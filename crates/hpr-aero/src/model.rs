@@ -25,8 +25,8 @@ use serde::{Deserialize, Serialize};
 
 use crate::body::{BODY_LIFT_K, BodyGeometry, sinc};
 use crate::drag::{
-    ComponentDrag, ComponentDragTerms, Drag, DragConditions, axial_drag_alpha_factor,
-    body_friction_form_factor,
+    ComponentDrag, ComponentDragTerms, Drag, DragConditions, SUBSONIC_MACH_LIMIT,
+    axial_drag_alpha_factor, body_friction_form_factor,
 };
 use crate::error::{AeroError, check_dimension, check_mach};
 use crate::fins::{FinGeometry, fin_count_factor, interference_factor, roll_sum, side_sum};
@@ -253,6 +253,7 @@ impl AeroModel {
         let mut fin_sets = Vec::new();
         let mut drag_terms = Vec::new();
         let mut previous_aft_area: Option<f64> = None;
+        let mut last_body_terms: Option<usize> = None;
         for component in &layout.components {
             let in_component = |e: AeroError| AeroError::InComponent {
                 id: component.id.clone(),
@@ -359,6 +360,7 @@ impl AeroModel {
             if let Some(geometry) = body {
                 let geometry = geometry.map_err(in_component)?;
                 let step = previous_aft_area.map_or(0.0, |aft| geometry.fore_area_m2 - aft);
+                last_body_terms = Some(drag_terms.len());
                 drag_terms.push(
                     ComponentDragTerms::body(
                         component,
@@ -375,10 +377,8 @@ impl AeroModel {
             }
         }
         // The aft base belongs to the last body component.
-        if let Some(last) = bodies.last()
-            && let Some(terms) = drag_terms.iter_mut().rfind(|t| t.id == last.id)
-        {
-            terms.base_area_m2 = last.geometry.aft_area_m2;
+        if let (Some(index), Some(last)) = (last_body_terms, bodies.last()) {
+            drag_terms[index].base_area_m2 = last.geometry.aft_area_m2;
         }
         Ok(Self {
             reference_area_m2,
@@ -421,7 +421,7 @@ impl AeroModel {
     /// # Errors
     ///
     /// - As [`Flow::validate`], except that with an override table any finite Mach number from 0 is
-    ///   accepted.
+    ///   accepted ([`AeroError::Domain`] otherwise).
     /// - As [`DragConditions::validate`].
     /// - [`AeroError::Table`] from the table lookup, and [`AeroError::Domain`] if the drag isn't
     ///   finite.
@@ -430,9 +430,16 @@ impl AeroModel {
         let factor = axial_drag_alpha_factor(flow.alpha_rad)?;
         let mut drag = if let Some(table) = &self.drag_table {
             flow.validate_angles()?;
-            let lookup = table.lookup(flow.mach, conditions.thrusting_motor_area_m2 > 0.0)?;
+            let lookup = table.lookup(flow.mach, conditions.thrusting)?;
+            let scale = match table.reference_diameter_m {
+                Some(d) => {
+                    check_dimension("drag table reference diameter", d, false)?;
+                    0.25 * PI * d * d / self.reference_area_m2
+                }
+                None => 1.0,
+            };
             Drag {
-                zero_lift_coefficient: lookup.value,
+                zero_lift_coefficient: lookup.value * scale,
                 table: Some(lookup),
                 ..Drag::default()
             }
@@ -453,6 +460,7 @@ impl AeroModel {
                 sum.parasitic += d.parasitic;
             }
             sum.zero_lift_coefficient = sum.friction + sum.pressure + sum.base + sum.parasitic;
+            sum.beyond_subsonic_methods = flow.mach > SUBSONIC_MACH_LIMIT;
             sum
         };
         drag.axial_coefficient = drag.zero_lift_coefficient * factor;
@@ -465,14 +473,16 @@ impl AeroModel {
         Ok(drag)
     }
 
-    /// Each component's share of the drag buildup at `flow` and `conditions`, in layout order, at
-    /// zero lift (the axial coefficient scaled by the flow's angle of attack). An override table
-    /// doesn't change these.
+    /// Each component's share of the drag buildup at `flow` and `conditions`, in layout order: its
+    /// zero-lift coefficient and parts, and its axial coefficient at the flow's angle of attack.
+    ///
+    /// These are always the buildup's terms. With an override table, [`AeroModel::drag`] returns
+    /// the table's value instead of their sum, so they don't add up to it.
     ///
     /// # Errors
     ///
     /// As [`Flow::validate`] and [`DragConditions::validate`].
-    pub fn drag_components(
+    pub fn buildup_components(
         &self,
         flow: &Flow,
         conditions: &DragConditions,

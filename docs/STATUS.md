@@ -14,11 +14,12 @@ M1.5 is done (ADR-008, ADR-009, `docs/physics/aero.md`). Start M1.6 from these n
 
 - **What exists:**
   - `hpr_aero::AeroModel::new(&Layout)` builds normal-force and drag terms once (about 11 µs).
-    Per evaluation: `normal_force(&Flow)` (about 25 ns) and `drag(&Flow, &DragConditions)` (60 to
-    110 ns), which returns `zero_lift_coefficient` and `axial_coefficient` (`C_A`, along `−z_B`).
-  - `DragConditions { reynolds_per_m, thrusting_motor_area_m2 }`: `V/ν` from the atmosphere
-    (`hpr_atmos::AirState::kinematic_viscosity_m2_s`) and the burning motors' case area
-    (`MountedMotor::diameter_m`). A positive area selects an override table's power-on curve.
+    Per evaluation: `normal_force(&Flow)` (about 25 ns) and `drag(&Flow, &DragConditions)` (50 to
+    110 ns), which returns `zero_lift_coefficient` and `axial_coefficient` (`C_A`, positive along
+    `−z_B`, negative past 90°), and flags `beyond_subsonic_methods` above Mach 0.8.
+  - `DragConditions::coasting(V/ν)` or `::thrusting(V/ν, motor_area_m2)`: `ν` from
+    `hpr_atmos::AirState::kinematic_viscosity_m2_s`, the area from the burning motors'
+    `MountedMotor::diameter_m`. `thrusting` also selects an override table's power-on curve.
   - `AeroModel::with_drag_table(DragTable)` flies another tool's `C_D0(M)`; a table accepts any
     Mach. `parse_mach_csv` reads RocketPy curves and RASAero II exports.
   - `hpr_design::Finish` on `Component::finish` (default 20 µm).
@@ -27,8 +28,9 @@ M1.5 is done (ADR-008, ADR-009, `docs/physics/aero.md`). Start M1.6 from these n
     them. Use `Assembly::mass_properties(t)` (about 0.1 µs) and one `AeroModel` per design.
   - The aero models are small-angle models (`α` accepted over `[0, π]`; drag mirrors past 90°).
     Decide how to treat large `α` near rail exit and apogee, and record it.
-  - Normal force and the drag buildup refuse `M ≥ 1` until M1.8. A flight that goes supersonic
-    needs an override table until then; decide what the engine does otherwise.
+  - Normal force and the drag buildup refuse `M ≥ 1` until M1.8, and drag is low above Mach 0.8.
+    A flight that goes faster needs an override table until then; decide what the engine does
+    otherwise.
   - Every motor in a configuration ignites at `t = 0` until M1.9.
   - RocketPy's data files must never be committed. Oracle scripts take inputs from notebooks and
     tests only; `cargo xtask aero` shows how to commit derived numbers only.
@@ -45,10 +47,9 @@ M1.5 is done (ADR-008, ADR-009, `docs/physics/aero.md`). Start M1.6 from these n
 
 ## Done log (newest first, keep about 15)
 
-- 2026-09-17: M1.5b Drag and override tables (PR #TBD, ADR-009): Niskanen's buildup (friction with
-  roughness, nose, shoulder, boattail, step, base with power-on relief, fin, lug and rail-button
-  terms), drag at angle of attack, Barrowman's roughness table, CSV override tables. At Mach 0.3,
-  Calisto +4.4% and −7.3%, Juno III −8.0% from their curves; Valetudo's suspect table −47%.
+- 2026-09-17: M1.5b Drag and override tables (PR #17, ADR-009): Niskanen's buildup, drag at angle
+  of attack, Barrowman's roughness table, CSV override tables. At Mach 0.3 against RASAero-labelled
+  curves: Calisto +4.4%, Juno III −6.0%, Cavour −8.3%; gaps: Cavour power-on −18%, Valetudo −47%.
 - 2026-09-17: M1.5a Normal force and centre of pressure (PR #16): Barrowman slopes and CPs for
   bodies (real volumes, L9) and fins (Prandtl–Glauert, MAC, fin-count factors L8, elliptical L10,
   freeform), Galejs body lift, ADR-008. Barrowman's five worked examples (NARAM-8, TIR-33) agree
@@ -57,8 +58,7 @@ M1.5 is done (ADR-008, ADR-009, `docs/physics/aero.md`). Start M1.6 from these n
   match to 8e-10; M1.4a Shapes, materials, component mass properties (PR #12, ADR-006).
 - 2026-09-17: M1.3 Solid motors (PR #9, ADR-005): RocketPy's SolidMotor to 8e-5, `.eng`/`.rse`
   round trips of 1710 files, 32 bundled public-domain curves.
-- 2026-09-17: M1.2 Atmosphere and wind (PR #7, ADR-004) and M1.1 Core math, frames, Earth (PR #5,
-  ADR-003): USSA76, soundings, four wind models, Dryden turbulence; WGS 84 geodesy and gravity.
+- 2026-09-17: M1.2 Atmosphere and wind (PR #7, ADR-004); M1.1 Core math, frames, Earth (PR #5).
 - 2026-09-17: M0.3 Lessons from Loft (PR #4), M0.2 Reference library (PR #3, ADR-002), M0.1
   Workspace, CI, licenses (PR #2, ADR-001). 2026-09-16: kickoff kit.
 
@@ -139,9 +139,10 @@ M1.5 is done (ADR-008, ADR-009, `docs/physics/aero.md`). Start M1.6 from these n
 - Aero (M1.5a) is small-angle only (fin slopes linear in `α`, no stall) and documented only to
   Mach 0.8; 0.8–1 is extrapolated until M1.8. Body-lift `K` is uncertain (Galejs: 1.0 to 1.5).
   The Recruiter's six fins miss TIR-33's print by +3.4% because the six-fin rules differ (ADR-008).
-- Drag (M1.5b): the RASAero comparison can't show 10% agreement, because the exports record no
-  inputs; plausible fins and finishes span −14% to +24%. Valetudo's table misses by 47% (ADR-009).
-  Nose and shoulder pressure drag is held at its low-subsonic value until M1.8 (low above Mach 0.6).
+- Drag (M1.5b): the RASAero comparison can't show 10% agreement without the exports' inputs
+  (fins and finish move each case by 20% or more). hpr misses Valetudo's suspect table by 47%, and
+  its power-on base relief is about 4× RASAero's (Cavour power-on −18%; ADR-009). Drag is low above
+  Mach 0.8 until M1.8 (flagged).
 - `AeroModel::normal_force` measured about 2× slower after M1.5b with nothing changed on its path
   (probably code layout; `docs/perf.md`). M1.6's flight benchmark will show whether it matters.
 - `refs doctor` "runnable" means the oracle's runtime starts (imports, JVM plus jar). No flight

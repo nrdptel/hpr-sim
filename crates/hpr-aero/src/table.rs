@@ -9,7 +9,8 @@
 //!
 //! [`parse_mach_csv`] reads CSV text (no I/O: the caller supplies the text):
 //!
-//! - **Two columns, no header**: Mach number and `C_D`, as in RocketPy's drag-curve files.
+//! - **Two columns**: Mach number and `C_D`, optionally under one header row, as in the drag
+//!   curves of RocketPy's Calisto, Juno III and Valetudo examples.
 //! - **A header row**: the Mach column is the first whose name contains `mach`, and the value
 //!   column is the one named by the caller (compared without case or surrounding space). Rows
 //!   with an angle-of-attack column (`alpha`) other than zero are skipped, which reads RASAero II's
@@ -26,21 +27,36 @@ use crate::error::AeroError;
 /// Drag coefficient against Mach number, power-off and optionally power-on.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
+#[non_exhaustive]
 pub struct DragTable {
     /// `C_D0(M)` with no motor thrusting.
     pub power_off: Table1D,
     /// `C_D0(M)` while a motor thrusts; the power-off table applies when this is `None`.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub power_on: Option<Table1D>,
+    /// The reference diameter the coefficients are on, m. When it differs from the rocket's,
+    /// [`crate::AeroModel::drag`] rescales by the ratio of the reference areas; `None` takes the
+    /// coefficients as on the rocket's reference area.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub reference_diameter_m: Option<f64>,
 }
 
 impl DragTable {
-    /// A table with a power-off curve and an optional power-on curve.
+    /// A table with a power-off curve and an optional power-on curve, on the rocket's reference
+    /// area.
     pub fn new(power_off: Table1D, power_on: Option<Table1D>) -> Self {
         Self {
             power_off,
             power_on,
+            reference_diameter_m: None,
         }
+    }
+
+    /// This table with its coefficients on a reference diameter of `diameter_m`.
+    #[must_use]
+    pub fn with_reference_diameter_m(mut self, diameter_m: f64) -> Self {
+        self.reference_diameter_m = Some(diameter_m);
+        self
     }
 
     /// Reads a power-off curve and an optional power-on curve from two-column CSV text
@@ -50,23 +66,22 @@ impl DragTable {
     ///
     /// As [`parse_mach_csv`].
     pub fn from_csv(power_off: &str, power_on: Option<&str>) -> Result<Self, AeroError> {
-        Ok(Self {
-            power_off: parse_mach_csv(power_off, None)?,
-            power_on: power_on
+        Ok(Self::new(
+            parse_mach_csv(power_off, None)?,
+            power_on
                 .map(|text| parse_mach_csv(text, None))
                 .transpose()?,
-        })
+        ))
     }
 
-    /// `C_D0` at `mach`, from the power-on curve when `thrusting` and it exists.
+    /// `C_D0` at `mach` on the table's own reference area, from the power-on curve when
+    /// `thrusting` and it exists.
     ///
     /// # Errors
     ///
-    /// [`AeroError::Mach`] for a negative or non-finite Mach number, and table errors.
+    /// [`AeroError::Domain`] for a negative or non-finite Mach number, and table errors.
     pub fn lookup(&self, mach: f64, thrusting: bool) -> Result<Lookup, AeroError> {
-        if !(mach.is_finite() && mach >= 0.0) {
-            return Err(AeroError::Mach { mach });
-        }
+        crate::drag::check_mach_any(mach)?;
         let table = match (&self.power_on, thrusting) {
             (Some(on), true) => on,
             _ => &self.power_off,
@@ -75,24 +90,52 @@ impl DragTable {
     }
 }
 
+/// Splits a CSV line into trimmed fields. A field in double quotes may contain commas; `""`
+/// inside quotes is a quote. Empty fields at the end of the line (a trailing comma) are dropped.
+fn split_fields(line: &str) -> Vec<String> {
+    let mut fields = Vec::new();
+    let mut field = String::new();
+    let mut quoted = false;
+    let mut chars = line.chars().peekable();
+    while let Some(c) = chars.next() {
+        match c {
+            '"' if quoted && chars.peek() == Some(&'"') => {
+                field.push('"');
+                chars.next();
+            }
+            '"' => quoted = !quoted,
+            ',' if !quoted => fields.push(std::mem::take(&mut field).trim().to_owned()),
+            _ => field.push(c),
+        }
+    }
+    fields.push(field.trim().to_owned());
+    while fields.len() > 1 && fields.last().is_some_and(String::is_empty) {
+        fields.pop();
+    }
+    fields
+}
+
 /// Reads a table of a value against Mach number from CSV text.
 ///
-/// With `column` `None`, the text must have exactly two numeric columns (Mach, value) and may
-/// start with one header row, which is ignored. With `column` `Some(name)`, the first non-blank
-/// row must be a header; the Mach column is the first whose name contains `mach` and the value
-/// column the one named `name` (both without regard to case or surrounding space). A column named
-/// like `alpha` (the angle of attack) selects the rows where it is zero.
+/// With `column` `None`, the text has two numeric columns (Mach, value), optionally under one
+/// header row. With `column` `Some(name)`, the first non-blank row must be a header; the Mach
+/// column is the first whose name contains `mach` and the value column the one named `name` (both
+/// without regard to case or surrounding space). A column whose name starts with `alpha` (the
+/// angle of attack) selects the rows where it is zero.
 ///
-/// Blank lines are skipped, `\r\n` line ends are accepted, and numbers may have leading zeros
-/// (`01.05`). The Mach numbers must strictly increase. The table interpolates linearly and holds
-/// its end values outside its range.
+/// A row is a header only if none of its fields is a number. A leading byte-order mark, blank
+/// lines, `\r\n` line ends, quoted fields, trailing commas and leading zeros (`01.05`) are
+/// accepted. A row identical to the one before it is skipped. Otherwise the Mach numbers must be
+/// finite and strictly increase: a Mach number repeated with another value, or out of order, is
+/// refused, not sorted. The table interpolates linearly and holds its end values outside its range.
 ///
 /// # Errors
 ///
-/// - [`AeroError::Csv`] naming the line for a row that doesn't parse, a missing column, or no
-///   rows.
-/// - [`AeroError::Table`] for Mach numbers that don't strictly increase, or too few rows.
+/// - [`AeroError::Csv`] naming the 1-based line for a row that doesn't parse, a missing column or
+///   header, a non-finite value, a Mach number that doesn't increase, or no rows (line 0).
+/// - [`AeroError::Table`] for fewer than two rows.
 pub fn parse_mach_csv(text: &str, column: Option<&str>) -> Result<Table1D, AeroError> {
+    let text = text.strip_prefix('\u{feff}').unwrap_or(text);
     let mut lines = text
         .lines()
         .enumerate()
@@ -100,20 +143,13 @@ pub fn parse_mach_csv(text: &str, column: Option<&str>) -> Result<Table1D, AeroE
         .filter(|(_, line)| !line.is_empty())
         .peekable();
     let csv = |line: usize, message: String| AeroError::Csv { line, message };
-    let fields = |line: &str| -> Vec<String> {
-        line.split(',')
-            .map(|f| f.trim().trim_matches('"').trim().to_owned())
-            .collect()
-    };
-    let numbers = |row: &[String]| -> Option<Vec<f64>> {
-        row.iter().map(|f| f.parse::<f64>().ok()).collect()
-    };
+    let number = |f: &String| f.parse::<f64>().ok();
 
-    let first = lines
+    let (first_line, first) = lines
         .peek()
-        .map(|&(n, line)| (n, fields(line)))
+        .map(|&(n, line)| (n, split_fields(line)))
         .ok_or_else(|| csv(0, "no rows".to_owned()))?;
-    let header = numbers(&first.1).is_none();
+    let header = first.iter().all(|f| number(f).is_none());
     let (mach_col, value_col, alpha_col, expected) = match column {
         None => {
             if header {
@@ -123,29 +159,34 @@ pub fn parse_mach_csv(text: &str, column: Option<&str>) -> Result<Table1D, AeroE
         }
         Some(name) => {
             if !header {
-                return Err(csv(first.0, format!("expected a header naming `{name}`")));
+                return Err(csv(
+                    first_line,
+                    format!("expected a header naming `{name}`"),
+                ));
             }
             lines.next();
-            let names: Vec<String> = first.1.iter().map(|f| f.to_lowercase()).collect();
+            let names: Vec<String> = first.iter().map(|f| f.to_lowercase()).collect();
             let mach = names
                 .iter()
                 .position(|f| f.contains("mach"))
-                .ok_or_else(|| csv(first.0, "no Mach column".to_owned()))?;
+                .ok_or_else(|| csv(first_line, "no Mach column".to_owned()))?;
             let wanted = name.trim().to_lowercase();
             let value = names
                 .iter()
                 .position(|f| *f == wanted)
-                .ok_or_else(|| csv(first.0, format!("no column named `{name}`")))?;
+                .ok_or_else(|| csv(first_line, format!("no column named `{name}`")))?;
             let alpha = names.iter().position(|f| f.starts_with("alpha"));
             (mach, value, alpha, None)
         }
     };
 
-    let (mut xs, mut ys) = (Vec::new(), Vec::new());
+    let (mut xs, mut ys): (Vec<f64>, Vec<f64>) = (Vec::new(), Vec::new());
     for (n, line) in lines {
-        let row = fields(line);
-        let values =
-            numbers(&row).ok_or_else(|| csv(n, format!("not a row of numbers: `{line}`")))?;
+        let values: Vec<f64> = split_fields(line)
+            .iter()
+            .map(number)
+            .collect::<Option<_>>()
+            .ok_or_else(|| csv(n, format!("not a row of numbers: `{line}`")))?;
         if let Some(expected) = expected
             && values.len() != expected
         {
@@ -165,8 +206,24 @@ pub fn parse_mach_csv(text: &str, column: Option<&str>) -> Result<Table1D, AeroE
         {
             continue;
         }
-        xs.push(get(mach_col)?);
-        ys.push(get(value_col)?);
+        let (mach, value) = (get(mach_col)?, get(value_col)?);
+        if !(mach.is_finite() && value.is_finite()) {
+            return Err(csv(n, format!("not finite: Mach {mach}, value {value}")));
+        }
+        if let (Some(&last), Some(&last_value)) = (xs.last(), ys.last()) {
+            // A repeated row is harmless; RocketPy's Cavour curve repeats its first one.
+            if mach == last && value == last_value {
+                continue;
+            }
+            if mach <= last {
+                return Err(csv(
+                    n,
+                    format!("Mach {mach} doesn't increase from the previous row's {last}"),
+                ));
+            }
+        }
+        xs.push(mach);
+        ys.push(value);
     }
     if xs.is_empty() {
         return Err(csv(0, "no rows".to_owned()));
@@ -230,38 +287,51 @@ mod tests {
     #[test]
     fn malformed_text_names_the_line() {
         let err = |text: &str, column| parse_mach_csv(text, column).unwrap_err();
-        assert!(matches!(err("", None), AeroError::Csv { line: 0, .. }));
-        assert!(matches!(
-            err("0.1,0.5\n0.2,x\n", None),
-            AeroError::Csv { line: 2, .. }
-        ));
-        assert!(matches!(
-            err("0.1,0.5,0.4\n", None),
-            AeroError::Csv { line: 1, .. }
-        ));
-        assert!(matches!(
-            err("0.1,0.5\n", Some("cd")),
-            AeroError::Csv { line: 1, .. }
-        ));
-        assert!(matches!(
-            err("Mach,CD\n0.1,0.5\n", Some("CA")),
-            AeroError::Csv { line: 1, .. }
-        ));
-        assert!(matches!(
-            err("0.2,0.5\n0.1,0.5\n", None),
-            AeroError::Table(_)
-        ));
+        let line = |text: &str, column| match err(text, column) {
+            AeroError::Csv { line, .. } => line,
+            other => panic!("expected a CSV error, got {other:?}"),
+        };
+        assert_eq!(line("", None), 0);
+        assert_eq!(line("0.1,0.5\n0.2,x\n", None), 2);
+        assert_eq!(line("0.1,0.5,0.4\n", None), 1);
+        assert_eq!(line("0.1,0.5\n", Some("cd")), 1);
+        assert_eq!(line("Mach,CD\n0.1,0.5\n", Some("CA")), 1);
+        // A first row with a number in it is a bad row, not a header.
+        assert_eq!(line("0.1,0.5x\n0.2,0.6\n0.3,0.7\n", None), 1);
+        // Duplicate, unsorted and non-finite rows name their line, counting skipped lines.
+        assert_eq!(line("0.2,0.5\n\n0.1,0.5\n", None), 3);
+        assert_eq!(line("0.1,0.5\n0.1,0.6\n", None), 2);
+        // An identical repeated row is skipped.
+        let repeated = parse_mach_csv("0.1,0.5\n0.1,0.5\n0.1,0.5\n0.2,0.6\n", None).unwrap();
+        assert_eq!(repeated.xs(), [0.1, 0.2]);
+        assert_eq!(line("0.1,0.5\n0.2,nan\n", None), 2);
+        assert_eq!(line("0.1,0.5\n0.2,inf\n", None), 2);
+        let alpha = "Mach,Alpha,CD\n0.1,0,0.5\n0.1,2,0.6\n0.1,0,0.7\n";
+        assert_eq!(line(alpha, Some("CD")), 4);
         assert!(matches!(err("0.2,0.5\n", None), AeroError::Table(_)));
         let table = DragTable::from_csv("0.1,0.5\n0.2,0.6\n", None).unwrap();
         assert!(matches!(
             table.lookup(-0.1, false),
-            Err(AeroError::Mach { .. })
+            Err(AeroError::Domain { .. })
         ));
         assert!(matches!(
             table.lookup(f64::NAN, false),
-            Err(AeroError::Mach { .. })
+            Err(AeroError::Domain { .. })
         ));
+        // Mach 3 is fine for a table.
+        assert_eq!(table.lookup(3.0, false).unwrap().value, 0.6);
         // No power-on curve: the power-off one applies while thrusting.
         assert_eq!(table.lookup(0.1, true).unwrap().value, 0.5);
+    }
+
+    /// A byte-order mark, quoted fields with commas, and trailing commas.
+    #[test]
+    fn byte_order_marks_quotes_and_trailing_commas() {
+        let table = parse_mach_csv("\u{feff}0.01,0.949\n0.02,1.05\n", None).unwrap();
+        assert_eq!(table.xs(), [0.01, 0.02]);
+        let text = "\"Mach\",\"CN (0,4)\",\"CD\",\n0.1,6.1,0.5,\n0.2,6.2,0.6,\n";
+        let table = parse_mach_csv(text, Some("cd")).unwrap();
+        assert_eq!(table.ys(), [0.5, 0.6]);
+        assert_eq!(split_fields("a,\"b,\"\"c\"\"\",d,,"), ["a", "b,\"c\"", "d"]);
     }
 }

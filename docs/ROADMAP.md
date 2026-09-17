@@ -193,6 +193,11 @@
       (tighten this later).
     - Unit tests cover every drag term's limits.
 
+    *Result (ADR-009):* within 10% for Calisto, Juno III and Cavour power-off (+4.4%, −6.0%,
+    −8.3%) under a declared input rule, with documented gaps: Cavour power-on −18.3% (power-on base
+    relief differs from RASAero's) and Valetudo −47% and −50% (a table 1.44 times its own
+    OpenRocket export).
+
 - [ ] **M1.6 6-DOF flight engine.**
   - State: position, velocity, attitude quaternion, angular velocity, time-varying mass
     properties.

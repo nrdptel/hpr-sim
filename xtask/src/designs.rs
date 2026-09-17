@@ -226,6 +226,7 @@ const RASAERO_CURVES: &[&str] = &[
     "calisto-tests-motor-at-minus-1.373",
     "juno-iii",
     "valetudo",
+    "cavour",
 ];
 const MOUNT_WALL_M: f64 = 0.0015;
 /// Below this, a gap between the example's last tail and its nozzle or fins gets no closing tube.
@@ -392,7 +393,8 @@ fn rocketpy_design(case: &Value, catalog: &Catalog) -> Result<Rocket, String> {
             span_m: span,
             sweep_m: sweep,
         };
-        let (cross_section, thickness) = fin_section(&fins["airfoil"], &planform)?;
+        let (cross_section, thickness) =
+            fin_section(text(case, "name")?, &fins["airfoil"], &planform)?;
         attached.push((
             index,
             component(
@@ -544,27 +546,42 @@ fn rocketpy_design(case: &Value, catalog: &Catalog) -> Result<Rocket, String> {
     })
 }
 
-/// A RocketPy fin set's cross-section and thickness: a NACA 00xx airfoil file gives an airfoil
-/// section `xx`% thick at the mean aerodynamic chord; any other airfoil (a lift curve) an airfoil
-/// section of the placeholder thickness; no airfoil square edges of the placeholder thickness.
-fn fin_section(airfoil: &Value, planform: &FinPlanform) -> Result<(FinCrossSection, f64), String> {
-    if airfoil.is_null() {
-        return Ok((FinCrossSection::Square, FIN_THICKNESS_M));
+/// Fin cross-sections published for an example's rocket outside RocketPy, by case name, with the
+/// source. Juno III's team describes "aletas com perfil de aerofólio truncado" (fins with a
+/// truncated airfoil profile, <https://www.projetojupiter.com/foguetes>): a rounded leading edge
+/// and a blunt trailing edge, which Niskanen's rounded section (half the base drag) represents
+/// better than the airfoil section (none).
+const PUBLISHED_FIN_SECTIONS: &[(&str, FinCrossSection)] =
+    &[("juno-iii", FinCrossSection::Rounded)];
+
+/// A RocketPy fin set's cross-section and thickness (ADR-009): a NACA 00xx airfoil file gives an
+/// airfoil section `xx`% thick at the mean aerodynamic chord; a section the rocket's team published
+/// ([`PUBLISHED_FIN_SECTIONS`]) keeps the placeholder thickness; anything else, including a
+/// lift-curve airfoil, which says nothing about the edges, keeps square edges of the placeholder
+/// thickness.
+fn fin_section(
+    case: &str,
+    airfoil: &Value,
+    planform: &FinPlanform,
+) -> Result<(FinCrossSection, f64), String> {
+    if let Some(file) = airfoil["file"].as_str() {
+        let digits = file
+            .strip_prefix("NACA00")
+            .and_then(|rest| rest.get(..2))
+            .and_then(|d| d.parse::<u32>().ok())
+            .ok_or_else(|| format!("unmapped airfoil file `{file}`"))?;
+        let geometry =
+            hpr_aero::fins::FinGeometry::from_planform(planform).map_err(|e| e.to_string())?;
+        return Ok((
+            FinCrossSection::Airfoil,
+            f64::from(digits) / 100.0 * geometry.mac_length_m,
+        ));
     }
-    let Some(file) = airfoil["file"].as_str() else {
-        return Ok((FinCrossSection::Airfoil, FIN_THICKNESS_M));
-    };
-    let digits = file
-        .strip_prefix("NACA00")
-        .and_then(|rest| rest.get(..2))
-        .and_then(|d| d.parse::<u32>().ok())
-        .ok_or_else(|| format!("unmapped airfoil file `{file}`"))?;
-    let geometry =
-        hpr_aero::fins::FinGeometry::from_planform(planform).map_err(|e| e.to_string())?;
-    Ok((
-        FinCrossSection::Airfoil,
-        f64::from(digits) / 100.0 * geometry.mac_length_m,
-    ))
+    let section = PUBLISHED_FIN_SECTIONS
+        .iter()
+        .find(|(name, _)| *name == case)
+        .map_or(FinCrossSection::Square, |&(_, section)| section);
+    Ok((section, FIN_THICKNESS_M))
 }
 
 /// The fixture's RocketPy motor as an hpr `SolidMotor`: the same inputs on hpr's motor axis
@@ -649,7 +666,12 @@ fn rocketpy_motor(motor: &Value, catalog: &Catalog) -> Result<SolidMotor, String
         thrust,
         propellant,
         MassElement {
-            mass_kg: num(motor, "dry_mass")?,
+            // hpr's motor needs a positive dry mass; RocketPy's Cavour example has none, so it
+            // takes 1e-15 kg, below the mass comparison's resolution (1e-12 of the rocket's).
+            mass_kg: match num(motor, "dry_mass")? {
+                0.0 => 1e-15,
+                mass => mass,
+            },
             cg_m: to_hpr(dry_cg),
             axial_inertia_kg_m2: dry_33,
             transverse_inertia_kg_m2: dry_11,
@@ -1035,7 +1057,7 @@ mod tests {
     fn committed_designs_match_the_generator() {
         let root = root().unwrap();
         let designs = generate(&root).unwrap();
-        assert_eq!(designs.len(), 9);
+        assert_eq!(designs.len(), 10);
         let stale = stale(&root.join(DIR), &designs);
         assert!(
             stale.is_empty(),

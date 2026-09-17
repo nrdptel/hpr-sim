@@ -38,11 +38,20 @@ pub const LOW_REYNOLDS: f64 = 1.0e4;
 /// The skin-friction coefficient below [`LOW_REYNOLDS`] (Niskanen 2009 eq. 3.81).
 pub const LOW_REYNOLDS_FRICTION: f64 = 1.48e-2;
 
-fn check_mach_any(mach: f64) -> Result<(), AeroError> {
+/// The top of the subsonic region for which Niskanen's methods are stated, Mach 0.8 (Niskanen 2009
+/// Table 3.1, p. 19; the transonic method takes over there, p. 47). The buildup accepts Mach
+/// numbers up to 1 and flags results above this ([`Drag::beyond_subsonic_methods`]).
+pub const SUBSONIC_MACH_LIMIT: f64 = 0.8;
+
+/// Checks a Mach number of any speed regime: finite and non-negative.
+pub(crate) fn check_mach_any(mach: f64) -> Result<(), AeroError> {
     if mach.is_finite() && mach >= 0.0 {
         Ok(())
     } else {
-        Err(AeroError::Mach { mach })
+        Err(AeroError::Domain {
+            what: "Mach number",
+            value: mach,
+        })
     }
 }
 
@@ -75,7 +84,7 @@ pub fn critical_reynolds(relative_roughness: f64) -> Result<f64, AeroError> {
 /// ```text
 /// C_f = 1.48e-2                     R < 1e4
 ///     = 1/(1.50 ln R − 5.6)²        1e4 ≤ R < R_crit     (eq. 3.78)
-///     = 0.032 (R_s/L)^0.2           R ≥ R_crit           (eq. 3.80)
+///     = 0.032 (R_s/L)^0.2           R ≥ R_crit, R ≥ 1e4  (eq. 3.80)
 /// ```
 ///
 /// As printed, the piecewise form jumps at `R_crit`: eq. 3.79 is not where eq. 3.78 and 3.80
@@ -89,12 +98,17 @@ pub fn incompressible_skin_friction(
     relative_roughness: f64,
 ) -> Result<f64, AeroError> {
     check_dimension("Reynolds number", reynolds, true)?;
-    let critical = critical_reynolds(relative_roughness)?;
-    Ok(if reynolds < critical {
-        turbulent_friction(reynolds)
-    } else {
+    Ok(if roughness_limited(reynolds, relative_roughness)? {
         0.032 * relative_roughness.powf(0.2)
+    } else {
+        turbulent_friction(reynolds)
     })
+}
+
+/// Whether eq. 3.81 takes the roughness-limited branch: from `R_crit`, and never below `1e4`,
+/// where the low-Reynolds value applies first.
+fn roughness_limited(reynolds: f64, relative_roughness: f64) -> Result<bool, AeroError> {
+    Ok(reynolds >= LOW_REYNOLDS && reynolds >= critical_reynolds(relative_roughness)?)
 }
 
 /// Skin-friction coefficient with compressibility (Niskanen 2009 eq. 3.82–3.84; Barrowman 1967
@@ -110,7 +124,7 @@ pub fn incompressible_skin_friction(
 ///
 /// # Errors
 ///
-/// As [`incompressible_skin_friction`], and [`AeroError::Mach`] for a negative or non-finite
+/// As [`incompressible_skin_friction`], and [`AeroError::Domain`] for a negative or non-finite
 /// Mach number.
 pub fn skin_friction_coefficient(
     reynolds: f64,
@@ -124,10 +138,10 @@ pub fn skin_friction_coefficient(
         return Ok(cf * (1.0 - 0.1 * m2));
     }
     let turbulent = turbulent_friction(reynolds) / (1.0 + 0.15 * m2).powf(0.58);
-    Ok(if reynolds < critical_reynolds(relative_roughness)? {
-        turbulent
-    } else {
+    Ok(if roughness_limited(reynolds, relative_roughness)? {
         (cf / (1.0 + 0.18 * m2)).max(turbulent)
+    } else {
+        turbulent
     })
 }
 
@@ -163,7 +177,7 @@ pub fn fin_friction_thickness_factor(
 ///
 /// # Errors
 ///
-/// [`AeroError::Mach`] for a negative or non-finite Mach number.
+/// [`AeroError::Domain`] for a negative or non-finite Mach number.
 pub fn stagnation_pressure_ratio(mach: f64) -> Result<f64, AeroError> {
     check_mach_any(mach)?;
     let m2 = mach * mach;
@@ -190,7 +204,7 @@ pub fn stagnation_drag_coefficient(mach: f64) -> Result<f64, AeroError> {
 ///
 /// # Errors
 ///
-/// [`AeroError::Mach`] for a negative or non-finite Mach number.
+/// [`AeroError::Domain`] for a negative or non-finite Mach number.
 pub fn base_drag_coefficient(mach: f64) -> Result<f64, AeroError> {
     check_mach_any(mach)?;
     Ok(if mach < 1.0 {
@@ -268,7 +282,7 @@ pub fn boattail_factor(
 ///
 /// # Errors
 ///
-/// [`AeroError::Mach`] for a negative or non-finite Mach number, [`AeroError::Domain`] for a
+/// [`AeroError::Domain`] for a negative or non-finite Mach number or a
 /// sweep outside `(−π/2, π/2)`, and [`AeroError::Unsupported`] for a cross-section this model
 /// doesn't know.
 pub fn fin_pressure_drag_coefficient(
@@ -321,7 +335,7 @@ pub fn fin_pressure_drag_coefficient(
 ///
 /// # Errors
 ///
-/// [`AeroError::Mach`] for a negative or non-finite Mach number, and [`AeroError::Domain`] for a
+/// [`AeroError::Domain`] for a negative or non-finite Mach number, or for a
 /// negative length, a non-positive outer radius, or an inner radius outside `[0, r_ext]`.
 pub fn launch_lug_drag(
     length_m: f64,
@@ -367,7 +381,8 @@ pub fn rail_button_drag_coefficient(mach: f64) -> Result<f64, AeroError> {
     stagnation_drag_coefficient(mach)
 }
 
-/// The scaling of axial drag with angle of attack, `C_A(α) = C_D0 f(α)` (Niskanen 2009 §3.4.7).
+/// The scaling of axial drag with angle of attack, `C_A(α) = C_D0 f(α)` (Niskanen 2009 §3.4.7),
+/// with `C_A` positive along `−z_B` (toward the tail).
 ///
 /// Niskanen describes, without coefficients, a two-part polynomial from `f = 1` at `α = 0` up to
 /// 1.3 at 17° and down to 0 at 90°, with zero slope at all three. hpr uses the lowest-degree
@@ -378,8 +393,9 @@ pub fn rail_button_drag_coefficient(mach: f64) -> Result<f64, AeroError> {
 /// f = 1.3 (1 − 3u² + 2u³),   u = (α − 17°)/73°,   17° ≤ α ≤ 90°
 /// ```
 ///
-/// Past 90° the flow meets the tail first; hpr mirrors, `f(α) = f(180° − α)` (an assumption; the
-/// source stops at 90°). The coefficients are derived, not published (ADR-009).
+/// Past 90° the flow meets the tail first and drag pushes toward the nose; hpr mirrors with the
+/// sign reversed, `f(α) = −f(180° − α)` (an assumption; the source stops at 90°), so `f` is
+/// continuous through 0 at 90°. The coefficients are derived, not published (ADR-009).
 ///
 /// # Errors
 ///
@@ -392,18 +408,19 @@ pub fn axial_drag_alpha_factor(alpha_rad: f64) -> Result<f64, AeroError> {
         });
     }
     let degrees = alpha_rad.to_degrees();
-    let a = if degrees > 90.0 {
-        180.0 - degrees
+    let (a, sign) = if degrees > 90.0 {
+        (180.0 - degrees, -1.0)
     } else {
-        degrees
+        (degrees, 1.0)
     };
-    Ok(if a <= 17.0 {
-        let t = a / 17.0;
-        1.0 + 0.3 * t * t * (3.0 - 2.0 * t)
-    } else {
-        let u = (a - 17.0) / 73.0;
-        1.3 * (1.0 - u * u * (3.0 - 2.0 * u))
-    })
+    Ok(sign
+        * if a <= 17.0 {
+            let t = a / 17.0;
+            1.0 + 0.3 * t * t * (3.0 - 2.0 * t)
+        } else {
+            let u = (a - 17.0) / 73.0;
+            1.3 * (1.0 - u * u * (3.0 - 2.0 * u))
+        })
 }
 
 /// What the drag buildup needs beyond the [`crate::Flow`].
@@ -414,47 +431,49 @@ pub struct DragConditions {
     /// Freestream Reynolds number per metre, `V/ν`, 1/m. The buildup multiplies it by the rocket's
     /// length (Niskanen 2009 eq. 3.12, p. 42).
     pub reynolds_per_m: f64,
+    /// Whether a motor is thrusting. It selects an override table's power-on curve.
+    pub thrusting: bool,
     /// Total cross-section area of the motors thrusting into the aft base, m², subtracted from
-    /// the base area (Niskanen 2009 p. 50); zero while coasting. A positive area also selects an
-    /// override table's power-on curve.
+    /// the base area (Niskanen 2009 p. 50). Zero while coasting.
     pub thrusting_motor_area_m2: f64,
 }
 
 impl DragConditions {
-    /// Conditions at `reynolds_per_m` with `thrusting_motor_area_m2` of motors thrusting.
-    pub fn new(reynolds_per_m: f64, thrusting_motor_area_m2: f64) -> Self {
+    /// Coasting at `reynolds_per_m`.
+    pub fn coasting(reynolds_per_m: f64) -> Self {
         Self {
             reynolds_per_m,
-            thrusting_motor_area_m2,
+            thrusting: false,
+            thrusting_motor_area_m2: 0.0,
         }
     }
 
-    /// Coasting at `reynolds_per_m`.
-    pub fn coasting(reynolds_per_m: f64) -> Self {
-        Self::new(reynolds_per_m, 0.0)
+    /// Thrusting at `reynolds_per_m`, with motors of total cross-section `motor_area_m2` in the aft
+    /// base (zero when the area is unknown: then the base drag gets no relief).
+    pub fn thrusting(reynolds_per_m: f64, motor_area_m2: f64) -> Self {
+        Self {
+            reynolds_per_m,
+            thrusting: true,
+            thrusting_motor_area_m2: motor_area_m2,
+        }
     }
 
-    /// Conditions at airspeed `speed_m_s` in air of kinematic viscosity
-    /// `kinematic_viscosity_m2_s`.
-    pub fn from_air(
-        speed_m_s: f64,
-        kinematic_viscosity_m2_s: f64,
-        thrusting_motor_area_m2: f64,
-    ) -> Self {
-        Self::new(
-            speed_m_s / kinematic_viscosity_m2_s,
-            thrusting_motor_area_m2,
-        )
-    }
-
-    /// Checks that both values are finite and non-negative.
+    /// Checks that the Reynolds number and the area are finite and non-negative, and that a
+    /// coasting rocket has no thrusting area.
     ///
     /// # Errors
     ///
     /// [`AeroError::Domain`] otherwise.
     pub fn validate(&self) -> Result<(), AeroError> {
         check_dimension("Reynolds number per metre", self.reynolds_per_m, true)?;
-        check_dimension("thrusting motor area", self.thrusting_motor_area_m2, true)
+        check_dimension("thrusting motor area", self.thrusting_motor_area_m2, true)?;
+        if !self.thrusting && self.thrusting_motor_area_m2 > 0.0 {
+            return Err(AeroError::Domain {
+                what: "thrusting motor area while coasting",
+                value: self.thrusting_motor_area_m2,
+            });
+        }
+        Ok(())
     }
 }
 
@@ -479,6 +498,10 @@ pub struct Drag {
     /// Set when an override table gave `C_D0` (the four parts are then zero): whether the lookup
     /// extrapolated.
     pub table: Option<Lookup>,
+    /// Whether the buildup ran above [`SUBSONIC_MACH_LIMIT`], where Niskanen's subsonic methods
+    /// end: nose, shoulder and step pressure drag miss their transonic rise until M1.8, so `C_D0`
+    /// is low there. Never set with an override table.
+    pub beyond_subsonic_methods: bool,
 }
 
 /// One component's share of the drag buildup, at zero lift.
@@ -577,7 +600,7 @@ impl ComponentDragTerms {
         }
         let change = geometry.aft_area_m2 - geometry.fore_area_m2;
         if change > 0.0 {
-            let joint = geometry.aft_slope.max(0.0).atan();
+            let joint = geometry.aft_angle_rad.max(0.0);
             terms.joint_pressure += joint_pressure_drag_coefficient(joint)? * change;
         } else if change < 0.0 {
             let diameter = |area: f64| 2.0 * (area / PI).sqrt();
@@ -694,6 +717,7 @@ impl ComponentDragTerms {
             base,
             parasitic,
             table: None,
+            beyond_subsonic_methods: mach > SUBSONIC_MACH_LIMIT,
         })
     }
 }
@@ -839,12 +863,7 @@ mod tests {
         );
         // At Mach 5 the rough value corrected by eq. 3.84 falls below the turbulent one, which
         // then applies.
-        let turbulent_m5 = {
-            let d = 1.50 * f64::ln(1e7) - 5.6;
-            1.0 / (d * d) / (1.0f64 + 0.15 * 25.0).powf(0.58)
-        };
         let rr_small = 2e-6;
-        assert!(critical_reynolds(rr_small).unwrap() < 1e7 * 10.0);
         for mach in (0..=100).map(|k| 0.05 * f64::from(k)) {
             for r in [0.0, 1e3, 1e4, 1e5, 1e7, 1e9] {
                 for rr in [0.0, 2e-6, 60e-6, 1e-3] {
@@ -870,8 +889,26 @@ mod tests {
                 assert!(f.is_finite() && f >= 0.0, "term {f} at M {mach}");
             }
         }
-        let rough_m5 = skin_friction_coefficient(1e7 * 10.0, rr_small, 5.0).unwrap();
-        assert!(rough_m5 >= turbulent_m5 * 0.5);
+        // At R = 1e9 on 2 µm per metre, eq. 3.84 gives 4.2e-4 at Mach 5, below the turbulent
+        // 6.2e-4 at the same Reynolds number, which then applies.
+        assert!(critical_reynolds(rr_small).unwrap() < 1e9);
+        let rough_m5 = 0.032 * rr_small.powf(0.2) / (1.0 + 0.18 * 25.0);
+        let turbulent_m5 = {
+            let d = 1.50 * f64::ln(1e9) - 5.6;
+            1.0 / (d * d) / (1.0f64 + 0.15 * 25.0).powf(0.58)
+        };
+        assert!(rough_m5 < turbulent_m5);
+        assert_eq!(
+            skin_friction_coefficient(1e9, rr_small, 5.0).unwrap(),
+            turbulent_m5
+        );
+        // Very rough (R_crit below 1e4): the low-Reynolds value still applies below 1e4.
+        assert!(critical_reynolds(2e-2).unwrap() < 5e3);
+        assert_eq!(incompressible_skin_friction(5e3, 2e-2).unwrap(), 1.48e-2);
+        assert_eq!(
+            incompressible_skin_friction(2e4, 2e-2).unwrap(),
+            0.032 * 2e-2f64.powf(0.2)
+        );
 
         // Base drag is continuous at Mach 1.
         let below = base_drag_coefficient(1.0 - 1e-12).unwrap();
@@ -969,7 +1006,7 @@ mod tests {
         let reversed = build(vec![b, a]);
         for (mach, alpha, motor) in [(0.1, 0.0, 0.0), (0.5, 0.2, 1e-3), (0.9, 1.0, 0.0)] {
             let flow = Flow::new(mach, alpha, 0.0);
-            let conditions = DragConditions::new(RE_PER_M, motor);
+            let conditions = DragConditions::thrusting(RE_PER_M, motor);
             let f = forward.drag(&flow, &conditions).unwrap();
             let r = reversed.drag(&flow, &conditions).unwrap();
             close(
@@ -1096,13 +1133,13 @@ mod tests {
         let c_base = 0.12 + 0.13 * 0.25;
         let off = m.drag(&flow, &DragConditions::coasting(RE_PER_M)).unwrap();
         let on = m
-            .drag(&flow, &DragConditions::new(RE_PER_M, motor))
+            .drag(&flow, &DragConditions::thrusting(RE_PER_M, motor))
             .unwrap();
         let full = m
-            .drag(&flow, &DragConditions::new(RE_PER_M, a_base))
+            .drag(&flow, &DragConditions::thrusting(RE_PER_M, a_base))
             .unwrap();
         let over = m
-            .drag(&flow, &DragConditions::new(RE_PER_M, 2.0 * a_base))
+            .drag(&flow, &DragConditions::thrusting(RE_PER_M, 2.0 * a_base))
             .unwrap();
         close(
             off.base,
@@ -1129,7 +1166,7 @@ mod tests {
         );
         // The base belongs to the last body component.
         let parts = m
-            .drag_components(&flow, &DragConditions::new(RE_PER_M, motor))
+            .buildup_components(&flow, &DragConditions::thrusting(RE_PER_M, motor))
             .unwrap();
         assert_eq!(parts[0].drag.base, 0.0);
         assert_eq!(parts[1].drag.base, on.base);
@@ -1144,7 +1181,7 @@ mod tests {
             0.5
         );
         assert_eq!(
-            t.drag(&flow, &DragConditions::new(RE_PER_M, motor))
+            t.drag(&flow, &DragConditions::thrusting(RE_PER_M, motor))
                 .unwrap()
                 .zero_lift_coefficient,
             0.4
@@ -1230,7 +1267,7 @@ mod tests {
         let m = model(&rocket);
         let a_ref = PI * 0.03 * 0.03;
         let parts = m
-            .drag_components(&Flow::axial(0.3), &DragConditions::coasting(RE_PER_M))
+            .buildup_components(&Flow::axial(0.3), &DragConditions::coasting(RE_PER_M))
             .unwrap();
         let find = |id: &str| parts.iter().find(|p| p.id == id).unwrap().drag;
         close(
@@ -1276,7 +1313,7 @@ mod tests {
         let flow = Flow::axial(0.3);
         let pressure_of = |r: &Rocket| {
             model(r)
-                .drag_components(&flow, &conditions)
+                .buildup_components(&flow, &conditions)
                 .unwrap()
                 .iter()
                 .filter(|c| c.id == "change" || c.id == "aft-tube")
@@ -1356,10 +1393,6 @@ mod tests {
                 ReferenceDiameter::Maximum {},
             )
         };
-        let error = |rocket: &Rocket| match AeroModel::new(&rocket.layout().unwrap()) {
-            Err(AeroError::InComponent { id, source }) => (id, *source),
-            other => panic!("expected an error in a component, got {other:?}"),
-        };
         // A rail button whose base and flange are taller than the button.
         let button = component(
             "buttons",
@@ -1396,10 +1429,20 @@ mod tests {
             AeroModel::new(&layout),
             Err(AeroError::Domain { .. })
         ));
-        // A negative custom roughness.
+        // A negative custom roughness: the design refuses it, and so does the model given such a
+        // layout directly.
         let mut fins = with_fin("fins", 3, 0.003, FinCrossSection::Square, 0.0);
         fins.finish = Some(Finish::Custom { roughness_m: -1e-6 });
-        let (id, source) = error(&base(fins));
+        assert!(base(fins).layout().is_err());
+        let mut layout = base(with_fin("fins", 3, 0.003, FinCrossSection::Square, 0.0))
+            .layout()
+            .unwrap();
+        let index = layout.find("fins").unwrap().0;
+        layout.components[index].finish = Finish::Custom { roughness_m: -1e-6 };
+        let (id, source) = match AeroModel::new(&layout) {
+            Err(AeroError::InComponent { id, source }) => (id, *source),
+            other => panic!("expected an error in a component, got {other:?}"),
+        };
         assert_eq!(id, "fins");
         assert!(matches!(source, AeroError::Design(_)), "{source:?}");
         // Bad conditions.
@@ -1414,7 +1457,11 @@ mod tests {
         for conditions in [
             DragConditions::coasting(f64::NAN),
             DragConditions::coasting(-1.0),
-            DragConditions::new(RE_PER_M, f64::INFINITY),
+            DragConditions::thrusting(RE_PER_M, f64::INFINITY),
+            DragConditions {
+                thrusting_motor_area_m2: 1e-3,
+                ..DragConditions::coasting(RE_PER_M)
+            },
         ] {
             assert!(m.drag(&flow, &conditions).is_err(), "{conditions:?}");
         }
@@ -1478,7 +1525,7 @@ mod tests {
         for bad in [-0.1, f64::NAN, f64::INFINITY] {
             assert!(matches!(
                 stagnation_pressure_ratio(bad),
-                Err(AeroError::Mach { .. })
+                Err(AeroError::Domain { .. })
             ));
         }
     }
@@ -1566,7 +1613,8 @@ mod tests {
     }
 
     /// The angle-of-attack factor meets every condition Niskanen states (1 at 0°, 1.3 at 17°, 0 at
-    /// 90°, zero slope at each), rises then falls, and mirrors past 90°.
+    /// 90°, zero slope at each), rises then falls, and mirrors with its sign reversed past 90°, so a
+    /// rocket flying tail first is pushed toward its nose.
     #[test]
     fn axial_drag_alpha_factor_limits() {
         let f = |deg: f64| axial_drag_alpha_factor(deg.to_radians()).unwrap();
@@ -1592,9 +1640,30 @@ mod tests {
             previous = f(deg);
         }
         for deg in [5.0, 17.0, 45.0, 89.0] {
-            close(f(180.0 - deg), f(deg), 1e-12, "mirror");
+            close(f(180.0 - deg), -f(deg), 1e-12, "mirror");
         }
-        assert_eq!(f(180.0), 1.0);
+        assert_eq!(f(180.0), -1.0);
+        // In a model at 135°: C_A points toward the nose.
+        let rocket = one_stage(
+            vec![
+                component("nose", nose(NoseShape::Conical {}, 0.2, 0.03), None),
+                component("tube", body_part(0.8, 0.03, 0.03), None),
+            ],
+            ReferenceDiameter::Maximum {},
+        );
+        let d = model(&rocket)
+            .drag(
+                &Flow::new(0.3, 135f64.to_radians(), 0.0),
+                &DragConditions::coasting(RE_PER_M),
+            )
+            .unwrap();
+        assert!(d.zero_lift_coefficient > 0.0 && d.axial_coefficient < 0.0);
+        close(
+            d.axial_coefficient,
+            -d.zero_lift_coefficient * f(45.0),
+            1e-14,
+            "C_A at 135°",
+        );
         assert!(axial_drag_alpha_factor(-1e-9).is_err());
         assert!(axial_drag_alpha_factor(PI + 1e-9).is_err());
     }
@@ -1750,8 +1819,16 @@ mod tests {
             "C_A",
         );
         assert_eq!(got.table, None);
+        assert!(!got.beyond_subsonic_methods);
+        let fast = m.drag(&Flow::axial(0.85), &conditions).unwrap();
+        assert!(fast.beyond_subsonic_methods);
+        assert!(
+            !m.drag(&Flow::axial(0.8), &conditions)
+                .unwrap()
+                .beyond_subsonic_methods
+        );
 
-        let parts = m.drag_components(&flow, &conditions).unwrap();
+        let parts = m.buildup_components(&flow, &conditions).unwrap();
         let ids: Vec<&str> = parts.iter().map(|p| p.id.as_str()).collect();
         assert_eq!(ids, ["nose", "tube", "fins", "lug"]);
         let sum = |f: fn(&Drag) -> f64| parts.iter().map(|p| f(&p.drag)).sum::<f64>();
@@ -1768,9 +1845,11 @@ mod tests {
             "C_A sum",
         );
 
-        // Airspeed and viscosity give the same conditions.
-        let from_air = DragConditions::from_air(50.0, 1e-5, 0.0);
-        assert_eq!(from_air.reynolds_per_m, 5e6);
+        // Thrusting with an unknown motor area: the base keeps its drag.
+        let unknown = m
+            .drag(&flow, &DragConditions::thrusting(re_per_m, 0.0))
+            .unwrap();
+        assert_eq!(unknown.base, got.base);
 
         // An override: the table's C_D0 (extrapolation reported), the same factor, and Mach 1.5
         // allowed for drag while the buildup refuses it.
@@ -1796,8 +1875,171 @@ mod tests {
         let fast = o.drag(&Flow::axial(1.5), &conditions).unwrap();
         assert_eq!(fast.zero_lift_coefficient, 0.9);
         assert!(fast.table.unwrap().extrapolated.is_some());
+        assert!(!fast.beyond_subsonic_methods);
         assert!(m.drag(&Flow::axial(1.5), &conditions).is_err());
         assert!(o.drag(&Flow::new(0.5, 4.0, 0.0), &conditions).is_err());
-        assert!(o.drag_components(&Flow::axial(1.5), &conditions).is_err());
+        assert!(
+            o.buildup_components(&Flow::axial(1.5), &conditions)
+                .is_err()
+        );
+    }
+
+    /// A narrowing elliptical, Haack or power-series transition ends in a blunt tip, where the
+    /// profile's slope is infinite: the model still builds, and the boattail rule doesn't use the
+    /// slope.
+    #[test]
+    fn curved_boattails_build_and_use_the_boattail_rule() {
+        let (big, small, l) = (0.03, 0.02, 0.04);
+        let a_ref = PI * big * big;
+        let delta = PI * (big * big - small * small);
+        let c_base = 0.12 + 0.13 * 0.09;
+        for shape in [
+            NoseShape::Elliptical {},
+            NoseShape::Haack { parameter: 0.0 },
+            NoseShape::PowerSeries { exponent: 0.5 },
+            NoseShape::Conical {},
+        ] {
+            let mut tail = body_part(l, big, small);
+            if let Part::Transition(t) = &mut tail {
+                t.shape = shape;
+            }
+            let rocket = one_stage(
+                vec![
+                    component(
+                        "nose",
+                        nose(NoseShape::Ogive { radius_ratio: 1.0 }, 0.2, big),
+                        None,
+                    ),
+                    component("tube", body_part(0.8, big, big), None),
+                    component("tail", tail, None),
+                ],
+                ReferenceDiameter::Maximum {},
+            );
+            let m = model(&rocket);
+            let tail = &m.bodies()[2];
+            assert!(tail.geometry.aft_angle_rad <= 0.0, "{shape:?}");
+            let parts = m
+                .buildup_components(&Flow::axial(0.3), &DragConditions::coasting(RE_PER_M))
+                .unwrap();
+            // γ = 0.04/0.02 = 2: half the base drag on the decrease in area.
+            close(
+                parts[2].drag.pressure,
+                0.5 * c_base * delta / a_ref,
+                1e-14,
+                "boattail",
+            );
+            close(
+                parts[2].drag.base,
+                c_base * PI * small * small / a_ref,
+                1e-14,
+                "base",
+            );
+        }
+    }
+
+    /// An override table on another reference diameter is rescaled by the ratio of the areas.
+    #[test]
+    fn drag_table_on_another_reference_diameter_is_rescaled() {
+        let rocket = one_stage(
+            vec![
+                component("nose", nose(NoseShape::Conical {}, 0.2, 0.03), None),
+                component("tube", body_part(0.8, 0.03, 0.03), None),
+            ],
+            ReferenceDiameter::Maximum {},
+        );
+        let m = model(&rocket);
+        let conditions = DragConditions::coasting(RE_PER_M);
+        let flow = Flow::axial(0.3);
+        let table = DragTable::from_csv("0,0.5\n1,0.5\n", None).unwrap();
+        let same = m.clone().with_drag_table(table.clone());
+        assert_eq!(
+            same.drag(&flow, &conditions).unwrap().zero_lift_coefficient,
+            0.5
+        );
+        let wider = m
+            .clone()
+            .with_drag_table(table.clone().with_reference_diameter_m(0.09));
+        close(
+            wider
+                .drag(&flow, &conditions)
+                .unwrap()
+                .zero_lift_coefficient,
+            0.5 * 2.25,
+            1e-14,
+            "a 90 mm reference on a 60 mm rocket",
+        );
+        let bad = m.with_drag_table(table.with_reference_diameter_m(0.0));
+        assert!(matches!(
+            bad.drag(&flow, &conditions),
+            Err(AeroError::Domain { .. })
+        ));
+    }
+
+    /// The joint angle comes from the profile at the aft end: a power-series nose `(x/L)^n` meets
+    /// its tube at `atan(n r/L)`, a von Kármán nose and a tangent ogive smoothly; a boattail that
+    /// closes to a point leaves no base.
+    #[test]
+    fn joint_angles_from_the_profile_and_a_closed_tail() {
+        let (r, l) = (0.03, 0.24);
+        let a_ref = PI * r * r;
+        let nose_pressure = |shape: NoseShape| {
+            let rocket = one_stage(
+                vec![
+                    component("nose", nose(shape, l, r), None),
+                    component("tube", body_part(0.8, r, r), None),
+                ],
+                ReferenceDiameter::Maximum {},
+            );
+            model(&rocket)
+                .buildup_components(&Flow::axial(0.3), &DragConditions::coasting(RE_PER_M))
+                .unwrap()[0]
+                .drag
+                .pressure
+        };
+        let phi = (0.5 * r / l).atan();
+        close(
+            nose_pressure(NoseShape::PowerSeries { exponent: 0.5 }),
+            0.8 * phi.sin().powi(2),
+            1e-12,
+            "x^0.5 nose",
+        );
+        let cone = (r / l).atan();
+        close(
+            nose_pressure(NoseShape::Conical {}),
+            0.8 * cone.sin().powi(2),
+            1e-12,
+            "cone",
+        );
+        assert!(nose_pressure(NoseShape::Haack { parameter: 0.0 }) < 1e-20);
+        assert!(nose_pressure(NoseShape::Ogive { radius_ratio: 1.0 }) < 1e-20);
+
+        // A 0.1 m cone closing a 30 mm tube to a point: γ = 0.1/0.06 < 3, no base.
+        let rocket = one_stage(
+            vec![
+                component(
+                    "nose",
+                    nose(NoseShape::Ogive { radius_ratio: 1.0 }, l, r),
+                    None,
+                ),
+                component("tube", body_part(0.8, r, r), None),
+                component("tail", body_part(0.1, r, 0.0), None),
+            ],
+            ReferenceDiameter::Maximum {},
+        );
+        let parts = model(&rocket)
+            .buildup_components(
+                &Flow::axial(0.3),
+                &DragConditions::thrusting(RE_PER_M, 1e-3),
+            )
+            .unwrap();
+        let c_base = 0.12 + 0.13 * 0.09;
+        let gamma: f64 = 0.1 / 0.06;
+        close(
+            parts[2].drag.pressure,
+            0.5 * (3.0 - gamma) * c_base * a_ref / a_ref,
+            1e-14,
+            "tail",
+        );
+        assert_eq!(parts[2].drag.base, 0.0);
     }
 }

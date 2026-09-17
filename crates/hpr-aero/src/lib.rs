@@ -431,7 +431,9 @@ mod tests {
     struct DragCurveCase {
         id: String,
         design: String,
+        variant_of: Option<String>,
         thrusting: bool,
+        curve_cd0: f64,
         hpr_cd0: f64,
         relative_error: f64,
     }
@@ -450,13 +452,17 @@ mod tests {
             "rocketpy-valetudo.json" => {
                 include_str!("../../../validation/designs/rocketpy-valetudo.json")
             }
+            "rocketpy-cavour.json" => {
+                include_str!("../../../validation/designs/rocketpy-cavour.json")
+            }
             other => panic!("no committed design {other}"),
         };
         serde_json::from_str(text).unwrap()
     }
 
     /// M1.5b done-when: subsonic `C_D0` of RocketPy's example rockets against the drag curves
-    /// that ship with them, at Mach 0.3 at sea level (where RASAero II computes its exports). The curves have unclear terms and stay in
+    /// that ship with them, at Mach 0.3 and USSA76 sea level (RASAero II computes its exports'
+    /// Reynolds numbers at sea level). The curves have unclear terms and stay in
     /// `refs/`; `cargo xtask aero` writes the relative errors to
     /// `validation/fixtures/aero/rocketpy-drag-curves.json`. This test recomputes hpr's values
     /// from the committed designs, so the recorded errors can't go stale, and checks them against
@@ -489,14 +495,21 @@ mod tests {
             } else {
                 0.0
             };
-            let drag = model
-                .drag(
-                    &Flow::axial(fixture.mach),
-                    &DragConditions::new(fixture.reynolds_per_m, motor_area),
-                )
-                .unwrap();
+            let conditions = if case.thrusting {
+                DragConditions::thrusting(fixture.reynolds_per_m, motor_area)
+            } else {
+                DragConditions::coasting(fixture.reynolds_per_m)
+            };
+            let drag = model.drag(&Flow::axial(fixture.mach), &conditions).unwrap();
             // A stale fixture: rerun `cargo xtask aero`.
             close(drag.zero_lift_coefficient, case.hpr_cd0, 1e-12, &case.id);
+            let error = drag.zero_lift_coefficient / case.curve_cd0 - 1.0;
+            assert!(
+                (error - case.relative_error).abs() < 1e-12,
+                "{}: recorded error {}, recomputed {error}",
+                case.id,
+                case.relative_error
+            );
             eprintln!(
                 "{}: C_D0 {:.4} ({:.4} friction, {:.4} pressure, {:.4} base, {:.4} parasitic), \
                  {:+.1}% from the curve",
@@ -508,14 +521,26 @@ mod tests {
                 drag.parasitic,
                 100.0 * case.relative_error
             );
-            if case.relative_error.abs() > fixture.tolerance_rel {
+            if error.abs() > fixture.tolerance_rel {
                 outside.push(case.id.as_str());
             }
         }
-        assert_eq!(fixture.cases.len(), 5);
-        // Valetudo's table, labelled RASAero, is 1.44 times the OpenRocket export for the same
-        // rocket and has no input file; hpr misses it by about half (ADR-009). Every other curve
-        // is within the tolerance.
-        assert_eq!(outside, ["valetudo-power-off", "valetudo-power-on"]);
+        // Six comparisons over four rockets, and one variant (Calisto's getting-started fins on
+        // the same export).
+        assert_eq!(fixture.cases.len(), 7);
+        let variants: Vec<&str> = fixture
+            .cases
+            .iter()
+            .filter(|c| c.variant_of.is_some())
+            .map(|c| c.id.as_str())
+            .collect();
+        assert_eq!(variants, ["calisto-getting-started-power-off"]);
+        // Outside the tolerance (ADR-009): Cavour under power, where Niskanen's base relief (the
+        // motor's whole area) is about four times RASAero's; and Valetudo's table, 1.44 times the
+        // OpenRocket export for the same rocket, which hpr matches to 2% with that file's inputs.
+        assert_eq!(
+            outside,
+            ["cavour-power-on", "valetudo-power-off", "valetudo-power-on"]
+        );
     }
 }

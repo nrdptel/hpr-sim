@@ -29,47 +29,74 @@ const CHECKOUT: &str = "refs/rocketpy";
 const MACH: f64 = 0.3;
 const TOLERANCE: f64 = 0.10;
 
-/// A comparison: an hpr design, a RocketPy drag curve, and what the curve is.
+/// A comparison: an hpr design, a RocketPy drag curve, and what the curve is. `variant_of` names
+/// the case whose curve a variant shares; variants are reported but aren't separate evidence.
 struct Case {
     id: &'static str,
     design: &'static str,
     curve: &'static str,
     thrusting: bool,
+    variant_of: Option<&'static str>,
     origin: &'static str,
 }
 
+/// Every RocketPy example whose drag curve is labelled RASAero, power-off, and power-on where the
+/// example's power-on curve differs.
 const CASES: &[Case] = &[
     Case {
         id: "calisto-power-off",
         design: "rocketpy-calisto-tests-motor-at-minus-1.373.json",
         curve: "data/rockets/calisto/powerOffDragCurve.csv",
         thrusting: false,
+        variant_of: None,
         origin: "RASAero II export: the alpha-0 `CD Power-Off` column of RocketPy's first commit's \
                  `data/calisto/CD Test.CSV` (da91db9e, 2018), rounded to 9 decimals and cut to \
-                 Mach 2; that export's power-on column equals its power-off column",
+                 Mach 2; the export's power-on column equals its power-off column. The design has \
+                 the 2018 notebook's fins; its rail buttons come from RocketPy's calisto_robust \
+                 test fixture, not the notebook",
     },
     Case {
         id: "calisto-getting-started-power-off",
         design: "rocketpy-calisto-getting-started-motor-at-minus-1.255.json",
         curve: "data/rockets/calisto/powerOffDragCurve.csv",
         thrusting: false,
-        origin: "the same RASAero II export, for the larger fins RocketPy's getting-started \
-                 example gives Calisto (tip chord 0.06 m, span 0.11 m, against the 2018 \
-                 notebook's 0.04 m and 0.10 m)",
+        variant_of: Some("calisto-power-off"),
+        origin: "the same RASAero II export, for the larger NACA 0012 fins RocketPy's \
+                 getting-started example gives Calisto (tip chord 0.06 m, span 0.11 m, against \
+                 the 2018 notebook's 0.04 m and 0.10 m)",
     },
     Case {
         id: "juno-iii-power-off",
         design: "rocketpy-juno-iii.json",
         curve: "data/rockets/juno3/drag_curve.csv",
         thrusting: false,
+        variant_of: None,
         origin: "labelled RASAero II by RocketPy's Juno III notebook; a 3-decimal, hand-edited \
                  table (broken above Mach 1), used for power-off and power-on",
+    },
+    Case {
+        id: "cavour-power-off",
+        design: "rocketpy-cavour.json",
+        curve: "data/rockets/polito/drag_coefficient_power_off.csv",
+        thrusting: false,
+        variant_of: None,
+        origin: "labelled RASAero II by RocketPy's Cavour notebook; a 3-decimal table from Mach \
+                 0.082 to 0.895 whose first row repeats",
+    },
+    Case {
+        id: "cavour-power-on",
+        design: "rocketpy-cavour.json",
+        curve: "data/rockets/polito/drag_coefficient_power_on.csv",
+        thrusting: true,
+        variant_of: None,
+        origin: "the power-on companion of the Cavour table, up to 0.013 below it",
     },
     Case {
         id: "valetudo-power-off",
         design: "rocketpy-valetudo.json",
         curve: "data/rockets/valetudo/Cd_PowerOff_RASAero.csv",
         thrusting: false,
+        variant_of: None,
         origin: "labelled RASAero by its file name; a 3-decimal, hand-edited table with no input \
                  file, 1.44 times the OpenRocket export for the same rocket in RocketPy's \
                  RocketPaper repository at Mach 0.3",
@@ -79,7 +106,9 @@ const CASES: &[Case] = &[
         design: "rocketpy-valetudo.json",
         curve: "data/rockets/valetudo/Cd_PowerOn_RASAero.csv",
         thrusting: true,
-        origin: "the power-on companion of the Valetudo table, 0.003 to 0.009 below it",
+        variant_of: None,
+        origin: "the power-on companion of the Valetudo table: 0.003 to 0.010 below it from Mach \
+                 0.02 (0.098 above at Mach 0.01)",
     },
 ];
 
@@ -114,7 +143,7 @@ pub fn run(args: &[String]) -> Result<(), String> {
 /// The fixture, computed from the committed designs and the curves in `refs/rocketpy`.
 fn generate(root: &Path) -> Result<Value, String> {
     let checkout = root.join(CHECKOUT);
-    let commit = git_head(&checkout)?;
+    let commit = crate::refs::git::clean_head(&checkout)?;
     let air = Ussa76::standard()
         .sample(0.0)
         .map_err(|e| e.to_string())?
@@ -136,7 +165,8 @@ fn generate(root: &Path) -> Result<Value, String> {
                 curve_path.display()
             )
         })?;
-        let curve_text = String::from_utf8(bytes.clone()).map_err(|e| e.to_string())?;
+        let curve_text = std::str::from_utf8(&bytes).map_err(|e| e.to_string())?;
+        let (curve_text, dropped) = first_row_per_mach(curve_text);
         let table =
             parse_mach_csv(&curve_text, None).map_err(|e| format!("{}: {e}", case.curve))?;
         let reference = table.lookup(MACH).map_err(|e| e.to_string())?;
@@ -158,7 +188,10 @@ fn generate(root: &Path) -> Result<Value, String> {
                 .map(|b| format!("{b:02x}"))
                 .collect::<String>(),
             "origin": case.origin,
+            "variant_of": case.variant_of,
             "thrusting": case.thrusting,
+            "curve_rows_dropped": dropped,
+            "curve_cd0": reference.value,
             "hpr_cd0": drag,
             "relative_error": error,
         }));
@@ -166,8 +199,9 @@ fn generate(root: &Path) -> Result<Value, String> {
     Ok(json!({
         "generator": "cargo xtask aero",
         "note": "Derived numbers only: RocketPy's curves are read from refs/rocketpy and never \
-                 committed. relative_error is hpr's C_D0 over the curve's value at the Mach \
-                 number, minus 1; the curve interpolates linearly.",
+                 committed. curve_cd0 is a curve's linear interpolation at the Mach number, after \
+                 dropping rows that repeat the previous row's Mach number (curve_rows_dropped), \
+                 and relative_error is hpr_cd0 over it, minus 1.",
         "rocketpy_commit": commit,
         "mach": MACH,
         "atmosphere": "USSA76 at sea level",
@@ -175,6 +209,29 @@ fn generate(root: &Path) -> Result<Value, String> {
         "tolerance_rel": TOLERANCE,
         "cases": cases,
     }))
+}
+
+/// The curve's text with every row whose Mach number repeats the previous row's dropped, and how
+/// many were dropped. `parse_mach_csv` refuses a repeated Mach number with another value; Cavour's
+/// curve rounds its Mach numbers to three decimals and repeats seven of them below Mach 0.1 with
+/// values 0.001 apart, far from the comparison. Unparseable rows are kept for the parser to report.
+fn first_row_per_mach(text: &str) -> (String, usize) {
+    let mut kept = String::new();
+    let mut last: Option<String> = None;
+    let mut dropped = 0;
+    for line in text.lines() {
+        let mach = line.split(',').next().map(|m| m.trim().to_owned());
+        if mach.is_some() && !line.trim().is_empty() && mach == last {
+            dropped += 1;
+            continue;
+        }
+        if !line.trim().is_empty() {
+            last = mach;
+        }
+        kept.push_str(line);
+        kept.push('\n');
+    }
+    (kept, dropped)
 }
 
 /// hpr's zero-lift drag coefficient for `rocket`'s first configuration, with its motors thrusting
@@ -194,27 +251,32 @@ fn hpr_drag(rocket: &Rocket, speed: f64, nu: f64, thrusting: bool) -> Result<f64
     } else {
         0.0
     };
+    let conditions = if thrusting {
+        DragConditions::thrusting(speed / nu, motor_area)
+    } else {
+        DragConditions::coasting(speed / nu)
+    };
     let drag = model
-        .drag(
-            &Flow::axial(MACH),
-            &DragConditions::from_air(speed, nu, motor_area),
-        )
+        .drag(&Flow::axial(MACH), &conditions)
         .map_err(|e| e.to_string())?;
     Ok(drag.zero_lift_coefficient)
 }
 
-fn git_head(checkout: &Path) -> Result<String, String> {
-    let output = std::process::Command::new("git")
-        .arg("-C")
-        .arg(checkout)
-        .args(["rev-parse", "HEAD"])
-        .output()
-        .map_err(|e| format!("git: {e}"))?;
-    if !output.status.success() {
-        return Err(format!(
-            "{}: not a git checkout (run `cargo xtask refs fetch`)",
-            checkout.display()
-        ));
+#[cfg(test)]
+mod tests {
+    /// With `refs/rocketpy` fetched, the committed fixture matches the curves and the designs.
+    /// Without the checkout (as in CI) there is nothing to compare; `hpr_aero`'s test still checks
+    /// the fixture against the committed designs.
+    #[test]
+    fn fixture_matches_the_curves_when_the_checkout_is_present() {
+        let root = crate::designs::root().unwrap();
+        if !root.join(super::CHECKOUT).join(".git").exists() {
+            eprintln!(
+                "{} is not fetched; skipping the comparison",
+                super::CHECKOUT
+            );
+            return;
+        }
+        super::run(&["--check".to_owned()]).unwrap();
     }
-    Ok(String::from_utf8_lossy(&output.stdout).trim().to_owned())
 }

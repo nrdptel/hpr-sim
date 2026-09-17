@@ -24,7 +24,7 @@ fn benches(c: &mut Criterion) {
     .unwrap();
     let flow = Flow::new(0.6, 0.05, 0.3);
     // Sea level at Mach 0.6, one 54 mm motor thrusting.
-    let conditions = DragConditions::new(0.6 * 340.294 / 1.4607e-5, 2.29e-3);
+    let conditions = DragConditions::thrusting(0.6 * 340.294 / 1.4607e-5, 2.29e-3);
     let two_stage = AeroModel::new(&two_stage.layout().unwrap()).unwrap();
     let calisto = AeroModel::new(&calisto.layout().unwrap()).unwrap();
     c.bench_function("AeroModel::drag, synthetic two-stage", |b| {

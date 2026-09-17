@@ -18,7 +18,7 @@
 
 mod doctor;
 mod download;
-mod git;
+pub(crate) mod git;
 mod hash;
 mod java;
 mod lock;

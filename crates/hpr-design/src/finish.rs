@@ -60,7 +60,7 @@ impl Default for Finish {
 
 impl Finish {
     /// Every named finish, smoothest first.
-    pub const NAMED: [Finish; 15] = [
+    pub const NAMED: &'static [Finish] = &[
         Finish::Mirror {},
         Finish::AverageGlass {},
         Finish::Polished {},

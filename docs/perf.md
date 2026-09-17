@@ -12,9 +12,9 @@ the command, so a later run can be compared like for like.
 
 | call | median |
 |---|---|
-| `AeroModel::drag`, synthetic two-stage | 106 ns |
-| `AeroModel::drag`, Calisto | 62 ns |
-| `AeroModel::drag`, Calisto with a 200-row table | 12 ns |
+| `AeroModel::drag`, synthetic two-stage | 107 ns |
+| `AeroModel::drag`, Calisto | 47 ns |
+| `AeroModel::drag`, Calisto with a 200-row table | 13 ns |
 
 - **Where the time goes.** Each component's skin friction takes a logarithm and a power, and each
   fin set a power for its leading edge; the table is a binary search.

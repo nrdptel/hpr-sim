@@ -635,6 +635,7 @@ pub struct PlacedComponent {
     /// Axial extent ([`Part::length_m`]), m.
     pub length_m: f64,
     /// The outer surface's finish ([`Component::finish`], with the default filled in).
+    #[serde(default)]
     pub finish: Finish,
     /// For an external attachment, the radius of the body tube it sits on, m.
     pub body_radius_m: Option<f64>,
@@ -716,7 +717,8 @@ impl Rocket {
     ///   a body tube, children under anything but a body component or inner tube), a missing or
     ///   unexpected position, an automatic dimension that doesn't apply or can't be resolved, or a
     ///   motor mount on anything but a body tube or inner tube.
-    /// - Any part's geometry, material or numerical error, and override errors.
+    /// - Any part's geometry, material or numerical error, a custom finish's negative or
+    ///   non-finite roughness, and override errors.
     pub fn layout(&self) -> Result<Layout, DesignError> {
         if self.stages.is_empty() {
             return Err(DesignError::Tree {
@@ -870,6 +872,9 @@ fn check_node(
     depth: usize,
 ) -> Result<(), DesignError> {
     unique(ids, &node.id)?;
+    if let Some(finish) = node.finish {
+        finish.roughness_m().map_err(|e| within(&node.id, e))?;
+    }
     if depth >= MAX_DEPTH {
         return Err(tree(
             &node.id,

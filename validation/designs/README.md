@@ -25,14 +25,16 @@ These are built from `validation/fixtures/design/rocketpy-rocket-mass.json`, whi
   - Body tubes fill the gaps, and a closing tube reaches the nozzle or the fins when no tail
     does.
   - Walls, fin thickness and materials are placeholders; the override replaces their mass.
+  - Parachutes are left out: RocketPy gives only their drag area.
 - **Drag inputs** (ADR-009):
   - Fins with a NACA 00xx airfoil in the example get an airfoil section that thick at the mean
-    aerodynamic chord; a lift-curve airfoil gives an airfoil section of the 3 mm placeholder; the
-    rest keep square 3 mm edges.
-  - The rockets whose curves RocketPy labels RASAero (both Calisto designs, Juno III, Valetudo)
-    take RASAero II's default smooth finish (`mirror`), because the exports don't record theirs.
-    The others keep the default finish.
-  - Parachutes are left out: RocketPy gives only their drag area.
+    aerodynamic chord. Juno III's fins take the rounded section its team published (a truncated
+    airfoil). The rest keep square 3 mm edges; a lift-curve airfoil says nothing about the edges.
+  - The rockets whose curves RocketPy labels RASAero (both Calisto designs, Juno III, Cavour,
+    Valetudo) take RASAero II's default smooth finish (`mirror`), because the exports don't record
+    theirs. The others keep the default finish.
+- **Cavour** has no motor dry mass in RocketPy; hpr's motor needs a positive one, so it gets
+  1e-15 kg.
 - **Calisto at −1.373 m:** RocketPy's tests give no geometry for this rocket, so it takes the
   `calisto_robust` test fixture's surfaces.
 
