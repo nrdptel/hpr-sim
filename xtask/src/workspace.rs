@@ -1,7 +1,6 @@
 //! The workspace layout, read from `cargo metadata`.
 
-use std::collections::BTreeMap;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::process::Command;
 
 use serde_json::Value;
@@ -19,28 +18,6 @@ pub struct Package {
     pub name: String,
     /// `[package.metadata.hpr] wasm = true`: the crate belongs to the pure core.
     pub wasm: bool,
-    pub dependencies: Vec<Dependency>,
-    /// The `[features]` table: feature name to the entries it enables.
-    pub features: BTreeMap<String, Vec<String>>,
-}
-
-/// One entry of a package's dependency tables.
-#[derive(Debug)]
-pub struct Dependency {
-    /// The name of the package depended on.
-    pub name: String,
-    /// The name the dependency is known by in `[features]` (differs from `name` when renamed).
-    pub key: String,
-    pub kind: DependencyKind,
-    pub optional: bool,
-}
-
-/// Which dependency table an entry comes from.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum DependencyKind {
-    Normal,
-    Dev,
-    Build,
 }
 
 /// The cargo binary that is running this xtask, so the pinned toolchain is used throughout.
@@ -48,11 +25,11 @@ pub fn cargo() -> String {
     std::env::var("CARGO").unwrap_or_else(|_| "cargo".to_owned())
 }
 
-/// Runs `cargo metadata --no-deps` for the workspace that contains this crate.
-pub fn load() -> Result<Workspace, String> {
+/// Runs `cargo metadata --no-deps` for the workspace that contains `dir`.
+pub fn load(dir: &Path) -> Result<Workspace, String> {
     let output = Command::new(cargo())
         .args(["metadata", "--format-version", "1", "--no-deps"])
-        .current_dir(env!("CARGO_MANIFEST_DIR"))
+        .current_dir(dir)
         .output()
         .map_err(|err| format!("could not run `cargo metadata`: {err}"))?;
     if !output.status.success() {
@@ -87,7 +64,10 @@ pub fn parse(json: &str) -> Result<Workspace, String> {
 }
 
 fn parse_package(package: &Value) -> Result<Package, String> {
-    let name = str_field(package, "name")?;
+    let name = package["name"]
+        .as_str()
+        .ok_or("a package in `cargo metadata` JSON has no name")?
+        .to_owned();
     let wasm = match &package["metadata"]["hpr"]["wasm"] {
         Value::Null => false,
         Value::Bool(flag) => *flag,
@@ -97,62 +77,7 @@ fn parse_package(package: &Value) -> Result<Package, String> {
             ));
         }
     };
-    let dependencies = package["dependencies"]
-        .as_array()
-        .ok_or_else(|| format!("{name}: no dependencies array"))?
-        .iter()
-        .map(|dep| parse_dependency(&name, dep))
-        .collect::<Result<_, _>>()?;
-    let mut features = BTreeMap::new();
-    if let Some(table) = package["features"].as_object() {
-        for (feature, entries) in table {
-            let entries = entries
-                .as_array()
-                .ok_or_else(|| format!("{name}: feature `{feature}` is not an array"))?
-                .iter()
-                .map(|entry| {
-                    entry.as_str().map(str::to_owned).ok_or_else(|| {
-                        format!("{name}: feature `{feature}` has a non-string entry")
-                    })
-                })
-                .collect::<Result<_, _>>()?;
-            features.insert(feature.clone(), entries);
-        }
-    }
-    Ok(Package {
-        name,
-        wasm,
-        dependencies,
-        features,
-    })
-}
-
-fn parse_dependency(package: &str, dep: &Value) -> Result<Dependency, String> {
-    let name = str_field(dep, "name").map_err(|err| format!("{package}: {err}"))?;
-    let kind = match &dep["kind"] {
-        Value::Null => DependencyKind::Normal,
-        Value::String(kind) if kind == "dev" => DependencyKind::Dev,
-        Value::String(kind) if kind == "build" => DependencyKind::Build,
-        other => {
-            return Err(format!(
-                "{package}: dependency {name} has unknown kind {other}"
-            ));
-        }
-    };
-    let key = dep["rename"].as_str().unwrap_or(&name).to_owned();
-    Ok(Dependency {
-        key,
-        kind,
-        optional: dep["optional"].as_bool().unwrap_or(false),
-        name,
-    })
-}
-
-fn str_field(value: &Value, field: &str) -> Result<String, String> {
-    value[field]
-        .as_str()
-        .map(str::to_owned)
-        .ok_or_else(|| format!("missing string field `{field}`"))
+    Ok(Package { name, wasm })
 }
 
 #[cfg(test)]
@@ -162,50 +87,22 @@ mod tests {
     const METADATA: &str = r#"{
         "workspace_root": "/work/hpr-sim",
         "packages": [
-            {
-                "name": "pure",
-                "metadata": { "hpr": { "wasm": true } },
-                "dependencies": [
-                    { "name": "base", "kind": null, "optional": false, "rename": null },
-                    { "name": "helper", "kind": "dev", "optional": false, "rename": null },
-                    { "name": "gen", "kind": "build", "optional": false, "rename": null },
-                    { "name": "net", "kind": null, "optional": true, "rename": "online" }
-                ],
-                "features": { "default": [], "net": ["dep:online"] }
-            },
-            {
-                "name": "tool",
-                "metadata": null,
-                "dependencies": [],
-                "features": {}
-            }
+            { "name": "pure", "metadata": { "hpr": { "wasm": true } } },
+            { "name": "tool", "metadata": null },
+            { "name": "other", "metadata": { "docs": {} } }
         ]
     }"#;
 
     #[test]
-    fn parses_packages_dependencies_and_features() {
+    fn parses_the_root_and_the_wasm_flags() {
         let workspace = parse(METADATA).unwrap();
         assert_eq!(workspace.root, PathBuf::from("/work/hpr-sim"));
-        assert_eq!(workspace.packages.len(), 2);
-
-        let pure = &workspace.packages[0];
-        assert!(pure.wasm);
-        let kinds: Vec<_> = pure.dependencies.iter().map(|d| d.kind).collect();
-        assert_eq!(
-            kinds,
-            [
-                DependencyKind::Normal,
-                DependencyKind::Dev,
-                DependencyKind::Build,
-                DependencyKind::Normal
-            ]
-        );
-        let net = &pure.dependencies[3];
-        assert_eq!((net.name.as_str(), net.key.as_str()), ("net", "online"));
-        assert!(net.optional);
-        assert_eq!(pure.features["net"], ["dep:online"]);
-
-        assert!(!workspace.packages[1].wasm);
+        let flags: Vec<_> = workspace
+            .packages
+            .iter()
+            .map(|p| (p.name.as_str(), p.wasm))
+            .collect();
+        assert_eq!(flags, [("pure", true), ("tool", false), ("other", false)]);
     }
 
     #[test]
@@ -213,12 +110,5 @@ mod tests {
         let json = METADATA.replace(r#""wasm": true"#, r#""wasm": "yes""#);
         let err = parse(&json).unwrap_err();
         assert!(err.contains("wasm must be true or false"), "{err}");
-    }
-
-    #[test]
-    fn rejects_an_unknown_dependency_kind() {
-        let json = METADATA.replace(r#""kind": "dev""#, r#""kind": "weird""#);
-        let err = parse(&json).unwrap_err();
-        assert!(err.contains("unknown kind"), "{err}");
     }
 }

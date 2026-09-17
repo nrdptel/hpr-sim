@@ -9,32 +9,33 @@
 //!
 //! The check has two parts:
 //!
-//! 1. A layering rule. Every normal dependency of a pure crate on another workspace crate must be
-//!    a pure crate too. Optional dependencies count when the default features enable them, and
-//!    target-specific dependencies count regardless of their target.
-//! 2. `cargo check --target wasm32-unknown-unknown` on every pure crate, with default features.
+//! 1. A layering rule. No workspace crate outside the pure core may appear in the pure core's
+//!    normal dependency graph, on any target. The graph comes from `cargo tree`, so it reflects
+//!    the features cargo actually resolves, including features one pure crate turns on in
+//!    another.
+//! 2. `cargo clippy --target wasm32-unknown-unknown -- -D warnings` on the pure core, with
+//!    default features. This compiles the core for the target and fails on any warning,
+//!    including warnings that only appear under `cfg(target_arch = "wasm32")`.
+//!
+//! Compiling for wasm32 does not prove the absence of I/O: `std::fs` and `std::time::Instant`
+//! compile there and fail at run time. The `disallowed-methods` and `disallowed-types` lists in
+//! `clippy.toml` cover that part.
 
 use std::collections::BTreeSet;
+use std::path::Path;
 use std::process::Command;
 
-use crate::workspace::{self, DependencyKind, Package};
+use crate::workspace::{self, Package, Workspace};
 
 /// The WebAssembly target the pure core must build for.
 pub const TARGET: &str = "wasm32-unknown-unknown";
 
-/// Runs the check. `cargo_args` are appended to the `cargo check` command line.
+/// Runs the check. `cargo_args` (for example `--locked`) are passed to every cargo command.
 pub fn run(cargo_args: &[String]) -> Result<(), String> {
-    let workspace = workspace::load()?;
+    let workspace = workspace::load(Path::new(env!("CARGO_MANIFEST_DIR")))?;
     let pure = pure_crates(&workspace.packages);
     if pure.is_empty() {
         return Err("no crate declares `[package.metadata.hpr] wasm = true`".to_owned());
-    }
-    let violations = layering_violations(&workspace.packages);
-    if !violations.is_empty() {
-        return Err(format!(
-            "pure-core crates depend on crates outside the pure core:\n{}",
-            violations.join("\n")
-        ));
     }
     println!(
         "wasm-check: {} pure-core crates: {}",
@@ -42,20 +43,23 @@ pub fn run(cargo_args: &[String]) -> Result<(), String> {
         pure.join(", ")
     );
 
+    check_layering(&workspace, &pure, cargo_args)?;
+    println!("wasm-check: layering ok (no workspace crate outside the core in its graph)");
+
     let mut command = Command::new(workspace::cargo());
     command
         .current_dir(&workspace.root)
-        .args(["check", "--target", TARGET]);
+        .args(["clippy", "--target", TARGET]);
     for name in &pure {
         command.args(["--package", name]);
     }
-    command.args(cargo_args);
+    command.args(cargo_args).args(["--", "-D", "warnings"]);
     let status = command
         .status()
-        .map_err(|err| format!("could not run `cargo check`: {err}"))?;
+        .map_err(|err| format!("could not run `cargo clippy`: {err}"))?;
     if !status.success() {
         return Err(format!(
-            "`cargo check --target {TARGET}` failed ({status}). If the target is missing, \
+            "`cargo clippy --target {TARGET}` failed ({status}). If the target is missing, \
              run `rustup target add {TARGET}`."
         ));
     }
@@ -74,176 +78,240 @@ pub fn pure_crates(packages: &[Package]) -> Vec<String> {
     names
 }
 
-/// Every `pure crate -> non-pure workspace crate` edge that a default-feature build would compile,
-/// one per line.
-pub fn layering_violations(packages: &[Package]) -> Vec<String> {
-    let members: BTreeSet<&str> = packages.iter().map(|p| p.name.as_str()).collect();
-    let pure: BTreeSet<&str> = packages
-        .iter()
-        .filter(|p| p.wasm)
-        .map(|p| p.name.as_str())
+/// Fails if a workspace crate outside the pure core is in the pure core's resolved normal
+/// dependency graph for any target. The error shows how each one is reached.
+pub fn check_layering(
+    workspace: &Workspace,
+    pure: &[String],
+    cargo_args: &[String],
+) -> Result<(), String> {
+    let tree = cargo_tree(&workspace.root, pure, &["--prefix", "none"], cargo_args)?;
+    let outside = outside_core(&tree, &workspace.packages);
+    if outside.is_empty() {
+        return Ok(());
+    }
+    let mut message = format!(
+        "the pure core depends on workspace crates outside it: {}",
+        outside.join(", ")
+    );
+    for name in &outside {
+        let paths = cargo_tree(&workspace.root, pure, &["--invert", name], cargo_args)?;
+        message.push_str(&format!("\n\n{}", paths.trim_end()));
+    }
+    Err(message)
+}
+
+/// Runs `cargo tree` over the normal dependencies of `packages` for all targets.
+fn cargo_tree(
+    root: &Path,
+    packages: &[String],
+    extra: &[&str],
+    cargo_args: &[String],
+) -> Result<String, String> {
+    let mut command = Command::new(workspace::cargo());
+    command.current_dir(root).args([
+        "tree", "--target", "all", "--edges", "normal", "--format", "{p}",
+    ]);
+    for name in packages {
+        command.args(["--package", name]);
+    }
+    command.args(extra).args(cargo_args);
+    let output = command
+        .output()
+        .map_err(|err| format!("could not run `cargo tree`: {err}"))?;
+    if !output.status.success() {
+        return Err(format!(
+            "`cargo tree` failed ({}):\n{}",
+            output.status,
+            String::from_utf8_lossy(&output.stderr)
+        ));
+    }
+    String::from_utf8(output.stdout)
+        .map_err(|err| format!("`cargo tree` printed invalid UTF-8: {err}"))
+}
+
+/// The non-pure workspace crates named in `cargo tree --prefix none --format {p}` output, whose
+/// lines look like `hpr-core v0.1.0 (/path/to/crate)`, sorted.
+fn outside_core(tree: &str, packages: &[Package]) -> Vec<String> {
+    let listed: BTreeSet<&str> = tree
+        .lines()
+        .filter_map(|line| line.split_whitespace().next())
         .collect();
-    let mut violations = Vec::new();
-    for package in packages.iter().filter(|p| p.wasm) {
-        let defaults = default_feature_entries(package);
-        for dep in &package.dependencies {
-            let outside_core =
-                members.contains(dep.name.as_str()) && !pure.contains(dep.name.as_str());
-            let compiled = dep.kind == DependencyKind::Normal
-                && (!dep.optional || enables_dependency(&defaults, &dep.key));
-            if outside_core && compiled {
-                violations.push(format!("  {} -> {}", package.name, dep.name));
-            }
-        }
-    }
-    violations
-}
-
-/// Every entry reachable from the `default` feature, following feature-to-feature references.
-fn default_feature_entries(package: &Package) -> BTreeSet<String> {
-    let mut seen = BTreeSet::new();
-    let mut pending = vec!["default".to_owned()];
-    while let Some(feature) = pending.pop() {
-        for entry in package.features.get(&feature).into_iter().flatten() {
-            if seen.insert(entry.clone()) && package.features.contains_key(entry) {
-                pending.push(entry.clone());
-            }
-        }
-    }
-    seen
-}
-
-/// Whether feature entries switch on the optional dependency known as `key`: `dep:key`, `key`,
-/// or `key/feature`. The weak form `key?/feature` does not.
-fn enables_dependency(entries: &BTreeSet<String>, key: &str) -> bool {
-    entries.iter().any(|entry| {
-        entry.strip_prefix("dep:") == Some(key)
-            || entry == key
-            || entry
-                .strip_prefix(key)
-                .is_some_and(|rest| rest.starts_with('/'))
-    })
+    packages
+        .iter()
+        .filter(|package| !package.wasm && listed.contains(package.name.as_str()))
+        .map(|package| package.name.clone())
+        .collect::<BTreeSet<_>>()
+        .into_iter()
+        .collect()
 }
 
 #[cfg(test)]
 mod tests {
-    use std::collections::BTreeMap;
+    use std::fs;
+    use std::path::PathBuf;
 
     use super::*;
-    use crate::workspace::Dependency;
-    use DependencyKind::{Build, Dev, Normal};
 
-    fn package(name: &str, wasm: bool, deps: &[(&str, DependencyKind, bool)]) -> Package {
+    fn package(name: &str, wasm: bool) -> Package {
         Package {
             name: name.to_owned(),
             wasm,
-            dependencies: deps
-                .iter()
-                .map(|&(dep, kind, optional)| Dependency {
-                    name: dep.to_owned(),
-                    key: dep.to_owned(),
-                    kind,
-                    optional,
-                })
-                .collect(),
-            features: BTreeMap::new(),
         }
-    }
-
-    fn with_features(mut package: Package, features: &[(&str, &[&str])]) -> Package {
-        for (feature, entries) in features {
-            package.features.insert(
-                (*feature).to_owned(),
-                entries.iter().map(|e| (*e).to_owned()).collect(),
-            );
-        }
-        package
     }
 
     #[test]
-    fn a_pure_crate_may_depend_on_pure_crates_and_external_crates() {
+    fn pure_crates_are_sorted_by_name() {
         let packages = [
-            package("core", true, &[("glam", Normal, false)]),
-            package("sim", true, &[("core", Normal, false)]),
+            package("sim", true),
+            package("net", false),
+            package("core", true),
         ];
-        assert!(layering_violations(&packages).is_empty());
         assert_eq!(pure_crates(&packages), ["core", "sim"]);
     }
 
     #[test]
-    fn a_pure_crate_may_not_depend_on_an_impure_workspace_crate() {
+    fn outside_core_reads_package_names_from_tree_output() {
         let packages = [
-            package("net", false, &[]),
-            package("core", true, &[("net", Normal, false)]),
+            package("core", true),
+            package("net", false),
+            package("cli", false),
         ];
-        assert_eq!(layering_violations(&packages), ["  core -> net"]);
+        let tree =
+            "core v0.1.0 (/w/core)\nnet v0.1.0 (/w/net)\nglam v0.33.0\n\nnet v0.1.0 (/w/net) (*)\n";
+        assert_eq!(outside_core(tree, &packages), ["net"]);
+        assert!(outside_core("core v0.1.0 (/w/core)\nnetwork v1.0.0\n", &packages).is_empty());
+    }
+
+    /// A throwaway workspace under the system temp directory, removed on drop.
+    struct Scratch(PathBuf);
+
+    impl Scratch {
+        /// A workspace with a non-pure `net` crate and two pure crates: `facade`, which has
+        /// `facade_deps` and `facade_extra` in its manifest, and `bind`, which depends on
+        /// `facade` as `bind_dep`.
+        fn new(case: &str, facade_deps: &str, facade_extra: &str, bind_dep: &str) -> Self {
+            let dir = std::env::temp_dir().join(format!(
+                "hpr-xtask-wasm-check-{case}-{}",
+                std::process::id()
+            ));
+            let _ = fs::remove_dir_all(&dir);
+            let scratch = Self(dir);
+            let pure = "[package.metadata.hpr]\nwasm = true\n";
+            scratch.write(
+                "Cargo.toml",
+                "[workspace]\nresolver = \"3\"\nmembers = [\"net\", \"facade\", \"bind\"]\n",
+            );
+            scratch.write("net/Cargo.toml", &manifest("net", "", ""));
+            scratch.write(
+                "facade/Cargo.toml",
+                &manifest("facade", facade_deps, &format!("{pure}{facade_extra}")),
+            );
+            scratch.write(
+                "bind/Cargo.toml",
+                &manifest("bind", &format!("facade = {bind_dep}\n"), pure),
+            );
+            for krate in ["net", "facade", "bind"] {
+                scratch.write(&format!("{krate}/src/lib.rs"), "");
+            }
+            scratch
+        }
+
+        fn write(&self, path: &str, contents: &str) {
+            let path = self.0.join(path);
+            fs::create_dir_all(path.parent().unwrap()).unwrap();
+            fs::write(path, contents).unwrap();
+        }
+
+        fn layering(&self) -> Result<(), String> {
+            let workspace = workspace::load(&self.0).unwrap();
+            let pure = pure_crates(&workspace.packages);
+            assert_eq!(pure, ["bind", "facade"]);
+            check_layering(&workspace, &pure, &["--offline".to_owned()])
+        }
+    }
+
+    impl Drop for Scratch {
+        fn drop(&mut self) {
+            let _ = fs::remove_dir_all(&self.0);
+        }
+    }
+
+    fn manifest(name: &str, dependencies: &str, extra: &str) -> String {
+        format!(
+            "[package]\nname = \"{name}\"\nversion = \"0.1.0\"\nedition = \"2024\"\n\
+             publish = false\n\n[dependencies]\n{dependencies}\n{extra}"
+        )
+    }
+
+    const OPTIONAL_NET: &str = "net = { path = \"../net\", optional = true }\n";
+    const NET_FEATURE: &str = "[features]\nnet = [\"dep:net\"]\n";
+
+    fn assert_rejects_net(result: Result<(), String>) {
+        let err = result.unwrap_err();
+        assert!(
+            err.contains("outside it: net") && err.contains("facade"),
+            "{err}"
+        );
     }
 
     #[test]
-    fn dev_and_build_dependencies_are_not_compiled_for_the_target() {
-        let packages = [
-            package("validate", false, &[]),
-            package(
-                "core",
-                true,
-                &[("validate", Dev, false), ("validate", Build, false)],
-            ),
-        ];
-        assert!(layering_violations(&packages).is_empty());
+    fn layering_passes_when_the_optional_crate_stays_off() {
+        let scratch = Scratch::new("off", OPTIONAL_NET, NET_FEATURE, "{ path = \"../facade\" }");
+        assert_eq!(scratch.layering(), Ok(()));
     }
 
     #[test]
-    fn impure_crates_are_not_constrained() {
-        let packages = [
-            package("net", false, &[]),
-            package("cli", false, &[("net", Normal, false)]),
-        ];
-        assert!(layering_violations(&packages).is_empty());
+    fn layering_catches_a_feature_enabled_by_another_pure_crate() {
+        let scratch = Scratch::new(
+            "dependent",
+            OPTIONAL_NET,
+            NET_FEATURE,
+            "{ path = \"../facade\", features = [\"net\"] }",
+        );
+        assert_rejects_net(scratch.layering());
     }
 
     #[test]
-    fn optional_dependencies_count_only_when_default_features_enable_them() {
-        let net = || package("net", false, &[]);
-        let facade = || package("facade", true, &[("net", Normal, true)]);
-
-        let off = [
-            net(),
-            with_features(facade(), &[("default", &[]), ("net", &["dep:net"])]),
-        ];
-        assert!(layering_violations(&off).is_empty());
-
-        let direct = [net(), with_features(facade(), &[("default", &["dep:net"])])];
-        assert_eq!(layering_violations(&direct), ["  facade -> net"]);
-
-        let chained = [
-            net(),
-            with_features(
-                facade(),
-                &[("default", &["online"]), ("online", &["net/cache"])],
-            ),
-        ];
-        assert_eq!(layering_violations(&chained), ["  facade -> net"]);
-
-        let weak = [
-            net(),
-            with_features(facade(), &[("default", &["net?/cache"])]),
-        ];
-        assert!(layering_violations(&weak).is_empty());
+    fn layering_catches_a_default_feature() {
+        let features = "[features]\ndefault = [\"net\"]\nnet = [\"dep:net\"]\n";
+        let scratch = Scratch::new(
+            "default",
+            OPTIONAL_NET,
+            features,
+            "{ path = \"../facade\" }",
+        );
+        assert_rejects_net(scratch.layering());
     }
 
     #[test]
-    fn a_dependency_whose_name_is_a_prefix_is_not_confused() {
-        let entries: BTreeSet<String> = ["dep:hpr-netx".to_owned(), "hpr-netx/a".to_owned()].into();
-        assert!(!enables_dependency(&entries, "hpr-net"));
-        assert!(enables_dependency(&entries, "hpr-netx"));
+    fn layering_catches_a_renamed_dependency() {
+        let deps = "online = { package = \"net\", path = \"../net\" }\n";
+        let scratch = Scratch::new("renamed", deps, "", "{ path = \"../facade\" }");
+        assert_rejects_net(scratch.layering());
+    }
+
+    #[test]
+    fn layering_catches_a_dependency_for_another_target() {
+        let target = "[target.'cfg(windows)'.dependencies]\nnet = { path = \"../net\" }\n";
+        let scratch = Scratch::new("target", "", target, "{ path = \"../facade\" }");
+        assert_rejects_net(scratch.layering());
+    }
+
+    #[test]
+    fn layering_ignores_dev_dependencies() {
+        let dev = "[dev-dependencies]\nnet = { path = \"../net\" }\n";
+        let scratch = Scratch::new("dev", "", dev, "{ path = \"../facade\" }");
+        assert_eq!(scratch.layering(), Ok(()));
     }
 
     /// The pure core named in docs/ARCHITECTURE.md (ADR-001). Changing it needs an ADR.
     #[test]
     fn the_workspace_pure_core_matches_the_architecture() {
-        let workspace = workspace::load().unwrap();
+        let workspace = workspace::load(Path::new(env!("CARGO_MANIFEST_DIR"))).unwrap();
+        let pure = pure_crates(&workspace.packages);
         assert_eq!(
-            pure_crates(&workspace.packages),
+            pure,
             [
                 "hpr",
                 "hpr-aero",
@@ -259,9 +327,6 @@ mod tests {
                 "hpr-wasm",
             ]
         );
-        assert_eq!(
-            layering_violations(&workspace.packages),
-            Vec::<String>::new()
-        );
+        assert_eq!(check_layering(&workspace, &pure, &[]), Ok(()));
     }
 }

@@ -7,6 +7,11 @@
     clippy::print_stderr,
     reason = "a command-line tool reports on the terminal"
 )]
+#![allow(
+    clippy::disallowed_methods,
+    clippy::disallowed_types,
+    reason = "dev tooling runs cargo and uses the filesystem; it is not part of the pure core"
+)]
 
 mod wasm_check;
 mod workspace;
