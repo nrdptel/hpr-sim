@@ -1198,8 +1198,10 @@ mass properties and drag. What is in hand:
   because no body has an aerodynamic model.
 - **A body is its own stages and their motors.** Its mass properties are the sum, so the bodies'
   masses add to the rocket's at that instant (a test). A body's mass is then held **constant**
-  through its descent, which is why a separation must follow the last burnout; a separation under
-  thrust is refused rather than approximated.
+  through its descent, which is why a separation must follow the last burnout. That is **enforced**
+  when the trigger fires, not merely documented: whether it fires before the burnout depends on the
+  flight, so it is a flight-time `SimError::Domain` rather than a setup check. A release across the
+  separation is refused when the devices are given, because a line cuts a device on its own body.
 - **The separation adds no impulse.** Each body starts at its own centre of mass with the velocity
   that point already had (`v_O + ω × r_cg`), so the bodies' momenta add to the stack's (a test).
   An ejection charge's impulse, the tip-off it gives each body and the tumbling that follows are

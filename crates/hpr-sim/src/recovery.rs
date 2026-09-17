@@ -909,6 +909,54 @@ pub(crate) fn body_mass_properties(
     hpr_design::MassProperties::combine(parts.iter())
 }
 
+/// The time a trigger fires, when it is one that is known before the flight: a time after
+/// ignition, or a motor's ejection delay after its burnout.
+///
+/// # Errors
+///
+/// [`SimError::Domain`] for a time before ignition, a motor that isn't there, or a motor with no
+/// ejection delay in seconds.
+pub(crate) fn trigger_time_s(
+    trigger: Trigger,
+    motors: &[hpr_design::PlacedMotor],
+) -> Result<Option<f64>, SimError> {
+    match trigger {
+        Trigger::Time { time_s } => {
+            if !(time_s.is_finite() && time_s >= 0.0) {
+                return Err(SimError::Domain {
+                    what: "deployment time after ignition, s",
+                    value: time_s,
+                });
+            }
+            Ok(Some(time_s))
+        }
+        Trigger::MotorDelay { motor } => {
+            let placed = motors.get(motor).ok_or(SimError::Domain {
+                what: "index of the motor whose delay fires a device",
+                value: motor as f64,
+            })?;
+            let delay_s = match placed.mounted.delay {
+                Some(hpr_motor::Delay::Seconds(delay_s)) => delay_s,
+                _ => {
+                    return Err(SimError::Domain {
+                        what: "the motor firing a device has no ejection delay in seconds (it is \
+                               plugged, or its delay is unset)",
+                        value: motor as f64,
+                    });
+                }
+            };
+            if !(delay_s.is_finite() && delay_s >= 0.0) {
+                return Err(SimError::Domain {
+                    what: "motor ejection delay, s",
+                    value: delay_s,
+                });
+            }
+            Ok(Some(placed.mounted.motor.burnout_time_s() + delay_s))
+        }
+        Trigger::Apogee | Trigger::Altitude { .. } => Ok(None),
+    }
+}
+
 /// Checks a flight's devices, and finds the trigger times that are known before it flies.
 ///
 /// The result has one entry per device: `Some(t)` for a [`Trigger::Time`] or a
@@ -917,6 +965,19 @@ pub(crate) fn plan(
     devices: &[Device],
     motors: &[hpr_design::PlacedMotor],
 ) -> Result<Vec<Option<f64>>, SimError> {
+    // A device is cut away by a line on its own body; a release across a separation has nothing
+    // to act through.
+    for (index, device) in devices.iter().enumerate() {
+        if let Some(other) = device.released_by
+            && devices.get(other).is_some_and(|by| by.body != device.body)
+        {
+            return Err(SimError::Domain {
+                what: "release across a separation (a device can only be released by one on its \
+                       own body); index of the released device",
+                value: index as f64,
+            });
+        }
+    }
     // A cycle of releases (A released by B, B released by A) can leave every device released and
     // the rocket falling under nothing at all, which the descent phase would fly as a vacuum drop
     // (found in review). Each chain has to end.
@@ -939,33 +1000,7 @@ pub(crate) fn plan(
     let mut times = Vec::with_capacity(devices.len());
     for (index, device) in devices.iter().enumerate() {
         device.validate(devices.len(), index)?;
-        let time = match device.trigger {
-            Trigger::Time { time_s } => Some(time_s),
-            Trigger::MotorDelay { motor } => {
-                let placed = motors.get(motor).ok_or(SimError::Domain {
-                    what: "index of the motor whose delay fires a device",
-                    value: motor as f64,
-                })?;
-                let delay_s = match placed.mounted.delay {
-                    Some(hpr_motor::Delay::Seconds(delay_s)) => delay_s,
-                    _ => {
-                        return Err(SimError::Domain {
-                            what: "the motor firing a device has no ejection delay in seconds \
-                                   (it is plugged, or its delay is unset)",
-                            value: motor as f64,
-                        });
-                    }
-                };
-                if !(delay_s.is_finite() && delay_s >= 0.0) {
-                    return Err(SimError::Domain {
-                        what: "motor ejection delay, s",
-                        value: delay_s,
-                    });
-                }
-                Some(placed.mounted.motor.burnout_time_s() + delay_s)
-            }
-            Trigger::Apogee | Trigger::Altitude { .. } => None,
-        };
+        let time = trigger_time_s(device.trigger, motors)?;
         times.push(time);
     }
     Ok(times)
@@ -3225,6 +3260,8 @@ mod tests {
     fn separations_outside_their_domain_are_refused() {
         let environment = || analytic_environment(UniformAir::sea_level(), G);
         let canopy = DeviceDrag::canopy(CanopyType::FlatCircular, 1.5);
+        // The devices are checked when they are given, the separation when it is; a caller sees
+        // whichever refuses first.
         let build = |devices: Vec<Device>, separation: Separation| {
             Simulation::new(
                 &two_stage(),
@@ -3235,8 +3272,7 @@ mod tests {
             )
             .unwrap()
             .with_recovery(devices)
-            .unwrap()
-            .with_separation(separation)
+            .and_then(|sim| sim.with_separation(separation))
             .map(|_| ())
         };
         let both = || {
@@ -3266,8 +3302,62 @@ mod tests {
         )
         .expect_err("a third body");
         assert!(matches!(error, SimError::Domain { .. }), "{error:?}");
+        // A release across the separation has no line to act through.
+        let error = build(
+            vec![
+                Device::new("sustainer", canopy, Trigger::Apogee).with_release_by(1),
+                Device::new("booster", canopy, Trigger::Apogee).on_body(1),
+            ],
+            Separation::new(Trigger::Apogee, 0),
+        )
+        .expect_err("a release across bodies");
+        assert!(matches!(error, SimError::Domain { .. }), "{error:?}");
         // And the ordinary case is accepted.
         assert!(build(both(), Separation::new(Trigger::Apogee, 0)).is_ok());
+    }
+
+    #[test]
+    fn a_separation_before_burnout_is_refused_in_flight() {
+        // A body's mass is held constant through its descent, so a separation under thrust would
+        // fly the wrong mass. It is a flight-time error, not a setup one: whether the trigger
+        // comes before the burnout depends on the flight.
+        let air = UniformAir::sea_level();
+        let assembly = two_stage().assemble("j760-i175").unwrap();
+        let canopy = DeviceDrag::canopy(CanopyType::FlatCircular, 1.5);
+        let devices = vec![
+            Device::new("sustainer", canopy, Trigger::Apogee),
+            Device::new(
+                "booster",
+                DeviceDrag::tumbling_stages(&assembly, (1, 1)).unwrap(),
+                Trigger::Apogee,
+            )
+            .on_body(1),
+        ];
+        let burnout_s = assembly
+            .motors
+            .iter()
+            .map(|motor| motor.mounted.motor.burnout_time_s())
+            .fold(0.0, f64::max);
+        assert!(burnout_s > 1.0, "{burnout_s}");
+        let sim = staged_flight(
+            analytic_environment(air, G),
+            devices,
+            Separation::new(
+                Trigger::Time {
+                    time_s: 0.5 * burnout_s,
+                },
+                0,
+            ),
+        );
+        // Started already descending, so the separation's time has passed at the first step.
+        let error = sim
+            .run_free(
+                0.5 * burnout_s,
+                dropped(&sim, 1_000.0, DVec3::new(0.0, 0.0, -1.0)),
+                &mut (),
+            )
+            .expect_err("a separation under thrust");
+        assert!(matches!(error, SimError::Domain { .. }), "{error:?}");
     }
 
     #[test]

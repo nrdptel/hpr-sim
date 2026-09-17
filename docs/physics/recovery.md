@@ -306,7 +306,10 @@ ends there: its `FlightResult` has `Termination::Separated`, a `Separation` even
   the flight's devices and their progress, so a canopy that opened before the separation stays open
   on whichever body carries it.
 - **A separation must follow the last burnout**, because a body's mass is held constant through its
-  descent. Powered staging, where a sustainer lights and keeps flying, is M1.9.
+  descent. A trigger that fires earlier is a flight-time error, not a silent approximation, since
+  whether it does depends on the flight. A release across the separation is refused too: a line
+  cuts a device on its own body. Powered staging, where a sustainer lights and keeps flying, is
+  M1.9.
 - Bodies are not watched by the `Observer`: their events and samples are in their `BodyFlight`.
 
 ## Verification
@@ -332,6 +335,7 @@ ends there: its `FlightResult` has `Termination::Separated`, a `Separation` even
 | The same recovered flight flown twice | bit-identical rows, events, final sample and step counts (Loft lesson L24: a run does not mutate the simulation) |
 | A separation at apogee of the two-stage test design, canopy on the sustainer and tumble on the booster | both bodies land: the 0.550 kg sustainer at 729.0 s and 2.11 m/s under its 1.8 m canopy, the 1.125 kg booster at 107.5 s and 16.74 m/s tumbling; the masses add to the 1.675 kg stack to 1e-12 and each lands within 0.1% of its own `v_e` |
 | The momenta of the bodies at a separation with a 0.6 rad/s body rate | add to the stack's to 1e-9, and the bodies start more than 0.5 m apart (each at its own centre of mass) |
+| A separation before the last burnout | refused in flight, with the burnout time in the error |
 
 ### Against RocketPy
 

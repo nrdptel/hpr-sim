@@ -623,6 +623,15 @@ impl Simulation {
                     }
                 };
                 if fires {
+                    if t < burnout_s {
+                        // A body's mass is held constant through its descent, so a separation
+                        // under thrust would fly the wrong mass. Powered staging is M1.9.
+                        return Err(SimError::Domain {
+                            what: "time of a separation (it must follow the last burnout, at \
+                                   which this rocket's is)",
+                            value: burnout_s,
+                        });
+                    }
                     let sample = self.sample(phase, window, t, &y, area)?;
                     record(&mut events, observer, EventKind::Separation, sample);
                     separated = true;
