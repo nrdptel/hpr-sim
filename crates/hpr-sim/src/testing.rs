@@ -256,6 +256,9 @@ pub(crate) fn design(name: &str) -> Rocket {
             include_str!("../../../validation/designs/rocketpy-prometheus-2022-generic-motor.json")
         }
         "rocketpy-juno-iii" => include_str!("../../../validation/designs/rocketpy-juno-iii.json"),
+        "synthetic-two-stage-75mm-54mm" => {
+            include_str!("../../../validation/designs/synthetic-two-stage-75mm-54mm.json")
+        }
         _ => panic!("no design {name}"),
     };
     serde_json::from_str(text).unwrap()

@@ -19,6 +19,7 @@ renumber. Supersede an entry by adding a new one that points back to it.
 | ADR-011 | Rigid-body flight: equations of motion, aerodynamic coupling, rail, phases and termination | accepted |
 | ADR-012 | Recovery: drag areas, triggers, inflation and the descent phase | accepted |
 | ADR-013 | Streamer and tumble drag | accepted |
+| ADR-014 | Separation: bodies, their masses and their descents | accepted |
 
 ---
 
@@ -1171,3 +1172,58 @@ type tables 5-1 to 5-5, the measured-drag section 5.2.3, the miscellaneous-decel
   rather than tune either.
 - If a streamer model is ever fitted to more drop data, `StreamerModel` is the place for it; the
   research note lists what would be needed.
+
+## ADR-014: Separation: bodies, their masses and their descents (2026-09-17)
+
+**Context.** M1.7c has to fly every body of a separated rocket to its own landing, with its own
+mass properties and drag. What is in hand:
+
+- The descent phase (ADR-012) is a point mass: it needs a mass and a drag area, and deliberately
+  has no airframe aerodynamics.
+- `hpr-design` carries `MassProperties` per stage (`Layout::stages`) and a stage index on every
+  placed motor, so a body's mass properties are a sum over its stages.
+- `hpr-aero` needs a nose-first layout, so a partial airframe has **no** aerodynamic model. A body
+  that had to fly aerodynamically would need M1.8's work and a way to build a model for a
+  headless stack.
+- M1.9 will add staging, where a sustainer lights after separation and keeps flying under thrust.
+
+**Decision.**
+
+- **A separation is a trigger plus a stage boundary** (`Separation { trigger, after_stage }`), with
+  the same triggers a device has. Stages `0..=after_stage` keep the nose (body 0), the rest form
+  body 1. Two bodies for M1.7c; more splits are additive and nothing in the types forbids them
+  later.
+- **The ascent ends at the separation**: `Termination::Separated`, a `Separation` event, and one
+  `BodyFlight` per body in `FlightResult::bodies`. Nothing continues in six degrees of freedom,
+  because no body has an aerodynamic model.
+- **A body is its own stages and their motors.** Its mass properties are the sum, so the bodies'
+  masses add to the rocket's at that instant (a test). A body's mass is then held **constant**
+  through its descent, which is why a separation must follow the last burnout; a separation under
+  thrust is refused rather than approximated.
+- **The separation adds no impulse.** Each body starts at its own centre of mass with the velocity
+  that point already had (`v_O + ω × r_cg`), so the bodies' momenta add to the stack's (a test).
+  An ejection charge's impulse, the tip-off it gives each body and the tumbling that follows are
+  not modelled; hpr says so rather than inventing a spring constant.
+- **Every body must carry a recovery device**, and a flight whose bodies are not all covered is
+  refused. With no airframe drag in the descent, a body with nothing open would fall as if in a
+  vacuum, which is a wrong number rather than a missing feature. A spent booster's device is
+  normally `DeviceDrag::tumbling_stages` over its own stages, which is §3.5's model applied to
+  that body rather than to the whole stack (the whole-stack form is still there for a stack that
+  tumbles without separating).
+- **The bodies fly as 6-state point masses** through the same integrator, with the descent's
+  equations less the thrust, their own stop times and their own height events. They share the
+  flight's devices and their progress, so a canopy that opened before the separation stays open on
+  the body that carries it.
+- **A body's descent is not observed.** `Observer` sees a 13-element rigid-body step; a body's
+  state is six. Its events and samples are in its `BodyFlight` (`BodySample`, `BodyEvent`), which
+  is what a report needs. Wiring the observer to bodies can come with M2.1's reports.
+
+**Consequences.**
+
+- M1.9's staging extends this: a body that keeps flying needs an aerodynamic model for a headless
+  stack, which is the real work, and the ignition times and mass variation that go with it.
+- M2.1's landing metrics take the bodies, not just the final sample.
+- A separation with three or more bodies needs `Separation::BODIES` generalised to a list of
+  boundaries; nothing else changes.
+- Because a body is a point mass, its attitude is not tracked at all after separation, so nothing
+  can report how a booster is oriented as it tumbles.

@@ -4,36 +4,38 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
 
 ## Now
 
-- **Current milestone:** M1.7c Separated bodies
-- **Run:** the first autopilot run; M0.1–M0.3, M1.1–M1.6, M1.7a and M1.7b have shipped
-- **Last updated:** 2026-09-17 (M1.7b merged)
+- **Current milestone:** M2.1 Validation harness plus the RocketPy code-to-code suite
+- **Run:** the first autopilot run; M0.1–M0.3, M1.1–M1.6 and all of M1.7 have shipped
+- **Last updated:** 2026-09-17 (M1.7c merged)
 
 ## Handoff (overwrite each session)
 
-M1.7a and M1.7b are done (ADR-012, ADR-013, `docs/physics/recovery.md`): parachutes within 3% of
-RocketPy for five examples, and streamers and tumble with cited drag models. Start M1.7c
-(separated bodies) from these notes:
+M1.7 is done (ADR-012, ADR-013, ADR-014, `docs/physics/recovery.md`): parachutes within 3% of
+RocketPy for five examples, streamers and tumble with cited drag models, and separation that flies
+every body to its own landing. M2.1 is the first end-to-end milestone. Start from these notes:
 
-- **What exists:** `hpr_sim::recovery` has `Device` (a `DeviceDrag` — a drag area, a canopy, a
-  streamer or a tumbling airframe — with a `Trigger`, a lag, an `Inflation` and an optional
-  `released_by`), Knacke's `CanopyType` table, `StreamerModel` and `terminal_speed_m_s`;
-  `Simulation::with_recovery` validates them. The first deployment switches the flight to
-  `Phase::Descent`, a point mass under the open devices' drag area. Deployments, filling ends and
-  known triggers are stop times; the per-interval event list is `flight::Watch`.
-- **Contracts for M1.7c:** separation needs an ADR on how a body's mass and drag are defined.
-  `Assembly` has no split, and the flight loop carries one 13-element state, so two bodies mean
-  two integrations. The cheapest honest way in (ADR-013): the descent phase already drops airframe
-  aerodynamics, so a separated body needs mass properties and its own device, not an aerodynamic
-  model; require every body to carry one. `Phase` is `#[non_exhaustive]`, so new phases are
-  additive; `Termination` may need a variant if only some bodies land. Sources for anything more:
-  `docs/research/streamer-and-tumble-drag.md`.
-- **For M2.1:** the recovery oracle takes its inputs from the committed mass fixture; a start time
-  must miss RocketPy's sampling grid (a deployment on a phase start gives NaNs) and its noise must
-  be zeroed (global `np.random`). RocketPy ends the rail phase at the forward button and codes the
-  nozzle gyration tensor's transverse term with `0.25·n²` (ADR-011).
+- **What exists to build on:** `hpr_sim::Simulation` flies pad → rail → free flight → descent, with
+  `with_recovery` and `with_separation`; `FlightResult` carries the events, the final sample and one
+  `BodyFlight` per separated body. `validation/designs/` has eight RocketPy examples and two
+  synthetic rockets, `validation/fixtures/` the oracle outputs, and `validation/oracles/rocketpy/`
+  five generators (`recovery.py` shows the pattern: it reads the committed mass fixture, so nothing
+  is transcribed twice).
+- **Contracts for M2.1:**
+  - It needs `hpr-validate` and `cargo xtask validate [--fast]`, TOML cases, reference JSON with
+    provenance, and `validation/reports/latest.md`; `xtask` has `aero`, `designs` and `refs` to
+    copy from.
+  - Both modes are required: **same-drag** (the oracle's `C_D0(M)` through
+    `Simulation::with_drag_table`) and **predicted** (hpr's own aero, which refuses `M ≥ 1` until
+    M1.8, so supersonic cases are reported as gaps, not hidden).
+  - RocketPy's motor files have unclear terms, so cases use the bundled curves (ADR-007); its
+    weather files are Copernicus, so declare the environment as `recovery.py` does.
+  - A start time must miss RocketPy's trigger grid (a deployment on a phase start gives NaNs) and
+    its parachute noise must be zeroed (global `np.random`).
+  - Differences to expect in the report: RocketPy's added mass under a canopy, its rail exit at
+    the forward button, its `0.25·n²` nozzle gyration term (ADR-011).
 - **Open conventions for the jar (M2.2/M3.1):** OpenRocket's override order (L51), automatic radii,
   positions, ogive parameter, walls, fin mass, cant pivot; from M1.5b the drag-at-angle polynomial
-  and the lug diameter; from M1.7b, that hpr's streamers are about twice OpenRocket's drag.
+  and the lug diameter.
 - **Process notes:**
   - `cargo test -p xtask` checks STATUS against ROADMAP, notices rows against lock titles, lesson
     tests once checked off, lock URLs and the generated designs.
@@ -44,13 +46,16 @@ RocketPy for five examples, and streamers and tumble with cited drag models. Sta
 
 ## Done log (newest first, keep about 15)
 
-- 2026-09-17: M1.7b Streamers and tumble (ADR-013): Filippone's correlation by default, appendix
-  C's on request, OpenRocket's tumble model from the airframe. Against Kidwell's drop tests the
-  default is +12% on his flat streamer where appendix C is +110%.
+- 2026-09-17: M1.7c Separated bodies (ADR-014): a separation splits the stack at a stage boundary
+  and flies each body as a point mass with its own mass and devices. Both bodies land, the masses
+  add to the stack's to 1e-12 and the momenta to 1e-9.
+
+- 2026-09-17: M1.7b Streamers and tumble (PR #24, ADR-013): Filippone's three curves by default
+  (+9% on Kidwell's flat drop), appendix C's on request (+88%), OpenRocket's tumble model from the
+  airframe (−10 to +19% on its own drop tests).
 - 2026-09-17: M1.7a Parachutes and descent (PR #23, ADR-012): Knacke's canopy tables and filling
-  law, four triggers, drogue release, a point-mass descent phase. Terminal speed reproduces Loft's
-  5.294 m/s; a descent follows the closed form to 2.1e-8 of `v_t`; five RocketPy examples within
-  0.71% in descent time and 0.27% in drift.
+  law, four triggers, drogue release, a point-mass descent phase. A descent follows the closed
+  form to 2.1e-8 of `v_t`; five RocketPy examples within 0.71% in descent time, 0.27% in drift.
 - 2026-09-17: M1.6b Rigid-body flight (PR #22, ADR-011): RocketPy's variable-mass equations about
   the nose tip, component-wise aero with damping, rail to the last button; pitch period 8e-5 from
   linear theory, Valetudo to the ground in 1.10 ms. M1.6a Integrator and events (PR #19, ADR-010):
@@ -58,9 +63,9 @@ RocketPy for five examples, and streamers and tumble with cited drag models. Sta
 - 2026-09-17: M1.5b Drag and override tables (PR #17, ADR-009): Niskanen's buildup, drag at angle,
   roughness, CSV overrides. At Mach 0.3 against RASAero curves: Calisto +4.4%, Juno III −6.0%,
   Cavour −8.3%; gaps: Valetudo −47%, Cavour power-on −18%.
-- 2026-09-17: M1.5a Normal force and CP (PR #16, ADR-008) within 1% of Barrowman's examples except
-  the Recruiter's six fins; M1.4b Design tree (PR #14) to 8e-10; M1.4a mass; M1.3 Solid motors to
-  8e-5; M1.2 Atmosphere; M1.1 Core math; M0.1–M0.3. 2026-09-16: kickoff.
+- 2026-09-17: M1.5a Normal force and CP (PR #16) within 1% of Barrowman's examples; M1.4b Design
+  tree (PR #14) to 8e-10; M1.4a mass; M1.3 Solid motors to 8e-5; M1.2 Atmosphere; M1.1 Core math;
+  M0.1–M0.3. 2026-09-16: kickoff.
 
 ## Needs Neer (blocking or one-way decisions; the session keeps working on other things)
 
@@ -83,36 +88,33 @@ RocketPy for five examples, and streamers and tumble with cited drag models. Sta
 
 ## Decided without Neer (one line each; significant ones get an ADR)
 
-- ADR-001: `MIT OR Apache-2.0`; permissive-only dependencies; pure core marked by
-  `[package.metadata.hpr] wasm = true`; crates at 0.1.0, `publish = false`; the binary is `hpr`.
-- ADR-002: refs pinned by commit, sha256 or dated capture, via git, curl and uv; `openjdk@21`.
-- M0.3: lessons map to milestones through `Loft lessons:` lines, whose tests must exist once
-  checked off; `cargo test` caps the docs; defects outside a milestone go to issues.
-- ADR-003: body `+z` toward the nose, RocketPy's launch angles, ellipsoidal heights, exact WGS 84
-  normal gravity and Coriolis by default.
-- ADR-004: atmosphere by height above sea level; ISA offsets at equal geopotential height; wind by
-  speed and direction; exact Dryden discretization; an in-house xoshiro256++.
-- ADR-005: NFPA 1125 statistics as ThrustCurve computes them; constant exhaust velocity; BATES or
-  column grains; only PD curves within 1% bundled (32).
+- ADR-001 to ADR-004 and M0.3, all in `DECISIONS.md`: the licence and workspace layout; refs
+  pinned by hash; body `+z` toward the nose with WGS 84 normal gravity and Coriolis by default;
+  the atmosphere and wind by height above sea level; and the doc guards `cargo test -p xtask` runs.
+- ADR-005: NFPA 1125 statistics as ThrustCurve computes them; constant exhaust velocity; only PD
+  curves within 1% bundled (32).
 - ADR-006: full inertia tensors; part frames at their forward end; Crowell's secant ogive by
-  `ρ/ρ_t` (OpenRocket's `κ` left to M3.1); walls normal to the surface; materials by value, cited.
+  `ρ/ρ_t`; walls normal to the surface; materials by value, cited.
 - ADR-007: body origin at the nose tip; one `Component` type with a `Part` enum; offsets positive
   aft; overrides rescale the tensor with mass; comparisons use bundled public-domain curves.
 - M1.4, M1.5, M1.6 and M1.7 were split into increments, done-when bullets divided unchanged.
-- ADR-008: body CP from the real volume with `sin α/α` and Galejs lift (`K` 1.1); Diederich fins
-  with Prandtl–Glauert, CP at quarter MAC; over eight fins, tube fins (#15) and `M ≥ 1` refused.
-- ADR-009: Niskanen's drag as printed (fully turbulent, jumps kept), friction on the axial
-  projection; lug `d` outer; rail buttons as pins; 20 µm finish; only derived numbers committed.
-- ADR-010: own DOPRI5 port (no ODE crate); the system carries weights, events and observer;
-  events stop past the zero and fire together; discontinuities are stop times.
-- ADR-011: nose-tip reference point; nozzle gyration tensor from the integral; mass rates by
-  differences inside intervals; no Earth rate in rotation; `M ≥ 1` stops a flight; rail `μ` 0.
+- ADR-008: body CP from the real volume with `sin α/α` and Galejs lift (`K` 1.1); Diederich fins,
+  CP at quarter MAC; over eight fins, tube fins (#15) and `M ≥ 1` refused.
+- ADR-009: Niskanen's drag as printed (fully turbulent, jumps kept); lug `d` outer; rail buttons
+  as pins; 20 µm finish; only derived numbers committed.
+- ADR-010: own DOPRI5 port (no ODE crate); events stop past the zero and fire together;
+  discontinuities are stop times.
+- ADR-011: nose-tip reference point; nozzle gyration from the integral; mass rates by differences
+  inside intervals; `M ≥ 1` stops a flight; rail `μ` 0.
 - ADR-012: recovery devices live in `hpr-sim`, not the design tree; `C_D0` on Knacke's nominal
-  area, the middle of his range; his filling law, no overshoot or opening-load factor; a point-mass
-  descent with no airframe drag or added mass; devices add, and one can release another.
+  area, the middle of his range; no overshoot or opening-load factor; a point-mass descent with no
+  airframe drag or added mass; devices add, and one can release another.
 - ADR-013: streamers take Filippone's three curves by default (+9% on Kidwell's flat drop), with
-  appendix C's on request (+88%); tumble takes OpenRocket's §3.5, which reproduces its own drop
-  tests to −10 to +19%, not the 3 to 14% claimed; pleats and tube fins are not modelled.
+  appendix C's on request (+88%); tumble takes OpenRocket's §3.5 (−10 to +19% on its own drops, not
+  the 3 to 14% claimed); pleats and tube fins are not modelled.
+- ADR-014: a separation splits the stack at a stage boundary into two point-mass bodies with their
+  own stages' mass and devices; no ejection impulse, every body needs a device, and it must follow
+  the last burnout (powered staging is M1.9).
 
 ## Known issues and risks
 
@@ -121,8 +123,7 @@ RocketPy for five examples, and streamers and tumble with cited drag models. Sta
 - Dryden turbulence is an aircraft model; how it applies to a climbing rocket is unvalidated
   until M2.3.
 - Only 32 curves are bundled (none in class A). The rest, and user curves, wait for M5's cache.
-- The bundle's checks and the 1710-file sweep ran on unpinned `refs/samples/` caches; the committed
-  curves are pinned by sha256.
+- The bundle's checks and the 1710-file sweep ran on unpinned `refs/samples/` caches.
 - Wall and fin cross-section mass may differ from OpenRocket's undocumented conventions; M2.2
   measures it.
 - `.CDX1` has no public spec (the importer relies on samples); ERA5 `.nc` may be netCDF4 (HDF5).
@@ -132,9 +133,8 @@ RocketPy for five examples, and streamers and tumble with cited drag models. Sta
   committed fixtures, never `refs/`.
 - Barrowman 1966, TIR-33, Galejs, the `.rse` spec and Knacke's manual have no clear terms: cite
   them, never redistribute them.
-- Aero (M1.5a) is small-angle only (no stall) and documented to Mach 0.8; 0.8–1 is extrapolated
-  until M1.8. Body-lift `K` is uncertain (Galejs: 1.0 to 1.5), and the Recruiter's six fins miss
-  TIR-33's print by +3.4% (ADR-008).
+- Aero (M1.5a) is small-angle only (no stall) and documented to Mach 0.8; body-lift `K` is
+  uncertain (Galejs: 1.0 to 1.5) and the Recruiter's six fins miss TIR-33 by +3.4% (ADR-008).
 - Drag (M1.5b): the RASAero comparison can't show 10% agreement without the exports' inputs (fins
   and finish move each case by 20% or more). hpr misses Valetudo's suspect table by 47% and
   Cavour's power-on by 18% (open; ADR-009); drag reads low from about Mach 0.6 until M1.8.

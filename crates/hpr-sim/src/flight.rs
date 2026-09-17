@@ -41,7 +41,7 @@ use crate::integrator::{
 };
 use crate::rail::{Guides, Rail};
 use crate::recorder::{FlightStep, Observer, Sample};
-use crate::recovery::{self, Device, Run, Trigger};
+use crate::recovery::{self, BodyEvent, BodyFlight, BodySample, Device, Run, Separation, Trigger};
 use crate::state::{STATE_LEN, State};
 
 /// How a flight is integrated and when it gives up.
@@ -96,6 +96,9 @@ pub enum EventKind {
     /// A recovery device was released, by its index: the device that releases it is fully open
     /// from this instant, so the drag area never dips between them.
     Release(usize),
+    /// The stack came apart at its separation's stage boundary; each body's descent is in
+    /// [`FlightResult::bodies`].
+    Separation,
     /// A user event, by its index in the order added.
     User(usize),
 }
@@ -124,6 +127,9 @@ pub enum Termination {
     TimeCap,
     /// The integrator's step limit was reached.
     StepLimit,
+    /// The stack separated, and each body flew on as its own descent
+    /// ([`FlightResult::bodies`]).
+    Separated,
 }
 
 /// A finished flight.
@@ -137,6 +143,10 @@ pub struct FlightResult {
     pub final_sample: Sample,
     /// The integrator's work.
     pub stats: Stats,
+    /// The descents of the separated bodies, in body order, when the flight ended with
+    /// [`Termination::Separated`]. Empty otherwise.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub bodies: Vec<BodyFlight>,
 }
 
 impl FlightResult {
@@ -180,6 +190,9 @@ pub struct Simulation {
     /// The trigger times known before the flight, one per device: a time after ignition or a
     /// motor's delay after its burnout, and `None` for the triggers the flight watches for.
     trigger_times_s: Vec<Option<f64>>,
+    separation: Option<Separation>,
+    /// The separation's trigger time, when it is one that is known before the flight.
+    separation_time_s: Option<f64>,
 }
 
 impl Simulation {
@@ -229,6 +242,8 @@ impl Simulation {
             user_events: Vec::new(),
             devices: Vec::new(),
             trigger_times_s: Vec::new(),
+            separation: None,
+            separation_time_s: None,
         })
     }
 
@@ -264,6 +279,62 @@ impl Simulation {
     #[must_use]
     pub fn recovery(&self) -> &[Device] {
         &self.devices
+    }
+
+    /// Flies with a separation: at its trigger the stack comes apart at the stage boundary, and
+    /// each body descends under its own devices ([`crate::recovery::Separation`]).
+    ///
+    /// Call this after [`Self::with_recovery`]: it checks the devices against the bodies.
+    ///
+    /// # Errors
+    ///
+    /// [`SimError::Domain`] if the design has no stage aft of the split, if a device names a body
+    /// that the separation doesn't make, if a body carries no device (the descent has no airframe
+    /// drag, so it would fall as if in a vacuum), or if the trigger names a motor without an
+    /// ejection delay.
+    pub fn with_separation(mut self, separation: Separation) -> Result<Self, SimError> {
+        let stages = self.vehicle.assembly.layout.stages.len();
+        if separation.stages_of(1, stages).is_none() {
+            return Err(SimError::Domain {
+                what: "stage boundary of a separation (there is no stage aft of it)",
+                value: separation.after_stage as f64,
+            });
+        }
+        for body in 0..Separation::BODIES {
+            if !self.devices.iter().any(|device| device.body == body) {
+                return Err(SimError::Domain {
+                    what: "recovery devices on a separated body (every body needs one: a descent \
+                           has no airframe drag)",
+                    value: body as f64,
+                });
+            }
+        }
+        if let Some(device) = self
+            .devices
+            .iter()
+            .find(|device| device.body >= Separation::BODIES)
+        {
+            return Err(SimError::Domain {
+                what: "body a device is attached to (the separation makes two)",
+                value: device.body as f64,
+            });
+        }
+        self.separation_time_s = recovery::plan(
+            &[Device::new(
+                "separation",
+                self.devices[0].drag,
+                separation.trigger,
+            )],
+            &self.vehicle.assembly.motors,
+        )?[0];
+        self.separation = Some(separation);
+        Ok(self)
+    }
+
+    /// The separation, if the flight has one.
+    #[must_use]
+    pub fn separation(&self) -> Option<Separation> {
+        self.separation
     }
 
     /// The assembled design.
@@ -414,6 +485,7 @@ impl Simulation {
         let mut phase = start_phase;
         let mut lifted = start_phase != Phase::Pad;
         let mut burnout_recorded = t0 >= burnout_s;
+        let mut separated = false;
         let mut events: Vec<FlightEvent> = Vec::new();
         let mut run = Run::new(self.devices.len());
         let record = |events: &mut Vec<FlightEvent>, observer: &mut dyn Observer, kind, sample| {
@@ -523,6 +595,38 @@ impl Simulation {
                 }
                 if !again {
                     break;
+                }
+            }
+
+            // The separation: the same triggers as a device's, and when it fires the ascent ends
+            // and every body descends on its own.
+            if let Some(separation) = self.separation
+                && matches!(phase, Phase::Free | Phase::Descent)
+            {
+                let window = (t, next_stop(&stops, t, cap));
+                let area = run.drag_area_m2(&self.devices, t);
+                let fires = match separation.trigger {
+                    Trigger::Time { .. } | Trigger::MotorDelay { .. } => {
+                        self.separation_time_s.is_some_and(|time| t >= time)
+                    }
+                    Trigger::Apogee => {
+                        self.evaluate(phase, window, t, &y, area)?
+                            .vertical_speed_m_s
+                            < 0.0
+                    }
+                    Trigger::Altitude {
+                        height_above_ground_m,
+                    } => {
+                        let e = self.evaluate(phase, window, t, &y, area)?;
+                        e.vertical_speed_m_s < 0.0
+                            && e.height_above_ground_m <= height_above_ground_m
+                    }
+                };
+                if fires {
+                    let sample = self.sample(phase, window, t, &y, area)?;
+                    record(&mut events, observer, EventKind::Separation, sample);
+                    separated = true;
+                    break Termination::Separated;
                 }
             }
 
@@ -661,11 +765,261 @@ impl Simulation {
         let next = next_stop(&stops, t, f64::INFINITY);
         let area = run.drag_area_m2(&self.devices, t);
         let final_sample = self.sample(phase, (t, next.max(t)), t, &y, area)?;
+        let bodies = if separated {
+            self.fly_bodies(t, &State::from_array(&y), &mut run)?
+        } else {
+            Vec::new()
+        };
         Ok(FlightResult {
             termination,
             events,
             final_sample,
             stats: integrator.stats(),
+            bodies,
+        })
+    }
+
+    /// Flies every separated body from the separation at `t` to its landing.
+    ///
+    /// Each body is a point mass with its own stages' and motors' mass, starting where its own
+    /// centre of mass was and with the velocity that point already had, so the separation adds no
+    /// impulse. The bodies share the flight's devices and their progress: a device that had
+    /// already opened stays open on whichever body carries it.
+    fn fly_bodies(
+        &self,
+        t: f64,
+        state: &State,
+        run: &mut Run,
+    ) -> Result<Vec<BodyFlight>, SimError> {
+        let Some(separation) = self.separation else {
+            return Ok(Vec::new());
+        };
+        let stage_count = self.vehicle.assembly.layout.stages.len();
+        let attitude = state.unit_attitude();
+        let mut bodies = Vec::new();
+        for body in 0..recovery::Separation::BODIES {
+            let Some(stages) = separation.stages_of(body, stage_count) else {
+                continue;
+            };
+            let mass = recovery::body_mass_properties(&self.vehicle.assembly, stages, t);
+            if !(mass.mass_kg.is_finite() && mass.mass_kg > 0.0) {
+                return Err(SimError::Domain {
+                    what: "mass of a separated body, kg",
+                    value: mass.mass_kg,
+                });
+            }
+            // Its own centre of mass, and the velocity that point had: `v_O + ω × r` in `L`.
+            let cg_enu_m = state.point_enu_m(mass.cg_m);
+            let velocity_enu_m_s =
+                state.velocity_enu_m_s + attitude.mul_vec3(state.body_rate_rad_s.cross(mass.cg_m));
+            bodies.push(self.fly_body(
+                Body {
+                    index: body,
+                    stages,
+                    mass_kg: mass.mass_kg,
+                },
+                t,
+                (cg_enu_m, velocity_enu_m_s),
+                run,
+            )?);
+        }
+        Ok(bodies)
+    }
+
+    /// Flies one body as a point mass from `(t, cg_enu_m, velocity_enu_m_s)` to its landing.
+    fn fly_body(
+        &self,
+        body: Body,
+        t0: f64,
+        (cg_enu_m, velocity_enu_m_s): (DVec3, DVec3),
+        run: &mut Run,
+    ) -> Result<BodyFlight, SimError> {
+        let Body {
+            index: body,
+            stages,
+            mass_kg,
+        } = body;
+        let cap = self.settings.max_time_s;
+        let start = [
+            cg_enu_m.x,
+            cg_enu_m.y,
+            cg_enu_m.z,
+            velocity_enu_m_s.x,
+            velocity_enu_m_s.y,
+            velocity_enu_m_s.z,
+        ];
+        let mut integrator = Integrator::new(self.settings.method, t0, start)?
+            .with_step_limit(self.settings.step_limit);
+        let mut stops: Vec<f64> = self
+            .trigger_times_s
+            .iter()
+            .enumerate()
+            .filter(|(index, _)| self.devices[*index].body == body)
+            .filter_map(|(_, time)| *time)
+            .filter(|time| *time > t0 && *time <= cap)
+            .collect();
+        stops.push(cap);
+        stops.sort_by(f64::total_cmp);
+        stops.dedup();
+        let mut events: Vec<BodyEvent> = Vec::new();
+        let start_sample = self.body_sample(body, mass_kg, t0, &start, run)?;
+        let mine: Vec<usize> = (0..self.devices.len())
+            .filter(|index| self.devices[*index].body == body)
+            .collect();
+
+        let termination = loop {
+            let t = integrator.time_s();
+            let y = *integrator.state();
+            if t >= cap {
+                break Termination::TimeCap;
+            }
+            // Charges, deployments and releases, as in the main loop.
+            loop {
+                let mut again = false;
+                let sample = self.body_sample(body, mass_kg, t, &y, run)?;
+                for &index in &mine {
+                    if !run.pending(index) {
+                        continue;
+                    }
+                    let fires = match self.devices[index].trigger {
+                        Trigger::Time { .. } | Trigger::MotorDelay { .. } => {
+                            self.trigger_times_s[index].is_some_and(|time| t >= time)
+                        }
+                        Trigger::Apogee => sample.vertical_speed_m_s < 0.0,
+                        Trigger::Altitude {
+                            height_above_ground_m,
+                        } => {
+                            sample.vertical_speed_m_s < 0.0
+                                && sample.height_above_ground_m <= height_above_ground_m
+                        }
+                    };
+                    if fires {
+                        let deploy_s = run.trigger(&self.devices, index, t);
+                        insert_stop(&mut stops, deploy_s, cap);
+                        events.push(BodyEvent {
+                            kind: EventKind::Trigger(index),
+                            sample,
+                        });
+                        again = true;
+                    }
+                }
+                for &index in &mine {
+                    if !run.waiting(index) || run.deploy_s(index) > t {
+                        continue;
+                    }
+                    if run.released_s(index).is_some_and(|released| released <= t) {
+                        run.abandon(index);
+                        again = true;
+                        continue;
+                    }
+                    let full_s = run.deploy(&self.devices, index, t, sample.airspeed_m_s);
+                    insert_stop(&mut stops, full_s, cap);
+                    events.push(BodyEvent {
+                        kind: EventKind::Deployment(index),
+                        sample: self.body_sample(body, mass_kg, t, &y, run)?,
+                    });
+                    again = true;
+                }
+                for &index in &mine {
+                    if run.release_due(index, t) {
+                        run.release(index);
+                        events.push(BodyEvent {
+                            kind: EventKind::Release(index),
+                            sample: self.body_sample(body, mass_kg, t, &y, run)?,
+                        });
+                        again = true;
+                    }
+                }
+                if !again {
+                    break;
+                }
+            }
+
+            let next = next_stop(&stops, t, cap);
+            let watches: Vec<usize> = mine
+                .iter()
+                .copied()
+                .filter(|index| {
+                    matches!(self.devices[*index].trigger, Trigger::Altitude { .. })
+                        && run.pending(*index)
+                })
+                .collect();
+            let mut system = BodySystem {
+                simulation: self,
+                body,
+                mass_kg,
+                run,
+                watches: &watches,
+                failure: None,
+            };
+            let outcome = integrator.advance(&mut system, next);
+            if let Some(error) = system.failure.take() {
+                return Err(error);
+            }
+            let outcome = match outcome {
+                Ok(outcome) => outcome,
+                Err(IntegrationError::StepLimit { .. }) => break Termination::StepLimit,
+                Err(IntegrationError::Derivative { source, .. }) => return Err(source),
+                Err(error) => return Err(SimError::Integration(Box::new(error))),
+            };
+            if let Advance::Events = outcome
+                && integrator.fired_events().contains(&0)
+            {
+                let t = integrator.time_s();
+                let y = *integrator.state();
+                events.push(BodyEvent {
+                    kind: EventKind::GroundHit,
+                    sample: self.body_sample(body, mass_kg, t, &y, run)?,
+                });
+                break Termination::GroundHit;
+            }
+        };
+
+        let t = integrator.time_s();
+        let y = *integrator.state();
+        Ok(BodyFlight {
+            body,
+            stages,
+            mass_kg,
+            start_sample,
+            termination,
+            events,
+            final_sample: self.body_sample(body, mass_kg, t, &y, run)?,
+            stats: integrator.stats(),
+        })
+    }
+
+    /// One separated body at `(t, y)`, where `y` is its centre of mass and that point's velocity.
+    fn body_sample(
+        &self,
+        body: usize,
+        mass_kg: f64,
+        t: f64,
+        y: &[f64; 6],
+        run: &Run,
+    ) -> Result<BodySample, SimError> {
+        let cg_enu_m = DVec3::new(y[0], y[1], y[2]);
+        let velocity_enu_m_s = DVec3::new(y[3], y[4], y[5]);
+        let frame = self.environment.earth.frame();
+        let geodetic = frame.geodetic_from_enu(cg_enu_m)?;
+        let height_above_ground_m = geodetic.height_m - frame.origin().height_m;
+        let up_ecef = DVec3::new(
+            geodetic.latitude_rad.cos() * geodetic.longitude_rad.cos(),
+            geodetic.latitude_rad.cos() * geodetic.longitude_rad.sin(),
+            geodetic.latitude_rad.sin(),
+        );
+        let up_enu = frame.ecef_from_enu_rotation().transpose() * up_ecef;
+        let height_msl_m = geodetic.height_m - self.environment.geoid_undulation_m;
+        let wind_enu = self.environment.wind.wind(height_msl_m)?.velocity_enu_m_s;
+        Ok(BodySample {
+            time_s: t,
+            cg_enu_m,
+            velocity_enu_m_s,
+            height_above_ground_m,
+            vertical_speed_m_s: up_enu.dot(velocity_enu_m_s),
+            airspeed_m_s: (velocity_enu_m_s - wind_enu).length(),
+            recovery_drag_area_m2: run.body_drag_area_m2(&self.devices, body, t),
+            mass_kg,
         })
     }
 
@@ -739,6 +1093,108 @@ enum Watch {
     Altitude(usize),
     /// A user event.
     User(usize),
+}
+
+/// Which body a descent is of: its index, its stages and its mass.
+#[derive(Debug, Clone, Copy)]
+struct Body {
+    index: usize,
+    stages: (usize, usize),
+    mass_kg: f64,
+}
+
+/// One separated body as the integrator sees it: a point mass under its open devices' drag area,
+/// with its centre of mass and that point's velocity as the state.
+///
+/// The equations are the descent phase's (`docs/physics/recovery.md`) with no thrust and no
+/// airframe: `m a = −½ ρ (C_D S)(t) |v − w| (v − w) + m (g + a_Coriolis)`.
+struct BodySystem<'a> {
+    simulation: &'a Simulation,
+    body: usize,
+    mass_kg: f64,
+    run: &'a Run,
+    /// The devices whose deployment height this body is watching for, as event 1 onward.
+    watches: &'a [usize],
+    failure: Option<SimError>,
+}
+
+impl BodySystem<'_> {
+    /// The height above the site and the drag acceleration at `(t, y)`.
+    fn sample(&self, t_s: f64, y: &[f64; 6]) -> Result<BodySample, SimError> {
+        self.simulation
+            .body_sample(self.body, self.mass_kg, t_s, y, self.run)
+    }
+}
+
+impl OdeSystem<6> for BodySystem<'_> {
+    type Error = SimError;
+
+    fn derivative(&mut self, t_s: f64, y: &[f64; 6]) -> Result<[f64; 6], SimError> {
+        let cg_enu_m = DVec3::new(y[0], y[1], y[2]);
+        let velocity_enu_m_s = DVec3::new(y[3], y[4], y[5]);
+        let environment = &self.simulation.environment;
+        let frame = environment.earth.frame();
+        let geodetic = frame.geodetic_from_enu(cg_enu_m)?;
+        let height_msl_m = geodetic.height_m - environment.geoid_undulation_m;
+        let air = environment.atmosphere.air(height_msl_m)?.air;
+        let wind_enu = environment.wind.wind(height_msl_m)?.velocity_enu_m_s;
+        let gravity_enu = environment.earth.gravity_enu_mps2(cg_enu_m)?;
+        let coriolis_enu = environment
+            .earth
+            .rotation_acceleration_enu_mps2(velocity_enu_m_s);
+        let drag_area_m2 = self
+            .run
+            .body_drag_area_m2(&self.simulation.devices, self.body, t_s);
+        let air_velocity = velocity_enu_m_s - wind_enu;
+        let speed = air_velocity.length();
+        let drag_enu = if air.density_kg_m3 > 0.0 && speed > 0.0 && drag_area_m2 > 0.0 {
+            air_velocity * (-0.5 * air.density_kg_m3 * drag_area_m2 * speed / self.mass_kg)
+        } else {
+            DVec3::ZERO
+        };
+        let acceleration = drag_enu + gravity_enu + coriolis_enu;
+        Ok([
+            velocity_enu_m_s.x,
+            velocity_enu_m_s.y,
+            velocity_enu_m_s.z,
+            acceleration.x,
+            acceleration.y,
+            acceleration.z,
+        ])
+    }
+
+    fn event_count(&self) -> usize {
+        1 + self.watches.len()
+    }
+
+    fn event_direction(&self, _index: usize) -> Direction {
+        Direction::Falling
+    }
+
+    fn event_value(&mut self, index: usize, t_s: f64, y: &[f64; 6]) -> f64 {
+        let sample = match self.sample(t_s, y) {
+            Ok(sample) => sample,
+            Err(error) => {
+                self.failure.get_or_insert(error);
+                return f64::NAN;
+            }
+        };
+        match index {
+            // The ground, then each watched device's deployment height.
+            0 => sample.height_above_ground_m,
+            other => match self
+                .watches
+                .get(other - 1)
+                .and_then(|device| self.simulation.devices.get(*device))
+                .map(|device| device.trigger)
+            {
+                Some(Trigger::Altitude {
+                    height_above_ground_m,
+                }) => sample.height_above_ground_m - height_above_ground_m,
+                _ => f64::NAN,
+            },
+        }
+    }
 }
 
 /// The recovery devices of a flight and their progress through it.

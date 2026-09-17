@@ -1,10 +1,10 @@
 # Recovery
 
-How hpr flies a rocket under a parachute, a streamer or tumbling: the drag area of a device, when
-it opens, how it fills, and the equations of the descent. Separated bodies are M1.7c and are not
-here yet. Code: `crates/hpr-sim/src/recovery.rs` and the descent branch of
+How hpr flies a rocket under a parachute, a streamer or tumbling, and how a separated stack flies
+every body to its own landing: the drag area of a device, when it opens, how it fills, and the
+equations of the descent. Code: `crates/hpr-sim/src/recovery.rs` and the descent branch of
 `crates/hpr-sim/src/dynamics.rs`. Decisions: ADR-012 (parachutes and the descent), ADR-013
-(streamers and tumble).
+(streamers and tumble), ADR-014 (separation).
 
 Sources:
 
@@ -282,6 +282,33 @@ computes it:
 v_e = √(2 m g / (ρ C_D S))
 ```
 
+## Separation
+
+A `Separation` is a trigger and a stage boundary. At the trigger the stack comes apart: stages
+`0..=after_stage` keep the nose and are **body 0**, the stages aft of the split are **body 1**, and
+each body flies on as a point mass under the devices that name it (`Device::on_body`). The ascent
+ends there: its `FlightResult` has `Termination::Separated`, a `Separation` event, and one
+`BodyFlight` per body in `bodies`.
+
+- **Each body is its own stages and their motors.** `body_mass_properties` sums the stages'
+  `MassProperties` and the motors mounted in them, so the bodies' masses add to the whole rocket's
+  at that instant — which is a test.
+- **The separation adds no impulse.** Each body starts at its **own** centre of mass, with the
+  velocity that point already had: `v_O + ω × r_cg` in the launch frame. The bodies' momenta
+  therefore add to the stack's, which is also a test. No spring, no gas pressure, no tip-off: an
+  ejection charge's impulse and the tumbling that follows are not modelled.
+- **Every body must carry a device.** The descent has no airframe drag (ADR-012), so a body with
+  nothing open would fall as if in a vacuum; a flight whose bodies are not all covered is refused.
+  A spent booster's device is usually `DeviceDrag::tumbling_stages(&assembly, its stages)`, which
+  is §3.5's model over that body's own components rather than the whole stack's.
+- **The bodies descend independently**, each with the same point-mass equations as the descent
+  phase, less the thrust: `m a = −½ ρ (C_D S)(t) |v − w| (v − w) + m (g + a_Coriolis)`. They share
+  the flight's devices and their progress, so a canopy that opened before the separation stays open
+  on whichever body carries it.
+- **A separation must follow the last burnout**, because a body's mass is held constant through its
+  descent. Powered staging, where a sustainer lights and keeps flying, is M1.9.
+- Bodies are not watched by the `Observer`: their events and samples are in their `BodyFlight`.
+
 ## Verification
 
 `crates/hpr-sim/src/recovery.rs`'s tests, all analytic unless they name the oracle:
@@ -303,6 +330,8 @@ v_e = √(2 m g / (ρ C_D S))
 | An apogee charge on a flight that starts descending | it fires at the first step (there is no apogee event to find), and a climbing start still waits for the apogee |
 | Two user events and an altitude device on one flight | the user events keep their numbers and fire during the descent, in height order |
 | The same recovered flight flown twice | bit-identical rows, events, final sample and step counts (Loft lesson L24: a run does not mutate the simulation) |
+| A separation at apogee of the two-stage test design, canopy on the sustainer and tumble on the booster | both bodies land: the 0.550 kg sustainer at 729.0 s and 2.11 m/s under its 1.8 m canopy, the 1.125 kg booster at 107.5 s and 16.74 m/s tumbling; the masses add to the 1.675 kg stack to 1e-12 and each lands within 0.1% of its own `v_e` |
+| The momenta of the bodies at a separation with a 0.6 rad/s body rate | add to the stack's to 1e-9, and the bodies start more than 0.5 m apart (each at its own centre of mass) |
 
 ### Against RocketPy
 
