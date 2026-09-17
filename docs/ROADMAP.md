@@ -98,7 +98,7 @@
   - A Dryden spectrum test passes (PSD within tolerance of theory).
   - `docs/physics/atmosphere.md` cites every equation.
 
-- [ ] **M1.3 Solid motors.**
+- [x] **M1.3 Solid motors.**
   - `.eng` and `.rse` readers and writers (clean room, from the public specs).
   - Motor model: thrust(t), propellant mass by impulse fraction (default) with an optional
     grain-geometry model; CG and inertia over time; nozzle exit area.

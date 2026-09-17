@@ -35,6 +35,9 @@ proptest = "1.11.0"
 # Tests only: an independent xoshiro256++ and SplitMix64 to check `hpr_core::random` against.
 rand_core = "0.10"
 rand_xoshiro = "0.8.1"
+# `.rse` motor files (and later `.ork` designs): a strict, read-only XML 1.0 parser with no
+# dependencies that refuses DTDs by default.
+roxmltree = "0.21.1"
 serde = { version = "1.0.229", features = ["derive"] }
 # `float_roundtrip` parses every float back to the exact f64 it was written from.
 serde_json = { version = "1.0.151", features = ["float_roundtrip"] }
