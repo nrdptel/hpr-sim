@@ -300,6 +300,7 @@ parasitic term on its own area. The axial coefficient is `C_A = C_D0 f(α)`.
   | Calisto, getting-started fins (variant) | the same | 0.3537 | −7.3% | −12.9% to +19.3% |
   | Juno III | labelled RASAero II, 3-decimal table | 0.3525 | −6.0% | −10.5% to +24.1% |
   | Cavour, power-off | labelled RASAero II, 3-decimal table | 0.5034 | −8.3% | −22.3% to −0.4% |
+  | **Cavour, power-on (outside 10%)** | the same, power-on | 0.4487 | **−18.3%** | −32.2% to −10.3% |
   | **Valetudo, power-off (outside 10%)** | labelled RASAero, 3-decimal table | 0.5566 | **−47.0%** | −59.4% to −42.5% |
   | **Valetudo, power-on (outside 10%)** | the same, power-on | 0.5189 | **−50.4%** | −62.8% to −45.9% |
 
@@ -307,19 +308,24 @@ parasitic term on its own area. The axial coefficient is `C_A = C_D0 f(α)`.
     - RASAero II's default smooth finish.
     - A NACA 00xx airfoil file in the example gives an airfoil section that thick at the mean
       aerodynamic chord (Calisto's getting-started fins).
-    - A published section is used: Juno III's team won a technical award for "análise de aletas
-      com perfil de aerofólio truncado" (an analysis of truncated-airfoil fins), taken as rounded
-      at the placeholder thickness; the citation gives no thickness.
+    - A published section is used: Juno III's team placed second for a technical award, cited for
+      "análise de aletas com perfil de aerofólio truncado" (an analysis of truncated-airfoil fins);
+      taken as rounded at the placeholder thickness, since the citation gives no thickness.
     - Otherwise the placeholder, square 3 mm (Calisto's 2018 fins, Cavour, Valetudo).
     - Rail buttons are as RocketPy defines them (without them, Calisto is +1.8%).
   - **Sensitivity.** The range is over square, rounded and airfoil fins (3 mm, or 12% for the
     airfoil), 0 or 20 µm, and with or without rail buttons. Before the published-section rule, square
     fins gave Juno III +14.6% and the getting-started Calisto +10.7%. The check places hpr near
     RASAero's subsonic drag under a declared rule; without the inputs it can't show agreement to 10%.
-  - **Power-on.** Only Valetudo's power-on table differs from its power-off table at Mach 0.3 (by
-    0.004), so only it is compared. Subtracting the motor's area ([N09] p. 50) removes 29% of
-    Valetudo's base drag (0.038), about nine times the table's relief. The designs' motor
-    diameter is the larger of the grain and nozzle exit diameters, since RocketPy gives no case.
+  - **Power-on.** Separate power-on curves are compared (Cavour's and Valetudo's). Subtracting the
+    motor's area ([N09] p. 50) removes 42% of Cavour's base drag and 29% of Valetudo's at Mach 0.3.
+    Cavour's power-on table is within its 0.001 rounding of power-off from Mach 0.16 up (0.0001 at
+    0.3) and 0.001 to 0.013 lower below; Valetudo's is 0.004 lower, about a ninth of hpr's relief.
+    The designs' motor diameter is the larger of the grain and nozzle exit diameters, since RocketPy
+    gives no case, and Cavour's result depends on it: −8.3% with no relief, −14.8% at 54 mm,
+    −18.3% at the design's 67 mm nozzle exit, −20.8% with the example's 75 mm motor. The cause of
+    that miss stays open: Niskanen's relief, a RASAero run with little or no nozzle exit diameter,
+    or tables sampled along a flight (their uneven Mach spacing suggests it; unconfirmed).
   - **Valetudo.** Its table (1.05) is 1.44 times the OpenRocket export for the same rocket (0.728).
     With that file's own inputs (60 µm, two 14 mm × 30 mm lugs, 3 mm square fins), hpr gives
     0.714, 1.9% under the OpenRocket export and 32% under the table.
@@ -327,11 +333,7 @@ parasitic term on its own area. The axial coefficient is `C_A = C_D0 f(α)`.
     - Calisto's power-on curve, which equals its power-off curve (no nozzle exit diameter in
       RASAero).
     - Juno III's power-on drag, which RocketPy takes from the same file.
-    - Cavour's power-on curve, within 0.0005 of its power-off curve from Mach 0.2 to 0.89 (0.0001
-      at 0.3), as RASAero gives without a nozzle exit diameter; whether one was entered isn't
-      recorded. hpr would be −18.3% from it with the design's 67 mm motor (the nozzle exit),
-      −14.8% with 54 mm, −20.8% with the example's 75 mm motor, and −8.3% with no relief.
-      Calisto's power-on would be −5.0%.
+    - Calisto's power-on result would be −5.0% (its power-on file is its power-off file).
     - The other examples, whose drag is a constant, CFD or of unknown origin.
 - **Loft lessons.**
   - L11: `drag::tests::drag_invariant_to_fin_set_order`

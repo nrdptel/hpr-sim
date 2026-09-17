@@ -198,8 +198,9 @@
     - Unit tests cover every drag term's limits.
 
     *Result (ADR-009):* not met for Valetudo (−47% power-off, −50% power-on; its table is 1.44 times
-    its own OpenRocket export, which hpr matches to 2%). Calisto, Juno III and Cavour are within
-    10% (+4.4%, −6.0%, −8.3%) under a declared input rule that can't pin the unrecorded inputs.
+    its own OpenRocket export, which hpr matches to 2%) or Cavour power-on (−18.3%, cause open).
+    Calisto, Juno III and Cavour power-off are within 10% (+4.4%, −6.0%, −8.3%) under a declared
+    input rule that can't pin the unrecorded inputs.
 
 - [ ] **M1.6 6-DOF flight engine.**
   - State: position, velocity, attitude quaternion, angular velocity, time-varying mass

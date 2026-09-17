@@ -739,13 +739,11 @@ power-on base relief (L13), uncited lug drag (L14), no drag at bare steps (L15) 
     (66.2 in) are within 1.5% of hpr's for those fins (6.18, 66.2 in), not for the getting-started
     fins (7.32, 70.3 in), which are reported as a variant, not as more evidence.
   - Juno III's, Cavour's and Valetudo's are labelled RASAero but are 3-decimal tables with no input
-    file. Power-on is compared only where its table differs from power-off at Mach 0.3, as for
-    Calisto: Juno III's is the same file, Cavour's is within 0.0001 there (and 0.0005 from Mach
-    0.2 to 0.89, as RASAero gives without a nozzle exit diameter, though the input isn't recorded),
-    and Valetudo's is 0.004 lower, so only Valetudo's is compared. Calisto's and Cavour's power-on
-    results are still reported (−5.0% and −18.3%).
-    Cavour's power-off table repeats 13 Mach numbers up to 0.107 over 22 rows, 7 with values 0.001
-    apart; the comparison keeps the first of each. `parse_mach_csv` itself refuses that curve.
+    file. Juno III's serves power-off and power-on alike; Cavour's and Valetudo's have separate
+    power-on tables, which are compared too (Calisto's power-on file is its power-off file; hpr's
+    power-on result would be −5.0%). Cavour's power-off table has 22 extra rows repeating 13 Mach
+    numbers up to 0.107, 7 with values 0.001 apart; the comparison keeps the first of each, and
+    `parse_mach_csv` itself refuses that curve.
 - **Inputs for the comparison: one declared rule, placeholders where nothing is known.** The
   exports record no inputs. Finish: RASAero II's documented default, smooth (p. 53,
   `Finish::Mirror`). Fin cross-section: a NACA 00xx airfoil file in the example gives an airfoil
@@ -764,19 +762,23 @@ power-on base relief (L13), uncited lug drag (L14), no drag at bare steps (L15) 
   | Calisto, getting-started fins (variant) | −7.3% | −12.9% to +19.3% |
   | Juno III | −6.0% | −10.5% to +24.1% |
   | Cavour, power-off | −8.3% | −22.3% to −0.4% |
+  | **Cavour, power-on** | **−18.3%** | −32.2% to −10.3% |
   | **Valetudo, power-off** | **−47.0%** | −59.4% to −42.5% |
   | **Valetudo, power-on** | **−50.4%** | −62.8% to −45.9% |
 
   The range is over square, rounded and airfoil fins (3 mm, or 12% of the chord for the airfoil),
   0 or 20 µm, with and without rail buttons. Before the published-section rule, square 3 mm fins
-  gave Juno III +14.6% and the getting-started Calisto +10.7%. The test pins exactly the two cases
-  outside 10%:
-  - **Power-on base relief differs from Valetudo's table.** At Mach 0.3, subtracting the motor's
-    area removes 29% of Valetudo's base drag (0.038), about nine times the table's 0.004. The
-    RocketPy designs have no motor case, so their motor diameter is the larger of the grain and
-    nozzle exit diameters; Cavour's power-on result ranges from −8.3% (no relief) to −20.8% (its
-    75 mm motor), so the cause of that miss can't be told from the input. hpr follows Niskanen;
-    flights with known motors (M2.1, M2.3) will show which relief is closer.
+  gave Juno III +14.6% and the getting-started Calisto +10.7%. The test pins exactly the three
+  cases outside 10%:
+  - **Cavour under power, cause open.** At Mach 0.3, subtracting the motor's area removes 42% of
+    Cavour's base drag (0.055) and 29% of Valetudo's (0.038). Cavour's power-on table is within its
+    0.001 rounding of power-off from Mach 0.16 up (0.0001 at 0.3; 0.001 to 0.013 lower below),
+    Valetudo's 0.004 lower, about a ninth of hpr's relief. The RocketPy designs have no motor case,
+    so their motor diameter is the larger of the grain and nozzle exit diameters, and Cavour's
+    result runs from −8.3% with no relief to −20.8% with its 75 mm motor (−18.3% at the 67 mm
+    nozzle exit). The miss may be Niskanen's relief, a RASAero run with little or no nozzle exit
+    diameter, or tables sampled along a flight (their uneven Mach spacing suggests it;
+    unconfirmed). Flights with known motors (M2.1, M2.3) will test the relief.
   - **Valetudo's table** gives 1.05 at Mach 0.3, 1.44 times the OpenRocket export for the same
     rocket in RocketPy's RocketPaper repository (0.728). With that `.ork`'s inputs (regular paint,
     60 µm; two 14 mm × 30 mm lugs instead of rail buttons; its 3 mm square fins) hpr gives 0.714,

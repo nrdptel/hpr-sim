@@ -40,11 +40,9 @@ struct Case {
     origin: &'static str,
 }
 
-/// Every RocketPy example whose drag curve is labelled RASAero, power-off, and power-on where the
-/// power-on curve differs from the power-off curve at the comparison's Mach number. RASAero II
-/// without a nozzle exit diameter gives power-on equal to power-off: Calisto's curves are equal,
-/// Juno III's are one file, and Cavour's differ by 0.0001 at Mach 0.3 (and nowhere by more than
-/// 0.0005 from Mach 0.2 to 0.89), so only Valetudo's power-on curve is compared.
+/// Every RocketPy example whose drag curve is labelled RASAero: power-off, and power-on wherever
+/// the example has a separate power-on curve that differs from its power-off curve. Calisto's
+/// power-on file is byte-identical to its power-off file, and Juno III uses one file for both.
 const CASES: &[Case] = &[
     Case {
         id: "calisto-power-off",
@@ -84,8 +82,19 @@ const CASES: &[Case] = &[
         thrusting: false,
         variant_of: None,
         origin: "labelled RASAero II by RocketPy's Cavour notebook; a 3-decimal table from Mach \
-                 0.082 to 0.895 that repeats 13 Mach numbers up to 0.107 over 22 rows, 7 of them \
-                 with values 0.001 apart; its power-on table equals it within 0.0005 from Mach 0.2",
+                 0.082 to 0.895 with 22 extra rows repeating 13 Mach numbers up to 0.107, 7 of \
+                 them with values 0.001 apart",
+    },
+    Case {
+        id: "cavour-power-on",
+        design: "rocketpy-cavour.json",
+        curve: "data/rockets/polito/drag_coefficient_power_on.csv",
+        thrusting: true,
+        variant_of: None,
+        origin: "the power-on companion of the Cavour table, from Mach 0.011 to 0.923: within the \
+                 tables' 0.001 rounding of the power-off table from Mach 0.16 up (0.0001 lower at \
+                 Mach 0.3), and 0.001 to 0.013 lower below Mach 0.16. Their uneven Mach spacing \
+                 suggests samples along a flight rather than a Mach sweep (unconfirmed)",
     },
     Case {
         id: "valetudo-power-off",

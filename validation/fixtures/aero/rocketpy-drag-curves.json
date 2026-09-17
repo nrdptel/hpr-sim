@@ -48,9 +48,22 @@
       "design": "rocketpy-cavour.json",
       "hpr_cd0": 0.5033853327445214,
       "id": "cavour-power-off",
-      "origin": "labelled RASAero II by RocketPy's Cavour notebook; a 3-decimal table from Mach 0.082 to 0.895 that repeats 13 Mach numbers up to 0.107 over 22 rows, 7 of them with values 0.001 apart; its power-on table equals it within 0.0005 from Mach 0.2",
+      "origin": "labelled RASAero II by RocketPy's Cavour notebook; a 3-decimal table from Mach 0.082 to 0.895 with 22 extra rows repeating 13 Mach numbers up to 0.107, 7 of them with values 0.001 apart",
       "relative_error": -0.08308682560196479,
       "thrusting": false,
+      "variant_of": null
+    },
+    {
+      "curve": "data/rockets/polito/drag_coefficient_power_on.csv",
+      "curve_cd0": 0.5489411764705883,
+      "curve_rows_dropped": 8,
+      "curve_sha256": "5f588e25e43b843470e1882f35e2a3be0b7f1760c6652da0c757ad203e7469ed",
+      "design": "rocketpy-cavour.json",
+      "hpr_cd0": 0.44872544923860425,
+      "id": "cavour-power-on",
+      "origin": "the power-on companion of the Cavour table, from Mach 0.011 to 0.923: within the tables' 0.001 rounding of the power-off table from Mach 0.16 up (0.0001 lower at Mach 0.3), and 0.001 to 0.013 lower below Mach 0.16. Their uneven Mach spacing suggests samples along a flight rather than a Mach sweep (unconfirmed)",
+      "relative_error": -0.18256186915384998,
+      "thrusting": true,
       "variant_of": null
     },
     {

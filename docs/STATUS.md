@@ -50,7 +50,7 @@ M1.5 is done (ADR-008, ADR-009, `docs/physics/aero.md`). Start M1.6 from these n
 
 - 2026-09-17: M1.5b Drag and override tables (PR #17, ADR-009): Niskanen's buildup, drag at angle
   of attack, Barrowman's roughness table, CSV override tables. At Mach 0.3 against RASAero-labelled
-  curves: Calisto +4.4%, Juno III −6.0%, Cavour −8.3%; documented gap: Valetudo −47%.
+  curves: Calisto +4.4%, Juno III −6.0%, Cavour −8.3%; gaps: Valetudo −47%, Cavour power-on −18%.
 - 2026-09-17: M1.5a Normal force and centre of pressure (PR #16): Barrowman slopes and CPs for
   bodies (real volumes, L9) and fins (Prandtl–Glauert, MAC, fin-count factors L8, elliptical L10,
   freeform), Galejs body lift, ADR-008. Barrowman's five worked examples (NARAM-8, TIR-33) agree
@@ -140,8 +140,8 @@ M1.5 is done (ADR-008, ADR-009, `docs/physics/aero.md`). Start M1.6 from these n
   Mach 0.8; 0.8–1 is extrapolated until M1.8. Body-lift `K` is uncertain (Galejs: 1.0 to 1.5).
   The Recruiter's six fins miss TIR-33's print by +3.4% because the six-fin rules differ (ADR-008).
 - Drag (M1.5b): the RASAero comparison can't show 10% agreement without the exports' inputs
-  (fins and finish move each case by 20% or more). hpr misses Valetudo's suspect table by 47%, and
-  its power-on base relief is about 9× that table's (ADR-009). Drag reads low from about Mach 0.6
+  (fins and finish move each case by 20% or more). hpr misses Valetudo's suspect table by 47% and
+  Cavour's power-on table by 18% (cause open; ADR-009). Drag reads low from about Mach 0.6
   until M1.8 (flagged above 0.8).
 - `AeroModel::normal_force` measured about 2× slower after M1.5b with nothing changed on its path
   (probably code layout; `docs/perf.md`). M1.6's flight benchmark will show whether it matters.

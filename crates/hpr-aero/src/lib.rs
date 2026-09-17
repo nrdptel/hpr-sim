@@ -525,9 +525,9 @@ mod tests {
                 outside.push(case.id.as_str());
             }
         }
-        // Five comparisons over four rockets, and one variant (Calisto's getting-started fins on
+        // Six comparisons over four rockets, and one variant (Calisto's getting-started fins on
         // the same export).
-        assert_eq!(fixture.cases.len(), 6);
+        assert_eq!(fixture.cases.len(), 7);
         let variants: Vec<&str> = fixture
             .cases
             .iter()
@@ -535,8 +535,13 @@ mod tests {
             .map(|c| c.id.as_str())
             .collect();
         assert_eq!(variants, ["calisto-getting-started-power-off"]);
-        // Outside the tolerance (ADR-009): Valetudo's table, 1.44 times the OpenRocket export for
-        // the same rocket, which hpr matches to 2% with that file's inputs.
-        assert_eq!(outside, ["valetudo-power-off", "valetudo-power-on"]);
+        // Outside the tolerance (ADR-009): Cavour under power, where the table carries at most
+        // 0.001 of relief at Mach 0.3 and hpr's depends on the unrecorded motor diameter; and
+        // Valetudo's table, 1.44 times the OpenRocket export for the same rocket, which hpr
+        // matches to 2% with that file's inputs.
+        assert_eq!(
+            outside,
+            ["cavour-power-on", "valetudo-power-off", "valetudo-power-on"]
+        );
     }
 }
