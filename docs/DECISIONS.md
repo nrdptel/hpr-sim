@@ -15,6 +15,7 @@ renumber. Supersede an entry by adding a new one that points back to it.
 | ADR-007 | Design tree: stations, placement, automatic radii, overrides, motors and checks | accepted |
 | ADR-008 | Subsonic normal force and centre of pressure | accepted |
 | ADR-009 | Subsonic drag buildup, surface finishes and drag override tables | accepted |
+| ADR-010 | Time integration: Dormand–Prince with dense output, RK4, stop times and events | accepted |
 
 ---
 
@@ -802,3 +803,63 @@ power-on base relief (L13), uncited lug drag (L14), no drag at bare steps (L15) 
 - M2.2 checks the angle-of-attack polynomial, the lug diameter, the boattail reading, the friction
   area and the leading-edge sweep average against OpenRocket.
 - `AeroModel::drag` takes about 50 to 110 ns (`docs/perf.md`).
+
+## ADR-010: Time integration: Dormand–Prince with dense output, RK4, stop times and events (2026-09-17)
+
+**Context.** M1.6 asks for adaptive Dormand–Prince 5(4) with dense output and event
+root-finding, plus a fixed-step RK4 option. M1.6 is split into M1.6a (the integrator and events)
+and M1.6b (the flight). Loft's RK4 had no error control and no apogee convergence check (L21). It
+didn't root-find events (L22), and it let burnout fall inside steps (L23). No crate in the
+workspace had an ODE integrator or a root finder. Hairer and Wanner's `DOPRI5` is the reference
+implementation of the method in their book and is BSD-2-Clause.
+
+**Decision.**
+
+- **One integrator in `hpr_sim::integrator`, no dependency.** It works on `[f64; N]` states
+  through an `OdeSystem<N>` trait whose derivative can fail with the system's own error.
+  Established Rust ODE crates either lack event location on dense output or pull in a
+  linear-algebra stack. The method is a few hundred lines, and owning it lets the tests pin every
+  coefficient.
+- **Port `DOPRI5` as the reference.** Take its coefficients, the RMS error norm, the PI controller
+  (`β = 0.04`, growth limits 1/5 to 10, safety 0.9), the starting step and the dense output
+  (`CONTD5`). The stiffness detection is left out. The port is attributed in
+  `THIRD-PARTY-NOTICES.md`, and the source is pinned (`hairer-dopri5`).
+- **Per-component tolerance weights come from the system.** `Adaptive` holds one relative and one
+  absolute tolerance, so it serializes, and `OdeSystem::absolute_tolerance_weights` scales `atol`
+  per component. The default is `rtol = atol = 1e-8`. M1.6b sets the flight's weights and may
+  change the defaults, from its benchmark.
+- **`advance(system, t_stop, events, observer)` is the only driver.**
+  - It stops exactly at `t_stop` or at the first event.
+  - Discontinuities are stop times, and the caller sets the phase between calls, because the step
+    that ends at a stop time evaluates its last stage there.
+  - Each call evaluates `f` afresh, and the step-size estimate carries over.
+  - The observer receives every accepted step with its dense output, which is what the recorder
+    will use.
+- **Events are sign changes between step ends, located by Brent's method on the dense output** to
+  1e-12 s. The integrator stops at the end of the final bracket on the far side of the zero, with
+  the dense-output state there. It does not take a fresh step to the event.
+  - Stopping past the zero guarantees that the next call doesn't report the same event again,
+    whatever the event functions' scale. A fresh full-order step can land a hair short of the zero
+    and trigger again at restart.
+  - The cost: the state at an event is fourth order (third for RK4) rather than fifth. The tests
+    show event times within about 1.5e-8 s at the default tolerances.
+  - The earliest crossing wins, and the lowest index breaks a tie.
+  - Double crossings inside one step go unseen. `max_step_s` bounds that.
+- **RK4 is fixed-step,** shortened only to land on a stop time or an event. Its dense output is the
+  cubic Hermite interpolant, whose end derivative is the next step's first stage.
+- **Failures are errors, never quiet stops.** The errors are `Derivative`, `StepTooSmall`,
+  `NotFinite`, `StepLimit` (default 10⁶ attempted steps), `EventNotFinite`, `Backward` and
+  `Settings`. A non-finite error estimate counts as a rejection before it counts as a failure. M1.6b
+  maps them to termination reasons (L25).
+
+**Consequences.**
+
+- M1.6b builds the flight as `OdeSystem<13>` phases (rail, powered, coast) separated by stop times
+  (motor ignition and burnout, thrust-curve knots where they matter) and events (liftoff, rail
+  exit, apogee, ground contact from the ellipsoidal height). It sets the tolerance weights for
+  position, velocity, quaternion and body rate, and renormalizes the quaternion between calls with
+  `Integrator::reset`.
+- The recorder samples `Step::state_at` at its output times rather than forcing steps onto them.
+- Stiff phases (a canopy opening in M1.7) will show up as small steps or `StepTooSmall`. M1.7
+  decides whether they need a bounded step or a different method.
+

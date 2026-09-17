@@ -266,6 +266,26 @@ dest = "refs/papers/sola-2017-quaternion-kinematics.pdf"
 license = "CC BY-NC-SA 4.0"
 mode = "fetched"
 
+# M1.6a integrator sources. Hairer's site serves the current files; the hashes pin the 2004
+# version read for the port.
+[[file]]
+name = "hairer-dopri5"
+title = "E. Hairer and G. Wanner, DOPRI5: explicit Runge-Kutta method of order (4)5 due to Dormand and Prince, with step size control and dense output (Fortran, version of 2004)"
+url = "https://www.unige.ch/~hairer/prog/nonstiff/dopri5.f"
+sha256 = "e4fbbe080508134f743d9934e76e45f49f03a320b7b024273757a7c278804c95"
+dest = "refs/sources/hairer/dopri5.f"
+license = "BSD-2-Clause"
+mode = "fetched"
+
+[[file]]
+name = "hairer-licence"
+title = "Licence of E. Hairer's ODE codes, Copyright (c) 2004, UNIGE"
+url = "https://www.unige.ch/~hairer/prog/licence.txt"
+sha256 = "49bcfad0e3bbe5c3a0428624254567f32786948332a3204fc1e35b8b2a02b0fd"
+dest = "refs/sources/hairer/licence.txt"
+license = "BSD-2-Clause"
+mode = "fetched"
+
 # M1.2 atmosphere, wind and turbulence sources.
 # MIL-F-8785C: everyspec.com refuses scripted downloads and stamps each copy, so this pins Abbott
 # Aerospace's copy of the same scan. If it moves, an immutable capture of everyspec's 2012 copy
