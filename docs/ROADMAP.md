@@ -353,16 +353,34 @@
     own formula, and the metric comes to −1.8% (issue #27, ADR-015). A merged line in
     `docs/physics/recovery.md` claiming the two codes used the same gravity model is corrected.
 
-  - [ ] **M2.1b The RocketPy code-to-code suite.**
-    - The five rebuilt example rockets, both modes, the CI job and the reference-regeneration
-      workflow.
+  - [ ] **M2.1b Whole flights against RocketPy, same-drag.**
+    - A `validation/oracles/rocketpy/flight.py` generator: the five example rockets flown from the
+      pad, with the environment declared as `recovery.py` declares it, writing apogee and time to
+      it, maximum velocity, Mach and acceleration, rail-exit velocity, burnout altitude and
+      velocity, and a time series for the RMS comparison.
+    - A `Flight::WholeFlight` case variant beside `RecoveryDescent`, taking the oracle's `C_D0(M)`
+      through `Simulation::with_drag_table`, so the case isolates dynamics, environment and motor.
     - Loft lessons: L75 (tests named in `docs/research/loft-lessons.md`).
 
     *Done when:*
-    - At least 5 cases pass their same-drag tolerances.
-    - Predicted-mode results are reported, with explained gaps.
-    - The CI job is green.
-    - A separate, manually triggered workflow regenerates the references.
+    - At least 5 whole-flight cases run in the lock and pass their same-drag tolerances, with the
+      tolerance for each metric argued in the case file.
+    - `hpr_validate::rocketpy::tests::oracle_inputs_come_from_the_case_file_not_hpr_outputs`
+      exists and passes.
+    - `validation/reports/latest.md` carries them, and the gravity rule of ADR-015 is applied:
+      the comparison flies the oracle's models where hpr has them.
+
+  - [ ] **M2.1c Predicted mode, CI and regeneration.**
+    - The same cases flown with hpr's own aero, reported beside the same-drag ones.
+    - A CI job that runs `cargo xtask validate` against the stored references, and a separate,
+      manually triggered workflow that regenerates them.
+
+    *Done when:*
+    - Predicted-mode results are in the report for every case, each gap explained in the case file
+      or `docs/VALIDATION.md`; `M ≥ 1` cases are reported as gaps, not hidden, until M1.8.
+    - The CI job is green on macOS, Windows and Linux.
+    - The regeneration workflow runs only when a human triggers it, and its output is a diff to
+      review, never an automatic commit.
 
 - [ ] **M1.8 Aerodynamics II (transonic and supersonic, damping, overrides).**
   - Transonic drag rise and supersonic wave drag.
