@@ -4,71 +4,68 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
 
 ## Now
 
-- **Current milestone:** M1.4b Design tree, configurations and checks
-- **Run:** the first autopilot run; M0.1–M0.3, M1.1–M1.3 and M1.4a have shipped
-- **Last updated:** 2026-09-17 (M1.4a merged)
+- **Current milestone:** M1.5 Aerodynamics I (subsonic)
+- **Run:** the first autopilot run; M0.1–M0.3 and M1.1–M1.4 have shipped
+- **Last updated:** 2026-09-17 (M1.4b merged)
 
 ## Handoff (overwrite each session)
 
-M1.4 is split (ROADMAP). M1.4a built the parts and their mass properties (ADR-006). Start M1.4b
-from these notes:
+M1.4 is done (ADR-006 parts, ADR-007 tree). Start M1.5 from these notes:
 
-- **What exists:** `hpr_design` has `MassProperties` (full tensor, `translated`, `rolled`,
-  `rotated`, `combine`, `validate`), `Profile`/`NoseShape`, `revolve` (filled or normal-thickness
-  wall), `FinSet`/`TubeFinSet`, and `parts` (nose cone, tube, transition, inner tube, ring or
-  bulkhead, lug, rail button, mass component, parachute, streamer, shock cord). Each part's frame
-  has its origin on the axis at its forward end (a nose's tip), with the part at `z ≤ 0`.
-  Body-attached parts take the body radius as an argument.
-- **M1.4b builds on it:**
-  - A tree of stages and components with axial placement (after the previous part, or relative
-    to the parent's top, middle or bottom), and auto radii resolved from neighbours and parents.
-  - Fix `z_ref` in `frames.md`; nose tip at `z = 0` is the obvious choice.
-  - Mass/CG/inertia overrides per component and subtree.
-  - Motor mounts that place `SolidMotor` elements with `MassProperties::from_motor_element`.
-  - Reference diameter (L47) and typed checks (L50: a motor wider than its mount; fin roots off
-    the body).
-- **RocketPy comparison:** `docs/research/rocketpy-rocket-mass.md` has RocketPy's composition
-  formulas, six example rockets' inputs and reproduced Calisto numbers. Its `I_11` is about the
-  centre of dry mass, not the CG. Calisto's motor sits at −1.255 m in the docs but −1.373 m in the
-  tests. Build each `SolidMotor` from RocketPy's data files in the oracle script and commit the
-  fixture.
-- **Open conventions to settle in M2.2/M3.1 with the jar:** OpenRocket's ogive parameter, how it
-  measures wall thickness and cuts steep ends (hpr rounds them: 2% of wall mass at 60°), whether
-  its fin mass uses the cross-section, and its cant pivot.
+- **What exists for aero:**
+  - `Rocket::layout()` returns a `Layout`: every `PlacedComponent` with its resolved `Part`
+    (automatic radii filled), `fore_station_m` (aft of the nose tip, `z = −s`), `length_m`, parent
+    and `body_radius_m` for fins. It also has `reference_diameter_m` and `reference_area_m2()`.
+  - `Profile` gives radius and slope; `revolve` gives wetted areas; fin planforms give area and
+    centroid.
+  - `validation/designs/` has seven RocketPy example cases with their geometry (nose, tubes,
+    conical tails, trapezoidal fins, buttons) and two synthetic rockets. `cargo xtask designs`
+    regenerates them, and a test keeps them in sync.
+- **M1.5 references:**
+  - RASAero exports are under `refs/rocketpy/data/rockets/`: `valetudo/Cd_Power{Off,On}_RASAero.csv`,
+    `calisto/power{Off,On}DragCurve.csv`, `juno3/drag_curve.csv` (check each file's origin before
+    calling it RASAero).
+  - Barrowman's 1966 report and 1967 thesis are pinned in `refs/papers/`.
+  - The example designs' fin thickness (3 mm), square sections and walls are placeholders. Set
+    any value the drag check needs from the example's own data, and record it.
+- **Contracts for later milestones:**
+  - M1.6 must refuse designs whose `checks::check` has `Severity::Error` findings unless the caller
+    accepts them, and takes `Assembly::mass_properties(t)` (about 0.1 µs) as the mass model.
+  - Every motor in a configuration ignites at `t = 0` until M1.9.
+  - RocketPy's data files (motor curves, `data/rockets/*.json`) must never be committed. Oracle
+    scripts take inputs from notebooks and tests only, and substitute bundled public-domain
+    curves, as `rocket_mass.py` does. Valkyrie was dropped for this reason.
+  - Override semantics (rescaling the tensor with mass, moving the centre) are checked only by
+    hand-worked tests. RocketPy sets mass, centre and inertia together; M2.2 measures OpenRocket's.
+- **Open conventions to settle with the jar (M2.2/M3.1):**
+  - OpenRocket's override order on parts with shoulders (L51), automatic-radius rules and positions.
+  - Its ogive parameter, wall thickness, steep ends, fin cross-section mass and cant pivot.
 - **Process notes:**
   - `cargo test -p xtask` checks STATUS against ROADMAP, notices rows against lock titles, lesson
-    tests once a milestone is checked off, and that lock URLs use https.
-  - Lesson rows name increments (`M1.4a`), and `- Loft lessons:` lines sit under the increments.
+    tests once a milestone is checked off, lock URLs, and the generated designs.
   - Data that must keep its bytes needs `-text` in `.gitattributes` (the repo forces LF).
-  - archive.org rate-limits (429) and was offline on 2026-09-17; its `id_` captures are stable pins.
-  - In zsh, quote curl's `'=https'`. The Bash guard hook rejects some tool names even in innocent
-    phrases. Scanned PDFs need their page images read. On snapshot drift, run
-    `cargo xtask refs fetch --adopt-snapshots`.
+  - archive.org rate-limits (429). In zsh, quote curl's `'=https'`. The Bash guard hook rejects some
+    tool names even in innocent phrases. Scanned PDFs need their page images read. On snapshot
+    drift, run `cargo xtask refs fetch --adopt-snapshots`.
 
 ## Done log (newest first, keep about 15)
 
+- 2026-09-17: M1.4b Design tree, configurations and checks (PR #14): stages, positions, automatic
+  radii, overrides, the reference diameter (L47), motor mounts and configurations, typed checks
+  (L50), ADR-007. Six RocketPy example rockets (`rocket_mass.py`, bundled public-domain curves)
+  match to 8e-10 at RocketPy's LSODA knots and 2.6e-5 between them. `cargo xtask designs` writes
+  `validation/designs/`.
 - 2026-09-17: M1.4a Shapes, materials, component mass properties (PR #12): every nose and
-  transition shape (clipped or not) checked against closed forms and 40-digit mpmath integrals,
-  normal-thickness walls checked against an independent mpmath envelope, fin planforms with
-  square/rounded/airfoil sections and tabs, all other
-  parts, full inertia tensors matching hand calculations, 49 cited materials, adaptive G7K15
-  quadrature in `hpr-core`, ADR-006, Wood Handbook pinned.
-- 2026-09-17: M1.3 Solid motors (PR #9): thrust curves with NFPA 1125 statistics matching
-  ThrustCurve's code, impulse classes, impulse-fraction consumption over a column or BATES grains,
-  mass properties matching RocketPy's SolidMotor to 8e-5, `.eng`/`.rse` readers and writers that
-  round-trip 1710 real files, 32 bundled public-domain curves, ADR-005, eight newly pinned sources.
-
-- 2026-09-17: M1.2 Atmosphere and wind (PR #7): USSA76 matching its tables at 32 altitudes,
-  offsets and field anchoring, moist air, sounding profiles, four wind models, exact Dryden
-  turbulence with a PSD test, `hpr_core::random`, ADR-004, and five newly pinned sources.
-- 2026-09-17: M1.1 Core math, frames, Earth (PR #5): `Table1D`, quaternion kinematics, ENU and
-  launch-angle frames, WGS 84 geodesy (Karney's inverse), exact normal gravity and the `Earth`
-  model with Coriolis, `docs/physics/` specs, ADR-003, and mpmath and RocketPy gravity fixtures.
-- 2026-09-17: M0.3 Lessons from Loft (PR #4): `docs/research/loft-lessons.md` (97 lessons, 16
-  process guards), `Loft lessons:` lines in ROADMAP, xtask doc checks, and the OpenRocket-source
-  fetch guard.
-- 2026-09-17: M0.2 Reference library (PR #3, ADR-002) and M0.1 Workspace, CI, licenses (PR #2,
-  ADR-001). 2026-09-16: kickoff kit (scope, architecture, roadmap, validation inventory).
+  transition shape checked against closed forms and mpmath, normal-thickness walls, fin planforms
+  and sections, all other parts, full inertia tensors by hand, 49 cited materials, G7K15 quadrature,
+  ADR-006.
+- 2026-09-17: M1.3 Solid motors (PR #9): NFPA 1125 statistics matching ThrustCurve's code, grain
+  consumption, mass properties matching RocketPy's SolidMotor to 8e-5, `.eng`/`.rse` round trips of
+  1710 files, 32 bundled public-domain curves, ADR-005.
+- 2026-09-17: M1.2 Atmosphere and wind (PR #7, ADR-004) and M1.1 Core math, frames, Earth (PR #5,
+  ADR-003): USSA76, soundings, four wind models, Dryden turbulence; WGS 84 geodesy and gravity.
+- 2026-09-17: M0.3 Lessons from Loft (PR #4), M0.2 Reference library (PR #3, ADR-002), M0.1
+  Workspace, CI, licenses (PR #2, ADR-001). 2026-09-16: kickoff kit.
 
 ## Needs Neer (blocking or one-way decisions; the session keeps working on other things)
 
@@ -117,8 +114,11 @@ from these notes:
   fin cross-sections change the mass (NACA 00xx for "airfoil"); materials stored by value, each
   built-in value cited.
 - M1.4: split into M1.4a (parts and mass) and M1.4b (tree, configurations, checks, RocketPy), with
-  the done-when bullets divided unchanged. Crowell (1996) is cited, not pinned (http-only mirror,
-  archive.org offline); the Wood Handbook is pinned; data sheets are cited by URL in the code.
+  the done-when bullets divided unchanged. Crowell (1996) is cited, not pinned.
+- ADR-007: body origin at the nose tip; one `Component` type with a `Part` enum; offsets positive
+  aft; overrides rescale the tensor with mass; checks with error and warning severities; test
+  designs as provisional JSON; the RocketPy comparison uses bundled public-domain curves because
+  RocketPy's motor files have unclear terms. Fins on noses and transitions are refused for now.
 
 ## Known issues and risks
 

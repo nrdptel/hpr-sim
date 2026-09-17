@@ -13,6 +13,7 @@
     reason = "dev tooling runs cargo and uses the filesystem; it is not part of the pure core"
 )]
 
+mod designs;
 #[cfg(test)]
 mod docs;
 mod refs;
@@ -28,10 +29,13 @@ Commands:
   wasm-check [cargo args]  Check the pure-core crates for wasm32-unknown-unknown. Extra
                            arguments (for example --locked) are passed on to `cargo check`.
 {REFS}
+{DESIGNS}
   help                     Print this message.";
 
 fn usage() -> String {
-    USAGE_TEMPLATE.replace("{REFS}", refs::USAGE)
+    USAGE_TEMPLATE
+        .replace("{REFS}", refs::USAGE)
+        .replace("{DESIGNS}", designs::USAGE)
 }
 
 fn main() -> ExitCode {
@@ -39,6 +43,7 @@ fn main() -> ExitCode {
     let result = match args.next().as_deref() {
         Some("wasm-check") => wasm_check::run(&args.collect::<Vec<_>>()),
         Some("refs") => refs::run(&args.collect::<Vec<_>>()),
+        Some("designs") => designs::run(&args.collect::<Vec<_>>()),
         Some("help" | "-h" | "--help") => {
             println!("{}", usage());
             Ok(())

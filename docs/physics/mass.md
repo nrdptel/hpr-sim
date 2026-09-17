@@ -21,8 +21,8 @@ Sources:
 - **Body axes** follow `frames.md`: `z` along the axis toward the nose, `x` the zero radial
   direction, `y = z × x`. Roll angles run from `x` toward `y`.
 - **A component's frame** has body axes and its origin on the axis at the component's forward end,
-  or at a nose cone's tip, so the component lies at `z ≤ 0`. The design tree (M1.4b) places it by
-  translating and rolling.
+  or at a nose cone's tip, so the component lies at `z ≤ 0`. The design tree places it by
+  translating it to its station (`design.md`).
 - **`MassProperties`** holds the mass, the centre of mass in body axes, and the **full** inertia
   tensor about the centre of mass. The tensor is taken with the positive products-of-inertia
   convention: `I = ∫ (|r|² E − r rᵀ) dm`, so `I_xy = −∫ x y dm`.
@@ -57,7 +57,7 @@ Sources:
   radius and its shoulder is not modeled.
 - **Parachute:** `m = ρ_s π D²/4 + n ℓ ρ_l`, the nominal area of a flat circular canopy plus its
   shroud lines. A conical or hemispherical canopy has more cloth than `πD²/4`; give its mass
-  through an override (M1.4b) or a matching nominal diameter.
+  through an override (`design.md`) or a matching nominal diameter.
 - **Streamer:** `ρ_s × length × width`. **Shock cord:** `ρ_l × length`.
 
 ## Fins

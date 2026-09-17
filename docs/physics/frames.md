@@ -48,13 +48,14 @@ converted before use. `docs/physics/geodesy.md` gives the conversions.
 
 ## Body frame `B`
 
-- **Origin:** a body reference point that the design model defines (M1.4). Mass properties
-  are given about it.
+- **Origin:** the nose tip, on the axis (ADR-007). Positions in mass properties are measured
+  from it.
 - **Axes:** `z_B` lies along the axis of symmetry, positive toward the nose. `x_B` is the design's
   zero radial direction, the angle from which fins, rail buttons and lugs are placed. `y_B = z_B × x_B`.
 - **Thrust** of a motor aligned with the axis acts along `+z_B`.
 - **Design stations** measured aft from the nose tip, as design files state them, map to
-  `z_B = z_ref − s`. M1.4 fixes `z_ref`.
+  `z_B = z_ref − s` with `z_ref = 0`, so `z_B = −s` and the whole rocket lies at `z_B ≤ 0`
+  (`docs/physics/design.md`).
 
 ## Attitude
 
