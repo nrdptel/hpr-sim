@@ -124,6 +124,21 @@ pub fn run_lock(root: &Path, fast: bool) -> Result<Report, ValidateError> {
 ///
 /// As [`run_lock`].
 pub fn run_case(root: &Path, case: &Case) -> Result<(Vec<Comparison>, Source), ValidateError> {
+    // A name the flight cannot measure is a typo, and it costs nothing to say so before flying.
+    let known: &[&str] = match &case.flight {
+        Flight::RecoveryDescent { .. } => &DESCENT_METRICS,
+    };
+    let unknown: Vec<&String> = case
+        .metrics
+        .keys()
+        .filter(|name| !known.contains(&name.as_str()))
+        .collect();
+    if !unknown.is_empty() {
+        return Err(ValidateError::Case(format!(
+            "case {}: {unknown:?} are not metrics this flight measures; it measures {known:?}",
+            case.id
+        )));
+    }
     let (reference, setup) = load_reference(root, case)?;
     let missing = reference.without_provenance();
     if !missing.is_empty() {

@@ -85,6 +85,31 @@ fn every_census_metric_has_a_per_case_tolerance() {
 }
 
 #[test]
+fn a_metric_the_flight_cannot_measure_is_refused_before_it_flies() {
+    // A typo in a case file should not cost a flight to find, and it must never pass: the metric
+    // names a flight can report are the ones the harness measures, and nothing else.
+    let mut case = cases().swap_remove(0);
+    case.metrics.insert(
+        "apogee_m".to_owned(),
+        Metric {
+            tolerance: Tolerance::relative(0.01),
+        },
+    );
+    let started = std::time::Instant::now();
+    let error = run_case(&root(), &case).expect_err("a metric the descent does not measure");
+    assert!(
+        matches!(&error, ValidateError::Case(message)
+            if message.contains("apogee_m") && message.contains("not metrics this flight measures")),
+        "{error}"
+    );
+    // The flights in this suite take seconds; this has to fail without making one.
+    assert!(
+        started.elapsed() < std::time::Duration::from_secs(1),
+        "it flew"
+    );
+}
+
+#[test]
 fn every_reference_value_has_provenance() {
     // Loft lesson L77. Loft shipped hand-written "stored results" in its demo designs, one set
     // internally inconsistent. Every value the harness reads carries a source naming the oracle,
