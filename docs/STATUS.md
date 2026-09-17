@@ -4,61 +4,58 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
 
 ## Now
 
-- **Current milestone:** M1.5a Normal force and centre of pressure (M1.5 Aerodynamics I)
-- **Run:** the first autopilot run; M0.1–M0.3 and M1.1–M1.4 have shipped
-- **Last updated:** 2026-09-17 (M1.4b merged)
+- **Current milestone:** M1.5b Drag and override tables (M1.5 Aerodynamics I)
+- **Run:** the first autopilot run; M0.1–M0.3, M1.1–M1.4 and M1.5a have shipped
+- **Last updated:** 2026-09-17 (M1.5a merged)
 
 ## Handoff (overwrite each session)
 
-M1.4 is done (ADR-006 parts, ADR-007 tree). Start M1.5 from these notes:
+M1.5a is done (ADR-008, `docs/physics/aero.md`). Start M1.5b from these notes:
 
-- **What exists for aero:**
-  - `Rocket::layout()` returns a `Layout`: every `PlacedComponent` with its resolved `Part`
-    (automatic radii filled), `fore_station_m` (aft of the nose tip, `z = −s`), `length_m`, parent
-    and `body_radius_m` for fins. It also has `reference_diameter_m` and `reference_area_m2()`.
-  - `Profile` gives radius and slope; `revolve` gives wetted areas; fin planforms give area and
-    centroid.
-  - `validation/designs/` has seven RocketPy example cases with their geometry (nose, tubes,
-    conical tails, trapezoidal fins, buttons) and two synthetic rockets. `cargo xtask designs`
-    regenerates them, and a test keeps them in sync.
-- **M1.5 references:**
+- **What exists:**
+  - `hpr_aero::AeroModel::new(&Layout)` precomputes per-component terms. `normal_force(&Flow)`
+    (about 10 ns) and `components(&Flow)` evaluate them. Add drag as further terms the same way.
+  - `BodyGeometry` (end areas, volume, planform) and `FinGeometry` (area, span, MAC, mid-chord
+    sweep) are public. `hpr_design::revolve` also gives wetted areas.
+  - `Flow { mach, alpha_rad, roll_rad }`: `M ≥ 1` is `AeroError::Mach` until M1.8.
+  - Tube fins are refused (issue #15).
+- **M1.5b references:**
+  - Niskanen 2009 §3.4 and the technical documentation 13.05 (drag), pinned in `refs/papers/`.
   - RASAero exports are under `refs/rocketpy/data/rockets/`: `valetudo/Cd_Power{Off,On}_RASAero.csv`,
-    `calisto/power{Off,On}DragCurve.csv`, `juno3/drag_curve.csv` (check each file's origin before
-    calling it RASAero).
-  - Barrowman's 1966 report and 1967 thesis are pinned in `refs/papers/`.
+    `calisto/power{Off,On}DragCurve.csv`, `juno3/drag_curve.csv`. Check each file's origin before
+    calling it RASAero. Data files are never committed; commit derived errors only.
   - The example designs' fin thickness (3 mm), square sections and walls are placeholders. Set
     any value the drag check needs from the example's own data, and record it.
+  - Loft lessons L11–L16 and L90 name the drag tests.
 - **Contracts for later milestones:**
   - M1.6 must refuse designs whose `checks::check` has `Severity::Error` findings unless the caller
-    accepts them, and takes `Assembly::mass_properties(t)` (about 0.1 µs) as the mass model.
+    accepts them. It takes `Assembly::mass_properties(t)` (about 0.1 µs) and an `AeroModel` built
+    once per design.
+  - The aero models are small-angle models. M1.6 decides how to treat large `α` near rail exit and
+    apogee, and records it.
   - Every motor in a configuration ignites at `t = 0` until M1.9.
-  - RocketPy's data files (motor curves, `data/rockets/*.json`) must never be committed. Oracle
-    scripts take inputs from notebooks and tests only, and substitute bundled public-domain
-    curves, as `rocket_mass.py` does. Valkyrie was dropped for this reason.
-  - Override semantics (rescaling the tensor with mass, moving the centre) are checked only by
-    hand-worked tests. RocketPy sets mass, centre and inertia together; M2.2 measures OpenRocket's.
-- **Open conventions to settle with the jar (M2.2/M3.1):**
-  - OpenRocket's override order on parts with shoulders (L51), automatic-radius rules and positions.
-  - Its ogive parameter, wall thickness, steep ends, fin cross-section mass and cant pivot.
+  - RocketPy's data files must never be committed. Oracle scripts take inputs from notebooks and
+    tests only, and substitute bundled public-domain curves, as `rocket_mass.py` does.
+- **Open conventions to settle with the jar (M2.2/M3.1):** OpenRocket's override order (L51),
+  automatic radii, positions, ogive parameter, walls, fin cross-section mass and cant pivot.
 - **Process notes:**
-  - `cargo test -p xtask` checks STATUS against ROADMAP, notices rows against lock titles, lesson
-    tests once a milestone is checked off, lock URLs, and the generated designs.
-  - Data that must keep its bytes needs `-text` in `.gitattributes` (the repo forces LF).
+  - `cargo test -p xtask` checks STATUS against ROADMAP, notices rows against lock titles (verbatim),
+    lesson tests once a milestone is checked off, lock URLs, and the generated designs.
+  - Scanned PDFs have no text layer: `pdftoppm -f N -l N -r 90 -gray -png` and read the image.
   - archive.org rate-limits (429). In zsh, quote curl's `'=https'`. The Bash guard hook rejects some
-    tool names even in innocent phrases. Scanned PDFs need their page images read. On snapshot
-    drift, run `cargo xtask refs fetch --adopt-snapshots`.
+    tool names. On snapshot drift, run `cargo xtask refs fetch --adopt-snapshots`.
 
 ## Done log (newest first, keep about 15)
 
-- 2026-09-17: M1.4b Design tree, configurations and checks (PR #14): stages, positions, automatic
-  radii, overrides, the reference diameter (L47), motor mounts and configurations, typed checks
-  (L50), ADR-007. Six RocketPy example rockets (`rocket_mass.py`, bundled public-domain curves)
-  match to 8e-10 at RocketPy's LSODA knots and 2.6e-5 between them. `cargo xtask designs` writes
-  `validation/designs/`.
-- 2026-09-17: M1.4a Shapes, materials, component mass properties (PR #12): every nose and
-  transition shape checked against closed forms and mpmath, normal-thickness walls, fin planforms
-  and sections, all other parts, full inertia tensors by hand, 49 cited materials, G7K15 quadrature,
-  ADR-006.
+- 2026-09-17: M1.5a Normal force and centre of pressure (PR #16): Barrowman slopes and CPs for
+  bodies (real volumes, L9) and fins (Prandtl–Glauert, MAC, fin-count factors L8, elliptical L10,
+  freeform), Galejs body lift, ADR-008. Barrowman's five worked examples (NARAM-8, TIR-33) agree
+  within 1% (worst 0.77%); the Recruiter's six fins need TIR-33's own rule (+2.9% with hpr's).
+- 2026-09-17: M1.4b Design tree, configurations and checks (PR #14, ADR-007): placement, automatic
+  radii, overrides, reference diameter (L47), motors, typed checks (L50); six RocketPy example
+  rockets match to 8e-10 at LSODA knots; `cargo xtask designs` writes `validation/designs/`.
+- 2026-09-17: M1.4a Shapes, materials, component mass properties (PR #12, ADR-006): shapes against
+  closed forms and mpmath, walls, fins, full inertia tensors, 49 cited materials.
 - 2026-09-17: M1.3 Solid motors (PR #9): NFPA 1125 statistics matching ThrustCurve's code, grain
   consumption, mass properties matching RocketPy's SolidMotor to 8e-5, `.eng`/`.rse` round trips of
   1710 files, 32 bundled public-domain curves, ADR-005.
@@ -119,6 +116,11 @@ M1.4 is done (ADR-006 parts, ADR-007 tree). Start M1.5 from these notes:
   aft; overrides rescale the tensor with mass; checks with error and warning severities; test
   designs as provisional JSON; the RocketPy comparison uses bundled public-domain curves because
   RocketPy's motor files have unclear terms. Fins on noses and transitions are refused for now.
+- M1.5: split into M1.5a (normal force, CP) and M1.5b (drag, override tables), done-when bullets
+  divided unchanged. The complete NARAM-8 scan and TIR-33 are pinned (unknown terms, cited only).
+- ADR-008: body CP from the real volume with `sin α/α` and Galejs lift (`K` 1.1); Diederich fins
+  with Prandtl–Glauert and the CP at quarter MAC to Mach 1; the technical documentation's fin-count
+  factors; more than eight fins, tube fins (#15) and `M ≥ 1` refused.
 
 ## Known issues and risks
 
@@ -128,21 +130,21 @@ M1.4 is done (ADR-006 parts, ADR-007 tree). Start M1.5 from these notes:
 - Dryden turbulence is an aircraft model. How it applies to a climbing rocket (path coordinate,
   rail start, near apogee) is unvalidated until M1.6 and M2.3.
 - Only 32 curves are bundled (none in class A). The rest, and user curves, wait for M5's cache.
-- The bundle's license and sample checks, and the 1710-file round-trip sweep, ran on unpinned
-  caches under `refs/samples/` (POST captures can't be pinned yet); the committed curves are
-  pinned by sha256.
+- The bundle's license checks and the 1710-file sweep ran on unpinned `refs/samples/` caches (POST
+  captures can't be pinned yet); the committed curves are pinned by sha256.
 - Wall mass (normal thickness) and fin cross-section mass may differ from OpenRocket's, whose
   conventions are undocumented; M2.2 measures and reports it. A 2 mm nose wall costs 2 ms.
 - The RASAero `.CDX1` format has no public spec, so the importer relies on samples.
 - ERA5 `.nc` files may be netCDF4 (HDF5), which affects the pure-Rust reader choice.
-- A new RustSec vulnerability notice (anywhere in the graph) or unmaintained notice (direct
-  dependencies) can turn CI red without a code change. Fix by upgrading or replacing the crate,
-  or by an `ignore` entry with a reason.
+- A new RustSec notice can turn CI red without a code change. Upgrade or replace the crate, or add
+  an `ignore` entry with a reason.
 - API snapshots can't be reproduced byte for byte on another machine once the API moves. Anything
   CI checks must come from committed fixtures, not from `refs/`.
-- The Barrowman 1966 report, the Galejs article, the RockSim `.rse` spec and the Knacke manual
-  (a contractor report with a restrictive title-page notice) have no clear terms: cite them, but
-  never redistribute them.
+- The Barrowman 1966 report, TIR-33, the Galejs article, the RockSim `.rse` spec and the Knacke
+  manual (restrictive title-page notice) have no clear terms: cite them, never redistribute them.
+- Aero (M1.5a) is small-angle only: fin slopes stay linear in `α` and nothing stalls. Body-lift `K`
+  is uncertain (Galejs: 1.0 to 1.5). The Recruiter's six fins sit +2.9% from TIR-33's print
+  because the six-fin rules differ; M2.2 compares against OpenRocket.
 - `refs doctor` "runnable" means the oracle's runtime starts (imports, JVM plus jar). No flight
   has been simulated through either oracle yet; M2.x writes those scripts. Node (for
   `analyze_stats.js`) is not checked by `refs doctor`.

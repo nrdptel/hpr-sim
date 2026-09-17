@@ -174,7 +174,7 @@
     (tighten this later).
   - Unit tests cover every drag term's limits.
 
-  - [ ] **M1.5a Normal force and centre of pressure.**
+  - [x] **M1.5a Normal force and centre of pressure.**
     - Barrowman CNα and CP for every component with Prandtl–Glauert, body lift at angle of attack,
       fin–body interference, and the `aero.md` sections for them.
     - Loft lessons: L8, L9, L10, L89 (tests named in `docs/research/loft-lessons.md`).
