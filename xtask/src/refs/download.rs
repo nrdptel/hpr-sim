@@ -21,6 +21,26 @@ pub enum Drift {
 pub struct Repin {
     pub name: String,
     pub sha256: String,
+    /// The date the adopted capture was made, `YYYY-MM-DD`.
+    pub captured: String,
+}
+
+/// What a kept capture is, written beside it as `<dest>.unpinned.toml`, so adopting it later
+/// can check it still belongs to the lock entry and keep its real capture date.
+#[derive(Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+struct KeptCapture {
+    url: String,
+    sha256: String,
+    captured: String,
+}
+
+/// The kept capture's date, if the capture beside `dest` came from `url` and still has the
+/// bytes recorded for it.
+fn kept_capture(unpinned: &Path, sidecar: &Path, url: &str) -> Option<String> {
+    let text = std::fs::read_to_string(sidecar).ok()?;
+    let kept: KeptCapture = toml::from_str(&text).ok()?;
+    let sha256 = hash::sha256_file(unpinned).ok()?;
+    (kept.url == url && kept.sha256 == sha256).then_some(kept.captured)
 }
 
 pub fn fetch_file(root: &Path, source: &FileSource) -> Outcome {
@@ -53,26 +73,34 @@ pub fn fetch_snapshot(
 ) -> (Outcome, Option<Repin>) {
     let dest = root.join(&source.dest);
     let unpinned = sibling(&dest, "unpinned");
-    if let Some(outcome) = already_pinned(&dest, &source.sha256) {
+    let sidecar = sibling(&dest, "unpinned.toml");
+    let discard_kept = || {
         let _ = std::fs::remove_file(&unpinned);
+        let _ = std::fs::remove_file(&sidecar);
+    };
+    if let Some(outcome) = already_pinned(&dest, &source.sha256) {
+        discard_kept();
         return (outcome, None);
     }
-    // Adopting takes the capture an earlier run kept aside, if there is one, so the capture that
-    // gets pinned is the one the user could inspect.
-    let kept = drift == Drift::Adopt && unpinned.is_file();
-    let verb = if kept {
-        "moved into place"
-    } else {
-        "downloaded"
+    // Adopting takes the capture an earlier run kept aside, so the capture that gets pinned is
+    // the one the user could inspect, but only if it came from this entry's URL.
+    let kept = match drift {
+        Drift::Adopt => kept_capture(&unpinned, &sidecar, &source.url),
+        Drift::Fail => None,
     };
-    let part = if kept {
-        unpinned.clone()
-    } else {
-        let part = sibling(&dest, "part");
-        if let Err(err) = download(&source.url, &part) {
-            return (Outcome::Failed(err), None);
+    let (part, captured, verb) = match kept {
+        Some(captured) => (
+            unpinned.clone(),
+            captured,
+            "moved the kept capture into place,",
+        ),
+        None => {
+            let part = sibling(&dest, "part");
+            if let Err(err) = download(&source.url, &part) {
+                return (Outcome::Failed(err), None);
+            }
+            (part, today(), "downloaded")
         }
-        part
     };
     let sha256 = match hash::sha256_file(&part) {
         Ok(sha256) => sha256,
@@ -80,36 +108,42 @@ pub fn fetch_snapshot(
     };
     if sha256 == source.sha256 {
         let outcome = place(&part, &dest, verb);
-        let _ = std::fs::remove_file(&unpinned);
+        discard_kept();
         return (outcome, None);
     }
     match drift {
         Drift::Adopt => {
             let outcome = match place(&part, &dest, verb) {
                 Outcome::Fetched(detail) => Outcome::Fetched(format!(
-                    "{detail}; {} adopted and repinned",
-                    if kept {
-                        "the capture kept by an earlier run"
-                    } else {
-                        "the new capture"
-                    }
+                    "{detail}; adopted the capture of {captured} and repinned"
                 )),
                 other => return (other, None),
             };
-            let _ = std::fs::remove_file(&unpinned);
+            discard_kept();
             let repin = Repin {
                 name: source.name.clone(),
                 sha256,
+                captured,
             };
             (outcome, Some(repin))
         }
         Drift::Fail => {
-            let kept = match std::fs::rename(&part, &unpinned) {
-                Ok(()) => format!("The new capture is at {}. ", unpinned.display()),
-                Err(_) => String::new(),
+            let record = KeptCapture {
+                url: source.url.clone(),
+                sha256: sha256.clone(),
+                captured,
+            };
+            let kept = std::fs::rename(&part, &unpinned).is_ok()
+                && toml::to_string(&record)
+                    .ok()
+                    .is_some_and(|text| std::fs::write(&sidecar, text).is_ok());
+            let note = if kept {
+                format!("The new capture is at {}. ", unpinned.display())
+            } else {
+                String::new()
             };
             let message = format!(
-                "the API now returns sha256 {sha256}, not the capture pinned on {} ({}). {kept}\
+                "the API now returns sha256 {sha256}, not the capture pinned on {} ({}). {note}\
                  Rerun with --adopt-snapshots to adopt it.",
                 source.captured, source.sha256
             );
@@ -197,10 +231,10 @@ pub fn download(url: &str, out: &Path) -> Result<(), String> {
     }
 }
 
-/// Rewrites the lock-file text so the named snapshot pins `sha256`, captured on `date`. Only the
+/// Rewrites the lock-file text so the named snapshot pins the adopted capture. Only the
 /// `sha256` and `captured` lines inside that `[[snapshot]]` table change; comments and layout
 /// stay as they are.
-pub fn repin(text: &str, repin: &Repin, date: &str) -> Result<String, String> {
+pub fn repin(text: &str, repin: &Repin) -> Result<String, String> {
     let lines: Vec<&str> = text.split_inclusive('\n').collect();
     let name_line = format!("name = \"{}\"", repin.name);
     let mut start = None;
@@ -224,7 +258,7 @@ pub fn repin(text: &str, repin: &Repin, date: &str) -> Result<String, String> {
                     out.push_str(&format!("sha256 = \"{}\"{newline}", repin.sha256));
                     replaced.0 = true;
                 } else if (first..end).contains(&i) && key == "captured" {
-                    out.push_str(&format!("captured = \"{date}\"{newline}"));
+                    out.push_str(&format!("captured = \"{}\"{newline}", repin.captured));
                     replaced.1 = true;
                 } else {
                     out.push_str(line);
@@ -284,13 +318,17 @@ mod tests {
         [python]\n\
         project = \"x\"\n";
 
+    fn capture(name: &str) -> Repin {
+        Repin {
+            name: name.into(),
+            sha256: "abcd".into(),
+            captured: "2026-09-17".into(),
+        }
+    }
+
     #[test]
     fn repins_only_the_named_snapshot() {
-        let repin_b = Repin {
-            name: "b".into(),
-            sha256: "abcd".into(),
-        };
-        let out = repin(LOCK, &repin_b, "2026-09-17").unwrap();
+        let out = repin(LOCK, &capture("b")).unwrap();
         let expected = LOCK
             .replace("sha256 = \"2222\"", "sha256 = \"abcd\"")
             .replace("captured = \"2026-01-02\"", "captured = \"2026-09-17\"");
@@ -299,15 +337,8 @@ mod tests {
 
     #[test]
     fn repin_fails_for_an_unknown_snapshot() {
-        let repin_c = Repin {
-            name: "c".into(),
-            sha256: "abcd".into(),
-        };
-        assert!(
-            repin(LOCK, &repin_c, "2026-09-17")
-                .unwrap_err()
-                .contains("no [[snapshot]]")
-        );
+        let err = repin(LOCK, &capture("c")).unwrap_err();
+        assert!(err.contains("no [[snapshot]]"), "{err}");
     }
 
     #[test]

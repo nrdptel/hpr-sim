@@ -1,5 +1,5 @@
 # The Python environment for the code-to-code oracles (RocketPy, and OpenRocket through JPype).
-# `cargo xtask refs fetch` installs it into the gitignored refs/venv with `uv sync --frozen`,
+# `cargo xtask refs fetch` installs it into the gitignored refs/venv with `uv sync --locked`,
 # which installs exactly what uv.lock pins and checks every artifact's hash. After editing this
 # file, run `uv lock --project validation/oracles` and commit both files.
 [project]
@@ -19,6 +19,8 @@ dependencies = [
 
 [tool.uv]
 package = false
+# `refs` relies on `uv sync --locked --check`.
+required-version = ">=0.12"
 
 [tool.uv.sources]
 orhelper = { git = "https://github.com/openrocket/orhelper", rev = "fb132c49e661bb00c5586cce6a4ac0c655425197" }

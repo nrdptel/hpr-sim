@@ -183,6 +183,25 @@ fn checkout(dir: &Path, source: &GitSource) -> Result<(), String> {
     }
 }
 
+/// A quick check of the commit only, for `doctor`; `verify` also re-hashes the files.
+pub fn head(root: &Path, source: &GitSource) -> Outcome {
+    match inspect(&root.join(&source.dest)) {
+        Ok(State::Missing) if source.private => {
+            Outcome::Skipped("private repository, not fetched".to_owned())
+        }
+        Ok(State::Missing) => Outcome::Failed("missing; run `cargo xtask refs fetch`".to_owned()),
+        Ok(State::Checkout {
+            head: Some(head), ..
+        }) if head == source.commit => Outcome::Ok(format!("at {}", pin(source))),
+        Ok(State::Checkout { head, .. }) => Outcome::Failed(format!(
+            "at {}, but the lock pins {}",
+            head.as_deref().map_or("no commit", short),
+            short(&source.commit)
+        )),
+        Err(err) => Outcome::Failed(err),
+    }
+}
+
 /// Checks that the checkout is at the pinned commit, that every tracked file's bytes match that
 /// commit (git re-hashes the files), that there are no untracked files outside the repository's
 /// ignore rules, and that every file in the manifest, if there is one, matches its hash.

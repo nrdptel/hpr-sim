@@ -12,13 +12,9 @@ pub struct Java {
     pub major: u32,
     /// The version string `java -version` printed.
     pub version: String,
-}
-
-impl Java {
-    /// The runtime's home directory (`<home>/bin/java`), for `JAVA_HOME`.
-    pub fn home(&self) -> Option<&Path> {
-        self.java.parent()?.parent()
-    }
+    /// The runtime's own `java.home` property, for `JAVA_HOME`. Asking the runtime is reliable
+    /// where the executable is a shim or a symlink (Homebrew, asdf, Windows `javapath`).
+    pub home: Option<PathBuf>,
 }
 
 /// Finds the first runtime with at least `min_major`, looking in `JAVA_HOME`, then (on macOS)
@@ -90,26 +86,31 @@ fn candidates(min_major: u32) -> Vec<PathBuf> {
 }
 
 fn probe(java: &Path) -> Option<Java> {
-    let output = Command::new(java).arg("-version").output().ok()?;
+    let output = Command::new(java)
+        .args(["-XshowSettings:properties", "-version"])
+        .output()
+        .ok()?;
     if !output.status.success() {
         return None;
     }
-    // `java -version` prints to stderr.
+    // Both the properties and the version go to stderr.
     let text = String::from_utf8_lossy(&output.stderr);
     let (version, major) = parse_version(&text)?;
-    // Resolve symlinks (Homebrew's `opt/openjdk@21/bin/java` points into the real JDK) so that
-    // `home` is a directory JPype can load the JVM from. Windows paths stay as given, since
-    // canonical `\\?\` paths confuse other tools.
-    let resolved = if cfg!(windows) {
-        None
-    } else {
-        java.canonicalize().ok()
-    };
     Some(Java {
-        java: resolved.unwrap_or_else(|| java.to_path_buf()),
+        java: java.to_path_buf(),
         major,
         version,
+        home: parse_home(&text),
     })
+}
+
+/// The `java.home = <dir>` line of `-XshowSettings:properties`.
+pub fn parse_home(text: &str) -> Option<PathBuf> {
+    text.lines()
+        .filter_map(|line| line.trim().strip_prefix("java.home"))
+        .find_map(|rest| rest.trim_start().strip_prefix('='))
+        .map(|home| PathBuf::from(home.trim()))
+        .filter(|home| !home.as_os_str().is_empty())
 }
 
 /// Parses the first line of `java -version`, for example `openjdk version "21.0.5" 2024-10-15`.
@@ -149,12 +150,13 @@ mod tests {
     }
 
     #[test]
-    fn home_is_two_levels_above_the_executable() {
-        let java = Java {
-            java: PathBuf::from("/jdk/bin/java"),
-            major: 21,
-            version: "21".to_owned(),
-        };
-        assert_eq!(java.home(), Some(Path::new("/jdk")));
+    fn home_comes_from_the_java_home_property() {
+        let text = "Property settings:\n    java.class.path = \n    java.home = /opt/jdk-21/Contents/Home\n    java.version = 21.0.5\n\nopenjdk version \"21.0.5\" 2024-10-15\n";
+        assert_eq!(
+            parse_home(text),
+            Some(PathBuf::from("/opt/jdk-21/Contents/Home"))
+        );
+        assert_eq!(parse_version(text), Some(("21.0.5".to_owned(), 21)));
+        assert_eq!(parse_home("java.homeless = x\njava.home =\n"), None);
     }
 }

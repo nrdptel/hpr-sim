@@ -1,9 +1,9 @@
 //! `cargo xtask refs doctor`: which tools, references and oracles are usable on this machine.
 
 use std::path::Path;
-use std::process::Command;
 
 use super::download;
+use super::git;
 use super::java;
 use super::lock::{Item, Lock};
 use super::python::{self, Import};
@@ -82,7 +82,7 @@ pub fn run(root: &Path, lock: &Lock) -> Result<(), String> {
     let mut rows = vec![row(["name", "kind", "status", "detail"])];
     for item in lock.items() {
         let (kind, outcome) = match item {
-            Item::Git(source) => ("git", git_head(root, source)),
+            Item::Git(source) => ("git", git::head(root, source)),
             Item::File(source) => (
                 "file",
                 download::verify_file(root, &source.dest, &source.sha256),
@@ -118,7 +118,7 @@ pub fn run(root: &Path, lock: &Lock) -> Result<(), String> {
     println!(
         "  (runnable: the oracle's runtime starts. RocketPy imports at the locked version; the \
          JVM loads the pinned OpenRocket jar. No flight is simulated here; the oracle scripts \
-         under validation/oracles/ do that.)"
+         that later milestones add do that.)"
     );
     Ok(())
 }
@@ -128,23 +128,6 @@ fn java_hint() -> &'static str {
         "install one (`brew install openjdk@21`) or set JAVA_HOME"
     } else {
         "install a JDK 17+ or set JAVA_HOME"
-    }
-}
-
-/// A quick git check: the commit only. `verify` also re-hashes the files.
-fn git_head(root: &Path, source: &super::lock::GitSource) -> Outcome {
-    let dir = root.join(&source.dest);
-    if !dir.exists() {
-        return if source.private {
-            Outcome::Skipped("private repository, not fetched".to_owned())
-        } else {
-            Outcome::Failed("missing; run `cargo xtask refs fetch`".to_owned())
-        };
-    }
-    match tool::stdout(tool::git(&dir).args(["rev-parse", "HEAD"])) {
-        Ok(head) if head == source.commit => Outcome::Ok(format!("at {}", &head[..10])),
-        Ok(head) => Outcome::Failed(format!("at {head}, but the lock pins {}", source.commit)),
-        Err(err) => Outcome::Failed(err),
     }
 }
 
@@ -236,9 +219,9 @@ jpype.startJVM(classpath=[sys.argv[1]], convertStrings=False)
 jpype.JClass(main)
 print("ok", main)
 "#;
-    let mut command = Command::new(python::interpreter(root, python));
+    let mut command = python::python_command(root, python);
     command.arg("-c").arg(SCRIPT).arg(jar);
-    if let Some(home) = java.home() {
+    if let Some(home) = &java.home {
         command.env("JAVA_HOME", home);
     }
     let out = tool::stdout(&mut command)?;

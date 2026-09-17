@@ -280,34 +280,66 @@ fn a_moved_snapshot_fails_unless_adopted() {
     assert_eq!(outcome, tally(0, 0, 0, 1));
     assert!(repins.is_empty());
     let unpinned = root.path().join("refs/snapshots/api.json.unpinned");
-    assert!(unpinned.is_file());
+    let sidecar = root.path().join("refs/snapshots/api.json.unpinned.toml");
+    assert!(unpinned.is_file() && sidecar.is_file());
     assert!(!root.path().join("refs/snapshots/api.json").exists());
 
-    // The API moves again, but adopting pins the capture that was kept for inspection.
+    // The API moves again, but adopting pins the capture that was kept for inspection, with the
+    // date it was captured (backdated here to show the date comes from the record).
+    let record = fs::read_to_string(&sidecar).unwrap();
+    let today = download::today();
+    fs::write(&sidecar, record.replace(&today, "2026-01-02")).unwrap();
     fs::write(&up.api_path, br#"{"motors":[2]}"#).unwrap();
     let (outcome, repins) = fetch(root.path(), &lock, &only_api, Drift::Adopt).unwrap();
     assert_eq!(outcome, tally(0, 1, 0, 0));
     let kept_sha256 = hash::sha256_bytes(br#"{"motors":[1]}"#);
-    assert_eq!(
-        repins,
-        [Repin {
-            name: "api".into(),
-            sha256: kept_sha256.clone()
-        }]
+    let expected = Repin {
+        name: "api".into(),
+        sha256: kept_sha256.clone(),
+        captured: "2026-01-02".into(),
+    };
+    assert_eq!(repins, [expected]);
+    assert!(
+        !unpinned.exists() && !sidecar.exists(),
+        "the kept capture was used up"
     );
-    assert!(!unpinned.exists(), "the kept capture was moved into place");
 
     // The repin is written to the lock file, and the result verifies.
     fs::create_dir_all(root.path().join("validation")).unwrap();
-    let lock_path = root.path().join(lock::LOCK_PATH);
-    fs::write(&lock_path, lock_text(&up)).unwrap();
+    fs::write(root.path().join(lock::LOCK_PATH), lock_text(&up)).unwrap();
     write_repins(root.path(), &repins).unwrap();
     let lock = Lock::load(root.path()).unwrap();
     assert_eq!(lock.snapshot[0].sha256, kept_sha256);
-    assert_eq!(lock.snapshot[0].captured, download::today());
+    assert_eq!(lock.snapshot[0].captured, "2026-01-02");
     assert_eq!(
         verify(root.path(), &lock, &only_api).unwrap(),
         tally(1, 0, 0, 0)
+    );
+}
+
+#[test]
+fn a_kept_capture_from_another_url_is_not_adopted() {
+    let up = upstream();
+    fs::write(&up.api_path, br#"{"motors":[1]}"#).unwrap();
+    let only_api = ["api".to_owned()];
+    let root = tempfile::tempdir().unwrap();
+    let lock = Lock::parse(&lock_text(&up)).unwrap();
+    fetch(root.path(), &lock, &only_api, Drift::Fail).unwrap();
+
+    // The entry now points at another endpoint: adopting downloads from it instead.
+    let other = up.api_path.with_file_name("other.json");
+    fs::write(&other, br#"{"motors":[3]}"#).unwrap();
+    let moved = lock_text(&up).replacen(&up.api, &file_url(&other), 1);
+    let lock = Lock::parse(&moved).unwrap();
+    let (outcome, repins) = fetch(root.path(), &lock, &only_api, Drift::Adopt).unwrap();
+    assert_eq!(outcome, tally(0, 1, 0, 0));
+    assert_eq!(repins[0].sha256, hash::sha256_bytes(br#"{"motors":[3]}"#));
+    assert_eq!(repins[0].captured, download::today());
+    assert!(
+        !root
+            .path()
+            .join("refs/snapshots/api.json.unpinned")
+            .exists()
     );
 }
 

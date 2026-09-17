@@ -170,19 +170,20 @@ fn write_repins(root: &Path, repins: &[Repin]) -> Result<(), String> {
     let path = root.join(lock::LOCK_PATH);
     let mut text = std::fs::read_to_string(&path)
         .map_err(|err| format!("could not read {}: {err}", path.display()))?;
-    let date = download::today();
     for repin in repins {
-        text = download::repin(&text, repin, &date)?;
+        text = download::repin(&text, repin)?;
     }
     Lock::parse(&text).map_err(|err| format!("repinning broke the lock file: {err}"))?;
     std::fs::write(&path, text)
         .map_err(|err| format!("could not write {}: {err}", path.display()))?;
-    let names: Vec<_> = repins.iter().map(|repin| repin.name.as_str()).collect();
-    println!(
-        "refs fetch: repinned {} in {} (captured {date}); commit the lock change",
-        names.join(", "),
-        lock::LOCK_PATH
-    );
+    for repin in repins {
+        println!(
+            "refs fetch: repinned {} in {} (captured {}); commit the lock change",
+            repin.name,
+            lock::LOCK_PATH,
+            repin.captured
+        );
+    }
     Ok(())
 }
 
