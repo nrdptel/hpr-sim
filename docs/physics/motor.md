@@ -137,7 +137,8 @@ F(p_a) = F_curve + (p_ref − p_a) A_e,    A_e = π r_e²
 - It holds while the nozzle flows full. Sea-level tests of altitude nozzles can separate
   ([SP] pp. 32–34).
 - hpr applies it strictly inside the burn, `0 < t < t_end`, as RocketPy's flight does
-  (`simulation/flight.py:1936-1956`), and never lets thrust go negative. Without a known nozzle it
+  (`simulation/flight.py:1936-1956`), but only where the curve's thrust is positive (RocketPy also
+  adds it inside zero-thrust gaps, where nothing flows), and never lets thrust go negative. Without a known nozzle it
   returns the curve. COTS files carry no exit diameter (`.rse` `exitDia` is always 0).
 - **Limits.** The full-flow term steps to zero at `t_end` (the integrator should treat burnout as
   an event). In the tail-off the real exit pressure falls with the chamber's, so the term

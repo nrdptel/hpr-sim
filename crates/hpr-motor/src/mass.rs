@@ -92,7 +92,8 @@ impl MassElement {
 
     /// The elements combined into one: total mass, mass-weighted centre, and inertias moved to
     /// that centre with the parallel-axis theorem. With zero total mass the centre is the plain
-    /// average of the element positions (or 0 with no elements) and the inertias are summed.
+    /// average of the element positions (or 0 with no elements) and the inertias are summed; a NaN
+    /// mass gives a NaN centre.
     pub fn combine<'a>(elements: impl IntoIterator<Item = &'a MassElement> + Clone) -> Self {
         let mut mass = 0.0;
         let mut moment = 0.0;
@@ -106,7 +107,9 @@ impl MassElement {
             count += 1.0;
             position_sum += element.cg_m;
         }
-        let cg = if mass > 0.0 {
+        let cg = if mass.is_nan() {
+            f64::NAN
+        } else if mass > 0.0 {
             moment / mass
         } else if count > 0.0 {
             position_sum / count

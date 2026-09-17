@@ -364,8 +364,8 @@ impl SolidMotor {
 
     /// The thrust at `t` with ambient pressure `ambient_pa`, for a curve measured at
     /// `reference_pa`: `F + (p_ref − p_a) A_e` strictly inside the burn (`0 < t < t_end`, as
-    /// RocketPy's flight applies it), never below zero; the curve's thrust elsewhere, and without a
-    /// nozzle. NaN inputs give NaN.
+    /// RocketPy's flight applies it) where the curve's thrust is positive, never below zero; the
+    /// curve's thrust elsewhere, and without a nozzle. NaN inputs give NaN.
     ///
     /// The term is the full-flow value throughout, so it steps to zero at `t_end`, and in the
     /// tail-off, where a real nozzle's exit pressure falls with the chamber's, it overstates the
@@ -373,7 +373,9 @@ impl SolidMotor {
     pub fn thrust_at_pressure_n(&self, t: f64, ambient_pa: f64, reference_pa: f64) -> f64 {
         let thrust = self.curve.thrust_n(t);
         match self.nozzle {
-            Some(nozzle) if t > 0.0 && t < self.curve.end_time_s() => {
+            Some(nozzle)
+                if t > 0.0 && t < self.curve.end_time_s() && (thrust > 0.0 || thrust.is_nan()) =>
+            {
                 let corrected = thrust + (reference_pa - ambient_pa) * nozzle.exit_area_m2();
                 if corrected.is_nan() {
                     corrected
@@ -481,6 +483,16 @@ mod tests {
         // A NaN time gives NaN mass properties, for columns and grains alike.
         let state = motor.state(f64::NAN);
         assert!(state.total.mass_kg.is_nan() && state.propellant.mass_kg.is_nan());
+        assert!(state.total.cg_m.is_nan());
+        // No flow, no pressure term: a zero-thrust gap inside the burn gets none.
+        let gap = ThrustCurve::new(
+            vec![0.0, 1.0, 1.0, 2.0, 2.0, 3.0],
+            vec![10.0, 10.0, 0.0, 0.0, 10.0, 0.0],
+        )
+        .unwrap();
+        let gapped = SolidMotor::new(gap, Propellant::Column(column), dry, Some(nozzle)).unwrap();
+        assert_eq!(gapped.thrust_at_pressure_n(1.5, 0.0, 101_325.0), 0.0);
+        assert!(gapped.thrust_at_pressure_n(2.5, 0.0, 101_325.0) > gapped.curve().thrust_n(2.5));
     }
 
     #[test]

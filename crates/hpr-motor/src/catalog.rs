@@ -305,8 +305,15 @@ impl CatalogMotor {
     /// # Errors
     ///
     /// As [`CatalogMotor::thrust_curve`] and [`SolidMotor::from_envelope`], and
-    /// [`MotorError::Inconsistent`] when neither the metadata nor the file gives the masses.
+    /// [`MotorError::Inconsistent`] for a hybrid (hpr models solids only) or when neither the
+    /// metadata nor the file gives the masses.
     pub fn motor(&self, curve: &CatalogCurve, text: &str) -> Result<SolidMotor, MotorError> {
+        if self.motor_type == MotorType::Hybrid {
+            return Err(MotorError::Inconsistent(format!(
+                "{} is a hybrid; hpr models solid motors only",
+                self.designation
+            )));
+        }
         let (thrust, header_propellant_kg, header_total_kg) = read_curve_file(curve, text)?;
         let propellant_kg = self
             .propellant_mass_g
@@ -542,10 +549,9 @@ mod tests {
             "\"motor_type\": \"hybrid\"",
             1,
         );
-        assert_eq!(
-            Catalog::from_json(&hybrid).unwrap().motors[0].motor_type,
-            MotorType::Hybrid
-        );
+        let hybrid = Catalog::from_json(&hybrid).unwrap();
+        assert_eq!(hybrid.motors[0].motor_type, MotorType::Hybrid);
+        assert!(hybrid.motors[0].bundled_motor().is_err());
     }
 
     #[derive(Debug, serde::Deserialize)]

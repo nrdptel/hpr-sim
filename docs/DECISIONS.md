@@ -391,7 +391,7 @@ Several choices had no single right answer (`docs/physics/motor.md`).
   average thrust on 17 of 1710 survey files, all with repeated times.
 - **Grains** need a bore: a solid end burner isn't a BATES grain, and its regression differs.
 - **Ambient pressure:** the full-flow term `(p_ref − p_a) A_e` applies strictly inside the burn,
-  as in RocketPy's flight. It steps to zero at burnout and overstates tail-off thrust (about 1% of
+  as in RocketPy's flight, and only where the curve's thrust is positive. It steps to zero at burnout and overstates tail-off thrust (about 1% of
   impulse in vacuum for a 38 mm reload with a known exit); COTS data gives no exit diameter, so
   it is off by default.
 - **File models:** `.eng` and `.rse` keep the file's units and points exactly, so read-write-read
