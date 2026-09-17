@@ -519,6 +519,11 @@ impl InertiaOverride {
 }
 
 impl Overrides {
+    /// Whether the centre of mass is overridden, along the axis or off it.
+    pub fn sets_centre(&self) -> bool {
+        self.cg_aft_m.is_some() || self.cg_xy_m.is_some()
+    }
+
     /// Whether nothing is overridden.
     pub fn is_empty(&self) -> bool {
         self.mass_kg.is_none()
@@ -627,8 +632,9 @@ pub struct PlacedComponent {
     pub own: MassProperties,
     /// It with everything attached to it, after every override that applies within.
     pub with_children: MassProperties,
-    /// Whether it has overrides of its own.
-    pub overridden: bool,
+    /// Whether its own overrides set its centre of mass.
+    #[serde(default)]
+    pub centre_overridden: bool,
 }
 
 impl PlacedComponent {
@@ -649,8 +655,9 @@ pub struct PlacedStage {
     pub aft_station_m: f64,
     /// Its mass properties in body axes, without motors, after its overrides.
     pub mass: MassProperties,
-    /// Whether the stage has overrides of its own.
-    pub overridden: bool,
+    /// Whether the stage's own overrides set its centre of mass.
+    #[serde(default)]
+    pub centre_overridden: bool,
 }
 
 /// A design resolved into placed parts, with its structural mass properties (no motors).
@@ -749,7 +756,7 @@ impl Rocket {
                 motor_mount: node.motor_mount,
                 own: placed,
                 with_children: placed,
-                overridden: !node.overrides.is_empty(),
+                centre_overridden: node.overrides.sets_centre(),
             });
             let with_children = finish(&mut components, index, node)?;
             stage_masses[*stage].push(with_children);
@@ -770,7 +777,7 @@ impl Rocket {
                 fore_station_m: fore,
                 aft_station_m: aft,
                 mass,
-                overridden: !stage.overrides.is_empty(),
+                centre_overridden: stage.overrides.sets_centre(),
             });
         }
         let structure = MassProperties::combine(stages.iter().map(|s| &s.mass));
@@ -1233,7 +1240,7 @@ fn finish(
             motor_mount: child.motor_mount,
             own: placed,
             with_children: placed,
-            overridden: !child.overrides.is_empty(),
+            centre_overridden: child.overrides.sets_centre(),
         });
         parts.push(finish(components, child_index, child)?);
     }

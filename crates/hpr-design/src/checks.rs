@@ -112,9 +112,9 @@ pub enum Finding {
         /// The tube's id.
         tube: String,
     },
-    /// A stage with an override, in itself or in a component, has its centre of mass forward of the
-    /// nose tip or aft of the rocket's end although every internal part in it is on the rocket,
-    /// such as a centre typed in millimetres as metres (error).
+    /// A stage with a centre-of-mass override, its own or a component's, has its centre forward of
+    /// the nose tip or aft of the rocket's end although every internal part in it is on the
+    /// rocket, such as a centre typed in millimetres as metres (error).
     CentreOutsideRocket {
         /// The stage's id.
         stage: String,
@@ -267,7 +267,7 @@ pub fn check_layout(layout: &Layout) -> Vec<Finding> {
                 .filter(|(_, c)| c.stage == k)
         };
         let holds = in_stage().any(|(i, _)| holds_off[i]);
-        let overridden = stage.overridden || in_stage().any(|(_, c)| c.overridden);
+        let overridden = stage.centre_overridden || in_stage().any(|(_, c)| c.centre_overridden);
         if overridden
             && !holds
             && stage.mass.mass_kg > 0.0
@@ -713,6 +713,12 @@ mod tests {
             "the test needs it off"
         );
         assert!(!has_errors(&check(&design).unwrap()));
+        // A mass override can't move a centre past its parts, so it doesn't arm the check.
+        let mut heavier = design.clone();
+        heavier.stages[0].components[0].children[0]
+            .overrides
+            .mass_kg = Some(1.0);
+        assert!(!has_errors(&check(&heavier).unwrap()));
         // A point mass at the rocket's end is on it, whatever the round-off in the length
         // (0.1 + 0.7 is 0.7999999999999999).
         let mut design = rocket(vec![stage(

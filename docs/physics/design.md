@@ -149,7 +149,7 @@ The reference area is `π d²/4`.
 | `attachment_off_body` | error | an external part's extent (a fin root) doesn't overlap its body tube at all (L50) |
 | `part_outside_rocket` | error | an internal part lies wholly forward of the nose tip or aft of the rocket's end, and touches none of the parts it hangs from |
 | `internal_part_wider_than_parent` | error | an internal part reaches farther from its parent's axis than the parent's bore (a nose cone's or transition's largest outer radius) |
-| `centre_outside_rocket` | error | a stage with an override (its own or a component's) has its centre off the rocket although its parts aren't |
+| `centre_outside_rocket` | error | a stage with a centre-of-mass override (its own or a component's) has its centre off the rocket although its parts aren't |
 | `motor_past_mount_top` | warning | the case's forward end is forward of the mount's |
 | `attachment_past_body_end` | warning | an external part runs past an end of its body tube |
 | `internal_part_past_parent_end` | warning | an internal part runs past an end of its parent |
@@ -165,8 +165,9 @@ The reference area is `π d²/4`.
 - A retainer on a motor mount that sticks out past the airframe touches its mount, so it is on the
   rocket. Only the mount gets a warning.
 - Fins may sweep past the rocket's end, and a heavy part may run past its tube's, so a stage's
-  centre can leave the rocket without an override. It is an error only when an override is
-  involved; no component-level centre is checked.
+  centre can leave the rocket without an override, and a mass override can't move a centre past
+  its parts. It is an error only when a centre override is involved; no component-level centre is
+  checked.
 
 Errors mark designs that can't exist as described. A simulation of one would be wrong, usually
 on the flattering side: Loft flew a 54 mm motor in a 38 mm mount 69% high. The flight engine
