@@ -1,0 +1,3 @@
+# Dev automation lives in the `xtask` crate (created in M0.1): `cargo xtask <command>`.
+[alias]
+xtask = "run --quiet --package xtask --"

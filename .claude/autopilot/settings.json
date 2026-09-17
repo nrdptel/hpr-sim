@@ -1,0 +1,14 @@
+{
+  "autoMode": {
+    "environment": [
+      "$defaults",
+      "Organization: Neer Patel (GitHub user nrdptel), a solo open-source developer. The project is hpr-sim, a rocket flight simulator licensed MIT OR Apache-2.0.",
+      "Primary use of Claude Code: unattended, autonomous software development on Neer's own project. Neer explicitly requested a multi-day unattended run.",
+      "Repository visibility: github.com/nrdptel/hpr-sim is a PUBLIC open-source repository by the owner's explicit choice. Pushing feature branches, opening PRs, and squash-merging them after green CI are approved.",
+      "Source control: github.com/nrdptel and its repositories belong to the owner. Reading nrdptel/fusionspace-loft (the owner's own MIT-licensed project) is approved, and porting its code and data into hpr-sim is approved. Reading nrdptel/loft-fixtures (PRIVATE, contains third-party design files) is approved locally under refs/ only; its contents must never be committed, pushed, or quoted into the public repository.",
+      "Trusted internal domains: motor.fusionspace.co and fusionspace.co (the owner's sites). Reading their public JSON APIs is approved.",
+      "Network posture: a developer Mac with open internet. Downloading public reference data and tools for validation is expected, including: RocketPy (github.com/RocketPy-Team, PyPI); the OpenRocket release jar from github.com/openrocket releases (run only, as an oracle); NASA NTRS PDFs; thrustcurve.org; open-meteo.com; NOAA (nomads.ncep.noaa.gov, the noaa-gfs-bdp-pds S3 bucket); crates.io; PyPI; rustup; Homebrew.",
+      "Host containment: an ordinary developer Mac. Work stays inside the project directory, except for package-manager caches and toolchain installs (rustup toolchains, targets and components; cargo install of dev tools such as cargo-nextest and cargo-deny; uv/pip into refs/venv; Homebrew formulae for jq, uv, a JDK 17+ and gh)."
+    ]
+  }
+}

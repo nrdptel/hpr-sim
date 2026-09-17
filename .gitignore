@@ -1,0 +1,29 @@
+# Rust
+/target/
+**/*.rs.bk
+
+# Reference library and private corpora: never commit these (see CLAUDE.md rules 3–4)
+/refs/
+/corpus/
+
+# Autopilot runtime state and logs
+/.autopilot/
+
+# Python / Node tooling used by the oracles and bindings
+.venv/
+__pycache__/
+*.pyc
+node_modules/
+/dist/
+*.whl
+
+# Local Claude Code settings
+.claude/settings.local.json
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/*
+!.vscode/extensions.json
+*.swp
