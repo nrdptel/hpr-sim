@@ -13,7 +13,8 @@ use criterion::{Criterion, criterion_group, criterion_main};
 use hpr_atmos::ConstantWind;
 use hpr_core::geodesy::Geodetic;
 use hpr_design::Rocket;
-use hpr_sim::{Environment, FlightSettings, Rail, Recorder, Simulation};
+use hpr_sim::recovery::{Device, DeviceDrag, Inflation};
+use hpr_sim::{CanopyType, Environment, FlightSettings, Rail, Recorder, Simulation, Trigger};
 
 fn benches(c: &mut Criterion) {
     // Valetudo on a K400C: 9.7 kg, 880 m apogee, 29 s to the ground.
@@ -47,6 +48,34 @@ fn benches(c: &mut Criterion) {
                 recorder
             })
         },
+    );
+
+    // The same flight recovered: a 0.6 m drogue at apogee and a 2.4 m main at 150 m, which is
+    // what a Level 2 flight actually does and what Monte Carlo will run (M1.7a).
+    let recovered = simulation
+        .with_recovery(vec![
+            Device::new(
+                "drogue",
+                DeviceDrag::canopy(CanopyType::FlatCircular, 0.6),
+                Trigger::Apogee,
+            )
+            .with_lag_s(0.5)
+            .with_inflation(Inflation::knacke(CanopyType::FlatCircular).unwrap())
+            .released_by(1),
+            Device::new(
+                "main",
+                DeviceDrag::canopy(CanopyType::FlatCircular, 2.4),
+                Trigger::Altitude {
+                    height_above_ground_m: 150.0,
+                },
+            )
+            .with_lag_s(1.0)
+            .with_inflation(Inflation::knacke(CanopyType::FlatCircular).unwrap()),
+        ])
+        .unwrap();
+    c.bench_function(
+        "Simulation::run, Valetudo K400C with a drogue and a main to the ground",
+        |b| b.iter(|| black_box(&recovered).run(&mut ()).unwrap()),
     );
 }
 

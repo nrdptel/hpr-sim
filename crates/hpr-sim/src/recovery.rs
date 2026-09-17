@@ -237,13 +237,15 @@ pub enum Trigger {
         /// The height above the launch site, m.
         height_above_ground_m: f64,
     },
-    /// At a time after the first ignition, s.
+    /// At a time after the first ignition, s. Charges are checked in free flight and during the
+    /// descent, so a time that passes on the pad or the rail fires at rail exit.
     Time {
         /// The time after ignition, s.
         time_s: f64,
     },
     /// A motor's ejection delay after that motor's burnout. The motor is its index in
     /// [`hpr_design::Assembly::motors`], and it must have a [`hpr_motor::Delay::Seconds`] delay.
+    /// As [`Self::Time`], a delay that expires before the rail exit fires there.
     MotorDelay {
         /// The motor's index.
         motor: usize,
@@ -1316,6 +1318,38 @@ mod tests {
                     speed,
                     oracle_speed,
                 ));
+            }
+
+            // An independent anchor on both simulators: by the time it lands, the rocket is
+            // descending at Knacke's equilibrium speed under the last device to open, computed
+            // here from hpr's own air and gravity at the site.
+            let last = oracle_devices.last().unwrap();
+            let air = sim
+                .environment()
+                .atmosphere
+                .air(number(&environment["elevation_m"]))
+                .unwrap()
+                .air;
+            let gravity_m_s2 = sim
+                .environment()
+                .earth
+                .gravity_enu_mps2(DVec3::ZERO)
+                .unwrap()
+                .length();
+            let equilibrium_m_s = terminal_speed_m_s(
+                mass_kg,
+                number(&last["cd_s_m2"]),
+                air.density_kg_m3,
+                gravity_m_s2,
+            );
+            for (who, speed) in [
+                ("hpr", -landing.vertical_speed_m_s),
+                ("rocketpy", number(&case["metrics"]["impact_speed_m_s"])),
+            ] {
+                assert!(
+                    (speed - equilibrium_m_s).abs() < 0.01 * equilibrium_m_s,
+                    "{name}: {who} lands at {speed} m/s, not the equilibrium {equilibrium_m_s}"
+                );
             }
 
             let metrics = case["metrics"].clone();

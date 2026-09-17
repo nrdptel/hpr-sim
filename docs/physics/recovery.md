@@ -46,6 +46,9 @@ A device's charge fires at its `Trigger`:
 - `MotorDelay { motor }`: that motor's ejection delay after its own burnout. The motor must have a
   delay in seconds; a plugged motor or one with no delay set is refused.
 
+Charges are only checked in free flight and during the descent, so a `Time` or `MotorDelay`
+trigger whose time passes while the rocket is still on the pad or the rail fires at rail exit.
+
 `lag_s` seconds after the trigger the device **deploys** (line stretch) and starts to fill. The
 first deployment of a flight switches it to the descent phase. A device can name another whose
 deployment **releases** it (`released_by`), which is how a drogue is cut away when the main opens;
@@ -110,8 +113,10 @@ m a_cg = −½ ρ (C_D S)(t) |v_cg − w| (v_cg − w) + m (g + a_Coriolis) + T
 - **Added mass is not modelled.** Knacke gives no closed-form apparent mass (printed page 5-40
   says only that it is the enclosed volume times density times a form factor), and RocketPy's
   `m_a = k_a ρ (2/3) π R² H` has no citation in its code. It carries no weight in RocketPy either,
-  so it changes no equilibrium descent rate, only the transient right after an opening. For
-  Calisto's main it is about half the rocket's mass, and the comparison below shows what it costs.
+  so it changes no equilibrium descent rate, only the transient right after an opening. It is not
+  small: the fixture records 5.6 kg for Calisto's main against a 16.2 kg rocket and 15.9 kg for
+  NDRT's against a 20.8 kg one (both at the start height; both grow with density as the rocket
+  descends). The comparison below shows what leaving it out costs.
 
 The equilibrium descent speed is Knacke's (printed page 5-128), and `recovery::terminal_speed_m_s`
 computes it:
@@ -160,6 +165,7 @@ Measured (hpr against RocketPy, 2026-09-17):
 
 Every metric is inside the milestone's 3%. The descent rate under the drogue, where a case has a
 main, agrees to 0.01%. The two largest gaps are both NDRT's, whose main has a drag area of 16 m²:
-RocketPy's added mass for it is 17 kg against the rocket's 21 kg, so its response to the opening
-is slower, which lengthens the descent (+0.71%) and, in a wind that shears with height, moves the
-smaller drift component by 2.87%. Adding a cited apparent-mass model would close that gap.
+RocketPy's added mass for it is 15.9 kg against the rocket's 20.8 kg, so its response to the
+opening is slower, which lengthens the descent (+0.71%) and, in a wind that shears with height,
+moves the smaller drift component by 2.87%. Adding a cited apparent-mass model would close that
+gap.

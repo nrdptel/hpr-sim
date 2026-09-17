@@ -3,6 +3,26 @@
 Measured numbers only, newest first within each section. Record the machine, the toolchain, and
 the command, so a later run can be compared like for like.
 
+## Recovery (M1.7a)
+
+- **Benchmark:** `cargo bench -p hpr-sim --bench flight`, criterion, release profile.
+- **When and where:** 2026-09-17 on an Apple M5 with rustc 1.98.1.
+- **Inputs:** the M1.6b flight below, with a 0.6 m flat circular drogue at apogee (0.5 s lag) and a
+  2.4 m main at 150 m (1 s lag) that releases the drogue, both filling by Knacke's law.
+
+| call | median |
+|---|---|
+| `Simulation::run`, Valetudo K400C with a drogue and a main to the ground | 0.87 ms |
+
+- **A recovered flight is cheaper than a ballistic one** (the M1.6b row re-measured at 1.17 ms in
+  the same run), although it lasts 61.0 s against 29 s: apogee at 874.0 m and 14.55 s, the main at
+  44.39 s, the ground at 6.57 m/s.
+- **Work.** 1,983 derivative evaluations, 316 accepted steps and 9 rejected, against the ballistic
+  flight's 2,578 and 410. The descent phase evaluates no airframe aerodynamics, and after burnout
+  the mass properties need no central differences, so the canopy's gentle dynamics buy longer
+  steps than the ballistic dive they replace. The average is 0.44 µs an evaluation, as in M1.6b.
+- **The 5 ms budget** for a Level 2 flight therefore also holds with recovery, 5.7 times under it.
+
 ## Flight (M1.6b)
 
 - **Benchmark:** `cargo bench -p hpr-sim --bench flight`, which is criterion, release profile.

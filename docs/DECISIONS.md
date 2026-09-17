@@ -1051,8 +1051,8 @@ and L26 set tests.
   - **Added mass is not modelled.** Knacke gives no closed form (printed page 5-40 is qualitative),
     and RocketPy's `m_a = k_a ρ (2/3) π R² H` carries no citation in its code and no weight in its
     equations, so it changes no equilibrium rate, only the transient. The comparison shows the
-    cost: NDRT 2020, whose main's added mass is 17 kg against a 21 kg rocket, is hpr's worst case
-    at +0.71% in descent time and +2.87% in the smaller drift component.
+    cost: NDRT 2020, whose main's added mass is 15.9 kg against a 20.8 kg rocket, is hpr's worst
+    case at +0.71% in descent time and +2.87% in the smaller drift component.
 - **Every deployment, every end of filling and every known trigger time is a stop time**, so no
   step straddles a change in the drag area, and events are located as in M1.6a. The event list is
   now built per interval as a `Watch` list instead of numbered by hand, because the height triggers
