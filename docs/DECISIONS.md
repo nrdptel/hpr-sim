@@ -371,8 +371,9 @@ Several choices had no single right answer (`docs/physics/motor.md`).
 
 - **Statistics:** total impulse integrates the straight-line curve exactly, from an implicit
   `(0, 0)`. Burn time follows NFPA 1125: between the 5%-of-peak crossings. Average thrust is total
-  impulse over that burn time. This is ThrustCurve's glossary and its site code; its statistics
-  page words average thrust differently, and the difference is about 0.1% of impulse.
+  impulse over that burn time. This is ThrustCurve's glossary and its site code, which a committed
+  fixture runs unchanged (hpr agrees to 1.8e-15 on the bundle); its statistics page words average
+  thrust differently, and the difference is about 0.1% of impulse.
 - **Impulse classes:** upper limits are inclusive (NAR: "5.01 to 10.0 N-sec" for `C`), from
   `1/8A` to `O`, and on to `Z` by doubling.
 - **Consumption:** constant effective exhaust velocity, `m_p(t) = m_p0 (1 − I(t)/I)`. This is
@@ -380,12 +381,19 @@ Several choices had no single right answer (`docs/physics/motor.md`).
   SP-8039 shows `I_sp` drifting within a burn), recorded as such.
 - **Propellant layout:** a fixed-shape column (the default, RocketPy's `GenericMotor` model) or
   BATES grains. The grain regression is solved exactly in burned mass instead of RocketPy's ODE in
-  time; the two agree to 1e-4.
+  time. Motor mass, centre and inertias agree with RocketPy within 7.9e-5 relative.
 - **Envelope default:** from a catalog entry alone, the propellant is a solid column and the dry
   mass a thin tube, both over the full length and centred. Crude, and documented as such; motors
   with data use `SolidMotor::new`. Catalog metadata overrides the curve file's header.
-- **Steps:** equal consecutive times in a curve are a step, not an error; decreasing times and
-  negative thrust are errors.
+- **Steps:** equal consecutive times in a curve are a step, not an error; decreasing times,
+  negative thrust, and curves with no impulse or no NFPA burn time are errors. ThrustCurve's code
+  instead averages points under 50 µs apart: identical on every bundled curve, and up to 1.1% in
+  average thrust on 17 of 1710 survey files, all with repeated times.
+- **Grains** need a bore: a solid end burner isn't a BATES grain, and its regression differs.
+- **Ambient pressure:** the full-flow term `(p_ref − p_a) A_e` applies strictly inside the burn,
+  as in RocketPy's flight. It steps to zero at burnout and overstates tail-off thrust (about 1% of
+  impulse in vacuum for a 38 mm reload with a known exit); COTS data gives no exit diameter, so
+  it is off by default.
 - **File models:** `.eng` and `.rse` keep the file's units and points exactly, so read-write-read
   cycles are bit-exact. Readers are lenient and return warnings; writers refuse anything the
   reader would read differently. Readers take `&str`; decoding bytes is `hpr-io`'s job.
@@ -396,6 +404,13 @@ Several choices had no single right answer (`docs/physics/motor.md`).
   O. Of 554 public-domain curves, 196 pass, so the rule leaves out 358. Most miss on burn time or
   average thrust, or their impulse is 1–5% off; the breakdown is in
   `docs/research/thrustcurve-data.md`. "Free" curves (which can be GPL) are never bundled.
+- **Catalog metadata:** each bundled motor's published statistics and identifiers (names, class,
+  type, dimensions, masses, impulse, thrust, burn time, delays, case) are copied from
+  ThrustCurve's API into the committed index, with attribution. ThrustCurve states no terms for
+  its metadata. These are facts about commercial products, mostly from certification bodies, for
+  32 motors, and the milestone's 1% check and offline catalog need them. Recorded under "Needs
+  Neer" (not blocking) to confirm; the fallback is to keep only the numbers the checks use, or to
+  take them from manufacturers' data sheets.
 - **XML:** `roxmltree`, a strict read-only parser that refuses DTDs; the `.rse` writer is
   hand-written.
 

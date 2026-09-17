@@ -17,7 +17,7 @@ use serde::{Deserialize, Serialize};
 use crate::curve::ThrustCurve;
 use crate::delay::DelayList;
 use crate::error::MotorError;
-use crate::text::{ParseWarning, Parsed, check_writable, finite};
+use crate::text::{ParseWarning, Parsed, WarningKind, check_writable, finite};
 
 const FORMAT: &str = ".eng";
 
@@ -134,10 +134,11 @@ pub fn parse(text: &str) -> Result<Parsed<EngFile>, MotorError> {
                         Ok(entry) => entries.push(entry),
                         Err(error) => errors.push(error),
                     }
-                    warnings.push(ParseWarning {
+                    warnings.push(ParseWarning::new(
                         line,
-                        message: "a new header with no comment line before it".into(),
-                    });
+                        WarningKind::Unusual,
+                        "a new header with no comment line before it",
+                    ));
                     header(&fields, std::mem::take(&mut comments), line, &mut warnings)
                         .map(|entry| State::Points(entry, line))
                 }
@@ -170,10 +171,11 @@ pub fn parse(text: &str) -> Result<Parsed<EngFile>, MotorError> {
             MotorError::Syntax { line, .. } => *line,
             _ => 0,
         };
-        warnings.push(ParseWarning {
+        warnings.push(ParseWarning::new(
             line,
-            message: format!("entry skipped: {error}"),
-        });
+            WarningKind::Skipped,
+            format!("entry skipped: {error}"),
+        ));
     }
     warnings.sort_by_key(|warning| warning.line);
     Ok(Parsed {
@@ -196,9 +198,11 @@ fn add_point(entry: &mut EngEntry, fields: &[&str], line: usize) -> Result<(), M
 ///
 /// # Errors
 ///
-/// - [`MotorError::Inconsistent`] for a header field that is empty, holds whitespace or starts
-///   with `;`; a comment that is empty, holds a line break or ends in whitespace; an entry with no
-///   points; or a file with no entries. The reader would not read these back unchanged.
+/// - [`MotorError::Inconsistent`] for a name that is empty, holds whitespace or starts with `;`;
+///   delays that are empty or hold whitespace; a manufacturer that is empty or isn't its words
+///   joined by single spaces; a comment that is empty, holds a line break or ends in whitespace;
+///   an entry with no points; or a file with no entries. The reader would not read these back
+///   unchanged.
 /// - [`MotorError::Domain`] for the values the reader rejects: non-finite numbers, a
 ///   non-positive diameter or length, negative masses or times, and decreasing times.
 pub fn write(file: &EngFile) -> Result<String, MotorError> {
@@ -212,16 +216,31 @@ pub fn write(file: &EngFile) -> Result<String, MotorError> {
         for comment in &entry.comments {
             write_comment(&mut out, comment)?;
         }
-        for (field, what) in [
-            (&entry.name, "name"),
-            (&entry.delays, "delays"),
-            (&entry.manufacturer, "manufacturer"),
-        ] {
-            if field.is_empty() || field.contains(char::is_whitespace) || field.starts_with(';') {
-                return Err(MotorError::Inconsistent(format!(
-                    "the .eng {what} {field:?} must be one token that doesn't start with `;`"
-                )));
-            }
+        // The name starts the line, so `;` there would make it a comment. The reader joins the
+        // manufacturer's words with single spaces.
+        let one_token = |field: &str| !field.is_empty() && !field.contains(char::is_whitespace);
+        let words = entry
+            .manufacturer
+            .split_whitespace()
+            .collect::<Vec<_>>()
+            .join(" ");
+        if !one_token(&entry.name) || entry.name.starts_with(';') {
+            return Err(MotorError::Inconsistent(format!(
+                "the .eng name {:?} must be one token that doesn't start with `;`",
+                entry.name
+            )));
+        }
+        if !one_token(&entry.delays) {
+            return Err(MotorError::Inconsistent(format!(
+                "the .eng delays {:?} must be one token",
+                entry.delays
+            )));
+        }
+        if entry.manufacturer.is_empty() || words != entry.manufacturer {
+            return Err(MotorError::Inconsistent(format!(
+                "the .eng manufacturer {:?} must be words separated by single spaces",
+                entry.manufacturer
+            )));
         }
         check_envelope(entry)?;
         if entry.points.is_empty() {
@@ -297,13 +316,14 @@ fn header(
         ));
     }
     if fields.len() > 7 {
-        warnings.push(ParseWarning {
+        warnings.push(ParseWarning::new(
             line,
-            message: format!(
+            WarningKind::Unusual,
+            format!(
                 "the header has {} fields; fields 7 onward are read as the manufacturer",
                 fields.len()
             ),
-        });
+        ));
     }
     let entry = EngEntry {
         comments,
@@ -363,28 +383,35 @@ fn finish(
             format!("the entry {:?} has no points", entry.name),
         ));
     }
-    let mut warn = |message: String| {
-        warnings.push(ParseWarning {
-            line: header_line,
-            message: format!("{}: {message}", entry.name),
-        });
+    let mut warn = |kind: WarningKind, message: String| {
+        warnings.push(ParseWarning::new(
+            header_line,
+            kind,
+            format!("{}: {message}", entry.name),
+        ));
     };
     if entry.propellant_mass_kg >= entry.total_mass_kg {
-        warn(format!(
-            "propellant mass {} kg is not below the total mass {} kg",
-            entry.propellant_mass_kg, entry.total_mass_kg
-        ));
+        warn(
+            WarningKind::Unusual,
+            format!(
+                "propellant mass {} kg is not below the total mass {} kg",
+                entry.propellant_mass_kg, entry.total_mass_kg
+            ),
+        );
     }
-    for message in entry.delays().warnings {
-        warn(message);
+    for warning in entry.delays().warnings {
+        warn(warning.kind, warning.message);
     }
     if let Some(&(_, last)) = entry.points.last()
         && last != 0.0
     {
-        warn(format!("the curve ends at {last} N, not zero"));
+        warn(
+            WarningKind::Unusual,
+            format!("the curve ends at {last} N, not zero"),
+        );
     }
     if entry.points.iter().any(|&(_, thrust)| thrust < 0.0) {
-        warn("the curve has negative thrust".into());
+        warn(WarningKind::Unusual, "the curve has negative thrust".into());
     }
     Ok(entry)
 }
@@ -402,7 +429,7 @@ fn syntax(line: usize, message: String) -> MotorError {
 }
 
 #[cfg(test)]
-mod tests {
+pub(crate) mod tests {
     use proptest::prelude::*;
 
     use super::*;
@@ -524,13 +551,22 @@ C6 18 70 0-3-5-7 .0108 0.0231 E
         assert_eq!(entry.points, [(0.02, 156.0), (68.5, 0.0)]);
         assert_eq!(parsed.value.trailing_comments, [" trailer"]);
         // More than seven header fields: the rest is the manufacturer.
-        let parsed = parse("K1 54 400 P 1 2 Contrail Rockets\n 1 1\n 2 0\n").unwrap();
+        let parsed = parse("K1 54 400 ;P 1 2 Contrail   Rockets\n 1 1\n 2 0\n").unwrap();
         assert_eq!(parsed.value.entries[0].manufacturer, "Contrail Rockets");
-        assert_eq!(parsed.warnings.len(), 1);
+        assert_eq!(parsed.value.entries[0].delays, ";P");
+        assert_eq!(parsed.warnings.len(), 2, "{:?}", parsed.warnings);
+        let written = write(&parsed.value).unwrap();
+        assert_eq!(parse(&written).unwrap().value, parsed.value);
+        let mut spaced = parsed.value.clone();
+        spaced.entries[0].manufacturer = "Contrail  Rockets".into();
         assert!(
-            write(&parsed.value).is_err(),
-            "a manufacturer with a space can't be written"
+            write(&spaced).is_err(),
+            "a double space would read back as one"
         );
+        // Exponents and signs read.
+        let parsed = parse("K1 54 4e2 P +1 2E0 X\n 1e-1 1.5e3\n 2 0\n").unwrap();
+        assert_eq!(parsed.value.entries[0].length_mm, 400.0);
+        assert_eq!(parsed.value.entries[0].points[0], (0.1, 1500.0));
     }
 
     #[test]
@@ -573,6 +609,25 @@ C6 18 70 0-3-5-7 .0108 0.0231 E
         assert!(back.entries[0].points[2].1.is_sign_negative());
     }
 
+    /// Every f64 in a file, as bits: `==` alone treats `-0.0` as `0.0`.
+    pub(crate) fn bits(file: &EngFile) -> Vec<u64> {
+        file.entries
+            .iter()
+            .flat_map(|e| {
+                [
+                    e.diameter_mm,
+                    e.length_mm,
+                    e.propellant_mass_kg,
+                    e.total_mass_kg,
+                ]
+                .into_iter()
+                .chain(e.points.iter().flat_map(|&(t, f)| [t, f]))
+                .map(f64::to_bits)
+                .collect::<Vec<_>>()
+            })
+            .collect()
+    }
+
     fn token() -> impl Strategy<Value = String> {
         "[A-Za-z0-9_./()-]{1,12}".prop_filter("not a comment", |s| !s.starts_with(';'))
     }
@@ -581,12 +636,22 @@ C6 18 70 0-3-5-7 .0108 0.0231 E
         "[ -~]{0,20}[!-~]".prop_map(|s| s)
     }
 
+    fn masses() -> impl Strategy<Value = f64> {
+        prop_oneof![Just(-0.0), Just(0.0), 1e-300..1e3f64]
+    }
+
     fn entries() -> impl Strategy<Value = EngEntry> {
         (
             prop::collection::vec(comment(), 0..3),
-            (token(), token(), token()),
-            (1e-3..1e4f64, 1e-3..1e5f64, 0.0..1e3f64, 0.0..1e3f64),
-            prop::collection::vec((0.0..10.0f64, 0.0..1e5f64), 1..30),
+            (token(), token(), "[A-Za-z;]{1,6}( [A-Za-z0-9;]{1,6}){0,2}"),
+            (1e-3..1e4f64, 1e-3..1e5f64, masses(), masses()),
+            prop::collection::vec(
+                (
+                    prop_oneof![Just(-0.0), 0.0..10.0f64],
+                    prop_oneof![Just(-0.0), -1.0..1e5f64],
+                ),
+                1..30,
+            ),
         )
             .prop_map(
                 |(comments, (name, delays, manufacturer), (d, l, p, t), mut points)| {
@@ -616,15 +681,6 @@ C6 18 70 0-3-5-7 .0108 0.0231 E
             let text = write(&file).unwrap();
             let back = parse(&text).unwrap().value;
             prop_assert_eq!(&back, &file);
-            let bits = |f: &EngFile| -> Vec<u64> {
-                f.entries.iter().flat_map(|e| {
-                    [e.diameter_mm, e.length_mm, e.propellant_mass_kg, e.total_mass_kg]
-                        .into_iter()
-                        .chain(e.points.iter().flat_map(|&(t, f)| [t, f]))
-                        .map(f64::to_bits)
-                        .collect::<Vec<_>>()
-                }).collect()
-            };
             prop_assert_eq!(bits(&back), bits(&file));
         }
     }

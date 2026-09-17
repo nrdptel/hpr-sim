@@ -77,7 +77,8 @@ impl ThrustCurve {
     ///   negative thrust.
     /// - [`MotorError::TimesDecreasing`] if a time is before its predecessor. Equal times are a
     ///   step.
-    /// - [`MotorError::NoThrust`] if no sample has positive thrust.
+    /// - [`MotorError::NoThrust`] if the total impulse or the NFPA 1125 burn time is not positive
+    ///   (no positive thrust, or thrust only at a single instant).
     pub fn new(times_s: Vec<f64>, thrusts_n: Vec<f64>) -> Result<Self, MotorError> {
         if times_s.len() != thrusts_n.len() || times_s.is_empty() {
             return Err(MotorError::Inconsistent(format!(
@@ -127,11 +128,17 @@ impl ThrustCurve {
                 value: total,
             });
         }
-        Ok(Self {
+        let curve = Self {
             times_s,
             thrusts_n,
             impulse_ns,
-        })
+        };
+        // Zero impulse would make the exhaust velocity zero and the mass flow infinite; zero burn
+        // time would make the average thrust infinite.
+        if !(total > 0.0 && curve.burn_time_s() > 0.0) {
+            return Err(MotorError::NoThrust);
+        }
+        Ok(curve)
     }
 
     /// The sample times, s, starting at 0 (including a prepended `(0, 0)`).
@@ -354,6 +361,16 @@ mod tests {
             (vec![0.0, f64::NAN], vec![5.0, 0.0]),
             (vec![0.0, 1.0], vec![f64::INFINITY, 0.0]),
             (vec![0.0, 1.0], vec![0.0, 0.0]),
+            // Thrust at a single instant: no impulse.
+            (vec![0.0], vec![5.0]),
+            (vec![0.5, 0.5], vec![0.0, 100.0]),
+            (vec![0.0, 0.0], vec![5.0, 5.0]),
+            // A spike on a zero-width step with only a 1% trickle after it: impulse but no NFPA
+            // burn time.
+            (
+                vec![0.0, 1.0, 1.0, 1.0, 2.0],
+                vec![0.0, 0.0, 100.0, 0.0, 1.0],
+            ),
         ];
         for (times, thrusts) in bad {
             assert!(

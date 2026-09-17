@@ -16,6 +16,8 @@
 
 use serde::{Deserialize, Serialize};
 
+use crate::text::WarningKind;
+
 /// One available delay setting.
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
 pub enum Delay {
@@ -30,13 +32,23 @@ pub enum Delay {
 pub struct DelayList {
     /// The settings in the order written (some files list them longest first).
     pub delays: Vec<Delay>,
-    /// Problems found while reading, such as an empty piece or an unreadable one; each unreadable
-    /// piece is left out of `delays`.
-    pub warnings: Vec<String>,
+    /// Problems found while reading: an empty or unreadable piece ([`WarningKind::Dropped`], and
+    /// left out of `delays`), or an ambiguous `0` ([`WarningKind::Unusual`]).
+    pub warnings: Vec<DelayWarning>,
+}
+
+/// A problem found while reading a delay string.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct DelayWarning {
+    /// Whether a piece was dropped.
+    pub kind: WarningKind,
+    /// What was found.
+    pub message: String,
 }
 
 impl DelayList {
-    /// Reads a delay string such as `6-10-14`, `5,8,11`, `P`, `6-10-14-P` or `1000`.
+    /// Reads a delay string such as `6-10-14`, `5,8,11`, `P`, `6-10-14-P` or `1000`. Any number
+    /// equal to 100 or 1000 (`1000.` too) is a plugged marker.
     pub fn parse(raw: &str) -> Self {
         let mut delays = Vec::new();
         let mut warnings = Vec::new();
@@ -47,19 +59,31 @@ impl DelayList {
         for piece in trimmed.split(['-', ',']) {
             let piece = piece.trim();
             match piece {
-                "" => warnings.push(format!("empty delay in {raw:?} ignored")),
-                "P" | "p" | "100" | "1000" => delays.push(Delay::Plugged),
+                "" => warnings.push(DelayWarning {
+                    kind: WarningKind::Dropped,
+                    message: format!("empty delay in {raw:?} ignored"),
+                }),
+                "P" | "p" => delays.push(Delay::Plugged),
                 _ => match piece.parse::<f64>() {
+                    Ok(marker) if marker == 100.0 || marker == 1000.0 => {
+                        delays.push(Delay::Plugged)
+                    }
                     Ok(seconds) if seconds.is_finite() && seconds >= 0.0 => {
                         if seconds == 0.0 {
-                            warnings.push(format!(
+                            warnings.push(DelayWarning {
+                                kind: WarningKind::Unusual,
+                                message: format!(
                                 "delay 0 in {raw:?} is ambiguous: the RASP spec means an ejection \
                                  charge with no delay, but files mostly mean plugged"
-                            ));
+                                ),
+                            });
                         }
                         delays.push(Delay::Seconds(seconds));
                     }
-                    _ => warnings.push(format!("unreadable delay {piece:?} in {raw:?} ignored")),
+                    _ => warnings.push(DelayWarning {
+                        kind: WarningKind::Dropped,
+                        message: format!("unreadable delay {piece:?} in {raw:?} ignored"),
+                    }),
                 },
             }
         }
@@ -89,6 +113,8 @@ mod tests {
         );
         assert!(list.warnings.is_empty());
         assert_eq!(DelayList::parse("P").delays, [Delay::Plugged]);
+        assert_eq!(DelayList::parse("1000.").delays, [Delay::Plugged]);
+        assert_eq!(DelayList::parse("100.0").delays, [Delay::Plugged]);
         assert_eq!(DelayList::parse(" p ").delays, [Delay::Plugged]);
         assert_eq!(
             DelayList::parse("10,14,1000").delays,
@@ -115,5 +141,7 @@ mod tests {
         let list = DelayList::parse("0");
         assert_eq!(list.delays, [Delay::Seconds(0.0)]);
         assert_eq!(list.warnings.len(), 1);
+        assert_eq!(list.warnings[0].kind, WarningKind::Unusual);
+        assert_eq!(DelayList::parse("x").warnings[0].kind, WarningKind::Dropped);
     }
 }

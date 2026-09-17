@@ -98,7 +98,7 @@ same license and mode.
 | `rocksim-rse-spec` | RockSim Engine File Format (.rse) specification, as hosted by ThrustCurve.org | unknown terms | fetched | read to write the `.rse` reader (M1.3); not redistributed |
 | `nasa-sp-8039` | NASA SP-8039, Solid Rocket Motor Performance Analysis and Prediction, 1971 | US government work | fetched | cited for the thrust equation and effective exhaust velocity (M1.3); no text copied |
 | `nar-standard-motor-codes` | National Association of Rocketry, Standard Motor Codes (nar.org/NARmotors.html, archived 2014-02-05) | unclear terms | fetched | cited for the impulse-class limits (M1.3); not redistributed |
-| `thrustcurve3-analyze` | ThrustCurve.org site source, simulate/analyze/analyze.js at commit 577afa6 | ISC | fetched | read to confirm ThrustCurve's burn-time, impulse and average-thrust definitions (M1.3); no code ported |
+| `thrustcurve3-analyze` | ThrustCurve.org site source, simulate/analyze/analyze.js at commit 577afa6 | ISC | fetched | read to confirm ThrustCurve's burn-time, impulse and average-thrust definitions, and run unchanged by `validation/oracles/thrustcurve/analyze_stats.js` for a committed fixture of its results (M1.3); no code ported |
 | `thrustcurve-metadata` | ThrustCurve.org API v1 `metadata.json` | unstated terms | fetched | attribution to ThrustCurve.org wherever the data is used; each curve file has its own data license |
 | `thrustcurve-motors` | ThrustCurve.org API v1 `search.json` (all motors) | unstated terms | fetched | attribution to ThrustCurve.org wherever the data is used; each curve file has its own data license |
 | `thrustcurve-rasp-format` | ThrustCurve.org "RASP File Format" page | unstated terms | fetched | cited for the `.eng` format (M1.3, `docs/format/eng.md`) |

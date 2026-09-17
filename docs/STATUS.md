@@ -4,49 +4,49 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
 
 ## Now
 
-- **Current milestone:** M1.3 Solid motors
-- **Run:** the first autopilot run; M0.1, M0.2, M0.3, M1.1 and M1.2 have shipped
-- **Last updated:** 2026-09-17 (M1.2 merged)
+- **Current milestone:** M1.4 Design model and mass properties
+- **Run:** the first autopilot run; M0.1–M0.3 and M1.1–M1.3 have shipped
+- **Last updated:** 2026-09-17 (M1.3 merged)
 
 ## Handoff (overwrite each session)
 
-M1.2 built `hpr-atmos` (ADR-004). Start M1.3 from these notes:
+M1.3 built `hpr-motor` (ADR-005). Start M1.4 from these notes:
 
-- **M1.3 itself:**
-  - The `.rse` spec and the ThrustCurve and motor-finder snapshots are already pinned.
-  - Follow `validation/oracles/rocketpy/*.py` for the SolidMotor oracle script.
-  - Loft lessons L36–L43 name the tests.
-- **Heights for the atmosphere and wind:** every model takes geometric height above mean sea
-  level. The flight engine (M1.6) must subtract the geoid undulation from ellipsoidal height
-  first.
-- **What M1.6 inherits:**
-  - `AtmosphereModel` (`Ussa76`, or a `SoundingProfile`, which needs the site latitude) and
-    `WindModel`. An anchored `Ussa76` holds its offset all the way up (+30% density at 30 km for
-    +20 K), so high flights want a sounding.
-  - `GustField`, a precomputed Dryden realization. M1.6 aligns its longitudinal component with
-    the flight path (not the horizontal wind), picks its path coordinate, and decides how gusts
-    start on the rail.
-  - Use the moist density and speed of sound for dynamic pressure and Mach.
-- **For M2.1:**
-  - RocketPy interpolates pressure linearly in height (up to 1.15% off between 700 and
-    500 hPa), wind as u/v components (`WindInterpolation::Components`), and ignores humidity.
-  - Its geopotential helper defaults to a radius ten times the Earth's (`rocketpy/tools.py:972`).
-  - See `docs/physics/atmosphere.md`.
-- **For M5.2:** convert forecast and sounding geopotential heights with
-  `geometric_from_wmo_geopotential_m`, and clamp radiosonde humidity into `[0, 1]`.
-- **For M6.1:** `hpr_core::random::SeededRng` (xoshiro256++, polar normals) is frozen. Changing
-  its algorithm, seeding or draw order needs an ADR.
+- **M1.4 itself:** Loft lessons L44–L50 and L91 name the tests. Build `validation/designs/` from
+  RocketPy's examples (inputs in `validation/oracles/rocketpy/attitude.py`); RocketPy's Calisto
+  uses its own M1670 data file, which hpr doesn't bundle.
+- **Motor frame:** `SolidMotor::state(t)` gives thrust, `ṁ`, and the propellant and whole-motor
+  `MassElement`s (mass, CG in metres forward of the nozzle exit, axial and transverse inertia
+  about their own centre). A motor mount places the nozzle exit in the body frame; retainers join
+  through `with_added_dry_mass` or as design parts. `CatalogMotor` gives diameter and length for
+  fit checks.
+- **Catalog motors are crude:** `from_envelope` centres the dry mass and propellant at `L/2`, so
+  their CG doesn't move. Designs with real motor data should use `SolidMotor::new` with grains.
+- **What M1.6 inherits:** burnout (`burnout_time_s`) is a thrust discontinuity and an event. The
+  ambient-pressure term (`thrust_at_pressure_n`) needs a nozzle, which COTS data never gives.
+  Delays come from `CatalogMotor::delays`.
+- **For M2.1:** RocketPy prepends `(0, 0)` to `.eng` curves (an explicit one makes its impulse
+  NaN), and `GenericMotor.load_from_eng` uses the diameter as the radius. `SolidMotor` takes its
+  propellant mass from the grains, not the file header.
+- **For M5:** fetch other ThrustCurve curves with `download.json` (POST batches of 250 work; the
+  `license` key is missing when blank). Never bundle non-PD curves. `bundle.py` rebuilds the
+  bundle; `survey.py` and `analyze_stats.js` are the checks.
 - **Process notes:**
-  - `cargo test -p xtask` checks that STATUS names the first open ROADMAP milestone, and that each
-    checked-off milestone's lesson tests exist. For M1.3 those are L36 to L43.
-  - A notices row must contain its lock entry's title word for word.
-  - In zsh, quote curl's `'=https'` (a bare `=word` expands to a command path).
-  - The Bash guard hook rejects some tool names even in innocent phrases, so word commit messages
-    and PR bodies plainly.
-  - If a refs fetch reports snapshot drift, run `cargo xtask refs fetch --adopt-snapshots`.
-  - Scanned PDFs (the 1976 standard) have unusable text layers; read the page images.
+  - `cargo test -p xtask` checks STATUS against ROADMAP, notices rows against lock titles, lesson
+    tests once a milestone is checked off, and that lock URLs use https.
+  - Data that must keep its bytes needs `-text` in `.gitattributes` (the repo forces LF).
+  - archive.org rate-limits (429) when several agents fetch at once; its `id_` captures are
+    stable pins.
+  - In zsh, quote curl's `'=https'`. The Bash guard hook rejects some tool names even in innocent
+    phrases. Scanned PDFs (the 1976 standard, SP-8039) need their page images read. On snapshot
+    drift, run `cargo xtask refs fetch --adopt-snapshots`.
 
 ## Done log (newest first, keep about 15)
+
+- 2026-09-17: M1.3 Solid motors (PR #8): thrust curves with NFPA 1125 statistics matching
+  ThrustCurve's code, impulse classes, impulse-fraction consumption over a column or BATES grains,
+  mass properties matching RocketPy's SolidMotor to 8e-5, `.eng`/`.rse` readers and writers that
+  round-trip 1710 real files, 32 bundled public-domain curves, ADR-005, eight newly pinned sources.
 
 - 2026-09-17: M1.2 Atmosphere and wind (PR #7): USSA76 matching its tables at 32 altitudes,
   offsets and field anchoring, moist air, sounding profiles, four wind models, exact Dryden
@@ -57,14 +57,15 @@ M1.2 built `hpr-atmos` (ADR-004). Start M1.3 from these notes:
 - 2026-09-17: M0.3 Lessons from Loft (PR #4): `docs/research/loft-lessons.md` (97 lessons, 16
   process guards), `Loft lessons:` lines in ROADMAP, xtask doc checks, and the OpenRocket-source
   fetch guard.
-- 2026-09-17: M0.2 Reference library (PR #3): `xtask refs fetch|verify|doctor`, 23 pinned
-  references plus the uv oracle environment, notices rows per source, ADR-002.
-- 2026-09-17: M0.1 Workspace, CI, licenses (PR #2): workspace skeleton, xtask wasm-check,
-  cargo-deny policy, CI on three OSes, ADR-001.
-- 2026-09-16: Kickoff kit written. Scope, architecture, roadmap and validation inventory are
-  set.
+- 2026-09-17: M0.2 Reference library (PR #3, ADR-002) and M0.1 Workspace, CI, licenses (PR #2,
+  ADR-001). 2026-09-16: kickoff kit (scope, architecture, roadmap, validation inventory).
 
 ## Needs Neer (blocking or one-way decisions; the session keeps working on other things)
+
+- (not blocking, licensing) `hpr-motor` commits ThrustCurve.org's published statistics and names
+  for its 32 bundled motors (`crates/hpr-motor/data/thrustcurve/catalog.json`); ThrustCurve states
+  no terms for its metadata. They are facts, with attribution, and the M1.3 checks need them
+  (ADR-005). Confirm, or ask John Coker; the fallback keeps only the checked numbers.
 
 - (not blocking, safety) Loft's public flutter calculator overstates flutter speed by √2 (a 1.5
   margin is really about 1.06): `lib/sim/flutter.ts:287` uses 1.337·(λ+1)/2, where NACA TN 4197
@@ -90,11 +91,8 @@ M1.2 built `hpr-atmos` (ADR-004). Start M1.3 from these notes:
 - The CLI binary is named `hpr` and has rustdoc disabled to avoid colliding with the `hpr` facade.
 - ADR-002: the reference library pins git by commit, files by sha256, and live APIs by dated
   capture; it shells out to git, curl and uv instead of adding HTTP crates.
-- orhelper comes from `openrocket/orhelper` at a pinned commit, not PyPI (0.1.3 predates OR 24.12).
-- Knacke's manual is fetched from archive.org's mirror of the DTIC copy (DTIC blocks automated
-  downloads).
-- Installed `openjdk@21` with Homebrew on the dev Mac (the preflight script names this step), so
-  the OpenRocket oracle runs.
+- orhelper comes from `openrocket/orhelper` at a pinned commit (PyPI's predates OR 24.12); Knacke's
+  manual from archive.org's DTIC mirror; `openjdk@21` from Homebrew on the dev Mac.
 - M0.3: Loft lessons map to milestones through `Loft lessons:` lines, and an xtask test requires a
   checked-off milestone's lesson tests to exist as live `#[test]`s. This tightens later *done
   when* criteria; nothing was loosened. Moving a lesson to a later milestone needs an ADR.
@@ -119,6 +117,11 @@ M1.2 built `hpr-atmos` (ADR-004). Start M1.3 from these notes:
 - M1.2: MIL-F-8785C is pinned from Abbott Aerospace's copy (everyspec blocks scripts and stamps
   each copy) and WMO-No. 8 from a national weather service's mirror; MIL-HDBK-1797 is cited for
   its differences only and not pinned (no stable public copy).
+- ADR-005: NFPA 1125 statistics as ThrustCurve's code computes them; constant exhaust velocity;
+  column or BATES grains (bores required); file models keep file units for bit-exact round
+  trips; bundle only PD curves within 1% of ThrustCurve's values (32), with their metadata.
+- M1.3: `roxmltree` for `.rse`; NAR's motor-code page pinned from its 2014 archive capture;
+  ThrustCurve's ISC `analyze.js` is run unchanged as an oracle under Node (fixture committed).
 
 ## Known issues and risks
 
@@ -127,8 +130,10 @@ M1.2 built `hpr-atmos` (ADR-004). Start M1.3 from these notes:
   fallback for MIL-F-8785C; WMO's own library needs a browser.
 - Dryden turbulence is an aircraft model. How it applies to a climbing rocket (path coordinate,
   rail start, near apogee) is unvalidated until M1.6 and M2.3.
-- ThrustCurve curve licenses are mixed (Loft found only 45 of 108 marked PD), so bundle only the
-  clean ones.
+- Only 32 curves are bundled (none in class A). The rest, and user curves, wait for M5's cache.
+- The bundle's license and sample checks, and the 1710-file round-trip sweep, ran on unpinned
+  caches under `refs/samples/` (POST captures can't be pinned yet); the committed curves are
+  pinned by sha256.
 - The RASAero `.CDX1` format has no public spec, so the importer relies on samples.
 - ERA5 `.nc` files may be netCDF4 (HDF5), which affects the pure-Rust reader choice.
 - A new RustSec vulnerability notice (anywhere in the graph) or unmaintained notice (direct
@@ -140,4 +145,5 @@ M1.2 built `hpr-atmos` (ADR-004). Start M1.3 from these notes:
   (a contractor report with a restrictive title-page notice) have no clear terms: cite them, but
   never redistribute them.
 - `refs doctor` "runnable" means the oracle's runtime starts (imports, JVM plus jar). No flight
-  has been simulated through either oracle yet; M1.3 and M2.x write those scripts.
+  has been simulated through either oracle yet; M2.x writes those scripts. Node (for
+  `analyze_stats.js`) is not checked by `refs doctor`.

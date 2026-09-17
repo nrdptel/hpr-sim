@@ -53,8 +53,11 @@ pub struct PropellantColumn {
     pub length_m: f64,
 }
 
-/// How the propellant is laid out and how its shape evolves.
+/// How the propellant is laid out and how its shape evolves. Serialized with a `model` tag
+/// (`"column"`, `"grains"`).
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+#[serde(tag = "model", rename_all = "snake_case")]
+#[non_exhaustive]
 pub enum Propellant {
     /// A fixed-shape column: the default when only a motor's envelope is known.
     Column(PropellantColumn),
@@ -241,9 +244,10 @@ impl SolidMotor {
         loaded_mass_kg: f64,
     ) -> Result<Self, MotorError> {
         for (value, what) in [
+            (propellant_mass_kg, "propellant mass (kg)"),
+            (loaded_mass_kg, "loaded motor mass (kg)"),
             (diameter_m, "motor diameter (m)"),
             (length_m, "motor length (m)"),
-            (loaded_mass_kg, "loaded motor mass (kg)"),
         ] {
             if !(value.is_finite() && value > 0.0) {
                 return Err(MotorError::Domain { what, value });
@@ -359,13 +363,23 @@ impl SolidMotor {
     }
 
     /// The thrust at `t` with ambient pressure `ambient_pa`, for a curve measured at
-    /// `reference_pa`: `F + (p_ref − p_a) A_e` while the curve's thrust is positive, never below
-    /// zero, and zero otherwise. Without a nozzle it is the curve's thrust.
+    /// `reference_pa`: `F + (p_ref − p_a) A_e` strictly inside the burn (`0 < t < t_end`, as
+    /// RocketPy's flight applies it), never below zero; the curve's thrust elsewhere, and without a
+    /// nozzle. NaN inputs give NaN.
+    ///
+    /// The term is the full-flow value throughout, so it steps to zero at `t_end`, and in the
+    /// tail-off, where a real nozzle's exit pressure falls with the chamber's, it overstates the
+    /// thrust (`docs/physics/motor.md`).
     pub fn thrust_at_pressure_n(&self, t: f64, ambient_pa: f64, reference_pa: f64) -> f64 {
         let thrust = self.curve.thrust_n(t);
         match self.nozzle {
-            Some(nozzle) if thrust > 0.0 => {
-                (thrust + (reference_pa - ambient_pa) * nozzle.exit_area_m2()).max(0.0)
+            Some(nozzle) if t > 0.0 && t < self.curve.end_time_s() => {
+                let corrected = thrust + (reference_pa - ambient_pa) * nozzle.exit_area_m2();
+                if corrected.is_nan() {
+                    corrected
+                } else {
+                    corrected.max(0.0)
+                }
             }
             _ => thrust,
         }
@@ -451,6 +465,22 @@ mod tests {
         assert_eq!(motor.thrust_at_pressure_n(0.5, 101_325.0, 101_325.0), f);
         assert_eq!(motor.thrust_at_pressure_n(2.0, 0.0, 101_325.0), 0.0);
         assert_eq!(motor.thrust_at_pressure_n(0.001, 1e9, 0.0), 0.0);
+        // Only strictly inside the burn: nothing is added at ignition or at the last sample.
+        assert_eq!(motor.thrust_at_pressure_n(0.0, 0.0, 101_325.0), 0.0);
+        assert_eq!(motor.thrust_at_pressure_n(1.2, 0.0, 101_325.0), 0.0);
+        assert!(
+            motor
+                .thrust_at_pressure_n(0.5, f64::NAN, 101_325.0)
+                .is_nan()
+        );
+        assert!(
+            motor
+                .thrust_at_pressure_n(f64::NAN, 0.0, 101_325.0)
+                .is_nan()
+        );
+        // A NaN time gives NaN mass properties, for columns and grains alike.
+        let state = motor.state(f64::NAN);
+        assert!(state.total.mass_kg.is_nan() && state.propellant.mass_kg.is_nan());
     }
 
     #[test]
@@ -520,6 +550,13 @@ mod tests {
         assert!(build(column, dry, nozzle(0.0, None)).is_err());
         assert!(build(column, dry, nozzle(0.01, Some(0.02))).is_err());
         assert!(SolidMotor::from_envelope(curve(), 0.038, 0.25, 0.7, 0.6).is_err());
+        assert!(matches!(
+            SolidMotor::from_envelope(curve(), 0.038, 0.25, f64::NAN, 0.6),
+            Err(MotorError::Domain {
+                what: "propellant mass (kg)",
+                ..
+            })
+        ));
         assert!(SolidMotor::from_envelope(curve(), 0.0, 0.25, 0.3, 0.6).is_err());
     }
 
@@ -585,6 +622,8 @@ mod tests {
         grains_center_of_mass_position: f64,
         coordinate_system_orientation: String,
         only_radial_burn: bool,
+        interpolation_method: String,
+        burn_time: Option<f64>,
     }
 
     #[derive(Debug, serde::Deserialize)]
@@ -626,9 +665,11 @@ mod tests {
     /// height. Positions are compared in hpr's motor frame (metres forward of the nozzle exit),
     /// relative to the motor's length.
     ///
-    /// Measured: every error is below 1e-4. The residual is RocketPy's ODE tolerance and its
-    /// linear interpolation between solver knots; hpr solves the grain geometry exactly. The test
-    /// holds 0.1%, ten times tighter than the done-when, so a regression shows long before 1%.
+    /// Measured: every error is below 1e-4. At RocketPy's own ODE knots hpr's exact web matches
+    /// RocketPy's bore and height to about 1e-9, so the residual is RocketPy's linear interpolation
+    /// between knots. The test holds 0.1%, ten times tighter than the done-when, so a regression
+    /// shows long before 1%. Because inputs and outputs share the frame mapping, loaded and
+    /// burned-out centres are also checked against values worked by hand from the cases' layouts.
     #[test]
     fn matches_rocketpy_solid_motor_for_three_bundled_motors() {
         let oracle: Oracle = serde_json::from_str(include_str!(
@@ -685,6 +726,34 @@ mod tests {
             };
             let motor =
                 SolidMotor::new(thrust, Propellant::Grains(grains), dry, Some(nozzle)).unwrap();
+            // The fixture must describe the model compared: linear thrust, the whole curve.
+            assert_eq!(inputs.interpolation_method, "linear");
+            assert_eq!(inputs.burn_time, None);
+            // Centres in hpr's frame, worked by hand from each case's layout (metres forward of
+            // the nozzle exit): the dry mass and grains at loaded, the dry mass at burnout.
+            let hand = match case.name.as_str() {
+                // Nozzle exit at 0: dry 0.2086 kg at 0.11, grains 0.2289391 kg at 0.13.
+                "cti-411i175-38mm-radial-burnout" => (0.2086, 0.11, 0.13),
+                // Axis from the forward closure to the nozzle exit at 0.404: dry at 0.25 and grains
+                // at 0.19 from the closure are 0.154 and 0.214 forward of the exit.
+                "cti-1633k940-54mm-axial-burnout-chamber-to-nozzle" => (0.5985, 0.154, 0.214),
+                // Nozzle exit at 0: dry 1.731 kg at 0.50, grains at 0.56.
+                "loki-m1378lr-54mm-inhibited-ends" => (1.731, 0.50, 0.56),
+                other => panic!("no hand values for {other}"),
+            };
+            let (dry_kg, dry_z, grains_z) = hand;
+            let m_p = case.scalars.propellant_initial_mass_kg;
+            let loaded_cg = (dry_kg * dry_z + m_p * grains_z) / (dry_kg + m_p);
+            assert!(
+                (motor.state(0.0).total.cg_m - loaded_cg).abs() < 1e-12,
+                "{}",
+                case.name
+            );
+            assert!(
+                (motor.state(motor.burnout_time_s()).total.cg_m - dry_z).abs() < 1e-12,
+                "{}",
+                case.name
+            );
 
             let scalars = &case.scalars;
             let close = |a: f64, b: f64| (a - b).abs() <= 1e-9 * b.abs();

@@ -23,8 +23,8 @@ pub enum MotorError {
         /// The text.
         text: String,
     },
-    /// A thrust curve needs at least one sample with positive thrust.
-    #[error("a thrust curve needs at least one sample with positive thrust")]
+    /// A thrust curve needs positive total impulse and a positive NFPA 1125 burn time.
+    #[error("a thrust curve needs positive total impulse and burn time")]
     NoThrust,
     /// Thrust-curve times must not decrease.
     #[error("thrust-curve times must not decrease; sample {index} at {time_s} s is earlier")]
@@ -44,6 +44,9 @@ pub enum MotorError {
         /// What is wrong.
         message: String,
     },
+    /// A motor catalog index that doesn't deserialize.
+    #[error("invalid motor catalog index: {0}")]
+    Catalog(String),
     /// Masses or geometry that contradict each other, such as a propellant mass above the total
     /// mass, or grains that don't fit.
     #[error("inconsistent motor: {0}")]

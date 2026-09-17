@@ -117,6 +117,8 @@ next header.
    prefer catalog metadata for delays.
 8. An entry with an error is skipped, with the error as a warning, when other entries in the file
    read; the reader resumes at the next comment line. With no entry read, the first error returns.
+   Every warning carries a kind: skipped (an entry lost), dropped (a value ignored) or unusual
+   (read as it stands).
 9. Comments: store the text after `;` verbatim, but drop comments that are empty after trimming.
    Comments between two entries belong to the next entry; comments after the last entry are file
    trailer comments.
@@ -129,9 +131,11 @@ an error there.
 
 - Each entry: its comments as `;text`, then the header with single spaces, then one `   t F` line
   per point, then a lone `;`. Finally the trailer comments. LF endings, a final newline, UTF-8.
-- Header tokens must be non-empty, whitespace-free and must not start with `;`. Comment text must
-  be non-empty, on one line, and without trailing whitespace (the reader would trim it). Otherwise
-  return an error, never a silent substitution.
+- The name must be one token that doesn't start with `;` (the line would read as a comment), and
+  the delays one token. The manufacturer may hold spaces if its words are separated by single
+  spaces, since the reader joins extra fields that way. Comment text must be non-empty, on one
+  line, and without trailing whitespace (the reader would trim it). Otherwise return an error,
+  never a silent substitution.
 - Numbers use Rust `{}` (Display). It prints the shortest digits that parse back to the same bits,
   never uses an exponent (older readers may not accept one), and writes `-0.0` as `-0`.
 - Points are written as stored: no origin is added or removed. The writer rejects negative or

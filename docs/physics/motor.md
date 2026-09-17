@@ -30,7 +30,13 @@ Sources:
   `"linear"`). Before the first sample the curve starts from `(0, 0)` when `t_0 > 0`, as the RASP
   format specifies and [TC-A] integrates. After the last sample `F = 0`.
 - Equal consecutive times are a **step**: the later value holds from that time on. Real files use
-  them for an abrupt burnout. Decreasing times and negative thrust are rejected.
+  them for an abrupt burnout. Decreasing times and negative thrust are rejected, and so is a curve
+  with no impulse or no NFPA burn time.
+- **Where [TC-A] differs.** Before integrating, ThrustCurve's code drops leading points below
+  500 µN and averages points closer than 50 µs (lines 40–91); hpr keeps leading zeros and treats
+  equal times as steps. The results are identical on every bundled curve. On the 1710 survey files
+  that read, they agree to 1e-9 except 17 with repeated times, where they differ by up to 1.1% in
+  average thrust. hpr keeps the step because a vertical drop is what the file draws.
 - **Total impulse:** the exact integral of the lines, `I = Σ ½ (F_i + F_{i+1}) (t_{i+1} − t_i)`
   ([SP] glossary p. 96: `I = ∫F dt`). `I(t)` is the same sum up to `t`, with the partial interval.
 - **Burn time (NFPA 1125):** from the moment the thrust first reaches 5% of peak to the moment it
@@ -70,6 +76,8 @@ c = I / m_p0,    ṁ(t) = F(t) / c,    m_p(t) = m_p0 (1 − I(t)/I)
   a solid cylinder).
 - **BATES grains** (`Propellant::Grains`): `N` identical grains `(R, r₀, h₀)`, spaced `h₀ + s`
   apart, burning on the bore and, unless inhibited, both ends ([RP] `solid_motor.py:487-632`).
+  Every grain needs a bore (`r₀ > 0`): a solid end burner shortens without widening, which this
+  regression (and RocketPy's) doesn't describe. Facing ends burn even with no gap, as in [RP].
   Every surface recedes by the same web `x`:
 
   ```text
@@ -110,7 +118,8 @@ c = I / m_p0,    ṁ(t) = F(t) / c,    m_p(t) = m_p0 (1 − I(t)/I)
   - ThrustCurve's loaded mass includes the reusable case ([TC-G] "Total Weight": "propellant and
     case").
   - [RP] `GenericMotor.load_from_eng` sets its chamber radius to the motor **diameter**
-    (`motor.py:1759-1761`), which doubles the radial terms. hpr uses `D/2`.
+    (`motor.py:1759-1761`), which quadruples the `r²` inertia terms (and the default nozzle
+    area it derives from that radius). hpr uses `D/2`.
 - **Catalog envelope:** diameter, length and masses come from the catalog metadata, not the curve
   file's header, which can be wrong (Loft lesson L43).
 
@@ -127,9 +136,13 @@ F(p_a) = F_curve + (p_ref − p_a) A_e,    A_e = π r_e²
   (`motor.py:1173-1191`) applies the same term.
 - It holds while the nozzle flows full. Sea-level tests of altitude nozzles can separate
   ([SP] pp. 32–34).
-- hpr applies it only while the curve's thrust is positive, and never lets thrust go negative.
-  Without a known nozzle it returns the curve. COTS files carry no exit diameter (`.rse`
-  `exitDia` is always 0).
+- hpr applies it strictly inside the burn, `0 < t < t_end`, as RocketPy's flight does
+  (`simulation/flight.py:1936-1956`), and never lets thrust go negative. Without a known nozzle it
+  returns the curve. COTS files carry no exit diameter (`.rse` `exitDia` is always 0).
+- **Limits.** The full-flow term steps to zero at `t_end` (the integrator should treat burnout as
+  an event). In the tail-off the real exit pressure falls with the chamber's, so the term
+  overstates thrust there: on the 411I175 (a 9.5 mm exit) in vacuum it adds 3.9 N·s in the 0.14 s
+  after the NFPA burn ends, which delivers 0.45 N·s itself; that is 0.95% of total impulse.
 
 ## Delays
 
@@ -139,15 +152,28 @@ F(p_a) = F_curve + (p_ref − p_a) A_e,    A_e = π r_e²
 ## Validation
 
 - **Catalog** (`catalog::tests`): all 32 bundled curves are within 1% of ThrustCurve's total
-  impulse, average thrust and burn time. Each is public domain, byte for byte its recorded SHA-256
-  (lessons L41–L43).
+  impulse, average thrust and burn time. **This is the bundling rule**, so it holds by
+  construction; the test guards the bundle against drift and mis-sourced curves (lesson L42). Of
+  554 public-domain curves, 196 pass (`docs/research/thrustcurve-data.md`, which also lists the
+  four motors whose stored values are printed coarser than 1%). Each bundled file is public domain
+  and byte for byte its recorded SHA-256 (lessons L41–L43).
+- **ThrustCurve's code** (`catalog::tests::every_bundled_curve_matches_thrustcurve_statistics_code`):
+  `validation/oracles/thrustcurve/analyze_stats.js` runs [TC-A] unchanged on every bundled curve
+  (`validation/fixtures/motor/thrustcurve-analyze-stats.json`). hpr's impulse, burn window, burn
+  time, average and peak thrust agree to 1.8e-15, so the definitions, not only the 1% rule, are
+  checked.
 - **RocketPy** (`motor::tests::matches_rocketpy_solid_motor_for_three_bundled_motors`): three
   bundled curves with BATES loads cover radial burnout, axial burnout, inhibited ends and both
   axis orientations. `validation/oracles/rocketpy/solid_motor.py` writes
-  `validation/fixtures/motor/rocketpy-solid-motor.json`.
-  - Every quantity is within 1e-4 of RocketPy on 203 times per motor: total and propellant mass,
-    centres, both inertias, bore and height.
-  - The residual is RocketPy's ODE tolerance and knot interpolation. The test holds 0.1%.
+  `validation/fixtures/motor/rocketpy-solid-motor.json`, and regenerates it byte for byte.
+  - On 203 times per motor, total mass, centre of mass, `I_t` and `I_a` agree with RocketPy within
+    7.9e-5 of RocketPy's own values.
+  - Quantities that go to zero are compared against a fixed scale: propellant mass and inertias
+    against their ignition values, grain height against its initial height, centres against the
+    motor length. On that scale they agree within 1e-4. Relative to their own tiny values in the
+    last grams of propellant they differ by up to 39%, from RocketPy's interpolation between ODE
+    knots and its early stop.
+  - The test holds 0.1% on these scales.
 - **Files:** 1710 of ThrustCurve's 1712 solid-motor files read and round-trip bit for bit (the other
   two have backwards times; `docs/format/`).
 - **Unit and property tests:** exact impulse integration, burn windows, grain volume inversion, the

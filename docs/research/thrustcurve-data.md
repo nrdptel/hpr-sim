@@ -118,13 +118,15 @@ Files within 1%. Impulse: trapezoid from an implicit (0, 0). Crossings: linear i
 | Impulse off more than 5% (up to 21%; likely a wrong curve, L42) | 41 |
 | Only on a value printed coarser than 1% (for example 0.23 s) | 34 |
 
-## Pins to add (not added here)
+## Pins
 
-- `[[snapshot]]`, ThrustCurve pages (same bytes on refetch 2026-09-17; sha256): `info/glossary.html`
-  1702cc6e…, `info/motorstats.html` 8cfaacf3…, `info/contribute.html` 35152a29…,
-  `info/api.html` 221e4814…, `api/v1/swagger.json` 566009ab….
-- `[[git]]` for `JohnCoker/thrustcurve3` at `577afa62302f70c6b2ba04e97a39240638cd704b`, ISC,
-  fetched. Alternatively, that commit's raw `simulate/analyze/analyze.js` (sha256 267eb536…).
+- Pinned in M1.3 (`validation/refs.lock.toml`): the glossary, motor-statistics, contribute, RASP
+  and simulators pages, and `analyze.js` at commit `577afa6`.
+- Not pinned: `info/api.html` (221e4814…) and `api/v1/swagger.json` (566009ab…), which only
+  describe the API.
 - The bundled curves are committed with their sha256 in `catalog.json`, so they need no refs pin.
   The 4 survey POST captures (2026-09-17T09:53Z) need a request body in snapshot pins; until
-  then, they stay an unpinned cache.
+  then, they stay an unpinned cache, and `bundle.py` checks licenses and samples against them.
+- **Coarse metadata.** Four bundled motors pass against stored values printed coarser than 1%:
+  Quest B4 (burn time 1.1 s, average thrust 4.4 N), CTI 68F240 (0.29 s), Loki J300LR (4.1 s) and
+  AeroTech K400C (3.2 s). Their 1% agreement is real but only as tight as those digits.

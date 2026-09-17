@@ -460,7 +460,7 @@ def main():
                   f"{'; '.join(r['issues'] + r['flags'])}")
 
     good = [r for r in results if r["license"] == "PD" and passes(r, A) and not
-            any(x.startswith("mentions") for x in r["flags"]) and "non-monotonic time" not in
+            any(x.startswith("mentions") for x in r["flags"]) and "time goes backwards" not in
             r["issues"]]
     if args.passing:
         print("\n== Passing PD files (definition A, no provenance flag) ==")

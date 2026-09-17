@@ -14,7 +14,7 @@ use hpr_motor::{BatesGrains, MassElement, Propellant, SolidMotor, eng, rse};
 
 fn benches(c: &mut Criterion) {
     let catalog = Catalog::bundled().unwrap();
-    // Loki M1378LR: a 54 mm, 4 s curve with 100-odd points.
+    // Loki M1378LR: a 54 mm, 4 s curve with 46 points.
     let entry = catalog.find("M1378LR").next().unwrap();
     let curve = &entry.curves[0];
     let text = bundled_curve_text(&curve.file).unwrap();

@@ -3,6 +3,12 @@
 //!
 //! - [`curve`]: thrust curves, total impulse, NFPA 1125 burn time and average thrust.
 //! - [`class`]: impulse classes (`1/8A` to `O` and beyond).
+//! - [`motor`]: the solid motor: consumption, mass properties and ambient-pressure thrust, with
+//!   [`grains`] (BATES grains) and [`mass`] (axisymmetric mass elements).
+//! - [`eng`] and [`rse`]: RASP and RockSim motor files, with [`delay`] strings.
+//! - [`catalog`]: the offline catalog and its bundled ThrustCurve.org curves.
+//!
+//! Physics: `docs/physics/motor.md`. Formats: `docs/format/eng.md`, `docs/format/rse.md`.
 
 mod bundled;
 pub mod catalog;
@@ -20,12 +26,12 @@ pub mod text;
 pub use catalog::{Catalog, CatalogCurve, CatalogMotor};
 pub use class::ImpulseClass;
 pub use curve::ThrustCurve;
-pub use delay::{Delay, DelayList};
+pub use delay::{Delay, DelayList, DelayWarning};
 pub use error::MotorError;
 pub use grains::{BatesGrains, GrainShape};
 pub use mass::MassElement;
 pub use motor::{MotorState, Nozzle, Propellant, PropellantColumn, SolidMotor};
-pub use text::{ParseWarning, Parsed};
+pub use text::{ParseWarning, Parsed, WarningKind};
 
 #[cfg(test)]
 mod tests {

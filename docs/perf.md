@@ -15,17 +15,20 @@ The motor calls the flight engine makes on every derivative evaluation, and read
 
 | call | median |
 |---|---|
-| `ThrustCurve::thrust_n` | 3.53 ns |
-| `SolidMotor::state`, envelope column | 12.5 ns |
-| `SolidMotor::state`, BATES grains | 28.4 ns |
-| `eng::parse`, one bundled curve | 3.32 µs |
-| `rse::parse`, the same curve | 14.2 µs |
-| `Catalog::bundled` (index only, 32 motors) | 33.1 µs |
+| `ThrustCurve::thrust_n` | 3.54 ns |
+| `SolidMotor::state`, envelope column | 12.7 ns |
+| `SolidMotor::state`, BATES grains | 33.3 ns |
+| `eng::parse`, one bundled curve | 3.47 µs |
+| `rse::parse`, the same curve | 10.9 µs |
+| `Catalog::bundled` (index only, 32 motors) | 33.3 µs |
 
-- **Inner-loop cost.** About 10⁴ derivative evaluations per flight at 28 ns is 0.3 ms.
+- **Inner-loop cost.** About 10⁴ derivative evaluations per flight at 33 ns is 0.3 ms.
 - **Grain solve.** The first version took 441 ns: at the root, Newton's step landed on the edge of
   its bracket, and the solver then bisected about 50 more times. Stopping once a step is within
-  rounding brought it to 28 ns with the same results.
+  rounding brought it to 28 ns with the same results (33 ns once NaN inputs were passed through).
+- **`.rse` line numbers.** Looking each node's line up in the text again made reading quadratic
+  (1.2 s for 1.35 MB). A table of line starts, built once, fixed it; this curve went from 14.2 to
+  10.9 µs.
 
 ## Atmosphere, wind and turbulence (M1.2)
 

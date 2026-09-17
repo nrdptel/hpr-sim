@@ -114,8 +114,12 @@ With every observed file setting both auto-calc flags to `1`, RockSim may ignore
 1. Use a conforming XML parser (`roxmltree`): it handles CDATA, entities and end-of-line
    normalization [X §2.11]. Refuse DTDs and external entities (core crates do no I/O). The reader
    takes text and strips a BOM; decoding bytes is the caller's job, in `hpr-io`.
-2. Take every `engine` element at any depth, so a bare `<engine>` root [P p.2] also works. An
-   engine with an error is skipped, with the error as a warning, when others in the file read.
+2. Take every `engine` element at any depth, so a bare `<engine>` root [P p.2] also works, but not
+   one nested inside another engine. An engine with an error is skipped, with the error as a
+   warning, when others in the file read. With repeated `<data>` or `<comments>`, the last is read,
+   with a warning. `<comments>` keeps only text: XML comments and processing instructions inside
+   are not part of it, and nested markup contributes its text. Every warning carries a kind:
+   skipped (an engine lost), dropped (a value ignored) or unusual (read as it stands).
    Points are `eng-data` children of `data`; also accept `point` [P p.2].
 3. Match attribute names exactly, then ASCII case-insensitively (`Type`/`type`); accept
    `initMass`/`propMass` as aliases [P p.2]. Ignore the rendering attributes silently; warn on and
@@ -127,7 +131,7 @@ With every observed file setting both auto-calc flags to `1`, RockSim may ignore
    warning.
 5. Numbers: trim XML whitespace, then parse with Rust's f64 parser. Reject non-finite values:
    Rust accepts `inf`, `infinity` and `NaN`. Warn if `propWt` ≥ `initWt`.
-   Keep file units (g, mm) in the file model, in fields named for them (`init_mass_g`). Convert
+   Keep file units (g, mm) in the file model, in fields named for them (`initial_mass_g`). Convert
    to SI only when building the physical motor: g → kg → g is not bit-exact (`4030.` comes back
    as `4030.0000000000005`; 14 of 1330 distinct mass and length values in the sets fail).
 6. Keep strings verbatim, including the spaces in `mfg`; normalize names in the catalog layer.

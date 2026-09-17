@@ -48,6 +48,7 @@ pub struct Snapshot {
 
 /// Whether a motor is used once or reloaded into a reusable case.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[non_exhaustive]
 pub enum MotorType {
     /// A single-use motor (ThrustCurve `SU`).
     #[serde(rename = "SU")]
@@ -55,6 +56,10 @@ pub enum MotorType {
     /// A reload for a reusable case (ThrustCurve `reload`).
     #[serde(rename = "reload")]
     Reload,
+    /// A hybrid motor (ThrustCurve `hybrid`). ThrustCurve lists them; hpr doesn't model them (COTS
+    /// solids only), and the bundled catalog has none.
+    #[serde(rename = "hybrid")]
+    Hybrid,
 }
 
 /// One motor's catalog entry, in ThrustCurve's units.
@@ -119,6 +124,7 @@ pub struct CatalogCurve {
     /// Who produced the data.
     pub source: CurveSource,
     /// The data license.
+    #[serde(default)]
     pub license: CurveLicense,
     /// The file's path relative to the catalog index.
     pub file: String,
@@ -134,6 +140,7 @@ pub struct CatalogCurve {
 
 /// A thrust-curve file format.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[non_exhaustive]
 pub enum CurveFormat {
     /// RASP `.eng`.
     #[serde(rename = "RASP")]
@@ -145,6 +152,7 @@ pub enum CurveFormat {
 
 /// Who produced a curve (ThrustCurve's `source`).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[non_exhaustive]
 pub enum CurveSource {
     /// A certification body's test data.
     #[serde(rename = "cert")]
@@ -157,8 +165,10 @@ pub enum CurveSource {
     User,
 }
 
-/// A curve's data license, as ThrustCurve records it.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+/// A curve's data license, as ThrustCurve records it. ThrustCurve's API leaves the key out when no
+/// license is recorded, which reads as [`CurveLicense::Unknown`].
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[non_exhaustive]
 pub enum CurveLicense {
     /// Public domain.
     #[serde(rename = "PD")]
@@ -170,7 +180,8 @@ pub enum CurveLicense {
     #[serde(rename = "other")]
     Other,
     /// No license recorded.
-    #[serde(rename = "unknown")]
+    #[default]
+    #[serde(rename = "unknown", alias = "")]
     Unknown,
 }
 
@@ -187,7 +198,7 @@ impl Catalog {
     ///
     /// # Errors
     ///
-    /// [`MotorError::Parse`] if the bundled index doesn't deserialize, which a test rules out.
+    /// [`MotorError::Catalog`] if the bundled index doesn't deserialize, which a test rules out.
     pub fn bundled() -> Result<Self, MotorError> {
         Self::from_json(bundled::CATALOG_JSON)
     }
@@ -196,12 +207,9 @@ impl Catalog {
     ///
     /// # Errors
     ///
-    /// [`MotorError::Parse`] if the text isn't a catalog index.
+    /// [`MotorError::Catalog`] if the text isn't a catalog index.
     pub fn from_json(text: &str) -> Result<Self, MotorError> {
-        serde_json::from_str(text).map_err(|error| MotorError::Parse {
-            what: "motor catalog index",
-            text: error.to_string(),
-        })
+        serde_json::from_str(text).map_err(|error| MotorError::Catalog(error.to_string()))
     }
 
     /// The motors whose designation or common name matches `name`, ignoring ASCII case, spaces
@@ -220,6 +228,45 @@ fn normalize(name: &str) -> String {
         .filter(|c| !c.is_whitespace() && *c != '-')
         .map(|c| c.to_ascii_lowercase())
         .collect()
+}
+
+/// A curve file's thrust curve and its header's propellant and loaded masses, kg.
+fn read_curve_file(
+    curve: &CatalogCurve,
+    text: &str,
+) -> Result<(ThrustCurve, f64, f64), MotorError> {
+    let one = |count: usize| {
+        if count == 1 {
+            Ok(())
+        } else {
+            Err(MotorError::Inconsistent(format!(
+                "the curve file {} holds {count} motors, not one",
+                curve.file
+            )))
+        }
+    };
+    match curve.format {
+        CurveFormat::Rasp => {
+            let file = eng::parse(text)?.value;
+            one(file.entries.len())?;
+            let entry = &file.entries[0];
+            Ok((
+                entry.thrust_curve()?,
+                entry.propellant_mass_kg,
+                entry.total_mass_kg,
+            ))
+        }
+        CurveFormat::RockSim => {
+            let file = rse::parse(text)?.value;
+            one(file.engines.len())?;
+            let engine = &file.engines[0];
+            Ok((
+                engine.thrust_curve()?,
+                engine.propellant_mass_g * 1e-3,
+                engine.initial_mass_g * 1e-3,
+            ))
+        }
+    }
 }
 
 /// The text of a bundled curve file, by its path in the bundled index.
@@ -248,28 +295,7 @@ impl CatalogMotor {
         curve: &CatalogCurve,
         text: &str,
     ) -> Result<ThrustCurve, MotorError> {
-        let one = |count: usize| {
-            if count == 1 {
-                Ok(())
-            } else {
-                Err(MotorError::Inconsistent(format!(
-                    "the curve file {} holds {count} motors, not one",
-                    curve.file
-                )))
-            }
-        };
-        match curve.format {
-            CurveFormat::Rasp => {
-                let file = eng::parse(text)?.value;
-                one(file.entries.len())?;
-                file.entries[0].thrust_curve()
-            }
-            CurveFormat::RockSim => {
-                let file = rse::parse(text)?.value;
-                one(file.engines.len())?;
-                file.engines[0].thrust_curve()
-            }
-        }
+        read_curve_file(curve, text).map(|(thrust, _, _)| thrust)
     }
 
     /// The motor with the curve read from `text`, built with [`SolidMotor::from_envelope`] from
@@ -281,22 +307,7 @@ impl CatalogMotor {
     /// As [`CatalogMotor::thrust_curve`] and [`SolidMotor::from_envelope`], and
     /// [`MotorError::Inconsistent`] when neither the metadata nor the file gives the masses.
     pub fn motor(&self, curve: &CatalogCurve, text: &str) -> Result<SolidMotor, MotorError> {
-        let thrust = self.thrust_curve(curve, text)?;
-        let (header_propellant_kg, header_total_kg) = match curve.format {
-            CurveFormat::Rasp => {
-                let file = eng::parse(text)?.value;
-                let entry = &file.entries[0];
-                (entry.propellant_mass_kg, entry.total_mass_kg)
-            }
-            CurveFormat::RockSim => {
-                let file = rse::parse(text)?.value;
-                let engine = &file.engines[0];
-                (
-                    engine.propellant_mass_g * 1e-3,
-                    engine.initial_mass_g * 1e-3,
-                )
-            }
-        };
+        let (thrust, header_propellant_kg, header_total_kg) = read_curve_file(curve, text)?;
         let propellant_kg = self
             .propellant_mass_g
             .map_or(header_propellant_kg, |g| g * 1e-3);
@@ -468,14 +479,7 @@ mod tests {
                         let written = eng::write(&first).unwrap();
                         let second = eng::parse(&written).unwrap().value;
                         assert_eq!(second, first, "{}", curve.file);
-                        let bits = |f: &eng::EngFile| -> Vec<u64> {
-                            f.entries[0]
-                                .points
-                                .iter()
-                                .flat_map(|&(t, f)| [t.to_bits(), f.to_bits()])
-                                .collect()
-                        };
-                        assert_eq!(bits(&second), bits(&first));
+                        assert_eq!(eng::tests::bits(&second), eng::tests::bits(&first));
                         assert_eq!(eng::write(&second).unwrap(), written);
                     }
                     CurveFormat::RockSim => {
@@ -483,6 +487,7 @@ mod tests {
                         let written = rse::write(&first).unwrap();
                         let second = rse::parse(&written).unwrap().value;
                         assert_eq!(second, first, "{}", curve.file);
+                        assert_eq!(rse::tests::bits(&second), rse::tests::bits(&first));
                         assert_eq!(rse::write(&second).unwrap(), written);
                     }
                 }
@@ -512,9 +517,108 @@ mod tests {
     }
 
     #[test]
-    fn rejects_non_catalog_json_and_unbundleable_licenses() {
-        assert!(Catalog::from_json("{}").is_err());
-        let json = bundled::CATALOG_JSON.replacen("\"license\": \"PD\"", "\"license\": \"GPL\"", 1);
-        assert!(Catalog::from_json(&json).is_err());
+    fn catalog_json_reads_thrustcurve_license_values_and_rejects_others() {
+        assert!(matches!(
+            Catalog::from_json("{}"),
+            Err(MotorError::Catalog(_))
+        ));
+        let with = |license: &str| {
+            Catalog::from_json(&bundled::CATALOG_JSON.replacen("\"license\": \"PD\",", license, 1))
+        };
+        let first_license = |catalog: Catalog| catalog.motors[0].curves[0].license;
+        assert!(with("\"license\": \"GPL\",").is_err());
+        assert_eq!(
+            first_license(with("\"license\": \"free\",").unwrap()),
+            CurveLicense::Free
+        );
+        // ThrustCurve's API leaves the key out, or blank, when no license is recorded.
+        assert_eq!(first_license(with("").unwrap()), CurveLicense::Unknown);
+        assert_eq!(
+            first_license(with("\"license\": \"\",").unwrap()),
+            CurveLicense::Unknown
+        );
+        let hybrid = bundled::CATALOG_JSON.replacen(
+            "\"motor_type\": \"SU\"",
+            "\"motor_type\": \"hybrid\"",
+            1,
+        );
+        assert_eq!(
+            Catalog::from_json(&hybrid).unwrap().motors[0].motor_type,
+            MotorType::Hybrid
+        );
+    }
+
+    #[derive(Debug, serde::Deserialize)]
+    struct AnalyzeOracle {
+        oracle: String,
+        curves: Vec<AnalyzeCurve>,
+    }
+
+    #[derive(Debug, serde::Deserialize)]
+    struct AnalyzeCurve {
+        file: String,
+        total_impulse_ns: f64,
+        burn_time_s: f64,
+        average_thrust_n: f64,
+        max_thrust_n: f64,
+        burn_start_s: f64,
+        burn_end_s: f64,
+    }
+
+    /// hpr's statistics against ThrustCurve.org's own code (`simulate/analyze/analyze.js`, run
+    /// unchanged by `validation/oracles/thrustcurve/analyze_stats.js`) on every bundled curve.
+    /// Unlike the 1% check against the stored values, which chose the bundle, this can fail: it
+    /// checks that hpr computes what ThrustCurve computes, to rounding.
+    #[test]
+    fn every_bundled_curve_matches_thrustcurve_statistics_code() {
+        let oracle: AnalyzeOracle = serde_json::from_str(include_str!(
+            "../../../validation/fixtures/motor/thrustcurve-analyze-stats.json"
+        ))
+        .unwrap();
+        assert!(oracle.oracle.contains("analyze.js at commit 577afa6"));
+        let catalog = bundled();
+        assert_eq!(oracle.curves.len(), bundled::CURVE_FILES.len());
+        let mut worst = 0.0f64;
+        for expected in &oracle.curves {
+            let (motor, curve) = catalog
+                .motors
+                .iter()
+                .find_map(|m| {
+                    m.curves
+                        .iter()
+                        .find(|c| c.file == expected.file)
+                        .map(|c| (m, c))
+                })
+                .unwrap();
+            let thrust = motor
+                .thrust_curve(curve, bundled_curve_text(&curve.file).unwrap())
+                .unwrap();
+            let (start, end) = thrust.burn_window_s();
+            for (ours, theirs, what) in [
+                (
+                    thrust.total_impulse_ns(),
+                    expected.total_impulse_ns,
+                    "total impulse",
+                ),
+                (thrust.burn_time_s(), expected.burn_time_s, "burn time"),
+                (
+                    thrust.average_thrust_n(),
+                    expected.average_thrust_n,
+                    "average thrust",
+                ),
+                (thrust.peak_thrust_n(), expected.max_thrust_n, "peak thrust"),
+                (start, expected.burn_start_s, "burn start"),
+                (end, expected.burn_end_s, "burn end"),
+            ] {
+                let error = (ours - theirs).abs() / theirs.abs().max(1e-3);
+                worst = worst.max(error);
+                assert!(
+                    error <= 1e-12,
+                    "{}: {what} {ours} against {theirs}",
+                    expected.file
+                );
+            }
+        }
+        eprintln!("largest relative difference from ThrustCurve's code: {worst:.2e}");
     }
 }

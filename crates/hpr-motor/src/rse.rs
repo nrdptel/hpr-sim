@@ -18,7 +18,7 @@ use serde::{Deserialize, Serialize};
 use crate::curve::ThrustCurve;
 use crate::delay::DelayList;
 use crate::error::MotorError;
-use crate::text::{ParseWarning, Parsed, check_writable, finite};
+use crate::text::{ParseWarning, Parsed, WarningKind, check_writable, finite};
 
 const FORMAT: &str = ".rse";
 
@@ -113,15 +113,15 @@ impl RseEngine {
 /// Reads a `.rse` file.
 ///
 /// An engine with an error is skipped, with the error as a warning, when other engines in the file
-/// read.
+/// read. An `<engine>` nested inside another engine is not read.
 ///
 /// # Errors
 ///
 /// [`MotorError::Syntax`], with the line number, for XML that isn't well formed (or has a DTD), or
 /// no `<engine>` elements; and, when no engine reads, the first engine's error: a missing required
-/// attribute (`code`, `dia`, `len`, `initWt`,
-/// `propWt`), an unreadable or non-finite number, a non-positive diameter or length, a negative
-/// mass, fewer than two points, a point without `t` or `f`, or negative or decreasing time.
+/// attribute (`code`, `dia`, `len`, `initWt`, `propWt`), an unreadable or non-finite number, a
+/// non-positive diameter or length, a negative mass, fewer than two points, a point without `t`
+/// or `f`, or negative or decreasing time.
 pub fn parse(text: &str) -> Result<Parsed<RseFile>, MotorError> {
     let text = text.strip_prefix('\u{feff}').unwrap_or(text);
     let options = ParsingOptions {
@@ -134,12 +134,26 @@ pub fn parse(text: &str) -> Result<Parsed<RseFile>, MotorError> {
             format!("not well-formed XML: {error}"),
         )
     })?;
+    let lines = Lines::new(text);
     let mut warnings = Vec::new();
     let mut engines = Vec::new();
     let mut errors = Vec::new();
-    for node in doc.descendants().filter(|node| node.has_tag_name("engine")) {
+    let is_engine = |node: &Node<'_, '_>| node.has_tag_name("engine");
+    for node in doc.descendants().filter(is_engine) {
+        if node
+            .ancestors()
+            .skip(1)
+            .any(|ancestor| is_engine(&ancestor))
+        {
+            warnings.push(ParseWarning::new(
+                lines.of(node),
+                WarningKind::Dropped,
+                "an <engine> inside another engine is ignored",
+            ));
+            continue;
+        }
         let mut engine_warnings = Vec::new();
-        match engine(&doc, node, &mut engine_warnings) {
+        match engine(&lines, node, &mut engine_warnings) {
             Ok(engine) => {
                 engines.push(engine);
                 warnings.append(&mut engine_warnings);
@@ -158,16 +172,38 @@ pub fn parse(text: &str) -> Result<Parsed<RseFile>, MotorError> {
             MotorError::Syntax { line, .. } => *line,
             _ => 0,
         };
-        warnings.push(ParseWarning {
+        warnings.push(ParseWarning::new(
             line,
-            message: format!("engine skipped: {error}"),
-        });
+            WarningKind::Skipped,
+            format!("engine skipped: {error}"),
+        ));
     }
     warnings.sort_by_key(|warning| warning.line);
     Ok(Parsed {
         value: RseFile { engines },
         warnings,
     })
+}
+
+/// The byte offset where each line starts, to turn node positions into line numbers without
+/// rescanning the text for every node.
+struct Lines {
+    starts: Vec<usize>,
+}
+
+impl Lines {
+    fn new(text: &str) -> Self {
+        let starts = std::iter::once(0)
+            .chain(text.match_indices('\n').map(|(i, _)| i + 1))
+            .collect();
+        Self { starts }
+    }
+
+    /// The 1-based line a node starts on.
+    fn of(&self, node: Node<'_, '_>) -> usize {
+        self.starts
+            .partition_point(|&start| start <= node.range().start)
+    }
 }
 
 /// Writes a `.rse` file in RockSim's layout and attribute order.
@@ -324,11 +360,11 @@ fn xml_text(value: &str, attribute: bool) -> Result<String, MotorError> {
 }
 
 fn engine(
-    doc: &Document<'_>,
+    lines: &Lines,
     node: Node<'_, '_>,
     warnings: &mut Vec<ParseWarning>,
 ) -> Result<RseEngine, MotorError> {
-    let line = line_of(doc, node);
+    let line = lines.of(node);
     for attribute in node.attributes() {
         let name = attribute.name();
         if !KNOWN.iter().any(|known| known.eq_ignore_ascii_case(name))
@@ -336,20 +372,22 @@ fn engine(
                 .iter()
                 .any(|known| known.eq_ignore_ascii_case(name))
         {
-            warnings.push(ParseWarning {
+            warnings.push(ParseWarning::new(
                 line,
-                message: format!("unknown <engine> attribute `{name}` ignored"),
-            });
+                WarningKind::Dropped,
+                format!("unknown <engine> attribute `{name}` ignored"),
+            ));
         }
     }
     let code = attr(node, &["code"]).ok_or_else(|| missing(line, "code"))?;
     let manufacturer = match attr(node, &["mfg"]) {
         Some(mfg) => mfg.to_owned(),
         None => {
-            warnings.push(ParseWarning {
+            warnings.push(ParseWarning::new(
                 line,
-                message: format!("engine {code:?} has no `mfg`; read as empty"),
-            });
+                WarningKind::Unusual,
+                format!("engine {code:?} has no `mfg`; read as empty"),
+            ));
             String::new()
         }
     };
@@ -373,23 +411,25 @@ fn engine(
         }
     }
     if propellant_mass_g >= initial_mass_g && initial_mass_g > 0.0 {
-        warnings.push(ParseWarning {
+        warnings.push(ParseWarning::new(
             line,
-            message: format!(
+            WarningKind::Unusual,
+            format!(
                 "engine {code:?}: propellant mass {propellant_mass_g} g is not below the loaded \
                  mass {initial_mass_g} g"
             ),
-        });
+        ));
     }
     let mut flag = |name: &'static str| match attr(node, &[name]) {
         None => None,
         Some("1") => Some(true),
         Some("0") => Some(false),
         Some(other) => {
-            warnings.push(ParseWarning {
+            warnings.push(ParseWarning::new(
                 line,
-                message: format!("`{name}` is {other:?}, not 0 or 1; ignored"),
-            });
+                WarningKind::Dropped,
+                format!("`{name}` is {other:?}, not 0 or 1; ignored"),
+            ));
             None
         }
     };
@@ -399,24 +439,39 @@ fn engine(
     let mut comments = None;
     let mut data = None;
     for child in node.children().filter(Node::is_element) {
-        match child.tag_name().name() {
-            "comments" => {
-                comments = Some(
+        let name = child.tag_name().name();
+        let duplicate = match name {
+            "comments" => comments
+                .replace(
+                    // The text only: XML comments and processing instructions inside are not part
+                    // of it, and nested markup contributes its text.
                     child
-                        .children()
-                        .filter_map(|c| c.text())
+                        .descendants()
+                        .filter(Node::is_text)
+                        .filter_map(|text| text.text())
                         .collect::<String>(),
-                );
+                )
+                .is_some(),
+            "data" => data.replace(child).is_some(),
+            other => {
+                warnings.push(ParseWarning::new(
+                    lines.of(child),
+                    WarningKind::Dropped,
+                    format!("unknown element <{other}> in an engine ignored"),
+                ));
+                false
             }
-            "data" => data = Some(child),
-            other => warnings.push(ParseWarning {
-                line: line_of(doc, child),
-                message: format!("unknown element <{other}> in an engine ignored"),
-            }),
+        };
+        if duplicate {
+            warnings.push(ParseWarning::new(
+                lines.of(child),
+                WarningKind::Dropped,
+                format!("engine {code:?} has more than one <{name}>; the last is read"),
+            ));
         }
     }
     let data = data.ok_or_else(|| syntax(line, format!("engine {code:?} has no <data>")))?;
-    let points = points(doc, data, code, warnings)?;
+    let points = points(lines, data, code, warnings)?;
 
     let engine = RseEngine {
         manufacturer,
@@ -469,22 +524,23 @@ const KNOWN: [&str; 20] = [
 ];
 
 fn points(
-    doc: &Document<'_>,
+    lines: &Lines,
     data: Node<'_, '_>,
     code: &str,
     warnings: &mut Vec<ParseWarning>,
 ) -> Result<Vec<RsePoint>, MotorError> {
     let mut points: Vec<RsePoint> = Vec::new();
     for node in data.children().filter(Node::is_element) {
-        let line = line_of(doc, node);
+        let line = lines.of(node);
         if !(node.has_tag_name("eng-data") || node.has_tag_name("point")) {
-            warnings.push(ParseWarning {
+            warnings.push(ParseWarning::new(
                 line,
-                message: format!(
+                WarningKind::Dropped,
+                format!(
                     "unknown element <{}> in <data> ignored",
                     node.tag_name().name()
                 ),
-            });
+            ));
             continue;
         }
         let get = |name: &'static str| -> Result<Option<f64>, MotorError> {
@@ -515,7 +571,7 @@ fn points(
             cg_mm: get("cg")?,
         });
     }
-    let line = line_of(doc, data);
+    let line = lines.of(data);
     if points.len() < 2 {
         return Err(syntax(
             line,
@@ -525,41 +581,47 @@ fn points(
     let total = points.len();
     let partial = |count: usize| count != 0 && count != total;
     if partial(points.iter().filter(|p| p.mass_g.is_some()).count()) {
-        warnings.push(ParseWarning {
+        warnings.push(ParseWarning::new(
             line,
-            message: format!("engine {code:?} gives `m` on only some points; all dropped"),
-        });
+            WarningKind::Dropped,
+            format!("engine {code:?} gives `m` on only some points; all dropped"),
+        ));
         points.iter_mut().for_each(|p| p.mass_g = None);
     }
     if partial(points.iter().filter(|p| p.cg_mm.is_some()).count()) {
-        warnings.push(ParseWarning {
+        warnings.push(ParseWarning::new(
             line,
-            message: format!("engine {code:?} gives `cg` on only some points; all dropped"),
-        });
+            WarningKind::Dropped,
+            format!("engine {code:?} gives `cg` on only some points; all dropped"),
+        ));
         points.iter_mut().for_each(|p| p.cg_mm = None);
     }
     Ok(points)
 }
 
-/// Warnings about a curve's end and summary attributes that disagree with the curve.
+/// Warnings about a curve's end, its delays, and summary attributes that disagree with the curve.
 fn summary_warnings(engine: &RseEngine, line: usize, warnings: &mut Vec<ParseWarning>) {
-    let mut warn = |message: String| {
-        warnings.push(ParseWarning {
+    let mut warn = |kind: WarningKind, message: String| {
+        warnings.push(ParseWarning::new(
             line,
-            message: format!("engine {:?}: {message}", engine.code),
-        });
+            kind,
+            format!("engine {:?}: {message}", engine.code),
+        ));
     };
+    for warning in engine.delays().warnings {
+        warn(warning.kind, warning.message);
+    }
     if let Some(last) = engine.points.last()
         && last.thrust_n != 0.0
     {
-        warn(format!("the curve ends at {} N, not zero", last.thrust_n));
+        warn(
+            WarningKind::Unusual,
+            format!("the curve ends at {} N, not zero", last.thrust_n),
+        );
     }
     if engine.points.iter().any(|p| p.thrust_n < 0.0) {
-        warn("the curve has negative thrust".into());
+        warn(WarningKind::Unusual, "the curve has negative thrust".into());
         return;
-    }
-    for message in engine.delays().warnings {
-        warn(message);
     }
     let Ok(curve) = engine.thrust_curve() else {
         return;
@@ -571,9 +633,10 @@ fn summary_warnings(engine: &RseEngine, line: usize, warnings: &mut Vec<ParseWar
         if let Some(given) = given
             && (given - computed).abs() > 0.01 * computed.abs()
         {
-            warn(format!(
-                "`{name}` {given} differs from the curve's {computed} by more than 1%"
-            ));
+            warn(
+                WarningKind::Unusual,
+                format!("`{name}` {given} differs from the curve's {computed} by more than 1%"),
+            );
         }
     }
 }
@@ -599,10 +662,6 @@ fn check_dimensions(diameter_mm: f64, length_mm: f64) -> Result<(), MotorError> 
     Ok(())
 }
 
-fn line_of(doc: &Document<'_>, node: Node<'_, '_>) -> usize {
-    doc.text_pos_at(node.range().start).row as usize
-}
-
 fn number(text: &str, what: &'static str, line: usize) -> Result<f64, MotorError> {
     finite(text, what).map_err(|_| syntax(line, format!("can't read `{what}` from {text:?}")))
 }
@@ -620,7 +679,7 @@ fn syntax(line: usize, message: String) -> MotorError {
 }
 
 #[cfg(test)]
-mod tests {
+pub(crate) mod tests {
     use proptest::prelude::*;
 
     use super::*;
@@ -748,6 +807,97 @@ mod tests {
         }
     }
 
+    /// Every f64 in a file, as bits, `None` as a marker: `==` alone treats `-0.0` as `0.0`.
+    pub(crate) fn bits(file: &RseFile) -> Vec<Option<u64>> {
+        file.engines
+            .iter()
+            .flat_map(|e| {
+                [
+                    Some(e.diameter_mm),
+                    Some(e.length_mm),
+                    Some(e.initial_mass_g),
+                    Some(e.propellant_mass_g),
+                    e.average_thrust_n,
+                    e.peak_thrust_n,
+                    e.throat_diameter_mm,
+                    e.exit_diameter_mm,
+                    e.total_impulse_ns,
+                    e.burn_time_s,
+                    e.mass_fraction_pct,
+                    e.isp_s,
+                ]
+                .into_iter()
+                .chain(
+                    e.points
+                        .iter()
+                        .flat_map(|p| [Some(p.time_s), Some(p.thrust_n), p.mass_g, p.cg_mm]),
+                )
+                .map(|value| value.map(f64::to_bits))
+                .collect::<Vec<_>>()
+            })
+            .collect()
+    }
+
+    #[test]
+    fn comments_keep_only_their_text() {
+        let text = r#"<engine code="A" mfg="X" dia="18" len="70" initWt="16" propWt="3">
+<comments>keep<!-- editor note -->this<?pi x?><b>bold</b><b>a<i>b</i>c</b></comments>
+<comments>second</comments>
+<data><eng-data t="0" f="0"/><eng-data t="0.2" f="2"/><eng-data t="0.3" f="0"/></data>
+<data><eng-data t="0" f="0"/><eng-data t="0.2" f="3"/><eng-data t="0.3" f="0"/></data>
+<comments><engine code="B" mfg="X" dia="18" len="70" initWt="16" propWt="3"><data>
+<eng-data t="0" f="0"/><eng-data t="0.2" f="2"/></data></engine></comments>
+</engine>"#;
+        let parsed = parse(text).unwrap();
+        assert_eq!(
+            parsed.value.engines.len(),
+            1,
+            "the nested engine is not read"
+        );
+        let engine = &parsed.value.engines[0];
+        // The last <comments> wins; it holds only the nested engine, whose text is one line break.
+        assert_eq!(engine.comments.as_deref(), Some("\n"));
+        assert_eq!(engine.points[1].thrust_n, 3.0);
+        let dropped: Vec<usize> = parsed
+            .warnings
+            .iter()
+            .filter(|w| w.kind == WarningKind::Dropped)
+            .map(|w| w.line)
+            .collect();
+        assert_eq!(dropped, [3, 5, 6, 6], "{:?}", parsed.warnings);
+        let single = r#"<engine code="A" mfg="X" dia="18" len="70" initWt="16" propWt="3">
+<comments>keep<!-- editor note -->this<?pi x?><b>bold</b><b>a<i>b</i>c</b></comments>
+<data><eng-data t="0" f="0"/><eng-data t="0.2" f="2"/><eng-data t="0.3" f="0"/></data></engine>"#;
+        let engine = &parse(single).unwrap().value.engines[0];
+        assert_eq!(engine.comments.as_deref(), Some("keepthisboldabc"));
+    }
+
+    #[test]
+    fn large_files_read_in_linear_time() {
+        // 200 engines of 500 points each (about 10 MB of XML): line numbers come from a table, so
+        // this takes milliseconds rather than rescanning the text for every point.
+        let points: String = (0..500)
+            .map(|i| {
+                format!(
+                    "<eng-data t=\"{}\" f=\"{}\" m=\"1\" cg=\"35\"/>\n",
+                    f64::from(i) * 0.01,
+                    10.0
+                )
+            })
+            .collect();
+        let engine = format!(
+            "<engine code=\"A\" mfg=\"X\" dia=\"18\" len=\"70\" initWt=\"16\" propWt=\"3\">\n<data>\n{points}</data></engine>\n"
+        );
+        let text = format!(
+            "<engine-database><engine-list>\n{}</engine-list></engine-database>",
+            engine.repeat(200)
+        );
+        let parsed = parse(&text).unwrap();
+        assert_eq!(parsed.value.engines.len(), 200);
+        let last = text.lines().count();
+        assert!(parsed.warnings.iter().all(|w| w.line <= last));
+    }
+
     #[test]
     fn a_broken_engine_is_skipped_with_a_warning() {
         let text = r#"<engine-database><engine-list>
@@ -761,7 +911,7 @@ mod tests {
         assert_eq!(parsed.value.engines[0].code, "B");
         assert_eq!(parsed.warnings.len(), 1);
         assert_eq!(parsed.warnings[0].line, 3);
-        assert!(parsed.warnings[0].message.starts_with("engine skipped"));
+        assert_eq!(parsed.warnings[0].kind, WarningKind::Skipped);
     }
 
     #[test]
@@ -916,16 +1066,6 @@ mod tests {
             let written = write(&file).unwrap();
             let back = parse(&written).unwrap().value;
             prop_assert_eq!(&back, &file);
-            let bits = |f: &RseFile| -> Vec<u64> {
-                f.engines.iter().flat_map(|e| {
-                    e.points.iter()
-                        .flat_map(|p| [Some(p.time_s), Some(p.thrust_n), p.mass_g, p.cg_mm])
-                        .chain([e.average_thrust_n, e.isp_s, Some(e.diameter_mm)])
-                        .flatten()
-                        .map(f64::to_bits)
-                        .collect::<Vec<_>>()
-                }).collect()
-            };
             prop_assert_eq!(bits(&back), bits(&file));
         }
     }

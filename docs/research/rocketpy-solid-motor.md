@@ -53,9 +53,9 @@ It overrides the base class integral `m_p0 + ∫ ṁ dt` (`motor.py:470-481`). B
 `v_e = I/m_p0` and the ODE below conserves volume, the two agree to ODE tolerance:
 `m_p(t) ≈ m_p0 (1 − I(t)/I)`.
 
-Measured on the oracle's 203-point grid, the largest `|m_p − m_p0(1 − I(t)/I)|` is 5.9e-5,
-6.9e-5 and 2.3e-4 kg for its three cases, which is 1.5e-4, 1.2e-4 and 7.9e-5 of `m_p0`. So hpr's
-impulse-fraction default reproduces SolidMotor's mass curve well inside 1%, if `m_p0` is the
+Measured on the committed fixture's 203-point grid, the largest `|m_p − m_p0(1 − I(t)/I)|` is
+1.1e-5, 5.3e-6 and 1.4e-4 kg for its three cases, which is 4.8e-5, 6.8e-6 and 5.4e-5 of `m_p0`.
+So hpr's impulse-fraction default reproduces SolidMotor's mass curve well inside 1%, if `m_p0` is the
 geometry mass. `total_mass = m_p + m_dry` (`motor.py:458-468`). `dry_mass` is required. If it is
 `None`, the `.eng` header's total minus propellant is used instead (`motor.py:403-417`).
 
@@ -72,11 +72,12 @@ geometry mass. `total_mass = m_p + m_dry` (`motor.py:458-468`). `dry_mass` is re
 - **Solver:** `scipy.integrate.solve_ivp` with LSODA, an analytic Jacobian (`:538-593`),
   `rtol = 1e-11` and `atol = 1e-12`, with no `t_eval` and no dense output (`:603-612`).
 - **Stop:** a terminal event on `(R_o − r_i)·h` falling through zero (`:595-600`). Radial burnout
-  happens first when the web `R_o − r_0` is under `h_0/2`, otherwise axial burnout. The event
-  fired 1.6e-5 to 2.1e-5 s before `t_out` in both invented cases (M1670 reached `t_out`).
+  happens first when the web `R_o − r_0` is under `h_0/2`, otherwise axial burnout. In the
+  fixture the event fired 3.7e-5 and 2.6e-5 s before `t_out` for the K940 and M1378LR cases; the
+  I175 case reached `t_out`.
   `grain_burn_out = sol.t[-1]` (`:614`).
 - **Output:** `grain_inner_radius` and `grain_height` are Functions on the solver's own step
-  knots (185 to 456 in the oracle cases), with `interpolation_method` and `"constant"`
+  knots (726, 837 and 1083 in the fixture's cases), with `interpolation_method` and `"constant"`
   extrapolation (`:617-630`).
 - **Diagnostics only:** `burn_area`, `burn_rate` and `Kn` (`:634-702`). The throat radius affects
   only `Kn` (`:348-349`).
@@ -113,8 +114,8 @@ the separation `s`, because the grain centres don't move.
   (`:637-638`).
 - **Motor `I_33 = I_p33 + I_d33`** (`motor.py:659-666`). Products are summed without a transfer
   term (`:668-766`).
-- **Hand check** (oracle case 1, t = 0): `I_p11` = 4.5778e-3, `z_cm` = 0.224732,
-  `I_11` = 1.21991e-2.
+- **Hand check** (fixture case 1, CTI 411I175, t = 0): `I_p11` = 8.6157e-4, `z_cm` = 0.120465,
+  `I_11` = 1.98633e-3.
 
 ## Nozzle
 

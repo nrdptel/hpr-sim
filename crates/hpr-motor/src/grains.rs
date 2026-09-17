@@ -15,6 +15,10 @@
 //! is solved for `x` by safeguarded Newton iteration; `V` falls monotonically, so the root is
 //! unique.
 //!
+//! Every grain needs a bore (`r₀ > 0`): a solid end burner shortens without widening, which this
+//! regression doesn't describe (nor does RocketPy's). Facing ends burn even with no gap between
+//! grains, as in RocketPy.
+//!
 //! The grains' centres stay put (both ends burn equally), spaced `h₀ + s` apart. About the
 //! stack's centre, with `m_g = m/N` per grain and the current `r` and `h`:
 //!
@@ -42,7 +46,7 @@ pub struct BatesGrains {
     pub density_kg_m3: f64,
     /// Grain outer radius `R`, m.
     pub outer_radius_m: f64,
-    /// Initial bore radius `r₀`, m (zero for an end burner, which then needs burning ends).
+    /// Initial bore radius `r₀`, m, positive.
     pub initial_inner_radius_m: f64,
     /// Initial grain height (length) `h₀`, m.
     pub initial_height_m: f64,
@@ -71,8 +75,10 @@ impl BatesGrains {
     ///
     /// # Errors
     ///
-    /// [`MotorError::Domain`] for a value that is not finite or out of range, and
-    /// [`MotorError::Inconsistent`] for no grains, or a bore at least as wide as the grain.
+    /// [`MotorError::Domain`] for a value that is not finite or out of range (including no bore),
+    /// and [`MotorError::Inconsistent`] for no grains, a bore at least as wide as the grain, or a
+    /// propellant mass that isn't a positive finite number (geometry so small or dense that it
+    /// underflows or overflows).
     pub fn validate(&self) -> Result<(), MotorError> {
         if self.count == 0 {
             return Err(MotorError::Inconsistent(
@@ -82,6 +88,7 @@ impl BatesGrains {
         let positive = [
             (self.density_kg_m3, "grain density (kg/m³)"),
             (self.outer_radius_m, "grain outer radius (m)"),
+            (self.initial_inner_radius_m, "grain bore radius (m)"),
             (self.initial_height_m, "grain height (m)"),
         ];
         for (value, what) in positive {
@@ -89,14 +96,11 @@ impl BatesGrains {
                 return Err(MotorError::Domain { what, value });
             }
         }
-        let non_negative = [
-            (self.initial_inner_radius_m, "grain bore radius (m)"),
-            (self.separation_m, "grain separation (m)"),
-        ];
-        for (value, what) in non_negative {
-            if !(value.is_finite() && value >= 0.0) {
-                return Err(MotorError::Domain { what, value });
-            }
+        if !(self.separation_m.is_finite() && self.separation_m >= 0.0) {
+            return Err(MotorError::Domain {
+                what: "grain separation (m)",
+                value: self.separation_m,
+            });
         }
         if !self.center_m.is_finite() {
             return Err(MotorError::Domain {
@@ -110,10 +114,11 @@ impl BatesGrains {
                 self.initial_inner_radius_m, self.outer_radius_m
             )));
         }
-        if self.inhibited_ends && self.initial_inner_radius_m == 0.0 {
-            return Err(MotorError::Inconsistent(
-                "a grain with no bore and inhibited ends has no burning surface".into(),
-            ));
+        let mass = self.initial_mass_kg();
+        if !(mass.is_finite() && mass > 0.0) {
+            return Err(MotorError::Inconsistent(format!(
+                "the grains' propellant mass {mass} kg is not a positive finite number"
+            )));
         }
         Ok(())
     }
@@ -139,7 +144,14 @@ impl BatesGrains {
     pub fn shape(&self, mass_kg: f64) -> GrainShape {
         let target = mass_kg / (f64::from(self.count) * self.density_kg_m3);
         let web = self.web_m();
-        let x = if target.is_nan() || target >= self.volume_m3(0.0) {
+        if target.is_nan() || !(web.is_finite() && web > 0.0) {
+            return GrainShape {
+                web_burned_m: f64::NAN,
+                inner_radius_m: f64::NAN,
+                height_m: f64::NAN,
+            };
+        }
+        let x = if target >= self.volume_m3(0.0) {
             0.0
         } else if target <= 0.0 {
             web
@@ -151,7 +163,11 @@ impl BatesGrains {
 
     /// The grains, with `mass_kg` of propellant left, as one mass element about the stack centre.
     pub fn mass_element(&self, mass_kg: f64) -> MassElement {
-        let mass = mass_kg.max(0.0);
+        let mass = if mass_kg.is_nan() {
+            f64::NAN
+        } else {
+            mass_kg.max(0.0)
+        };
         let shape = self.shape(mass);
         let n = f64::from(self.count);
         let radii = self.outer_radius_m.powi(2) + shape.inner_radius_m.powi(2);
@@ -325,11 +341,47 @@ mod tests {
                 inhibited_ends: true,
                 ..good
             },
+            // An end burner: no bore, ends burning.
+            BatesGrains {
+                initial_inner_radius_m: 0.0,
+                ..good
+            },
+            // Geometry whose mass underflows or overflows.
+            BatesGrains {
+                outer_radius_m: 1e-200,
+                initial_inner_radius_m: 1e-201,
+                ..good
+            },
+            BatesGrains {
+                density_kg_m3: 1e308,
+                ..good
+            },
         ];
         for g in bad {
             assert!(g.validate().is_err(), "{g:?}");
         }
         assert!(good.validate().is_ok());
+        // Unvalidated geometry gives NaN rather than panicking.
+        for g in [
+            BatesGrains {
+                outer_radius_m: f64::NAN,
+                inhibited_ends: true,
+                ..good
+            },
+            BatesGrains {
+                outer_radius_m: f64::NEG_INFINITY,
+                ..good
+            },
+            BatesGrains {
+                initial_inner_radius_m: 0.02,
+                ..good
+            },
+        ] {
+            assert!(g.shape(0.1).web_burned_m.is_nan(), "{g:?}");
+            let _ = g.mass_element(0.1);
+        }
+        assert!(good.shape(f64::NAN).height_m.is_nan());
+        assert!(good.mass_element(f64::NAN).mass_kg.is_nan());
     }
 
     proptest! {

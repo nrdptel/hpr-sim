@@ -9,8 +9,33 @@ use crate::error::MotorError;
 pub struct ParseWarning {
     /// The 1-based line number the warning is about.
     pub line: usize,
+    /// Whether data was lost.
+    pub kind: WarningKind,
     /// What was accepted, and how it was read.
     pub message: String,
+}
+
+/// How serious a [`ParseWarning`] is.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+#[non_exhaustive]
+pub enum WarningKind {
+    /// A whole motor entry had an error and was left out of the result.
+    Skipped,
+    /// A value was dropped or ignored, such as an unknown attribute or a partial mass column.
+    Dropped,
+    /// Something unusual was read as it stands, such as a curve that doesn't end at zero thrust.
+    Unusual,
+}
+
+impl ParseWarning {
+    pub(crate) fn new(line: usize, kind: WarningKind, message: impl Into<String>) -> Self {
+        Self {
+            line,
+            kind,
+            message: message.into(),
+        }
+    }
 }
 
 /// A parsed value and the warnings its reader raised.
