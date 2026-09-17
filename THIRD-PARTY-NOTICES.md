@@ -16,7 +16,33 @@ adds a source.
 
 ## Bundled
 
-None yet.
+- **ThrustCurve.org thrust curves** (`crates/hpr-motor/data/thrustcurve/curves/`, compiled into
+  `hpr-motor`): 32 files that ThrustCurve.org marks public domain (license `PD`), unchanged. The
+  index `crates/hpr-motor/data/thrustcurve/catalog.json` records each file's source URL, simfile
+  id, data source (certification, manufacturer or user), SHA-256 and download date, and copies
+  each motor's published statistics from the ThrustCurve.org API (unstated terms; factual values,
+  used with attribution). Data courtesy of ThrustCurve.org, https://www.thrustcurve.org/. Curves
+  marked "free", "other" or with no license are never bundled (ADR-005).
+
+## Ported
+
+- **RocketPy** (MIT), `rocketpy/motors/solid_motor.py` at v1.13.0: the BATES grain regression
+  geometry and the grain-stack inertia, re-derived in closed form in `hpr_motor::grains`, and the
+  constant-exhaust-velocity consumption in `hpr_motor::motor`. RocketPy's license applies to those
+  portions:
+
+  > MIT License. Copyright (c) 2018 Giovani Hidalgo Ceotto. Permission is hereby granted, free of
+  > charge, to any person obtaining a copy of this software and associated documentation files
+  > (the "Software"), to deal in the Software without restriction, including without limitation
+  > the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of
+  > the Software, and to permit persons to whom the Software is furnished to do so, subject to the
+  > following conditions: The above copyright notice and this permission notice shall be included
+  > in all copies or substantial portions of the Software. THE SOFTWARE IS PROVIDED "AS IS",
+  > WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES
+  > OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+  > AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN
+  > ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE
+  > OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 ## Rust dependencies
 
@@ -26,13 +52,14 @@ None yet.
 |---|---|---|---|
 | `criterion` | Apache-2.0 OR MIT | `hpr-core` (benchmarks only) | statistics for `cargo bench` (`docs/perf.md`) |
 | `glam` | MIT OR Apache-2.0 | `hpr-core` | `f64` vectors, quaternions and matrices (`ARCHITECTURE.md`) |
-| `proptest` | MIT OR Apache-2.0 | `hpr-core`, `hpr-atmos` (tests only) | property tests |
+| `proptest` | MIT OR Apache-2.0 | `hpr-core`, `hpr-atmos`, `hpr-motor` (tests only) | property tests |
 | `rand_core` | MIT OR Apache-2.0 | `hpr-core` (tests only) | the generator traits `rand_xoshiro` implements |
 | `rand_xoshiro` | MIT OR Apache-2.0 | `hpr-core` (tests only) | an independent xoshiro256++ and SplitMix64 that `hpr_core::random` is checked against, bit for bit |
-| `serde_json` | MIT OR Apache-2.0 | `xtask`; `hpr-core`, `hpr-atmos` (tests only) | reads `cargo metadata` output; serde round-trip tests and JSON fixtures |
-| `serde` | MIT OR Apache-2.0 | `xtask`, `hpr-core`, `hpr-atmos` | derives the `validation/refs.lock.toml` types and the public data types |
-| `thiserror` | MIT OR Apache-2.0 | `hpr-core`, `hpr-atmos` | library error types |
-| `sha2` | MIT OR Apache-2.0 | `xtask` | SHA-256 of fetched references |
+| `roxmltree` | MIT OR Apache-2.0 | `hpr-motor` | a strict, read-only XML 1.0 parser for `.rse` motor files |
+| `serde_json` | MIT OR Apache-2.0 | `xtask`, `hpr-motor`; `hpr-core`, `hpr-atmos` (tests only) | reads `cargo metadata` output and the bundled motor catalog index; serde round-trip tests and JSON fixtures |
+| `serde` | MIT OR Apache-2.0 | `xtask`, `hpr-core`, `hpr-atmos`, `hpr-motor` | derives the `validation/refs.lock.toml` types and the public data types |
+| `thiserror` | MIT OR Apache-2.0 | `hpr-core`, `hpr-atmos`, `hpr-motor` | library error types |
+| `sha2` | MIT OR Apache-2.0 | `xtask`; `hpr-motor` (tests only) | SHA-256 of fetched references and of the bundled motor curves |
 | `toml` | MIT OR Apache-2.0 | `xtask` | reads `validation/refs.lock.toml` |
 | `tempfile` | MIT OR Apache-2.0 | `xtask` (tests only) | temporary directories for the `refs` tests |
 
@@ -69,8 +96,16 @@ same license and mode.
 | `picard-2008-cipm-2007` | A. Picard, R. S. Davis, M. Gläser and K. Fujii, Revised formula for the density of moist air (CIPM-2007), Metrologia 45 (2008) 149-155 | BIPM and IOP Publishing copyright | fetched | its equation is evaluated by `validation/oracles/atmosphere/moist_air.py` to check humid-air density (M1.2); not redistributed |
 | `iapws-r12-08` | IAPWS R12-08, Release on the IAPWS Formulation 2008 for the Viscosity of Ordinary Water Substance | IAPWS: publication allowed with attribution | fetched | its dilute-gas viscosity (eq. 11) is evaluated by `validation/oracles/atmosphere/moist_air.py` to size humidity's effect on viscosity (M1.2) |
 | `rocksim-rse-spec` | RockSim Engine File Format (.rse) specification, as hosted by ThrustCurve.org | unknown terms | fetched | read to write the `.rse` reader (M1.3); not redistributed |
+| `nasa-sp-8039` | NASA SP-8039, Solid Rocket Motor Performance Analysis and Prediction, 1971 | US government work | fetched | cited for the thrust equation and effective exhaust velocity (M1.3); no text copied |
+| `nar-standard-motor-codes` | National Association of Rocketry, Standard Motor Codes: How To Interpret Rocket Motor Codes | unclear terms | fetched | cited for the impulse-class limits (M1.3); not redistributed |
+| `thrustcurve3-analyze` | ThrustCurve.org site source, simulate/analyze/analyze.js at commit 577afa6 | ISC | fetched | read to confirm ThrustCurve's burn-time, impulse and average-thrust definitions (M1.3); no code ported |
 | `thrustcurve-metadata` | ThrustCurve.org API v1 `metadata.json` | unstated terms | fetched | attribution to ThrustCurve.org wherever the data is used; each curve file has its own data license |
 | `thrustcurve-motors` | ThrustCurve.org API v1 `search.json` (all motors) | unstated terms | fetched | attribution to ThrustCurve.org wherever the data is used; each curve file has its own data license |
+| `thrustcurve-rasp-format` | ThrustCurve.org "RASP File Format" page | unstated terms | fetched | cited for the `.eng` format (M1.3, `docs/format/eng.md`) |
+| `thrustcurve-glossary` | ThrustCurve.org glossary page | unstated terms | fetched | cited for burn time, average thrust, loaded weight and delays (M1.3) |
+| `thrustcurve-motorstats` | ThrustCurve.org "Motor Statistics" page | unstated terms | fetched | cited for the NFPA 1125 burn-time normalization (M1.3) |
+| `thrustcurve-contribute` | ThrustCurve.org "Contribute" page | unstated terms | fetched | cited for the meaning of the curve data licenses (M1.3) |
+| `thrustcurve-simulators` | ThrustCurve.org "Flight Simulators" page | unstated terms | fetched | cited for RockSim's motor type and CG columns (M1.3, `docs/format/rse.md`) |
 | `motor-finder-meta` | motor.fusionspace.co API v1 `meta.json` | free to use, attribution appreciated | fetched | attribution to motor.fusionspace.co |
 | `motor-finder-motors` | motor.fusionspace.co API v1 `motors.json` | free to use, attribution appreciated | fetched | attribution to motor.fusionspace.co |
 | `motor-finder-in-stock` | motor.fusionspace.co API v1 `in-stock.json` | free to use, attribution appreciated | fetched | attribution to motor.fusionspace.co |
@@ -97,6 +132,6 @@ Nothing here is bundled.
 |---|---|---|---|
 | RocketSerializer | MIT | run-only | cross-checks the `.ork` importer (M3.1) |
 | `openrocket/motor-database` | GPL-3.0 | run-only reference | not bundled |
-| ThrustCurve.org thrust-curve files | per file: public domain, none, or unknown | fetched and cached | only curves with clear terms are bundled (M1.3) |
+| ThrustCurve.org thrust-curve files | per file: public domain, free, other, or none | fetched and cached (M5) | 32 public-domain curves are bundled (M1.3, above); the rest are fetched and cached, never bundled |
 | Open-Meteo | data CC BY 4.0 | fetched and cached (M5.2) | attribution required |
 | WMM2025 | public domain | may be bundled (M5.3) | |

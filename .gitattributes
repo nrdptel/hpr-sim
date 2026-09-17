@@ -8,3 +8,7 @@
 *.zip binary
 *.ork binary
 *.gz binary
+
+# Bundled ThrustCurve.org curves keep the exact bytes the site serves (mostly CRLF, no final
+# newline); crates/hpr-motor/data/thrustcurve/catalog.json pins their sha256.
+crates/hpr-motor/data/thrustcurve/curves/** -text

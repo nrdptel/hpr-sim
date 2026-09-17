@@ -1,0 +1,119 @@
+//! Ejection delays: the time from burnout to the ejection charge, or none for a plugged motor.
+//!
+//! Motor files and catalogs write a motor's available delays as one string. The RASP spec gives
+//! "delays separated by dashes", with `0` for an ejection charge with no delay and `P` for plugged
+//! (`docs/format/eng.md`). Real files also use commas, a trailing `P`, and `100` or `1000` as
+//! plugged markers; checked against ThrustCurve.org's metadata, `100` and `1000` nearly always mean
+//! plugged, and so does `0` more often than not (counts in `docs/format/eng.md` and `rse.md`). So
+//! this reader:
+//!
+//! - splits on `-` and `,`, dropping empty pieces with a warning;
+//! - reads `P` (either case), `100` and `1000` as [`Delay::Plugged`];
+//! - reads other numbers as [`Delay::Seconds`], and flags `0` as ambiguous.
+//!
+//! The raw string stays in the file model so writers reproduce it exactly; physics should prefer
+//! the catalog's delays.
+
+use serde::{Deserialize, Serialize};
+
+/// One available delay setting.
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+pub enum Delay {
+    /// The ejection charge fires this many seconds after burnout.
+    Seconds(f64),
+    /// No ejection charge: the forward closure is plugged.
+    Plugged,
+}
+
+/// A delay string read into settings.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct DelayList {
+    /// The settings in the order written (some files list them longest first).
+    pub delays: Vec<Delay>,
+    /// Problems found while reading, such as an empty piece or an unreadable one; each unreadable
+    /// piece is left out of `delays`.
+    pub warnings: Vec<String>,
+}
+
+impl DelayList {
+    /// Reads a delay string such as `6-10-14`, `5,8,11`, `P`, `6-10-14-P` or `1000`.
+    pub fn parse(raw: &str) -> Self {
+        let mut delays = Vec::new();
+        let mut warnings = Vec::new();
+        let trimmed = raw.trim();
+        if trimmed.is_empty() {
+            return Self { delays, warnings };
+        }
+        for piece in trimmed.split(['-', ',']) {
+            let piece = piece.trim();
+            match piece {
+                "" => warnings.push(format!("empty delay in {raw:?} ignored")),
+                "P" | "p" | "100" | "1000" => delays.push(Delay::Plugged),
+                _ => match piece.parse::<f64>() {
+                    Ok(seconds) if seconds.is_finite() && seconds >= 0.0 => {
+                        if seconds == 0.0 {
+                            warnings.push(format!(
+                                "delay 0 in {raw:?} is ambiguous: the RASP spec means an ejection \
+                                 charge with no delay, but files mostly mean plugged"
+                            ));
+                        }
+                        delays.push(Delay::Seconds(seconds));
+                    }
+                    _ => warnings.push(format!("unreadable delay {piece:?} in {raw:?} ignored")),
+                },
+            }
+        }
+        Self { delays, warnings }
+    }
+
+    /// Whether any setting is plugged.
+    pub fn has_plugged(&self) -> bool {
+        self.delays.contains(&Delay::Plugged)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn plain_lists_and_markers() {
+        let list = DelayList::parse("6-10-14");
+        assert_eq!(
+            list.delays,
+            [
+                Delay::Seconds(6.0),
+                Delay::Seconds(10.0),
+                Delay::Seconds(14.0)
+            ]
+        );
+        assert!(list.warnings.is_empty());
+        assert_eq!(DelayList::parse("P").delays, [Delay::Plugged]);
+        assert_eq!(DelayList::parse(" p ").delays, [Delay::Plugged]);
+        assert_eq!(
+            DelayList::parse("10,14,1000").delays,
+            [Delay::Seconds(10.0), Delay::Seconds(14.0), Delay::Plugged]
+        );
+        assert!(DelayList::parse("").delays.is_empty());
+        assert!(!DelayList::parse("6").has_plugged());
+    }
+
+    #[test]
+    fn malformed_pieces_are_dropped_with_warnings() {
+        let list = DelayList::parse("4-7-10,");
+        assert_eq!(list.delays.len(), 3);
+        assert_eq!(list.warnings.len(), 1);
+        let list = DelayList::parse("1-3--4");
+        assert_eq!(list.delays.len(), 3);
+        assert_eq!(list.warnings.len(), 1);
+        let list = DelayList::parse("-");
+        assert!(list.delays.is_empty());
+        assert_eq!(list.warnings.len(), 2);
+        let list = DelayList::parse("S-M-L");
+        assert!(list.delays.is_empty());
+        assert_eq!(list.warnings.len(), 3);
+        let list = DelayList::parse("0");
+        assert_eq!(list.delays, [Delay::Seconds(0.0)]);
+        assert_eq!(list.warnings.len(), 1);
+    }
+}

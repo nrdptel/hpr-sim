@@ -178,6 +178,37 @@ dest = "refs/papers/rocksim-rse-spec.pdf"
 license = "unknown terms"
 mode = "fetched"
 
+[[file]]
+name = "nasa-sp-8039"
+title = "NASA SP-8039, Solid Rocket Motor Performance Analysis and Prediction, 1971"
+url = "https://ntrs.nasa.gov/api/citations/19720011135/downloads/19720011135.pdf"
+sha256 = "9e151b8184340ee0bba0cfa605c1e378337716a167f015e89c1a8c85b5754e0d"
+dest = "refs/papers/nasa-sp-8039.pdf"
+license = "US government work"
+mode = "fetched"
+
+# NAR's own page (nar.org/NARmotors.html, printed 2012-11-23) as mirrored by a university course
+# site; nar.org refuses scripted downloads.
+[[file]]
+name = "nar-standard-motor-codes"
+title = "National Association of Rocketry, Standard Motor Codes: How To Interpret Rocket Motor Codes"
+url = "http://ftp.demec.ufpr.br/foguete/apostila/codigo_padrao_motores_da_NAR.pdf"
+sha256 = "dd0e9e236fb831871eb3b6372240b4a0f49d001cd60998c750e1fe6e70d5dc35"
+dest = "refs/papers/nar-standard-motor-codes.pdf"
+license = "unclear terms"
+mode = "fetched"
+
+# ThrustCurve.org's own statistics code (ISC), read to confirm how the site computes burn time,
+# total impulse and average thrust.
+[[file]]
+name = "thrustcurve3-analyze"
+title = "ThrustCurve.org site source, simulate/analyze/analyze.js at commit 577afa6"
+url = "https://raw.githubusercontent.com/JohnCoker/thrustcurve3/577afa62302f70c6b2ba04e97a39240638cd704b/simulate/analyze/analyze.js"
+sha256 = "267eb5364a7ca13b4ec32246c97ee0194a4ee6fd5489765ff178fddf666c637a"
+dest = "refs/sources/thrustcurve3/analyze.js"
+license = "ISC"
+mode = "fetched"
+
 # NGA serves the standard from a PHP download endpoint; the bytes matched every archive.org capture
 # from 2021-07 to 2026-07. If NGA moves it, the immutable capture is
 # https://web.archive.org/web/20230321131228id_/https://earth-info.nga.mil/php/download.php?file=coord-wgs84
@@ -282,6 +313,53 @@ url = "https://www.thrustcurve.org/api/v1/search.json?maxResults=10000"
 sha256 = "00cd2cdeb1472d6e6d853c7ffa78c631b36ce0be6898af0bdec4285aeb7ebb83"
 captured = "2026-09-17"
 dest = "refs/snapshots/thrustcurve/motors.json"
+license = "unstated terms"
+mode = "fetched"
+
+# ThrustCurve.org information pages: the RASP format, the definitions behind its motor statistics,
+# and its data-license terms. Pages served by the site can change, so they are pinned as captures.
+[[snapshot]]
+name = "thrustcurve-rasp-format"
+url = "https://www.thrustcurve.org/info/raspformat.html"
+sha256 = "69573e9fc644c467fd2c8f5e4d0b2af99831a5a4bc554d15b56027ee640c626e"
+captured = "2026-09-17"
+dest = "refs/snapshots/thrustcurve/info/raspformat.html"
+license = "unstated terms"
+mode = "fetched"
+
+[[snapshot]]
+name = "thrustcurve-glossary"
+url = "https://www.thrustcurve.org/info/glossary.html"
+sha256 = "1702cc6e5b957f49af6f60090490c2fc0b9e4edfd83c93a719287f1e3855e287"
+captured = "2026-09-17"
+dest = "refs/snapshots/thrustcurve/info/glossary.html"
+license = "unstated terms"
+mode = "fetched"
+
+[[snapshot]]
+name = "thrustcurve-motorstats"
+url = "https://www.thrustcurve.org/info/motorstats.html"
+sha256 = "8cfaacf3319bef69d2a7f1dff46f4ad2566a2496f2c21b53cca9a8612e6a1ec8"
+captured = "2026-09-17"
+dest = "refs/snapshots/thrustcurve/info/motorstats.html"
+license = "unstated terms"
+mode = "fetched"
+
+[[snapshot]]
+name = "thrustcurve-contribute"
+url = "https://www.thrustcurve.org/info/contribute.html"
+sha256 = "35152a2901150dca9a98f6d0ed1826edee65c6c5aed37031d9c8a984b7dcc40d"
+captured = "2026-09-17"
+dest = "refs/snapshots/thrustcurve/info/contribute.html"
+license = "unstated terms"
+mode = "fetched"
+
+[[snapshot]]
+name = "thrustcurve-simulators"
+url = "https://www.thrustcurve.org/info/simulators.html"
+sha256 = "5bb2bad7ee6c99009b1017a5650111d8cb6be7c9045acb1d84b252db9930cb7a"
+captured = "2026-09-17"
+dest = "refs/snapshots/thrustcurve/info/simulators.html"
 license = "unstated terms"
 mode = "fetched"
 

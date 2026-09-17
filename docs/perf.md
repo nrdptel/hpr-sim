@@ -3,6 +3,30 @@
 Measured numbers only, newest first within each section. Record the machine, the toolchain, and
 the command, so a later run can be compared like for like.
 
+## Solid motors (M1.3)
+
+The motor calls the flight engine makes on every derivative evaluation, and reading motor data.
+
+- **Benchmark:** `cargo bench -p hpr-motor --bench motor`, which is criterion, release profile.
+- **When and where:** 2026-09-17 on an Apple M5 with rustc 1.98.1.
+- **Inputs:** the bundled Loki M1378LR curve (46 points, 4.08 s) at t = 2.345 s. The grain model
+  is four BATES grains, 0.256 m long. The `.rse` input is the same curve written as a RockSim
+  file.
+
+| call | median |
+|---|---|
+| `ThrustCurve::thrust_n` | 3.53 ns |
+| `SolidMotor::state`, envelope column | 12.5 ns |
+| `SolidMotor::state`, BATES grains | 28.4 ns |
+| `eng::parse`, one bundled curve | 3.32 µs |
+| `rse::parse`, the same curve | 14.2 µs |
+| `Catalog::bundled` (index only, 32 motors) | 33.1 µs |
+
+- **Inner-loop cost.** About 10⁴ derivative evaluations per flight at 28 ns is 0.3 ms.
+- **Grain solve.** The first version took 441 ns: at the root, Newton's step landed on the edge of
+  its bracket, and the solver then bisected about 50 more times. Stopping once a step is within
+  rounding brought it to 28 ns with the same results.
+
 ## Atmosphere, wind and turbulence (M1.2)
 
 The calls the flight engine makes on every derivative evaluation, and one gust-field build.

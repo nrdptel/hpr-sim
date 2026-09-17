@@ -17,3 +17,16 @@ wasm = true
 
 [dependencies]
 hpr-core.workspace = true
+roxmltree.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+thiserror.workspace = true
+
+[dev-dependencies]
+criterion.workspace = true
+proptest.workspace = true
+sha2.workspace = true
+
+[[bench]]
+name = "motor"
+harness = false
