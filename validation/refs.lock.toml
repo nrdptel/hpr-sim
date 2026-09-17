@@ -187,14 +187,14 @@ dest = "refs/papers/nasa-sp-8039.pdf"
 license = "US government work"
 mode = "fetched"
 
-# NAR's own page (nar.org/NARmotors.html, printed 2012-11-23) as mirrored by a university course
-# site; nar.org refuses scripted downloads.
+# NAR's own page as the Internet Archive captured it on 2014-02-05 (nar.org has since moved it and
+# refuses scripted downloads); the `id_` capture serves the original bytes.
 [[file]]
 name = "nar-standard-motor-codes"
-title = "National Association of Rocketry, Standard Motor Codes: How To Interpret Rocket Motor Codes"
-url = "http://ftp.demec.ufpr.br/foguete/apostila/codigo_padrao_motores_da_NAR.pdf"
-sha256 = "dd0e9e236fb831871eb3b6372240b4a0f49d001cd60998c750e1fe6e70d5dc35"
-dest = "refs/papers/nar-standard-motor-codes.pdf"
+title = "National Association of Rocketry, Standard Motor Codes (nar.org/NARmotors.html, archived 2014-02-05)"
+url = "https://web.archive.org/web/20140205181530id_/http://www.nar.org/NARmotors.html"
+sha256 = "1f0d01687b22fbe1e6a92662e9f4a74a1db4fd8b6d8b615460cd5e5eae7331d6"
+dest = "refs/papers/nar-standard-motor-codes.html"
 license = "unclear terms"
 mode = "fetched"
 
