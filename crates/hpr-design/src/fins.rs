@@ -496,6 +496,12 @@ impl FinSet {
                     value: tab.offset_m,
                 });
             }
+            let root = self.planform.root_chord_m();
+            if tab.offset_m < 0.0 || tab.offset_m + tab.length_m > root * (1.0 + 1e-12) {
+                return Err(DesignError::Geometry(format!(
+                    "a fin tab must lie along the root chord ({root} m)"
+                )));
+            }
         }
         Ok(())
     }
@@ -566,17 +572,12 @@ impl FinSet {
     pub fn single_fin(&self, body_radius_m: f64) -> Result<MassProperties, DesignError> {
         self.validate()?;
         check_dimension("fin body radius", body_radius_m, true)?;
-        if let Some(tab) = self.tab {
-            let root = self.planform.root_chord_m();
-            if tab.height_m > body_radius_m
-                || tab.offset_m < 0.0
-                || tab.offset_m + tab.length_m > root * (1.0 + 1e-12)
-            {
-                return Err(DesignError::Geometry(format!(
-                    "a fin tab must lie along the root chord ({root} m) and no deeper than the body \
-                     radius ({body_radius_m} m)"
-                )));
-            }
+        if let Some(tab) = self.tab
+            && tab.height_m > body_radius_m
+        {
+            return Err(DesignError::Geometry(format!(
+                "a fin tab must reach no deeper than the body radius ({body_radius_m} m)"
+            )));
         }
         let density = self.material.bulk_kg_m3("fin set")?;
         let fin = self.fin_integrals(body_radius_m)?;
@@ -986,6 +987,13 @@ mod tests {
     #[test]
     fn tabs_must_fit_the_root_and_the_body() {
         let mut fins = set(3, rectangle(0.1, 0.05), 0.003);
+        // Along the root is checked without a body; the depth needs one.
+        fins.tab = Some(FinTab {
+            height_m: 0.01,
+            length_m: 0.08,
+            offset_m: 0.03,
+        });
+        assert!(matches!(fins.validate(), Err(DesignError::Geometry(_))));
         for tab in [
             FinTab {
                 height_m: 0.05,

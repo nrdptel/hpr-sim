@@ -454,9 +454,16 @@ a boattail is oriented or where cant pivots (`docs/physics/shapes.md`, `docs/phy
   maps it by running the jar. The Haack parameter may reach 2/3, the monotone limit. A transition's
   shape puts its tip at the smaller end. Clipped transitions follow [TD] §A.7. Parameters out of
   range are errors, never defaults.
-- **Walls are measured normal to the surface.** The inner surface is the envelope of circles of
-  radius `t` on the profile, extended along the end tangents, and the wall fills in near a tip. It
-  is how a molded or laid-up shell is made. Radial thickness, as in Crowell, overstates the wall by
+- **Walls are measured normal to the surface.** The wall is the part of the solid within `t` of the
+  lateral surface: its inner surface is the envelope of circles of radius `t` on the profile, ends
+  included and not extended, and the wall fills in near a tip. This is how a molded or laid-up
+  shell is made.
+  - At a cut end where the surface meets the end plane at an obtuse angle inside the wall, the
+    inner corner is rounded rather than square: `t² (tan φ − φ)/2` less section per unit rim
+    length, 3e-4 `t²` at 7°.
+  - Extending the surface along its end tangent would cut it square. But that closes a steep end
+    with a disc, and it made wall mass jump by up to 8% as an end slope rounded from finite to
+    infinite, so it was dropped. Radial thickness, as in Crowell, overstates the wall by
   `√(1 + y′²)`. M2.2 measures what OpenRocket does, and any gap goes in the report, not into this
   model.
 - **Fin cross-sections change the mass.** The section's thickness distribution is integrated
@@ -470,7 +477,7 @@ a boattail is oriented or where cant pivots (`docs/physics/shapes.md`, `docs/phy
 - **Numerics.** `hpr_core::quadrature` gains an adaptive vector G7K15 (QUADPACK's `QAG` without
   extrapolation), with substitutions and end-relative evaluation at blunt tips. Filled solids match closed forms
   to 1e-10 and 40-digit mpmath integrals to 1e-12; walls match an independent 25-digit mpmath
-  envelope to 1e-9 (worst measured 1.8e-10). Principal moments
+  envelope to 1e-10 (worst measured 5.9e-12). Principal moments
   use cyclic Jacobi, not the closed-form eigenvalue method that loses `√ε` for repeated moments.
 - **Materials** are values stored in the design (name and density with its kind), not library
   keys, so designs stay complete offline. Built-in values cite primary public sources: USDA's Wood

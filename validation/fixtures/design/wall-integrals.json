@@ -5,7 +5,7 @@
   "generated": "2026-09-17",
   "command": "refs/venv/bin/python validation/oracles/design/walls.py > validation/fixtures/design/wall-integrals.json",
   "inputs_sha256": {
-    "script": "931788b51b72cb8acfa7af92f48bc315fc52236f0841dd3dbd0c1117b7e7041c",
+    "script": "d2a972ef5237c52555ac08637d8af1135126b5db86379674091ecb3b74d883fe",
     "shapes.py": "845c11f402fadf444e0db14c01a18f48db36f9ba4695005684e02cb62f381fda"
   },
   "units": "SI; centroids are metres aft of the forward end; moments are per unit density",
@@ -67,10 +67,10 @@
       },
       "wall_thickness_m": 0.0015,
       "expected": {
-        "volume_m3": 4.35320014428417e-05,
-        "centroid_m": 0.12097780486284626,
-        "axial_m5": 3.246757409036069e-08,
-        "transverse_m5": 1.2047187466086883e-07
+        "volume_m3": 4.353193211175886e-05,
+        "centroid_m": 0.12097767906848073,
+        "axial_m5": 3.246751778227152e-08,
+        "transverse_m5": 1.2047141398200567e-07
       }
     },
     {
@@ -117,7 +117,7 @@
         "volume_m3": 3.877452446038528e-05,
         "centroid_m": 0.11283527639547687,
         "axial_m5": 1.8761841582874465e-08,
-        "transverse_m5": 1.2604843501193515e-07
+        "transverse_m5": 1.260484350119361e-07
       }
     },
     {
@@ -194,10 +194,10 @@
       },
       "wall_thickness_m": 0.002,
       "expected": {
-        "volume_m3": 5.502927309209321e-05,
-        "centroid_m": 0.04756379973573499,
-        "axial_m5": 1.0612632996740888e-07,
-        "transverse_m5": 9.859428987752925e-08
+        "volume_m3": 5.502896633606821e-05,
+        "centroid_m": 0.0475635077846948,
+        "axial_m5": 1.0612593027137713e-07,
+        "transverse_m5": 9.859324861022905e-08
       }
     },
     {
@@ -211,10 +211,10 @@
       },
       "wall_thickness_m": 0.002,
       "expected": {
-        "volume_m3": 5.785214784521726e-05,
-        "centroid_m": 0.05206311174410991,
-        "axial_m5": 1.2253357933556016e-07,
-        "transverse_m5": 1.083996974604837e-07
+        "volume_m3": 5.784964625732146e-05,
+        "centroid_m": 0.05206535766397902,
+        "axial_m5": 1.2253032165355373e-07,
+        "transverse_m5": 1.0839132031818843e-07
       }
     },
     {
@@ -227,10 +227,10 @@
       },
       "wall_thickness_m": 0.002,
       "expected": {
-        "volume_m3": 6.0335175683150344e-05,
-        "centroid_m": 0.05074168063709751,
-        "axial_m5": 1.3438956262350971e-07,
-        "transverse_m5": 1.177857942963057e-07
+        "volume_m3": 6.033517568312878e-05,
+        "centroid_m": 0.050741680637114935,
+        "axial_m5": 1.3438956262347853e-07,
+        "transverse_m5": 1.1778579429623878e-07
       }
     },
     {
@@ -243,10 +243,10 @@
       },
       "wall_thickness_m": 0.002,
       "expected": {
-        "volume_m3": 6.0335175683150344e-05,
-        "centroid_m": 0.049258319362902495,
-        "axial_m5": 1.3438956262350971e-07,
-        "transverse_m5": 1.177857942963084e-07
+        "volume_m3": 6.033517568312878e-05,
+        "centroid_m": 0.04925831936288507,
+        "axial_m5": 1.3438956262347853e-07,
+        "transverse_m5": 1.1778579429623998e-07
       }
     },
     {
@@ -260,10 +260,10 @@
       },
       "wall_thickness_m": 0.002,
       "expected": {
-        "volume_m3": 5.804443184174488e-05,
-        "centroid_m": 0.05135618658812836,
-        "axial_m5": 1.217037586693072e-07,
-        "transverse_m5": 1.0935054628758103e-07
+        "volume_m3": 5.804443184340746e-05,
+        "centroid_m": 0.051356186586712725,
+        "axial_m5": 1.2170375867165608e-07,
+        "transverse_m5": 1.0935054629281663e-07
       }
     },
     {
@@ -277,10 +277,10 @@
       },
       "wall_thickness_m": 0.002,
       "expected": {
-        "volume_m3": 5.54093990523237e-05,
-        "centroid_m": 0.052372993669123874,
-        "axial_m5": 1.0827735301712721e-07,
-        "transverse_m5": 9.987825403700201e-08
+        "volume_m3": 5.540891362382249e-05,
+        "centroid_m": 0.052373451856930264,
+        "axial_m5": 1.0827672055585791e-07,
+        "transverse_m5": 9.987661002866508e-08
       }
     },
     {
@@ -294,10 +294,10 @@
       },
       "wall_thickness_m": 0.002,
       "expected": {
-        "volume_m3": 5.6028399675851076e-05,
-        "centroid_m": 0.047700968272514896,
-        "axial_m5": 1.118568394530368e-07,
-        "transverse_m5": 1.0199342096867424e-07
+        "volume_m3": 5.602761587344201e-05,
+        "centroid_m": 0.0477002378350059,
+        "axial_m5": 1.1185581833737494e-07,
+        "transverse_m5": 1.0199077357772666e-07
       }
     },
     {
@@ -311,10 +311,10 @@
       },
       "wall_thickness_m": 0.002,
       "expected": {
-        "volume_m3": 5.756522400230936e-05,
-        "centroid_m": 0.05191672485430765,
-        "axial_m5": 1.2041363818915261e-07,
-        "transverse_m5": 1.0752308332824389e-07
+        "volume_m3": 5.7565224008413464e-05,
+        "centroid_m": 0.05191672484893933,
+        "axial_m5": 1.2041363819731695e-07,
+        "transverse_m5": 1.0752308334797103e-07
       }
     },
     {
@@ -328,10 +328,10 @@
       },
       "wall_thickness_m": 0.002,
       "expected": {
-        "volume_m3": 5.734763914415749e-05,
-        "centroid_m": 0.04786753605058832,
-        "axial_m5": 1.1955815198101652e-07,
-        "transverse_m5": 1.0662002158002337e-07
+        "volume_m3": 5.7345683530320446e-05,
+        "centroid_m": 0.047865762179396705,
+        "axial_m5": 1.195556049991852e-07,
+        "transverse_m5": 1.0661345659117865e-07
       }
     }
   ]

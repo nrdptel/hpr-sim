@@ -513,14 +513,63 @@ mod tests {
         use crate::parts::Transition;
         use crate::shapes::NoseShape;
         use crate::solids::Wall;
-        // A conical shoulderless transition from R1 to R2 with a wall t normal to the surface: the
-        // inner surface is the outer line moved in by t √(1 + k²), k = (R2 − R1)/L, so the wall's
-        // area at x is π t w (2R1 − t w + 2kx) with w = √(1 + k²).
+        // A conical shoulderless transition from R1 to R2 with a wall t normal to the surface. Cut
+        // square, the inner surface would be the outer line moved in by t √(1 + k²),
+        // k = (R2 − R1)/L, giving a wall of area π t w (2R1 − t w + 2kx) at x, w = √(1 + k²).
         let (r1, r2, l, t) = (0.0381f64, 0.0508f64, 0.1f64, 0.002f64);
         let k = (r2 - r1) / l;
         let w = (1.0 + k * k).sqrt();
-        let volume = PI * t * w * ((2.0 * r1 - t * w) * l + k * l * l);
-        let moment = PI * t * w * ((2.0 * r1 - t * w) * l * l / 2.0 + 2.0 * k * l.powi(3) / 3.0);
+        let square_volume = PI * t * w * ((2.0 * r1 - t * w) * l + k * l * l);
+        let square_moment =
+            PI * t * w * ((2.0 * r1 - t * w) * l * l / 2.0 + 2.0 * k * l.powi(3) / 3.0);
+        // At the fore end the surface meets the end plane at an obtuse angle inside the wall, so
+        // the wall is the square cut less the sliver outside the fore rim's circle. In polar
+        // coordinates (ρ, ψ) about the rim, with φ = atan k, the sliver is 0 ≤ ψ ≤ φ,
+        // t < ρ ≤ t / cos(φ − ψ), at x = ρ sin ψ and r = R1 − ρ cos ψ; its volume and first moment
+        // are 2π ∬ r ρ dρ dψ and 2π ∬ x r ρ dρ dψ, done in ρ by hand and in ψ by quadrature.
+        let phi = k.atan();
+        let tol = hpr_core::quadrature::Tolerance::default();
+        let (sliver_volume, sliver_moment) = {
+            let span = |psi: f64| (t, t / (phi - psi).cos());
+            let volume = hpr_core::quadrature::integrate_scalar(
+                |psi| {
+                    let (a, b) = span(psi);
+                    r1 * (b * b - a * a) / 2.0 - psi.cos() * (b.powi(3) - a.powi(3)) / 3.0
+                },
+                0.0,
+                phi,
+                tol,
+            )
+            .unwrap();
+            let moment = hpr_core::quadrature::integrate_scalar(
+                |psi| {
+                    let (a, b) = span(psi);
+                    r1 * psi.sin() * (b.powi(3) - a.powi(3)) / 3.0
+                        - psi.sin() * psi.cos() * (b.powi(4) - a.powi(4)) / 4.0
+                },
+                0.0,
+                phi,
+                tol,
+            )
+            .unwrap();
+            (2.0 * PI * volume, 2.0 * PI * moment)
+        };
+        let volume = square_volume - sliver_volume;
+        let moment = square_moment - sliver_moment;
+        // The sliver's section is ∬ ρ dρ dψ = (t²/2) ∫ (sec²(φ − ψ) − 1) dψ = t² (tan φ − φ)/2.
+        let sliver_area = hpr_core::quadrature::integrate_scalar(
+            |psi| 0.5 * t * t * ((phi - psi).cos().powi(-2) - 1.0),
+            0.0,
+            phi,
+            tol,
+        )
+        .unwrap();
+        close(
+            sliver_area,
+            t * t * (phi.tan() - phi) / 2.0,
+            1e-10,
+            "sliver section",
+        );
         let transition = Transition {
             shape: NoseShape::Conical {},
             clipped: false,

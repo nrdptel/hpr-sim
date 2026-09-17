@@ -30,11 +30,13 @@
 //! A point below the profile is at least `t` from every surface point exactly when it lies below
 //! all those circles: if it lay above the lower half of the circle about some surface point, the
 //! continuous profile would cross the point's height closer than `t`, so the point would be in the
-//! wall anyway. The minimum is taken over the profile extended past each cut end along its end
-//! tangent, so the wall is cut square by the end planes; past an end whose tangent is vertical
-//! there is no extension, and the end point itself is a candidate. ADR-006 records this choice
-//! against the radial-thickness alternative. The integration is split where `r_i` reaches zero and
-//! at `t` from each end, where the end points' circles enter the envelope.
+//! wall anyway. The surface is the profile over its own length, ends included, with no extension
+//! past a cut end. At an end where the surface meets the end plane at an obtuse angle inside the
+//! wall, the wall's inner corner is rounded by the rim's circle instead of cut square. That removes
+//! `t² (tan φ − φ)/2` of section per unit rim length, with `φ` the surface's angle to the axis
+//! there: 3.0e-4 t² at 7°, and it grows without bound only as the end turns vertical, where a square
+//! cut would close the end with a disc. The integration is split where `r_i` reaches zero and where
+//! the nearest surface point moves between the lateral surface and a rim.
 //!
 //! The integrals use [`hpr_core::quadrature::integrate`] on integrands scaled to order one.
 //! See `docs/physics/mass.md`.
@@ -150,23 +152,18 @@ pub fn revolve(profile: &Profile, wall: Wall) -> Result<RevolvedGeometry, Design
     let moments = match thickness {
         None => filled,
         Some(t) => {
-            let inner = |x: f64| inner_radius(profile, x * length, t) / scale;
+            let inner = |x: f64| inner_radius(profile, x * length, t).0 / scale;
             let integrand = |x: f64| {
                 let yi2 = inner(x).powi(2);
                 [yi2, x * yi2, yi2 * yi2, x * x * yi2]
             };
             let mut hollow = [0.0; 4];
-            // Split where the inner radius fills in, and where the circles about the end points
-            // enter the envelope (`t` from each end), which is a kink.
-            let mut breaks = filling_points(&inner);
-            let edge = t / length;
-            breaks.extend(
-                [edge, 1.0 - edge]
-                    .into_iter()
-                    .filter(|b| *b > 0.0 && *b < 1.0),
-            );
-            breaks.sort_by(f64::total_cmp);
-            breaks.dedup();
+            // Split where the inner radius fills in and where the envelope's nearest surface point
+            // moves between the lateral surface and an end point: both are kinks.
+            let breaks = envelope_breaks(&|x: f64| {
+                let (r, source) = inner_radius(profile, x * length, t);
+                (r > 0.0, source)
+            });
             for pair in breaks.windows(2) {
                 // Every piece is integrated, even one that looks filled in at its middle, so a
                 // thin hollow the crossing grid misses still counts.
@@ -210,90 +207,91 @@ pub fn revolve(profile: &Profile, wall: Wall) -> Result<RevolvedGeometry, Design
     })
 }
 
-/// The inner radius of a wall of thickness `t` at station `x` (both m): the lower envelope of
-/// circles of radius `t` centred on the profile, extended along its end tangents.
-fn inner_radius(profile: &Profile, x: f64, t: f64) -> f64 {
+/// Which surface point sets a wall's inner radius.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum Source {
+    /// A point of the lateral surface between the ends.
+    Surface,
+    /// The rim at the forward end.
+    Fore,
+    /// The rim at the aft end.
+    Aft,
+}
+
+/// The inner radius of a wall of thickness `t` at station `x` (both m), and which surface point
+/// sets it: the lower envelope of circles of radius `t` centred on the profile, over the profile's
+/// own length.
+fn inner_radius(profile: &Profile, x: f64, t: f64) -> (f64, Source) {
     let length = profile.length_m();
-    let (fore_r, fore_slope) = profile.radius_and_slope(0.0);
-    let (aft_r, aft_slope) = profile.radius_and_slope(length);
-    // The profile height at s, or None past an end whose tangent is vertical.
-    let height = |s: f64| -> Option<f64> {
-        if s < 0.0 {
-            fore_slope.is_finite().then_some(fore_r + fore_slope * s)
-        } else if s > length {
-            aft_slope
-                .is_finite()
-                .then_some(aft_r + aft_slope * (s - length))
-        } else {
-            Some(profile.radius_m(s))
-        }
-    };
     let bound = |s: f64| -> f64 {
         let dx = x - s;
-        match height(s) {
-            Some(y) => y - (t * t - dx * dx).max(0.0).sqrt(),
-            None => f64::INFINITY,
-        }
+        profile.radius_m(s) - (t * t - dx * dx).max(0.0).sqrt()
     };
+    // The window of surface points within `t` of the station, on the profile.
+    let lo = (x - t).max(0.0);
+    let hi = (x + t).min(length);
     // A coarse scan finds the basin, and golden-section search refines it.
     const SAMPLES: usize = 32;
-    let step = 2.0 * t / SAMPLES as f64;
-    let sample = |k: usize| x - t + step * (k as f64 + 0.5);
+    let step = (hi - lo) / SAMPLES as f64;
+    let sample = |k: usize| lo + step * (k as f64 + 0.5);
     let best = (0..SAMPLES)
         .min_by(|&i, &j| bound(sample(i)).total_cmp(&bound(sample(j))))
         .unwrap_or(0);
-    let mut lo = (sample(best) - step).max(x - t);
-    let mut hi = (sample(best) + step).min(x + t);
+    let mut left = (sample(best) - step).max(lo);
+    let mut right = (sample(best) + step).min(hi);
     let ratio = 0.5 * (5f64.sqrt() - 1.0);
-    let mut a = hi - ratio * (hi - lo);
-    let mut b = lo + ratio * (hi - lo);
+    let mut a = right - ratio * (right - left);
+    let mut b = left + ratio * (right - left);
     let (mut fa, mut fb) = (bound(a), bound(b));
     for _ in 0..80 {
         if fa <= fb {
-            hi = b;
+            right = b;
             b = a;
             fb = fa;
-            a = hi - ratio * (hi - lo);
+            a = right - ratio * (right - left);
             fa = bound(a);
         } else {
-            lo = a;
+            left = a;
             a = b;
             fa = fb;
-            b = lo + ratio * (hi - lo);
+            b = left + ratio * (right - left);
             fb = bound(b);
         }
         // Near the minimum the bound is quadratic in s, with curvature of order 1/t, so locating s
         // to 1e-9 t fixes the value to about 1e-18 t.
-        if hi - lo <= 1e-9 * t {
+        if right - left <= 1e-9 * t {
             break;
         }
     }
-    let mut minimum = fa.min(fb).min(bound(sample(best)));
-    // Past an end with a vertical tangent the profile stops, so the minimum can sit exactly on the
-    // end, where the search above only approaches it from inside.
-    for end in [0.0, length] {
+    let mut minimum = (fa.min(fb).min(bound(sample(best))), Source::Surface);
+    // The ends are part of the surface, and a minimum can sit exactly on one, where the search above
+    // only approaches it from inside.
+    for (end, source) in [(0.0, Source::Fore), (length, Source::Aft)] {
         if (x - end).abs() <= t {
-            minimum = minimum.min(bound(end));
+            let value = bound(end);
+            if value < minimum.0 {
+                minimum = (value, source);
+            }
         }
     }
-    minimum.max(0.0)
+    (minimum.0.max(0.0), minimum.1)
 }
 
-/// Normalized stations bounding the pieces between which the wall's inner radius is either zero
-/// or positive: 0, every crossing (to near machine precision), and 1.
-fn filling_points(inner: &impl Fn(f64) -> f64) -> Vec<f64> {
-    const GRID: usize = 64;
+/// Normalized stations bounding the pieces over which the wall's state is smooth: 0, every point
+/// where `state` (whether the hollow is open, and which surface point sets its radius) changes, to
+/// near machine precision, and 1.
+fn envelope_breaks(state: &impl Fn(f64) -> (bool, Source)) -> Vec<f64> {
+    const GRID: usize = 128;
     let mut points = vec![0.0];
-    let hollow = |x: f64| inner(x) > 0.0;
-    let mut previous = hollow(0.0);
+    let mut previous = state(0.0);
     for k in 1..=GRID {
         let x = k as f64 / GRID as f64;
-        let now = hollow(x);
+        let now = state(x);
         if now != previous {
             let (mut lo, mut hi) = ((k - 1) as f64 / GRID as f64, x);
             for _ in 0..60 {
                 let mid = 0.5 * (lo + hi);
-                if hollow(mid) == previous {
+                if state(mid) == previous {
                     lo = mid;
                 } else {
                     hi = mid;
@@ -442,20 +440,25 @@ mod tests {
             close(
                 got.volume_m3,
                 want.volume_m3,
-                1e-9,
+                1e-10,
                 &format!("volume {label}"),
             );
             close(
                 got.centroid_m,
                 want.centroid_m,
-                1e-9,
+                1e-10,
                 &format!("centroid {label}"),
             );
-            close(got.axial_m5, want.axial_m5, 1e-9, &format!("axial {label}"));
+            close(
+                got.axial_m5,
+                want.axial_m5,
+                1e-10,
+                &format!("axial {label}"),
+            );
             close(
                 got.transverse_m5,
                 want.transverse_m5,
-                1e-9,
+                1e-10,
                 &format!("transverse {label}"),
             );
         }
@@ -576,6 +579,55 @@ mod tests {
         let filled = revolve(&profile, Wall::Filled {}).unwrap();
         close(filled.volume_m3, outer, 1e-12, "filled volume");
         close(wall.volume_m3, outer - hollow, 1e-10, "wall volume");
+    }
+
+    #[test]
+    fn wall_mass_is_continuous_as_an_end_turns_vertical() {
+        // A power series with n just below 1 has an infinite slope at its small end in floating
+        // point, while the cone's is finite; their profiles differ by about 1e-6 of the volume, and
+        // so must their walls. Extending cut ends along finite tangents made this 8% on a 5 mm
+        // transition.
+        for length in [0.005, 0.01, 0.05] {
+            let wall = |shape| {
+                let profile = Profile::transition(shape, length, 0.0381, 0.0508, false).unwrap();
+                let filled = revolve(&profile, Wall::Filled {}).unwrap().volume_m3;
+                let shell = revolve(&profile, Wall::Shell { thickness_m: 0.002 })
+                    .unwrap()
+                    .volume_m3;
+                (filled, shell)
+            };
+            let (cone_filled, cone_wall) = wall(NoseShape::Conical {});
+            let (power_filled, power_wall) = wall(NoseShape::PowerSeries { exponent: 0.99999 });
+            let filled_change = ((power_filled - cone_filled) / cone_filled).abs();
+            let wall_change = ((power_wall - cone_wall) / cone_wall).abs();
+            assert!(
+                wall_change < 1e-5,
+                "{length}: filled {filled_change:e}, wall {wall_change:e}"
+            );
+        }
+    }
+
+    #[test]
+    fn a_hollow_shorter_than_the_crossing_grid_still_counts() {
+        // A cone with a wall so thick that the hollow is only the last 3.8 mm of 300 mm, less than
+        // the 1/128 grid the fill-in search steps by: the offset-cone formula still holds.
+        let (l, r, t): (f64, f64, f64) = (0.3, 0.05, 0.0487);
+        let k = r / l;
+        let x0 = t * (1.0 + k * k).sqrt() / k;
+        assert!(l - x0 < l / 64.0);
+        let hollow = PI * k * k * (l - x0).powi(3) / 3.0;
+        let g = revolve(
+            &Profile::nose(NoseShape::Conical {}, l, r).unwrap(),
+            Wall::Shell { thickness_m: t },
+        )
+        .unwrap();
+        close(
+            g.volume_m3,
+            PI * r * r * l / 3.0 - hollow,
+            1e-12,
+            "thick cone",
+        );
+        assert!(hollow > 1e-9);
     }
 
     #[test]

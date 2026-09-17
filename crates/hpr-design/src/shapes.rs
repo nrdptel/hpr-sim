@@ -11,7 +11,7 @@
 //! conical            g = ξ
 //! ogive              y = √(ρ² − (Lξ − ρ cos α)²) + ρ sin α,   α = atan(R/L) − acos(√(L² + R²) / 2ρ)
 //! elliptical         g = √(1 − (1 − ξ)²)
-//! power series       g = ξⁿ,                            0 < n ≤ 1
+//! power series       g = ξⁿ,                            0.02 ≤ n ≤ 1
 //! parabolic series   g = (2ξ − K′ξ²) / (2 − K′),        0 ≤ K′ ≤ 1
 //! Haack series       g = √((θ − sin 2θ / 2 + C sin³θ) / π),   θ = acos(1 − 2ξ),   0 ≤ C ≤ 2/3
 //! ```
@@ -58,7 +58,7 @@ pub enum NoseShape {
     Elliptical {},
     /// `g = ξⁿ`: `n = 1` is a cone and `n = ½` a paraboloid.
     PowerSeries {
-        /// The exponent `n`, in `(0, 1]`.
+        /// The exponent `n`, in `[0.02, 1]` ([`MIN_POWER_EXPONENT`]).
         exponent: f64,
     },
     /// Parabolic series: `K′ = 0` is a cone and `K′ = 1` a full parabola, tangent at the base.
@@ -72,6 +72,12 @@ pub enum NoseShape {
         parameter: f64,
     },
 }
+
+/// The smallest power-series exponent accepted. Blunter profiles approach a flat face whose area the
+/// integrals can't resolve (at `n = 1e-9` the wetted area misses the face's `πR²`), and between
+/// `0.01` and `1e-8` they don't converge; `0.02` is the bluntest checked against mpmath. Model a
+/// flat face as a tube and a bulkhead.
+pub const MIN_POWER_EXPONENT: f64 = 0.02;
 
 impl NoseShape {
     /// The tangent ogive.
@@ -97,7 +103,7 @@ impl NoseShape {
             Self::PowerSeries { exponent } => (
                 "power series exponent",
                 exponent,
-                exponent > 0.0 && exponent <= 1.0,
+                (MIN_POWER_EXPONENT..=1.0).contains(&exponent),
             ),
             Self::ParabolicSeries { parameter } => (
                 "parabolic series parameter",
@@ -603,6 +609,7 @@ mod tests {
         for shape in [
             NoseShape::PowerSeries { exponent: 0.0 },
             NoseShape::PowerSeries { exponent: 1.5 },
+            NoseShape::PowerSeries { exponent: 0.019 },
             NoseShape::ParabolicSeries { parameter: -0.1 },
             NoseShape::Haack { parameter: 0.7 },
             NoseShape::Ogive { radius_ratio: 0.1 },
@@ -883,8 +890,8 @@ mod tests {
             let (r, slope) = nose.radius_and_slope(0.3 * xi);
             assert!(r > 0.0 && slope.is_finite() && slope > 0.0, "{xi}");
         }
-        // A tangent-ogive transition 2000 calibres of its radius step long still reaches both
-        // radii, and its volume is the cylinder's to within the step.
+        // A tangent-ogive transition 500 times as long as its radius step still reaches both
+        // radii, and its volume lies between the two cylinders'.
         let slender =
             Profile::transition(NoseShape::TANGENT_OGIVE, 0.05, 0.025, 0.0251, false).unwrap();
         assert!((slender.radius_m(0.0) - 0.025).abs() < 1e-15);

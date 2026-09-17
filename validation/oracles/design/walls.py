@@ -2,17 +2,19 @@
 volume, centroid and both moments of inertia, per unit density.
 
 The wall is the part of the solid within t of the outer surface (ADR-006, docs/physics/shapes.md).
-Its inner radius at station x is the lower envelope of circles of radius t centred on the profile,
-extended past a cut end along the end tangent (and not at all past an end whose tangent is vertical):
+The surface is the profile over its own length, ends included, with no extension past a cut end.
+Its inner radius at station x is the lower envelope of circles of radius t centred on it:
 
-    r_i(x) = max(0, min over |s - x| <= t of [ y(s) - sqrt(t^2 - (x - s)^2) ])
+    r_i(x) = max(0, min over s in [0, L], |s - x| <= t, of [ y(s) - sqrt(t^2 - (x - s)^2) ])
 
 hpr-design finds that minimum by a coarse scan and a golden-section search. This script shares no
 code with it and finds the minimum differently: every interior minimum is a root of the derivative
-y'(s) - (x - s) / sqrt(t^2 - (x - s)^2), bracketed on a grid and solved by bisection,
-and the ends of the profile are added as candidates. The hollow is integrated by tanh-sinh at 25
-digits, split where r_i reaches zero and at t from each end, and subtracted from the filled solid.
-The profiles come from shapes.py in this directory.
+y'(s) - (x - s) / sqrt(t^2 - (x - s)^2), bracketed on a grid (from the window's edges too, where the
+derivative is infinite) and solved by bisection, and the profile's two ends are candidates. The
+hollow is integrated by tanh-sinh at 25 digits, split wherever the hollow opens or closes or the
+nearest surface point moves between the lateral surface and a rim, and subtracted from the filled
+solid; every hollow integral's error estimate must be below 1e-18 relative. The profiles come from
+shapes.py in this directory.
 
 Run from the repository root (the oracle environment has mpmath):
 
@@ -45,102 +47,98 @@ COMMAND = (
 def wall_integrals(case, t):
     at, length = shapes.profile(case)
     t = mpf(t)
-    fore_r, fore_slope = at(mpf(0))
-    aft_r, aft_slope = at(length)
-
-    def height(s):
-        """(y, y') on the profile or its tangent extensions; None where there is no surface."""
-        if s < 0:
-            return None if abs(fore_slope) == inf else (fore_r + fore_slope * s, fore_slope)
-        if s > length:
-            return None if abs(aft_slope) == inf else (aft_r + aft_slope * (s - length), aft_slope)
-        return at(s)
 
     cache = {}
 
     def inner(x):
+        """(r_i(x), source): source is "surface", "fore" or "aft", the point setting the minimum."""
         if x in cache:
             return cache[x]
-        candidates = []
 
         def bound(s):
-            h = height(s)
-            return None if h is None else h[0] - sqrt(max(t * t - (x - s) ** 2, 0))
+            return at(s)[0] - sqrt(max(t * t - (x - s) ** 2, 0))
 
         def slope(s):
-            h = height(s)
-            if h is None or abs(h[1]) == inf:
+            y_slope = at(s)[1]
+            if abs(y_slope) == inf:
                 return None
             gap = t * t - (x - s) ** 2
             if gap <= 0:
                 return -inf if s < x else inf
-            return h[1] - (x - s) / sqrt(gap)
+            return y_slope - (x - s) / sqrt(gap)
 
-        # The window's own edges have infinite slopes (-inf on the left, +inf on the right), so a
-        # minimum can lie between an edge and the first grid point; the profile's ends, where it
-        # stops, bound the window too.
-        lo = x - t
-        hi = x + t
-        lo_slope, hi_slope = -inf, inf
-        if lo < 0 and height(lo) is None:
-            lo, lo_slope = mpf(0), slope(mpf(0))
-        if hi > length and height(hi) is None:
-            hi, hi_slope = length, slope(length)
+        # The window of surface points within t, on the profile. At a window edge inside the
+        # profile the derivative is -inf (left) or +inf (right); at a profile end it is whatever the
+        # profile's slope gives.
+        lo, hi = max(x - t, mpf(0)), min(x + t, length)
+        lo_slope = -inf if x - t > 0 else slope(lo)
+        hi_slope = inf if x + t < length else slope(hi)
         n = 48
         points = [lo] + [lo + (hi - lo) * (k + mpf(1) / 2) / n for k in range(n)] + [hi]
         values = [lo_slope] + [slope(s) for s in points[1:-1]] + [hi_slope]
+        candidates = []
         for k in range(len(points) - 1):
             a, b = values[k], values[k + 1]
-            if a is None or b is None:
+            if a is None or b is None or not (a <= 0 <= b):
                 continue
-            if a <= 0 <= b:
-                # Bisection on the sign: the derivative is steep near the window's edges, which
-                # defeats a residual test.
-                left, right = points[k], points[k + 1]
-                for _ in range(100):
-                    mid = (left + right) / 2
-                    value = slope(mid)
-                    if value is not None and value <= 0:
-                        left = mid
-                    else:
-                        right = mid
-                candidates.append(bound((left + right) / 2))
-        for s in points:
-            value = bound(s)
-            if value is not None:
-                candidates.append(value)
-        for end in (mpf(0), length):
+            # Bisection on the sign: the derivative is steep near the window's edges, which
+            # defeats a residual test.
+            left, right = points[k], points[k + 1]
+            for _ in range(100):
+                mid = (left + right) / 2
+                value = slope(mid)
+                if value is not None and value <= 0:
+                    left = mid
+                else:
+                    right = mid
+            candidates.append((bound((left + right) / 2), "surface"))
+        for s in points[1:-1]:
+            candidates.append((bound(s), "surface"))
+        # The profile's ends are surface points too; there is no extension past them.
+        for end, name in ((mpf(0), "fore"), (length, "aft")):
             if abs(x - end) <= t:
-                candidates.append(bound(end))
-        value = max(min(c for c in candidates if c is not None), mpf(0))
-        cache[x] = value
-        return value
+                candidates.append((bound(end), name))
+        value, source = min(candidates, key=lambda c: c[0])
+        result = (max(value, mpf(0)), source)
+        cache[x] = result
+        return result
 
-    # Where the hollow starts or ends, found by bisection on a grid.
-    grid = [length * k / 128 for k in range(129)]
-    breaks = {mpf(0), length, t, length - t}
-    hollow = [inner(x) > 0 for x in grid]
-    for k in range(128):
-        if hollow[k] != hollow[k + 1]:
+    def state(x):
+        r, source = inner(x)
+        return (r > 0, source if r > 0 else None)
+
+    # Kinks: where the hollow opens or closes, and where the nearest surface point moves between
+    # the lateral surface and a rim. Found on a grid and located by bisection.
+    grid = [length * k / 256 for k in range(257)]
+    states = [state(x) for x in grid]
+    breaks = {mpf(0), length}
+    for k in range(256):
+        if states[k] != states[k + 1]:
             lo, hi = grid[k], grid[k + 1]
-            for _ in range(80):
+            for _ in range(90):
                 mid = (lo + hi) / 2
-                if (inner(mid) > 0) == hollow[k]:
+                if state(mid) == states[k]:
                     lo = mid
                 else:
                     hi = mid
             breaks.add((lo + hi) / 2)
-    points = sorted(b for b in breaks if 0 <= b <= length)
+    points = sorted(breaks)
+
+    errors = []
 
     def integral(f):
-        # The default degree stops early near a blunt end's envelope; degree 10 converges.
-        return quad(lambda x: f(x, inner(x)), points, maxdegree=10)
+        value, error = quad(lambda x: f(x, inner(x)[0]), points, maxdegree=10, error=True)
+        errors.append(error / abs(value) if value else error)
+        return value
 
     filled = shapes.integrals(case)
     v_in = pi * integral(lambda x, r: r**2)
     m_in = pi * integral(lambda x, r: x * r**2)
     a_in = pi / 2 * integral(lambda x, r: r**4)
     f_in = pi * integral(lambda x, r: r**4 / 4 + x**2 * r**2)
+    worst = max(errors)
+    if worst > mpf("1e-18"):
+        raise RuntimeError(f"hollow integral error estimate {mpmath.nstr(worst, 3)} for {case}")
     volume = filled["volume_m3"] - v_in
     first = filled["volume_m3"] * filled["centroid_m"] - m_in
     fore_plane = (

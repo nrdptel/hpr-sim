@@ -87,15 +87,24 @@ diameter, moved to the reference plane by the parallel-axis theorem. `S` exclude
   - A wall of thickness `t` is the part of the solid within `t` of the outer surface, so `t` is
     measured normal to the surface, which is how molded and laid-up shells are made.
   - Its inner radius is the lower envelope of circles of radius `t` on the profile:
-    `r_i(x) = max(0, min_{|s−x|≤t} [y(s) − √(t² − (x − s)²)])`. The profile is extended past cut
-    ends along their tangents, so the wall is cut square.
+    `r_i(x) = max(0, min_{s ∈ [0, L], |s−x| ≤ t} [y(s) − √(t² − (x − s)²)])`. The surface is the
+    profile over its own length, ends included, with no extension past a cut end.
   - The envelope is exact for any continuous profile. A point above the lower half of some
     surface point's circle has the profile crossing its height closer than `t`, so it is in the
     wall anyway.
-  - Past an end whose tangent is vertical (a blunt end of an unclipped transition) there is no
-    extension, and the end point itself is a candidate.
-  - The minimum comes from a 32-point scan, a golden-section search and those end points.
-  - The hollow is integrated separately, split where `r_i` reaches zero and at `t` from each end.
+  - **Cut ends.** Where the surface meets the end plane at an obtuse angle inside the wall (the
+    small end of a transition, the base of a bulged ogive), the rim's circle rounds the wall's
+    inner corner.
+    - A square cut would add a sliver of `t² (tan φ − φ)/2` of section per unit rim length, with
+      `φ` the surface's angle to the axis: 3.0e-4 `t²` at 7°.
+    - The sliver grows without bound only as the end turns vertical. There, a square cut (made by
+      extending the surface along its tangent) closes the end with a disc of thickness `t`.
+    - The first version did extend along finite end tangents only. Its wall mass jumped by up to
+      8% between shapes whose end slopes rounded to finite and to infinite.
+  - The minimum comes from a 32-point scan, a golden-section search, and the two end points, which
+    the search only approaches from inside.
+  - The hollow is integrated separately. It is split where `r_i` reaches zero and where the nearest
+    surface point moves between the lateral surface and a rim, since both are kinks.
   - [TD] doesn't say how OpenRocket measures thickness, and [CR] measures it radially. The two
     differ by a factor `√(1 + y′²)` in wall volume, 1.4% for a cone three calibres long. M2.2
     will measure OpenRocket's choice.
@@ -122,17 +131,25 @@ diameter, moved to the reference plane by the parallel-axis theorem. `S` exclude
 - **Walls against mpmath** (`solids::tests::walls_match_the_mpmath_references`):
   - 20 walls: 11 noses of every family, and 9 transitions both ways, including unclipped blunt
     ends and clipped ones.
-  - Volume, centroid and both moments to 1e-9 relative (worst measured 1.8e-10).
+  - Volume, centroid and both moments to 1e-10 relative (worst measured 5.9e-12).
   - Reference: `validation/fixtures/design/wall-integrals.json`, from
-    `validation/oracles/design/walls.py`. It finds the envelope from the roots of its derivative,
-    bracketed from the window edges and solved by bisection at 25 digits, with no code shared with
-    Rust, and integrates by tanh-sinh at degree 10.
-  - The first reviews found two faults this test now pins. Blunt transition ends failed to
-    converge, or were 5e-6 low, until the end points became candidates. The oracle itself first
-    missed minima next to the window edge.
+    `validation/oracles/design/walls.py`, which shares no code with Rust.
+    - It finds the envelope from the roots of its derivative, bracketed from the window edges and
+      solved by bisection.
+    - It splits the integrals at the kinks it finds, and requires every hollow integral's error
+      estimate below 1e-18.
+  - Reviews found three faults this test now pins:
+    - Blunt transition ends failed to converge, or were 5e-6 low, until the end points became
+      candidates.
+    - Tangent extensions made wall mass jump with the end slope.
+    - The oracle itself first missed minima next to the window edge and left kinks unsplit.
 - **Walls by hand:**
   - A conical wall is the cone minus the same cone moved aft by `t/sin β`: volume, centroid and
-    both moments by hand, to 1e-9.
+    both moments by hand, to 1e-9. A cone so thick that its hollow is 3.8 mm long matches the same
+    formula to 1e-12.
+  - A conical transition's wall is the square-cut frustum shell less the fore rim's sliver, in
+    polar coordinates about the rim: mass and centroid to 1e-10, sliver section to 1e-10
+    (`mass::tests::hollow_transition_and_freeform_fin_cg_are_exact_centroids`).
   - A tangent-ogive wall is bounded by the concentric arc of radius `ρ − t`: volume by hand, to
     1e-10.
   - A tube matches the hollow-cylinder formulas.
@@ -143,5 +160,8 @@ diameter, moved to the reference plane by the parallel-axis theorem. `S` exclude
     tip slope is `+∞`, never NaN.
   - Ogive radius ratios up to 1e12 give the cone, and a power series with `n = 0.02` integrates
     (`extreme_parameters_stay_accurate_or_fail_loudly`).
-  - Unknown fields in a shape or wall are rejected. Transitions hit both radii and are monotone both ways, clipped or
-  not (lesson L49).
+  - Unknown fields in a shape or wall are rejected.
+  - Transitions hit both radii and are monotone both ways, clipped or not (lesson L49); bulged
+    ogives are excluded because their profile is deliberately not monotone.
+  - Power-series exponents below 0.02 are rejected. Blunter profiles approach a flat face the
+    integrals can't resolve.

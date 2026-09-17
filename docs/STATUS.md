@@ -131,7 +131,7 @@ from these notes:
   caches under `refs/samples/` (POST captures can't be pinned yet); the committed curves are
   pinned by sha256.
 - Wall mass (normal thickness) and fin cross-section mass may differ from OpenRocket's, whose
-  conventions are undocumented; M2.2 measures and reports it. A 2 mm nose wall costs 1.7 ms.
+  conventions are undocumented; M2.2 measures and reports it. A 2 mm nose wall costs 2 ms.
 - The RASAero `.CDX1` format has no public spec, so the importer relies on samples.
 - ERA5 `.nc` files may be netCDF4 (HDF5), which affects the pure-Rust reader choice.
 - A new RustSec vulnerability notice (anywhere in the graph) or unmaintained notice (direct
