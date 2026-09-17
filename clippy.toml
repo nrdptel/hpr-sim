@@ -38,10 +38,14 @@ disallowed-methods = [
 disallowed-types = [
     { path = "std::fs::File", reason = "the pure core does no I/O (ADR-001)" },
     { path = "std::fs::OpenOptions", reason = "the pure core does no I/O (ADR-001)" },
+    { path = "std::io::Stderr", reason = "the pure core does no I/O (ADR-001)" },
+    { path = "std::io::Stdin", reason = "the pure core does no I/O (ADR-001)" },
+    { path = "std::io::Stdout", reason = "the pure core does no I/O (ADR-001)" },
     { path = "std::net::TcpListener", reason = "the pure core does no I/O (ADR-001)" },
     { path = "std::net::TcpStream", reason = "the pure core does no I/O (ADR-001)" },
     { path = "std::net::UdpSocket", reason = "the pure core does no I/O (ADR-001)" },
     { path = "std::process::Command", reason = "the pure core does no I/O (ADR-001)" },
+    { path = "std::thread::Builder", reason = "the pure core uses no threads (ADR-001); parallelism goes through the `parallel` feature" },
     { path = "std::time::Instant", reason = "no clocks in the pure core: results must be deterministic (ADR-001)" },
     { path = "std::time::SystemTime", reason = "no clocks in the pure core: results must be deterministic (ADR-001)" },
 ]

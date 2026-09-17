@@ -327,6 +327,9 @@ mod tests {
                 "hpr-wasm",
             ]
         );
-        assert_eq!(check_layering(&workspace, &pure, &[]), Ok(()));
+        assert_eq!(
+            check_layering(&workspace, &pure, &["--locked".to_owned()]),
+            Ok(())
+        );
     }
 }
