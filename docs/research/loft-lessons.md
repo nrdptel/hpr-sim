@@ -28,19 +28,20 @@ Loft's claims are leads: every test re-derives its numbers from a primary source
 - **From OpenRocket's GPL Java, by Loft's own comments:** CG and override precedence
   (`lib/sim/mass.ts:250-350`), parachute Cd 0.8 (`lib/sim/recovery-defaults.ts:38-60`), the ring
   auto bore (`lib/ork/adapt.ts:1350-1393`), the 24.12 ground-hit frame (`lib/ork/adapt.ts:84-108`).
-- **Blanket rule:** any Loft text that names a `.java` file, quotes Java or says "settled from
-  source" is off limits. Known places: Loft's `ROADMAP.md` (lines 1355, 2080-2096, 2258-2266,
-  2486-2496, 3545-3560), `BACKLOG.md:1428,2841`, `COMPETITION.md` rows 35, 36, 41 and 47, test
-  comments at `lib/ork/adapt.test.ts:968-980` and `lib/corpus/sweep.test.ts:160-162`, the RockSim
-  shape codes (`lib/rkt/adapt.ts:68-106`) and the methods page's auto-radius and ring-bore text.
+- **Blanket rule:** any Loft text that names a `.java` file, quotes Java or OpenRocket's message
+  strings, or says it was read from OpenRocket's source is off limits. Known places: Loft's
+  `ROADMAP.md` (1355, 2080-2096, 2258-2266, 2486-2496, 2605-2640, 3545-3560),
+  `BACKLOG.md:1428,2841`, `COMPETITION.md` rows 35, 36, 41, 47, `lib/ork/adapt.test.ts:968-980`,
+  `lib/corpus/sweep.test.ts:160-162`, the RockSim shape codes (`lib/rkt/adapt.ts:68-106`), the
+  methods page's auto-radius text.
 - **Example files:** OpenRocket's example `.ork` files are GPL data: inputs only, never committed.
 
 ## Numbers not to reuse as references
 
 - **`fixtures/rocketpy-cross-check.json`:** records RocketPy 1.12.1 but no install pin, date or
   inputs hash; fed Loft's own Cd, mass and inertia, under ISA.
-- **Demo "stored" figures and the demo `.rkt` results:** author estimates; one set is inconsistent.
-- **The OpenRocket example summary on Loft's validation page:** unasserted, no Loft commit or date.
+- **Demo "stored" figures, demo `.rkt` results, the OpenRocket example summary:** author estimates
+  (one set inconsistent) or unasserted, with no Loft commit or date.
 - **Stored results as found** (L87): 8 of 79 OpenRocket runs outdated and 7 not simulated; two
   RockSim test files that don't match their geometry; a `.CDX1` with 3.76 ft and 10.16 ft apogees.
 - **Certified impulses in `db.test.ts`:** re-read them from the ThrustCurve snapshot.
@@ -50,7 +51,7 @@ Loft's claims are leads: every test re-derives its numbers from a primary source
 | id | lesson | Loft evidence | milestone | test to write |
 |---|---|---|---|---|
 | L1 | Constant gravity 9.80665 on a flat Earth; RocketPy at latitude 0 used 9.78033, so Loft read low against it | lib/units.ts:52; scripts/rocketpy/fly.py:30 | M1.1 | `hpr_core::gravity::tests::somigliana_matches_published_values` |
-| L2 | Geometric altitude treated as geopotential: 11 km gave 216.65 K and 22,632 Pa, where USSA76 gives 216.774 K and 22,699.96 Pa (its table prints 2.2699E+2 mb) | lib/sim/atmosphere.ts:37,94 | M1.2 | `hpr_atmos::ussa76::tests::geometric_11_km_matches_the_1976_tables` |
+| L2 | Geometric altitude treated as geopotential: 11 km gave 216.65 K and 22,632 Pa, where USSA76 gives 216.774 K and 22,699.96 Pa (the table truncates to 2.2699E+2 mb, so compare within one count) | lib/sim/atmosphere.ts:37,94 | M1.2 | `hpr_atmos::ussa76::tests::geometric_11_km_matches_the_1976_tables` |
 | L3 | Only 4 layers, and the 32 km lapse runs on forever: 335 K at 70 km against 219.6 K | lib/sim/atmosphere.ts:37-42 | M1.2 | `hpr_atmos::ussa76::tests::fifty_km_is_270_65_k_and_79_779_pa` |
 | L4 | Sutherland constants aren't USSA76's (sea-level viscosity +1.3%) | lib/sim/atmosphere.ts:31-34 | M1.2 | `hpr_atmos::ussa76::tests::sea_level_viscosity_is_1_7894e_5` |
 | L5 | "Today's conditions" keep the standard lapse from the field up; dry air; no sounding temperatures | lib/sim/atmosphere.ts:147-158 | M1.2 | `hpr_atmos::profile::tests::sounding_temperature_overrides_standard_lapse` |
@@ -70,17 +71,17 @@ Loft's claims are leads: every test re-derives its numbers from a primary source
 | L19 | Tube-fin CP about 0.9 cal forward of OpenRocket's; ring tails skipped | app/docs/limitations/page.tsx:651-667 | M2.2 | `hpr_validate::openrocket::tests::tube_fin_cp_within_0_25_cal_of_oracle` |
 | L20 | 3-DOF: no angle of attack, body lift, damping or roll, and no weathercocking (the boost drifts downwind) | lib/sim/simulate.ts:6-12,660-667 | M1.6 | `hpr_sim::tests::stable_rocket_weathercocks_into_crosswind` |
 | L21 | RK4 with no error control (steps capped only for canopy stiffness) and no apogee convergence test | lib/sim/simulate.ts:436-468 | M1.6 | `hpr_sim::integrator::tests::apogee_converges_under_tolerance_halving` |
-| L22 | Events not root-found: apogee quantised to the step, altitude deploys overshoot by v·dt, landing taken below ground | lib/sim/simulate.ts:874-958 | M1.6 | `hpr_sim::events::tests::apogee_landing_and_altitude_deploy_located_within_1e_6_s` |
+| L22 | Events not root-found: apogee quantised to the step, altitude deploys overshoot by v·dt, landing taken below ground (truth: the L23 vacuum case) | lib/sim/simulate.ts:874-958 | M1.6 | `hpr_sim::events::tests::apogee_landing_and_altitude_deploy_located_within_1e_6_s` |
 | L23 | Discontinuities fall inside steps; the vacuum closed form was only checked to ±2% | lib/sim/simulate.test.ts:79-104 | M1.6 | `hpr_sim::integrator::tests::constant_thrust_vacuum_matches_closed_form` |
 | L24 | `simulate()` mutates its input recovery devices, so repeated runs (and a convergence test) were contaminated | lib/sim/simulate.ts:902-905 | M1.6 | `hpr_sim::tests::repeated_runs_are_bit_identical` |
 | L25 | Any stop before the time cap was labelled "step budget", including a rocket that never lifted off | lib/sim/simulate.ts:772,982 | M1.6 | `hpr_sim::tests::termination_reason_distinguishes_no_liftoff_time_cap_and_step_limit` |
 | L26 | Rail has no friction or button geometry; "last button clears" was blamed for a gap the oracle couldn't show | lib/sim/simulate.ts:692; scripts/rocketpy/fly.py:48-91 | M1.6 | `hpr_sim::rail::tests::rail_exit_is_when_the_last_button_leaves` |
 | L27 | Instant inflation, no opening load, an unsourced 0.5·A_ref body term, and no drogue-release option | lib/sim/recovery.ts:41; lib/sim/simulate.ts:680 | M1.7 | `hpr_sim::recovery::tests::inflation_time_limits_peak_opening_load` |
 | L28 | Stiff canopy drag under explicit RK4 forced a 2e-4 s step floor; the 1200 s cap left high descents unlanded | lib/sim/simulate.ts:436,452-468 | M1.7 | `hpr_sim::recovery::tests::oversized_canopy_and_ten_km_descent_land_without_step_collapse` |
-| L29 | Parachute Cd 0.8 came from OpenRocket source; Knacke Table 5-1 gives 0.75 to 0.80 for flat circular canopies (RocketPy's 1.4 is hemispherical) | lib/sim/recovery-defaults.ts:38-60 | M1.7 | `hpr_sim::recovery::tests::default_canopy_cd_carries_its_citation` |
+| L29 | Parachute Cd 0.8 came from OpenRocket source; Knacke Table 5-1 gives 0.75 to 0.80 on nominal area for flat circular canopies (RocketPy's 1.4 is hemispherical) | lib/sim/recovery-defaults.ts:38-60 | M1.7 | `hpr_sim::recovery::tests::default_canopy_cd_carries_its_citation` |
 | L30 | Staging fixed before flight: apogee or altitude separation fell back to burnout, and boosters were never flown | lib/sim/setup.ts:288-300; lib/sim/simulate.ts:1039-1063 | M1.9 | `hpr_sim::staging::tests::apogee_separation_fires_in_flight_and_booster_flies_to_landing` |
 | L31 | Clusters are on-axis only (no motor-out moment); mixed clusters were sent to the oracle as N copies of motor 0 | lib/sim/setup.ts:358; lib/validation/rocketpy-spec.ts:198-230 | M1.9 | `hpr_sim::staging::tests::cluster_motor_out_produces_pitch_moment` |
-| L32 | Flutter uses 1.337·(λ+1)/2, but NACA TN 4197 eq. 18 gives (39.3/p₀)·(λ+1)/2 = 2.674·(λ+1)/2, so Loft's flutter speed is √2 too high (the unsafe side); 7 shear moduli unsourced | lib/sim/flutter.ts:11,287 | M1.10 | `hpr_sim::flutter::tests::flutter_denominator_matches_tn_4197_eq_18`, `hpr_sim::flutter::tests::scaling_laws_in_thickness_shear_modulus_and_pressure` |
+| L32 | Flutter uses 1.337·(λ+1)/2, but NACA TN 4197 eq. 18 gives (39.3/p₀)·(λ+1)/2 with p₀ 14.696 psi = 2.674·(λ+1)/2, so Loft's flutter speed is √2 too high (the unsafe side); 7 shear moduli unsourced | lib/sim/flutter.ts:11,287 | M1.10 | `hpr_sim::flutter::tests::flutter_denominator_matches_tn_4197_eq_18`, `hpr_sim::flutter::tests::scaling_laws_in_thickness_shear_modulus_and_pressure` |
 | L33 | Static margin blew up as CNα went to 0 and was published as ±12 to 15 cal | COMPETITION.md:129 | M1.10 | `hpr_sim::metrics::tests::static_margin_undefined_when_cn_alpha_near_zero` |
 | L34 | Opening shock inflated max acceleration, and a finite difference missed thrust-spike peaks | lib/sim/simulate.test.ts:232-288 | M1.10 | `hpr_sim::metrics::tests::peak_acceleration_is_analytic_and_excludes_opening_shock` |
 | L35 | Zeros stood in for "never happened"; apogee datum and ground-hit frame went unstated | lib/sim/withheld.ts:23-139; BACKLOG.md:1010-1016 | M1.10 | `hpr_sim::metrics::tests::unlanded_flight_has_no_ground_hit_speed_and_outputs_name_datum` |
@@ -90,7 +91,7 @@ Loft's claims are leads: every test re-derives its numbers from a primary source
 | id | lesson | Loft evidence | milestone | test to write |
 |---|---|---|---|---|
 | L36 | `.eng` reads only the first header; a second block's samples are appended to the first curve | lib/motors/eng.ts:69-83 | M1.3 | `hpr_motor::eng::tests::multiple_blocks_parse_separately` |
-| L37 | Delays split on "-" only: `P` and comma lists are lost, and 100 and 1000 (plugged markers in bundled files, not in the RASP spec) become 100 s and 1000 s | lib/motors/eng.ts:127-132 | M1.3 | `hpr_motor::eng::tests::delay_lists_and_plugged_markers_parse` |
+| L37 | Delays split on "-" only: `P` and comma lists are lost, and 100 and 1000 (presumably plugged markers; the RASP spec defines only P and 0) become 100 s and 1000 s | lib/motors/eng.ts:127-132 | M1.3 | `hpr_motor::eng::tests::delay_lists_and_plugged_markers_parse` |
 | L38 | Class letter off by one at band tops (2.5 N·s gives B); no 1/8A | lib/motors/eng.ts:53-59 | M1.3 | `hpr_motor::tests::impulse_class_upper_bound_inclusive` |
 | L39 | Time samples not checked for order; burn time is the last sample, while ThrustCurve's glossary uses NFPA 1125 (5% of peak) | lib/motors/eng.ts:88-149 | M1.3 | `hpr_motor::eng::tests::rejects_non_monotonic_time`, `hpr_motor::tests::burn_time_uses_the_nfpa_1125_definition` |
 | L40 | Motor CG fixed at the casing midpoint with zero own inertia; the impulse-fraction model is uncited | lib/sim/setup.ts:246; lib/motors/eng.ts:175-179 | M1.3 | `hpr_motor::tests::cg_and_inertia_move_from_loaded_to_burnout` |
@@ -157,8 +158,8 @@ Loft's claims are leads: every test re-derives its numbers from a primary source
 
 | id | lesson | Loft evidence | milestone | test to write |
 |---|---|---|---|---|
-| L89 | Barrowman hand values: cone CNα 2 and CP 2L/3; conical transition 20 to 40 mm over 0.1 m (reference radius 40 mm) gives CNα 1.5 and CP 0.05556 m from its fore end; elliptical fin CP 0.28779 c_r from the root leading edge | lib/sim/aero.test.ts:69-263 | M1.5 | `hpr_aero::tests::barrowman_hand_values` |
-| L90 | Drag invariants: skin friction follows Niskanen eq. 3.81 piecewise (it steps up at R_crit) and stays finite to M5; split fin sets drag like one set; base drag continuous at M1 | lib/sim/aero.test.ts:297-744 | M1.5 | `hpr_aero::drag::tests::skin_friction_follows_eq_3_81_and_drag_invariants_hold` |
+| L89 | Barrowman hand values: cone CNα 2 and CP 2L/3; conical transition from radius 20 to 40 mm over 0.1 m (reference radius 40 mm) gives CNα 1.5 and CP 0.05556 m from its fore end; elliptical fin CP 0.28779 c_r from the root leading edge | lib/sim/aero.test.ts:69-263 | M1.5 | `hpr_aero::tests::barrowman_hand_values` |
+| L90 | Drag invariants: skin friction follows Niskanen eq. 3.81 piecewise (it is discontinuous at R_crit) and stays finite to M5; split fin sets drag like one set; base drag continuous at M1 | lib/sim/aero.test.ts:297-744 | M1.5 | `hpr_aero::drag::tests::skin_friction_follows_eq_3_81_and_drag_invariants_hold` |
 | L91 | Nose volumes: cone πR²L/3; tangent ogive R 0.04 m, L 0.25 m gives 6.7509e-4 m³; Haack πR²L(1/2 + 3C/16) | lib/sim/shapes.test.ts:1-58 | M1.4 | `hpr_design::shapes::tests::nose_volumes_match_closed_forms` |
 | L92 | Terminal descent: 1.1 kg, Cd 0.8, 1 m canopy, ρ 1.225, g 9.80665, canopy drag only, gives 5.294 m/s (Loft allowed ±30%) | lib/sim/simulate.test.ts:166-201 | M1.7 | `hpr_sim::recovery::tests::descent_rate_equals_terminal_velocity` |
 | L93 | Staging: sustainer lights at booster burnout plus delay, mass steps at separation, an unreachable trigger never lights | lib/sim/staging.test.ts:267-311,687-800 | M1.9 | `hpr_sim::staging::tests::serial_plan_timing_and_mass_step` |
@@ -190,10 +191,8 @@ Loft's claims are leads: every test re-derives its numbers from a primary source
 
 ## Competition notes (from Loft's `COMPETITION.md`; re-check the sources before relying on them)
 
-- **Loft's edge:** no install, it reads the file you have, and it sets several answers side by
-  side and flags disagreement (M3.x, M4.2 `hpr compare`, M4.4).
-- **Formats alone aren't an edge:** OpenRocket 23.09 already reads `.ork`, `.rkt` and `.CDX1`. The
-  edge is a lossless round trip (L58 to L68).
+- **Edge:** Loft read the file you have and set several answers side by side (M4.2 `hpr compare`);
+  OpenRocket already reads `.ork`, `.rkt` and `.CDX1`, so the edge is a lossless round trip (L58+).
 - **Accuracy bars (UNVERIFIED):** RocketPy's README cites 2 flights at +0.45% and -0.75% apogee
   (J. Aerosp. Eng., doi 10.1061/(ASCE)AS.1943-5525.0001331); Loft's RASAero II figure has no source.
 - **Gaps in every tool:** none flags out-of-envelope numbers (M1.8, M1.10); RocketPy's

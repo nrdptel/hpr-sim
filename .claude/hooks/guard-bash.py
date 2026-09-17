@@ -7,9 +7,10 @@
 * no force-adding the private reference library (refs/, corpus/), and no committing any file whose
   bytes match a file in the private loft-fixtures corpus
 * no `gh pr merge` unless every CI check on the PR has passed, and never with --admin
-* no fetching OpenRocket's GPL source code (clean room), from Bash or WebFetch. Its release assets
-  (the jar, the thesis and technical-documentation PDFs), its issues and other repos such as
-  openrocket-database stay allowed
+* no fetching OpenRocket's GPL source code (clean room), from Bash or WebFetch. Release assets
+  downloaded by URL (the jar, the thesis and technical-documentation PDFs), its issues and other
+  repos such as openrocket-database stay allowed; `gh release download` is blocked because it can
+  fetch the source archive
 
 Exit code 2 blocks the call, and stderr goes back to Claude as the reason. Any internal error
 exits 0 so a bug in this guard never wedges a run; the settings.json deny rules are
@@ -68,6 +69,7 @@ GIT_FETCHES = {"clone", "fetch", "pull", "submodule", "remote", "archive", "ls-r
 GH_FETCHES = {("repo", "clone"), ("pr", "diff"), ("pr", "checkout"), ("search", "code"), ("release", "download"), ("browse", None)}
 # Wrappers that run the command after them.
 WRAPPERS = {"env", "command", "nice", "nohup", "time", "exec", "timeout"}
+WRAPPER_OPTIONS_WITH_VALUE = {"-s", "--signal", "-k", "--kill-after", "-n", "--adjustment", "-u", "--unset", "-C", "--chdir"}
 
 
 def strip_wrappers(tokens: list[str]) -> list[str]:
@@ -81,7 +83,8 @@ def strip_wrappers(tokens: list[str]) -> list[str]:
         elif base in WRAPPERS:
             i += 1
             while i < len(tokens) and tokens[i].startswith("-"):
-                i += 1
+                # Options such as `timeout -s KILL`, `nice -n 10` and `env -u HOME` take a value.
+                i += 2 if tokens[i] in WRAPPER_OPTIONS_WITH_VALUE else 1
             if base == "timeout" and i < len(tokens):
                 i += 1  # the duration
         else:
