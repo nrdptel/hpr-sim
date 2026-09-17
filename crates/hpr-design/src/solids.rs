@@ -28,12 +28,13 @@
 //! ```
 //!
 //! A point below the profile is at least `t` from every surface point exactly when it lies below
-//! all those circles; the minimum is taken over the profile extended past each cut end along its
-//! end tangent, so the wall is cut square by the end planes. The envelope holds for profiles that
-//! do not fall faster than 45° (`y′ ≥ −1`) where they fall, which every nose cone and transition
-//! of practical proportions satisfies; ADR-006 records this choice against the radial-thickness
-//! alternative. Where `r_i` reaches zero near a tip the wall has filled in, and the integration is
-//! split there.
+//! all those circles: if it lay above the lower half of the circle about some surface point, the
+//! continuous profile would cross the point's height closer than `t`, so the point would be in the
+//! wall anyway. The minimum is taken over the profile extended past each cut end along its end
+//! tangent, so the wall is cut square by the end planes; past an end whose tangent is vertical
+//! there is no extension, and the end point itself is a candidate. ADR-006 records this choice
+//! against the radial-thickness alternative. The integration is split where `r_i` reaches zero and
+//! at `t` from each end, where the end points' circles enter the envelope.
 //!
 //! The integrals use [`hpr_core::quadrature::integrate`] on integrands scaled to order one.
 //! See `docs/physics/mass.md`.
@@ -51,7 +52,7 @@ use crate::shapes::{Profile, check_dimension};
 #[serde(tag = "kind", rename_all = "snake_case", deny_unknown_fields)]
 pub enum Wall {
     /// Solid all the way to the axis.
-    Filled,
+    Filled {},
     /// A wall of constant thickness measured normal to the outer surface.
     Shell {
         /// Wall thickness, m.
@@ -103,7 +104,7 @@ pub fn revolve(profile: &Profile, wall: Wall) -> Result<RevolvedGeometry, Design
     let length = profile.length_m();
     let scale = profile.max_radius_m();
     let thickness = match wall {
-        Wall::Filled => None,
+        Wall::Filled {} => None,
         Wall::Shell { thickness_m } => {
             check_dimension("wall thickness", thickness_m, false)?;
             Some(thickness_m)
@@ -135,11 +136,8 @@ pub fn revolve(profile: &Profile, wall: Wall) -> Result<RevolvedGeometry, Design
 
     // Surfaces, and the filled solid's moments: [∫Y², ∫XY², ∫Y⁴, ∫X²Y²] over X.
     let [wetted, planform, planform_moment, _, _] = halves(&|x, y, slope| {
-        let wetted = if y == 0.0 {
-            0.0
-        } else {
-            (y * y + (y * slope).powi(2)).sqrt()
-        };
+        // `hypot` keeps a very blunt tip's `y y′` from overflowing when squared.
+        let wetted = if y == 0.0 { 0.0 } else { y.hypot(y * slope) };
         [wetted, y, x * y, 0.0, 0.0]
     })?;
     let [a, b, c, d, _] = halves(&|x, y, _| {
@@ -158,12 +156,20 @@ pub fn revolve(profile: &Profile, wall: Wall) -> Result<RevolvedGeometry, Design
                 [yi2, x * yi2, yi2 * yi2, x * x * yi2]
             };
             let mut hollow = [0.0; 4];
-            let breaks = filling_points(&inner);
+            // Split where the inner radius fills in, and where the circles about the end points
+            // enter the envelope (`t` from each end), which is a kink.
+            let mut breaks = filling_points(&inner);
+            let edge = t / length;
+            breaks.extend(
+                [edge, 1.0 - edge]
+                    .into_iter()
+                    .filter(|b| *b > 0.0 && *b < 1.0),
+            );
+            breaks.sort_by(f64::total_cmp);
+            breaks.dedup();
             for pair in breaks.windows(2) {
-                // The hollow is empty where the wall has filled in.
-                if inner(0.5 * (pair[0] + pair[1])) == 0.0 {
-                    continue;
-                }
+                // Every piece is integrated, even one that looks filled in at its middle, so a
+                // thin hollow the crossing grid misses still counts.
                 let piece = integrate(integrand, pair[0], pair[1], WALL)?;
                 for (sum, value) in hollow.iter_mut().zip(piece.value) {
                     *sum += value;
@@ -183,6 +189,12 @@ pub fn revolve(profile: &Profile, wall: Wall) -> Result<RevolvedGeometry, Design
     let axial = 0.5 * PI * r2l * scale * scale * fourth;
     let about_fore = PI * (0.25 * r2l * scale * scale * fourth + r2l * length * length * second);
     let transverse = about_fore - volume * centroid * centroid;
+    // The subtraction may round a tiny moment below zero; anything larger is a numerical fault.
+    if transverse < -1e-9 * about_fore {
+        return Err(DesignError::Geometry(format!(
+            "the transverse moment came out negative ({transverse:e} m⁵)"
+        )));
+    }
     Ok(RevolvedGeometry {
         volume_m3: volume,
         centroid_m: centroid,
@@ -256,7 +268,14 @@ fn inner_radius(profile: &Profile, x: f64, t: f64) -> f64 {
             break;
         }
     }
-    let minimum = fa.min(fb).min(bound(sample(best)));
+    let mut minimum = fa.min(fb).min(bound(sample(best)));
+    // Past an end with a vertical tangent the profile stops, so the minimum can sit exactly on the
+    // end, where the search above only approaches it from inside.
+    for end in [0.0, length] {
+        if (x - end).abs() <= t {
+            minimum = minimum.min(bound(end));
+        }
+    }
     minimum.max(0.0)
 }
 
@@ -317,72 +336,175 @@ mod tests {
         let fixture: Fixture = serde_json::from_str(text).unwrap();
         assert_eq!(fixture.cases.len(), 22);
         for case in fixture.cases {
-            let mut input = case.input.clone();
-            let object = input.as_object_mut().unwrap();
-            let kind = object.remove("shape").unwrap();
-            let mut shape = serde_json::json!({ "kind": kind });
-            if let Some(parameter) = object.remove("parameter") {
-                let key = match kind.as_str().unwrap() {
-                    "ogive" => "radius_ratio",
-                    "power_series" => "exponent",
-                    _ => "parameter",
-                };
-                shape[key] = parameter;
-            }
-            object.insert("shape".to_owned(), shape);
-            let profile: Profile = serde_json::from_value(input).unwrap();
-            let got = revolve(&profile, Wall::Filled).unwrap();
+            let profile = fixture_profile(&case.input);
+            let got = revolve(&profile, Wall::Filled {}).unwrap();
             let want = case.expected;
             let label = case.input.to_string();
             close(
                 got.volume_m3,
                 want.volume_m3,
-                1e-11,
+                1e-12,
                 &format!("volume {label}"),
             );
             close(
                 got.centroid_m,
                 want.centroid_m,
-                1e-11,
+                1e-12,
                 &format!("centroid {label}"),
             );
             close(
                 got.axial_m5,
                 want.axial_m5,
-                1e-11,
+                1e-12,
                 &format!("axial {label}"),
             );
             close(
                 got.transverse_m5,
                 want.transverse_m5,
-                1e-10,
+                1e-12,
                 &format!("transverse {label}"),
             );
             close(
                 got.wetted_area_m2,
                 want.wetted_area_m2,
-                1e-11,
+                1e-12,
                 &format!("wetted {label}"),
             );
             close(
                 got.planform_area_m2,
                 want.planform_area_m2,
-                1e-11,
+                1e-12,
                 &format!("planform {label}"),
             );
             close(
                 got.planform_centroid_m,
                 want.planform_centroid_m,
-                1e-11,
+                1e-12,
                 &format!("planform centroid {label}"),
             );
         }
     }
 
+    #[derive(serde::Deserialize)]
+    struct WallFixture {
+        cases: Vec<WallCase>,
+    }
+
+    #[derive(serde::Deserialize)]
+    struct WallCase {
+        input: serde_json::Value,
+        wall_thickness_m: f64,
+        expected: WallExpected,
+    }
+
+    #[derive(serde::Deserialize)]
+    struct WallExpected {
+        volume_m3: f64,
+        centroid_m: f64,
+        axial_m5: f64,
+        transverse_m5: f64,
+    }
+
+    /// A fixture case's input as a profile (the fixture names the shape parameter `parameter`).
+    fn fixture_profile(input: &serde_json::Value) -> Profile {
+        let mut input = input.clone();
+        let object = input.as_object_mut().unwrap();
+        let kind = object.remove("shape").unwrap();
+        let mut shape = serde_json::json!({ "kind": kind });
+        if let Some(parameter) = object.remove("parameter") {
+            let key = match kind.as_str().unwrap() {
+                "ogive" => "radius_ratio",
+                "power_series" => "exponent",
+                _ => "parameter",
+            };
+            shape[key] = parameter;
+        }
+        object.insert("shape".to_owned(), shape);
+        serde_json::from_value(input).unwrap()
+    }
+
+    /// Walls of every shape family, as noses and as transitions both ways, clipped and not (blunt
+    /// unclipped ends included), against `validation/oracles/design/walls.py`, which finds the
+    /// envelope from the roots of its derivative at 25 digits.
+    #[test]
+    fn walls_match_the_mpmath_references() {
+        let text = include_str!("../../../validation/fixtures/design/wall-integrals.json");
+        let fixture: WallFixture = serde_json::from_str(text).unwrap();
+        assert_eq!(fixture.cases.len(), 20);
+        for case in fixture.cases {
+            let profile = fixture_profile(&case.input);
+            let wall = Wall::Shell {
+                thickness_m: case.wall_thickness_m,
+            };
+            let got = revolve(&profile, wall).unwrap();
+            let want = case.expected;
+            let label = format!("{} t = {}", case.input, case.wall_thickness_m);
+            close(
+                got.volume_m3,
+                want.volume_m3,
+                1e-9,
+                &format!("volume {label}"),
+            );
+            close(
+                got.centroid_m,
+                want.centroid_m,
+                1e-9,
+                &format!("centroid {label}"),
+            );
+            close(got.axial_m5, want.axial_m5, 1e-9, &format!("axial {label}"));
+            close(
+                got.transverse_m5,
+                want.transverse_m5,
+                1e-9,
+                &format!("transverse {label}"),
+            );
+        }
+    }
+
+    #[test]
+    fn extreme_parameters_stay_accurate_or_fail_loudly() {
+        // A huge ogive radius is a cone.
+        let cone = revolve(
+            &Profile::nose(NoseShape::Conical {}, 0.3, 0.05).unwrap(),
+            Wall::Filled {},
+        )
+        .unwrap();
+        for ratio in [1e6, 1e12] {
+            let profile = Profile::nose(
+                NoseShape::Ogive {
+                    radius_ratio: ratio,
+                },
+                0.3,
+                0.05,
+            )
+            .unwrap();
+            assert!(
+                (profile.radius_m(0.001) - 0.05 / 300.0).abs() < 1e-9,
+                "{ratio}"
+            );
+            let g = revolve(&profile, Wall::Filled {}).unwrap();
+            close(g.volume_m3, cone.volume_m3, 1e-5, &format!("ogive {ratio}"));
+        }
+        // A very blunt power series still integrates.
+        let n = 0.02;
+        let g = revolve(
+            &Profile::nose(NoseShape::PowerSeries { exponent: n }, 0.2, 0.05).unwrap(),
+            Wall::Filled {},
+        )
+        .unwrap();
+        close(
+            g.volume_m3,
+            PI * 0.05 * 0.05 * 0.2 / (2.0 * n + 1.0),
+            1e-10,
+            "blunt power series",
+        );
+        assert!(g.wetted_area_m2.is_finite());
+    }
+
     #[test]
     fn a_tube_matches_the_hollow_cylinder_formulas() {
         let (l, r, t) = (0.5, 0.05, 0.002);
-        let profile = Profile::transition(NoseShape::Conical, l, r, r, false).unwrap();
+        let profile = Profile::transition(NoseShape::Conical {}, l, r, r, false).unwrap();
         let g = revolve(&profile, Wall::Shell { thickness_m: t }).unwrap();
         let ri = r - t;
         let v = PI * (r * r - ri * ri) * l;
@@ -406,7 +528,7 @@ mod tests {
         let (l, r, t): (f64, f64, f64) = (0.3, 0.05, 0.003);
         let k = r / l;
         let x0 = t * (1.0 + k * k).sqrt() / k;
-        let profile = Profile::nose(NoseShape::Conical, l, r).unwrap();
+        let profile = Profile::nose(NoseShape::Conical {}, l, r).unwrap();
         let g = revolve(&profile, Wall::Shell { thickness_m: t }).unwrap();
         // Integrals of the outer cone and the hollow cone over [x0, L], by hand.
         let u = l - x0;
@@ -451,7 +573,7 @@ mod tests {
             PI * (l * rho * rho - l.powi(3) / 3.0 - (rho - r) * rho * rho * (l / rho).asin());
         let profile = Profile::nose(NoseShape::TANGENT_OGIVE, l, r).unwrap();
         let wall = revolve(&profile, Wall::Shell { thickness_m: t }).unwrap();
-        let filled = revolve(&profile, Wall::Filled).unwrap();
+        let filled = revolve(&profile, Wall::Filled {}).unwrap();
         close(filled.volume_m3, outer, 1e-12, "filled volume");
         close(wall.volume_m3, outer - hollow, 1e-10, "wall volume");
     }
@@ -459,7 +581,7 @@ mod tests {
     #[test]
     fn a_thick_wall_fills_the_solid_and_a_thin_one_is_area_times_thickness() {
         let profile = Profile::nose(NoseShape::VON_KARMAN, 0.3, 0.05).unwrap();
-        let filled = revolve(&profile, Wall::Filled).unwrap();
+        let filled = revolve(&profile, Wall::Filled {}).unwrap();
         let thick = revolve(&profile, Wall::Shell { thickness_m: 0.2 }).unwrap();
         close(thick.volume_m3, filled.volume_m3, 1e-12, "thick wall");
         close(

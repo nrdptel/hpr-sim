@@ -468,8 +468,9 @@ a boattail is oriented or where cant pivots (`docs/physics/shapes.md`, `docs/phy
 - **Recovery parts and mass components** are solid cylinders of their packed size. A parachute's
   cloth is `πD²/4`.
 - **Numerics.** `hpr_core::quadrature` gains an adaptive vector G7K15 (QUADPACK's `QAG` without
-  extrapolation), with substitutions and end-relative evaluation at blunt tips; every result is
-  checked to 1e-10 or better against closed forms or 40-digit mpmath integrals. Principal moments
+  extrapolation), with substitutions and end-relative evaluation at blunt tips. Filled solids match closed forms
+  to 1e-10 and 40-digit mpmath integrals to 1e-12; walls match an independent 25-digit mpmath
+  envelope to 1e-9 (worst measured 1.8e-10). Principal moments
   use cyclic Jacobi, not the closed-form eigenvalue method that loses `√ε` for repeated moments.
 - **Materials** are values stored in the design (name and density with its kind), not library
   keys, so designs stay complete offline. Built-in values cite primary public sources: USDA's Wood
@@ -483,7 +484,11 @@ a boattail is oriented or where cant pivots (`docs/physics/shapes.md`, `docs/phy
 **Consequences.**
 
 - M1.4b builds the tree on these parts: placement, auto radii, overrides, configurations with
-  `SolidMotor`, reference diameter and checks.
+  `SolidMotor`, reference diameter and checks. The part types hold resolved geometry. "Auto or
+  fixed" radii and overrides belong to the tree's own types, so these serialized forms don't
+  change when the tree arrives.
+- Fin cant sign: a positive cant turns fin 0's leading edge toward `−y_B`, and a test pins it.
+  M1.8 derives the roll-forcing sign from this geometry.
 - M1.5 takes wetted areas, planform areas and centroids from `revolve` and the fin planforms.
 - M2.2 compares OpenRocket's component masses, and reports the wall-thickness and cross-section
   conventions if they explain differences.

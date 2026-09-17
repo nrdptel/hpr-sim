@@ -69,7 +69,9 @@ small extracted fixtures with a clear license are committed, each with its prove
   stated. Its curves are checked by closed forms and by
   `validation/oracles/design/shapes.py` → `validation/fixtures/design/shape-integrals.json`
   (mpmath, 40 digits, 22 noses and transitions): every filled volume, centroid, moment and area
-  agrees to 1e-11 relative (1e-10 for the transverse moment) (M1.4a, `docs/physics/shapes.md`).
+  agrees to 1e-12 relative. Walls: `validation/oracles/design/walls.py` →
+  `validation/fixtures/design/wall-integrals.json` (20 walls, 25 digits): volume, centroid and
+  moments agree to 1e-9 (M1.4a, `docs/physics/shapes.md`).
 - **Material densities:** USDA Forest Products Laboratory, *Wood Handbook* FPL-GTR-190 (2010),
   pinned as `fpl-gtr-190-wood-handbook`; manufacturers' data sheets and military specifications,
   cited per value with URLs in `hpr_design::materials` (M1.4a, `docs/physics/mass.md`).

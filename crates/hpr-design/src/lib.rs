@@ -46,10 +46,10 @@ mod tests {
     fn composite_rocket_inertia_matches_hand_calculation() {
         let r = 0.05;
         let nose = NoseCone {
-            shape: NoseShape::Conical,
+            shape: NoseShape::Conical {},
             length_m: 0.3,
             base_radius_m: r,
-            wall: Wall::Filled,
+            wall: Wall::Filled {},
             shoulder: None,
             material: Material::bulk("PLA", 1240.0),
         };

@@ -1,0 +1,338 @@
+{
+  "source": "ADR-006 wall definition (docs/physics/shapes.md); profiles from shapes.py",
+  "generator": "validation/oracles/design/walls.py (mpmath tanh-sinh, 25 digits)",
+  "tool": "mpmath 1.3.0",
+  "generated": "2026-09-17",
+  "command": "refs/venv/bin/python validation/oracles/design/walls.py > validation/fixtures/design/wall-integrals.json",
+  "inputs_sha256": {
+    "script": "931788b51b72cb8acfa7af92f48bc315fc52236f0841dd3dbd0c1117b7e7041c",
+    "shapes.py": "845c11f402fadf444e0db14c01a18f48db36f9ba4695005684e02cb62f381fda"
+  },
+  "units": "SI; centroids are metres aft of the forward end; moments are per unit density",
+  "cases": [
+    {
+      "input": {
+        "shape": "conical",
+        "length_m": 0.3,
+        "fore_radius_m": 0.0,
+        "aft_radius_m": 0.05
+      },
+      "wall_thickness_m": 0.002,
+      "expected": {
+        "volume_m3": 9.172555380948019e-05,
+        "centroid_m": 0.20199961688615184,
+        "axial_m5": 1.1013309338424378e-07,
+        "transverse_m5": 4.957245608026768e-07
+      }
+    },
+    {
+      "input": {
+        "shape": "ogive",
+        "length_m": 0.25,
+        "fore_radius_m": 0.0,
+        "aft_radius_m": 0.04,
+        "parameter": 1.0
+      },
+      "wall_thickness_m": 0.002,
+      "expected": {
+        "volume_m3": 8.18367107203331e-05,
+        "centroid_m": 0.1565259539617929,
+        "axial_m5": 8.533574148776992e-08,
+        "transverse_m5": 3.4178899817469505e-07
+      }
+    },
+    {
+      "input": {
+        "shape": "ogive",
+        "length_m": 0.4,
+        "fore_radius_m": 0.0,
+        "aft_radius_m": 0.051,
+        "parameter": 2.5
+      },
+      "wall_thickness_m": 0.003,
+      "expected": {
+        "volume_m3": 0.00020823002858134888,
+        "centroid_m": 0.26152859266721734,
+        "axial_m5": 2.8641230782176954e-07,
+        "transverse_m5": 1.9928187024771024e-06
+      }
+    },
+    {
+      "input": {
+        "shape": "ogive",
+        "length_m": 0.2,
+        "fore_radius_m": 0.0,
+        "aft_radius_m": 0.03,
+        "parameter": 0.6
+      },
+      "wall_thickness_m": 0.0015,
+      "expected": {
+        "volume_m3": 4.35320014428417e-05,
+        "centroid_m": 0.12097780486284626,
+        "axial_m5": 3.246757409036069e-08,
+        "transverse_m5": 1.2047187466086883e-07
+      }
+    },
+    {
+      "input": {
+        "shape": "elliptical",
+        "length_m": 0.12,
+        "fore_radius_m": 0.0,
+        "aft_radius_m": 0.05
+      },
+      "wall_thickness_m": 0.002,
+      "expected": {
+        "volume_m3": 6.109707617084784e-05,
+        "centroid_m": 0.06683370848962716,
+        "axial_m5": 1.0619691666326308e-07,
+        "transverse_m5": 1.1866869713160352e-07
+      }
+    },
+    {
+      "input": {
+        "shape": "power_series",
+        "length_m": 0.3,
+        "fore_radius_m": 0.0,
+        "aft_radius_m": 0.05,
+        "parameter": 0.5
+      },
+      "wall_thickness_m": 0.002,
+      "expected": {
+        "volume_m3": 0.00012296644928473568,
+        "centroid_m": 0.1803469260831907,
+        "axial_m5": 1.7575902786000512e-07,
+        "transverse_m5": 8.446564199190536e-07
+      }
+    },
+    {
+      "input": {
+        "shape": "power_series",
+        "length_m": 0.2,
+        "fore_radius_m": 0.0,
+        "aft_radius_m": 0.0275,
+        "parameter": 0.3
+      },
+      "wall_thickness_m": 0.0015,
+      "expected": {
+        "volume_m3": 3.877452446038528e-05,
+        "centroid_m": 0.11283527639547687,
+        "axial_m5": 1.8761841582874465e-08,
+        "transverse_m5": 1.2604843501193515e-07
+      }
+    },
+    {
+      "input": {
+        "shape": "parabolic_series",
+        "length_m": 0.3,
+        "fore_radius_m": 0.0,
+        "aft_radius_m": 0.05,
+        "parameter": 0.5
+      },
+      "wall_thickness_m": 0.002,
+      "expected": {
+        "volume_m3": 0.00010209011149104386,
+        "centroid_m": 0.19636309161897286,
+        "axial_m5": 1.345706257422881e-07,
+        "transverse_m5": 5.807890174454909e-07
+      }
+    },
+    {
+      "input": {
+        "shape": "haack",
+        "length_m": 0.5,
+        "fore_radius_m": 0.0,
+        "aft_radius_m": 0.0785,
+        "parameter": 0.0
+      },
+      "wall_thickness_m": 0.003,
+      "expected": {
+        "volume_m3": 0.0004715713059280951,
+        "centroid_m": 0.31077925517495,
+        "axial_m5": 1.7658213769161133e-06,
+        "transverse_m5": 8.197631273520522e-06
+      }
+    },
+    {
+      "input": {
+        "shape": "haack",
+        "length_m": 0.3,
+        "fore_radius_m": 0.0,
+        "aft_radius_m": 0.05,
+        "parameter": 0.3333333333333333
+      },
+      "wall_thickness_m": 0.002,
+      "expected": {
+        "volume_m3": 0.00012944061443683372,
+        "centroid_m": 0.18201424256038248,
+        "axial_m5": 2.1175256177981016e-07,
+        "transverse_m5": 8.48662509467769e-07
+      }
+    },
+    {
+      "input": {
+        "shape": "power_series",
+        "length_m": 0.2,
+        "fore_radius_m": 0.0,
+        "aft_radius_m": 0.0275,
+        "parameter": 0.3
+      },
+      "wall_thickness_m": 0.006,
+      "expected": {
+        "volume_m3": 0.00013743446698774996,
+        "centroid_m": 0.11492693551976782,
+        "axial_m5": 5.5860299110307696e-08,
+        "transverse_m5": 4.2710677844126306e-07
+      }
+    },
+    {
+      "input": {
+        "shape": "conical",
+        "length_m": 0.1,
+        "fore_radius_m": 0.0508,
+        "aft_radius_m": 0.0381,
+        "clipped": false
+      },
+      "wall_thickness_m": 0.002,
+      "expected": {
+        "volume_m3": 5.502927309209321e-05,
+        "centroid_m": 0.04756379973573499,
+        "axial_m5": 1.0612632996740888e-07,
+        "transverse_m5": 9.859428987752925e-08
+      }
+    },
+    {
+      "input": {
+        "shape": "ogive",
+        "length_m": 0.1,
+        "fore_radius_m": 0.0381,
+        "aft_radius_m": 0.0508,
+        "clipped": false,
+        "parameter": 1.0
+      },
+      "wall_thickness_m": 0.002,
+      "expected": {
+        "volume_m3": 5.785214784521726e-05,
+        "centroid_m": 0.05206311174410991,
+        "axial_m5": 1.2253357933556016e-07,
+        "transverse_m5": 1.083996974604837e-07
+      }
+    },
+    {
+      "input": {
+        "shape": "elliptical",
+        "length_m": 0.1,
+        "fore_radius_m": 0.0381,
+        "aft_radius_m": 0.0508,
+        "clipped": false
+      },
+      "wall_thickness_m": 0.002,
+      "expected": {
+        "volume_m3": 6.0335175683150344e-05,
+        "centroid_m": 0.05074168063709751,
+        "axial_m5": 1.3438956262350971e-07,
+        "transverse_m5": 1.177857942963057e-07
+      }
+    },
+    {
+      "input": {
+        "shape": "elliptical",
+        "length_m": 0.1,
+        "fore_radius_m": 0.0508,
+        "aft_radius_m": 0.0381,
+        "clipped": false
+      },
+      "wall_thickness_m": 0.002,
+      "expected": {
+        "volume_m3": 6.0335175683150344e-05,
+        "centroid_m": 0.049258319362902495,
+        "axial_m5": 1.3438956262350971e-07,
+        "transverse_m5": 1.177857942963084e-07
+      }
+    },
+    {
+      "input": {
+        "shape": "power_series",
+        "length_m": 0.1,
+        "fore_radius_m": 0.0381,
+        "aft_radius_m": 0.0508,
+        "clipped": false,
+        "parameter": 0.5
+      },
+      "wall_thickness_m": 0.002,
+      "expected": {
+        "volume_m3": 5.804443184174488e-05,
+        "centroid_m": 0.05135618658812836,
+        "axial_m5": 1.217037586693072e-07,
+        "transverse_m5": 1.0935054628758103e-07
+      }
+    },
+    {
+      "input": {
+        "shape": "power_series",
+        "length_m": 0.1,
+        "fore_radius_m": 0.0381,
+        "aft_radius_m": 0.0508,
+        "clipped": true,
+        "parameter": 0.5
+      },
+      "wall_thickness_m": 0.002,
+      "expected": {
+        "volume_m3": 5.54093990523237e-05,
+        "centroid_m": 0.052372993669123874,
+        "axial_m5": 1.0827735301712721e-07,
+        "transverse_m5": 9.987825403700201e-08
+      }
+    },
+    {
+      "input": {
+        "shape": "parabolic_series",
+        "length_m": 0.1,
+        "fore_radius_m": 0.0508,
+        "aft_radius_m": 0.0381,
+        "clipped": true,
+        "parameter": 0.75
+      },
+      "wall_thickness_m": 0.002,
+      "expected": {
+        "volume_m3": 5.6028399675851076e-05,
+        "centroid_m": 0.047700968272514896,
+        "axial_m5": 1.118568394530368e-07,
+        "transverse_m5": 1.0199342096867424e-07
+      }
+    },
+    {
+      "input": {
+        "shape": "haack",
+        "length_m": 0.1,
+        "fore_radius_m": 0.0381,
+        "aft_radius_m": 0.0508,
+        "clipped": false,
+        "parameter": 0.0
+      },
+      "wall_thickness_m": 0.002,
+      "expected": {
+        "volume_m3": 5.756522400230936e-05,
+        "centroid_m": 0.05191672485430765,
+        "axial_m5": 1.2041363818915261e-07,
+        "transverse_m5": 1.0752308332824389e-07
+      }
+    },
+    {
+      "input": {
+        "shape": "haack",
+        "length_m": 0.1,
+        "fore_radius_m": 0.0508,
+        "aft_radius_m": 0.0381,
+        "clipped": true,
+        "parameter": 0.3333333333333333
+      },
+      "wall_thickness_m": 0.002,
+      "expected": {
+        "volume_m3": 5.734763914415749e-05,
+        "centroid_m": 0.04786753605058832,
+        "axial_m5": 1.1955815198101652e-07,
+        "transverse_m5": 1.0662002158002337e-07
+      }
+    }
+  ]
+}

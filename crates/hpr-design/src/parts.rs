@@ -705,10 +705,10 @@ mod tests {
         let (l, r, rho) = (0.2, 0.03, 1240.0);
         let (ls, rs, ts) = (0.05, 0.028, 0.002);
         let nose = NoseCone {
-            shape: NoseShape::Conical,
+            shape: NoseShape::Conical {},
             length_m: l,
             base_radius_m: r,
-            wall: Wall::Filled,
+            wall: Wall::Filled {},
             shoulder: Some(Shoulder {
                 length_m: ls,
                 outer_radius_m: rs,
@@ -754,7 +754,7 @@ mod tests {
             capped: false,
         };
         let t = Transition {
-            shape: NoseShape::Conical,
+            shape: NoseShape::Conical {},
             clipped: false,
             length_m: 0.1,
             fore_radius_m: 0.021,

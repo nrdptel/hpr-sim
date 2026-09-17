@@ -20,7 +20,7 @@
 //! rim. `ρ` is given as a multiple of the tangent-ogive radius `ρ_t = (R² + L²) / 2R`
 //! ([`NoseShape::Ogive::radius_ratio`]): 1 is the tangent ogive, larger values are secant ogives
 //! that meet the base at an angle, and values below 1 bulge beyond `R` before the base. The arc
-//! passes through the tip only while its centre is aft of the tip, which needs
+//! passes through the tip only while its centre is not above the axis, which needs
 //! `ρ ≥ (L² + R²) / 2L`, that is `radius_ratio ≥ R/L`. A cone is the limit of infinite `ρ`.
 //! The Haack series is monotone for `C ≤ 2/3` (`d(g²)/dθ ∝ sin²θ (2 + 3C cos θ)`); `C = 0` is the
 //! LD-Haack (von Kármán) ogive and `C = 1/3` the LV-Haack.
@@ -47,7 +47,7 @@ use crate::error::DesignError;
 #[non_exhaustive]
 pub enum NoseShape {
     /// A straight cone.
-    Conical,
+    Conical {},
     /// A circular-arc ogive whose arc radius is `radius_ratio` times the tangent-ogive radius.
     Ogive {
         /// The arc radius over the tangent-ogive radius: 1 for a tangent ogive, above 1 for a
@@ -55,7 +55,7 @@ pub enum NoseShape {
         radius_ratio: f64,
     },
     /// Half an ellipse: a blunt, rounded tip.
-    Elliptical,
+    Elliptical {},
     /// `g = ξⁿ`: `n = 1` is a cone and `n = ½` a paraboloid.
     PowerSeries {
         /// The exponent `n`, in `(0, 1]`.
@@ -87,7 +87,7 @@ impl NoseShape {
     /// curve the shape is applied to (the ogive's lower bound on `radius_ratio` depends on it).
     fn validate(&self, fineness: f64) -> Result<(), DesignError> {
         let (what, value, ok) = match *self {
-            Self::Conical | Self::Elliptical => return Ok(()),
+            Self::Conical {} | Self::Elliptical {} => return Ok(()),
             Self::Ogive { radius_ratio } => (
                 "ogive radius ratio",
                 radius_ratio,
@@ -118,6 +118,25 @@ impl NoseShape {
     }
 }
 
+/// `θ − sin 2θ / 2`, by its Taylor series below `θ = 0.1`, where the difference cancels:
+/// `Σ_{k≥1} (−1)^(k+1) 2^(2k) θ^(2k+1) / (2k+1)!`. Five terms leave an error below `1e-16`
+/// relative there.
+fn haack_core(theta: f64) -> f64 {
+    if theta >= 0.1 {
+        return theta - (2.0 * theta).sin() / 2.0;
+    }
+    let t2 = theta * theta;
+    let mut term = theta;
+    let mut sum = 0.0;
+    for k in 1..=5 {
+        // term = 2^(2k) θ^(2k+1) / (2k+1)!, built up from the previous one.
+        let k2 = f64::from(2 * k);
+        term *= 4.0 * t2 / (k2 * (k2 + 1.0));
+        sum += if k % 2 == 1 { term } else { -term };
+    }
+    sum
+}
+
 /// A circular arc through `(0, 0)` and `(L, R)` in units of `R`: centre `(xc, yc)`, radius `rho`.
 #[derive(Debug, Clone, Copy, PartialEq)]
 struct Arc {
@@ -128,23 +147,36 @@ struct Arc {
 
 impl Arc {
     /// Crowell's secant ogive for fineness `lambda = L/R` and `rho = ratio · ρ_t` (units of `R`).
+    /// The centre lies on the chord's perpendicular bisector, on the side away from the profile,
+    /// at `d = √(ρ² − c²/4)` from the chord's midpoint (chord length `c = √(λ² + 1)`), which is the
+    /// centre `(ρ cos α, ρ sin α)` of Crowell's formula computed without rounding `α` near `−π/2`.
     fn new(lambda: f64, ratio: f64) -> Self {
         let chord = (lambda * lambda + 1.0).sqrt();
         let rho = ratio * 0.5 * (lambda * lambda + 1.0);
-        // Clamping keeps the boundary shape (acos argument 1 within rounding) finite.
-        let alpha = (1.0 / lambda).atan() - (chord / (2.0 * rho)).clamp(-1.0, 1.0).acos();
+        let half = 0.5 * chord;
+        let d = ((rho - half).max(0.0) * (rho + half)).sqrt();
         Self {
-            xc: rho * alpha.cos(),
-            yc: rho * alpha.sin(),
+            xc: 0.5 * lambda + d / chord,
+            // Rounding can leave the boundary shape's centre a hair above the axis.
+            yc: (0.5 - d * lambda / chord).min(0.0),
             rho,
         }
     }
 
-    /// Height and slope at `x` (units of `R`).
+    /// Height and slope at `x` (units of `R`). The arc passes through the origin, so
+    /// `ρ² = x_c² + y_c²` and `ρ² − (x − x_c)² = y_c² + x (2x_c − x)`, a sum with no cancellation
+    /// even when `ρ` is huge; and `y (y − 2y_c) = x (2x_c − x)` gives
+    /// `y = x (2x_c − x) / (root − y_c)` without the cancellation in `root + y_c` near the tip.
     fn eval(&self, x: f64) -> (f64, f64) {
-        let dx = x - self.xc;
-        let root = (self.rho * self.rho - dx * dx).max(0.0).sqrt();
-        (root + self.yc, -dx / root)
+        let chord_term = x * (2.0 * self.xc - x);
+        let root = (self.yc * self.yc + chord_term).max(0.0).sqrt();
+        let denominator = root - self.yc;
+        let y = if denominator > 0.0 {
+            chord_term / denominator
+        } else {
+            0.0
+        };
+        (y, (self.xc - x) / root)
     }
 }
 
@@ -162,12 +194,12 @@ enum Curve {
 impl Curve {
     fn new(shape: NoseShape, fineness: f64) -> Self {
         match shape {
-            NoseShape::Conical => Self::Conical,
+            NoseShape::Conical {} => Self::Conical,
             NoseShape::Ogive { radius_ratio } => Self::Arc {
                 arc: Arc::new(fineness, radius_ratio),
                 lambda: fineness,
             },
-            NoseShape::Elliptical => Self::Elliptical,
+            NoseShape::Elliptical {} => Self::Elliptical,
             NoseShape::PowerSeries { exponent } => Self::Power(exponent),
             NoseShape::ParabolicSeries { parameter } => Self::Parabolic(parameter),
             NoseShape::Haack { parameter } => Self::Haack(parameter),
@@ -193,10 +225,14 @@ impl Curve {
                 (2.0 - 2.0 * k * xi) / (2.0 - k),
             ),
             Self::Haack(c) => {
-                let theta = (1.0 - 2.0 * xi).acos();
+                // θ = acos(1 − 2ξ) = 2 asin(√ξ); the second form keeps θ exact near the tip.
+                let theta = 2.0 * xi.sqrt().asin();
                 let (sin, cos) = (theta.sin(), theta.cos());
-                let g2 = (theta - sin * cos + c * sin * sin * sin) / PI;
+                let g2 = (haack_core(theta) + c * sin * sin * sin) / PI;
                 let g = g2.max(0.0).sqrt();
+                if g == 0.0 {
+                    return (0.0, f64::INFINITY);
+                }
                 // dg/dξ = sin θ (2 + 3C cos θ) / (π g), from d(g²)/dθ and dθ/dξ = 2 / sin θ.
                 (g, sin * (2.0 + 3.0 * c * cos) / (PI * g))
             }
@@ -443,6 +479,12 @@ fn clip(shape: NoseShape, length: f64, small: f64, big: f64) -> Result<(Curve, f
         0.5 * (lo + hi)
     };
     match shape {
+        NoseShape::Ogive { radius_ratio } if radius_ratio < 1.0 => {
+            Err(DesignError::Geometry(format!(
+                "a clipped ogive transition needs a monotone profile, so its radius ratio must be at \
+             least 1, not {radius_ratio}"
+            )))
+        }
         NoseShape::Ogive { radius_ratio } => {
             // The whole nose's fineness sets its arc; find the nose length whose cut piece is
             // `length` long. The cut fraction grows with the nose length, so bisect on it.
@@ -497,11 +539,11 @@ mod tests {
     use super::*;
 
     const ALL: [NoseShape; 9] = [
-        NoseShape::Conical,
+        NoseShape::Conical {},
         NoseShape::TANGENT_OGIVE,
         NoseShape::Ogive { radius_ratio: 2.5 },
         NoseShape::Ogive { radius_ratio: 0.6 },
-        NoseShape::Elliptical,
+        NoseShape::Elliptical {},
         NoseShape::PowerSeries { exponent: 0.5 },
         NoseShape::ParabolicSeries { parameter: 0.75 },
         NoseShape::VON_KARMAN,
@@ -541,14 +583,14 @@ mod tests {
         assert!(secant.radius_and_slope(length).1 > 0.01);
         // A secant ogive lies between the cone and the tangent ogive; a bulged one exceeds R.
         let x = 0.2;
-        assert!(at(NoseShape::Conical, x) < at(NoseShape::Ogive { radius_ratio: 2.0 }, x));
+        assert!(at(NoseShape::Conical {}, x) < at(NoseShape::Ogive { radius_ratio: 2.0 }, x));
         assert!(at(NoseShape::Ogive { radius_ratio: 2.0 }, x) < at(NoseShape::TANGENT_OGIVE, x));
         let bulged = Profile::nose(NoseShape::Ogive { radius_ratio: 0.5 }, length, radius).unwrap();
         assert!(bulged.max_radius_m() > radius);
         assert!(bulged.radius_m(0.35) > radius);
         // An enormous ogive radius approaches the cone.
         let flat = at(NoseShape::Ogive { radius_ratio: 1e8 }, x);
-        assert!((flat - at(NoseShape::Conical, x)).abs() < 1e-8);
+        assert!((flat - at(NoseShape::Conical {}, x)).abs() < 1e-8);
         // Haack C = 1/3 (LV) is fuller than C = 0 (von Kármán) everywhere inside, and the tips
         // are the published closed forms: at ξ = ½, θ = π/2 and g² = (π/2 + C)/π.
         let mid = length / 2.0;
@@ -609,7 +651,7 @@ mod tests {
         }
         // Clipped and unclipped agree for the cone and the tangent ogive (techdoc §A.7) and differ
         // for a power series.
-        for shape in [NoseShape::Conical, NoseShape::TANGENT_OGIVE] {
+        for shape in [NoseShape::Conical {}, NoseShape::TANGENT_OGIVE] {
             let a = Profile::transition(shape, 0.1, 0.03, 0.05, false).unwrap();
             let b = Profile::transition(shape, 0.1, 0.03, 0.05, true).unwrap();
             for x in [0.01, 0.04, 0.07] {
@@ -643,10 +685,10 @@ mod tests {
         use crate::solids::{Wall, revolve};
         let tol = 1e-10;
         let (r, l): (f64, f64) = (0.05, 0.3);
-        let solid = |shape| revolve(&Profile::nose(shape, l, r).unwrap(), Wall::Filled).unwrap();
+        let solid = |shape| revolve(&Profile::nose(shape, l, r).unwrap(), Wall::Filled {}).unwrap();
 
         // Cone.
-        let g = solid(NoseShape::Conical);
+        let g = solid(NoseShape::Conical {});
         close(g.volume_m3, PI * r * r * l / 3.0, tol, "cone volume");
         close(g.centroid_m, 0.75 * l, tol, "cone centroid");
         close(
@@ -666,7 +708,7 @@ mod tests {
         // Loft's number for the tangent ogive.
         let loft = revolve(
             &Profile::nose(NoseShape::TANGENT_OGIVE, 0.25, 0.04).unwrap(),
-            Wall::Filled,
+            Wall::Filled {},
         )
         .unwrap();
         assert!((loft.volume_m3 - 6.7509e-4).abs() < 5e-9);
@@ -703,7 +745,7 @@ mod tests {
 
         // Half a prolate spheroid, tip forward: centroid 3L/8 from the base; Crowell's area with
         // e = √(1 − R²/L²); planform a half ellipse with centroid 4L/3π from the base.
-        let g = solid(NoseShape::Elliptical);
+        let g = solid(NoseShape::Elliptical {});
         let e = (1.0 - r * r / (l * l)).sqrt();
         close(
             g.volume_m3,
@@ -732,8 +774,8 @@ mod tests {
         );
         // An oblate half spheroid (L < R): area πR² + (πL²/2e) ln((1 + e)/(1 − e)), e = √(1 − L²/R²).
         let oblate = revolve(
-            &Profile::nose(NoseShape::Elliptical, 0.03, r).unwrap(),
-            Wall::Filled,
+            &Profile::nose(NoseShape::Elliptical {}, 0.03, r).unwrap(),
+            Wall::Filled {},
         )
         .unwrap();
         let e = (1.0 - 0.03f64.powi(2) / (r * r)).sqrt();
@@ -818,6 +860,75 @@ mod tests {
     }
 
     #[test]
+    fn tips_stay_exact_where_the_formulas_cancel() {
+        // θ − sin 2θ/2 by series agrees with the direct form where both are accurate, and with
+        // (2/3)θ³ − (2/15)θ⁵ at small θ.
+        for theta in [0.1f64, 0.1 - 1e-12, 0.3] {
+            let direct = theta - (2.0 * theta).sin() / 2.0;
+            assert!(
+                (haack_core(theta) - direct).abs() <= 1e-13 * direct,
+                "{theta}"
+            );
+        }
+        let theta: f64 = 1e-3;
+        let series =
+            2.0 / 3.0 * theta.powi(3) - 2.0 / 15.0 * theta.powi(5) + 4.0 / 315.0 * theta.powi(7);
+        assert!((haack_core(theta) - series).abs() <= 1e-15 * series);
+        // A Haack transition's slope at its small end is infinite, never NaN.
+        let t = Profile::transition(NoseShape::VON_KARMAN, 0.02, 0.0508, 0.0785, false).unwrap();
+        assert_eq!(t.radius_and_slope(0.0), (0.0508, f64::INFINITY));
+        let nose = Profile::nose(NoseShape::VON_KARMAN, 0.3, 0.05).unwrap();
+        assert_eq!(nose.radius_and_slope(0.0), (0.0, f64::INFINITY));
+        for xi in [1e-18, 1e-12, 1e-6] {
+            let (r, slope) = nose.radius_and_slope(0.3 * xi);
+            assert!(r > 0.0 && slope.is_finite() && slope > 0.0, "{xi}");
+        }
+        // A tangent-ogive transition 2000 calibres of its radius step long still reaches both
+        // radii, and its volume is the cylinder's to within the step.
+        let slender =
+            Profile::transition(NoseShape::TANGENT_OGIVE, 0.05, 0.025, 0.0251, false).unwrap();
+        assert!((slender.radius_m(0.0) - 0.025).abs() < 1e-15);
+        assert!((slender.radius_m(0.05) - 0.0251).abs() < 1e-15);
+        let g = crate::solids::revolve(&slender, crate::solids::Wall::Filled {}).unwrap();
+        let (lo, hi) = (PI * 0.025f64.powi(2) * 0.05, PI * 0.0251f64.powi(2) * 0.05);
+        assert!(g.volume_m3 > lo && g.volume_m3 < hi);
+        // The boundary ogive, whose arc centre sits on the axis, is valid and ends at R.
+        let edge = Profile::nose(NoseShape::Ogive { radius_ratio: 0.2 }, 0.25, 0.05).unwrap();
+        assert!((edge.radius_m(0.25) - 0.05).abs() < 1e-15);
+        assert!(edge.radius_m(0.0).abs() < 1e-15);
+        // Clipped bulged ogives are rejected.
+        assert!(matches!(
+            Profile::transition(
+                NoseShape::Ogive { radius_ratio: 0.7 },
+                0.05,
+                0.02,
+                0.025,
+                true
+            ),
+            Err(DesignError::Geometry(_))
+        ));
+    }
+
+    #[test]
+    fn unknown_shape_fields_are_rejected() {
+        for bad in [
+            r#"{"kind":"conical","radius_ratio":2.0}"#,
+            r#"{"kind":"elliptical","parameter":0.5}"#,
+            r#"{"kind":"haack","parameter":0.0,"clipped":true}"#,
+        ] {
+            assert!(serde_json::from_str::<NoseShape>(bad).is_err(), "{bad}");
+        }
+        assert_eq!(
+            serde_json::from_str::<NoseShape>(r#"{"kind":"conical"}"#).unwrap(),
+            NoseShape::Conical {}
+        );
+        assert!(
+            serde_json::from_str::<crate::solids::Wall>(r#"{"kind":"filled","thickness_m":0.002}"#)
+                .is_err()
+        );
+    }
+
+    #[test]
     fn profiles_round_trip_through_serde_and_reject_bad_data() {
         let t = Profile::transition(NoseShape::LV_HAACK, 0.12, 0.04, 0.02, true).unwrap();
         let json = serde_json::to_string(&t).unwrap();
@@ -830,8 +941,9 @@ mod tests {
         let bad =
             r#"{"shape":{"kind":"conical"},"length_m":-1,"fore_radius_m":0,"aft_radius_m":0.02}"#;
         assert!(serde_json::from_str::<Profile>(bad).is_err());
-        assert!(Profile::transition(NoseShape::Conical, 0.1, 0.0, 0.0, false).is_err());
-        let cylinder = Profile::transition(NoseShape::Elliptical, 0.1, 0.02, 0.02, true).unwrap();
+        assert!(Profile::transition(NoseShape::Conical {}, 0.1, 0.0, 0.0, false).is_err());
+        let cylinder =
+            Profile::transition(NoseShape::Elliptical {}, 0.1, 0.02, 0.02, true).unwrap();
         assert_eq!(cylinder.radius_and_slope(0.05), (0.02, 0.0));
     }
 }

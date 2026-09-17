@@ -20,7 +20,7 @@ fn benches(c: &mut Criterion) {
         Profile::transition(NoseShape::TANGENT_OGIVE, 0.1, 0.0508, 0.0381, false).unwrap();
     let shell = Wall::Shell { thickness_m: 0.002 };
     c.bench_function("revolve von Karman nose, filled", |b| {
-        b.iter(|| revolve(black_box(&nose), Wall::Filled).unwrap())
+        b.iter(|| revolve(black_box(&nose), Wall::Filled {}).unwrap())
     });
     c.bench_function("revolve von Karman nose, 2 mm wall", |b| {
         b.iter(|| revolve(black_box(&nose), shell).unwrap())

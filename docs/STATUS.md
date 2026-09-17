@@ -48,7 +48,8 @@ from these notes:
 
 - 2026-09-17: M1.4a Shapes, materials, component mass properties (PR #12): every nose and
   transition shape (clipped or not) checked against closed forms and 40-digit mpmath integrals,
-  normal-thickness walls, fin planforms with square/rounded/airfoil sections and tabs, all other
+  normal-thickness walls checked against an independent mpmath envelope, fin planforms with
+  square/rounded/airfoil sections and tabs, all other
   parts, full inertia tensors matching hand calculations, 49 cited materials, adaptive G7K15
   quadrature in `hpr-core`, ADR-006, Wood Handbook pinned.
 - 2026-09-17: M1.3 Solid motors (PR #9): thrust curves with NFPA 1125 statistics matching
@@ -130,7 +131,7 @@ from these notes:
   caches under `refs/samples/` (POST captures can't be pinned yet); the committed curves are
   pinned by sha256.
 - Wall mass (normal thickness) and fin cross-section mass may differ from OpenRocket's, whose
-  conventions are undocumented; M2.2 measures and reports it. A 2 mm nose wall costs 1.4 ms.
+  conventions are undocumented; M2.2 measures and reports it. A 2 mm nose wall costs 1.7 ms.
 - The RASAero `.CDX1` format has no public spec, so the importer relies on samples.
 - ERA5 `.nc` files may be netCDF4 (HDF5), which affects the pure-Rust reader choice.
 - A new RustSec vulnerability notice (anywhere in the graph) or unmaintained notice (direct

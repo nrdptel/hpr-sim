@@ -66,9 +66,9 @@ Sources:
   - Trapezoidal: root chord `c_r`, tip chord `c_t` parallel to the body, span `s`, and sweep `x_t`
     from the root leading edge to the tip leading edge.
   - Elliptical: `c(h) = c_r √(1 − (h/s)²)`, centred on the root chord (implied by [TD] eq. 3.71).
-  - Freeform: a simple polygon from the root leading edge to the root trailing edge, closed along
-    the root. Crossing edges, points below the root, and outlines that don't start and end on it
-    are errors.
+  - Freeform: a simple polygon from the root leading edge `[0, 0]` to the root trailing edge
+    `[c_r, 0]`, closed along the root. Crossing edges, points below the root, and outlines that
+    don't run from the origin aft along the root are errors.
 - **Cross-sections.** Each chord from `a` to `b` has a thickness distribution `t(x)`. [TD] uses
   the cross-section for drag only; hpr also counts the volume it removes.
   - **Square:** `t(x) = t`.
@@ -91,12 +91,14 @@ Sources:
   - With the fin at roll 0 (points at `(r, τ, −x)`):
     `I_xx = ∫(τ² + x²)`, `I_yy = ∫(r² + x²)`, `I_zz = ∫(r² + τ²)` and `I_xz = ∫ r x`, all `dm`.
   - Loft ignored the span and fixed a freeform fin's CG at `0.42 c_r` (lessons L44, L45).
-- **Tabs** are square slabs below the root, `−h_tab ≤ h ≤ 0`, with closed-form integrals. Loft never
+- **Tabs** are square slabs below the root, `−h_tab ≤ h ≤ 0`, with closed-form integrals. A tab
+  must lie along the root chord and reach no deeper than the body radius. Loft never
   read them (lesson L46).
 - **Root.** The flat root is placed at radius `R_b`; the sliver between it and the curved tube,
   `t²/8R_b` deep, is ignored. Fillets are not modeled yet.
 - **Cant** `δ` turns each fin and its tab about the fin's outward span axis through the root
-  mid-chord, right-handed. [TD] doesn't state the pivot. Mass and trace are unchanged; the
+  mid-chord, right-handed, so a positive cant turns fin 0's leading edge toward `−y_B`
+  (`positive_cant_turns_the_leading_edge_toward_negative_y`). [TD] doesn't state the pivot. Mass and trace are unchanged; the
   products of inertia in the fin's own frame grow as `sin 2δ`.
 - **Sets** roll the fin to `φ_k = φ₀ + 2πk/N` and combine. Three or more fins are isotropic across
   the axis; one or two are not, and the full tensor keeps the difference.

@@ -522,7 +522,7 @@ mod tests {
         let volume = PI * t * w * ((2.0 * r1 - t * w) * l + k * l * l);
         let moment = PI * t * w * ((2.0 * r1 - t * w) * l * l / 2.0 + 2.0 * k * l.powi(3) / 3.0);
         let transition = Transition {
-            shape: NoseShape::Conical,
+            shape: NoseShape::Conical {},
             clipped: false,
             length_m: l,
             fore_radius_m: r1,

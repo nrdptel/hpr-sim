@@ -29,7 +29,11 @@ shape is a normalized curve `g(ξ)` with `g(0) = 0` at the tip and `g(1) = 1` at
   - `1` is the tangent ogive, whose slope is zero at the base.
   - Values above 1 meet the base at an angle.
   - Values below 1 bulge past `R` before the base.
-  - The arc reaches the tip only while its centre is aft of it, which needs `ρ ≥ (L² + R²)/2L`.
+  - The arc reaches the tip only while its centre is not above the axis, which needs
+    `ρ ≥ (L² + R²)/2L`.
+  - The centre is computed on the chord's perpendicular bisector and the height as
+    `y = x(2x_c − x)/(√(ρ² − (x − x_c)²) − y_c)`, which avoids the cancellation near the tip of a
+    slender ogive.
 - **OpenRocket's ogive parameter is not adopted.** [TD] contradicts itself about it:
   - A.3 defines it as `κ = ρ_t/ρ`.
   - A.4–A.5 describe the first `L` of a tangent ogive of length `L/κ`, which at `L = 4`, `R = 1`,
@@ -59,6 +63,8 @@ A transition runs from fore radius `R_f` to aft radius `R_a` over `L`.
   - The ogive's curve depends on its fineness, so the nose length is found by bisection too.
   - Conical and tangent-ogive transitions are the same clipped or not; the test checks this to
     1e-12.
+  - A clipped ogive with `ρ/ρ_t < 1` is rejected: its profile isn't monotone, so the cut is
+    ambiguous.
 
 ## Solids of revolution
 
@@ -83,9 +89,13 @@ diameter, moved to the reference plane by the parallel-axis theorem. `S` exclude
   - Its inner radius is the lower envelope of circles of radius `t` on the profile:
     `r_i(x) = max(0, min_{|s−x|≤t} [y(s) − √(t² − (x − s)²)])`. The profile is extended past cut
     ends along their tangents, so the wall is cut square.
-  - The minimum comes from a 32-point scan and a golden-section search.
-  - The envelope is exact for profiles that don't fall faster than 45° where they fall.
-  - The hollow is integrated separately and split where `r_i` reaches zero.
+  - The envelope is exact for any continuous profile. A point above the lower half of some
+    surface point's circle has the profile crossing its height closer than `t`, so it is in the
+    wall anyway.
+  - Past an end whose tangent is vertical (a blunt end of an unclipped transition) there is no
+    extension, and the end point itself is a candidate.
+  - The minimum comes from a 32-point scan, a golden-section search and those end points.
+  - The hollow is integrated separately, split where `r_i` reaches zero and at `t` from each end.
   - [TD] doesn't say how OpenRocket measures thickness, and [CR] measures it radially. The two
     differ by a factor `√(1 + y′²)` in wall volume, 1.4% for a cone three calibres long. M2.2
     will measure OpenRocket's choice.
@@ -103,13 +113,24 @@ diameter, moved to the reference plane by the parallel-axis theorem. `S` exclude
   - Loft's tangent-ogive value, `R = 0.04 m`, `L = 0.25 m` gives `6.7509e-4 m³` (lesson L91).
 - **mpmath references** (`solids::tests::filled_solids_match_the_mpmath_references`):
   - 22 noses and transitions of every family, in both directions, clipped and not.
-  - All seven quantities, to 1e-11 relative (1e-10 for `J_t`).
+  - All seven quantities, to 1e-12 relative (worst measured 2.4e-14).
   - Reference: `validation/fixtures/design/shape-integrals.json`, from
     `validation/oracles/design/shapes.py` (40-digit tanh-sinh on the defining formulas, Haack in
     `θ`, with no code shared with Rust).
   - These references alone check the wetted areas of the power series (`n ≠ ½`) and parabolic
     series, both Haack areas, and the moments of inertia of the filled shapes.
-- **Walls:**
+- **Walls against mpmath** (`solids::tests::walls_match_the_mpmath_references`):
+  - 20 walls: 11 noses of every family, and 9 transitions both ways, including unclipped blunt
+    ends and clipped ones.
+  - Volume, centroid and both moments to 1e-9 relative (worst measured 1.8e-10).
+  - Reference: `validation/fixtures/design/wall-integrals.json`, from
+    `validation/oracles/design/walls.py`. It finds the envelope from the roots of its derivative,
+    bracketed from the window edges and solved by bisection at 25 digits, with no code shared with
+    Rust, and integrates by tanh-sinh at degree 10.
+  - The first reviews found two faults this test now pins. Blunt transition ends failed to
+    converge, or were 5e-6 low, until the end points became candidates. The oracle itself first
+    missed minima next to the window edge.
+- **Walls by hand:**
   - A conical wall is the cone minus the same cone moved aft by `t/sin β`: volume, centroid and
     both moments by hand, to 1e-9.
   - A tangent-ogive wall is bounded by the concentric arc of radius `ρ − t`: volume by hand, to
@@ -117,5 +138,10 @@ diameter, moved to the reference plane by the parallel-axis theorem. `S` exclude
   - A tube matches the hollow-cylinder formulas.
   - A wall thicker than the body fills it, and a thin wall's volume tends to `S t`.
 - **Profiles:** each ends at `0` and `R`, slopes match central differences, and parameters out of
-  range are errors (lesson L48). Transitions hit both radii and are monotone both ways, clipped or
+  range are errors (lesson L48).
+  - Haack tips use `θ = 2 asin √ξ` and a Taylor series for `θ − sin 2θ/2` below `θ = 0.1`, so the
+    tip slope is `+∞`, never NaN.
+  - Ogive radius ratios up to 1e12 give the cone, and a power series with `n = 0.02` integrates
+    (`extreme_parameters_stay_accurate_or_fail_loudly`).
+  - Unknown fields in a shape or wall are rejected. Transitions hit both radii and are monotone both ways, clipped or
   not (lesson L49).

@@ -16,21 +16,25 @@ The calls a design edit makes, or a Monte Carlo sample that perturbs dimensions.
 
 | call | median |
 |---|---|
-| `revolve`, von Kármán nose, filled | 8.15 µs |
-| `revolve`, von Kármán nose, 2 mm wall | 1.35 ms |
-| `revolve`, ogive boattail, 2 mm wall | 351 µs |
-| `NoseCone::mass_properties`, 2 mm wall | 1.36 ms |
-| `FinSet::mass_properties`, trapezoidal airfoil | 309 ns |
-| `FinSet::mass_properties`, freeform rounded | 11.5 µs |
+| `revolve`, von Kármán nose, filled | 10.1 µs |
+| `revolve`, von Kármán nose, 2 mm wall | 1.70 ms |
+| `revolve`, ogive boattail, 2 mm wall | 194 µs |
+| `NoseCone::mass_properties`, 2 mm wall | 1.70 ms |
+| `FinSet::mass_properties`, trapezoidal airfoil | 314 ns |
+| `FinSet::mass_properties`, freeform rounded | 11.4 µs |
 
 - **Wall cost.** Each quadrature node finds the inner radius by a 32-point scan and a
   golden-section search, about 70 profile evaluations. The first version refined the minimizing
   station to 1e-15 t and scanned 256 stations for where the wall fills in: 2.25 ms. Near the
   minimum the value is quadratic in the station, so 1e-9 t is enough (1.84 ms), and a 64-station
   scan still brackets the one fill-in point a nose has (1.35 ms), with every test unchanged.
+  The review fixes then added the profile's end points as candidates, split at `t` from each
+  end, and integrated every piece (1.70 ms). The boattail got faster (351 to 194 µs), because the
+  split removed a kink its integration had been bisecting. The filled nose went from 8.2 to
+  10.1 µs with the Haack series and the precise arc.
 - **Where it matters.** Mass properties are computed once per design, not per derivative
   evaluation. A 10,000-sample Monte Carlo run that perturbs nose dimensions would spend about
-  14 s in walls; M6.1 can cache or perturb mass directly.
+  17 s in walls; M6.1 can cache or perturb mass directly.
 
 ## Solid motors (M1.3)
 

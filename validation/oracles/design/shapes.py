@@ -2,9 +2,9 @@
 and areas of the filled solids of revolution, to 30 significant digits.
 
 Sources for the profiles:
-- G. A. Crowell Sr., The Descriptive Geometry of Nose Cones, 1996, pp. 1-6
-  (`crowell-1996-nose-cones` in validation/refs.lock.toml): cone, tangent and secant ogive,
-  elliptical, power series, parabolic series, Haack series.
+- G. A. Crowell Sr., The Descriptive Geometry of Nose Cones, 1996, pp. 1-6 (cited, not pinned; see
+  docs/VALIDATION.md): cone, tangent and secant ogive, elliptical, power series, parabolic series,
+  Haack series.
 - S. Niskanen, OpenRocket technical documentation v13.05, 2013, appendix A, pp. 102-106
   (`openrocket-techdoc-13.05`): the same curves, and clipped transitions (section A.7).
 
@@ -25,7 +25,7 @@ import json
 from pathlib import Path
 
 import mpmath
-from mpmath import acos, atan, cos, findroot, mp, mpf, pi, quad, sin, sqrt
+from mpmath import acos, atan, cos, findroot, inf, mp, mpf, pi, quad, sin, sqrt
 
 mp.dps = 40
 
@@ -55,24 +55,39 @@ def curve(kind, param, fineness):
 
         return g
     if kind == "elliptical":
-        return lambda xi: (sqrt(1 - (1 - xi) ** 2), (1 - xi) / sqrt(1 - (1 - xi) ** 2) if xi else 0)
+        def g(xi):
+            value = sqrt(xi * (2 - xi))
+            return value, ((1 - xi) / value if value else inf)
+
+        return g
     if kind == "power_series":
         n = mpf(param)
-        return lambda xi: (xi**n, n * xi ** (n - 1) if xi else 0)
+        return lambda xi: (xi**n, n * xi ** (n - 1) if xi else inf)
     if kind == "parabolic_series":
         k = mpf(param)
         return lambda xi: ((2 * xi - k * xi**2) / (2 - k), (2 - 2 * k * xi) / (2 - k))
     if kind == "haack":
         c = mpf(param)
 
+        def core(theta):
+            """theta - sin(2 theta)/2, by its Taylor series near 0 where the difference cancels."""
+            if theta > mpf("0.1"):
+                return theta - sin(2 * theta) / 2
+            total, term = mpf(0), theta
+            # Terms fall by at least 4 theta^2 / 6 < 1/100 each; 2 dps terms leave 2 dps digits.
+            for k in range(1, 2 * mp.dps):
+                term *= 4 * theta**2 / ((2 * k) * (2 * k + 1))
+                total += term if k % 2 else -term
+            return total
+
         def g(xi):
-            theta = acos(1 - 2 * xi)
-            value = sqrt((theta - sin(2 * theta) / 2 + c * sin(theta) ** 3) / pi)
+            theta = 2 * mpmath.asin(sqrt(xi))
+            value = sqrt((core(theta) + c * sin(theta) ** 3) / pi)
             # d(g^2)/dtheta = sin^2 theta (2 + 3C cos theta) / pi and dtheta/dxi = 2 / sin theta.
-            # At the tip, theta - sin(2 theta)/2 cancels to zero at the working precision; only
-            # y * slope enters the integrals, and it vanishes there.
+            # At the tip, theta - sin(2 theta)/2 cancels to zero at the working precision, where
+            # the slope is infinite.
             if value == 0:
-                return value, mpf(0)
+                return value, inf
             return value, sin(theta) * (2 + 3 * c * cos(theta)) / (pi * value)
 
         return g
@@ -109,13 +124,14 @@ def profile(case):
 def integrals(case):
     at, length = profile(case)
     if case["shape"] == "haack" and not case.get("clipped"):
-        # Substitute u (from the tip) = L/2 (1 - cos theta), dx = L/2 sin theta dtheta: the
-        # integrands are smooth in theta.
+        # Substitute u (from the tip) = L sin^2(theta/2) = L/2 (1 - cos theta), with
+        # dx = L/2 sin theta dtheta: the integrands are smooth in theta, and the sin^2 form keeps u
+        # exact near the tip.
         tip_aft = mpf(case["aft_radius_m"]) < mpf(case["fore_radius_m"])
 
         def integrate(f):
             def integrand(theta):
-                u = length / 2 * (1 - cos(theta))
+                u = length * sin(theta / 2) ** 2
                 x = length - u if tip_aft else u
                 y, slope = at(x)
                 return f(x, y, slope) * length / 2 * sin(theta)
@@ -132,7 +148,8 @@ def integrals(case):
     axial = pi / 2 * integrate(lambda x, y, s: y**4)
     fore_plane = pi * integrate(lambda x, y, s: y**4 / 4 + x**2 * y**2)
     centroid = first / vol
-    wetted = 2 * pi * integrate(lambda x, y, s: sqrt(y**2 + (y * s) ** 2))
+    # At a blunt tip y = 0 and the slope is infinite; the integrand's limit there is finite.
+    wetted = 2 * pi * integrate(lambda x, y, s: sqrt(y**2 + (y * s) ** 2) if y else 0)
     planform = 2 * integrate(lambda x, y, s: y)
     planform_first = 2 * integrate(lambda x, y, s: x * y)
     return {

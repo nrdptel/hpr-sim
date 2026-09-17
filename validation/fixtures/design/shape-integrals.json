@@ -5,7 +5,7 @@
   "generated": "2026-09-17",
   "command": "refs/venv/bin/python validation/oracles/design/shapes.py > validation/fixtures/design/shape-integrals.json",
   "inputs_sha256": {
-    "script": "c0d7e30959d7e72923a0753c65c9841a02149225ec0e7bb3bc1af7f5f5d15128"
+    "script": "845c11f402fadf444e0db14c01a18f48db36f9ba4695005684e02cb62f381fda"
   },
   "units": "SI; centroids are metres aft of the forward end; moments are per unit density",
   "cases": [

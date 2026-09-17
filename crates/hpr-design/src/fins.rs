@@ -41,7 +41,7 @@
 //! root is taken to sit on the body at radius `R_b`; the sliver between a flat root and the curved
 //! tube, `t²/8R_b` deep, is ignored. **Cant** `δ` turns each fin (with its tab) by `δ` about its own
 //! outward span axis through the root mid-chord, right-handed, so a positive cant turns fin 0's
-//! leading edge toward `+y_B`. See `docs/physics/mass.md`.
+//! leading edge toward `−y_B`. See `docs/physics/mass.md`.
 
 use std::f64::consts::PI;
 
@@ -77,8 +77,9 @@ pub enum FinPlanform {
         /// Span, m.
         span_m: f64,
     },
-    /// A polygon given as `[x, h]` points from the root leading edge around to the root trailing
-    /// edge, closed along the root (`h = 0`); `x` runs aft and `h` outward, in metres.
+    /// A polygon given as `[x, h]` points from the root leading edge, which must be `[0, 0]`,
+    /// around to the root trailing edge `[c_r, 0]` with `c_r > 0`, closed along the root; `x` runs
+    /// aft and `h` outward, in metres.
     Freeform {
         /// The outline, m.
         points_m: Vec<[f64; 2]>,
@@ -218,11 +219,7 @@ impl FinPlanform {
             Self::Trapezoidal { root_chord_m, .. } | Self::Elliptical { root_chord_m, .. } => {
                 *root_chord_m
             }
-            Self::Freeform { points_m } => {
-                let first = points_m.first().map_or(0.0, |p| p[0]);
-                let last = points_m.last().map_or(0.0, |p| p[0]);
-                (last - first).abs()
-            }
+            Self::Freeform { points_m } => points_m.last().map_or(0.0, |p| p[0]),
         }
     }
 
@@ -270,8 +267,10 @@ impl FinPlanform {
         Ok(())
     }
 
-    /// The chord intervals `[a, b]` crossing span `h`, sorted, into `out`.
-    fn chords(&self, h: f64, out: &mut Vec<(f64, f64)>) {
+    /// The chord intervals `(a, b)` at span `h` (m outward from the root), sorted along `x` (m aft
+    /// of the root leading edge), replacing the contents of `out`. A span at or beyond the tip
+    /// gives none. The planform should be valid ([`FinPlanform::validate`]).
+    pub fn chords_at(&self, h: f64, out: &mut Vec<(f64, f64)>) {
         out.clear();
         match self {
             Self::Trapezoidal {
@@ -339,7 +338,7 @@ impl FinPlanform {
         for pair in self.breakpoints().windows(2) {
             let piece = integrate(
                 |h| {
-                    self.chords(h * scale, &mut chords);
+                    self.chords_at(h * scale, &mut chords);
                     chords.iter().fold([0.0; 3], |acc, &(a, b)| {
                         let (a, b) = (a / scale, b / scale);
                         [
@@ -399,9 +398,11 @@ fn validate_outline(points: &[[f64; 2]]) -> Result<(), DesignError> {
         }
     }
     let (first, last) = (points[0], points[points.len() - 1]);
-    if first[1] != 0.0 || last[1] != 0.0 || first[0] == last[0] {
+    if first != [0.0, 0.0] || last[1] != 0.0 || last[0] <= 0.0 {
         return Err(DesignError::Geometry(
-            "a freeform fin must start and end at different points on the root (span 0)".to_owned(),
+            "a freeform fin must start at the root leading edge [0, 0] and end at the root \
+             trailing edge [c, 0] with c > 0"
+                .to_owned(),
         ));
     }
     let n = points.len();
@@ -509,7 +510,7 @@ impl FinSet {
         for pair in self.planform.breakpoints().windows(2) {
             let piece = integrate(
                 |h| {
-                    self.planform.chords(h * scale, &mut chords);
+                    self.planform.chords_at(h * scale, &mut chords);
                     let mut m = [0.0; 4];
                     for &(a, b) in &chords {
                         let c = chord_moments(self.cross_section, a / scale, b / scale, t);
@@ -565,6 +566,18 @@ impl FinSet {
     pub fn single_fin(&self, body_radius_m: f64) -> Result<MassProperties, DesignError> {
         self.validate()?;
         check_dimension("fin body radius", body_radius_m, true)?;
+        if let Some(tab) = self.tab {
+            let root = self.planform.root_chord_m();
+            if tab.height_m > body_radius_m
+                || tab.offset_m < 0.0
+                || tab.offset_m + tab.length_m > root * (1.0 + 1e-12)
+            {
+                return Err(DesignError::Geometry(format!(
+                    "a fin tab must lie along the root chord ({root} m) and no deeper than the body \
+                     radius ({body_radius_m} m)"
+                )));
+            }
+        }
         let density = self.material.bulk_kg_m3("fin set")?;
         let fin = self.fin_integrals(body_radius_m)?;
         let tab = self.tab_integrals(body_radius_m);
@@ -936,6 +949,75 @@ mod tests {
     }
 
     #[test]
+    fn positive_cant_turns_the_leading_edge_toward_negative_y() {
+        // A swept fin's centroid lies aft of the root mid-chord, so turning it by δ about the span
+        // axis through the mid-chord moves the centroid to y = (x̄ − c_r/2) sin δ and
+        // z = −c_r/2 − (x̄ − c_r/2) cos δ; the leading edge (x = 0) goes to y = −(c_r/2) sin δ.
+        let (cr, ct, s, xt) = (0.15, 0.05, 0.1, 0.09);
+        let planform = FinPlanform::Trapezoidal {
+            root_chord_m: cr,
+            tip_chord_m: ct,
+            span_m: s,
+            sweep_m: xt,
+        };
+        let centroid = planform.geometry().unwrap().centroid_x_m;
+        assert!(centroid > cr / 2.0);
+        let mut fins = set(1, planform, 0.003);
+        let delta: f64 = 0.2;
+        fins.cant_rad = delta;
+        let fin = fins.single_fin(0.04).unwrap();
+        close(
+            fin.cg_m.y,
+            (centroid - cr / 2.0) * delta.sin(),
+            1e-12,
+            "centroid y",
+        );
+        close(
+            fin.cg_m.z,
+            -cr / 2.0 - (centroid - cr / 2.0) * delta.cos(),
+            1e-12,
+            "centroid z",
+        );
+        assert!(fin.cg_m.y > 0.0);
+        let leading_edge = DQuat::from_rotation_x(delta) * DVec3::new(0.04, 0.0, cr / 2.0);
+        assert!(leading_edge.y < 0.0);
+    }
+
+    #[test]
+    fn tabs_must_fit_the_root_and_the_body() {
+        let mut fins = set(3, rectangle(0.1, 0.05), 0.003);
+        for tab in [
+            FinTab {
+                height_m: 0.05,
+                length_m: 0.02,
+                offset_m: 0.0,
+            },
+            FinTab {
+                height_m: 0.01,
+                length_m: 0.02,
+                offset_m: -0.01,
+            },
+            FinTab {
+                height_m: 0.01,
+                length_m: 0.08,
+                offset_m: 0.03,
+            },
+        ] {
+            fins.tab = Some(tab);
+            assert!(
+                matches!(fins.mass_properties(0.03), Err(DesignError::Geometry(_))),
+                "{tab:?}"
+            );
+        }
+        fins.tab = Some(FinTab {
+            height_m: 0.03,
+            length_m: 0.1,
+            offset_m: 0.0,
+        });
+        fins.mass_properties(0.03).unwrap();
+    }
+
+    #[test]
     fn a_swept_fin_has_the_parallel_axis_product_of_inertia() {
         // A single trapezoidal fin: I_xz about the origin is ∫ r x dm, so about the centre it is
         // ∫ r x dm − m r̄ x̄ (with z = −x, I_xz = −∫ x_B z_B dm). Check against direct quadrature of
@@ -1007,6 +1089,15 @@ mod tests {
             points_m: vec![[0.0, 0.0], [0.05, 0.05], [0.1, 0.02]],
         };
         assert!(open.validate().is_err());
+        // The root leading edge is the origin, and the outline runs forward to aft.
+        let shifted = FinPlanform::Freeform {
+            points_m: vec![[0.03, 0.0], [0.08, 0.05], [0.13, 0.0]],
+        };
+        assert!(shifted.validate().is_err());
+        let backwards = FinPlanform::Freeform {
+            points_m: vec![[0.0, 0.0], [-0.05, 0.05], [-0.1, 0.0]],
+        };
+        assert!(backwards.validate().is_err());
         assert!(
             set(0, rectangle(0.1, 0.1), 0.003)
                 .mass_properties(0.03)
