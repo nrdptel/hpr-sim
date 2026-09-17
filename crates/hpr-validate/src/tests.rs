@@ -529,14 +529,51 @@ fn the_committed_cases_all_pass_and_the_report_says_so() {
     let committed = std::fs::read_to_string(root().join("validation/reports/latest.md"))
         .expect("the report is committed");
     assert_eq!(committed, markdown, "run `cargo xtask validate`");
-    // The JSON is pinned by value rather than by bytes: it holds full-precision floats, and the
-    // point is that the numbers are current, not that the file formats identically everywhere.
+    // The JSON is pinned too, but not by its bytes: it carries full-precision floats, and hpr
+    // promises bit-identical results on one platform, not across three (ADR-015). So everything
+    // that cannot differ by platform is compared exactly...
     let committed: Report = serde_json::from_str(
         &std::fs::read_to_string(root().join("validation/reports/latest.json"))
             .expect("the JSON report is committed"),
     )
     .expect("the JSON report parses");
-    assert_eq!(committed, report, "run `cargo xtask validate`");
+    assert_eq!(committed.harness_version, report.harness_version);
+    assert_eq!(committed.fast, report.fast);
+    assert_eq!(committed.cases, report.cases, "run `cargo xtask validate`");
+    assert_eq!(committed.skipped, report.skipped);
+    assert_eq!(
+        committed.sources, report.sources,
+        "run `cargo xtask validate`"
+    );
+    let shape = |report: &Report| {
+        report
+            .comparisons
+            .iter()
+            .map(|comparison| {
+                (
+                    comparison.case.clone(),
+                    comparison.metric.clone(),
+                    comparison.source.clone(),
+                    comparison.tolerance,
+                    comparison.verdict,
+                    comparison.note.clone(),
+                )
+            })
+            .collect::<Vec<_>>()
+    };
+    assert_eq!(
+        shape(&committed),
+        shape(&report),
+        "run `cargo xtask validate`"
+    );
+    // ...and its numbers through the Markdown it renders, to the six decimals that report prints,
+    // which is where the descent reproduces on macOS, Windows and Linux. A tighter check here
+    // would assert a cross-platform bit-identity hpr does not claim.
+    assert_eq!(
+        committed.to_markdown(),
+        markdown,
+        "run `cargo xtask validate`"
+    );
 }
 
 #[test]

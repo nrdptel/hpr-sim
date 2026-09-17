@@ -1301,8 +1301,13 @@ and M1.7a's recovery comparison, whose references are real RocketPy output.
   the diff. It carries each reference's SHA-256 and the generator's own description of what the
   oracle modelled and what it had to override, so a hand-edited reference or an unlike comparison
   shows up in the report rather than only in git history. A test asserts the committed Markdown is
-  byte-for-byte what the harness produces, and the JSON by value: the Markdown is rounded to six
-  decimals and reproduces on macOS, Windows and Linux today, and if a platform ever diverges the
+  byte-for-byte what the harness produces. The JSON is pinned in two parts, because it carries
+  full-precision floats and hpr's determinism promise is bit-identical results **on one platform**,
+  not across three: everything that cannot differ by platform (cases, metric names, sources,
+  tolerances, verdicts, reasons, hashes) is compared exactly, and the numbers through the Markdown
+  the committed JSON renders, to the six decimals that report prints. That is the resolution at
+  which the descents reproduce on macOS, Windows and Linux, measured, not assumed — CI failed the
+  first time this was asserted at full precision. If a platform ever diverges at six decimals, the
   answer is to find out why, not to loosen the comparison.
 - **M2.1a's first cases are M1.7a's descents.** They are the only references in hand that cover a
   whole hpr flight path end to end, and reusing them means the harness ships with five real cases
