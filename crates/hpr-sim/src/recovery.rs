@@ -18,6 +18,12 @@ use serde::{Deserialize, Serialize};
 
 use crate::error::SimError;
 
+/// The smallest aspect ratio `l/w` a streamer may have. A strip wider than it is long is not a
+/// streamer, and both correlations run away there: Carruthers and Filippone's `C_D → ∞` as
+/// `AR → 0`, and appendix C notes its own form "obtains maximum drag for a fixed surface area at
+/// the limit `l → 0`, `w → ∞`" (printed page 117).
+pub const MIN_STREAMER_ASPECT_RATIO: f64 = 1.0;
+
 /// The largest `C_D0` a canopy may be given. Knacke's printed values run from 0.30 to 0.96 on the
 /// nominal area; anything above this is a drag area mistaken for a coefficient.
 const MAX_CANOPY_DRAG_COEFFICIENT: f64 = 2.0;
@@ -179,15 +185,19 @@ pub enum StreamerModel {
     ///   does not repeat as an equation),
     /// - `C_D = 0.405 AR^−0.494` at `S = 0.075 m²` (eq. 1; Figure 4 reads `0.4046 AR^−0.494`).
     ///
-    /// hpr interpolates between neighbouring curves linearly in `ln S` and holds the end curve
-    /// outside the fitted range. That interpolation is hpr's, not the paper's, and the middle
-    /// curve is not between the other two: at `AR = 3.3` it is the highest of the three.
+    /// hpr interpolates between **neighbouring** curves linearly in `ln S` and holds the end
+    /// curve outside the fitted range. That interpolation is hpr's, not the paper's. All three
+    /// are needed because `C_D` is far from linear in `ln S`: at `AR = 3.3` the middle curve sits
+    /// 0.3% *below* the smallest area's rather than 63% of the way to the largest's, so blending
+    /// only the extremes reads 18% low there.
     ///
     /// The correlations are for streamers clamped at the luff; the paper measures more drag when
     /// the luff is free, which is what a descending streamer has.
     ///
-    /// This is the default: it is the only model of the two that agrees with a free-drop
-    /// measurement (`docs/physics/recovery.md`).
+    /// This is the default: on the one free-drop measurement in hand that a flat correlation
+    /// should fit (Kidwell's unpleated streamer) it is 9% fast where [`Self::OpenRocket`] is 88%
+    /// fast. Both are fast on his pleated streamers, which neither models
+    /// (`docs/physics/recovery.md`).
     #[default]
     Filippone,
     /// The OpenRocket technical documentation v13.05, Appendix C (printed pages 113-118):
@@ -195,8 +205,9 @@ pub enum StreamerModel {
     /// wind-tunnel tests of model-rocket streamers (`w` 0.01 to 0.09 m, `l` 0.2 to 1.0 m, surface
     /// density 10 to 80 g/m², 6 to 12 m/s), with a stated 12 to 27% error on an independent set.
     ///
-    /// Use it to compare with OpenRocket. Measured against a free drop it is about four times low
-    /// in drag area, which is twice the descent rate.
+    /// Use it to compare with OpenRocket. Against Kidwell's free drops it is low in drag area by
+    /// 4.2 times on his flat crêpe streamer and 7.8 times on his pleated Micafilm one, which is
+    /// 88% and 154% fast in descent rate (`docs/physics/recovery.md`).
     OpenRocket,
 }
 
@@ -209,9 +220,9 @@ impl StreamerModel {
         (0.075, 0.405, -0.494),
     ];
 
-    /// The aspect ratios `AR = l/w` this model will take. The correlations are fitted from 3.3 to
-    /// 30; below 1 a "streamer" is wider than it is long and the power law runs away
-    /// (`C_D → ∞` as `AR → 0`).
+    /// The aspect ratios `AR = l/w` the correlations were fitted over. Outside it they only
+    /// extrapolate, and as `AR → 0` the power law runs away (`C_D → ∞`), which is why a flight
+    /// refuses a strip wider than it is long ([`MIN_STREAMER_ASPECT_RATIO`]).
     pub const FILIPPONE_ASPECT_RATIO_RANGE: (f64, f64) = (3.3, 30.0);
 
     /// The drag area `C_D S` of a streamer, m².
@@ -282,11 +293,10 @@ pub enum DeviceDrag {
         /// The drag area `C_D S`, m².
         drag_area_m2: f64,
         /// The body's side profile area, m² (for reports; it and the fin area have to add up to
-        /// the drag area through the model's two coefficients).
-        #[serde(default)]
+        /// the drag area through the model's two coefficients, so a file that leaves one out is
+        /// refused by serde rather than silently defaulting to an inconsistent device).
         body_profile_m2: f64,
         /// The effective fin area, m² (for reports).
-        #[serde(default)]
         fin_area_m2: f64,
     },
     /// A canopy of nominal diameter `D₀` with `C_D0` on the nominal area `S₀ = π D₀²/4`
@@ -652,12 +662,14 @@ impl Device {
                         value: surface_density_kg_m2,
                     });
                 }
-                // A strip wider than it is long is not a streamer, and the correlations run away
-                // there. Above the fitted range they only extrapolate, which is allowed.
-                if model == StreamerModel::Filippone && length_m / width_m < 1.0 {
+                // A strip wider than it is long is not a streamer, and both correlations run
+                // away there. Above the fitted range they only extrapolate, which is allowed.
+                let _ = model;
+                if length_m / width_m < MIN_STREAMER_ASPECT_RATIO {
                     return Err(SimError::Domain {
-                        what: "streamer aspect ratio, length over width (the correlation is \
-                               fitted from 3.3 to 30 and is meaningless below 1)",
+                        what: "streamer aspect ratio, length over width (Carruthers and \
+                               Filippone fit 3.3 to 30, and both correlations are meaningless \
+                               below 1)",
                         value: length_m / width_m,
                     });
                 }
@@ -2488,9 +2500,9 @@ mod tests {
 
     #[test]
     fn streamer_models_reproduce_their_printed_equations() {
-        // Carruthers and Filippone's two printed curves, on the planform area, at the areas they
-        // were fitted at: `C_D = 0.405 AR^−0.494` at 0.075 m² (eq. 1) and `C_D = 0.561 AR^−0.480`
-        // at 0.025 m² (eq. 2).
+        // Carruthers and Filippone's three printed curves, on the planform area, at the areas
+        // they were fitted at: `0.405 AR^−0.494` at 0.075 m² (eq. 1), `0.561 AR^−0.480` at
+        // 0.025 m² (eq. 2) and `0.6514 AR^−0.6075` at 0.05 m² (the trend line on Figure 3).
         let cases: [(f64, f64, f64); 6] = [
             (10.0, 0.075, 0.405 * 10.0_f64.powf(-0.494)),
             (30.0, 0.075, 0.405 * 30.0_f64.powf(-0.494)),
@@ -2697,6 +2709,7 @@ mod tests {
         ];
         let mut report = String::new();
         let mut worst: f64 = 0.0;
+        let mut errors = Vec::new();
         for (name, fins, root_m, tip_m, span_m, diameter_m, body_m, mass_kg, measured_m_s) in models
         {
             let fin_area_m2 = if fins == 0 {
@@ -2711,22 +2724,61 @@ mod tests {
             let predicted_m_s = terminal_speed_m_s(mass_kg, drag_area_m2, rho, G);
             let error = predicted_m_s / measured_m_s - 1.0;
             worst = worst.max(error.abs());
+            errors.push(error);
             report.push_str(&format!(
                 "{name}: measured {measured_m_s:.1} m/s, hpr {predicted_m_s:.2} ({:+.1}%)\n",
                 100.0 * error
             ));
         }
         eprintln!("{report}");
-        // Measured: −5.8%, −5.4%, −7.1%, +19.1% and −10.0%, so the spread is −10 to +19%, not the
-        // 3 to 14% the documentation claims for its own fit. The finless model is the outlier: it
-        // wants a body coefficient near 0.79 where the model says 0.56. Either hpr's reading of
-        // the two areas is not the one behind the constants (the text pins neither convention) or
-        // the claim is not reproducible; `docs/physics/recovery.md` says so rather than repeating
-        // the 3 to 14%.
+        // The spread is −10 to +19%, not the 3 to 14% the documentation claims for its own fit,
+        // and the finless model is the outlier: it wants a body coefficient near 0.79 where the
+        // model says 0.56. Either hpr's reading of the two areas is not the one behind the
+        // constants (the text pins neither convention) or the claim is not reproducible;
+        // `docs/physics/recovery.md` prints this table rather than repeating the 3 to 14%.
+        //
+        // Every model's error is pinned, not just the worst: a wrong efficiency factor would
+        // move one of the others while the extreme stayed put.
+        assert_eq!(
+            errors
+                .iter()
+                .map(|error| format!("{:+.1}", 100.0 * error))
+                .collect::<Vec<_>>(),
+            ["-5.8", "-5.4", "-7.2", "+19.0", "-10.0"],
+            "{report}"
+        );
         assert!(worst < 0.20, "{worst} spread:\n{report}");
+    }
+
+    #[test]
+    fn tumbling_refuses_an_airframe_the_model_cannot_represent() {
+        // Tube fins are a large part of a tumbling rocket's broadside area and §3.5 has no factor
+        // for them, so `tumbling` refuses rather than crediting a bare tube's drag.
+        let mut rocket = design("rocketpy-valetudo");
+        let (index, fins) = rocket.stages[0].components[1]
+            .children
+            .iter()
+            .enumerate()
+            .find_map(|(index, child)| match &child.part {
+                hpr_design::Part::FinSet(fins) => Some((index, fins.clone())),
+                _ => None,
+            })
+            .expect("Valetudo has a fin set");
+        rocket.stages[0].components[1].children[index].part =
+            hpr_design::Part::TubeFinSet(hpr_design::TubeFinSet {
+                count: 3,
+                length_m: 0.15,
+                outer_radius_m: 0.02,
+                thickness_m: 0.001,
+                base_angle_rad: 0.0,
+                material: fins.material.clone(),
+            });
+        let assembly = rocket.assemble("example").unwrap();
+        let error = DeviceDrag::tumbling(&assembly).expect_err("tube fins");
+        assert!(matches!(error, SimError::Domain { .. }), "{error:?}");
+        // The unchanged design is fine, so the refusal is about the tube fins and nothing else.
         assert!(
-            worst > 0.15,
-            "the finless model is the known outlier:\n{report}"
+            DeviceDrag::tumbling(&design("rocketpy-valetudo").assemble("example").unwrap()).is_ok()
         );
     }
 

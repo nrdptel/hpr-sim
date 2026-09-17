@@ -144,7 +144,7 @@ RocketPy for five examples, and streamers and tumble with cited drag models. Sta
 - Recovery: no canopy overshoot or opening-load factor (a 1.5 m canopy peaks at 1.6 kN where
   Knacke's infinite-mass `C_x` gives 5.1 kN), no added mass, no airframe drag under a canopy, the
   attitude freezes at deployment, and his filling time is stated only for 150 to 500 ft/s, above
-  where hobby mains open (M1.7a). Streamer pleats are not modelled (Kidwell's pleated streamers
-  descend 58% slower), and the tumble model misses its own finless drop test by +19% and is fitted
-  to 6.8 to 160 g models, so a booster tumbling reads slow above `Re ≈ 2e5` (M1.7b).
+  where hobby mains open (M1.7a). Streamer pleats are not modelled (Kidwell's pleated streamer
+  descends 27% slower than his flat one, 2.2x the drag area), and the tumble model misses its own
+  finless drop test by +19% and is fitted to 6.8 to 160 g models (M1.7b).
 - `refs doctor` "runnable" means the oracle's runtime starts, not that a flight ran (M2.x).

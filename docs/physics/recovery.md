@@ -53,10 +53,11 @@ A streamer is a strip of fabric of length `l` and width `w`, so a planform (one-
   | 0.05 m² | `C_D = 0.6514 AR^−0.6075` | the trend line on Figure 3; the text does not repeat it |
   | 0.075 m² | `C_D = 0.405 AR^−0.494` | eq. 1 (Figure 4 reads `0.4046 AR^−0.494`) |
 
-  **hpr** interpolates between neighbouring curves linearly in `ln S`, and holds the end curve
-  outside the fitted areas; that is hpr's choice, not the paper's. The middle curve is not between
-  the other two: at `AR = 3.3` it is the highest of the three, which is why hpr carries all three
-  rather than blending the extremes (blending them alone reads 18% low at that aspect ratio).
+  **hpr** interpolates between *neighbouring* curves linearly in `ln S`, and holds the end curve
+  outside the fitted areas; that is hpr's choice, not the paper's. All three are needed because
+  `C_D` is far from linear in `ln S`: at `AR = 3.3` the middle curve sits 0.3% *below* the
+  smallest area's (0.3154 against 0.3163, with 0.2245 at the largest) rather than 63% of the way
+  between them, so blending only the extremes reads 18% low there.
 
   Two of the paper's own measurements bear on how hpr should read it, and neither is in the
   correlations: a **free** leading edge gives more drag than the clamped mounting these curves
@@ -92,11 +93,15 @@ of planform against Filippone's largest 0.075 m², and 0.1016 m wide by 1.016 m 
 appendix C's `w ≤ 0.09`, `l ≤ 1.0`.
 
 That last point is where hpr's **clamp** above 0.075 m² matters, and the evidence pulls two ways.
-The paper's own trend is that `C_D` falls as the area grows (its two end fits imply about
-`S^−0.3`), so extrapolating it to Kidwell's 0.1032 m² would give `C_D = 0.105` where the clamp
-gives 0.130 — the clamp reads high against the trend. But the drop itself measures 0.155, higher
-than either. hpr holds the end curve rather than extrapolating because that is closer to the one
-free-drop measurement in hand, and it says so here rather than claiming the trend.
+The paper's own trend is that `C_D` falls as the area grows: its two end curves at `AR = 10` imply
+`S^−0.326`, which extrapolated to Kidwell's 0.1032 m² would give `C_D = 0.117` where the clamp
+gives 0.130 (the steeper inner pair, `S^−0.53`, would give 0.110). So the clamp reads high against
+the trend. But the drop itself implies 0.155, higher than any of them. hpr holds the end curve
+rather than extrapolating because that is the closer of the two to the one free-drop measurement
+in hand, and it says so here rather than claiming the trend. Two caveats: that rests on a single
+point, at one aspect ratio, with a fabric nothing like the paper's cotton; and it holds partly
+because the clamped-luff correlation is itself biased low, so two errors cancel. Nothing is
+measured anywhere near the 0.225 m² end of the clamp.
 
 hpr therefore defaults to `Filippone` and keeps `OpenRocket` for comparing with OpenRocket
 (ADR-013).

@@ -1132,8 +1132,9 @@ type tables 5-1 to 5-5, the measured-drag section 5.2.3, the miscellaneous-decel
     hand is higher than either, so the clamp is the closer of the two. `recovery.md` states both.
   - **Pleats are not modelled**, so hpr predicts a faster descent for a folded streamer. That is
     the safe direction for a landing, and it is stated in `docs/physics/recovery.md`.
-  - hpr's streamer descent rates will therefore differ from OpenRocket's by about a factor of two.
-    M2.2 will see that; it is the intended difference, not a defect.
+  - hpr's streamer descent rates will therefore differ from OpenRocket's by 1.4 to 2.4 times,
+    depending on the fabric (the drag-area ratio runs 1.9 to 5.8). M2.2 will see that; it is the
+    intended difference, not a defect.
 - **Tumble is the technical documentation's §3.5 model**, `C_D S = 1.42 A_f + 0.56 A_bt`, computed
   from the airframe by `DeviceDrag::tumbling`: `A_bt` by integrating the outer diameter along the
   axis (each body component's mean diameter times its length), `A_f` as one fin's planform area
