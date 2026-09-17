@@ -460,9 +460,10 @@ a boattail is oriented or where cant pivots (`docs/physics/shapes.md`, `docs/phy
   shell is made.
   - At a cut end where the surface meets the end plane at an obtuse angle inside the wall, the
     inner corner is rounded rather than square: `t² (tan φ − φ)/2` less section per unit rim
-    length, 3e-4 `t²` at 7°.
+    length, 3.1e-4 `t²` at 7°. On steep ends it is not small: 1.26% of wall mass at 56° and 2.24%
+    at 60° for a 2 mm wall. M2.2 checks this against OpenRocket.
   - Extending the surface along its end tangent would cut it square. But that closes a steep end
-    with a disc, and it made wall mass jump by up to 8% as an end slope rounded from finite to
+    with a disc, and it made wall mass jump by 8.3% as an end slope rounded from finite to
     infinite, so it was dropped. Radial thickness, as in Crowell, overstates the wall by
   `√(1 + y′²)`. M2.2 measures what OpenRocket does, and any gap goes in the report, not into this
   model.

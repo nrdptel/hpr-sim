@@ -96,11 +96,14 @@ diameter, moved to the reference plane by the parallel-axis theorem. `S` exclude
     small end of a transition, the base of a bulged ogive), the rim's circle rounds the wall's
     inner corner.
     - A square cut would add a sliver of `t² (tan φ − φ)/2` of section per unit rim length, with
-      `φ` the surface's angle to the axis: 3.0e-4 `t²` at 7°.
+      `φ` the surface's angle to the axis: 3.1e-4 `t²` at 7°. On steep ends it matters: a
+      square-cut part is heavier than this model by 1.26% of wall mass for a 27→49 mm transition
+      over 15 mm (56°), and by 2.24% for 20→37.3 mm over 10 mm (60°), both with `t = 2 mm`. M2.2
+      should check how real parts and OpenRocket treat such ends.
     - The sliver grows without bound only as the end turns vertical. There, a square cut (made by
       extending the surface along its tangent) closes the end with a disc of thickness `t`.
-    - The first version did extend along finite end tangents only. Its wall mass jumped by up to
-      8% between shapes whose end slopes rounded to finite and to infinite.
+    - The first version did extend along finite end tangents only. Its wall mass jumped by 8.3%
+      between shapes whose end slopes rounded to finite and to infinite.
   - The minimum comes from a 32-point scan, a golden-section search, and the two end points, which
     the search only approaches from inside.
   - The hollow is integrated separately. It is split where `r_i` reaches zero and where the nearest
@@ -146,7 +149,7 @@ diameter, moved to the reference plane by the parallel-axis theorem. `S` exclude
 - **Walls by hand:**
   - A conical wall is the cone minus the same cone moved aft by `t/sin β`: volume, centroid and
     both moments by hand, to 1e-9. A cone so thick that its hollow is 3.8 mm long matches the same
-    formula to 1e-12.
+    formula to 1e-12 (`a_nearly_filled_cone_matches_the_offset_cone`).
   - A conical transition's wall is the square-cut frustum shell less the fore rim's sliver, in
     polar coordinates about the rim: mass and centroid to 1e-10, sliver section to 1e-10
     (`mass::tests::hollow_transition_and_freeform_fin_cg_are_exact_centroids`).
@@ -158,10 +161,11 @@ diameter, moved to the reference plane by the parallel-axis theorem. `S` exclude
   range are errors (lesson L48).
   - Haack tips use `θ = 2 asin √ξ` and a Taylor series for `θ − sin 2θ/2` below `θ = 0.1`, so the
     tip slope is `+∞`, never NaN.
-  - Ogive radius ratios up to 1e12 give the cone, and a power series with `n = 0.02` integrates
+  - Ogive radius ratios up to 1e12 give the cone. A power series at the minimum exponent, 0.05,
+    matches its closed-form volume as a nose and as transitions both ways
     (`extreme_parameters_stay_accurate_or_fail_loudly`).
   - Unknown fields in a shape or wall are rejected.
   - Transitions hit both radii and are monotone both ways, clipped or not (lesson L49); bulged
     ogives are excluded because their profile is deliberately not monotone.
-  - Power-series exponents below 0.02 are rejected. Blunter profiles approach a flat face the
-    integrals can't resolve.
+  - Power-series exponents below 0.05 are rejected. Blunter profiles approach a flat face the
+    integrals can't resolve, and unclipped transitions below about 0.038 fail to converge.

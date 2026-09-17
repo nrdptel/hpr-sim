@@ -34,7 +34,7 @@
 //! past a cut end. At an end where the surface meets the end plane at an obtuse angle inside the
 //! wall, the wall's inner corner is rounded by the rim's circle instead of cut square. That removes
 //! `t² (tan φ − φ)/2` of section per unit rim length, with `φ` the surface's angle to the axis
-//! there: 3.0e-4 t² at 7°, and it grows without bound only as the end turns vertical, where a square
+//! there: 3.1e-4 t² at 7°, and it grows without bound only as the end turns vertical, where a square
 //! cut would close the end with a disc. The integration is split where `r_i` reaches zero and where
 //! the nearest surface point moves between the lateral surface and a rim.
 //!
@@ -166,7 +166,8 @@ pub fn revolve(profile: &Profile, wall: Wall) -> Result<RevolvedGeometry, Design
             });
             for pair in breaks.windows(2) {
                 // Every piece is integrated, even one that looks filled in at its middle, so a
-                // thin hollow the crossing grid misses still counts.
+                // hollow the crossing grid misses is still counted wherever quadrature nodes reach
+                // it.
                 let piece = integrate(integrand, pair[0], pair[1], WALL)?;
                 for (sum, value) in hollow.iter_mut().zip(piece.value) {
                     *sum += value;
@@ -488,20 +489,28 @@ mod tests {
             let g = revolve(&profile, Wall::Filled {}).unwrap();
             close(g.volume_m3, cone.volume_m3, 1e-5, &format!("ogive {ratio}"));
         }
-        // A very blunt power series still integrates.
-        let n = 0.02;
-        let g = revolve(
-            &Profile::nose(NoseShape::PowerSeries { exponent: n }, 0.2, 0.05).unwrap(),
-            Wall::Filled {},
-        )
-        .unwrap();
+        // The bluntest power series accepted integrates as a nose and as transitions both ways:
+        // V = πR²L/(2n + 1) for the nose, and πL(R₁² + 2R₁ΔR/(n + 1) + ΔR²/(2n + 1)) for a
+        // transition growing from R₁ by ΔR (a boattail is its mirror image).
+        let n = crate::shapes::MIN_POWER_EXPONENT;
+        let shape = NoseShape::PowerSeries { exponent: n };
+        let g = revolve(&Profile::nose(shape, 0.2, 0.05).unwrap(), Wall::Filled {}).unwrap();
         close(
             g.volume_m3,
             PI * 0.05 * 0.05 * 0.2 / (2.0 * n + 1.0),
             1e-10,
-            "blunt power series",
+            "blunt power nose",
         );
         assert!(g.wetted_area_m2.is_finite());
+        let (r1, dr, l): (f64, f64, f64) = (0.0381, 0.0127, 0.1);
+        let volume = PI * l * (r1 * r1 + 2.0 * r1 * dr / (n + 1.0) + dr * dr / (2.0 * n + 1.0));
+        for (fore, aft) in [(r1, r1 + dr), (r1 + dr, r1)] {
+            let profile = Profile::transition(shape, l, fore, aft, false).unwrap();
+            let g = revolve(&profile, Wall::Filled {}).unwrap();
+            close(g.volume_m3, volume, 1e-10, "blunt power transition");
+            assert!(g.wetted_area_m2.is_finite());
+            revolve(&profile, Wall::Shell { thickness_m: 0.002 }).unwrap();
+        }
     }
 
     #[test]
@@ -608,9 +617,9 @@ mod tests {
     }
 
     #[test]
-    fn a_hollow_shorter_than_the_crossing_grid_still_counts() {
-        // A cone with a wall so thick that the hollow is only the last 3.8 mm of 300 mm, less than
-        // the 1/128 grid the fill-in search steps by: the offset-cone formula still holds.
+    fn a_nearly_filled_cone_matches_the_offset_cone() {
+        // A cone with a wall so thick that the hollow is only the last 3.8 mm of 300 mm: the
+        // offset-cone formula still holds, and the fill-in point is found to high precision.
         let (l, r, t): (f64, f64, f64) = (0.3, 0.05, 0.0487);
         let k = r / l;
         let x0 = t * (1.0 + k * k).sqrt() / k;

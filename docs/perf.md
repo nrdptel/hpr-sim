@@ -28,9 +28,9 @@ The calls a design edit makes, or a Monte Carlo sample that perturbs dimensions.
   station to 1e-15 t and scanned 256 stations for where the wall fills in: 2.25 ms. Near the
   minimum the value is quadratic in the station, so 1e-9 t is enough (1.84 ms), and a 64-station
   scan still brackets the one fill-in point a nose has (1.35 ms), with every test unchanged.
-  The review fixes made the end points candidates and dropped tangent extensions (1.70 ms). They
-  also split the integration wherever the nearest surface point moves between the surface and a
-  rim, which needs a 128-station scan (2.00 ms). The filled nose went from 8.2 to 10.1 µs with the
+  The review fixes first made the end points candidates and split at `t` from each end (1.70 ms).
+  Then they dropped tangent extensions and split wherever the nearest surface point moves between
+  the surface and a rim, which needs a 128-station scan (2.00 ms). The filled nose went from 8.2 to 10.1 µs with the
   Haack series and the precise arc.
 - **Where it matters.** Mass properties are computed once per design, not per derivative
   evaluation. A 10,000-sample Monte Carlo run that perturbs nose dimensions would spend about

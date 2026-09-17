@@ -33,7 +33,8 @@ from these notes:
   Calisto's inputs); the M1670 file isn't bundled, so build its `SolidMotor` from its data file in
   the oracle script and commit the fixture.
 - **Open conventions to settle in M2.2/M3.1 with the jar:** OpenRocket's ogive parameter, how it
-  measures wall thickness, whether its fin mass uses the cross-section, and its cant pivot.
+  measures wall thickness and cuts steep ends (hpr rounds them: 2% of wall mass at 60°), whether
+  its fin mass uses the cross-section, and its cant pivot.
 - **Process notes:**
   - `cargo test -p xtask` checks STATUS against ROADMAP, notices rows against lock titles, lesson
     tests once a milestone is checked off, and that lock URLs use https.

@@ -11,7 +11,7 @@
 //! conical            g = ξ
 //! ogive              y = √(ρ² − (Lξ − ρ cos α)²) + ρ sin α,   α = atan(R/L) − acos(√(L² + R²) / 2ρ)
 //! elliptical         g = √(1 − (1 − ξ)²)
-//! power series       g = ξⁿ,                            0.02 ≤ n ≤ 1
+//! power series       g = ξⁿ,                            0.05 ≤ n ≤ 1
 //! parabolic series   g = (2ξ − K′ξ²) / (2 − K′),        0 ≤ K′ ≤ 1
 //! Haack series       g = √((θ − sin 2θ / 2 + C sin³θ) / π),   θ = acos(1 − 2ξ),   0 ≤ C ≤ 2/3
 //! ```
@@ -58,7 +58,7 @@ pub enum NoseShape {
     Elliptical {},
     /// `g = ξⁿ`: `n = 1` is a cone and `n = ½` a paraboloid.
     PowerSeries {
-        /// The exponent `n`, in `[0.02, 1]` ([`MIN_POWER_EXPONENT`]).
+        /// The exponent `n`, in `[0.05, 1]` ([`MIN_POWER_EXPONENT`]).
         exponent: f64,
     },
     /// Parabolic series: `K′ = 0` is a cone and `K′ = 1` a full parabola, tangent at the base.
@@ -74,10 +74,12 @@ pub enum NoseShape {
 }
 
 /// The smallest power-series exponent accepted. Blunter profiles approach a flat face whose area the
-/// integrals can't resolve (at `n = 1e-9` the wetted area misses the face's `πR²`), and between
-/// `0.01` and `1e-8` they don't converge; `0.02` is the bluntest checked against mpmath. Model a
-/// flat face as a tube and a bulkhead.
-pub const MIN_POWER_EXPONENT: f64 = 0.02;
+/// integrals can't resolve: at `n = 1e-9` a nose's wetted area misses the face's `πR²`, a nose fails
+/// to converge between `1e-8` and `0.01`, and an unclipped transition up to about `0.038`, where
+/// the surface integrand `∝ ξ^(2n−1)` drives bisection to subnormal stations. `0.05` is the bluntest
+/// checked, as a nose and as transitions both ways, against closed-form volumes. Model a flat face
+/// as a tube and a bulkhead.
+pub const MIN_POWER_EXPONENT: f64 = 0.05;
 
 impl NoseShape {
     /// The tangent ogive.
@@ -609,7 +611,7 @@ mod tests {
         for shape in [
             NoseShape::PowerSeries { exponent: 0.0 },
             NoseShape::PowerSeries { exponent: 1.5 },
-            NoseShape::PowerSeries { exponent: 0.019 },
+            NoseShape::PowerSeries { exponent: 0.049 },
             NoseShape::ParabolicSeries { parameter: -0.1 },
             NoseShape::Haack { parameter: 0.7 },
             NoseShape::Ogive { radius_ratio: 0.1 },
