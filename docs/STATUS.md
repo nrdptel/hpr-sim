@@ -43,7 +43,7 @@ M1.3 built `hpr-motor` (ADR-005). Start M1.4 from these notes:
 
 ## Done log (newest first, keep about 15)
 
-- 2026-09-17: M1.3 Solid motors (PR #8): thrust curves with NFPA 1125 statistics matching
+- 2026-09-17: M1.3 Solid motors (PR #9): thrust curves with NFPA 1125 statistics matching
   ThrustCurve's code, impulse classes, impulse-fraction consumption over a column or BATES grains,
   mass properties matching RocketPy's SolidMotor to 8e-5, `.eng`/`.rse` readers and writers that
   round-trip 1710 real files, 32 bundled public-domain curves, ADR-005, eight newly pinned sources.
