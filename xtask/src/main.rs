@@ -13,6 +13,8 @@
     reason = "dev tooling runs cargo and uses the filesystem; it is not part of the pure core"
 )]
 
+#[cfg(test)]
+mod docs;
 mod refs;
 mod wasm_check;
 mod workspace;
