@@ -19,7 +19,7 @@ the command, so a later run can be compared like for like.
 | `Simulation::run`, Valetudo K400C to the ground | 1.10 ms |
 | `Simulation::run`, Valetudo K400C with every channel recorded at 10 ms | 2.49 ms |
 
-- **The M1.6 budget** is 5 ms for a typical Level 2 flight, so this is 4.6 times under it.
+- **The M1.6 budget** is 5 ms for a typical Level 2 flight, so this is 4.5 times under it.
 - **Work.** 2578 derivative evaluations, 410 accepted steps and 15 rejected, so about 0.4 µs per
   evaluation including the event checks. The event functions reuse the evaluation cached for the
   step's last stage.
