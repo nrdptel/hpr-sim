@@ -102,6 +102,8 @@ Nose cones, transitions and body tubes, from the outer profile (shoulders are in
   `r_t/(s + r_t) < 0.4` ([B66] p. 36).
 - **Not modelled.**
   - The body lift the fins induce, `K_B(T)` ([B66] p. 36 neglects it; [B67] eq. 3-98 has it).
+  - The roll moment of a single fin: its force acts at `r_t + y_MAC` along the fin's normal. Two or
+    more even fins cancel it; one fin doesn't (roll arrives in M1.8).
   - Interference between fin sets at the same station.
   - Cant, which matters for roll (M1.8).
   - Tube fins, which are refused until a cited method exists (issue #15). Any part kind the model

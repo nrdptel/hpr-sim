@@ -620,7 +620,9 @@ had no fin-count correction (L8), and swapped elliptical fins for an equal-area 
   no fin-count factor, without a derivation and for six fins only. MIL-HDBK-762 gives six and eight
   fins from slender-body theory, the technical documentation interpolates five and seven, and
   OpenRocket (the M2.2 oracle) uses the same factors, so a comparison there isolates other
-  differences. The two rules agree within about ±5% over common span-to-radius ratios.
+  differences. With `x = r/(s + r)`, hpr's six-fin slope over TIR-33's is
+  `0.913 (1 + x)/(1 + 0.5 x)`: −8.7% as `x → 0`, −4.3% at 0.1, +3.2% at 0.3 (the Recruiter) and
+  +6.5% at 0.4, the edge of the interference fit's range.
 - **Radius steps (an extrapolation).** Where one body component's aft radius differs from the next
   one's fore radius, the step adds `(2/A_ref)ΔA` at the joint (a zero-length transition), so the
   body's total slope is Barrowman 1966 eq. 10 over the whole body. Barrowman 1967 p. 18 assumes no

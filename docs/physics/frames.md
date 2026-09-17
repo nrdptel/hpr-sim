@@ -64,7 +64,9 @@ converted before use. `docs/physics/geodesy.md` gives the conversions.
 - **Flow roll `φ`:** the direction in which the air crosses the body, measured in the `x_B`–`y_B`
   plane from `x_B` toward `y_B`. Fin `k` of a set sits at `Λ_k = θ₀ + 2πk/N − φ` from the lateral
   airflow, with `θ₀` the set's base angle.
-- Normal-force coefficients lie in the plane of `+z_B` and the flow (`docs/physics/aero.md`).
+- **Force directions.** With `ŵ = (cos φ, sin φ, 0)` the lateral air direction in `B`, the normal
+  and side forces are `q A_ref (C_N ŵ + C_Y (z_B × ŵ))`: `C_N` is positive along `ŵ`, the way the
+  crossing air pushes the body, and `C_Y` is across the flow's plane (`docs/physics/aero.md`).
 
 ## Attitude
 

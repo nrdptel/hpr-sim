@@ -262,6 +262,8 @@ pub fn side_sum(count: u32, base_angle_rad: f64, flow_roll_rad: f64) -> f64 {
 
 #[cfg(test)]
 mod tests {
+    use std::f64::consts::FRAC_1_SQRT_2;
+
     use super::*;
 
     fn close(got: f64, want: f64, rel: f64, what: &str) {
@@ -586,5 +588,44 @@ mod tests {
                 (fin.mac_span_m / reference.centroid_span_m - 1.0).abs() < 1e-9
             );
         }
+    }
+
+    /// The roll and side sums rebuild the direct per-fin vector sum: fin `k` at `θ_k` pushes along
+    /// its normal `n_k = (−sin θ_k, cos θ_k)` in proportion to the air crossing it, `sin(φ − θ_k)`,
+    /// and `Σ sin(φ − θ_k) n_k = roll_sum · ŵ + side_sum · (z_B × ŵ)` with `ŵ = (cos φ, sin φ)`
+    /// (`frames.md`, force directions). Two fins along `x_B` in a 45° flow push along `+y_B`.
+    #[test]
+    fn roll_and_side_sums_rebuild_the_per_fin_vector() {
+        for n in 1..=8u32 {
+            for base in [0.0, 0.7, 1.0] {
+                for roll in [0.0, 0.4, PI / 4.0, 2.5, -1.2] {
+                    let direct = (0..n).fold([0.0, 0.0], |acc, k| {
+                        let theta = base + TAU * f64::from(k) / f64::from(n);
+                        let push = (roll - theta).sin();
+                        [acc[0] - push * theta.sin(), acc[1] + push * theta.cos()]
+                    });
+                    let (c_n, c_y) = (roll_sum(n, base, roll), side_sum(n, base, roll));
+                    let rebuilt = [
+                        c_n * roll.cos() - c_y * roll.sin(),
+                        c_n * roll.sin() + c_y * roll.cos(),
+                    ];
+                    for (got, want) in rebuilt.iter().zip(direct) {
+                        assert!(
+                            (got - want).abs() < 1e-14,
+                            "{n} {base} {roll}: {rebuilt:?} {direct:?}"
+                        );
+                    }
+                }
+            }
+        }
+        let (c_n, c_y) = (roll_sum(2, 0.0, PI / 4.0), side_sum(2, 0.0, PI / 4.0));
+        let push = [
+            c_n * FRAC_1_SQRT_2 - c_y * FRAC_1_SQRT_2,
+            c_n * FRAC_1_SQRT_2 + c_y * FRAC_1_SQRT_2,
+        ];
+        assert!(
+            push[0].abs() < 1e-15 && (push[1] - 2.0 * FRAC_1_SQRT_2).abs() < 1e-15,
+            "{push:?}"
+        );
     }
 }
