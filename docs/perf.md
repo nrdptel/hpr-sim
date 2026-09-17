@@ -3,6 +3,36 @@
 Measured numbers only, newest first within each section. Record the machine, the toolchain, and
 the command, so a later run can be compared like for like.
 
+## Flight (M1.6b)
+
+- **Benchmark:** `cargo bench -p hpr-sim --bench flight`, which is criterion, release profile.
+- **When and where:** 2026-09-17 on an Apple M5 with rustc 1.98.1.
+- **Inputs:**
+  - Valetudo (`rocketpy-valetudo.json`, K400C, 9.7 kg), from a 3 m vertical rail at Spaceport
+    America.
+  - The 1976 standard atmosphere, 5 m/s wind from the west.
+  - The default settings (Dormand–Prince 5(4), `rtol = atol = 1e-8`), from ignition to the ground
+    (29 s, apogee 874 m).
+
+| call | median |
+|---|---|
+| `Simulation::run`, Valetudo K400C to the ground | 1.10 ms |
+| `Simulation::run`, Valetudo K400C with every channel recorded at 10 ms | 2.49 ms |
+
+- **The M1.6 budget** is 5 ms for a typical Level 2 flight, so this is 4.5 times under it.
+- **Work.** 2578 derivative evaluations, 410 accepted steps and 15 rejected, so about 0.4 µs per
+  evaluation including the event checks. The event functions reuse the evaluation cached for the
+  step's last stage.
+- **Where the time goes.**
+  - Each evaluation calls `Assembly::mass_properties` four times, for the value and the central
+    differences of its rates. That is most of the cost, at about 60–100 ns each (M1.4b).
+  - The other calls are one geodetic conversion, the atmosphere and wind, drag (50–110 ns) and a
+    normal force per component (about 25 ns each).
+  - Analytic motor rates would remove three of the four mass calls.
+- **Recording** every channel every 10 ms adds 2900 full evaluations, 1.4 ms.
+- **Tolerance.** Loosening to 1e-6 halves the time (0.59 ms), at a 7e-5 m apogee error
+  (`docs/physics/flight.md`).
+
 ## Drag (M1.5b)
 
 - **Benchmark:** `cargo bench -p hpr-aero --bench drag`, which is criterion, release profile.

@@ -99,7 +99,8 @@ Sources:
 ## Defaults and limits
 
 - `rtol = atol = 1e-8`, no maximum step, and a limit of 10⁶ attempted steps.
-- **M1.6b decides the flight's weights and tolerances** from its benchmark and accuracy.
+- The flight keeps these defaults with unit weights (`flight.md`: 1.1 ms per Level 2 flight, apogee
+  converged to 3e-5 m).
 - A stiff flight phase shows up as `StepTooSmall` or the step limit.
 - Integration runs forward only. `t_stop` may be infinite, to run until an event or a stop from
   `accept_step`. After any error, the integrator stays at its last accepted step and can resume;
