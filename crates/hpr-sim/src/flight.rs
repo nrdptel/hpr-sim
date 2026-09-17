@@ -337,11 +337,22 @@ impl Simulation {
         start_phase: Phase,
         observer: &mut dyn Observer,
     ) -> Result<FlightResult, SimError> {
-        if !t0.is_finite() || t0 >= self.settings.max_time_s {
+        if !t0.is_finite() || t0 < 0.0 || t0 >= self.settings.max_time_s {
             return Err(SimError::Domain {
-                what: "start time (must be finite and before the time cap)",
+                what: "start time (must be from ignition and before the time cap)",
                 value: t0,
             });
+        }
+        if start_phase == Phase::Free {
+            let height = self
+                .evaluate(Phase::Free, (t0, t0), t0, &state.to_array())?
+                .height_above_ground_m;
+            if height <= 0.0 {
+                return Err(SimError::Domain {
+                    what: "starting height of the centre of mass above the ground",
+                    value: height,
+                });
+            }
         }
         let mut integrator = Integrator::new(self.settings.method, t0, state.to_array())?
             .with_step_limit(self.settings.step_limit);
@@ -356,6 +367,7 @@ impl Simulation {
 
         let mut phase = start_phase;
         let mut lifted = start_phase != Phase::Pad;
+        let mut burnout_recorded = t0 >= burnout_s;
         let mut events: Vec<FlightEvent> = Vec::new();
         let record = |events: &mut Vec<FlightEvent>, observer: &mut dyn Observer, kind, sample| {
             let event = FlightEvent { kind, sample };
@@ -411,13 +423,14 @@ impl Simulation {
             };
             let t = integrator.time_s();
             let y = *integrator.state();
+            // Burnout is a stop time, but an event can end the step on it first.
+            if !burnout_recorded && t >= burnout_s {
+                burnout_recorded = true;
+                let sample = self.sample(phase, window, t, &y)?;
+                record(&mut events, observer, EventKind::Burnout, sample);
+            }
             match outcome {
-                Advance::Reached => {
-                    if t == burnout_s && t > t0 {
-                        let sample = self.sample(phase, window, t, &y)?;
-                        record(&mut events, observer, EventKind::Burnout, sample);
-                    }
-                }
+                Advance::Reached => {}
                 Advance::Events => {
                     let fired = integrator.fired_events().to_vec();
                     let mut ground = false;

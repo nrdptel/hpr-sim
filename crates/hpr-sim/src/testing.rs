@@ -301,7 +301,7 @@ pub(crate) fn analytic_environment(air: UniformAir, g_mps2: f64) -> Environment 
 /// A standard environment at [`site`] with `wind`.
 pub(crate) fn windy_environment(wind: impl Wind + 'static) -> Environment {
     Environment {
-        wind: Box::new(wind),
+        wind: std::sync::Arc::new(wind),
         ..Environment::standard(site()).unwrap()
     }
 }

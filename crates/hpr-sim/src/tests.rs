@@ -126,13 +126,88 @@ fn vacuum_ballistic_flight_follows_the_parabola() {
     .unwrap();
     let apogee = result.event(EventKind::Apogee).unwrap().sample;
     let ground = result.event(EventKind::GroundHit).unwrap().sample;
-    // Measured at the default tolerances: 1.7e-6 m over 25 s and 700 m, momentum 7.8e-7 after
+    // Measured at the default tolerances: 1.7e-6 m over 22 s and 700 m, momentum 7.8e-7 after
     // 60 rad of spin, apogee −4.7e-7 s and ground contact 1.1e-8 s from the closed form.
     assert!(worst_position < 5e-6, "{worst_position}");
     assert!(worst_momentum < 2.5e-6, "{worst_momentum}");
     assert!((apogee.time_s - apogee_s).abs() < 1e-6);
     assert!((ground.time_s - ground_s).abs() < 1e-6);
     assert!((ground.cg_enu_m - parabola(ground_s)).length() < 5e-6);
+}
+
+#[test]
+fn powered_vertical_climb_in_vacuum_integrates_the_axial_equation() {
+    // Mid-burn, vertical, in a vacuum under uniform gravity, with no rotation: the nose tip's
+    // velocity is v0 + ∫ ((T − m r″ − 2ṁ r′ + m̈(n − r))/m − g) dt along the axis. The integrand
+    // comes here from the motor and the assembly directly, and the quadrature splits at the
+    // thrust curve's knots.
+    let (t0, t1) = (0.5, 3.0);
+    let sim = valetudo(analytic_environment(UniformAir::vacuum(), G), capped(t1));
+    let assembly = sim.assembly();
+    let placed = &assembly.motors[0];
+    let motor = &placed.mounted.motor;
+    let h = 1e-4;
+    let props = |t: f64| assembly.mass_properties(t);
+    // Rates by central differences centred inside each knot interval [a, b] and extended
+    // linearly to t (exact for the quadratic mass of a linear thrust segment).
+    let integrand = |t: f64, a: f64, b: f64| {
+        let c = t.clamp(a + h, b - h);
+        let (m, r) = (props(t).mass_kg, props(t).cg_m.z);
+        let r_mid = props(c).cg_m.z;
+        let r2 = (props(c + h).cg_m.z - 2.0 * r_mid + props(c - h).cg_m.z) / (h * h);
+        let r1 = (props(c + h).cg_m.z - props(c - h).cg_m.z) / (2.0 * h) + (t - c) * r2;
+        let mdot = -motor.state(t).mass_flow_kg_s;
+        let mddot =
+            -(motor.state(c + h).mass_flow_kg_s - motor.state(c - h).mass_flow_kg_s) / (2.0 * h);
+        let thrust = motor.thrust_at_pressure_n(t, 0.0);
+        (thrust - m * r2 - 2.0 * mdot * r1 + mddot * (placed.nozzle_m.z - r)) / m - G
+    };
+    let mut knots: Vec<f64> = motor
+        .curve()
+        .times_s()
+        .iter()
+        .copied()
+        .filter(|t| *t > t0 && *t < t1)
+        .collect();
+    knots.insert(0, t0);
+    knots.push(t1);
+    let tolerance = hpr_core::quadrature::Tolerance {
+        relative: 1e-10,
+        absolute: 1e-10,
+        max_intervals: 4000,
+    };
+    let delta_v: f64 = knots
+        .windows(2)
+        .map(|w| {
+            hpr_core::quadrature::integrate_scalar(
+                |t| integrand(t, w[0], w[1]),
+                w[0],
+                w[1],
+                tolerance,
+            )
+            .unwrap()
+        })
+        .sum();
+    let v0 = 50.0;
+    let state = State {
+        position_enu_m: DVec3::new(0.0, 0.0, 300.0),
+        velocity_enu_m_s: DVec3::new(0.0, 0.0, v0),
+        attitude: DQuat::IDENTITY,
+        body_rate_rad_s: DVec3::ZERO,
+    };
+    let result = sim.run_free(t0, state, &mut ()).unwrap();
+    assert_eq!(result.termination, Termination::TimeCap);
+    let end = result.final_sample.state;
+    assert!(
+        end.body_rate_rad_s.length() < 1e-9,
+        "{:?}",
+        end.body_rate_rad_s
+    );
+    assert!(end.velocity_enu_m_s.x.abs() + end.velocity_enu_m_s.y.abs() < 1e-9);
+    let error = end.velocity_enu_m_s.z - (v0 + delta_v);
+    // Measured: 4.3e-8 m/s of 185 m/s. Dropping the m̈(n − r) term alone moves it by about
+    // 0.05 m/s.
+    assert!(error.abs() < 1.5e-7, "{error} of {}", v0 + delta_v);
 }
 
 #[test]
@@ -164,7 +239,7 @@ fn nose_down_fall_reaches_the_closed_form_terminal_velocity() {
         worst = worst.max((v - expected).abs() / terminal);
     }
     let last = fall[fall.len() - 1];
-    // Measured: 7.6e-9 of v_t over the first minute; after 150 s the speed is v_t to 1e-5.
+    // Measured: 5.5e-9 of v_t; after 150 s the speed is v_t to 1e-5.
     assert!(worst < 2.5e-8, "{worst}");
     assert!(
         (-last / terminal - 1.0).abs() < 2e-5,
@@ -400,6 +475,152 @@ fn termination_reason_distinguishes_no_liftoff_time_cap_and_step_limit() {
     );
     assert_eq!(limited.termination, Termination::StepLimit);
     assert!(limited.final_sample.time_s < normal.final_sample.time_s);
+    // A rail far longer than the burn: the rocket coasts to a stop on it and settles back.
+    let stalled = fly(Rail::vertical(2000.0), FlightSettings::default());
+    assert_eq!(stalled.termination, Termination::StalledOnRail);
+    let kinds: Vec<EventKind> = stalled.events.iter().map(|e| e.kind).collect();
+    assert_eq!(kinds, [EventKind::Liftoff, EventKind::Burnout]);
+    assert_eq!(stalled.final_sample.state.velocity_enu_m_s, DVec3::ZERO);
+}
+
+#[test]
+fn a_calm_vertical_flight_falls_tail_first_and_lands() {
+    // With no wind and no Earth rotation the rocket stops at apogee pointing up and falls tail
+    // first. The fins' normal force must vanish for that axial flow; a force linear in α would
+    // stay large at α = π and flip direction with rounding noise, collapsing the step size.
+    use hpr_core::earth::{Earth, EarthRotation, GravityModel};
+    use hpr_core::gravity::NormalGravity;
+    let earth = Earth::new(
+        NormalGravity::wgs84(),
+        site(),
+        GravityModel::Ellipsoidal,
+        EarthRotation::Ignore,
+    )
+    .unwrap();
+    let environment = Environment::new(
+        earth,
+        hpr_atmos::AtmosphereModel::default(),
+        ConstantWind::calm(),
+    );
+    let result = valetudo(environment, FlightSettings::default())
+        .run(&mut ())
+        .unwrap();
+    assert_eq!(result.termination, Termination::GroundHit);
+    assert!(result.stats.evaluations < 20_000, "{:?}", result.stats);
+}
+
+#[test]
+fn burnout_is_recorded_when_an_event_ends_the_step_on_it() {
+    // A user event whose root is exactly the burnout stop time ends the step there as an event.
+    let sim = valetudo(Environment::standard(site()).unwrap(), capped(20.0));
+    let burnout_s = sim.assembly().motors[0].mounted.motor.burnout_time_s();
+    let sim = sim.with_event(UserEvent {
+        name: "burnout clock".to_owned(),
+        direction: Direction::Rising,
+        function: Box::new(move |sample| sample.time_s - burnout_s),
+    });
+    let result = sim.run(&mut ()).unwrap();
+    let burnouts: Vec<f64> = result
+        .events
+        .iter()
+        .filter(|e| e.kind == EventKind::Burnout)
+        .map(|e| e.sample.time_s)
+        .collect();
+    let user: Vec<f64> = result
+        .events
+        .iter()
+        .filter(|e| e.kind == EventKind::User(0))
+        .map(|e| e.sample.time_s)
+        .collect();
+    assert_eq!(burnouts.len(), 1, "{:?}", result.events);
+    assert_eq!(user.len(), 1);
+    assert!(
+        (user[0] - burnouts[0]).abs() < 1e-9,
+        "{user:?} {burnouts:?}"
+    );
+}
+
+#[test]
+fn observer_errors_stop_the_flight_and_bad_starts_are_refused() {
+    struct Quitter;
+    impl crate::recorder::Observer for Quitter {
+        fn step(&mut self, step: &dyn crate::recorder::FlightStep) -> Result<(), SimError> {
+            if step.end_s() > 2.0 {
+                Err(SimError::Domain {
+                    what: "observer stop",
+                    value: step.end_s(),
+                })
+            } else {
+                Ok(())
+            }
+        }
+    }
+    let sim = valetudo(
+        Environment::standard(site()).unwrap(),
+        FlightSettings::default(),
+    );
+    let error = sim.run(&mut Quitter).unwrap_err();
+    assert!(
+        matches!(error, SimError::Domain { what: "observer stop", value } if value > 2.0),
+        "{error:?}"
+    );
+    let state = State {
+        position_enu_m: DVec3::new(0.0, 0.0, 100.0),
+        velocity_enu_m_s: DVec3::ZERO,
+        attitude: DQuat::IDENTITY,
+        body_rate_rad_s: DVec3::ZERO,
+    };
+    assert!(sim.run_free(-1.0, state, &mut ()).is_err());
+    let underground = State {
+        position_enu_m: DVec3::new(0.0, 0.0, -5.0),
+        ..state
+    };
+    assert!(sim.run_free(10.0, underground, &mut ()).is_err());
+}
+
+#[test]
+fn rk4_and_dormand_prince_fly_the_same_trajectory() {
+    let fly = |method| {
+        let settings = FlightSettings {
+            method,
+            ..FlightSettings::default()
+        };
+        valetudo(
+            windy_environment(ConstantWind::new(3.0, 0.5).unwrap()),
+            settings,
+        )
+        .run(&mut ())
+        .unwrap()
+    };
+    let adaptive = fly(crate::integrator::Method::default());
+    let fixed = fly(crate::integrator::Method::Rk4 { step_s: 0.002 });
+    assert_eq!(fixed.termination, Termination::GroundHit);
+    let apogee = |r: &crate::flight::FlightResult| r.event(EventKind::Apogee).unwrap().sample;
+    let (a, b) = (apogee(&adaptive), apogee(&fixed));
+    // Measured: 1.2e-5 m and 2.1e-7 s, Dormand–Prince's own error at its tolerance; RK4 gives the
+    // same apogee at 2, 1 and 0.5 ms. Before motors were evaluated inside their burn at the
+    // interval ends, RK4 converged at first order (5.1 mm at 2 ms).
+    assert!((a.height_above_ground_m - b.height_above_ground_m).abs() < 4e-5);
+    assert!((a.time_s - b.time_s).abs() < 1e-6);
+    assert!((a.cg_enu_m - b.cg_enu_m).length() < 4e-5);
+}
+
+#[test]
+fn a_recorder_is_cleared_between_flights_and_simulations_are_shareable() {
+    fn shareable<T: Send + Sync>() {}
+    shareable::<Simulation>();
+    shareable::<Recorder>();
+    shareable::<Environment>();
+    assert!(Recorder::new(vec![Channel::Time], Some(0.0)).is_err());
+    let sim = valetudo(Environment::standard(site()).unwrap(), capped(8.0));
+    let mut recorder = Recorder::new(vec![Channel::Time], Some(0.1)).unwrap();
+    sim.run(&mut recorder).unwrap();
+    let first = recorder.rows().to_vec();
+    recorder.clear();
+    sim.run(&mut recorder).unwrap();
+    assert_eq!(recorder.rows(), first);
+    let times = column(&recorder, "time_s");
+    assert!(times.windows(2).all(|w| w[1] > w[0]), "no repeated times");
 }
 
 #[test]

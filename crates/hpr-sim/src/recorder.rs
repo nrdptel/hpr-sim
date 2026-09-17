@@ -85,7 +85,7 @@ pub enum Channel {
 
 impl Channel {
     /// Every channel, in column order.
-    pub const ALL: [Channel; 16] = [
+    pub const ALL: &'static [Channel] = &[
         Channel::Time,
         Channel::Position,
         Channel::Velocity,
@@ -204,9 +204,16 @@ pub trait Observer {
 
 impl Observer for () {}
 
-/// Records chosen channels, one row per sample: at every multiple of `interval_s` from ignition,
-/// or at every step's end without an interval, plus the flight's first state and every event.
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+/// Records chosen channels, one row per sample.
+///
+/// - With an interval, a row at every multiple of `interval_s` after ignition that falls within the
+///   flight, and a row at every event (unless the last row already has that time).
+/// - Without one, a row at the flight's first step's start and at every step's end; events end
+///   steps, so they are among the rows.
+///
+/// A recorder keeps one flight: [`Recorder::clear`] it before recording another. It serializes its
+/// settings and rows for inspection; it is built with [`Recorder::new`], not deserialized.
+#[derive(Debug, Clone, PartialEq, Serialize)]
 pub struct Recorder {
     channels: Vec<Channel>,
     interval_s: Option<f64>,
@@ -214,6 +221,7 @@ pub struct Recorder {
     next_index: u64,
     rows: Vec<Vec<f64>>,
     samples: usize,
+    last_time_s: Option<f64>,
 }
 
 impl Recorder {
@@ -237,7 +245,16 @@ impl Recorder {
             next_index: 0,
             rows: Vec::new(),
             samples: 0,
+            last_time_s: None,
         })
+    }
+
+    /// Forgets the recorded rows, ready for another flight.
+    pub fn clear(&mut self) {
+        self.next_index = 0;
+        self.rows.clear();
+        self.samples = 0;
+        self.last_time_s = None;
     }
 
     /// The column names.
@@ -259,6 +276,7 @@ impl Recorder {
         }
         self.rows.push(row);
         self.samples += 1;
+        self.last_time_s = Some(sample.time_s);
     }
 }
 
@@ -277,6 +295,12 @@ impl Observer for Recorder {
                 if (self.next_index as f64) < first {
                     self.next_index = first as u64;
                 }
+                if !(dt.is_finite() && dt > 0.0) {
+                    return Err(SimError::Domain {
+                        what: "recorder interval",
+                        value: dt,
+                    });
+                }
                 loop {
                     let t = self.next_index as f64 * dt;
                     if t > step.end_s() {
@@ -292,7 +316,7 @@ impl Observer for Recorder {
     }
 
     fn event(&mut self, event: &FlightEvent) {
-        if self.interval_s.is_some() {
+        if self.interval_s.is_some() && self.last_time_s != Some(event.sample.time_s) {
             self.record(&event.sample);
         }
     }

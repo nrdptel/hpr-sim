@@ -1,5 +1,7 @@
 //! The flight's surroundings: the Earth model with the launch site, the atmosphere and the wind.
 
+use std::sync::Arc;
+
 use hpr_atmos::{Atmosphere, AtmosphereModel, ConstantWind, Wind};
 use hpr_core::earth::Earth;
 use hpr_core::geodesy::Geodetic;
@@ -12,16 +14,17 @@ use crate::error::SimError;
 /// atmosphere and wind take height above mean sea level, `H = h − N`, with the geoid undulation
 /// `N` at the site given here (hpr has no geoid model; `docs/physics/geodesy.md`). The ground is
 /// the ellipsoidal height of the site. Wind vectors are taken in the launch frame's axes.
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Environment {
     /// The Earth: the launch site and frame, gravity and rotation.
     pub earth: Earth,
     /// The geoid undulation `N` at the site, m (`h = H + N`).
     pub geoid_undulation_m: f64,
-    /// The atmosphere, by height above mean sea level.
-    pub atmosphere: Box<dyn Atmosphere>,
+    /// The atmosphere, by height above mean sea level. Shared, so environments clone cheaply
+    /// across threads.
+    pub atmosphere: Arc<dyn Atmosphere>,
     /// The wind, by height above mean sea level, in launch-frame axes.
-    pub wind: Box<dyn Wind>,
+    pub wind: Arc<dyn Wind>,
 }
 
 impl Environment {
@@ -34,8 +37,8 @@ impl Environment {
         Self {
             earth,
             geoid_undulation_m: 0.0,
-            atmosphere: Box::new(atmosphere),
-            wind: Box::new(wind),
+            atmosphere: Arc::new(atmosphere),
+            wind: Arc::new(wind),
         }
     }
 

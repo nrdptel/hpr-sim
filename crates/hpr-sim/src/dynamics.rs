@@ -40,9 +40,14 @@ const MASS_DERIVATIVE_STEP_S: f64 = 1e-4;
 /// Airspeeds below this (m/s) produce no aerodynamic force: the angles are undefined at rest.
 const MIN_AIRSPEED_M_S: f64 = 1e-9;
 
+/// Integration intervals shorter than this (s) take no mass-property rates: central differences
+/// over them would be rounding noise, and the motors can't change measurably within them.
+const MIN_DERIVATIVE_INTERVAL_S: f64 = 2e-5;
+
 /// Where the rocket is in its flight, which decides what it is free to do.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
 #[serde(rename_all = "snake_case")]
+#[non_exhaustive]
 pub enum Phase {
     /// Held on the pad by gravity and friction: the state doesn't change.
     Pad,
@@ -105,6 +110,8 @@ pub(crate) struct Vehicle {
     pub(crate) assembly: Assembly,
     pub(crate) aero: AeroModel,
     stations_m: Vec<f64>,
+    /// The first fin set's index among the aerodynamic components.
+    first_fin_index: usize,
     motors: Vec<MotorTerms>,
     reference_area_m2: f64,
 }
@@ -134,10 +141,12 @@ impl Vehicle {
             })
             .collect();
         let reference_area_m2 = aero.reference_area_m2();
+        let first_fin_index = aero.bodies().len();
         Ok(Self {
             assembly,
             aero,
             stations_m,
+            first_fin_index,
             motors,
             reference_area_m2,
         })
@@ -188,7 +197,7 @@ impl Vehicle {
             inertia_o,
             inertia_o_rate: DMat3::ZERO,
         };
-        if !burning || b <= a {
+        if !burning || b - a < MIN_DERIVATIVE_INTERVAL_S {
             return state;
         }
         let h = MASS_DERIVATIVE_STEP_S.min(0.5 * (b - a));
@@ -281,15 +290,22 @@ impl Vehicle {
                 continue;
             }
             let motor = &placed.mounted.motor;
+            // The motor burns throughout this interval, so a stage evaluated on its ends (ignition
+            // or burnout, where the pressure correction switches) takes the one-sided limit
+            // inside the burn.
+            let t = t.clamp(0.0_f64.next_up(), terms.burnout_s.next_down());
             let force = DVec3::Z * motor.thrust_at_pressure_n(t, pressure_pa);
             thrust += force;
             thrust_moment += terms.nozzle_m.cross(force);
             burning_area_m2 += terms.area_m2;
             let mdot = -motor.state(t).mass_flow_kg_s;
-            let h = MASS_DERIVATIVE_STEP_S.min(0.5 * (b - a));
-            let c = t.clamp(a + h, b - h);
-            let mddot = -(motor.state(c + h).mass_flow_kg_s - motor.state(c - h).mass_flow_kg_s)
-                / (2.0 * h);
+            let mddot = if b - a < MIN_DERIVATIVE_INTERVAL_S {
+                0.0
+            } else {
+                let h = MASS_DERIVATIVE_STEP_S.min(0.5 * (b - a));
+                let c = t.clamp(a + h, b - h);
+                -(motor.state(c + h).mass_flow_kg_s - motor.state(c - h).mass_flow_kg_s) / (2.0 * h)
+            };
             let lever = terms.nozzle_m - r;
             t03_jet += lever * (2.0 * mdot);
             t04_jet += lever * mddot;
@@ -393,6 +409,8 @@ impl Vehicle {
     ///   velocity plus `ω × p` at the component's small-angle centre of pressure `p`, which gives
     ///   the aerodynamic damping in pitch and yaw. `C_N` acts along the crossing air `ŵ`, `C_Y`
     ///   along `z_B × ŵ`, at the stations their moments give (`docs/physics/frames.md`).
+    /// - Fin sets use `sin α` in place of their model's `α`, so their force vanishes when the air
+    ///   comes from the tail as well as from the nose.
     fn aerodynamics(
         &self,
         air: &hpr_atmos::AirState,
@@ -441,7 +459,15 @@ impl Vehicle {
             let normal = self
                 .aero
                 .component_normal_force(index, &Flow::new(local_speed / sound, alpha_i, roll_i))?;
-            let q_i = 0.5 * rho * local_speed * local_speed * area;
+            // Fin normal force follows the crossflow `V sin α`, as the body terms do: the
+            // small-angle slope times `sin α` rather than `α`, so it vanishes for axial flow either
+            // way (ADR-011).
+            let fin_scale = if index >= self.first_fin_index && alpha_i > 0.0 {
+                alpha_i.sin() / alpha_i
+            } else {
+                1.0
+            };
+            let q_i = 0.5 * rho * local_speed * local_speed * area * fin_scale;
             let across = DVec3::new(roll_i.cos(), roll_i.sin(), 0.0);
             let side = DVec3::Z.cross(across);
             out.force += (across * normal.coefficient + side * normal.side_coefficient) * q_i;
@@ -466,8 +492,9 @@ struct Aerodynamics {
 /// The total angle of attack and the flow roll of a body moving at `v` (body axes) through still
 /// air: `α` between `z_B` and `v`, and `φ` the direction the air crosses the body, from `x_B`
 /// toward `y_B`, which is opposite the lateral velocity (`docs/physics/frames.md`).
-fn flow_angles(v: DVec3, speed: f64) -> (f64, f64) {
-    let alpha = (v.z / speed).clamp(-1.0, 1.0).acos();
+fn flow_angles(v: DVec3, _speed: f64) -> (f64, f64) {
+    // `atan2` keeps full precision near 0 and π, where `acos` loses half the digits.
+    let alpha = v.x.hypot(v.y).atan2(v.z);
     let roll = if v.x == 0.0 && v.y == 0.0 {
         0.0
     } else {
@@ -514,6 +541,45 @@ mod tests {
         let coasting = vehicle.mass_state(10.0, (9.0, 11.0));
         assert_eq!(coasting.mass_rate_kg_s, 0.0);
         assert_eq!(coasting.inertia_o_rate, DMat3::ZERO);
+    }
+
+    #[test]
+    fn rail_friction_is_coulomb_on_the_force_across_the_rail() {
+        // In a vacuum on a rail at 60°, friction removes exactly μ g cos E from the acceleration
+        // along the rail: the weight's share across the rail is the only normal force, and the
+        // mass terms act along the axis.
+        let vehicle = valetudo();
+        let environment = analytic_environment(UniformAir::vacuum(), 9.806_65);
+        let elevation = std::f64::consts::FRAC_PI_3;
+        let state = State {
+            position_enu_m: DVec3::new(0.0, 0.0, 10.0),
+            velocity_enu_m_s: DVec3::ZERO,
+            attitude: crate::rail::Rail {
+                elevation_rad: elevation,
+                ..crate::rail::Rail::vertical(3.0)
+            }
+            .attitude(),
+            body_rate_rad_s: DVec3::ZERO,
+        };
+        let along = |mu: f64| {
+            vehicle
+                .evaluate(
+                    &environment,
+                    mu,
+                    Phase::Rail,
+                    (1.0, 2.0),
+                    1.5,
+                    &state.to_array(),
+                )
+                .unwrap()
+        };
+        let (free, rubbing) = (along(0.0), along(0.3));
+        let mass = vehicle.mass_state(1.5, (1.0, 2.0)).mass_kg;
+        let expected = 0.3 * mass * 9.806_65 * elevation.cos();
+        assert!((free.rail_force_n - rubbing.rail_force_n - expected).abs() < 1e-9 * expected);
+        let direction = state.unit_attitude().mul_vec3(DVec3::Z);
+        let difference = free.acceleration_enu_m_s2 - rubbing.acceleration_enu_m_s2;
+        assert!((difference - direction * (expected / mass)).length() < 1e-12);
     }
 
     #[test]

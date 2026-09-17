@@ -23,7 +23,7 @@ fn benches(c: &mut Criterion) {
     .unwrap();
     let site = Geodetic::from_degrees(32.99, -106.97, 1400.0).unwrap();
     let environment = Environment {
-        wind: Box::new(ConstantWind::new(5.0, 4.712_388_980_384_69).unwrap()),
+        wind: std::sync::Arc::new(ConstantWind::new(5.0, 4.712_388_980_384_69).unwrap()),
         ..Environment::standard(site).unwrap()
     };
     let simulation = Simulation::new(

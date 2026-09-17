@@ -598,7 +598,11 @@ impl AeroModel {
     /// [`Self::component_count`].
     pub fn component_station_m(&self, index: usize) -> Option<f64> {
         if let Some(body) = self.bodies.get(index) {
-            Some(if body.slope_per_rad == 0.0 {
+            // As `NormalForce`'s CP: a slope that cancels to rounding (a step in radius offsetting
+            // a taper) has no potential-flow station.
+            let step_slope = 2.0 * body.step_area_m2 / self.reference_area_m2;
+            let scale = (body.slope_per_rad - step_slope).abs() + step_slope.abs();
+            Some(if body.slope_per_rad.abs() <= 1e-12 * scale {
                 body.lift_station_m
             } else {
                 body.moment_slope_m / body.slope_per_rad

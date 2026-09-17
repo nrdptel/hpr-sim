@@ -45,7 +45,7 @@ M1.7 from these notes:
 
 - 2026-09-17: M1.6b Rigid-body flight (ADR-011): RocketPy's variable-mass equations about the nose
   tip, component-wise aero with rotational damping, rail to the last button. Pitch period 8e-5 from
-  linear theory; jet damping 1e-6 from the classical form; Valetudo to the ground in 1.09 ms.
+  linear theory; jet damping 1e-6 from the classical form; Valetudo to the ground in 1.10 ms.
 - 2026-09-17: M1.6a Integrator and events (PR #19, ADR-010): DOPRI5 port with dense output, RK4,
   stop times, Brent events. Step halving: orders 5.09 and 4.01; events within 1.5e-8 s.
 - 2026-09-17: M1.5b Drag and override tables (PR #17, ADR-009): Niskanen's buildup, drag at angle

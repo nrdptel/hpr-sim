@@ -16,11 +16,11 @@ the command, so a later run can be compared like for like.
 
 | call | median |
 |---|---|
-| `Simulation::run`, Valetudo K400C to the ground | 1.09 ms |
-| `Simulation::run`, Valetudo K400C with every channel recorded at 10 ms | 2.43 ms |
+| `Simulation::run`, Valetudo K400C to the ground | 1.10 ms |
+| `Simulation::run`, Valetudo K400C with every channel recorded at 10 ms | 2.49 ms |
 
 - **The M1.6 budget** is 5 ms for a typical Level 2 flight, so this is 4.6 times under it.
-- **Work.** 2680 derivative evaluations, 423 accepted steps and 19 rejected, so about 0.4 µs per
+- **Work.** 2578 derivative evaluations, 410 accepted steps and 15 rejected, so about 0.4 µs per
   evaluation including the event checks. The event functions reuse the evaluation cached for the
   step's last stage.
 - **Where the time goes.**
@@ -29,8 +29,8 @@ the command, so a later run can be compared like for like.
   - The other calls are one geodetic conversion, the atmosphere and wind, drag (50–110 ns) and a
     normal force per component (about 25 ns each).
   - Analytic motor rates would remove three of the four mass calls.
-- **Recording** every channel every 10 ms adds 2900 full evaluations, 1.3 ms.
-- **Tolerance.** Loosening to 1e-6 halves the time (0.60 ms), at a 4 mm apogee error
+- **Recording** every channel every 10 ms adds 2900 full evaluations, 1.4 ms.
+- **Tolerance.** Loosening to 1e-6 halves the time (0.59 ms), at a 7e-5 m apogee error
   (`docs/physics/flight.md`).
 
 ## Drag (M1.5b)
