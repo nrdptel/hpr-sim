@@ -42,6 +42,8 @@ pub struct Sample {
     pub thrust_n: f64,
     /// The mass, kg.
     pub mass_kg: f64,
+    /// The drag area `C_D S` of the open recovery devices, m² (zero before any deploys).
+    pub recovery_drag_area_m2: f64,
 }
 
 /// What a recorder can keep. Vector channels take three columns (east, north, up or x, y, z).
@@ -81,6 +83,8 @@ pub enum Channel {
     Thrust,
     /// The mass, kg.
     Mass,
+    /// The open recovery devices' drag area `C_D S`, m².
+    RecoveryDragArea,
 }
 
 impl Channel {
@@ -102,6 +106,7 @@ impl Channel {
         Channel::AxialCoefficient,
         Channel::Thrust,
         Channel::Mass,
+        Channel::RecoveryDragArea,
     ];
 
     /// The column names, with units.
@@ -135,6 +140,7 @@ impl Channel {
             Self::AxialCoefficient => one("axial_coefficient"),
             Self::Thrust => one("thrust_n"),
             Self::Mass => one("mass_kg"),
+            Self::RecoveryDragArea => one("recovery_drag_area_m2"),
         }
     }
 
@@ -161,6 +167,7 @@ impl Channel {
             Self::AxialCoefficient => row.push(sample.axial_coefficient),
             Self::Thrust => row.push(sample.thrust_n),
             Self::Mass => row.push(sample.mass_kg),
+            Self::RecoveryDragArea => row.push(sample.recovery_drag_area_m2),
         }
     }
 }

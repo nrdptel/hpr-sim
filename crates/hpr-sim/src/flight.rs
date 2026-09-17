@@ -7,6 +7,8 @@
 //! - **Rail:** one degree of freedom along the rail until the last guide leaves its top (rail
 //!   exit, `crate::rail`). If the rocket stops on the rail it falls back to the pad phase.
 //! - **Free:** six degrees of freedom until the ground.
+//! - **Descent:** once a recovery device deploys, a point mass under the open devices' drag area
+//!   (`crate::recovery`), with the attitude frozen where it deployed.
 //!
 //! Every thrust-curve knot and every burnout is a stop time, so no step straddles a change in the
 //! thrust's slope or the end of a burn, and each interval knows which motors burn. Liftoff, rail
@@ -30,7 +32,7 @@ use hpr_design::Rocket;
 use hpr_design::checks::{check, has_errors};
 use serde::{Deserialize, Serialize};
 
-use crate::dynamics::{Evaluation, Phase, Vehicle};
+use crate::dynamics::{Conditions, Evaluation, Phase, Vehicle};
 use crate::environment::Environment;
 use crate::error::SimError;
 use crate::events::Direction;
@@ -39,6 +41,7 @@ use crate::integrator::{
 };
 use crate::rail::{Guides, Rail};
 use crate::recorder::{FlightStep, Observer, Sample};
+use crate::recovery::{self, Device, Run, Trigger};
 use crate::state::{STATE_LEN, State};
 
 /// How a flight is integrated and when it gives up.
@@ -84,6 +87,13 @@ pub enum EventKind {
     Apogee,
     /// The centre of mass reached the launch site's ellipsoidal height, descending.
     GroundHit,
+    /// A recovery device's charge fired, by its index in the flight's devices.
+    Trigger(usize),
+    /// A recovery device deployed (line stretch), its lag after the trigger, by its index. The
+    /// first deployment starts the descent phase.
+    Deployment(usize),
+    /// A recovery device was released by another one's deployment, by its index.
+    Release(usize),
     /// A user event, by its index in the order added.
     User(usize),
 }
@@ -164,6 +174,10 @@ pub struct Simulation {
     guides: Guides,
     settings: FlightSettings,
     user_events: Vec<UserEvent>,
+    devices: Vec<Device>,
+    /// The trigger times known before the flight, one per device: a time after ignition or a
+    /// motor's delay after its burnout, and `None` for the triggers the flight watches for.
+    trigger_times_s: Vec<Option<f64>>,
 }
 
 impl Simulation {
@@ -211,6 +225,8 @@ impl Simulation {
             guides,
             settings,
             user_events: Vec::new(),
+            devices: Vec::new(),
+            trigger_times_s: Vec::new(),
         })
     }
 
@@ -221,11 +237,31 @@ impl Simulation {
         self
     }
 
-    /// Adds a user event, checked during free flight.
+    /// Adds a user event, checked during free flight and the descent.
     #[must_use]
     pub fn with_event(mut self, event: UserEvent) -> Self {
         self.user_events.push(event);
         self
+    }
+
+    /// Flies with these recovery devices, in the order given: a device's index in this list names
+    /// it in [`EventKind`] and in [`crate::recovery::Device::released_by`].
+    ///
+    /// # Errors
+    ///
+    /// [`SimError::Domain`] for a device whose drag area, lag, inflation, trigger or release index
+    /// is outside its domain, or whose trigger names a motor that isn't there or has no ejection
+    /// delay in seconds.
+    pub fn with_recovery(mut self, devices: Vec<Device>) -> Result<Self, SimError> {
+        self.trigger_times_s = recovery::plan(&devices, &self.vehicle.assembly.motors)?;
+        self.devices = devices;
+        Ok(self)
+    }
+
+    /// The recovery devices.
+    #[must_use]
+    pub fn recovery(&self) -> &[Device] {
+        &self.devices
     }
 
     /// The assembled design.
@@ -301,15 +337,17 @@ impl Simulation {
         self.fly(t0_s, state, Phase::Free, observer)
     }
 
-    /// The sample at `(t, y)` in `phase` during the interval `window`.
+    /// The sample at `(t, y)` in `phase` during the interval `window`, with `drag_area_m2` of
+    /// recovery devices open.
     fn sample(
         &self,
         phase: Phase,
         window: (f64, f64),
         t: f64,
         y: &[f64; STATE_LEN],
+        drag_area_m2: f64,
     ) -> Result<Sample, SimError> {
-        let evaluation = self.evaluate(phase, window, t, y)?;
+        let evaluation = self.evaluate(phase, window, t, y, drag_area_m2)?;
         Ok(sample_of(phase, t, y, &evaluation))
     }
 
@@ -319,12 +357,16 @@ impl Simulation {
         window: (f64, f64),
         t: f64,
         y: &[f64; STATE_LEN],
+        drag_area_m2: f64,
     ) -> Result<Evaluation, SimError> {
         self.vehicle.evaluate(
             &self.environment,
             self.rail.friction_coefficient,
-            phase,
-            window,
+            Conditions {
+                phase,
+                window,
+                drag_area_m2,
+            },
             t,
             y,
         )
@@ -345,7 +387,7 @@ impl Simulation {
         }
         if start_phase == Phase::Free {
             let height = self
-                .evaluate(Phase::Free, (t0, t0), t0, &state.to_array())?
+                .evaluate(Phase::Free, (t0, t0), t0, &state.to_array(), 0.0)?
                 .height_above_ground_m;
             if height <= 0.0 {
                 return Err(SimError::Domain {
@@ -356,9 +398,11 @@ impl Simulation {
         }
         let mut integrator = Integrator::new(self.settings.method, t0, state.to_array())?
             .with_step_limit(self.settings.step_limit);
+        let cap = self.settings.max_time_s;
         let mut stops = self.vehicle.thrust_knots_s();
-        stops.push(self.settings.max_time_s);
-        stops.retain(|t| *t <= self.settings.max_time_s);
+        stops.push(cap);
+        stops.extend(self.trigger_times_s.iter().flatten().copied());
+        stops.retain(|t| *t <= cap);
         stops.sort_by(f64::total_cmp);
         stops.dedup();
         let burnout_s = self.vehicle.burnout_s();
@@ -369,6 +413,7 @@ impl Simulation {
         let mut lifted = start_phase != Phase::Pad;
         let mut burnout_recorded = t0 >= burnout_s;
         let mut events: Vec<FlightEvent> = Vec::new();
+        let mut run = Run::new(self.devices.len());
         let record = |events: &mut Vec<FlightEvent>, observer: &mut dyn Observer, kind, sample| {
             let event = FlightEvent { kind, sample };
             observer.event(&event);
@@ -377,21 +422,83 @@ impl Simulation {
 
         let termination = loop {
             let t = integrator.time_s();
-            let y = *integrator.state();
-            if t >= self.settings.max_time_s {
+            let mut y = *integrator.state();
+            if t >= cap {
                 break Termination::TimeCap;
             }
-            let next = stops
-                .iter()
-                .copied()
-                .find(|stop| *stop > t)
-                .unwrap_or(self.settings.max_time_s);
+
+            // Recovery: fire the charges whose time or height has come, then deploy the devices
+            // whose lag has run out. A lag of zero deploys in the same pass, and a deployment can
+            // release another device, so this repeats until nothing more happens.
+            while !self.devices.is_empty() && matches!(phase, Phase::Free | Phase::Descent) {
+                let mut again = false;
+                let window = (t, next_stop(&stops, t, cap));
+                let area = run.drag_area_m2(&self.devices, t);
+                for index in 0..self.devices.len() {
+                    if !run.pending(index) {
+                        continue;
+                    }
+                    let fires = match self.devices[index].trigger {
+                        Trigger::Time { .. } | Trigger::MotorDelay { .. } => {
+                            self.trigger_times_s[index].is_some_and(|time| t >= time)
+                        }
+                        Trigger::Altitude {
+                            height_above_ground_m,
+                        } => {
+                            // An altimeter's main setting: descending, at or below the height.
+                            // A rocket already below it at apogee fires there, as the event on
+                            // the height never crosses it (RocketPy's numeric trigger).
+                            let e = self.evaluate(phase, window, t, &y, area)?;
+                            e.vertical_speed_m_s < 0.0
+                                && e.height_above_ground_m <= height_above_ground_m
+                        }
+                        Trigger::Apogee => false,
+                    };
+                    if fires {
+                        let deploy_s = run.trigger(&self.devices, index, t);
+                        insert_stop(&mut stops, deploy_s, cap);
+                        let sample = self.sample(phase, window, t, &y, area)?;
+                        record(&mut events, observer, EventKind::Trigger(index), sample);
+                        again = true;
+                    }
+                }
+                for index in 0..self.devices.len() {
+                    if !run.waiting(index) || run.deploy_s(index) > t {
+                        continue;
+                    }
+                    let airspeed_m_s = self.evaluate(phase, window, t, &y, area)?.airspeed_m_s;
+                    let full_s = run.deploy(&self.devices, index, t, airspeed_m_s);
+                    insert_stop(&mut stops, full_s, cap);
+                    if phase != Phase::Descent {
+                        // The descent is a point mass: the attitude freezes where it deployed.
+                        phase = Phase::Descent;
+                        let mut frozen = State::from_array(&y);
+                        frozen.body_rate_rad_s = DVec3::ZERO;
+                        y = frozen.to_array();
+                        integrator.reset(t, y)?;
+                    }
+                    let area = run.drag_area_m2(&self.devices, t);
+                    let sample = self.sample(phase, window, t, &y, area)?;
+                    record(&mut events, observer, EventKind::Deployment(index), sample);
+                    for other in 0..self.devices.len() {
+                        if self.devices[other].released_by == Some(index) {
+                            record(&mut events, observer, EventKind::Release(other), sample);
+                        }
+                    }
+                    again = true;
+                }
+                if !again {
+                    break;
+                }
+            }
+
+            let next = next_stop(&stops, t, cap);
             let window = (t, next);
             if phase == Phase::Pad {
-                if self.evaluate(Phase::Pad, window, t, &y)?.rail_force_n > 0.0 {
+                if self.evaluate(Phase::Pad, window, t, &y, 0.0)?.rail_force_n > 0.0 {
                     phase = Phase::Rail;
                     lifted = true;
-                    let sample = self.sample(phase, window, t, &y)?;
+                    let sample = self.sample(phase, window, t, &y, 0.0)?;
                     record(&mut events, observer, EventKind::Liftoff, sample);
                 } else if t >= burnout_s {
                     break if lifted {
@@ -401,12 +508,18 @@ impl Simulation {
                     };
                 }
             }
+            let watches = self.watches(phase, &run);
             let mut system = PhaseSystem {
                 simulation: self,
                 phase,
                 window,
                 rail_origin,
                 exit_travel_m,
+                canopies: Canopies {
+                    devices: &self.devices,
+                    run: &run,
+                },
+                watches: &watches,
                 observer: &mut *observer,
                 failure: None,
                 cache: None,
@@ -423,10 +536,11 @@ impl Simulation {
             };
             let t = integrator.time_s();
             let y = *integrator.state();
+            let area = run.drag_area_m2(&self.devices, t);
             // Burnout is a stop time, but an event can end the step on it first.
             if !burnout_recorded && t >= burnout_s {
                 burnout_recorded = true;
-                let sample = self.sample(phase, window, t, &y)?;
+                let sample = self.sample(phase, window, t, &y, area)?;
                 record(&mut events, observer, EventKind::Burnout, sample);
             }
             match outcome {
@@ -436,31 +550,58 @@ impl Simulation {
                     let mut ground = false;
                     let mut next_phase = phase;
                     for index in fired {
-                        match (phase, index) {
-                            (Phase::Rail, 0) => {
+                        match watches[index] {
+                            Watch::RailExit => {
                                 next_phase = Phase::Free;
-                                let sample = self.sample(Phase::Free, window, t, &y)?;
+                                let sample = self.sample(Phase::Free, window, t, &y, area)?;
                                 record(&mut events, observer, EventKind::RailExit, sample);
                             }
-                            (Phase::Rail, _) => next_phase = Phase::Pad,
-                            (Phase::Free, 0) => {
-                                let sample = self.sample(phase, window, t, &y)?;
-                                record(&mut events, observer, EventKind::Apogee, sample);
+                            Watch::RailStall => next_phase = Phase::Pad,
+                            Watch::RailForce => {
+                                next_phase = Phase::Rail;
+                                lifted = true;
+                                let sample = self.sample(Phase::Rail, window, t, &y, area)?;
+                                record(&mut events, observer, EventKind::Liftoff, sample);
                             }
-                            (Phase::Free, 1) => {
-                                let sample = self.sample(phase, window, t, &y)?;
+                            Watch::Apogee => {
+                                let sample = self.sample(phase, window, t, &y, area)?;
+                                record(&mut events, observer, EventKind::Apogee, sample);
+                                for device in 0..self.devices.len() {
+                                    if self.devices[device].trigger == Trigger::Apogee
+                                        && run.pending(device)
+                                    {
+                                        let deploy_s = run.trigger(&self.devices, device, t);
+                                        insert_stop(&mut stops, deploy_s, cap);
+                                        record(
+                                            &mut events,
+                                            observer,
+                                            EventKind::Trigger(device),
+                                            sample,
+                                        );
+                                    }
+                                }
+                            }
+                            Watch::Ground => {
+                                let sample = self.sample(phase, window, t, &y, area)?;
                                 record(&mut events, observer, EventKind::GroundHit, sample);
                                 ground = true;
                             }
-                            (Phase::Free, user) => {
-                                let sample = self.sample(phase, window, t, &y)?;
-                                record(&mut events, observer, EventKind::User(user - 2), sample);
+                            Watch::Altitude(device) => {
+                                if run.pending(device) {
+                                    let deploy_s = run.trigger(&self.devices, device, t);
+                                    insert_stop(&mut stops, deploy_s, cap);
+                                    let sample = self.sample(phase, window, t, &y, area)?;
+                                    record(
+                                        &mut events,
+                                        observer,
+                                        EventKind::Trigger(device),
+                                        sample,
+                                    );
+                                }
                             }
-                            (Phase::Pad, _) => {
-                                next_phase = Phase::Rail;
-                                lifted = true;
-                                let sample = self.sample(Phase::Rail, window, t, &y)?;
-                                record(&mut events, observer, EventKind::Liftoff, sample);
+                            Watch::User(user) => {
+                                let sample = self.sample(phase, window, t, &y, area)?;
+                                record(&mut events, observer, EventKind::User(user), sample);
                             }
                         }
                     }
@@ -481,18 +622,82 @@ impl Simulation {
 
         let t = integrator.time_s();
         let y = *integrator.state();
-        let next = stops
-            .iter()
-            .copied()
-            .find(|stop| *stop > t)
-            .unwrap_or(f64::INFINITY);
-        let final_sample = self.sample(phase, (t, next.max(t)), t, &y)?;
+        let next = next_stop(&stops, t, f64::INFINITY);
+        let area = run.drag_area_m2(&self.devices, t);
+        let final_sample = self.sample(phase, (t, next.max(t)), t, &y, area)?;
         Ok(FlightResult {
             termination,
             events,
             final_sample,
             stats: integrator.stats(),
         })
+    }
+
+    /// What the integrator watches for in `phase`, in event order.
+    fn watches(&self, phase: Phase, run: &Run) -> Vec<Watch> {
+        match phase {
+            Phase::Pad => vec![Watch::RailForce],
+            Phase::Rail => vec![Watch::RailExit, Watch::RailStall],
+            Phase::Free | Phase::Descent => {
+                let mut watches = vec![Watch::Apogee, Watch::Ground];
+                for (index, device) in self.devices.iter().enumerate() {
+                    if matches!(device.trigger, Trigger::Altitude { .. }) && run.pending(index) {
+                        watches.push(Watch::Altitude(index));
+                    }
+                }
+                watches.extend((0..self.user_events.len()).map(Watch::User));
+                watches
+            }
+        }
+    }
+}
+
+/// The first stop after `t`, or `cap`.
+fn next_stop(stops: &[f64], t: f64, cap: f64) -> f64 {
+    stops.iter().copied().find(|stop| *stop > t).unwrap_or(cap)
+}
+
+/// Adds `t` to the sorted stop times, unless it is past `cap` or already there.
+fn insert_stop(stops: &mut Vec<f64>, t: f64, cap: f64) {
+    if !t.is_finite() || t > cap {
+        return;
+    }
+    match stops.binary_search_by(|stop| stop.total_cmp(&t)) {
+        Ok(_) => {}
+        Err(index) => stops.insert(index, t),
+    }
+}
+
+/// What the integrator watches for, in the order the events are numbered.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum Watch {
+    /// The pad's force margin rising through zero: liftoff.
+    RailForce,
+    /// The travel along the rail reaching the exit travel.
+    RailExit,
+    /// The speed along the rail falling through zero: a stall.
+    RailStall,
+    /// The centre of mass's height rate falling through zero: apogee.
+    Apogee,
+    /// The centre of mass reaching the ground, descending.
+    Ground,
+    /// A device's deployment height, descending.
+    Altitude(usize),
+    /// A user event.
+    User(usize),
+}
+
+/// The recovery devices of a flight and their progress through it.
+#[derive(Debug, Clone, Copy)]
+struct Canopies<'a> {
+    devices: &'a [Device],
+    run: &'a Run,
+}
+
+impl Canopies<'_> {
+    /// The open devices' drag area at `t`, m².
+    fn drag_area_m2(&self, t: f64) -> f64 {
+        self.run.drag_area_m2(self.devices, t)
     }
 }
 
@@ -513,6 +718,7 @@ fn sample_of(phase: Phase, t: f64, y: &[f64; STATE_LEN], e: &Evaluation) -> Samp
         axial_coefficient: e.axial_coefficient,
         thrust_n: e.thrust_n,
         mass_kg: e.mass.mass_kg,
+        recovery_drag_area_m2: e.recovery_drag_area_m2,
     }
 }
 
@@ -523,6 +729,8 @@ struct PhaseSystem<'a> {
     window: (f64, f64),
     rail_origin: DVec3,
     exit_travel_m: f64,
+    canopies: Canopies<'a>,
+    watches: &'a [Watch],
     observer: &'a mut dyn Observer,
     /// An error from an event function or the observer, returned after the integrator stops.
     failure: Option<SimError>,
@@ -539,7 +747,13 @@ impl PhaseSystem<'_> {
         {
             return Ok(*evaluation);
         }
-        let evaluation = self.simulation.evaluate(self.phase, self.window, t, y)?;
+        let evaluation = self.simulation.evaluate(
+            self.phase,
+            self.window,
+            t,
+            y,
+            self.canopies.drag_area_m2(t),
+        )?;
         self.cache = Some((t, *y, evaluation));
         Ok(evaluation)
     }
@@ -564,45 +778,58 @@ impl OdeSystem<STATE_LEN> for PhaseSystem<'_> {
     }
 
     fn event_count(&self) -> usize {
-        match self.phase {
-            Phase::Pad => 1,
-            Phase::Rail => 2,
-            Phase::Free => 2 + self.simulation.user_events.len(),
-        }
+        self.watches.len()
     }
 
     fn event_direction(&self, index: usize) -> Direction {
-        match (self.phase, index) {
-            (Phase::Pad | Phase::Rail, 0) => Direction::Rising,
-            (Phase::Rail | Phase::Free, 1) | (Phase::Free, 0) => Direction::Falling,
-            (Phase::Free, user) => self
+        match self.watches.get(index) {
+            Some(Watch::RailForce | Watch::RailExit) => Direction::Rising,
+            Some(Watch::RailStall | Watch::Apogee | Watch::Ground | Watch::Altitude(_)) => {
+                Direction::Falling
+            }
+            Some(Watch::User(user)) => self
                 .simulation
                 .user_events
-                .get(user - 2)
+                .get(*user)
                 .map_or(Direction::Either, |event| event.direction),
-            _ => Direction::Either,
+            None => Direction::Either,
         }
     }
 
     fn event_value(&mut self, index: usize, t_s: f64, y: &[f64; STATE_LEN]) -> f64 {
         let state = State::from_array(y);
-        match (self.phase, index) {
-            (Phase::Rail, 0) => {
+        let Some(watch) = self.watches.get(index).copied() else {
+            return f64::NAN;
+        };
+        match watch {
+            Watch::RailExit => {
                 let along = self.simulation.rail.direction_enu();
                 (state.position_enu_m - self.rail_origin).dot(along) - self.exit_travel_m
             }
-            (Phase::Rail, _) => state
+            Watch::RailStall => state
                 .velocity_enu_m_s
                 .dot(self.simulation.rail.direction_enu()),
-            (Phase::Free, 0) => {
+            Watch::Apogee => {
                 let value = self.evaluation(t_s, y).map(|e| e.vertical_speed_m_s);
                 self.or_fail(value)
             }
-            (Phase::Free, 1) => {
+            Watch::Ground => {
                 let value = self.evaluation(t_s, y).map(|e| e.height_above_ground_m);
                 self.or_fail(value)
             }
-            (Phase::Free, user) => {
+            Watch::Altitude(device) => {
+                let height_m = match self.simulation.devices.get(device).map(|d| d.trigger) {
+                    Some(Trigger::Altitude {
+                        height_above_ground_m,
+                    }) => height_above_ground_m,
+                    _ => return f64::NAN,
+                };
+                let value = self
+                    .evaluation(t_s, y)
+                    .map(|e| e.height_above_ground_m - height_m);
+                self.or_fail(value)
+            }
+            Watch::User(user) => {
                 let value = self
                     .evaluation(t_s, y)
                     .map(|e| sample_of(self.phase, t_s, y, &e));
@@ -610,12 +837,12 @@ impl OdeSystem<STATE_LEN> for PhaseSystem<'_> {
                     Ok(sample) => self
                         .simulation
                         .user_events
-                        .get(user - 2)
+                        .get(user)
                         .map_or(f64::NAN, |event| (event.function)(&sample)),
                     Err(error) => self.or_fail(Err(error)),
                 }
             }
-            (Phase::Pad, _) => {
+            Watch::RailForce => {
                 let value = self.evaluation(t_s, y).map(|e| e.rail_force_n);
                 self.or_fail(value)
             }
@@ -627,6 +854,7 @@ impl OdeSystem<STATE_LEN> for PhaseSystem<'_> {
             simulation: self.simulation,
             phase: self.phase,
             window: self.window,
+            canopies: self.canopies,
             step,
         };
         match self.observer.step(&view) {
@@ -644,6 +872,7 @@ struct StepView<'a> {
     simulation: &'a Simulation,
     phase: Phase,
     window: (f64, f64),
+    canopies: Canopies<'a>,
     step: &'a Step<STATE_LEN>,
 }
 
@@ -665,7 +894,12 @@ impl FlightStep for StepView<'_> {
     }
 
     fn sample(&self, t_s: f64) -> Result<Sample, SimError> {
-        self.simulation
-            .sample(self.phase, self.window, t_s, &self.step.state_at(t_s))
+        self.simulation.sample(
+            self.phase,
+            self.window,
+            t_s,
+            &self.step.state_at(t_s),
+            self.canopies.drag_area_m2(t_s),
+        )
     }
 }

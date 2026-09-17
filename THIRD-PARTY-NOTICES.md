@@ -45,7 +45,10 @@ adds a source.
   geometry and the grain-stack inertia, re-derived in closed form in `hpr_motor::grains`, and the
   constant-exhaust-velocity consumption in `hpr_motor::motor`. Its technical documentation
   `docs/technical/equations_of_motion.rst` and `equations_of_motion_v1.rst` at v1.13.0: the
-  variable-mass rigid-body equations of motion in `hpr_sim::dynamics`. RocketPy's license applies
+  variable-mass rigid-body equations of motion in `hpr_sim::dynamics`. And
+  `rocketpy/simulation/flight.py:2710-2790` at v1.13.0: the point-mass descent under a parachute's
+  drag area, and its numeric deployment trigger (`rocketpy/rocket/parachute.py:354-364`), in
+  `hpr_sim::recovery` and the descent branch of `hpr_sim::dynamics`. RocketPy's license applies
   to those portions:
 
   > MIT License. Copyright (c) 2018 Giovani Hidalgo Ceotto. Permission is hereby granted, free of
