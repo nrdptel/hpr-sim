@@ -28,6 +28,28 @@ small extracted fixtures with a clear license are committed, each with its prove
   - Real-flight apogee mean absolute error at or below 5% on well-characterized flights.
   - Every miss is explained in the report.
 
+## The harness (M2.1a)
+
+`cargo xtask validate [--fast]` runs every case in `validation/cases/lock.toml` and writes
+`validation/reports/latest.md` and `latest.json`. A case (`validation/cases/<id>.toml`) says what
+to fly and which metrics to compare, each with its own tolerance, against which reference
+(`validation/fixtures/**`, written by a generator under `validation/oracles/`). Decisions:
+ADR-015; code: `crates/hpr-validate/`.
+
+The rules the harness enforces, each from a Loft lesson:
+
+- A run **reads** references and never writes them: a reference moves only when its generator runs
+  (L76). There is no flag to update one.
+- Every reference value carries a source naming the oracle, the generator and the field (L77).
+- Every metric a case reports has a tolerance that bounds something, and a case that measures
+  anything it does not gate is refused (L79).
+- The cases that must run are locked; a missing one fails, a committed case that is not locked
+  fails, and `--fast` may only leave out cases the lock marks slow (L78).
+- A case's inputs come from the reference's own record of what the oracle flew, never from hpr's
+  output (L75).
+
+The committed report carries no timestamp, so a number that moves shows up in the diff.
+
 ## Reference simulators (oracles)
 
 | tool | use | license | where | notes |

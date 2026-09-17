@@ -20,6 +20,7 @@ renumber. Supersede an entry by adding a new one that points back to it.
 | ADR-012 | Recovery: drag areas, triggers, inflation and the descent phase | accepted |
 | ADR-013 | Streamer and tumble drag | accepted |
 | ADR-014 | Separation: bodies, their masses and their descents | accepted |
+| ADR-015 | The validation harness: cases, references, tolerances and reports | accepted |
 
 ---
 
@@ -1244,3 +1245,57 @@ mass properties and drag. What is in hand:
   boundaries; nothing else changes.
 - Because a body is a point mass, its attitude is not tracked at all after separation, so nothing
   can report how a booster is oriented as it tumbles.
+
+## ADR-015: The validation harness: cases, references, tolerances and reports (2026-09-17)
+
+**Context.** M2.1 is the first end-to-end milestone: hpr's numbers against other tools' for whole
+flights. M2.1a builds the harness the suite runs on. What shapes it is less the plumbing than
+Loft's five validation lessons (`docs/research/loft-lessons.md`): a comparison that wasn't
+like-for-like (L75), a reference regenerated whenever it disagreed (L76), hand-written "stored
+results" (L77), suites that skipped themselves and reported green (L78), and 10 of 12 metrics with
+no gate at all (L79).
+
+Already in hand: five oracle fixtures under `validation/fixtures/` with their generator scripts,
+and M1.7a's recovery comparison, whose references are real RocketPy output.
+
+**Decision.**
+
+- **A case is a TOML file, a reference is JSON a generator wrote, and the harness only ever reads
+  the reference.** `validation/cases/<id>.toml` says what to fly and which metrics to compare
+  against which reference file and case; `validation/fixtures/**` holds what the oracle said. A run
+  writes nothing but the report, so hpr cannot move its own goal posts (L76) — there is no
+  `--update-references` flag, and there will not be one: a reference moves when its generator runs.
+- **Every reference value carries a source** naming the oracle, the generator and the field it came
+  from, and a value with a blank source is refused (L77). The harness builds those strings from the
+  generator's own provenance block rather than trusting a hand-written label.
+- **Every metric a case reports has a tolerance that bounds something**, and a case that measures
+  anything it does not gate is refused (L79). A tolerance is a fraction, an absolute difference, or
+  both, and one that bounds nothing accepts nothing rather than passing quietly. The absolute floor
+  exists for values that pass through zero, such as a drift component that is 20 µm of Coriolis
+  noise; it is fixed at 5 cm for the descent cases, far below 3% of any drift worth reporting, so
+  it never loosens the milestone's gate.
+- **The cases that must run are locked** in `validation/cases/lock.toml`, and a locked case that is
+  not there is an error, not a skip (L78). A committed case that is not locked is an error too, so
+  a case cannot be added and forgotten. `--fast` may only leave out cases the lock marks slow, and
+  the report says it was a fast run.
+- **The oracle's inputs come from the reference's own record of what it flew** (L75): the descent
+  cases take the site, the wind, the devices and the state at the first deployment from the
+  fixture, so a case cannot compare hpr against hpr. The one place that knows a generator's JSON
+  shape is `hpr_validate::rocketpy`.
+- **The report is committed**, in Markdown for people and JSON for machines, and carries no
+  timestamp, so a run that changes nothing changes no bytes and a number that moves shows up in
+  the diff. A test asserts the committed report is the one the harness produces.
+- **M2.1a's first cases are M1.7a's descents.** They are the only references in hand that cover a
+  whole hpr flight path end to end, and reusing them means the harness ships with five real cases
+  rather than a demonstration. M2.1b adds the ascent cases in both modes, the CI job and the
+  regeneration workflow, which is where `Flight` grows a variant.
+
+**Consequences.**
+
+- M2.1b adds a `Flight::WholeFlight` variant, the same-drag and predicted modes, `hpr-validate`'s
+  own binary if one is wanted, and the CI job. The metric names M2.1 lists (apogee, time to
+  apogee, maximum velocity and Mach, rail-exit velocity, burnout state, time-series RMS) arrive
+  with it.
+- M2.4's census reads `validation/reports/latest.json`.
+- `hpr-validate` reads files, so it is not part of the pure core and `cargo xtask wasm-check`
+  leaves it out, as `ARCHITECTURE.md` already says.

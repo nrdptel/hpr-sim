@@ -313,7 +313,6 @@
     - **predicted:** hpr uses its own aero. Supersonic predicted-mode gaps are expected until M1.8
       and are reported, not hidden.
   - A CI job compares against the stored references.
-  - Loft lessons: L75, L76, L77, L78, L79 (tests named in `docs/research/loft-lessons.md`).
 
   *Done when:*
   - At least 5 cases pass their same-drag tolerances.
@@ -321,6 +320,39 @@
   - `validation/reports/latest.md` is generated.
   - The CI job is green.
   - A separate, manually triggered workflow regenerates the references.
+
+  - [x] **M2.1a The harness.**
+    - `hpr-validate` and `cargo xtask validate [--fast]`: case files (TOML), reference JSON with
+      provenance, per-case tolerances on every metric, a case lock so a silently skipped case
+      fails, and Markdown plus JSON reports.
+    - Its first cases are the recovery descents, whose references M1.7a already generated.
+    - Loft lessons: L76, L77, L78, L79 (tests named in `docs/research/loft-lessons.md`).
+
+    *Done when:*
+    - `cargo xtask validate` runs every case in the lock against its stored reference and writes
+      `validation/reports/latest.md`.
+    - A case whose metric has no tolerance, a reference value with no provenance, and a run with
+      fewer cases than the lock expects each fail.
+
+    *Result (ADR-015):* met. `cargo xtask validate` runs the five locked descent cases, compares
+    25 metrics against `validation/fixtures/recovery/rocketpy-descent.json` and writes
+    `validation/reports/latest.{md,json}`: all 25 within tolerance, worst case +2.87% (NDRT's
+    northward drift) against a 3% gate. A metric with no tolerance, a reference value with a blank
+    source, a lock naming a case that is not there and a committed case that is not locked each
+    fail; the four lesson tests check L76–L79 directly, including that a run leaves the reference
+    byte-for-byte unchanged. `--fast` may only drop cases the lock marks slow, and says so in the
+    report.
+
+  - [ ] **M2.1b The RocketPy code-to-code suite.**
+    - The five rebuilt example rockets, both modes, the CI job and the reference-regeneration
+      workflow.
+    - Loft lessons: L75 (tests named in `docs/research/loft-lessons.md`).
+
+    *Done when:*
+    - At least 5 cases pass their same-drag tolerances.
+    - Predicted-mode results are reported, with explained gaps.
+    - The CI job is green.
+    - A separate, manually triggered workflow regenerates the references.
 
 - [ ] **M1.8 Aerodynamics II (transonic and supersonic, damping, overrides).**
   - Transonic drag rise and supersonic wave drag.
