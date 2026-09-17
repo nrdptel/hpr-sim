@@ -77,7 +77,7 @@ long session with many context compactions, and it doesn't wait out weekly limit
 
 ```bash
 mkdir -p .autopilot && echo $(( $(date +%s) + 48*3600 )) > .autopilot/deadline
-caffeinate -ims claude --model claude-opus-5 --effort xhigh --permission-mode auto \
+caffeinate -ims claude --model claude-opus-5 --effort xhigh --permission-mode bypassPermissions \
   --remote-control hpr-sim --settings "$(cat .claude/autopilot/settings.json)"
 ```
 

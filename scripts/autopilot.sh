@@ -23,6 +23,7 @@
 # Watch:    scripts/autopilot-status.sh   |   tail -f .autopilot/runs.log
 #
 # Environment overrides: HPR_MODEL (default claude-opus-5), HPR_EFFORT (default xhigh),
+#   HPR_PERMISSION_MODE (default bypassPermissions; set it to auto for the classifier-checked mode),
 #   HPR_CYCLE_MAX_HOURS (default 10), HPR_STALL_MINUTES (default 120), HPR_LIMIT_POLL_MINUTES (default 10)
 
 set -uo pipefail
@@ -47,6 +48,7 @@ mkdir -p "$LOGS"
 
 MODEL="${HPR_MODEL:-claude-opus-5}"
 EFFORT="${HPR_EFFORT:-xhigh}"
+PERM_MODE="${HPR_PERMISSION_MODE:-bypassPermissions}"
 CYCLE_MAX=$(( ${HPR_CYCLE_MAX_HOURS:-10} * 3600 ))
 STALL_MAX=$(( ${HPR_STALL_MINUTES:-120} * 60 ))
 LIMIT_POLL=$(( ${HPR_LIMIT_POLL_MINUTES:-10} * 60 ))
@@ -206,7 +208,7 @@ while :; do
     claude -p "/goal $GOAL_TEXT" \
       --model "$MODEL" \
       --effort "$EFFORT" \
-      --permission-mode auto \
+      --permission-mode "$PERM_MODE" \
       --settings "$SETTINGS_JSON" \
       --output-format stream-json --verbose \
       --name "hpr-autopilot-$cycle" \
@@ -238,9 +240,9 @@ while :; do
   IFS='|' read -r kind is_error turns pmode snippet <<< "$(analyze "$out" "$err")"
   log "Cycle $cycle ended: rc=$rc, ${dur}s, turns=$turns, mode=$pmode, result=$kind (error=$is_error). $snippet"
 
-  if [ "$pmode" != "?" ] && [ "$pmode" != "auto" ]; then
-    log "The session ran in '$pmode' mode instead of auto (auto mode unavailable?). Stopping; headless runs can't edit files without it."
-    notify "Stopped: auto mode wasn't available."
+  if [ "$pmode" != "?" ] && [ "$pmode" != "$PERM_MODE" ]; then
+    log "The session ran in '$pmode' mode instead of $PERM_MODE (mode unavailable or disabled by policy?). Stopping; headless runs can't edit files without it."
+    notify "Stopped: $PERM_MODE mode wasn't available."
     break
   fi
   if [ "$kind" = "auth" ]; then

@@ -179,8 +179,8 @@ case "$trusted" in
   *)   warn "This folder isn't marked trusted yet. Run 'claude' here once, accept the trust prompt, then type /exit. Without that, headless runs ignore the project's allow rules." ;;
 esac
 
-if have claude && [ "$trusted" = "yes" ] && ask "Run a tiny headless test (one short Opus 5 reply) to confirm sign-in, the model and auto mode?"; then
-  smoke=$(claude -p "Reply with exactly the word OK and nothing else." --model claude-opus-5 --permission-mode auto \
+if have claude && [ "$trusted" = "yes" ] && ask "Run a tiny headless test (one short Opus 5 reply) to confirm sign-in, the model and the permission mode?"; then
+  smoke=$(claude -p "Reply with exactly the word OK and nothing else." --model claude-opus-5 --permission-mode "${HPR_PERMISSION_MODE:-bypassPermissions}" \
             --output-format stream-json --verbose --max-turns 1 < /dev/null 2>&1 | python3 -c '
 import json, sys
 mode, result, err = "?", "", False
@@ -196,8 +196,8 @@ for line in sys.stdin:
         result, err = str(ev.get("result", ""))[:120], bool(ev.get("is_error"))
 print(f"{mode}|{err}|{result}")')
   IFS='|' read -r smode serr sresult <<< "$smoke"
-  if [ "$serr" = "False" ] && [ "$smode" != "default" ]; then ok "headless test passed (mode: $smode, reply: $sresult)"
-  else bad "headless test failed (mode: ${smode:-?}, reply: ${sresult:-none}). Fix sign-in, model access or auto mode before starting."; fi
+  if [ "$serr" = "False" ] && [ "$smode" = "${HPR_PERMISSION_MODE:-bypassPermissions}" ]; then ok "headless test passed (mode: $smode, reply: $sresult)"
+  else bad "headless test failed (mode: ${smode:-?}, reply: ${sresult:-none}). Fix sign-in, model access or the permission mode before starting."; fi
 fi
 
 case "$ROOT" in
