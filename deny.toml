@@ -1,16 +1,18 @@
 # cargo-deny policy (https://embarkstudios.github.io/cargo-deny/). Run with `cargo deny check`.
-# The license rules come from CLAUDE.md rule 3 and ADR-001: the project is MIT OR Apache-2.0, so
-# every dependency must be under a permissive license. Copyleft licenses (GPL, AGPL, LGPL, MPL,
+# The license rules come from the clean-room rule and ADR-001: the project is MIT OR Apache-2.0,
+# so every dependency must be under a permissive license. Copyleft licenses (GPL, AGPL, LGPL, MPL,
 # EPL, CDDL, EUPL, OSL, CC-BY-SA...) are not on the allow list and are therefore rejected.
 # Adding a license to the list needs an ADR.
 
 [graph]
-# Check every feature combination's dependencies (net, python, ffi...), on every target.
+# Check the dependencies of all features enabled together, on every target.
 all-features = true
 
 [advisories]
-# RustSec advisories. Vulnerabilities and unsoundness always fail; unmaintained crates fail too.
-unmaintained = "all"
+# RustSec advisories. Vulnerabilities, unsoundness and yanked versions fail anywhere in the graph.
+# Unmaintained crates fail when the workspace depends on them directly, because choosing a
+# maintained crate is our call; a notice deep in the graph must not block unrelated PRs.
+unmaintained = "workspace"
 unsound = "all"
 yanked = "deny"
 ignore = []
@@ -25,6 +27,7 @@ allow = [
     "BSD-3-Clause",
     "BSL-1.0",
     "CC0-1.0",
+    "CDLA-Permissive-2.0",
     "ISC",
     "MIT",
     "MIT-0",
@@ -48,8 +51,8 @@ allow-wildcard-paths = true
 deny = [
     { crate = "hdf5", reason = "abandoned; use hdf5-metno only if netCDF4 is truly needed (ARCHITECTURE.md)" },
     { crate = "openssl-sys", reason = "hpr-net uses rustls only, so builds need no system OpenSSL" },
-    { crate = "serde_yaml", reason = "deprecated; the project uses JSON and TOML (CLAUDE.md)" },
-    { crate = "serde_yml", reason = "unmaintained; the project uses JSON and TOML (CLAUDE.md)" },
+    { crate = "serde_yaml", reason = "deprecated; the project uses JSON and TOML (ARCHITECTURE.md)" },
+    { crate = "serde_yml", reason = "unmaintained; the project uses JSON and TOML (ARCHITECTURE.md)" },
 ]
 
 [sources]
