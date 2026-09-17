@@ -77,7 +77,8 @@ pub enum Finding {
         /// How far past, m.
         excess_m: f64,
     },
-    /// An internal part lies wholly forward of the nose tip or aft of the rocket's end (error).
+    /// An internal part lies wholly forward of the nose tip or aft of the rocket's end, and touches
+    /// none of the parts it hangs from (a motor mount may stick out) (error).
     PartOutsideRocket {
         /// Component id.
         component: String,
@@ -111,9 +112,9 @@ pub enum Finding {
         /// The tube's id.
         tube: String,
     },
-    /// A stage's centre of mass lies forward of the nose tip or aft of the rocket's end, although
-    /// every internal part in it is on the rocket: only an override puts it there, such as a
-    /// centre typed in millimetres as metres (error).
+    /// A stage with an override, in itself or in a component, has its centre of mass forward of the
+    /// nose tip or aft of the rocket's end although every internal part in it is on the rocket,
+    /// such as a centre typed in millimetres as metres (error).
     CentreOutsideRocket {
         /// The stage's id.
         stage: String,
@@ -217,18 +218,35 @@ pub fn check_layout(layout: &Layout) -> Vec<Finding> {
             });
         }
     }
-    // Attached parts wholly off the rocket, and the components holding one.
+    // Internal parts wholly off the rocket and off every part they hang from, and the components
+    // holding one.
     let length = layout.length_m;
+    let apart = |c: &PlacedComponent, fore: f64, aft: f64| {
+        if c.length_m > 0.0 {
+            overlap(c.fore_station_m, c.aft_station_m(), fore, aft) <= 0.0
+        } else {
+            c.fore_station_m < fore - LENGTH_TOLERANCE_M
+                || c.fore_station_m > aft + LENGTH_TOLERANCE_M
+        }
+    };
     let off_rocket: Vec<bool> = layout
         .components
         .iter()
         .map(|c| {
-            c.parent.is_some()
-                && if c.length_m > 0.0 {
-                    overlap(c.fore_station_m, c.aft_station_m(), 0.0, length) <= 0.0
-                } else {
-                    c.fore_station_m < 0.0 || c.fore_station_m > length
+            if c.parent.is_none() || c.part.is_external() || !apart(c, 0.0, length) {
+                return false;
+            }
+            let mut ancestor = c.parent;
+            for _ in 0..layout.components.len() {
+                let Some(a) = ancestor.and_then(|i| layout.components.get(i)) else {
+                    break;
+                };
+                if !apart(c, a.fore_station_m, a.aft_station_m()) {
+                    return false;
                 }
+                ancestor = a.parent;
+            }
+            true
         })
         .collect();
     let mut holds_off = off_rocket.clone();
@@ -241,12 +259,17 @@ pub fn check_layout(layout: &Layout) -> Vec<Finding> {
     }
     for (k, stage) in layout.stages.iter().enumerate() {
         let station = -stage.mass.cg_m.z;
-        let holds = layout
-            .components
-            .iter()
-            .zip(&holds_off)
-            .any(|(c, &h)| h && c.stage == k);
-        if !holds
+        let in_stage = || {
+            layout
+                .components
+                .iter()
+                .enumerate()
+                .filter(|(_, c)| c.stage == k)
+        };
+        let holds = in_stage().any(|(i, _)| holds_off[i]);
+        let overridden = stage.overridden || in_stage().any(|(_, c)| c.overridden);
+        if overridden
+            && !holds
             && stage.mass.mass_kg > 0.0
             && !(-LENGTH_TOLERANCE_M..=length + LENGTH_TOLERANCE_M).contains(&station)
         {
@@ -397,12 +420,12 @@ pub fn check_configuration(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::Part;
     use crate::testing::{
         attached, body, bottom, inner_tube, mass_component, ring, rocket, stage, three_fin_rocket,
         top, tube,
     };
     use crate::{AutoDimension, MotorMount};
+    use crate::{Part, Position};
 
     fn kinds(findings: &[Finding]) -> Vec<(String, Severity)> {
         findings
@@ -653,6 +676,59 @@ mod tests {
                 if stage == "sustainer" && *station_m == 350.0),
             "{findings:?}"
         );
+        // A retainer on a motor mount sticking out past the airframe is on the rocket.
+        let mut design = three_fin_rocket();
+        let mount = &mut design.stages[0].components[1].children[0];
+        mount.position = Some(bottom(0.012));
+        mount.children = vec![attached(
+            "retainer",
+            mass_component(0.05, 0.01, 0.015),
+            bottom(0.0),
+        )];
+        let findings = check(&design).unwrap();
+        assert!(!has_errors(&findings), "{findings:?}");
+        assert!(
+            findings
+                .iter()
+                .all(|f| matches!(f, Finding::InternalPartPastParentEnd { component, .. } if component == "mmt")),
+            "{findings:?}"
+        );
+        // Fins trailing far past a light stage's end move its centre off the rocket, but with no
+        // override that is geometry, not a typo.
+        let mut can = body("can", tube(0.3, 0.03, 0.0005));
+        let mut fins = attached("trailing-fins", crate::testing::fins(0.2, 0.1), bottom(0.0));
+        if let Part::FinSet(set) = &mut fins.part {
+            set.planform = crate::FinPlanform::Trapezoidal {
+                root_chord_m: 0.2,
+                tip_chord_m: 0.2,
+                span_m: 0.1,
+                sweep_m: 0.4,
+            };
+        }
+        can.children = vec![fins];
+        let design = rocket(vec![stage("s", vec![can])]);
+        let layout = design.layout().unwrap();
+        assert!(
+            -layout.stages[0].mass.cg_m.z > layout.length_m,
+            "the test needs it off"
+        );
+        assert!(!has_errors(&check(&design).unwrap()));
+        // A point mass at the rocket's end is on it, whatever the round-off in the length
+        // (0.1 + 0.7 is 0.7999999999999999).
+        let mut design = rocket(vec![stage(
+            "s",
+            vec![
+                body("nose", crate::testing::nose(0.1, 0.03)),
+                body("airframe", tube(0.7, 0.03, 0.001)),
+            ],
+        )]);
+        design.stages[0].components[1].children = vec![attached(
+            "tail-weight",
+            mass_component(0.05, 0.0, 0.01),
+            Position::Absolute { station_m: 0.8 },
+        )];
+        assert!(design.layout().unwrap().length_m < 0.8);
+        assert!(check(&design).unwrap().is_empty());
         // Ballast wider than a nose cone.
         let mut design = three_fin_rocket();
         design.stages[0].components[0].children = vec![attached(

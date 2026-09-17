@@ -58,12 +58,14 @@ pub fn run(args: &[String]) -> Result<(), String> {
             stale.join(", ")
         ));
     }
-    fs::create_dir_all(&dir).map_err(|e| format!("{}: {e}", dir.display()))?;
-    for name in extra(&dir, &designs) {
-        let path = dir.join(&name);
-        fs::remove_file(&path).map_err(|e| format!("{}: {e}", path.display()))?;
-        println!("removed {DIR}/{name}");
+    let unknown = extra(&dir, &designs);
+    if !unknown.is_empty() {
+        return Err(format!(
+            "{DIR} holds files the generator doesn't write; remove them or add them to it: {}",
+            unknown.join(", ")
+        ));
     }
+    fs::create_dir_all(&dir).map_err(|e| format!("{}: {e}", dir.display()))?;
     for (name, text) in &designs {
         let path = dir.join(name);
         fs::write(&path, text).map_err(|e| format!("{}: {e}", path.display()))?;

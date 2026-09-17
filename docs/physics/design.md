@@ -147,9 +147,9 @@ The reference area is `π d²/4`.
 | `motor_wider_than_mount` | error | case diameter > mount inner diameter (L50) |
 | `motor_outside_mount` | error | the case doesn't overlap its mount along the axis at all (an overhang typed in mm as m) |
 | `attachment_off_body` | error | an external part's extent (a fin root) doesn't overlap its body tube at all (L50) |
-| `part_outside_rocket` | error | an internal part lies wholly forward of the nose tip or aft of the rocket's end |
+| `part_outside_rocket` | error | an internal part lies wholly forward of the nose tip or aft of the rocket's end, and touches none of the parts it hangs from |
 | `internal_part_wider_than_parent` | error | an internal part reaches farther from its parent's axis than the parent's bore (a nose cone's or transition's largest outer radius) |
-| `centre_outside_rocket` | error | a stage's centre lies off the rocket although its parts don't: only an override puts it there |
+| `centre_outside_rocket` | error | a stage with an override (its own or a component's) has its centre off the rocket although its parts aren't |
 | `motor_past_mount_top` | warning | the case's forward end is forward of the mount's |
 | `attachment_past_body_end` | warning | an external part runs past an end of its body tube |
 | `internal_part_past_parent_end` | warning | an internal part runs past an end of its parent |
@@ -162,7 +162,11 @@ The reference area is `π d²/4`.
   body axis inside that pod doesn't. Centering rings have no offset, so they sit on the body axis.
 - Parts wholly outside the rocket report only `part_outside_rocket`, and a stage holding one is
   spared `centre_outside_rocket`. A single check covers each fault.
-- Fins may sweep past the rocket's end, so no component-level centre is checked.
+- A retainer on a motor mount that sticks out past the airframe touches its mount, so it is on the
+  rocket. Only the mount gets a warning.
+- Fins may sweep past the rocket's end, and a heavy part may run past its tube's, so a stage's
+  centre can leave the rocket without an override. It is an error only when an override is
+  involved; no component-level centre is checked.
 
 Errors mark designs that can't exist as described. A simulation of one would be wrong, usually
 on the flattering side: Loft flew a 54 mm motor in a 38 mm mount 69% high. The flight engine
