@@ -524,6 +524,11 @@ impl Overrides {
         self.cg_aft_m.is_some() || self.cg_xy_m.is_some()
     }
 
+    /// Whether the centre of mass is moved along the axis (`cg_aft_m`).
+    pub fn sets_axial_centre(&self) -> bool {
+        self.cg_aft_m.is_some()
+    }
+
     /// Whether nothing is overridden.
     pub fn is_empty(&self) -> bool {
         self.mass_kg.is_none()
@@ -632,7 +637,7 @@ pub struct PlacedComponent {
     pub own: MassProperties,
     /// It with everything attached to it, after every override that applies within.
     pub with_children: MassProperties,
-    /// Whether its own overrides set its centre of mass.
+    /// Whether its own overrides move its centre of mass along the axis (`cg_aft_m`).
     #[serde(default)]
     pub centre_overridden: bool,
 }
@@ -655,7 +660,7 @@ pub struct PlacedStage {
     pub aft_station_m: f64,
     /// Its mass properties in body axes, without motors, after its overrides.
     pub mass: MassProperties,
-    /// Whether the stage's own overrides set its centre of mass.
+    /// Whether the stage's own overrides move its centre of mass along the axis (`cg_aft_m`).
     #[serde(default)]
     pub centre_overridden: bool,
 }
@@ -756,7 +761,7 @@ impl Rocket {
                 motor_mount: node.motor_mount,
                 own: placed,
                 with_children: placed,
-                centre_overridden: node.overrides.sets_centre(),
+                centre_overridden: node.overrides.sets_axial_centre(),
             });
             let with_children = finish(&mut components, index, node)?;
             stage_masses[*stage].push(with_children);
@@ -777,7 +782,7 @@ impl Rocket {
                 fore_station_m: fore,
                 aft_station_m: aft,
                 mass,
-                centre_overridden: stage.overrides.sets_centre(),
+                centre_overridden: stage.overrides.sets_axial_centre(),
             });
         }
         let structure = MassProperties::combine(stages.iter().map(|s| &s.mass));
@@ -1240,7 +1245,7 @@ fn finish(
             motor_mount: child.motor_mount,
             own: placed,
             with_children: placed,
-            centre_overridden: child.overrides.sets_centre(),
+            centre_overridden: child.overrides.sets_axial_centre(),
         });
         parts.push(finish(components, child_index, child)?);
     }
