@@ -1,0 +1,223 @@
+{
+  "source": "A. Picard et al., Revised formula for the density of moist air (CIPM-2007), Metrologia 45 (2008) 149-155, eqs. (1), (4), (A1.1)-(A1.4); x_CO2 = 400 umol/mol",
+  "generator": "validation/oracles/atmosphere/moist_air.py (mpmath, 30 digits)",
+  "range": "CIPM-2007's stated range: 600-1100 hPa, 15-27 degC, 0-100% relative humidity",
+  "cases": [
+    {
+      "temperature_k": 288.15,
+      "pressure_pa": 60000.0,
+      "relative_humidity": 0.0,
+      "cipm_2007_density_kg_m3": 0.7255769905583024
+    },
+    {
+      "temperature_k": 288.15,
+      "pressure_pa": 60000.0,
+      "relative_humidity": 0.5,
+      "cipm_2007_density_kg_m3": 0.7216844754964445
+    },
+    {
+      "temperature_k": 288.15,
+      "pressure_pa": 60000.0,
+      "relative_humidity": 1.0,
+      "cipm_2007_density_kg_m3": 0.7178017976640848
+    },
+    {
+      "temperature_k": 288.15,
+      "pressure_pa": 85000.0,
+      "relative_humidity": 0.0,
+      "cipm_2007_density_kg_m3": 1.0280039457825028
+    },
+    {
+      "temperature_k": 288.15,
+      "pressure_pa": 85000.0,
+      "relative_humidity": 0.5,
+      "cipm_2007_density_kg_m3": 1.0241128758515365
+    },
+    {
+      "temperature_k": 288.15,
+      "pressure_pa": 85000.0,
+      "relative_humidity": 1.0,
+      "cipm_2007_density_kg_m3": 1.0202317490344492
+    },
+    {
+      "temperature_k": 288.15,
+      "pressure_pa": 101325.0,
+      "relative_humidity": 0.0,
+      "cipm_2007_density_kg_m3": 1.225521344728071
+    },
+    {
+      "temperature_k": 288.15,
+      "pressure_pa": 101325.0,
+      "relative_humidity": 0.5,
+      "cipm_2007_density_kg_m3": 1.2216312217620968
+    },
+    {
+      "temperature_k": 288.15,
+      "pressure_pa": 101325.0,
+      "relative_humidity": 1.0,
+      "cipm_2007_density_kg_m3": 1.2177510985572122
+    },
+    {
+      "temperature_k": 288.15,
+      "pressure_pa": 110000.0,
+      "relative_humidity": 0.0,
+      "cipm_2007_density_kg_m3": 1.3304912723862048
+    },
+    {
+      "temperature_k": 288.15,
+      "pressure_pa": 110000.0,
+      "relative_humidity": 0.5,
+      "cipm_2007_density_kg_m3": 1.3266016539973673
+    },
+    {
+      "temperature_k": 288.15,
+      "pressure_pa": 110000.0,
+      "relative_humidity": 1.0,
+      "cipm_2007_density_kg_m3": 1.3227220632930934
+    },
+    {
+      "temperature_k": 294.15,
+      "pressure_pa": 60000.0,
+      "relative_humidity": 0.0,
+      "cipm_2007_density_kg_m3": 0.7107512884563307
+    },
+    {
+      "temperature_k": 294.15,
+      "pressure_pa": 60000.0,
+      "relative_humidity": 0.5,
+      "cipm_2007_density_kg_m3": 0.7051900524306626
+    },
+    {
+      "temperature_k": 294.15,
+      "pressure_pa": 60000.0,
+      "relative_humidity": 1.0,
+      "cipm_2007_density_kg_m3": 0.6996470109956858
+    },
+    {
+      "temperature_k": 294.15,
+      "pressure_pa": 85000.0,
+      "relative_humidity": 0.0,
+      "cipm_2007_density_kg_m3": 1.006983684875321
+    },
+    {
+      "temperature_k": 294.15,
+      "pressure_pa": 85000.0,
+      "relative_humidity": 0.5,
+      "cipm_2007_density_kg_m3": 1.0014243259596787
+    },
+    {
+      "temperature_k": 294.15,
+      "pressure_pa": 85000.0,
+      "relative_humidity": 1.0,
+      "cipm_2007_density_kg_m3": 0.9958834043214708
+    },
+    {
+      "temperature_k": 294.15,
+      "pressure_pa": 101325.0,
+      "relative_humidity": 0.0,
+      "cipm_2007_density_kg_m3": 1.2004505888735577
+    },
+    {
+      "temperature_k": 294.15,
+      "pressure_pa": 101325.0,
+      "relative_humidity": 0.5,
+      "cipm_2007_density_kg_m3": 1.194892457256737
+    },
+    {
+      "temperature_k": 294.15,
+      "pressure_pa": 101325.0,
+      "relative_humidity": 1.0,
+      "cipm_2007_density_kg_m3": 1.1893528873721844
+    },
+    {
+      "temperature_k": 294.15,
+      "pressure_pa": 110000.0,
+      "relative_humidity": 0.0,
+      "cipm_2007_density_kg_m3": 1.303266359299678
+    },
+    {
+      "temperature_k": 294.15,
+      "pressure_pa": 110000.0,
+      "relative_humidity": 0.5,
+      "cipm_2007_density_kg_m3": 1.297708881192797
+    },
+    {
+      "temperature_k": 294.15,
+      "pressure_pa": 110000.0,
+      "relative_humidity": 1.0,
+      "cipm_2007_density_kg_m3": 1.292170025011919
+    },
+    {
+      "temperature_k": 300.15,
+      "pressure_pa": 60000.0,
+      "relative_humidity": 0.0,
+      "cipm_2007_density_kg_m3": 0.6965204280146109
+    },
+    {
+      "temperature_k": 300.15,
+      "pressure_pa": 60000.0,
+      "relative_humidity": 0.5,
+      "cipm_2007_density_kg_m3": 0.6887064028098867
+    },
+    {
+      "temperature_k": 300.15,
+      "pressure_pa": 60000.0,
+      "relative_humidity": 1.0,
+      "cipm_2007_density_kg_m3": 0.6809245357686352
+    },
+    {
+      "temperature_k": 300.15,
+      "pressure_pa": 85000.0,
+      "relative_humidity": 0.0,
+      "cipm_2007_density_kg_m3": 0.9868080497430746
+    },
+    {
+      "temperature_k": 300.15,
+      "pressure_pa": 85000.0,
+      "relative_humidity": 0.5,
+      "cipm_2007_density_kg_m3": 0.9789964222276685
+    },
+    {
+      "temperature_k": 300.15,
+      "pressure_pa": 85000.0,
+      "relative_humidity": 1.0,
+      "cipm_2007_density_kg_m3": 0.9712174970511512
+    },
+    {
+      "temperature_k": 300.15,
+      "pressure_pa": 101325.0,
+      "relative_humidity": 0.0,
+      "cipm_2007_density_kg_m3": 1.1763881817226487
+    },
+    {
+      "temperature_k": 300.15,
+      "pressure_pa": 101325.0,
+      "relative_humidity": 0.5,
+      "cipm_2007_density_kg_m3": 1.1685781148987264
+    },
+    {
+      "temperature_k": 300.15,
+      "pressure_pa": 101325.0,
+      "relative_humidity": 1.0,
+      "cipm_2007_density_kg_m3": 1.1608010185459232
+    },
+    {
+      "temperature_k": 300.15,
+      "pressure_pa": 110000.0,
+      "relative_humidity": 0.0,
+      "cipm_2007_density_kg_m3": 1.2771369935942356
+    },
+    {
+      "temperature_k": 300.15,
+      "pressure_pa": 110000.0,
+      "relative_humidity": 0.5,
+      "cipm_2007_density_kg_m3": 1.2693277566414394
+    },
+    {
+      "temperature_k": 300.15,
+      "pressure_pa": 110000.0,
+      "relative_humidity": 1.0,
+      "cipm_2007_density_kg_m3": 1.2615516173973829
+    }
+  ]
+}
