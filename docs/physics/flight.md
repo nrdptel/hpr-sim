@@ -75,7 +75,7 @@ q̇   = ½ q ⊗ (0, ω)
     interval's end the derivative is taken at the nearest valid centre and extended linearly.
   - `m̈_k` differences each motor's mass flow the same way.
   - After burnout (an interval starting past every burnout) the rates are zero, and so are they over
-    intervals shorter than 2e-7 s, where differences would be rounding noise.
+    intervals shorter than 2e-5 s, where differences would be rounding noise.
 - **Motors at the ends of an interval.** A motor that burns through an interval is evaluated at
   its one-sided limit inside the burn, `t` clamped to `(0, t_end)`. The last stage of the step
   ending at burnout (or the first after ignition) then sees the burning motor, including the
