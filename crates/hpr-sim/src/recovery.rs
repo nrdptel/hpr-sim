@@ -1515,6 +1515,72 @@ mod tests {
     }
 
     #[test]
+    fn a_recovered_flight_repeats_bit_identically() {
+        // Determinism, and Loft lesson L24: the devices' progress belongs to the flight, not to
+        // the simulation, so flying the same simulation twice gives bit-identical rows and events.
+        let sim = flight(
+            analytic_wind_environment(
+                UniformAir::sea_level(),
+                G,
+                ConstantWind::new(3.0, 1.2).unwrap(),
+            ),
+            vec![
+                Device::new(
+                    "drogue",
+                    DeviceDrag::canopy(CanopyType::FlatCircular, 0.5),
+                    Trigger::Apogee,
+                )
+                .with_lag_s(0.75)
+                .with_inflation(Inflation::knacke(CanopyType::FlatCircular).unwrap())
+                .released_by(1),
+                Device::new(
+                    "main",
+                    DeviceDrag::canopy(CanopyType::FlatCircular, 2.0),
+                    Trigger::Altitude {
+                        height_above_ground_m: 200.0,
+                    },
+                )
+                .with_lag_s(1.25)
+                .with_inflation(Inflation::knacke(CanopyType::FlatCircular).unwrap()),
+            ],
+            3600.0,
+        );
+        let fly = || {
+            let mut recorder = Recorder::new(Channel::ALL.to_vec(), Some(0.1)).unwrap();
+            let result = sim.run(&mut recorder).unwrap();
+            (recorder.rows().to_vec(), result)
+        };
+        let (first_rows, first) = fly();
+        let (second_rows, second) = fly();
+        assert_eq!(first.termination, Termination::GroundHit);
+        assert!(first_rows.len() > 100, "{} rows", first_rows.len());
+        assert_eq!(first_rows, second_rows, "the rows differ between runs");
+        assert_eq!(
+            first.events, second.events,
+            "the events differ between runs"
+        );
+        assert_eq!(first.final_sample, second.final_sample);
+        assert_eq!(first.stats, second.stats);
+        // And the events are the full sequence, once each.
+        let kinds: Vec<EventKind> = first.events.iter().map(|event| event.kind).collect();
+        assert_eq!(
+            kinds,
+            vec![
+                EventKind::Liftoff,
+                EventKind::RailExit,
+                EventKind::Burnout,
+                EventKind::Apogee,
+                EventKind::Trigger(0),
+                EventKind::Deployment(0),
+                EventKind::Trigger(1),
+                EventKind::Deployment(1),
+                EventKind::Release(0),
+                EventKind::GroundHit,
+            ]
+        );
+    }
+
+    #[test]
     fn devices_outside_their_domain_are_refused() {
         let environment = || analytic_environment(UniformAir::sea_level(), G);
         let rocket = design("rocketpy-valetudo");

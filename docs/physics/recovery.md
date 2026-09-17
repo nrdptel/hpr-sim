@@ -140,6 +140,7 @@ v_e = √(2 m g / (ρ C_D S))
 | A whole flight: drogue at apogee with a lag, main at 300 m, drogue released | events in order; each stage settles within 2% of its own `v_e` |
 | Two devices triggered at the same instant | both open in the same pass, and the descent settles at the `v_e` of the **sum** of their drag areas |
 | A device released before its own charge fires | it deploys into a release that has already happened and adds nothing; the descent stays at the open device's `v_e` |
+| The same recovered flight flown twice | bit-identical rows, events, final sample and step counts (Loft lesson L24: a run does not mutate the simulation) |
 
 An independent anchor on the comparison: in every one of the five cases below, both hpr and
 RocketPy land within 1% of Knacke's `v_e` for the device that is open at landing, computed from
