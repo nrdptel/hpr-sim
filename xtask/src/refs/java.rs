@@ -115,7 +115,11 @@ fn executable_home(java: &Path) -> Option<PathBuf> {
     } else {
         java.canonicalize().ok()?
     };
-    Some(resolved.parent()?.parent()?.to_path_buf())
+    let bin = resolved.parent()?;
+    let home = bin.parent()?;
+    // Only a real runtime layout counts; a shim directory (Windows `javapath`, say) does not.
+    let exe = resolved.file_name()?;
+    (bin.file_name()? == "bin" && home.join("bin").join(exe).is_file()).then(|| home.to_path_buf())
 }
 
 /// The `java.home = <dir>` line of `-XshowSettings:properties`.

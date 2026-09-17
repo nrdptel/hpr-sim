@@ -127,10 +127,11 @@ UNOWNED = "(not owned by any package)"
 for dirpath, dirnames, filenames in os.walk(sys.prefix):
     dirnames[:] = [d for d in dirnames if d != "__pycache__"]
     for name in dirnames:
-        # os.walk doesn't follow directory symlinks, so report them instead of skipping them.
+        # os.walk doesn't follow directory symlinks or Windows junctions, so report them instead
+        # of skipping them.
         full = os.path.join(dirpath, name)
         rel = os.path.relpath(full, sys.prefix)
-        if os.path.islink(full) and rel != "lib64":
+        if (os.path.islink(full) or os.path.isjunction(full)) and rel != "lib64":
             bad.append(f"{rel.replace(os.sep, '/')} is a symlinked directory {UNOWNED}")
     for name in filenames:
         full = os.path.join(dirpath, name)
