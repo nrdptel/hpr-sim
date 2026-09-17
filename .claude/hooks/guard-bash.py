@@ -9,8 +9,8 @@
 * no `gh pr merge` unless every CI check on the PR has passed, and never with --admin
 
 Exit code 2 blocks the call, and stderr goes back to Claude as the reason. Any internal error
-exits 0 so a bug in this guard never wedges a run; the settings.json deny rules and auto mode are
-the other layers.
+exits 0 so a bug in this guard never wedges a run; the settings.json deny rules are
+the other layer (they still apply in bypassPermissions mode).
 """
 
 from __future__ import annotations
