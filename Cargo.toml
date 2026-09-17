@@ -26,6 +26,7 @@ hpr-io = { path = "crates/hpr-io", version = "0.1.0" }
 hpr-motor = { path = "crates/hpr-motor", version = "0.1.0" }
 hpr-net = { path = "crates/hpr-net", version = "0.1.0" }
 hpr-sim = { path = "crates/hpr-sim", version = "0.1.0" }
+hpr-validate = { path = "crates/hpr-validate", version = "0.1.0" }
 
 # Third-party crates. Each one needs a line of justification in the PR that adds it.
 # Benchmarks only: statistics and the cargo bench harness, without the plotting and rayon defaults.
