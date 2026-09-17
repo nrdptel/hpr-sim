@@ -8,8 +8,9 @@
 //!   with `V` its volume (Barrowman 1966 eq. 28, 1967 eq. 3-89; Niskanen eq. 3.28). The moment
 //!   slope `(2/A_ref)[l A(l) − V]` (Niskanen eq. 3.25 times `d`) stays well conditioned when
 //!   `A(l) ≈ A(0)`. At an angle of attack `α`, Niskanen keeps the `sin α / α` factor of the
-//!   crossflow `v₀ sin α` (eq. 3.19). Slender-body theory has no Mach term: the body's slope is
-//!   the same at every subsonic Mach number (Barrowman 1967 p. 3; Niskanen p. 22).
+//!   crossflow `v₀ sin α` (eq. 3.19). No Mach term: Barrowman 1967 p. 18 leaves body
+//!   compressibility out, and Niskanen p. 22 takes the body's normal force as the same at all
+//!   speeds.
 //! - **Body lift** (Galejs, after Hoerner p. 3-11; Niskanen eq. 3.26–3.27):
 //!   `C_N = K (A_plan/A_ref) sin² α` with `K = 1.1`, acting at the centroid of the side-view
 //!   (planform) area. It is zero at `α = 0`, so it doesn't change `C_Nα` there.

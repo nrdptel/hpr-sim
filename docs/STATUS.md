@@ -50,7 +50,7 @@ M1.5a is done (ADR-008, `docs/physics/aero.md`). Start M1.5b from these notes:
 - 2026-09-17: M1.5a Normal force and centre of pressure (PR #16): Barrowman slopes and CPs for
   bodies (real volumes, L9) and fins (Prandtl–Glauert, MAC, fin-count factors L8, elliptical L10,
   freeform), Galejs body lift, ADR-008. Barrowman's five worked examples (NARAM-8, TIR-33) agree
-  within 1% (worst 0.77%); the Recruiter's six fins need TIR-33's own rule (+2.9% with hpr's).
+  within 1% except the Recruiter's six-fin slopes (+3.4%, +2.9%), which follow TIR-33's own rule.
 - 2026-09-17: M1.4b Design tree, configurations and checks (PR #14, ADR-007): placement, automatic
   radii, overrides, reference diameter (L47), motors, typed checks (L50); six RocketPy example
   rockets match to 8e-10 at LSODA knots; `cargo xtask designs` writes `validation/designs/`.
@@ -142,9 +142,9 @@ M1.5a is done (ADR-008, `docs/physics/aero.md`). Start M1.5b from these notes:
   CI checks must come from committed fixtures, not from `refs/`.
 - The Barrowman 1966 report, TIR-33, the Galejs article, the RockSim `.rse` spec and the Knacke
   manual (restrictive title-page notice) have no clear terms: cite them, never redistribute them.
-- Aero (M1.5a) is small-angle only: fin slopes stay linear in `α` and nothing stalls. Body-lift `K`
-  is uncertain (Galejs: 1.0 to 1.5). The Recruiter's six fins sit +2.9% from TIR-33's print
-  because the six-fin rules differ; M2.2 compares against OpenRocket.
+- Aero (M1.5a) is small-angle only (fin slopes linear in `α`, no stall) and documented only to
+  Mach 0.8; 0.8–1 is extrapolated until M1.8. Body-lift `K` is uncertain (Galejs: 1.0 to 1.5).
+  The Recruiter's six fins miss TIR-33's print by +3.4% because the six-fin rules differ (ADR-008).
 - `refs doctor` "runnable" means the oracle's runtime starts (imports, JVM plus jar). No flight
   has been simulated through either oracle yet; M2.x writes those scripts. Node (for
   `analyze_stats.js`) is not checked by `refs doctor`.

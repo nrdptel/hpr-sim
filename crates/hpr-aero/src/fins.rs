@@ -242,6 +242,24 @@ pub fn roll_sum(count: u32, base_angle_rad: f64, flow_roll_rad: f64) -> f64 {
         .sum()
 }
 
+/// `Σ sin(φ − θ_k) cos(φ − θ_k)` over `count` evenly spaced fins at `θ_k` in a lateral airflow at
+/// `φ`: the side-force share, perpendicular to the flow's plane. Each fin sees the local angle
+/// `α sin Λ_k` (Niskanen 2009 eq. 3.50) and pushes along its own normal; eq. 3.51 keeps the part of
+/// that push in the flow's plane, `sin² Λ_k`, and this is the part across it. The sum vanishes for
+/// three or more fins; for one or two it doesn't: two fins at 45° to the flow push along their
+/// common normal, `√2` times their in-plane share. Derived here from eq. 3.50; Niskanen drops it.
+pub fn side_sum(count: u32, base_angle_rad: f64, flow_roll_rad: f64) -> f64 {
+    if count >= 3 {
+        return 0.0;
+    }
+    (0..count)
+        .map(|k| {
+            let lambda = base_angle_rad + TAU * f64::from(k) / f64::from(count) - flow_roll_rad;
+            -lambda.sin() * lambda.cos()
+        })
+        .sum()
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -491,6 +509,13 @@ mod tests {
                 close(roll_sum(n, 0.2, roll), direct, 1e-14, "direct sum");
             }
         }
+        for n in 3..=8 {
+            assert_eq!(side_sum(n, 0.2, 0.9), 0.0);
+        }
+        // Two fins along x_B, flow at 45°: in-plane and side shares of 1 each, a push along y_B.
+        close(side_sum(2, 0.0, PI / 4.0), 1.0, 1e-15, "two fins, side");
+        close(roll_sum(2, 0.0, PI / 4.0), 1.0, 1e-15, "two fins, in plane");
+        assert!(side_sum(2, 0.0, 0.0).abs() < 1e-15 && side_sum(2, 0.0, PI / 2.0).abs() < 1e-15);
         assert_eq!(roll_sum(1, 0.0, 0.0), 0.0);
         close(
             roll_sum(1, 0.0, PI / 2.0),

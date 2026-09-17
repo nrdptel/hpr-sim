@@ -19,7 +19,7 @@ pub mod model;
 
 pub use body::{BODY_LIFT_K, BodyGeometry};
 pub use error::AeroError;
-pub use fins::{FinGeometry, fin_count_factor, interference_factor, roll_sum};
+pub use fins::{FinGeometry, fin_count_factor, interference_factor, roll_sum, side_sum};
 pub use model::{AeroModel, BodyAero, ComponentNormalForce, FinSetAero, Flow, NormalForce};
 
 #[cfg(test)]
@@ -310,6 +310,8 @@ mod tests {
         assert_eq!(tolerance, 0.01);
         let flow = Flow::axial(0.0);
         let mut worst: f64 = 0.0;
+        let mut worst_own = (0.0, String::new());
+        let mut outside_own = Vec::new();
         assert_eq!(fixture.examples.len(), 5);
         let printed_values: usize = fixture.examples.iter().map(|e| e.printed.len()).sum();
         assert_eq!(printed_values, 19);
@@ -335,6 +337,14 @@ mod tests {
                 };
                 let mut slope = force.slope_per_rad;
                 let mut cp_m = force.cp_station_m.unwrap();
+                let own_cp_err = (cp_m / INCH - example.station_offset_in) / printed.cp_in - 1.0;
+                let own = (slope / printed.cn_alpha - 1.0).abs().max(own_cp_err.abs());
+                if own > worst_own.0 {
+                    worst_own = (own, format!("{} {}", example.id, printed.what));
+                }
+                if own > tolerance {
+                    outside_own.push(format!("{} {}", example.id, printed.what));
+                }
                 if printed.six_fin_rule {
                     let set = six_fin.expect("a six-fin set");
                     let set_slope = set
@@ -394,6 +404,14 @@ mod tests {
                 worst = worst.max(slope_err.abs()).max(cp_err.abs());
             }
         }
-        eprintln!("worst relative error: {:.3}%", 100.0 * worst);
+        eprintln!(
+            "worst relative error, hpr's own model: {:.2}% ({}); with TIR-33's six-fin rule for \
+             the Recruiter: {:.3}%",
+            100.0 * worst_own.0,
+            worst_own.1,
+            100.0 * worst
+        );
+        // With hpr's own six-fin rule (ADR-008), exactly the Recruiter's six-fin slopes miss 1%.
+        assert_eq!(outside_own, ["recruiter fins", "recruiter total"]);
     }
 }

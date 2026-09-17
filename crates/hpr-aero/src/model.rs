@@ -8,10 +8,11 @@
 //! - bodies of revolution, `(2/A_ref)ΔA · sin α/α` at `X_B`, plus body lift
 //!   `K (A_plan/A_ref) sin² α / α` at the planform centroid ([`crate::body`]);
 //! - a step in radius where one body component meets the next, `(2/A_ref)ΔA · sin α/α` at the
-//!   joint: Barrowman 1966 eq. 10 applied to the whole body counts every change of cross-section,
-//!   and a step is a transition of zero length. It is part of the aft component's terms;
+//!   joint, reported with the aft component. This extrapolates Barrowman 1966 eq. 10 over the whole
+//!   body to a transition of zero length; Barrowman 1967 p. 18 assumes no discontinuities;
 //! - fin sets, `(C_Nα)₁ Σ sin² Λ_k · f_N · K_T(B)` at the quarter mean aerodynamic chord
-//!   ([`crate::fins`]).
+//!   ([`crate::fins`]), and for one or two fins the side force `(C_Nα)₁ Σ sin Λ cos Λ · K_T(B)`
+//!   across the flow's plane ([`crate::fins::side_sum`]).
 //!
 //! Launch lugs and rail buttons add drag only, and internal parts sit inside the body. Tube fins
 //! have no cited normal-force method yet and are refused, as is any part kind this model doesn't
@@ -24,7 +25,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::body::{BODY_LIFT_K, BodyGeometry, sinc};
 use crate::error::{AeroError, check_dimension, check_mach};
-use crate::fins::{FinGeometry, fin_count_factor, interference_factor, roll_sum};
+use crate::fins::{FinGeometry, fin_count_factor, interference_factor, roll_sum, side_sum};
 
 /// The air-relative flow at one instant.
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
@@ -92,18 +93,50 @@ pub struct NormalForce {
     /// `Σ C_N,i X_i`, m: the normal force's moment about the nose tip per unit dynamic pressure and
     /// reference area, defined even when the net force is zero.
     pub moment_m: f64,
-    /// Centre of pressure, m aft of the nose tip; `None` when the slope is zero.
+    /// Centre of pressure, m aft of the nose tip; `None` when the slope is zero, or so small
+    /// against its terms (below 1e-12 of `Σ |C_Nα,i|`) that the ratio would be noise.
     pub cp_station_m: Option<f64>,
+    /// Side-force coefficient across the plane of the flow, along `z_B` × the lateral-flow
+    /// direction. Only fin sets of one or two fins produce it ([`crate::fins::side_sum`]).
+    pub side_coefficient: f64,
+    /// `Σ C_Y,i X_i`, m: the side force's moment about the nose tip per unit dynamic pressure and
+    /// reference area.
+    pub side_moment_m: f64,
+}
+
+/// One component's contributions per radian: slope, moment slope about the nose tip, side slope
+/// and side moment slope, and `Σ |terms|` of the slope to judge cancellation.
+#[derive(Clone, Copy, Default)]
+struct Term {
+    slope: f64,
+    moment: f64,
+    side: f64,
+    side_moment: f64,
+    scale: f64,
+}
+
+impl Term {
+    fn add(self, other: Term) -> Term {
+        Term {
+            slope: self.slope + other.slope,
+            moment: self.moment + other.moment,
+            side: self.side + other.side,
+            side_moment: self.side_moment + other.side_moment,
+            scale: self.scale + other.scale,
+        }
+    }
 }
 
 impl NormalForce {
-    /// From a slope and its moment slope `Σ C_Nα,i X_i` (m per radian) at `alpha_rad`.
-    fn new(slope: f64, moment_slope: f64, alpha_rad: f64) -> Self {
+    fn new(term: Term, alpha_rad: f64) -> Self {
+        let cancelled = term.slope.abs() <= 1e-12 * term.scale;
         Self {
-            coefficient: slope * alpha_rad,
-            slope_per_rad: slope,
-            moment_m: moment_slope * alpha_rad,
-            cp_station_m: (slope != 0.0).then(|| moment_slope / slope),
+            coefficient: term.slope * alpha_rad,
+            slope_per_rad: term.slope,
+            moment_m: term.moment * alpha_rad,
+            cp_station_m: (term.slope != 0.0 && !cancelled).then(|| term.moment / term.slope),
+            side_coefficient: term.side * alpha_rad,
+            side_moment_m: term.side_moment * alpha_rad,
         }
     }
 }
@@ -292,27 +325,35 @@ impl AeroModel {
         &self.fin_sets
     }
 
-    /// Each component's id, slope per radian and moment slope about the nose tip (m per radian) at
-    /// a validated `flow`: bodies first, then fin sets, in layout order.
-    fn terms<'a>(&'a self, flow: &Flow) -> impl Iterator<Item = (&'a str, f64, f64)> + 'a {
+    /// Each component's id and contributions at a validated `flow`: bodies first, then fin sets,
+    /// in layout order.
+    fn terms<'a>(&'a self, flow: &Flow) -> impl Iterator<Item = (&'a str, Term)> + 'a {
         let (potential, lift) = alpha_factors(flow.alpha_rad);
         let beta = (1.0 - flow.mach * flow.mach).sqrt();
         let roll = flow.roll_rad;
         let a_ref = self.reference_area_m2;
         let bodies = self.bodies.iter().map(move |body| {
-            let lift = body.lift_factor * lift;
-            (
-                body.id.as_str(),
-                body.slope_per_rad * potential + lift,
-                body.moment_slope_m * potential + lift * body.lift_station_m,
-            )
+            let (attached, lift) = (body.slope_per_rad * potential, body.lift_factor * lift);
+            let term = Term {
+                slope: attached + lift,
+                moment: body.moment_slope_m * potential + lift * body.lift_station_m,
+                scale: attached.abs() + lift.abs(),
+                ..Term::default()
+            };
+            (body.id.as_str(), term)
         });
         let fins = self.fin_sets.iter().map(move |set| {
-            let slope = set.geometry.slope_at(beta, a_ref)
-                * roll_sum(set.count, set.base_angle_rad, roll)
-                * set.count_factor
-                * set.interference;
-            (set.id.as_str(), slope, slope * set.cp_station_m)
+            let per_set = set.geometry.slope_at(beta, a_ref) * set.count_factor * set.interference;
+            let slope = per_set * roll_sum(set.count, set.base_angle_rad, roll);
+            let side = per_set * side_sum(set.count, set.base_angle_rad, roll);
+            let term = Term {
+                slope,
+                moment: slope * set.cp_station_m,
+                side,
+                side_moment: side * set.cp_station_m,
+                scale: slope.abs(),
+            };
+            (set.id.as_str(), term)
         });
         bodies.chain(fins)
     }
@@ -324,12 +365,10 @@ impl AeroModel {
     /// As [`Flow::validate`].
     pub fn normal_force(&self, flow: &Flow) -> Result<NormalForce, AeroError> {
         flow.validate()?;
-        let (slope, moment) = self
+        let total = self
             .terms(flow)
-            .fold((0.0, 0.0), |(s, m), (_, slope, moment)| {
-                (s + slope, m + moment)
-            });
-        Ok(NormalForce::new(slope, moment, flow.alpha_rad))
+            .fold(Term::default(), |sum, (_, term)| sum.add(term));
+        Ok(NormalForce::new(total, flow.alpha_rad))
     }
 
     /// Each component's normal force at `flow`, bodies first, then fin sets, in layout order. A
@@ -342,9 +381,9 @@ impl AeroModel {
         flow.validate()?;
         Ok(self
             .terms(flow)
-            .map(|(id, slope, moment)| ComponentNormalForce {
+            .map(|(id, term)| ComponentNormalForce {
                 id: id.to_owned(),
-                normal_force: NormalForce::new(slope, moment, flow.alpha_rad),
+                normal_force: NormalForce::new(term, flow.alpha_rad),
             })
             .collect())
     }
@@ -380,7 +419,7 @@ fn body_terms(
 
 #[cfg(test)]
 mod tests {
-    use std::f64::consts::FRAC_PI_2;
+    use std::f64::consts::{FRAC_PI_2, FRAC_PI_4};
 
     use hpr_design::{
         FinPlanform, LaunchLug, NoseShape, Part, Position, ReferenceDiameter, TubeFinSet,
@@ -645,6 +684,8 @@ mod tests {
             let tol = 1e-12 * (1.0 + total.coefficient.abs());
             prop_assert!((c - total.coefficient).abs() <= tol);
             prop_assert!((moment - total.moment_m).abs() <= 1e-12 * (1.0 + total.moment_m.abs()));
+            let side: f64 = parts.iter().map(|p| p.normal_force.side_coefficient).sum();
+            prop_assert!((side - total.side_coefficient).abs() <= 1e-12 * (1.0 + total.side_coefficient.abs()));
             let slope: f64 = parts.iter().map(|p| p.normal_force.slope_per_rad).sum();
             prop_assert!((slope - total.slope_per_rad).abs() <= 1e-12 * total.slope_per_rad.abs());
         }
@@ -804,5 +845,58 @@ mod tests {
             AeroModel::new(&nan),
             Err(AeroError::InComponent { .. })
         ));
+    }
+
+    /// A two-fin set pushes along its fins' common normal: at 45° to the flow its side share
+    /// equals its in-plane share, with the side moment at the fins' CP. Four fins have none.
+    #[test]
+    fn two_fin_sets_push_across_the_flow() {
+        let two = model(&finned_rocket(2));
+        let set = &two.fin_sets()[0];
+        let alpha = 0.05;
+        let f = two.normal_force(&flow(0.4, alpha, FRAC_PI_4)).unwrap();
+        let one_fin = set
+            .geometry
+            .single_fin_slope(two.reference_area_m2(), 0.4)
+            .unwrap()
+            * set.interference;
+        close(f.side_coefficient, one_fin * alpha, 1e-13, "side");
+        close(
+            f.side_moment_m,
+            one_fin * alpha * set.cp_station_m,
+            1e-13,
+            "side moment",
+        );
+        let fins = &two.components(&flow(0.4, alpha, FRAC_PI_4)).unwrap()[4];
+        close(
+            fins.normal_force.coefficient,
+            one_fin * alpha,
+            1e-13,
+            "in plane",
+        );
+        let four = model(&finned_rocket(4))
+            .normal_force(&flow(0.4, alpha, 0.3))
+            .unwrap();
+        assert_eq!((four.side_coefficient, four.side_moment_m), (0.0, 0.0));
+    }
+
+    /// A body whose areas cancel to round-off has no CP rather than a CP at 1e14 m; its moment is
+    /// still reported.
+    #[test]
+    fn a_cancelled_slope_has_no_cp() {
+        let rocket = one_stage(
+            vec![
+                component("nose", nose(NoseShape::Conical {}, 0.2, 0.0254), None),
+                component("tube", body_part(0.5, 0.0254, 0.0254), None),
+                component("tail", body_part(0.3, 0.0254, 1e-9), None),
+            ],
+            ReferenceDiameter::Maximum {},
+        );
+        let m = model(&rocket);
+        let f = m.normal_force(&Flow::axial(0.3)).unwrap();
+        assert!(f.slope_per_rad.abs() < 1e-12, "{}", f.slope_per_rad);
+        assert_eq!(f.cp_station_m, None);
+        let moving = m.normal_force(&flow(0.3, 0.01, 0.0)).unwrap();
+        assert!(moving.moment_m.is_finite() && moving.cp_station_m.is_some());
     }
 }

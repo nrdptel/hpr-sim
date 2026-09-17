@@ -602,29 +602,38 @@ had no fin-count correction (L8), and swapped elliptical fins for an equal-area 
 - **Fin count and roll.** `Σ sin² Λ_k` (exactly `N/2` for three or more fins) times 1, 0.948,
   0.913, 0.854 or 0.810 for up to 4, 5, 6, 7 or 8 fins (technical documentation eq. 3.54, from
   MIL-HDBK-762(MI) p. 5-24). More than eight fins are refused: the documentation's 0.750 has no
-  source. The side force of one- and two-fin sets is not modelled (Niskanen keeps only the
-  in-plane component). Fin sets at the same station are not combined.
-- **Interference.** `K_T(B) = 1 + r_t/(s + r_t)` (Barrowman 1966 eq. 77), not the thesis's full
-  slender-body terms.
-- **Scope.** `0 ≤ M < 1`; `M ≥ 1` is an error until M1.8. Tube fins are refused until a cited
-  method is found. Lugs and rail buttons add no normal force. Cant is ignored until roll (M1.8).
-  The model is a small-angle model; `α` is accepted over `[0, π]` so the flight engine can decide
-  what to do near apogee.
+  source. One- and two-fin sets also report a side force across the flow's plane,
+  `Σ sin Λ_k cos Λ_k`, derived from Niskanen's per-fin angle `α sin Λ_k` (eq. 3.50). Niskanen drops
+  it, arguing that it cancels for two or more fins, but for two fins it adds. Fin sets at the same
+  station are not combined.
+- **Interference.** `K_T(B) = 1 + r_t/(s + r_t)` (Barrowman 1966 eq. 77, a fit for
+  `r_t/(s + r_t) < 0.4`), not the thesis's full slender-body terms; the fin-induced body lift
+  `K_B(T)` is neglected, as in the report.
+- **Scope.** `0 ≤ M < 1`; `M ≥ 1` is an error until M1.8. The sources document the subsonic
+  models only to Mach 0.8, and Niskanen's fin CP shift would already be 0.05 MAC aft there, so
+  0.8–1 is an unvalidated extrapolation, accepted so M1.6 can fly through it until M1.8. Tube fins
+  and unknown part kinds are refused. Lugs and rail buttons add no normal force. Cant is ignored
+  until roll (M1.8). The model is a small-angle model; `α` is accepted over `[0, π]` so the flight
+  engine can decide what to do near apogee. A slope that cancels to below 1e-12 of its terms has no
+  CP; `moment_m` is always defined.
 - **Six fins: MIL-HDBK-762 over TIR-33.** TIR-33 handles six fins with `K = 1 + 0.5 R/(S + R)` and
   no fin-count factor, without a derivation and for six fins only. MIL-HDBK-762 gives six and eight
   fins from slender-body theory, the technical documentation interpolates five and seven, and
   OpenRocket (the M2.2 oracle) uses the same factors, so a comparison there isolates other
   differences. The two rules agree within about ±5% over common span-to-radius ratios.
-- **Radius steps.** Where one body component's aft radius differs from the next one's fore radius,
-  the step adds `(2/A_ref)ΔA` at the joint (a zero-length transition), so the body's total slope is
-  Barrowman 1966 eq. 10 over the whole body. It is reported as part of the aft component. A body that
-  starts blunt (no nose cone) gets no term for its front face, as eq. 10 gives.
-- **Validation.** Barrowman's five published worked examples (NARAM-8's Testbed II and Aerobee 350;
-  TIR-33's Javelin, Recruiter and Arcon-Hi), every printed component and total, within 1%. Four
-  pass on hpr's own model. The Recruiter's six-fin values pass with TIR-33's rule substituted in
-  the slope and the CP weighting; with hpr's rule the slopes sit +3.4% (fins) and +2.9% (total)
-  from the print, of which the difference between the rules is +3.2% and +2.8%. The test reports
-  both.
+- **Radius steps (an extrapolation).** Where one body component's aft radius differs from the next
+  one's fore radius, the step adds `(2/A_ref)ΔA` at the joint (a zero-length transition), so the
+  body's total slope is Barrowman 1966 eq. 10 over the whole body. Barrowman 1967 p. 18 assumes no
+  discontinuities, so this goes beyond the source; dropping the step would lose its slope silently.
+  It is reported as part of the aft component. A body that starts blunt (no nose cone) gets no term
+  for its front face, as eq. 10 gives.
+- **Validation, and the gap it leaves.** Barrowman's five published worked examples (NARAM-8's
+  Testbed II and Aerobee 350; TIR-33's Javelin, Recruiter and Arcon-Hi), every printed component
+  and total. With hpr's own model, four examples agree within 1% (worst −0.77%), and the
+  Recruiter's six-fin slopes do not: +3.42% (fins) and +2.87% (total). That gap is this ADR's
+  six-fin choice, measured: the rules differ by +3.22% and +2.83%, and with TIR-33's rule
+  substituted in the slope and the CP weighting the Recruiter agrees within 1% (worst +0.19%). The
+  test pins that exactly those two values fall outside 1% with hpr's model, and prints both.
 
 **Consequences.**
 

@@ -103,7 +103,7 @@
       "notes": [
         "The nose is idealized as a cone 4.15 in long whose imaginary tip is 0.8 in ahead of the real tip (p. 24): station_offset_in is added to every printed station to place the parts, and subtracted from every computed CP.",
         "The fin drawing (p. 24, Fig. 16) gives a tip chord of 0.85 in; the calculation (p. 25) uses 0.8 in, which produced the printed results.",
-        "The fin slope uses the mid-chord length 1.64 in; the geometry gives 1.631 in."
+        "The fin slope uses the mid-chord length 1.64 in, which matches the drawn tip chord of 0.85 in (1.638 in); with the 0.8 in used, the geometry gives 1.631 in."
       ]
     },
     {

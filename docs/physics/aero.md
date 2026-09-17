@@ -25,7 +25,8 @@ Sources:
   Stations are metres aft of the nose tip (`frames.md`, `design.md`).
 - `Flow` holds the Mach number, the total angle of attack `α ∈ [0, π]` between `+z_B` and the
   air-relative velocity, and the roll `φ` of the lateral airflow, measured from `x_B` toward `y_B`.
-- `C_N` lies in the plane of the flow. The slope is `C_Nα = C_N/α` for `α > 0` and `∂C_N/∂α` at
+- `C_N` lies in the plane of the flow. The side coefficient `C_Y` lies across it, along `z_B` × the
+  lateral-flow direction; only one- and two-fin sets produce it. The slope is `C_Nα = C_N/α` for `α > 0` and `∂C_N/∂α` at
   `α = 0` ([N09] eq. 3.8). The centre of pressure is the moment sum
   `X = Σ C_Nα,i X_i / Σ C_Nα,i` ([B66] p. 38; [N09] eq. 3.29). A rocket with no net slope has no CP
   (`None`), but `NormalForce::moment_m = Σ C_N,i X_i` (the moment about the nose tip per unit
@@ -44,15 +45,18 @@ Nose cones, transitions and body tubes, from the outer profile (shoulders are in
 
 - A nose with a sharp tip has slope 2. A cylinder has 0 and no CP. A boattail has a negative
   slope, and the frustum CP formula [B66] eq. 44 still holds ([B66] p. 21).
-- **Radius steps.** [B66] eq. 10 over the whole body counts every change of cross-section, so a
-  step where one body component meets the next adds `(2/A_ref)ΔA` at the joint, the limit of a
-  transition whose length goes to zero. It is reported with the aft component
-  (`BodyAero::step_area_m2`). A blunt front face gets no term, as eq. 10 gives. The design checks
-  warn about steps (`radius_step`); the real flow separates there, which M1.5b's drag must count.
+- **Radius steps (an extrapolation).** A step where one body component meets the next adds
+  `(2/A_ref)ΔA` at the joint, the limit of a transition whose length goes to zero, so the body's
+  total slope is [B66] eq. 10 over the whole body. [B67] p. 18 assumes no discontinuities, so this
+  goes beyond the source; leaving the step out would silently drop its slope (a 27 mm nose base on
+  a 29 mm tube loses 13%). It is reported with the aft component (`BodyAero::step_area_m2`). A
+  blunt front face gets no term, as eq. 10 gives. The design checks warn about steps
+  (`radius_step`); the real flow separates there, which M1.5b's drag must count.
 - `V` and the planform come from integrating the real profile (`hpr_design::revolve`), so ogive,
   power, parabolic and Haack transitions get their own CP (Loft lesson L9). [B66] fits tangent
   ogives with 0.466 L instead: 0.2–0.9% different at fineness 2.8–5.
-- The body's slope has no Mach term in slender-body theory ([B67] p. 3; [N09] p. 22).
+- The body's slope has no Mach term: [B67] p. 18 leaves body compressibility out as a
+  conservative choice, and [N09] p. 22 takes the body's normal force as the same at all speeds.
 - `K` is uncertain: [G] cites Hoerner's 1.1 to 1.5, fitted 1.0 to his own data, and says 1.2
   suits large angles better. Body lift is zero at `α = 0`, so the worked examples don't test it.
 
@@ -77,7 +81,8 @@ Nose cones, transitions and body tubes, from the outer profile (shoulders are in
   gap counts toward the CP but not toward `A_fin` ([N09] pp. 27–28). `Γ_c` is the span average of
   the mid-chord angle ([N09] p. 29), which gives the natural angle for trapezoids and ellipses. The
   integrals are exact: between vertex heights the edges are straight, and a three-point Gauss rule
-  per band is exact.
+  per band is exact. Bands thinner than 1e-12 of the span (vertex heights a few rounding steps
+  apart, as when a tip is converted from inches) are skipped.
 - **Prandtl–Glauert** enters through `β` in the fin slope only. As `M → 1` the slope tends to
   `π s²/A_ref`. The CP stays at the quarter chord for all subsonic Mach ([B67] p. 6). Niskanen's aft
   shift above Mach 0.5 ([N09] eq. 3.35–3.36) moves to M1.8, together with the supersonic fit it
@@ -88,8 +93,15 @@ Nose cones, transitions and body tubes, from the outer profile (shoulders are in
   six and eight fins 1.37 and 1.62 times four ([762] p. 5-24), and interpolate five and seven (L8).
   More than eight fins are refused: [TD]'s 0.750 has no data behind it. [N09]'s roll-dependent
   15% and 6% reductions for three and four fins were dropped in [TD].
+- **Side force of one- and two-fin sets.** Each fin sees `α sin Λ_k` ([N09] eq. 3.50) and pushes
+  along its own normal. Eq. 3.51 keeps the in-plane share `sin² Λ_k`; the share across the plane is
+  `sin Λ_k cos Λ_k`, which cancels for three or more fins but not for one or two. [N09] pp. 31–32
+  drops it, arguing that it cancels for two or more fins; for two fins the pushes add. hpr reports
+  it as `C_Y` at the fins' CP (derived here from eq. 3.50, not taken from a source).
+- **Interference** `K_T(B)` is Barrowman's straight-line fit to NACA TR-1307, justified for
+  `r_t/(s + r_t) < 0.4` ([B66] p. 36).
 - **Not modelled.**
-  - The side force of one- and two-fin sets: [N09] keeps only the in-plane component.
+  - The body lift the fins induce, `K_B(T)` ([B66] p. 36 neglects it; [B67] eq. 3-98 has it).
   - Interference between fin sets at the same station.
   - Cant, which matters for roll (M1.8).
   - Tube fins, which are refused until a cited method exists (issue #15). Any part kind the model
@@ -101,7 +113,14 @@ Nose cones, transitions and body tubes, from the outer profile (shoulders are in
 - These are small-angle models. `α` is accepted over `[0, π]`, but fin slopes stay linear in `α`
   and nothing models stall. The flight engine (M1.6) must decide how to treat large angles near
   rail exit and apogee.
-- `M ≥ 1` is an error until M1.8. Transonic effects above about Mach 0.8 are not modelled.
+- In one measured case, fins at `α = π/2` give `C_N` 17.4 against a flat-plate estimate near 5, and
+  at `α = π` the fins still give 34.7 while every body term vanishes. That case is a 54 mm
+  four-fin rocket at Mach 0.3.
+- `M ≥ 1` is an error until M1.8, but the models are only documented to Mach 0.8.
+  - [N09]'s subsonic range is 0–0.8, and [B67] p. 18 notes that `C_Nα` rises near Mach 1.
+  - [N09] eq. 3.35–3.36 would move the fin CP from 0.25 to about 0.30 of the MAC at Mach 0.8 and
+    about 0.33 at 0.9 (aspect ratio 1.6); hpr keeps 0.25.
+  - Between 0.8 and 1, results are unvalidated extrapolations; M1.8 replaces them.
 
 ## Verification
 
@@ -114,13 +133,16 @@ Nose cones, transitions and body tubes, from the outer profile (shoulders are in
   | Testbed II [B66] pp. 41–45 | 21.397 / 21.44 (−0.20%) | 16.703 / 16.7 (+0.02%) |
   | Aerobee 350 [B66] pp. 47–50 | 21.449 / 21.5 (−0.24%) | 390.48 / 391 (−0.13%) |
   | Javelin [TIR] pp. 21–22 | 35.927 / 35.9 (+0.07%) | 11.286 / 11.3 (−0.13%) |
-  | Recruiter [TIR] pp. 23–25, TIR-33's six-fin rule substituted | 35.415 / 35.4 (+0.04%) | 15.627 / 15.6 (+0.17%) |
-  | Recruiter with hpr's six-fin rule (reported, not checked at 1%) | 36.416 / 35.4 (+2.87%) | 15.665 / 15.6 (+0.42%) |
+  | **Recruiter [TIR] pp. 23–25, hpr's model: outside 1%** | **36.416 / 35.4 (+2.87%)** | 15.665 / 15.6 (+0.42%) |
+  | Recruiter with TIR-33's six-fin rule substituted | 35.415 / 35.4 (+0.04%) | 15.627 / 15.6 (+0.17%) |
   | Arcon-Hi, two stages [TIR] pp. 27–29 | 96.163 / 96.2 (−0.04%) | 20.803 / 20.8 (+0.02%) |
   | Arcon-Hi, sustainer alone | 32.257 / 32.2 (+0.18%) | 17.845 / 17.9 (−0.31%) |
 
-  - The worst of the 38 printed values (19 slopes, 19 CPs) is the Testbed II nose CP, −0.77%: [B66]'s
-    0.466 L fit against the integrated tangent ogive.
+  - **With hpr's own model, four examples agree within 1% and the Recruiter does not.** Its six-fin
+    slopes are +3.42% (fins) and +2.87% (total). Those are the only 2 of the 38 printed values (19
+    slopes, 19 CPs) outside 1%, and the test pins that list.
+  - With TIR-33's six-fin rule substituted for the Recruiter, the worst is the Testbed II nose CP,
+    −0.77%: [B66]'s 0.466 L fit against the integrated tangent ogive.
   - CPs are compared as stations from the nose tip. Measured from each part's own front, two
     printed values miss 1%: the Testbed II boattail (0.655 in against 0.72 in, −9%, Barrowman's
     diameter ratio slip) and the Javelin fins (0.653 in against 0.66 in, −1.1%, rounding).
