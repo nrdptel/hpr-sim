@@ -1,0 +1,413 @@
+{
+  "source": "G. A. Crowell Sr., The Descriptive Geometry of Nose Cones (1996), pp. 1-6; S. Niskanen, OpenRocket technical documentation v13.05 (2013), appendix A",
+  "generator": "validation/oracles/design/shapes.py (mpmath tanh-sinh, 40 digits)",
+  "tool": "mpmath 1.3.0",
+  "generated": "2026-09-17",
+  "command": "refs/venv/bin/python validation/oracles/design/shapes.py > validation/fixtures/design/shape-integrals.json",
+  "inputs_sha256": {
+    "script": "c0d7e30959d7e72923a0753c65c9841a02149225ec0e7bb3bc1af7f5f5d15128"
+  },
+  "units": "SI; centroids are metres aft of the forward end; moments are per unit density",
+  "cases": [
+    {
+      "input": {
+        "shape": "conical",
+        "length_m": 0.3,
+        "fore_radius_m": 0.0,
+        "aft_radius_m": 0.05
+      },
+      "expected": {
+        "volume_m3": 0.0007853981633974483,
+        "centroid_m": 0.22499999999999998,
+        "axial_m5": 5.890486225480863e-07,
+        "transverse_m5": 2.945243112740431e-06,
+        "wetted_area_m2": 0.047773905196790374,
+        "planform_area_m2": 0.015,
+        "planform_centroid_m": 0.19999999999999998
+      }
+    },
+    {
+      "input": {
+        "shape": "ogive",
+        "length_m": 0.25,
+        "fore_radius_m": 0.0,
+        "aft_radius_m": 0.04,
+        "parameter": 1.0
+      },
+      "expected": {
+        "volume_m3": 0.00067508779089777,
+        "centroid_m": 0.1714471292362238,
+        "axial_m5": 4.1229107241297676e-07,
+        "transverse_m5": 2.1269484879615774e-06,
+        "wetted_area_m2": 0.04252742471973694,
+        "planform_area_m2": 0.013401352445033736,
+        "planform_centroid_m": 0.1559298923868058
+      }
+    },
+    {
+      "input": {
+        "shape": "ogive",
+        "length_m": 0.4,
+        "fore_radius_m": 0.0,
+        "aft_radius_m": 0.051,
+        "parameter": 2.5
+      },
+      "expected": {
+        "volume_m3": 0.001326795685938526,
+        "centroid_m": 0.2886963035031669,
+        "axial_m5": 1.121823322489724e-06,
+        "transverse_m5": 9.410523040496236e-06,
+        "wetted_area_m2": 0.07318879340328231,
+        "planform_area_m2": 0.02314412763639233,
+        "planform_centroid_m": 0.2587315932966279
+      }
+    },
+    {
+      "input": {
+        "shape": "ogive",
+        "length_m": 0.2,
+        "fore_radius_m": 0.0,
+        "aft_radius_m": 0.03,
+        "parameter": 0.6
+      },
+      "expected": {
+        "volume_m3": 0.00040461121995563946,
+        "centroid_m": 0.1308762983858078,
+        "axial_m5": 1.7193106258169301e-07,
+        "transverse_m5": 8.53765710775087e-07,
+        "wetted_area_m2": 0.029997493363315166,
+        "planform_area_m2": 0.009434541065939066,
+        "planform_centroid_m": 0.12092406544343122
+      }
+    },
+    {
+      "input": {
+        "shape": "elliptical",
+        "length_m": 0.12,
+        "fore_radius_m": 0.0,
+        "aft_radius_m": 0.05
+      },
+      "expected": {
+        "volume_m3": 0.0006283185307179587,
+        "centroid_m": 0.075,
+        "axial_m5": 6.283185307179588e-07,
+        "transverse_m5": 8.51371609122834e-07,
+        "wetted_area_m2": 0.03151331404774385,
+        "planform_area_m2": 0.00942477796076938,
+        "planform_centroid_m": 0.0690704182105935
+      }
+    },
+    {
+      "input": {
+        "shape": "power_series",
+        "length_m": 0.3,
+        "fore_radius_m": 0.0,
+        "aft_radius_m": 0.05,
+        "parameter": 0.5
+      },
+      "expected": {
+        "volume_m3": 0.0011780972450961727,
+        "centroid_m": 0.19999999999999998,
+        "axial_m5": 9.817477042468105e-07,
+        "transverse_m5": 6.381360077604268e-06,
+        "wetted_area_m2": 0.06345112548554735,
+        "planform_area_m2": 0.02,
+        "planform_centroid_m": 0.18
+      }
+    },
+    {
+      "input": {
+        "shape": "power_series",
+        "length_m": 0.2,
+        "fore_radius_m": 0.0,
+        "aft_radius_m": 0.0275,
+        "parameter": 0.3
+      },
+      "expected": {
+        "volume_m3": 0.0002969786805346602,
+        "centroid_m": 0.12307692307692308,
+        "axial_m5": 8.166913714703155e-08,
+        "transverse_m5": 8.218435903609193e-07,
+        "wetted_area_m2": 0.026849846013771782,
+        "planform_area_m2": 0.008461538461538461,
+        "planform_centroid_m": 0.11304347826086956
+      }
+    },
+    {
+      "input": {
+        "shape": "power_series",
+        "length_m": 0.5,
+        "fore_radius_m": 0.0,
+        "aft_radius_m": 0.0785,
+        "parameter": 0.75
+      },
+      "expected": {
+        "volume_m3": 0.0038718558659167407,
+        "centroid_m": 0.35714285714285715,
+        "axial_m5": 7.456044940545449e-06,
+        "transverse_m5": 4.7626615054362754e-05,
+        "wetted_area_m2": 0.1422828441657665,
+        "planform_area_m2": 0.04485714285714286,
+        "planform_centroid_m": 0.3181818181818182
+      }
+    },
+    {
+      "input": {
+        "shape": "parabolic_series",
+        "length_m": 0.3,
+        "fore_radius_m": 0.0,
+        "aft_radius_m": 0.05,
+        "parameter": 0.0
+      },
+      "expected": {
+        "volume_m3": 0.0007853981633974483,
+        "centroid_m": 0.22499999999999998,
+        "axial_m5": 5.890486225480863e-07,
+        "transverse_m5": 2.945243112740431e-06,
+        "wetted_area_m2": 0.047773905196790374,
+        "planform_area_m2": 0.015,
+        "planform_centroid_m": 0.19999999999999998
+      }
+    },
+    {
+      "input": {
+        "shape": "parabolic_series",
+        "length_m": 0.3,
+        "fore_radius_m": 0.0,
+        "aft_radius_m": 0.05,
+        "parameter": 0.5
+      },
+      "expected": {
+        "volume_m3": 0.0009250245035569947,
+        "centroid_m": 0.21792452830188677,
+        "axial_m5": 7.402643183227274e-07,
+        "transverse_m5": 3.7879902044583456e-06,
+        "wetted_area_m2": 0.052963583381316924,
+        "planform_area_m2": 0.016666666666666666,
+        "planform_centroid_m": 0.19499999999999998
+      }
+    },
+    {
+      "input": {
+        "shape": "parabolic_series",
+        "length_m": 0.35,
+        "fore_radius_m": 0.0,
+        "aft_radius_m": 0.0635,
+        "parameter": 1.0
+      },
+      "expected": {
+        "volume_m3": 0.002364634902454989,
+        "centroid_m": 0.24062499999999998,
+        "axial_m5": 3.632304413494907e-06,
+        "transverse_m5": 1.4909394293583185e-05,
+        "wetted_area_m2": 0.09430492145015208,
+        "planform_area_m2": 0.02963333333333333,
+        "planform_centroid_m": 0.21874999999999997
+      }
+    },
+    {
+      "input": {
+        "shape": "haack",
+        "length_m": 0.5,
+        "fore_radius_m": 0.0,
+        "aft_radius_m": 0.0785,
+        "parameter": 0.0
+      },
+      "expected": {
+        "volume_m3": 0.004839819832395926,
+        "centroid_m": 0.34375,
+        "axial_m5": 1.0614388626454645e-05,
+        "transverse_m5": 6.35992951591418e-05,
+        "wetted_area_m2": 0.1620352541442553,
+        "planform_area_m2": 0.051120681041235946,
+        "planform_centroid_m": 0.3098415601866093
+      }
+    },
+    {
+      "input": {
+        "shape": "haack",
+        "length_m": 0.3,
+        "fore_radius_m": 0.0,
+        "aft_radius_m": 0.05,
+        "parameter": 0.3333333333333333
+      },
+      "expected": {
+        "volume_m3": 0.0013253594007331942,
+        "centroid_m": 0.19999999999999998,
+        "axial_m5": 1.2474436829659047e-06,
+        "transverse_m5": 6.698285761510092e-06,
+        "wetted_area_m2": 0.06667715608881475,
+        "planform_area_m2": 0.021007342319269998,
+        "planform_centroid_m": 0.18186989718970126
+      }
+    },
+    {
+      "input": {
+        "shape": "haack",
+        "length_m": 0.2,
+        "fore_radius_m": 0.0,
+        "aft_radius_m": 0.02,
+        "parameter": 0.6666666666666666
+      },
+      "expected": {
+        "volume_m3": 0.00015707963267948968,
+        "centroid_m": 0.13,
+        "axial_m5": 2.520736799395124e-08,
+        "transverse_m5": 3.42470912623904e-07,
+        "wetted_area_m2": 0.01879180843795661,
+        "planform_area_m2": 0.005957228763847293,
+        "planform_centroid_m": 0.1192177895611376
+      }
+    },
+    {
+      "input": {
+        "shape": "conical",
+        "length_m": 0.1,
+        "fore_radius_m": 0.03,
+        "aft_radius_m": 0.05,
+        "clipped": false
+      },
+      "expected": {
+        "volume_m3": 0.0005131268000863329,
+        "centroid_m": 0.05816326530612245,
+        "axial_m5": 4.527035013822893e-07,
+        "transverse_m5": 6.267445286843745e-07,
+        "wetted_area_m2": 0.025630467591062554,
+        "planform_area_m2": 0.008,
+        "planform_centroid_m": 0.05416666666666667
+      }
+    },
+    {
+      "input": {
+        "shape": "ogive",
+        "length_m": 0.08,
+        "fore_radius_m": 0.0635,
+        "aft_radius_m": 0.0385,
+        "clipped": false,
+        "parameter": 1.0
+      },
+      "expected": {
+        "volume_m3": 0.0007873578505695981,
+        "centroid_m": 0.03440487131063063,
+        "axial_m5": 1.3094386164611207e-06,
+        "transverse_m5": 1.0294176246454525e-06,
+        "wetted_area_m2": 0.029446022925375254,
+        "planform_area_m2": 0.008878046045878059,
+        "planform_centroid_m": 0.03705817304466655
+      }
+    },
+    {
+      "input": {
+        "shape": "elliptical",
+        "length_m": 0.06,
+        "fore_radius_m": 0.05,
+        "aft_radius_m": 0.02,
+        "clipped": false
+      },
+      "expected": {
+        "volume_m3": 0.00036614843843499605,
+        "centroid_m": 0.02548291676742512,
+        "axial_m5": 3.8248833332391294e-07,
+        "transverse_m5": 2.852705839615463e-07,
+        "wetted_area_m2": 0.018796443223854986,
+        "planform_area_m2": 0.005227433388230814,
+        "planform_centroid_m": 0.027546979426692556
+      }
+    },
+    {
+      "input": {
+        "shape": "power_series",
+        "length_m": 0.1,
+        "fore_radius_m": 0.03,
+        "aft_radius_m": 0.05,
+        "clipped": false,
+        "parameter": 0.5
+      },
+      "expected": {
+        "volume_m3": 0.0005969026041820608,
+        "centroid_m": 0.05596491228070176,
+        "axial_m5": 5.917713361811975e-07,
+        "transverse_m5": 7.600986316815658e-07,
+        "wetted_area_m2": 0.028003901137078676,
+        "planform_area_m2": 0.008666666666666668,
+        "planform_centroid_m": 0.05307692307692308
+      }
+    },
+    {
+      "input": {
+        "shape": "power_series",
+        "length_m": 0.1,
+        "fore_radius_m": 0.03,
+        "aft_radius_m": 0.05,
+        "clipped": true,
+        "parameter": 0.5
+      },
+      "expected": {
+        "volume_m3": 0.0005340707511102649,
+        "centroid_m": 0.05784313725490196,
+        "axial_m5": 4.874704600820164e-07,
+        "transverse_m5": 6.559409327914338e-07,
+        "wetted_area_m2": 0.02615375396015572,
+        "planform_area_m2": 0.008166666666666668,
+        "planform_centroid_m": 0.05403061224489796
+      }
+    },
+    {
+      "input": {
+        "shape": "parabolic_series",
+        "length_m": 0.12,
+        "fore_radius_m": 0.05,
+        "aft_radius_m": 0.03,
+        "clipped": true,
+        "parameter": 0.75
+      },
+      "expected": {
+        "volume_m3": 0.0006621577622215768,
+        "centroid_m": 0.05068499657599453,
+        "axial_m5": 6.236981983907749e-07,
+        "transverse_m5": 1.0385617708427892e-06,
+        "wetted_area_m2": 0.031722348823628274,
+        "planform_area_m2": 0.00996113298371611,
+        "planform_centroid_m": 0.055181271038297786
+      }
+    },
+    {
+      "input": {
+        "shape": "haack",
+        "length_m": 0.15,
+        "fore_radius_m": 0.02,
+        "aft_radius_m": 0.05,
+        "clipped": false,
+        "parameter": 0.3333333333333333
+      },
+      "expected": {
+        "volume_m3": 0.0008230393251573502,
+        "centroid_m": 0.08991304621046087,
+        "axial_m5": 8.074391328909886e-07,
+        "transverse_m5": 1.668339538479685e-06,
+        "wetted_area_m2": 0.0395190080437064,
+        "planform_area_m2": 0.012302202695781,
+        "planform_centroid_m": 0.0831631947119551
+      }
+    },
+    {
+      "input": {
+        "shape": "haack",
+        "length_m": 0.15,
+        "fore_radius_m": 0.05,
+        "aft_radius_m": 0.02,
+        "clipped": true,
+        "parameter": 0.0
+      },
+      "expected": {
+        "volume_m3": 0.00073098591720445,
+        "centroid_m": 0.05688583726995303,
+        "axial_m5": 6.666927022106984e-07,
+        "transverse_m5": 1.4327273170644653e-06,
+        "wetted_area_m2": 0.036864612763290804,
+        "planform_area_m2": 0.011512922947670399,
+        "planform_centroid_m": 0.06513548564150304
+      }
+    }
+  ]
+}

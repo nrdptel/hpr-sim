@@ -156,6 +156,15 @@ dest = "refs/papers/naca-tn-4197.pdf"
 license = "US government work"
 mode = "fetched"
 
+[[file]]
+name = "fpl-gtr-190-wood-handbook"
+title = "Forest Products Laboratory, Wood Handbook: Wood as an Engineering Material, General Technical Report FPL-GTR-190, 2010"
+url = "https://www.fpl.fs.usda.gov/documnts/fplgtr/fpl_gtr190.pdf"
+sha256 = "dec06ab1ad9c97fbb4092779cd5d367a4d7fc4e3585f00b9e65f18b080ada2ec"
+dest = "refs/papers/fpl-gtr-190-wood-handbook-2010.pdf"
+license = "US government work"
+mode = "fetched"
+
 # DTIC (ADA247666) blocked automated downloads when this was pinned; this is archive.org's mirror
 # of the DTIC copy. It carries a DTIC public-release stamp, but the title page names the author as
 # a contractor and restricts distribution to US Government personnel, so the terms are unclear:
