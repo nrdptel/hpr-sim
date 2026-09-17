@@ -84,7 +84,7 @@
   - Quaternion integration keeps the norm within 1e-12 over 1e6 steps in tests.
   - Everything compiles for wasm32.
 
-- [ ] **M1.2 Atmosphere and wind.**
+- [x] **M1.2 Atmosphere and wind.**
   - USSA76 from 0 to 86 km: temperature, pressure, density, speed of sound, dynamic viscosity
     (Sutherland).
   - ISA temperature offset; custom profile from soundings (p, T, RH, wind vs height) with

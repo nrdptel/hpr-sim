@@ -10,6 +10,7 @@ pub mod frames;
 pub mod geodesy;
 pub mod gravity;
 pub mod interp;
+pub mod random;
 
 pub use error::CoreError;
 pub use glam::{DMat3, DQuat, DVec3};

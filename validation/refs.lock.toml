@@ -208,6 +208,58 @@ dest = "refs/papers/sola-2017-quaternion-kinematics.pdf"
 license = "CC BY-NC-SA 4.0"
 mode = "fetched"
 
+# M1.2 atmosphere, wind and turbulence sources.
+# MIL-F-8785C: everyspec.com refuses scripted downloads and stamps each copy, so this pins Abbott
+# Aerospace's copy of the same scan. If it moves, an immutable capture of everyspec's 2012 copy
+# (stamped, 5e0598b6...) is
+# https://web.archive.org/web/20120909042612id_/http://www.everyspec.com:80/MIL-SPECS/MIL-SPECS-MIL-F/download.php?spec=MIL-F-8785C.028392.pdf
+[[file]]
+name = "mil-f-8785c"
+title = "MIL-F-8785C, Military Specification: Flying Qualities of Piloted Airplanes, 5 November 1980"
+url = "https://www.abbottaerospace.com/downloads/mil-f-8785c-flying-qualities-of-piloted-airplanes/?wpdmdl=39986&ind=1506521340699"
+sha256 = "51c4e51c3650ab7a5df9ff81e98a075947fc6d2dce97561ce96ffeda7791af8d"
+dest = "refs/papers/mil-f-8785c.pdf"
+license = "US government work"
+mode = "fetched"
+
+[[file]]
+name = "nasa-tm-2008-215633"
+title = "D. L. Johnson (ed.), Terrestrial Environment (Climatic) Criteria Guidelines for Use in Aerospace Vehicle Development, 2008 Revision, NASA/TM-2008-215633"
+url = "https://ntrs.nasa.gov/api/citations/20090022159/downloads/20090022159.pdf"
+sha256 = "896d715558417b1f47fe5c1dd888203598cfce63bbcdfb189ca7e482d8e4927f"
+dest = "refs/papers/nasa-tm-2008-215633.pdf"
+license = "US government work"
+mode = "fetched"
+
+# library.wmo.int serves only through a JavaScript challenge; this is a national weather service's
+# mirror of the official 2023 PDF (ISBN 978-92-63-10008-5).
+[[file]]
+name = "wmo-no8-vol1-2023"
+title = "WMO-No. 8, Guide to Instruments and Methods of Observation, Volume I: Measurement of Meteorological Variables, 2023 edition"
+url = "https://amc.namem.gov.mn/wp-content/uploads/WMO/1.%208_I-2023_en.pdf"
+sha256 = "467afdde56646a9403e21345fdc1fa9f7d7434eeddbfc341c7810ae0a0d05ba9"
+dest = "refs/papers/wmo-no8-vol1-2023.pdf"
+license = "WMO copyright; short extracts with full citation"
+mode = "fetched"
+
+[[file]]
+name = "picard-2008-cipm-2007"
+title = "A. Picard, R. S. Davis, M. Gläser and K. Fujii, Revised formula for the density of moist air (CIPM-2007), Metrologia 45 (2008) 149-155"
+url = "https://www.nist.gov/system/files/documents/calibrations/CIPM-2007.pdf"
+sha256 = "0266277b62e34253a36af817e70af4ffbe74f079ed7c35ce3770477c2ea822e3"
+dest = "refs/papers/picard-2008-cipm-2007-moist-air-density.pdf"
+license = "BIPM and IOP Publishing copyright"
+mode = "fetched"
+
+[[file]]
+name = "iapws-r12-08"
+title = "IAPWS R12-08, Release on the IAPWS Formulation 2008 for the Viscosity of Ordinary Water Substance"
+url = "https://iapws.org/public/documents/FPpx6/visc.pdf"
+sha256 = "6e89cafb61618f38aeca88a5740181948db7300d2b4beafbb4228bb164657bef"
+dest = "refs/papers/iapws-r12-08-water-viscosity.pdf"
+license = "IAPWS: publication allowed with attribution"
+mode = "fetched"
+
 # Snapshots of live APIs, pinned by the sha256 of one dated capture. The APIs change (the motor
 # finder hourly), so a fresh fetch elsewhere may not reproduce these bytes: fetch then fails and
 # keeps the new capture aside, and `fetch --adopt-snapshots` repins to it.
@@ -281,6 +333,7 @@ checks = [
     { module = "orhelper", version = "0.1.5" },
     { module = "jpype" },
     { module = "mpmath", version = "1.3.0" },
+    { module = "ambiance", version = "1.3.1" },
 ]
 
 # The OpenRocket oracle's runtime. `doctor` looks in JAVA_HOME, /usr/libexec/java_home (macOS),

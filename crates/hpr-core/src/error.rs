@@ -60,6 +60,10 @@ pub enum CoreError {
     /// A lookup at NaN.
     #[error("lookup at NaN")]
     NanLookup,
+    /// A serialized random generator state that is not four `0x`-prefixed hexadecimal 64-bit
+    /// words, or is all zero.
+    #[error("a random generator state must be four 0x-prefixed 64-bit hex words, not all zero")]
+    InvalidRandomState,
     /// An input outside a model's domain, such as a latitude beyond ±90°.
     #[error("{what} is outside its domain: {value}")]
     Domain {
