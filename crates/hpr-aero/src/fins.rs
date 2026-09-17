@@ -35,6 +35,7 @@ use crate::error::{AeroError, check_dimension, check_mach};
 
 /// A fin's aerodynamic geometry.
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+#[non_exhaustive]
 pub struct FinGeometry {
     /// Span from the root (body surface) to the tip, m.
     pub span_m: f64,
@@ -114,6 +115,12 @@ impl FinGeometry {
             (0.0, 0.0, 0.0, 0.0, 0.0, 0.0);
         for band in heights.windows(2) {
             let (lo, hi) = (band[0], band[1]);
+            // Vertex heights a few rounding steps apart (a tip given in inches and in metres) make
+            // a band too thin for its Gauss points to land inside it. Its share of any integral is
+            // below 1e-12 of the fin's.
+            if hi - lo <= 1e-12 * span {
+                continue;
+            }
             let half = 0.5 * (hi - lo);
             let mid = 0.5 * (hi + lo);
             let mut mids = [0.0; 2];
@@ -175,10 +182,14 @@ impl FinGeometry {
     pub fn single_fin_slope(&self, reference_area_m2: f64, mach: f64) -> Result<f64, AeroError> {
         check_mach(mach)?;
         check_dimension("reference area", reference_area_m2, false)?;
-        let beta = (1.0 - mach * mach).sqrt();
+        Ok(self.slope_at((1.0 - mach * mach).sqrt(), reference_area_m2))
+    }
+
+    /// [`FinGeometry::single_fin_slope`] at the Prandtl–Glauert factor `beta`, unchecked.
+    pub(crate) fn slope_at(&self, beta: f64, reference_area_m2: f64) -> f64 {
         let s2 = self.span_m * self.span_m;
         let f = beta * s2 / (self.area_m2 * self.midchord_sweep_rad.cos());
-        Ok(TAU * s2 / reference_area_m2 / (1.0 + (1.0 + f * f).sqrt()))
+        TAU * s2 / reference_area_m2 / (1.0 + (1.0 + f * f).sqrt())
     }
 }
 
@@ -494,5 +505,61 @@ mod tests {
             "two fins across the flow",
         );
         close(roll_sum(2, 0.0, PI / 4.0), 1.0, 1e-15, "two fins at 45°");
+    }
+
+    /// A tip whose two vertices are a few rounding steps apart (3.5 in written in metres and
+    /// converted from inches) is still one tip: the sliver band between them is skipped.
+    #[test]
+    fn nearly_level_tip_vertices_are_one_tip() {
+        let tip = 3.5 * 0.0254;
+        assert_ne!(tip, 0.0889);
+        let nudged = FinPlanform::Freeform {
+            points_m: vec![[0.0, 0.0], [0.03, 0.0889], [0.06, tip], [0.1, 0.0]],
+        };
+        let level = FinPlanform::Freeform {
+            points_m: vec![[0.0, 0.0], [0.03, 0.0889], [0.06, 0.0889], [0.1, 0.0]],
+        };
+        let (a, b) = (
+            FinGeometry::from_planform(&nudged).unwrap(),
+            FinGeometry::from_planform(&level).unwrap(),
+        );
+        close(a.area_m2, b.area_m2, 1e-12, "area");
+        close(
+            a.centre_of_pressure_m(),
+            b.centre_of_pressure_m(),
+            1e-12,
+            "CP",
+        );
+        close(a.midchord_sweep_rad, b.midchord_sweep_rad, 1e-12, "sweep");
+    }
+
+    proptest::proptest! {
+        /// Four-point outlines, with the tip vertices nudged by up to three rounding steps: the
+        /// area and the area centroid's span match hpr-design's own quadrature of the planform.
+        #[test]
+        fn freeform_integrals_match_the_design_quadrature(
+            x1 in -0.05f64..0.15,
+            tip in 0.0f64..0.1,
+            y1 in 0.01f64..0.2,
+            y2_ratio in 0.5f64..1.5,
+            root in 0.02f64..0.3,
+            steps in -3i32..=3,
+            level in proptest::bool::ANY,
+        ) {
+            let mut y2 = if level { y1 } else { y1 * y2_ratio };
+            for _ in 0..steps.unsigned_abs() {
+                y2 = if steps > 0 { y2.next_up() } else { y2.next_down() };
+            }
+            let planform = FinPlanform::Freeform {
+                points_m: vec![[0.0, 0.0], [x1, y1], [x1 + tip, y2], [root, 0.0]],
+            };
+            proptest::prop_assume!(planform.validate().is_ok());
+            let reference = planform.geometry().unwrap();
+            let fin = FinGeometry::from_planform(&planform).unwrap();
+            proptest::prop_assert!((fin.area_m2 / reference.area_m2 - 1.0).abs() < 1e-9);
+            proptest::prop_assert!(
+                (fin.mac_span_m / reference.centroid_span_m - 1.0).abs() < 1e-9
+            );
+        }
     }
 }

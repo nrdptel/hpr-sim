@@ -30,12 +30,12 @@
       "notes": [
         "The nose CP is 0.466 L (Barrowman's fit for ogives); hpr integrates the tangent ogive's volume.",
         "The fin slope uses the mid-chord length 1.81 in; the geometry gives 1.803 in.",
-        "The boattail CP puts d1/d2 = 0.754 (aft over fore) into eq. 44, whose d1 is the fore diameter; fore over aft gives 0.655 in instead of 0.72 in."
+        "The boattail CP puts d1/d2 = 0.754 (aft over fore) into eq. 44, whose d1 is the fore diameter; fore over aft gives 0.655 in instead of 0.72 in aft of the boattail's front (-9% measured from there, -0.6% as a station)."
       ]
     },
     {
       "id": "aerobee-350",
-      "source": "naram8 pp. 47-50 (configuration drawing p. 47; nose and fins p. 48; X_F and K p. 49; totals p. 50)",
+      "source": "naram8 pp. 47-50 (configuration drawing: the tangent-ogive nose to station 110.0 on the unnumbered PDF page 51, fins on p. 47; nose and fins p. 48; X_F and K p. 49; totals p. 50)",
       "reference_diameter_in": 22.0,
       "station_offset_in": 0.0,
       "nose": { "shape": "tangent_ogive", "length_in": 110.0, "base_diameter_in": 22.0 },
@@ -52,7 +52,7 @@
       ],
       "notes": [
         "The calculation keeps only the ogive nose and the sustainer's four fins; the booster, its fins and the blunted tip are left out, as here.",
-        "The fin slope uses a mid-chord length of 39.7 in 'found by measuring enlarged fin drawing'; the geometry gives 40.50 in.",
+        "The fin slope uses a mid-chord length of 39.7 in, measured from an enlarged drawing; the geometry gives 40.50 in.",
         "p. 48 prints (1.509)^2 for (1.059)^2, and the total CP on p. 50 uses 425.45 in for the fins' 425.37 in.",
         "Wind-tunnel CP at Mach 0.6: 394 in (p. 50)."
       ]
@@ -99,7 +99,7 @@
         { "what": "fins", "cn_alpha": 31.0, "cp_in": 17.0, "six_fin_rule": true },
         { "what": "total", "cn_alpha": 35.4, "cp_in": 15.6, "six_fin_rule": true }
       ],
-      "six_fin_rule": "TIR-33 p. 25 scales six fins by N/2 with K_fb = 1 + 0.5 R/(S + R) and no fin-count factor. hpr uses the fin-count factor 0.913 from MIL-HDBK-762(MI) p. 5-24 with K = 1 + R/(S + R) (ADR-008). The slopes marked six_fin_rule are checked with TIR-33's rule substituted, and hpr's own values are checked to differ from them by exactly the ratio of the two rules.",
+      "six_fin_rule": "TIR-33 p. 25 scales six fins by N/2 with K_fb = 1 + 0.5 R/(S + R) and no fin-count factor. hpr uses the fin-count factor 0.913 from MIL-HDBK-762(MI) p. 5-24 with K = 1 + R/(S + R) (ADR-008). Values marked six_fin_rule are checked with TIR-33's rule substituted into the fin slope and the CP weighting; hpr's own values are reported by the test and must miss the print by about the rules' difference.",
       "notes": [
         "The nose is idealized as a cone 4.15 in long whose imaginary tip is 0.8 in ahead of the real tip (p. 24): station_offset_in is added to every printed station to place the parts, and subtracted from every computed CP.",
         "The fin drawing (p. 24, Fig. 16) gives a tip chord of 0.85 in; the calculation (p. 25) uses 0.8 in, which produced the printed results.",

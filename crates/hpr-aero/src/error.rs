@@ -26,6 +26,10 @@ pub enum AeroError {
     /// A part the models have no cited method for, such as tube fins.
     #[error("no aerodynamic model: {0}")]
     Unsupported(String),
+    /// A layout that doesn't hold together for the aerodynamic models, such as a fin set without
+    /// the radius of its body tube.
+    #[error("inconsistent layout: {0}")]
+    Layout(String),
     /// An error in one component, with its id.
     #[error("{id}: {source}")]
     InComponent {

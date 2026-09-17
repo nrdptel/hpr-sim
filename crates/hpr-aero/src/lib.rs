@@ -297,8 +297,9 @@ mod tests {
     /// 1970), component by component and in total. Inputs and printed results are in
     /// `validation/fixtures/aero/barrowman-worked-examples.json`, with page numbers and notes.
     ///
-    /// The Recruiter's six-fin slopes follow TIR-33's own six-fin rule; they are checked with
-    /// that rule substituted, and hpr's values are pinned to differ by exactly the rules' ratio.
+    /// The Recruiter's six-fin slopes follow TIR-33's own six-fin rule. They are checked with that
+    /// rule substituted into the slope and the CP weighting; hpr's own values are reported, and
+    /// must miss the print by about the rules' difference, which exceeds the tolerance.
     #[test]
     fn barrowman_worked_examples() {
         let fixture: Fixture = serde_json::from_str(include_str!(
@@ -309,6 +310,9 @@ mod tests {
         assert_eq!(tolerance, 0.01);
         let flow = Flow::axial(0.0);
         let mut worst: f64 = 0.0;
+        assert_eq!(fixture.examples.len(), 5);
+        let printed_values: usize = fixture.examples.iter().map(|e| e.printed.len()).sum();
+        assert_eq!(printed_values, 19);
         for example in &fixture.examples {
             let (whole, first) = example_rockets(example);
             let model = AeroModel::new(&whole.layout().unwrap()).unwrap();
@@ -330,7 +334,7 @@ mod tests {
                     }
                 };
                 let mut slope = force.slope_per_rad;
-                let cp_in = force.cp_station_m.unwrap() / INCH - example.station_offset_in;
+                let mut cp_m = force.cp_station_m.unwrap();
                 if printed.six_fin_rule {
                     let set = six_fin.expect("a six-fin set");
                     let set_slope = set
@@ -340,8 +344,10 @@ mod tests {
                         * roll_sum(set.count, set.base_angle_rad, 0.0)
                         * set.count_factor
                         * set.interference;
-                    let tir33_slope = slope + set_slope * (six_fin_rule_ratio(set) - 1.0);
-                    // hpr's own slope differs from TIR-33's by the rules alone.
+                    let extra = set_slope * (six_fin_rule_ratio(set) - 1.0);
+                    let tir33_slope = slope + extra;
+                    // The two six-fin rules differ by more than the tolerance, and hpr's own slope
+                    // misses the print by about that difference.
                     let rule_gap = slope / tir33_slope - 1.0;
                     let printed_gap = slope / printed.cn_alpha - 1.0;
                     assert!(
@@ -358,8 +364,16 @@ mod tests {
                         100.0 * printed_gap,
                         100.0 * rule_gap
                     );
+                    eprintln!(
+                        "{} {}: with hpr's rule, CP {:.4} in",
+                        example.id,
+                        printed.what,
+                        cp_m / INCH - example.station_offset_in
+                    );
+                    cp_m = (cp_m * slope + extra * set.cp_station_m) / tir33_slope;
                     slope = tir33_slope;
                 }
+                let cp_in = cp_m / INCH - example.station_offset_in;
                 let slope_err = slope / printed.cn_alpha - 1.0;
                 let cp_err = cp_in / printed.cp_in - 1.0;
                 eprintln!(

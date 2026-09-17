@@ -7,15 +7,19 @@
 //!
 //! - bodies of revolution, `(2/A_ref)ΔA · sin α/α` at `X_B`, plus body lift
 //!   `K (A_plan/A_ref) sin² α / α` at the planform centroid ([`crate::body`]);
+//! - a step in radius where one body component meets the next, `(2/A_ref)ΔA · sin α/α` at the
+//!   joint: Barrowman 1966 eq. 10 applied to the whole body counts every change of cross-section,
+//!   and a step is a transition of zero length. It is part of the aft component's terms;
 //! - fin sets, `(C_Nα)₁ Σ sin² Λ_k · f_N · K_T(B)` at the quarter mean aerodynamic chord
 //!   ([`crate::fins`]).
 //!
 //! Launch lugs and rail buttons add drag only, and internal parts sit inside the body. Tube fins
-//! have no cited normal-force method yet and are refused. Stations are metres aft of the nose tip.
+//! have no cited normal-force method yet and are refused, as is any part kind this model doesn't
+//! know. Stations are metres aft of the nose tip.
 
 use std::f64::consts::PI;
 
-use hpr_design::{Layout, Part, PlacedComponent, Profile, Wall, revolve};
+use hpr_design::{Layout, Part, PlacedComponent};
 use serde::{Deserialize, Serialize};
 
 use crate::body::{BODY_LIFT_K, BodyGeometry, sinc};
@@ -24,6 +28,8 @@ use crate::fins::{FinGeometry, fin_count_factor, interference_factor, roll_sum};
 
 /// The air-relative flow at one instant.
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+#[non_exhaustive]
 pub struct Flow {
     /// Mach number, in `[0, 1)` for the subsonic models.
     pub mach: f64,
@@ -36,13 +42,19 @@ pub struct Flow {
 }
 
 impl Flow {
-    /// Straight into the wind at `mach`.
-    pub fn axial(mach: f64) -> Self {
+    /// A flow at `mach`, angle of attack `alpha_rad` and lateral-flow roll `roll_rad`. Checked
+    /// when used ([`Flow::validate`]).
+    pub fn new(mach: f64, alpha_rad: f64, roll_rad: f64) -> Self {
         Self {
             mach,
-            alpha_rad: 0.0,
-            roll_rad: 0.0,
+            alpha_rad,
+            roll_rad,
         }
+    }
+
+    /// Straight into the wind at `mach`.
+    pub fn axial(mach: f64) -> Self {
+        Self::new(mach, 0.0, 0.0)
     }
 
     /// Checks the Mach number and the angles.
@@ -71,27 +83,34 @@ impl Flow {
 
 /// The normal force of a whole rocket, or of one component, at a flow condition.
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+#[non_exhaustive]
 pub struct NormalForce {
     /// Normal-force coefficient `C_N` on the reference area, in the plane of the flow.
     pub coefficient: f64,
     /// `C_N/α` per radian; at `α = 0`, the slope `∂C_N/∂α`.
     pub slope_per_rad: f64,
+    /// `Σ C_N,i X_i`, m: the normal force's moment about the nose tip per unit dynamic pressure and
+    /// reference area, defined even when the net force is zero.
+    pub moment_m: f64,
     /// Centre of pressure, m aft of the nose tip; `None` when the slope is zero.
     pub cp_station_m: Option<f64>,
 }
 
 impl NormalForce {
-    fn new(slope: f64, moment: f64, alpha_rad: f64) -> Self {
+    /// From a slope and its moment slope `Σ C_Nα,i X_i` (m per radian) at `alpha_rad`.
+    fn new(slope: f64, moment_slope: f64, alpha_rad: f64) -> Self {
         Self {
             coefficient: slope * alpha_rad,
             slope_per_rad: slope,
-            cp_station_m: (slope != 0.0).then(|| moment / slope),
+            moment_m: moment_slope * alpha_rad,
+            cp_station_m: (slope != 0.0).then(|| moment_slope / slope),
         }
     }
 }
 
 /// One component's share of the normal force.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[non_exhaustive]
 pub struct ComponentNormalForce {
     /// The component's id.
     pub id: String,
@@ -100,7 +119,10 @@ pub struct ComponentNormalForce {
 }
 
 /// A body component's precomputed terms.
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+///
+/// Serialize-only, like [`AeroModel`]: the terms are computed by [`AeroModel::new`], not read.
+#[derive(Debug, Clone, PartialEq, Serialize)]
+#[non_exhaustive]
 pub struct BodyAero {
     /// The component's id.
     pub id: String,
@@ -108,9 +130,12 @@ pub struct BodyAero {
     pub fore_station_m: f64,
     /// Its geometry.
     pub geometry: BodyGeometry,
-    /// Potential-flow slope at `α → 0`, per radian.
+    /// The step in cross-section area from the previous body component's aft end to this one's
+    /// fore end, m² (zero for the first body component).
+    pub step_area_m2: f64,
+    /// Potential-flow slope at `α → 0`, per radian, with the step.
     pub slope_per_rad: f64,
-    /// Potential-flow moment slope about the nose tip, m per radian.
+    /// Potential-flow moment slope about the nose tip, m per radian, with the step.
     pub moment_slope_m: f64,
     /// Body lift `K A_plan / A_ref`: `C_N = lift_factor · sin² α`.
     pub lift_factor: f64,
@@ -119,7 +144,10 @@ pub struct BodyAero {
 }
 
 /// A fin set's precomputed terms.
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+///
+/// Serialize-only, like [`AeroModel`].
+#[derive(Debug, Clone, PartialEq, Serialize)]
+#[non_exhaustive]
 pub struct FinSetAero {
     /// The component's id.
     pub id: String,
@@ -137,18 +165,11 @@ pub struct FinSetAero {
     pub cp_station_m: f64,
 }
 
-impl FinSetAero {
-    /// The set's slope per radian at `mach` and `roll_rad`.
-    fn slope(&self, reference_area_m2: f64, mach: f64, roll_rad: f64) -> Result<f64, AeroError> {
-        Ok(self.geometry.single_fin_slope(reference_area_m2, mach)?
-            * roll_sum(self.count, self.base_angle_rad, roll_rad)
-            * self.count_factor
-            * self.interference)
-    }
-}
-
 /// A rocket's normal-force model.
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+///
+/// Serialize-only, for inspection: a model is built from a [`Layout`] by [`AeroModel::new`], which
+/// checks what it builds.
+#[derive(Debug, Clone, PartialEq, Serialize)]
 pub struct AeroModel {
     reference_area_m2: f64,
     bodies: Vec<BodyAero>,
@@ -160,50 +181,51 @@ impl AeroModel {
     ///
     /// # Errors
     ///
-    /// [`AeroError::InComponent`] naming the component, around:
-    /// - [`AeroError::Unsupported`] for tube fins;
-    /// - [`AeroError::Domain`] for a fin set of more than eight fins or without a body radius;
-    /// - design errors from a profile, a planform or a volume integral.
-    ///
-    /// [`AeroError::Domain`] for a non-positive reference diameter.
+    /// - [`AeroError::Domain`] for a non-positive reference diameter.
+    /// - [`AeroError::InComponent`] naming the component, around:
+    ///   - [`AeroError::Unsupported`] for tube fins or a part kind this model doesn't know;
+    ///   - [`AeroError::Domain`] for a fin set of more than eight fins, or a non-finite station;
+    ///   - [`AeroError::Layout`] for a fin set without the radius of its body tube;
+    ///   - design errors from a profile, a planform or a volume integral.
     pub fn new(layout: &Layout) -> Result<Self, AeroError> {
         check_dimension("reference diameter", layout.reference_diameter_m, false)?;
         let reference_area_m2 = layout.reference_area_m2();
         let mut bodies = Vec::new();
         let mut fin_sets = Vec::new();
+        let mut previous_aft_area: Option<f64> = None;
         for component in &layout.components {
             let in_component = |e: AeroError| AeroError::InComponent {
                 id: component.id.clone(),
                 source: Box::new(e),
             };
-            match &component.part {
-                Part::NoseCone(nose) => {
-                    let geometry = nose
+            if !component.fore_station_m.is_finite() {
+                return Err(in_component(AeroError::Domain {
+                    what: "component station",
+                    value: component.fore_station_m,
+                }));
+            }
+            let body = match &component.part {
+                Part::NoseCone(nose) => Some(
+                    nose.profile()
+                        .map_err(AeroError::from)
+                        .and_then(|p| BodyGeometry::from_profile(&p)),
+                ),
+                Part::Transition(transition) => Some(
+                    transition
                         .profile()
                         .map_err(AeroError::from)
-                        .and_then(|p| revolved(&p))
-                        .map_err(in_component)?;
-                    bodies.push(body_terms(component, geometry, reference_area_m2));
-                }
-                Part::Transition(transition) => {
-                    let geometry = transition
-                        .profile()
-                        .map_err(AeroError::from)
-                        .and_then(|p| revolved(&p))
-                        .map_err(in_component)?;
-                    bodies.push(body_terms(component, geometry, reference_area_m2));
-                }
+                        .and_then(|p| BodyGeometry::from_profile(&p)),
+                ),
                 Part::BodyTube(tube) => {
-                    let geometry = BodyGeometry::cylinder(tube.length_m, tube.outer_radius_m)
-                        .map_err(in_component)?;
-                    bodies.push(body_terms(component, geometry, reference_area_m2));
+                    Some(BodyGeometry::cylinder(tube.length_m, tube.outer_radius_m))
                 }
                 Part::FinSet(set) => {
                     let terms = (|| {
                         let geometry = FinGeometry::from_planform(&set.planform)?;
-                        let body_radius = component.body_radius_m.ok_or(AeroError::Domain {
-                            what: "body radius at the fins",
-                            value: f64::NAN,
+                        let body_radius = component.body_radius_m.ok_or_else(|| {
+                            AeroError::Layout(
+                                "a fin set needs the radius of the body tube it is on".to_owned(),
+                            )
                         })?;
                         Ok(FinSetAero {
                             id: component.id.clone(),
@@ -218,14 +240,34 @@ impl AeroModel {
                     })()
                     .map_err(in_component)?;
                     fin_sets.push(terms);
+                    None
                 }
                 Part::TubeFinSet(_) => {
                     return Err(in_component(AeroError::Unsupported(
                         "tube fins (no cited normal-force method yet)".to_owned(),
                     )));
                 }
-                // Lugs and rail buttons: drag only. Everything else is inside the body.
-                _ => {}
+                // Drag only (M1.5b).
+                Part::LaunchLug(_) | Part::RailButton(_) => None,
+                // Inside the body.
+                Part::InnerTube(_)
+                | Part::CenteringRing(_)
+                | Part::MassComponent(_)
+                | Part::Parachute(_)
+                | Part::Streamer(_)
+                | Part::ShockCord(_) => None,
+                other => {
+                    return Err(in_component(AeroError::Unsupported(format!(
+                        "a {} part",
+                        other.kind_name()
+                    ))));
+                }
+            };
+            if let Some(geometry) = body {
+                let geometry = geometry.map_err(in_component)?;
+                let step = previous_aft_area.map_or(0.0, |aft| geometry.fore_area_m2 - aft);
+                previous_aft_area = Some(geometry.aft_area_m2);
+                bodies.push(body_terms(component, geometry, step, reference_area_m2));
             }
         }
         Ok(Self {
@@ -250,6 +292,31 @@ impl AeroModel {
         &self.fin_sets
     }
 
+    /// Each component's id, slope per radian and moment slope about the nose tip (m per radian) at
+    /// a validated `flow`: bodies first, then fin sets, in layout order.
+    fn terms<'a>(&'a self, flow: &Flow) -> impl Iterator<Item = (&'a str, f64, f64)> + 'a {
+        let (potential, lift) = alpha_factors(flow.alpha_rad);
+        let beta = (1.0 - flow.mach * flow.mach).sqrt();
+        let roll = flow.roll_rad;
+        let a_ref = self.reference_area_m2;
+        let bodies = self.bodies.iter().map(move |body| {
+            let lift = body.lift_factor * lift;
+            (
+                body.id.as_str(),
+                body.slope_per_rad * potential + lift,
+                body.moment_slope_m * potential + lift * body.lift_station_m,
+            )
+        });
+        let fins = self.fin_sets.iter().map(move |set| {
+            let slope = set.geometry.slope_at(beta, a_ref)
+                * roll_sum(set.count, set.base_angle_rad, roll)
+                * set.count_factor
+                * set.interference;
+            (set.id.as_str(), slope, slope * set.cp_station_m)
+        });
+        bodies.chain(fins)
+    }
+
     /// The whole rocket's normal force at `flow`.
     ///
     /// # Errors
@@ -257,47 +324,29 @@ impl AeroModel {
     /// As [`Flow::validate`].
     pub fn normal_force(&self, flow: &Flow) -> Result<NormalForce, AeroError> {
         flow.validate()?;
-        let (potential, lift) = alpha_factors(flow.alpha_rad);
-        let (mut slope, mut moment) = (0.0, 0.0);
-        for body in &self.bodies {
-            slope += body.slope_per_rad * potential + body.lift_factor * lift;
-            moment +=
-                body.moment_slope_m * potential + body.lift_factor * lift * body.lift_station_m;
-        }
-        for set in &self.fin_sets {
-            let s = set.slope(self.reference_area_m2, flow.mach, flow.roll_rad)?;
-            slope += s;
-            moment += s * set.cp_station_m;
-        }
+        let (slope, moment) = self
+            .terms(flow)
+            .fold((0.0, 0.0), |(s, m), (_, slope, moment)| {
+                (s + slope, m + moment)
+            });
         Ok(NormalForce::new(slope, moment, flow.alpha_rad))
     }
 
-    /// Each component's normal force at `flow`, bodies first, then fin sets, in layout order.
+    /// Each component's normal force at `flow`, bodies first, then fin sets, in layout order. A
+    /// step in radius is part of the component aft of it.
     ///
     /// # Errors
     ///
     /// As [`Flow::validate`].
     pub fn components(&self, flow: &Flow) -> Result<Vec<ComponentNormalForce>, AeroError> {
         flow.validate()?;
-        let (potential, lift) = alpha_factors(flow.alpha_rad);
-        let mut out = Vec::with_capacity(self.bodies.len() + self.fin_sets.len());
-        for body in &self.bodies {
-            let slope = body.slope_per_rad * potential + body.lift_factor * lift;
-            let moment =
-                body.moment_slope_m * potential + body.lift_factor * lift * body.lift_station_m;
-            out.push(ComponentNormalForce {
-                id: body.id.clone(),
+        Ok(self
+            .terms(flow)
+            .map(|(id, slope, moment)| ComponentNormalForce {
+                id: id.to_owned(),
                 normal_force: NormalForce::new(slope, moment, flow.alpha_rad),
-            });
-        }
-        for set in &self.fin_sets {
-            let slope = set.slope(self.reference_area_m2, flow.mach, flow.roll_rad)?;
-            out.push(ComponentNormalForce {
-                id: set.id.clone(),
-                normal_force: NormalForce::new(slope, slope * set.cp_station_m, flow.alpha_rad),
-            });
-        }
-        Ok(out)
+            })
+            .collect())
     }
 }
 
@@ -308,32 +357,24 @@ fn alpha_factors(alpha_rad: f64) -> (f64, f64) {
     (s, alpha_rad.sin() * s)
 }
 
-/// A nose cone's or transition's geometry from its outer profile.
-fn revolved(profile: &Profile) -> Result<BodyGeometry, AeroError> {
-    let g = revolve(profile, Wall::Filled {})?;
-    let area = |r: f64| PI * r * r;
-    let geometry = BodyGeometry {
-        length_m: profile.length_m(),
-        fore_area_m2: area(profile.fore_radius_m()),
-        aft_area_m2: area(profile.aft_radius_m()),
-        volume_m3: g.volume_m3,
-        planform_area_m2: g.planform_area_m2,
-        planform_centroid_m: g.planform_centroid_m,
-    };
-    geometry.validate()?;
-    Ok(geometry)
-}
-
-fn body_terms(component: &PlacedComponent, geometry: BodyGeometry, a_ref: f64) -> BodyAero {
+fn body_terms(
+    component: &PlacedComponent,
+    geometry: BodyGeometry,
+    step_area_m2: f64,
+    a_ref: f64,
+) -> BodyAero {
+    let station = component.fore_station_m;
+    let step_slope = 2.0 * step_area_m2 / a_ref;
     let slope = geometry.normal_force_slope(a_ref);
     BodyAero {
         id: component.id.clone(),
-        fore_station_m: component.fore_station_m,
+        fore_station_m: station,
         geometry,
-        slope_per_rad: slope,
-        moment_slope_m: slope * component.fore_station_m + geometry.moment_slope_m(a_ref),
+        step_area_m2,
+        slope_per_rad: slope + step_slope,
+        moment_slope_m: (slope + step_slope) * station + geometry.moment_slope_m(a_ref),
         lift_factor: BODY_LIFT_K * geometry.planform_area_m2 / a_ref,
-        lift_station_m: component.fore_station_m + geometry.planform_centroid_m,
+        lift_station_m: station + geometry.planform_centroid_m,
     }
 }
 
@@ -366,11 +407,7 @@ mod tests {
     }
 
     fn flow(mach: f64, alpha_rad: f64, roll_rad: f64) -> Flow {
-        Flow {
-            mach,
-            alpha_rad,
-            roll_rad,
-        }
+        Flow::new(mach, alpha_rad, roll_rad)
     }
 
     /// A cone on a cylinder, broadside and at small angles: the potential term scales with
@@ -592,6 +629,27 @@ mod tests {
         /// alone and scales the CP by `k`. A custom reference diameter scales the slope by
         /// `(d/d′)²` and leaves the CP alone.
         #[test]
+        fn components_sum_to_the_total(
+            count in 1u32..=8,
+            mach in 0.0f64..0.99,
+            alpha in 0.0f64..PI,
+            roll in -4.0f64..4.0,
+        ) {
+            let m = model(&finned_rocket(count));
+            let f = flow(mach, alpha, roll);
+            let total = m.normal_force(&f).unwrap();
+            let parts = m.components(&f).unwrap();
+            let (c, moment) = parts.iter().fold((0.0, 0.0), |(c, x), p| {
+                (c + p.normal_force.coefficient, x + p.normal_force.moment_m)
+            });
+            let tol = 1e-12 * (1.0 + total.coefficient.abs());
+            prop_assert!((c - total.coefficient).abs() <= tol);
+            prop_assert!((moment - total.moment_m).abs() <= 1e-12 * (1.0 + total.moment_m.abs()));
+            let slope: f64 = parts.iter().map(|p| p.normal_force.slope_per_rad).sum();
+            prop_assert!((slope - total.slope_per_rad).abs() <= 1e-12 * total.slope_per_rad.abs());
+        }
+
+        #[test]
         fn scaling_leaves_slopes_and_scales_the_cp(
             k in 0.1f64..10.0,
             nose_fineness in 1.5f64..8.0,
@@ -638,5 +696,113 @@ mod tests {
             prop_assert!(rel(custom.slope_per_rad, factor * base.slope_per_rad) < 1e-12);
             prop_assert!(rel(custom.cp_station_m.unwrap(), base_cp) < 1e-12);
         }
+    }
+
+    /// A step in radius where two body components meet counts as a zero-length transition at the
+    /// joint, so the body's total slope is Barrowman 1966 eq. 10 over the whole body: `2` for any
+    /// pointed body however its radii step.
+    #[test]
+    fn radius_steps_count_at_the_joint() {
+        let rocket = one_stage(
+            vec![
+                component("nose", nose(NoseShape::Conical {}, 0.2, 0.027), None),
+                component("tube", body_part(0.5, 0.029, 0.029), None),
+                component("tail", body_part(0.3, 0.025, 0.025), None),
+            ],
+            ReferenceDiameter::Maximum {},
+        );
+        let m = model(&rocket);
+        let a_ref = PI * 0.029 * 0.029;
+        let total = m.normal_force(&Flow::axial(0.3)).unwrap();
+        close(
+            total.slope_per_rad,
+            2.0 * PI * 0.025 * 0.025 / a_ref,
+            1e-14,
+            "eq. 10",
+        );
+        let parts = m.components(&Flow::axial(0.3)).unwrap();
+        let tube = parts[1].normal_force;
+        close(
+            tube.slope_per_rad,
+            2.0 * PI * (0.029f64.powi(2) - 0.027f64.powi(2)) / a_ref,
+            1e-14,
+            "step up",
+        );
+        close(
+            tube.cp_station_m.unwrap(),
+            0.2,
+            1e-14,
+            "step up at the joint",
+        );
+        let tail = parts[2].normal_force;
+        assert!(tail.slope_per_rad < 0.0);
+        close(
+            tail.cp_station_m.unwrap(),
+            0.7,
+            1e-14,
+            "step down at the joint",
+        );
+        assert_eq!(m.bodies()[0].step_area_m2, 0.0);
+    }
+
+    /// A freeform fin set through the model equals the same trapezoid given as a trapezoid.
+    #[test]
+    fn freeform_fins_through_the_model() {
+        let trapezoid = finned_rocket(3);
+        let mut freeform = trapezoid.clone();
+        if let Part::FinSet(set) = &mut freeform.stages[0].components[3].children[0].part {
+            set.planform = FinPlanform::Freeform {
+                points_m: vec![[0.0, 0.0], [0.07, 0.06], [0.12, 0.06], [0.12, 0.0]],
+            };
+        }
+        let (a, b) = (model(&trapezoid), model(&freeform));
+        let f = flow(0.7, 0.1, 0.0);
+        let (fa, fb) = (a.normal_force(&f).unwrap(), b.normal_force(&f).unwrap());
+        close(fb.coefficient, fa.coefficient, 1e-13, "C_N");
+        close(
+            fb.cp_station_m.unwrap(),
+            fa.cp_station_m.unwrap(),
+            1e-13,
+            "CP",
+        );
+    }
+
+    /// `Flow` and `NormalForce` round-trip through JSON, and a misspelt flow field is refused.
+    #[test]
+    fn flow_and_results_round_trip() {
+        let f = flow(0.3, 0.1, -0.2);
+        let back: Flow = serde_json::from_str(&serde_json::to_string(&f).unwrap()).unwrap();
+        assert_eq!(back, f);
+        assert!(
+            serde_json::from_str::<Flow>(
+                r#"{"mach":0.3,"alpha_rad":0.1,"roll_rad":0,"aoa_deg":5}"#
+            )
+            .is_err()
+        );
+        let n = model(&finned_rocket(4)).normal_force(&f).unwrap();
+        let back: NormalForce = serde_json::from_str(&serde_json::to_string(&n).unwrap()).unwrap();
+        assert_eq!(back, n);
+    }
+
+    /// Layouts that don't hold together: fins without a body radius, a non-finite station.
+    #[test]
+    fn inconsistent_layouts_are_refused() {
+        let layout = finned_rocket(4).layout().unwrap();
+        let (fins, _) = layout.find("fins").unwrap();
+        let mut no_radius = layout.clone();
+        no_radius.components[fins].body_radius_m = None;
+        let err = AeroModel::new(&no_radius).unwrap_err();
+        assert!(
+            matches!(&err, AeroError::InComponent { id, source } if id == "fins"
+                && matches!(**source, AeroError::Layout(_))),
+            "{err}"
+        );
+        assert_eq!(err, err.clone());
+        let mut nan = layout;
+        nan.components[0].fore_station_m = f64::NAN;
+        assert!(matches!(
+            AeroModel::new(&nan),
+            Err(AeroError::InComponent { .. })
+        ));
     }
 }

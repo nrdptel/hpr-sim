@@ -610,17 +610,28 @@ had no fin-count correction (L8), and swapped elliptical fins for an equal-area 
   method is found. Lugs and rail buttons add no normal force. Cant is ignored until roll (M1.8).
   The model is a small-angle model; `α` is accepted over `[0, π]` so the flight engine can decide
   what to do near apogee.
+- **Six fins: MIL-HDBK-762 over TIR-33.** TIR-33 handles six fins with `K = 1 + 0.5 R/(S + R)` and
+  no fin-count factor, without a derivation and for six fins only. MIL-HDBK-762 gives six and eight
+  fins from slender-body theory, the technical documentation interpolates five and seven, and
+  OpenRocket (the M2.2 oracle) uses the same factors, so a comparison there isolates other
+  differences. The two rules agree within about ±5% over common span-to-radius ratios.
+- **Radius steps.** Where one body component's aft radius differs from the next one's fore radius,
+  the step adds `(2/A_ref)ΔA` at the joint (a zero-length transition), so the body's total slope is
+  Barrowman 1966 eq. 10 over the whole body. It is reported as part of the aft component. A body that
+  starts blunt (no nose cone) gets no term for its front face, as eq. 10 gives.
 - **Validation.** Barrowman's five published worked examples (NARAM-8's Testbed II and Aerobee 350;
-  TIR-33's Javelin, Recruiter and Arcon-Hi), every printed component and total, within 1%. The
-  Recruiter's six-fin slopes follow TIR-33's own six-fin rule (`K = 1 + 0.5 R/(S + R)`, no
-  fin-count factor). They are checked with that rule substituted. hpr's values sit +3.4% (fins)
-  and +2.9% (total) from the print, and the difference between the two rules accounts for +3.2% and
-  +2.8% of that. The measured gap is reported by the test and in `docs/physics/aero.md`.
+  TIR-33's Javelin, Recruiter and Arcon-Hi), every printed component and total, within 1%. Four
+  pass on hpr's own model. The Recruiter's six-fin values pass with TIR-33's rule substituted in
+  the slope and the CP weighting; with hpr's rule the slopes sit +3.4% (fins) and +2.9% (total)
+  from the print, of which the difference between the rules is +3.2% and +2.8%. The test reports
+  both.
 
 **Consequences.**
 
 - M1.6 builds an `AeroModel` once per design and calls `normal_force` (about 10 ns) per
-  derivative evaluation. It decides how to treat large angles of attack.
+  derivative evaluation, using `moment_m` for the moment (defined even with no net force). It
+  decides how to treat large angles of attack.
+- Unknown part kinds are refused, so a new `Part` variant needs an aerodynamic decision.
 - M1.8 adds the transonic and supersonic slopes, the fin CP shift, roll forcing and damping.
 - M2.2 compares CNα and CP against OpenRocket, which uses the same fin-count factors.
 

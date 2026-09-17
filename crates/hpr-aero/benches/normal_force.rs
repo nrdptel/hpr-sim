@@ -30,11 +30,7 @@ fn benches(c: &mut Criterion) {
     c.bench_function("AeroModel::new, Calisto", |b| {
         b.iter(|| AeroModel::new(black_box(&calisto)).unwrap())
     });
-    let flow = Flow {
-        mach: 0.6,
-        alpha_rad: 0.05,
-        roll_rad: 0.3,
-    };
+    let flow = Flow::new(0.6, 0.05, 0.3);
     let model = AeroModel::new(&two_stage).unwrap();
     c.bench_function("AeroModel::normal_force, synthetic two-stage", |b| {
         b.iter(|| black_box(&model).normal_force(black_box(&flow)).unwrap())

@@ -18,6 +18,7 @@
 
 use std::f64::consts::PI;
 
+use hpr_design::{Profile, Wall, revolve};
 use serde::{Deserialize, Serialize};
 
 use crate::error::{AeroError, check_dimension};
@@ -29,6 +30,7 @@ pub const BODY_LIFT_K: f64 = 1.1;
 /// The aerodynamic geometry of one body component, in its own frame (fore end at 0, stations
 /// positive aft).
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+#[non_exhaustive]
 pub struct BodyGeometry {
     /// Length, m.
     pub length_m: f64,
@@ -62,6 +64,28 @@ impl BodyGeometry {
             planform_area_m2: 2.0 * radius_m * length_m,
             planform_centroid_m: 0.5 * length_m,
         })
+    }
+
+    /// A nose cone's or transition's geometry from its outer profile, filled
+    /// ([`hpr_design::revolve`]).
+    ///
+    /// # Errors
+    ///
+    /// Numerical errors from the volume integral, and [`AeroError::Domain`] if the result is out
+    /// of range.
+    pub fn from_profile(profile: &Profile) -> Result<Self, AeroError> {
+        let g = revolve(profile, Wall::Filled {})?;
+        let area = |r: f64| PI * r * r;
+        let geometry = Self {
+            length_m: profile.length_m(),
+            fore_area_m2: area(profile.fore_radius_m()),
+            aft_area_m2: area(profile.aft_radius_m()),
+            volume_m3: g.volume_m3,
+            planform_area_m2: g.planform_area_m2,
+            planform_centroid_m: g.planform_centroid_m,
+        };
+        geometry.validate()?;
+        Ok(geometry)
     }
 
     /// Checks that every field is finite and in range.
@@ -125,7 +149,7 @@ pub(crate) fn sinc(x: f64) -> f64 {
 
 #[cfg(test)]
 mod tests {
-    use hpr_design::{NoseShape, Profile, Wall, revolve};
+    use hpr_design::NoseShape;
 
     use super::*;
 
@@ -138,16 +162,7 @@ mod tests {
     }
 
     fn from_profile(profile: &Profile) -> BodyGeometry {
-        let g = revolve(profile, Wall::Filled {}).unwrap();
-        let area = |r: f64| PI * r * r;
-        BodyGeometry {
-            length_m: profile.length_m(),
-            fore_area_m2: area(profile.fore_radius_m()),
-            aft_area_m2: area(profile.aft_radius_m()),
-            volume_m3: g.volume_m3,
-            planform_area_m2: g.planform_area_m2,
-            planform_centroid_m: g.planform_centroid_m,
-        }
+        BodyGeometry::from_profile(profile).unwrap()
     }
 
     /// Conical frustum CP from Barrowman 1966 eq. 44 (with the p. 20 correction), `d₁` fore:

@@ -28,7 +28,8 @@ Sources:
 - `C_N` lies in the plane of the flow. The slope is `C_Nα = C_N/α` for `α > 0` and `∂C_N/∂α` at
   `α = 0` ([N09] eq. 3.8). The centre of pressure is the moment sum
   `X = Σ C_Nα,i X_i / Σ C_Nα,i` ([B66] p. 38; [N09] eq. 3.29). A rocket with no net slope has no CP
-  (`None`).
+  (`None`), but `NormalForce::moment_m = Σ C_N,i X_i` (the moment about the nose tip per unit
+  dynamic pressure and reference area) is always defined.
 
 ## Bodies of revolution
 
@@ -43,6 +44,11 @@ Nose cones, transitions and body tubes, from the outer profile (shoulders are in
 
 - A nose with a sharp tip has slope 2. A cylinder has 0 and no CP. A boattail has a negative
   slope, and the frustum CP formula [B66] eq. 44 still holds ([B66] p. 21).
+- **Radius steps.** [B66] eq. 10 over the whole body counts every change of cross-section, so a
+  step where one body component meets the next adds `(2/A_ref)ΔA` at the joint, the limit of a
+  transition whose length goes to zero. It is reported with the aft component
+  (`BodyAero::step_area_m2`). A blunt front face gets no term, as eq. 10 gives. The design checks
+  warn about steps (`radius_step`); the real flow separates there, which M1.5b's drag must count.
 - `V` and the planform come from integrating the real profile (`hpr_design::revolve`), so ogive,
   power, parabolic and Haack transitions get their own CP (Loft lesson L9). [B66] fits tangent
   ogives with 0.466 L instead: 0.2–0.9% different at fineness 2.8–5.
@@ -86,7 +92,8 @@ Nose cones, transitions and body tubes, from the outer profile (shoulders are in
   - The side force of one- and two-fin sets: [N09] keeps only the in-plane component.
   - Interference between fin sets at the same station.
   - Cant, which matters for roll (M1.8).
-  - Tube fins, which are refused until a cited method exists.
+  - Tube fins, which are refused until a cited method exists (issue #15). Any part kind the model
+    doesn't know is refused too.
   - Launch lugs and rail buttons add drag only (M1.5b).
 
 ## Validity and open questions
@@ -107,17 +114,21 @@ Nose cones, transitions and body tubes, from the outer profile (shoulders are in
   | Testbed II [B66] pp. 41–45 | 21.397 / 21.44 (−0.20%) | 16.703 / 16.7 (+0.02%) |
   | Aerobee 350 [B66] pp. 47–50 | 21.449 / 21.5 (−0.24%) | 390.48 / 391 (−0.13%) |
   | Javelin [TIR] pp. 21–22 | 35.927 / 35.9 (+0.07%) | 11.286 / 11.3 (−0.13%) |
-  | Recruiter [TIR] pp. 23–25, TIR-33's six-fin rule | 35.415 / 35.4 (+0.04%) | 15.665 / 15.6 (+0.42%) |
+  | Recruiter [TIR] pp. 23–25, TIR-33's six-fin rule substituted | 35.415 / 35.4 (+0.04%) | 15.627 / 15.6 (+0.17%) |
+  | Recruiter with hpr's six-fin rule (reported, not checked at 1%) | 36.416 / 35.4 (+2.87%) | 15.665 / 15.6 (+0.42%) |
   | Arcon-Hi, two stages [TIR] pp. 27–29 | 96.163 / 96.2 (−0.04%) | 20.803 / 20.8 (+0.02%) |
   | Arcon-Hi, sustainer alone | 32.257 / 32.2 (+0.18%) | 17.845 / 17.9 (−0.31%) |
 
-  - The worst of the 38 printed values (19 slopes, 19 CPs) is the Testbed II nose CP, −0.77%. It is [B66]'s 0.466 L
-    fit against the integrated tangent ogive.
+  - The worst of the 38 printed values (19 slopes, 19 CPs) is the Testbed II nose CP, −0.77%: [B66]'s
+    0.466 L fit against the integrated tangent ogive.
+  - CPs are compared as stations from the nose tip. Measured from each part's own front, two
+    printed values miss 1%: the Testbed II boattail (0.655 in against 0.72 in, −9%, Barrowman's
+    diameter ratio slip) and the Javelin fins (0.653 in against 0.66 in, −1.1%, rounding).
   - **Recruiter's six fins.** TIR-33 scales six fins by `N/2` with `K = 1 + 0.5 R/(S + R)` and no
     fin-count factor. With hpr's own rule (0.913 and the full `K`), the fins are +3.42% and the
     total +2.87% from the print. The difference between the two rules accounts for +3.22% and
-    +2.83% of that. The test checks the TIR-33 rule within 1%, and checks that hpr's gap is that
-    difference to within 1%.
+    +2.83% of that. The test checks the TIR-33 rule within 1% (slopes and CP weighting), reports
+    hpr's own values, and checks that the rules differ by more than 2%.
   - The printed mid-chord lengths were measured or rounded. hpr computes them from the geometry
     (Aerobee: 39.7 in printed, 40.50 in geometric). The fixture's notes list each slip in the
     printed arithmetic.
