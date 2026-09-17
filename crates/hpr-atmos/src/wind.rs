@@ -30,7 +30,9 @@ use crate::error::{AtmosError, finite, positive};
 pub struct WindSample {
     /// Velocity of the air in East-North-Up axes, m/s.
     pub velocity_enu_m_s: DVec3,
-    /// `Some` when the height was outside the model's data or valid range; `None` inside it.
+    /// `Some` when the height was below or above a tabulated wind's levels, or below ground for
+    /// a law written above ground; `None` otherwise. The power and log laws are not flagged above
+    /// the surface layer they describe.
     pub extrapolated: Option<Side>,
 }
 
@@ -130,6 +132,16 @@ impl ConstantWind {
             direction_from_rad: 0.0,
         }
     }
+
+    /// Wind speed, m/s.
+    pub fn speed_m_s(&self) -> f64 {
+        self.speed_m_s
+    }
+
+    /// Direction the wind blows from, in `[0, 2π)`, rad.
+    pub fn direction_from_rad(&self) -> f64 {
+        self.direction_from_rad
+    }
 }
 
 impl Wind for ConstantWind {
@@ -155,7 +167,8 @@ impl Wind for ConstantWind {
 /// in Aerospace Vehicle Development* (2008), §2.2.5.2, eq. 2.1, pinned as `nasa-tm-2008-215633`.
 /// There it describes peak winds below 150 m, with `z_ref = 18.3 m` and exponents from 0.14 to
 /// about 0.2 (Table 2-1); `docs/physics/wind.md` says how to choose one. Heights below ground are
-/// flagged.
+/// flagged. Heights above the surface layer are not, although the law keeps growing there: pair
+/// it with winds aloft.
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
 #[serde(try_from = "PowerLawWindData", into = "PowerLawWindData")]
 pub struct PowerLawWind {
@@ -231,6 +244,31 @@ impl PowerLawWind {
             direction_from_rad: check_direction(direction_from_rad)?,
             ground_msl_m: finite("ground height (m)", ground_msl_m)?,
         })
+    }
+
+    /// Wind speed at the reference height, m/s.
+    pub fn reference_speed_m_s(&self) -> f64 {
+        self.reference_speed_m_s
+    }
+
+    /// Reference height above ground, m.
+    pub fn reference_height_agl_m(&self) -> f64 {
+        self.reference_height_agl_m
+    }
+
+    /// The exponent `α`.
+    pub fn exponent(&self) -> f64 {
+        self.exponent
+    }
+
+    /// Direction the wind blows from, in `[0, 2π)`, rad.
+    pub fn direction_from_rad(&self) -> f64 {
+        self.direction_from_rad
+    }
+
+    /// Height of the ground above mean sea level, m.
+    pub fn ground_msl_m(&self) -> f64 {
+        self.ground_msl_m
     }
 }
 
@@ -338,6 +376,31 @@ impl LogLawWind {
             ground_msl_m: finite("ground height (m)", ground_msl_m)?,
         })
     }
+
+    /// Wind speed at the reference height, m/s.
+    pub fn reference_speed_m_s(&self) -> f64 {
+        self.reference_speed_m_s
+    }
+
+    /// Reference height above ground, m.
+    pub fn reference_height_agl_m(&self) -> f64 {
+        self.reference_height_agl_m
+    }
+
+    /// Roughness length `z₀`, m.
+    pub fn roughness_length_m(&self) -> f64 {
+        self.roughness_length_m
+    }
+
+    /// Direction the wind blows from, in `[0, 2π)`, rad.
+    pub fn direction_from_rad(&self) -> f64 {
+        self.direction_from_rad
+    }
+
+    /// Height of the ground above mean sea level, m.
+    pub fn ground_msl_m(&self) -> f64 {
+        self.ground_msl_m
+    }
 }
 
 impl Wind for LogLawWind {
@@ -425,7 +488,7 @@ impl LayeredWind {
     ///
     /// # Errors
     ///
-    /// - [`AtmosError::TooFewLevels`] with no levels.
+    /// - [`AtmosError::NoLevels`] with no levels.
     /// - [`AtmosError::HeightsNotIncreasing`] unless heights strictly increase.
     /// - [`AtmosError::Domain`] for a negative speed or any value that is not finite.
     pub fn new(
@@ -433,7 +496,7 @@ impl LayeredWind {
         interpolation: WindInterpolation,
     ) -> Result<Self, AtmosError> {
         if levels.is_empty() {
-            return Err(AtmosError::TooFewLevels { min: 1, got: 0 });
+            return Err(AtmosError::NoLevels);
         }
         let mut checked = Vec::with_capacity(levels.len());
         for (index, level) in levels.into_iter().enumerate() {
@@ -473,7 +536,7 @@ impl Wind for LayeredWind {
         // `new` guarantees at least one level.
         let (first, last) = match (levels.first(), levels.last()) {
             (Some(first), Some(last)) => (first, last),
-            _ => return Err(AtmosError::TooFewLevels { min: 1, got: 0 }),
+            _ => return Err(AtmosError::NoLevels),
         };
         let hold = |level: &WindLevel, side| WindSample {
             velocity_enu_m_s: velocity_from_speed_direction(
@@ -772,7 +835,7 @@ mod tests {
         assert!(LogLawWind::new(1.0, 10.0, 0.0, 0.0, 0.0).is_err());
         assert!(matches!(
             LayeredWind::new(vec![], WindInterpolation::default()),
-            Err(AtmosError::TooFewLevels { .. })
+            Err(AtmosError::NoLevels)
         ));
         let level = |h| WindLevel {
             height_msl_m: h,

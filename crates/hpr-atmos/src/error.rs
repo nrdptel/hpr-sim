@@ -1,6 +1,5 @@
 //! Error types for the atmosphere and wind models.
 
-use hpr_core::CoreError;
 use thiserror::Error;
 
 /// An error from an atmosphere or wind model: an input outside a model's domain, or a profile
@@ -8,9 +7,6 @@ use thiserror::Error;
 #[derive(Debug, Clone, PartialEq, Error)]
 #[non_exhaustive]
 pub enum AtmosError {
-    /// An error from a core table or model.
-    #[error(transparent)]
-    Core(#[from] CoreError),
     /// An input outside a model's domain, such as a negative pressure or a non-finite height.
     #[error("{what} is outside its domain: {value}")]
     Domain {
@@ -19,14 +15,12 @@ pub enum AtmosError {
         /// The offending value.
         value: f64,
     },
-    /// A profile needs at least `min` levels.
-    #[error("a profile needs at least {min} levels, got {got}")]
-    TooFewLevels {
-        /// The minimum number of levels.
-        min: usize,
-        /// The number supplied.
-        got: usize,
-    },
+    /// A sounding profile or a layered wind was given no levels.
+    #[error("a profile or wind table needs at least one level")]
+    NoLevels,
+    /// A gust field has no samples.
+    #[error("a gust field needs at least one sample")]
+    EmptyGustField,
     /// Profile heights must strictly increase.
     #[error("profile heights must strictly increase; level {index} does not")]
     HeightsNotIncreasing {
@@ -40,6 +34,19 @@ pub enum AtmosError {
         index: usize,
         /// The column.
         column: &'static str,
+    },
+    /// A sounding level's pressure is not below the pressure of the level beneath it. Pressure
+    /// must fall with height; a pressure in hPa given as Pa is the usual cause.
+    #[error(
+        "sounding level {index} has pressure {pressure_pa} Pa, not below {below_pa} Pa beneath it"
+    )]
+    PressureNotDecreasing {
+        /// Index of the level.
+        index: usize,
+        /// Its pressure, Pa.
+        pressure_pa: f64,
+        /// The pressure of the level below, given or filled in, Pa.
+        below_pa: f64,
     },
     /// The lowest level of a sounding must give its pressure; the levels above may be filled in
     /// hydrostatically.

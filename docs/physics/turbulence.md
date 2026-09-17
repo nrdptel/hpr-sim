@@ -82,7 +82,10 @@ Exact discretization, so step length never changes the statistics.
 - **State is normalized,** so intensities and lengths may change from one step to the next
   (with altitude, say) without breaking stationarity.
 - **Determinism:** draws come in a fixed order (`u`, two for `v`, two for `w`) from a seeded
-  xoshiro256++, so the same seed and steps give bit-identical gusts.
+  xoshiro256++, so the same seed and steps give bit-identical gusts on one platform.
+  - The integer stream is identical everywhere.
+  - Normals and gusts go through the math library's `ln` and `exp`, which may differ in the last
+    bit between platforms.
 - **Checkpointing:** the generator serializes, so a run can be checkpointed and resumed.
 
 `GustField` precomputes a realization at a fixed spacing and interpolates it linearly. That makes

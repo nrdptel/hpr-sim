@@ -160,8 +160,8 @@ fn molecular_weight_ratio(z: f64) -> f64 {
     MOLECULAR_WEIGHT_RATIO[i] + t * (MOLECULAR_WEIGHT_RATIO[i + 1] - MOLECULAR_WEIGHT_RATIO[i])
 }
 
-/// Standard molecular-scale temperature (K) and the layer index at geopotential altitude `h`.
-/// Below the first base the first layer continues; above the 86 km top the caller holds.
+/// The index of the layer containing geopotential altitude `h`. Below the first base it is the
+/// first layer; above the 86 km top the caller holds the top values instead.
 fn standard_layer(h: f64) -> usize {
     LAYERS.iter().rposition(|&(base, _)| h >= base).unwrap_or(0)
 }

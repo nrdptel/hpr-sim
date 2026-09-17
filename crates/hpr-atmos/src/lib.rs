@@ -19,9 +19,12 @@ pub mod profile;
 pub mod ussa76;
 pub mod wind;
 
-pub use air::{AirSample, AirState, Atmosphere};
-pub use dryden::{DrydenGenerator, DrydenParameters, GustField, TurbulenceSeverity};
+pub use air::{AirSample, AirState, Atmosphere, AtmosphereModel};
+pub use dryden::{DrydenGenerator, DrydenParameters, GustField, GustSample, TurbulenceSeverity};
 pub use error::AtmosError;
 pub use profile::{SoundingLevel, SoundingProfile};
 pub use ussa76::Ussa76;
-pub use wind::{Wind, WindModel, WindSample};
+pub use wind::{
+    ConstantWind, LayeredWind, LogLawWind, PowerLawWind, Wind, WindInterpolation, WindLevel,
+    WindModel, WindSample,
+};

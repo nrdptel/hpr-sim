@@ -146,9 +146,11 @@ impl SoundingProfile {
     ///
     /// # Errors
     ///
-    /// - [`AtmosError::TooFewLevels`] with no levels.
+    /// - [`AtmosError::NoLevels`] with no levels.
     /// - [`AtmosError::HeightsNotIncreasing`] unless heights strictly increase.
     /// - [`AtmosError::MissingBasePressure`] if the lowest level has no pressure.
+    /// - [`AtmosError::PressureNotDecreasing`] if a given pressure is not below the pressure of
+    ///   the level beneath it.
     /// - [`AtmosError::IncompleteColumn`] if humidity or wind is given on some levels but not all,
     ///   or a wind speed comes without its direction.
     /// - [`AtmosError::Domain`] for a non-positive temperature or pressure, a relative humidity
@@ -159,7 +161,7 @@ impl SoundingProfile {
         wind_interpolation: WindInterpolation,
     ) -> Result<Self, AtmosError> {
         let Some(first) = levels.first() else {
-            return Err(AtmosError::TooFewLevels { min: 1, got: 0 });
+            return Err(AtmosError::NoLevels);
         };
         let has_humidity = first.relative_humidity.is_some();
         let has_wind = first.wind_speed_m_s.is_some() || first.wind_direction_from_rad.is_some();
@@ -218,6 +220,13 @@ impl SoundingProfile {
         let mut pressures_pa: Vec<f64> = Vec::with_capacity(n);
         for (i, level) in levels.iter().enumerate() {
             let pressure = match (level.pressure_pa, pressures_pa.last()) {
+                (Some(p), Some(&below)) if p >= below => {
+                    return Err(AtmosError::PressureNotDecreasing {
+                        index: i,
+                        pressure_pa: p,
+                        below_pa: below,
+                    });
+                }
                 (Some(p), _) => p,
                 (None, Some(&below)) => {
                     let (t0, t1) = (temperatures_k[i - 1], temperatures_k[i]);
@@ -688,10 +697,7 @@ mod tests {
     fn invalid_profiles_are_rejected() {
         let ok = level(0.0, 290.0, Some(100_000.0), Some(0.5));
         let build = |levels| SoundingProfile::new(levels, WindInterpolation::default());
-        assert!(matches!(
-            build(vec![]),
-            Err(AtmosError::TooFewLevels { .. })
-        ));
+        assert!(matches!(build(vec![]), Err(AtmosError::NoLevels)));
         assert!(matches!(
             build(vec![level(0.0, 290.0, None, None)]),
             Err(AtmosError::MissingBasePressure)
@@ -709,6 +715,31 @@ mod tests {
         assert!(matches!(
             build(vec![ok, windless_direction]),
             Err(AtmosError::IncompleteColumn { index: 1, .. })
+        ));
+        // A pressure in hPa typed as Pa: the 850 at 1500 m is not below 101 325 Pa.
+        assert!(matches!(
+            build(vec![
+                level(0.0, 290.0, Some(101_325.0), None),
+                level(1_500.0, 280.0, Some(850.0), None),
+                level(3_000.0, 270.0, Some(70_000.0), None),
+            ]),
+            Err(AtmosError::PressureNotDecreasing { index: 2, .. })
+        ));
+        assert!(matches!(
+            build(vec![
+                level(0.0, 290.0, Some(101_325.0), None),
+                level(1_500.0, 280.0, Some(101_325.0), None),
+            ]),
+            Err(AtmosError::PressureNotDecreasing { index: 1, .. })
+        ));
+        // A given pressure above a filled one is caught too.
+        assert!(matches!(
+            build(vec![
+                level(0.0, 290.0, Some(101_325.0), None),
+                level(1_000.0, 283.0, None, None),
+                level(2_000.0, 276.0, Some(95_000.0), None),
+            ]),
+            Err(AtmosError::PressureNotDecreasing { index: 2, .. })
         ));
         assert!(build(vec![level(0.0, 290.0, Some(100_000.0), Some(1.5))]).is_err());
         assert!(build(vec![level(0.0, -1.0, Some(100_000.0), None)]).is_err());

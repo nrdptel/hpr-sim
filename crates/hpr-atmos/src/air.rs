@@ -6,6 +6,8 @@ use hpr_core::interp::Side;
 use serde::{Deserialize, Serialize};
 
 use crate::error::AtmosError;
+use crate::profile::SoundingProfile;
+use crate::ussa76::Ussa76;
 
 /// Thermodynamic and transport properties of the air at one point.
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
@@ -53,4 +55,59 @@ pub trait Atmosphere: fmt::Debug + Send + Sync {
     /// [`AtmosError::Domain`] if the height is not finite, or is outside the heights the model
     /// can represent at all (as opposed to heights it extrapolates to, which it flags).
     fn air(&self, height_msl_m: f64) -> Result<AirSample, AtmosError>;
+}
+
+/// Any of the atmosphere models, tagged by `model` when serialized.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(tag = "model", rename_all = "snake_case")]
+#[non_exhaustive]
+pub enum AtmosphereModel {
+    /// [`Ussa76`], optionally offset.
+    Standard(Ussa76),
+    /// [`SoundingProfile`], boxed because it is far larger than the standard.
+    Sounding(Box<SoundingProfile>),
+}
+
+impl Default for AtmosphereModel {
+    fn default() -> Self {
+        AtmosphereModel::Standard(Ussa76::standard())
+    }
+}
+
+impl Atmosphere for AtmosphereModel {
+    fn air(&self, height_msl_m: f64) -> Result<AirSample, AtmosError> {
+        match self {
+            AtmosphereModel::Standard(model) => model.sample(height_msl_m),
+            AtmosphereModel::Sounding(model) => model.sample(height_msl_m),
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn atmosphere_models_round_trip_through_json() {
+        let standard = AtmosphereModel::Standard(Ussa76::with_offset(10.0, 99_000.0).unwrap());
+        let json = serde_json::to_string(&standard).unwrap();
+        assert_eq!(
+            json,
+            r#"{"model":"standard","temperature_offset_k":10.0,"sea_level_pressure_pa":99000.0}"#
+        );
+        assert_eq!(
+            serde_json::from_str::<AtmosphereModel>(&json).unwrap(),
+            standard
+        );
+        let sounding = r#"{"model":"sounding","levels":[
+            {"height_msl_m":0.0,"temperature_k":290.0,"pressure_pa":100000.0}]}"#;
+        let model: AtmosphereModel = serde_json::from_str(sounding).unwrap();
+        assert!(matches!(model, AtmosphereModel::Sounding(_)));
+        let air = model.air(0.0).unwrap().air;
+        assert_eq!(air.pressure_pa, 100_000.0);
+        assert_eq!(
+            AtmosphereModel::default().air(0.0).unwrap(),
+            Ussa76::standard().sample(0.0).unwrap()
+        );
+    }
 }

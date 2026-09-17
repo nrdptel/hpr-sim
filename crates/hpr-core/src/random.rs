@@ -7,15 +7,16 @@
 //!   Math. Softw.* 47(4), article 36 (2021), <https://doi.org/10.1145/3460772>; reference C code
 //!   (public domain) at <https://prng.di.unimi.it/>.
 //!
-//! The algorithm is part of the result: the same seed gives the same stream on every platform
-//! and in every release. Changing the generator, the seeding or the order of draws changes every
-//! seeded result, so it needs an ADR.
+//! The algorithm is part of the result: the same seed gives the same integer stream on every
+//! platform and in every release. Changing the generator, the seeding or the order of draws
+//! changes every seeded result, so it needs an ADR.
 //!
 //! Normal deviates use the polar method of G. Marsaglia and T. A. Bray, "A convenient method for
 //! generating normal variables", *SIAM Review* 6(3), 260–264 (1964): draw `u, v` uniform on
 //! `(−1, 1)` until `0 < s = u² + v² < 1`, then `u·√(−2 ln s / s)` and `v·√(−2 ln s / s)` are two
 //! independent standard normal deviates. The second one is kept for the next call. The method
-//! needs only `ln` and `sqrt`, so results are bit-identical wherever `ln` is.
+//! needs only `ln` and `sqrt`, so normal deviates are bit-identical on one platform, and across
+//! platforms wherever their math libraries' `ln` agree.
 
 use serde::{Deserialize, Serialize};
 
@@ -37,8 +38,10 @@ fn splitmix64(state: &mut u64) -> u64 {
 
 /// A seeded xoshiro256++ generator with a standard normal sampler.
 ///
-/// It serializes as its 256-bit state and the spare normal deviate, so a run can be checkpointed
-/// and resumed bit for bit. The all-zero state is rejected: xoshiro would stay at zero forever.
+/// It serializes as its 256-bit state, written as four hexadecimal strings (`"0x…"`, because JSON
+/// readers such as JavaScript's lose integers above 2⁵³), and the spare normal deviate, so a run
+/// can be checkpointed and resumed bit for bit. The all-zero state is rejected: xoshiro would stay
+/// at zero forever.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(try_from = "SeededRngData", into = "SeededRngData")]
 pub struct SeededRng {
@@ -49,20 +52,33 @@ pub struct SeededRng {
 #[derive(Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 struct SeededRngData {
-    state: [u64; 4],
+    state: [String; 4],
     #[serde(default)]
     spare_normal: Option<f64>,
+}
+
+/// Parses one state word written as `0x` and 1 to 16 hexadecimal digits.
+fn parse_state_word(text: &str) -> Result<u64, CoreError> {
+    text.strip_prefix("0x")
+        .filter(|digits| {
+            !digits.is_empty()
+                && digits.len() <= 16
+                && digits.bytes().all(|b| b.is_ascii_hexdigit())
+        })
+        .and_then(|digits| u64::from_str_radix(digits, 16).ok())
+        .ok_or(CoreError::InvalidRandomState)
 }
 
 impl TryFrom<SeededRngData> for SeededRng {
     type Error = CoreError;
 
     fn try_from(data: SeededRngData) -> Result<Self, CoreError> {
-        if data.state == [0; 4] {
-            return Err(CoreError::Domain {
-                what: "xoshiro256++ state (all zero)",
-                value: 0.0,
-            });
+        let mut state = [0; 4];
+        for (word, text) in state.iter_mut().zip(&data.state) {
+            *word = parse_state_word(text)?;
+        }
+        if state == [0; 4] {
+            return Err(CoreError::InvalidRandomState);
         }
         if let Some(spare) = data.spare_normal
             && !spare.is_finite()
@@ -73,7 +89,7 @@ impl TryFrom<SeededRngData> for SeededRng {
             });
         }
         Ok(SeededRng {
-            state: data.state,
+            state,
             spare_normal: data.spare_normal,
         })
     }
@@ -82,7 +98,7 @@ impl TryFrom<SeededRngData> for SeededRng {
 impl From<SeededRng> for SeededRngData {
     fn from(rng: SeededRng) -> Self {
         SeededRngData {
-            state: rng.state,
+            state: rng.state.map(|word| format!("{word:#018x}")),
             spare_normal: rng.spare_normal,
         }
     }
@@ -263,8 +279,37 @@ mod tests {
     }
 
     #[test]
-    fn all_zero_state_is_rejected() {
-        let json = r#"{"state":[0,0,0,0],"spare_normal":null}"#;
-        assert!(serde_json::from_str::<SeededRng>(json).is_err());
+    fn state_serializes_as_hex_words_and_bad_states_are_rejected() {
+        let rng = SeededRng::seed_from_u64(1);
+        let value = serde_json::to_value(&rng).unwrap();
+        let words = value["state"].as_array().unwrap();
+        assert_eq!(words.len(), 4);
+        for (word, &expected) in words.iter().zip(&rng.state) {
+            let text = word.as_str().unwrap();
+            assert_eq!(text.len(), 18);
+            assert_eq!(parse_state_word(text).unwrap(), expected);
+        }
+        let zero = r#"{"state":["0x0","0x0","0x0","0x00"],"spare_normal":null}"#;
+        assert_eq!(
+            serde_json::from_str::<SeededRng>(zero)
+                .unwrap_err()
+                .to_string(),
+            CoreError::InvalidRandomState.to_string()
+        );
+        for bad in [
+            r#"{"state":[1,2,3,4]}"#,
+            r#"{"state":["1","0x2","0x3","0x4"]}"#,
+            r#"{"state":["0x","0x2","0x3","0x4"]}"#,
+            r#"{"state":["0x10000000000000000","0x2","0x3","0x4"]}"#,
+            r#"{"state":["0xg","0x2","0x3","0x4"]}"#,
+            r#"{"state":["0x+1","0x2","0x3","0x4"]}"#,
+        ] {
+            assert!(serde_json::from_str::<SeededRng>(bad).is_err(), "{bad}");
+        }
+        let short = r#"{"state":["0x1","0x2","0x3","0x4"]}"#;
+        assert_eq!(
+            serde_json::from_str::<SeededRng>(short).unwrap().state,
+            [1, 2, 3, 4]
+        );
     }
 }

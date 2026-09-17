@@ -333,6 +333,12 @@ had no single right answer and are recorded here.
     crate can change its algorithm in a new release. It also keeps the pure core free of runtime
     dependencies.
   - **Frozen:** changing the algorithm, seeding or draw order needs an ADR.
+  - **Portability:** the integer stream is the same on every platform. Normal deviates,
+    turbulence and the atmosphere use the platform's `ln`, `exp` and `powf`, so those are
+    bit-identical on one platform (the CLAUDE.md requirement) but may differ in the last bit
+    across platforms.
+  - **Serialized form:** checkpoints write the state as four `0x` hex strings, because JSON
+    readers lose integers above 2⁵³.
 
 **Consequences.**
 

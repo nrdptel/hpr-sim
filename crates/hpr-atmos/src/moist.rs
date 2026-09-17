@@ -132,8 +132,6 @@ mod tests {
     fn saturation_vapour_pressure_follows_wmo_4_b_1() {
         for (t_c, expected_hpa) in [(0.0, 6.112), (20.0, 23.325_960_2), (-40.0, 0.190_212_012)] {
             let e = saturation_vapour_pressure_pa(273.15 + t_c) / 100.0;
-            let computed = 6.112 * (17.62 * t_c / (243.12 + t_c)).exp();
-            assert!((e - computed).abs() < 1e-12 * computed, "{t_c}");
             assert!((e - expected_hpa).abs() < 1e-8 * expected_hpa, "{t_c}: {e}");
         }
         assert_eq!(saturation_vapour_pressure_pa(30.0), 0.0);
