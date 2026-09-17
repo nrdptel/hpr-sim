@@ -126,6 +126,51 @@ c = I / m_p0,    ṁ(t) = F(t) / c,    m_p(t) = m_p0 (1 − I(t)/I)
 - **Catalog envelope:** diameter, length and masses come from the catalog metadata, not the curve
   file's header, which can be wrong (Loft lesson L43).
 
+### The effective exhaust velocity is a units check
+
+Both constructors refuse a motor whose curve and propellant mass imply an effective exhaust
+velocity `c = I/m_p` outside **200 to 5,000 m/s**. Nothing else in the API notices a units slip:
+the 411I175's envelope in millimetres and grams read as metres and kilograms
+(`from_envelope(curve, 38.0, 245.0, 228.9, 437.5)`) has positive, finite dimensions, a propellant
+mass below the loaded mass, and an exhaust velocity of 1.8 m/s.
+
+`I` is the curve's own impulse, uncorrected for ambient pressure, because that is the impulse the
+model actually delivers: `state()` derives the mass flow as `F(t)/c` from the same uncorrected
+curve, so `∫ṁ dt = I/c = m_p` closes exactly. The bound is therefore on `c` at the curve's
+reference pressure, which for a sea-level-tested motor is a few per cent below its vacuum value.
+
+Chemistry sets the scale, and rather than quote an `I_sp` table hpr has not read, the range comes
+from the catalog itself. Measured over the 1,708 ThrustCurve.org simulator files that have both a
+parsed impulse and a catalog propellant mass — the same mass `CatalogMotor::motor` uses, which prefers the metadata over
+the curve file's header:
+
+| percentile | min | p1 | p5 | p50 | p95 | p99 | max |
+|---|---|---|---|---|---|---|---|
+| `c`, m/s | 236 | 597 | 928 | **1,867** | 2,210 | 2,463 | 3,031 |
+
+The bulk of that distribution is APCP; the low tail is the black-powder motors, which cluster
+below about 900 m/s.
+
+**Under that convention the bound rejects none of them.** That is the honest statement of what this
+check is: a guard against a units slip, which moves `c` by a factor of 1,000, not a filter on
+propellant. It has real headroom but not a great deal at the low end — the lowest real entry is
+1.2x above the floor and the highest 1.65x below the ceiling — and the low tail is an accounting
+artifact rather than chemistry: Estes and Quest normally record a "propellant weight" that includes
+the delay grain and the ejection charge, neither of which delivers thrust impulse, so a small
+black-powder motor reads lower than its propellant really is. A 1/8A recorded that way could fall
+under 200 m/s; if one ever does, the fallback is issue #11's second option, applying the bound only
+above a couple of grams of propellant.
+
+Two numbers worth keeping straight, because both have been got wrong here:
+
+- Reading the **curve file header** mass instead gives a different distribution (max 10,111 m/s,
+  from a J motor whose header claims 83 g where its catalog entry says 396 g). hpr does not use
+  header masses when the catalog has them (Loft lesson L43, `catalog.rs`), so that file builds at
+  2,111 m/s and passes.
+- The 32 bundled motors run **689.78 m/s** (a black-powder C) to **2,651.64 m/s** (a K), computed
+  from each curve's own impulse — not from the catalog's stored `total_impulse_ns`, which differs
+  by up to 0.3% and would say 2,645.
+
 ## Thrust at altitude
 
 The thrust equation is `F = ṁ u_e + (p_e − p_a) A_e` ([SP] eq. 2, p. 3, with `g_c = 1` in SI).

@@ -58,9 +58,8 @@ the milestone's 3% (worst +2.86%). M2.1b is the suite itself. Start from these n
 - 2026-09-17: M1.7c Separated bodies (ADR-014): a separation splits the stack at a stage boundary
   and flies each body as a point mass with its own mass and devices. Both bodies land, the masses
   add to the stack's to 1e-12 and the momenta to 1e-9.
-- 2026-09-17: M1.7b Streamers and tumble (PR #24, ADR-013): Filippone's three curves by default
-  (+9% on Kidwell's flat drop), appendix C's on request (+88%), OpenRocket's tumble model from the
-  airframe (−10 to +19% on its own drop tests).
+- 2026-09-17: M1.7b Streamers and tumble (ADR-013): Filippone's three curves by default (+9% on
+  Kidwell's flat drop), appendix C's on request (+88%), tumble from the airframe (−10 to +19%).
 - 2026-09-17: M1.7a Parachutes and descent (ADR-012): Knacke's canopy tables and filling law, four
   triggers, drogue release, a point-mass descent. A descent follows the closed form to 2.1e-8 of
   `v_t`; five RocketPy examples within 0.71% in descent time, 0.28% in drift.
@@ -105,12 +104,13 @@ the milestone's 3% (worst +2.86%). M2.1b is the suite itself. Start from these n
 - ADR-011: nose-tip reference; nozzle gyration from the integral; `M ≥ 1` stops a flight; rail `μ` 0.
 - ADR-012: recovery devices live in `hpr-sim`; `C_D0` on Knacke's nominal area, mid-range; a
   point-mass descent, no added mass; devices add and can release one another.
-- ADR-013: streamers take Filippone's three curves by default (+9% on Kidwell's flat drop), appendix
-  C's on request (+88%); tumble takes OpenRocket's §3.5 (−10 to +19% on its own drops, not the 3 to
-  14% claimed).
+- ADR-013: streamers take Filippone's three curves by default, appendix C's on request; tumble takes
+  OpenRocket's §3.5 (−10 to +19% on its own drops, not the 3 to 14% claimed).
 - ADR-014: a separation splits the stack at a stage boundary into two point-mass bodies with their
   own stages' mass and devices; no ejection impulse (linear momentum only), every body needs a
   device, only body 0's act before the split, and it must follow the last burnout (M1.9 stages).
+- #11: `SolidMotor` refuses `c = I/m_p` outside 200–5,000 m/s: a units guard, not a propellant
+  filter (it rejects none of the 1,708 surveyed motors, 236 to 3,031 m/s), and a behaviour change.
 - ADR-015: a run reads references and never writes them (no update flag); every value carries its
   generator's source and the file its hash; every reported metric is gated at the milestone's 3%
   with no absolute floor, or declared not scored in writing; the locked cases must all run; a

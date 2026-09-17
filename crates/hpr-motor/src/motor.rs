@@ -150,6 +150,25 @@ pub struct MotorState {
     pub total: MassElement,
 }
 
+/// The effective exhaust velocity `c = I/m_p` a solid motor's curve and propellant mass have to
+/// imply, m/s.
+///
+/// Measured over the 1,708 ThrustCurve.org simulator files with both a parsed impulse and a
+/// catalog propellant mass — the mass [`crate::CatalogMotor::motor`] uses, which prefers the
+/// metadata over the curve file's header — `c` runs 236 to 3,031 m/s, with a median of 1,867 and
+/// 90% of them between 928 and 2,210 (`docs/physics/motor.md`). The bulk is APCP; the tail below
+/// about 900 m/s is black powder, read low because Estes and Quest count the delay grain and the
+/// ejection charge as propellant.
+///
+/// **The bound rejects none of those 1,708.** It is not a filter on propellant: it is there to
+/// catch a units slip, which moves `c` by a factor of 1,000 — the worked example in
+/// [`SolidMotor::from_envelope`]'s test lands at 1.8 m/s. The headroom is real but not enormous at
+/// the low end (the lowest catalog entry is 1.2x above the floor, the highest 1.65x below the
+/// ceiling), and a 1/8A whose recorded propellant mass is mostly delay grain could fall through
+/// the floor; issue #11 records the fallback, which is to apply the bound only above a couple of
+/// grams.
+pub const EXHAUST_VELOCITY_RANGE_M_S: std::ops::RangeInclusive<f64> = 200.0..=5000.0;
+
 impl SolidMotor {
     /// Builds a motor from its thrust curve, propellant, dry mass (about its own centre) and
     /// optional nozzle.
@@ -161,8 +180,10 @@ impl SolidMotor {
     ///   position, a column with non-positive mass, radius or length, a nozzle with a non-positive
     ///   exit radius, a throat radius outside `(0, exit radius]`, or a negative or non-finite
     ///   reference pressure.
-    /// - [`MotorError::Inconsistent`] for a column bore at least as wide as the column, or bad
-    ///   grain geometry ([`BatesGrains::validate`]).
+    /// - [`MotorError::Inconsistent`] for a column bore at least as wide as the column, bad grain
+    ///   geometry ([`BatesGrains::validate`]), or a curve and propellant mass whose effective
+    ///   exhaust velocity `I/m_p` is outside [`EXHAUST_VELOCITY_RANGE_M_S`], which is what a
+    ///   units slip looks like.
     pub fn new(
         curve: ThrustCurve,
         propellant: Propellant,
@@ -239,6 +260,20 @@ impl SolidMotor {
                 });
             }
         }
+        // A units slip is the failure this catches: the 411I175 built from millimetres and grams
+        // read as metres and kilograms is accepted by every check above, and flies with an
+        // effective exhaust velocity of 1.8 m/s.
+        let exhaust_velocity_m_s = curve.total_impulse_ns() / propellant_mass_kg;
+        if !EXHAUST_VELOCITY_RANGE_M_S.contains(&exhaust_velocity_m_s) {
+            return Err(MotorError::Inconsistent(format!(
+                "a total impulse of {} N·s from {propellant_mass_kg} kg of propellant is an \
+                 effective exhaust velocity of {exhaust_velocity_m_s} m/s, outside the {} to {} \
+                 m/s a solid motor can have; check the units of the masses and the curve",
+                curve.total_impulse_ns(),
+                EXHAUST_VELOCITY_RANGE_M_S.start(),
+                EXHAUST_VELOCITY_RANGE_M_S.end()
+            )));
+        }
         Ok(Self {
             curve,
             propellant,
@@ -263,7 +298,9 @@ impl SolidMotor {
     ///
     /// [`MotorError::Domain`] for a non-positive or non-finite dimension or propellant mass, and
     /// [`MotorError::Inconsistent`] when the propellant mass is not below the loaded mass (the
-    /// motor would weigh nothing at burnout).
+    /// motor would weigh nothing at burnout), or when the curve and the propellant mass imply an
+    /// effective exhaust velocity outside [`EXHAUST_VELOCITY_RANGE_M_S`] — which is what this
+    /// constructor's arguments look like in millimetres and grams.
     pub fn from_envelope(
         curve: ThrustCurve,
         diameter_m: f64,
@@ -458,9 +495,89 @@ mod tests {
     }
 
     #[test]
+    fn a_units_slip_is_refused_by_its_exhaust_velocity() {
+        // The worked example from the issue: the 411I175's envelope in millimetres and grams,
+        // read as metres and kilograms. Every dimension is positive and finite, the propellant is
+        // below the loaded mass, and the motor is nonsense: 437.5 kg of motor, and 411 N·s from
+        // 228.9 kg of propellant is an exhaust velocity of 1.8 m/s.
+        let i175 = ThrustCurve::new(vec![0.0, 0.1, 2.3, 2.4], vec![0.0, 220.0, 150.0, 0.0])
+            .expect("a plausible I-class curve");
+        // 425.5 N·s: an I by the NFPA classes, which is what the designation says.
+        let impulse = i175.total_impulse_ns();
+        assert!((impulse - 425.5).abs() < 0.1, "{impulse}");
+        let slipped = SolidMotor::from_envelope(i175.clone(), 38.0, 245.0, 228.9, 437.5)
+            .expect_err("millimetres and grams read as metres and kilograms");
+        assert!(
+            matches!(&slipped, MotorError::Inconsistent(message)
+                if message.contains("exhaust velocity") && message.contains("check the units")),
+            "{slipped}"
+        );
+        // The same motor in SI is accepted: 38 mm by 245 mm, 228.9 g of propellant, 437.5 g
+        // loaded, c = 1,859 m/s, which is within 0.5% of the median of the 1,710 surveyed files.
+        let motor = SolidMotor::from_envelope(i175.clone(), 0.038, 0.245, 0.2289, 0.4375)
+            .expect("the same motor in metres and kilograms");
+        let c = motor.curve().total_impulse_ns() / motor.propellant_mass_kg(0.0);
+        assert!((1700.0..1900.0).contains(&c), "{c}");
+
+        // The bound is on the physics, not on which constructor was used.
+        let dry = MassElement::thin_tube(0.2086, 0.1225, 0.019, 0.245);
+        let column = PropellantColumn {
+            mass_kg: 2.289,
+            center_m: 0.1225,
+            outer_radius_m: 0.017,
+            inner_radius_m: 0.005,
+            length_m: 0.2,
+        };
+        let ten_times = SolidMotor::new(i175, Propellant::Column(column), dry, None)
+            .expect_err("ten times the propellant for the same impulse");
+        assert!(
+            // 425.5 N·s over 2.289 kg is 185.9 m/s, just under the floor.
+            matches!(&ten_times, MotorError::Inconsistent(message) if message.contains("185.8")),
+            "{ten_times}"
+        );
+
+        assert!(!EXHAUST_VELOCITY_RANGE_M_S.contains(&1.8));
+    }
+
+    #[test]
+    fn every_bundled_motor_is_inside_the_range() {
+        // The check's other half: a bound real motors fall outside is a bug, not a check. This
+        // builds all 32 rather than asserting a remembered pair of numbers — the doc's figures
+        // came out of the catalog's stored impulse once, which is not what the check divides.
+        let catalog = crate::Catalog::bundled().expect("the bundled catalog parses");
+        let mut lowest = f64::INFINITY;
+        let mut highest: f64 = 0.0;
+        let (mut low_name, mut high_name) = (String::new(), String::new());
+        for entry in &catalog.motors {
+            let motor = entry
+                .bundled_motor()
+                .unwrap_or_else(|error| panic!("{}: {error}", entry.designation));
+            let c = motor.curve().total_impulse_ns() / motor.propellant_mass_kg(0.0);
+            assert!(
+                EXHAUST_VELOCITY_RANGE_M_S.contains(&c),
+                "{}: c = {c} m/s",
+                entry.designation
+            );
+            if c < lowest {
+                lowest = c;
+                low_name = entry.common_name.clone();
+            }
+            if c > highest {
+                highest = c;
+                high_name = entry.common_name.clone();
+            }
+        }
+        // `docs/physics/motor.md` quotes these; they are measured here so the doc cannot drift.
+        assert!((lowest - 689.78).abs() < 0.01, "{low_name} at {lowest}");
+        assert!((highest - 2651.64).abs() < 0.01, "{high_name} at {highest}");
+    }
+
+    #[test]
     fn a_curve_ending_above_zero_is_empty_and_silent_at_its_end() {
         let cut = ThrustCurve::new(vec![0.0, 1.0], vec![20.0, 20.0]).unwrap();
-        let motor = SolidMotor::from_envelope(cut, 0.038, 0.25, 0.2, 0.5).unwrap();
+        // 20 N·s from 10 g is c = 2,000 m/s, which is what APCP does; the 200 g this used to burn
+        // was 100 m/s, and `EXHAUST_VELOCITY_RANGE_M_S` now refuses it.
+        let motor = SolidMotor::from_envelope(cut, 0.038, 0.25, 0.01, 0.5).unwrap();
         let before = motor.state(1.0 - 1e-9);
         assert_eq!(before.thrust_n, 20.0);
         assert!(before.mass_flow_kg_s > 0.0 && before.propellant.mass_kg > 0.0);
@@ -469,7 +586,7 @@ mod tests {
             (end.thrust_n, end.mass_flow_kg_s, end.propellant.mass_kg),
             (0.0, 0.0, 0.0)
         );
-        assert_eq!(end.total.mass_kg, 0.3);
+        assert_eq!(end.total.mass_kg, 0.49);
     }
 
     #[test]
@@ -537,10 +654,12 @@ mod tests {
         let state = motor.state(f64::NAN);
         assert!(state.total.mass_kg.is_nan() && state.propellant.mass_kg.is_nan());
         assert!(state.total.cg_m.is_nan());
-        // No flow, no pressure term: a zero-thrust gap inside the burn gets none.
+        // No flow, no pressure term: a zero-thrust gap inside the burn gets none. The thrusts are
+        // 400 N rather than the 10 N this used to use, so that 0.3 kg of propellant implies
+        // c = 1,990 m/s instead of 50 m/s, which `EXHAUST_VELOCITY_RANGE_M_S` refuses.
         let gap = ThrustCurve::new(
             vec![0.0, 1.0, 1.0, 2.0, 2.0, 3.0],
-            vec![10.0, 10.0, 0.0, 0.0, 10.0, 0.0],
+            vec![400.0, 400.0, 0.0, 0.0, 400.0, 0.0],
         )
         .unwrap();
         let gapped = SolidMotor::new(gap, Propellant::Column(column), dry, Some(nozzle)).unwrap();
