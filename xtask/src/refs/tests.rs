@@ -268,15 +268,35 @@ fn verify_checks_the_manifest_pin_and_the_commit() {
     );
 }
 
+/// Rewrites the `captured = ...` line of a kept capture's record.
+fn backdate(sidecar: &Path, date: &str) {
+    let record: String = fs::read_to_string(sidecar)
+        .unwrap()
+        .lines()
+        .map(|line| {
+            if line.starts_with("captured = ") {
+                format!("captured = \"{date}\"\n")
+            } else {
+                format!("{line}\n")
+            }
+        })
+        .collect();
+    fs::write(sidecar, record).unwrap();
+}
+
+/// Fetches only the `api` snapshot.
+fn fetch_api(root: &Path, lock: &Lock, drift: Drift) -> (Tally, Vec<Repin>) {
+    fetch(root, lock, &["api".to_owned()], drift).unwrap()
+}
+
 #[test]
 fn a_moved_snapshot_fails_unless_adopted() {
     let up = upstream();
     fs::write(&up.api_path, br#"{"motors":[1]}"#).unwrap();
     let lock = Lock::parse(&lock_text(&up)).unwrap();
-    let only_api = ["api".to_owned()];
 
     let root = tempfile::tempdir().unwrap();
-    let (outcome, repins) = fetch(root.path(), &lock, &only_api, Drift::Fail).unwrap();
+    let (outcome, repins) = fetch_api(root.path(), &lock, Drift::Fail);
     assert_eq!(outcome, tally(0, 0, 0, 1));
     assert!(repins.is_empty());
     let unpinned = root.path().join("refs/snapshots/api.json.unpinned");
@@ -285,12 +305,10 @@ fn a_moved_snapshot_fails_unless_adopted() {
     assert!(!root.path().join("refs/snapshots/api.json").exists());
 
     // The API moves again, but adopting pins the capture that was kept for inspection, with the
-    // date it was captured (backdated here to show the date comes from the record).
-    let record = fs::read_to_string(&sidecar).unwrap();
-    let today = download::today();
-    fs::write(&sidecar, record.replace(&today, "2026-01-02")).unwrap();
+    // date recorded for it (backdated here to show the date comes from the record).
+    backdate(&sidecar, "2026-01-02");
     fs::write(&up.api_path, br#"{"motors":[2]}"#).unwrap();
-    let (outcome, repins) = fetch(root.path(), &lock, &only_api, Drift::Adopt).unwrap();
+    let (outcome, repins) = fetch_api(root.path(), &lock, Drift::Adopt);
     assert_eq!(outcome, tally(0, 1, 0, 0));
     let kept_sha256 = hash::sha256_bytes(br#"{"motors":[1]}"#);
     let expected = Repin {
@@ -311,6 +329,7 @@ fn a_moved_snapshot_fails_unless_adopted() {
     let lock = Lock::load(root.path()).unwrap();
     assert_eq!(lock.snapshot[0].sha256, kept_sha256);
     assert_eq!(lock.snapshot[0].captured, "2026-01-02");
+    let only_api = ["api".to_owned()];
     assert_eq!(
         verify(root.path(), &lock, &only_api).unwrap(),
         tally(1, 0, 0, 0)
@@ -318,29 +337,47 @@ fn a_moved_snapshot_fails_unless_adopted() {
 }
 
 #[test]
-fn a_kept_capture_from_another_url_is_not_adopted() {
+fn a_kept_capture_that_no_longer_fits_the_entry_is_not_adopted() {
     let up = upstream();
-    fs::write(&up.api_path, br#"{"motors":[1]}"#).unwrap();
-    let only_api = ["api".to_owned()];
-    let root = tempfile::tempdir().unwrap();
-    let lock = Lock::parse(&lock_text(&up)).unwrap();
-    fetch(root.path(), &lock, &only_api, Drift::Fail).unwrap();
+    let text = lock_text(&up);
+    let newest = br#"{"motors":[3]}"#;
 
-    // The entry now points at another endpoint: adopting downloads from it instead.
-    let other = up.api_path.with_file_name("other.json");
-    fs::write(&other, br#"{"motors":[3]}"#).unwrap();
-    let moved = lock_text(&up).replacen(&up.api, &file_url(&other), 1);
-    let lock = Lock::parse(&moved).unwrap();
-    let (outcome, repins) = fetch(root.path(), &lock, &only_api, Drift::Adopt).unwrap();
-    assert_eq!(outcome, tally(0, 1, 0, 0));
-    assert_eq!(repins[0].sha256, hash::sha256_bytes(br#"{"motors":[3]}"#));
-    assert_eq!(repins[0].captured, download::today());
-    assert!(
-        !root
-            .path()
-            .join("refs/snapshots/api.json.unpinned")
-            .exists()
-    );
+    // Each case keeps a capture of [1], changes something, and then adopts. The kept capture
+    // must be passed over, so the fresh download of [3] is what gets pinned.
+    // Each change returns the new lock text; it gets the kept capture's path.
+    type Change<'a> = &'a dyn Fn(&Path) -> String;
+    let cases: [(&str, Change); 3] = [
+        ("another URL", &|_| {
+            let other = up.api_path.with_file_name("other.json");
+            fs::write(&other, newest).unwrap();
+            text.replacen(&up.api, &file_url(&other), 1)
+        }),
+        ("a newer pin in the lock", &|_| {
+            let repinned = hash::sha256_bytes(br#"{"motors":[2]}"#);
+            text.replacen(&up.api_sha256, &repinned, 1)
+        }),
+        ("edited kept bytes", &|unpinned| {
+            fs::write(unpinned, br#"{"motors":[1],"edited":true}"#).unwrap();
+            text.clone()
+        }),
+    ];
+    for (case, change) in cases {
+        fs::write(&up.api_path, br#"{"motors":[1]}"#).unwrap();
+        let root = tempfile::tempdir().unwrap();
+        let lock = Lock::parse(&text).unwrap();
+        fetch_api(root.path(), &lock, Drift::Fail);
+        let unpinned = root.path().join("refs/snapshots/api.json.unpinned");
+        let sidecar = root.path().join("refs/snapshots/api.json.unpinned.toml");
+        backdate(&sidecar, "2026-01-02");
+
+        fs::write(&up.api_path, newest).unwrap();
+        let lock = Lock::parse(&change(&unpinned)).unwrap();
+        let (outcome, repins) = fetch_api(root.path(), &lock, Drift::Adopt);
+        assert_eq!(outcome, tally(0, 1, 0, 0), "{case}");
+        assert_eq!(repins[0].sha256, hash::sha256_bytes(newest), "{case}");
+        assert_ne!(repins[0].captured, "2026-01-02", "{case}");
+        assert!(!unpinned.exists(), "{case}");
+    }
 }
 
 #[test]

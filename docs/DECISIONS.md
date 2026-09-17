@@ -127,10 +127,11 @@ driven by `validation/refs.lock.toml`.
     RockSim `.rse` spec).
   - `[[snapshot]]`: a live API (ThrustCurve, motor.fusionspace.co) pinned by the sha256 and date
     of one capture. APIs move (the motor finder hourly), so a missing snapshot that no longer
-    matches fails, and the new capture is kept beside it with a record of its URL, hash and
-    date. `fetch --adopt-snapshots` moves that kept capture into place if it came from the
-    entry's current URL (otherwise it downloads a fresh one). It then rewrites only that entry's
-    `sha256` and `captured` lines, using the capture's real date.
+    matches fails. The new capture is kept beside it, with a record of its URL, its hash, its
+    date and the pin it drifted from. `fetch --adopt-snapshots` moves that kept capture into place
+    only if the entry still has the same URL and pin and the bytes are unchanged; otherwise it
+    downloads a fresh capture and says why. It then rewrites only that entry's `sha256` and
+    `captured` lines, using the capture's real date.
   - `[python]`: a `uv` project in `validation/oracles/` (`pyproject.toml` and `uv.lock`,
     committed), installed into `refs/venv` with `uv sync --locked`. That refuses a lock that is
     stale against `pyproject.toml` and checks every artifact against the hash in `uv.lock`;
@@ -154,10 +155,14 @@ driven by `validation/refs.lock.toml`.
     Untracked files that the repository doesn't ignore also fail.
   - The environment must pass `uv sync --locked --check`, which compares package versions only.
     Then every installed file is re-hashed against the sha256 its package's `RECORD` lists
-    (4,675 files today), and any file no `RECORD` lists fails, apart from the venv's own
-    scaffolding. That includes a `sitecustomize.py` or `.pth` file, which would run at startup.
+    (4,675 files today). Any file or symlinked directory that no `RECORD` lists fails, such as a
+    `sitecustomize.py` or a `.pth` file, which would run at startup. The exception is the venv's
+    own scaffolding (activation scripts, interpreter links, `pyvenv.cfg`, `_virtualenv.py`),
+    which is allowed by name. Its content isn't pinned, because uv generates it, except
+    `_virtualenv.pth`, whose one line is checked.
     The check runs Python with `-I`, so `PYTHONPATH` and the current directory can't leak in.
-    `fetch` repairs hash failures with `uv sync --reinstall --no-cache`. uv installs by copying
+    `fetch` repairs hash failures with `uv sync --reinstall --no-cache`. Files no package owns
+    can't be repaired that way, so `fetch` names them and asks for them to be deleted. uv installs by copying
     (`UV_LINK_MODE=copy`), so an edited venv file can't corrupt uv's cache through a hard link.
   - Git commands drop `GIT_DIR`-style variables, so a git hook can't redirect them at this
     repository.

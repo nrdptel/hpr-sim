@@ -100,8 +100,22 @@ fn probe(java: &Path) -> Option<Java> {
         java: java.to_path_buf(),
         major,
         version,
-        home: parse_home(&text),
+        // A home path with characters outside the console's code page can come back mangled;
+        // then fall back to the directory above the (resolved) executable's `bin`.
+        home: parse_home(&text)
+            .filter(|home| home.is_dir())
+            .or_else(|| executable_home(java)),
     })
+}
+
+fn executable_home(java: &Path) -> Option<PathBuf> {
+    // Windows paths stay as given: canonical `\\?\` paths confuse other tools.
+    let resolved = if cfg!(windows) {
+        java.to_path_buf()
+    } else {
+        java.canonicalize().ok()?
+    };
+    Some(resolved.parent()?.parent()?.to_path_buf())
 }
 
 /// The `java.home = <dir>` line of `-XshowSettings:properties`.

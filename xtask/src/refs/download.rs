@@ -26,21 +26,39 @@ pub struct Repin {
 }
 
 /// What a kept capture is, written beside it as `<dest>.unpinned.toml`, so adopting it later
-/// can check it still belongs to the lock entry and keep its real capture date.
+/// can check it still belongs to the same lock entry and keep its real capture date.
 #[derive(Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 struct KeptCapture {
     url: String,
+    /// The pin the capture drifted from. If the lock has been repinned since (say by a pull),
+    /// the capture is out of date and is not adopted.
+    pinned_sha256: String,
     sha256: String,
     captured: String,
 }
 
-/// The kept capture's date, if the capture beside `dest` came from `url` and still has the
-/// bytes recorded for it.
-fn kept_capture(unpinned: &Path, sidecar: &Path, url: &str) -> Option<String> {
-    let text = std::fs::read_to_string(sidecar).ok()?;
-    let kept: KeptCapture = toml::from_str(&text).ok()?;
-    let sha256 = hash::sha256_file(unpinned).ok()?;
-    (kept.url == url && kept.sha256 == sha256).then_some(kept.captured)
+/// The kept capture's date, if there is a kept capture for this lock entry as it stands.
+/// `Err` says why a kept capture was passed over; `Ok(None)` means there is none.
+fn kept_capture(
+    unpinned: &Path,
+    sidecar: &Path,
+    source: &SnapshotSource,
+) -> Result<Option<String>, &'static str> {
+    if !unpinned.is_file() {
+        return Ok(None);
+    }
+    let text = std::fs::read_to_string(sidecar).map_err(|_| "its record is missing")?;
+    let kept: KeptCapture = toml::from_str(&text).map_err(|_| "its record is unreadable")?;
+    if kept.url != source.url {
+        return Err("it came from another URL");
+    }
+    if kept.pinned_sha256 != source.sha256 {
+        return Err("the lock has been repinned since it was kept");
+    }
+    match hash::sha256_file(unpinned) {
+        Ok(sha256) if sha256 == kept.sha256 => Ok(Some(kept.captured)),
+        _ => Err("its bytes changed after it was kept"),
+    }
 }
 
 pub fn fetch_file(root: &Path, source: &FileSource) -> Outcome {
@@ -83,10 +101,13 @@ pub fn fetch_snapshot(
         return (outcome, None);
     }
     // Adopting takes the capture an earlier run kept aside, so the capture that gets pinned is
-    // the one the user could inspect, but only if it came from this entry's URL.
-    let kept = match drift {
-        Drift::Adopt => kept_capture(&unpinned, &sidecar, &source.url),
-        Drift::Fail => None,
+    // the one the user could inspect, but only if it still belongs to this entry as it stands.
+    let (kept, passed_over) = match drift {
+        Drift::Adopt => match kept_capture(&unpinned, &sidecar, source) {
+            Ok(kept) => (kept, None),
+            Err(reason) => (None, Some(reason)),
+        },
+        Drift::Fail => (None, None),
     };
     let (part, captured, verb) = match kept {
         Some(captured) => (
@@ -115,7 +136,10 @@ pub fn fetch_snapshot(
         Drift::Adopt => {
             let outcome = match place(&part, &dest, verb) {
                 Outcome::Fetched(detail) => Outcome::Fetched(format!(
-                    "{detail}; adopted the capture of {captured} and repinned"
+                    "{detail}; adopted the capture of {captured} and repinned{}",
+                    passed_over.map_or_else(String::new, |reason| format!(
+                        " (a kept capture was not used: {reason})"
+                    ))
                 )),
                 other => return (other, None),
             };
@@ -130,6 +154,7 @@ pub fn fetch_snapshot(
         Drift::Fail => {
             let record = KeptCapture {
                 url: source.url.clone(),
+                pinned_sha256: source.sha256.clone(),
                 sha256: sha256.clone(),
                 captured,
             };

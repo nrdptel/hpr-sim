@@ -76,7 +76,15 @@ impl Records {
             self.checked
         )
     }
+
+    /// Whether every problem is a file no package owns, which reinstalling cannot remove.
+    fn only_unowned(&self) -> bool {
+        self.bad.iter().all(|problem| problem.ends_with(UNOWNED))
+    }
 }
+
+/// The suffix the RECORD check puts on files that belong to no package.
+const UNOWNED: &str = "(not owned by any package)";
 
 const RECORD_SCRIPT: &str = r#"
 import base64, hashlib, importlib.metadata, json, os, sys
@@ -115,13 +123,27 @@ def scaffolding(parts):
                 or name.startswith("python3") or name in ("python.exe", "pythonw.exe"))
     return parts[-2] == "site-packages" and name in ("_virtualenv.py", "_virtualenv.pth")
 
+UNOWNED = "(not owned by any package)"
 for dirpath, dirnames, filenames in os.walk(sys.prefix):
     dirnames[:] = [d for d in dirnames if d != "__pycache__"]
+    for name in dirnames:
+        # os.walk doesn't follow directory symlinks, so report them instead of skipping them.
+        full = os.path.join(dirpath, name)
+        rel = os.path.relpath(full, sys.prefix)
+        if os.path.islink(full) and rel != "lib64":
+            bad.append(f"{rel.replace(os.sep, '/')} is a symlinked directory {UNOWNED}")
     for name in filenames:
         full = os.path.join(dirpath, name)
         parts = os.path.relpath(full, sys.prefix).split(os.sep)
-        if key(full) not in listed and not scaffolding(parts):
-            bad.append(f"{'/'.join(parts)} (not in any RECORD)")
+        if key(full) in listed:
+            continue
+        if not scaffolding(parts):
+            bad.append(f"{'/'.join(parts)} {UNOWNED}")
+        elif name == "_virtualenv.pth":
+            # The one scaffolding file with fixed content; it runs at every interpreter start.
+            with open(full, encoding="utf-8", errors="replace") as pth:
+                if pth.read().strip() != "import _virtualenv":
+                    bad.append(f"{'/'.join(parts)} has unexpected content {UNOWNED}")
 print(json.dumps({"checked": checked, "bad": bad}))
 "#;
 
@@ -151,7 +173,7 @@ fn parse_records(json: &str) -> Result<Records, String> {
 }
 
 pub fn fetch(root: &Path, python: &PythonEnv) -> Outcome {
-    let reinstall = match package_mismatch(root, python) {
+    let mut reinstall = match package_mismatch(root, python) {
         Ok(Some(_)) => false,
         Ok(None) => match check_records(root, python) {
             Ok(records) if records.bad.is_empty() => {
@@ -160,32 +182,49 @@ pub fn fetch(root: &Path, python: &PythonEnv) -> Outcome {
                     python.venv, records.checked
                 ));
             }
+            Ok(records) if records.only_unowned() => return unowned(python, &records),
             Ok(_) => true,
             Err(err) => return Outcome::Failed(err),
         },
         Err(err) => return Outcome::Failed(err),
     };
-    let mut sync = uv(root, python, "sync");
-    sync.args(["--locked", "--quiet"]);
-    if reinstall {
-        // Fresh downloads, in case the cache itself is what changed.
-        sync.args(["--reinstall", "--no-cache"]);
+    loop {
+        let mut sync = uv(root, python, "sync");
+        sync.args(["--locked", "--quiet"]);
+        if reinstall {
+            // Fresh downloads, in case the cache itself is what changed.
+            sync.args(["--reinstall", "--no-cache"]);
+        }
+        match tool::output(&mut sync) {
+            Ok(out) if out.status.success() => {}
+            Ok(out) => return Outcome::Failed(tool::failure(&sync, &out)),
+            Err(err) => return Outcome::Failed(err),
+        }
+        match check_records(root, python) {
+            Ok(records) if records.bad.is_empty() => {
+                return Outcome::Fetched(format!(
+                    "{} {} from uv.lock; {} files match their RECORD hashes",
+                    if reinstall { "reinstalled" } else { "synced" },
+                    python.venv,
+                    records.checked
+                ));
+            }
+            Ok(records) if records.only_unowned() => return unowned(python, &records),
+            // A plain sync only replaces outdated packages; edited files need a reinstall.
+            Ok(_) if !reinstall => reinstall = true,
+            Ok(records) => return Outcome::Failed(records.summary()),
+            Err(err) => return Outcome::Failed(err),
+        }
     }
-    match tool::output(&mut sync) {
-        Ok(out) if out.status.success() => {}
-        Ok(out) => return Outcome::Failed(tool::failure(&sync, &out)),
-        Err(err) => return Outcome::Failed(err),
-    }
-    match check_records(root, python) {
-        Ok(records) if records.bad.is_empty() => Outcome::Fetched(format!(
-            "{} {} from uv.lock; {} files match their RECORD hashes",
-            if reinstall { "reinstalled" } else { "synced" },
-            python.venv,
-            records.checked
-        )),
-        Ok(records) => Outcome::Failed(records.summary()),
-        Err(err) => Outcome::Failed(err),
-    }
+}
+
+fn unowned(python: &PythonEnv, records: &Records) -> Outcome {
+    Outcome::Failed(format!(
+        "{}. No package owns these, so reinstalling cannot fix them: delete them, or delete {} \
+         and fetch again",
+        records.summary(),
+        python.venv
+    ))
 }
 
 pub fn verify(root: &Path, python: &PythonEnv) -> Outcome {
@@ -289,6 +328,18 @@ fn parse_imports(json: &str, modules: &[&str]) -> Result<Vec<(String, Import)>, 
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn the_script_and_the_code_agree_on_unowned_files() {
+        assert!(RECORD_SCRIPT.contains(&format!("UNOWNED = \"{UNOWNED}\"")));
+        let records = |bad: &[&str]| Records {
+            checked: 1,
+            bad: bad.iter().map(|b| (*b).to_owned()).collect(),
+        };
+        let unowned = format!("lib/sitecustomize.py {UNOWNED}");
+        assert!(records(&[&unowned]).only_unowned());
+        assert!(!records(&[&unowned, "six.py (hash differs)"]).only_unowned());
+    }
 
     #[test]
     fn parses_record_results_and_caps_the_names_shown() {
