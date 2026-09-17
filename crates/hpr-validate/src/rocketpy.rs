@@ -77,7 +77,8 @@ pub fn descent_case(
 
     let setup = DescentSetup {
         design: text(found.get("design"))?,
-        dry_mass_kg: number(found.get("dry_mass_kg"))?,
+        dry_mass_kg: positive(number(found.get("dry_mass_kg"))?)?,
+        start_height_above_ground_m: number(start.get("height_above_ground_m"))?,
         latitude_deg: number(environment.get("latitude_deg"))?,
         longitude_deg: number(environment.get("longitude_deg"))?,
         elevation_m,
@@ -106,7 +107,7 @@ pub fn descent_case(
         sha256: sha256.to_owned(),
         values,
     };
-    reference.names_its_run().then_some((reference, setup))
+    Some((reference, setup))
 }
 
 /// The wind the oracle flew, as `(height above sea level, east, north)` levels. A scalar is one
@@ -146,4 +147,9 @@ fn text(value: Option<&Value>) -> Option<String> {
 /// A JSON number, however it is written.
 fn number(value: Option<&Value>) -> Option<f64> {
     value?.as_f64()
+}
+
+/// A number that can be a mass.
+fn positive(value: f64) -> Option<f64> {
+    (value.is_finite() && value > 0.0).then_some(value)
 }

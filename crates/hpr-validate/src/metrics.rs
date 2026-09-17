@@ -41,15 +41,6 @@ pub struct Reference {
 }
 
 impl Reference {
-    /// Whether the run that produced it is named at all: a file that does not say what wrote it,
-    /// with which command, is not a reference (L77), however many numbers it holds.
-    #[must_use]
-    pub fn names_its_run(&self) -> bool {
-        [&self.oracle, &self.generator, &self.command]
-            .into_iter()
-            .all(|field| !field.trim().is_empty())
-    }
-
     /// The metrics that carry no source, which is what L77 refuses.
     #[must_use]
     pub fn without_provenance(&self) -> Vec<String> {

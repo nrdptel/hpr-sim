@@ -52,13 +52,21 @@ The rules the harness enforces, each from a Loft lesson:
   M2.1b, which is where a case chooses a rocket rather than replaying one.
 
 **Not scored** is the harness's one escape hatch, and it is deliberately uncomfortable: the case
-has to write down why, naming an issue; the metric is still measured and still printed with both
-numbers and the difference; it never counts as a pass; and the whole excused set is pinned by
-`hpr_validate::tests::the_metrics_that_are_not_scored_are_these_and_no_others`. It exists because
-the alternative is worse. Valetudo's northward drift is 0.55 mm in hpr against RocketPy's 0.020 mm
-(issue #27); an absolute floor wide enough to pass that would have been 8.7x looser than the 3%
-gate on the same case's total drift, and would have hidden a real regression. The descent cases
-therefore carry no absolute floors at all: every gate is the milestone's 3%.
+has to write down why, a blank reason fails outright, the metric is still measured and still
+printed with both numbers and the difference, it never counts as a pass, and the whole excused set
+is pinned by `hpr_validate::tests::the_metrics_that_are_not_scored_are_these_and_no_others`.
+**No metric uses it today**, which is the outcome to aim for: it was written for Valetudo's
+northward drift, which read 28x RocketPy's, and the right answer turned out to be to fix the
+comparison rather than to excuse the number. The descent cases carry no absolute floors either:
+every gate is the milestone's 3%.
+
+That fix is worth stating, because it is what L75 means in practice. hpr's default gravity is the
+full normal-gravity vector, which leans a few parts in 10⁶ poleward above the ellipsoid; RocketPy
+applies gravity to the vertical axis alone. The difference is 5.2e-4 m of northward drift over an
+800 m descent, which is invisible in every metric that matters and swamps the one 20 µm number that
+does not. hpr ships `GravityModel::VerticalTaylor` as RocketPy's own formula for like-for-like
+comparisons, so the suite flies that, and the metric comes to −1.8% (ADR-015, issue #27,
+`docs/physics/recovery.md`).
 
 The committed report carries no timestamp, so a number that moves shows up in the diff. A `--fast`
 run writes `latest-fast.{md,json}` instead, which is not committed: a partial report never stands
@@ -185,7 +193,7 @@ excellent offline test fixtures for the weather-file readers.
 
 | source | what | license | notes |
 |---|---|---|---|
-| RocketPy `Flight` parachute phase | descent rate, descent time and drift for five example rockets (Calisto, Valetudo, NDRT 2020, Prometheus 2022, Juno III) | MIT | `validation/oracles/rocketpy/recovery.py` → `validation/fixtures/recovery/rocketpy-descent.json`, replayed by `hpr_sim::recovery::tests::descent_matches_rocketpy_examples`. Both start from the same declared post-burnout state with the first device open, the same drag areas, triggers and declared wind, and RocketPy's noise zeroed. Agreement: descent time within 0.71%, impact descent rate within 0.03%, drift magnitude within 0.27%, the worst single drift component 2.87% (NDRT's 49 m north of a 327 m drift, where RocketPy's added mass is 15.9 kg against a 20.8 kg rocket), and the deployment heights of the later devices within 0.17% (RocketPy's trigger sampling). The oracle runs at `rtol = atol = 1e-8`; at 1e-6 every compared metric moves by at most 3.5e-6 (its one larger entry, 2.1e-3, is on Valetudo's 20 µm north drift component, which M1.7a did not compare; M2.1a measures it and reports it **not scored**, because hpr's is 28x RocketPy's at 0.55 mm and the cause is not established: issue #27). M1.7a; `docs/physics/recovery.md` |
+| RocketPy `Flight` parachute phase | descent rate, descent time and drift for five example rockets (Calisto, Valetudo, NDRT 2020, Prometheus 2022, Juno III) | MIT | `validation/oracles/rocketpy/recovery.py` → `validation/fixtures/recovery/rocketpy-descent.json`, replayed by `hpr_sim::recovery::tests::descent_matches_rocketpy_examples`. Both start from the same declared post-burnout state with the first device open, the same drag areas, triggers and declared wind, and RocketPy's noise zeroed. Agreement: descent time within 0.71%, impact descent rate within 0.03%, drift magnitude within 0.27%, the worst single drift component 2.87% (NDRT's 49 m north of a 327 m drift, where RocketPy's added mass is 15.9 kg against a 20.8 kg rocket), and the deployment heights of the later devices within 0.17% (RocketPy's trigger sampling). The oracle runs at `rtol = atol = 1e-8`; at 1e-6 every compared metric moves by at most 3.5e-6 (its one larger entry, 2.1e-3, is on Valetudo's 20 µm north drift component, which M1.7a did not compare; M2.1a measures it, and reading 28x high there is what found the gravity-model difference in ADR-015, issue #27). M1.7a; `docs/physics/recovery.md` |
 | Knacke's canopy tables | drag coefficients on the nominal area, canopy fill constants, drag-area growth exponents and opening-force coefficients | no clear terms: cited, never redistributed | transcribed into `hpr_sim::recovery::CanopyType` with the printed page at each accessor, and pinned by `hpr_sim::recovery::tests::default_canopy_cd_carries_its_citation` (which also fixes hpr's default `C_D0` as the middle of each printed range) |
 
 ### Streamers and tumble (M1.7b)

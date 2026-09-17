@@ -2,9 +2,12 @@
 
 use std::path::Path;
 
+use hpr_atmos::AtmosphereModel;
 use hpr_atmos::{LayeredWind, WindInterpolation, WindLevel};
 use hpr_core::DVec3;
+use hpr_core::earth::{Earth, EarthRotation, GravityModel};
 use hpr_core::geodesy::Geodetic;
+use hpr_core::gravity::NormalGravity;
 use hpr_design::Rocket;
 use hpr_sim::{
     Device, DeviceDrag, Environment, EventKind, FlightSettings, Rail, Simulation, State,
@@ -135,6 +138,15 @@ pub fn run_lock(root: &Path, fast: bool) -> Result<Report, ValidateError> {
         cases.push(case.id.clone());
         comparisons.extend(case_comparisons);
         sources.push(source);
+    }
+    if comparisons.is_empty() {
+        // L78 once more: "ok" over nothing is the report Loft's suites produced when their
+        // fixtures were missing. A run that scored no metric has not validated anything.
+        return Err(ValidateError::Case(format!(
+            "the run covered {} case(s) and compared nothing; a suite that checks nothing is not \
+             a suite that passes",
+            cases.len()
+        )));
     }
     Ok(Report {
         harness_version: env!("CARGO_PKG_VERSION").to_owned(),
@@ -357,10 +369,23 @@ fn fly_descent(
                 direction_from_rad: (-east).atan2(-north).rem_euclid(std::f64::consts::TAU),
             })
             .collect();
-        let environment = Environment {
-            wind: std::sync::Arc::new(LayeredWind::new(levels, WindInterpolation::Components)?),
-            ..Environment::standard(site)?
-        };
+        // L75, on a difference that took two reviews to find: hpr's default gravity is the full
+        // normal-gravity *vector*, which above the ellipsoid leans very slightly north, while
+        // RocketPy applies gravity to the vertical axis alone (`Flight.u_dot_parachute`,
+        // `flight.py:2777`). Over an 800 m descent that difference is 5.2e-4 m of northward
+        // drift — 26 times the Coriolis drift it hides among. hpr ships RocketPy's formula for
+        // exactly this reason, so a RocketPy comparison uses it.
+        let earth = Earth::new(
+            NormalGravity::wgs84(),
+            site,
+            GravityModel::VerticalTaylor,
+            EarthRotation::Coriolis,
+        )?;
+        let environment = Environment::new(
+            earth,
+            AtmosphereModel::default(),
+            LayeredWind::new(levels, WindInterpolation::Components)?,
+        );
         let devices = setup
             .devices
             .iter()
@@ -398,7 +423,7 @@ fn fly_descent(
         let properties = simulation.assembly().mass_properties(setup.start_time_s);
         // L75 again: the same rocket has to weigh the same in both codes before any difference in
         // where it lands can be read as physics.
-        let mass_gap = (properties.mass_kg - setup.dry_mass_kg).abs() / setup.dry_mass_kg;
+        let mass_gap = (properties.mass_kg - setup.dry_mass_kg).abs() / setup.dry_mass_kg.abs();
         if !mass_gap.is_finite() || mass_gap > MASS_AGREEMENT {
             return Ok(Err(format!(
                 "hpr flies {:.6} kg where the reference recorded {:.6} kg, a relative {mass_gap:.3e}",
@@ -439,10 +464,12 @@ fn fly_descent(
         measured.insert("drift_m", drift.truncate().length());
         measured.insert("drift_east_m", drift.x);
         measured.insert("drift_north_m", drift.y);
-        // As the generator defines it: the height given up, over the time it took.
+        // As the generator defines it: the height above the site it started from, over the time
+        // it took. Measuring the ENU `z` drop instead would carry the curvature of the ground
+        // (`drift²/2R`, 15 cm over Calisto's 1.4 km drift), which is not what the oracle divided.
         measured.insert(
             "mean_descent_rate_m_s",
-            (cg_enu_m.z - landing.cg_enu_m.z) / descent_time_s,
+            (setup.start_height_above_ground_m - landing.height_above_ground_m) / descent_time_s,
         );
         Ok(Ok(measured))
     };
@@ -483,6 +510,9 @@ pub struct DescentSetup {
     pub design: String,
     /// What it weighed as it descended, kg.
     pub dry_mass_kg: f64,
+    /// How far above the site the descent starts, m: the generator's own numerator for the mean
+    /// descent rate.
+    pub start_height_above_ground_m: f64,
     /// The site's latitude, degrees.
     pub latitude_deg: f64,
     /// Its longitude, degrees.

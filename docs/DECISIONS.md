@@ -1075,7 +1075,9 @@ and L26 set tests.
   draws on the global `np.random`) and a declared wind (the examples' own winds need the network or
   Copernicus files). Five example rockets. The oracle runs at `rtol = atol = 1e-8` and records its
   own solver's contribution per metric: at most 3.5e-6 on every compared metric (its one larger
-  entry, 2.1e-3, is on a 20 µm drift component this comparison did not compare; M2.1a measures it, finds hpr 28x above RocketPy at 0.55 mm and reports it unscored against issue #27). The differences that remain
+  entry, 2.1e-3, is on a 20 µm drift component this comparison did not compare; M2.1a measures it,
+  and reading 28x high there is what found the gravity-model difference of ADR-015, issue #27). The
+  differences that remain
   are listed in `recovery.md`, with the trigger-sampling one measured rather than assumed away. Whole-flight comparisons, ascent included, are M2.1's.
 
 **Consequences.**
@@ -1277,12 +1279,23 @@ and M1.7a's recovery comparison, whose references are real RocketPy output.
 - **A metric that cannot honestly be scored is declared, not smoothed over.** The descent cases
   carry no absolute floors: an absolute bound wide enough to carry Valetudo's near-zero northward
   drift would also have been 8.7x looser than 3% of that case's whole drift, which is a weakened
-  check wearing a tolerance's clothes. Instead the case says `not_scored = "<reason>"`, the harness
-  measures and prints the metric with both numbers and the reason, and the run counts it apart
-  from the verdict. One metric is declared today: Valetudo's `drift_north_m`, where hpr is 28x
-  RocketPy at 0.55 mm for reasons not established (issue #27). Loft excused its two largest misses
-  as "no single target" (L82), so the whole excused set is pinned by a test named after what it is,
-  and a reason has to name an issue.
+  check wearing a tolerance's clothes. The alternative is `not_scored = "<reason>"`: the harness
+  measures and prints the metric with both numbers and the reason, and counts it apart from the
+  verdict. Loft excused its two largest misses as "no single target" (L82), so a blank reason fails
+  outright and the whole excused set is pinned by a test named after what it is. **No metric uses
+  it today.** It was written for Valetudo's northward drift, where hpr read 28x RocketPy; the cause
+  turned out to be the gravity model below, and the metric is now gated at 3% like every other. The
+  mechanism stays for M2.1b, whose predicted-mode supersonic cases are gaps by construction.
+- **A RocketPy comparison flies RocketPy's gravity model.** hpr's default is the full
+  normal-gravity vector, which above the ellipsoid leans a few parts in 10⁶ poleward; RocketPy
+  applies gravity to the vertical axis alone. The difference is invisible in every metric that
+  matters and decisive in the one that does not: 5.2e-4 m of northward drift over an 800 m
+  descent, against a 2.0e-5 m Coriolis signal. hpr already ships `GravityModel::VerticalTaylor`
+  as RocketPy's formula "for like-for-like comparisons", so the harness uses it, and Valetudo's
+  northward drift comes to −1.8% instead of +2704%. The general rule this is an instance of: when
+  the oracle's model is a documented simplification of hpr's and hpr can be asked for the same
+  simplification, the comparison uses it and says so, rather than reporting the modelling gap as
+  a physics gap (L75).
 - **The cases that must run are locked** in `validation/cases/lock.toml`, and a locked case that is
   not there is an error, not a skip (L78). A committed case that is not locked is an error too, so
   a case cannot be added and forgotten — and both checks live in the command, not only in a test.

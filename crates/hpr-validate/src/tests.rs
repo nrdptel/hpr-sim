@@ -4,7 +4,7 @@ use std::path::{Path, PathBuf};
 
 use crate::case::{Case, CaseLock, Metric, Tolerance, cases_dir, committed_cases};
 use crate::metrics::{Reference, ReferenceValue};
-use crate::report::{Report, Verdict};
+use crate::report::{Comparison, Report, Verdict};
 use crate::run::{ValidateError, run_case, run_lock};
 
 /// The repository root, from this crate's manifest.
@@ -226,23 +226,34 @@ fn the_metrics_that_are_not_scored_are_these_and_no_others() {
         .iter()
         .map(|comparison| (comparison.case.as_str(), comparison.metric.as_str()))
         .collect();
-    assert_eq!(excused, vec![("descent-valetudo", "drift_north_m")]);
-    for comparison in report.not_scored() {
-        let reason = comparison.note.as_deref().unwrap_or_default();
-        assert!(
-            reason.contains("issue #"),
-            "{}'s {} is excused without naming an issue: {reason}",
-            comparison.case,
-            comparison.metric
-        );
-        assert_eq!(comparison.verdict, Verdict::NotScored);
-        // It is still measured and still printed, with both numbers.
-        assert!(comparison.measured != 0.0 && comparison.reference != 0.0);
-        assert!(report.to_markdown().contains(reason), "the report hides it");
-    }
-    // An unscored metric cannot make a run green on its own: the verdict counts failures only.
+    // None. Valetudo's northward drift was excused while its 28x gap was unexplained; the gap was
+    // an unlike gravity model, the suite now flies RocketPy's own, and the metric is gated like
+    // every other. Adding an excuse back means editing this line.
+    assert_eq!(excused, Vec::<(&str, &str)>::new());
     assert!(report.passed());
-    assert_eq!(report.failures().len(), 0);
+
+    // The hatch itself still works, and still refuses to be a quiet pass: a declared metric is
+    // printed with both numbers and its reason, and one with a blank reason fails outright.
+    let declared = Comparison::not_scored(
+        "a-case",
+        "drift_north_m",
+        5.5e-4,
+        2.0e-5,
+        "rocketpy 1.13.0, ..., metrics.drift_north_m",
+        "  the cause is not established: issue #27  ",
+    );
+    assert_eq!(declared.verdict, Verdict::NotScored);
+    assert!(!declared.scored());
+    assert_eq!(
+        declared.note.as_deref(),
+        Some("the cause is not established: issue #27")
+    );
+    let blank = Comparison::not_scored("a-case", "drift_north_m", 5.5e-4, 2.0e-5, "...", "   ");
+    assert_eq!(
+        blank.verdict,
+        Verdict::Fail,
+        "an excuse nobody wrote down is not an excuse"
+    );
 }
 
 #[test]
@@ -311,7 +322,6 @@ fn every_reference_value_has_provenance() {
         .into_iter()
         .collect(),
     };
-    assert!(blank.names_its_run());
     assert_eq!(blank.without_provenance(), vec!["descent_time_s"]);
 }
 
@@ -498,7 +508,7 @@ fn the_committed_cases_all_pass_and_the_report_says_so() {
     let report = run_lock(&root(), false).expect("the committed cases run");
     assert_eq!(report.cases.len(), 5, "{:?}", report.cases);
     assert_eq!(report.comparisons.len(), 30);
-    assert_eq!(report.not_scored().len(), 1);
+    assert!(report.not_scored().is_empty(), "every metric is scored");
     assert!(report.passed(), "{:?}", report.failures());
     let (worst, relative) = report.worst_scored().expect("something was scored");
     assert!(
@@ -509,7 +519,7 @@ fn the_committed_cases_all_pass_and_the_report_says_so() {
     );
     let markdown = report.to_markdown();
     assert!(
-        markdown.contains("29 scored, all within tolerance"),
+        markdown.contains("30 scored, all within tolerance"),
         "{markdown}"
     );
     assert!(
@@ -586,7 +596,8 @@ fn a_fast_run_says_what_it_left_out() {
     assert!(report.skipped.is_empty(), "the lock marks no case slow");
     assert!(report.to_markdown().contains("nothing was left out"));
 
-    // With a case marked slow, a fast run leaves out that case and only that case, and says so.
+    // With every case marked slow, a fast run would cover nothing at all, and "ok" over nothing is
+    // the report Loft's suites produced when their fixtures went missing. It fails instead.
     let scratch = scratch_case("descent-juno-iii", |_| {});
     scratch.write(
         "validation/cases/lock.toml",
@@ -596,14 +607,10 @@ fn a_fast_run_says_what_it_left_out() {
         })
         .expect("the lock serialises"),
     );
-    let fast = run_lock(scratch.path(), true).expect("a fast run");
-    assert!(fast.cases.is_empty());
-    assert_eq!(fast.skipped, vec!["descent-juno-iii".to_owned()]);
+    let error = run_lock(scratch.path(), true).expect_err("a fast run that covers nothing");
     assert!(
-        fast.to_markdown()
-            .contains("left out 1 of the locked cases: descent-juno-iii"),
-        "{}",
-        fast.to_markdown()
+        matches!(&error, ValidateError::Case(message) if message.contains("compared nothing")),
+        "{error}"
     );
     // The same lock run whole covers it.
     let whole = run_lock(scratch.path(), false).expect("a whole run");

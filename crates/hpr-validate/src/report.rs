@@ -75,6 +75,7 @@ impl Comparison {
         source: &str,
         reason: &str,
     ) -> Self {
+        let reason = reason.trim();
         Self::build(
             case,
             metric,
@@ -82,8 +83,14 @@ impl Comparison {
             reference,
             source,
             Tolerance::default(),
-            Verdict::NotScored,
-            Some(reason.to_owned()),
+            if reason.is_empty() {
+                // An excuse nobody wrote down is the thing this mechanism exists to prevent, so a
+                // blank one fails rather than quietly not counting.
+                Verdict::Fail
+            } else {
+                Verdict::NotScored
+            },
+            (!reason.is_empty()).then(|| reason.to_owned()),
         )
     }
 
@@ -285,7 +292,7 @@ impl Report {
                 source.case,
                 source.oracle,
                 source.file,
-                &source.sha256[..16],
+                source.sha256.get(..16).unwrap_or(&source.sha256),
                 source.model,
                 source.overrides
             ));

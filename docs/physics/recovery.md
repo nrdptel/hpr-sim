@@ -394,8 +394,17 @@ What still differs, and by how much:
 - **Atmosphere.** hpr evaluates the 1976 standard atmosphere; RocketPy interpolates a 100-point
   pressure table over 0 to 80 km. Measured over the fixture's 23 samples: at most 3.7e-4 in
   density, which the test gates at 5e-4.
-- **Gravity.** The same model: RocketPy's "Somigliana" formula is WGS 84 normal gravity, and the
-  test asserts hpr's agrees with the fixture's samples to 1e-6.
+- **Gravity.** The same *magnitude*, and for a long time that was all this said. RocketPy's
+  "Somigliana" formula is WGS 84 normal gravity and hpr's agrees with the fixture's samples to
+  1e-6 — but RocketPy applies it to the vertical axis alone (`Flight.u_dot_parachute`,
+  `flight.py:2777`, where only `az` carries a gravity term), while hpr's default
+  `GravityModel::Ellipsoidal` uses the full normal-gravity **vector**, which above the ellipsoid
+  leans a few parts in 10⁶ toward the pole: 4.0e-6 m/s² at Valetudo's site at ground level and
+  8.7e-6 m/s² at 800 m. The M1.7a test compares gravity by magnitude, so it could not see this,
+  and no metric it gates is sensitive to it. It shows up in one number in the whole suite,
+  Valetudo's 20 µm northward drift, where it put hpr 28x high (issue #27). The validation suite
+  therefore flies `GravityModel::VerticalTaylor`, which hpr ships as RocketPy's own formula for
+  like-for-like comparisons; with it the two agree to 1.8% on that number as well.
 - **Geometry.** hpr flies over the ellipsoid and takes heights along its normal; RocketPy's `z` is
   flat. Over Calisto's 1.4 km of drift the curvature is 0.15 m of height, 0.03 s of descent.
 
@@ -406,18 +415,20 @@ Measured (hpr against RocketPy, 2026-09-17):
 | case | descent time | descent rate under the drogue | impact descent rate | drift | worst drift component |
 |---|---|---|---|---|---|
 | Calisto (drogue 1.0 m², main 10 m² at 800 m, wind 5 E / 2 N) | +0.08% (257.27 s) | −0.01% (17.967 m/s) | −0.03% (5.454 m/s) | +0.06% (1,385.8 m) | +0.06% |
-| Valetudo (drogue 0.4537 m², no wind) | −0.02% (45.76 s) | — | +0.00% (17.627 m/s) | −0.89% (0.19 m, Coriolis only) | +2704% (north, 0.55 mm against 0.020 mm; open, issue #27) |
+| Valetudo (drogue 0.4537 m², no wind) | −0.02% (45.76 s) | — | +0.00% (17.627 m/s) | −0.89% (0.19 m, Coriolis only) | −1.77% (north, 19 µm; +2704% under hpr's own gravity, issue #27) |
 | NDRT 2020 (drogue 0.438 m², main 16.05 m² at 167.6 m, sheared wind) | +0.71% (61.60 s) | +0.01% (28.156 m/s) | +0.01% (4.604 m/s) | +0.27% (327.9 m) | +2.87% (north, −50.8 m) |
 | Prometheus 2022 (drogue 0.467 m², main 5.78 m² at 457.2 m) | +0.08% (153.50 s) | −0.01% (26.400 m/s) | −0.03% (7.323 m/s) | +0.07% (1,236.9 m) | +0.07% |
 | Juno III (drogue 0.885 m²) | −0.02% (53.56 s) | — | −0.01% (22.431 m/s) | −0.03% (457.9 m) | −0.03% |
 
-Valetudo's north drift is the one entry that is not agreement. It is 0.55 mm against RocketPy's
-0.020 mm in a descent whose total drift is 0.19 m, and both codes carry the same Coriolis term
-(hpr in `dynamics.rs`; RocketPy in `Flight.u_dot_parachute`, `flight.py:2779-2783`). A
-quasi-steady balance — the horizontal velocity relaxes in about `v_t/g` ≈ 1.8 s, so
-`v_north ≈ −2 ω_z v_east · v_t/g` — gives about 2e-5 m over the descent, which is RocketPy's
-number, so hpr's is the one to explain. The validation suite reports it unscored rather than
-passing it on a widened tolerance (issue #27).
+Valetudo's north drift is worth its own paragraph, because it is the number that found the gravity
+difference above. In still air it is Coriolis alone: the horizontal velocity relaxes to a drag
+balance in about `v_t/g` ≈ 1.8 s, so `v_north ≈ −2 ω_z v_east · v_t/g`, which integrates to 2.0e-5 m
+over the descent. RocketPy gives 1.9653e-5 m. Under hpr's default gravity hpr gave 5.51e-4 m, 28x
+high, and `(1/g)∫₀^800 g_north dz` = 5.2e-4 m accounts for the difference to within a few percent.
+Flown against RocketPy's own gravity formula, as the validation suite does, hpr gives 1.93e-5 m,
+−1.8%. Both codes carry the same Coriolis term (hpr in `dynamics.rs`; RocketPy in
+`flight.py:2779-2783`), and on this evidence neither is wrong: they were being asked different
+questions.
 
 The later devices' trigger heights agree to −0.01%, −0.17% and −0.01% (RocketPy's trigger
 sampling, above), and in every case both simulators land within 1% of Knacke's `v_e` for the
