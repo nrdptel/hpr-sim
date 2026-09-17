@@ -1,8 +1,17 @@
-//! Test problems with closed-form solutions, shared by the integrator and event tests.
+//! Test problems with closed-form solutions and test flights, shared by the tests.
 
 use std::convert::Infallible;
 use std::ops::ControlFlow;
 
+use hpr_aero::DragTable;
+use hpr_atmos::{AirSample, AirState, AtmosError, Atmosphere, ConstantWind, Ussa76, Wind};
+use hpr_core::earth::{Earth, EarthRotation, GravityModel};
+use hpr_core::geodesy::Geodetic;
+use hpr_core::gravity::NormalGravity;
+use hpr_core::interp::{Extrapolation, Interpolation, Table1D};
+use hpr_design::Rocket;
+
+use crate::environment::Environment;
 use crate::events::Direction;
 use crate::integrator::{OdeSystem, Step};
 
@@ -228,4 +237,85 @@ where
     fn accept_step(&mut self, step: &Step<N>) -> ControlFlow<()> {
         (self.observe)(step)
     }
+}
+
+/// A validation design by file name (`validation/designs/<name>.json`).
+pub(crate) fn design(name: &str) -> Rocket {
+    let text = match name {
+        "synthetic-54mm-three-fin" => {
+            include_str!("../../../validation/designs/synthetic-54mm-three-fin.json")
+        }
+        "rocketpy-valetudo" => include_str!("../../../validation/designs/rocketpy-valetudo.json"),
+        _ => panic!("no design {name}"),
+    };
+    serde_json::from_str(text).unwrap()
+}
+
+/// Spaceport America, near the site RocketPy's examples use.
+pub(crate) fn site() -> Geodetic {
+    Geodetic::from_degrees(32.99, -106.97, 1400.0).unwrap()
+}
+
+/// The same air at every height (`density` 0 for a vacuum).
+#[derive(Debug, Clone, Copy)]
+pub(crate) struct UniformAir(pub(crate) AirState);
+
+impl UniformAir {
+    /// The 1976 standard atmosphere's sea-level air.
+    pub(crate) fn sea_level() -> Self {
+        Self(Ussa76::standard().sample(0.0).unwrap().air)
+    }
+
+    /// No air: zero density and pressure, with the sea-level speed of sound and viscosity so that
+    /// Mach and Reynolds numbers stay finite.
+    pub(crate) fn vacuum() -> Self {
+        let mut air = Self::sea_level().0;
+        air.density_kg_m3 = 0.0;
+        air.pressure_pa = 0.0;
+        Self(air)
+    }
+}
+
+impl Atmosphere for UniformAir {
+    fn air(&self, _height_msl_m: f64) -> Result<AirSample, AtmosError> {
+        Ok(AirSample {
+            air: self.0,
+            extrapolated: None,
+        })
+    }
+}
+
+/// An environment for analytic tests: uniform `air`, constant gravity `g` straight down the launch
+/// frame, no Earth rotation and no wind.
+pub(crate) fn analytic_environment(air: UniformAir, g_mps2: f64) -> Environment {
+    let earth = Earth::new(
+        NormalGravity::wgs84(),
+        site(),
+        GravityModel::Constant { g_mps2 },
+        EarthRotation::Ignore,
+    )
+    .unwrap();
+    Environment::new(earth, air, ConstantWind::calm())
+}
+
+/// A standard environment at [`site`] with `wind`.
+pub(crate) fn windy_environment(wind: impl Wind + 'static) -> Environment {
+    Environment {
+        wind: Box::new(wind),
+        ..Environment::standard(site()).unwrap()
+    }
+}
+
+/// A drag table with the same power-off `C_D0` at every Mach number.
+pub(crate) fn constant_drag(cd: f64) -> DragTable {
+    DragTable::new(
+        Table1D::new(
+            vec![0.0, 1.0],
+            vec![cd, cd],
+            Interpolation::Linear,
+            Extrapolation::Clamp,
+        )
+        .unwrap(),
+        None,
+    )
 }

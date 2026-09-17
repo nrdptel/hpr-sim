@@ -4,34 +4,32 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
 
 ## Now
 
-- **Current milestone:** M1.6b Rigid-body flight
-- **Run:** the first autopilot run; M0.1–M0.3, M1.1–M1.5 and M1.6a have shipped
-- **Last updated:** 2026-09-17 (M1.6a merged)
+- **Current milestone:** M1.7 Recovery
+- **Run:** the first autopilot run; M0.1–M0.3 and M1.1–M1.6 have shipped
+- **Last updated:** 2026-09-17 (M1.6b merged)
 
 ## Handoff (overwrite each session)
 
-M1.6a is done (ADR-010, `docs/physics/integration.md`). Start M1.6b from these notes:
+M1.6 is done (ADR-010, ADR-011, `docs/physics/integration.md`, `docs/physics/flight.md`). Start
+M1.7 from these notes:
 
-- **What exists:** `hpr_sim::Integrator<N>` with `Method::DormandPrince54(Adaptive)` (default
-  `rtol = atol = 1e-8`) or `Method::Rk4 { step_s }`. `advance(system, t_stop)` stops exactly at
-  `t_stop`, at events (`fired_events()`, all coincident ones) or when `OdeSystem::accept_step`
-  breaks. The one `OdeSystem<N>` type carries the derivative, `atol` weights, events and the step
-  observer (each `Step` has `state_at(t)` for the recorder). Normalize the quaternion inside it.
-- **Contracts for M1.6b:**
-  - Discontinuities are stop times, and the caller sets the phase between `advance` calls (the
-    step ending at a stop time evaluates its last stage there). The motor's pressure correction
-    steps just after 0 and at the curve's end (`hpr_motor::SolidMotor::thrust_at_pressure_n`).
-  - Refuse designs whose `checks::check` has `Severity::Error` findings unless the caller accepts
-    them; `Assembly::mass_properties(t)` (about 0.1 µs), one `AeroModel` per design.
-  - The aero models are small-angle (`α` in `[0, π]`, drag mirrored past 90°); decide large `α`
-    near rail exit and apogee. Normal force refuses `M ≥ 1` until M1.8 (a `DragTable` accepts any
-    Mach for drag only); decide what a faster flight does. There are no damping moments in
-    `hpr-aero` (M1.8): the pitch-oscillation test needs the engine's own `ω × r` airspeed at each
-    component's CP, as RocketPy's `u_dot_generalized` does (`flight.py:2471`, MIT).
-  - Atmosphere and wind take height above MSL; ground contact and apogee use the ellipsoidal
-    height from `LaunchFrame::geodetic_from_enu` (L35). There is no geoid model: take `N` as input.
-  - Every motor ignites at `t = 0` until M1.9. Settle the Earth-rate term in the rotational
-    equations (frames.md) and record it. L25's step limit is `IntegrationError::StepLimit`.
+- **What exists:** `hpr_sim::Simulation::new(rocket, config, Environment, Rail, FlightSettings)`
+  and `run(&mut observer)` fly pad → rail → free flight to `GroundHit` in about 1.1 ms (`perf.md`);
+  `run_free(t0, State, ..)` starts in free flight. `FlightResult` has `events` (liftoff, rail
+  exit, burnout, apogee, ground hit, user) and a `Termination`. `Recorder` keeps `Channel`s.
+  Phases are `PhaseSystem`s in `flight.rs`; `dynamics::Vehicle::evaluate` has the equations.
+- **Contracts for M1.7:**
+  - Recovery devices are new phases or events on `PhaseSystem`; deployment at apogee must use the
+    coincident-events path (`Integrator::fired_events`). A canopy opening is stiff: bound the step
+    (`Adaptive::max_step_s`) or model inflation, and check L28's step collapse.
+  - After separation the bodies fly independently; `Assembly` has no split yet, so decide how a
+    body's mass properties and drag are defined, and record it.
+  - Motor delays (`MountedMotor::delay`) time from burnout; every motor still ignites at `t = 0`.
+  - The aero models refuse `M ≥ 1` (a flight stops with `SimError::Aero`); descent is subsonic.
+  - RocketPy's parachute model is MIT: its `Flight` descent equations can be read and ported with
+    attribution. Knacke's manual (`refs/papers`) has no clear terms: cite, don't copy.
+- **For M2.1 (RocketPy comparison):** RocketPy ends the rail phase at the forward button and codes
+  the nozzle gyration tensor's transverse term with `0.25·n²` (ADR-011, `flight.md`).
 - **Open conventions to settle with the jar (M2.2/M3.1):** OpenRocket's override order (L51),
   automatic radii, positions, ogive parameter, walls, fin cross-section mass and cant pivot; from
   M1.5b, the drag-at-angle polynomial, the lug diameter, the boattail areas and the friction area.
@@ -45,19 +43,18 @@ M1.6a is done (ADR-010, `docs/physics/integration.md`). Start M1.6b from these n
 
 ## Done log (newest first, keep about 15)
 
-- 2026-09-17: M1.6a Integrator and events (ADR-010): DOPRI5 port with dense output, RK4, stop
-  times, Brent event location. Step halving: orders 5.09 and 4.01; events within 1.5e-8 s.
+- 2026-09-17: M1.6b Rigid-body flight (ADR-011): RocketPy's variable-mass equations about the nose
+  tip, component-wise aero with rotational damping, rail to the last button. Pitch period 8e-5 from
+  linear theory; jet damping 1e-6 from the classical form; Valetudo to the ground in 1.09 ms.
+- 2026-09-17: M1.6a Integrator and events (PR #19, ADR-010): DOPRI5 port with dense output, RK4,
+  stop times, Brent events. Step halving: orders 5.09 and 4.01; events within 1.5e-8 s.
 - 2026-09-17: M1.5b Drag and override tables (PR #17, ADR-009): Niskanen's buildup, drag at angle
   of attack, Barrowman's roughness table, CSV override tables. At Mach 0.3 against RASAero-labelled
   curves: Calisto +4.4%, Juno III −6.0%, Cavour −8.3%; gaps: Valetudo −47%, Cavour power-on −18%.
-- 2026-09-17: M1.5a Normal force and centre of pressure (PR #16): Barrowman slopes and CPs for
-  bodies (real volumes, L9) and fins (Prandtl–Glauert, MAC, fin-count factors L8, elliptical L10,
-  freeform), Galejs body lift, ADR-008. Barrowman's five worked examples (NARAM-8, TIR-33) agree
-  within 1% except the Recruiter's six-fin slopes (+3.4%, +2.9%), which follow TIR-33's own rule.
-- 2026-09-17: M1.4b Design tree, configurations, checks (PR #14, ADR-007): six RocketPy examples
-  match to 8e-10; M1.4a Shapes, materials, component mass properties (PR #12, ADR-006).
-- 2026-09-17: M1.3 Solid motors (PR #9, ADR-005): RocketPy's SolidMotor to 8e-5, `.eng`/`.rse`
-  round trips of 1710 files, 32 bundled public-domain curves.
+- 2026-09-17: M1.5a Normal force and CP (PR #16, ADR-008): Barrowman's worked examples within 1%
+  except the Recruiter's six-fin slopes (+3.4%, +2.9%, TIR-33's own rule).
+- 2026-09-17: M1.4b Design tree (PR #14, ADR-007), RocketPy examples to 8e-10; M1.4a mass (PR #12);
+  M1.3 Solid motors (PR #9, ADR-005), SolidMotor to 8e-5, 1710 files round-tripped.
 - 2026-09-17: M1.2 Atmosphere and wind (PR #7, ADR-004); M1.1 Core math, frames, Earth (PR #5);
   M0.1–M0.3 Workspace, reference library, Loft lessons (PRs #2–#4). 2026-09-16: kickoff.
 
@@ -117,6 +114,8 @@ M1.6a is done (ADR-010, `docs/physics/integration.md`). Start M1.6b from these n
   the examples' airfoils; commit derived numbers only.
 - ADR-010: own DOPRI5 port (no ODE crate); the system carries weights, events and observer; events
   stop past the zero on the dense output and fire together; discontinuities are stop times.
+- ADR-011: nose-tip reference point; nozzle gyration tensor from the integral; mass rates by
+  differences inside intervals; no Earth rate in rotation; `M ≥ 1` stops a flight; rail `μ` 0.
 
 ## Known issues and risks
 
@@ -144,6 +143,8 @@ M1.6a is done (ADR-010, `docs/physics/integration.md`). Start M1.6b from these n
   (fins and finish move each case by 20% or more). hpr misses Valetudo's suspect table by 47% and
   Cavour's power-on table by 18% (cause open; ADR-009). Drag reads low from about Mach 0.6
   until M1.8 (flagged above 0.8).
-- `AeroModel::normal_force` measured 2× slower after M1.5b, path unchanged (`docs/perf.md`).
+- Flight (M1.6b): no tip-off, roll forcing or damping (M1.8), turbulence or thrust misalignment;
+  the small-angle aero is used at every `α`. Four `mass_properties` calls are most of an
+  evaluation's 0.4 µs (`perf.md`).
 - `refs doctor` "runnable" means the oracle's runtime starts (imports, JVM plus jar), not that a
   flight ran (M2.x); it doesn't check Node (for `analyze_stats.js`).

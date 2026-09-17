@@ -43,8 +43,10 @@ adds a source.
 
 - **RocketPy** (MIT), `rocketpy/motors/solid_motor.py` at v1.13.0: the BATES grain regression
   geometry and the grain-stack inertia, re-derived in closed form in `hpr_motor::grains`, and the
-  constant-exhaust-velocity consumption in `hpr_motor::motor`. RocketPy's license applies to those
-  portions:
+  constant-exhaust-velocity consumption in `hpr_motor::motor`. Its technical documentation
+  `docs/technical/equations_of_motion.rst` and `equations_of_motion_v1.rst` at v1.13.0: the
+  variable-mass rigid-body equations of motion in `hpr_sim::dynamics`. RocketPy's license applies
+  to those portions:
 
   > MIT License. Copyright (c) 2018 Giovani Hidalgo Ceotto. Permission is hereby granted, free of
   > charge, to any person obtaining a copy of this software and associated documentation files

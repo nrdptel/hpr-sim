@@ -202,7 +202,7 @@
     Calisto, Juno III and Cavour power-off are within 10% (+4.4%, −6.0%, −8.3%) under a declared
     input rule that can't pin the unrecorded inputs.
 
-- [ ] **M1.6 6-DOF flight engine.**
+- [x] **M1.6 6-DOF flight engine.**
   - State: position, velocity, attitude quaternion, angular velocity, time-varying mass
     properties.
   - Rail/tower phase: guided, with friction and rail-button geometry.
@@ -229,7 +229,7 @@
     - Step-halving convergence shows the expected order.
     - Events are located to ≤1e-6 s.
 
-  - [ ] **M1.6b Rigid-body flight.**
+  - [x] **M1.6b Rigid-body flight.**
     - The state, the rail phase, powered and coast phases with jet damping, the flight events, the
       recorder and observer, and the `criterion` benchmark.
     - Loft lessons: L20, L24, L25, L26 (tests named in `docs/research/loft-lessons.md`).

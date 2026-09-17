@@ -452,6 +452,7 @@ dependencies = [
 name = "hpr-sim"
 version = "0.1.0"
 dependencies = [
+ "criterion",
  "hpr-aero",
  "hpr-atmos",
  "hpr-core",

@@ -530,31 +530,84 @@ impl AeroModel {
         let (potential, lift) = alpha_factors(flow.alpha_rad);
         let beta = (1.0 - flow.mach * flow.mach).sqrt();
         let roll = flow.roll_rad;
-        let a_ref = self.reference_area_m2;
-        let bodies = self.bodies.iter().map(move |body| {
-            let (attached, lift) = (body.slope_per_rad * potential, body.lift_factor * lift);
-            let term = Term {
-                slope: attached + lift,
-                moment: body.moment_slope_m * potential + lift * body.lift_station_m,
-                scale: attached.abs() + lift.abs(),
-                ..Term::default()
-            };
-            (body.id.as_str(), term)
-        });
-        let fins = self.fin_sets.iter().map(move |set| {
-            let per_set = set.geometry.slope_at(beta, a_ref) * set.count_factor * set.interference;
-            let slope = per_set * roll_sum(set.count, set.base_angle_rad, roll);
-            let side = per_set * side_sum(set.count, set.base_angle_rad, roll);
-            let term = Term {
-                slope,
-                moment: slope * set.cp_station_m,
-                side,
-                side_moment: side * set.cp_station_m,
-                scale: slope.abs(),
-            };
-            (set.id.as_str(), term)
-        });
+        let bodies = self
+            .bodies
+            .iter()
+            .map(move |body| (body.id.as_str(), body_term(body, potential, lift)));
+        let fins = self
+            .fin_sets
+            .iter()
+            .map(move |set| (set.id.as_str(), self.fin_term(set, beta, roll)));
         bodies.chain(fins)
+    }
+
+    /// A fin set's contribution at `β = √(1 − M²)` and flow roll `roll`, per radian of `α`.
+    fn fin_term(&self, set: &FinSetAero, beta: f64, roll: f64) -> Term {
+        let per_set = set.geometry.slope_at(beta, self.reference_area_m2)
+            * set.count_factor
+            * set.interference;
+        let slope = per_set * roll_sum(set.count, set.base_angle_rad, roll);
+        let side = per_set * side_sum(set.count, set.base_angle_rad, roll);
+        Term {
+            slope,
+            moment: slope * set.cp_station_m,
+            side,
+            side_moment: side * set.cp_station_m,
+            scale: slope.abs(),
+        }
+    }
+
+    /// The number of components with a normal-force term: the bodies, then the fin sets, in the
+    /// order of [`Self::components`].
+    pub fn component_count(&self) -> usize {
+        self.bodies.len() + self.fin_sets.len()
+    }
+
+    /// Component `index`'s normal force at `flow`, in the order of [`Self::components`], without
+    /// allocating. A flight engine evaluates each component at its own local flow, which includes
+    /// the airspeed the body's rotation adds at the component.
+    ///
+    /// # Errors
+    ///
+    /// As [`Flow::validate`], and [`AeroError::Domain`] for an index past
+    /// [`Self::component_count`].
+    pub fn component_normal_force(
+        &self,
+        index: usize,
+        flow: &Flow,
+    ) -> Result<NormalForce, AeroError> {
+        flow.validate()?;
+        let term = if let Some(body) = self.bodies.get(index) {
+            let (potential, lift) = alpha_factors(flow.alpha_rad);
+            body_term(body, potential, lift)
+        } else if let Some(set) = self.fin_sets.get(index - self.bodies.len()) {
+            let beta = (1.0 - flow.mach * flow.mach).sqrt();
+            self.fin_term(set, beta, flow.roll_rad)
+        } else {
+            return Err(AeroError::Domain {
+                what: "component index",
+                value: index as f64,
+            });
+        };
+        Ok(NormalForce::new(term, flow.alpha_rad))
+    }
+
+    /// The station, m aft of the nose tip, of component `index`'s small-angle centre of
+    /// pressure: where a flight engine takes the component's local airspeed. A body with no
+    /// potential-flow slope (a cylinder) uses its body-lift station. `None` for an index past
+    /// [`Self::component_count`].
+    pub fn component_station_m(&self, index: usize) -> Option<f64> {
+        if let Some(body) = self.bodies.get(index) {
+            Some(if body.slope_per_rad == 0.0 {
+                body.lift_station_m
+            } else {
+                body.moment_slope_m / body.slope_per_rad
+            })
+        } else {
+            self.fin_sets
+                .get(index - self.bodies.len())
+                .map(|set| set.cp_station_m)
+        }
     }
 
     /// The whole rocket's normal force at `flow`.
@@ -585,6 +638,17 @@ impl AeroModel {
                 normal_force: NormalForce::new(term, flow.alpha_rad),
             })
             .collect())
+    }
+}
+
+/// A body's contribution at the potential-flow and body-lift factors of [`alpha_factors`].
+fn body_term(body: &BodyAero, potential: f64, lift: f64) -> Term {
+    let (attached, lift) = (body.slope_per_rad * potential, body.lift_factor * lift);
+    Term {
+        slope: attached + lift,
+        moment: body.moment_slope_m * potential + lift * body.lift_station_m,
+        scale: attached.abs() + lift.abs(),
+        ..Term::default()
     }
 }
 
@@ -887,6 +951,19 @@ mod tests {
             prop_assert!((side - total.side_coefficient).abs() <= 1e-12 * (1.0 + total.side_coefficient.abs()));
             let slope: f64 = parts.iter().map(|p| p.normal_force.slope_per_rad).sum();
             prop_assert!((slope - total.slope_per_rad).abs() <= 1e-12 * total.slope_per_rad.abs());
+            // The allocation-free per-component path gives the same terms, and each component's
+            // small-angle station is its centre of pressure as α → 0.
+            prop_assert_eq!(m.component_count(), parts.len());
+            let small = flow(mach, 1e-6, roll);
+            for (index, part) in parts.iter().enumerate() {
+                prop_assert_eq!(&m.component_normal_force(index, &f).unwrap(), &part.normal_force);
+                let station = m.component_station_m(index).unwrap();
+                if let Some(cp) = m.component_normal_force(index, &small).unwrap().cp_station_m {
+                    prop_assert!((station - cp).abs() <= 1e-6 * (1.0 + cp.abs()));
+                }
+            }
+            prop_assert!(m.component_normal_force(parts.len(), &f).is_err());
+            prop_assert!(m.component_station_m(parts.len()).is_none());
         }
 
         #[test]
