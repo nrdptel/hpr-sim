@@ -12,15 +12,17 @@ the command, so a later run can be compared like for like.
 
 | call | median |
 |---|---|
-| `Simulation::run`, Valetudo K400C with a drogue and a main to the ground | 0.87 ms |
+| `Simulation::run`, Valetudo K400C with a drogue and a main to the ground | 0.88 ms |
 
 - **A recovered flight is cheaper than a ballistic one** (the M1.6b row re-measured at 1.17 ms in
-  the same run), although it lasts 61.0 s against 29 s: apogee at 874.0 m and 14.55 s, the main at
-  44.39 s, the ground at 6.57 m/s.
-- **Work.** 1,983 derivative evaluations, 316 accepted steps and 9 rejected, against the ballistic
-  flight's 2,578 and 410. The descent phase evaluates no airframe aerodynamics, and after burnout
-  the mass properties need no central differences, so the canopy's gentle dynamics buy longer
-  steps than the ballistic dive they replace. The average is 0.44 µs an evaluation, as in M1.6b.
+  the same run), although it lasts 61.3 s against 29 s: it reaches the ground at 6.57 m/s.
+- **Work.** 2,085 derivative evaluations, 328 accepted steps and 14 rejected, against the
+  ballistic flight's 2,578 and 410. The descent phase evaluates no airframe aerodynamics, and
+  after burnout the mass properties need no central differences, so a descent step is cheaper as
+  well as longer than the ballistic dive it replaces.
+- **The recovery scan** (the numeric triggers) adds **24** evaluations over the whole flight, one
+  per integration interval while a device is pending, shared by every pending device. `Stats` does
+  not count them, so they are 1.1% of the work above and not in that 2,085.
 - **The 5 ms budget** for a Level 2 flight therefore also holds with recovery, 5.7 times under it.
 
 ## Flight (M1.6b)

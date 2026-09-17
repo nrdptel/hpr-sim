@@ -15,6 +15,10 @@ use serde::{Deserialize, Serialize};
 
 use crate::error::SimError;
 
+/// The largest `C_D0` a canopy may be given. Knacke's printed values run from 0.30 to 0.96 on the
+/// nominal area; anything above this is a drag area mistaken for a coefficient.
+const MAX_CANOPY_DRAG_COEFFICIENT: f64 = 2.0;
+
 /// A canopy type with printed data in Knacke's tables.
 ///
 /// Solid textile canopies come from Table 5-1 (printed page 5-3), slotted ones from Table 5-2
@@ -315,8 +319,12 @@ impl Inflation {
 }
 
 /// A recovery device: a drag area, when it opens, and how it fills.
+///
+/// Build one with [`Device::new`] and the builders: the struct is `#[non_exhaustive]` so that
+/// M1.7b's streamers and separation can add fields without breaking callers.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
+#[non_exhaustive]
 pub struct Device {
     /// A name for reports.
     pub name: String,
@@ -331,8 +339,9 @@ pub struct Device {
     /// How its drag area grows from line stretch.
     #[serde(default = "instant")]
     pub inflation: Inflation,
-    /// The device whose deployment releases this one, by its index in the flight's list: a drogue
-    /// cut away when the main opens.
+    /// The device whose opening releases this one, by its index in the flight's list: a drogue cut
+    /// away once the main is fully open. A device released before its own charge fires never
+    /// deploys.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub released_by: Option<usize>,
 }
@@ -369,15 +378,30 @@ impl Device {
         self
     }
 
-    /// The same device, released when device `index` deploys.
+    /// The same device, released when device `index` is fully open.
     #[must_use]
-    pub fn released_by(mut self, index: usize) -> Self {
+    pub fn with_release_by(mut self, index: usize) -> Self {
         self.released_by = Some(index);
         self
     }
 
     /// Checks the device's numbers.
     fn validate(&self, count: usize, index: usize) -> Result<(), SimError> {
+        if let DeviceDrag::Canopy {
+            drag_coefficient, ..
+        } = self.drag
+            // Knacke's tables run from 0.30 (hemisflo ribbon) to 0.96 (triconical) on the nominal
+            // area. The bound is loose enough for a coefficient measured on another reference
+            // area, and tight enough to catch a drag area passed as a coefficient.
+            && !(drag_coefficient.is_finite()
+                && drag_coefficient > 0.0
+                && drag_coefficient <= MAX_CANOPY_DRAG_COEFFICIENT)
+        {
+            return Err(SimError::Domain {
+                what: "canopy drag coefficient on the nominal area (0 to 2]",
+                value: drag_coefficient,
+            });
+        }
         let area = self.drag.drag_area_m2();
         if !(area.is_finite() && area > 0.0) {
             return Err(SimError::Domain {
@@ -525,12 +549,21 @@ pub(crate) struct DeviceRun {
     pub(crate) deployed_s: Option<f64>,
     /// Its filling time, s, fixed at deployment.
     pub(crate) filling_time_s: f64,
-    /// When it was released, s.
+    /// When it is released, s: the time the device that releases it is fully open.
     pub(crate) released_s: Option<f64>,
+    /// Whether that release has been recorded.
+    pub(crate) release_recorded: bool,
+    /// Whether it was cut away before its own charge fired, so it never deploys.
+    pub(crate) abandoned: bool,
 }
 
 /// Every device's progress through one flight. The [`crate::Simulation`] is not mutated by a run
 /// (Loft lesson L24), so this lives with the flight.
+///
+/// Every method here indexes `devices` by a device's position in the flight's list, which is the
+/// invariant [`Run::new`] establishes: a run is built with one entry per device and is only ever
+/// passed the same slice. Indexing therefore cannot be out of range, and a caller that broke that
+/// (a future per-body run, M1.7b) would panic here rather than silently pull the wrong canopy.
 #[derive(Debug, Clone, Default)]
 pub(crate) struct Run {
     pub(crate) devices: Vec<DeviceRun>,
@@ -551,8 +584,8 @@ impl Run {
         deploy_s
     }
 
-    /// Deploys device `index` at `t` with airspeed `airspeed_m_s`, releases whatever it releases,
-    /// and returns the time its canopy is full.
+    /// Deploys device `index` at `t` with airspeed `airspeed_m_s`, schedules the release of
+    /// whatever it releases for the moment its own canopy is full, and returns that time.
     pub(crate) fn deploy(
         &mut self,
         devices: &[Device],
@@ -566,18 +599,40 @@ impl Run {
             .filling_time_s(device.drag.nominal_diameter_m(), airspeed_m_s);
         self.devices[index].deployed_s = Some(t);
         self.devices[index].filling_time_s = filling_time_s;
+        let full_s = t + filling_time_s;
         for (other, run) in devices.iter().zip(&mut self.devices) {
             if other.released_by == Some(index) && run.released_s.is_none() {
-                run.released_s = Some(t);
+                run.released_s = Some(full_s);
             }
         }
-        t + filling_time_s
+        full_s
     }
 
-    /// Whether device `index` has been triggered but has not deployed.
+    /// When device `index` is released, s.
+    pub(crate) fn released_s(&self, index: usize) -> Option<f64> {
+        self.devices[index].released_s
+    }
+
+    /// Whether device `index`'s release has come and has not been recorded.
+    pub(crate) fn release_due(&self, index: usize, t: f64) -> bool {
+        let run = self.devices[index];
+        !run.release_recorded && run.released_s.is_some_and(|released| t >= released)
+    }
+
+    /// Marks device `index`'s release as recorded.
+    pub(crate) fn release(&mut self, index: usize) {
+        self.devices[index].release_recorded = true;
+    }
+
+    /// Gives up on device `index`, which was cut away before its charge fired.
+    pub(crate) fn abandon(&mut self, index: usize) {
+        self.devices[index].abandoned = true;
+    }
+
+    /// Whether device `index` has been triggered but has not deployed or been abandoned.
     pub(crate) fn waiting(&self, index: usize) -> bool {
         let run = self.devices[index];
-        run.triggered_s.is_some() && run.deployed_s.is_none()
+        run.triggered_s.is_some() && run.deployed_s.is_none() && !run.abandoned
     }
 
     /// When device `index` deploys, s: infinite until its charge fires.
@@ -612,7 +667,14 @@ impl Run {
                     return Some(full);
                 }
                 let fraction = (elapsed / run.filling_time_s).min(1.0);
-                Some(full * fraction.powf(device.inflation.exponent()))
+                // `j` is 1 (ribbon and ringslot) or 2 (solid cloth) for every canopy Knacke's
+                // method names, so the common cases avoid `powf`.
+                let growth = match device.inflation.exponent() {
+                    1.0 => fraction,
+                    2.0 => fraction * fraction,
+                    exponent => fraction.powf(exponent),
+                };
+                Some(full * growth)
             })
             .sum()
     }
@@ -622,6 +684,10 @@ impl Run {
 ///
 /// It is the speed at which the drag area's drag balances the weight, so it is also the speed a
 /// long descent settles at.
+///
+/// The formula is evaluated as written, with no domain checks: a zero drag area or density gives
+/// infinity, and a negative mass, density, drag area or gravity gives NaN. Flights validate their
+/// devices instead ([`crate::Simulation::with_recovery`]).
 #[must_use]
 pub fn terminal_speed_m_s(
     mass_kg: f64,
@@ -748,34 +814,80 @@ mod tests {
         assert!((canopy.drag_area_m2() - 0.775 * PI).abs() < 1e-15);
         assert_eq!(canopy.nominal_diameter_m(), Some(2.0));
         assert_eq!(canopy.canopy_type(), Some(flat));
-        // Every type's default sits inside its own printed range, and the fill constants and
-        // growth exponents are only there where Knacke prints them.
-        for kind in [
-            CanopyType::FlatCircular,
-            CanopyType::Conical,
-            CanopyType::Biconical,
-            CanopyType::Triconical,
-            CanopyType::ExtendedSkirt10Flat,
-            CanopyType::ExtendedSkirt14Full,
-            CanopyType::Hemispherical,
-            CanopyType::Annular,
-            CanopyType::Cross,
-            CanopyType::FlatRibbon,
-            CanopyType::ConicalRibbon,
-            CanopyType::Ringslot,
-            CanopyType::Ringsail,
-        ] {
-            let (low, high) = kind.drag_coefficient_range();
-            assert!(0.0 < low && low < high && high < 1.0, "{kind:?}");
-            assert!((kind.drag_coefficient() - 0.5 * (low + high)).abs() < 1e-15);
-            assert!(kind.opening_force_coefficient() >= 1.0, "{kind:?}");
-            if let Some(exponent) = kind.growth_exponent() {
-                assert!(exponent == 1.0 || exponent == 2.0, "{kind:?}");
-            }
-            if let Some(constant) = kind.fill_constant() {
-                assert!(constant > 0.0, "{kind:?}");
-            }
+        // Knacke's tables as transcribed, entry by entry: the `C_D0` range (Tables 5-1 and 5-2),
+        // the unreefed fill constant (Table 5-6, `None` where the table prints "insufficient
+        // data"), the drag-area growth exponent (Pflanz, Figure 5-51, `None` for the types he
+        // does not name) and the infinite-mass opening-force coefficient `C_x`. A typo in any of
+        // these changes a user's descent rate, so they are pinned literally.
+        let table = [
+            (
+                CanopyType::FlatCircular,
+                0.75,
+                0.80,
+                Some(8.0),
+                Some(2.0),
+                1.7,
+            ),
+            (CanopyType::Conical, 0.75, 0.90, None, Some(2.0), 1.8),
+            (CanopyType::Biconical, 0.75, 0.92, None, None, 1.8),
+            (CanopyType::Triconical, 0.80, 0.96, None, Some(2.0), 1.8),
+            (
+                CanopyType::ExtendedSkirt10Flat,
+                0.78,
+                0.87,
+                Some(10.0),
+                Some(2.0),
+                1.4,
+            ),
+            (
+                CanopyType::ExtendedSkirt14Full,
+                0.75,
+                0.90,
+                Some(12.0),
+                Some(2.0),
+                1.4,
+            ),
+            (CanopyType::Hemispherical, 0.62, 0.77, None, None, 1.6),
+            (CanopyType::Annular, 0.85, 0.95, None, None, 1.4),
+            (CanopyType::Cross, 0.60, 0.85, Some(11.7), None, 1.15),
+            (
+                CanopyType::FlatRibbon,
+                0.45,
+                0.50,
+                Some(14.0),
+                Some(1.0),
+                1.05,
+            ),
+            (
+                CanopyType::ConicalRibbon,
+                0.50,
+                0.55,
+                Some(14.0),
+                Some(1.0),
+                1.05,
+            ),
+            (
+                CanopyType::Ringslot,
+                0.56,
+                0.65,
+                Some(14.0),
+                Some(1.0),
+                1.05,
+            ),
+            (CanopyType::Ringsail, 0.75, 0.85, Some(7.5), None, 1.10),
+        ];
+        for (kind, low, high, fill_constant, growth_exponent, opening) in table {
+            assert_eq!(kind.drag_coefficient_range(), (low, high), "{kind:?}");
+            assert_eq!(kind.drag_coefficient(), 0.5 * (low + high), "{kind:?}");
+            assert_eq!(kind.fill_constant(), fill_constant, "{kind:?}");
+            assert_eq!(kind.growth_exponent(), growth_exponent, "{kind:?}");
+            assert_eq!(kind.opening_force_coefficient(), opening, "{kind:?}");
+            assert!(
+                source.contains("Knacke") && kind.source() == source,
+                "{kind:?}"
+            );
         }
+
         assert_eq!(Inflation::knacke(CanopyType::Hemispherical), None);
         assert_eq!(
             Inflation::knacke(CanopyType::FlatCircular),
@@ -982,7 +1094,7 @@ mod tests {
                 Trigger::Apogee,
             )
             .with_lag_s(1.0)
-            .released_by(1),
+            .with_release_by(1),
             Device::new(
                 "main",
                 DeviceDrag::canopy(CanopyType::FlatCircular, 2.5),
@@ -1257,7 +1369,7 @@ mod tests {
                 let mut next = Device::new(device["name"].as_str().unwrap(), drag, trigger)
                     .with_lag_s(number(&device["lag_s"]));
                 if index + 1 < oracle_devices.len() {
-                    next = next.released_by(index + 1);
+                    next = next.with_release_by(index + 1);
                 }
                 devices.push(next);
             }
@@ -1477,7 +1589,7 @@ mod tests {
     #[test]
     fn a_device_released_before_it_opens_never_pulls() {
         // The main opens first and releases the drogue; when the drogue's own charge fires later
-        // it deploys into a release that has already happened, and adds no drag area.
+        // there is nothing left to open, so it is recorded as triggered and never deploys.
         let air = UniformAir::sea_level();
         let devices = vec![
             Device::new(
@@ -1487,7 +1599,7 @@ mod tests {
                     time_s: START_S + 5.0,
                 },
             )
-            .released_by(1),
+            .with_release_by(1),
             open_at_start(DeviceDrag::DragArea { cd_s_m2: 1.0 }),
         ];
         let sim = flight(analytic_environment(air, G), devices, 3600.0);
@@ -1496,12 +1608,16 @@ mod tests {
             .unwrap();
         assert_eq!(result.termination, Termination::GroundHit);
         let release = result.event(EventKind::Release(0)).unwrap().sample;
-        assert_eq!(release.time_s, START_S);
-        let deployment = result.event(EventKind::Deployment(0)).unwrap().sample;
-        assert_eq!(deployment.time_s, START_S + 5.0);
+        assert_eq!(
+            release.time_s, START_S,
+            "the main opens at once, so it releases at once"
+        );
+        let trigger = result.event(EventKind::Trigger(0)).unwrap().sample;
+        assert_eq!(trigger.time_s, START_S + 5.0);
         assert!(
-            (deployment.recovery_drag_area_m2 - 1.0).abs() < 1e-12,
-            "{deployment:?}"
+            result.event(EventKind::Deployment(0)).is_none(),
+            "a released device must not deploy: {:?}",
+            result.events.iter().map(|e| e.kind).collect::<Vec<_>>()
         );
         let landing = result.event(EventKind::GroundHit).unwrap().sample;
         assert!((landing.recovery_drag_area_m2 - 1.0).abs() < 1e-12);
@@ -1512,6 +1628,80 @@ mod tests {
             "{} vs {terminal_m_s}",
             landing.vertical_speed_m_s
         );
+    }
+
+    #[test]
+    fn a_release_waits_for_the_main_to_fill_so_the_drag_area_never_dips() {
+        // A drogue cut away at the main's line stretch would leave the rocket under an empty
+        // canopy: the drag area would collapse and the descent would speed up. The release waits
+        // until the main is full, so the drag area only ever grows here (ADR-012).
+        let air = UniformAir::sea_level();
+        let drogue_m2 = 0.45;
+        let main_m2 = 6.0;
+        let filling_s = 2.0;
+        let devices = vec![
+            open_at_start(DeviceDrag::DragArea { cd_s_m2: drogue_m2 }).with_release_by(1),
+            Device::new(
+                "main",
+                DeviceDrag::DragArea { cd_s_m2: main_m2 },
+                Trigger::Time {
+                    time_s: START_S + 20.0,
+                },
+            )
+            .with_inflation(Inflation::FillingTime {
+                time_s: filling_s,
+                exponent: 2.0,
+            }),
+        ];
+        let sim = flight(analytic_environment(air, G), devices, 3600.0);
+        let mut recorder = Recorder::new(
+            vec![
+                Channel::Time,
+                Channel::RecoveryDragArea,
+                Channel::VerticalSpeed,
+            ],
+            None,
+        )
+        .unwrap();
+        let result = sim
+            .run_free(START_S, dropped(&sim, 2_000.0, DVec3::ZERO), &mut recorder)
+            .unwrap();
+        assert_eq!(result.termination, Termination::GroundHit);
+        let main = result.event(EventKind::Deployment(1)).unwrap().sample;
+        let release = result.event(EventKind::Release(0)).unwrap().sample;
+        assert_eq!(main.time_s, START_S + 20.0);
+        assert!(
+            (release.time_s - (main.time_s + filling_s)).abs() < 1e-9,
+            "released at {} m, not at the end of filling {}",
+            release.time_s,
+            main.time_s + filling_s
+        );
+        // The drag area never falls below the drogue's, and the descent never speeds up after the
+        // main's charge fires.
+        let areas = column(&recorder, "recovery_drag_area_m2");
+        let times = column(&recorder, "time_s");
+        let speeds = column(&recorder, "vertical_speed_m_s");
+        let mut worst_area = f64::INFINITY;
+        let mut fastest = 0.0_f64;
+        for ((t, area), speed) in times.iter().zip(&areas).zip(&speeds) {
+            if *t < main.time_s {
+                continue;
+            }
+            worst_area = worst_area.min(*area);
+            fastest = fastest.max(-speed);
+        }
+        assert!(
+            worst_area >= drogue_m2 - 1e-12,
+            "the drag area dipped to {worst_area} m², below the drogue's {drogue_m2}"
+        );
+        assert!(
+            fastest <= -main.vertical_speed_m_s + 1e-9,
+            "the descent sped up after the main fired: {fastest} against {}",
+            -main.vertical_speed_m_s
+        );
+        // And by the end the main alone carries it.
+        let landing = result.event(EventKind::GroundHit).unwrap().sample;
+        assert!((landing.recovery_drag_area_m2 - main_m2).abs() < 1e-12);
     }
 
     #[test]
@@ -1532,7 +1722,7 @@ mod tests {
                 )
                 .with_lag_s(0.75)
                 .with_inflation(Inflation::knacke(CanopyType::FlatCircular).unwrap())
-                .released_by(1),
+                .with_release_by(1),
                 Device::new(
                     "main",
                     DeviceDrag::canopy(CanopyType::FlatCircular, 2.0),
@@ -1577,6 +1767,160 @@ mod tests {
                 EventKind::Release(0),
                 EventKind::GroundHit,
             ]
+        );
+    }
+
+    #[test]
+    fn an_apogee_charge_fires_on_a_flight_that_starts_descending() {
+        // The apogee trigger is RocketPy's `y[5] < 0`, not only hpr's apogee event: a flight
+        // restarted past its apogee (`run_free`, which M1.9's staging and flight-data replay use)
+        // still deploys. Found in review: with an event-only trigger this flight fell ballistically
+        // to the ground with no deployment and no error.
+        let air = UniformAir::sea_level();
+        let device = Device::new(
+            "main",
+            DeviceDrag::DragArea { cd_s_m2: 2.0 },
+            Trigger::Apogee,
+        );
+        let drag_area_m2 = device.drag.drag_area_m2();
+        let sim = flight(analytic_environment(air, G), vec![device], 3600.0);
+        let result = sim
+            .run_free(
+                START_S,
+                dropped(&sim, 1_000.0, DVec3::new(0.0, 0.0, -5.0)),
+                &mut (),
+            )
+            .unwrap();
+        assert_eq!(result.termination, Termination::GroundHit);
+        let deployment = result.event(EventKind::Deployment(0)).unwrap().sample;
+        assert_eq!(deployment.time_s, START_S, "it is already descending");
+        assert_eq!(
+            result.event(EventKind::Apogee),
+            None,
+            "there is no apogee to find"
+        );
+        let mass_kg = sim.assembly().mass_properties(START_S).mass_kg;
+        let terminal_m_s = terminal_speed_m_s(mass_kg, drag_area_m2, air.0.density_kg_m3, G);
+        let landing = result.event(EventKind::GroundHit).unwrap().sample;
+        assert!(
+            (-landing.vertical_speed_m_s / terminal_m_s - 1.0).abs() < 1e-6,
+            "{} vs {terminal_m_s}",
+            landing.vertical_speed_m_s
+        );
+        // A climbing flight does not fire it early: the charge waits for the apogee.
+        let climbing = sim
+            .run_free(
+                START_S,
+                dropped(&sim, 1_000.0, DVec3::new(0.0, 0.0, 30.0)),
+                &mut (),
+            )
+            .unwrap();
+        let apogee = climbing.event(EventKind::Apogee).unwrap().sample;
+        let fired = climbing.event(EventKind::Trigger(0)).unwrap().sample;
+        assert_eq!(fired.time_s, apogee.time_s);
+        assert!(apogee.time_s > START_S + 1.0, "{}", apogee.time_s);
+    }
+
+    #[test]
+    fn user_events_keep_their_numbers_and_fire_during_the_descent() {
+        // The event list is rebuilt per interval (`flight::Watch`), and the height triggers come
+        // and go, so the user events sit after them. This pins that their indices don't move and
+        // that they still fire once the descent has started.
+        let air = UniformAir::sea_level();
+        let devices = vec![
+            open_at_start(DeviceDrag::DragArea { cd_s_m2: 0.5 }).with_release_by(1),
+            Device::new(
+                "main",
+                DeviceDrag::DragArea { cd_s_m2: 4.0 },
+                Trigger::Altitude {
+                    height_above_ground_m: 400.0,
+                },
+            ),
+        ];
+        let sim = flight(analytic_environment(air, G), devices, 3600.0)
+            .with_event(crate::flight::UserEvent {
+                name: "through 700 m".to_owned(),
+                direction: crate::events::Direction::Falling,
+                function: Box::new(|sample| sample.height_above_ground_m - 700.0),
+            })
+            .with_event(crate::flight::UserEvent {
+                name: "through 100 m".to_owned(),
+                direction: crate::events::Direction::Falling,
+                function: Box::new(|sample| sample.height_above_ground_m - 100.0),
+            });
+        let result = sim
+            .run_free(START_S, dropped(&sim, 1_000.0, DVec3::ZERO), &mut ())
+            .unwrap();
+        assert_eq!(result.termination, Termination::GroundHit);
+        for (user, height_m) in [(0usize, 700.0), (1, 100.0)] {
+            let event = result
+                .event(EventKind::User(user))
+                .unwrap_or_else(|| panic!("user event {user} never fired"))
+                .sample;
+            assert!(
+                (event.height_above_ground_m - height_m).abs() < 1e-6,
+                "user event {user} fired at {} m",
+                event.height_above_ground_m
+            );
+            assert_eq!(event.phase, crate::Phase::Descent);
+        }
+        // The user events fire between the main's trigger and the ground, in height order.
+        let kinds: Vec<EventKind> = result.events.iter().map(|event| event.kind).collect();
+        let position = |kind| kinds.iter().position(|other| *other == kind).unwrap();
+        assert!(position(EventKind::User(0)) < position(EventKind::Trigger(1)));
+        assert!(position(EventKind::Trigger(1)) < position(EventKind::User(1)));
+        assert!(position(EventKind::User(1)) < position(EventKind::GroundHit));
+    }
+
+    #[test]
+    fn the_public_recovery_types_round_trip_through_json() {
+        let devices = vec![
+            Device::new(
+                "drogue",
+                DeviceDrag::DragArea { cd_s_m2: 0.45 },
+                Trigger::Apogee,
+            )
+            .with_lag_s(1.5)
+            .with_release_by(1),
+            Device::new(
+                "main",
+                DeviceDrag::canopy(CanopyType::Ringsail, 3.0),
+                Trigger::Altitude {
+                    height_above_ground_m: 250.0,
+                },
+            )
+            .with_inflation(Inflation::FillingTime {
+                time_s: 1.5,
+                exponent: 2.0,
+            }),
+            Device::new(
+                "timer",
+                DeviceDrag::canopy(CanopyType::FlatCircular, 1.0),
+                Trigger::Time { time_s: 12.0 },
+            )
+            .with_inflation(Inflation::knacke(CanopyType::FlatCircular).unwrap()),
+            Device::new(
+                "ejection",
+                DeviceDrag::DragArea { cd_s_m2: 1.0 },
+                Trigger::MotorDelay { motor: 0 },
+            ),
+        ];
+        let text = serde_json::to_string(&devices).unwrap();
+        let back: Vec<Device> = serde_json::from_str(&text).unwrap();
+        assert_eq!(devices, back);
+        // The defaults are optional in a file, and unknown fields are refused.
+        let terse: Device = serde_json::from_str(
+            r#"{"name":"d","drag":{"drag_area":{"cd_s_m2":1.5}},"trigger":"apogee"}"#,
+        )
+        .unwrap();
+        assert_eq!(terse.lag_s, 0.0);
+        assert_eq!(terse.inflation, Inflation::Instant);
+        assert_eq!(terse.released_by, None);
+        assert!(
+            serde_json::from_str::<Device>(
+                r#"{"name":"d","drag":{"drag_area":{"cd_s_m2":1.5}},"trigger":"apogee","lg":1}"#
+            )
+            .is_err()
         );
     }
 
@@ -1627,8 +1971,8 @@ mod tests {
                 canopy,
                 Trigger::MotorDelay { motor: 7 },
             )],
-            vec![Device::new("itself", canopy, apogee).released_by(0)],
-            vec![Device::new("no such device", canopy, apogee).released_by(3)],
+            vec![Device::new("itself", canopy, apogee).with_release_by(0)],
+            vec![Device::new("no such device", canopy, apogee).with_release_by(3)],
             vec![
                 Device::new("no diameter", DeviceDrag::DragArea { cd_s_m2: 1.0 }, apogee)
                     .with_inflation(Inflation::FillConstant {

@@ -37,7 +37,10 @@ added mass. Knacke's hemispherical range on `S₀` is 0.62 to 0.77.
 
 A device's charge fires at its `Trigger`:
 
-- `Apogee`: when the apogee event fires (the centre of mass's height rate falling through zero).
+- `Apogee`: when the centre of mass is descending. hpr's apogee event fires it the instant the
+  height rate crosses zero; a flight that *starts* past its apogee (`run_free`, which staging and
+  flight-data replay use) fires it at its first step, as RocketPy's own apogee trigger does
+  (`y[5] < 0`, `parachute.py:368-376`). Whichever comes first wins; it fires once.
 - `Altitude { height_above_ground_m }`: the first time the centre of mass is **descending** and at
   or below that height above the launch site. This is an altimeter's main setting. A rocket whose
   apogee is already below the setting fires at apogee, because no crossing follows; that is
@@ -50,12 +53,19 @@ Charges are only checked in free flight and during the descent, so a `Time` or `
 trigger whose time passes while the rocket is still on the pad or the rail fires at rail exit.
 
 `lag_s` seconds after the trigger the device **deploys** (line stretch) and starts to fill. The
-first deployment of a flight switches it to the descent phase. A device can name another whose
-deployment **releases** it (`released_by`), which is how a drogue is cut away when the main opens;
-a released device contributes nothing from that instant.
+first deployment of a flight switches it to the descent phase.
+
+A device can name another whose opening **releases** it (`released_by`), which is how a drogue is
+cut away under a main. The release happens when the releasing device is **fully open**, not at its
+line stretch: cutting the drogue at line stretch would leave the rocket under an empty canopy, and
+the drag area would collapse and the descent speed up (found in review; measured at 0.45 m² → 0.02
+m² and 18.3 → 22.0 m/s before the fix). A released device contributes nothing from its release, and
+one released before its own charge fires never deploys at all — its `Trigger` is recorded and no
+`Deployment` follows.
 
 Events, in the order a two-device flight records them: `Apogee`, `Trigger(drogue)`,
-`Deployment(drogue)`, `Trigger(main)`, `Deployment(main)`, `Release(drogue)`, `GroundHit`.
+`Deployment(drogue)`, `Trigger(main)`, `Deployment(main)`, `Release(drogue)` (at the end of the
+main's filling), `GroundHit`.
 
 Trigger times that are known before the flight (a time, or a motor delay) and every deployment and
 end of filling are stop times, so no integration step straddles a change in the drag area.
@@ -139,7 +149,10 @@ v_e = √(2 m g / (ρ C_D S))
 | An oversized canopy (5 m) opening at 100 m/s, 10 km of descent at 2.95 m/s | lands in 3,392 s in 6,914 accepted steps (a mean step of 0.49 s, where Loft's explicit RK4 needed a 2e-4 s floor) |
 | A whole flight: drogue at apogee with a lag, main at 300 m, drogue released | events in order; each stage settles within 2% of its own `v_e` |
 | Two devices triggered at the same instant | both open in the same pass, and the descent settles at the `v_e` of the **sum** of their drag areas |
-| A device released before its own charge fires | it deploys into a release that has already happened and adds nothing; the descent stays at the open device's `v_e` |
+| A device released before its own charge fires | it is recorded as triggered and never deploys; the descent stays at the open device's `v_e` |
+| A drogue released by a main that fills over 2 s | the release waits for the end of filling, the drag area never falls below the drogue's, and the descent never speeds up |
+| An apogee charge on a flight that starts descending | it fires at the first step (there is no apogee event to find), and a climbing start still waits for the apogee |
+| Two user events and an altitude device on one flight | the user events keep their numbers and fire during the descent, in height order |
 | The same recovered flight flown twice | bit-identical rows, events, final sample and step counts (Loft lesson L24: a run does not mutate the simulation) |
 
 An independent anchor on the comparison: in every one of the five cases below, both hpr and

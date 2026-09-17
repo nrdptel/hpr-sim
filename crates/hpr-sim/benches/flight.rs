@@ -61,7 +61,7 @@ fn benches(c: &mut Criterion) {
             )
             .with_lag_s(0.5)
             .with_inflation(Inflation::knacke(CanopyType::FlatCircular).unwrap())
-            .released_by(1),
+            .with_release_by(1),
             Device::new(
                 "main",
                 DeviceDrag::canopy(CanopyType::FlatCircular, 2.4),

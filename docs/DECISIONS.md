@@ -1031,14 +1031,20 @@ and L26 set tests.
     stated in `docs/physics/recovery.md`; Ludtke's and Pflanz's laws are later work.
   - A deployment at zero airspeed has no filling time in `n D₀/v`, so the canopy opens at once.
 - **Triggers: apogee, a height above the site while descending, a time after ignition, and a
-  motor's ejection delay after its burnout.** The height trigger fires at apogee for a rocket whose
-  apogee is already below the setting, which is RocketPy's numeric trigger and an altimeter's
-  behaviour. A motor with no delay in seconds (plugged, or unset) is refused rather than assumed.
+  motor's ejection delay after its burnout.** Both the apogee and the height trigger are numeric as
+  well as event-driven — "descending", and "descending at or below the height" — which is
+  RocketPy's own form (`y[5] < 0`) and an altimeter's behaviour, and which means a flight that
+  starts past its apogee still deploys (found in review: an event-only apogee trigger fell
+  ballistically to the ground with no deployment and no error). A motor with no delay in seconds
+  (plugged, or unset) is refused rather than assumed.
   There is no sampling rate and no barometric noise: hpr locates the crossing with its event
   finder. Monte Carlo can perturb the setting instead (M1.10).
-- **A device can be released by another's deployment** (`released_by`), which cuts a drogue away
-  when the main opens (L27). Open devices otherwise **add** their drag areas, where RocketPy keeps
-  one `cd_s` and replaces it.
+- **A device can be released by another's opening** (`released_by`), which cuts a drogue away under
+  a main (L27). The release waits until the releasing device is **fully open**: releasing at its
+  line stretch collapsed the drag area to almost nothing while the main filled, and the descent
+  sped up (found in review, now a test). A device released before its own charge fires never
+  deploys. Open devices otherwise **add** their drag areas, where RocketPy keeps one `cd_s` and
+  replaces it, which is why the comparison gives its drogue `released_by` the main.
 - **The descent is a point mass in a new `Phase::Descent`**, entered at the first deployment:
   `m a_cg = −½ ρ (C_D S) |v_cg − w| (v_cg − w) + m (g + a_Coriolis) + T`.
   - The attitude freezes and the body rates are set to zero. A tethered rocket's attitude under a
@@ -1053,8 +1059,10 @@ and L26 set tests.
     equations, so it changes no equilibrium rate, only the transient. The comparison shows the
     cost: NDRT 2020, whose main's added mass is 15.9 kg against a 20.8 kg rocket, is hpr's worst
     case at +0.71% in descent time and +2.87% in the smaller drift component.
-- **Every deployment, every end of filling and every known trigger time is a stop time**, so no
-  step straddles a change in the drag area, and events are located as in M1.6a. The event list is
+- **Every deployment, every end of filling (which is also a release) and every known trigger time
+  is a stop time**, so no step straddles a change in the drag area, and events are located as in
+  M1.6a. The numeric triggers are checked once per interval, on one evaluation shared by every
+  pending device, which `Stats` does not count. The event list is
   now built per interval as a `Watch` list instead of numbered by hand, because the height triggers
   come and go.
 - **The comparison with RocketPy starts where both models agree.** Both simulators start from the

@@ -18,10 +18,10 @@
 //! A flight ends on the ground ([`Termination::GroundHit`]), with no liftoff by the last burnout
 //! ([`Termination::NoLiftoff`]), stalled back onto the pad ([`Termination::StalledOnRail`]), at
 //! the time cap ([`Termination::TimeCap`]) or at the step limit ([`Termination::StepLimit`]).
-//! Anything else that stops it is an error. Until M1.7 there is no recovery: the flight is
-//! ballistic to the ground.
+//! Anything else that stops it is an error. With no recovery device the flight is ballistic to
+//! the ground.
 //!
-//! Method: `docs/physics/flight.md`.
+//! Method: `docs/physics/flight.md` and `docs/physics/recovery.md`.
 
 use std::fmt;
 use std::ops::ControlFlow;
@@ -90,9 +90,11 @@ pub enum EventKind {
     /// A recovery device's charge fired, by its index in the flight's devices.
     Trigger(usize),
     /// A recovery device deployed (line stretch), its lag after the trigger, by its index. The
-    /// first deployment starts the descent phase.
+    /// first deployment starts the descent phase. A device that was released before its charge
+    /// fired never deploys.
     Deployment(usize),
-    /// A recovery device was released by another one's deployment, by its index.
+    /// A recovery device was released, by its index: the device that releases it is fully open
+    /// from this instant, so the drag area never dips between them.
     Release(usize),
     /// A user event, by its index in the order added.
     User(usize),
@@ -434,13 +436,25 @@ impl Simulation {
                 let mut again = false;
                 let window = (t, next_stop(&stops, t, cap));
                 let area = run.drag_area_m2(&self.devices, t);
+                // One evaluation serves every device in the pass: they all ask about the same
+                // `(t, y)`. It is only made when a pending device needs the flight's state, and
+                // it is not one of the integrator's, so `Stats` doesn't count it.
+                let mut here: Option<Evaluation> = None;
                 for index in 0..self.devices.len() {
                     if !run.pending(index) {
                         continue;
                     }
+                    // `plan` gives `trigger_times_s` one entry per device, in order.
                     let fires = match self.devices[index].trigger {
                         Trigger::Time { .. } | Trigger::MotorDelay { .. } => {
                             self.trigger_times_s[index].is_some_and(|time| t >= time)
+                        }
+                        // Descending: RocketPy's own apogee trigger (`y[5] < 0`), so a flight that
+                        // starts past its apogee still deploys. The apogee event fires this too,
+                        // and whichever comes first wins.
+                        Trigger::Apogee => {
+                            let e = self.evaluation(&mut here, phase, window, t, &y, area)?;
+                            e.vertical_speed_m_s < 0.0
                         }
                         Trigger::Altitude {
                             height_above_ground_m,
@@ -448,11 +462,10 @@ impl Simulation {
                             // An altimeter's main setting: descending, at or below the height.
                             // A rocket already below it at apogee fires there, as the event on
                             // the height never crosses it (RocketPy's numeric trigger).
-                            let e = self.evaluate(phase, window, t, &y, area)?;
+                            let e = self.evaluation(&mut here, phase, window, t, &y, area)?;
                             e.vertical_speed_m_s < 0.0
                                 && e.height_above_ground_m <= height_above_ground_m
                         }
-                        Trigger::Apogee => false,
                     };
                     if fires {
                         let deploy_s = run.trigger(&self.devices, index, t);
@@ -466,8 +479,14 @@ impl Simulation {
                     if !run.waiting(index) || run.deploy_s(index) > t {
                         continue;
                     }
-                    let airspeed_m_s = self.evaluate(phase, window, t, &y, area)?.airspeed_m_s;
-                    let full_s = run.deploy(&self.devices, index, t, airspeed_m_s);
+                    if run.released_s(index).is_some_and(|released| released <= t) {
+                        // Cut away before its own charge fired: the canopy never flies.
+                        run.abandon(index);
+                        again = true;
+                        continue;
+                    }
+                    let evaluation = self.evaluation(&mut here, phase, window, t, &y, area)?;
+                    let full_s = run.deploy(&self.devices, index, t, evaluation.airspeed_m_s);
                     insert_stop(&mut stops, full_s, cap);
                     if phase != Phase::Descent {
                         // The descent is a point mass: the attitude freezes where it deployed.
@@ -476,16 +495,23 @@ impl Simulation {
                         frozen.body_rate_rad_s = DVec3::ZERO;
                         y = frozen.to_array();
                         integrator.reset(t, y)?;
+                        here = None;
                     }
                     let area = run.drag_area_m2(&self.devices, t);
                     let sample = self.sample(phase, window, t, &y, area)?;
                     record(&mut events, observer, EventKind::Deployment(index), sample);
-                    for other in 0..self.devices.len() {
-                        if self.devices[other].released_by == Some(index) {
-                            record(&mut events, observer, EventKind::Release(other), sample);
-                        }
-                    }
                     again = true;
+                }
+                // A release happens when the device that releases it is fully open, which is a
+                // stop time, so the drag area never dips between a drogue and a filling main.
+                for index in 0..self.devices.len() {
+                    if run.release_due(index, t) {
+                        run.release(index);
+                        let area = run.drag_area_m2(&self.devices, t);
+                        let sample = self.sample(phase, window, t, &y, area)?;
+                        record(&mut events, observer, EventKind::Release(index), sample);
+                        again = true;
+                    }
                 }
                 if !again {
                     break;
@@ -550,6 +576,8 @@ impl Simulation {
                     let mut ground = false;
                     let mut next_phase = phase;
                     for index in fired {
+                        // `event_count` is `watches.len()`, and the integrator numbers its events
+                        // by it, so a fired index is always in range.
                         match watches[index] {
                             Watch::RailExit => {
                                 next_phase = Phase::Free;
@@ -631,6 +659,24 @@ impl Simulation {
             final_sample,
             stats: integrator.stats(),
         })
+    }
+
+    /// The evaluation at `(t, y)` for the recovery scan, made once per pass and reused.
+    fn evaluation(
+        &self,
+        cache: &mut Option<Evaluation>,
+        phase: Phase,
+        window: (f64, f64),
+        t: f64,
+        y: &[f64; STATE_LEN],
+        drag_area_m2: f64,
+    ) -> Result<Evaluation, SimError> {
+        if let Some(evaluation) = cache {
+            return Ok(*evaluation);
+        }
+        let evaluation = self.evaluate(phase, window, t, y, drag_area_m2)?;
+        *cache = Some(evaluation);
+        Ok(evaluation)
     }
 
     /// What the integrator watches for in `phase`, in event order.
