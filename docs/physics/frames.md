@@ -1,6 +1,6 @@
 # Frames and sign conventions
 
-This is the single definition of the frames, and every crate follows it (CLAUDE.md). Code:
+This is the single definition of the frames, and every crate follows it. Code:
 `hpr_core::{geodesy, frames, attitude}`. ADR-003 records why these choices were made.
 
 ## Units and angles
@@ -97,8 +97,11 @@ z_B in L = (sin A cos E, cos A cos E, sin E)
   `E` = inclination, `φ` = rail-button angle. RocketPy 1.13.0 sets precession `ψ = −heading`,
   nutation `θ = inclination − 90°` and spin `φ`, then builds `q = q_z(ψ) q_x(θ) q_z(φ)`
   (`rocketpy/simulation/flight.py:1557-1579`, `rocketpy/tools.py` `euler313_to_quaternions`).
-  RocketPy's `e0…e3` matched `q` (w, x, y, z) to 2.2e-16 over 1000 random launch attitudes
-  (checked 2026-09-17). RocketPy's body `+z` also points toward the nose.
+  RocketPy's `e0…e3` equal `q` (w, x, y, z), sign included: the test
+  `frames::tests::launch_angles_match_the_rocketpy_oracle` checks 8 rail setups to 1e-14 against
+  `validation/fixtures/earth/rocketpy-attitude.json` (from `validation/oracles/rocketpy/attitude.py`),
+  and an ad hoc check of 1000 random attitudes agreed to 2.2e-16. RocketPy's body `+z` also points
+  toward the nose.
 
 ## Tests that pin this
 

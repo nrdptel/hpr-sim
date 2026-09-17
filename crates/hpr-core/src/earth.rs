@@ -11,16 +11,18 @@ use serde::{Deserialize, Serialize};
 
 use crate::error::CoreError;
 use crate::frames::LaunchFrame;
-use crate::geodesy::Geodetic;
+use crate::geodesy::{Geodetic, first_non_finite};
 use crate::gravity::NormalGravity;
 
 /// How gravity is evaluated along the trajectory.
 #[derive(Debug, Clone, Copy, PartialEq, Default, Serialize, Deserialize)]
 #[serde(tag = "kind", rename_all = "snake_case")]
+#[non_exhaustive]
 pub enum GravityModel {
     /// A uniform field `(0, 0, −g)` in the launch frame.
     Constant {
-        /// Gravity magnitude, m/s².
+        /// Gravity magnitude, m/s², not negative: the field points down whatever the sign
+        /// convention of the source, and [`Earth::new`] rejects a negative value.
         g_mps2: f64,
     },
     /// `(0, 0, −γ)` with `γ` from the Taylor series (eq. 4-3) at the launch latitude and height
@@ -39,6 +41,7 @@ pub enum GravityModel {
 /// Which Earth-rotation terms the launch-frame equations of motion include.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
+#[non_exhaustive]
 pub enum EarthRotation {
     /// No rotation terms: `L` is treated as inertial apart from the centrifugal part already in
     /// normal gravity.
@@ -93,24 +96,23 @@ impl Earth {
     ///
     /// # Errors
     ///
-    /// [`CoreError::Domain`] if the site is not a valid geodetic position or a constant gravity
-    /// is not finite.
+    /// [`CoreError::Domain`] if the site is not a valid geodetic position, or a constant gravity
+    /// magnitude is negative or not finite.
     pub fn new(
         field: NormalGravity,
         site: Geodetic,
         gravity: GravityModel,
         rotation: EarthRotation,
     ) -> Result<Self, CoreError> {
-        let site = Geodetic::new(site.latitude_rad, site.longitude_rad, site.height_m)?;
         if let GravityModel::Constant { g_mps2 } = gravity
-            && !g_mps2.is_finite()
+            && !(g_mps2.is_finite() && g_mps2 >= 0.0)
         {
             return Err(CoreError::Domain {
-                what: "constant gravity (m/s²)",
+                what: "constant gravity magnitude (m/s²), which must be finite and not negative",
                 value: g_mps2,
             });
         }
-        let frame = LaunchFrame::new(field.ellipsoid(), site);
+        let frame = LaunchFrame::new(field.ellipsoid(), site)?;
         Ok(Self {
             field,
             frame,
@@ -172,12 +174,10 @@ impl Earth {
     /// [`CoreError::Domain`] for a non-finite position, or (for the ellipsoidal model) a position
     /// hundreds of kilometres inside the Earth.
     pub fn gravity_enu_mps2(&self, position_enu_m: DVec3) -> Result<DVec3, CoreError> {
-        if !position_enu_m.is_finite() {
+        if let Some(value) = first_non_finite(position_enu_m) {
             return Err(CoreError::Domain {
                 what: "launch-frame position component (m)",
-                value: position_enu_m
-                    .max_element()
-                    .max(-position_enu_m.min_element()),
+                value,
             });
         }
         let site = self.frame.origin();
@@ -330,13 +330,15 @@ mod tests {
 
     #[test]
     fn rejects_bad_inputs_and_round_trips_through_serde() {
-        let bad_g = Earth::new(
-            NormalGravity::wgs84(),
-            site(),
-            GravityModel::Constant { g_mps2: f64::NAN },
-            EarthRotation::Ignore,
-        );
-        assert!(bad_g.is_err());
+        for g_mps2 in [f64::NAN, f64::INFINITY, -9.81] {
+            let bad_g = Earth::new(
+                NormalGravity::wgs84(),
+                site(),
+                GravityModel::Constant { g_mps2 },
+                EarthRotation::Ignore,
+            );
+            assert!(bad_g.is_err(), "g = {g_mps2}");
+        }
         let bad_site = Geodetic {
             latitude_rad: 2.0,
             ..site()

@@ -124,8 +124,11 @@ mod tests {
     }
 
     /// M1.1 *done when*: the norm stays within 1e-12 of one over 1e6 steps. Classical RK4 on
-    /// `q̇`, renormalized after each step as the flight engine does; also checks the attitude
-    /// against the closed form so the norm bound is not met by a wrong rotation.
+    /// `q̇`, renormalized after each step as the flight engine does. Measured after
+    /// renormalization the bound is met by construction, so the test also bounds the drift of
+    /// each raw step before renormalization (a derivative with a spurious real part grows the
+    /// norm and fails it) and checks the attitude against the closed form (a wrong rotation
+    /// fails that).
     #[test]
     fn rk4_with_renormalization_keeps_unit_norm_over_a_million_steps() {
         let c = coning();
@@ -133,18 +136,28 @@ mod tests {
         let steps = 1_000_000;
         let mut q = c.attitude(0.0);
         let mut worst_norm_error = 0.0f64;
+        let mut worst_step_drift = 0.0f64;
         for n in 0..steps {
             let t = f64::from(n) * dt;
             let k1 = quaternion_derivative(q, c.body_rate(t));
             let k2 = quaternion_derivative(q + k1 * (0.5 * dt), c.body_rate(t + 0.5 * dt));
             let k3 = quaternion_derivative(q + k2 * (0.5 * dt), c.body_rate(t + 0.5 * dt));
             let k4 = quaternion_derivative(q + k3 * dt, c.body_rate(t + dt));
-            q = renormalize(q + (k1 + k2 * 2.0 + k3 * 2.0 + k4) * (dt / 6.0)).unwrap();
+            let raw = q + (k1 + k2 * 2.0 + k3 * 2.0 + k4) * (dt / 6.0);
+            worst_step_drift = worst_step_drift.max((raw.length() - 1.0).abs());
+            q = renormalize(raw).unwrap();
             worst_norm_error = worst_norm_error.max((q.length() - 1.0).abs());
         }
         let t_end = f64::from(steps) * dt;
         let attitude_error = angle_between(q, c.attitude(t_end));
         assert!(worst_norm_error <= 1e-12, "norm error {worst_norm_error:e}");
+        // For a constant rate RK4 scales the norm by |R(iθ)| = √(1 − θ⁶/72 + θ⁸/576) ≈ 1 − θ⁶/144
+        // per step, θ = |ω|Δt/2 ≈ 3e-4, about 1e-23: far below rounding. The raw drift should be
+        // a few multiples of f64::EPSILON.
+        assert!(
+            worst_step_drift <= 16.0 * f64::EPSILON,
+            "raw step drift {worst_step_drift:e}"
+        );
         assert!(
             attitude_error < 1e-9,
             "attitude error {attitude_error:e} rad"
@@ -160,12 +173,19 @@ mod tests {
         let steps = 1_000_000;
         let mut q = q0;
         let mut worst_norm_error = 0.0f64;
+        let mut worst_step_drift = 0.0f64;
         for _ in 0..steps {
+            let raw = q * DQuat::from_scaled_axis(omega * dt);
+            worst_step_drift = worst_step_drift.max((raw.length() - 1.0).abs());
             q = step_constant_rate(q, omega, dt).unwrap();
             worst_norm_error = worst_norm_error.max((q.length() - 1.0).abs());
         }
         let exact = q0 * DQuat::from_scaled_axis(omega * (f64::from(steps) * dt));
         assert!(worst_norm_error <= 1e-12, "norm error {worst_norm_error:e}");
+        assert!(
+            worst_step_drift <= 16.0 * f64::EPSILON,
+            "raw step drift {worst_step_drift:e}"
+        );
         let attitude_error = angle_between(q, exact);
         assert!(
             attitude_error < 1e-9,

@@ -116,8 +116,10 @@ impl NormalGravity {
     /// # Errors
     ///
     /// [`CoreError::Domain`] unless the ellipsoid is oblate (the ellipsoidal-harmonic formulas
-    /// divide by its linear eccentricity), `GM` is finite and positive, and `ω` is finite and not
-    /// negative.
+    /// divide by its linear eccentricity), `GM` is finite and positive, `ω` is finite and not
+    /// negative, and the derived constants are usable: `q₀` positive (it underflows for a
+    /// flattening below about 1e-200), `k` finite, and `γ_e`, `γ_p` finite and positive (the
+    /// equator does not spin faster than orbit).
     pub fn new(ellipsoid: Ellipsoid, gm_m3_s2: f64, omega_rad_s: f64) -> Result<Self, CoreError> {
         if ellipsoid.flattening() <= 0.0 {
             return Err(CoreError::Domain {
@@ -137,7 +139,20 @@ impl NormalGravity {
                 value: omega_rad_s,
             });
         }
-        Ok(Self::derive(ellipsoid, gm_m3_s2, omega_rad_s))
+        let field = Self::derive(ellipsoid, gm_m3_s2, omega_rad_s);
+        let usable = field.q0 > 0.0
+            && field.k.is_finite()
+            && field.gamma_e.is_finite()
+            && field.gamma_e > 0.0
+            && field.gamma_p.is_finite()
+            && field.gamma_p > 0.0;
+        if !usable {
+            return Err(CoreError::Domain {
+                what: "equatorial normal gravity derived from the defining parameters (m/s²)",
+                value: field.gamma_e,
+            });
+        }
+        Ok(field)
     }
 
     /// The WGS 84 normal gravity field.
@@ -513,6 +528,13 @@ mod tests {
         assert!(NormalGravity::new(sphere, WGS84_GM_M3_S2, 0.0).is_err());
         assert!(NormalGravity::new(Ellipsoid::WGS84, -1.0, 0.0).is_err());
         assert!(NormalGravity::new(Ellipsoid::WGS84, WGS84_GM_M3_S2, f64::NAN).is_err());
+        // q₀ underflows for a vanishing flattening; a huge ellipsoid overflows.
+        let nearly_round = Ellipsoid::new(6.4e6, 1e300).unwrap();
+        assert!(NormalGravity::new(nearly_round, WGS84_GM_M3_S2, 7e-5).is_err());
+        let huge = Ellipsoid::new(1e300, 298.0).unwrap();
+        assert!(NormalGravity::new(huge, WGS84_GM_M3_S2, 7e-5).is_err());
+        // Spinning faster than orbital speed at the equator.
+        assert!(NormalGravity::new(Ellipsoid::WGS84, WGS84_GM_M3_S2, 2e-3).is_err());
         assert_eq!(
             NormalGravity::new(
                 Ellipsoid::WGS84,

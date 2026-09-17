@@ -26,14 +26,16 @@ pub struct Ellipsoid {
 #[serde(deny_unknown_fields)]
 struct EllipsoidData {
     semi_major_axis_m: f64,
-    inverse_flattening: f64,
+    /// The flattening itself rather than its inverse, which is infinite for a sphere and has no
+    /// JSON representation.
+    flattening: f64,
 }
 
 impl TryFrom<EllipsoidData> for Ellipsoid {
     type Error = CoreError;
 
     fn try_from(data: EllipsoidData) -> Result<Self, CoreError> {
-        Ellipsoid::new(data.semi_major_axis_m, data.inverse_flattening)
+        Ellipsoid::from_flattening(data.semi_major_axis_m, data.flattening)
     }
 }
 
@@ -41,7 +43,7 @@ impl From<Ellipsoid> for EllipsoidData {
     fn from(ellipsoid: Ellipsoid) -> Self {
         EllipsoidData {
             semi_major_axis_m: ellipsoid.semi_major_axis_m,
-            inverse_flattening: ellipsoid.inverse_flattening(),
+            flattening: ellipsoid.flattening,
         }
     }
 }
@@ -62,21 +64,36 @@ impl Ellipsoid {
     /// [`CoreError::Domain`] unless `a` is finite and positive and `1/f` is greater than one
     /// (or `+∞`).
     pub fn new(semi_major_axis_m: f64, inverse_flattening: f64) -> Result<Self, CoreError> {
-        if !(semi_major_axis_m.is_finite() && semi_major_axis_m > 0.0) {
-            return Err(CoreError::Domain {
-                what: "semi-major axis (m)",
-                value: semi_major_axis_m,
-            });
-        }
         if inverse_flattening.is_nan() || inverse_flattening <= 1.0 {
             return Err(CoreError::Domain {
                 what: "inverse flattening",
                 value: inverse_flattening,
             });
         }
+        Self::from_flattening(semi_major_axis_m, 1.0 / inverse_flattening)
+    }
+
+    /// An ellipsoid from its semi-major axis `a` and flattening `f` (zero for a sphere).
+    ///
+    /// # Errors
+    ///
+    /// [`CoreError::Domain`] unless `a` is finite and positive and `0 ≤ f < 1`.
+    pub fn from_flattening(semi_major_axis_m: f64, flattening: f64) -> Result<Self, CoreError> {
+        if !(semi_major_axis_m.is_finite() && semi_major_axis_m > 0.0) {
+            return Err(CoreError::Domain {
+                what: "semi-major axis (m)",
+                value: semi_major_axis_m,
+            });
+        }
+        if !(0.0..1.0).contains(&flattening) {
+            return Err(CoreError::Domain {
+                what: "flattening",
+                value: flattening,
+            });
+        }
         Ok(Self {
             semi_major_axis_m,
-            flattening: 1.0 / inverse_flattening,
+            flattening,
         })
     }
 
@@ -158,12 +175,10 @@ impl Ellipsoid {
     /// the closed form needs limiting forms: the equatorial plane within `a e²` of the centre
     /// (about 42.7 km for WGS 84), deep inside the Earth.
     pub fn geodetic_from_ecef(&self, position_ecef_m: DVec3) -> Result<Geodetic, CoreError> {
-        if !position_ecef_m.is_finite() {
+        if let Some(value) = first_non_finite(position_ecef_m) {
             return Err(CoreError::Domain {
                 what: "ECEF position component (m)",
-                value: position_ecef_m
-                    .max_element()
-                    .max(-position_ecef_m.min_element()),
+                value,
             });
         }
         let a = self.semi_major_axis_m;
@@ -209,8 +224,18 @@ impl Ellipsoid {
     }
 }
 
+/// The first component of `v` that is NaN or infinite, for error reports.
+pub(crate) fn first_non_finite(v: DVec3) -> Option<f64> {
+    v.to_array().into_iter().find(|c| !c.is_finite())
+}
+
 /// A geodetic position on an ellipsoid.
+///
+/// The fields are public for convenience; [`Geodetic::new`], deserialization and every
+/// constructor that takes a site ([`crate::frames::LaunchFrame::new`], [`crate::earth::Earth::new`])
+/// check them.
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+#[serde(try_from = "GeodeticData", into = "GeodeticData")]
 pub struct Geodetic {
     /// Geodetic latitude `φ`, rad, in `[−π/2, π/2]`, positive north.
     pub latitude_rad: f64,
@@ -221,7 +246,42 @@ pub struct Geodetic {
     pub height_m: f64,
 }
 
+#[derive(Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+struct GeodeticData {
+    latitude_rad: f64,
+    longitude_rad: f64,
+    height_m: f64,
+}
+
+impl TryFrom<GeodeticData> for Geodetic {
+    type Error = CoreError;
+
+    fn try_from(data: GeodeticData) -> Result<Self, CoreError> {
+        Geodetic::new(data.latitude_rad, data.longitude_rad, data.height_m)
+    }
+}
+
+impl From<Geodetic> for GeodeticData {
+    fn from(point: Geodetic) -> Self {
+        GeodeticData {
+            latitude_rad: point.latitude_rad,
+            longitude_rad: point.longitude_rad,
+            height_m: point.height_m,
+        }
+    }
+}
+
 impl Geodetic {
+    /// Checks a position built from the public fields: the same checks as [`Geodetic::new`].
+    ///
+    /// # Errors
+    ///
+    /// As [`Geodetic::new`].
+    pub fn validated(self) -> Result<Self, CoreError> {
+        Self::new(self.latitude_rad, self.longitude_rad, self.height_m)
+    }
+
     /// A position from latitude and longitude in radians and ellipsoidal height in metres.
     ///
     /// # Errors
@@ -361,6 +421,42 @@ mod tests {
         let g = sphere.geodetic_from_ecef(p).unwrap();
         assert!((g.height_m - (p.length() - 6.371e6)).abs() < 1e-8);
         assert!((g.latitude_rad - (5.0e6f64).atan2(5.0e6)).abs() < 1e-15);
+    }
+
+    #[test]
+    fn serde_round_trips_and_rechecks() {
+        for ellipsoid in [WGS84, Ellipsoid::new(6.371e6, f64::INFINITY).unwrap()] {
+            let json = serde_json::to_string(&ellipsoid).unwrap();
+            assert_eq!(
+                serde_json::from_str::<Ellipsoid>(&json).unwrap(),
+                ellipsoid,
+                "{json}"
+            );
+        }
+        assert!(
+            serde_json::from_str::<Ellipsoid>(r#"{"semi_major_axis_m": 6.4e6, "flattening": 1.0}"#)
+                .is_err()
+        );
+        let point = Geodetic::from_degrees(-33.9, 18.6, 300.0).unwrap();
+        let json = serde_json::to_string(&point).unwrap();
+        assert_eq!(serde_json::from_str::<Geodetic>(&json).unwrap(), point);
+        let degrees_in_radian_fields =
+            r#"{"latitude_rad": 32.99, "longitude_rad": -106.97, "height_m": 1400.0}"#;
+        assert!(serde_json::from_str::<Geodetic>(degrees_in_radian_fields).is_err());
+        let unchecked = Geodetic {
+            latitude_rad: f64::NAN,
+            ..point
+        };
+        assert!(unchecked.validated().is_err());
+        assert_eq!(point.validated(), Ok(point));
+    }
+
+    #[test]
+    fn errors_report_the_offending_component() {
+        let err = WGS84
+            .geodetic_from_ecef(DVec3::new(f64::NAN, 1.0, 2.0))
+            .unwrap_err();
+        assert!(matches!(err, CoreError::Domain { value, .. } if value.is_nan()));
     }
 
     #[test]

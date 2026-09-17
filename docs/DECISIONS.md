@@ -223,7 +223,8 @@ The comparisons in M2.1 need hpr's conventions to map exactly onto RocketPy's.
   - **Attitude:** a unit Hamilton quaternion mapping body to launch components, with
     `q̇ = ½ q ⊗ (0, ω_B)` and renormalization after every step.
   - **Launch angles:** `q = R_z(−A) R_x(E − π/2) R_z(φ)`. This is RocketPy's 3-1-3 initial
-    attitude with heading, inclination and rail-button angle, checked to 2.2e-16.
+    attitude with heading, inclination and rail-button angle, pinned by a RocketPy oracle
+    fixture (`validation/oracles/rocketpy/attitude.py`).
   - **Rationale:** RocketPy is the main oracle, so matching its axes removes a class of sign
     errors from the comparisons. At the identity attitude the rocket stands vertical on the pad.
 - **Heights:** every height in the core is ellipsoidal (`Geodetic::height_m`). Heights above sea

@@ -69,7 +69,7 @@
 
 ## Phase 1: Physics core (the heart), with validation interleaved
 
-- [ ] **M1.1 Core math, frames, Earth.**
+- [x] **M1.1 Core math, frames, Earth.**
   - `hpr-core`: vectors and quaternions (glam f64), interpolation tables (linear/cubic, clamped,
     with extrapolation flags).
   - Frames spec in `docs/physics/frames.md`: ENU launch frame, body frame, Euler conventions,

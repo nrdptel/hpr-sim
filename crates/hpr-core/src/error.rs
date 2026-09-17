@@ -45,6 +45,18 @@ pub enum CoreError {
         /// The last abscissa.
         max: f64,
     },
+    /// An interval's width, its secant slope or a spline slope overflows `f64`.
+    #[error("table interval {interval} overflows: its width or slope is not a finite f64")]
+    TableOverflow {
+        /// Index of the interval `[x_i, x_{i+1}]`.
+        interval: usize,
+    },
+    /// Linear extrapolation gave a value that is not finite.
+    #[error("linear extrapolation to {x} does not give a finite value")]
+    ExtrapolationOverflow {
+        /// The requested abscissa.
+        x: f64,
+    },
     /// A lookup at NaN.
     #[error("lookup at NaN")]
     NanLookup,

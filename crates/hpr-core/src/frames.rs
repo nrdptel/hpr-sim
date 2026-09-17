@@ -44,12 +44,7 @@ impl TryFrom<LaunchFrameData> for LaunchFrame {
     type Error = CoreError;
 
     fn try_from(data: LaunchFrameData) -> Result<Self, CoreError> {
-        let origin = Geodetic::new(
-            data.origin.latitude_rad,
-            data.origin.longitude_rad,
-            data.origin.height_m,
-        )?;
-        Ok(LaunchFrame::new(data.ellipsoid, origin))
+        LaunchFrame::new(data.ellipsoid, data.origin)
     }
 }
 
@@ -64,19 +59,27 @@ impl From<LaunchFrame> for LaunchFrameData {
 
 impl LaunchFrame {
     /// The ENU frame with its origin at `origin` on `ellipsoid`.
-    #[must_use]
-    pub fn new(ellipsoid: Ellipsoid, origin: Geodetic) -> Self {
-        Self {
+    ///
+    /// # Errors
+    ///
+    /// [`CoreError::Domain`] if `origin` fails [`Geodetic::new`]'s checks (for example degrees
+    /// written into the radian fields).
+    pub fn new(ellipsoid: Ellipsoid, origin: Geodetic) -> Result<Self, CoreError> {
+        let origin = origin.validated()?;
+        Ok(Self {
             ellipsoid,
             origin,
             origin_ecef_m: ellipsoid.ecef_from_geodetic(origin),
             ecef_from_enu: ecef_from_enu_rotation(origin),
-        }
+        })
     }
 
     /// The ENU frame at `origin` on the WGS 84 ellipsoid.
-    #[must_use]
-    pub fn wgs84(origin: Geodetic) -> Self {
+    ///
+    /// # Errors
+    ///
+    /// As [`LaunchFrame::new`].
+    pub fn wgs84(origin: Geodetic) -> Result<Self, CoreError> {
         Self::new(Ellipsoid::WGS84, origin)
     }
 
@@ -188,7 +191,13 @@ impl LaunchAngles {
         let x0 = reference.mul_vec3(DVec3::X);
         let y0 = reference.mul_vec3(DVec3::Y);
         let x_body = q.mul_vec3(DVec3::X);
-        let roll_rad = x_body.dot(y0).atan2(x_body.dot(x0));
+        // atan2 returns −π for (−0, negative); the documented range is (−π, π].
+        let roll = x_body.dot(y0).atan2(x_body.dot(x0));
+        let roll_rad = if roll <= -std::f64::consts::PI {
+            std::f64::consts::PI
+        } else {
+            roll
+        };
         Self {
             azimuth_rad,
             elevation_rad,
@@ -260,12 +269,81 @@ mod tests {
         assert_eq!(angles.azimuth_rad, 0.0);
         assert!((angles.elevation_rad - FRAC_PI_2).abs() < 1e-15);
         assert!((angles.roll_rad + 1.1).abs() < 1e-15);
+
+        // Nose straight down by a half turn about x_L: exactly the zero-roll reference.
+        let down = LaunchAngles::from_quaternion(DQuat::from_xyzw(1.0, 0.0, 0.0, 0.0));
+        assert_eq!(down.azimuth_rad, 0.0);
+        assert!((down.elevation_rad + FRAC_PI_2).abs() < 1e-15);
+        assert_eq!(down.roll_rad, 0.0);
+        // By a half turn about y_L, x_B ends up at −x_L and atan2 meets (−0, −1): roll lands on
+        // +π, not −π.
+        for sign in [1.0, -1.0] {
+            let down = LaunchAngles::from_quaternion(DQuat::from_xyzw(0.0, sign, 0.0, 0.0));
+            assert!((down.elevation_rad + FRAC_PI_2).abs() < 1e-15);
+            assert_eq!(down.roll_rad, PI);
+        }
+    }
+
+    /// ADR-003 adopts RocketPy's launch attitude convention: heading = azimuth, inclination =
+    /// elevation, rail-button angle = roll. RocketPy's scalar-first Euler parameters come from
+    /// `validation/oracles/rocketpy/attitude.py`.
+    #[test]
+    fn launch_angles_match_the_rocketpy_oracle() {
+        #[derive(serde::Deserialize)]
+        struct Oracle {
+            cases: Vec<Case>,
+        }
+        #[derive(serde::Deserialize)]
+        struct Case {
+            heading_deg: f64,
+            inclination_deg: f64,
+            rail_button_angle_rad: f64,
+            e0: f64,
+            e1: f64,
+            e2: f64,
+            e3: f64,
+        }
+        let oracle: Oracle = serde_json::from_str(include_str!(
+            "../../../validation/fixtures/earth/rocketpy-attitude.json"
+        ))
+        .unwrap();
+        assert!(oracle.cases.len() >= 6);
+        for case in &oracle.cases {
+            let q = LaunchAngles {
+                azimuth_rad: case.heading_deg.to_radians(),
+                elevation_rad: case.inclination_deg.to_radians(),
+                roll_rad: case.rail_button_angle_rad,
+            }
+            .to_quaternion();
+            let rocketpy = DQuat::from_xyzw(case.e1, case.e2, case.e3, case.e0);
+            // Same attitude, and the same sign: RocketPy's construction and ours multiply the
+            // same three half-angle rotations.
+            assert!(
+                (q - rocketpy).length() < 1e-14,
+                "heading {} inclination {}: {q} vs {rocketpy}",
+                case.heading_deg,
+                case.inclination_deg
+            );
+        }
+    }
+
+    #[test]
+    fn launch_frame_rejects_unchecked_sites() {
+        let degrees = Geodetic {
+            latitude_rad: 32.99,
+            longitude_rad: -106.97,
+            height_m: 1400.0,
+        };
+        assert!(LaunchFrame::wgs84(degrees).is_err());
+        let json = r#"{"ellipsoid": {"semi_major_axis_m": 6378137.0, "flattening": 0.0033528106647474805},
+            "origin": {"latitude_rad": 1.0, "longitude_rad": 0.0, "height_m": "NaN"}}"#;
+        assert!(serde_json::from_str::<LaunchFrame>(json).is_err());
     }
 
     #[test]
     fn launch_frame_axes_and_origin() {
         let site = Geodetic::from_degrees(32.99, -106.97, 1400.0).unwrap();
-        let frame = LaunchFrame::wgs84(site);
+        let frame = LaunchFrame::wgs84(site).unwrap();
         assert_eq!(frame.enu_from_ecef(frame.origin_ecef_m()), DVec3::ZERO);
         let back = frame.geodetic_from_enu(DVec3::ZERO).unwrap();
         assert!((back.latitude_rad - site.latitude_rad).abs() < 1e-15);
@@ -318,9 +396,14 @@ mod tests {
         /// Quaternion → angles → quaternion is the same rotation everywhere, the vertical
         /// singularity included, and the angles land in their documented ranges.
         #[test]
-        fn quaternion_round_trips_through_launch_angles(q in unit_quaternion(), vertical in any::<bool>()) {
-            // Half the cases are exactly vertical (a pure rotation about z_L).
-            let q = if vertical { DQuat::from_rotation_z(2.0 * q.w.atan2(q.z)) } else { q };
+        fn quaternion_round_trips_through_launch_angles(q in unit_quaternion(), case in 0u8..3) {
+            // A third of the cases point exactly up and a third exactly down.
+            let turn = DQuat::from_rotation_z(2.0 * q.w.atan2(q.z));
+            let q = match case {
+                0 => q,
+                1 => turn,
+                _ => turn * DQuat::from_rotation_x(PI),
+            };
             let angles = LaunchAngles::from_quaternion(q);
             prop_assert!(angle_between(angles.to_quaternion(), q) < 1e-12);
             prop_assert!((0.0..2.0 * PI).contains(&angles.azimuth_rad));
@@ -342,7 +425,7 @@ mod tests {
             offset in prop::array::uniform3(-2.0e6..2.0e6f64),
             up in 0.0..1.0e6f64,
         ) {
-            let frame = LaunchFrame::wgs84(Geodetic::new(lat, lon, h0).unwrap());
+            let frame = LaunchFrame::wgs84(Geodetic::new(lat, lon, h0).unwrap()).unwrap();
             let p = DVec3::new(offset[0], offset[1], up);
             let ecef = frame.ecef_from_enu(p);
             prop_assert!((frame.enu_from_ecef(ecef) - p).length() < 1e-7);

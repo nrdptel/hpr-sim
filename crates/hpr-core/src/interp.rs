@@ -44,6 +44,7 @@ pub enum Interpolation {
 /// What a lookup outside `[x_0, x_{n-1}]` does.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
+#[non_exhaustive]
 pub enum Extrapolation {
     /// Hold the end value: `y(x) = y_0` below the table and `y_{n-1}` above it.
     #[default]
@@ -131,9 +132,10 @@ impl Table1D {
     ///
     /// - [`CoreError::TableLengthMismatch`] if the columns differ in length.
     /// - [`CoreError::TableTooShort`] with fewer than [`Table1D::MIN_KNOTS`] knots.
-    /// - [`CoreError::TableNotFinite`] if any value is NaN or infinite, or a secant slope
-    ///   `(y_{i+1} - y_i) / (x_{i+1} - x_i)` overflows.
+    /// - [`CoreError::TableNotFinite`] if any value is NaN or infinite.
     /// - [`CoreError::TableNotIncreasing`] unless `xs` strictly increases.
+    /// - [`CoreError::TableOverflow`] if an interval's width `x_{i+1} − x_i`, its secant slope, or
+    ///   a spline slope is not representable as a finite `f64`.
     pub fn new(
         xs: Vec<f64>,
         ys: Vec<f64>,
@@ -162,18 +164,26 @@ impl Table1D {
         if let Some(index) = xs.windows(2).position(|w| w[1] <= w[0]) {
             return Err(CoreError::TableNotIncreasing { index: index + 1 });
         }
+        if let Some(interval) = xs.windows(2).position(|w| !(w[1] - w[0]).is_finite()) {
+            return Err(CoreError::TableOverflow { interval });
+        }
         let secants: Vec<f64> = xs
             .windows(2)
             .zip(ys.windows(2))
             .map(|(x, y)| (y[1] - y[0]) / (x[1] - x[0]))
             .collect();
-        if let Some(index) = secants.iter().position(|s| !s.is_finite()) {
-            return Err(CoreError::TableNotFinite { index: index + 1 });
+        if let Some(interval) = secants.iter().position(|s| !s.is_finite()) {
+            return Err(CoreError::TableOverflow { interval });
         }
         let slopes = match interpolation {
             Interpolation::Linear => Vec::new(),
             Interpolation::NaturalCubic => natural_spline_slopes(&xs, &secants),
         };
+        if let Some(knot) = slopes.iter().position(|s| !s.is_finite()) {
+            return Err(CoreError::TableOverflow {
+                interval: knot.min(xs.len() - 2),
+            });
+        }
         Ok(Self {
             xs,
             ys,
@@ -215,6 +225,8 @@ impl Table1D {
     /// - [`CoreError::NanLookup`] if `x` is NaN.
     /// - [`CoreError::OutOfRange`] if `x` is outside the table and the policy is
     ///   [`Extrapolation::Error`].
+    /// - [`CoreError::ExtrapolationOverflow`] if linear extrapolation does not give a finite
+    ///   value (`x` infinite, or so far out that the line overflows).
     pub fn lookup(&self, x: f64) -> Result<Lookup, CoreError> {
         if x.is_nan() {
             return Err(CoreError::NanLookup);
@@ -236,7 +248,13 @@ impl Table1D {
                 };
                 match self.extrapolation {
                     Extrapolation::Clamp => y_end,
-                    Extrapolation::Linear => y_end + slope * (x - x_end),
+                    Extrapolation::Linear => {
+                        let value = y_end + slope * (x - x_end);
+                        if !value.is_finite() {
+                            return Err(CoreError::ExtrapolationOverflow { x });
+                        }
+                        value
+                    }
                     Extrapolation::Error => {
                         return Err(CoreError::OutOfRange {
                             x,
@@ -330,9 +348,12 @@ fn natural_spline_slopes(xs: &[f64], secants: &[f64]) -> Vec<f64> {
     let mut diag = vec![0.0; n];
     let mut upper = vec![0.0; n];
     let mut rhs = vec![0.0; n];
-    diag[0] = 2.0;
-    upper[0] = 1.0;
-    rhs[0] = 3.0 * secants[0];
+    // The end rows are the natural conditions multiplied by their interval width, so every row
+    // scales like h and a table with tiny intervals doesn't overflow the pivots.
+    let h_first = xs[1] - xs[0];
+    diag[0] = 2.0 * h_first;
+    upper[0] = h_first;
+    rhs[0] = 3.0 * h_first * secants[0];
     for i in 1..n - 1 {
         let h_prev = xs[i] - xs[i - 1];
         let h_next = xs[i + 1] - xs[i];
@@ -341,9 +362,10 @@ fn natural_spline_slopes(xs: &[f64], secants: &[f64]) -> Vec<f64> {
         upper[i] = h_prev;
         rhs[i] = 3.0 * (h_next * secants[i - 1] + h_prev * secants[i]);
     }
-    lower[n - 1] = 1.0;
-    diag[n - 1] = 2.0;
-    rhs[n - 1] = 3.0 * secants[n - 2];
+    let h_last = xs[n - 1] - xs[n - 2];
+    lower[n - 1] = h_last;
+    diag[n - 1] = 2.0 * h_last;
+    rhs[n - 1] = 3.0 * h_last * secants[n - 2];
 
     // Forward sweep. Strict diagonal dominance keeps every pivot positive.
     for i in 1..n {
@@ -410,8 +432,55 @@ mod tests {
         // A secant that overflows: a huge rise over a subnormal run.
         assert_eq!(
             Table1D::new(vec![0.0, 1e-310], vec![-1e300, 1e300], lin, clamp),
-            Err(CoreError::TableNotFinite { index: 1 })
+            Err(CoreError::TableOverflow { interval: 0 })
         );
+        // An interval wider than f64::MAX.
+        assert_eq!(
+            Table1D::new(vec![-1e308, 1e308], vec![0.0, 1.0], lin, clamp),
+            Err(CoreError::TableOverflow { interval: 0 })
+        );
+    }
+
+    #[test]
+    fn subnormal_intervals_keep_the_spline_finite() {
+        let xs = vec![0.0, 1e-310, 2e-310, 4e-310];
+        let ys = vec![0.0, 1e-300, 0.0, 1e-300];
+        let t = Table1D::new(xs, ys, Interpolation::NaturalCubic, Extrapolation::Clamp).unwrap();
+        assert!(t.slopes.iter().all(|s| s.is_finite()), "{:?}", t.slopes);
+        assert_eq!(t.eval(1e-310).unwrap(), 1e-300);
+        assert!(t.eval(1.5e-310).unwrap().is_finite());
+    }
+
+    #[test]
+    fn linear_extrapolation_to_infinity_is_an_error() {
+        let flat = table(
+            &[0.0, 1.0],
+            &[2.0, 2.0],
+            Interpolation::Linear,
+            Extrapolation::Linear,
+        );
+        assert_eq!(
+            flat.lookup(f64::INFINITY),
+            Err(CoreError::ExtrapolationOverflow { x: f64::INFINITY })
+        );
+        let steep = table(
+            &[0.0, 1.0],
+            &[0.0, 1e300],
+            Interpolation::Linear,
+            Extrapolation::Linear,
+        );
+        assert!(matches!(
+            steep.lookup(1e10),
+            Err(CoreError::ExtrapolationOverflow { .. })
+        ));
+        // Clamping to an end value is always finite.
+        let clamp = table(
+            &[0.0, 1.0],
+            &[2.0, 3.0],
+            Interpolation::NaturalCubic,
+            Extrapolation::Clamp,
+        );
+        assert_eq!(clamp.eval(f64::NEG_INFINITY).unwrap(), 2.0);
     }
 
     #[test]
