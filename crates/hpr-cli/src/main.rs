@@ -6,6 +6,11 @@
     clippy::print_stdout,
     reason = "a command-line tool reports on standard output"
 )]
+#![allow(
+    clippy::disallowed_methods,
+    clippy::disallowed_types,
+    reason = "the command-line tool reads and writes files; it is not part of the pure core"
+)]
 
 fn main() {
     println!(

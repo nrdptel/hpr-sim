@@ -1,6 +1,47 @@
 # Tests may unwrap, expect and panic: a failing test should stop at the failure.
+allow-dbg-in-tests = true
 allow-expect-in-tests = true
 allow-panic-in-tests = true
 allow-print-in-tests = true
 allow-unwrap-in-tests = true
-allow-dbg-in-tests = true
+
+# The pure core does no I/O: no filesystem, network, clocks, threads, processes or environment
+# (ADR-001). These compile for wasm32-unknown-unknown but fail or panic there at run time, so the
+# wasm build alone cannot catch them. Crates outside the pure core (hpr-net, hpr-validate, hpr-cli,
+# xtask) allow `clippy::disallowed_methods` and `clippy::disallowed_types` at the crate root.
+disallowed-methods = [
+    { path = "std::env::args", reason = "the pure core does no I/O (ADR-001)" },
+    { path = "std::env::current_dir", reason = "the pure core does no I/O (ADR-001)" },
+    { path = "std::env::var", reason = "the pure core does no I/O (ADR-001)" },
+    { path = "std::env::var_os", reason = "the pure core does no I/O (ADR-001)" },
+    { path = "std::env::vars", reason = "the pure core does no I/O (ADR-001)" },
+    { path = "std::fs::canonicalize", reason = "the pure core does no I/O (ADR-001)" },
+    { path = "std::fs::copy", reason = "the pure core does no I/O (ADR-001)" },
+    { path = "std::fs::create_dir", reason = "the pure core does no I/O (ADR-001)" },
+    { path = "std::fs::create_dir_all", reason = "the pure core does no I/O (ADR-001)" },
+    { path = "std::fs::metadata", reason = "the pure core does no I/O (ADR-001)" },
+    { path = "std::fs::read", reason = "the pure core does no I/O (ADR-001)" },
+    { path = "std::fs::read_dir", reason = "the pure core does no I/O (ADR-001)" },
+    { path = "std::fs::read_to_string", reason = "the pure core does no I/O (ADR-001)" },
+    { path = "std::fs::remove_dir", reason = "the pure core does no I/O (ADR-001)" },
+    { path = "std::fs::remove_dir_all", reason = "the pure core does no I/O (ADR-001)" },
+    { path = "std::fs::remove_file", reason = "the pure core does no I/O (ADR-001)" },
+    { path = "std::fs::rename", reason = "the pure core does no I/O (ADR-001)" },
+    { path = "std::fs::write", reason = "the pure core does no I/O (ADR-001)" },
+    { path = "std::io::stderr", reason = "the pure core does no I/O (ADR-001)" },
+    { path = "std::io::stdin", reason = "the pure core does no I/O (ADR-001)" },
+    { path = "std::io::stdout", reason = "the pure core does no I/O (ADR-001)" },
+    { path = "std::process::exit", reason = "a library returns errors instead of exiting" },
+    { path = "std::thread::sleep", reason = "the pure core uses no threads or clocks (ADR-001)" },
+    { path = "std::thread::spawn", reason = "the pure core uses no threads (ADR-001); parallelism goes through the `parallel` feature" },
+]
+disallowed-types = [
+    { path = "std::fs::File", reason = "the pure core does no I/O (ADR-001)" },
+    { path = "std::fs::OpenOptions", reason = "the pure core does no I/O (ADR-001)" },
+    { path = "std::net::TcpListener", reason = "the pure core does no I/O (ADR-001)" },
+    { path = "std::net::TcpStream", reason = "the pure core does no I/O (ADR-001)" },
+    { path = "std::net::UdpSocket", reason = "the pure core does no I/O (ADR-001)" },
+    { path = "std::process::Command", reason = "the pure core does no I/O (ADR-001)" },
+    { path = "std::time::Instant", reason = "no clocks in the pure core: results must be deterministic (ADR-001)" },
+    { path = "std::time::SystemTime", reason = "no clocks in the pure core: results must be deterministic (ADR-001)" },
+]
