@@ -13,7 +13,7 @@
 pub mod events;
 pub mod integrator;
 
-pub use events::{Direction, EVENT_TIME_RESOLUTION_S, EventList, EventSet, find_root};
+pub use events::{Direction, EVENT_TIME_RESOLUTION_S, RootError, find_root};
 pub use integrator::{
     Adaptive, Advance, DEFAULT_STEP_LIMIT, IntegrationError, Integrator, Method, OdeSystem,
     SettingsError, Stats, Step,

@@ -2,10 +2,11 @@
 //! classical fixed-step fourth-order Runge–Kutta method.
 //!
 //! [`Integrator::advance`] takes accepted steps from the current time toward a stop time and
-//! returns at the stop time or at the first event on the way. A stop time is always a step
-//! boundary, so a caller puts discontinuities there (burnout, a thrust-curve knot, a phase change)
-//! and never lets one fall inside a step (Loft lesson L23). Each accepted step is handed to an
-//! observer as a [`Step`], which carries the step's dense output.
+//! returns at the stop time, at the first events on the way, or when the system asks to stop. A
+//! stop time is always a step boundary, so a caller puts discontinuities there (burnout, a
+//! thrust-curve knot, a phase change) and never lets one fall inside a step (Loft lesson L23). The
+//! system declares its events and sees each accepted step, with its dense output, through
+//! [`OdeSystem`]'s provided methods.
 //!
 //! - **Dormand–Prince 5(4)** ([`Method::DormandPrince54`]): the pair of J. R. Dormand and
 //!   P. J. Prince, "A family of embedded Runge-Kutta formulae", *J. Comput. Appl. Math.* 6 (1980)
@@ -13,7 +14,7 @@
 //!   error norm, the PI step-size controller, the starting step and the fourth-order continuous
 //!   extension follow E. Hairer and G. Wanner's `DOPRI5` (version of 2004, BSD-2-Clause, pinned
 //!   as `hairer-dopri5` in `validation/refs.lock.toml`), which implements Hairer, Nørsett and
-//!   Wanner, *Solving Ordinary Differential Equations I*, 2nd ed., Springer, 1993, §II.4–II.6
+//!   Wanner, *Solving Ordinary Differential Equations I*, 2nd ed., Springer, 1993, §II.4–II.6,
 //!   and §IV.2 of volume II. The port is noted in `THIRD-PARTY-NOTICES.md`.
 //! - **RK4** ([`Method::Rk4`]): Kutta's classical method (HNW I, §II.1, table 1.2) with a fixed
 //!   step and cubic Hermite dense output from the derivatives at both ends.
@@ -21,13 +22,19 @@
 //! Method, tests and limits: `docs/physics/integration.md`.
 
 use std::fmt;
+use std::ops::ControlFlow;
 
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
-use crate::events::{EVENT_TIME_RESOLUTION_S, EventSet, find_root};
+use crate::events::{Direction, EVENT_TIME_RESOLUTION_S, RootError, find_root};
 
-/// A first-order system `y' = f(t, y)` with `N` components.
+/// A first-order system `y' = f(t, y)` with `N` components, its events and its step observer.
+///
+/// Only [`derivative`](Self::derivative) is required. The event methods declare scalar functions
+/// `g_i(t, y)` whose crossings stop the integration (none by default), and
+/// [`accept_step`](Self::accept_step) sees every accepted step. One type carries all three so
+/// that a flight phase can record from, and stop on, its own state.
 pub trait OdeSystem<const N: usize> {
     /// The error the derivative can return.
     type Error;
@@ -36,8 +43,10 @@ pub trait OdeSystem<const N: usize> {
     ///
     /// # Errors
     ///
-    /// Whatever the system can't evaluate; the integration stops with
-    /// [`IntegrationError::Derivative`].
+    /// Whatever the system can't evaluate. In an adaptive step the integrator treats an error as a
+    /// rejection and retries with a shorter step, because a long step's stages can probe states
+    /// off the trajectory; the error is returned once the step can't shrink further, or at once
+    /// for the step's first stage and for RK4.
     fn derivative(&mut self, t_s: f64, y: &[f64; N]) -> Result<[f64; N], Self::Error>;
 
     /// Per-component weights `wᵢ` on the absolute tolerance, so that components in different
@@ -45,6 +54,29 @@ pub trait OdeSystem<const N: usize> {
     /// `wᵢ·atol + rtol·|yᵢ|`. Every weight must be finite and positive. All ones by default.
     fn absolute_tolerance_weights(&self) -> [f64; N] {
         [1.0; N]
+    }
+
+    /// The number of event functions (none by default).
+    fn event_count(&self) -> usize {
+        0
+    }
+
+    /// The direction of event `index`.
+    fn event_direction(&self, _index: usize) -> Direction {
+        Direction::Either
+    }
+
+    /// `g_index(t, y)`. A non-finite value stops the integration with
+    /// [`IntegrationError::EventNotFinite`].
+    fn event_value(&mut self, _index: usize, _t_s: f64, _y: &[f64; N]) -> f64 {
+        f64::NAN
+    }
+
+    /// Sees each accepted step, including one shortened to end at an event or a stop time.
+    /// Returning `Break` stops the integration at the end of this step with [`Advance::Stopped`]
+    /// (unless events fired there, which take precedence).
+    fn accept_step(&mut self, _step: &Step<N>) -> ControlFlow<()> {
+        ControlFlow::Continue(())
     }
 }
 
@@ -59,7 +91,8 @@ pub struct Adaptive {
     pub absolute_tolerance: f64,
     /// The first step, in seconds, or `None` for Hairer's starting-step estimate (HNW I, §II.4).
     pub initial_step_s: Option<f64>,
-    /// The longest step, in seconds, or `None` for no limit.
+    /// The longest step, in seconds, or `None` for no limit. Events that cross and return within
+    /// one step go unseen, so this also bounds the event functions' shortest detectable excursion.
     pub max_step_s: Option<f64>,
 }
 
@@ -77,12 +110,14 @@ impl Default for Adaptive {
 
 /// The integration method.
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
-#[serde(tag = "method", rename_all = "snake_case")]
+#[serde(tag = "method", deny_unknown_fields)]
 #[non_exhaustive]
 pub enum Method {
     /// Adaptive Dormand–Prince 5(4) with error control and fourth-order dense output.
+    #[serde(rename = "dopri5")]
     DormandPrince54(Adaptive),
     /// Classical RK4 with a fixed step, shortened only to land on a stop time or an event.
+    #[serde(rename = "rk4")]
     Rk4 {
         /// The step, in seconds.
         step_s: f64,
@@ -150,12 +185,13 @@ pub enum SettingsError {
     },
 }
 
-/// Why an integration stopped short.
+/// Why an integration stopped short. The integrator stays at its last accepted step, and a later
+/// [`Integrator::advance`] may resume from there.
 #[derive(Debug, Clone, PartialEq, Error)]
 #[non_exhaustive]
 pub enum IntegrationError<E> {
     /// The system's derivative failed.
-    #[error("the derivative failed at t = {t_s} s: {source}")]
+    #[error("the derivative failed at t = {t_s} s")]
     Derivative {
         /// The time of the failed evaluation.
         t_s: f64,
@@ -171,13 +207,13 @@ pub enum IntegrationError<E> {
         /// The rejected step.
         step_s: f64,
     },
-    /// The state or its derivative stopped being finite and a shorter step didn't help.
+    /// The state, its derivative or the step stopped being finite and a shorter step didn't help.
     #[error("the solution is not finite after t = {t_s} s")]
     NotFinite {
         /// The start of the failed step.
         t_s: f64,
     },
-    /// The integrator's step limit was reached.
+    /// The integrator's step limit was reached. [`Integrator::set_step_limit`] can raise it.
     #[error("the step limit ({limit}) was reached at t = {t_s} s")]
     StepLimit {
         /// Where the integration stopped.
@@ -185,8 +221,8 @@ pub enum IntegrationError<E> {
         /// The limit, counting accepted and rejected steps.
         limit: u64,
     },
-    /// An event function returned a non-finite value.
-    #[error("event {index} is not finite at t = {t_s} s")]
+    /// An event function returned a non-finite value, or its crossing couldn't be located.
+    #[error("event {index} failed at t = {t_s} s")]
     EventNotFinite {
         /// The event's index.
         index: usize,
@@ -208,15 +244,15 @@ pub enum IntegrationError<E> {
 
 /// How [`Integrator::advance`] returned.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[non_exhaustive]
 pub enum Advance {
     /// The integrator is at the stop time.
     Reached,
-    /// The integrator is at the first crossing of event `index`, the earliest of all events (the
-    /// lowest index on a tie).
-    Event {
-        /// The event's index in the [`EventSet`].
-        index: usize,
-    },
+    /// The integrator is at the earliest event crossing; [`Integrator::fired_events`] lists every
+    /// event past its zero there.
+    Events,
+    /// [`OdeSystem::accept_step`] asked to stop; the integrator is at the end of that step.
+    Stopped,
 }
 
 /// Work counters since the integrator was built.
@@ -226,7 +262,7 @@ pub struct Stats {
     pub evaluations: u64,
     /// Accepted steps, including steps shortened to end at an event.
     pub accepted_steps: u64,
-    /// Rejected steps.
+    /// Rejected steps, including steps whose stages failed.
     pub rejected_steps: u64,
 }
 
@@ -270,6 +306,25 @@ impl<const N: usize> fmt::Debug for Step<N> {
     }
 }
 
+/// `Δ = y₁ − y₀`, `r₂ = h f₀ − Δ` and `r₃ = Δ − h f₁ − r₂`, shared by both dense outputs.
+fn hermite_terms<const N: usize>(
+    h: f64,
+    start: &[f64; N],
+    end: &[f64; N],
+    f0: &[f64; N],
+    f1: &[f64; N],
+) -> ([f64; N], [f64; N], [f64; N]) {
+    let mut delta = [0.0; N];
+    let mut r2 = [0.0; N];
+    let mut r3 = [0.0; N];
+    for i in 0..N {
+        delta[i] = end[i] - start[i];
+        r2[i] = h * f0[i] - delta[i];
+        r3[i] = delta[i] - h * f1[i] - r2[i];
+    }
+    (delta, r2, r3)
+}
+
 impl<const N: usize> Step<N> {
     fn quartic(
         start_s: f64,
@@ -278,29 +333,17 @@ impl<const N: usize> Step<N> {
         end: [f64; N],
         k1: &[f64; N],
         k7: &[f64; N],
-        dense_increment: [f64; N],
+        r4: [f64; N],
     ) -> Self {
         let h = end_s - start_s;
-        let mut delta = [0.0; N];
-        let mut r2 = [0.0; N];
-        let mut r3 = [0.0; N];
-        for i in 0..N {
-            delta[i] = end[i] - start[i];
-            r2[i] = h * k1[i] - delta[i];
-            r3[i] = delta[i] - h * k7[i] - r2[i];
-        }
+        let (delta, r2, r3) = hermite_terms(h, &start, &end, k1, k7);
         Self {
             start_s,
             end_s,
             span_s: h,
             start,
             end,
-            dense: Dense::Quartic {
-                delta,
-                r2,
-                r3,
-                r4: dense_increment,
-            },
+            dense: Dense::Quartic { delta, r2, r3, r4 },
         }
     }
 
@@ -313,14 +356,7 @@ impl<const N: usize> Step<N> {
         f1: &[f64; N],
     ) -> Self {
         let h = end_s - start_s;
-        let mut delta = [0.0; N];
-        let mut r2 = [0.0; N];
-        let mut r3 = [0.0; N];
-        for i in 0..N {
-            delta[i] = end[i] - start[i];
-            r2[i] = h * f0[i] - delta[i];
-            r3[i] = delta[i] - h * f1[i] - r2[i];
-        }
+        let (delta, r2, r3) = hermite_terms(h, &start, &end, f0, f1);
         Self {
             start_s,
             end_s,
@@ -366,8 +402,8 @@ impl<const N: usize> Step<N> {
         &self.end
     }
 
-    /// The dense output at `t`, meant for `t` in `[start_s, end_s]`: exactly the end states at
-    /// the ends, fourth order inside a Dormand–Prince step and third order inside an RK4 step.
+    /// The dense output at `t`, meant for `t` in `[start_s, end_s]`: the stored states at the two
+    /// ends, fourth order inside a Dormand–Prince step and third order inside an RK4 step.
     #[must_use]
     pub fn state_at(&self, t_s: f64) -> [f64; N] {
         if t_s == self.end_s {
@@ -382,15 +418,13 @@ impl<const N: usize> Step<N> {
         match &self.dense {
             Dense::Quartic { delta, r2, r3, r4 } => {
                 for i in 0..N {
-                    let delta = delta[i];
                     y[i] = self.start[i]
-                        + theta * (delta + theta1 * (r2[i] + theta * (r3[i] + theta1 * r4[i])));
+                        + theta * (delta[i] + theta1 * (r2[i] + theta * (r3[i] + theta1 * r4[i])));
                 }
             }
             Dense::Cubic { delta, r2, r3 } => {
                 for i in 0..N {
-                    let delta = delta[i];
-                    y[i] = self.start[i] + theta * (delta + theta1 * (r2[i] + theta * r3[i]));
+                    y[i] = self.start[i] + theta * (delta[i] + theta1 * (r2[i] + theta * r3[i]));
                 }
             }
         }
@@ -444,16 +478,25 @@ mod dp {
 
 /// Hairer's step-size controller constants (`DOPRI5` defaults).
 const SAFETY: f64 = 0.9;
-/// The step may shrink by at most 1/0.2 = 5...
-const SHRINK_LIMIT: f64 = 1.0 / 0.2;
-/// ...and grow by at most 10 per step.
-const GROW_LIMIT: f64 = 1.0 / 10.0;
+/// The step may shrink by at most a factor of 5 (`1/FAC1`, `FAC1 = 0.2`)...
+const MAX_SHRINK: f64 = 5.0;
+/// ...and grow by at most 10 (`1/FAC2`, `FAC2 = 10`), as a divisor `0.1`.
+const MIN_DIVISOR: f64 = 0.1;
 /// The PI controller's `β` (HNW II, §IV.2).
 const BETA: f64 = 0.04;
 /// The error exponent `1/5 − 0.75 β`.
 const EXPONENT: f64 = 0.2 - BETA * 0.75;
 /// `DOPRI5`'s rounding unit.
 const ROUNDING: f64 = 2.3e-16;
+
+/// Whether a step `h` at `t` is too short to change `t` meaningfully (`DOPRI5`:
+/// `0.1|h| ≤ |t|·uround`), with `|t|` floored at one second so that it also applies near `t = 0`.
+fn negligible_step(t: f64, h: f64) -> bool {
+    0.1 * h <= t.abs().max(1.0) * ROUNDING
+}
+
+/// The default step limit.
+pub const DEFAULT_STEP_LIMIT: u64 = 1_000_000;
 
 /// A stateful integrator for an `N`-component system.
 #[derive(Debug, Clone)]
@@ -469,10 +512,8 @@ pub struct Integrator<const N: usize> {
     step_limit: u64,
     g_start: Vec<f64>,
     g_end: Vec<f64>,
+    fired: Vec<usize>,
 }
-
-/// The default step limit.
-pub const DEFAULT_STEP_LIMIT: u64 = 1_000_000;
 
 impl<const N: usize> Integrator<N> {
     /// An integrator at `(t0, y0)`.
@@ -492,9 +533,9 @@ impl<const N: usize> Integrator<N> {
             step_limit: DEFAULT_STEP_LIMIT,
             g_start: Vec::new(),
             g_end: Vec::new(),
+            fired: Vec::new(),
         };
         integrator.reset(t0_s, y0)?;
-        integrator.next_step_s = 0.0;
         Ok(integrator)
     }
 
@@ -506,12 +547,17 @@ impl<const N: usize> Integrator<N> {
         self
     }
 
+    /// Changes the step limit, for example to continue after [`IntegrationError::StepLimit`].
+    pub fn set_step_limit(&mut self, steps: u64) {
+        self.step_limit = steps;
+    }
+
     /// Moves the integrator to a new time and state, as after an impulse or a projection such as
     /// renormalizing a quaternion. The step-size estimate carries over.
     ///
     /// # Errors
     ///
-    /// [`SettingsError::NotFinite`] for a non-finite time or state.
+    /// [`SettingsError::NotFinite`] for a non-finite time or state; the integrator is unchanged.
     pub fn reset(&mut self, t_s: f64, y: [f64; N]) -> Result<(), SettingsError> {
         if !t_s.is_finite() {
             return Err(SettingsError::NotFinite {
@@ -527,6 +573,7 @@ impl<const N: usize> Integrator<N> {
         }
         self.t_s = t_s;
         self.y = y;
+        self.fired.clear();
         Ok(())
     }
 
@@ -554,42 +601,54 @@ impl<const N: usize> Integrator<N> {
         self.stats
     }
 
-    /// Integrates toward `t_stop_s` (which may be infinite), stopping at the first event.
+    /// The step the adaptive method will try next, once it has taken one.
+    #[must_use]
+    pub fn next_step_s(&self) -> Option<f64> {
+        (self.next_step_s > 0.0).then_some(self.next_step_s)
+    }
+
+    /// The events that fired at the current time, ascending, after [`Advance::Events`]; empty
+    /// otherwise.
+    #[must_use]
+    pub fn fired_events(&self) -> &[usize] {
+        &self.fired
+    }
+
+    /// Integrates toward `t_stop_s` (which may be infinite), stopping at the first events.
     ///
-    /// - The last step is shortened to end exactly at `t_stop_s`.
-    /// - Events are checked at the end of every accepted step. The earliest crossing is located
-    ///   on the step's dense output; the integrator stops there with the dense output's state, just
-    ///   past the crossing (within [`EVENT_TIME_RESOLUTION_S`]).
+    /// - The last step is shortened, or stretched by up to 1%, to end exactly at `t_stop_s`. A stop
+    ///   within the rounding of `t` counts as reached without a step.
+    /// - Events are checked at the end of every accepted step. The earliest crossing is located on
+    ///   the step's dense output; the integrator stops there with the dense output's state, just
+    ///   past the crossing (within [`EVENT_TIME_RESOLUTION_S`]), and reports every event that is
+    ///   past its zero at that state.
     /// - A call that starts on an event it returned doesn't return it again: the event's function
     ///   is already past zero there, and a crossing must start strictly on the near side.
-    /// - `observer` sees every accepted step, including the shortened last one.
+    /// - [`OdeSystem::accept_step`] sees every accepted step and may stop the integration.
     /// - The derivative is evaluated afresh at the start of each call, so a caller can change the
     ///   system (a phase) between calls.
     ///
     /// # Errors
     ///
     /// [`IntegrationError`]: a failed derivative, a non-finite solution or event, a step that
-    /// can't be made small enough, the step limit, or a stop time in the past.
-    pub fn advance<S, E, O>(
+    /// can't be made small enough, the step limit, or a stop time in the past. The integrator is
+    /// left at its last accepted step.
+    pub fn advance<S>(
         &mut self,
         system: &mut S,
         t_stop_s: f64,
-        events: &mut E,
-        observer: &mut O,
     ) -> Result<Advance, IntegrationError<S::Error>>
     where
-        S: OdeSystem<N>,
-        E: EventSet<N> + ?Sized,
-        O: FnMut(&Step<N>),
+        S: OdeSystem<N> + ?Sized,
     {
+        self.fired.clear();
         if t_stop_s.is_nan() || t_stop_s < self.t_s {
             return Err(IntegrationError::Backward {
                 t_s: self.t_s,
                 t_stop_s,
             });
         }
-        // A stop closer than the rounding of `t` is already reached.
-        if t_stop_s - self.t_s <= 4.0 * ROUNDING * self.t_s.abs().max(1.0) {
+        if negligible_step(self.t_s, t_stop_s - self.t_s) {
             self.t_s = t_stop_s;
             return Ok(Advance::Reached);
         }
@@ -598,8 +657,8 @@ impl<const N: usize> Integrator<N> {
             positive("absolute tolerance weight", w)?;
         }
         self.g_start.clear();
-        for index in 0..events.count() {
-            let g = events.value(index, self.t_s, &self.y);
+        for index in 0..system.event_count() {
+            let g = system.event_value(index, self.t_s, &self.y);
             if !g.is_finite() {
                 return Err(IntegrationError::EventNotFinite {
                     index,
@@ -610,13 +669,13 @@ impl<const N: usize> Integrator<N> {
         }
         match self.method {
             Method::DormandPrince54(adaptive) => {
-                self.advance_dp(system, &adaptive, &weights, t_stop_s, events, observer)
+                self.advance_dp(system, &adaptive, &weights, t_stop_s)
             }
-            Method::Rk4 { step_s } => self.advance_rk4(system, step_s, t_stop_s, events, observer),
+            Method::Rk4 { step_s } => self.advance_rk4(system, step_s, t_stop_s),
         }
     }
 
-    fn evaluate<S: OdeSystem<N>>(
+    fn evaluate<S: OdeSystem<N> + ?Sized>(
         &mut self,
         system: &mut S,
         t_s: f64,
@@ -628,7 +687,7 @@ impl<const N: usize> Integrator<N> {
             .map_err(|source| IntegrationError::Derivative { t_s, source })
     }
 
-    fn count_step<X>(&self) -> Result<(), IntegrationError<X>> {
+    fn check_step_limit<X>(&self) -> Result<(), IntegrationError<X>> {
         if self.stats.accepted_steps + self.stats.rejected_steps >= self.step_limit {
             Err(IntegrationError::StepLimit {
                 t_s: self.t_s,
@@ -639,14 +698,16 @@ impl<const N: usize> Integrator<N> {
         }
     }
 
-    /// Stages 2 to 6 and the fifth-order solution of a Dormand–Prince step of `h` from `(t, y)`.
-    fn dp_stages<S: OdeSystem<N>>(
+    /// Stages 2 to 7 and the fifth-order solution of a Dormand–Prince step of `h` from `(t, y)`,
+    /// with `k7` evaluated at `t1`.
+    fn dp_stages<S: OdeSystem<N> + ?Sized>(
         &mut self,
         system: &mut S,
         t: f64,
         y: &[f64; N],
         k1: &[f64; N],
         h: f64,
+        t1: f64,
     ) -> Result<DpStages<N>, IntegrationError<S::Error>> {
         use dp::*;
         let k2 = self.evaluate(system, t + C2 * h, &lin(y, h, &[(A21, k1)]))?;
@@ -663,7 +724,7 @@ impl<const N: usize> Integrator<N> {
         )?;
         let k6 = self.evaluate(
             system,
-            t + h,
+            t1,
             &lin(
                 y,
                 h,
@@ -675,23 +736,24 @@ impl<const N: usize> Integrator<N> {
             h,
             &[(B1, k1), (B3, &k3), (B4, &k4), (B5, &k5), (B6, &k6)],
         );
-        Ok(DpStages { k3, k4, k5, k6, y1 })
+        let k7 = self.evaluate(system, t1, &y1)?;
+        Ok(DpStages {
+            k3,
+            k4,
+            k5,
+            k6,
+            k7,
+            y1,
+        })
     }
 
-    fn advance_dp<S, E, O>(
+    fn advance_dp<S: OdeSystem<N> + ?Sized>(
         &mut self,
         system: &mut S,
         adaptive: &Adaptive,
         weights: &[f64; N],
         t_stop_s: f64,
-        events: &mut E,
-        observer: &mut O,
-    ) -> Result<Advance, IntegrationError<S::Error>>
-    where
-        S: OdeSystem<N>,
-        E: EventSet<N> + ?Sized,
-        O: FnMut(&Step<N>),
-    {
+    ) -> Result<Advance, IntegrationError<S::Error>> {
         use dp::*;
         let rtol = adaptive.relative_tolerance;
         let atol = adaptive.absolute_tolerance;
@@ -709,26 +771,41 @@ impl<const N: usize> Integrator<N> {
         };
         h = h.min(max_step);
         let mut rejected = false;
-        let mut last_rejection_not_finite = false;
+        // Why the last step was rejected, if not for its error estimate: reported instead of
+        // `StepTooSmall` if the step can't shrink further.
+        let mut failure: Option<IntegrationError<S::Error>> = None;
         loop {
-            self.count_step()?;
+            self.check_step_limit()?;
             let t = self.t_s;
+            let y = self.y;
+            if !h.is_finite() || h <= 0.0 {
+                return Err(failure.unwrap_or(IntegrationError::NotFinite { t_s: t }));
+            }
             let proposed = h;
             let last = t + 1.01 * h >= t_stop_s;
             if last {
                 h = t_stop_s - t;
             }
-            if 0.1 * h <= t.abs() * ROUNDING || h <= 0.0 {
-                return Err(if last_rejection_not_finite {
-                    IntegrationError::NotFinite { t_s: t }
-                } else {
-                    IntegrationError::StepTooSmall { t_s: t, step_s: h }
-                });
+            if negligible_step(t, h) {
+                if last {
+                    // The stop is within the rounding of `t`.
+                    self.t_s = t_stop_s;
+                    return Ok(Advance::Reached);
+                }
+                return Err(failure.unwrap_or(IntegrationError::StepTooSmall { t_s: t, step_s: h }));
             }
-            let y = self.y;
-            let stages = self.dp_stages(system, t, &y, &k1, h)?;
             let t1 = if last { t_stop_s } else { t + h };
-            let k7 = self.evaluate(system, t1, &stages.y1)?;
+            let stages = match self.dp_stages(system, t, &y, &k1, h, t1) {
+                Ok(stages) => stages,
+                Err(error) => {
+                    // A long step's stages can leave the trajectory; retry shorter.
+                    self.stats.rejected_steps += 1;
+                    failure = Some(error);
+                    rejected = true;
+                    h /= MAX_SHRINK;
+                    continue;
+                }
+            };
 
             let mut sum = 0.0;
             for i in 0..N {
@@ -738,37 +815,40 @@ impl<const N: usize> Integrator<N> {
                         + E4 * stages.k4[i]
                         + E5 * stages.k5[i]
                         + E6 * stages.k6[i]
-                        + E7 * k7[i]);
+                        + E7 * stages.k7[i]);
                 sum += (e / scale(i, y[i], stages.y1[i])).powi(2);
             }
             let error = (sum / N.max(1) as f64).sqrt();
-
             if !error.is_finite() {
                 self.stats.rejected_steps += 1;
-                last_rejection_not_finite = true;
+                failure = Some(IntegrationError::NotFinite { t_s: t });
                 rejected = true;
-                h *= 1.0 / SHRINK_LIMIT;
+                h /= MAX_SHRINK;
                 continue;
             }
-            last_rejection_not_finite = false;
             let fac11 = error.powf(EXPONENT);
-            let fac =
-                (fac11 / self.previous_error.powf(BETA) / SAFETY).clamp(GROW_LIMIT, SHRINK_LIMIT);
             if error > 1.0 {
                 self.stats.rejected_steps += 1;
+                failure = None;
                 rejected = true;
-                h /= (fac11 / SAFETY).min(SHRINK_LIMIT);
+                h /= (fac11 / SAFETY).min(MAX_SHRINK);
                 continue;
             }
 
             // Accepted.
-            self.previous_error = error.max(1e-4);
+            let fac =
+                (fac11 / self.previous_error.powf(BETA) / SAFETY).clamp(MIN_DIVISOR, MAX_SHRINK);
             let mut h_new = (h / fac).min(max_step);
             if rejected {
                 h_new = h_new.min(h);
             }
-            rejected = false;
-            let dense = lin(
+            // A step shortened to land on the stop time says little about the next one.
+            let carry = if last {
+                h_new.max(proposed.min(max_step))
+            } else {
+                h_new
+            };
+            let r4 = lin(
                 &[0.0; N],
                 h,
                 &[
@@ -777,37 +857,72 @@ impl<const N: usize> Integrator<N> {
                     (D4, &stages.k4),
                     (D5, &stages.k5),
                     (D6, &stages.k6),
-                    (D7, &k7),
+                    (D7, &stages.k7),
                 ],
             );
-            let step = Step::quartic(t, t1, y, stages.y1, &k1, &k7, dense);
-            self.stats.accepted_steps += 1;
-
-            if let Some((index, t_event)) = self.locate_event(&step, events)? {
-                let shortened = step.truncated(t_event);
-                self.t_s = t_event;
-                self.y = shortened.end;
-                self.next_step_s = if last {
-                    h_new.max(proposed.min(max_step))
-                } else {
-                    h_new
-                };
-                observer(&shortened);
-                return Ok(Advance::Event { index });
+            let step = Step::quartic(t, t1, y, stages.y1, &k1, &stages.k7, r4);
+            let located = self.locate_event(system, &step)?;
+            self.previous_error = error.max(1e-4);
+            self.next_step_s = carry;
+            if let Some(outcome) = self.commit(system, step, located)? {
+                return Ok(outcome);
             }
-
-            self.t_s = t1;
-            self.y = stages.y1;
-            k1 = k7;
-            std::mem::swap(&mut self.g_start, &mut self.g_end);
-            observer(&step);
             if last {
-                // A step shortened to land on the stop time says little about the next one.
-                self.next_step_s = h_new.max(proposed.min(max_step));
                 return Ok(Advance::Reached);
             }
+            k1 = stages.k7;
+            rejected = false;
+            failure = None;
             h = h_new;
         }
+    }
+
+    /// Moves to the end of an accepted step, or to the event located in it, and tells the system.
+    /// Returns the outcome if the integration stops here.
+    fn commit<S: OdeSystem<N> + ?Sized>(
+        &mut self,
+        system: &mut S,
+        step: Step<N>,
+        event: Option<(usize, f64)>,
+    ) -> Result<Option<Advance>, IntegrationError<S::Error>> {
+        let Some((first, t_event)) = event else {
+            self.stats.accepted_steps += 1;
+            self.t_s = step.end_s;
+            self.y = step.end;
+            std::mem::swap(&mut self.g_start, &mut self.g_end);
+            return Ok(system
+                .accept_step(&step)
+                .is_break()
+                .then_some(Advance::Stopped));
+        };
+        let shortened = step.truncated(t_event);
+        self.fired.clear();
+        for index in 0..self.g_start.len() {
+            let g = system.event_value(index, t_event, &shortened.end);
+            if !g.is_finite() {
+                return Err(IntegrationError::EventNotFinite {
+                    index,
+                    t_s: t_event,
+                });
+            }
+            if system
+                .event_direction(index)
+                .crosses(self.g_start[index], g)
+            {
+                self.fired.push(index);
+            }
+        }
+        // The earliest event is past zero at its far-side bracket end by construction; include it
+        // even if an event function that isn't a pure function of `(t, y)` says otherwise.
+        if let Err(position) = self.fired.binary_search(&first) {
+            self.fired.insert(position, first);
+        }
+        self.stats.accepted_steps += 1;
+        self.t_s = t_event;
+        self.y = shortened.end;
+        // Events take precedence over a request to stop.
+        let _ = system.accept_step(&shortened);
+        Ok(Some(Advance::Events))
     }
 
     /// Hairer's starting step (`DOPRI5` function `HINIT`; HNW I, §II.4): a first guess from the
@@ -816,7 +931,7 @@ impl<const N: usize> Integrator<N> {
         clippy::too_many_arguments,
         reason = "private helper sharing `advance_dp`'s validated inputs"
     )]
-    fn starting_step<S: OdeSystem<N>>(
+    fn starting_step<S: OdeSystem<N> + ?Sized>(
         &mut self,
         system: &mut S,
         f0: &[f64; N],
@@ -860,23 +975,16 @@ impl<const N: usize> Integrator<N> {
         }
     }
 
-    fn advance_rk4<S, E, O>(
+    fn advance_rk4<S: OdeSystem<N> + ?Sized>(
         &mut self,
         system: &mut S,
         step_s: f64,
         t_stop_s: f64,
-        events: &mut E,
-        observer: &mut O,
-    ) -> Result<Advance, IntegrationError<S::Error>>
-    where
-        S: OdeSystem<N>,
-        E: EventSet<N> + ?Sized,
-        O: FnMut(&Step<N>),
-    {
+    ) -> Result<Advance, IntegrationError<S::Error>> {
         let (t0, y0) = (self.t_s, self.y);
         let mut k1 = self.evaluate(system, t0, &y0)?;
         loop {
-            self.count_step()?;
+            self.check_step_limit()?;
             let t = self.t_s;
             let y = self.y;
             let last = t + 1.01 * step_s >= t_stop_s;
@@ -885,45 +993,43 @@ impl<const N: usize> Integrator<N> {
             } else {
                 (step_s, t + step_s)
             };
-            let y1 = self.rk4_step(system, t, &y, &k1, h)?;
+            if negligible_step(t, h) {
+                if last {
+                    self.t_s = t_stop_s;
+                    return Ok(Advance::Reached);
+                }
+                return Err(IntegrationError::StepTooSmall { t_s: t, step_s: h });
+            }
+            let y1 = self.rk4_step(system, t, &y, &k1, h, t1)?;
             let f1 = self.evaluate(system, t1, &y1)?;
             if y1.iter().chain(&f1).any(|v| !v.is_finite()) {
                 return Err(IntegrationError::NotFinite { t_s: t });
             }
             let step = Step::cubic(t, t1, y, y1, &k1, &f1);
-            self.stats.accepted_steps += 1;
-
-            if let Some((index, t_event)) = self.locate_event(&step, events)? {
-                let shortened = step.truncated(t_event);
-                self.t_s = t_event;
-                self.y = shortened.end;
-                observer(&shortened);
-                return Ok(Advance::Event { index });
+            let located = self.locate_event(system, &step)?;
+            if let Some(outcome) = self.commit(system, step, located)? {
+                return Ok(outcome);
             }
-
-            self.t_s = t1;
-            self.y = y1;
-            k1 = f1;
-            std::mem::swap(&mut self.g_start, &mut self.g_end);
-            observer(&step);
             if last {
                 return Ok(Advance::Reached);
             }
+            k1 = f1;
         }
     }
 
     /// One classical RK4 step (HNW I, table 1.2): weights 1/6, 2/6, 2/6, 1/6 at 0, ½, ½, 1.
-    fn rk4_step<S: OdeSystem<N>>(
+    fn rk4_step<S: OdeSystem<N> + ?Sized>(
         &mut self,
         system: &mut S,
         t: f64,
         y: &[f64; N],
         k1: &[f64; N],
         h: f64,
+        t1: f64,
     ) -> Result<[f64; N], IntegrationError<S::Error>> {
         let k2 = self.evaluate(system, t + 0.5 * h, &lin(y, h, &[(0.5, k1)]))?;
         let k3 = self.evaluate(system, t + 0.5 * h, &lin(y, h, &[(0.5, &k2)]))?;
-        let k4 = self.evaluate(system, t + h, &lin(y, h, &[(1.0, &k3)]))?;
+        let k4 = self.evaluate(system, t1, &lin(y, h, &[(1.0, &k3)]))?;
         Ok(lin(
             y,
             h,
@@ -936,21 +1042,17 @@ impl<const N: usize> Integrator<N> {
         ))
     }
 
-    /// Evaluates every event at the step's end into `g_end` and returns the earliest crossing,
-    /// located on the dense output.
-    fn locate_event<E, X>(
+    /// Evaluates every event at the step's end into `g_end` and returns the earliest crossing
+    /// (the lowest index on a tie) and its time, located on the dense output.
+    fn locate_event<S: OdeSystem<N> + ?Sized>(
         &mut self,
+        system: &mut S,
         step: &Step<N>,
-        events: &mut E,
-    ) -> Result<Option<(usize, f64)>, IntegrationError<X>>
-    where
-        E: EventSet<N> + ?Sized,
-    {
-        let count = events.count();
+    ) -> Result<Option<(usize, f64)>, IntegrationError<S::Error>> {
         self.g_end.clear();
         let mut earliest: Option<(usize, f64)> = None;
-        for index in 0..count {
-            let g1 = events.value(index, step.end_s, &step.end);
+        for index in 0..self.g_start.len() {
+            let g1 = system.event_value(index, step.end_s, &step.end);
             if !g1.is_finite() {
                 return Err(IntegrationError::EventNotFinite {
                     index,
@@ -958,19 +1060,25 @@ impl<const N: usize> Integrator<N> {
                 });
             }
             self.g_end.push(g1);
-            let g0 = self.g_start.get(index).copied().unwrap_or(0.0);
-            if !events.direction(index).crosses(g0, g1) {
+            let g0 = self.g_start[index];
+            if !system.event_direction(index).crosses(g0, g1) {
                 continue;
             }
             let root = find_root(
-                |t| events.value(index, t, &step.state_at(t)),
+                |t| system.event_value(index, t, &step.state_at(t)),
                 step.start_s,
                 step.end_s,
                 g0,
                 g1,
                 EVENT_TIME_RESOLUTION_S,
             )
-            .map_err(|t_s| IntegrationError::EventNotFinite { index, t_s })?;
+            .map_err(|error| IntegrationError::EventNotFinite {
+                index,
+                t_s: match error {
+                    RootError::NotFinite { x } => x,
+                    _ => step.end_s,
+                },
+            })?;
             if earliest.is_none_or(|(_, t)| root < t) {
                 earliest = Some((index, root));
             }
@@ -985,6 +1093,7 @@ struct DpStages<const N: usize> {
     k4: [f64; N],
     k5: [f64; N],
     k6: [f64; N],
+    k7: [f64; N],
     y1: [f64; N],
 }
 
@@ -1002,548 +1111,4 @@ fn lin<const N: usize>(y: &[f64; N], h: f64, terms: &[(f64, &[f64; N])]) -> [f64
 }
 
 #[cfg(test)]
-mod tests {
-    use std::convert::Infallible;
-
-    use super::*;
-    use crate::events::{Direction, EventList};
-    use crate::testing::{ConstantThrustVacuum, QuadraticDragFall, closed_form_quadratic_drag};
-
-    /// `y' = −2 t y²`, `y(0) = 1`: `y = 1/(1 + t²)`. Nonlinear and non-autonomous, so the
-    /// order conditions of every tree matter.
-    struct Rational;
-
-    impl OdeSystem<1> for Rational {
-        type Error = Infallible;
-        fn derivative(&mut self, t: f64, y: &[f64; 1]) -> Result<[f64; 1], Infallible> {
-            Ok([-2.0 * t * y[0] * y[0]])
-        }
-    }
-
-    fn rational(t: f64) -> f64 {
-        1.0 / (1.0 + t * t)
-    }
-
-    /// The tableau as matrices, for the order conditions.
-    fn tableau() -> ([[f64; 7]; 7], [f64; 7], [f64; 7], [f64; 7]) {
-        use dp::*;
-        let a = [
-            [0.0; 7],
-            [A21, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
-            [A31, A32, 0.0, 0.0, 0.0, 0.0, 0.0],
-            [A41, A42, A43, 0.0, 0.0, 0.0, 0.0],
-            [A51, A52, A53, A54, 0.0, 0.0, 0.0],
-            [A61, A62, A63, A64, A65, 0.0, 0.0],
-            [B1, 0.0, B3, B4, B5, B6, 0.0],
-        ];
-        let c = [0.0, C2, C3, C4, C5, 1.0, 1.0];
-        let b = [B1, 0.0, B3, B4, B5, B6, 0.0];
-        let e = [E1, 0.0, E3, E4, E5, E6, E7];
-        let b_hat: Vec<f64> = b.iter().zip(e).map(|(b, e)| b - e).collect();
-        (a, c, b, b_hat.try_into().unwrap())
-    }
-
-    fn dot(u: &[f64; 7], v: &[f64; 7]) -> f64 {
-        u.iter().zip(v).map(|(a, b)| a * b).sum()
-    }
-
-    fn mul(a: &[[f64; 7]; 7], v: &[f64; 7]) -> [f64; 7] {
-        std::array::from_fn(|i| dot(&a[i], v))
-    }
-
-    fn hadamard(u: &[f64; 7], v: &[f64; 7]) -> [f64; 7] {
-        std::array::from_fn(|i| u[i] * v[i])
-    }
-
-    /// The 17 order conditions for trees of order ≤ 5 (HNW I, §II.2, table 2.2), as
-    /// `(order, value, expected)`.
-    fn order_conditions(weights: &[f64; 7]) -> Vec<(u32, f64, f64)> {
-        let (a, c, _, _) = tableau();
-        let one = [1.0; 7];
-        let c2 = hadamard(&c, &c);
-        let c3 = hadamard(&c2, &c);
-        let c4 = hadamard(&c3, &c);
-        let ac = mul(&a, &c);
-        let ac2 = mul(&a, &c2);
-        let ac3 = mul(&a, &c3);
-        let aac = mul(&a, &ac);
-        let aac2 = mul(&a, &ac2);
-        let aaac = mul(&a, &aac);
-        let b = weights;
-        vec![
-            (1, dot(b, &one), 1.0),
-            (2, dot(b, &c), 1.0 / 2.0),
-            (3, dot(b, &c2), 1.0 / 3.0),
-            (3, dot(b, &ac), 1.0 / 6.0),
-            (4, dot(b, &c3), 1.0 / 4.0),
-            (4, dot(b, &hadamard(&c, &ac)), 1.0 / 8.0),
-            (4, dot(b, &ac2), 1.0 / 12.0),
-            (4, dot(b, &aac), 1.0 / 24.0),
-            (5, dot(b, &c4), 1.0 / 5.0),
-            (5, dot(b, &hadamard(&c2, &ac)), 1.0 / 10.0),
-            (5, dot(b, &hadamard(&c, &ac2)), 1.0 / 15.0),
-            (5, dot(b, &hadamard(&c, &aac)), 1.0 / 30.0),
-            (5, dot(b, &hadamard(&ac, &ac)), 1.0 / 20.0),
-            (5, dot(b, &ac3), 1.0 / 20.0),
-            (5, dot(b, &mul(&a, &hadamard(&c, &ac))), 1.0 / 40.0),
-            (5, dot(b, &aac2), 1.0 / 60.0),
-            (5, dot(b, &aaac), 1.0 / 120.0),
-        ]
-    }
-
-    #[test]
-    fn tableau_satisfies_the_order_conditions() {
-        let (a, c, b, b_hat) = tableau();
-        for (row, ci) in a.iter().zip(c) {
-            assert!((row.iter().sum::<f64>() - ci).abs() < 1e-14);
-        }
-        for (order, value, expected) in order_conditions(&b) {
-            assert!(
-                (value - expected).abs() < 1e-14,
-                "b, order {order}: {value}"
-            );
-        }
-        let embedded = order_conditions(&b_hat);
-        for (order, value, expected) in &embedded {
-            if *order <= 4 {
-                assert!(
-                    (value - expected).abs() < 1e-14,
-                    "b̂, order {order}: {value}"
-                );
-            }
-        }
-        assert!(
-            embedded
-                .iter()
-                .any(|(order, value, expected)| *order == 5 && (value - expected).abs() > 1e-4),
-            "the embedded solution must be of order 4 exactly"
-        );
-    }
-
-    /// Observed orders `log₂(e(h)/e(h/2))` from errors at halving steps.
-    fn observed_orders(errors: &[f64]) -> Vec<f64> {
-        errors.windows(2).map(|w| (w[0] / w[1]).log2()).collect()
-    }
-
-    #[test]
-    fn fixed_step_dormand_prince_converges_at_fifth_order() {
-        // Take n fixed steps of the fifth-order solution with the tableau itself.
-        let end = 2.0;
-        let mut errors = Vec::new();
-        let mut dense_errors = Vec::new();
-        for n in [10, 20, 40, 80, 160, 320] {
-            let h = end / f64::from(n);
-            let mut integrator = Integrator::new(Method::default(), 0.0, [1.0]).unwrap();
-            let mut dense_error: f64 = 0.0;
-            for _ in 0..n {
-                let (t, y) = (integrator.t_s, integrator.y);
-                let k1 = integrator.evaluate(&mut Rational, t, &y).unwrap();
-                let stages = integrator.dp_stages(&mut Rational, t, &y, &k1, h).unwrap();
-                let k7 = integrator
-                    .evaluate(&mut Rational, t + h, &stages.y1)
-                    .unwrap();
-                let dense = lin(
-                    &[0.0; 1],
-                    h,
-                    &[
-                        (dp::D1, &k1),
-                        (dp::D3, &stages.k3),
-                        (dp::D4, &stages.k4),
-                        (dp::D5, &stages.k5),
-                        (dp::D6, &stages.k6),
-                        (dp::D7, &k7),
-                    ],
-                );
-                let step = Step::quartic(t, t + h, y, stages.y1, &k1, &k7, dense);
-                for theta in [0.25, 0.5, 0.75] {
-                    let ti = t + theta * h;
-                    dense_error = dense_error.max((step.state_at(ti)[0] - rational(ti)).abs());
-                }
-                integrator.t_s = t + h;
-                integrator.y = stages.y1;
-            }
-            errors.push((integrator.y[0] - rational(end)).abs());
-            dense_errors.push(dense_error);
-        }
-        // Measured: 5.88, 5.53, 5.31, 5.16, 5.09, approaching 5 from above as h shrinks.
-        let orders = observed_orders(&errors);
-        assert!(
-            orders.windows(2).all(|w| w[1] < w[0]),
-            "{errors:?} → {orders:?}"
-        );
-        assert!(orders.iter().all(|p| *p >= 4.9), "{errors:?} → {orders:?}");
-        assert!(
-            (4.9..=5.2).contains(&orders[orders.len() - 1]),
-            "{orders:?}"
-        );
-        // The continuous extension has local order 4: its error, O(h⁵) inside each step, is not
-        // carried forward, and the nodes are fifth order, so the interpolated error also falls as
-        // h⁵ (measured 4.81, 4.97, 4.99, 4.99, 5.00).
-        let dense_orders = observed_orders(&dense_errors);
-        for order in &dense_orders[1..] {
-            assert!(
-                (4.9..=5.1).contains(order),
-                "{dense_errors:?} → {dense_orders:?}"
-            );
-        }
-    }
-
-    #[test]
-    fn rk4_converges_at_fourth_order() {
-        let end = 2.0;
-        let mut errors = Vec::new();
-        let mut dense_errors = Vec::new();
-        for n in [20, 40, 80, 160] {
-            let step_s = end / f64::from(n);
-            let mut integrator = Integrator::new(Method::Rk4 { step_s }, 0.0, [1.0]).unwrap();
-            let mut dense_error: f64 = 0.0;
-            let mut steps = 0;
-            let outcome = integrator
-                .advance(&mut Rational, end, &mut (), &mut |step: &Step<1>| {
-                    steps += 1;
-                    let t = 0.5 * (step.start_s() + step.end_s());
-                    dense_error = dense_error.max((step.state_at(t)[0] - rational(t)).abs());
-                })
-                .unwrap();
-            assert_eq!(outcome, Advance::Reached);
-            assert_eq!(steps, n);
-            assert_eq!(integrator.time_s(), end);
-            errors.push((integrator.state()[0] - rational(end)).abs());
-            dense_errors.push(dense_error);
-        }
-        let orders = observed_orders(&errors);
-        for order in &orders {
-            assert!((3.8..=4.3).contains(order), "{errors:?} → {orders:?}");
-        }
-        // Cubic Hermite interpolation: local error O(h⁴).
-        let dense_orders = observed_orders(&dense_errors);
-        for order in &dense_orders {
-            assert!(*order >= 3.8, "{dense_errors:?} → {dense_orders:?}");
-        }
-    }
-
-    #[test]
-    fn adaptive_error_is_proportional_to_the_tolerance() {
-        // With local extrapolation the global error of DOPRI5 scales about linearly with the
-        // tolerance (HNW I, §II.4, "tolerance proportionality").
-        let mut errors = Vec::new();
-        for k in 0..6 {
-            let tol = 1e-4 * 10f64.powi(-k);
-            let method = Method::DormandPrince54(Adaptive {
-                relative_tolerance: tol,
-                absolute_tolerance: tol,
-                ..Adaptive::default()
-            });
-            let mut integrator = Integrator::new(method, 0.0, [1.0]).unwrap();
-            integrator
-                .advance(&mut Rational, 10.0, &mut (), &mut |_: &Step<1>| {})
-                .unwrap();
-            let error = (integrator.state()[0] - rational(10.0)).abs();
-            assert!(error < 20.0 * tol, "tol {tol}: error {error}");
-            errors.push(error);
-        }
-        assert!(errors[5] < 1e-3 * errors[0], "{errors:?}");
-    }
-
-    #[test]
-    fn apogee_converges_under_tolerance_halving() {
-        // Loft lesson L21: RK4 with no error control and no convergence check on apogee. Here the
-        // apogee of a vertical flight with quadratic drag is found as an event at tolerances
-        // halving from 1e-5 to 2e-8; its time and height converge to the closed form, and the
-        // error stays within a small multiple of the tolerance throughout.
-        let flight = QuadraticDragFall::example();
-        let truth = closed_form_quadratic_drag(&flight, 150.0);
-        let mut errors = Vec::new();
-        for k in 0..10 {
-            let tol = 1e-5 / 2f64.powi(k);
-            let method = Method::DormandPrince54(Adaptive {
-                relative_tolerance: tol,
-                absolute_tolerance: tol,
-                ..Adaptive::default()
-            });
-            let mut integrator = Integrator::new(method, 0.0, [0.0, 150.0]).unwrap();
-            let mut events = EventList::new(
-                vec![Direction::Falling],
-                |_: usize, _t: f64, y: &[f64; 2]| y[1],
-            );
-            let outcome = integrator
-                .advance(
-                    &mut flight.clone(),
-                    100.0,
-                    &mut events,
-                    &mut |_: &Step<2>| {},
-                )
-                .unwrap();
-            assert_eq!(outcome, Advance::Event { index: 0 });
-            let dt = (integrator.time_s() - truth.apogee_s).abs();
-            let dh = (integrator.state()[0] - truth.apogee_m).abs();
-            assert!(
-                dt < 1e3 * tol && dh < 1e4 * tol,
-                "tol {tol}: dt {dt}, dh {dh}"
-            );
-            errors.push((tol, dt, dh));
-        }
-        let (_, dt_last, dh_last) = errors[errors.len() - 1];
-        let (_, dt_first, dh_first) = errors[0];
-        assert!(dt_last < 1e-6 && dh_last < 1e-5, "{errors:?}");
-        assert!(
-            dt_last < dt_first / 50.0 && dh_last < dh_first / 50.0,
-            "{errors:?}"
-        );
-    }
-
-    #[test]
-    fn constant_thrust_vacuum_matches_closed_form() {
-        // Loft lesson L23: burnout fell inside a step and the vacuum case was only checked to ±2%.
-        // Burnout is a stop time here, so the discontinuity sits on a step boundary, and the
-        // flight matches Tsiolkovsky's closed form to about 1e-10 relative.
-        let mut rocket = ConstantThrustVacuum {
-            gravity_mps2: 9.806_65,
-            thrust_n: 2000.0,
-            exhaust_velocity_m_s: 2000.0,
-            burning: true,
-        };
-        let m0 = 20.0;
-        let burnout_s = 8.0;
-        for method in [Method::default(), Method::Rk4 { step_s: 0.01 }] {
-            rocket.burning = true;
-            let mut integrator = Integrator::new(method, 0.0, [0.0, 0.0, m0]).unwrap();
-            let outcome = integrator
-                .advance(&mut rocket, burnout_s, &mut (), &mut |_: &Step<3>| {})
-                .unwrap();
-            assert_eq!(outcome, Advance::Reached);
-            assert_eq!(integrator.time_s(), burnout_s);
-            let expected = rocket.powered_state(m0, burnout_s);
-            for (got, want) in integrator.state().iter().zip(expected) {
-                assert!(
-                    (got - want).abs() <= 1e-9 * want.abs(),
-                    "{method:?}: {got} vs {want}"
-                );
-            }
-
-            rocket.burning = false;
-            let mut events = EventList::new(
-                vec![Direction::Falling],
-                |_: usize, _t: f64, y: &[f64; 3]| y[1],
-            );
-            let outcome = integrator
-                .advance(&mut rocket, 1000.0, &mut events, &mut |_: &Step<3>| {})
-                .unwrap();
-            assert_eq!(outcome, Advance::Event { index: 0 });
-            let [h_b, v_b, _] = expected;
-            let g = rocket.gravity_mps2;
-            let apogee_s = burnout_s + v_b / g;
-            let apogee_m = h_b + v_b * v_b / (2.0 * g);
-            assert!((integrator.time_s() - apogee_s).abs() < 1e-7, "{method:?}");
-            assert!(
-                (integrator.state()[0] - apogee_m).abs() < 1e-9 * apogee_m,
-                "{method:?}: {} vs {apogee_m}",
-                integrator.state()[0]
-            );
-        }
-    }
-
-    #[test]
-    fn a_discontinuity_inside_a_step_costs_accuracy_that_a_stop_time_keeps() {
-        // The same flight with burnout switched by time inside the derivative: fixed-step RK4
-        // drops to first order across the jump in thrust. With burnout as a stop time and the
-        // phase set by the caller, each step sees one side of the jump only. (Deciding the phase
-        // from `t` alone would not do: the last stage of the step ending at burnout is evaluated at
-        // burnout and belongs to the burning side.)
-        struct Switching {
-            rocket: ConstantThrustVacuum,
-            phase: Option<bool>,
-        }
-        impl OdeSystem<3> for Switching {
-            type Error = Infallible;
-            fn derivative(&mut self, t: f64, y: &[f64; 3]) -> Result<[f64; 3], Infallible> {
-                self.rocket.burning = self.phase.unwrap_or(t < 8.005);
-                self.rocket.derivative(t, y)
-            }
-        }
-        let rocket = ConstantThrustVacuum {
-            gravity_mps2: 9.806_65,
-            thrust_n: 2000.0,
-            exhaust_velocity_m_s: 2000.0,
-            burning: true,
-        };
-        let m0 = 20.0;
-        let exact_v = |t: f64| {
-            let [_, v_b, _] = rocket.powered_state(m0, 8.005);
-            v_b - rocket.gravity_mps2 * (t - 8.005)
-        };
-        let run = |stop_at_burnout: bool| {
-            let mut integrator =
-                Integrator::new(Method::Rk4 { step_s: 0.01 }, 0.0, [0.0, 0.0, m0]).unwrap();
-            let mut system = Switching {
-                rocket: rocket.clone(),
-                phase: None,
-            };
-            if stop_at_burnout {
-                system.phase = Some(true);
-                integrator
-                    .advance(&mut system, 8.005, &mut (), &mut |_: &Step<3>| {})
-                    .unwrap();
-                system.phase = Some(false);
-            }
-            integrator
-                .advance(&mut system, 10.0, &mut (), &mut |_: &Step<3>| {})
-                .unwrap();
-            (integrator.state()[1] - exact_v(10.0)).abs()
-        };
-        let (inside, on_boundary) = (run(false), run(true));
-        assert!(on_boundary < 1e-9, "{on_boundary}");
-        // Measured: 0.56 m/s through the jump, 1e-12 m/s with the stop time.
-        assert!(inside > 0.1, "{inside}");
-    }
-
-    #[test]
-    fn stop_times_are_exact_and_repeated_runs_are_bit_identical() {
-        let run = || {
-            let mut integrator = Integrator::new(Method::default(), 0.0, [1.0]).unwrap();
-            let mut ends = Vec::new();
-            for stop in [0.1, 0.3, 1.7, 5.0] {
-                integrator
-                    .advance(&mut Rational, stop, &mut (), &mut |s: &Step<1>| {
-                        ends.push(s.end_s().to_bits());
-                    })
-                    .unwrap();
-                assert_eq!(integrator.time_s(), stop);
-            }
-            (integrator.state()[0].to_bits(), ends, integrator.stats())
-        };
-        assert_eq!(run(), run());
-    }
-
-    #[test]
-    fn steps_join_up_and_the_dense_output_meets_the_ends() {
-        let mut previous_end = 0.0;
-        let mut count = 0;
-        let mut integrator = Integrator::new(Method::default(), 0.0, [1.0]).unwrap();
-        integrator
-            .advance(&mut Rational, 3.0, &mut (), &mut |step: &Step<1>| {
-                assert_eq!(step.start_s(), previous_end);
-                assert_eq!(step.state_at(step.start_s()), *step.start());
-                assert_eq!(step.state_at(step.end_s()), *step.end());
-                previous_end = step.end_s();
-                count += 1;
-            })
-            .unwrap();
-        assert_eq!(previous_end, 3.0);
-        let stats = integrator.stats();
-        assert_eq!(stats.accepted_steps, count);
-        // First-same-as-last: six new evaluations per step, plus the start and the first guess.
-        assert_eq!(
-            stats.evaluations,
-            6 * (stats.accepted_steps + stats.rejected_steps) + 2
-        );
-    }
-
-    #[derive(Debug, PartialEq)]
-    struct Refused;
-
-    #[test]
-    fn failures_are_reported_as_errors() {
-        // A derivative that fails past t = 1.
-        struct Failing;
-        impl OdeSystem<1> for Failing {
-            type Error = Refused;
-            fn derivative(&mut self, t: f64, _y: &[f64; 1]) -> Result<[f64; 1], Refused> {
-                if t > 1.0 { Err(Refused) } else { Ok([1.0]) }
-            }
-        }
-        let mut integrator = Integrator::new(Method::default(), 0.0, [0.0]).unwrap();
-        let error = integrator
-            .advance(&mut Failing, 2.0, &mut (), &mut |_: &Step<1>| {})
-            .unwrap_err();
-        assert!(
-            matches!(error, IntegrationError::Derivative { source: Refused, t_s } if t_s > 1.0)
-        );
-
-        // A blow-up: y' = y², y(0) = 1 has y = 1/(1 − t).
-        struct BlowUp;
-        impl OdeSystem<1> for BlowUp {
-            type Error = Infallible;
-            fn derivative(&mut self, _t: f64, y: &[f64; 1]) -> Result<[f64; 1], Infallible> {
-                Ok([y[0] * y[0]])
-            }
-        }
-        let mut integrator = Integrator::new(Method::default(), 0.0, [1.0]).unwrap();
-        let error = integrator
-            .advance(&mut BlowUp, 2.0, &mut (), &mut |_: &Step<1>| {})
-            .unwrap_err();
-        assert!(
-            matches!(
-                error,
-                IntegrationError::StepTooSmall { t_s, .. } | IntegrationError::NotFinite { t_s }
-                    if (t_s - 1.0).abs() < 1e-3
-            ),
-            "{error:?}"
-        );
-
-        // The step limit.
-        let mut integrator = Integrator::new(Method::Rk4 { step_s: 0.01 }, 0.0, [1.0])
-            .unwrap()
-            .with_step_limit(50);
-        let error = integrator
-            .advance(&mut Rational, 2.0, &mut (), &mut |_: &Step<1>| {})
-            .unwrap_err();
-        assert_eq!(
-            error,
-            IntegrationError::StepLimit {
-                t_s: integrator.time_s(),
-                limit: 50
-            }
-        );
-        assert!((integrator.time_s() - 0.5).abs() < 1e-12);
-
-        // Bad settings, a backward stop and bad weights.
-        assert!(Integrator::new(Method::Rk4 { step_s: 0.0 }, 0.0, [1.0]).is_err());
-        assert!(Integrator::new(Method::default(), f64::NAN, [1.0]).is_err());
-        assert!(Integrator::new(Method::default(), 0.0, [f64::INFINITY]).is_err());
-        let error = integrator
-            .advance(&mut Rational, 0.0, &mut (), &mut |_: &Step<1>| {})
-            .unwrap_err();
-        assert!(matches!(error, IntegrationError::Backward { .. }));
-        struct Unweighted;
-        impl OdeSystem<1> for Unweighted {
-            type Error = Infallible;
-            fn derivative(&mut self, _t: f64, _y: &[f64; 1]) -> Result<[f64; 1], Infallible> {
-                Ok([0.0])
-            }
-            fn absolute_tolerance_weights(&self) -> [f64; 1] {
-                [0.0]
-            }
-        }
-        let mut integrator = Integrator::new(Method::default(), 0.0, [1.0]).unwrap();
-        let error = integrator
-            .advance(&mut Unweighted, 1.0, &mut (), &mut |_: &Step<1>| {})
-            .unwrap_err();
-        assert!(matches!(error, IntegrationError::Settings(_)));
-    }
-
-    #[test]
-    fn methods_round_trip_through_json() {
-        for method in [
-            Method::default(),
-            Method::DormandPrince54(Adaptive {
-                max_step_s: Some(0.5),
-                ..Adaptive::default()
-            }),
-            Method::Rk4 { step_s: 0.01 },
-        ] {
-            let json = serde_json::to_string(&method).unwrap();
-            assert_eq!(
-                serde_json::from_str::<Method>(&json).unwrap(),
-                method,
-                "{json}"
-            );
-        }
-        let json = r#"{"method":"dormand_prince54","relative_tolerance":1e-6}"#;
-        let Method::DormandPrince54(adaptive) = serde_json::from_str(json).unwrap() else {
-            panic!("{json}");
-        };
-        assert_eq!(adaptive.relative_tolerance, 1e-6);
-        assert_eq!(adaptive.absolute_tolerance, 1e-8);
-    }
-}
+mod tests;

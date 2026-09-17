@@ -13,10 +13,10 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
 M1.6a is done (ADR-010, `docs/physics/integration.md`). Start M1.6b from these notes:
 
 - **What exists:** `hpr_sim::Integrator<N>` with `Method::DormandPrince54(Adaptive)` (default
-  `rtol = atol = 1e-8`) or `Method::Rk4 { step_s }`. `advance(system, t_stop, events, observer)`
-  stops exactly at `t_stop` or at the earliest event (Brent on the dense output, stopping just past
-  the zero). `OdeSystem<N>::absolute_tolerance_weights` scales `atol` per component. The observer
-  gets each `Step` with `state_at(t)` for the recorder; `Integrator::reset` renormalizes a state.
+  `rtol = atol = 1e-8`) or `Method::Rk4 { step_s }`. `advance(system, t_stop)` stops exactly at
+  `t_stop`, at events (`fired_events()`, all coincident ones) or when `OdeSystem::accept_step`
+  breaks. The one `OdeSystem<N>` type carries the derivative, `atol` weights, events and the step
+  observer (each `Step` has `state_at(t)` for the recorder). Normalize the quaternion inside it.
 - **Contracts for M1.6b:**
   - Discontinuities are stop times, and the caller sets the phase between `advance` calls (the
     step ending at a stop time evaluates its last stage there). The motor's pressure correction
@@ -115,8 +115,8 @@ M1.6a is done (ADR-010, `docs/physics/integration.md`). Start M1.6b from these n
   projection; boattail areas as the decrease; lug `d` the outer diameter; rail buttons as rail pins;
   derived cubic drag-at-angle; 20 µm default finish; RASAero comparison designs smooth, fins from
   the examples' airfoils; commit derived numbers only.
-- ADR-010: own DOPRI5 port (no ODE crate); per-component `atol` weights from the system; events
-  stop past the zero on the dense output (no re-step); discontinuities are stop times.
+- ADR-010: own DOPRI5 port (no ODE crate); the system carries weights, events and observer; events
+  stop past the zero on the dense output and fire together; discontinuities are stop times.
 
 ## Known issues and risks
 

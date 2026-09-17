@@ -1,8 +1,10 @@
 //! Test problems with closed-form solutions, shared by the integrator and event tests.
 
 use std::convert::Infallible;
+use std::ops::ControlFlow;
 
-use crate::integrator::OdeSystem;
+use crate::events::Direction;
+use crate::integrator::{OdeSystem, Step};
 
 /// Vertical flight under constant gravity with quadratic drag: `h' = v`, `v' = −g − k v|v|`.
 #[derive(Debug, Clone)]
@@ -131,5 +133,99 @@ impl ConstantThrustVacuum {
             c * (m0_kg / m).ln() - g * t_s,
             m,
         ]
+    }
+}
+
+/// The harmonic oscillator `x'' = −x` as `[x, x']`.
+#[derive(Debug, Clone, Copy)]
+pub(crate) struct Oscillator;
+
+impl OdeSystem<2> for Oscillator {
+    type Error = Infallible;
+
+    fn derivative(&mut self, _t_s: f64, y: &[f64; 2]) -> Result<[f64; 2], Infallible> {
+        Ok([y[1], -y[0]])
+    }
+}
+
+/// A system with events `g(index, t, y)` added, and a record of every accepted step's
+/// `(start, end)` times with the dense output at requested fractions.
+pub(crate) struct WithEvents<S, G> {
+    pub(crate) system: S,
+    directions: Vec<Direction>,
+    g: G,
+    /// Every accepted step, as `(start_s, end_s)`.
+    pub(crate) steps: Vec<(f64, f64)>,
+}
+
+impl<S, G> WithEvents<S, G> {
+    pub(crate) fn new(system: S, directions: Vec<Direction>, g: G) -> Self {
+        Self {
+            system,
+            directions,
+            g,
+            steps: Vec::new(),
+        }
+    }
+}
+
+impl<S, G, const N: usize> OdeSystem<N> for WithEvents<S, G>
+where
+    S: OdeSystem<N>,
+    G: FnMut(usize, f64, &[f64; N]) -> f64,
+{
+    type Error = S::Error;
+
+    fn derivative(&mut self, t_s: f64, y: &[f64; N]) -> Result<[f64; N], S::Error> {
+        self.system.derivative(t_s, y)
+    }
+
+    fn absolute_tolerance_weights(&self) -> [f64; N] {
+        self.system.absolute_tolerance_weights()
+    }
+
+    fn event_count(&self) -> usize {
+        self.directions.len()
+    }
+
+    fn event_direction(&self, index: usize) -> Direction {
+        self.directions[index]
+    }
+
+    fn event_value(&mut self, index: usize, t_s: f64, y: &[f64; N]) -> f64 {
+        (self.g)(index, t_s, y)
+    }
+
+    fn accept_step(&mut self, step: &Step<N>) -> ControlFlow<()> {
+        self.steps.push((step.start_s(), step.end_s()));
+        ControlFlow::Continue(())
+    }
+}
+
+/// A system that hands every accepted step to a closure, which may stop the integration.
+pub(crate) struct Watched<S, O> {
+    pub(crate) system: S,
+    observe: O,
+}
+
+impl<S, O> Watched<S, O> {
+    pub(crate) fn new(system: S, observe: O) -> Self {
+        Self { system, observe }
+    }
+}
+
+impl<S, O, const N: usize> OdeSystem<N> for Watched<S, O>
+where
+    S: OdeSystem<N>,
+    O: FnMut(&Step<N>) -> ControlFlow<()>,
+{
+    type Error = S::Error;
+
+    fn derivative(&mut self, t_s: f64, y: &[f64; N]) -> Result<[f64; N], S::Error> {
+        self.system.derivative(t_s, y)
+    }
+
+    fn accept_step(&mut self, step: &Step<N>) -> ControlFlow<()> {
+        (self.observe)(step)
     }
 }
