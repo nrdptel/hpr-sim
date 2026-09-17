@@ -43,36 +43,60 @@ added mass. Knacke's hemispherical range on `S₀` is 0.62 to 0.77.
 A streamer is a strip of fabric of length `l` and width `w`, so a planform (one-side) area
 `S = l w` and an aspect ratio `AR = l/w`. `StreamerModel` picks the correlation:
 
-- **`Filippone`** (the default): `C_D = 0.405 AR^−0.494` on `S` for a planform area of 0.075 m²
-  and `C_D = 0.561 AR^−0.480` for 0.025 m² (eqs. 1 and 2), from wind-tunnel tests of cotton
-  streamers at `AR` 3.3 to 30 and 6 to 18.9 m/s. The paper prints a curve for each of its extreme
-  areas and none between, so **hpr** interpolates them linearly in `ln S` and holds the end curve
-  outside; that interpolation is hpr's, not the paper's. The paper also measures what it doesn't
-  correlate: lighter, smoother fabric has significantly lower drag (polyester at 64 g/m² against
-  cotton at 177), free mounting gives more drag than clamped, and a drag crisis appears near
-  `Re = 7.2e5` for the largest area.
+- **`Filippone`** (the default), on `S`, from wind-tunnel tests of cotton streamers **clamped at
+  the leading edge** at `AR` 3.3 to 30 and 6 to 18.9 m/s. The paper fits one power curve per
+  planform area, and prints all three:
+
+  | planform area | curve | where |
+  |---|---|---|
+  | 0.025 m² | `C_D = 0.561 AR^−0.480` | eq. 2 (Figure 2's trend reads `0.561 AR^−0.4795`) |
+  | 0.05 m² | `C_D = 0.6514 AR^−0.6075` | the trend line on Figure 3; the text does not repeat it |
+  | 0.075 m² | `C_D = 0.405 AR^−0.494` | eq. 1 (Figure 4 reads `0.4046 AR^−0.494`) |
+
+  **hpr** interpolates between neighbouring curves linearly in `ln S`, and holds the end curve
+  outside the fitted areas; that is hpr's choice, not the paper's. The middle curve is not between
+  the other two: at `AR = 3.3` it is the highest of the three, which is why hpr carries all three
+  rather than blending the extremes (blending them alone reads 18% low at that aspect ratio).
+
+  Two of the paper's own measurements bear on how hpr should read it, and neither is in the
+  correlations: a **free** leading edge gives more drag than the clamped mounting these curves
+  come from, and lighter, smoother fabric gives less (polyester at 64 g/m² against cotton at 177).
+  A rocket's streamer is free and light. It also finds a drag crisis near `Re = 7.2e5` at the
+  largest area.
 - **`OpenRocket`**: `C_Dm = 0.034 ((ρ_m + 25 g/m²)/(105 g/m²)) ((l + 1 m)/l)` on `S` (Appendix C,
   eq. C.6, printed page 117), fitted to model-rocket streamers (`w` 0.01 to 0.09 m, `l` 0.2 to
   1.0 m, 10 to 80 g/m², 6 to 12 m/s) with a stated 12 to 27% error on an independent set. It is
   the only one of the two that uses the material.
 
-**Which is right?** The two disagree by about a factor of four in drag area. C. Kidwell's
-NARAM-43 drop tests (2001) settle it as far as one dataset can: sixteen 4 in × 40 in streamers
-with a 5 g corner weight, dropped 20.1 m, masses in his Table 1 and descent rates in his results.
-Recomputed here (`streamer_models_against_kidwells_drop_tests`):
+**Which is right?** The two disagree by a factor that depends on the fabric: at `AR = 10` and
+`l = 1.016 m` the ratio of their drag areas is 5.8 at 10 g/m², 3.5 at 32 and 1.9 at 80. C.
+Kidwell's NARAM-43 drop tests (2001) settle it as far as one dataset can: sixteen 4 in × 40 in
+streamers, each with about 5 g at one corner, dropped 20.1 m.
 
-| case | measured | `C_D` measured, on `S` | `Filippone` | `OpenRocket` |
+Two details of his method decide how to compare, and both were got wrong here before review: his
+rates are **distance over time**, so they are averages over the drop rather than terminal speeds
+(a 20.1 m drop averages 0.97 of terminal at 2.8 m/s but 0.89 at 5.9 m/s), and they are
+**normalised** to a notional 5.000 g weight. `streamer_models_against_kidwells_drop_tests` uses
+the notional mass and compares the same average, from the closed-form fall:
+
+| case | measured | `C_D` it implies, on `S` | `Filippone` | `OpenRocket` |
 |---|---|---|---|---|
-| crêpe paper, 32 g/m², **unpleated** | 2.80 m/s | 0.161 | 3.12 m/s (+12%) | 5.87 m/s (+110%) |
-| Micafilm, 42 g/m², pleated | 2.04 m/s | 0.341 | 3.31 m/s (+62%) | 5.74 m/s (+181%) |
+| crêpe paper, 32 g/m², **unpleated** | 2.80 m/s | 0.155 | 3.05 m/s (+9%) | 5.28 m/s (+88%) |
+| Micafilm, 42 g/m², pleated | 2.04 m/s | 0.338 | 3.21 m/s (+58%) | 5.19 m/s (+154%) |
 
-Kidwell's crêpe streamer is the one he left flat, and a flat correlation predicts it to 12%; the
-`OpenRocket` correlation is twice its descent rate, four times low in drag area. His other
-materials were folded in ¾ in pleats, which more than doubles the drag again — **hpr models no
-pleats**, so it predicts a faster descent for a pleated streamer, which is the safe direction for
-a landing. Note that his streamers are just outside Appendix C's fitted range (0.1016 m wide,
-1.016 m long against `w ≤ 0.09` and `l ≤ 1.0`), and that Filippone's correlation is for cotton,
-heavier and rougher than any of Kidwell's materials.
+Kidwell's crêpe streamer is the one he left flat, and a flat correlation predicts it to 9%;
+appendix C reads 88% fast. His other materials were folded in ¾ in pleats, which more than doubles
+the drag again — **hpr models no pleats**, so it predicts a faster descent for a pleated streamer,
+which is the safe direction for a landing. Both his cases are a little outside both fits: 0.1032 m²
+of planform against Filippone's largest 0.075 m², and 0.1016 m wide by 1.016 m long against
+appendix C's `w ≤ 0.09`, `l ≤ 1.0`.
+
+That last point is where hpr's **clamp** above 0.075 m² matters, and the evidence pulls two ways.
+The paper's own trend is that `C_D` falls as the area grows (its two end fits imply about
+`S^−0.3`), so extrapolating it to Kidwell's 0.1032 m² would give `C_D = 0.105` where the clamp
+gives 0.130 — the clamp reads high against the trend. But the drop itself measures 0.155, higher
+than either. hpr holds the end curve rather than extrapolating because that is closer to the one
+free-drop measurement in hand, and it says so here rather than claiming the trend.
 
 hpr therefore defaults to `Filippone` and keeps `OpenRocket` for comparing with OpenRocket
 (ADR-013).
@@ -95,17 +119,38 @@ C_D S = 1.42 A_f + 0.56 A_bt
   model: four fins are 1.41 of one fin, not 2, and it is not monotonic. More than eight fins is
   refused.
 - The documentation notes 0.56 is half a circular cylinder's 1.12 in crossflow, as expected of a
-  cylinder falling at a random angle, and that 1.42 sits between a flat plate's 1.17 and an open
-  hemispherical cup's 1.42. Those come from Hoerner's *Fluid-Dynamic Drag* (1965), which is
+  cylinder falling at a random angle, and that 1.42 is "similar to that of a flat plate 1.17 or an
+  open hemispherical cup 1.42". Those come from Hoerner's *Fluid-Dynamic Drag* (1965), which is
   copyrighted with no legal free copy; NASA TN D-540 and TR R-474 carry the same numbers and are
   free (`docs/research/streamer-and-tumble-drag.md`).
+- The body's profile uses each component's **end** diameters, so a curved nose is under-counted:
+  for Valetudo's tangent ogive the true `∫d dx` is 0.0148 m² against the 0.0111 m² hpr takes, 25%
+  low on the nose and 2.2% low on the whole body (1.1% high in terminal speed).
 
-**Where it stops being true.** The constants were fitted to 22 m drop tests of five models 44 to
-103 mm across and 6.8 to 160 g, descending at 5.0 to 6.6 m/s, and predict those within 3 to 14%.
-A high-power booster is far outside that: Valetudo tumbling comes out at 37 m/s, and above a
-Reynolds number of about 3e5 (a 100 mm body at 30 m/s) a cylinder's crossflow drag falls by
-roughly half, so a real large body would descend faster still. hpr does not model that fall, and
-nothing in the pinned sources covers it.
+**How well it does.** The documentation says its fit predicts its own five drop-test models within
+3 to 14%. hpr does not reproduce that. Replaying Table 3.3 (printed page 54: five models, 22 m,
+ρ = 1.31 kg/m³, `v₀` read from video to ±0.3 m/s) through hpr's reading of the model
+(`the_tumble_model_against_its_own_drop_tests`):
+
+| model | fins | measured | hpr |
+|---|---|---|---|
+| #1 | 3 | 5.6 m/s | 5.27 (−5.8%) |
+| #2 | 4 | 6.3 m/s | 5.96 (−5.4%) |
+| #3 | 3 | 6.6 m/s | 6.13 (−7.2%) |
+| #4 | none | 5.4 m/s | 6.43 (**+19.0%**) |
+| #5 | fins only | 5.0 m/s | 4.50 (−10.0%) |
+
+So the spread is −10 to +19%, and the finless tube is the outlier: it wants a body coefficient
+near 0.79 where the model prints 0.56. The text pins neither the body-profile nor the fin-area
+convention, so either hpr reads the areas differently from whoever fitted the constants, or the
+claim is not reproducible. The table above is what hpr can demonstrate, so it is what hpr states.
+
+**Where it stops being true.** The fit covers 44 to 103 mm bodies of 6.8 to 160 g descending at
+5.0 to 6.6 m/s. A high-power booster is far outside it: Valetudo tumbling comes out at 37 m/s.
+A cylinder's crossflow drag falls by roughly half above a Reynolds number near 2e5 (a 100 mm body
+reaches that at about 30 m/s, and Valetudo's 80 mm at 37 m/s is right at it), so a real body that
+size would descend faster than hpr says. hpr does not model that fall, and nothing in the pinned
+sources covers it.
 
 A tumbling body is a device like any other: give it a trigger, and it starts at that moment.
 hpr does not decide by itself when a rocket tumbles — nothing citable says when a stage becomes

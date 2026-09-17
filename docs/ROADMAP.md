@@ -272,11 +272,11 @@
     - A streamer's and a tumbling body's descent rates match the terminal velocity of their cited
       drag models (analytic tests).
 
-    *Result (ADR-013):* met. Streamers take Carruthers and Filippone's wind-tunnel correlation by
-    default and OpenRocket's appendix C on request; tumble takes OpenRocket's §3.5 with its fin
-    efficiency table. Against Kidwell's 2001 drop tests the default is within 12% on his one flat
-    streamer, where appendix C is 110% fast; pleats are not modelled and both models then predict
-    a faster descent than measured.
+    *Result (ADR-013):* met. Streamers take all three of Carruthers and Filippone's printed
+    curves by default and OpenRocket's appendix C on request; tumble takes OpenRocket's §3.5 with
+    its fin efficiency table. Against Kidwell's 2001 drop tests the default is within 9% on his
+    one flat streamer, where appendix C is 88% fast. The tumble model reproduces its own drop
+    tests to −10 to +19%, not the 3 to 14% its source claims, and the docs say so.
 
   - [ ] **M1.7c Separated bodies.**
     - Separation, with every body flown to its own landing and its own mass properties and drag.

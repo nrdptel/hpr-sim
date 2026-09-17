@@ -110,9 +110,9 @@ RocketPy for five examples, and streamers and tumble with cited drag models. Sta
 - ADR-012: recovery devices live in `hpr-sim`, not the design tree; `C_D0` on Knacke's nominal
   area, the middle of his range; his filling law, no overshoot or opening-load factor; a point-mass
   descent with no airframe drag or added mass; devices add, and one can release another.
-- ADR-013: streamers take Filippone's correlation by default (+12% on Kidwell's flat drop), with
-  appendix C's on request (+110%); tumble takes OpenRocket's §3.5 from the airframe; pleats and the
-  Reynolds fall-off are not modelled.
+- ADR-013: streamers take Filippone's three curves by default (+9% on Kidwell's flat drop), with
+  appendix C's on request (+88%); tumble takes OpenRocket's §3.5, which reproduces its own drop
+  tests to −10 to +19%, not the 3 to 14% claimed; pleats and tube fins are not modelled.
 
 ## Known issues and risks
 
@@ -145,6 +145,6 @@ RocketPy for five examples, and streamers and tumble with cited drag models. Sta
   Knacke's infinite-mass `C_x` gives 5.1 kN), no added mass, no airframe drag under a canopy, the
   attitude freezes at deployment, and his filling time is stated only for 150 to 500 ft/s, above
   where hobby mains open (M1.7a). Streamer pleats are not modelled (Kidwell's pleated streamers
-  descend 60% slower), and the tumble constants are fitted to 6.8 to 160 g models, so a booster
-  tumbling reads slow above `Re ≈ 3e5` (M1.7b).
+  descend 58% slower), and the tumble model misses its own finless drop test by +19% and is fitted
+  to 6.8 to 160 g models, so a booster tumbling reads slow above `Re ≈ 2e5` (M1.7b).
 - `refs doctor` "runnable" means the oracle's runtime starts, not that a flight ran (M2.x).

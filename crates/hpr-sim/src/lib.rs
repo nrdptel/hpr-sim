@@ -42,7 +42,9 @@ pub use integrator::{
 };
 pub use rail::{Guides, Rail};
 pub use recorder::{Channel, FlightStep, Observer, Recorder, Sample};
-pub use recovery::{CanopyType, Device, DeviceDrag, Inflation, Trigger, terminal_speed_m_s};
+pub use recovery::{
+    CanopyType, Device, DeviceDrag, Inflation, StreamerModel, Trigger, terminal_speed_m_s,
+};
 pub use state::{STATE_LEN, State};
 
 #[cfg(test)]

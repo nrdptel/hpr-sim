@@ -1108,20 +1108,28 @@ type tables 5-1 to 5-5, the measured-drag section 5.2.3, the miscellaneous-decel
 **Decision.**
 
 - **A streamer is a drag area from a correlation on its planform area `S = l w` and aspect ratio
-  `AR = l/w`, and hpr carries both correlations** (`StreamerModel`), because they disagree by
-  about a factor of four and only one of them survives a comparison with a free drop.
-  - **The default is Carruthers and Filippone's**: `C_D = 0.405 AR^−0.494` at `S = 0.075 m²` and
-    `C_D = 0.561 AR^−0.480` at `S = 0.025 m²`. Between those two printed curves hpr interpolates
-    linearly in `ln S`, and outside them it holds the end curve; that interpolation is hpr's
-    choice and is documented as such.
+  `AR = l/w`, and hpr carries both correlations** (`StreamerModel`), because they disagree by a
+  factor that runs from 1.9 (at 80 g/m²) to 5.8 (at 10 g/m²) and only one of them survives a
+  comparison with a free drop.
+  - **The default is Carruthers and Filippone's**, all three of its printed curves:
+    `0.561 AR^−0.480` at `S = 0.025 m²` (eq. 2), `0.6514 AR^−0.6075` at 0.05 m² (the trend line on
+    Figure 3, which the text does not repeat) and `0.405 AR^−0.494` at 0.075 m² (eq. 1). hpr
+    interpolates between neighbours linearly in `ln S` and holds the end curve outside; that is
+    hpr's choice, documented as such. Blending only the two extremes, as the first draft did,
+    reads 18% below the paper's own middle curve at `AR = 3.3` (found in review).
   - **`StreamerModel::OpenRocket`** is appendix C's `C_Dm = 0.034 ((ρ_m + 25)/105)((l + 1)/l)`,
     kept for comparing with OpenRocket in M2.2. It is the only one of the two that uses the
     material.
-  - **The measurement that decides it.** Recomputed here from Kidwell's Table 1 and his results:
-    his crêpe streamer, the one he left unpleated, descends at 2.80 m/s, which is a `C_D` of 0.161
-    on its planform. Filippone's correlation gives 3.12 m/s (+12%); appendix C gives 5.87 m/s
-    (+110%), four times low in drag area. Kidwell's pleated streamers descend slower still
-    (Micafilm at 2.04 m/s, `C_D` 0.341), which neither model reaches.
+  - **The measurement that decides it.** Recomputed here from Kidwell's Table 1 and his results,
+    with his normalisation to a notional 5 g weight and his distance-over-time rates compared
+    against the same average from the closed-form fall (both corrected in review): his crêpe
+    streamer, the one he left unpleated, descends at 2.80 m/s, a `C_D` of 0.155 on its planform.
+    Filippone's correlation gives 3.05 m/s (+9%); appendix C gives 5.28 m/s (+88%). Kidwell's
+    pleated streamers descend slower still (Micafilm at 2.04 m/s, `C_D` 0.338), which neither
+    model reaches.
+  - **Above the largest fitted area hpr holds the end curve rather than extrapolating.** The
+    paper's trend would give a lower `C_D` (about `S^−0.3`), but the only free-drop measurement in
+    hand is higher than either, so the clamp is the closer of the two. `recovery.md` states both.
   - **Pleats are not modelled**, so hpr predicts a faster descent for a folded streamer. That is
     the safe direction for a landing, and it is stated in `docs/physics/recovery.md`.
   - hpr's streamer descent rates will therefore differ from OpenRocket's by about a factor of two.
@@ -1134,9 +1142,15 @@ type tables 5-1 to 5-5, the measured-drag section 5.2.3, the miscellaneous-decel
   - Its constants come from Hoerner's *Fluid-Dynamic Drag*, which is copyrighted with no legal
     free copy. hpr cites the documentation, and the research note records NASA TN D-540 and
     TR R-474, which are free and carry the same numbers, for when a pinned source is needed.
-  - **The fit is for small models** (44 to 103 mm, 6.8 to 160 g, 5.0 to 6.6 m/s, 3 to 14% error).
-    A high-power booster is outside it, and above `Re ≈ 3e5` a cylinder's crossflow drag falls by
-    about half, so hpr will read slow there. The limit is documented rather than extrapolated.
+  - **hpr states what it can demonstrate, not the documentation's accuracy claim.** Replaying its
+    own Table 3.3 through hpr's reading of the model gives −5.8%, −5.4%, −7.2%, +19.0% and −10.0%
+    on the five drop-test models, not the 3 to 14% it claims: the finless tube wants a body
+    coefficient near 0.79 where the model prints 0.56, and the text pins neither area convention.
+    The spread is a test (`the_tumble_model_against_its_own_drop_tests`) and is what the docs
+    quote (found in review: the claim had been repeated without checking it).
+  - **The fit is for small models** (44 to 103 mm, 6.8 to 160 g, 5.0 to 6.6 m/s). A high-power
+    booster is outside it, and above `Re ≈ 2e5` a cylinder's crossflow drag falls by about half,
+    so hpr will read slow there. The limit is documented rather than extrapolated.
 - **A tumbling body is a device with a trigger, like a canopy.** hpr does not decide by itself
   when a rocket tumbles: no source in hand says when a stage becomes unstable enough, and the same
   documentation declines to model the analogous twirling streamer regime.
