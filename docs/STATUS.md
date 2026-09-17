@@ -20,25 +20,23 @@ drift and landing, within 3% of RocketPy for five examples. Start M1.7b from the
   Deployments, filling ends and known triggers are stop times; the per-interval event list is
   `flight::Watch`.
 - **Contracts for M1.7b:**
-  - **Streamers need a source.** Knacke has no streamer data at all (checked: tables 5-1 to 5-5,
-    section 5.8.4, the contents). Try the OpenRocket technical documentation (CC BY-SA,
-    `refs/papers/`), Niskanen's thesis, or the jar in M2.2; never Loft's GPL-derived defaults (L29).
-  - **Tumble** is where the airframe's own drag matters; the descent phase leaves airframe drag
-    out (ADR-012), so add a cited broadside model, not the small-angle aero.
+  - **Streamers and tumble have sources:** `docs/research/streamer-and-tumble-drag.md` (the
+    OpenRocket technical documentation's verified streamer equation C.6 and tumble model §3.5, the
+    free NASA reports behind its Hoerner citations, a claim to reproduce first, and the reason
+    tumble needs the airframe drag ADR-012 leaves out). Never Loft's GPL defaults (L29).
   - **Separation** needs an ADR on how a body's mass and drag are defined: `Assembly` has no
     split, and the loop carries one 13-element state. `Phase` is `#[non_exhaustive]`, so new
     phases are additive; `Termination` may need a variant if only some bodies land.
-- **For M2.1:** the recovery oracle (`validation/oracles/rocketpy/recovery.py`) takes its inputs
-  from the committed mass fixture; a start time must miss RocketPy's sampling grid (a deployment on
-  a phase start collides and gives NaNs) and its parachute noise must be zeroed (global
-  `np.random`). RocketPy ends the rail phase at the forward button and codes the nozzle gyration
-  tensor's transverse term with `0.25·n²` (ADR-011).
+- **For M2.1:** the recovery oracle takes its inputs from the committed mass fixture; a start time
+  must miss RocketPy's sampling grid (a deployment on a phase start gives NaNs) and its noise must
+  be zeroed (global `np.random`). RocketPy ends the rail phase at the forward button and codes the
+  nozzle gyration tensor's transverse term with `0.25·n²` (ADR-011).
 - **Open conventions for the jar (M2.2/M3.1):** OpenRocket's override order (L51), automatic radii,
-  positions, ogive parameter, walls, fin mass and cant pivot; and from M1.5b the drag-at-angle
-  polynomial, the lug diameter and the boattail areas.
+  positions, ogive parameter, walls, fin mass, cant pivot; from M1.5b the drag-at-angle polynomial,
+  the lug diameter and the boattail areas.
 - **Process notes:**
   - `cargo test -p xtask` checks STATUS against ROADMAP, notices rows against lock titles, lesson
-    tests once a milestone is checked off, lock URLs, and the generated designs.
+    tests once checked off, lock URLs and the generated designs.
   - `cargo xtask aero` and the oracles need `refs/rocketpy`; its data files are never committed.
     Scanned PDFs have no text layer: `pdftoppm -f N -l N -r 90 -gray -png` and read the image.
   - archive.org rate-limits (429), ScienceDirect refuses scripts (403). On snapshot drift, run
@@ -145,6 +143,8 @@ drift and landing, within 3% of RocketPy for five examples. Start M1.7b from the
 - Flight (M1.6b): no tip-off, roll forcing or damping (M1.8), turbulence or thrust misalignment;
   the small-angle aero is used at every `α`. Four `mass_properties` calls are most of an
   evaluation's 0.4 µs (`perf.md`).
-- Recovery (M1.7a): no canopy overshoot or opening-load factor (the peak load is a lower bound),
-  no added mass, no airframe drag under a canopy, and the attitude freezes at deployment.
+- Recovery (M1.7a): no canopy overshoot or opening-load factor (a 1.5 m canopy peaks at 1.6 kN
+  where Knacke's infinite-mass `C_x` gives 5.1 kN), no added mass, no airframe drag under a canopy,
+  the attitude freezes at deployment, and his linear filling time is stated only for 150 to
+  500 ft/s, above where hobby mains open.
 - `refs doctor` "runnable" means the oracle's runtime starts, not that a flight ran (M2.x).

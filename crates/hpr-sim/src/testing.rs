@@ -308,6 +308,18 @@ pub(crate) fn analytic_environment(air: UniformAir, g_mps2: f64) -> Environment 
     Environment::new(earth, air, ConstantWind::calm())
 }
 
+/// [`analytic_environment`] with Earth's rotation on, so the Coriolis force acts.
+pub(crate) fn rotating_analytic_environment(air: UniformAir, g_mps2: f64) -> Environment {
+    let earth = Earth::new(
+        NormalGravity::wgs84(),
+        site(),
+        GravityModel::Constant { g_mps2 },
+        EarthRotation::Coriolis,
+    )
+    .unwrap();
+    Environment::new(earth, air, ConstantWind::calm())
+}
+
 /// An analytic environment ([`analytic_environment`]) with `wind` in place of calm air.
 pub(crate) fn analytic_wind_environment(
     air: UniformAir,

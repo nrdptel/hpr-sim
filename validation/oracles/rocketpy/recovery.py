@@ -29,8 +29,9 @@ with:
   device's lag set to zero, so both simulators start with it open;
 - a declared environment: the example's site and elevation, RocketPy's standard atmosphere and a
   declared wind, so nothing needs the network or a licensed weather file;
-- RocketPy's own solver at `rtol = atol = 1e-8`, with every case run again at 1e-6 so the fixture
-  can state how much of each metric is the solver's.
+- RocketPy's own solver at `rtol = atol = 1e-8`, with every case run again at 1e-6 on a fresh
+  rocket, so the fixture can state how much of each metric is the solver's
+  (`solver.relative_change_from_loose`).
 
 What it records per case: the environment (with density, gravity and wind sampled over the
 descent, so hpr's own models can be checked against RocketPy's before the descent is compared), the
@@ -404,29 +405,13 @@ def run(document, case):
         start_t,
         start,
     )
-    solver_change = max(
-        abs(loose_metrics[key] - value) / abs(value)
+    solver_change_by_metric = {
+        key: abs(loose_metrics[key] - value) / abs(value)
         for key, value in metrics.items()
         if abs(value) > 1e-9
-    )
+    }
+    solver_change = max(solver_change_by_metric.values())
 
-    metrics = metrics_of(flight, case, start_t, start)
-    # The same case at RocketPy's looser tolerances: how much of each metric is the solver's.
-    loose = Flight(
-        rocket=rocket,
-        environment=env,
-        rail_length=1.0,
-        inclination=90,
-        heading=0,
-        initial_solution=list(start),
-        **LOOSE_SOLVER,
-    )
-    loose_metrics = metrics_of(loose, case, start_t, start)
-    solver_change = max(
-        abs(loose_metrics[key] - value) / abs(value)
-        for key, value in metrics.items()
-        if abs(value) > 1e-9
-    )
     return {
         "name": name,
         "source": f"{inputs['source']}; site and wind: {case['site']}",
@@ -489,6 +474,7 @@ def run(document, case):
             source="flight.py:489-509, :611-628",
             loose=LOOSE_SOLVER,
             loose_metrics=loose_metrics,
+            relative_change_from_loose=solver_change_by_metric,
             worst_relative_change_from_loose=solver_change,
         ),
     }

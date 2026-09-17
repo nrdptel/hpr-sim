@@ -86,17 +86,28 @@ with `t_d` its deployment, `t_f` its filling time and `j` its growth exponent. `
   upper bound on hpr's opening load.
 - `FillingTime { time_s, exponent }`: a filling time fixed in advance.
 - `FillConstant { constant, exponent }`: Knacke's `t_f = n D₀/v` (printed page 5-43), with `v` the
-  airspeed at line stretch and `n` the canopy fill constant. A deployment at rest has no filling
-  time in this law (`n D₀/v` diverges), so the canopy is taken as open at once and fills as the
-  rocket picks up speed.
+  airspeed at line stretch and `n` the canopy fill constant, from Table 5-6's **unreefed** column
+  (printed page 5-44). A deployment at rest has no filling time in this law (`n D₀/v` diverges), so
+  the canopy is taken as open at once and fills as the rocket picks up speed.
+
+  Knacke states the linear form only "in the medium-velocity range of about 150 to 500 ft/s"
+  (45.7 to 152.4 m/s; `Inflation::FILL_CONSTANT_RANGE_M_S`). A hobby main opening at 20 to 30 m/s
+  is **below** that range, where his alternative for solid flat circular canopies is
+  `t_f = n D₀/v^0.85` with `n = 4.0` — a dimensional form (feet and ft/s) that cannot be used in
+  SI as printed, so hpr does not. Outside the range the filling time, and with it the peak load
+  hpr reports, is an extrapolation: at 25 m/s the linear form gives a 2.5 m main `t_f = 0.8 s`
+  from a correlation fitted at three to six times that speed.
 
 `j = 1` is linear growth (Knacke's ribbon and ringslot canopies) and `j = 2` the concave growth of
 solid cloth (Pflanz, Figure 5-51). Knacke's measured drag area **overshoots** the steady value by
 10 to 80% near the end of filling (Figure 5-40, printed page 5-47), and his infinite-mass opening
 force is `C_x = 1.7` for a flat circular canopy. hpr models neither: its drag area rises to the
 steady value and stays. The peak load hpr reports is therefore a lower bound on the real opening
-shock, and instant inflation is hpr's own upper bound. Ludtke's law and Pflanz's `X1` reduction
-factor are candidates for a later milestone.
+shock, and instant inflation is hpr's own upper bound. For scale, the 1.5 m flat circular canopy
+of the test above peaks at 1.6 kN filling and 3.0 kN opening instantly, where Knacke's
+infinite-mass `C_x = 1.7` on the same dynamic pressure would be 5.1 kN: size hardware from the
+source, not from hpr. Ludtke's law and Pflanz's `X1` reduction factor are candidates for a later
+milestone.
 
 ## The descent
 
@@ -148,10 +159,12 @@ v_e = √(2 m g / (ρ C_D S))
 |---|---|
 | Knacke's `v_e` against Loft's case (1.1 kg, 1 m flat canopy, `C_D` 0.8, ρ 1.225) | 5.294 m/s, as Loft printed |
 | A descent from rest against the closed-form fall under quadratic drag (2 km, uniform air, constant gravity) | 2.1e-8 of `v_t` over the whole descent; the landing time within 1e-5 s of the closed form's 204 s |
-| Drift in a steady wind, entered drifting with the air | exactly the wind times the time of flight (1e-8); the fall itself within 1e-4 of the closed form |
+| Drift in a steady wind, entered drifting with the air, no Earth rotation | exactly the wind times the time of flight (1e-8); the fall itself within 1e-4 of the closed form |
+| The Coriolis drift of a 3 km descent, Earth rotation on | 0.3666 m east against the steady prediction `2Ω cos φ · v_t²/g · T` = 0.3685 m (5%), and 29 µm north |
 | Knacke's filling law, `t_f = n D₀/v` and `(t/t_f)^j` | the recorded drag area to 1e-9 of `(C_D S)₀` |
-| Inflation against instant opening (deployed at 60 m/s under a 1.5 m flat circular canopy) | peak load 1,615 N against 3,020 N instant, 0.53 of it |
-| An oversized canopy (5 m) opening at 100 m/s, 10 km of descent at 2.95 m/s | lands in 3,392 s in 6,914 accepted steps (a mean step of 0.49 s, where Loft's explicit RK4 needed a 2e-4 s floor) |
+| Inflation against instant opening (deployed at 60 m/s under a 1.5 m flat circular canopy) | peak load 1,615 N against 3,020 N instant (0.53 of it), between the closed-form 1,527 N without gravity and 1,674 N with it |
+| An oversized canopy (5 m) opening at 100 m/s, 10 km of descent at 2.95 m/s | lands in 3,392 s in 6,914 accepted steps and 2 rejected (a mean step of 0.49 s, where Loft's explicit RK4 needed a 2e-4 s floor) |
+| A deployment with a 0.7 rad/s body rate | the centre of mass keeps its velocity across the handover to 1e-12, though the state carries the nose tip's |
 | A whole flight: drogue at apogee with a lag, main at 300 m, drogue released | events in order; each stage settles within 2% of its own `v_e` |
 | Two devices triggered at the same instant | both open in the same pass, and the descent settles at the `v_e` of the **sum** of their drag areas |
 | A device released before its own charge fires | it is recorded as triggered and never deploys; the descent stays at the open device's `v_e` |
@@ -160,10 +173,6 @@ v_e = √(2 m g / (ρ C_D S))
 | Two user events and an altitude device on one flight | the user events keep their numbers and fire during the descent, in height order |
 | The same recovered flight flown twice | bit-identical rows, events, final sample and step counts (Loft lesson L24: a run does not mutate the simulation) |
 
-An independent anchor on the comparison: in every one of the five cases below, both hpr and
-RocketPy land within 1% of Knacke's `v_e` for the device that is open at landing, computed from
-hpr's own air and gravity at the site. The test asserts it for both.
-
 ### Against RocketPy
 
 `validation/oracles/rocketpy/recovery.py` flies RocketPy's own parachute phase for five of its
@@ -171,22 +180,48 @@ example rockets and writes `validation/fixtures/recovery/rocketpy-descent.json`;
 `descent_matches_rocketpy_examples` replays each case in hpr. Both start from the same declared
 state after burnout, near apogee, with the first device opening at once (its lag is overridden to
 zero, so no ballistic segment under either model's aerodynamics separates them), the same `C_D S`,
-triggers, sampling rates and wind, and RocketPy's noise set to zero. The oracle runs at
-`rtol = atol = 1e-9`. The remaining differences are the models': hpr has no added mass, hpr's
-drogue is released by the main where RocketPy replaces the drag area, hpr uses the exact 1976
-standard atmosphere where RocketPy interpolates a 100-point pressure table (0.05% in density), and
-hpr uses WGS 84 normal gravity where RocketPy uses Somigliana's formula. The test checks the
-environments agree first, then the descent.
+the same deployment settings and the same wind, and RocketPy's noise set to zero. The oracle runs
+at `rtol = atol = 1e-8`; run again at 1e-6 it moves every compared metric by at most 3.5e-6
+(the fixture's `solver.relative_change_from_loose`. Its one larger entry, 2.1e-3, is on Valetudo's
+20 µm *north* drift component, which is noise and is not compared).
+
+What still differs, and by how much:
+
+- **Added mass.** hpr has none; RocketPy's carries no weight, so it changes no equilibrium, only
+  the transient after an opening. This is the largest difference (see NDRT below).
+- **Trigger sampling.** RocketPy checks its triggers on a grid of `1/sampling_rate` (100 or
+  105 Hz) anchored at `t = 0`, and only over the span after its first accepted step; hpr has no
+  sampling rate and locates the crossing with its event finder. So RocketPy's first deployment is
+  2.5 ms late in the four 105 Hz cases and 13 ms in Prometheus's, and its main fires a little
+  below its setting: 800.07 m against 800.00 m for Calisto, 167.93 m against 167.64 m for NDRT
+  (0.29 m, about 0.01 s of descent). Those trigger heights are compared in the table below rather
+  than assumed away.
+- **Release against replacement.** hpr sums its open devices and releases the drogue when the main
+  is full; RocketPy holds one `C_D S` and replaces it. For these cases, whose canopies open
+  instantly, the two are the same.
+- **Atmosphere.** hpr evaluates the 1976 standard atmosphere; RocketPy interpolates a 100-point
+  pressure table over 0 to 80 km. Measured over the fixture's 23 samples: at most 3.7e-4 in
+  density, which the test gates at 5e-4.
+- **Gravity.** The same model: RocketPy's "Somigliana" formula is WGS 84 normal gravity, and the
+  test asserts hpr's agrees with the fixture's samples to 1e-6.
+- **Geometry.** hpr flies over the ellipsoid and takes heights along its normal; RocketPy's `z` is
+  flat. Over Calisto's 1.4 km of drift the curvature is 0.15 m of height, 0.03 s of descent.
+
+The test checks the environments agree first, then the descent.
 
 Measured (hpr against RocketPy, 2026-09-17):
 
-| case | descent time | impact descent rate | drift | worst drift component |
-|---|---|---|---|---|
-| Calisto (drogue 1.0 m², main 10 m² at 800 m, wind 5 E / 2 N) | +0.08% (257.27 s) | −0.03% (5.454 m/s) | +0.06% (1,385.8 m) | +0.06% |
-| Valetudo (drogue 0.4537 m², no wind) | −0.02% (45.76 s) | +0.00% (17.627 m/s) | −0.89% (0.19 m, Coriolis only) | — |
-| NDRT 2020 (drogue 0.438 m², main 16.05 m² at 167.6 m, sheared wind) | +0.71% (61.60 s) | +0.01% (4.604 m/s) | +0.27% (327.9 m) | +2.87% (north, −50.8 m) |
-| Prometheus 2022 (drogue 0.467 m², main 5.78 m² at 457.2 m) | +0.08% (153.50 s) | −0.03% (7.323 m/s) | +0.07% (1,236.9 m) | +0.07% |
-| Juno III (drogue 0.885 m²) | −0.02% (53.56 s) | −0.01% (22.431 m/s) | −0.03% (457.9 m) | −0.03% |
+| case | descent time | descent rate under the drogue | impact descent rate | drift | worst drift component |
+|---|---|---|---|---|---|
+| Calisto (drogue 1.0 m², main 10 m² at 800 m, wind 5 E / 2 N) | +0.08% (257.27 s) | −0.01% (17.967 m/s) | −0.03% (5.454 m/s) | +0.06% (1,385.8 m) | +0.06% |
+| Valetudo (drogue 0.4537 m², no wind) | −0.02% (45.76 s) | — | +0.00% (17.627 m/s) | −0.89% (0.19 m, Coriolis only) | — |
+| NDRT 2020 (drogue 0.438 m², main 16.05 m² at 167.6 m, sheared wind) | +0.71% (61.60 s) | +0.01% (28.156 m/s) | +0.01% (4.604 m/s) | +0.27% (327.9 m) | +2.87% (north, −50.8 m) |
+| Prometheus 2022 (drogue 0.467 m², main 5.78 m² at 457.2 m) | +0.08% (153.50 s) | −0.01% (26.400 m/s) | −0.03% (7.323 m/s) | +0.07% (1,236.9 m) | +0.07% |
+| Juno III (drogue 0.885 m²) | −0.02% (53.56 s) | — | −0.01% (22.431 m/s) | −0.03% (457.9 m) | −0.03% |
+
+The later devices' trigger heights agree to −0.01%, −0.17% and −0.01% (RocketPy's trigger
+sampling, above), and in every case both simulators land within 1% of Knacke's `v_e` for the
+device that is open, computed from hpr's own air and gravity at the site.
 
 Every metric is inside the milestone's 3%. The descent rate under the drogue, where a case has a
 main, agrees to 0.01%. The two largest gaps are both NDRT's, whose main has a drag area of 16 m²:

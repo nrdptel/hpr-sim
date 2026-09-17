@@ -1069,8 +1069,10 @@ and L26 set tests.
   same declared post-burnout state near apogee with the first device's lag overridden to zero, so
   no segment under either model's aerodynamics separates them, with RocketPy's noise zeroed (it
   draws on the global `np.random`) and a declared wind (the examples' own winds need the network or
-  Copernicus files). Five example rockets; the oracle records its own solver's contribution
-  (at most 3.4e-6). Whole-flight comparisons, ascent included, are M2.1's.
+  Copernicus files). Five example rockets. The oracle runs at `rtol = atol = 1e-8` and records its
+  own solver's contribution per metric: at most 3.5e-6 on every compared metric (its one larger
+  entry, 2.1e-3, is on a 20 µm drift component that is not compared). The differences that remain
+  are listed in `recovery.md`, with the trigger-sampling one measured rather than assumed away. Whole-flight comparisons, ascent included, are M2.1's.
 
 **Consequences.**
 

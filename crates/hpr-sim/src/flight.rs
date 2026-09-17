@@ -489,9 +489,15 @@ impl Simulation {
                     let full_s = run.deploy(&self.devices, index, t, evaluation.airspeed_m_s);
                     insert_stop(&mut stops, full_s, cap);
                     if phase != Phase::Descent {
-                        // The descent is a point mass: the attitude freezes where it deployed.
+                        // The descent is a point mass: the attitude freezes where it deployed and
+                        // the body rates go, snubbed by the lines and the canopy. The state's
+                        // velocity is the nose tip's, so it is shifted to keep the centre of mass
+                        // moving as it was: dropping `ω` while holding `v_O` would change the
+                        // centre of mass's momentum with nothing to do it (found in review).
                         phase = Phase::Descent;
                         let mut frozen = State::from_array(&y);
+                        frozen.velocity_enu_m_s = evaluation.cg_velocity_enu_m_s
+                            - frozen.unit_attitude().mul_vec3(evaluation.mass.cg_rate_m_s);
                         frozen.body_rate_rad_s = DVec3::ZERO;
                         y = frozen.to_array();
                         integrator.reset(t, y)?;

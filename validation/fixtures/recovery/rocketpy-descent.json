@@ -191,6 +191,14 @@
      "drift_m": 1384.9430563038948,
      "mean_descent_rate_m_s": 11.669845549937337
     },
+    "relative_change_from_loose": {
+     "descent_time_s": 3.4111098367457413e-06,
+     "impact_speed_m_s": 8.617569601193186e-07,
+     "drift_east_m": 3.40825080396465e-06,
+     "drift_north_m": 3.4118694685876716e-06,
+     "drift_m": 3.4087492583099093e-06,
+     "mean_descent_rate_m_s": 3.4111214723485784e-06
+    },
     "worst_relative_change_from_loose": 3.4118694685876716e-06
    }
   },
@@ -319,6 +327,14 @@
      "drift_north_m": 1.9694438028479694e-05,
      "drift_m": 0.19124134859948178,
      "mean_descent_rate_m_s": 17.480892230117195
+    },
+    "relative_change_from_loose": {
+     "descent_time_s": 1.468631136204201e-06,
+     "impact_speed_m_s": 1.7353375961495764e-07,
+     "drift_east_m": 3.46793071893384e-06,
+     "drift_north_m": 0.00210936708146097,
+     "drift_m": 3.4679529823592733e-06,
+     "mean_descent_rate_m_s": 1.4686332932000658e-06
     },
     "worst_relative_change_from_loose": 0.00210936708146097
    }
@@ -510,6 +526,14 @@
      "drift_m": 326.99010340856523,
      "mean_descent_rate_m_s": 16.349213493679823
     },
+    "relative_change_from_loose": {
+     "descent_time_s": 7.098338503881869e-08,
+     "impact_speed_m_s": 1.0938923730137039e-08,
+     "drift_east_m": 2.0957594443405508e-07,
+     "drift_north_m": 1.2649355686079785e-06,
+     "drift_m": 1.7589796120620842e-07,
+     "mean_descent_rate_m_s": 7.098339022846785e-08
+    },
     "worst_relative_change_from_loose": 1.2649355686079785e-06
    }
   },
@@ -694,6 +718,14 @@
      "drift_m": 1236.0697422519547,
      "mean_descent_rate_m_s": 19.56020420249596
     },
+    "relative_change_from_loose": {
+     "descent_time_s": 2.9180046772389884e-06,
+     "impact_speed_m_s": 1.482009943447032e-07,
+     "drift_east_m": 2.9744135810313566e-06,
+     "drift_north_m": 2.903377900854981e-06,
+     "drift_m": 2.920813761118963e-06,
+     "mean_descent_rate_m_s": 2.9180131920625486e-06
+    },
     "worst_relative_change_from_loose": 2.9744135810313566e-06
    }
   },
@@ -832,6 +864,14 @@
      "drift_north_m": -160.77762534698084,
      "drift_m": 457.985768363507,
      "mean_descent_rate_m_s": 22.4020868958517
+    },
+    "relative_change_from_loose": {
+     "descent_time_s": 1.6013816620612557e-06,
+     "impact_speed_m_s": 4.325242678064113e-07,
+     "drift_east_m": 1.5986629662856627e-06,
+     "drift_north_m": 1.6007326342307343e-06,
+     "drift_m": 1.598918029547931e-06,
+     "mean_descent_rate_m_s": 1.6013842264742366e-06
     },
     "worst_relative_change_from_loose": 1.6013842264742366e-06
    }
