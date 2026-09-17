@@ -1,0 +1,137 @@
+{
+  "description": "Barrowman's worked centre-of-pressure examples: printed inputs and printed results, in inches, as facts extracted from the scans. Checked by hpr_aero::tests::barrowman_worked_examples (M1.5a).",
+  "sources": {
+    "naram8": "J. S. and J. A. Barrowman, The Theoretical Prediction of the Center of Pressure, NARAM-8, 1966; refs/papers/barrowman-1966-naram8-nakka.pdf (PDF pages 45-49 hold printed pp. 41-45, PDF pages 52-55 hold pp. 47-50)",
+    "tir33": "J. S. Barrowman, Calculating the Center of Pressure of a Model Rocket, Centuri TIR-33, 1970; bound in refs/papers/barrowman-1966-naram8-nakka.pdf (printed page = PDF page - 79)"
+  },
+  "tolerance_rel": 0.01,
+  "tolerance_reason": "M1.5 done-when: CNα and CP reproduce Barrowman's worked examples within 1%. Printed values are hand or slide-rule results to three or four figures.",
+  "examples": [
+    {
+      "id": "testbed-ii",
+      "source": "naram8 pp. 41-45 (drawing p. 41; nose and fins p. 42; X_F and K p. 43; boattail p. 44; totals p. 45)",
+      "reference_diameter_in": 0.976,
+      "station_offset_in": 0.0,
+      "nose": { "shape": "tangent_ogive", "length_in": 2.75, "base_diameter_in": 0.976 },
+      "body": [
+        { "id": "body", "length_in": 7.0, "fore_diameter_in": 0.976, "aft_diameter_in": 0.976 },
+        { "id": "boattail", "length_in": 1.375, "fore_diameter_in": 0.976, "aft_diameter_in": 0.736 },
+        { "id": "tail", "length_in": 8.75, "fore_diameter_in": 0.736, "aft_diameter_in": 0.736 }
+      ],
+      "fin_sets": [
+        { "id": "fins", "on": "tail", "count": 4, "root_chord_in": 3.0, "tip_chord_in": 2.0, "span_in": 1.5, "sweep_in": 1.5, "root_leading_edge_station_in": 16.625 }
+      ],
+      "printed": [
+        { "what": "nose", "cn_alpha": 2.0, "cp_in": 1.28 },
+        { "what": "fins", "cn_alpha": 20.3, "cp_in": 17.958 },
+        { "what": "boattail", "cn_alpha": -0.86, "cp_in": 10.47 },
+        { "what": "total", "cn_alpha": 21.44, "cp_in": 16.7 }
+      ],
+      "notes": [
+        "The nose CP is 0.466 L (Barrowman's fit for ogives); hpr integrates the tangent ogive's volume.",
+        "The fin slope uses the mid-chord length 1.81 in; the geometry gives 1.803 in.",
+        "The boattail CP puts d1/d2 = 0.754 (aft over fore) into eq. 44, whose d1 is the fore diameter; fore over aft gives 0.655 in instead of 0.72 in aft of the boattail's front (-9% measured from there, -0.6% as a station)."
+      ]
+    },
+    {
+      "id": "aerobee-350",
+      "source": "naram8 pp. 47-50 (configuration drawing: the tangent-ogive nose to station 110.0 on the unnumbered PDF page 51, fins on p. 47; nose and fins p. 48; X_F and K p. 49; totals p. 50)",
+      "reference_diameter_in": 22.0,
+      "station_offset_in": 0.0,
+      "nose": { "shape": "tangent_ogive", "length_in": 110.0, "base_diameter_in": 22.0 },
+      "body": [
+        { "id": "body", "length_in": 340.45, "fore_diameter_in": 22.0, "aft_diameter_in": 22.0 }
+      ],
+      "fin_sets": [
+        { "id": "fins", "on": "body", "count": 4, "root_chord_in": 50.0, "tip_chord_in": 25.0, "span_in": 34.2, "sweep_in": 34.2, "root_leading_edge_station_in": 400.45 }
+      ],
+      "printed": [
+        { "what": "nose", "cn_alpha": 2.0, "cp_in": 51.3 },
+        { "what": "fins", "cn_alpha": 19.5, "cp_in": 425.37 },
+        { "what": "total", "cn_alpha": 21.5, "cp_in": 391.0 }
+      ],
+      "notes": [
+        "The calculation keeps only the ogive nose and the sustainer's four fins; the booster, its fins and the blunted tip are left out, as here.",
+        "The fin slope uses a mid-chord length of 39.7 in, measured from an enlarged drawing; the geometry gives 40.50 in.",
+        "p. 48 prints (1.509)^2 for (1.059)^2, and the total CP on p. 50 uses 425.45 in for the fins' 425.37 in.",
+        "Wind-tunnel CP at Mach 0.6: 394 in (p. 50)."
+      ]
+    },
+    {
+      "id": "javelin",
+      "source": "tir33 pp. 21-22 (drawing and fins p. 21; X_f and totals p. 22)",
+      "reference_diameter_in": 0.75,
+      "station_offset_in": 0.0,
+      "nose": { "shape": "tangent_ogive", "length_in": 3.6, "base_diameter_in": 0.75 },
+      "body": [
+        { "id": "body", "length_in": 9.2, "fore_diameter_in": 0.75, "aft_diameter_in": 0.75 }
+      ],
+      "fin_sets": [
+        { "id": "fins", "on": "body", "count": 4, "root_chord_in": 1.6, "tip_chord_in": 0.85, "span_in": 1.65, "sweep_in": 0.75, "root_leading_edge_station_in": 11.2 }
+      ],
+      "printed": [
+        { "what": "nose", "cn_alpha": 2.0, "cp_in": 1.68 },
+        { "what": "fins", "cn_alpha": 33.9, "cp_in": 11.86 },
+        { "what": "total", "cn_alpha": 35.9, "cp_in": 11.3 }
+      ],
+      "notes": [
+        "The fin is idealized to a trapezoid by filling the corner at the back of its root (p. 21).",
+        "The fin slope uses the mid-chord length 1.7 in; the geometry gives 1.692 in."
+      ]
+    },
+    {
+      "id": "recruiter",
+      "source": "tir33 pp. 23-25 (drawings pp. 23-24; nose and shoulder p. 24; fins and totals p. 25)",
+      "reference_diameter_in": 0.908,
+      "station_offset_in": 0.8,
+      "nose": { "shape": "cone", "length_in": 4.15, "base_diameter_in": 0.908 },
+      "body": [
+        { "id": "body", "length_in": 5.25, "fore_diameter_in": 0.908, "aft_diameter_in": 0.908 },
+        { "id": "shoulder", "length_in": 1.0, "fore_diameter_in": 0.908, "aft_diameter_in": 1.34 },
+        { "id": "tail", "length_in": 8.4, "fore_diameter_in": 1.34, "aft_diameter_in": 1.34 }
+      ],
+      "fin_sets": [
+        { "id": "fins", "on": "tail", "count": 6, "root_chord_in": 1.75, "tip_chord_in": 0.8, "span_in": 1.56, "sweep_in": 0.95, "root_leading_edge_station_in": 16.25 }
+      ],
+      "printed": [
+        { "what": "nose", "cn_alpha": 2.0, "cp_in": 1.97 },
+        { "what": "shoulder", "cn_alpha": 2.36, "cp_in": 9.13 },
+        { "what": "fins", "cn_alpha": 31.0, "cp_in": 17.0, "six_fin_rule": true },
+        { "what": "total", "cn_alpha": 35.4, "cp_in": 15.6, "six_fin_rule": true }
+      ],
+      "six_fin_rule": "TIR-33 p. 25 scales six fins by N/2 with K_fb = 1 + 0.5 R/(S + R) and no fin-count factor. hpr uses the fin-count factor 0.913 from MIL-HDBK-762(MI) p. 5-24 with K = 1 + R/(S + R) (ADR-008). Values marked six_fin_rule are checked with TIR-33's rule substituted into the fin slope and the CP weighting; hpr's own values are reported by the test and must miss the print by about the rules' difference.",
+      "notes": [
+        "The nose is idealized as a cone 4.15 in long whose imaginary tip is 0.8 in ahead of the real tip (p. 24): station_offset_in is added to every printed station to place the parts, and subtracted from every computed CP.",
+        "The fin drawing (p. 24, Fig. 16) gives a tip chord of 0.85 in; the calculation (p. 25) uses 0.8 in, which produced the printed results.",
+        "The fin slope uses the mid-chord length 1.64 in, which matches the drawn tip chord of 0.85 in (1.638 in); with the 0.8 in used, the geometry gives 1.631 in."
+      ]
+    },
+    {
+      "id": "arcon-hi",
+      "source": "tir33 pp. 27-29 (drawing p. 27; fins p. 28; totals p. 29)",
+      "reference_diameter_in": 1.04,
+      "station_offset_in": 0.0,
+      "nose": { "shape": "tangent_ogive", "length_in": 5.25, "base_diameter_in": 1.04 },
+      "body": [
+        { "id": "sustainer-body", "length_in": 14.75, "fore_diameter_in": 1.04, "aft_diameter_in": 1.04 },
+        { "id": "booster-body", "stage": "booster", "length_in": 4.0, "fore_diameter_in": 1.04, "aft_diameter_in": 1.04 }
+      ],
+      "fin_sets": [
+        { "id": "sustainer-fins", "on": "sustainer-body", "count": 4, "root_chord_in": 1.9, "tip_chord_in": 1.05, "span_in": 2.2, "sweep_in": 0.85, "root_leading_edge_station_in": 18.1 },
+        { "id": "booster-fins", "on": "booster-body", "count": 4, "root_chord_in": 2.45, "tip_chord_in": 1.25, "span_in": 3.45, "sweep_in": 0.6, "root_leading_edge_station_in": 21.55 }
+      ],
+      "printed": [
+        { "what": "nose", "cn_alpha": 2.0, "cp_in": 2.45 },
+        { "what": "sustainer-fins", "cn_alpha": 30.2, "cp_in": 18.86 },
+        { "what": "booster-fins", "cn_alpha": 64.0, "cp_in": 22.3 },
+        { "what": "total", "cn_alpha": 96.2, "cp_in": 20.8 },
+        { "what": "sustainer-alone", "cn_alpha": 32.2, "cp_in": 17.9 }
+      ],
+      "notes": [
+        "The sustainer ends at the sustainer fins' trailing edge (20.0 in) and the booster at its fins' trailing edge (24.0 in); tube lengths don't enter Barrowman's slopes.",
+        "The mid-chord lengths are 2.25 in and 3.45 in; the geometry gives 2.241 in and 3.45 in.",
+        "The sustainer-alone CP, 17.9 in, comes from rounded moments (575/32.2 = 17.86)."
+      ]
+    }
+  ]
+}

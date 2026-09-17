@@ -45,6 +45,13 @@ small extracted fixtures with a clear license are committed, each with its prove
 - **Barrowman 1967 thesis** (NTRS 20010047838):
   https://ntrs.nasa.gov/api/citations/20010047838/downloads/20010047838.pdf
 - **Barrowman 1966 report:** https://www.apogeerockets.com/downloads/barrowman_report.pdf
+  That copy lacks printed pp. 39–50, the worked examples. The complete scan, bound with Barrowman's
+  Centuri TIR-33 (1970), is https://www.nakka-rocketry.net/articles/Barrowman.NARAM-8.pdf. Its
+  five worked examples (Testbed II, Aerobee 350, Javelin, Recruiter, Arcon-Hi) are level-2
+  references for CNα and CP: `validation/fixtures/aero/barrowman-worked-examples.json`, checked
+  within 1% by `hpr_aero::tests::barrowman_worked_examples` (M1.5a, `docs/physics/aero.md`). Four
+  pass on hpr's own model. The Recruiter's six-fin slopes pass only with TIR-33's own six-fin rule
+  substituted: with hpr's rule (MIL-HDBK-762, ADR-008) they are +3.4% (fins) and +2.9% (total).
 - **Niskanen 2009 OpenRocket thesis** (CC BY-NC-ND; read for methods only, don't copy):
   `https://github.com/openrocket/openrocket/releases/download/Development_of_an_Open_Source_model_rocket_simulation-thesis-v20090520/Development_of_an_Open_Source_model_rocket_simulation-thesis-v20090520.pdf`
 - **OpenRocket technical documentation v13.05** (CC BY-SA):
