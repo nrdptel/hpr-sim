@@ -25,5 +25,30 @@ Scope for now: commercial off-the-shelf solid rocket motors.
 **Every figure this tool produces is an estimate from a model, not a measurement, and never a
 go/no-go verdict.** The motor's printed data and your RSO are authoritative.
 
-Part of [Fusion Space](https://fusionspace.co). Licensed under either of MIT or Apache-2.0, at your
-option.
+## Building
+
+The toolchain is pinned in `rust-toolchain.toml`, so [rustup](https://rustup.rs) installs the right
+version on first use.
+
+```bash
+cargo test --workspace --all-features   # unit tests
+cargo xtask wasm-check                  # the pure core builds for wasm32-unknown-unknown
+cargo deny check                        # dependency licenses, advisories and sources
+```
+
+The workspace crates live under `crates/`; `docs/ARCHITECTURE.md` describes what each one is for.
+The roadmap is in `docs/ROADMAP.md` and progress in `docs/STATUS.md`.
+
+## License
+
+Part of [Fusion Space](https://fusionspace.co). Licensed under either of
+
+- Apache License, Version 2.0 ([LICENSE-APACHE](LICENSE-APACHE))
+- MIT license ([LICENSE-MIT](LICENSE-MIT))
+
+at your option. Third-party sources and their licenses are listed in
+[THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md).
+
+Unless you explicitly state otherwise, any contribution intentionally submitted for inclusion in
+the work by you, as defined in the Apache-2.0 license, shall be dual licensed as above, without any
+additional terms or conditions.

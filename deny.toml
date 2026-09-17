@@ -1,0 +1,59 @@
+# cargo-deny policy (https://embarkstudios.github.io/cargo-deny/). Run with `cargo deny check`.
+# The license rules come from CLAUDE.md rule 3 and ADR-001: the project is MIT OR Apache-2.0, so
+# every dependency must be under a permissive license. Copyleft licenses (GPL, AGPL, LGPL, MPL,
+# EPL, CDDL, EUPL, OSL, CC-BY-SA...) are not on the allow list and are therefore rejected.
+# Adding a license to the list needs an ADR.
+
+[graph]
+# Check every feature combination's dependencies (net, python, ffi...), on every target.
+all-features = true
+
+[advisories]
+# RustSec advisories. Vulnerabilities and unsoundness always fail; unmaintained crates fail too.
+unmaintained = "all"
+unsound = "all"
+yanked = "deny"
+ignore = []
+
+[licenses]
+confidence-threshold = 0.93
+allow = [
+    "0BSD",
+    "Apache-2.0",
+    "Apache-2.0 WITH LLVM-exception",
+    "BSD-2-Clause",
+    "BSD-3-Clause",
+    "BSL-1.0",
+    "CC0-1.0",
+    "ISC",
+    "MIT",
+    "MIT-0",
+    "Unicode-3.0",
+    "Unlicense",
+    "Zlib",
+]
+# The allow list is a policy, not an inventory: a permissive license need not be in use yet.
+unused-allowed-license = "allow"
+exceptions = []
+
+[licenses.private]
+# Check the workspace's own crates as well.
+ignore = false
+
+[bans]
+multiple-versions = "warn"
+wildcards = "deny"
+# Workspace crates refer to each other by path; they are not published (publish = false).
+allow-wildcard-paths = true
+deny = [
+    { crate = "hdf5", reason = "abandoned; use hdf5-metno only if netCDF4 is truly needed (ARCHITECTURE.md)" },
+    { crate = "openssl-sys", reason = "hpr-net uses rustls only, so builds need no system OpenSSL" },
+    { crate = "serde_yaml", reason = "deprecated; the project uses JSON and TOML (CLAUDE.md)" },
+    { crate = "serde_yml", reason = "unmaintained; the project uses JSON and TOML (CLAUDE.md)" },
+]
+
+[sources]
+unknown-registry = "deny"
+unknown-git = "deny"
+allow-registry = ["https://github.com/rust-lang/crates.io-index"]
+allow-git = []
