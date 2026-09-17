@@ -1284,7 +1284,9 @@ and M1.7a's recovery comparison, whose references are real RocketPy output.
   shape is `hpr_validate::rocketpy`.
 - **The report is committed**, in Markdown for people and JSON for machines, and carries no
   timestamp, so a run that changes nothing changes no bytes and a number that moves shows up in
-  the diff. A test asserts the committed report is the one the harness produces.
+  the diff. A test asserts the committed report is the one the harness produces. A `--fast` run
+  writes `latest-fast.{md,json}`, which is gitignored: a partial report that overwrote the
+  committed one would leave the repository claiming a suite that never ran.
 - **M2.1a's first cases are M1.7a's descents.** They are the only references in hand that cover a
   whole hpr flight path end to end, and reusing them means the harness ships with five real cases
   rather than a demonstration. M2.1b adds the ascent cases in both modes, the CI job and the

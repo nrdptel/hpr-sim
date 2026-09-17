@@ -34,7 +34,7 @@ pub mod run;
 
 pub use case::{Case, CaseLock, Metric, Tolerance};
 pub use metrics::{Measured, Reference, ReferenceValue};
-pub use report::{Comparison, Report, Verdict};
+pub use report::{Comparison, Report, Source, Verdict};
 pub use run::{ValidateError, run_case, run_lock};
 
 #[cfg(test)]

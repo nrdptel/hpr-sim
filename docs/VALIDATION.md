@@ -48,7 +48,9 @@ The rules the harness enforces, each from a Loft lesson:
 - A case's inputs come from the reference's own record of what the oracle flew, never from hpr's
   output (L75).
 
-The committed report carries no timestamp, so a number that moves shows up in the diff.
+The committed report carries no timestamp, so a number that moves shows up in the diff. A `--fast`
+run writes `latest-fast.{md,json}` instead, which is not committed: a partial report never stands
+in for the whole suite's record.
 
 ## Reference simulators (oracles)
 

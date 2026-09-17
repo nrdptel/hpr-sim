@@ -20,6 +20,9 @@ node_modules/
 # Local Claude Code settings
 .claude/settings.local.json
 
+# A `--fast` validation run's report: partial, local, and never the suite's record (ADR-015).
+validation/reports/latest-fast.*
+
 # OS / editor
 .DS_Store
 Thumbs.db
