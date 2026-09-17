@@ -1446,6 +1446,75 @@ mod tests {
     }
 
     #[test]
+    fn devices_that_open_together_add_their_drag_areas() {
+        // Two devices triggered at the same instant both open in the same pass, and the descent
+        // runs under the sum of their drag areas.
+        let air = UniformAir::sea_level();
+        let devices = vec![
+            open_at_start(DeviceDrag::DragArea { cd_s_m2: 1.0 }),
+            open_at_start(DeviceDrag::DragArea { cd_s_m2: 2.0 }),
+        ];
+        let sim = flight(analytic_environment(air, G), devices, 3600.0);
+        let result = sim
+            .run_free(START_S, dropped(&sim, 1_000.0, DVec3::ZERO), &mut ())
+            .unwrap();
+        assert_eq!(result.termination, Termination::GroundHit);
+        for index in 0..2 {
+            let deployment = result.event(EventKind::Deployment(index)).unwrap().sample;
+            assert_eq!(deployment.time_s, START_S, "device {index}");
+        }
+        let landing = result.event(EventKind::GroundHit).unwrap().sample;
+        assert!((landing.recovery_drag_area_m2 - 3.0).abs() < 1e-12);
+        let mass_kg = sim.assembly().mass_properties(START_S).mass_kg;
+        let terminal_m_s = terminal_speed_m_s(mass_kg, 3.0, air.0.density_kg_m3, G);
+        assert!(
+            (-landing.vertical_speed_m_s / terminal_m_s - 1.0).abs() < 1e-6,
+            "{} vs {terminal_m_s}",
+            landing.vertical_speed_m_s
+        );
+    }
+
+    #[test]
+    fn a_device_released_before_it_opens_never_pulls() {
+        // The main opens first and releases the drogue; when the drogue's own charge fires later
+        // it deploys into a release that has already happened, and adds no drag area.
+        let air = UniformAir::sea_level();
+        let devices = vec![
+            Device::new(
+                "drogue",
+                DeviceDrag::DragArea { cd_s_m2: 4.0 },
+                Trigger::Time {
+                    time_s: START_S + 5.0,
+                },
+            )
+            .released_by(1),
+            open_at_start(DeviceDrag::DragArea { cd_s_m2: 1.0 }),
+        ];
+        let sim = flight(analytic_environment(air, G), devices, 3600.0);
+        let result = sim
+            .run_free(START_S, dropped(&sim, 1_000.0, DVec3::ZERO), &mut ())
+            .unwrap();
+        assert_eq!(result.termination, Termination::GroundHit);
+        let release = result.event(EventKind::Release(0)).unwrap().sample;
+        assert_eq!(release.time_s, START_S);
+        let deployment = result.event(EventKind::Deployment(0)).unwrap().sample;
+        assert_eq!(deployment.time_s, START_S + 5.0);
+        assert!(
+            (deployment.recovery_drag_area_m2 - 1.0).abs() < 1e-12,
+            "{deployment:?}"
+        );
+        let landing = result.event(EventKind::GroundHit).unwrap().sample;
+        assert!((landing.recovery_drag_area_m2 - 1.0).abs() < 1e-12);
+        let mass_kg = sim.assembly().mass_properties(START_S).mass_kg;
+        let terminal_m_s = terminal_speed_m_s(mass_kg, 1.0, air.0.density_kg_m3, G);
+        assert!(
+            (-landing.vertical_speed_m_s / terminal_m_s - 1.0).abs() < 1e-6,
+            "{} vs {terminal_m_s}",
+            landing.vertical_speed_m_s
+        );
+    }
+
+    #[test]
     fn devices_outside_their_domain_are_refused() {
         let environment = || analytic_environment(UniformAir::sea_level(), G);
         let rocket = design("rocketpy-valetudo");
