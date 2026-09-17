@@ -305,8 +305,12 @@ had no single right answer and are recorded here.
     choice, viscosity 2.1% at saturation and 30 °C. CIPM-2007 itself was rejected: it is valid
     only from 15 to 27 °C and from 600 to 1100 hPa.
 - **Soundings:**
+  - A profile takes its site's latitude and works in WMO geopotential height (eqs. 12.15–12.16),
+    so its hydrostatics use the local normal gravity (±0.27% from `g₀`). The latitude-free
+    geopotential was rejected: it is 0.1% off in pressure over 3 km at the equator and poles.
   - Temperature and humidity are linear in geopotential height, and pressure uses the
     temperature-shaped log form, which is exact for dry hydrostatic layers.
+  - Given pressures must fall with height.
   - Omitted pressures are filled hydrostatically with virtual temperature.
   - Beyond the levels, the standard continues, anchored at the end level. Above the top, the
     vapour mole fraction is held and capped at saturation.
@@ -316,7 +320,7 @@ had no single right answer and are recorded here.
 - **Wind:**
   - Meteorological "from" directions, and ENU velocities.
   - `LayeredWind` defaults to speed-and-direction interpolation along the shorter arc, which
-    keeps a veering wind's speed.
+    keeps a veering wind's speed. A calm level takes the other level's direction.
   - `Components` interpolation reproduces RocketPy.
   - Beyond the end levels the end wind is held and flagged.
 - **Turbulence:** Dryden spectra with MIL-F-8785C's scale-length convention (not

@@ -16,7 +16,7 @@ The calls the flight engine makes on every derivative evaluation, and one gust-f
 | call | median |
 |---|---|
 | `Ussa76::sample` | 9.14 ns |
-| `SoundingProfile::sample`, 30 levels | 21.4 ns |
+| `SoundingProfile::sample`, 30 levels | 21.7 ns |
 | `LayeredWind::wind`, 30 levels | 7.49 ns |
 | `LayeredWind::wind`, 1 level | 3.64 ns |
 | `GustField::gust` | 1.87 ns |

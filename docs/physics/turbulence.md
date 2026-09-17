@@ -44,19 +44,25 @@ uses [8785C]'s form and lengths throughout.
   σ_w = 0.1 u₂₀,   σ_u = σ_v = σ_w / (0.177 + 0.000823 h)^0.4
   ```
 
-  - The formulas hold from 10 to 1000 ft. Below 10 ft this code uses the 10 ft values. Above
-    1000 ft the figures give `L = 1000 ft` and equal intensities.
+  - The formulas hold from 10 to 1000 ft. Below 10 ft this code uses the 10 ft values. From 1000
+    to 2000 ft the figures give `L = 1000 ft` and equal intensities.
+  - The model covers only up to about 2000 ft (§3.8.1), so above that the constructor returns an
+    error instead of quietly holding values.
   - Fig. 9 marks `u₂₀` = 15, 30 and 45 kt for light, moderate and severe turbulence.
-  - `u` lies along the mean wind and `w` is vertical ([8785C] p. 60).
+  - For aircraft at low altitude, `u` lies along the horizontal *relative* mean wind and `w` is
+    vertical ([8785C] p. 60).
 - **Medium/high altitude** ([8785C] §3.7.2, above about 2000 ft): isotropic, with
   `L = 1750 ft`.
   - The intensity against altitude and exceedance probability is only a graph (Fig. 7), so the
     caller supplies it.
   - Neither military document says how to blend 1000–2000 ft. MATLAB's documentation
     interpolates linearly, but that is its own choice.
-- **Axes of the gust field:** `u` is along the mean wind's horizontal direction of travel, `w`
-  is up, and `v` completes a right-handed set. The field is symmetric in sign, so these choices
-  don't change its statistics.
+- **Axes of the gust field:** `u` is the longitudinal component and `v`, `w` the transverse ones.
+  - The longitudinal spectrum belongs to the component along the path through the frozen
+    field. For a climbing rocket that is nearly vertical, so M1.6 must align `u` with the path.
+  - Getting that wrong changes the statistics: a horizontal gust given the longitudinal spectrum
+    has twice the transverse power at low frequency and 2/3 of it at high frequency.
+  - The axes' signs don't matter.
 
 ## Generator
 
@@ -111,8 +117,12 @@ repeatedly and on rejected steps.
   - Setup: 2²⁰ samples at 1 m, with `σ = (1.5, 1.2, 0.9)` m/s and `L = (40, 40, 20)` m.
   - Estimate: 256 Hann-windowed segments of 4096 samples, averaged (Bartlett's method).
   - In every octave band from bin 1 to Nyquist, each component's mean ratio to theory is within
-    4 standard errors. The standard error is `√(1.94/(nK))` for `n` bins and `K` segments, where
-    1.94 is the Hann window's neighbouring-bin correlation.
+    4 standard errors.
+  - The variance of a band's mean ratio is `[1 + 2ρ₁²(n−1)/n + 2ρ₂²(n−2)/n]/(nK)` for `n` bins
+    and `K` segments, with the Hann window's neighbouring-bin correlations `ρ₁ = 2/3` and
+    `ρ₂ = 1/6`. The bracket tends to 1.94.
+  - The one- and two-bin bands at the bottom are loose (±25%, ±21%); the wide bands (±1–3%) pin
+    the spectrum.
   - Theory is the continuous spectrum sampled at 1 m, in closed form. Below a tenth of Nyquist it
     is checked against [8785C]'s formula to 1%.
   - The variance of the record is within 5% of `σ²`.
@@ -122,13 +132,17 @@ repeatedly and on rejected steps.
   - `two_steps_compose_into_one`: `Q(a+b) = Φ(b)Q(a)Φ(b)ᵀ + Q(b)` to 1e-12 relative, down to
     `r = 1e-9`.
   - `transverse_output_has_the_dryden_autocorrelation`.
-  - `step_length_does_not_change_the_statistics`: 0.25 m steps give the 1 m correlation.
   - `regularized_gamma_matches_independent_references`.
+- **Stepping loop:** `quarter_metre_steps_give_the_one_metre_correlation`, to 2e-3.
+  - The sampling error is about 4e-4, so this catches a scale length 10% off.
+  - It can't tell an exact step from an Euler step (8e-5 apart), which is why the exactness
+    tests above exist.
 - **Spectra:**
   - `spectra_integrate_to_the_variance`
   - `spectra_are_the_cosine_transforms_of_the_autocorrelations`
 - **Parameters:** `low_altitude_parameters_follow_the_specification`, at 100 ft moderate:
-  `L_u = 505.169 ft` and `σ_u/σ_w = 1.715849`.
+  `L_u = 505.169 ft` and `σ_u/σ_w = 1.715849`. It also checks the 10 ft floor, the 1000–2000 ft
+  hold, and the refusal above 2000 ft.
 - **Determinism:** the same seed gives bit-identical fields, and a serialized generator resumes
   the stream.
 - **`hpr_core::random::tests`:**

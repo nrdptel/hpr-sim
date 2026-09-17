@@ -30,7 +30,12 @@ fn sounding() -> SoundingProfile {
             }
         })
         .collect();
-    SoundingProfile::new(levels, WindInterpolation::SpeedDirection).unwrap()
+    SoundingProfile::new(
+        levels,
+        32.99_f64.to_radians(),
+        WindInterpolation::SpeedDirection,
+    )
+    .unwrap()
 }
 
 fn atmosphere(c: &mut Criterion) {

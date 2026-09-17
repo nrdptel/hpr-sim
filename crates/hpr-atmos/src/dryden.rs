@@ -68,6 +68,9 @@ const LOW_ALTITUDE_MIN_FT: f64 = 10.0;
 /// Upper end of the low-altitude formulas, ft.
 const LOW_ALTITUDE_MAX_FT: f64 = 1000.0;
 
+/// Top of the low-altitude model, ft (MIL-F-8785C §3.8.1: "approximately 2,000 feet AGL").
+const LOW_ALTITUDE_MODEL_TOP_FT: f64 = 2000.0;
+
 /// Dryden scale length above about 2000 ft, ft (MIL-F-8785C §3.7.2).
 const MEDIUM_HIGH_ALTITUDE_SCALE_LENGTH_FT: f64 = 1750.0;
 
@@ -166,21 +169,28 @@ impl DrydenParameters {
     /// σ_w = 0.1 u₂₀,   σ_u = σ_v = σ_w / (0.177 + 0.000823 h)^0.4
     /// ```
     ///
-    /// The formulas hold from 10 to 1000 ft. Below 10 ft this uses the 10 ft values; above
-    /// 1000 ft, the specification's figures' values there (`L = 1000 ft`, `σ_u = σ_v = σ_w`).
-    /// The specification applies the low-altitude model up to about 2000 ft and gives no blend
-    /// into the medium/high-altitude model ([`DrydenParameters::mil_f_8785c_medium_high_altitude`]).
+    /// The formulas hold from 10 to 1000 ft. Below 10 ft this uses the 10 ft values; from 1000 to
+    /// 2000 ft, the specification's figures' values at 1000 ft (`L = 1000 ft`, `σ_u = σ_v = σ_w`).
+    /// The specification applies the low-altitude model only up to about 2000 ft (§3.8.1) and
+    /// gives no blend into the medium/high-altitude model
+    /// ([`DrydenParameters::mil_f_8785c_medium_high_altitude`]), so above 2000 ft this refuses.
     ///
     /// # Errors
     ///
-    /// [`AtmosError::Domain`] if the height is not finite or the wind speed is negative or not
-    /// finite.
+    /// [`AtmosError::Domain`] if the height is not finite or above 2000 ft (609.6 m), or the wind
+    /// speed is negative or not finite.
     pub fn mil_f_8785c_low_altitude(
         height_agl_m: f64,
         wind_speed_20_ft_m_s: f64,
     ) -> Result<Self, AtmosError> {
-        let height_ft = (finite("height above terrain (m)", height_agl_m)? / FOOT_M)
-            .clamp(LOW_ALTITUDE_MIN_FT, LOW_ALTITUDE_MAX_FT);
+        let height = finite("height above terrain (m)", height_agl_m)?;
+        if height > LOW_ALTITUDE_MODEL_TOP_FT * FOOT_M {
+            return Err(AtmosError::Domain {
+                what: "height above terrain for the low-altitude model (m)",
+                value: height,
+            });
+        }
+        let height_ft = (height / FOOT_M).clamp(LOW_ALTITUDE_MIN_FT, LOW_ALTITUDE_MAX_FT);
         let u20 = finite("wind speed at 20 ft (m/s)", wind_speed_20_ft_m_s)?;
         if u20 < 0.0 {
             return Err(AtmosError::Domain {
@@ -471,9 +481,13 @@ pub struct GustSample {
 /// metres and interpolated linearly, so it is a pure function an adaptive integrator can call
 /// repeatedly.
 ///
-/// **Axes.** `u` is along the mean wind's horizontal direction of travel, `w` is up, and `v`
-/// completes a right-handed set (90° to the left of `u`, seen from above). The field is
-/// isotropic in sign, so these choices do not change its statistics.
+/// **Axes.** `u` is the longitudinal component: the Dryden spectrum it carries belongs to the
+/// velocity component along the path through the frozen field, and `v` and `w` are the two
+/// transverse ones. MIL-F-8785C (p. 60) puts `u` along the horizontal *relative* mean wind for
+/// aircraft at low altitude, but for a climbing rocket the path is nearly vertical, so the caller
+/// must align `u` with the path. Getting that wrong does change the statistics: a horizontal gust
+/// given the longitudinal spectrum has twice the transverse power at low frequency and 2/3 of it at
+/// high frequency. The signs of the axes do not matter.
 ///
 /// **Path coordinate.** The field does not decide what `s` is: distance flown through the air is
 /// Taylor's hypothesis, but a caller may key it on altitude or on time at a reference speed.
@@ -953,9 +967,13 @@ mod tests {
     /// A seeded field of 2²⁰ samples one metre apart is cut into 256 segments of 4096. Each is
     /// Hann-windowed and transformed, and the periodograms are averaged (Bartlett's method).
     /// Over octave bands of frequency bins from the first above zero to Nyquist, the mean ratio of
-    /// the estimate to theory must fall within 4 standard errors. The standard error of a band of `n` bins averaged over `K`
-    /// segments is `√(1.94/(nK))`, where 1.94 accounts for the Hann window's correlation between
-    /// neighbouring bins (`1 + 2·(2/3)² + 2·(1/6)²`).
+    /// the estimate to theory must fall within 4 standard errors. For a band of `n` bins averaged
+    /// over `K` segments the variance of the mean ratio is
+    /// `[1 + 2ρ₁²(n−1)/n + 2ρ₂²(n−2)/n]/(nK)`, where `ρ₁ = 2/3` and `ρ₂ = 1/6` are the Hann
+    /// window's correlations between the transforms at neighbouring bins and bins two apart
+    /// (the bracket tends to 1.94 for wide bands and is 1 for a single bin). The single-bin and
+    /// two-bin bands at the bottom are loose (±25%, ±21%); the wide bands above (±1–3%) are what
+    /// pin the spectrum.
     ///
     /// Theory is the spectrum of the continuous process sampled every metre (its aliased
     /// spectrum), which the exact discretization produces. Below a tenth of the Nyquist
@@ -1009,7 +1027,12 @@ mod tests {
                     .map(|k| estimate[k][component] / theory(k))
                     .sum::<f64>()
                     / n as f64;
-                let standard_error = (1.94 / (n * segments) as f64).sqrt();
+                let nf = n as f64;
+                let (rho1_sq, rho2_sq) = (4.0 / 9.0, 1.0 / 36.0);
+                let bracket = 1.0
+                    + 2.0 * rho1_sq * (nf - 1.0) / nf
+                    + 2.0 * rho2_sq * (nf - 2.0).max(0.0) / nf;
+                let standard_error = (bracket / (nf * segments as f64)).sqrt();
                 assert!(
                     (ratio - 1.0).abs() < 4.0 * standard_error,
                     "component {component}, bins {band_start}..{band_end}: ratio {ratio}, \
@@ -1037,10 +1060,13 @@ mod tests {
         }
     }
 
-    /// Stepping 0.25 m at a time samples the same process as stepping 1 m: the lag-1 m
-    /// correlation of the fine record matches `R(1 m)/σ²`.
+    /// A field stepped 0.25 m at a time has the 1 m correlation `R(1 m)/σ²` of the process. The
+    /// sampling error is about 4e-4 (five seeds all within 9e-4), so the 2e-3 bound catches a
+    /// scale length 10% off in `u` and `v` and 3% off in `w`. It is a check of the stepping loop,
+    /// not of exactness: an Euler step would differ by only 8e-5 here. Exactness is pinned by
+    /// `transition_preserves_the_stationary_covariance` and `two_steps_compose_into_one`.
     #[test]
-    fn step_length_does_not_change_the_statistics() {
+    fn quarter_metre_steps_give_the_one_metre_correlation() {
         let p = parameters();
         let fine = GustField::generate(11, &p, 400_000.0, 0.25).unwrap();
         let samples = fine.samples();
@@ -1053,7 +1079,7 @@ mod tests {
             let correlation = lag1 / lag0;
             let expected = p.autocorrelation(1.0)[component] / p.intensity_m_s()[component].powi(2);
             assert!(
-                (correlation - expected).abs() < 0.01,
+                (correlation - expected).abs() < 2e-3,
                 "component {component}: {correlation} vs {expected}"
             );
         }
@@ -1198,6 +1224,11 @@ mod tests {
         assert!((top.scale_length_m() - DVec3::splat(304.8)).length() < 1e-9);
         assert!((top.intensity_m_s() - DVec3::splat(0.1 * u20)).length() < 1e-12);
         assert_eq!(top, above);
+        assert_eq!(
+            DrydenParameters::mil_f_8785c_low_altitude(2000.0 * FOOT_M, u20).unwrap(),
+            top
+        );
+        assert!(DrydenParameters::mil_f_8785c_low_altitude(2001.0 * FOOT_M, u20).is_err());
         let ground = DrydenParameters::mil_f_8785c_low_altitude(0.0, u20).unwrap();
         let ten_feet = DrydenParameters::mil_f_8785c_low_altitude(10.0 * FOOT_M, u20).unwrap();
         assert_eq!(ground, ten_feet);

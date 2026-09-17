@@ -1,9 +1,13 @@
 //! Custom atmospheres from soundings or forecasts: temperature, pressure, humidity and wind at
 //! levels, interpolated in height, with the offset standard atmosphere beyond them.
 //!
-//! **Between two levels** `i` and `i + 1`, interpolation runs in geopotential height `H` (the
-//! 1976 standard's, [`geopotential_from_geometric_m`]), at fraction
-//! `t = (H − H_i)/(H_{i+1} − H_i)`:
+//! **Geopotential height.** A profile knows its latitude `φ`, and works in WMO geopotential height
+//! `Z(z, φ)` ([`wmo_geopotential_from_geometric_m`]), whose gravity is the normal gravity at that
+//! latitude. Pressure then falls hydrostatically with the local gravity, which is up to 0.27%
+//! from the standard's `g₀` at the equator and poles.
+//!
+//! **Between two levels** `i` and `i + 1`, interpolation runs in `Z`, at fraction
+//! `t = (Z − Z_i)/(Z_{i+1} − Z_i)`:
 //!
 //! ```text
 //! T = T_i + t (T_{i+1} − T_i)
@@ -20,14 +24,18 @@
 //! WMO-No. 8 (2023), Vol. I, eqs. 12.17 and 12.18):
 //!
 //! ```text
-//! ln(P_{i+1}/P_i) = −(g₀/R_d) (H_{i+1} − H_i) · ln(T_v,i+1/T_v,i) / (T_v,i+1 − T_v,i)
+//! ln(P_{i+1}/P_i) = −(g₀/R_d) (Z_{i+1} − Z_i) · ln(T_v,i+1/T_v,i) / (T_v,i+1 − T_v,i)
 //! ```
 //!
 //! **Beyond the levels** the profile continues as the 1976 standard atmosphere, offset to pass
-//! through the end level's temperature and pressure ([`Ussa76::anchored`]), and flags the sample.
+//! through the end level's temperature and pressure ([`Ussa76::anchored`]) and evaluated at the
+//! same geopotential height (the standard's geopotential `H` set equal to `Z`), and flags the
+//! sample.
 //! Below the lowest level the lowest level's relative humidity is held. Above the highest, its
 //! vapour mole fraction is held, capped at saturation, so a humid top does not put water into the
-//! cold stratosphere.
+//! cold stratosphere. The continued pressure is the dry standard's, so in humid air it falls up to
+//! `x_v (1 − M_v/M₀)` (about 1.6% at 30 °C and saturation) faster than hydrostatic balance; the
+//! samples are flagged.
 //!
 //! Heights are geometric above mean sea level. Soundings and forecasts usually report WMO
 //! geopotential height; convert it with [`geometric_from_wmo_geopotential_m`].
@@ -38,7 +46,7 @@ use serde::{Deserialize, Serialize};
 use crate::air::{AirSample, Atmosphere};
 use crate::error::{AtmosError, finite, positive};
 use crate::moist::{check_relative_humidity, moist_air_unchecked, saturation_vapour_pressure_pa};
-use crate::ussa76::{DRY_AIR_GAS_CONSTANT_J_PER_KG_K, Ussa76, geopotential_from_geometric_m};
+use crate::ussa76::{DRY_AIR_GAS_CONSTANT_J_PER_KG_K, Ussa76, geometric_from_geopotential_m};
 use crate::wind::{LayeredWind, WindInterpolation, WindLevel};
 use hpr_core::gravity::STANDARD_GRAVITY_MPS2;
 
@@ -72,15 +80,19 @@ pub struct SoundingLevel {
 
 /// An atmosphere built from a sounding or a forecast profile.
 ///
-/// It serializes as its levels as given and its wind interpolation, and rebuilds (and
-/// re-checks) everything else when deserialized.
+/// It serializes as its levels as given, its latitude and its wind interpolation, and rebuilds
+/// (and re-checks) everything else when deserialized.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(try_from = "SoundingProfileData", into = "SoundingProfileData")]
 pub struct SoundingProfile {
     levels: Vec<SoundingLevel>,
+    latitude_rad: f64,
     wind_interpolation: WindInterpolation,
+    /// `γ_s(φ)/γ₄₅` and `R(φ)` of WMO-No. 8 eq. 12.16 at the profile's latitude.
+    gravity_ratio: f64,
+    radius_m: f64,
     heights_m: Vec<f64>,
-    /// Geopotential height of each level, m′.
+    /// WMO geopotential height of each level, gpm.
     geopotentials_m: Vec<f64>,
     temperatures_k: Vec<f64>,
     pressures_pa: Vec<f64>,
@@ -97,6 +109,7 @@ pub struct SoundingProfile {
 #[serde(deny_unknown_fields)]
 struct SoundingProfileData {
     levels: Vec<SoundingLevel>,
+    latitude_rad: f64,
     #[serde(default)]
     wind_interpolation: WindInterpolation,
 }
@@ -105,7 +118,7 @@ impl TryFrom<SoundingProfileData> for SoundingProfile {
     type Error = AtmosError;
 
     fn try_from(data: SoundingProfileData) -> Result<Self, AtmosError> {
-        SoundingProfile::new(data.levels, data.wind_interpolation)
+        SoundingProfile::new(data.levels, data.latitude_rad, data.wind_interpolation)
     }
 }
 
@@ -113,6 +126,7 @@ impl From<SoundingProfile> for SoundingProfileData {
     fn from(profile: SoundingProfile) -> Self {
         SoundingProfileData {
             levels: profile.levels,
+            latitude_rad: profile.latitude_rad,
             wind_interpolation: profile.wind_interpolation,
         }
     }
@@ -141,8 +155,8 @@ fn inverse_log_mean(a: f64, b: f64) -> f64 {
 }
 
 impl SoundingProfile {
-    /// A profile from `levels`, lowest first, whose wind (if the levels give one) interpolates as
-    /// `wind_interpolation`.
+    /// A profile from `levels`, lowest first, measured at geodetic latitude `latitude_rad`, whose
+    /// wind (if the levels give one) interpolates as `wind_interpolation`.
     ///
     /// # Errors
     ///
@@ -154,12 +168,15 @@ impl SoundingProfile {
     /// - [`AtmosError::IncompleteColumn`] if humidity or wind is given on some levels but not all,
     ///   or a wind speed comes without its direction.
     /// - [`AtmosError::Domain`] for a non-positive temperature or pressure, a relative humidity
-    ///   outside `[0, 1]`, a negative wind speed, a non-finite value, or end levels whose offset
-    ///   standard atmosphere is out of range.
+    ///   outside `[0, 1]`, a negative wind speed, a latitude beyond ±90°, a non-finite value, or
+    ///   end levels whose offset standard atmosphere is out of range.
     pub fn new(
         levels: Vec<SoundingLevel>,
+        latitude_rad: f64,
         wind_interpolation: WindInterpolation,
     ) -> Result<Self, AtmosError> {
+        let (gamma_s, radius_m) = wmo_gravity_and_radius(latitude_rad)?;
+        let gravity_ratio = gamma_s / GAMMA_45_MPS2;
         let Some(first) = levels.first() else {
             return Err(AtmosError::NoLevels);
         };
@@ -181,7 +198,7 @@ impl SoundingProfile {
                 return Err(AtmosError::HeightsNotIncreasing { index });
             }
             heights_m.push(z);
-            geopotentials_m.push(geopotential_from_geometric_m(z)?);
+            geopotentials_m.push(wmo_geopotential(gravity_ratio, radius_m, z)?);
             temperatures_k.push(positive("sounding temperature (K)", level.temperature_k)?);
             if let Some(p) = level.pressure_pa {
                 positive("sounding pressure (Pa)", p)?;
@@ -249,8 +266,16 @@ impl SoundingProfile {
         }
 
         let last = n - 1;
-        let below = Ussa76::anchored(heights_m[0], temperatures_k[0], pressures_pa[0])?;
-        let above = Ussa76::anchored(heights_m[last], temperatures_k[last], pressures_pa[last])?;
+        let below = Ussa76::anchored(
+            geometric_from_geopotential_m(geopotentials_m[0])?,
+            temperatures_k[0],
+            pressures_pa[0],
+        )?;
+        let above = Ussa76::anchored(
+            geometric_from_geopotential_m(geopotentials_m[last])?,
+            temperatures_k[last],
+            pressures_pa[last],
+        )?;
         let top_vapour_fraction =
             (vapour(humidity_at(last), temperatures_k[last]) / pressures_pa[last]).min(1.0);
         let wind = if has_wind {
@@ -260,7 +285,10 @@ impl SoundingProfile {
         };
         Ok(SoundingProfile {
             levels,
+            latitude_rad,
             wind_interpolation,
+            gravity_ratio,
+            radius_m,
             heights_m,
             geopotentials_m,
             temperatures_k,
@@ -278,6 +306,11 @@ impl SoundingProfile {
         &self.levels
     }
 
+    /// The geodetic latitude the profile was measured at, rad.
+    pub fn latitude_rad(&self) -> f64 {
+        self.latitude_rad
+    }
+
     /// The pressure at each level, Pa, with omitted ones filled in.
     pub fn pressures_pa(&self) -> &[f64] {
         &self.pressures_pa
@@ -292,13 +325,18 @@ impl SoundingProfile {
     ///
     /// # Errors
     ///
-    /// [`AtmosError::Domain`] if the height is not finite or is at or below `−r₀`.
+    /// [`AtmosError::Domain`] if the height is not finite, is at or below `−R(φ)`, or is so far
+    /// above the Earth that the standard atmosphere has no height for its geopotential.
     pub fn sample(&self, height_msl_m: f64) -> Result<AirSample, AtmosError> {
         let z = finite("height (m)", height_msl_m)?;
         let n = self.heights_m.len();
         let humidity = |i: usize| self.humidities.get(i).copied();
+        let geopotential = wmo_geopotential(self.gravity_ratio, self.radius_m, z)?;
         if z < self.heights_m[0] {
-            let air = self.below.sample(z)?.air;
+            let air = self
+                .below
+                .sample(geometric_from_geopotential_m(geopotential)?)?
+                .air;
             let e = vapour(humidity(0), air.temperature_k);
             return Ok(AirSample {
                 air: moist_air_unchecked(air.temperature_k, air.pressure_pa, e),
@@ -306,7 +344,10 @@ impl SoundingProfile {
             });
         }
         if z > self.heights_m[n - 1] {
-            let air = self.above.sample(z)?.air;
+            let air = self
+                .above
+                .sample(geometric_from_geopotential_m(geopotential)?)?
+                .air;
             let e = (self.top_vapour_fraction * air.pressure_pa)
                 .min(saturation_vapour_pressure_pa(air.temperature_k));
             return Ok(AirSample {
@@ -325,9 +366,8 @@ impl SoundingProfile {
             });
         }
         let i = upper - 1;
-        let h = geopotential_from_geometric_m(z)?;
-        let (h0, h1) = (self.geopotentials_m[i], self.geopotentials_m[upper]);
-        let fraction = ((h - h0) / (h1 - h0)).clamp(0.0, 1.0);
+        let (z0, z1) = (self.geopotentials_m[i], self.geopotentials_m[upper]);
+        let fraction = ((geopotential - z0) / (z1 - z0)).clamp(0.0, 1.0);
         let (t0, t1) = (self.temperatures_k[i], self.temperatures_k[upper]);
         let t = t0 + fraction * (t1 - t0);
         let (p0, p1) = (self.pressures_pa[i], self.pressures_pa[upper]);
@@ -357,6 +397,17 @@ impl Atmosphere for SoundingProfile {
 
 /// `γ₄₅ = 9.80665 m/s²`, the gravity that defines the geopotential metre.
 const GAMMA_45_MPS2: f64 = STANDARD_GRAVITY_MPS2;
+
+/// Eq. 12.15 with `γ_s(φ)/γ₄₅` and `R(φ)` already evaluated.
+fn wmo_geopotential(gravity_ratio: f64, radius_m: f64, height_m: f64) -> Result<f64, AtmosError> {
+    if height_m <= -radius_m {
+        return Err(AtmosError::Domain {
+            what: "geometric height (m)",
+            value: height_m,
+        });
+    }
+    Ok(gravity_ratio * radius_m * height_m / (radius_m + height_m))
+}
 
 /// `γ_s(φ)` and `R(φ)` of WMO-No. 8 (2023), Vol. I, eq. 12.16.
 fn wmo_gravity_and_radius(latitude_rad: f64) -> Result<(f64, f64), AtmosError> {
@@ -394,13 +445,7 @@ pub fn wmo_geopotential_from_geometric_m(
 ) -> Result<f64, AtmosError> {
     let (gamma_s, radius) = wmo_gravity_and_radius(latitude_rad)?;
     let z = finite("geometric height (m)", height_msl_m)?;
-    if z <= -radius {
-        return Err(AtmosError::Domain {
-            what: "geometric height (m)",
-            value: z,
-        });
-    }
-    Ok(gamma_s / GAMMA_45_MPS2 * radius * z / (radius + z))
+    wmo_geopotential(gamma_s / GAMMA_45_MPS2, radius, z)
 }
 
 /// Geometric height above mean sea level of WMO geopotential height `geopotential_height_m`
@@ -429,10 +474,14 @@ pub fn geometric_from_wmo_geopotential_m(
 
 #[cfg(test)]
 mod tests {
+    use hpr_core::gravity::NormalGravity;
+
     use super::*;
     use crate::moist::moist_air;
-    use crate::ussa76::{EARTH_RADIUS_M, geometric_from_geopotential_m};
     use crate::wind::Wind;
+
+    /// Spaceport America's latitude, for tests that don't care which latitude.
+    const LATITUDE_RAD: f64 = 32.99 * std::f64::consts::PI / 180.0;
 
     fn level(z: f64, t: f64, p: Option<f64>, u: Option<f64>) -> SoundingLevel {
         SoundingLevel {
@@ -445,15 +494,28 @@ mod tests {
         }
     }
 
+    fn profile_at(levels: Vec<SoundingLevel>, latitude_rad: f64) -> SoundingProfile {
+        SoundingProfile::new(levels, latitude_rad, WindInterpolation::default()).unwrap()
+    }
+
+    /// The standard atmosphere's geometric height at the WMO geopotential of `z`: where the
+    /// standard's air is the air a profile at `latitude_rad` continues with.
+    fn standard_height(z: f64, latitude_rad: f64) -> f64 {
+        geometric_from_geopotential_m(wmo_geopotential_from_geometric_m(z, latitude_rad).unwrap())
+            .unwrap()
+    }
+
     /// `P(z₁)` by integrating `dP/dz = −ρ g` from `(z₀, P₀)` with the profile's own interpolated
-    /// temperature and humidity, by the second-order midpoint method on 20 000 steps. The density
-    /// is evaluated at the running pressure, so the integral does not use the profile's
-    /// interpolated pressure.
+    /// temperature and humidity, by the second-order midpoint method on 20 000 steps. Gravity is
+    /// WGS 84 normal gravity at the profile's latitude (`hpr_core`'s Taylor form, independent of
+    /// the WMO geopotential formula), and density is evaluated at the running pressure, so the
+    /// integral uses neither the profile's geopotential nor its interpolated pressure.
     fn integrate_pressure(profile: &SoundingProfile, z0: f64, p0: f64, z1: f64) -> f64 {
+        let gravity = NormalGravity::wgs84();
         let steps = 20_000;
         let dz = (z1 - z0) / f64::from(steps);
-        let vapour_fraction = |z: f64| {
-            // e/p from the profile's air: ρ R_d T / p = 1 − x_v (1 − M_v/M₀).
+        let vapour_pressure = |z: f64| {
+            // e from the profile's air: ρ R_d T / p = 1 − x_v (1 − M_v/M₀).
             let air = profile.sample(z).unwrap().air;
             let deficit = 1.0
                 - air.density_kg_m3 * DRY_AIR_GAS_CONSTANT_J_PER_KG_K * air.temperature_k
@@ -465,8 +527,8 @@ mod tests {
             (air.temperature_k, x * air.pressure_pa)
         };
         let weight = |z: f64, p: f64| {
-            let (t, e) = vapour_fraction(z);
-            let g = STANDARD_GRAVITY_MPS2 * (EARTH_RADIUS_M / (EARTH_RADIUS_M + z)).powi(2);
+            let (t, e) = vapour_pressure(z);
+            let g = gravity.taylor_mps2(profile.latitude_rad(), z).unwrap();
             moist_air_unchecked(t, p, e.max(0.0)).density_kg_m3 * g
         };
         let mut p = p0;
@@ -484,22 +546,21 @@ mod tests {
     #[test]
     fn sounding_temperature_overrides_standard_lapse() {
         let field = level(1400.0, 308.15, Some(85_500.0), Some(0.2));
-        let profile = SoundingProfile::new(
+        let profile = profile_at(
             vec![
                 field,
                 level(2400.0, 300.15, None, Some(0.15)),
                 level(3400.0, 301.15, None, Some(0.10)),
             ],
-            WindInterpolation::default(),
-        )
-        .unwrap();
+            LATITUDE_RAD,
+        );
         let standard_lapse = Ussa76::anchored(1400.0, 308.15, 85_500.0).unwrap();
 
         // Temperature follows the sounding: 8 K/km down to 2400 m, then a 1 K inversion. 2900 m is
         // halfway in geometric height and 4e-5 past halfway in geopotential height.
         let mid = profile.sample(2900.0).unwrap();
         assert_eq!(mid.extrapolated, None);
-        let h = |z| geopotential_from_geometric_m(z).unwrap();
+        let h = |z| wmo_geopotential_from_geometric_m(z, LATITUDE_RAD).unwrap();
         let fraction = (h(2900.0) - h(2400.0)) / (h(3400.0) - h(2400.0));
         assert!((fraction - 0.5 - 3.9e-5).abs() < 1e-6);
         assert!((mid.air.temperature_k - (300.15 + fraction)).abs() < 1e-12);
@@ -510,10 +571,10 @@ mod tests {
         assert!(top.temperature_k - lapse_top.temperature_k > 5.0);
 
         // The filled pressures are hydrostatic for the sounding's temperatures and humidity. The
-        // fill takes virtual temperature linear in height, while the profile interpolates
-        // temperature and relative humidity linearly; vapour pressure is exponential in
-        // temperature, so the two differ by about 0.06 K mid-layer here, and the pressures by
-        // 1.1e-5 (a tenth of a metre of height). Dry air agrees to 1e-10 (next test).
+        // fill takes virtual temperature linear in geopotential height, while the profile
+        // interpolates temperature and relative humidity linearly; vapour pressure is exponential
+        // in temperature, so the two differ by about 0.06 K mid-layer here, and the pressures by
+        // 1.1e-5 (a tenth of a metre of height). Dry air agrees to 2e-8 (next test).
         for (z, p) in [
             (2400.0, profile.pressures_pa()[1]),
             (3400.0, profile.pressures_pa()[2]),
@@ -533,90 +594,109 @@ mod tests {
         assert!((top.density_kg_m3 / lapse_top.density_kg_m3 - 1.0).abs() > 0.01);
     }
 
-    /// Levels taken from the standard atmosphere reproduce it between them, because both are
-    /// linear in geopotential height: temperature to rounding, and pressure and density to 1e-12.
+    /// Dry, the fill and the interpolation make the same assumption, so they agree with an
+    /// integration under WGS 84 normal gravity at the equator, mid-latitudes and the pole. The
+    /// bound is WMO eq. 12.16's rounded constants: its surface gravity is 3.4e-8 (equator) to
+    /// 5.2e-8 (pole) below WGS 84's, which over `ΔZ/H_s ≈ 0.23` is about 1e-8 in pressure.
     #[test]
-    fn standard_levels_reproduce_the_standard_between_them() {
-        let standard = Ussa76::standard();
-        let heights = [
-            0.0,
-            5_000.0,
-            geometric_from_geopotential_m(11_000.0).unwrap(),
-            15_000.0,
-            geometric_from_geopotential_m(20_000.0).unwrap(),
-            26_000.0,
-        ];
-        let levels = heights
-            .iter()
-            .map(|&z| {
-                let air = standard.sample(z).unwrap().air;
-                level(z, air.temperature_k, Some(air.pressure_pa), None)
-            })
-            .collect();
-        let profile = SoundingProfile::new(levels, WindInterpolation::default()).unwrap();
-        for z in heights {
-            let ours = profile.sample(z).unwrap().air;
-            let reference = standard.sample(z).unwrap().air;
-            assert_eq!(ours.temperature_k, reference.temperature_k);
-            assert_eq!(ours.pressure_pa, reference.pressure_pa);
-            assert!((ours.density_kg_m3 / reference.density_kg_m3 - 1.0).abs() < 1e-15);
-        }
-        for z in [2_500.0, 8_000.0, 13_000.0, 17_500.0, 23_000.0] {
-            let ours = profile.sample(z).unwrap().air;
-            let reference = standard.sample(z).unwrap().air;
-            assert!(
-                (ours.temperature_k - reference.temperature_k).abs() < 1e-10,
-                "{z}"
+    fn filled_pressures_are_hydrostatic_for_dry_air() {
+        for latitude_deg in [0.0_f64, 32.99, 90.0] {
+            let profile = profile_at(
+                vec![
+                    level(1400.0, 308.15, Some(85_500.0), None),
+                    level(2400.0, 300.15, None, None),
+                    level(3400.0, 301.15, None, None),
+                ],
+                latitude_deg.to_radians(),
             );
-            for (a, b) in [
-                (ours.pressure_pa, reference.pressure_pa),
-                (ours.density_kg_m3, reference.density_kg_m3),
+            for (z, p) in [
+                (2400.0, profile.pressures_pa()[1]),
+                (3400.0, profile.pressures_pa()[2]),
             ] {
-                assert!(((a - b) / b).abs() < 1e-12, "{z}: {a} vs {b}");
+                let integrated = integrate_pressure(&profile, 1400.0, 85_500.0, z);
+                assert!(
+                    ((p - integrated) / integrated).abs() < 2e-8,
+                    "{latitude_deg}° {z}: {p} vs {integrated}"
+                );
             }
         }
     }
 
-    /// Dry, the fill and the interpolation make the same assumption, so they agree to the
-    /// integration's own error.
+    /// Gravity is 0.53% stronger at the poles than at the equator, so the same sounding's pressure
+    /// falls faster there. Over 2 km, about 0.23 scale heights at 293 K, that is
+    /// 0.53% × 0.23 = 0.12% lower.
     #[test]
-    fn filled_pressures_are_hydrostatic_for_dry_air() {
-        let profile = SoundingProfile::new(
-            vec![
-                level(1400.0, 308.15, Some(85_500.0), None),
-                level(2400.0, 300.15, None, None),
-                level(3400.0, 301.15, None, None),
-            ],
-            WindInterpolation::default(),
-        )
-        .unwrap();
-        for (z, p) in [
-            (2400.0, profile.pressures_pa()[1]),
-            (3400.0, profile.pressures_pa()[2]),
-        ] {
-            let integrated = integrate_pressure(&profile, 1400.0, 85_500.0, z);
-            assert!(
-                ((p - integrated) / integrated).abs() < 1e-10,
-                "{z}: {p} vs {integrated}"
-            );
+    fn pressure_falls_faster_where_gravity_is_stronger() {
+        let levels = vec![
+            level(1400.0, 300.0, Some(85_500.0), None),
+            level(3400.0, 287.0, None, None),
+        ];
+        let equator = profile_at(levels.clone(), 0.0).pressures_pa()[1];
+        let pole = profile_at(levels, std::f64::consts::FRAC_PI_2).pressures_pa()[1];
+        let difference = pole / equator - 1.0;
+        assert!((-0.0014..-0.0011).contains(&difference), "{difference}");
+    }
+
+    /// Levels taken from the standard atmosphere, placed at the WMO heights of its geopotential
+    /// levels, reproduce it between them, because both are linear in geopotential: temperature to
+    /// rounding, and pressure and density to 1e-12.
+    #[test]
+    fn standard_levels_reproduce_the_standard_between_them() {
+        let standard = Ussa76::standard();
+        for latitude_deg in [0.0_f64, 45.0, 80.0] {
+            let latitude = latitude_deg.to_radians();
+            let heights: Vec<f64> = [0.0, 5_000.0, 11_000.0, 15_000.0, 20_000.0, 26_000.0]
+                .iter()
+                .map(|&geopotential| geometric_from_wmo_geopotential_m(geopotential, latitude))
+                .collect::<Result<_, _>>()
+                .unwrap();
+            let levels = heights
+                .iter()
+                .map(|&z| {
+                    let air = standard.sample(standard_height(z, latitude)).unwrap().air;
+                    level(z, air.temperature_k, Some(air.pressure_pa), None)
+                })
+                .collect();
+            let profile = profile_at(levels, latitude);
+            for z in heights
+                .iter()
+                .copied()
+                .chain([2_500.0, 8_000.0, 13_000.0, 17_500.0, 23_000.0])
+            {
+                let ours = profile.sample(z).unwrap().air;
+                let reference = standard.sample(standard_height(z, latitude)).unwrap().air;
+                assert!(
+                    (ours.temperature_k - reference.temperature_k).abs() < 1e-10,
+                    "{latitude_deg}° {z}"
+                );
+                for (a, b) in [
+                    (ours.pressure_pa, reference.pressure_pa),
+                    (ours.density_kg_m3, reference.density_kg_m3),
+                ] {
+                    assert!(
+                        ((a - b) / b).abs() < 1e-12,
+                        "{latitude_deg}° {z}: {a} vs {b}"
+                    );
+                }
+            }
         }
     }
 
-    /// A dry fill from sea level to the tropopause base gives the standard's base pressure.
+    /// A dry fill from sea level to the tropopause base (11 km of geopotential) gives the
+    /// standard's base pressure.
     #[test]
     fn hydrostatic_fill_matches_the_standard() {
-        let tropopause = geometric_from_geopotential_m(11_000.0).unwrap();
-        let profile = SoundingProfile::new(
+        let tropopause = geometric_from_wmo_geopotential_m(11_000.0, LATITUDE_RAD).unwrap();
+        let profile = profile_at(
             vec![
                 level(0.0, 288.15, Some(101_325.0), None),
                 level(tropopause, 216.65, None, None),
             ],
-            WindInterpolation::default(),
-        )
-        .unwrap();
+            LATITUDE_RAD,
+        );
         let p = profile.pressures_pa()[1];
         let reference = Ussa76::standard()
-            .sample(tropopause)
+            .sample(geometric_from_geopotential_m(11_000.0).unwrap())
             .unwrap()
             .air
             .pressure_pa;
@@ -628,27 +708,48 @@ mod tests {
 
     #[test]
     fn beyond_the_levels_follows_the_offset_standard() {
-        let profile = SoundingProfile::new(
+        let profile = profile_at(
             vec![
                 level(500.0, 295.0, Some(95_000.0), Some(0.6)),
                 level(2_000.0, 288.0, Some(80_000.0), Some(1.0)),
             ],
-            WindInterpolation::default(),
-        )
-        .unwrap();
+            LATITUDE_RAD,
+        );
         let top = profile.sample(2_000.0).unwrap().air;
         let just_above = profile.sample(2_000.001).unwrap();
         assert_eq!(just_above.extrapolated, Some(Side::Above));
         assert!((just_above.air.temperature_k - top.temperature_k).abs() < 1e-4);
         assert!((just_above.air.pressure_pa / top.pressure_pa - 1.0).abs() < 1e-6);
         assert!((just_above.air.density_kg_m3 / top.density_kg_m3 - 1.0).abs() < 1e-5);
-        // Above, the standard lapse (6.5 K/km) continues from the top level.
+        // Above, the standard lapse (6.5 K per geopotential km) continues from the top level.
         let aloft = profile.sample(6_000.0).unwrap().air;
-        assert!((aloft.temperature_k - (288.0 - 6.5 * 4.0)).abs() < 0.05);
+        let h = |z| wmo_geopotential_from_geometric_m(z, LATITUDE_RAD).unwrap();
+        let expected = 288.0 - 0.0065 * (h(6_000.0) - h(2_000.0));
+        assert!((aloft.temperature_k - expected).abs() < 1e-9);
         // The saturated top's vapour is capped at saturation in the cold air aloft.
         let e_sat = saturation_vapour_pressure_pa(aloft.temperature_k);
         let capped = moist_air(aloft.temperature_k, aloft.pressure_pa, e_sat).unwrap();
         assert!((aloft.density_kg_m3 / capped.density_kg_m3 - 1.0).abs() < 1e-14);
+        // The continuation is the dry standard's pressure, so it is hydrostatic with the local
+        // gravity for dry air (to WMO's rounded gravity constants). With humid air it falls a
+        // little faster than hydrostatic: here, saturated at 288 K, 2.7e-4 low after 300 m.
+        let dry = profile_at(
+            vec![
+                level(500.0, 295.0, Some(95_000.0), None),
+                level(2_000.0, 288.0, Some(80_000.0), None),
+            ],
+            LATITUDE_RAD,
+        );
+        let integrated = integrate_pressure(&dry, 2_000.0, 80_000.0, 2_300.0);
+        let continued = dry.sample(2_300.0).unwrap().air.pressure_pa;
+        assert!(
+            (continued / integrated - 1.0).abs() < 1e-8,
+            "{continued} {integrated}"
+        );
+        let humid_integrated = integrate_pressure(&profile, 2_000.0, 80_000.0, 2_300.0);
+        let humid_continued = profile.sample(2_300.0).unwrap().air.pressure_pa;
+        let low = humid_continued / humid_integrated - 1.0;
+        assert!((-3e-4..-2.5e-4).contains(&low), "{low}");
 
         let below = profile.sample(0.0).unwrap();
         assert_eq!(below.extrapolated, Some(Side::Below));
@@ -658,16 +759,19 @@ mod tests {
 
     #[test]
     fn a_single_level_is_an_anchored_standard_atmosphere() {
-        let profile = SoundingProfile::new(
+        let profile = profile_at(
             vec![level(1_000.0, 280.0, Some(90_000.0), None)],
-            WindInterpolation::default(),
-        )
-        .unwrap();
-        let anchored = Ussa76::anchored(1_000.0, 280.0, 90_000.0).unwrap();
+            LATITUDE_RAD,
+        );
+        let anchored =
+            Ussa76::anchored(standard_height(1_000.0, LATITUDE_RAD), 280.0, 90_000.0).unwrap();
         assert_eq!(profile.sample(1_000.0).unwrap().extrapolated, None);
         for z in [0.0, 3_000.0] {
             let ours = profile.sample(z).unwrap().air;
-            let reference = anchored.sample(z).unwrap().air;
+            let reference = anchored
+                .sample(standard_height(z, LATITUDE_RAD))
+                .unwrap()
+                .air;
             assert!((ours.density_kg_m3 / reference.density_kg_m3 - 1.0).abs() < 1e-14);
         }
     }
@@ -680,23 +784,22 @@ mod tests {
         let mut high = level(1_000.0, 283.0, None, None);
         high.wind_speed_m_s = Some(9.0);
         high.wind_direction_from_rad = Some(2.0);
-        let profile = SoundingProfile::new(vec![low, high], WindInterpolation::Components).unwrap();
+        let profile =
+            SoundingProfile::new(vec![low, high], LATITUDE_RAD, WindInterpolation::Components)
+                .unwrap();
         let wind = profile.wind().unwrap();
         assert_eq!(wind.interpolation(), WindInterpolation::Components);
         assert_eq!(wind.levels().len(), 2);
         assert!(wind.wind(500.0).is_ok());
-        let dry = SoundingProfile::new(
-            vec![level(0.0, 290.0, Some(100_000.0), None)],
-            WindInterpolation::default(),
-        )
-        .unwrap();
+        let dry = profile_at(vec![level(0.0, 290.0, Some(100_000.0), None)], LATITUDE_RAD);
         assert!(dry.wind().is_none());
     }
 
     #[test]
     fn invalid_profiles_are_rejected() {
         let ok = level(0.0, 290.0, Some(100_000.0), Some(0.5));
-        let build = |levels| SoundingProfile::new(levels, WindInterpolation::default());
+        let build =
+            |levels| SoundingProfile::new(levels, LATITUDE_RAD, WindInterpolation::default());
         assert!(matches!(build(vec![]), Err(AtmosError::NoLevels)));
         assert!(matches!(
             build(vec![level(0.0, 290.0, None, None)]),
@@ -745,11 +848,18 @@ mod tests {
         assert!(build(vec![level(0.0, -1.0, Some(100_000.0), None)]).is_err());
         assert!(build(vec![level(0.0, 290.0, Some(0.0), None)]).is_err());
         assert!(build(vec![level(f64::NAN, 290.0, Some(1e5), None)]).is_err());
+        let levels = vec![level(0.0, 290.0, Some(1e5), None)];
+        for latitude in [2.0, f64::NAN] {
+            assert!(
+                SoundingProfile::new(levels.clone(), latitude, WindInterpolation::default())
+                    .is_err()
+            );
+        }
     }
 
     #[test]
     fn profiles_round_trip_through_json() {
-        let json = r#"{"levels":[
+        let json = r#"{"latitude_rad":0.5758,"levels":[
             {"height_msl_m":1400.0,"temperature_k":300.0,"pressure_pa":86000.0,
              "relative_humidity":0.3,"wind_speed_m_s":4.0,"wind_direction_from_rad":3.0},
             {"height_msl_m":3000.0,"temperature_k":290.0,
@@ -760,11 +870,15 @@ mod tests {
             profile.wind_interpolation,
             WindInterpolation::SpeedDirection
         );
+        assert_eq!(profile.latitude_rad(), 0.5758);
         let back: SoundingProfile =
             serde_json::from_str(&serde_json::to_string(&profile).unwrap()).unwrap();
         assert_eq!(back, profile);
-        let unknown = r#"{"levels":[{"height_msl_m":0.0,"temperature_k":300.0,"pressure_pa":1e5,"dew_point_k":280.0}]}"#;
+        let unknown = r#"{"latitude_rad":0.0,"levels":[{"height_msl_m":0.0,"temperature_k":300.0,"pressure_pa":1e5,"dew_point_k":280.0}]}"#;
         assert!(serde_json::from_str::<SoundingProfile>(unknown).is_err());
+        let no_latitude =
+            r#"{"levels":[{"height_msl_m":0.0,"temperature_k":300.0,"pressure_pa":1e5}]}"#;
+        assert!(serde_json::from_str::<SoundingProfile>(no_latitude).is_err());
     }
 
     /// WMO-No. 8 (2023), Vol. I, p. 416: 30 km geometric is 29.7785 km of geopotential at the

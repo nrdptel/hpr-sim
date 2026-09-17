@@ -32,8 +32,9 @@
 //! through a measured temperature and pressure at one height, such as the launch site.
 //!
 //! **Outside −5 km to 86 km** the model extends the lowest layer downward and continues
-//! isothermally above 86 km, and flags every such sample as extrapolated. Above 86 km the real
-//! standard's temperature rises and its composition changes, so values there are rough.
+//! isothermally above 86 km, and flags every such sample as extrapolated. The real standard is
+//! also isothermal (186.87 K) from 86 to 91 km and warms above that, and its composition changes
+//! above 86 km, so pressure and density there are rough.
 
 use hpr_core::gravity::STANDARD_GRAVITY_MPS2;
 use hpr_core::interp::Side;
@@ -279,6 +280,12 @@ impl Ussa76 {
     /// The offset standard that passes through a measured kinetic `temperature_k` and
     /// `pressure_pa` at geometric `height_msl_m`: `ΔT` makes the temperature match there, and `P₀`
     /// scales the pressure profile to match. Launch-site conditions are the usual use.
+    ///
+    /// The offset holds all the way up, which a real hot or cold day does not: anchoring +20 K at
+    /// a 1400 m field (at the standard's field pressure) makes the air 5.7% thinner at 3 km but
+    /// 14% denser at 20 km and 30% denser at 30 km than the standard
+    /// (`validation/oracles/atmosphere/conventions.py`). For flights far above the field, prefer
+    /// a sounding.
     ///
     /// # Errors
     ///

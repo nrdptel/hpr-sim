@@ -20,9 +20,12 @@ M1.2 built `hpr-atmos` (ADR-004). Start M1.3 from these notes:
   level. The flight engine (M1.6) must subtract the geoid undulation from ellipsoidal height
   first.
 - **What M1.6 inherits:**
-  - `Ussa76` (with `anchored` for field conditions), `SoundingProfile` and `WindModel`.
-  - `GustField`, a precomputed Dryden realization. M1.6 picks its path coordinate (distance
-    through the air, or altitude) and how gusts start on the rail.
+  - `AtmosphereModel` (`Ussa76`, or a `SoundingProfile`, which needs the site latitude) and
+    `WindModel`. An anchored `Ussa76` holds its offset all the way up (+30% density at 30 km for
+    +20 K), so high flights want a sounding.
+  - `GustField`, a precomputed Dryden realization. M1.6 aligns its longitudinal component with
+    the flight path (not the horizontal wind), picks its path coordinate, and decides how gusts
+    start on the rail.
   - Use the moist density and speed of sound for dynamic pressure and Mach.
 - **For M2.1:**
   - RocketPy interpolates pressure linearly in height (up to 1.15% off between 700 and
@@ -45,7 +48,7 @@ M1.2 built `hpr-atmos` (ADR-004). Start M1.3 from these notes:
 
 ## Done log (newest first, keep about 15)
 
-- 2026-09-17: M1.2 Atmosphere and wind (PR #6): USSA76 matching its tables at 32 altitudes,
+- 2026-09-17: M1.2 Atmosphere and wind (PR #7): USSA76 matching its tables at 32 altitudes,
   offsets and field anchoring, moist air, sounding profiles, four wind models, exact Dryden
   turbulence with a PSD test, `hpr_core::random`, ADR-004, and five newly pinned sources.
 - 2026-09-17: M1.1 Core math, frames, Earth (PR #5): `Table1D`, quaternion kinematics, ENU and

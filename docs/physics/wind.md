@@ -29,8 +29,8 @@ Sources:
   - [TM] eq. 2.1 gives it for peak winds below 150 m, with `z_ref = 18.3 m`.
   - [TM] Table 2-1: `α = 0.2` for 7–22 m/s and 0.14 above 22 m/s. Eq. 2.22 gives `1/7` with
     `z_ref = 10 m` for strong 10 m winds.
-  - The exponents describe peak-wind profiles. For mean wind over open terrain, `1/7` is the
-    usual choice.
+  - The exponents describe peak-wind profiles, and [TM] eq. 2.22 uses `1/7` for strong 10 m
+    winds. Pick the exponent for the site; no single value fits mean winds everywhere.
   - Above the surface layer the law keeps growing, so pair it with measured winds aloft.
 - **`LogLawWind`:** `V = V_ref ln(z/z₀)/ln(z_ref/z₀)` for `z > z₀`, and zero from the ground to
   `z₀`.
@@ -42,6 +42,9 @@ Sources:
 - **`LayeredWind`:** speed and direction tabulated at heights, as from a sounding or forecast.
   - `SpeedDirection` (the default) interpolates speed linearly and turns the direction along
     the shorter arc. Exactly opposite directions veer clockwise. A turning wind keeps its speed.
+  - A calm level (speed 0) takes the other level's direction, because reports give calm as
+    "0 from 0°". Without that rule a wind growing out of calm would swing through a
+    meaningless direction and create a crosswind neither level has.
   - `Components` interpolates East and North linearly, as RocketPy does. Between levels 90°
     apart the speed dips by up to 29%.
   - Beyond the end levels the end wind is held and the sample is flagged.
@@ -67,8 +70,8 @@ M1.6 and M5.2 decide how the flight engine composes a surface law with levels al
   - Halfway between 4 m/s from 350° and 12 m/s from 30°, the wind is 8 m/s from 10°, turning
     through north.
   - There is no step just above the surface level.
-- **`components_interpolation_averages_the_vectors`** and
-  **`opposite_directions_turn_clockwise`**.
+- **`components_interpolation_averages_the_vectors`**, **`opposite_directions_turn_clockwise`**
+  and **`wind_grows_out_of_calm_without_turning`**.
 - **`layered_wind_holds_and_flags_beyond_its_levels`**.
 - **`meteorological_direction_convention`**, plus the power and log laws through their
   references, below ground, and at `z₀`.

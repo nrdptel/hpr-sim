@@ -425,7 +425,9 @@ impl Wind for LogLawWind {
 #[non_exhaustive]
 pub enum WindInterpolation {
     /// Speed linearly in height, and direction linearly along the shorter arc between the two
-    /// levels (clockwise when they are exactly opposite). A wind that veers keeps its speed.
+    /// levels (clockwise when they are exactly opposite). A wind that veers keeps its speed. A calm
+    /// level (speed 0, whose reported direction means nothing) takes the other level's direction,
+    /// so the wind grows out of calm without turning.
     #[default]
     SpeedDirection,
     /// The East and North components linearly in height, as RocketPy does. Speed dips between
@@ -561,14 +563,20 @@ impl Wind for LayeredWind {
         let velocity = match self.interpolation {
             WindInterpolation::SpeedDirection => {
                 let speed = a.speed_m_s + t * (b.speed_m_s - a.speed_m_s);
-                let mut turn = b.direction_from_rad - a.direction_from_rad;
+                // A calm level's direction is meaningless (reports give 0): use the other's.
+                let (from_a, from_b) = match (a.speed_m_s == 0.0, b.speed_m_s == 0.0) {
+                    (true, false) => (b.direction_from_rad, b.direction_from_rad),
+                    (false, true) => (a.direction_from_rad, a.direction_from_rad),
+                    _ => (a.direction_from_rad, b.direction_from_rad),
+                };
+                let mut turn = from_b - from_a;
                 // Shorter arc, in (−π, π]: exactly opposite winds turn clockwise.
                 if turn > PI {
                     turn -= TAU;
                 } else if turn <= -PI {
                     turn += TAU;
                 }
-                velocity_from_speed_direction(speed, a.direction_from_rad + t * turn)
+                velocity_from_speed_direction(speed, from_a + t * turn)
             }
             WindInterpolation::Components => {
                 let va = velocity_from_speed_direction(a.speed_m_s, a.direction_from_rad);
@@ -703,6 +711,35 @@ mod tests {
             speed_and_direction_from(polar.wind(50.0).unwrap().velocity_enu_m_s);
         assert!((speed - 10.0).abs() < 1e-12);
         assert!((direction - deg(315.0)).abs() < 1e-12);
+    }
+
+    /// A calm surface reported as "0 knots from 0°" does not make the wind turn on its way up to
+    /// the first level aloft: halfway to 10 m/s from the south it is 5 m/s from the south.
+    #[test]
+    fn wind_grows_out_of_calm_without_turning() {
+        for (calm_below, calm_height) in [(true, 0.0), (false, 1000.0)] {
+            let calm = WindLevel {
+                height_msl_m: calm_height,
+                speed_m_s: 0.0,
+                direction_from_rad: 0.0,
+            };
+            let windy = WindLevel {
+                height_msl_m: 1000.0 - calm_height,
+                speed_m_s: 10.0,
+                direction_from_rad: deg(180.0),
+            };
+            let levels = if calm_below {
+                vec![calm, windy]
+            } else {
+                vec![windy, calm]
+            };
+            let wind = LayeredWind::new(levels, WindInterpolation::SpeedDirection).unwrap();
+            assert_close(
+                wind.wind(500.0).unwrap().velocity_enu_m_s,
+                DVec3::new(0.0, 5.0, 0.0),
+                1e-12,
+            );
+        }
     }
 
     #[test]

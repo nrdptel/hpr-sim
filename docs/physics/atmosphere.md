@@ -50,8 +50,9 @@ a   = (γ R* T_M / M₀)^½                                (50)
   leave it out below 86 km and print `T = T_M` (p. 9). This model follows the equations, so its
   kinetic temperature there is up to 0.036%, and its viscosity up to 0.031%, below the print.
 - **Outside the range:** below −5 km the first layer continues, and above 86 km the atmosphere
-  is isothermal at 186.87 K. Both are flagged. The real standard warms above 86 km and changes
-  composition, so values there are rough, but the densities are tiny.
+  is isothermal at 186.87 K. Both are flagged. The real standard is also isothermal from 86 to
+  91 km, then warms, and its composition changes above 86 km. Pressure and density there are
+  rough, but tiny.
 - **Loft got this wrong** (lessons L2–L4):
   - It fed geometric altitude to geopotential formulas: at 11 km it gave 216.65 K and 22 632 Pa,
     against 216.774 K and 22 699.96 Pa.
@@ -70,6 +71,16 @@ aviation convention gives 289.95 K where this gives 288.65 K, and densities 0.38
 (`validation/oracles/atmosphere/conventions.py`). This choice keeps the lapse rate attached to
 height, like a sounding; see ADR-004.
 
+**An anchor's offset holds all the way up,** which a real hot or cold day doesn't. Anchoring
++20 K at a 1400 m field, at the standard's pressure there, gives these densities against the
+standard (`conventions.py`):
+
+| height | 3 km | 20 km | 30 km |
+|---|---|---|---|
+| density | −5.7% | +14% | +30% |
+
+Field conditions suit flights of a few kilometres; higher flights need a sounding.
+
 ## Moist air
 
 An ideal mixture of dry air (`M₀`, `γ = 1.4`) and water vapour (`M_v = 18.01528 kg/kmol`,
@@ -83,8 +94,9 @@ C_p    = (1 − x_v)(7/2) R* + x_v · 4 R*,   γ = C_p / (C_p − R*),   a = (γ
 ```
 
 - **Relative humidity** is taken with respect to liquid water at every temperature, as
-  radiosondes report it ([WMO] §12.1.2). No enhancement factor is applied: it would change `e` by
-  about 0.5% near the surface, which is under 0.01% of density.
+  radiosondes report it ([WMO] §12.1.2). No enhancement factor is applied. Near the surface it
+  would raise `e` by about 0.47%, which changes density by at most 0.013% (at 40 °C and
+  saturation), and less in cooler or drier air.
 - **Accuracy:**
   - Density agrees with CIPM-2007 (a real-gas equation) to 0.047% over its range: 15–27 °C,
     600–1100 hPa, dry to saturated. Ignoring humidity entirely is 0.4% off at 20 °C and 50% RH.
@@ -97,30 +109,45 @@ C_p    = (1 − x_v)(7/2) R* + x_v · 4 R*,   γ = C_p / (C_p − R*),   a = (γ
 
 ## Sounding and forecast profiles
 
-`SoundingProfile` takes levels of geometric height, temperature, optional pressure, optional
-relative humidity, and optional wind speed and direction. Humidity and wind are given on every
-level or on none.
+`SoundingProfile` takes the site's latitude and levels of geometric height, temperature, optional
+pressure, optional relative humidity, and optional wind speed and direction. Humidity and wind
+are given on every level or on none. A given pressure must be below the level beneath it, which
+catches hPa entered as Pa.
 
-- **Between levels,** interpolation runs in the standard's geopotential height `H`:
-  - `T` and `U` are linear in `H`.
+- **Gravity:** the profile works in WMO geopotential height `Z(z, φ)` ([WMO] eqs.
+  12.15–12.16), whose gravity is the normal gravity at the site's latitude.
+  - Surface gravity runs from 9.780 m/s² at the equator to 9.832 m/s² at the poles, ±0.27%
+    around the standard's `g₀`.
+  - Over 2 km at 293 K the same sounding's pressure falls 0.12% more at the pole than at the
+    equator.
+  - A latitude-free geopotential would leave errors of that size.
+- **Between levels,** interpolation runs in `Z`:
+  - `T` and `U` are linear in `Z`.
   - Pressure uses `ln P = ln P_i + ln(P_{i+1}/P_i) · ln(T/T_i)/ln(T_{i+1}/T_i)`, which is
-    exact for a dry hydrostatic layer with `T` linear in `H` and passes through both levels'
+    exact for a dry hydrostatic layer with `T` linear in `Z` and passes through both levels'
     pressures.
-  - Levels sampled from the standard reproduce it between them to 1e-12.
+  - Levels sampled from the standard at its geopotential levels reproduce it between them to
+    1e-12, at any latitude.
 - **Missing pressures** above the lowest level are filled hydrostatically, with virtual
-  temperature linear in `H` ([WMO] eqs. 12.17–12.18). A dry fill agrees with direct integration
-  to 1e-11. A humid fill agrees to 1.1e-5, because vapour pressure is exponential in `T` and so
-  not quite linear across the layer.
+  temperature linear in `Z` ([WMO] eqs. 12.17–12.18).
+  - A dry fill agrees with direct integration under WGS 84 normal gravity to 2e-8. The limit is
+    WMO's rounded surface gravity constants, 3–5e-8 low.
+  - A humid fill agrees to 1.1e-5, because vapour pressure is exponential in `T` and so not
+    quite linear across the layer.
 - **Beyond the levels** the profile continues as the standard atmosphere anchored at the end
-  level, and flags the sample:
+  level and evaluated at the same geopotential (so still with the local gravity), and flags the
+  sample:
   - Below, it holds relative humidity.
   - Above, it holds the vapour mole fraction, capped at saturation, so a humid top doesn't
     carry water into the cold stratosphere.
+  - The continued pressure is the dry standard's. It is hydrostatic for dry air, but in humid
+    air it falls up to `x_v(1 − M_v/M₀)` faster (1.6% of the gradient at 30 °C and
+    saturation).
 - **Geopotential heights.** Soundings (Wyoming's `HGHT`) and forecasts (Open-Meteo's
   `geopotential_height`) report geopotential metres above sea level. Convert them with
-  `geometric_from_wmo_geopotential_m`, which uses [WMO] eqs. 12.15–12.16 with latitude-dependent
-  normal gravity and radius. At 30 km that is 29.7785 km of geopotential at the equator and
-  29.932 km at 80° N. The standard's latitude-free `r₀` formula is only for the standard itself.
+  `geometric_from_wmo_geopotential_m`. At 30 km that is 29.7785 km of geopotential at the
+  equator and 29.932 km at 80° N. The standard's latitude-free `r₀` formula is only for the
+  standard itself.
 - **Loft lesson L5:** "today's conditions" kept the standard lapse from the field up, ignored
   humidity and never used sounding temperatures.
 
@@ -169,8 +196,10 @@ These are findings from reading `refs/rocketpy`, not yet pinned by fixtures:
   - Dry air equals the standard.
   - CIPM-2007 density to 0.05% at 36 points.
 - **`profile::tests`:**
-  - Standard levels are reproduced.
-  - Dry and humid fills match direct integration.
-  - The continuation beyond the levels.
+  - Standard levels are reproduced at 0°, 45° and 80°.
+  - Dry fills at 0°, 33° and 90°, and a humid fill, match direct integration under WGS 84 normal
+    gravity.
+  - Pressure falls faster at the pole.
+  - The continuation beyond the levels is hydrostatic when dry, with the humid shortfall pinned.
   - WMO geopotential values.
-  - Errors and serde.
+  - Errors (including rising pressures) and serde.

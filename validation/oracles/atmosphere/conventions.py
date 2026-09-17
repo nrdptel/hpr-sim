@@ -5,6 +5,8 @@
    aviation (ESDU 77022) convention offsets it at equal pressure altitude. Both are hydrostatic.
 2. How far pressure interpolated linearly in height (as RocketPy does) is from the hydrostatic
    pressure between standard pressure levels of the dry 1976 standard atmosphere.
+3. How an offset anchored at a launch site drifts from the standard aloft: +20 K at a 1400 m
+   field, at the standard's pressure there.
 
 Plain Python, from the 1976 standard's constants and layers (Table 4); shares no code with
 hpr-atmos. Run from the repository root:
@@ -68,6 +70,18 @@ def main():
             abs((a + (b - a) * k / 400) / standard(ha + (hb - ha) * k / 400)[1] - 1) for k in range(1, 400)
         )
         print(f"{a / 100:.0f} to {b / 100:.0f} hPa: linear-in-height pressure is off by up to {worst * 100:.2f}%")
+
+    r0 = 6356766.0
+    field = r0 * 1400.0 / (r0 + 1400.0)
+    _, p_field = standard(field)
+    _, p_unit = standard(field, 20.0, 1.0)
+    p0 = p_field / p_unit
+    for z in [3000.0, 20000.0, 30000.0]:
+        h1 = r0 * z / (r0 + z)
+        ts, ps = standard(h1)
+        ta, pa = standard(h1, 20.0, p0)
+        print(f"+20 K anchored at a 1400 m field: density at {z / 1000:.0f} km is "
+              f"{((pa / ta) / (ps / ts) - 1) * 100:+.1f}% against the standard")
 
 
 if __name__ == "__main__":

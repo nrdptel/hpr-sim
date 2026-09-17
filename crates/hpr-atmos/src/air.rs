@@ -99,7 +99,7 @@ mod tests {
             serde_json::from_str::<AtmosphereModel>(&json).unwrap(),
             standard
         );
-        let sounding = r#"{"model":"sounding","levels":[
+        let sounding = r#"{"model":"sounding","latitude_rad":0.6,"levels":[
             {"height_msl_m":0.0,"temperature_k":290.0,"pressure_pa":100000.0}]}"#;
         let model: AtmosphereModel = serde_json::from_str(sounding).unwrap();
         assert!(matches!(model, AtmosphereModel::Sounding(_)));
