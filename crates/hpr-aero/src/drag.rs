@@ -38,9 +38,11 @@ pub const LOW_REYNOLDS: f64 = 1.0e4;
 /// The skin-friction coefficient below [`LOW_REYNOLDS`] (Niskanen 2009 eq. 3.81).
 pub const LOW_REYNOLDS_FRICTION: f64 = 1.48e-2;
 
-/// The top of the subsonic region for which Niskanen's methods are stated, Mach 0.8 (Niskanen 2009
-/// Table 3.1, p. 19; the transonic method takes over there, p. 47). The buildup accepts Mach
-/// numbers up to 1 and flags results above this ([`Drag::beyond_subsonic_methods`]).
+/// The top of the subsonic region, Mach 0.8 (Niskanen 2009 Table 3.1, p. 19), where Niskanen's
+/// semi-empirical transonic method starts (p. 47). The buildup accepts Mach numbers up to 1 and
+/// flags results above this ([`Drag::beyond_subsonic_methods`]). The flag marks the region's edge,
+/// not the start of the error: without eq. 3.87's high-subsonic interpolation (M1.8), nose and
+/// shoulder pressure drag already reads low from about Mach 0.6.
 pub const SUBSONIC_MACH_LIMIT: f64 = 0.8;
 
 /// Checks a Mach number of any speed regime: finite and non-negative.
@@ -495,12 +497,13 @@ pub struct Drag {
     pub base: f64,
     /// Parasitic drag of launch lugs and rail buttons (eq. 3.95–3.96).
     pub parasitic: f64,
-    /// Set when an override table gave `C_D0` (the four parts are then zero): whether the lookup
-    /// extrapolated.
+    /// Set when an override table gave `C_D0` (the four parts are then zero): the lookup, on the
+    /// table's own reference area, and whether it extrapolated.
     pub table: Option<Lookup>,
-    /// Whether the buildup ran above [`SUBSONIC_MACH_LIMIT`], where Niskanen's subsonic methods
-    /// end: nose, shoulder and step pressure drag miss their transonic rise until M1.8, so `C_D0`
-    /// is low there. Never set with an override table.
+    /// Whether the buildup ran above [`SUBSONIC_MACH_LIMIT`], the top of Niskanen's subsonic
+    /// region. Nose, shoulder and step pressure drag miss their rise toward Mach 1 until M1.8, so
+    /// `C_D0` is low there (and somewhat low from about Mach 0.6). Never set with an override
+    /// table.
     pub beyond_subsonic_methods: bool,
 }
 

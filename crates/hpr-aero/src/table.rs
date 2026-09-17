@@ -211,7 +211,7 @@ pub fn parse_mach_csv(text: &str, column: Option<&str>) -> Result<Table1D, AeroE
             return Err(csv(n, format!("not finite: Mach {mach}, value {value}")));
         }
         if let (Some(&last), Some(&last_value)) = (xs.last(), ys.last()) {
-            // A repeated row is harmless; RocketPy's Cavour curve repeats its first one.
+            // An identical repeated row is harmless (RocketPy's Cavour curve has several).
             if mach == last && value == last_value {
                 continue;
             }

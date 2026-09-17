@@ -174,6 +174,10 @@
     (tighten this later).
   - Unit tests cover every drag term's limits.
 
+  *Result:* see M1.5a (the Recruiter's six-fin slopes, ADR-008) and M1.5b (Valetudo, ADR-009).
+  Skin friction is fully turbulent with roughness, as in Niskanen; laminar and transitional
+  friction were not built (ADR-009).
+
   - [x] **M1.5a Normal force and centre of pressure.**
     - Barrowman CNα and CP for every component with Prandtl–Glauert, body lift at angle of attack,
       fin–body interference, and the `aero.md` sections for them.
@@ -193,10 +197,9 @@
       (tighten this later).
     - Unit tests cover every drag term's limits.
 
-    *Result (ADR-009):* within 10% for Calisto, Juno III and Cavour power-off (+4.4%, −6.0%,
-    −8.3%) under a declared input rule, with documented gaps: Cavour power-on −18.3% (power-on base
-    relief differs from RASAero's) and Valetudo −47% and −50% (a table 1.44 times its own
-    OpenRocket export).
+    *Result (ADR-009):* not met for Valetudo (−47% power-off, −50% power-on; its table is 1.44 times
+    its own OpenRocket export, which hpr matches to 2%). Calisto, Juno III and Cavour are within
+    10% (+4.4%, −6.0%, −8.3%) under a declared input rule that can't pin the unrecorded inputs.
 
 - [ ] **M1.6 6-DOF flight engine.**
   - State: position, velocity, attitude quaternion, angular velocity, time-varying mass

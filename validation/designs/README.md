@@ -28,8 +28,9 @@ These are built from `validation/fixtures/design/rocketpy-rocket-mass.json`, whi
   - Parachutes are left out: RocketPy gives only their drag area.
 - **Drag inputs** (ADR-009):
   - Fins with a NACA 00xx airfoil in the example get an airfoil section that thick at the mean
-    aerodynamic chord. Juno III's fins take the rounded section its team published (a truncated
-    airfoil). The rest keep square 3 mm edges; a lift-curve airfoil says nothing about the edges.
+    aerodynamic chord. Juno III's fins take a rounded section, from its team's award citation for
+    an analysis of truncated-airfoil fins, at 3 mm. The rest keep square 3 mm edges; a lift-curve
+    airfoil says nothing about the edges.
   - The rockets whose curves RocketPy labels RASAero (both Calisto designs, Juno III, Cavour,
     Valetudo) take RASAero II's default smooth finish (`mirror`), because the exports don't record
     theirs. The others keep the default finish.

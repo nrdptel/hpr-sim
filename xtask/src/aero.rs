@@ -41,7 +41,10 @@ struct Case {
 }
 
 /// Every RocketPy example whose drag curve is labelled RASAero, power-off, and power-on where the
-/// example's power-on curve differs.
+/// power-on curve differs from the power-off curve at the comparison's Mach number. RASAero II
+/// without a nozzle exit diameter gives power-on equal to power-off: Calisto's curves are equal,
+/// Juno III's are one file, and Cavour's differ by 0.0001 at Mach 0.3 (and nowhere by more than
+/// 0.0005 from Mach 0.2 to 0.89), so only Valetudo's power-on curve is compared.
 const CASES: &[Case] = &[
     Case {
         id: "calisto-power-off",
@@ -81,15 +84,8 @@ const CASES: &[Case] = &[
         thrusting: false,
         variant_of: None,
         origin: "labelled RASAero II by RocketPy's Cavour notebook; a 3-decimal table from Mach \
-                 0.082 to 0.895 whose first row repeats",
-    },
-    Case {
-        id: "cavour-power-on",
-        design: "rocketpy-cavour.json",
-        curve: "data/rockets/polito/drag_coefficient_power_on.csv",
-        thrusting: true,
-        variant_of: None,
-        origin: "the power-on companion of the Cavour table, up to 0.013 below it",
+                 0.082 to 0.895 that repeats 13 Mach numbers up to 0.107 over 22 rows, 7 of them \
+                 with values 0.001 apart; its power-on table equals it within 0.0005 from Mach 0.2",
     },
     Case {
         id: "valetudo-power-off",
@@ -213,8 +209,8 @@ fn generate(root: &Path) -> Result<Value, String> {
 
 /// The curve's text with every row whose Mach number repeats the previous row's dropped, and how
 /// many were dropped. `parse_mach_csv` refuses a repeated Mach number with another value; Cavour's
-/// curve rounds its Mach numbers to three decimals and repeats seven of them below Mach 0.1 with
-/// values 0.001 apart, far from the comparison. Unparseable rows are kept for the parser to report.
+/// curve rounds its Mach numbers to three decimals and repeats 13 of them up to Mach 0.107 (7 with
+/// values 0.001 apart), far from the comparison. Unparseable rows are kept for the parser to report.
 fn first_row_per_mach(text: &str) -> (String, usize) {
     let mut kept = String::new();
     let mut last: Option<String> = None;

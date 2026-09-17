@@ -546,11 +546,11 @@ fn rocketpy_design(case: &Value, catalog: &Catalog) -> Result<Rocket, String> {
     })
 }
 
-/// Fin cross-sections published for an example's rocket outside RocketPy, by case name, with the
-/// source. Juno III's team describes "aletas com perfil de aerofólio truncado" (fins with a
-/// truncated airfoil profile, <https://www.projetojupiter.com/foguetes>): a rounded leading edge
-/// and a blunt trailing edge, which Niskanen's rounded section (half the base drag) represents
-/// better than the airfoil section (none).
+/// Fin cross-sections published for an example's rocket outside RocketPy, by case name. Juno III's
+/// team was cited for "análise de aletas com perfil de aerofólio truncado", an analysis of
+/// truncated-airfoil fins (<https://www.projetojupiter.com/foguetes>): a rounded leading edge and a
+/// blunt trailing edge, which Niskanen's rounded section (half the base drag) represents better than
+/// the airfoil section (none). The citation gives no thickness, so the placeholder stays.
 const PUBLISHED_FIN_SECTIONS: &[(&str, FinCrossSection)] =
     &[("juno-iii", FinCrossSection::Rounded)];
 

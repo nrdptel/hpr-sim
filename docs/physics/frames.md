@@ -66,7 +66,9 @@ converted before use. `docs/physics/geodesy.md` gives the conversions.
   airflow, with `θ₀` the set's base angle.
 - **Force directions.** With `ŵ = (cos φ, sin φ, 0)` the lateral air direction in `B`, the normal
   and side forces are `q A_ref (C_N ŵ + C_Y (z_B × ŵ))`: `C_N` is positive along `ŵ`, the way the
-  crossing air pushes the body, and `C_Y` is across the flow's plane (`docs/physics/aero.md`).
+  crossing air pushes the body, and `C_Y` is across the flow's plane (`docs/physics/aero.md`). The
+  axial force is `−q A_ref C_A z_B`: `C_A` is positive when the flow meets the nose and drag pushes
+  toward the tail, and negative past `α = 90°`, when the rocket moves tail first.
 
 ## Attitude
 

@@ -171,9 +171,9 @@ parasitic term on its own area. The axial coefficient is `C_A = C_D0 f(α)`.
   angle is `atan(dr/dx)` at the aft end, `±π/2` where a curved transition ends in a blunt tip.
 - **Base drag under power** subtracts the thrusting motors' cross-section from the aft base, down
   to zero ([N09] p. 50: "if the base is the same size as the motor itself, no base drag"; L13).
-  `DragConditions::thrusting(reynolds_per_m, motor_area_m2)` takes the case area of the burning
-  motors from the flight engine (zero when unknown: no relief). The base belongs to the last body
-  component.
+  `DragConditions::thrusting(reynolds_per_m, motor_area_m2)` takes the cross-section of the
+  burning motors from the flight engine (zero when unknown: no relief). The base belongs to the
+  last body component.
 - **Fins.** Each fin set is its own term with its own thickness, chord and cross-section, so their
   order doesn't matter (L11). `c̄` is the mean aerodynamic chord and `Γ_L` the leading-edge sweep:
   `atan(x_t/s)` for a trapezoid, the span average for freeform outlines ([N09] p. 50), and for an
@@ -210,12 +210,14 @@ parasitic term on its own area. The axial coefficient is `C_A = C_D0 f(α)`.
 
 - The buildup refuses `M ≥ 1` until M1.8, like the normal force. The term functions are defined to
   any Mach number and stay finite to Mach 5 (tested), for M1.8 to build on.
-- **Above Mach 0.8 the drag is low, and flagged.** [N09]'s subsonic methods stop at Mach 0.8
-  (Table 3.1). Eq. 3.87 then raises nose and shoulder pressure drag toward appendix B's transonic
-  values: closed forms for cones and ogives, Stoney's data (NASA TR-R-100) for other shapes. That
-  arrives with M1.8; until then pressure drag is held at its low-subsonic value, and
-  `Drag::beyond_subsonic_methods` is set above Mach 0.8. A 3:1 cone's pressure drag would gain
-  about 0.05 by Mach 0.9, and flat faces and steps would rise from 0.80 toward 1.04.
+- **High subsonic drag is low; above Mach 0.8 it is flagged.** [N09] eq. 3.87 interpolates nose
+  and shoulder pressure drag from its Mach 0 value (eq. 3.86) to appendix B's value and slope at
+  Mach 1: closed forms for cones and ogives, Stoney's data (NASA TR-R-100) for other shapes. That
+  arrives with M1.8; until then pressure drag is held at its low-subsonic value, so it reads low
+  from about Mach 0.6. A 3:1 tangent ogive misses 0.006 at Mach 0.7 and 0.021 at 0.8 (4–5% of
+  `C_D0`), a 2:1 cone 0.037 at 0.8, a 3:1 cone about 0.05 at 0.9, and flat faces and steps would
+  rise from 0.80 toward 1.04. `Drag::beyond_subsonic_methods` marks the top of [N09]'s subsonic region,
+  Mach 0.8 (Table 3.1), not the start of the error.
 - Nothing models laminar flow, fin-tip vortices, interference drag, fin tabs, fillets, canted fins
   or the flow a boattail guides into the base ([N09] p. 51).
 
@@ -298,7 +300,6 @@ parasitic term on its own area. The axial coefficient is `C_A = C_D0 f(α)`.
   | Calisto, getting-started fins (variant) | the same | 0.3537 | −7.3% | −12.9% to +19.3% |
   | Juno III | labelled RASAero II, 3-decimal table | 0.3525 | −6.0% | −10.5% to +24.1% |
   | Cavour, power-off | labelled RASAero II, 3-decimal table | 0.5034 | −8.3% | −22.3% to −0.4% |
-  | **Cavour, power-on (outside 10%)** | the same, power-on | 0.4487 | **−18.3%** | −32.2% to −10.3% |
   | **Valetudo, power-off (outside 10%)** | labelled RASAero, 3-decimal table | 0.5566 | **−47.0%** | −59.4% to −42.5% |
   | **Valetudo, power-on (outside 10%)** | the same, power-on | 0.5189 | **−50.4%** | −62.8% to −45.9% |
 
@@ -306,16 +307,19 @@ parasitic term on its own area. The axial coefficient is `C_A = C_D0 f(α)`.
     - RASAero II's default smooth finish.
     - A NACA 00xx airfoil file in the example gives an airfoil section that thick at the mean
       aerodynamic chord (Calisto's getting-started fins).
-    - A section the team published is used: Juno III's truncated airfoil, taken as rounded.
+    - A published section is used: Juno III's team won a technical award for "análise de aletas
+      com perfil de aerofólio truncado" (an analysis of truncated-airfoil fins), taken as rounded
+      at the placeholder thickness; the citation gives no thickness.
     - Otherwise the placeholder, square 3 mm (Calisto's 2018 fins, Cavour, Valetudo).
     - Rail buttons are as RocketPy defines them (without them, Calisto is +1.8%).
   - **Sensitivity.** The range is over square, rounded and airfoil fins (3 mm, or 12% for the
     airfoil), 0 or 20 µm, and with or without rail buttons. Before the published-section rule, square
     fins gave Juno III +14.6% and the getting-started Calisto +10.7%. The check places hpr near
     RASAero's subsonic drag under a declared rule; without the inputs it can't show agreement to 10%.
-  - **Power-on.** Subtracting the motor's area ([N09] p. 50) removes 42% of Cavour's base drag and
-    29% of Valetudo's at Mach 0.3; their tables drop 0.0001 and 0.004. That difference in method,
-    not an input, puts Cavour's power-on case outside. M2.1's flights will test it.
+  - **Power-on.** Only Valetudo's power-on table differs from its power-off table at Mach 0.3 (by
+    0.004), so only it is compared. Subtracting the motor's area ([N09] p. 50) removes 29% of
+    Valetudo's base drag (0.038), about nine times the table's relief. The designs' motor
+    diameter is the larger of the grain and nozzle exit diameters, since RocketPy gives no case.
   - **Valetudo.** Its table (1.05) is 1.44 times the OpenRocket export for the same rocket (0.728).
     With that file's own inputs (60 µm, two 14 mm × 30 mm lugs, 3 mm square fins), hpr gives
     0.714, 1.9% under the OpenRocket export and 32% under the table.
@@ -323,6 +327,11 @@ parasitic term on its own area. The axial coefficient is `C_A = C_D0 f(α)`.
     - Calisto's power-on curve, which equals its power-off curve (no nozzle exit diameter in
       RASAero).
     - Juno III's power-on drag, which RocketPy takes from the same file.
+    - Cavour's power-on curve, within 0.0005 of its power-off curve from Mach 0.2 to 0.89 (0.0001
+      at 0.3), as RASAero gives without a nozzle exit diameter; whether one was entered isn't
+      recorded. hpr would be −18.3% from it with the design's 67 mm motor (the nozzle exit),
+      −14.8% with 54 mm, −20.8% with the example's 75 mm motor, and −8.3% with no relief.
+      Calisto's power-on would be −5.0%.
     - The other examples, whose drag is a constant, CFD or of unknown origin.
 - **Loft lessons.**
   - L11: `drag::tests::drag_invariant_to_fin_set_order`
