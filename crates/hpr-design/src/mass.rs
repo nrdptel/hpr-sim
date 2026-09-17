@@ -755,7 +755,14 @@ mod tests {
             let about = body.inertia_about(DVec3::new(0.3, -0.2, 1.0));
             let delta = MassProperties { inertia_kg_m2: about - body.inertia_kg_m2, ..body };
             let extra = delta.principal_moments_kg_m2();
-            proptest::prop_assert!(extra[0] >= -1e-12 * a[2]);
+            // `delta` is m(|d|² 1 − d dᵀ), with an exact zero eigenvalue along d: its rounding is
+            // relative to the tensor's own size, which can dwarf the body's moments (#20).
+            let size = delta
+                .inertia_kg_m2
+                .to_cols_array()
+                .iter()
+                .fold(a[2], |m, v| m.max(v.abs()));
+            proptest::prop_assert!(extra[0] >= -1e-12 * size);
         }
     }
 
