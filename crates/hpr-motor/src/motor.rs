@@ -153,16 +153,20 @@ pub struct MotorState {
 /// The effective exhaust velocity `c = I/m_p` a solid motor's curve and propellant mass have to
 /// imply, m/s.
 ///
-/// Chemistry sets the scale: black powder is about 800 m/s (`I_sp` ≈ 80 s) and APCP 2,000 to
-/// 2,500 m/s. Measured over the 1,710 ThrustCurve.org simulator files hpr's M1.3 survey parsed,
-/// `c` runs 297 to 10,111 m/s with a median of 1,851 m/s, 90% of them between 1,041 and 2,192 m/s
-/// (`docs/physics/motor.md`).
+/// Measured over the 1,708 ThrustCurve.org simulator files with both a parsed impulse and a
+/// catalog propellant mass — the mass [`crate::CatalogMotor::motor`] uses, which prefers the
+/// metadata over the curve file's header — `c` runs 236 to 3,031 m/s, with a median of 1,867 and
+/// 90% of them between 928 and 2,210 (`docs/physics/motor.md`). The bulk is APCP; the tail below
+/// about 900 m/s is black powder, read low because Estes and Quest count the delay grain and the
+/// ejection charge as propellant.
 ///
-/// This range is deliberately far wider than that spread, because it is not a judgement about
-/// propellant: it is there to catch a units slip, which moves `c` by a factor of 1,000. Of the
-/// 1,710 files it rejects exactly one, a J motor claiming 836 N·s from 83 g, which no chemical
-/// propellant can do. Tightening it to 300–4,000 m/s would also reject two certified A motors
-/// whose propellant mass is recorded to 0.1 g, where the rounding alone is ±10%.
+/// **The bound rejects none of those 1,708.** It is not a filter on propellant: it is there to
+/// catch a units slip, which moves `c` by a factor of 1,000 — the worked example in
+/// [`SolidMotor::from_envelope`]'s test lands at 1.8 m/s. The headroom is real but not enormous at
+/// the low end (the lowest catalog entry is 1.2x above the floor, the highest 1.65x below the
+/// ceiling), and a 1/8A whose recorded propellant mass is mostly delay grain could fall through
+/// the floor; issue #11 records the fallback, which is to apply the bound only above a couple of
+/// grams.
 pub const EXHAUST_VELOCITY_RANGE_M_S: std::ops::RangeInclusive<f64> = 200.0..=5000.0;
 
 impl SolidMotor {
@@ -527,19 +531,45 @@ mod tests {
         let ten_times = SolidMotor::new(i175, Propellant::Column(column), dry, None)
             .expect_err("ten times the propellant for the same impulse");
         assert!(
-            matches!(&ten_times, MotorError::Inconsistent(message)
-                if message.contains("179.6") || message.contains("exhaust velocity")),
+            // 425.5 N·s over 2.289 kg is 185.9 m/s, just under the floor.
+            matches!(&ten_times, MotorError::Inconsistent(message) if message.contains("185.8")),
             "{ten_times}"
         );
 
-        // Every bundled motor passes it, which is the check's other half: the range has to be one
-        // real motors live inside. `bundled::tests` builds all 32; this pins the extremes of the
-        // measured spread (`docs/physics/motor.md`): 689 m/s for a black-powder C, 2,645 m/s for
-        // a K, against a range of 200 to 5,000.
-        assert!(EXHAUST_VELOCITY_RANGE_M_S.contains(&689.0));
-        assert!(EXHAUST_VELOCITY_RANGE_M_S.contains(&2645.0));
-        assert!(!EXHAUST_VELOCITY_RANGE_M_S.contains(&10_111.0));
         assert!(!EXHAUST_VELOCITY_RANGE_M_S.contains(&1.8));
+    }
+
+    #[test]
+    fn every_bundled_motor_is_inside_the_range() {
+        // The check's other half: a bound real motors fall outside is a bug, not a check. This
+        // builds all 32 rather than asserting a remembered pair of numbers — the doc's figures
+        // came out of the catalog's stored impulse once, which is not what the check divides.
+        let catalog = crate::Catalog::bundled().expect("the bundled catalog parses");
+        let mut lowest = f64::INFINITY;
+        let mut highest: f64 = 0.0;
+        let (mut low_name, mut high_name) = (String::new(), String::new());
+        for entry in &catalog.motors {
+            let motor = entry
+                .bundled_motor()
+                .unwrap_or_else(|error| panic!("{}: {error}", entry.designation));
+            let c = motor.curve().total_impulse_ns() / motor.propellant_mass_kg(0.0);
+            assert!(
+                EXHAUST_VELOCITY_RANGE_M_S.contains(&c),
+                "{}: c = {c} m/s",
+                entry.designation
+            );
+            if c < lowest {
+                lowest = c;
+                low_name = entry.common_name.clone();
+            }
+            if c > highest {
+                highest = c;
+                high_name = entry.common_name.clone();
+            }
+        }
+        // `docs/physics/motor.md` quotes these; they are measured here so the doc cannot drift.
+        assert!((lowest - 689.78).abs() < 0.01, "{low_name} at {lowest}");
+        assert!((highest - 2651.64).abs() < 0.01, "{high_name} at {highest}");
     }
 
     #[test]
