@@ -178,6 +178,36 @@ dest = "refs/papers/rocksim-rse-spec.pdf"
 license = "unknown terms"
 mode = "fetched"
 
+# NGA serves the standard from a PHP download endpoint; the bytes matched every archive.org capture
+# from 2021-07 to 2026-07. If NGA moves it, the immutable capture is
+# https://web.archive.org/web/20230321131228id_/https://earth-info.nga.mil/php/download.php?file=coord-wgs84
+[[file]]
+name = "wgs84-nga-stnd-0036"
+title = "NGA.STND.0036_1.0.0_WGS84, Department of Defense World Geodetic System 1984, Its Definition and Relationships with Local Geodetic Systems, 2014"
+url = "https://earth-info.nga.mil/php/download.php?file=coord-wgs84"
+sha256 = "5edc1cf7411d4df01cae5205ee19f661265c45a55cca60b9351f6ae5abade512"
+dest = "refs/papers/nga-stnd-0036-wgs84.pdf"
+license = "US government work"
+mode = "fetched"
+
+[[file]]
+name = "karney-2011-geodesics"
+title = "C. F. F. Karney, Geodesics on an ellipsoid of revolution, arXiv:1102.1215v1, 2011"
+url = "https://arxiv.org/pdf/1102.1215v1"
+sha256 = "39995ffb715906861becd18b66248b73b7fac97b611dd4b9002c604353aefc8d"
+dest = "refs/papers/karney-2011-geodesics-arxiv-1102.1215v1.pdf"
+license = "arXiv non-exclusive license"
+mode = "fetched"
+
+[[file]]
+name = "sola-2017-quaternion-kinematics"
+title = "J. Solà, Quaternion kinematics for the error-state Kalman filter, arXiv:1711.02508v1, 2017"
+url = "https://arxiv.org/pdf/1711.02508v1"
+sha256 = "6a3d3d3933c425eb6cef049290c2b48b71a90f5189e9810575d83d3a922faaca"
+dest = "refs/papers/sola-2017-quaternion-kinematics.pdf"
+license = "CC BY-NC-SA 4.0"
+mode = "fetched"
+
 # Snapshots of live APIs, pinned by the sha256 of one dated capture. The APIs change (the motor
 # finder hourly), so a fresh fetch elsewhere may not reproduce these bytes: fetch then fails and
 # keeps the new capture aside, and `fetch --adopt-snapshots` repins to it.
@@ -250,6 +280,7 @@ checks = [
     { module = "rocketpy", version = "1.13.0" },
     { module = "orhelper", version = "0.1.5" },
     { module = "jpype" },
+    { module = "mpmath", version = "1.3.0" },
 ]
 
 # The OpenRocket oracle's runtime. `doctor` looks in JAVA_HOME, /usr/libexec/java_home (macOS),

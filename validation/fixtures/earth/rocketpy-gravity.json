@@ -1,0 +1,54 @@
+{
+  "oracle": "rocketpy 1.13.0",
+  "generator": "validation/oracles/rocketpy/gravity.py",
+  "cases": [
+    {
+      "latitude_deg": 0.0,
+      "height_m": 0.0,
+      "formula_mps2": 9.7803253359,
+      "flight_mps2": 9.7803253359
+    },
+    {
+      "latitude_deg": 45.0,
+      "height_m": 0.0,
+      "formula_mps2": 9.806197769373473,
+      "flight_mps2": 9.806197769373473
+    },
+    {
+      "latitude_deg": 90.0,
+      "height_m": 0.0,
+      "formula_mps2": 9.832184937859486,
+      "flight_mps2": 9.832184937859486
+    },
+    {
+      "latitude_deg": 32.99,
+      "height_m": 1400.0,
+      "formula_mps2": 9.791332883241857,
+      "flight_mps2": 9.791332876610461
+    },
+    {
+      "latitude_deg": -33.9,
+      "height_m": 300.0,
+      "formula_mps2": 9.795482830387119,
+      "flight_mps2": 9.795482876684897
+    },
+    {
+      "latitude_deg": 60.0,
+      "height_m": 10000.0,
+      "formula_mps2": 9.788404652318235,
+      "flight_mps2": 9.788404652318242
+    },
+    {
+      "latitude_deg": 28.5,
+      "height_m": 30000.0,
+      "formula_mps2": 9.700140841160172,
+      "flight_mps2": 9.700140841160174
+    },
+    {
+      "latitude_deg": 45.0,
+      "height_m": 100000.0,
+      "formula_mps2": 9.504874468341399,
+      "flight_mps2": 9.563982073028948
+    }
+  ]
+}
