@@ -7,6 +7,8 @@
 * no force-adding the private reference library (refs/, corpus/), and no committing any file whose
   bytes match a file in the private loft-fixtures corpus
 * no `gh pr merge` unless every CI check on the PR has passed, and never with --admin
+* no fetching OpenRocket's GPL source code (clean room). Its release assets (the jar, the thesis and
+  technical-documentation PDFs) and other repos such as openrocket-database stay allowed
 
 Exit code 2 blocks the call, and stderr goes back to Claude as the reason. Any internal error
 exits 0 so a bug in this guard never wedges a run; the settings.json deny rules are
@@ -40,6 +42,20 @@ TRACE_PATTERNS = [
     r"noreply@anthropic",
     r"\bclaude\b",
 ]
+
+
+# OpenRocket's source repository, in the forms a fetch names it. Release downloads
+# (github.com/openrocket/openrocket/releases/...) don't match, and neither do sibling repos such as
+# openrocket-database, because the repo name must end at a slash, `.git` or the end of the token.
+GPL_SOURCE = re.compile(
+    r"raw\.githubusercontent\.com/openrocket/openrocket/"
+    r"|github\.com/openrocket/openrocket/(?:blob|tree|raw|archive|commits?|zipball|tarball)/"
+    r"|github\.com[:/]openrocket/openrocket(?:\.git)?/?$"
+    r"|repos/openrocket/openrocket/(?:contents|zipball|tarball|git|commits|readme)"
+    r"|^openrocket/openrocket(?:\.git)?$",
+    re.IGNORECASE,
+)
+FETCHERS = {"curl", "wget", "git", "gh", "svn", "http", "https", "xh", "aria2c"}
 
 
 def block(reason: str) -> None:
@@ -221,6 +237,9 @@ def check_pr_merge(args: list[str], cwd: str) -> None:
 
 
 def check_segment(tokens: list[str], cwd: str, raw: str, state: dict) -> None:
+    if tokens and os.path.basename(tokens[0]) in FETCHERS and any(GPL_SOURCE.search(t) for t in tokens[1:]):
+        block("That fetches OpenRocket's GPL source code, which this clean-room project never reads (CLAUDE.md hard rule 3). "
+              "Use its published docs, or run the pinned jar as an oracle.")
     for t in tokens:
         m = re.match(r"^(?:user\.(?:name|email)|GIT_(?:AUTHOR|COMMITTER)_(?:NAME|EMAIL))=(.*)$", t)
         if m and m.group(1) not in (APPROVED_NAME, APPROVED_EMAIL):

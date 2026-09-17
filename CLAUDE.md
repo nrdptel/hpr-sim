@@ -139,6 +139,10 @@ At the start of every session, read these in order. They are short on purpose; k
 
 - **Keep the main context lean.** Use subagents (Explore/general-purpose) for broad reading and web
   research, and have them return conclusions, not dumps.
+- **A subagent's finding is a claim** until you reproduce it (run the command, read the cited
+  line). Only then act on it or record it as fact.
+- **Defects outside the current milestone** become GitHub issues in this repo, never a markdown
+  ledger. A wrong number in merged physics is the exception: fix it first, test first.
 - **Use dynamic workflows** for work that really fans out: validation sweeps across many cases,
   multi-angle reviews, porting many file formats in parallel. Name the size you need. Don't run
   workflows for small edits.

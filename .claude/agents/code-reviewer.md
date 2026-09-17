@@ -34,7 +34,8 @@ Look for, in order of importance:
    - Is anything feature-gated incorrectly?
    - Could a pure crate end up with I/O, or fail to compile for wasm32?
 4. **Tests:** is new behavior tested, including edge cases, and do the tests assert on meaningful
-   values?
+   values? A test that re-implements the formula or unit conversion it checks, instead of calling
+   the library and comparing with independent numbers, proves nothing.
 5. **Hygiene:**
    - Dead code, needless clones or allocations in hot loops.
    - Dependency additions without justification.
