@@ -9,7 +9,9 @@
 //!
 //! - splits on `-` and `,`, dropping empty pieces with a warning;
 //! - reads `P` (either case), `100` and `1000` as [`Delay::Plugged`];
-//! - reads other numbers as [`Delay::Seconds`], and flags `0` as ambiguous.
+//! - reads `0` as [`Delay::ZeroOrPlugged`], with a warning, so that it can't become an ejection at
+//!   burnout without a decision;
+//! - reads other numbers as [`Delay::Seconds`].
 //!
 //! The raw string stays in the file model so writers reproduce it exactly; physics should prefer
 //! the catalog's delays.
@@ -18,13 +20,19 @@ use serde::{Deserialize, Serialize};
 
 use crate::text::WarningKind;
 
-/// One available delay setting.
+/// One available delay setting. Serialized with a `kind` tag and the seconds as `value`:
+/// `{"kind":"seconds","value":6.0}`, `{"kind":"plugged"}`.
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+#[serde(tag = "kind", content = "value", rename_all = "snake_case")]
+#[non_exhaustive]
 pub enum Delay {
-    /// The ejection charge fires this many seconds after burnout.
+    /// The ejection charge fires this many seconds after burnout (positive).
     Seconds(f64),
     /// No ejection charge: the forward closure is plugged.
     Plugged,
+    /// A `0`: the RASP spec means an ejection charge at burnout, but most files mean plugged
+    /// (`docs/format/eng.md`). The user or the catalog has to settle which.
+    ZeroOrPlugged,
 }
 
 /// A delay string read into settings.
@@ -33,7 +41,8 @@ pub struct DelayList {
     /// The settings in the order written (some files list them longest first).
     pub delays: Vec<Delay>,
     /// Problems found while reading: an empty or unreadable piece ([`WarningKind::Dropped`], and
-    /// left out of `delays`), or an ambiguous `0` ([`WarningKind::Unusual`]).
+    /// left out of `delays`), or an ambiguous `0` ([`WarningKind::Unusual`], kept as
+    /// [`Delay::ZeroOrPlugged`]).
     pub warnings: Vec<DelayWarning>,
 }
 
@@ -68,16 +77,17 @@ impl DelayList {
                     Ok(marker) if marker == 100.0 || marker == 1000.0 => {
                         delays.push(Delay::Plugged)
                     }
-                    Ok(seconds) if seconds.is_finite() && seconds >= 0.0 => {
-                        if seconds == 0.0 {
-                            warnings.push(DelayWarning {
-                                kind: WarningKind::Unusual,
-                                message: format!(
+                    Ok(0.0) => {
+                        warnings.push(DelayWarning {
+                            kind: WarningKind::Unusual,
+                            message: format!(
                                 "delay 0 in {raw:?} is ambiguous: the RASP spec means an ejection \
                                  charge with no delay, but files mostly mean plugged"
-                                ),
-                            });
-                        }
+                            ),
+                        });
+                        delays.push(Delay::ZeroOrPlugged);
+                    }
+                    Ok(seconds) if seconds.is_finite() && seconds > 0.0 => {
                         delays.push(Delay::Seconds(seconds));
                     }
                     _ => warnings.push(DelayWarning {
@@ -90,7 +100,7 @@ impl DelayList {
         Self { delays, warnings }
     }
 
-    /// Whether any setting is plugged.
+    /// Whether any setting is plugged ([`Delay::Plugged`]; an ambiguous `0` doesn't count).
     pub fn has_plugged(&self) -> bool {
         self.delays.contains(&Delay::Plugged)
     }
@@ -125,6 +135,17 @@ mod tests {
     }
 
     #[test]
+    fn serde_form_is_tagged() {
+        let delays = [Delay::Seconds(6.0), Delay::Plugged, Delay::ZeroOrPlugged];
+        let json = serde_json::to_string(&delays).unwrap();
+        assert_eq!(
+            json,
+            r#"[{"kind":"seconds","value":6.0},{"kind":"plugged"},{"kind":"zero_or_plugged"}]"#
+        );
+        assert_eq!(serde_json::from_str::<Vec<Delay>>(&json).unwrap(), delays);
+    }
+
+    #[test]
     fn malformed_pieces_are_dropped_with_warnings() {
         let list = DelayList::parse("4-7-10,");
         assert_eq!(list.delays.len(), 3);
@@ -139,9 +160,11 @@ mod tests {
         assert!(list.delays.is_empty());
         assert_eq!(list.warnings.len(), 3);
         let list = DelayList::parse("0");
-        assert_eq!(list.delays, [Delay::Seconds(0.0)]);
+        assert_eq!(list.delays, [Delay::ZeroOrPlugged]);
+        assert!(!list.has_plugged());
         assert_eq!(list.warnings.len(), 1);
         assert_eq!(list.warnings[0].kind, WarningKind::Unusual);
+        assert_eq!(DelayList::parse("0.0-6").delays[0], Delay::ZeroOrPlugged);
         assert_eq!(DelayList::parse("x").warnings[0].kind, WarningKind::Dropped);
     }
 }

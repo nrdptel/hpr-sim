@@ -381,7 +381,8 @@ Several choices had no single right answer (`docs/physics/motor.md`).
   SP-8039 shows `I_sp` drifting within a burn), recorded as such.
 - **Propellant layout:** a fixed-shape column (the default, RocketPy's `GenericMotor` model) or
   BATES grains. The grain regression is solved exactly in burned mass instead of RocketPy's ODE in
-  time. Motor mass, centre and inertias agree with RocketPy within 7.9e-5 relative.
+  time. Motor mass and inertias agree with RocketPy within 7.9e-5 relative, and the centre of
+  mass within 5.8e-6 of the motor length.
 - **Envelope default:** from a catalog entry alone, the propellant is a solid column and the dry
   mass a thin tube, both over the full length and centred. Crude, and documented as such; motors
   with data use `SolidMotor::new`. Catalog metadata overrides the curve file's header.
@@ -391,14 +392,18 @@ Several choices had no single right answer (`docs/physics/motor.md`).
   average thrust on 17 of 1710 survey files, all with repeated times.
 - **Grains** need a bore: a solid end burner isn't a BATES grain, and its regression differs.
 - **Ambient pressure:** the full-flow term `(p_ref − p_a) A_e` applies strictly inside the burn,
-  as in RocketPy's flight, and only where the curve's thrust is positive. It steps to zero at burnout and overstates tail-off thrust (about 1% of
+  as in RocketPy's flight, and only where the curve's thrust is positive. `p_ref`, the test site's
+  pressure, is stored with the nozzle, since files don't record it. The term steps in after
+  ignition and to zero at burnout, and overstates tail-off thrust (about 1% of
   impulse in vacuum for a 38 mm reload with a known exit); COTS data gives no exit diameter, so
   it is off by default.
 - **File models:** `.eng` and `.rse` keep the file's units and points exactly, so read-write-read
   cycles are bit-exact. Readers are lenient and return warnings; writers refuse anything the
   reader would read differently. Readers take `&str`; decoding bytes is `hpr-io`'s job.
-- **Delays:** the raw string is kept; `P`, `100` and `1000` read as plugged, `0` is flagged as
-  ambiguous.
+- **Delays:** the raw string is kept; `P`, `100` and `1000` read as plugged, and `0` reads as its
+  own ambiguous "zero or plugged" setting, never as an ejection at burnout.
+- **Curve end:** the thrust is zero from the last sample's instant on, so thrust, mass flow and
+  propellant agree at burnout. The motor's dry mass must be positive.
 - **Bundled catalog:** only curves ThrustCurve marks public domain, whose total impulse, burn time
   and average thrust each match ThrustCurve's stored values within 1%. That is 32 curves from B to
   O. Of 554 public-domain curves, 196 pass, so the rule leaves out 358. Most miss on burn time or

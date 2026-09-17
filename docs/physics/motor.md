@@ -28,7 +28,9 @@ Sources:
 
 - Samples `(t_i, F_i)` joined by straight lines, as [RP] reads them (`interpolation_method`
   `"linear"`). Before the first sample the curve starts from `(0, 0)` when `t_0 > 0`, as the RASP
-  format specifies and [TC-A] integrates. After the last sample `F = 0`.
+  format specifies and [TC-A] integrates. From the last sample on `F = 0`, that instant included:
+  like any step, the end takes the later value, so at burnout the thrust, the mass flow and the
+  propellant left are all zero together.
 - Equal consecutive times are a **step**: the later value holds from that time on. Real files use
   them for an abrupt burnout. Decreasing times and negative thrust are rejected, and so is a curve
   with no impulse or no NFPA burn time.
@@ -103,7 +105,8 @@ c = I / m_p0,    ṁ(t) = F(t) / c,    m_p(t) = m_p0 (1 − I(t)/I)
 ## The whole motor
 
 - **Dry mass** (case, closures, liner, nozzle) is one element: mass, centre and inertias about its
-  own centre. `with_added_dry_mass` joins more hardware, such as a retainer.
+  own centre. `with_added_dry_mass` joins more hardware, such as a retainer. It must be positive:
+  at burnout it is the whole motor, and with no mass it has no centre.
 - The motor is the dry mass and the propellant combined about the instantaneous centre with the
   parallel-axis theorem: `z = Σ m_k z_k / m`, `I_a = Σ I_a,k`,
   `I_t = Σ (I_t,k + m_k (z_k − z)²)`. This is [RP] `Motor.I_11` (`motor.py:585-666`).
@@ -134,21 +137,28 @@ F(p_a) = F_curve + (p_ref − p_a) A_e,    A_e = π r_e²
 
 - [SP] doesn't print this conversion; it follows from eq. 2. [RP] `Motor.pressure_thrust`
   (`motor.py:1173-1191`) applies the same term.
+- `p_ref` is the ambient pressure at the static test site, stored with the nozzle
+  (`Nozzle::reference_pressure_pa`). Motor files and catalogs don't record it, so standard
+  sea-level pressure (101 325 Pa) is only a stand-in. For a test at 1500 m elevation (84.6 kPa
+  in the 1976 standard atmosphere), the stand-in makes the term 16.8 kPa × `A_e` too large at
+  every altitude.
 - It holds while the nozzle flows full. Sea-level tests of altitude nozzles can separate
   ([SP] pp. 32–34).
 - hpr applies it strictly inside the burn, `0 < t < t_end`, as RocketPy's flight does
   (`simulation/flight.py:1936-1956`), but only where the curve's thrust is positive (RocketPy also
   adds it inside zero-thrust gaps, where nothing flows), and never lets thrust go negative. Without a known nozzle it
   returns the curve. COTS files carry no exit diameter (`.rse` `exitDia` is always 0).
-- **Limits.** The full-flow term steps to zero at `t_end` (the integrator should treat burnout as
-  an event). In the tail-off the real exit pressure falls with the chamber's, so the term
+- **Limits.** The full-flow term steps in just after ignition and steps to zero at `t_end` (the
+  integrator should treat both as events). In the ignition transient and the tail-off the real exit pressure falls with the chamber's, so the term
   overstates thrust there: on the 411I175 (a 9.5 mm exit) in vacuum it adds 3.9 N·s in the 0.14 s
   after the NFPA burn ends, which delivers 0.45 N·s itself; that is 0.95% of total impulse.
 
 ## Delays
 
 [TC-G] lists every achievable delay, adjustable ones included. Plugged motors are `P`. See
-`hpr_motor::delay` and `docs/format/eng.md` for the markers files use.
+`hpr_motor::delay` and `docs/format/eng.md` for the markers files use. A `0` is read as its own
+"zero or plugged" setting, because the RASP spec says it means ejection at burnout but most files
+mean plugged; it never becomes an ejection event without a decision.
 
 ## Validation
 
@@ -167,8 +177,8 @@ F(p_a) = F_curve + (p_ref − p_a) A_e,    A_e = π r_e²
   bundled curves with BATES loads cover radial burnout, axial burnout, inhibited ends and both
   axis orientations. `validation/oracles/rocketpy/solid_motor.py` writes
   `validation/fixtures/motor/rocketpy-solid-motor.json`, and regenerates it byte for byte.
-  - On 203 times per motor, total mass, centre of mass, `I_t` and `I_a` agree with RocketPy within
-    7.9e-5 of RocketPy's own values.
+  - On 203 times per motor, total mass, `I_t` and `I_a` agree with RocketPy within 7.9e-5 of
+    RocketPy's own values, and the centre of mass within 5.8e-6 of the motor length.
   - Quantities that go to zero are compared against a fixed scale: propellant mass and inertias
     against their ignition values, grain height against its initial height, centres against the
     motor length. On that scale they agree within 1e-4. Relative to their own tiny values in the

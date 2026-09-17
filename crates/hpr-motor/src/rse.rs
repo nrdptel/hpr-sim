@@ -117,13 +117,14 @@ impl RseEngine {
 ///
 /// # Errors
 ///
-/// [`MotorError::Syntax`], with the line number, for XML that isn't well formed (or has a DTD), or
-/// no `<engine>` elements; and, when no engine reads, the first engine's error: a missing required
+/// [`MotorError::Syntax`], with the line number, for XML that isn't well formed (or has a DTD),
+/// elements nested more than [`MAX_ELEMENT_DEPTH`] deep, or no `<engine>` elements; and, when no engine reads, the first engine's error: a missing required
 /// attribute (`code`, `dia`, `len`, `initWt`, `propWt`), an unreadable or non-finite number, a
 /// non-positive diameter or length, a negative mass, fewer than two points, a point without `t`
 /// or `f`, or negative or decreasing time.
 pub fn parse(text: &str) -> Result<Parsed<RseFile>, MotorError> {
     let text = text.strip_prefix('\u{feff}').unwrap_or(text);
+    check_nesting(text)?;
     let options = ParsingOptions {
         allow_dtd: false,
         ..ParsingOptions::default()
@@ -599,7 +600,8 @@ fn points(
     Ok(points)
 }
 
-/// Warnings about a curve's end, its delays, and summary attributes that disagree with the curve.
+/// Warnings about a curve's end, its delays, a hybrid motor, and summary attributes that disagree
+/// with the curve.
 fn summary_warnings(engine: &RseEngine, line: usize, warnings: &mut Vec<ParseWarning>) {
     let mut warn = |kind: WarningKind, message: String| {
         warnings.push(ParseWarning::new(
@@ -610,6 +612,18 @@ fn summary_warnings(engine: &RseEngine, line: usize, warnings: &mut Vec<ParseWar
     };
     for warning in engine.delays().warnings {
         warn(warning.kind, warning.message);
+    }
+    if engine
+        .motor_type
+        .as_deref()
+        .is_some_and(|kind| kind.trim().eq_ignore_ascii_case("hybrid"))
+    {
+        warn(
+            WarningKind::Unusual,
+            "a hybrid motor: hpr models solid motors only, and a `SolidMotor` built from this \
+             curve would be wrong"
+                .into(),
+        );
     }
     if let Some(last) = engine.points.last()
         && last.thrust_n != 0.0
@@ -678,6 +692,85 @@ fn syntax(line: usize, message: String) -> MotorError {
     }
 }
 
+/// The deepest element nesting [`parse`] accepts. Real files nest five deep (`<engine-database>`,
+/// `<engine-list>`, `<engine>`, `<data>`, `<eng-data>`).
+///
+/// The XML parser descends into nested elements recursively, and a stack overflow aborts the
+/// process rather than panicking, so a hostile or corrupt file must be refused before parsing.
+/// Measured on macOS aarch64: a debug build uses about 15 KB of stack per level (48 levels fit in
+/// 1 MB, the wasm32 default, and 64 don't), a release build under 1 KB.
+pub const MAX_ELEMENT_DEPTH: usize = 32;
+
+/// Refuses elements nested more than [`MAX_ELEMENT_DEPTH`] deep, scanning the text without
+/// recursion.
+///
+/// The count is exact for well-formed XML: comments, CDATA sections, processing instructions and
+/// declarations are skipped, a `>` inside a quoted attribute doesn't end a tag, and `<a/>` doesn't
+/// nest. On malformed text it may count too many levels but never too few before the point where
+/// the parser stops: a `<` ends a tag even inside quotes (it can't appear there in XML).
+fn check_nesting(text: &str) -> Result<(), MotorError> {
+    let bytes = text.as_bytes();
+    let find = |from: usize, needle: &[u8]| {
+        bytes[from..]
+            .windows(needle.len())
+            .position(|window| window == needle)
+            .map_or(bytes.len(), |at| from + at + needle.len())
+    };
+    let mut depth = 0_usize;
+    let mut i = 0;
+    while let Some(offset) = bytes[i..].iter().position(|&b| b == b'<') {
+        let start = i + offset;
+        let rest = &bytes[start..];
+        i = if rest.starts_with(b"<!--") {
+            find(start + 4, b"-->")
+        } else if rest.starts_with(b"<![CDATA[") {
+            find(start + 9, b"]]>")
+        } else if rest.starts_with(b"<?") {
+            find(start + 2, b"?>")
+        } else if rest.starts_with(b"<!") || rest.starts_with(b"</") {
+            if rest[1] == b'/' {
+                depth = depth.saturating_sub(1);
+            }
+            find(start + 2, b">")
+        } else {
+            let mut quote = None;
+            let mut end = bytes.len();
+            let mut self_closing = false;
+            for (j, &b) in bytes.iter().enumerate().skip(start + 1) {
+                match (quote, b) {
+                    (_, b'<') => {
+                        end = j;
+                        break;
+                    }
+                    (None, b'"' | b'\'') => quote = Some(b),
+                    (Some(open), _) if b == open => quote = None,
+                    (None, b'>') => {
+                        self_closing = bytes[j - 1] == b'/';
+                        end = j + 1;
+                        break;
+                    }
+                    _ => {}
+                }
+            }
+            if !self_closing {
+                depth += 1;
+                if depth > MAX_ELEMENT_DEPTH {
+                    let line = bytes[..start].iter().filter(|&&b| b == b'\n').count() + 1;
+                    return Err(syntax(
+                        line,
+                        format!("elements nested more than {MAX_ELEMENT_DEPTH} deep"),
+                    ));
+                }
+            }
+            end
+        };
+        if i >= bytes.len() {
+            break;
+        }
+    }
+    Ok(())
+}
+
 #[cfg(test)]
 pub(crate) mod tests {
     use proptest::prelude::*;
@@ -704,6 +797,49 @@ pub(crate) mod tests {
     </engine>
   </engine-list>
 </engine-database>"#;
+
+    #[test]
+    fn deep_nesting_is_refused_before_the_xml_parser_recurses() {
+        // Unchecked, 100,000 levels overflow any test thread's stack inside the XML parser, in
+        // debug and release builds alike, and abort the test process; the scan refuses them
+        // without recursing.
+        let deep = |n: usize| format!("{}{}", "<a>".repeat(n), "</a>".repeat(n));
+        let result = parse(&deep(100_000));
+        assert!(
+            matches!(&result, Err(MotorError::Syntax { line: 1, message, .. })
+                if message.contains("nested")),
+            "{result:?}"
+        );
+
+        // The sample nests four deep; wrapping it to exactly the limit still reads, and one more
+        // level is refused on the line where it opens.
+        let body = SAMPLE.split_once('\n').unwrap().1;
+        let inner = body.strip_suffix("</engine-database>").unwrap();
+        let wrapped = |extra: usize| {
+            format!(
+                "<engine-database>{}\n{inner}{}</engine-database>",
+                "<!-- <x> --><x a='>'><y/>".repeat(extra),
+                "</x>".repeat(extra)
+            )
+        };
+        let at_limit = wrapped(MAX_ELEMENT_DEPTH - 4);
+        assert_eq!(parse(&at_limit).unwrap().value.engines.len(), 1);
+        let comments_line = at_limit
+            .lines()
+            .position(|l| l.contains("<comments>"))
+            .unwrap()
+            + 1;
+        assert!(matches!(
+            parse(&wrapped(MAX_ELEMENT_DEPTH - 3)),
+            Err(MotorError::Syntax { line, .. }) if line == comments_line
+        ));
+        // A CDATA section, comment or processing instruction full of tags doesn't count.
+        let hidden = format!(
+            "<?xml version='1.0'?><!-- {0} --><engine-database><![CDATA[{0}]]><?pi {0}?>\n{body}",
+            "<a>".repeat(100)
+        );
+        assert_eq!(parse(&hidden).unwrap().value.engines.len(), 1);
+    }
 
     #[test]
     fn reads_the_observed_layout() {
@@ -927,6 +1063,24 @@ pub(crate) mod tests {
                 .all(|p| p.mass_g.is_none())
         );
         assert_eq!(parsed.warnings.len(), 1);
+    }
+
+    #[test]
+    fn a_hybrid_is_read_with_a_warning() {
+        let hybrid = |kind: &str| {
+            format!(
+                r#"<engine code="H" mfg="X" Type="{kind}" dia="38" len="300" initWt="900" propWt="200"><data>
+                <eng-data t="0" f="0"/><eng-data t="0.5" f="200"/><eng-data t="1" f="0"/>
+                </data></engine>"#
+            )
+        };
+        let parsed = parse(&hybrid(" Hybrid")).unwrap();
+        assert_eq!(parsed.value.engines.len(), 1);
+        assert!(matches!(
+            parsed.warnings.as_slice(),
+            [w] if w.kind == WarningKind::Unusual && w.message.contains("hybrid")
+        ));
+        assert!(parse(&hybrid("reloadable")).unwrap().warnings.is_empty());
     }
 
     #[test]

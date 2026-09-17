@@ -287,15 +287,30 @@ impl CatalogMotor {
     ///
     /// # Errors
     ///
+    /// - [`MotorError::Inconsistent`] if `curve` is not one of this motor's curves, or the file
+    ///   doesn't hold exactly one motor.
     /// - The format's parse error ([`eng::parse`], [`rse::parse`]).
-    /// - [`MotorError::Inconsistent`] if the file doesn't hold exactly one motor.
     /// - [`ThrustCurve::new`]'s errors.
     pub fn thrust_curve(
         &self,
         curve: &CatalogCurve,
         text: &str,
     ) -> Result<ThrustCurve, MotorError> {
+        self.check_own(curve)?;
         read_curve_file(curve, text).map(|(thrust, _, _)| thrust)
+    }
+
+    /// Refuses a curve listed under another motor, which would pair this motor's masses and
+    /// envelope with the wrong thrust.
+    fn check_own(&self, curve: &CatalogCurve) -> Result<(), MotorError> {
+        if self.curves.contains(curve) {
+            Ok(())
+        } else {
+            Err(MotorError::Inconsistent(format!(
+                "curve {} is not one of {}'s curves",
+                curve.simfile_id, self.designation
+            )))
+        }
     }
 
     /// The motor with the curve read from `text`, built with [`SolidMotor::from_envelope`] from
@@ -306,7 +321,8 @@ impl CatalogMotor {
     ///
     /// As [`CatalogMotor::thrust_curve`] and [`SolidMotor::from_envelope`], and
     /// [`MotorError::Inconsistent`] for a hybrid (hpr models solids only) or when neither the
-    /// metadata nor the file gives the masses.
+    /// metadata nor the file gives the masses. The text is not checked against the curve's SHA-256:
+    /// pass the file the curve names.
     pub fn motor(&self, curve: &CatalogCurve, text: &str) -> Result<SolidMotor, MotorError> {
         if self.motor_type == MotorType::Hybrid {
             return Err(MotorError::Inconsistent(format!(
@@ -314,6 +330,7 @@ impl CatalogMotor {
                 self.designation
             )));
         }
+        self.check_own(curve)?;
         let (thrust, header_propellant_kg, header_total_kg) = read_curve_file(curve, text)?;
         let propellant_kg = self
             .propellant_mass_g
@@ -552,6 +569,20 @@ mod tests {
         let hybrid = Catalog::from_json(&hybrid).unwrap();
         assert_eq!(hybrid.motors[0].motor_type, MotorType::Hybrid);
         assert!(hybrid.motors[0].bundled_motor().is_err());
+    }
+
+    #[test]
+    fn a_curve_of_another_motor_is_refused() {
+        let catalog = Catalog::bundled().unwrap();
+        let (this, other) = (&catalog.motors[0], &catalog.motors[1]);
+        let curve = &other.curves[0];
+        let text = bundled_curve_text(&curve.file).unwrap();
+        assert!(other.motor(curve, text).is_ok());
+        assert!(matches!(
+            this.motor(curve, text),
+            Err(MotorError::Inconsistent(message)) if message.contains(&curve.simfile_id)
+        ));
+        assert!(this.thrust_curve(curve, text).is_err());
     }
 
     #[derive(Debug, serde::Deserialize)]

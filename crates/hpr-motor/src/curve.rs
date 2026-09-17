@@ -151,7 +151,7 @@ impl ThrustCurve {
         &self.thrusts_n
     }
 
-    /// The last sample time, s. The thrust is zero from here on.
+    /// The last sample time, s. The thrust is zero from here on, this instant included.
     pub fn end_time_s(&self) -> f64 {
         self.times_s.last().copied().unwrap_or(0.0)
     }
@@ -167,7 +167,10 @@ impl ThrustCurve {
     }
 
     /// The thrust at time `t` (s after ignition), N: linear between samples, zero before ignition
-    /// and after the last sample. A NaN time gives NaN.
+    /// and from the last sample on. A NaN time gives NaN.
+    ///
+    /// Like any step, the end of the curve takes the later value at its own instant: a curve that
+    /// ends above zero thrust gives zero at its last sample time, when all the propellant is gone.
     pub fn thrust_n(&self, t: f64) -> f64 {
         if t.is_nan() {
             return f64::NAN;
@@ -178,7 +181,6 @@ impl ThrustCurve {
                 let (f0, f1) = (self.thrusts_n[i], self.thrusts_n[i + 1]);
                 f0 + (f1 - f0) * (t - t0) / (t1 - t0)
             }
-            None if t == self.end_time_s() => self.thrusts_n.last().copied().unwrap_or(0.0),
             None => 0.0,
         }
     }
@@ -321,7 +323,9 @@ mod tests {
         // A curve that ends above 5% of peak ends its burn at the last sample.
         let cut = ThrustCurve::new(vec![0.0, 1.0], vec![20.0, 20.0]).unwrap();
         assert_eq!(cut.burn_window_s(), (0.0, 1.0));
-        assert_eq!(cut.thrust_n(1.0), 20.0);
+        // It holds its thrust up to the end and steps to zero there, with the propellant gone.
+        assert_eq!(cut.thrust_n(1.0 - 1e-12), 20.0);
+        assert_eq!(cut.thrust_n(1.0), 0.0);
     }
 
     #[test]
@@ -446,8 +450,8 @@ mod tests {
         }
     }
 
-    /// The thrust approaching `t` from the left, which differs from [`ThrustCurve::thrust_n`] only
-    /// at the last sample.
+    /// The thrust approaching `t` from the left. The generated curves have no steps, so this
+    /// differs from [`ThrustCurve::thrust_n`] only from the last sample on.
     fn right(curve: &ThrustCurve, t: f64) -> f64 {
         if t >= curve.end_time_s() {
             curve.thrusts_n().last().copied().unwrap_or(0.0)

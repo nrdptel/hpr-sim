@@ -129,7 +129,8 @@ pub fn parse(text: &str) -> Result<Parsed<EngFile>, MotorError> {
                 2 => {
                     add_point(&mut entry, &fields, line).map(|()| State::Points(entry, header_line))
                 }
-                n if n >= 7 => {
+                // A header starts with the motor's name; a line of numbers is a corrupt point.
+                n if n >= 7 && fields[0].parse::<f64>().is_err() => {
                     match finish(entry, header_line, &mut warnings) {
                         Ok(entry) => entries.push(entry),
                         Err(error) => errors.push(error),
@@ -540,6 +541,24 @@ C6 18 70 0-3-5-7 .0108 0.0231 E
             .map(|w| w.line)
             .collect();
         assert_eq!(skipped, [4, 11]);
+
+        // A corrupt data line of seven numbers is not a header for a motor named "0.2": its entry
+        // is skipped, and reading resumes at the next comment.
+        let text = "A1 18 70 3 0.003 0.016 X\n 0.1 1\n 0.2 5 1 2 3 4 5\n 0.3 0\n;\nB4 18 70 4 0.006 0.02 X\n 0.1 2\n 0.3 0\n";
+        let parsed = parse(text).unwrap();
+        let names: Vec<&str> = parsed
+            .value
+            .entries
+            .iter()
+            .map(|e| e.name.as_str())
+            .collect();
+        assert_eq!(names, ["B4"]);
+        assert!(
+            parsed
+                .warnings
+                .iter()
+                .any(|w| w.line == 3 && w.kind == WarningKind::Skipped)
+        );
     }
 
     #[test]

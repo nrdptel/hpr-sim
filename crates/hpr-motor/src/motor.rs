@@ -35,7 +35,11 @@ use crate::error::MotorError;
 use crate::grains::BatesGrains;
 use crate::mass::MassElement;
 
-/// Standard sea-level pressure, Pa: the usual reference for a static test's thrust curve.
+/// Standard sea-level pressure (US Standard Atmosphere 1976), Pa.
+///
+/// A thrust curve's reference pressure is the ambient pressure where the motor was static-tested,
+/// which motor files and catalogs don't record; this value is only a stand-in when the test site's
+/// pressure is unknown.
 pub const STANDARD_SEA_LEVEL_PRESSURE_PA: f64 = 101_325.0;
 
 /// A propellant charge of fixed shape whose density falls as it burns.
@@ -55,7 +59,9 @@ pub struct PropellantColumn {
 
 /// How the propellant is laid out and how its shape evolves. Serialized with a `model` tag
 /// (`"column"`, `"grains"`).
-#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+///
+/// Not `Copy`, so that a later model can hold tabulated data.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(tag = "model", rename_all = "snake_case")]
 #[non_exhaustive]
 pub enum Propellant {
@@ -72,6 +78,9 @@ pub struct Nozzle {
     pub exit_radius_m: f64,
     /// Throat radius, m, when known (informational: the thrust curve already carries its effect).
     pub throat_radius_m: Option<f64>,
+    /// The ambient pressure the thrust curve was measured at, Pa: the static test site's. Motor
+    /// files don't record it; [`STANDARD_SEA_LEVEL_PRESSURE_PA`] is a stand-in when it's unknown.
+    pub reference_pressure_pa: f64,
 }
 
 impl Nozzle {
@@ -82,6 +91,10 @@ impl Nozzle {
 }
 
 /// A solid rocket motor.
+///
+/// Nothing here can tell a hybrid's thrust curve from a solid's, so the checks are at the edges:
+/// [`crate::catalog::CatalogMotor::motor`] refuses hybrids and the `.rse` reader warns about them
+/// (`.eng` files don't say).
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(try_from = "MotorData", into = "MotorData")]
 pub struct SolidMotor {
@@ -143,9 +156,11 @@ impl SolidMotor {
     ///
     /// # Errors
     ///
-    /// - [`MotorError::Domain`] for a negative or non-finite dry mass or inertia, a non-finite
+    /// - [`MotorError::Domain`] for a non-positive or non-finite dry mass (the motor at burnout,
+    ///   whose centre of mass needs some mass), a negative or non-finite dry inertia, a non-finite
     ///   position, a column with non-positive mass, radius or length, a nozzle with a non-positive
-    ///   exit radius, or a throat radius outside `(0, exit radius]`.
+    ///   exit radius, a throat radius outside `(0, exit radius]`, or a negative or non-finite
+    ///   reference pressure.
     /// - [`MotorError::Inconsistent`] for a column bore at least as wide as the column, or bad
     ///   grain geometry ([`BatesGrains::validate`]).
     pub fn new(
@@ -160,6 +175,12 @@ impl SolidMotor {
             "dry axial inertia (kg·m²)",
             "dry transverse inertia (kg·m²)",
         ])?;
+        if dry.mass_kg <= 0.0 {
+            return Err(MotorError::Domain {
+                what: "dry mass (kg), which must be positive",
+                value: dry.mass_kg,
+            });
+        }
         let propellant_mass_kg = match &propellant {
             Propellant::Column(column) => {
                 for (value, what) in [
@@ -211,6 +232,12 @@ impl SolidMotor {
                     value: throat,
                 });
             }
+            if !(nozzle.reference_pressure_pa.is_finite() && nozzle.reference_pressure_pa >= 0.0) {
+                return Err(MotorError::Domain {
+                    what: "thrust-curve reference pressure (Pa)",
+                    value: nozzle.reference_pressure_pa,
+                });
+            }
         }
         Ok(Self {
             curve,
@@ -235,7 +262,8 @@ impl SolidMotor {
     /// # Errors
     ///
     /// [`MotorError::Domain`] for a non-positive or non-finite dimension or propellant mass, and
-    /// [`MotorError::Inconsistent`] when the propellant mass exceeds the loaded mass.
+    /// [`MotorError::Inconsistent`] when the propellant mass is not below the loaded mass (the
+    /// motor would weigh nothing at burnout).
     pub fn from_envelope(
         curve: ThrustCurve,
         diameter_m: f64,
@@ -253,9 +281,10 @@ impl SolidMotor {
                 return Err(MotorError::Domain { what, value });
             }
         }
-        if propellant_mass_kg > loaded_mass_kg {
+        if propellant_mass_kg >= loaded_mass_kg {
             return Err(MotorError::Inconsistent(format!(
-                "propellant mass {propellant_mass_kg} kg exceeds the loaded mass {loaded_mass_kg} kg"
+                "propellant mass {propellant_mass_kg} kg is not below the loaded mass \
+                 {loaded_mass_kg} kg"
             )));
         }
         let radius = 0.5 * diameter_m;
@@ -362,21 +391,24 @@ impl SolidMotor {
         }
     }
 
-    /// The thrust at `t` with ambient pressure `ambient_pa`, for a curve measured at
-    /// `reference_pa`: `F + (p_ref − p_a) A_e` strictly inside the burn (`0 < t < t_end`, as
+    /// The thrust at `t` with ambient pressure `ambient_pa`, N: `F + (p_ref − p_a) A_e`, with the
+    /// nozzle's [`Nozzle::reference_pressure_pa`], strictly inside the burn (`0 < t < t_end`, as
     /// RocketPy's flight applies it) where the curve's thrust is positive, never below zero; the
-    /// curve's thrust elsewhere, and without a nozzle. NaN inputs give NaN.
+    /// curve's thrust elsewhere, and without a nozzle. A NaN time gives NaN, and so does a NaN
+    /// ambient pressure where the term applies.
     ///
-    /// The term is the full-flow value throughout, so it steps to zero at `t_end`, and in the
-    /// tail-off, where a real nozzle's exit pressure falls with the chamber's, it overstates the
-    /// thrust (`docs/physics/motor.md`).
-    pub fn thrust_at_pressure_n(&self, t: f64, ambient_pa: f64, reference_pa: f64) -> f64 {
+    /// The term is the full-flow value throughout, so the thrust steps by it just after ignition
+    /// and again at `t_end` (both events for an integrator), and in the ignition transient and the
+    /// tail-off, where a real nozzle's exit pressure is far from its full-flow value, it misstates
+    /// the thrust (`docs/physics/motor.md`).
+    pub fn thrust_at_pressure_n(&self, t: f64, ambient_pa: f64) -> f64 {
         let thrust = self.curve.thrust_n(t);
         match self.nozzle {
             Some(nozzle)
                 if t > 0.0 && t < self.curve.end_time_s() && (thrust > 0.0 || thrust.is_nan()) =>
             {
-                let corrected = thrust + (reference_pa - ambient_pa) * nozzle.exit_area_m2();
+                let corrected =
+                    thrust + (nozzle.reference_pressure_pa - ambient_pa) * nozzle.exit_area_m2();
                 if corrected.is_nan() {
                     corrected
                 } else {
@@ -426,6 +458,21 @@ mod tests {
     }
 
     #[test]
+    fn a_curve_ending_above_zero_is_empty_and_silent_at_its_end() {
+        let cut = ThrustCurve::new(vec![0.0, 1.0], vec![20.0, 20.0]).unwrap();
+        let motor = SolidMotor::from_envelope(cut, 0.038, 0.25, 0.2, 0.5).unwrap();
+        let before = motor.state(1.0 - 1e-9);
+        assert_eq!(before.thrust_n, 20.0);
+        assert!(before.mass_flow_kg_s > 0.0 && before.propellant.mass_kg > 0.0);
+        let end = motor.state(motor.burnout_time_s());
+        assert_eq!(
+            (end.thrust_n, end.mass_flow_kg_s, end.propellant.mass_kg),
+            (0.0, 0.0, 0.0)
+        );
+        assert_eq!(end.total.mass_kg, 0.3);
+    }
+
+    #[test]
     fn envelope_defaults_are_centred_tubes_and_columns() {
         let motor = SolidMotor::from_envelope(curve(), 0.038, 0.25, 0.3, 0.6).unwrap();
         let loaded = motor.state(0.0);
@@ -439,7 +486,7 @@ mod tests {
         assert!((loaded.total.transverse_inertia_kg_m2 - (dry_t + prop_t)).abs() < 1e-15);
         assert!(motor.nozzle().is_none());
         assert_eq!(
-            motor.thrust_at_pressure_n(0.5, 0.0, 101_325.0),
+            motor.thrust_at_pressure_n(0.5, 0.0),
             motor.curve().thrust_n(0.5)
         );
     }
@@ -457,29 +504,35 @@ mod tests {
         let nozzle = Nozzle {
             exit_radius_m: 0.01,
             throat_radius_m: Some(0.004),
+            reference_pressure_pa: STANDARD_SEA_LEVEL_PRESSURE_PA,
         };
         let motor =
             SolidMotor::new(curve(), Propellant::Column(column), dry, Some(nozzle)).unwrap();
         let area = PI * 1e-4;
         let f = motor.curve().thrust_n(0.5);
-        let vacuum = motor.thrust_at_pressure_n(0.5, 0.0, STANDARD_SEA_LEVEL_PRESSURE_PA);
+        let vacuum = motor.thrust_at_pressure_n(0.5, 0.0);
         assert!((vacuum - (f + 101_325.0 * area)).abs() < 1e-9);
-        assert_eq!(motor.thrust_at_pressure_n(0.5, 101_325.0, 101_325.0), f);
-        assert_eq!(motor.thrust_at_pressure_n(2.0, 0.0, 101_325.0), 0.0);
-        assert_eq!(motor.thrust_at_pressure_n(0.001, 1e9, 0.0), 0.0);
+        assert_eq!(motor.thrust_at_pressure_n(0.5, 101_325.0), f);
+        assert_eq!(motor.thrust_at_pressure_n(2.0, 0.0), 0.0);
+        assert_eq!(motor.thrust_at_pressure_n(0.001, 1e9), 0.0);
+        // The curve's own reference pressure is used: tested at altitude, it gains less in vacuum.
+        let high = SolidMotor::new(
+            curve(),
+            Propellant::Column(column),
+            dry,
+            Some(Nozzle {
+                reference_pressure_pa: 80_000.0,
+                ..nozzle
+            }),
+        )
+        .unwrap();
+        assert!((high.thrust_at_pressure_n(0.5, 0.0) - (f + 80_000.0 * area)).abs() < 1e-9);
+        assert!((high.thrust_at_pressure_n(0.5, 101_325.0) - (f - 21_325.0 * area)).abs() < 1e-9);
         // Only strictly inside the burn: nothing is added at ignition or at the last sample.
-        assert_eq!(motor.thrust_at_pressure_n(0.0, 0.0, 101_325.0), 0.0);
-        assert_eq!(motor.thrust_at_pressure_n(1.2, 0.0, 101_325.0), 0.0);
-        assert!(
-            motor
-                .thrust_at_pressure_n(0.5, f64::NAN, 101_325.0)
-                .is_nan()
-        );
-        assert!(
-            motor
-                .thrust_at_pressure_n(f64::NAN, 0.0, 101_325.0)
-                .is_nan()
-        );
+        assert_eq!(motor.thrust_at_pressure_n(0.0, 0.0), 0.0);
+        assert_eq!(motor.thrust_at_pressure_n(1.2, 0.0), 0.0);
+        assert!(motor.thrust_at_pressure_n(0.5, f64::NAN).is_nan());
+        assert!(motor.thrust_at_pressure_n(f64::NAN, 0.0).is_nan());
         // A NaN time gives NaN mass properties, for columns and grains alike.
         let state = motor.state(f64::NAN);
         assert!(state.total.mass_kg.is_nan() && state.propellant.mass_kg.is_nan());
@@ -491,8 +544,8 @@ mod tests {
         )
         .unwrap();
         let gapped = SolidMotor::new(gap, Propellant::Column(column), dry, Some(nozzle)).unwrap();
-        assert_eq!(gapped.thrust_at_pressure_n(1.5, 0.0, 101_325.0), 0.0);
-        assert!(gapped.thrust_at_pressure_n(2.5, 0.0, 101_325.0) > gapped.curve().thrust_n(2.5));
+        assert_eq!(gapped.thrust_at_pressure_n(1.5, 0.0), 0.0);
+        assert!(gapped.thrust_at_pressure_n(2.5, 0.0) > gapped.curve().thrust_n(2.5));
     }
 
     #[test]
@@ -553,15 +606,32 @@ mod tests {
             )
             .is_err()
         );
-        let nozzle = |exit, throat| {
+        // No dry mass: nothing would be left at burnout to have a centre of mass.
+        assert!(
+            build(
+                column,
+                MassElement {
+                    mass_kg: 0.0,
+                    ..dry
+                },
+                None
+            )
+            .is_err()
+        );
+        let nozzle = |exit, throat, reference| {
             Some(Nozzle {
                 exit_radius_m: exit,
                 throat_radius_m: throat,
+                reference_pressure_pa: reference,
             })
         };
-        assert!(build(column, dry, nozzle(0.0, None)).is_err());
-        assert!(build(column, dry, nozzle(0.01, Some(0.02))).is_err());
+        assert!(build(column, dry, nozzle(0.01, Some(0.004), 101_325.0)).is_ok());
+        assert!(build(column, dry, nozzle(0.0, None, 101_325.0)).is_err());
+        assert!(build(column, dry, nozzle(0.01, Some(0.02), 101_325.0)).is_err());
+        assert!(build(column, dry, nozzle(0.01, None, -1.0)).is_err());
+        assert!(build(column, dry, nozzle(0.01, None, f64::NAN)).is_err());
         assert!(SolidMotor::from_envelope(curve(), 0.038, 0.25, 0.7, 0.6).is_err());
+        assert!(SolidMotor::from_envelope(curve(), 0.038, 0.25, 0.6, 0.6).is_err());
         assert!(matches!(
             SolidMotor::from_envelope(curve(), 0.038, 0.25, f64::NAN, 0.6),
             Err(MotorError::Domain {
@@ -735,6 +805,7 @@ mod tests {
             let nozzle = Nozzle {
                 exit_radius_m: inputs.nozzle_radius,
                 throat_radius_m: Some(inputs.throat_radius),
+                reference_pressure_pa: STANDARD_SEA_LEVEL_PRESSURE_PA,
             };
             let motor =
                 SolidMotor::new(thrust, Propellant::Grains(grains), dry, Some(nozzle)).unwrap();

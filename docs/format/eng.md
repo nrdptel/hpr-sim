@@ -112,9 +112,10 @@ next header.
    thrust, and delay pieces the delay reader drops or flags. Equal consecutive times are accepted
    (a step in the physical curve). The RASP 32-point limit is not enforced.
 7. Delays: keep the raw token verbatim. The derived view splits on `-` or `,`, drops empty pieces
-   (with a warning), maps `P`/`p` → plugged and `100`/`1000` → plugged, and reads other pieces as
-   whole seconds. Flag `0` as ambiguous (spec: no delay; files: usually plugged). Physics should
-   prefer catalog metadata for delays.
+   (with a warning), maps `P`/`p` → plugged and `100`/`1000` → plugged, reads `0` as its own
+   "zero or plugged" setting with a warning (spec: no delay; files: usually plugged), and reads
+   other pieces as seconds. A `0` never becomes an ejection at burnout without a decision. Physics
+   should prefer catalog metadata for delays.
 8. An entry with an error is skipped, with the error as a warning, when other entries in the file
    read; the reader resumes at the next comment line. With no entry read, the first error returns.
    Every warning carries a kind: skipped (an entry lost), dropped (a value ignored) or unusual
