@@ -4,7 +4,7 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
 
 ## Now
 
-- **Current milestone:** M2.1b The RocketPy code-to-code suite (M2.1a shipped)
+- **Current milestone:** M2.1b Whole flights against RocketPy, same-drag (M2.1a shipped)
 - **Run:** the first autopilot run; M0.1–M0.3, M1.1–M1.7 and M2.1a have shipped
 - **Last updated:** 2026-09-17 (M2.1a merged)
 
@@ -26,9 +26,10 @@ the milestone's 3% (worst +2.86%). M2.1b is the suite itself. Start from these n
   that is RocketPy's gravity; hpr's default vector gravity put Valetudo's 20 µm north drift 28x
   high (#27, ADR-015). When an oracle's model is a documented simplification hpr can also be asked
   for, use it rather than reporting the modelling gap as a physics gap.
-- **What M2.1b adds:** a `Flight::WholeFlight` variant, M2.1's whole-flight metrics (apogee and
-  time to it, max velocity/Mach/acceleration, rail exit, burnout, time-series RMS), both modes, the
-  CI job and the regeneration workflow.
+- **What M2.1b adds:** a `validation/oracles/rocketpy/flight.py` generator (none exists: the five
+  generators cover attitude, gravity, recovery, mass and motors) and a `Flight::WholeFlight`
+  variant taking the oracle's `C_D0(M)` through `Simulation::with_drag_table`. M2.1c then adds
+  predicted mode, the CI job and the regeneration workflow.
 - **Both modes are required:** **same-drag** (the oracle's `C_D0(M)` through
   `Simulation::with_drag_table`) and **predicted** (hpr's own aero, which refuses `M ≥ 1` until
   M1.8, so supersonic cases are gaps, not hidden, and need their own stated tolerance).
@@ -36,8 +37,8 @@ the milestone's 3% (worst +2.86%). M2.1b is the suite itself. Start from these n
   (ADR-007); its weather files are Copernicus, so declare the environment as `recovery.py` does.
   Zero the parachute noise (global `np.random`); a deployment on a phase start gives NaNs. Expect
   differences from its added mass, its rail exit at the forward button and `0.25·n²` (ADR-011).
-- **Open conventions for the jar (M2.2/M3.1):** override order (L51), automatic radii, positions,
-  ogive, walls, fin mass, cant pivot, the drag-at-angle polynomial, lug diameter.
+- **Open conventions for the jar (M2.2/M3.1):** override order (L51), radii, positions, ogive,
+  walls, fin mass, cant pivot, the drag-at-angle polynomial, lug diameter.
 - **Process notes:**
   - `cargo test -p xtask` checks STATUS against ROADMAP, notices rows against lock titles, lesson
     tests once checked off, lock URLs and the generated designs.
@@ -48,6 +49,8 @@ the milestone's 3% (worst +2.86%). M2.1b is the suite itself. Start from these n
 
 ## Done log (newest first, keep about 15)
 
+- 2026-09-17: #27 closed (PR #28): the M1.7a RocketPy comparison flies RocketPy's gravity model and
+  asserts the vector, not the magnitude, which is what hid the difference; M2.1b split in two.
 - 2026-09-17: M2.1a Validation harness (ADR-015): TOML cases, references with per-value provenance
   and a hash, per-metric 3% gates, a case lock and committed reports. Five descent cases, 30
   metrics, all inside 3% (worst +2.86%). L76–L79 have live tests. It found a gravity-model
@@ -58,17 +61,15 @@ the milestone's 3% (worst +2.86%). M2.1b is the suite itself. Start from these n
 - 2026-09-17: M1.7b Streamers and tumble (PR #24, ADR-013): Filippone's three curves by default
   (+9% on Kidwell's flat drop), appendix C's on request (+88%), OpenRocket's tumble model from the
   airframe (−10 to +19% on its own drop tests).
-- 2026-09-17: M1.7a Parachutes and descent (PR #23, ADR-012): Knacke's canopy tables and filling
-  law, four triggers, drogue release, a point-mass descent phase. A descent follows the closed
-  form to 2.1e-8 of `v_t`; five RocketPy examples within 0.71% in descent time, 0.27% in drift.
-- 2026-09-17: M1.6b Rigid-body flight (ADR-011): variable-mass equations about the nose tip,
-  component-wise aero, rail to the last button; pitch period 8e-5 from linear theory. M1.6a
-  Integrator (ADR-010): DOPRI5 with dense output, RK4, Brent events; orders 5.09 and 4.01.
-- 2026-09-17: M1.5b Drag and override tables (ADR-009): Niskanen's buildup, drag at angle,
-  roughness, CSV overrides. At Mach 0.3 against RASAero: Calisto +4.4%, Juno III −6.0%, Cavour
-  −8.3%; gaps: Valetudo −47%, Cavour power-on −18%.
-- 2026-09-17: M1.5a CP within 1% of Barrowman bar the Recruiter's six fins (+3.4%); M1.4b Design
-  tree to 8e-10; M1.4a mass; M1.3 Solid motors to 8e-5; M1.2 Atmosphere; M1.1; M0.1–M0.3.
+- 2026-09-17: M1.7a Parachutes and descent (ADR-012): Knacke's canopy tables and filling law, four
+  triggers, drogue release, a point-mass descent. A descent follows the closed form to 2.1e-8 of
+  `v_t`; five RocketPy examples within 0.71% in descent time, 0.28% in drift.
+- 2026-09-17: M1.6b Rigid-body flight (ADR-011): variable-mass equations about the nose tip, rail
+  to the last button; pitch period 8e-5 from linear theory. M1.6a (ADR-010): DOPRI5 with dense
+  output, RK4, Brent events; orders 5.09 and 4.01.
+- 2026-09-17: M1.5b Drag and overrides (ADR-009): Niskanen's buildup, drag at angle, roughness, CSV
+  overrides. At Mach 0.3 against RASAero: Calisto +4.4%, Juno III −6.0%, Cavour −8.3%; gaps:
+  Valetudo −47%, Cavour power-on −18%. M1.5a CP within 1% of Barrowman; M1.1–M1.4, M0.1–M0.3.
 
 ## Needs Neer (blocking or one-way decisions; the session keeps working on other things)
 
@@ -143,8 +144,7 @@ the milestone's 3% (worst +2.86%). M2.1b is the suite itself. Start from these n
 - `refs doctor` "runnable" means the oracle's runtime starts, not that a flight ran; no oracle runs
   in CI, which compares against stored output (M2.1b).
 - hpr's descent results are not bit-identical across macOS, Windows and Linux: the committed report
-  is pinned to the six decimals it prints, where they agree, and CI proved full precision does not
-  (M2.1a, ADR-015).
-- The M1.7a in-crate RocketPy comparison still flies hpr's own gravity and checks gravity by
-  magnitude, which is why it could not see the model difference #27 found. It agrees on everything
-  it gates; making it like-for-like too is open (#27).
+  is pinned to six decimals, where they agree; CI proved full precision does not (M2.1a).
+- Normal gravity's meridional term is pinned only where M1.7a's fixtures sample it (23°S to 41°N,
+  under 4.4 km). It is asserted against its first-order closed form to 2%; higher or nearer the
+  poles is unmeasured (#27, closed).
