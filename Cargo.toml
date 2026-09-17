@@ -32,6 +32,9 @@ hpr-sim = { path = "crates/hpr-sim", version = "0.1.0" }
 criterion = { version = "0.8.2", default-features = false, features = ["cargo_bench_support"] }
 glam = { version = "0.33.7", default-features = false, features = ["f64", "serde", "std"] }
 proptest = "1.11.0"
+# Tests only: an independent xoshiro256++ and SplitMix64 to check `hpr_core::random` against.
+rand_core = "0.10"
+rand_xoshiro = "0.8.1"
 serde = { version = "1.0.229", features = ["derive"] }
 # `float_roundtrip` parses every float back to the exact f64 it was written from.
 serde_json = { version = "1.0.151", features = ["float_roundtrip"] }
