@@ -157,7 +157,7 @@
     - Mass, CG and inertia match RocketPy's example rockets where RocketPy exposes them.
     - The OpenRocket stored-value comparison is deferred to M2.2 and noted there.
 
-- [ ] **M1.5 Aerodynamics I (subsonic).**
+- [x] **M1.5 Aerodynamics I (subsonic).**
   - Barrowman CNα and CP for every component, with Prandtl–Glauert correction.
   - Body lift at angle of attack; fin–body interference.
   - Drag buildup: skin friction (laminar/turbulent with roughness), nose/transition pressure drag,
@@ -174,6 +174,10 @@
     (tighten this later).
   - Unit tests cover every drag term's limits.
 
+  *Result:* see M1.5a (the Recruiter's six-fin slopes, ADR-008) and M1.5b (Valetudo, ADR-009).
+  Skin friction is fully turbulent with roughness, as in Niskanen; laminar and transitional
+  friction were not built (ADR-009).
+
   - [x] **M1.5a Normal force and centre of pressure.**
     - Barrowman CNα and CP for every component with Prandtl–Glauert, body lift at angle of attack,
       fin–body interference, and the `aero.md` sections for them.
@@ -182,7 +186,7 @@
     *Done when:*
     - CNα and CP reproduce Barrowman's worked example(s) within 1%.
 
-  - [ ] **M1.5b Drag and override tables.**
+  - [x] **M1.5b Drag and override tables.**
     - The drag buildup, Cd at angle of attack, Cd-vs-Mach override tables from CSV, and the `aero.md`
       sections for them.
     - Loft lessons: L11, L12, L13, L14, L15, L16, L90 (tests named in
@@ -192,6 +196,11 @@
     - Subsonic Cd for the RocketPy example rockets is within 10% of their RASAero CSVs at Mach 0.3
       (tighten this later).
     - Unit tests cover every drag term's limits.
+
+    *Result (ADR-009):* not met for Valetudo (−47% power-off, −50% power-on; its table is 1.44 times
+    its own OpenRocket export, which hpr matches to 2%) or Cavour power-on (−18.3%, cause open).
+    Calisto, Juno III and Cavour power-off are within 10% (+4.4%, −6.0%, −8.3%) under a declared
+    input rule that can't pin the unrecorded inputs.
 
 - [ ] **M1.6 6-DOF flight engine.**
   - State: position, velocity, attitude quaternion, angular velocity, time-varying mass

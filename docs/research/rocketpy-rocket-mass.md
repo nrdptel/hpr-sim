@@ -70,7 +70,8 @@ The −1.373 value at `t = 0`, 10.516648, matches RocketPy's own pinned test val
 
 - **Fixture.** `validation/oracles/rocketpy/rocket_mass.py` writes
   `validation/fixtures/design/rocketpy-rocket-mass.json` with seven cases: Calisto at both motor
-  positions, Bella Lui, NDRT 2020, Valetudo, Juno III and Prometheus.
+  positions, Bella Lui, NDRT 2020, Valetudo, Juno III and Prometheus. M1.5b added Cavour, for its
+  RASAero-labelled drag curve (ADR-009).
   - Prometheus's `GenericMotor` is hpr's propellant column: a fixed centre, solid-cylinder inertia,
     and impulse-fraction consumption (`motors/motor.py:470-524`, `:1566-1661`).
   - Valkyrie is left out. Its inputs exist only in `data/rockets/valkyrie/VLK.json`, and RocketPy's

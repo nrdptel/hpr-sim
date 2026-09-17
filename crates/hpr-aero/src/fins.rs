@@ -43,6 +43,9 @@ pub struct FinGeometry {
     pub area_m2: f64,
     /// Mid-chord sweep `Γ_c`, rad, positive with the tip aft.
     pub midchord_sweep_rad: f64,
+    /// Leading-edge sweep `Γ_L`, rad, positive with the tip aft; the span average of the edge's
+    /// angle when it is curved or kinked (Niskanen 2009 eq. 3.91).
+    pub leading_edge_sweep_rad: f64,
     /// Length of the mean aerodynamic chord `c̄`, m.
     pub mac_length_m: f64,
     /// Leading edge of the mean aerodynamic chord, m aft of the root leading edge.
@@ -72,6 +75,7 @@ impl FinGeometry {
                     span_m: s,
                     area_m2: 0.5 * s * sum,
                     midchord_sweep_rad: (x_t + 0.5 * c_t - 0.5 * c_r).atan2(s),
+                    leading_edge_sweep_rad: x_t.atan2(s),
                     mac_length_m: 2.0 / 3.0 * (c_r * c_r + c_r * c_t + c_t * c_t) / sum,
                     mac_leading_edge_m: x_t * y_mac / s,
                     mac_span_m: y_mac,
@@ -86,6 +90,7 @@ impl FinGeometry {
                     span_m: s,
                     area_m2: 0.25 * PI * c_r * s,
                     midchord_sweep_rad: 0.0,
+                    leading_edge_sweep_rad: elliptical_leading_edge_sweep(0.5 * c_r / s),
                     mac_length_m: mac,
                     mac_leading_edge_m: 0.5 * (c_r - mac),
                     mac_span_m: 4.0 * s / (3.0 * PI),
@@ -111,8 +116,8 @@ impl FinGeometry {
             ((0.6f64).sqrt(), 5.0 / 9.0),
         ];
         let mut chords = Vec::new();
-        let (mut area, mut filled, mut c2, mut yc, mut xc, mut sweep) =
-            (0.0, 0.0, 0.0, 0.0, 0.0, 0.0);
+        let (mut area, mut filled, mut c2, mut yc, mut xc, mut sweep, mut le_sweep) =
+            (0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0);
         for band in heights.windows(2) {
             let (lo, hi) = (band[0], band[1]);
             // Vertex heights a few rounding steps apart (a tip given in inches and in metres) make
@@ -124,6 +129,7 @@ impl FinGeometry {
             let half = 0.5 * (hi - lo);
             let mid = 0.5 * (hi + lo);
             let mut mids = [0.0; 2];
+            let mut leading = [0.0; 2];
             for (k, &(t, w)) in nodes.iter().enumerate() {
                 let y = mid + half * t;
                 planform.chords_at(y, &mut chords);
@@ -144,11 +150,13 @@ impl FinGeometry {
                 xc += wh * le * c;
                 if k != 1 {
                     mids[k / 2] = 0.5 * (le + te);
+                    leading[k / 2] = le;
                 }
             }
             // The mid-chord line is straight in the band: its angle from the outer two nodes.
             let dy = 2.0 * half * (0.6f64).sqrt();
             sweep += (hi - lo) * (mids[1] - mids[0]).atan2(dy);
+            le_sweep += (hi - lo) * (leading[1] - leading[0]).atan2(dy);
         }
         if !(area > 0.0 && filled > 0.0 && span > 0.0) {
             return Err(AeroError::Domain {
@@ -160,6 +168,7 @@ impl FinGeometry {
             span_m: span,
             area_m2: area,
             midchord_sweep_rad: sweep / span,
+            leading_edge_sweep_rad: le_sweep / span,
             mac_length_m: c2 / filled,
             mac_leading_edge_m: xc / filled,
             mac_span_m: yc / filled,
@@ -191,6 +200,25 @@ impl FinGeometry {
         let f = beta * s2 / (self.area_m2 * self.midchord_sweep_rad.cos());
         TAU * s2 / reference_area_m2 / (1.0 + (1.0 + f * f).sqrt())
     }
+}
+
+/// The span-averaged leading-edge angle of an elliptical fin whose root chord is `2k` spans.
+///
+/// The leading edge `x = (c_r/2)(1 − √(1 − η²))`, `η = y/s`, has the angle
+/// `Γ(η) = atan(k η/√(1 − η²))`. Integrating by parts with `η = sin t`,
+/// `∫₀¹ Γ dη = π/2 − ∫₀¹ k du/(k² + (1 − k²)u²)`, which is `π/2 − acos(k)/√(1 − k²)` for `k < 1`,
+/// `π/2 − 1` at `k = 1`, and `π/2 − acosh(k)/√(k² − 1)` for `k > 1`.
+fn elliptical_leading_edge_sweep(k: f64) -> f64 {
+    let d = 1.0 - k * k;
+    let integral = if d.abs() < 1e-6 {
+        // Series about k = 1 in d = 1 − k², the same on both sides: 1 + d/6 + 3d²/40 + ….
+        1.0 + d / 6.0 + 0.075 * d * d
+    } else if d > 0.0 {
+        k.acos() / d.sqrt()
+    } else {
+        k.acosh() / (-d).sqrt()
+    };
+    std::f64::consts::FRAC_PI_2 - integral
 }
 
 /// Fin–body interference factor `K_T(B) = 1 + r_t/(s + r_t)` (Barrowman 1966 eq. 77; Niskanen 2009

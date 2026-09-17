@@ -13,14 +13,18 @@
 //! Physics: `docs/physics/aero.md`.
 
 pub mod body;
+pub mod drag;
 pub mod error;
 pub mod fins;
 pub mod model;
+pub mod table;
 
 pub use body::{BODY_LIFT_K, BodyGeometry};
+pub use drag::{ComponentDrag, ComponentDragTerms, Drag, DragConditions};
 pub use error::AeroError;
 pub use fins::{FinGeometry, fin_count_factor, interference_factor, roll_sum, side_sum};
 pub use model::{AeroModel, BodyAero, ComponentNormalForce, FinSetAero, Flow, NormalForce};
+pub use table::{DragTable, parse_mach_csv};
 
 #[cfg(test)]
 mod testing;
@@ -413,5 +417,131 @@ mod tests {
         );
         // With hpr's own six-fin rule (ADR-008), exactly the Recruiter's six-fin slopes miss 1%.
         assert_eq!(outside_own, ["recruiter fins", "recruiter total"]);
+    }
+
+    #[derive(Deserialize)]
+    struct DragCurves {
+        mach: f64,
+        reynolds_per_m: f64,
+        tolerance_rel: f64,
+        cases: Vec<DragCurveCase>,
+    }
+
+    #[derive(Deserialize)]
+    struct DragCurveCase {
+        id: String,
+        design: String,
+        variant_of: Option<String>,
+        thrusting: bool,
+        curve_cd0: f64,
+        hpr_cd0: f64,
+        relative_error: f64,
+    }
+
+    fn committed_design(name: &str) -> Rocket {
+        let text = match name {
+            "rocketpy-calisto-tests-motor-at-minus-1.373.json" => include_str!(
+                "../../../validation/designs/rocketpy-calisto-tests-motor-at-minus-1.373.json"
+            ),
+            "rocketpy-calisto-getting-started-motor-at-minus-1.255.json" => include_str!(
+                "../../../validation/designs/rocketpy-calisto-getting-started-motor-at-minus-1.255.json"
+            ),
+            "rocketpy-juno-iii.json" => {
+                include_str!("../../../validation/designs/rocketpy-juno-iii.json")
+            }
+            "rocketpy-valetudo.json" => {
+                include_str!("../../../validation/designs/rocketpy-valetudo.json")
+            }
+            "rocketpy-cavour.json" => {
+                include_str!("../../../validation/designs/rocketpy-cavour.json")
+            }
+            other => panic!("no committed design {other}"),
+        };
+        serde_json::from_str(text).unwrap()
+    }
+
+    /// M1.5b done-when: subsonic `C_D0` of RocketPy's example rockets against the drag curves
+    /// that ship with them, at Mach 0.3 and USSA76 sea level (RASAero II computes its exports'
+    /// Reynolds numbers at sea level). The curves have unclear terms and stay in
+    /// `refs/`; `cargo xtask aero` writes the relative errors to
+    /// `validation/fixtures/aero/rocketpy-drag-curves.json`. This test recomputes hpr's values
+    /// from the committed designs, so the recorded errors can't go stale, and checks them against
+    /// the tolerance.
+    #[test]
+    fn rocketpy_drag_curves_at_mach_0_3() {
+        let fixture: DragCurves = serde_json::from_str(include_str!(
+            "../../../validation/fixtures/aero/rocketpy-drag-curves.json"
+        ))
+        .unwrap();
+        assert_eq!(fixture.mach, 0.3);
+        assert_eq!(fixture.tolerance_rel, 0.10);
+        let air = hpr_atmos::Ussa76::standard().sample(0.0).unwrap().air;
+        close(
+            fixture.reynolds_per_m,
+            0.3 * air.speed_of_sound_m_s / air.kinematic_viscosity_m2_s(),
+            1e-12,
+            "sea-level Reynolds number per metre",
+        );
+        let mut outside = Vec::new();
+        for case in &fixture.cases {
+            let rocket = committed_design(&case.design);
+            let model = AeroModel::new(&rocket.layout().unwrap()).unwrap();
+            let motor_area: f64 = if case.thrusting {
+                rocket.configurations[0]
+                    .motors
+                    .iter()
+                    .map(|m| 0.25 * PI * m.diameter_m * m.diameter_m)
+                    .sum()
+            } else {
+                0.0
+            };
+            let conditions = if case.thrusting {
+                DragConditions::thrusting(fixture.reynolds_per_m, motor_area)
+            } else {
+                DragConditions::coasting(fixture.reynolds_per_m)
+            };
+            let drag = model.drag(&Flow::axial(fixture.mach), &conditions).unwrap();
+            // A stale fixture: rerun `cargo xtask aero`.
+            close(drag.zero_lift_coefficient, case.hpr_cd0, 1e-12, &case.id);
+            let error = drag.zero_lift_coefficient / case.curve_cd0 - 1.0;
+            assert!(
+                (error - case.relative_error).abs() < 1e-12,
+                "{}: recorded error {}, recomputed {error}",
+                case.id,
+                case.relative_error
+            );
+            eprintln!(
+                "{}: C_D0 {:.4} ({:.4} friction, {:.4} pressure, {:.4} base, {:.4} parasitic), \
+                 {:+.1}% from the curve",
+                case.id,
+                drag.zero_lift_coefficient,
+                drag.friction,
+                drag.pressure,
+                drag.base,
+                drag.parasitic,
+                100.0 * case.relative_error
+            );
+            if error.abs() > fixture.tolerance_rel {
+                outside.push(case.id.as_str());
+            }
+        }
+        // Six comparisons over four rockets, and one variant (Calisto's getting-started fins on
+        // the same export).
+        assert_eq!(fixture.cases.len(), 7);
+        let variants: Vec<&str> = fixture
+            .cases
+            .iter()
+            .filter(|c| c.variant_of.is_some())
+            .map(|c| c.id.as_str())
+            .collect();
+        assert_eq!(variants, ["calisto-getting-started-power-off"]);
+        // Outside the tolerance (ADR-009): Cavour under power, where the table carries at most
+        // 0.001 of relief at Mach 0.3 and hpr's depends on the unrecorded motor diameter; and
+        // Valetudo's table, 1.44 times the OpenRocket export for the same rocket, which hpr
+        // matches to 2% with that file's inputs.
+        assert_eq!(
+            outside,
+            ["cavour-power-on", "valetudo-power-off", "valetudo-power-on"]
+        );
     }
 }

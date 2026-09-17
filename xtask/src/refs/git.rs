@@ -45,6 +45,30 @@ fn inspect(dir: &Path) -> Result<State, String> {
     })
 }
 
+/// The commit checked out at `dir`, for recording what a derived fixture was computed from.
+///
+/// # Errors
+///
+/// When `dir` is missing, isn't its own git checkout (a plain directory inside another checkout),
+/// has no commits, or has modified tracked files.
+pub(crate) fn clean_head(dir: &Path) -> Result<String, String> {
+    match inspect(dir)? {
+        State::Missing => Err(format!(
+            "{} is missing (run `cargo xtask refs fetch`)",
+            dir.display()
+        )),
+        State::Checkout { head: None, .. } => Err(format!("{} has no commits", dir.display())),
+        State::Checkout { modified: true, .. } => Err(format!(
+            "{} has modified tracked files; restore it with `cargo xtask refs fetch`",
+            dir.display()
+        )),
+        State::Checkout {
+            head: Some(head),
+            modified: false,
+        } => Ok(head),
+    }
+}
+
 fn is_empty_dir(dir: &Path) -> bool {
     std::fs::read_dir(dir).is_ok_and(|mut entries| entries.next().is_none())
 }

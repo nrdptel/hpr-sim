@@ -35,6 +35,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::config::{Configuration, MotorMount};
 use crate::error::DesignError;
+use crate::finish::Finish;
 use crate::fins::{FinSet, TubeFinSet};
 use crate::mass::MassProperties;
 use crate::parts::{
@@ -103,6 +104,10 @@ pub struct Component {
     /// Makes a body tube or an inner tube a motor mount.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub motor_mount: Option<MotorMount>,
+    /// The outer surface's finish, for skin friction; `None` means [`Finish::default`]. Parts
+    /// inside the body ignore it.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub finish: Option<Finish>,
     /// Mass, centre-of-mass and inertia overrides.
     #[serde(default, skip_serializing_if = "Overrides::is_empty")]
     pub overrides: Overrides,
@@ -629,6 +634,9 @@ pub struct PlacedComponent {
     pub fore_station_m: f64,
     /// Axial extent ([`Part::length_m`]), m.
     pub length_m: f64,
+    /// The outer surface's finish ([`Component::finish`], with the default filled in).
+    #[serde(default)]
+    pub finish: Finish,
     /// For an external attachment, the radius of the body tube it sits on, m.
     pub body_radius_m: Option<f64>,
     /// Its motor mount, if it is one.
@@ -709,7 +717,8 @@ impl Rocket {
     ///   a body tube, children under anything but a body component or inner tube), a missing or
     ///   unexpected position, an automatic dimension that doesn't apply or can't be resolved, or a
     ///   motor mount on anything but a body tube or inner tube.
-    /// - Any part's geometry, material or numerical error, and override errors.
+    /// - Any part's geometry, material or numerical error, a custom finish's negative or
+    ///   non-finite roughness, and override errors.
     pub fn layout(&self) -> Result<Layout, DesignError> {
         if self.stages.is_empty() {
             return Err(DesignError::Tree {
@@ -757,6 +766,7 @@ impl Rocket {
                 part,
                 fore_station_m: station,
                 length_m: length,
+                finish: node.finish.unwrap_or_default(),
                 body_radius_m: None,
                 motor_mount: node.motor_mount,
                 own: placed,
@@ -862,6 +872,9 @@ fn check_node(
     depth: usize,
 ) -> Result<(), DesignError> {
     unique(ids, &node.id)?;
+    if let Some(finish) = node.finish {
+        finish.roughness_m().map_err(|e| within(&node.id, e))?;
+    }
     if depth >= MAX_DEPTH {
         return Err(tree(
             &node.id,
@@ -1241,6 +1254,7 @@ fn finish(
             part,
             fore_station_m: fore,
             length_m: length,
+            finish: child.finish.unwrap_or_default(),
             body_radius_m,
             motor_mount: child.motor_mount,
             own: placed,

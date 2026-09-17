@@ -69,11 +69,13 @@ the example gave it. The propellant mass comes from the grain geometry (SolidMot
 initial mass (GenericMotor), so the substitute changes when the propellant burns, not how much there
 is. An .eng file must not contain a `0 0` point (see solid_motor.py); no bundled curve does.
 
-Which examples. Seven cases from six rockets (Calisto at two motor positions), plus Prometheus's
-`GenericMotor`. Left out: Valkyrie, whose inputs exist only in RocketPy's data file
+Which examples. Eight cases from seven rockets (Calisto at two motor positions), plus Prometheus's
+`GenericMotor`. Cavour's motor has no dry mass or inertia, so its mass tests little that Juno III
+doesn't; it is here because its drag curve is labelled RASAero II, which M1.5b compares (ADR-009).
+Left out: Valkyrie, whose inputs exist only in RocketPy's data file
 `data/rockets/valkyrie/VLK.json` (data files carry their own terms), and Andromeda, Astra, Camoes,
-Cavour, Erebus 11, Genesis and Lince, whose motors have no dry mass or inertia and so test nothing
-Bella Lui, Valetudo and Juno III don't.
+Erebus 11, Genesis and Lince, whose motors have no dry mass or inertia and so test nothing Bella Lui,
+Valetudo and Juno III don't.
 
 `--example-curves` reads each example's own thrust file from refs/rocketpy/data/motors with the
 example's burn options instead, as a local cross-check of docs/research/rocketpy-rocket-mass.md.
@@ -473,6 +475,58 @@ CASES = [
                 {"name": "Drogue", "cd_s": 0.885, "trigger": APOGEE, "sampling_rate": 105,
                  "noise": NOISE, "lag": 0.5},
             ],
+        },
+    },
+    {
+        # docs/examples/cavour_flight_sim.ipynb: motor :157-172 (Cesaroni_3618L995-P.eng, burn_time
+        # 3.8, zero dry mass and inertia, default "nozzle_to_combustion_chamber"), rocket :245-254
+        # (drag curves "from RASAero II", :244), rail buttons :255, add_motor :257, nose and fins
+        # :266-278 (no tail, no parachute). Substitute: Loki L1040LR (3707 N s against the L995's
+        # 3618 N s).
+        "name": "cavour",
+        "source": "docs/examples/cavour_flight_sim.ipynb:157-172 (motor), :245-257 (rocket, rail "
+                  "buttons, add_motor), :266-278 (nose, fins)",
+        "rocket": {
+            "radius": 0.052,
+            "mass": 8.219,
+            "inertia": [4.449, 4.449, 0.014634],
+            "center_of_mass_without_motor": 1.1994,
+            "coordinate_system_orientation": "tail_to_nose",
+            "motor_position": 0,
+        },
+        "motor_kind": "solid",
+        "motor": {
+            "dry_mass": 0,
+            "dry_inertia": [0, 0, 0],
+            "center_of_dry_mass_position": 1.1994,
+            "nozzle_position": 0,
+            "nozzle_radius": 0.0335,
+            "throat_radius": 0.0114,
+            "grain_number": 3,
+            "grain_density": 1653.53,
+            "grain_outer_radius": 0.0325,
+            "grain_initial_inner_radius": 0.011375,
+            "grain_initial_height": 0.13244,
+            "grain_separation": 0.001,
+            "grains_center_of_mass_position": 0.19966000000000006,
+            "coordinate_system_orientation": "nozzle_to_combustion_chamber",
+            "burn_time": None,
+            "reshape_thrust_curve": False,
+            "interpolation_method": "linear",
+            "only_radial_burn": False,
+        },
+        "thrust_file": "curves/5f4294d20002e90000000839.eng",
+        "example_thrust": {"file": "cesaroni/Cesaroni_3618L995-P.eng", "burn_time": 3.8},
+        "geometry": {
+            "nose": {"length": 0.52, "kind": "vonKarman", "position": 2.7224},
+            "fin_sets": [{
+                "type": "trapezoidal", "n": 4, "span": 0.1, "root_chord": 0.2, "tip_chord": 0.07,
+                "position": 0.2104,
+            }],
+            "tails": [],
+            "rail_buttons": {"upper_button_position": 1.0954,
+                             "lower_button_position": 0.005400000000000071},
+            "parachutes": [],
         },
     },
     {

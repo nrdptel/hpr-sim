@@ -24,8 +24,13 @@ use hpr_design::{Layout, Part, PlacedComponent};
 use serde::{Deserialize, Serialize};
 
 use crate::body::{BODY_LIFT_K, BodyGeometry, sinc};
+use crate::drag::{
+    ComponentDrag, ComponentDragTerms, Drag, DragConditions, SUBSONIC_MACH_LIMIT,
+    axial_drag_alpha_factor, body_friction_form_factor,
+};
 use crate::error::{AeroError, check_dimension, check_mach};
 use crate::fins::{FinGeometry, fin_count_factor, interference_factor, roll_sum, side_sum};
+use crate::table::DragTable;
 
 /// The air-relative flow at one instant.
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
@@ -66,6 +71,11 @@ impl Flow {
     /// outside `[0, π]` or a non-finite roll.
     pub fn validate(&self) -> Result<(), AeroError> {
         check_mach(self.mach)?;
+        self.validate_angles()
+    }
+
+    /// Checks the angles only.
+    fn validate_angles(&self) -> Result<(), AeroError> {
         if !(0.0..=PI).contains(&self.alpha_rad) {
             return Err(AeroError::Domain {
                 what: "angle of attack",
@@ -198,15 +208,18 @@ pub struct FinSetAero {
     pub cp_station_m: f64,
 }
 
-/// A rocket's normal-force model.
+/// A rocket's aerodynamic model: normal force, centre of pressure and drag.
 ///
 /// Serialize-only, for inspection: a model is built from a [`Layout`] by [`AeroModel::new`], which
 /// checks what it builds.
 #[derive(Debug, Clone, PartialEq, Serialize)]
 pub struct AeroModel {
     reference_area_m2: f64,
+    length_m: f64,
     bodies: Vec<BodyAero>,
     fin_sets: Vec<FinSetAero>,
+    drag_terms: Vec<ComponentDragTerms>,
+    drag_table: Option<DragTable>,
 }
 
 impl AeroModel {
@@ -214,18 +227,33 @@ impl AeroModel {
     ///
     /// # Errors
     ///
-    /// - [`AeroError::Domain`] for a non-positive reference diameter.
+    /// - [`AeroError::Domain`] for a non-positive reference diameter, rocket length or body radius.
     /// - [`AeroError::InComponent`] naming the component, around:
-    ///   - [`AeroError::Unsupported`] for tube fins or a part kind this model doesn't know;
-    ///   - [`AeroError::Domain`] for a fin set of more than eight fins, or a non-finite station;
+    ///   - [`AeroError::Unsupported`] for tube fins, or a part kind or fin cross-section this model
+    ///     doesn't know;
+    ///   - [`AeroError::Domain`] for a fin set of more than eight fins, a non-finite station, or a
+    ///     drag input out of range (a negative fin thickness, a launch lug's wall thicker than its
+    ///     radius, a rail button's base and flange taller than the button, a negative roughness);
     ///   - [`AeroError::Layout`] for a fin set without the radius of its body tube;
     ///   - design errors from a profile, a planform or a volume integral.
     pub fn new(layout: &Layout) -> Result<Self, AeroError> {
         check_dimension("reference diameter", layout.reference_diameter_m, false)?;
         let reference_area_m2 = layout.reference_area_m2();
+        let length_m = layout.length_m;
+        check_dimension("rocket length", length_m, false)?;
+        let mut max_radius: f64 = 0.0;
+        for component in layout.body() {
+            if let Some(radius) = component.part.max_radius_m()? {
+                max_radius = max_radius.max(radius);
+            }
+        }
+        check_dimension("maximum body radius", max_radius, false)?;
+        let form_factor = body_friction_form_factor(length_m / (2.0 * max_radius))?;
         let mut bodies = Vec::new();
         let mut fin_sets = Vec::new();
+        let mut drag_terms = Vec::new();
         let mut previous_aft_area: Option<f64> = None;
+        let mut last_body_terms: Option<usize> = None;
         for component in &layout.components {
             let in_component = |e: AeroError| AeroError::InComponent {
                 id: component.id.clone(),
@@ -272,6 +300,16 @@ impl AeroModel {
                         })
                     })()
                     .map_err(in_component)?;
+                    drag_terms.push(
+                        ComponentDragTerms::fins(
+                            component,
+                            set,
+                            &terms.geometry,
+                            length_m,
+                            reference_area_m2,
+                        )
+                        .map_err(in_component)?,
+                    );
                     fin_sets.push(terms);
                     None
                 }
@@ -280,8 +318,31 @@ impl AeroModel {
                         "tube fins (no cited normal-force method yet)".to_owned(),
                     )));
                 }
-                // Drag only (M1.5b).
-                Part::LaunchLug(_) | Part::RailButton(_) => None,
+                // Drag only.
+                Part::LaunchLug(lug) => {
+                    drag_terms.push(
+                        ComponentDragTerms::launch_lugs(
+                            component,
+                            lug,
+                            length_m,
+                            reference_area_m2,
+                        )
+                        .map_err(in_component)?,
+                    );
+                    None
+                }
+                Part::RailButton(button) => {
+                    drag_terms.push(
+                        ComponentDragTerms::rail_buttons(
+                            component,
+                            button,
+                            length_m,
+                            reference_area_m2,
+                        )
+                        .map_err(in_component)?,
+                    );
+                    None
+                }
                 // Inside the body.
                 Part::InnerTube(_)
                 | Part::CenteringRing(_)
@@ -299,15 +360,153 @@ impl AeroModel {
             if let Some(geometry) = body {
                 let geometry = geometry.map_err(in_component)?;
                 let step = previous_aft_area.map_or(0.0, |aft| geometry.fore_area_m2 - aft);
+                last_body_terms = Some(drag_terms.len());
+                drag_terms.push(
+                    ComponentDragTerms::body(
+                        component,
+                        &geometry,
+                        previous_aft_area,
+                        form_factor,
+                        length_m,
+                        reference_area_m2,
+                    )
+                    .map_err(in_component)?,
+                );
                 previous_aft_area = Some(geometry.aft_area_m2);
                 bodies.push(body_terms(component, geometry, step, reference_area_m2));
             }
         }
+        // The aft base belongs to the last body component.
+        if let (Some(index), Some(last)) = (last_body_terms, bodies.last()) {
+            drag_terms[index].base_area_m2 = last.geometry.aft_area_m2;
+        }
         Ok(Self {
             reference_area_m2,
+            length_m,
             bodies,
             fin_sets,
+            drag_terms,
+            drag_table: None,
         })
+    }
+
+    /// This model with `table` replacing the drag buildup's zero-lift drag
+    /// ([`crate::table`]).
+    #[must_use]
+    pub fn with_drag_table(mut self, table: DragTable) -> Self {
+        self.drag_table = Some(table);
+        self
+    }
+
+    /// The drag override table, if any.
+    pub fn drag_table(&self) -> Option<&DragTable> {
+        self.drag_table.as_ref()
+    }
+
+    /// The components' precomputed drag terms, in layout order.
+    pub fn drag_terms(&self) -> &[ComponentDragTerms] {
+        &self.drag_terms
+    }
+
+    /// Rocket length for the Reynolds number: nose tip to the aft end of the last body component,
+    /// m.
+    pub fn length_m(&self) -> f64 {
+        self.length_m
+    }
+
+    /// The whole rocket's drag at `flow` and `conditions`: the zero-lift drag of the buildup, or of
+    /// the override table when there is one, and the axial coefficient at the flow's angle of
+    /// attack.
+    ///
+    /// # Errors
+    ///
+    /// - As [`Flow::validate`], except that with an override table any finite Mach number from 0 is
+    ///   accepted ([`AeroError::Domain`] otherwise).
+    /// - As [`DragConditions::validate`].
+    /// - [`AeroError::Table`] from the table lookup, and [`AeroError::Domain`] if the drag isn't
+    ///   finite.
+    pub fn drag(&self, flow: &Flow, conditions: &DragConditions) -> Result<Drag, AeroError> {
+        conditions.validate()?;
+        let factor = axial_drag_alpha_factor(flow.alpha_rad)?;
+        let mut drag = if let Some(table) = &self.drag_table {
+            flow.validate_angles()?;
+            let lookup = table.lookup(flow.mach, conditions.thrusting)?;
+            let scale = match table.reference_diameter_m {
+                Some(d) => {
+                    check_dimension("drag table reference diameter", d, false)?;
+                    0.25 * PI * d * d / self.reference_area_m2
+                }
+                None => 1.0,
+            };
+            Drag {
+                zero_lift_coefficient: lookup.value * scale,
+                table: Some(lookup),
+                ..Drag::default()
+            }
+        } else {
+            flow.validate()?;
+            let reynolds = conditions.reynolds_per_m * self.length_m;
+            let mut sum = Drag::default();
+            for terms in &self.drag_terms {
+                let d = terms.evaluate(
+                    reynolds,
+                    flow.mach,
+                    conditions.thrusting_motor_area_m2,
+                    self.reference_area_m2,
+                )?;
+                sum.friction += d.friction;
+                sum.pressure += d.pressure;
+                sum.base += d.base;
+                sum.parasitic += d.parasitic;
+            }
+            sum.zero_lift_coefficient = sum.friction + sum.pressure + sum.base + sum.parasitic;
+            sum.beyond_subsonic_methods = flow.mach > SUBSONIC_MACH_LIMIT;
+            sum
+        };
+        drag.axial_coefficient = drag.zero_lift_coefficient * factor;
+        if !(drag.zero_lift_coefficient.is_finite() && drag.axial_coefficient.is_finite()) {
+            return Err(AeroError::Domain {
+                what: "drag coefficient",
+                value: drag.zero_lift_coefficient,
+            });
+        }
+        Ok(drag)
+    }
+
+    /// Each component's share of the drag buildup at `flow` and `conditions`, in layout order: its
+    /// zero-lift coefficient and parts, and its axial coefficient at the flow's angle of attack.
+    ///
+    /// These are always the buildup's terms. With an override table, [`AeroModel::drag`] returns
+    /// the table's value instead of their sum, so they don't add up to it.
+    ///
+    /// # Errors
+    ///
+    /// As [`Flow::validate`] and [`DragConditions::validate`].
+    pub fn buildup_components(
+        &self,
+        flow: &Flow,
+        conditions: &DragConditions,
+    ) -> Result<Vec<ComponentDrag>, AeroError> {
+        flow.validate()?;
+        conditions.validate()?;
+        let factor = axial_drag_alpha_factor(flow.alpha_rad)?;
+        let reynolds = conditions.reynolds_per_m * self.length_m;
+        self.drag_terms
+            .iter()
+            .map(|terms| {
+                let mut drag = terms.evaluate(
+                    reynolds,
+                    flow.mach,
+                    conditions.thrusting_motor_area_m2,
+                    self.reference_area_m2,
+                )?;
+                drag.axial_coefficient *= factor;
+                Ok(ComponentDrag {
+                    id: terms.id.clone(),
+                    drag,
+                })
+            })
+            .collect()
     }
 
     /// Reference area, m².

@@ -25,12 +25,19 @@ adds a source.
   marked "free", "other" or with no license are never bundled (ADR-005).
 
 - **RocketPy example rocket inputs** (MIT, RocketPy v1.13.0): the masses, inertias, positions,
-  motor dimensions and aerodynamic-surface dimensions of six example rockets, taken from RocketPy's
+  motor dimensions and aerodynamic-surface dimensions of seven example rockets, taken from RocketPy's
   notebooks and test code (never from its data files). They are recorded
   in `validation/fixtures/design/rocketpy-rocket-mass.json` with RocketPy's outputs, and turned into
   `validation/designs/rocketpy-*.json` by `cargo xtask designs`. RocketPy's motor thrust files carry
   their own terms and are **not** committed; the fixture pairs each example with a bundled
   public-domain curve instead (ADR-007). RocketPy's license, quoted under Ported, applies.
+- **Comparisons with RocketPy's drag curves** (ADR-009): `cargo xtask aero` reads the Calisto,
+  Juno III, Cavour and Valetudo curves from the `refs/rocketpy` checkout and commits only derived
+  numbers to `validation/fixtures/aero/rocketpy-drag-curves.json` (each curve's value at Mach 0.3,
+  hpr's drag coefficients, the relative errors and each file's sha256). The curves themselves carry
+  their own terms and are **not** committed. The designs' drag inputs cite RASAero II's Users
+  Manual (2019, p. 53) for its default surface finish, and Projeto Jupiter's rocket page
+  (projetojupiter.com/foguetes) for Juno III's fin profile; neither is redistributed.
 
 ## Ported
 

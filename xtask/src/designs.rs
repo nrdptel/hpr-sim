@@ -19,7 +19,7 @@ use std::path::{Path, PathBuf};
 use hpr_design::materials;
 use hpr_design::{
     AutoDimension, BodyTube, CenteringRing, Component, Configuration, FinCrossSection, FinPlanform,
-    FinSet, InertiaOverride, InnerTube, MassComponent, Material, MotorMount, MountedMotor,
+    FinSet, Finish, InertiaOverride, InnerTube, MassComponent, Material, MotorMount, MountedMotor,
     NoseCone, NoseShape, Overrides, Packing, Parachute, Part, Position, RailButton,
     ReferenceDiameter, Rocket, ShockCord, Shoulder, Stage, Transition, Wall,
 };
@@ -74,7 +74,7 @@ pub fn run(args: &[String]) -> Result<(), String> {
     Ok(())
 }
 
-fn root() -> Result<PathBuf, String> {
+pub fn root() -> Result<PathBuf, String> {
     Path::new(env!("CARGO_MANIFEST_DIR"))
         .parent()
         .map(Path::to_path_buf)
@@ -114,7 +114,7 @@ fn stale(dir: &Path, designs: &[(String, String)]) -> Vec<String> {
 }
 
 /// Whether two JSON values are equal, with numbers equal to 1e-12 relative.
-fn same(a: &Value, b: &Value) -> bool {
+pub fn same(a: &Value, b: &Value) -> bool {
     match (a, b) {
         (Value::Number(x), Value::Number(y)) => match (x.as_f64(), y.as_f64()) {
             (Some(x), Some(y)) => x == y || (x - y).abs() <= 1e-12 * x.abs().max(y.abs()),
@@ -193,6 +193,7 @@ fn component(id: &str, part: Part, position: Option<Position>) -> Component {
         position,
         auto: Vec::new(),
         motor_mount: None,
+        finish: None,
         overrides: Overrides::default(),
         overrides_include_children: false,
         children: Vec::new(),
@@ -213,9 +214,20 @@ fn bundled_curve<'a>(
 
 /// Wall thicknesses and fin thickness for the RocketPy examples, m. The examples give no
 /// structure (their masses are inputs), so these only make the parts real; the stage override
-/// replaces their mass.
+/// replaces their mass. The fin thickness is also a drag input: a NACA 00xx airfoil in the
+/// example sets it instead.
 const WALL_M: f64 = 0.002;
 const FIN_THICKNESS_M: f64 = 0.003;
+/// The examples whose drag curves RocketPy labels RASAero. RASAero II's exports don't record
+/// their inputs, so these designs take its documented default surface finish, smooth (RASAero II
+/// Users Manual, 2019, p. 53), for the drag comparison (ADR-009).
+const RASAERO_CURVES: &[&str] = &[
+    "calisto-getting-started-motor-at-minus-1.255",
+    "calisto-tests-motor-at-minus-1.373",
+    "juno-iii",
+    "valetudo",
+    "cavour",
+];
 const MOUNT_WALL_M: f64 = 0.0015;
 /// Below this, a gap between the example's last tail and its nozzle or fins gets no closing tube.
 const CLOSING_TUBE_MIN_M: f64 = 0.01;
@@ -375,20 +387,23 @@ fn rocketpy_design(case: &Value, catalog: &Catalog) -> Result<Rocket, String> {
             .as_u64()
             .and_then(|n| u32::try_from(n).ok())
             .ok_or("fin count")?;
+        let planform = FinPlanform::Trapezoidal {
+            root_chord_m: root,
+            tip_chord_m: tip_chord,
+            span_m: span,
+            sweep_m: sweep,
+        };
+        let (cross_section, thickness) =
+            fin_section(text(case, "name")?, &fins["airfoil"], &planform)?;
         attached.push((
             index,
             component(
                 &format!("fins-{}", k + 1),
                 Part::FinSet(FinSet {
                     count,
-                    planform: FinPlanform::Trapezoidal {
-                        root_chord_m: root,
-                        tip_chord_m: tip_chord,
-                        span_m: span,
-                        sweep_m: sweep,
-                    },
-                    thickness_m: FIN_THICKNESS_M,
-                    cross_section: FinCrossSection::Square,
+                    planform,
+                    thickness_m: thickness,
+                    cross_section,
                     tab: None,
                     cant_rad: fins["cant_angle"].as_f64().unwrap_or(0.0).to_radians(),
                     base_angle_rad: 0.0,
@@ -472,6 +487,17 @@ fn rocketpy_design(case: &Value, catalog: &Catalog) -> Result<Rocket, String> {
     for (index, child) in attached {
         body[index].children.push(child);
     }
+    let name = text(case, "name")?;
+    if RASAERO_CURVES.contains(&name) {
+        for part in &mut body {
+            part.finish = Some(Finish::Mirror {});
+            for child in &mut part.children {
+                if child.part.is_external() {
+                    child.finish = Some(Finish::Mirror {});
+                }
+            }
+        }
+    }
 
     let (entry, _) = bundled_curve(catalog, text(motor, "thrust_file")?)?;
     let original = text(case, "original_thrust_source")?;
@@ -487,7 +513,6 @@ fn rocketpy_design(case: &Value, catalog: &Catalog) -> Result<Rocket, String> {
     if i11 != i22 {
         return Err("I_11 and I_22 differ".to_owned());
     }
-    let name = text(case, "name")?;
     Ok(Rocket {
         name: format!("RocketPy example: {name}"),
         stages: vec![Stage {
@@ -519,6 +544,44 @@ fn rocketpy_design(case: &Value, catalog: &Catalog) -> Result<Rocket, String> {
             }],
         }],
     })
+}
+
+/// Fin cross-sections published for an example's rocket outside RocketPy, by case name. Juno III's
+/// team was cited for "análise de aletas com perfil de aerofólio truncado", an analysis of
+/// truncated-airfoil fins (<https://www.projetojupiter.com/foguetes>): a rounded leading edge and a
+/// blunt trailing edge, which Niskanen's rounded section (half the base drag) represents better than
+/// the airfoil section (none). The citation gives no thickness, so the placeholder stays.
+const PUBLISHED_FIN_SECTIONS: &[(&str, FinCrossSection)] =
+    &[("juno-iii", FinCrossSection::Rounded)];
+
+/// A RocketPy fin set's cross-section and thickness (ADR-009): a NACA 00xx airfoil file gives an
+/// airfoil section `xx`% thick at the mean aerodynamic chord; a section the rocket's team published
+/// ([`PUBLISHED_FIN_SECTIONS`]) keeps the placeholder thickness; anything else, including a
+/// lift-curve airfoil, which says nothing about the edges, keeps square edges of the placeholder
+/// thickness.
+fn fin_section(
+    case: &str,
+    airfoil: &Value,
+    planform: &FinPlanform,
+) -> Result<(FinCrossSection, f64), String> {
+    if let Some(file) = airfoil["file"].as_str() {
+        let digits = file
+            .strip_prefix("NACA00")
+            .and_then(|rest| rest.get(..2))
+            .and_then(|d| d.parse::<u32>().ok())
+            .ok_or_else(|| format!("unmapped airfoil file `{file}`"))?;
+        let geometry =
+            hpr_aero::fins::FinGeometry::from_planform(planform).map_err(|e| e.to_string())?;
+        return Ok((
+            FinCrossSection::Airfoil,
+            f64::from(digits) / 100.0 * geometry.mac_length_m,
+        ));
+    }
+    let section = PUBLISHED_FIN_SECTIONS
+        .iter()
+        .find(|(name, _)| *name == case)
+        .map_or(FinCrossSection::Square, |&(_, section)| section);
+    Ok((section, FIN_THICKNESS_M))
 }
 
 /// The fixture's RocketPy motor as an hpr `SolidMotor`: the same inputs on hpr's motor axis
@@ -603,7 +666,12 @@ fn rocketpy_motor(motor: &Value, catalog: &Catalog) -> Result<SolidMotor, String
         thrust,
         propellant,
         MassElement {
-            mass_kg: num(motor, "dry_mass")?,
+            // hpr's motor needs a positive dry mass; RocketPy's Cavour example has none, so it
+            // takes 1e-15 kg, below the mass comparison's resolution (1e-12 of the rocket's).
+            mass_kg: match num(motor, "dry_mass")? {
+                0.0 => 1e-15,
+                mass => mass,
+            },
             cg_m: to_hpr(dry_cg),
             axial_inertia_kg_m2: dry_33,
             transverse_inertia_kg_m2: dry_11,
@@ -989,7 +1057,7 @@ mod tests {
     fn committed_designs_match_the_generator() {
         let root = root().unwrap();
         let designs = generate(&root).unwrap();
-        assert_eq!(designs.len(), 9);
+        assert_eq!(designs.len(), 10);
         let stale = stale(&root.join(DIR), &designs);
         assert!(
             stale.is_empty(),

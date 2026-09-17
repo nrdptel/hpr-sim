@@ -4,6 +4,7 @@
 //! - [`mass`]: mass, centre of mass and full inertia tensor, and how bodies combine.
 //! - [`shapes`]: nose cone and transition profiles.
 //! - [`solids`]: solids of revolution, filled or with a wall.
+//! - [`finish`]: surface finishes and their roughness heights.
 //! - [`fins`]: fin sets (trapezoidal, elliptical, freeform) and tube fins.
 //! - [`parts`]: every other component, from body tubes to shock cords.
 //! - [`material`]: materials and their densities, and [`materials`]: built-in values with sources.
@@ -17,6 +18,7 @@
 pub mod checks;
 pub mod config;
 pub mod error;
+pub mod finish;
 pub mod fins;
 pub mod mass;
 pub mod material;
@@ -32,6 +34,7 @@ mod testing;
 pub use checks::{Finding, Severity};
 pub use config::{Assembly, Configuration, MotorMount, MountedMotor, PlacedMotor};
 pub use error::DesignError;
+pub use finish::Finish;
 pub use fins::{FinCrossSection, FinPlanform, FinSet, FinTab, TubeFinSet};
 pub use mass::MassProperties;
 pub use material::{Density, Material};

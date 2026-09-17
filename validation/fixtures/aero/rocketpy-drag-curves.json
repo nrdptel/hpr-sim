@@ -1,0 +1,102 @@
+{
+  "atmosphere": "USSA76 at sea level",
+  "cases": [
+    {
+      "curve": "data/rockets/calisto/powerOffDragCurve.csv",
+      "curve_cd0": 0.381505764,
+      "curve_rows_dropped": 0,
+      "curve_sha256": "94760a42d5f5fad4fb815f448db72201fafd2b2a3c6ec2d2c83618b2953207e0",
+      "design": "rocketpy-calisto-tests-motor-at-minus-1.373.json",
+      "hpr_cd0": 0.3981823830720661,
+      "id": "calisto-power-off",
+      "origin": "RASAero II export: the alpha-0 `CD Power-Off` column of RocketPy's first commit's `data/calisto/CD Test.CSV` (da91db9e, 2018), rounded to 9 decimals and cut to Mach 2; the export's power-on column equals its power-off column. The design has the 2018 notebook's fins; its rail buttons come from RocketPy's calisto_robust test fixture, not the notebook",
+      "relative_error": 0.04371262676929333,
+      "thrusting": false,
+      "variant_of": null
+    },
+    {
+      "curve": "data/rockets/calisto/powerOffDragCurve.csv",
+      "curve_cd0": 0.381505764,
+      "curve_rows_dropped": 0,
+      "curve_sha256": "94760a42d5f5fad4fb815f448db72201fafd2b2a3c6ec2d2c83618b2953207e0",
+      "design": "rocketpy-calisto-getting-started-motor-at-minus-1.255.json",
+      "hpr_cd0": 0.35366457846519544,
+      "id": "calisto-getting-started-power-off",
+      "origin": "the same RASAero II export, for the larger NACA 0012 fins RocketPy's getting-started example gives Calisto (tip chord 0.06 m, span 0.11 m, against the 2018 notebook's 0.04 m and 0.10 m)",
+      "relative_error": -0.07297710326286078,
+      "thrusting": false,
+      "variant_of": "calisto-power-off"
+    },
+    {
+      "curve": "data/rockets/juno3/drag_curve.csv",
+      "curve_cd0": 0.375,
+      "curve_rows_dropped": 0,
+      "curve_sha256": "02711cd44cd877427b6b951ffe792253526149c2afeb17097e398cb7d8fd6511",
+      "design": "rocketpy-juno-iii.json",
+      "hpr_cd0": 0.3525453753905272,
+      "id": "juno-iii-power-off",
+      "origin": "labelled RASAero II by RocketPy's Juno III notebook; a 3-decimal, hand-edited table (broken above Mach 1), used for power-off and power-on",
+      "relative_error": -0.059878998958594054,
+      "thrusting": false,
+      "variant_of": null
+    },
+    {
+      "curve": "data/rockets/polito/drag_coefficient_power_off.csv",
+      "curve_cd0": 0.549,
+      "curve_rows_dropped": 22,
+      "curve_sha256": "e47b9398b9e7802ac2f6edafe291edc1015fbb1ee6cb02df52404cf1b276f1c9",
+      "design": "rocketpy-cavour.json",
+      "hpr_cd0": 0.5033853327445214,
+      "id": "cavour-power-off",
+      "origin": "labelled RASAero II by RocketPy's Cavour notebook; a 3-decimal table from Mach 0.082 to 0.895 with 22 extra rows repeating 13 Mach numbers up to 0.107, 7 of them with values 0.001 apart",
+      "relative_error": -0.08308682560196479,
+      "thrusting": false,
+      "variant_of": null
+    },
+    {
+      "curve": "data/rockets/polito/drag_coefficient_power_on.csv",
+      "curve_cd0": 0.5489411764705883,
+      "curve_rows_dropped": 8,
+      "curve_sha256": "5f588e25e43b843470e1882f35e2a3be0b7f1760c6652da0c757ad203e7469ed",
+      "design": "rocketpy-cavour.json",
+      "hpr_cd0": 0.44872544923860425,
+      "id": "cavour-power-on",
+      "origin": "the power-on companion of the Cavour table, from Mach 0.011 to 0.923: within the tables' 0.001 rounding of the power-off table from Mach 0.16 up (0.0001 lower at Mach 0.3), and 0.001 to 0.013 lower below Mach 0.16. Their uneven Mach spacing suggests samples along a flight rather than a Mach sweep (unconfirmed)",
+      "relative_error": -0.18256186915384998,
+      "thrusting": true,
+      "variant_of": null
+    },
+    {
+      "curve": "data/rockets/valetudo/Cd_PowerOff_RASAero.csv",
+      "curve_cd0": 1.05,
+      "curve_rows_dropped": 0,
+      "curve_sha256": "e21edefacdb497112eebbca562220b049f07c297c6bba87635f2dca04a1b84a0",
+      "design": "rocketpy-valetudo.json",
+      "hpr_cd0": 0.5565669992755498,
+      "id": "valetudo-power-off",
+      "origin": "labelled RASAero by its file name; a 3-decimal, hand-edited table with no input file, 1.44 times the OpenRocket export for the same rocket in RocketPy's RocketPaper repository at Mach 0.3",
+      "relative_error": -0.46993619116614316,
+      "thrusting": false,
+      "variant_of": null
+    },
+    {
+      "curve": "data/rockets/valetudo/Cd_PowerOn_RASAero.csv",
+      "curve_cd0": 1.046,
+      "curve_rows_dropped": 0,
+      "curve_sha256": "8e24d7d382f6de81360a6ac7bf58acaca0a4fafefb210de5813923aa9a53aed5",
+      "design": "rocketpy-valetudo.json",
+      "hpr_cd0": 0.5188668119217228,
+      "id": "valetudo-power-on",
+      "origin": "the power-on companion of the Valetudo table: 0.003 to 0.010 below it from Mach 0.02 (0.098 above at Mach 0.01)",
+      "relative_error": -0.5039514226369763,
+      "thrusting": true,
+      "variant_of": null
+    }
+  ],
+  "generator": "cargo xtask aero",
+  "mach": 0.3,
+  "note": "Derived numbers only: RocketPy's curves are read from refs/rocketpy and never committed. curve_cd0 is a curve's linear interpolation at the Mach number, after dropping rows that repeat the previous row's Mach number (curve_rows_dropped), and relative_error is hpr_cd0 over it, minus 1.",
+  "reynolds_per_m": 6988900.010238359,
+  "rocketpy_commit": "9bd6ad3af8f97bafa3201d4e70eba2877e66e040",
+  "tolerance_rel": 0.1
+}

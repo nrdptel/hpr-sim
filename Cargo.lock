@@ -327,6 +327,7 @@ name = "hpr-aero"
 version = "0.1.0"
 dependencies = [
  "criterion",
+ "hpr-atmos",
  "hpr-core",
  "hpr-design",
  "proptest",
@@ -1026,6 +1027,8 @@ checksum = "1ebf944e87a7c253233ad6766e082e3cd714b5d03812acc24c318f549614536e"
 name = "xtask"
 version = "0.1.0"
 dependencies = [
+ "hpr-aero",
+ "hpr-atmos",
  "hpr-design",
  "hpr-motor",
  "serde",

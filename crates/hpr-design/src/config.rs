@@ -409,7 +409,7 @@ mod tests {
         ));
     }
     /// The RocketPy example designs in `validation/designs/`, by oracle case name.
-    const ROCKETPY_DESIGNS: [(&str, &str); 7] = [
+    const ROCKETPY_DESIGNS: [(&str, &str); 8] = [
         (
             "calisto-getting-started-motor-at-minus-1.255",
             include_str!(
@@ -437,6 +437,10 @@ mod tests {
         (
             "juno-iii",
             include_str!("../../../validation/designs/rocketpy-juno-iii.json"),
+        ),
+        (
+            "cavour",
+            include_str!("../../../validation/designs/rocketpy-cavour.json"),
         ),
         (
             "prometheus-2022-generic-motor",
@@ -619,7 +623,15 @@ mod tests {
                 .unwrap();
             assert_eq!(motor.curve(), &bundled, "{name}: the bundled curve");
             let dry = motor.dry();
-            assert_eq!(dry.mass_kg, number(m, "dry_mass"), "{name}");
+            // hpr's motor needs a positive dry mass: the generator gives Cavour's massless dry
+            // parts 1e-15 kg.
+            let example_dry = number(m, "dry_mass");
+            let expected_dry = if example_dry == 0.0 {
+                1e-15
+            } else {
+                example_dry
+            };
+            assert_eq!(dry.mass_kg, expected_dry, "{name}");
             let dry_inertia: Vec<f64> = m["dry_inertia"]
                 .as_array()
                 .unwrap()

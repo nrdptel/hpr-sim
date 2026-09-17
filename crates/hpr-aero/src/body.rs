@@ -17,7 +17,7 @@
 //!
 //! See `docs/physics/aero.md`.
 
-use std::f64::consts::PI;
+use std::f64::consts::{FRAC_PI_2, PI};
 
 use hpr_design::{Profile, Wall, revolve};
 use serde::{Deserialize, Serialize};
@@ -45,6 +45,10 @@ pub struct BodyGeometry {
     pub planform_area_m2: f64,
     /// Centroid of the planform area, m aft of the fore end.
     pub planform_centroid_m: f64,
+    /// Angle of the outer surface to the axis at the aft end, `atan(dr/dx)`, rad: positive where
+    /// the radius grows aft, and `±π/2` where the profile ends in a blunt tip (the aft end of a
+    /// narrowing elliptical or Haack transition).
+    pub aft_angle_rad: f64,
 }
 
 impl BodyGeometry {
@@ -64,6 +68,7 @@ impl BodyGeometry {
             volume_m3: area * length_m,
             planform_area_m2: 2.0 * radius_m * length_m,
             planform_centroid_m: 0.5 * length_m,
+            aft_angle_rad: 0.0,
         })
     }
 
@@ -84,6 +89,7 @@ impl BodyGeometry {
             volume_m3: g.volume_m3,
             planform_area_m2: g.planform_area_m2,
             planform_centroid_m: g.planform_centroid_m,
+            aft_angle_rad: profile.radius_and_slope(profile.length_m()).1.atan(),
         };
         geometry.validate()?;
         Ok(geometry)
@@ -93,14 +99,20 @@ impl BodyGeometry {
     ///
     /// # Errors
     ///
-    /// [`AeroError::Domain`] for a non-finite or negative value, or a length or volume that isn't
-    /// positive.
+    /// [`AeroError::Domain`] for a non-finite or negative value, or a length, volume or planform
+    /// area that isn't positive.
     pub fn validate(&self) -> Result<(), AeroError> {
         check_dimension("body length", self.length_m, false)?;
         check_dimension("body fore area", self.fore_area_m2, true)?;
         check_dimension("body aft area", self.aft_area_m2, true)?;
         check_dimension("body volume", self.volume_m3, false)?;
         check_dimension("body planform area", self.planform_area_m2, false)?;
+        if !(-FRAC_PI_2..=FRAC_PI_2).contains(&self.aft_angle_rad) {
+            return Err(AeroError::Domain {
+                what: "body angle at the aft end",
+                value: self.aft_angle_rad,
+            });
+        }
         if !self.planform_centroid_m.is_finite() {
             return Err(AeroError::Domain {
                 what: "body planform centroid",

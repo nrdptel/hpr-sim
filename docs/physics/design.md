@@ -195,8 +195,10 @@ on the flattering side: Loft flew a 54 mm motor in a 38 mm mount 69% high. The f
   on-axis part in the pod doesn't. Motors miss their mounts in both directions. Parts and a stage
   centre lie off the rocket. A layout with a corrupt parent index is skipped, not a panic.
 - **Against RocketPy 1.13.0** (`config::tests::matches_rocketpy_example_rockets`):
-  - Seven cases of `validation/fixtures/design/rocketpy-rocket-mass.json`: six example rockets
-    (Calisto at two motor positions) and Prometheus's `GenericMotor`.
+  - Eight cases of `validation/fixtures/design/rocketpy-rocket-mass.json`: seven example rockets
+    (Calisto at two motor positions) and Prometheus's `GenericMotor`. Cavour (added in M1.5b for
+    its drag curve) has no motor dry mass; its design gives the motor 1e-15 kg, since hpr needs a
+    positive one.
     `docs/research/rocketpy-rocket-mass.md` gives the curve substitution and the examples left out.
   - The test derives the stage override, nozzle station and motor inputs from the fixture itself,
     independently of the design generator.
@@ -210,8 +212,8 @@ on the flattering side: Loft flew a 54 mm motor in a 38 mm mount 69% high. The f
     | products of inertia (of `I_11`) | 0 | 1e-15 |
     | at LSODA knots: total mass, centre (of length), `I_11`, `I_33` | 8.0e-10 | 1e-8 |
     | at LSODA knots: grain propellant mass (of initial) | 2.4e-9 | 1e-8 |
-    | even grid: total mass | 8.3e-6 | 5e-5 |
-    | even grid: centre of mass (of the rocket's length) | 2.5e-6 | 2e-5 |
+    | even grid: total mass | 1.1e-5 (Cavour) | 5e-5 |
+    | even grid: centre of mass (of the rocket's length) | 3.6e-6 (Cavour) | 2e-5 |
     | even grid: `I_11` about the dry centre and about the centre of mass | 2.6e-5 | 1e-4 |
     | even grid: `I_33` | 1.4e-5 | 1e-4 |
     | even grid: grain propellant mass (of initial) | 4.9e-5 | 2.5e-4 |
@@ -223,7 +225,7 @@ on the flattering side: Loft flew a 54 mm motor in a 38 mm mount 69% high. The f
   - The comparison sets mass, centre and inertia together. So the override steps (rescaling the
     tensor with mass, moving the centre) are checked by hand-worked tests, not against RocketPy.
 - **Public designs** (`validation/designs/`, written by `cargo xtask designs`, which a test keeps in
-  sync): the seven RocketPy cases and two synthetic rockets resolve with no findings and assemble
+  sync): the eight RocketPy cases and two synthetic rockets resolve with no findings and assemble
   into valid bodies at ignition, mid-burn and burnout.
 - **Lessons:** L47 `tests::reference_diameter_ignores_internal_components`; L50
   `checks::tests::motor_wider_than_mount_is_rejected` and `checks::tests::fin_root_must_touch_body`.

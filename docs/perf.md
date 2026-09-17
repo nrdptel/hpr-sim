@@ -3,6 +3,29 @@
 Measured numbers only, newest first within each section. Record the machine, the toolchain, and
 the command, so a later run can be compared like for like.
 
+## Drag (M1.5b)
+
+- **Benchmark:** `cargo bench -p hpr-aero --bench drag`, which is criterion, release profile.
+- **When and where:** 2026-09-17 on an Apple M5 with rustc 1.98.1.
+- **Inputs:** the two layouts below, at Mach 0.6, `α` 0.05 rad, sea-level Reynolds number, one
+  54 mm motor thrusting; and Calisto with a 200-row override table.
+
+| call | median |
+|---|---|
+| `AeroModel::drag`, synthetic two-stage | 107 ns |
+| `AeroModel::drag`, Calisto | 47 ns |
+| `AeroModel::drag`, Calisto with a 200-row table | 13 ns |
+
+- **Where the time goes.** Each component's skin friction takes a logarithm and a power, and each
+  fin set a power for its leading edge; the table is a binary search.
+- **Normal force after M1.5b.** Re-measured in the same session: `AeroModel::new` 3.86 µs and
+  11.2 µs, `normal_force` 28.0 ns (two-stage) and 22.2 ns (Calisto), where `main` before M1.5b
+  measured 14.8 ns and 11.1 ns in that session (the M1.5a numbers below came from an earlier
+  session). Nothing on the normal-force path changed. Removing the new drag fields from
+  `AeroModel` recovered part of it (21.4 ns and 19.5 ns), and `#[inline]` on the hot helpers
+  changed nothing, so it looks like code layout; M1.6's flight benchmark will show whether it
+  matters.
+
 ## Normal force (M1.5a)
 
 - **Benchmark:** `cargo bench -p hpr-aero --bench normal_force`, which is criterion, release profile.
