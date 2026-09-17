@@ -50,7 +50,7 @@ M1.4 is done (ADR-006 parts, ADR-007 tree). Start M1.5 from these notes:
 
 ## Done log (newest first, keep about 15)
 
-- 2026-09-17: M1.4b Design tree, configurations and checks (PR #TBD): stages, positions, automatic
+- 2026-09-17: M1.4b Design tree, configurations and checks (PR #14): stages, positions, automatic
   radii, overrides, the reference diameter (L47), motor mounts and configurations, typed checks
   (L50), ADR-007. Six RocketPy example rockets (`rocket_mass.py`, bundled public-domain curves)
   match to 8e-10 at RocketPy's LSODA knots and 2.6e-5 between them. `cargo xtask designs` writes
