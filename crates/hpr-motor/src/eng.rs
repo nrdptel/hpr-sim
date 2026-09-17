@@ -129,8 +129,8 @@ pub fn parse(text: &str) -> Result<Parsed<EngFile>, MotorError> {
                 2 => {
                     add_point(&mut entry, &fields, line).map(|()| State::Points(entry, header_line))
                 }
-                // A header starts with the motor's name; a line of numbers is a corrupt point.
-                n if n >= 7 && fields[0].parse::<f64>().is_err() => {
+                // A header has a name and a manufacturer; a line of numbers is a corrupt point.
+                n if n >= 7 && !fields.iter().all(|field| field.parse::<f64>().is_ok()) => {
                     match finish(entry, header_line, &mut warnings) {
                         Ok(entry) => entries.push(entry),
                         Err(error) => errors.push(error),
@@ -558,6 +558,23 @@ C6 18 70 0-3-5-7 .0108 0.0231 E
                 .warnings
                 .iter()
                 .any(|w| w.line == 3 && w.kind == WarningKind::Skipped)
+        );
+
+        // Names can start with digits: an unseparated header still starts a new entry.
+        let text = "A8 18 70 3 0.003 0.016 E\n 0.1 1\n 0.2 0\n1266-J760-WT-19A 54 400 P 0.5 1 AT\n 0.1 900\n 1.5 0\n";
+        let parsed = parse(text).unwrap();
+        let names: Vec<&str> = parsed
+            .value
+            .entries
+            .iter()
+            .map(|e| e.name.as_str())
+            .collect();
+        assert_eq!(names, ["A8", "1266-J760-WT-19A"]);
+        assert!(
+            parsed
+                .warnings
+                .iter()
+                .all(|w| w.kind != WarningKind::Skipped)
         );
     }
 

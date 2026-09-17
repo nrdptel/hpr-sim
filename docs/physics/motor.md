@@ -149,9 +149,11 @@ F(p_a) = F_curve + (p_ref − p_a) A_e,    A_e = π r_e²
   adds it inside zero-thrust gaps, where nothing flows), and never lets thrust go negative. Without a known nozzle it
   returns the curve. COTS files carry no exit diameter (`.rse` `exitDia` is always 0).
 - **Limits.** The full-flow term steps in just after ignition and steps to zero at `t_end` (the
-  integrator should treat both as events). In the ignition transient and the tail-off the real exit pressure falls with the chamber's, so the term
-  overstates thrust there: on the 411I175 (a 9.5 mm exit) in vacuum it adds 3.9 N·s in the 0.14 s
-  after the NFPA burn ends, which delivers 0.45 N·s itself; that is 0.95% of total impulse.
+  integrator should treat both as events). In the ignition transient and the tail-off the real
+  exit pressure is far from its full-flow value, so the term misstates thrust there. In the
+  tail-off, where the exit pressure falls with the chamber's, it overstates it: on the 411I175 (a
+  9.5 mm exit) in vacuum it adds 3.9 N·s in the 0.14 s after the NFPA burn ends, which delivers
+  0.45 N·s itself; that is 0.95% of total impulse.
 
 ## Delays
 

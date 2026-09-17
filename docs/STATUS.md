@@ -22,9 +22,9 @@ M1.3 built `hpr-motor` (ADR-005). Start M1.4 from these notes:
   fit checks.
 - **Catalog motors are crude:** `from_envelope` centres the dry mass and propellant at `L/2`, so
   their CG doesn't move. Designs with real motor data should use `SolidMotor::new` with grains.
-- **What M1.6 inherits:** burnout (`burnout_time_s`) is a thrust discontinuity and an event. The
-  ambient-pressure term (`thrust_at_pressure_n`) needs a nozzle, which COTS data never gives.
-  Delays come from `CatalogMotor::delays`.
+- **What M1.6 inherits:** burnout (`burnout_time_s`, thrust already zero there) is an event. The
+  pressure term needs a nozzle and its test pressure, which COTS data never gives. Delays come
+  from `CatalogMotor::delays`; settle any `Delay::ZeroOrPlugged` before an ejection event.
 - **For M2.1:** RocketPy prepends `(0, 0)` to `.eng` curves (an explicit one makes its impulse
   NaN), and `GenericMotor.load_from_eng` uses the diameter as the radius. `SolidMotor` takes its
   propellant mass from the grains, not the file header.

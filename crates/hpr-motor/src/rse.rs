@@ -118,10 +118,11 @@ impl RseEngine {
 /// # Errors
 ///
 /// [`MotorError::Syntax`], with the line number, for XML that isn't well formed (or has a DTD),
-/// elements nested more than [`MAX_ELEMENT_DEPTH`] deep, or no `<engine>` elements; and, when no engine reads, the first engine's error: a missing required
-/// attribute (`code`, `dia`, `len`, `initWt`, `propWt`), an unreadable or non-finite number, a
-/// non-positive diameter or length, a negative mass, fewer than two points, a point without `t`
-/// or `f`, or negative or decreasing time.
+/// elements nested more than [`MAX_ELEMENT_DEPTH`] deep, or no `<engine>` elements; and, when no
+/// engine reads, the first engine's error: a missing required attribute (`code`, `dia`, `len`,
+/// `initWt`, `propWt`), an unreadable or non-finite number, a non-positive diameter or length, a
+/// negative mass, fewer than two points, a point without `t` or `f`, or negative or decreasing
+/// time.
 pub fn parse(text: &str) -> Result<Parsed<RseFile>, MotorError> {
     let text = text.strip_prefix('\u{feff}').unwrap_or(text);
     check_nesting(text)?;
