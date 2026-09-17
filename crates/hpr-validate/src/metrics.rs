@@ -26,13 +26,30 @@ pub struct Reference {
     pub generator: String,
     /// The command that regenerates it.
     pub command: String,
+    /// What the oracle modelled, in the generator's words.
+    pub model: String,
+    /// What the generator overrode to make the comparison like-for-like.
+    pub overrides: String,
     /// The reference's own case id.
     pub case: String,
+    /// The file it was read from, relative to the repository root.
+    pub file: String,
+    /// That file's SHA-256, so an edited reference shows up in the report itself.
+    pub sha256: String,
     /// The values, by metric name.
     pub values: BTreeMap<String, ReferenceValue>,
 }
 
 impl Reference {
+    /// Whether the run that produced it is named at all: a file that does not say what wrote it,
+    /// with which command, is not a reference (L77), however many numbers it holds.
+    #[must_use]
+    pub fn names_its_run(&self) -> bool {
+        [&self.oracle, &self.generator, &self.command]
+            .into_iter()
+            .all(|field| !field.trim().is_empty())
+    }
+
     /// The metrics that carry no source, which is what L77 refuses.
     #[must_use]
     pub fn without_provenance(&self) -> Vec<String> {

@@ -1,7 +1,16 @@
-# valetudo: RocketPy's own parachute phase, replayed from the state and the devices its
-# generator recorded (`validation/oracles/rocketpy/recovery.py`, M1.7a). The gate is the
-# milestone's 3% on the descent rate and the drift. A drift component can pass through zero, so
-# those carry a 5 cm floor as well: fixed, and far below 3% of any drift worth reporting.
+# valetudo: RocketPy's own parachute phase, replayed from the state and the devices its generator
+# recorded (`validation/oracles/rocketpy/recovery.py`, M1.7a). Every metric is held to the
+# milestone's 3%, with no absolute floor: a floor large enough to carry a drift component that is
+# essentially zero would also be looser than 3% of the drift itself, which would hide a real
+# regression rather than report one.
+#
+# `mean_descent_rate_m_s` is the generator's `start_height_agl / descent_time`, so it carries no
+# information beyond the descent time; it is compared because the reference publishes it, and a
+# reference value nobody looks at is how a suite starts reporting on less than it says.
+#
+# This case descends in still air from 800 m, so its drift is Coriolis alone: 19 cm east and, in
+# RocketPy, 20 um north. hpr's north drift is 28x that, which is unexplained (issue #27), so that
+# one metric is declared not scored rather than passed on a tolerance wide enough to swallow it.
 id = "descent-valetudo"
 title = "Descent of RocketPy's valetudo under its own devices"
 reference = "validation/fixtures/recovery/rocketpy-descent.json"
@@ -17,14 +26,14 @@ relative = 0.03
 [metrics.impact_speed_m_s]
 relative = 0.03
 
+[metrics.mean_descent_rate_m_s]
+relative = 0.03
+
 [metrics.drift_m]
 relative = 0.03
-absolute = 0.05
 
 [metrics.drift_east_m]
 relative = 0.03
-absolute = 0.05
 
 [metrics.drift_north_m]
-relative = 0.03
-absolute = 0.05
+not_scored = "hpr drifts 0.55 mm north where RocketPy drifts 0.020 mm; both carry the same Coriolis term and a quasi-steady estimate lands on RocketPy's value, so hpr's is the suspect one. Unexplained: issue #27."

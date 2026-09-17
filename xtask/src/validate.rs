@@ -64,6 +64,10 @@ fn write_reports(root: &Path, report: &Report) -> Result<&'static str, String> {
 }
 
 /// Prints one line per case and a summary.
+///
+/// The worst figure is over the **scored** metrics: a metric a case declares not scored is
+/// counted and named separately, so a run cannot look green by leaving something out and cannot
+/// look alarming because a declared difference is large in percentage terms.
 fn print_summary(report: &Report) {
     for case in &report.cases {
         let metrics: Vec<&hpr_validate::Comparison> = report
@@ -73,16 +77,27 @@ fn print_summary(report: &Report) {
             .collect();
         let worst = metrics
             .iter()
+            .filter(|comparison| comparison.scored())
             .filter_map(|comparison| comparison.relative)
             .fold(0.0_f64, |worst, relative| worst.max(relative.abs()));
         let failed = metrics
             .iter()
             .filter(|comparison| comparison.verdict == hpr_validate::Verdict::Fail)
             .count();
+        let unscored: Vec<&str> = metrics
+            .iter()
+            .filter(|comparison| !comparison.scored())
+            .map(|comparison| comparison.metric.as_str())
+            .collect();
         println!(
-            "{case}: {} metric(s), worst {:+.2}%{}",
+            "{case}: {} metric(s), worst scored {:+.2}%{}{}",
             metrics.len(),
             100.0 * worst,
+            if unscored.is_empty() {
+                String::new()
+            } else {
+                format!(", not scored: {}", unscored.join(", "))
+            },
             if failed == 0 {
                 String::new()
             } else {
@@ -90,10 +105,16 @@ fn print_summary(report: &Report) {
             }
         );
     }
+    let not_scored = report.not_scored().len();
     println!(
-        "validate: {} case(s), {} metric(s), {}",
+        "validate: {} case(s), {} metric(s){}, {}",
         report.cases.len(),
         report.comparisons.len(),
+        if not_scored == 0 {
+            String::new()
+        } else {
+            format!(" ({not_scored} not scored)")
+        },
         if report.passed() { "ok" } else { "FAILED" }
     );
 }
@@ -107,15 +128,20 @@ mod tests {
     /// A report with no comparisons, which is all the stem depends on.
     fn report(fast: bool) -> Report {
         Report {
-            hpr_version: "0.0.0".to_owned(),
+            harness_version: "0.0.0".to_owned(),
             fast,
             cases: Vec::new(),
+            skipped: Vec::new(),
             comparisons: Vec::new(),
             sources: vec![Source {
                 case: "x".to_owned(),
                 oracle: "rocketpy 1.13.0".to_owned(),
                 generator: "validation/oracles/rocketpy/recovery.py".to_owned(),
                 command: "...".to_owned(),
+                file: "validation/fixtures/recovery/rocketpy-descent.json".to_owned(),
+                sha256: "0".repeat(64),
+                model: "a point mass under a canopy".to_owned(),
+                overrides: "none".to_owned(),
             }],
         }
     }

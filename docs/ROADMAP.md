@@ -335,13 +335,19 @@
       fewer cases than the lock expects each fail.
 
     *Result (ADR-015):* met. `cargo xtask validate` runs the five locked descent cases, compares
-    25 metrics against `validation/fixtures/recovery/rocketpy-descent.json` and writes
-    `validation/reports/latest.{md,json}`: all 25 within tolerance, worst case +2.87% (NDRT's
-    northward drift) against a 3% gate. A metric with no tolerance, a reference value with a blank
-    source, a lock naming a case that is not there and a committed case that is not locked each
-    fail; the four lesson tests check L76–L79 directly, including that a run leaves the reference
-    byte-for-byte unchanged. `--fast` may only drop cases the lock marks slow, and says so in the
-    report.
+    30 metrics against `validation/fixtures/recovery/rocketpy-descent.json` and writes
+    `validation/reports/latest.{md,json}`. 29 of the 30 are scored and all are within their gate,
+    which is the milestone's 3% in every case and carries no absolute floor; the largest is NDRT's
+    northward drift at +2.87%. The 30th, Valetudo's northward drift, is declared **not scored**:
+    hpr gives 0.55 mm where RocketPy gives 0.020 mm, the cause is not established (issue #27), and
+    the report prints both numbers and the reason rather than passing it on a widened tolerance.
+    Refused by the command, not only by a test: a metric with no tolerance, a bound that is
+    infinite or negative, a metric both gated and excused, a reference metric the case ignores, a
+    reference that does not name the run that produced it, a case that flies a different design or
+    mass than the reference recorded, a lock naming a case that is not there, and a committed case
+    the lock does not name. Twelve tests cover it, four of them L76–L79 by name, including a run
+    that flies a case with half its drag area and leaves every committed fixture byte-for-byte
+    unchanged.
 
   - [ ] **M2.1b The RocketPy code-to-code suite.**
     - The five rebuilt example rockets, both modes, the CI job and the reference-regeneration

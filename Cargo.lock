@@ -467,14 +467,13 @@ dependencies = [
 name = "hpr-validate"
 version = "0.1.0"
 dependencies = [
- "hpr",
  "hpr-atmos",
  "hpr-core",
  "hpr-design",
- "hpr-flightdata",
  "hpr-sim",
  "serde",
  "serde_json",
+ "sha2",
  "thiserror",
  "toml",
 ]

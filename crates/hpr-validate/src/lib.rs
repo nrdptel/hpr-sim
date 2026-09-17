@@ -32,7 +32,7 @@ pub mod report;
 pub mod rocketpy;
 pub mod run;
 
-pub use case::{Case, CaseLock, Metric, Tolerance};
+pub use case::{Case, CaseLock, Metric, Tolerance, committed_cases};
 pub use metrics::{Measured, Reference, ReferenceValue};
 pub use report::{Comparison, Report, Source, Verdict};
 pub use run::{ValidateError, run_case, run_lock};

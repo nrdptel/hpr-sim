@@ -1,5 +1,5 @@
 {
-  "hpr_version": "0.1.0",
+  "harness_version": "0.1.0",
   "fast": false,
   "cases": [
     "descent-calisto-tests-motor-at-minus-1.373",
@@ -8,6 +8,7 @@
     "descent-prometheus-2022-generic-motor",
     "descent-juno-iii"
   ],
+  "skipped": [],
   "comparisons": [
     {
       "case": "descent-calisto-tests-motor-at-minus-1.373",
@@ -29,8 +30,7 @@
       "reference": 1286.0301835192645,
       "source": "rocketpy 1.13.0, validation/oracles/rocketpy/recovery.py, case calisto-tests-motor-at-minus-1.373, metrics.drift_east_m",
       "tolerance": {
-        "relative": 0.03,
-        "absolute": 0.05
+        "relative": 0.03
       },
       "difference": 0.7449779140495139,
       "relative": 0.0005792849371628719,
@@ -43,8 +43,7 @@
       "reference": 1384.9477772436032,
       "source": "rocketpy 1.13.0, validation/oracles/rocketpy/recovery.py, case calisto-tests-motor-at-minus-1.373, metrics.drift_m",
       "tolerance": {
-        "relative": 0.03,
-        "absolute": 0.05
+        "relative": 0.03
       },
       "difference": 0.810943244125383,
       "relative": 0.0005855406661898583,
@@ -57,8 +56,7 @@
       "reference": 514.010420876274,
       "source": "rocketpy 1.13.0, validation/oracles/rocketpy/recovery.py, case calisto-tests-motor-at-minus-1.373, metrics.drift_north_m",
       "tolerance": {
-        "relative": 0.03,
-        "absolute": 0.05
+        "relative": 0.03
       },
       "difference": 0.3211019045636476,
       "relative": 0.0006246992113822128,
@@ -75,6 +73,19 @@
       },
       "difference": -0.0015817436418661401,
       "relative": -0.00028990798564655765,
+      "verdict": "pass"
+    },
+    {
+      "case": "descent-calisto-tests-motor-at-minus-1.373",
+      "metric": "mean_descent_rate_m_s",
+      "measured": 11.661367201702577,
+      "reference": 11.66980574281239,
+      "source": "rocketpy 1.13.0, validation/oracles/rocketpy/recovery.py, case calisto-tests-motor-at-minus-1.373, metrics.mean_descent_rate_m_s",
+      "tolerance": {
+        "relative": 0.03
+      },
+      "difference": -0.008438541109812903,
+      "relative": -0.0007231089613475638,
       "verdict": "pass"
     },
     {
@@ -97,8 +108,7 @@
       "reference": 0.1912406843759503,
       "source": "rocketpy 1.13.0, validation/oracles/rocketpy/recovery.py, case valetudo, metrics.drift_east_m",
       "tolerance": {
-        "relative": 0.03,
-        "absolute": 0.05
+        "relative": 0.03
       },
       "difference": -0.0017110631346103633,
       "relative": -0.008947171153428168,
@@ -111,8 +121,7 @@
       "reference": 0.19124068538577654,
       "source": "rocketpy 1.13.0, validation/oracles/rocketpy/recovery.py, case valetudo, metrics.drift_m",
       "tolerance": {
-        "relative": 0.03,
-        "absolute": 0.05
+        "relative": 0.03
       },
       "difference": -0.0017102628598828773,
       "relative": -0.008942986459355566,
@@ -124,13 +133,11 @@
       "measured": 0.0005511215455837295,
       "reference": 0.00001965298267377511,
       "source": "rocketpy 1.13.0, validation/oracles/rocketpy/recovery.py, case valetudo, metrics.drift_north_m",
-      "tolerance": {
-        "relative": 0.03,
-        "absolute": 0.05
-      },
+      "tolerance": {},
       "difference": 0.0005314685629099543,
       "relative": 27.042641401152032,
-      "verdict": "pass"
+      "verdict": "not_scored",
+      "note": "hpr drifts 0.55 mm north where RocketPy drifts 0.020 mm; both carry the same Coriolis term and a quasi-steady estimate lands on RocketPy's value, so hpr's is the suspect one. Unexplained: issue #27."
     },
     {
       "case": "descent-valetudo",
@@ -143,6 +150,19 @@
       },
       "difference": 0.0006698700788589917,
       "relative": 0.0000380040934541784,
+      "verdict": "pass"
+    },
+    {
+      "case": "descent-valetudo",
+      "metric": "mean_descent_rate_m_s",
+      "measured": 17.48418323198097,
+      "reference": 17.480866557134576,
+      "source": "rocketpy 1.13.0, validation/oracles/rocketpy/recovery.py, case valetudo, metrics.mean_descent_rate_m_s",
+      "tolerance": {
+        "relative": 0.03
+      },
+      "difference": 0.0033166748463955287,
+      "relative": 0.0001897317181362427,
       "verdict": "pass"
     },
     {
@@ -165,8 +185,7 @@
       "reference": 323.2342316429894,
       "source": "rocketpy 1.13.0, validation/oracles/rocketpy/recovery.py, case ndrt-2020-nose-to-tail, metrics.drift_east_m",
       "tolerance": {
-        "relative": 0.03,
-        "absolute": 0.05
+        "relative": 0.03
       },
       "difference": 0.6688538257161554,
       "relative": 0.002069254306130859,
@@ -179,8 +198,7 @@
       "reference": 326.9900458916828,
       "source": "rocketpy 1.13.0, validation/oracles/rocketpy/recovery.py, case ndrt-2020-nose-to-tail, metrics.drift_m",
       "tolerance": {
-        "relative": 0.03,
-        "absolute": 0.05
+        "relative": 0.03
       },
       "difference": 0.8784700107444792,
       "relative": 0.0026865344122294077,
@@ -193,8 +211,7 @@
       "reference": -49.41782680785443,
       "source": "rocketpy 1.13.0, validation/oracles/rocketpy/recovery.py, case ndrt-2020-nose-to-tail, metrics.drift_north_m",
       "tolerance": {
-        "relative": 0.03,
-        "absolute": 0.05
+        "relative": 0.03
       },
       "difference": -1.4206915017169877,
       "relative": 0.028748562886848437,
@@ -211,6 +228,19 @@
       },
       "difference": 0.0005369502928402881,
       "relative": 0.00011663195594284374,
+      "verdict": "pass"
+    },
+    {
+      "case": "descent-ndrt-2020-nose-to-tail",
+      "metric": "mean_descent_rate_m_s",
+      "measured": 16.23483400153627,
+      "reference": 16.349212333157304,
+      "source": "rocketpy 1.13.0, validation/oracles/rocketpy/recovery.py, case ndrt-2020-nose-to-tail, metrics.mean_descent_rate_m_s",
+      "tolerance": {
+        "relative": 0.03
+      },
+      "difference": -0.11437833162103317,
+      "relative": -0.006995953645367136,
       "verdict": "pass"
     },
     {
@@ -233,8 +263,7 @@
       "reference": -612.3894052360855,
       "source": "rocketpy 1.13.0, validation/oracles/rocketpy/recovery.py, case prometheus-2022-generic-motor, metrics.drift_east_m",
       "tolerance": {
-        "relative": 0.03,
-        "absolute": 0.05
+        "relative": 0.03
       },
       "difference": -0.42125931957900775,
       "relative": 0.0006878945258966488,
@@ -247,8 +276,7 @@
       "reference": 1236.0733525920127,
       "source": "rocketpy 1.13.0, validation/oracles/rocketpy/recovery.py, case prometheus-2022-generic-motor, metrics.drift_m",
       "tolerance": {
-        "relative": 0.03,
-        "absolute": 0.05
+        "relative": 0.03
       },
       "difference": 0.8129280987109269,
       "relative": 0.0006576697871580505,
@@ -261,8 +289,7 @@
       "reference": 1073.7115764220164,
       "source": "rocketpy 1.13.0, validation/oracles/rocketpy/recovery.py, case prometheus-2022-generic-motor, metrics.drift_north_m",
       "tolerance": {
-        "relative": 0.03,
-        "absolute": 0.05
+        "relative": 0.03
       },
       "difference": 0.6955907021501844,
       "relative": 0.0006478375733529265,
@@ -279,6 +306,19 @@
       },
       "difference": -0.002199795779258551,
       "relative": -0.00030031347125193236,
+      "verdict": "pass"
+    },
+    {
+      "case": "descent-prometheus-2022-generic-motor",
+      "metric": "mean_descent_rate_m_s",
+      "measured": 19.54475883452691,
+      "reference": 19.56014712572861,
+      "source": "rocketpy 1.13.0, validation/oracles/rocketpy/recovery.py, case prometheus-2022-generic-motor, metrics.mean_descent_rate_m_s",
+      "tolerance": {
+        "relative": 0.03
+      },
+      "difference": -0.015388291201698934,
+      "relative": -0.0007867165365774684,
       "verdict": "pass"
     },
     {
@@ -301,8 +341,7 @@
       "reference": 428.8380897329483,
       "source": "rocketpy 1.13.0, validation/oracles/rocketpy/recovery.py, case juno-iii, metrics.drift_east_m",
       "tolerance": {
-        "relative": 0.03,
-        "absolute": 0.05
+        "relative": 0.03
       },
       "difference": -0.1152185645465238,
       "relative": -0.00026867614445879614,
@@ -315,8 +354,7 @@
       "reference": 457.9865006463802,
       "source": "rocketpy 1.13.0, validation/oracles/rocketpy/recovery.py, case juno-iii, metrics.drift_m",
       "tolerance": {
-        "relative": 0.03,
-        "absolute": 0.05
+        "relative": 0.03
       },
       "difference": -0.12230829865757187,
       "relative": -0.0002670565584028171,
@@ -329,8 +367,7 @@
       "reference": -160.77788270938456,
       "source": "rocketpy 1.13.0, validation/oracles/rocketpy/recovery.py, case juno-iii, metrics.drift_north_m",
       "tolerance": {
-        "relative": 0.03,
-        "absolute": 0.05
+        "relative": 0.03
       },
       "difference": 0.041084273698714924,
       "relative": -0.00025553436210487454,
@@ -348,6 +385,19 @@
       "difference": -0.0017663470064412934,
       "relative": -0.00007874123452115496,
       "verdict": "pass"
+    },
+    {
+      "case": "descent-juno-iii",
+      "metric": "mean_descent_rate_m_s",
+      "measured": 22.406292606310284,
+      "reference": 22.402051021560553,
+      "source": "rocketpy 1.13.0, validation/oracles/rocketpy/recovery.py, case juno-iii, metrics.mean_descent_rate_m_s",
+      "tolerance": {
+        "relative": 0.03
+      },
+      "difference": 0.004241584749731686,
+      "relative": 0.00018933912549567135,
+      "verdict": "pass"
     }
   ],
   "sources": [
@@ -355,31 +405,51 @@
       "case": "descent-calisto-tests-motor-at-minus-1.373",
       "oracle": "rocketpy 1.13.0",
       "generator": "validation/oracles/rocketpy/recovery.py",
-      "command": "refs/venv/bin/python validation/oracles/rocketpy/recovery.py"
+      "command": "refs/venv/bin/python validation/oracles/rocketpy/recovery.py",
+      "file": "validation/fixtures/recovery/rocketpy-descent.json",
+      "sha256": "02e4a9ebd99745af99215ba378ee6dca8c26612d3230e830cd90aea3d839c20c",
+      "model": "Flight.u_dot_parachute (flight.py:2710-2790): a point mass of the rocket's dry mass under the last deployed parachute's C_D S, with an added mass that carries no weight, the wind and density at the height above sea level, Somigliana gravity and Earth's rotation",
+      "overrides": "every parachute's noise is zero (RocketPy's noise draws from the global np.random), and the first device's lag is zero so that the descent starts where both models agree"
     },
     {
       "case": "descent-valetudo",
       "oracle": "rocketpy 1.13.0",
       "generator": "validation/oracles/rocketpy/recovery.py",
-      "command": "refs/venv/bin/python validation/oracles/rocketpy/recovery.py"
+      "command": "refs/venv/bin/python validation/oracles/rocketpy/recovery.py",
+      "file": "validation/fixtures/recovery/rocketpy-descent.json",
+      "sha256": "02e4a9ebd99745af99215ba378ee6dca8c26612d3230e830cd90aea3d839c20c",
+      "model": "Flight.u_dot_parachute (flight.py:2710-2790): a point mass of the rocket's dry mass under the last deployed parachute's C_D S, with an added mass that carries no weight, the wind and density at the height above sea level, Somigliana gravity and Earth's rotation",
+      "overrides": "every parachute's noise is zero (RocketPy's noise draws from the global np.random), and the first device's lag is zero so that the descent starts where both models agree"
     },
     {
       "case": "descent-ndrt-2020-nose-to-tail",
       "oracle": "rocketpy 1.13.0",
       "generator": "validation/oracles/rocketpy/recovery.py",
-      "command": "refs/venv/bin/python validation/oracles/rocketpy/recovery.py"
+      "command": "refs/venv/bin/python validation/oracles/rocketpy/recovery.py",
+      "file": "validation/fixtures/recovery/rocketpy-descent.json",
+      "sha256": "02e4a9ebd99745af99215ba378ee6dca8c26612d3230e830cd90aea3d839c20c",
+      "model": "Flight.u_dot_parachute (flight.py:2710-2790): a point mass of the rocket's dry mass under the last deployed parachute's C_D S, with an added mass that carries no weight, the wind and density at the height above sea level, Somigliana gravity and Earth's rotation",
+      "overrides": "every parachute's noise is zero (RocketPy's noise draws from the global np.random), and the first device's lag is zero so that the descent starts where both models agree"
     },
     {
       "case": "descent-prometheus-2022-generic-motor",
       "oracle": "rocketpy 1.13.0",
       "generator": "validation/oracles/rocketpy/recovery.py",
-      "command": "refs/venv/bin/python validation/oracles/rocketpy/recovery.py"
+      "command": "refs/venv/bin/python validation/oracles/rocketpy/recovery.py",
+      "file": "validation/fixtures/recovery/rocketpy-descent.json",
+      "sha256": "02e4a9ebd99745af99215ba378ee6dca8c26612d3230e830cd90aea3d839c20c",
+      "model": "Flight.u_dot_parachute (flight.py:2710-2790): a point mass of the rocket's dry mass under the last deployed parachute's C_D S, with an added mass that carries no weight, the wind and density at the height above sea level, Somigliana gravity and Earth's rotation",
+      "overrides": "every parachute's noise is zero (RocketPy's noise draws from the global np.random), and the first device's lag is zero so that the descent starts where both models agree"
     },
     {
       "case": "descent-juno-iii",
       "oracle": "rocketpy 1.13.0",
       "generator": "validation/oracles/rocketpy/recovery.py",
-      "command": "refs/venv/bin/python validation/oracles/rocketpy/recovery.py"
+      "command": "refs/venv/bin/python validation/oracles/rocketpy/recovery.py",
+      "file": "validation/fixtures/recovery/rocketpy-descent.json",
+      "sha256": "02e4a9ebd99745af99215ba378ee6dca8c26612d3230e830cd90aea3d839c20c",
+      "model": "Flight.u_dot_parachute (flight.py:2710-2790): a point mass of the rocket's dry mass under the last deployed parachute's C_D S, with an added mass that carries no weight, the wind and density at the height above sea level, Somigliana gravity and Earth's rotation",
+      "overrides": "every parachute's noise is zero (RocketPy's noise draws from the global np.random), and the first device's lag is zero so that the descent starts where both models agree"
     }
   ]
 }

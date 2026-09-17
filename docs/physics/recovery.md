@@ -371,7 +371,8 @@ zero, so no ballistic segment under either model's aerodynamics separates them),
 the same deployment settings and the same wind, and RocketPy's noise set to zero. The oracle runs
 at `rtol = atol = 1e-8`; run again at 1e-6 it moves every compared metric by at most 3.5e-6
 (the fixture's `solver.relative_change_from_loose`. Its one larger entry, 2.1e-3, is on Valetudo's
-20 µm *north* drift component, which is noise and is not compared).
+20 µm *north* drift component, which M1.7a did not compare; M2.1a measures it, and hpr comes out
+28x above RocketPy at 0.55 mm, which is unexplained and open as issue #27).
 
 What still differs, and by how much:
 
@@ -405,10 +406,18 @@ Measured (hpr against RocketPy, 2026-09-17):
 | case | descent time | descent rate under the drogue | impact descent rate | drift | worst drift component |
 |---|---|---|---|---|---|
 | Calisto (drogue 1.0 m², main 10 m² at 800 m, wind 5 E / 2 N) | +0.08% (257.27 s) | −0.01% (17.967 m/s) | −0.03% (5.454 m/s) | +0.06% (1,385.8 m) | +0.06% |
-| Valetudo (drogue 0.4537 m², no wind) | −0.02% (45.76 s) | — | +0.00% (17.627 m/s) | −0.89% (0.19 m, Coriolis only) | — |
+| Valetudo (drogue 0.4537 m², no wind) | −0.02% (45.76 s) | — | +0.00% (17.627 m/s) | −0.89% (0.19 m, Coriolis only) | +2704% (north, 0.55 mm against 0.020 mm; open, issue #27) |
 | NDRT 2020 (drogue 0.438 m², main 16.05 m² at 167.6 m, sheared wind) | +0.71% (61.60 s) | +0.01% (28.156 m/s) | +0.01% (4.604 m/s) | +0.27% (327.9 m) | +2.87% (north, −50.8 m) |
 | Prometheus 2022 (drogue 0.467 m², main 5.78 m² at 457.2 m) | +0.08% (153.50 s) | −0.01% (26.400 m/s) | −0.03% (7.323 m/s) | +0.07% (1,236.9 m) | +0.07% |
 | Juno III (drogue 0.885 m²) | −0.02% (53.56 s) | — | −0.01% (22.431 m/s) | −0.03% (457.9 m) | −0.03% |
+
+Valetudo's north drift is the one entry that is not agreement. It is 0.55 mm against RocketPy's
+0.020 mm in a descent whose total drift is 0.19 m, and both codes carry the same Coriolis term
+(hpr in `dynamics.rs`; RocketPy in `Flight.u_dot_parachute`, `flight.py:2779-2783`). A
+quasi-steady balance — the horizontal velocity relaxes in about `v_t/g` ≈ 1.8 s, so
+`v_north ≈ −2 ω_z v_east · v_t/g` — gives about 2e-5 m over the descent, which is RocketPy's
+number, so hpr's is the one to explain. The validation suite reports it unscored rather than
+passing it on a widened tolerance (issue #27).
 
 The later devices' trigger heights agree to −0.01%, −0.17% and −0.01% (RocketPy's trigger
 sampling, above), and in every case both simulators land within 1% of Knacke's `v_e` for the

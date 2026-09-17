@@ -12,9 +12,8 @@ publish.workspace = true
 workspace = true
 
 [dependencies]
-hpr.workspace = true
-hpr-flightdata.workspace = true
 hpr-sim.workspace = true
+sha2.workspace = true
 hpr-design.workspace = true
 hpr-atmos.workspace = true
 hpr-core.workspace = true

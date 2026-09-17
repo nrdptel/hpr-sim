@@ -6,7 +6,8 @@
 //! said, with a source for every value) and a [`DescentSetup`] (the inputs hpr must fly).
 //!
 //! Loft lesson L75: the inputs come from **the reference's own record of what it flew**, never
-//! from an hpr output, so a case cannot quietly compare hpr against itself.
+//! from an hpr output, so a case cannot quietly compare hpr against itself. That includes which
+//! rocket it flew and what that rocket weighed, which the harness checks rather than trusts.
 
 use serde_json::Value;
 
@@ -14,12 +15,23 @@ use crate::metrics::{Reference, ReferenceValue};
 use crate::run::{DescentDevice, DescentSetup};
 
 /// The case named `case` of a recovery-descent fixture, as the oracle's answers and the inputs it
-/// flew. `None` if the document has no such case or is not that fixture's shape.
+/// flew. `None` if the document has no such case, does not name the run that produced it, or is
+/// not that fixture's shape.
+///
+/// `file` is the reference's path from the repository root and `sha256` its hash; both go into the
+/// report, so a hand-edited reference changes the report rather than only the file.
 #[must_use]
-pub fn descent_case(document: &Value, case: &str) -> Option<(Reference, DescentSetup)> {
-    let oracle = document.get("oracle")?.as_str()?.to_owned();
-    let generator = document.get("generator")?.as_str()?.to_owned();
-    let command = document.get("command")?.as_str()?.to_owned();
+pub fn descent_case(
+    document: &Value,
+    case: &str,
+    file: &str,
+    sha256: &str,
+) -> Option<(Reference, DescentSetup)> {
+    let oracle = text(document.get("oracle"))?;
+    let generator = text(document.get("generator"))?;
+    let command = text(document.get("command"))?;
+    let model = text(document.get("model"))?;
+    let overrides = text(document.get("overrides"))?;
     let found = document
         .get("cases")?
         .as_array()?
@@ -64,6 +76,8 @@ pub fn descent_case(document: &Value, case: &str) -> Option<(Reference, DescentS
         .collect::<Option<Vec<_>>>()?;
 
     let setup = DescentSetup {
+        design: text(found.get("design"))?,
+        dry_mass_kg: number(found.get("dry_mass_kg"))?,
         latitude_deg: number(environment.get("latitude_deg"))?,
         longitude_deg: number(environment.get("longitude_deg"))?,
         elevation_m,
@@ -81,16 +95,18 @@ pub fn descent_case(document: &Value, case: &str) -> Option<(Reference, DescentS
         ),
         devices,
     };
-    Some((
-        Reference {
-            oracle,
-            generator,
-            command,
-            case: case.to_owned(),
-            values,
-        },
-        setup,
-    ))
+    let reference = Reference {
+        oracle,
+        generator,
+        command,
+        model,
+        overrides,
+        case: case.to_owned(),
+        file: file.to_owned(),
+        sha256: sha256.to_owned(),
+        values,
+    };
+    reference.names_its_run().then_some((reference, setup))
 }
 
 /// The wind the oracle flew, as `(height above sea level, east, north)` levels. A scalar is one
@@ -119,6 +135,12 @@ fn wind_levels(environment: &Value, elevation_m: f64) -> Option<Vec<(f64, f64, f
         )]),
         _ => None,
     }
+}
+
+/// A JSON string that says something.
+fn text(value: Option<&Value>) -> Option<String> {
+    let text = value?.as_str()?.trim();
+    (!text.is_empty()).then(|| text.to_owned())
 }
 
 /// A JSON number, however it is written.

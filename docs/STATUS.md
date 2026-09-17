@@ -12,19 +12,20 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
 
 M2.1a shipped the validation harness (ADR-015, `docs/VALIDATION.md`): `cargo xtask validate
 [--fast]` runs the cases in `validation/cases/lock.toml` against stored references and writes
-`validation/reports/latest.{md,json}`. Five descent cases, 25 metrics, all within tolerance (worst
-+2.87%). M2.1b is the suite itself. Start from these notes:
+`validation/reports/latest.{md,json}`. Five descent cases, 30 metrics: 29 scored and all inside
+the milestone's 3% (worst +2.87%), 1 declared not scored (issue #27). M2.1b is the suite itself.
+Start from these notes:
 
 - **The harness:** a case is `validation/cases/<id>.toml` (`Flight` says what to fly, `metrics`
   names each metric's tolerance, `reference` points at a fixture); `hpr-validate` reads it, flies
-  hpr and reports. `crates/hpr-validate/src/rocketpy.rs` is the only place that knows a
-  generator's JSON shape. The harness never writes a reference (L76), refuses a value with no
-  source (L77) or a metric with no gate (L79), and fails on a locked case it cannot find or a
-  committed case the lock does not name (L78).
+  hpr and reports, and `rocketpy.rs` is the only place that knows a generator's JSON shape. It
+  never writes a reference (L76), refuses a value with no source (L77) or a metric with no gate
+  (L79), and fails on a locked case it cannot find or a committed case the lock does not name
+  (L78). A metric that cannot honestly be gated is declared `not_scored = "<reason naming an
+  issue>"`: printed, never a pass, the set pinned by a test. No absolute floors; use that hatch.
 - **What M2.1b adds:** a `Flight::WholeFlight` variant beside `RecoveryDescent`, M2.1's whole-flight
-  metrics (apogee and time to it, maximum velocity/Mach/acceleration, rail exit, burnout altitude
-  and velocity, time-series RMS after alignment), both modes, the CI job and the regeneration
-  workflow.
+  metrics (apogee and time to it, max velocity/Mach/acceleration, rail exit, burnout, time-series
+  RMS), both modes, the CI job and the regeneration workflow.
 - **Both modes are required:** **same-drag** (the oracle's `C_D0(M)` through
   `Simulation::with_drag_table`) and **predicted** (hpr's own aero, which refuses `M ≥ 1` until
   M1.8, so supersonic cases are gaps in the report, not hidden). Predicted mode needs its own
@@ -32,23 +33,22 @@ M2.1a shipped the validation harness (ADR-015, `docs/VALIDATION.md`): `cargo xta
 - **Oracle notes:** RocketPy's motor files have unclear terms, so cases use the bundled curves
   (ADR-007); its weather files are Copernicus, so declare the environment as `recovery.py` does.
   Zero the parachute noise (global `np.random`); a deployment on a phase start gives NaNs. Expect
-  differences from its added mass under a canopy, its rail exit at the forward button and its
-  `0.25·n²` nozzle gyration term (ADR-011).
+  differences from its added mass, its rail exit at the forward button and `0.25·n²` (ADR-011).
 - **Open conventions for the jar (M2.2/M3.1):** override order (L51), automatic radii, positions,
-  ogive parameter, walls, fin mass, cant pivot, the drag-at-angle polynomial and the lug diameter.
+  ogive, walls, fin mass, cant pivot, the drag-at-angle polynomial, lug diameter.
 - **Process notes:**
   - `cargo test -p xtask` checks STATUS against ROADMAP, notices rows against lock titles, lesson
     tests once checked off, lock URLs and the generated designs.
   - `cargo xtask aero` and the oracles need `refs/rocketpy`; its data files are never committed.
-    Scanned PDFs need `pdftoppm -f N -l N -r 90 -gray -png`; born-digital ones `pdftotext -layout`.
-  - archive.org rate-limits (429), ScienceDirect refuses scripts (403). On snapshot drift, run
+    Scanned PDFs need `pdftoppm -f N -l N -r 90 -gray -png`, born-digital ones `pdftotext -layout`;
+    archive.org rate-limits (429) and ScienceDirect refuses scripts (403). On snapshot drift, run
     `cargo xtask refs fetch --adopt-snapshots`.
 
 ## Done log (newest first, keep about 15)
 
-- 2026-09-17: M2.1a Validation harness (ADR-015): TOML cases, references with per-value
-  provenance, per-metric tolerances, a case lock and committed Markdown plus JSON reports. Five
-  descent cases, 25 metrics, all within tolerance, worst +2.87%; L76–L79 have live tests.
+- 2026-09-17: M2.1a Validation harness (ADR-015): TOML cases, references with per-value provenance
+  and a hash, per-metric 3% gates, a case lock and committed reports. Five descent cases, 30
+  metrics: 29 scored and inside 3% (worst +2.87%), 1 not scored (#27). L76–L79 have live tests.
 - 2026-09-17: M1.7c Separated bodies (ADR-014): a separation splits the stack at a stage boundary
   and flies each body as a point mass with its own mass and devices. Both bodies land, the masses
   add to the stack's to 1e-12 and the momenta to 1e-9.
@@ -90,13 +90,13 @@ M2.1a shipped the validation harness (ADR-015, `docs/VALIDATION.md`): `cargo xta
   pinned by hash; body `+z` toward the nose with WGS 84 normal gravity and Coriolis by default;
   the atmosphere and wind by height above sea level; and the doc guards `cargo test -p xtask` runs.
 - ADR-005: NFPA 1125 statistics as ThrustCurve computes them; constant exhaust velocity; 32 curves.
-- ADR-006: full inertia tensors; part frames at their forward end; Crowell's secant ogive by
-  `ρ/ρ_t`; walls normal to the surface; materials by value, cited.
+- ADR-006: full inertia tensors; part frames at their forward end; Crowell's secant ogive; walls
+  normal to the surface; materials by value, cited.
 - ADR-007: body origin at the nose tip; one `Component` type with a `Part` enum; offsets positive
   aft; overrides rescale the tensor with mass; comparisons use bundled public-domain curves.
 - M1.4, M1.5, M1.6 and M1.7 were split into increments, done-when bullets divided unchanged.
-- ADR-008: body CP from the real volume with `sin α/α` and Galejs lift (`K` 1.1); Diederich fins,
-  CP at quarter MAC; over eight fins, tube fins (#15) and `M ≥ 1` refused.
+- ADR-008: body CP from the real volume with `sin α/α` and Galejs lift (`K` 1.1); Diederich fins at
+  quarter MAC; over eight fins, tube fins (#15) and `M ≥ 1` refused.
 - ADR-009: Niskanen's drag as printed (fully turbulent, jumps kept); lug `d` outer; rail buttons
   as pins; 20 µm finish; only derived numbers committed.
 - ADR-010: own DOPRI5 (no ODE crate); events stop past the zero; discontinuities are stop times.
@@ -112,29 +112,24 @@ M2.1a shipped the validation harness (ADR-015, `docs/VALIDATION.md`): `cargo xta
   own stages' mass and devices; no ejection impulse (linear momentum only), every body needs a
   device, only body 0's act before the split, and it must follow the last burnout (M1.9 stages).
 - ADR-015: a run reads references and never writes them (no update flag); every value carries its
-  generator's source; every reported metric is gated, with a fixed 5 cm floor for drifts that pass
-  through zero; the locked cases must all run; a case's inputs come from the reference's own record
-  of what the oracle flew; the report is committed and carries no date.
+  generator's source and the file its hash; every reported metric is gated at the milestone's 3%
+  with no absolute floor, or declared not scored in writing against an issue; the locked cases must
+  all run; a case's inputs, design and mass come from the reference's own record of what the oracle
+  flew; the report is committed and carries no date.
 
 ## Known issues and risks
 
 - Two M1.2 sources are pinned from third-party mirrors (MIL-F-8785C from Abbott Aerospace; WMO-No. 8
-  from Mongolia's weather service).
-- Dryden turbulence is an aircraft model; how it applies to a climbing rocket is unvalidated
-  until M2.3.
+  from Mongolia's weather service). Dryden turbulence is an aircraft model, unvalidated until M2.3.
 - Only 32 curves are bundled (none in class A); the rest wait for M5's cache. The bundle's checks
   and the 1710-file sweep ran on unpinned `refs/samples/` caches.
-- Wall and fin cross-section mass may differ from OpenRocket's undocumented conventions; M2.2
-  measures it.
+- Wall and fin mass may differ from OpenRocket's undocumented conventions; M2.2 measures it.
 - `.CDX1` has no public spec (the importer relies on samples); ERA5 `.nc` may be netCDF4 (HDF5).
 - A new RustSec notice can turn CI red with no code change: upgrade, replace, or `ignore` with a
-  reason.
-- API snapshots can't be reproduced byte for byte once an API moves: what CI checks comes from
-  committed fixtures, never `refs/`.
-- Barrowman 1966, TIR-33, Galejs, the `.rse` spec and Knacke's manual have no clear terms: cite
-  them, never redistribute them.
-- Aero (M1.5a) is small-angle only (no stall) and documented to Mach 0.8; body-lift `K` is
-  uncertain (Galejs: 1.0 to 1.5) and the Recruiter's six fins miss TIR-33 by +3.4% (ADR-008).
+  reason. API snapshots can't be reproduced once an API moves: CI checks committed fixtures only.
+- Barrowman 1966, TIR-33, Galejs, the `.rse` spec and Knacke have no clear terms: never redistribute.
+- Aero (M1.5a) is small-angle only and documented to Mach 0.8; body-lift `K` is uncertain (Galejs:
+  1.0 to 1.5) and the Recruiter's six fins miss TIR-33 by +3.4% (ADR-008).
 - Drag (M1.5b): the RASAero comparison can't show 10% agreement without the exports' inputs (fins
   and finish move each case by 20% or more). hpr misses Valetudo's suspect table by 47% and
   Cavour's power-on by 18% (open; ADR-009); drag reads low from about Mach 0.6 until M1.8.
@@ -148,3 +143,6 @@ M2.1a shipped the validation harness (ADR-015, `docs/VALIDATION.md`): `cargo xta
   descends 27% slower, 2.2x the drag area); tumble misses its own finless drop by +19% (M1.7b).
 - `refs doctor` "runnable" means the oracle's runtime starts, not that a flight ran; no oracle runs
   in CI, which compares against stored output (M2.1b).
+- Valetudo's northward drift is 0.55 mm in hpr against RocketPy's 0.020 mm, a factor of 28 on a
+  quantity both codes compute the same way; a quasi-steady Coriolis balance gives RocketPy's value,
+  so hpr's is suspect. Unexplained, unscored in the suite, open as issue #27 (M2.1a).

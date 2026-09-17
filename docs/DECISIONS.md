@@ -1075,7 +1075,7 @@ and L26 set tests.
   draws on the global `np.random`) and a declared wind (the examples' own winds need the network or
   Copernicus files). Five example rockets. The oracle runs at `rtol = atol = 1e-8` and records its
   own solver's contribution per metric: at most 3.5e-6 on every compared metric (its one larger
-  entry, 2.1e-3, is on a 20 µm drift component that is not compared). The differences that remain
+  entry, 2.1e-3, is on a 20 µm drift component this comparison did not compare; M2.1a measures it, finds hpr 28x above RocketPy at 0.55 mm and reports it unscored against issue #27). The differences that remain
   are listed in `recovery.md`, with the trigger-sampling one measured rather than assumed away. Whole-flight comparisons, ascent included, are M2.1's.
 
 **Consequences.**
@@ -1268,25 +1268,42 @@ and M1.7a's recovery comparison, whose references are real RocketPy output.
 - **Every reference value carries a source** naming the oracle, the generator and the field it came
   from, and a value with a blank source is refused (L77). The harness builds those strings from the
   generator's own provenance block rather than trusting a hand-written label.
-- **Every metric a case reports has a tolerance that bounds something**, and a case that measures
-  anything it does not gate is refused (L79). A tolerance is a fraction, an absolute difference, or
-  both, and one that bounds nothing accepts nothing rather than passing quietly. The absolute floor
-  exists for values that pass through zero, such as a drift component that is 20 µm of Coriolis
-  noise; it is fixed at 5 cm for the descent cases, far below 3% of any drift worth reporting, so
-  it never loosens the milestone's gate.
+- **Every metric a case reports has a tolerance that bounds something, or a written reason why it
+  is not scored** (L79). A tolerance is a fraction, an absolute difference, or both; one that
+  bounds nothing — including an infinite or negative bound — accepts nothing rather than passing
+  quietly, and a case that measures or publishes anything it does not account for is refused, in
+  both directions: hpr may not measure a metric the case does not gate, and the reference may not
+  publish one the case ignores.
+- **A metric that cannot honestly be scored is declared, not smoothed over.** The descent cases
+  carry no absolute floors: an absolute bound wide enough to carry Valetudo's near-zero northward
+  drift would also have been 8.7x looser than 3% of that case's whole drift, which is a weakened
+  check wearing a tolerance's clothes. Instead the case says `not_scored = "<reason>"`, the harness
+  measures and prints the metric with both numbers and the reason, and the run counts it apart
+  from the verdict. One metric is declared today: Valetudo's `drift_north_m`, where hpr is 28x
+  RocketPy at 0.55 mm for reasons not established (issue #27). Loft excused its two largest misses
+  as "no single target" (L82), so the whole excused set is pinned by a test named after what it is,
+  and a reason has to name an issue.
 - **The cases that must run are locked** in `validation/cases/lock.toml`, and a locked case that is
   not there is an error, not a skip (L78). A committed case that is not locked is an error too, so
-  a case cannot be added and forgotten. `--fast` may only leave out cases the lock marks slow, and
-  the report says it was a fast run.
+  a case cannot be added and forgotten — and both checks live in the command, not only in a test.
+  `--fast` may only leave out cases the lock marks slow, names them in the report, and writes
+  `latest-fast.{md,json}` rather than the committed record.
 - **The oracle's inputs come from the reference's own record of what it flew** (L75): the descent
   cases take the site, the wind, the devices and the state at the first deployment from the
-  fixture, so a case cannot compare hpr against hpr. The one place that knows a generator's JSON
-  shape is `hpr_validate::rocketpy`.
+  fixture, so a case cannot compare hpr against hpr. That extends to the vehicle: the reference
+  records which design it flew and what it weighed, and the harness refuses a case that names
+  another design or whose mass differs by more than 1e-9, so a copied case file cannot report the
+  difference between two rockets as a difference in the physics. The one place that knows a
+  generator's JSON shape is `hpr_validate::rocketpy`, and a file that does not name the oracle,
+  the generator and the command that produced it is not a reference at all.
 - **The report is committed**, in Markdown for people and JSON for machines, and carries no
   timestamp, so a run that changes nothing changes no bytes and a number that moves shows up in
-  the diff. A test asserts the committed report is the one the harness produces. A `--fast` run
-  writes `latest-fast.{md,json}`, which is gitignored: a partial report that overwrote the
-  committed one would leave the repository claiming a suite that never ran.
+  the diff. It carries each reference's SHA-256 and the generator's own description of what the
+  oracle modelled and what it had to override, so a hand-edited reference or an unlike comparison
+  shows up in the report rather than only in git history. A test asserts the committed Markdown is
+  byte-for-byte what the harness produces, and the JSON by value: the Markdown is rounded to six
+  decimals and reproduces on macOS, Windows and Linux today, and if a platform ever diverges the
+  answer is to find out why, not to loosen the comparison.
 - **M2.1a's first cases are M1.7a's descents.** They are the only references in hand that cover a
   whole hpr flight path end to end, and reusing them means the harness ships with five real cases
   rather than a demonstration. M2.1b adds the ascent cases in both modes, the CI job and the

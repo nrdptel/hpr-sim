@@ -7,9 +7,9 @@ use serde::{Deserialize, Serialize};
 
 /// One validation case, read from a TOML file under `validation/cases/`.
 ///
-/// Every metric it reports has to name a tolerance (Loft lesson L79), and the reference it
-/// compares against has to carry provenance (L77). The harness checks both before it flies
-/// anything.
+/// Every metric it reports has to name a tolerance (Loft lesson L79) or say in writing why it is
+/// not scored, and the reference it compares against has to carry provenance (L77). The harness
+/// checks both before it flies anything.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct Case {
@@ -47,7 +47,7 @@ pub enum Flight {
     },
 }
 
-/// One metric of a case: how far hpr may be from the reference.
+/// One metric of a case: how far hpr may be from the reference, or why it is not scored.
 ///
 /// In a case file that is a table of one or both bounds:
 ///
@@ -57,17 +57,103 @@ pub enum Flight {
 ///
 /// [metrics.drift_north_m]
 /// relative = 0.03
-/// absolute = 2.0     # this component passes through zero, so a fraction alone means nothing
+/// absolute = 0.002    # this component passes through zero, so a fraction alone means nothing
 /// ```
 ///
 /// A metric whose table sets neither is refused, because that is the "ungated metric" of Loft
 /// lesson L79 by another name.
-#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+///
+/// The one alternative to a gate is to say, in the case file, that the metric is not scored and
+/// why:
+///
+/// ```toml
+/// [metrics.drift_north_m]
+/// not_scored = "hpr and RocketPy differ by 28x on 0.5 mm and the cause is not established (#27)"
+/// ```
+///
+/// Such a metric is still measured and still printed, with both numbers, the difference and the
+/// reason: it is a gap on the face of the report, not a quiet omission and not a pass. Loft
+/// excused its two largest misses as "no single target" (L82), so the reason has to be written
+/// down, and `hpr_validate::tests::the_metrics_that_are_not_scored_are_these_and_no_others` pins
+/// the whole set: a new excuse has to be argued in a test whose name says what it is.
+#[derive(Debug, Clone, PartialEq, Default, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct Metric {
-    /// How far hpr may be from the reference.
-    #[serde(flatten)]
-    pub tolerance: Tolerance,
+    /// How far hpr may be from the reference, as a fraction of it (`0.03` for 3%).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub relative: Option<f64>,
+    /// How far hpr may be from the reference, in the metric's own unit.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub absolute: Option<f64>,
+    /// Why the metric is measured and reported but not scored. Mutually exclusive with a bound.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub not_scored: Option<String>,
+}
+
+impl Metric {
+    /// A relative bound alone.
+    #[must_use]
+    pub fn relative(relative: f64) -> Self {
+        Self {
+            relative: Some(relative),
+            ..Self::default()
+        }
+    }
+
+    /// The bounds it holds hpr to.
+    #[must_use]
+    pub fn tolerance(&self) -> Tolerance {
+        Tolerance {
+            relative: self.relative,
+            absolute: self.absolute,
+        }
+    }
+
+    /// The reason it is not scored, if it says one.
+    #[must_use]
+    pub fn reason(&self) -> Option<&str> {
+        self.not_scored
+            .as_deref()
+            .map(str::trim)
+            .filter(|reason| !reason.is_empty())
+    }
+
+    /// Checks that the metric is either gated or declared, and that its bounds are real numbers
+    /// that bound something.
+    ///
+    /// # Errors
+    ///
+    /// A sentence naming what is wrong, for [`crate::run::ValidateError::Case`].
+    pub fn check(&self, case: &str, name: &str) -> Result<(), String> {
+        let gated = self.tolerance().is_set();
+        match (gated, self.reason()) {
+            (false, None) => {
+                // Loft lesson L79: a tolerance that bounds nothing gates nothing. A metric is
+                // either held to a number or declared, in writing, not to be.
+                Err(format!(
+                    "case {case}: {name} has a tolerance that bounds nothing, and no written \
+                     reason for not scoring it"
+                ))
+            }
+            (true, Some(_)) => Err(format!(
+                "case {case}: {name} is both gated and declared not scored; it is one or the other"
+            )),
+            (false, Some(_)) => Ok(()),
+            (true, None) => {
+                for (label, bound) in [("relative", self.relative), ("absolute", self.absolute)] {
+                    if let Some(bound) = bound
+                        && !(bound.is_finite() && bound > 0.0)
+                    {
+                        // An infinite or negative bound is a gate that cannot fail.
+                        return Err(format!(
+                            "case {case}: {name}'s {label} bound is {bound}, which bounds nothing"
+                        ));
+                    }
+                }
+                Ok(())
+            }
+        }
+    }
 }
 
 /// How far a measured value may be from its reference: a fraction of it, an absolute difference,
@@ -93,22 +179,39 @@ impl Tolerance {
         }
     }
 
-    /// Whether this bounds anything at all. A tolerance that bounds nothing gates nothing (L79).
+    /// Whether this bounds anything at all. A bound that is not a positive, finite number gates
+    /// nothing (L79), so it does not count as set.
     #[must_use]
-    pub const fn is_set(self) -> bool {
-        self.relative.is_some() || self.absolute.is_some()
+    pub fn is_set(self) -> bool {
+        [self.relative, self.absolute]
+            .into_iter()
+            .flatten()
+            .any(|bound| bound.is_finite() && bound > 0.0)
+    }
+
+    /// How much `reference` may move under this tolerance, in the metric's own unit.
+    #[must_use]
+    pub fn allowed(self, reference: f64) -> f64 {
+        let relative = self
+            .relative
+            .filter(|bound| bound.is_finite() && *bound > 0.0)
+            .map_or(0.0, |relative| relative * reference.abs());
+        let absolute = self
+            .absolute
+            .filter(|bound| bound.is_finite() && *bound > 0.0)
+            .unwrap_or(0.0);
+        relative.max(absolute)
     }
 
     /// Whether `measured` is within this tolerance of `reference`: inside either bound that is
     /// given. A tolerance with neither accepts nothing, so an unset one fails rather than passing
-    /// silently.
+    /// silently, and a value that is not a real number never passes.
     #[must_use]
     pub fn accepts(self, measured: f64, reference: f64) -> bool {
-        let allowed = self
-            .relative
-            .map_or(0.0, |relative| relative * reference.abs())
-            .max(self.absolute.unwrap_or(0.0));
-        self.is_set() && (measured - reference).abs() <= allowed
+        self.is_set()
+            && measured.is_finite()
+            && reference.is_finite()
+            && (measured - reference).abs() <= self.allowed(reference)
     }
 
     /// How the tolerance reads in a report.
@@ -148,6 +251,16 @@ impl CaseLock {
             .collect()
     }
 
+    /// The ids a run leaves out, which is empty unless it is a fast one.
+    #[must_use]
+    pub fn skipped(&self, fast: bool) -> Vec<String> {
+        self.cases
+            .iter()
+            .filter(|id| fast && self.slow.contains(id))
+            .cloned()
+            .collect()
+    }
+
     /// The ids named as slow that are not cases at all.
     #[must_use]
     pub fn unknown_slow(&self) -> Vec<String> {
@@ -163,4 +276,35 @@ impl CaseLock {
 #[must_use]
 pub fn cases_dir(root: &Path) -> PathBuf {
     root.join("validation/cases")
+}
+
+/// Every case id committed under `validation/cases/`, sorted.
+///
+/// A case that is committed but not locked would never run, which is the other half of L78.
+///
+/// # Errors
+///
+/// The directory's own error, as a sentence.
+pub fn committed_cases(root: &Path) -> Result<Vec<String>, String> {
+    let directory = cases_dir(root);
+    let mut ids = Vec::new();
+    for entry in std::fs::read_dir(&directory)
+        .map_err(|error| format!("reading {}: {error}", directory.display()))?
+    {
+        let path = entry
+            .map_err(|error| format!("reading {}: {error}", directory.display()))?
+            .path();
+        if path
+            .extension()
+            .is_some_and(|extension| extension == "toml")
+            && let Some(stem) = path
+                .file_stem()
+                .map(|stem| stem.to_string_lossy().into_owned())
+            && stem != "lock"
+        {
+            ids.push(stem);
+        }
+    }
+    ids.sort();
+    Ok(ids)
 }
