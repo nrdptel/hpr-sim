@@ -1928,12 +1928,29 @@ mod tests {
             )
             .unwrap();
             let wind = wind_of(&environment);
+            // Gravity: RocketPy applies it to the vertical axis alone (`Flight.u_dot_parachute`,
+            // `flight.py:2777`, where only `az` carries a gravity term), so this flies hpr's
+            // model of the same shape. hpr's default is the full normal-gravity vector, which
+            // above the ellipsoid leans a few parts in 10^6 poleward; over Valetudo's 800 m that
+            // is 5.2e-4 m of northward drift, which is nothing beside the metrics below and
+            // 26 times the drift the Coriolis term produces there (issue #27, ADR-015).
+            let earth = hpr_core::earth::Earth::new(
+                hpr_core::gravity::NormalGravity::wgs84(),
+                site,
+                hpr_core::earth::GravityModel::VerticalTaylor,
+                hpr_core::earth::EarthRotation::Coriolis,
+            )
+            .unwrap();
             let sim = Simulation::new(
                 &design(&format!("rocketpy-{name}")),
                 "example",
                 Environment {
                     wind,
-                    ..Environment::standard(site).unwrap()
+                    ..Environment::new(
+                        earth,
+                        hpr_atmos::AtmosphereModel::default(),
+                        hpr_atmos::ConstantWind::calm(),
+                    )
                 },
                 // The rail is never used: these flights start in the air. It only has to be
                 // long enough for the design's guides.
@@ -1961,18 +1978,49 @@ mod tests {
                     "{name}: density {density} vs {oracle} at {height_msl_m} m"
                 );
                 // Gravity: RocketPy's "Somigliana" model is the same WGS 84 normal gravity hpr
-                // uses, so these have to agree, not merely be close.
+                // uses, so these have to agree, not merely be close — and as a *vector*, because
+                // agreeing in magnitude is exactly what let a model difference hide here for a
+                // milestone. Under the model this test flies, gravity is vertical, as RocketPy's
+                // is; under hpr's default it would not be, and the next assertion measures what
+                // that would have added.
                 let up = DVec3::new(0.0, 0.0, height_msl_m - number(&environment["elevation_m"]));
-                let gravity = sim
-                    .environment()
-                    .earth
-                    .gravity_enu_mps2(up)
-                    .unwrap()
-                    .length();
+                let gravity = sim.environment().earth.gravity_enu_mps2(up).unwrap();
                 let oracle_gravity = number(&sample["gravity_m_s2"]);
                 assert!(
-                    (gravity - oracle_gravity).abs() < 1e-6 * oracle_gravity,
-                    "{name}: gravity {gravity} vs {oracle_gravity} at {height_msl_m} m"
+                    (gravity.length() - oracle_gravity).abs() < 1e-6 * oracle_gravity,
+                    "{name}: gravity {gravity:?} vs {oracle_gravity} at {height_msl_m} m"
+                );
+                assert_eq!(
+                    (gravity.x, gravity.y),
+                    (0.0, 0.0),
+                    "{name}: gravity leans off the vertical where RocketPy's cannot"
+                );
+                // What hpr's own model would have added, so the difference is a number in this
+                // file rather than a surprise in a validation report. It grows with height and
+                // points toward the equator: over these five cases, from +6.9e-6 m/s² at
+                // Valetudo's 1,168 m (23°S, so northward) to −3.3e-5 m/s² at Calisto's 4,400 m
+                // (33°N, so southward). Over Valetudo's 800 m descent that is 5.2e-4 m of drift,
+                // 26 times the Coriolis drift it sits beside (issue #27).
+                let ellipsoidal = hpr_core::earth::Earth::new(
+                    hpr_core::gravity::NormalGravity::wgs84(),
+                    site,
+                    hpr_core::earth::GravityModel::Ellipsoidal,
+                    hpr_core::earth::EarthRotation::Coriolis,
+                )
+                .unwrap()
+                .gravity_enu_mps2(up)
+                .unwrap();
+                assert!(
+                    ellipsoidal.x.abs() < 1e-12,
+                    "{name}: normal gravity has no east component, but this one is {}",
+                    ellipsoidal.x
+                );
+                assert!(
+                    ellipsoidal.y.abs() < 5e-5
+                        && ellipsoidal.y.signum() != number(&environment["latitude_deg"]).signum(),
+                    "{name}: hpr's own gravity leans {} m/s² off the vertical at {height_msl_m} m, \
+                     which is not the equatorward deflection issue #27 measured",
+                    ellipsoidal.y
                 );
                 let wind = sim
                     .environment()
