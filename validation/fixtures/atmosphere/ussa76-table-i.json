@@ -1,0 +1,962 @@
+{
+  "source": "U.S. Standard Atmosphere, 1976, NOAA-S/T 76-1562 (NASA-TM-X-74335), NOAA, NASA and USAF, Washington DC, October 1976; NTRS 19770009539 (`us-std-atmosphere-1976` in validation/refs.lock.toml). US government work, public domain.",
+  "tables": {
+    "table_i": {
+      "title": "Table I, Geometric Altitude, Metric Units (temperature, pressure, density)",
+      "columns_used": [
+        "Z (m)",
+        "H (m)",
+        "T (K)",
+        "T_M (K)",
+        "P (mb)",
+        "rho (kg/m^3)"
+      ],
+      "columns_not_transcribed": [
+        "t (C)",
+        "P (torr)",
+        "P/P0",
+        "rho/rho0"
+      ],
+      "printed_pages": [
+        51,
+        53,
+        55,
+        57,
+        59,
+        61,
+        63,
+        65,
+        67,
+        68
+      ],
+      "pdf_pages": [
+        66,
+        68,
+        70,
+        72,
+        74,
+        76,
+        78,
+        80,
+        82,
+        83
+      ]
+    },
+    "table_iii": {
+      "title": "Table III, Geometric Altitude, Metric Units (sound speed, viscosities, conductivity)",
+      "columns_used": [
+        "Z (m)",
+        "C_s (m/s)",
+        "mu (N s/m^2)",
+        "eta (m^2/s)"
+      ],
+      "columns_not_transcribed": [
+        "H (m)",
+        "mu/mu0",
+        "eta/eta0",
+        "kappa (J/(m s K))",
+        "kappa/kappa0"
+      ],
+      "printed_pages": [
+        99,
+        101,
+        103,
+        105,
+        107,
+        109,
+        111,
+        113,
+        115
+      ],
+      "pdf_pages": [
+        114,
+        116,
+        118,
+        120,
+        122,
+        124,
+        126,
+        128,
+        130
+      ]
+    }
+  },
+  "transcription": [
+    "Transcribed by hand from the page images of the scan at 300 and 600 dpi. The PDF text layer is unusable and was not used. Every printed digit is kept.",
+    "The tables print a mantissa and a power of ten (\"2.2699 + 2\"), with the power only on the first row of each block of ten rows and on the row where it changes. The `printed` strings use E notation with the power that applies to the row (\"2.2699E+2\").",
+    "`printed` keeps the printed unit: pressure is in millibars. `si` is the printed value in SI (1 mb = 100 Pa exactly, Table 1 on page 2), with no other change. One count is one unit in the last printed digit (for \"2.2699E+2\" mb, 0.0001E+2 mb = 1 Pa).",
+    "Page 57, Z = 8000 m: the second digit of P, \"3.5651\", is a damaged glyph read as 5 (the same row prints 2.6740E+2 torr, 356.50 mb). Page 65, Z = 47000 m: the row is smudged but every digit is legible.",
+    "Page 67, Z = 84000 m: rho is printed 9.6940E-6 (confirmed at 600 dpi), 1.3 counts above eqs. 33a and 42 evaluated from the constants (9.69387E-6); the same row prints rho/rho0 = 7.9134E-6, which gives 9.6939E-6. It is transcribed as printed. Every other value is within one count of that evaluation (validation/oracles/ussa76/tables.py)."
+  ],
+  "notes": [
+    "Page 9: the ratio M/M0 of Table 8 was not included in the program that computed the tables below 86 km, so between 80 and 85.5 km the printed kinetic temperature T equals T_M, and the speed of sound and viscosities use that T. The page says tabulated T must be multiplied by M/M0 for the correct kinetic temperature and warns of a discontinuity of up to 0.04% between 85.5 and 86 km. Pressure and density do not depend on M/M0 below 86 km.",
+    "At Z = 86000 m the table is computed from the upper-atmosphere model, so T = 186.87 K is the kinetic temperature (T_7 = 186.8673 K, eq. 25, page 10) and T_M = 186.95 K. From 86 km the table prints temperatures to 0.01 K and rho to 4 significant digits.",
+    "Table III ends at Z = 85500 m (page 115; pages 18 and 19 say the speed of sound and the viscosities are tabulated only below 86 km), so the 86000 m row has null for those."
+  ],
+  "rows": [
+    {
+      "geometric_altitude_m": -2000.0,
+      "pages": {
+        "table_i": 51,
+        "table_iii": 99
+      },
+      "printed": {
+        "geopotential_altitude_m": "-2001",
+        "temperature_k": "301.154",
+        "molecular_scale_temperature_k": "301.154",
+        "pressure_mb": "1.2778E+3",
+        "density_kgpm3": "1.4782E+0",
+        "speed_of_sound_mps": "347.89",
+        "dynamic_viscosity_pas": "1.8515E-5",
+        "kinematic_viscosity_m2ps": "1.2525E-5"
+      },
+      "si": {
+        "geopotential_altitude_m": -2001.0,
+        "temperature_k": 301.154,
+        "molecular_scale_temperature_k": 301.154,
+        "pressure_pa": 127780.0,
+        "density_kgpm3": 1.4782,
+        "speed_of_sound_mps": 347.89,
+        "dynamic_viscosity_pas": 1.8515e-05,
+        "kinematic_viscosity_m2ps": 1.2525e-05
+      }
+    },
+    {
+      "geometric_altitude_m": -1000.0,
+      "pages": {
+        "table_i": 53,
+        "table_iii": 101
+      },
+      "printed": {
+        "geopotential_altitude_m": "-1000",
+        "temperature_k": "294.651",
+        "molecular_scale_temperature_k": "294.651",
+        "pressure_mb": "1.1393E+3",
+        "density_kgpm3": "1.3470E+0",
+        "speed_of_sound_mps": "344.11",
+        "dynamic_viscosity_pas": "1.8206E-5",
+        "kinematic_viscosity_m2ps": "1.3516E-5"
+      },
+      "si": {
+        "geopotential_altitude_m": -1000.0,
+        "temperature_k": 294.651,
+        "molecular_scale_temperature_k": 294.651,
+        "pressure_pa": 113930.0,
+        "density_kgpm3": 1.347,
+        "speed_of_sound_mps": 344.11,
+        "dynamic_viscosity_pas": 1.8206e-05,
+        "kinematic_viscosity_m2ps": 1.3516e-05
+      }
+    },
+    {
+      "geometric_altitude_m": 0.0,
+      "pages": {
+        "table_i": 53,
+        "table_iii": 101
+      },
+      "printed": {
+        "geopotential_altitude_m": "0",
+        "temperature_k": "288.150",
+        "molecular_scale_temperature_k": "288.150",
+        "pressure_mb": "1.01325E+3",
+        "density_kgpm3": "1.2250E+0",
+        "speed_of_sound_mps": "340.29",
+        "dynamic_viscosity_pas": "1.7894E-5",
+        "kinematic_viscosity_m2ps": "1.4607E-5"
+      },
+      "si": {
+        "geopotential_altitude_m": 0.0,
+        "temperature_k": 288.15,
+        "molecular_scale_temperature_k": 288.15,
+        "pressure_pa": 101325.0,
+        "density_kgpm3": 1.225,
+        "speed_of_sound_mps": 340.29,
+        "dynamic_viscosity_pas": 1.7894e-05,
+        "kinematic_viscosity_m2ps": 1.4607e-05
+      }
+    },
+    {
+      "geometric_altitude_m": 500.0,
+      "pages": {
+        "table_i": 53,
+        "table_iii": 101
+      },
+      "printed": {
+        "geopotential_altitude_m": "500",
+        "temperature_k": "284.900",
+        "molecular_scale_temperature_k": "284.900",
+        "pressure_mb": "9.5461E+2",
+        "density_kgpm3": "1.1673E+0",
+        "speed_of_sound_mps": "338.37",
+        "dynamic_viscosity_pas": "1.7737E-5",
+        "kinematic_viscosity_m2ps": "1.5195E-5"
+      },
+      "si": {
+        "geopotential_altitude_m": 500.0,
+        "temperature_k": 284.9,
+        "molecular_scale_temperature_k": 284.9,
+        "pressure_pa": 95461.0,
+        "density_kgpm3": 1.1673,
+        "speed_of_sound_mps": 338.37,
+        "dynamic_viscosity_pas": 1.7737e-05,
+        "kinematic_viscosity_m2ps": 1.5195e-05
+      }
+    },
+    {
+      "geometric_altitude_m": 1000.0,
+      "pages": {
+        "table_i": 53,
+        "table_iii": 101
+      },
+      "printed": {
+        "geopotential_altitude_m": "1000",
+        "temperature_k": "281.651",
+        "molecular_scale_temperature_k": "281.651",
+        "pressure_mb": "8.9876E+2",
+        "density_kgpm3": "1.1117E+0",
+        "speed_of_sound_mps": "336.43",
+        "dynamic_viscosity_pas": "1.7579E-5",
+        "kinematic_viscosity_m2ps": "1.5813E-5"
+      },
+      "si": {
+        "geopotential_altitude_m": 1000.0,
+        "temperature_k": 281.651,
+        "molecular_scale_temperature_k": 281.651,
+        "pressure_pa": 89876.0,
+        "density_kgpm3": 1.1117,
+        "speed_of_sound_mps": 336.43,
+        "dynamic_viscosity_pas": 1.7579e-05,
+        "kinematic_viscosity_m2ps": 1.5813e-05
+      }
+    },
+    {
+      "geometric_altitude_m": 2000.0,
+      "pages": {
+        "table_i": 53,
+        "table_iii": 101
+      },
+      "printed": {
+        "geopotential_altitude_m": "1999",
+        "temperature_k": "275.154",
+        "molecular_scale_temperature_k": "275.154",
+        "pressure_mb": "7.9501E+2",
+        "density_kgpm3": "1.0066E+0",
+        "speed_of_sound_mps": "332.53",
+        "dynamic_viscosity_pas": "1.7260E-5",
+        "kinematic_viscosity_m2ps": "1.7147E-5"
+      },
+      "si": {
+        "geopotential_altitude_m": 1999.0,
+        "temperature_k": 275.154,
+        "molecular_scale_temperature_k": 275.154,
+        "pressure_pa": 79501.0,
+        "density_kgpm3": 1.0066,
+        "speed_of_sound_mps": 332.53,
+        "dynamic_viscosity_pas": 1.726e-05,
+        "kinematic_viscosity_m2ps": 1.7147e-05
+      }
+    },
+    {
+      "geometric_altitude_m": 3000.0,
+      "pages": {
+        "table_i": 55,
+        "table_iii": 103
+      },
+      "printed": {
+        "geopotential_altitude_m": "2999",
+        "temperature_k": "268.659",
+        "molecular_scale_temperature_k": "268.659",
+        "pressure_mb": "7.0121E+2",
+        "density_kgpm3": "9.0925E-1",
+        "speed_of_sound_mps": "328.58",
+        "dynamic_viscosity_pas": "1.6938E-5",
+        "kinematic_viscosity_m2ps": "1.8628E-5"
+      },
+      "si": {
+        "geopotential_altitude_m": 2999.0,
+        "temperature_k": 268.659,
+        "molecular_scale_temperature_k": 268.659,
+        "pressure_pa": 70121.0,
+        "density_kgpm3": 0.90925,
+        "speed_of_sound_mps": 328.58,
+        "dynamic_viscosity_pas": 1.6938e-05,
+        "kinematic_viscosity_m2ps": 1.8628e-05
+      }
+    },
+    {
+      "geometric_altitude_m": 5000.0,
+      "pages": {
+        "table_i": 55,
+        "table_iii": 103
+      },
+      "printed": {
+        "geopotential_altitude_m": "4996",
+        "temperature_k": "255.676",
+        "molecular_scale_temperature_k": "255.676",
+        "pressure_mb": "5.4048E+2",
+        "density_kgpm3": "7.3643E-1",
+        "speed_of_sound_mps": "320.55",
+        "dynamic_viscosity_pas": "1.6282E-5",
+        "kinematic_viscosity_m2ps": "2.2110E-5"
+      },
+      "si": {
+        "geopotential_altitude_m": 4996.0,
+        "temperature_k": 255.676,
+        "molecular_scale_temperature_k": 255.676,
+        "pressure_pa": 54048.0,
+        "density_kgpm3": 0.73643,
+        "speed_of_sound_mps": 320.55,
+        "dynamic_viscosity_pas": 1.6282e-05,
+        "kinematic_viscosity_m2ps": 2.211e-05
+      }
+    },
+    {
+      "geometric_altitude_m": 8000.0,
+      "pages": {
+        "table_i": 57,
+        "table_iii": 105
+      },
+      "printed": {
+        "geopotential_altitude_m": "7990",
+        "temperature_k": "236.215",
+        "molecular_scale_temperature_k": "236.215",
+        "pressure_mb": "3.5651E+2",
+        "density_kgpm3": "5.2579E-1",
+        "speed_of_sound_mps": "308.11",
+        "dynamic_viscosity_pas": "1.5271E-5",
+        "kinematic_viscosity_m2ps": "2.9044E-5"
+      },
+      "si": {
+        "geopotential_altitude_m": 7990.0,
+        "temperature_k": 236.215,
+        "molecular_scale_temperature_k": 236.215,
+        "pressure_pa": 35651.0,
+        "density_kgpm3": 0.52579,
+        "speed_of_sound_mps": 308.11,
+        "dynamic_viscosity_pas": 1.5271e-05,
+        "kinematic_viscosity_m2ps": 2.9044e-05
+      }
+    },
+    {
+      "geometric_altitude_m": 11000.0,
+      "pages": {
+        "table_i": 59,
+        "table_iii": 107
+      },
+      "printed": {
+        "geopotential_altitude_m": "10981",
+        "temperature_k": "216.774",
+        "molecular_scale_temperature_k": "216.774",
+        "pressure_mb": "2.2699E+2",
+        "density_kgpm3": "3.6480E-1",
+        "speed_of_sound_mps": "295.15",
+        "dynamic_viscosity_pas": "1.4223E-5",
+        "kinematic_viscosity_m2ps": "3.8988E-5"
+      },
+      "si": {
+        "geopotential_altitude_m": 10981.0,
+        "temperature_k": 216.774,
+        "molecular_scale_temperature_k": 216.774,
+        "pressure_pa": 22699.0,
+        "density_kgpm3": 0.3648,
+        "speed_of_sound_mps": 295.15,
+        "dynamic_viscosity_pas": 1.4223e-05,
+        "kinematic_viscosity_m2ps": 3.8988e-05
+      }
+    },
+    {
+      "geometric_altitude_m": 15000.0,
+      "pages": {
+        "table_i": 59,
+        "table_iii": 107
+      },
+      "printed": {
+        "geopotential_altitude_m": "14965",
+        "temperature_k": "216.650",
+        "molecular_scale_temperature_k": "216.650",
+        "pressure_mb": "1.2111E+2",
+        "density_kgpm3": "1.9476E-1",
+        "speed_of_sound_mps": "295.07",
+        "dynamic_viscosity_pas": "1.4216E-5",
+        "kinematic_viscosity_m2ps": "7.2995E-5"
+      },
+      "si": {
+        "geopotential_altitude_m": 14965.0,
+        "temperature_k": 216.65,
+        "molecular_scale_temperature_k": 216.65,
+        "pressure_pa": 12111.0,
+        "density_kgpm3": 0.19476,
+        "speed_of_sound_mps": 295.07,
+        "dynamic_viscosity_pas": 1.4216e-05,
+        "kinematic_viscosity_m2ps": 7.2995e-05
+      }
+    },
+    {
+      "geometric_altitude_m": 20000.0,
+      "pages": {
+        "table_i": 61,
+        "table_iii": 109
+      },
+      "printed": {
+        "geopotential_altitude_m": "19937",
+        "temperature_k": "216.650",
+        "molecular_scale_temperature_k": "216.650",
+        "pressure_mb": "5.5293E+1",
+        "density_kgpm3": "8.8910E-2",
+        "speed_of_sound_mps": "295.07",
+        "dynamic_viscosity_pas": "1.4216E-5",
+        "kinematic_viscosity_m2ps": "1.5989E-4"
+      },
+      "si": {
+        "geopotential_altitude_m": 19937.0,
+        "temperature_k": 216.65,
+        "molecular_scale_temperature_k": 216.65,
+        "pressure_pa": 5529.3,
+        "density_kgpm3": 0.08891,
+        "speed_of_sound_mps": 295.07,
+        "dynamic_viscosity_pas": 1.4216e-05,
+        "kinematic_viscosity_m2ps": 0.00015989
+      }
+    },
+    {
+      "geometric_altitude_m": 25000.0,
+      "pages": {
+        "table_i": 61,
+        "table_iii": 109
+      },
+      "printed": {
+        "geopotential_altitude_m": "24902",
+        "temperature_k": "221.552",
+        "molecular_scale_temperature_k": "221.552",
+        "pressure_mb": "2.5492E+1",
+        "density_kgpm3": "4.0084E-2",
+        "speed_of_sound_mps": "298.39",
+        "dynamic_viscosity_pas": "1.4484E-5",
+        "kinematic_viscosity_m2ps": "3.6135E-4"
+      },
+      "si": {
+        "geopotential_altitude_m": 24902.0,
+        "temperature_k": 221.552,
+        "molecular_scale_temperature_k": 221.552,
+        "pressure_pa": 2549.2,
+        "density_kgpm3": 0.040084,
+        "speed_of_sound_mps": 298.39,
+        "dynamic_viscosity_pas": 1.4484e-05,
+        "kinematic_viscosity_m2ps": 0.00036135
+      }
+    },
+    {
+      "geometric_altitude_m": 30000.0,
+      "pages": {
+        "table_i": 63,
+        "table_iii": 111
+      },
+      "printed": {
+        "geopotential_altitude_m": "29859",
+        "temperature_k": "226.509",
+        "molecular_scale_temperature_k": "226.509",
+        "pressure_mb": "1.1970E+1",
+        "density_kgpm3": "1.8410E-2",
+        "speed_of_sound_mps": "301.71",
+        "dynamic_viscosity_pas": "1.4753E-5",
+        "kinematic_viscosity_m2ps": "8.0134E-4"
+      },
+      "si": {
+        "geopotential_altitude_m": 29859.0,
+        "temperature_k": 226.509,
+        "molecular_scale_temperature_k": 226.509,
+        "pressure_pa": 1197.0,
+        "density_kgpm3": 0.01841,
+        "speed_of_sound_mps": 301.71,
+        "dynamic_viscosity_pas": 1.4753e-05,
+        "kinematic_viscosity_m2ps": 0.00080134
+      }
+    },
+    {
+      "geometric_altitude_m": 32000.0,
+      "pages": {
+        "table_i": 63,
+        "table_iii": 111
+      },
+      "printed": {
+        "geopotential_altitude_m": "31840",
+        "temperature_k": "228.490",
+        "molecular_scale_temperature_k": "228.490",
+        "pressure_mb": "8.8906E+0",
+        "density_kgpm3": "1.3555E-2",
+        "speed_of_sound_mps": "303.02",
+        "dynamic_viscosity_pas": "1.4859E-5",
+        "kinematic_viscosity_m2ps": "1.0962E-3"
+      },
+      "si": {
+        "geopotential_altitude_m": 31840.0,
+        "temperature_k": 228.49,
+        "molecular_scale_temperature_k": 228.49,
+        "pressure_pa": 889.06,
+        "density_kgpm3": 0.013555,
+        "speed_of_sound_mps": 303.02,
+        "dynamic_viscosity_pas": 1.4859e-05,
+        "kinematic_viscosity_m2ps": 0.0010962
+      }
+    },
+    {
+      "geometric_altitude_m": 35000.0,
+      "pages": {
+        "table_i": 63,
+        "table_iii": 111
+      },
+      "printed": {
+        "geopotential_altitude_m": "34808",
+        "temperature_k": "236.513",
+        "molecular_scale_temperature_k": "236.513",
+        "pressure_mb": "5.7459E+0",
+        "density_kgpm3": "8.4634E-3",
+        "speed_of_sound_mps": "308.30",
+        "dynamic_viscosity_pas": "1.5287E-5",
+        "kinematic_viscosity_m2ps": "1.8062E-3"
+      },
+      "si": {
+        "geopotential_altitude_m": 34808.0,
+        "temperature_k": 236.513,
+        "molecular_scale_temperature_k": 236.513,
+        "pressure_pa": 574.59,
+        "density_kgpm3": 0.0084634,
+        "speed_of_sound_mps": 308.3,
+        "dynamic_viscosity_pas": 1.5287e-05,
+        "kinematic_viscosity_m2ps": 0.0018062
+      }
+    },
+    {
+      "geometric_altitude_m": 40000.0,
+      "pages": {
+        "table_i": 65,
+        "table_iii": 113
+      },
+      "printed": {
+        "geopotential_altitude_m": "39750",
+        "temperature_k": "250.350",
+        "molecular_scale_temperature_k": "250.350",
+        "pressure_mb": "2.8714E+0",
+        "density_kgpm3": "3.9957E-3",
+        "speed_of_sound_mps": "317.19",
+        "dynamic_viscosity_pas": "1.6009E-5",
+        "kinematic_viscosity_m2ps": "4.0066E-3"
+      },
+      "si": {
+        "geopotential_altitude_m": 39750.0,
+        "temperature_k": 250.35,
+        "molecular_scale_temperature_k": 250.35,
+        "pressure_pa": 287.14,
+        "density_kgpm3": 0.0039957,
+        "speed_of_sound_mps": 317.19,
+        "dynamic_viscosity_pas": 1.6009e-05,
+        "kinematic_viscosity_m2ps": 0.0040066
+      }
+    },
+    {
+      "geometric_altitude_m": 45000.0,
+      "pages": {
+        "table_i": 65,
+        "table_iii": 113
+      },
+      "printed": {
+        "geopotential_altitude_m": "44684",
+        "temperature_k": "264.164",
+        "molecular_scale_temperature_k": "264.164",
+        "pressure_mb": "1.4910E+0",
+        "density_kgpm3": "1.9663E-3",
+        "speed_of_sound_mps": "325.82",
+        "dynamic_viscosity_pas": "1.6713E-5",
+        "kinematic_viscosity_m2ps": "8.4995E-3"
+      },
+      "si": {
+        "geopotential_altitude_m": 44684.0,
+        "temperature_k": 264.164,
+        "molecular_scale_temperature_k": 264.164,
+        "pressure_pa": 149.1,
+        "density_kgpm3": 0.0019663,
+        "speed_of_sound_mps": 325.82,
+        "dynamic_viscosity_pas": 1.6713e-05,
+        "kinematic_viscosity_m2ps": 0.0084995
+      }
+    },
+    {
+      "geometric_altitude_m": 47000.0,
+      "pages": {
+        "table_i": 65,
+        "table_iii": 113
+      },
+      "printed": {
+        "geopotential_altitude_m": "46655",
+        "temperature_k": "269.684",
+        "molecular_scale_temperature_k": "269.684",
+        "pressure_mb": "1.1585E+0",
+        "density_kgpm3": "1.4965E-3",
+        "speed_of_sound_mps": "329.21",
+        "dynamic_viscosity_pas": "1.6989E-5",
+        "kinematic_viscosity_m2ps": "1.1352E-2"
+      },
+      "si": {
+        "geopotential_altitude_m": 46655.0,
+        "temperature_k": 269.684,
+        "molecular_scale_temperature_k": 269.684,
+        "pressure_pa": 115.85,
+        "density_kgpm3": 0.0014965,
+        "speed_of_sound_mps": 329.21,
+        "dynamic_viscosity_pas": 1.6989e-05,
+        "kinematic_viscosity_m2ps": 0.011352
+      }
+    },
+    {
+      "geometric_altitude_m": 50000.0,
+      "pages": {
+        "table_i": 65,
+        "table_iii": 113
+      },
+      "printed": {
+        "geopotential_altitude_m": "49610",
+        "temperature_k": "270.650",
+        "molecular_scale_temperature_k": "270.650",
+        "pressure_mb": "7.9779E-1",
+        "density_kgpm3": "1.0269E-3",
+        "speed_of_sound_mps": "329.80",
+        "dynamic_viscosity_pas": "1.7037E-5",
+        "kinematic_viscosity_m2ps": "1.6591E-2"
+      },
+      "si": {
+        "geopotential_altitude_m": 49610.0,
+        "temperature_k": 270.65,
+        "molecular_scale_temperature_k": 270.65,
+        "pressure_pa": 79.779,
+        "density_kgpm3": 0.0010269,
+        "speed_of_sound_mps": 329.8,
+        "dynamic_viscosity_pas": 1.7037e-05,
+        "kinematic_viscosity_m2ps": 0.016591
+      }
+    },
+    {
+      "geometric_altitude_m": 51000.0,
+      "pages": {
+        "table_i": 65,
+        "table_iii": 113
+      },
+      "printed": {
+        "geopotential_altitude_m": "50594",
+        "temperature_k": "270.650",
+        "molecular_scale_temperature_k": "270.650",
+        "pressure_mb": "7.0458E-1",
+        "density_kgpm3": "9.0690E-4",
+        "speed_of_sound_mps": "329.80",
+        "dynamic_viscosity_pas": "1.7037E-5",
+        "kinematic_viscosity_m2ps": "1.8786E-2"
+      },
+      "si": {
+        "geopotential_altitude_m": 50594.0,
+        "temperature_k": 270.65,
+        "molecular_scale_temperature_k": 270.65,
+        "pressure_pa": 70.458,
+        "density_kgpm3": 0.0009069,
+        "speed_of_sound_mps": 329.8,
+        "dynamic_viscosity_pas": 1.7037e-05,
+        "kinematic_viscosity_m2ps": 0.018786
+      }
+    },
+    {
+      "geometric_altitude_m": 55000.0,
+      "pages": {
+        "table_i": 65,
+        "table_iii": 113
+      },
+      "printed": {
+        "geopotential_altitude_m": "54528",
+        "temperature_k": "260.771",
+        "molecular_scale_temperature_k": "260.771",
+        "pressure_mb": "4.2525E-1",
+        "density_kgpm3": "5.6810E-4",
+        "speed_of_sound_mps": "323.72",
+        "dynamic_viscosity_pas": "1.6541E-5",
+        "kinematic_viscosity_m2ps": "2.9117E-2"
+      },
+      "si": {
+        "geopotential_altitude_m": 54528.0,
+        "temperature_k": 260.771,
+        "molecular_scale_temperature_k": 260.771,
+        "pressure_pa": 42.525,
+        "density_kgpm3": 0.0005681,
+        "speed_of_sound_mps": 323.72,
+        "dynamic_viscosity_pas": 1.6541e-05,
+        "kinematic_viscosity_m2ps": 0.029117
+      }
+    },
+    {
+      "geometric_altitude_m": 60000.0,
+      "pages": {
+        "table_i": 67,
+        "table_iii": 115
+      },
+      "printed": {
+        "geopotential_altitude_m": "59439",
+        "temperature_k": "247.021",
+        "molecular_scale_temperature_k": "247.021",
+        "pressure_mb": "2.1958E-1",
+        "density_kgpm3": "3.0968E-4",
+        "speed_of_sound_mps": "315.07",
+        "dynamic_viscosity_pas": "1.5837E-5",
+        "kinematic_viscosity_m2ps": "5.1141E-2"
+      },
+      "si": {
+        "geopotential_altitude_m": 59439.0,
+        "temperature_k": 247.021,
+        "molecular_scale_temperature_k": 247.021,
+        "pressure_pa": 21.958,
+        "density_kgpm3": 0.00030968,
+        "speed_of_sound_mps": 315.07,
+        "dynamic_viscosity_pas": 1.5837e-05,
+        "kinematic_viscosity_m2ps": 0.051141
+      }
+    },
+    {
+      "geometric_altitude_m": 65000.0,
+      "pages": {
+        "table_i": 67,
+        "table_iii": 115
+      },
+      "printed": {
+        "geopotential_altitude_m": "64342",
+        "temperature_k": "233.292",
+        "molecular_scale_temperature_k": "233.292",
+        "pressure_mb": "1.0929E-1",
+        "density_kgpm3": "1.6321E-4",
+        "speed_of_sound_mps": "306.19",
+        "dynamic_viscosity_pas": "1.5116E-5",
+        "kinematic_viscosity_m2ps": "9.2617E-2"
+      },
+      "si": {
+        "geopotential_altitude_m": 64342.0,
+        "temperature_k": 233.292,
+        "molecular_scale_temperature_k": 233.292,
+        "pressure_pa": 10.929,
+        "density_kgpm3": 0.00016321,
+        "speed_of_sound_mps": 306.19,
+        "dynamic_viscosity_pas": 1.5116e-05,
+        "kinematic_viscosity_m2ps": 0.092617
+      }
+    },
+    {
+      "geometric_altitude_m": 70000.0,
+      "pages": {
+        "table_i": 67,
+        "table_iii": 115
+      },
+      "printed": {
+        "geopotential_altitude_m": "69238",
+        "temperature_k": "219.585",
+        "molecular_scale_temperature_k": "219.585",
+        "pressure_mb": "5.2209E-2",
+        "density_kgpm3": "8.2829E-5",
+        "speed_of_sound_mps": "297.06",
+        "dynamic_viscosity_pas": "1.4377E-5",
+        "kinematic_viscosity_m2ps": "1.7357E-1"
+      },
+      "si": {
+        "geopotential_altitude_m": 69238.0,
+        "temperature_k": 219.585,
+        "molecular_scale_temperature_k": 219.585,
+        "pressure_pa": 5.2209,
+        "density_kgpm3": 8.2829e-05,
+        "speed_of_sound_mps": 297.06,
+        "dynamic_viscosity_pas": 1.4377e-05,
+        "kinematic_viscosity_m2ps": 0.17357
+      }
+    },
+    {
+      "geometric_altitude_m": 71000.0,
+      "pages": {
+        "table_i": 67,
+        "table_iii": 115
+      },
+      "printed": {
+        "geopotential_altitude_m": "70216",
+        "temperature_k": "216.846",
+        "molecular_scale_temperature_k": "216.846",
+        "pressure_mb": "4.4795E-2",
+        "density_kgpm3": "7.1966E-5",
+        "speed_of_sound_mps": "295.20",
+        "dynamic_viscosity_pas": "1.4227E-5",
+        "kinematic_viscosity_m2ps": "1.9769E-1"
+      },
+      "si": {
+        "geopotential_altitude_m": 70216.0,
+        "temperature_k": 216.846,
+        "molecular_scale_temperature_k": 216.846,
+        "pressure_pa": 4.4795,
+        "density_kgpm3": 7.1966e-05,
+        "speed_of_sound_mps": 295.2,
+        "dynamic_viscosity_pas": 1.4227e-05,
+        "kinematic_viscosity_m2ps": 0.19769
+      }
+    },
+    {
+      "geometric_altitude_m": 75000.0,
+      "pages": {
+        "table_i": 67,
+        "table_iii": 115
+      },
+      "printed": {
+        "geopotential_altitude_m": "74125",
+        "temperature_k": "208.399",
+        "molecular_scale_temperature_k": "208.399",
+        "pressure_mb": "2.3881E-2",
+        "density_kgpm3": "3.9921E-5",
+        "speed_of_sound_mps": "289.40",
+        "dynamic_viscosity_pas": "1.3759E-5",
+        "kinematic_viscosity_m2ps": "3.4465E-1"
+      },
+      "si": {
+        "geopotential_altitude_m": 74125.0,
+        "temperature_k": 208.399,
+        "molecular_scale_temperature_k": 208.399,
+        "pressure_pa": 2.3881,
+        "density_kgpm3": 3.9921e-05,
+        "speed_of_sound_mps": 289.4,
+        "dynamic_viscosity_pas": 1.3759e-05,
+        "kinematic_viscosity_m2ps": 0.34465
+      }
+    },
+    {
+      "geometric_altitude_m": 80000.0,
+      "pages": {
+        "table_i": 67,
+        "table_iii": 115
+      },
+      "printed": {
+        "geopotential_altitude_m": "79006",
+        "temperature_k": "198.639",
+        "molecular_scale_temperature_k": "198.639",
+        "pressure_mb": "1.0524E-2",
+        "density_kgpm3": "1.8458E-5",
+        "speed_of_sound_mps": "282.54",
+        "dynamic_viscosity_pas": "1.3208E-5",
+        "kinematic_viscosity_m2ps": "7.1557E-1"
+      },
+      "si": {
+        "geopotential_altitude_m": 79006.0,
+        "temperature_k": 198.639,
+        "molecular_scale_temperature_k": 198.639,
+        "pressure_pa": 1.0524,
+        "density_kgpm3": 1.8458e-05,
+        "speed_of_sound_mps": 282.54,
+        "dynamic_viscosity_pas": 1.3208e-05,
+        "kinematic_viscosity_m2ps": 0.71557
+      }
+    },
+    {
+      "geometric_altitude_m": 82000.0,
+      "pages": {
+        "table_i": 67,
+        "table_iii": 115
+      },
+      "printed": {
+        "geopotential_altitude_m": "80956",
+        "temperature_k": "194.739",
+        "molecular_scale_temperature_k": "194.739",
+        "pressure_mb": "7.5009E-3",
+        "density_kgpm3": "1.3418E-5",
+        "speed_of_sound_mps": "279.75",
+        "dynamic_viscosity_pas": "1.2985E-5",
+        "kinematic_viscosity_m2ps": "9.6769E-1"
+      },
+      "si": {
+        "geopotential_altitude_m": 80956.0,
+        "temperature_k": 194.739,
+        "molecular_scale_temperature_k": 194.739,
+        "pressure_pa": 0.75009,
+        "density_kgpm3": 1.3418e-05,
+        "speed_of_sound_mps": 279.75,
+        "dynamic_viscosity_pas": 1.2985e-05,
+        "kinematic_viscosity_m2ps": 0.96769
+      }
+    },
+    {
+      "geometric_altitude_m": 84000.0,
+      "pages": {
+        "table_i": 67,
+        "table_iii": 115
+      },
+      "printed": {
+        "geopotential_altitude_m": "82904",
+        "temperature_k": "190.841",
+        "molecular_scale_temperature_k": "190.841",
+        "pressure_mb": "5.3105E-3",
+        "density_kgpm3": "9.6940E-6",
+        "speed_of_sound_mps": "276.94",
+        "dynamic_viscosity_pas": "1.2760E-5",
+        "kinematic_viscosity_m2ps": "1.3163E+0"
+      },
+      "si": {
+        "geopotential_altitude_m": 82904.0,
+        "temperature_k": 190.841,
+        "molecular_scale_temperature_k": 190.841,
+        "pressure_pa": 0.53105,
+        "density_kgpm3": 9.694e-06,
+        "speed_of_sound_mps": 276.94,
+        "dynamic_viscosity_pas": 1.276e-05,
+        "kinematic_viscosity_m2ps": 1.3163
+      }
+    },
+    {
+      "geometric_altitude_m": 85000.0,
+      "pages": {
+        "table_i": 67,
+        "table_iii": 115
+      },
+      "printed": {
+        "geopotential_altitude_m": "83878",
+        "temperature_k": "188.893",
+        "molecular_scale_temperature_k": "188.893",
+        "pressure_mb": "4.4568E-3",
+        "density_kgpm3": "8.2196E-6",
+        "speed_of_sound_mps": "275.52",
+        "dynamic_viscosity_pas": "1.2647E-5",
+        "kinematic_viscosity_m2ps": "1.5386E+0"
+      },
+      "si": {
+        "geopotential_altitude_m": 83878.0,
+        "temperature_k": 188.893,
+        "molecular_scale_temperature_k": 188.893,
+        "pressure_pa": 0.44568,
+        "density_kgpm3": 8.2196e-06,
+        "speed_of_sound_mps": 275.52,
+        "dynamic_viscosity_pas": 1.2647e-05,
+        "kinematic_viscosity_m2ps": 1.5386
+      }
+    },
+    {
+      "geometric_altitude_m": 86000.0,
+      "pages": {
+        "table_i": 68,
+        "table_iii": null
+      },
+      "printed": {
+        "geopotential_altitude_m": "84852",
+        "temperature_k": "186.87",
+        "molecular_scale_temperature_k": "186.95",
+        "pressure_mb": "3.7338E-3",
+        "density_kgpm3": "6.958E-6",
+        "speed_of_sound_mps": null,
+        "dynamic_viscosity_pas": null,
+        "kinematic_viscosity_m2ps": null
+      },
+      "si": {
+        "geopotential_altitude_m": 84852.0,
+        "temperature_k": 186.87,
+        "molecular_scale_temperature_k": 186.95,
+        "pressure_pa": 0.37338,
+        "density_kgpm3": 6.958e-06,
+        "speed_of_sound_mps": null,
+        "dynamic_viscosity_pas": null,
+        "kinematic_viscosity_m2ps": null
+      }
+    }
+  ]
+}

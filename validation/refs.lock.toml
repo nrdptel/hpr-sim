@@ -281,6 +281,7 @@ checks = [
     { module = "orhelper", version = "0.1.5" },
     { module = "jpype" },
     { module = "mpmath", version = "1.3.0" },
+    { module = "ambiance", version = "1.3.1" },
 ]
 
 # The OpenRocket oracle's runtime. `doctor` looks in JAVA_HOME, /usr/libexec/java_home (macOS),
