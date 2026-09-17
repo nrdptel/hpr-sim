@@ -27,11 +27,11 @@ from these notes:
   - Motor mounts that place `SolidMotor` elements with `MassProperties::from_motor_element`.
   - Reference diameter (L47) and typed checks (L50: a motor wider than its mount; fin roots off
     the body).
-- **RocketPy comparison:** RocketPy's `Rocket` takes mass, inertia and CG without motor as inputs
-  and adds the motor by the parallel-axis theorem. Match `total_mass(t)`, `center_of_mass(t)`,
-  `I_11(t)` and `I_33(t)` for its example rockets (`validation/oracles/rocketpy/attitude.py` has
-  Calisto's inputs); the M1670 file isn't bundled, so build its `SolidMotor` from its data file in
-  the oracle script and commit the fixture.
+- **RocketPy comparison:** `docs/research/rocketpy-rocket-mass.md` has RocketPy's composition
+  formulas, six example rockets' inputs and reproduced Calisto numbers. Its `I_11` is about the
+  centre of dry mass, not the CG. Calisto's motor sits at −1.255 m in the docs but −1.373 m in the
+  tests. Build each `SolidMotor` from RocketPy's data files in the oracle script and commit the
+  fixture.
 - **Open conventions to settle in M2.2/M3.1 with the jar:** OpenRocket's ogive parameter, how it
   measures wall thickness and cuts steep ends (hpr rounds them: 2% of wall mass at 60°), whether
   its fin mass uses the cross-section, and its cant pivot.
