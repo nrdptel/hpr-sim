@@ -1,0 +1,23 @@
+[package]
+name = "hpr-sim"
+description = "The 6-DOF flight engine: state, launch rail phase, integrators, events, recovery, staging and the recorder."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+publish.workspace = true
+
+[lints]
+workspace = true
+
+# Pure crate: no I/O, and it must build for wasm32-unknown-unknown (`cargo xtask wasm-check`).
+[package.metadata.hpr]
+wasm = true
+
+[dependencies]
+hpr-core.workspace = true
+hpr-atmos.workspace = true
+hpr-motor.workspace = true
+hpr-design.workspace = true
+hpr-aero.workspace = true

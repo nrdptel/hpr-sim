@@ -1,0 +1,10 @@
+# Check out text files with LF on every OS, so rustfmt, snapshot tests and reference-data hashes
+# behave the same on Windows as on macOS and Linux.
+* text=auto eol=lf
+
+*.png binary
+*.jpg binary
+*.pdf binary
+*.zip binary
+*.ork binary
+*.gz binary
