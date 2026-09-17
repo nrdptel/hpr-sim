@@ -16,7 +16,7 @@ or a public trait gets an entry in `DECISIONS.md` first.
 - **Features for weight.** `net`, `python`, `ffi`, `parallel` and `serde` are cargo features, so a
   minimal embed stays small.
 
-## Crate map (workspace members under `crates/`)
+## Crate map (workspace members under `crates/`; `xtask/` sits at the root, per ADR-001)
 
 | crate | role | depends on |
 |---|---|---|
@@ -38,6 +38,12 @@ or a public trait gets an entry in `DECISIONS.md` first.
 | `hpr-wasm` | wasm-bindgen package with generated TS types (`tsify`) | facade (no net) |
 | `hpr-validate` | validation harness: cases, oracle references, metrics, reports | facade, flightdata |
 | `xtask` | dev automation: `wasm-check`, `refs`, `validate`, `schema`, `bench`, `notices` | — |
+
+**Pure core** (ADR-001): the crates that do no I/O and must build for `wasm32-unknown-unknown`
+declare `[package.metadata.hpr] wasm = true`. They are `hpr-core`, `hpr-atmos`, `hpr-motor`,
+`hpr-design`, `hpr-aero`, `hpr-sim`, `hpr-analysis`, `hpr-flightdata`, `hpr-format`, `hpr-io`,
+`hpr` (without `net`) and `hpr-wasm`. `cargo xtask wasm-check` enforces both the build and the
+rule that they depend on no workspace crate outside the core.
 
 Crate names on crates.io are **not** reserved yet. Publishing is a "Needs Neer" item.
 
