@@ -10,7 +10,11 @@
   its own *done when*.
 - Blocked milestones are marked `[blocked]` with a pointer into `STATUS.md`.
 - New milestones may be added (at the right position, with a *done when*). Existing *done when*
-  bullets may be tightened but never loosened without an ADR.
+  bullets may be tightened but never loosened without an ADR. Milestones are never removed,
+  renumbered or moved later in the order without an ADR.
+- A `Loft lessons:` line lists ids from `docs/research/loft-lessons.md`. A milestone that owns a
+  lesson (listed first on its row) ships its named tests; `cargo test -p xtask` checks this once
+  the milestone is checked off.
 
 ## Phase 0: Foundations
 
@@ -55,7 +59,7 @@
   - `THIRD-PARTY-NOTICES.md` lists every source with its license and usage mode (bundled /
     fetched / run-only).
 
-- [ ] **M0.3 Lessons from Loft.** Read `refs/fusionspace-loft` (docs/methods, the limitations
+- [x] **M0.3 Lessons from Loft.** Read `refs/fusionspace-loft` (docs/methods, the limitations
   page, `COMPETITION.md`, the importer-bug entries in `BACKLOG.md`, `lib/sim`, `lib/ork`,
   `lib/validation`). Write `docs/research/loft-lessons.md` (at most 200 lines) covering the models
   used, known weaknesses, importer quirks, test cases worth porting, and process mistakes to avoid.
@@ -71,6 +75,7 @@
   - Frames spec in `docs/physics/frames.md`: ENU launch frame, body frame, Euler conventions,
     geodetic/ECEF conversion.
   - WGS84 Somigliana gravity with altitude; optional Earth-rotation terms.
+  - Loft lessons: L1 (tests named in `docs/research/loft-lessons.md`).
 
   *Done when:*
   - Gravity matches the published formula values at at least 6 latitude/altitude points to 1e-6
@@ -85,6 +90,7 @@
   - ISA temperature offset; custom profile from soundings (p, T, RH, wind vs height) with
     interpolation.
   - Wind models: constant, power/log law, tabulated layers, seeded Dryden turbulence.
+  - Loft lessons: L2, L3, L4, L5, L6 (tests named in `docs/research/loft-lessons.md`).
 
   *Done when:*
   - USSA76 matches the tables at at least 25 altitudes to at most 0.1% (the small table fixture is
@@ -99,6 +105,8 @@
   - Delays (including plugged); case/retainer mass.
   - Offline catalog type with per-curve provenance and license. Bundle only curves with clear
     terms; the rest are fetched and cached later (M5).
+  - Loft lessons: L36, L37, L38, L39, L40, L41, L42, L43 (tests named in
+    `docs/research/loft-lessons.md`).
 
   *Done when:*
   - For every bundled curve, total impulse, average thrust and burn time match the ThrustCurve
@@ -122,6 +130,8 @@
   - A small public test-design set under `validation/designs/`, built from the RocketPy examples
     and synthetic rockets. Tests use it because the private corpus must not appear in committed
     snapshots.
+  - Loft lessons: L44, L45, L46, L47, L48, L49, L50, L91 (tests named in
+    `docs/research/loft-lessons.md`).
 
   *Done when:*
   - Analytic volume, area and CG tests pass for every shape.
@@ -139,6 +149,8 @@
     exports. The dynamics can then be validated with the same drag as the oracle before our own
     aero predictions are compared.
   - `docs/physics/aero.md` with a citation for each term.
+  - Loft lessons: L8, L9, L10, L11, L12, L13, L14, L15, L16, L89, L90 (tests named in
+    `docs/research/loft-lessons.md`).
 
   *Done when:*
   - CNα and CP reproduce Barrowman's worked example(s) within 1%.
@@ -155,6 +167,8 @@
     burnout, apogee, ground hit, user events); fixed-step RK4 option.
   - Recorder with a configurable channel set; observer trait.
   - `criterion` benchmark.
+  - Loft lessons: L20, L21, L22, L23, L24, L25, L26 (tests named in
+    `docs/research/loft-lessons.md`).
 
   *Done when:*
   - Analytic tests pass: vacuum ballistic, terminal velocity, torque-free precession, and pitch
@@ -168,6 +182,7 @@
   - Parachutes (Cd·S, inflation time or area-growth model), streamers, tumble.
   - Drogue and main with deployment triggers (apogee, altitude, timer, motor delay).
   - Descent with wind drift; separated bodies tracked independently; landing detection.
+  - Loft lessons: L27, L28, L29, L92 (tests named in `docs/research/loft-lessons.md`).
 
   *Done when:*
   - Analytic tests for terminal velocity, descent time and drift pass.
@@ -193,6 +208,7 @@
     - **predicted:** hpr uses its own aero. Supersonic predicted-mode gaps are expected until M1.8
       and are reported, not hidden.
   - A CI job compares against the stored references.
+  - Loft lessons: L75, L76, L77, L78, L79 (tests named in `docs/research/loft-lessons.md`).
 
   *Done when:*
   - At least 5 cases pass their same-drag tolerances.
@@ -207,6 +223,7 @@
   - CP shift with Mach.
   - Pitch, yaw and roll damping; roll forcing from cant.
   - Extend the M1.5 override tables to CNα and CP vs Mach and AoA, importable from RASAero CSV.
+  - Loft lessons: L7, L17, L18 (tests named in `docs/research/loft-lessons.md`).
 
   *Done when:*
   - Cd vs Mach is within 10% of RocketPy's RASAero CSVs across Mach 0.1–2.0 for the available
@@ -221,6 +238,8 @@
   - Unknown content is kept in `extensions.x-openrocket` for a lossless round trip.
   - Graceful warnings instead of failures.
   - Port Loft's importer lessons (auto radii, stage boundaries).
+  - Loft lessons: L49, L56, L57, L58, L59, L60, L61, L62, L63, L64, L65, L66 (tests named in
+    `docs/research/loft-lessons.md`).
 
   *Done when:*
   - Every `.ork` in `refs/loft-fixtures` and the OR example set imports with zero errors.
@@ -234,6 +253,7 @@
     corpus.
   - The stored results inside the `.ork` files are used as a second reference.
   - The deferred M1.4 mass/CG checks run against OR values.
+  - Loft lessons: L19, L51, L80, L81, L82, L87 (tests named in `docs/research/loft-lessons.md`).
 
   *Done when:*
   - At least 20 designs are in the report with an error distribution (apogee, max velocity,
@@ -245,6 +265,7 @@
   - Stage separation triggers (burnout plus delay, altitude, time); sustainer ignition.
   - Booster tracked through recovery.
   - Clustered motor mounts, with mass and thrust summed and the thrust offset handled.
+  - Loft lessons: L30, L31, L93 (tests named in `docs/research/loft-lessons.md`).
 
   *Done when:*
   - A two-stage design and a cluster design each match OpenRocket within the per-case tolerance.
@@ -255,6 +276,7 @@
   - Optimum ejection delay; max q; flutter velocity and margin (primary source cited).
   - Landing point in lat/lon.
   - Exports: CSV, JSON, Parquet (feature), KML and GeoJSON.
+  - Loft lessons: L32, L33, L34, L35, L94 (tests named in `docs/research/loft-lessons.md`).
 
   *Done when:*
   - Metrics are unit-tested.
@@ -265,6 +287,7 @@
   - Cases from the RocketPy flight data with their ERA5 environments, which needs a weather-file
     reader: a netCDF reader or a documented conversion.
   - Also the corpus flights that have logs.
+  - Loft lessons: L83 (tests named in `docs/research/loft-lessons.md`).
 
   *Done when:*
   - At least 6 real flights are in the report, with apogee error and altitude-trace RMS.
@@ -273,6 +296,8 @@
 
 - [ ] **M2.4 Accuracy census gate.** Generate a summary census (a README table and badge) from the
   report. CI fails on any per-case regression beyond tolerance.
+
+  - Loft lessons: L84, L85, L86, L88 (tests named in `docs/research/loft-lessons.md`).
 
   *Done when:* a deliberately perturbed drag coefficient on a throwaway draft PR makes CI fail.
   The failing run is linked from the real PR's description, and the throwaway PR is closed with
@@ -284,18 +309,23 @@
   `Rocket`, `Flight`) plus trait-based custom models. Add `examples/` (at least 4) and a rustdoc
   guide.
 
+  - Loft lessons: L95 (tests named in `docs/research/loft-lessons.md`).
+
   *Done when:*
   - The examples run in CI.
   - rustdoc has zero warnings.
   - A "custom aero model" example overrides a built-in model through the trait.
 
 - [ ] **M4.2 CLI.** `hpr sim|validate|convert|motors|mc|optimize|compare|diagnose` (stubs are fine
-  for commands whose milestone hasn't come yet), `--json` everywhere, and shell completions.
+  for commands whose milestone hasn't come yet), `--json` everywhere, and shell completions. The
+  README's command and format table is generated from the registered commands (Loft lesson P10).
 
   *Done when:* `assert_cmd` tests cover every implemented command and the JSON output validates
   against the published schemas.
 
 - [ ] **M3.2 OpenRocket `.ork` export** (schema 1.10).
+
+  - Loft lessons: L67, L68 (tests named in `docs/research/loft-lessons.md`).
 
   *Done when:*
   - `.ork` → hpr → `.ork` → OR 24.12 (oracle) loads every corpus design.
@@ -371,6 +401,7 @@
     tolerances), wind, launch angle, deployment delays.
   - Landing ellipses at confidence levels; apogee distribution.
   - Sensitivity analysis (Morris screening and Sobol indices).
+  - Loft lessons: L52, L53, L54, L55, L96 (tests named in `docs/research/loft-lessons.md`).
 
   *Done when:*
   - Results are bit-reproducible for the same seed.
@@ -401,11 +432,15 @@
 
 - [ ] **M3.4 RockSim `.rkt` import/export** (clean room, from the RockSim XML doc and samples).
 
+  - Loft lessons: L69, L70, L71 (tests named in `docs/research/loft-lessons.md`).
+
   *Done when:* the corpus `.rkt` files import, and the exports reopen in our importer with
   semantic equality.
 
 - [ ] **M3.5 RASAero `.CDX1` import/export** (from samples only). Fix the Loft `<Location>` bug
   class.
+
+  - Loft lessons: L72, L73, L74 (tests named in `docs/research/loft-lessons.md`).
 
   *Done when:* the corpus `.CDX1` files import with overall length within 0.5% of the stated
   values.
@@ -469,6 +504,7 @@
     sizing).
   - Auto-size parachutes to a target descent rate.
   - Suggestions with reasons.
+  - Loft lessons: L97 (tests named in `docs/research/loft-lessons.md`).
 
   *Done when:* every template simulates and passes its own checks, and each check has
   positive/negative tests.
@@ -485,6 +521,8 @@
   PWA, Tauri v2 for desktop and mobile) against all-Rust. Build a throwaway 3D trajectory spike in
   each and measure bundle size, frame rate on a phone-class device profile, and development
   effort.
+
+  - Loft lessons: P15 (read Loft's `OWNER-NOTES.md` UI notes before the spike).
 
   *Done when:* the ADR is merged with measurements.
 

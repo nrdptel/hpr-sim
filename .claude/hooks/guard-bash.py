@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""PreToolUse guard for Bash calls. It enforces the parts of CLAUDE.md that must never slip:
+"""PreToolUse guard for Bash (and WebFetch) calls. It enforces the parts of CLAUDE.md that must never slip:
 
 * no pushes to main/master and no force pushes (work ships through PRs, and CI must run first)
 * no AI-attribution traces in commit messages or PR bodies (Neer's zero-trace rule)
@@ -7,6 +7,10 @@
 * no force-adding the private reference library (refs/, corpus/), and no committing any file whose
   bytes match a file in the private loft-fixtures corpus
 * no `gh pr merge` unless every CI check on the PR has passed, and never with --admin
+* no fetching OpenRocket's GPL source code (clean room), from Bash or WebFetch. Release assets
+  downloaded by URL (the jar, the thesis and technical-documentation PDFs), its issues and other
+  repos such as openrocket-database stay allowed; `gh release download` is blocked because it can
+  fetch the source archive
 
 Exit code 2 blocks the call, and stderr goes back to Claude as the reason. Any internal error
 exits 0 so a bug in this guard never wedges a run; the settings.json deny rules are
@@ -40,6 +44,72 @@ TRACE_PATTERNS = [
     r"noreply@anthropic",
     r"\bclaude\b",
 ]
+
+
+# OpenRocket's source repository, in the forms a fetch names it: files, clones, archives, diffs and
+# the contents API. Release downloads (github.com/openrocket/openrocket/releases/...), issues and
+# sibling repos such as openrocket-database don't match: the repo name must end at a slash, `.git`
+# or the end of the token.
+GPL_SOURCE = re.compile(
+    r"raw\.githubusercontent\.com/openrocket/openrocket/"
+    r"|codeload\.github\.com/openrocket/openrocket/"
+    r"|patch-diff\.githubusercontent\.com/raw/openrocket/openrocket/"
+    r"|github\.com/openrocket/openrocket/(?:blob|tree|raw|archive|commits?|zipball|tarball|compare)/"
+    r"|github\.com/openrocket/openrocket/pull/\d+(?:/files|/commits|\.diff|\.patch)"
+    r"|github\.com[:/]openrocket/openrocket(?:\.git)?/?$"
+    r"|repos/openrocket/openrocket/(?:contents|zipball|tarball|git|commits|readme|compare|pulls/\d+/files)"
+    r"|^(?:--repo=)?openrocket/openrocket(?:\.git)?$",
+    re.IGNORECASE,
+)
+# Commands that download whatever URL they are given.
+FETCHERS = {"curl", "wget", "svn", "http", "https", "xh", "aria2c"}
+# git and gh subcommands that fetch a repository's content; everything else (commit messages, PR
+# bodies, `git grep`, reading upstream issues) may mention the repo freely.
+GIT_FETCHES = {"clone", "fetch", "pull", "submodule", "remote", "archive", "ls-remote"}
+GH_FETCHES = {("repo", "clone"), ("pr", "diff"), ("pr", "checkout"), ("search", "code"), ("release", "download"), ("browse", None)}
+# Wrappers that run the command after them.
+WRAPPERS = {"env", "command", "nice", "nohup", "time", "exec", "timeout"}
+WRAPPER_OPTIONS_WITH_VALUE = {"-s", "--signal", "-k", "--kill-after", "-n", "--adjustment", "-u", "--unset", "-C", "--chdir"}
+
+
+def strip_wrappers(tokens: list[str]) -> list[str]:
+    """Drops `VAR=value`, `env`, `timeout 60` and similar prefixes in front of the real command."""
+    i = 0
+    while i < len(tokens):
+        t = tokens[i]
+        base = os.path.basename(t)
+        if re.match(r"^[A-Za-z_][A-Za-z0-9_]*=", t):
+            i += 1
+        elif base in WRAPPERS:
+            i += 1
+            while i < len(tokens) and tokens[i].startswith("-"):
+                # Options such as `timeout -s KILL`, `nice -n 10` and `env -u HOME` take a value.
+                i += 2 if tokens[i] in WRAPPER_OPTIONS_WITH_VALUE else 1
+            if base == "timeout" and i < len(tokens):
+                i += 1  # the duration
+        else:
+            break
+    return tokens[i:]
+
+
+def fetches_gpl_source(tokens: list[str]) -> bool:
+    tokens = strip_wrappers(tokens)
+    if not tokens:
+        return False
+    base = os.path.basename(tokens[0]).lower()
+    if base == "git":
+        sub, args = git_subcommand(tokens)
+        candidates = args if sub in GIT_FETCHES else []
+    elif base == "gh":
+        words = [a for a in tokens[1:] if not a.startswith("-")]
+        pair = (words[0] if words else None, words[1] if len(words) > 1 else None)
+        fetches = pair[0] == "api" or pair in GH_FETCHES or (pair[0], None) in GH_FETCHES
+        candidates = tokens[1:] if fetches else []
+    elif base in FETCHERS:
+        candidates = tokens[1:]
+    else:
+        candidates = []
+    return any(GPL_SOURCE.search(t) for t in candidates)
 
 
 def block(reason: str) -> None:
@@ -221,6 +291,9 @@ def check_pr_merge(args: list[str], cwd: str) -> None:
 
 
 def check_segment(tokens: list[str], cwd: str, raw: str, state: dict) -> None:
+    if fetches_gpl_source(tokens):
+        block("That fetches OpenRocket's GPL source code, which this clean-room project never reads (CLAUDE.md hard rule 3). "
+              "Use its published docs, or run the pinned jar as an oracle.")
     for t in tokens:
         m = re.match(r"^(?:user\.(?:name|email)|GIT_(?:AUTHOR|COMMITTER)_(?:NAME|EMAIL))=(.*)$", t)
         if m and m.group(1) not in (APPROVED_NAME, APPROVED_EMAIL):
@@ -277,6 +350,12 @@ def main() -> None:
     try:
         data = json.load(sys.stdin)
     except Exception:
+        sys.exit(0)
+    if data.get("tool_name") == "WebFetch":
+        url = (data.get("tool_input") or {}).get("url") or ""
+        if GPL_SOURCE.search(url):
+            block("That URL is OpenRocket's GPL source code, which this clean-room project never reads (CLAUDE.md hard rule 3). "
+                  "Use its published docs (openrocket.readthedocs.io, the wiki, the technical documentation PDF) instead.")
         sys.exit(0)
     if data.get("tool_name") != "Bash":
         sys.exit(0)
