@@ -294,9 +294,19 @@ ends there: its `FlightResult` has `Termination::Separated`, a `Separation` even
   `MassProperties` and the motors mounted in them, so the bodies' masses add to the whole rocket's
   at that instant — which is a test.
 - **The separation adds no impulse.** Each body starts at its **own** centre of mass, with the
-  velocity that point already had: `v_O + ω × r_cg` in the launch frame. The bodies' momenta
-  therefore add to the stack's, which is also a test. No spring, no gas pressure, no tip-off: an
+  velocity that point already had: `v_O + ω × r_cg` in the launch frame. The bodies' **linear**
+  momenta therefore add to the stack's, which is a test. Their rotation is dropped, so the angular
+  momentum is not conserved: the orbital part survives, each body's spin about its own centre does
+  not (31% of it at the 0.6 rad/s of the test, 0.02 J). No spring, no gas pressure, no tip-off: an
   ejection charge's impulse and the tumbling that follows are not modelled.
+- **Only body 0's devices act before the separation.** A device meant for another body has a drag
+  area computed for that body — a booster's tumbling area, say — which is not a model of the whole
+  stack, so it waits for its body. With no separation every device is body 0's.
+- **Each body finds its own apogee.** The ascent ends at the separation, so a body separated while
+  still climbing records its own `Apogee` event and fires its apogee charges there; without that
+  it would fall ballistically (found in review, now a test).
+- **A body must start above the ground**, as a free flight must: the ground event is a falling
+  crossing, so a body that started below the site would integrate underground to the time cap.
 - **Every body must carry a device.** The descent has no airframe drag (ADR-012), so a body with
   nothing open would fall as if in a vacuum; a flight whose bodies are not all covered is refused.
   A spent booster's device is usually `DeviceDrag::tumbling_stages(&assembly, its stages)`, which
@@ -334,8 +344,11 @@ ends there: its `FlightResult` has `Termination::Separated`, a `Separation` even
 | Two user events and an altitude device on one flight | the user events keep their numbers and fire during the descent, in height order |
 | The same recovered flight flown twice | bit-identical rows, events, final sample and step counts (Loft lesson L24: a run does not mutate the simulation) |
 | A separation at apogee of the two-stage test design, canopy on the sustainer and tumble on the booster | both bodies land: the 0.550 kg sustainer at 729.0 s and 2.11 m/s under its 1.8 m canopy, the 1.125 kg booster at 107.5 s and 16.74 m/s tumbling; the masses add to the 1.675 kg stack to 1e-12 and each lands within 0.1% of its own `v_e` |
-| The momenta of the bodies at a separation with a 0.6 rad/s body rate | add to the stack's to 1e-9, and the bodies start more than 0.5 m apart (each at its own centre of mass) |
+| The linear momenta of the bodies at a separation with a 0.6 rad/s body rate | add to the stack's to 1e-9, and each body starts at its own centre of mass to 1e-12 (0.817 m apart on this design) |
 | A separation before the last burnout | refused in flight, with the burnout time in the error |
+| A separation while still climbing at 100 m/s | both bodies find their own apogee above 1,400 m, fire there, and land within 1% of their own `v_e` |
+| A timed separation, and a height separation | fire at their own time to 1e-9 s and at their own height to 1e-6 m, rather than at the next boundary that happens to exist (found in review: one fired 186 s late, another never) |
+| A body that runs out of time | says `TimeCap` in its own `BodyFlight`; `FlightResult::bodies_landed` is false and `landings()` is short |
 
 ### Against RocketPy
 

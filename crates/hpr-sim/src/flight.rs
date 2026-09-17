@@ -139,7 +139,8 @@ pub struct FlightResult {
     pub termination: Termination,
     /// Its events, in order.
     pub events: Vec<FlightEvent>,
-    /// The flight where it ended.
+    /// The flight where it ended. After a [`Termination::Separated`] this is the **stack** at the
+    /// separation, not a landing: the landings are in `bodies` (see [`Self::landings`]).
     pub final_sample: Sample,
     /// The integrator's work.
     pub stats: Stats,
@@ -150,6 +151,45 @@ pub struct FlightResult {
 }
 
 impl FlightResult {
+    /// Whether every separated body landed. A flight that ends with
+    /// [`Termination::Separated`] says only that the stack came apart: each body's own
+    /// [`BodyFlight::termination`] says whether it reached the ground, and a body can run out of
+    /// time or steps on its own.
+    #[must_use]
+    pub fn bodies_landed(&self) -> bool {
+        !self.bodies.is_empty()
+            && self
+                .bodies
+                .iter()
+                .all(|body| body.termination == Termination::GroundHit)
+    }
+
+    /// Where the flight put things on the ground: the final sample's position when it landed
+    /// intact, or each separated body's landing.
+    #[must_use]
+    pub fn landings(&self) -> Vec<BodySample> {
+        if self.termination == Termination::Separated {
+            self.bodies
+                .iter()
+                .filter(|body| body.termination == Termination::GroundHit)
+                .map(|body| body.final_sample)
+                .collect()
+        } else if self.termination == Termination::GroundHit {
+            vec![BodySample {
+                time_s: self.final_sample.time_s,
+                cg_enu_m: self.final_sample.cg_enu_m,
+                cg_velocity_enu_m_s: self.final_sample.cg_velocity_enu_m_s,
+                height_above_ground_m: self.final_sample.height_above_ground_m,
+                vertical_speed_m_s: self.final_sample.vertical_speed_m_s,
+                airspeed_m_s: self.final_sample.airspeed_m_s,
+                recovery_drag_area_m2: self.final_sample.recovery_drag_area_m2,
+                mass_kg: self.final_sample.mass_kg,
+            }]
+        } else {
+            Vec::new()
+        }
+    }
+
     /// The first event of `kind`.
     #[must_use]
     pub fn event(&self, kind: EventKind) -> Option<&FlightEvent> {
@@ -271,6 +311,11 @@ impl Simulation {
     /// delay in seconds.
     pub fn with_recovery(mut self, devices: Vec<Device>) -> Result<Self, SimError> {
         self.trigger_times_s = recovery::plan(&devices, &self.vehicle.assembly.motors)?;
+        if self.separation.is_some() {
+            // Already given a separation, so the bodies are known; otherwise the check waits for
+            // one, and for the flight, so that the two builders work in either order.
+            check_bodies(&devices, self.separation)?;
+        }
         self.devices = devices;
         Ok(self)
     }
@@ -290,8 +335,9 @@ impl Simulation {
     ///
     /// [`SimError::Domain`] if the design has no stage aft of the split, if a device names a body
     /// that the separation doesn't make, if a body carries no device (the descent has no airframe
-    /// drag, so it would fall as if in a vacuum), or if the trigger names a motor without an
-    /// ejection delay.
+    /// drag, so it would fall as if in a vacuum), or if the trigger is out of its domain. The same
+    /// checks run again if [`Self::with_recovery`] is called afterwards, so the builders can be
+    /// given in either order.
     pub fn with_separation(mut self, separation: Separation) -> Result<Self, SimError> {
         let stages = self.vehicle.assembly.layout.stages.len();
         if separation.stages_of(1, stages).is_none() {
@@ -458,6 +504,9 @@ impl Simulation {
                 value: t0,
             });
         }
+        // The builders can be given in either order, and the last one wins, so the devices and
+        // the bodies are checked against each other here as well.
+        check_bodies(&self.devices, self.separation)?;
         if start_phase == Phase::Free {
             let height = self
                 .evaluate(Phase::Free, (t0, t0), t0, &state.to_array(), 0.0)?
@@ -475,6 +524,7 @@ impl Simulation {
         let mut stops = self.vehicle.thrust_knots_s();
         stops.push(cap);
         stops.extend(self.trigger_times_s.iter().flatten().copied());
+        stops.extend(self.separation_time_s);
         stops.retain(|t| *t <= cap);
         stops.sort_by(f64::total_cmp);
         stops.dedup();
@@ -503,17 +553,20 @@ impl Simulation {
 
             // Recovery: fire the charges whose time or height has come, then deploy the devices
             // whose lag has run out. A lag of zero deploys in the same pass, and a deployment can
-            // release another device, so this repeats until nothing more happens.
+            // release another device, so this repeats until nothing more happens. Only the
+            // devices of body 0 act before a separation: a device meant for another body has a
+            // drag area computed for that body (a booster's tumbling area, say), which is not a
+            // model of the whole stack.
             while !self.devices.is_empty() && matches!(phase, Phase::Free | Phase::Descent) {
                 let mut again = false;
                 let window = (t, next_stop(&stops, t, cap));
-                let area = run.drag_area_m2(&self.devices, t);
+                let area = self.ascent_drag_area_m2(&run, t);
                 // One evaluation serves every device in the pass: they all ask about the same
                 // `(t, y)`. It is only made when a pending device needs the flight's state, and
                 // it is not one of the integrator's, so `Stats` doesn't count it.
                 let mut here: Option<Evaluation> = None;
                 for index in 0..self.devices.len() {
-                    if !run.pending(index) {
+                    if !run.pending(index) || !self.acts_before_separation(index) {
                         continue;
                     }
                     // `plan` gives `trigger_times_s` one entry per device, in order.
@@ -521,12 +574,14 @@ impl Simulation {
                         Trigger::Time { .. } | Trigger::MotorDelay { .. } => {
                             self.trigger_times_s[index].is_some_and(|time| t >= time)
                         }
-                        // Descending: RocketPy's own apogee trigger (`y[5] < 0`), so a flight that
-                        // starts past its apogee still deploys. The apogee event fires this too,
-                        // and whichever comes first wins.
+                        // At or past the apogee, which is RocketPy's own trigger (`y[5] < 0`)
+                        // widened to include a flight that starts exactly at its apogee: with
+                        // `< 0` such a flight has no crossing for the apogee event to find
+                        // either, and would wait for the next interval. The apogee event fires
+                        // this too, and whichever comes first wins.
                         Trigger::Apogee => {
                             let e = self.evaluation(&mut here, phase, window, t, &y, area)?;
-                            e.vertical_speed_m_s < 0.0
+                            e.vertical_speed_m_s <= 0.0
                         }
                         Trigger::Altitude {
                             height_above_ground_m,
@@ -548,7 +603,10 @@ impl Simulation {
                     }
                 }
                 for index in 0..self.devices.len() {
-                    if !run.waiting(index) || run.deploy_s(index) > t {
+                    if !run.waiting(index)
+                        || run.deploy_s(index) > t
+                        || !self.acts_before_separation(index)
+                    {
                         continue;
                     }
                     if run.released_s(index).is_some_and(|released| released <= t) {
@@ -577,7 +635,7 @@ impl Simulation {
                         integrator.reset(t, y)?;
                         here = None;
                     }
-                    let area = run.drag_area_m2(&self.devices, t);
+                    let area = self.ascent_drag_area_m2(&run, t);
                     let sample = self.sample(phase, window, t, &y, area)?;
                     record(&mut events, observer, EventKind::Deployment(index), sample);
                     again = true;
@@ -585,9 +643,9 @@ impl Simulation {
                 // A release happens when the device that releases it is fully open, which is a
                 // stop time, so the drag area never dips between a drogue and a filling main.
                 for index in 0..self.devices.len() {
-                    if run.release_due(index, t) {
+                    if run.release_due(index, t) && self.acts_before_separation(index) {
                         run.release(index);
-                        let area = run.drag_area_m2(&self.devices, t);
+                        let area = self.ascent_drag_area_m2(&run, t);
                         let sample = self.sample(phase, window, t, &y, area)?;
                         record(&mut events, observer, EventKind::Release(index), sample);
                         again = true;
@@ -604,15 +662,16 @@ impl Simulation {
                 && matches!(phase, Phase::Free | Phase::Descent)
             {
                 let window = (t, next_stop(&stops, t, cap));
-                let area = run.drag_area_m2(&self.devices, t);
+                let area = self.ascent_drag_area_m2(&run, t);
                 let fires = match separation.trigger {
                     Trigger::Time { .. } | Trigger::MotorDelay { .. } => {
                         self.separation_time_s.is_some_and(|time| t >= time)
                     }
+                    // At or past the apogee, as a device's apogee trigger is.
                     Trigger::Apogee => {
                         self.evaluate(phase, window, t, &y, area)?
                             .vertical_speed_m_s
-                            < 0.0
+                            <= 0.0
                     }
                     Trigger::Altitude {
                         height_above_ground_m,
@@ -683,7 +742,7 @@ impl Simulation {
             };
             let t = integrator.time_s();
             let y = *integrator.state();
-            let area = run.drag_area_m2(&self.devices, t);
+            let area = self.ascent_drag_area_m2(&run, t);
             // Burnout is a stop time, but an event can end the step on it first.
             if !burnout_recorded && t >= burnout_s {
                 burnout_recorded = true;
@@ -748,6 +807,10 @@ impl Simulation {
                                     );
                                 }
                             }
+                            Watch::SeparationHeight => {
+                                // The separation itself fires at the top of the next pass, which
+                                // is where its burnout check and its bodies live.
+                            }
                             Watch::User(user) => {
                                 let sample = self.sample(phase, window, t, &y, area)?;
                                 record(&mut events, observer, EventKind::User(user), sample);
@@ -772,7 +835,7 @@ impl Simulation {
         let t = integrator.time_s();
         let y = *integrator.state();
         let next = next_stop(&stops, t, f64::INFINITY);
-        let area = run.drag_area_m2(&self.devices, t);
+        let area = self.ascent_drag_area_m2(&run, t);
         let final_sample = self.sample(phase, (t, next.max(t)), t, &y, area)?;
         let bodies = if separated {
             self.fly_bodies(t, &State::from_array(&y), &mut run)?
@@ -859,19 +922,32 @@ impl Simulation {
         ];
         let mut integrator = Integrator::new(self.settings.method, t0, start)?
             .with_step_limit(self.settings.step_limit);
-        let mut stops: Vec<f64> = self
-            .trigger_times_s
-            .iter()
-            .enumerate()
-            .filter(|(index, _)| self.devices[*index].body == body)
-            .filter_map(|(_, time)| *time)
-            .filter(|time| *time > t0 && *time <= cap)
-            .collect();
+        // Every time this body's devices already have: their trigger times, and — for a device
+        // that was triggered, deployed or released before the separation — its deployment, the
+        // end of its filling and its release. Without these the descent would step straight past
+        // them (found in review).
+        let mut stops: Vec<f64> = Vec::new();
+        for index in 0..self.devices.len() {
+            if self.devices[index].body != body {
+                continue;
+            }
+            stops.extend(self.trigger_times_s[index]);
+            stops.extend(run.times_of(index));
+        }
+        stops.retain(|time| *time > t0 && *time <= cap);
         stops.push(cap);
         stops.sort_by(f64::total_cmp);
         stops.dedup();
         let mut events: Vec<BodyEvent> = Vec::new();
         let start_sample = self.body_sample(body, mass_kg, t0, &start, run)?;
+        if start_sample.height_above_ground_m <= 0.0 {
+            // The ground event is a falling crossing, so a body that starts below the site would
+            // integrate underground to the time cap.
+            return Err(SimError::Domain {
+                what: "starting height of a separated body's centre of mass above the ground",
+                value: start_sample.height_above_ground_m,
+            });
+        }
         let mine: Vec<usize> = (0..self.devices.len())
             .filter(|index| self.devices[*index].body == body)
             .collect();
@@ -894,7 +970,7 @@ impl Simulation {
                         Trigger::Time { .. } | Trigger::MotorDelay { .. } => {
                             self.trigger_times_s[index].is_some_and(|time| t >= time)
                         }
-                        Trigger::Apogee => sample.vertical_speed_m_s < 0.0,
+                        Trigger::Apogee => sample.vertical_speed_m_s <= 0.0,
                         Trigger::Altitude {
                             height_above_ground_m,
                         } => {
@@ -953,11 +1029,17 @@ impl Simulation {
                         && run.pending(*index)
                 })
                 .collect();
+            // A body separated while still climbing has to find its own apogee, or an apogee
+            // charge would never fire and it would fall ballistically (found in review).
+            let apogee = mine.iter().any(|index| {
+                self.devices[*index].trigger == Trigger::Apogee && run.pending(*index)
+            });
             let mut system = BodySystem {
                 simulation: self,
                 body,
                 mass_kg,
                 run,
+                apogee,
                 watches: &watches,
                 failure: None,
             };
@@ -971,16 +1053,25 @@ impl Simulation {
                 Err(IntegrationError::Derivative { source, .. }) => return Err(source),
                 Err(error) => return Err(SimError::Integration(Box::new(error))),
             };
-            if let Advance::Events = outcome
-                && integrator.fired_events().contains(&0)
-            {
+            if let Advance::Events = outcome {
+                let fired = integrator.fired_events().to_vec();
                 let t = integrator.time_s();
                 let y = *integrator.state();
-                events.push(BodyEvent {
-                    kind: EventKind::GroundHit,
-                    sample: self.body_sample(body, mass_kg, t, &y, run)?,
-                });
-                break Termination::GroundHit;
+                if apogee && fired.contains(&1) {
+                    // The body's own apogee: the ascent's ended at the separation, so this is the
+                    // only place a staged flight can record one.
+                    events.push(BodyEvent {
+                        kind: EventKind::Apogee,
+                        sample: self.body_sample(body, mass_kg, t, &y, run)?,
+                    });
+                }
+                if fired.contains(&0) {
+                    events.push(BodyEvent {
+                        kind: EventKind::GroundHit,
+                        sample: self.body_sample(body, mass_kg, t, &y, run)?,
+                    });
+                    break Termination::GroundHit;
+                }
             }
         };
 
@@ -1023,7 +1114,7 @@ impl Simulation {
         Ok(BodySample {
             time_s: t,
             cg_enu_m,
-            velocity_enu_m_s,
+            cg_velocity_enu_m_s: velocity_enu_m_s,
             height_above_ground_m,
             vertical_speed_m_s: up_enu.dot(velocity_enu_m_s),
             airspeed_m_s: (velocity_enu_m_s - wind_enu).length(),
@@ -1050,6 +1141,21 @@ impl Simulation {
         Ok(evaluation)
     }
 
+    /// The drag area acting on the stack before a separation, m²: body 0's devices, which with
+    /// no separation is all of them.
+    fn ascent_drag_area_m2(&self, run: &Run, t: f64) -> f64 {
+        if self.separation.is_some() {
+            run.body_drag_area_m2(&self.devices, 0, t)
+        } else {
+            run.drag_area_m2(&self.devices, t)
+        }
+    }
+
+    /// Whether device `index` acts on the stack before a separation: only body 0's do.
+    fn acts_before_separation(&self, index: usize) -> bool {
+        self.separation.is_none() || self.devices[index].body == 0
+    }
+
     /// What the integrator watches for in `phase`, in event order.
     fn watches(&self, phase: Phase, run: &Run) -> Vec<Watch> {
         match phase {
@@ -1058,15 +1164,60 @@ impl Simulation {
             Phase::Free | Phase::Descent => {
                 let mut watches = vec![Watch::Apogee, Watch::Ground];
                 for (index, device) in self.devices.iter().enumerate() {
-                    if matches!(device.trigger, Trigger::Altitude { .. }) && run.pending(index) {
+                    if matches!(device.trigger, Trigger::Altitude { .. })
+                        && run.pending(index)
+                        && self.acts_before_separation(index)
+                    {
                         watches.push(Watch::Altitude(index));
                     }
+                }
+                // The separation's own height, so it is located rather than polled at the next
+                // boundary that happens to exist.
+                if let Some(Trigger::Altitude { .. }) =
+                    self.separation.map(|separation| separation.trigger)
+                {
+                    watches.push(Watch::SeparationHeight);
                 }
                 watches.extend((0..self.user_events.len()).map(Watch::User));
                 watches
             }
         }
     }
+}
+
+/// Checks the devices against the bodies a separation makes, whichever builder ran last.
+///
+/// With a separation, every body it makes needs at least one device and no device may name a body
+/// it doesn't make. Without one there is only body 0, so a device that names another would have
+/// its drag area counted on the whole rocket and never be flown on a body of its own.
+fn check_bodies(devices: &[Device], separation: Option<Separation>) -> Result<(), SimError> {
+    let bodies = if separation.is_some() {
+        Separation::BODIES
+    } else {
+        1
+    };
+    if let Some(device) = devices.iter().find(|device| device.body >= bodies) {
+        return Err(SimError::Domain {
+            what: if separation.is_some() {
+                "body a device is attached to (the separation makes two)"
+            } else {
+                "body a device is attached to (there is no separation, so there is only body 0)"
+            },
+            value: device.body as f64,
+        });
+    }
+    if separation.is_some() {
+        for body in 0..bodies {
+            if !devices.iter().any(|device| device.body == body) {
+                return Err(SimError::Domain {
+                    what: "recovery devices on a separated body (every body needs one: a descent \
+                           has no airframe drag)",
+                    value: body as f64,
+                });
+            }
+        }
+    }
+    Ok(())
 }
 
 /// The first stop after `t`, or `cap`.
@@ -1100,6 +1251,8 @@ enum Watch {
     Ground,
     /// A device's deployment height, descending.
     Altitude(usize),
+    /// The separation's height, descending.
+    SeparationHeight,
     /// A user event.
     User(usize),
 }
@@ -1122,7 +1275,9 @@ struct BodySystem<'a> {
     body: usize,
     mass_kg: f64,
     run: &'a Run,
-    /// The devices whose deployment height this body is watching for, as event 1 onward.
+    /// Whether the body is watching for its own apogee, which is event 1 when it is.
+    apogee: bool,
+    /// The devices whose deployment height this body is watching for, after the apogee.
     watches: &'a [usize],
     failure: Option<SimError>,
 }
@@ -1173,7 +1328,7 @@ impl OdeSystem<6> for BodySystem<'_> {
     }
 
     fn event_count(&self) -> usize {
-        1 + self.watches.len()
+        1 + usize::from(self.apogee) + self.watches.len()
     }
 
     fn event_direction(&self, _index: usize) -> Direction {
@@ -1188,20 +1343,26 @@ impl OdeSystem<6> for BodySystem<'_> {
                 return f64::NAN;
             }
         };
-        match index {
-            // The ground, then each watched device's deployment height.
-            0 => sample.height_above_ground_m,
-            other => match self
-                .watches
-                .get(other - 1)
-                .and_then(|device| self.simulation.devices.get(*device))
-                .map(|device| device.trigger)
-            {
-                Some(Trigger::Altitude {
-                    height_above_ground_m,
-                }) => sample.height_above_ground_m - height_above_ground_m,
-                _ => f64::NAN,
-            },
+        // The ground, then this body's apogee if it is looking for one, then each watched
+        // device's deployment height. Every one is a falling crossing, so a device fires on the
+        // way down only.
+        if index == 0 {
+            return sample.height_above_ground_m;
+        }
+        if self.apogee && index == 1 {
+            return sample.vertical_speed_m_s;
+        }
+        let watch = index - 1 - usize::from(self.apogee);
+        match self
+            .watches
+            .get(watch)
+            .and_then(|device| self.simulation.devices.get(*device))
+            .map(|device| device.trigger)
+        {
+            Some(Trigger::Altitude {
+                height_above_ground_m,
+            }) => sample.height_above_ground_m - height_above_ground_m,
+            _ => f64::NAN,
         }
     }
 }
@@ -1303,9 +1464,13 @@ impl OdeSystem<STATE_LEN> for PhaseSystem<'_> {
     fn event_direction(&self, index: usize) -> Direction {
         match self.watches.get(index) {
             Some(Watch::RailForce | Watch::RailExit) => Direction::Rising,
-            Some(Watch::RailStall | Watch::Apogee | Watch::Ground | Watch::Altitude(_)) => {
-                Direction::Falling
-            }
+            Some(
+                Watch::RailStall
+                | Watch::Apogee
+                | Watch::Ground
+                | Watch::Altitude(_)
+                | Watch::SeparationHeight,
+            ) => Direction::Falling,
             Some(Watch::User(user)) => self
                 .simulation
                 .user_events
@@ -1338,6 +1503,18 @@ impl OdeSystem<STATE_LEN> for PhaseSystem<'_> {
             }
             Watch::Altitude(device) => {
                 let height_m = match self.simulation.devices.get(device).map(|d| d.trigger) {
+                    Some(Trigger::Altitude {
+                        height_above_ground_m,
+                    }) => height_above_ground_m,
+                    _ => return f64::NAN,
+                };
+                let value = self
+                    .evaluation(t_s, y)
+                    .map(|e| e.height_above_ground_m - height_m);
+                self.or_fail(value)
+            }
+            Watch::SeparationHeight => {
+                let height_m = match self.simulation.separation.map(|s| s.trigger) {
                     Some(Trigger::Altitude {
                         height_above_ground_m,
                     }) => height_above_ground_m,

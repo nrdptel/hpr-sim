@@ -63,9 +63,9 @@ every body to its own landing. M2.1 is the first end-to-end milestone. Start fro
 - 2026-09-17: M1.5b Drag and override tables (PR #17, ADR-009): Niskanen's buildup, drag at angle,
   roughness, CSV overrides. At Mach 0.3 against RASAero curves: Calisto +4.4%, Juno III −6.0%,
   Cavour −8.3%; gaps: Valetudo −47%, Cavour power-on −18%.
-- 2026-09-17: M1.5a Normal force and CP (PR #16) within 1% of Barrowman's examples; M1.4b Design
-  tree (PR #14) to 8e-10; M1.4a mass; M1.3 Solid motors to 8e-5; M1.2 Atmosphere; M1.1 Core math;
-  M0.1–M0.3. 2026-09-16: kickoff.
+- 2026-09-17: M1.5a Normal force and CP (PR #16) within 1% of Barrowman's examples bar the
+  Recruiter's six fins (+3.4%); M1.4b Design tree (PR #14) to 8e-10; M1.4a mass; M1.3 Solid motors
+  to 8e-5; M1.2 Atmosphere; M1.1 Core math; M0.1–M0.3. 2026-09-16: kickoff.
 
 ## Needs Neer (blocking or one-way decisions; the session keeps working on other things)
 
@@ -113,8 +113,8 @@ every body to its own landing. M2.1 is the first end-to-end milestone. Start fro
   appendix C's on request (+88%); tumble takes OpenRocket's §3.5 (−10 to +19% on its own drops, not
   the 3 to 14% claimed); pleats and tube fins are not modelled.
 - ADR-014: a separation splits the stack at a stage boundary into two point-mass bodies with their
-  own stages' mass and devices; no ejection impulse, every body needs a device, and it must follow
-  the last burnout (powered staging is M1.9).
+  own stages' mass and devices; no ejection impulse (linear momentum only), every body needs a
+  device, only body 0's act before the split, and it must follow the last burnout (M1.9 stages).
 
 ## Known issues and risks
 
