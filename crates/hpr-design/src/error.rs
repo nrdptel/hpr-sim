@@ -34,6 +34,26 @@ pub enum DesignError {
         /// The material's kind.
         actual: &'static str,
     },
+    /// A design tree that doesn't hold together, such as fins attached to an inner tube or an
+    /// automatic radius with nothing to take it from.
+    #[error("{id}: {message}")]
+    Tree {
+        /// The id of the stage, component or configuration at fault.
+        id: String,
+        /// What is wrong.
+        message: String,
+    },
+    /// Two stages, components or configurations share an id, or an id is empty.
+    #[error("ids must be unique and non-empty, but `{0}` is not")]
+    DuplicateId(String),
+    /// A reference to an id that doesn't exist.
+    #[error("no {what} has the id `{id}`")]
+    UnknownId {
+        /// What was looked for.
+        what: &'static str,
+        /// The id.
+        id: String,
+    },
     /// A numerical method failed, such as an integral that didn't converge.
     #[error(transparent)]
     Numerics(#[from] CoreError),

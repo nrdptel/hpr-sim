@@ -30,3 +30,7 @@ serde_json.workspace = true
 [[bench]]
 name = "mass"
 harness = false
+
+[[bench]]
+name = "design"
+harness = false

@@ -7,9 +7,15 @@
 //! - [`fins`]: fin sets (trapezoidal, elliptical, freeform) and tube fins.
 //! - [`parts`]: every other component, from body tubes to shock cords.
 //! - [`material`]: materials and their densities, and [`materials`]: built-in values with sources.
+//! - [`tree`]: the design tree of stages and components, placement, automatic radii, overrides and
+//!   the reference diameter.
+//! - [`config`]: motor mounts, configurations, and the rocket's mass properties through the burn.
+//! - [`checks`]: structural checks with typed findings.
 //!
-//! Physics: `docs/physics/shapes.md` and `docs/physics/mass.md`.
+//! Physics: `docs/physics/shapes.md`, `docs/physics/mass.md` and `docs/physics/design.md`.
 
+pub mod checks;
+pub mod config;
 pub mod error;
 pub mod fins;
 pub mod mass;
@@ -18,7 +24,13 @@ pub mod materials;
 pub mod parts;
 pub mod shapes;
 pub mod solids;
+pub mod tree;
 
+#[cfg(test)]
+mod testing;
+
+pub use checks::{Finding, Severity};
+pub use config::{Assembly, Configuration, MotorMount, MountedMotor, PlacedMotor};
 pub use error::DesignError;
 pub use fins::{FinCrossSection, FinPlanform, FinSet, FinTab, TubeFinSet};
 pub use mass::MassProperties;
@@ -29,6 +41,10 @@ pub use parts::{
 };
 pub use shapes::{NoseShape, Profile};
 pub use solids::{RevolvedGeometry, Wall, revolve};
+pub use tree::{
+    AutoDimension, Component, InertiaOverride, Layout, Overrides, Part, PlacedComponent,
+    PlacedStage, Position, ReferenceDiameter, Rocket, Stage,
+};
 
 #[cfg(test)]
 mod tests {
@@ -175,5 +191,172 @@ mod tests {
         // The off-axis payload makes the products of inertia non-zero.
         assert!(xy.abs() > 1e-6 && xz.abs() > 1e-6 && yz.abs() > 1e-6);
         rocket.validate().unwrap();
+    }
+    /// Loft lesson L47: the reference diameter was the widest component, which could be an
+    /// internal one. Here the default is the widest body component; an oversized ring, a mass
+    /// wider than the airframe, fins, tube fins and a shoulder don't count, and the nose-base and
+    /// custom choices do what they say.
+    #[test]
+    fn reference_diameter_ignores_internal_components() {
+        use crate::testing::{
+            attached, body, fins, mass_component, nose, ring, rocket, stage, top, tube,
+        };
+
+        let mut upper = body("upper", tube(0.5, 0.03, 0.001));
+        upper.children = vec![
+            attached("oversized-ring", ring(0.005, 0.07, 0.0), top(0.1)),
+            attached("wide-mass", mass_component(0.2, 0.05, 0.09), top(0.2)),
+            attached("fins", fins(0.1, 0.2), top(0.3)),
+            attached(
+                "tube-fins",
+                Part::TubeFinSet(TubeFinSet {
+                    count: 6,
+                    length_m: 0.1,
+                    outer_radius_m: 0.03,
+                    thickness_m: 0.001,
+                    base_angle_rad: 0.0,
+                    material: Material::bulk("cardboard", 790.0),
+                }),
+                top(0.35),
+            ),
+        ];
+        let mut nose_cone = body("nose", nose(0.2, 0.03));
+        if let Part::NoseCone(n) = &mut nose_cone.part {
+            n.shoulder = Some(Shoulder {
+                length_m: 0.05,
+                outer_radius_m: 0.08,
+                thickness_m: 0.002,
+                capped: false,
+            });
+        }
+        let lower = body(
+            "flare",
+            Part::Transition(Transition {
+                shape: NoseShape::Conical {},
+                clipped: false,
+                length_m: 0.1,
+                fore_radius_m: 0.03,
+                aft_radius_m: 0.04,
+                wall: Wall::Shell { thickness_m: 0.002 },
+                fore_shoulder: None,
+                aft_shoulder: None,
+                material: Material::bulk("cardboard", 790.0),
+            }),
+        );
+        let mut design = rocket(vec![stage(
+            "s",
+            vec![
+                nose_cone,
+                upper,
+                lower,
+                body("booster", tube(0.4, 0.04, 0.001)),
+            ],
+        )]);
+        let layout = design.layout().unwrap();
+        assert_eq!(layout.reference_diameter_m, 0.08);
+        assert!((layout.reference_area_m2() - PI * 0.0016).abs() < 1e-15);
+
+        // Without the wider booster section, the internal parts still don't count.
+        let mut short = design.clone();
+        short.stages[0].components.truncate(2);
+        assert_eq!(short.layout().unwrap().reference_diameter_m, 0.06);
+
+        design.reference_diameter = ReferenceDiameter::NoseBase {};
+        assert_eq!(design.layout().unwrap().reference_diameter_m, 0.06);
+        design.reference_diameter = ReferenceDiameter::Custom { diameter_m: 0.1 };
+        assert_eq!(design.layout().unwrap().reference_diameter_m, 0.1);
+        design.reference_diameter = ReferenceDiameter::Custom { diameter_m: 0.0 };
+        assert!(matches!(design.layout(), Err(DesignError::Domain { .. })));
+
+        // A bulged secant ogive is wider than its base, and that width counts.
+        let mut bulged = short;
+        if let Part::NoseCone(n) = &mut bulged.stages[0].components[0].part {
+            n.shape = NoseShape::Ogive { radius_ratio: 0.5 };
+        }
+        let d = bulged.layout().unwrap().reference_diameter_m;
+        assert!(d > 0.06 + 1e-4, "{d}");
+    }
+    /// Every public test design in `validation/designs/` (written by `cargo xtask designs`)
+    /// resolves, has no error findings, and assembles into a real body at ignition and burnout in
+    /// every configuration.
+    #[test]
+    fn validation_designs_resolve_and_pass_checks() {
+        const DESIGNS: [(&str, &str); 10] = [
+            (
+                "rocketpy-calisto-getting-started-motor-at-minus-1.255",
+                include_str!(
+                    "../../../validation/designs/rocketpy-calisto-getting-started-motor-at-minus-1.255.json"
+                ),
+            ),
+            (
+                "rocketpy-calisto-tests-motor-at-minus-1.373",
+                include_str!(
+                    "../../../validation/designs/rocketpy-calisto-tests-motor-at-minus-1.373.json"
+                ),
+            ),
+            (
+                "rocketpy-bella-lui",
+                include_str!("../../../validation/designs/rocketpy-bella-lui.json"),
+            ),
+            (
+                "rocketpy-ndrt-2020-nose-to-tail",
+                include_str!("../../../validation/designs/rocketpy-ndrt-2020-nose-to-tail.json"),
+            ),
+            (
+                "rocketpy-valetudo",
+                include_str!("../../../validation/designs/rocketpy-valetudo.json"),
+            ),
+            (
+                "rocketpy-juno-iii",
+                include_str!("../../../validation/designs/rocketpy-juno-iii.json"),
+            ),
+            (
+                "rocketpy-valkyrie",
+                include_str!("../../../validation/designs/rocketpy-valkyrie.json"),
+            ),
+            (
+                "rocketpy-prometheus-2022-generic-motor",
+                include_str!(
+                    "../../../validation/designs/rocketpy-prometheus-2022-generic-motor.json"
+                ),
+            ),
+            (
+                "synthetic-54mm-three-fin",
+                include_str!("../../../validation/designs/synthetic-54mm-three-fin.json"),
+            ),
+            (
+                "synthetic-two-stage-75mm-54mm",
+                include_str!("../../../validation/designs/synthetic-two-stage-75mm-54mm.json"),
+            ),
+        ];
+        for (name, text) in DESIGNS {
+            let design: Rocket = serde_json::from_str(text).unwrap();
+            let findings = checks::check(&design).unwrap();
+            println!("{name}: {findings:?}");
+            assert!(!checks::has_errors(&findings), "{name}: {findings:?}");
+            let layout = design.layout().unwrap();
+            println!(
+                "  structure {:.4} kg, centre at station {:.4} m, length {:.4} m, reference {:.4} m",
+                layout.structure.mass_kg,
+                -layout.structure.cg_m.z,
+                layout.length_m,
+                layout.reference_diameter_m
+            );
+            assert!(layout.reference_diameter_m > 0.0);
+            assert!(!design.configurations.is_empty(), "{name}");
+            for configuration in &design.configurations {
+                let assembly = design.assemble(&configuration.id).unwrap();
+                let burnout = assembly
+                    .motors
+                    .iter()
+                    .map(|m| m.mounted.motor.burnout_time_s())
+                    .fold(0.0, f64::max);
+                for t in [0.0, 0.5 * burnout, burnout] {
+                    let whole = assembly.mass_properties(t);
+                    whole.validate().unwrap();
+                    assert!(whole.mass_kg > layout.structure.mass_kg, "{name}");
+                }
+            }
+        }
     }
 }

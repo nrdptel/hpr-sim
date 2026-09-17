@@ -1,0 +1,308 @@
+{
+  "name": "RocketPy example: ndrt-2020-nose-to-tail",
+  "stages": [
+    {
+      "id": "rocket",
+      "name": "",
+      "components": [
+        {
+          "id": "nose",
+          "name": "",
+          "part": {
+            "nose_cone": {
+              "shape": {
+                "kind": "ogive",
+                "radius_ratio": 1.0
+              },
+              "length_m": 0.61,
+              "base_radius_m": 0.1015,
+              "wall": {
+                "kind": "shell",
+                "thickness_m": 0.002
+              },
+              "shoulder": null,
+              "material": {
+                "name": "Fiberglass laminate (G10/FR-4)",
+                "density": {
+                  "kind": "bulk",
+                  "kg_m3": 1800.0
+                }
+              }
+            }
+          }
+        },
+        {
+          "id": "body-tube-1",
+          "name": "",
+          "part": {
+            "body_tube": {
+              "length_m": 0.59,
+              "outer_radius_m": 0.1015,
+              "thickness_m": 0.002,
+              "material": {
+                "name": "Fiberglass laminate (G10/FR-4)",
+                "density": {
+                  "kind": "bulk",
+                  "kg_m3": 1800.0
+                }
+              }
+            }
+          }
+        },
+        {
+          "id": "tail-1",
+          "name": "",
+          "part": {
+            "transition": {
+              "shape": {
+                "kind": "conical"
+              },
+              "clipped": false,
+              "length_m": 0.127,
+              "fore_radius_m": 0.1015,
+              "aft_radius_m": 0.0775,
+              "wall": {
+                "kind": "shell",
+                "thickness_m": 0.002
+              },
+              "fore_shoulder": null,
+              "aft_shoulder": null,
+              "material": {
+                "name": "Fiberglass laminate (G10/FR-4)",
+                "density": {
+                  "kind": "bulk",
+                  "kg_m3": 1800.0
+                }
+              }
+            }
+          }
+        },
+        {
+          "id": "body-tube-2",
+          "name": "",
+          "part": {
+            "body_tube": {
+              "length_m": 2.064,
+              "outer_radius_m": 0.0775,
+              "thickness_m": 0.002,
+              "material": {
+                "name": "Fiberglass laminate (G10/FR-4)",
+                "density": {
+                  "kind": "bulk",
+                  "kg_m3": 1800.0
+                }
+              }
+            }
+          },
+          "children": [
+            {
+              "id": "motor-mount",
+              "name": "",
+              "part": {
+                "inner_tube": {
+                  "length_m": 0.6559999999999999,
+                  "outer_radius_m": 0.0345,
+                  "thickness_m": 0.0015,
+                  "radial_offset_m": 0.0,
+                  "angle_rad": 0.0,
+                  "material": {
+                    "name": "Fiberglass laminate (G10/FR-4)",
+                    "density": {
+                      "kind": "bulk",
+                      "kg_m3": 1800.0
+                    }
+                  }
+                }
+              },
+              "position": {
+                "from": "bottom",
+                "aft_offset_m": 0.0
+              },
+              "motor_mount": {
+                "overhang_m": 0.0
+              }
+            },
+            {
+              "id": "fins-1",
+              "name": "",
+              "part": {
+                "fin_set": {
+                  "count": 4,
+                  "planform": {
+                    "kind": "trapezoidal",
+                    "root_chord_m": 0.152,
+                    "tip_chord_m": 0.0762,
+                    "span_m": 0.165,
+                    "sweep_m": 0.038093251535717916
+                  },
+                  "thickness_m": 0.003,
+                  "cross_section": "square",
+                  "tab": null,
+                  "cant_rad": 0.0,
+                  "base_angle_rad": 0.0,
+                  "material": {
+                    "name": "Fiberglass laminate (G10/FR-4)",
+                    "density": {
+                      "kind": "bulk",
+                      "kg_m3": 1800.0
+                    }
+                  }
+                }
+              },
+              "position": {
+                "from": "absolute",
+                "station_m": 3.05
+              }
+            },
+            {
+              "id": "rail-buttons",
+              "name": "",
+              "part": {
+                "rail_button": {
+                  "outer_diameter_m": 0.0113,
+                  "inner_diameter_m": 0.0064,
+                  "height_m": 0.0081,
+                  "base_height_m": 0.002,
+                  "flange_height_m": 0.002,
+                  "angle_rad": 0.7853981633974483,
+                  "count": 2,
+                  "spacing_m": 0.5,
+                  "material": {
+                    "name": "Acetal (POM, Delrin)",
+                    "density": {
+                      "kind": "bulk",
+                      "kg_m3": 1420.0
+                    }
+                  }
+                }
+              },
+              "position": {
+                "from": "absolute",
+                "station_m": 1.49435
+              }
+            }
+          ]
+        }
+      ],
+      "overrides": {
+        "mass_kg": 18.998,
+        "cg_aft_m": 1.3,
+        "cg_xy_m": [
+          0.0,
+          0.0
+        ],
+        "inertia": {
+          "xx_kg_m2": 73.316,
+          "yy_kg_m2": 73.316,
+          "zz_kg_m2": 0.15982,
+          "xy_kg_m2": 0.0,
+          "xz_kg_m2": 0.0,
+          "yz_kg_m2": 0.0
+        }
+      }
+    }
+  ],
+  "reference_diameter": {
+    "kind": "maximum"
+  },
+  "configurations": [
+    {
+      "id": "example",
+      "name": "the example's motor inputs with the L2500ST curve in place of Cesaroni_4895L1395-P.eng",
+      "motors": [
+        {
+          "mount": "motor-mount",
+          "designation": "L2500ST",
+          "diameter_m": 0.066,
+          "length_m": 0.6559999999999999,
+          "motor": {
+            "curve": {
+              "times_s": [
+                0.0,
+                0.016,
+                0.027,
+                0.03,
+                0.039,
+                0.043,
+                0.08,
+                0.118,
+                0.198,
+                0.399,
+                0.495,
+                0.601,
+                0.701,
+                0.799,
+                1.001,
+                1.199,
+                1.399,
+                1.501,
+                1.6,
+                1.675,
+                1.752,
+                1.777,
+                1.805,
+                1.827,
+                1.852,
+                1.87,
+                1.895,
+                1.923
+              ],
+              "thrusts_n": [
+                0.0,
+                24.712,
+                449.764,
+                1329.524,
+                1784.23,
+                2041.239,
+                2224.11,
+                2357.557,
+                2476.176,
+                2678.817,
+                2748.011,
+                2787.551,
+                2822.148,
+                2822.148,
+                2807.321,
+                2757.896,
+                2668.932,
+                2565.14,
+                2402.039,
+                2233.995,
+                2006.641,
+                1818.828,
+                1334.466,
+                884.702,
+                434.937,
+                242.181,
+                88.964,
+                0.0
+              ]
+            },
+            "propellant": {
+              "model": "grains",
+              "count": 5,
+              "density_kg_m3": 1519.708,
+              "outer_radius_m": 0.033,
+              "initial_inner_radius_m": 0.015,
+              "initial_height_m": 0.12,
+              "separation_m": 0.003,
+              "center_m": 0.35,
+              "inhibited_ends": false
+            },
+            "dry": {
+              "mass_kg": 1.848,
+              "cg_m": 0.35,
+              "axial_inertia_kg_m2": 0.0,
+              "transverse_inertia_kg_m2": 0.0
+            },
+            "nozzle": {
+              "exit_radius_m": 0.02475,
+              "throat_radius_m": 0.01075,
+              "reference_pressure_pa": 101325.0
+            }
+          }
+        }
+      ]
+    }
+  ]
+}
