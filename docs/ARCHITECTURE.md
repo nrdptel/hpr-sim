@@ -43,7 +43,8 @@ or a public trait gets an entry in `DECISIONS.md` first.
 declare `[package.metadata.hpr] wasm = true`. They are `hpr-core`, `hpr-atmos`, `hpr-motor`,
 `hpr-design`, `hpr-aero`, `hpr-sim`, `hpr-analysis`, `hpr-flightdata`, `hpr-format`, `hpr-io`,
 `hpr` (without `net`) and `hpr-wasm`. `cargo xtask wasm-check` enforces both the build and the
-rule that they depend on no workspace crate outside the core.
+rule that they depend on no workspace crate outside the core; `clippy.toml` bans the I/O, clock
+and thread APIs.
 
 Crate names on crates.io are **not** reserved yet. Publishing is a "Needs Neer" item.
 

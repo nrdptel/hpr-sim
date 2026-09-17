@@ -14,7 +14,7 @@
 
 ## Phase 0: Foundations
 
-- [ ] **M0.1 Workspace, CI, licenses.**
+- [x] **M0.1 Workspace, CI, licenses.**
   - Cargo workspace with the crate skeletons from `ARCHITECTURE.md` (empty crates are fine).
   - `rust-toolchain.toml` pinned to the current stable.
   - Edition 2024; `rustfmt.toml`, clippy lints and `[workspace.dependencies]`.
