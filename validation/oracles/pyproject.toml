@@ -1,0 +1,24 @@
+# The Python environment for the code-to-code oracles (RocketPy, and OpenRocket through JPype).
+# `cargo xtask refs fetch` installs it into the gitignored refs/venv with `uv sync --frozen`,
+# which installs exactly what uv.lock pins and checks every artifact's hash. After editing this
+# file, run `uv lock --project validation/oracles` and commit both files.
+[project]
+name = "hpr-sim-oracles"
+version = "0.0.0"
+description = "Reference simulators run as external oracles for hpr-sim validation (not a package)."
+requires-python = ">=3.12,<3.13"
+dependencies = [
+    # The primary code-to-code oracle (MIT).
+    "rocketpy==1.13.0",
+    # Drives the OpenRocket jar (GPL-2.0, run-only; its source is never read). The PyPI release
+    # predates OpenRocket 24.12, so this comes from the maintained fork at a pinned commit.
+    "orhelper",
+    # Starts the JVM for the OpenRocket oracle (Apache-2.0). orhelper needs it too.
+    "jpype1>=1.7.1",
+]
+
+[tool.uv]
+package = false
+
+[tool.uv.sources]
+orhelper = { git = "https://github.com/openrocket/orhelper", rev = "fb132c49e661bb00c5586cce6a4ac0c655425197" }

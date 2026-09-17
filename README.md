@@ -36,6 +36,16 @@ cargo xtask wasm-check                  # the pure core builds for wasm32-unknow
 cargo deny check                        # dependency licenses, advisories and sources
 ```
 
+Validation work uses a local reference library (other simulators, papers, motor data), pinned in
+`validation/refs.lock.toml` and downloaded into the gitignored `refs/`. Fetching it needs `git`,
+`curl` and [uv](https://docs.astral.sh/uv/); the OpenRocket oracle also needs Java 17+.
+
+```bash
+cargo xtask refs fetch    # fetch everything to its pinned state (safe to rerun)
+cargo xtask refs verify   # re-hash everything against the pins
+cargo xtask refs doctor   # which tools and oracles work on this machine
+```
+
 The workspace crates live under `crates/`; `docs/ARCHITECTURE.md` describes what each one is for.
 The roadmap is in `docs/ROADMAP.md` and progress in `docs/STATUS.md`.
 

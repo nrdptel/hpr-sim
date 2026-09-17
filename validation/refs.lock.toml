@@ -1,0 +1,247 @@
+# The reference library: every outside source the validation work uses, pinned.
+#
+#   cargo xtask refs fetch     # bring refs/ to the pinned state (idempotent)
+#   cargo xtask refs verify    # re-hash everything against these pins
+#   cargo xtask refs doctor    # which tools and oracles work on this machine
+#
+# Everything lands in the gitignored refs/ and is never committed (CLAUDE.md rules 3 and 4).
+# Every item needs a row in THIRD-PARTY-NOTICES.md with the same license and mode; a test checks
+# that. Modes: `fetched` (downloaded and read or used as data) or `run-only` (executed as an
+# oracle; its source is never read). Sources were checked on 2026-09-17.
+
+version = 1
+
+# Git repositories, pinned by full commit id. `shallow` fetches only that commit.
+
+[[git]]
+name = "rocketpy"
+url = "https://github.com/RocketPy-Team/RocketPy.git"
+tag = "v1.13.0"
+commit = "9bd6ad3af8f97bafa3201d4e70eba2877e66e040"
+dest = "refs/rocketpy"
+shallow = true
+license = "MIT"
+mode = "fetched"
+
+[[git]]
+name = "openrocket-database"
+url = "https://github.com/openrocket/openrocket-database.git"
+commit = "1512874ace50917e25ccf7d7df1f616b5f39a8b5"
+dest = "refs/openrocket-database"
+shallow = true
+license = "Apache-2.0"
+mode = "fetched"
+
+[[git]]
+name = "fusionspace-loft"
+url = "https://github.com/nrdptel/fusionspace-loft.git"
+commit = "64f51ef1b3e91db6c843336af95b26c841f2c0d1"
+dest = "refs/fusionspace-loft"
+license = "MIT"
+mode = "fetched"
+
+# Private: other people's design files. Skipped with a note where GitHub access is missing (CI).
+# The manifest pin is the one Loft used.
+[[git]]
+name = "loft-fixtures"
+url = "https://github.com/nrdptel/loft-fixtures.git"
+commit = "37251476e5cfee330c88aa94cf0dd58f93370ccd"
+dest = "refs/loft-fixtures"
+private = true
+manifest = "CHECKSUMS.sha256"
+manifest_sha256 = "d909aeae6e063b629a161ba36dcc0f8b51e45313997789c8ecbc71e342971510"
+license = "private; third-party design files"
+mode = "fetched"
+
+# Immutable downloads, pinned by sha256.
+
+[[file]]
+name = "openrocket-jar"
+title = "OpenRocket 24.12 (needs Java 17+)"
+url = "https://github.com/openrocket/openrocket/releases/download/release-24.12/OpenRocket-24.12.jar"
+sha256 = "4959b72f52f5f607941e9722abbb7b7f0c4a38ebbbf84204a329db9f31c4f897"
+dest = "refs/openrocket/OpenRocket-24.12.jar"
+license = "GPL-3.0"
+mode = "run-only"
+
+[[file]]
+name = "barrowman-1967-thesis"
+title = "J. S. Barrowman, The Practical Calculation of the Aerodynamic Characteristics of Slender Finned Vehicles, MS thesis, 1967 (NASA/TM-2001-209983)"
+url = "https://ntrs.nasa.gov/api/citations/20010047838/downloads/20010047838.pdf"
+sha256 = "09d62b014a706c700e1b596c8cc58c60e87d613da4ce963db3f72361ef0187eb"
+dest = "refs/papers/barrowman-1967-thesis.pdf"
+license = "US government work"
+mode = "fetched"
+
+[[file]]
+name = "barrowman-1966-cp-report"
+title = "J. S. and J. A. Barrowman, The Theoretical Prediction of the Center of Pressure, NARAM-8, 1966"
+url = "https://www.apogeerockets.com/downloads/barrowman_report.pdf"
+sha256 = "321c9eaac9b3b89664b9170d0e4f1bf021d4087bad5561c7f6e7e98818fe7a7e"
+dest = "refs/papers/barrowman-1966-cp-report.pdf"
+license = "unknown terms"
+mode = "fetched"
+
+[[file]]
+name = "niskanen-2009-thesis"
+title = "S. Niskanen, Development of an Open Source model rocket simulation software, MSc thesis, 2009"
+url = "https://github.com/openrocket/openrocket/releases/download/Development_of_an_Open_Source_model_rocket_simulation-thesis-v20090520/Development_of_an_Open_Source_model_rocket_simulation-thesis-v20090520.pdf"
+sha256 = "b948abf452c2f1c2ac63f0e0acfcb12dda2af856f8a7b51b22e0afca76d78d0c"
+dest = "refs/papers/niskanen-2009-thesis.pdf"
+license = "CC BY-NC-ND 1.0"
+mode = "fetched"
+
+[[file]]
+name = "openrocket-techdoc-13.05"
+title = "S. Niskanen, OpenRocket technical documentation, v13.05, 2013"
+url = "https://github.com/openrocket/openrocket/releases/download/OpenRocket_technical_documentation-v13.05/OpenRocket_technical_documentation-v13.05.pdf"
+sha256 = "cc6fd3291ade76ee044ffd40ff285cf814c7496b97d1ff7b35222d8f2d23cf8c"
+dest = "refs/papers/openrocket-techdoc-13.05.pdf"
+license = "CC BY-SA 3.0"
+mode = "fetched"
+
+[[file]]
+name = "us-std-atmosphere-1976"
+title = "U.S. Standard Atmosphere, 1976 (NOAA-S/T-76-1562, NASA-TM-X-74335)"
+url = "https://ntrs.nasa.gov/api/citations/19770009539/downloads/19770009539.pdf"
+sha256 = "23eb6b68346d4abc6071fc598872d51c40cf8c613d1a5d1006c6261bcd09dcea"
+dest = "refs/papers/us-std-atmosphere-1976.pdf"
+license = "US government work"
+mode = "fetched"
+
+[[file]]
+name = "nasa-tn-d-4013"
+title = "J. C. Ferris, Static stability investigation of a single-stage sounding rocket at Mach numbers from 0.60 to 1.20, NASA TN D-4013, 1967"
+url = "https://ntrs.nasa.gov/api/citations/19670020050/downloads/19670020050.pdf"
+sha256 = "44dc62a4131cf31b88fab20566f2a4b934a16be17388e099192d25236f08324a"
+dest = "refs/papers/nasa-tn-d-4013.pdf"
+license = "US government work"
+mode = "fetched"
+
+[[file]]
+name = "nasa-tn-d-4014"
+title = "C. D. Babb and D. E. Fuller, Static stability investigation of a sounding-rocket vehicle at Mach numbers from 1.50 to 4.63, NASA TN D-4014, 1967"
+url = "https://ntrs.nasa.gov/api/citations/19670020031/downloads/19670020031.pdf"
+sha256 = "d698b06798ad806a4fd6463f02f4c9e2624cd944d7a7902f2c015dbb5a351064"
+dest = "refs/papers/nasa-tn-d-4014.pdf"
+license = "US government work"
+mode = "fetched"
+
+[[file]]
+name = "galejs-wind-instability"
+title = "R. Galejs, Wind Instability: What Barrowman Left Out, Sentinel 39 (about 1999)"
+url = "https://www.argoshpr.ch/j3/articles/pdf/sentinel39-galejs.pdf"
+sha256 = "3c322bfee549a3fbfcec9ae62c8e46f638cf0cef261569f373d252131d1d421c"
+dest = "refs/papers/galejs-wind-instability.pdf"
+license = "unknown terms"
+mode = "fetched"
+
+[[file]]
+name = "mil-hdbk-762"
+title = "MIL-HDBK-762(MI), Design of Aerodynamically Stabilized Free Rockets, 1990 (Distribution A)"
+url = "https://archive.org/download/MILHDBK762DesignOfAerodynamicallyStabilizedFreeRockets/MIL-HDBK-762%2C%20Design%20of%20Aerodynamically%20Stabilized%20Free%20Rockets.pdf"
+sha256 = "a9c9d72394cbc57e7beed02648bdf972542329c9949958ce209ddbd087820553"
+dest = "refs/papers/mil-hdbk-762.pdf"
+license = "US government work"
+mode = "fetched"
+
+# NTRS serves this one with a 436-byte header before the %PDF marker; the pin is for the bytes as
+# served. PDF readers open it as is.
+[[file]]
+name = "naca-tn-4197"
+title = "D. J. Martin, Summary of Flutter Experiences as a Guide to the Preliminary Design of Lifting Surfaces on Missiles, NACA TN 4197, 1958"
+url = "https://ntrs.nasa.gov/api/citations/19930085030/downloads/19930085030.pdf"
+sha256 = "cd46997b270a6463c1a0dd3656af30b990dfbf14f3d72578bf622c45d29cecea"
+dest = "refs/papers/naca-tn-4197.pdf"
+license = "US government work"
+mode = "fetched"
+
+# DTIC (ADA247666) blocked automated downloads when this was pinned; this is archive.org's mirror
+# of the DTIC copy (title page: NWC TP 6575, March 1991, approved for public release).
+[[file]]
+name = "knacke-1991-parachute-manual"
+title = "T. W. Knacke, Parachute Recovery Systems Design Manual, NWC TP 6575, 1991 (DTIC ADA247666)"
+url = "https://archive.org/download/DTIC_ADA247666/DTIC_ADA247666.pdf"
+sha256 = "138d001f515328a36ef3cddc234b40b4b84c19ad2ea1ac204bd60f555f9ab0c8"
+dest = "refs/papers/knacke-1991-parachute-manual.pdf"
+license = "US government work"
+mode = "fetched"
+
+# Snapshots of live APIs, pinned by the sha256 of one dated capture. The APIs change (the motor
+# finder hourly), so a fresh fetch elsewhere may not reproduce these bytes: fetch then fails and
+# keeps the new capture aside, and `fetch --adopt-snapshots` repins to it.
+
+# ThrustCurve.org API v1. Search results include out-of-production motors and hybrids (filter
+# those out; COTS solids only). Thrust curves are not included, and each curve file carries its
+# own data license.
+[[snapshot]]
+name = "thrustcurve-metadata"
+url = "https://www.thrustcurve.org/api/v1/metadata.json"
+sha256 = "3b56749a5cea23e53385ec11ea8e3c1e07569a9b897496ee3d04bf70ee6f6d94"
+captured = "2026-09-17"
+dest = "refs/snapshots/thrustcurve/metadata.json"
+license = "unstated terms"
+mode = "fetched"
+
+[[snapshot]]
+name = "thrustcurve-motors"
+url = "https://www.thrustcurve.org/api/v1/search.json?maxResults=10000"
+sha256 = "00cd2cdeb1472d6e6d853c7ffa78c631b36ce0be6898af0bdec4285aeb7ebb83"
+captured = "2026-09-17"
+dest = "refs/snapshots/thrustcurve/motors.json"
+license = "unstated terms"
+mode = "fetched"
+
+# motor.fusionspace.co API v1 (US stock and prices). "Free to use; attribution to
+# motor.fusionspace.co is appreciated."
+[[snapshot]]
+name = "motor-finder-meta"
+url = "https://motor.fusionspace.co/api/v1/meta.json"
+sha256 = "fb1a68c3904b7238515b7144d5d4cece537e15f3064e24df4cebac8a222a4a66"
+captured = "2026-09-17"
+dest = "refs/snapshots/motor-finder/meta.json"
+license = "free to use, attribution appreciated"
+mode = "fetched"
+
+[[snapshot]]
+name = "motor-finder-motors"
+url = "https://motor.fusionspace.co/api/v1/motors.json"
+sha256 = "58f30191f8475521b01d280886c4e45cb6014d1e2e54940dbbb1d5fea6f0e3b5"
+captured = "2026-09-17"
+dest = "refs/snapshots/motor-finder/motors.json"
+license = "free to use, attribution appreciated"
+mode = "fetched"
+
+[[snapshot]]
+name = "motor-finder-in-stock"
+url = "https://motor.fusionspace.co/api/v1/in-stock.json"
+sha256 = "644181c9ac6f88ce360a2b3ae5dd5aeba4eebf2ee23e9e80b7ec9d896cbf0cc7"
+captured = "2026-09-17"
+dest = "refs/snapshots/motor-finder/in-stock.json"
+license = "free to use, attribution appreciated"
+mode = "fetched"
+
+[[snapshot]]
+name = "motor-finder-vendors"
+url = "https://motor.fusionspace.co/api/v1/vendors.json"
+sha256 = "9b6ebd163eaccfed2bfb9c11a37a03df1860fd05425850b39aa6f32a85177fca"
+captured = "2026-09-17"
+dest = "refs/snapshots/motor-finder/vendors.json"
+license = "free to use, attribution appreciated"
+mode = "fetched"
+
+# The oracle Python environment: `uv sync --frozen` from validation/oracles/uv.lock, which pins
+# every package by hash (orhelper by git commit). Selected on the command line as `python`.
+[python]
+project = "validation/oracles"
+venv = "refs/venv"
+checks = [
+    { module = "rocketpy", version = "1.13.0" },
+    { module = "orhelper", version = "0.1.5" },
+    { module = "jpype" },
+]
+
+# The OpenRocket oracle's runtime. `doctor` looks in JAVA_HOME, /usr/libexec/java_home (macOS),
+# Homebrew's openjdk kegs, then PATH.
+[java]
+min_major = 17
