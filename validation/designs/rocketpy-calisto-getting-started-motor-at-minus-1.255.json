@@ -29,6 +29,9 @@
                 }
               }
             }
+          },
+          "finish": {
+            "kind": "mirror"
           }
         },
         {
@@ -47,6 +50,9 @@
                 }
               }
             }
+          },
+          "finish": {
+            "kind": "mirror"
           },
           "children": [
             {
@@ -89,8 +95,8 @@
                     "span_m": 0.11,
                     "sweep_m": 0.06
                   },
-                  "thickness_m": 0.003,
-                  "cross_section": "square",
+                  "thickness_m": 0.0112,
+                  "cross_section": "airfoil",
                   "tab": null,
                   "cant_rad": 0.0,
                   "base_angle_rad": 0.0,
@@ -106,6 +112,9 @@
               "position": {
                 "from": "absolute",
                 "station_m": 2.32756
+              },
+              "finish": {
+                "kind": "mirror"
               }
             },
             {
@@ -133,6 +142,9 @@
               "position": {
                 "from": "absolute",
                 "station_m": 1.19055
+              },
+              "finish": {
+                "kind": "mirror"
               }
             }
           ]
@@ -163,6 +175,9 @@
                 }
               }
             }
+          },
+          "finish": {
+            "kind": "mirror"
           }
         }
       ],

@@ -17,6 +17,7 @@ pub(crate) fn component(id: &str, part: Part, position: Option<Position>) -> Com
         position,
         auto: Vec::new(),
         motor_mount: None,
+        finish: None,
         overrides: Overrides::default(),
         overrides_include_children: false,
         children: Vec::new(),

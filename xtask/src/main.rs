@@ -13,6 +13,7 @@
     reason = "dev tooling runs cargo and uses the filesystem; it is not part of the pure core"
 )]
 
+mod aero;
 mod designs;
 #[cfg(test)]
 mod docs;
@@ -30,12 +31,14 @@ Commands:
                            arguments (for example --locked) are passed on to `cargo check`.
 {REFS}
 {DESIGNS}
+{AERO}
   help                     Print this message.";
 
 fn usage() -> String {
     USAGE_TEMPLATE
         .replace("{REFS}", refs::USAGE)
         .replace("{DESIGNS}", designs::USAGE)
+        .replace("{AERO}", aero::USAGE)
 }
 
 fn main() -> ExitCode {
@@ -44,6 +47,7 @@ fn main() -> ExitCode {
         Some("wasm-check") => wasm_check::run(&args.collect::<Vec<_>>()),
         Some("refs") => refs::run(&args.collect::<Vec<_>>()),
         Some("designs") => designs::run(&args.collect::<Vec<_>>()),
+        Some("aero") => aero::run(&args.collect::<Vec<_>>()),
         Some("help" | "-h" | "--help") => {
             println!("{}", usage());
             Ok(())

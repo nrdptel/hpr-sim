@@ -29,6 +29,9 @@
                 }
               }
             }
+          },
+          "finish": {
+            "kind": "mirror"
           }
         },
         {
@@ -47,6 +50,9 @@
                 }
               }
             }
+          },
+          "finish": {
+            "kind": "mirror"
           },
           "children": [
             {
@@ -106,6 +112,9 @@
               "position": {
                 "from": "absolute",
                 "station_m": 2.328
+              },
+              "finish": {
+                "kind": "mirror"
               }
             },
             {
@@ -133,6 +142,9 @@
               "position": {
                 "from": "absolute",
                 "station_m": 1.07235
+              },
+              "finish": {
+                "kind": "mirror"
               }
             }
           ]
@@ -163,6 +175,9 @@
                 }
               }
             }
+          },
+          "finish": {
+            "kind": "mirror"
           }
         }
       ],

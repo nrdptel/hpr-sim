@@ -1,5 +1,6 @@
 //! Error types for the aerodynamic models.
 
+use hpr_core::CoreError;
 use hpr_design::DesignError;
 use thiserror::Error;
 
@@ -41,6 +42,18 @@ pub enum AeroError {
     /// An error from the design model, such as a profile whose volume integral fails.
     #[error(transparent)]
     Design(#[from] DesignError),
+    /// CSV text that doesn't read as a table, with its 1-based line (0 when the text has no
+    /// rows).
+    #[error("CSV line {line}: {message}")]
+    Csv {
+        /// The line, counting from 1.
+        line: usize,
+        /// What is wrong.
+        message: String,
+    },
+    /// A table that doesn't hold together, such as Mach numbers that don't increase.
+    #[error(transparent)]
+    Table(#[from] CoreError),
 }
 
 /// Checks that `value` is finite and positive (or non-negative when `allow_zero`).

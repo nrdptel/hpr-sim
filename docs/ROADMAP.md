@@ -157,7 +157,7 @@
     - Mass, CG and inertia match RocketPy's example rockets where RocketPy exposes them.
     - The OpenRocket stored-value comparison is deferred to M2.2 and noted there.
 
-- [ ] **M1.5 Aerodynamics I (subsonic).**
+- [x] **M1.5 Aerodynamics I (subsonic).**
   - Barrowman CNα and CP for every component, with Prandtl–Glauert correction.
   - Body lift at angle of attack; fin–body interference.
   - Drag buildup: skin friction (laminar/turbulent with roughness), nose/transition pressure drag,
@@ -182,7 +182,7 @@
     *Done when:*
     - CNα and CP reproduce Barrowman's worked example(s) within 1%.
 
-  - [ ] **M1.5b Drag and override tables.**
+  - [x] **M1.5b Drag and override tables.**
     - The drag buildup, Cd at angle of attack, Cd-vs-Mach override tables from CSV, and the `aero.md`
       sections for them.
     - Loft lessons: L11, L12, L13, L14, L15, L16, L90 (tests named in

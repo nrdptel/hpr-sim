@@ -31,6 +31,12 @@ adds a source.
   `validation/designs/rocketpy-*.json` by `cargo xtask designs`. RocketPy's motor thrust files carry
   their own terms and are **not** committed; the fixture pairs each example with a bundled
   public-domain curve instead (ADR-007). RocketPy's license, quoted under Ported, applies.
+- **Comparisons with RocketPy's drag curves** (ADR-009): `cargo xtask aero` reads the Calisto,
+  Juno III and Valetudo curves from the `refs/rocketpy` checkout and commits only derived numbers
+  to `validation/fixtures/aero/rocketpy-drag-curves.json` (hpr's drag coefficients, the relative
+  errors and each file's sha256). The curves themselves carry their own terms and are **not**
+  committed. The designs' drag inputs cite RASAero II's Users Manual (2019, p. 53) for its default
+  surface finish; the manual itself is not redistributed.
 
 ## Ported
 

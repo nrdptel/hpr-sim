@@ -23,9 +23,14 @@ thiserror.workspace = true
 
 [dev-dependencies]
 criterion.workspace = true
+hpr-atmos.workspace = true
 proptest.workspace = true
 serde_json.workspace = true
 
 [[bench]]
 name = "normal_force"
+harness = false
+
+[[bench]]
+name = "drag"
 harness = false

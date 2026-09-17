@@ -21,6 +21,7 @@ pub(crate) fn body(id: &str, part: Part) -> Component {
         position: None,
         auto: Vec::new(),
         motor_mount: None,
+        finish: None,
         overrides: Overrides::default(),
         overrides_include_children: false,
         children: Vec::new(),

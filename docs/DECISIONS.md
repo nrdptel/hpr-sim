@@ -14,6 +14,7 @@ renumber. Supersede an entry by adding a new one that points back to it.
 | ADR-006 | Component geometry and mass properties: frames, shapes, walls, fins and materials | accepted |
 | ADR-007 | Design tree: stations, placement, automatic radii, overrides, motors and checks | accepted |
 | ADR-008 | Subsonic normal force and centre of pressure | accepted |
+| ADR-009 | Subsonic drag buildup, surface finishes and drag override tables | accepted |
 
 ---
 
@@ -646,3 +647,102 @@ had no fin-count correction (L8), and swapped elliptical fins for an equal-area 
 - M1.8 adds the transonic and supersonic slopes, the fin CP shift, roll forcing and damping.
 - M2.2 compares CNα and CP against OpenRocket, which uses the same fin-count factors.
 
+## ADR-009: Subsonic drag buildup, surface finishes and drag override tables (2026-09-17)
+
+**Context.** M1.5b adds drag. Niskanen's thesis (2009, §3.4 and appendix B) is the primary
+source; the OpenRocket technical documentation 13.05 reprints the same drag equations unchanged,
+and Barrowman's 1967 thesis (ch. 4) is the source of its friction, roughness and leading-edge
+formulas. The sources leave gaps: no coefficients for drag at angle of attack, undefined areas in
+the boattail rule, an unstated diameter in the lug rule, no rail buttons, and friction that jumps
+where eq. 3.81 switches branches. Loft merged fin sets (L11), used uncited constants (L12), had no
+power-on base relief (L13), uncited lug drag (L14), no drag at bare steps (L15) and a silent cap of
+10 (L16). The done-when compares with RocketPy's RASAero curves, whose inputs aren't recorded.
+
+**Decision.**
+
+- **Buildup.** `C_D0` = friction + pressure + base + parasitic on the reference area (eq. 3.75,
+  3.97); `C_A = C_D0 f(α)`. Each component keeps its own terms (fin sets are never merged), and
+  `AeroModel::drag_components` reports them.
+- **Friction.** Fully turbulent (Niskanen p. 43), `R` on the rocket's length (nose tip to the aft
+  end of the last body component), eq. 3.78–3.84 exactly as printed, including the jump at `R_crit`
+  and between the subsonic and supersonic corrections at Mach 1. Roughness is per component
+  (`hpr_design::Finish`), always over the rocket's length. The body form factor `1 + 1/(2 f_B)`
+  uses body length over maximum body diameter; the fin factor `1 + 2t/c̄` is per fin set.
+- **Friction area (a departure).** A body's friction area is its axial projection
+  `2π ∫ r dx = π A_plan`, not the slant surface of eq. 3.85: only the axial share of the wall shear
+  makes drag. It changes slender noses by about 1% of their own friction (2.4% for a tangent ogive
+  of fineness 2), and it keeps a shoulder's drag continuous as its length goes to zero.
+- **Pressure drag.** Noses and shoulders `0.8 sin² φ` with `φ` from the profile's slope at the
+  aft joint, on the increase in area (eq. 3.86), held at that value through subsonic flow: eq. 3.87
+  interpolates to appendix B's transonic values, which need Stoney's shape data and arrive with
+  M1.8. Boattails follow eq. 3.88 on their decrease in area, reading both `A_base` and `A_boattail`
+  as that decrease, the only reading under which a zero-length boattail drags like the base it
+  uncovers (Niskanen p. 49). Steps in radius are zero-length shoulders (`0.8 ΔA`) or boattails
+  (base drag on `ΔA`), and a body without a nose cone gets `0.8 A` on its face.
+- **Base drag.** Eq. 3.94 on the last body component's aft area less the thrusting motors'
+  cross-section (`DragConditions::thrusting_motor_area_m2`, the burning motors' case area; Niskanen
+  p. 50), down to zero.
+- **Fins.** Eq. 3.89–3.93 by cross-section (square, rounded, airfoil) on `N t s`; `Γ_L` is
+  `atan(x_t/s)` for trapezoids, the span average for freeform outlines, and a closed-form average for
+  ellipses.
+- **Parasitic.** Launch lugs follow eq. 3.95–3.96 with `d` the outer diameter (the rail-pin passage
+  on p. 52 only reads that way). Rail buttons follow the rail-pin rule, the stagnation coefficient
+  on their side profile. Neither adds friction.
+- **Angle of attack (derived).** Niskanen gives only the shape: 1 at 0°, 1.3 at 17°, 0 at 90°, zero
+  slope at each. hpr uses the unique cubic per part that meets those conditions, and mirrors past
+  90° (`f(180° − α)`, an assumption). M2.2 compares with OpenRocket.
+- **Refusals.** `M ≥ 1` for the buildup (the term functions are defined and finite to Mach 5),
+  geometry the terms can't use, negative roughness, non-finite conditions and non-finite results
+  are errors. Nothing is clamped.
+- **Finishes.** `hpr_design::Finish` names the fifteen rows of Barrowman 1967 Table 4-1 (after
+  Hoerner p. 5-3; Niskanen Table 3.2 reprints ten) plus a custom height, on `Component::finish`.
+  The default is "paint in aircraft mass production", 20 µm: no source gives a hobby-rocket
+  default, RASAero II defaults to smooth, and OpenRocket's "regular paint" is 60 µm (Niskanen
+  p. 83).
+- **Override tables.** `DragTable` holds `C_D0(M)` power-off and optionally power-on, read from CSV
+  text: RocketPy's two headerless columns, or a named column of a headed file with rows at non-zero
+  `Alpha` skipped (RASAero II's export). Linear interpolation, end values held, extrapolation
+  reported. A positive thrusting-motor area selects power-on. The angle-of-attack factor still
+  applies, and a model with a table accepts any Mach number for drag.
+- **The comparison with RocketPy's curves.** At Mach 0.3 at sea level (USSA76), where RASAero II
+  computes its exports (Users Manual p. 84). The curves stay in `refs/`; `cargo xtask aero` writes
+  only hpr's `C_D0`, the relative errors and the files' sha256 to
+  `validation/fixtures/aero/rocketpy-drag-curves.json`, and `hpr_aero`'s test recomputes hpr's
+  values from the committed designs. Provenance, found by tracing RocketPy's history:
+  - Calisto's curve is a RASAero II export: the alpha-0 `CD Power-Off` column of the `CD Test.CSV`
+    in RocketPy's first commit (2018). Its power-on column equals power-off, as RASAero II gives
+    when no nozzle exit diameter is entered, so only power-off is compared. The Calisto design with
+    the 2018 notebook's fins (tip chord 0.04 m, span 0.10 m) is the like-for-like case; the
+    getting-started example's larger fins are compared too.
+  - Juno III's and Valetudo's are labelled RASAero but are hand-edited 3-decimal tables with no
+    input file. Juno III's is used for power-off and power-on alike, so only power-off is
+    compared.
+- **Inputs for the comparison, from evidence, not fitted.** The exports record no inputs, so the
+  four designs take RASAero II's documented default finish, smooth (p. 53: `Finish::Mirror`). Fin
+  cross-sections come from each RocketPy example: a NACA 00xx file gives an airfoil `xx`% thick at
+  the mean aerodynamic chord (Calisto getting-started: NACA 0012), a lift-curve airfoil gives an
+  airfoil section of the 3 mm placeholder (Juno III), and no airfoil the placeholder 3 mm square
+  edges (the 2018 Calisto, Valetudo). Rail buttons stay as the examples define them.
+- **Result, and the gap it leaves.** Calisto (2018 fins) +4.4%, Calisto getting-started −7.3%,
+  Juno III −8.0%: within 10%. Valetudo −47.0% power-off and −50.4% power-on: outside, and the test
+  pins exactly those two. Valetudo's table gives 1.05 at Mach 0.3, 1.44 times the OpenRocket export
+  for the same rocket in RocketPy's RocketPaper repository (0.73), and no input file exists to
+  check it; across the inputs below hpr stays 42% to 63% under it. The unrecorded inputs matter:
+  across square, rounded and airfoil fins (3 mm, or 12% for the airfoil), 0 or 20 µm, and with or
+  without rail buttons, the three passing cases range from −14% to +24%. With the same fins and the
+  20 µm default instead of smooth they are +12.8%, +1.4% and +1.5%.
+  The 10% check therefore shows hpr is in RASAero's neighbourhood, not that it agrees to 10%; M2.2
+  (OpenRocket, with known inputs) is the sharper test.
+
+**Consequences.**
+
+- M1.6 supplies `DragConditions` (Reynolds number per metre from the airspeed and the atmosphere's
+  kinematic viscosity, and the burning motors' case area) and uses `axial_coefficient` along the
+  body axis.
+- M1.8 adds eq. 3.87's nose and shoulder interpolation, the transonic and supersonic branches of
+  every term, and extends override tables to `C_Nα` and CP.
+- M2.1's same-drag mode uses `DragTable`. It must decide whether RocketPy's drag scales with angle
+  of attack as hpr's does.
+- M2.2 checks the angle-of-attack polynomial, the lug diameter, the boattail reading and the
+  friction area against OpenRocket.
+- `AeroModel::drag` takes about 60 to 110 ns (`docs/perf.md`).

@@ -45,6 +45,8 @@ pub struct BodyGeometry {
     pub planform_area_m2: f64,
     /// Centroid of the planform area, m aft of the fore end.
     pub planform_centroid_m: f64,
+    /// Slope of the outer surface `dr/dx` at the aft end: the tangent of the joint angle there.
+    pub aft_slope: f64,
 }
 
 impl BodyGeometry {
@@ -64,6 +66,7 @@ impl BodyGeometry {
             volume_m3: area * length_m,
             planform_area_m2: 2.0 * radius_m * length_m,
             planform_centroid_m: 0.5 * length_m,
+            aft_slope: 0.0,
         })
     }
 
@@ -84,6 +87,7 @@ impl BodyGeometry {
             volume_m3: g.volume_m3,
             planform_area_m2: g.planform_area_m2,
             planform_centroid_m: g.planform_centroid_m,
+            aft_slope: profile.radius_and_slope(profile.length_m()).1,
         };
         geometry.validate()?;
         Ok(geometry)
@@ -93,14 +97,20 @@ impl BodyGeometry {
     ///
     /// # Errors
     ///
-    /// [`AeroError::Domain`] for a non-finite or negative value, or a length or volume that isn't
-    /// positive.
+    /// [`AeroError::Domain`] for a non-finite or negative value, or a length, volume or planform
+    /// area that isn't positive.
     pub fn validate(&self) -> Result<(), AeroError> {
         check_dimension("body length", self.length_m, false)?;
         check_dimension("body fore area", self.fore_area_m2, true)?;
         check_dimension("body aft area", self.aft_area_m2, true)?;
         check_dimension("body volume", self.volume_m3, false)?;
         check_dimension("body planform area", self.planform_area_m2, false)?;
+        if !self.aft_slope.is_finite() {
+            return Err(AeroError::Domain {
+                what: "body slope at the aft end",
+                value: self.aft_slope,
+            });
+        }
         if !self.planform_centroid_m.is_finite() {
             return Err(AeroError::Domain {
                 what: "body planform centroid",
