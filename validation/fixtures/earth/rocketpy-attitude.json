@@ -1,0 +1,86 @@
+{
+  "oracle": "rocketpy 1.13.0",
+  "generator": "validation/oracles/rocketpy/attitude.py",
+  "cases": [
+    {
+      "heading_deg": 0.0,
+      "inclination_deg": 90.0,
+      "rail_button_angle_deg": 0.0,
+      "coordinate_system_orientation": "tail_to_nose",
+      "e0": 1.0,
+      "e1": 0.0,
+      "e2": -0.0,
+      "e3": 0.0
+    },
+    {
+      "heading_deg": 0.0,
+      "inclination_deg": 85.0,
+      "rail_button_angle_deg": 45.0,
+      "coordinate_system_orientation": "tail_to_nose",
+      "e0": 0.9230002039112792,
+      "e1": -0.04029905920751535,
+      "e2": 0.01669241687462921,
+      "e3": 0.38231920253318413
+    },
+    {
+      "heading_deg": 90.0,
+      "inclination_deg": 80.0,
+      "rail_button_angle_deg": 0.0,
+      "coordinate_system_orientation": "tail_to_nose",
+      "e0": 0.7044160264027587,
+      "e1": -0.06162841671621935,
+      "e2": 0.061628416716219346,
+      "e3": -0.7044160264027586
+    },
+    {
+      "heading_deg": 135.0,
+      "inclination_deg": 84.0,
+      "rail_button_angle_deg": 120.0,
+      "coordinate_system_orientation": "tail_to_nose",
+      "e0": 0.9900861206485412,
+      "e1": 0.031860111510992356,
+      "e2": 0.04152090570267543,
+      "e3": -0.13034731060999621
+    },
+    {
+      "heading_deg": 200.0,
+      "inclination_deg": 60.0,
+      "rail_button_angle_deg": 300.0,
+      "coordinate_system_orientation": "tail_to_nose",
+      "e0": 0.6208851530148455,
+      "e1": 0.08852132690137683,
+      "e2": -0.24321034680169396,
+      "e3": 0.739942111693848
+    },
+    {
+      "heading_deg": 271.5,
+      "inclination_deg": 88.5,
+      "rail_button_angle_deg": 10.0,
+      "coordinate_system_orientation": "nose_to_tail",
+      "e0": 0.774326299985696,
+      "e1": -0.008544361164987944,
+      "e2": -0.009916219264599077,
+      "e3": 0.6326511231620795
+    },
+    {
+      "heading_deg": 359.0,
+      "inclination_deg": 45.0,
+      "rail_button_angle_deg": 45.0,
+      "coordinate_system_orientation": "nose_to_tail",
+      "e0": 0.8566061861091764,
+      "e1": -0.3522619568279038,
+      "e2": -0.14952632938216023,
+      "e3": -0.34609136440073857
+    },
+    {
+      "heading_deg": 17.0,
+      "inclination_deg": 30.0,
+      "rail_button_angle_deg": 200.0,
+      "coordinate_system_orientation": "nose_to_tail",
+      "e0": 0.2747938931859025,
+      "e1": -0.013088474153936602,
+      "e2": 0.4998286624877786,
+      "e3": 0.8212723764182835
+    }
+  ]
+}

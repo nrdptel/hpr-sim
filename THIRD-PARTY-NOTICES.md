@@ -24,8 +24,12 @@ None yet.
 
 | crate | license | used by | why |
 |---|---|---|---|
-| `serde_json` | MIT OR Apache-2.0 | `xtask` | reads `cargo metadata` output |
-| `serde` | MIT OR Apache-2.0 | `xtask` | derives the `validation/refs.lock.toml` types |
+| `criterion` | Apache-2.0 OR MIT | `hpr-core` (benchmarks only) | statistics for `cargo bench` (`docs/perf.md`) |
+| `glam` | MIT OR Apache-2.0 | `hpr-core` | `f64` vectors, quaternions and matrices (`ARCHITECTURE.md`) |
+| `proptest` | MIT OR Apache-2.0 | `hpr-core` (tests only) | property tests |
+| `serde_json` | MIT OR Apache-2.0 | `xtask`; `hpr-core` (tests only) | reads `cargo metadata` output; serde round-trip tests |
+| `serde` | MIT OR Apache-2.0 | `xtask`, `hpr-core` | derives the `validation/refs.lock.toml` types and the public data types |
+| `thiserror` | MIT OR Apache-2.0 | `hpr-core` | library error types |
 | `sha2` | MIT OR Apache-2.0 | `xtask` | SHA-256 of fetched references |
 | `toml` | MIT OR Apache-2.0 | `xtask` | reads `validation/refs.lock.toml` |
 | `tempfile` | MIT OR Apache-2.0 | `xtask` (tests only) | temporary directories for the `refs` tests |
@@ -54,6 +58,9 @@ same license and mode.
 | `mil-hdbk-762` | MIL-HDBK-762(MI), Design of Aerodynamically Stabilized Free Rockets, 1990 (Distribution A) | US government work | fetched | cited, not copied |
 | `naca-tn-4197` | D. J. Martin, Summary of Flutter Experiences as a Guide to the Preliminary Design of Lifting Surfaces on Missiles, NACA TN 4197, 1958 | US government work | fetched | cited, not copied |
 | `knacke-1991-parachute-manual` | T. W. Knacke, Parachute Recovery Systems Design Manual, NWC TP 6575, 1991 (DTIC ADA247666) | unclear terms | fetched | contractor report with a DTIC public-release stamp but a restrictive title-page notice; cited, never redistributed |
+| `wgs84-nga-stnd-0036` | NGA.STND.0036_1.0.0_WGS84, Department of Defense World Geodetic System 1984, Its Definition and Relationships with Local Geodetic Systems, 2014 | US government work | fetched | cited for the ellipsoid, geodetic conversion and normal gravity (M1.1); no text copied |
+| `karney-2011-geodesics` | C. F. F. Karney, Geodesics on an ellipsoid of revolution, arXiv:1102.1215v1, 2011 | arXiv non-exclusive license | fetched | appendix B cited for the ECEF-to-geodetic conversion (M1.1); no text copied |
+| `sola-2017-quaternion-kinematics` | J. Solà, Quaternion kinematics for the error-state Kalman filter, arXiv:1711.02508v1, 2017 | CC BY-NC-SA 4.0 | fetched | cited for the attitude kinematics (M1.1); no text copied |
 | `rocksim-rse-spec` | RockSim Engine File Format (.rse) specification, as hosted by ThrustCurve.org | unknown terms | fetched | read to write the `.rse` reader (M1.3); not redistributed |
 | `thrustcurve-metadata` | ThrustCurve.org API v1 `metadata.json` | unstated terms | fetched | attribution to ThrustCurve.org wherever the data is used; each curve file has its own data license |
 | `thrustcurve-motors` | ThrustCurve.org API v1 `search.json` (all motors) | unstated terms | fetched | attribution to ThrustCurve.org wherever the data is used; each curve file has its own data license |
@@ -72,6 +79,7 @@ Nothing here is bundled.
 | `rocketpy` 1.13.0 | MIT | run-only | the primary code-to-code oracle |
 | `orhelper` 0.1.5 (`openrocket/orhelper` at commit `fb132c49e661`) | GPL-2.0 | run-only | drives the OpenRocket jar; its source is never read |
 | `JPype1` 1.7.1 | Apache-2.0 | run-only | starts the JVM for the OpenRocket oracle |
+| `mpmath` 1.3.0 | BSD-3-Clause | run-only | arbitrary-precision reference values from published formulas (`validation/oracles/wgs84/`) |
 | the dependencies `uv.lock` pins (numpy, scipy, matplotlib, netCDF4 and others) | as each package states | run-only | installed only as the oracles' runtime |
 | a Java 17+ runtime (for example OpenJDK from Homebrew) | GPL-2.0 WITH Classpath-exception-2.0 | run-only | installed by the user, not fetched; `refs doctor` finds it |
 

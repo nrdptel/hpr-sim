@@ -4,40 +4,46 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
 
 ## Now
 
-- **Current milestone:** M1.1 Core math, frames, Earth
-- **Run:** the first autopilot run; M0.1, M0.2 and M0.3 have shipped
-- **Last updated:** 2026-09-17 (M0.3 merged)
+- **Current milestone:** M1.2 Atmosphere and wind
+- **Run:** the first autopilot run; M0.1, M0.2, M0.3 and M1.1 have shipped
+- **Last updated:** 2026-09-17 (M1.1 merged)
 
 ## Handoff (overwrite each session)
 
-M0.3 wrote `docs/research/loft-lessons.md`: 97 lessons (`L1` to `L97`) and 16 process mistakes
-(`P1` to `P16`). Each lesson names its milestone and the tests to write, and each affected
-`ROADMAP.md` entry now has a `Loft lessons:` line. Start M1.1 from these notes:
+M1.1 put the conventions every later crate uses into `hpr-core` (ADR-003). Start M1.2 from these
+notes:
 
-- **`cargo test -p xtask` checks the planning docs** (`xtask/src/docs.rs`):
-  - STATUS must name the first open ROADMAP milestone.
-  - STATUS stays within 150 lines and each `docs/research/` note within 200.
-  - When a milestone is checked off, every lesson it owns must have its named test function in
-    that crate. For M1.1 that is L1: `hpr_core::gravity::tests::somigliana_matches_published_values`.
-    A rename that keeps the assertion is fine; moving a lesson later or dropping one needs an ADR.
-- **Gravity source:** WGS84 Somigliana needs its primary source (NIMA TR8350.2) pinned in
-  `validation/refs.lock.toml` before it is cited; it isn't in the lock yet.
-- **Clean room:** Loft material that came from OpenRocket's Java source is listed in the lessons
-  doc, with a blanket rule. Never port it. The guard hook now blocks fetching OpenRocket's source
-  from Bash and WebFetch.
-- **Loft's numbers are leads, not references.** Review confirmed against NACA TN 4197 eq. 18 that
-  Loft's flutter speed is √2 too high (L32); M1.10 pins the correct denominator.
-- **Reference library:**
-  - `refs/rocketpy` is a shallow clone of `v1.13.0`; `rocketpy` has no `__version__`, so use
-    `importlib.metadata.version`.
-  - ThrustCurve `search.json` includes hybrids (152 of 1156); filter to solids.
-  - If a fetch reports snapshot drift, run `cargo xtask refs fetch --adopt-snapshots` and commit
-    the lock change.
-- **Wording:** the Bash guard hook rejects commit messages and PR bodies containing certain tool
-  names, even in innocent phrases; word them plainly.
+- **Frames are fixed** in `docs/physics/frames.md`:
+  - ENU launch frame at the pad; body `+z` points to the nose.
+  - Hamilton quaternion from body to launch frame.
+  - Launch angles use RocketPy's 3-1-3 convention.
+  - All heights are **ellipsoidal**. Atmosphere and wind tables keyed on height above sea level
+    must say so and convert at the boundary. Geoid undulation is up to ±100 m.
+- **Use `hpr_core::interp::Table1D`** for soundings and profiles.
+  - It interpolates linearly or with a natural cubic, and every lookup flags extrapolation.
+  - Linear tables suit data with kinks, such as USSA76 layer boundaries. Natural cubics overshoot.
+- **Gravity for geopotential altitude.** USSA76 uses its own constant `g₀ = 9.80665` and radius
+  `r₀`. Use those, not `NormalGravity`, when converting geometric to geopotential height
+  (`STANDARD_GRAVITY_MPS2` exists for this).
+- **Reference values:** where no table is published, follow
+  `validation/oracles/wgs84/normal_gravity.py`: evaluate the published formulas in mpmath, check
+  against the printed digits, commit the JSON under `validation/fixtures/`, and read it with
+  `include_str!`.
+- **For M1.6 and M2.1** (recorded in ADR-003 and `docs/physics/gravity.md`):
+  - The flight engine must use geodetic height, not `z_L`, for ground contact and apogee.
+  - RocketPy evaluates gravity at height above sea level and holds it constant above 80 km.
+- **Process notes:**
+  - `cargo test -p xtask` checks that STATUS names the first open ROADMAP milestone, and that each
+    checked-off milestone's lesson tests exist. For M1.2 those are L2 to L6.
+  - The Bash guard hook rejects some tool names even in innocent phrases, so word commit messages
+    and PR bodies plainly.
+  - If a refs fetch reports snapshot drift, run `cargo xtask refs fetch --adopt-snapshots`.
 
 ## Done log (newest first, keep about 15)
 
+- 2026-09-17: M1.1 Core math, frames, Earth (PR #5): `Table1D`, quaternion kinematics, ENU and
+  launch-angle frames, WGS 84 geodesy (Karney's inverse), exact normal gravity and the `Earth`
+  model with Coriolis, `docs/physics/` specs, ADR-003, and mpmath and RocketPy gravity fixtures.
 - 2026-09-17: M0.3 Lessons from Loft (PR #4): `docs/research/loft-lessons.md` (97 lessons, 16
   process guards), `Loft lessons:` lines in ROADMAP, xtask doc checks, and the OpenRocket-source
   fetch guard.
@@ -86,6 +92,15 @@ M0.3 wrote `docs/research/loft-lessons.md`: 97 lessons (`L1` to `L97`) and 16 pr
   at 150, and checks that STATUS's current milestone matches ROADMAP.
 - M0.3: new process rules: subagent findings are claims until reproduced; defects outside the
   milestone go to GitHub issues; milestones are never removed or moved later without an ADR.
+
+- ADR-003: body `+z` toward the nose and RocketPy's launch-angle convention; ellipsoidal heights
+  everywhere; exact WGS 84 normal gravity as the default, with a RocketPy-compatible
+  `vertical_taylor` option; Coriolis on by default.
+- M1.1: reference values come from published formulas evaluated with mpmath (added to the oracle
+  environment) when no table is published; `serde_json` parses floats exactly (`float_roundtrip`).
+- M1.1: RocketPy conventions are pinned by running RocketPy itself (a real `Flight`'s initial
+  quaternion), not by re-typing its formulas; `criterion` (no default features) benches hot paths,
+  with numbers in `docs/perf.md`.
 
 ## Known issues and risks
 
