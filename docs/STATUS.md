@@ -10,7 +10,7 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
 
 ## Handoff (overwrite each session)
 
-M0.3 wrote `docs/research/loft-lessons.md`: 95 lessons (`L1` to `L95`) and 16 process mistakes
+M0.3 wrote `docs/research/loft-lessons.md`: 97 lessons (`L1` to `L97`) and 16 process mistakes
 (`P1` to `P16`). Each lesson names its milestone and the tests to write, and each affected
 `ROADMAP.md` entry now has a `Loft lessons:` line. Start M1.1 from these notes:
 
@@ -19,13 +19,14 @@ M0.3 wrote `docs/research/loft-lessons.md`: 95 lessons (`L1` to `L95`) and 16 pr
   - STATUS stays within 150 lines and each `docs/research/` note within 200.
   - When a milestone is checked off, every lesson it owns must have its named test function in
     that crate. For M1.1 that is L1: `hpr_core::gravity::tests::somigliana_matches_published_values`.
-    Rename a test in the lessons doc if needed; never drop one without an ADR.
+    A rename that keeps the assertion is fine; moving a lesson later or dropping one needs an ADR.
 - **Gravity source:** WGS84 Somigliana needs its primary source (NIMA TR8350.2) pinned in
   `validation/refs.lock.toml` before it is cited; it isn't in the lock yet.
-- **Clean room:** Loft code that came from OpenRocket's Java source is listed in the lessons doc.
-  Never port it. `guard-bash.py` now blocks fetching OpenRocket's source repository.
-- **Loft's numbers are leads, not references.** A suspected √2 error in Loft's flutter constant
-  (L32) is unverified until M1.10 checks it against NACA TN 4197.
+- **Clean room:** Loft material that came from OpenRocket's Java source is listed in the lessons
+  doc, with a blanket rule. Never port it. The guard hook now blocks fetching OpenRocket's source
+  from Bash and WebFetch.
+- **Loft's numbers are leads, not references.** Review confirmed against NACA TN 4197 eq. 18 that
+  Loft's flutter speed is √2 too high (L32); M1.10 pins the correct denominator.
 - **Reference library:**
   - `refs/rocketpy` is a shallow clone of `v1.13.0`; `rocketpy` has no `__version__`, so use
     `importlib.metadata.version`.
@@ -37,9 +38,9 @@ M0.3 wrote `docs/research/loft-lessons.md`: 95 lessons (`L1` to `L95`) and 16 pr
 
 ## Done log (newest first, keep about 15)
 
-- 2026-09-17: M0.3 Lessons from Loft: `docs/research/loft-lessons.md` (95 lessons, 16 process
-  guards), `Loft lessons:` lines in ROADMAP, xtask doc checks, and the OpenRocket-source fetch
-  guard.
+- 2026-09-17: M0.3 Lessons from Loft (PR #4): `docs/research/loft-lessons.md` (97 lessons, 16
+  process guards), `Loft lessons:` lines in ROADMAP, xtask doc checks, and the OpenRocket-source
+  fetch guard.
 - 2026-09-17: M0.2 Reference library (PR #3): `xtask refs fetch|verify|doctor`, 23 pinned
   references plus the uv oracle environment, notices rows per source, ADR-002.
 - 2026-09-17: M0.1 Workspace, CI, licenses (PR #2): workspace skeleton, xtask wasm-check,
@@ -48,6 +49,11 @@ M0.3 wrote `docs/research/loft-lessons.md`: 95 lessons (`L1` to `L95`) and 16 pr
   set.
 
 ## Needs Neer (blocking or one-way decisions; the session keeps working on other things)
+
+- (not blocking, safety) Loft's public flutter calculator overstates flutter speed by √2 (a 1.5
+  margin is really about 1.06): `lib/sim/flutter.ts:287` uses 1.337·(λ+1)/2, where NACA TN 4197
+  eq. 18 gives 2.674·(λ+1)/2. The autopilot may not post outside this repo; consider a notice or
+  fix before Loft shuts down.
 
 - (not blocking) Crate names on crates.io (`hpr`, `hpr-sim`, `hpr-core`...) are not reserved, and
   every crate has `publish = false`. Decide whether and when to reserve or publish them.
@@ -74,10 +80,10 @@ M0.3 wrote `docs/research/loft-lessons.md`: 95 lessons (`L1` to `L95`) and 16 pr
 - Installed `openjdk@21` with Homebrew on the dev Mac (the preflight script names this step), so
   the OpenRocket oracle runs.
 - M0.3: Loft lessons map to milestones through `Loft lessons:` lines, and an xtask test requires a
-  checked-off milestone's lesson tests to exist. This tightens later *done when* criteria; nothing
-  was loosened.
-- M0.3: research notes are capped at 200 lines each, and STATUS's current milestone must match
-  ROADMAP; both are checked by `cargo test`.
+  checked-off milestone's lesson tests to exist as live `#[test]`s. This tightens later *done
+  when* criteria; nothing was loosened. Moving a lesson to a later milestone needs an ADR.
+- M0.3: `cargo test` caps research notes at 200 lines, ROADMAP at 1,000 (40 per entry) and STATUS
+  at 150, and checks that STATUS's current milestone matches ROADMAP.
 - M0.3: new process rules: subagent findings are claims until reproduced; defects outside the
   milestone go to GitHub issues; milestones are never removed or moved later without an ADR.
 

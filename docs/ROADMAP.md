@@ -130,7 +130,7 @@
   - A small public test-design set under `validation/designs/`, built from the RocketPy examples
     and synthetic rockets. Tests use it because the private corpus must not appear in committed
     snapshots.
-  - Loft lessons: L44, L45, L46, L47, L48, L49, L50, L89 (tests named in
+  - Loft lessons: L44, L45, L46, L47, L48, L49, L50, L91 (tests named in
     `docs/research/loft-lessons.md`).
 
   *Done when:*
@@ -149,7 +149,7 @@
     exports. The dynamics can then be validated with the same drag as the oracle before our own
     aero predictions are compared.
   - `docs/physics/aero.md` with a citation for each term.
-  - Loft lessons: L8, L9, L10, L11, L12, L13, L14, L15, L16, L87, L88 (tests named in
+  - Loft lessons: L8, L9, L10, L11, L12, L13, L14, L15, L16, L89, L90 (tests named in
     `docs/research/loft-lessons.md`).
 
   *Done when:*
@@ -182,7 +182,7 @@
   - Parachutes (Cd·S, inflation time or area-growth model), streamers, tumble.
   - Drogue and main with deployment triggers (apogee, altitude, timer, motor delay).
   - Descent with wind drift; separated bodies tracked independently; landing detection.
-  - Loft lessons: L27, L28, L29, L90 (tests named in `docs/research/loft-lessons.md`).
+  - Loft lessons: L27, L28, L29, L92 (tests named in `docs/research/loft-lessons.md`).
 
   *Done when:*
   - Analytic tests for terminal velocity, descent time and drift pass.
@@ -253,7 +253,7 @@
     corpus.
   - The stored results inside the `.ork` files are used as a second reference.
   - The deferred M1.4 mass/CG checks run against OR values.
-  - Loft lessons: L19, L51, L80, L81, L82 (tests named in `docs/research/loft-lessons.md`).
+  - Loft lessons: L19, L51, L80, L81, L82, L87 (tests named in `docs/research/loft-lessons.md`).
 
   *Done when:*
   - At least 20 designs are in the report with an error distribution (apogee, max velocity,
@@ -265,7 +265,7 @@
   - Stage separation triggers (burnout plus delay, altitude, time); sustainer ignition.
   - Booster tracked through recovery.
   - Clustered motor mounts, with mass and thrust summed and the thrust offset handled.
-  - Loft lessons: L30, L31, L91 (tests named in `docs/research/loft-lessons.md`).
+  - Loft lessons: L30, L31, L93 (tests named in `docs/research/loft-lessons.md`).
 
   *Done when:*
   - A two-stage design and a cluster design each match OpenRocket within the per-case tolerance.
@@ -276,7 +276,7 @@
   - Optimum ejection delay; max q; flutter velocity and margin (primary source cited).
   - Landing point in lat/lon.
   - Exports: CSV, JSON, Parquet (feature), KML and GeoJSON.
-  - Loft lessons: L32, L33, L34, L35, L92 (tests named in `docs/research/loft-lessons.md`).
+  - Loft lessons: L32, L33, L34, L35, L94 (tests named in `docs/research/loft-lessons.md`).
 
   *Done when:*
   - Metrics are unit-tested.
@@ -297,7 +297,7 @@
 - [ ] **M2.4 Accuracy census gate.** Generate a summary census (a README table and badge) from the
   report. CI fails on any per-case regression beyond tolerance.
 
-  - Loft lessons: L84, L85, L86 (tests named in `docs/research/loft-lessons.md`).
+  - Loft lessons: L84, L85, L86, L88 (tests named in `docs/research/loft-lessons.md`).
 
   *Done when:* a deliberately perturbed drag coefficient on a throwaway draft PR makes CI fail.
   The failing run is linked from the real PR's description, and the throwaway PR is closed with
@@ -309,7 +309,7 @@
   `Rocket`, `Flight`) plus trait-based custom models. Add `examples/` (at least 4) and a rustdoc
   guide.
 
-  - Loft lessons: L93 (tests named in `docs/research/loft-lessons.md`).
+  - Loft lessons: L95 (tests named in `docs/research/loft-lessons.md`).
 
   *Done when:*
   - The examples run in CI.
@@ -401,7 +401,7 @@
     tolerances), wind, launch angle, deployment delays.
   - Landing ellipses at confidence levels; apogee distribution.
   - Sensitivity analysis (Morris screening and Sobol indices).
-  - Loft lessons: L52, L53, L54, L55, L94 (tests named in `docs/research/loft-lessons.md`).
+  - Loft lessons: L52, L53, L54, L55, L96 (tests named in `docs/research/loft-lessons.md`).
 
   *Done when:*
   - Results are bit-reproducible for the same seed.
@@ -504,7 +504,7 @@
     sizing).
   - Auto-size parachutes to a target descent rate.
   - Suggestions with reasons.
-  - Loft lessons: L95 (tests named in `docs/research/loft-lessons.md`).
+  - Loft lessons: L97 (tests named in `docs/research/loft-lessons.md`).
 
   *Done when:* every template simulates and passes its own checks, and each check has
   positive/negative tests.
@@ -522,7 +522,7 @@
   each and measure bundle size, frame rate on a phone-class device profile, and development
   effort.
 
-  - Loft lessons: P15 (tests named in `docs/research/loft-lessons.md`).
+  - Loft lessons: P15 (read Loft's `OWNER-NOTES.md` UI notes before the spike).
 
   *Done when:* the ADR is merged with measurements.
 
