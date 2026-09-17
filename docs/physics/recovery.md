@@ -372,7 +372,8 @@ the same deployment settings and the same wind, and RocketPy's noise set to zero
 at `rtol = atol = 1e-8`; run again at 1e-6 it moves every compared metric by at most 3.5e-6
 (the fixture's `solver.relative_change_from_loose`. Its one larger entry, 2.1e-3, is on Valetudo's
 20 µm *north* drift component, which M1.7a did not compare; M2.1a measures it, and hpr comes out
-28x above RocketPy at 0.55 mm, which is unexplained and open as issue #27).
+28x above RocketPy at 0.55 mm, and reading that high is what found the gravity-model difference
+below, issue #27).
 
 What still differs, and by how much:
 
@@ -400,11 +401,14 @@ What still differs, and by how much:
   `flight.py:2777`, where only `az` carries a gravity term), while hpr's default
   `GravityModel::Ellipsoidal` uses the full normal-gravity **vector**, which above the ellipsoid
   leans a few parts in 10⁶ toward the pole: 4.0e-6 m/s² at Valetudo's site at ground level and
-  8.7e-6 m/s² at 800 m. The M1.7a test compares gravity by magnitude, so it could not see this,
-  and no metric it gates is sensitive to it. It shows up in one number in the whole suite,
-  Valetudo's 20 µm northward drift, where it put hpr 28x high (issue #27). The validation suite
-  therefore flies `GravityModel::VerticalTaylor`, which hpr ships as RocketPy's own formula for
-  like-for-like comparisons; with it the two agree to 1.8% on that number as well.
+  8.7e-6 m/s² at 1,468 m, growing in proportion to height above the ellipsoid and pointing toward
+  the equator (`docs/physics/gravity.md`): over these five sites it runs from +6.9e-6 m/s² at
+  Valetudo's topmost gravity sample to −3.3e-5 m/s² at Calisto's 4,400 m. hpr's vector also turns
+  with the local vertical downrange, `g·d/R`, which is 2.1e-3 m/s² at Calisto's 1.4 km of drift and
+  is much the larger of the two wherever a rocket drifts at all. The M1.7a test used to compare
+  gravity by magnitude alone, so it could see neither. Both this comparison and the validation
+  suite now fly `GravityModel::VerticalTaylor`, which hpr ships as RocketPy's own formula for
+  like-for-like comparisons, and both assert the gravity **vector** rather than its length.
 - **Geometry.** hpr flies over the ellipsoid and takes heights along its normal; RocketPy's `z` is
   flat. Over Calisto's 1.4 km of drift the curvature is 0.15 m of height, 0.03 s of descent.
 
@@ -414,11 +418,16 @@ Measured (hpr against RocketPy, 2026-09-17):
 
 | case | descent time | descent rate under the drogue | impact descent rate | drift | worst drift component |
 |---|---|---|---|---|---|
-| Calisto (drogue 1.0 m², main 10 m² at 800 m, wind 5 E / 2 N) | +0.08% (257.27 s) | −0.01% (17.967 m/s) | −0.03% (5.454 m/s) | +0.06% (1,385.8 m) | +0.06% |
+| Calisto (drogue 1.0 m², main 10 m² at 800 m, wind 5 E / 2 N) | +0.08% (257.27 s) | −0.01% (17.967 m/s) | −0.03% (5.454 m/s) | +0.08% (1,386.0 m) | +0.08% |
 | Valetudo (drogue 0.4537 m², no wind) | −0.02% (45.76 s) | — | +0.00% (17.627 m/s) | −0.89% (0.19 m, Coriolis only) | −1.77% (north, 19 µm; +2704% under hpr's own gravity, issue #27) |
-| NDRT 2020 (drogue 0.438 m², main 16.05 m² at 167.6 m, sheared wind) | +0.71% (61.60 s) | +0.01% (28.156 m/s) | +0.01% (4.604 m/s) | +0.27% (327.9 m) | +2.87% (north, −50.8 m) |
-| Prometheus 2022 (drogue 0.467 m², main 5.78 m² at 457.2 m) | +0.08% (153.50 s) | −0.01% (26.400 m/s) | −0.03% (7.323 m/s) | +0.07% (1,236.9 m) | +0.07% |
-| Juno III (drogue 0.885 m²) | −0.02% (53.56 s) | — | −0.01% (22.431 m/s) | −0.03% (457.9 m) | −0.03% |
+| NDRT 2020 (drogue 0.438 m², main 16.05 m² at 167.6 m, sheared wind) | +0.71% (61.60 s) | +0.01% (28.156 m/s) | +0.01% (4.604 m/s) | +0.28% (327.9 m) | +2.86% (north, −50.8 m) |
+| Prometheus 2022 (drogue 0.467 m², main 5.78 m² at 457.2 m) | +0.08% (153.50 s) | −0.01% (26.400 m/s) | −0.03% (7.323 m/s) | +0.08% (1,237.1 m) | +0.09% |
+| Juno III (drogue 0.885 m²) | −0.02% (53.56 s) | — | −0.01% (22.431 m/s) | −0.02% (457.9 m) | −0.02% |
+
+These numbers are hpr flown under RocketPy's gravity model, as the comparison has been since
+issue #27. Under hpr's own the drifting cases read a little closer — Calisto +0.06% rather than
++0.08% — because the vertical's turn downrange pushes the rocket back toward the pad and cancels
+part of a real difference. The like-for-like number is the honest one.
 
 Valetudo's north drift is worth its own paragraph, because it is the number that found the gravity
 difference above. In still air it is Coriolis alone: the horizontal velocity relaxes to a drag
@@ -438,5 +447,5 @@ Every metric is inside the milestone's 3%. The descent rate under the drogue, wh
 main, agrees to 0.01%. The two largest gaps are both NDRT's, whose main has a drag area of 16 m²:
 RocketPy's added mass for it is 15.9 kg against the rocket's 20.8 kg, so its response to the
 opening is slower, which lengthens the descent (+0.71%) and, in a wind that shears with height,
-moves the smaller drift component by 2.87%. Adding a cited apparent-mass model would close that
+moves the smaller drift component by 2.86%. Adding a cited apparent-mass model would close that
 gap.

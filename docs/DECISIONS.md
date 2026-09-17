@@ -1061,7 +1061,7 @@ and L26 set tests.
     and RocketPy's `m_a = k_a ρ (2/3) π R² H` carries no citation in its code and no weight in its
     equations, so it changes no equilibrium rate, only the transient. The comparison shows the
     cost: NDRT 2020, whose main's added mass is 15.9 kg against a 20.8 kg rocket, is hpr's worst
-    case at +0.71% in descent time and +2.87% in the smaller drift component.
+    case at +0.71% in descent time and +2.86% in the smaller drift component.
 - **Every deployment, every end of filling (which is also a release) and every known trigger time
   is a stop time**, so no step straddles a change in the drag area, and events are located as in
   M1.6a. The numeric triggers are checked once per interval, on one evaluation shared by every
@@ -1287,7 +1287,8 @@ and M1.7a's recovery comparison, whose references are real RocketPy output.
   turned out to be the gravity model below, and the metric is now gated at 3% like every other. The
   mechanism stays for M2.1b, whose predicted-mode supersonic cases are gaps by construction.
 - **A RocketPy comparison flies RocketPy's gravity model.** hpr's default is the full
-  normal-gravity vector, which above the ellipsoid leans a few parts in 10⁶ poleward; RocketPy
+  normal-gravity vector, which above the ellipsoid leans a few parts in 10⁶ toward the equator;
+  RocketPy
   applies gravity to the vertical axis alone. The difference is invisible in every metric that
   matters and decisive in the one that does not: 5.2e-4 m of northward drift over an 800 m
   descent, against a 2.0e-5 m Coriolis signal. hpr already ships `GravityModel::VerticalTaylor`
