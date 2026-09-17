@@ -3,6 +3,31 @@
 Measured numbers only, newest first within each section. Record the machine, the toolchain, and
 the command, so a later run can be compared like for like.
 
+## Atmosphere, wind and turbulence (M1.2)
+
+The calls the flight engine makes on every derivative evaluation, and one gust-field build.
+
+- **Benchmark:** `cargo bench -p hpr-atmos --bench atmosphere`, which is criterion, release
+  profile.
+- **When and where:** 2026-09-17 on an Apple M5 with rustc 1.98.1.
+- **Inputs:** 4.4 km above sea level. The sounding has 30 humid levels with wind, from a 1400 m
+  site to 12 km, and its pressures above the first level are filled in.
+
+| call | median |
+|---|---|
+| `Ussa76::sample` | 9.14 ns |
+| `SoundingProfile::sample`, 30 levels | 21.4 ns |
+| `LayeredWind::wind`, 30 levels | 7.49 ns |
+| `LayeredWind::wind`, 1 level | 3.64 ns |
+| `GustField::gust` | 1.87 ns |
+| `DrydenGenerator::advance`, 1 m | 55.3 ns |
+| `GustField::generate`, 20 km at 1 m (20 001 samples) | 1.10 ms |
+
+- **Inner-loop cost.** About 10⁴ derivative evaluations per flight, each calling a 30-level
+  sounding, its wind and a gust lookup, is about 0.3 ms: well inside M1.6's 5 ms budget.
+- **Generation cost.** Most of a generator step is the incomplete-gamma series and five normal
+  draws, 55 ns in all. A gust field is built once per flight, or once per Monte Carlo sample.
+
 ## Earth model (M1.1)
 
 The calls the flight engine makes on every derivative evaluation.
