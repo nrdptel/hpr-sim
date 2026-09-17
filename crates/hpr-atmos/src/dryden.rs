@@ -360,12 +360,52 @@ impl TransverseState {
 /// next (for example with altitude); within a step they are held constant. Draws come from a
 /// [`SeededRng`] in a fixed order (`u`, then two for `v`, then two for `w`), so the same seed
 /// and the same steps give bit-identical gusts.
+///
+/// It serializes as its generator and state, so a run can be checkpointed and resumed; a
+/// non-finite state is rejected when deserialized.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(try_from = "DrydenGeneratorData", into = "DrydenGeneratorData")]
 pub struct DrydenGenerator {
     rng: SeededRng,
     u: f64,
     v: TransverseState,
     w: TransverseState,
+}
+
+#[derive(Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+struct DrydenGeneratorData {
+    rng: SeededRng,
+    u: f64,
+    v: TransverseState,
+    w: TransverseState,
+}
+
+impl TryFrom<DrydenGeneratorData> for DrydenGenerator {
+    type Error = AtmosError;
+
+    fn try_from(data: DrydenGeneratorData) -> Result<Self, AtmosError> {
+        for value in [data.u, data.v.x1, data.v.x2, data.w.x1, data.w.x2] {
+            finite("turbulence generator state", value)?;
+        }
+        Ok(DrydenGenerator {
+            rng: data.rng,
+            u: data.u,
+            v: data.v,
+            w: data.w,
+        })
+    }
+}
+
+impl From<DrydenGenerator> for DrydenGeneratorData {
+    fn from(generator: DrydenGenerator) -> Self {
+        DrydenGeneratorData {
+            rng: generator.rng,
+            u: generator.u,
+            v: generator.v,
+            w: generator.w,
+        }
+    }
 }
 
 impl DrydenGenerator {
@@ -437,10 +477,57 @@ pub struct GustSample {
 /// Taylor's hypothesis, but a caller may key it on altitude or on time at a reference speed.
 /// Linear interpolation removes variance at wavelengths near the spacing, so keep the spacing
 /// well below the smallest scale length (a tenth or less).
+///
+/// It serializes as its spacing and samples, and re-checks them when deserialized.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(try_from = "GustFieldData", into = "GustFieldData")]
 pub struct GustField {
     spacing_m: f64,
     samples: Vec<DVec3>,
+}
+
+#[derive(Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+struct GustFieldData {
+    spacing_m: f64,
+    samples: Vec<DVec3>,
+}
+
+impl TryFrom<GustFieldData> for GustField {
+    type Error = AtmosError;
+
+    fn try_from(data: GustFieldData) -> Result<Self, AtmosError> {
+        let spacing = positive("gust field spacing (m)", data.spacing_m)?;
+        if data.samples.is_empty() {
+            return Err(AtmosError::TooFewLevels { min: 1, got: 0 });
+        }
+        if data.samples.len() > MAX_GUST_FIELD_SAMPLES {
+            // Cast: only reported in the error.
+            let count = data.samples.len() as f64;
+            return Err(AtmosError::Domain {
+                what: "gust field samples",
+                value: count,
+            });
+        }
+        for sample in &data.samples {
+            for value in sample.to_array() {
+                finite("gust sample (m/s)", value)?;
+            }
+        }
+        Ok(GustField {
+            spacing_m: spacing,
+            samples: data.samples,
+        })
+    }
+}
+
+impl From<GustField> for GustFieldData {
+    fn from(field: GustField) -> Self {
+        GustFieldData {
+            spacing_m: field.spacing_m,
+            samples: field.samples,
+        }
+    }
 }
 
 impl GustField {
@@ -1053,6 +1140,22 @@ mod tests {
         assert!(generator.advance(1e300, &p).unwrap().is_finite());
         let json = r#"{"intensity_m_s":[1,1,1],"scale_length_m":[1,-1,1]}"#;
         assert!(serde_json::from_str::<DrydenParameters>(json).is_err());
+        // Fields and generators re-check what they deserialize.
+        let field = GustField::generate(2, &p, 5.0, 1.0).unwrap();
+        let json = serde_json::to_string(&field).unwrap();
+        assert_eq!(serde_json::from_str::<GustField>(&json).unwrap(), field);
+        for bad in [
+            r#"{"spacing_m":0.0,"samples":[[0,0,0]]}"#,
+            r#"{"spacing_m":1.0,"samples":[]}"#,
+            r#"{"spacing_m":1.0,"samples":[[0,1e999,0]]}"#,
+        ] {
+            assert!(serde_json::from_str::<GustField>(bad).is_err(), "{bad}");
+        }
+        let mut value = serde_json::to_value(DrydenGenerator::new(4)).unwrap();
+        value["u"] = serde_json::Value::from(f64::MAX);
+        assert!(serde_json::from_value::<DrydenGenerator>(value.clone()).is_ok());
+        value["v"]["x1"] = serde_json::json!(null);
+        assert!(serde_json::from_value::<DrydenGenerator>(value).is_err());
     }
 
     /// MIL-F-8785C Figures 10 and 11 at h = 100 ft for a moderate 30 kt wind at 20 ft, evaluated
