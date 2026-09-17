@@ -782,7 +782,9 @@ impl<const N: usize> Integrator<N> {
                 return Err(failure.unwrap_or(IntegrationError::NotFinite { t_s: t }));
             }
             let proposed = h;
-            let last = t + 1.01 * h >= t_stop_s;
+            // Stretch up to 1% to land on the stop, but not past the longest step (beyond the
+            // rounding that equal steps accumulate).
+            let last = t + 1.01 * h >= t_stop_s && t_stop_s - t <= max_step * (1.0 + 1e-9);
             if last {
                 h = t_stop_s - t;
             }
@@ -900,6 +902,7 @@ impl<const N: usize> Integrator<N> {
         for index in 0..self.g_start.len() {
             let g = system.event_value(index, t_event, &shortened.end);
             if !g.is_finite() {
+                self.fired.clear();
                 return Err(IntegrationError::EventNotFinite {
                     index,
                     t_s: t_event,

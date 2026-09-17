@@ -55,7 +55,8 @@ Sources:
 ## Stop times and discontinuities
 
 - `Integrator::advance(system, t_stop)` never steps past `t_stop`. Like `DOPRI5`, it stretches the
-  last step up to 1% to land on it exactly, and `time_s()` equals `t_stop` bit for bit.
+  last step up to 1% to land on it exactly (never past `max_step_s`), and `time_s()` equals
+  `t_stop` bit for bit.
 - The system is one `OdeSystem<N>`: the derivative, optional tolerance weights, optional events
   (`event_count`, `event_direction`, `event_value`), and `accept_step`. `accept_step` sees every
   accepted step with its dense output and can stop the run (`Advance::Stopped`). So a flight phase

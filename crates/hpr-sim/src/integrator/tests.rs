@@ -570,7 +570,7 @@ fn steps_join_up_respect_the_limit_and_interpolate_to_their_ends() {
     let mut worst: f64 = 0.0;
     let mut system = Watched::new(Rational, |step: &Step<1>| {
         assert_eq!(step.start_s(), previous_end);
-        assert!(step.end_s() - step.start_s() <= max_step_s * (1.0 + 1e-12));
+        assert!(step.end_s() - step.start_s() <= max_step_s * (1.0 + 1e-9));
         assert_eq!(step.state_at(step.start_s()), *step.start());
         assert_eq!(step.state_at(step.end_s()), *step.end());
         // Just inside the end, the dense output is as good as the step.
@@ -581,6 +581,7 @@ fn steps_join_up_respect_the_limit_and_interpolate_to_their_ends() {
         ControlFlow::Continue(())
     });
     let mut integrator = Integrator::new(method, 0.0, [1.0]).unwrap();
+    // 3.0 is 42.86 longest steps: the last one must not stretch past the limit.
     integrator.advance(&mut system, 3.0).unwrap();
     assert_eq!(previous_end, 3.0);
     assert!(worst < 1e-8, "{worst}");
@@ -596,6 +597,22 @@ fn steps_join_up_respect_the_limit_and_interpolate_to_their_ends() {
         stats.evaluations,
         6 * (stats.accepted_steps + stats.rejected_steps) + 2
     );
+    // A stop just over one longest step away is not reached by stretching the step past the limit.
+    let method = Method::DormandPrince54(Adaptive {
+        initial_step_s: Some(0.1),
+        max_step_s: Some(0.1),
+        ..Adaptive::default()
+    });
+    let mut longest: f64 = 0.0;
+    let mut clock = Watched::new(Clock, |step: &Step<1>| {
+        longest = longest.max(step.end_s() - step.start_s());
+        ControlFlow::Continue(())
+    });
+    let mut stretched = Integrator::new(method, 0.0, [0.0]).unwrap();
+    stretched.advance(&mut clock, 0.9).unwrap();
+    stretched.advance(&mut clock, 0.9 + 0.1005).unwrap();
+    assert!(longest <= 0.1 * (1.0 + 1e-9), "{longest}");
+
     // The step estimate carries over a reset.
     let next = integrator.next_step_s();
     assert!(next.is_some());
