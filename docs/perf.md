@@ -3,6 +3,24 @@
 Measured numbers only, newest first within each section. Record the machine, the toolchain, and
 the command, so a later run can be compared like for like.
 
+## Normal force (M1.5a)
+
+- **Benchmark:** `cargo bench -p hpr-aero --bench normal_force`, which is criterion, release profile.
+- **When and where:** 2026-09-17 on an Apple M5 with rustc 1.98.1.
+- **Inputs:** resolved layouts of `synthetic-two-stage-75mm-54mm.json` (two fin sets, two
+  transitions) and `rocketpy-calisto-getting-started-motor-at-minus-1.255.json` (von Kármán nose,
+  boattail, one fin set), at Mach 0.6, `α` 0.05 rad.
+
+| call | median |
+|---|---|
+| `AeroModel::new`, synthetic two-stage | 3.54 µs |
+| `AeroModel::new`, Calisto | 10.7 µs |
+| `AeroModel::normal_force`, synthetic two-stage | 11.0 ns |
+| `AeroModel::normal_force`, Calisto | 8.5 ns |
+
+- **Where the time goes.** Building the model integrates each nose and transition's filled volume
+  and planform once. Evaluation is a sum over components with one square root per fin set.
+
 ## Design tree and assembly (M1.4b)
 
 - **Benchmark:** `cargo bench -p hpr-design --bench design`, which is criterion, release profile.

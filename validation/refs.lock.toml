@@ -83,6 +83,24 @@ license = "unknown terms"
 mode = "fetched"
 
 [[file]]
+name = "barrowman-1966-naram8-nakka"
+title = "J. S. and J. A. Barrowman, The Theoretical Prediction of the Center of Pressure, NARAM-8, 1966 (complete scan with its Testbed II and Aerobee 350 examples), bound with J. S. Barrowman, Calculating the Center of Pressure of a Model Rocket, Centuri TIR-33, 1970"
+url = "https://www.nakka-rocketry.net/articles/Barrowman.NARAM-8.pdf"
+sha256 = "cff6faf50db24b130d36f379b3dc566d1f3266e2031c01e4e6270320140c6f8e"
+dest = "refs/papers/barrowman-1966-naram8-nakka.pdf"
+license = "unknown terms"
+mode = "fetched"
+
+[[file]]
+name = "tir-33-centuri-cp"
+title = "J. S. Barrowman, Calculating the Center of Pressure of a Model Rocket, Centuri TIR-33, 1970 (standalone scan)"
+url = "https://www.nakka-rocketry.net/rocket/TIR-33_Calculating.C.P..model.rocket.pdf"
+sha256 = "0add8b84192baf5711e3be56e4571c49ddf56d83589bc94520d4db7efdd5f7e6"
+dest = "refs/papers/tir-33-centuri-cp.pdf"
+license = "unknown terms"
+mode = "fetched"
+
+[[file]]
 name = "niskanen-2009-thesis"
 title = "S. Niskanen, Development of an Open Source model rocket simulation software, MSc thesis, 2009"
 url = "https://github.com/openrocket/openrocket/releases/download/Development_of_an_Open_Source_model_rocket_simulation-thesis-v20090520/Development_of_an_Open_Source_model_rocket_simulation-thesis-v20090520.pdf"

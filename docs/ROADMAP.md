@@ -167,14 +167,31 @@
     exports. The dynamics can then be validated with the same drag as the oracle before our own
     aero predictions are compared.
   - `docs/physics/aero.md` with a citation for each term.
-  - Loft lessons: L8, L9, L10, L11, L12, L13, L14, L15, L16, L89, L90 (tests named in
-    `docs/research/loft-lessons.md`).
 
   *Done when:*
   - CNα and CP reproduce Barrowman's worked example(s) within 1%.
   - Subsonic Cd for the RocketPy example rockets is within 10% of their RASAero CSVs at Mach 0.3
     (tighten this later).
   - Unit tests cover every drag term's limits.
+
+  - [ ] **M1.5a Normal force and centre of pressure.**
+    - Barrowman CNα and CP for every component with Prandtl–Glauert, body lift at angle of attack,
+      fin–body interference, and the `aero.md` sections for them.
+    - Loft lessons: L8, L9, L10, L89 (tests named in `docs/research/loft-lessons.md`).
+
+    *Done when:*
+    - CNα and CP reproduce Barrowman's worked example(s) within 1%.
+
+  - [ ] **M1.5b Drag and override tables.**
+    - The drag buildup, Cd at angle of attack, Cd-vs-Mach override tables from CSV, and the `aero.md`
+      sections for them.
+    - Loft lessons: L11, L12, L13, L14, L15, L16, L90 (tests named in
+      `docs/research/loft-lessons.md`).
+
+    *Done when:*
+    - Subsonic Cd for the RocketPy example rockets is within 10% of their RASAero CSVs at Mach 0.3
+      (tighten this later).
+    - Unit tests cover every drag term's limits.
 
 - [ ] **M1.6 6-DOF flight engine.**
   - State: position, velocity, attitude quaternion, angular velocity, time-varying mass

@@ -57,6 +57,15 @@ converted before use. `docs/physics/geodesy.md` gives the conversions.
   `z_B = z_ref − s` with `z_ref = 0`, so `z_B = −s` and the whole rocket lies at `z_B ≤ 0`
   (`docs/physics/design.md`).
 
+## Aerodynamic angles
+
+- **Angle of attack `α`:** the total angle between `+z_B` and the rocket's velocity relative to the
+  air, in `[0, π]`.
+- **Flow roll `φ`:** the direction in which the air crosses the body, measured in the `x_B`–`y_B`
+  plane from `x_B` toward `y_B`. Fin `k` of a set sits at `Λ_k = θ₀ + 2πk/N − φ` from the lateral
+  airflow, with `θ₀` the set's base angle.
+- Normal-force coefficients lie in the plane of `+z_B` and the flow (`docs/physics/aero.md`).
+
 ## Attitude
 
 The attitude is a unit Hamilton quaternion `q` (glam `DQuat`, stored `x, y, z, w`) that maps

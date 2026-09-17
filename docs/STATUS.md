@@ -4,7 +4,7 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
 
 ## Now
 
-- **Current milestone:** M1.5 Aerodynamics I (subsonic)
+- **Current milestone:** M1.5a Normal force and centre of pressure (M1.5 Aerodynamics I)
 - **Run:** the first autopilot run; M0.1–M0.3 and M1.1–M1.4 have shipped
 - **Last updated:** 2026-09-17 (M1.4b merged)
 

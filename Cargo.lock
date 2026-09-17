@@ -326,8 +326,13 @@ dependencies = [
 name = "hpr-aero"
 version = "0.1.0"
 dependencies = [
+ "criterion",
  "hpr-core",
  "hpr-design",
+ "proptest",
+ "serde",
+ "serde_json",
+ "thiserror",
 ]
 
 [[package]]

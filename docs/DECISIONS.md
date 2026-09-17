@@ -13,6 +13,7 @@ renumber. Supersede an entry by adding a new one that points back to it.
 | ADR-005 | Solid motors: statistics, consumption, grains, file models and the bundled catalog | accepted |
 | ADR-006 | Component geometry and mass properties: frames, shapes, walls, fins and materials | accepted |
 | ADR-007 | Design tree: stations, placement, automatic radii, overrides, motors and checks | accepted |
+| ADR-008 | Subsonic normal force and centre of pressure | accepted |
 
 ---
 
@@ -574,3 +575,52 @@ centre and inertia as inputs and adds the motor; it computes nothing from geomet
 - M2.2 measures OpenRocket's override order (L51) and automatic-radius rules with the jar. M3.1
   maps `.ork` positions, auto flags and overrides onto these types, and reports any rule that
   doesn't map.
+
+## ADR-008: Subsonic normal force and centre of pressure (2026-09-17)
+
+**Context.** M1.5a adds Barrowman's normal-force slope and centre of pressure. The sources
+disagree in places. Barrowman's 1966 report fits ogive noses with 0.466 L, and his 1967 thesis
+adds slender-body interference terms that the report leaves out. Niskanen (2009) keeps
+`sin α/α` and adds body lift. The OpenRocket technical documentation (13.05) replaces the thesis's
+roll-dependent three- and four-fin terms with plain `N/2`. Barrowman's own TIR-33 (1970) treats
+six fins with its own interference factor. Loft reused the conical CP for every transition (L9),
+had no fin-count correction (L8), and swapped elliptical fins for an equal-area trapezoid (L10).
+
+**Decision.**
+
+- **Bodies.** `(C_Nα)_B = (2/A_ref)ΔA` and `X_B = [l A(l) − V]/ΔA`, with `V` integrated from the
+  real profile (no 0.466 L fit). Moments are summed as `(2/A_ref)[l A(l) − V]`, which stays well
+  conditioned when `ΔA → 0`. The potential term carries `sin α/α` (Niskanen eq. 3.19). No Mach
+  term.
+- **Body lift.** Galejs's `K (A_plan/A_ref) sin² α` with `K = 1.1` at the planform centroid
+  (Niskanen eq. 3.26–3.27), on every body component.
+- **Fins.** Diederich's slope with `β = √(1 − M²)` (Barrowman 1967 eq. 3-6), the mean aerodynamic
+  chord integrals with the CP at its quarter chord for all subsonic Mach (Barrowman 1967 p. 6).
+  Niskanen's aft CP shift above Mach 0.5 (eq. 3.35–3.36) belongs with the supersonic fit it
+  interpolates to and moves to M1.8. Freeform fins follow Niskanen pp. 27–29: the filled chord
+  for the CP, the true area for the slope, the span-averaged mid-chord angle.
+- **Fin count and roll.** `Σ sin² Λ_k` (exactly `N/2` for three or more fins) times 1, 0.948,
+  0.913, 0.854 or 0.810 for up to 4, 5, 6, 7 or 8 fins (technical documentation eq. 3.54, from
+  MIL-HDBK-762(MI) p. 5-24). More than eight fins are refused: the documentation's 0.750 has no
+  source. The side force of one- and two-fin sets is not modelled (Niskanen keeps only the
+  in-plane component). Fin sets at the same station are not combined.
+- **Interference.** `K_T(B) = 1 + r_t/(s + r_t)` (Barrowman 1966 eq. 77), not the thesis's full
+  slender-body terms.
+- **Scope.** `0 ≤ M < 1`; `M ≥ 1` is an error until M1.8. Tube fins are refused until a cited
+  method is found. Lugs and rail buttons add no normal force. Cant is ignored until roll (M1.8).
+  The model is a small-angle model; `α` is accepted over `[0, π]` so the flight engine can decide
+  what to do near apogee.
+- **Validation.** Barrowman's five published worked examples (NARAM-8's Testbed II and Aerobee 350;
+  TIR-33's Javelin, Recruiter and Arcon-Hi), every printed component and total, within 1%. The
+  Recruiter's six-fin slopes follow TIR-33's own six-fin rule (`K = 1 + 0.5 R/(S + R)`, no
+  fin-count factor). They are checked with that rule substituted. hpr's values sit +3.4% (fins)
+  and +2.9% (total) from the print, and the difference between the two rules accounts for +3.2% and
+  +2.8% of that. The measured gap is reported by the test and in `docs/physics/aero.md`.
+
+**Consequences.**
+
+- M1.6 builds an `AeroModel` once per design and calls `normal_force` (about 10 ns) per
+  derivative evaluation. It decides how to treat large angles of attack.
+- M1.8 adds the transonic and supersonic slopes, the fin CP shift, roll forcing and damping.
+- M2.2 compares CNα and CP against OpenRocket, which uses the same fin-count factors.
+
