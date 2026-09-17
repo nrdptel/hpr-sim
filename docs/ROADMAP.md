@@ -244,11 +244,35 @@
   - Parachutes (Cd·S, inflation time or area-growth model), streamers, tumble.
   - Drogue and main with deployment triggers (apogee, altitude, timer, motor delay).
   - Descent with wind drift; separated bodies tracked independently; landing detection.
-  - Loft lessons: L27, L28, L29, L92 (tests named in `docs/research/loft-lessons.md`).
 
   *Done when:*
   - Analytic tests for terminal velocity, descent time and drift pass.
   - Descent rate and drift match RocketPy's for 3 example rockets within 3%.
+
+  - [x] **M1.7a Parachutes and descent.**
+    - Parachutes (Cd·S, inflation time or area-growth model), drogue and main with deployment
+      triggers (apogee, altitude, timer, motor delay), drogue release, descent with wind drift
+      and landing detection.
+    - Loft lessons: L27, L28, L29, L92 (tests named in `docs/research/loft-lessons.md`).
+
+    *Done when:*
+    - Analytic tests for terminal velocity, descent time and drift pass.
+    - Descent rate and drift match RocketPy's for 3 example rockets within 3%.
+
+    *Result (ADR-012):* met. Knacke's `v_e` reproduces Loft's case (5.294 m/s); a descent follows
+    the closed-form fall to 2.1e-8 of `v_t`; drift is the wind times the time of flight to 1e-8.
+    Five RocketPy examples agree within 0.71% in descent time, 0.03% in impact descent rate and
+    0.27% in drift, worst single drift component 2.87% (NDRT, where RocketPy's added mass is
+    nearly the rocket's).
+
+  - [ ] **M1.7b Streamers, tumble and separated bodies.**
+    - Streamers and tumble, each with a cited drag model; separation, with every body flown to
+      its own landing and its own mass properties and drag.
+
+    *Done when:*
+    - A streamer's and a tumbling body's descent rates match the terminal velocity of their cited
+      drag models (analytic tests).
+    - A separation gives every body a landing, and the bodies' masses sum to the rocket's.
 
 - [ ] **M2.1 Validation harness plus the RocketPy code-to-code suite.** This is the first
   end-to-end milestone.

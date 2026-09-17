@@ -55,6 +55,21 @@ pub enum Phase {
     Rail,
     /// Free flight: six degrees of freedom.
     Free,
+    /// Descent under recovery devices: a point mass, with the attitude frozen where it deployed
+    /// (`docs/physics/recovery.md`).
+    Descent,
+}
+
+/// What an evaluation needs besides the time and the state.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub(crate) struct Conditions {
+    /// Which phase the flight is in, which decides the degrees of freedom and the forces.
+    pub(crate) phase: Phase,
+    /// The integration interval: which motors burn through it, and the bounds the mass-property
+    /// difference stencils stay inside.
+    pub(crate) window: (f64, f64),
+    /// The open recovery devices' drag area, m² (descent phase only).
+    pub(crate) drag_area_m2: f64,
 }
 
 /// A motor's fixed data for the equations.
@@ -102,6 +117,8 @@ pub(crate) struct Evaluation {
     pub(crate) rail_force_n: f64,
     /// The body origin's acceleration relative to `L`, in `L`, m/s².
     pub(crate) acceleration_enu_m_s2: DVec3,
+    /// The drag area of the open recovery devices, m².
+    pub(crate) recovery_drag_area_m2: f64,
 }
 
 /// The rocket's models, fixed for a flight.
@@ -220,17 +237,21 @@ impl Vehicle {
         state
     }
 
-    /// Evaluates the equations of motion in `phase` at `(t, y)`, with the motors burning as the
-    /// integration interval `window` decides.
+    /// Evaluates the equations of motion at `(t, y)` under `conditions`: the phase, the motors
+    /// burning as its integration interval decides, and the recovery devices open.
     pub(crate) fn evaluate(
         &self,
         environment: &Environment,
         friction_coefficient: f64,
-        phase: Phase,
-        window: (f64, f64),
+        conditions: Conditions,
         t: f64,
         y: &[f64; STATE_LEN],
     ) -> Result<Evaluation, SimError> {
+        let Conditions {
+            phase,
+            window,
+            drag_area_m2: recovery_drag_area_m2,
+        } = conditions;
         let state = State::from_array(y);
         let norm = state.attitude.length();
         if !(norm.is_finite() && norm > 0.0) {
@@ -317,14 +338,22 @@ impl Vehicle {
             jet_gyration += gyration * mdot;
         }
 
-        // Aerodynamics.
-        let aero = self.aerodynamics(
-            &air,
-            to_body.mul_vec3(v_o - wind_enu),
-            omega,
-            r,
-            burning_area_m2,
-        )?;
+        // Aerodynamics: the airframe in flight, the open canopies during the descent.
+        let aero = if phase == Phase::Descent {
+            canopy_drag(
+                &air,
+                to_body.mul_vec3(cg_velocity_enu_m_s - wind_enu),
+                recovery_drag_area_m2,
+            )
+        } else {
+            self.aerodynamics(
+                &air,
+                to_body.mul_vec3(v_o - wind_enu),
+                omega,
+                r,
+                burning_area_m2,
+            )?
+        };
 
         // The equations.
         let forces = aero.force + weight;
@@ -369,6 +398,15 @@ impl Vehicle {
                     omega_dot.z,
                 ];
             }
+            Phase::Descent => {
+                // A point mass: the canopies' drag and the weight, with no rotation. The mass
+                // terms of `T04` stay, so a device that opens while a motor burns still feels the
+                // thrust along the axis it froze at.
+                let t20 = t04 + forces;
+                acceleration_enu_m_s2 = q.mul_vec3(t20 / m);
+                derivative[..3].copy_from_slice(&v_o.to_array());
+                derivative[3..6].copy_from_slice(&acceleration_enu_m_s2.to_array());
+            }
             Phase::Rail | Phase::Pad => {
                 // No rotation: the rail supplies the moments and the force across the axis.
                 let t20 = t04 + forces;
@@ -398,6 +436,11 @@ impl Vehicle {
             thrust_n: thrust.z,
             rail_force_n,
             acceleration_enu_m_s2,
+            recovery_drag_area_m2: if phase == Phase::Descent {
+                recovery_drag_area_m2
+            } else {
+                0.0
+            },
         })
     }
 
@@ -489,6 +532,34 @@ struct Aerodynamics {
     axial_coefficient: f64,
 }
 
+/// The drag of the open recovery devices: `D = −½ ρ (C_D S) |v| v` on the centre of mass's air
+/// velocity `air_velocity_cg_body` (body axes), with no moment about it.
+///
+/// Source: Knacke's steady drag on the drag area `C_D S` (`docs/physics/recovery.md`), the same
+/// form RocketPy's parachute phase uses (`flight.py:2770-2774`, MIT). The airframe's own drag is
+/// left out, as RocketPy leaves it out: the rocket's attitude under a canopy is not modelled.
+fn canopy_drag(
+    air: &hpr_atmos::AirState,
+    air_velocity_cg_body: DVec3,
+    drag_area_m2: f64,
+) -> Aerodynamics {
+    let speed = air_velocity_cg_body.length();
+    let rho = air.density_kg_m3;
+    let mut out = Aerodynamics {
+        airspeed_m_s: speed,
+        mach: speed / air.speed_of_sound_m_s,
+        ..Aerodynamics::default()
+    };
+    if rho <= 0.0 || speed < MIN_AIRSPEED_M_S || drag_area_m2 <= 0.0 {
+        return out;
+    }
+    let (alpha, _) = flow_angles(air_velocity_cg_body, speed);
+    out.angle_of_attack_rad = alpha;
+    out.dynamic_pressure_pa = 0.5 * rho * speed * speed;
+    out.force = air_velocity_cg_body * (-0.5 * rho * drag_area_m2 * speed);
+    out
+}
+
 /// The total angle of attack and the flow roll of a body moving at `v` (body axes) through still
 /// air: `α` between `z_B` and `v`, and `φ` the direction the air crosses the body, from `x_B`
 /// toward `y_B`, which is opposite the lateral velocity (`docs/physics/frames.md`).
@@ -566,8 +637,11 @@ mod tests {
                 .evaluate(
                     &environment,
                     mu,
-                    Phase::Rail,
-                    (1.0, 2.0),
+                    Conditions {
+                        phase: Phase::Rail,
+                        window: (1.0, 2.0),
+                        drag_area_m2: 0.0,
+                    },
                     1.5,
                     &state.to_array(),
                 )
@@ -604,7 +678,17 @@ mod tests {
             body_rate_rad_s: DVec3::new(0.0, rate, 0.0),
         };
         let evaluation = vehicle
-            .evaluate(&environment, 0.0, Phase::Free, window, t, &state.to_array())
+            .evaluate(
+                &environment,
+                0.0,
+                Conditions {
+                    phase: Phase::Free,
+                    window,
+                    drag_area_m2: 0.0,
+                },
+                t,
+                &state.to_array(),
+            )
             .unwrap();
         let omega_dot = DVec3::from_slice(&evaluation.derivative[10..13]);
 

@@ -1,0 +1,880 @@
+{
+ "oracle": "rocketpy 1.13.0",
+ "generator": "validation/oracles/rocketpy/recovery.py",
+ "command": "refs/venv/bin/python validation/oracles/rocketpy/recovery.py",
+ "model": "Flight.u_dot_parachute (flight.py:2710-2790): a point mass of the rocket's dry mass under the last deployed parachute's C_D S, with an added mass that carries no weight, the wind and density at the height above sea level, Somigliana gravity and Earth's rotation",
+ "overrides": "every parachute's noise is zero (RocketPy's noise draws from the global np.random), and the first device's lag is zero so that the descent starts where both models agree",
+ "mass_fixture": {
+  "file": "validation/fixtures/design/rocketpy-rocket-mass.json",
+  "generator": "validation/oracles/rocketpy/rocket_mass.py",
+  "thrust_curves": "bundled public-domain substitutes (crates/hpr-motor/data/thrustcurve)"
+ },
+ "cases": [
+  {
+   "name": "calisto-tests-motor-at-minus-1.373",
+   "source": "tests/fixtures/rockets/rocket_fixtures.py:18-26 (rocket), :50 (add_motor), :171-183 (surfaces, rail buttons, parachutes); tests/fixtures/motor/solid_motor_fixtures.py:20-38 (motor); tests/fixtures/surfaces/surface_fixtures.py:25-72; tests/fixtures/parachutes/parachute_fixtures.py:16-87; site and wind: tests/fixtures/environment/environment_fixtures.py:36-42 (elevation, latitude, longitude); wind from tests/fixtures/flight/flight_fixtures.py:206-212",
+   "design": "validation/designs/rocketpy-calisto-tests-motor-at-minus-1.373.json",
+   "thrust_substitute": {
+    "file": "crates/hpr-motor/data/thrustcurve/curves/5f4294d20002e90000000867.eng",
+    "sha256": "cbe7c9030d20d878da9b000aa57ee382b708eaa51e16f7a62b5f7a5ec5f158fe",
+    "example_file": "Cesaroni_M1670.eng"
+   },
+   "environment": {
+    "latitude_deg": 32.990254,
+    "longitude_deg": -106.974998,
+    "elevation_m": 1400,
+    "atmosphere": "rocketpy standard atmosphere (custom_atmosphere with no pressure or temperature given)",
+    "gravity": "rocketpy Somigliana normal gravity (environment.py:938-985)",
+    "wind_u": 5,
+    "wind_v": 2,
+    "samples": [
+     {
+      "height_above_ground_m": 0.0,
+      "height_msl_m": 1400.0,
+      "pressure_pa": 85596.6788165608,
+      "temperature_k": 279.0656943290321,
+      "density_kg_m3": 1.0685345497124046,
+      "gravity_m_s2": 9.79133308624842,
+      "wind_east_m_s": 5.0,
+      "wind_north_m_s": 2.0
+     },
+     {
+      "height_above_ground_m": 100.0,
+      "height_msl_m": 1500.0,
+      "pressure_pa": 84556.9685725944,
+      "temperature_k": 278.41681535253446,
+      "density_kg_m3": 1.0580155480683846,
+      "gravity_m_s2": 9.791024656723124,
+      "wind_east_m_s": 5.0,
+      "wind_north_m_s": 2.0
+     },
+     {
+      "height_above_ground_m": 500.0,
+      "height_msl_m": 1900.0,
+      "pressure_pa": 80495.49389762929,
+      "temperature_k": 275.8212994465436,
+      "density_kg_m3": 1.0166743713950648,
+      "gravity_m_s2": 9.789791076642468,
+      "wind_east_m_s": 5.0,
+      "wind_north_m_s": 2.0
+     },
+     {
+      "height_above_ground_m": 1000.0,
+      "height_msl_m": 2400.0,
+      "pressure_pa": 75634.35135057251,
+      "temperature_k": 272.5769045640551,
+      "density_kg_m3": 0.966647513220715,
+      "gravity_m_s2": 9.788249415141136,
+      "wind_east_m_s": 5.0,
+      "wind_north_m_s": 2.0
+     },
+     {
+      "height_above_ground_m": 2000.0,
+      "height_msl_m": 3400.0,
+      "pressure_pa": 66630.67776988957,
+      "temperature_k": 266.0881147990781,
+      "density_kg_m3": 0.8723421573570544,
+      "gravity_m_s2": 9.785167182032426,
+      "wind_east_m_s": 5.0,
+      "wind_north_m_s": 2.0
+     },
+     {
+      "height_above_ground_m": 3000.0,
+      "height_msl_m": 4400.0,
+      "pressure_pa": 58517.43974608721,
+      "temperature_k": 259.59932503410107,
+      "density_kg_m3": 0.7852715515195868,
+      "gravity_m_s2": 9.782086393398554,
+      "wind_east_m_s": 5.0,
+      "wind_north_m_s": 2.0
+     }
+    ]
+   },
+   "dry_mass_kg": 16.241,
+   "devices": [
+    {
+     "name": "calisto_drogue_chute",
+     "cd_s_m2": 1.0,
+     "trigger": {
+      "kind": "apogee"
+     },
+     "sampling_rate_hz": 105.0,
+     "lag_s": 0.0,
+     "example_lag_s": 1.5,
+     "example_noise": [
+      0,
+      8.3,
+      0.5
+     ],
+     "added_mass_kg_at_start": 0.17830411237594748
+    },
+    {
+     "name": "calisto_main_chute",
+     "cd_s_m2": 10.0,
+     "trigger": {
+      "kind": "descending_below_height_agl",
+      "height_m": 800
+     },
+     "sampling_rate_hz": 105.0,
+     "lag_s": 1.5,
+     "example_lag_s": 1.5,
+     "example_noise": [
+      0,
+      8.3,
+      0.5
+     ],
+     "added_mass_kg_at_start": 5.638471112826111
+    }
+   ],
+   "start": {
+    "time_s": 60.007,
+    "height_above_ground_m": 3000.0,
+    "position_msl_m": [
+     0.0,
+     0.0,
+     4400.0
+    ],
+    "velocity_m_s": [
+     5.0,
+     2.0,
+     -0.5
+    ]
+   },
+   "events": [
+    {
+     "name": "calisto_drogue_chute",
+     "trigger_s": 60.00952380952381,
+     "deploy_s": 60.00952380952381,
+     "lag_s": 0.0,
+     "vertical_speed_at_trigger_m_s": -0.5246866806169691,
+     "height_above_ground_at_trigger_m": 2999.9987069366225
+    },
+    {
+     "name": "calisto_main_chute",
+     "trigger_s": 177.17142857142858,
+     "deploy_s": 178.67142857142858,
+     "lag_s": 1.5,
+     "vertical_speed_at_trigger_m_s": -17.96835673245937,
+     "height_above_ground_at_trigger_m": 800.070500867098
+    }
+   ],
+   "impact": {
+    "time_s": 317.08068795301034,
+    "east_m": 1286.0301835192645,
+    "north_m": 514.010420876274,
+    "vertical_speed_m_s": -5.456019565444218
+   },
+   "metrics": {
+    "descent_time_s": 257.07368795301034,
+    "impact_speed_m_s": 5.456019565444218,
+    "drift_east_m": 1286.0301835192645,
+    "drift_north_m": 514.010420876274,
+    "drift_m": 1384.9477772436032,
+    "mean_descent_rate_m_s": 11.66980574281239
+   },
+   "solver": {
+    "rtol": 1e-08,
+    "atol": 1e-08,
+    "max_time": 6000,
+    "integrator": "LSODA",
+    "source": "flight.py:489-509, :611-628",
+    "loose": {
+     "rtol": 1e-06,
+     "atol": 1e-06,
+     "max_time": 6000
+    },
+    "loose_metrics": {
+     "descent_time_s": 257.0728110464246,
+     "impact_speed_m_s": 5.456014863681383,
+     "drift_east_m": 1286.0258004058576,
+     "drift_north_m": 514.0086671398125,
+     "drift_m": 1384.9430563038948,
+     "mean_descent_rate_m_s": 11.669845549937337
+    },
+    "relative_change_from_loose": {
+     "descent_time_s": 3.4111098367457413e-06,
+     "impact_speed_m_s": 8.617569601193186e-07,
+     "drift_east_m": 3.40825080396465e-06,
+     "drift_north_m": 3.4118694685876716e-06,
+     "drift_m": 3.4087492583099093e-06,
+     "mean_descent_rate_m_s": 3.4111214723485784e-06
+    },
+    "worst_relative_change_from_loose": 3.4118694685876716e-06
+   }
+  },
+  {
+   "name": "valetudo",
+   "source": "docs/examples/valetudo_flight_sim.ipynb:72-110 (parameters), :245-263 (motor), :334-347 (rocket, rail buttons, add_motor), :363-374 (nose, fins), :390-397 (parachute); site and wind: docs/examples/valetudo_flight_sim.ipynb (elevation, latitude, longitude; the example's set_atmospheric_model call is commented out, leaving no wind)",
+   "design": "validation/designs/rocketpy-valetudo.json",
+   "thrust_substitute": {
+    "file": "crates/hpr-motor/data/thrustcurve/curves/5f4294d20002e9000000086c.eng",
+    "sha256": "44c000f296691383b8ec93481311630e0db25937a27c1ad2fd4f09712ed7543d",
+    "example_file": "keron_thrust_curve.csv"
+   },
+   "environment": {
+    "latitude_deg": -23.363611,
+    "longitude_deg": -48.011389,
+    "elevation_m": 668,
+    "atmosphere": "rocketpy standard atmosphere (custom_atmosphere with no pressure or temperature given)",
+    "gravity": "rocketpy Somigliana normal gravity (environment.py:938-985)",
+    "wind_u": 0,
+    "wind_v": 0,
+    "samples": [
+     {
+      "height_above_ground_m": 0.0,
+      "height_msl_m": 668.0,
+      "pressure_pa": 93566.48463563851,
+      "temperature_k": 283.81548843699534,
+      "density_kg_m3": 1.1484770667769877,
+      "gravity_m_s2": 9.786388824688006,
+      "wind_east_m_s": 0.0,
+      "wind_north_m_s": 0.0
+     },
+     {
+      "height_above_ground_m": 100.0,
+      "height_msl_m": 768.0,
+      "pressure_pa": 92436.85033618075,
+      "temperature_k": 283.1666094604976,
+      "density_kg_m3": 1.1372114007710672,
+      "gravity_m_s2": 9.786080214949807,
+      "wind_east_m_s": 0.0,
+      "wind_north_m_s": 0.0
+     },
+     {
+      "height_above_ground_m": 500.0,
+      "height_msl_m": 1168.0,
+      "pressure_pa": 88050.72060232637,
+      "temperature_k": 280.57109355450683,
+      "density_kg_m3": 1.0932716749508105,
+      "gravity_m_s2": 9.784845950304744,
+      "wind_east_m_s": 0.0,
+      "wind_north_m_s": 0.0
+     }
+    ]
+   },
+   "dry_mass_kg": 8.258,
+   "devices": [
+    {
+     "name": "Drogue",
+     "cd_s_m2": 0.4537,
+     "trigger": {
+      "kind": "apogee"
+     },
+     "sampling_rate_hz": 105.0,
+     "lag_s": 0.0,
+     "example_lag_s": 1.0,
+     "example_noise": [
+      0,
+      8.3,
+      0.5
+     ],
+     "added_mass_kg_at_start": 0.07364829028180128
+    }
+   ],
+   "start": {
+    "time_s": 60.007,
+    "height_above_ground_m": 800.0,
+    "position_msl_m": [
+     0.0,
+     0.0,
+     1468.0
+    ],
+    "velocity_m_s": [
+     0.0,
+     0.0,
+     -0.5
+    ]
+   },
+   "events": [
+    {
+     "name": "Drogue",
+     "trigger_s": 60.00952380952381,
+     "deploy_s": 60.00952380952381,
+     "lag_s": 0.0,
+     "vertical_speed_at_trigger_m_s": -0.5246928609906432,
+     "height_above_ground_at_trigger_m": 799.998706931339
+    }
+   ],
+   "impact": {
+    "time_s": 105.77132165907078,
+    "east_m": 0.1912406843759503,
+    "north_m": 1.965298267377511e-05,
+    "vertical_speed_m_s": -17.626261225429708
+   },
+   "metrics": {
+    "descent_time_s": 45.76432165907078,
+    "impact_speed_m_s": 17.626261225429708,
+    "drift_east_m": 0.1912406843759503,
+    "drift_north_m": 1.965298267377511e-05,
+    "drift_m": 0.19124068538577654,
+    "mean_descent_rate_m_s": 17.480866557134576
+   },
+   "solver": {
+    "rtol": 1e-08,
+    "atol": 1e-08,
+    "max_time": 6000,
+    "integrator": "LSODA",
+    "source": "flight.py:489-509, :611-628",
+    "loose": {
+     "rtol": 1e-06,
+     "atol": 1e-06,
+     "max_time": 6000
+    },
+    "loose_metrics": {
+     "descent_time_s": 45.764254448163065,
+     "impact_speed_m_s": 17.626264284181087,
+     "drift_east_m": 0.19124134758539435,
+     "drift_north_m": 1.9694438028479694e-05,
+     "drift_m": 0.19124134859948178,
+     "mean_descent_rate_m_s": 17.480892230117195
+    },
+    "relative_change_from_loose": {
+     "descent_time_s": 1.468631136204201e-06,
+     "impact_speed_m_s": 1.7353375961495764e-07,
+     "drift_east_m": 3.46793071893384e-06,
+     "drift_north_m": 0.00210936708146097,
+     "drift_m": 3.4679529823592733e-06,
+     "mean_descent_rate_m_s": 1.4686332932000658e-06
+    },
+    "worst_relative_change_from_loose": 0.00210936708146097
+   }
+  },
+  {
+   "name": "ndrt-2020-nose-to-tail",
+   "source": "docs/examples/ndrt_2020_flight_sim.ipynb:73-122 (parameters), :199-217 (motor), :308-323 (rocket, rail buttons, add_motor), :339-358 (nose, fins, transition), :374-389 (parachutes); site and wind: docs/examples/ndrt_2020_flight_sim.ipynb (elevation, latitude, longitude); the wind profile is declared by this script",
+   "design": "validation/designs/rocketpy-ndrt-2020-nose-to-tail.json",
+   "thrust_substitute": {
+    "file": "crates/hpr-motor/data/thrustcurve/curves/5f4294d20002e9000000085f.eng",
+    "sha256": "55bf15bdfae33a02fa2f19b7ce19fb61c4031213f6669291bffe3487cdaa9014",
+    "example_file": "Cesaroni_4895L1395-P.eng"
+   },
+   "environment": {
+    "latitude_deg": 41.775447,
+    "longitude_deg": -86.572467,
+    "elevation_m": 206,
+    "atmosphere": "rocketpy standard atmosphere (custom_atmosphere with no pressure or temperature given)",
+    "gravity": "rocketpy Somigliana normal gravity (environment.py:938-985)",
+    "wind_u": [
+     [
+      206,
+      2.0
+     ],
+     [
+      706,
+      6.0
+     ],
+     [
+      1206,
+      11.0
+     ]
+    ],
+    "wind_v": [
+     [
+      206,
+      -3.0
+     ],
+     [
+      706,
+      -1.0
+     ],
+     [
+      1206,
+      4.0
+     ]
+    ],
+    "samples": [
+     {
+      "height_above_ground_m": 0.0,
+      "height_msl_m": 206.0,
+      "pressure_pa": 98908.40420878505,
+      "temperature_k": 286.8133093084147,
+      "density_kg_m3": 1.2013567728357901,
+      "gravity_m_s2": 9.80265045928233,
+      "wind_east_m_s": 2.0,
+      "wind_north_m_s": -3.0
+     },
+     {
+      "height_above_ground_m": 100.0,
+      "height_msl_m": 306.0,
+      "pressure_pa": 97739.81985943564,
+      "temperature_k": 286.164430331917,
+      "density_kg_m3": 1.1898548633349233,
+      "gravity_m_s2": 9.802341921494754,
+      "wind_east_m_s": 2.8,
+      "wind_north_m_s": -2.6
+     },
+     {
+      "height_above_ground_m": 500.0,
+      "height_msl_m": 706.0,
+      "pressure_pa": 93135.76753744447,
+      "temperature_k": 283.5689144259262,
+      "density_kg_m3": 1.1441842992403266,
+      "gravity_m_s2": 9.801107862454785,
+      "wind_east_m_s": 6.0,
+      "wind_north_m_s": -1.0
+     },
+     {
+      "height_above_ground_m": 1000.0,
+      "height_msl_m": 1206.0,
+      "pressure_pa": 87644.5491165591,
+      "temperature_k": 280.3245195434377,
+      "density_kg_m3": 1.0891857012472843,
+      "gravity_m_s2": 9.799565635849916,
+      "wind_east_m_s": 11.0,
+      "wind_north_m_s": 4.0
+     }
+    ]
+   },
+   "dry_mass_kg": 20.846,
+   "devices": [
+    {
+     "name": "Drogue",
+     "cd_s_m2": 0.43779526194023793,
+     "trigger": {
+      "kind": "apogee"
+     },
+     "sampling_rate_hz": 105.0,
+     "lag_s": 0.0,
+     "example_lag_s": 1.0,
+     "example_noise": [
+      0,
+      8.3,
+      0.5
+     ],
+     "added_mass_kg_at_start": 0.07163908206043447
+    },
+    {
+     "name": "Main",
+     "cd_s_m2": 16.05249293780873,
+     "trigger": {
+      "kind": "descending_below_height_agl",
+      "height_m": 167.64
+     },
+     "sampling_rate_hz": 105.0,
+     "lag_s": 1.0,
+     "example_lag_s": 1.0,
+     "example_noise": [
+      0,
+      8.3,
+      0.5
+     ],
+     "added_mass_kg_at_start": 15.905860092282872
+    }
+   ],
+   "start": {
+    "time_s": 60.007,
+    "height_above_ground_m": 1000.0,
+    "position_msl_m": [
+     0.0,
+     0.0,
+     1206.0
+    ],
+    "velocity_m_s": [
+     11.0,
+     4.0,
+     -0.5
+    ]
+   },
+   "events": [
+    {
+     "name": "Drogue",
+     "trigger_s": 60.00952380952381,
+     "deploy_s": 60.00952380952381,
+     "lag_s": 0.0,
+     "vertical_speed_at_trigger_m_s": -0.5247294977660704,
+     "height_above_ground_at_trigger_m": 999.9987068857333
+    },
+    {
+     "name": "Main",
+     "trigger_s": 91.00000000000001,
+     "deploy_s": 92.00000000000001,
+     "lag_s": 1.0,
+     "vertical_speed_at_trigger_m_s": -28.15162510219395,
+     "height_above_ground_at_trigger_m": 167.92790176499807
+    }
+   ],
+   "impact": {
+    "time_s": 121.17202615676062,
+    "east_m": 323.2342316429894,
+    "north_m": -49.41782680785443,
+    "vertical_speed_m_s": -4.603800806559603
+   },
+   "metrics": {
+    "descent_time_s": 61.165026156760625,
+    "impact_speed_m_s": 4.603800806559603,
+    "drift_east_m": 323.2342316429894,
+    "drift_north_m": -49.41782680785443,
+    "drift_m": 326.9900458916828,
+    "mean_descent_rate_m_s": 16.349212333157304
+   },
+   "solver": {
+    "rtol": 1e-08,
+    "atol": 1e-08,
+    "max_time": 6000,
+    "integrator": "LSODA",
+    "source": "flight.py:489-509, :611-628",
+    "loose": {
+     "rtol": 1e-06,
+     "atol": 1e-06,
+     "max_time": 6000
+    },
+    "loose_metrics": {
+     "descent_time_s": 61.16502181506002,
+     "impact_speed_m_s": 4.603800856920229,
+     "drift_east_m": 323.2342993851088,
+     "drift_north_m": -49.41776429748758,
+     "drift_m": 326.99010340856523,
+     "mean_descent_rate_m_s": 16.349213493679823
+    },
+    "relative_change_from_loose": {
+     "descent_time_s": 7.098338503881869e-08,
+     "impact_speed_m_s": 1.0938923730137039e-08,
+     "drift_east_m": 2.0957594443405508e-07,
+     "drift_north_m": 1.2649355686079785e-06,
+     "drift_m": 1.7589796120620842e-07,
+     "mean_descent_rate_m_s": 7.098339022846785e-08
+    },
+    "worst_relative_change_from_loose": 1.2649355686079785e-06
+   }
+  },
+  {
+   "name": "prometheus-2022-generic-motor",
+   "source": "docs/examples/prometheus_2022_flight_sim.ipynb:194-205 (motor), :252-268 (rocket, rail buttons, add_motor), :269-277 (nose, fins), :278-287 (parachutes); site and wind: docs/examples/prometheus_flight_sim.ipynb (elevation, latitude, longitude); the wind is declared by this script",
+   "design": "validation/designs/rocketpy-prometheus-2022-generic-motor.json",
+   "thrust_substitute": {
+    "file": "crates/hpr-motor/data/thrustcurve/curves/5f4294d20002e90000000741.eng",
+    "sha256": "e26c4b679382eed11a49ad8d0b239a21dccb61b4cd88124f5128b932b38c8150",
+    "example_file": "Cesaroni_7579M1520-P.eng"
+   },
+   "environment": {
+    "latitude_deg": 32.939377,
+    "longitude_deg": -106.911986,
+    "elevation_m": 1401,
+    "atmosphere": "rocketpy standard atmosphere (custom_atmosphere with no pressure or temperature given)",
+    "gravity": "rocketpy Somigliana normal gravity (environment.py:938-985)",
+    "wind_u": -4,
+    "wind_v": 7,
+    "samples": [
+     {
+      "height_above_ground_m": 0.0,
+      "height_msl_m": 1401.0,
+      "pressure_pa": 85586.23002065839,
+      "temperature_k": 279.05920553926717,
+      "density_kg_m3": 1.0684289565184875,
+      "gravity_m_s2": 9.791288027439384,
+      "wind_east_m_s": -4.0,
+      "wind_north_m_s": 7.0
+     },
+     {
+      "height_above_ground_m": 100.0,
+      "height_msl_m": 1501.0,
+      "pressure_pa": 84546.62325375646,
+      "temperature_k": 278.41032656276946,
+      "density_kg_m3": 1.0579107583937395,
+      "gravity_m_s2": 9.790979597709796,
+      "wind_east_m_s": -4.0,
+      "wind_north_m_s": 7.0
+     },
+     {
+      "height_above_ground_m": 500.0,
+      "height_msl_m": 1901.0,
+      "pressure_pa": 80485.53087161585,
+      "temperature_k": 275.81481065677866,
+      "density_kg_m3": 1.0165724515733394,
+      "gravity_m_s2": 9.789746016781766,
+      "wind_east_m_s": -4.0,
+      "wind_north_m_s": 7.0
+     },
+     {
+      "height_above_ground_m": 1000.0,
+      "height_msl_m": 2401.0,
+      "pressure_pa": 75624.87299620017,
+      "temperature_k": 272.57041577429015,
+      "density_kg_m3": 0.9665493838265334,
+      "gravity_m_s2": 9.788204354250055,
+      "wind_east_m_s": -4.0,
+      "wind_north_m_s": 7.0
+     },
+     {
+      "height_above_ground_m": 2000.0,
+      "height_msl_m": 3401.0,
+      "pressure_pa": 66622.13225168329,
+      "temperature_k": 266.0816260093131,
+      "density_kg_m3": 0.8722515483353863,
+      "gravity_m_s2": 9.785122119100429,
+      "wind_east_m_s": -4.0,
+      "wind_north_m_s": 7.0
+     },
+     {
+      "height_above_ground_m": 3000.0,
+      "height_msl_m": 4401.0,
+      "pressure_pa": 58509.749038319016,
+      "temperature_k": 259.59283624433607,
+      "density_kg_m3": 0.7851879725812061,
+      "gravity_m_s2": 9.7820413284111,
+      "wind_east_m_s": -4.0,
+      "wind_north_m_s": 7.0
+     }
+    ]
+   },
+   "dry_mass_kg": 16.911,
+   "devices": [
+    {
+     "name": "Drogue",
+     "cd_s_m2": 0.46698161273625394,
+     "trigger": {
+      "kind": "apogee"
+     },
+     "sampling_rate_hz": 100.0,
+     "lag_s": 0.0,
+     "example_lag_s": 0.0,
+     "example_noise": [
+      0,
+      0,
+      0
+     ],
+     "added_mass_kg_at_start": 0.0568937820879074
+    },
+    {
+     "name": "Main",
+     "cd_s_m2": 5.7788974576111425,
+     "trigger": {
+      "kind": "descending_below_height_agl",
+      "height_m": 457.2
+     },
+     "sampling_rate_hz": 100.0,
+     "lag_s": 0.0,
+     "example_lag_s": 0.0,
+     "example_noise": [
+      0,
+      0,
+      0
+     ],
+     "added_mass_kg_at_start": 2.476752536434406
+    }
+   ],
+   "start": {
+    "time_s": 60.007,
+    "height_above_ground_m": 3000.0,
+    "position_msl_m": [
+     0.0,
+     0.0,
+     4401.0
+    ],
+    "velocity_m_s": [
+     -4.0,
+     7.0,
+     -0.5
+    ]
+   },
+   "events": [
+    {
+     "name": "Drogue",
+     "trigger_s": 60.02,
+     "deploy_s": 60.02,
+     "lag_s": 0.0,
+     "vertical_speed_at_trigger_m_s": -0.6271736398794009,
+     "height_above_ground_at_trigger_m": 2999.992673359672
+    },
+    {
+     "name": "Main",
+     "trigger_s": 152.4,
+     "deploy_s": 152.4,
+     "lag_s": 0.0,
+     "vertical_speed_at_trigger_m_s": -26.40142087318187,
+     "height_above_ground_at_trigger_m": 457.257281788784
+    }
+   ],
+   "impact": {
+    "time_s": 213.38007949253225,
+    "east_m": -612.3894052360855,
+    "north_m": 1073.7115764220164,
+    "vertical_speed_m_s": -7.324998675844104
+   },
+   "metrics": {
+    "descent_time_s": 153.37307949253224,
+    "impact_speed_m_s": 7.324998675844104,
+    "drift_east_m": -612.3894052360855,
+    "drift_north_m": 1073.7115764220164,
+    "drift_m": 1236.0733525920127,
+    "mean_descent_rate_m_s": 19.56014712572861
+   },
+   "solver": {
+    "rtol": 1e-08,
+    "atol": 1e-08,
+    "max_time": 6000,
+    "integrator": "LSODA",
+    "source": "flight.py:489-509, :611-628",
+    "loose": {
+     "rtol": 1e-06,
+     "atol": 1e-06,
+     "max_time": 6000
+    },
+    "loose_metrics": {
+     "descent_time_s": 153.37263194916892,
+     "impact_speed_m_s": 7.324997590272017,
+     "drift_east_m": -612.3875837367217,
+     "drift_north_m": 1073.7084590315535,
+     "drift_m": 1236.0697422519547,
+     "mean_descent_rate_m_s": 19.56020420249596
+    },
+    "relative_change_from_loose": {
+     "descent_time_s": 2.9180046772389884e-06,
+     "impact_speed_m_s": 1.482009943447032e-07,
+     "drift_east_m": 2.9744135810313566e-06,
+     "drift_north_m": 2.903377900854981e-06,
+     "drift_m": 2.920813761118963e-06,
+     "mean_descent_rate_m_s": 2.9180131920625486e-06
+    },
+    "worst_relative_change_from_loose": 2.9744135810313566e-06
+   }
+  },
+  {
+   "name": "juno-iii",
+   "source": "docs/examples/juno3_flight_sim.ipynb:168-185 (motor), :246-255 (rocket, add_motor), :275-331 (nose, fins, tail, rail buttons), :340-347 (parachute); site and wind: docs/examples/juno3_flight_sim.ipynb (elevation, latitude, longitude); the wind is declared by this script",
+   "design": "validation/designs/rocketpy-juno-iii.json",
+   "thrust_substitute": {
+    "file": "crates/hpr-motor/data/thrustcurve/curves/5f4294d20002e90000000741.eng",
+    "sha256": "e26c4b679382eed11a49ad8d0b239a21dccb61b4cd88124f5128b932b38c8150",
+    "example_file": "mandioca_thrust_curve.csv"
+   },
+   "environment": {
+    "latitude_deg": 32.939377,
+    "longitude_deg": -106.911986,
+    "elevation_m": 1480,
+    "atmosphere": "rocketpy standard atmosphere (custom_atmosphere with no pressure or temperature given)",
+    "gravity": "rocketpy Somigliana normal gravity (environment.py:938-985)",
+    "wind_u": 8,
+    "wind_v": -3,
+    "samples": [
+     {
+      "height_above_ground_m": 0.0,
+      "height_msl_m": 1480.0,
+      "pressure_pa": 84764.08711282296,
+      "temperature_k": 278.54659114783396,
+      "density_kg_m3": 1.060112969751934,
+      "gravity_m_s2": 9.791044366762277,
+      "wind_east_m_s": 8.0,
+      "wind_north_m_s": -3.0
+     },
+     {
+      "height_above_ground_m": 100.0,
+      "height_msl_m": 1580.0,
+      "pressure_pa": 83732.47591394141,
+      "temperature_k": 277.89771217133625,
+      "density_kg_m3": 1.0496561832236506,
+      "gravity_m_s2": 9.790735948229825,
+      "wind_east_m_s": 8.0,
+      "wind_north_m_s": -3.0
+     },
+     {
+      "height_above_ground_m": 500.0,
+      "height_msl_m": 1980.0,
+      "pressure_pa": 79701.47730385952,
+      "temperature_k": 275.30219626534546,
+      "density_kg_m3": 1.0085438881992825,
+      "gravity_m_s2": 9.78950241050779,
+      "wind_east_m_s": 8.0,
+      "wind_north_m_s": -3.0
+     },
+     {
+      "height_above_ground_m": 1000.0,
+      "height_msl_m": 2480.0,
+      "pressure_pa": 74879.1880110487,
+      "temperature_k": 272.05780138285695,
+      "density_kg_m3": 0.958822129377795,
+      "gravity_m_s2": 9.787960804633192,
+      "wind_east_m_s": 8.0,
+      "wind_north_m_s": -3.0
+     }
+    ]
+   },
+   "dry_mass_kg": 24.05000000001,
+   "devices": [
+    {
+     "name": "Drogue",
+     "cd_s_m2": 0.885,
+     "trigger": {
+      "kind": "apogee"
+     },
+     "sampling_rate_hz": 105.0,
+     "lag_s": 0.0,
+     "example_lag_s": 0.5,
+     "example_noise": [
+      0,
+      8.3,
+      0.5
+     ],
+     "added_mass_kg_at_start": 0.17760004185891046
+    }
+   ],
+   "start": {
+    "time_s": 60.007,
+    "height_above_ground_m": 1200.0,
+    "position_msl_m": [
+     0.0,
+     0.0,
+     2680.0
+    ],
+    "velocity_m_s": [
+     8.0,
+     -3.0,
+     -0.5
+    ]
+   },
+   "events": [
+    {
+     "name": "Drogue",
+     "trigger_s": 60.00952380952381,
+     "deploy_s": 60.00952380952381,
+     "lag_s": 0.0,
+     "vertical_speed_at_trigger_m_s": -0.5246990086386872,
+     "height_above_ground_at_trigger_m": 1199.9987069229528
+    }
+   ],
+   "impact": {
+    "time_s": 113.57352383503083,
+    "east_m": 428.8380897329483,
+    "north_m": -160.77788270938456,
+    "vertical_speed_m_s": -22.43230014341138
+   },
+   "metrics": {
+    "descent_time_s": 53.56652383503083,
+    "impact_speed_m_s": 22.43230014341138,
+    "drift_east_m": 428.8380897329483,
+    "drift_north_m": -160.77788270938456,
+    "drift_m": 457.9865006463802,
+    "mean_descent_rate_m_s": 22.402051021560553
+   },
+   "solver": {
+    "rtol": 1e-08,
+    "atol": 1e-08,
+    "max_time": 6000,
+    "integrator": "LSODA",
+    "source": "flight.py:489-509, :611-628",
+    "loose": {
+     "rtol": 1e-06,
+     "atol": 1e-06,
+     "max_time": 6000
+    },
+    "loose_metrics": {
+     "descent_time_s": 53.56643805458186,
+     "impact_speed_m_s": 22.432290440897184,
+     "drift_east_m": 428.8374041653757,
+     "drift_north_m": -160.77762534698084,
+     "drift_m": 457.985768363507,
+     "mean_descent_rate_m_s": 22.4020868958517
+    },
+    "relative_change_from_loose": {
+     "descent_time_s": 1.6013816620612557e-06,
+     "impact_speed_m_s": 4.325242678064113e-07,
+     "drift_east_m": 1.5986629662856627e-06,
+     "drift_north_m": 1.6007326342307343e-06,
+     "drift_m": 1.598918029547931e-06,
+     "mean_descent_rate_m_s": 1.6013842264742366e-06
+    },
+    "worst_relative_change_from_loose": 1.6013842264742366e-06
+   }
+  }
+ ]
+}

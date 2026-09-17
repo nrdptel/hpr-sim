@@ -246,6 +246,16 @@ pub(crate) fn design(name: &str) -> Rocket {
             include_str!("../../../validation/designs/synthetic-54mm-three-fin.json")
         }
         "rocketpy-valetudo" => include_str!("../../../validation/designs/rocketpy-valetudo.json"),
+        "rocketpy-calisto-tests-motor-at-minus-1.373" => include_str!(
+            "../../../validation/designs/rocketpy-calisto-tests-motor-at-minus-1.373.json"
+        ),
+        "rocketpy-ndrt-2020-nose-to-tail" => {
+            include_str!("../../../validation/designs/rocketpy-ndrt-2020-nose-to-tail.json")
+        }
+        "rocketpy-prometheus-2022-generic-motor" => {
+            include_str!("../../../validation/designs/rocketpy-prometheus-2022-generic-motor.json")
+        }
+        "rocketpy-juno-iii" => include_str!("../../../validation/designs/rocketpy-juno-iii.json"),
         _ => panic!("no design {name}"),
     };
     serde_json::from_str(text).unwrap()
@@ -296,6 +306,30 @@ pub(crate) fn analytic_environment(air: UniformAir, g_mps2: f64) -> Environment 
     )
     .unwrap();
     Environment::new(earth, air, ConstantWind::calm())
+}
+
+/// [`analytic_environment`] with Earth's rotation on, so the Coriolis force acts.
+pub(crate) fn rotating_analytic_environment(air: UniformAir, g_mps2: f64) -> Environment {
+    let earth = Earth::new(
+        NormalGravity::wgs84(),
+        site(),
+        GravityModel::Constant { g_mps2 },
+        EarthRotation::Coriolis,
+    )
+    .unwrap();
+    Environment::new(earth, air, ConstantWind::calm())
+}
+
+/// An analytic environment ([`analytic_environment`]) with `wind` in place of calm air.
+pub(crate) fn analytic_wind_environment(
+    air: UniformAir,
+    g_mps2: f64,
+    wind: impl Wind + 'static,
+) -> Environment {
+    Environment {
+        wind: std::sync::Arc::new(wind),
+        ..analytic_environment(air, g_mps2)
+    }
 }
 
 /// A standard environment at [`site`] with `wind`.

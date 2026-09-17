@@ -145,6 +145,13 @@ excellent offline test fixtures for the weather-file readers.
 | motor.fusionspace.co API v1 | live US stock and prices (AeroTech, Cesaroni, Loki) | free to use, attribution appreciated | `https://motor.fusionspace.co/api/v1/{meta,motors,in-stock,vendors}.json`, `/motors/{mfr}/{designation}.json` (`/` becomes `~`), `/openapi.json`. Refreshed hourly, CORS-open, no key. Prices are in integer cents. `schema_version` is 1. Docs: https://github.com/nrdptel/Hobby-Rocket-Motor-Finder/blob/main/docs/api.md |
 | Certification | `certOrg` field in ThrustCurve | — | no machine-readable NAR/TRA/CAR lists |
 
+## Recovery
+
+| source | what | license | notes |
+|---|---|---|---|
+| RocketPy `Flight` parachute phase | descent rate, descent time and drift for five example rockets (Calisto, Valetudo, NDRT 2020, Prometheus 2022, Juno III) | MIT | `validation/oracles/rocketpy/recovery.py` → `validation/fixtures/recovery/rocketpy-descent.json`, replayed by `hpr_sim::recovery::tests::descent_matches_rocketpy_examples`. Both start from the same declared post-burnout state with the first device open, the same drag areas, triggers and declared wind, and RocketPy's noise zeroed. Agreement: descent time within 0.71%, impact descent rate within 0.03%, drift magnitude within 0.27%, the worst single drift component 2.87% (NDRT's 49 m north of a 327 m drift, where RocketPy's added mass is 15.9 kg against a 20.8 kg rocket), and the deployment heights of the later devices within 0.17% (RocketPy's trigger sampling). The oracle runs at `rtol = atol = 1e-8`; at 1e-6 every compared metric moves by at most 3.5e-6 (its one larger entry, 2.1e-3, is on Valetudo's 20 µm north drift component, which is not compared). M1.7a; `docs/physics/recovery.md` |
+| Knacke's canopy tables | drag coefficients on the nominal area, canopy fill constants, drag-area growth exponents and opening-force coefficients | no clear terms: cited, never redistributed | transcribed into `hpr_sim::recovery::CanopyType` with the printed page at each accessor, and pinned by `hpr_sim::recovery::tests::default_canopy_cd_carries_its_citation` (which also fixes hpr's default `C_D0` as the middle of each printed range) |
+
 ## Design formats
 
 | format | spec status | notes |
