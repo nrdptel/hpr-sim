@@ -196,6 +196,31 @@ dest = "refs/papers/knacke-1991-parachute-manual.pdf"
 license = "unclear terms"
 mode = "fetched"
 
+# Streamer drag, M1.7b. Peer-reviewed (Journal of Aircraft 42(4), 2005, pp. 976-982,
+# DOI 10.2514/1.9754); the AIAA copy is paywalled and refuses automated fetches, so this is the
+# authors' post-peer-review copy in the University of Manchester's repository. No licence is
+# stated on it: cite it, never redistribute it.
+[[file]]
+name = "carruthers-filippone-2005-streamer-drag"
+title = "J. Carruthers and A. Filippone, Aerodynamic Drag of Streamers and Flags, J. Aircraft 42(4), 2005 (author post-print)"
+url = "https://pure.manchester.ac.uk/ws/files/29884977/POST-PEER-REVIEW-NON-PUBLISHERS.PDF"
+sha256 = "a4194f88d2fb9ab5ceaac3e4c00fbf2f0e1b00167b7f87e13ca271eaf78fdb1a"
+dest = "refs/papers/carruthers-filippone-2005-streamer-drag.pdf"
+license = "unclear terms"
+mode = "fetched"
+
+# The free-drop streamer data M1.7b checks both streamer models against, and the OpenRocket
+# technical documentation's own reference [46] for its appendix C. Published by NARHAMS with no
+# licence stated: cite it, never redistribute it.
+[[file]]
+name = "kidwell-2001-streamer-duration"
+title = "C. Kidwell, Streamer Duration Optimization: Material and Length-to-Width Ratio, NAR R&D, NARAM-43, 2001"
+url = "https://www.narhams.org/library/rnd/StreamerDuration.pdf"
+sha256 = "fbea5d1d558a4cc583f2a9fdb2a094fd2dd71adf86b75bc98672a5f938ec045d"
+dest = "refs/papers/kidwell-2001-streamer-duration.pdf"
+license = "unknown terms"
+mode = "fetched"
+
 [[file]]
 name = "rocksim-rse-spec"
 title = "RockSim Engine File Format (.rse) specification, as hosted by ThrustCurve.org"

@@ -5,6 +5,9 @@
 //! first one to open starts the descent phase ([`crate::Phase::Descent`]), where the rocket flies
 //! as a point mass under the sum of the open devices' drag areas (`docs/physics/recovery.md`).
 //!
+//! Streamers and tumbling bodies are drag areas too, from their own sources
+//! ([`StreamerModel`], [`DeviceDrag::tumbling`]).
+//!
 //! Canopy data comes from T. W. Knacke, *Parachute Recovery Systems Design Manual*, NWC TP 6575
 //! (1991): drag coefficients on the nominal area `S₀` from Tables 5-1 and 5-2, canopy fill
 //! constants from Table 5-6, the drag-area growth exponents of Pflanz's method (Figure 5-51) and
@@ -14,6 +17,12 @@
 use serde::{Deserialize, Serialize};
 
 use crate::error::SimError;
+
+/// The smallest aspect ratio `l/w` a streamer may have. A strip wider than it is long is not a
+/// streamer, and both correlations run away there: Carruthers and Filippone's `C_D → ∞` as
+/// `AR → 0`, and appendix C notes its own form "obtains maximum drag for a fixed surface area at
+/// the limit `l → 0`, `w → ∞`" (printed page 117).
+pub const MIN_STREAMER_ASPECT_RATIO: f64 = 1.0;
 
 /// The largest `C_D0` a canopy may be given. Knacke's printed values run from 0.30 to 0.96 on the
 /// nominal area; anything above this is a drag area mistaken for a coefficient.
@@ -156,15 +165,139 @@ impl CanopyType {
     }
 }
 
+/// How a streamer's drag area is estimated. A streamer of length `l` and width `w` has a
+/// planform (one-side) area `S = l w` and an aspect ratio `AR = l/w`.
+///
+/// The two models disagree by a factor of about four in drag area, so
+/// `docs/physics/recovery.md` sets out what each is fitted to and how each compares with the only
+/// free-drop data in hand (ADR-013).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+#[non_exhaustive]
+pub enum StreamerModel {
+    /// J. Carruthers and A. Filippone, "Aerodynamic Drag of Streamers and Flags", *Journal of
+    /// Aircraft* 42(4), 2005, pp. 976-982, on the planform area, from wind-tunnel tests of cotton
+    /// streamers at `AR` 3.3 to 30 and 6 to 18.9 m/s. It fits one power curve per planform area:
+    ///
+    /// - `C_D = 0.561 AR^−0.480` at `S = 0.025 m²` (eq. 2; Figure 2's trend line reads
+    ///   `0.561 AR^−0.4795`),
+    /// - `C_D = 0.6514 AR^−0.6075` at `S = 0.05 m²` (the trend line on Figure 3, which the text
+    ///   does not repeat as an equation),
+    /// - `C_D = 0.405 AR^−0.494` at `S = 0.075 m²` (eq. 1; Figure 4 reads `0.4046 AR^−0.494`).
+    ///
+    /// hpr interpolates between **neighbouring** curves linearly in `ln S` and holds the end
+    /// curve outside the fitted range. That interpolation is hpr's, not the paper's. All three
+    /// are needed because `C_D` is far from linear in `ln S`: at `AR = 3.3` the middle curve sits
+    /// 0.3% *below* the smallest area's rather than 63% of the way to the largest's, so blending
+    /// only the extremes reads 18% low there.
+    ///
+    /// The correlations are for streamers clamped at the luff; the paper measures more drag when
+    /// the luff is free, which is what a descending streamer has.
+    ///
+    /// This is the default: on the one free-drop measurement in hand that a flat correlation
+    /// should fit (Kidwell's unpleated streamer) it is 9% fast where [`Self::OpenRocket`] is 88%
+    /// fast. Both are fast on his pleated streamers, which neither models
+    /// (`docs/physics/recovery.md`).
+    #[default]
+    Filippone,
+    /// The OpenRocket technical documentation v13.05, Appendix C (printed pages 113-118):
+    /// `C_Dm = 0.034 ((ρ_m + 25 g/m²)/(105 g/m²)) ((l + 1 m)/l)` on the planform area, fitted to
+    /// wind-tunnel tests of model-rocket streamers (`w` 0.01 to 0.09 m, `l` 0.2 to 1.0 m, surface
+    /// density 10 to 80 g/m², 6 to 12 m/s), with a stated 12 to 27% error on an independent set.
+    ///
+    /// Use it to compare with OpenRocket. Against Kidwell's free drops it is low in drag area by
+    /// 4.2 times on his flat crêpe streamer and 7.8 times on his pleated Micafilm one, which is
+    /// 88% and 154% fast in descent rate (`docs/physics/recovery.md`).
+    OpenRocket,
+}
+
+impl StreamerModel {
+    /// Carruthers and Filippone's three fitted curves, as `(planform area m², coefficient,
+    /// exponent)` with `C_D = coefficient · AR^exponent`, in order of area.
+    const FILIPPONE_CURVES: [(f64, f64, f64); 3] = [
+        (0.025, 0.561, -0.480),
+        (0.05, 0.6514, -0.6075),
+        (0.075, 0.405, -0.494),
+    ];
+
+    /// The aspect ratios `AR = l/w` the correlations were fitted over. Outside it they only
+    /// extrapolate, and as `AR → 0` the power law runs away (`C_D → ∞`), which is why a flight
+    /// refuses a strip wider than it is long ([`MIN_STREAMER_ASPECT_RATIO`]).
+    pub const FILIPPONE_ASPECT_RATIO_RANGE: (f64, f64) = (3.3, 30.0);
+
+    /// The drag area `C_D S` of a streamer, m².
+    ///
+    /// `surface_density_kg_m2` is the fabric's, which only [`Self::OpenRocket`] uses. Outside the
+    /// ranges each correlation was fitted over this extrapolates; a flight refuses the shapes
+    /// that make it meaningless ([`crate::Simulation::with_recovery`]).
+    #[must_use]
+    pub fn drag_area_m2(self, length_m: f64, width_m: f64, surface_density_kg_m2: f64) -> f64 {
+        let planform_m2 = length_m * width_m;
+        match self {
+            Self::Filippone => {
+                let aspect_ratio = length_m / width_m;
+                let curve = |(_, coefficient, exponent): (f64, f64, f64)| {
+                    coefficient * aspect_ratio.powf(exponent)
+                };
+                let curves = Self::FILIPPONE_CURVES;
+                // Between two neighbouring curves, linearly in `ln S`; outside, the end curve.
+                let coefficient = if planform_m2 <= curves[0].0 {
+                    curve(curves[0])
+                } else if planform_m2 >= curves[2].0 {
+                    curve(curves[2])
+                } else {
+                    let upper = usize::from(planform_m2 > curves[1].0) + 1;
+                    let (low_m2, high_m2) = (curves[upper - 1].0, curves[upper].0);
+                    let fraction = (planform_m2 / low_m2).ln() / (high_m2 / low_m2).ln();
+                    let (low, high) = (curve(curves[upper - 1]), curve(curves[upper]));
+                    low + fraction * (high - low)
+                };
+                coefficient * planform_m2
+            }
+            Self::OpenRocket => {
+                0.034
+                    * ((surface_density_kg_m2 + 0.025) / 0.105)
+                    * ((length_m + 1.0) / length_m)
+                    * planform_m2
+            }
+        }
+    }
+}
+
 /// What gives a device its drag area `C_D S`.
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
-#[serde(rename_all = "snake_case")]
+#[serde(rename_all = "snake_case", deny_unknown_fields)]
 #[non_exhaustive]
 pub enum DeviceDrag {
     /// A drag area given directly, m² (RocketPy's `cd_s`).
     DragArea {
         /// `C_D S`, m².
         cd_s_m2: f64,
+    },
+    /// A streamer: a strip of fabric `length_m` by `width_m`, whose drag area comes from
+    /// `model` ([`StreamerModel`]).
+    Streamer {
+        /// Its length `l`, m.
+        length_m: f64,
+        /// Its width `w`, m.
+        width_m: f64,
+        /// The fabric's surface density, kg/m² ([`StreamerModel::OpenRocket`] uses it).
+        surface_density_kg_m2: f64,
+        /// Which correlation gives its drag area.
+        #[serde(default)]
+        model: StreamerModel,
+    },
+    /// A body descending broadside, tumbling, with no device open: the drag area of its body tubes
+    /// and fins. Build it with [`DeviceDrag::tumbling`], which computes it from the airframe.
+    Tumble {
+        /// The drag area `C_D S`, m².
+        drag_area_m2: f64,
+        /// The body's side profile area, m² (for reports; it and the fin area have to add up to
+        /// the drag area through the model's two coefficients, so a file that leaves one out is
+        /// refused by serde rather than silently defaulting to an inconsistent device).
+        body_profile_m2: f64,
+        /// The effective fin area, m² (for reports).
+        fin_area_m2: f64,
     },
     /// A canopy of nominal diameter `D₀` with `C_D0` on the nominal area `S₀ = π D₀²/4`
     /// (Knacke's convention, printed page 5-2).
@@ -179,7 +312,109 @@ pub enum DeviceDrag {
     },
 }
 
+/// The drag coefficient of a tumbling body tube, on its side profile area (the OpenRocket
+/// technical documentation v13.05, §3.5, printed page 54: fitted to 22 m drop tests of five
+/// models, and half the 1.12 of a circular cylinder in crossflow, as expected of a cylinder
+/// falling at a random angle).
+pub const TUMBLE_BODY_DRAG_COEFFICIENT: f64 = 0.56;
+
+/// The drag coefficient of a tumbling fin set, on its effective fin area (the same source; it
+/// sits between a flat plate's 1.17 and an open hemispherical cup's 1.42, and the documentation
+/// says it is the less reliable of the two).
+pub const TUMBLE_FIN_DRAG_COEFFICIENT: f64 = 1.42;
+
+/// The effective fin area of a tumbling set is one fin's area times this factor, by fin count
+/// (the same source, Table 3.4, printed page 55, for 1 to 8 fins). It is a fit, not a model: it
+/// is not `n` times one fin, and it is not monotonic.
+pub const TUMBLE_FIN_EFFICIENCY: [f64; 8] = [0.50, 1.00, 1.50, 1.41, 1.81, 1.73, 1.90, 1.85];
+
 impl DeviceDrag {
+    /// The drag area of `assembly` tumbling: `C_D,f A_f + C_D,bt A_bt` (the OpenRocket technical
+    /// documentation v13.05, §3.5, eq. 3.98 and 3.99, printed pages 53 to 55).
+    ///
+    /// - `A_bt` is the body's side profile area, the integral of its outer diameter along the
+    ///   axis. hpr takes each body component's **end** diameters, `(d_fore + d_aft)/2 · length`,
+    ///   which is exact for tubes and cones and low for a curved nose: for Valetudo's tangent
+    ///   ogive it is 0.0111 m² against the true 0.0148 m², 25% low on the nose and 2.2% on the
+    ///   whole body.
+    /// - `A_f` is, for each fin set, one fin's planform area times the efficiency factor for its
+    ///   fin count ([`TUMBLE_FIN_EFFICIENCY`]). Launch lugs and rail buttons add nothing, and an
+    ///   airframe with **tube fins** is refused: they are a large part of its broadside area and
+    ///   the model has no factor for them.
+    ///
+    /// It sums **every** stage, so it is the whole stack tumbling. A spent booster tumbling on
+    /// its own, which is what the documentation's model was written for, is M1.7c's business:
+    /// that will pass the body's own components.
+    ///
+    /// The constants were fitted to 22 m drop tests of five models 44 to 103 mm across and 6.8 to
+    /// 160 g, descending at 5.0 to 6.6 m/s, and predict those terminal velocities within 3 to 14%.
+    /// Bodies much larger or faster than that are outside the fit: above a Reynolds number of
+    /// about 3e5 a cylinder's crossflow drag falls by roughly half (`docs/physics/recovery.md`).
+    ///
+    /// # Errors
+    ///
+    /// [`SimError::Design`] if a fin planform's area can't be computed, and [`SimError::Domain`]
+    /// if the airframe presents no area at all, carries tube fins, or has a fin set of more than
+    /// the eight fins Table 3.4 covers.
+    pub fn tumbling(assembly: &hpr_design::Assembly) -> Result<Self, SimError> {
+        let mut body_profile_m2 = 0.0;
+        let mut fin_area_m2 = 0.0;
+        for component in &assembly.layout.components {
+            if let (Some(fore_m), Some(aft_m)) = (
+                component.part.fore_radius_m(),
+                component.part.aft_radius_m(),
+            ) {
+                body_profile_m2 += (fore_m + aft_m) * component.length_m;
+            }
+            if matches!(component.part, hpr_design::Part::TubeFinSet(_)) {
+                // Tube fins are a large part of such a rocket's broadside area and the model has
+                // no factor for them, so hpr refuses rather than crediting a bare tube's drag.
+                return Err(SimError::Domain {
+                    what: "tumbling an airframe with tube fins (the model covers body tubes and \
+                           fin sets only)",
+                    value: 0.0,
+                });
+            }
+            if let hpr_design::Part::FinSet(fins) = &component.part {
+                let count = fins.count as usize;
+                let efficiency =
+                    TUMBLE_FIN_EFFICIENCY
+                        .get(count.wrapping_sub(1))
+                        .ok_or(SimError::Domain {
+                            what: "number of fins in a tumbling set (the fitted efficiency factors \
+                               cover 1 to 8)",
+                            value: fins.count.into(),
+                        })?;
+                fin_area_m2 += fins.planform.geometry()?.area_m2 * efficiency;
+            }
+        }
+        let drag_area_m2 = TUMBLE_FIN_DRAG_COEFFICIENT * fin_area_m2
+            + TUMBLE_BODY_DRAG_COEFFICIENT * body_profile_m2;
+        if !(drag_area_m2.is_finite() && drag_area_m2 > 0.0) {
+            return Err(SimError::Domain {
+                what: "drag area of the tumbling airframe, m²",
+                value: drag_area_m2,
+            });
+        }
+        Ok(Self::Tumble {
+            drag_area_m2,
+            body_profile_m2,
+            fin_area_m2,
+        })
+    }
+
+    /// A streamer `length_m` by `width_m` of a fabric of `surface_density_kg_m2`, by the default
+    /// model ([`StreamerModel::Filippone`]).
+    #[must_use]
+    pub const fn streamer(length_m: f64, width_m: f64, surface_density_kg_m2: f64) -> Self {
+        Self::Streamer {
+            length_m,
+            width_m,
+            surface_density_kg_m2,
+            model: StreamerModel::Filippone,
+        }
+    }
+
     /// A canopy of `nominal_diameter_m` with its type's default `C_D0`
     /// ([`CanopyType::drag_coefficient`]).
     #[must_use]
@@ -196,6 +431,13 @@ impl DeviceDrag {
     pub fn drag_area_m2(&self) -> f64 {
         match *self {
             Self::DragArea { cd_s_m2 } => cd_s_m2,
+            Self::Streamer {
+                length_m,
+                width_m,
+                surface_density_kg_m2,
+                model,
+            } => model.drag_area_m2(length_m, width_m, surface_density_kg_m2),
+            Self::Tumble { drag_area_m2, .. } => drag_area_m2,
             Self::Canopy {
                 nominal_diameter_m,
                 drag_coefficient,
@@ -211,7 +453,7 @@ impl DeviceDrag {
     #[must_use]
     pub const fn nominal_diameter_m(&self) -> Option<f64> {
         match *self {
-            Self::DragArea { .. } => None,
+            Self::DragArea { .. } | Self::Streamer { .. } | Self::Tumble { .. } => None,
             Self::Canopy {
                 nominal_diameter_m, ..
             } => Some(nominal_diameter_m),
@@ -222,7 +464,7 @@ impl DeviceDrag {
     #[must_use]
     pub const fn canopy_type(&self) -> Option<CanopyType> {
         match *self {
-            Self::DragArea { .. } => None,
+            Self::DragArea { .. } | Self::Streamer { .. } | Self::Tumble { .. } => None,
             Self::Canopy { kind, .. } => kind,
         }
     }
@@ -399,6 +641,64 @@ impl Device {
 
     /// Checks the device's numbers.
     fn validate(&self, count: usize, index: usize) -> Result<(), SimError> {
+        match self.drag {
+            DeviceDrag::Streamer {
+                length_m,
+                width_m,
+                surface_density_kg_m2,
+                model,
+            } => {
+                for (what, value) in [
+                    ("streamer length, m", length_m),
+                    ("streamer width, m", width_m),
+                ] {
+                    if !(value.is_finite() && value > 0.0) {
+                        return Err(SimError::Domain { what, value });
+                    }
+                }
+                if !(surface_density_kg_m2.is_finite() && surface_density_kg_m2 >= 0.0) {
+                    return Err(SimError::Domain {
+                        what: "streamer fabric surface density, kg/m²",
+                        value: surface_density_kg_m2,
+                    });
+                }
+                // A strip wider than it is long is not a streamer, and both correlations run
+                // away there. Above the fitted range they only extrapolate, which is allowed.
+                let _ = model;
+                if length_m / width_m < MIN_STREAMER_ASPECT_RATIO {
+                    return Err(SimError::Domain {
+                        what: "streamer aspect ratio, length over width (Carruthers and \
+                               Filippone fit 3.3 to 30, and both correlations are meaningless \
+                               below 1)",
+                        value: length_m / width_m,
+                    });
+                }
+            }
+            DeviceDrag::Tumble {
+                drag_area_m2,
+                body_profile_m2,
+                fin_area_m2,
+            } => {
+                for (what, value) in [
+                    ("tumbling body side profile area, m²", body_profile_m2),
+                    ("tumbling effective fin area, m²", fin_area_m2),
+                ] {
+                    if !(value.is_finite() && value >= 0.0) {
+                        return Err(SimError::Domain { what, value });
+                    }
+                }
+                let parts = TUMBLE_FIN_DRAG_COEFFICIENT * fin_area_m2
+                    + TUMBLE_BODY_DRAG_COEFFICIENT * body_profile_m2;
+                if (drag_area_m2 - parts).abs() > 1e-9 * drag_area_m2.abs().max(1.0) {
+                    return Err(SimError::Domain {
+                        what: "tumbling drag area against its body and fin areas (build one with \
+                               DeviceDrag::tumbling)",
+                        value: drag_area_m2,
+                    });
+                }
+            }
+            DeviceDrag::DragArea { .. } | DeviceDrag::Canopy { .. } => {}
+        }
         if let DeviceDrag::Canopy {
             drag_coefficient, ..
         } = self.drag
@@ -2141,6 +2441,27 @@ mod tests {
                 DeviceDrag::DragArea { cd_s_m2: 1.0 },
                 Trigger::MotorDelay { motor: 0 },
             ),
+            Device::new(
+                "streamer",
+                DeviceDrag::streamer(1.2, 0.12, 0.032),
+                Trigger::Apogee,
+            ),
+            Device::new(
+                "appendix C streamer",
+                DeviceDrag::Streamer {
+                    length_m: 1.0,
+                    width_m: 0.1,
+                    surface_density_kg_m2: 0.04,
+                    model: StreamerModel::OpenRocket,
+                },
+                Trigger::Apogee,
+            ),
+            Device::new(
+                "tumble",
+                DeviceDrag::tumbling(&design("rocketpy-valetudo").assemble("example").unwrap())
+                    .unwrap(),
+                Trigger::Apogee,
+            ),
         ];
         let text = serde_json::to_string(&devices).unwrap();
         let back: Vec<Device> = serde_json::from_str(&text).unwrap();
@@ -2158,6 +2479,374 @@ mod tests {
                 r#"{"name":"d","drag":{"drag_area":{"cd_s_m2":1.5}},"trigger":"apogee","lg":1}"#
             )
             .is_err()
+        );
+        // A typo inside the drag is refused too: `model` defaults, and the two streamer models
+        // differ by a factor of four in drag area, so a silent default would be a wrong number.
+        let typo = r#"{"name":"s","drag":{"streamer":{"length_m":1.0,"width_m":0.1,
+            "surface_density_kg_m2":0.04,"modle":"open_rocket"}},"trigger":"apogee"}"#;
+        assert!(serde_json::from_str::<Device>(typo).is_err(), "{typo}");
+        // And the model itself round-trips by name.
+        let named: DeviceDrag = serde_json::from_str(
+            r#"{"streamer":{"length_m":1.0,"width_m":0.1,"surface_density_kg_m2":0.04,
+                "model":"open_rocket"}}"#,
+        )
+        .unwrap();
+        assert_eq!(named.canopy_type(), None);
+        assert!(
+            (named.drag_area_m2() - StreamerModel::OpenRocket.drag_area_m2(1.0, 0.1, 0.04)).abs()
+                < 1e-15
+        );
+    }
+
+    #[test]
+    fn streamer_models_reproduce_their_printed_equations() {
+        // Carruthers and Filippone's three printed curves, on the planform area, at the areas
+        // they were fitted at: `0.405 AR^−0.494` at 0.075 m² (eq. 1), `0.561 AR^−0.480` at
+        // 0.025 m² (eq. 2) and `0.6514 AR^−0.6075` at 0.05 m² (the trend line on Figure 3).
+        let cases: [(f64, f64, f64); 6] = [
+            (10.0, 0.075, 0.405 * 10.0_f64.powf(-0.494)),
+            (30.0, 0.075, 0.405 * 30.0_f64.powf(-0.494)),
+            (10.0, 0.025, 0.561 * 10.0_f64.powf(-0.480)),
+            (3.3, 0.025, 0.561 * 3.3_f64.powf(-0.480)),
+            // The trend line on Figure 3, which the text does not repeat as an equation.
+            (3.3, 0.05, 0.6514 * 3.3_f64.powf(-0.6075)),
+            (30.0, 0.05, 0.6514 * 30.0_f64.powf(-0.6075)),
+        ];
+        for (aspect_ratio, planform_m2, expected) in cases {
+            // A planform area `S` at aspect ratio `l/w` means `l = √(S·AR)`, `w = √(S/AR)`.
+            let length_m = (planform_m2 * aspect_ratio).sqrt();
+            let width_m = (planform_m2 / aspect_ratio).sqrt();
+            let drag_area_m2 = StreamerModel::Filippone.drag_area_m2(length_m, width_m, 0.05);
+            let coefficient = drag_area_m2 / planform_m2;
+            assert!(
+                (coefficient - expected).abs() < 1e-12,
+                "AR {aspect_ratio} at {planform_m2} m²: {coefficient} vs {expected}"
+            );
+        }
+        // Between the two areas it interpolates, and outside them it holds the end curve. A
+        // planform of 0.05 m² at `AR = 10` is `l = √0.5 m` by `w = l/10`.
+        let middle_m = (0.5_f64).sqrt();
+        let between = StreamerModel::Filippone.drag_area_m2(middle_m, middle_m / 10.0, 0.05) / 0.05;
+        let small = 0.561 * 10.0_f64.powf(-0.480);
+        let large = 0.405 * 10.0_f64.powf(-0.494);
+        assert!(large < between && between < small, "{between}");
+        let huge = StreamerModel::Filippone.drag_area_m2(3.0, 0.3, 0.05) / 0.9;
+        assert!((huge - large).abs() < 1e-12, "{huge} vs {large}");
+
+        // The OpenRocket technical documentation's appendix C: its own reference material is
+        // 80 g/m² polyethylene, where the material factor is exactly 1 and `C_Dm` is
+        // `0.034 (l + 1)/l`.
+        let reference = StreamerModel::OpenRocket.drag_area_m2(0.4, 0.04, 0.080) / (0.4 * 0.04);
+        assert!(
+            (reference - 0.034 * (0.4 + 1.0) / 0.4).abs() < 1e-12,
+            "{reference}"
+        );
+        // And its material correction is linear in surface density about −25 g/m².
+        let light = StreamerModel::OpenRocket.drag_area_m2(0.4, 0.04, 0.010);
+        let heavy = StreamerModel::OpenRocket.drag_area_m2(0.4, 0.04, 0.080);
+        assert!(
+            (light / heavy - (0.010 + 0.025) / (0.080 + 0.025)).abs() < 1e-12,
+            "{light} {heavy}"
+        );
+    }
+
+    /// The average speed of a drop from rest through `height_m` under a drag area, m/s: the
+    /// closed-form fall `h = (v_t²/g) ln cosh(g t/v_t)` solved for the time. A drop test measures
+    /// this, not the terminal speed it is approaching.
+    fn drop_average_m_s(
+        mass_kg: f64,
+        drag_area_m2: f64,
+        density_kg_m3: f64,
+        height_m: f64,
+    ) -> (f64, f64) {
+        let terminal_m_s = terminal_speed_m_s(mass_kg, drag_area_m2, density_kg_m3, G);
+        let time_s =
+            (terminal_m_s / G) * (G * height_m / (terminal_m_s * terminal_m_s)).exp().acosh();
+        (height_m / time_s, terminal_m_s)
+    }
+
+    #[test]
+    fn streamer_models_against_kidwells_drop_tests() {
+        // The only free-drop streamer data in hand: C. Kidwell, "Streamer Duration Optimization",
+        // NAR R&D, NARAM-43 (2001). Sixteen 4 in × 40 in streamers, each with a weight of about
+        // 5 g at one corner, dropped 20.1 m from a stadium deck.
+        //
+        // Two details of his method decide how to compare (both found in review):
+        //
+        // - his descent rates are **distance over time**, so they are averages over the drop, not
+        //   terminal speeds. A 20.1 m drop averages 0.97 of terminal at 2.8 m/s and 0.89 at
+        //   5.9 m/s, so the correction matters most for the model that predicts the fastest fall.
+        //   The prediction here is therefore the same average, from the closed-form fall.
+        // - he **normalised** each rate "by dividing by the actual mass of the attached weight
+        //   and multiplying by 5 g", so the rates belong to a notional 5.000 g weight, not to
+        //   Table 1's actual one.
+        let length_m = 40.0 * 0.0254;
+        let width_m = 4.0 * 0.0254;
+        let planform_m2 = length_m * width_m;
+        let rho = 1.225;
+        let drop_m = 20.1;
+        let cases = [
+            // (material, streamer mass from Table 1, normalised descent rate, pleated)
+            ("crepe paper", 3.3206e-3, 2.80, false),
+            ("Micafilm", 4.3412e-3, 2.04, true),
+        ];
+        let mut report = String::new();
+        for (material, streamer_kg, measured_m_s, pleated) in cases {
+            let surface_density_kg_m2 = streamer_kg / planform_m2;
+            let mass_kg = streamer_kg + 5.0e-3;
+            let predict = |model: StreamerModel| {
+                let drag_area_m2 = model.drag_area_m2(length_m, width_m, surface_density_kg_m2);
+                let (average_m_s, terminal_m_s) =
+                    drop_average_m_s(mass_kg, drag_area_m2, rho, drop_m);
+                (average_m_s, terminal_m_s, drag_area_m2)
+            };
+            let (filippone, _, filippone_m2) = predict(StreamerModel::Filippone);
+            let (open_rocket, _, open_rocket_m2) = predict(StreamerModel::OpenRocket);
+            // What the drop itself says the drag area was.
+            let measured_m2 = {
+                // Invert the closed-form average: search the drag area whose average matches.
+                let mut low = 1e-4;
+                let mut high = 1.0;
+                for _ in 0..200 {
+                    let middle = 0.5 * (low + high);
+                    if drop_average_m_s(mass_kg, middle, rho, drop_m).0 > measured_m_s {
+                        low = middle;
+                    } else {
+                        high = middle;
+                    }
+                }
+                0.5 * (low + high)
+            };
+            report.push_str(&format!(
+                "{material}: measured {measured_m_s:.2} m/s (C_D S {measured_m2:.5} m², C_D \
+                 {:.3}), Filippone {filippone:.2} ({:+.0}%, C_D S {filippone_m2:.5}), OpenRocket \
+                 {open_rocket:.2} ({:+.0}%, C_D S {open_rocket_m2:.5})\n",
+                measured_m2 / planform_m2,
+                100.0 * (filippone / measured_m_s - 1.0),
+                100.0 * (open_rocket / measured_m_s - 1.0),
+            ));
+            // Both models predict a faster descent than the drop: neither knows about pleats, and
+            // the correlations are for a streamer clamped at its leading edge, which the paper
+            // measures as less draggy than a free one.
+            assert!(filippone > measured_m_s, "{material}: {filippone}");
+            assert!(open_rocket > filippone, "{material}: {open_rocket}");
+            if pleated {
+                // Pleats more than double the drag: measured C_D 0.341 against 0.161 flat.
+                assert!(
+                    (filippone / measured_m_s - 1.0) < 0.75,
+                    "{material}: {filippone} against {measured_m_s}"
+                );
+            } else {
+                // Flat streamer, flat correlation: within 10%, where appendix C is 88% fast.
+                assert!(
+                    (filippone / measured_m_s - 1.0) < 0.10,
+                    "{material}: {filippone} against {measured_m_s}"
+                );
+                assert!(
+                    (open_rocket / measured_m_s - 1.0) > 0.5,
+                    "{material}: appendix C should be the slow one: {open_rocket}"
+                );
+            }
+        }
+        eprintln!("{report}");
+    }
+
+    #[test]
+    fn a_streamer_descends_at_its_cited_terminal_velocity() {
+        // A streamer's drag area is its model's, and a descent under it settles at Knacke's
+        // equilibrium speed for that area, the same as a canopy's.
+        let air = UniformAir::sea_level();
+        let drag = DeviceDrag::streamer(1.5, 0.15, 0.040);
+        let drag_area_m2 = drag.drag_area_m2();
+        // 1.5 m by 0.15 m is a planform of 0.225 m², above the largest area Carruthers and
+        // Filippone fitted, so their 0.075 m² curve holds: `C_D = 0.405 · 10^−0.494 = 0.12984`
+        // and `C_D S = 0.029216 m²`.
+        let expected_m2 = 0.405 * 10.0_f64.powf(-0.494) * 0.225;
+        assert!(
+            (drag_area_m2 - expected_m2).abs() < 1e-12,
+            "{drag_area_m2} vs {expected_m2}"
+        );
+        let sim = flight(
+            analytic_environment(air, G),
+            vec![open_at_start(drag)],
+            3600.0,
+        );
+        let mass_kg = sim.assembly().mass_properties(START_S).mass_kg;
+        let terminal_m_s = terminal_speed_m_s(mass_kg, drag_area_m2, air.0.density_kg_m3, G);
+        // A streamer is a feeble decelerator: Valetudo falls at 67 m/s under this one, so the
+        // drop has to be long enough to settle (the time constant is `v_t/g`, near 7 s).
+        assert!(terminal_m_s > 20.0, "{terminal_m_s}");
+        let result = sim
+            .run_free(START_S, dropped(&sim, 6_000.0, DVec3::ZERO), &mut ())
+            .unwrap();
+        assert_eq!(result.termination, Termination::GroundHit);
+        let landing = result.event(EventKind::GroundHit).unwrap().sample;
+        assert!(
+            (-landing.vertical_speed_m_s / terminal_m_s - 1.0).abs() < 1e-6,
+            "{} vs {terminal_m_s}",
+            landing.vertical_speed_m_s
+        );
+    }
+
+    #[test]
+    fn the_tumble_model_against_its_own_drop_tests() {
+        // The tumbling constants were fitted to the five models of the OpenRocket technical
+        // documentation's Table 3.3 (printed page 54), dropped 22 m at ρ = 1.31 kg/m³ with the
+        // terminal velocity read off the video to ±0.3 m/s. Replaying them through hpr's reading
+        // of the model — `1.42 · eff(n) · A_1fin + 0.56 · d · l`, with one fin's area the
+        // trapezoid `(C_r + C_t) s/2` — is the only independent check of it available, and it
+        // does **not** reproduce the documentation's claim of 3 to 14%.
+        let rho = 1.31;
+        // (model, fins, root chord, tip chord, span, diameter, body length, mass, measured v0)
+        let models = [
+            (
+                "#1", 3usize, 0.070, 0.040, 0.060, 0.044, 0.108, 18.0e-3, 5.6,
+            ),
+            ("#2", 4, 0.070, 0.040, 0.060, 0.044, 0.108, 22.0e-3, 6.3),
+            ("#3", 3, 0.200, 0.140, 0.130, 0.103, 0.290, 160.0e-3, 6.6),
+            ("#4", 0, 0.0, 0.0, 0.0, 0.044, 0.100, 6.8e-3, 5.4),
+            ("#5", 4, 0.085, 0.085, 0.050, 0.0, 0.0, 11.5e-3, 5.0),
+        ];
+        let mut report = String::new();
+        let mut worst: f64 = 0.0;
+        let mut errors = Vec::new();
+        for (name, fins, root_m, tip_m, span_m, diameter_m, body_m, mass_kg, measured_m_s) in models
+        {
+            let fin_area_m2 = if fins == 0 {
+                0.0
+            } else {
+                let one_m2 = 0.5 * (root_m + tip_m) * span_m;
+                one_m2 * TUMBLE_FIN_EFFICIENCY[fins - 1]
+            };
+            let body_profile_m2 = diameter_m * body_m;
+            let drag_area_m2 = TUMBLE_FIN_DRAG_COEFFICIENT * fin_area_m2
+                + TUMBLE_BODY_DRAG_COEFFICIENT * body_profile_m2;
+            let predicted_m_s = terminal_speed_m_s(mass_kg, drag_area_m2, rho, G);
+            let error = predicted_m_s / measured_m_s - 1.0;
+            worst = worst.max(error.abs());
+            errors.push(error);
+            report.push_str(&format!(
+                "{name}: measured {measured_m_s:.1} m/s, hpr {predicted_m_s:.2} ({:+.1}%)\n",
+                100.0 * error
+            ));
+        }
+        eprintln!("{report}");
+        // The spread is −10 to +19%, not the 3 to 14% the documentation claims for its own fit,
+        // and the finless model is the outlier: it wants a body coefficient near 0.79 where the
+        // model says 0.56. Either hpr's reading of the two areas is not the one behind the
+        // constants (the text pins neither convention) or the claim is not reproducible;
+        // `docs/physics/recovery.md` prints this table rather than repeating the 3 to 14%.
+        //
+        // Every model's error is pinned, not just the worst: a wrong efficiency factor would
+        // move one of the others while the extreme stayed put.
+        assert_eq!(
+            errors
+                .iter()
+                .map(|error| format!("{:+.1}", 100.0 * error))
+                .collect::<Vec<_>>(),
+            ["-5.8", "-5.4", "-7.2", "+19.0", "-10.0"],
+            "{report}"
+        );
+        assert!(worst < 0.20, "{worst} spread:\n{report}");
+    }
+
+    #[test]
+    fn tumbling_refuses_an_airframe_the_model_cannot_represent() {
+        // Tube fins are a large part of a tumbling rocket's broadside area and §3.5 has no factor
+        // for them, so `tumbling` refuses rather than crediting a bare tube's drag.
+        let mut rocket = design("rocketpy-valetudo");
+        let (index, fins) = rocket.stages[0].components[1]
+            .children
+            .iter()
+            .enumerate()
+            .find_map(|(index, child)| match &child.part {
+                hpr_design::Part::FinSet(fins) => Some((index, fins.clone())),
+                _ => None,
+            })
+            .expect("Valetudo has a fin set");
+        rocket.stages[0].components[1].children[index].part =
+            hpr_design::Part::TubeFinSet(hpr_design::TubeFinSet {
+                count: 3,
+                length_m: 0.15,
+                outer_radius_m: 0.02,
+                thickness_m: 0.001,
+                base_angle_rad: 0.0,
+                material: fins.material.clone(),
+            });
+        let assembly = rocket.assemble("example").unwrap();
+        let error = DeviceDrag::tumbling(&assembly).expect_err("tube fins");
+        assert!(matches!(error, SimError::Domain { .. }), "{error:?}");
+        // The unchanged design is fine, so the refusal is about the tube fins and nothing else.
+        assert!(
+            DeviceDrag::tumbling(&design("rocketpy-valetudo").assemble("example").unwrap()).is_ok()
+        );
+    }
+
+    #[test]
+    fn a_tumbling_body_descends_at_its_cited_terminal_velocity() {
+        // The OpenRocket technical documentation's tumbling model, §3.5: the drag area is
+        // `1.42 A_f + 0.56 A_bt`, with `A_bt` the body's side profile and `A_f` one fin's area
+        // times the efficiency factor for the fin count. Computed here from Valetudo's own
+        // geometry, and checked by a flight.
+        let air = UniformAir::sea_level();
+        let rocket = design("rocketpy-valetudo");
+        let assembly = rocket.assemble("example").unwrap();
+        let drag = DeviceDrag::tumbling(&assembly).unwrap();
+        let DeviceDrag::Tumble {
+            drag_area_m2,
+            body_profile_m2,
+            fin_area_m2,
+        } = drag
+        else {
+            panic!("tumbling should build a Tumble: {drag:?}");
+        };
+        // Valetudo: a 0.274 m tangent nose and 1.884 m of 80.9 mm tube, so a side profile of
+        // 0.04045·0.274 + 0.0809·1.884 = 0.1635 m², and three fins of 0.058 m root, 0.018 m tip
+        // and 0.077 m span, so one fin is 2.93e-3 m² and the three-fin factor is 1.50.
+        let expected_fin_m2 = 1.5
+            * match &assembly
+                .layout
+                .components
+                .iter()
+                .find(|c| matches!(c.part, hpr_design::Part::FinSet(_)))
+                .unwrap()
+                .part
+            {
+                hpr_design::Part::FinSet(fins) => fins.planform.geometry().unwrap().area_m2,
+                _ => unreachable!(),
+            };
+        assert!(
+            (fin_area_m2 - expected_fin_m2).abs() < 1e-12,
+            "{fin_area_m2}"
+        );
+        assert!(
+            (drag_area_m2 - (1.42 * fin_area_m2 + 0.56 * body_profile_m2)).abs() < 1e-15,
+            "{drag_area_m2}"
+        );
+        assert!(
+            (body_profile_m2 - (0.040_45 * 0.274 + 0.080_9 * 1.884)).abs() < 1e-12,
+            "{body_profile_m2}"
+        );
+
+        let sim = flight(
+            analytic_environment(air, G),
+            vec![open_at_start(drag)],
+            3600.0,
+        );
+        let mass_kg = sim.assembly().mass_properties(START_S).mass_kg;
+        let terminal_m_s = terminal_speed_m_s(mass_kg, drag_area_m2, air.0.density_kg_m3, G);
+        // Tumbling is slower than a ballistic dive but far faster than a canopy: 37 m/s for this
+        // 8.3 kg rocket, well outside the 6.8 to 160 g the constants were fitted on.
+        assert!(terminal_m_s > 20.0 && terminal_m_s < 60.0, "{terminal_m_s}");
+        let result = sim
+            .run_free(START_S, dropped(&sim, 4_000.0, DVec3::ZERO), &mut ())
+            .unwrap();
+        assert_eq!(result.termination, Termination::GroundHit);
+        let landing = result.event(EventKind::GroundHit).unwrap().sample;
+        assert!(
+            (-landing.vertical_speed_m_s / terminal_m_s - 1.0).abs() < 1e-6,
+            "{} vs {terminal_m_s}",
+            landing.vertical_speed_m_s
         );
     }
 
