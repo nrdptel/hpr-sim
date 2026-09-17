@@ -1,9 +1,9 @@
 # Validation plan and reference inventory
 
-This inventory was checked on 2026-09-16. Re-verify versions and URLs when fetching, then pin
-commits, versions and sha256 values in `validation/refs.lock.toml`. Everything downloaded goes to
-the gitignored `refs/`; only small extracted fixtures with a clear license are committed, each with
-its provenance.
+This inventory was checked on 2026-09-16. The sources `cargo xtask refs fetch` downloads were pinned
+on 2026-09-17 in `validation/refs.lock.toml` (commits and sha256 values; ADR-002), which is the
+source of truth for versions and URLs. Everything downloaded goes to the gitignored `refs/`; only
+small extracted fixtures with a clear license are committed, each with its provenance.
 
 ## Principles
 
@@ -33,7 +33,7 @@ its provenance.
 | tool | use | license | where | notes |
 |---|---|---|---|---|
 | RocketPy 1.13.0 (PyPI, 2026-07-22) | primary code-to-code oracle; headless Python | MIT | https://github.com/RocketPy-Team/RocketPy | Install in a `uv` venv under `refs/`. Acceptance tests to mirror: `tests/acceptance/test_{bella_lui,ndrt_2020,prometheus}_rocket.py`. Example apogees are in `docs/examples/index.rst` |
-| OpenRocket 24.12 jar | second oracle (run only, never read its source) | GPL-3.0 | `https://github.com/openrocket/openrocket/releases/download/release-24.12/OpenRocket-24.12.jar` | Needs Java 17+. Drive it with **orhelper** from git (`https://github.com/openrocket/orhelper`, GPL-2.0, run-only) through JPype. 16 example `.ork` files are in the jar under `datafiles/examples/` (use them locally, don't commit them) |
+| OpenRocket 24.12 jar | second oracle (run only, never read its source) | GPL-3.0 | `https://github.com/openrocket/openrocket/releases/download/release-24.12/OpenRocket-24.12.jar` | Needs Java 17+. Drive it with **orhelper** from git (`https://github.com/openrocket/orhelper`, GPL-2.0, run-only, pinned commit; the PyPI release 0.1.3 predates 24.12's `info.openrocket` packages) through JPype. 16 example `.ork` files are in the jar under `datafiles/examples/` (use them locally, don't commit them) |
 | RocketSerializer | `.ork` to RocketPy converter; cross-checks our `.ork` importer | MIT | https://github.com/RocketPy-Team/RocketSerializer | active |
 | RASAero II 1.0.2.0 | Windows-only freeware; no automation | closed | https://www.rasaero.com/dl_software_ii.htm | Use only the exported Cd CSVs that ship with RocketPy data (for example `data/rockets/valetudo/Cd_Power{On,Off}_RASAero.csv`) |
 | JSBSim | optional generic 6-DOF cross-check | LGPL-2.1 | https://github.com/JSBSim-Team/jsbsim | low priority |
@@ -52,14 +52,17 @@ its provenance.
 - **US Standard Atmosphere 1976:**
   https://ntrs.nasa.gov/api/citations/19770009539/downloads/19770009539.pdf. Python cross-checks:
   `ambiance` (Apache-2.0), `pyatmos` (MIT).
-- **NASA sounding-rocket stability tests:** NTRS 19670020050 (Mach 0.6–1.2) and 19670020031
-  (Mach 1.5–4.63).
+- **NASA sounding-rocket stability tests:** NASA TN D-4013 (NTRS 19670020050, Mach 0.6–1.2) and
+  TN D-4014 (NTRS 19670020031, Mach 1.5–4.63).
 - **Galejs, "Wind instability":** https://www.argoshpr.ch/j3/articles/pdf/sentinel39-galejs.pdf
 - **MIL-HDBK-762** (design of aerodynamically stabilized free rockets):
   https://archive.org/details/MILHDBK762DesignOfAerodynamicallyStabilizedFreeRockets
-- **Fin flutter:** NACA TN 4197. Find the primary source and cite it.
-- **Parachute inflation:** Knacke, *Parachute Recovery Systems Design Manual* (NWC TP 6575,
-  public). Find it and cite it.
+- **Fin flutter:** D. J. Martin, NACA TN 4197 (1958), NTRS 19930085030. NTRS serves it with a
+  436-byte header before `%PDF`; the lock pins the bytes as served.
+- **Parachute inflation:** T. W. Knacke, *Parachute Recovery Systems Design Manual*, NWC TP 6575
+  (1991), DTIC ADA247666. DTIC refused automated downloads, so the lock uses archive.org's mirror
+  of the DTIC copy. It is a contractor report: DTIC stamps it for public release, but the title
+  page limits distribution to US Government personnel, so cite it and never redistribute it.
 - **Index of further references:** https://wiki.openrocket.info/Resources
 - **Not available:** there's no legitimate free copy of *Topics in Advanced Model Rocketry*. Don't
   use pirated copies.
@@ -112,7 +115,7 @@ excellent offline test fixtures for the weather-file readers.
 
 | source | what | license | notes |
 |---|---|---|---|
-| ThrustCurve.org API v1 (`/api/v1/{metadata,search,download}.json`) | motor metadata and simfiles | spec is ISC; **data license per file** (PD / none / `?` / "free") | Cache results and give attribution. Bundle only curves with clear terms. Loft found only 45 of 108 curves marked PD |
+| ThrustCurve.org API v1 (`/api/v1/{metadata,search,download}.json`) | motor metadata and simfiles | spec is ISC; **data license per file** (PD / none / `?` / "free") | Cache results and give attribution. Bundle only curves with clear terms. Loft found only 45 of 108 curves marked PD. `search.json?maxResults=10000` returns every motor (1156 on 2026-09-17), out-of-production and **hybrid** ones included, so filter to solids; `availability=all` is ignored |
 | RASP `.eng` spec | https://www.thrustcurve.org/info/raspformat.html | — | implicit (0,0) first point; ends at zero thrust |
 | RockSim `.rse` spec | https://www.thrustcurve.org/thirdparty/RockSim%20Engine%20File%20Format.pdf | — | XML |
 | `broofa/thrustcurve-db` | JSON snapshot including thrust samples | ISC (code) | handy offline seed; check the data terms per curve |

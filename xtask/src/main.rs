@@ -13,29 +13,36 @@
     reason = "dev tooling runs cargo and uses the filesystem; it is not part of the pure core"
 )]
 
+mod refs;
 mod wasm_check;
 mod workspace;
 
 use std::process::ExitCode;
 
-const USAGE: &str = "\
+const USAGE_TEMPLATE: &str = "\
 Usage: cargo xtask <command> [args]
 
 Commands:
   wasm-check [cargo args]  Check the pure-core crates for wasm32-unknown-unknown. Extra
                            arguments (for example --locked) are passed on to `cargo check`.
+{REFS}
   help                     Print this message.";
+
+fn usage() -> String {
+    USAGE_TEMPLATE.replace("{REFS}", refs::USAGE)
+}
 
 fn main() -> ExitCode {
     let mut args = std::env::args().skip(1);
     let result = match args.next().as_deref() {
         Some("wasm-check") => wasm_check::run(&args.collect::<Vec<_>>()),
+        Some("refs") => refs::run(&args.collect::<Vec<_>>()),
         Some("help" | "-h" | "--help") => {
-            println!("{USAGE}");
+            println!("{}", usage());
             Ok(())
         }
-        Some(other) => Err(format!("unknown command `{other}`\n\n{USAGE}")),
-        None => Err(format!("no command given\n\n{USAGE}")),
+        Some(other) => Err(format!("unknown command `{other}`\n\n{}", usage())),
+        None => Err(format!("no command given\n\n{}", usage())),
     };
     match result {
         Ok(()) => ExitCode::SUCCESS,
