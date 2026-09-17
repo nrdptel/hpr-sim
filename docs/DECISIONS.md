@@ -1067,7 +1067,8 @@ and L26 set tests.
   come and go.
 - **The comparison with RocketPy starts where both models agree.** Both simulators start from the
   same declared post-burnout state near apogee with the first device's lag overridden to zero, so
-  no segment under either model's aerodynamics separates them, with RocketPy's noise zeroed (it
+  almost no segment under either model's aerodynamics separates them (RocketPy's trigger sampling
+  leaves 2.5 to 13 ms of its own 6-DOF flight, `recovery.md`), with RocketPy's noise zeroed (it
   draws on the global `np.random`) and a declared wind (the examples' own winds need the network or
   Copernicus files). Five example rockets. The oracle runs at `rtol = atol = 1e-8` and records its
   own solver's contribution per metric: at most 3.5e-6 on every compared metric (its one larger

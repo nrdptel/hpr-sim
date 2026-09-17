@@ -126,7 +126,10 @@ m a_cg = −½ ρ (C_D S)(t) |v_cg − w| (v_cg − w) + m (g + a_Coriolis) + T
   equation is the one above, with `a_cg = a_O`.
 - The drag acts at the centre of mass along the air's relative velocity, so it exerts no moment.
 - The attitude and the body rates **freeze** at deployment (the body rates are set to zero), and
-  the state's reference point, the nose tip, keeps its rigid offset from the centre of mass.
+  the state's reference point, the nose tip, keeps its rigid offset from the centre of mass. The
+  state's nose-tip velocity is shifted by `q(ω × r_cg)` as the rates go, so that the centre of
+  mass keeps the velocity it had: snubbing the rotation is internal to the lines and the canopy
+  and cannot move the centre of mass's momentum.
 - The airframe's own drag is **left out**, as RocketPy leaves it out. A rocket's attitude under a
   canopy, and so the area it presents, is not modelled. For a drogue whose drag area is close to
   the airframe's broadside area this is a real omission; it is the same omission the oracle makes,
@@ -160,11 +163,11 @@ v_e = √(2 m g / (ρ C_D S))
 | Knacke's `v_e` against Loft's case (1.1 kg, 1 m flat canopy, `C_D` 0.8, ρ 1.225) | 5.294 m/s, as Loft printed |
 | A descent from rest against the closed-form fall under quadratic drag (2 km, uniform air, constant gravity) | 2.1e-8 of `v_t` over the whole descent; the landing time within 1e-5 s of the closed form's 204 s |
 | Drift in a steady wind, entered drifting with the air, no Earth rotation | exactly the wind times the time of flight (1e-8); the fall itself within 1e-4 of the closed form |
-| The Coriolis drift of a 3 km descent, Earth rotation on | 0.3666 m east against the steady prediction `2Ω cos φ · v_t²/g · T` = 0.3685 m (5%), and 29 µm north |
+| The Coriolis drift of a 3 km descent, Earth rotation on | 0.3666 m east against the steady prediction `2Ω cos φ · v_t²/g · T` = 0.3685 m, 0.52% apart, and 29 µm north |
 | Knacke's filling law, `t_f = n D₀/v` and `(t/t_f)^j` | the recorded drag area to 1e-9 of `(C_D S)₀` |
-| Inflation against instant opening (deployed at 60 m/s under a 1.5 m flat circular canopy) | peak load 1,615 N against 3,020 N instant (0.53 of it), between the closed-form 1,527 N without gravity and 1,674 N with it |
+| Inflation against instant opening (deployed at 60 m/s under a 1.5 m flat circular canopy) | peak load 1,615 N against 3,020 N instant (0.53 of it), between the closed-form 1,527 N without gravity and 1,670 N with it |
 | An oversized canopy (5 m) opening at 100 m/s, 10 km of descent at 2.95 m/s | lands in 3,392 s in 6,914 accepted steps and 2 rejected (a mean step of 0.49 s, where Loft's explicit RK4 needed a 2e-4 s floor) |
-| A deployment with a 0.7 rad/s body rate | the centre of mass keeps its velocity across the handover to 1e-12, though the state carries the nose tip's |
+| A deployment with a 0.7 rad/s body rate, and another inside the burn in a crosswind | the centre of mass keeps its velocity across the handover to 1e-12, and the nose tip's moves by exactly `q(ω × r_cg)` |
 | A whole flight: drogue at apogee with a lag, main at 300 m, drogue released | events in order; each stage settles within 2% of its own `v_e` |
 | Two devices triggered at the same instant | both open in the same pass, and the descent settles at the `v_e` of the **sum** of their drag areas |
 | A device released before its own charge fires | it is recorded as triggered and never deploys; the descent stays at the open device's `v_e` |
@@ -192,10 +195,13 @@ What still differs, and by how much:
 - **Trigger sampling.** RocketPy checks its triggers on a grid of `1/sampling_rate` (100 or
   105 Hz) anchored at `t = 0`, and only over the span after its first accepted step; hpr has no
   sampling rate and locates the crossing with its event finder. So RocketPy's first deployment is
-  2.5 ms late in the four 105 Hz cases and 13 ms in Prometheus's, and its main fires a little
-  below its setting: 800.07 m against 800.00 m for Calisto, 167.93 m against 167.64 m for NDRT
-  (0.29 m, about 0.01 s of descent). Those trigger heights are compared in the table below rather
-  than assumed away.
+  2.5 ms late in the four 105 Hz cases and 13 ms in Prometheus's, and its `h < setting` predicate
+  can only fire at or **below** the setting, by at most one sample of fall: `v_z/rate` is 0.17 m
+  for Calisto and 0.27 m for NDRT (about 0.01 s of descent). The heights the fixture records at
+  those triggers (800.07 m, 167.93 m, 457.26 m) come from RocketPy's *reporting* spline over its
+  stored samples, not from the dense output its trigger read, so they sit just above the setting
+  instead. The table below compares hpr's trigger height against those reported values, which is
+  the closest the fixture can come; it is a difference of the same size either way.
 - **Release against replacement.** hpr sums its open devices and releases the drogue when the main
   is full; RocketPy holds one `C_D S` and replaces it. For these cases, whose canopies open
   instantly, the two are the same.

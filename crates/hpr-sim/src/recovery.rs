@@ -87,7 +87,8 @@ impl CanopyType {
     }
 
     /// The canopy fill constant `n` of `t_f = n D₀/v` (Table 5-6, printed page 5-44, unreefed
-    /// column), where Knacke prints one. `None` where the table says "insufficient data".
+    /// column), where Knacke prints one. `None` where the table has no unreefed value for the
+    /// type, which for five of these is because it has no row there at all.
     ///
     /// Knacke's rows cover types, not every variant: the ribbon row serves both ribbon entries.
     /// (The ringsail row prints 7 unreefed; its 7 to 8 is the reefed column.)
@@ -1546,8 +1547,14 @@ mod tests {
                     trigger.height_above_ground_m
                 );
                 let oracle_event = &case["events"].as_array().unwrap()[index];
+                // The oracle's own reported height at its trigger, which comes from RocketPy's
+                // reporting spline over its stored samples, not from the dense output its
+                // trigger was evaluated on. It can only have fired at or below the setting, by
+                // at most one sample of fall (`v_z/sampling_rate`).
                 rows.push((
-                    format!("{name}: device {index} trigger height"),
+                    format!(
+                        "{name}: device {index} trigger height, hpr against the oracle's report"
+                    ),
                     trigger.height_above_ground_m,
                     number(&oracle_event["height_above_ground_at_trigger_m"]),
                 ));
@@ -1690,7 +1697,9 @@ mod tests {
     fn a_deployment_keeps_the_centre_of_mass_moving_as_it_was() {
         // Dropping the body rates at deployment must not move the centre of mass's momentum:
         // the state carries the nose tip's velocity, so it has to be shifted by `ω × r_cg`
-        // (found in review; a 0.5 rad/s pitch rate and a 1 m lever is 0.5 m/s of descent rate).
+        // (found in review). With `r_cg` along the axis and `ω` across it the error is across the
+        // axis too, so for this nose-up drop it is about 0.9 m/s of drift rate; it becomes a
+        // descent-rate error once the rocket has pitched over.
         let air = UniformAir::sea_level();
         let device = open_at_start(DeviceDrag::DragArea { cd_s_m2: 1.5 });
         let sim = flight(analytic_environment(air, G), vec![device], 3600.0);
@@ -1724,6 +1733,65 @@ mod tests {
             "{} vs {terminal_m_s}",
             landing.vertical_speed_m_s
         );
+    }
+
+    #[test]
+    fn a_deployment_during_a_burn_keeps_the_centre_of_mass_moving_as_it_was() {
+        // The same handover while propellant still burns, so the centre of mass is moving inside
+        // the body as well (`v_cg = v_O + q(ω × r_cg + ṙ_cg)`). The two `ṙ_cg` terms cancel, so
+        // the net shift is `q(ω × r_cg)` whatever the motor is doing; this pins that, and that
+        // the canopy opening under thrust (an off-nominal case the descent phase keeps the thrust
+        // for) does not move the centre of mass. Valetudo burns until 3.26 s, and the crosswind
+        // gives it a body rate to shift by.
+        let sim = flight(
+            analytic_wind_environment(
+                UniformAir::sea_level(),
+                G,
+                ConstantWind::new(8.0, 1.5).unwrap(),
+            ),
+            vec![Device::new(
+                "early",
+                DeviceDrag::DragArea { cd_s_m2: 0.2 },
+                Trigger::Time { time_s: 2.0 },
+            )],
+            3600.0,
+        );
+        let result = sim.run(&mut ()).unwrap();
+        let trigger = result.event(EventKind::Trigger(0)).unwrap().sample;
+        let deployment = result.event(EventKind::Deployment(0)).unwrap().sample;
+        assert_eq!(trigger.time_s, 2.0);
+        assert_eq!(deployment.time_s, 2.0);
+        assert!(
+            trigger.thrust_n > 0.0,
+            "the motor has to be burning: {trigger:?}"
+        );
+        assert!(
+            trigger.state.body_rate_rad_s.length() > 1e-3,
+            "the flight needs a body rate to shift by: {}",
+            trigger.state.body_rate_rad_s
+        );
+        // The centre of mass keeps its velocity, and the nose tip's moved by exactly `ω × r_cg`.
+        assert!(
+            (deployment.cg_velocity_enu_m_s - trigger.cg_velocity_enu_m_s).length() < 1e-12,
+            "{} vs {}",
+            deployment.cg_velocity_enu_m_s,
+            trigger.cg_velocity_enu_m_s
+        );
+        let cg_m = sim.assembly().mass_properties(2.0).cg_m;
+        let shift = trigger
+            .state
+            .unit_attitude()
+            .mul_vec3(trigger.state.body_rate_rad_s.cross(cg_m));
+        assert!(shift.length() > 1e-3, "{shift}");
+        assert!(
+            (deployment.state.velocity_enu_m_s - trigger.state.velocity_enu_m_s - shift).length()
+                < 1e-12,
+            "{} vs {} + {shift}",
+            deployment.state.velocity_enu_m_s,
+            trigger.state.velocity_enu_m_s
+        );
+        assert_eq!(deployment.phase, crate::Phase::Descent);
+        assert_eq!(result.termination, Termination::GroundHit);
     }
 
     #[test]

@@ -494,6 +494,8 @@ impl Simulation {
                         // velocity is the nose tip's, so it is shifted to keep the centre of mass
                         // moving as it was: dropping `ω` while holding `v_O` would change the
                         // centre of mass's momentum with nothing to do it (found in review).
+                        // Written this way it reads as what it is; the `ṙ_cg` terms cancel, so
+                        // the net shift is `q(ω × r_cg)`.
                         phase = Phase::Descent;
                         let mut frozen = State::from_array(&y);
                         frozen.velocity_enu_m_s = evaluation.cg_velocity_enu_m_s
