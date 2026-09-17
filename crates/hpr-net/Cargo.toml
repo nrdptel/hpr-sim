@@ -1,0 +1,16 @@
+[package]
+name = "hpr-net"
+description = "Optional online data sources with an on-disk cache and an explicit offline mode: weather, soundings, elevation, ThrustCurve and motor stock."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+publish.workspace = true
+
+[lints]
+workspace = true
+
+[dependencies]
+hpr-atmos.workspace = true
+hpr-motor.workspace = true

@@ -1,0 +1,19 @@
+[package]
+name = "hpr-motor"
+description = "Solid rocket motor model (thrust, propellant mass, CG and inertia over time), `.eng`/`.rse` reading and writing, and catalog types."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+publish.workspace = true
+
+[lints]
+workspace = true
+
+# Pure crate: no I/O, and it must build for wasm32-unknown-unknown (`cargo xtask wasm-check`).
+[package.metadata.hpr]
+wasm = true
+
+[dependencies]
+hpr-core.workspace = true

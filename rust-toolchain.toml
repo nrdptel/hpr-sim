@@ -1,0 +1,7 @@
+# The pinned stable toolchain. Bump it in its own PR, with the local gate run on the new version,
+# and bump `rust-version` in Cargo.toml to match: resolver 3 picks dependency versions from it.
+[toolchain]
+channel = "1.98.1"
+profile = "minimal"
+components = ["clippy", "rustfmt"]
+targets = ["wasm32-unknown-unknown"]

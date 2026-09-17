@@ -1,0 +1,21 @@
+[package]
+name = "hpr-cli"
+description = "The `hpr` command-line tool."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+publish.workspace = true
+
+[[bin]]
+name = "hpr"
+path = "src/main.rs"
+# The facade library is also called `hpr`; documenting both would collide in target/doc.
+doc = false
+
+[lints]
+workspace = true
+
+[dependencies]
+hpr.workspace = true

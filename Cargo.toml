@@ -1,0 +1,53 @@
+[workspace]
+resolver = "3"
+members = ["crates/*", "xtask"]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.98.1"
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/nrdptel/hpr-sim"
+# Publishing to crates.io waits for Neer (see docs/STATUS.md).
+publish = false
+
+[workspace.dependencies]
+# Workspace crates. Crates in the pure core must not depend on hpr-net, hpr-cli, hpr-py, hpr-ffi
+# or hpr-validate; `cargo xtask wasm-check` enforces this.
+hpr = { path = "crates/hpr", version = "0.1.0" }
+hpr-aero = { path = "crates/hpr-aero", version = "0.1.0" }
+hpr-analysis = { path = "crates/hpr-analysis", version = "0.1.0" }
+hpr-atmos = { path = "crates/hpr-atmos", version = "0.1.0" }
+hpr-core = { path = "crates/hpr-core", version = "0.1.0" }
+hpr-design = { path = "crates/hpr-design", version = "0.1.0" }
+hpr-flightdata = { path = "crates/hpr-flightdata", version = "0.1.0" }
+hpr-format = { path = "crates/hpr-format", version = "0.1.0" }
+hpr-io = { path = "crates/hpr-io", version = "0.1.0" }
+hpr-motor = { path = "crates/hpr-motor", version = "0.1.0" }
+hpr-net = { path = "crates/hpr-net", version = "0.1.0" }
+hpr-sim = { path = "crates/hpr-sim", version = "0.1.0" }
+
+# Third-party crates. Each one needs a line of justification in the PR that adds it.
+serde_json = "1.0.151"
+
+[workspace.lints.rust]
+missing_debug_implementations = "warn"
+missing_docs = "warn"
+# Only the binding crates (hpr-py, hpr-ffi, hpr-wasm) may opt out, per item, with a reason.
+unsafe_code = "deny"
+
+[workspace.lints.clippy]
+# Library code does not panic except to state an invariant, with a comment saying why
+# (`#[expect(clippy::expect_used, reason = "...")]`). clippy.toml relaxes these in tests.
+expect_used = "warn"
+panic = "warn"
+unwrap_used = "warn"
+# Library code does no I/O; binaries opt out at the crate root.
+print_stderr = "warn"
+print_stdout = "warn"
+# Every `allow` or `expect` says why.
+allow_attributes_without_reason = "warn"
+# Leftovers that must not reach main.
+dbg_macro = "warn"
+todo = "warn"
+unimplemented = "warn"

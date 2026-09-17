@@ -1,0 +1,19 @@
+[package]
+name = "hpr-analysis"
+description = "Monte Carlo dispersion, sensitivity analysis, optimization and challenge specifications."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+publish.workspace = true
+
+[lints]
+workspace = true
+
+# Pure crate: no I/O, and it must build for wasm32-unknown-unknown (`cargo xtask wasm-check`).
+[package.metadata.hpr]
+wasm = true
+
+[dependencies]
+hpr-sim.workspace = true
