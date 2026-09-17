@@ -23,9 +23,8 @@ use serde::{Deserialize, Serialize};
 
 use crate::error::DesignError;
 use crate::mass::MassProperties;
-use crate::parts::InnerTube;
 use crate::shapes::check_dimension;
-use crate::tree::{Layout, Part, Rocket};
+use crate::tree::{Layout, Rocket};
 
 /// Makes a body tube or inner tube a motor mount.
 #[derive(Debug, Clone, Copy, PartialEq, Default, Serialize, Deserialize)]
@@ -127,74 +126,51 @@ pub struct Assembly {
 impl Assembly {
     /// The rocket `t_s` seconds after ignition: the structure and every motor.
     pub fn mass_properties(&self, t_s: f64) -> MassProperties {
-        let mut parts = vec![self.layout.structure];
-        parts.extend(self.motors.iter().map(|m| m.mass_properties(t_s)));
-        MassProperties::combine(&parts)
+        self.motors
+            .iter()
+            .fold(self.layout.structure, |sum, motor| {
+                MassProperties::combine([&sum, &motor.mass_properties(t_s)])
+            })
     }
 
     /// The rocket with every motor spent: the structure and the motors' dry masses.
     pub fn dry_mass_properties(&self) -> MassProperties {
-        let mut parts = vec![self.layout.structure];
-        parts.extend(self.motors.iter().map(PlacedMotor::dry_mass_properties));
-        MassProperties::combine(&parts)
+        self.motors
+            .iter()
+            .fold(self.layout.structure, |sum, motor| {
+                MassProperties::combine([&sum, &motor.dry_mass_properties()])
+            })
     }
 }
 
-impl Rocket {
-    /// The configuration with id `id`.
-    pub fn configuration(&self, id: &str) -> Option<&Configuration> {
-        self.configurations.iter().find(|c| c.id == id)
-    }
-
-    /// Resolves the tree and places the motors of configuration `configuration_id`.
+impl Layout {
+    /// Places `configuration`'s motors in their mounts in this layout.
     ///
     /// # Errors
     ///
-    /// - As [`Rocket::layout`].
-    /// - [`DesignError::DuplicateId`] for an empty or repeated configuration id.
-    /// - [`DesignError::UnknownId`] for a configuration or mount that doesn't exist.
+    /// - [`DesignError::UnknownId`] for a mount that doesn't exist.
     /// - [`DesignError::Tree`] for a mount that isn't a motor mount, or two motors in one mount.
-    /// - [`DesignError::Domain`] for a non-positive or non-finite motor diameter or length, or a
-    ///   non-finite overhang.
-    pub fn assemble(&self, configuration_id: &str) -> Result<Assembly, DesignError> {
-        let layout = self.layout()?;
-        self.place_motors(layout, configuration_id)
-    }
-
-    /// Places configuration `configuration_id`'s motors in an already resolved layout of this
-    /// rocket.
-    ///
-    /// # Errors
-    ///
-    /// As [`Rocket::assemble`], without the layout's.
+    /// - [`DesignError::InComponent`] (with the mount's id) wrapping [`DesignError::Domain`] for a
+    ///   non-positive or non-finite motor diameter or length, or a non-finite overhang.
     pub fn place_motors(
         &self,
-        layout: Layout,
-        configuration_id: &str,
-    ) -> Result<Assembly, DesignError> {
-        let mut ids = BTreeSet::new();
-        for configuration in &self.configurations {
-            if configuration.id.is_empty() || !ids.insert(configuration.id.as_str()) {
-                return Err(DesignError::DuplicateId(configuration.id.clone()));
-            }
-        }
-        let configuration =
-            self.configuration(configuration_id)
-                .ok_or_else(|| DesignError::UnknownId {
-                    what: "configuration",
-                    id: configuration_id.to_owned(),
-                })?;
+        configuration: &Configuration,
+    ) -> Result<Vec<PlacedMotor>, DesignError> {
         let mut mounts = BTreeSet::new();
         let mut motors = Vec::with_capacity(configuration.motors.len());
         for mounted in &configuration.motors {
-            check_dimension("motor diameter (m)", mounted.diameter_m, false)?;
-            check_dimension("motor length (m)", mounted.length_m, false)?;
-            let (_, mount) = layout
+            let (_, mount) = self
                 .find(&mounted.mount)
                 .ok_or_else(|| DesignError::UnknownId {
                     what: "motor mount",
                     id: mounted.mount.clone(),
                 })?;
+            let in_mount = |error| DesignError::InComponent {
+                id: mount.id.clone(),
+                source: Box::new(error),
+            };
+            check_dimension("motor diameter (m)", mounted.diameter_m, false).map_err(in_mount)?;
+            check_dimension("motor length (m)", mounted.length_m, false).map_err(in_mount)?;
             let Some(spec) = mount.motor_mount else {
                 return Err(DesignError::Tree {
                     id: mount.id.clone(),
@@ -214,22 +190,12 @@ impl Rocket {
                 });
             }
             if !spec.overhang_m.is_finite() {
-                return Err(DesignError::Domain {
+                return Err(in_mount(DesignError::Domain {
                     what: "motor overhang (m)",
                     value: spec.overhang_m,
-                });
+                }));
             }
-            let (x, y) = match &mount.part {
-                Part::InnerTube(InnerTube {
-                    radial_offset_m,
-                    angle_rad,
-                    ..
-                }) => (
-                    radial_offset_m * angle_rad.cos(),
-                    radial_offset_m * angle_rad.sin(),
-                ),
-                _ => (0.0, 0.0),
-            };
+            let [x, y] = mount.part.axis_offset_m();
             motors.push(PlacedMotor {
                 mount: mount.id.clone(),
                 stage: mount.stage,
@@ -237,6 +203,48 @@ impl Rocket {
                 mounted: mounted.clone(),
             });
         }
+        Ok(motors)
+    }
+}
+
+impl Rocket {
+    /// The configuration with id `id`.
+    pub fn configuration(&self, id: &str) -> Option<&Configuration> {
+        self.configurations.iter().find(|c| c.id == id)
+    }
+
+    /// Checks that configuration ids are unique and non-empty.
+    ///
+    /// # Errors
+    ///
+    /// [`DesignError::DuplicateId`] for the first empty or repeated id.
+    pub fn check_configuration_ids(&self) -> Result<(), DesignError> {
+        let mut ids = BTreeSet::new();
+        for configuration in &self.configurations {
+            if configuration.id.is_empty() || !ids.insert(configuration.id.as_str()) {
+                return Err(DesignError::DuplicateId(configuration.id.clone()));
+            }
+        }
+        Ok(())
+    }
+
+    /// Resolves the tree and places the motors of configuration `configuration_id`.
+    ///
+    /// # Errors
+    ///
+    /// - As [`Rocket::layout`] and [`Layout::place_motors`].
+    /// - [`DesignError::DuplicateId`] for an empty or repeated configuration id.
+    /// - [`DesignError::UnknownId`] for a configuration that doesn't exist.
+    pub fn assemble(&self, configuration_id: &str) -> Result<Assembly, DesignError> {
+        self.check_configuration_ids()?;
+        let configuration =
+            self.configuration(configuration_id)
+                .ok_or_else(|| DesignError::UnknownId {
+                    what: "configuration",
+                    id: configuration_id.to_owned(),
+                })?;
+        let layout = self.layout()?;
+        let motors = layout.place_motors(configuration)?;
         Ok(Assembly {
             configuration: configuration.id.clone(),
             layout,
@@ -372,15 +380,36 @@ mod tests {
             Err(DesignError::DuplicateId("main".to_owned()))
         );
 
-        let mut d = design;
+        let mut d = design.clone();
         d.configurations[0].motors[0].diameter_m = 0.0;
         assert!(matches!(
             d.assemble("main"),
-            Err(DesignError::Domain { .. })
+            Err(DesignError::InComponent { ref id, ref source })
+                if id == "mmt" && matches!(**source, DesignError::Domain { .. })
+        ));
+
+        let mut d = design.clone();
+        d.stages[0].components[1].children[0].motor_mount = Some(MotorMount {
+            overhang_m: f64::NAN,
+        });
+        assert!(matches!(
+            d.assemble("main"),
+            Err(DesignError::InComponent { .. })
+        ));
+
+        // A layout places any configuration handed to it, not only the rocket's own.
+        let layout = design.layout().unwrap();
+        let mut candidate = design.configurations[0].clone();
+        candidate.id = "candidate".to_owned();
+        assert_eq!(layout.place_motors(&candidate).unwrap().len(), 1);
+        candidate.motors[0].mount = "chute".to_owned();
+        assert!(matches!(
+            layout.place_motors(&candidate),
+            Err(DesignError::Tree { ref id, .. }) if id == "chute"
         ));
     }
     /// The RocketPy example designs in `validation/designs/`, by oracle case name.
-    const ROCKETPY_DESIGNS: [(&str, &str); 8] = [
+    const ROCKETPY_DESIGNS: [(&str, &str); 7] = [
         (
             "calisto-getting-started-motor-at-minus-1.255",
             include_str!(
@@ -410,10 +439,6 @@ mod tests {
             include_str!("../../../validation/designs/rocketpy-juno-iii.json"),
         ),
         (
-            "valkyrie",
-            include_str!("../../../validation/designs/rocketpy-valkyrie.json"),
-        ),
-        (
             "prometheus-2022-generic-motor",
             include_str!("../../../validation/designs/rocketpy-prometheus-2022-generic-motor.json"),
         ),
@@ -433,6 +458,7 @@ mod tests {
         geometry: serde_json::Value,
         scalars: OracleScalars,
         series: OracleSeries,
+        knot_series: Option<OracleSeries>,
     }
 
     #[derive(Debug, serde::Deserialize)]
@@ -495,16 +521,18 @@ mod tests {
     /// M1.4b's done-when: mass, centre of mass and inertia match RocketPy's example rockets. The
     /// fixture comes from `validation/oracles/rocketpy/rocket_mass.py` (RocketPy 1.13.0), which
     /// builds each example rocket from its own inputs, with the bundled public-domain curve nearest
-    /// in impulse in place of the example's thrust file (whose terms are unclear; ADR-007).
+    /// in impulse in place of the example's thrust file (whose terms are unclear; ADR-007). Its
+    /// docstring lists the examples left out and why.
     ///
     /// The designs in `validation/designs/` are generated by `cargo xtask designs`. This test
     /// derives the mass inputs again from the fixture, independently of that generator: the stage
     /// override, the nozzle station through RocketPy's placement rule
     /// (`rocket.py:1113-1125`: `z = p + s·z_m`, `s` the product of the two orientation signs), and
     /// the motor's grains or column, dry mass and curve. Then it compares, at 103 times through the
-    /// burn and after it: total mass, the centre of mass (as a station, relative to the rocket's
-    /// length), `I_11` about the centre of dry mass (RocketPy's reference point), `I_11` about the
-    /// centre of mass, `I_33`, and the propellant mass, plus the dry scalars.
+    /// burn and after it and at up to 60 of RocketPy's LSODA knots: total mass, the centre of mass
+    /// (as a station, relative to the rocket's length), `I_11` about the centre of dry mass
+    /// (RocketPy's reference point), `I_11` about the centre of mass, `I_33`, and the propellant
+    /// mass, plus the dry scalars.
     #[test]
     fn matches_rocketpy_example_rockets() {
         let oracle: Oracle = serde_json::from_str(include_str!(
@@ -679,67 +707,105 @@ mod tests {
                 || name.to_owned(),
             );
 
-            // Through the burn.
-            let s = &case.series;
-            for (i, &t) in s.time_s.iter().enumerate() {
-                let at = || format!("{name} at t = {t} s");
-                let whole = assembly.mass_properties(t);
-                worst.see("total mass", relative(whole.mass_kg, s.total_mass[i]), at);
-                worst.see(
-                    "centre of mass (of length)",
-                    (-whole.cg_m.z - station(s.center_of_mass[i])).abs() / length,
-                    at,
-                );
-                let about_dry = whole.inertia_about(dry_rocket.cg_m);
-                worst.see(
-                    "I_11 about the dry centre",
-                    relative(about_dry.x_axis.x, s.I_11[i]),
-                    at,
-                );
-                worst.see(
-                    "I_22 about the dry centre",
-                    relative(about_dry.y_axis.y, s.I_11[i]),
-                    at,
-                );
-                worst.see(
-                    "I_11 about the centre of mass",
-                    relative(whole.inertia_kg_m2.x_axis.x, s.I_11_about_cg[i]),
-                    at,
-                );
-                worst.see(
-                    "I_33",
-                    relative(whole.inertia_kg_m2.z_axis.z, s.I_33[i]),
-                    at,
-                );
-                let products = [
-                    whole.inertia_kg_m2.y_axis.x,
-                    whole.inertia_kg_m2.z_axis.x,
-                    whole.inertia_kg_m2.z_axis.y,
-                ];
-                worst.see(
-                    "products of inertia (of I_11)",
-                    products.iter().fold(0.0f64, |a, v| a.max(v.abs())) / s.I_11[i],
-                    at,
-                );
-                let what = match motor.propellant() {
-                    hpr_motor::Propellant::Column(_) => "propellant mass, column (of initial)",
-                    _ => "propellant mass, grains (of initial)",
+            // Through the burn, on the even grid and at RocketPy's own knots.
+            let grids = [
+                ("", Some(&case.series)),
+                (" at knots", case.knot_series.as_ref()),
+            ];
+            for (grid, s) in grids.into_iter().filter_map(|(g, s)| Some((g, s?))) {
+                let label = |what: &'static str| -> &'static str {
+                    match (what, grid.is_empty()) {
+                        (_, true) => what,
+                        ("total mass", false) => "total mass at knots",
+                        ("centre of mass (of length)", false) => "centre of mass at knots",
+                        ("I_11 about the dry centre", false) => {
+                            "I_11 about the dry centre at knots"
+                        }
+                        ("I_22 about the dry centre", false) => {
+                            "I_22 about the dry centre at knots"
+                        }
+                        ("I_11 about the centre of mass", false) => {
+                            "I_11 about the centre of mass at knots"
+                        }
+                        ("I_33", false) => "I_33 at knots",
+                        ("products of inertia (of I_11)", false) => "products of inertia at knots",
+                        ("propellant mass, grains (of initial)", false) => {
+                            "propellant mass, grains, at knots"
+                        }
+                        (other, false) => panic!("no knot label for {other}"),
+                    }
                 };
-                worst.see(
-                    what,
-                    (motor.propellant_mass_kg(t) - s.propellant_mass[i]).abs() / m_p0,
-                    at,
-                );
+                for (i, &t) in s.time_s.iter().enumerate() {
+                    let at = || format!("{name} at t = {t} s");
+                    let whole = assembly.mass_properties(t);
+                    worst.see(
+                        label("total mass"),
+                        relative(whole.mass_kg, s.total_mass[i]),
+                        at,
+                    );
+                    worst.see(
+                        label("centre of mass (of length)"),
+                        (-whole.cg_m.z - station(s.center_of_mass[i])).abs() / length,
+                        at,
+                    );
+                    let about_dry = whole.inertia_about(dry_rocket.cg_m);
+                    worst.see(
+                        label("I_11 about the dry centre"),
+                        relative(about_dry.x_axis.x, s.I_11[i]),
+                        at,
+                    );
+                    worst.see(
+                        label("I_22 about the dry centre"),
+                        relative(about_dry.y_axis.y, s.I_11[i]),
+                        at,
+                    );
+                    worst.see(
+                        label("I_11 about the centre of mass"),
+                        relative(whole.inertia_kg_m2.x_axis.x, s.I_11_about_cg[i]),
+                        at,
+                    );
+                    worst.see(
+                        label("I_33"),
+                        relative(whole.inertia_kg_m2.z_axis.z, s.I_33[i]),
+                        at,
+                    );
+                    let products = [
+                        whole.inertia_kg_m2.y_axis.x,
+                        whole.inertia_kg_m2.z_axis.x,
+                        whole.inertia_kg_m2.z_axis.y,
+                    ];
+                    worst.see(
+                        label("products of inertia (of I_11)"),
+                        products.iter().fold(0.0f64, |a, v| a.max(v.abs())) / s.I_11[i],
+                        at,
+                    );
+                    let what = match motor.propellant() {
+                        hpr_motor::Propellant::Column(_) => "propellant mass, column (of initial)",
+                        _ => "propellant mass, grains (of initial)",
+                    };
+                    worst.see(
+                        label(what),
+                        (motor.propellant_mass_kg(t) - s.propellant_mass[i]).abs() / m_p0,
+                        at,
+                    );
+                }
             }
         }
-        // Measured worst (RocketPy 1.13.0): dry scalars and the column's propellant mass agree to
-        // 2e-16 and the products of inertia are exactly zero. Through the burn: total mass 1.4e-5,
-        // centre 3.9e-6 of the length, `I_11` 2.6e-5, `I_33` 1.4e-5, and grain propellant mass
-        // 9.7e-5 of its initial value. `SolidMotor` takes its propellant mass from grain volumes
-        // solved by LSODA and interpolated linearly between the solver's knots
-        // (`solid_motor.py:375-383`, `:603-630`), and `GenericMotor` samples its inertias at the
-        // thrust knots; hpr's are exact for a piecewise-linear curve (M1.3 measured the same gap
-        // motor by motor). The tolerances sit four to ten times above those.
+        // Measured worst (RocketPy 1.13.0), and each tolerance's margin over it:
+        //
+        // - Exact quantities: dry mass, centre and inertias, initial propellant mass and the
+        //   column's propellant mass agree to 2.4e-16 (tolerance 1e-12). Products of inertia are
+        //   exactly zero (1e-15).
+        // - At RocketPy's LSODA knots, where its grain geometry holds computed values: total mass
+        //   3.3e-10, centre 1.4e-10 of the length, `I_11` 8.0e-10, `I_33` 1.8e-10, grain propellant
+        //   mass 2.4e-9 of its initial value. That is the solver's own accuracy (rtol 1e-11); the
+        //   tolerance is 1e-8, a margin of 4 to 70.
+        // - On the even grid, between knots: total mass 8.3e-6, centre 2.5e-6, `I_11` 2.6e-5,
+        //   `I_33` 1.4e-5, grain propellant mass 4.9e-5. `SolidMotor` interpolates its grain
+        //   volumes linearly between LSODA knots (`solid_motor.py:375-383`, `:603-630`) and
+        //   `GenericMotor` samples its inertias at the thrust knots, while hpr's are exact for a
+        //   piecewise-linear curve. Tolerances: 5e-5 (margin 6), 2e-5 (8), 1e-4 (3.9 and 7) and
+        //   2.5e-4 (5).
         let tolerance = |what: &str| match what {
             "initial propellant mass"
             | "dry mass"
@@ -747,13 +813,28 @@ mod tests {
             | "dry I_11"
             | "dry I_33"
             | "propellant mass, column (of initial)" => 1e-12,
-            "products of inertia (of I_11)" => 1e-15,
-            "propellant mass, grains (of initial)" => 5e-4,
-            _ => 1e-4,
+            "products of inertia (of I_11)" | "products of inertia at knots" => 1e-15,
+            "total mass at knots"
+            | "centre of mass at knots"
+            | "I_11 about the dry centre at knots"
+            | "I_22 about the dry centre at knots"
+            | "I_11 about the centre of mass at knots"
+            | "I_33 at knots"
+            | "propellant mass, grains, at knots" => 1e-8,
+            "total mass" => 5e-5,
+            "centre of mass (of length)" => 2e-5,
+            "I_11 about the dry centre"
+            | "I_22 about the dry centre"
+            | "I_11 about the centre of mass"
+            | "I_33" => 1e-4,
+            "propellant mass, grains (of initial)" => 2.5e-4,
+            other => panic!("no tolerance for {other}"),
         };
-        assert_eq!(worst.0.len(), 14, "every quantity was compared");
         for (what, error, at) in &worst.0 {
             println!("{what}: {error:.3e} ({at})");
+        }
+        assert_eq!(worst.0.len(), 22, "every quantity was compared");
+        for (what, error, at) in &worst.0 {
             assert!(*error <= tolerance(what), "{what}: {error:e} at {at}");
         }
     }

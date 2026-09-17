@@ -80,7 +80,8 @@ An `auto` list names dimensions that the tree resolves. The part's stored value 
 - **Centering rings:** the outer radius is the parent's inner radius. The inner radius is the
   outer radius of the widest on-axis inner tube among its siblings that overlaps it along the axis
   (by a positive length). With none, it is zero: a bulkhead.
-- **Packed parts** (mass components and recovery parts) take the parent tube's inner radius.
+- **Packed parts** (mass components and recovery parts) take the parent tube's inner radius, less
+  the distance from the parent's axis to the part's axis. An offset outside the bore is refused.
 
 ## Overrides
 
@@ -88,13 +89,15 @@ An `auto` list names dimensions that the tree resolves. The part's stored value 
 
 1. **Mass** `m′`: `I′ = I m′/m`, same centre. The body keeps its shape. A body with `m = 0` becomes
    a point mass `m′` at `c`.
-2. **Centre** `a` (`cg_aft_m`): `c′_z = −(s_fore + a)`, measured from the forward end of what is
-   overridden. `cg_xy_m` sets `c′_x` and `c′_y`; without it they are kept. The tensor about the
-   centre is unchanged.
+2. **Centre** `a` (`cg_aft_m`): `c′_z = −(s_fore + a)`, measured from the component's own forward
+   end (a stage's for a stage, and never a shoulder's), whether or not the children are covered.
+   `cg_xy_m` sets `c′_x` and `c′_y`; without it they are kept. The tensor about the centre is
+   unchanged.
 3. **Inertia**: the tensor about the centre is replaced. `InertiaOverride` gives its six entries
    with the sign convention of `mass.md` (`I_xy = −∫ x y dm`); the off-diagonal ones default to zero.
 
-The result must pass `MassProperties::validate`.
+The result must pass `MassProperties::validate`, which also refuses inertia on a body with no mass.
+Errors inside a stage or component name it (`DesignError::InComponent`).
 
 - **Scope.** A component's overrides cover the component alone. With
   `overrides_include_children`, they cover the component and everything attached to it. A stage's
@@ -142,13 +145,24 @@ The reference area is `π d²/4`.
 | finding | severity | when |
 |---|---|---|
 | `motor_wider_than_mount` | error | case diameter > mount inner diameter (L50) |
+| `motor_outside_mount` | error | the case doesn't overlap its mount along the axis at all (an overhang typed in mm as m) |
 | `attachment_off_body` | error | an external part's extent (a fin root) doesn't overlap its body tube at all (L50) |
-| `internal_part_wider_than_parent` | error | an internal part reaches past the parent tube's bore |
+| `part_outside_rocket` | error | an internal part lies wholly forward of the nose tip or aft of the rocket's end |
+| `internal_part_wider_than_parent` | error | an internal part reaches farther from its parent's axis than the parent's bore (a nose cone's or transition's largest outer radius) |
+| `centre_outside_rocket` | error | a stage's centre lies off the rocket although its parts don't: only an override puts it there |
 | `motor_past_mount_top` | warning | the case's forward end is forward of the mount's |
 | `attachment_past_body_end` | warning | an external part runs past an end of its body tube |
 | `internal_part_past_parent_end` | warning | an internal part runs past an end of its parent |
+| `ring_overlaps_inner_tube` | warning | a centering ring crosses an inner tube beside it (a cluster's off-axis tubes), counting that mass twice |
 | `radius_step` | warning | adjacent body components' radii differ where they meet |
 | `no_nose_cone` | warning | the first body component isn't a nose cone |
+
+- **Radial reach** is measured about the parent's own axis: the distance between the part's axis
+  and the parent's, plus the part's radius. A block centred in an off-axis pod fits; a part on the
+  body axis inside that pod doesn't. Centering rings have no offset, so they sit on the body axis.
+- Parts wholly outside the rocket report only `part_outside_rocket`, and a stage holding one is
+  spared `centre_outside_rocket`. A single check covers each fault.
+- Fins may sweep past the rocket's end, so no component-level centre is checked.
 
 Errors mark designs that can't exist as described. A simulation of one would be wrong, usually
 on the flattering side: Loft flew a 54 mm motor in a 38 mm mount 69% high. The flight engine
@@ -166,33 +180,44 @@ on the flattering side: Loft flew a 54 mm motor in a 38 mm mount 69% high. The f
   - `config::tests`: the placed motor's nozzle station, and the rocket's mass, centre and inertia
     at loaded, burning and burnt out, by the parallel-axis theorem, to 1e-12; an off-axis mount's
     `I_yz = −m y z`.
-- **Overrides** (`overrides_rescale_move_and_replace`): each step, the scopes, a stage override,
-  the massless case, and refusal of unphysical results.
+- **Overrides** (`overrides_rescale_move_and_replace`, `nested_overrides_apply_deepest_first`):
+  each step, the scopes, a stage override, deeper overrides first, the massless case, and refusal
+  of non-finite and unphysical results.
 - **Property** (proptest): randomly placed masses sum to the structure's mass and centre, and
   sliding every part moves the centre rigidly without changing the tensor.
+- **Checks** (`checks::tests`): each finding and its severity. A cluster pod's block fits and an
+  on-axis part in the pod doesn't. Motors miss their mounts in both directions. Parts and a stage
+  centre lie off the rocket. A layout with a corrupt parent index is skipped, not a panic.
 - **Against RocketPy 1.13.0** (`config::tests::matches_rocketpy_example_rockets`):
-  - The eight example-rocket cases of `validation/fixtures/design/rocketpy-rocket-mass.json` are
-    compared at 103 times each. The fixture's generator and its curve substitution are described
-    in `docs/research/rocketpy-rocket-mass.md`.
+  - Seven cases of `validation/fixtures/design/rocketpy-rocket-mass.json`: six example rockets
+    (Calisto at two motor positions) and Prometheus's `GenericMotor`.
+    `docs/research/rocketpy-rocket-mass.md` gives the curve substitution and the examples left out.
   - The test derives the stage override, nozzle station and motor inputs from the fixture itself,
     independently of the design generator.
+  - The rockets are compared at 103 even times through the burn and after it, and at up to 60 of
+    RocketPy's LSODA knots.
   - Worst measured, with the test's tolerance:
 
     | quantity | worst | tolerance |
     |---|---|---|
-    | dry mass, centre, `I_11`, `I_33`; column propellant mass | 2.4e-16 | 1e-12 |
+    | dry mass, centre, `I_11`, `I_33`; initial and column propellant mass | 2.4e-16 | 1e-12 |
     | products of inertia (of `I_11`) | 0 | 1e-15 |
-    | total mass | 1.4e-5 | 1e-4 |
-    | centre of mass (of the rocket's length) | 3.9e-6 | 1e-4 |
-    | `I_11` about the dry centre, and about the centre of mass | 2.6e-5 | 1e-4 |
-    | `I_33` | 1.4e-5 | 1e-4 |
-    | grain propellant mass (of initial) | 9.7e-5 | 5e-4 |
+    | at LSODA knots: total mass, centre (of length), `I_11`, `I_33` | 8.0e-10 | 1e-8 |
+    | at LSODA knots: grain propellant mass (of initial) | 2.4e-9 | 1e-8 |
+    | even grid: total mass | 8.3e-6 | 5e-5 |
+    | even grid: centre of mass (of the rocket's length) | 2.5e-6 | 2e-5 |
+    | even grid: `I_11` about the dry centre and about the centre of mass | 2.6e-5 | 1e-4 |
+    | even grid: `I_33` | 1.4e-5 | 1e-4 |
+    | even grid: grain propellant mass (of initial) | 4.9e-5 | 2.5e-4 |
 
-  - The residual is RocketPy's own resampling: grain volumes between LSODA knots, and
-    `GenericMotor` inertias at thrust knots. hpr's values are exact for a piecewise-linear curve.
+  - At RocketPy's knots, agreement is the ODE solver's own accuracy (rtol 1e-11).
+  - Between knots, the residual is RocketPy's resampling: it interpolates grain volumes linearly
+    between LSODA knots and samples `GenericMotor` inertias at thrust knots. hpr's values are
+    exact for a piecewise-linear curve.
+  - The comparison sets mass, centre and inertia together. So the override steps (rescaling the
+    tensor with mass, moving the centre) are checked by hand-worked tests, not against RocketPy.
 - **Public designs** (`validation/designs/`, written by `cargo xtask designs`, which a test keeps in
-  sync): the eight RocketPy examples and two synthetic rockets all resolve, pass the checks without
-  errors, and assemble into valid bodies. Valkyrie's one warning is real: its fins run 22 mm onto
-  the boattail, as in RocketPy's example.
+  sync): the seven RocketPy cases and two synthetic rockets resolve with no findings and assemble
+  into valid bodies at ignition, mid-burn and burnout.
 - **Lessons:** L47 `tests::reference_diameter_ignores_internal_components`; L50
   `checks::tests::motor_wider_than_mount_is_rejected` and `checks::tests::fin_root_must_touch_body`.

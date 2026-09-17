@@ -277,11 +277,11 @@ mod tests {
         assert!(d > 0.06 + 1e-4, "{d}");
     }
     /// Every public test design in `validation/designs/` (written by `cargo xtask designs`)
-    /// resolves, has no error findings, and assembles into a real body at ignition and burnout in
-    /// every configuration.
+    /// resolves, has no findings, and assembles into a real body at ignition and burnout in every
+    /// configuration.
     #[test]
     fn validation_designs_resolve_and_pass_checks() {
-        const DESIGNS: [(&str, &str); 10] = [
+        const DESIGNS: [(&str, &str); 9] = [
             (
                 "rocketpy-calisto-getting-started-motor-at-minus-1.255",
                 include_str!(
@@ -311,10 +311,6 @@ mod tests {
                 include_str!("../../../validation/designs/rocketpy-juno-iii.json"),
             ),
             (
-                "rocketpy-valkyrie",
-                include_str!("../../../validation/designs/rocketpy-valkyrie.json"),
-            ),
-            (
                 "rocketpy-prometheus-2022-generic-motor",
                 include_str!(
                     "../../../validation/designs/rocketpy-prometheus-2022-generic-motor.json"
@@ -333,7 +329,7 @@ mod tests {
             let design: Rocket = serde_json::from_str(text).unwrap();
             let findings = checks::check(&design).unwrap();
             println!("{name}: {findings:?}");
-            assert!(!checks::has_errors(&findings), "{name}: {findings:?}");
+            assert!(findings.is_empty(), "{name}: {findings:?}");
             let layout = design.layout().unwrap();
             println!(
                 "  structure {:.4} kg, centre at station {:.4} m, length {:.4} m, reference {:.4} m",

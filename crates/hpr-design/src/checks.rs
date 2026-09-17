@@ -11,13 +11,11 @@
 //!
 //! See `docs/physics/design.md`.
 
-use std::collections::BTreeMap;
-
 use serde::{Deserialize, Serialize};
 
 use crate::config::Configuration;
 use crate::error::DesignError;
-use crate::tree::{LENGTH_TOLERANCE_M, Layout, Part, Rocket};
+use crate::tree::{LENGTH_TOLERANCE_M, Layout, Part, PlacedComponent, Rocket};
 
 /// How serious a finding is.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
@@ -45,6 +43,14 @@ pub enum Finding {
         /// Mount inside diameter, m.
         mount_inner_diameter_m: f64,
     },
+    /// The motor case doesn't overlap its mount along the axis at all, such as an overhang typed
+    /// in millimetres as metres (error).
+    MotorOutsideMount {
+        /// Configuration id.
+        configuration: String,
+        /// Mount id.
+        mount: String,
+    },
     /// The motor case reaches forward past the mount's forward end (warning).
     MotorPastMountTop {
         /// Configuration id.
@@ -71,6 +77,11 @@ pub enum Finding {
         /// How far past, m.
         excess_m: f64,
     },
+    /// An internal part lies wholly forward of the nose tip or aft of the rocket's end (error).
+    PartOutsideRocket {
+        /// Component id.
+        component: String,
+    },
     /// An internal part runs past an end of its parent (warning).
     InternalPartPastParentEnd {
         /// Component id.
@@ -80,16 +91,34 @@ pub enum Finding {
         /// How far past, m.
         excess_m: f64,
     },
-    /// An internal part reaches farther from the axis than its parent tube's inside wall (error).
+    /// An internal part reaches farther from its parent's axis than the parent has room: a tube's
+    /// bore, or a nose cone's or transition's largest outer radius (error).
     InternalPartWiderThanParent {
         /// Component id.
         component: String,
         /// Parent id.
         parent: String,
-        /// How far the part reaches from the axis, m.
-        radial_extent_m: f64,
-        /// The parent's inner radius, m.
-        parent_inner_radius_m: f64,
+        /// How far the part reaches from the parent's axis, m.
+        reach_m: f64,
+        /// The room in the parent, m.
+        room_m: f64,
+    },
+    /// A centering ring overlaps an inner tube beside it, so the mass where they cross is counted
+    /// twice; an automatic inner radius only clears on-axis tubes (warning).
+    RingOverlapsInnerTube {
+        /// The ring's id.
+        ring: String,
+        /// The tube's id.
+        tube: String,
+    },
+    /// A stage's centre of mass lies forward of the nose tip or aft of the rocket's end, although
+    /// every internal part in it is on the rocket: only an override puts it there, such as a
+    /// centre typed in millimetres as metres (error).
+    CentreOutsideRocket {
+        /// The stage's id.
+        stage: String,
+        /// The centre's station, m.
+        station_m: f64,
     },
     /// Adjacent body components' radii differ where they meet (warning).
     RadiusStep {
@@ -114,11 +143,15 @@ impl Finding {
     pub fn severity(&self) -> Severity {
         match self {
             Self::MotorWiderThanMount { .. }
+            | Self::MotorOutsideMount { .. }
             | Self::AttachmentOffBody { .. }
-            | Self::InternalPartWiderThanParent { .. } => Severity::Error,
+            | Self::PartOutsideRocket { .. }
+            | Self::InternalPartWiderThanParent { .. }
+            | Self::CentreOutsideRocket { .. } => Severity::Error,
             Self::MotorPastMountTop { .. }
             | Self::AttachmentPastBodyEnd { .. }
             | Self::InternalPartPastParentEnd { .. }
+            | Self::RingOverlapsInnerTube { .. }
             | Self::RadiusStep { .. }
             | Self::NoNoseCone { .. } => Severity::Warning,
         }
@@ -129,13 +162,14 @@ impl Finding {
 ///
 /// # Errors
 ///
-/// As [`Rocket::layout`] and [`Rocket::place_motors`]: a design that doesn't resolve can't be
-/// checked.
+/// As [`Rocket::layout`], [`Rocket::check_configuration_ids`] and [`Layout::place_motors`]: a
+/// design that doesn't resolve can't be checked.
 pub fn check(rocket: &Rocket) -> Result<Vec<Finding>, DesignError> {
+    rocket.check_configuration_ids()?;
     let layout = rocket.layout()?;
     let mut findings = check_layout(&layout);
     for configuration in &rocket.configurations {
-        findings.extend(check_configuration(rocket, &layout, configuration)?);
+        findings.extend(check_configuration(&layout, configuration)?);
     }
     Ok(findings)
 }
@@ -145,11 +179,15 @@ pub fn has_errors(findings: &[Finding]) -> bool {
     findings.iter().any(|f| f.severity() == Severity::Error)
 }
 
+/// The overlap of `[a0, a1]` and `[b0, b1]`, m (negative when they are apart).
+fn overlap(a0: f64, a1: f64, b0: f64, b1: f64) -> f64 {
+    a1.min(b1) - a0.max(b0)
+}
+
 /// How far `[fore, aft]` runs past `[parent_fore, parent_aft]`, m, or `None` when the two don't
 /// overlap at all.
 fn excess(fore: f64, aft: f64, parent_fore: f64, parent_aft: f64) -> Option<f64> {
-    let overlap = aft.min(parent_aft) - fore.max(parent_fore);
-    if overlap <= 0.0 {
+    if overlap(fore, aft, parent_fore, parent_aft) <= 0.0 {
         return None;
     }
     Some((parent_fore - fore).max(aft - parent_aft).max(0.0))
@@ -179,81 +217,150 @@ pub fn check_layout(layout: &Layout) -> Vec<Finding> {
             });
         }
     }
-    for component in &layout.components {
-        let Some(parent_index) = component.parent else {
+    // Attached parts wholly off the rocket, and the components holding one.
+    let length = layout.length_m;
+    let off_rocket: Vec<bool> = layout
+        .components
+        .iter()
+        .map(|c| {
+            c.parent.is_some()
+                && if c.length_m > 0.0 {
+                    overlap(c.fore_station_m, c.aft_station_m(), 0.0, length) <= 0.0
+                } else {
+                    c.fore_station_m < 0.0 || c.fore_station_m > length
+                }
+        })
+        .collect();
+    let mut holds_off = off_rocket.clone();
+    for (index, component) in layout.components.iter().enumerate().rev() {
+        if holds_off[index]
+            && let Some(flag) = component.parent.and_then(|p| holds_off.get_mut(p))
+        {
+            *flag = true;
+        }
+    }
+    for (k, stage) in layout.stages.iter().enumerate() {
+        let station = -stage.mass.cg_m.z;
+        let holds = layout
+            .components
+            .iter()
+            .zip(&holds_off)
+            .any(|(c, &h)| h && c.stage == k);
+        if !holds
+            && stage.mass.mass_kg > 0.0
+            && !(-LENGTH_TOLERANCE_M..=length + LENGTH_TOLERANCE_M).contains(&station)
+        {
+            findings.push(Finding::CentreOutsideRocket {
+                stage: stage.id.clone(),
+                station_m: station,
+            });
+        }
+    }
+    for (index, component) in layout.components.iter().enumerate() {
+        let Some(parent) = component.parent.and_then(|i| layout.components.get(i)) else {
             continue;
         };
-        let parent = &layout.components[parent_index];
-        let span = excess(
-            component.fore_station_m,
-            component.aft_station_m(),
-            parent.fore_station_m,
-            parent.aft_station_m(),
-        );
-        if component.part.is_external() {
-            match span {
-                None => findings.push(Finding::AttachmentOffBody {
-                    component: component.id.clone(),
-                    body: parent.id.clone(),
-                }),
-                Some(e) if e > LENGTH_TOLERANCE_M => {
-                    findings.push(Finding::AttachmentPastBodyEnd {
-                        component: component.id.clone(),
-                        body: parent.id.clone(),
-                        excess_m: e,
-                    });
-                }
-                Some(_) => {}
-            }
-            continue;
-        }
-        // An internal part entirely outside its parent runs past it by at least its own length.
-        let e = span.unwrap_or_else(|| {
-            (parent.fore_station_m - component.fore_station_m)
-                .max(component.aft_station_m() - parent.aft_station_m())
-        });
-        if e > LENGTH_TOLERANCE_M {
-            findings.push(Finding::InternalPartPastParentEnd {
-                component: component.id.clone(),
-                parent: parent.id.clone(),
-                excess_m: e,
-            });
-        }
-        if let (Some(extent), Some(inner)) = (
-            component.part.radial_extent_m(),
-            parent.part.inner_radius_m(),
-        ) && extent > inner + LENGTH_TOLERANCE_M
-        {
-            findings.push(Finding::InternalPartWiderThanParent {
-                component: component.id.clone(),
-                parent: parent.id.clone(),
-                radial_extent_m: extent,
-                parent_inner_radius_m: inner,
-            });
-        }
+        attached_findings(component, parent, off_rocket[index], layout, &mut findings);
     }
     findings
 }
 
-/// The checks on one configuration's motors in `layout`, a resolved layout of `rocket`.
+/// The checks on one attached part.
+fn attached_findings(
+    component: &PlacedComponent,
+    parent: &PlacedComponent,
+    off_rocket: bool,
+    layout: &Layout,
+    findings: &mut Vec<Finding>,
+) {
+    let (fore, aft) = (component.fore_station_m, component.aft_station_m());
+    let span = excess(fore, aft, parent.fore_station_m, parent.aft_station_m());
+    if component.part.is_external() {
+        match span {
+            None => findings.push(Finding::AttachmentOffBody {
+                component: component.id.clone(),
+                body: parent.id.clone(),
+            }),
+            Some(e) if e > LENGTH_TOLERANCE_M => {
+                findings.push(Finding::AttachmentPastBodyEnd {
+                    component: component.id.clone(),
+                    body: parent.id.clone(),
+                    excess_m: e,
+                });
+            }
+            Some(_) => {}
+        }
+        return;
+    }
+    // An internal part entirely outside its parent runs past it by at least its own length.
+    let e =
+        span.unwrap_or_else(|| (parent.fore_station_m - fore).max(aft - parent.aft_station_m()));
+    if off_rocket {
+        findings.push(Finding::PartOutsideRocket {
+            component: component.id.clone(),
+        });
+    } else if e > LENGTH_TOLERANCE_M {
+        findings.push(Finding::InternalPartPastParentEnd {
+            component: component.id.clone(),
+            parent: parent.id.clone(),
+            excess_m: e,
+        });
+    }
+    let room = parent
+        .part
+        .inner_radius_m()
+        .or_else(|| parent.part.max_radius_m().ok().flatten());
+    if let (Some(reach), Some(room)) = (
+        component.part.reach_from_m(parent.part.axis_offset_m()),
+        room,
+    ) && reach > room + LENGTH_TOLERANCE_M
+    {
+        findings.push(Finding::InternalPartWiderThanParent {
+            component: component.id.clone(),
+            parent: parent.id.clone(),
+            reach_m: reach,
+            room_m: room,
+        });
+    }
+    if let Part::CenteringRing(ring) = &component.part {
+        for tube in layout
+            .components
+            .iter()
+            .filter(|c| c.parent == component.parent && c.id != component.id)
+        {
+            let Part::InnerTube(inner) = &tube.part else {
+                continue;
+            };
+            // The tube covers radii [d − R, d + R] about the ring's (the body) axis.
+            let [x, y] = tube.part.axis_offset_m();
+            let d = x.hypot(y);
+            let radial = (d + inner.outer_radius_m).min(ring.outer_radius_m)
+                - (d - inner.outer_radius_m).max(ring.inner_radius_m);
+            if overlap(fore, aft, tube.fore_station_m, tube.aft_station_m()) > LENGTH_TOLERANCE_M
+                && radial > LENGTH_TOLERANCE_M
+            {
+                findings.push(Finding::RingOverlapsInnerTube {
+                    ring: component.id.clone(),
+                    tube: tube.id.clone(),
+                });
+            }
+        }
+    }
+}
+
+/// The checks on one configuration's motors in `layout`. The configuration need not be one of the
+/// rocket's own, so a candidate motor can be checked before it is stored.
 ///
 /// # Errors
 ///
-/// As [`Rocket::place_motors`].
+/// As [`Layout::place_motors`].
 pub fn check_configuration(
-    rocket: &Rocket,
     layout: &Layout,
     configuration: &Configuration,
 ) -> Result<Vec<Finding>, DesignError> {
-    let assembly = rocket.place_motors(layout.clone(), &configuration.id)?;
-    let components: BTreeMap<&str, _> = layout
-        .components
-        .iter()
-        .map(|c| (c.id.as_str(), c))
-        .collect();
     let mut findings = Vec::new();
-    for motor in &assembly.motors {
-        let Some(mount) = components.get(motor.mount.as_str()) else {
+    for motor in layout.place_motors(configuration)? {
+        let Some((_, mount)) = layout.find(&motor.mount) else {
             continue;
         };
         if let Some(inner) = mount.part.inner_radius_m() {
@@ -267,7 +374,15 @@ pub fn check_configuration(
                 });
             }
         }
-        let past = mount.fore_station_m - motor.fore_station_m();
+        let (fore, nozzle) = (motor.fore_station_m(), motor.nozzle_station_m());
+        if overlap(fore, nozzle, mount.fore_station_m, mount.aft_station_m()) <= 0.0 {
+            findings.push(Finding::MotorOutsideMount {
+                configuration: configuration.id.clone(),
+                mount: mount.id.clone(),
+            });
+            continue;
+        }
+        let past = mount.fore_station_m - fore;
         if past > LENGTH_TOLERANCE_M {
             findings.push(Finding::MotorPastMountTop {
                 configuration: configuration.id.clone(),
@@ -282,6 +397,7 @@ pub fn check_configuration(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::Part;
     use crate::testing::{
         attached, body, bottom, inner_tube, mass_component, ring, rocket, stage, three_fin_rocket,
         top, tube,
@@ -419,21 +535,138 @@ mod tests {
                     "internal_part_past_parent_end".to_owned(),
                     Severity::Warning
                 ),
-                (
-                    "internal_part_past_parent_end".to_owned(),
-                    Severity::Warning
-                ),
+                // Wholly forward of the nose tip: one error, not also a warning.
+                ("part_outside_rocket".to_owned(), Severity::Error),
             ]
         );
-        let Finding::InternalPartPastParentEnd { excess_m, .. } = &findings[4] else {
-            panic!()
-        };
-        // A part wholly outside runs past by at least its length: here 0.2 m forward of the tube.
-        assert!((excess_m - 0.2).abs() < 1e-12, "{excess_m}");
 
-        // An automatic ring always fits.
+        // A ring left solid across the motor mount counts their mass twice.
         let mut design = three_fin_rocket();
         design.stages[0].components[1].children[1].auto = vec![AutoDimension::OuterRadius];
-        assert!(check(&design).unwrap().is_empty());
+        assert_eq!(
+            check(&design).unwrap(),
+            vec![Finding::RingOverlapsInnerTube {
+                ring: "ring-fore".to_owned(),
+                tube: "mmt".to_owned(),
+            }]
+        );
+    }
+
+    /// Radial room is measured about the parent's own axis: a block centred in an off-axis pod
+    /// fits, and a mass on the body axis attached to the pod doesn't. Rings in a cluster warn.
+    #[test]
+    fn internal_parts_are_measured_from_their_parents_axis() {
+        let offset = |part: Part, r: f64| match part {
+            Part::InnerTube(mut t) => {
+                t.radial_offset_m = r;
+                Part::InnerTube(t)
+            }
+            Part::MassComponent(mut m) => {
+                m.packing.radial_offset_m = r;
+                Part::MassComponent(m)
+            }
+            other => other,
+        };
+        let mut pod = attached(
+            "pod",
+            offset(inner_tube(0.3, 0.02, 0.001), 0.025),
+            bottom(0.0),
+        );
+        pod.children = vec![attached(
+            "block",
+            offset(inner_tube(0.01, 0.019, 0.003), 0.025),
+            top(0.0),
+        )];
+        let mut airframe = body("airframe", tube(0.8, 0.05, 0.002));
+        airframe.children = vec![pod, attached("ring", ring(0.005, 0.048, 0.0), bottom(-0.1))];
+        let design = rocket(vec![stage(
+            "s",
+            vec![body("nose", crate::testing::nose(0.2, 0.05)), airframe],
+        )]);
+        assert_eq!(
+            check(&design).unwrap(),
+            vec![Finding::RingOverlapsInnerTube {
+                ring: "ring".to_owned(),
+                tube: "pod".to_owned(),
+            }]
+        );
+
+        let mut design = design;
+        design.stages[0].components[1].children[0].children[0] =
+            attached("on-axis", mass_component(0.1, 0.05, 0.004), top(0.1));
+        let findings = check(&design).unwrap();
+        let wide = findings
+            .iter()
+            .find_map(|f| match f {
+                Finding::InternalPartWiderThanParent {
+                    component,
+                    reach_m,
+                    room_m,
+                    ..
+                } if component == "on-axis" => Some((*reach_m, *room_m)),
+                _ => None,
+            })
+            .unwrap();
+        assert!(
+            (wide.0 - 0.029).abs() < 1e-15 && (wide.1 - 0.019).abs() < 1e-15,
+            "{wide:?}"
+        );
+    }
+
+    /// A motor that isn't in its mount at all is an error, whichever way it missed.
+    #[test]
+    fn motor_outside_its_mount_is_rejected() {
+        for overhang in [5.0, 0.2, -0.3] {
+            let mut design = three_fin_rocket();
+            design.stages[0].components[1].children[0].motor_mount = Some(MotorMount {
+                overhang_m: overhang,
+            });
+            let findings = check(&design).unwrap();
+            assert_eq!(
+                findings,
+                vec![Finding::MotorOutsideMount {
+                    configuration: "main".to_owned(),
+                    mount: "mmt".to_owned(),
+                }],
+                "{overhang}"
+            );
+            assert!(has_errors(&findings));
+        }
+    }
+
+    /// Parts wholly off the rocket are errors, and a stage centre moved off it by an override too.
+    #[test]
+    fn parts_and_centres_off_the_rocket_are_rejected() {
+        let mut design = three_fin_rocket();
+        design.stages[0].components[1].children[4].position = Some(top(2.0));
+        assert_eq!(
+            check(&design).unwrap(),
+            vec![Finding::PartOutsideRocket {
+                component: "chute".to_owned(),
+            }]
+        );
+        let mut design = three_fin_rocket();
+        design.stages[0].overrides.cg_aft_m = Some(350.0);
+        let findings = check(&design).unwrap();
+        assert!(
+            matches!(&findings[..], [Finding::CentreOutsideRocket { stage, station_m }]
+                if stage == "sustainer" && *station_m == 350.0),
+            "{findings:?}"
+        );
+        // Ballast wider than a nose cone.
+        let mut design = three_fin_rocket();
+        design.stages[0].components[0].children = vec![attached(
+            "ballast",
+            mass_component(0.1, 0.02, 0.2),
+            bottom(0.0),
+        )];
+        assert!(matches!(
+            &check(&design).unwrap()[..],
+            [Finding::InternalPartWiderThanParent { component, .. }] if component == "ballast"
+        ));
+        // A check of a layout with a bad parent index skips it instead of panicking.
+        let mut layout = three_fin_rocket().layout().unwrap();
+        layout.components[2].parent = Some(999);
+        let _ = check_layout(&layout);
     }
 }

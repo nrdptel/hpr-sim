@@ -25,8 +25,8 @@ adds a source.
   marked "free", "other" or with no license are never bundled (ADR-005).
 
 - **RocketPy example rocket inputs** (MIT, RocketPy v1.13.0): the masses, inertias, positions,
-  motor dimensions and aerodynamic-surface dimensions of eight example rockets, taken from
-  RocketPy's notebooks, `data/rockets/valkyrie/VLK.json` and its test fixtures. They are recorded
+  motor dimensions and aerodynamic-surface dimensions of six example rockets, taken from RocketPy's
+  notebooks and test code (never from its data files). They are recorded
   in `validation/fixtures/design/rocketpy-rocket-mass.json` with RocketPy's outputs, and turned into
   `validation/designs/rocketpy-*.json` by `cargo xtask designs`. RocketPy's motor thrust files carry
   their own terms and are **not** committed; the fixture pairs each example with a bundled

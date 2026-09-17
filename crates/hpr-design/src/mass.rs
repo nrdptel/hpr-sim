@@ -192,7 +192,8 @@ impl MassProperties {
 
     /// Checks that this could be a real body: finite, non-negative mass; finite centre; a
     /// symmetric tensor (to 1e-9 of its largest entry) whose principal moments are non-negative
-    /// and obey the triangle inequality `I_1 + I_2 ≥ I_3` (to the same tolerance).
+    /// and obey the triangle inequality `I_1 + I_2 ≥ I_3` (to the same tolerance), and that is zero
+    /// when the mass is.
     ///
     /// # Errors
     ///
@@ -219,6 +220,11 @@ impl MassProperties {
             ));
         }
         let scale = entries.iter().fold(0.0f64, |m, v| m.max(v.abs()));
+        if self.mass_kg == 0.0 && scale > 0.0 {
+            return Err(DesignError::UnphysicalInertia(format!(
+                "a body with no mass has no inertia, but this one has {scale:e} kg·m²"
+            )));
+        }
         let tolerance = 1e-9 * scale;
         let asymmetry = (i - i.transpose())
             .to_cols_array()
@@ -775,5 +781,11 @@ mod tests {
         MassProperties::axisymmetric(1.0, DVec3::ZERO, 0.0, 0.5)
             .validate()
             .unwrap();
+        // No mass, no inertia; massless placeholders stay valid.
+        assert!(matches!(
+            MassProperties::axisymmetric(0.0, DVec3::ZERO, 1.0, 5.0).validate(),
+            Err(DesignError::UnphysicalInertia(_))
+        ));
+        MassProperties::combine([&a, &b]).validate().unwrap();
     }
 }

@@ -270,18 +270,41 @@ impl Part {
         }
     }
 
-    /// How far an internal part reaches from the body axis, m: an inner tube's offset plus its
-    /// radius, a ring's outer radius, or a packed part's offset plus its packed radius.
-    pub fn radial_extent_m(&self) -> Option<f64> {
+    /// Where the part's own axis crosses the `x`–`y` plane, `[x, y]` in body axes, m: an inner
+    /// tube's or packed part's radial offset turned by its angle, and the body axis for every
+    /// other part.
+    pub fn axis_offset_m(&self) -> [f64; 2] {
+        let turned = |r: f64, angle: f64| [r * angle.cos(), r * angle.sin()];
         match self {
-            Self::InnerTube(p) => Some(p.radial_offset_m + p.outer_radius_m),
+            Self::InnerTube(p) => turned(p.radial_offset_m, p.angle_rad),
+            Self::MassComponent(p) => turned(p.packing.radial_offset_m, p.packing.angle_rad),
+            Self::Parachute(p) => turned(p.packing.radial_offset_m, p.packing.angle_rad),
+            Self::Streamer(p) => turned(p.packing.radial_offset_m, p.packing.angle_rad),
+            Self::ShockCord(p) => turned(p.packing.radial_offset_m, p.packing.angle_rad),
+            _ => [0.0, 0.0],
+        }
+    }
+
+    /// An internal part's outer radius about its own axis, m: an inner tube's or ring's outer
+    /// radius, or a packed part's packed radius.
+    pub fn outer_radius_about_axis_m(&self) -> Option<f64> {
+        match self {
+            Self::InnerTube(p) => Some(p.outer_radius_m),
             Self::CenteringRing(p) => Some(p.outer_radius_m),
-            Self::MassComponent(p) => Some(p.packing.radial_offset_m + p.packing.radius_m),
-            Self::Parachute(p) => Some(p.packing.radial_offset_m + p.packing.radius_m),
-            Self::Streamer(p) => Some(p.packing.radial_offset_m + p.packing.radius_m),
-            Self::ShockCord(p) => Some(p.packing.radial_offset_m + p.packing.radius_m),
+            Self::MassComponent(p) => Some(p.packing.radius_m),
+            Self::Parachute(p) => Some(p.packing.radius_m),
+            Self::Streamer(p) => Some(p.packing.radius_m),
+            Self::ShockCord(p) => Some(p.packing.radius_m),
             _ => None,
         }
+    }
+
+    /// How far an internal part reaches from `axis` (`[x, y]` in body axes, m): the distance
+    /// between the two axes plus the part's outer radius.
+    pub fn reach_from_m(&self, axis: [f64; 2]) -> Option<f64> {
+        let [x, y] = self.axis_offset_m();
+        self.outer_radius_about_axis_m()
+            .map(|r| (x - axis[0]).hypot(y - axis[1]) + r)
     }
 
     /// Mass properties in the part's own frame. External attachments need the radius of the body
@@ -289,16 +312,18 @@ impl Part {
     ///
     /// # Errors
     ///
-    /// The part's own geometry, material and numerical errors, and [`DesignError::Domain`] when an
-    /// external attachment has no body radius.
+    /// The part's own geometry, material and numerical errors, and [`DesignError::Geometry`] when
+    /// an external attachment has no body radius.
     pub fn mass_properties(
         &self,
         body_radius_m: Option<f64>,
     ) -> Result<MassProperties, DesignError> {
         let body = || {
-            body_radius_m.ok_or(DesignError::Domain {
-                what: "body radius for an external part",
-                value: f64::NAN,
+            body_radius_m.ok_or_else(|| {
+                DesignError::Geometry(format!(
+                    "a {} needs the radius of the body it sits on",
+                    self.kind_name()
+                ))
             })
         };
         match self {
@@ -379,11 +404,27 @@ pub enum AutoDimension {
     /// A centering ring's inner radius: the outer radius of the widest on-axis inner tube among
     /// its siblings that overlaps it along the axis, or zero when none does.
     InnerRadius,
-    /// A mass component's or recovery part's packed radius: its parent's inner radius.
+    /// A mass component's or recovery part's packed radius: its parent's inner radius less the
+    /// part's radial offset.
     PackedRadius,
 }
 
 impl AutoDimension {
+    /// The dimension's name, as serialized.
+    pub fn name(self) -> &'static str {
+        match self {
+            Self::BaseRadius => "base_radius",
+            Self::OuterRadius => "outer_radius",
+            Self::ForeRadius => "fore_radius",
+            Self::AftRadius => "aft_radius",
+            Self::ShoulderRadius => "shoulder_radius",
+            Self::ForeShoulderRadius => "fore_shoulder_radius",
+            Self::AftShoulderRadius => "aft_shoulder_radius",
+            Self::InnerRadius => "inner_radius",
+            Self::PackedRadius => "packed_radius",
+        }
+    }
+
     fn applies_to(self, part: &Part) -> bool {
         use AutoDimension as A;
         matches!(
@@ -410,9 +451,10 @@ impl AutoDimension {
 ///
 /// 1. **Mass** `m′`: the body is rescaled, `I′ = I m′/m`, keeping its centre and shape. A body with
 ///    no mass becomes a point mass at its centre.
-/// 2. **Centre of mass**: the centre moves along the axis to `cg_aft_m` aft of the covered parts'
-///    forward end, and off the axis to `cg_xy_m` when given (otherwise it keeps its offset); the
-///    tensor about the centre is unchanged.
+/// 2. **Centre of mass**: the centre moves along the axis to `cg_aft_m` aft of the component's
+///    forward end (a stage's, for a stage), with or without its children, and off the axis to
+///    `cg_xy_m` when given (otherwise it keeps its offset); the tensor about the centre is
+///    unchanged.
 /// 3. **Inertia**: the tensor about the (new) centre is replaced.
 #[derive(Debug, Clone, Copy, PartialEq, Default, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -485,7 +527,8 @@ impl Overrides {
             && self.inertia.is_none()
     }
 
-    /// Applies the overrides to `mass`, whose parts start at station `fore_station_m`.
+    /// Applies the overrides to `mass`, measuring a centre-of-mass override from station
+    /// `fore_station_m`.
     ///
     /// # Errors
     ///
@@ -665,7 +708,7 @@ impl Rocket {
                 return Err(tree(&stage.id, "a stage needs at least one body component"));
             }
             for component in &stage.components {
-                check_node(&mut ids, component, None)?;
+                check_node(&mut ids, component, None, 0)?;
             }
         }
 
@@ -687,7 +730,8 @@ impl Rocket {
         let mut station = 0.0;
         for ((stage, node), part) in nodes.iter().zip(parts) {
             let length = part.length_m();
-            check_dimension("body component length", length, false)?;
+            check_dimension("body component length", length, false)
+                .map_err(|e| within(&node.id, e))?;
             let placed = place(&part, None, station, &node.id)?;
             let index = components.len();
             components.push(PlacedComponent {
@@ -714,7 +758,8 @@ impl Rocket {
             let (fore, aft) = ends.unwrap_or((0.0, 0.0));
             let mass = stage
                 .overrides
-                .apply(MassProperties::combine(masses), fore)?;
+                .apply(MassProperties::combine(masses), fore)
+                .map_err(|e| within(&stage.id, e))?;
             stages.push(PlacedStage {
                 id: stage.id.clone(),
                 fore_station_m: fore,
@@ -763,6 +808,19 @@ impl Rocket {
     }
 }
 
+/// `error` in the stage or component `id`.
+fn within(id: &str, error: DesignError) -> DesignError {
+    DesignError::InComponent {
+        id: id.to_owned(),
+        source: Box::new(error),
+    }
+}
+
+/// How many levels a body component and the parts nested in it may span, the body component being
+/// the first: inner tubes in inner tubes far beyond any real rocket, and shallow enough that
+/// resolving never exhausts a small (wasm) stack.
+pub const MAX_DEPTH: usize = 32;
+
 fn tree(id: &str, message: impl Into<String>) -> DesignError {
     DesignError::Tree {
         id: id.to_owned(),
@@ -783,8 +841,15 @@ fn check_node(
     ids: &mut BTreeSet<String>,
     node: &Component,
     parent: Option<&Part>,
+    depth: usize,
 ) -> Result<(), DesignError> {
     unique(ids, &node.id)?;
+    if depth >= MAX_DEPTH {
+        return Err(tree(
+            &node.id,
+            format!("components nest more than {MAX_DEPTH} deep"),
+        ));
+    }
     let kind = node.part.kind_name();
     match (parent, node.part.role()) {
         (None, Role::Body) => {
@@ -834,7 +899,7 @@ fn check_node(
         if !auto.applies_to(&node.part) {
             return Err(tree(
                 &node.id,
-                format!("a {kind} has no automatic {auto:?} dimension"),
+                format!("a {kind} has no automatic {} dimension", auto.name()),
             ));
         }
     }
@@ -850,7 +915,7 @@ fn check_node(
         ));
     }
     for child in &node.children {
-        check_node(ids, child, Some(&node.part))?;
+        check_node(ids, child, Some(&node.part), depth + 1)?;
     }
     Ok(())
 }
@@ -1024,10 +1089,9 @@ fn place(
     fore_station_m: f64,
     id: &str,
 ) -> Result<MassProperties, DesignError> {
-    let mass = part.mass_properties(body_radius_m).map_err(|e| match e {
-        DesignError::Geometry(message) => tree(id, message),
-        other => other,
-    })?;
+    let mass = part
+        .mass_properties(body_radius_m)
+        .map_err(|e| within(id, e))?;
     Ok(mass.translated(DVec3::new(0.0, 0.0, -fore_station_m)))
 }
 
@@ -1037,11 +1101,20 @@ fn finish(
     index: usize,
     node: &Component,
 ) -> Result<MassProperties, DesignError> {
-    let parent = components[index].clone();
+    let parent = &components[index];
+    let (p_fore, p_length, stage) = (parent.fore_station_m, parent.length_m, parent.stage);
+    let (p_kind, p_inner) = (parent.part.kind_name(), parent.part.inner_radius_m());
+    let p_axis = parent.part.axis_offset_m();
+    let p_tube_radius = match &parent.part {
+        Part::BodyTube(tube) => Some(tube.outer_radius_m),
+        _ => None,
+    };
     let own = if node.overrides_include_children {
         parent.own
     } else {
-        node.overrides.apply(parent.own, parent.fore_station_m)?
+        node.overrides
+            .apply(parent.own, p_fore)
+            .map_err(|e| within(&node.id, e))?
     };
 
     // Positions first: they don't depend on any automatic radius, and a ring's inner radius needs
@@ -1050,8 +1123,7 @@ fn finish(
     let mut previous_aft = None;
     for child in &node.children {
         let length = child.part.length_m();
-        check_dimension("attached part length", length, true)?;
-        let (p_fore, p_length) = (parent.fore_station_m, parent.length_m);
+        check_dimension("attached part length", length, true).map_err(|e| within(&child.id, e))?;
         let fore = match child.position {
             Some(Position::Top { aft_offset_m }) => p_fore + aft_offset_m,
             Some(Position::Middle { aft_offset_m }) => {
@@ -1063,10 +1135,13 @@ fn finish(
             None => return Err(tree(&child.id, "an attached part needs a position")),
         };
         if !fore.is_finite() {
-            return Err(DesignError::Domain {
-                what: "attached part position (m)",
-                value: fore,
-            });
+            return Err(within(
+                &child.id,
+                DesignError::Domain {
+                    what: "attached part position (m)",
+                    value: fore,
+                },
+            ));
         }
         stations.push((fore, length));
         previous_aft = Some(fore + length);
@@ -1077,15 +1152,30 @@ fn finish(
         let (fore, length) = stations[k];
         let mut part = child.part.clone();
         let parent_inner = || {
-            parent.part.inner_radius_m().ok_or_else(|| {
+            p_inner.ok_or_else(|| {
                 tree(
                     &child.id,
                     format!(
-                        "an automatic radius needs a tube's inner radius, and a {} has none",
-                        parent.part.kind_name()
+                        "an automatic radius needs a tube's inner radius, and a {p_kind} has none"
                     ),
                 )
             })
+        };
+        // A packed part fills the parent's bore on its side of the parent's axis.
+        let packed = |packing: &mut crate::parts::Packing| -> Result<(), DesignError> {
+            let (x, y) = (
+                packing.radial_offset_m * packing.angle_rad.cos(),
+                packing.radial_offset_m * packing.angle_rad.sin(),
+            );
+            let room = parent_inner()? - (x - p_axis[0]).hypot(y - p_axis[1]);
+            if !(room.is_finite() && room > 0.0) {
+                return Err(tree(
+                    &child.id,
+                    "an automatic packed radius needs a radial offset inside the parent's bore",
+                ));
+            }
+            packing.radius_m = room;
+            Ok(())
         };
         for auto in &child.auto {
             match (auto, &mut part) {
@@ -1109,26 +1199,18 @@ fn finish(
                         })
                         .fold(0.0, f64::max);
                 }
-                (AutoDimension::PackedRadius, Part::MassComponent(p)) => {
-                    p.packing.radius_m = parent_inner()?;
-                }
-                (AutoDimension::PackedRadius, Part::Parachute(p)) => {
-                    p.packing.radius_m = parent_inner()?;
-                }
-                (AutoDimension::PackedRadius, Part::Streamer(p)) => {
-                    p.packing.radius_m = parent_inner()?;
-                }
-                (AutoDimension::PackedRadius, Part::ShockCord(p)) => {
-                    p.packing.radius_m = parent_inner()?;
-                }
+                (AutoDimension::PackedRadius, Part::MassComponent(p)) => packed(&mut p.packing)?,
+                (AutoDimension::PackedRadius, Part::Parachute(p)) => packed(&mut p.packing)?,
+                (AutoDimension::PackedRadius, Part::Streamer(p)) => packed(&mut p.packing)?,
+                (AutoDimension::PackedRadius, Part::ShockCord(p)) => packed(&mut p.packing)?,
                 _ => {}
             }
         }
         let body_radius_m = if part.is_external() {
-            match parent.part {
-                Part::BodyTube(ref tube) => Some(tube.outer_radius_m),
-                _ => return Err(tree(&child.id, "external parts attach to a body tube")),
-            }
+            Some(
+                p_tube_radius
+                    .ok_or_else(|| tree(&child.id, "external parts attach to a body tube"))?,
+            )
         } else {
             None
         };
@@ -1136,7 +1218,7 @@ fn finish(
         let child_index = components.len();
         components.push(PlacedComponent {
             id: child.id.clone(),
-            stage: parent.stage,
+            stage,
             parent: Some(index),
             part,
             fore_station_m: fore,
@@ -1151,7 +1233,10 @@ fn finish(
 
     let mut with_children = MassProperties::combine(&parts);
     if node.overrides_include_children {
-        with_children = node.overrides.apply(with_children, parent.fore_station_m)?;
+        with_children = node
+            .overrides
+            .apply(with_children, p_fore)
+            .map_err(|e| within(&node.id, e))?;
     }
     components[index].own = own;
     components[index].with_children = with_children;
@@ -1601,15 +1686,44 @@ mod tests {
         assert_eq!(b.own.inertia_kg_m2, DMat3::ZERO);
 
         // Overrides that make no real body are refused.
+        let in_stage = |design: &Rocket| match design.layout() {
+            Err(DesignError::InComponent { id, source }) if id == "s" => *source,
+            other => panic!("{other:?}"),
+        };
         let mut bad = plain.clone();
         bad.stages[0].overrides.mass_kg = Some(-1.0);
-        assert!(matches!(bad.layout(), Err(DesignError::Domain { .. })));
-        let mut bad = plain;
+        assert!(matches!(in_stage(&bad), DesignError::Domain { .. }));
+        let mut bad = plain.clone();
         bad.stages[0].overrides.inertia = Some(InertiaOverride::axisymmetric(1.0, 0.1));
-        assert!(matches!(
-            bad.layout(),
-            Err(DesignError::UnphysicalInertia(_))
-        ));
+        assert!(matches!(in_stage(&bad), DesignError::UnphysicalInertia(_)));
+        for broken in [
+            Overrides {
+                cg_aft_m: Some(f64::NAN),
+                ..Overrides::default()
+            },
+            Overrides {
+                cg_xy_m: Some([0.0, f64::INFINITY]),
+                ..Overrides::default()
+            },
+        ] {
+            let mut bad = plain.clone();
+            bad.stages[0].overrides = broken;
+            assert!(matches!(in_stage(&bad), DesignError::Domain { .. }));
+        }
+        let mut bad = plain.clone();
+        bad.stages[0].overrides.inertia = Some(InertiaOverride {
+            xy_kg_m2: f64::NAN,
+            ..InertiaOverride::axisymmetric(0.1, 1.0)
+        });
+        assert!(matches!(in_stage(&bad), DesignError::UnphysicalInertia(_)));
+        // Zero mass scales the tensor to zero, but a massless body can't be given an inertia.
+        let mut zero = plain.clone();
+        zero.stages[0].overrides.mass_kg = Some(0.0);
+        assert_eq!(zero.layout().unwrap().structure.inertia_kg_m2, DMat3::ZERO);
+        let mut bad = plain;
+        bad.stages[0].overrides.mass_kg = Some(0.0);
+        bad.stages[0].overrides.inertia = Some(InertiaOverride::axisymmetric(1.0, 5.0));
+        assert!(matches!(in_stage(&bad), DesignError::UnphysicalInertia(_)));
     }
 
     /// A tree that doesn't hold together is refused with the offending id.
@@ -1696,6 +1810,176 @@ mod tests {
         let mut d = base();
         d.stages.clear();
         assert!(matches!(d.layout(), Err(DesignError::Tree { .. })));
+    }
+
+    /// A child's own override applies before its parent's override over the subtree: the parent's
+    /// mass override rescales a total that already holds the child's overridden mass.
+    #[test]
+    fn nested_overrides_apply_deepest_first() {
+        let mut airframe = body("airframe", tube(0.8, 0.03, 0.001));
+        let mut bay = attached("bay", mass_component(0.4, 0.1, 0.02), top(0.3));
+        bay.overrides.mass_kg = Some(1.0);
+        airframe.children = vec![bay];
+        let plain = rocket(vec![stage("s", vec![airframe.clone()])]);
+        let layout = plain.layout().unwrap();
+        let (_, t) = layout.find("airframe").unwrap();
+        let (_, b) = layout.find("bay").unwrap();
+        assert_eq!(b.own.mass_kg, 1.0);
+        close(
+            t.with_children.mass_kg,
+            t.own.mass_kg + 1.0,
+            1e-15,
+            "child override inside",
+        );
+
+        airframe.overrides.mass_kg = Some(3.0);
+        airframe.overrides_include_children = true;
+        let layout = rocket(vec![stage("s", vec![airframe])]).layout().unwrap();
+        let (_, t2) = layout.find("airframe").unwrap();
+        close(
+            t2.with_children.mass_kg,
+            3.0,
+            0.0,
+            "parent override over the total",
+        );
+        // The rescaled subtree keeps the centre of the tube plus the 1 kg bay, not the 0.4 kg bay.
+        close(
+            t2.with_children.cg_m.z,
+            t.with_children.cg_m.z,
+            1e-15,
+            "centre kept",
+        );
+    }
+
+    /// The aft radius and aft shoulder take the tube behind a transition; missing shoulders, a
+    /// shoulder with no tube, a nose-base reference with no nose, too deep a tree, and a bad part
+    /// are all refused with the offending id.
+    #[test]
+    fn aft_radii_and_resolution_errors() {
+        let boattail = |aft_shoulder: bool| {
+            let mut c = body(
+                "flare",
+                Part::Transition(Transition {
+                    shape: crate::NoseShape::Conical {},
+                    clipped: false,
+                    length_m: 0.1,
+                    fore_radius_m: 0.03,
+                    aft_radius_m: 0.0,
+                    wall: crate::Wall::Shell { thickness_m: 0.002 },
+                    fore_shoulder: None,
+                    aft_shoulder: aft_shoulder.then_some(Shoulder {
+                        length_m: 0.04,
+                        outer_radius_m: 0.0,
+                        thickness_m: 0.002,
+                        capped: false,
+                    }),
+                    material: crate::testing::cardboard(),
+                }),
+            );
+            c.auto = vec![AutoDimension::AftRadius, AutoDimension::AftShoulderRadius];
+            c
+        };
+        let with = |flare: Component, last: Component| {
+            rocket(vec![stage(
+                "s",
+                vec![
+                    body("nose", nose(0.2, 0.03)),
+                    body("upper", tube(0.5, 0.03, 0.001)),
+                    flare,
+                    last,
+                ],
+            )])
+        };
+        let layout = with(boattail(true), body("lower", tube(0.4, 0.04, 0.0015)))
+            .layout()
+            .unwrap();
+        let Part::Transition(t) = layout.find("flare").unwrap().1.part.clone() else {
+            panic!()
+        };
+        assert_eq!(t.aft_radius_m, 0.04);
+        assert_eq!(t.aft_shoulder.unwrap().outer_radius_m, 0.04 - 0.0015);
+
+        let tree_id = |result: Result<Layout, DesignError>| match result {
+            Err(DesignError::Tree { id, .. }) => id,
+            other => panic!("{other:?}"),
+        };
+        // No shoulder to size.
+        let lower = || body("lower", tube(0.4, 0.04, 0.0015));
+        assert_eq!(tree_id(with(boattail(false), lower()).layout()), "flare");
+        // A shoulder into a transition, not a tube.
+        let mut cone = boattail(true);
+        cone.id = "cone".to_owned();
+        cone.auto = vec![AutoDimension::AftShoulderRadius];
+        if let Part::Transition(t) = &mut cone.part {
+            t.aft_radius_m = 0.02;
+        }
+        assert_eq!(tree_id(with(boattail(true), cone).layout()), "flare");
+
+        let mut no_nose = with(boattail(true), lower());
+        no_nose.stages[0].components.remove(0);
+        no_nose.reference_diameter = ReferenceDiameter::NoseBase {};
+        assert!(matches!(no_nose.layout(), Err(DesignError::Tree { .. })));
+
+        // A body tube holding `n` nested inner tubes: `n + 1` levels.
+        let nest = |n: usize| {
+            let mut deepest = attached("t0", inner_tube(0.1, 0.02, 0.001), top(0.0));
+            for k in 1..n {
+                let mut outer = attached(&format!("t{k}"), inner_tube(0.1, 0.02, 0.001), top(0.0));
+                outer.children = vec![deepest];
+                deepest = outer;
+            }
+            let mut airframe = body("airframe", tube(0.5, 0.03, 0.001));
+            airframe.children = vec![deepest];
+            rocket(vec![stage("s", vec![airframe])])
+        };
+        nest(MAX_DEPTH - 1).layout().unwrap();
+        assert_eq!(tree_id(nest(MAX_DEPTH).layout()), "t0");
+
+        // A part's own error names the part.
+        let bad = with(boattail(true), body("lower", tube(0.4, 0.04, -0.001)));
+        assert!(matches!(
+            bad.layout(),
+            Err(DesignError::InComponent { ref id, ref source })
+                if id == "lower" && matches!(**source, DesignError::Domain { .. })
+        ));
+        let mut bad = with(boattail(true), lower());
+        bad.stages[0].components[1].children = vec![attached(
+            "lost",
+            mass_component(0.1, 0.1, 0.01),
+            top(f64::NAN),
+        )];
+        assert!(matches!(
+            bad.layout(),
+            Err(DesignError::InComponent { ref id, .. }) if id == "lost"
+        ));
+    }
+
+    /// An automatic packed radius fills the bore on the part's side of the axis, and an offset
+    /// outside the bore is refused.
+    #[test]
+    fn packed_radius_leaves_room_for_the_offset() {
+        let mut design = three_fin_rocket();
+        if let Part::Parachute(chute) = &mut design.stages[0].components[1].children[4].part {
+            chute.packing.radial_offset_m = 0.005;
+        }
+        let layout = design.layout().unwrap();
+        let Part::Parachute(chute) = layout.find("chute").unwrap().1.part.clone() else {
+            panic!()
+        };
+        close(
+            chute.packing.radius_m,
+            0.0255 - 0.005,
+            1e-15,
+            "packed radius",
+        );
+        assert!(crate::checks::check(&design).unwrap().is_empty());
+        if let Part::Parachute(chute) = &mut design.stages[0].components[1].children[4].part {
+            chute.packing.radial_offset_m = 0.03;
+        }
+        assert!(matches!(
+            design.layout(),
+            Err(DesignError::Tree { ref id, .. }) if id == "chute"
+        ));
     }
 
     #[test]

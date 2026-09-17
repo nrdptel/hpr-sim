@@ -538,18 +538,32 @@ centre and inertia as inputs and adds the motor; it computes nothing from geomet
   M1.9. Catalog references wait for the facade (M4.1) and the online catalog (M5.4).
 - **Reference diameter** defaults to the widest body component in any stage. `nose_base` and
   `custom` are the alternatives.
-- **Checks** return typed findings with a severity. Errors: a motor wider than its mount, an
-  external part that doesn't overlap its body tube, an internal part wider than its parent's bore.
-  Warnings: a motor past its mount's top, attachments and internal parts past their parent's ends,
-  radius steps, no nose cone. Lengths compare with 1 nm of slack. The flight engine (M1.6) must
-  refuse designs with errors unless the caller accepts them.
+- **Checks** return typed findings with a severity.
+  - Errors: a motor wider than its mount or wholly outside it, an external part that doesn't
+    overlap its body tube, an internal part off the rocket or reaching past its parent's bore
+    (measured about the parent's own axis), and a stage centre moved off the rocket by an override.
+  - Warnings: a motor past its mount's top, attachments and internal parts past their parent's ends,
+    a ring crossing an inner tube, radius steps, no nose cone.
+  - Lengths compare with 1 nm of slack.
+  - The flight engine (M1.6) must refuse designs with errors unless the caller accepts them.
+  - `Layout::place_motors` takes any configuration, so a candidate motor is checked before it is
+    stored.
+- **Errors and limits.** An error inside a stage or component carries its id
+  (`DesignError::InComponent`). Components nest at most 32 levels. `MassProperties::validate` now
+  also refuses inertia on a body with no mass.
 - **Public test designs** live in `validation/designs/` as JSON of `hpr_design::Rocket`. The format
   is provisional: M3.3 defines the open format and migrates them.
-- **RocketPy comparison with substituted curves.** RocketPy's motor data files carry their own
-  terms (`THIRD-PARTY-NOTICES.md`), so the committed fixture keeps each example rocket's inputs
-  exactly and pairs its motor with the bundled public-domain curve nearest in impulse. Mass
-  composition doesn't depend on which curve schedules the burn. A local run with the examples'
-  own curves stays under `refs/` and is reported, not committed.
+- **RocketPy comparison with substituted curves.** RocketPy's data files carry their own terms
+  (`THIRD-PARTY-NOTICES.md`).
+  - The committed fixture takes inputs only from RocketPy's notebooks and test code. It keeps each
+    example rocket's inputs exactly, and pairs its motor with the bundled public-domain curve
+    nearest in impulse.
+  - Valkyrie is left out, because its inputs exist only in a data file.
+  - Mass composition doesn't depend on which curve schedules the burn. Values at ignition are
+    identical, and at burnout they agree to 1e-9. A local run with the examples' own curves stays
+    under `refs/`.
+  - The fixture also samples RocketPy at its LSODA knots. There hpr agrees to the solver's
+    accuracy (1e-9), and the test holds 1e-8.
 
 **Consequences.**
 

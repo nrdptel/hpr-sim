@@ -8,8 +8,10 @@
 //!   rail buttons) follows the example, for the aerodynamics milestones.
 //! - `synthetic-*.json`: rockets whose mass comes from their geometry.
 //!
-//! `--check` compares instead of writing and fails on any difference; a test runs it, so the
-//! committed files always match this generator.
+//! `--check` compares instead of writing, and a test runs it, so the committed files always match
+//! this generator. It fails on a missing or extra `.json` file and on any difference in content.
+//! Numbers compare to 1e-12 relative, because a platform's `tan` (for swept fins) may round its
+//! last bit differently; formatting is not compared.
 
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -57,6 +59,11 @@ pub fn run(args: &[String]) -> Result<(), String> {
         ));
     }
     fs::create_dir_all(&dir).map_err(|e| format!("{}: {e}", dir.display()))?;
+    for name in extra(&dir, &designs) {
+        let path = dir.join(&name);
+        fs::remove_file(&path).map_err(|e| format!("{}: {e}", path.display()))?;
+        println!("removed {DIR}/{name}");
+    }
     for (name, text) in &designs {
         let path = dir.join(name);
         fs::write(&path, text).map_err(|e| format!("{}: {e}", path.display()))?;
@@ -72,13 +79,53 @@ fn root() -> Result<PathBuf, String> {
         .ok_or_else(|| "xtask has no parent directory".to_owned())
 }
 
-/// The file names in `designs` whose committed text in `dir` is missing or different.
+/// The `.json` files in `dir` that the generator doesn't write.
+fn extra(dir: &Path, designs: &[(String, String)]) -> Vec<String> {
+    let Ok(entries) = fs::read_dir(dir) else {
+        return Vec::new();
+    };
+    let mut names: Vec<String> = entries
+        .filter_map(|e| e.ok()?.file_name().into_string().ok())
+        .filter(|name| name.ends_with(".json") && !designs.iter().any(|(n, _)| n == name))
+        .collect();
+    names.sort();
+    names
+}
+
+/// The files in `dir` that differ from `designs`: missing, extra, unreadable, or with different
+/// content.
 fn stale(dir: &Path, designs: &[(String, String)]) -> Vec<String> {
-    designs
+    let mut stale: Vec<String> = designs
         .iter()
-        .filter(|(name, text)| fs::read_to_string(dir.join(name)).ok().as_ref() != Some(text))
+        .filter(|(name, text)| {
+            let committed = fs::read_to_string(dir.join(name)).ok();
+            let parse = |t: &str| serde_json::from_str::<Value>(t).ok();
+            match (committed.as_deref().and_then(parse), parse(text)) {
+                (Some(a), Some(b)) => !same(&a, &b),
+                _ => true,
+            }
+        })
         .map(|(name, _)| name.clone())
-        .collect()
+        .collect();
+    stale.extend(extra(dir, designs));
+    stale
+}
+
+/// Whether two JSON values are equal, with numbers equal to 1e-12 relative.
+fn same(a: &Value, b: &Value) -> bool {
+    match (a, b) {
+        (Value::Number(x), Value::Number(y)) => match (x.as_f64(), y.as_f64()) {
+            (Some(x), Some(y)) => x == y || (x - y).abs() <= 1e-12 * x.abs().max(y.abs()),
+            _ => x == y,
+        },
+        (Value::Array(x), Value::Array(y)) => {
+            x.len() == y.len() && x.iter().zip(y).all(|(x, y)| same(x, y))
+        }
+        (Value::Object(x), Value::Object(y)) => {
+            x.len() == y.len() && x.iter().all(|(k, v)| y.get(k).is_some_and(|w| same(v, w)))
+        }
+        _ => a == b,
+    }
 }
 
 /// Every design as `(file name, pretty JSON)`.
@@ -922,12 +969,25 @@ fn two_stage(catalog: &Catalog) -> Result<Rocket, String> {
 mod tests {
     use super::*;
 
-    /// The committed designs are exactly what the generator writes from the committed fixture.
+    /// Numbers match to round-off; anything else must be equal.
+    #[test]
+    fn comparison_allows_round_off_only() {
+        let a: Value = serde_json::from_str(r#"{"x": [0.1, 2], "s": "a"}"#).unwrap();
+        let close: Value =
+            serde_json::from_str(r#"{"x": [0.10000000000000002, 2], "s": "a"}"#).unwrap();
+        let far: Value = serde_json::from_str(r#"{"x": [0.1000001, 2], "s": "a"}"#).unwrap();
+        let text: Value = serde_json::from_str(r#"{"x": [0.1, 2], "s": "b"}"#).unwrap();
+        let longer: Value = serde_json::from_str(r#"{"x": [0.1, 2, 3], "s": "a"}"#).unwrap();
+        assert!(same(&a, &close));
+        assert!(!same(&a, &far) && !same(&a, &text) && !same(&a, &longer));
+    }
+
+    /// The committed designs are what the generator writes from the committed fixture.
     #[test]
     fn committed_designs_match_the_generator() {
         let root = root().unwrap();
         let designs = generate(&root).unwrap();
-        assert_eq!(designs.len(), 10);
+        assert_eq!(designs.len(), 9);
         let stale = stale(&root.join(DIR), &designs);
         assert!(
             stale.is_empty(),

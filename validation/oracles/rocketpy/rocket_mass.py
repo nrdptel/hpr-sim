@@ -22,6 +22,11 @@ What it pins, per case:
 - Time series on a fixed grid (100 points from t = 0 to burn-out, then 3 points after): the motor's
   propellant mass, and the rocket's total mass, centre of mass, I_11 and I_33 about the centre of
   dry mass, and I_11 about the instantaneous centre of mass.
+- For a `SolidMotor`, the same at up to 60 of the LSODA steps of its grain geometry, evenly spread
+  by index (`knot_series`; solid_motor.py:603-630). There RocketPy's functions hold computed values
+  rather than interpolants, so a comparison is not limited by RocketPy's resampling. A
+  `GenericMotor` has no such grid: its mass is exact on the even grid and its inertias at the thrust
+  knots, so it has no `knot_series`.
 
 Frames and reference points (rocketpy/rocket/rocket.py):
 
@@ -40,7 +45,7 @@ Frames and reference points (rocketpy/rocket/rocket.py):
   `com_to_cdm_function`, rocket.py:1013-1021). The script checks that offset's square against
   (center_of_mass - center_of_dry_mass_position)^2.
 - `I_22` equals `I_11` and the products of inertia are zero for these inputs. The script checks both
-  instead of storing them; a nonzero product would be stored.
+  instead of storing them, and fails on a nonzero product.
 
 Every Function is read with `get_value_opt`, as `Flight` does. Rocket Functions are Function
 arithmetic on the motor's, so between knots they are linear interpolants of the products at the
@@ -63,6 +68,12 @@ records the curve's path and SHA-256, the example's original thrust file name, a
 the example gave it. The propellant mass comes from the grain geometry (SolidMotor) or the stated
 initial mass (GenericMotor), so the substitute changes when the propellant burns, not how much there
 is. An .eng file must not contain a `0 0` point (see solid_motor.py); no bundled curve does.
+
+Which examples. Seven cases from six rockets (Calisto at two motor positions), plus Prometheus's
+`GenericMotor`. Left out: Valkyrie, whose inputs exist only in RocketPy's data file
+`data/rockets/valkyrie/VLK.json` (data files carry their own terms), and Andromeda, Astra, Camoes,
+Cavour, Erebus 11, Genesis and Lince, whose motors have no dry mass or inertia and so test nothing
+Bella Lui, Valetudo and Juno III don't.
 
 `--example-curves` reads each example's own thrust file from refs/rocketpy/data/motors with the
 example's burn options instead, as a local cross-check of docs/research/rocketpy-rocket-mass.md.
@@ -465,65 +476,6 @@ CASES = [
         },
     },
     {
-        # data/rockets/valkyrie/VLK.json as docs/examples/valkyrie_flight_sim.ipynb builds it:
-        # rocket VLK.json:4-10 (notebook :348-362), motor VLK.json:13-30 (Cesaroni_1997K650-21A.eng,
-        # burn_time 3.5; notebook :222-243), rail buttons VLK.json:71-73 (:364-368), add_motor :370,
-        # nose VLK.json:35-38 (:372-376), fins VLK.json:41-48 (:378-386), tail VLK.json:51-54
-        # (:388-393), parachutes VLK.json:57-68 (:403-419). The main chute's trigger function
-        # (:399-400) is RocketPy's 500 m trigger. Substitute: Cesaroni 1633K940-18A (1636 N s
-        # against the K650's 1997 N s); the closer AMW K1075 (2255 N s) is Bella Lui's.
-        "name": "valkyrie",
-        "source": "data/rockets/valkyrie/VLK.json:1-76, as built by "
-                  "docs/examples/valkyrie_flight_sim.ipynb:222-243 (motor), :348-393 (rocket, rail "
-                  "buttons, add_motor, nose, fins, tail), :399-419 (parachutes)",
-        "rocket": {
-            "radius": 0.055,
-            "mass": 5.65,
-            "inertia": [1.806, 1.806, 0.0183],
-            "center_of_mass_without_motor": 0.844,
-            "coordinate_system_orientation": "tail_to_nose",
-            "motor_position": 0,
-        },
-        "motor_kind": "solid",
-        "motor": {
-            "dry_mass": 0.6449,
-            "dry_inertia": [0.0343, 0.0343, 0.0008],
-            "center_of_dry_mass_position": 0.246,
-            "nozzle_position": 0,
-            "nozzle_radius": 0.045,
-            "throat_radius": 0.023,
-            "grain_number": 5,
-            "grain_density": 1170,
-            "grain_outer_radius": 0.025,
-            "grain_initial_inner_radius": 0.01,
-            "grain_initial_height": 0.0966,
-            "grain_separation": 0.001,
-            "grains_center_of_mass_position": 0.246,
-            "coordinate_system_orientation": "nozzle_to_combustion_chamber",
-            "burn_time": None,
-            "reshape_thrust_curve": False,
-            "interpolation_method": "linear",
-            "only_radial_burn": False,
-        },
-        "thrust_file": "curves/5f4294d20002e90000000749.eng",
-        "example_thrust": {"file": "cesaroni/Cesaroni_1997K650-21A.eng", "burn_time": 3.5},
-        "geometry": {
-            "nose": {"length": 0.20, "kind": "elliptical", "position": 1.84},
-            "fin_sets": [{"type": "trapezoidal", "n": 4, "root_chord": 0.17, "tip_chord": 0.14,
-                          "span": 0.0768, "position": 0.148, "cant_angle": 0,
-                          "sweep_length": 0.10}],
-            "tails": [{"top_radius": 0.055, "bottom_radius": 0.03, "length": 0.15, "position": 0}],
-            "rail_buttons": {"upper_button_position": 1.13, "lower_button_position": 0.383,
-                             "angular_position": 0},
-            "parachutes": [
-                {"name": "Drogue", "cd_s": 0.258940616, "trigger": APOGEE, "sampling_rate": 105,
-                 "lag": 1.73, "noise": NOISE},
-                {"name": "Main", "cd_s": 5.786483801, "trigger": below(500), "sampling_rate": 105,
-                 "lag": 1.73, "noise": NOISE},
-            ],
-        },
-    },
-    {
         # docs/examples/prometheus_2022_flight_sim.ipynb: GenericMotor :194-205
         # (Cesaroni_7579M1520-P.eng, burn_time 4.897; nozzle position, dry inertia, dry centre and
         # orientation left at their defaults), rocket :252-264, rail buttons :266, add_motor :268,
@@ -576,6 +528,7 @@ CASES = [
 
 GRID_POINTS = 100
 AFTER_BURNOUT_S = [0.05, 0.5, 2.0]
+KNOT_SAMPLES = 60
 
 # Largest allowed gap, m^2, between Flight's squared CG offset and (center_of_mass - z_cdm)^2.
 OFFSET_TOLERANCE_M2 = 1e-12
@@ -651,6 +604,32 @@ def add_geometry(rocket, geometry):
         rocket.add_parachute(**kwargs)
 
 
+def sample(name, rocket, motor, z_cdm, times):
+    """The compared quantities at `times`, with the checks on I_22 and Flight's CG offset."""
+    series = {"time_s": times}
+    for key, f in [
+        ("propellant_mass", motor.propellant_mass),
+        ("total_mass", rocket.total_mass),
+        ("center_of_mass", rocket.center_of_mass),
+        ("I_11", rocket.I_11),
+        ("I_33", rocket.I_33),
+    ]:
+        series[key] = [finite(f.get_value_opt(t), f"{name} {key}({t})") for t in times]
+
+    about_cg = []
+    rows = zip(times, series["total_mass"], series["center_of_mass"], series["I_11"])
+    for t, m, z_cm, i_11 in rows:
+        offset = finite(rocket.com_to_cdm_function.get_value_opt(t), f"{name} com_to_cdm({t})")
+        if abs(offset * offset - (z_cm - z_cdm) ** 2) > OFFSET_TOLERANCE_M2:
+            fail(f"{name} com_to_cdm_function({t}) differs from center_of_mass - z_cdm")
+        about_cg.append(i_11 - m * (z_cm - z_cdm) ** 2)
+    series["I_11_about_cg"] = about_cg
+
+    if [float(rocket.I_22.get_value_opt(t)) for t in times] != series["I_11"]:
+        fail(f"{name} I_22 differs from I_11")
+    return series
+
+
 def run(case, example_curves):
     name = case["name"]
     motor, motor_kwargs, thrust_path = build_motor(case, example_curves)
@@ -673,29 +652,13 @@ def run(case, example_curves):
     t_out = float(motor.burn_out_time)
     times = [float(t) for t in np.linspace(0.0, t_out, GRID_POINTS)]
     times += [t_out + dt for dt in AFTER_BURNOUT_S]
-
     z_cdm = finite(rocket.center_of_dry_mass_position, f"{name} center_of_dry_mass_position")
-    series = {"time_s": times}
-    for key, f in [
-        ("propellant_mass", motor.propellant_mass),
-        ("total_mass", rocket.total_mass),
-        ("center_of_mass", rocket.center_of_mass),
-        ("I_11", rocket.I_11),
-        ("I_33", rocket.I_33),
-    ]:
-        series[key] = [finite(f.get_value_opt(t), f"{name} {key}({t})") for t in times]
-
-    about_cg = []
-    rows = zip(times, series["total_mass"], series["center_of_mass"], series["I_11"])
-    for t, m, z_cm, i_11 in rows:
-        offset = finite(rocket.com_to_cdm_function.get_value_opt(t), f"{name} com_to_cdm({t})")
-        if abs(offset * offset - (z_cm - z_cdm) ** 2) > OFFSET_TOLERANCE_M2:
-            fail(f"{name} com_to_cdm_function({t}) differs from center_of_mass - z_cdm")
-        about_cg.append(i_11 - m * (z_cm - z_cdm) ** 2)
-    series["I_11_about_cg"] = about_cg
-
-    if [float(rocket.I_22.get_value_opt(t)) for t in times] != series["I_11"]:
-        fail(f"{name} I_22 differs from I_11")
+    series = sample(name, rocket, motor, z_cdm, times)
+    knot_series = None
+    if case["motor_kind"] == "solid":
+        knots = motor.grain_inner_radius.source[:, 0]
+        picks = np.unique(np.linspace(0, len(knots) - 1, min(KNOT_SAMPLES, len(knots))).round())
+        knot_series = sample(name, rocket, motor, z_cdm, [float(knots[int(i)]) for i in picks])
     if rocket.dry_I_22 != rocket.dry_I_11:
         fail(f"{name} dry_I_22 differs from dry_I_11")
 
@@ -715,8 +678,7 @@ def run(case, example_curves):
         values = [finite(f.get_value_opt(t), f"{name} {product}({t})") for t in times]
         dry = finite(getattr(rocket, f"dry_{product}"), f"{name} dry_{product}")
         if any(values) or dry:
-            series[product] = values
-            scalars[f"dry_{product}_kg_m2"] = dry
+            fail(f"{name}: {product} is not zero; hpr's comparison assumes it is")
     scalars = {key: finite(value, f"{name} {key}") for key, value in scalars.items()}
 
     motor_record = {"motor_kind": case["motor_kind"], **motor_kwargs}
@@ -735,6 +697,7 @@ def run(case, example_curves):
         "geometry": case["geometry"],
         "scalars": scalars,
         "series": series,
+        "knot_series": knot_series,
     }
 
 
@@ -756,6 +719,9 @@ for case in CASES:
 document = json.dumps({
     "oracle": f"rocketpy {importlib.metadata.version('rocketpy')}",
     "generator": "validation/oracles/rocketpy/rocket_mass.py",
+    "command": "refs/venv/bin/python validation/oracles/rocketpy/rocket_mass.py"
+               + "".join(f" {arg}" for arg in args)
+               + " > validation/fixtures/design/rocketpy-rocket-mass.json",
     "evaluation": "Function.get_value_opt",
     "thrust_curves": (
         "the examples' own (refs/rocketpy/data/motors; local cross-check, never committed)"

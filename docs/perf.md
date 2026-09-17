@@ -13,15 +13,17 @@ the command, so a later run can be compared like for like.
 
 | call | median |
 |---|---|
-| `Rocket::layout`, synthetic two-stage | 720 µs |
+| `Rocket::layout`, synthetic two-stage | 654 µs |
 | `Rocket::layout`, Calisto | 2.38 ms |
-| `Assembly::mass_properties(t)`, two motors | 85 ns |
-| `Assembly::mass_properties(t)`, Calisto (BATES grains) | 118 ns |
+| `Assembly::mass_properties(t)`, two motors | 62 ns |
+| `Assembly::mass_properties(t)`, Calisto (BATES grains) | 54 ns |
 
 - **Where the time goes.** Resolving a design costs what its walls cost (M1.4a below): Calisto's
   nose wall is 2 ms of its 2.4 ms. Resolve once per design.
 - **Per step.** The flight engine calls `mass_properties(t)` at each derivative evaluation. At about
-  0.1 µs, a few thousand evaluations cost well under a millisecond of M1.6's 5 ms budget.
+  60 ns, a few thousand evaluations cost well under a millisecond of M1.6's 5 ms budget. Folding
+  the motors into the structure pairwise, instead of collecting them into a `Vec`, took it from 85
+  and 118 ns (review fix).
 
 ## Mass properties from geometry (M1.4a)
 

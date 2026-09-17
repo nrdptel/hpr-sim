@@ -43,6 +43,14 @@ pub enum DesignError {
         /// What is wrong.
         message: String,
     },
+    /// An error in one stage or component, with its id.
+    #[error("{id}: {source}")]
+    InComponent {
+        /// The id of the stage or component.
+        id: String,
+        /// The error.
+        source: Box<DesignError>,
+    },
     /// Two stages, components or configurations share an id, or an id is empty.
     #[error("ids must be unique and non-empty, but `{0}` is not")]
     DuplicateId(String),

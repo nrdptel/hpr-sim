@@ -69,20 +69,26 @@ The −1.373 value at `t = 0`, 10.516648, matches RocketPy's own pinned test val
 ## Outcome (M1.4b)
 
 - **Fixture.** `validation/oracles/rocketpy/rocket_mass.py` writes
-  `validation/fixtures/design/rocketpy-rocket-mass.json`, with eight cases: all six rockets above,
-  Calisto at both motor positions, and Prometheus. Prometheus's `GenericMotor` is hpr's
-  propellant column: a fixed centre, solid-cylinder inertia, and impulse-fraction consumption
-  (`motors/motor.py:470-524`, `:1566-1661`).
-- **Curves.** RocketPy's motor data files carry their own terms, so each case keeps the example's
-  inputs but uses the bundled public-domain curve nearest in impulse (ADR-007). Nothing at `t = 0`
-  depends on the curve. With `--example-curves` the script reproduces the table above exactly;
-  that output stays under `refs/`.
+  `validation/fixtures/design/rocketpy-rocket-mass.json` with seven cases: Calisto at both motor
+  positions, Bella Lui, NDRT 2020, Valetudo, Juno III and Prometheus.
+  - Prometheus's `GenericMotor` is hpr's propellant column: a fixed centre, solid-cylinder inertia,
+    and impulse-fraction consumption (`motors/motor.py:470-524`, `:1566-1661`).
+  - Valkyrie is left out. Its inputs exist only in `data/rockets/valkyrie/VLK.json`, and RocketPy's
+    data files carry their own terms.
+- **Curves.** RocketPy's thrust files are data files too. Each case keeps the example's inputs but
+  uses the bundled public-domain curve nearest in impulse (ADR-007).
+  - Values at ignition don't depend on the curve, and at burnout they agree to 1e-9. So hpr's
+    match there is also a match to the table above.
+  - With `--example-curves` the script reproduces that table exactly; its output stays under
+    `refs/`.
 - **Calisto's tests rocket** has no geometry in RocketPy's tests, so its design takes the
-  `calisto_robust` fixture's surfaces, which sit about 0.118 m aft of the notebook's.
+  `calisto_robust` fixture's surfaces, about 0.118 m aft of the notebook's.
 - **Agreement** (`hpr_design::config::tests::matches_rocketpy_example_rockets`):
   - Dry scalars match to 2e-16, and the products of inertia are exactly zero.
-  - Through the burn: total mass to 1.4e-5, centre to 3.9e-6 of the length, `I_11` to 2.6e-5
-    and `I_33` to 1.4e-5.
-  - The residual is RocketPy's resampling. `SolidMotor` grain volumes are interpolated
-    linearly between LSODA knots (`motors/solid_motor.py:375-383`, `:603-630`), and
-    `GenericMotor` inertias are sampled at thrust knots.
+  - At RocketPy's LSODA knots, where its grain geometry holds computed values: mass, centre and
+    inertia match to 8e-10, and propellant mass to 2.4e-9. That is the solver's accuracy.
+  - Between knots, on an even grid: mass to 8.3e-6, centre to 2.5e-6 of the length, `I_11` to
+    2.6e-5 and `I_33` to 1.4e-5.
+  - That residual is RocketPy's resampling. `SolidMotor` interpolates grain volumes linearly
+    between LSODA knots (`motors/solid_motor.py:375-383`, `:603-630`). `GenericMotor` samples its
+    inertias at thrust knots.
