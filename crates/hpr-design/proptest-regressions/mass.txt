@@ -1,0 +1,7 @@
+# Seeds for failure cases proptest has generated in the past. It is
+# automatically read and these particular cases re-run before any
+# novel cases are generated.
+#
+# It is recommended to check this file in to source control so that
+# everyone who runs the test benefits from these saved cases.
+cc 63eda393f132c97bcb9e4dd6f6aefa0e773943f5b1c64eeb8c7f48a51bcd4b8b # shrinks to body = MassProperties { mass_kg: 0.01, cg_m: DVec3(2.9948587463836622, -1.570553645229616, 0.0), inertia_kg_m2: DMat3 { x_axis: DVec3(1.6666666666666668e-7, 0.0, 0.0), y_axis: DVec3(0.0, 1.6666666666666668e-7, 0.0), z_axis: DVec3(0.0, 0.0, 1.6666666666666668e-7) } }, angles = [0.0, 0.0, 0.0]
