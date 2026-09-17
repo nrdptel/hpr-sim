@@ -1,9 +1,10 @@
 # Recovery
 
-How hpr flies a rocket under a parachute: the drag area of a device, when it opens, how it fills,
-and the equations of the descent. Streamers, tumble and separated bodies are M1.7b and are not
+How hpr flies a rocket under a parachute, a streamer or tumbling: the drag area of a device, when
+it opens, how it fills, and the equations of the descent. Separated bodies are M1.7c and are not
 here yet. Code: `crates/hpr-sim/src/recovery.rs` and the descent branch of
-`crates/hpr-sim/src/dynamics.rs`. Decisions: ADR-012.
+`crates/hpr-sim/src/dynamics.rs`. Decisions: ADR-012 (parachutes and the descent), ADR-013
+(streamers and tumble).
 
 Sources:
 
@@ -12,6 +13,10 @@ Sources:
   limits distribution, so it is cited, never redistributed (`docs/VALIDATION.md`).
 - RocketPy 1.13.0 (MIT), `rocketpy/simulation/flight.py:2710-2790` and
   `rocketpy/rocket/parachute.py`, for the point-mass descent that M1.7a is compared against.
+- J. Carruthers and A. Filippone, "Aerodynamic Drag of Streamers and Flags", *Journal of Aircraft*
+  42(4), 2005, and the OpenRocket technical documentation v13.05 (CC BY-SA), Appendix C, for
+  streamers; the same documentation's §3.5 for tumbling bodies; and C. Kidwell's NARAM-43 drop
+  tests (2001) as the measurement both streamer models are checked against.
 
 ## Drag area
 
@@ -32,6 +37,79 @@ default is the middle of the range (flat circular: 0.75 to 0.80, so 0.775). Wher
 RocketPy's default parachute `C_D` of 1.4 is not a `C_D0` in this sense: it is a hemispherical
 canopy's coefficient on the projected area, which it uses only to turn `cd_s` into a radius for its
 added mass. Knacke's hemispherical range on `S₀` is 0.62 to 0.77.
+
+## Streamers
+
+A streamer is a strip of fabric of length `l` and width `w`, so a planform (one-side) area
+`S = l w` and an aspect ratio `AR = l/w`. `StreamerModel` picks the correlation:
+
+- **`Filippone`** (the default): `C_D = 0.405 AR^−0.494` on `S` for a planform area of 0.075 m²
+  and `C_D = 0.561 AR^−0.480` for 0.025 m² (eqs. 1 and 2), from wind-tunnel tests of cotton
+  streamers at `AR` 3.3 to 30 and 6 to 18.9 m/s. The paper prints a curve for each of its extreme
+  areas and none between, so **hpr** interpolates them linearly in `ln S` and holds the end curve
+  outside; that interpolation is hpr's, not the paper's. The paper also measures what it doesn't
+  correlate: lighter, smoother fabric has significantly lower drag (polyester at 64 g/m² against
+  cotton at 177), free mounting gives more drag than clamped, and a drag crisis appears near
+  `Re = 7.2e5` for the largest area.
+- **`OpenRocket`**: `C_Dm = 0.034 ((ρ_m + 25 g/m²)/(105 g/m²)) ((l + 1 m)/l)` on `S` (Appendix C,
+  eq. C.6, printed page 117), fitted to model-rocket streamers (`w` 0.01 to 0.09 m, `l` 0.2 to
+  1.0 m, 10 to 80 g/m², 6 to 12 m/s) with a stated 12 to 27% error on an independent set. It is
+  the only one of the two that uses the material.
+
+**Which is right?** The two disagree by about a factor of four in drag area. C. Kidwell's
+NARAM-43 drop tests (2001) settle it as far as one dataset can: sixteen 4 in × 40 in streamers
+with a 5 g corner weight, dropped 20.1 m, masses in his Table 1 and descent rates in his results.
+Recomputed here (`streamer_models_against_kidwells_drop_tests`):
+
+| case | measured | `C_D` measured, on `S` | `Filippone` | `OpenRocket` |
+|---|---|---|---|---|
+| crêpe paper, 32 g/m², **unpleated** | 2.80 m/s | 0.161 | 3.12 m/s (+12%) | 5.87 m/s (+110%) |
+| Micafilm, 42 g/m², pleated | 2.04 m/s | 0.341 | 3.31 m/s (+62%) | 5.74 m/s (+181%) |
+
+Kidwell's crêpe streamer is the one he left flat, and a flat correlation predicts it to 12%; the
+`OpenRocket` correlation is twice its descent rate, four times low in drag area. His other
+materials were folded in ¾ in pleats, which more than doubles the drag again — **hpr models no
+pleats**, so it predicts a faster descent for a pleated streamer, which is the safe direction for
+a landing. Note that his streamers are just outside Appendix C's fitted range (0.1016 m wide,
+1.016 m long against `w ≤ 0.09` and `l ≤ 1.0`), and that Filippone's correlation is for cotton,
+heavier and rougher than any of Kidwell's materials.
+
+hpr therefore defaults to `Filippone` and keeps `OpenRocket` for comparing with OpenRocket
+(ADR-013).
+
+## Tumble
+
+A body with nothing deployed descends broadside, tumbling. `DeviceDrag::tumbling(&assembly)`
+computes its drag area from the airframe by the OpenRocket technical documentation's §3.5
+(printed pages 53 to 55, eqs. 3.98 and 3.99):
+
+```text
+C_D S = 1.42 A_f + 0.56 A_bt
+```
+
+- `A_bt` is the body's side profile area. hpr integrates the outer diameter along the axis, taking
+  each body component's mean diameter times its length: exact for tubes and cones, approximate for
+  a curved nose.
+- `A_f` is, for each fin set, **one** fin's planform area times an efficiency factor by fin count:
+  0.50, 1.00, 1.50, 1.41, 1.81, 1.73, 1.90, 1.85 for 1 to 8 fins (Table 3.4). It is a fit, not a
+  model: four fins are 1.41 of one fin, not 2, and it is not monotonic. More than eight fins is
+  refused.
+- The documentation notes 0.56 is half a circular cylinder's 1.12 in crossflow, as expected of a
+  cylinder falling at a random angle, and that 1.42 sits between a flat plate's 1.17 and an open
+  hemispherical cup's 1.42. Those come from Hoerner's *Fluid-Dynamic Drag* (1965), which is
+  copyrighted with no legal free copy; NASA TN D-540 and TR R-474 carry the same numbers and are
+  free (`docs/research/streamer-and-tumble-drag.md`).
+
+**Where it stops being true.** The constants were fitted to 22 m drop tests of five models 44 to
+103 mm across and 6.8 to 160 g, descending at 5.0 to 6.6 m/s, and predict those within 3 to 14%.
+A high-power booster is far outside that: Valetudo tumbling comes out at 37 m/s, and above a
+Reynolds number of about 3e5 (a 100 mm body at 30 m/s) a cylinder's crossflow drag falls by
+roughly half, so a real large body would descend faster still. hpr does not model that fall, and
+nothing in the pinned sources covers it.
+
+A tumbling body is a device like any other: give it a trigger, and it starts at that moment.
+hpr does not decide by itself when a rocket tumbles — nothing citable says when a stage becomes
+unstable enough (the same documentation declines to model the analogous streamer regime).
 
 ## Triggers, lag and release
 

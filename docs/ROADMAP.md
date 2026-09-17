@@ -265,13 +265,23 @@
     0.27% in drift, worst single drift component 2.87% (NDRT, where RocketPy's added mass is
     nearly the rocket's).
 
-  - [ ] **M1.7b Streamers, tumble and separated bodies.**
-    - Streamers and tumble, each with a cited drag model; separation, with every body flown to
-      its own landing and its own mass properties and drag.
+  - [x] **M1.7b Streamers and tumble.**
+    - Streamers and tumble, each with a cited drag model.
 
     *Done when:*
     - A streamer's and a tumbling body's descent rates match the terminal velocity of their cited
       drag models (analytic tests).
+
+    *Result (ADR-013):* met. Streamers take Carruthers and Filippone's wind-tunnel correlation by
+    default and OpenRocket's appendix C on request; tumble takes OpenRocket's §3.5 with its fin
+    efficiency table. Against Kidwell's 2001 drop tests the default is within 12% on his one flat
+    streamer, where appendix C is 110% fast; pleats are not modelled and both models then predict
+    a faster descent than measured.
+
+  - [ ] **M1.7c Separated bodies.**
+    - Separation, with every body flown to its own landing and its own mass properties and drag.
+
+    *Done when:*
     - A separation gives every body a landing, and the bodies' masses sum to the rocket's.
 
 - [ ] **M2.1 Validation harness plus the RocketPy code-to-code suite.** This is the first

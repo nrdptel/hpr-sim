@@ -18,6 +18,7 @@ renumber. Supersede an entry by adding a new one that points back to it.
 | ADR-010 | Time integration: Dormand–Prince with dense output, RK4, stop times and events | accepted |
 | ADR-011 | Rigid-body flight: equations of motion, aerodynamic coupling, rail, phases and termination | accepted |
 | ADR-012 | Recovery: drag areas, triggers, inflation and the descent phase | accepted |
+| ADR-013 | Streamer and tumble drag | accepted |
 
 ---
 
@@ -1085,3 +1086,73 @@ and L26 set tests.
   show the opening.
 - M1.10's Monte Carlo can vary deployment heights, lags and drag areas; nothing here samples.
 - M3.1 maps `.ork` recovery devices onto these types.
+
+## ADR-013: Streamer and tumble drag (2026-09-17)
+
+**Context.** M1.7b needs a cited drag model for a streamer and for a body tumbling with nothing
+deployed. Knacke's manual, which M1.7a leaned on, has **no streamer data at all** (checked: the
+type tables 5-1 to 5-5, the measured-drag section 5.2.3, the miscellaneous-decelerator section
+5.8.4 and the contents) and no bluff-body crossflow table. What is in hand
+(`docs/research/streamer-and-tumble-drag.md`):
+
+- The **OpenRocket technical documentation v13.05** (CC BY-SA, a published document, pinned):
+  Appendix C fits a streamer drag coefficient to its own wind-tunnel tests, and §3.5 fits a
+  tumbling model to 22 m drop tests. Its Java source is GPL and is never read.
+- **Carruthers and Filippone (2005)**, peer-reviewed wind-tunnel measurements of streamers and
+  flags, whose AIAA copy is paywalled and whose author post-print states no licence.
+- **Kidwell's NARAM-43 drop tests (2001)**, OpenRocket's own reference for its appendix, with per
+  streamer masses and measured descent rates. No licence stated.
+- Loft's L29 lesson: its recovery defaults came from OpenRocket's **source**, which must not be
+  ported.
+
+**Decision.**
+
+- **A streamer is a drag area from a correlation on its planform area `S = l w` and aspect ratio
+  `AR = l/w`, and hpr carries both correlations** (`StreamerModel`), because they disagree by
+  about a factor of four and only one of them survives a comparison with a free drop.
+  - **The default is Carruthers and Filippone's**: `C_D = 0.405 AR^−0.494` at `S = 0.075 m²` and
+    `C_D = 0.561 AR^−0.480` at `S = 0.025 m²`. Between those two printed curves hpr interpolates
+    linearly in `ln S`, and outside them it holds the end curve; that interpolation is hpr's
+    choice and is documented as such.
+  - **`StreamerModel::OpenRocket`** is appendix C's `C_Dm = 0.034 ((ρ_m + 25)/105)((l + 1)/l)`,
+    kept for comparing with OpenRocket in M2.2. It is the only one of the two that uses the
+    material.
+  - **The measurement that decides it.** Recomputed here from Kidwell's Table 1 and his results:
+    his crêpe streamer, the one he left unpleated, descends at 2.80 m/s, which is a `C_D` of 0.161
+    on its planform. Filippone's correlation gives 3.12 m/s (+12%); appendix C gives 5.87 m/s
+    (+110%), four times low in drag area. Kidwell's pleated streamers descend slower still
+    (Micafilm at 2.04 m/s, `C_D` 0.341), which neither model reaches.
+  - **Pleats are not modelled**, so hpr predicts a faster descent for a folded streamer. That is
+    the safe direction for a landing, and it is stated in `docs/physics/recovery.md`.
+  - hpr's streamer descent rates will therefore differ from OpenRocket's by about a factor of two.
+    M2.2 will see that; it is the intended difference, not a defect.
+- **Tumble is the technical documentation's §3.5 model**, `C_D S = 1.42 A_f + 0.56 A_bt`, computed
+  from the airframe by `DeviceDrag::tumbling`: `A_bt` by integrating the outer diameter along the
+  axis (each body component's mean diameter times its length), `A_f` as one fin's planform area
+  times Table 3.4's efficiency factor for the fin count. More than eight fins is refused, because
+  the table stops there.
+  - Its constants come from Hoerner's *Fluid-Dynamic Drag*, which is copyrighted with no legal
+    free copy. hpr cites the documentation, and the research note records NASA TN D-540 and
+    TR R-474, which are free and carry the same numbers, for when a pinned source is needed.
+  - **The fit is for small models** (44 to 103 mm, 6.8 to 160 g, 5.0 to 6.6 m/s, 3 to 14% error).
+    A high-power booster is outside it, and above `Re ≈ 3e5` a cylinder's crossflow drag falls by
+    about half, so hpr will read slow there. The limit is documented rather than extrapolated.
+- **A tumbling body is a device with a trigger, like a canopy.** hpr does not decide by itself
+  when a rocket tumbles: no source in hand says when a stage becomes unstable enough, and the same
+  documentation declines to model the analogous twirling streamer regime.
+- **Both new sources are pinned and cite-only** (`validation/refs.lock.toml`,
+  `THIRD-PARTY-NOTICES.md`): the Filippone post-print and Kidwell's report state no licence, so
+  their numbers are used and their text is never copied or redistributed.
+- **M1.7 is split again.** M1.7b is streamers and tumble, with the first of M1.7's remaining
+  *done when* bullets; M1.7c is separated bodies, with the second. Separation needs its own
+  decision about how a body's mass properties and drag are defined, and `Assembly` has no split.
+
+**Consequences.**
+
+- M1.7c flies separated bodies. Since the descent phase already drops airframe aerodynamics, a
+  separated body needs mass properties and its own device, not an aerodynamic model — which is
+  the cheapest honest way in.
+- M2.2's OpenRocket comparison should compare streamers under both models, and report the gap
+  rather than tune either.
+- If a streamer model is ever fitted to more drop data, `StreamerModel` is the place for it; the
+  research note lists what would be needed.
