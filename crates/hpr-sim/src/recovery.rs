@@ -1931,9 +1931,11 @@ mod tests {
             // Gravity: RocketPy applies it to the vertical axis alone (`Flight.u_dot_parachute`,
             // `flight.py:2777`, where only `az` carries a gravity term), so this flies hpr's
             // model of the same shape. hpr's default is the full normal-gravity vector, which
-            // above the ellipsoid leans a few parts in 10^6 poleward; over Valetudo's 800 m that
-            // is 5.2e-4 m of northward drift, which is nothing beside the metrics below and
-            // 26 times the drift the Coriolis term produces there (issue #27, ADR-015).
+            // differs from that in two ways: it turns with the vertical downrange (`g d/R`,
+            // 2.1e-3 m/s² at Calisto's 1.4 km of drift, and the larger effect wherever a rocket
+            // drifts), and above the ellipsoid it leans a few parts in 10^6 toward the equator
+            // (3e-5 m/s²). The lean is what issue #27 chased: over Valetudo's 800 m of still-air
+            // descent it is 5.2e-4 m of drift, 26 times what the Coriolis term produces there.
             let earth = hpr_core::earth::Earth::new(
                 hpr_core::gravity::NormalGravity::wgs84(),
                 site,
@@ -1986,8 +1988,12 @@ mod tests {
                 let up = DVec3::new(0.0, 0.0, height_msl_m - number(&environment["elevation_m"]));
                 let gravity = sim.environment().earth.gravity_enu_mps2(up).unwrap();
                 let oracle_gravity = number(&sample["gravity_m_s2"]);
+                // 1e-8, not the 1e-6 this used to allow: the worst residual over the 23 samples
+                // is 4.7e-9 relative, and 1e-6 of g is 9.8e-6 m/s², which is larger than the
+                // deflection issue #27 turned on. A bound has to be tighter than the effects it
+                // is meant to see.
                 assert!(
-                    (gravity.length() - oracle_gravity).abs() < 1e-6 * oracle_gravity,
+                    (gravity.length() - oracle_gravity).abs() < 1e-8 * oracle_gravity,
                     "{name}: gravity {gravity:?} vs {oracle_gravity} at {height_msl_m} m"
                 );
                 assert_eq!(
@@ -1996,11 +2002,19 @@ mod tests {
                     "{name}: gravity leans off the vertical where RocketPy's cannot"
                 );
                 // What hpr's own model would have added, so the difference is a number in this
-                // file rather than a surprise in a validation report. It grows with height and
-                // points toward the equator: over these five cases, from +6.9e-6 m/s² at
-                // Valetudo's 1,168 m (23°S, so northward) to −3.3e-5 m/s² at Calisto's 4,400 m
-                // (33°N, so southward). Over Valetudo's 800 m descent that is 5.2e-4 m of drift,
-                // 26 times the Coriolis drift it sits beside (issue #27).
+                // file rather than a surprise in a validation report. To first order the
+                // meridional component of normal gravity above the ellipsoid is
+                //
+                //     γ_φ ≈ −C h sin 2φ,   C = 8.15e-9 s⁻²
+                //
+                // — proportional to height above the ellipsoid, toward the equator in both
+                // hemispheres, and zero on it (`docs/physics/gravity.md`). Over these five cases
+                // it runs from +6.9e-6 m/s² at Valetudo's topmost sample (1,168 m, 23°S, so
+                // northward) to −3.3e-5 m/s² at Calisto's 4,400 m (33°N, so southward). Checking
+                // the form rather than a bound is the point: "less than 5e-5" would pass an
+                // implementation whose size was wrong by half.
+                let latitude_rad = number(&environment["latitude_deg"]).to_radians();
+                let expected = -8.15e-9 * height_msl_m * (2.0 * latitude_rad).sin();
                 let ellipsoidal = hpr_core::earth::Earth::new(
                     hpr_core::gravity::NormalGravity::wgs84(),
                     site,
@@ -2016,10 +2030,9 @@ mod tests {
                     ellipsoidal.x
                 );
                 assert!(
-                    ellipsoidal.y.abs() < 5e-5
-                        && ellipsoidal.y.signum() != number(&environment["latitude_deg"]).signum(),
-                    "{name}: hpr's own gravity leans {} m/s² off the vertical at {height_msl_m} m, \
-                     which is not the equatorward deflection issue #27 measured",
+                    (ellipsoidal.y - expected).abs() <= 0.02 * expected.abs().max(1e-9),
+                    "{name}: hpr's own gravity leans {} m/s² at {height_msl_m} m, where the \
+                     first-order normal-gravity term is {expected} m/s² (issue #27)",
                     ellipsoidal.y
                 );
                 let wind = sim

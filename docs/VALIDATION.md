@@ -61,7 +61,8 @@ comparison rather than to excuse the number. The descent cases carry no absolute
 every gate is the milestone's 3%.
 
 That fix is worth stating, because it is what L75 means in practice. hpr's default gravity is the
-full normal-gravity vector, which leans a few parts in 10⁶ poleward above the ellipsoid; RocketPy
+full normal-gravity vector, which leans a few parts in 10⁶ toward the equator above the
+ellipsoid; RocketPy
 applies gravity to the vertical axis alone. The difference is 5.2e-4 m of northward drift over an
 800 m descent, which is invisible in every metric that matters and swamps the one 20 µm number that
 does not. hpr ships `GravityModel::VerticalTaylor` as RocketPy's own formula for like-for-like

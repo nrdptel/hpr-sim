@@ -27,9 +27,12 @@ pub enum GravityModel {
     },
     /// `(0, 0, −γ)` with `γ` from the Taylor series (eq. 4-3) at the launch latitude and height
     /// `h₀ + z`: RocketPy's gravity formula, for like-for-like comparisons. A RocketPy flight
-    /// differs from the formula in two ways a case must reproduce itself: it evaluates it at
-    /// height above sea level rather than above the ellipsoid, and it holds the value constant
-    /// above `max_expected_height` (80 km by default; at 100 km that is 0.6% high).
+    /// differs from the formula in three ways a case must reproduce itself: it evaluates it at
+    /// height above sea level rather than above the ellipsoid; it holds the value constant above
+    /// `max_expected_height` (80 km by default; at 100 km that is 0.6% high); and it does not fly
+    /// the formula at all but a 100-point cubic spline through it
+    /// (`Environment.set_gravity_model` → `Function.set_discrete`), which over the 0 to 4.4 km of
+    /// M1.7a's descents differs from the formula by at most 4.6e-8 m/s².
     VerticalTaylor,
     /// `(0, 0, −|γ|)` with the exact magnitude (eq. 4-4) at the launch latitude and longitude and
     /// height `h₀ + z`: altitude-dependent, but always along the launch site's vertical.
