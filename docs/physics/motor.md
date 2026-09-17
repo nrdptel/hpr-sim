@@ -126,6 +126,29 @@ c = I / m_p0,    ṁ(t) = F(t) / c,    m_p(t) = m_p0 (1 − I(t)/I)
 - **Catalog envelope:** diameter, length and masses come from the catalog metadata, not the curve
   file's header, which can be wrong (Loft lesson L43).
 
+### The effective exhaust velocity is a units check
+
+Both constructors refuse a motor whose curve and propellant mass imply an effective exhaust
+velocity `c = I/m_p` outside **200 to 5,000 m/s**. Nothing else in the API notices a units slip:
+the 411I175's envelope in millimetres and grams read as metres and kilograms
+(`from_envelope(curve, 38.0, 245.0, 228.9, 437.5)`) has positive, finite dimensions, a propellant
+mass below the loaded mass, and an exhaust velocity of 1.8 m/s.
+
+Chemistry sets the scale: black powder is about 800 m/s (`I_sp` ≈ 80 s) and APCP 2,000 to
+2,500 m/s. Measured over the 1,710 ThrustCurve.org simulator files the M1.3 survey parsed
+(`validation/oracles/thrustcurve/survey.py`, run against the gitignored cache):
+
+| percentile | min | p1 | p5 | p50 | p95 | p99 | max |
+|---|---|---|---|---|---|---|---|
+| `c`, m/s | 297 | 597 | 1,041 | **1,851** | 2,192 | 2,421 | 10,111 |
+
+The bound is deliberately far wider than that spread, because it is not a judgement about
+propellant. It rejects exactly one of the 1,710 files — a J motor claiming 836 N·s from 83 g,
+which no chemical propellant can do — and it catches a units slip, which moves `c` by a factor of
+1,000. Tightening it to 300–4,000 m/s would reject two more, both certified A motors whose
+propellant mass is recorded to 0.1 g, where the rounding alone is ±10%. The 32 bundled motors run
+689 m/s (a black-powder C) to 2,645 m/s (a K).
+
 ## Thrust at altitude
 
 The thrust equation is `F = ṁ u_e + (p_e − p_a) A_e` ([SP] eq. 2, p. 3, with `g_c = 1` in SI).

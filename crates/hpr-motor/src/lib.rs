@@ -30,7 +30,9 @@ pub use delay::{Delay, DelayList, DelayWarning};
 pub use error::MotorError;
 pub use grains::{BatesGrains, GrainShape};
 pub use mass::MassElement;
-pub use motor::{MotorState, Nozzle, Propellant, PropellantColumn, SolidMotor};
+pub use motor::{
+    EXHAUST_VELOCITY_RANGE_M_S, MotorState, Nozzle, Propellant, PropellantColumn, SolidMotor,
+};
 pub use text::{ParseWarning, Parsed, WarningKind};
 
 #[cfg(test)]
