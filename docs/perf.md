@@ -3,6 +3,39 @@
 Measured numbers only, newest first within each section. Record the machine, the toolchain, and
 the command, so a later run can be compared like for like.
 
+## Mass properties from geometry (M1.4a)
+
+The calls a design edit makes, or a Monte Carlo sample that perturbs dimensions.
+
+- **Benchmark:** `cargo bench -p hpr-design --bench mass`, which is criterion, release profile.
+- **When and where:** 2026-09-17 on an Apple M5 with rustc 1.98.1.
+- **Inputs:** a 4-inch (101.6 mm) von Kármán nose 5 calibres long, and a tangent-ogive boattail
+  from 101.6 to 76.2 mm over 0.1 m, each filled or with a 2 mm wall. The fins are four
+  trapezoidal G10 fins (0.2/0.08 m chords, 0.11 m span) with an airfoil section, and the same set
+  as a five-point freeform outline with rounded edges.
+
+| call | median |
+|---|---|
+| `revolve`, von Kármán nose, filled | 10.1 µs |
+| `revolve`, von Kármán nose, 2 mm wall | 2.00 ms |
+| `revolve`, ogive boattail, 2 mm wall | 274 µs |
+| `NoseCone::mass_properties`, 2 mm wall | 1.99 ms |
+| `FinSet::mass_properties`, trapezoidal airfoil | 305 ns |
+| `FinSet::mass_properties`, freeform rounded | 11.2 µs |
+
+- **Wall cost.** Each quadrature node finds the inner radius by a 32-point scan and a
+  golden-section search, about 70 profile evaluations. The first version refined the minimizing
+  station to 1e-15 t and scanned 256 stations for where the wall fills in: 2.25 ms. Near the
+  minimum the value is quadratic in the station, so 1e-9 t is enough (1.84 ms), and a 64-station
+  scan still brackets the one fill-in point a nose has (1.35 ms), with every test unchanged.
+  The review fixes first made the end points candidates and split at `t` from each end (1.70 ms).
+  Then they dropped tangent extensions and split wherever the nearest surface point moves between
+  the surface and a rim, which needs a 128-station scan (2.00 ms). The filled nose went from 8.2 to 10.1 µs with the
+  Haack series and the precise arc.
+- **Where it matters.** Mass properties are computed once per design, not per derivative
+  evaluation. A 10,000-sample Monte Carlo run that perturbs nose dimensions would spend about
+  20 s in walls; M6.1 can cache or perturb mass directly.
+
 ## Solid motors (M1.3)
 
 The motor calls the flight engine makes on every derivative evaluation, and reading motor data.

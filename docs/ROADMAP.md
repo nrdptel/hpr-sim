@@ -130,14 +130,32 @@
   - A small public test-design set under `validation/designs/`, built from the RocketPy examples
     and synthetic rockets. Tests use it because the private corpus must not appear in committed
     snapshots.
-  - Loft lessons: L44, L45, L46, L47, L48, L49, L50, L91 (tests named in
-    `docs/research/loft-lessons.md`).
 
   *Done when:*
   - Analytic volume, area and CG tests pass for every shape.
   - The inertia tensor of composite test bodies matches hand calculations.
   - Mass, CG and inertia match RocketPy's example rockets where RocketPy exposes them.
   - The OpenRocket stored-value comparison is deferred to M2.2 and noted there.
+
+  - [x] **M1.4a Shapes, materials and component mass properties.**
+    - Every nose and transition shape above (clipped or not), solids of revolution filled or with a
+      wall, fin planforms, cross-sections and tabs, and every other component listed, each with
+      mass, CG and full inertia tensor from geometry in its own frame.
+    - Cited materials; `MassProperties` with the parallel-axis theorem and rotations.
+    - Loft lessons: L44, L45, L46, L48, L49, L91 (tests named in `docs/research/loft-lessons.md`).
+
+    *Done when:*
+    - Analytic volume, area and CG tests pass for every shape.
+    - The inertia tensor of composite test bodies matches hand calculations.
+
+  - [ ] **M1.4b Design tree, configurations and checks.**
+    - Stages and component placement, configurations with motors, overrides, reference diameter,
+      structural checks with typed warnings, and `validation/designs/`.
+    - Loft lessons: L47, L50 (tests named in `docs/research/loft-lessons.md`).
+
+    *Done when:*
+    - Mass, CG and inertia match RocketPy's example rockets where RocketPy exposes them.
+    - The OpenRocket stored-value comparison is deferred to M2.2 and noted there.
 
 - [ ] **M1.5 Aerodynamics I (subsonic).**
   - Barrowman CNα and CP for every component, with Prandtl–Glauert correction.

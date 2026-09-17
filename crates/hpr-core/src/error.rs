@@ -64,6 +64,26 @@ pub enum CoreError {
     /// words, or is all zero.
     #[error("a random generator state must be four 0x-prefixed 64-bit hex words, not all zero")]
     InvalidRandomState,
+    /// An integrand returned NaN or an infinity.
+    #[error("the integrand is not finite at {x}")]
+    QuadratureNotFinite {
+        /// Where the integrand was evaluated.
+        x: f64,
+    },
+    /// Adaptive integration didn't meet its tolerance within its subinterval budget.
+    #[error(
+        "integration did not converge: component {component} is {value} with error estimate {error} after {intervals} subintervals"
+    )]
+    QuadratureDidNotConverge {
+        /// The component furthest from its tolerance.
+        component: usize,
+        /// Its best estimate.
+        value: f64,
+        /// Its error estimate.
+        error: f64,
+        /// The subintervals used.
+        intervals: usize,
+    },
     /// An input outside a model's domain, such as a latitude beyond ±90°.
     #[error("{what} is outside its domain: {value}")]
     Domain {

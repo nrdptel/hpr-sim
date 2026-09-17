@@ -63,6 +63,18 @@ small extracted fixtures with a clear license are committed, each with its prove
   (1991), DTIC ADA247666. DTIC refused automated downloads, so the lock uses archive.org's mirror
   of the DTIC copy. It is a contractor report: DTIC stamps it for public release, but the title
   page limits distribution to US Government personnel, so cite it and never redistribute it.
+- **Nose cone geometry:** G. A. Crowell Sr., *The Descriptive Geometry of Nose Cones* (1996).
+  Cited but not pinned: the only copy found is a plain-http mirror
+  (`servidor.demec.ufpr.br/CFD/bibliografia/aerodinamica/Crowell_1996.pdf`), with no license
+  stated. Its curves are checked by closed forms and by
+  `validation/oracles/design/shapes.py` → `validation/fixtures/design/shape-integrals.json`
+  (mpmath, 40 digits, 22 noses and transitions): every filled volume, centroid, moment and area
+  agrees to 1e-12 relative. Walls: `validation/oracles/design/walls.py` →
+  `validation/fixtures/design/wall-integrals.json` (20 walls, 25 digits): volume, centroid and
+  moments agree to 1e-10 (M1.4a, `docs/physics/shapes.md`).
+- **Material densities:** USDA Forest Products Laboratory, *Wood Handbook* FPL-GTR-190 (2010),
+  pinned as `fpl-gtr-190-wood-handbook`; manufacturers' data sheets and military specifications,
+  cited per value with URLs in `hpr_design::materials` (M1.4a, `docs/physics/mass.md`).
 - **Index of further references:** https://wiki.openrocket.info/Resources
 - **Not available:** there's no legitimate free copy of *Topics in Advanced Model Rocketry*. Don't
   use pirated copies.

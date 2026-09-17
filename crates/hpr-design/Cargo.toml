@@ -18,3 +18,15 @@ wasm = true
 [dependencies]
 hpr-core.workspace = true
 hpr-motor.workspace = true
+serde.workspace = true
+thiserror.workspace = true
+
+[dev-dependencies]
+criterion.workspace = true
+glam.workspace = true
+proptest.workspace = true
+serde_json.workspace = true
+
+[[bench]]
+name = "mass"
+harness = false

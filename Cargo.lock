@@ -374,8 +374,14 @@ dependencies = [
 name = "hpr-design"
 version = "0.1.0"
 dependencies = [
+ "criterion",
+ "glam",
  "hpr-core",
  "hpr-motor",
+ "proptest",
+ "serde",
+ "serde_json",
+ "thiserror",
 ]
 
 [[package]]
