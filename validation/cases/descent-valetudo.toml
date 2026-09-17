@@ -1,0 +1,41 @@
+# valetudo: RocketPy's own parachute phase, replayed from the state and the devices its generator
+# recorded (`validation/oracles/rocketpy/recovery.py`, M1.7a). Every metric is held to the
+# milestone's 3%, with no absolute floor: a floor large enough to carry a drift component that is
+# essentially zero would also be looser than 3% of the drift itself, which would hide a real
+# regression rather than report one.
+#
+# `mean_descent_rate_m_s` is the generator's `start_height_agl / descent_time`, so it carries no
+# information beyond the descent time; it is compared because the reference publishes it, and a
+# reference value nobody looks at is how a suite starts reporting on less than it says.
+#
+# This case descends in still air from 800 m, so its drift is Coriolis alone: 19 cm east and 20 um
+# north. That 20 um is the most delicate number in the suite, and it is what caught the gravity
+# model: hpr's default carries the full normal-gravity vector, which leans 4 to 9e-6 m/s^2 north
+# above the ellipsoid, where RocketPy applies gravity to the vertical axis alone. Comparing the two
+# put hpr 28x high here (issue #27); flown against RocketPy's own formula the two agree to 1.8%.
+id = "descent-valetudo"
+title = "Descent of RocketPy's valetudo under its own devices"
+reference = "validation/fixtures/recovery/rocketpy-descent.json"
+reference_case = "valetudo"
+
+[flight.recovery_descent]
+design = "rocketpy-valetudo"
+configuration = "example"
+
+[metrics.descent_time_s]
+relative = 0.03
+
+[metrics.impact_speed_m_s]
+relative = 0.03
+
+[metrics.mean_descent_rate_m_s]
+relative = 0.03
+
+[metrics.drift_m]
+relative = 0.03
+
+[metrics.drift_east_m]
+relative = 0.03
+
+[metrics.drift_north_m]
+relative = 0.03

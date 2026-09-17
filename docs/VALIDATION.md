@@ -28,6 +28,50 @@ small extracted fixtures with a clear license are committed, each with its prove
   - Real-flight apogee mean absolute error at or below 5% on well-characterized flights.
   - Every miss is explained in the report.
 
+## The harness (M2.1a)
+
+`cargo xtask validate [--fast]` runs every case in `validation/cases/lock.toml` and writes
+`validation/reports/latest.md` and `latest.json`. A case (`validation/cases/<id>.toml`) says what
+to fly and which metrics to compare, each with its own tolerance, against which reference
+(`validation/fixtures/**`, written by a generator under `validation/oracles/`). Decisions:
+ADR-015; code: `crates/hpr-validate/`.
+
+The rules the harness enforces, each from a Loft lesson:
+
+- A run **reads** references and never writes them: a reference moves only when its generator runs
+  (L76). There is no flag to update one.
+- Every reference value carries a source naming the oracle, the generator and the field, and the
+  report carries the reference file's SHA-256, so an edited reference shows up in the report (L77).
+- Every metric a case reports is either held to a tolerance that bounds something or declared, in
+  writing, not scored; a case is refused if hpr measures a metric it does not account for, or if
+  the reference publishes one the case ignores (L79).
+- The cases that must run are locked; a missing one fails, a committed case that is not locked
+  fails, and `--fast` may only leave out cases the lock marks slow and names them (L78).
+- A case's inputs come from the reference's own record of what the oracle flew, never from hpr's
+  output — including which design it flew and what that weighed (L75). L75's own test arrives with
+  M2.1b, which is where a case chooses a rocket rather than replaying one.
+
+**Not scored** is the harness's one escape hatch, and it is deliberately uncomfortable: the case
+has to write down why, a blank reason fails outright, the metric is still measured and still
+printed with both numbers and the difference, it never counts as a pass, and the whole excused set
+is pinned by `hpr_validate::tests::the_metrics_that_are_not_scored_are_these_and_no_others`.
+**No metric uses it today**, which is the outcome to aim for: it was written for Valetudo's
+northward drift, which read 28x RocketPy's, and the right answer turned out to be to fix the
+comparison rather than to excuse the number. The descent cases carry no absolute floors either:
+every gate is the milestone's 3%.
+
+That fix is worth stating, because it is what L75 means in practice. hpr's default gravity is the
+full normal-gravity vector, which leans a few parts in 10⁶ poleward above the ellipsoid; RocketPy
+applies gravity to the vertical axis alone. The difference is 5.2e-4 m of northward drift over an
+800 m descent, which is invisible in every metric that matters and swamps the one 20 µm number that
+does not. hpr ships `GravityModel::VerticalTaylor` as RocketPy's own formula for like-for-like
+comparisons, so the suite flies that, and the metric comes to −1.8% (ADR-015, issue #27,
+`docs/physics/recovery.md`).
+
+The committed report carries no timestamp, so a number that moves shows up in the diff. A `--fast`
+run writes `latest-fast.{md,json}` instead, which is not committed: a partial report never stands
+in for the whole suite's record.
+
 ## Reference simulators (oracles)
 
 | tool | use | license | where | notes |
@@ -149,7 +193,7 @@ excellent offline test fixtures for the weather-file readers.
 
 | source | what | license | notes |
 |---|---|---|---|
-| RocketPy `Flight` parachute phase | descent rate, descent time and drift for five example rockets (Calisto, Valetudo, NDRT 2020, Prometheus 2022, Juno III) | MIT | `validation/oracles/rocketpy/recovery.py` → `validation/fixtures/recovery/rocketpy-descent.json`, replayed by `hpr_sim::recovery::tests::descent_matches_rocketpy_examples`. Both start from the same declared post-burnout state with the first device open, the same drag areas, triggers and declared wind, and RocketPy's noise zeroed. Agreement: descent time within 0.71%, impact descent rate within 0.03%, drift magnitude within 0.27%, the worst single drift component 2.87% (NDRT's 49 m north of a 327 m drift, where RocketPy's added mass is 15.9 kg against a 20.8 kg rocket), and the deployment heights of the later devices within 0.17% (RocketPy's trigger sampling). The oracle runs at `rtol = atol = 1e-8`; at 1e-6 every compared metric moves by at most 3.5e-6 (its one larger entry, 2.1e-3, is on Valetudo's 20 µm north drift component, which is not compared). M1.7a; `docs/physics/recovery.md` |
+| RocketPy `Flight` parachute phase | descent rate, descent time and drift for five example rockets (Calisto, Valetudo, NDRT 2020, Prometheus 2022, Juno III) | MIT | `validation/oracles/rocketpy/recovery.py` → `validation/fixtures/recovery/rocketpy-descent.json`, replayed by `hpr_sim::recovery::tests::descent_matches_rocketpy_examples`. Both start from the same declared post-burnout state with the first device open, the same drag areas, triggers and declared wind, and RocketPy's noise zeroed. Agreement: descent time within 0.71%, impact descent rate within 0.03%, drift magnitude within 0.27%, the worst single drift component 2.87% (NDRT's 49 m north of a 327 m drift, where RocketPy's added mass is 15.9 kg against a 20.8 kg rocket), and the deployment heights of the later devices within 0.17% (RocketPy's trigger sampling). The oracle runs at `rtol = atol = 1e-8`; at 1e-6 every compared metric moves by at most 3.5e-6 (its one larger entry, 2.1e-3, is on Valetudo's 20 µm north drift component, which M1.7a did not compare; M2.1a measures it, and reading 28x high there is what found the gravity-model difference in ADR-015, issue #27). M1.7a; `docs/physics/recovery.md` |
 | Knacke's canopy tables | drag coefficients on the nominal area, canopy fill constants, drag-area growth exponents and opening-force coefficients | no clear terms: cited, never redistributed | transcribed into `hpr_sim::recovery::CanopyType` with the printed page at each accessor, and pinned by `hpr_sim::recovery::tests::default_canopy_cd_carries_its_citation` (which also fixes hpr's default `C_D0` as the middle of each printed range) |
 
 ### Streamers and tumble (M1.7b)

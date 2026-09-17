@@ -18,6 +18,7 @@ mod designs;
 #[cfg(test)]
 mod docs;
 mod refs;
+mod validate;
 mod wasm_check;
 mod workspace;
 
@@ -32,6 +33,7 @@ Commands:
 {REFS}
 {DESIGNS}
 {AERO}
+{VALIDATE}
   help                     Print this message.";
 
 fn usage() -> String {
@@ -39,6 +41,7 @@ fn usage() -> String {
         .replace("{REFS}", refs::USAGE)
         .replace("{DESIGNS}", designs::USAGE)
         .replace("{AERO}", aero::USAGE)
+        .replace("{VALIDATE}", validate::USAGE)
 }
 
 fn main() -> ExitCode {
@@ -48,6 +51,7 @@ fn main() -> ExitCode {
         Some("refs") => refs::run(&args.collect::<Vec<_>>()),
         Some("designs") => designs::run(&args.collect::<Vec<_>>()),
         Some("aero") => aero::run(&args.collect::<Vec<_>>()),
+        Some("validate") => validate::run(&args.collect::<Vec<_>>()),
         Some("help" | "-h" | "--help") => {
             println!("{}", usage());
             Ok(())

@@ -15,6 +15,7 @@ workspace = true
 hpr-aero.workspace = true
 hpr-atmos.workspace = true
 hpr-design.workspace = true
+hpr-validate.workspace = true
 hpr-motor.workspace = true
 serde.workspace = true
 serde_json.workspace = true

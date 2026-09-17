@@ -467,8 +467,15 @@ dependencies = [
 name = "hpr-validate"
 version = "0.1.0"
 dependencies = [
- "hpr",
- "hpr-flightdata",
+ "hpr-atmos",
+ "hpr-core",
+ "hpr-design",
+ "hpr-sim",
+ "serde",
+ "serde_json",
+ "sha2",
+ "thiserror",
+ "toml",
 ]
 
 [[package]]
@@ -1035,6 +1042,7 @@ dependencies = [
  "hpr-atmos",
  "hpr-design",
  "hpr-motor",
+ "hpr-validate",
  "serde",
  "serde_json",
  "sha2",

@@ -313,7 +313,6 @@
     - **predicted:** hpr uses its own aero. Supersonic predicted-mode gaps are expected until M1.8
       and are reported, not hidden.
   - A CI job compares against the stored references.
-  - Loft lessons: L75, L76, L77, L78, L79 (tests named in `docs/research/loft-lessons.md`).
 
   *Done when:*
   - At least 5 cases pass their same-drag tolerances.
@@ -321,6 +320,49 @@
   - `validation/reports/latest.md` is generated.
   - The CI job is green.
   - A separate, manually triggered workflow regenerates the references.
+
+  - [x] **M2.1a The harness.**
+    - `hpr-validate` and `cargo xtask validate [--fast]`: case files (TOML), reference JSON with
+      provenance, per-case tolerances on every metric, a case lock so a silently skipped case
+      fails, and Markdown plus JSON reports.
+    - Its first cases are the recovery descents, whose references M1.7a already generated.
+    - Loft lessons: L76, L77, L78, L79 (tests named in `docs/research/loft-lessons.md`).
+
+    *Done when:*
+    - `cargo xtask validate` runs every case in the lock against its stored reference and writes
+      `validation/reports/latest.md`.
+    - A case whose metric has no tolerance, a reference value with no provenance, and a run with
+      fewer cases than the lock expects each fail.
+
+    *Result (ADR-015):* met. `cargo xtask validate` runs the five locked descent cases, compares
+    30 metrics against `validation/fixtures/recovery/rocketpy-descent.json` and writes
+    `validation/reports/latest.{md,json}`. All 30 are scored and all pass, every one against the
+    milestone's 3% with no absolute floor anywhere; the largest is NDRT's northward drift at
+    +2.86%. Refused by the command, not only by a test: a metric with no tolerance, a bound that is
+    infinite or negative, a metric both gated and excused, a reference metric the case ignores, a
+    reference that does not name the run that produced it, a case that flies a different design or
+    mass than the reference recorded, a lock naming a case that is not there, a committed case the
+    lock does not name, and a run that ends up comparing nothing. Twelve tests cover it, four of
+    them L76–L79 by name, including a run that flies a case with half its drag area and leaves
+    every committed fixture byte-for-byte unchanged.
+
+    The suite earned its keep before it shipped. Valetudo's 20 µm northward drift — the most
+    delicate number in it — read 28x RocketPy's, and the cause was hpr's default gravity being the
+    full normal-gravity vector where RocketPy's is vertical-only: 5.2e-4 m of drift over an 800 m
+    descent. The comparison now flies `GravityModel::VerticalTaylor`, which hpr ships as RocketPy's
+    own formula, and the metric comes to −1.8% (issue #27, ADR-015). A merged line in
+    `docs/physics/recovery.md` claiming the two codes used the same gravity model is corrected.
+
+  - [ ] **M2.1b The RocketPy code-to-code suite.**
+    - The five rebuilt example rockets, both modes, the CI job and the reference-regeneration
+      workflow.
+    - Loft lessons: L75 (tests named in `docs/research/loft-lessons.md`).
+
+    *Done when:*
+    - At least 5 cases pass their same-drag tolerances.
+    - Predicted-mode results are reported, with explained gaps.
+    - The CI job is green.
+    - A separate, manually triggered workflow regenerates the references.
 
 - [ ] **M1.8 Aerodynamics II (transonic and supersonic, damping, overrides).**
   - Transonic drag rise and supersonic wave drag.
