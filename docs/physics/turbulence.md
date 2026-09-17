@@ -110,7 +110,7 @@ repeatedly and on rejected steps.
 - **`dryden::tests::dryden_spectrum_matches_theory`** (M1.2 *done when*):
   - Setup: 2²⁰ samples at 1 m, with `σ = (1.5, 1.2, 0.9)` m/s and `L = (40, 40, 20)` m.
   - Estimate: 256 Hann-windowed segments of 4096 samples, averaged (Bartlett's method).
-  - In every octave band from bin 8 to Nyquist, each component's mean ratio to theory is within
+  - In every octave band from bin 1 to Nyquist, each component's mean ratio to theory is within
     4 standard errors. The standard error is `√(1.94/(nK))` for `n` bins and `K` segments, where
     1.94 is the Hann window's neighbouring-bin correlation.
   - Theory is the continuous spectrum sampled at 1 m, in closed form. Below a tenth of Nyquist it

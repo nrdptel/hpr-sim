@@ -952,8 +952,8 @@ mod tests {
     ///
     /// A seeded field of 2²⁰ samples one metre apart is cut into 256 segments of 4096. Each is
     /// Hann-windowed and transformed, and the periodograms are averaged (Bartlett's method).
-    /// Over octave bands of frequency bins, the mean ratio of the estimate to theory must fall
-    /// within 4 standard errors. The standard error of a band of `n` bins averaged over `K`
+    /// Over octave bands of frequency bins from the first above zero to Nyquist, the mean ratio of
+    /// the estimate to theory must fall within 4 standard errors. The standard error of a band of `n` bins averaged over `K`
     /// segments is `√(1.94/(nK))`, where 1.94 accounts for the Hann window's correlation between
     /// neighbouring bins (`1 + 2·(2/3)² + 2·(1/6)²`).
     ///
@@ -1001,7 +1001,7 @@ mod tests {
                     frequency(k),
                 )
             };
-            let mut band_start = 8;
+            let mut band_start = 1;
             while band_start < segment / 2 {
                 let band_end = (2 * band_start).min(segment / 2);
                 let n = band_end - band_start;
@@ -1022,7 +1022,8 @@ mod tests {
                 let continuous = PI * p.spectra(TAU * frequency(k))[component];
                 assert!((theory(k) / continuous - 1.0).abs() < 0.01, "bin {k}");
             }
-            // And the variance of the whole record is σ², within 5 standard errors (about 1%).
+            // And the variance of the whole record is σ² to 5%. One standard error of it is about
+            // 1% here (√(2L/N) for the longitudinal component), so this is about 5 of them.
             let variance = field
                 .samples()
                 .iter()

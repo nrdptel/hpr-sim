@@ -4,43 +4,50 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
 
 ## Now
 
-- **Current milestone:** M1.2 Atmosphere and wind
-- **Run:** the first autopilot run; M0.1, M0.2, M0.3 and M1.1 have shipped
-- **Last updated:** 2026-09-17 (M1.1 merged)
+- **Current milestone:** M1.3 Solid motors
+- **Run:** the first autopilot run; M0.1, M0.2, M0.3, M1.1 and M1.2 have shipped
+- **Last updated:** 2026-09-17 (M1.2 merged)
 
 ## Handoff (overwrite each session)
 
-M1.1 put the conventions every later crate uses into `hpr-core` (ADR-003). Start M1.2 from these
-notes:
+M1.2 built `hpr-atmos` (ADR-004). Start M1.3 from these notes:
 
-- **Frames are fixed** in `docs/physics/frames.md`:
-  - ENU launch frame at the pad; body `+z` points to the nose.
-  - Hamilton quaternion from body to launch frame.
-  - Launch angles use RocketPy's 3-1-3 convention.
-  - All heights are **ellipsoidal**. Atmosphere and wind tables keyed on height above sea level
-    must say so and convert at the boundary. Geoid undulation is up to ±100 m.
-- **Use `hpr_core::interp::Table1D`** for soundings and profiles.
-  - It interpolates linearly or with a natural cubic, and every lookup flags extrapolation.
-  - Linear tables suit data with kinks, such as USSA76 layer boundaries. Natural cubics overshoot.
-- **Gravity for geopotential altitude.** USSA76 uses its own constant `g₀ = 9.80665` and radius
-  `r₀`. Use those, not `NormalGravity`, when converting geometric to geopotential height
-  (`STANDARD_GRAVITY_MPS2` exists for this).
-- **Reference values:** where no table is published, follow
-  `validation/oracles/wgs84/normal_gravity.py`: evaluate the published formulas in mpmath, check
-  against the printed digits, commit the JSON under `validation/fixtures/`, and read it with
-  `include_str!`.
-- **For M1.6 and M2.1** (recorded in ADR-003 and `docs/physics/gravity.md`):
-  - The flight engine must use geodetic height, not `z_L`, for ground contact and apogee.
-  - RocketPy evaluates gravity at height above sea level and holds it constant above 80 km.
+- **M1.3 itself:**
+  - The `.rse` spec and the ThrustCurve and motor-finder snapshots are already pinned.
+  - Follow `validation/oracles/rocketpy/*.py` for the SolidMotor oracle script.
+  - Loft lessons L36–L43 name the tests.
+- **Heights for the atmosphere and wind:** every model takes geometric height above mean sea
+  level. The flight engine (M1.6) must subtract the geoid undulation from ellipsoidal height
+  first.
+- **What M1.6 inherits:**
+  - `Ussa76` (with `anchored` for field conditions), `SoundingProfile` and `WindModel`.
+  - `GustField`, a precomputed Dryden realization. M1.6 picks its path coordinate (distance
+    through the air, or altitude) and how gusts start on the rail.
+  - Use the moist density and speed of sound for dynamic pressure and Mach.
+- **For M2.1:**
+  - RocketPy interpolates pressure linearly in height (up to 1.15% off between 700 and
+    500 hPa), wind as u/v components (`WindInterpolation::Components`), and ignores humidity.
+  - Its geopotential helper defaults to a radius ten times the Earth's (`rocketpy/tools.py:972`).
+  - See `docs/physics/atmosphere.md`.
+- **For M5.2:** convert forecast and sounding geopotential heights with
+  `geometric_from_wmo_geopotential_m`, and clamp radiosonde humidity into `[0, 1]`.
+- **For M6.1:** `hpr_core::random::SeededRng` (xoshiro256++, polar normals) is frozen. Changing
+  its algorithm, seeding or draw order needs an ADR.
 - **Process notes:**
   - `cargo test -p xtask` checks that STATUS names the first open ROADMAP milestone, and that each
-    checked-off milestone's lesson tests exist. For M1.2 those are L2 to L6.
+    checked-off milestone's lesson tests exist. For M1.3 those are L36 to L43.
+  - A notices row must contain its lock entry's title word for word.
+  - In zsh, quote curl's `'=https'` (a bare `=word` expands to a command path).
   - The Bash guard hook rejects some tool names even in innocent phrases, so word commit messages
     and PR bodies plainly.
   - If a refs fetch reports snapshot drift, run `cargo xtask refs fetch --adopt-snapshots`.
+  - Scanned PDFs (the 1976 standard) have unusable text layers; read the page images.
 
 ## Done log (newest first, keep about 15)
 
+- 2026-09-17: M1.2 Atmosphere and wind (PR #6): USSA76 matching its tables at 32 altitudes,
+  offsets and field anchoring, moist air, sounding profiles, four wind models, exact Dryden
+  turbulence with a PSD test, `hpr_core::random`, ADR-004, and five newly pinned sources.
 - 2026-09-17: M1.1 Core math, frames, Earth (PR #5): `Table1D`, quaternion kinematics, ENU and
   launch-angle frames, WGS 84 geodesy (Karney's inverse), exact normal gravity and the `Earth`
   model with Coriolis, `docs/physics/` specs, ADR-003, and mpmath and RocketPy gravity fixtures.
@@ -101,9 +108,22 @@ notes:
 - M1.1: RocketPy conventions are pinned by running RocketPy itself (a real `Flight`'s initial
   quaternion), not by re-typing its formulas; `criterion` (no default features) benches hot paths,
   with numbers in `docs/perf.md`.
+- ADR-004: atmosphere and wind take height above sea level; ISA offsets apply at equal
+  geopotential height (not the aviation pressure-altitude convention); soundings interpolate in
+  geopotential height with hydrostatic pressure; wind defaults to speed-and-direction
+  interpolation; Dryden uses MIL-F-8785C's lengths with exact discretization; an in-house frozen
+  xoshiro256++ generator.
+- M1.2: MIL-F-8785C is pinned from Abbott Aerospace's copy (everyspec blocks scripts and stamps
+  each copy) and WMO-No. 8 from a national weather service's mirror; MIL-HDBK-1797 is cited for
+  its differences only and not pinned (no stable public copy).
 
 ## Known issues and risks
 
+- Two M1.2 sources are pinned from third-party mirrors: MIL-F-8785C from Abbott Aerospace, and
+  WMO-No. 8 from Mongolia's weather service. If either moves, the lock file names an archive.org
+  fallback for MIL-F-8785C; WMO's own library needs a browser.
+- Dryden turbulence is an aircraft model. How it applies to a climbing rocket (path coordinate,
+  rail start, near apogee) is unvalidated until M1.6 and M2.3.
 - ThrustCurve curve licenses are mixed (Loft found only 45 of 108 marked PD), so bundle only the
   clean ones.
 - The RASAero `.CDX1` format has no public spec, so the importer relies on samples.

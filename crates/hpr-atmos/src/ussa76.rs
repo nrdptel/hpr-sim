@@ -22,7 +22,8 @@
 //! `Z` is geometric altitude, `T` the kinetic temperature, and `M/M₀` the molecular-weight ratio,
 //! 1 below 80 km and tabulated from 80 to 86 km (Table 8). The printed tables leave `M/M₀` out
 //! below 86 km and print `T = T_M` there (p. 9); this module follows the equations, so from 80 to
-//! 85.5 km its kinetic temperature and viscosity are up to 0.031% below the printed values.
+//! 85.5 km its kinetic temperature is up to 0.036% and its viscosity up to 0.031% below the printed
+//! values.
 //!
 //! **Offsets.** [`Ussa76::with_offset`] adds a constant `ΔT` to `T_M` at every geopotential height
 //! and integrates the hydrostatic equation from a chosen sea-level pressure, so pressure and
@@ -437,6 +438,19 @@ mod tests {
     struct Row {
         geometric_altitude_m: f64,
         printed: Printed,
+        si: Si,
+    }
+
+    #[derive(Deserialize)]
+    struct Si {
+        geopotential_altitude_m: f64,
+        temperature_k: f64,
+        molecular_scale_temperature_k: f64,
+        pressure_pa: f64,
+        density_kgpm3: f64,
+        speed_of_sound_mps: Option<f64>,
+        dynamic_viscosity_pas: Option<f64>,
+        kinematic_viscosity_m2ps: Option<f64>,
     }
 
     #[derive(Deserialize)]
@@ -562,9 +576,41 @@ mod tests {
                 check(nu, printed, "ν", !tables_omit_m_over_m0);
             }
         }
-        // 32 rows × 5 columns, plus speed of sound and viscosities on the 31 rows below 86 km,
-        // plus the 11 `T_M`-based viscosities from 80 to 85.5 km.
-        assert!(compared >= 32 * 5 + 31 * 3, "{compared}");
+        // 32 rows × 5 columns, plus speed of sound and both viscosities on the 31 rows below
+        // 86 km, plus the `T_M`-based viscosity on the 3 rows at 82, 84 and 85 km.
+        assert_eq!(compared, 32 * 5 + 31 * 3 + 3);
+    }
+
+    /// The fixture's SI column is the printed column converted (millibars × 100), so a test
+    /// reading one reads the other. CI never runs the Python cross-check, so this runs here.
+    #[test]
+    fn fixture_si_values_are_the_printed_values() {
+        for row in table().rows {
+            let (p, si) = (&row.printed, &row.si);
+            let parsed = |text: &str| parse_printed(text).0;
+            let z = row.geometric_altitude_m;
+            assert_eq!(
+                si.geopotential_altitude_m,
+                parsed(&p.geopotential_altitude_m),
+                "{z}"
+            );
+            assert_eq!(si.temperature_k, parsed(&p.temperature_k), "{z}");
+            assert_eq!(
+                si.molecular_scale_temperature_k,
+                parsed(&p.molecular_scale_temperature_k),
+                "{z}"
+            );
+            let (mb, count) = parse_printed(&p.pressure_mb);
+            assert!((si.pressure_pa - 100.0 * mb).abs() <= 1e-6 * count, "{z}");
+            assert_eq!(si.density_kgpm3, parsed(&p.density_kgpm3), "{z}");
+            for (si_value, printed) in [
+                (si.speed_of_sound_mps, &p.speed_of_sound_mps),
+                (si.dynamic_viscosity_pas, &p.dynamic_viscosity_pas),
+                (si.kinematic_viscosity_m2ps, &p.kinematic_viscosity_m2ps),
+            ] {
+                assert_eq!(si_value, printed.as_deref().map(parsed), "{z}");
+            }
+        }
     }
 
     /// Loft lesson L2: 11 km *geometric* is 216.774 K and 22,699.96 Pa (Table I prints 2.2699E+2

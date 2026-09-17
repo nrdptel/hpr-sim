@@ -166,8 +166,10 @@ mod tests {
 
     /// Humid air is lighter, and the ideal-mixture density agrees with the CIPM-2007 formula
     /// (with its real-gas compressibility) to 0.05% over CIPM-2007's range, 15–27 °C and
-    /// 600–1100 hPa, from dry to saturated; the largest difference is 0.047%. Reference values
-    /// from `validation/oracles/atmosphere/moist_air.py`.
+    /// 600–1100 hPa, from dry to saturated. The largest difference is 0.047%: the size of the
+    /// documented simplifications (ideal gas, no enhancement factor, the 1976 dry-air constants),
+    /// so this is a regression bound on them, not an accuracy target. Reference values from
+    /// `validation/oracles/atmosphere/moist_air.py`.
     #[test]
     fn humid_density_agrees_with_cipm_2007() {
         let fixture: Fixture = serde_json::from_str(include_str!(

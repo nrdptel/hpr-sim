@@ -1,5 +1,11 @@
 {
   "source": "U.S. Standard Atmosphere, 1976, NOAA-S/T 76-1562 (NASA-TM-X-74335), NOAA, NASA and USAF, Washington DC, October 1976; NTRS 19770009539 (`us-std-atmosphere-1976` in validation/refs.lock.toml). US government work, public domain.",
+  "tool": "hand transcription from the scan's page images at 300 and 600 dpi",
+  "transcribed": "2026-09-17",
+  "inputs_sha256": {
+    "source": "23eb6b68346d4abc6071fc598872d51c40cf8c613d1a5d1006c6261bcd09dcea"
+  },
+  "cross_check_command": "refs/venv/bin/python validation/oracles/ussa76/tables.py",
   "tables": {
     "table_i": {
       "title": "Table I, Geometric Altitude, Metric Units (temperature, pressure, density)",

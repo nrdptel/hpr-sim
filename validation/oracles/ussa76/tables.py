@@ -170,7 +170,7 @@ for row in TABLE["rows"]:
         assert si == float(Decimal(printed) * factor), (row["geometric_altitude_m"], si_key, printed, si)
 
 # 2. Table 8's altitudes agree with eqs. 18 and 19. Most are truncated to the printed 0.1 m, but
-#    three differ by up to 0.12 m (confirmed on the page image), so a transcription slip is taken
+#    two differ by up to 0.12 m (confirmed on the page image), so a transcription slip is taken
 #    to be anything beyond two counts, and the rows beyond one count are listed.
 table_8 = CONSTANTS["table_8"]
 table_8_checks = [

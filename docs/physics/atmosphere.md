@@ -48,7 +48,7 @@ a   = (γ R* T_M / M₀)^½                                (50)
     is 1.7894e-5 Pa·s with it and 1.7912e-5 with 110.
 - **80 to 86 km:** `M/M₀` comes from Table 8, interpolated linearly in `Z`. The printed tables
   leave it out below 86 km and print `T = T_M` (p. 9). This model follows the equations, so its
-  kinetic temperature and viscosity there are up to 0.031% below the print.
+  kinetic temperature there is up to 0.036%, and its viscosity up to 0.031%, below the print.
 - **Outside the range:** below −5 km the first layer continues, and above 86 km the atmosphere
   is isothermal at 186.87 K. Both are flagged. The real standard warms above 86 km and changes
   composition, so values there are rough, but the densities are tiny.
@@ -165,7 +165,7 @@ These are findings from reading `refs/rocketpy`, not yet pinned by fixtures:
     offsets.
   - Anchors reproduce their conditions, and layers join continuously.
 - **`moist::tests`:**
-  - WMO 4.B.1 values.
+  - WMO 4.B.1 against the formula evaluated separately in mpmath (WMO prints no table of it).
   - Dry air equals the standard.
   - CIPM-2007 density to 0.05% at 36 points.
 - **`profile::tests`:**

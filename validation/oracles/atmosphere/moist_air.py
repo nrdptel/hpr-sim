@@ -22,10 +22,22 @@ Run from the repository root (the oracle environment has mpmath):
 It writes the fixture to stdout and the documentation checks to stderr.
 """
 
+import hashlib
 import json
 import sys
+from pathlib import Path
 
+import mpmath
 from mpmath import exp, mp, mpf, sqrt
+
+# Provenance written into the fixture (docs/VALIDATION.md). Update the date when regenerating.
+GENERATED = "2026-09-17"
+COMMAND = (
+    "refs/venv/bin/python validation/oracles/atmosphere/moist_air.py "
+    "> validation/fixtures/atmosphere/cipm-2007-moist-air-density.json"
+)
+# sha256 of the pinned source, `picard-2008-cipm-2007` in validation/refs.lock.toml.
+SOURCE_SHA256 = "0266277b62e34253a36af817e70af4ffbe74f079ed7c35ce3770477c2ea822e3"
 
 mp.dps = 30
 
@@ -113,6 +125,13 @@ def main():
         "source": "A. Picard et al., Revised formula for the density of moist air (CIPM-2007), "
         "Metrologia 45 (2008) 149-155, eqs. (1), (4), (A1.1)-(A1.4); x_CO2 = 400 umol/mol",
         "generator": "validation/oracles/atmosphere/moist_air.py (mpmath, 30 digits)",
+        "tool": f"mpmath {mpmath.__version__}",
+        "generated": GENERATED,
+        "command": COMMAND,
+        "inputs_sha256": {
+            "source": SOURCE_SHA256,
+            "script": hashlib.sha256(Path(__file__).read_bytes()).hexdigest(),
+        },
         "range": "CIPM-2007's stated range: 600-1100 hPa, 15-27 degC, 0-100% relative humidity",
         "cases": cases,
     }
