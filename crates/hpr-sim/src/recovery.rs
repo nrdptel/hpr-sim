@@ -14,6 +14,7 @@
 //! the infinite-mass opening-force coefficients `C_x` from the same tables. Every number is cited
 //! at its accessor, with the printed page.
 
+use hpr_core::DVec3;
 use serde::{Deserialize, Serialize};
 
 use crate::error::SimError;
@@ -342,9 +343,9 @@ impl DeviceDrag {
     ///   airframe with **tube fins** is refused: they are a large part of its broadside area and
     ///   the model has no factor for them.
     ///
-    /// It sums **every** stage, so it is the whole stack tumbling. A spent booster tumbling on
-    /// its own, which is what the documentation's model was written for, is M1.7c's business:
-    /// that will pass the body's own components.
+    /// It sums **every** stage, so it is the whole stack tumbling. For a spent booster on its
+    /// own, which is what the documentation's model was written for, use
+    /// [`Self::tumbling_stages`] with that body's stages.
     ///
     /// The constants were fitted to 22 m drop tests of five models 44 to 103 mm across and 6.8 to
     /// 160 g, descending at 5.0 to 6.6 m/s, and predict those terminal velocities within 3 to 14%.
@@ -357,9 +358,36 @@ impl DeviceDrag {
     /// if the airframe presents no area at all, carries tube fins, or has a fin set of more than
     /// the eight fins Table 3.4 covers.
     pub fn tumbling(assembly: &hpr_design::Assembly) -> Result<Self, SimError> {
+        Self::tumbling_stages(
+            assembly,
+            (0, assembly.layout.stages.len().saturating_sub(1)),
+        )
+    }
+
+    /// The drag area of the stages `first..=last` of `assembly` tumbling on their own, which is
+    /// what a separated body does ([`Separation`]). [`Self::tumbling`] is this over every stage.
+    ///
+    /// # Errors
+    ///
+    /// As [`Self::tumbling`].
+    pub fn tumbling_stages(
+        assembly: &hpr_design::Assembly,
+        (first, last): (usize, usize),
+    ) -> Result<Self, SimError> {
+        let stages = assembly.layout.stages.len();
+        if first > last || last >= stages {
+            return Err(SimError::Domain {
+                what: "stage range of a tumbling body (first must not pass last, and last must \
+                       be a stage of the design); the last given",
+                value: last as f64,
+            });
+        }
         let mut body_profile_m2 = 0.0;
         let mut fin_area_m2 = 0.0;
         for component in &assembly.layout.components {
+            if !(first..=last).contains(&component.stage) {
+                continue;
+            }
             if let (Some(fore_m), Some(aft_m)) = (
                 component.part.fore_radius_m(),
                 component.part.aft_radius_m(),
@@ -598,6 +626,10 @@ pub struct Device {
     /// deploys.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub released_by: Option<usize>,
+    /// Which body it is attached to, after a separation ([`Separation`]): body 0 keeps the nose,
+    /// body 1 is the stages aft of the split. Without a separation there is only body 0.
+    #[serde(default)]
+    pub body: usize,
 }
 
 fn instant() -> Inflation {
@@ -615,6 +647,7 @@ impl Device {
             lag_s: 0.0,
             inflation: Inflation::Instant,
             released_by: None,
+            body: 0,
         }
     }
 
@@ -636,6 +669,13 @@ impl Device {
     #[must_use]
     pub fn with_release_by(mut self, index: usize) -> Self {
         self.released_by = Some(index);
+        self
+    }
+
+    /// The same device, carried by body `index` after a separation ([`Separation`]).
+    #[must_use]
+    pub fn on_body(mut self, index: usize) -> Self {
+        self.body = index;
         self
     }
 
@@ -807,6 +847,129 @@ fn check_exponent(exponent: f64) -> Result<(), SimError> {
     }
 }
 
+/// A separation: the stack comes apart at a stage boundary and every body descends under its own
+/// devices (`docs/physics/recovery.md`, ADR-014).
+///
+/// Bodies are contiguous runs of stages. Stages `0..=after_stage` keep the nose and are body 0;
+/// the stages aft of the split are body 1. Each body flies as a point mass from the separation,
+/// with the mass properties of its own stages and motors, so every body must carry at least one
+/// device: the descent phase has no airframe drag (ADR-012), and a body with nothing open would
+/// fall as if in a vacuum.
+///
+/// A separation is an ideal one: no impulse, so each body leaves with the velocity its own centre
+/// of mass already had. It must come after the last burnout, because a body's mass is taken as
+/// constant through its descent; powered staging is M1.9.
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct Separation {
+    /// When the stack comes apart.
+    pub trigger: Trigger,
+    /// The last stage that stays with the nose. Stages after it form the aft body.
+    pub after_stage: usize,
+}
+
+impl Separation {
+    /// A separation at the boundary after `after_stage`, on `trigger`.
+    #[must_use]
+    pub const fn new(trigger: Trigger, after_stage: usize) -> Self {
+        Self {
+            trigger,
+            after_stage,
+        }
+    }
+
+    /// The stages of body `index`: body 0 keeps the nose, body 1 is the rest. `None` when there
+    /// is no such body, including when the boundary is at or past the last stage.
+    #[must_use]
+    pub const fn stages_of(&self, index: usize, stage_count: usize) -> Option<(usize, usize)> {
+        let Some(aft) = self.after_stage.checked_add(1) else {
+            return None;
+        };
+        if aft >= stage_count {
+            return None;
+        }
+        match index {
+            0 => Some((0, self.after_stage)),
+            1 => Some((aft, stage_count - 1)),
+            _ => None,
+        }
+    }
+
+    /// How many bodies it makes: two.
+    pub const BODIES: usize = 2;
+}
+
+/// The mass properties of the stages `first..=last` of `assembly`, with their motors, `t_s`
+/// seconds after ignition. Summing over every stage gives [`hpr_design::Assembly::mass_properties`].
+pub(crate) fn body_mass_properties(
+    assembly: &hpr_design::Assembly,
+    (first, last): (usize, usize),
+    t_s: f64,
+) -> hpr_design::MassProperties {
+    let mut parts = vec![];
+    for (index, stage) in assembly.layout.stages.iter().enumerate() {
+        if (first..=last).contains(&index) {
+            parts.push(stage.mass);
+        }
+    }
+    let motors: Vec<_> = assembly
+        .motors
+        .iter()
+        .filter(|motor| (first..=last).contains(&motor.stage))
+        .map(|motor| motor.mass_properties(t_s))
+        .collect();
+    parts.extend(motors);
+    hpr_design::MassProperties::combine(parts.iter())
+}
+
+/// The time a trigger fires, when it is one that is known before the flight: a time after
+/// ignition, or a motor's ejection delay after its burnout.
+///
+/// # Errors
+///
+/// [`SimError::Domain`] for a time before ignition, a motor that isn't there, or a motor with no
+/// ejection delay in seconds.
+pub(crate) fn trigger_time_s(
+    trigger: Trigger,
+    motors: &[hpr_design::PlacedMotor],
+) -> Result<Option<f64>, SimError> {
+    match trigger {
+        Trigger::Time { time_s } => {
+            if !(time_s.is_finite() && time_s >= 0.0) {
+                return Err(SimError::Domain {
+                    what: "deployment time after ignition, s",
+                    value: time_s,
+                });
+            }
+            Ok(Some(time_s))
+        }
+        Trigger::MotorDelay { motor } => {
+            let placed = motors.get(motor).ok_or(SimError::Domain {
+                what: "index of the motor whose delay fires a device",
+                value: motor as f64,
+            })?;
+            let delay_s = match placed.mounted.delay {
+                Some(hpr_motor::Delay::Seconds(delay_s)) => delay_s,
+                _ => {
+                    return Err(SimError::Domain {
+                        what: "the motor firing a device has no ejection delay in seconds (it is \
+                               plugged, or its delay is unset)",
+                        value: motor as f64,
+                    });
+                }
+            };
+            if !(delay_s.is_finite() && delay_s >= 0.0) {
+                return Err(SimError::Domain {
+                    what: "motor ejection delay, s",
+                    value: delay_s,
+                });
+            }
+            Ok(Some(placed.mounted.motor.burnout_time_s() + delay_s))
+        }
+        Trigger::Apogee | Trigger::Altitude { .. } => Ok(None),
+    }
+}
+
 /// Checks a flight's devices, and finds the trigger times that are known before it flies.
 ///
 /// The result has one entry per device: `Some(t)` for a [`Trigger::Time`] or a
@@ -815,6 +978,19 @@ pub(crate) fn plan(
     devices: &[Device],
     motors: &[hpr_design::PlacedMotor],
 ) -> Result<Vec<Option<f64>>, SimError> {
+    // A device is cut away by a line on its own body; a release across a separation has nothing
+    // to act through.
+    for (index, device) in devices.iter().enumerate() {
+        if let Some(other) = device.released_by
+            && devices.get(other).is_some_and(|by| by.body != device.body)
+        {
+            return Err(SimError::Domain {
+                what: "release across a separation (a device can only be released by one on its \
+                       own body); index of the released device",
+                value: index as f64,
+            });
+        }
+    }
     // A cycle of releases (A released by B, B released by A) can leave every device released and
     // the rocket falling under nothing at all, which the descent phase would fly as a vacuum drop
     // (found in review). Each chain has to end.
@@ -837,33 +1013,7 @@ pub(crate) fn plan(
     let mut times = Vec::with_capacity(devices.len());
     for (index, device) in devices.iter().enumerate() {
         device.validate(devices.len(), index)?;
-        let time = match device.trigger {
-            Trigger::Time { time_s } => Some(time_s),
-            Trigger::MotorDelay { motor } => {
-                let placed = motors.get(motor).ok_or(SimError::Domain {
-                    what: "index of the motor whose delay fires a device",
-                    value: motor as f64,
-                })?;
-                let delay_s = match placed.mounted.delay {
-                    Some(hpr_motor::Delay::Seconds(delay_s)) => delay_s,
-                    _ => {
-                        return Err(SimError::Domain {
-                            what: "the motor firing a device has no ejection delay in seconds \
-                                   (it is plugged, or its delay is unset)",
-                            value: motor as f64,
-                        });
-                    }
-                };
-                if !(delay_s.is_finite() && delay_s >= 0.0) {
-                    return Err(SimError::Domain {
-                        what: "motor ejection delay, s",
-                        value: delay_s,
-                    });
-                }
-                Some(placed.mounted.motor.burnout_time_s() + delay_s)
-            }
-            Trigger::Apogee | Trigger::Altitude { .. } => None,
-        };
+        let time = trigger_time_s(device.trigger, motors)?;
         times.push(time);
     }
     Ok(times)
@@ -939,6 +1089,20 @@ impl Run {
         full_s
     }
 
+    /// Every time device `index` already has that a descent must not step past: its deployment,
+    /// the end of its filling and its release.
+    pub(crate) fn times_of(&self, index: usize) -> Vec<f64> {
+        let run = self.devices[index];
+        let mut times = Vec::new();
+        times.extend(run.deploy_s);
+        if let Some(deployed_s) = run.deployed_s {
+            times.push(deployed_s + run.filling_time_s);
+        }
+        times.extend(run.released_s);
+        times.retain(|time| time.is_finite());
+        times
+    }
+
     /// When device `index` is released, s.
     pub(crate) fn released_s(&self, index: usize) -> Option<f64> {
         self.devices[index].released_s
@@ -976,38 +1140,113 @@ impl Run {
         self.devices[index].triggered_s.is_none()
     }
 
+    /// The total drag area of body `body`'s open devices at `t`, m².
+    pub(crate) fn body_drag_area_m2(&self, devices: &[Device], body: usize, t: f64) -> f64 {
+        devices
+            .iter()
+            .enumerate()
+            .filter(|(_, device)| device.body == body)
+            .map(|(index, _)| self.one_drag_area_m2(devices, index, t))
+            .sum()
+    }
+
     /// The total drag area of the open devices at `t`, m².
     ///
     /// A device deployed at `t_d` with filling time `t_f` and growth exponent `j` contributes
     /// `(C_D S)₀ min(1, (t − t_d)/t_f)^j`, and nothing once it is released.
     pub(crate) fn drag_area_m2(&self, devices: &[Device], t: f64) -> f64 {
-        devices
-            .iter()
-            .zip(&self.devices)
-            .filter_map(|(device, run)| {
-                let deployed_s = run.deployed_s?;
-                if run.released_s.is_some_and(|released| t >= released) {
-                    return None;
-                }
-                let full = device.drag.drag_area_m2();
-                let elapsed = t - deployed_s;
-                if elapsed < 0.0 {
-                    return Some(0.0);
-                }
-                if run.filling_time_s <= 0.0 {
-                    return Some(full);
-                }
-                let fraction = (elapsed / run.filling_time_s).min(1.0);
-                // `j` is 1 (ribbon and ringslot) or 2 (solid cloth) for every canopy Knacke's
-                // method names, so the common cases avoid `powf`.
-                let growth = match device.inflation.exponent() {
-                    1.0 => fraction,
-                    2.0 => fraction * fraction,
-                    exponent => fraction.powf(exponent),
-                };
-                Some(full * growth)
-            })
+        (0..devices.len())
+            .map(|index| self.one_drag_area_m2(devices, index, t))
             .sum()
+    }
+
+    /// The drag area of device `index` at `t`, m²: nothing before it deploys or after it is
+    /// released, and its inflation law in between.
+    fn one_drag_area_m2(&self, devices: &[Device], index: usize, t: f64) -> f64 {
+        let (device, run) = (&devices[index], self.devices[index]);
+        let Some(deployed_s) = run.deployed_s else {
+            return 0.0;
+        };
+        if run.released_s.is_some_and(|released| t >= released) {
+            return 0.0;
+        }
+        let full = device.drag.drag_area_m2();
+        let elapsed = t - deployed_s;
+        if elapsed < 0.0 {
+            return 0.0;
+        }
+        if run.filling_time_s <= 0.0 {
+            return full;
+        }
+        let fraction = (elapsed / run.filling_time_s).min(1.0);
+        // `j` is 1 (ribbon and ringslot) or 2 (solid cloth) for every canopy Knacke's method
+        // names, so the common cases avoid `powf`.
+        let growth = match device.inflation.exponent() {
+            1.0 => fraction,
+            2.0 => fraction * fraction,
+            exponent => fraction.powf(exponent),
+        };
+        full * growth
+    }
+}
+
+/// One separated body at an instant of its descent.
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+pub struct BodySample {
+    /// Time since the first ignition, s.
+    pub time_s: f64,
+    /// Its centre of mass in the launch frame, m.
+    pub cg_enu_m: DVec3,
+    /// That point's velocity relative to the launch frame, m/s.
+    pub cg_velocity_enu_m_s: DVec3,
+    /// Its centre of mass's ellipsoidal height above the launch site, m.
+    pub height_above_ground_m: f64,
+    /// The rate of that height, m/s.
+    pub vertical_speed_m_s: f64,
+    /// Its airspeed, m/s.
+    pub airspeed_m_s: f64,
+    /// The drag area `C_D S` of its open devices, m².
+    pub recovery_drag_area_m2: f64,
+    /// Its mass, kg.
+    pub mass_kg: f64,
+}
+
+/// An event during a separated body's descent, with the body at that instant.
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+pub struct BodyEvent {
+    /// What happened: a device's [`crate::EventKind::Trigger`], [`crate::EventKind::Deployment`],
+    /// [`crate::EventKind::Release`] or the body's [`crate::EventKind::GroundHit`].
+    pub kind: crate::EventKind,
+    /// The body at that instant.
+    pub sample: BodySample,
+}
+
+/// One separated body's descent, from the separation to its landing.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct BodyFlight {
+    /// Which body: 0 keeps the nose.
+    pub body: usize,
+    /// The stages it is made of, inclusive.
+    pub stages: (usize, usize),
+    /// Its mass, kg, constant through the descent.
+    pub mass_kg: f64,
+    /// Where it started: the separation, with its own centre of mass and that point's velocity.
+    pub start_sample: BodySample,
+    /// Why its descent ended.
+    pub termination: crate::Termination,
+    /// Its events, in order.
+    pub events: Vec<BodyEvent>,
+    /// Where it ended.
+    pub final_sample: BodySample,
+    /// The integrator's work on it.
+    pub stats: crate::Stats,
+}
+
+impl BodyFlight {
+    /// The first event of `kind`.
+    #[must_use]
+    pub fn event(&self, kind: crate::EventKind) -> Option<&BodyEvent> {
+        self.events.iter().find(|event| event.kind == kind)
     }
 }
 
@@ -2848,6 +3087,602 @@ mod tests {
             "{} vs {terminal_m_s}",
             landing.vertical_speed_m_s
         );
+    }
+
+    /// The two-stage test design, whose booster and sustainer each carry a motor.
+    fn two_stage() -> hpr_design::Rocket {
+        design("synthetic-two-stage-75mm-54mm")
+    }
+
+    /// That design flown with `devices` and a separation, from a vertical rail.
+    fn staged_flight(
+        environment: Environment,
+        devices: Vec<Device>,
+        separation: Separation,
+    ) -> Simulation {
+        Simulation::new(
+            &two_stage(),
+            "j760-i175",
+            environment,
+            Rail::vertical(6.0),
+            FlightSettings {
+                max_time_s: 3600.0,
+                ..FlightSettings::default()
+            },
+        )
+        .unwrap()
+        .with_recovery(devices)
+        .unwrap()
+        .with_separation(separation)
+        .unwrap()
+    }
+
+    #[test]
+    fn a_separation_lands_every_body_and_the_masses_add_up() {
+        // The stack comes apart at apogee: the sustainer descends under a canopy, the booster
+        // tumbles. Both have to reach the ground, each at its own terminal speed, and their
+        // masses have to add up to the whole rocket's.
+        let air = UniformAir::sea_level();
+        let assembly = two_stage().assemble("j760-i175").unwrap();
+        // The booster tumbles on its own stage's geometry, not the whole stack's.
+        let tumble = DeviceDrag::tumbling_stages(&assembly, (1, 1)).unwrap();
+        let devices = vec![
+            Device::new(
+                "sustainer main",
+                DeviceDrag::canopy(CanopyType::FlatCircular, 1.8),
+                Trigger::Altitude {
+                    height_above_ground_m: 1_500.0,
+                },
+            ),
+            Device::new(
+                "booster tumble",
+                tumble,
+                Trigger::Altitude {
+                    height_above_ground_m: 1_500.0,
+                },
+            )
+            .on_body(1),
+        ];
+        let sim = staged_flight(
+            analytic_environment(air, G),
+            devices,
+            Separation::new(Trigger::Apogee, 0),
+        );
+        // From just past apogee: this stack goes supersonic on the way up, which the aero refuses
+        // until M1.8, and the ascent is not what this test is about.
+        let start = dropped(&sim, 2_000.0, DVec3::new(0.0, 0.0, -0.5));
+        let result = sim.run_free(START_S, start, &mut ()).unwrap();
+        assert_eq!(result.termination, Termination::Separated);
+        assert!(result.event(EventKind::Separation).is_some());
+        assert_eq!(result.bodies.len(), 2, "{:?}", result.bodies.len());
+
+        // The bodies' masses add up to the rocket's at the separation, and each is a real share.
+        let separation = result.event(EventKind::Separation).unwrap().sample;
+        let whole_kg = sim.assembly().mass_properties(separation.time_s).mass_kg;
+        let sum_kg: f64 = result.bodies.iter().map(|body| body.mass_kg).sum();
+        assert!(
+            (sum_kg - whole_kg).abs() < 1e-12 * whole_kg,
+            "{sum_kg} vs {whole_kg}"
+        );
+        assert_eq!(result.bodies[0].stages, (0, 0));
+        assert_eq!(result.bodies[1].stages, (1, 1));
+        for body in &result.bodies {
+            // Each body is its own stage's structure plus the motor mounted in it, so a swapped
+            // split or a motor on the wrong stage fails here and not only in the sum.
+            let layout = &sim.assembly().layout;
+            let expected_kg = layout.stages[body.stages.0].mass.mass_kg
+                + sim
+                    .assembly()
+                    .motors
+                    .iter()
+                    .filter(|motor| motor.stage == body.stages.0)
+                    .map(|motor| motor.mass_properties(separation.time_s).mass_kg)
+                    .sum::<f64>();
+            assert!(
+                (body.mass_kg - expected_kg).abs() < 1e-12 * expected_kg,
+                "body {}: {} vs {expected_kg}",
+                body.body,
+                body.mass_kg
+            );
+        }
+        // Measured: a 0.550 kg sustainer and a 1.125 kg booster of a 1.675 kg stack.
+        assert!(
+            (result.bodies[0].mass_kg - 0.550_344).abs() < 1e-5,
+            "{}",
+            result.bodies[0].mass_kg
+        );
+        assert!(
+            (result.bodies[1].mass_kg - 1.124_834).abs() < 1e-5,
+            "{}",
+            result.bodies[1].mass_kg
+        );
+
+        // Every body lands, under its own device, at its own terminal speed.
+        let rho = air.0.density_kg_m3;
+        for body in &result.bodies {
+            assert_eq!(
+                body.termination,
+                Termination::GroundHit,
+                "body {}",
+                body.body
+            );
+            let landing = body.event(EventKind::GroundHit).unwrap().sample;
+            assert!(landing.height_above_ground_m.abs() < 1e-6, "{landing:?}");
+            assert!(landing.time_s > separation.time_s, "{landing:?}");
+            let device = body.body;
+            let drag_area_m2 = sim.recovery()[device].drag.drag_area_m2();
+            let terminal_m_s = terminal_speed_m_s(body.mass_kg, drag_area_m2, rho, G);
+            assert!(
+                (-landing.vertical_speed_m_s / terminal_m_s - 1.0).abs() < 1e-3,
+                "body {}: {} vs {terminal_m_s}",
+                body.body,
+                landing.vertical_speed_m_s
+            );
+            assert!(
+                (landing.recovery_drag_area_m2 - drag_area_m2).abs() < 1e-12,
+                "body {}: {landing:?}",
+                body.body
+            );
+            assert!(body.event(EventKind::Deployment(device)).is_some());
+        }
+        // The tumbling booster comes down much faster than the sustainer under its canopy, and
+        // both descent times are pinned, not just the speeds. Measured: the sustainer lands at
+        // 729.00 s at 2.114 m/s under its 1.8 m canopy, the booster at 107.51 s at 16.745 m/s.
+        let landing_of = |body: usize| {
+            result.bodies[body]
+                .event(EventKind::GroundHit)
+                .unwrap()
+                .sample
+        };
+        let under_canopy = -landing_of(0).vertical_speed_m_s;
+        let tumbling = -landing_of(1).vertical_speed_m_s;
+        assert!(
+            tumbling / under_canopy > 7.5,
+            "{tumbling} vs {under_canopy}"
+        );
+        assert!(
+            (landing_of(0).time_s - 729.00).abs() < 0.5,
+            "{}",
+            landing_of(0).time_s
+        );
+        assert!(
+            (landing_of(1).time_s - 107.51).abs() < 0.2,
+            "{}",
+            landing_of(1).time_s
+        );
+        assert!(result.bodies_landed(), "{:?}", result.bodies.len());
+        assert_eq!(result.landings().len(), 2);
+    }
+
+    #[test]
+    fn a_separation_conserves_momentum_and_gives_each_body_its_own_start() {
+        // An ideal separation adds no impulse: each body leaves with the velocity its own centre
+        // of mass already had, so the bodies' momenta add to the stack's.
+        let air = UniformAir::sea_level();
+        let assembly = two_stage().assemble("j760-i175").unwrap();
+        let devices = vec![
+            Device::new(
+                "sustainer",
+                DeviceDrag::canopy(CanopyType::FlatCircular, 1.5),
+                Trigger::Altitude {
+                    height_above_ground_m: 1_500.0,
+                },
+            ),
+            Device::new(
+                "booster",
+                DeviceDrag::tumbling_stages(&assembly, (1, 1)).unwrap(),
+                Trigger::Altitude {
+                    height_above_ground_m: 1_500.0,
+                },
+            )
+            .on_body(1),
+        ];
+        let sim = staged_flight(
+            analytic_wind_environment(air, G, ConstantWind::new(5.0, 0.9).unwrap()),
+            devices,
+            Separation::new(Trigger::Apogee, 0),
+        );
+        // Separating with a body rate, so that `ω × r` is part of each body's start.
+        let mut start = dropped(&sim, 2_000.0, DVec3::new(3.0, 0.0, -2.0));
+        start.body_rate_rad_s = DVec3::new(0.0, 0.6, 0.0);
+        let result = sim.run_free(START_S, start, &mut ()).unwrap();
+        let separation = result.event(EventKind::Separation).unwrap().sample;
+        let whole_kg = sim.assembly().mass_properties(separation.time_s).mass_kg;
+        let momentum: DVec3 = result
+            .bodies
+            .iter()
+            .map(|body| body.start_sample.cg_velocity_enu_m_s * body.mass_kg)
+            .sum();
+        let expected = separation.cg_velocity_enu_m_s * whole_kg;
+        assert!(
+            (momentum - expected).length() < 1e-9 * expected.length(),
+            "{momentum} vs {expected}"
+        );
+        // And each body starts where **its own** centre of mass was, not the stack's: the two
+        // are 0.817 m apart on this design.
+        let state = result.final_sample.state;
+        for body in &result.bodies {
+            let cg_m = body_mass_properties(sim.assembly(), body.stages, separation.time_s).cg_m;
+            let expected = state.point_enu_m(cg_m);
+            assert!(
+                (body.start_sample.cg_enu_m - expected).length() < 1e-12,
+                "body {}: {} vs {expected}",
+                body.body,
+                body.start_sample.cg_enu_m
+            );
+        }
+        let gap = (result.bodies[0].start_sample.cg_enu_m - result.bodies[1].start_sample.cg_enu_m)
+            .length();
+        assert!((gap - 0.817).abs() < 0.01, "{gap}");
+    }
+
+    #[test]
+    fn a_body_separated_while_climbing_finds_its_own_apogee() {
+        // Found in review: a body's system watched only the ground and its own deployment
+        // heights, so a body that separated while still climbing never saw a descending moment,
+        // its apogee charge never fired, and it hit the ground in a vacuum at 165 m/s reported as
+        // an ordinary landing. Both bodies now find their own apogee.
+        let air = UniformAir::sea_level();
+        let assembly = two_stage().assemble("j760-i175").unwrap();
+        let devices = vec![
+            Device::new(
+                "sustainer",
+                DeviceDrag::canopy(CanopyType::FlatCircular, 1.5),
+                Trigger::Apogee,
+            ),
+            Device::new(
+                "booster",
+                DeviceDrag::tumbling_stages(&assembly, (1, 1)).unwrap(),
+                Trigger::Apogee,
+            )
+            .on_body(1),
+        ];
+        let burnout_s = assembly
+            .motors
+            .iter()
+            .map(|motor| motor.mounted.motor.burnout_time_s())
+            .fold(0.0, f64::max);
+        let sim = staged_flight(
+            analytic_environment(air, G),
+            devices,
+            Separation::new(
+                Trigger::Time {
+                    time_s: burnout_s + 1.0,
+                },
+                0,
+            ),
+        );
+        // Still climbing hard when the stack comes apart.
+        let start = dropped(&sim, 1_000.0, DVec3::new(0.0, 0.0, 100.0));
+        let result = sim.run_free(burnout_s + 1.0, start, &mut ()).unwrap();
+        assert_eq!(result.termination, Termination::Separated);
+        assert!(result.bodies_landed(), "{:?}", result.bodies.len());
+        let rho = air.0.density_kg_m3;
+        for body in &result.bodies {
+            assert!(
+                body.start_sample.vertical_speed_m_s > 50.0,
+                "body {} should still be climbing: {:?}",
+                body.body,
+                body.start_sample.vertical_speed_m_s
+            );
+            // Each body records its own apogee, then fires its charge and opens.
+            let apogee = body
+                .event(EventKind::Apogee)
+                .unwrap_or_else(|| panic!("body {} found no apogee", body.body))
+                .sample;
+            assert!(apogee.vertical_speed_m_s.abs() < 1e-6, "{apogee:?}");
+            assert!(
+                apogee.height_above_ground_m > 1_400.0,
+                "body {}: {:?}",
+                body.body,
+                apogee.height_above_ground_m
+            );
+            assert!(body.event(EventKind::Deployment(body.body)).is_some());
+            // And it lands at its own terminal speed, not ballistically.
+            let drag_area_m2 = sim.recovery()[body.body].drag.drag_area_m2();
+            let terminal_m_s = terminal_speed_m_s(body.mass_kg, drag_area_m2, rho, G);
+            let landing = body.event(EventKind::GroundHit).unwrap().sample;
+            assert!(
+                (-landing.vertical_speed_m_s / terminal_m_s - 1.0).abs() < 0.01,
+                "body {}: {} vs {terminal_m_s}",
+                body.body,
+                landing.vertical_speed_m_s
+            );
+        }
+    }
+
+    #[test]
+    fn a_timed_separation_fires_at_its_own_time() {
+        // Found in review: the separation's trigger was neither a stop time nor a located event,
+        // so a timed or height separation fired at whatever boundary happened to come next —
+        // measured hundreds of seconds late, or never. Its time is a stop time now, and its
+        // height is an event.
+        let air = UniformAir::sea_level();
+        let assembly = two_stage().assemble("j760-i175").unwrap();
+        let devices = || {
+            vec![
+                Device::new(
+                    "sustainer",
+                    DeviceDrag::canopy(CanopyType::FlatCircular, 1.5),
+                    Trigger::Altitude {
+                        height_above_ground_m: 300.0,
+                    },
+                ),
+                Device::new(
+                    "booster",
+                    DeviceDrag::tumbling_stages(&assembly, (1, 1)).unwrap(),
+                    Trigger::Apogee,
+                )
+                .on_body(1),
+            ]
+        };
+        let burnout_s = assembly
+            .motors
+            .iter()
+            .map(|motor| motor.mounted.motor.burnout_time_s())
+            .fold(0.0, f64::max);
+        // A time, well after the burnout and nowhere near a thrust knot or a device's trigger.
+        let at_s = burnout_s + 7.5;
+        let sim = staged_flight(
+            analytic_environment(air, G),
+            devices(),
+            Separation::new(Trigger::Time { time_s: at_s }, 0),
+        );
+        let result = sim
+            .run_free(
+                burnout_s + 0.5,
+                dropped(&sim, 2_000.0, DVec3::new(0.0, 0.0, -1.0)),
+                &mut (),
+            )
+            .unwrap();
+        let separation = result.event(EventKind::Separation).unwrap().sample;
+        assert!(
+            (separation.time_s - at_s).abs() < 1e-9,
+            "{} vs {at_s}",
+            separation.time_s
+        );
+
+        // And a height separation fires at its height, located rather than polled.
+        let sim = staged_flight(
+            analytic_environment(air, G),
+            devices(),
+            Separation::new(
+                Trigger::Altitude {
+                    height_above_ground_m: 1_000.0,
+                },
+                0,
+            ),
+        );
+        let result = sim
+            .run_free(
+                burnout_s + 0.5,
+                dropped(&sim, 2_000.0, DVec3::new(0.0, 0.0, -1.0)),
+                &mut (),
+            )
+            .unwrap();
+        let separation = result.event(EventKind::Separation).unwrap().sample;
+        assert!(
+            (separation.height_above_ground_m - 1_000.0).abs() < 1e-6,
+            "{:?}",
+            separation.height_above_ground_m
+        );
+        assert!(result.bodies_landed(), "{:?}", result.bodies.len());
+    }
+
+    #[test]
+    fn a_body_whose_device_never_opens_is_refused() {
+        // Found in review: a device that is attached but never fires — an altimeter set above the
+        // body's own apogee — dropped the body with no drag at all, at 170 m/s, reported as an
+        // ordinary landing. A body that reaches the ground with nothing open is an error.
+        let air = UniformAir::sea_level();
+        let assembly = two_stage().assemble("j760-i175").unwrap();
+        let sim = staged_flight(
+            analytic_environment(air, G),
+            vec![
+                Device::new(
+                    "sustainer",
+                    DeviceDrag::canopy(CanopyType::FlatCircular, 1.5),
+                    Trigger::Apogee,
+                ),
+                Device::new(
+                    "booster",
+                    DeviceDrag::tumbling_stages(&assembly, (1, 1)).unwrap(),
+                    // Above the height this body ever reaches, so it never fires.
+                    Trigger::Altitude {
+                        height_above_ground_m: 5_000.0,
+                    },
+                )
+                .on_body(1),
+            ],
+            Separation::new(Trigger::Apogee, 0),
+        );
+        let error = sim
+            .run_free(
+                10.0,
+                dropped(&sim, 1_000.0, DVec3::new(0.0, 0.0, -1.0)),
+                &mut (),
+            )
+            .expect_err("a body with nothing open");
+        assert!(matches!(error, SimError::Domain { .. }), "{error:?}");
+    }
+
+    #[test]
+    fn a_body_that_runs_out_of_time_says_so() {
+        // A flight that separates says only that the stack came apart: each body's own
+        // termination says whether it reached the ground.
+        let air = UniformAir::sea_level();
+        let assembly = two_stage().assemble("j760-i175").unwrap();
+        let sim = Simulation::new(
+            &two_stage(),
+            "j760-i175",
+            analytic_environment(air, G),
+            Rail::vertical(6.0),
+            FlightSettings {
+                max_time_s: 60.0,
+                ..FlightSettings::default()
+            },
+        )
+        .unwrap()
+        .with_recovery(vec![
+            Device::new(
+                "sustainer",
+                DeviceDrag::canopy(CanopyType::FlatCircular, 1.8),
+                Trigger::Apogee,
+            ),
+            Device::new(
+                "booster",
+                DeviceDrag::tumbling_stages(&assembly, (1, 1)).unwrap(),
+                Trigger::Apogee,
+            )
+            .on_body(1),
+        ])
+        .unwrap()
+        .with_separation(Separation::new(Trigger::Apogee, 0))
+        .unwrap();
+        let result = sim
+            .run_free(10.0, dropped(&sim, 2_000.0, DVec3::ZERO), &mut ())
+            .unwrap();
+        assert_eq!(result.termination, Termination::Separated);
+        assert!(!result.bodies_landed(), "{:?}", result.bodies.len());
+        assert!(
+            result
+                .bodies
+                .iter()
+                .any(|body| body.termination == Termination::TimeCap),
+            "{:?}",
+            result
+                .bodies
+                .iter()
+                .map(|b| b.termination)
+                .collect::<Vec<_>>()
+        );
+        assert!(result.landings().len() < result.bodies.len());
+    }
+
+    #[test]
+    fn separations_outside_their_domain_are_refused() {
+        let environment = || analytic_environment(UniformAir::sea_level(), G);
+        let canopy = DeviceDrag::canopy(CanopyType::FlatCircular, 1.5);
+        // The devices are checked when they are given, the separation when it is; a caller sees
+        // whichever refuses first.
+        let build = |devices: Vec<Device>, separation: Separation| {
+            Simulation::new(
+                &two_stage(),
+                "j760-i175",
+                environment(),
+                Rail::vertical(6.0),
+                FlightSettings::default(),
+            )
+            .unwrap()
+            .with_recovery(devices)
+            .and_then(|sim| sim.with_separation(separation))
+            .map(|_| ())
+        };
+        let both = || {
+            vec![
+                Device::new("sustainer", canopy, Trigger::Apogee),
+                Device::new("booster", canopy, Trigger::Apogee).on_body(1),
+            ]
+        };
+        // No stage aft of the split.
+        let error = build(both(), Separation::new(Trigger::Apogee, 1)).expect_err("no aft stage");
+        assert!(matches!(error, SimError::Domain { .. }), "{error:?}");
+        // A body with no device would fall in a vacuum.
+        let error = build(
+            vec![Device::new("sustainer", canopy, Trigger::Apogee)],
+            Separation::new(Trigger::Apogee, 0),
+        )
+        .expect_err("the booster has nothing");
+        assert!(matches!(error, SimError::Domain { .. }), "{error:?}");
+        // A device on a body the separation doesn't make.
+        let error = build(
+            vec![
+                Device::new("sustainer", canopy, Trigger::Apogee),
+                Device::new("booster", canopy, Trigger::Apogee).on_body(1),
+                Device::new("ghost", canopy, Trigger::Apogee).on_body(2),
+            ],
+            Separation::new(Trigger::Apogee, 0),
+        )
+        .expect_err("a third body");
+        assert!(matches!(error, SimError::Domain { .. }), "{error:?}");
+        // A release across the separation has no line to act through.
+        let error = build(
+            vec![
+                Device::new("sustainer", canopy, Trigger::Apogee).with_release_by(1),
+                Device::new("booster", canopy, Trigger::Apogee).on_body(1),
+            ],
+            Separation::new(Trigger::Apogee, 0),
+        )
+        .expect_err("a release across bodies");
+        assert!(matches!(error, SimError::Domain { .. }), "{error:?}");
+        // And the ordinary case is accepted.
+        assert!(build(both(), Separation::new(Trigger::Apogee, 0)).is_ok());
+    }
+
+    #[test]
+    fn a_separation_before_burnout_is_refused() {
+        // A body's mass is held constant through its descent, so a separation under thrust would
+        // fly the wrong mass. A time that is known to precede the burnout is refused when the
+        // separation is given; an apogee or height trigger can only be checked in flight, and is.
+        let air = UniformAir::sea_level();
+        let assembly = two_stage().assemble("j760-i175").unwrap();
+        let canopy = DeviceDrag::canopy(CanopyType::FlatCircular, 1.5);
+        let devices = || {
+            vec![
+                Device::new("sustainer", canopy, Trigger::Apogee),
+                Device::new(
+                    "booster",
+                    DeviceDrag::tumbling_stages(&assembly, (1, 1)).unwrap(),
+                    Trigger::Apogee,
+                )
+                .on_body(1),
+            ]
+        };
+        let burnout_s = assembly
+            .motors
+            .iter()
+            .map(|motor| motor.mounted.motor.burnout_time_s())
+            .fold(0.0, f64::max);
+        assert!(burnout_s > 1.0, "{burnout_s}");
+        let build = |separation| {
+            Simulation::new(
+                &two_stage(),
+                "j760-i175",
+                analytic_environment(air, G),
+                Rail::vertical(6.0),
+                FlightSettings::default(),
+            )
+            .unwrap()
+            .with_recovery(devices())
+            .unwrap()
+            .with_separation(separation)
+        };
+        // Known in advance: refused at once, even though a flight might start after it.
+        let error = build(Separation::new(
+            Trigger::Time {
+                time_s: 0.5 * burnout_s,
+            },
+            0,
+        ))
+        .expect_err("a timed separation under thrust");
+        assert!(matches!(error, SimError::Domain { .. }), "{error:?}");
+
+        // Only knowable in flight: a height a climbing rocket passes before its burnout.
+        let sim = build(Separation::new(
+            Trigger::Altitude {
+                height_above_ground_m: 500.0,
+            },
+            0,
+        ))
+        .unwrap();
+        let error = sim
+            .run_free(
+                0.5 * burnout_s,
+                dropped(&sim, 400.0, DVec3::new(0.0, 0.0, -1.0)),
+                &mut (),
+            )
+            .expect_err("a height separation under thrust");
+        assert!(matches!(error, SimError::Domain { .. }), "{error:?}");
     }
 
     #[test]

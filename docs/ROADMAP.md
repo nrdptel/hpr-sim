@@ -240,7 +240,7 @@
     - A single typical L2 flight simulates in ≤5 ms release-mode (number recorded in
       `docs/perf.md`).
 
-- [ ] **M1.7 Recovery.**
+- [x] **M1.7 Recovery.**
   - Parachutes (Cd·S, inflation time or area-growth model), streamers, tumble.
   - Drogue and main with deployment triggers (apogee, altitude, timer, motor delay).
   - Descent with wind drift; separated bodies tracked independently; landing detection.
@@ -248,6 +248,9 @@
   *Done when:*
   - Analytic tests for terminal velocity, descent time and drift pass.
   - Descent rate and drift match RocketPy's for 3 example rockets within 3%.
+
+  *Result:* met by M1.7a; M1.7b and M1.7c add the streamers, tumble and separation the entry
+  lists (ADR-012, ADR-013, ADR-014).
 
   - [x] **M1.7a Parachutes and descent.**
     - Parachutes (Cd·S, inflation time or area-growth model), drogue and main with deployment
@@ -278,11 +281,17 @@
     one flat streamer, where appendix C is 88% fast. The tumble model reproduces its own drop
     tests to −10 to +19%, not the 3 to 14% its source claims, and the docs say so.
 
-  - [ ] **M1.7c Separated bodies.**
+  - [x] **M1.7c Separated bodies.**
     - Separation, with every body flown to its own landing and its own mass properties and drag.
 
     *Done when:*
     - A separation gives every body a landing, and the bodies' masses sum to the rocket's.
+
+    *Result (ADR-014):* met. A `Separation` splits the stack at a stage boundary; each body flies
+    as a point mass with its own stages' and motors' mass under the devices that name it. On the
+    two-stage test design both bodies land (the sustainer at 2.11 m/s under a canopy, the booster
+    at 16.74 m/s tumbling), the masses add to the stack's to 1e-12 and the momenta to 1e-9. Every
+    body must carry a device, and a separation must follow the last burnout.
 
 - [ ] **M2.1 Validation harness plus the RocketPy code-to-code suite.** This is the first
   end-to-end milestone.
