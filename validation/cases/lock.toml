@@ -1,0 +1,14 @@
+# The cases `cargo xtask validate` must run, in report order (Loft lesson L78: a suite that
+# silently skips a case and reports green is worse than a red one, so the harness fails if a
+# locked case is missing).
+
+cases = [
+    "descent-calisto-tests-motor-at-minus-1.373",
+    "descent-valetudo",
+    "descent-ndrt-2020-nose-to-tail",
+    "descent-prometheus-2022-generic-motor",
+    "descent-juno-iii",
+]
+
+# Cases `--fast` may leave out. None yet: every descent case runs in milliseconds.
+slow = []

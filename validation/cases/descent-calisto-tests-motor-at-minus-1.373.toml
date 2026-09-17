@@ -1,0 +1,30 @@
+# calisto-tests-motor-at-minus-1.373: RocketPy's own parachute phase, replayed from the state and the devices its
+# generator recorded (`validation/oracles/rocketpy/recovery.py`, M1.7a). The gate is the
+# milestone's 3% on the descent rate and the drift. A drift component can pass through zero, so
+# those carry a 5 cm floor as well: fixed, and far below 3% of any drift worth reporting.
+id = "descent-calisto-tests-motor-at-minus-1.373"
+title = "Descent of RocketPy's calisto-tests-motor-at-minus-1.373 under its own devices"
+reference = "validation/fixtures/recovery/rocketpy-descent.json"
+reference_case = "calisto-tests-motor-at-minus-1.373"
+
+[flight.recovery_descent]
+design = "rocketpy-calisto-tests-motor-at-minus-1.373"
+configuration = "example"
+
+[metrics.descent_time_s]
+relative = 0.03
+
+[metrics.impact_speed_m_s]
+relative = 0.03
+
+[metrics.drift_m]
+relative = 0.03
+absolute = 0.05
+
+[metrics.drift_east_m]
+relative = 0.03
+absolute = 0.05
+
+[metrics.drift_north_m]
+relative = 0.03
+absolute = 0.05

@@ -1,0 +1,385 @@
+{
+  "hpr_version": "0.1.0",
+  "fast": false,
+  "cases": [
+    "descent-calisto-tests-motor-at-minus-1.373",
+    "descent-valetudo",
+    "descent-ndrt-2020-nose-to-tail",
+    "descent-prometheus-2022-generic-motor",
+    "descent-juno-iii"
+  ],
+  "comparisons": [
+    {
+      "case": "descent-calisto-tests-motor-at-minus-1.373",
+      "metric": "descent_time_s",
+      "measured": 257.2726168078237,
+      "reference": 257.07368795301034,
+      "source": "rocketpy 1.13.0, validation/oracles/rocketpy/recovery.py, case calisto-tests-motor-at-minus-1.373, metrics.descent_time_s",
+      "tolerance": {
+        "relative": 0.03
+      },
+      "difference": 0.19892885481334588,
+      "relative": 0.0007738203641039585,
+      "verdict": "pass"
+    },
+    {
+      "case": "descent-calisto-tests-motor-at-minus-1.373",
+      "metric": "drift_east_m",
+      "measured": 1286.775161433314,
+      "reference": 1286.0301835192645,
+      "source": "rocketpy 1.13.0, validation/oracles/rocketpy/recovery.py, case calisto-tests-motor-at-minus-1.373, metrics.drift_east_m",
+      "tolerance": {
+        "relative": 0.03,
+        "absolute": 0.05
+      },
+      "difference": 0.7449779140495139,
+      "relative": 0.0005792849371628719,
+      "verdict": "pass"
+    },
+    {
+      "case": "descent-calisto-tests-motor-at-minus-1.373",
+      "metric": "drift_m",
+      "measured": 1385.7587204877286,
+      "reference": 1384.9477772436032,
+      "source": "rocketpy 1.13.0, validation/oracles/rocketpy/recovery.py, case calisto-tests-motor-at-minus-1.373, metrics.drift_m",
+      "tolerance": {
+        "relative": 0.03,
+        "absolute": 0.05
+      },
+      "difference": 0.810943244125383,
+      "relative": 0.0005855406661898583,
+      "verdict": "pass"
+    },
+    {
+      "case": "descent-calisto-tests-motor-at-minus-1.373",
+      "metric": "drift_north_m",
+      "measured": 514.3315227808376,
+      "reference": 514.010420876274,
+      "source": "rocketpy 1.13.0, validation/oracles/rocketpy/recovery.py, case calisto-tests-motor-at-minus-1.373, metrics.drift_north_m",
+      "tolerance": {
+        "relative": 0.03,
+        "absolute": 0.05
+      },
+      "difference": 0.3211019045636476,
+      "relative": 0.0006246992113822128,
+      "verdict": "pass"
+    },
+    {
+      "case": "descent-calisto-tests-motor-at-minus-1.373",
+      "metric": "impact_speed_m_s",
+      "measured": 5.454437821802352,
+      "reference": 5.456019565444218,
+      "source": "rocketpy 1.13.0, validation/oracles/rocketpy/recovery.py, case calisto-tests-motor-at-minus-1.373, metrics.impact_speed_m_s",
+      "tolerance": {
+        "relative": 0.03
+      },
+      "difference": -0.0015817436418661401,
+      "relative": -0.00028990798564655765,
+      "verdict": "pass"
+    },
+    {
+      "case": "descent-valetudo",
+      "metric": "descent_time_s",
+      "measured": 45.7556403629121,
+      "reference": 45.76432165907078,
+      "source": "rocketpy 1.13.0, validation/oracles/rocketpy/recovery.py, case valetudo, metrics.descent_time_s",
+      "tolerance": {
+        "relative": 0.03
+      },
+      "difference": -0.008681296158684404,
+      "relative": -0.00018969572461615883,
+      "verdict": "pass"
+    },
+    {
+      "case": "descent-valetudo",
+      "metric": "drift_east_m",
+      "measured": 0.18952962124133993,
+      "reference": 0.1912406843759503,
+      "source": "rocketpy 1.13.0, validation/oracles/rocketpy/recovery.py, case valetudo, metrics.drift_east_m",
+      "tolerance": {
+        "relative": 0.03,
+        "absolute": 0.05
+      },
+      "difference": -0.0017110631346103633,
+      "relative": -0.008947171153428168,
+      "verdict": "pass"
+    },
+    {
+      "case": "descent-valetudo",
+      "metric": "drift_m",
+      "measured": 0.18953042252589367,
+      "reference": 0.19124068538577654,
+      "source": "rocketpy 1.13.0, validation/oracles/rocketpy/recovery.py, case valetudo, metrics.drift_m",
+      "tolerance": {
+        "relative": 0.03,
+        "absolute": 0.05
+      },
+      "difference": -0.0017102628598828773,
+      "relative": -0.008942986459355566,
+      "verdict": "pass"
+    },
+    {
+      "case": "descent-valetudo",
+      "metric": "drift_north_m",
+      "measured": 0.0005511215455837295,
+      "reference": 0.00001965298267377511,
+      "source": "rocketpy 1.13.0, validation/oracles/rocketpy/recovery.py, case valetudo, metrics.drift_north_m",
+      "tolerance": {
+        "relative": 0.03,
+        "absolute": 0.05
+      },
+      "difference": 0.0005314685629099543,
+      "relative": 27.042641401152032,
+      "verdict": "pass"
+    },
+    {
+      "case": "descent-valetudo",
+      "metric": "impact_speed_m_s",
+      "measured": 17.626931095508567,
+      "reference": 17.626261225429708,
+      "source": "rocketpy 1.13.0, validation/oracles/rocketpy/recovery.py, case valetudo, metrics.impact_speed_m_s",
+      "tolerance": {
+        "relative": 0.03
+      },
+      "difference": 0.0006698700788589917,
+      "relative": 0.0000380040934541784,
+      "verdict": "pass"
+    },
+    {
+      "case": "descent-ndrt-2020-nose-to-tail",
+      "metric": "descent_time_s",
+      "measured": 61.596466888159775,
+      "reference": 61.165026156760625,
+      "source": "rocketpy 1.13.0, validation/oracles/rocketpy/recovery.py, case ndrt-2020-nose-to-tail, metrics.descent_time_s",
+      "tolerance": {
+        "relative": 0.03
+      },
+      "difference": 0.4314407313991495,
+      "relative": 0.007053716126817384,
+      "verdict": "pass"
+    },
+    {
+      "case": "descent-ndrt-2020-nose-to-tail",
+      "metric": "drift_east_m",
+      "measured": 323.90308546870557,
+      "reference": 323.2342316429894,
+      "source": "rocketpy 1.13.0, validation/oracles/rocketpy/recovery.py, case ndrt-2020-nose-to-tail, metrics.drift_east_m",
+      "tolerance": {
+        "relative": 0.03,
+        "absolute": 0.05
+      },
+      "difference": 0.6688538257161554,
+      "relative": 0.002069254306130859,
+      "verdict": "pass"
+    },
+    {
+      "case": "descent-ndrt-2020-nose-to-tail",
+      "metric": "drift_m",
+      "measured": 327.8685159024273,
+      "reference": 326.9900458916828,
+      "source": "rocketpy 1.13.0, validation/oracles/rocketpy/recovery.py, case ndrt-2020-nose-to-tail, metrics.drift_m",
+      "tolerance": {
+        "relative": 0.03,
+        "absolute": 0.05
+      },
+      "difference": 0.8784700107444792,
+      "relative": 0.0026865344122294077,
+      "verdict": "pass"
+    },
+    {
+      "case": "descent-ndrt-2020-nose-to-tail",
+      "metric": "drift_north_m",
+      "measured": -50.83851830957142,
+      "reference": -49.41782680785443,
+      "source": "rocketpy 1.13.0, validation/oracles/rocketpy/recovery.py, case ndrt-2020-nose-to-tail, metrics.drift_north_m",
+      "tolerance": {
+        "relative": 0.03,
+        "absolute": 0.05
+      },
+      "difference": -1.4206915017169877,
+      "relative": 0.028748562886848437,
+      "verdict": "pass"
+    },
+    {
+      "case": "descent-ndrt-2020-nose-to-tail",
+      "metric": "impact_speed_m_s",
+      "measured": 4.604337756852443,
+      "reference": 4.603800806559603,
+      "source": "rocketpy 1.13.0, validation/oracles/rocketpy/recovery.py, case ndrt-2020-nose-to-tail, metrics.impact_speed_m_s",
+      "tolerance": {
+        "relative": 0.03
+      },
+      "difference": 0.0005369502928402881,
+      "relative": 0.00011663195594284374,
+      "verdict": "pass"
+    },
+    {
+      "case": "descent-prometheus-2022-generic-motor",
+      "metric": "descent_time_s",
+      "measured": 153.49998643723322,
+      "reference": 153.37307949253224,
+      "source": "rocketpy 1.13.0, validation/oracles/rocketpy/recovery.py, case prometheus-2022-generic-motor, metrics.descent_time_s",
+      "tolerance": {
+        "relative": 0.03
+      },
+      "difference": 0.12690694470097696,
+      "relative": 0.0008274395032092714,
+      "verdict": "pass"
+    },
+    {
+      "case": "descent-prometheus-2022-generic-motor",
+      "metric": "drift_east_m",
+      "measured": -612.8106645556645,
+      "reference": -612.3894052360855,
+      "source": "rocketpy 1.13.0, validation/oracles/rocketpy/recovery.py, case prometheus-2022-generic-motor, metrics.drift_east_m",
+      "tolerance": {
+        "relative": 0.03,
+        "absolute": 0.05
+      },
+      "difference": -0.42125931957900775,
+      "relative": 0.0006878945258966488,
+      "verdict": "pass"
+    },
+    {
+      "case": "descent-prometheus-2022-generic-motor",
+      "metric": "drift_m",
+      "measured": 1236.8862806907237,
+      "reference": 1236.0733525920127,
+      "source": "rocketpy 1.13.0, validation/oracles/rocketpy/recovery.py, case prometheus-2022-generic-motor, metrics.drift_m",
+      "tolerance": {
+        "relative": 0.03,
+        "absolute": 0.05
+      },
+      "difference": 0.8129280987109269,
+      "relative": 0.0006576697871580505,
+      "verdict": "pass"
+    },
+    {
+      "case": "descent-prometheus-2022-generic-motor",
+      "metric": "drift_north_m",
+      "measured": 1074.4071671241666,
+      "reference": 1073.7115764220164,
+      "source": "rocketpy 1.13.0, validation/oracles/rocketpy/recovery.py, case prometheus-2022-generic-motor, metrics.drift_north_m",
+      "tolerance": {
+        "relative": 0.03,
+        "absolute": 0.05
+      },
+      "difference": 0.6955907021501844,
+      "relative": 0.0006478375733529265,
+      "verdict": "pass"
+    },
+    {
+      "case": "descent-prometheus-2022-generic-motor",
+      "metric": "impact_speed_m_s",
+      "measured": 7.322798880064846,
+      "reference": 7.324998675844104,
+      "source": "rocketpy 1.13.0, validation/oracles/rocketpy/recovery.py, case prometheus-2022-generic-motor, metrics.impact_speed_m_s",
+      "tolerance": {
+        "relative": 0.03
+      },
+      "difference": -0.002199795779258551,
+      "relative": -0.00030031347125193236,
+      "verdict": "pass"
+    },
+    {
+      "case": "descent-juno-iii",
+      "metric": "descent_time_s",
+      "measured": 53.55711651389729,
+      "reference": 53.56652383503083,
+      "source": "rocketpy 1.13.0, validation/oracles/rocketpy/recovery.py, case juno-iii, metrics.descent_time_s",
+      "tolerance": {
+        "relative": 0.03
+      },
+      "difference": -0.009407321133537039,
+      "relative": -0.00017561940667475132,
+      "verdict": "pass"
+    },
+    {
+      "case": "descent-juno-iii",
+      "metric": "drift_east_m",
+      "measured": 428.72287116840175,
+      "reference": 428.8380897329483,
+      "source": "rocketpy 1.13.0, validation/oracles/rocketpy/recovery.py, case juno-iii, metrics.drift_east_m",
+      "tolerance": {
+        "relative": 0.03,
+        "absolute": 0.05
+      },
+      "difference": -0.1152185645465238,
+      "relative": -0.00026867614445879614,
+      "verdict": "pass"
+    },
+    {
+      "case": "descent-juno-iii",
+      "metric": "drift_m",
+      "measured": 457.8641923477226,
+      "reference": 457.9865006463802,
+      "source": "rocketpy 1.13.0, validation/oracles/rocketpy/recovery.py, case juno-iii, metrics.drift_m",
+      "tolerance": {
+        "relative": 0.03,
+        "absolute": 0.05
+      },
+      "difference": -0.12230829865757187,
+      "relative": -0.0002670565584028171,
+      "verdict": "pass"
+    },
+    {
+      "case": "descent-juno-iii",
+      "metric": "drift_north_m",
+      "measured": -160.73679843568584,
+      "reference": -160.77788270938456,
+      "source": "rocketpy 1.13.0, validation/oracles/rocketpy/recovery.py, case juno-iii, metrics.drift_north_m",
+      "tolerance": {
+        "relative": 0.03,
+        "absolute": 0.05
+      },
+      "difference": 0.041084273698714924,
+      "relative": -0.00025553436210487454,
+      "verdict": "pass"
+    },
+    {
+      "case": "descent-juno-iii",
+      "metric": "impact_speed_m_s",
+      "measured": 22.430533796404937,
+      "reference": 22.43230014341138,
+      "source": "rocketpy 1.13.0, validation/oracles/rocketpy/recovery.py, case juno-iii, metrics.impact_speed_m_s",
+      "tolerance": {
+        "relative": 0.03
+      },
+      "difference": -0.0017663470064412934,
+      "relative": -0.00007874123452115496,
+      "verdict": "pass"
+    }
+  ],
+  "sources": [
+    {
+      "case": "descent-calisto-tests-motor-at-minus-1.373",
+      "oracle": "rocketpy 1.13.0",
+      "generator": "validation/oracles/rocketpy/recovery.py",
+      "command": "refs/venv/bin/python validation/oracles/rocketpy/recovery.py"
+    },
+    {
+      "case": "descent-valetudo",
+      "oracle": "rocketpy 1.13.0",
+      "generator": "validation/oracles/rocketpy/recovery.py",
+      "command": "refs/venv/bin/python validation/oracles/rocketpy/recovery.py"
+    },
+    {
+      "case": "descent-ndrt-2020-nose-to-tail",
+      "oracle": "rocketpy 1.13.0",
+      "generator": "validation/oracles/rocketpy/recovery.py",
+      "command": "refs/venv/bin/python validation/oracles/rocketpy/recovery.py"
+    },
+    {
+      "case": "descent-prometheus-2022-generic-motor",
+      "oracle": "rocketpy 1.13.0",
+      "generator": "validation/oracles/rocketpy/recovery.py",
+      "command": "refs/venv/bin/python validation/oracles/rocketpy/recovery.py"
+    },
+    {
+      "case": "descent-juno-iii",
+      "oracle": "rocketpy 1.13.0",
+      "generator": "validation/oracles/rocketpy/recovery.py",
+      "command": "refs/venv/bin/python validation/oracles/rocketpy/recovery.py"
+    }
+  ]
+}

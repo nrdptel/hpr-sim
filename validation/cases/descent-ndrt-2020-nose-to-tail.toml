@@ -1,0 +1,30 @@
+# ndrt-2020-nose-to-tail: RocketPy's own parachute phase, replayed from the state and the devices its
+# generator recorded (`validation/oracles/rocketpy/recovery.py`, M1.7a). The gate is the
+# milestone's 3% on the descent rate and the drift. A drift component can pass through zero, so
+# those carry a 5 cm floor as well: fixed, and far below 3% of any drift worth reporting.
+id = "descent-ndrt-2020-nose-to-tail"
+title = "Descent of RocketPy's ndrt-2020-nose-to-tail under its own devices"
+reference = "validation/fixtures/recovery/rocketpy-descent.json"
+reference_case = "ndrt-2020-nose-to-tail"
+
+[flight.recovery_descent]
+design = "rocketpy-ndrt-2020-nose-to-tail"
+configuration = "example"
+
+[metrics.descent_time_s]
+relative = 0.03
+
+[metrics.impact_speed_m_s]
+relative = 0.03
+
+[metrics.drift_m]
+relative = 0.03
+absolute = 0.05
+
+[metrics.drift_east_m]
+relative = 0.03
+absolute = 0.05
+
+[metrics.drift_north_m]
+relative = 0.03
+absolute = 0.05
