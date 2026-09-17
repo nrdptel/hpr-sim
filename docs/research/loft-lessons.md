@@ -43,7 +43,7 @@ Loft's claims are leads: every test re-derives its numbers from a primary source
 - **Demo "stored" figures, demo `.rkt` results, the OpenRocket example summary:** author estimates
   (one set inconsistent) or unasserted, with no Loft commit or date.
 - **Stored results as found** (L87): 8 of 79 OpenRocket runs outdated and 7 not simulated; two
-  RockSim test files that don't match their geometry; a `.CDX1` with 3.76 ft and 10.16 ft apogees.
+  RockSim test files that don't match their geometry; a `.CDX1` storing apogees under 4 m.
 - **Certified impulses in `db.test.ts`:** re-read them from the ThrustCurve snapshot.
 
 ## Physics and numerics
@@ -141,17 +141,17 @@ Loft's claims are leads: every test re-derives its numbers from a primary source
 |---|---|---|---|---|
 | L75 | The RocketPy check wasn't like-for-like: ISA against stored conditions, unstated latitude and gravity, Loft's own drag and mass fed to the oracle | scripts/rocketpy/fly.py:30-46; lib/validation/rocketpy-spec.ts:127-259 | M2.1 | `hpr_validate::rocketpy::tests::oracle_inputs_come_from_the_case_file_not_hpr_outputs` |
 | L76 | "If the drift guard fails, regenerate the reference", and the reference moved with Loft's drag | scripts/rocketpy/README.md:23-29 | M2.1 | `hpr_validate::tests::references_unchanged_when_hpr_drag_is_perturbed` |
-| L77 | Hand-written "stored" results in demo designs, one physically impossible | app/docs/validation/page.tsx:152-170 | M2.1 | `hpr_validate::tests::every_reference_value_has_provenance` |
+| L77 | Hand-written "stored" results in demo designs, one set internally inconsistent | app/docs/validation/page.tsx:152-170 | M2.1 | `hpr_validate::tests::every_reference_value_has_provenance` |
 | L78 | Suites skipped themselves without fixtures and reported green; a filter ignored 2 of 5 tool families | MAINTAINING.md:45-55; BACKLOG.md:1075-1082 | M2.1 | `hpr_validate::tests::fewer_cases_run_than_the_lock_expects_fails` |
 | L79 | Only 2 of 12 metrics had per-case gates; a +204% deployment velocity passed as "ungated" | BACKLOG.md:1787-1791 | M2.1 | `hpr_validate::tests::every_census_metric_has_a_per_case_tolerance` |
 | L80 | Same word, different quantity: optimum delay, deployment and ground-hit velocity differ by tool and OpenRocket version (Loft took the 24.12 boundary from source; the older side needs a second pinned jar) | lib/validation/compare.ts:105-124; lib/ork/adapt.ts:1009-1054 | M2.2 | `hpr_validate::tests::stored_metric_definitions_are_per_tool_and_version` |
 | L81 | Metrics for events that never happened were scored as 0 | lib/validation/compare.ts:47-61 | M2.2 | `hpr_validate::tests::metric_for_missing_event_is_withheld_not_scored` |
-| L82 | References 60% apart were excused as "no single target", and known issues excused the two largest misses | lib/corpus/sweep.test.ts:86-110; BACKLOG.md:1792-1799 | M2.2 | `hpr_validate::tests::excused_cases_stay_in_the_report_against_both_references` |
+| L82 | References 60% apart were excused as "no single target", and known issues excused the two largest misses | lib/corpus/sweep.test.ts:86-110; BACKLOG.md:1792-1799 | M2.2 | `hpr_validate::tests::excused_cases_stay_in_the_census_statistics_against_both_references` |
 | L83 | No real-flight validation ever happened | app/docs/validation/page.tsx:624-636 | M2.3 | `hpr_validate::tests::real_flight_cases_report_apogee_and_trace_rms` |
 | L84 | Hand-written counts for unnamed populations (27 `.ork` vs 35 files; 8 of 79 vs 11 of 91 runs); one disagreement counted 15 times | lib/validation/stored-status.ts:15-17; ROADMAP.md:2389-2391 | M2.4 | `hpr_validate::census::tests::counts_are_generated_and_each_case_counts_once` |
 | L85 | The known-issue "now passes" nudge used half the tolerance, so it was blind in the 6 to 12% band | lib/corpus/sweep.test.ts:2898-2913 | M2.4 | `hpr_validate::census::tests::known_gap_that_starts_passing_fails_the_gate` |
 | L86 | A headline accuracy figure was published without its oracle kind, population or Mach regime | COMPETITION.md:74,132 | M2.4 | `hpr_validate::census::tests::headline_names_oracle_kind_population_and_regime` |
-| L87 | Stored results were scored as references regardless of status: outdated and not-simulated runs, files that don't match their geometry, impossible apogees | app/docs/validation/page.tsx:119-126; lib/corpus/sweep.test.ts:96-104; BACKLOG.md:1083-1085 | M2.2 | `hpr_validate::openrocket::tests::stale_and_implausible_stored_results_are_labelled_or_excluded` |
+| L87 | Stored results were scored as references regardless of status (labelled but still counted): outdated and not-simulated runs, files that don't match their geometry, impossible apogees | app/docs/validation/page.tsx:119-126; lib/corpus/sweep.test.ts:96-104; BACKLOG.md:1083-1085 | M2.2 | `hpr_validate::openrocket::tests::stale_and_implausible_stored_results_are_excluded_from_gates_and_census` |
 | L88 | The only independent check held drag equal; Loft's own aero was never gated against an oracle | lib/validation/rocketpy-spec.ts:127-137 | M2.4 | `hpr_validate::census::tests::predicted_mode_regressions_fail_the_gate` |
 
 ## Tests worth porting (closed forms; Loft's tolerances were loose)
