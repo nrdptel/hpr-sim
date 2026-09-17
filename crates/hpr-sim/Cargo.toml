@@ -21,3 +21,8 @@ hpr-atmos.workspace = true
 hpr-motor.workspace = true
 hpr-design.workspace = true
 hpr-aero.workspace = true
+serde.workspace = true
+thiserror.workspace = true
+
+[dev-dependencies]
+serde_json.workspace = true

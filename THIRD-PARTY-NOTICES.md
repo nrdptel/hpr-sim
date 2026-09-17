@@ -59,6 +59,26 @@ adds a source.
   > ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE
   > OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
+- **DOPRI5** (BSD-2-Clause), E. Hairer and G. Wanner's `dopri5.f`, version of 2004: the
+  Dormand–Prince coefficients, the error norm, the PI step-size controller, the starting-step
+  estimate and the dense-output formula, re-expressed in Rust in `hpr_sim::integrator`. Its license
+  applies to those portions:
+
+  > Copyright (c) 2004, UNIGE. Redistribution and use in source and binary forms, with or without
+  > modification, are permitted provided that the following conditions are met: Redistributions of
+  > source code must retain the above copyright notice, this list of conditions and the following
+  > disclaimer. Redistributions in binary form must reproduce the above copyright notice, this list
+  > of conditions and the following disclaimer in the documentation and/or other materials provided
+  > with the distribution. THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS
+  > IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
+  > OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE
+  > REGENTS OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+  > CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+  > SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
+  > THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR
+  > OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+  > POSSIBILITY OF SUCH DAMAGE.
+
 ## Rust dependencies
 
 `Cargo.lock` lists the full dependency graph. Direct third-party dependencies:
@@ -117,6 +137,8 @@ same license and mode.
 | `nasa-sp-8039` | NASA SP-8039, Solid Rocket Motor Performance Analysis and Prediction, 1971 | US government work | fetched | cited for the thrust equation and effective exhaust velocity (M1.3); no text copied |
 | `nar-standard-motor-codes` | National Association of Rocketry, Standard Motor Codes (nar.org/NARmotors.html, archived 2014-02-05) | unclear terms | fetched | cited for the impulse-class limits (M1.3); not redistributed |
 | `thrustcurve3-analyze` | ThrustCurve.org site source, simulate/analyze/analyze.js at commit 577afa6 | ISC | fetched | read to confirm ThrustCurve's burn-time, impulse and average-thrust definitions, and run unchanged by `validation/oracles/thrustcurve/analyze_stats.js` for a committed fixture of its results (M1.3); no code ported |
+| `hairer-dopri5` | E. Hairer and G. Wanner, DOPRI5: explicit Runge-Kutta method of order (4)5 due to Dormand and Prince, with step size control and dense output (Fortran, version of 2004) | BSD-2-Clause | fetched | ported to `hpr_sim::integrator` (M1.6a); see Ported |
+| `hairer-licence` | Licence of E. Hairer's ODE codes, Copyright (c) 2004, UNIGE | BSD-2-Clause | fetched | the terms of `hairer-dopri5` (M1.6a) |
 | `thrustcurve-metadata` | ThrustCurve.org API v1 `metadata.json` | unstated terms | fetched | attribution to ThrustCurve.org wherever the data is used; each curve file has its own data license |
 | `thrustcurve-motors` | ThrustCurve.org API v1 `search.json` (all motors) | unstated terms | fetched | attribution to ThrustCurve.org wherever the data is used; each curve file has its own data license |
 | `thrustcurve-rasp-format` | ThrustCurve.org "RASP File Format" page | unstated terms | fetched | cited for the `.eng` format (M1.3, `docs/format/eng.md`) |

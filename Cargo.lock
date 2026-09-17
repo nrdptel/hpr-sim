@@ -457,6 +457,9 @@ dependencies = [
  "hpr-core",
  "hpr-design",
  "hpr-motor",
+ "serde",
+ "serde_json",
+ "thiserror",
 ]
 
 [[package]]

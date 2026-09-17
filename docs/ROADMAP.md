@@ -211,8 +211,6 @@
     burnout, apogee, ground hit, user events); fixed-step RK4 option.
   - Recorder with a configurable channel set; observer trait.
   - `criterion` benchmark.
-  - Loft lessons: L20, L21, L22, L23, L24, L25, L26 (tests named in
-    `docs/research/loft-lessons.md`).
 
   *Done when:*
   - Analytic tests pass: vacuum ballistic, terminal velocity, torque-free precession, and pitch
@@ -221,6 +219,26 @@
   - Events are located to ≤1e-6 s.
   - A single typical L2 flight simulates in ≤5 ms release-mode (number recorded in
     `docs/perf.md`).
+
+  - [x] **M1.6a Integrator and events.**
+    - Adaptive Dormand–Prince 5(4) with dense output, event root-finding and stop times that put
+      discontinuities on step boundaries; the fixed-step RK4 option; `docs/physics/integration.md`.
+    - Loft lessons: L21, L22, L23 (tests named in `docs/research/loft-lessons.md`).
+
+    *Done when:*
+    - Step-halving convergence shows the expected order.
+    - Events are located to ≤1e-6 s.
+
+  - [ ] **M1.6b Rigid-body flight.**
+    - The state, the rail phase, powered and coast phases with jet damping, the flight events, the
+      recorder and observer, and the `criterion` benchmark.
+    - Loft lessons: L20, L24, L25, L26 (tests named in `docs/research/loft-lessons.md`).
+
+    *Done when:*
+    - Analytic tests pass: vacuum ballistic, terminal velocity, torque-free precession, and pitch
+      oscillation frequency vs linear theory.
+    - A single typical L2 flight simulates in ≤5 ms release-mode (number recorded in
+      `docs/perf.md`).
 
 - [ ] **M1.7 Recovery.**
   - Parachutes (Cd·S, inflation time or area-growth model), streamers, tumble.
