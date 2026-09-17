@@ -46,7 +46,7 @@ from these notes:
 
 ## Done log (newest first, keep about 15)
 
-- 2026-09-17: M1.4a Shapes, materials, component mass properties (PR #11): every nose and
+- 2026-09-17: M1.4a Shapes, materials, component mass properties (PR #12): every nose and
   transition shape (clipped or not) checked against closed forms and 40-digit mpmath integrals,
   normal-thickness walls, fin planforms with square/rounded/airfoil sections and tabs, all other
   parts, full inertia tensors matching hand calculations, 49 cited materials, adaptive G7K15
