@@ -201,7 +201,7 @@ impl Vehicle {
             return state;
         }
         let h = MASS_DERIVATIVE_STEP_S.min(0.5 * (b - a));
-        let c = t.clamp(a + h, b - h);
+        let c = t.max(a + h).min(b - h);
         let (m_minus, r_minus, _, i_minus) = props(c - h);
         let (m_plus, r_plus, _, i_plus) = props(c + h);
         let (m_mid, r_mid) = if c == t {
@@ -293,7 +293,7 @@ impl Vehicle {
             // The motor burns throughout this interval, so a stage evaluated on its ends (ignition
             // or burnout, where the pressure correction switches) takes the one-sided limit
             // inside the burn.
-            let t = t.clamp(0.0_f64.next_up(), terms.burnout_s.next_down());
+            let t = t.max(0.0_f64.next_up()).min(terms.burnout_s.next_down());
             let force = DVec3::Z * motor.thrust_at_pressure_n(t, pressure_pa);
             thrust += force;
             thrust_moment += terms.nozzle_m.cross(force);
@@ -303,7 +303,7 @@ impl Vehicle {
                 0.0
             } else {
                 let h = MASS_DERIVATIVE_STEP_S.min(0.5 * (b - a));
-                let c = t.clamp(a + h, b - h);
+                let c = t.max(a + h).min(b - h);
                 -(motor.state(c + h).mass_flow_kg_s - motor.state(c - h).mass_flow_kg_s) / (2.0 * h)
             };
             let lever = terms.nozzle_m - r;
