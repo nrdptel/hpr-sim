@@ -302,13 +302,22 @@ ends there: its `FlightResult` has `Termination::Separated`, a `Separation` even
 - **Only body 0's devices act before the separation.** A device meant for another body has a drag
   area computed for that body — a booster's tumbling area, say — which is not a model of the whole
   stack, so it waits for its body. With no separation every device is body 0's.
-- **Each body finds its own apogee.** The ascent ends at the separation, so a body separated while
-  still climbing records its own `Apogee` event and fires its apogee charges there; without that
-  it would fall ballistically (found in review, now a test).
+- **Each body finds its own apogee**, whatever its devices are triggered by. The ascent ends at
+  the separation, so this is the only place a staged flight can record a peak, and without it a
+  body separated while climbing would never fire an apogee charge (found in review, now a test).
 - **A body must start above the ground**, as a free flight must: the ground event is a falling
   crossing, so a body that started below the site would integrate underground to the time cap.
-- **Every body must carry a device.** The descent has no airframe drag (ADR-012), so a body with
-  nothing open would fall as if in a vacuum; a flight whose bodies are not all covered is refused.
+- **Every body must carry a device, and it must open.** The descent has no airframe drag
+  (ADR-012), so a body with nothing open would fall as if in a vacuum. A flight whose bodies are
+  not all covered is refused when it is set up, and a body that reaches the ground without a single
+  deployment — an altimeter set above that body's own apogee, say — is a flight-time error rather
+  than a landing at 170 m/s (both found in review).
+- **A body coasts with no drag at all until its first device opens**, which is the same omission
+  as the descent phase's and hurts more here: a 0.55 kg sustainer that separates at 2 km and waits
+  for a 300 m main arrives at **168 m/s** where an airframe would have held it near 60 to 70, so
+  its deployment speed, and any opening load taken from it, read high. Give a body a device that
+  opens at once (`DeviceDrag::tumbling_stages` over its own stages is the cited way) if the coast
+  matters.
   A spent booster's device is usually `DeviceDrag::tumbling_stages(&assembly, its stages)`, which
   is §3.5's model over that body's own components rather than the whole stack's.
 - **The bodies descend independently**, each with the same point-mass equations as the descent
@@ -349,6 +358,8 @@ ends there: its `FlightResult` has `Termination::Separated`, a `Separation` even
 | A separation while still climbing at 100 m/s | both bodies find their own apogee above 1,400 m, fire there, and land within 1% of their own `v_e` |
 | A timed separation, and a height separation | fire at their own time to 1e-9 s and at their own height to 1e-6 m, rather than at the next boundary that happens to exist (found in review: one fired 186 s late, another never) |
 | A body that runs out of time | says `TimeCap` in its own `BodyFlight`; `FlightResult::bodies_landed` is false and `landings()` is short |
+| A body whose device never fires (an altimeter above its apogee) | refused in flight, naming the body, rather than landed at 170 m/s |
+| A timed separation known to precede the burnout | refused when the separation is given; a height one that a climbing rocket passes early is refused in flight |
 
 ### Against RocketPy
 

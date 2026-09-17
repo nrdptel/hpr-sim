@@ -1210,9 +1210,12 @@ mass properties and drag. What is in hand:
   body — which is the other reason the burnout rule is enforced. An ejection charge's impulse, the
   tip-off it gives each body and the tumbling that follows are not modelled; hpr says so rather
   than inventing a spring constant.
-- **Every body must carry a recovery device**, and a flight whose bodies are not all covered is
-  refused. With no airframe drag in the descent, a body with nothing open would fall as if in a
-  vacuum, which is a wrong number rather than a missing feature. A spent booster's device is
+- **Every body must carry a recovery device, and that device must open.** A flight whose bodies
+  are not all covered is refused when it is set up; a body that reaches the ground with no
+  deployment at all is refused in flight. With no airframe drag in the descent, either case would
+  be a fall in a vacuum, which is a wrong number rather than a missing feature. The corollary is
+  recorded in `recovery.md`: a body coasts drag-free between the separation and its first
+  deployment, which reads high in arrival speed. A spent booster's device is
   normally `DeviceDrag::tumbling_stages` over its own stages, which is §3.5's model applied to
   that body rather than to the whole stack (the whole-stack form is still there for a stack that
   tumbles without separating).

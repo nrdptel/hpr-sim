@@ -346,33 +346,34 @@ impl Simulation {
                 value: separation.after_stage as f64,
             });
         }
-        for body in 0..Separation::BODIES {
-            if !self.devices.iter().any(|device| device.body == body) {
-                return Err(SimError::Domain {
-                    what: "recovery devices on a separated body (every body needs one: a descent \
-                           has no airframe drag)",
-                    value: body as f64,
-                });
-            }
+        if !self.devices.is_empty() {
+            // With the devices already given they are checked now; given afterwards they are
+            // checked then, and either way again when the flight starts.
+            check_bodies(&self.devices, Some(separation))?;
         }
-        if let Some(device) = self
-            .devices
-            .iter()
-            .find(|device| device.body >= Separation::BODIES)
+        if let Trigger::Altitude {
+            height_above_ground_m,
+        } = separation.trigger
+            && !(height_above_ground_m.is_finite() && height_above_ground_m > 0.0)
         {
             return Err(SimError::Domain {
-                what: "body a device is attached to (the separation makes two)",
-                value: device.body as f64,
+                what: "height above the launch site at which the stack separates, m",
+                value: height_above_ground_m,
             });
         }
-        self.separation_time_s = recovery::plan(
-            &[Device::new(
-                "separation",
-                self.devices[0].drag,
-                separation.trigger,
-            )],
-            &self.vehicle.assembly.motors,
-        )?[0];
+        let time_s = recovery::trigger_time_s(separation.trigger, &self.vehicle.assembly.motors)?;
+        if let Some(time_s) = time_s
+            && time_s < self.vehicle.burnout_s()
+        {
+            // A body's mass is held constant through its descent. For a trigger whose time is
+            // known now, say so now rather than in the middle of a flight.
+            return Err(SimError::Domain {
+                what: "time of a separation (it must follow the last burnout, at which this \
+                       rocket's is)",
+                value: self.vehicle.burnout_s(),
+            });
+        }
+        self.separation_time_s = time_s;
         self.separation = Some(separation);
         Ok(self)
     }
@@ -724,6 +725,7 @@ impl Simulation {
                 canopies: Canopies {
                     devices: &self.devices,
                     run: &run,
+                    body: self.separation.map(|_| 0),
                 },
                 watches: &watches,
                 observer: &mut *observer,
@@ -1029,11 +1031,10 @@ impl Simulation {
                         && run.pending(*index)
                 })
                 .collect();
-            // A body separated while still climbing has to find its own apogee, or an apogee
-            // charge would never fire and it would fall ballistically (found in review).
-            let apogee = mine.iter().any(|index| {
-                self.devices[*index].trigger == Trigger::Apogee && run.pending(*index)
-            });
+            // Every body watches for its own apogee: an apogee charge on a body separated while
+            // climbing would never fire without it (found in review), and since the ascent ends
+            // at the separation this is the only place a staged flight can record a peak.
+            let apogee = events.iter().all(|event| event.kind != EventKind::Apogee);
             let mut system = BodySystem {
                 simulation: self,
                 body,
@@ -1077,6 +1078,22 @@ impl Simulation {
 
         let t = integrator.time_s();
         let y = *integrator.state();
+        let final_sample = self.body_sample(body, mass_kg, t, &y, run)?;
+        if termination == Termination::GroundHit
+            && !events
+                .iter()
+                .any(|event| matches!(event.kind, EventKind::Deployment(_)))
+        {
+            // Every body must carry a device, and its device must actually open: a trigger that
+            // never becomes true (an altimeter set above the body's own apogee, say) would
+            // otherwise drop the body with no drag at all, which is a wrong number rather than a
+            // missing feature (found in review).
+            return Err(SimError::Domain {
+                what: "a separated body reached the ground with no device open (its triggers \
+                       never fired); the body",
+                value: body as f64,
+            });
+        }
         Ok(BodyFlight {
             body,
             stages,
@@ -1084,7 +1101,7 @@ impl Simulation {
             start_sample,
             termination,
             events,
-            final_sample: self.body_sample(body, mass_kg, t, &y, run)?,
+            final_sample,
             stats: integrator.stats(),
         })
     }
@@ -1372,12 +1389,20 @@ impl OdeSystem<6> for BodySystem<'_> {
 struct Canopies<'a> {
     devices: &'a [Device],
     run: &'a Run,
+    /// The body whose devices act, when a separation means only some of them do. `None` is all
+    /// of them, which is what a flight without a separation has.
+    body: Option<usize>,
 }
 
 impl Canopies<'_> {
-    /// The open devices' drag area at `t`, m².
+    /// The drag area at `t` of the devices that act on what is being flown, m². It has to match
+    /// the loop's `ascent_drag_area_m2`, because this is what the equations and the recorded rows
+    /// see.
     fn drag_area_m2(&self, t: f64) -> f64 {
-        self.run.drag_area_m2(self.devices, t)
+        match self.body {
+            Some(body) => self.run.body_drag_area_m2(self.devices, body, t),
+            None => self.run.drag_area_m2(self.devices, t),
+        }
     }
 }
 

@@ -3164,16 +3164,38 @@ mod tests {
             (sum_kg - whole_kg).abs() < 1e-12 * whole_kg,
             "{sum_kg} vs {whole_kg}"
         );
+        assert_eq!(result.bodies[0].stages, (0, 0));
+        assert_eq!(result.bodies[1].stages, (1, 1));
         for body in &result.bodies {
+            // Each body is its own stage's structure plus the motor mounted in it, so a swapped
+            // split or a motor on the wrong stage fails here and not only in the sum.
+            let layout = &sim.assembly().layout;
+            let expected_kg = layout.stages[body.stages.0].mass.mass_kg
+                + sim
+                    .assembly()
+                    .motors
+                    .iter()
+                    .filter(|motor| motor.stage == body.stages.0)
+                    .map(|motor| motor.mass_properties(separation.time_s).mass_kg)
+                    .sum::<f64>();
             assert!(
-                body.mass_kg > 0.05 * whole_kg,
-                "body {} is {} kg of {whole_kg}",
+                (body.mass_kg - expected_kg).abs() < 1e-12 * expected_kg,
+                "body {}: {} vs {expected_kg}",
                 body.body,
                 body.mass_kg
             );
         }
-        assert_eq!(result.bodies[0].stages, (0, 0));
-        assert_eq!(result.bodies[1].stages, (1, 1));
+        // Measured: a 0.550 kg sustainer and a 1.125 kg booster of a 1.675 kg stack.
+        assert!(
+            (result.bodies[0].mass_kg - 0.550_344).abs() < 1e-5,
+            "{}",
+            result.bodies[0].mass_kg
+        );
+        assert!(
+            (result.bodies[1].mass_kg - 1.124_834).abs() < 1e-5,
+            "{}",
+            result.bodies[1].mass_kg
+        );
 
         // Every body lands, under its own device, at its own terminal speed.
         let rho = air.0.density_kg_m3;
@@ -3276,21 +3298,22 @@ mod tests {
             (momentum - expected).length() < 1e-9 * expected.length(),
             "{momentum} vs {expected}"
         );
-        // And each body starts where its own centre of mass was, which is not the stack's.
-        let centres: Vec<DVec3> = result
-            .bodies
-            .iter()
-            .map(|body| {
-                body.events
-                    .first()
-                    .map_or(body.final_sample, |e| e.sample)
-                    .cg_enu_m
-            })
-            .collect();
-        assert!(
-            (centres[0] - centres[1]).length() > 0.5,
-            "the bodies should start apart: {centres:?}"
-        );
+        // And each body starts where **its own** centre of mass was, not the stack's: the two
+        // are 0.817 m apart on this design.
+        let state = result.final_sample.state;
+        for body in &result.bodies {
+            let cg_m = body_mass_properties(sim.assembly(), body.stages, separation.time_s).cg_m;
+            let expected = state.point_enu_m(cg_m);
+            assert!(
+                (body.start_sample.cg_enu_m - expected).length() < 1e-12,
+                "body {}: {} vs {expected}",
+                body.body,
+                body.start_sample.cg_enu_m
+            );
+        }
+        let gap = (result.bodies[0].start_sample.cg_enu_m - result.bodies[1].start_sample.cg_enu_m)
+            .length();
+        assert!((gap - 0.817).abs() < 0.01, "{gap}");
     }
 
     #[test]
@@ -3447,6 +3470,43 @@ mod tests {
     }
 
     #[test]
+    fn a_body_whose_device_never_opens_is_refused() {
+        // Found in review: a device that is attached but never fires — an altimeter set above the
+        // body's own apogee — dropped the body with no drag at all, at 170 m/s, reported as an
+        // ordinary landing. A body that reaches the ground with nothing open is an error.
+        let air = UniformAir::sea_level();
+        let assembly = two_stage().assemble("j760-i175").unwrap();
+        let sim = staged_flight(
+            analytic_environment(air, G),
+            vec![
+                Device::new(
+                    "sustainer",
+                    DeviceDrag::canopy(CanopyType::FlatCircular, 1.5),
+                    Trigger::Apogee,
+                ),
+                Device::new(
+                    "booster",
+                    DeviceDrag::tumbling_stages(&assembly, (1, 1)).unwrap(),
+                    // Above the height this body ever reaches, so it never fires.
+                    Trigger::Altitude {
+                        height_above_ground_m: 5_000.0,
+                    },
+                )
+                .on_body(1),
+            ],
+            Separation::new(Trigger::Apogee, 0),
+        );
+        let error = sim
+            .run_free(
+                10.0,
+                dropped(&sim, 1_000.0, DVec3::new(0.0, 0.0, -1.0)),
+                &mut (),
+            )
+            .expect_err("a body with nothing open");
+        assert!(matches!(error, SimError::Domain { .. }), "{error:?}");
+    }
+
+    #[test]
     fn a_body_that_runs_out_of_time_says_so() {
         // A flight that separates says only that the stack came apart: each body's own
         // termination says whether it reached the ground.
@@ -3560,46 +3620,68 @@ mod tests {
     }
 
     #[test]
-    fn a_separation_before_burnout_is_refused_in_flight() {
+    fn a_separation_before_burnout_is_refused() {
         // A body's mass is held constant through its descent, so a separation under thrust would
-        // fly the wrong mass. It is a flight-time error, not a setup one: whether the trigger
-        // comes before the burnout depends on the flight.
+        // fly the wrong mass. A time that is known to precede the burnout is refused when the
+        // separation is given; an apogee or height trigger can only be checked in flight, and is.
         let air = UniformAir::sea_level();
         let assembly = two_stage().assemble("j760-i175").unwrap();
         let canopy = DeviceDrag::canopy(CanopyType::FlatCircular, 1.5);
-        let devices = vec![
-            Device::new("sustainer", canopy, Trigger::Apogee),
-            Device::new(
-                "booster",
-                DeviceDrag::tumbling_stages(&assembly, (1, 1)).unwrap(),
-                Trigger::Apogee,
-            )
-            .on_body(1),
-        ];
+        let devices = || {
+            vec![
+                Device::new("sustainer", canopy, Trigger::Apogee),
+                Device::new(
+                    "booster",
+                    DeviceDrag::tumbling_stages(&assembly, (1, 1)).unwrap(),
+                    Trigger::Apogee,
+                )
+                .on_body(1),
+            ]
+        };
         let burnout_s = assembly
             .motors
             .iter()
             .map(|motor| motor.mounted.motor.burnout_time_s())
             .fold(0.0, f64::max);
         assert!(burnout_s > 1.0, "{burnout_s}");
-        let sim = staged_flight(
-            analytic_environment(air, G),
-            devices,
-            Separation::new(
-                Trigger::Time {
-                    time_s: 0.5 * burnout_s,
-                },
-                0,
-            ),
-        );
-        // Started already descending, so the separation's time has passed at the first step.
+        let build = |separation| {
+            Simulation::new(
+                &two_stage(),
+                "j760-i175",
+                analytic_environment(air, G),
+                Rail::vertical(6.0),
+                FlightSettings::default(),
+            )
+            .unwrap()
+            .with_recovery(devices())
+            .unwrap()
+            .with_separation(separation)
+        };
+        // Known in advance: refused at once, even though a flight might start after it.
+        let error = build(Separation::new(
+            Trigger::Time {
+                time_s: 0.5 * burnout_s,
+            },
+            0,
+        ))
+        .expect_err("a timed separation under thrust");
+        assert!(matches!(error, SimError::Domain { .. }), "{error:?}");
+
+        // Only knowable in flight: a height a climbing rocket passes before its burnout.
+        let sim = build(Separation::new(
+            Trigger::Altitude {
+                height_above_ground_m: 500.0,
+            },
+            0,
+        ))
+        .unwrap();
         let error = sim
             .run_free(
                 0.5 * burnout_s,
-                dropped(&sim, 1_000.0, DVec3::new(0.0, 0.0, -1.0)),
+                dropped(&sim, 400.0, DVec3::new(0.0, 0.0, -1.0)),
                 &mut (),
             )
-            .expect_err("a separation under thrust");
+            .expect_err("a height separation under thrust");
         assert!(matches!(error, SimError::Domain { .. }), "{error:?}");
     }
 
