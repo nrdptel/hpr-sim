@@ -98,6 +98,9 @@ notes:
   `vertical_taylor` option; Coriolis on by default.
 - M1.1: reference values come from published formulas evaluated with mpmath (added to the oracle
   environment) when no table is published; `serde_json` parses floats exactly (`float_roundtrip`).
+- M1.1: RocketPy conventions are pinned by running RocketPy itself (a real `Flight`'s initial
+  quaternion), not by re-typing its formulas; `criterion` (no default features) benches hot paths,
+  with numbers in `docs/perf.md`.
 
 ## Known issues and risks
 

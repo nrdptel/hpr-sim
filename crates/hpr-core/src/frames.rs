@@ -285,8 +285,9 @@ mod tests {
     }
 
     /// ADR-003 adopts RocketPy's launch attitude convention: heading = azimuth, inclination =
-    /// elevation, rail-button angle = roll. RocketPy's scalar-first Euler parameters come from
-    /// `validation/oracles/rocketpy/attitude.py`.
+    /// elevation, and roll = the rail-button angular position for a `tail_to_nose` rocket or
+    /// 2π minus it for `nose_to_tail`. The oracle builds real RocketPy flights and reads the
+    /// initial Euler parameters (`validation/oracles/rocketpy/attitude.py`).
     #[test]
     fn launch_angles_match_the_rocketpy_oracle() {
         #[derive(serde::Deserialize)]
@@ -297,7 +298,8 @@ mod tests {
         struct Case {
             heading_deg: f64,
             inclination_deg: f64,
-            rail_button_angle_rad: f64,
+            rail_button_angle_deg: f64,
+            coordinate_system_orientation: String,
             e0: f64,
             e1: f64,
             e2: f64,
@@ -308,23 +310,35 @@ mod tests {
         ))
         .unwrap();
         assert!(oracle.cases.len() >= 6);
+        let mut orientations = std::collections::BTreeSet::new();
         for case in &oracle.cases {
+            let button = case.rail_button_angle_deg.to_radians();
+            let roll_rad = match case.coordinate_system_orientation.as_str() {
+                "tail_to_nose" => button,
+                "nose_to_tail" => 2.0 * PI - button,
+                other => panic!("unknown orientation {other}"),
+            };
+            orientations.insert(case.coordinate_system_orientation.as_str());
             let q = LaunchAngles {
                 azimuth_rad: case.heading_deg.to_radians(),
                 elevation_rad: case.inclination_deg.to_radians(),
-                roll_rad: case.rail_button_angle_rad,
+                roll_rad,
             }
             .to_quaternion();
             let rocketpy = DQuat::from_xyzw(case.e1, case.e2, case.e3, case.e0);
-            // Same attitude, and the same sign: RocketPy's construction and ours multiply the
-            // same three half-angle rotations.
             assert!(
-                (q - rocketpy).length() < 1e-14,
-                "heading {} inclination {}: {q} vs {rocketpy}",
+                angle_between(q, rocketpy) < 1e-12,
+                "heading {} inclination {} buttons {}: {q} vs {rocketpy}",
                 case.heading_deg,
-                case.inclination_deg
+                case.inclination_deg,
+                case.rail_button_angle_deg
             );
         }
+        assert_eq!(
+            orientations.len(),
+            2,
+            "both rocket orientations are covered"
+        );
     }
 
     #[test]

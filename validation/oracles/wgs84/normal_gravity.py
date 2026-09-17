@@ -120,8 +120,10 @@ def exact_components(lat, lon, h):
 
 def potential(x, y, z):
     """Normal potential U (gravitational plus centrifugal) in ellipsoidal-harmonic coordinates, the
-    potential that (4-5) and (4-6) differentiate. The checks below confirm it: U is constant on the
-    ellipsoid with the published U0, and its numerical gradient reproduces the ECEF vector."""
+    potential that (4-5) and (4-6) differentiate: W. A. Heiskanen and H. Moritz, Physical Geodesy,
+    1967, eq. 2-126 (NGA.STND.0036 reference [18]). The checks below confirm it independently: U is
+    constant on the ellipsoid with the published U0, its gravitational part is harmonic above the
+    ellipsoid, and its numerical gradient reproduces the ECEF vector."""
     r2 = x**2 + y**2 + z**2
     u = sqrt((r2 - E_LIN**2) / 2 * (1 + sqrt(1 + 4 * E_LIN**2 * z**2 / (r2 - E_LIN**2) ** 2)))
     beta = atan2(z * sqrt(u**2 + E_LIN**2), u * sqrt(x**2 + y**2))
@@ -140,7 +142,24 @@ for lat_deg in ("0", "45", "90"):
     assert mp.nstr(u0, 12) == mp.nstr(mpf("6.26368517146e7"), 12), (lat_deg, u0)
 
 
-# 2. the gravity vector is the gradient of U (central differences, step 1e-4 m).
+# 2. the gravitational part V = U - omega^2 (x^2 + y^2)/2 is harmonic outside the ellipsoid, so
+#    q(u)/q0 off the ellipsoid is checked too (second central differences, step 1 m);
+def assert_harmonic(x, y, z):
+    d = mpf(1)
+
+    def v(px, py, pz):
+        return potential(px, py, pz) - OMEGA**2 * (px**2 + py**2) / 2
+
+    centre = v(x, y, z)
+    laplacian = (
+        v(x + d, y, z) + v(x - d, y, z) + v(x, y + d, z) + v(x, y - d, z) + v(x, y, z + d) + v(x, y, z - d)
+        - 6 * centre
+    ) / d**2
+    # Each second derivative is about GM/r^3 ~ 1.5e-6 s^-2; the sum must vanish.
+    assert abs(laplacian) < mpf("1e-18"), laplacian
+
+
+# 3. the gravity vector is the gradient of U (central differences, step 1e-4 m).
 def assert_gradient(x, y, z, vector):
     d = mpf("1e-4")
     grad = (
@@ -180,6 +199,8 @@ for lat_s, lon_s, h_s in POINTS:
     gamma_u, gamma_beta, (gx, gy, gz) = ellipsoidal(x, y, z)
     gamma_h, gamma_phi, _ = exact_components(lat, lon, h)
     assert_gradient(x, y, z, (gx, gy, gz))
+    if h > 0:
+        assert_harmonic(x, y, z)
     cases.append(
         {
             "latitude_deg": float(lat_s),

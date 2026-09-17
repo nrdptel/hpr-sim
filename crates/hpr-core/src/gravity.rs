@@ -50,17 +50,35 @@ fn q_and_q_prime(eps: f64) -> (f64, f64) {
     }
     let t = eps * eps;
     let (mut q, mut q_prime) = (0.0, 0.0);
-    // (−1)^(n+1) ε^(2n); at ε < 0.5 each term is under a quarter of the last, so 40 terms reach
-    // far below rounding.
+    // `power` is (−1)^(n+1) ε^(2n). At ε < 0.5 each term is under a quarter of the last, so the
+    // sums stop changing well within 40 terms; for the Earth (ε ≤ 0.082) about 8 are needed.
     let mut power = t;
     for n in 1..=40 {
         let n = f64::from(n);
         let denominator = (2.0 * n + 1.0) * (2.0 * n + 3.0);
-        q += 2.0 * n * power * eps / denominator;
-        q_prime += 6.0 * power / denominator;
+        let q_term = 2.0 * n * power * eps / denominator;
+        let q_prime_term = 6.0 * power / denominator;
+        q += q_term;
+        q_prime += q_prime_term;
+        if q_term.abs() <= f64::EPSILON * 0.25 * q.abs()
+            && q_prime_term.abs() <= f64::EPSILON * 0.25 * q_prime.abs()
+        {
+            break;
+        }
         power *= -t;
     }
     (q, q_prime)
+}
+
+/// Rejects a latitude outside `[−π/2, π/2]` or NaN.
+fn check_latitude(latitude_rad: f64) -> Result<(), CoreError> {
+    if latitude_rad.is_nan() || latitude_rad.abs() > std::f64::consts::FRAC_PI_2 {
+        return Err(CoreError::Domain {
+            what: "geodetic latitude (rad)",
+            value: latitude_rad,
+        });
+    }
+    Ok(())
 }
 
 /// The normal gravity field of a level ellipsoid, fixed by four defining parameters: `a`, `1/f`,
@@ -237,11 +255,16 @@ impl NormalGravity {
     /// ```text
     /// γ = γ_e (1 + k sin²φ) / √(1 − e² sin²φ)
     /// ```
-    #[must_use]
-    pub fn surface_mps2(&self, latitude_rad: f64) -> f64 {
+    ///
+    /// # Errors
+    ///
+    /// [`CoreError::Domain`] if `|φ| > π/2` or `φ` is NaN, which catches degrees passed as
+    /// radians for most launch sites.
+    pub fn surface_mps2(&self, latitude_rad: f64) -> Result<f64, CoreError> {
+        check_latitude(latitude_rad)?;
         let s2 = latitude_rad.sin().powi(2);
-        self.gamma_e * (1.0 + self.k * s2)
-            / (1.0 - self.ellipsoid.eccentricity_squared() * s2).sqrt()
+        Ok(self.gamma_e * (1.0 + self.k * s2)
+            / (1.0 - self.ellipsoid.eccentricity_squared() * s2).sqrt())
     }
 
     /// Magnitude of normal gravity at geodetic latitude `φ` and ellipsoidal height `h` by the
@@ -251,17 +274,26 @@ impl NormalGravity {
     /// γ_h = γ [1 − (2/a)(1 + f + m − 2f sin²φ) h + (3/a²) h²]
     /// ```
     ///
-    /// RocketPy uses this form. It drifts from the exact field with height: about 3e-7 relative
-    /// at 30 km and 1.4e-5 at 100 km (`docs/physics/gravity.md`). Prefer
+    /// RocketPy's gravity formula has this form. It drifts from the exact field with height:
+    /// about 3e-7 relative at 30 km and 1.4e-5 at 100 km (`docs/physics/gravity.md`). Prefer
     /// [`NormalGravity::enu_at_mps2`] unless matching an oracle that uses it.
-    #[must_use]
-    pub fn taylor_mps2(&self, latitude_rad: f64, height_m: f64) -> f64 {
+    ///
+    /// # Errors
+    ///
+    /// As [`NormalGravity::surface_mps2`], and [`CoreError::Domain`] for a non-finite height.
+    pub fn taylor_mps2(&self, latitude_rad: f64, height_m: f64) -> Result<f64, CoreError> {
+        if !height_m.is_finite() {
+            return Err(CoreError::Domain {
+                what: "ellipsoidal height (m)",
+                value: height_m,
+            });
+        }
         let a = self.ellipsoid.semi_major_axis_m();
         let f = self.ellipsoid.flattening();
         let s2 = latitude_rad.sin().powi(2);
-        self.surface_mps2(latitude_rad)
+        Ok(self.surface_mps2(latitude_rad)?
             * (1.0 - 2.0 / a * (1.0 + f + self.m - 2.0 * f * s2) * height_m
-                + 3.0 / (a * a) * height_m * height_m)
+                + 3.0 / (a * a) * height_m * height_m))
     }
 
     /// The normal gravity vector at an ECEF position, resolved in ECEF, m/s². Exact closed form
@@ -335,8 +367,11 @@ impl NormalGravity {
     ///
     /// # Errors
     ///
-    /// As [`NormalGravity::ecef_mps2`], which cannot fail for heights above −6000 km.
+    /// [`CoreError::Domain`] if `point` fails [`Geodetic::new`]'s checks, or as
+    /// [`NormalGravity::ecef_mps2`], which cannot fail for heights above −5800 km (the focal
+    /// disc lies 5856 km below the equator).
     pub fn enu_at_mps2(&self, point: Geodetic) -> Result<DVec3, CoreError> {
+        let point = point.validated()?;
         let gamma = self.ecef_mps2(self.ellipsoid.ecef_from_geodetic(point))?;
         Ok(ecef_from_enu_rotation(point).transpose() * gamma)
     }
@@ -423,8 +458,8 @@ mod tests {
                 case.latitude_deg, case.longitude_deg, case.height_m
             );
             let g = point(case);
-            let surface = field.surface_mps2(g.latitude_rad);
-            let taylor = field.taylor_mps2(g.latitude_rad, g.height_m);
+            let surface = field.surface_mps2(g.latitude_rad).unwrap();
+            let taylor = field.taylor_mps2(g.latitude_rad, g.height_m).unwrap();
             let enu = field.enu_at_mps2(g).unwrap();
             let ecef = field
                 .ecef_mps2(field.ellipsoid().ecef_from_geodetic(g))
@@ -478,7 +513,9 @@ mod tests {
         let field = NormalGravity::wgs84();
         assert!(oracle.cases.len() >= 6);
         for case in &oracle.cases {
-            let value = field.taylor_mps2(case.latitude_deg.to_radians(), case.height_m);
+            let value = field
+                .taylor_mps2(case.latitude_deg.to_radians(), case.height_m)
+                .unwrap();
             let error = relative_error(value, case.formula_mps2);
             assert!(
                 error < 1e-12,
@@ -498,7 +535,7 @@ mod tests {
             let lat = f64::from(k) * 5.0;
             let g = Geodetic::from_degrees(lat, 17.0 * f64::from(k), 0.0).unwrap();
             let enu = field.enu_at_mps2(g).unwrap();
-            let surface = field.surface_mps2(g.latitude_rad);
+            let surface = field.surface_mps2(g.latitude_rad).unwrap();
             assert!(relative_error(-enu.z, surface) < 1e-14, "lat {lat}");
             assert!(enu.truncate().length() < 1e-12, "lat {lat}: {enu}");
         }
@@ -544,6 +581,26 @@ mod tests {
             Ok(NormalGravity::wgs84())
         );
         let field = NormalGravity::wgs84();
+        // Degrees passed as radians.
+        assert!(field.surface_mps2(32.99).is_err());
+        assert!(field.taylor_mps2(32.99, 1400.0).is_err());
+        assert!(field.taylor_mps2(0.5, f64::NAN).is_err());
+        let degrees = Geodetic {
+            latitude_rad: 32.99,
+            longitude_rad: -106.97,
+            height_m: 1400.0,
+        };
+        assert!(field.enu_at_mps2(degrees).is_err());
+        assert!(
+            field
+                .enu_at_mps2(Geodetic::from_degrees(0.0, 0.0, -5.7e6).unwrap())
+                .is_ok()
+        );
+        assert!(
+            field
+                .enu_at_mps2(Geodetic::from_degrees(0.0, 0.0, -5.9e6).unwrap())
+                .is_err()
+        );
         assert!(field.ecef_mps2(DVec3::ZERO).is_err());
         assert!(field.ecef_mps2(DVec3::new(1.0e5, 0.0, 0.0)).is_err());
         assert!(

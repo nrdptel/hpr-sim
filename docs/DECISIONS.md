@@ -242,8 +242,9 @@ The comparisons in M2.1 need hpr's conventions to map exactly onto RocketPy's.
     centrifugal term is inside normal gravity.
   - `q` and `q′` use their `atan` series below `ε = 0.5` to avoid cancellation. That makes the
     derived constants round to Table 3.6.
-  - **Rationale:** exact at every height a hobby rocket reaches, cheap enough for the inner loop,
-    and able to reproduce RocketPy's model exactly when a comparison needs it.
+  - **Rationale:** exact at every height a hobby rocket reaches, cheap enough for the inner loop
+    (35.5 ns a call on the dev machine, `docs/perf.md`), and able to reproduce RocketPy's
+    formula exactly when a comparison needs it.
 - **Reference values:** no publication tabulates normal gravity by latitude and height.
   `validation/oracles/wgs84/normal_gravity.py` evaluates the published formulas at 40 digits with
   mpmath, which was added to the oracle environment. It checks the derived constants against the

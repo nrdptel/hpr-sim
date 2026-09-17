@@ -24,6 +24,7 @@ None yet.
 
 | crate | license | used by | why |
 |---|---|---|---|
+| `criterion` | Apache-2.0 OR MIT | `hpr-core` (benchmarks only) | statistics for `cargo bench` (`docs/perf.md`) |
 | `glam` | MIT OR Apache-2.0 | `hpr-core` | `f64` vectors, quaternions and matrices (`ARCHITECTURE.md`) |
 | `proptest` | MIT OR Apache-2.0 | `hpr-core` (tests only) | property tests |
 | `serde_json` | MIT OR Apache-2.0 | `xtask`; `hpr-core` (tests only) | reads `cargo metadata` output; serde round-trip tests |

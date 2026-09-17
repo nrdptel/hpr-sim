@@ -82,12 +82,13 @@ q′ = Σ_{n≥1} (−1)^(n+1) 6 ε^(2n)    / ((2n+1)(2n+3))
 | model | vector in `L` | use |
 |---|---|---|
 | `constant { g_mps2 }` | `(0, 0, −g)` | analytic tests; comparisons with tools that use 9.80665 |
-| `vertical_taylor` | `(0, 0, −γ_h)` from eq. 4-3 at `(φ₀, h₀ + z)` | like-for-like with RocketPy |
+| `vertical_taylor` | `(0, 0, −γ_h)` from eq. 4-3 at `(φ₀, h₀ + z)` | like-for-like with RocketPy's formula (see its flight quirks below) |
 | `vertical` | `(0, 0, −|γ|)` exact at `(φ₀, λ₀, h₀ + z)` | along the launch vertical |
 | `ellipsoidal` (default) | the full vector at the body's position, rotated into `L` | everything else |
 
-The ellipsoidal model follows the vertical as it turns downrange, by `d/N` (a test checks
-20 km). Earth rotation (`earth::EarthRotation`) is `coriolis` by default, `−2Ω × v` with
+The ellipsoidal model follows the vertical as it turns downrange: by about `d/(N + h)` east-west
+and `d/(M + h)` north-south, with `M = a(1 − e²)/(1 − e² sin²φ)^(3/2)` the meridian radius. A
+test checks both at 20 km, to 1e-4 east and 1e-3 north (the curvature changes along a meridian). Earth rotation (`earth::EarthRotation`) is `coriolis` by default, `−2Ω × v` with
 `Ω = ω(0, cos φ₀, sin φ₀)`, or `ignore`.
 
 **`STANDARD_GRAVITY_MPS2 = 9.80665`** is the conventional `g₀` (3rd CGPM, 1901; also used by the

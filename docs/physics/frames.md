@@ -93,15 +93,18 @@ z_B in L = (sin A cos E, cos A cos E, sin E)
 - **Vertical singularity.** At `E = ±π/2`, `A` and `φ` turn about the same axis.
   `LaunchAngles::from_quaternion` then reports `A = 0` and puts the whole turn into `φ`. This is
   for reporting only: the state is always the quaternion.
-- **RocketPy correspondence.** This is RocketPy's 3-1-3 convention, with `A` = heading,
-  `E` = inclination, `φ` = rail-button angle. RocketPy 1.13.0 sets precession `ψ = −heading`,
-  nutation `θ = inclination − 90°` and spin `φ`, then builds `q = q_z(ψ) q_x(θ) q_z(φ)`
-  (`rocketpy/simulation/flight.py:1557-1579`, `rocketpy/tools.py` `euler313_to_quaternions`).
-  RocketPy's `e0…e3` equal `q` (w, x, y, z), sign included: the test
-  `frames::tests::launch_angles_match_the_rocketpy_oracle` checks 8 rail setups to 1e-14 against
-  `validation/fixtures/earth/rocketpy-attitude.json` (from `validation/oracles/rocketpy/attitude.py`),
-  and an ad hoc check of 1000 random attitudes agreed to 2.2e-16. RocketPy's body `+z` also points
-  toward the nose.
+- **RocketPy correspondence.** This is RocketPy's 3-1-3 convention:
+  - `A` is the heading and `E` the inclination.
+  - `φ` is the rail-button angular position for a `tail_to_nose` rocket, and 2π minus it for a
+    `nose_to_tail` rocket.
+  - RocketPy 1.13.0 sets precession `ψ = −heading`, nutation `θ = inclination − 90°` and spin `φ`,
+    then builds `q = q_z(ψ) q_x(θ) q_z(φ)` (`rocketpy/simulation/flight.py:1557-1579`,
+    `rocketpy/tools.py` `euler313_to_quaternions`).
+  - `validation/oracles/rocketpy/attitude.py` builds real RocketPy flights for 8 rail setups, with
+    both orientations, and records the initial `e0…e3`.
+  - `frames::tests::launch_angles_match_the_rocketpy_oracle` checks that `q` (w, x, y, z) is the
+    same attitude to 1e-12 rad.
+  - RocketPy's body `+z` also points toward the nose.
 
 ## Tests that pin this
 

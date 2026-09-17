@@ -28,6 +28,8 @@ hpr-net = { path = "crates/hpr-net", version = "0.1.0" }
 hpr-sim = { path = "crates/hpr-sim", version = "0.1.0" }
 
 # Third-party crates. Each one needs a line of justification in the PR that adds it.
+# Benchmarks only: statistics and the cargo bench harness, without the plotting and rayon defaults.
+criterion = { version = "0.8.2", default-features = false, features = ["cargo_bench_support"] }
 glam = { version = "0.33.7", default-features = false, features = ["f64", "serde", "std"] }
 proptest = "1.11.0"
 serde = { version = "1.0.229", features = ["derive"] }

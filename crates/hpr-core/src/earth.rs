@@ -26,7 +26,10 @@ pub enum GravityModel {
         g_mps2: f64,
     },
     /// `(0, 0, −γ)` with `γ` from the Taylor series (eq. 4-3) at the launch latitude and height
-    /// `h₀ + z`. This is RocketPy's model, for like-for-like comparisons.
+    /// `h₀ + z`: RocketPy's gravity formula, for like-for-like comparisons. A RocketPy flight
+    /// differs from the formula in two ways a case must reproduce itself: it evaluates it at
+    /// height above sea level rather than above the ellipsoid, and it holds the value constant
+    /// above `max_expected_height` (80 km by default; at 100 km that is 0.6% high).
     VerticalTaylor,
     /// `(0, 0, −|γ|)` with the exact magnitude (eq. 4-4) at the launch latitude and longitude and
     /// height `h₀ + z`: altitude-dependent, but always along the launch site's vertical.
@@ -187,7 +190,7 @@ impl Earth {
             GravityModel::VerticalTaylor => Ok(DVec3::new(
                 0.0,
                 0.0,
-                -self.field.taylor_mps2(site.latitude_rad, height_m),
+                -self.field.taylor_mps2(site.latitude_rad, height_m)?,
             )),
             GravityModel::Vertical => {
                 let above = Geodetic { height_m, ..site };
@@ -285,19 +288,37 @@ mod tests {
     fn ellipsoidal_gravity_turns_with_the_vertical_downrange() {
         let e = earth(GravityModel::Ellipsoidal);
         let d = 20_000.0;
-        let g = e.gravity_enu_mps2(DVec3::new(d, 0.0, 0.0)).unwrap();
-        let tilt = (-g.x).atan2(-g.z);
-        // Prime-vertical radius at the site: the east-west curvature radius.
-        let n = e
-            .frame()
-            .ellipsoid()
-            .prime_vertical_radius_m(site().latitude_rad);
-        let expected = d / (n + site().height_m);
-        assert!(g.x < 0.0, "gravity leans back toward the pad");
+        let ellipsoid = e.frame().ellipsoid();
+        let lat = site().latitude_rad;
+        let h0 = site().height_m;
+        // East-west the vertical turns with the prime-vertical radius N; north-south with the
+        // meridian radius M = a(1 − e²)/(1 − e² sin²φ)^(3/2).
+        let n = ellipsoid.prime_vertical_radius_m(lat);
+        let e2 = ellipsoid.eccentricity_squared();
+        let m =
+            ellipsoid.semi_major_axis_m() * (1.0 - e2) / (1.0 - e2 * lat.sin().powi(2)).powf(1.5);
+
+        let east = e.gravity_enu_mps2(DVec3::new(d, 0.0, 0.0)).unwrap();
+        let east_tilt = (-east.x).atan2(-east.z);
+        let east_expected = d / (n + h0);
+        assert!(east.x < 0.0, "gravity leans back toward the pad");
         assert!(
-            (tilt - expected).abs() < 2e-3 * expected,
-            "{tilt} vs {expected}"
+            (east_tilt - east_expected).abs() < 1e-4 * east_expected,
+            "east: {east_tilt} vs {east_expected}"
         );
+
+        // Northward the ellipsoid's curvature varies along the path and the normal gravity
+        // deflection above the ellipsoid adds a little, so the agreement is looser.
+        let north = e.gravity_enu_mps2(DVec3::new(0.0, d, 0.0)).unwrap();
+        let north_tilt = (-north.y).atan2(-north.z);
+        let north_expected = d / (m + h0);
+        assert!(north.y < 0.0, "gravity leans back toward the pad");
+        assert!(
+            (north_tilt - north_expected).abs() < 1e-3 * north_expected,
+            "north: {north_tilt} vs {north_expected}"
+        );
+        // And not with N, which differs from M by about 0.5% at this latitude.
+        assert!((north_tilt - d / (n + h0)).abs() > 3e-3 * north_expected);
     }
 
     #[test]

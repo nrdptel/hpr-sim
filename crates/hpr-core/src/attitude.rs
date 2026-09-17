@@ -164,6 +164,41 @@ mod tests {
         );
     }
 
+    /// RK4 with renormalization over the coning motion from `t = 0` to `t_end`; returns the
+    /// attitude error against the closed form, rad.
+    fn rk4_coning_error(dt: f64, steps: u32) -> f64 {
+        let c = coning();
+        let mut q = c.attitude(0.0);
+        for n in 0..steps {
+            let t = f64::from(n) * dt;
+            let k1 = quaternion_derivative(q, c.body_rate(t));
+            let k2 = quaternion_derivative(q + k1 * (0.5 * dt), c.body_rate(t + 0.5 * dt));
+            let k3 = quaternion_derivative(q + k2 * (0.5 * dt), c.body_rate(t + 0.5 * dt));
+            let k4 = quaternion_derivative(q + k3 * dt, c.body_rate(t + dt));
+            q = renormalize(q + (k1 + k2 * 2.0 + k3 * 2.0 + k4) * (dt / 6.0)).unwrap();
+        }
+        angle_between(q, c.attitude(f64::from(steps) * dt))
+    }
+
+    /// Flight-engine step sizes, |ω|Δt of 0.05 to 0.2: the kinematics plus renormalization
+    /// converge at RK4's fourth order to the closed-form attitude, so errors in the derivative
+    /// that only show at large steps are caught.
+    #[test]
+    fn large_steps_converge_at_fourth_order() {
+        // |ω| ≈ 5.3 rad/s; 20 s of coning at Δt = 0.04, 0.02 and 0.01 s.
+        let coarse = rk4_coning_error(0.04, 500);
+        let medium = rk4_coning_error(0.02, 1000);
+        let fine = rk4_coning_error(0.01, 2000);
+        assert!(coarse < 1e-2, "coarse error {coarse:e}");
+        for (big, small) in [(coarse, medium), (medium, fine)] {
+            let order = (big / small).log2();
+            assert!(
+                (3.7..4.3).contains(&order),
+                "observed order {order}: {big:e} → {small:e}"
+            );
+        }
+    }
+
     /// The exponential-map step is exact for a constant rate, over a million steps.
     #[test]
     fn constant_rate_steps_track_the_exact_rotation() {
