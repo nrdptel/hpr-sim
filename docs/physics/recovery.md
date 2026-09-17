@@ -108,6 +108,11 @@ gravity:
 m a_cg = −½ ρ (C_D S)(t) |v_cg − w| (v_cg − w) + m (g + a_Coriolis) + T
 ```
 
+- In code this is the free-flight translational equation of `docs/physics/flight.md` with `ω = 0`
+  and the canopy drag in place of the airframe's aerodynamics, so the mass terms of `T20` (the
+  centre of mass's motion inside the body, `−m r″ − 2ṁ r′`, and the jet terms) are still there and
+  the integrated point is still the nose tip. After burnout every one of them is zero and the
+  equation is the one above, with `a_cg = a_O`.
 - The drag acts at the centre of mass along the air's relative velocity, so it exerts no moment.
 - The attitude and the body rates **freeze** at deployment (the body rates are set to zero), and
   the state's reference point, the nose tip, keeps its rigid offset from the centre of mass.
