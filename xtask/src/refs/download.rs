@@ -33,7 +33,7 @@ pub fn fetch_file(root: &Path, source: &FileSource) -> Outcome {
         return Outcome::Failed(err);
     }
     match hash::sha256_file(&part) {
-        Ok(sha256) if sha256 == source.sha256 => place(&part, &dest),
+        Ok(sha256) if sha256 == source.sha256 => place(&part, &dest, "downloaded"),
         Ok(sha256) => {
             let _ = std::fs::remove_file(&part);
             Outcome::Failed(format!(
@@ -45,35 +45,58 @@ pub fn fetch_file(root: &Path, source: &FileSource) -> Outcome {
     }
 }
 
-/// Fetches a snapshot. The outcome comes with a repin request when the capture was adopted.
+/// Fetches a snapshot. The outcome comes with a repin request when a new capture was adopted.
 pub fn fetch_snapshot(
     root: &Path,
     source: &SnapshotSource,
     drift: Drift,
 ) -> (Outcome, Option<Repin>) {
     let dest = root.join(&source.dest);
+    let unpinned = sibling(&dest, "unpinned");
     if let Some(outcome) = already_pinned(&dest, &source.sha256) {
+        let _ = std::fs::remove_file(&unpinned);
         return (outcome, None);
     }
-    let part = sibling(&dest, "part");
-    if let Err(err) = download(&source.url, &part) {
-        return (Outcome::Failed(err), None);
-    }
+    // Adopting takes the capture an earlier run kept aside, if there is one, so the capture that
+    // gets pinned is the one the user could inspect.
+    let kept = drift == Drift::Adopt && unpinned.is_file();
+    let verb = if kept {
+        "moved into place"
+    } else {
+        "downloaded"
+    };
+    let part = if kept {
+        unpinned.clone()
+    } else {
+        let part = sibling(&dest, "part");
+        if let Err(err) = download(&source.url, &part) {
+            return (Outcome::Failed(err), None);
+        }
+        part
+    };
     let sha256 = match hash::sha256_file(&part) {
         Ok(sha256) => sha256,
         Err(err) => return (Outcome::Failed(err), None),
     };
     if sha256 == source.sha256 {
-        return (place(&part, &dest), None);
+        let outcome = place(&part, &dest, verb);
+        let _ = std::fs::remove_file(&unpinned);
+        return (outcome, None);
     }
     match drift {
         Drift::Adopt => {
-            let outcome = match place(&part, &dest) {
-                Outcome::Fetched(detail) => {
-                    Outcome::Fetched(format!("{detail}; new capture adopted and repinned"))
-                }
+            let outcome = match place(&part, &dest, verb) {
+                Outcome::Fetched(detail) => Outcome::Fetched(format!(
+                    "{detail}; {} adopted and repinned",
+                    if kept {
+                        "the capture kept by an earlier run"
+                    } else {
+                        "the new capture"
+                    }
+                )),
                 other => return (other, None),
             };
+            let _ = std::fs::remove_file(&unpinned);
             let repin = Repin {
                 name: source.name.clone(),
                 sha256,
@@ -81,14 +104,13 @@ pub fn fetch_snapshot(
             (outcome, Some(repin))
         }
         Drift::Fail => {
-            let unpinned = sibling(&dest, "unpinned");
             let kept = match std::fs::rename(&part, &unpinned) {
                 Ok(()) => format!("The new capture is at {}. ", unpinned.display()),
                 Err(_) => String::new(),
             };
             let message = format!(
                 "the API now returns sha256 {sha256}, not the capture pinned on {} ({}). {kept}\
-                 Rerun with --adopt-snapshots to adopt the new capture.",
+                 Rerun with --adopt-snapshots to adopt it.",
                 source.captured, source.sha256
             );
             (Outcome::Failed(message), None)
@@ -127,10 +149,10 @@ fn sibling(dest: &Path, suffix: &str) -> PathBuf {
     dest.with_file_name(name)
 }
 
-fn place(part: &Path, dest: &Path) -> Outcome {
+fn place(part: &Path, dest: &Path, verb: &str) -> Outcome {
     let bytes = std::fs::metadata(part).map(|meta| meta.len()).unwrap_or(0);
     match std::fs::rename(part, dest) {
-        Ok(()) => Outcome::Fetched(format!("downloaded {}, sha256 matches", tool::size(bytes))),
+        Ok(()) => Outcome::Fetched(format!("{verb} {}, sha256 matches", tool::size(bytes))),
         Err(err) => Outcome::Failed(format!("could not move the download into place: {err}")),
     }
 }
@@ -152,6 +174,11 @@ pub fn download(url: &str, out: &Path) -> Result<(), String> {
         "3",
         "--connect-timeout",
         "30",
+        // Give up on a transfer that stalls below 1 kB/s for a minute instead of hanging.
+        "--speed-limit",
+        "1024",
+        "--speed-time",
+        "60",
         "--proto",
         "=https,file",
         "--proto-redir",

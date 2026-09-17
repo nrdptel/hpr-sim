@@ -17,7 +17,11 @@ fn file_url(path: &Path) -> String {
 }
 
 fn git_ok(dir: &Path, args: &[&str]) -> String {
-    let out = Command::new("git")
+    let mut command = Command::new("git");
+    for var in tool::GIT_REPO_VARS {
+        command.env_remove(var);
+    }
+    let out = command
         .arg("-C")
         .arg(dir)
         .args(["-c", "user.name=test", "-c", "user.email=test@example.com"])
@@ -38,6 +42,7 @@ struct Upstream {
     _dir: tempfile::TempDir,
     repo: String,
     commit: String,
+    later_commit: String,
     manifest_sha256: String,
     paper: String,
     paper_sha256: String,
@@ -63,6 +68,7 @@ fn upstream() -> Upstream {
     fs::write(repo.join("later.txt"), "later").unwrap();
     git_ok(&repo, &["add", "."]);
     git_ok(&repo, &["commit", "--quiet", "-m", "two"]);
+    let later_commit = git_ok(&repo, &["rev-parse", "HEAD"]);
 
     let paper = dir.path().join("paper.pdf");
     fs::write(&paper, b"%PDF-1.4 test").unwrap();
@@ -71,6 +77,7 @@ fn upstream() -> Upstream {
     Upstream {
         repo: file_url(&repo),
         commit,
+        later_commit,
         manifest_sha256: hash::sha256_bytes(manifest.as_bytes()),
         paper: file_url(&paper),
         paper_sha256: hash::sha256_bytes(b"%PDF-1.4 test"),
@@ -272,31 +279,110 @@ fn a_moved_snapshot_fails_unless_adopted() {
     let (outcome, repins) = fetch(root.path(), &lock, &only_api, Drift::Fail).unwrap();
     assert_eq!(outcome, tally(0, 0, 0, 1));
     assert!(repins.is_empty());
-    assert!(
-        root.path()
-            .join("refs/snapshots/api.json.unpinned")
-            .is_file()
-    );
+    let unpinned = root.path().join("refs/snapshots/api.json.unpinned");
+    assert!(unpinned.is_file());
     assert!(!root.path().join("refs/snapshots/api.json").exists());
 
+    // The API moves again, but adopting pins the capture that was kept for inspection.
+    fs::write(&up.api_path, br#"{"motors":[2]}"#).unwrap();
     let (outcome, repins) = fetch(root.path(), &lock, &only_api, Drift::Adopt).unwrap();
     assert_eq!(outcome, tally(0, 1, 0, 0));
-    let new_sha256 = hash::sha256_bytes(br#"{"motors":[1]}"#);
+    let kept_sha256 = hash::sha256_bytes(br#"{"motors":[1]}"#);
     assert_eq!(
         repins,
         [Repin {
             name: "api".into(),
-            sha256: new_sha256.clone()
+            sha256: kept_sha256.clone()
         }]
     );
+    assert!(!unpinned.exists(), "the kept capture was moved into place");
 
-    let repinned = download::repin(&lock_text(&up), &repins[0], "2026-09-18").unwrap();
-    let lock = Lock::parse(&repinned).unwrap();
-    assert_eq!(lock.snapshot[0].sha256, new_sha256);
-    assert_eq!(lock.snapshot[0].captured, "2026-09-18");
+    // The repin is written to the lock file, and the result verifies.
+    fs::create_dir_all(root.path().join("validation")).unwrap();
+    let lock_path = root.path().join(lock::LOCK_PATH);
+    fs::write(&lock_path, lock_text(&up)).unwrap();
+    write_repins(root.path(), &repins).unwrap();
+    let lock = Lock::load(root.path()).unwrap();
+    assert_eq!(lock.snapshot[0].sha256, kept_sha256);
+    assert_eq!(lock.snapshot[0].captured, download::today());
     assert_eq!(
         verify(root.path(), &lock, &only_api).unwrap(),
         tally(1, 0, 0, 0)
+    );
+}
+
+#[test]
+fn an_existing_checkout_moves_to_a_new_pin_but_foreign_directories_are_left_alone() {
+    let up = upstream();
+    let root = tempfile::tempdir().unwrap();
+    let root = root.path();
+    let repo = ["repo".to_owned()];
+    let text = lock_text(&up);
+    fetch(root, &Lock::parse(&text).unwrap(), &repo, Drift::Fail).unwrap();
+
+    // A clean checkout follows the pin, and the files of the new commit verify.
+    let later = text.replacen(&up.commit, &up.later_commit, 1);
+    let lock = Lock::parse(&later).unwrap();
+    assert_eq!(
+        fetch(root, &lock, &repo, Drift::Fail).unwrap().0,
+        tally(0, 1, 0, 0)
+    );
+    assert_eq!(verify(root, &lock, &repo).unwrap(), tally(1, 0, 0, 0));
+    assert!(root.join("refs/repo/later.txt").is_file());
+
+    // An untracked file fails verify until it is removed.
+    let stray = root.join("refs/repo/stray.csv");
+    fs::write(&stray, "extra").unwrap();
+    assert_eq!(verify(root, &lock, &repo).unwrap(), tally(0, 0, 0, 1));
+    fs::remove_file(&stray).unwrap();
+    assert_eq!(verify(root, &lock, &repo).unwrap(), tally(1, 0, 0, 0));
+
+    // A directory that isn't a checkout is never touched; an empty one counts as missing.
+    let other = tempfile::tempdir().unwrap();
+    let notes = other.path().join("refs/repo/notes.txt");
+    fs::create_dir_all(notes.parent().unwrap()).unwrap();
+    fs::write(&notes, "mine").unwrap();
+    assert_eq!(
+        fetch(other.path(), &lock, &repo, Drift::Fail).unwrap().0,
+        tally(0, 0, 0, 1)
+    );
+    assert_eq!(fs::read_to_string(&notes).unwrap(), "mine");
+    fs::remove_file(&notes).unwrap();
+    assert_eq!(
+        fetch(other.path(), &lock, &repo, Drift::Fail).unwrap().0,
+        tally(0, 1, 0, 0)
+    );
+}
+
+#[test]
+fn a_reachable_private_repo_with_a_bad_pin_fails_instead_of_skipping() {
+    let up = upstream();
+    let root = tempfile::tempdir().unwrap();
+    let text = lock_text(&up).replacen(&format!("{}/does-not-exist", up.repo), &up.repo, 1);
+    let bad_pin = text.replacen(
+        &format!(
+            "commit = \"{}\"\n        dest = \"refs/private\"",
+            up.commit
+        ),
+        &format!(
+            "commit = \"{}\"\n        dest = \"refs/private\"",
+            "1".repeat(40)
+        ),
+        1,
+    );
+    assert_ne!(bad_pin, text);
+    let lock = Lock::parse(&bad_pin).unwrap();
+    let private = ["private-repo".to_owned()];
+    assert_eq!(
+        fetch(root.path(), &lock, &private, Drift::Fail).unwrap().0,
+        tally(0, 0, 0, 1)
+    );
+    assert!(!root.path().join("refs/private").exists());
+
+    let lock = Lock::parse(&text).unwrap();
+    assert_eq!(
+        fetch(root.path(), &lock, &private, Drift::Fail).unwrap().0,
+        tally(0, 1, 0, 0)
     );
 }
 

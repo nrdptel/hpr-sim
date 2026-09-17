@@ -9,6 +9,7 @@ use super::tool::{self, Outcome};
 /// The state of a checkout directory.
 #[derive(Debug, PartialEq, Eq)]
 enum State {
+    /// Absent, or an empty directory.
     Missing,
     /// A git checkout. `head` is `None` in a repository with no commits yet.
     Checkout {
@@ -18,7 +19,7 @@ enum State {
 }
 
 fn inspect(dir: &Path) -> Result<State, String> {
-    if !dir.exists() {
+    if !dir.exists() || is_empty_dir(dir) {
         return Ok(State::Missing);
     }
     let top =
@@ -30,7 +31,8 @@ fn inspect(dir: &Path) -> Result<State, String> {
         })?;
     if !same_dir(Path::new(&top), dir) {
         return Err(format!(
-            "{} is not the root of a git checkout (the enclosing checkout is {top})",
+            "{} exists but is not a git checkout (git found the enclosing checkout {top}); move \
+             it aside and fetch again",
             dir.display()
         ));
     }
@@ -41,6 +43,10 @@ fn inspect(dir: &Path) -> Result<State, String> {
         head,
         modified: !changes.is_empty(),
     })
+}
+
+fn is_empty_dir(dir: &Path) -> bool {
+    std::fs::read_dir(dir).is_ok_and(|mut entries| entries.next().is_none())
 }
 
 fn same_dir(a: &Path, b: &Path) -> bool {
@@ -65,6 +71,9 @@ fn pin(source: &GitSource) -> String {
 /// Brings the checkout to the pinned commit. An existing checkout is reused: if it is already at
 /// the commit nothing happens, and otherwise the commit is fetched if needed and checked out
 /// detached. Checkouts with local changes to tracked files are never touched.
+///
+/// A private repository that isn't checked out yet and can't be reached (no credentials, as in
+/// CI) is skipped. Every other failure, including a bad pin, fails.
 pub fn fetch(root: &Path, source: &GitSource) -> Outcome {
     let dir = root.join(&source.dest);
     let state = match inspect(&dir) {
@@ -86,13 +95,23 @@ pub fn fetch(root: &Path, source: &GitSource) -> Outcome {
         }
         State::Checkout { .. } => false,
         State::Missing => {
-            if let Err(err) = init(&dir) {
-                return Outcome::Failed(err);
+            if source.private
+                && let Err(err) = reachable(root, &source.url)
+            {
+                return Outcome::Skipped(format!(
+                    "private repository, not reachable with the current credentials ({})",
+                    first_line(&err)
+                ));
             }
             true
         }
     };
-    match checkout(&dir, source) {
+    let result = if created {
+        init(&dir).and_then(|()| checkout(&dir, source))
+    } else {
+        checkout(&dir, source)
+    };
+    match result {
         Ok(()) if created => Outcome::Fetched(format!(
             "cloned {} at {}",
             if source.shallow {
@@ -108,16 +127,14 @@ pub fn fetch(root: &Path, source: &GitSource) -> Outcome {
                 // Leave no half-made checkout behind, so the next run starts clean.
                 let _ = std::fs::remove_dir_all(&dir);
             }
-            if source.private {
-                Outcome::Skipped(format!(
-                    "private repository, not reachable with the current credentials ({})",
-                    first_line(&err)
-                ))
-            } else {
-                Outcome::Failed(err)
-            }
+            Outcome::Failed(err)
         }
     }
+}
+
+/// Whether the repository answers at all with the current credentials.
+fn reachable(root: &Path, url: &str) -> Result<(), String> {
+    tool::stdout(tool::git(root).args(["ls-remote", "--quiet", url, "HEAD"])).map(|_| ())
 }
 
 fn first_line(text: &str) -> &str {
@@ -151,6 +168,8 @@ fn checkout(dir: &Path, source: &GitSource) -> Result<(), String> {
     tool::stdout(tool::git(dir).args([
         "-c",
         "advice.detachedHead=false",
+        "-c",
+        "core.autocrlf=false",
         "checkout",
         "--quiet",
         "--detach",
@@ -164,8 +183,9 @@ fn checkout(dir: &Path, source: &GitSource) -> Result<(), String> {
     }
 }
 
-/// Checks that the checkout is at the pinned commit and that every tracked file's content matches
-/// that commit (git re-hashes the files), plus every file in the manifest if there is one.
+/// Checks that the checkout is at the pinned commit, that every tracked file's bytes match that
+/// commit (git re-hashes the files), that there are no untracked files outside the repository's
+/// ignore rules, and that every file in the manifest, if there is one, matches its hash.
 pub fn verify(root: &Path, source: &GitSource) -> Outcome {
     let dir = root.join(&source.dest);
     match inspect(&dir) {
@@ -192,6 +212,7 @@ fn verify_content(dir: &Path, source: &GitSource) -> Result<String, String> {
     // The checkout's own index caches file timestamps and sizes, so a same-size edit that keeps
     // the timestamp would pass a plain `git status`. A fresh index read from HEAD has no cached
     // stat data, which makes git compare the content of every tracked file with its blob.
+    // `core.autocrlf=false` compares the bytes on disk, not a line-ending-normalised copy.
     let index = tool::stdout(tool::git(dir).args(["rev-parse", "--git-path", "hpr-verify.index"]))?;
     let index = dir.join(index);
     let _ = std::fs::remove_file(&index);
@@ -201,31 +222,40 @@ fn verify_content(dir: &Path, source: &GitSource) -> Result<String, String> {
         .args(["read-tree", "HEAD"]);
     let mut status = tool::git(dir);
     status.env("GIT_INDEX_FILE", &index).args([
+        "-c",
+        "core.autocrlf=false",
         "status",
         "--porcelain",
-        "--untracked-files=no",
+        "--untracked-files=all",
         "--no-renames",
     ]);
     let changed = tool::stdout(&mut read_tree).and_then(|_| tool::stdout(&mut status));
     let _ = std::fs::remove_file(&index);
     let changed = changed?;
-    if !changed.is_empty() {
+    let untracked = changed
+        .lines()
+        .filter(|line| line.starts_with("??"))
+        .count();
+    let differ = changed.lines().count() - untracked;
+    if differ + untracked > 0 {
         return Err(format!(
-            "{} tracked file(s) differ from {}",
-            changed.lines().count(),
+            "{differ} tracked file(s) differ from {} and {untracked} untracked file(s) are \
+             present",
             pin(source)
         ));
     }
     let mut detail = format!("at {}, tracked files match", pin(source));
     if let (Some(manifest), Some(pin)) = (&source.manifest, &source.manifest_sha256) {
-        let files = verify_manifest(dir, manifest, pin)?;
+        let files = verify_manifest(dir, manifest, pin, source.private)?;
         detail.push_str(&format!(", {files} manifest hashes match"));
     }
     Ok(detail)
 }
 
 /// Checks the manifest's own hash, then the hash of every file it lists. Returns the file count.
-fn verify_manifest(dir: &Path, manifest: &str, pin: &str) -> Result<usize, String> {
+/// File names are left out of the error for private repositories, whose names are not public.
+fn verify_manifest(dir: &Path, manifest: &str, pin: &str, private: bool) -> Result<usize, String> {
+    const SHOWN: usize = 5;
     let path = dir.join(manifest);
     let actual = hash::sha256_file(&path)?;
     if actual != pin {
@@ -245,13 +275,14 @@ fn verify_manifest(dir: &Path, manifest: &str, pin: &str) -> Result<usize, Strin
         }
     }
     if bad.is_empty() {
-        Ok(entries.len())
-    } else {
-        Err(format!(
-            "{} of {} manifest entries fail: {}",
-            bad.len(),
-            entries.len(),
-            bad.join(", ")
-        ))
+        return Ok(entries.len());
     }
+    let mut message = format!("{} of {} manifest entries fail", bad.len(), entries.len());
+    if !private {
+        message.push_str(&format!(": {}", bad[..bad.len().min(SHOWN)].join(", ")));
+        if bad.len() > SHOWN {
+            message.push_str(&format!(" and {} more", bad.len() - SHOWN));
+        }
+    }
+    Err(message)
 }

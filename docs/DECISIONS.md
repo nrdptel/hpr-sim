@@ -123,43 +123,57 @@ driven by `validation/refs.lock.toml`.
 - **One lock file, four kinds of item.**
   - `[[git]]`: pinned by full commit id, optionally shallow. Existing checkouts are reused and
     moved to the pin; checkouts with local changes are never touched.
-  - `[[file]]`: an immutable download pinned by sha256 (the OpenRocket jar, 11 papers).
+  - `[[file]]`: an immutable download pinned by sha256 (the OpenRocket jar, 11 papers and the
+    RockSim `.rse` spec).
   - `[[snapshot]]`: a live API (ThrustCurve, motor.fusionspace.co) pinned by the sha256 and date
     of one capture. APIs move (the motor finder hourly), so a missing snapshot that no longer
-    matches fails, and the new capture is kept beside it. `fetch --adopt-snapshots` moves it into
-    place and rewrites only that entry's `sha256` and `captured` lines.
+    matches fails, and the new capture is kept beside it. `fetch --adopt-snapshots` moves that
+    kept capture (or, if there is none, a fresh one) into place and rewrites only that entry's
+    `sha256` and `captured` lines.
   - `[python]`: a `uv` project in `validation/oracles/` (`pyproject.toml` and `uv.lock`,
-    committed), installed into `refs/venv` with `uv sync --frozen`, which checks every artifact
-    against the hash in `uv.lock`; orhelper is pinned by git commit.
+    committed), installed into `refs/venv` with `uv sync --locked`. That refuses a lock that is
+    stale against `pyproject.toml` and checks every artifact against the hash in `uv.lock`;
+    orhelper is pinned by git commit.
 
   Every destination must be a plain relative path inside the gitignored `refs/`, and
   destinations may not overlap.
 - **Private repositories** (`private = true`, today `loft-fixtures`) are fetched with the
-  user's git credentials, never prompting. When that fails, as in CI, they are skipped with a
-  note and leave no partial checkout. A `sha256sum` manifest in a checkout can be pinned too;
+  user's git credentials, never prompting. A private repository that isn't checked out and
+  doesn't answer `git ls-remote` (no access, as in CI) is skipped with a note. Any other failure,
+  such as a bad pin or a checkout that can't move, fails. No partial checkout is left behind. A `sha256sum` manifest in a checkout can be pinned too;
   `verify` then hashes every listed file.
 - **Idempotence:** anything already in its pinned state is left alone, so a second `fetch`
   downloads nothing. Downloads go to `<dest>.part` and are renamed into place only after the hash
   matches.
-- **Verify re-hashes content**, not timestamps. Files are hashed with SHA-256. Git checkouts are
-  compared against a fresh temporary index read from the pinned commit, which makes git hash every
-  tracked file; a plain `git status` trusts cached stat data and can miss a same-size edit (a
-  test shows both). The environment is checked with `uv sync --frozen --check`.
+- **Verify re-hashes content**, not timestamps.
+  - Files are hashed with SHA-256.
+  - Git checkouts are compared, byte for byte (`core.autocrlf=false`), against a fresh temporary
+    index read from the pinned commit. That makes git hash every tracked file, whereas a plain
+    `git status` trusts cached stat data and can miss a same-size edit; a test shows both.
+    Untracked files that the repository doesn't ignore also fail.
+  - The environment must pass `uv sync --locked --check`, which compares package versions only,
+    and then every installed file is re-hashed against the sha256 its package's `RECORD` lists
+    (4,675 files today).
+  - Git commands drop `GIT_DIR`-style variables, so a git hook can't redirect them at this
+    repository.
 - **External tools instead of crates:** `git`, `curl` and `uv` are run as commands. They exist on
   all three CI operating systems, and an HTTP and TLS stack in `xtask` would add many dependencies
-  for no gain. curl is restricted to `https` (and `file` for tests), redirects included. New
+  for no gain. curl is restricted to `https` (and `file` for tests), redirects included, and gives
+  up on a transfer that stalls below 1 kB/s for a minute. New
   `xtask` dependencies: `serde`, `toml`, `sha2`, and `tempfile` for tests.
 - **Doctor** lists the tools and their versions, a quick reference check (hashes of files,
   commits of checkouts), and whether each oracle is runnable. RocketPy: `rocketpy` imports at the
   locked version. OpenRocket: Java 17+ is found (`JAVA_HOME`, macOS `java_home`, Homebrew's
   keg-only `openjdk` formulae, then `PATH`), the jar verifies, `orhelper` and `jpype` import, and
   a smoke test starts the JVM through JPype and loads the jar's `Main-Class`. The smoke test uses
-  JPype (Apache-2.0) directly, so no project code calls into GPL orhelper.
+  JPype (Apache-2.0) directly, so no project code calls into GPL orhelper. "Runnable" therefore
+  means the runtime starts, not that a flight has been simulated; the M2.x oracle scripts do that.
 - **Consistency tests:** every lock item needs a row in `THIRD-PARTY-NOTICES.md` with the same
   license and mode (and title, for papers), and every real URL uses `https`.
 - **Source choices:** orhelper comes from `openrocket/orhelper` at a pinned commit, because PyPI's
   0.1.3 predates OpenRocket 24.12. The Knacke manual comes from archive.org's mirror of the DTIC
-  copy, because DTIC refused automated downloads. RocketPy is a shallow clone of `v1.13.0`
+  copy, because DTIC refused automated downloads. It is a contractor report with a restrictive
+  title-page notice, so it is labelled "unclear terms" and is never redistributed. RocketPy is a shallow clone of `v1.13.0`
   (about 390 MB, mostly ERA5 weather files that M2.3 needs).
 
 **Consequences.**

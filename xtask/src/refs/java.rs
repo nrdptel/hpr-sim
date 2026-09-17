@@ -77,9 +77,14 @@ fn candidates(min_major: u32) -> Vec<PathBuf> {
         out.extend(kegs.into_iter().rev().map(|keg| keg.join("bin").join(exe)));
     }
     // On macOS, /usr/bin/java is a stub that offers to install Java when none is registered;
-    // `java_home` above already covers the registered runtimes.
-    if !macos {
-        out.push(PathBuf::from(exe));
+    // `java_home` above already covers the registered runtimes. Elsewhere, search PATH for full
+    // paths, so the runtime's home (and so JAVA_HOME for JPype) is known.
+    if !macos && let Some(path) = std::env::var_os("PATH") {
+        out.extend(
+            std::env::split_paths(&path)
+                .map(|dir| dir.join(exe))
+                .filter(|java| java.is_file()),
+        );
     }
     out
 }

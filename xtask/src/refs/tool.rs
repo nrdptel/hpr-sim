@@ -98,9 +98,23 @@ pub fn failure(command: &Command, out: &Output) -> String {
     )
 }
 
-/// A git command in `dir` that never prompts for credentials.
+/// Variables that point git at another repository. Git hooks set them, and they override `-C`.
+pub const GIT_REPO_VARS: [&str; 6] = [
+    "GIT_DIR",
+    "GIT_WORK_TREE",
+    "GIT_INDEX_FILE",
+    "GIT_OBJECT_DIRECTORY",
+    "GIT_ALTERNATE_OBJECT_DIRECTORIES",
+    "GIT_COMMON_DIR",
+];
+
+/// A git command in `dir` that never prompts for credentials and ignores any repository the
+/// caller's environment points at.
 pub fn git(dir: &Path) -> Command {
     let mut command = Command::new("git");
+    for var in GIT_REPO_VARS {
+        command.env_remove(var);
+    }
     command
         .arg("-C")
         .arg(dir)

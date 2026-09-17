@@ -33,7 +33,7 @@
   - `cargo deny check` passes.
   - ADR-001 records the license choice and workspace layout.
 
-- [ ] **M0.2 Reference library.**
+- [x] **M0.2 Reference library.**
   - `cargo xtask refs fetch|verify|doctor`, driven by `validation/refs.lock.toml`. It populates
     `refs/` with:
     - RocketPy (pinned tag; shallow clone).

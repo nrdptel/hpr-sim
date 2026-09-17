@@ -1,8 +1,10 @@
 //! The `uv`-managed Python environment the RocketPy and OpenRocket oracles run in.
 //!
 //! The environment is a `uv` project (`pyproject.toml` plus `uv.lock`, committed) whose virtual
-//! environment lives in the gitignored `refs/`. `uv sync --frozen` installs exactly what
-//! `uv.lock` pins and checks every downloaded artifact against the hash recorded there.
+//! environment lives in the gitignored `refs/`. `uv sync --locked` installs exactly what `uv.lock`
+//! pins, refuses a lock that no longer matches `pyproject.toml`, and checks every downloaded
+//! artifact against the hash in the lock. `uv sync --check` compares package versions only, so
+//! the installed files are also re-hashed against the sha256 each package's `RECORD` lists.
 
 use std::path::{Path, PathBuf};
 use std::process::Command;
@@ -26,28 +28,127 @@ fn uv(root: &Path, python: &PythonEnv, subcommand: &str) -> Command {
     command
 }
 
-/// Whether the environment exists and matches `uv.lock` exactly, without changing anything.
-fn in_sync(root: &Path, python: &PythonEnv) -> Result<bool, String> {
+/// Whether the installed packages match `uv.lock`. A lock that is stale against
+/// `pyproject.toml`, or any other uv failure, is an error rather than "outdated".
+fn packages_current(root: &Path, python: &PythonEnv) -> Result<bool, String> {
     if !root.join(&python.venv).is_dir() {
         return Ok(false);
     }
-    let out = tool::output(uv(root, python, "sync").args(["--frozen", "--check"]))?;
-    Ok(out.status.success())
+    let mut check = uv(root, python, "sync");
+    check.args(["--locked", "--check"]);
+    let out = tool::output(&mut check)?;
+    if out.status.success() {
+        return Ok(true);
+    }
+    if String::from_utf8_lossy(&out.stderr).contains("environment is outdated") {
+        Ok(false)
+    } else {
+        Err(tool::failure(&check, &out))
+    }
+}
+
+/// The result of re-hashing the installed files.
+struct Records {
+    checked: usize,
+    bad: Vec<String>,
+}
+
+impl Records {
+    fn summary(&self) -> String {
+        const SHOWN: usize = 5;
+        let mut names = self.bad[..self.bad.len().min(SHOWN)].join(", ");
+        if self.bad.len() > SHOWN {
+            names.push_str(&format!(" and {} more", self.bad.len() - SHOWN));
+        }
+        format!(
+            "{} of {} installed files differ from their RECORD hashes: {names}",
+            self.bad.len(),
+            self.checked
+        )
+    }
+}
+
+const RECORD_SCRIPT: &str = r#"
+import base64, hashlib, importlib.metadata, json
+checked, bad = 0, []
+for dist in importlib.metadata.distributions():
+    for path in dist.files or []:
+        if path.hash is None:
+            continue
+        if path.hash.mode != "sha256":
+            bad.append(f"{path} (hash {path.hash.mode})")
+            continue
+        try:
+            data = dist.locate_file(path).read_bytes()
+        except OSError:
+            bad.append(f"{path} (unreadable)")
+            continue
+        checked += 1
+        digest = base64.urlsafe_b64encode(hashlib.sha256(data).digest()).rstrip(b"=").decode()
+        if digest != path.hash.value:
+            bad.append(str(path))
+print(json.dumps({"checked": checked, "bad": bad}))
+"#;
+
+/// Re-hashes every installed file that a package's `RECORD` lists with a hash.
+fn check_records(root: &Path, python: &PythonEnv) -> Result<Records, String> {
+    let mut command = Command::new(interpreter(root, python));
+    command.arg("-c").arg(RECORD_SCRIPT);
+    let json = tool::stdout(&mut command)?;
+    parse_records(&json)
+}
+
+fn parse_records(json: &str) -> Result<Records, String> {
+    let value: Value = serde_json::from_str(json)
+        .map_err(|err| format!("unexpected RECORD-check output: {err}"))?;
+    let checked = value["checked"]
+        .as_u64()
+        .ok_or("the RECORD check did not report a count")?;
+    let bad = value["bad"]
+        .as_array()
+        .ok_or("the RECORD check did not report its failures")?
+        .iter()
+        .map(|path| path.as_str().unwrap_or("?").to_owned())
+        .collect();
+    Ok(Records {
+        checked: usize::try_from(checked).unwrap_or(usize::MAX),
+        bad,
+    })
 }
 
 pub fn fetch(root: &Path, python: &PythonEnv) -> Outcome {
-    match in_sync(root, python) {
-        Ok(true) => return Outcome::Ok(format!("{} matches uv.lock", python.venv)),
-        Ok(false) => {}
+    let reinstall = match packages_current(root, python) {
+        Ok(false) => false,
+        Ok(true) => match check_records(root, python) {
+            Ok(records) if records.bad.is_empty() => {
+                return Outcome::Ok(format!(
+                    "{} matches uv.lock; {} files match their RECORD hashes",
+                    python.venv, records.checked
+                ));
+            }
+            Ok(_) => true,
+            Err(err) => return Outcome::Failed(err),
+        },
+        Err(err) => return Outcome::Failed(err),
+    };
+    let mut sync = uv(root, python, "sync");
+    sync.args(["--locked", "--quiet"]);
+    if reinstall {
+        sync.arg("--reinstall");
+    }
+    match tool::output(&mut sync) {
+        Ok(out) if out.status.success() => {}
+        Ok(out) => return Outcome::Failed(tool::failure(&sync, &out)),
         Err(err) => return Outcome::Failed(err),
     }
-    let mut sync = uv(root, python, "sync");
-    sync.args(["--frozen", "--quiet"]);
-    match tool::output(&mut sync) {
-        Ok(out) if out.status.success() => {
-            Outcome::Fetched(format!("synced {} from uv.lock", python.venv))
-        }
-        Ok(out) => Outcome::Failed(tool::failure(&sync, &out)),
+    match check_records(root, python) {
+        Ok(records) if records.bad.is_empty() => Outcome::Fetched(format!(
+            "{} {} from uv.lock; {} files match their RECORD hashes",
+            if reinstall { "reinstalled" } else { "synced" },
+            python.venv,
+            records.checked
+        )),
+        Ok(records) => Outcome::Failed(records.summary()),
         Err(err) => Outcome::Failed(err),
     }
 }
@@ -56,11 +157,21 @@ pub fn verify(root: &Path, python: &PythonEnv) -> Outcome {
     if !root.join(&python.venv).is_dir() {
         return Outcome::Failed("missing; run `cargo xtask refs fetch`".to_owned());
     }
-    match in_sync(root, python) {
-        Ok(true) => Outcome::Ok("installed packages match uv.lock".to_owned()),
-        Ok(false) => Outcome::Failed(
-            "installed packages differ from uv.lock; run `cargo xtask refs fetch`".to_owned(),
-        ),
+    match packages_current(root, python) {
+        Ok(true) => {}
+        Ok(false) => {
+            return Outcome::Failed(
+                "installed packages differ from uv.lock; run `cargo xtask refs fetch`".to_owned(),
+            );
+        }
+        Err(err) => return Outcome::Failed(err),
+    }
+    match check_records(root, python) {
+        Ok(records) if records.bad.is_empty() => Outcome::Ok(format!(
+            "packages match uv.lock; {} files match their RECORD hashes",
+            records.checked
+        )),
+        Ok(records) => Outcome::Failed(records.summary()),
         Err(err) => Outcome::Failed(err),
     }
 }
@@ -137,6 +248,21 @@ fn parse_imports(json: &str, modules: &[&str]) -> Result<Vec<(String, Import)>, 
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn parses_record_results_and_caps_the_names_shown() {
+        let records = parse_records(r#"{"checked": 4675, "bad": []}"#).unwrap();
+        assert_eq!((records.checked, records.bad.len()), (4675, 0));
+        let bad: Vec<String> = (0..7).map(|i| format!("\"pkg/f{i}.py\"")).collect();
+        let json = format!(r#"{{"checked": 10, "bad": [{}]}}"#, bad.join(","));
+        let summary = parse_records(&json).unwrap().summary();
+        assert!(
+            summary.starts_with("7 of 10 installed files differ"),
+            "{summary}"
+        );
+        assert!(summary.ends_with("pkg/f4.py and 2 more"), "{summary}");
+        assert!(parse_records("{}").is_err());
+    }
 
     #[test]
     fn parses_import_results() {

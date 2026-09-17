@@ -20,7 +20,7 @@ tag = "v1.13.0"
 commit = "9bd6ad3af8f97bafa3201d4e70eba2877e66e040"
 dest = "refs/rocketpy"
 shallow = true
-license = "MIT"
+license = "MIT; data files carry their own terms"
 mode = "fetched"
 
 [[git]]
@@ -88,7 +88,7 @@ title = "S. Niskanen, Development of an Open Source model rocket simulation soft
 url = "https://github.com/openrocket/openrocket/releases/download/Development_of_an_Open_Source_model_rocket_simulation-thesis-v20090520/Development_of_an_Open_Source_model_rocket_simulation-thesis-v20090520.pdf"
 sha256 = "b948abf452c2f1c2ac63f0e0acfcb12dda2af856f8a7b51b22e0afca76d78d0c"
 dest = "refs/papers/niskanen-2009-thesis.pdf"
-license = "CC BY-NC-ND 1.0"
+license = "CC BY-NC-ND 1.0 Finland"
 mode = "fetched"
 
 [[file]]
@@ -157,14 +157,25 @@ license = "US government work"
 mode = "fetched"
 
 # DTIC (ADA247666) blocked automated downloads when this was pinned; this is archive.org's mirror
-# of the DTIC copy (title page: NWC TP 6575, March 1991, approved for public release).
+# of the DTIC copy. It carries a DTIC public-release stamp, but the title page names the author as
+# a contractor and restricts distribution to US Government personnel, so the terms are unclear:
+# cite it, never redistribute it.
 [[file]]
 name = "knacke-1991-parachute-manual"
 title = "T. W. Knacke, Parachute Recovery Systems Design Manual, NWC TP 6575, 1991 (DTIC ADA247666)"
 url = "https://archive.org/download/DTIC_ADA247666/DTIC_ADA247666.pdf"
 sha256 = "138d001f515328a36ef3cddc234b40b4b84c19ad2ea1ac204bd60f555f9ab0c8"
 dest = "refs/papers/knacke-1991-parachute-manual.pdf"
-license = "US government work"
+license = "unclear terms"
+mode = "fetched"
+
+[[file]]
+name = "rocksim-rse-spec"
+title = "RockSim Engine File Format (.rse) specification, as hosted by ThrustCurve.org"
+url = "https://www.thrustcurve.org/thirdparty/RockSim%20Engine%20File%20Format.pdf"
+sha256 = "c47a04f4d58f26219d70b2529654e6a4ed376310bb8a312c103be25647f85f95"
+dest = "refs/papers/rocksim-rse-spec.pdf"
+license = "unknown terms"
 mode = "fetched"
 
 # Snapshots of live APIs, pinned by the sha256 of one dated capture. The APIs change (the motor

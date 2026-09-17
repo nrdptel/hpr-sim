@@ -115,6 +115,11 @@ pub fn run(root: &Path, lock: &Lock) -> Result<(), String> {
         &openrocket.detail,
     ]));
     print_table(&rows);
+    println!(
+        "  (runnable: the oracle's runtime starts. RocketPy imports at the locked version; the \
+         JVM loads the pinned OpenRocket jar. No flight is simulated here; the oracle scripts \
+         under validation/oracles/ do that.)"
+    );
     Ok(())
 }
 

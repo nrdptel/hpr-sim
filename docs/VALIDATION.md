@@ -61,7 +61,8 @@ small extracted fixtures with a clear license are committed, each with its prove
   436-byte header before `%PDF`; the lock pins the bytes as served.
 - **Parachute inflation:** T. W. Knacke, *Parachute Recovery Systems Design Manual*, NWC TP 6575
   (1991), DTIC ADA247666. DTIC refused automated downloads, so the lock uses archive.org's mirror
-  of the DTIC copy.
+  of the DTIC copy. It is a contractor report: DTIC stamps it for public release, but the title
+  page limits distribution to US Government personnel, so cite it and never redistribute it.
 - **Index of further references:** https://wiki.openrocket.info/Resources
 - **Not available:** there's no legitimate free copy of *Topics in Advanced Model Rocketry*. Don't
   use pirated copies.
