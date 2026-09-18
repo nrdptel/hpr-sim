@@ -4,18 +4,13 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
 
 ## Now
 
-- **Current milestone:** M2.1c Predicted mode, CI and regeneration
-- **Order:** M2.1c, then M1.8; M0.4 waits only on M0.4d's deploy, blocked on Pages (Needs Neer)
-- **Run:** the first autopilot run; M0.1-M0.4c, M0.4e, M1.1-M1.7, M2.1a and M2.1b have shipped,
-  and M0.4d all but its deploy
-- **Last updated:** 2026-09-18 (M2.1b2 shipped; M2.1c not started)
+- **Current milestone:** M2.1c2 Predicted mode
+- **Order:** M2.1c2, then M1.8; M0.4 waits only on M0.4d's deploy, blocked on Pages (Needs Neer)
+- **Run:** the first autopilot run; M0.1-M0.4c, M0.4e, M1.1-M1.7, M2.1a, M2.1b and M2.1c1 have
+  shipped, and M0.4d all but its deploy
+- **Last updated:** 2026-09-18 (M2.1c1 shipped; M2.1c2 started)
 
 ## Handoff (overwrite each session)
-
-M2.1b2 (ADR-021): six whole-flight cases. Five pass (64 metrics within 3%), Prometheus is a known
-gap (Mach 1.014), and eleven metrics are not scored, nine of them the path in wind, where hpr
-turns into the wind less than RocketPy: M2.1's landing offset is not met (issue #50, open). The designs fly RocketPy's
-thrust as measured (`reference_pressure_pa: null`); the first flight went from 874.0 to 779.0 m.
 
 - **Page rules** (ADR-016 to ADR-020): relative links between pages, GitHub URLs for the rest,
   labels as links to their rows, none in headings, Unicode equations; new pages in `SUMMARY.md`; a
@@ -27,40 +22,41 @@ thrust as measured (`reference_pressure_pa: null`); the first flight went from 8
 - **When Pages is on:** `gh workflow run CI --ref main`; once `deploy` passes, drop the README's
   "goes live once" sentence, check M0.4d and M0.4 off, and set both rows to `done`.
 
-Next, M2.1c: predicted mode, a CI job for `cargo xtask validate`, and manual regeneration.
+M2.1c1 (ADR-022): CI's `validate (os)` job runs `cargo xtask validate --check` on three OSes; the
+*Regenerate references* workflow (by hand only, read-only token) uploads the references' diff.
+Next, M2.1c2: predicted mode, the same six cases flown with hpr's own aero.
 
-- **Predicted mode needs its own reference.** The committed one is same-drag (`C_D0` 0.5).
-  Comparing hpr's own drag against it measures hpr's drag against an arbitrary constant. The
-  like-for-like reference is RocketPy flying its examples' own drag curves, which live in `refs/`
-  and carry their own terms (ADR-009). Results computed from them may be published; the curves
-  may not. Decide in an ADR; otherwise report hpr's predicted apogee beside the same-drag one and
-  say what it is.
+- **The reference:** RocketPy flying each example's own drag, as v1.13.0 really flies it: the
+  Calisto, Valetudo and Juno III CSVs from `refs/rocketpy/data/rockets/` (Juno's `*= factor` never
+  reaches `power_*_drag_7d`, so the raw curve), NDRT's constant 0.44, Bella Lui's 0.43 (its
+  cell-25 `Function` is lost the same way), and Prometheus's `prometheus_cd_at_ma` (MIT test code,
+  power-on x1.02). Commit results and each file's sha256, never the curves (ADR-009). Add it to
+  `scripts/regenerate-references.sh`.
+- **Scoring:** planned as ADR-023: each metric keeps M2.1's 3% as a *target*, reported as within or
+  outside it in its own report section, never failing the run; every miss explained in the case
+  file (M2.1's "targets, not gates"). `cargo xtask aero` already measures hpr's drag against these
+  curves at Mach 0.3 (Valetudo -47%, Juno -6%, Calisto +4%), which is most of the explanation.
 - **Issue #50** (the path in wind) is the largest open physics question; bisect it before M2.2.
 - **Prometheus stays a gap** until M1.8; `a_known_gap_is_checked_not_trusted` fails the run once
   hpr flies it. Remove `known_gap` then; its tolerances are already argued.
-- **CI:** `cargo test` already runs every case against the committed report, pinned to six
-  decimals on three OSes (whole flights reproduced there); a `validate` job makes it explicit.
-- **Regeneration** needs `refs/rocketpy` and `refs/venv` (`cargo xtask refs fetch`). A
-  `workflow_dispatch` job regenerates the fixtures and uploads the diff; it never commits.
+- **After merging #51:** `gh workflow run regenerate-references.yml` once, and record whether Linux
+  reproduces the macOS fixtures (ADR-022 leaves that to be measured).
 - **Process notes:** `cargo test -p xtask` guards STATUS, ROADMAP, notices, lessons and the lock.
   Oracles run from the repo root with `refs/venv/bin/python`. `cargo xtask designs` and
   `cargo xtask examples` rewrite designs and example outputs; pages quoting them must follow.
 
 ## Done log (newest first, keep about 15)
 
+- 2026-09-18: M2.1c1 Validation in CI and regeneration by hand (PR #51, ADR-022): `validate
+  --check` on three OSes; a `workflow_dispatch`-only workflow that uploads the references' diff.
 - 2026-09-18: M2.1b2 The whole-flight cases (PR #49, ADR-021): five pass (64 metrics within
   3%), Prometheus a checked gap, the path in wind not scored (#50); the L75 test; Bella Lui added.
 - 2026-09-18: M0.4e The reader test (PR #47, ADR-020): cold readers answered 5, then 9 of 10
   questions (the tenth then fixed); every flagged term fixed; four examples in CI; labels link rows
   held to the roadmap, in the API reference too (#44).
-- 2026-09-18: M0.4d Publish, all but the deploy (PR #43, ADR-019): the rustdoc of 16 crates
-  under the site's `api/`, linked from *The API reference* and linking the guide, both ways
-  checked; `site-url`; a `deploy` job that waits for Pages; the README links the site.
-- 2026-09-18: M0.4c Getting started, and how a flight is simulated (PR #42, ADR-018): a
-  first flight (Valetudo, 874.0 m apogee) and a drag what-if run in CI on three OSes against
-  committed output; pages quote them, checked line for line; a flight diagram; `with_wind`.
-- 2026-09-18: M0.4b Model pages, Accuracy, Glossary, Checking a claim (PR #40, ADR-017): *In
-  short* on all 16 model pages and *Accuracy*'s numbers traced to sources, both checked.
+- 2026-09-18: M0.4d Publish, all but the deploy (PR #43, ADR-019): rustdoc under `api/`.
+- 2026-09-18: M0.4c Getting started (PR #42, ADR-018): examples run in CI, quoted line for line.
+- 2026-09-18: M0.4b Model pages, Accuracy, Glossary, Checking a claim (PR #40, ADR-017).
 - 2026-09-18: M0.4a The site and its link checks (PR #37, ADR-016): mdBook, links and labels.
 - 2026-09-17: M2.1b1 The whole-flight oracle (and PR #34, its bounded step, #33): `flight.py`
   flies the examples pad to landing under a declared `C_D0`; Prometheus reaches Mach 1.014.
@@ -73,7 +69,8 @@ Next, M2.1c: predicted mode, a CI job for `cargo xtask validate`, and manual reg
   which the README already links. They ship mdBook's MPL-2.0 theme and rustdoc's OFL fonts, each
   with its licence (ADR-016, ADR-019). The autopilot may not change repo settings.
 - **Protect `main`** (2 minutes, optional). Settings → Branches → rule for `main`: require the
-  `fmt`, `clippy`, `doc`, `deny`, `wasm-check`, `site` and three `test (...)` checks; block force
+  `fmt`, `clippy`, `doc`, `deny`, `wasm-check`, `site` and the three `test (...)` and three
+  `validate (...)` checks; block force
   pushes. Don't require approvals: the autopilot merges its own PRs as you, and authors can't
   self-approve.
 - **Loft's flutter calculator overstates flutter speed by √2** (safety). fusionspace-loft
@@ -113,6 +110,8 @@ Next, M2.1c: predicted mode, a CI job for `cargo xtask validate`, and manual reg
   filter (it rejects none of the 1,708 surveyed motors, 236 to 3,031 m/s), and a behaviour change.
 - M2.1b1: a same-drag case declares its own `C_D0(M)`, which both codes then fly, rather than
   committing or reading RocketPy's exports (their own terms, ADR-009; absent from CI).
+- ADR-022: CI checks the committed report to the digits the platforms share; references are
+  regenerated only by hand and reviewed as a diff; M2.1c split into c1 (CI) and c2 (predicted).
 - ADR-021: whole flights measured as RocketPy defines them (dry-mass centre, forward-button rail
   exit); Bella Lui added so five can pass; a `known_gap` only for `M ≥ 1`, checked and pinned;
   RocketPy's `reference_pressure=None` transcribed as `None`, not the sea-level stand-in.
