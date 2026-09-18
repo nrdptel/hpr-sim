@@ -385,11 +385,19 @@
       *Result:* met. `flight.py` flies all five examples pad to landing under a declared constant
       `C_D0` of 0.5 and writes `validation/fixtures/flight/rocketpy-whole-flight.json`, identical
       byte for byte on a second run. Apogees 779 to 3,623 m AGL; Prometheus peaks at Mach 1.014,
-      so it is an `M >= 1` gap for M2.1b2 to report, not to hide. The looseness check had to be
-      inverted and says so: at rtol 1e-6, which is RocketPy's own default, none of the five cases
-      leaves the rail, and at 1e-7 NDRT still does not, so the second run tightens to 1e-9
-      (worst metric change 4.2e-4). The cause is open; thrust-to-weight, measured at 5.8 to 12.3,
-      rules out a marginal liftoff.
+      so it is an `M >= 1` gap for M2.1b2 to report, not to hide. The loose run is at RocketPy's
+      own 1e-6 against the 1e-8 reference: worst metric change 3.9e-3.
+
+      On the way in, the oracle would not fly at all at any tolerance looser than 1e-8, and the
+      cause turned out to be a step-size cliff, not the marginal liftoff first guessed: every
+      bundled substitute curve starts at t = 0.008 s and RocketPy extrapolates thrust to zero, so
+      thrust(0) is 0, `udot_rail1` clamps the acceleration to zero, and with an unbounded step
+      LSODA steps over the whole burn. Bounding `max_time_step` to 0.05 s fixes it; all five now
+      fly at RocketPy's *default* tolerances and agree with the reference to ~1e-5 (issue #33).
+      `max_acceleration` is recorded with the instant it occurs and beside a power-on maximum,
+      because for NDRT and Prometheus the whole-flight maximum is the parachute inflating (191.8
+      at 54.9 s against 114.2 power-on), which is not a flight load and is a transient the two
+      models deliberately model differently.
 
     - [ ] **M2.1b2 The whole-flight cases.**
       - A `Flight::WholeFlight` case variant beside `RecoveryDescent`, taking the case's `C_D0(M)`

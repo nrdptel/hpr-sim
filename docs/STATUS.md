@@ -10,29 +10,29 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
 
 ## Handoff (overwrite each session)
 
-M2.1b1 shipped the whole-flight oracle. M2.1b2 is the Rust half: a `Flight::WholeFlight` case
-variant beside `RecoveryDescent`, five cases in the lock, and the L75 test. Start here:
+M2.1b1 shipped the whole-flight oracle. M2.1b2 is the Rust half: a `Flight::WholeFlight` variant
+beside `RecoveryDescent`, five cases in the lock, and the L75 test. Start here:
 
-- **The reference** is `validation/fixtures/flight/rocketpy-whole-flight.json`, written by
-  `validation/oracles/rocketpy/flight.py`. Teach `crates/hpr-validate/src/rocketpy.rs` its shape,
-  as it already knows `recovery.py`'s; it is the only place that may.
-- **The drag is the case's, not RocketPy's.** RocketPy's exports carry their own terms (ADR-009)
-  and CI has no `refs/`, so the fixture declares a constant `C_D0` of 0.5 and hands it to both
-  codes. Feed it to hpr through `Simulation::with_drag_table` (`crates/hpr-sim/src/flight.rs:292`).
-  Do not invent a Mach curve there: that is L18 rebuilt inside the reference.
-- **Two gaps the cases must report, not hide.** Prometheus peaks at Mach 1.014 and hpr refuses
-  `M >= 1` until M1.8, so that case is a declared gap. And the oracle's own solver is fragile here:
-  at rtol 1e-6, RocketPy's default, none of the five cases leaves the rail (apogee 0, nothing
-  deployed, the run hits `max_time`), and at 1e-7 NDRT still does not. The cause is open (#33);
-  thrust-to-weight of 5.8 to 12.3 rules out a marginal liftoff, so do not gate b2 on the oracle
-  being run at any tolerance but the 1e-8 the fixture records.
+- **The reference** is `validation/fixtures/flight/rocketpy-whole-flight.json`. Teach
+  `crates/hpr-validate/src/rocketpy.rs` its shape, as it knows `recovery.py`'s; only it may.
+- **The drag is the case's, not RocketPy's.** Its exports carry their own terms (ADR-009) and CI
+  has no `refs/`, so the fixture declares a constant `C_D0` of 0.5 for both codes. Feed it to hpr
+  through `Simulation::with_drag_table` (`crates/hpr-sim/src/flight.rs:292`); do not invent a Mach
+  curve there, which is L18 rebuilt inside the reference.
+- **One gap to report, not hide:** Prometheus peaks at Mach 1.014 and hpr refuses `M >= 1` until
+  M1.8, so that case is a declared gap.
+- **Gate `max_acceleration_power_on_m_s2`, not the whole-flight maximum**, which for NDRT and
+  Prometheus is the parachute inflating (191.8 at 54.9 s against 114.2 power-on), a transient the
+  two codes model differently. Or declare the other `not_scored` in writing.
+- **Pin the reference area too.** "Same drag" is a force, `0.5 rho V^2 A C_D`: RocketPy takes `A`
+  from `Rocket(radius)`, hpr from the design. The fixture records `reference_radius_m` and
+  `reference_area_m2` so the L75 test can assert they agree.
 - **Argue each tolerance in the case file** and fly `GravityModel::VerticalTaylor` (ADR-015);
   expect differences from RocketPy's added mass, its rail exit and `0.25*n^2` (ADR-011).
-- **The harness, unchanged from M2.1a:** it never writes a reference (L76), refuses a value with no
-  source (L77) or a metric with no gate (L79), and fails on a locked case it cannot find or a
-  committed case the lock does not name (L78).
+- **The harness, unchanged from M2.1a:** it never writes a reference (L76), refuses an unsourced
+  value (L77) or an ungated metric (L79), and fails on a missing locked case (L78).
 - **Open conventions for the jar (M2.2/M3.1):** override order (L51), radii, positions, ogive,
-  walls, fin mass, cant pivot, the drag-at-angle polynomial, lug diameter.
+  walls, fin mass, cant pivot, drag-at-angle, lug diameter.
 - **Process notes:** `cargo test -p xtask` checks STATUS against ROADMAP, notices rows against lock
   titles, lesson tests once checked off, lock URLs and the generated designs. `cargo xtask aero`
   and the oracles need `refs/rocketpy`; its data files are never committed. Scanned PDFs need
@@ -45,8 +45,8 @@ variant beside `RecoveryDescent`, five cases in the lock, and the L75 test. Star
 - 2026-09-17: M2.1b1 The whole-flight oracle: `validation/oracles/rocketpy/flight.py` flies the
   five examples pad to landing under a declared constant `C_D0` (RocketPy's own exports carry
   their own terms), reproducible byte for byte. Apogees 779 to 3,623 m AGL; Prometheus reaches
-  Mach 1.014. RocketPy's default tolerances do not fly these cases at all, so the solver check
-  tightens rather than loosens, and says so.
+  Mach 1.014. Bounding `max_time_step` fixed a step-size cliff that kept every case on the rail
+  (#33).
 - 2026-09-17: #11 closed (PR #30): `SolidMotor` refuses an impossible exhaust velocity, the range
   measured over 1,708 catalog motors. #27 closed (PR #28): the M1.7a RocketPy comparison flies
   RocketPy's gravity and asserts the vector, not the magnitude, which is what hid the difference.
