@@ -433,9 +433,8 @@ Several choices had no single right answer (`docs/physics/motor.md`).
   type, dimensions, masses, impulse, thrust, burn time, delays, case) are copied from
   ThrustCurve's API into the committed index, with attribution. ThrustCurve states no terms for
   its metadata. These are facts about commercial products, mostly from certification bodies, for
-  32 motors, and the milestone's 1% check and offline catalog need them. Recorded under "Needs
-  Neer" (not blocking) to confirm; the fallback is to keep only the numbers the checks use, or to
-  take them from manufacturers' data sheets.
+  32 motors, and the milestone's 1% check and offline catalog need them. Neer confirmed on
+  2026-09-18 that they are treated as facts, used with attribution; the catalog keeps them all.
 - **XML:** `roxmltree`, a strict read-only parser that refuses DTDs; the `.rse` writer is
   hand-written.
 

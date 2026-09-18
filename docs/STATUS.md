@@ -72,9 +72,6 @@ M2.1c (ADR-022, 023): CI checks the report on three OSes; predicted mode's 3% ar
 - **Loft's flutter calculator overstates flutter speed by √2** (safety). fusionspace-loft
   `lib/sim/flutter.ts:287` uses 1.337·(λ+1)/2; NACA TN 4197 eq. 18 gives 2.674·(λ+1)/2 (39.3 over
   14.7 psi), so its "1.5 margin" is about 1.06. Fix it or post a notice before Loft shuts down.
-- **ThrustCurve data** (yes or no). `hpr-motor` bundles ThrustCurve.org's numbers and names for 32
-  motors, with attribution; the site states no terms for them (ADR-005). OK to treat them as facts,
-  or ask John Coker? If not, the fallback keeps only the numbers the tests check.
 - **crates.io names** (whenever): `hpr`, `hpr-sim`, `hpr-core`... are unreserved. Reserve them?
 - **orhelper** (no action if fine): GPL-2.0, so M2.2 drives OpenRocket via JPype, never imports it.
 
