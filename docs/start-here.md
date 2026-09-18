@@ -128,8 +128,8 @@ out.
   - Both codes get the same [drag areas](glossary.md#drag-area) and wind.
   - RocketPy's parachutes can add random noise, which would make each run differ; it is switched
     off.
-  - hpr uses RocketPy's formula for gravity, and RocketPy's way of interpolating the wind: of
-    working out the wind between the heights it is given.
+  - hpr uses RocketPy's formula for gravity, and RocketPy's way of interpolating the wind, that
+    is, of working out the wind between the heights it is given.
 
   Six numbers are compared for each rocket: the descent time, the mean descent rate, the descent
   rate at landing, and the [drift](glossary.md#drift) in total, to the east and to the north. All

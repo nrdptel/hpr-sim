@@ -144,8 +144,8 @@ hpr doesn't judge whether a margin is enough; your club's or range's rules do.
 Barrowman's method works out each nose cone, transition and fin set on its own. Each gets a CP and
 a normal-force slope: how fast its sideways push grows with the
 [angle of attack](glossary.md#angle-of-attack), per radian. A plain body tube's slope is zero, so
-it has no line of its own. (At larger angles the air crossing a tube does push it sideways, but
-that push grows with `sin² α`, so it is zero straight into the wind and adds nothing to the slope.)
+it has no line of its own. (A tube's sideways push appears only at larger angles, so it adds
+nothing to the slope.)
 The rocket's CP is the average of the parts' CPs, each weighted by its slope:
 
 | part | slope (per radian) | CP (m from the nose tip) | slope × CP |

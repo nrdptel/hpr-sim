@@ -105,10 +105,10 @@ correlation, the curve fitted to measurements that gives its drag coefficient:
 
   **hpr** interpolates between *neighbouring* curves, linearly in the logarithm of the area
   (`ln S`), and holds the end curve outside the fitted areas; that is hpr's choice, not the
-  paper's. All three are needed because `C_D` is far from linear in `ln S`: at `AR = 3.3` the
-  middle curve sits 0.3% *below* the smallest area's (0.3154 against 0.3163, with 0.2245 at the
-  largest) rather than 63% of the way between them, so blending only the extremes reads 18% low
-  there.
+  paper's. All three curves are needed, because `C_D` is far from linear in `ln S`. At
+  `AR = 3.3`, the middle area's `C_D` (0.3154) sits 0.3% *below* the smallest area's (0.3163),
+  not partway down to the largest's (0.2245); a straight line in `ln S` would put it 63% of the
+  way there. Blending only the two end curves would read 18% low there.
 
   Three of the paper's own findings bear on how to read it, and none is in its curves:
 
@@ -429,23 +429,34 @@ Each body flies on as a point mass under the devices that name it (`Device::on_b
 ends there: its `FlightResult` has `Termination::Separated`, a `Separation` event, and one
 `BodyFlight` per body in `bodies`.
 
+**What happens at a separation:**
+
 - **Each body is its own stages and their motors.** `body_mass_properties` sums the stages'
   `MassProperties` and the motors mounted in them, so the bodies' masses add to the whole rocket's
   at that instant — which is a test.
-- **The separation adds no impulse.** Each body starts at its **own** centre of mass, with the
+- **Nothing pushes the bodies apart.** Each body starts at its **own** centre of mass, with the
   velocity that point already had: the nose tip's velocity plus the rotation's share,
-  `v_O + ω × r_cg`, in the launch frame. The bodies' **linear** momenta therefore add to the
-  stack's, which is a test. Their rotation is dropped, so the angular momentum is not conserved:
-  the orbital part (each body's centre moving round the stack's) survives, and each body's spin
-  about its own centre does not (31% of it at the 0.6 rad/s of the test, 0.02 J). No spring, no gas
-  pressure, no [tip-off](../glossary.md#tip-off): an ejection charge's impulse and the tumbling that
-  follows are not modelled.
+  `v_O + ω × r_cg`, in the launch frame. So the bodies' **linear** momenta add to the stack's,
+  which is a test.
+- **Their spin is dropped.** Each body's centre keeps moving round the stack's as it was, but each
+  body's spin about its own centre is lost, so angular momentum is not conserved. In the test,
+  spinning at 0.6 rad/s, the lost spin is 31% of the angular momentum, and 0.02 J of energy.
 - **Only body 0's devices act before the separation.** A device meant for another body has a drag
   area computed for that body — a booster's tumbling area, say — which is not a model of the whole
   stack, so it waits for its body. With no separation every device is body 0's.
 - **Each body finds its own apogee**, whatever its devices are triggered by. The ascent ends at
   the separation, so this is the only place a staged flight can record a peak, and without it a
   body separated while climbing would never fire an apogee charge (found in review, now a test).
+- **The bodies descend independently**, each with the same point-mass equations as the descent
+  phase, less the thrust: `m a = −½ ρ (C_D S)(t) |v − w| (v − w) + m (g + a_Coriolis)`. They share
+  the flight's devices and their progress, so a canopy that opened before the separation stays open
+  on whichever body carries it.
+- Bodies are not watched by the `Observer`: their events and samples are in their `BodyFlight`.
+
+**Limits:**
+
+- **No ejection charge, spring or [tip-off](../glossary.md#tip-off).** An ejection charge's
+  impulse, and the tumbling that follows, are not modelled.
 - **A body must start above the ground**, as a free flight must: the ground event is a falling
   crossing, so a body that started below the site would go on integrating underground until the
   flight's time limit.
@@ -462,16 +473,11 @@ ends there: its `FlightResult` has `Termination::Separated`, a `Separation` even
   matters.
   A spent booster's device is usually `DeviceDrag::tumbling_stages(&assembly, its stages)`, which
   is §3.5's model over that body's own components rather than the whole stack's.
-- **The bodies descend independently**, each with the same point-mass equations as the descent
-  phase, less the thrust: `m a = −½ ρ (C_D S)(t) |v − w| (v − w) + m (g + a_Coriolis)`. They share
-  the flight's devices and their progress, so a canopy that opened before the separation stays open
-  on whichever body carries it.
 - **A separation must follow the last burnout**, because a body's mass is held constant through its
   descent. A trigger that fires earlier is a flight-time error, not a silent approximation, since
   whether it does depends on the flight. A release across the separation is refused too: a line
   cuts a device on its own body. Powered staging, where a sustainer lights and keeps flying, is
   planned for the staging milestone ([M1.9](../decisions-and-roadmap.md#m1-9)).
-- Bodies are not watched by the `Observer`: their events and samples are in their `BodyFlight`.
 
 ## Verification
 

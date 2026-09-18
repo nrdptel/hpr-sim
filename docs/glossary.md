@@ -813,8 +813,9 @@ the committed [validation report][report], with every number and its verdict. Se
 
 Verification checks that the code does what its model says, against closed-form answers, printed
 tables and worked examples. Validation checks that the model matches the real world. hpr ranks its
-evidence in four [kinds][levels]: analytic and unit tests, component references such as tables
-and worked examples, [code-to-code comparison](#code-to-code-comparison), and real flights. See
+evidence in [four kinds][levels], named as on Accuracy: *analytic* (exact answers), *published
+source* (printed tables and worked examples), *another code*
+([code-to-code comparison](#code-to-code-comparison)), and *real flights*. See
 [Accuracy](accuracy.md).
 
 

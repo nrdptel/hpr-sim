@@ -8,7 +8,7 @@
 - **Sources:** the US military flying-qualities specification MIL-F-8785C (1980), NASA's climatic
   criteria for aerospace vehicles NASA/TM-2008-215633 (2008), and the World Meteorological
   Organization's observing guide WMO-No. 8 (2023).
-- **How well it is validated:** unit tests pin each model: with speed and direction interpolated
+- **How well it is validated:** tests with exact answers pin each model: with speed and direction interpolated
   separately (the default), halfway between 4 m/s from 350° and 12 m/s from 30° a table gives 8 m/s
   from 10°. In [RocketPy](../glossary.md#rocketpy)'s parachute descents, hpr's wind, interpolated
   by components as RocketPy does, matches RocketPy's samples to 1e-9 m/s (in

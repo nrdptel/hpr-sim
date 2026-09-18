@@ -428,7 +428,8 @@ parasitic term on its own area. The axial coefficient is `C_A = C_D0 f(α)`.
   | 2:1 cone | 0.8 | 0.037 |
   | 3:1 cone | 0.9 | about 0.05 |
 
-  - A flat face or a step would see its coefficient, on its own area, rise from 0.80 toward 1.04.
+  - hpr also holds the drag of a flat nose face or a step at its low-speed value, 0.80 on its own
+    area; the source has it rising toward 1.04 as the speed rises.
   - No test computes these shortfalls, because eq. 3.87 isn't in the code yet. The drag decision
     ([ADR-009][adr-009]) records the ogive's and the 2:1 cone's.
   - `Drag::beyond_subsonic_methods` marks the top of [N09]'s subsonic region, Mach 0.8
