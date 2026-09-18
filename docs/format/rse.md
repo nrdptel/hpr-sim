@@ -1,9 +1,10 @@
 # RockSim `.rse` motor files
 
-Code: `hpr_motor::rse` (M1.3). An XML motor database: one or more engines, each with its attributes
-and a sampled thrust, mass and CG curve. The rules below are from the spec unless marked
-**Observed** or **Policy**. The spec is thin and disagrees with every real file on element and
-attribute names, so a reader must follow the observed structure.
+Code: `hpr_motor::rse`, written for the solid-motor milestone ([M1.3][roadmap]). An XML motor
+database: one or more engines, each with its attributes and a sampled thrust, mass and CG curve.
+The rules below are from the spec unless marked **Observed** or **Policy**. The spec is thin and
+disagrees with every real file on element and attribute names, so a reader must follow the
+observed structure.
 
 ## Sources
 
@@ -169,3 +170,5 @@ write-parse-write reproduces every value bit for bit. The other two have a time 
 backwards and are rejected with its line. In the manufacturer sets, 704 engines read; one engine
 with a backwards time is skipped with a warning. The files are cached under `refs/samples/` and
 never committed.
+
+[roadmap]: https://github.com/nrdptel/hpr-sim/blob/main/docs/ROADMAP.md

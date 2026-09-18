@@ -5,8 +5,8 @@ Code: `hpr_design::shapes` (profiles) and `hpr_design::solids` (volume, centroid
 Sources:
 
 - **[CR]** G. A. Crowell Sr., *The Descriptive Geometry of Nose Cones* (1996), pp. 1–6 and 12–14.
-  Cited, not pinned: the only copy found is on a plain-http university mirror, and ADR-002 pins
-  over https. [TD] gives the same curves.
+  Cited, not pinned: the only copy found is on a plain-http university mirror, and the reference
+  library ([ADR-002][adr-002]) pins over https. [TD] gives the same curves.
 - **[TD]** S. Niskanen, *OpenRocket technical documentation* v13.05 (2013), appendix A, pp. 102–106,
   pinned as `openrocket-techdoc-13.05`. This is the published document, not the program's source.
 
@@ -38,7 +38,8 @@ shape is a normalized curve `g(ξ)` with `g(0) = 0` at the tip and `g(1) = 1` at
   - A.3 defines it as `κ = ρ_t/ρ`.
   - A.4–A.5 describe the first `L` of a tangent ogive of length `L/κ`, which at `L = 4`, `R = 1`,
     `κ = ½` has `ρ = 24.8`, not `ρ_t/κ = 17.0`.
-  - The `.ork` importer (M3.1) must settle the mapping by running the OpenRocket jar.
+  - The planned `.ork` importer ([M3.1][roadmap]) must settle the mapping by running the
+    OpenRocket jar.
 - **Haack.** Monotone for `C ≤ 2/3`, because `d(g²)/dθ = sin²θ (2 + 3C cos θ)/π`. `C = 0` is the
   von Kármán (LD-Haack) ogive and `C = 1/3` the LV-Haack. [TD] limits `C` to `1/3` in the program.
 - **Blunt tips.** The elliptical, power-series (`n < 1`) and Haack slopes are infinite at the tip.
@@ -56,7 +57,7 @@ A transition runs from fore radius `R_f` to aft radius `R_a` over `L`.
   `r = R_f + (R_a − R_f) g(x/L)`. A boattail is the mirror image,
   `r = R_a + (R_f − R_a) g(1 − x/L)`.
   [TD] doesn't say how a shrinking transition is oriented; this choice keeps both ends' radii
-  exact and the profile monotone (Loft lesson L49).
+  exact and the profile monotone ([Loft lesson L49][lessons]).
 - **Clipped** ([TD] §A.7): cut a whole nose cone of base radius `max(R_f, R_a)` where its radius
   is `min(R_f, R_a)`, with the nose length chosen so the piece is `L` long.
   - Shapes other than the ogive invert `g` by bisection.
@@ -83,7 +84,7 @@ diameter, moved to the reference plane by the parallel-axis theorem. `S` exclude
   the normalized distance from that end. The substitution removes the `u^(−1/2)` singularity of a
   blunt tip's surface integrand, and measuring from the end keeps the tip exact. The integrals use
   `hpr_core::quadrature` (`quadrature.md`) at a relative tolerance of 1e-12.
-- **Walls** (ADR-006).
+- **Walls** ([ADR-006][adr-006], component geometry and mass properties).
   - A wall of thickness `t` is the part of the solid within `t` of the outer surface, so `t` is
     measured normal to the surface, which is how molded and laid-up shells are made.
   - Its inner radius is the lower envelope of circles of radius `t` on the profile:
@@ -98,8 +99,9 @@ diameter, moved to the reference plane by the parallel-axis theorem. `S` exclude
     - A square cut would add a sliver of `t² (tan φ − φ)/2` of section per unit rim length, with
       `φ` the surface's angle to the axis: 3.1e-4 `t²` at 7°. On steep ends it matters: a
       square-cut part is heavier than this model by 1.26% of wall mass for a 27→49 mm transition
-      over 15 mm (56°), and by 2.24% for 20→37.3 mm over 10 mm (60°), both with `t = 2 mm`. M2.2
-      should check how real parts and OpenRocket treat such ends.
+      over 15 mm (56°), and by 2.24% for 20→37.3 mm over 10 mm (60°), both with `t = 2 mm`. The
+      OpenRocket comparison ([M2.2][roadmap]) should check how real parts and OpenRocket treat such
+      ends.
     - The sliver grows without bound only as the end turns vertical. There, a square cut (made by
       extending the surface along its tangent) closes the end with a disc of thickness `t`.
     - The first version did extend along finite end tangents only. Its wall mass jumped by 8.3%
@@ -109,8 +111,8 @@ diameter, moved to the reference plane by the parallel-axis theorem. `S` exclude
   - The hollow is integrated separately. It is split where `r_i` reaches zero and where the nearest
     surface point moves between the lateral surface and a rim, since both are kinks.
   - [TD] doesn't say how OpenRocket measures thickness, and [CR] measures it radially. The two
-    differ by a factor `√(1 + y′²)` in wall volume, 1.4% for a cone three calibres long. M2.2
-    will measure OpenRocket's choice.
+    differ by a factor `√(1 + y′²)` in wall volume, 1.4% for a cone three calibres long. The
+    OpenRocket comparison ([M2.2][roadmap]) will measure OpenRocket's choice.
 
 ## Verification
 
@@ -122,7 +124,8 @@ diameter, moved to the reference plane by the parallel-axis theorem. `S` exclude
   - Power series and parabolic series: `A_p` and `x_p` too; parabolic series by polynomial
     integrals.
   - Haack: `V = πR²L(½ + 3C/16)` and `x̄ = L(11 + 3C)/(2(8 + 3C))`, integrated in `θ`.
-  - Loft's tangent-ogive value, `R = 0.04 m`, `L = 0.25 m` gives `6.7509e-4 m³` (lesson L91).
+  - Loft's tangent-ogive value, `R = 0.04 m`, `L = 0.25 m` gives `6.7509e-4 m³`
+    ([Loft lesson L91][lessons]).
 - **mpmath references** (`solids::tests::filled_solids_match_the_mpmath_references`):
   - 22 noses and transitions of every family, in both directions, clipped and not.
   - All seven quantities, to 1e-12 relative (worst measured 2.4e-14).
@@ -158,14 +161,20 @@ diameter, moved to the reference plane by the parallel-axis theorem. `S` exclude
   - A tube matches the hollow-cylinder formulas.
   - A wall thicker than the body fills it, and a thin wall's volume tends to `S t`.
 - **Profiles:** each ends at `0` and `R`, slopes match central differences, and parameters out of
-  range are errors (lesson L48).
+  range are errors ([Loft lesson L48][lessons]).
   - Haack tips use `θ = 2 asin √ξ` and a Taylor series for `θ − sin 2θ/2` below `θ = 0.1`, so the
     tip slope is `+∞`, never NaN.
   - Ogive radius ratios up to 1e12 give the cone. A power series at the minimum exponent, 0.05,
     matches its closed-form volume as a nose and as transitions both ways
     (`extreme_parameters_stay_accurate_or_fail_loudly`).
   - Unknown fields in a shape or wall are rejected.
-  - Transitions hit both radii and are monotone both ways, clipped or not (lesson L49); bulged
-    ogives are excluded because their profile is deliberately not monotone.
+  - Transitions hit both radii and are monotone both ways, clipped or not
+    ([Loft lesson L49][lessons]); bulged ogives are excluded because their profile is deliberately
+    not monotone.
   - Power-series exponents below 0.05 are rejected. Blunter profiles approach a flat face the
     integrals can't resolve, and unclipped transitions below about 0.038 fail to converge.
+
+[adr-002]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-002-the-reference-library-lock-file-fetch-verify-and-doctor-2026-09-17
+[adr-006]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-006-component-geometry-and-mass-properties-frames-shapes-walls-fins-and-materials-2026-09-17
+[lessons]: https://github.com/nrdptel/hpr-sim/blob/main/docs/research/loft-lessons.md
+[roadmap]: https://github.com/nrdptel/hpr-sim/blob/main/docs/ROADMAP.md

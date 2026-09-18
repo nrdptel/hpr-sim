@@ -1,7 +1,8 @@
 # Frames and sign conventions
 
 This is the single definition of the frames, and every crate follows it. Code:
-`hpr_core::{geodesy, frames, attitude}`. ADR-003 records why these choices were made.
+`hpr_core::{geodesy, frames, attitude}`. [ADR-003][adr-003], the frames and gravity decision,
+records why these choices were made.
 
 ## Units and angles
 
@@ -43,13 +44,14 @@ converted before use. `docs/physics/geodesy.md` gives the conversions.
   gravity and must not be added again (`docs/physics/gravity.md`).
 - **`z_L` is not altitude.** `L` is a tangent plane, so a point at `z_L = 0` at horizontal
   distance `d` from the pad is about `d²/(2R)` above the ellipsoid: 7.8 m at 10 km. Height above
-  the ellipsoid comes from `LaunchFrame::geodetic_from_enu`. The flight engine (M1.6) must detect
-  ground contact and state its apogee datum with that height, not with `z_L` (Loft lesson L35).
+  the ellipsoid comes from `LaunchFrame::geodetic_from_enu`. The flight engine ([M1.6][roadmap])
+  must detect ground contact and state its apogee datum with that height, not with `z_L`
+  ([Loft lesson L35][lessons]).
 
 ## Body frame `B`
 
-- **Origin:** the nose tip, on the axis (ADR-007). Positions in mass properties are measured
-  from it.
+- **Origin:** the nose tip, on the axis ([ADR-007][adr-007], the design-tree decision).
+  Positions in mass properties are measured from it.
 - **Axes:** `z_B` lies along the axis of symmetry, positive toward the nose. `x_B` is the design's
   zero radial direction, the angle from which fins, rail buttons and lugs are placed. `y_B = z_B × x_B`.
 - **Thrust** of a motor aligned with the axis acts along `+z_B`.
@@ -84,8 +86,8 @@ v_L = q ⊗ v_B ⊗ q*        (glam: q.mul_vec3(v_B))
 - The kinematics are `q̇ = ½ q ⊗ (0, ω_B)` (Solà 2017, eq. 200). The integrator renormalizes `q`
   after every step (`attitude::renormalize`).
 - `L` itself turns at `Ω` (above), so `ω_B` differs from the inertial rate by `R(q)ᵀ Ω`, at most
-  7.3e-5 rad/s. The flight engine (M1.6) decides whether its rotational dynamics include that
-  term, and records the decision.
+  7.3e-5 rad/s. The flight engine ([M1.6][roadmap]) decides whether its rotational dynamics
+  include that term, and records the decision.
 
 ## Launch angles
 
@@ -134,3 +136,8 @@ z_B in L = (sin A cos E, cos A cos E, sin E)
   - named attitudes, and the tangent-plane rise `d²/(2N)`.
 - **`hpr_core::attitude::tests`:** the kinematic equation checked against a closed-form coning
   motion, and norm drift ≤ 1e-12 over 1e6 RK4 steps with attitude error < 1e-9 rad.
+
+[adr-003]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-003-frames-attitude-geodesy-and-the-gravity-model-2026-09-17
+[adr-007]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-007-design-tree-stations-placement-automatic-radii-overrides-motors-and-checks-2026-09-17
+[lessons]: https://github.com/nrdptel/hpr-sim/blob/main/docs/research/loft-lessons.md
+[roadmap]: https://github.com/nrdptel/hpr-sim/blob/main/docs/ROADMAP.md

@@ -19,7 +19,8 @@ Sources:
 - **Time** `t` is seconds from ignition.
 - **Motor axis:** positions are metres along the motor's axis **from the nozzle exit plane toward
   the forward closure**, so `+z` points toward the nose like the body frame (`frames.md`). The
-  design model (M1.4) places the motor's nozzle exit in the body frame.
+  design model (from [M1.4][roadmap], the design and mass-properties milestone) places the
+  motor's nozzle exit in the body frame.
 - **Inertia:** every part is symmetric about the axis. `I_a` is about the axis and `I_t` about a
   transverse axis, both through the part's own centre of mass (RocketPy's `I_33` and `I_11`).
 - Motor files keep their own units (mm, kg or g). The model is SI.
@@ -43,7 +44,8 @@ Sources:
   ([SP] glossary p. 96: `I = ∫F dt`). `I(t)` is the same sum up to `t`, with the partial interval.
 - **Burn time (NFPA 1125):** from the moment the thrust first reaches 5% of peak to the moment it
   last falls to 5% of peak, each crossing interpolated on its segment ([TC-G] "Burn Time";
-  [TC-S]; [TC-A] lines 165–203). The last sample's time is not the burn time (Loft lesson L39).
+  [TC-S]; [TC-A] lines 165–203). The last sample's time is not the burn time
+  ([Loft lesson L39][lessons]).
 - **Average thrust:** total impulse over the NFPA burn time ([TC-G] "Average Thrust"; [TC-A]
   line 231).
   - [TC-S] says instead "the total impulse during the 5%-defined burn time". The two differ by the
@@ -51,7 +53,7 @@ Sources:
     (`docs/research/thrustcurve-data.md`). hpr follows the glossary and the site's code.
 - **Impulse class:** `upper(k) = 1.25 · 2^k N·s`, from `1/8A` (`k = −2`) to `O` (`k = 15`), and on
   to `Z` by doubling. **Upper limits are inclusive:** [NAR] states `C` as "5.01 to 10.0 N-sec".
-  Loft gave `B` for 2.5 N·s (lesson L38).
+  Loft gave `B` for 2.5 N·s ([Loft lesson L38][lessons]).
 
 ## Propellant consumption
 
@@ -116,15 +118,15 @@ c = I / m_p0,    ṁ(t) = F(t) / c,    m_p(t) = m_p0 (1 − I(t)/I)
     `I_t = m (r²/2 + L²/12)`, also centred at `L/2`.
 
   **These are crude:** the centre of mass stays at `L/2` throughout. Loft fixed the CG at the
-  midpoint with no inertia of its own (lesson L40); hpr gives the parts inertia, and moves the CG
-  as soon as the dry and propellant centres differ.
+  midpoint with no inertia of its own ([Loft lesson L40][lessons]); hpr gives the parts inertia,
+  and moves the CG as soon as the dry and propellant centres differ.
   - ThrustCurve's loaded mass includes the reusable case ([TC-G] "Total Weight": "propellant and
     case").
   - [RP] `GenericMotor.load_from_eng` sets its chamber radius to the motor **diameter**
     (`motor.py:1759-1761`), which quadruples the `r²` inertia terms (and the default nozzle
     area it derives from that radius). hpr uses `D/2`.
 - **Catalog envelope:** diameter, length and masses come from the catalog metadata, not the curve
-  file's header, which can be wrong (Loft lesson L43).
+  file's header, which can be wrong ([Loft lesson L43][lessons]).
 
 ### The effective exhaust velocity is a units check
 
@@ -165,8 +167,8 @@ Two numbers worth keeping straight, because both have been got wrong here:
 
 - Reading the **curve file header** mass instead gives a different distribution (max 10,111 m/s,
   from a J motor whose header claims 83 g where its catalog entry says 396 g). hpr does not use
-  header masses when the catalog has them (Loft lesson L43, `catalog.rs`), so that file builds at
-  2,111 m/s and passes.
+  header masses when the catalog has them ([Loft lesson L43][lessons], `catalog.rs`), so that file
+  builds at 2,111 m/s and passes.
 - The 32 bundled motors run **689.78 m/s** (a black-powder C) to **2,651.64 m/s** (a K), computed
   from each curve's own impulse — not from the catalog's stored `total_impulse_ns`, which differs
   by up to 0.3% and would say 2,645.
@@ -211,10 +213,11 @@ mean plugged; it never becomes an ejection event without a decision.
 
 - **Catalog** (`catalog::tests`): all 32 bundled curves are within 1% of ThrustCurve's total
   impulse, average thrust and burn time. **This is the bundling rule**, so it holds by
-  construction; the test guards the bundle against drift and mis-sourced curves (lesson L42). Of
-  554 public-domain curves, 196 pass (`docs/research/thrustcurve-data.md`, which also lists the
-  four motors whose stored values are printed coarser than 1%). Each bundled file is public domain
-  and byte for byte its recorded SHA-256 (lessons L41–L43).
+  construction; the test guards the bundle against drift and mis-sourced curves
+  ([Loft lesson L42][lessons]). Of 554 public-domain curves, 196 pass
+  (`docs/research/thrustcurve-data.md`, which also lists the four motors whose stored values are
+  printed coarser than 1%). Each bundled file is public domain and byte for byte its recorded
+  SHA-256 ([Loft lessons L41–L43][lessons]).
 - **ThrustCurve's code** (`catalog::tests::every_bundled_curve_matches_thrustcurve_statistics_code`):
   `validation/oracles/thrustcurve/analyze_stats.js` runs [TC-A] unchanged on every bundled curve
   (`validation/fixtures/motor/thrustcurve-analyze-stats.json`). hpr's impulse, burn window, burn
@@ -236,3 +239,6 @@ mean plugged; it never becomes an ejection event without a decision.
   two have backwards times; `docs/format/`).
 - **Unit and property tests:** exact impulse integration, burn windows, grain volume inversion, the
   parallel-axis theorem, and the impulse-fraction flow integrating to `m_p0`.
+
+[lessons]: https://github.com/nrdptel/hpr-sim/blob/main/docs/research/loft-lessons.md
+[roadmap]: https://github.com/nrdptel/hpr-sim/blob/main/docs/ROADMAP.md

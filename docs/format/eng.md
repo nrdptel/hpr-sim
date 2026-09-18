@@ -1,7 +1,8 @@
 # RASP `.eng` motor files
 
-Code: `hpr_motor::eng` (M1.3). A plain-text thrust curve with a one-line header. The rules below
-are from the spec unless marked **Observed** or **Policy**.
+Code: `hpr_motor::eng`, written for the solid-motor milestone ([M1.3][roadmap]). A plain-text
+thrust curve with a one-line header. The rules below are from the spec unless marked **Observed**
+or **Policy**.
 
 ## Sources
 
@@ -50,7 +51,7 @@ point   := time thrust                 "usually preceded by a few spaces" [R Dat
   explicit (0, 0) is called "a common mistake".
 - "The final point must have a thrust of zero and it indicates the motor's burn time." A zero
   thrust anywhere else is rejected by ThrustCurve. (ThrustCurve's *metadata* burn time uses the
-  NFPA 1125 5% rule instead; see Loft lesson L39.)
+  NFPA 1125 5% rule instead; see [Loft lesson L39][lessons].)
 - Points "must be in order of time". ThrustCurve rejects a point "before the previous point" and a
   first point at negative time. Equal times are not addressed.
 - RASP allowed at most 32 points, including the final zero; modern tools don't enforce this.
@@ -69,7 +70,7 @@ next header.
   13 of 13 single downloads lack a final newline. There is no BOM, no non-ASCII byte, no inline
   `;`, no blank or comment line inside the data, and no indented comment.
 - **Entries:** always separated by a comment; there are 470 lone `;` lines. A reader that stops
-  at the first header loses the rest of the file (Loft L36).
+  at the first header loses the rest of the file ([Loft lesson L36][lessons]).
 - **Header:** never more than 7 fields; spaces in a manufacturer name become `_`
   (`Contrail_Rockets`). Manufacturer spellings vary (`AT`, `A`, `Aerotech`, `AERO`, `AT-RMS`,
   `AT/RCS`; `CTI`, `Ces`, `CSR`, `Pro38`). The name is often the full designation, not class plus
@@ -82,7 +83,7 @@ next header.
   (`6-10-14-P`), 1 lowercase `p`, and 4 malformed (`4-7-10,`, `-`, `1-3--4-6-7-9-10`). 58 lists
   are descending (`14-12-10-8-6`). 27 contain `100` or `1000`. Checked against ThrustCurve search
   metadata, `100`/`1000` mean plugged in 14 of 14 cases, and `0` means plugged in 120 of 149, against
-  the spec's "no delay" (Loft L37).
+  the spec's "no delay" ([Loft lesson L37][lessons]).
 - **Curve:** 32 entries have an explicit first point at t = 0 with nonzero thrust. Loft's bundle
   also had an explicit (0, 0). 4 entries don't end at zero thrust. 4 have equal consecutive
   times (a vertical drop to zero, or rounded times). 69 have more than 32 points. None have
@@ -154,3 +155,6 @@ On 2026-09-17, all 889 RASP files in ThrustCurve.org's solid-motor survey
 (`docs/research/thrustcurve-data.md`) and the 721 entries of its manufacturer sets read, and
 write-parse-write reproduces every value bit for bit. The files are cached under `refs/samples/`
 and never committed; the committed test covers the bundled curves.
+
+[lessons]: https://github.com/nrdptel/hpr-sim/blob/main/docs/research/loft-lessons.md
+[roadmap]: https://github.com/nrdptel/hpr-sim/blob/main/docs/ROADMAP.md

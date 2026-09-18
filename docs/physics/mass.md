@@ -16,7 +16,10 @@ Sources:
 - **[AvD]** I. H. Abbott and A. E. von Doenhoff, *Theory of Wing Sections*, Dover (1959), eq. 6.2
   (NACA four-digit thickness distribution).
 
-## Frames and conventions (ADR-006)
+## Frames and conventions
+
+These conventions were set in [ADR-006][adr-006], the decision on component geometry and mass
+properties.
 
 - **Body axes** follow `frames.md`: `z` along the axis toward the nose, `x` the zero radial
   direction, `y = z × x`. Roll angles run from `x` toward `y`.
@@ -43,7 +46,7 @@ Sources:
 - **Hollow cylinder**, radii `R > r`, length `L`: `I_axis = m(R² + r²)/2` and
   `I_across = m((R² + r²)/4 + L²/12)`. This covers body tubes, inner tubes and couplers, centering
   rings, bulkheads (`r = 0`), launch lugs, tube fins, and shoulders.
-  - Loft used `mL²/12` with no radial term, and no roll inertia at all (lesson L44).
+  - Loft used `mL²/12` with no radial term, and no roll inertia at all ([Loft lesson L44][lessons]).
 - **Solid cylinder**, radius `a`, height `h`: `I_axis = m a²/2` and `I_across = m(3a² + h²)/12`.
   This covers mass components, packed parachutes, streamers and shock cords ([TD] Table 5.1
   treats recovery parts as cylinders too), and each disc of a rail button.
@@ -90,10 +93,11 @@ Sources:
   The span integration is split at every vertex height and runs adaptively.
   - With the fin at roll 0 (points at `(r, τ, −x)`):
     `I_xx = ∫(τ² + x²)`, `I_yy = ∫(r² + x²)`, `I_zz = ∫(r² + τ²)` and `I_xz = ∫ r x`, all `dm`.
-  - Loft ignored the span and fixed a freeform fin's CG at `0.42 c_r` (lessons L44, L45).
+  - Loft ignored the span and fixed a freeform fin's CG at `0.42 c_r`
+    ([Loft lessons L44, L45][lessons]).
 - **Tabs** are square slabs below the root, `−h_tab ≤ h ≤ 0`, with closed-form integrals. A tab
   must lie along the root chord and reach no deeper than the body radius. Loft never
-  read them (lesson L46).
+  read them ([Loft lesson L46][lessons]).
 - **Root.** The flat root is placed at radius `R_b`; the sliver between it and the curved tube,
   `t²/8R_b` deep, is ignored. Fillets are not modeled yet.
 - **Cant** `δ` turns each fin and its tab about the fin's outward span axis through the root
@@ -160,8 +164,11 @@ the URL it was read from, and a basis:
   body keeps its principal moments, and the inertia about any point exceeds that about the centre.
 - **Materials:** ids are unique, sources present, and the unit conversions reproduce the sources
   (1.1 oz/yd² = 37.3 g/m², 225 ft/lb = 6.61 g/m, white ash 678 kg/m³).
-- **Lessons:**
-  - L44 `thin_tube_inertia_includes_radial_term`.
-  - L45 `hollow_transition_and_freeform_fin_cg_are_exact_centroids`: a conical wall's exact
-    centroid, and an M-shaped fin against the shoelace centroid.
-  - L46 `fin_tab_and_rail_button_mass_counted`.
+- **Loft lessons:**
+  - [L44][lessons] `thin_tube_inertia_includes_radial_term`.
+  - [L45][lessons] `hollow_transition_and_freeform_fin_cg_are_exact_centroids`: a conical wall's
+    exact centroid, and an M-shaped fin against the shoelace centroid.
+  - [L46][lessons] `fin_tab_and_rail_button_mass_counted`.
+
+[adr-006]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-006-component-geometry-and-mass-properties-frames-shapes-walls-fins-and-materials-2026-09-17
+[lessons]: https://github.com/nrdptel/hpr-sim/blob/main/docs/research/loft-lessons.md

@@ -52,8 +52,8 @@ Sources:
     profile blends up from it.
 - **`WindModel`:** any of these, tagged by `model` in JSON.
 
-**Loft lesson L6:** design-file runs used one wind vector, and forecast profiles stepped at the
-lowest level instead of blending from the surface.
+**[Loft lesson L6][lessons]:** design-file runs used one wind vector, and forecast profiles
+stepped at the lowest level instead of blending from the surface.
 
 ## Not yet modelled
 
@@ -62,11 +62,12 @@ lowest level instead of blending from the surface.
 - Terrain effects.
 - A blend below the lowest tabulated level (the table holds the lowest level's wind).
 
-M1.6 and M5.2 decide how the flight engine composes a surface law with levels aloft.
+The flight-engine milestone ([M1.6][roadmap]) and the planned weather milestone
+([M5.2][roadmap]) decide how the flight engine composes a surface law with levels aloft.
 
 ## Tests that pin this
 
-- **`wind::tests::layered_wind_interpolates_speed_and_heading`** (L6):
+- **`wind::tests::layered_wind_interpolates_speed_and_heading`** ([Loft lesson L6][lessons]):
   - Halfway between 4 m/s from 350° and 12 m/s from 30°, the wind is 8 m/s from 10°, turning
     through north.
   - There is no step just above the surface level.
@@ -76,3 +77,6 @@ M1.6 and M5.2 decide how the flight engine composes a surface law with levels al
 - **`meteorological_direction_convention`**, plus the power and log laws through their
   references, below ground, and at `z₀`.
 - Invalid inputs, and the tagged JSON round trip.
+
+[lessons]: https://github.com/nrdptel/hpr-sim/blob/main/docs/research/loft-lessons.md
+[roadmap]: https://github.com/nrdptel/hpr-sim/blob/main/docs/ROADMAP.md

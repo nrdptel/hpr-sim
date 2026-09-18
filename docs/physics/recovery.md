@@ -3,8 +3,8 @@
 How hpr flies a rocket under a parachute, a streamer or tumbling, and how a separated stack flies
 every body to its own landing: the drag area of a device, when it opens, how it fills, and the
 equations of the descent. Code: `crates/hpr-sim/src/recovery.rs` and the descent branch of
-`crates/hpr-sim/src/dynamics.rs`. Decisions: ADR-012 (parachutes and the descent), ADR-013
-(streamers and tumble), ADR-014 (separation).
+`crates/hpr-sim/src/dynamics.rs`. Decisions: [ADR-012][adr-012] (parachutes and the descent),
+[ADR-013][adr-013] (streamers and tumble), [ADR-014][adr-014] (separation).
 
 Sources:
 
@@ -12,7 +12,8 @@ Sources:
   coefficients, filling times, drag-area growth and the equilibrium descent speed. Its title page
   limits distribution, so it is cited, never redistributed (`docs/VALIDATION.md`).
 - RocketPy 1.13.0 (MIT), `rocketpy/simulation/flight.py:2710-2790` and
-  `rocketpy/rocket/parachute.py`, for the point-mass descent that M1.7a is compared against.
+  `rocketpy/rocket/parachute.py`, for the point-mass descent that the parachute milestone
+  ([M1.7a][roadmap]) is compared against.
 - J. Carruthers and A. Filippone, "Aerodynamic Drag of Streamers and Flags", *Journal of Aircraft*
   42(4), 2005, and the OpenRocket technical documentation v13.05 (CC BY-SA), Appendix C, for
   streamers; the same documentation's §3.5 for tumbling bodies; and C. Kidwell's NARAM-43 drop
@@ -104,7 +105,7 @@ because the clamped-luff correlation is itself biased low, so two errors cancel.
 measured anywhere near the 0.225 m² end of the clamp.
 
 hpr therefore defaults to `Filippone` and keeps `OpenRocket` for comparing with OpenRocket
-(ADR-013).
+([ADR-013][adr-013], streamer and tumble drag).
 
 ## Tumble
 
@@ -261,7 +262,7 @@ m a_cg = −½ ρ (C_D S)(t) |v_cg − w| (v_cg − w) + m (g + a_Coriolis) + T
 - The airframe's own drag is **left out**, as RocketPy leaves it out. A rocket's attitude under a
   canopy, and so the area it presents, is not modelled. For a drogue whose drag area is close to
   the airframe's broadside area this is a real omission; it is the same omission the oracle makes,
-  and M1.7b's tumble model is where a body's own drag belongs.
+  and the tumble model ([M1.7b][roadmap], streamers and tumble) is where a body's own drag belongs.
 - The thrust `T` is kept, along the frozen axis, so a device that opens while a motor still burns
   (an off-nominal case) is not silently thrust-free. Its direction is wrong the moment the rocket
   would have swung under the canopy.
@@ -307,11 +308,11 @@ ends there: its `FlightResult` has `Termination::Separated`, a `Separation` even
   body separated while climbing would never fire an apogee charge (found in review, now a test).
 - **A body must start above the ground**, as a free flight must: the ground event is a falling
   crossing, so a body that started below the site would integrate underground to the time cap.
-- **Every body must carry a device, and it must open.** The descent has no airframe drag
-  (ADR-012), so a body with nothing open would fall as if in a vacuum. A flight whose bodies are
-  not all covered is refused when it is set up, and a body that reaches the ground without a single
-  deployment — an altimeter set above that body's own apogee, say — is a flight-time error rather
-  than a landing at 170 m/s (both found in review).
+- **Every body must carry a device, and it must open.** The descent has no airframe drag (the
+  descent-phase decision, [ADR-012][adr-012]), so a body with nothing open would fall as if in a
+  vacuum. A flight whose bodies are not all covered is refused when it is set up, and a body that
+  reaches the ground without a single deployment — an altimeter set above that body's own apogee,
+  say — is a flight-time error rather than a landing at 170 m/s (both found in review).
 - **A body coasts with no drag at all until its first device opens**, which is the same omission
   as the descent phase's and hurts more here: a 0.55 kg sustainer that separates at 2 km and waits
   for a 300 m main arrives at **168 m/s** where an airframe would have held it near 60 to 70, so
@@ -328,7 +329,7 @@ ends there: its `FlightResult` has `Termination::Separated`, a `Separation` even
   descent. A trigger that fires earlier is a flight-time error, not a silent approximation, since
   whether it does depends on the flight. A release across the separation is refused too: a line
   cuts a device on its own body. Powered staging, where a sustainer lights and keeps flying, is
-  M1.9.
+  planned for the staging milestone ([M1.9][roadmap]).
 - Bodies are not watched by the `Observer`: their events and samples are in their `BodyFlight`.
 
 ## Verification
@@ -351,7 +352,7 @@ ends there: its `FlightResult` has `Termination::Separated`, a `Separation` even
 | A drogue released by a main that fills over 2 s | the release waits for the end of filling, the drag area never falls below the drogue's, and the descent never speeds up |
 | An apogee charge on a flight that starts descending | it fires at the first step (there is no apogee event to find), and a climbing start still waits for the apogee |
 | Two user events and an altitude device on one flight | the user events keep their numbers and fire during the descent, in height order |
-| The same recovered flight flown twice | bit-identical rows, events, final sample and step counts (Loft lesson L24: a run does not mutate the simulation) |
+| The same recovered flight flown twice | bit-identical rows, events, final sample and step counts ([Loft lesson L24][lessons]: a run does not mutate the simulation) |
 | A separation at apogee of the two-stage test design, canopy on the sustainer and tumble on the booster | both bodies land: the 0.550 kg sustainer at 729.0 s and 2.11 m/s under its 1.8 m canopy, the 1.125 kg booster at 107.5 s and 16.74 m/s tumbling; the masses add to the 1.675 kg stack to 1e-12 and each lands within 0.1% of its own `v_e` |
 | The linear momenta of the bodies at a separation with a 0.6 rad/s body rate | add to the stack's to 1e-9, and each body starts at its own centre of mass to 1e-12 (0.817 m apart on this design) |
 | A separation before the last burnout | refused in flight, with the burnout time in the error |
@@ -371,9 +372,9 @@ zero, so no ballistic segment under either model's aerodynamics separates them),
 the same deployment settings and the same wind, and RocketPy's noise set to zero. The oracle runs
 at `rtol = atol = 1e-8`; run again at 1e-6 it moves every compared metric by at most 3.5e-6
 (the fixture's `solver.relative_change_from_loose`. Its one larger entry, 2.1e-3, is on Valetudo's
-20 µm *north* drift component, which M1.7a did not compare; M2.1a measures it, and hpr comes out
-28x above RocketPy at 0.55 mm, and reading that high is what found the gravity-model difference
-below, issue #27).
+20 µm *north* drift component, which the parachute milestone ([M1.7a][roadmap]) did not compare;
+the validation harness ([M2.1a][roadmap]) measures it, and hpr comes out 28x above RocketPy at
+0.55 mm, and reading that high is what found the gravity-model difference below, issue #27).
 
 What still differs, and by how much:
 
@@ -405,10 +406,11 @@ What still differs, and by how much:
   the equator (`docs/physics/gravity.md`): over these five sites it runs from +6.9e-6 m/s² at
   Valetudo's topmost gravity sample to −3.3e-5 m/s² at Calisto's 4,400 m. hpr's vector also turns
   with the local vertical downrange, `g·d/R`, which is 2.1e-3 m/s² at Calisto's 1.4 km of drift and
-  is much the larger of the two wherever a rocket drifts at all. The M1.7a test used to compare
-  gravity by magnitude alone, so it could see neither. Both this comparison and the validation
-  suite now fly `GravityModel::VerticalTaylor`, which hpr ships as RocketPy's own formula for
-  like-for-like comparisons, and both assert the gravity **vector** rather than its length.
+  is much the larger of the two wherever a rocket drifts at all. The parachute milestone's test
+  ([M1.7a][roadmap]) used to compare gravity by magnitude alone, so it could see neither. Both this
+  comparison and the validation suite now fly `GravityModel::VerticalTaylor`, which hpr ships as
+  RocketPy's own formula for like-for-like comparisons, and both assert the gravity **vector**
+  rather than its length.
 - **Geometry.** hpr flies over the ellipsoid and takes heights along its normal; RocketPy's `z` is
   flat. Over Calisto's 1.4 km of drift the curvature is 0.15 m of height, 0.03 s of descent.
 
@@ -449,3 +451,9 @@ RocketPy's added mass for it is 15.9 kg against the rocket's 20.8 kg, so its res
 opening is slower, which lengthens the descent (+0.71%) and, in a wind that shears with height,
 moves the smaller drift component by 2.86%. Adding a cited apparent-mass model would close that
 gap.
+
+[adr-012]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-012-recovery-drag-areas-triggers-inflation-and-the-descent-phase-2026-09-17
+[adr-013]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-013-streamer-and-tumble-drag-2026-09-17
+[adr-014]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-014-separation-bodies-their-masses-and-their-descents-2026-09-17
+[lessons]: https://github.com/nrdptel/hpr-sim/blob/main/docs/research/loft-lessons.md
+[roadmap]: https://github.com/nrdptel/hpr-sim/blob/main/docs/ROADMAP.md
