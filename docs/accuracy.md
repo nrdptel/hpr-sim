@@ -6,8 +6,9 @@ landing point have not been compared with another simulator's or with a real fli
 checked is each model on its own, against exact answers, its published source and in places
 RocketPy, and the descent under a parachute, against RocketPy, for five rockets.
 
-Each number here appears, written the same way (sign and percent sign included), in the model page,
-report or case file that its sentence or table row links to, and the descent table matches the
+Each number here appears, written the same way (the same digits, and the same sign and percent
+sign where it writes them), in the model page, report or case file that its sentence or table row
+links to, and the descent table matches the
 report cell by cell. The site's build checks both, so a number can't go stale here without failing
 it. The check can't tell whether a number is quoted in the right context; the model pages say what
 each one means. [Checking a claim](checking-a-claim.md) shows how to follow a number back to its

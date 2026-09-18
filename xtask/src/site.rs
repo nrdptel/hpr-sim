@@ -801,6 +801,25 @@ fn results_tables(page: &str, report: &str) -> Vec<(usize, String)> {
     let results = report_results(report);
     let mut shown = BTreeSet::new();
     let mut problems = Vec::new();
+    if results.is_empty() {
+        problems.push((
+            1,
+            format!(
+                "{REPORT} has no table of results, with `case`, `metric` and `difference` columns"
+            ),
+        ));
+    }
+    let mut keys = BTreeSet::new();
+    for (case, metric, _) in &results {
+        if !keys.insert((case, metric)) {
+            problems.push((
+                1,
+                format!(
+                    "{REPORT} gives `{metric}` of `{case}` twice, so the page can't give it once"
+                ),
+            ));
+        }
+    }
     for table in tables(page) {
         if table
             .header
@@ -831,7 +850,7 @@ fn results_tables(page: &str, report: &str) -> Vec<(usize, String)> {
                     continue;
                 };
                 match results.iter().find(|(c, m, _)| c == case && m == metric) {
-                    Some((c, m, difference)) if *difference == written.replace('−', "-") => {
+                    Some((c, m, difference)) if normalized(difference) == normalized(written) => {
                         shown.insert((c.as_str(), m.as_str()));
                     }
                     Some((_, _, difference)) => problems.push((
@@ -896,7 +915,8 @@ fn line_index(text: &str) -> impl Fn(usize) -> usize {
 /// file; but not a page among the `guides`, which would let a page vouch for itself. A number
 /// matches one written the same way there ([`Quoted::matches`]). That is how a reader checks it
 /// in one click, and how a number that moves at its source fails here until the page follows
-/// (ADR-017). Headings quote no numbers. `missing` says where a number should have been.
+/// (ADR-017). A heading can't link a source, so it quotes no numbers. `missing` says where a
+/// number should have been.
 fn untraced_numbers(
     root: &Path,
     name: &str,
@@ -918,6 +938,9 @@ fn untraced_numbers(
     let mut files: BTreeMap<String, Option<Vec<Quoted>>> = BTreeMap::new();
     let mut blocks: Vec<Block> = Vec::new();
     let mut in_heading = false;
+    // A heading's text, and where it starts.
+    let mut heading = String::new();
+    let mut heading_at = 0;
     let mut in_code_block = false;
     for (event, range) in Parser::new_ext(text, options()).into_offset_iter() {
         match event {
@@ -975,8 +998,27 @@ fn untraced_numbers(
                     }
                 }
             }
-            Event::Start(Tag::Heading { .. }) => in_heading = true,
-            Event::End(TagEnd::Heading(_)) => in_heading = false,
+            Event::Start(Tag::Heading { .. }) => {
+                in_heading = true;
+                heading.clear();
+                heading_at = range.start;
+            }
+            Event::End(TagEnd::Heading(_)) => {
+                in_heading = false;
+                let inside = only.as_ref().is_none_or(|only| only.contains(&heading_at));
+                for number in quoted(&heading).into_iter().filter(Quoted::is_checked) {
+                    if inside {
+                        problems.push((
+                            line(heading_at),
+                            format!(
+                                "a heading quotes `{number}`, and can't link where it comes \
+                                 from: move the number to the text below"
+                            ),
+                        ));
+                    }
+                }
+            }
+            Event::Text(words) if in_heading => heading.push_str(&words),
             Event::Start(Tag::CodeBlock(_)) => in_code_block = true,
             Event::End(TagEnd::CodeBlock) => in_code_block = false,
             Event::Start(Tag::Link { dest_url, .. }) => {
@@ -1051,12 +1093,16 @@ impl std::fmt::Display for Quoted {
     }
 }
 
+/// What glued to the end of a whole number makes it part of a word, as in `3D`, `1st` or
+/// `32bit`, rather than a number with its unit.
+const WORD_SUFFIXES: [&str; 7] = ["D", "DOF", "st", "nd", "rd", "th", "bit"];
+
 /// The superscripts that write a power of ten, `10⁻¹²`.
 const SUPERSCRIPTS: &str = "⁰¹²³⁴⁵⁶⁷⁸⁹⁻⁺";
 
 /// Every number in `text`, as [`Quoted`]. Digits glued to a word before them are part of it
-/// (`M1.8`, `C_D0`, `v1.13.0`), and so is a whole number glued to letters after it (`3D`, `1st`);
-/// a decimal or an exponent glued to its unit (`12.5m`) is a number. A `#` makes an issue's
+/// (`M1.8`, `C_D0`, `v1.13.0`), and so is a whole number glued to a [`WORD_SUFFIXES`] after it
+/// (`3D`, `1st`); one glued to its unit (`12.5m`, `3048m`) is a number. A `#` makes an issue's
 /// number (`#39`), which is not quoted.
 fn quoted(text: &str) -> Vec<Quoted> {
     let chars: Vec<char> = normalized(text).chars().collect();
@@ -1105,13 +1151,21 @@ fn quoted(text: &str) -> Vec<Quoted> {
             end += 1;
             scaled = true;
         }
-        if chars.get(end).is_some_and(|c| c.is_alphabetic()) && !scaled {
+        // A whole number glued to a word suffix is part of a word (`3D`, `1st`); glued to a unit
+        // (`3048m`, `20kg`) it is a number.
+        let suffix: String = chars[end..]
+            .iter()
+            .take_while(|c| c.is_alphabetic())
+            .collect();
+        if !scaled && WORD_SUFFIXES.contains(&suffix.as_str()) {
             at = end;
             continue;
         }
+        // A `-` is a sign only where it doesn't join two words, as in `2026-09-17` or `WGS-84`.
+        let joins = at >= 2 && chars[at - 2].is_alphanumeric();
         found.push(Quoted {
             digits: chars[at..end].iter().collect(),
-            sign: before.filter(|c| matches!(c, '+' | '-')),
+            sign: before.filter(|c| matches!(c, '+' | '-') && !joins),
             percent: chars.get(end) == Some(&'%'),
         });
         at = end;
@@ -2048,8 +2102,13 @@ mod tests {
                     &IN_SHORT_OK.replace("printed values.", "values, 0.28% (in short only)."),
                 ),
             ])
-            .len(),
-            2
+            .iter()
+            .map(|problem| problem.split(" is not in").next().unwrap())
+            .collect::<Vec<_>>(),
+            [
+                "docs/physics/gravity.md:7: `0.28%`",
+                "docs/physics/wind.md:7: `0.28%`"
+            ]
         );
     }
 
@@ -2069,17 +2128,19 @@ mod tests {
             ),
             [
                 "3%", "30", "+2.865%", "-10%", "+19%", "1e-6", "2e-16", "1E-9", "1708", "1.13.0",
-                "2026", "-09", "-17"
+                "2026", "09", "17"
             ]
         );
         // A decimal or exponent glued to its unit is a number; powers of ten in superscripts are
         // one number with their base.
         assert_eq!(
-            read("12.5m, 1.2 × 10⁻⁶, 10⁻¹² and 2²⁰ samples"),
-            ["12.5", "1.2×10⁻⁶", "10⁻¹²", "2²⁰"]
+            read("12.5m, 3048m, 20kg, 1.2 × 10⁻⁶, 10⁻¹² and 2²⁰ samples"),
+            ["12.5", "3048", "20", "1.2×10⁻⁶", "10⁻¹²", "2²⁰"]
         );
+        // A hyphen that joins two words is no minus sign.
+        assert_eq!(read("10-20%, WGS-84 and x −5%"), ["10", "20%", "84", "-5%"]);
         assert_eq!(
-            read("6-DOF, Level 2, 3 fins, M1.8, C_D0, v0.5.4, L1150R, 3D, x2.5, #39 and 4."),
+            read("6-DOF, Level 2, 3 fins, M1.8, C_D0, v0.5.4, L1150R, 3D, 21st, x2.5, #39 and 4."),
             Vec::<String>::new()
         );
         // Commas separate thousands only before exactly three digits.
@@ -2150,7 +2211,7 @@ mod tests {
              Nothing glues numbers: 9.780<br>1e-6 and 9[.](physics/gravity.md)780 \
              ([Gravity](physics/gravity.md)).\n\n\
              {RESULTS}\n\
-             ## Details\n\nNo numbers here.\n"
+             ## Details\n\nNo numbers here.\n\n## Within 88.8% everywhere\n"
         );
         let found: Vec<String> = accuracy_problems(&page, &[])
             .iter()
@@ -2167,6 +2228,8 @@ mod tests {
                 "docs/accuracy.md:23: `9.98%`",
                 // `9[.](...)780` is `9` and `780`, not `9.780`.
                 "docs/accuracy.md:25: `780`",
+                "docs/accuracy.md:38: a heading quotes `88.8%`, and can't link where it comes \
+                 from: move the number to the text below",
             ]
         );
     }
@@ -2199,6 +2262,30 @@ mod tests {
             ),
         ] {
             let found = accuracy_problems(&format!("# Accuracy\n\n{GRAVITY}{table}"), &[]);
+            assert!(found.iter().any(|found| found == problem), "{found:#?}");
+        }
+        // A report that gives a result twice, or none at all, can't be checked against.
+        let twice = "# Report\n\n| case | metric | difference |\n|---|---|---|\n\
+                     | alpha | drift_m | +2.865% |\n\n| case | metric | difference |\n|---|---|---|\n\
+                     | alpha | drift_m | +9.999% |\n";
+        let none =
+            "# Report\n\n| Case | Metric | Diff |\n|---|---|---|\n| alpha | drift_m | +2.865% |\n";
+        for (report, problem) in [
+            (
+                twice,
+                "docs/accuracy.md:1: validation/reports/latest.md gives `drift_m` of `alpha` twice, \
+                 so the page can't give it once",
+            ),
+            (
+                none,
+                "docs/accuracy.md:1: validation/reports/latest.md has no table of results, with \
+                 `case`, `metric` and `difference` columns",
+            ),
+        ] {
+            let found = accuracy_problems(
+                &format!("# Accuracy\n\n{GRAVITY}"),
+                &[("validation/reports/latest.md", report)],
+            );
             assert!(found.iter().any(|found| found == problem), "{found:#?}");
         }
     }

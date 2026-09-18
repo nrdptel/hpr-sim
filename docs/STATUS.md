@@ -25,6 +25,9 @@ M0.4b gave every model page an *In short* and wrote *Accuracy*, *Glossary*, *Che
   diagram must render on both: an SVG under `docs/` or a ```` ```text ```` sketch, not mermaid.
 - **Page rules** (ADR-016, ADR-017): relative links between pages, GitHub URLs for the rest,
   labels as links, none in headings, Unicode equations, "Level 2"; new pages go in `SUMMARY.md`.
+- **For M0.4e, from M0.4b's docs review:** model pages rarely link the Glossary; recovery's
+  "Against RocketPy" is a wall of text; QUADPACK, CIPM, octave band and stiffness-style terms have
+  no entry.
 - **For M0.4d:** GitHub Pages serves under `/hpr-sim/`, so set `site-url` in `book.toml`, and teach
   `check_html` to resolve root-absolute hrefs (`404.html` has `<base href="/">`) against it.
 
