@@ -1,0 +1,75 @@
+# Bella Lui: RocketPy's example flown from the pad to the ground, each code with its own drag
+# (`validation/oracles/rocketpy/flight.py --own-drag`, M2.1c2).
+#
+# Predicted mode (ADR-023): hpr flies its own aerodynamics, drag and normal force alike, from the
+# design's geometry; the reference is RocketPy flying the example's own drag as RocketPy 1.13.0
+# flies the example (a constant C_D 0.43, power-on and power-off, since the notebook's later
+# replacement curve never reaches the flight), with RocketPy's own normal force. Everything else is
+# the same-drag case's (`flight-bella-lui.toml`): the site, the declared wind, the rail, the
+# parachutes, the motor, RocketPy's gravity and atmosphere, and the same checks that hpr's design is
+# the rocket the reference flew. So a difference here is the same-drag difference plus the two
+# codes' aerodynamics, mostly their drag, and neither drag is the truth.
+#
+# Every metric carries M2.1's 3% as a target: reported as within or outside it, never gated, so a
+# miss does not fail the run and a number that moves still shows in the committed report. The
+# misses, and why:
+#
+# - apogee_drift_m (-14.80%) and landing_drift_m (-30.34%): the path in wind (issue #50); the
+#   same-drag case misses them by -15.59% and -31.32% and does not score them. Nothing else misses:
+#   hpr's coasting C_D0 at Mach 0.3 is 0.423 against the example's 0.43 (computed as `cargo xtask
+#   aero` computes it; not committed), and the apogee is +1.12%, against +0.48% flown on the same
+#   drag.
+id = "predicted-bella-lui"
+title = "Bella Lui from the pad to the ground, predicted: hpr's own aerodynamics"
+reference = "validation/fixtures/flight/rocketpy-whole-flight-own-drag.json"
+reference_case = "bella-lui"
+
+[flight.whole_flight]
+design = "rocketpy-bella-lui"
+configuration = "example"
+mode = "predicted"
+
+[metrics.apogee_agl_m]
+relative = 0.03
+
+[metrics.apogee_time_s]
+relative = 0.03
+
+[metrics.max_speed_m_s]
+relative = 0.03
+
+[metrics.max_mach]
+relative = 0.03
+
+[metrics.max_acceleration_m_s2]
+relative = 0.03
+
+[metrics.max_acceleration_time_s]
+relative = 0.03
+
+[metrics.max_acceleration_power_on_m_s2]
+relative = 0.03
+
+[metrics.rail_exit_speed_m_s]
+relative = 0.03
+
+[metrics.rail_exit_time_s]
+relative = 0.03
+
+[metrics.burnout_altitude_agl_m]
+relative = 0.03
+
+[metrics.burnout_speed_m_s]
+relative = 0.03
+
+[metrics.flight_time_s]
+relative = 0.03
+
+[metrics.apogee_drift_m]
+relative = 0.03
+
+[metrics.landing_drift_m]
+relative = 0.03
+
+[metrics.impact_speed_m_s]
+relative = 0.03

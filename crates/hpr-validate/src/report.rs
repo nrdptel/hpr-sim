@@ -160,10 +160,7 @@ impl Comparison {
     /// Whether this is a predicted-mode row, held to a target rather than a gate.
     #[must_use]
     pub fn targeted_row(&self) -> bool {
-        matches!(
-            self.verdict,
-            Verdict::WithinTarget | Verdict::OutsideTarget
-        )
+        matches!(self.verdict, Verdict::WithinTarget | Verdict::OutsideTarget)
     }
 }
 

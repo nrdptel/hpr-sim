@@ -18,7 +18,7 @@ use hpr_sim::{
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 
-use crate::case::{Case, CaseLock, Flight, cases_dir, committed_cases};
+use crate::case::{Case, CaseLock, DragMode, Flight, cases_dir, committed_cases};
 use crate::metrics::{Measured, Reference};
 use crate::report::{Comparison, Gap, Report, Source};
 
@@ -310,6 +310,13 @@ pub fn run_case(root: &Path, case: &Case) -> Result<CaseRun, ValidateError> {
             });
         }
     };
+    let predicted = matches!(
+        case.flight,
+        Flight::WholeFlight {
+            mode: DragMode::Predicted,
+            ..
+        }
+    );
     let mut comparisons = Vec::new();
     for (name, metric) in &case.metrics {
         let value = reference.values.get(name).ok_or_else(|| {
@@ -326,11 +333,20 @@ pub fn run_case(root: &Path, case: &Case) -> Result<CaseRun, ValidateError> {
                 measured.values.keys().collect::<Vec<_>>()
             ))
         })?;
-        comparisons.push(match metric.reason() {
-            Some(reason) => {
+        comparisons.push(match (metric.reason(), predicted) {
+            (Some(reason), _) => {
                 Comparison::not_scored(&case.id, name, *got, value.value, &value.source, reason)
             }
-            None => Comparison::new(
+            (None, false) => Comparison::new(
+                &case.id,
+                name,
+                *got,
+                value.value,
+                &value.source,
+                metric.tolerance(),
+            ),
+            // Predicted mode: the tolerance is a target, reported and never gated (ADR-023).
+            (None, true) => Comparison::targeted(
                 &case.id,
                 name,
                 *got,
@@ -430,9 +446,10 @@ fn measure(root: &Path, case: &Case, setup: &Setup) -> Result<Flown, ValidateErr
             Flight::WholeFlight {
                 design,
                 configuration,
+                mode,
             },
             Setup::WholeFlight(setup),
-        ) => fly_whole_flight(root, case, setup, design, configuration),
+        ) => fly_whole_flight(root, case, setup, design, configuration, *mode),
         _ => Err(ValidateError::Case(format!(
             "case {}: its reference was read for another kind of flight",
             case.id
@@ -665,6 +682,7 @@ fn fly_whole_flight(
     setup: &WholeFlightSetup,
     design: &str,
     configuration: &str,
+    mode: DragMode,
 ) -> Result<Flown, ValidateError> {
     let refuse = |what: String| ValidateError::Flight {
         case: case.id.clone(),
@@ -679,12 +697,40 @@ fn fly_whole_flight(
             setup.design
         )));
     }
-    if setup.cd0_vs_mach != setup.declared_cd0_vs_mach {
-        return Err(refuse(format!(
-            "the reference's case flew C_D0(M) = {:?}, not the {:?} its generator declares",
-            setup.cd0_vs_mach, setup.declared_cd0_vs_mach
-        )));
-    }
+    // Each mode needs the reference that means something against it: same-drag the declared
+    // table, flown by both codes; predicted RocketPy flying the example's own drag, since hpr's
+    // own drag scored against the declared constant would measure it against an arbitrary number.
+    let declared = match (
+        mode,
+        &setup.cd0_vs_mach,
+        &setup.declared_cd0_vs_mach,
+        &setup.own_drag_source,
+    ) {
+        (DragMode::SameDrag, Some(flown), Some(declared), None) => {
+            if flown != declared {
+                return Err(refuse(format!(
+                    "the reference's case flew C_D0(M) = {flown:?}, not the {declared:?} its \
+                     generator declares"
+                )));
+            }
+            Some(flown.clone())
+        }
+        (DragMode::Predicted, None, None, Some(_)) => None,
+        (DragMode::SameDrag, ..) => {
+            return Err(refuse(
+                "a same-drag case needs a reference that flew its generator's declared C_D0(M), \
+                 and this one did not"
+                    .to_owned(),
+            ));
+        }
+        (DragMode::Predicted, ..) => {
+            return Err(refuse(
+                "a predicted case needs a reference that flew the example's own drag; against a \
+                 declared table it would score hpr's drag against an arbitrary constant"
+                    .to_owned(),
+            ));
+        }
+    };
     if let Some((first, rest)) = setup.devices.split_first() {
         if first.height_above_ground_m.is_some() {
             return Err(refuse(format!(
@@ -727,16 +773,6 @@ fn fly_whole_flight(
             // RocketPy's rail has no friction (ADR-011).
             friction_coefficient: 0.0,
         };
-        let (machs, coefficients): (Vec<f64>, Vec<f64>) = setup.cd0_vs_mach.iter().copied().unzip();
-        let table = Table1D::new(
-            machs,
-            coefficients,
-            Interpolation::Linear,
-            // Outside the declared Mach range there is no declared drag, so none is invented.
-            Extrapolation::Error,
-        )?;
-        let drag = DragTable::new(table.clone(), Some(table))
-            .with_reference_diameter_m(2.0 * setup.reference_radius_m);
         let simulation = Simulation::new(
             &rocket,
             configuration,
@@ -746,8 +782,26 @@ fn fly_whole_flight(
                 max_time_s: 6000.0,
                 ..FlightSettings::default()
             },
-        )?
-        .with_drag_table(drag);
+        )?;
+        // Predicted mode flies the design's own aerodynamics: no table.
+        let simulation = match &declared {
+            Some(rows) => {
+                let (machs, coefficients): (Vec<f64>, Vec<f64>) = rows.iter().copied().unzip();
+                let table = Table1D::new(
+                    machs,
+                    coefficients,
+                    Interpolation::Linear,
+                    // Outside the declared Mach range there is no declared drag, so none is
+                    // invented.
+                    Extrapolation::Error,
+                )?;
+                simulation.with_drag_table(
+                    DragTable::new(table.clone(), Some(table))
+                        .with_reference_diameter_m(2.0 * setup.reference_radius_m),
+                )
+            }
+            None => simulation,
+        };
 
         // L75: the same rocket has to weigh the same, fly its drag on the same area and burn the
         // same motor in both codes before any difference in how it flies can be read as physics.
@@ -1151,10 +1205,15 @@ pub struct WholeFlightSetup {
     pub effective_1rl_m: f64,
     /// The motor as RocketPy flew it, which hpr's must match.
     pub motor: FlightMotor,
-    /// The `(Mach, C_D0)` rows the case flew, power on and off alike.
-    pub cd0_vs_mach: Vec<(f64, f64)>,
-    /// The rows the generator declares for every case, which the case's must equal.
-    pub declared_cd0_vs_mach: Vec<(f64, f64)>,
+    /// The `(Mach, C_D0)` rows the case flew, power on and off alike, in a same-drag reference;
+    /// `None` in a reference that flew the example's own drag.
+    pub cd0_vs_mach: Option<Vec<(f64, f64)>>,
+    /// The rows the generator declares for every case, which the case's must equal; `None` in a
+    /// reference that flew the example's own drag.
+    pub declared_cd0_vs_mach: Option<Vec<(f64, f64)>>,
+    /// Where the example's own drag came from, in a reference that flew it: recorded by its
+    /// source and hash, never its values, which carry their own terms (ADR-009).
+    pub own_drag_source: Option<String>,
     /// The radius the drag coefficients are on, m (RocketPy's `Rocket(radius)`).
     pub reference_radius_m: f64,
     /// The area they are on, m².

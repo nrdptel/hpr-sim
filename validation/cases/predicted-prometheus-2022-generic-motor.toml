@@ -1,0 +1,76 @@
+# Prometheus 2022: RocketPy's example flown from the pad to the ground, each code with its own drag
+# (`validation/oracles/rocketpy/flight.py --own-drag`, M2.1c2).
+#
+# Predicted mode (ADR-023): hpr flies its own aerodynamics, drag and normal force alike, from the
+# design's geometry; the reference is RocketPy flying the example's own drag as RocketPy 1.13.0
+# flies the example (`prometheus_cd_at_ma` from RocketPy's tests, and 1.02 times it power-on), with
+# RocketPy's own normal force. Everything else is the same-drag case's
+# (`flight-prometheus-2022-generic-motor.toml`): the site, the declared wind, the rail, the
+# parachutes, the motor, RocketPy's gravity and atmosphere, and the same checks that hpr's design is
+# the rocket the reference flew. So a difference here is the same-drag difference plus the two
+# codes' aerodynamics, mostly their drag, and neither drag is the truth.
+#
+# Every metric carries M2.1's 3% as a target: reported as within or outside it, never gated, so a
+# miss does not fail the run and a number that moves still shows in the committed report. The
+# misses, and why:
+#
+# - Every metric: a known gap. RocketPy flying the example's own drag peaks at Mach 1.049 near
+#   burnout, and hpr's aerodynamics refuse M >= 1 until M1.8 (ADR-008, ADR-011), so hpr's flight
+#   stops at Mach 1 and nothing can be compared. The harness checks this rather than trusting it:
+#   the reference must reach Mach 1, hpr must refuse with that error, and the run fails once hpr
+#   flies it (L85). The same-drag case is the same gap, at Mach 1.014.
+id = "predicted-prometheus-2022-generic-motor"
+title = "Prometheus 2022 from the pad to the ground, predicted: hpr's own aerodynamics"
+reference = "validation/fixtures/flight/rocketpy-whole-flight-own-drag.json"
+reference_case = "prometheus-2022-generic-motor"
+known_gap = "RocketPy flying the example's own drag peaks at Mach 1.049 near burnout, and hpr's aerodynamics refuse M >= 1 until M1.8 (ADR-008, ADR-011), so the flight stops at Mach 1 and no metric can be compared."
+
+[flight.whole_flight]
+design = "rocketpy-prometheus-2022-generic-motor"
+configuration = "example"
+mode = "predicted"
+
+[metrics.apogee_agl_m]
+relative = 0.03
+
+[metrics.apogee_time_s]
+relative = 0.03
+
+[metrics.max_speed_m_s]
+relative = 0.03
+
+[metrics.max_mach]
+relative = 0.03
+
+[metrics.max_acceleration_m_s2]
+relative = 0.03
+
+[metrics.max_acceleration_time_s]
+relative = 0.03
+
+[metrics.max_acceleration_power_on_m_s2]
+relative = 0.03
+
+[metrics.rail_exit_speed_m_s]
+relative = 0.03
+
+[metrics.rail_exit_time_s]
+relative = 0.03
+
+[metrics.burnout_altitude_agl_m]
+relative = 0.03
+
+[metrics.burnout_speed_m_s]
+relative = 0.03
+
+[metrics.flight_time_s]
+relative = 0.03
+
+[metrics.apogee_drift_m]
+relative = 0.03
+
+[metrics.landing_drift_m]
+relative = 0.03
+
+[metrics.impact_speed_m_s]
+relative = 0.03

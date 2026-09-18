@@ -133,6 +133,27 @@ fn print_summary(report: &Report) {
             .iter()
             .filter(|comparison| comparison.case == *case)
             .collect();
+        if metrics.iter().any(|comparison| comparison.targeted_row()) {
+            // Predicted mode reports against a target and never gates, so it has no "worst
+            // scored"; its largest difference is the headline.
+            let within = metrics
+                .iter()
+                .filter(|comparison| comparison.verdict == hpr_validate::Verdict::WithinTarget)
+                .count();
+            let largest = metrics
+                .iter()
+                .filter_map(|comparison| comparison.relative.map(|r| (r, &comparison.metric)))
+                .max_by(|(a, _), (b, _)| a.abs().total_cmp(&b.abs()));
+            println!(
+                "{case}: predicted, {} metric(s) reported, {within} within target{}",
+                metrics.len(),
+                largest.map_or_else(String::new, |(relative, metric)| format!(
+                    ", largest {metric} {:+.2}%",
+                    100.0 * relative
+                ))
+            );
+            continue;
+        }
         let worst = metrics
             .iter()
             .filter(|comparison| comparison.scored())

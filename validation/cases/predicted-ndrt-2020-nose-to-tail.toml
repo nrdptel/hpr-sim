@@ -1,0 +1,80 @@
+# NDRT 2020: RocketPy's example flown from the pad to the ground, each code with its own drag
+# (`validation/oracles/rocketpy/flight.py --own-drag`, M2.1c2).
+#
+# Predicted mode (ADR-023): hpr flies its own aerodynamics, drag and normal force alike, from the
+# design's geometry; the reference is RocketPy flying the example's own drag as RocketPy 1.13.0
+# flies the example (a constant C_D 0.44, power-on and power-off), with RocketPy's own normal force.
+# Everything else is the same-drag case's (`flight-ndrt-2020-nose-to-tail.toml`): the site, the
+# declared wind, the rail, the parachutes, the motor, RocketPy's gravity and atmosphere, and the
+# same checks that hpr's design is the rocket the reference flew. So a difference here is the
+# same-drag difference plus the two codes' aerodynamics, mostly their drag, and neither drag is the
+# truth.
+#
+# Every metric carries M2.1's 3% as a target: reported as within or outside it, never gated, so a
+# miss does not fail the run and a number that moves still shows in the committed report. The
+# misses, and why:
+#
+# - apogee_agl_m (+10.23%), apogee_time_s (+6.53%), flight_time_s (+6.83%) and landing_drift_m
+#   (+14.98%): the drag. hpr's coasting C_D0 is 0.318 at Mach 0.3 and 0.333 at Mach 0.5 (sea level,
+#   computed as `cargo xtask aero` computes it; not committed), 24 to 28% below the example's 0.44.
+#   Flown on the same drag the apogees agree to -0.010% (`flight-ndrt-2020-nose-to-tail.toml`). So
+#   it flies 10% higher and comes down later and further.
+# - apogee_drift_m (-4.44%): the path in wind (issue #50); -18.65% in the same-drag case.
+# - max_acceleration_m_s2 (+83.06%) and max_acceleration_time_s (+9.61%): the whole flight's peak is
+#   the main parachute opening, where RocketPy counts the canopy's added mass and hpr does not
+#   (ADR-012; +83.06% and not scored in the same-drag case). Its time is later because the apogee
+#   is. The power-on peak, the flight load, is within target at +0.67%.
+id = "predicted-ndrt-2020-nose-to-tail"
+title = "NDRT 2020 from the pad to the ground, predicted: hpr's own aerodynamics"
+reference = "validation/fixtures/flight/rocketpy-whole-flight-own-drag.json"
+reference_case = "ndrt-2020-nose-to-tail"
+
+[flight.whole_flight]
+design = "rocketpy-ndrt-2020-nose-to-tail"
+configuration = "example"
+mode = "predicted"
+
+[metrics.apogee_agl_m]
+relative = 0.03
+
+[metrics.apogee_time_s]
+relative = 0.03
+
+[metrics.max_speed_m_s]
+relative = 0.03
+
+[metrics.max_mach]
+relative = 0.03
+
+[metrics.max_acceleration_m_s2]
+relative = 0.03
+
+[metrics.max_acceleration_time_s]
+relative = 0.03
+
+[metrics.max_acceleration_power_on_m_s2]
+relative = 0.03
+
+[metrics.rail_exit_speed_m_s]
+relative = 0.03
+
+[metrics.rail_exit_time_s]
+relative = 0.03
+
+[metrics.burnout_altitude_agl_m]
+relative = 0.03
+
+[metrics.burnout_speed_m_s]
+relative = 0.03
+
+[metrics.flight_time_s]
+relative = 0.03
+
+[metrics.apogee_drift_m]
+relative = 0.03
+
+[metrics.landing_drift_m]
+relative = 0.03
+
+[metrics.impact_speed_m_s]
+relative = 0.03

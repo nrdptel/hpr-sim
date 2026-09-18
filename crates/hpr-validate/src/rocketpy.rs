@@ -142,8 +142,20 @@ pub fn whole_flight_case(
                 value => Some(number(Some(value))?),
             },
         },
-        cd0_vs_mach: pairs(drag.get("cd0_vs_mach"))?,
-        declared_cd0_vs_mach: pairs(document.get("declared_drag")?.get("cd0_vs_mach"))?,
+        // A same-drag reference records the table its case flew and the one its generator
+        // declares; an own-drag reference records where each example's drag came from instead.
+        cd0_vs_mach: match drag.get("own") {
+            Some(_) => None,
+            None => Some(pairs(drag.get("cd0_vs_mach"))?),
+        },
+        declared_cd0_vs_mach: match drag.get("own") {
+            Some(_) => None,
+            None => Some(pairs(document.get("declared_drag")?.get("cd0_vs_mach"))?),
+        },
+        own_drag_source: match drag.get("own") {
+            Some(_) => Some(text(drag.get("source"))?),
+            None => None,
+        },
         reference_radius_m: positive(number(drag.get("reference_radius_m"))?)?,
         reference_area_m2: positive(number(drag.get("reference_area_m2"))?)?,
         devices,
