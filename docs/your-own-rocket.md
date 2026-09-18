@@ -85,7 +85,7 @@ The fin set, as the design file stores it:
 }
 ```
 
-Like the first flight's, this output is committed in
+Like the first flight's in [Getting started](getting-started.md), this output is committed in
 [`own_rocket.output.txt`](https://github.com/nrdptel/hpr-sim/blob/main/crates/hpr-sim/examples/own_rocket.output.txt),
 and CI (the project's automated checks) runs the program on macOS, Windows and Linux and fails if
 it prints anything else.
@@ -97,15 +97,15 @@ file in the same folder, say `my_rocket.rs`, and run that with
 ## The rocket
 
 The rocket has a 54 mm airframe (the tube's inside diameter) and flies on a Cesaroni H54, a 29 mm
-reloadable motor. These are the program's inputs:
+reloadable motor (a propellant load for a reusable case). These are the program's inputs:
 
 | part | Rust type | in the program |
 |---|---|---|
-| nose cone | [`NoseCone`](api/hpr_design/parts/struct.NoseCone.html) | a tangent ogive ([Shapes](physics/shapes.md)) 0.22 m long, of ABS with a 1.5 mm wall, and a 6 cm shoulder that slides into the tube |
+| nose cone | [`NoseCone`](api/hpr_design/parts/struct.NoseCone.html) | a [tangent ogive](glossary.md#tangent-ogive) ([Shapes](physics/shapes.md)) 0.22 m long, of ABS with a 1.5 mm wall, and a 6 cm shoulder that slides into the tube |
 | airframe | [`BodyTube`](api/hpr_design/parts/struct.BodyTube.html) | 0.9 m of kraft phenolic tube, outer radius 0.02815 m (56.3 mm across), 1.15 mm wall |
 | motor mount | [`InnerTube`](api/hpr_design/parts/struct.InnerTube.html) | 0.2 m long, outer radius 0.0155 m, 1 mm wall, so a 29 mm bore; flush with the airframe's aft end, with the nozzle 5 mm past it |
 | fins | [`FinSet`](api/hpr_design/fins/struct.FinSet.html) | three trapezoidal fins of 1/8 in (3.175 mm) birch plywood with rounded edges: root chord 0.1 m, tip chord 0.04 m, span 0.045 m, and the tip's leading edge 0.05 m aft of the root's |
-| recovery bay | [`MassComponent`](api/hpr_design/parts/struct.MassComponent.html) | 200 g standing in for the parachute, shock cord and altimeter, 0.15 m long, 7 cm below the airframe's top |
+| recovery bay | [`MassComponent`](api/hpr_design/parts/struct.MassComponent.html) | 200 g standing in for the parachute, shock cord and altimeter, packed as a cylinder 0.15 m long and 50 mm across ([packing](#packing)), 7 cm below the airframe's top |
 | motor | [`MountedMotor`](api/hpr_design/config/struct.MountedMotor.html) | the Cesaroni 168H54-10A from the bundled catalog, with a 10 s [ejection delay](glossary.md#ejection-delay) |
 
 Every size is in metres, and every round part takes a **radius**, not a diameter: halve the
@@ -126,22 +126,27 @@ propellant is gone.
   burns away.
 - **Centre of pressure:** where the air's sideways push acts, 0.779 m aft of the tip. It depends on
   the rocket's shape and speed, not its mass, so it is the same in both columns. Both use
-  [Mach](glossary.md#mach-number) 0.3.
+  [Mach](glossary.md#mach-number) 0.3, with the air straight along the rocket's axis.
 - **Stability margin:** how far the CP lies behind the CG, in
   [calibres](glossary.md#calibre-caliber), that is, in body diameters. At liftoff it is
   (0.779 − 0.671) m ÷ 0.0563 m ≈ 1.9; the program works from the unrounded values and prints 1.92.
   At burnout the CG has moved forward, so the margin has grown to 2.99.
 
-A positive margin means that when something tips the rocket, the air turns it back toward its
-flight path. hpr doesn't judge whether a margin is enough; your club's or range's rules do.
+A positive margin means that when something tips the rocket, the air turns its nose back into the
+oncoming air. That oncoming air is the *relative wind*: the airflow the rocket feels from its own
+motion through the air plus any wind. In a crosswind, the same turn swings the rocket upwind
+([weathercocking](glossary.md#weathercocking)).
+
+hpr doesn't judge whether a margin is enough; your club's or range's rules do.
 
 ### Where the centre of pressure comes from
 
 Barrowman's method works out each nose cone, transition and fin set on its own. Each gets a CP and
 a normal-force slope: how fast its sideways push grows with the
-[angle of attack](glossary.md#angle-of-attack), per radian. A plain body tube adds no sideways
-push at small angles, so it has no line of its own. The rocket's CP is the average of the parts'
-CPs, each weighted by its slope:
+[angle of attack](glossary.md#angle-of-attack), per radian. A plain body tube's slope is zero, so
+it has no line of its own. (At larger angles the air crossing a tube does push it sideways, but
+that push grows with `sin² α`, so it is zero straight into the wind and adds nothing to the slope.)
+The rocket's CP is the average of the parts' CPs, each weighted by its slope:
 
 | part | slope (per radian) | CP (m from the nose tip) | slope × CP |
 |---|---|---|---|
@@ -153,10 +158,25 @@ So the CP is 5.313 ÷ 6.82 ≈ 0.779 m. The fins sit far aft and have more than 
 slope, so they pull the CP toward the tail. Moving the CP aft (bigger fins, or fins farther aft)
 or the CG forward (a heavier nose) raises the margin; run the program to see by how much.
 
-The fins' slope, and only theirs, grows with the Mach number, so the CP moves aft as the rocket
-speeds up. `Flow::axial(0.0)` in place of `Flow::axial(0.3)` gives the low-speed value
-that Barrowman's method gives by hand
+**How speed moves the CP.** In hpr, only a fin set's slope changes with the Mach number: it grows
+as the rocket speeds up toward Mach 1. Every part's own CP stays where it is, and so do the slopes
+of nose cones, transitions and body tubes
 ([Aerodynamics](physics/aero.md#your-rockets-centre-of-pressure)).
+
+- With the fins at the tail, as here, the growing fin slope pulls the rocket's CP aft as it speeds
+  up.
+- A rocket with canards (a second fin set near the nose) is different. The canards' slope grows
+  too and pulls the CP forward, so which way the CP moves depends on both fin sets.
+- hpr keeps each fin set's CP a quarter of the way back along its
+  [mean aerodynamic chord](glossary.md#mean-aerodynamic-chord-mac), a kind of average chord, at
+  every speed below Mach 1. Niskanen's 2009 thesis, which hpr's aerodynamics also draw on, has a
+  correction that moves it aft above Mach 0.5. hpr leaves that correction out until
+  [M1.8](decisions-and-roadmap.md#m1-8) (transonic and supersonic aerodynamics), so above
+  Mach 0.5 hpr's CP sits forward of where the correction would put it
+  ([Aerodynamics](physics/aero.md#fins)). This rocket's top speed, Mach 0.56, is just past 0.5.
+
+`Flow::axial(0.0)` in place of `Flow::axial(0.3)` gives the low-speed value that Barrowman's method
+gives by hand.
 
 ### The flight
 
@@ -172,9 +192,21 @@ motor's ejection charge fires.
   airspeed is also the speed over the ground. Mach 0.56 is just under about Mach 0.6, where hpr's
   nose drag starts to read low ([Aerodynamics](physics/aero.md#drag-limits)).
 - **Ejection:** at 13.50 s, at 5.5 m/s. The charge fires the 10 s delay after
-  [burnout](glossary.md#burnout), which in hpr is the thrust curve's last point, 3.50 s for this
-  motor. That is 0.42 s before apogee, while the rocket is still climbing slowly. (The catalog's
-  [burn time](glossary.md#burn-time) for this motor, 3.12 s, is measured another way.)
+  [burnout](glossary.md#burnout), which in hpr is the time of the thrust curve's last point, 3.50 s
+  for this motor. That is 0.42 s before apogee, while the rocket is still climbing slowly.
+
+This motor has three times near the end of its burn, and they measure different things:
+
+| time | what it is | where it comes from |
+|---|---|---|
+| 3.12 s | the [burn time](glossary.md#burn-time) [ThrustCurve.org](glossary.md#thrustcurveorg) publishes for the motor | the bundled catalog, which copies ThrustCurve.org's values |
+| 3.13 s | the burn time hpr works out from this motor's thrust curve, by the same [NFPA 1125](glossary.md#nfpa-1125) rule: from when the thrust first reaches 5% of its peak to when it last falls to 5% | [Solid motors](physics/motor.md#the-bundled-motors) lists it |
+| 3.50 s | [burnout](glossary.md#burnout): the curve's last point, where the thrust reaches zero | the thrust curve; the ejection delay counts from here |
+
+- The first two differ by 0.01 s. hpr bundles a motor only if its computed burn time is within 1%
+  of ThrustCurve.org's ([Solid motors](physics/motor.md#the-bundled-motors)).
+- From 3.13 s to 3.50 s the motor still pushes, with under 5% of its peak thrust (the curve's peak
+  is 103 N, so under about 5 N). The burn time leaves that tail out; the flight doesn't.
 
 ### The fin set as a design file
 
@@ -295,7 +327,7 @@ fn main() -> Result<(), Box<dyn Error>> {
     );
 
     // The parachute, shock cord and altimeter, as one 200 g mass 7 cm below the tube's top, clear
-    // of the nose's shoulder.
+    // of the nose's shoulder. Its packing is the cylinder the mass fills: 15 cm long, 5 cm across.
     let packing = Packing {
         length_m: 0.15,
         radius_m: 0.025,
@@ -352,7 +384,8 @@ fn main() -> Result<(), Box<dyn Error>> {
     let spent = assembly.dry_mass_properties();
     let (cg_liftoff_m, cg_burnout_m) = (-full.cg_m.z, -spent.cg_m.z);
 
-    // The centre of pressure by Barrowman's method, at Mach 0.3 and a small angle of attack.
+    // The centre of pressure by Barrowman's method, at Mach 0.3 with the air straight along the
+    // axis. Barrowman's slopes are the small-angle limit, so this is the CP at small angles.
     let flow = Flow::axial(0.3);
     let aero = AeroModel::new(&assembly.layout)?;
     let total = aero.normal_force(&flow)?;
@@ -465,10 +498,11 @@ fn component(id: &str, part: Part, position: Option<Position>) -> Component {
 
 It has eight steps.
 
-1. **The parts.** Each part is a Rust value from the `hpr_design` crate, wrapped in a
-   [`Component`](api/hpr_design/tree/struct.Component.html): a node of the design tree with an id,
-   the part, and where it sits. The `component` helper at the bottom of the program fills in the
-   fields a part seldom needs: a display name, a surface finish, mass overrides and children.
+1. **The parts.** Each part is a Rust value from the `hpr_design` [crate](glossary.md#crate),
+   wrapped in a [`Component`](api/hpr_design/tree/struct.Component.html): a node of the design
+   tree with an id, the part, and where it sits. The `component` helper at the bottom of the
+   program fills in the fields a part seldom needs: a display name, a surface finish, mass
+   overrides and children.
    [`Part`](api/hpr_design/tree/enum.Part.html) lists every kind of part.
 2. **Where each part sits.** Nose cones, body tubes and transitions are *body components*: they
    go in a stage's list, nose first, and stack from the nose tip aft, so they have no position.
@@ -482,6 +516,19 @@ It has eight steps.
      ([Automatic dimensions](physics/design.md#automatic-dimensions)).
    - **Motor mount.** Setting `motor_mount` makes a body tube or inner tube a mount, and its
      `overhang_m` is how far the nozzle sits aft of the mount's end.
+   - <a id="packing"></a>**Packing.** A
+     [`MassComponent`](api/hpr_design/parts/struct.MassComponent.html) is a mass and its
+     [`Packing`](api/hpr_design/parts/struct.Packing.html): the size of the solid cylinder hpr
+     spreads the mass through. Here it is 0.15 m long with `radius_m` 0.025, so 50 mm across,
+     inside the airframe's 54 mm bore.
+     - The length places the mass. Its CG is the cylinder's middle, 0.145 m below the airframe's
+       top, since the cylinder starts 7 cm down.
+     - Of the mass properties, the radius changes only the moments of inertia: how hard the mass
+       is to turn.
+     - A cylinder wider than the tube's bore is an error. `AutoDimension::PackedRadius` in the
+       component's `auto` list fits it to the bore instead.
+     - `radial_offset_m` and `angle_rad` move it off the rocket's axis. Parachutes, streamers and
+       shock cords have a packing too.
 3. **Materials.** `material("abs")` looks up one of hpr's 49 built-in materials by its id, each
    with the source of its density ([Mass properties](physics/mass.md#materials)). The
    [`materials`](api/hpr_design/materials/index.html) page of the API reference lists them. For a
@@ -492,8 +539,11 @@ It has eight steps.
    [designation](glossary.md#motor-designation) or common name, ignoring case, spaces and hyphens,
    so `"h54"` finds this one too. `bundled_motor()` builds the motor from its thrust curve and the
    catalog's size and masses. The [`MountedMotor`](api/hpr_design/config/struct.MountedMotor.html)
-   names the mount by its id, and carries the delay and the case's size, which the design checks
-   use, and so does the base drag while the motor burns. [Solid motors](physics/motor.md#using-a-motor)
+   names the mount by its id, and carries the ejection delay and the case's diameter and length.
+   The design checks compare the case with its mount: a case wider than the mount's bore is an
+   error. While the motor burns, hpr also uses the case's diameter for the
+   [base drag](glossary.md#base-drag), the drag on the rocket's flat aft end: the part of that end
+   the burning case covers gets none. [Solid motors](physics/motor.md#using-a-motor)
    lists [the bundled motors](physics/motor.md#the-bundled-motors), and shows how to use
    [a motor file of your own](physics/motor.md#a-motor-from-a-file), such as one from
    ThrustCurve.org, instead.
@@ -510,7 +560,8 @@ It has eight steps.
      [`Assembly`](api/hpr_design/config/struct.Assembly.html).
    - Its `mass_properties(t)` is the whole rocket `t` seconds after ignition, and
      `dry_mass_properties()` is the rocket with every motor spent.
-   - Each gives a mass, a CG and an inertia. The CG, `cg_m`, is in the
+   - Each gives a mass, a CG and the moments of inertia (how hard the rocket is to turn), which
+     the flight needs. The CG, `cg_m`, is in the
      [body frame](glossary.md#body-frame), whose origin is the nose tip and whose `z` axis points
      forward, out through the nose. So a point `s` metres aft of the tip has `z = −s`, and the CG's
      station is `−cg_m.z`.
@@ -518,14 +569,16 @@ It has eight steps.
      aerodynamic model from the placed parts. Its
      [`normal_force`](api/hpr_aero/model/struct.AeroModel.html#method.normal_force), at
      `Flow::axial(0.3)` (Mach 0.3, with the air straight along the axis), returns the rocket's
-     slope and its CP, `cp_station_m`, and
-     [`components`](api/hpr_aero/model/struct.AeroModel.html#method.components) returns each
-     part's share.
+     slope and its CP, `cp_station_m`. Barrowman's slopes are the small-angle limit, so this is the
+     CP at small angles of attack.
+     [`components`](api/hpr_aero/model/struct.AeroModel.html#method.components), at the same flow,
+     returns each part's share.
    - The margin is the CP's station less the CG's, divided by the reference diameter,
      `assembly.layout.reference_diameter_m`.
 7. **The flight.** This is as in [Getting started](getting-started.md#the-program-step-by-step),
    with three differences.
-   - `Simulation::new` names the configuration to fly, `"h54"`, and runs the design's checks first.
+   - `Simulation::new` names the configuration to fly, `"h54"`, and runs the design's checks first
+     ([Checks](physics/design.md#checks)).
    - The parachute's trigger is `Trigger::MotorDelay { motor: 0 }`: the ejection charge of the
      configuration's first motor ([Recovery](physics/recovery.md#triggers-lag-and-release)).
    - A [`Recorder`](api/hpr_sim/recorder/struct.Recorder.html) keeps the airspeed and the Mach
@@ -596,7 +649,7 @@ The example leaves out several kinds of part and setting that a design can have:
   milestone, and so does an optimum ejection delay.
 - **Only in Rust, or in JSON.** A simpler builder ([M4.1](decisions-and-roadmap.md#m4-1), the simpler library interface),
   a command-line tool ([M4.2](decisions-and-roadmap.md#m4-2)) and Python ([M4.3](decisions-and-roadmap.md#m4-3)) are planned.
-- **No import from other programs.** OpenRocket `.ork` files ([M3.1](decisions-and-roadmap.md#m3-1), OpenRocket import)
+- **No import from other programs.** [OpenRocket](glossary.md#openrocket) `.ork` files ([M3.1](decisions-and-roadmap.md#m3-1), OpenRocket import)
   and RockSim `.rkt` files ([M3.4](decisions-and-roadmap.md#m3-4), RockSim import) can't be read yet.
 - **Nothing at or above Mach 1.** The aerodynamics refuse Mach 1, and a flight that reaches it
   stops with an error, until [M1.8](decisions-and-roadmap.md#m1-8) (transonic and supersonic aerodynamics). From Mach 0.8
@@ -606,7 +659,9 @@ The example leaves out several kinds of part and setting that a design can have:
   (staging, clusters and air starts).
 - **Commercial solid motors only** ([COTS motors](glossary.md#cots-motor)). With only catalog data,
   a motor's own CG stays at its mid-length, full or spent ([Solid motors](physics/motor.md)).
-- **Tube fins are refused** by the aerodynamics until a cited method for them exists.
+- **Tube fins are refused** by the aerodynamics until a cited method for them exists. Tube fins
+  are open tubes that run along the body, touching it, in place of flat fins. A design can hold
+  them, but a flight or a CP can't be worked out with them.
 
 ## Where next
 

@@ -64,10 +64,11 @@ The numbers match the drawing.
 4. **Coast, to apogee.** The same equations with no thrust: drag and gravity slow the climb.
    [Apogee](glossary.md#apogee) is where the vertical speed falls through zero.
 5. **The drogue.** Each recovery device fires its charge at its trigger: apogee, a height on the
-   way down, a time, or a motor's [ejection delay](glossary.md#ejection-delay). After its lag, it
-   [deploys](glossary.md#deployment). From the first deployment the rocket is a single point with
-   mass: its attitude (which way it points) freezes, and it falls under gravity and the open
-   devices' drag while the wind carries it along, which is its [drift](glossary.md#drift).
+   way down, a time, or a motor's [ejection delay](glossary.md#ejection-delay). After its lag, a
+   set time from the charge to its lines stretching, it [deploys](glossary.md#deployment). From
+   the first deployment the rocket is a single point with mass: its attitude (which way it
+   points) freezes, and it falls under gravity and the open devices' drag while the wind carries
+   it along, which is its [drift](glossary.md#drift).
 6. **The main.** A second device, typically the main set to a height above the ground, adds its
    drag to the drogue's. A device can also cut another away as it opens, and a rocket can
    [separate](glossary.md#separation) into parts that each come down on their own.
@@ -143,8 +144,9 @@ flight:
   [stall](glossary.md#stall), but a flight uses them at every angle: just off the rail in a strong
   crosswind, and near apogee.
 - **Staging, delayed ignition and air starts**, planned for [M1.9](decisions-and-roadmap.md#m1-9), the staging and
-  clusters milestone. Every motor ignites at time zero. A cluster whose motors all light then is
-  flown, but no test or comparison has checked one yet.
+  clusters milestone. Every motor ignites at time zero, so a two-stage design flies with all its
+  motors lit at once. A cluster whose motors all light then is flown, but no test or comparison
+  has checked one yet.
 - **Roll**, the torques that spin a rocket up and slow its spin, planned for [M1.8](decisions-and-roadmap.md#m1-8), the
   second aerodynamics milestone; [tip-off](glossary.md#tip-off), thrust misalignment (a motor
   pushing slightly off the rocket's axis) and turbulence, which no milestone plans yet.

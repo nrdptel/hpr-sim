@@ -131,7 +131,9 @@ With every observed file setting both auto-calc flags to `1`, RockSim may ignore
 1. Use a conforming XML parser (`roxmltree`): it handles CDATA (raw-text sections), entities
    (escapes such as `&amp;`) and end-of-line normalization [X §2.11]. Refuse DTDs and external
    entities, declarations that can make a parser fetch other files (core crates do no I/O). The reader
-   takes text and strips a BOM; decoding bytes is the caller's job, in `hpr-io`.
+   takes text and strips a BOM. Decoding bytes is the caller's job, as for
+   [`.eng` files](eng.md#reader-policy-lenient-with-diagnostics): planned for `hpr-io`, which
+   doesn't do it yet.
 2. Take every `engine` element at any depth, so a bare `<engine>` root [P p.2] also works, but not
    one nested inside another engine. An engine with an error is skipped, with the error as a
    warning, when others in the file read. With repeated `<data>` or `<comments>`, the last is read,

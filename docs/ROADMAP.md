@@ -67,7 +67,7 @@
   *Done when:* the file exists, and every quirk or weakness it lists maps to a roadmap milestone or
   a named test to write.
 
-- [ ] **M0.4 A documentation site people can read.** Added by Neer on 2026-09-17 (VISION V15,
+- [ ] [blocked] **M0.4 A documentation site people can read.** Added by Neer on 2026-09-17 (VISION V15,
   CLAUDE.md "Documentation is a deliverable"). Retrofit everything shipped so far; later milestones
   keep the site current. Split it into increments if it is bigger than one session.
   - Tool and layout by ADR (mdBook is the first candidate). Each page has one source:
@@ -97,6 +97,9 @@
   when* bullets are the four above, unchanged: the first bullet's checks are shared between M0.4a
   (links, bare labels) and M0.4b (*In short*).
 
+  *Blocked* on M0.4d's deploy alone (Pages is off; `STATUS.md`, Needs Neer): every other bullet has
+  shipped. Check M0.4 off with M0.4d.
+
   - [x] **M0.4a The site and its link checks.** An ADR picks the tool (mdBook is the first
     candidate) and the layout. `docs/physics/` and `docs/format/` move into the site's source, so
     each page has one source, and equations render on the site and on GitHub. *Start here* page.
@@ -125,7 +128,7 @@
     *Blocked* on Pages being off (`STATUS.md`, Needs Neer). Everything else shipped (ADR-019): the
     rustdoc under the site's `api/`, links both ways checked, the README link, and a `deploy` job
     that is skipped, with a warning, until Pages is on. Check it off once a run on `main` deploys.
-  - [ ] **M0.4e The reader test.**
+  - [x] **M0.4e The reader test.**
 
     *Done when:* a reviewer with no project context, given only the site, answers ten questions a
     new user would ask, listed in the PR (for example: "How far can I trust the descent drift, and

@@ -1642,8 +1642,8 @@ milestone to link to, and a Markdown anchor comes only from a heading, which may
 
 **Decision.**
 
-- **The test reads the built site, cold.** A `docs-reviewer` gets a copy of `target/site`, the API
-  reference included, and nothing else from the repository, except a file that a page links on
+- **The test reads the built site, cold.** A reviewer with no project context gets a copy of
+  `target/site`, the API reference included, and nothing else from the repository, except a file that a page links on
   GitHub, as a reader would click through. The ten questions are listed in the PR. Each answer
   cites its pages; every flagged term is fixed; then a fresh reviewer, on the fixed site, answers
   the same ten again, to show the fixes read as meant.
@@ -1673,7 +1673,7 @@ milestone to link to, and a Markdown anchor comes only from a heading, which may
 - Linking each label to its phase of the roadmap or its section of the lessons file: closer than
   the top of the file, but still a long list to search, and the reader lands on GitHub rather than
   a line of plain words.
-- Anchors in `ROADMAP.md` itself: it is a working file the autopilot edits all the time, and not a
+- Anchors in `ROADMAP.md` itself: it is a working file, edited with every milestone, and not a
   page of the site, so a reader still leaves the site to decode a label.
 
 **Consequences.**

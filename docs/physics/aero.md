@@ -10,8 +10,10 @@
   [Barrowman's method](../glossary.md#barrowmans-method); for drag, mainly Niskanen's 2009
   OpenRocket thesis.
 - **How well it is validated:** the normal force and centre of pressure only at Mach 0, against
-  Barrowman's worked examples (rockets he calculated by hand): four of five agree within 1%, and
-  his six-fin Recruiter is +2.87% high (+3.42% on its fins), mostly from a different six-fin rule.
+  Barrowman's worked examples (rockets he calculated by hand): every centre of pressure agrees
+  within 1%, and so does every [normal-force slope](../glossary.md#normal-force-slope) but one:
+  his six-fin Recruiter's is +2.87% high (+3.42% on its fins), mostly from a different six-fin
+  rule.
   Drag only at Mach 0.3, against curves labelled [RASAero](../glossary.md#rasaero-ii) in
   [RocketPy](../glossary.md#rocketpy)'s [example rockets](../glossary.md#example-rockets), which
   don't record their fins or surface finish, so hpr's follow a declared rule: within 10% in four
@@ -24,7 +26,8 @@
   from about Mach 0.6 it reads low against the source's own high-subsonic correction; the models
   are documented to Mach 0.8 and refuse Mach 1 until [M1.8](../decisions-and-roadmap.md#m1-8)
   ([transonic and supersonic](../glossary.md#transonic-and-supersonic) aerodynamics), which also
-  brings roll torques (the torques that spin a rocket up and slow its spin).
+  brings damping coefficients for pitch, yaw and roll, and roll forcing (the torque from fins set
+  at an angle that spins a rocket up).
 
 ## Code and sources
 
@@ -69,7 +72,7 @@ the symbols the whole page uses; each section defines its own as well.
 | station, `X` | a [station](../glossary.md#station): a position along the rocket, in metres aft of the nose tip ([Frames](frames.md), [Design tree](design.md)) | m |
 | `x_B`, `y_B`, `z_B` | the axes of the [body frame](../glossary.md#body-frame), fixed to the rocket: `z_B` along its axis toward the nose, `x_B` the direction around the body that fins are placed from, and `y_B` square to both | none |
 | `M` | the [Mach number](../glossary.md#mach-number): airspeed divided by the speed of sound | none |
-| `α` | the total [angle of attack](../glossary.md#angle-of-attack): the angle between the nose direction `+z_B` and the airflow (the rocket's velocity relative to the air), from 0 to π | rad |
+| `α` | the total [angle of attack](../glossary.md#angle-of-attack): the angle between the nose direction `+z_B` and the rocket's velocity relative to the air, from 0 to π ([Frames](frames.md#aerodynamic-angles)). The oncoming air flows the opposite way, so at `α = 0` it meets the nose head-on | rad |
 | `φ` | the flow roll: which way around the body the air crosses it, measured from `x_B` toward `y_B` ([Frames](frames.md#aerodynamic-angles)) | rad |
 | `C_N` | the coefficient of the [normal force](../glossary.md#normal-force): the sideways push, square to the axis, in the plane that holds the axis and the airflow | none |
 | `C_Nα` | the [normal-force slope](../glossary.md#normal-force-slope): how fast `C_N` grows with `α`. It is `C_N/α` for `α > 0`, and the derivative `∂C_N/∂α` at `α = 0` ([N09] eq. 3.8) | per rad |
@@ -114,11 +117,23 @@ To get it in code:
 
 What changes it:
 
-- **Speed.** Only the fins' slope changes with Mach number, and it grows toward Mach 1
-  (*Prandtl–Glauert*, under Fins). So the CP moves toward the fins as the rocket speeds up.
+- **Speed.** Only the fins' slope changes with Mach number. It grows toward Mach 1 through the
+  Prandtl–Glauert factor, the classic correction for the air's compressibility, whose effect grows
+  as the speed nears that of sound (*Prandtl–Glauert*, under Fins). How much a fin set gains
+  depends on its span, area and sweep. So as the rocket speeds up, the CP moves toward its fins:
+  - With fins only at the tail, it moves aft.
+  - With canards (a second fin set near the nose) as well, both sets gain, and the CP can move
+    either way, depending on each set's shape and place.
+  - hpr keeps each fin set's own CP a quarter of the way along its
+    [mean aerodynamic chord](#fins) (MAC, a weighted average of its chords) at every speed below
+    Mach 1. Niskanen's thesis moves it further aft above about Mach 0.5, which hpr leaves out
+    until [M1.8](../decisions-and-roadmap.md#m1-8), the transonic and supersonic aerodynamics
+    milestone (*Validity and open questions*, below, gives its size).
+
   `Flow::axial(0.0)` gives the low-speed CP that Barrowman's method gives by hand.
 - **Angle.** `Flow::axial` gives the small-angle CP. At an angle of attack, body lift adds a force
-  at each body's side-view centroid (*Bodies of revolution*, below), and the CP moves with it.
+  at each body's side-view centroid, the centre of its outline seen from the side
+  (*Bodies of revolution*, below), and the CP moves with it.
 - **Stability.** A rocket is statically stable when its CP is aft of its
   [centre of gravity](../glossary.md#centre-of-gravity-cg) (CG).
   - [`Assembly::mass_properties`](../api/hpr_design/config/struct.Assembly.html#method.mass_properties)
@@ -217,9 +232,10 @@ A fin set is `N` identical fins spaced evenly around a body tube. For one fin of
   1e-12 of the span (vertex heights a few rounding steps apart, as when a tip is converted from
   inches) are skipped.
 - **Prandtl–Glauert** enters through `β` in the fin slope only. As `M → 1` the slope tends to
-  `π s²/A_ref`. The CP stays at the quarter chord for all subsonic Mach ([B67] p. 6). Niskanen's aft
-  shift above Mach 0.5 ([N09] eq. 3.35–3.36) moves to the planned transonic and supersonic
-  milestone ([M1.8](../decisions-and-roadmap.md#m1-8)), together with the supersonic fit it interpolates to.
+  `π s²/A_ref`. The CP stays at the quarter chord, a quarter of the way along the MAC, for all
+  subsonic Mach ([B67] p. 6). Niskanen's aft shift above Mach 0.5 ([N09] eq. 3.35–3.36) moves to
+  the planned transonic and supersonic milestone ([M1.8](../decisions-and-roadmap.md#m1-8)),
+  together with the supersonic fit it interpolates to.
 - **Fin count.** A fin at angle `Λ_k` to the lateral airflow adds `(C_Nα)₁ sin² Λ_k` in the plane of
   the flow. The sum is `N/2` for three or more evenly spaced fins, at any roll. `f_N` is 1 up to four
   fins, then 0.948, 0.913, 0.854 and 0.810 for five to eight ([TD] eq. 3.54). Those factors make
@@ -240,10 +256,16 @@ A fin set is `N` identical fins spaced evenly around a body tube. For one fin of
     aerodynamics milestone).
   - Interference between fin sets at the same station.
   - Cant (fins set at an angle to spin the rocket), which matters for roll ([M1.8](../decisions-and-roadmap.md#m1-8)).
-  - Damping coefficients. In a flight, pitch and yaw damping come instead from evaluating each
-    component in its own local flow, which includes the speed the rocket's rotation adds there
-    ([Rigid-body flight](flight.md#aerodynamics-in-flight)). Roll damping, and roll forcing from
-    cant, arrive with [M1.8](../decisions-and-roadmap.md#m1-8).
+  - Damping coefficients, for pitch, yaw and roll, and roll forcing from cant: all planned for
+    [M1.8](../decisions-and-roadmap.md#m1-8). Until then:
+    - In a flight, pitch and yaw damping come only from evaluating each component in its own
+      local flow, which includes the speed the rocket's rotation adds there
+      ([Rigid-body flight](flight.md#aerodynamics-in-flight)).
+    - Only components with a slope give it: nose cones, transitions and fin sets. A boattail's
+      slope is negative, so it takes some away.
+    - Body tubes give none at small angles. Their own slope is 0, and their body lift grows with
+      `sin² α`, so it adds nothing there.
+    - Nothing aerodynamic damps or drives roll.
   - Tube fins, which are refused until a cited method exists
     ([issue #15](https://github.com/nrdptel/hpr-sim/issues/15)). Any part kind the model doesn't
     know is refused too.
@@ -262,6 +284,11 @@ Decisions: [ADR-009][adr-009] (drag buildup, surface finishes and override table
   and Table 4-1 of roughness heights (p. 46, after Hoerner p. 5-3).
 - **[N09] §3.4** (pp. 41–53) and appendix B (pp. 106–110). [TD] reprints the same drag equations
   and tables unchanged.
+
+On this page `C_D0` is the zero-lift [drag coefficient](../glossary.md#drag-coefficient): the
+drag with the air straight along the axis (no angle of attack), divided by `q A_ref`.
+[Recovery](recovery.md#drag-area) uses the same symbol for something else: a parachute canopy's
+drag coefficient on its [nominal area](../glossary.md#nominal-area).
 
 Drag is built up term by term. Skin friction acts over the whole surface. Pressure drag acts on
 noses and shoulders (here, a transition that widens toward the tail) and on boattails (one that
@@ -337,7 +364,7 @@ parasitic term on its own area. The axial coefficient is `C_A = C_D0 f(α)`.
   transition it replaces ([Loft lesson L15](../decisions-and-roadmap.md#l15)), and it is reported with the aft component.
 - **Boattails.** [N09] eq. 3.88 writes `A_base/A_boattail` without defining the areas, and p. 48
   says a zero-length boattail drags like "the total base drag". Taking `A_base` as the aft base
-  would count that base twice and leave the uncovered annulus out, so hpr reads both as the
+  would count that base twice and leave out the uncovered ring (annulus), so hpr reads both as the
   boattail's decrease in area (Calisto's boattail: 0.052, against 0.046 the other way). The joint
   angle is `atan(dr/dx)` at the aft end, `±π/2` where a curved transition ends in a blunt tip.
 - **Base drag under power** subtracts the thrusting motors' cross-section from the aft base, down
@@ -390,10 +417,22 @@ parasitic term on its own area. The axial coefficient is `C_A = C_D0 f(α)`.
   shoulder pressure drag from its Mach 0 value (eq. 3.86) to appendix B's value and slope at Mach 1:
   closed forms for cones and ogives, Stoney's data (NASA TR-R-100) for other shapes. That arrives
   with [M1.8](../decisions-and-roadmap.md#m1-8); until then nose and shoulder pressure drag is held at its low-subsonic
-  value, so it reads low from about Mach 0.6. A 3:1 tangent ogive misses 0.006 at Mach 0.7 and 0.021
-  at 0.8 (4–5% of `C_D0`), a 2:1 cone 0.037 at 0.8, a 3:1 cone about 0.05 at 0.9, and flat faces and
-  steps would rise from 0.80 toward 1.04. `Drag::beyond_subsonic_methods` marks the top of [N09]'s
-  subsonic region, Mach 0.8 (Table 3.1), not the start of the error.
+  value, so it reads low from about Mach 0.6. How far `C_D0` falls short of eq. 3.87, by nose
+  shape (3:1 is a [fineness](../glossary.md#fineness-ratio) of 3, three times as long as it is
+  wide):
+
+  | nose | Mach | `C_D0` reads low by |
+  |---|---|---|
+  | 3:1 tangent ogive | 0.7 | 0.006 |
+  | 3:1 tangent ogive | 0.8 | 0.021, which is 4–5% of `C_D0` |
+  | 2:1 cone | 0.8 | 0.037 |
+  | 3:1 cone | 0.9 | about 0.05 |
+
+  - A flat face or a step would see its coefficient, on its own area, rise from 0.80 toward 1.04.
+  - No test computes these shortfalls, because eq. 3.87 isn't in the code yet. The drag decision
+    ([ADR-009][adr-009]) records the ogive's and the 2:1 cone's.
+  - `Drag::beyond_subsonic_methods` marks the top of [N09]'s subsonic region, Mach 0.8
+    (Table 3.1), not the start of the error.
 - Nothing models laminar flow, fin-tip vortices, interference drag, fin tabs, fillets, canted fins
   or the flow a boattail guides into the base ([N09] p. 51).
 
@@ -409,8 +448,10 @@ parasitic term on its own area. The axial coefficient is `C_A = C_D0 f(α)`.
 - `M ≥ 1` is an error until [M1.8](../decisions-and-roadmap.md#m1-8) (transonic and supersonic aerodynamics), but the
   models are only documented to Mach 0.8.
   - [N09]'s subsonic range is 0–0.8, and [B67] p. 18 notes that `C_Nα` rises near Mach 1.
-  - [N09] eq. 3.35–3.36 would move the fin CP from 0.25 to about 0.30 of the MAC at Mach 0.8 and
-    about 0.33 at 0.9 (aspect ratio 1.6); hpr keeps 0.25.
+  - [N09] eq. 3.35–3.36 would move a fin set's CP aft, from 0.25 of the way along its mean
+    aerodynamic chord (MAC, defined under *Fins*) to about 0.30 at Mach 0.8 and about 0.33 at 0.9,
+    for fins of aspect ratio 1.6 (a measure of how long the span is against the chord). hpr keeps
+    0.25.
   - Between 0.8 and 1, results are unvalidated extrapolations; [M1.8](../decisions-and-roadmap.md#m1-8) will replace them.
 
 ## Verification
@@ -430,9 +471,9 @@ parasitic term on its own area. The axial coefficient is `C_A = C_D0 f(α)`.
   | Arcon-Hi, two stages [TIR] pp. 27–29 | 96.163 / 96.2 (−0.04%) | 20.803 / 20.8 (+0.02%) |
   | Arcon-Hi, sustainer alone | 32.257 / 32.2 (+0.18%) | 17.845 / 17.9 (−0.31%) |
 
-  - **With hpr's own model, four examples agree within 1% and the Recruiter does not.** Its six-fin
-    slopes are +3.42% (fins) and +2.87% (total). Those are the only 2 of the 38 printed values (19
-    slopes, 19 CPs) outside 1%, and the test pins that list.
+  - **With hpr's own model, every CP agrees within 1%, and every slope but the Recruiter's.**
+    Its six-fin slopes are +3.42% (fins) and +2.87% (total). Those are the only 2 of the 38
+    printed values (19 slopes, 19 CPs) outside 1%, and the test pins that list.
   - With TIR-33's six-fin rule substituted for the Recruiter, the worst is the Testbed II nose CP,
     −0.77%: [B66]'s 0.466 L fit against the integrated tangent ogive.
   - CPs are compared as stations from the nose tip. Measured from each part's own front, two

@@ -4,31 +4,29 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
 
 ## Now
 
-- **Current milestone:** M0.4e The reader test
-- **Order:** M0.4e, then M2.1b2 (handoff below); M0.4d is blocked on Pages (Needs Neer)
-- **Run:** the first autopilot run; M0.1-M0.4c, M1.1-M1.7, M2.1a and M2.1b1 have shipped, and
-  M0.4d all but its deploy
-- **Last updated:** 2026-09-18 (M0.4d built, deploy blocked on Pages; M0.4e not started)
+- **Current milestone:** M2.1b2 The whole-flight cases
+- **Order:** M2.1b2, then M2.1c; M0.4 waits only on M0.4d's deploy, blocked on Pages (Needs Neer)
+- **Run:** the first autopilot run; M0.1-M0.4c, M0.4e, M1.1-M1.7, M2.1a and M2.1b1 have shipped,
+  and M0.4d all but its deploy
+- **Last updated:** 2026-09-18 (M0.4e shipped; M2.1b2 not started)
 
 ## Handoff (overwrite each session)
 
-M0.4d (ADR-019): `cargo xtask site` builds each library's rustdoc, in dependency order, into
-`target/site/api` and checks every link; *The API reference* (`docs/api.md`) links each crate,
-and each crate's `//!` links its guide pages by address; `deploy` waits for Pages. Next, M0.4e:
+M0.4e (ADR-020): two cold reader passes on the built site; every flagged term is fixed. New pages
+*Recording a trajectory* and *Your own rocket*; four new examples run in CI (`trajectory`,
+`own_rocket`, `motors`, `wind_profiles`). Every milestone and Loft lesson label now links a row of
+*Decisions and the roadmap* (`#m1-9`, `#l15`), and the rustdoc links them by the site's address.
 
-- **The reader test.** Give a `docs-reviewer` only the built site (`target/site`, rustdoc too) and
-  ten new-user questions, listed in the PR; each answer cites a page; fix every term it flags.
-- **Known gaps, from earlier docs reviews:** model pages rarely link the Glossary; recovery's
-  "Against RocketPy" is a wall of text; QUADPACK, CIPM, octave band and stiffness-style terms have
-  no entry. Readers ask how to fly their own rocket (no builder until M4.1) and how to get a
-  trajectory out (a `Recorder` is described, not shown).
-- **Page rules** (ADR-016 to ADR-019): relative links between pages, GitHub URLs for the rest,
-  labels as links, none in headings, Unicode equations, "Level 2"; new pages in `SUMMARY.md`; a new
-  library needs a row in `docs/api.md` and a guide link in its `//!`. Rustdoc labels: #44.
+- **Page rules** (ADR-016 to ADR-020): relative links between pages, GitHub URLs for the rest,
+  labels as links to their rows, none in headings, Unicode equations; new pages in `SUMMARY.md`; a
+  new library needs a row in `docs/api.md` and a guide link in its `//!`.
+- **Checking a milestone off** in `ROADMAP.md` fails `cargo xtask site` until its row in
+  `docs/decisions-and-roadmap.md` says `done`; a new milestone needs a row. A page that names a new
+  Loft lesson needs a lesson row. The rustdoc is checked for bare labels too (#44 is fixed).
 - **When Pages is on:** `gh workflow run CI --ref main`; once `deploy` passes, drop the README's
-  "goes live once" sentence and check M0.4d off.
+  "goes live once" sentence, check M0.4d and M0.4 off, and set both rows to `done`.
 
-After M0.4 comes M2.1b2: a `Flight::WholeFlight` variant, five cases in the lock, the L75 test.
+Next, M2.1b2: a `Flight::WholeFlight` variant, five cases in the lock, the L75 test.
 
 - **The reference** is `validation/fixtures/flight/rocketpy-whole-flight.json`. Teach
   `crates/hpr-validate/src/rocketpy.rs` its shape, as it knows `recovery.py`'s; only it may.
@@ -53,21 +51,21 @@ After M0.4 comes M2.1b2: a `Flight::WholeFlight` variant, five cases in the lock
 
 ## Done log (newest first, keep about 15)
 
+- 2026-09-18: M0.4e The reader test (PR #47, ADR-020): cold readers answered 5, then 9 of 10
+  questions (the tenth then fixed); every flagged term fixed; four examples in CI; labels link rows
+  held to the roadmap, in the API reference too (#44).
 - 2026-09-18: M0.4d Publish, all but the deploy (PR #43, ADR-019): the rustdoc of 16 crates
   under the site's `api/`, linked from *The API reference* and linking the guide, both ways
   checked; `site-url`; a `deploy` job that waits for Pages; the README links the site.
 - 2026-09-18: M0.4c Getting started, and how a flight is simulated (PR #42, ADR-018): a
   first flight (Valetudo, 874.0 m apogee) and a drag what-if run in CI on three OSes against
   committed output; pages quote them, checked line for line; a flight diagram; `with_wind`.
-- 2026-09-18: M0.4b Model pages, Accuracy, Glossary, Checking a claim (PR #40, ADR-017): all 16
-  model pages open with *In short*, which the site check enforces; *Accuracy*'s numbers are traced
-  to their sources by the check; a 70-term Glossary; stale lines fixed (geoid, timing, scope).
-- 2026-09-18: M0.4a The site and its link checks (PR #37, ADR-016): `cargo xtask site` checks
-  links and labels, builds with mdBook and checks the HTML in CI; *Start here*; #38, #39 filed.
+- 2026-09-18: M0.4b Model pages, Accuracy, Glossary, Checking a claim (PR #40, ADR-017): *In
+  short* on all 16 model pages and *Accuracy*'s numbers traced to sources, both checked.
+- 2026-09-18: M0.4a The site and its link checks (PR #37, ADR-016): mdBook, links and labels.
 - 2026-09-17: PR #34: the M2.1b1 oracle's step is bounded; the cliff was its `max_time` (#33).
-- 2026-09-17: M2.1b1 The whole-flight oracle: `validation/oracles/rocketpy/flight.py` flies the
-  five examples pad to landing under a declared constant `C_D0`, byte for byte. Apogees 779 to
-  3,623 m AGL; Prometheus reaches Mach 1.014.
+- 2026-09-17: M2.1b1 The whole-flight oracle: `flight.py` flies the five examples pad to landing
+  under a declared `C_D0`; apogees 779 to 3,623 m AGL; Prometheus reaches Mach 1.014.
 
 ## Needs Neer (blocking or one-way decisions; the session keeps working on other things)
 
@@ -96,6 +94,8 @@ After M0.4 comes M2.1b2: a `Flight::WholeFlight` variant, five cases in the lock
   site); Unicode equations; our own link and label checks; web links counted, not fetched (#38);
   *In short* in a fixed form; *Accuracy*'s numbers checked against the files they link; the
   records stay files; examples run in CI against committed output, and quotes match line for line.
+- ADR-020: the reader test reads the built site cold, twice; every milestone and lesson label links
+  a row of plain words, which the site check holds to the roadmap; the rustdoc is checked too.
 - ADR-019: the rustdoc is part of the site (`api/`), crates link the guide by its address; CI
   deploys from `main` after every check, and skips with a warning while Pages is off.
 - ADR-001 to ADR-007 and M0.3 (details in `DECISIONS.md`): licence and layout; refs pinned by hash;

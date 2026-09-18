@@ -7,12 +7,15 @@
   centre of mass and inertia as it burns, thrust at altitude, and ejection delays.
 - **Sources:** NASA SP-8039 (1971), the National Association of Rocketry's *Standard Motor
   Codes*, ThrustCurve.org's glossary, statistics page and code, and RocketPy 1.13.0's motor code.
-- **How well it is validated:** by unit tests and
-  [code-to-code](../glossary.md#code-to-code-comparison), the first and third of four
-  [kinds of evidence][levels]. ThrustCurve.org's own statistics code agrees to 1.8e-15 on all 32
-  bundled curves. On three of them, RocketPy agrees within 7.9e-5 (relative) in total mass and
-  inertias, with the centre of mass within 5.8e-6 motor lengths and the propellant's own
-  quantities within 1e-4 of their values at ignition. Not compared with OpenRocket or a real
+- **How well it is validated:** by *analytic* tests (exact answers worked out by hand) and by
+  *another code* ([code-to-code](../glossary.md#code-to-code-comparison)), the first and third of
+  the four [kinds of evidence][levels]. Small numbers here are in
+  [scientific notation](../glossary.md#scientific-notation), and a
+  [relative](../glossary.md#relative-and-absolute-difference) difference is a fraction of the value
+  compared. ThrustCurve.org's own statistics code agrees to 1.8e-15, relative, on all 32 bundled
+  curves. On three of them, RocketPy's total mass and inertias agree within 7.9e-5 relative. The
+  two centres of mass differ by under 5.8e-6 of the motor's length, and the propellant's own mass
+  and inertias agree within 1e-4 of their values at ignition. Not compared with OpenRocket or a real
   flight.
 - **What it leaves out:** anything but [commercial off-the-shelf](../glossary.md#cots-motor)
   solids. Only 32 curves are bundled, none in class A. Propellant burns in proportion to the
@@ -128,7 +131,10 @@ by its designation or common name, ignoring case, spaces and hyphens. It returns
 `I175` finds both the AeroTech I175WS and the Cesaroni 411I175-14A. Then
 `entry.bundled_motor()` builds the motor
 ([`CatalogMotor`](../api/hpr_motor/catalog/struct.CatalogMotor.html)), with the catalog's size and
-masses and the [envelope default](#the-whole-motor) for where its mass sits.
+masses. The catalog doesn't say where inside the motor its mass sits, so hpr uses a rough guess,
+the *envelope default*: the propellant and the rest of the motor (case, nozzle and closures) are
+each spread evenly along its length, so the centre of mass stays at mid-length as it burns
+([The whole motor](#the-whole-motor) gives the details).
 
 ### A motor from a file
 
@@ -154,12 +160,20 @@ The example reads a `.eng` file in four steps:
 4. **Build the motor.** `SolidMotor::from_envelope(curve, diameter_m, length_m, propellant_kg,
    loaded_kg)` ([`SolidMotor`](../api/hpr_motor/motor/struct.SolidMotor.html)). A `.eng` header
    gives the size in millimetres and the masses in kilograms, so the example multiplies the size
-   by 0.001. A slip here is caught: a motor whose numbers imply an impossible exhaust velocity is
-   refused ([the units check](#the-effective-exhaust-velocity-is-a-units-check)).
+   by 0.001 and passes the masses as they are. **Check that step yourself:** the motor can't tell
+   a size left in millimetres. The [units check](#the-effective-exhaust-velocity-is-a-units-check)
+   looks at the impulse and the propellant mass, not the size, and any positive size is accepted.
+   The design checks catch part of it later, if the same size goes into the rocket
+   ([Putting it in a rocket](#putting-it-in-a-rocket)): a diameter too wide for the mount stops
+   the flight, but a length too long for it only draws a warning.
 
 For a `.rse` file, use `rse::parse` ([`rse::parse`](../api/hpr_motor/rse/fn.parse.html)) instead.
 Its motors are in `engines` rather than `entries`, and its masses are in grams
-(`initial_mass_g`, `propellant_mass_g`), so multiply those by 0.001 too.
+(`initial_mass_g`, `propellant_mass_g`), so multiply those by 0.001 too. Forget it for the
+propellant, and the units check catches it: grams read as kilograms make the exhaust velocity
+1,000 times too small, and the motor is refused. The check sees only the propellant mass, so a
+loaded mass left in grams, with the propellant converted, is accepted as a 1,000-times-heavier
+motor.
 
 The file here is Loki Research's I377. The program prints what it read: 38 mm by 292 mm, 560 g
 loaded with 250 g of propellant. From the curve it works out 525.8 N·s, an I motor, averaging
@@ -195,7 +209,7 @@ holding one [`MountedMotor`](../api/hpr_design/config/struct.MountedMotor.html).
 |---|---|
 | `mount` | The id of the mount in the design, here `motor-mount` |
 | `designation` | A name, for display |
-| `diameter_m`, `length_m` | The case's size, in metres. The design checks compare the diameter with the mount's bore: a motor wider than its mount is an error, and the flight refuses to start |
+| `diameter_m`, `length_m` | The case's size, in metres. The design checks compare the diameter with the mount's bore: a motor wider than its mount is an error, and the flight refuses to start. A case that reaches forward past the mount's top is only a warning |
 | `motor` | The motor built above |
 | `delay` | The [ejection delay](../glossary.md#ejection-delay) chosen, if any. A parachute can fire on it, with the `MotorDelay` trigger ([Recovery](recovery.md#triggers-lag-and-release)) |
 
@@ -387,12 +401,22 @@ c = I / m_p0,    ṁ(t) = F(t) / c,    m_p(t) = m_p0 (1 − I(t)/I)
 
 Both constructors, `SolidMotor::new` and `SolidMotor::from_envelope`, refuse a motor whose curve
 and propellant mass imply an effective exhaust velocity `c = I/m_p` outside **200 to 5,000 m/s**.
-It is a guard against a units slip, not a filter on propellant:
+It is a guard against a slip in the units of the propellant mass, not a filter on propellant:
 
-- **What it catches.** Sizes in millimetres and masses in grams, typed where metres and kilograms
-  belong, which move `c` by a factor of 1,000. Nothing else in the API notices: the 411I175's envelope read that way,
+- **What it catches.** A propellant mass in grams typed where kilograms belong, such as a `.rse`
+  file's `propellant_mass_g` passed unconverted, which moves `c` by a factor of 1,000. Nothing
+  else in the API notices: the 411I175's envelope typed in millimetres and grams,
   `from_envelope(curve, 38.0, 245.0, 228.9, 437.5)`, has positive, finite dimensions and a
-  propellant mass below the loaded mass, and an exhaust velocity of 1.8 m/s.
+  propellant mass below the loaded mass, and an exhaust velocity of 1.8 m/s. It is the grams that
+  give it away.
+- **What it can't catch.** A size in the wrong unit. `c` doesn't depend on the diameter or the
+  length, and the motor accepts any positive size: the example's I377 with its size left in
+  millimetres, `from_envelope(curve, 38.0, 292.0, 0.250, 0.560)`, is accepted, at the same
+  2103 m/s. Only the design checks see a size, and only the one given to the `MountedMotor`
+  ([Checks](design.md#checks)). A diameter wider than the mount's bore is an error,
+  `motor_wider_than_mount`, and the flight refuses to start. A case that runs forward past the
+  mount's top is only a warning, `motor_past_mount_top`, so a length slip alone still flies.
+  Nor does `c` involve the loaded mass, so a loaded mass in grams passes too.
 - **What it lets through.** Every real motor checked. The 1,708 ThrustCurve.org files with a
   catalog propellant mass run from 236 to 3,031 m/s, with a median of 1,867 and 90% of them
   between 928 and 2,210. The 32 bundled motors run from **689.78 m/s** (a black-powder C) to
@@ -474,8 +498,9 @@ ejection event by itself: the user has to decide.
   hpr's impulse, burn window, burn time, average and peak thrust agree to 1.8e-15, so the
   definitions, not only the 1% rule, are checked.
 - **RocketPy** (`motor::tests::matches_rocketpy_solid_motor_for_three_bundled_motors`): three
-  bundled curves with BATES loads cover radial burnout, axial burnout, inhibited ends and both
-  axis orientations.
+  bundled curves with BATES loads cover grains that burn out radially (the bore reaches the outer
+  wall first) and axially (the burning ends meet first), inhibited ends, and both of RocketPy's
+  axis directions (positions measured from the nozzle forward, or toward the nozzle).
   [`validation/oracles/rocketpy/solid_motor.py`](https://github.com/nrdptel/hpr-sim/blob/main/validation/oracles/rocketpy/solid_motor.py)
   writes
   [`validation/fixtures/motor/rocketpy-solid-motor.json`](https://github.com/nrdptel/hpr-sim/blob/main/validation/fixtures/motor/rocketpy-solid-motor.json),
@@ -564,14 +589,18 @@ fn main() -> Result<(), Box<dyn Error>> {
             _ => "other",
         };
         let class = ImpulseClass::from_total_impulse(curve.total_impulse_ns())?;
+        // An entry the catalog gives no loaded mass for would show a dash; every bundled one has
+        // a loaded mass.
+        let loaded_g = entry
+            .total_mass_g
+            .map_or_else(|| "-".to_owned(), |mass_g| format!("{mass_g:.1}"));
         println!(
-            "{:<12} {:<8}  {kind:<10}  {:<5} {:>5} {:>7} {:>9.1} {:>11.1} {:>9.1} {:>7.2}",
+            "{:<12} {:<8}  {kind:<10}  {:<5} {:>5} {:>7} {loaded_g:>9} {:>11.1} {:>9.1} {:>7.2}",
             entry.designation,
             entry.manufacturer_abbrev,
             class.label(),
             entry.diameter_mm,
             entry.length_mm,
-            entry.total_mass_g.unwrap_or(f64::NAN),
             curve.total_impulse_ns(),
             curve.average_thrust_n(),
             curve.burn_time_s(),
@@ -590,7 +619,8 @@ fn main() -> Result<(), Box<dyn Error>> {
         return Err("expected one motor in the file".into());
     };
     // The file gives the size in millimetres and the masses in kilograms; the motor takes metres
-    // and kilograms.
+    // and kilograms. Only the size needs converting, and the motor can't tell if it isn't: its
+    // units check looks at the impulse and the propellant mass, not the size.
     let diameter_m = entry.diameter_mm * 1e-3;
     let length_m = entry.length_mm * 1e-3;
     let motor = SolidMotor::from_envelope(

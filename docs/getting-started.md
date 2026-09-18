@@ -11,8 +11,16 @@ some Rust, but no knowledge of this project.
 
 ## What you need
 
-- **Rust**, through [rustup](https://rustup.rs). The repository pins the version it is built with
-  (in `rust-toolchain.toml`), and rustup installs that version the first time you build.
+- **Rust**, through [rustup](https://rustup.rs), Rust's installer. The repository pins the version
+  it is built with (in `rust-toolchain.toml`), and rustup installs that version the first time you
+  build.
+- **Your system's C build tools**, which Rust uses to link programs. You may have them already:
+  - On Windows, the Microsoft C++ build tools, from Visual Studio. The rustup installer checks for
+    them and says how to get them.
+  - On macOS, Apple's command-line developer tools. If `git` or `cc` is missing, install them with
+    `xcode-select --install`; they include Git.
+  - On Linux, a C compiler such as `gcc`, which most distributions have. On Debian and Ubuntu it
+    comes with the `build-essential` package.
 - **Git**, to fetch the code.
 - **A network connection the first time**, to download Rust and the libraries hpr-sim uses. After
   that, everything here works offline, on macOS, Windows and Linux.
@@ -29,8 +37,10 @@ cargo run --example first_flight -p hpr-sim
 
 The first run compiles hpr-sim and its libraries, which takes a few minutes; later runs start at
 once. The last command runs the program
-[`crates/hpr-sim/examples/first_flight.rs`](https://github.com/nrdptel/hpr-sim/blob/main/crates/hpr-sim/examples/first_flight.rs),
-which prints this:
+[`crates/hpr-sim/examples/first_flight.rs`](https://github.com/nrdptel/hpr-sim/blob/main/crates/hpr-sim/examples/first_flight.rs).
+In that command, `--example first_flight` names the program, and `-p hpr-sim` (short for
+`--package`) names the [crate](glossary.md#crate), one of the repository's Rust packages, that
+holds it: `hpr-sim`, the crate that flies the rocket. The program prints this:
 
 <!-- quote: crates/hpr-sim/examples/first_flight.output.txt -->
 ```text
@@ -137,7 +147,7 @@ Below the table:
   been compared with another simulator's or a real flight's. Comparing whole flights with
   RocketPy's is the next validation milestone, [M2.1b2](decisions-and-roadmap.md#m2-1b2); [Accuracy](accuracy.md) keeps
   every result so far.
-- **The drag is the largest doubt, and it moves the apogee by up to a tenth.** hpr computes the
+- **The drag is the largest doubt.** hpr computes the
   [drag coefficient](glossary.md#drag-coefficient) from the rocket's shape and surface. For this
   design it is 0.5566 at Mach 0.3, coasting with the motor burnt out
   ([power-off drag](glossary.md#power-on-and-power-off-drag)), with a mirror-smooth surface finish
@@ -151,7 +161,13 @@ Below the table:
   A second program,
   [`drag_what_if.rs`](https://github.com/nrdptel/hpr-sim/blob/main/crates/hpr-sim/examples/drag_what_if.rs),
   flies the same rocket with each of the other two values in place of hpr's drag, held at every
-  Mach number, and prints:
+  Mach number. Run it the same way:
+
+  ```bash
+  cargo run --example drag_what_if -p hpr-sim
+  ```
+
+  It prints this, and CI checks that on every change, as it does for the first program:
 
   <!-- quote: crates/hpr-sim/examples/drag_what_if.output.txt -->
   ```text
@@ -162,6 +178,18 @@ Below the table:
   0.728, from the rocket's OpenRocket file         842.2
   1.05, from RocketPy's example curve              790.9
   ```
+
+  For this rocket, the three drag values on record move the apogee from 874.0 m to 790.9 m, 9.5%
+  lower. That is a spread, not a bound:
+
+  - It shows how much this rocket's apogee depends on its drag. It doesn't say how far hpr's
+    apogee is from the truth.
+  - Three values don't fence in the true drag: it could lie outside them.
+  - hpr's drag has been checked against reference drag curves at Mach 0.3 only. It is within 10%
+    in four of seven cases, 18% low for another rocket with its motor burning, and 47% to 50% low
+    against this rocket's own curve, the 1.05 above
+    ([Accuracy](accuracy.md#results-by-model)).
+  - Another rocket, or this one on another motor, has its own spread.
 
   So 874 m is this design's answer, and with more drag the same design would peak lower. The
   rocket that flew had a different motor, so none of these is a prediction of its flight.
@@ -176,6 +204,30 @@ Below the table:
   RocketPy's within 3% for five rockets ([Recovery](physics/recovery.md)). This example opens the
   drogue after half a second and uses hpr's own gravity, and its landing point also depends on
   where the apogee is, which no comparison has checked yet.
+
+### Checking it yourself
+
+You don't have to take these numbers on trust. Four ways to test them:
+
+- **See how much the drag matters.** Run `drag_what_if`, as above. To try other drag
+  coefficients, change the values in its list of them and run it again.
+- **Trace a number to its source.** [Checking a claim](checking-a-claim.md) follows any number on
+  this site back to the published source of its model, the test that pins it, and any comparison
+  with another program.
+- **Compare with a flight of your own, by hand.** Build your rocket as
+  [Your own rocket](your-own-rocket.md) does, with the motor you flew
+  ([Solid motors](physics/motor.md#using-a-motor) shows how to read its thrust-curve file). Set the
+  rail and the wind to match the day, and set hpr's apogee beside your altimeter's. hpr's apogee is
+  the height of the rocket's centre of gravity above the pad. hpr can't read an altimeter's flight
+  log yet: that comes with [M7.1](decisions-and-roadmap.md#m7-1), the flight-log milestone.
+- **Compare with another simulator, by hand.** Enter the same rocket, motor, rail and wind in
+  OpenRocket or RocketPy, and compare the apogee. Give both the same surface finish and rail
+  guides: for this rocket, the OpenRocket file's finish and launch lugs take hpr's drag
+  coefficient from 0.5566 to 0.714, as above. hpr can't import an OpenRocket design yet: that
+  comes with [M3.1](decisions-and-roadmap.md#m3-1), OpenRocket import.
+
+The project's own comparison of whole flights, against RocketPy, is
+[M2.1b2](decisions-and-roadmap.md#m2-1b2), and it isn't done yet.
 
 ## The program, step by step
 
@@ -415,8 +467,9 @@ It has six steps.
      data.
    - `Trigger::Apogee` fires at apogee; `Trigger::Altitude` fires when the rocket falls past a
      height above the pad.
-   - `with_lag_s` is the time from the charge to the lines stretching. With no filling law given,
-     each parachute opens fully at once.
+   - `with_lag_s` is the time from the charge to the lines stretching. With no
+     [filling](glossary.md#inflation-and-filling-time) rule given, one for how the canopy's drag
+     grows as it opens, each parachute opens fully at once.
 6. **The flight.** `run` flies the rocket until it lands. It returns a
    [`FlightResult`](api/hpr_sim/flight/struct.FlightResult.html), the record of the finished
    flight: how it ended (`termination`), its `events`, each with a `Sample` of the flight at that
@@ -433,7 +486,19 @@ A [`Sample`](api/hpr_sim/recorder/struct.Sample.html) is a snapshot of the fligh
 It holds what the program prints, and more: the time, the centre of gravity's position
 (`cg_enu_m`, metres east, north and up of the pad) and velocity (`cg_velocity_enu_m_s`), the
 height above the pad, the vertical speed, the airspeed, the Mach number, the angle of attack, the
-thrust and the mass. Every quantity is in SI units, and its name says which.
+thrust and the mass. Every quantity is in [SI units](glossary.md#si-units), the metric units of
+the International System, and its name ends in its unit:
+
+| ending | unit | example |
+|---|---|---|
+| `_m` | metres | `height_above_ground_m` |
+| `_m_s` | metres per second | `vertical_speed_m_s` |
+| `_s` | seconds | `time_s` |
+| `_kg` | kilograms | `mass_kg` |
+| `_n` | newtons | `thrust_n` |
+| `_rad` | radians | `angle_of_attack_rad` |
+
+A number with no unit, such as the Mach number (`mach`), has none in its name.
 
 ## Change it
 

@@ -3,16 +3,29 @@
 This note holds the reasoning and the measurements behind the units check in `hpr_motor`
 (`EXHAUST_VELOCITY_RANGE_M_S` in `crates/hpr-motor/src/motor.rs`). The Solid motors page
 (`docs/physics/motor.md`, "The effective exhaust velocity is a units check") gives the short
-version. It was moved here from that page in M0.4e, unchanged in substance.
+version. It was moved here from that page in
+[M0.4e](../decisions-and-roadmap.md#m0-4e), the documentation reader test, unchanged in substance.
 
 ## What the check is
 
 Both motor constructors (`SolidMotor::new` and `SolidMotor::from_envelope`) refuse a motor whose
 curve and propellant mass imply an effective exhaust velocity `c = I/m_p` (total impulse over
-propellant mass) outside **200 to 5,000 m/s**. Nothing else in the API notices a units slip: the
+propellant mass) outside **200 to 5,000 m/s**.
+
+It catches a propellant mass in the wrong unit. Nothing else in the API notices one: the
 411I175's envelope in millimetres and grams read as metres and kilograms
 (`from_envelope(curve, 38.0, 245.0, 228.9, 437.5)`) has positive, finite dimensions, a propellant
-mass below the loaded mass, and an exhaust velocity of 1.8 m/s.
+mass below the loaded mass, and an exhaust velocity of 1.8 m/s. The grams are what the check sees.
+
+It can't catch a size in the wrong unit, because `c` doesn't depend on the motor's size and
+`from_envelope` accepts any finite, positive diameter and length. The I377 of the motors example
+with its size left in millimetres and its masses in kilograms,
+`from_envelope(curve, 38.0, 292.0, 0.250, 0.560)`, builds at 2,103 m/s, the same as with its size
+in metres. A size slip is caught only by the design checks (`hpr_design::checks`), and only when
+the same size is given to the `MountedMotor`: a diameter wider than the mount's bore is the error
+`motor_wider_than_mount`, which stops the flight, while a case that runs past the mount's forward
+end is only the warning `motor_past_mount_top`. Nor does `c` involve the loaded mass, so a loaded
+mass in grams with the propellant mass in kilograms is accepted too.
 
 ## Which impulse
 
@@ -42,8 +55,8 @@ cluster below about 900 m/s.
 ## What that means for the check
 
 **Under that convention the bound rejects none of them.** That is the honest statement of what
-this check is: a guard against a units slip, which moves `c` by a factor of 1,000, not a filter on
-propellant.
+this check is: a guard against a slip in the units of the propellant mass, which moves `c` by a
+factor of 1,000, not a filter on propellant.
 
 It has real headroom, but not a great deal at the low end: the lowest real entry is 1.2x above the
 floor, and the highest 1.65x below the ceiling. The low tail is an accounting artifact rather than
@@ -59,7 +72,8 @@ Both have been got wrong here before.
 
 - Reading the **curve file header** mass instead gives a different distribution (max 10,111 m/s,
   from a J motor whose header claims 83 g where its catalog entry says 396 g). hpr does not use
-  header masses when the catalog has them (Loft lesson L43, `catalog.rs`), so that file builds at
+  header masses when the catalog has them
+  ([Loft lesson L43](../decisions-and-roadmap.md#l43), `catalog.rs`), so that file builds at
   2,111 m/s and passes.
 - The 32 bundled motors run **689.78 m/s** (the Estes C5, a black-powder C) to **2,651.64 m/s**
   (the AeroTech K400C), computed from each curve's own impulse. The catalog's stored

@@ -112,8 +112,11 @@ next header.
 
 ## Reader policy (lenient, with diagnostics)
 
-1. The reader takes text and strips a UTF-8 BOM. Decoding bytes into text (and any fallback to
-   Windows-1252, an older Windows character set) is the caller's job, in `hpr-io`. Lines split on LF, CRLF or a bare CR and are trimmed.
+1. The reader takes text and strips a UTF-8 BOM. Decoding bytes into text is the caller's job:
+   today, read the file into a string yourself, as with `std::fs::read_to_string`, which expects
+   UTF-8. That job, and any fallback to Windows-1252 (an older Windows character set), is planned
+   for `hpr-io`, the crate for other programs' file formats, which doesn't do it yet. Lines split
+   on LF, CRLF or a bare CR and are trimmed.
 2. A line whose first non-blank character is `;` is a comment. Fields split on runs of spaces
    and tabs.
 3. Each entry is read in stages (a state machine). Before the header, skip blanks and collect comments. The header is the

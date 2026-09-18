@@ -64,7 +64,7 @@ happened:
 
 | time (s) | event |
 |---|---|
-| 0.001 | [liftoff](glossary.md#liftoff): the thrust first beats the weight, and the rocket starts up the rail |
+| 0.001 | [liftoff](glossary.md#liftoff): the push up the rail first beats the weight, and the rocket starts to move |
 | 0.361 | the rocket leaves the 3 m rail |
 | 3.259 | burnout |
 | 14.547 | apogee; the drogue's charge fires at the same moment, so it shares this row |
@@ -83,9 +83,14 @@ What the numbers show:
 - **Under the drogue alone it falls at about 27 m/s**, and the wind carries it east.
 - **The main slows it from 26.5 to 8.0 m/s** in the 0.6 s after it opens (from 44.435 to 45.000),
   and it lands at 6.4 m/s, 100.4 m east of the pad.
+- **`cg_north_m` shows 0.1 m for a while, with no wind from the south.** The Earth's rotation
+  nudges a moving rocket sideways, to the right of its motion in the northern hemisphere
+  ([Coriolis acceleration](glossary.md#coriolis-acceleration)). While the rocket moves west, that
+  is north: it drifts 5 to 7 cm, which the table rounds to 0.0 or 0.1 m.
 - **`cg_up_m` and `height_above_ground_m` agree here, and don't in general.** The launch frame is
-  flat, and the Earth curves away beneath it, so far from the pad `cg_up_m` reads high: 7.8 m at
-  10 km. For heights, use `height_above_ground_m`.
+  a flat plane, and the Earth curves away below it, so far from the pad `cg_up_m` reads low: on
+  the ground 10 km from the pad, it is −7.8 m. At this landing, 100 m out, it is under a
+  millimetre low. For heights, use `height_above_ground_m`.
 
 ## Record something else
 
@@ -209,8 +214,10 @@ fn main() -> Result<(), Box<dyn Error>> {
     Ok(())
 }
 
-/// `value` to `decimals` places, without the minus sign of a value that rounds to zero: the landing
-/// is found a micrometre below the ground, and apogee's vertical speed is a hair below zero.
+/// `value` to `decimals` places, without the minus sign of a value that rounds to zero. Some values
+/// that are zero in principle come out a hair below it: the vertical speed at ignition and at
+/// apogee, the landing height, which is found just below the ground, and the landing's `cg_up_m`,
+/// under a millimetre below the pad's level because the ground curves away.
 fn rounded(value: f64, decimals: usize) -> String {
     let text = format!("{value:.decimals$}");
     match text.strip_prefix('-') {

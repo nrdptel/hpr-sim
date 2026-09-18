@@ -17,9 +17,10 @@ the rocket's position along three axes and its rotation about three. Meanwhile t
 the rocket's mass, [centre of gravity](glossary.md#centre-of-gravity-cg) and inertia (how hard it is
 to turn) change.
 
-It is a Rust library first, meant to be built into other programs, in the spirit of
-[RocketPy](https://github.com/RocketPy-Team/RocketPy). A command-line tool, Python bindings,
-design-file import and a graphical app are planned. None of them exists yet.
+It is a Rust library first, meant to be built into other programs, as
+[RocketPy](glossary.md#rocketpy) is. RocketPy is an open-source rocket flight simulator, written in
+Python and used as a Python library. A command-line tool, Python bindings, design-file import and a
+graphical app are planned for hpr-sim. None of them exists yet.
 
 It is also built to be checked. Every model cites a published source, and tests pin every model.
 The simulator is being compared against RocketPy, and will be compared against
@@ -37,7 +38,7 @@ These parts are built and tested. Each page gives its sources, and most say what
 |---|---|---|
 | Earth | Gravity from [WGS 84](glossary.md#wgs-84) (the model of the Earth's shape and gravity that GPS uses), varying with latitude and height; the Earth's rotation; launch-site coordinates | [Frames](physics/frames.md), [Geodesy](physics/geodesy.md), [Gravity](physics/gravity.md) |
 | Air | The 1976 US [Standard Atmosphere](glossary.md#standard-atmosphere) up to 86 km, with temperature offsets, humidity, and [soundings](glossary.md#sounding) (measured or forecast profiles of pressure, temperature and wind against height) | [Atmosphere](physics/atmosphere.md) |
-| Wind | Constant, layered, power-law and logarithmic wind profiles; [turbulence](glossary.md#turbulence-dryden) (random gusts) from a seeded generator, which repeats exactly for the same seed on the same platform | [Wind](physics/wind.md), [Turbulence](physics/turbulence.md) |
+| Wind | Constant, layered, power-law and logarithmic wind profiles; [turbulence](glossary.md#turbulence-dryden) (random gusts) from a random-number generator started from a [seed](glossary.md#seed), a number you choose: the same seed gives exactly the same gusts every time on the same platform (operating system and processor) | [Wind](physics/wind.md), [Turbulence](physics/turbulence.md) |
 | Motors | Reads `.eng` and `.rse` [thrust curves](glossary.md#thrust-curve); thrust, mass, centre of gravity and inertia through the burn; [32 bundled motors](physics/motor.md#the-bundled-motors) | [Solid motors](physics/motor.md), [`.eng` files](format/eng.md), [`.rse` files](format/rse.md) |
 | Rocket | Nose cones, body tubes, transitions (tapered sections between tubes of different diameters), fins and other parts, their materials, the whole rocket's mass properties, and design checks | [Design tree](physics/design.md), [Shapes](physics/shapes.md), [Mass properties](physics/mass.md) |
 | Aerodynamics | The [centre of pressure](glossary.md#centre-of-pressure-cp) (where the aerodynamic force acts; its distance behind the centre of gravity is the [stability margin](glossary.md#stability-margin)), the [normal force](glossary.md#normal-force) (the sideways force when the rocket flies at an angle to the airflow, its [angle of attack](glossary.md#angle-of-attack)) and drag. Documented up to [Mach](glossary.md#mach-number) 0.8, for small angles of attack | [Aerodynamics](physics/aero.md) |
@@ -46,11 +47,17 @@ These parts are built and tested. Each page gives its sources, and most say what
 
 ## What doesn't work yet
 
+These are the gaps you are most likely to meet. Each model page lists what its own model leaves
+out.
+
+### Speed and angle of attack
+
 - **Nothing at or above Mach 1.** A flight that reaches Mach 1 stops with an error.
   [Transonic and supersonic](glossary.md#transonic-and-supersonic) aerodynamics are planned for
   [M1.8](decisions-and-roadmap.md#m1-8), the second aerodynamics milestone.
-- **High subsonic speeds are shaky.** From Mach 0.8 to 1 the aerodynamics are unvalidated
-  extrapolations. Below that, one part of the drag reads low from about Mach 0.6:
+- **High subsonic speeds are shaky.** From Mach 0.8 to 1 the aerodynamics are extrapolations: the
+  models are used beyond the speeds they are documented for, and nothing has checked them there.
+  Below that, one part of the drag reads low from about Mach 0.6:
   - The air's pressure on the nose, and on any transition where the body widens, adds drag. hpr
     holds that drag at its low-speed value.
   - Its source, Niskanen's 2009 thesis, has it rise toward Mach 1. hpr doesn't add that rise yet.
@@ -61,8 +68,12 @@ These parts are built and tested. Each page gives its sources, and most say what
 - **Small angles of attack only.** Nothing models [stall](glossary.md#stall), the loss of lift at
   a large angle of attack, yet a flight uses the same models at every angle. So results near rail
   exit in a strong crosswind, and near apogee, are the least trustworthy.
-- **No staging, delayed ignition or air starts** ([M1.9](decisions-and-roadmap.md#m1-9), the staging and clusters
-  milestone). Every motor in a design ignites at the start of the flight, time zero.
+
+### Staging, two-stage rockets, clusters and air starts
+
+- **No staging, so no true two-stage flight, and no delayed ignition or air starts**
+  ([M1.9](decisions-and-roadmap.md#m1-9), the staging and clusters milestone). Every motor in a
+  design ignites at the start of the flight, time zero.
   - A [cluster](glossary.md#cluster), several motors burning side by side, flies that way: hpr adds
     up their thrust, and a motor off the rocket's centre line adds a turning moment. No test or
     comparison has checked a cluster flight yet.
@@ -71,6 +82,9 @@ These parts are built and tested. Each page gives its sources, and most say what
   - An [air start](glossary.md#air-start), a motor lit after liftoff, isn't possible yet.
   - A rocket can [separate](glossary.md#separation) into parts for recovery, but only after the
     last motor has burnt out.
+
+### Effects left out
+
 - **Some effects are left out of a flight, or approximated:**
   - roll forcing and roll damping (the torques that spin a rocket up and slow its spin), planned
     for [M1.8](decisions-and-roadmap.md#m1-8), the second aerodynamics milestone;
@@ -86,6 +100,9 @@ These parts are built and tested. Each page gives its sources, and most say what
     [Getting started](getting-started.md) flies, it adds 21 N to the push at liftoff and changes
     the burnout speed by at most 0.05 m/s
     ([Rigid-body flight](physics/flight.md#equations-of-motion)).
+
+### Outputs and ways to use it
+
 - **No stability margin output yet.** You can compute the centre of pressure and the centre of
   gravity, and [Your own rocket](your-own-rocket.md) shows how to get the margin from them. A
   margin tracked through the flight comes with [M1.10](decisions-and-roadmap.md#m1-10), the outputs milestone.
@@ -111,7 +128,8 @@ These parts are built and tested. Each page gives its sources, and most say what
   - Both codes get the same [drag areas](glossary.md#drag-area) and wind.
   - RocketPy's parachutes can add random noise, which would make each run differ; it is switched
     off.
-  - hpr uses RocketPy's formula for gravity and its way of interpolating the wind between heights.
+  - hpr uses RocketPy's formula for gravity, and RocketPy's way of interpolating the wind: of
+    working out the wind between the heights it is given.
 
   Six numbers are compared for each rocket: the descent time, the mean descent rate, the descent
   rate at landing, and the [drift](glossary.md#drift) in total, to the east and to the north. All
@@ -128,12 +146,14 @@ These parts are built and tested. Each page gives its sources, and most say what
     [RASAero II](glossary.md#rasaero-ii)'s (another rocket aerodynamics program). The curves don't
     record the fins' edges or the surface finish, so hpr's copies of the designs follow a declared
     guess. hpr is within 10% in four of the seven cases.
-  - It is 18% low for Cavour, another of RocketPy's examples, while its motor burns
+  - hpr's drag is 18% low for Cavour, another of RocketPy's examples, while its motor burns
     ([power-on drag](glossary.md#power-on-and-power-off-drag)); the cause is not known yet.
-  - It is 47% to 50% low for Valetudo. That curve gives 1.05 at Mach 0.3, 1.44 times the 0.728
-    in an [OpenRocket](glossary.md#openrocket) file of the same rocket. Given that file's own
-    surface finish and launch lugs, hpr gives 0.714, 1.9% under it
-    ([Aerodynamics](physics/aero.md#drag-verification)).
+  - hpr's drag is 47% to 50% below Valetudo's example curve. Valetudo is the rocket that
+    [Getting started](getting-started.md) flies. Its references disagree with each other, though:
+    at Mach 0.3 the example curve gives a [drag coefficient](glossary.md#drag-coefficient) of
+    1.05, 1.44 times the 0.728 in an [OpenRocket](glossary.md#openrocket) file of the same rocket.
+    Given that OpenRocket file's own surface finish and launch lugs, hpr gives 0.714, 1.9% under
+    the file's 0.728 ([Aerodynamics](physics/aero.md#drag-verification)).
   - The Recruiter is a six-fin model rocket that J. S. Barrowman, whose
     [method](glossary.md#barrowmans-method) hpr follows for the normal force, works through in
     his 1970 report Centuri TIR-33. hpr's [normal-force slope](glossary.md#normal-force-slope)
@@ -143,6 +163,10 @@ These parts are built and tested. Each page gives its sources, and most say what
   - [Tumbling](glossary.md#tumble-recovery) drag is −10 to +19% off its source's own drop tests.
     A separated body's parachute can open at a higher speed than it would for real, because the
     body falls with no drag until then ([Recovery](physics/recovery.md)).
+- **You can check it yourself.** [Getting started](getting-started.md#checking-it-yourself) says
+  how: run a program that shows how much the drag moves the apogee, trace any number with
+  [Checking a claim](checking-a-claim.md), or compare hpr's apogee by hand with your own
+  altimeter's or another simulator's.
 
 ## Reading these pages
 

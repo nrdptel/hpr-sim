@@ -85,9 +85,10 @@ parachute differs from RocketPy's by +2.865%, inside the 3% tolerance its case a
    in a large one.
 3. **The reference.** The values come from [`rocketpy-descent.json`][descent-fixture], which the
    report names with its hash. The script [`recovery.py`][recovery-oracle] wrote it by flying
-   RocketPy 1.13.0's own parachute phase; the lock file pins that RocketPy by commit. Its first
-   lines say what RocketPy computes, and what the comparison overrides (both codes start from the
-   same state, with the first parachute opening at once).
+   RocketPy 1.13.0's own parachute phase; the lock file pins that RocketPy by commit, the id of
+   one exact version of its code. The reference file's first lines say what RocketPy computes, and
+   what the comparison overrides (both codes start from the same state, with the first parachute
+   opening at once).
 4. **The model.** [Recovery](physics/recovery.md) explains hpr's descent, and its section
    [Against RocketPy](physics/recovery.md#against-rocketpy) explains the differences that remain.
    The likely cause is [added mass](glossary.md#added-mass): RocketPy treats the air a canopy

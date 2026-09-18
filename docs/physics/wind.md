@@ -11,9 +11,12 @@
 - **How well it is validated:** unit tests pin each model: with speed and direction interpolated
   separately (the default), halfway between 4 m/s from 350° and 12 m/s from 30° a table gives 8 m/s
   from 10°. In [RocketPy](../glossary.md#rocketpy)'s parachute descents, hpr's wind, interpolated
-  by components as RocketPy does, matches RocketPy's samples to 1e-9 m/s, including NDRT 2020's
-  wind, which changes with height. The [drift](../glossary.md#drift) agrees within 0.28% in the
-  four cases with wind ([Recovery](recovery.md#against-rocketpy)). No real flights yet.
+  by components as RocketPy does, matches RocketPy's samples to 1e-9 m/s (in
+  [scientific notation](../glossary.md#scientific-notation): a thousand-millionth of a metre per
+  second). That includes the wind of NDRT 2020, one of the
+  [example rockets](../glossary.md#example-rockets), which changes with height. In the four
+  descents with wind, the total [drift](../glossary.md#drift) agrees within 0.28%, and each east or
+  north part within 2.9% ([Recovery](recovery.md#against-rocketpy)). No real flights yet.
 - **What it leaves out:** wind varying in time or across the field, vertical wind, terrain, and
   gusts (no flight uses [Turbulence](turbulence.md)). A flight takes one wind model, so a power or
   log law, which keeps growing with height, can't hand over to winds aloft.
@@ -48,6 +51,19 @@ how to fetch and check it):
 - **Height:** a flight asks every model for the wind at a height above mean sea level, as it asks
   the [atmosphere](atmosphere.md#height-datum). Some models are built from heights above the
   ground instead: [Which height?](#which-height) says which.
+- **Flags:** each answer a wind model gives carries a flag, which is set when the height is
+  outside what the model covers. That is below a table's lowest level or above its highest, or
+  below the ground for a power or log law.
+  - The model still answers: a table holds its end level's wind, and a law gives calm below the
+    ground. The flag says that the answer was filled in, not taken from the model's data.
+  - In code it is the answer's `extrapolated` field: `None` normally, and `Some(Side::Below)` or
+    `Some(Side::Above)` when flagged.
+  - The power and log laws are not flagged high above the ground, although they describe only
+    the air near it.
+  - **A flight doesn't read the flag yet** ([issue #45](https://github.com/nrdptel/hpr-sim/issues/45)).
+    A rocket that climbs above a table's top level flies on the held wind, and nothing in its
+    result says so. Ask the model yourself before flying a table, as
+    [the example](#an-example-of-each) does: it marks each flagged answer with a star.
 
 ## Models
 
@@ -57,14 +73,18 @@ station. Each law blows from one direction at every height.
 
 - **`ConstantWind`:** one velocity at every height.
 - **`PowerLawWind`:** the speed grows as a power of height, `V = V_ref (z/z_ref)^α` for `z > 0`,
-  and is zero at and below the ground. A height below the ground is flagged.
+  and is zero at and below the ground. A height below the ground is [flagged](#conventions).
   - `α` is the exponent: the larger it is, the faster the wind grows with height.
   - [TM] eq. 2.1 gives the law for peak winds below 150 m, with `z_ref = 18.3 m`. A peak wind is
     the strongest speed over a period, gusts included, not the steady mean wind hpr flies.
   - [TM] Table 2-1: `α = 0.2` for 7–22 m/s and 0.14 above 22 m/s. Eq. 2.22 gives `1/7` with
     `z_ref = 10 m` for strong 10 m winds.
-  - Those exponents describe profiles of peak winds, and of strong 10 m winds. Pick the exponent
-    for the site; no single value fits mean winds everywhere.
+  - Those exponents describe profiles of peak winds, and of strong 10 m winds. No single value
+    fits mean winds everywhere, so treat any exponent as a starting point, not a measurement of
+    your field.
+  - [The example](#an-example-of-each) uses `α = 1/7` (about 0.14) with a 10 m reference height,
+    the pairing of [TM] eq. 2.22. Its *power law* column shows what that does to a 5.0 m/s wind at
+    10 m: 4.0 m/s at 2 m, 6.9 m/s at 100 m, and 10.7 m/s at 2,000 m, where it is still growing.
   - The law describes the surface layer: the air nearest the ground, where friction with the
     ground sets how fast the wind grows with height ([TM] fits it below 150 m). Above that layer the
     law keeps growing, so pair it with measured winds aloft.
@@ -75,8 +95,8 @@ station. Each law blows from one direction at every height.
   - This is the neutral surface-layer law `V = (u*/κ) ln(z/z₀)` ([WMO] ch. 5 annex; [TM] eq.
     2.8 with `Ψ = 0`), written through a reference wind. There `u*` is the friction velocity, a
     speed that measures how hard the wind drags on the ground, and `κ` is the von Kármán
-    constant. Writing the law through the wind measured at `z_ref` cancels both, so hpr needs
-    neither.
+    constant, a fixed number of the theory. Writing the law through the wind measured at `z_ref`
+    cancels both, so hpr needs neither.
   - `Ψ` in [TM] eq. 2.8 corrects for the air's stability: air warmed from below mixes more, and
     air cooled from below mixes less, which changes how the wind grows with height. `Ψ = 0` is
     neutral air, where neither happens. hpr has only the neutral law.
@@ -128,30 +148,50 @@ So a table's levels, from a forecast or a sounding, are **above sea level**. At 
 above sea level, a forecast's 10 m wind goes in at 1,410 m. Entered at 10 m instead, the whole
 profile sits 1,400 m too low. The [example](#an-example-of-each)'s last column shows what the
 flight would then see: 11.6 m/s from 298° near the pad instead of 5.0 m/s from 270°, and the top
-level's 12.0 m/s from 300° from 100 m up. Above that, every sample is flagged as beyond the table,
-which is the sign to look for.
+level's 12.0 m/s from 300° from 100 m up. Above that, every sample is
+[flagged](#conventions) as beyond the table, which is the sign to look for.
 
-**The ground's height above sea level.** hpr takes the launch site's height as
-[ellipsoidal height](../glossary.md#ellipsoidal-height), and a flight gets height above sea level
-from it by subtracting the geoid undulation `N`, the height of sea level above the ellipsoid.
-[`Environment`](../api/hpr_sim/environment/struct.Environment.html) holds `N`. It is 0 unless you
-set it with `with_geoid_undulation_m`, so by default the ground is at the site's own height.
-Compute it as the example does: the site's `height_m` less the environment's
-`geoid_undulation_m`. A law doesn't take the ground's height from the site by itself: if its
-`ground_msl_m` is wrong, its whole profile is shifted up or down by the error.
+**What to enter for your field's elevation.** The launch site's height, the third number in
+`Geodetic::from_degrees(latitude, longitude, height)`, is an
+[ellipsoidal height](../glossary.md#ellipsoidal-height): height above the
+[WGS 84](../glossary.md#wgs-84) ellipsoid, the smooth shape hpr gives the Earth. A field's
+elevation, as a map gives it, is height above sea level instead. The two differ by the geoid
+undulation `N`, the height of sea level above the ellipsoid at that place, which can be up to
+about 100 m. hpr has no map of `N`, so there are two ways to set up a site:
+
+- **The simple way, which the examples take.** Enter your field's elevation above sea level as
+  the site's height, and leave `N` at 0, as `Environment::standard` sets it. The air and the wind
+  are then looked up at the right heights above sea level. What is off is the height above the
+  ellipsoid, by your field's `N`. A flight uses that only to work out gravity, which changes by
+  about 0.003% over 100 m of height.
+- **The exact way, if you know `N` at your field.** Enter the elevation plus `N` as the site's
+  height, and give the environment `N` with `with_geoid_undulation_m`
+  ([`Environment`](../api/hpr_sim/environment/struct.Environment.html)).
+
+Either way, the ground is the site's `height_m` less the environment's `geoid_undulation_m` above
+sea level, which is how the example works it out. A power or log law needs that number as its
+`ground_msl_m`, and doesn't take it from the site by itself. If its `ground_msl_m` is wrong, its
+whole profile is shifted up or down by the error.
 
 Three more things to watch:
 
 - **Geopotential heights.** Soundings and forecasts often give heights in geopotential metres
-  above sea level, not geometric metres. Convert them first with
-  [`geometric_from_wmo_geopotential_m`](../api/hpr_atmos/profile/fn.geometric_from_wmo_geopotential_m.html)
-  ([Atmosphere](atmosphere.md#sounding-and-forecast-profiles) explains).
+  above sea level, not geometric metres (the metres a tape measure would give).
+  - A geopotential metre measures height by the work done lifting a mass against gravity: it is
+    the climb that takes as much work as one metre does where gravity is 9.80665 m/s².
+  - Gravity varies with height and latitude, so the two differ by an amount that depends on
+    both. 30 km above sea level is 29.7785 km of geopotential at the equator and 29.932 km at
+    80° N.
+  - Convert them first with
+    [`geometric_from_wmo_geopotential_m`](../api/hpr_atmos/profile/fn.geometric_from_wmo_geopotential_m.html)
+    ([Atmosphere](atmosphere.md#sounding-and-forecast-profiles) explains).
 - **A sounding's wind** is a `LayeredWind` (`SoundingProfile::wind`). A flight flies it only if
   you also pass it to `with_wind`: the atmosphere and the wind are separate parts of
   `Environment`.
-- **The flags.** A model flags a height below or above a table's levels, or below the ground for a
-  law. A flight doesn't report those flags yet, so ask the model yourself before flying a table,
-  as the example does.
+- **The flags.** A table flags a height below or above its levels, and a law a height below the
+  ground ([Conventions](#conventions) says how to read a flag). A flight doesn't report flags yet
+  ([issue #45](https://github.com/nrdptel/hpr-sim/issues/45)), so ask the model yourself before
+  flying a table, as the example does.
 
 ## An example of each
 
@@ -406,6 +446,14 @@ levels aloft. The planned weather milestone ([M5.2](../decisions-and-roadmap.md#
   references, below ground, and at `z₀`.
 - **`invalid_inputs_are_rejected`**, and **`wind_models_round_trip_through_json`**: each model
   written to JSON and read back gives the same wind.
+- **Against RocketPy**, in the recovery test `descent_matches_rocketpy_examples`
+  ([Recovery](recovery.md#against-rocketpy)):
+  - At every height its parachute descents sample, hpr's wind matches RocketPy's within 1e-9 m/s
+    in its east and north parts.
+  - Four of the five descents fly in wind: Calisto, NDRT 2020, Prometheus and Juno III. Their total
+    drift agrees within 0.28%, and each east or north part within 2.9%. The largest gap is the
+    north part of NDRT 2020's drift, +2.865% (the
+    [validation report](https://github.com/nrdptel/hpr-sim/blob/main/validation/reports/latest.md)).
 - The example above, which CI runs and compares with its committed output.
 
 [lock]: https://github.com/nrdptel/hpr-sim/blob/main/validation/refs.lock.toml
