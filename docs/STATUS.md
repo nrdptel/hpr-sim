@@ -4,11 +4,11 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
 
 ## Now
 
-- **Current milestone:** M2.1d3 The path in wind (issue #50)
-- **Order:** M2.1d3, then M1.8
-- **Run:** the first autopilot run has ended; M0.1-M0.4, M1.1-M1.7, M2.1a-M2.1c and M2.1d1-d2
-  have shipped. The site is live at https://nrdptel.github.io/hpr-sim/
-- **Last updated:** 2026-09-18 (M0.4 done; M2.1d3 not started)
+- **Current milestone:** M1.8 Aerodynamics II (transonic and supersonic, damping, overrides)
+- **Order:** M1.8, then M3.1
+- **Run:** M0.1-M0.4, M1.1-M1.7 and M2.1 have shipped. The site is live at
+  https://nrdptel.github.io/hpr-sim/
+- **Last updated:** 2026-09-18 (M2.1d3 done, and with it M2.1; M1.8 not started)
 
 ## Handoff (overwrite each session)
 
@@ -20,21 +20,21 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
 - **Checking a milestone off** in `ROADMAP.md` fails `cargo xtask site` until its row in
   `docs/decisions-and-roadmap.md` says `done`; a new milestone needs a row.
 
-M2.1c (ADR-022, 023): CI checks the report on three OSes; predicted mode's 3% are *targets*.
-
-- **M2.1d1, the RMS (ADR-024):** `series_height_rms_m` and `series_speed_rms_m_s` on every flown
-  whole-flight case (Prometheus stays the `M ≥ 1` gap), sampled from each step's dense output at
-  the fixture's 120 times, held to 3% of the reference's apogee and max speed (the gate test holds
-  them no looser). A new whole-flight case must name both.
-- **M2.1d2, the calm-air cases (ADR-025):** three `flight-*-calm` cases, flown on `flight.py`'s
-  `CALM_AIR_BASES`, drifts scored at 3%; Juno III's are not scored (-3.7%; the rail release is 1.6 points of it,
-  per `rail_release.py`; a same-sign rest, -0.5 to -2.2%, remains in every calm drift).
-- **M2.1d3, issue #50** (the path in wind): start with the rail release (ADR-025), then hpr's
-  drag growth with angle of attack, and each code's normal force and damping (only C_D0 differs
-  between the modes). In wind the gap is far more than the release explains.
-- **M1.8** after: don't read predicted mode's +10% (Valetudo, NDRT) as gaps to close. hpr's drag
+- **Validation (M2.1, ADR-021 to ADR-026):** CI checks the report on three OSes; predicted mode's
+  3% are *targets*; every whole flight names both RMS metrics, each held to 3% of its reference's
+  apogee or max speed (ADR-024); a reference that moves moves those bounds with it.
+- **M2.1d3, the path in wind (ADR-026):** the whole-flight oracle flies RocketPy 1.13.0 with
+  upstream PRs #1188 (merged) and #1196 (open) applied by `corrections.py`: as released,
+  `u_dot_generalized` took its moments during the burn about the wrong point. When RocketPy
+  releases #1196, re-pin, regenerate and delete `corrections.py`. `wind_response.py` flies every
+  case as released, corrected, and with hpr's rail release, body lift and thin fins added. Five
+  drifts stay reported as measured model differences (Juno III and Bella Lui in wind, NDRT's
+  apogee drift); Prometheus's drifts are gated for when hpr flies it.
+- **M1.8** next: don't read predicted mode's +10% (Valetudo, NDRT) as gaps to close. hpr's drag
   there runs on placeholder fin edges and finishes, and Valetudo's table is suspect (ADR-009).
-  Both Prometheus cases are checked `M ≥ 1` gaps that fail the run once hpr flies them.
+  Both Prometheus cases are checked `M ≥ 1` gaps that fail the run once hpr flies them; its
+  drifts are then held to 3% like every other metric. M1.8's damping must keep hpr's local-flow
+  pitch damping, which ADR-026 found agrees with corrected RocketPy's.
 - **Regeneration is not bit-identical across machines:** the first *Regenerate references* run
   (GitHub's macOS runner) moved RocketPy's fixtures in their last digits (descents at most 3.6e-11
   relative), changing their hashes and so the report's; the script prints each fixture's move.
@@ -44,6 +44,9 @@ M2.1c (ADR-022, 023): CI checks the report on three OSes; predicted mode's 3% ar
 
 ## Done log (newest first, keep about 15)
 
+- 2026-09-18: M2.1d3 The path in wind (ADR-026, issue #50), and with it M2.1: RocketPy's equations
+  corrected as upstream PRs #1188 and #1196 do; six drifts now gated, five measured as body lift
+  and rail release.
 - 2026-09-18: M0.4d Publish, and with it M0.4 (PR #59, ADR-019): Neer turned Pages on; CI run
   35396233336 on `main` deployed the guide and the rustdoc. ThrustCurve's catalog values confirmed
   as facts (ADR-005).
@@ -73,6 +76,9 @@ M2.1c (ADR-022, 023): CI checks the report on three OSes; predicted mode's 3% ar
 
 ## Decided without Neer (one line each; significant ones get an ADR)
 
+- ADR-026: the oracle flies RocketPy 1.13.0 with two upstream corrections (PR #1188 merged, #1196
+  open, both on RocketPy's record); hpr keeps body lift and its rail release; a drift is gated
+  unless a measurement excuses it, so Prometheus's drifts are gated for when it flies.
 - M0.4, M1.4, M1.5, M1.6, M1.7 and M2.1b were split into increments, done-when bullets unchanged.
 - ADR-016 to ADR-018, the site: mdBook 0.5.4 over `docs/` (its MPL-2.0 theme files ship in the
   site); Unicode equations; our own link and label checks; web links counted, not fetched (#38);
@@ -127,6 +133,9 @@ M2.1c (ADR-022, 023): CI checks the report on three OSes; predicted mode's 3% ar
 - Drag (M1.5b): the RASAero comparison can't show 10% agreement without the exports' inputs (fins
   and finish move each case by 20%+). hpr misses Valetudo's suspect table by 47% and Cavour's
   power-on by 18% (open; ADR-009); drag reads low from about Mach 0.6 until M1.8.
+- In wind, a slow rocket's drift in hpr rests on body lift's uncertain `K`: Juno III's apogee
+  drift is 237 to 191 m over Galejs's 1.0 to 1.5 (ADR-026). The oracle carries two unreleased
+  RocketPy corrections; if #1196 changes before it merges, revisit `corrections.py`.
 - Flight (M1.6b): no tip-off, roll forcing or damping (M1.8), turbulence or thrust misalignment;
   the small-angle aero is used at every `α`. Four `mass_properties` calls are most of an
   evaluation's 0.4 µs (`perf.md`).

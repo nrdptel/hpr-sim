@@ -154,11 +154,14 @@ Below the table:
   declared drag coefficient, agree within 3% on how high, how fast and how long
   ([M2.1b2](decisions-and-roadmap.md#m2-1b2), the whole-flight comparison). That checks the
   equations of motion, the motor and the air, not the drag.
-- **Where it goes in wind does not match.** In wind, hpr turns the rocket into the wind less than
-  RocketPy does ([issue #50](https://github.com/nrdptel/hpr-sim/issues/50)), so this
-  example's apogee 86 m upwind and its landing point are the least trustworthy numbers it
-  prints. No flight has been compared with a real one.
-  [Accuracy](accuracy.md#whole-flights-against-rocketpy) keeps every result so far.
+- **Where it goes in wind is the least certain number.** This airframe was compared with RocketPy
+  only in still air, where its drifts agree within 3%. Here it leaves the rail at 16.2 m/s into a
+  5 m/s wind, at a steep angle to the airflow. At such angles hpr adds body lift, a sideways push
+  on the body that RocketPy leaves out, and it moved the drifts of two of RocketPy's rockets by 11
+  to 43%; how much body lift a body makes is itself uncertain
+  ([Accuracy](accuracy.md#whole-flights-against-rocketpy)). So this example's apogee 86 m upwind
+  and its landing point are the least trustworthy numbers it prints. No flight has been compared
+  with a real one.
 - **The thrust is likely a little low for this site.** hpr flies the curve as measured, to match
   RocketPy's example. A motor fired on a test stand near sea level gives somewhat more thrust in
   the thinner air at 1,400 m. With hpr's correction for that, which assumes a sea-level test,
