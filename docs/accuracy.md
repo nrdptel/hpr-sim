@@ -374,7 +374,8 @@ What the two codes still do differently, and what it moves:
   fix is proposed in [a pull request to RocketPy](https://github.com/RocketPy-Team/RocketPy/pull/1196), still open, built on
   [one that is merged](https://github.com/RocketPy-Team/RocketPy/pull/1188) but not yet released. RocketPy 1.13.0 as installed still has the
   error; the comparison applies both fixes ([ADR-026][adr-026]). Without them, Juno III's apogee drift was
-  582.4 m, and hpr's differences were up to −60.8% in wind (the question of
+  582.4 m, and hpr's drifts in wind were up to −60.8% short of RocketPy's at apogee and +151%
+  beyond it at landing (the question of
   [issue #50][issue-50]).
 - **On the rail,** hpr keeps the terms for the centre of mass moving inside the body as the
   propellant burns, and RocketPy's rail equation leaves them out. At a sharp ignition spike, with
@@ -538,9 +539,9 @@ rest.
 - **Body lift in wind.** A slow rocket leaves the rail at a steep angle to a crosswind, and there
   hpr's body lift, which RocketPy leaves out, is the largest reason its drift differs: Juno III's
   apogee drift is −42.510% against RocketPy's ([report][report]). How much body lift a rocket body
-  makes is itself uncertain. Across its source's range of `K`, Juno III's apogee drift in hpr runs
-  from 191 m at 1.5 to 237 m at 1.0; it is 228 m at hpr's 1.1, and would be 326 m with no body
-  lift ([ADR-026][adr-026]). Only real flights can say which is right
+  makes is itself uncertain. Across its source's range of `K`, Juno III's apogee drift runs from
+  194.1 m at 1.5 to 240.2 m at 1.0, and would be 328.0 m with no body lift, flown in RocketPy with
+  hpr's model; hpr itself gives 228 m at its 1.1 ([ADR-026][adr-026]). Only real flights can say which is right
   ([M2.3](decisions-and-roadmap.md#m2-3)).
 - **Airfoil fins.** hpr's fins use the flat-plate lift slope. It cannot model an airfoil lift
   curve such as the one Juno III's example gives its fins, which makes RocketPy's fin slope 7.6%

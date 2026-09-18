@@ -364,9 +364,10 @@ def peak_thrust_to_weight(rocket, env, case):
     return finite(peak / weight, "thrust to weight")
 
 
-def fly(rocket, env, rail, solver):
-    """RocketPy's flight with the upstream corrections to its equations (`corrections.py`)."""
-    return corrections.CorrectedFlight(
+def fly(rocket, env, rail, solver, flight_class=corrections.CorrectedFlight):
+    """RocketPy's flight with the upstream corrections to its equations (`corrections.py`), or,
+    given `rocketpy.Flight` as `flight_class`, as released."""
+    return flight_class(
         rocket=rocket,
         environment=env,
         rail_length=rail["rail_length_m"],
@@ -600,7 +601,8 @@ def main():
     print(
         json.dumps(
             {
-                "oracle": f"rocketpy {importlib.metadata.version('rocketpy')}",
+                "oracle": f"rocketpy {importlib.metadata.version('rocketpy')} with upstream PRs "
+                          "#1188 and #1196 applied (corrections.py)",
                 "generator": "validation/oracles/rocketpy/flight.py",
                 "command": f"{COMMAND} {OWN_DRAG_FLAG}" if own_drag else COMMAND,
                 **drag_fields,

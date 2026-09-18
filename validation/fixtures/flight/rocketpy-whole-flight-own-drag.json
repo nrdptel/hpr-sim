@@ -1,5 +1,5 @@
 {
- "oracle": "rocketpy 1.13.0",
+ "oracle": "rocketpy 1.13.0 with upstream PRs #1188 and #1196 applied (corrections.py)",
  "generator": "validation/oracles/rocketpy/flight.py",
  "command": "refs/venv/bin/python validation/oracles/rocketpy/flight.py --own-drag",
  "model": "Flight.u_dot_generalized (flight.py:2471-2709, the default equations_of_motion='standard') with upstream PRs #1188 and #1196 applied (corrections.py): RocketPy's 6-DOF variable-mass rigid body from the rail to apogee, then its point-mass parachute phase (u_dot_parachute, flight.py:2710-2790), under each example's own drag and RocketPy's Barrowman lift",
@@ -17,7 +17,7 @@
    "upstream": "https://github.com/RocketPy-Team/RocketPy/pull/1196",
    "issue": "https://github.com/RocketPy-Team/RocketPy/issues/1186",
    "state": "open, head 927e771e1a7faa2915d1f96ff48a70c544db13b4 (2026-09-16)",
-   "what": "u_dot_generalized negates com_to_cdm_function and nozzle_to_cdm where it reads them and flips the sign of r_CM ^ w_dot in v_dot (flight.py:2508-2515, :2698): both attributes point to the centre of dry mass, the equations need them from it, so during the burn the moments were taken about a point as far forward of the dry centre of mass as the centre of mass is behind it"
+   "what": "u_dot_generalized negates com_to_cdm_function and nozzle_to_cdm where it reads them and flips the sign of r_CM ^ w_dot in v_dot (flight.py:2509-2515, :2695): both attributes point to the centre of dry mass, the equations need them from it, so during the burn the moments were taken about a point as far forward of the dry centre of mass as the centre of mass is behind it"
   }
  ],
  "mass_fixture": {

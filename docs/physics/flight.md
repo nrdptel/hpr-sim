@@ -376,7 +376,8 @@ What the two codes still do differently, and how much it moves:
   and its rockets turn into the wind too far. The fix is proposed in [a pull request to RocketPy](https://github.com/RocketPy-Team/RocketPy/pull/1196),
   still open, built on [one that is merged](https://github.com/RocketPy-Team/RocketPy/pull/1188) but not yet released; RocketPy 1.13.0 as installed still has
   the error, and the comparison applies both fixes. Without them,
-  hpr's drifts in wind differed from RocketPy's by up to 60.8% ([ADR-026][adr-026],
+  hpr's drifts in wind were up to −60.8% short of RocketPy's at apogee and +151% beyond it at
+  landing ([ADR-026][adr-026],
   [issue #50](https://github.com/nrdptel/hpr-sim/issues/50)).
 - **The rail.** hpr's rail equation keeps the terms for the centre of mass moving inside the
   body as the propellant burns. RocketPy's rail equation (`udot_rail1`) leaves them out. At a

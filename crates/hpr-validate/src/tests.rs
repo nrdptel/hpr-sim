@@ -221,8 +221,8 @@ fn no_committed_gate_is_looser_than_the_milestone_says() {
         .iter()
         .filter(|c| c.scored() || c.targeted_row());
     // M2.1d2's calm-air cases add 42 point metrics and 6 RMS rows (Calisto's acceleration time is
-    // not scored); M2.1d3 scores six drifts that were not (ADR-026): Calisto's two in wind, Valetudo's
-    // and NDRT 2020's landing drift, and Juno III's two in calm air.
+    // not scored); M2.1d3 scores six drifts that were not (ADR-026): Calisto's two in wind,
+    // Valetudo's and NDRT 2020's landing drift, and Juno III's two in calm air.
     assert_eq!(bounded.clone().count(), 94 + 10 + 75 + 10 + 42 + 6 + 6);
     for comparison in bounded {
         let allowed = comparison.tolerance.allowed(comparison.reference);
@@ -262,10 +262,11 @@ fn the_metrics_that_are_not_scored_are_these_and_no_others() {
     // - NDRT 2020's whole-flight maximum is the main opening, where RocketPy has added mass and hpr
     //   has none (ADR-012); the power-on maximum and the opening's time are gated.
     // - The drifts in wind where the two codes' models, not an error in either, carry them past 3%
-    //   (ADR-026): Juno III's and Bella Lui's, and NDRT 2020's apogee drift. hpr's body lift at the
-    //   rail exit's angle of attack, which RocketPy's linear normal force leaves out, and its release
-    //   at the last rail button; with both added to RocketPy (`wind_response.py`) the drifts land
-    //   within 1.4% of hpr's. Every other drift is gated.
+    //   (ADR-026): Juno III's and Bella Lui's, and NDRT 2020's apogee drift. hpr's body lift at
+    //   the rail exit's angle of attack, which RocketPy's linear normal force leaves out, its
+    //   release at the last rail button, and Juno III's flat-plate fin slope; with all three added
+    //   to RocketPy (`wind_response.py`) the drifts land within 1.4% of hpr's. Every other drift is
+    //   gated.
     // - In calm air (M2.1d2), Calisto's acceleration time for the same reason as in wind.
     //
     // Adding an excuse means editing this list.

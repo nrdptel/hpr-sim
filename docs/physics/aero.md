@@ -454,9 +454,10 @@ parasitic term on its own area. The axial coefficient is `C_A = C_D0 f(α)`.
   so hpr [turns into the wind](../glossary.md#weathercocking) less than RocketPy, whose normal
   force has no body term. Juno III's apogee ends 228.0 m from the pad in hpr and 396.6 m in
   RocketPy; body lift is about half of that difference, and hpr's rail release and fin slope most
-  of the rest. `K` matters there: across [G]'s range, hpr's apogee drift runs from 191 m at
-  `K = 1.5` to 237 m at 1.0, and would be 326 m with no body lift. Calisto, off the rail at 28 m/s
-  and 11°, changes its drift by under 0.5% across that range. Which is nearer a real flight is
+  of the rest. `K` matters there: across [G]'s range, Juno III's apogee drift runs from 194.1 m at
+  `K = 1.5` to 240.2 m at 1.0, and would be 328.0 m with no body lift (flown in RocketPy with
+  hpr's model; hpr gives within 4 m of each). Calisto, off the rail at 28 m/s and 11°, changes
+  its drift by under 0.5% across that range. Which is nearer a real flight is
   open until [M2.3](../decisions-and-roadmap.md#m2-3).
 - **No airfoils.** Fins use the flat-plate lift slope (2π per radian in two dimensions). An airfoil
   lift curve, such as the one Juno III's example gives its fins, is not modelled; RocketPy uses

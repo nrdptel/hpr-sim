@@ -2061,8 +2061,8 @@ those calm-air runs as cases, with the drifts scored at M2.1's 3%.
 ## ADR-026: The path in wind: RocketPy's corrected equations, and hpr's body lift (2026-09-18)
 
 **Context.** In wind, hpr's whole flights turned into the wind less than RocketPy 1.13.0's
-(issue #50). Juno III's apogee drift was −60.8% of RocketPy's, NDRT 2020's −18.6%, Bella Lui's
-−15.6% and Calisto's −5.6%. In still air, Valetudo's landing drift was −3.4%, and in calm air
+(issue #50). Juno III's apogee drift was −60.8% of RocketPy's (its landing drift +151%), NDRT
+2020's −18.6%, Bella Lui's −15.6% and Calisto's −5.6%. In still air, Valetudo's landing drift was −3.4%, and in calm air
 Juno III's drifts were −3.7% (ADR-025). Same-drag mode shares only `C_D0`, so M2.1d3 looked at
 everything else that turns a rocket in wind: the rail release, the drag's growth with angle of
 attack, the normal force and the damping.
@@ -2093,12 +2093,16 @@ RocketPy's own `center_of_mass` puts the centre of mass at 1.639 m. The margin R
 is 1.75 times the one its own `static_margin` reports. After burnout `r_CM` is zero and the
 error ends. A rocket that is too stable during the burn turns into the wind too much.
 
-RocketPy's maintainers have it on record. Issue #1186 (2026-08-25) reports the sign, and PR #1196
-(open, head `927e771e`) corrects it with three edits: negate `r_CM` with its derivatives, negate
-`r_NOZ`, and flip the `r_CM ^ w_dot` term in `v_dot`, which was written for the reversed vector.
-PR #1196 builds on PR #1188 (merged into `develop` 2026-09-09, not released), which corrects the
-nozzle gyration tensor's parallel-axis term from `0.25 * nozzle_to_cdm**2` to `nozzle_to_cdm**2`,
-so that the jet damping uses the whole lever.
+Upstream, an outside contributor reported the sign in issue #1186 (2026-08-25) and proposed the
+fix in PR #1196 (open, not yet reviewed, head `927e771e`): three edits that negate `r_CM` with its
+derivatives, negate `r_NOZ`, and flip the `r_CM ^ w_dot` term in `v_dot`, which was written for
+the reversed vector. PR #1196 builds on PR #1188, merged into `develop` 2026-09-09 and not yet
+released, which corrects the nozzle gyration tensor's parallel-axis term from
+`0.25 * nozzle_to_cdm**2` to `nozzle_to_cdm**2`, so that the jet damping uses the whole lever.
+RocketPy's own `develop` branch agrees on the convention: the tip-off phase merged there in PR #920
+(2026-09-14) says, at `flight.py:2086-2087`, "The generalized EOM store r_CM / r_NOZ as (point ->
+CDM) vectors, i.e. the negative of the true-frame position; hence the sign flips below", and
+negates `com_to_cdm_function` for its own use.
 
 Two checks:
 
@@ -2171,8 +2175,9 @@ build).
 **Alternatives rejected.**
 
 - *Keeping RocketPy as released and the drifts unscored.* The reference would carry an error in
-  its equations of motion that its maintainers have accepted (#1188) or proposed to fix (#1196),
-  and that its own `static_margin` contradicts. hpr's correct answer would read as a miss:
+  its equations of motion that its own `static_margin` contradicts, that RocketPy's `develop`
+  branch describes in a comment (PR #920), and that PR #1188 (merged) and PR #1196 (open)
+  correct. hpr's correct answer would read as a miss:
   Juno III's apogee, +1.71% as released, is +0.70% corrected.
 - *Only #1196.* It is written on top of #1188, which is merged upstream.
 - *RocketPy's `develop` branch with #1196.* Unreleased, and it would move every reference for
@@ -2190,10 +2195,15 @@ build).
   Calisto in wind and for NDRT 2020's landing. It is not met for Juno III and Bella Lui in wind,
   where the two codes' models differ: body lift and the rail release by design, Juno III's airfoil
   fins a feature hpr lacks. The report shows both numbers.
-- In wind, a slow rocket's drift in hpr depends on body lift's uncertain `K`. Juno III's apogee
-  drift is 237 m at `K = 1.0`, 228 m at 1.1 and 191 m at 1.5, and would be 326 m with no body
-  lift; its landing drift is 664, 674 and 719 m (local build). Calisto, off the rail at 28 m/s
-  and 11°, moves by under 0.5%. Which code is nearer a real flight is for M2.3.
+- In wind, a slow rocket's drift in hpr depends on body lift's uncertain `K`. Flown in RocketPy
+  with hpr's body lift, rail release and fin slope (`wind_response.py`), Juno III's apogee drift is
+  240.2 m at `K = 1.0`, 231.1 m at 1.1 and 194.1 m at 1.5, and 328.0 m with no body lift; its
+  landing drift is 659.5, 670.2 and 714.2 m. hpr itself gives 237, 228, 191 and 326 m (local
+  build). Calisto, off the rail at 28 m/s and 11°, changes its drifts by under 0.5% across
+  `K = 1.0` to 1.5. Which code is nearer a real flight is for M2.3.
+- The corrections do not only move RocketPy toward hpr: Valetudo's apogee difference grew from
+  +0.003% to +0.116%, and predicted NDRT 2020's apogee drift from −4.44% to +11.906% (outside its
+  target before and after).
 - The time-series RMS tightens: Juno III's height RMS is 15.9 m, from 39.2.
 - Predicted mode: 66 of 85 metrics within target, from 63; Calisto's drifts and Juno III's apogee
   are now within, and nothing new misses.

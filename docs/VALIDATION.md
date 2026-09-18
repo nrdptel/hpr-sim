@@ -138,10 +138,11 @@ thrust for ambient pressure with a sea-level stand-in, which RocketPy's examples
 flew, and the harness checks hpr's against it. Heights are measured from the dry centre of mass's
 height at launch, since RocketPy's starts at the ground, and the rail exit at RocketPy's
 `effective_1rl`. Every scored metric agrees within 3%, and since M2.1d3 that includes every drift
-but those of the two rockets that leave the rail slowly into a wind (ADR-026).
+but five: those of the two rockets that leave the rail slowly into a wind, Juno III and Bella
+Lui, and NDRT 2020's apogee drift (ADR-026).
 
 **RocketPy's equations as corrected upstream (M2.1d3).** The whole-flight references fly RocketPy
-1.13.0 with two corrections its maintainers have made or proposed, applied by
+1.13.0 with two corrections made or proposed upstream, applied by
 `validation/oracles/rocketpy/corrections.py` and recorded in each fixture's `corrections`: PR #1188
 (merged, unreleased), the nozzle's jet-damping lever, and PR #1196 (open, for issue #1186), the
 sign of the centre-of-mass and nozzle vectors in `u_dot_generalized`. As released, RocketPy took

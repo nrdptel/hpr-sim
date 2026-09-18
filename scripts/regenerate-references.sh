@@ -119,6 +119,13 @@ else
     xtask validate || status=$?
 fi
 
+# The case files excuse five drifts with numbers `wind_response.py` measured (ADR-026). Nothing
+# gates them, so print them here, where a reviewer of the regenerated references reads the diff,
+# to check against those reasons.
+echo
+echo "regenerate: validation/oracles/rocketpy/wind_response.py, for the case files' not_scored reasons:"
+"$python" validation/oracles/rocketpy/wind_response.py || status=$?
+
 # Only validation/ is written above, so only it is summarised: other local edits are not ours.
 echo
 if [[ -z $(git status --porcelain -- validation) ]]; then

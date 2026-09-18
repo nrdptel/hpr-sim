@@ -15,12 +15,18 @@ In wind hpr's whole flights turned into the wind less than RocketPy's: Juno III'
    `hpr_aero::BODY_LIFT_K`; `docs/physics/aero.md`). RocketPy's own normal force is linear in
    alpha and has no body term. The planforms come from hpr's design (`validation/designs/`), with
    each nose's profile from RocketPy's own `NoseCone.y_nosecone`.
-5. **+ thin-plate fins** (Juno III only): without the airfoil lift curve Juno III's example gives
-   its fins, which makes RocketPy's fin slope 7.6% steeper than hpr's thin-plate one.
+5. **+ thin-plate fins**, for a case whose fins carry an airfoil lift curve (Juno III's, in wind
+   and calm): without it, as hpr flies them. The airfoil makes RocketPy's fin slope 7.6% steeper
+   than hpr's thin-plate one.
 
 After step 5 RocketPy flies hpr's choices on every point the two codes' normal force and rail
 differ on but two small ones (hpr's `sin alpha` in place of `alpha`, and its drag factor at an
 angle of attack), so its drifts should land on hpr's.
+
+Two more measurements follow each case: RocketPy's fin slope at Mach 0.1 with and without the
+airfoil, for a case whose fins carry one, and the drifts of step 5 with body lift's `K` at 0
+(none), 1.0 and 1.5, the ends of the range Galejs cites, to show how much a drift in wind rests on
+that constant.
 
 It also prints, for each case, the check that found the first correction: at the released
 flight's rail exit, where the rotation rate is zero and so no damping acts, RocketPy's angular
@@ -34,8 +40,9 @@ Run from the repo root:
 with no names for every case, or with names (`juno-iii`, `juno-iii-calm`, ...) to pick some.
 """
 
-import json
+import copy
 import math
+import json
 import sys
 import warnings
 
@@ -44,7 +51,6 @@ from rocketpy import Flight, Function
 from rocketpy.mathutils.vector_matrix import Vector
 from rocketpy.rocket.aero_surface.aero_surface import AeroSurface
 
-import corrections
 import flight
 import recovery
 
@@ -116,14 +122,14 @@ def body_planforms(design, nose):
             area = (fore + aft) * length
             centroid = length * (fore + 2.0 * aft) / (3.0 * (fore + aft))
         else:
-            continue
+            fail(f"{component['id']} is a part this script has no planform for: {sorted(part)}")
         planforms.append((component["id"], area, station + centroid))
         station += length
     return planforms
 
 
-def add_body_lift(rocket, design):
-    """Adds `BodyLift` for each body component, placed at its planform centroid."""
+def add_body_lift(rocket, design, k):
+    """Adds `BodyLift` with constant `k` for each body component, at its planform centroid."""
     nose, nose_position = next(
         (surface, position)
         for surface, position in rocket.aerodynamic_surfaces
@@ -131,19 +137,26 @@ def add_body_lift(rocket, design):
     )
     surfaces, positions = [], []
     for name, area, station in body_planforms(design, nose):
-        factor = BODY_LIFT_K * area / rocket.area
+        factor = k * area / rocket.area
         surfaces.append(BodyLift(f"body lift, {name}", factor, rocket.radius))
         positions.append(nose_position.z - station * rocket._csys)
     rocket.add_surfaces(surfaces, positions)
     return [(surface.name, surface.lift_factor) for surface in surfaces]
 
 
+def fail(message):
+    sys.exit(f"wind_response.py: {message}")
+
+
 def rail_exit_check(flown):
-    """RocketPy's angular acceleration at the rail exit, against the moment about its own centre
-    of mass and about the point mirrored across the centre of dry mass, over the inertia there."""
+    """RocketPy's angular acceleration at the rail exit, about body x and y, against the moment
+    about its own centre of mass and about the point mirrored across the centre of dry mass, over
+    the inertia there. The rotation rate must be zero, so no damping term acts."""
     t_exit = flown.out_of_rail_time
     row = next(row for row in flown.solution if row[0] >= t_exit)
     t, state = row[0], list(row[1:])
+    if any(state[10:13]):
+        fail(f"the rotation rate at the rail exit is {state[10:13]}, not zero")
     variables = flown._Flight__post_processed_variables
     variables.clear()
     derivative = flown.u_dot_generalized(t, state, post_processing=True)
@@ -158,17 +171,18 @@ def rail_exit_check(flown):
     moment = Vector([m1, m2, m3])
     about_true = moment - (Vector([0, 0, true_r]) ^ force)
     about_mirror = moment + (Vector([0, 0, true_r]) ^ force)
+    # The rocket is axisymmetric, so the inertia about body x and y is the same.
     return {
         "t": t,
-        "flown": derivative[10],
-        "about_centre_of_mass": about_true.x / inertia,
-        "about_the_mirror_point": about_mirror.x / inertia,
+        "flown": (derivative[10], derivative[11]),
+        "about_centre_of_mass": (about_true.x / inertia, about_true.y / inertia),
+        "about_the_mirror_point": (about_mirror.x / inertia, about_mirror.y / inertia),
     }
 
 
 def fly(case, inputs, env, variant):
     """The case's metrics and apogee position under one variant."""
-    inputs = json.loads(json.dumps(inputs))
+    inputs = copy.deepcopy(inputs)
     base = inputs["name"]
     if variant["thin_fins"]:
         for fins in inputs["geometry"]["fin_sets"]:
@@ -177,10 +191,10 @@ def fly(case, inputs, env, variant):
     lifts = None
     if variant["body_lift"]:
         with open(f"validation/designs/rocketpy-{base}.json") as file:
-            lifts = add_body_lift(rocket, json.load(file))
+            lifts = add_body_lift(rocket, json.load(file), variant.get("k", BODY_LIFT_K))
     rail = dict(flight.RAILS[base])
     if variant["release"]:
-        buttons = inputs["geometry"]["rail_buttons"]
+        buttons = inputs["geometry"].get("rail_buttons") or fail(f"{base} has no rail buttons")
         rail["rail_length_m"] += abs(
             buttons["upper_button_position"] - buttons["lower_button_position"]
         )
@@ -189,15 +203,13 @@ def fly(case, inputs, env, variant):
     else:
         # RocketPy as released: its own tensor and equations.
         rocket.evaluate_nozzle_gyration_tensor()
-        flown = Flight(
-            rocket=rocket,
-            environment=env,
-            rail_length=rail["rail_length_m"],
-            inclination=rail["inclination_deg"],
-            heading=rail["heading_deg"],
-            **flight.SOLVER,
-        )
+        flown = flight.fly(rocket, env, rail, flight.SOLVER, flight_class=Flight)
     metrics = flight.metrics_of(flown, case, case["name"], flight.SOLVER)
+    metrics["fin_slope_at_mach_0_1"] = sum(
+        surface.clalpha(0.1)
+        for surface, _ in rocket.aerodynamic_surfaces
+        if type(surface).__name__ == "TrapezoidalFins"
+    )
     east = flown.apogee_x - flown.x(0)
     north = flown.apogee_y - flown.y(0)
     return flown, metrics, (east, north), lifts
@@ -227,7 +239,7 @@ def main():
     every = every + flight.calm_air_cases(every)
     cases = [case for case in every if not keep or case["name"] in keep]
     if keep and len(cases) != len(keep):
-        flight.fail(f"unknown case(s): {sorted(keep - {case['name'] for case in cases})}")
+        fail(f"unknown case(s): {sorted(keep - {case['name'] for case in cases})}")
     for case in cases:
         base = case.get("base", case["name"])
         inputs = recovery.mass_case(document, base)
@@ -235,10 +247,12 @@ def main():
         env = recovery.environment_of(case)
         has_airfoil = any("airfoil" in fins for fins in inputs["geometry"]["fin_sets"])
         print(f"{case['name']}:")
+        slopes = {}
         for variant in VARIANTS:
             if variant["thin_fins"] and not has_airfoil:
                 continue
             flown, metrics, (east, north), lifts = fly(case, inputs, env, variant)
+            slopes[variant["thin_fins"]] = metrics["fin_slope_at_mach_0_1"]
             print(
                 f"  {variant['label']:30s} apogee_agl_m {metrics['apogee_agl_m']:7.1f}  "
                 f"apogee_drift_m {metrics['apogee_drift_m']:7.1f}  "
@@ -250,12 +264,26 @@ def main():
                 print(f"  {'':30s} body-lift factors K A_plan/A_ref: {described}")
             if variant["label"] == "released":
                 check = rail_exit_check(flown)
+                pair = lambda values: "({:+.4f}, {:+.4f})".format(*values)
                 print(
-                    f"  {'':30s} rail exit {check['t']:.4f} s, angular acceleration about x: "
-                    f"flown {check['flown']:+.4f} rad/s^2, moment about the centre of mass "
-                    f"over I {check['about_centre_of_mass']:+.4f}, about the mirrored point "
-                    f"{check['about_the_mirror_point']:+.4f}"
+                    f"  {'':30s} rail exit {check['t']:.4f} s, angular acceleration about body "
+                    f"(x, y): flown {pair(check['flown'])} rad/s^2, moment about the centre of "
+                    f"mass over I {pair(check['about_centre_of_mass'])}, about the mirrored point "
+                    f"{pair(check['about_the_mirror_point'])}"
                 )
+        if has_airfoil:
+            print(
+                f"  fin slope at Mach 0.1, per radian: {slopes[False]:.4f} with the airfoil, "
+                f"{slopes[True]:.4f} thin-plate, a ratio of {slopes[False] / slopes[True]:.4f}"
+            )
+        last = dict(VARIANTS[-1] if has_airfoil else VARIANTS[-2])
+        swept = []
+        for k in (0.0, 1.0, 1.5):
+            _, metrics, _, _ = fly(case, inputs, env, dict(last, k=k))
+            swept.append(
+                f"K {k:.1f}: {metrics['apogee_drift_m']:.1f} / {metrics['landing_drift_m']:.1f}"
+            )
+        print(f"  body-lift K swept, apogee / landing drift in m: {'; '.join(swept)}")
 
 
 if __name__ == "__main__":

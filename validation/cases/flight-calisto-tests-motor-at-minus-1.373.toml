@@ -40,12 +40,12 @@
 #   drift past 3%, the drift is reported as a measured model difference and not scored (ADR-026).
 #   hpr's growth of C_D0 with the angle of attack (up to 1.3 times at 17 degrees; RocketPy's table
 #   has none) moves no drift by more than 0.1%.
-# - The reference's equations. RocketPy 1.13.0 flies with the two corrections its maintainers
-#   have made or proposed to its 6-DOF equations, PRs #1188 and #1196 (`corrections.py`,
-#   ADR-026). As released it took the moments during the burn about a point as far forward of the
-#   dry centre of mass as the centre of mass is behind it, which overstated its stability while
-#   the motor burned, and its jet damping used a quarter of the nozzle's lever squared. Flown as
-#   released, the drifts in wind missed by up to 60.8% (issue #50).
+# - The reference's equations. RocketPy 1.13.0 flies with two corrections to its 6-DOF equations
+#   made or proposed upstream, PR #1188 (merged) and PR #1196 (open) (`corrections.py`, ADR-026).
+#   As released it takes the moments during the burn about a point as far forward of the dry
+#   centre of mass as the centre of mass is behind it, which overstates its stability while the
+#   motor burns, and its jet damping uses a quarter of the nozzle's lever squared. Flown as
+#   released, the drifts in wind missed by up to -60.8% at apogee and +151% at landing (issue #50).
 # - Parachutes. RocketPy counts a canopy's added mass for the whole parachute phase and samples
 #   its triggers at 100 to 105 Hz; hpr has no added mass and fires its triggers at the instant
 #   (ADR-012). This leaves the descent rates at landing within 0.03%.

@@ -134,7 +134,7 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
   and finish move each case by 20%+). hpr misses Valetudo's suspect table by 47% and Cavour's
   power-on by 18% (open; ADR-009); drag reads low from about Mach 0.6 until M1.8.
 - In wind, a slow rocket's drift in hpr rests on body lift's uncertain `K`: Juno III's apogee
-  drift is 237 to 191 m over Galejs's 1.0 to 1.5 (ADR-026). The oracle carries two unreleased
+  drift is 240 to 194 m over Galejs's 1.0 to 1.5 (ADR-026, `wind_response.py`). The oracle carries two unreleased
   RocketPy corrections; if #1196 changes before it merges, revisit `corrections.py`.
 - Flight (M1.6b): no tip-off, roll forcing or damping (M1.8), turbulence or thrust misalignment;
   the small-angle aero is used at every `α`. Four `mass_properties` calls are most of an

@@ -12,12 +12,15 @@ tip where the centre of mass is 1.639 m, so the margin it flies there, to its ce
 2.072 m, is 1.75 times its own `static_margin`. After burnout `r_CM` is zero and `r_NOZ` enters
 only through the mass flow, so the error ends with the burn.
 
-RocketPy's maintainers have both defects on record:
+Both are on RocketPy's record:
 
-- Issue #1186 (open, 2026-08-25) reports the sign, and PR #1196 (open, head
-  927e771e1a7faa2915d1f96ff48a70c544db13b4, 2026-09-16) corrects it with three edits to
-  `u_dot_generalized`: negate `r_CM` and its derivatives, negate `r_NOZ`, and flip the sign of the
-  `r_CM ^ w_dot` term in `v_dot`, which was written for the reversed vector.
+- An outside contributor reported the sign in issue #1186 (open, 2026-08-25) and proposed the fix
+  in PR #1196 (open, not yet reviewed, head 927e771e1a7faa2915d1f96ff48a70c544db13b4,
+  2026-09-16): three edits to `u_dot_generalized` that negate `r_CM` and its derivatives, negate
+  `r_NOZ`, and flip the sign of the `r_CM ^ w_dot` term in `v_dot`, which was written for the
+  reversed vector. RocketPy's `develop` branch agrees on the convention: its tip-off phase (PR #920,
+  merged 2026-09-14) says the generalized equations "store r_CM / r_NOZ as (point -> CDM) vectors,
+  i.e. the negative of the true-frame position", and negates them for its own use.
 - PR #1188 (merged into `develop` 2026-09-09, not yet released) corrects the nozzle gyration
   tensor's parallel-axis term from `0.25 * nozzle_to_cdm**2` to `nozzle_to_cdm**2`
   (`rocket.py:984-985`), so the jet damping about the CDM uses the whole lever.
@@ -27,16 +30,22 @@ RocketPy's own `u_dot_generalized` source with #1196's three substitutions, each
 match exactly once, so an upgrade that moves the code stops the script instead of flying something
 else. `correct_nozzle_gyration` sets the tensor as #1188's `evaluate_nozzle_gyration_tensor` does.
 
-Checked before adopting them (`wind_response.py` reproduces both): at RocketPy's own states along
-Juno III's windy flight, the corrected equations give the angular acceleration hpr's do to 1 to 3%,
-and the centre-of-dry-mass acceleration to 0.01 m/s^2, once hpr's normal force is made linear like
-RocketPy's; the released ones give 1.75 times hpr's at the rail exit, where the rotation rate is
-still zero, so no damping term can be the cause.
+Checked before adopting them (ADR-026):
+
+- RocketPy against itself, which `wind_response.py` prints for every case: at the rail exit, where
+  the rotation rate is zero so no damping term acts, RocketPy's angular acceleration as released
+  equals the moment about the mirrored point over the inertia, not the moment about its own
+  `center_of_mass` (Juno III: 0.3608 against 0.2067 rad/s^2).
+- Against hpr, with a local probe that is not committed: at RocketPy's own states along Juno III's
+  windy flight, the corrected equations give the angular acceleration hpr's do to 0.1 to 5%, and
+  the centre-of-dry-mass acceleration to 0.01 m/s^2, once hpr's normal force is made linear like
+  RocketPy's; as released they give 1.75 times hpr's at the rail exit.
 
 RocketPy is MIT-licensed (`THIRD-PARTY-NOTICES.md`); the substituted lines are PR #1196's.
 """
 
 import inspect
+import linecache
 import textwrap
 
 import rocketpy.simulation.flight as rocketpy_flight
@@ -105,9 +114,11 @@ def corrected_u_dot_generalized():
             )
         source = source.replace(released, corrected)
     wrapped = "class Flight:\n" + textwrap.indent(textwrap.dedent(source), "    ")
+    filename = "<u_dot_generalized with PR #1196>"
+    # So a traceback from inside the corrected function shows its lines.
+    linecache.cache[filename] = (len(wrapped), None, wrapped.splitlines(True), filename)
     namespace = {}
-    exec(compile(wrapped, "<u_dot_generalized with PR #1196>", "exec"),
-         vars(rocketpy_flight), namespace)
+    exec(compile(wrapped, filename, "exec"), vars(rocketpy_flight), namespace)
     return namespace["Flight"].u_dot_generalized
 
 
