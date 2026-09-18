@@ -4,9 +4,10 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
 
 ## Now
 
-- **Current milestone:** M2.1b2 The whole-flight cases (M2.1b1 shipped)
+- **Current milestone:** M0.4 A documentation site people can read (Neer added it on 2026-09-17)
+- **Order:** review and merge PR #34 (green, unreviewed), then M0.4, then M2.1b2 (handoff below)
 - **Run:** the first autopilot run; M0.1-M0.3, M1.1-M1.7, M2.1a and M2.1b1 have shipped
-- **Last updated:** 2026-09-17 (M2.1b1)
+- **Last updated:** 2026-09-17 (Neer's documentation steer)
 
 ## Handoff (overwrite each session)
 
@@ -70,20 +71,19 @@ variant beside `RecoveryDescent`, five cases in the lock, and the L75 test. Star
 
 ## Needs Neer (blocking or one-way decisions; the session keeps working on other things)
 
-- (not blocking, licensing) `hpr-motor` commits ThrustCurve.org's published statistics and names for
-  its 32 bundled motors (`crates/hpr-motor/data/thrustcurve/catalog.json`), which states no terms
-  for its metadata. They are facts, with attribution, and the M1.3 checks need them (ADR-005).
-  Confirm, or ask John Coker; the fallback keeps only the checked numbers.
-- (not blocking, safety) Loft's public flutter calculator overstates flutter speed by √2 (a 1.5
-  margin is really about 1.06): `lib/sim/flutter.ts:287` uses 1.337·(λ+1)/2, where NACA TN 4197
-  eq. 18 gives 2.674·(λ+1)/2. Consider a notice or fix before Loft shuts down.
-- (not blocking) Crate names on crates.io (`hpr`, `hpr-sim`, `hpr-core`...) are not reserved, and
-  every crate has `publish = false`. Decide whether and when to reserve or publish them.
-- (not blocking) `main` has no branch protection. Requiring the CI checks before merge would back
-  up the guard hook; repo settings are off limits for the autopilot.
-- (not blocking until M2.2) orhelper is GPL-2.0, and CLAUDE.md allows running it as an oracle, but a
-  script in this MIT/Apache repo that does `import orhelper` could be read as a derivative work.
-  The default: M2.2 drives the jar through JPype (Apache-2.0) and keeps orhelper run-only.
+- **Turn on GitHub Pages** (1 minute; M0.4 publishes the docs there). Settings → Pages → Build and
+  deployment → Source: **GitHub Actions**. The autopilot may not change repo settings.
+- **Protect `main`** (2 minutes, optional). Settings → Branches → rule for `main`: require the
+  `fmt`, `clippy`, `doc`, `deny`, `wasm-check` and three `test (...)` checks; block force pushes.
+  Don't require approvals: the autopilot merges its own PRs as you, and authors can't self-approve.
+- **Loft's flutter calculator overstates flutter speed by √2** (safety). fusionspace-loft
+  `lib/sim/flutter.ts:287` uses 1.337·(λ+1)/2; NACA TN 4197 eq. 18 gives 2.674·(λ+1)/2 (39.3 over
+  14.7 psi), so its "1.5 margin" is about 1.06. Fix it or post a notice before Loft shuts down.
+- **ThrustCurve data** (yes or no). `hpr-motor` bundles ThrustCurve.org's numbers and names for 32
+  motors, with attribution; the site states no terms for them (ADR-005). OK to treat them as facts,
+  or ask John Coker? If not, the fallback keeps only the numbers the tests check.
+- **crates.io names** (whenever): `hpr`, `hpr-sim`, `hpr-core`... are unreserved. Reserve them?
+- **orhelper** (no action if fine): GPL-2.0, so M2.2 drives OpenRocket via JPype, never imports it.
 
 ## Decided without Neer (one line each; significant ones get an ADR)
 

@@ -32,7 +32,7 @@ use std::path::{Path, PathBuf};
 /// The lessons doc, relative to the workspace root.
 const LESSONS: &str = "docs/research/loft-lessons.md";
 
-/// Line budgets. STATUS's comes from CLAUDE.md ("Keep docs short"); the rest keep one topic per
+/// Line budgets. STATUS's comes from CLAUDE.md ("Keep the working files short"); the rest keep one topic per
 /// file and a terse roadmap (Loft's grew to 8,761 lines, one milestone to about 1,700).
 const STATUS_MAX_LINES: usize = 150;
 const RESEARCH_MAX_LINES: usize = 200;
