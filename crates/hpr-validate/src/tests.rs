@@ -4,7 +4,7 @@ use std::path::{Path, PathBuf};
 
 use crate::case::{Case, CaseLock, Metric, Tolerance, cases_dir, committed_cases};
 use crate::metrics::{Reference, ReferenceValue};
-use crate::report::{Comparison, Report, Verdict};
+use crate::report::{Comparison, Report, Verdict, same_but_for_platform_rounding};
 use crate::run::{ValidateError, run_case, run_lock};
 
 /// The repository root, from this crate's manifest.
@@ -598,76 +598,23 @@ fn the_committed_cases_all_pass_and_the_report_says_so() {
         .cloned()
         .collect();
     assert_eq!(compared, flown);
-    // The committed reports are these reports, so a number that moves shows up in the diff.
-    let committed = std::fs::read_to_string(root().join("validation/reports/latest.md"))
-        .expect("the report is committed");
-    if let Err(what) = same_but_for_platform_rounding(&committed, &markdown) {
+    // The committed reports are these reports, so a number that moves shows up in the diff. The
+    // JSON is pinned too, to what the platforms share (`Report::reproduces`); CI's `validate` job
+    // runs the same check through `cargo xtask validate --check`.
+    let read = |name: &str| {
+        std::fs::read_to_string(root().join("validation/reports").join(name))
+            .expect("the report is committed")
+    };
+    if let Err(what) = report.reproduces(&read("latest.md"), &read("latest.json")) {
         panic!("{what}; run `cargo xtask validate`");
     }
-    // The JSON is pinned too, but not by its bytes: it carries full-precision floats, and hpr
-    // promises bit-identical results on one platform, not across three (ADR-015). So everything
-    // that cannot differ by platform is compared exactly...
-    let committed: Report = serde_json::from_str(
-        &std::fs::read_to_string(root().join("validation/reports/latest.json"))
-            .expect("the JSON report is committed"),
-    )
-    .expect("the JSON report parses");
-    assert_eq!(committed.harness_version, report.harness_version);
-    assert_eq!(committed.fast, report.fast);
-    assert_eq!(committed.cases, report.cases, "run `cargo xtask validate`");
-    assert_eq!(committed.skipped, report.skipped);
-    // A gap's Mach number is where the integrator narrowed onto 1, to the last bits of which the
-    // platforms need not agree; everything else about it must.
-    let gap_shape = |report: &Report| {
-        report
-            .gaps
-            .iter()
-            .map(|gap| {
-                (
-                    gap.case.clone(),
-                    gap.reason.clone(),
-                    gap.refusal.clone(),
-                    gap.metric_count,
-                    (gap.mach - 1.0).abs() < 1e-9,
-                )
-            })
-            .collect::<Vec<_>>()
-    };
-    assert_eq!(
-        gap_shape(&committed),
-        gap_shape(&report),
-        "run `cargo xtask validate`"
-    );
-    assert_eq!(
-        committed.sources, report.sources,
-        "run `cargo xtask validate`"
-    );
-    let shape = |report: &Report| {
-        report
-            .comparisons
-            .iter()
-            .map(|comparison| {
-                (
-                    comparison.case.clone(),
-                    comparison.metric.clone(),
-                    comparison.source.clone(),
-                    comparison.tolerance,
-                    comparison.verdict,
-                    comparison.note.clone(),
-                )
-            })
-            .collect::<Vec<_>>()
-    };
-    assert_eq!(
-        shape(&committed),
-        shape(&report),
-        "run `cargo xtask validate`"
-    );
-    // ...and its numbers through the Markdown it renders, to the precision the platforms share.
-    // A tighter check here would assert a cross-platform bit-identity hpr does not claim.
-    if let Err(what) = same_but_for_platform_rounding(&committed.to_markdown(), &markdown) {
-        panic!("{what}; run `cargo xtask validate`");
-    }
+    // It catches a report that moved, in either file.
+    let moved = read("latest.md").replacen("| pass |", "| **fail** |", 1);
+    assert!(report.reproduces(&moved, &read("latest.json")).is_err());
+    let mut moved: Report = serde_json::from_str(&read("latest.json")).expect("it parses");
+    moved.cases.pop();
+    let moved = serde_json::to_string(&moved).expect("it serialises");
+    assert!(report.reproduces(&read("latest.md"), &moved).is_err());
 }
 
 #[test]
@@ -684,53 +631,6 @@ fn platform_rounding_forgives_the_last_digits_and_nothing_else() {
     assert!(check(&row.replace("landing_drift_m", "apogee_drift_m")).is_err());
     assert!(check(&format!("{row}\n")).is_ok());
     assert!(check(&format!("{row}\n| another |")).is_err());
-}
-
-/// Whether two renderings of the report are the same, letter for letter, except that a number
-/// may differ by two units in its sixth decimal or by 1e-7 of itself, whichever is larger.
-///
-/// hpr is bit-identical on one platform, not across three (ADR-015). The descents reproduce to
-/// the six decimals the report prints; a whole flight does to about 1e-8 of each value, not
-/// always to its sixth decimal: NDRT 2020's landing drift is 354.240893 m on macOS and
-/// 354.240895 m on Linux, after 84 s of six-degree-of-freedom flight in a sheared wind. Every
-/// word, case, metric, tolerance and verdict must still match exactly.
-fn same_but_for_platform_rounding(committed: &str, computed: &str) -> Result<(), String> {
-    let (committed, computed): (Vec<&str>, Vec<&str>) =
-        (committed.lines().collect(), computed.lines().collect());
-    if committed.len() != computed.len() {
-        return Err(format!(
-            "the committed report has {} lines and this run's {}",
-            committed.len(),
-            computed.len()
-        ));
-    }
-    let number = |cell: &str| {
-        cell.trim()
-            .trim_end_matches('%')
-            .trim_start_matches('+')
-            .parse::<f64>()
-            .ok()
-    };
-    for (line, (old, new)) in committed.iter().zip(&computed).enumerate() {
-        if old == new {
-            continue;
-        }
-        let (old_cells, new_cells): (Vec<&str>, Vec<&str>) =
-            (old.split('|').collect(), new.split('|').collect());
-        let close = old_cells.len() == new_cells.len()
-            && old_cells.iter().zip(&new_cells).all(|(a, b)| {
-                a == b
-                    || matches!((number(a), number(b)), (Some(a), Some(b))
-                        if (a - b).abs() <= (2e-6_f64).max(1e-7 * b.abs()))
-            });
-        if !close {
-            return Err(format!(
-                "line {} differs beyond platform rounding:\n  committed: {old}\n  this run:  {new}",
-                line + 1
-            ));
-        }
-    }
-    Ok(())
 }
 
 #[test]

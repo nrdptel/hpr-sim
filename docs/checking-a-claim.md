@@ -106,7 +106,11 @@ nothing about whether either matches a real parachute on a real day. Real flight
 ## Rules that keep the trail honest
 
 - **A reference is never changed to make a comparison pass.** It moves only when its generator runs
-  again, which is a deliberate step recorded in the history. This guards against
+  again, which is a deliberate step recorded in the history. The workflow that regenerates the
+  references runs only when a person starts it, and it cannot commit: its output is a diff for a
+  person to review ([Validation](https://github.com/nrdptel/hpr-sim/blob/main/docs/VALIDATION.md#in-ci-and-regenerating-the-references-m21c1)).
+  Every pull request reruns every case on three operating systems and fails if the committed
+  report no longer matches. This guards against
   [Loft lesson L76](decisions-and-roadmap.md#l76): Loft, the project before this one, said to regenerate a reference
   when its drift check failed, so the reference moved with Loft's own drag.
 - **A tolerance lives in its case file, with its reason.** Loosening one to turn a failure into a

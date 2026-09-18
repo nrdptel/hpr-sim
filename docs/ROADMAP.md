@@ -503,12 +503,40 @@
     - A CI job that runs `cargo xtask validate` against the stored references, and a separate,
       manually triggered workflow that regenerates them.
 
-    *Done when:*
+    *Done when:* split below into M2.1c1 and M2.1c2, which carry these three bullets between them.
     - Predicted-mode results are in the report for every case, each gap explained in the case file
       or `docs/VALIDATION.md`; `M ≥ 1` cases are reported as gaps, not hidden, until M1.8.
     - The CI job is green on macOS, Windows and Linux.
     - The regeneration workflow runs only when a human triggers it, and its output is a diff to
       review, never an automatic commit.
+
+    - [x] **M2.1c1 The CI job and the regeneration workflow.**
+      - `cargo xtask validate --check`, and a `validate` job running it on three OSes.
+      - `scripts/regenerate-references.sh` and a `workflow_dispatch`-only workflow that runs it.
+
+      *Done when:*
+      - The CI job is green on macOS, Windows and Linux.
+      - The regeneration workflow runs only when a human triggers it, and its output is a diff to
+        review, never an automatic commit.
+
+      *Result (ADR-022):* met. `cargo xtask validate --check` runs all eleven locked cases, writes
+      nothing, and fails if a metric is outside its tolerance or the committed report is not this
+      run's to the digits the platforms share (`Report::reproduces`, which the report test now
+      shares); it exits 1 on a report with one verdict flipped. CI's `validate` job runs it on
+      macOS, Windows and Linux, and the deploy waits for it. *Regenerate references* is
+      `workflow_dispatch` only, with a read-only token and no stored credentials, so it cannot
+      push; it runs the RocketPy chain (`rocket_mass.py`, `cargo xtask designs`, `recovery.py`,
+      `flight.py`, `cargo xtask validate`) and uploads the diff. Run locally in 41 s, the chain
+      reproduced every committed fixture and the report byte for byte.
+
+    - [ ] **M2.1c2 Predicted mode.**
+      - The same cases flown with hpr's own aero, against a reference in which RocketPy flies each
+        example's own drag curves; results computed from those curves are committed, the curves
+        are not (ADR-009).
+
+      *Done when:*
+      - Predicted-mode results are in the report for every case, each gap explained in the case
+        file or `docs/VALIDATION.md`; `M ≥ 1` cases are reported as gaps, not hidden, until M1.8.
 
 - [ ] **M1.8 Aerodynamics II (transonic and supersonic, damping, overrides).**
   - Transonic drag rise and supersonic wave drag.

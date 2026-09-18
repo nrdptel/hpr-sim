@@ -1,0 +1,55 @@
+name: Regenerate references
+
+# Regenerates the references `cargo xtask validate` compares against, from RocketPy, and uploads
+# the difference for a person to review (M2.1c1, ADR-022). It runs only when someone starts it:
+# Actions, "Regenerate references", "Run workflow", or `gh workflow run regenerate-references.yml`.
+# It cannot commit: its token may read the repository and nothing else, and the checkout keeps no
+# credentials. A reference is changed only by a person committing the diff, in a PR that says why.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  CARGO_TERM_COLOR: always
+  CARGO_INCREMENTAL: 0
+
+jobs:
+  regenerate:
+    name: regenerate
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - run: rustup toolchain install
+      - uses: Swatinem/rust-cache@v2
+      # uv builds the oracle environment from validation/oracles/uv.lock (it needs uv 0.12 or later).
+      - uses: astral-sh/setup-uv@v10
+      # RocketPy and its dependencies, pinned by uv.lock, into the gitignored refs/venv, and the
+      # RocketPy checkout pinned by validation/refs.lock.toml, each checked against its hash.
+      - run: cargo run --locked --quiet --package xtask -- refs fetch python rocketpy
+      # Writes the fixtures and the report in the working tree; fails if a generator fails or a
+      # metric falls outside tolerance, having written what it could.
+      - run: scripts/regenerate-references.sh
+      # The diff is the output, whatever the step above said: a failure is the case it matters most.
+      - name: Collect the diff
+        if: always()
+        run: |
+          git add --intent-to-add validation
+          git diff -- validation > references.diff
+          git diff --stat -- validation | tee references.stat
+          if [[ -s references.diff ]]; then
+            echo "::notice title=References changed::Download the references-diff artifact and review it; nothing was committed."
+          else
+            echo "::notice title=References reproduce::Regenerating changed no committed file."
+          fi
+      - if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: references-diff
+          path: |
+            references.diff
+            references.stat
+          if-no-files-found: error

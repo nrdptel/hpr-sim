@@ -216,7 +216,7 @@ Valetudo, NDRT 2020, Juno III, Bella Lui and Prometheus 2022. They are set up th
 
 This is [same-drag](glossary.md#same-drag-and-predicted-mode) mode. It checks the equations of
 motion, the motor and the air, not the drag. hpr's own drag is compared in
-[M2.1c](decisions-and-roadmap.md#m2-1c), not done yet.
+[M2.1c2](decisions-and-roadmap.md#m2-1c2), not done yet.
 
 **In short: how high, how fast and how long agree; where the rocket goes in wind does not.** The
 heights, speeds, times and accelerations of five flights agree within the 3% of each case's gate

@@ -27,6 +27,7 @@ renumber. Supersede an entry by adding a new one that points back to it.
 | ADR-019 | Publishing the site and the API reference to GitHub Pages | accepted |
 | ADR-020 | The reader test, and labels that lead to plain words | accepted |
 | ADR-021 | Whole flights against RocketPy: what is compared, and the gaps it may declare | accepted |
+| ADR-022 | Validation in CI, and regenerating references only by hand | accepted |
 
 ---
 
@@ -1774,3 +1775,60 @@ landing points, recorded but not compared, were far apart in wind.
   and a design's nozzle must say which reference pressure it means.
 - When M1.8 lifts the Mach limit, the Prometheus case fails until its gap is removed. Its
   tolerances are already argued in its case file.
+
+## ADR-022: Validation in CI, and regenerating references only by hand (2026-09-18)
+
+**Context.** M2.1c asks for a CI job that runs `cargo xtask validate` against the stored references
+and is green on three OSes, and for a separate workflow, triggered only by a person, that
+regenerates the references and whose output is a diff to review, never a commit. `cargo test`
+already reran every case and compared the result with the committed report, but inside a test
+that nobody would read as "the validation suite ran", and `cargo xtask validate` itself rewrote
+the report rather than checking it. hpr is bit-identical on one platform, not across three
+(ADR-015), so the committed report cannot be compared byte for byte on Windows or Linux. The
+references come from RocketPy, which needs the oracle environment in the gitignored `refs/` (uv,
+RocketPy 1.13.0 and its dependencies); no CI job had one. Loft lesson L76 is why a reference must
+never move on its own: Loft's advice to regenerate a reference whenever a check failed let the
+reference follow Loft's own drag.
+
+**Decision.**
+
+- **`cargo xtask validate --check`** runs every locked case, writes nothing, and fails unless every
+  scored metric passes and the run reproduces the committed `latest.md` and `latest.json`. The
+  comparison is `Report::reproduces`, moved from the report test into `hpr-validate` so the test
+  and the command share one definition: everything that cannot differ by platform (cases, sources,
+  tolerances, verdicts, notes, gaps but for the Mach number the integrator narrowed onto) exactly,
+  and every number through the Markdown to two units in its sixth decimal or 1e-7 of itself.
+  `--check` with `--fast` is refused: a partial run cannot check the whole suite's record.
+- **A `validate` job** in `ci.yml` runs it on `ubuntu-latest`, `macos-latest` and
+  `windows-latest`, with no oracle and no network; the Pages deploy waits for it.
+- **`scripts/regenerate-references.sh`** runs the chain behind the references the harness reads, in
+  order: `rocket_mass.py`, `cargo xtask designs`, `recovery.py`, `flight.py`, then
+  `cargo xtask validate`. Each generator writes to a temporary file, so a failure leaves the
+  committed fixture alone. The report is written even when a metric fails, so the diff shows what
+  moved; the script then exits non-zero.
+- **The *Regenerate references* workflow** (`regenerate-references.yml`) runs the script on
+  Linux, and only on `workflow_dispatch`. Its token has `contents: read` and the checkout keeps no
+  credentials, so it cannot push. It uploads `references.diff` and a summary as an artifact, and
+  collects them even when the script fails.
+- The script covers the harness's references and the design fixture they are built from. The
+  other oracles' fixtures (atmosphere, geodesy, shapes, walls, motors, ThrustCurve) feed unit
+  tests, not the harness; they keep their own commands.
+
+**Alternatives.**
+
+- Diffing the report `cargo xtask validate` writes with `git diff --exit-code`: exact bytes fail
+  on the platforms that round the last digits differently.
+- Only the existing test: it runs the same check, but a reader of CI cannot see the suite ran.
+- A workflow that opens a PR or commits: that is L76 automated. A person commits the diff, in a PR
+  that says why the reference moved.
+- Running the oracles in CI on every PR: RocketPy's environment takes minutes to build, and a
+  stored reference is the point of ADR-015.
+
+**Consequences.**
+
+- A change that moves a validation number cannot merge without the report that says so, on any
+  of the three OSes.
+- The workflow could not run before it was on `main` (GitHub only dispatches workflows the default
+  branch has). The script ran locally first: in 41 s it reproduced every committed fixture and the
+  report byte for byte.
+- M2.1c2's predicted-mode reference joins the chain when it lands.

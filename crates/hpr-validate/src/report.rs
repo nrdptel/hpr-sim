@@ -228,6 +228,84 @@ impl Report {
             .max_by(|(_, a), (_, b)| a.total_cmp(b))
     }
 
+    /// Whether this run reproduces a committed report, given the text of its `latest.md` and
+    /// `latest.json`.
+    ///
+    /// hpr is bit-identical on one platform, not across three (ADR-015), so the JSON is not
+    /// compared by its bytes: it carries full-precision floats. Everything that cannot differ by
+    /// platform is compared exactly: the harness version, the cases, what was left out, the
+    /// sources, each comparison's case, metric, source, tolerance, verdict and note, and each gap
+    /// but for the Mach number the integrator narrowed onto 1. The numbers are compared through the
+    /// Markdown, the committed file's and the committed JSON's rendering alike, which must match
+    /// this run's letter for letter except that a number may differ by two units in its sixth
+    /// decimal or by 1e-7 of itself, whichever is larger. A tighter check would assert a
+    /// cross-platform bit-identity hpr does not claim.
+    ///
+    /// # Errors
+    ///
+    /// The first difference found, or why the committed JSON does not parse.
+    pub fn reproduces(&self, committed_markdown: &str, committed_json: &str) -> Result<(), String> {
+        let markdown = self.to_markdown();
+        same_but_for_platform_rounding(committed_markdown, &markdown)
+            .map_err(|what| format!("latest.md: {what}"))?;
+        let committed: Self = serde_json::from_str(committed_json)
+            .map_err(|error| format!("latest.json does not parse: {error}"))?;
+        let differs = |what: &str| Err(format!("latest.json: {what} differ"));
+        if committed.harness_version != self.harness_version {
+            return differs("the harness versions");
+        }
+        if committed.fast != self.fast || committed.skipped != self.skipped {
+            return differs("the cases left out");
+        }
+        if committed.cases != self.cases {
+            return differs("the cases");
+        }
+        // A gap's Mach number is where the integrator narrowed onto 1, to the last bits of which
+        // the platforms need not agree; everything else about it must.
+        let gap_shape = |report: &Self| {
+            report
+                .gaps
+                .iter()
+                .map(|gap| {
+                    (
+                        gap.case.clone(),
+                        gap.reason.clone(),
+                        gap.refusal.clone(),
+                        gap.metric_count,
+                        (gap.mach - 1.0).abs() < 1e-9,
+                    )
+                })
+                .collect::<Vec<_>>()
+        };
+        if gap_shape(&committed) != gap_shape(self) {
+            return differs("the known gaps");
+        }
+        if committed.sources != self.sources {
+            return differs("the sources");
+        }
+        let shape = |report: &Self| {
+            report
+                .comparisons
+                .iter()
+                .map(|comparison| {
+                    (
+                        comparison.case.clone(),
+                        comparison.metric.clone(),
+                        comparison.source.clone(),
+                        comparison.tolerance,
+                        comparison.verdict,
+                        comparison.note.clone(),
+                    )
+                })
+                .collect::<Vec<_>>()
+        };
+        if shape(&committed) != shape(self) {
+            return differs("the comparisons' metrics, sources, tolerances, verdicts or notes");
+        }
+        same_but_for_platform_rounding(&committed.to_markdown(), &markdown)
+            .map_err(|what| format!("latest.json: {what}"))
+    }
+
     /// The report as Markdown: a summary line, then one table row per metric.
     ///
     /// It carries no date, so a run that changes nothing changes no bytes and the committed report
@@ -358,4 +436,54 @@ impl Report {
         }
         out
     }
+}
+
+/// Whether two renderings of the report are the same, letter for letter, except that a number
+/// may differ by two units in its sixth decimal or by 1e-7 of itself, whichever is larger.
+///
+/// hpr is bit-identical on one platform, not across three (ADR-015). The descents reproduce to
+/// the six decimals the report prints; a whole flight does to about 1e-8 of each value, not
+/// always to its sixth decimal: NDRT 2020's landing drift is 354.240893 m on macOS and
+/// 354.240895 m on Linux, after 84 s of six-degree-of-freedom flight in a sheared wind. Every
+/// word, case, metric, tolerance and verdict must still match exactly.
+pub(crate) fn same_but_for_platform_rounding(
+    committed: &str,
+    computed: &str,
+) -> Result<(), String> {
+    let (committed, computed): (Vec<&str>, Vec<&str>) =
+        (committed.lines().collect(), computed.lines().collect());
+    if committed.len() != computed.len() {
+        return Err(format!(
+            "the committed report has {} lines and this run's {}",
+            committed.len(),
+            computed.len()
+        ));
+    }
+    let number = |cell: &str| {
+        cell.trim()
+            .trim_end_matches('%')
+            .trim_start_matches('+')
+            .parse::<f64>()
+            .ok()
+    };
+    for (line, (old, new)) in committed.iter().zip(&computed).enumerate() {
+        if old == new {
+            continue;
+        }
+        let (old_cells, new_cells): (Vec<&str>, Vec<&str>) =
+            (old.split('|').collect(), new.split('|').collect());
+        let close = old_cells.len() == new_cells.len()
+            && old_cells.iter().zip(&new_cells).all(|(a, b)| {
+                a == b
+                    || matches!((number(a), number(b)), (Some(a), Some(b))
+                        if (a - b).abs() <= (2e-6_f64).max(1e-7 * b.abs()))
+            });
+        if !close {
+            return Err(format!(
+                "line {} differs beyond platform rounding:\n  committed: {old}\n  this run:  {new}",
+                line + 1
+            ));
+        }
+    }
+    Ok(())
 }
