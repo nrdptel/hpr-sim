@@ -59,14 +59,18 @@ fn main() -> Result<(), Box<dyn Error>> {
             _ => "other",
         };
         let class = ImpulseClass::from_total_impulse(curve.total_impulse_ns())?;
+        // An entry the catalog gives no loaded mass for would show a dash; every bundled one has
+        // a loaded mass.
+        let loaded_g = entry
+            .total_mass_g
+            .map_or_else(|| "-".to_owned(), |mass_g| format!("{mass_g:.1}"));
         println!(
-            "{:<12} {:<8}  {kind:<10}  {:<5} {:>5} {:>7} {:>9.1} {:>11.1} {:>9.1} {:>7.2}",
+            "{:<12} {:<8}  {kind:<10}  {:<5} {:>5} {:>7} {loaded_g:>9} {:>11.1} {:>9.1} {:>7.2}",
             entry.designation,
             entry.manufacturer_abbrev,
             class.label(),
             entry.diameter_mm,
             entry.length_mm,
-            entry.total_mass_g.unwrap_or(f64::NAN),
             curve.total_impulse_ns(),
             curve.average_thrust_n(),
             curve.burn_time_s(),
@@ -85,7 +89,8 @@ fn main() -> Result<(), Box<dyn Error>> {
         return Err("expected one motor in the file".into());
     };
     // The file gives the size in millimetres and the masses in kilograms; the motor takes metres
-    // and kilograms.
+    // and kilograms. Only the size needs converting, and the motor can't tell if it isn't: its
+    // units check looks at the impulse and the propellant mass, not the size.
     let diameter_m = entry.diameter_mm * 1e-3;
     let length_m = entry.length_mm * 1e-3;
     let motor = SolidMotor::from_envelope(

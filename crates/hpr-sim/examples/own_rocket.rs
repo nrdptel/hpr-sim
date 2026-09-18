@@ -106,7 +106,7 @@ fn main() -> Result<(), Box<dyn Error>> {
     );
 
     // The parachute, shock cord and altimeter, as one 200 g mass 7 cm below the tube's top, clear
-    // of the nose's shoulder.
+    // of the nose's shoulder. Its packing is the cylinder the mass fills: 15 cm long, 5 cm across.
     let packing = Packing {
         length_m: 0.15,
         radius_m: 0.025,
@@ -163,7 +163,8 @@ fn main() -> Result<(), Box<dyn Error>> {
     let spent = assembly.dry_mass_properties();
     let (cg_liftoff_m, cg_burnout_m) = (-full.cg_m.z, -spent.cg_m.z);
 
-    // The centre of pressure by Barrowman's method, at Mach 0.3 and a small angle of attack.
+    // The centre of pressure by Barrowman's method, at Mach 0.3 with the air straight along the
+    // axis. Barrowman's slopes are the small-angle limit, so this is the CP at small angles.
     let flow = Flow::axial(0.3);
     let aero = AeroModel::new(&assembly.layout)?;
     let total = aero.normal_force(&flow)?;

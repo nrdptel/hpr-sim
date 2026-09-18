@@ -92,8 +92,10 @@ fn main() -> Result<(), Box<dyn Error>> {
     Ok(())
 }
 
-/// `value` to `decimals` places, without the minus sign of a value that rounds to zero: the landing
-/// is found a micrometre below the ground, and apogee's vertical speed is a hair below zero.
+/// `value` to `decimals` places, without the minus sign of a value that rounds to zero. Some values
+/// that are zero in principle come out a hair below it: the vertical speed at ignition and at
+/// apogee, the landing height, which is found just below the ground, and the landing's `cg_up_m`,
+/// under a millimetre below the pad's level because the ground curves away.
 fn rounded(value: f64, decimals: usize) -> String {
     let text = format!("{value:.decimals$}");
     match text.strip_prefix('-') {

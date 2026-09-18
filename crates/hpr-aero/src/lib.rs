@@ -7,7 +7,7 @@
 //! [guide-aero]: https://nrdptel.github.io/hpr-sim/physics/aero.html
 //! [guide-cp]: https://nrdptel.github.io/hpr-sim/physics/aero.html#your-rockets-centre-of-pressure
 //! [guide-flight]: https://nrdptel.github.io/hpr-sim/physics/flight.html#aerodynamics-in-flight
-//! [roadmap]: https://github.com/nrdptel/hpr-sim/blob/main/docs/ROADMAP.md
+//! [m1-8]: https://nrdptel.github.io/hpr-sim/decisions-and-roadmap.html#m1-8
 //!
 //! - [`body`]: nose cones, body tubes and transitions: Barrowman's slope and centre of pressure,
 //!   and Galejs's body lift.
@@ -23,11 +23,16 @@
 //! pressure][guide-cp] in the guide).
 //!
 //! Status: subsonic flow only (`M < 1`): normal force, centre of pressure, drag and override
-//! tables. The crate has no damping coefficients. The flight engine (`hpr_sim`) gets pitch and yaw
-//! damping by evaluating each component in its own local flow, which includes the speed the
-//! rocket's rotation adds there ([Rigid-body flight][guide-flight] in the guide). Transonic and
-//! supersonic flow, and roll forcing and roll damping, are planned for milestone [M1.8][roadmap]
-//! of the roadmap.
+//! tables. The crate has no damping coefficients.
+//!
+//! - Pitch and yaw damping in a flight come only from the flight engine (`hpr_sim`) evaluating
+//!   each component in its own local flow, which includes the speed the rocket's rotation adds
+//!   there ([Rigid-body flight][guide-flight] in the guide).
+//! - Only components with a normal-force slope give that damping: nose cones, transitions and fin
+//!   sets. Body tubes give none at small angles: their own slope is 0, and their body lift grows
+//!   with `sin² α`.
+//! - Transonic and supersonic flow, damping coefficients for pitch, yaw and roll, and roll forcing
+//!   from canted fins are planned for [M1.8][m1-8], the second aerodynamics milestone.
 
 pub mod body;
 pub mod drag;
