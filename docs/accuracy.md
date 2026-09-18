@@ -3,9 +3,9 @@
 This page gathers every check hpr-sim has passed so far, and every known gap, in words and numbers.
 Start with the bottom line: **when both codes fly the same drag
 ([same-drag](glossary.md#same-drag-and-predicted-mode)), hpr's whole flights match RocketPy's in
-height, speed and time, and in where they land in calm air. In wind they agree for a rocket that
-leaves the rail fast, and differ for a slow one, because hpr includes a force that RocketPy leaves
-out.** With each code's own drag ([predicted](glossary.md#same-drag-and-predicted-mode)), hpr's
+height, speed and time, and in where they land without wind. In wind they agree for a rocket that
+leaves the rail fast. For one that leaves it slowly they differ, mostly because hpr includes a
+sideways force on the body that RocketPy leaves out.** With each code's own drag ([predicted](glossary.md#same-drag-and-predicted-mode)), hpr's
 heights differ from RocketPy's by −0.604% to +10.322% ([report][report]), the larger gaps where
 its drag is well below the example's. No flight has been compared with a real one.
 
@@ -16,7 +16,7 @@ What has been checked so far:
 - the descent under a parachute, against RocketPy, for five rockets;
 - whole flights from the pad to the ground, against RocketPy, for five rockets flown with one
   declared drag coefficient, with a sixth reported as a gap: heights, speeds and times agree, and
-  so does the path, except for two slow rockets in wind;
+  so does the path, except for rockets that leave the rail slowly into a wind;
 - the same flights with each code's own drag, reported against a target rather than gated.
 
 Every number here links to the page or file it comes from. [Checking a claim](checking-a-claim.md)
@@ -117,7 +117,7 @@ may be from its reference and still pass.
 | [Aerodynamics](physics/aero.md) | drag curves labelled [RASAero](glossary.md#rasaero-ii) in RocketPy's examples, at [Mach](glossary.md#mach-number) 0.3, with the fins and surface finish guessed because the curves don't record them | within 10% in four of seven cases; −18.3% for Cavour [power-on](glossary.md#power-on-and-power-off-drag) (motor burning), cause open |
 | [Aerodynamics](physics/aero.md) | Valetudo's drag table, which is 1.44 times the drag in the [OpenRocket](glossary.md#openrocket) export for the same rocket | −47.0% power-off and −50.4% power-on. Against the OpenRocket export, hpr is 23.5% under as designed here, and 1.9% under with the export's own surface finish and launch lugs |
 | [Rigid-body flight](physics/flight.md) | the exact motion of a tumbling, spinning rocket in a vacuum, over 22 s | the centre of mass within 1.7e-6 m of the exact parabola |
-| [Rigid-body flight](physics/flight.md) | RocketPy's whole flights from the pad to the ground, for five rockets, both codes flying one declared drag coefficient | heights, speeds, times and accelerations within 3% ([below](#whole-flights-against-rocketpy)), the largest +1.783% in the [report][report]; in wind the horizontal path is far off, reported but not scored ([issue #50][issue-50]) |
+| [Rigid-body flight](physics/flight.md) | RocketPy's whole flights from the pad to the ground, for five rockets, both codes flying one declared drag coefficient | heights, speeds, times and accelerations within 3% ([below](#whole-flights-against-rocketpy)), the largest +1.783% in the [report][report]; the path too, except the drifts of Juno III and Bella Lui in wind and NDRT 2020's apogee drift, reported, not scored, as measured differences between the models ([ADR-026][adr-026]) |
 | [Time integration](physics/integration.md) | a separate line-by-line transcription of `DOPRI5`, the published Fortran integrator by Hairer and Wanner that hpr's [Dormand–Prince](glossary.md#dormandprince-and-rk4) stepper follows, on the problem Hairer's own example program for `DOPRI5` solves: the Arenstorf orbit, the closed, looping path of a small body pulled by two large ones that circle each other | the same step counts |
 | [Time integration](physics/integration.md) | a vertical flight with drag that has an exact solution | apogee, deployment and landing times within 1.5e-8 s |
 | [Recovery](physics/recovery.md) | RocketPy's descents under a parachute, for five rockets | every descent metric within 3% ([below](#the-descent-under-a-parachute-against-rocketpy)) |
@@ -223,15 +223,18 @@ motion, the motor and the air, not the drag. hpr's own drag is compared
 [below](#whole-flights-with-each-codes-own-drag).
 
 **In short: how high, how fast and how long agree, and so does where the rocket goes, except for
-two slow rockets in wind.** The heights, speeds, times and accelerations of five flights, and of
-three of them again in calm air, agree within the 3% of each case's gate
-([case file][juno-case]); the largest difference is +1.783% ([report][report]). So do the apogee
-and landing points, within −2.141%, in calm and still air and for Calisto in wind. Juno III and
-Bella Lui leave the rail slowly into the wind, at a steep angle to the airflow, where hpr adds a
-force RocketPy leaves out ([body lift](physics/aero.md#bodies-of-revolution)), and their drifts
-differ by 11 to 43%. They are reported, not scored ([ADR-026][adr-026]). So the landing offset that
-[M2.1](decisions-and-roadmap.md#m2-1) asks for is met except where the two codes' models differ by
-design.
+rockets that leave the rail slowly into a wind.** The heights, speeds, times and accelerations of
+five flights, and of three of them again in calm air, agree within the 3% of each case's gate
+([case file][juno-case]); the largest difference is +1.783% ([report][report]). Here *still air*
+is an example flown with no wind (Valetudo's), and *calm air* a windy case flown again with its
+wind switched off. The apogee and landing points agree too, within 2.2%, in every flight without
+wind and for Calisto in wind ([ADR-026][adr-026]). Juno III and Bella Lui leave the rail slowly
+into the wind, at a steep angle to the airflow. There hpr's [body lift](glossary.md#body-lift),
+which RocketPy leaves out, its later release from the rail and, for Juno III, its simpler fin
+model put their drifts 11 to 43% from RocketPy's. NDRT 2020's apogee drift differs by −4.654%,
+mostly from the rail release. These five drifts are reported, not scored. So the landing offset
+that [M2.1](decisions-and-roadmap.md#m2-1) asks for is met except where the two codes' models
+differ.
 
 Each of fifteen numbers per flight must agree within 3% of RocketPy's, with no absolute floor, or
 say in its case file why it is not scored. Each case file argues why, for example
@@ -265,8 +268,8 @@ The definitions:
 - `apogee_drift_m` and `landing_drift_m`: how far from the pad, along the ground, the apogee and
   the landing point are.
 
-Speeds and accelerations are those of the rocket's centre of mass without propellant, the point
-RocketPy's flight follows; hpr's own output follows the centre of mass of the loaded rocket.
+Speeds and accelerations are those of the rocket's [centre of dry mass](glossary.md#centre-of-dry-mass),
+the point RocketPy's flight follows; hpr's own output follows the centre of mass of the loaded rocket.
 Heights are measured from where that point starts, as RocketPy's are. A difference is hpr's value
 less RocketPy's, over RocketPy's.
 
@@ -342,26 +345,35 @@ off. The other seven are at an eighth of theirs or less. The speed RMS runs from
 
 What the two codes still do differently, and what it moves:
 
-- **In wind, body lift.** A rocket that leaves the rail slowly into a wind meets the airflow at a
-  steep angle: Juno III leaves at 18 m/s into an 8.5 m/s wind, 26° off it. There hpr's normal
-  force includes body lift, a sideways force on the body tube that grows with the square of that
-  angle, and RocketPy's does not. Body lift acts near the middle of the rocket, so it pushes it
-  downwind without turning it, and hpr turns into the wind less. hpr also keeps the rocket on its
-  rail until the last rail button leaves; RocketPy frees it at the first. Juno III's apogee is
-  228.0 m from the pad in hpr and 396.6 m in RocketPy (−42.510%), and Bella Lui's drifts are
-  −11.264% and −23.833%. Given hpr's body lift and rail release, and for Juno III the thin fins hpr
-  assumes, RocketPy puts Juno III's apogee 231.1 m out, and every windy drift within 1.4% of hpr's
-  ([ADR-026][adr-026], measured by
-  [`wind_response.py`](https://github.com/nrdptel/hpr-sim/blob/main/validation/oracles/rocketpy/wind_response.py)).
-  These five drifts, NDRT 2020's apogee drift among them, are reported but not scored, as a
-  measured difference between the models. Every other drift is scored and passes: Calisto's in
-  wind, Valetudo's in still air, NDRT 2020's landing, and all six in calm air
-  ([report][report], [case file][juno-case]).
-- **RocketPy's own equations, corrected.** RocketPy 1.13.0 as released took the turning moments
-  during the burn about the wrong point: as far in front of the rocket's empty centre of mass as
-  the real centre of mass is behind it. That made its rockets too stable while the motor burned,
-  so they turned into the wind too far. RocketPy's developers have the fix on record, and the
-  comparison flies RocketPy with it ([ADR-026][adr-026]). As released, Juno III's apogee drift was
+- **In wind: body lift, the rail release and Juno III's fins.** A rocket that leaves the rail
+  slowly into a wind meets the airflow at a steep angle: Juno III leaves at 18 m/s into an
+  8.5 m/s wind, 26° off it ([ADR-026][adr-026]). Three things differ there.
+  - hpr's normal force includes [body lift](glossary.md#body-lift), which grows with the square
+    of that angle; RocketPy's does not. Body lift acts near the middle of the rocket, so it pushes
+    it downwind with little turning, and hpr [turns into the wind](glossary.md#weathercocking)
+    less.
+  - hpr keeps the rocket guided until its last
+    [rail button](glossary.md#rail-exit-and-rail-exit-velocity) leaves the rail; RocketPy frees it
+    at the first.
+  - Juno III's example gives its fins an airfoil lift curve, which RocketPy uses and hpr cannot
+    model. RocketPy's fin slope is 7.6% steeper than hpr's flat-plate one ([ADR-026][adr-026]).
+
+  Juno III's apogee is 228.0 m from the pad in hpr and 396.6 m in RocketPy (−42.510%). Adding
+  hpr's choices to RocketPy one at a time moves RocketPy's to 360.7 m with hpr's rail release,
+  270.6 m with its body lift too, and 231.1 m with its fin slope as well ([ADR-026][adr-026],
+  measured by [`wind_response.py`](https://github.com/nrdptel/hpr-sim/blob/main/validation/oracles/rocketpy/wind_response.py)). Every windy drift lands within 1.4% of hpr's the
+  same way. Bella Lui's drifts are −11.264% and −23.833%, and NDRT 2020's apogee drift −4.654%,
+  mostly its rail release. These five are reported but not scored, as measured differences
+  between the models. Every other drift is scored and passes: Calisto's in wind, Valetudo's in
+  still air, NDRT 2020's landing, and all six in calm air ([report][report],
+  [case file][juno-case]).
+- **RocketPy's own equations, corrected.** RocketPy 1.13.0 takes the turning moments during the
+  burn about the wrong point: as far in front of the rocket's
+  [centre of dry mass](glossary.md#centre-of-dry-mass) as the real centre of mass is behind it.
+  That makes its rockets too stable while the motor burns, so they turn into the wind too far. The
+  fix is proposed in [a pull request to RocketPy](https://github.com/RocketPy-Team/RocketPy/pull/1196), still open, built on
+  [one that is merged](https://github.com/RocketPy-Team/RocketPy/pull/1188) but not yet released. RocketPy 1.13.0 as installed still has the
+  error; the comparison applies both fixes ([ADR-026][adr-026]). Without them, Juno III's apogee drift was
   582.4 m, and hpr's differences were up to −60.8% in wind (the question of
   [issue #50][issue-50]).
 - **On the rail,** hpr keeps the terms for the centre of mass moving inside the body as the
@@ -387,9 +399,10 @@ outlive its cause ([case file][prometheus-case]). Bella Lui was added so that fi
 still be scored while Prometheus can't.
 
 What this shows: with the drag given, the two codes agree on how high, how fast and how long a
-rocket flies, and on where it goes except for two slow rockets in wind, where they differ by
-design. [M2.1](decisions-and-roadmap.md#m2-1)'s landing offset is met everywhere else
-([ADR-026][adr-026]). Which code is nearer the truth for those two is for real flights to say.
+rocket flies, and on where it goes, except for rockets that leave the rail slowly into a wind,
+where their models differ. [M2.1](decisions-and-roadmap.md#m2-1)'s landing offset is met
+everywhere else ([ADR-026][adr-026]). Which code is nearer the truth for those is for real flights
+to say.
 Nothing here says anything about hpr's own drag, which the next section compares, or about a real
 flight. The
 comparisons with OpenRocket ([M2.2](decisions-and-roadmap.md#m2-2), the OpenRocket comparison)
@@ -473,8 +486,8 @@ Why the misses, largest first:
   OpenRocket finish and launch lugs take hpr's drag coefficient from 0.5566 to 0.714
   ([Aerodynamics](physics/aero.md#drag-verification)). So a miss here is not a gap for hpr
   to close toward the example's drag.
-- **The drifts of Juno III and Bella Lui in wind:** hpr's body lift and rail release, as in
-  same-drag mode ([ADR-026][adr-026]).
+- **The drifts of Juno III and Bella Lui in wind:** hpr's body lift and rail release, and Juno
+  III's fin slope, as in same-drag mode ([ADR-026][adr-026]).
 - **NDRT 2020's peak deceleration** at its main opening, +83.059%, is the added-mass difference
   explained above. Its time moves +9.697% with the later apogee ([report][report],
   [case file][ndrt-predicted-case]).
@@ -523,11 +536,15 @@ rest.
   ([Recovery](physics/recovery.md#against-rocketpy)), and the cause of NDRT's +83.059% peak as
   its main opens in the whole flight ([report][report], [case file][ndrt-flight-case]).
 - **Body lift in wind.** A slow rocket leaves the rail at a steep angle to a crosswind, and there
-  hpr's body lift, which RocketPy leaves out, sets how far it drifts: Juno III's apogee drift is
-  −42.510% against RocketPy's ([report][report]). How much body lift a rocket body makes is itself
-  uncertain; across its source's range, Juno III's apogee drift in hpr runs from 237 to 191 m
-  ([ADR-026][adr-026]). Only real flights can say which is right
+  hpr's body lift, which RocketPy leaves out, is the largest reason its drift differs: Juno III's
+  apogee drift is −42.510% against RocketPy's ([report][report]). How much body lift a rocket body
+  makes is itself uncertain. Across its source's range of `K`, Juno III's apogee drift in hpr runs
+  from 191 m at 1.5 to 237 m at 1.0; it is 228 m at hpr's 1.1, and would be 326 m with no body
+  lift ([ADR-026][adr-026]). Only real flights can say which is right
   ([M2.3](decisions-and-roadmap.md#m2-3)).
+- **Airfoil fins.** hpr's fins use the flat-plate lift slope. It cannot model an airfoil lift
+  curve such as the one Juno III's example gives its fins, which makes RocketPy's fin slope 7.6%
+  steeper ([ADR-026][adr-026]).
 - **Mach 1.** hpr stops any flight that reaches Mach 1, so Prometheus 2022 can't be compared
   until [M1.8](decisions-and-roadmap.md#m1-8) ([case file][prometheus-case]).
 - **Turbulence** is an aircraft model, unvalidated for rockets, and no flight uses it yet
@@ -539,7 +556,6 @@ rest.
 
 [ndrt-case]: https://github.com/nrdptel/hpr-sim/blob/main/validation/cases/descent-ndrt-2020-nose-to-tail.toml
 [plan]: https://github.com/nrdptel/hpr-sim/blob/main/docs/VALIDATION.md#principles
-[plan-refs]: https://github.com/nrdptel/hpr-sim/blob/main/docs/VALIDATION.md
 [report]: https://github.com/nrdptel/hpr-sim/blob/main/validation/reports/latest.md
 [rocket-notes]: https://github.com/nrdptel/hpr-sim/blob/main/docs/research/rocketpy-rocket-mass.md
 [valetudo-case]: https://github.com/nrdptel/hpr-sim/blob/main/validation/cases/descent-valetudo.toml
@@ -549,13 +565,10 @@ rest.
 [calisto-case]: https://github.com/nrdptel/hpr-sim/blob/main/validation/cases/flight-calisto-tests-motor-at-minus-1.373.toml
 [issue-50]: https://github.com/nrdptel/hpr-sim/issues/50
 [bella-predicted-case]: https://github.com/nrdptel/hpr-sim/blob/main/validation/cases/predicted-bella-lui.toml
-[juno-predicted-case]: https://github.com/nrdptel/hpr-sim/blob/main/validation/cases/predicted-juno-iii.toml
 [ndrt-predicted-case]: https://github.com/nrdptel/hpr-sim/blob/main/validation/cases/predicted-ndrt-2020-nose-to-tail.toml
 [prometheus-predicted-case]: https://github.com/nrdptel/hpr-sim/blob/main/validation/cases/predicted-prometheus-2022-generic-motor.toml
 [valetudo-predicted-case]: https://github.com/nrdptel/hpr-sim/blob/main/validation/cases/predicted-valetudo.toml
 [juno-case]: https://github.com/nrdptel/hpr-sim/blob/main/validation/cases/flight-juno-iii.toml
-[adr-025]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-025-the-calm-air-cases-and-juno-iiis-drifts-left-to-the-rail-release-2026-09-18
 [adr-026]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-026-the-path-in-wind-rocketpys-corrected-equations-and-hprs-body-lift-2026-09-18
-[juno-calm-case]: https://github.com/nrdptel/hpr-sim/blob/main/validation/cases/flight-juno-iii-calm.toml
 [ndrt-flight-case]: https://github.com/nrdptel/hpr-sim/blob/main/validation/cases/flight-ndrt-2020-nose-to-tail.toml
 [prometheus-case]: https://github.com/nrdptel/hpr-sim/blob/main/validation/cases/flight-prometheus-2022-generic-motor.toml

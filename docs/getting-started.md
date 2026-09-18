@@ -6,8 +6,8 @@ Then it walks through that program, so you can change it and fly your own variat
 some Rust, but no knowledge of this project.
 
 > **The numbers this example prints are not validated.** hpr's whole flights match RocketPy's in
-> height, speed and time when both codes are given the same drag, but not in where they go in
-> wind. With its own drag, hpr flies this rocket about 10% higher than RocketPy does on the drag
+> height, speed and time when both codes are given the same drag, and in where they go, except for
+> rockets that leave the rail slowly into a wind (see [How far to trust it](#how-far-to-trust-it)). With its own drag, hpr flies this rocket about 10% higher than RocketPy does on the drag
 > table RocketPy's example ships (770 m against 700 m in the
 > [validation case](accuracy.md#whole-flights-with-each-codes-own-drag)); which drag is closer to
 > the truth is open. No flight has been compared with a real one.
@@ -156,9 +156,10 @@ Below the table:
   equations of motion, the motor and the air, not the drag.
 - **Where it goes in wind is the least certain number.** This airframe was compared with RocketPy
   only in still air, where its drifts agree within 3%. Here it leaves the rail at 16.2 m/s into a
-  5 m/s wind, at a steep angle to the airflow. At such angles hpr adds body lift, a sideways push
-  on the body that RocketPy leaves out, and it moved the drifts of two of RocketPy's rockets by 11
-  to 43%; how much body lift a body makes is itself uncertain
+  5 m/s wind, at a steep angle to the airflow. At such angles hpr's
+  [body lift](glossary.md#body-lift), a sideways push on the body that RocketPy leaves out, and
+  its later release from the rail put the drifts of two of RocketPy's rockets 11 to 43% from
+  RocketPy's; how much body lift a body makes is itself uncertain
   ([Accuracy](accuracy.md#whole-flights-against-rocketpy)). So this example's apogee 86 m upwind
   and its landing point are the least trustworthy numbers it prints. No flight has been compared
   with a real one.

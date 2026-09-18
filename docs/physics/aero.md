@@ -21,8 +21,8 @@
   (motor burning), cause open. Valetudo's −47.0% and −50.4% are against a table 1.44 times its own
   [OpenRocket](../glossary.md#openrocket) export; hpr is 23.5% under that export as designed here,
   and 1.9% under it with the export's own finish and launch lugs. In whole flights in wind, body
-  lift, which RocketPy leaves out, moves a slow rocket's drift by up to 43% against RocketPy's
-  ([ADR-026][adr-026]). Nothing against a real flight.
+  lift, which RocketPy leaves out, is the largest reason a slow rocket's drift differs from
+  RocketPy's ([ADR-026][adr-026]). Nothing against a real flight.
 - **What it leaves out:** large angles and [stall](../glossary.md#stall), though a flight uses
   these models at every angle. Nose and shoulder pressure drag is held at its low-speed value, so
   from about Mach 0.6 it reads low against the source's own high-subsonic correction; the models
@@ -446,15 +446,21 @@ parasitic term on its own area. The axial coefficient is `C_A = C_D0 f(α)`.
   and nothing models stall. The flight engine uses them at every angle all the same
   ([Rigid-body flight](flight.md)), so its results are least trustworthy where large angles occur:
   off the rail in a strong crosswind, and near apogee.
-- **Body lift in wind (measured, [ADR-026][adr-026]).** A rocket that leaves the rail slowly into
+- **Body lift in wind** (measured by flying both codes, not against a real flight;
+  [ADR-026][adr-026]). A rocket that leaves the rail slowly into
   a crosswind meets the air at a steep angle. Juno III, one of RocketPy's example rockets, leaves
   at 18 m/s into an 8.5 m/s wind, 26° off the airflow, and there body lift is about half its normal
-  force. Acting near the middle of the body, it pushes the rocket downwind more than it turns it,
-  so hpr turns into the wind less than RocketPy, whose normal force has no body term. Juno III's
-  apogee ends 228.0 m from the pad in hpr and 396.6 m in RocketPy. `K` matters there: across
-  [G]'s range, 1.0 to 1.5, hpr's apogee drift runs from 237 to 191 m. Calisto, off the rail at
-  28 m/s and 11°, moves by under 0.5%. Which is nearer a real flight is open until
-  [M2.3](../decisions-and-roadmap.md#m2-3).
+  force. Acting near the middle of the body, it pushes the rocket downwind with little turning,
+  so hpr [turns into the wind](../glossary.md#weathercocking) less than RocketPy, whose normal
+  force has no body term. Juno III's apogee ends 228.0 m from the pad in hpr and 396.6 m in
+  RocketPy; body lift is about half of that difference, and hpr's rail release and fin slope most
+  of the rest. `K` matters there: across [G]'s range, hpr's apogee drift runs from 191 m at
+  `K = 1.5` to 237 m at 1.0, and would be 326 m with no body lift. Calisto, off the rail at 28 m/s
+  and 11°, changes its drift by under 0.5% across that range. Which is nearer a real flight is
+  open until [M2.3](../decisions-and-roadmap.md#m2-3).
+- **No airfoils.** Fins use the flat-plate lift slope (2π per radian in two dimensions). An airfoil
+  lift curve, such as the one Juno III's example gives its fins, is not modelled; RocketPy uses
+  it, and its fin slope there is 7.6% steeper ([ADR-026][adr-026]).
 - In one measured case, fins at `α = π/2` give `C_N` 17.4 against a flat-plate estimate near 5, and
   at `α = π` the fins still give 34.7 while every body term vanishes. That case is a 54 mm
   four-fin rocket at Mach 0.3.

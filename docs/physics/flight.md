@@ -13,8 +13,10 @@
   agree on height, speed, time and acceleration within 3%; the largest scored difference is
   +1.783%, a peak acceleration on the rail ([validation report][report],
   [whole flights against RocketPy](#whole-flights-against-rocketpy)). So does the path, except
-  for two rockets that leave the rail slowly into a wind: there hpr's body lift, which RocketPy's
-  normal force leaves out, moves the drift by up to 43% ([ADR-026][adr-026]). A sixth rocket
+  for rockets that leave the rail slowly into a wind. There hpr's
+  [body lift](../glossary.md#body-lift), which RocketPy's normal force leaves out, its later
+  release from the rail and, for Juno III, its simpler fin model put the drift 4.7 to 43% from
+  RocketPy's ([ADR-026][adr-026]). A sixth rocket
   reaches Mach 1, which hpr refuses. With hpr's own drag, against RocketPy flying the drag its
   examples ship, hpr's heights differ from RocketPy's by −0.604% to +10.322%, the larger gaps where
   its drag is well below the example's
@@ -353,8 +355,8 @@ and a declared wind.
 | height, speed, time, acceleration | all scored, all within 3% of RocketPy's |
 | largest of those | +1.783%, Bella Lui's peak acceleration, on the rail |
 | largest in apogee | +0.700%, Juno III, in the suite's strongest wind |
-| path in calm and still air (drift of apogee and landing) | all scored, within −2.141% |
-| path in wind | Calisto's scored, within +1.433%, and NDRT 2020's landing; Juno III's and Bella Lui's, and NDRT 2020's apogee drift, differ by 4.7 to 43% and are reported, not scored: hpr's body lift, which RocketPy leaves out ([ADR-026][adr-026]) |
+| path without wind (drift of apogee and landing) | all scored, within 2.2% (largest −2.141%, Bella Lui's calm landing) |
+| path in wind | Calisto's scored (largest +1.433%), and NDRT 2020's landing; Juno III's and Bella Lui's, and NDRT 2020's apogee drift, differ by 4.7 to 43% and are reported, not scored: hpr's body lift and rail release, and Juno III's fin slope ([ADR-026][adr-026]) |
 
 What the two codes still do differently, and how much it moves:
 
@@ -362,15 +364,18 @@ What the two codes still do differently, and how much it moves:
   Juno III at 18 m/s into an 8.5 m/s wind, 26° off the airflow. There hpr's normal force includes
   body lift ([Aerodynamics](aero.md#bodies-of-revolution)), which RocketPy's leaves out. It pushes
   the rocket downwind more than it turns it, so hpr turns into the wind less: Juno III's apogee is
-  228.0 m from the pad in hpr and 396.6 m in RocketPy. Given hpr's body lift, rail release and
-  thin fins, RocketPy puts it 231.1 m out, and every windy drift within 1.4% of hpr's
+  228.0 m from the pad in hpr and 396.6 m in RocketPy. Given hpr's body lift, its rail release and
+  its flat-plate fin slope (it cannot model the airfoil lift curve Juno III's example gives its
+  fins), RocketPy puts it 231.1 m out, and every windy drift within 1.4% of hpr's
   ([ADR-026][adr-026]). hpr's growth of drag with the angle of attack moves no drift by more than
   0.1%.
 - **RocketPy's equations, corrected.** hpr's equations of motion follow RocketPy's technical
-  documentation, which measures the centre of mass from the centre of dry mass. RocketPy 1.13.0's
-  code reads that vector the other way round, so during the burn it took the turning moments about
-  the wrong point and its rockets turned into the wind too far. Its developers have the fix on
-  record (pull requests 1188 and 1196), and the comparison flies RocketPy with it. As released,
+  documentation, which measures the centre of mass from the
+  [centre of dry mass](../glossary.md#centre-of-dry-mass). RocketPy 1.13.0's code reads that
+  vector the other way round, so during the burn it takes the turning moments about the wrong point
+  and its rockets turn into the wind too far. The fix is proposed in [a pull request to RocketPy](https://github.com/RocketPy-Team/RocketPy/pull/1196),
+  still open, built on [one that is merged](https://github.com/RocketPy-Team/RocketPy/pull/1188) but not yet released; RocketPy 1.13.0 as installed still has
+  the error, and the comparison applies both fixes. Without them,
   hpr's drifts in wind differed from RocketPy's by up to 60.8% ([ADR-026][adr-026],
   [issue #50](https://github.com/nrdptel/hpr-sim/issues/50)).
 - **The rail.** hpr's rail equation keeps the terms for the centre of mass moving inside the

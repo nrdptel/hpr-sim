@@ -2188,7 +2188,8 @@ build).
 
 - Issue #50 closes. M2.1's landing offset is met in calm air, in still air (Valetudo), for
   Calisto in wind and for NDRT 2020's landing. It is not met for Juno III and Bella Lui in wind,
-  where the two codes' models differ by design; the report shows both numbers.
+  where the two codes' models differ: body lift and the rail release by design, Juno III's airfoil
+  fins a feature hpr lacks. The report shows both numbers.
 - In wind, a slow rocket's drift in hpr depends on body lift's uncertain `K`. Juno III's apogee
   drift is 237 m at `K = 1.0`, 228 m at 1.1 and 191 m at 1.5, and would be 326 m with no body
   lift; its landing drift is 664, 674 and 719 m (local build). Calisto, off the rail at 28 m/s
