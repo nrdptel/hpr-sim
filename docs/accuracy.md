@@ -6,13 +6,13 @@ landing point have not been compared with another simulator's or with a real fli
 checked is each model on its own, against exact answers, its published source and in places
 RocketPy, and the descent under a parachute, against RocketPy, for five rockets.
 
-Each number here appears, written the same way (the same digits, and the same sign and percent
-sign where it writes them), in the model page, report or case file that its sentence or table row
-links to, and the descent table matches the
-report cell by cell. The site's build checks both, so a number can't go stale here without failing
-it. The check can't tell whether a number is quoted in the right context; the model pages say what
-each one means. [Checking a claim](checking-a-claim.md) shows how to follow a number back to its
-source and its test.
+Each number here appears, written the same way (the same digits, and the same sign and percent sign
+where it writes them), in the model page, report or case file that its sentence or table row links
+to, and the descent table matches the report cell by cell. The site's build checks both, so a number
+that changes at its source fails it, unless the same number still appears elsewhere in that file.
+The check can't tell whether a number is quoted in the right context; the model pages say what each
+one means. [Checking a claim](checking-a-claim.md) shows how to follow a number back to its source
+and its test.
 
 ## Four kinds of evidence
 
@@ -47,7 +47,7 @@ through, as part of that comparison.
 | [Turbulence](physics/turbulence.md) | ✓ | — | — | — |
 | [Design tree](physics/design.md) | ✓ | — | ✓ RocketPy, mass properties only | — |
 | [Shapes](physics/shapes.md) | ✓ | — | — | — |
-| [Mass properties](physics/mass.md) | ✓ | ✓ densities | — | — |
+| [Mass properties](physics/mass.md) | ✓ | — | — | — |
 | [Solid motors](physics/motor.md) | ✓ | — | ✓ RocketPy, ThrustCurve.org | — |
 | [Aerodynamics](physics/aero.md) | ✓ | ✓ Barrowman's examples | partial: drag only, inputs not matched | — |
 | [Rigid-body flight](physics/flight.md) | ✓ | — | — | — |
@@ -69,11 +69,11 @@ tolerance. The headline results, as relative differences unless a unit is given:
 | [Atmosphere](physics/atmosphere.md) | the 1976 standard's tables; the CIPM-2007 moist-air formula; RocketPy | within 0.1% at 32 altitudes; humid density within 0.047%; RocketPy's density within 3.7e-4 ([Recovery](physics/recovery.md#against-rocketpy)) |
 | [Wind](physics/wind.md) | unit tests; RocketPy's wind in its descents | RocketPy's wind to 1e-9 m/s, and drift within 0.28% in the four cases with wind ([Recovery](physics/recovery.md#against-rocketpy)) |
 | [Turbulence](physics/turbulence.md) | the Dryden spectra, over 2²⁰ samples | within 4 standard errors in every octave band; unvalidated for rockets |
-| [Design tree](physics/design.md) | a hand-worked rocket; eight cases of RocketPy's example rockets | 1e-12 by hand; RocketPy within 8.0e-10 at its solver's times, and between them 1.1e-5 in mass and 2.6e-5 in inertia; grain propellant mass 2.4e-9 and 4.9e-5 |
+| [Design tree](physics/design.md) | a hand-worked rocket; eight cases of RocketPy's example rockets | 1e-12 by hand; RocketPy within 8.0e-10 at its solver's times, and between them 1.1e-5 in mass and 2.6e-5 in inertia; grain propellant mass 2.4e-9 and 4.9e-5 of its initial value |
 | [Shapes](physics/shapes.md) | closed forms; independent high-precision integrals | 1e-10 and 1e-12 on 22 noses and transitions; 20 walls to 1e-10 |
-| [Mass properties](physics/mass.md) | hand calculation; exact integration; published densities | 1e-11 by hand; fin sections to 1e-13; densities as their sources print them |
-| [Solid motors](physics/motor.md) | ThrustCurve.org's statistics code; RocketPy's motor | 1.8e-15 on all 32 bundled curves; RocketPy within 7.9e-5 on three, the propellant's quantities within 1e-4 |
-| [Aerodynamics](physics/aero.md) | Barrowman's worked examples, at Mach 0; drag curves labelled RASAero, at Mach 0.3 | four of five examples within 1%, the Recruiter +2.87% (+3.42% on its fins); drag within 10% in four of seven cases with guessed inputs, −18.3% for Cavour under power, and −47.0% and −50.4% for Valetudo, whose table is 1.44 times its own OpenRocket export (hpr is 1.9% under that) |
+| [Mass properties](physics/mass.md) | hand calculation; exact integration | 1e-11 by hand; fin sections to 1e-13; densities converted as their sources print them |
+| [Solid motors](physics/motor.md) | ThrustCurve.org's statistics code; RocketPy's motor | 1.8e-15 on all 32 bundled curves; RocketPy within 7.9e-5 on three, the propellant's quantities within 1e-4 of their values at ignition |
+| [Aerodynamics](physics/aero.md) | Barrowman's worked examples, at Mach 0; drag curves labelled RASAero, at Mach 0.3 | four of five examples within 1%, the Recruiter +2.87% (+3.42% on its fins); drag within 10% in four of seven cases with guessed inputs, −18.3% for Cavour under power, and −47.0% and −50.4% for Valetudo, whose table is 1.44 times its own OpenRocket export (hpr is 23.5% under that export as designed here, 1.9% with the export's own finish and lugs) |
 | [Rigid-body flight](physics/flight.md) | exact motion in a vacuum | the centre of mass on the exact parabola to 1.7e-6 m over 22 s; no whole flight compared |
 | [Time integration](physics/integration.md) | an independent `DOPRI5`; a flight with an exact solution | the same step counts; event times within 1.5e-8 s |
 | [Recovery](physics/recovery.md) | RocketPy's descents; published drop tests | every descent metric within 3% (below); the later triggers within 0.17% and the drogue's descent rate to 0.01%; tumbling −10 to +19% off its drops; streamers +9% fast on a flat one and +58% on a pleated one |
@@ -97,7 +97,11 @@ Each metric must agree within 3%, with no absolute floor, as each case file argu
 - `mean_descent_rate_m_s`: the start's height over the descent time, so it repeats the descent
   time in another form.
 - `drift_m`, `drift_east_m` and `drift_north_m`: how far the rocket lands from where the descent
-  started, not from the pad, and that distance's east and north parts.
+  started, not from the pad, and that distance's east and north parts. A drift to the south or
+  west is negative.
+
+A difference is hpr's value less RocketPy's, over RocketPy's. So a positive one means hpr's value
+is larger in size, in the same direction: NDRT drifts south, and hpr carries it further south.
 
 Every result of the report, as hpr's difference from RocketPy:
 
@@ -113,9 +117,9 @@ Valetudo falls in still air, so its drift, 0.19 m, comes only from the Earth's r
 north part is 19 µm; a small difference there is a large fraction
 ([Recovery](physics/recovery.md#against-rocketpy)).
 
-The largest gap, NDRT's north drift, most likely comes from [added mass](glossary.md#added-mass): RocketPy counts the air
-a canopy drags along, 15.9 kg for NDRT's main against the rocket's 20.8 kg, and hpr has no such
-term, so the two respond differently as the canopy opens
+The largest gap, NDRT's north drift, most likely comes from [added mass](glossary.md#added-mass):
+RocketPy counts the air a canopy drags along, 15.9 kg for NDRT's main against the rocket's 20.8 kg,
+and hpr has no such term, so the two respond differently as the canopy opens
 ([Recovery](physics/recovery.md#against-rocketpy)). That explanation fits the size of the gap, but
 no test has isolated it yet.
 
@@ -138,7 +142,8 @@ These are the largest known differences and missing pieces. Each model page's *I
 rest.
 
 - **Aerodynamics were checked at two speeds only:** Mach 0 for the normal force and centre of
-  pressure, and Mach 0.3 for drag. Pressure drag is held at its low-speed value, so from about
+  pressure, and Mach 0.3 for drag. Nose and shoulder pressure drag is held at its low-speed value,
+  so from about
   Mach 0.6 it reads low against the source's own high-subsonic correction, and the models are
   documented only to Mach 0.8 ([Aerodynamics](physics/aero.md)).
 - **Drag against the RASAero curves** is within 10% in four of seven cases, with the fins and
@@ -151,9 +156,10 @@ rest.
 - **Tumbling** is −10 to +19% off its source's own drop tests, and is used far outside the fit
   behind it: Valetudo tumbles at 37 m/s against a fit from 5.0 to 6.6 m/s. The default streamer
   model reads +58% fast on a pleated streamer ([Recovery](physics/recovery.md)).
-- **Opening loads** are a lower bound only for a given deployment speed, and that speed can itself
-  read high: a separated body falls with no drag until its device opens
-  ([Recovery](physics/recovery.md)).
+- **Opening loads** are no safe bound either way: with a filling time hpr leaves out the canopy's
+  overshoot, and opening at once it ignores how a light rocket slows while the canopy fills. The
+  deployment speed can itself read high: a separated body falls with no drag until its device
+  opens ([Recovery](physics/recovery.md#inflation)).
 - **No added mass under a canopy,** the likely cause of the 2.86% drift difference above
   ([Recovery](physics/recovery.md#against-rocketpy)).
 - **Turbulence** is an aircraft model, unvalidated for rockets, and no flight uses it yet

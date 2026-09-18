@@ -29,7 +29,7 @@ The air a canopy has to push along with it while it speeds up or slows down rela
 counted as extra mass that carries no weight; in steady descent it changes nothing.
 RocketPy includes it in its parachute descent and hpr doesn't. For NDRT 2020's main, one of the
 [example rockets](#example-rockets), RocketPy's added mass is 15.9 kg against the rocket's 20.8 kg,
-which makes it the largest difference between the two codes' descents. See
+which makes it the likely cause of the largest difference between the two codes' descents. See
 [Recovery](physics/recovery.md#against-rocketpy).
 
 ## AGL (above ground level)
@@ -282,10 +282,11 @@ solution's own, and stops there so the flight can change phase. See
 
 ## Example rockets
 
-The rockets that hpr flies to compare itself with other codes: Calisto, Valetudo, NDRT 2020,
-Prometheus, Juno III and Cavour come from RocketPy's own examples. The Recruiter and Barrowman's
-other rockets are worked examples from his papers. Their designs, as hpr reads them, are in the
-repository's [`validation/designs/`][designs] folder. See [Accuracy](accuracy.md).
+The rockets that hpr flies to compare itself with other codes. Calisto, Valetudo, NDRT 2020,
+Prometheus, Juno III, Cavour and Bella Lui come from RocketPy's own examples; their designs, as
+hpr reads them, are in the repository's [`validation/designs/`][designs] folder. The Recruiter and
+Barrowman's other rockets are worked examples from his papers, with their printed values in
+[`barrowman-worked-examples.json`][barrowman]. See [Accuracy](accuracy.md).
 
 ## Fineness ratio
 
@@ -325,8 +326,9 @@ limits are inclusive. See [Solid motors](physics/motor.md#thrust-curve).
 How a parachute opens: from [deployment](#deployment), its drag area grows over the filling time
 `t_f` to its full value. hpr can open it at once (RocketPy's model), over a fixed time, or over
 Knacke's `t_f = n D₀/v`, with `n` the canopy's fill constant, `D₀` its nominal diameter and `v` the
-airspeed. hpr leaves out the drag's overshoot as a canopy fills, so the opening load it reports is
-a lower bound. See [Recovery](physics/recovery.md#inflation).
+airspeed. hpr leaves out the drag's overshoot as a canopy fills, and opening at once it ignores how
+a light rocket slows while the canopy fills, so the opening load it reports is no safe bound either
+way. See [Recovery](physics/recovery.md#inflation).
 
 
 ## Launch frame (ENU)
@@ -433,9 +435,11 @@ oracles too; all of them live under `validation/oracles/`. See
 
 ## Parallel-axis theorem
 
-The rule for moving a moment of inertia from a part's own centre of mass to another point: add the
-part's mass times the square of the distance between them. It is how hpr adds up the inertias of
-a rocket's parts. See [Mass properties](physics/mass.md).
+The rule for moving a moment of inertia from an axis through a part's own centre of mass to a
+parallel axis: add the part's mass times the square of the perpendicular distance between the two
+axes. A part on the rocket's centre line adds nothing to the roll inertia this way, only to pitch
+and yaw. hpr uses its tensor form to add up the inertias of a rocket's parts. See
+[Mass properties](physics/mass.md#frames-and-conventions).
 
 ## Power-on and power-off drag
 
@@ -457,9 +461,10 @@ least trustworthy. See [Rigid-body flight](physics/flight.md#phases).
 
 ## RASAero II
 
-A rocket aerodynamics and flight program whose drag curves several of RocketPy's
-[example rockets](#example-rockets) carry. hpr's drag at Mach 0.3 is compared with those curves,
-with the fin shapes and surface finish guessed, because the curves don't record them. See
+A rocket aerodynamics and flight program. Several of RocketPy's [example rockets](#example-rockets)
+carry drag curves labelled as RASAero's, though only Calisto's traces to an export. hpr's drag at
+Mach 0.3 is compared with those curves, with the fin shapes and surface finish guessed, because
+the curves don't record them. See
 [Aerodynamics](physics/aero.md#verification).
 
 ## Reference area
@@ -560,7 +565,7 @@ Station `s` is `z_B = −s` in the [body frame](#body-frame). See
 
 A problem in which some motion is so fast, and so strongly damped, that a method such as
 [Dormand–Prince](#dormandprince-and-rk4) has to take tiny steps to stay stable. hpr doesn't detect
-stiffness: the run stops with an error when its steps get too small. See
+stiffness: the run stops with an error when its steps get too small or too many. See
 [Time integration](physics/integration.md#defaults-and-limits).
 
 ## Stop time
@@ -687,6 +692,7 @@ where it blows *toward*, 180° from this. The wind itself is the air's velocity 
 [adr-011]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-011-rigid-body-flight-equations-of-motion-aerodynamic-coupling-rail-phases-and-termination-2026-09-17
 [decisions]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md
 [harness]: https://github.com/nrdptel/hpr-sim/blob/main/docs/VALIDATION.md#the-harness-m21a
+[barrowman]: https://github.com/nrdptel/hpr-sim/blob/main/validation/fixtures/aero/barrowman-worked-examples.json
 [designs]: https://github.com/nrdptel/hpr-sim/tree/main/validation/designs
 [lessons]: https://github.com/nrdptel/hpr-sim/blob/main/docs/research/loft-lessons.md
 [levels]: accuracy.md#four-kinds-of-evidence

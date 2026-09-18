@@ -41,9 +41,9 @@ The [Accuracy](accuracy.md) page gathers every result from steps 3 and 4 in one 
 not quite sea level), is 9.7803253359 m/s².
 
 1. **The page.** [Gravity and Earth rotation](physics/gravity.md) models *normal gravity*, the pull
-   of an idealised Earth plus the effect of its spin. The table under
-   [Defining parameters and derived constants](physics/gravity.md#defining-parameters-and-derived-constants)
-   gives `γ_e`, the value at the equator, as 9.7803253359 m/s², and cites Table 3.6 of **[NGA]**.
+   of an idealised Earth plus the effect of its spin. The table under [Defining parameters and
+   derived constants](physics/gravity.md#defining-parameters-and-derived-constants) gives `γ_e`, the
+   value at the equator, as 9.7803253359 m/s², and cites Table 3.6 of **[NGA]**.
 2. **The source.** **[NGA]** is the US National Geospatial-Intelligence Agency's WGS 84 standard,
    NGA.STND.0036 (2014), a US government work. The lock file pins it as `wgs84-nga-stnd-0036`, and
    `cargo xtask refs fetch wgs84-nga-stnd-0036` downloads it. Table 3.6 prints the same value.

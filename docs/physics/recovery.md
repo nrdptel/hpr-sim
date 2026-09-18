@@ -15,17 +15,19 @@
   descent has been compared with a real flight. Against measured drop tests, tumbling is −10 to
   +19% off, and the default streamer model predicts a descent +9% faster than Kidwell's one flat
   streamer.
-- **What it leaves out:** the drag overshoot and shock as a canopy opens: for a given deployment
-  speed hpr's peak load is a lower bound, so size hardware from Knacke. The deployment speed can
-  itself read high, because a separated body falls with no drag until its device opens, and the
-  airframe's drag under a canopy is left out too. Also left out: added mass (air carried along),
-  the swing (the attitude freezes at deployment), and streamer pleats (+58% fast on a pleated one).
-  Tumbling is used far outside its fit: 37 m/s for Valetudo, against 5.0 to 6.6 m/s.
+- **What it leaves out:** the drag overshoot as a canopy fills, and the way a light rocket slows
+  while it fills, so hpr's peak opening load is no safe bound either way: size hardware from Knacke.
+  The deployment speed can itself read high, because a separated body falls with no drag until its
+  device opens, and the airframe's drag under a canopy is left out too. Also left out: added mass
+  (air carried along), the swing (the attitude freezes at deployment), and streamer pleats (+58%
+  fast on a pleated one). Tumbling is used far outside its fit: 37 m/s for Valetudo, against 5.0 to
+  6.6 m/s.
 
 ## Code and sources
 
-Code: `crates/hpr-sim/src/recovery.rs` and the descent branch of `crates/hpr-sim/src/dynamics.rs`. Decisions: [ADR-012][adr-012] (parachutes and the descent),
-[ADR-013][adr-013] (streamers and tumble), [ADR-014][adr-014] (separation).
+Code: `crates/hpr-sim/src/recovery.rs` and the descent branch of `crates/hpr-sim/src/dynamics.rs`.
+Decisions: [ADR-012][adr-012] (parachutes and the descent), [ADR-013][adr-013] (streamers and
+tumble), [ADR-014][adr-014] (separation).
 
 Sources:
 
@@ -252,8 +254,14 @@ with `t_d` its deployment, `t_f` its filling time and `j` its growth exponent. `
 solid cloth (Pflanz, Figure 5-51). Knacke's measured drag area **overshoots** the steady value by
 10 to 80% near the end of filling (Figure 5-40, printed page 5-47), and his infinite-mass opening
 force is `C_x = 1.7` for a flat circular canopy. hpr models neither: its drag area rises to the
-steady value and stays. The peak load hpr reports is therefore a lower bound on the real opening
-shock, and instant inflation is hpr's own upper bound. For scale, the 1.5 m flat circular canopy
+steady value and stays. So the peak load hpr reports is no safe bound on the real one, in either
+direction. With a filling time, it leaves out the overshoot, so for that filling time and
+deployment speed the real peak is higher. Opening at once, it applies the full drag area at line
+stretch, the infinite-mass case: Knacke's opening force is `F = (C_D S) q C_x X1` (printed page
+5-49), where the force-reduction factor `X1` is 1 at infinite mass and as low as 0.02 for a
+final-descent parachute with a low canopy loading, which slows its load while it fills. A big
+main on a light rocket can therefore see far less than hpr's instant peak. Instant inflation is
+hpr's own upper bound. For scale, the 1.5 m flat circular canopy
 of the test above peaks at 1.6 kN filling and 3.0 kN opening instantly, where Knacke's
 infinite-mass `C_x = 1.7` on the same dynamic pressure would be 5.1 kN: size hardware from the
 source, not from hpr. Ludtke's law and Pflanz's `X1` reduction factor are candidates for a later
@@ -402,7 +410,7 @@ RocketPy, at 0.55 mm, and that is what found the gravity-model difference below
 What still differs, and by how much:
 
 - **Added mass.** hpr has none; RocketPy's carries no weight, so it changes no equilibrium, only
-  the transient after an opening. This is the largest difference (see NDRT below).
+  the transient after an opening. It is most likely the largest difference (see NDRT below).
 - **Trigger sampling.** RocketPy checks its triggers on a grid of `1/sampling_rate` (100 or
   105 Hz) anchored at `t = 0`, and only over the span after its first accepted step; hpr has no
   sampling rate and locates the crossing with its event finder. So RocketPy's first deployment is
@@ -416,6 +424,9 @@ What still differs, and by how much:
 - **Release against replacement.** hpr sums its open devices and releases the drogue when the main
   is full; RocketPy holds one `C_D S` and replaces it. For these cases, whose canopies open
   instantly, the two are the same.
+- **Wind.** Both codes interpolate the declared wind by its east and north components, and the
+  test holds hpr's to RocketPy's samples within 1e-9 m/s in each, NDRT's sheared profile
+  included.
 - **Atmosphere.** hpr evaluates the 1976 standard atmosphere; RocketPy interpolates a 100-point
   pressure table over 0 to 80 km. Measured over the fixture's 23 samples: at most 3.7e-4 in
   density, which the test gates at 5e-4.
@@ -471,9 +482,9 @@ device that is open, computed from hpr's own air and gravity at the site.
 Every metric is inside the milestone's 3%. The descent rate under the drogue, where a case has a
 main, agrees to 0.01%. The two largest gaps are both NDRT's, whose main has a drag area of 16 m²:
 RocketPy's added mass for it is 15.9 kg against the rocket's 20.8 kg, so its response to the
-opening is slower, which lengthens the descent (+0.71%) and, in a wind that shears with height,
-moves the smaller drift component by 2.86%. Adding a cited apparent-mass model would close that
-gap.
+opening is slower, which most likely lengthens the descent (+0.71%) and, in a wind that shears
+with height, moves the smaller drift component by 2.86%. No test has isolated it yet; a cited
+apparent-mass model would show whether it closes that gap.
 
 [adr-012]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-012-recovery-drag-areas-triggers-inflation-and-the-descent-phase-2026-09-17
 [adr-013]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-013-streamer-and-tumble-drag-2026-09-17

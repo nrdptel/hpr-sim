@@ -12,12 +12,13 @@
   curves labelled RASAero in RocketPy's examples, which don't record their fins or finish, so
   hpr's follow a declared rule: within 10% in four of seven cases, and −18.3% for Cavour under
   power, cause open. Valetudo's −47.0% and −50.4% are against a table 1.44 times its own
-  OpenRocket export, which hpr's drag is 1.9% under. Nothing against a real flight.
-- **What it leaves out:** large angles and stall, though a flight uses these models at every
-  angle. Pressure drag is held at its low-speed value, so from about Mach 0.6 it reads low against
-  the source's own high-subsonic correction; the models are documented to Mach 0.8 and refuse
-  Mach 1 until [M1.8][roadmap] (transonic and supersonic aerodynamics), which also brings roll
-  torques.
+  OpenRocket export; hpr is 23.5% under that export as designed here, and 1.9% under it with the
+  export's own finish and lugs. Nothing against a real flight.
+- **What it leaves out:** large angles and stall, though a flight uses these models at every angle.
+  Nose and shoulder pressure drag is held at its low-speed value, so from about Mach 0.6 it reads
+  low against the source's own high-subsonic correction; the models are documented to Mach 0.8 and
+  refuse Mach 1 until [M1.8][roadmap] (transonic and supersonic aerodynamics), which also brings
+  roll torques.
 
 ## Code and sources
 
@@ -360,7 +361,8 @@ parasitic term on its own area. The axial coefficient is `C_A = C_D0 f(α)`.
     or tables sampled along a flight (their uneven Mach spacing suggests it; unconfirmed).
   - **Valetudo.** Its table (1.05) is 1.44 times the OpenRocket export for the same rocket (0.728).
     With that file's own inputs (60 µm, two 14 mm × 30 mm lugs, 3 mm square fins), hpr gives
-    0.714, 1.9% under the OpenRocket export and 32% under the table.
+    0.714, 1.9% under the OpenRocket export and 32% under the table. As designed for this
+    comparison, its 0.5566 is 23.5% under the export.
   - **Not compared.**
     - Calisto's power-on curve, which equals its power-off curve (no nozzle exit diameter in
       RASAero).

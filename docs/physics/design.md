@@ -12,7 +12,8 @@
   [kinds of evidence][levels]. A hand-worked rocket agrees to 1e-12 through the burn. For eight
   cases of RocketPy's example rockets, a given structure with its motor placed agrees in mass,
   centre and inertia within 8.0e-10 (relative) at the times RocketPy computed, and within 1.1e-5
-  in mass and 2.6e-5 in inertia between them; grain propellant mass within 2.4e-9 and 4.9e-5.
+  in mass and 2.6e-5 in inertia between them; grain propellant mass within 2.4e-9 and 4.9e-5
+  of its initial value.
   Placement, automatic radii and overrides are checked by hand only. Not compared with OpenRocket
   or a real flight.
 - **What it leaves out:** all motors ignite together at `t = 0` until staging arrives
