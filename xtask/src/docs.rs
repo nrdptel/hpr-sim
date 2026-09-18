@@ -371,8 +371,9 @@ fn check(
 }
 
 /// Checks that `STATUS.md`'s `- **Current milestone:** M1.2 ...` line names the first milestone
-/// that is neither checked off nor blocked. When that milestone is split, its first open increment
-/// (`M1.2a`, listed right after it) is accepted too.
+/// that is neither checked off nor blocked, or any link of the chain of first open increments
+/// under it: `M1.2`, then `M1.2a` if it is split, then `M1.2a1` if *that* is split again. Nothing
+/// else is accepted, so naming a later increment is still a problem.
 fn current_milestone_problem(status: &str, roadmap: &str) -> Option<String> {
     let Some(named) = status.lines().find_map(|line| {
         let rest = line.trim_start().strip_prefix("- **Current milestone:**")?;
@@ -597,6 +598,26 @@ fn helper() {}
         assert!(defines_test(src, "indented_live"));
         for name in ["commented", "ignored", "helper", "missing"] {
             assert!(!defines_test(src, name), "{name}");
+        }
+    }
+
+    #[test]
+    fn a_milestone_id_may_be_split_once_and_then_split_again() {
+        for (tail, want) in [
+            ("1.2 Atmosphere.**", Some("1.2")),
+            ("1.2a Tables.**", Some("1.2a")),
+            ("1.2b1 Shear.**", Some("1.2b1")),
+            ("1.10 Outputs.**", Some("1.10")),
+            // A letter after the increment's digits is not an id: M1.2b1a would make the chain
+            // ambiguous, and `- [ ] **M1.2b-1**` parses as M1.2b, which shows up as a duplicate
+            // entry rather than passing for a third level.
+            ("1.2ab Nope.**", None),
+            ("1.2a3b Nope.**", None),
+            ("1.2b-1 Nope.**", Some("1.2b")),
+            ("1 Nope.**", None),
+            ("x.2 Nope.**", None),
+        ] {
+            assert_eq!(milestone_number(tail), want, "{tail}");
         }
     }
 
