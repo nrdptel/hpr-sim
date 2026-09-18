@@ -73,8 +73,8 @@ parachute descents sample, as part of that comparison, and nowhere else
 | [Shapes](physics/shapes.md) | ✓ | — | — | — |
 | [Mass properties](physics/mass.md) | ✓ | — | — | — |
 | [Solid motors](physics/motor.md) | ✓ | — | ✓ RocketPy, ThrustCurve.org | — |
-| [Aerodynamics](physics/aero.md) | ✓ | ✓ Barrowman's examples | partial: drag only, with the fins and finish guessed | — |
-| [Rigid-body flight](physics/flight.md) | ✓ | — | ✓ RocketPy, with the drag given | — |
+| [Aerodynamics](physics/aero.md) | ✓ | ✓ Barrowman's examples | partial: drag only, with the fins and finish guessed; and in whole flights, against a target | — |
+| [Rigid-body flight](physics/flight.md) | ✓ | — | ✓ RocketPy, with the drag given; and on each code's own drag, against a target | — |
 | [Time integration](physics/integration.md) | ✓ | — | — | — |
 | [Recovery](physics/recovery.md) | ✓ | ✓ | ✓ RocketPy | — (drop tests ✓) |
 | [Interpolation](physics/interpolation.md) | ✓ | — | — | — |
@@ -317,7 +317,8 @@ still be scored while Prometheus can't.
 
 What this shows: with the drag given, the two codes agree on how high, how fast and how long a
 rocket flies. They don't agree well enough on where it goes: within a few per cent in calm air, and
-far apart in wind, which is open. [M2.1](decisions-and-roadmap.md#m2-1)'s landing offset is not met. Nothing here says anything about hpr's own drag, which the next section compares, or about a real flight. The
+far apart in wind, which is open. [M2.1](decisions-and-roadmap.md#m2-1)'s landing offset is
+reported but not met ([issue #50][issue-50]); the milestone closed with it open. Nothing here says anything about hpr's own drag, which the next section compares, or about a real flight. The
 comparisons with OpenRocket ([M2.2](decisions-and-roadmap.md#m2-2), the OpenRocket comparison)
 and with real flights ([M2.3](decisions-and-roadmap.md#m2-3), the real-flights milestone) come
 after.
@@ -336,10 +337,12 @@ predicted-mode comparison).
 (+1.118%), just outside for Juno III (+3.181%), and well above for Valetudo (+10.007%) and NDRT
 2020 (+10.232%), where its drag is well below the example's** ([report][report]). These are
 results, not a pass or fail. Neither code's drag is the truth: each example's drag came from
-RASAero, OpenRocket or its team's own estimate. So each number is held to the 3% of
-[M2.1](decisions-and-roadmap.md#m2-1), the validation milestone, as a *target*, reported as within
-or outside it, and never gated. Each case file explains its misses
-([Valetudo's][valetudo-predicted-case] and [NDRT 2020's][ndrt-predicted-case], for example).
+RASAero, OpenRocket or its team's own estimate. So each number is compared with the same 3% as the
+same-drag flights ([M2.1](decisions-and-roadmap.md#m2-1), the validation milestone), but only as a
+[target](glossary.md#gate-and-target). A miss is reported and explained in its case file
+([Valetudo's][valetudo-predicted-case] and [NDRT 2020's][ndrt-predicted-case], for example), and
+does not fail the test suite. The report is committed, so any number that moves shows up in
+review.
 
 Every predicted result of the report, as hpr's difference from RocketPy:
 
@@ -372,7 +375,8 @@ Why the misses, largest first:
 - **Valetudo and NDRT 2020 fly high: the drag.** hpr's drag coefficient at Mach 0.3 is −47.0%
   from Valetudo's table, a hand-edited table 1.44 times the drag of the OpenRocket export for the
   same rocket ([Aerodynamics](physics/aero.md#verification)). For NDRT 2020 it is 0.318 against
-  the example's constant 0.44 ([case file][ndrt-predicted-case]). Flown on the same drag, the
+  the example's constant 0.44 ([case file][ndrt-predicted-case]; computed locally, not yet pinned
+  by a test). These drags are compared at Mach 0.3 only, where both rockets fly most of the way. Flown on the same drag, the
   apogees agree with RocketPy's to +0.003% and −0.010% ([report][report]). Less drag also means a
   later apogee, a longer descent and further to drift, which moves their times and drifts too.
 - **Juno III is +3.181% high.** hpr's drag is 6.0% below the example's curve at Mach 0.3, and the
@@ -398,6 +402,10 @@ real-flights milestone).
 These are the largest known differences and missing pieces. Each model page's *In short* lists the
 rest.
 
+- **hpr's own drag in a whole flight.** Its heights are +10.007% and +10.232% above RocketPy's for
+  Valetudo and NDRT 2020, where its drag is well below the examples' ([report][report]). Which
+  drag is right is open until real flights ([M2.3](decisions-and-roadmap.md#m2-3), the
+  real-flights milestone).
 - **Aerodynamics were checked at two speeds only:** Mach 0 for the normal force and centre of
   pressure, and Mach 0.3 for drag. The drag from air pressure on the nose, and on any shoulder (a
   transition that widens toward the tail), is held at its low-speed value. So from about Mach 0.6

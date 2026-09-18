@@ -1879,7 +1879,11 @@ below Valetudo's table and 6.0% below Juno III's at Mach 0.3.
   committed. A test pins that every predicted row, and no other, is a target row.
 - **Prometheus 2022 is a known gap in predicted mode too:** RocketPy on its own drag peaks at
   Mach 1.049, and the harness checks the gap as it does the same-drag one (L85).
-- `scripts/regenerate-references.sh` regenerates the new reference with the others.
+- `scripts/regenerate-references.sh` regenerates the new reference with the others, and now
+  prints how far each fixture moved, number by number. ADR-022's first dispatched run, on GitHub's
+  macOS runner, showed why: RocketPy's fixtures moved in their last digits (the descents by at most
+  3.6e-11 relative; in the whole flights, a landing height of 2e-8 m by 3e-9 m), which changed
+  their hashes and so the report, with no printed metric moving.
 
 **Alternatives.**
 
@@ -1887,8 +1891,8 @@ below Valetudo's table and 6.0% below Juno III's at Mach 0.3.
 - Gating it at 3%: two of five apogees miss by 10%, from drag tables that are not the truth
   either. A gate would fail the suite on a disagreement nobody can yet settle, or be loosened to
   pass, which rule 2 forbids. M2.1 itself calls these "targets, not gates".
-- Declaring every predicted metric *not scored*: 75 excuses would drown the eleven that mean "an
-  open miss", and a target that is met would read like one that is not.
+- Declaring every predicted metric *not scored*: it would bury the same-drag suite's eleven open
+  misses among 75 routine notes, and a target that is met would read like one that is not.
 - Committing the examples' curves, or reading them in CI: their terms forbid the first (ADR-009),
   and CI has no RocketPy checkout.
 

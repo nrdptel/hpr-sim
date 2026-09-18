@@ -103,9 +103,11 @@ only when a person regenerates the references.
   `references-diff` artifact. Its token can read the repository and nothing more, so it cannot
   commit.
 
-On Linux the regenerated fixtures may differ from the committed ones in their last digits, and a
-fixture that moved at all makes the report be rewritten too; that is why the workflow runs on a
-Mac. Either way the result is a diff to read, not a new reference.
+Another machine's floating point can move the regenerated fixtures' last digits, and a fixture that
+moved at all makes the report be rewritten too. The first run on GitHub's Mac did that: the descents
+moved by at most 3.6e-11 of each value, the whole flights' largest move was a landing height of
+2e-8 m shifting by 3e-9 m, and no printed metric changed. So the script prints, for each fixture,
+how many values moved and the largest relative move; read that before the diff. Either way the result is a diff to read, not a new reference.
 Committing it is a decision a PR has to argue:
 [Loft lesson L76](decisions-and-roadmap.md#l76), where a reference regenerated whenever a check
 failed ended up following the simulator it was meant to check.
@@ -139,7 +141,6 @@ The committed report carries no timestamp, so a number that moves shows up in th
 run writes `latest-fast.{md,json}` instead, which is not committed: a partial report never stands
 in for the whole suite's record.
 
-
 ### Predicted mode (M2.1c2)
 
 The `predicted-*` cases fly the same six examples with hpr's own aerodynamics
@@ -154,7 +155,8 @@ Each predicted metric keeps M2.1's 3% as a target, not a gate: its verdict is `w
 file explains its own. In short, 56 of 75 are within target; the apogees are −0.527% (Calisto),
 +1.118% (Bella Lui), +3.181% (Juno III), +10.007% (Valetudo) and +10.232% (NDRT 2020), the last two
 where hpr's drag is well below the example's; the drifts miss as in same-drag mode (issue #50).
-Prometheus 2022 is a checked `M ≥ 1` gap, at Mach 1.049 on its own drag.
+Prometheus 2022 is a known gap the harness checks: on its own drag RocketPy's flight reaches Mach
+1.049, past hpr's subsonic limit.
 
 ## Reference simulators (oracles)
 

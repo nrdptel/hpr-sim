@@ -358,6 +358,15 @@ which the pages also write as "fineness 3". See
 [Aerodynamics](physics/aero.md#bodies-of-revolution).
 
 
+## Gate and target
+
+Two ways a validation result is held to a bound. A **gate** fails the test suite when a number
+falls outside it, so a change that breaks agreement cannot merge. A **target** is the same kind of
+bound, but a miss is only reported, with its explanation in the case file, and never fails the
+suite: it is used where neither side of the comparison is known to be right, as for hpr's own drag
+against the drag RocketPy's examples ship. Either way the report is committed, so any number that
+moves shows up in review. See [Accuracy](accuracy.md#whole-flights-with-each-codes-own-drag).
+
 ## Geodetic latitude
 
 Latitude as maps and GPS give it: the angle between the equator's plane and the
@@ -623,9 +632,12 @@ The height above the ground at which the logarithmic wind law's wind falls to ze
 
 Two ways of comparing hpr's whole flights with another simulator's. In **same-drag** mode both
 codes fly one drag coefficient that the comparison declares, so a difference comes from the
-equations of motion, the motor or the air, not the drag. In **predicted** mode each code computes
-its own drag from the rocket's shape, which tests the aerodynamics as well. See
-[Accuracy](accuracy.md#whole-flights-against-rocketpy).
+equations of motion, the motor or the air, not the drag. In **predicted** mode hpr works out its
+own aerodynamics from the rocket's shape, and the other code flies the drag its example ships
+(from RASAero, OpenRocket or the team). A difference is then mostly the two drags. Neither drag is
+known to be right, so those results are held to a [target, not a gate](#gate-and-target). See
+[Accuracy](accuracy.md#whole-flights-against-rocketpy) and
+[Accuracy](accuracy.md#whole-flights-with-each-codes-own-drag).
 
 ## Scientific notation
 

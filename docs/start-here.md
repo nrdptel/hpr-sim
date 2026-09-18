@@ -122,8 +122,8 @@ out.
   Five of RocketPy's example rockets agree within 3% on apogee, speeds, burnout and flight time
   ([M2.1b2](decisions-and-roadmap.md#m2-1b2), the whole-flight comparison). Where they go in wind
   does not agree: hpr turns into the wind less than RocketPy
-  ([issue #50](https://github.com/nrdptel/hpr-sim/issues/50)). With each code's own drag, hpr's
-  heights differ from RocketPy's by −0.527% to +10.232%, the larger gaps where its drag is well
+  ([issue #50](https://github.com/nrdptel/hpr-sim/issues/50)). With hpr's own drag, against
+  RocketPy flying the drag its examples ship, hpr's heights differ from RocketPy's by −0.527% to +10.232%, the larger gaps where its drag is well
   below the example's ([Accuracy](accuracy.md#whole-flights-with-each-codes-own-drag)).
   No flight has been compared with OpenRocket ([M2.2](decisions-and-roadmap.md#m2-2)) or a real
   one ([M2.3](decisions-and-roadmap.md#m2-3)).

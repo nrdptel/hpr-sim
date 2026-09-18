@@ -4,11 +4,12 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
 
 ## Now
 
-- **Current milestone:** M2.1c2 Predicted mode
-- **Order:** M2.1c2, then M1.8; M0.4 waits only on M0.4d's deploy, blocked on Pages (Needs Neer)
-- **Run:** the first autopilot run; M0.1-M0.4c, M0.4e, M1.1-M1.7, M2.1a, M2.1b and M2.1c1 have
-  shipped, and M0.4d all but its deploy
-- **Last updated:** 2026-09-18 (M2.1c1 shipped; M2.1c2 started)
+- **Current milestone:** M1.8 Aerodynamics II (transonic and supersonic, damping, overrides)
+- **Order:** issue #50 (bisect first), M1.8; M0.4 waits only on M0.4d's deploy, blocked on Pages
+  (Needs Neer)
+- **Run:** the first autopilot run; M0.1-M0.4c, M0.4e, M1.1-M1.7 and M2.1 have shipped, and M0.4d
+  all but its deploy
+- **Last updated:** 2026-09-18 (M2.1c2 shipped, and with it M2.1; M1.8 not started)
 
 ## Handoff (overwrite each session)
 
@@ -22,31 +23,30 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
 - **When Pages is on:** `gh workflow run CI --ref main`; once `deploy` passes, drop the README's
   "goes live once" sentence, check M0.4d and M0.4 off, and set both rows to `done`.
 
-M2.1c1 (ADR-022): CI's `validate (os)` job runs `cargo xtask validate --check` on three OSes; the
-*Regenerate references* workflow (by hand only, read-only token) uploads the references' diff.
-Next, M2.1c2: predicted mode, the same six cases flown with hpr's own aero.
+M2.1 is done (ADR-015, ADR-021 to ADR-023). CI's `validate (os)` job checks the committed report on
+three OSes; *Regenerate references* runs only by hand and uploads a diff. Predicted mode flies hpr's
+own aero against RocketPy on each example's own drag (`flight.py --own-drag`), each metric held to
+a 3% *target*, never gated: apogees −0.527% to +10.232%, the misses explained in the case files.
 
-- **The reference:** RocketPy flying each example's own drag, as v1.13.0 really flies it: the
-  Calisto, Valetudo and Juno III CSVs from `refs/rocketpy/data/rockets/` (Juno's `*= factor` never
-  reaches `power_*_drag_7d`, so the raw curve), NDRT's constant 0.44, Bella Lui's 0.43 (its
-  cell-25 `Function` is lost the same way), and Prometheus's `prometheus_cd_at_ma` (MIT test code,
-  power-on x1.02). Commit results and each file's sha256, never the curves (ADR-009). Add it to
-  `scripts/regenerate-references.sh`.
-- **Scoring:** planned as ADR-023: each metric keeps M2.1's 3% as a *target*, reported as within or
-  outside it in its own report section, never failing the run; every miss explained in the case
-  file (M2.1's "targets, not gates"). `cargo xtask aero` already measures hpr's drag against these
-  curves at Mach 0.3 (Valetudo -47%, Juno -6%, Calisto +4%), which is most of the explanation.
-- **Issue #50** (the path in wind) is the largest open physics question; bisect it before M2.2.
-- **Prometheus stays a gap** until M1.8; `a_known_gap_is_checked_not_trusted` fails the run once
-  hpr flies it. Remove `known_gap` then; its tolerances are already argued.
-- **After merging #51:** `gh workflow run regenerate-references.yml` once, and record whether Linux
-  reproduces the macOS fixtures (ADR-022 leaves that to be measured).
+- **Issue #50** (the path in wind; M2.1's landing offset, reported but not scored) is the largest
+  open physics question. Bisect it before M1.8's drag work moves the numbers: the rail release,
+  hpr's drag growth with angle of attack, and each code's normal force and damping.
+- **M1.8** next: Cd vs Mach within 10% of RocketPy's RASAero CSVs (`cargo xtask aero` already
+  reads them at Mach 0.3), supersonic cases within tolerance (both Prometheus cases are checked
+  `M ≥ 1` gaps that fail the run once hpr flies them: then remove `known_gap`), roll damping.
+  Predicted mode shows the drag gaps it should close: NDRT 2020 +10.232% and Valetudo +10.007%.
+- **Regeneration is not bit-identical across machines:** the first *Regenerate references* run
+  (GitHub's macOS runner) moved RocketPy's fixtures in their last digits (descents at most 3.6e-11
+  relative), changing their hashes and so the report's; no printed metric moved. The script now
+  prints how far each fixture moved: read that before the diff.
 - **Process notes:** `cargo test -p xtask` guards STATUS, ROADMAP, notices, lessons and the lock.
   Oracles run from the repo root with `refs/venv/bin/python`. `cargo xtask designs` and
   `cargo xtask examples` rewrite designs and example outputs; pages quoting them must follow.
 
 ## Done log (newest first, keep about 15)
 
+- 2026-09-18: M2.1c2 Predicted mode (PR #52, ADR-023): hpr's own aero against RocketPy on each
+  example's own drag; 3% targets, not gates; 56 of 75 within; M2.1 done.
 - 2026-09-18: M2.1c1 Validation in CI and regeneration by hand (PR #51, ADR-022): `validate
   --check` on three OSes; a `workflow_dispatch`-only workflow that uploads the references' diff.
 - 2026-09-18: M2.1b2 The whole-flight cases (PR #49, ADR-021): five pass (64 metrics within
@@ -56,8 +56,7 @@ Next, M2.1c2: predicted mode, the same six cases flown with hpr's own aero.
   held to the roadmap, in the API reference too (#44).
 - 2026-09-18: M0.4d Publish, all but the deploy (PR #43, ADR-019): rustdoc under `api/`.
 - 2026-09-18: M0.4c Getting started (PR #42, ADR-018): examples run in CI, quoted line for line.
-- 2026-09-18: M0.4b Model pages, Accuracy, Glossary, Checking a claim (PR #40, ADR-017).
-- 2026-09-18: M0.4a The site and its link checks (PR #37, ADR-016): mdBook, links and labels.
+- 2026-09-18: M0.4a, M0.4b The site, its checks, and the model pages (PRs #37, #40; ADR-016, 017).
 - 2026-09-17: M2.1b1 The whole-flight oracle (and PR #34, its bounded step, #33): `flight.py`
   flies the examples pad to landing under a declared `C_D0`; Prometheus reaches Mach 1.014.
 
@@ -110,6 +109,8 @@ Next, M2.1c2: predicted mode, the same six cases flown with hpr's own aero.
   filter (it rejects none of the 1,708 surveyed motors, 236 to 3,031 m/s), and a behaviour change.
 - M2.1b1: a same-drag case declares its own `C_D0(M)`, which both codes then fly, rather than
   committing or reading RocketPy's exports (their own terms, ADR-009; absent from CI).
+- ADR-023: predicted mode scores against RocketPy on the examples' own drag as RocketPy really
+  flies it (post-construction rescalings ignored); its 3% is a target, reported, never gated.
 - ADR-022: CI checks the committed report to the digits the platforms share; references are
   regenerated only by hand and reviewed as a diff; M2.1c split into c1 (CI) and c2 (predicted).
 - ADR-021: whole flights measured as RocketPy defines them (dry-mass centre, forward-button rail

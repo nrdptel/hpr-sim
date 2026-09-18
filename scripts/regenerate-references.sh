@@ -60,6 +60,52 @@ generate validation/oracles/rocketpy/flight.py validation/fixtures/flight/rocket
 generate validation/oracles/rocketpy/flight.py validation/fixtures/flight/rocketpy-whole-flight-own-drag.json \
     --own-drag
 
+# How far each regenerated fixture moved from the committed one, number by number. Another machine's
+# floating point moves RocketPy's last digits, which changes a fixture's hash and so the report: on
+# GitHub's macOS runner the descents moved by at most 3.6e-11 relative, and the whole flights' 742
+# moved values by at most 2.9e-6 on this measure (a landing height of 2e-8 m moving by 3e-9 m). A
+# real change moves numbers by far more.
+for fixture in \
+    validation/fixtures/design/rocketpy-rocket-mass.json \
+    validation/fixtures/recovery/rocketpy-descent.json \
+    validation/fixtures/flight/rocketpy-whole-flight.json \
+    validation/fixtures/flight/rocketpy-whole-flight-own-drag.json; do
+    git show "HEAD:$fixture" 2>/dev/null | "$python" -c '
+import json, sys
+
+def walk(old, new, path, moved):
+    if isinstance(old, dict) and isinstance(new, dict) and old.keys() == new.keys():
+        for key in old:
+            walk(old[key], new[key], f"{path}.{key}", moved)
+    elif isinstance(old, list) and isinstance(new, list) and len(old) == len(new):
+        for index, (a, b) in enumerate(zip(old, new)):
+            walk(a, b, f"{path}[{index}]", moved)
+    elif isinstance(old, (int, float)) and isinstance(new, (int, float)) \
+            and not isinstance(old, bool) and not isinstance(new, bool):
+        if old != new:
+            # Relative to the larger, and numbers under 1e-3, such as a height at landing that
+            # the event solver leaves at 2e-8 m, as if they were 1e-3.
+            moved.append((abs(old - new) / max(abs(old), abs(new), 1e-3), path))
+    elif old != new:
+        moved.append((float("inf"), path))
+
+try:
+    old = json.load(sys.stdin)
+except ValueError:
+    sys.exit(0)  # not committed yet: there is nothing to compare with
+with open(sys.argv[1]) as file:
+    new = json.load(file)
+moved = []
+walk(old, new, "$", moved)
+if not moved:
+    print(f"regenerate: {sys.argv[1]}: unchanged")
+else:
+    worst, where = max(moved)
+    print(f"regenerate: {sys.argv[1]}: {len(moved)} value(s) moved, the largest by {worst:.1e} "
+          f"relative, at {where}")
+' "$fixture"
+done
+
 # The committed report was written on macOS, and another platform rounds a whole flight's last
 # digits differently, so the report is rewritten only when this run does not reproduce it
 # (`cargo xtask validate --check`, to the digits the platforms share). A fixture that moved at all

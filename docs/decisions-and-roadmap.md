@@ -108,7 +108,7 @@ missing or its status disagrees.
 | <a id="m1-7a"></a>[M1.7a][phase-1] | Parachutes, and the descent under them | done |
 | <a id="m1-7b"></a>[M1.7b][phase-1] | Streamers and tumble recovery | done |
 | <a id="m1-7c"></a>[M1.7c][phase-1] | Separated bodies, each flown to its own landing | done |
-| <a id="m2-1"></a>[M2.1][phase-1] | The validation harness, and comparisons with RocketPy | done |
+| <a id="m2-1"></a>[M2.1][phase-1] | The validation harness, and comparisons with RocketPy; closed with the landing offset in wind still open ([issue #50](https://github.com/nrdptel/hpr-sim/issues/50)) | done |
 | <a id="m2-1a"></a>[M2.1a][phase-1] | The harness itself: cases, reference data, tolerances and reports | done |
 | <a id="m2-1b"></a>[M2.1b][phase-1] | Whole flights against RocketPy, with both codes given the same drag | done |
 | <a id="m2-1b1"></a>[M2.1b1][phase-1] | The script that flies RocketPy's example rockets from pad to landing, as the reference | done |
