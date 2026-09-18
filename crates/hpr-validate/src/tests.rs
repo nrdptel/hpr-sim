@@ -5,7 +5,7 @@ use std::path::{Path, PathBuf};
 use crate::case::{Case, CaseLock, Metric, Tolerance, cases_dir, committed_cases};
 use crate::metrics::{Reference, ReferenceValue};
 use crate::report::{Comparison, Report, Verdict};
-use crate::run::{ValidateError, run_case, run_lock};
+use crate::run::{ValidateError, peak_between, run_case, run_lock};
 
 /// The repository root, from this crate's manifest.
 pub(crate) fn root() -> PathBuf {
@@ -893,7 +893,6 @@ fn a_metric_the_flight_cannot_measure_is_refused_before_it_flies() {
 
 #[test]
 fn a_peak_inside_a_step_is_found_smooth_or_kinked() {
-    use crate::run::peak_between;
     let found = |value: fn(f64) -> f64| {
         peak_between::<()>(0.0, 0.05, |t| Ok(value(t))).expect("the value never fails")
     };

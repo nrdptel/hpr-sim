@@ -981,11 +981,7 @@ fn fly_whole_flight(
             .collect();
         // `f64::max` passes over a NaN, so a sample that is not a number would vanish from the
         // maxima below rather than fail them. Refuse the flight instead.
-        if let Some(row) = flown.iter().find(|row| {
-            !(row.speed_m_s.is_finite()
-                && row.mach.is_finite()
-                && row.acceleration_m_s2.is_finite())
-        }) {
+        if let Some(row) = flown.iter().find(|row| !row.is_finite()) {
             return Ok(Err(format!(
                 "the flight has a sample that is not a number at {} s: {row:?}",
                 row.time_s
@@ -1060,6 +1056,11 @@ struct Row {
 }
 
 impl Row {
+    /// Whether every quantity in the row is a number.
+    fn is_finite(&self) -> bool {
+        self.speed_m_s.is_finite() && self.mach.is_finite() && self.acceleration_m_s2.is_finite()
+    }
+
     /// The quantities whose peaks the metrics report, each as a function of a row.
     const PEAKED: [fn(&Row) -> f64; 3] = [
         |row| row.speed_m_s,
@@ -1168,35 +1169,52 @@ impl Peaks {
     /// step control is not the same on every platform (predicted mode's drag calls `ln` and
     /// `powf`), so neither is such a peak: moving predicted mode's solver tolerance by 1e-8 of
     /// itself moved NDRT 2020's max speed by 2.4e-6 of itself, where the event-located apogee
-    /// moved by 1.3e-9. So where a quantity rises out of the step's start and into its end, one
-    /// microsecond (or a quarter of the step) inside each, a golden-section search on the
-    /// step's dense output narrows onto the peak between them. What it finds is the
+    /// moved by 1.3e-9. So where a quantity rises out of the step's start and falls into its end,
+    /// as read one microsecond (or a quarter of the step) inside each, a golden-section search on
+    /// the step's dense output narrows onto the peak between them. What it finds is the
     /// interpolant's peak, which the tolerance controls, wherever the steps fall.
-    fn peaks_within(&self, step: &dyn FlightStep) -> Result<Vec<Row>, SimError> {
+    ///
+    /// `first` and `last` are the rows at the step's start and end. A sample inside the step that
+    /// is not a number comes back as a row of its own, so that the flight is refused for it rather
+    /// than the comparisons passing over it.
+    fn peaks_within(
+        &self,
+        step: &dyn FlightStep,
+        first: &Row,
+        last: &Row,
+    ) -> Result<Vec<Row>, SimError> {
         let (start_s, end_s) = (step.start_s(), step.end_s());
         let inside = (0.25 * (end_s - start_s)).min(1e-6);
-        // `row` gives none only for a step of no length, which has no inside.
-        let (Some(first), Some(second), Some(penultimate), Some(last)) = (
-            self.row(step, start_s)?,
+        // A step of no length has no inside: in free flight `row` gives none there, and elsewhere
+        // every sample of it is one instant, so no quantity rises out of its start.
+        let (Some(second), Some(penultimate)) = (
             self.row(step, start_s + inside)?,
             self.row(step, end_s - inside)?,
-            self.row(step, end_s)?,
         ) else {
             return Ok(Vec::new());
         };
+        let mut not_a_number = [second, penultimate]
+            .into_iter()
+            .find(|row| !row.is_finite());
         let mut peaks = Vec::new();
         for quantity in Row::PEAKED {
-            if !(quantity(&second) > quantity(&first) && quantity(&penultimate) > quantity(&last)) {
+            if !(quantity(&second) > quantity(first) && quantity(&penultimate) > quantity(last)) {
                 continue;
             }
             let peak_s = peak_between(start_s, end_s, |t_s| -> Result<f64, SimError> {
-                Ok(self
-                    .row(step, t_s)?
-                    .as_ref()
-                    .map_or(f64::NEG_INFINITY, quantity))
+                Ok(match self.row(step, t_s)? {
+                    Some(row) if row.is_finite() => quantity(&row),
+                    Some(row) => {
+                        not_a_number.get_or_insert(row);
+                        f64::NAN
+                    }
+                    // Only a step of no length, returned from above.
+                    None => f64::NEG_INFINITY,
+                })
             })?;
             peaks.extend(self.row(step, peak_s)?);
         }
+        peaks.extend(not_a_number);
         Ok(peaks)
     }
 
@@ -1214,9 +1232,13 @@ impl Observer for Peaks {
         // instant, such as a canopy fully open, where the deceleration peaks. Taking only the ends
         // would read that peak one step late, wherever the step control happens to put it, which
         // differs across platforms in the sixth figure where the peak falls steeply.
-        self.rows.extend(self.row(step, start_s)?);
-        self.rows.extend(self.row(step, end_s)?);
-        let peaks = self.peaks_within(step)?;
+        let (first, last) = (self.row(step, start_s)?, self.row(step, end_s)?);
+        let peaks = match (&first, &last) {
+            (Some(first), Some(last)) => self.peaks_within(step, first, last)?,
+            _ => Vec::new(),
+        };
+        self.rows.extend(first);
+        self.rows.extend(last);
         self.rows.extend(peaks);
         if self.forward_guide_exit.is_none()
             && step.phase() == Phase::Rail
@@ -1400,4 +1422,109 @@ pub struct DescentDevice {
     pub lag_s: f64,
     /// The height above the site it opens at, m; `None` opens it at the start.
     pub height_above_ground_m: Option<f64>,
+}
+
+#[cfg(test)]
+mod peak_tests {
+    use hpr_core::DQuat;
+
+    use super::*;
+
+    /// A free-flight step whose rocket climbs straight up at `speed(t)`, at a steady 9 m/s².
+    struct Climb {
+        start_s: f64,
+        end_s: f64,
+        speed: fn(f64) -> f64,
+    }
+
+    impl FlightStep for Climb {
+        fn phase(&self) -> Phase {
+            Phase::Free
+        }
+        fn start_s(&self) -> f64 {
+            self.start_s
+        }
+        fn end_s(&self) -> f64 {
+            self.end_s
+        }
+        fn state_at(&self, t_s: f64) -> State {
+            State {
+                position_enu_m: DVec3::ZERO,
+                velocity_enu_m_s: DVec3::new(0.0, 0.0, (self.speed)(t_s)),
+                attitude: DQuat::IDENTITY,
+                body_rate_rad_s: DVec3::ZERO,
+            }
+        }
+        fn sample(&self, t_s: f64) -> Result<Sample, SimError> {
+            let state = self.state_at(t_s);
+            let speed = state.velocity_enu_m_s.z;
+            Ok(Sample {
+                time_s: t_s,
+                phase: Phase::Free,
+                state,
+                cg_enu_m: DVec3::ZERO,
+                cg_velocity_enu_m_s: state.velocity_enu_m_s,
+                height_above_ground_m: 0.0,
+                vertical_speed_m_s: speed,
+                acceleration_enu_m_s2: DVec3::new(0.0, 0.0, 9.0),
+                airspeed_m_s: speed,
+                mach: speed / 340.0,
+                angle_of_attack_rad: 0.0,
+                dynamic_pressure_pa: 0.0,
+                axial_coefficient: 0.0,
+                thrust_n: 0.0,
+                mass_kg: 1.0,
+                recovery_drag_area_m2: 0.0,
+            })
+        }
+    }
+
+    /// The rows the observer keeps for one step.
+    fn rows(start_s: f64, end_s: f64, speed: fn(f64) -> f64) -> Vec<Row> {
+        let mut peaks = Peaks {
+            dry_cg_m: DVec3::ZERO,
+            rail_axis_enu: DVec3::Z,
+            start_enu_m: DVec3::ZERO,
+            forward_guide_travel_m: 1.0,
+            forward_guide_exit: None,
+            rows: Vec::new(),
+        };
+        let step = Climb {
+            start_s,
+            end_s,
+            speed,
+        };
+        peaks.step(&step).expect("the stub's samples never fail");
+        peaks.rows
+    }
+
+    #[test]
+    fn a_peak_inside_a_step_gets_a_row_and_a_rise_does_not() {
+        // Speed, and so Mach, peak at 0.013 s inside the step; the acceleration is steady. The
+        // ends and the two peaks give four rows, the peaks at the top to rounding.
+        let peaked = rows(0.0, 0.05, |t| 100.0 - 1e4 * (t - 0.013).powi(2));
+        assert_eq!(peaked.len(), 4, "{peaked:?}");
+        for row in &peaked[2..] {
+            assert!((row.time_s - 0.013).abs() < 1e-8, "{row:?}");
+            assert!((row.speed_m_s - 100.0).abs() < 1e-12, "{row:?}");
+        }
+        // A step that only rises has its peak at its end, which is a row already.
+        assert_eq!(rows(0.0, 0.05, |t| 100.0 + t).len(), 2);
+        // A step of no length has no row at all in free flight: its instant is the end of the
+        // step before it.
+        assert!(rows(0.03, 0.03, |t| 100.0 + t).is_empty());
+    }
+
+    #[test]
+    fn a_sample_inside_a_step_that_is_not_a_number_is_kept_to_be_refused() {
+        // Finite at the ends and a microsecond inside them, not a number around the peak.
+        let rows = rows(0.0, 0.05, |t| {
+            if (t - 0.013).abs() < 1e-3 {
+                f64::NAN
+            } else {
+                100.0 - 1e4 * (t - 0.013).powi(2)
+            }
+        });
+        assert!(rows.iter().any(|row| !row.is_finite()), "{rows:?}");
+    }
 }

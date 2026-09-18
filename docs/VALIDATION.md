@@ -122,7 +122,10 @@ The whole-flight cases (`validation/cases/flight-*.toml`) fly RocketPy's example
 the ground in the same-drag mode: hpr flies the reference's declared `C_D0(M)` through
 `Simulation::with_drag_table`, on the reference area the reference records. The metrics are
 measured as RocketPy defines them (L80): at the centre of dry mass, with the rail exit when the
-forward button reaches the top of the rail, and the maxima over the solver's steps.
+forward button reaches the top of the rail. The maxima depart from RocketPy's on purpose: RocketPy
+takes them at its solution's points, and hpr finds each peak between its solver's steps as well
+(ADR-023), because a peak read only at the steps moves with the step sequence, which differs
+across platforms. That can only raise hpr's reading; it rose by at most 6.3e-5 of itself.
 
 The first run found an input, not a model, difference: the transcribed designs corrected the
 thrust for ambient pressure with a sea-level stand-in, which RocketPy's examples never do

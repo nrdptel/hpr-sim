@@ -1892,11 +1892,14 @@ below Valetudo's table and 6.0% below Juno III's at Mach 0.3.
   wherever the step control put them, and that differs between platforms. Moving predicted mode's
   tolerance by 1e-8 of itself stands in for that: it moved NDRT's max speed by 2.4e-6 and Bella
   Lui's by 2.7e-6, but the event-located apogee by only 1.3e-9. Now, wherever speed, Mach or
-  acceleration rises out of a step's start and into its end, a golden-section search on the step's
-  dense output finds the peak between them. The same perturbation then moves no metric by more
-  than 7.9e-9. The step-end reading had been low by up to 6.3e-5 (same-drag NDRT's max speed).
-  Every verdict stands, and five of *Accuracy*'s cells moved in the third decimal. The bound is
-  not loosened.
+  acceleration rises out of a step's start and falls into its end, a golden-section search on the
+  step's dense output finds the peak between them. The same perturbation then moves no metric by
+  more than 7.9e-9. The step-end reading had been low by up to 6.3e-5 (same-drag NDRT's max
+  speed). Every verdict stands, and five of *Accuracy*'s cells moved in the third decimal. The
+  bound is not loosened. This departs from measuring as RocketPy does (L80) on purpose: RocketPy
+  reads its maxima at its solution's points, so hpr's peak can now only read higher than a
+  sampled one would, by the 6.3e-5 above at most, far inside 3%. The alternative, a
+  platform-dependent number in a report that must reproduce on three platforms, is worse.
 - The set of predicted rows outside their target is pinned by a test, as the not-scored set is,
   so a case file's "nothing else misses" cannot go stale unnoticed.
 - `scripts/regenerate-references.sh` regenerates the new reference with the others, and now

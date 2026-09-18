@@ -26,6 +26,7 @@ M2.1c (ADR-022, ADR-023): CI's `validate (os)` job checks the committed report o
 *Regenerate references* runs only by hand and uploads a diff. Predicted mode flies hpr's own drag
 against RocketPy on each example's own drag (`flight.py --own-drag`) at rtol 1e-11, each metric
 held to a 3% *target*, never gated: apogees −0.527% to +10.232%, misses explained and pinned.
+Peaks are found inside steps on the dense output, so they no longer move with the step sequence.
 M2.1 stays open for M2.1d: its list names a time-series RMS nobody built, and the landing offset.
 
 - **M2.1d, the RMS:** each whole-flight fixture has a 120-row `series` (time, height, speed);
