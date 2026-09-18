@@ -1,0 +1,45 @@
+32 motors come built in:
+
+                                           dia  length    loaded       total   average    burn
+designation  maker     type        class    mm      mm    mass g impulse N·s  thrust N  time s
+B4           Quest     single-use  B        18      81      19.8         4.9       4.4    1.11
+C5           Estes     single-use  C        18      70      24.8         7.8       3.9    1.98
+D5           Quest     single-use  D        20      96      44.1        17.6       3.8    4.59
+E26W         AeroTech  single-use  E        24    87.7      44.0        27.6      23.5    1.18
+26E31-15A    Cesaroni  reload      E        24      69      52.0        26.1      30.7    0.85
+F52C         AeroTech  single-use  F        29   111.4      81.4        66.3      52.8    1.25
+68F240-15A   Cesaroni  reload      F        24     133      91.8        68.0     236.6    0.29
+F15          Estes     single-use  F        29     114     102.0        49.6      14.5    3.42
+G69N         AeroTech  reload      G        38     106     201.0       136.3      72.1    1.89
+131G84-10A   Cesaroni  reload      G        24     228     172.0       131.3      84.2    1.56
+H170M        AeroTech  reload      H        38     191     330.0       318.0     165.4    1.92
+168H54-10A   Cesaroni  reload      H        29     187     209.0       168.2      53.8    3.13
+H125-CT      Loki      reload      H        38   177.8     342.0       241.7     125.0    1.93
+I175WS       AeroTech  single-use  I        38     214     348.0       333.2     177.5    1.88
+411I175-14A  Cesaroni  reload      I        38     245     437.5       411.4     174.1    2.36
+I377-CT      Loki      reload      I        38   292.1     560.0       525.8     377.9    1.39
+J450DM       AeroTech  single-use  J        54     359    1223.0      1061.6     465.6    2.28
+1266J760-19A Cesaroni  reload      J        54     329    1076.8      1267.3     758.2    1.67
+J300LR       Loki      reload      J        54     327    1315.0      1212.8     297.0    4.08
+K400C        AeroTech  single-use  K        54     359    1194.0      1307.3     409.8    3.19
+2245K1075-P  AMW       reload      K        54     728    2638.8      2255.1    1072.9    2.10
+1633K940-18A Cesaroni  reload      K        54     404    1366.5      1636.1     936.9    1.75
+L2500ST      AeroTech  reload      L        98     443    4989.0      4671.9    2501.7    1.87
+3300L3200-P  Cesaroni  reload      L        75     486    3263.7      3299.6    3206.8    1.03
+L1040LR      Loki      reload      L        54     736    2962.0      3722.5    1037.1    3.59
+M1350W       AeroTech  single-use  M        75     622    4808.0      5179.5    1350.1    3.84
+8187M1545-P  Cesaroni  reload      M        75    1025    7878.3      8181.8    1547.7    5.29
+M1378LR      Loki      reload      M        54    1108    4331.0      5362.3    1375.6    3.90
+N3300R       AeroTech  reload      N        98    1046   12054.0     14035.1    3189.9    4.40
+13628N5600-P Cesaroni  reload      N        98    1010   11280.0     13633.5    5626.1    2.42
+O6000W       AeroTech  single-use  O       152    1120   31520.0     39687.2    5828.8    6.81
+21062O3400-P Cesaroni  reload      O        98    1239   16842.0     21041.0    3424.3    6.14
+
+From the .eng file: I377CT by Loki, 38 mm by 292 mm, 560 g loaded, 250 g of propellant
+  525.8 N·s (class I), 377.9 N average over 1.39 s, 657.0 N peak
+  effective exhaust velocity 2103 m/s
+
+Valetudo on the I377CT: 8.82 kg at liftoff
+  leaves the 3 m rail at 17.7 m/s
+  apogee 151.7 m above the pad, at 6.09 s
+Not yet validated: see the Accuracy page before trusting these numbers.
