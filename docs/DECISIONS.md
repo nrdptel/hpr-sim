@@ -1904,3 +1904,7 @@ below Valetudo's table and 6.0% below Juno III's at Mach 0.3.
 - A reader can see how hpr's own aerodynamics compare with the drag RocketPy's examples ship, and
   why; nothing says which drag is right until real flights (M2.3).
 - When M1.8 lifts the Mach limit, both Prometheus cases fail until their gaps are removed.
+- A predicted case's known gap is justified by the reference reaching Mach 1, as a same-drag
+  one's is. hpr's own drag could take a rocket past Mach 1 where RocketPy's example stays below
+  it; no case does that today (both Prometheus references exceed Mach 1), and such a case would
+  have to leave the lock or wait for M1.8.

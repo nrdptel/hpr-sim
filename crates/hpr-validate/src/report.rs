@@ -43,7 +43,7 @@ pub struct Comparison {
     pub difference: f64,
     /// That difference as a fraction of the reference, where the reference is not zero.
     pub relative: Option<f64>,
-    /// Pass, fail, or not scored.
+    /// Pass, fail, not scored, or within or outside a predicted-mode target.
     pub verdict: Verdict,
     /// Why it is not scored, for a [`Verdict::NotScored`] row.
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -72,7 +72,10 @@ impl Comparison {
     }
 
     /// Compares `measured` against `reference` under `tolerance` as a target, not a gate: predicted
-    /// mode's rows, which are reported and never fail a run.
+    /// mode's rows, which are reported and never fail a run for being outside it.
+    ///
+    /// A row with no bound, or a number that is not finite, is not a miss to explain but a broken
+    /// comparison, so it fails the run, as a blank reason for not scoring does.
     #[must_use]
     pub fn targeted(
         case: &str,
@@ -82,7 +85,9 @@ impl Comparison {
         source: &str,
         tolerance: Tolerance,
     ) -> Self {
-        let verdict = if tolerance.accepts(measured, reference) {
+        let verdict = if !tolerance.is_set() || !measured.is_finite() || !reference.is_finite() {
+            Verdict::Fail
+        } else if tolerance.accepts(measured, reference) {
             Verdict::WithinTarget
         } else {
             Verdict::OutsideTarget
@@ -392,7 +397,8 @@ impl Report {
         Ok(())
     }
 
-    /// The report as Markdown: a summary line, then one table row per metric.
+    /// The report as Markdown: a summary, one table row per gated or not-scored metric, then
+    /// predicted mode's rows in their own table.
     ///
     /// It carries no date, so a run that changes nothing changes no bytes and the committed report
     /// only moves when a number does.

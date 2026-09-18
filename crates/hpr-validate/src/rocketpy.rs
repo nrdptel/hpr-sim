@@ -81,7 +81,8 @@ pub fn descent_case(
 }
 
 /// The case named `case` of a whole-flight fixture (`flight.py`'s), as the oracle's answers and
-/// the inputs it flew: the site and wind, the rail, the declared drag table with the reference
+/// the inputs it flew: the site and wind, the rail, the declared drag table (or, in an own-drag
+/// fixture, where the example's own drag came from) with the reference
 /// area it was flown on, the dry mass, and the parachutes in the order they open. `None` if the
 /// document has no such case, does not name the run that produced it, or is not that shape.
 ///

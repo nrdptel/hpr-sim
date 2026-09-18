@@ -66,10 +66,11 @@ pub enum Flight {
         /// Its configuration id.
         configuration: String,
     },
-    /// A flight from the pad to the ground, in the same-drag mode of [M2.1][m2-1]: hpr flies the
-    /// `C_D0(M)` table the reference declares, through [`hpr_sim::Simulation::with_drag_table`],
-    /// so a difference is in the equations of motion, the environment or the motor, not in the
-    /// drag.
+    /// A flight from the pad to the ground, in either mode of [M2.1][m2-1] ([`DragMode`]). In
+    /// same-drag mode hpr flies the `C_D0(M)` table the reference declares, through
+    /// [`hpr_sim::Simulation::with_drag_table`], so a difference is in the equations of motion,
+    /// the environment or the motor, not in the drag. In predicted mode it flies the design's own
+    /// aerodynamics against a reference that flew the example's own drag.
     ///
     /// The site, the wind, the rail, the drag table and its reference area, and the recovery
     /// devices all come from the reference's own record of what the oracle flew
@@ -93,7 +94,7 @@ pub enum Flight {
 ///
 /// [m2-1]: https://nrdptel.github.io/hpr-sim/decisions-and-roadmap.html#m2-1
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(rename_all = "kebab-case")]
+#[serde(rename_all = "snake_case")]
 #[non_exhaustive]
 pub enum DragMode {
     /// hpr flies the `C_D0(M)` table the reference declares, so a difference is in the equations

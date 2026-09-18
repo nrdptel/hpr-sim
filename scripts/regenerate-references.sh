@@ -70,7 +70,9 @@ for fixture in \
     validation/fixtures/recovery/rocketpy-descent.json \
     validation/fixtures/flight/rocketpy-whole-flight.json \
     validation/fixtures/flight/rocketpy-whole-flight-own-drag.json; do
-    git show "HEAD:$fixture" 2>/dev/null | "$python" -c '
+    # A fixture not committed yet has nothing to compare with; `|| true` keeps pipefail from
+    # stopping the script there.
+    { git show "HEAD:$fixture" 2>/dev/null || true; } | "$python" -c '
 import json, sys
 
 def walk(old, new, path, moved):

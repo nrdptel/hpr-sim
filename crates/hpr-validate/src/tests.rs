@@ -200,8 +200,15 @@ fn no_committed_gate_is_looser_than_the_milestone_says() {
     // The floor an absolute bound provides is the quiet way to widen a gate: a metre of slack on a
     // metre of drift reads as "3% or 1.0" in the report and passes anything. Every scored
     // comparison's effective gate has to be within the 3% the milestone claims.
+    // Predicted mode's targets too (ADR-023): a target widened past 3% would turn misses into
+    // "within target" with nothing failing.
     let report = run_lock(&root(), false).expect("the committed cases run");
-    for comparison in report.comparisons.iter().filter(|c| c.scored()) {
+    let bounded = report
+        .comparisons
+        .iter()
+        .filter(|c| c.scored() || c.targeted_row());
+    assert_eq!(bounded.clone().count(), 94 + 75);
+    for comparison in bounded {
         let allowed = comparison.tolerance.allowed(comparison.reference);
         let claimed = 0.03 * comparison.reference.abs();
         assert!(
@@ -734,6 +741,63 @@ fn reproducing_forgives_the_last_digits_and_nothing_else() {
     let mut renamed = committed.clone();
     renamed.cases[0] = "flight-y".to_owned();
     assert!(check(&renamed, &markdown, &json).is_err());
+}
+
+#[test]
+fn a_target_is_reported_and_never_gated_but_a_broken_one_fails() {
+    // Predicted mode's rows (ADR-023): inside or outside the target, never scored, never failing
+    // the run, never the worst scored difference; but a row with no bound or a number that is not
+    // finite is a broken comparison, not a miss to explain.
+    let row = |measured: f64, tolerance: Tolerance| {
+        Comparison::targeted(
+            "predicted-x",
+            "apogee_agl_m",
+            measured,
+            100.0,
+            "rocketpy",
+            tolerance,
+        )
+    };
+    let within = row(102.0, Tolerance::relative(0.03));
+    let outside = row(110.0, Tolerance::relative(0.03));
+    assert_eq!(within.verdict, Verdict::WithinTarget);
+    assert_eq!(outside.verdict, Verdict::OutsideTarget);
+    let gated = Comparison::new(
+        "flight-x",
+        "apogee_agl_m",
+        101.0,
+        100.0,
+        "rocketpy",
+        Tolerance::relative(0.03),
+    );
+    let report = Report {
+        harness_version: "0.0.0".to_owned(),
+        fast: false,
+        cases: vec!["flight-x".to_owned(), "predicted-x".to_owned()],
+        skipped: Vec::new(),
+        comparisons: vec![gated, within.clone(), outside.clone()],
+        gaps: Vec::new(),
+        sources: Vec::new(),
+    };
+    assert!(!within.scored() && !outside.scored());
+    assert!(within.targeted_row() && outside.targeted_row());
+    assert!(report.passed());
+    assert!(report.not_scored().is_empty());
+    let (worst, _) = report.worst_scored().expect("the gated row");
+    assert_eq!(worst.case, "flight-x");
+    let markdown = report.to_markdown();
+    assert!(markdown.contains("## Predicted mode"), "{markdown}");
+    assert!(markdown.contains("| outside target |"), "{markdown}");
+    assert!(
+        markdown.contains("2 predicted-mode metric(s)"),
+        "{markdown}"
+    );
+    for broken in [
+        row(f64::NAN, Tolerance::relative(0.03)),
+        row(102.0, Tolerance::default()),
+    ] {
+        assert_eq!(broken.verdict, Verdict::Fail);
+    }
 }
 
 #[test]

@@ -185,14 +185,27 @@ fn print_summary(report: &Report) {
         );
     }
     let not_scored = report.not_scored().len();
+    let targeted = report
+        .comparisons
+        .iter()
+        .filter(|comparison| comparison.targeted_row())
+        .count();
+    let aside: Vec<String> = [
+        (not_scored, "not scored"),
+        (targeted, "predicted, against a target"),
+    ]
+    .into_iter()
+    .filter(|(count, _)| *count > 0)
+    .map(|(count, what)| format!("{count} {what}"))
+    .collect();
     println!(
         "validate: {} case(s), {} metric(s){}, {}",
         report.cases.len(),
         report.comparisons.len(),
-        if not_scored == 0 {
+        if aside.is_empty() {
             String::new()
         } else {
-            format!(" ({not_scored} not scored)")
+            format!(" ({})", aside.join(", "))
         },
         if report.passed() { "ok" } else { "FAILED" }
     );

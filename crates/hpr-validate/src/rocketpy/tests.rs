@@ -232,3 +232,47 @@ fn the_harness_flies_the_references_rail_and_wind() {
         "{windy} against {as_flown}"
     );
 }
+
+#[test]
+fn the_own_drag_reference_differs_from_the_same_drag_one_only_in_its_drag() {
+    // Predicted mode's case files say that everything but the drag is the same-drag case's
+    // (ADR-023): the rocket, the site and wind, the rail, the motor and the parachutes. So a
+    // predicted difference is the aerodynamics, not an input that drifted between the fixtures.
+    let same = fixture(WHOLE_FLIGHT);
+    let own = fixture("validation/fixtures/flight/rocketpy-whole-flight-own-drag.json");
+    let names = |document: &Value| -> Vec<Value> {
+        document["cases"]
+            .as_array()
+            .expect("cases")
+            .iter()
+            .map(|case| case["name"].clone())
+            .collect()
+    };
+    assert_eq!(names(&own), names(&same));
+    for name in names(&same) {
+        let name = name.as_str().expect("a name");
+        let (a, b) = (case_of(&same, name), case_of(&own, name));
+        for input in [
+            "design",
+            "source",
+            "thrust_substitute",
+            "motor",
+            "environment",
+            "dry_mass_kg",
+            "peak_thrust_to_weight",
+            "devices",
+        ] {
+            assert_eq!(a[input], b[input], "{name}'s {input}");
+        }
+        // The rail is the same but for where RocketPy's rail phase ends, which it measures.
+        for key in ["rail_length_m", "inclination_deg", "heading_deg", "source"] {
+            assert_eq!(a["rail"][key], b["rail"][key], "{name}'s rail {key}");
+        }
+        for key in ["reference_radius_m", "reference_area_m2"] {
+            assert_eq!(a["drag"][key], b["drag"][key], "{name}'s drag {key}");
+        }
+        assert!(a["drag"]["own"].is_null() && b["drag"]["cd0_vs_mach"].is_null());
+    }
+    assert_eq!(own["mass_fixture"], same["mass_fixture"]);
+    assert_eq!(own["oracle"], same["oracle"]);
+}
