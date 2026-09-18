@@ -52,6 +52,11 @@ relative = 0.03
 [metrics.flight_time_s]
 relative = 0.03
 
+# Open (M2.1d2): both drifts fail, -3.67% and -3.70% (hpr 549.2 and 627.2 m, RocketPy 570.1 and
+# 651.3 m), with the apogee within 0.06%. Measured once, not yet a committed check: RocketPy flown
+# on a rail 1.41 m longer (its button spacing), so it frees the rocket where hpr does (hpr at the
+# last button, RocketPy at the first), drifts 561.0 and 641.0 m, and hpr is within -2.1% and -2.2%.
+# They stay scored, and failing, until that is pinned and argued in an ADR.
 [metrics.apogee_drift_m]
 relative = 0.03
 
