@@ -26,9 +26,9 @@ M2.1c (ADR-022, ADR-023): CI checks the committed report on three OSes; predicte
 own drag at rtol 1e-11 against 3% *targets*, never gated. M2.1 stays open for M2.1d2.
 
 - **M2.1d1, the RMS (ADR-024):** `series_height_rms_m` and `series_speed_rms_m_s` on every flown
-  whole-flight case (Prometheus stays the `M ≥ 1` gap), sampled from each step's dense output at the fixture's 120 times, held to 3%
-  of the reference's apogee and max speed (the gate test holds them no looser). A new whole-flight
-  case must name both.
+  whole-flight case (Prometheus stays the `M ≥ 1` gap), sampled from each step's dense output at
+  the fixture's 120 times, held to 3% of the reference's apogee and max speed (the gate test holds
+  them no looser). A new whole-flight case must name both.
 - **M2.1d2, issue #50** (the path in wind): bisect the rail release, hpr's drag growth with angle of
   attack, and each code's normal force and damping (only C_D0 differs between the modes).
 - **M1.8** after: don't read predicted mode's +10% (Valetudo, NDRT) as gaps to close. hpr's drag

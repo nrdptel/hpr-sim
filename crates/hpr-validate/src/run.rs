@@ -1531,6 +1531,12 @@ mod peak_tests {
             self.end_s
         }
         fn state_at(&self, t_s: f64) -> State {
+            // Nothing outside the step: a time read from a step that does not hold it is NaN.
+            let t_s = if (self.start_s..=self.end_s).contains(&t_s) {
+                t_s
+            } else {
+                f64::NAN
+            };
             State {
                 // Rising a metre a second, for the series samples' heights.
                 position_enu_m: DVec3::new(0.0, 0.0, t_s),
@@ -1563,7 +1569,6 @@ mod peak_tests {
         }
     }
 
-    /// The rows the observer keeps for one step.
     #[test]
     fn each_series_time_is_sampled_once_from_the_step_that_holds_it() {
         // The dry centre of mass half a metre below the stub's origin, which rises at 1 m/s from
@@ -1596,6 +1601,7 @@ mod peak_tests {
         assert_eq!(peaks.on_grid, expected);
     }
 
+    /// The rows the observer keeps for one step.
     fn rows(start_s: f64, end_s: f64, speed: fn(f64) -> f64) -> Vec<Row> {
         let mut peaks = Peaks {
             dry_cg_m: DVec3::ZERO,
