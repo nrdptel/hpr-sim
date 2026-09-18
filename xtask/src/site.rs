@@ -106,10 +106,10 @@ const ACCURACY: &str = "accuracy.md";
 const REPORT: &str = "validation/reports/latest.md";
 /// The page that indexes the decisions and the roadmap, relative to [`SOURCE`].
 const RECORDS: &str = "decisions-and-roadmap.md";
-/// The files [`RECORDS`] indexes, relative to the workspace root, and the prefix of the level-2
-/// headings in each that it must link: every decision, and every phase of the roadmap.
 /// The roadmap, relative to the workspace root, whose milestones [`RECORDS`] has a row for each.
 const ROADMAP: &str = "docs/ROADMAP.md";
+/// The files [`RECORDS`] indexes, relative to the workspace root, and the prefix of the level-2
+/// headings in each that it must link: every decision, and every phase of the roadmap.
 const INDEXED: [(&str, &str); 2] = [("docs/DECISIONS.md", "ADR-"), (ROADMAP, "Phase ")];
 /// Where GitHub Pages serves the site: the project page of `nrdptel/hpr-sim`. The crates'
 /// documentation links the guide by this address, and the README's first lines link it.
@@ -721,7 +721,6 @@ fn read_page(text: &str) -> Page {
     let mut page = Page::default();
     let mut undefined = Vec::new();
     let mut headings = Vec::new();
-    let mut ids = Vec::new();
     {
         // `[text][ref]` and `[ref][]` are meant as links. `[ref]` alone may be a citation key such
         // as `[NGA]`, which GitHub and the site both show as text.
@@ -755,9 +754,6 @@ fn read_page(text: &str) -> Page {
             }
             if dollar_code {
                 page.problems.push((line(range.start), MATH.to_owned()));
-            }
-            if let Event::Html(html) | Event::InlineHtml(html) = &event {
-                ids.extend(anchor_ids(html));
             }
             match event {
                 Event::Start(Tag::Link {
@@ -831,7 +827,7 @@ fn read_page(text: &str) -> Page {
     }
     page.problems.sort_by_key(|(line, _)| *line);
     page.anchors = anchors(headings);
-    page.anchors.extend(ids);
+    page.anchors.extend(raw_html_ids(text));
     page
 }
 
@@ -930,51 +926,73 @@ fn page_rules(
     problems
 }
 
+/// What a line of the roadmap says about a milestone.
+enum MilestoneLine {
+    /// A milestone or increment: its id and status.
+    Read(String, &'static str),
+    /// A task-list item whose bold text opens with `M` and a digit, which can't be read.
+    Unreadable,
+}
+
+/// Reads a line of the roadmap: a task-list item (`-`, `*`, `+` or `1.`, then a box) whose bold
+/// text opens with the milestone's id, `- [x] **M1.1 Core math.**` or
+/// `- [ ] [blocked] **M0.4d Publish.**`. `None` for any other line.
+fn milestone_line(line: &str) -> Option<MilestoneLine> {
+    let item = line.trim_start();
+    let item = item.strip_prefix(['-', '*', '+']).or_else(|| {
+        let rest = item.trim_start_matches(|c: char| c.is_ascii_digit());
+        (rest.len() < item.len())
+            .then_some(rest)?
+            .strip_prefix(['.', ')'])
+    })?;
+    let (mark, rest) = item.trim_start().strip_prefix('[')?.split_once(']')?;
+    let rest = rest.trim_start();
+    let (blocked, rest) = match rest.strip_prefix("[blocked]") {
+        Some(rest) => (true, rest.trim_start()),
+        None => (false, rest),
+    };
+    let bold = rest.strip_prefix("**")?;
+    if !bold
+        .strip_prefix('M')
+        .is_some_and(|after| after.starts_with(|c: char| c.is_ascii_digit()))
+    {
+        return None;
+    }
+    let id = bold.split_whitespace().next().unwrap_or_default();
+    let status = match (mark, blocked) {
+        ("x" | "X", _) => "done",
+        (" ", true) => "blocked",
+        (" ", false) => "not yet done",
+        _ => return Some(MilestoneLine::Unreadable),
+    };
+    Some(if is_milestone_id(id) {
+        MilestoneLine::Read(id.to_owned(), status)
+    } else {
+        MilestoneLine::Unreadable
+    })
+}
+
 /// The milestones and increments of the roadmap, in order, as (id, status): `done` once checked
-/// off, `blocked` when marked so, and `not yet done` otherwise. Each is a task-list item whose
-/// bold text opens with its id: `- [x] **M1.1 Core math.**`, `- [ ] [blocked] **M0.4d Publish.**`.
+/// off, `blocked` when marked so, and `not yet done` otherwise ([`milestone_line`]).
 fn roadmap_milestones(roadmap: &str) -> Vec<(String, &'static str)> {
     roadmap
         .lines()
-        .filter_map(|line| {
-            let (mark, rest) = line.trim_start().strip_prefix("- [")?.split_once("] ")?;
-            let (blocked, rest) = match rest.strip_prefix("[blocked] ") {
-                Some(rest) => (true, rest),
-                None => (false, rest),
-            };
-            let id = rest.strip_prefix("**")?.split_whitespace().next()?;
-            let status = match (mark, blocked) {
-                ("x" | "X", _) => "done",
-                (" ", true) => "blocked",
-                (" ", false) => "not yet done",
-                _ => return None,
-            };
-            is_milestone_id(id).then(|| (id.to_owned(), status))
+        .filter_map(|line| match milestone_line(line)? {
+            MilestoneLine::Read(id, status) => Some((id, status)),
+            MilestoneLine::Unreadable => None,
         })
         .collect()
 }
 
-/// The roadmap's task-list items that look like a milestone, their bold text opening with `M` and
-/// a digit, but that [`roadmap_milestones`] can't read: an id it doesn't recognise (`**M1.11**
-/// Foo`, `**M1.11: Foo**`) or a mark other than `x`, `X` or a space. Each would need no row, so
-/// each is a problem.
-fn unreadable_milestones(roadmap: &str) -> Vec<String> {
-    let read: BTreeSet<String> = roadmap_milestones(roadmap)
-        .into_iter()
-        .map(|(id, _)| id)
-        .collect();
+/// The roadmap's lines that look like a milestone and can't be read, as (line, text): an id
+/// [`is_milestone_id`] doesn't accept (`**M1.11** Foo`, `**M1.11: Foo**`), or a mark other than
+/// `x`, `X` or a space. Each would need no row, so each is a problem.
+fn unreadable_milestones(roadmap: &str) -> Vec<(usize, String)> {
     roadmap
         .lines()
-        .filter_map(|line| {
-            let (_, rest) = line.trim_start().strip_prefix("- [")?.split_once("] ")?;
-            let rest = rest.strip_prefix("[blocked] ").unwrap_or(rest);
-            let bold = rest.strip_prefix("**M")?;
-            if !bold.starts_with(|c: char| c.is_ascii_digit()) {
-                return None;
-            }
-            let id = rest.strip_prefix("**")?.split_whitespace().next()?;
-            (!read.contains(id)).then(|| line.trim().to_owned())
-        })
+        .enumerate()
+        .filter(|(_, line)| matches!(milestone_line(line), Some(MilestoneLine::Unreadable)))
+        .map(|(index, line)| (index + 1, line.trim().to_owned()))
         .collect()
 }
 
@@ -1008,12 +1026,13 @@ fn milestone_rows(text: &str, roadmap: &str) -> Vec<(usize, String)> {
     let expected = roadmap_milestones(roadmap);
     let mut problems: Vec<(usize, String)> = unreadable_milestones(roadmap)
         .into_iter()
-        .map(|line| {
+        .map(|(at, line)| {
             (
                 1,
                 format!(
-                    "{ROADMAP} has `{line}`, which reads like a milestone and isn't one: write it \
-                     `- [ ] **M<topic>.<place> Title.**`, with `x` in the box once it is done"
+                    "{ROADMAP}:{at} has `{line}`, which reads like a milestone and isn't one: \
+                     write it `- [ ] **M<topic>.<place> Title.**`, with `x` in the box once it is \
+                     done"
                 ),
             )
         })
@@ -1943,13 +1962,31 @@ fn in_short(text: &str) -> Option<(usize, String)> {
 /// the `id`s of its `<a id="...">` elements.
 fn anchors_of(text: &str) -> BTreeSet<String> {
     let mut found = anchors(headings(text, None));
-    // Only raw HTML names an anchor: not code, which may show a tag as an example.
+    found.extend(raw_html_ids(text));
+    found
+}
+
+/// The [`anchor_ids`] of a Markdown file's raw HTML, and of nothing else: code may show a tag as an
+/// example. An HTML block arrives a line at a time, so its lines are read together, and a comment
+/// across them hides what it holds.
+fn raw_html_ids(text: &str) -> Vec<String> {
+    let mut ids = Vec::new();
+    let mut block: Option<String> = None;
     for event in Parser::new_ext(text, options()) {
-        if let Event::Html(html) | Event::InlineHtml(html) = event {
-            found.extend(anchor_ids(&html));
+        match event {
+            Event::Start(Tag::HtmlBlock) => block = Some(String::new()),
+            Event::End(TagEnd::HtmlBlock) => {
+                ids.extend(anchor_ids(&block.take().unwrap_or_default()))
+            }
+            Event::Html(html) => match block.as_mut() {
+                Some(block) => block.push_str(&html),
+                None => ids.extend(anchor_ids(&html)),
+            },
+            Event::InlineHtml(html) => ids.extend(anchor_ids(&html)),
+            _ => {}
         }
     }
-    found
+    ids
 }
 
 /// The anchors of headings with these texts, in order: each one's [`slug`], a repeat numbered
@@ -2010,17 +2047,33 @@ fn prose_text(html: &str) -> String {
             // What was on either side of the element stays two words.
             kept.push(' ');
         } else {
-            // Any other tag goes through, for `visible_text` to drop, and leaves a space: rustdoc
-            // closes a heading, a summary or a table cell right before the next text, which is a
-            // word of its own.
+            // Any other tag goes through, for `visible_text` to drop. A block's leaves a space:
+            // rustdoc closes a heading, a summary or a table cell right before the next text,
+            // which is a word of its own. An inline one doesn't, since rustdoc puts `<wbr>` and
+            // `<span>` inside a name (`Component<wbr>Drag`).
             let end = rest.find('>').map_or(rest.len(), |end| end + 1);
             kept.push_str(&rest[..end]);
-            kept.push(' ');
+            if !INLINE.iter().any(|name| is_tag(&rest[..end], name)) {
+                kept.push(' ');
+            }
             rest = &rest[end..];
         }
     }
     kept.push_str(rest);
     visible_text(&kept)
+}
+
+/// The inline elements [`prose_text`] reads as part of the words around them.
+const INLINE: [&str; 11] = [
+    "wbr", "span", "em", "strong", "b", "i", "small", "sub", "sup", "abbr", "mark",
+];
+
+/// Whether `tag`, a whole tag such as `<em>` or `</em>`, opens or closes the element `name`.
+fn is_tag(tag: &str, name: &str) -> bool {
+    let inside = tag.trim_start_matches('<').trim_start_matches('/');
+    inside
+        .strip_prefix(name)
+        .is_some_and(|after| after.starts_with(['>', '/', ' ', '\t', '\n', '\r']))
 }
 
 /// Whether `html` starts with a start tag of the element `name`: `<a>` or `<a href="...">` for
@@ -3253,17 +3306,57 @@ mod tests {
             ]
         );
         let odd = "- [X] **M0.1 Done.**\n- [ ] **M1.11** Foo\n- [ ] **M1.12: Bar.**\n\
-                   - [?] **M1.13 Baz.**\n- [ ] **Mars.**\n";
-        assert_eq!(roadmap_milestones(odd), [("M0.1".to_owned(), "done")]);
+                   - [?] **M1.13 Baz.**\n- [ ] **Mars.**\n* [ ]  **M1.14 Star.**\n\
+                   1. [x] **M1.15 Numbered.**\n- [?] **M0.1 Again.**\n";
+        assert_eq!(
+            roadmap_milestones(odd),
+            [
+                ("M0.1".to_owned(), "done"),
+                ("M1.14".to_owned(), "not yet done"),
+                ("M1.15".to_owned(), "done"),
+            ]
+        );
         assert_eq!(
             unreadable_milestones(odd),
             [
-                "- [ ] **M1.11** Foo",
-                "- [ ] **M1.12: Bar.**",
-                "- [?] **M1.13 Baz.**"
+                (2, "- [ ] **M1.11** Foo".to_owned()),
+                (3, "- [ ] **M1.12: Bar.**".to_owned()),
+                (4, "- [?] **M1.13 Baz.**".to_owned()),
+                (8, "- [?] **M0.1 Again.**".to_owned()),
             ]
         );
-        assert_eq!(milestone_rows("", odd).len(), 4);
+        let unreadable = |at: usize, line: &str| {
+            (
+                1,
+                format!(
+                    "docs/ROADMAP.md:{at} has `{line}`, which reads like a milestone and isn't \
+                     one: write it `- [ ] **M<topic>.<place> Title.**`, with `x` in the box once \
+                     it is done"
+                ),
+            )
+        };
+        let missing = |id: &str, status: &str| {
+            (
+                1,
+                format!(
+                    "`{id}`, {status} in docs/ROADMAP.md, has no row in the table of milestones: \
+                     add `| <a id=\"{}\"></a>[{id}][phase-N] | what it covers | {status} |`",
+                    milestone_anchor(id)
+                ),
+            )
+        };
+        assert_eq!(
+            milestone_rows("", odd),
+            [
+                unreadable(2, "- [ ] **M1.11** Foo"),
+                unreadable(3, "- [ ] **M1.12: Bar.**"),
+                unreadable(4, "- [?] **M1.13 Baz.**"),
+                unreadable(8, "- [?] **M0.1 Again.**"),
+                missing("M0.1", "done"),
+                missing("M1.14", "not yet done"),
+                missing("M1.15", "done"),
+            ]
+        );
         for id in ["M1.1", "M1.10", "M2.1b2", "M0.4e"] {
             assert!(is_milestone_id(id), "{id}");
         }
@@ -3471,9 +3564,11 @@ mod tests {
             ["l15", "m1-9", "records"]
         );
         assert_eq!(anchor_ids("<a id=\"a\"><a id=\"b\">"), ["a", "b"]);
-        // A tag shown in code, or inside a comment, names no anchor.
+        // A tag shown in code, or inside a comment, names no anchor, even a comment across the
+        // lines of an HTML block.
         let text = "# T\n\n`<a id=\"code\">`\n\n```html\n<a id=\"block\"></a>\n```\n\n\
-                    <!-- <a id=\"comment\"></a> -->\n\n<a id=\"real\"></a>\n";
+                    <!-- <a id=\"comment\"></a> -->\n\n<!--\n<a id=\"hidden\"></a>\n-->\n\n\
+                    <a id=\"real\"></a>\n";
         assert_eq!(
             anchors_of(text).into_iter().collect::<Vec<_>>(),
             ["real", "t"]
@@ -3813,7 +3908,7 @@ mod tests {
                 "<p>A <a href=\"x\">L1</a> b <abbr>c</abbr> <code>L2</code>d<pre>L3</pre>\
                  <!-- <a> --> e <aside>f</aside> <script>L4</script><style>L5</style>g</p> h"
             ),
-            " A   b  c   d  e  f    g  h"
+            " A   b c  d  e  f    g  h"
         );
         // Rustdoc closes one element right before the next text; the two stay apart, so a doc
         // comment that opens with a label is seen.
@@ -3822,6 +3917,13 @@ mod tests {
         let mut bare = Vec::new();
         scan_labels(&prose_text(glued), 0, &mut bare);
         assert_eq!(bare.len(), 2, "{bare:?}");
+        // An inline tag inside a name leaves it one word: rustdoc writes `Norm<wbr>L2`.
+        let mut bare = Vec::new();
+        let name = "<h1>Struct <span>Norm<wbr>L2</span></h1><p><em>Curve</em>L3 and <b>x</b></p>";
+        scan_labels(&prose_text(name), 0, &mut bare);
+        assert_eq!(bare, Vec::new());
+        assert!(is_tag("</em>", "em") && is_tag("<wbr>", "wbr") && is_tag("<b class=\"x\">", "b"));
+        assert!(!is_tag("<br>", "b") && !is_tag("<embed>", "em"));
         // An element that never closes hides the rest of the page, as an unclosed tag does.
         assert_eq!(prose_text("a <code>b c"), "a  ");
         assert!(opens("<a>", "a") && opens("<a\nhref=\"x\">", "a"));
