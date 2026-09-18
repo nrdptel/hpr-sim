@@ -11,14 +11,17 @@
 //!   follow. Other web links are counted, not fetched: a PR's checks don't depend on the network.
 //! - **Bare labels.** An internal label (`L12`, a Loft lesson; `ADR-008`; a milestone id such as
 //!   `M1.5b`) means nothing to a reader on its own, so outside a link's text it fails (CLAUDE.md,
-//!   "Easy to read"). Fenced code blocks are exempt: they quote files and output verbatim.
+//!   "Easy to read"): in prose, tables, headings, inline code, raw HTML and image alt text. Fenced
+//!   code blocks are exempt: they quote files and output verbatim. A link inside a heading fails
+//!   too, since mdBook makes every heading a link.
 //! - **Equations** are written in Unicode, which reads the same on GitHub, on the site and in
-//!   rustdoc. `$$` display math and ```` ```math ```` blocks render on GitHub only, so they fail.
+//!   rustdoc. `$x$`, `$$` and ```` ```math ```` render as math on GitHub only, so they fail.
 //! - **Coverage.** Every page under `docs/physics/` and `docs/format/` is in the summary.
 //!
 //! `cargo test` runs these on the real pages. `cargo xtask site` runs them, builds the site into
-//! `target/site` with mdBook, and checks the built HTML as well: every relative `href` must reach
-//! a file and an `id` in the output, which catches what mdBook itself rewrites.
+//! `target/site` with mdBook, and checks the built HTML as well: every relative `href` and `src`
+//! must reach a file, and every fragment an `id`, in the output, which catches what mdBook itself
+//! rewrites.
 
 use std::collections::{BTreeMap, BTreeSet};
 use std::fs;
@@ -102,8 +105,11 @@ fn mdbook_build(root: &Path) -> Result<(), String> {
         fs::remove_dir_all(&output_dir)
             .map_err(|err| format!("could not clear {OUTPUT}: {err}"))?;
     }
+    // mdBook's log level comes from the environment; a quieter one would hide the warnings.
     let output = Command::new("mdbook")
-        .arg("build")
+        .args(["build", "--dest-dir", OUTPUT])
+        .env_remove("MDBOOK_LOG")
+        .env_remove("RUST_LOG")
         .current_dir(root)
         .output()
         .map_err(|err| format!("could not run `mdbook build`: {err}"))?;
@@ -180,6 +186,7 @@ fn check_sources(root: &Path) -> Result<Report, String> {
         }
     }
 
+    // The anchors of the other Markdown files that GitHub URLs point into, read once each.
     let mut others = BTreeMap::new();
     for (name, page) in &pages {
         for (line, problem) in &page.problems {
@@ -234,11 +241,11 @@ enum Reach {
 }
 
 /// Checks one link on page `from` (relative to [`SOURCE`]). `pages` are the site's pages;
-/// `others` caches the other Markdown files a GitHub URL points into.
+/// `others` caches the anchors of the other Markdown files a GitHub URL points into.
 fn check_link(
     root: &Path,
     pages: &BTreeMap<String, Page>,
-    others: &mut BTreeMap<String, Page>,
+    others: &mut BTreeMap<String, BTreeSet<String>>,
     from: &str,
     dest: &str,
 ) -> Result<Reach, String> {
@@ -247,13 +254,13 @@ fn check_link(
     }
     if let Some(rest) = dest.strip_prefix(GITHUB) {
         // Issues, pull requests and the like are on the web; files on `main` are checked here.
-        let Some(target) = rest
-            .strip_prefix("blob/main/")
-            .or_else(|| rest.strip_prefix("tree/main/"))
+        let Some(target) = ["blob/main/", "tree/main/", "raw/main/"]
+            .iter()
+            .find_map(|prefix| rest.strip_prefix(prefix))
         else {
             return Ok(Reach::Web);
         };
-        let (path, fragment) = split_fragment(target);
+        let (path, fragment) = split_target(target);
         let path = path.trim_end_matches('/');
         if path.is_empty() || join("", path).as_deref() != Some(path) || !root.join(path).exists() {
             return Err(format!("no `{path}` in the repository"));
@@ -271,9 +278,9 @@ fn check_link(
                     if !others.contains_key(path) {
                         let text = fs::read_to_string(root.join(path))
                             .map_err(|err| format!("can't read `{path}`: {err}"))?;
-                        others.insert(path.to_owned(), read_page(&text));
+                        others.insert(path.to_owned(), anchors_of(&text));
                     }
-                    &others[path].anchors
+                    &others[path]
                 }
             };
             return has_anchor(anchors, fragment, path).map(|()| Reach::Repository);
@@ -290,17 +297,23 @@ fn check_link(
                 .to_owned(),
         );
     }
-    let (path, fragment) = split_fragment(dest);
+    let (path, fragment) = split_target(dest);
     let name = if path.is_empty() {
         from.to_owned()
     } else {
-        join(parent(from), path).ok_or_else(|| {
+        join(parent(from), &path).ok_or_else(|| {
             format!(
                 "leaves `{SOURCE}/`, which the site can't follow: link it by its GitHub URL, \
                  {GITHUB}blob/main/..."
             )
         })?
     };
+    if name == SUMMARY {
+        return Err(format!(
+            "`{SOURCE}/{SUMMARY}` is the site's table of contents, which mdBook doesn't write as a \
+             page"
+        ));
+    }
     if let Some(page) = pages.get(&name) {
         return match fragment {
             Some(fragment) => has_anchor(&page.anchors, fragment, &format!("{SOURCE}/{name}"))
@@ -349,12 +362,15 @@ fn is_web(dest: &str) -> bool {
     dest.contains("://") || dest.starts_with("//") || dest.starts_with("mailto:")
 }
 
-/// Splits `path#fragment`; an empty fragment is none.
-fn split_fragment(dest: &str) -> (&str, Option<&str>) {
-    match dest.split_once('#') {
+/// Splits `path?query#fragment` into the path, percent-decoded, and the fragment. The query
+/// (`?plain=1`, `?raw=true`) is dropped, and an empty fragment is none.
+fn split_target(dest: &str) -> (String, Option<&str>) {
+    let (path, fragment) = match dest.split_once('#') {
         Some((path, fragment)) => (path, Some(fragment).filter(|f| !f.is_empty())),
         None => (dest, None),
-    }
+    };
+    let path = path.split_once('?').map_or(path, |(path, _)| path);
+    (percent_decode(path), fragment)
 }
 
 /// The directory of a `/`-separated relative path: `physics` for `physics/aero.md`.
@@ -406,13 +422,10 @@ fn options() -> Options {
 const MATH: &str = "GitHub renders this math and the site doesn't: write the equation in Unicode, \
                     in a ```text block (ADR-016)";
 
+/// Reads a page: its anchors, its links and images, and what is wrong on it by itself.
 fn read_page(text: &str) -> Page {
-    let line = |offset: usize| {
-        1 + text.as_bytes()[..offset.min(text.len())]
-            .iter()
-            .filter(|&&b| b == b'\n')
-            .count()
-    };
+    let newlines: Vec<usize> = text.match_indices('\n').map(|(at, _)| at).collect();
+    let line = |offset: usize| 1 + newlines.partition_point(|&at| at < offset);
     let mut page = Page::default();
     let mut undefined = Vec::new();
     let mut headings = Vec::new();
@@ -432,6 +445,7 @@ fn read_page(text: &str) -> Page {
             None
         };
         let parser = Parser::new_with_broken_link_callback(text, options(), Some(callback));
+        // A label belongs in a link's text. An image's alt text is read like prose.
         let mut in_link = 0usize;
         let mut in_code_block = false;
         let mut heading: Option<String> = None;
@@ -440,16 +454,38 @@ fn read_page(text: &str) -> Page {
         let mut prose_at = 0;
         for (event, range) in parser.into_offset_iter() {
             let is_prose = matches!(event, Event::Text(_)) && in_link == 0 && !in_code_block;
+            // GitHub's other inline math: a dollar sign right before a code span, `` $`x^2`$ ``.
+            let dollar_code = matches!(event, Event::Code(_)) && prose.ends_with('$');
             if !is_prose && !prose.is_empty() {
                 scan(&prose, line(prose_at), &mut page.problems);
                 prose.clear();
             }
+            if dollar_code {
+                page.problems.push((line(range.start), MATH.to_owned()));
+            }
             match event {
-                Event::Start(Tag::Link { dest_url, .. } | Tag::Image { dest_url, .. }) => {
-                    page.links.push((line(range.start), dest_url.into_string()));
+                Event::Start(Tag::Link {
+                    link_type,
+                    dest_url,
+                    ..
+                }) => {
+                    if heading.is_some() {
+                        page.problems
+                            .push((line(range.start), HEADING_LINK.to_owned()));
+                    }
+                    // An email autolink's destination is the bare address.
+                    let dest = if matches!(link_type, LinkType::Email) {
+                        format!("mailto:{dest_url}")
+                    } else {
+                        dest_url.into_string()
+                    };
+                    page.links.push((line(range.start), dest));
                     in_link += 1;
                 }
-                Event::End(TagEnd::Link | TagEnd::Image) => in_link = in_link.saturating_sub(1),
+                Event::End(TagEnd::Link) => in_link = in_link.saturating_sub(1),
+                Event::Start(Tag::Image { dest_url, .. }) => {
+                    page.links.push((line(range.start), dest_url.into_string()));
+                }
                 Event::Start(Tag::CodeBlock(kind)) => {
                     in_code_block = true;
                     if let CodeBlockKind::Fenced(info) = kind
@@ -480,6 +516,10 @@ fn read_page(text: &str) -> Page {
                         scan_labels(&code, line(range.start), &mut page.problems);
                     }
                 }
+                // Raw HTML shows its text too, and a label there is as bare as anywhere.
+                Event::Html(html) | Event::InlineHtml(html) if in_link == 0 => {
+                    scan_labels(&visible_text(&html), line(range.start), &mut page.problems);
+                }
                 _ => {}
             }
         }
@@ -494,27 +534,91 @@ fn read_page(text: &str) -> Page {
         ));
     }
     page.problems.sort_by_key(|(line, _)| *line);
+    page.anchors = anchors(headings);
+    page
+}
 
+const HEADING_LINK: &str = "a link inside a heading: mdBook already makes each heading a link, and \
+                            a link inside a link is invalid HTML; move it to the text below";
+
+/// The anchors GitHub gives the headings of a Markdown file, which is read for nothing else.
+fn anchors_of(text: &str) -> BTreeSet<String> {
+    let mut headings = Vec::new();
+    let mut heading: Option<String> = None;
+    for event in Parser::new_ext(text, options()) {
+        match event {
+            Event::Start(Tag::Heading { .. }) => heading = Some(String::new()),
+            Event::End(TagEnd::Heading(_)) => headings.extend(heading.take()),
+            Event::Text(text) | Event::Code(text) => {
+                if let Some(heading) = heading.as_mut() {
+                    heading.push_str(&text);
+                }
+            }
+            _ => {}
+        }
+    }
+    anchors(headings)
+}
+
+/// The anchors of headings with these texts, in order: each one's [`slug`], a repeat numbered
+/// `-1`, `-2` and so on, as GitHub numbers them.
+fn anchors(headings: Vec<String>) -> BTreeSet<String> {
     let mut seen: BTreeMap<String, usize> = BTreeMap::new();
+    let mut out = BTreeSet::new();
     for heading in headings {
         let base = slug(&heading);
         let count = seen.entry(base.clone()).or_insert(0);
-        page.anchors.insert(if *count == 0 {
+        out.insert(if *count == 0 {
             base
         } else {
             format!("{base}-{count}")
         });
         *count += 1;
     }
-    page
+    out
+}
+
+/// The text a reader sees in raw HTML: without its tags and comments.
+fn visible_text(html: &str) -> String {
+    let mut out = String::with_capacity(html.len());
+    let mut rest = html;
+    while !rest.is_empty() {
+        if let Some(comment) = rest.strip_prefix("<!--") {
+            rest = comment.split_once("-->").map_or("", |(_, after)| after);
+        } else if let Some(tag) = rest.strip_prefix('<') {
+            rest = tag.split_once('>').map_or("", |(_, after)| after);
+        } else {
+            let end = rest.find('<').unwrap_or(rest.len());
+            out.push_str(&rest[..end]);
+            rest = &rest[end..];
+        }
+    }
+    out
 }
 
 /// Scans prose (text outside links and code) for bare labels and for math only GitHub renders.
 fn scan(text: &str, line: usize, problems: &mut Vec<(usize, String)>) {
     scan_labels(text, line, problems);
-    if text.contains("$$") || text.contains("$\\") {
+    if text.contains("$$") || has_inline_math(text) {
         problems.push((line, MATH.to_owned()));
     }
+}
+
+/// Whether `text` holds GitHub's inline math, `$x$`: a `$` before a non-space, closed by a later
+/// `$` after a non-space and not before a digit. Two prices, "$5 and $10", are not math.
+fn has_inline_math(text: &str) -> bool {
+    let chars: Vec<char> = text.chars().collect();
+    chars.iter().enumerate().any(|(open, &c)| {
+        c == '$'
+            && chars
+                .get(open + 1)
+                .is_some_and(|next| !next.is_whitespace() && *next != '$')
+            && (open + 2..chars.len()).any(|close| {
+                chars[close] == '$'
+                    && !chars[close - 1].is_whitespace()
+                    && !chars.get(close + 1).is_some_and(char::is_ascii_digit)
+            })
+    })
 }
 
 fn scan_labels(text: &str, line: usize, problems: &mut Vec<(usize, String)>) {
@@ -523,7 +627,8 @@ fn scan_labels(text: &str, line: usize, problems: &mut Vec<(usize, String)>) {
             line,
             format!(
                 "bare label `{label}`: make it a link, with a few words saying what it is \
-                 (ADR-016). A motor designation is written in full, such as `L1150R`"
+                 (ADR-016). A motor designation is written in full, such as `L1150R`, and a \
+                 certification level in words, such as \"Level 2\""
             ),
         ));
     }
@@ -563,7 +668,7 @@ fn label_at(bytes: &[u8]) -> Option<usize> {
         digits(4)?
     } else if bytes.first() == Some(&b'L') {
         digits(1)?
-    } else {
+    } else if bytes.first() == Some(&b'M') {
         // A milestone: M, digits, a dot, digits, then an optional letter and digits.
         let major = digits(1)?;
         if bytes.get(major) != Some(&b'.') {
@@ -574,13 +679,15 @@ fn label_at(bytes: &[u8]) -> Option<usize> {
             end = digits(end + 1).unwrap_or(end + 1);
         }
         end
+    } else {
+        return None;
     };
     (!bytes.get(end).is_some_and(u8::is_ascii_alphanumeric)).then_some(end)
 }
 
 /// The anchor GitHub gives a heading with this text: lower case; letters, digits, `-` and `_`
 /// kept; each space a `-`; everything else dropped. A repeated heading's anchor is numbered
-/// (`-1`, `-2`) by [`read_page`]. mdBook derives the same ids for this site's headings, which the
+/// (`-1`, `-2`) by [`anchors`]. mdBook derives the same ids for this site's headings, which the
 /// check of the built pages confirms.
 fn slug(heading: &str) -> String {
     heading
@@ -596,8 +703,8 @@ fn slug(heading: &str) -> String {
         .collect()
 }
 
-/// Checks the built site in `dir`: every relative `href` in its HTML reaches a file, and its
-/// `#fragment` an `id` in that file. Returns the number of HTML files and the problems.
+/// Checks the built site in `dir`: every relative `href` and `src` in its HTML reaches a file,
+/// and its `#fragment` an `id` in that file. Returns the number of HTML files and the problems.
 fn check_html(dir: &Path) -> Result<(usize, Vec<String>), String> {
     let mut names = Vec::new();
     html_files(dir, "", &mut names)?;
@@ -619,17 +726,21 @@ fn check_html(dir: &Path) -> Result<(usize, Vec<String>), String> {
     }
     let mut problems = Vec::new();
     for (name, text) in &texts {
-        for raw in attributes(text, "href") {
-            let href = unescape(raw);
-            if is_web(&href) || href.starts_with("javascript:") || href.starts_with("data:") {
+        let links = attributes(text, "href")
+            .map(|raw| ("href", raw))
+            .chain(attributes(text, "src").map(|raw| ("src", raw)));
+        for (attribute, raw) in links {
+            let value = unescape(raw);
+            if is_web(&value) || value.starts_with("javascript:") || value.starts_with("data:") {
                 continue;
             }
-            let (path, fragment) = split_fragment(&href);
+            let link = format!("`{attribute}=\"{value}\"`");
+            let (path, fragment) = split_target(&value);
             let target = if path.is_empty() {
                 name.clone()
             } else {
-                let Some(target) = join(parent(name), &percent_decode(path)) else {
-                    problems.push(format!("{name}: `href=\"{href}\"` climbs out of the site"));
+                let Some(target) = join(parent(name), &path) else {
+                    problems.push(format!("{name}: {link} climbs out of the site"));
                     continue;
                 };
                 if target.is_empty() || target.ends_with('/') || dir.join(&target).is_dir() {
@@ -642,9 +753,7 @@ fn check_html(dir: &Path) -> Result<(usize, Vec<String>), String> {
             };
             let Some(target_ids) = ids.get(&target) else {
                 if !dir.join(&target).is_file() {
-                    problems.push(format!(
-                        "{name}: `href=\"{href}\"`: no `{target}` in the site"
-                    ));
+                    problems.push(format!("{name}: {link}: no `{target}` in the site"));
                 }
                 continue;
             };
@@ -652,7 +761,7 @@ fn check_html(dir: &Path) -> Result<(usize, Vec<String>), String> {
                 && !target_ids.contains(&percent_decode(fragment))
             {
                 problems.push(format!(
-                    "{name}: `href=\"{href}\"`: `{target}` has no `id=\"{fragment}\"`"
+                    "{name}: {link}: `{target}` has no `id=\"{fragment}\"`"
                 ));
             }
         }
@@ -786,8 +895,12 @@ mod tests {
                 (
                     "docs/physics/gravity.md",
                     "# Gravity\n\n## Formulas\n\nBack to [the start](../start-here.md#start-here), \
-                     [here](#formulas), [NGA] as a citation, and [the crate](https://github.com/nrdptel/hpr-sim/tree/main/crates/).\n",
+                     [here](#formulas), [NGA] as a citation, and [the crate](https://github.com/nrdptel/hpr-sim/tree/main/crates/).\n\n\
+                     ![A plot of gravity](plot%20one.png?raw=true), <neer@example.com>, \
+                     [the source](https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md?plain=1#adr-003-frames-2026-09-17) \
+                     and [raw](https://github.com/nrdptel/hpr-sim/raw/main/crates/README.md).\n",
                 ),
+                ("docs/physics/plot one.png", "png"),
                 ("docs/DECISIONS.md", "# Decisions\n\n## ADR-003: Frames (2026-09-17)\n"),
                 ("docs/research/loft-lessons.md", "# Lessons\n"),
                 ("crates/README.md", "crates\n"),
@@ -796,8 +909,8 @@ mod tests {
         )
         .unwrap();
         assert_eq!(report.problems, Vec::<String>::new());
-        // The summary's two links count too.
-        assert_eq!((report.pages, report.links, report.web), (2, 9, 1));
+        // The summary's two links count too; the email address is on the web.
+        assert_eq!((report.pages, report.links, report.web), (2, 13, 2));
     }
 
     #[test]
@@ -812,7 +925,9 @@ mod tests {
                     [g](https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-999)\n\
                     [h][undefined]\n\
                     [i](#nowhere)\n\
-                    [j](physics)\n";
+                    [j](physics)\n\
+                    [k](SUMMARY.md)\n\n\
+                    ## Drag ([a link](physics/gravity.md))\n";
         assert_eq!(
             problems(&[
                 ("docs/SUMMARY.md", SUMMARY_TWO_PAGES),
@@ -823,8 +938,12 @@ mod tests {
                 ("ROADMAP.md", "# Roadmap\n"),
             ]),
             [
+                // What is wrong on the page itself comes first, then its links, each by line.
                 "docs/start-here.md:10: `[undefined]` is used as a link, and no `[undefined]: ...` \
                  defines it",
+                "docs/start-here.md:15: a link inside a heading: mdBook already makes each \
+                 heading a link, and a link inside a link is invalid HTML; move it to the text \
+                 below",
                 "docs/start-here.md:3: link `missing.md`: no page `docs/missing.md`",
                 "docs/start-here.md:4: link `physics/gravity.md#nowhere`: \
                  `docs/physics/gravity.md` has no heading with the anchor `#nowhere`",
@@ -845,6 +964,8 @@ mod tests {
                  with the anchor `#nowhere`",
                 "docs/start-here.md:12: link `physics`: `docs/physics` is a directory, which has \
                  no page on the site",
+                "docs/start-here.md:13: link `SUMMARY.md`: `docs/SUMMARY.md` is the site's table \
+                 of contents, which mdBook doesn't write as a page",
             ]
         );
     }
@@ -861,10 +982,13 @@ mod tests {
                     are links.\n\n\
                     ```text\nL12 in a fenced block is quoted verbatim\n```\n\n\
                     L1150R and M1297 are motors, Mach 1.8 a speed, XL12 and L12x and M2 and ADR- nothing.\n\n\
+                    ![A diagram for ADR-008](x.png)\n\n\
+                    <details>\nThe L12 fix <!-- and L13, which no reader sees -->\n</details>\n\n\
                     [d]: https://example.com\n";
         let found = problems(&[
             ("docs/SUMMARY.md", "[Start here](start-here.md)\n"),
             ("docs/start-here.md", page),
+            ("docs/x.png", "png"),
         ]);
         let labels: Vec<(&str, &str)> = found
             .iter()
@@ -881,6 +1005,8 @@ mod tests {
                 ("docs/start-here.md:5", "M1.5b"),
                 ("docs/start-here.md:6", "M2.1b1"),
                 ("docs/start-here.md:9", "M1.8"),
+                ("docs/start-here.md:19", "ADR-008"),
+                ("docs/start-here.md:22", "L12"),
             ]
         );
     }
@@ -894,15 +1020,20 @@ mod tests {
             ]
         );
         assert_eq!(
-            labels("L1150R M1297 Mach 1.8 ADR- XL10 L10x M1 M1.x ADR-7b L 1 M.1 ML1"),
+            labels(
+                "L1150R M1297 Mach 1.8 ADR- XL10 L10x M1 M1.x ADR-7b L 1 M.1 ML1 eq. A1.3 A2.1b"
+            ),
             Vec::<&str>::new()
         );
+        // A certification level looks like a lesson, so pages write "Level 2" (ADR-016).
+        assert_eq!(labels("an L2 certified flyer"), ["L2"]);
     }
 
     #[test]
     fn math_that_only_github_renders_fails() {
         let page = "# Start here\n\n$$x = 1$$\n\nInline $\\alpha$ too.\n\n```math\nx\n```\n\n\
-                    Unicode `γ = GM/r²` and a price of $5 are fine.\n";
+                    Unicode `γ = GM/r²`, a price of $5, and $5 and $10 and $5-$10 are fine.\n\n\
+                    But $F = ma$ is math,\n\nand so is $`x^2`$ and $\\{x\\}$.\n";
         let found = problems(&[
             ("docs/SUMMARY.md", "[Start here](start-here.md)\n"),
             ("docs/start-here.md", page),
@@ -916,7 +1047,10 @@ mod tests {
             [
                 "docs/start-here.md:3",
                 "docs/start-here.md:5",
-                "docs/start-here.md:7"
+                "docs/start-here.md:7",
+                "docs/start-here.md:13",
+                "docs/start-here.md:15",
+                "docs/start-here.md:15",
             ]
         );
     }
@@ -995,7 +1129,8 @@ mod tests {
                  <a href=\"physics/wind.html\">x</a> <a href=\"../outside.html\">x</a>\n\
                  <a href=\"https://example.com/nowhere.html\">web</a> <a href=\"#top\">ok</a>\n\
                  <a href=\"physics/\">ok</a> <a href=\"physics/aero.html#%C2%B5-term\">ok</a>\n\
-                 <link rel=\"stylesheet\" href=\"css/site.css\"><h1 id=\"top\">t</h1>",
+                 <link rel=\"stylesheet\" href=\"css/site.css\"><h1 id=\"top\">t</h1>\n\
+                 <script src=\"css/site.css\"></script><img src=\"missing.png\">",
             ),
             (
                 "physics/aero.html",
@@ -1013,6 +1148,7 @@ mod tests {
                  `id=\"drag\"`",
                 "index.html: `href=\"physics/wind.html\"`: no `physics/wind.html` in the site",
                 "index.html: `href=\"../outside.html\"` climbs out of the site",
+                "index.html: `src=\"missing.png\"`: no `missing.png` in the site",
             ]
         );
     }
