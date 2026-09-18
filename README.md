@@ -3,8 +3,7 @@
 **Pre-alpha, under active construction.** Nothing here is ready to rely on yet.
 
 **Documentation: <https://nrdptel.github.io/hpr-sim/>**, a searchable guide with the API
-reference (rustdoc) beside it. *It goes live once GitHub Pages is turned on for this repository.*
-Until then, read the same pages here: [Start here](docs/start-here.md) says what works, what
+reference (rustdoc) beside it. The same pages also read here on GitHub: [Start here](docs/start-here.md) says what works, what
 doesn't and how far to trust it; [Getting started](docs/getting-started.md) flies a first rocket;
 [Accuracy](docs/accuracy.md) has every validation result. `cargo xtask site` builds the site on
 your machine.

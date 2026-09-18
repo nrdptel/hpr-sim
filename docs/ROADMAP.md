@@ -67,7 +67,7 @@
   *Done when:* the file exists, and every quirk or weakness it lists maps to a roadmap milestone or
   a named test to write.
 
-- [ ] [blocked] **M0.4 A documentation site people can read.** Added by Neer on 2026-09-17 (VISION V15,
+- [x] **M0.4 A documentation site people can read.** Added by Neer on 2026-09-17 (VISION V15,
   CLAUDE.md "Documentation is a deliverable"). Retrofit everything shipped so far; later milestones
   keep the site current. Split it into increments if it is bigger than one session.
   - Tool and layout by ADR (mdBook is the first candidate). Each page has one source:
@@ -97,8 +97,7 @@
   when* bullets are the four above, unchanged: the first bullet's checks are shared between M0.4a
   (links, bare labels) and M0.4b (*In short*).
 
-  *Blocked* on M0.4d's deploy alone (Pages is off; `STATUS.md`, Needs Neer): every other bullet has
-  shipped. Check M0.4 off with M0.4d.
+  Done 2026-09-18, with M0.4d's first deploy.
 
   - [x] **M0.4a The site and its link checks.** An ADR picks the tool (mdBook is the first
     candidate) and the layout. `docs/physics/` and `docs/format/` move into the site's source, so
@@ -118,16 +117,15 @@
     flies a first rocket; *How a flight is simulated* walks pad to landing with a diagram.
 
     *Done when:* the *Getting started* example runs in CI.
-  - [ ] [blocked] **M0.4d Publish.** Workspace rustdoc sits next to the guide, each linking to the
+  - [x] **M0.4d Publish.** Workspace rustdoc sits next to the guide, each linking to the
     other.
 
     *Done when:* a workflow deploys the site and the rustdoc to GitHub Pages from `main`, and the
     README's first lines link to it. (Needs Neer to enable Pages. Until he does, only this bullet
     is blocked.)
 
-    *Blocked* on Pages being off (`STATUS.md`, Needs Neer). Everything else shipped (ADR-019): the
-    rustdoc under the site's `api/`, links both ways checked, the README link, and a `deploy` job
-    that is skipped, with a warning, until Pages is on. Check it off once a run on `main` deploys.
+    Done 2026-09-18 (ADR-019): Neer turned Pages on, and CI run 35396233336 on `main` deployed
+    the guide and the rustdoc to https://nrdptel.github.io/hpr-sim/.
   - [x] **M0.4e The reader test.**
 
     *Done when:* a reviewer with no project context, given only the site, answers ten questions a
