@@ -16,9 +16,10 @@
 
 ## Code and sources
 
-Code: `hpr_core::interp` (`Table1D`). Tables carry curves such as Cd(M), thrust(t) and
-atmosphere soundings. Every table states how it interpolates and what happens outside its range,
-and every lookup reports whether it extrapolated.
+Code: `hpr_core::interp` (`Table1D`). Today it carries the drag tables that override hpr's own
+drag, `C_D(M)` ([Aerodynamics](aero.md)); thrust curves and soundings interpolate on their own
+([Solid motors](motor.md), [Atmosphere](atmosphere.md)). Every table states how it interpolates and
+what happens outside its range, and every lookup reports whether it extrapolated.
 
 ## Knots
 
