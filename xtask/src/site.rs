@@ -21,6 +21,12 @@
 //!   `## In short` section right under its title: a bulleted list of four items, each opening with
 //!   its label in bold, saying what it models, its sources, how well it is validated and what it
 //!   leaves out ([`IN_SHORT_ITEMS`]). A reader who stops there knows how far to trust the page.
+//! - **Accuracy** (`docs/accuracy.md`) gives every validation result. It names every case of the
+//!   committed report and links every model page, and each number it quotes must appear in a file
+//!   that the same paragraph, list item or table row links to, so a number that moves at its
+//!   source fails here until the page follows.
+//! - **Decisions and the roadmap** (`docs/decisions-and-roadmap.md`) links every decision record
+//!   in `docs/DECISIONS.md` and every phase of `docs/ROADMAP.md`, so a new one can't be missed.
 //!
 //! `cargo test` runs these on the real pages. `cargo xtask site` runs them, builds the site into
 //! `target/site` with mdBook, and checks the built HTML as well: every relative `href` and `src`
@@ -65,6 +71,16 @@ const IN_SHORT_ITEMS: [&str; 4] = [
     "How well it is validated:",
     "What it leaves out:",
 ];
+/// The page that gives every validation result, relative to [`SOURCE`]. Every number it quotes is
+/// traced to a file it links ([`untraced_numbers`]).
+const ACCURACY: &str = "accuracy.md";
+/// The committed validation report, relative to the workspace root. [`ACCURACY`] names every case.
+const REPORT: &str = "validation/reports/latest.md";
+/// The page that indexes the decisions and the roadmap, relative to [`SOURCE`].
+const RECORDS: &str = "decisions-and-roadmap.md";
+/// The files [`RECORDS`] indexes, relative to the workspace root, and the prefix of the level-2
+/// headings in each that it must link: every decision, and every phase of the roadmap.
+const INDEXED: [(&str, &str); 2] = [("docs/DECISIONS.md", "ADR-"), ("docs/ROADMAP.md", "Phase ")];
 /// What `mdbook --version` prints for the release series `book.toml` is written for.
 const MDBOOK_SERIES: &str = "mdbook v0.5.";
 /// How to install the mdBook release CI uses.
@@ -199,12 +215,9 @@ fn check_sources(root: &Path) -> Result<Report, String> {
         match fs::read_to_string(source.join(name)) {
             Ok(text) => {
                 let mut page = read_page(&text);
-                if parent(name) == MODELS
-                    && let Some(problem) = in_short(&text)
-                {
-                    page.problems.push(problem);
-                    page.problems.sort_by_key(|(line, _)| *line);
-                }
+                page.problems
+                    .extend(page_rules(root, name, &text, &page.links));
+                page.problems.sort_by_key(|(line, _)| *line);
                 pages.insert(name.clone(), page);
             }
             Err(err) => report.problems.push(format!(
@@ -568,6 +581,329 @@ fn read_page(text: &str) -> Page {
 const HEADING_LINK: &str = "a link inside a heading: mdBook already makes each heading a link, and \
                             a link inside a link is invalid HTML; move it to the text below";
 
+/// The rules only some pages follow, as (line, message): a model page opens with *In short*;
+/// [`ACCURACY`] traces its numbers, names every case of the report and links every model page;
+/// [`RECORDS`] links every decision and every phase of the roadmap. `links` are the page's.
+fn page_rules(
+    root: &Path,
+    name: &str,
+    text: &str,
+    links: &[(usize, String)],
+) -> Vec<(usize, String)> {
+    let mut problems = Vec::new();
+    if parent(name) == MODELS {
+        problems.extend(in_short(text));
+    }
+    let linked: BTreeSet<(String, Option<String>)> = links
+        .iter()
+        .filter_map(|(_, dest)| repository_file(name, dest))
+        .collect();
+    if name == ACCURACY {
+        problems.extend(untraced_numbers(root, name, text));
+        match fs::read_to_string(root.join(REPORT)) {
+            Ok(report) => {
+                for case in report_cases(&report) {
+                    if !text.contains(&format!("`{case}`")) {
+                        problems.push((
+                            1,
+                            format!(
+                                "the case `{case}` of {REPORT} is not on the page, as `{case}`: \
+                                 it gives every validation result"
+                            ),
+                        ));
+                    }
+                }
+            }
+            Err(err) => problems.push((1, format!("can't read {REPORT}: {err}"))),
+        }
+        for file in markdown_files(&root.join(SOURCE).join(MODELS)) {
+            let model = format!("{SOURCE}/{MODELS}/{file}");
+            if !linked.iter().any(|(path, _)| *path == model) {
+                problems.push((
+                    1,
+                    format!("no link to the model page `{model}`, whose checks this page gives"),
+                ));
+            }
+        }
+    }
+    if name == RECORDS {
+        for (file, prefix) in INDEXED {
+            let Ok(indexed) = fs::read_to_string(root.join(file)) else {
+                problems.push((1, format!("can't read {file}")));
+                continue;
+            };
+            for heading in level_two_headings(&indexed) {
+                let anchor = slug(&heading);
+                if heading.starts_with(prefix)
+                    && !linked.contains(&(file.to_owned(), Some(anchor.clone())))
+                {
+                    problems.push((
+                        1,
+                        format!(
+                            "no link to `{heading}` in {file}: link it as \
+                             {GITHUB}blob/main/{file}#{anchor}"
+                        ),
+                    ));
+                }
+            }
+        }
+    }
+    problems
+}
+
+/// The file of the repository a link on page `from` reaches, relative to the workspace root, and
+/// its fragment: a page or file under [`SOURCE`] by a relative link, or anything by its GitHub
+/// URL. `None` for the web and for links that reach nothing.
+fn repository_file(from: &str, dest: &str) -> Option<(String, Option<String>)> {
+    let (path, fragment) = if let Some(rest) = dest.strip_prefix(GITHUB) {
+        let target = ["blob/main/", "tree/main/", "raw/main/"]
+            .iter()
+            .find_map(|prefix| rest.strip_prefix(prefix))?;
+        let (path, fragment) = split_target(target);
+        (join("", &path)?, fragment)
+    } else if is_web(dest) || dest.starts_with('/') {
+        return None;
+    } else {
+        let (path, fragment) = split_target(dest);
+        let name = if path.is_empty() {
+            from.to_owned()
+        } else {
+            join(parent(from), &path)?
+        };
+        (format!("{SOURCE}/{name}"), fragment)
+    };
+    Some((path, fragment.map(percent_decode)))
+}
+
+/// The cases of the committed report, in order: the first column of its table's rows.
+fn report_cases(report: &str) -> Vec<String> {
+    let mut cases: Vec<String> = Vec::new();
+    for line in report.lines() {
+        let Some(row) = line.strip_prefix("| ") else {
+            continue;
+        };
+        let case = row.split(" |").next().unwrap_or_default().trim();
+        if case.is_empty()
+            || case == "case"
+            || case.starts_with("---")
+            || cases.iter().any(|c| c == case)
+        {
+            continue;
+        }
+        cases.push(case.to_owned());
+    }
+    cases
+}
+
+/// The texts of a Markdown file's level-2 headings, in order.
+fn level_two_headings(text: &str) -> Vec<String> {
+    let mut headings = Vec::new();
+    let mut heading: Option<String> = None;
+    for event in Parser::new_ext(text, options()) {
+        match event {
+            Event::Start(Tag::Heading {
+                level: HeadingLevel::H2,
+                ..
+            }) => heading = Some(String::new()),
+            Event::End(TagEnd::Heading(_)) => headings.extend(heading.take()),
+            Event::Text(text) | Event::Code(text) => {
+                if let Some(heading) = heading.as_mut() {
+                    heading.push_str(&text);
+                }
+            }
+            _ => {}
+        }
+    }
+    headings
+}
+
+/// The numbers on page `name` that can't be traced, as (line, message). Every number a
+/// paragraph, list item or table row quotes, outside code and link text, must appear in a file of
+/// the repository that the same paragraph, item or row links to: a page, the report, a case file.
+/// That is how a reader checks it in one click, and how a number that moves at its source fails
+/// here until the page follows (CLAUDE.md, "Never stale"). Headings quote no numbers.
+fn untraced_numbers(root: &Path, name: &str, text: &str) -> Vec<(usize, String)> {
+    let newlines: Vec<usize> = text.match_indices('\n').map(|(at, _)| at).collect();
+    let line = |offset: usize| 1 + newlines.partition_point(|&at| at < offset);
+    /// A paragraph, list item or table row: where it starts, what it quotes and what it links.
+    struct Block {
+        at: usize,
+        text: String,
+        links: Vec<String>,
+    }
+    let mut problems = Vec::new();
+    let mut files: BTreeMap<String, Option<String>> = BTreeMap::new();
+    let mut blocks: Vec<Block> = Vec::new();
+    let mut in_link = 0usize;
+    let mut in_heading = false;
+    for (event, range) in Parser::new_ext(text, options()).into_offset_iter() {
+        match event {
+            Event::Start(Tag::Paragraph | Tag::Item | Tag::TableHead | Tag::TableRow) => {
+                blocks.push(Block {
+                    at: range.start,
+                    text: String::new(),
+                    links: Vec::new(),
+                });
+            }
+            Event::End(TagEnd::Paragraph | TagEnd::Item | TagEnd::TableHead | TagEnd::TableRow) => {
+                let Some(block) = blocks.pop() else { continue };
+                let sources: Vec<String> = block
+                    .links
+                    .iter()
+                    .filter_map(|dest| repository_file(name, dest))
+                    .filter_map(|(path, _)| {
+                        files
+                            .entry(path.clone())
+                            .or_insert_with(|| {
+                                fs::read_to_string(root.join(&path))
+                                    .ok()
+                                    .map(|text| without_separators(&text))
+                            })
+                            .clone()
+                    })
+                    .collect();
+                for number in numbers(&block.text) {
+                    if !sources
+                        .iter()
+                        .any(|source| contains_number(source, &number))
+                    {
+                        problems.push((
+                            line(block.at),
+                            format!(
+                                "`{number}` is not in a file that this paragraph, list item or \
+                                 table row links to: link where the number comes from (a model \
+                                 page, the report, a case file), and quote it as it is there"
+                            ),
+                        ));
+                    }
+                }
+            }
+            Event::Start(Tag::Heading { .. }) => in_heading = true,
+            Event::End(TagEnd::Heading(_)) => in_heading = false,
+            Event::Start(Tag::Link { dest_url, .. }) => {
+                if let Some(block) = blocks.last_mut() {
+                    block.links.push(dest_url.into_string());
+                }
+                in_link += 1;
+            }
+            Event::End(TagEnd::Link) => in_link = in_link.saturating_sub(1),
+            Event::Text(quoted) if in_link == 0 && !in_heading => {
+                if let Some(block) = blocks.last_mut() {
+                    block.text.push_str(&quoted);
+                }
+            }
+            // Code and link text don't join the words around them into one number.
+            Event::Code(_) | Event::SoftBreak | Event::HardBreak => {
+                if let Some(block) = blocks.last_mut() {
+                    block.text.push(' ');
+                }
+            }
+            _ => {}
+        }
+    }
+    problems
+}
+
+/// The numbers a reader would check in `text`: each with a decimal point, an exponent, a percent
+/// sign or at least two digits, so "6-DOF", "Level 2" and "3 fins" are words, and "3%", "0.28",
+/// "1e-6" and "1,708" are numbers. A sign is dropped, and so are thousands separators.
+fn numbers(text: &str) -> Vec<String> {
+    let text = without_separators(text);
+    let chars: Vec<char> = text.chars().collect();
+    let mut found = Vec::new();
+    let mut at = 0;
+    // The end of the digits and dotted digits from `at`: `1.13.0` is one number.
+    let digits_end = |at: usize| {
+        let mut end = at;
+        while end < chars.len()
+            && (chars[end].is_ascii_digit()
+                || (chars[end] == '.' && chars.get(end + 1).is_some_and(char::is_ascii_digit)))
+        {
+            end += 1;
+        }
+        end
+    };
+    while at < chars.len() {
+        if !chars[at].is_ascii_digit() {
+            at += 1;
+            continue;
+        }
+        // Digits glued to a word before them are part of it: `M1.8`, `C_D0`, `v1.13.0`.
+        if at > 0 && (chars[at - 1].is_alphanumeric() || chars[at - 1] == '_') {
+            at = digits_end(at);
+            continue;
+        }
+        let mut end = digits_end(at);
+        let decimal = chars[at..end].contains(&'.');
+        let mut exponent = false;
+        if chars.get(end) == Some(&'e') {
+            let digits_at = match chars.get(end + 1) {
+                Some('-' | '−' | '+') => end + 2,
+                _ => end + 1,
+            };
+            if chars.get(digits_at).is_some_and(char::is_ascii_digit) {
+                exponent = true;
+                end = digits_at;
+                while end < chars.len() && chars[end].is_ascii_digit() {
+                    end += 1;
+                }
+            }
+        }
+        // A number glued to letters, such as `3D` or `1st`, is a word.
+        if chars.get(end).is_some_and(|c| c.is_alphabetic()) {
+            at = end;
+            continue;
+        }
+        let number: String = chars[at..end].iter().collect::<String>().replace('−', "-");
+        let percent = chars.get(end) == Some(&'%');
+        if decimal || exponent || percent || end - at >= 2 {
+            found.push(number);
+        }
+        at = end;
+    }
+    found
+}
+
+/// `text` without the commas that separate thousands, so `1,708` reads as `1708`.
+fn without_separators(text: &str) -> String {
+    let chars: Vec<char> = text.chars().collect();
+    chars
+        .iter()
+        .enumerate()
+        .filter(|&(at, &c)| {
+            !(c == ','
+                && at > 0
+                && chars[at - 1].is_ascii_digit()
+                && chars.get(at + 1).is_some_and(char::is_ascii_digit))
+        })
+        .map(|(_, &c)| c)
+        .collect()
+}
+
+/// Whether `text` holds `number` as a whole number: not inside a longer one, so `2.8` is not in
+/// `2.865` and `30` is not in `130`.
+fn contains_number(text: &str, number: &str) -> bool {
+    let digit_before = |at: usize| {
+        let before = &text[..at];
+        let mut chars = before.chars().rev();
+        match chars.next() {
+            Some(c) if c.is_ascii_digit() => true,
+            Some('.') => chars.next().is_some_and(|c| c.is_ascii_digit()),
+            _ => false,
+        }
+    };
+    let digit_after = |at: usize| {
+        let mut chars = text[at..].chars();
+        match chars.next() {
+            Some(c) if c.is_ascii_digit() => true,
+            Some('.') => chars.next().is_some_and(|c| c.is_ascii_digit()),
+            _ => false,
+        }
+    };
+    text.match_indices(number)
+        .any(|(at, _)| !digit_before(at) && !digit_after(at + number.len()))
+}
+
 /// How a model page opens, for the messages of [`in_short`].
 const IN_SHORT_FORM: &str = "a model page opens with *In short*: right under its `# title`, a \
                              `## In short` section holding only a bulleted list of four items, \
@@ -575,13 +911,16 @@ const IN_SHORT_FORM: &str = "a model page opens with *In short*: right under its
                              is validated:**` and `**What it leaves out:**`, in that order, each \
                              followed by its answer";
 
+/// A Markdown event and the bytes of the page it comes from.
+type Spanned<'a> = (Event<'a>, std::ops::Range<usize>);
+
 /// What is wrong with the *In short* a model page opens with, if anything, as (line, message):
 /// the first thing that departs from [`IN_SHORT_FORM`].
 fn in_short(text: &str) -> Option<(usize, String)> {
     let newlines: Vec<usize> = text.match_indices('\n').map(|(at, _)| at).collect();
     let line = |offset: usize| 1 + newlines.partition_point(|&at| at < offset);
     let fail = |offset: usize, what: &str| Some((line(offset), format!("{what}: {IN_SHORT_FORM}")));
-    let events: Vec<(Event<'_>, std::ops::Range<usize>)> = Parser::new_ext(text, options())
+    let events: Vec<Spanned<'_>> = Parser::new_ext(text, options())
         .into_offset_iter()
         .collect();
     let offset = |at: usize| events.get(at).map_or(text.len(), |(_, range)| range.start);
@@ -650,7 +989,7 @@ fn in_short(text: &str) -> Option<(usize, String)> {
     }
     let list_at = offset(at);
     at += 1;
-    let mut items: Vec<(usize, &[(Event<'_>, std::ops::Range<usize>)])> = Vec::new();
+    let mut items: Vec<(usize, &[Spanned<'_>])> = Vec::new();
     let mut depth = 0usize;
     let mut item_from = at;
     let list_end = loop {
@@ -1368,6 +1707,137 @@ mod tests {
                 ("docs/format/eng.md", "# eng\n\nWords.\n"),
             ]),
             Vec::<String>::new()
+        );
+    }
+
+    #[test]
+    fn numbers_are_the_ones_a_reader_would_check() {
+        assert_eq!(
+            numbers(
+                "Within 3% on 30 numbers; +2.865% and −10% to +19%; 1e-6, 2e−16 and 1,708 motors; \
+                 RocketPy 1.13.0 and 2026-09-17."
+            ),
+            [
+                "3", "30", "2.865", "10", "19", "1e-6", "2e-16", "1708", "1.13.0", "2026", "09",
+                "17"
+            ]
+        );
+        assert_eq!(
+            numbers("6-DOF, Level 2, 3 fins, M1.8, C_D0, v0.5.4, L1150R, 3D, x2.5 and 4.").len(),
+            0
+        );
+        assert!(contains_number("at +2.865% against", "2.865"));
+        assert!(contains_number("(1e-6)", "1e-6"));
+        assert!(!contains_number("2.865", "2.8"));
+        assert!(!contains_number("2.865", "865"));
+        assert!(!contains_number("130 and 1300", "30"));
+        assert!(contains_number(&without_separators("1,708 motors"), "1708"));
+    }
+
+    /// A site with an Accuracy page, one model page and a report of the cases `alpha` and `beta`.
+    fn accuracy_problems(accuracy: &str, extra: &[(&str, &str)]) -> Vec<String> {
+        let gravity = format!("{IN_SHORT_OK}\nIt is 9.780 m/s² at the equator, to 1e-6.\n");
+        let mut files = vec![
+            (
+                "docs/SUMMARY.md",
+                "[Accuracy](accuracy.md)\n- [Gravity](physics/gravity.md)\n",
+            ),
+            ("docs/accuracy.md", accuracy),
+            ("docs/physics/gravity.md", gravity.as_str()),
+            (
+                "validation/reports/latest.md",
+                "# Report\n\n| case | metric | difference |\n|---|---|---|\n\
+                 | alpha | drift_m | +2.865% |\n| alpha | time_s | -0.019% |\n\
+                 | beta | drift_m | +0.075% |\n",
+            ),
+        ];
+        files.extend_from_slice(extra);
+        problems(&files)
+    }
+
+    const REPORT_LINK: &str =
+        "https://github.com/nrdptel/hpr-sim/blob/main/validation/reports/latest.md";
+
+    #[test]
+    fn the_accuracy_page_traces_every_number_it_quotes() {
+        let page = format!(
+            "# Accuracy\n\n\
+             The descent agrees within 2.865% for `alpha` and `beta` ([the report]({REPORT_LINK})).\n\n\
+             Gravity matches to 1e-6 ([Gravity](physics/gravity.md)).\n\n\
+             Gravity matches to 1e-7 ([Gravity](physics/gravity.md)).\n\n\
+             | model | how well |\n|---|---|\n\
+             | [Gravity](physics/gravity.md) | 9.780 and 9.781 |\n\n\
+             - An item quoting 12.5% with no link.\n\
+             - Level 2, 6-DOF, 3 fins and `0.123` in code are not quoted numbers.\n\n\
+             ## The 1976 standard\n"
+        );
+        assert_eq!(
+            accuracy_problems(&page, &[]),
+            [
+                "docs/accuracy.md:7: `1e-7` is not in a file that this paragraph, list item or \
+                 table row links to: link where the number comes from (a model page, the \
+                 report, a case file), and quote it as it is there",
+                "docs/accuracy.md:11: `9.781` is not in a file that this paragraph, list item or \
+                 table row links to: link where the number comes from (a model page, the \
+                 report, a case file), and quote it as it is there",
+                "docs/accuracy.md:13: `12.5` is not in a file that this paragraph, list item or \
+                 table row links to: link where the number comes from (a model page, the \
+                 report, a case file), and quote it as it is there",
+            ]
+        );
+    }
+
+    #[test]
+    fn the_accuracy_page_names_every_case_and_links_every_model_page() {
+        let wind = IN_SHORT_OK.replace("# Gravity", "# Wind");
+        assert_eq!(
+            accuracy_problems(
+                "# Accuracy\n\nOnly `alpha`, and alpha again, and [Gravity](physics/gravity.md).\n",
+                &[("docs/physics/wind.md", &wind)]
+            ),
+            [
+                "docs/physics/wind.md: not in docs/SUMMARY.md, so the site doesn't show it",
+                "docs/accuracy.md:1: the case `beta` of validation/reports/latest.md is not on \
+                 the page, as `beta`: it gives every validation result",
+                "docs/accuracy.md:1: no link to the model page `docs/physics/wind.md`, whose \
+                 checks this page gives",
+            ]
+        );
+    }
+
+    #[test]
+    fn the_records_page_links_every_decision_and_phase() {
+        let blob = "https://github.com/nrdptel/hpr-sim/blob/main/docs";
+        let page = format!(
+            "# Decisions and the roadmap\n\n\
+             [ADR-000: kickoff]({blob}/DECISIONS.md#adr-000-kickoff-2026-09-16) and \
+             [Phase 0]({blob}/ROADMAP.md#phase-0-foundations).\n"
+        );
+        assert_eq!(
+            problems(&[
+                (
+                    "docs/SUMMARY.md",
+                    "[Decisions and the roadmap](decisions-and-roadmap.md)\n"
+                ),
+                ("docs/decisions-and-roadmap.md", &page),
+                (
+                    "docs/DECISIONS.md",
+                    "# Decisions\n\n## ADR-000: Kickoff (2026-09-16)\n\n### ADR-000a: a part\n\n\
+                     ## ADR-001: Licence\n\n## Index\n",
+                ),
+                (
+                    "docs/ROADMAP.md",
+                    "# Roadmap\n\n## Phase 0: Foundations\n\n## Phase 1: Physics\n\n## Notes\n",
+                ),
+            ]),
+            [
+                "docs/decisions-and-roadmap.md:1: no link to `ADR-001: Licence` in \
+                 docs/DECISIONS.md: link it as \
+                 https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-001-licence",
+                "docs/decisions-and-roadmap.md:1: no link to `Phase 1: Physics` in \
+                 docs/ROADMAP.md: link it as \
+                 https://github.com/nrdptel/hpr-sim/blob/main/docs/ROADMAP.md#phase-1-physics",
+            ]
         );
     }
 
