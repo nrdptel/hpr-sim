@@ -15,7 +15,7 @@
 use serde_json::Value;
 
 use crate::metrics::{Reference, ReferenceValue};
-use crate::run::{DescentDevice, DescentSetup, FlightDevice, WholeFlightSetup};
+use crate::run::{DescentDevice, DescentSetup, FlightDevice, FlightMotor, WholeFlightSetup};
 
 /// The case named `case` of a recovery-descent fixture, as the oracle's answers and the inputs it
 /// flew. `None` if the document has no such case, does not name the run that produced it, or is
@@ -102,6 +102,7 @@ pub fn whole_flight_case(
     let elevation_m = number(environment.get("elevation_m"))?;
     let rail = found.get("rail")?;
     let drag = found.get("drag")?;
+    let motor = found.get("motor")?;
     let devices = found
         .get("devices")?
         .as_array()?
@@ -130,6 +131,17 @@ pub fn whole_flight_case(
         rail_length_m: positive(number(rail.get("rail_length_m"))?)?,
         inclination_deg: number(rail.get("inclination_deg"))?,
         heading_deg: number(rail.get("heading_deg"))?,
+        effective_1rl_m: positive(number(rail.get("effective_1rl_m"))?)?,
+        motor: FlightMotor {
+            total_impulse_ns: positive(number(motor.get("total_impulse_ns"))?)?,
+            burn_out_time_s: positive(number(motor.get("burn_out_time_s"))?)?,
+            propellant_initial_mass_kg: positive(number(motor.get("propellant_initial_mass_kg"))?)?,
+            // RocketPy's None is JSON's null: no correction, which is a value, not a gap.
+            reference_pressure_pa: match motor.get("reference_pressure_pa")? {
+                Value::Null => None,
+                value => Some(number(Some(value))?),
+            },
+        },
         cd0_vs_mach: pairs(drag.get("cd0_vs_mach"))?,
         declared_cd0_vs_mach: pairs(document.get("declared_drag")?.get("cd0_vs_mach"))?,
         reference_radius_m: positive(number(drag.get("reference_radius_m"))?)?,

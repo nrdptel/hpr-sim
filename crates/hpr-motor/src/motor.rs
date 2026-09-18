@@ -78,14 +78,20 @@ pub struct Nozzle {
     pub exit_radius_m: f64,
     /// Throat radius, m, when known (informational: the thrust curve already carries its effect).
     pub throat_radius_m: Option<f64>,
-    /// The ambient pressure the thrust curve was measured at, Pa: the static test site's. Motor
-    /// files don't record it; [`STANDARD_SEA_LEVEL_PRESSURE_PA`] is a stand-in when it's unknown.
+    /// The ambient pressure the thrust curve was measured at, Pa: the static test site's. The
+    /// thrust is then corrected to the ambient pressure in flight.
     ///
     /// `None` flies the curve as it is at every ambient pressure, with no correction. That is
     /// RocketPy's default (`Motor(reference_pressure=None)`, whose `pressure_thrust` is then zero,
-    /// `motor.py:1188-1189`), so a RocketPy input transcribed into hpr says `None` rather than
-    /// taking the stand-in: at a 1,400 m site the stand-in adds 16 kPa × `A_e` of thrust, 2 to 4%
-    /// of the examples' peak acceleration, that RocketPy never flew.
+    /// `motor.py:1188-1189`), so a RocketPy input transcribed into hpr says `None`.
+    ///
+    /// Which to give: motor files don't record where the curve was measured. For a motor tested
+    /// near sea level, [`STANDARD_SEA_LEVEL_PRESSURE_PA`] adds the thrust a higher site gains
+    /// (16 kPa × `A_e` at 1,400 m); `None` leaves it out. A design must say which: the field is
+    /// required, as `null` for `None`, so leaving it out is an error rather than a silent choice.
+    /// Motors read from `.eng` or `.rse` files, or from the catalog, carry no nozzle and so no
+    /// correction.
+    #[serde(deserialize_with = "Option::deserialize")]
     pub reference_pressure_pa: Option<f64>,
 }
 
@@ -673,6 +679,18 @@ mod tests {
         for pressure in [0.0, 50_000.0, 101_325.0, 1e9] {
             assert_eq!(uncorrected.thrust_at_pressure_n(0.5, pressure), f);
         }
+        // A design says which it means: `null` is no correction, and leaving the key out is an
+        // error, not a quiet `None`.
+        let read = |text: &str| serde_json::from_str::<Nozzle>(text);
+        assert_eq!(
+            read(
+                r#"{"exit_radius_m": 0.01, "throat_radius_m": null, "reference_pressure_pa": null}"#
+            )
+            .unwrap()
+            .reference_pressure_pa,
+            None
+        );
+        assert!(read(r#"{"exit_radius_m": 0.01, "throat_radius_m": null}"#).is_err());
         // Only strictly inside the burn: nothing is added at ignition or at the last sample.
         assert_eq!(motor.thrust_at_pressure_n(0.0, 0.0), 0.0);
         assert_eq!(motor.thrust_at_pressure_n(1.2, 0.0), 0.0);

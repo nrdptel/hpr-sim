@@ -227,24 +227,30 @@ fn the_metrics_that_are_not_scored_are_these_and_no_others() {
         .collect();
     // Valetudo's northward drift was excused while its 28x gap was unexplained; the gap was an
     // unlike gravity model, the suite now flies RocketPy's own, and the metric is gated like every
-    // other. The two below are whole flights (M2.1b2), each argued in its case file:
+    // other. The ones below are whole flights (M2.1b2), each argued in its case file:
     //
     // - Calisto's maximum acceleration comes twice, 0.9% apart, and hpr's rail terms decide which
     //   is the higher, so its *time* jumps between the peaks; the value is gated.
     // - NDRT 2020's whole-flight maximum is the main opening, where RocketPy has added mass and hpr
     //   has none (ADR-012); the power-on maximum and the opening's time are gated.
+    // - The horizontal path in wind, where hpr turns into the wind far more than RocketPy
+    //   (issue #50); in calm air the drifts agree to 1.3 to 3.7%, and Valetudo, in still air,
+    //   keeps its apogee drift gated while its landing drift (-3.41%) is reported.
     //
     // Adding an excuse means editing this list.
-    assert_eq!(
-        excused,
-        vec![
-            (
-                "flight-calisto-tests-motor-at-minus-1.373",
-                "max_acceleration_time_s"
-            ),
-            ("flight-ndrt-2020-nose-to-tail", "max_acceleration_m_s2"),
-        ]
-    );
+    let drifts = |case| [(case, "apogee_drift_m"), (case, "landing_drift_m")];
+    let mut expected = vec![];
+    expected.extend(drifts("flight-calisto-tests-motor-at-minus-1.373"));
+    expected.push((
+        "flight-calisto-tests-motor-at-minus-1.373",
+        "max_acceleration_time_s",
+    ));
+    expected.push(("flight-valetudo", "landing_drift_m"));
+    expected.extend(drifts("flight-ndrt-2020-nose-to-tail"));
+    expected.push(("flight-ndrt-2020-nose-to-tail", "max_acceleration_m_s2"));
+    expected.extend(drifts("flight-juno-iii"));
+    expected.extend(drifts("flight-bella-lui"));
+    assert_eq!(excused, expected);
     // A known gap is the other way a case goes unscored, and the set of them is pinned the same
     // way: Prometheus 2022 reaches Mach 1.014, which hpr refuses until M1.8.
     let gaps: Vec<&str> = report.gaps.iter().map(|gap| gap.case.as_str()).collect();
@@ -541,10 +547,10 @@ fn the_committed_cases_all_pass_and_the_report_says_so() {
     // report that `cargo xtask validate` writes is the one this produces.
     let report = run_lock(&root(), false).expect("the committed cases run");
     assert_eq!(report.cases.len(), 11, "{:?}", report.cases);
-    // Five descents of six metrics, and five whole flights of twelve; the sixth whole flight is a
+    // Five descents of six metrics, and five whole flights of fifteen; the sixth whole flight is a
     // known gap and compares nothing.
-    assert_eq!(report.comparisons.len(), 90);
-    assert_eq!(report.not_scored().len(), 2, "argued in the case files");
+    assert_eq!(report.comparisons.len(), 105);
+    assert_eq!(report.not_scored().len(), 11, "argued in the case files");
     assert_eq!(report.gaps.len(), 1);
     assert!(report.passed(), "{:?}", report.failures());
     // M2.1b2's own bar: at least five whole flights, every metric scored or argued, all passing.
@@ -564,12 +570,12 @@ fn the_committed_cases_all_pass_and_the_report_says_so() {
     );
     let markdown = report.to_markdown();
     assert!(
-        markdown.contains("88 scored, all within tolerance"),
+        markdown.contains("94 scored, all within tolerance"),
         "{markdown}"
     );
     assert!(
         markdown
-            .contains("## Known gaps\n\n- **flight-prometheus-2022-generic-motor**: 12 metric(s)"),
+            .contains("## Known gaps\n\n- **flight-prometheus-2022-generic-motor**: 15 metric(s)"),
         "{markdown}"
     );
     assert!(
@@ -607,7 +613,28 @@ fn the_committed_cases_all_pass_and_the_report_says_so() {
     assert_eq!(committed.fast, report.fast);
     assert_eq!(committed.cases, report.cases, "run `cargo xtask validate`");
     assert_eq!(committed.skipped, report.skipped);
-    assert_eq!(committed.gaps, report.gaps, "run `cargo xtask validate`");
+    // A gap's Mach number is where the integrator narrowed onto 1, to the last bits of which the
+    // platforms need not agree; everything else about it must.
+    let gap_shape = |report: &Report| {
+        report
+            .gaps
+            .iter()
+            .map(|gap| {
+                (
+                    gap.case.clone(),
+                    gap.reason.clone(),
+                    gap.refusal.clone(),
+                    gap.metric_count,
+                    (gap.mach - 1.0).abs() < 1e-9,
+                )
+            })
+            .collect::<Vec<_>>()
+    };
+    assert_eq!(
+        gap_shape(&committed),
+        gap_shape(&report),
+        "run `cargo xtask validate`"
+    );
     assert_eq!(
         committed.sources, report.sources,
         "run `cargo xtask validate`"
@@ -731,7 +758,6 @@ fn a_tolerance_accepts_what_it_says() {
     assert_eq!(Tolerance::relative(0.03).describe(), "3.000%");
 }
 
-/// Every file under `path`, by relative name, with its bytes.
 /// `case_id`'s committed case file with `known_gap` set to `reason`, or removed for `None`.
 fn with_gap(case_id: &str, reason: Option<&str>) -> String {
     let mut case = cases()
@@ -758,7 +784,7 @@ fn a_known_gap_is_checked_not_trusted() {
         .expect("Prometheus is a gap");
     assert!(gap.reason.contains("Mach 1.014"), "{gap:?}");
     assert!(gap.refusal.contains("Mach 1.000"), "{gap:?}");
-    assert_eq!(gap.metrics, 12);
+    assert_eq!(gap.metric_count, 15);
     assert!(
         !report
             .comparisons
@@ -817,6 +843,7 @@ fn a_known_gap_is_checked_not_trusted() {
     assert!(error.to_string().contains("gives no reason"), "{error}");
 }
 
+/// Every file under `path`, by relative name, with its bytes.
 fn tree(path: &Path) -> std::collections::BTreeMap<String, Vec<u8>> {
     let mut files = std::collections::BTreeMap::new();
     let mut stack = vec![path.to_path_buf()];

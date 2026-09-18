@@ -481,17 +481,21 @@
       - `validation/reports/latest.md` carries them, and the gravity rule of ADR-015 is applied:
         the comparison flies the oracle's models where hpr has them.
 
-      *Result (ADR-021):* met. Six whole-flight cases are locked. Five pass: 58 metrics scored,
-      all within 3% with no floor, the largest Bella Lui's power-on peak at +1.783% and Juno III's
-      apogee at +1.760%. Two metrics are argued as not scored (Calisto's time of peak
-      acceleration, two peaks 0.9% apart; NDRT's whole-flight peak, the main opening, where
-      RocketPy has added mass). Prometheus (Mach 1.014) is a known gap that the harness checks
-      and that fails the run once hpr flies it (L85). Bella Lui is the sixth rocket, added to
-      `flight.py` alone. The L75 test passes. The comparison flies RocketPy's gravity, atmosphere,
-      frictionless rail and thrust: the first run was 2.7 to 3.9% high on peak acceleration
-      because the transcribed designs corrected thrust for ambient pressure, which RocketPy's
-      examples never do; `Nozzle::reference_pressure_pa` is now optional, and the designs say
-      `None`. The site's example flights moved with it (first flight 874.0 to 779.0 m).
+      *Result (ADR-021):* met. Six whole-flight cases are locked, fifteen metrics each. Five
+      pass: every scored metric within 3% with no floor, 64 of them; the largest in height, speed
+      and acceleration are Bella Lui's power-on peak at +1.783% and Juno III's apogee at +1.710%,
+      and Valetudo's apogee drift is −2.426%. Eleven are argued as not scored. Nine are the drifts
+      in wind and Valetudo's still-air landing drift: in wind hpr turns into the wind far more
+      than RocketPy (Juno III's apogee 228 m from the pad against 582 m), while flown calm the two
+      agree within 0.18% on apogee and 1.3 to 3.7% on the drifts (issue #50). The others are
+      Calisto's time of peak acceleration and NDRT's main-opening peak. Prometheus (Mach 1.014) is
+      a known gap that the harness checks and that fails the run once hpr flies it (L85). Bella
+      Lui is the sixth rocket. The L75 test passes, and the reference now records the motor and
+      `effective_1rl`, which the harness checks. The comparison flies RocketPy's gravity,
+      atmosphere, rail and thrust: the first run was 2.7 to 3.9% high on peak acceleration because
+      the transcribed designs corrected thrust for ambient pressure, which RocketPy's examples
+      never do; the designs now say `null`, and the site's example flights moved with them (first
+      flight 874.0 to 779.0 m).
 
   - [ ] **M2.1c Predicted mode, CI and regeneration.**
     - The same cases flown with hpr's own aero, reported beside the same-drag ones.

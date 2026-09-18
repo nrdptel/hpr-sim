@@ -66,6 +66,25 @@ fn oracle_inputs_come_from_the_case_file_not_hpr_outputs() {
         );
         assert_eq!(setup.reference_area_m2, drag["reference_area_m2"], "{name}");
         assert_eq!(setup.dry_mass_kg, found["dry_mass_kg"], "{name}");
+        assert_eq!(setup.effective_1rl_m, rail["effective_1rl_m"], "{name}");
+        let motor = &found["motor"];
+        assert_eq!(
+            setup.motor.total_impulse_ns, motor["total_impulse_ns"],
+            "{name}"
+        );
+        assert_eq!(
+            setup.motor.burn_out_time_s, motor["burn_out_time_s"],
+            "{name}"
+        );
+        assert_eq!(
+            setup.motor.propellant_initial_mass_kg, motor["propellant_initial_mass_kg"],
+            "{name}"
+        );
+        assert_eq!(
+            setup.motor.reference_pressure_pa,
+            motor["reference_pressure_pa"].as_f64(),
+            "{name}"
+        );
         let devices = found["devices"].as_array().expect("devices");
         assert_eq!(setup.devices.len(), devices.len(), "{name}");
         for (read, written) in setup.devices.iter().zip(devices) {
@@ -160,9 +179,56 @@ fn oracle_inputs_come_from_the_case_file_not_hpr_outputs() {
         },
         "reference area",
     );
+    // A motor corrected for a reference pressure RocketPy never applied: the input this
+    // milestone found transcribed wrong (ADR-021).
+    refused(
+        |case| case["motor"]["reference_pressure_pa"] = json!(101_325.0),
+        "reference pressure",
+    );
+    // A motor with another impulse.
+    refused(
+        |case| {
+            let impulse = case["motor"]["total_impulse_ns"]
+                .as_f64()
+                .expect("an impulse");
+            case["motor"]["total_impulse_ns"] = json!(impulse * 1.001);
+        },
+        "total impulse",
+    );
     // A case whose drag is not the generator's declaration.
     refused(
         |case| case["drag"]["cd0_vs_mach"] = json!([[0.0, 0.45], [3.0, 0.45]]),
         "its generator declares",
+    );
+}
+
+#[test]
+fn the_harness_flies_the_references_rail_and_wind() {
+    // L75 again, at the level of the flight rather than the parser: a rail angle or a wind that
+    // the harness took from anywhere but the reference would leave hpr's answer where it was when
+    // the reference moved. The drift is the metric that moves most with both.
+    let drift = |edit: fn(&mut Value)| {
+        let scratch = scratch_case("flight-valetudo", |document| {
+            for case in document["cases"].as_array_mut().expect("cases") {
+                edit(case);
+            }
+        });
+        let report = run_lock(scratch.path(), false).expect("the case runs");
+        report
+            .comparisons
+            .iter()
+            .find(|comparison| comparison.metric == "apogee_drift_m")
+            .map(|comparison| comparison.measured)
+            .expect("the drift is measured")
+    };
+    let as_flown = drift(|_| {});
+    let steeper = drift(|case| case["rail"]["inclination_deg"] = json!(89.0));
+    let windy = drift(|case| case["environment"]["wind_u"] = json!(-6.0));
+    // Valetudo's 84.7 degree rail carries its apogee 164 m downrange in still air; nearly
+    // vertical, it goes a fraction of that, and a crosswind moves it again.
+    assert!(steeper < 0.5 * as_flown, "{steeper} against {as_flown}");
+    assert!(
+        (windy - as_flown).abs() > 20.0,
+        "{windy} against {as_flown}"
     );
 }

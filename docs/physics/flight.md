@@ -10,9 +10,11 @@
 - **How well it is validated:** by analytic and unit tests (a tumbling rocket's centre of mass
   stays on the exact parabola in a vacuum to 1.7e-6 m over 22 s), and against RocketPy. Five of
   its example rockets, flown from the pad to the ground by both codes with the same declared drag,
-  agree on every scored metric within 3%; the largest difference is +1.783%, a peak acceleration
-  on the rail ([validation report][report],
-  [whole flights against RocketPy](#whole-flights-against-rocketpy)). A sixth reaches Mach 1,
+  agree on height, speed, time and acceleration within 3%; the largest scored difference is
+  +1.783%, a peak acceleration on the rail ([validation report][report],
+  [whole flights against RocketPy](#whole-flights-against-rocketpy)). **The path in wind does not
+  agree:** hpr turns into the wind far more than RocketPy, and the cause is open
+  ([issue #50](https://github.com/nrdptel/hpr-sim/issues/50)). A sixth rocket reaches Mach 1,
   which hpr refuses. hpr's own drag has not been checked in a whole flight yet
   ([M2.1c](../decisions-and-roadmap.md#m2-1c)), and no flight has been compared with a real one.
 - **What it leaves out:** staging and delayed ignition, tip-off (the pivot as the rocket leaves the
@@ -335,40 +337,46 @@ default settings. The numbers were measured on 2026-09-17.
 ### Whole flights against RocketPy
 
 `cargo xtask validate` flies six of RocketPy's example rockets from the pad to the ground and
-compares twelve numbers of each with RocketPy 1.13.0's own flight
+compares fifteen numbers of each with RocketPy 1.13.0's own flight
 ([ADR-021][adr-021], the whole-flight comparison). Both codes fly one declared drag coefficient,
-a constant `C_D0` of 0.5 on the same reference area, so what is compared is the equations of
+a constant `C_D0` of 0.5 on the same reference area. So what is compared is the equations of
 motion, the motor and the air, not the drag. The rest is RocketPy's where hpr has it: its gravity
-formula, standard atmosphere, frictionless rail, the example's rail angles and parachutes, and a
-declared wind.
+formula, standard atmosphere, frictionless rail, the example's rail angles, parachutes and motor,
+and a declared wind.
 
 | result | value |
 |---|---|
-| cases scored | 5, and a sixth reported as a known gap |
-| metrics scored | 58 of 60, each within 3% of RocketPy's |
-| largest difference | +1.783%, Bella Lui's peak acceleration, on the rail |
-| largest in apogee | +1.760%, Juno III, in the suite's strongest wind |
+| cases scored | 5, and a sixth, which reaches Mach 1, reported as a known gap |
+| height, speed, time, acceleration | all scored, all within 3% of RocketPy's |
+| largest of those | +1.783%, Bella Lui's peak acceleration, on the rail |
+| largest in apogee | +1.710%, Juno III, in the suite's strongest wind |
+| path in wind (drift of apogee and landing) | far off: Juno III's apogee is 228 m from the pad in hpr, 582 m in RocketPy; reported, not scored |
+| path in calm air | within 1.3 to 3.7% (three cases flown with no wind in both codes) |
 
 What the two codes still do differently, and how much it moves:
 
+- **The wind.** In wind, hpr turns into the wind far more than RocketPy. Flown with no wind, the
+  same rockets agree on the apogee to 0.18% and on the drifts to 1.3 to 3.7%. So the difference is
+  in the response to wind: each code's own normal force, the pitch damping hpr doesn't have until
+  [M1.8](../decisions-and-roadmap.md#m1-8), and hpr's growth of drag with the angle of attack,
+  which RocketPy's drag table doesn't have. Which one it is, is open
+  ([issue #50](https://github.com/nrdptel/hpr-sim/issues/50)).
 - **The rail.** hpr's rail equation keeps the terms for the centre of mass moving inside the
   body as the propellant burns. RocketPy's rail equation (`udot_rail1`) leaves them out. At a
-  sharp ignition spike they add 1.2 to 1.3 m/s² at the same instant, with thrust and mass equal
-  to five digits.
-- **The normal force.** The same drag doesn't mean the same lift: each code turns the rocket
-  into the wind with its own model. This is the likely source of the apogee differences, the
-  largest in the strongest wind, but no run has isolated it.
-- **The parachutes.** RocketPy adds the air a canopy drags along while it opens (added mass); hpr
-  has none. So the peak deceleration as NDRT 2020's main opens differs by 57%, and that one number
-  is reported but not scored.
-- **Mach 1.** Prometheus 2022 reaches Mach 1.014, which hpr refuses until
-  [M1.8](../decisions-and-roadmap.md#m1-8). The case still runs, and it fails the suite once hpr
-  flies it, so the gap can't outlive its cause.
+  sharp ignition spike, with thrust and mass the same to five digits, hpr's acceleration is 1.2
+  to 1.3 m/s² higher. hpr also guides the rocket until its last rail button leaves, where
+  RocketPy frees it at the first.
+- **Calisto's two peaks.** Its acceleration peaks twice, 0.9% apart, and the rail terms make hpr's
+  maximum the other peak. So the time of the peak (−96.8%) is reported but not scored.
+- **The parachutes.** RocketPy counts the air a canopy drags along (added mass); hpr has none. So
+  the peak deceleration as NDRT 2020's main opens is 83% higher in hpr, and that number is
+  reported but not scored. The speeds at landing agree within 0.03%.
 
 The metrics are measured as RocketPy defines them: speeds and accelerations at the centre of dry
-mass, and the rail exit when the forward rail button reaches the top of the rail, where hpr's own
-rail-exit event waits for the last one. Each case file argues its tolerances; [Accuracy][accuracy]
-gives every result.
+mass; heights from that point's height at launch, since RocketPy's starts at the ground; and the
+rail exit when the rocket has travelled RocketPy's `effective_1rl`, the forward button at the top
+of the rail, where hpr's own rail-exit event waits for the last one. Each case file argues its
+tolerances; [Accuracy][accuracy] gives every result.
 
 [adr-007]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-007-design-tree-stations-placement-automatic-radii-overrides-motors-and-checks-2026-09-17
 [adr-011]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-011-rigid-body-flight-equations-of-motion-aerodynamic-coupling-rail-phases-and-termination-2026-09-17

@@ -74,7 +74,7 @@ fn print_summary(report: &Report) {
             // A gap compares nothing, so "0 metrics, worst +0.00%" would read as a clean pass.
             println!(
                 "{case}: known gap, {} metric(s) not scored: hpr {}",
-                gap.metrics, gap.refusal
+                gap.metric_count, gap.refusal
             );
             continue;
         }

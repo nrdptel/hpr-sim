@@ -52,7 +52,14 @@
     "rail_length_m": 5.2,
     "inclination_deg": 85,
     "heading_deg": 0,
-    "source": "tests/fixtures/flight/flight_fixtures.py:34-36"
+    "source": "tests/fixtures/flight/flight_fixtures.py:34-36",
+    "effective_1rl_m": 3.745
+   },
+   "motor": {
+    "total_impulse_ns": 5362.290276000001,
+    "burn_out_time_s": 4.079,
+    "propellant_initial_mass_kg": 2.955911961392022,
+    "reference_pressure_pa": null
    },
    "environment": {
     "latitude_deg": 32.990254,
@@ -730,7 +737,10 @@
     "rail_exit_time_s": 0.2947025366462337,
     "burnout_altitude_agl_m": 683.7980186047334,
     "burnout_speed_m_s": 235.68602557235096,
-    "flight_time_s": 260.4441897219676
+    "flight_time_s": 260.4441897219676,
+    "apogee_drift_m": 447.073696076301,
+    "landing_drift_m": 1195.4939856894437,
+    "impact_speed_m_s": 5.456019564836863
    },
    "solver": {
     "rtol": 1e-08,
@@ -757,7 +767,10 @@
      "rail_exit_time_s": 0.29470208780717894,
      "burnout_altitude_agl_m": 683.7960375570101,
      "burnout_speed_m_s": 235.68396345613579,
-     "flight_time_s": 260.439821496239
+     "flight_time_s": 260.439821496239,
+     "apogee_drift_m": 447.06856205620784,
+     "landing_drift_m": 1195.475402894841,
+     "impact_speed_m_s": 5.4560195648368035
     },
     "relative_change_from_loose": {
      "apogee_agl_m": 9.396421146360501e-06,
@@ -771,7 +784,10 @@
      "rail_exit_time_s": 1.5230240630576567e-06,
      "burnout_altitude_agl_m": 2.897124106018893e-06,
      "burnout_speed_m_s": 8.74942080322129e-06,
-     "flight_time_s": 1.6772214167007375e-05
+     "flight_time_s": 1.6772214167007375e-05,
+     "apogee_drift_m": 1.1483610282239046e-05,
+     "landing_drift_m": 1.5544030187647306e-05,
+     "impact_speed_m_s": 1.0906843975308893e-14
     },
     "worst_relative_change_from_loose": 0.0038763043680566226
    }
@@ -805,7 +821,14 @@
     "rail_length_m": 5.7,
     "inclination_deg": 84.7,
     "heading_deg": 53,
-    "source": "docs/examples/valetudo_flight_sim.ipynb, the `parameters` dict (rail_length, inclination, heading; the means, not the dispersions)"
+    "source": "docs/examples/valetudo_flight_sim.ipynb, the `parameters` dict (rail_length, inclination, heading; the means, not the dispersions)",
+    "effective_1rl_m": 4.452
+   },
+   "motor": {
+    "total_impulse_ns": 1307.2574510000004,
+    "burn_out_time_s": 3.259,
+    "propellant_initial_mass_kg": 1.408689772020137,
+    "reference_pressure_pa": null
    },
    "environment": {
     "latitude_deg": -23.363611,
@@ -1466,7 +1489,10 @@
     "rail_exit_time_s": 0.4556715070083803,
     "burnout_altitude_agl_m": 214.4054936320938,
     "burnout_speed_m_s": 111.39217840662408,
-    "flight_time_s": 58.58157829941384
+    "flight_time_s": 58.58157829941384,
+    "apogee_drift_m": 167.71985733574164,
+    "landing_drift_m": 206.41154236864853,
+    "impact_speed_m_s": 17.626261231560633
    },
    "solver": {
     "rtol": 1e-08,
@@ -1493,7 +1519,10 @@
      "rail_exit_time_s": 0.45567092582482444,
      "burnout_altitude_agl_m": 214.40505757477717,
      "burnout_speed_m_s": 111.3925865298687,
-     "flight_time_s": 58.58180690668112
+     "flight_time_s": 58.58180690668112,
+     "apogee_drift_m": 167.72075282279647,
+     "landing_drift_m": 206.41230448613564,
+     "impact_speed_m_s": 17.626261231683564
     },
     "relative_change_from_loose": {
      "apogee_agl_m": 4.373574472739786e-06,
@@ -1507,7 +1536,10 @@
      "rail_exit_time_s": 1.2754441455158126e-06,
      "burnout_altitude_agl_m": 2.033797311965337e-06,
      "burnout_speed_m_s": 3.6638411282463757e-06,
-     "flight_time_s": 3.902374669956203e-06
+     "flight_time_s": 3.902374669956203e-06,
+     "apogee_drift_m": 5.339183261055843e-06,
+     "landing_drift_m": 3.692223207906504e-06,
+     "impact_speed_m_s": 6.9743093614056574e-12
     },
     "worst_relative_change_from_loose": 0.0017559944551715984
    }
@@ -1541,7 +1573,14 @@
     "rail_length_m": 3.353,
     "inclination_deg": 90,
     "heading_deg": 181,
-    "source": "docs/examples/ndrt_2020_flight_sim.ipynb, the `parameters` dict (rail_length, inclination, heading; the means, not the dispersions)"
+    "source": "docs/examples/ndrt_2020_flight_sim.ipynb, the `parameters` dict (rail_length, inclination, heading; the means, not the dispersions)",
+    "effective_1rl_m": 1.4620000000000002
+   },
+   "motor": {
+    "total_impulse_ns": 4671.947937000002,
+    "burn_out_time_s": 1.923,
+    "propellant_initial_mass_kg": 2.474998928387409,
+    "reference_pressure_pa": null
    },
    "environment": {
     "latitude_deg": 41.775447,
@@ -2245,7 +2284,10 @@
     "rail_exit_time_s": 0.2151474829876164,
     "burnout_altitude_agl_m": 186.49011713884744,
     "burnout_speed_m_s": 181.93097743939447,
-    "flight_time_s": 84.0717358186585
+    "flight_time_s": 84.0717358186585,
+    "apogee_drift_m": 69.59690367692836,
+    "landing_drift_m": 340.9865227238528,
+    "impact_speed_m_s": 4.603800807213657
    },
    "solver": {
     "rtol": 1e-08,
@@ -2272,7 +2314,10 @@
      "rail_exit_time_s": 0.2151423518613123,
      "burnout_altitude_agl_m": 186.4900410730529,
      "burnout_speed_m_s": 181.93227054504882,
-     "flight_time_s": 84.07453967304444
+     "flight_time_s": 84.07453967304444,
+     "apogee_drift_m": 69.59797336059972,
+     "landing_drift_m": 340.9970535786499,
+     "impact_speed_m_s": 4.603800820861145
     },
     "relative_change_from_loose": {
      "apogee_agl_m": 9.570816259614677e-06,
@@ -2286,7 +2331,10 @@
      "rail_exit_time_s": 2.3849343867959462e-05,
      "burnout_altitude_agl_m": 4.0788110221435635e-07,
      "burnout_speed_m_s": 7.107671670624621e-06,
-     "flight_time_s": 3.335073742253981e-05
+     "flight_time_s": 3.335073742253981e-05,
+     "apogee_drift_m": 1.5369702024764443e-05,
+     "landing_drift_m": 3.08834927346011e-05,
+     "impact_speed_m_s": 2.9643957581948764e-09
     },
     "worst_relative_change_from_loose": 0.001545777865464828
    }
@@ -2320,7 +2368,14 @@
     "rail_length_m": 5.18,
     "inclination_deg": 80,
     "heading_deg": 75,
-    "source": "docs/examples/prometheus_2022_flight_sim.ipynb:404-406"
+    "source": "docs/examples/prometheus_2022_flight_sim.ipynb:404-406",
+    "effective_1rl_m": 4.49
+   },
+   "motor": {
+    "total_impulse_ns": 8181.831123999998,
+    "burn_out_time_s": 5.396,
+    "propellant_initial_mass_kg": 3.737,
+    "reference_pressure_pa": null
    },
    "environment": {
     "latitude_deg": 32.939377,
@@ -2998,7 +3053,10 @@
     "rail_exit_time_s": 0.38301427458383214,
     "burnout_altitude_agl_m": 1003.9384809470275,
     "burnout_speed_m_s": 326.6319053879143,
-    "flight_time_s": 200.89804584487237
+    "flight_time_s": 200.89804584487237,
+    "apogee_drift_m": 1774.3224896980241,
+    "landing_drift_m": 1356.8169587946377,
+    "impact_speed_m_s": 7.324998673763396
    },
    "solver": {
     "rtol": 1e-08,
@@ -3025,7 +3083,10 @@
      "rail_exit_time_s": 0.38301437598620736,
      "burnout_altitude_agl_m": 1003.938250833402,
      "burnout_speed_m_s": 326.63170212670605,
-     "flight_time_s": 200.89774610817634
+     "flight_time_s": 200.89774610817634,
+     "apogee_drift_m": 1774.3216431064075,
+     "landing_drift_m": 1356.8162687313206,
+     "impact_speed_m_s": 7.324998673761714
     },
     "relative_change_from_loose": {
      "apogee_agl_m": 6.764334950729832e-07,
@@ -3039,7 +3100,10 @@
      "rail_exit_time_s": 2.647482925512591e-07,
      "burnout_altitude_agl_m": 2.2921088285328706e-07,
      "burnout_speed_m_s": 6.222944081358476e-07,
-     "flight_time_s": 1.491984129438608e-06
+     "flight_time_s": 1.491984129438608e-06,
+     "apogee_drift_m": 4.771351440223871e-07,
+     "landing_drift_m": 5.085898378398191e-07,
+     "impact_speed_m_s": 2.296532739230874e-13
     },
     "worst_relative_change_from_loose": 0.0015923313095858288
    }
@@ -3073,7 +3137,14 @@
     "rail_length_m": 5.2,
     "inclination_deg": 85,
     "heading_deg": 105,
-    "source": "docs/examples/juno3_flight_sim.ipynb, the `Flight` call"
+    "source": "docs/examples/juno3_flight_sim.ipynb, the `Flight` call",
+    "effective_1rl_m": 3.6660000000000004
+   },
+   "motor": {
+    "total_impulse_ns": 8181.831123999998,
+    "burn_out_time_s": 5.396,
+    "propellant_initial_mass_kg": 8.16938398827658,
+    "reference_pressure_pa": null
    },
    "environment": {
     "latitude_deg": 32.939377,
@@ -3734,7 +3805,10 @@
     "rail_exit_time_s": 0.44470489395997914,
     "burnout_altitude_agl_m": 673.1791615287189,
     "burnout_speed_m_s": 223.80916208667793,
-    "flight_time_s": 134.79526895399863
+    "flight_time_s": 134.79526895399863,
+    "apogee_drift_m": 582.4052638433105,
+    "landing_drift_m": 268.3169036807095,
+    "impact_speed_m_s": 22.432300116375785
    },
    "solver": {
     "rtol": 1e-08,
@@ -3761,7 +3835,10 @@
      "rail_exit_time_s": 0.4447009904020244,
      "burnout_altitude_agl_m": 673.1767454424785,
      "burnout_speed_m_s": 223.8088027396229,
-     "flight_time_s": 134.79488116760663
+     "flight_time_s": 134.79488116760663,
+     "apogee_drift_m": 582.4081625281707,
+     "landing_drift_m": 268.30993922734234,
+     "impact_speed_m_s": 22.43230011646713
     },
     "relative_change_from_loose": {
      "apogee_agl_m": 3.5445581861140086e-06,
@@ -3775,14 +3852,17 @@
      "rail_exit_time_s": 8.777861471244718e-06,
      "burnout_altitude_agl_m": 3.589068673615184e-06,
      "burnout_speed_m_s": 1.6055958195540854e-06,
-     "flight_time_s": 2.8768546181625167e-06
+     "flight_time_s": 2.8768546181625167e-06,
+     "apogee_drift_m": 4.977092482007626e-06,
+     "landing_drift_m": 2.595607385013063e-05,
+     "impact_speed_m_s": 4.071977502162511e-12
     },
     "worst_relative_change_from_loose": 0.0029520350705938675
    }
   },
   {
    "name": "bella-lui",
-   "source": "docs/examples/bella_lui_flight_sim.ipynb:75-115 (parameters), :257-275 (motor), :366-379 (rocket, rail buttons, add_motor), :395-413 (nose, fins, tail), :429-436 (parachute); site and wind: docs/examples/bella_lui_flight_sim.ipynb:139-153 (elevation, latitude, longitude; the example's wind comes from an ERA5 reanalysis file); the wind is declared by this script; rail: docs/examples/bella_lui_flight_sim.ipynb:75-115, the `parameters` dict (rail_length, inclination, heading; the means, not the dispersions)",
+   "source": "docs/examples/bella_lui_flight_sim.ipynb:75-115 (parameters), :257-275 (motor), :366-379 (rocket, rail buttons, add_motor), :395-413 (nose, fins, tail), :429-436 (parachute); site and wind: docs/examples/bella_lui_flight_sim.ipynb:139-153 (elevation, latitude, longitude; the example's wind comes from an ERA5 reanalysis file, and its gravity=9.81 is replaced by RocketPy's Somigliana gravity, as for every case); the wind is declared by this script; rail: docs/examples/bella_lui_flight_sim.ipynb:75-115, the `parameters` dict (rail_length, inclination, heading; the means, not the dispersions)",
    "design": "validation/designs/rocketpy-bella-lui.json",
    "thrust_substitute": {
     "file": "crates/hpr-motor/data/thrustcurve/curves/5f4294d20002e9000000073d.eng",
@@ -3809,7 +3889,14 @@
     "rail_length_m": 4.2,
     "inclination_deg": 89,
     "heading_deg": 45,
-    "source": "docs/examples/bella_lui_flight_sim.ipynb:75-115, the `parameters` dict (rail_length, inclination, heading; the means, not the dispersions)"
+    "source": "docs/examples/bella_lui_flight_sim.ipynb:75-115, the `parameters` dict (rail_length, inclination, heading; the means, not the dispersions)",
+    "effective_1rl_m": 2.9644000000000004
+   },
+   "motor": {
+    "total_impulse_ns": 2255.140217,
+    "burn_out_time_s": 2.198,
+    "propellant_initial_mass_kg": 0.8237722431150509,
+    "reference_pressure_pa": null
    },
    "environment": {
     "latitude_deg": 47.213476,
@@ -4470,7 +4557,10 @@
     "rail_exit_time_s": 0.3437520062439915,
     "burnout_altitude_agl_m": 119.66365649506236,
     "burnout_speed_m_s": 96.6561566633442,
-    "flight_time_s": 39.295132956929585
+    "flight_time_s": 39.295132956929585,
+    "apogee_drift_m": 123.92788047306846,
+    "landing_drift_m": 74.55318348019024,
+    "impact_speed_m_s": 19.673890568217736
    },
    "solver": {
     "rtol": 1e-08,
@@ -4497,7 +4587,10 @@
      "rail_exit_time_s": 0.34375021272087525,
      "burnout_altitude_agl_m": 119.66340506145309,
      "burnout_speed_m_s": 96.65621545450539,
-     "flight_time_s": 39.29517597618402
+     "flight_time_s": 39.29517597618402,
+     "apogee_drift_m": 123.9291121707582,
+     "landing_drift_m": 74.55449397143325,
+     "impact_speed_m_s": 19.673890567705424
     },
     "relative_change_from_loose": {
      "apogee_agl_m": 1.3639887197560195e-06,
@@ -4511,7 +4604,10 @@
      "rail_exit_time_s": 5.2174913416263125e-06,
      "burnout_altitude_agl_m": 2.1011693661130115e-06,
      "burnout_speed_m_s": 6.082505575408857e-07,
-     "flight_time_s": 1.0947730977634503e-06
+     "flight_time_s": 1.0947730977634503e-06,
+     "apogee_drift_m": 9.938826396811432e-06,
+     "landing_drift_m": 1.7577938081637622e-05,
+     "impact_speed_m_s": 2.60401962106918e-11
     },
     "worst_relative_change_from_loose": 0.0008040416649695616
    }

@@ -12,9 +12,10 @@ use hpr_core::gravity::NormalGravity;
 use hpr_core::interp::{Extrapolation, Interpolation, Table1D};
 use hpr_design::{MassProperties, Rocket};
 use hpr_sim::{
-    Device, DeviceDrag, Environment, EventKind, FlightSettings, FlightStep, Observer, Phase, Rail,
-    Sample, SimError, Simulation, State, Termination, Trigger,
+    Device, DeviceDrag, Direction, Environment, EventKind, FlightSettings, FlightStep, Observer,
+    Phase, Rail, Sample, SimError, Simulation, State, Termination, Trigger, UserEvent,
 };
+use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 
 use crate::case::{Case, CaseLock, Flight, cases_dir, committed_cases};
@@ -174,7 +175,8 @@ pub fn run_lock(root: &Path, fast: bool) -> Result<Report, ValidateError> {
 }
 
 /// What running one case gives.
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[non_exhaustive]
 pub struct CaseRun {
     /// One comparison per metric, or none for a known gap.
     pub comparisons: Vec<Comparison>,
@@ -277,23 +279,31 @@ pub fn run_case(root: &Path, case: &Case) -> Result<CaseRun, ValidateError> {
                 case.id
             )));
         }
-        (Flown::RefusedAtMach { refusal, .. }, Some(reason)) => {
+        (Flown::RefusedAtMach { mach }, Some(reason)) => {
             return Ok(CaseRun {
                 comparisons: Vec::new(),
                 source,
                 gap: Some(Gap {
                     case: case.id.clone(),
                     reason,
-                    refusal,
-                    metrics: case.metrics.len(),
+                    // Rounded: the report is pinned across platforms. The integrator narrows its
+                    // step onto the boundary, so this is Mach 1.000 wherever it runs.
+                    refusal: format!(
+                        "refused the flight at Mach {mach:.3}, outside its subsonic models' range \
+                         of [0, 1)"
+                    ),
+                    mach,
+                    metric_count: case.metrics.len(),
                 }),
             });
         }
-        (Flown::RefusedAtMach { mach, refusal }, None) => {
+        (Flown::RefusedAtMach { mach }, None) => {
+            // The error hpr raised, which carries nothing but this Mach number.
+            let error = SimError::Aero(AeroError::Mach { mach });
             return Err(ValidateError::Flight {
                 case: case.id.clone(),
-                what: refusal,
-                source: Some(Box::new(SimError::Aero(AeroError::Mach { mach }))),
+                what: error.to_string(),
+                source: Some(Box::new(error)),
             });
         }
     };
@@ -361,12 +371,11 @@ enum Setup {
 enum Flown {
     /// It reached the ground, and these are its metrics.
     Measured(Measured),
-    /// hpr refused it at this Mach number, which its aerodynamics do not cover until M1.8.
+    /// hpr refused it at this Mach number, at or past 1, which its aerodynamics do not cover
+    /// until M1.8.
     RefusedAtMach {
         /// The Mach number it refused.
         mach: f64,
-        /// hpr's words.
-        refusal: String,
     },
 }
 
@@ -641,8 +650,9 @@ fn rocketpy_environment(
 ///   (`effective_1rl`, `flight.py:1716-1730`), where hpr's own rail exit is the aft-most guide's
 ///   ([Loft lesson L26][l26]). hpr is still on its rail then, so the harness finds the instant the
 ///   forward guide's travel is reached and reads the speed there.
-/// - The maxima are over the solver's steps, as RocketPy's are over its solution array; the
-///   power-on maximum is over the steps up to burnout (`max_acceleration_power_on`).
+/// - The maxima are over the solver's steps, both ends of each, as RocketPy's are over its
+///   solution array, which starts each phase at its first instant; the power-on maximum is over
+///   the steps up to burnout (`max_acceleration_power_on`).
 ///
 /// [l26]: https://nrdptel.github.io/hpr-sim/decisions-and-roadmap.html#l26
 /// [l80]: https://github.com/nrdptel/hpr-sim/blob/main/docs/research/loft-lessons.md
@@ -724,33 +734,6 @@ fn fly_whole_flight(
         )?;
         let drag = DragTable::new(table.clone(), Some(table))
             .with_reference_diameter_m(2.0 * setup.reference_radius_m);
-        let devices = setup
-            .devices
-            .iter()
-            .enumerate()
-            .map(|(index, device)| {
-                let trigger = match device.height_above_ground_m {
-                    Some(height_above_ground_m) => Trigger::Altitude {
-                        height_above_ground_m,
-                    },
-                    None => Trigger::Apogee,
-                };
-                let mut built = Device::new(
-                    &device.name,
-                    DeviceDrag::DragArea {
-                        cd_s_m2: device.cd_s_m2,
-                    },
-                    trigger,
-                )
-                .with_lag_s(device.lag_s);
-                // RocketPy flies one parachute at a time, the last deployed (flight.py:1404-1431);
-                // hpr sums its open devices, so each one releases the one before as it opens.
-                if index + 1 < setup.devices.len() {
-                    built = built.with_release_by(index + 1);
-                }
-                built
-            })
-            .collect();
         let simulation = Simulation::new(
             &rocket,
             configuration,
@@ -761,11 +744,10 @@ fn fly_whole_flight(
                 ..FlightSettings::default()
             },
         )?
-        .with_drag_table(drag)
-        .with_recovery(devices)?;
+        .with_drag_table(drag);
 
-        // L75: the same rocket has to weigh the same, and fly its drag on the same area, in both
-        // codes before any difference in how it flies can be read as physics.
+        // L75: the same rocket has to weigh the same, fly its drag on the same area and burn the
+        // same motor in both codes before any difference in how it flies can be read as physics.
         let assembly = simulation.assembly();
         let dry = assembly
             .motors
@@ -795,28 +777,105 @@ fn fly_whole_flight(
                 setup.reference_area_m2, setup.reference_radius_m
             )));
         }
+        let [placed] = assembly.motors.as_slice() else {
+            return Ok(Err(format!(
+                "the design flies {} motors, where RocketPy's examples fly one",
+                assembly.motors.len()
+            )));
+        };
+        let motor = &placed.mounted.motor;
+        for (what, hpr, rocketpy) in [
+            (
+                "total impulse, N s",
+                motor.curve().total_impulse_ns(),
+                setup.motor.total_impulse_ns,
+            ),
+            (
+                "burn-out time, s",
+                motor.burnout_time_s(),
+                setup.motor.burn_out_time_s,
+            ),
+            (
+                "initial propellant mass, kg",
+                motor.propellant_initial_mass_kg(),
+                setup.motor.propellant_initial_mass_kg,
+            ),
+        ] {
+            let gap = (hpr - rocketpy).abs() / rocketpy.abs();
+            if !gap.is_finite() || gap > MASS_AGREEMENT {
+                return Ok(Err(format!(
+                    "hpr's motor has a {what} of {hpr} where the reference flew {rocketpy}, a \
+                     relative {gap:.3e}"
+                )));
+            }
+        }
+        // The input this milestone found transcribed wrong: a correction for ambient pressure
+        // that RocketPy's examples never apply.
+        let reference_pa = motor
+            .nozzle()
+            .and_then(|nozzle| nozzle.reference_pressure_pa);
+        if reference_pa != setup.motor.reference_pressure_pa {
+            return Ok(Err(format!(
+                "hpr's motor corrects its thrust for a reference pressure of {reference_pa:?} Pa, \
+                 where the reference flew {:?}",
+                setup.motor.reference_pressure_pa
+            )));
+        }
 
-        let guides = simulation.guides();
+        // RocketPy's tracked point, the centre of dry mass, starts at the ground
+        // (`z_init = elevation`, flight.py:1553); hpr's starts `h0` above it, with the rocket's
+        // aft end at the rail's foot. So heights are measured from `h0`, the main opens `h0`
+        // higher, and the flight lands when it is back at `h0`, where RocketPy's does.
+        let start = simulation.initial_state();
+        let origin = start.position_enu_m + start.attitude.mul_vec3(dry.cg_m);
+        let h0 = origin.z;
+        let devices = setup
+            .devices
+            .iter()
+            .enumerate()
+            .map(|(index, device)| {
+                let trigger = match device.height_above_ground_m {
+                    Some(height_above_ground_m) => Trigger::Altitude {
+                        height_above_ground_m: height_above_ground_m + h0,
+                    },
+                    None => Trigger::Apogee,
+                };
+                let mut built = Device::new(
+                    &device.name,
+                    DeviceDrag::DragArea {
+                        cd_s_m2: device.cd_s_m2,
+                    },
+                    trigger,
+                )
+                .with_lag_s(device.lag_s);
+                // RocketPy flies one parachute at a time, the last deployed (flight.py:1404-1431);
+                // hpr sums its open devices, so each one releases the one before as it opens.
+                if index + 1 < setup.devices.len() {
+                    built = built.with_release_by(index + 1);
+                }
+                built
+            })
+            .collect();
+        let simulation = simulation.with_recovery(devices)?.with_event(UserEvent {
+            name: "back at the starting height".to_owned(),
+            direction: Direction::Falling,
+            function: Box::new(move |sample: &Sample| sample.height_above_ground_m - h0),
+        });
+
         let mut peaks = Peaks {
             dry_cg_m: dry.cg_m,
             rail_axis_enu: rail.direction_enu(),
-            aft_station_m: guides.aft_station_m,
-            forward_guide_travel_m: guides.first_guide_exit_travel_m(rail.length_m),
+            start_enu_m: start.position_enu_m,
+            forward_guide_travel_m: setup.effective_1rl_m,
             forward_guide_exit: None,
             rows: Vec::new(),
         };
         let result = match simulation.run(&mut peaks) {
             Ok(result) => result,
-            Err(SimError::Aero(AeroError::Mach { mach })) => {
-                // Rounded, because the report is pinned across platforms and the last digits of
-                // where the flight crossed Mach 1 are not.
-                return Ok(Ok(Flown::RefusedAtMach {
-                    mach,
-                    refusal: format!(
-                        "refused the flight at Mach {mach:.3}, outside its subsonic models' range \
-                         of [0, 1)"
-                    ),
-                }));
+            // Only a real Mach number at or past 1: the aerodynamics raise the same error for a
+            // NaN, and that is a failure, not the known gap.
+            Err(SimError::Aero(AeroError::Mach { mach })) if mach.is_finite() && mach >= 1.0 => {
+                return Ok(Ok(Flown::RefusedAtMach { mach }));
             }
             Err(error) => return Err(error),
         };
@@ -835,23 +894,38 @@ fn fly_whole_flight(
         let (apogee, burnout, landing) = match (
             event(EventKind::Apogee),
             event(EventKind::Burnout),
-            event(EventKind::GroundHit),
+            event(EventKind::User(0)),
         ) {
             (Ok(apogee), Ok(burnout), Ok(landing)) => (apogee, burnout, landing),
             (Err(what), _, _) | (_, Err(what), _) | (_, _, Err(what)) => return Ok(Err(what)),
         };
         let Some((rail_exit_time_s, rail_exit_speed_m_s)) = peaks.forward_guide_exit else {
-            return Ok(Err(
-                "the forward guide never reached the top of the rail".to_owned()
-            ));
+            return Ok(Err(format!(
+                "the rocket never travelled RocketPy's effective_1rl, {} m, along the rail",
+                setup.effective_1rl_m
+            )));
         };
-        let fastest = peaks
+        // The flight is RocketPy's until it lands, which is where its record ends.
+        let flown: Vec<&Row> = peaks
             .rows
             .iter()
-            .map(|row| row.speed_m_s)
-            .fold(0.0, f64::max);
-        let max_mach = peaks.rows.iter().map(|row| row.mach).fold(0.0, f64::max);
-        let hardest = |rows: &mut dyn Iterator<Item = &Row>| {
+            .filter(|row| row.time_s <= landing.time_s)
+            .collect();
+        // `f64::max` passes over a NaN, so a sample that is not a number would vanish from the
+        // maxima below rather than fail them. Refuse the flight instead.
+        if let Some(row) = flown.iter().find(|row| {
+            !(row.speed_m_s.is_finite()
+                && row.mach.is_finite()
+                && row.acceleration_m_s2.is_finite())
+        }) {
+            return Ok(Err(format!(
+                "the flight has a sample that is not a number at {} s: {row:?}",
+                row.time_s
+            )));
+        }
+        let fastest = flown.iter().map(|row| row.speed_m_s).fold(0.0, f64::max);
+        let max_mach = flown.iter().map(|row| row.mach).fold(0.0, f64::max);
+        let hardest = |rows: &mut dyn Iterator<Item = &&Row>| {
             rows.fold((0.0, 0.0), |(peak, at), row| {
                 if row.acceleration_m_s2 > peak {
                     (row.acceleration_m_s2, row.time_s)
@@ -860,12 +934,18 @@ fn fly_whole_flight(
                 }
             })
         };
-        let (max_acceleration, max_acceleration_time_s) = hardest(&mut peaks.rows.iter());
+        let (max_acceleration, max_acceleration_time_s) = hardest(&mut flown.iter());
         let (max_acceleration_power_on, _) =
-            hardest(&mut peaks.rows.iter().filter(|row| row.time_s <= burnout.time_s));
+            hardest(&mut flown.iter().filter(|row| row.time_s <= burnout.time_s));
+        // Where it went, from where the dry centre of mass started, as RocketPy's x and y are.
+        let drift = |state: &State| {
+            (state.position_enu_m + state.attitude.mul_vec3(dry.cg_m) - origin)
+                .truncate()
+                .length()
+        };
 
         let mut measured = Measured::default();
-        measured.insert("apogee_agl_m", apogee.height_above_ground_m);
+        measured.insert("apogee_agl_m", apogee.height_above_ground_m - h0);
         measured.insert("apogee_time_s", apogee.time_s);
         measured.insert("max_speed_m_s", fastest);
         measured.insert("max_mach", max_mach);
@@ -874,12 +954,16 @@ fn fly_whole_flight(
         measured.insert("max_acceleration_power_on_m_s2", max_acceleration_power_on);
         measured.insert("rail_exit_speed_m_s", rail_exit_speed_m_s);
         measured.insert("rail_exit_time_s", rail_exit_time_s);
-        measured.insert("burnout_altitude_agl_m", burnout.height_above_ground_m);
+        // At burnout the propellant is gone, so the centre of mass is the dry one.
+        measured.insert("burnout_altitude_agl_m", burnout.height_above_ground_m - h0);
         measured.insert(
             "burnout_speed_m_s",
             point_velocity(&burnout.state, dry.cg_m).length(),
         );
         measured.insert("flight_time_s", landing.time_s);
+        measured.insert("apogee_drift_m", drift(&apogee.state));
+        measured.insert("landing_drift_m", drift(&landing.state));
+        measured.insert("impact_speed_m_s", -landing.vertical_speed_m_s);
         Ok(Ok(Flown::Measured(measured)))
     };
     match flight() {
@@ -914,19 +998,20 @@ struct Peaks {
     dry_cg_m: DVec3,
     /// The rail's axis, up the rail.
     rail_axis_enu: DVec3,
-    /// The rocket's aft end, m aft of the nose tip; it starts at the rail's foot.
-    aft_station_m: f64,
-    /// How far the rocket travels before its forward guide leaves the top of the rail, m.
+    /// The nose tip's position at ignition, m.
+    start_enu_m: DVec3,
+    /// How far the rocket travels along the rail before RocketPy's forward button leaves its top,
+    /// m (`effective_1rl`).
     forward_guide_travel_m: f64,
     /// When that happened and the speed then, once it has.
     forward_guide_exit: Option<(f64, f64)>,
-    /// A row at the first step's start and at every step's end.
+    /// A row at every step's start and end.
     rows: Vec<Row>,
 }
 
 impl Peaks {
     /// The row at `t_s` within `step`.
-    fn row(&self, step: &dyn FlightStep, t_s: f64) -> Result<Row, SimError> {
+    fn row(&self, step: &dyn FlightStep, t_s: f64) -> Result<Option<Row>, SimError> {
         let sample: Sample = step.sample(t_s)?;
         let state = sample.state;
         let omega = state.body_rate_rad_s;
@@ -935,12 +1020,16 @@ impl Peaks {
         // of its dense output: a backward difference over a microsecond, or over the step's first
         // quarter if it is shorter. Off the free phase nothing rotates.
         let omega_dot = if step.phase() == Phase::Free {
-            let h = (0.25 * (t_s - step.start_s())).min(1e-6);
-            if h > 0.0 {
-                (omega - step.state_at(t_s - h).body_rate_rad_s) / h
+            let back = (0.25 * (t_s - step.start_s())).min(1e-6);
+            let ahead = (0.25 * (step.end_s() - t_s)).min(1e-6);
+            if back > 0.0 {
+                (omega - step.state_at(t_s - back).body_rate_rad_s) / back
+            } else if ahead > 0.0 {
+                (step.state_at(t_s + ahead).body_rate_rad_s - omega) / ahead
             } else {
-                let h = (0.25 * (step.end_s() - t_s)).min(1e-6);
-                (step.state_at(t_s + h).body_rate_rad_s - omega) / h
+                // A step of no length has no interpolant to differentiate, and its instant is
+                // the end of the step before it, which is already a row.
+                return Ok(None);
             }
         } else {
             DVec3::ZERO
@@ -949,18 +1038,17 @@ impl Peaks {
             + state
                 .attitude
                 .mul_vec3(omega_dot.cross(p) + omega.cross(omega.cross(p)));
-        Ok(Row {
+        Ok(Some(Row {
             time_s: t_s,
             speed_m_s: point_velocity(&state, p).length(),
             mach: sample.mach,
             acceleration_m_s2: acceleration.length(),
-        })
+        }))
     }
 
     /// How far past the forward guide's exit the rocket has travelled at `t_s`, m.
     fn past_forward_guide(&self, step: &dyn FlightStep, t_s: f64) -> f64 {
-        step.state_at(t_s).position_enu_m.dot(self.rail_axis_enu)
-            - self.aft_station_m
+        (step.state_at(t_s).position_enu_m - self.start_enu_m).dot(self.rail_axis_enu)
             - self.forward_guide_travel_m
     }
 }
@@ -968,12 +1056,12 @@ impl Peaks {
 impl Observer for Peaks {
     fn step(&mut self, step: &dyn FlightStep) -> Result<(), SimError> {
         let (start_s, end_s) = (step.start_s(), step.end_s());
-        if self.rows.is_empty() {
-            let row = self.row(step, start_s)?;
-            self.rows.push(row);
-        }
-        let row = self.row(step, end_s)?;
-        self.rows.push(row);
+        // Each step's start as well as its end: after an event the start is the new phase's first
+        // instant, such as a canopy fully open, where the deceleration peaks. Taking only the ends
+        // would read that peak one step late, wherever the step control happens to put it, which
+        // differs across platforms in the sixth figure where the peak falls steeply.
+        self.rows.extend(self.row(step, start_s)?);
+        self.rows.extend(self.row(step, end_s)?);
         if self.forward_guide_exit.is_none()
             && step.phase() == Phase::Rail
             && self.past_forward_guide(step, end_s) >= 0.0
@@ -1016,7 +1104,7 @@ pub const DESCENT_METRICS: [&str; 6] = [
 ];
 
 /// The metric names a whole-flight case can report: `flight.py`'s, as RocketPy defines them.
-pub const WHOLE_FLIGHT_METRICS: [&str; 12] = [
+pub const WHOLE_FLIGHT_METRICS: [&str; 15] = [
     "apogee_agl_m",
     "apogee_time_s",
     "max_speed_m_s",
@@ -1029,10 +1117,13 @@ pub const WHOLE_FLIGHT_METRICS: [&str; 12] = [
     "burnout_altitude_agl_m",
     "burnout_speed_m_s",
     "flight_time_s",
+    "apogee_drift_m",
+    "landing_drift_m",
+    "impact_speed_m_s",
 ];
 
 /// The parts of a reference a whole-flight case needs, read from the generator's own JSON.
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct WholeFlightSetup {
     /// The design the oracle flew, from the repository root.
     pub design: String,
@@ -1052,6 +1143,11 @@ pub struct WholeFlightSetup {
     pub inclination_deg: f64,
     /// Its heading, clockwise from north, degrees.
     pub heading_deg: f64,
+    /// How far RocketPy's rocket travels along the rail before its forward button leaves the top,
+    /// m (`effective_1rl`): where the rail-exit metrics are taken.
+    pub effective_1rl_m: f64,
+    /// The motor as RocketPy flew it, which hpr's must match.
+    pub motor: FlightMotor,
     /// The `(Mach, C_D0)` rows the case flew, power on and off alike.
     pub cd0_vs_mach: Vec<(f64, f64)>,
     /// The rows the generator declares for every case, which the case's must equal.
@@ -1064,8 +1160,21 @@ pub struct WholeFlightSetup {
     pub devices: Vec<FlightDevice>,
 }
 
+/// The motor of a whole flight, as the reference records RocketPy flying it.
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+pub struct FlightMotor {
+    /// The thrust curve's total impulse, N s.
+    pub total_impulse_ns: f64,
+    /// When the curve ends, s after ignition.
+    pub burn_out_time_s: f64,
+    /// The propellant's mass at ignition, kg.
+    pub propellant_initial_mass_kg: f64,
+    /// The pressure the curve is corrected from, Pa; `None` for no correction.
+    pub reference_pressure_pa: Option<f64>,
+}
+
 /// One recovery device of a whole flight, as the reference declares it.
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct FlightDevice {
     /// Its name, for reports.
     pub name: String,
@@ -1078,7 +1187,7 @@ pub struct FlightDevice {
 }
 
 /// The parts of a reference a descent case needs, read from the generator's own JSON.
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct DescentSetup {
     /// The design the oracle flew, from the repository root.
     pub design: String,
@@ -1106,7 +1215,7 @@ pub struct DescentSetup {
 }
 
 /// One device as the reference declares it.
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct DescentDevice {
     /// Its name, for reports.
     pub name: String,

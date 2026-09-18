@@ -137,6 +137,7 @@ impl Comparison {
 /// It is not a pass and not a quiet omission. The report prints it in a section of its own, with
 /// the case's reason and hpr's refusal, and the summary counts it apart.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[non_exhaustive]
 pub struct Gap {
     /// The case's id.
     pub case: String,
@@ -144,8 +145,10 @@ pub struct Gap {
     pub reason: String,
     /// What hpr said when it refused the flight.
     pub refusal: String,
-    /// The metrics the case would have scored, with the tolerances they will be held to.
-    pub metrics: usize,
+    /// The Mach number hpr refused.
+    pub mach: f64,
+    /// How many metrics the case would have scored, with the tolerances they will be held to.
+    pub metric_count: usize,
 }
 
 /// Where a case's reference came from.
@@ -317,7 +320,7 @@ impl Report {
             for gap in &self.gaps {
                 out.push_str(&format!(
                     "- **{}**: {} metric(s), none scored. {} hpr: {}\n",
-                    gap.case, gap.metrics, gap.reason, gap.refusal
+                    gap.case, gap.metric_count, gap.reason, gap.refusal
                 ));
             }
         }
@@ -333,13 +336,24 @@ impl Report {
                 source.overrides
             ));
         }
-        if let Some(source) = self.sources.first() {
+        // Each reference's own command, once, in the order the cases first name it.
+        let mut commands: Vec<&str> = Vec::new();
+        for source in &self.sources {
+            if !commands.contains(&source.command.as_str()) {
+                commands.push(&source.command);
+            }
+        }
+        if !commands.is_empty() {
             out.push_str(&format!(
-                "\nRegenerate with `{}`, after `cargo xtask refs fetch` has put the oracle in the \
+                "\nRegenerate with {}, after `cargo xtask refs fetch` has put the oracle in the \
                  gitignored `refs/`. A reference moves only when its generator runs, which is a \
                  deliberate step: it is never regenerated to make a comparison pass (Loft lesson \
                  L76).\n",
-                source.command
+                commands
+                    .iter()
+                    .map(|command| format!("`{command}`"))
+                    .collect::<Vec<_>>()
+                    .join(" and ")
             ));
         }
         out

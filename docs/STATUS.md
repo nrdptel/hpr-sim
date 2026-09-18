@@ -12,10 +12,10 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
 
 ## Handoff (overwrite each session)
 
-M2.1b2 (ADR-021): six whole-flight cases in the lock. Five pass, 58 metrics within 3% (largest
-+1.783%), two argued as not scored, and Prometheus is a known gap (Mach 1.014). The designs now
-fly RocketPy's thrust as measured (`Nozzle::reference_pressure_pa: None`), which moved the site's
-example flights (first flight 874.0 to 779.0 m).
+M2.1b2 (ADR-021): six whole-flight cases. Five pass (64 metrics within 3%), Prometheus is a known
+gap (Mach 1.014), and eleven metrics are argued as not scored, nine of them the path in wind:
+hpr turns into the wind far more than RocketPy (issue #50, open). The designs fly RocketPy's
+thrust as measured (`reference_pressure_pa: null`); the first flight went from 874.0 to 779.0 m.
 
 - **Page rules** (ADR-016 to ADR-020): relative links between pages, GitHub URLs for the rest,
   labels as links to their rows, none in headings, Unicode equations; new pages in `SUMMARY.md`; a
@@ -35,6 +35,7 @@ Next, M2.1c: predicted mode, a CI job for `cargo xtask validate`, and manual reg
   and carry their own terms (ADR-009). Results computed from them may be published; the curves
   may not. Decide in an ADR; otherwise report hpr's predicted apogee beside the same-drag one and
   say what it is.
+- **Issue #50** (the path in wind) is the largest open physics question; bisect it before M2.2.
 - **Prometheus stays a gap** until M1.8; `a_known_gap_is_checked_not_trusted` fails the run once
   hpr flies it. Remove `known_gap` then; its tolerances are already argued.
 - **CI:** `cargo test` already runs every case against the committed report, pinned to six
@@ -47,9 +48,8 @@ Next, M2.1c: predicted mode, a CI job for `cargo xtask validate`, and manual reg
 
 ## Done log (newest first, keep about 15)
 
-- 2026-09-18: M2.1b2 The whole-flight cases (PR #49, ADR-021): six cases, five pass (58
-  metrics within 3%, largest +1.783%), Prometheus a checked gap; the L75 test; Bella Lui added;
-  designs fly RocketPy's uncorrected thrust (`reference_pressure_pa: None`).
+- 2026-09-18: M2.1b2 The whole-flight cases (PR #49, ADR-021): five pass (64 metrics within
+  3%), Prometheus a checked gap, the path in wind not scored (#50); the L75 test; Bella Lui added.
 - 2026-09-18: M0.4e The reader test (PR #47, ADR-020): cold readers answered 5, then 9 of 10
   questions (the tenth then fixed); every flagged term fixed; four examples in CI; labels link rows
   held to the roadmap, in the API reference too (#44).
