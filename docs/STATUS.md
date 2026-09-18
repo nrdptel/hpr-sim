@@ -23,9 +23,9 @@ variant beside `RecoveryDescent`, five cases in the lock, and the L75 test. Star
 - **Two gaps the cases must report, not hide.** Prometheus peaks at Mach 1.014 and hpr refuses
   `M >= 1` until M1.8, so that case is a declared gap. And the oracle's own solver is fragile here:
   at rtol 1e-6, RocketPy's default, none of the five cases leaves the rail (apogee 0, nothing
-  deployed, the run hits `max_time`), and at 1e-7 NDRT still does not. The cause is open;
-  thrust-to-weight of 5.8 to 12.3 rules out a marginal liftoff. Worth an issue before b2 gates on
-  these numbers.
+  deployed, the run hits `max_time`), and at 1e-7 NDRT still does not. The cause is open (#33);
+  thrust-to-weight of 5.8 to 12.3 rules out a marginal liftoff, so do not gate b2 on the oracle
+  being run at any tolerance but the 1e-8 the fixture records.
 - **Argue each tolerance in the case file** and fly `GravityModel::VerticalTaylor` (ADR-015);
   expect differences from RocketPy's added mass, its rail exit and `0.25*n^2` (ADR-011).
 - **The harness, unchanged from M2.1a:** it never writes a reference (L76), refuses a value with no
