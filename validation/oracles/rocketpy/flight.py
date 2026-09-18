@@ -56,17 +56,18 @@ COMMAND = "refs/venv/bin/python validation/oracles/rocketpy/flight.py"
 # see the module docstring. Constant, so that nothing about the curve's shape is invented.
 DECLARED_CD0 = [[0.0, 0.5], [3.0, 0.5]]
 
-# RocketPy's thrust `Function` extrapolates to zero, and every bundled substitute curve starts at
-# t = 0.008 s, so thrust(0) is exactly 0. On the rail `Flight.udot_rail1` then clamps the
-# acceleration to zero (RocketPy's rocketpy/simulation/flight.py:1862-1871, not this file), so the derivative at the initial state is the zero
-# vector. With RocketPy's defaults (`time_overshoot=True`, `max_time_step=inf`) the rail phase's
-# bound is `max_time`, and LSODA, handed a zero derivative and a 6000 s horizon, takes one step
-# straight over the whole burn: the rocket never leaves the rail and the run reports apogee 0.
+# RocketPy's `.eng` reader puts a (0, 0) point before the file's first one (RocketPy's
+# rocketpy/motors/motor.py:1133, not this file), so thrust ramps linearly from exactly 0 at t = 0.
+# On the rail `Flight.udot_rail1` then clamps the acceleration to zero (RocketPy's
+# rocketpy/simulation/flight.py:1862-1871), so the derivative at the initial state is the zero
+# vector. With no step bound (`max_time_step=inf`, RocketPy's default) the rail phase's bound is
+# `max_time`, and this script's 6000 s horizon, ten times RocketPy's default 600 s, lets LSODA's
+# first step go straight over the whole burn: the rocket never leaves the rail.
 #
-# Bounding `max_time_step` is the fix, and it is what RocketPy's own examples do. Measured on
-# valetudo with nothing else changed: at RocketPy's default tolerances the flight goes from apogee
-# 0 to 778.881 m AGL, leaving the rail at 0.4557 s. So the reference is no longer sitting one
-# decade from total failure, and the loose run below is a real one again.
+# Bounding `max_time_step` is the fix. Measured at rtol 1e-6 with nothing else changed, all five
+# cases: RocketPy's own defaults (`max_time` 600, no bound) fly (valetudo 778.812 m AGL); a
+# `max_time` of 6000 with no bound leaves every one on the rail; 6000 with a 0.05 s bound flies
+# every one again (valetudo 778.881 m, rail exit 0.4557 s).
 MAX_TIME_STEP_S = 0.05
 
 # Tighter than RocketPy's defaults (rtol 1e-6, atol 1e-3 on position), so the reference is the

@@ -414,12 +414,13 @@
       so it is an `M >= 1` gap for M2.1b2 to report, not to hide. The loose run is at rtol = atol =
       1e-6 (RocketPy's default rtol) against the 1e-8 reference: worst metric change 3.9e-3.
 
-      On the way in, the oracle would not fly at all at any tolerance looser than 1e-8, and the
-      cause turned out to be a step-size cliff, not the marginal liftoff first guessed: every
-      bundled substitute curve starts at t = 0.008 s and RocketPy extrapolates thrust to zero, so
-      thrust(0) is 0, `udot_rail1` clamps the acceleration to zero, and with an unbounded step
-      LSODA steps over the whole burn. Bounding `max_time_step` to 0.05 s fixes it: the loose run
-      above flies all five (issue #33).
+      On the way in, no case flew at rtol 1e-6 and NDRT did not at 1e-7. The cause was a
+      step-size cliff of the oracle's own making, not the marginal liftoff first guessed.
+      RocketPy's `.eng` reader starts every curve at (0, 0), so thrust(0) is 0 and `udot_rail1`
+      clamps the acceleration to zero; with no step bound, the oracle's 6000 s `max_time` (ten
+      times RocketPy's default) lets LSODA step over the whole burn. RocketPy's own defaults fly
+      all five. Bounding `max_time_step` to 0.05 s fixes it: the loose run above flies all five
+      (issue #33). For M2.1b2, thrust ramps linearly from 0 at t = 0 to the file's first point.
       `max_acceleration` is recorded with the instant it occurs and beside a power-on maximum,
       because for NDRT and Prometheus the whole-flight maximum is the parachute inflating (191.8
       at 54.9 s against 114.2 power-on), which is not a flight load and is a transient the two

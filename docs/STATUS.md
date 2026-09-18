@@ -46,8 +46,8 @@ beside `RecoveryDescent`, five cases in the lock, and the L75 test. Start here:
 - 2026-09-17: M2.1b1 The whole-flight oracle: `validation/oracles/rocketpy/flight.py` flies the
   five examples pad to landing under a declared constant `C_D0` (RocketPy's own exports carry
   their own terms), reproducible byte for byte. Apogees 779 to 3,623 m AGL; Prometheus reaches
-  Mach 1.014. Bounding `max_time_step` fixed a step-size cliff that kept every case on the rail
-  (#33).
+  Mach 1.014. Bounding `max_time_step` fixed a step-size cliff, of the oracle's own 6000 s
+  `max_time`, that kept every case on the rail (#33).
 - 2026-09-17: #11 closed (PR #30): `SolidMotor` refuses an impossible exhaust velocity, the range
   measured over 1,708 catalog motors. #27 closed (PR #28): the M1.7a RocketPy comparison flies
   RocketPy's gravity and asserts the vector, not the magnitude, which is what hid the difference.
