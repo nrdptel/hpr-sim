@@ -17,8 +17,9 @@
     shared start, not from the pad.
   - That comparison flies RocketPy's gravity formula and RocketPy's way of interpolating the wind,
     and hpr's defaults differ from both (the full gravity vector, and a wind table interpolated by
-    speed and direction). Under hpr's own gravity, Calisto's drift reads +0.06% rather than
-    +0.08%. What hpr's default wind interpolation does to drift has not been measured.
+    speed and direction). Under hpr's own gravity, Calisto's drift read a little closer, once, before
+    the comparison switched (Against RocketPy, below); no test pins that. What hpr's default wind
+    interpolation does to drift has not been measured.
   - Against measured drop tests, tumbling is −10 to +19% off, and the default streamer model
     predicts a descent +9% faster than Kidwell's one flat streamer.
 - **What it leaves out:**
@@ -334,17 +335,23 @@ Knacke states the linear form only "in the medium-velocity range of about 150 to
 
 ### The opening load
 
-hpr's drag area rises to the steady value and stays there. Two things Knacke describes are left
-out:
+hpr's drag area rises to the steady value and stays there. Knacke writes the opening force as
+`F = (C_D S) q C_x X1` (printed page 5-50), with `q` the
+[dynamic pressure](../glossary.md#dynamic-pressure) at line stretch. Its two factors fare
+differently in hpr:
 
-- **The overshoot.** Knacke's measured drag area **overshoots** the steady value by 10 to 80% near
-  the end of filling (Figure 5-40, printed page 5-47). His infinite-mass opening-force coefficient
-  is `C_x = 1.7` for a flat circular canopy.
-- **The slowing.** Knacke's opening force is `F = (C_D S) q C_x X1` (printed page 5-50), with `q`
-  the [dynamic pressure](../glossary.md#dynamic-pressure) at line stretch. The force-reduction
-  factor `X1` allows for the rocket slowing while the canopy fills. It is 1 at infinite mass (a
-  load too heavy to slow), and as low as 0.02 for a final-descent parachute with a low canopy
-  loading (little weight for the canopy's size).
+- **The overshoot, `C_x`, is left out.** Knacke's measured drag area **overshoots** the steady
+  value by 10 to 80% near the end of filling (Figure 5-40, printed page 5-47). His infinite-mass
+  opening-force coefficient is `C_x = 1.7` for a flat circular canopy; hpr's is 1 in every mode.
+- **The slowing, `X1`, depends on the mode.** `X1` allows for the rocket slowing while the canopy
+  fills. It is 1 at infinite mass (a load too heavy to slow), and as low as 0.02 for a
+  final-descent parachute with a low canopy loading (little weight for the canopy's size).
+  - **With a filling time** (`FillingTime` or `FillConstant`), hpr already includes the slowing:
+    it integrates the rocket's deceleration while the drag area grows, which is Pflanz's method
+    done step by step, without the overshoot. Don't apply `X1` on top of hpr's peak, or the
+    slowing is counted twice and the load reads low.
+  - **Opening at once** (`Instant`, the default), there is no slowing: the peak is Knacke's
+    infinite-mass case with `C_x = 1`.
 
 So the peak load hpr reports is **no safe bound** on the real one, in either direction:
 
@@ -544,7 +551,7 @@ gaps, in order:
   ([scientific notation](../glossary.md#scientific-notation) for 0.00000001). Run again at 1e-6,
   it moves every compared metric by at most 3.5e-6 relative (the fixture's
   `solver.relative_change_from_loose`), far below the gaps. The one larger entry, 2.1e-3, is
-  Valetudo's 20 µm north drift, which has [its own section](#valetudos-north-drift) below.
+  Valetudo's north drift of 19 µm, which has [its own section](#valetudos-north-drift) below.
 
 **The results.** Measured (hpr against RocketPy, 2026-09-17):
 
@@ -566,7 +573,8 @@ gaps, in order:
 - **These numbers use RocketPy's gravity and wind interpolation, not hpr's defaults.**
   - Gravity: the comparison has flown RocketPy's gravity model since
     [issue #27](https://github.com/nrdptel/hpr-sim/issues/27). Under hpr's own gravity the drifting
-    cases read a little closer (Calisto +0.06% rather than +0.08%), because the vertical's turn
+    cases read a little closer (Calisto +0.06% rather than +0.08%, measured once when the
+    comparison switched and not pinned by a test), because the vertical's turn
     downrange pushes the rocket back toward the pad and cancels part of a real difference. The
     like-for-like number is the honest one.
   - Wind: here both codes interpolate the wind by its east and north components, as RocketPy does.

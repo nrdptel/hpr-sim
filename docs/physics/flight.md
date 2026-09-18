@@ -187,11 +187,12 @@ q̇   = ½ q ⊗ (0, ω)
     `sin² α`.
   - `hpr-aero` has no damping coefficients. Damping coefficients for pitch, yaw and roll, and roll
     forcing from canted fins, are planned for the second aerodynamics milestone
-    ([M1.8](../decisions-and-roadmap.md#m1-8)).
+    ([M1.8](../decisions-and-roadmap.md#m1-8)); for pitch and yaw they will have to replace the
+    local-flow damping, not add to it.
   - Until then nothing aerodynamic damps or drives roll: the air's forces have no moment about
     the rocket's axis. The roll rate can still change through inertia coupling (turning about one
-    axis driving turning about another) and, while a motor burns, through the jet and the falling
-    inertia in `T21`.
+    axis driving turning about another), but only for a rocket whose mass isn't symmetric about
+    its axis, and, while a motor burns, through the jet and the falling inertia in `T21`.
 - **Limits.**
   - The models are small-angle: no stall, and body lift and fins extended by `sin α`. They
     overstate the forces at large `α`. In normal flights large `α` occurs near apogee, where the

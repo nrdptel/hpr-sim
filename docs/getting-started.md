@@ -218,7 +218,11 @@ You don't have to take these numbers on trust. Four ways to test them:
   [Your own rocket](your-own-rocket.md) does, with the motor you flew
   ([Solid motors](physics/motor.md#using-a-motor) shows how to read its thrust-curve file). Set the
   rail and the wind to match the day, and set hpr's apogee beside your altimeter's. hpr's apogee is
-  the height of the rocket's centre of gravity above the pad. hpr can't read an altimeter's flight
+  the height of the rocket's centre of gravity above the pad. Most hobby altimeters measure air
+  pressure and turn it into height with the standard atmosphere, so on a day warmer or colder than
+  standard they read off by roughly 3 to 4% of the height for every 10 °C of difference. Give hpr
+  the day's temperature too: `Ussa76::with_offset` shifts the standard atmosphere, and
+  `Environment::new` takes it. hpr can't read an altimeter's flight
   log yet: that comes with [M7.1](decisions-and-roadmap.md#m7-1), the flight-log milestone.
 - **Compare with another simulator, by hand.** Enter the same rocket, motor, rail and wind in
   OpenRocket or RocketPy, and compare the apogee. Give both the same surface finish and rail

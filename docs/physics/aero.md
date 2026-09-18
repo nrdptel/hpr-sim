@@ -11,9 +11,9 @@
   OpenRocket thesis.
 - **How well it is validated:** the normal force and centre of pressure only at Mach 0, against
   Barrowman's worked examples (rockets he calculated by hand): every centre of pressure agrees
-  within 1%, and so does every [normal-force slope](../glossary.md#normal-force-slope) but one:
-  his six-fin Recruiter's is +2.87% high (+3.42% on its fins), mostly from a different six-fin
-  rule.
+  within 1%, and so does every [normal-force slope](../glossary.md#normal-force-slope) but his
+  six-fin Recruiter's: +2.87% high for the rocket and +3.42% for its fins, mostly from a different
+  six-fin rule.
   Drag only at Mach 0.3, against curves labelled [RASAero](../glossary.md#rasaero-ii) in
   [RocketPy](../glossary.md#rocketpy)'s [example rockets](../glossary.md#example-rockets), which
   don't record their fins or surface finish, so hpr's follow a declared rule: within 10% in four
@@ -257,7 +257,8 @@ A fin set is `N` identical fins spaced evenly around a body tube. For one fin of
   - Interference between fin sets at the same station.
   - Cant (fins set at an angle to spin the rocket), which matters for roll ([M1.8](../decisions-and-roadmap.md#m1-8)).
   - Damping coefficients, for pitch, yaw and roll, and roll forcing from cant: all planned for
-    [M1.8](../decisions-and-roadmap.md#m1-8). Until then:
+    [M1.8](../decisions-and-roadmap.md#m1-8). Pitch and yaw coefficients will have to replace the
+    local-flow damping below, not add to it, or it would be counted twice. Until then:
     - In a flight, pitch and yaw damping come only from evaluating each component in its own
       local flow, which includes the speed the rocket's rotation adds there
       ([Rigid-body flight](flight.md#aerodynamics-in-flight)).

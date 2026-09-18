@@ -185,7 +185,7 @@ impl SolidMotor {
     /// - [`MotorError::Inconsistent`] for a column bore at least as wide as the column, bad grain
     ///   geometry ([`BatesGrains::validate`]), or a curve and propellant mass whose effective
     ///   exhaust velocity `I/m_p` is outside [`EXHAUST_VELOCITY_RANGE_M_S`], which is what a
-    ///   units slip looks like.
+    ///   propellant mass in the wrong unit looks like. Sizes can't be checked this way.
     pub fn new(
         curve: ThrustCurve,
         propellant: Propellant,
@@ -262,9 +262,9 @@ impl SolidMotor {
                 });
             }
         }
-        // A units slip is the failure this catches: the 411I175 built from millimetres and grams
-        // read as metres and kilograms is accepted by every check above, and flies with an
-        // effective exhaust velocity of 1.8 m/s.
+        // A mass-unit slip is the failure this catches: the 411I175 built from grams read as
+        // kilograms is accepted by every check above, and flies with an effective exhaust velocity
+        // of 1.8 m/s. Its sizes in millimetres don't change `c`, so nothing here can catch them.
         let exhaust_velocity_m_s = curve.total_impulse_ns() / propellant_mass_kg;
         if !EXHAUST_VELOCITY_RANGE_M_S.contains(&exhaust_velocity_m_s) {
             return Err(MotorError::Inconsistent(format!(

@@ -268,7 +268,7 @@ friction, pressure, base and fin terms, or read from a table instead. For a para
 
 ## Drag crisis
 
-A sudden fall in a blunt body's drag coefficient over a narrow range of [Reynolds number](#reynolds-number), as the flow along its surface turns turbulent and stays attached further round. For a cylinder lying across the flow it comes at a Reynolds number of a few hundred thousand. hpr's recovery models include none. See [Recovery](physics/recovery.md#tumble).
+A sudden fall in a blunt body's drag coefficient over a narrow range of [Reynolds number](#reynolds-number), as the flow along its surface turns turbulent and stays attached further round. For a cylinder lying across the flow it comes at a Reynolds number of a few hundred thousand. For streamers, Carruthers and Filippone report a sudden drop near 7.2e5, which they put down to a change in how the streamer oscillates. hpr's recovery models include none. See [Recovery](physics/recovery.md#tumble).
 
 ## Drift
 
@@ -311,7 +311,8 @@ ellipsoid. See [Frames](physics/frames.md#earth-centred-earth-fixed-ecef) and
 A motor's thrust divided by its propellant mass flow, `c = F/ṁ`, in m/s. hpr holds it constant
 through the burn, `c = I/m_p` (total impulse over propellant mass), so propellant burns in
 proportion to the impulse delivered. It also refuses a motor whose `c` falls outside 200 to
-5,000 m/s, which catches units slips; ThrustCurve.org's catalog has a median of 1,867 m/s. See
+5,000 m/s, which catches a propellant mass given in the wrong unit, such as grams for
+kilograms; ThrustCurve.org's catalog has a median of 1,867 m/s. See
 [Solid motors](physics/motor.md#propellant-consumption).
 
 
@@ -438,7 +439,7 @@ Mach 1) and supersonic (above it) aerodynamics arrive with [M1.8](decisions-and-
 
 ## Mean aerodynamic chord (MAC)
 
-An average of a fin's chords (its lengths along the airflow, root to tip), weighted so that the long chords count more: `c̄ = (1/A)∫c² dy` over the span. hpr puts each fin set's [centre of pressure](#centre-of-pressure-cp) a quarter of the way back along it, at every speed below Mach 1; real fins' centre of pressure moves further aft at high subsonic speeds, which hpr leaves out. See [Aerodynamics](physics/aero.md#fins).
+An average of a fin's chords (its lengths along the airflow, root to tip), weighted so that the long chords count more: `c̄ = (1/A)∫c² dy` over the span, `A` being one fin's area. hpr puts each fin set's [centre of pressure](#centre-of-pressure-cp) a quarter of the way back along it, at every speed below Mach 1; real fins' centre of pressure moves further aft at high subsonic speeds, which hpr leaves out. See [Aerodynamics](physics/aero.md#fins).
 
 ## Metric
 
@@ -509,7 +510,7 @@ A range of frequencies, or of wavelengths, whose top is twice its bottom. The tu
 
 ## Opening load
 
-The peak force a parachute puts on the rocket as it opens. Knacke writes it as `F = (C_D S) q C_x X1`: the steady drag at the [dynamic pressure](#dynamic-pressure) `q` at line stretch, times `C_x` for the canopy's overshoot when the load doesn't slow (1.7 for a flat circular canopy), times `X1` for how much the rocket slows while the canopy fills. hpr models neither factor, so the opening load it reports is no safe bound either way: don't size recovery hardware from it. See [Recovery](physics/recovery.md#the-opening-load).
+The peak force a parachute puts on the rocket as it opens. Knacke writes it as `F = (C_D S) q C_x X1`: the steady drag at the [dynamic pressure](#dynamic-pressure) `q` at line stretch, times `C_x` for the canopy's overshoot when the load doesn't slow (1.7 for a flat circular canopy), times `X1` for how much the rocket slows while the canopy fills. hpr leaves out the overshoot. With a filling time it already includes the slowing, so `X1` must not be applied on top; a canopy that opens at once has none. So the opening load it reports is no safe bound either way: don't size recovery hardware from it. See [Recovery](physics/recovery.md#the-opening-load).
 
 ## OpenRocket
 
@@ -624,7 +625,7 @@ Writing a very small or very large number as a power of ten, the way programs pr
 
 ## Seed
 
-A number that starts a random-number generator. The same seed gives the same sequence of numbers, so a run that uses random numbers, such as [turbulence](#turbulence-dryden), repeats exactly on the same platform (operating system and processor). The program that runs it chooses the seed. On another platform the results can differ in their last binary digit. See [Turbulence](physics/turbulence.md#generator).
+A number that starts a random-number generator. The same seed gives the same sequence of numbers, so a run that uses random numbers, such as [turbulence](#turbulence-dryden), repeats exactly on the same platform (operating system and processor). The program that runs it chooses the seed. On another platform each random draw can differ in its last binary digit, and over a whole flight such differences can grow. See [Turbulence](physics/turbulence.md#generator).
 
 ## Separation
 

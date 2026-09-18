@@ -32,7 +32,8 @@
 //!   sets. Body tubes give none at small angles: their own slope is 0, and their body lift grows
 //!   with `sin² α`.
 //! - Transonic and supersonic flow, damping coefficients for pitch, yaw and roll, and roll forcing
-//!   from canted fins are planned for [M1.8][m1-8], the second aerodynamics milestone.
+//!   from canted fins are planned for [M1.8][m1-8], the second aerodynamics milestone. For pitch
+//!   and yaw, those coefficients will have to replace the local-flow damping, not add to it.
 
 pub mod body;
 pub mod drag;

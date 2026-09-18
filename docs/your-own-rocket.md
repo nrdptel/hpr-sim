@@ -133,8 +133,8 @@ propellant is gone.
   At burnout the CG has moved forward, so the margin has grown to 2.99.
 
 A positive margin means that when something tips the rocket, the air turns its nose back into the
-oncoming air. That oncoming air is the *relative wind*: the airflow the rocket feels from its own
-motion through the air plus any wind. In a crosswind, the same turn swings the rocket upwind
+oncoming air. That oncoming air is the *relative wind*: the airflow the rocket feels, from its
+motion over the ground combined with the wind. In a crosswind, the same turn swings the rocket upwind
 ([weathercocking](glossary.md#weathercocking)).
 
 hpr doesn't judge whether a margin is enough; your club's or range's rules do.
