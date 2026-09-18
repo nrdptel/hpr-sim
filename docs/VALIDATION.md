@@ -28,6 +28,10 @@ small extracted fixtures with a clear license are committed, each with its prove
   - Real-flight apogee mean absolute error at or below 5% on well-characterized flights.
   - Every miss is explained in the report.
 
+  Since the first report (M2.1a), the code-to-code 3% is a gate in same-drag mode and stays a
+  target in predicted mode, where neither code's drag is the truth (ADR-023); a predicted miss is
+  explained in its case file, and the set of misses is pinned by a test.
+
 ## The harness (M2.1a)
 
 `cargo xtask validate [--fast|--check]` runs every case in `validation/cases/lock.toml` and writes
@@ -103,9 +107,11 @@ only when a person regenerates the references.
   `references-diff` artifact. Its token can read the repository and nothing more, so it cannot
   commit.
 
-On Linux the regenerated fixtures may differ from the committed ones in their last digits, and a
-fixture that moved at all makes the report be rewritten too; that is why the workflow runs on a
-Mac. Either way the result is a diff to read, not a new reference.
+Another machine's floating point can move the regenerated fixtures' last digits, and a fixture that
+moved at all makes the report be rewritten too. The first run on GitHub's Mac did that: the descents
+moved by at most 3.6e-11 of each value, the whole flights' largest move was a landing height of
+2e-8 m shifting by 3e-9 m, and no printed metric changed. So the script prints, for each fixture,
+how many values moved and the largest relative move; read that before the diff. Either way the result is a diff to read, not a new reference.
 Committing it is a decision a PR has to argue:
 [Loft lesson L76](decisions-and-roadmap.md#l76), where a reference regenerated whenever a check
 failed ended up following the simulator it was meant to check.
@@ -116,7 +122,13 @@ The whole-flight cases (`validation/cases/flight-*.toml`) fly RocketPy's example
 the ground in the same-drag mode: hpr flies the reference's declared `C_D0(M)` through
 `Simulation::with_drag_table`, on the reference area the reference records. The metrics are
 measured as RocketPy defines them (L80): at the centre of dry mass, with the rail exit when the
-forward button reaches the top of the rail, and the maxima over the solver's steps.
+forward button reaches the top of the rail. The maxima depart from RocketPy's on purpose: RocketPy
+takes them at its solution's points, and hpr finds each peak between its solver's steps as well
+([ADR-023](DECISIONS.md#adr-023-predicted-mode-each-codes-own-drag-reported-against-a-target-2026-09-18),
+which sets how peaks are found in both modes), because a peak read only at the steps moves with
+the step sequence, which differs across platforms. That can only raise hpr's reading; against its
+old step-end reading it rose by at most 6.3e-5 of itself. RocketPy's own shortfall is not
+measured.
 
 The first run found an input, not a model, difference: the transcribed designs corrected the
 thrust for ambient pressure with a sea-level stand-in, which RocketPy's examples never do
@@ -138,6 +150,26 @@ comparisons, so the suite flies that, and the metric comes to −1.8% (ADR-015, 
 The committed report carries no timestamp, so a number that moves shows up in the diff. A `--fast`
 run writes `latest-fast.{md,json}` instead, which is not committed: a partial report never stands
 in for the whole suite's record.
+
+### Predicted mode (M2.1c2)
+
+The `predicted-*` cases fly the same six examples with hpr's own aerodynamics
+(`mode = "predicted"`), against `validation/fixtures/flight/rocketpy-whole-flight-own-drag.json`:
+RocketPy flying each example's own drag, as RocketPy 1.13.0 flies the example
+(`flight.py --own-drag`). The curves stay in `refs/`; the reference records each one's path and
+SHA-256 (ADR-009). Each mode refuses the other's reference.
+
+Each predicted metric keeps M2.1's 3% as a target, not a gate: its verdict is `within target` or
+`outside target`, it sits in the report's own *Predicted mode* section, and it never fails the run
+(ADR-023). Neither code's drag is the truth, so a miss is a measurement to explain, and each case
+file explains its own. In short, 56 of 75 are within target; the apogees are −0.527% (Calisto),
++1.118% (Bella Lui), +3.181% (Juno III), +10.007% (Valetudo) and +10.232% (NDRT 2020), the last two
+where hpr's drag is well below the example's, which also moves their times and drifts; in the
+windy cases the drifts miss as in same-drag mode (issue #50). hpr's drag is for the designs as
+transcribed, whose fin edges and finishes are placeholders where the examples record none.
+Predicted mode flies at rtol = atol = 1e-11, so its report reproduces across platforms (ADR-023).
+Prometheus 2022 is a known gap the harness checks: on its own drag RocketPy's flight reaches Mach
+1.049, past hpr's subsonic limit.
 
 ## Reference simulators (oracles)
 

@@ -1,0 +1,80 @@
+# Juno III: RocketPy's example flown from the pad to the ground, each code with its own drag
+# (`validation/oracles/rocketpy/flight.py --own-drag`, M2.1c2).
+#
+# Predicted mode (ADR-023): hpr flies its own drag, from the design's geometry, where the same-drag
+# case flies the declared table (its normal force is its own in both modes, so only the drag
+# differs); the reference is RocketPy flying the example's own drag as RocketPy 1.13.0 flies the
+# example (RocketPy's `drag_curve.csv`, unscaled, since the notebook's rescaling never reaches the
+# flight), with RocketPy's own normal force. Everything else is the same-drag case's
+# (`flight-juno-iii.toml`): the site, the declared wind, the rail, the parachutes, the motor,
+# RocketPy's gravity and atmosphere, and the same checks that hpr's design is the rocket the
+# reference flew. So a difference here is the same-drag difference plus the two codes' drag, and
+# neither drag is the truth. hpr's is for the design as transcribed: its fin thickness and edges and
+# its surface finish are placeholders where RocketPy's example records none
+# (`xtask/src/designs.rs`), so a miss is not a gap for hpr to close toward the example's drag.
+#
+# Every metric carries M2.1's 3% as a target: reported as within or outside it, never gated, so a
+# miss does not fail the run and a number that moves still shows in the committed report. The
+# misses, and why:
+#
+# - apogee_agl_m (+3.18%): just outside. hpr's C_D0 at Mach 0.3 is 6.0% below the example's curve
+#   (`validation/fixtures/aero/rocketpy-drag-curves.json`) and the same-drag case is already +1.71%.
+#   Read literally, the notebook's rescaling to C_D(0.6) = 0.38 never reaches RocketPy's flight;
+#   applied, it lowers RocketPy's apogee 0.66% and takes this miss to +3.87% and flight_time_s to
+#   +3.10% (measured in review).
+# - apogee_drift_m (-59.13%) and landing_drift_m (+171.82%): the path in wind (issue #50); the
+#   same-drag case misses them by -60.85% and +151.33% and does not score them.
+id = "predicted-juno-iii"
+title = "Juno III from the pad to the ground, predicted: hpr's own aerodynamics"
+reference = "validation/fixtures/flight/rocketpy-whole-flight-own-drag.json"
+reference_case = "juno-iii"
+
+[flight.whole_flight]
+design = "rocketpy-juno-iii"
+configuration = "example"
+mode = "predicted"
+
+[metrics.apogee_agl_m]
+relative = 0.03
+
+[metrics.apogee_time_s]
+relative = 0.03
+
+[metrics.max_speed_m_s]
+relative = 0.03
+
+[metrics.max_mach]
+relative = 0.03
+
+[metrics.max_acceleration_m_s2]
+relative = 0.03
+
+[metrics.max_acceleration_time_s]
+relative = 0.03
+
+[metrics.max_acceleration_power_on_m_s2]
+relative = 0.03
+
+[metrics.rail_exit_speed_m_s]
+relative = 0.03
+
+[metrics.rail_exit_time_s]
+relative = 0.03
+
+[metrics.burnout_altitude_agl_m]
+relative = 0.03
+
+[metrics.burnout_speed_m_s]
+relative = 0.03
+
+[metrics.flight_time_s]
+relative = 0.03
+
+[metrics.apogee_drift_m]
+relative = 0.03
+
+[metrics.landing_drift_m]
+relative = 0.03
+
+[metrics.impact_speed_m_s]
+relative = 0.03

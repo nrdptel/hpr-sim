@@ -5,7 +5,7 @@ use std::path::{Path, PathBuf};
 use crate::case::{Case, CaseLock, Metric, Tolerance, cases_dir, committed_cases};
 use crate::metrics::{Reference, ReferenceValue};
 use crate::report::{Comparison, Report, Verdict};
-use crate::run::{ValidateError, run_case, run_lock};
+use crate::run::{ValidateError, peak_between, run_case, run_lock};
 
 /// The repository root, from this crate's manifest.
 pub(crate) fn root() -> PathBuf {
@@ -41,14 +41,17 @@ pub(crate) fn cases() -> Vec<Case> {
 pub(crate) struct Scratch(PathBuf);
 
 impl Scratch {
-    /// A fresh directory.
+    /// A fresh directory. Tests run in parallel and the clock may tick coarsely, so a counter
+    /// keeps two made in the same instant apart.
     fn new() -> Self {
+        static MADE: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
         let path = std::env::temp_dir().join(format!(
-            "hpr-validate-{}-{}",
+            "hpr-validate-{}-{}-{}",
             std::process::id(),
             std::time::SystemTime::now()
                 .duration_since(std::time::UNIX_EPOCH)
-                .map_or(0, |since| since.as_nanos())
+                .map_or(0, |since| since.as_nanos()),
+            MADE.fetch_add(1, std::sync::atomic::Ordering::Relaxed)
         ));
         std::fs::create_dir_all(&path).expect("a temporary directory");
         Self(path)
@@ -200,8 +203,15 @@ fn no_committed_gate_is_looser_than_the_milestone_says() {
     // The floor an absolute bound provides is the quiet way to widen a gate: a metre of slack on a
     // metre of drift reads as "3% or 1.0" in the report and passes anything. Every scored
     // comparison's effective gate has to be within the 3% the milestone claims.
+    // Predicted mode's targets too (ADR-023): a target widened past 3% would turn misses into
+    // "within target" with nothing failing.
     let report = run_lock(&root(), false).expect("the committed cases run");
-    for comparison in report.comparisons.iter().filter(|c| c.scored()) {
+    let bounded = report
+        .comparisons
+        .iter()
+        .filter(|c| c.scored() || c.targeted_row());
+    assert_eq!(bounded.clone().count(), 94 + 75);
+    for comparison in bounded {
         let allowed = comparison.tolerance.allowed(comparison.reference);
         let claimed = 0.03 * comparison.reference.abs();
         assert!(
@@ -253,9 +263,62 @@ fn the_metrics_that_are_not_scored_are_these_and_no_others() {
     expected.extend(drifts("flight-bella-lui"));
     assert_eq!(excused, expected);
     // A known gap is the other way a case goes unscored, and the set of them is pinned the same
-    // way: Prometheus 2022 reaches Mach 1.014, which hpr refuses until M1.8.
+    // way: Prometheus 2022 reaches Mach 1.014 on the declared drag and Mach 1.049 on its own, both
+    // of which hpr refuses until M1.8.
     let gaps: Vec<&str> = report.gaps.iter().map(|gap| gap.case.as_str()).collect();
-    assert_eq!(gaps, vec!["flight-prometheus-2022-generic-motor"]);
+    assert_eq!(
+        gaps,
+        vec![
+            "flight-prometheus-2022-generic-motor",
+            "predicted-prometheus-2022-generic-motor"
+        ]
+    );
+    // Predicted mode's misses are pinned too, so a case file's account of them ("nothing else
+    // misses") cannot go stale unnoticed (ADR-023). Adding a miss means editing this list and
+    // explaining it in the case file.
+    let outside: Vec<(&str, &str)> = report
+        .comparisons
+        .iter()
+        .filter(|comparison| comparison.verdict == Verdict::OutsideTarget)
+        .map(|comparison| (comparison.case.as_str(), comparison.metric.as_str()))
+        .collect();
+    let mut expected_outside = vec![];
+    expected_outside.extend(drifts("predicted-calisto-tests-motor-at-minus-1.373"));
+    for metric in [
+        "apogee_agl_m",
+        "apogee_drift_m",
+        "apogee_time_s",
+        "flight_time_s",
+        "landing_drift_m",
+    ] {
+        expected_outside.push(("predicted-valetudo", metric));
+    }
+    for metric in [
+        "apogee_agl_m",
+        "apogee_drift_m",
+        "apogee_time_s",
+        "flight_time_s",
+        "landing_drift_m",
+        "max_acceleration_m_s2",
+        "max_acceleration_time_s",
+    ] {
+        expected_outside.push(("predicted-ndrt-2020-nose-to-tail", metric));
+    }
+    expected_outside.push(("predicted-juno-iii", "apogee_agl_m"));
+    expected_outside.extend(drifts("predicted-juno-iii"));
+    expected_outside.extend(drifts("predicted-bella-lui"));
+    assert_eq!(outside, expected_outside);
+    // Predicted mode is the third, and it is reported against a target rather than excused: every
+    // metric of every predicted case, and no other, is a target row (ADR-023).
+    for comparison in &report.comparisons {
+        assert_eq!(
+            comparison.targeted_row(),
+            comparison.case.starts_with("predicted-"),
+            "{}'s {}",
+            comparison.case,
+            comparison.metric
+        );
+    }
     assert!(report.passed());
 
     // The hatch itself still works, and still refuses to be a quiet pass: a declared metric is
@@ -547,12 +610,19 @@ fn the_committed_cases_all_pass_and_the_report_says_so() {
     // The milestone's own check: every locked case runs against its stored reference, and the
     // report that `cargo xtask validate` writes is the one this produces.
     let report = run_lock(&root(), false).expect("the committed cases run");
-    assert_eq!(report.cases.len(), 11, "{:?}", report.cases);
-    // Five descents of six metrics, and five whole flights of fifteen; the sixth whole flight is a
-    // known gap and compares nothing.
-    assert_eq!(report.comparisons.len(), 105);
+    assert_eq!(report.cases.len(), 17, "{:?}", report.cases);
+    // Five descents of six metrics, and five whole flights of fifteen in each mode; the sixth whole
+    // flight is a known gap in both and compares nothing.
+    assert_eq!(report.comparisons.len(), 180);
     assert_eq!(report.not_scored().len(), 11, "argued in the case files");
-    assert_eq!(report.gaps.len(), 1);
+    assert_eq!(report.gaps.len(), 2);
+    // Predicted mode's 75 rows are reported against a target and never count towards the verdict.
+    let targeted = report
+        .comparisons
+        .iter()
+        .filter(|comparison| comparison.targeted_row())
+        .count();
+    assert_eq!(targeted, 75);
     assert!(report.passed(), "{:?}", report.failures());
     // M2.1b2's own bar: at least five whole flights, every metric scored or argued, all passing.
     let whole_flights: Vec<&String> = report
@@ -712,6 +782,63 @@ fn reproducing_forgives_the_last_digits_and_nothing_else() {
 }
 
 #[test]
+fn a_target_is_reported_and_never_gated_but_a_broken_one_fails() {
+    // Predicted mode's rows (ADR-023): inside or outside the target, never scored, never failing
+    // the run, never the worst scored difference; but a row with no bound or a number that is not
+    // finite is a broken comparison, not a miss to explain.
+    let row = |measured: f64, tolerance: Tolerance| {
+        Comparison::targeted(
+            "predicted-x",
+            "apogee_agl_m",
+            measured,
+            100.0,
+            "rocketpy",
+            tolerance,
+        )
+    };
+    let within = row(102.0, Tolerance::relative(0.03));
+    let outside = row(110.0, Tolerance::relative(0.03));
+    assert_eq!(within.verdict, Verdict::WithinTarget);
+    assert_eq!(outside.verdict, Verdict::OutsideTarget);
+    let gated = Comparison::new(
+        "flight-x",
+        "apogee_agl_m",
+        101.0,
+        100.0,
+        "rocketpy",
+        Tolerance::relative(0.03),
+    );
+    let report = Report {
+        harness_version: "0.0.0".to_owned(),
+        fast: false,
+        cases: vec!["flight-x".to_owned(), "predicted-x".to_owned()],
+        skipped: Vec::new(),
+        comparisons: vec![gated, within.clone(), outside.clone()],
+        gaps: Vec::new(),
+        sources: Vec::new(),
+    };
+    assert!(!within.scored() && !outside.scored());
+    assert!(within.targeted_row() && outside.targeted_row());
+    assert!(report.passed());
+    assert!(report.not_scored().is_empty());
+    let (worst, _) = report.worst_scored().expect("the gated row");
+    assert_eq!(worst.case, "flight-x");
+    let markdown = report.to_markdown();
+    assert!(markdown.contains("## Predicted mode"), "{markdown}");
+    assert!(markdown.contains("| outside target |"), "{markdown}");
+    assert!(
+        markdown.contains("2 predicted-mode metric(s)"),
+        "{markdown}"
+    );
+    for broken in [
+        row(f64::NAN, Tolerance::relative(0.03)),
+        row(102.0, Tolerance::default()),
+    ] {
+        assert_eq!(broken.verdict, Verdict::Fail);
+    }
+}
+
+#[test]
 fn a_fast_run_says_what_it_left_out() {
     // `--fast` may only leave out cases the lock marks slow, and the report names them, so a short
     // run cannot be mistaken for a whole one (Loft lesson L78's other half).
@@ -762,6 +889,32 @@ fn a_metric_the_flight_cannot_measure_is_refused_before_it_flies() {
         started.elapsed() < std::time::Duration::from_secs(1),
         "it flew"
     );
+}
+
+#[test]
+fn a_peak_inside_a_step_is_found_smooth_or_kinked() {
+    let found = |value: fn(f64) -> f64| {
+        peak_between::<()>(0.0, 0.05, |t| Ok(value(t))).expect("the value never fails")
+    };
+    // A smooth peak, as speed's at burnout: its top is flat to rounding within 2.6e-9 s of it,
+    // so that is how near it can be found, and the value there is the peak's to rounding.
+    let speed = |t: f64| 186.68 - 4e3 * (t - 0.0317).powi(2);
+    let smooth = found(speed);
+    assert!((smooth - 0.0317).abs() < 5e-9, "{smooth}");
+    assert!((speed(smooth) - 186.68).abs() < 1e-13, "{}", speed(smooth));
+    // A kinked one, as where a wind table changes level: within 3.5e-11 of the 0.05 s bracket.
+    let kinked = found(|t| 115.3 - 900.0 * (t - 0.0083).abs());
+    assert!((kinked - 0.0083).abs() < 2e-12, "{kinked}");
+    // At an end of the bracket it finds that end.
+    let rising = found(|t| t);
+    assert!((rising - 0.05).abs() < 2e-12, "{rising}");
+    // And it stops at the first error.
+    let mut calls = 0;
+    let failed = peak_between(0.0, 1.0, |_| {
+        calls += 1;
+        if calls < 3 { Ok(0.0) } else { Err("no sample") }
+    });
+    assert_eq!((failed, calls), (Err("no sample"), 3));
 }
 
 #[test]
@@ -873,6 +1026,43 @@ fn a_known_gap_is_checked_not_trusted() {
     );
     let error = run_lock(scratch.path(), false).expect_err("a gap hpr flies through");
     assert!(error.to_string().contains("hpr flew it"), "{error}");
+
+    // Each mode needs its own reference (ADR-023). A predicted case scored against the same-drag
+    // reference would measure hpr's drag against the declared constant, and a same-drag case
+    // against the own-drag reference would fly a table the reference never flew.
+    let scratch = scratch_case("predicted-valetudo", |_| {});
+    let predicted = std::fs::read_to_string(scratch.path().join(file("predicted-valetudo")))
+        .expect("the scratch case");
+    let same_drag_reference = "validation/fixtures/flight/rocketpy-whole-flight.json";
+    scratch.write(
+        same_drag_reference,
+        &std::fs::read_to_string(root().join(same_drag_reference)).expect("committed"),
+    );
+    scratch.write(
+        &file("predicted-valetudo"),
+        &predicted.replace(
+            "rocketpy-whole-flight-own-drag.json",
+            "rocketpy-whole-flight.json",
+        ),
+    );
+    let error = run_lock(scratch.path(), false).expect_err("predicted against the same drag");
+    assert!(
+        error
+            .to_string()
+            .contains("a predicted case needs a reference that flew the example's own drag"),
+        "{error}"
+    );
+    scratch.write(
+        &file("predicted-valetudo"),
+        &predicted.replace("mode = \"predicted\"\n", ""),
+    );
+    let error = run_lock(scratch.path(), false).expect_err("same-drag against its own drag");
+    assert!(
+        error
+            .to_string()
+            .contains("a same-drag case needs a reference that flew its generator's"),
+        "{error}"
+    );
 
     // And a gap nobody explained is not one.
     let scratch = scratch_case("flight-prometheus-2022-generic-motor", |_| {});

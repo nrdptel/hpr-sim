@@ -14,7 +14,9 @@
 # 2. `cargo xtask designs`: hpr's design files for those rockets (validation/designs/).
 # 3. recovery.py: RocketPy's descents under each rocket's parachutes
 #    (validation/fixtures/recovery/rocketpy-descent.json).
-# 4. flight.py: RocketPy's whole flights, pad to landing (validation/fixtures/flight/).
+# 4. flight.py: RocketPy's whole flights, pad to landing, on the declared drag and, with
+#    `--own-drag`, on each example's own (validation/fixtures/flight/; the second reads the drag
+#    curves from refs/rocketpy).
 # 5. `cargo xtask validate`: the report, validation/reports/latest.{md,json}, rewritten only when
 #    the run does not reproduce the committed one.
 #
@@ -55,6 +57,56 @@ generate validation/oracles/rocketpy/rocket_mass.py validation/fixtures/design/r
 xtask designs
 generate validation/oracles/rocketpy/recovery.py validation/fixtures/recovery/rocketpy-descent.json
 generate validation/oracles/rocketpy/flight.py validation/fixtures/flight/rocketpy-whole-flight.json
+generate validation/oracles/rocketpy/flight.py validation/fixtures/flight/rocketpy-whole-flight-own-drag.json \
+    --own-drag
+
+# How far each regenerated fixture moved from the committed one, number by number. Another machine's
+# floating point moves RocketPy's last digits, which changes a fixture's hash and so the report: on
+# GitHub's macOS runner the descents moved by at most 3.6e-11 relative, and the whole flights' 742
+# moved values by at most 2.9e-6 on this measure (a landing height of 2e-8 m moving by 3e-9 m). A
+# real change moves numbers by far more.
+for fixture in \
+    validation/fixtures/design/rocketpy-rocket-mass.json \
+    validation/fixtures/recovery/rocketpy-descent.json \
+    validation/fixtures/flight/rocketpy-whole-flight.json \
+    validation/fixtures/flight/rocketpy-whole-flight-own-drag.json; do
+    # A fixture not committed yet has nothing to compare with; `|| true` keeps pipefail from
+    # stopping the script there.
+    { git show "HEAD:$fixture" 2>/dev/null || true; } | "$python" -c '
+import json, sys
+
+def walk(old, new, path, moved):
+    if isinstance(old, dict) and isinstance(new, dict) and old.keys() == new.keys():
+        for key in old:
+            walk(old[key], new[key], f"{path}.{key}", moved)
+    elif isinstance(old, list) and isinstance(new, list) and len(old) == len(new):
+        for index, (a, b) in enumerate(zip(old, new)):
+            walk(a, b, f"{path}[{index}]", moved)
+    elif isinstance(old, (int, float)) and isinstance(new, (int, float)) \
+            and not isinstance(old, bool) and not isinstance(new, bool):
+        if old != new:
+            # Relative to the larger, and numbers under 1e-3, such as a height at landing that
+            # the event solver leaves at 2e-8 m, as if they were 1e-3.
+            moved.append((abs(old - new) / max(abs(old), abs(new), 1e-3), path))
+    elif old != new:
+        moved.append((float("inf"), path))
+
+try:
+    old = json.load(sys.stdin)
+except ValueError:
+    sys.exit(0)  # not committed yet: there is nothing to compare with
+with open(sys.argv[1]) as file:
+    new = json.load(file)
+moved = []
+walk(old, new, "$", moved)
+if not moved:
+    print(f"regenerate: {sys.argv[1]}: unchanged")
+else:
+    worst, where = max(moved)
+    print(f"regenerate: {sys.argv[1]}: {len(moved)} value(s) moved, the largest by {worst:.1e} "
+          f"relative, at {where}")
+' "$fixture"
+done
 
 # The committed report was written on macOS, and another platform rounds a whole flight's last
 # digits differently, so the report is rewritten only when this run does not reproduce it

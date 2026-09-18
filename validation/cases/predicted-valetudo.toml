@@ -1,0 +1,80 @@
+# Valetudo: RocketPy's example flown from the pad to the ground, each code with its own drag
+# (`validation/oracles/rocketpy/flight.py --own-drag`, M2.1c2).
+#
+# Predicted mode (ADR-023): hpr flies its own drag, from the design's geometry, where the same-drag
+# case flies the declared table (its normal force is its own in both modes, so only the drag
+# differs); the reference is RocketPy flying the example's own drag as RocketPy 1.13.0 flies the
+# example (the RASAero tables `Cd_PowerOff_RASAero.csv` and `Cd_PowerOn_RASAero.csv`), with
+# RocketPy's own normal force. Everything else is the same-drag case's (`flight-valetudo.toml`): the
+# site, the declared wind, the rail, the parachutes, the motor, RocketPy's gravity and atmosphere,
+# and the same checks that hpr's design is the rocket the reference flew. So a difference here is
+# the same-drag difference plus the two codes' drag, and neither drag is the truth. hpr's is for the
+# design as transcribed: its fin thickness and edges and its surface finish are placeholders where
+# RocketPy's example records none (`xtask/src/designs.rs`), so a miss is not a gap for hpr to close
+# toward the example's drag.
+#
+# Every metric carries M2.1's 3% as a target: reported as within or outside it, never gated, so a
+# miss does not fail the run and a number that moves still shows in the committed report. The
+# misses, and why:
+#
+# - apogee_agl_m (+10.01%), apogee_time_s (+6.16%), flight_time_s (+8.85%), apogee_drift_m (+10.55%)
+#   and landing_drift_m (+8.69%): the drag. hpr's C_D0 at Mach 0.3 is 47% below the example's
+#   power-off table and 50% below its power-on one
+#   (`validation/fixtures/aero/rocketpy-drag-curves.json`), a 3-decimal, hand-edited table with no
+#   inputs that ADR-009 calls suspect. Flown on the same drag the two codes agree on the apogee to
+#   +0.003% (`flight-valetudo.toml`), so the 10% is the drag: less of it flies the rocket higher,
+#   and a higher apogee means a longer descent under the drogue and further to drift.
+id = "predicted-valetudo"
+title = "Valetudo from the pad to the ground, predicted: hpr's own aerodynamics"
+reference = "validation/fixtures/flight/rocketpy-whole-flight-own-drag.json"
+reference_case = "valetudo"
+
+[flight.whole_flight]
+design = "rocketpy-valetudo"
+configuration = "example"
+mode = "predicted"
+
+[metrics.apogee_agl_m]
+relative = 0.03
+
+[metrics.apogee_time_s]
+relative = 0.03
+
+[metrics.max_speed_m_s]
+relative = 0.03
+
+[metrics.max_mach]
+relative = 0.03
+
+[metrics.max_acceleration_m_s2]
+relative = 0.03
+
+[metrics.max_acceleration_time_s]
+relative = 0.03
+
+[metrics.max_acceleration_power_on_m_s2]
+relative = 0.03
+
+[metrics.rail_exit_speed_m_s]
+relative = 0.03
+
+[metrics.rail_exit_time_s]
+relative = 0.03
+
+[metrics.burnout_altitude_agl_m]
+relative = 0.03
+
+[metrics.burnout_speed_m_s]
+relative = 0.03
+
+[metrics.flight_time_s]
+relative = 0.03
+
+[metrics.apogee_drift_m]
+relative = 0.03
+
+[metrics.landing_drift_m]
+relative = 0.03
+
+[metrics.impact_speed_m_s]
+relative = 0.03

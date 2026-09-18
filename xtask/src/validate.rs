@@ -133,6 +133,27 @@ fn print_summary(report: &Report) {
             .iter()
             .filter(|comparison| comparison.case == *case)
             .collect();
+        if metrics.iter().any(|comparison| comparison.targeted_row()) {
+            // Predicted mode reports against a target and never gates, so it has no "worst
+            // scored"; its largest difference is the headline.
+            let within = metrics
+                .iter()
+                .filter(|comparison| comparison.verdict == hpr_validate::Verdict::WithinTarget)
+                .count();
+            let largest = metrics
+                .iter()
+                .filter_map(|comparison| comparison.relative.map(|r| (r, &comparison.metric)))
+                .max_by(|(a, _), (b, _)| a.abs().total_cmp(&b.abs()));
+            println!(
+                "{case}: predicted, {} metric(s) reported, {within} within target{}",
+                metrics.len(),
+                largest.map_or_else(String::new, |(relative, metric)| format!(
+                    ", largest {metric} {:+.2}%",
+                    100.0 * relative
+                ))
+            );
+            continue;
+        }
         let worst = metrics
             .iter()
             .filter(|comparison| comparison.scored())
@@ -164,14 +185,30 @@ fn print_summary(report: &Report) {
         );
     }
     let not_scored = report.not_scored().len();
+    let targeted = report
+        .comparisons
+        .iter()
+        .filter(|comparison| comparison.targeted_row())
+        .count();
+    let outside = report
+        .comparisons
+        .iter()
+        .filter(|comparison| comparison.verdict == hpr_validate::Verdict::OutsideTarget)
+        .count();
+    let predicted = format!("predicted, against a target, {outside} outside it");
+    let aside: Vec<String> = [(not_scored, "not scored"), (targeted, predicted.as_str())]
+        .into_iter()
+        .filter(|(count, _)| *count > 0)
+        .map(|(count, what)| format!("{count} {what}"))
+        .collect();
     println!(
         "validate: {} case(s), {} metric(s){}, {}",
         report.cases.len(),
         report.comparisons.len(),
-        if not_scored == 0 {
+        if aside.is_empty() {
             String::new()
         } else {
-            format!(" ({not_scored} not scored)")
+            format!(" ({})", aside.join(", "))
         },
         if report.passed() { "ok" } else { "FAILED" }
     );

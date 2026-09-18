@@ -66,10 +66,11 @@ pub enum Flight {
         /// Its configuration id.
         configuration: String,
     },
-    /// A flight from the pad to the ground, in the same-drag mode of [M2.1][m2-1]: hpr flies the
-    /// `C_D0(M)` table the reference declares, through [`hpr_sim::Simulation::with_drag_table`],
-    /// so a difference is in the equations of motion, the environment or the motor, not in the
-    /// drag.
+    /// A flight from the pad to the ground, in either mode of [M2.1][m2-1] ([`DragMode`]). In
+    /// same-drag mode hpr flies the `C_D0(M)` table the reference declares, through
+    /// [`hpr_sim::Simulation::with_drag_table`], so a difference is in the equations of motion,
+    /// the environment or the motor, not in the drag. In predicted mode it flies the design's own
+    /// aerodynamics against a reference that flew the example's own drag.
     ///
     /// The site, the wind, the rail, the drag table and its reference area, and the recovery
     /// devices all come from the reference's own record of what the oracle flew
@@ -83,7 +84,38 @@ pub enum Flight {
         design: String,
         /// Its configuration id.
         configuration: String,
+        /// Whose drag hpr flies: the reference's declared table (the default), or its own.
+        #[serde(default, skip_serializing_if = "DragMode::is_same_drag")]
+        mode: DragMode,
     },
+}
+
+/// Whose drag a whole flight flies, the two modes of [M2.1][m2-1].
+///
+/// [m2-1]: https://nrdptel.github.io/hpr-sim/decisions-and-roadmap.html#m2-1
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+#[non_exhaustive]
+pub enum DragMode {
+    /// hpr flies the `C_D0(M)` table the reference declares, so a difference is in the equations
+    /// of motion, the environment or the motor. Its metrics are gated.
+    #[default]
+    SameDrag,
+    /// hpr flies its own drag against a reference in which RocketPy flies the example's own drag,
+    /// so a difference is mostly the two drags ([M2.1c2][m2-1c2]). hpr's normal force is its own
+    /// in both modes; only the zero-lift drag differs. Its metrics are
+    /// held to a target and reported, never gated ([`crate::Verdict::WithinTarget`]).
+    ///
+    /// [m2-1c2]: https://nrdptel.github.io/hpr-sim/decisions-and-roadmap.html#m2-1c2
+    Predicted,
+}
+
+impl DragMode {
+    /// Whether this is the default, same-drag mode.
+    #[must_use]
+    pub fn is_same_drag(&self) -> bool {
+        *self == Self::SameDrag
+    }
 }
 
 impl Flight {

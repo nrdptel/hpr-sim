@@ -498,7 +498,7 @@
       never do; the designs now say `null`, and the site's example flights moved with them (first
       flight 874.0 to 779.0 m).
 
-  - [ ] **M2.1c Predicted mode, CI and regeneration.**
+  - [x] **M2.1c Predicted mode, CI and regeneration.**
     - The same cases flown with hpr's own aero, reported beside the same-drag ones.
     - A CI job that runs `cargo xtask validate` against the stored references, and a separate,
       manually triggered workflow that regenerates them.
@@ -531,7 +531,7 @@
       and the report byte for byte; GitHub dispatches a workflow only once it is on `main`, so its
       first run follows the merge.
 
-    - [ ] **M2.1c2 Predicted mode.**
+    - [x] **M2.1c2 Predicted mode.**
       - The same cases flown with hpr's own aero, against a reference in which RocketPy flies each
         example's own drag curves; results computed from those curves are committed, the curves
         are not (ADR-009).
@@ -539,6 +539,31 @@
       *Done when:*
       - Predicted-mode results are in the report for every case, each gap explained in the case
         file or `docs/VALIDATION.md`; `M ≥ 1` cases are reported as gaps, not hidden, until M1.8.
+
+      *Result (ADR-023):* met. `flight.py --own-drag` flies the six examples on the drag RocketPy
+      1.13.0 really flies (Juno III's and Bella Lui's later rescalings never reach RocketPy's
+      flight, checked in its source) and records each curve's path and SHA-256, never its values;
+      it reproduces byte for byte. Six `predicted-*` cases fly hpr's own aerodynamics against it,
+      each metric held to M2.1's 3% as a target, reported in the report's *Predicted mode* section
+      and never gated: 56 of 75 within it. Apogees: Calisto −0.527%, Bella Lui +1.118%, Juno III
+      +3.181%, Valetudo +10.007% and NDRT 2020 +10.232%, where hpr's drag is 47% below Valetudo's
+      table and 0.318 against NDRT's 0.44; flown on the same drag all five agree within 1.710%.
+      Every miss is explained in its case file, and the set of misses is pinned by a test.
+      Prometheus 2022 is a checked `M ≥ 1` gap (Mach 1.049). Each mode refuses the other's
+      reference, tested. hpr flies predicted mode at rtol = atol = 1e-11: at the default 1e-8 its
+      NDRT apogee differed by 1.7e-7 between macOS and Linux, past the report's reproduction bound,
+      because the drag's `ln` and `powf` differ in their last bits and so move the step sequence.
+
+  - [ ] **M2.1d The time-series RMS and the path in wind.**
+    - The two items of M2.1's list that M2.1a to M2.1c leave open: the time-series RMS after
+      alignment (each whole-flight fixture already carries its series), and the landing offset,
+      reported but not scored until issue #50 finds why hpr turns into the wind less than RocketPy.
+
+    *Done when:*
+    - Every whole-flight case reports its time-series RMS after alignment against the reference's
+      series, gated with its tolerance argued in the case file.
+    - Issue #50's cause is found and the drifts are scored within their tolerances, or an ADR
+      records the measured cause and why they cannot be, and the gap stays visible in the report.
 
 - [ ] **M1.8 Aerodynamics II (transonic and supersonic, damping, overrides).**
   - Transonic drag rise and supersonic wave drag.

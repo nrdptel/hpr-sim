@@ -44,7 +44,7 @@ pub mod report;
 pub mod rocketpy;
 pub mod run;
 
-pub use case::{Case, CaseLock, Metric, Tolerance, committed_cases};
+pub use case::{Case, CaseLock, DragMode, Metric, Tolerance, committed_cases};
 pub use metrics::{Measured, Reference, ReferenceValue};
 pub use report::{Comparison, Gap, NotReproduced, Report, Source, Verdict};
 pub use run::{CaseRun, ValidateError, run_case, run_lock};

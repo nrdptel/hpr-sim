@@ -12,13 +12,14 @@ use hpr_core::gravity::NormalGravity;
 use hpr_core::interp::{Extrapolation, Interpolation, Table1D};
 use hpr_design::{MassProperties, Rocket};
 use hpr_sim::{
-    Device, DeviceDrag, Direction, Environment, EventKind, FlightSettings, FlightStep, Observer,
-    Phase, Rail, Sample, SimError, Simulation, State, Termination, Trigger, UserEvent,
+    Adaptive, Device, DeviceDrag, Direction, Environment, EventKind, FlightSettings, FlightStep,
+    Method, Observer, Phase, Rail, Sample, SimError, Simulation, State, Termination, Trigger,
+    UserEvent,
 };
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 
-use crate::case::{Case, CaseLock, Flight, cases_dir, committed_cases};
+use crate::case::{Case, CaseLock, DragMode, Flight, cases_dir, committed_cases};
 use crate::metrics::{Measured, Reference};
 use crate::report::{Comparison, Gap, Report, Source};
 
@@ -310,6 +311,13 @@ pub fn run_case(root: &Path, case: &Case) -> Result<CaseRun, ValidateError> {
             });
         }
     };
+    let predicted = matches!(
+        case.flight,
+        Flight::WholeFlight {
+            mode: DragMode::Predicted,
+            ..
+        }
+    );
     let mut comparisons = Vec::new();
     for (name, metric) in &case.metrics {
         let value = reference.values.get(name).ok_or_else(|| {
@@ -326,11 +334,20 @@ pub fn run_case(root: &Path, case: &Case) -> Result<CaseRun, ValidateError> {
                 measured.values.keys().collect::<Vec<_>>()
             ))
         })?;
-        comparisons.push(match metric.reason() {
-            Some(reason) => {
+        comparisons.push(match (metric.reason(), predicted) {
+            (Some(reason), _) => {
                 Comparison::not_scored(&case.id, name, *got, value.value, &value.source, reason)
             }
-            None => Comparison::new(
+            (None, false) => Comparison::new(
+                &case.id,
+                name,
+                *got,
+                value.value,
+                &value.source,
+                metric.tolerance(),
+            ),
+            // Predicted mode: the tolerance is a target, reported and never gated (ADR-023).
+            (None, true) => Comparison::targeted(
                 &case.id,
                 name,
                 *got,
@@ -430,9 +447,10 @@ fn measure(root: &Path, case: &Case, setup: &Setup) -> Result<Flown, ValidateErr
             Flight::WholeFlight {
                 design,
                 configuration,
+                mode,
             },
             Setup::WholeFlight(setup),
-        ) => fly_whole_flight(root, case, setup, design, configuration),
+        ) => fly_whole_flight(root, case, setup, design, configuration, *mode),
         _ => Err(ValidateError::Case(format!(
             "case {}: its reference was read for another kind of flight",
             case.id
@@ -639,8 +657,9 @@ fn rocketpy_environment(
     ))
 }
 
-/// A flight from the pad to the ground under the drag table, rail, site, wind and devices the
-/// reference declares: `flight.py`'s flight, through hpr.
+/// A flight from the pad to the ground under the rail, site, wind and devices the reference
+/// declares, and in same-drag mode its drag table (in predicted mode, the design's own drag):
+/// `flight.py`'s flight, through hpr.
 ///
 /// The metrics are measured as RocketPy defines them, which is not always as hpr's own events
 /// would ([Loft lesson L80][l80]: the same word can name a different quantity):
@@ -654,8 +673,10 @@ fn rocketpy_environment(
 ///   ([Loft lesson L26][l26]). hpr is still on its rail then, so the harness finds the instant the
 ///   forward guide's travel is reached and reads the speed there.
 /// - The maxima are over the solver's steps, both ends of each, as RocketPy's are over its
-///   solution array, which starts each phase at its first instant; the power-on maximum is over
-///   the steps up to burnout (`max_acceleration_power_on`).
+///   solution array, which starts each phase at its first instant. Unlike RocketPy's, they are
+///   also over the peaks found inside a step on its dense output (`Peaks::peaks_within`), so that
+///   they do not move with the step sequence (ADR-023). The power-on maximum is over those up to
+///   burnout (`max_acceleration_power_on`).
 ///
 /// [l26]: https://nrdptel.github.io/hpr-sim/decisions-and-roadmap.html#l26
 /// [l80]: https://github.com/nrdptel/hpr-sim/blob/main/docs/research/loft-lessons.md
@@ -665,6 +686,7 @@ fn fly_whole_flight(
     setup: &WholeFlightSetup,
     design: &str,
     configuration: &str,
+    mode: DragMode,
 ) -> Result<Flown, ValidateError> {
     let refuse = |what: String| ValidateError::Flight {
         case: case.id.clone(),
@@ -679,12 +701,40 @@ fn fly_whole_flight(
             setup.design
         )));
     }
-    if setup.cd0_vs_mach != setup.declared_cd0_vs_mach {
-        return Err(refuse(format!(
-            "the reference's case flew C_D0(M) = {:?}, not the {:?} its generator declares",
-            setup.cd0_vs_mach, setup.declared_cd0_vs_mach
-        )));
-    }
+    // Each mode needs the reference that means something against it: same-drag the declared
+    // table, flown by both codes; predicted RocketPy flying the example's own drag, since hpr's
+    // own drag scored against the declared constant would measure it against an arbitrary number.
+    let declared = match (
+        mode,
+        &setup.cd0_vs_mach,
+        &setup.declared_cd0_vs_mach,
+        &setup.own_drag_source,
+    ) {
+        (DragMode::SameDrag, Some(flown), Some(declared), None) => {
+            if flown != declared {
+                return Err(refuse(format!(
+                    "the reference's case flew C_D0(M) = {flown:?}, not the {declared:?} its \
+                     generator declares"
+                )));
+            }
+            Some(flown.clone())
+        }
+        (DragMode::Predicted, None, None, Some(_)) => None,
+        (DragMode::SameDrag, ..) => {
+            return Err(refuse(
+                "a same-drag case needs a reference that flew its generator's declared C_D0(M), \
+                 and this one did not"
+                    .to_owned(),
+            ));
+        }
+        (DragMode::Predicted, ..) => {
+            return Err(refuse(
+                "a predicted case needs a reference that flew the example's own drag; against a \
+                 declared table it would score hpr's drag against an arbitrary constant"
+                    .to_owned(),
+            ));
+        }
+    };
     if let Some((first, rest)) = setup.devices.split_first() {
         if first.height_above_ground_m.is_some() {
             return Err(refuse(format!(
@@ -727,16 +777,6 @@ fn fly_whole_flight(
             // RocketPy's rail has no friction (ADR-011).
             friction_coefficient: 0.0,
         };
-        let (machs, coefficients): (Vec<f64>, Vec<f64>) = setup.cd0_vs_mach.iter().copied().unzip();
-        let table = Table1D::new(
-            machs,
-            coefficients,
-            Interpolation::Linear,
-            // Outside the declared Mach range there is no declared drag, so none is invented.
-            Extrapolation::Error,
-        )?;
-        let drag = DragTable::new(table.clone(), Some(table))
-            .with_reference_diameter_m(2.0 * setup.reference_radius_m);
         let simulation = Simulation::new(
             &rocket,
             configuration,
@@ -744,10 +784,36 @@ fn fly_whole_flight(
             rail,
             FlightSettings {
                 max_time_s: 6000.0,
+                method: match mode {
+                    DragMode::Predicted => Method::DormandPrince54(Adaptive {
+                        relative_tolerance: PREDICTED_TOLERANCE,
+                        absolute_tolerance: PREDICTED_TOLERANCE,
+                        ..Adaptive::default()
+                    }),
+                    _ => FlightSettings::default().method,
+                },
                 ..FlightSettings::default()
             },
-        )?
-        .with_drag_table(drag);
+        )?;
+        // Predicted mode flies the design's own aerodynamics: no table.
+        let simulation = match &declared {
+            Some(rows) => {
+                let (machs, coefficients): (Vec<f64>, Vec<f64>) = rows.iter().copied().unzip();
+                let table = Table1D::new(
+                    machs,
+                    coefficients,
+                    Interpolation::Linear,
+                    // Outside the declared Mach range there is no declared drag, so none is
+                    // invented.
+                    Extrapolation::Error,
+                )?;
+                simulation.with_drag_table(
+                    DragTable::new(table.clone(), Some(table))
+                        .with_reference_diameter_m(2.0 * setup.reference_radius_m),
+                )
+            }
+            None => simulation,
+        };
 
         // L75: the same rocket has to weigh the same, fly its drag on the same area and burn the
         // same motor in both codes before any difference in how it flies can be read as physics.
@@ -916,11 +982,7 @@ fn fly_whole_flight(
             .collect();
         // `f64::max` passes over a NaN, so a sample that is not a number would vanish from the
         // maxima below rather than fail them. Refuse the flight instead.
-        if let Some(row) = flown.iter().find(|row| {
-            !(row.speed_m_s.is_finite()
-                && row.mach.is_finite()
-                && row.acceleration_m_s2.is_finite())
-        }) {
+        if let Some(row) = flown.iter().find(|row| !row.is_finite()) {
             return Ok(Err(format!(
                 "the flight has a sample that is not a number at {} s: {row:?}",
                 row.time_s
@@ -985,7 +1047,7 @@ fn point_velocity(state: &State, p: DVec3) -> DVec3 {
     state.velocity_enu_m_s + state.attitude.mul_vec3(state.body_rate_rad_s.cross(p))
 }
 
-/// One step's end, as the whole-flight metrics need it.
+/// One instant of the flight, as the whole-flight metrics need it.
 #[derive(Debug, Clone, Copy)]
 struct Row {
     time_s: f64,
@@ -994,8 +1056,60 @@ struct Row {
     acceleration_m_s2: f64,
 }
 
-/// Watches a whole flight for what its metrics need: every step's speed, Mach and acceleration at
-/// the dry centre of mass, and the instant the forward guide leaves the rail.
+impl Row {
+    /// Whether every quantity in the row is a number.
+    fn is_finite(&self) -> bool {
+        self.speed_m_s.is_finite() && self.mach.is_finite() && self.acceleration_m_s2.is_finite()
+    }
+
+    /// The quantities whose peaks the metrics report, each as a function of a row.
+    const PEAKED: [fn(&Row) -> f64; 3] = [
+        |row| row.speed_m_s,
+        |row| row.mach,
+        |row| row.acceleration_m_s2,
+    ];
+}
+
+/// Golden-section iterations that narrow onto a peak inside one step: each keeps 0.618 of the
+/// bracket, so 50 leave 3.5e-11 of the step's length.
+const PEAK_ITERATIONS: usize = 50;
+
+/// Where `value` peaks between `low` and `high`, by golden-section search (Kiefer 1953, "Sequential
+/// minimax search for a maximum", Proc. AMS 4(3), 502-506): each iteration keeps 0.618 of the
+/// bracket, for [`PEAK_ITERATIONS`] iterations. For a `value` that rises to one peak and then
+/// falls, the answer is within 3.5e-11 of the bracket's length of a kinked peak. A smooth peak's
+/// top is flat to the value's rounding over a wider span, so the answer is somewhere on it and
+/// the value there is the peak's to rounding.
+///
+/// # Errors
+///
+/// The first error `value` returns.
+pub(crate) fn peak_between<E>(
+    low: f64,
+    high: f64,
+    mut value: impl FnMut(f64) -> Result<f64, E>,
+) -> Result<f64, E> {
+    let keep = 0.5 * (5.0_f64.sqrt() - 1.0);
+    let (mut low, mut high) = (low, high);
+    let (mut left, mut right) = (high - keep * (high - low), low + keep * (high - low));
+    let (mut at_left, mut at_right) = (value(left)?, value(right)?);
+    for _ in 0..PEAK_ITERATIONS {
+        if at_left > at_right {
+            (high, right, at_right) = (right, left, at_left);
+            left = high - keep * (high - low);
+            at_left = value(left)?;
+        } else {
+            (low, left, at_left) = (left, right, at_right);
+            right = low + keep * (high - low);
+            at_right = value(right)?;
+        }
+    }
+    Ok(if at_left > at_right { left } else { right })
+}
+
+/// Watches a whole flight for what its metrics need: speed, Mach and acceleration at the dry centre
+/// of mass at every step's ends and at each of their peaks inside a step, and the instant the
+/// forward guide leaves the rail.
 struct Peaks {
     /// The dry centre of mass, body axes from the nose tip, m.
     dry_cg_m: DVec3,
@@ -1008,7 +1122,7 @@ struct Peaks {
     forward_guide_travel_m: f64,
     /// When that happened and the speed then, once it has.
     forward_guide_exit: Option<(f64, f64)>,
-    /// A row at every step's start and end.
+    /// A row at every step's start and end, and at every peak inside a step.
     rows: Vec<Row>,
 }
 
@@ -1049,6 +1163,68 @@ impl Peaks {
         }))
     }
 
+    /// The rows at the peaks of speed, Mach and acceleration that fall inside `step`.
+    ///
+    /// A peak read only where steps end is off by wherever the step control put them, by O(h²) of
+    /// the step length h at a smooth peak. (A thrust curve's points are stop times, so a peak there
+    /// is a step's end and read exactly.) The step control is not the same on every platform
+    /// (predicted mode's drag calls `ln` and `powf`), so neither is such a peak: moving predicted
+    /// mode's solver tolerance by 1e-7 of itself moved NDRT 2020's max speed by 2.4e-6 of itself,
+    /// where the event-located apogee moved by 1.3e-9. So where a quantity rises out of the step's start and falls into its end,
+    /// as read one microsecond (or a quarter of the step) inside each, a golden-section search on
+    /// the step's dense output narrows onto the peak between them. What it finds is the
+    /// interpolant's peak, which the tolerance controls, wherever the steps fall.
+    ///
+    /// Its limits, measured by sampling every step at 400 points: a step whose quantity turns more
+    /// than once, or jumps (the skin friction at the critical Reynolds number), is not searched;
+    /// none of those is a flight's maximum today. And the acceleration an evaluation of the
+    /// equations of motion gives is smooth only to about 1e-7 m/s², so a smooth acceleration peak
+    /// is found to about 1e-8 of itself and its time only to about 1e-4 s (issue #53).
+    ///
+    /// `first` and `last` are the rows at the step's start and end. A sample inside the step that
+    /// is not a number comes back as a row of its own, so that the flight is refused for it rather
+    /// than the comparisons passing over it.
+    fn peaks_within(
+        &self,
+        step: &dyn FlightStep,
+        first: &Row,
+        last: &Row,
+    ) -> Result<Vec<Row>, SimError> {
+        let (start_s, end_s) = (step.start_s(), step.end_s());
+        let inside = (0.25 * (end_s - start_s)).min(1e-6);
+        // A step of no length has no inside: in free flight `row` gives none there, and elsewhere
+        // every sample of it is one instant, so no quantity rises out of its start.
+        let (Some(second), Some(penultimate)) = (
+            self.row(step, start_s + inside)?,
+            self.row(step, end_s - inside)?,
+        ) else {
+            return Ok(Vec::new());
+        };
+        let mut not_a_number = [second, penultimate]
+            .into_iter()
+            .find(|row| !row.is_finite());
+        let mut peaks = Vec::new();
+        for quantity in Row::PEAKED {
+            if !(quantity(&second) > quantity(first) && quantity(&penultimate) > quantity(last)) {
+                continue;
+            }
+            let peak_s = peak_between(start_s, end_s, |t_s| -> Result<f64, SimError> {
+                Ok(match self.row(step, t_s)? {
+                    Some(row) if row.is_finite() => quantity(&row),
+                    Some(row) => {
+                        not_a_number.get_or_insert(row);
+                        f64::NAN
+                    }
+                    // Only a step of no length, returned from above.
+                    None => f64::NEG_INFINITY,
+                })
+            })?;
+            peaks.extend(self.row(step, peak_s)?);
+        }
+        peaks.extend(not_a_number);
+        Ok(peaks)
+    }
+
     /// How far past the forward guide's exit the rocket has travelled at `t_s`, m.
     fn past_forward_guide(&self, step: &dyn FlightStep, t_s: f64) -> f64 {
         (step.state_at(t_s).position_enu_m - self.start_enu_m).dot(self.rail_axis_enu)
@@ -1063,8 +1239,14 @@ impl Observer for Peaks {
         // instant, such as a canopy fully open, where the deceleration peaks. Taking only the ends
         // would read that peak one step late, wherever the step control happens to put it, which
         // differs across platforms in the sixth figure where the peak falls steeply.
-        self.rows.extend(self.row(step, start_s)?);
-        self.rows.extend(self.row(step, end_s)?);
+        let (first, last) = (self.row(step, start_s)?, self.row(step, end_s)?);
+        let peaks = match (&first, &last) {
+            (Some(first), Some(last)) => self.peaks_within(step, first, last)?,
+            _ => Vec::new(),
+        };
+        self.rows.extend(first);
+        self.rows.extend(last);
+        self.rows.extend(peaks);
         if self.forward_guide_exit.is_none()
             && step.phase() == Phase::Rail
             && self.past_forward_guide(step, end_s) >= 0.0
@@ -1125,6 +1307,18 @@ pub const WHOLE_FLIGHT_METRICS: [&str; 15] = [
     "impact_speed_m_s",
 ];
 
+/// The solver tolerance, `rtol` and `atol` alike, predicted mode flies at (ADR-023).
+///
+/// Its aerodynamics call `ln` and `powf` (the skin friction), whose last bits differ between the
+/// platforms' maths libraries, so the adaptive step sequence can differ between them, and the answer
+/// then differs by the solver's global error. At the default 1e-8, NDRT 2020's predicted apogee was
+/// 1404.058522 m on macOS and 1404.058761 m on Linux, 1.7e-7 apart, past the committed report's
+/// 1e-7 reproduction bound (ADR-022). Measured on macOS, that apogee is 1404.058522, .057883,
+/// .058122 and .058145 m at 1e-8, 1e-9, 1e-10 and 1e-11: converged at 1e-11 to about 1e-5 m, far
+/// inside the bound, for 0.5 s more over the whole suite. Same-drag mode's table interpolation
+/// reproduces at the default and keeps it.
+const PREDICTED_TOLERANCE: f64 = 1e-11;
+
 /// The parts of a reference a whole-flight case needs, read from the generator's own JSON.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct WholeFlightSetup {
@@ -1151,10 +1345,17 @@ pub struct WholeFlightSetup {
     pub effective_1rl_m: f64,
     /// The motor as RocketPy flew it, which hpr's must match.
     pub motor: FlightMotor,
-    /// The `(Mach, C_D0)` rows the case flew, power on and off alike.
-    pub cd0_vs_mach: Vec<(f64, f64)>,
-    /// The rows the generator declares for every case, which the case's must equal.
-    pub declared_cd0_vs_mach: Vec<(f64, f64)>,
+    /// The `(Mach, C_D0)` rows the case flew, power on and off alike, in a same-drag reference;
+    /// `None` in a reference that flew the example's own drag.
+    pub cd0_vs_mach: Option<Vec<(f64, f64)>>,
+    /// The rows the generator declares for every case, which the case's must equal; `None` in a
+    /// reference that flew the example's own drag.
+    pub declared_cd0_vs_mach: Option<Vec<(f64, f64)>>,
+    /// Where the example's own drag came from, in a reference that flew it: recorded by its
+    /// source and hash, never its values, which carry their own terms
+    /// ([ADR-009](https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-009-subsonic-drag-buildup-surface-finishes-and-drag-override-tables-2026-09-17),
+    /// the drag decisions).
+    pub own_drag_source: Option<String>,
     /// The radius the drag coefficients are on, m (RocketPy's `Rocket(radius)`).
     pub reference_radius_m: f64,
     /// The area they are on, m².
@@ -1228,4 +1429,109 @@ pub struct DescentDevice {
     pub lag_s: f64,
     /// The height above the site it opens at, m; `None` opens it at the start.
     pub height_above_ground_m: Option<f64>,
+}
+
+#[cfg(test)]
+mod peak_tests {
+    use hpr_core::DQuat;
+
+    use super::*;
+
+    /// A free-flight step whose rocket climbs straight up at `speed(t)`, at a steady 9 m/s².
+    struct Climb {
+        start_s: f64,
+        end_s: f64,
+        speed: fn(f64) -> f64,
+    }
+
+    impl FlightStep for Climb {
+        fn phase(&self) -> Phase {
+            Phase::Free
+        }
+        fn start_s(&self) -> f64 {
+            self.start_s
+        }
+        fn end_s(&self) -> f64 {
+            self.end_s
+        }
+        fn state_at(&self, t_s: f64) -> State {
+            State {
+                position_enu_m: DVec3::ZERO,
+                velocity_enu_m_s: DVec3::new(0.0, 0.0, (self.speed)(t_s)),
+                attitude: DQuat::IDENTITY,
+                body_rate_rad_s: DVec3::ZERO,
+            }
+        }
+        fn sample(&self, t_s: f64) -> Result<Sample, SimError> {
+            let state = self.state_at(t_s);
+            let speed = state.velocity_enu_m_s.z;
+            Ok(Sample {
+                time_s: t_s,
+                phase: Phase::Free,
+                state,
+                cg_enu_m: DVec3::ZERO,
+                cg_velocity_enu_m_s: state.velocity_enu_m_s,
+                height_above_ground_m: 0.0,
+                vertical_speed_m_s: speed,
+                acceleration_enu_m_s2: DVec3::new(0.0, 0.0, 9.0),
+                airspeed_m_s: speed,
+                mach: speed / 340.0,
+                angle_of_attack_rad: 0.0,
+                dynamic_pressure_pa: 0.0,
+                axial_coefficient: 0.0,
+                thrust_n: 0.0,
+                mass_kg: 1.0,
+                recovery_drag_area_m2: 0.0,
+            })
+        }
+    }
+
+    /// The rows the observer keeps for one step.
+    fn rows(start_s: f64, end_s: f64, speed: fn(f64) -> f64) -> Vec<Row> {
+        let mut peaks = Peaks {
+            dry_cg_m: DVec3::ZERO,
+            rail_axis_enu: DVec3::Z,
+            start_enu_m: DVec3::ZERO,
+            forward_guide_travel_m: 1.0,
+            forward_guide_exit: None,
+            rows: Vec::new(),
+        };
+        let step = Climb {
+            start_s,
+            end_s,
+            speed,
+        };
+        peaks.step(&step).expect("the stub's samples never fail");
+        peaks.rows
+    }
+
+    #[test]
+    fn a_peak_inside_a_step_gets_a_row_and_a_rise_does_not() {
+        // Speed, and so Mach, peak at 0.013 s inside the step; the acceleration is steady. The
+        // ends and the two peaks give four rows, the peaks at the top to rounding.
+        let peaked = rows(0.0, 0.05, |t| 100.0 - 1e4 * (t - 0.013).powi(2));
+        assert_eq!(peaked.len(), 4, "{peaked:?}");
+        for row in &peaked[2..] {
+            assert!((row.time_s - 0.013).abs() < 1e-8, "{row:?}");
+            assert!((row.speed_m_s - 100.0).abs() < 1e-12, "{row:?}");
+        }
+        // A step that only rises has its peak at its end, which is a row already.
+        assert_eq!(rows(0.0, 0.05, |t| 100.0 + t).len(), 2);
+        // A step of no length has no row at all in free flight: its instant is the end of the
+        // step before it.
+        assert!(rows(0.03, 0.03, |t| 100.0 + t).is_empty());
+    }
+
+    #[test]
+    fn a_sample_inside_a_step_that_is_not_a_number_is_kept_to_be_refused() {
+        // Finite at the ends and a microsecond inside them, not a number around the peak.
+        let rows = rows(0.0, 0.05, |t| {
+            if (t - 0.013).abs() < 1e-3 {
+                f64::NAN
+            } else {
+                100.0 - 1e4 * (t - 0.013).powi(2)
+            }
+        });
+        assert!(rows.iter().any(|row| !row.is_finite()), "{rows:?}");
+    }
 }

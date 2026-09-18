@@ -7,8 +7,10 @@ some Rust, but no knowledge of this project.
 
 > **The numbers this example prints are not validated.** hpr's whole flights match RocketPy's in
 > height, speed and time when both codes are given the same drag, but not in where they go in
-> wind. hpr's own drag, which this example flies, has not been checked that way, and no flight has
-> been compared with a real one.
+> wind. With its own drag, hpr flies this rocket about 10% higher than RocketPy does on the drag
+> table RocketPy's example ships (770 m against 700 m in the
+> [validation case](accuracy.md#whole-flights-with-each-codes-own-drag)); which drag is closer to
+> the truth is open. No flight has been compared with a real one.
 > [How far to trust it](#how-far-to-trust-it) below says what that means for this one.
 
 ## What you need
@@ -155,10 +157,8 @@ Below the table:
 - **Where it goes in wind does not match.** In wind, hpr turns the rocket into the wind less than
   RocketPy does ([issue #50](https://github.com/nrdptel/hpr-sim/issues/50)), so this
   example's apogee 86 m upwind and its landing point are the least trustworthy numbers it
-  prints. With hpr's own drag, as here, the
-  comparison is [M2.1c2](decisions-and-roadmap.md#m2-1c2), not done yet, and no flight has been
-  compared with a real one. [Accuracy](accuracy.md#whole-flights-against-rocketpy) keeps every
-  result so far.
+  prints. No flight has been compared with a real one.
+  [Accuracy](accuracy.md#whole-flights-against-rocketpy) keeps every result so far.
 - **The thrust is likely a little low for this site.** hpr flies the curve as measured, to match
   RocketPy's example. A motor fired on a test stand near sea level gives somewhat more thrust in
   the thinner air at 1,400 m. With hpr's correction for that, which assumes a sea-level test,
@@ -174,7 +174,9 @@ Below the table:
   - With that file's rougher finish (60 µm) and its two launch lugs (short tubes on the outside of
     the body that ride along the rail, like rail buttons), hpr gives 0.714, 1.9% under it.
   - The drag curve in RocketPy's example says 1.05, which the comparison leaves unexplained
-    ([Aerodynamics](physics/aero.md#drag-verification)).
+    ([Aerodynamics](physics/aero.md#drag-verification)). Flown on that curve, RocketPy's flight
+    peaks 10% lower than hpr's on its own drag
+    ([Accuracy](accuracy.md#whole-flights-with-each-codes-own-drag)).
 
   A second program,
   [`drag_what_if.rs`](https://github.com/nrdptel/hpr-sim/blob/main/crates/hpr-sim/examples/drag_what_if.rs),
@@ -221,7 +223,8 @@ Below the table:
   parachute opening at once and RocketPy's formula for gravity, hpr's descent agrees with
   RocketPy's within 3% for five rockets ([Recovery](physics/recovery.md)). This example opens the
   drogue after half a second and uses hpr's own gravity, and its landing point also depends on
-  where the apogee is, which no comparison has checked yet.
+  where the apogee is, which on each code's own drag differs from RocketPy's by 10% for this
+  rocket.
 
 ### Checking it yourself
 
@@ -250,7 +253,7 @@ You don't have to take these numbers on trust. Four ways to test them:
 
 The project's own comparison of whole flights against RocketPy, with the drag given to both codes,
 is [M2.1b2](decisions-and-roadmap.md#m2-1b2); with each code's own drag it is
-[M2.1c2](decisions-and-roadmap.md#m2-1c2), not done yet.
+[M2.1c2](decisions-and-roadmap.md#m2-1c2).
 
 ## The program, step by step
 

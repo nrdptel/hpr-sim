@@ -39,6 +39,7 @@ new record replaces it and points back. All of them are in the [decision log][de
 | [ADR-020: The reader test][adr-020] | How the site was tested on a new reader, and why every milestone and lesson label links a row of plain words on this page | [Decisions and the roadmap](#every-milestone) |
 | [ADR-021: Whole flights against RocketPy][adr-021] | What a whole-flight comparison measures and how, why a sixth rocket was added, and how a case declares a limit of hpr's as a known gap | [Accuracy](accuracy.md#whole-flights-against-rocketpy) |
 | [ADR-022: Validation in CI, and regenerating references only by hand][adr-022] | How every pull request reruns the validation cases on three operating systems, and why the references change only when a person regenerates them and reviews the diff | [Checking a claim](checking-a-claim.md#rules-that-keep-the-trail-honest) |
+| [ADR-023: Predicted mode][adr-023] | How hpr's own aerodynamics are compared with RocketPy flying each example's own drag, and why those results are reported against a target rather than gated | [Accuracy](accuracy.md#whole-flights-with-each-codes-own-drag) |
 
 ## The roadmap
 
@@ -112,9 +113,10 @@ missing or its status disagrees.
 | <a id="m2-1b"></a>[M2.1b][phase-1] | Whole flights against RocketPy, with both codes given the same drag | done |
 | <a id="m2-1b1"></a>[M2.1b1][phase-1] | The script that flies RocketPy's example rockets from pad to landing, as the reference | done |
 | <a id="m2-1b2"></a>[M2.1b2][phase-1] | hpr's whole flights compared with that reference | done |
-| <a id="m2-1c"></a>[M2.1c][phase-1] | The same cases flown with each code's own drag, a CI job, and regenerating references | not yet done |
+| <a id="m2-1c"></a>[M2.1c][phase-1] | The same cases flown with each code's own drag, a CI job, and regenerating references | done |
 | <a id="m2-1c1"></a>[M2.1c1][phase-1] | A CI job that checks every case against its stored reference, and a workflow, run only by hand, that regenerates the references | done |
-| <a id="m2-1c2"></a>[M2.1c2][phase-1] | The same cases flown with each code's own drag | not yet done |
+| <a id="m2-1c2"></a>[M2.1c2][phase-1] | The same cases flown with each code's own drag | done |
+| <a id="m2-1d"></a>[M2.1d][phase-1] | The time-series comparison, and where a rocket goes in wind (issue #50) | not yet done |
 | <a id="m1-8"></a>[M1.8][phase-1] | Transonic and supersonic aerodynamics, damping, and overriding the aerodynamics | not yet done |
 | <a id="m3-1"></a>[M3.1][phase-1] | Reading OpenRocket `.ork` design files | not yet done |
 | <a id="m2-2"></a>[M2.2][phase-1] | OpenRocket as a reference program, and a corpus of designs to compare | not yet done |
@@ -240,6 +242,7 @@ is the milestone that added or will add that test.
 [adr-020]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-020-the-reader-test-and-labels-that-lead-to-plain-words-2026-09-18
 [adr-021]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-021-whole-flights-against-rocketpy-what-is-compared-and-the-gaps-it-may-declare-2026-09-18
 [adr-022]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-022-validation-in-ci-and-regenerating-references-only-by-hand-2026-09-18
+[adr-023]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-023-predicted-mode-each-codes-own-drag-reported-against-a-target-2026-09-18
 [decisions]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md
 [lessons]: https://github.com/nrdptel/hpr-sim/blob/main/docs/research/loft-lessons.md
 [lessons-motors]: https://github.com/nrdptel/hpr-sim/blob/main/docs/research/loft-lessons.md#motors-mass-and-design-checks

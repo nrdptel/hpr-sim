@@ -122,10 +122,11 @@ out.
   Five of RocketPy's example rockets agree within 3% on apogee, speeds, burnout and flight time
   ([M2.1b2](decisions-and-roadmap.md#m2-1b2), the whole-flight comparison). Where they go in wind
   does not agree: hpr turns into the wind less than RocketPy
-  ([issue #50](https://github.com/nrdptel/hpr-sim/issues/50)). hpr's own drag has
-  not been compared in a whole flight yet ([M2.1c2](decisions-and-roadmap.md#m2-1c2)), nor has any
-  flight been compared with OpenRocket ([M2.2](decisions-and-roadmap.md#m2-2)) or a real one
-  ([M2.3](decisions-and-roadmap.md#m2-3)).
+  ([issue #50](https://github.com/nrdptel/hpr-sim/issues/50)). With hpr's own drag, against
+  RocketPy flying the drag its examples ship, hpr's heights differ from RocketPy's by −0.527% to +10.232%, the larger gaps where its drag is well
+  below the example's ([Accuracy](accuracy.md#whole-flights-with-each-codes-own-drag)).
+  No flight has been compared with OpenRocket ([M2.2](decisions-and-roadmap.md#m2-2)) or a real
+  one ([M2.3](decisions-and-roadmap.md#m2-3)).
 - **The descent under a parachute matches RocketPy's.** The comparison flies the descents of five
   of RocketPy's [example rockets](glossary.md#example-rockets) in both codes:
   - Each starts from the same state near apogee, with the first parachute opening at once.
