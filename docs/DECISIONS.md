@@ -26,6 +26,7 @@ renumber. Supersede an entry by adding a new one that points back to it.
 | ADR-018 | Examples run in CI against committed output; pages quote files, checked line for line | accepted |
 | ADR-019 | Publishing the site and the API reference to GitHub Pages | accepted |
 | ADR-020 | The reader test, and labels that lead to plain words | accepted |
+| ADR-021 | Whole flights against RocketPy: what is compared, and the gaps it may declare | accepted |
 
 ---
 
@@ -1681,3 +1682,73 @@ milestone to link to, and a Markdown anchor comes only from a heading, which may
 - Checking a milestone off in `ROADMAP.md` fails the site check until its row on *Decisions and the
   roadmap* says `done`; the error gives the row to write. A new milestone needs a row.
 - A page that names a lesson without a row fails the link check until the row is added.
+
+
+## ADR-021: Whole flights against RocketPy: what is compared, and the gaps it may declare (2026-09-18)
+
+**Context.** M2.1b2 scores hpr's whole flights against the same-drag reference M2.1b1 committed,
+`validation/fixtures/flight/rocketpy-whole-flight.json`. Its done-when asks for at least five cases
+that pass. RocketPy's five examples in that reference include Prometheus 2022, which peaks at Mach
+1.014, and hpr refuses `M ≥ 1` until M1.8 (ADR-008, ADR-011). The first run of the other four put
+hpr 2.7 to 3.9% high on peak acceleration and 6 to 9% high on apogee, everywhere but NDRT 2020.
+At Valetudo's peak, 0.034 s after ignition, there is no drag yet, so the difference had to be
+thrust or mass.
+
+**Decision.**
+
+- **The designs fly the thrust curve as RocketPy does.** RocketPy's `Motor(reference_pressure=None)`
+  default, which every example keeps, makes its `pressure_thrust` zero (`motor.py:1188-1189`).
+  `cargo xtask designs` had written hpr's 101,325 Pa stand-in instead, which adds `16 kPa × A_e`
+  of thrust at a 1,400 m site. NDRT, at 206 m, was the one case it barely touched.
+  `Nozzle::reference_pressure_pa` is now an `Option`: `None` flies the curve as it is at every
+  pressure, and the transcription writes `None` wherever RocketPy's input has none. With that, every
+  gated metric agrees within 1.8%. The example flights on the site move with it: the first flight's
+  apogee goes from 874.0 to 779.0 m.
+- **A sixth rocket, not a weaker bar.** Bella Lui, on M2.1's own list of example rockets, is added
+  to `flight.py` alone, with its example's site and rail and a declared wind (its example's weather
+  is an ERA5 file). The five examples already in the reference are unchanged byte for byte.
+- **A known gap is declared, checked and pinned.** A case may say `known_gap = "..."`. The harness
+  accepts one kind, hpr's refusal of `M ≥ 1`. It checks that the reference reaches Mach 1, that
+  hpr refuses the flight with exactly that error, and it fails the run once hpr flies the case
+  ([Loft lesson L85](https://github.com/nrdptel/hpr-sim/blob/main/docs/research/loft-lessons.md)).
+  The report lists gaps in a section of their own. They count neither as a pass nor as a fail,
+  and a test pins the set.
+- **Metrics mean what RocketPy means by them** (L80). RocketPy's state follows the centre of dry
+  mass, so speeds and accelerations are that point's (`v_O + ω × p`,
+  `a_O + ω̇ × p + ω × (ω × p)`, with `ω̇` from the step's interpolant). RocketPy's rail exit is the
+  forward button at the top (`effective_1rl`), which the harness finds by bisecting hpr's rail
+  phase. hpr's own exit is the last guide's (L26). The maxima are over the solver's steps, and the
+  power-on maximum is over the steps up to burnout.
+- **The reference records everything the flight needs** (L75). `flight.py` now writes each case's
+  parachutes (drag area, trigger, lag, sampling rate). The harness reads the site, wind, rail, drag
+  table and area, and devices from the reference alone. It refuses a design whose dry mass or
+  reference area differs from the recorded one by more than 1e-9. It also refuses a case whose drag
+  is not the generator's declaration.
+- **Two metrics are not scored, each argued in its case file.** One is Calisto's time of peak
+  acceleration: its two peaks are 0.9% apart, and hpr's rail terms put the maximum on the other
+  one. The other is NDRT's whole-flight maximum, which is the main opening, where RocketPy has
+  added mass and hpr has none (ADR-012). Every other metric is gated at 3% with no floor, as
+  ADR-015 requires.
+
+**Alternatives.**
+
+- Scoring four cases and calling Prometheus the fifth: it compares nothing, so it would not be a
+  pass.
+- Keeping the stand-in and gating at 10%: that would hide an input difference as a model
+  difference.
+- Flying Prometheus's subsonic part only: its maximum speed, burnout and apogee all come after
+  Mach 1. A comparison cut there would score a different flight from the reference's.
+- A different declared drag for Prometheus, to keep it subsonic: that is a reference tuned to
+  suit hpr.
+
+**Consequences.**
+
+- Model differences that remain are measured, not tuned away, and written in the case files. The
+  normal force is each code's own in same-drag mode (the likely source of Juno III's +1.76%
+  apogee, in the suite's strongest wind; not isolated). hpr's rail equation keeps the
+  variable-mass terms RocketPy's `udot_rail1` leaves out: +1.2 to 1.3 m/s² at a sharp ignition
+  spike, with thrust and mass equal to five digits.
+- An hpr user flying a real motor still gets the sea-level stand-in by default. `None` is for
+  inputs that were never corrected, such as RocketPy's.
+- When M1.8 lifts the Mach limit, the Prometheus case fails until its gap is removed. Its
+  tolerances are already argued in its case file.

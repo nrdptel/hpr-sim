@@ -421,7 +421,7 @@
     own formula, and the metric comes to −1.8% (issue #27, ADR-015). A merged line in
     `docs/physics/recovery.md` claiming the two codes used the same gravity model is corrected.
 
-  - [ ] **M2.1b Whole flights against RocketPy, same-drag.**
+  - [x] **M2.1b Whole flights against RocketPy, same-drag.**
     - A `validation/oracles/rocketpy/flight.py` generator (M2.1b1) and a `Flight::WholeFlight`
       case variant taking the oracle's `C_D0(M)` through `Simulation::with_drag_table` (M2.1b2).
     - Loft lessons: L75 (tests named in `docs/research/loft-lessons.md`).
@@ -468,7 +468,7 @@
       at 54.9 s against 114.2 power-on), which is not a flight load and is a transient the two
       models deliberately model differently.
 
-    - [ ] **M2.1b2 The whole-flight cases.**
+    - [x] **M2.1b2 The whole-flight cases.**
       - A `Flight::WholeFlight` case variant beside `RecoveryDescent`, taking the case's `C_D0(M)`
         through `Simulation::with_drag_table`, and the five cases in the lock.
       - Loft lessons: L75 (tests named in `docs/research/loft-lessons.md`).
@@ -480,6 +480,18 @@
         exists and passes.
       - `validation/reports/latest.md` carries them, and the gravity rule of ADR-015 is applied:
         the comparison flies the oracle's models where hpr has them.
+
+      *Result (ADR-021):* met. Six whole-flight cases are locked. Five pass: 58 metrics scored,
+      all within 3% with no floor, the largest Bella Lui's power-on peak at +1.783% and Juno III's
+      apogee at +1.760%. Two metrics are argued as not scored (Calisto's time of peak
+      acceleration, two peaks 0.9% apart; NDRT's whole-flight peak, the main opening, where
+      RocketPy has added mass). Prometheus (Mach 1.014) is a known gap that the harness checks
+      and that fails the run once hpr flies it (L85). Bella Lui is the sixth rocket, added to
+      `flight.py` alone. The L75 test passes. The comparison flies RocketPy's gravity, atmosphere,
+      frictionless rail and thrust: the first run was 2.7 to 3.9% high on peak acceleration
+      because the transcribed designs corrected thrust for ambient pressure, which RocketPy's
+      examples never do; `Nozzle::reference_pressure_pa` is now optional, and the designs say
+      `None`. The site's example flights moved with it (first flight 874.0 to 779.0 m).
 
   - [ ] **M2.1c Predicted mode, CI and regeneration.**
     - The same cases flown with hpr's own aero, reported beside the same-drag ones.

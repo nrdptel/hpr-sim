@@ -8,7 +8,7 @@ use crate::report::{Comparison, Report, Verdict};
 use crate::run::{ValidateError, run_case, run_lock};
 
 /// The repository root, from this crate's manifest.
-fn root() -> PathBuf {
+pub(crate) fn root() -> PathBuf {
     Path::new(env!("CARGO_MANIFEST_DIR"))
         .parent()
         .and_then(Path::parent)
@@ -24,7 +24,7 @@ fn lock() -> CaseLock {
 }
 
 /// Every committed case, in lock order.
-fn cases() -> Vec<Case> {
+pub(crate) fn cases() -> Vec<Case> {
     lock()
         .cases
         .iter()
@@ -38,7 +38,7 @@ fn cases() -> Vec<Case> {
 }
 
 /// A directory that removes itself, so a failing assertion cannot leave one behind.
-struct Scratch(PathBuf);
+pub(crate) struct Scratch(PathBuf);
 
 impl Scratch {
     /// A fresh directory.
@@ -55,12 +55,12 @@ impl Scratch {
     }
 
     /// Its path.
-    fn path(&self) -> &Path {
+    pub(crate) fn path(&self) -> &Path {
         &self.0
     }
 
     /// Writes `text` to `relative`, creating what it needs.
-    fn write(&self, relative: &str, text: &str) {
+    pub(crate) fn write(&self, relative: &str, text: &str) {
         let path = self.0.join(relative);
         if let Some(parent) = path.parent() {
             std::fs::create_dir_all(parent).expect("a temporary directory");
@@ -79,7 +79,7 @@ impl Drop for Scratch {
 /// and run the harness for real.
 ///
 /// `edit` sees the reference document before it is written.
-fn scratch_case(case_id: &str, edit: impl FnOnce(&mut serde_json::Value)) -> Scratch {
+pub(crate) fn scratch_case(case_id: &str, edit: impl FnOnce(&mut serde_json::Value)) -> Scratch {
     let scratch = Scratch::new();
     let case = cases()
         .into_iter()
@@ -95,8 +95,7 @@ fn scratch_case(case_id: &str, edit: impl FnOnce(&mut serde_json::Value)) -> Scr
         &case.reference.display().to_string(),
         &serde_json::to_string_pretty(&document).expect("the reference serialises"),
     );
-    let crate::case::Flight::RecoveryDescent { design, .. } = &case.flight;
-    let design_path = format!("validation/designs/{design}.json");
+    let design_path = format!("validation/designs/{}.json", case.flight.design());
     scratch.write(
         &design_path,
         &std::fs::read_to_string(root().join(&design_path)).expect("the design is committed"),
@@ -226,10 +225,30 @@ fn the_metrics_that_are_not_scored_are_these_and_no_others() {
         .iter()
         .map(|comparison| (comparison.case.as_str(), comparison.metric.as_str()))
         .collect();
-    // None. Valetudo's northward drift was excused while its 28x gap was unexplained; the gap was
-    // an unlike gravity model, the suite now flies RocketPy's own, and the metric is gated like
-    // every other. Adding an excuse back means editing this line.
-    assert_eq!(excused, Vec::<(&str, &str)>::new());
+    // Valetudo's northward drift was excused while its 28x gap was unexplained; the gap was an
+    // unlike gravity model, the suite now flies RocketPy's own, and the metric is gated like every
+    // other. The two below are whole flights (M2.1b2), each argued in its case file:
+    //
+    // - Calisto's maximum acceleration comes twice, 0.9% apart, and hpr's rail terms decide which
+    //   is the higher, so its *time* jumps between the peaks; the value is gated.
+    // - NDRT 2020's whole-flight maximum is the main opening, where RocketPy has added mass and hpr
+    //   has none (ADR-012); the power-on maximum and the opening's time are gated.
+    //
+    // Adding an excuse means editing this list.
+    assert_eq!(
+        excused,
+        vec![
+            (
+                "flight-calisto-tests-motor-at-minus-1.373",
+                "max_acceleration_time_s"
+            ),
+            ("flight-ndrt-2020-nose-to-tail", "max_acceleration_m_s2"),
+        ]
+    );
+    // A known gap is the other way a case goes unscored, and the set of them is pinned the same
+    // way: Prometheus 2022 reaches Mach 1.014, which hpr refuses until M1.8.
+    let gaps: Vec<&str> = report.gaps.iter().map(|gap| gap.case.as_str()).collect();
+    assert_eq!(gaps, vec!["flight-prometheus-2022-generic-motor"]);
     assert!(report.passed());
 
     // The hatch itself still works, and still refuses to be a quiet pass: a declared metric is
@@ -278,11 +297,26 @@ fn every_reference_value_has_provenance() {
             source.generator.starts_with("validation/oracles/"),
             "{source:?}"
         );
-        assert!(source.command.contains("recovery.py"), "{source:?}");
+        // The command regenerates the reference from the generator it names, and the model says
+        // what that generator flew: a descent's point mass, or a whole flight's rigid body.
+        assert!(source.command.contains(&source.generator), "{source:?}");
         assert_eq!(source.sha256.len(), 64, "{source:?}");
-        assert!(source.model.contains("point mass"), "{source:?}");
+        let expected_model = if source.generator.ends_with("recovery.py") {
+            "point mass"
+        } else {
+            assert!(source.generator.ends_with("flight.py"), "{source:?}");
+            "6-DOF variable-mass rigid body"
+        };
+        assert!(source.model.contains(expected_model), "{source:?}");
         assert!(source.overrides.contains("noise"), "{source:?}");
     }
+    assert!(
+        report
+            .sources
+            .iter()
+            .any(|source| source.generator.ends_with("flight.py")),
+        "the whole flights are among the sources"
+    );
     // The hash is the file's, so an edited reference shows up in the report and not only in git.
     let committed =
         std::fs::read(root().join("validation/fixtures/recovery/rocketpy-descent.json"))
@@ -506,10 +540,21 @@ fn the_committed_cases_all_pass_and_the_report_says_so() {
     // The milestone's own check: every locked case runs against its stored reference, and the
     // report that `cargo xtask validate` writes is the one this produces.
     let report = run_lock(&root(), false).expect("the committed cases run");
-    assert_eq!(report.cases.len(), 5, "{:?}", report.cases);
-    assert_eq!(report.comparisons.len(), 30);
-    assert!(report.not_scored().is_empty(), "every metric is scored");
+    assert_eq!(report.cases.len(), 11, "{:?}", report.cases);
+    // Five descents of six metrics, and five whole flights of twelve; the sixth whole flight is a
+    // known gap and compares nothing.
+    assert_eq!(report.comparisons.len(), 90);
+    assert_eq!(report.not_scored().len(), 2, "argued in the case files");
+    assert_eq!(report.gaps.len(), 1);
     assert!(report.passed(), "{:?}", report.failures());
+    // M2.1b2's own bar: at least five whole flights, every metric scored or argued, all passing.
+    let whole_flights: Vec<&String> = report
+        .cases
+        .iter()
+        .filter(|case| case.starts_with("flight-"))
+        .filter(|case| !report.gaps.iter().any(|gap| &gap.case == *case))
+        .collect();
+    assert!(whole_flights.len() >= 5, "{whole_flights:?}");
     let (worst, relative) = report.worst_scored().expect("something was scored");
     assert!(
         relative < 0.03,
@@ -519,7 +564,12 @@ fn the_committed_cases_all_pass_and_the_report_says_so() {
     );
     let markdown = report.to_markdown();
     assert!(
-        markdown.contains("30 scored, all within tolerance"),
+        markdown.contains("88 scored, all within tolerance"),
+        "{markdown}"
+    );
+    assert!(
+        markdown
+            .contains("## Known gaps\n\n- **flight-prometheus-2022-generic-motor**: 12 metric(s)"),
         "{markdown}"
     );
     assert!(
@@ -534,7 +584,13 @@ fn the_committed_cases_all_pass_and_the_report_says_so() {
         .map(|comparison| comparison.case.clone())
         .collect();
     compared.dedup();
-    assert_eq!(compared, report.cases);
+    let flown: Vec<String> = report
+        .cases
+        .iter()
+        .filter(|case| !report.gaps.iter().any(|gap| &gap.case == *case))
+        .cloned()
+        .collect();
+    assert_eq!(compared, flown);
     // The committed reports are these reports, so a number that moves shows up in the diff.
     let committed = std::fs::read_to_string(root().join("validation/reports/latest.md"))
         .expect("the report is committed");
@@ -551,6 +607,7 @@ fn the_committed_cases_all_pass_and_the_report_says_so() {
     assert_eq!(committed.fast, report.fast);
     assert_eq!(committed.cases, report.cases, "run `cargo xtask validate`");
     assert_eq!(committed.skipped, report.skipped);
+    assert_eq!(committed.gaps, report.gaps, "run `cargo xtask validate`");
     assert_eq!(
         committed.sources, report.sources,
         "run `cargo xtask validate`"
@@ -675,6 +732,91 @@ fn a_tolerance_accepts_what_it_says() {
 }
 
 /// Every file under `path`, by relative name, with its bytes.
+/// `case_id`'s committed case file with `known_gap` set to `reason`, or removed for `None`.
+fn with_gap(case_id: &str, reason: Option<&str>) -> String {
+    let mut case = cases()
+        .into_iter()
+        .find(|case| case.id == case_id)
+        .expect("a committed case");
+    case.known_gap = reason.map(str::to_owned);
+    toml::to_string(&case).expect("the case serialises")
+}
+
+#[test]
+fn a_known_gap_is_checked_not_trusted() {
+    // A known gap excuses a whole case, so it gets the scrutiny a not-scored metric does and more
+    // (L82): the harness accepts one kind, hpr's refusal of M >= 1, and checks both sides of it.
+    let file = |id: &str| format!("validation/cases/{id}.toml");
+
+    // The committed one: the reference reaches Mach 1, hpr refuses the flight for exactly that,
+    // and the report carries it with the case's reason and hpr's words, scoring nothing.
+    let report = run_lock(&root(), false).expect("the committed cases run");
+    let gap = report
+        .gaps
+        .iter()
+        .find(|gap| gap.case == "flight-prometheus-2022-generic-motor")
+        .expect("Prometheus is a gap");
+    assert!(gap.reason.contains("Mach 1.014"), "{gap:?}");
+    assert!(gap.refusal.contains("Mach 1.000"), "{gap:?}");
+    assert_eq!(gap.metrics, 12);
+    assert!(
+        !report
+            .comparisons
+            .iter()
+            .any(|comparison| comparison.case == gap.case),
+        "a gap scores nothing, not even a pass"
+    );
+
+    // Without the declaration, the same refusal fails the run: a case that stops short is not a
+    // case that passes.
+    let scratch = scratch_case("flight-prometheus-2022-generic-motor", |_| {});
+    scratch.write(
+        &file("flight-prometheus-2022-generic-motor"),
+        &with_gap("flight-prometheus-2022-generic-motor", None),
+    );
+    let error = run_lock(scratch.path(), false).expect_err("an undeclared refusal fails");
+    assert!(
+        matches!(&error, ValidateError::Flight { what, .. } if what.contains("Mach 1.000")),
+        "{error}"
+    );
+
+    // A gap the reference does not reach is refused before anything flies: Valetudo peaks at
+    // Mach 0.33.
+    let scratch = scratch_case("flight-valetudo", |_| {});
+    scratch.write(
+        &file("flight-valetudo"),
+        &with_gap("flight-valetudo", Some("it goes supersonic")),
+    );
+    let error = run_lock(scratch.path(), false).expect_err("a gap the reference denies");
+    assert!(
+        error.to_string().contains("reference peaks at Mach"),
+        "{error}"
+    );
+
+    // Loft lesson L85: a gap that has closed must not stay excused. With a reference that claims
+    // Mach 1.2 but a flight hpr completes, the declared gap fails the run.
+    let scratch = scratch_case("flight-valetudo", |document| {
+        for case in document["cases"].as_array_mut().expect("cases") {
+            case["metrics"]["max_mach"] = serde_json::json!(1.2);
+        }
+    });
+    scratch.write(
+        &file("flight-valetudo"),
+        &with_gap("flight-valetudo", Some("it goes supersonic")),
+    );
+    let error = run_lock(scratch.path(), false).expect_err("a gap hpr flies through");
+    assert!(error.to_string().contains("hpr flew it"), "{error}");
+
+    // And a gap nobody explained is not one.
+    let scratch = scratch_case("flight-prometheus-2022-generic-motor", |_| {});
+    scratch.write(
+        &file("flight-prometheus-2022-generic-motor"),
+        &with_gap("flight-prometheus-2022-generic-motor", Some("   ")),
+    );
+    let error = run_lock(scratch.path(), false).expect_err("a blank gap");
+    assert!(error.to_string().contains("gives no reason"), "{error}");
+}
+
 fn tree(path: &Path) -> std::collections::BTreeMap<String, Vec<u8>> {
     let mut files = std::collections::BTreeMap::new();
     let mut stack = vec![path.to_path_buf()];

@@ -7,10 +7,14 @@
   burns.
 - **Sources:** the equations of motion in RocketPy's technical documentation (RocketPy 1.13.0),
   and the RocketPy paper (Ceotto et al., 2021), which is cited but was not fetched.
-- **How well it is validated:** by analytic and unit tests only. For example, a tumbling rocket's
-  centre of mass stays on the exact parabola in a vacuum to 1.7e-6 m over 22 s. No whole flight
-  (apogee, top speed, landing point) has been compared with another simulator or a real flight
-  yet; the comparison with RocketPy is planned as [M2.1b2](../decisions-and-roadmap.md#m2-1b2).
+- **How well it is validated:** by analytic and unit tests (a tumbling rocket's centre of mass
+  stays on the exact parabola in a vacuum to 1.7e-6 m over 22 s), and against RocketPy. Five of
+  its example rockets, flown from the pad to the ground by both codes with the same declared drag,
+  agree on every scored metric within 3%; the largest difference is +1.783%, a peak acceleration
+  on the rail ([validation report][report],
+  [whole flights against RocketPy](#whole-flights-against-rocketpy)). A sixth reaches Mach 1,
+  which hpr refuses. hpr's own drag has not been checked in a whole flight yet
+  ([M2.1c](../decisions-and-roadmap.md#m2-1c)), and no flight has been compared with a real one.
 - **What it leaves out:** staging and delayed ignition, tip-off (the pivot as the rocket leaves the
   rail), roll forcing and aerodynamic roll damping, turbulence and thrust misalignment. Its
   small-angle aerodynamics are used at every angle of attack (the angle between the rocket's axis
@@ -148,7 +152,7 @@ q̇   = ½ q ⊗ (0, ω)
   again.
   - hpr keeps the terms as RocketPy does, for parity in the RocketPy comparison ([M2.1](../decisions-and-roadmap.md#m2-1)).
     The form is exact for the [RP-EOM] model, not for a measured curve.
-  - The size of the double count on Valetudo: it lifts off at 1.07 ms with 73 N of thrust against
+  - The size of the double count on Valetudo: it lifts off at 1.56 ms with 73 N of thrust against
     95 N of weight, 21 N coming from `m̈(n − r)`, and it changes the burnout speed by at most
     0.05 m/s.
 - **Earth's rotation.** It enters only through the Coriolis force. The rotational equations use
@@ -328,5 +332,46 @@ default settings. The numbers were measured on 2026-09-17.
   `SimError::Aero(Mach)`.
 - **Cost.** About 1.1 ms per Valetudo flight to the ground (`docs/perf.md`).
 
+### Whole flights against RocketPy
+
+`cargo xtask validate` flies six of RocketPy's example rockets from the pad to the ground and
+compares twelve numbers of each with RocketPy 1.13.0's own flight
+([ADR-021][adr-021], the whole-flight comparison). Both codes fly one declared drag coefficient,
+a constant `C_D0` of 0.5 on the same reference area, so what is compared is the equations of
+motion, the motor and the air, not the drag. The rest is RocketPy's where hpr has it: its gravity
+formula, standard atmosphere, frictionless rail, the example's rail angles and parachutes, and a
+declared wind.
+
+| result | value |
+|---|---|
+| cases scored | 5, and a sixth reported as a known gap |
+| metrics scored | 58 of 60, each within 3% of RocketPy's |
+| largest difference | +1.783%, Bella Lui's peak acceleration, on the rail |
+| largest in apogee | +1.760%, Juno III, in the suite's strongest wind |
+
+What the two codes still do differently, and how much it moves:
+
+- **The rail.** hpr's rail equation keeps the terms for the centre of mass moving inside the
+  body as the propellant burns. RocketPy's rail equation (`udot_rail1`) leaves them out. At a
+  sharp ignition spike they add 1.2 to 1.3 m/s² at the same instant, with thrust and mass equal
+  to five digits.
+- **The normal force.** The same drag doesn't mean the same lift: each code turns the rocket
+  into the wind with its own model. This is the likely source of the apogee differences, the
+  largest in the strongest wind, but no run has isolated it.
+- **The parachutes.** RocketPy adds the air a canopy drags along while it opens (added mass); hpr
+  has none. So the peak deceleration as NDRT 2020's main opens differs by 57%, and that one number
+  is reported but not scored.
+- **Mach 1.** Prometheus 2022 reaches Mach 1.014, which hpr refuses until
+  [M1.8](../decisions-and-roadmap.md#m1-8). The case still runs, and it fails the suite once hpr
+  flies it, so the gap can't outlive its cause.
+
+The metrics are measured as RocketPy defines them: speeds and accelerations at the centre of dry
+mass, and the rail exit when the forward rail button reaches the top of the rail, where hpr's own
+rail-exit event waits for the last one. Each case file argues its tolerances; [Accuracy][accuracy]
+gives every result.
+
 [adr-007]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-007-design-tree-stations-placement-automatic-radii-overrides-motors-and-checks-2026-09-17
 [adr-011]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-011-rigid-body-flight-equations-of-motion-aerodynamic-coupling-rail-phases-and-termination-2026-09-17
+[report]: https://github.com/nrdptel/hpr-sim/blob/main/validation/reports/latest.md
+[adr-021]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-021-whole-flights-against-rocketpy-what-is-compared-and-the-gaps-it-may-declare-2026-09-18
+[accuracy]: ../accuracy.md#whole-flights-against-rocketpy

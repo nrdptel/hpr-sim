@@ -457,7 +457,16 @@ F(p_a) = F_curve + (p_ref − p_a) A_e,    A_e = π r_e²
 - hpr applies it strictly inside the burn, `0 < t < t_end` (`t_end` the curve's last time), as
   RocketPy's flight does ([`simulation/flight.py:1936-1956`][rp-flight]), but only where the
   curve's thrust is positive (RocketPy also adds it inside zero-thrust gaps, where nothing flows),
-  and never lets thrust go negative. Without a known nozzle it returns the curve. Commercial motor
+  and never lets thrust go negative. Without a known nozzle it returns the curve.
+- **No reference pressure, no correction.** A nozzle may leave `reference_pressure_pa` empty
+  (`None`, `null` in a design file). The curve is then flown as it is at every pressure, which is
+  what RocketPy does by default: its `Motor(reference_pressure=None)` makes `pressure_thrust`
+  zero ([`motor.py:1188-1189`][rp-1173]). The designs transcribed from RocketPy's examples say
+  `None` for that reason ([ADR-021][adr-021]). With the sea-level stand-in, the Valetudo of
+  [Getting started](../getting-started.md), at a 1,400 m site, carried about 23 N of thrust
+  (15.7 kPa × 1.47e-3 m²) that RocketPy's example never flies, and reached 874 m where it now
+  reaches 779 m. The unit test `hpr_motor::motor::tests::pressure_correction_uses_the_exit_area`
+  pins both forms. Commercial motor
   files carry no exit diameter: `.eng` has no field for one, and the `.rse` format's `exitDia`
   attribute is always 0 ([`.rse` files](../format/rse.md#engine-attributes)).
 - **Limits.** The full-flow term steps in just after ignition and steps to zero at `t_end` (the
@@ -737,3 +746,4 @@ fn main() -> Result<(), Box<dyn Error>> {
 [rp-1759]: https://github.com/RocketPy-Team/RocketPy/blob/v1.13.0/rocketpy/motors/motor.py#L1759-L1761
 [rp-1173]: https://github.com/RocketPy-Team/RocketPy/blob/v1.13.0/rocketpy/motors/motor.py#L1173-L1191
 [rp-flight]: https://github.com/RocketPy-Team/RocketPy/blob/v1.13.0/rocketpy/simulation/flight.py#L1936-L1956
+[adr-021]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-021-whole-flights-against-rocketpy-what-is-compared-and-the-gaps-it-may-declare-2026-09-18

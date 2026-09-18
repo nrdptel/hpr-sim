@@ -13,6 +13,7 @@ workspace = true
 
 [dependencies]
 hpr-sim.workspace = true
+hpr-aero.workspace = true
 sha2.workspace = true
 hpr-design.workspace = true
 hpr-atmos.workspace = true

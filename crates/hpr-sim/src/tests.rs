@@ -31,6 +31,26 @@ fn valetudo(environment: Environment, settings: FlightSettings) -> Simulation {
     .unwrap()
 }
 
+/// Valetudo with its thrust curve taken as measured at standard sea-level pressure, so that a
+/// flight in a vacuum carries the pressure term `p_ref A_e`. The design itself, like RocketPy's
+/// example, gives no reference pressure and so no correction.
+fn valetudo_measured_at_sea_level(
+    environment: Environment,
+    settings: FlightSettings,
+) -> Simulation {
+    let mut rocket = serde_json::to_value(design("rocketpy-valetudo")).unwrap();
+    rocket["configurations"][0]["motors"][0]["motor"]["nozzle"]["reference_pressure_pa"] =
+        serde_json::json!(hpr_motor::motor::STANDARD_SEA_LEVEL_PRESSURE_PA);
+    Simulation::new(
+        &serde_json::from_value(rocket).unwrap(),
+        "example",
+        environment,
+        Rail::vertical(3.0),
+        settings,
+    )
+    .unwrap()
+}
+
 fn capped(max_time_s: f64) -> FlightSettings {
     FlightSettings {
         max_time_s,
@@ -142,7 +162,8 @@ fn powered_vertical_climb_in_vacuum_integrates_the_axial_equation() {
     // comes here from the motor and the assembly directly, and the quadrature splits at the
     // thrust curve's knots.
     let (t0, t1) = (0.5, 3.0);
-    let sim = valetudo(analytic_environment(UniformAir::vacuum(), G), capped(t1));
+    let sim =
+        valetudo_measured_at_sea_level(analytic_environment(UniformAir::vacuum(), G), capped(t1));
     let assembly = sim.assembly();
     let placed = &assembly.motors[0];
     let motor = &placed.mounted.motor;
@@ -396,7 +417,7 @@ fn stable_rocket_weathercocks_into_crosswind() {
     let windy_apogee = at(&windy, EventKind::Apogee);
     let burnout = at(&windy, EventKind::Burnout);
     let axis_east = burnout.state.unit_attitude().mul_vec3(DVec3::Z).x;
-    // Measured: calm −1.0 m (Earth rotation), windy −96 m, axis 0.12 west of vertical at burnout.
+    // Measured: calm −0.86 m (Earth rotation), windy −86 m, axis 0.12 west of vertical at burnout.
     assert!(calm_apogee.cg_enu_m.x.abs() < 5.0);
     assert!(axis_east < -0.05, "{axis_east}");
     assert!(windy_apogee.cg_enu_m.x - calm_apogee.cg_enu_m.x < -50.0);

@@ -5,9 +5,10 @@ a short program that flies a rocket from the launch rail to the ground and print
 Then it walks through that program, so you can change it and fly your own variations. It needs
 some Rust, but no knowledge of this project.
 
-> **The numbers this example prints are not validated.** No whole flight from hpr has yet been
-> compared with another simulator or with a real flight; [How far to trust it](#how-far-to-trust-it)
-> below says what that means for this one.
+> **The numbers this example prints are not validated.** hpr's whole flights match RocketPy's
+> when both codes are given the same drag, but hpr's own drag, which this example flies, has not
+> been checked that way, and no flight has been compared with a real one.
+> [How far to trust it](#how-far-to-trust-it) below says what that means for this one.
 
 ## What you need
 
@@ -49,19 +50,19 @@ Not yet validated: see the Accuracy page before trusting these numbers.
 
 event                time (s)   CG height (m)   speed (m/s)
 liftoff                  0.00             0.9           0.0
-rail exit                0.36             3.9          16.7
-burnout                  3.26           229.6         119.6
-apogee                  14.55           874.0           6.5
-drogue charge fires     14.55           874.0           6.5
-drogue opens            15.05           872.8           7.6
-main charge fires       43.43           150.0          27.0
-main opens              44.43           123.5          27.0
-landing                 63.13             0.0           8.1
+rail exit                0.37             3.9          16.2
+burnout                  3.26           216.0         111.0
+apogee                  13.84           779.0           6.2
+drogue charge fires     13.84           779.0           6.2
+drogue opens            14.34           777.9           7.4
+main charge fires       39.25           150.0          27.0
+main opens              40.25           123.5          27.0
+landing                 58.95             0.0           8.1
 
-Apogee:     874.0 m (2867 ft) above the pad, 95.7 m from it at a bearing of 270°, at 14.55 s
-Top speed:  120.3 m/s (Mach 0.36), at 3.1 s
-Rail exit:  16.7 m/s
-Landing:    100.4 m from the pad at a bearing of 90°, falling at 6.4 m/s, at 63.13 s
+Apogee:     779.0 m (2556 ft) above the pad, 85.8 m from it at a bearing of 270°, at 13.84 s
+Top speed:  112.3 m/s (Mach 0.34), at 3.0 s
+Rail exit:  16.2 m/s
+Landing:    94.3 m from the pad at a bearing of 90°, falling at 6.4 m/s, at 58.95 s
 ```
 
 You should see exactly these numbers. The project's automated checks (CI, for continuous
@@ -79,8 +80,10 @@ hpr's copy of it is one of the project's [example rockets](glossary.md#example-r
 Its motor is not a real K400C. It keeps the size and mass of the motor in RocketPy's example, and
 takes the thrust curve of a K400C, a commercial motor
 ([motor designation](glossary.md#motor-designation)) whose curve hpr bundles, in place of the
-original's. The rocket launches from a 3 m vertical rail, in a 5 m/s wind that blows from the west
-at every height, and comes down on a [drogue and a main](glossary.md#drogue-and-main) parachute.
+original's. Like RocketPy's example, hpr flies the curve as it was measured: it adds no thrust for
+the thinner air at the site, 1,400 m above sea level. The rocket launches from a 3 m vertical
+rail, in a 5 m/s wind that blows from the west at every height, and comes down on a
+[drogue and a main](glossary.md#drogue-and-main) parachute.
 
 The table lists the flight's [events](glossary.md#event) in order:
 
@@ -104,8 +107,8 @@ And the events:
 | main opens | a second later, the main takes effect |
 | landing | the centre of gravity reaches the ground |
 
-Liftoff comes a millisecond after ignition, when the thrust is only 73 N against 95 N of weight.
-Most of the rest of the push, 21 N, comes from the propellant's
+Liftoff comes 1.6 milliseconds after ignition, when the thrust is only 73 N against 95 N of
+weight. Most of the rest of the push, 21 N, comes from the propellant's
 [internal momentum](glossary.md#internal-momentum): the propellant and gas moving inside the motor
 as it burns.
 
@@ -118,12 +121,12 @@ as it burns.
   ([Rigid-body flight](physics/flight.md#equations-of-motion)).
 
 The speed is over the ground, so it includes the drift. At apogee the rocket is still moving
-sideways at 6.5 m/s. At landing it falls at 6.4 m/s while the 5 m/s wind carries it east, 8.1 m/s
+sideways at 6.2 m/s. At landing it falls at 6.4 m/s while the 5 m/s wind carries it east, 8.1 m/s
 in all (√(6.4² + 5²) ≈ 8.1).
 
 Below the table:
 
-- **Apogee** is the highest point, in metres and feet, and where it was: 95.7 m from the pad at a
+- **Apogee** is the highest point, in metres and feet, and where it was: 85.8 m from the pad at a
   [bearing](glossary.md#bearing) of 270°. A bearing is a direction clockwise from north, so 270°
   is due west.
 - **Top speed** is the fastest the rocket went, over the ground, with its
@@ -136,17 +139,21 @@ Below the table:
   [what is left out](how-a-flight-is-simulated.md#what-is-left-out)). hpr sets no minimum
   rail-exit speed and doesn't judge whether this one is enough; that call is your range safety
   officer's.
-- **Landing** is where the rocket came down, 100.4 m due east of the pad, and how fast it was
+- **Landing** is where the rocket came down, 94.3 m due east of the pad, and how fast it was
   falling. The rocket [weathercocks](glossary.md#weathercocking): it turns into the wind as it
   climbs, so its apogee is west of the pad. It then drifts east under its parachutes, past the
   pad.
 
 ## How far to trust it
 
-- **No whole flight has been validated.** hpr's apogee, top speed and landing point have not yet
-  been compared with another simulator's or a real flight's. Comparing whole flights with
-  RocketPy's is the next validation milestone, [M2.1b2](decisions-and-roadmap.md#m2-1b2); [Accuracy](accuracy.md) keeps
-  every result so far.
+- **Whole flights match RocketPy's, given the same drag.** Five of RocketPy's example rockets,
+  this airframe among them, flown from the pad to the ground by both codes with one declared
+  drag coefficient, agree within 3% on every scored number
+  ([M2.1b2](decisions-and-roadmap.md#m2-1b2), the whole-flight comparison). That checks the
+  equations of motion, the motor and the air, not the drag. With hpr's own drag, as here, the
+  comparison is [M2.1c](decisions-and-roadmap.md#m2-1c), not done yet, and no flight has been
+  compared with a real one. [Accuracy](accuracy.md#whole-flights-against-rocketpy) keeps every
+  result so far.
 - **The drag is the largest doubt.** hpr computes the
   [drag coefficient](glossary.md#drag-coefficient) from the rocket's shape and surface. For this
   design it is 0.5566 at Mach 0.3, coasting with the motor burnt out
@@ -174,12 +181,12 @@ Below the table:
   Valetudo's apogee under three drag models, from a 3 m rail in 5 m/s of wind
 
   drag coefficient                             apogee (m)
-  hpr's own, from the design                       874.0
-  0.728, from the rocket's OpenRocket file         842.2
-  1.05, from RocketPy's example curve              790.9
+  hpr's own, from the design                       779.0
+  0.728, from the rocket's OpenRocket file         753.6
+  1.05, from RocketPy's example curve              711.8
   ```
 
-  For this rocket, the three drag values on record move the apogee from 874.0 m to 790.9 m, 9.5%
+  For this rocket, the three drag values on record move the apogee from 779.0 m to 711.8 m, 8.6%
   lower. That is a spread, not a bound:
 
   - It shows how much this rocket's apogee depends on its drag. It doesn't say how far hpr's
@@ -191,7 +198,7 @@ Below the table:
     ([Accuracy](accuracy.md#results-by-model)).
   - Another rocket, or this one on another motor, has its own spread.
 
-  So 874 m is this design's answer, and with more drag the same design would peak lower. The
+  So 779 m is this design's answer, and with more drag the same design would peak lower. The
   rocket that flew had a different motor, so none of these is a prediction of its flight.
 - **The parachutes are simple.** Each opens fully the moment its lines stretch, with no
   [filling time](glossary.md#inflation-and-filling-time) and no drag overshoot (the canopy's drag
@@ -230,8 +237,9 @@ You don't have to take these numbers on trust. Four ways to test them:
   coefficient from 0.5566 to 0.714, as above. hpr can't import an OpenRocket design yet: that
   comes with [M3.1](decisions-and-roadmap.md#m3-1), OpenRocket import.
 
-The project's own comparison of whole flights, against RocketPy, is
-[M2.1b2](decisions-and-roadmap.md#m2-1b2), and it isn't done yet.
+The project's own comparison of whole flights against RocketPy, with the drag given to both codes,
+is [M2.1b2](decisions-and-roadmap.md#m2-1b2); with each code's own drag it is
+[M2.1c](decisions-and-roadmap.md#m2-1c), not done yet.
 
 ## The program, step by step
 

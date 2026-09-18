@@ -70,6 +70,14 @@ fn write_reports(root: &Path, report: &Report) -> Result<&'static str, String> {
 /// look alarming because a declared difference is large in percentage terms.
 fn print_summary(report: &Report) {
     for case in &report.cases {
+        if let Some(gap) = report.gaps.iter().find(|gap| gap.case == *case) {
+            // A gap compares nothing, so "0 metrics, worst +0.00%" would read as a clean pass.
+            println!(
+                "{case}: known gap, {} metric(s) not scored: hpr {}",
+                gap.metrics, gap.refusal
+            );
+            continue;
+        }
         let metrics: Vec<&hpr_validate::Comparison> = report
             .comparisons
             .iter()
@@ -133,6 +141,7 @@ mod tests {
             cases: Vec::new(),
             skipped: Vec::new(),
             comparisons: Vec::new(),
+            gaps: Vec::new(),
             sources: vec![Source {
                 case: "x".to_owned(),
                 oracle: "rocketpy 1.13.0".to_owned(),

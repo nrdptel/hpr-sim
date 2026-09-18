@@ -4,53 +4,52 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
 
 ## Now
 
-- **Current milestone:** M2.1b2 The whole-flight cases
-- **Order:** M2.1b2, then M2.1c; M0.4 waits only on M0.4d's deploy, blocked on Pages (Needs Neer)
-- **Run:** the first autopilot run; M0.1-M0.4c, M0.4e, M1.1-M1.7, M2.1a and M2.1b1 have shipped,
+- **Current milestone:** M2.1c Predicted mode, CI and regeneration
+- **Order:** M2.1c, then M1.8; M0.4 waits only on M0.4d's deploy, blocked on Pages (Needs Neer)
+- **Run:** the first autopilot run; M0.1-M0.4c, M0.4e, M1.1-M1.7, M2.1a and M2.1b have shipped,
   and M0.4d all but its deploy
-- **Last updated:** 2026-09-18 (M0.4e shipped; M2.1b2 not started)
+- **Last updated:** 2026-09-18 (M2.1b2 shipped; M2.1c not started)
 
 ## Handoff (overwrite each session)
 
-M0.4e (ADR-020): two cold reader passes on the built site; every flagged term is fixed. New pages
-*Recording a trajectory* and *Your own rocket*; four new examples run in CI (`trajectory`,
-`own_rocket`, `motors`, `wind_profiles`). Every milestone and Loft lesson label now links a row of
-*Decisions and the roadmap* (`#m1-9`, `#l15`), and the rustdoc links them by the site's address.
+M2.1b2 (ADR-021): six whole-flight cases in the lock. Five pass, 58 metrics within 3% (largest
++1.783%), two argued as not scored, and Prometheus is a known gap (Mach 1.014). The designs now
+fly RocketPy's thrust as measured (`Nozzle::reference_pressure_pa: None`), which moved the site's
+example flights (first flight 874.0 to 779.0 m).
 
 - **Page rules** (ADR-016 to ADR-020): relative links between pages, GitHub URLs for the rest,
   labels as links to their rows, none in headings, Unicode equations; new pages in `SUMMARY.md`; a
-  new library needs a row in `docs/api.md` and a guide link in its `//!`.
+  new library needs a row in `docs/api.md` and a guide link in its `//!`. *Accuracy*'s numbers
+  must be in a file the same item links (the report, a case file); its results tables must hold
+  every row of the report, cell for cell.
 - **Checking a milestone off** in `ROADMAP.md` fails `cargo xtask site` until its row in
-  `docs/decisions-and-roadmap.md` says `done`; a new milestone needs a row. A page that names a new
-  Loft lesson needs a lesson row. The rustdoc is checked for bare labels too (#44 is fixed).
+  `docs/decisions-and-roadmap.md` says `done`; a new milestone needs a row.
 - **When Pages is on:** `gh workflow run CI --ref main`; once `deploy` passes, drop the README's
   "goes live once" sentence, check M0.4d and M0.4 off, and set both rows to `done`.
 
-Next, M2.1b2: a `Flight::WholeFlight` variant, five cases in the lock, the L75 test.
+Next, M2.1c: predicted mode, a CI job for `cargo xtask validate`, and manual regeneration.
 
-- **The reference** is `validation/fixtures/flight/rocketpy-whole-flight.json`. Teach
-  `crates/hpr-validate/src/rocketpy.rs` its shape, as it knows `recovery.py`'s; only it may.
-- **The drag is the case's, not RocketPy's.** Its exports carry their own terms (ADR-009) and CI
-  has no `refs/`, so the fixture declares a constant `C_D0` of 0.5 for both codes. Feed it to hpr
-  through `Simulation::with_drag_table` (`crates/hpr-sim/src/flight.rs:292`); do not invent a Mach
-  curve there, which is L18 rebuilt inside the reference. Pin the area too: the fixture records
-  `reference_radius_m` and `reference_area_m2` for the L75 test to assert.
-- **Thrust starts at (0, 0):** RocketPy's `.eng` reader inserts that point, so thrust ramps
-  linearly to the file's first (0.008 to 0.038 s). Model it the same way or argue the difference.
-- **Gate `max_acceleration_power_on_m_s2`**, not the whole-flight maximum (the parachute for NDRT
-  and Prometheus). It is sampled at solver steps; see #36 for that and the oracle's follow-ups.
-- **One gap to report, not hide:** Prometheus peaks at Mach 1.014; hpr refuses `M >= 1` until M1.8.
-- **Argue each tolerance in the case file** and fly `GravityModel::VerticalTaylor` (ADR-015);
-  expect differences from RocketPy's added mass, its rail exit and `0.25*n^2` (ADR-011).
-- **Open conventions for the jar (M2.2/M3.1):** override order (L51), radii, positions, ogive,
-  walls, fin mass, cant pivot, drag-at-angle, lug diameter.
+- **Predicted mode needs its own reference.** The committed one is same-drag (`C_D0` 0.5).
+  Comparing hpr's own drag against it measures hpr's drag against an arbitrary constant. The
+  like-for-like reference is RocketPy flying its examples' own drag curves, which live in `refs/`
+  and carry their own terms (ADR-009). Results computed from them may be published; the curves
+  may not. Decide in an ADR; otherwise report hpr's predicted apogee beside the same-drag one and
+  say what it is.
+- **Prometheus stays a gap** until M1.8; `a_known_gap_is_checked_not_trusted` fails the run once
+  hpr flies it. Remove `known_gap` then; its tolerances are already argued.
+- **CI:** `cargo test` already runs every case against the committed report, pinned to six
+  decimals on three OSes (whole flights reproduced there); a `validate` job makes it explicit.
+- **Regeneration** needs `refs/rocketpy` and `refs/venv` (`cargo xtask refs fetch`). A
+  `workflow_dispatch` job regenerates the fixtures and uploads the diff; it never commits.
 - **Process notes:** `cargo test -p xtask` guards STATUS, ROADMAP, notices, lessons and the lock.
-  The oracles need `refs/rocketpy` (run from the repo root with `refs/venv/bin/python`); its data
-  is never committed. Scanned PDFs: `pdftoppm -r 90 -gray -png`; born-digital: `pdftotext -layout`.
-  On snapshot drift, run `cargo xtask refs fetch --adopt-snapshots`.
+  Oracles run from the repo root with `refs/venv/bin/python`. `cargo xtask designs` and
+  `cargo xtask examples` rewrite designs and example outputs; pages quoting them must follow.
 
 ## Done log (newest first, keep about 15)
 
+- 2026-09-18: M2.1b2 The whole-flight cases (PR #49, ADR-021): six cases, five pass (58
+  metrics within 3%, largest +1.783%), Prometheus a checked gap; the L75 test; Bella Lui added;
+  designs fly RocketPy's uncorrected thrust (`reference_pressure_pa: None`).
 - 2026-09-18: M0.4e The reader test (PR #47, ADR-020): cold readers answered 5, then 9 of 10
   questions (the tenth then fixed); every flagged term fixed; four examples in CI; labels link rows
   held to the roadmap, in the API reference too (#44).
@@ -63,9 +62,8 @@ Next, M2.1b2: a `Flight::WholeFlight` variant, five cases in the lock, the L75 t
 - 2026-09-18: M0.4b Model pages, Accuracy, Glossary, Checking a claim (PR #40, ADR-017): *In
   short* on all 16 model pages and *Accuracy*'s numbers traced to sources, both checked.
 - 2026-09-18: M0.4a The site and its link checks (PR #37, ADR-016): mdBook, links and labels.
-- 2026-09-17: PR #34: the M2.1b1 oracle's step is bounded; the cliff was its `max_time` (#33).
-- 2026-09-17: M2.1b1 The whole-flight oracle: `flight.py` flies the five examples pad to landing
-  under a declared `C_D0`; apogees 779 to 3,623 m AGL; Prometheus reaches Mach 1.014.
+- 2026-09-17: M2.1b1 The whole-flight oracle (and PR #34, its bounded step, #33): `flight.py`
+  flies the examples pad to landing under a declared `C_D0`; Prometheus reaches Mach 1.014.
 
 ## Needs Neer (blocking or one-way decisions; the session keeps working on other things)
 
@@ -115,6 +113,9 @@ Next, M2.1b2: a `Flight::WholeFlight` variant, five cases in the lock, the L75 t
   filter (it rejects none of the 1,708 surveyed motors, 236 to 3,031 m/s), and a behaviour change.
 - M2.1b1: a same-drag case declares its own `C_D0(M)`, which both codes then fly, rather than
   committing or reading RocketPy's exports (their own terms, ADR-009; absent from CI).
+- ADR-021: whole flights measured as RocketPy defines them (dry-mass centre, forward-button rail
+  exit); Bella Lui added so five can pass; a `known_gap` only for `M ≥ 1`, checked and pinned;
+  RocketPy's `reference_pressure=None` transcribed as `None`, not the sea-level stand-in.
 - ADR-015: a run reads references, never writes them; every value carries its source and the file
   its hash; every metric is gated at 3% with no floor, or declared not scored; locked cases must
   run; inputs come from the oracle's own record; RocketPy comparisons fly RocketPy's gravity.
@@ -144,7 +145,6 @@ Next, M2.1b2: a `Flight::WholeFlight` variant, five cases in the lock, the L75 t
   attitude freezes at deployment, and his filling time is stated only for 150 to 500 ft/s (M1.7a).
   Streamer pleats are not modelled (hpr reads +58% fast on Kidwell's pleated streamer, +9% on his
   flat one); tumble misses its own finless drop by +19% (M1.7b).
-- `refs doctor` "runnable" means the oracle's runtime starts, not that a flight ran; no oracle runs
-  in CI, which compares against stored output (M2.1b).
+- `refs doctor` "runnable" means the oracle's runtime starts; no oracle runs in CI (M2.1b).
 - hpr's descent results are not bit-identical across macOS, Windows and Linux: the committed report
   is pinned to six decimals, where they agree; CI proved full precision does not (M2.1a).

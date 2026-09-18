@@ -1,0 +1,80 @@
+# calisto-tests-motor-at-minus-1.373: RocketPy's example flown from the pad to the ground by both codes
+# (`validation/oracles/rocketpy/flight.py`, M2.1b1), compared metric by metric (M2.1b2).
+#
+# Same-drag mode: both codes fly the C_D0(M) the generator declares (a constant 0.5, on the
+# reference area the reference records and the harness checks), so a difference is in the equations
+# of motion, the environment or the motor, not in the drag. The site, the declared wind, the rail
+# and the parachutes are the reference's own record; the flight uses RocketPy's gravity, standard
+# atmosphere and frictionless rail (ADR-015). The thrust curve is flown as measured, as RocketPy
+# does with no reference pressure (the design says `reference_pressure_pa: null`).
+#
+# Every metric is held to the milestone's 3%, with no absolute floor. Why 3% and not tighter: the
+# two codes still differ, by design, in three places, each measured rather than assumed.
+#
+# - Normal force. Same-drag shares C_D0 only; each code turns the rocket into the wind with its own
+#   lift model (hpr's is Galejs body lift and Diederich fins, ADR-008), so apogee, its time and the
+#   burnout altitude move with the wind. This is the expected source of the largest differences
+#   (up to 1.8% across the six cases); it is not isolated by a run of its own.
+# - The rail. hpr's rail equation keeps the variable-mass terms (the centre of mass moving inside
+#   the body as propellant burns), which RocketPy's `udot_rail1` leaves out. At a sharp ignition
+#   spike they add 1.2 to 1.3 m/s^2 at the same instant, with thrust and mass equal to five digits
+#   (Calisto at 0.05 s: 112.34 against 111.18; Bella Lui at 0.007 s: 74.14 against 72.84).
+# - Parachutes. RocketPy adds a canopy's added mass while it opens and samples its triggers at
+#   100 to 105 Hz; hpr has no added mass and fires its triggers at the instant (ADR-012).
+#
+# RocketPy's own solver moves the metrics by at most 0.39% between rtol 1e-6 and 1e-8 (the time of
+# the peak acceleration), so the reference is the model's answer to well inside the gate.
+#
+# The metrics are measured as RocketPy defines them (L80): speeds and accelerations at the centre
+# of dry mass, the rail exit when the forward button reaches the top (`effective_1rl`), the maxima
+# over the solver's steps, and the power-on maximum over the steps up to burnout.
+#
+# Calisto: 2,610 m AGL on an M motor, with a drogue and a main. The worst scored difference is the
+# burnout altitude at +0.25%.
+#
+# The time of the maximum acceleration is not scored, for the reason in its table: the flight has
+# two peaks 0.9% apart, and the rail terms above decide which is higher.
+id = "flight-calisto-tests-motor-at-minus-1.373"
+title = "Calisto, RocketPy's test rocket, from the pad to the ground, same-drag"
+reference = "validation/fixtures/flight/rocketpy-whole-flight.json"
+reference_case = "calisto-tests-motor-at-minus-1.373"
+
+[flight.whole_flight]
+design = "rocketpy-calisto-tests-motor-at-minus-1.373"
+configuration = "example"
+
+[metrics.apogee_agl_m]
+relative = 0.03
+
+[metrics.apogee_time_s]
+relative = 0.03
+
+[metrics.max_speed_m_s]
+relative = 0.03
+
+[metrics.max_mach]
+relative = 0.03
+
+[metrics.max_acceleration_m_s2]
+relative = 0.03
+
+[metrics.max_acceleration_time_s]
+not_scored = "two peaks 0.9% apart: RocketPy's are 111.18 m/s^2 on the rail at 0.05 s and 112.26 at 1.568 s, so its maximum is the later one; hpr's rail equation adds 1.16 m/s^2 of variable-mass terms at 0.05 s (thrust and mass equal to five digits), which lifts that peak to 112.35 and moves the maximum's time from one peak to the other. The value itself is gated and agrees to 0.07%."
+
+[metrics.max_acceleration_power_on_m_s2]
+relative = 0.03
+
+[metrics.rail_exit_speed_m_s]
+relative = 0.03
+
+[metrics.rail_exit_time_s]
+relative = 0.03
+
+[metrics.burnout_altitude_agl_m]
+relative = 0.03
+
+[metrics.burnout_speed_m_s]
+relative = 0.03
+
+[metrics.flight_time_s]
+relative = 0.03

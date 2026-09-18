@@ -80,7 +80,13 @@ pub struct Nozzle {
     pub throat_radius_m: Option<f64>,
     /// The ambient pressure the thrust curve was measured at, Pa: the static test site's. Motor
     /// files don't record it; [`STANDARD_SEA_LEVEL_PRESSURE_PA`] is a stand-in when it's unknown.
-    pub reference_pressure_pa: f64,
+    ///
+    /// `None` flies the curve as it is at every ambient pressure, with no correction. That is
+    /// RocketPy's default (`Motor(reference_pressure=None)`, whose `pressure_thrust` is then zero,
+    /// `motor.py:1188-1189`), so a RocketPy input transcribed into hpr says `None` rather than
+    /// taking the stand-in: at a 1,400 m site the stand-in adds 16 kPa × `A_e` of thrust, 2 to 4%
+    /// of the examples' peak acceleration, that RocketPy never flew.
+    pub reference_pressure_pa: Option<f64>,
 }
 
 impl Nozzle {
@@ -255,10 +261,12 @@ impl SolidMotor {
                     value: throat,
                 });
             }
-            if !(nozzle.reference_pressure_pa.is_finite() && nozzle.reference_pressure_pa >= 0.0) {
+            if let Some(reference) = nozzle.reference_pressure_pa
+                && !(reference.is_finite() && reference >= 0.0)
+            {
                 return Err(MotorError::Domain {
                     what: "thrust-curve reference pressure (Pa)",
-                    value: nozzle.reference_pressure_pa,
+                    value: reference,
                 });
             }
         }
@@ -434,8 +442,8 @@ impl SolidMotor {
     /// The thrust at `t` with ambient pressure `ambient_pa`, N: `F + (p_ref − p_a) A_e`, with the
     /// nozzle's [`Nozzle::reference_pressure_pa`], strictly inside the burn (`0 < t < t_end`, as
     /// RocketPy's flight applies it) where the curve's thrust is positive, never below zero; the
-    /// curve's thrust elsewhere, and without a nozzle. A NaN time gives NaN, and so does a NaN
-    /// ambient pressure where the term applies.
+    /// curve's thrust elsewhere, without a nozzle, and with a nozzle that gives no reference
+    /// pressure. A NaN time gives NaN, and so does a NaN ambient pressure where the term applies.
     ///
     /// The term is the full-flow value throughout, so the thrust steps by it just after ignition
     /// and again at `t_end` (both events for an integrator), and in the ignition transient and the
@@ -444,11 +452,13 @@ impl SolidMotor {
     pub fn thrust_at_pressure_n(&self, t: f64, ambient_pa: f64) -> f64 {
         let thrust = self.curve.thrust_n(t);
         match self.nozzle {
-            Some(nozzle)
-                if t > 0.0 && t < self.curve.end_time_s() && (thrust > 0.0 || thrust.is_nan()) =>
-            {
-                let corrected =
-                    thrust + (nozzle.reference_pressure_pa - ambient_pa) * nozzle.exit_area_m2();
+            Some(
+                nozzle @ Nozzle {
+                    reference_pressure_pa: Some(reference_pa),
+                    ..
+                },
+            ) if t > 0.0 && t < self.curve.end_time_s() && (thrust > 0.0 || thrust.is_nan()) => {
+                let corrected = thrust + (reference_pa - ambient_pa) * nozzle.exit_area_m2();
                 if corrected.is_nan() {
                     corrected
                 } else {
@@ -624,7 +634,7 @@ mod tests {
         let nozzle = Nozzle {
             exit_radius_m: 0.01,
             throat_radius_m: Some(0.004),
-            reference_pressure_pa: STANDARD_SEA_LEVEL_PRESSURE_PA,
+            reference_pressure_pa: Some(STANDARD_SEA_LEVEL_PRESSURE_PA),
         };
         let motor =
             SolidMotor::new(curve(), Propellant::Column(column), dry, Some(nozzle)).unwrap();
@@ -641,13 +651,28 @@ mod tests {
             Propellant::Column(column),
             dry,
             Some(Nozzle {
-                reference_pressure_pa: 80_000.0,
+                reference_pressure_pa: Some(80_000.0),
                 ..nozzle
             }),
         )
         .unwrap();
         assert!((high.thrust_at_pressure_n(0.5, 0.0) - (f + 80_000.0 * area)).abs() < 1e-9);
         assert!((high.thrust_at_pressure_n(0.5, 101_325.0) - (f - 21_325.0 * area)).abs() < 1e-9);
+        // With no reference pressure, as RocketPy's `Motor(reference_pressure=None)`, the curve is
+        // flown as it is at every pressure: its `pressure_thrust` is zero (`motor.py:1188-1189`).
+        let uncorrected = SolidMotor::new(
+            curve(),
+            Propellant::Column(column),
+            dry,
+            Some(Nozzle {
+                reference_pressure_pa: None,
+                ..nozzle
+            }),
+        )
+        .unwrap();
+        for pressure in [0.0, 50_000.0, 101_325.0, 1e9] {
+            assert_eq!(uncorrected.thrust_at_pressure_n(0.5, pressure), f);
+        }
         // Only strictly inside the burn: nothing is added at ignition or at the last sample.
         assert_eq!(motor.thrust_at_pressure_n(0.0, 0.0), 0.0);
         assert_eq!(motor.thrust_at_pressure_n(1.2, 0.0), 0.0);
@@ -744,7 +769,7 @@ mod tests {
             Some(Nozzle {
                 exit_radius_m: exit,
                 throat_radius_m: throat,
-                reference_pressure_pa: reference,
+                reference_pressure_pa: Some(reference),
             })
         };
         assert!(build(column, dry, nozzle(0.01, Some(0.004), 101_325.0)).is_ok());
@@ -927,7 +952,7 @@ mod tests {
             let nozzle = Nozzle {
                 exit_radius_m: inputs.nozzle_radius,
                 throat_radius_m: Some(inputs.throat_radius),
-                reference_pressure_pa: STANDARD_SEA_LEVEL_PRESSURE_PA,
+                reference_pressure_pa: Some(STANDARD_SEA_LEVEL_PRESSURE_PA),
             };
             let motor =
                 SolidMotor::new(thrust, Propellant::Grains(grains), dry, Some(nozzle)).unwrap();

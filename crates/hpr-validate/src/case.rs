@@ -29,6 +29,20 @@ pub struct Case {
     pub reference_case: Option<String>,
     /// The metrics to compare, each with its tolerance.
     pub metrics: BTreeMap<String, Metric>,
+    /// A limit of hpr's that this case is known to reach, in writing. The case still runs, and
+    /// its metrics keep the tolerances they will be held to once the limit is lifted, but nothing
+    /// is scored: the report shows the case as a gap, with this reason and hpr's own refusal.
+    ///
+    /// The one gap the harness accepts is hpr's refusal of `M ≥ 1` before the transonic and
+    /// supersonic aerodynamics of [M1.8][m1-8]. It is checked, not trusted: the reference must
+    /// itself reach Mach 1, and hpr must refuse the flight with exactly that error. A gap that
+    /// starts flying fails the run, so it cannot stay excused after it is fixed
+    /// ([Loft lesson L85][l85]).
+    ///
+    /// [m1-8]: https://nrdptel.github.io/hpr-sim/decisions-and-roadmap.html#m1-8
+    /// [l85]: https://nrdptel.github.io/hpr-sim/decisions-and-roadmap.html#l85
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub known_gap: Option<String>,
 }
 
 /// What a case flies.
@@ -52,6 +66,34 @@ pub enum Flight {
         /// Its configuration id.
         configuration: String,
     },
+    /// A flight from the pad to the ground, in the same-drag mode of [M2.1][m2-1]: hpr flies the
+    /// `C_D0(M)` table the reference declares, through [`hpr_sim::Simulation::with_drag_table`],
+    /// so a difference is in the equations of motion, the environment or the motor, not in the
+    /// drag.
+    ///
+    /// The site, the wind, the rail, the drag table and its reference area, and the recovery
+    /// devices all come from the reference's own record of what the oracle flew
+    /// ([Loft lesson L75][l75]). The harness checks the rest rather than trusting it: the design
+    /// must be the one the reference names, with the dry mass and reference area it recorded.
+    ///
+    /// [m2-1]: https://nrdptel.github.io/hpr-sim/decisions-and-roadmap.html#m2-1
+    /// [l75]: https://nrdptel.github.io/hpr-sim/decisions-and-roadmap.html#l75
+    WholeFlight {
+        /// The design to fly, by file name under `validation/designs/`.
+        design: String,
+        /// Its configuration id.
+        configuration: String,
+    },
+}
+
+impl Flight {
+    /// The design it flies, by file name under `validation/designs/`.
+    #[must_use]
+    pub fn design(&self) -> &str {
+        match self {
+            Self::RecoveryDescent { design, .. } | Self::WholeFlight { design, .. } => design,
+        }
+    }
 }
 
 /// One metric of a case: how far hpr may be from the reference, or why it is not scored.

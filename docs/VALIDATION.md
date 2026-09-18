@@ -48,17 +48,36 @@ The rules the harness enforces, each from a Loft lesson:
 - The cases that must run are locked; a missing one fails, a committed case that is not locked
   fails, and `--fast` may only leave out cases the lock marks slow and names them (L78).
 - A case's inputs come from the reference's own record of what the oracle flew, never from hpr's
-  output — including which design it flew and what that weighed (L75). L75's own test arrives with
-  M2.1b, which is where a case chooses a rocket rather than replaying one.
+  output — including which design it flew, what that weighed and, for a whole flight, the area its
+  drag table is on (L75, `hpr_validate::rocketpy::tests::oracle_inputs_come_from_the_case_file_not_hpr_outputs`).
+- A case may declare a **known gap**, a limit of hpr's it runs into. The only one accepted is hpr's
+  refusal of `M ≥ 1` before M1.8: the reference must reach Mach 1, hpr must refuse the flight with
+  that error, and a gap that hpr starts flying fails the run (L85). A gap scores nothing and is
+  listed in the report's own section, and the set is pinned (ADR-021).
 
 **Not scored** is the harness's one escape hatch, and it is deliberately uncomfortable: the case
 has to write down why, a blank reason fails outright, the metric is still measured and still
 printed with both numbers and the difference, it never counts as a pass, and the whole excused set
 is pinned by `hpr_validate::tests::the_metrics_that_are_not_scored_are_these_and_no_others`.
-**No metric uses it today**, which is the outcome to aim for: it was written for Valetudo's
-northward drift, which read 28x RocketPy's, and the right answer turned out to be to fix the
-comparison rather than to excuse the number. The descent cases carry no absolute floors either:
-every gate is the milestone's 3%.
+It was written for Valetudo's northward drift, which read 28x RocketPy's, and the right answer
+there turned out to be to fix the comparison rather than to excuse the number. Two whole-flight
+metrics use it today, each argued in its case file (ADR-021): Calisto's time of peak acceleration,
+whose two peaks are 0.9% apart, and NDRT 2020's whole-flight peak, which is its main opening, where
+RocketPy has added mass and hpr has none. No case carries an absolute floor: every gate is the
+milestone's 3%.
+
+### Whole flights (M2.1b2)
+
+The whole-flight cases (`validation/cases/flight-*.toml`) fly RocketPy's examples from the pad to
+the ground in the same-drag mode: hpr flies the reference's declared `C_D0(M)` through
+`Simulation::with_drag_table`, on the reference area the reference records. The metrics are
+measured as RocketPy defines them (L80): at the centre of dry mass, with the rail exit when the
+forward button reaches the top of the rail, and the maxima over the solver's steps.
+
+The first run found an input, not a model, difference: the transcribed designs corrected the
+thrust for ambient pressure with a sea-level stand-in, which RocketPy's examples never do
+(`reference_pressure=None`). The designs now say `None`, and every scored metric agrees within 3%
+(ADR-021).
 
 That fix is worth stating, because it is what L75 means in practice. hpr's default gravity is the
 full normal-gravity vector, which leans a few parts in 10⁶ toward the equator above the
@@ -195,7 +214,7 @@ excellent offline test fixtures for the weather-file readers.
 | source | what | license | notes |
 |---|---|---|---|
 | RocketPy `Flight` parachute phase | descent rate, descent time and drift for five example rockets (Calisto, Valetudo, NDRT 2020, Prometheus 2022, Juno III) | MIT | `validation/oracles/rocketpy/recovery.py` → `validation/fixtures/recovery/rocketpy-descent.json`, replayed by `hpr_sim::recovery::tests::descent_matches_rocketpy_examples`. Both start from the same declared post-burnout state with the first device open, the same drag areas, triggers and declared wind, RocketPy's noise zeroed, and (since issue #27) RocketPy's own gravity model, compared as a vector rather than a magnitude. Agreement: descent time within 0.71%, impact descent rate within 0.03%, drift magnitude within 0.28% in the four cases with wind (Valetudo's still-air 0.19 m, from the Earth's rotation alone, −0.89%), the worst single drift component 2.86% (NDRT's 49 m south of a 327 m drift, where RocketPy's added mass is 15.9 kg against a 20.8 kg rocket), and the deployment heights of the later devices within 0.17% (RocketPy's trigger sampling). The oracle runs at `rtol = atol = 1e-8`; at 1e-6 every compared metric moves by at most 3.5e-6 (its one larger entry, 2.1e-3, is on Valetudo's 20 µm north drift component, which M1.7a did not compare; M2.1a measures it, and reading 28x high there is what found the gravity-model difference in ADR-015, issue #27). M1.7a; `docs/physics/recovery.md` |
-| RocketPy `Flight` from the pad | apogee and time to it, maximum velocity, Mach and acceleration, rail-exit velocity, burnout altitude and velocity, and the trajectory, for the same five example rockets | MIT | `validation/oracles/rocketpy/flight.py` → `validation/fixtures/flight/rocketpy-whole-flight.json`, the same-drag reference M2.1b2 scores hpr against. The drag is **declared by the generator** as a constant `C_D0` and handed to RocketPy's `power_off_drag` and `power_on_drag`: RocketPy's own exports carry their own terms and are never committed (ADR-009), and a Mach curve invented here would be an uncited drag model inside the reference (L18). Same-drag mode scores the equations of motion, not the aerodynamics. Everything but each example's rail comes from the mass fixture by way of `recovery.py`. Reproducible byte for byte; the loose run at rtol = atol = 1e-6 (RocketPy's default rtol) moves every metric by at most 3.9e-3. `max_time_step` is bounded at 0.05 s: without it, thrust(0) = 0 and the generator's 6000 s `max_time` let LSODA step over the whole burn and no case leaves the rail (issue #33). Recorded gap: Prometheus peaks at Mach 1.014, which hpr refuses until M1.8. `max_acceleration` is the whole flight's, which for NDRT and Prometheus is the parachute, so a power-on maximum is recorded beside it. M2.1b1 |
+| RocketPy `Flight` from the pad | apogee and time to it, maximum velocity, Mach and acceleration, rail-exit velocity, burnout altitude and velocity, and the trajectory, for the same five example rockets and Bella Lui | MIT | `validation/oracles/rocketpy/flight.py` → `validation/fixtures/flight/rocketpy-whole-flight.json`, the same-drag reference M2.1b2 scores hpr against. The drag is **declared by the generator** as a constant `C_D0` and handed to RocketPy's `power_off_drag` and `power_on_drag`: RocketPy's own exports carry their own terms and are never committed (ADR-009), and a Mach curve invented here would be an uncited drag model inside the reference (L18). Same-drag mode scores the equations of motion, not the aerodynamics. Everything but each example's rail comes from the mass fixture by way of `recovery.py`; Bella Lui, added in M2.1b2 because Prometheus cannot be scored until M1.8, declares its site and wind in `flight.py` itself (its example's weather is an ERA5 file). Each case records the parachutes it flew, so the harness reads everything from the reference (L75). Reproducible byte for byte; the loose run at rtol = atol = 1e-6 (RocketPy's default rtol) moves every metric by at most 3.9e-3. `max_time_step` is bounded at 0.05 s: without it, thrust(0) = 0 and the generator's 6000 s `max_time` let LSODA step over the whole burn and no case leaves the rail (issue #33). Recorded gap: Prometheus peaks at Mach 1.014, which hpr refuses until M1.8. `max_acceleration` is the whole flight's, which for NDRT and Prometheus is the parachute, so a power-on maximum is recorded beside it. M2.1b1; scored in M2.1b2 (ADR-021): five cases pass every scored metric within 3% (largest +1.783%), two metrics are argued as not scored, and Prometheus is a known gap |
 | Knacke's canopy tables | drag coefficients on the nominal area, canopy fill constants, drag-area growth exponents and opening-force coefficients | no clear terms: cited, never redistributed | transcribed into `hpr_sim::recovery::CanopyType` with the printed page at each accessor, and pinned by `hpr_sim::recovery::tests::default_canopy_cd_carries_its_citation` (which also fixes hpr's default `C_D0` as the middle of each printed range) |
 
 ### Streamers and tumble (M1.7b)

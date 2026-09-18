@@ -23,26 +23,25 @@ naming each column, then one line per moment of the flight. It holds this:
 ```text
 time_s,height_above_ground_m,vertical_speed_m_s,airspeed_m_s,cg_east_m,cg_north_m,cg_up_m
 0.000,0.9,0.0,5.0,0.0,0.0,0.9
-0.001,0.9,0.0,5.0,0.0,0.0,0.9
-0.361,3.9,16.7,17.4,0.0,0.0,3.9
-3.259,229.6,119.3,120.0,-10.0,0.0,229.6
-5.000,418.8,98.4,99.3,-24.7,0.0,418.8
-10.000,773.7,44.7,46.4,-63.7,0.0,773.7
-14.547,874.0,0.0,11.5,-95.7,0.0,874.0
-15.000,873.0,-4.1,11.9,-98.5,0.0,873.0
-15.047,872.8,-4.5,12.0,-98.8,0.0,872.8
-20.000,779.3,-26.0,26.1,-107.2,0.1,779.3
-25.000,644.9,-27.1,27.1,-89.1,0.1,644.9
-30.000,509.5,-27.0,27.0,-65.2,0.1,509.5
-35.000,375.0,-26.8,26.8,-40.3,0.1,375.0
-40.000,241.3,-26.6,26.6,-15.3,0.1,241.3
-43.435,150.0,-26.5,26.5,1.9,0.1,150.0
-44.435,123.5,-26.5,26.5,6.9,0.1,123.5
-45.000,116.4,-8.0,8.0,9.7,0.1,116.4
-50.000,83.9,-6.4,6.4,34.7,0.1,83.9
-55.000,51.9,-6.4,6.4,59.7,0.1,51.9
-60.000,20.0,-6.4,6.4,84.7,0.0,20.0
-63.134,0.0,-6.4,6.4,100.4,0.0,0.0
+0.002,0.9,0.0,5.0,0.0,0.0,0.9
+0.371,3.9,16.2,17.0,0.0,0.0,3.9
+3.259,216.0,110.7,111.4,-9.3,0.0,216.0
+5.000,390.8,90.4,91.3,-23.2,0.0,390.8
+10.000,707.9,37.5,39.4,-60.1,0.0,707.9
+13.836,779.0,0.0,11.2,-85.8,0.0,779.0
+14.336,777.9,-4.5,11.7,-88.8,0.0,777.9
+15.000,773.0,-10.2,14.1,-92.3,0.0,773.0
+20.000,665.9,-26.4,26.5,-94.5,0.1,665.9
+25.000,531.5,-27.0,27.0,-74.6,0.1,531.5
+30.000,396.8,-26.8,26.8,-50.4,0.1,396.8
+35.000,263.0,-26.7,26.7,-25.5,0.1,263.0
+39.249,150.0,-26.5,26.5,-4.2,0.0,150.0
+40.000,130.1,-26.5,26.5,-0.5,0.0,130.1
+40.249,123.5,-26.5,26.5,0.8,0.0,123.5
+45.000,89.1,-6.4,6.4,24.6,0.0,89.1
+50.000,57.1,-6.4,6.4,49.6,0.0,57.1
+55.000,25.2,-6.4,6.4,74.6,0.0,25.2
+58.948,0.0,-6.4,6.4,94.3,0.0,0.0
 ```
 
 Like the first flight's, this output is committed in
@@ -64,32 +63,32 @@ happened:
 
 | time (s) | event |
 |---|---|
-| 0.001 | [liftoff](glossary.md#liftoff): the push up the rail first beats the weight, and the rocket starts to move |
-| 0.361 | the rocket leaves the 3 m rail |
+| 0.002 | [liftoff](glossary.md#liftoff): the push up the rail first beats the weight, and the rocket starts to move |
+| 0.371 | the rocket leaves the 3 m rail |
 | 3.259 | burnout |
-| 14.547 | apogee; the drogue's charge fires at the same moment, so it shares this row |
-| 15.047 | the drogue opens, half a second later |
-| 43.435 | the main's charge fires, as the rocket falls past 150 m |
-| 44.435 | the main opens, a second later |
-| 63.134 | landing |
+| 13.836 | apogee; the drogue's charge fires at the same moment, so it shares this row |
+| 14.336 | the drogue opens, half a second later |
+| 39.249 | the main's charge fires, as the rocket falls past 150 m |
+| 40.249 | the main opens, a second later |
+| 58.948 | landing |
 
 What the numbers show:
 
 - **On the pad the airspeed is 5.0 m/s** with the rocket standing still: that is the wind.
 - **The rocket climbs into the wind.** The wind blows from the west, and off the rail a stable
   rocket turns its nose toward the wind it feels
-  ([weathercocking](glossary.md#weathercocking)), so it drifts west: `cg_east_m` is −95.7 m at
+  ([weathercocking](glossary.md#weathercocking)), so it drifts west: `cg_east_m` is −85.8 m at
   apogee.
 - **Under the drogue alone it falls at about 27 m/s**, and the wind carries it east.
-- **The main slows it from 26.5 to 8.0 m/s** in the 0.6 s after it opens (from 44.435 to 45.000),
-  and it lands at 6.4 m/s, 100.4 m east of the pad.
+- **The main slows it from 26.5 to 6.4 m/s** between the row where it opens (40.249) and the
+  next (45.000), and it lands at 6.4 m/s, 94.3 m east of the pad.
 - **`cg_north_m` shows 0.1 m for a while, with no wind from the south.** The Earth's rotation
   nudges a moving rocket sideways, to the right of its motion in the northern hemisphere
   ([Coriolis acceleration](glossary.md#coriolis-acceleration)). While the rocket moves west, that
-  is north: it drifts 5 to 7 cm, which the table rounds to 0.0 or 0.1 m.
+  is north: it drifts up to 6.3 cm, which the table rounds to 0.0 or 0.1 m.
 - **`cg_up_m` and `height_above_ground_m` agree here, and don't in general.** The launch frame is
   a flat plane, and the Earth curves away below it, so far from the pad `cg_up_m` reads low: on
-  the ground 10 km from the pad, it is −7.8 m. At this landing, 100 m out, it is under a
+  the ground 10 km from the pad, it is −7.8 m. At this landing, 94 m out, it is under a
   millimetre low. For heights, use `height_above_ground_m`.
 
 ## Record something else
@@ -98,7 +97,7 @@ The program below makes its recorder with
 `Recorder::new(vec![Channel::Time, Channel::HeightAboveGround, ...], Some(5.0))`, and passes it to
 `run`, which feeds it every step of the flight. Change either argument:
 
-- **The interval** is `Some(5.0)`, a row every 5 s. `Some(0.1)` gives a smooth plot, about 640
+- **The interval** is `Some(5.0)`, a row every 5 s. `Some(0.1)` gives a smooth plot, about 600
   rows for this flight. `None` keeps a row at the end of every step the integrator takes, which is
   as fine as the flight was computed ([Time integration](physics/integration.md)).
 - **The channels** are the columns. Others include the Mach number, the

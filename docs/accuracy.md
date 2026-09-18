@@ -1,14 +1,17 @@
 # Accuracy
 
 This page gathers every check hpr-sim has passed so far, and every known gap, in words and numbers.
-Start with the bottom line: **no whole flight has been validated yet.** hpr's apogee, top speed and
-landing point have not been compared with another simulator's or with a real flight's.
+Start with the bottom line: **whole flights match RocketPy's when both codes fly the same drag,
+and nothing more has been shown yet.** hpr's own drag has not been checked in a whole flight, and
+no flight has been compared with a real one.
 
 What has been checked so far:
 
 - each model on its own, against exact answers, its published source and, in places,
   [RocketPy](glossary.md#rocketpy), an open-source flight simulator;
-- the descent under a parachute, against RocketPy, for five rockets.
+- the descent under a parachute, against RocketPy, for five rockets;
+- whole flights from the pad to the ground, against RocketPy, for five rockets flown with one
+  declared drag coefficient, with a sixth reported as a gap.
 
 Every number here links to the page or file it comes from. [Checking a claim](checking-a-claim.md)
 shows how to follow one back to its source and its test, and
@@ -66,7 +69,7 @@ parachute descents sample, as part of that comparison, and nowhere else
 | [Mass properties](physics/mass.md) | ✓ | — | — | — |
 | [Solid motors](physics/motor.md) | ✓ | — | ✓ RocketPy, ThrustCurve.org | — |
 | [Aerodynamics](physics/aero.md) | ✓ | ✓ Barrowman's examples | partial: drag only, with the fins and finish guessed | — |
-| [Rigid-body flight](physics/flight.md) | ✓ | — | — | — |
+| [Rigid-body flight](physics/flight.md) | ✓ | — | ✓ RocketPy, with the drag given | — |
 | [Time integration](physics/integration.md) | ✓ | — | — | — |
 | [Recovery](physics/recovery.md) | ✓ | ✓ | ✓ RocketPy | — (drop tests ✓) |
 | [Interpolation](physics/interpolation.md) | ✓ | — | — | — |
@@ -107,7 +110,8 @@ may be from its reference and still pass.
 | [Aerodynamics](physics/aero.md) | [Barrowman's](glossary.md#barrowmans-method) five worked examples, at Mach 0 (low speed): each rocket's [normal-force slope](glossary.md#normal-force-slope) and [centre of pressure](glossary.md#centre-of-pressure-cp) | every centre of pressure within 1%. Every slope within 1% too, except the six-fin Recruiter's: +2.87% (+3.42% on its fins alone) |
 | [Aerodynamics](physics/aero.md) | drag curves labelled [RASAero](glossary.md#rasaero-ii) in RocketPy's examples, at [Mach](glossary.md#mach-number) 0.3, with the fins and surface finish guessed because the curves don't record them | within 10% in four of seven cases; −18.3% for Cavour [power-on](glossary.md#power-on-and-power-off-drag) (motor burning), cause open |
 | [Aerodynamics](physics/aero.md) | Valetudo's drag table, which is 1.44 times the drag in the [OpenRocket](glossary.md#openrocket) export for the same rocket | −47.0% power-off and −50.4% power-on. Against the OpenRocket export, hpr is 23.5% under as designed here, and 1.9% under with the export's own surface finish and launch lugs |
-| [Rigid-body flight](physics/flight.md) | the exact motion of a tumbling, spinning rocket in a vacuum, over 22 s | the centre of mass within 1.7e-6 m of the exact parabola. No whole flight compared |
+| [Rigid-body flight](physics/flight.md) | the exact motion of a tumbling, spinning rocket in a vacuum, over 22 s | the centre of mass within 1.7e-6 m of the exact parabola |
+| [Rigid-body flight](physics/flight.md) | RocketPy's whole flights from the pad to the ground, for five rockets, both codes flying one declared drag coefficient | every scored metric within 3% ([below](#whole-flights-against-rocketpy)); the largest is +1.783% in the [report][report] |
 | [Time integration](physics/integration.md) | a separate line-by-line transcription of `DOPRI5`, the published Fortran integrator by Hairer and Wanner that hpr's [Dormand–Prince](glossary.md#dormandprince-and-rk4) stepper follows, on the problem Hairer's own example program for `DOPRI5` solves: the Arenstorf orbit, the closed, looping path of a small body pulled by two large ones that circle each other | the same step counts |
 | [Time integration](physics/integration.md) | a vertical flight with drag that has an exact solution | apogee, deployment and landing times within 1.5e-8 s |
 | [Recovery](physics/recovery.md) | RocketPy's descents under a parachute, for five rockets | every descent metric within 3% ([below](#the-descent-under-a-parachute-against-rocketpy)) |
@@ -134,9 +138,8 @@ set up the same way:
 - RocketPy's gravity formula, and its way of interpolating the wind (by its east and north
   components), in place of hpr's own defaults, to compare like with like.
 
-The committed [validation report][report] sums it up: 5 cases, one per rocket, and 30 metrics, the
-six numbers below for each descent. All 30 were scored and all are within tolerance; the largest
-difference is +2.865%.
+The committed [validation report][report] gives the six numbers below for each descent. All of
+them were scored and all are within tolerance; the largest difference is +2.865%.
 
 Each metric must agree within 3% of RocketPy's value, with no absolute floor (a fixed allowance,
 in metres or seconds, that would pass any smaller difference). Each case file argues why, for
@@ -195,16 +198,99 @@ no test has isolated it yet.
 What this shows: the two codes agree on the physics of a descent. It says nothing about whether
 either matches a real parachute on a real day.
 
-## Whole flights
+## Whole flights against RocketPy
 
-Not validated yet. RocketPy's five example rockets have been flown from the pad to landing, with a
-[drag coefficient](glossary.md#drag-coefficient) declared the same for both codes, and the result
-is committed as a reference ([validation plan][plan-refs]). hpr will be scored against it in
-[M2.1b2](decisions-and-roadmap.md#m2-1b2), the whole-flight comparison. One case will show a gap from the start: RocketPy's
-Prometheus peaks at Mach 1.014, and hpr stops any flight that reaches Mach 1 until [M1.8](decisions-and-roadmap.md#m1-8)
-adds transonic and supersonic aerodynamics. The comparisons with OpenRocket ([M2.2](decisions-and-roadmap.md#m2-2), the
-OpenRocket comparison) and with real flights ([M2.3](decisions-and-roadmap.md#m2-3), the real-flights milestone) come
-after.
+Six of RocketPy's example rockets are flown from the pad to the ground in both codes, set up the
+same way ([ADR-021][adr-021], the whole-flight comparison):
+
+- one declared [drag coefficient](glossary.md#drag-coefficient), a constant 0.5
+  ([case file][juno-case]), on the same reference area. So this checks the equations of motion, the motor and the air, not the drag:
+  hpr's own drag is compared in [M2.1c](decisions-and-roadmap.md#m2-1c), not done yet;
+- the example's launch rail, site, parachutes and motor, with the thrust curve flown as measured
+  and no correction for the thinner air at the site, as RocketPy's examples fly it;
+- RocketPy's gravity formula, standard atmosphere and frictionless rail, and a declared wind;
+- the random noise RocketPy can add to each parachute switched off.
+
+Each of twelve numbers per flight must agree within 3% of RocketPy's, with no absolute floor.
+Each case file argues why, for example [Juno III's][juno-case]. The numbers are measured as
+RocketPy defines them:
+
+- `apogee_agl_m` and `apogee_time_s`: the highest point above the pad, and when.
+- `flight_time_s`: the time from ignition to landing.
+- `max_speed_m_s` and `max_mach`: the top speed over the ground, and the top
+  [Mach number](glossary.md#mach-number).
+- `rail_exit_speed_m_s` and `rail_exit_time_s`: when the forward rail button reaches the top of
+  the rail, and the speed then. hpr's own rail-exit event waits for the last button, so the
+  comparison finds RocketPy's instant instead.
+- `burnout_altitude_agl_m` and `burnout_speed_m_s`: at the end of the thrust curve.
+- `max_acceleration_power_on_m_s2`: the largest acceleration while the motor burns.
+- `max_acceleration_m_s2` and `max_acceleration_time_s`: the largest over the whole flight, and
+  when. For NDRT 2020 that is its main parachute opening, not a flight load
+  ([case file][ndrt-flight-case]).
+
+Speeds and accelerations are those of the rocket's centre of mass without propellant, the point
+RocketPy's flight follows. A difference is hpr's value less RocketPy's, over RocketPy's.
+
+The [validation report][report] scores every number of the five flights but two, and all of them
+are within tolerance. The two are measured and reported but not scored, each for a reason written
+in its case file, and the sixth rocket is a known gap. Every result of the report, as hpr's difference from
+RocketPy:
+
+| case | `apogee_agl_m` | `apogee_time_s` | `flight_time_s` | `max_speed_m_s` |
+|---|---|---|---|---|
+| [`flight-calisto-tests-motor-at-minus-1.373`][report] | +0.184% | +0.167% | +0.195% | −0.009% |
+| [`flight-valetudo`][report] | +0.134% | +0.217% | +0.259% | −0.049% |
+| [`flight-ndrt-2020-nose-to-tail`][report] | +0.150% | +0.150% | +0.716% | −0.056% |
+| [`flight-juno-iii`][report] | +1.760% | +0.956% | +1.336% | +0.059% |
+| [`flight-bella-lui`][report] | +0.690% | +0.275% | +0.466% | −0.018% |
+
+| case | `max_mach` | `rail_exit_speed_m_s` | `rail_exit_time_s` | `burnout_altitude_agl_m` |
+|---|---|---|---|---|
+| [`flight-calisto-tests-motor-at-minus-1.373`][report] | −0.179% | +0.064% | −0.004% | +0.248% |
+| [`flight-valetudo`][report] | −0.112% | +0.062% | −0.038% | +0.508% |
+| [`flight-ndrt-2020-nose-to-tail`][report] | −0.094% | +0.193% | +0.074% | +1.070% |
+| [`flight-juno-iii`][report] | −0.393% | +0.075% | −0.073% | +0.973% |
+| [`flight-bella-lui`][report] | −0.134% | +0.082% | +0.068% | +1.177% |
+
+| case | `burnout_speed_m_s` | `max_acceleration_power_on_m_s2` | `max_acceleration_m_s2` | `max_acceleration_time_s` |
+|---|---|---|---|---|
+| [`flight-calisto-tests-motor-at-minus-1.373`][report] | −0.016% | +0.074% | +0.074% | −96.812% |
+| [`flight-valetudo`][report] | −0.066% | +0.248% | +0.248% | +0.006% |
+| [`flight-ndrt-2020-nose-to-tail`][report] | −0.066% | −0.001% | +56.850% | +0.283% |
+| [`flight-juno-iii`][report] | +0.040% | −0.235% | −0.235% | −0.002% |
+| [`flight-bella-lui`][report] | −0.029% | +1.783% | +1.783% | +0.001% |
+
+What the two codes still do differently, and what it moves:
+
+- **On the rail,** hpr keeps the terms for the centre of mass moving inside the body as the
+  propellant burns, and RocketPy's rail equation leaves them out. At a sharp ignition spike they
+  add 1.2 to 1.3 m/s² at the same instant, with thrust and mass equal to five digits. That is
+  Bella Lui's +1.783%, whose peak is 7 ms after ignition ([report][report],
+  [case file][bella-case]).
+- **Calisto's two peaks.** Calisto's acceleration peaks twice, 0.9% apart: on the rail at 0.05 s
+  and at 1.568 s. The same rail terms make hpr's first peak the higher, so `max_acceleration_time_s`
+  moves from one peak to the other (−96.812%). The peak's size agrees to +0.074%; its time is
+  reported but not scored ([report][report], [case file][calisto-case]).
+- **The main opening.** RocketPy adds the air a canopy drags along while it opens
+  ([added mass](glossary.md#added-mass)), and hpr has none. So NDRT's peak deceleration as its
+  main opens is +56.850% in hpr, reported but not scored. Its time is scored, since both codes put
+  it where the main opens ([report][report], [case file][ndrt-flight-case]).
+- **The normal force.** The same drag doesn't mean the same lift: each code turns the rocket into
+  the wind with its own model. This is the likely source of the apogee differences, the largest
+  being Juno III's +1.760% in the suite's strongest wind, but no run has isolated it
+  ([report][report], [case file][juno-case]).
+
+**Prometheus 2022 is a known gap.** RocketPy's flight peaks at Mach 1.014, and hpr stops any
+flight at Mach 1 until [M1.8](decisions-and-roadmap.md#m1-8) adds transonic and supersonic
+aerodynamics. The case still runs: the harness checks that hpr stops it for that reason and no
+other, lists it under the report's *Known gaps*, and fails once hpr flies it, so the gap can't
+outlive its cause ([case file][prometheus-case]). Bella Lui is the sixth rocket so that five can
+be scored.
+
+What this shows: with the drag given, the two codes agree on how a rocket flies. It says nothing
+yet about hpr's own drag, or about a real flight. The comparisons with OpenRocket
+([M2.2](decisions-and-roadmap.md#m2-2), the OpenRocket comparison) and with real flights
+([M2.3](decisions-and-roadmap.md#m2-3), the real-flights milestone) come after.
 
 ## Known gaps
 
@@ -234,7 +320,10 @@ rest.
   [separated](glossary.md#separation) body falls with no drag until its device opens
   ([Recovery](physics/recovery.md#inflation)).
 - **No added mass under a canopy,** the likely cause of the 2.86% drift difference above
-  ([Recovery](physics/recovery.md#against-rocketpy)).
+  ([Recovery](physics/recovery.md#against-rocketpy)), and the cause of NDRT's +56.850% peak as
+  its main opens in the whole flight ([report][report], [case file][ndrt-flight-case]).
+- **Mach 1.** hpr stops any flight that reaches Mach 1, so Prometheus 2022 can't be compared
+  until [M1.8](decisions-and-roadmap.md#m1-8) ([case file][prometheus-case]).
 - **Turbulence** is an aircraft model, unvalidated for rockets, and no flight uses it yet
   ([Turbulence](physics/turbulence.md)).
 - **Wall and fin mass** may follow different conventions from OpenRocket's, which its documentation
@@ -248,3 +337,9 @@ rest.
 [report]: https://github.com/nrdptel/hpr-sim/blob/main/validation/reports/latest.md
 [rocket-notes]: https://github.com/nrdptel/hpr-sim/blob/main/docs/research/rocketpy-rocket-mass.md
 [valetudo-case]: https://github.com/nrdptel/hpr-sim/blob/main/validation/cases/descent-valetudo.toml
+[adr-021]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-021-whole-flights-against-rocketpy-what-is-compared-and-the-gaps-it-may-declare-2026-09-18
+[bella-case]: https://github.com/nrdptel/hpr-sim/blob/main/validation/cases/flight-bella-lui.toml
+[calisto-case]: https://github.com/nrdptel/hpr-sim/blob/main/validation/cases/flight-calisto-tests-motor-at-minus-1.373.toml
+[juno-case]: https://github.com/nrdptel/hpr-sim/blob/main/validation/cases/flight-juno-iii.toml
+[ndrt-flight-case]: https://github.com/nrdptel/hpr-sim/blob/main/validation/cases/flight-ndrt-2020-nose-to-tail.toml
+[prometheus-case]: https://github.com/nrdptel/hpr-sim/blob/main/validation/cases/flight-prometheus-2022-generic-motor.toml

@@ -256,7 +256,7 @@
             "nozzle": {
               "exit_radius_m": 0.021641999999999998,
               "throat_radius_m": 0.008,
-              "reference_pressure_pa": 101325.0
+              "reference_pressure_pa": null
             }
           }
         }

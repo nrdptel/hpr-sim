@@ -34,7 +34,10 @@ the command, so a later run can be compared like for like.
     America.
   - The 1976 standard atmosphere, 5 m/s wind from the west.
   - The default settings (Dormand–Prince 5(4), `rtol = atol = 1e-8`), from ignition to the ground
-    (29 s, apogee 874 m).
+    (29 s, apogee 874 m, when measured).
+  - Since M2.1b2 the motor gets no pressure-thrust correction at the site, so the same inputs now
+    reach 779 m and the ground at 27.5 s. The flight timings here and under Recovery (M1.7a) above
+    predate that change.
 
 | call | median |
 |---|---|

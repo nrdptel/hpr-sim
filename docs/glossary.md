@@ -825,7 +825,7 @@ source* (printed tables and worked examples), *another code*
 A stable rocket turning into the wind it feels. Off the rail in a crosswind, the airflow meets the
 rocket partly from the side, and the [normal force](#normal-force), acting behind the centre of
 gravity, swings the nose toward it, so the rocket climbs upwind. In hpr's test, a 5 m/s wind from
-the west puts Valetudo's apogee 96 m upwind. See
+the west puts Valetudo's apogee 86 m upwind. See
 [Rigid-body flight](physics/flight.md#verification).
 
 

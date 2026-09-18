@@ -118,10 +118,12 @@ out.
 
 [Accuracy](accuracy.md) gathers every result so far, gaps included. In brief:
 
-- **No whole flight has been validated.** hpr's apogee, top speed and landing point have not yet
-  been compared with another simulator's or with a real flight's. That is the next work: whole
-  flights against RocketPy ([M2.1b2](decisions-and-roadmap.md#m2-1b2), the whole-flight comparison), then OpenRocket
-  ([M2.2](decisions-and-roadmap.md#m2-2)) and real flights ([M2.3](decisions-and-roadmap.md#m2-3)).
+- **Whole flights match RocketPy's when both codes fly the same drag.** Five of RocketPy's
+  example rockets agree within 3% on apogee, speeds, burnout and flight time
+  ([M2.1b2](decisions-and-roadmap.md#m2-1b2), the whole-flight comparison). hpr's own drag has
+  not been compared in a whole flight yet ([M2.1c](decisions-and-roadmap.md#m2-1c)), nor has any
+  flight been compared with OpenRocket ([M2.2](decisions-and-roadmap.md#m2-2)) or a real one
+  ([M2.3](decisions-and-roadmap.md#m2-3)).
 - **The descent under a parachute matches RocketPy's.** The comparison flies the descents of five
   of RocketPy's [example rockets](glossary.md#example-rockets) in both codes:
   - Each starts from the same state near apogee, with the first parachute opening at once.

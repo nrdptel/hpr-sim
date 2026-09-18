@@ -17,7 +17,7 @@ use hpr_sim::recovery::{Device, DeviceDrag, Inflation};
 use hpr_sim::{CanopyType, Environment, FlightSettings, Rail, Recorder, Simulation, Trigger};
 
 fn benches(c: &mut Criterion) {
-    // Valetudo on a K400C: 9.7 kg, 880 m apogee, 29 s to the ground.
+    // Valetudo on a K400C: 9.7 kg, 779 m apogee, 27.5 s to the ground.
     let rocket: Rocket = serde_json::from_str(include_str!(
         "../../../validation/designs/rocketpy-valetudo.json"
     ))

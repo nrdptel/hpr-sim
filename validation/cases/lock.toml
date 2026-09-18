@@ -8,7 +8,14 @@ cases = [
     "descent-ndrt-2020-nose-to-tail",
     "descent-prometheus-2022-generic-motor",
     "descent-juno-iii",
+    "flight-calisto-tests-motor-at-minus-1.373",
+    "flight-valetudo",
+    "flight-ndrt-2020-nose-to-tail",
+    "flight-prometheus-2022-generic-motor",
+    "flight-juno-iii",
+    "flight-bella-lui",
 ]
 
-# Cases `--fast` may leave out. None yet: every descent case runs in milliseconds.
+# Cases `--fast` may leave out. None yet: every case, whole flights included, runs in well under a
+# second.
 slow = []

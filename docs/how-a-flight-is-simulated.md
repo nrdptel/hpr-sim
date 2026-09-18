@@ -2,13 +2,14 @@
 
 This page follows a flight from ignition to landing, and says in plain words what hpr computes at
 each stage and which model does it. Read it to learn what lies behind a number hpr prints, before
-the model pages it links. It describes the method, not how well it works: no whole flight has been
-validated yet, and [Accuracy](accuracy.md) keeps every result so far.
+the model pages it links. It describes the method, not how well it works: whole flights match RocketPy's
+when both codes fly the same drag, hpr's own drag is not yet checked in a whole flight, and
+[Accuracy](accuracy.md) keeps every result so far.
 
 ![A rocket's flight seen from the side. It lifts off the pad, leaves the rail, burns out, and coasts to apogee west of the pad, into the wind. It then drifts east under a drogue and a main parachute, and lands east of the pad. Seven numbered points mark the events: liftoff, rail exit, burnout, apogee, the drogue opening, the main opening, and landing.](images/flight-phases.svg)
 
 The drawing is the shape of the [Getting started](getting-started.md) example's flight, not to
-scale: its apogee is 874 m up and 96 m west of the pad, and it lands 100 m east of it.
+scale: its apogee is 779 m up and 86 m west of the pad, and it lands 94 m east of it.
 
 ## What goes in
 
