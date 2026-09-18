@@ -23,7 +23,6 @@ use hpr_design::{
     NoseCone, NoseShape, Overrides, Packing, Parachute, Part, Position, RailButton,
     ReferenceDiameter, Rocket, ShockCord, Shoulder, Stage, Transition, Wall,
 };
-use hpr_motor::motor::STANDARD_SEA_LEVEL_PRESSURE_PA;
 use hpr_motor::{
     BatesGrains, Catalog, Delay, MassElement, Nozzle, Propellant, PropellantColumn, SolidMotor,
     catalog::bundled_curve_text,
@@ -679,7 +678,13 @@ fn rocketpy_motor(motor: &Value, catalog: &Catalog) -> Result<SolidMotor, String
         Some(Nozzle {
             exit_radius_m: num(motor, "nozzle_radius")?,
             throat_radius_m: throat,
-            reference_pressure_pa: STANDARD_SEA_LEVEL_PRESSURE_PA,
+            // RocketPy's own default, which every example keeps: no reference pressure, so no
+            // correction (`Motor(reference_pressure=None)`, motor.py:1188-1189). The sea-level
+            // stand-in would add thrust at altitude that RocketPy never flew (M2.1b2).
+            reference_pressure_pa: match motor.get("reference_pressure") {
+                None | Some(Value::Null) => None,
+                Some(_) => Some(num(motor, "reference_pressure")?),
+            },
         }),
     )
     .map_err(|e| e.to_string())

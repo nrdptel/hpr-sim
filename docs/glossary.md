@@ -619,6 +619,14 @@ commit, to produce its reference values. See [Checking a claim](checking-a-claim
 
 The height above the ground at which the logarithmic wind law's wind falls to zero, written `z₀`. Rougher ground has a larger one: 0.03 m for open flat terrain with grass, and 0.001–0.01 m for mown grass. hpr's `LogLawWind` takes it as `roughness_length_m`. See [Wind](physics/wind.md#models).
 
+## Same-drag and predicted mode
+
+Two ways of comparing hpr's whole flights with another simulator's. In **same-drag** mode both
+codes fly one drag coefficient that the comparison declares, so a difference comes from the
+equations of motion, the motor or the air, not the drag. In **predicted** mode each code computes
+its own drag from the rocket's shape, which tests the aerodynamics as well. See
+[Accuracy](accuracy.md#whole-flights-against-rocketpy).
+
 ## Scientific notation
 
 Writing a very small or very large number as a power of ten, the way programs print it. The number after the `e` says how many places the decimal point moves, to the left when it is negative: 1e-12 is a millionth of a millionth, and 1e6 is a million. 2²⁰ is 2 multiplied by itself 20 times, about a million. See [Accuracy](accuracy.md#how-to-read-the-numbers).
@@ -825,7 +833,7 @@ source* (printed tables and worked examples), *another code*
 A stable rocket turning into the wind it feels. Off the rail in a crosswind, the airflow meets the
 rocket partly from the side, and the [normal force](#normal-force), acting behind the centre of
 gravity, swings the nose toward it, so the rocket climbs upwind. In hpr's test, a 5 m/s wind from
-the west puts Valetudo's apogee 96 m upwind. See
+the west puts Valetudo's apogee 86 m upwind. See
 [Rigid-body flight](physics/flight.md#verification).
 
 

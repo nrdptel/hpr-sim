@@ -37,6 +37,7 @@ new record replaces it and points back. All of them are in the [decision log][de
 | [ADR-018: Examples and quotes][adr-018] | Every example program runs in CI and must print its committed output, and a page's quote of a file must match it line for line | [Getting started](getting-started.md) |
 | [ADR-019: Publishing the site][adr-019] | How this site and the API reference are built together, link each other, and are published from `main` | [The API reference](api.md) |
 | [ADR-020: The reader test][adr-020] | How the site was tested on a new reader, and why every milestone and lesson label links a row of plain words on this page | [Decisions and the roadmap](#every-milestone) |
+| [ADR-021: Whole flights against RocketPy][adr-021] | What a whole-flight comparison measures and how, why a sixth rocket was added, and how a case declares a limit of hpr's as a known gap | [Accuracy](accuracy.md#whole-flights-against-rocketpy) |
 
 ## The roadmap
 
@@ -107,9 +108,9 @@ missing or its status disagrees.
 | <a id="m1-7c"></a>[M1.7c][phase-1] | Separated bodies, each flown to its own landing | done |
 | <a id="m2-1"></a>[M2.1][phase-1] | The validation harness, and comparisons with RocketPy | not yet done |
 | <a id="m2-1a"></a>[M2.1a][phase-1] | The harness itself: cases, reference data, tolerances and reports | done |
-| <a id="m2-1b"></a>[M2.1b][phase-1] | Whole flights against RocketPy, with both codes given the same drag | not yet done |
+| <a id="m2-1b"></a>[M2.1b][phase-1] | Whole flights against RocketPy, with both codes given the same drag | done |
 | <a id="m2-1b1"></a>[M2.1b1][phase-1] | The script that flies RocketPy's example rockets from pad to landing, as the reference | done |
-| <a id="m2-1b2"></a>[M2.1b2][phase-1] | hpr's whole flights compared with that reference | not yet done |
+| <a id="m2-1b2"></a>[M2.1b2][phase-1] | hpr's whole flights compared with that reference | done |
 | <a id="m2-1c"></a>[M2.1c][phase-1] | The same cases flown with each code's own drag, a CI job, and regenerating references | not yet done |
 | <a id="m1-8"></a>[M1.8][phase-1] | Transonic and supersonic aerodynamics, damping, and overriding the aerodynamics | not yet done |
 | <a id="m3-1"></a>[M3.1][phase-1] | Reading OpenRocket `.ork` design files | not yet done |
@@ -207,6 +208,7 @@ is the milestone that added or will add that test.
 | <a id="l77"></a>[L77][lessons-validation] | Loft shipped hand-written "stored" results, one set inconsistent with itself | [M2.1a](#m2-1a) |
 | <a id="l78"></a>[L78][lessons-validation] | Loft's test suites skipped themselves when their data was missing, and still reported a pass | [M2.1a](#m2-1a) |
 | <a id="l79"></a>[L79][lessons-validation] | Only 2 of Loft's 12 metrics had a tolerance per case; a deployment speed 204% off passed as "ungated" | [M2.1a](#m2-1a) |
+| <a id="l85"></a>[L85][lessons-validation] | Loft's check that a known gap had closed used half the tolerance, so it missed gaps that closed in between | [M2.1b2](#m2-1b2), [M2.4](#m2-4) |
 | <a id="l82"></a>[L82][lessons-validation] | References 60% apart were excused as "no single target", and known issues excused the two largest misses | [M2.2](#m2-2) |
 | <a id="l89"></a>[L89][lessons-tests] | Barrowman's hand-worked values for a cone, a conical transition and an elliptical fin, which hpr's tests check | [M1.5a](#m1-5a) |
 | <a id="l90"></a>[L90][lessons-tests] | Properties any drag model must keep, such as split fin sets dragging like one set, which hpr's tests check | [M1.5b](#m1-5b) |
@@ -233,6 +235,7 @@ is the milestone that added or will add that test.
 [adr-018]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-018-examples-run-in-ci-against-committed-output-pages-quote-files-checked-line-for-line-2026-09-18
 [adr-019]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-019-publishing-the-site-and-the-api-reference-to-github-pages-2026-09-18
 [adr-020]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-020-the-reader-test-and-labels-that-lead-to-plain-words-2026-09-18
+[adr-021]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-021-whole-flights-against-rocketpy-what-is-compared-and-the-gaps-it-may-declare-2026-09-18
 [decisions]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md
 [lessons]: https://github.com/nrdptel/hpr-sim/blob/main/docs/research/loft-lessons.md
 [lessons-motors]: https://github.com/nrdptel/hpr-sim/blob/main/docs/research/loft-lessons.md#motors-mass-and-design-checks

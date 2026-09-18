@@ -467,6 +467,7 @@ dependencies = [
 name = "hpr-validate"
 version = "0.1.0"
 dependencies = [
+ "hpr-aero",
  "hpr-atmos",
  "hpr-core",
  "hpr-design",

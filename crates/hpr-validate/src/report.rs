@@ -131,6 +131,26 @@ impl Comparison {
     }
 }
 
+/// A case that ran into a limit of hpr's it declares in writing ([`crate::Case::known_gap`]): it
+/// was flown, hpr refused it as the case said it would, and none of its metrics was scored.
+///
+/// It is not a pass and not a quiet omission. The report prints it in a section of its own, with
+/// the case's reason and hpr's refusal, and the summary counts it apart.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[non_exhaustive]
+pub struct Gap {
+    /// The case's id.
+    pub case: String,
+    /// The case's written reason.
+    pub reason: String,
+    /// What hpr said when it refused the flight.
+    pub refusal: String,
+    /// The Mach number hpr refused.
+    pub mach: f64,
+    /// How many metrics the case would have scored, with the tolerances they will be held to.
+    pub metric_count: usize,
+}
+
 /// Where a case's reference came from.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Source {
@@ -166,6 +186,9 @@ pub struct Report {
     pub skipped: Vec<String>,
     /// Every metric compared.
     pub comparisons: Vec<Comparison>,
+    /// The cases that ran into a limit of hpr's they declare, in case order.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub gaps: Vec<Gap>,
     /// Where each case's reference came from, in case order.
     pub sources: Vec<Source>,
 }
@@ -244,6 +267,13 @@ impl Report {
                 self.not_scored().len()
             ));
         }
+        if !self.gaps.is_empty() {
+            out.push_str(&format!(
+                "{} case(s) are known gaps: flown, refused by hpr for the reason the case gives, \
+                 and not scored. They are listed under Known gaps, below the table.\n\n",
+                self.gaps.len()
+            ));
+        }
         if self.fast {
             out.push_str(&if self.skipped.is_empty() {
                 "Run with `--fast`. The lock marks no case slow, so nothing was left out.\n\n"
@@ -285,6 +315,15 @@ impl Report {
                 comparison.note.as_deref().unwrap_or("")
             ));
         }
+        if !self.gaps.is_empty() {
+            out.push_str("\n## Known gaps\n\n");
+            for gap in &self.gaps {
+                out.push_str(&format!(
+                    "- **{}**: {} metric(s), none scored. {} hpr: {}\n",
+                    gap.case, gap.metric_count, gap.reason, gap.refusal
+                ));
+            }
+        }
         out.push_str("\n## References\n\n");
         for source in &self.sources {
             out.push_str(&format!(
@@ -297,13 +336,24 @@ impl Report {
                 source.overrides
             ));
         }
-        if let Some(source) = self.sources.first() {
+        // Each reference's own command, once, in the order the cases first name it.
+        let mut commands: Vec<&str> = Vec::new();
+        for source in &self.sources {
+            if !commands.contains(&source.command.as_str()) {
+                commands.push(&source.command);
+            }
+        }
+        if !commands.is_empty() {
             out.push_str(&format!(
-                "\nRegenerate with `{}`, after `cargo xtask refs fetch` has put the oracle in the \
+                "\nRegenerate with {}, after `cargo xtask refs fetch` has put the oracle in the \
                  gitignored `refs/`. A reference moves only when its generator runs, which is a \
                  deliberate step: it is never regenerated to make a comparison pass (Loft lesson \
                  L76).\n",
-                source.command
+                commands
+                    .iter()
+                    .map(|command| format!("`{command}`"))
+                    .collect::<Vec<_>>()
+                    .join(" and ")
             ));
         }
         out

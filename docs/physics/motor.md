@@ -447,10 +447,11 @@ F(p_a) = F_curve + (p_ref − p_a) A_e,    A_e = π r_e²
   ([`motor.py:1173-1191`][rp-1173]) applies the same term.
 - `p_ref` is the air pressure at the static test site, where the motor was fired on a test stand
   to measure its curve. It is stored with the nozzle (`Nozzle::reference_pressure_pa`). Motor
-  files and catalogs don't record it, so standard sea-level pressure (101 325 Pa) is only a
-  stand-in. For a test at 1500 m elevation (84.6 kPa in the 1976
-  [standard atmosphere](../glossary.md#standard-atmosphere)), the stand-in makes the term
-  16.8 kPa × `A_e` too large at every altitude.
+  files and catalogs don't record it, so a design gives it, or gives none (below). Standard
+  sea-level pressure (101 325 Pa) suits a motor tested near sea level, but it is a guess: for a
+  test at 1500 m elevation (84.6 kPa in the 1976
+  [standard atmosphere](../glossary.md#standard-atmosphere)), it makes the term 16.8 kPa × `A_e`
+  too large at every altitude.
 - It holds while the exhaust fills the nozzle to its exit. A nozzle made for high altitude, tested
   at sea level, can have its flow come away from the nozzle wall (separate), and then it doesn't
   ([SP] pp. 32–34).
@@ -459,7 +460,19 @@ F(p_a) = F_curve + (p_ref − p_a) A_e,    A_e = π r_e²
   curve's thrust is positive (RocketPy also adds it inside zero-thrust gaps, where nothing flows),
   and never lets thrust go negative. Without a known nozzle it returns the curve. Commercial motor
   files carry no exit diameter: `.eng` has no field for one, and the `.rse` format's `exitDia`
-  attribute is always 0 ([`.rse` files](../format/rse.md#engine-attributes)).
+  attribute is always 0 ([`.rse` files](../format/rse.md#engine-attributes)). So a motor read from
+  a file or the catalog gets no correction.
+- **No reference pressure, no correction.** A nozzle may leave `reference_pressure_pa` empty
+  (`None`, `null` in a design file). The curve is then flown as it is at every pressure, which is
+  what RocketPy does by default: its `Motor(reference_pressure=None)` makes `pressure_thrust`
+  zero ([`motor.py:1188-1189`][rp-1173]). The designs transcribed from RocketPy's examples say
+  `None` for that reason ([ADR-021][adr-021]). With the sea-level stand-in, the Valetudo of
+  [Getting started](../getting-started.md), at a 1,400 m site, carried about 23 N of thrust
+  (15.7 kPa × 1.47e-3 m²) that RocketPy's example never flies, and reached 874 m where it now
+  reaches 779 m. A design must say which it means: the key is required, `null` for none, so
+  leaving it out is an error rather than a silent choice. The unit test
+  `hpr_motor::motor::tests::pressure_correction_uses_the_exit_area` pins both forms and the
+  missing key.
 - **Limits.** The full-flow term steps in just after ignition and steps to zero at `t_end` (the
   integrator should treat both as [events](../glossary.md#event)). In the ignition transient (the
   first moments, while the pressure inside the motor builds) and the tail-off (the end of the
@@ -737,3 +750,4 @@ fn main() -> Result<(), Box<dyn Error>> {
 [rp-1759]: https://github.com/RocketPy-Team/RocketPy/blob/v1.13.0/rocketpy/motors/motor.py#L1759-L1761
 [rp-1173]: https://github.com/RocketPy-Team/RocketPy/blob/v1.13.0/rocketpy/motors/motor.py#L1173-L1191
 [rp-flight]: https://github.com/RocketPy-Team/RocketPy/blob/v1.13.0/rocketpy/simulation/flight.py#L1936-L1956
+[adr-021]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-021-whole-flights-against-rocketpy-what-is-compared-and-the-gaps-it-may-declare-2026-09-18

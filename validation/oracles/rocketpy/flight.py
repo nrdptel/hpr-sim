@@ -117,7 +117,35 @@ RAILS = {
         "heading_deg": 105,
         "source": "docs/examples/juno3_flight_sim.ipynb, the `Flight` call",
     },
+    "bella-lui": {
+        "rail_length_m": 4.2,
+        "inclination_deg": 89,
+        "heading_deg": 45,
+        "source": "docs/examples/bella_lui_flight_sim.ipynb:75-115, the `parameters` dict "
+                  "(rail_length, inclination, heading; the means, not the dispersions)",
+    },
 }
+
+# Examples flown pad to landing but not in `recovery.py`'s descent cases, declared in its form.
+#
+# Bella Lui is the sixth rocket because Prometheus 2022 peaks at Mach 1.014, which hpr refuses
+# until M1.8, so five examples alone could never give M2.1 its five same-drag passes; it is on
+# M2.1's own list of example rockets. Its example takes its weather from an ERA5 reanalysis file
+# (Copernicus), so the wind is declared here, as `recovery.py` declares the winds it cannot use.
+WHOLE_FLIGHT_ONLY_CASES = [
+    {
+        "name": "bella-lui",
+        "site": "docs/examples/bella_lui_flight_sim.ipynb:139-153 (elevation, latitude, "
+                "longitude; the example's wind comes from an ERA5 reanalysis file, and its "
+                "gravity=9.81 is replaced by RocketPy's Somigliana gravity, as for every case); "
+                "the wind is declared by this script",
+        "latitude": 47.213476,
+        "longitude": 9.003336,
+        "elevation": 407,
+        "wind_u": 3,
+        "wind_v": -2,
+    },
+]
 
 
 def fail(message):
@@ -150,6 +178,26 @@ def build_rocket(inputs):
         fail(f"{inputs['name']} has no parachutes, so it would not come down under one")
     zero_noise(rocket)
     return rocket, thrust_path
+
+
+def devices_of(inputs, rocket):
+    """The parachutes the flight carried, in the order they open, as the example declared them.
+
+    A reference names everything the comparison flies (L75), so the devices are recorded here,
+    not left for the harness to find in the mass fixture. RocketPy checks a trigger at the
+    parachute's sampling rate, so its charge fires up to one sample after the condition is met.
+    """
+    by_name = {parachute.name: parachute for parachute in rocket.parachutes}
+    return [
+        {
+            "name": chute["name"],
+            "cd_s_m2": finite(by_name[chute["name"]].cd_s, "cd_s"),
+            "trigger": chute["trigger"],
+            "lag_s": finite(by_name[chute["name"]].lag, "lag"),
+            "sampling_rate_hz": finite(by_name[chute["name"]].sampling_rate, "sampling rate"),
+        }
+        for chute in recovery.devices_of(inputs)
+    ]
 
 
 def zero_noise(rocket):
@@ -225,6 +273,13 @@ def metrics_of(flight, case, name, solver):
         ),
         "burnout_speed_m_s": finite(flight.speed.get_value_opt(burnout_s), "burn-out speed"),
         "flight_time_s": finite(flight.t_final, "flight time"),
+        # Where the flight went, not only how high: the horizontal distance from the pad of the
+        # apogee and of the landing point (M2.1's "landing offset"), and the vertical speed at
+        # landing (its "descent rates"). RocketPy's x and y are the centre of dry mass's, from
+        # where it started (`apogee_x`, `x_impact`, flight.py:1156-1158, :1223-1226).
+        "apogee_drift_m": finite(math.hypot(flight.apogee_x, flight.apogee_y), "apogee drift"),
+        "landing_drift_m": finite(math.hypot(flight.x_impact, flight.y_impact), "landing drift"),
+        "impact_speed_m_s": finite(-flight.impact_velocity, "impact vertical speed"),
     }
 
 
@@ -266,6 +321,7 @@ def run(document, case):
     ]
     if not events:
         fail(f"{name}: no parachute deployed, so the descent is ballistic")
+    devices = devices_of(inputs, rocket)
     metrics = metrics_of(flight, case, name, SOLVER)
 
     loose_inputs = recovery.mass_case(document, name)
@@ -297,7 +353,21 @@ def run(document, case):
             "reference_radius_m": finite(rocket.radius, "reference radius"),
             "reference_area_m2": finite(rocket.area, "reference area"),
         },
-        "rail": dict(rail),
+        # RocketPy's rail phase ends when its tracked point has moved `effective_1rl` along the
+        # rail: the forward button, at its recorded position, reaching the top
+        # (flight.py:1716-1730). The rail-exit metrics are defined by this distance.
+        "rail": dict(rail, effective_1rl_m=finite(flight.effective_1rl, "effective_1rl")),
+        # The motor as RocketPy flew it, so the harness can check hpr's against it rather than
+        # trust the design (L75): the impulse and burn of the curve, the propellant, and the
+        # reference pressure, which RocketPy leaves at None (no ambient-pressure correction).
+        "motor": {
+            "total_impulse_ns": finite(rocket.motor.total_impulse, "total impulse"),
+            "burn_out_time_s": finite(rocket.motor.burn_out_time, "burn-out time"),
+            "propellant_initial_mass_kg": finite(
+                rocket.motor.propellant_initial_mass, "propellant mass"
+            ),
+            "reference_pressure_pa": rocket.motor.reference_pressure,
+        },
         "environment": {
             "latitude_deg": case["latitude"],
             "longitude_deg": case["longitude"],
@@ -310,6 +380,7 @@ def run(document, case):
         },
         "dry_mass_kg": finite(rocket.dry_mass, "dry mass"),
         "peak_thrust_to_weight": peak_thrust_to_weight(rocket, env, case),
+        "devices": devices,
         "events": events,
         "impact": {
             "time_s": finite(flight.t_final, "impact time"),
@@ -337,7 +408,8 @@ def run(document, case):
 
 def main():
     keep = set(sys.argv[1:])
-    cases = [case for case in recovery.CASES if not keep or case["name"] in keep]
+    every = recovery.CASES + WHOLE_FLIGHT_ONLY_CASES
+    cases = [case for case in every if not keep or case["name"] in keep]
     if keep and len(cases) != len(keep):
         fail(f"unknown case(s): {sorted(keep - {case['name'] for case in cases})}")
     document = recovery.mass_fixture()

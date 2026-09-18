@@ -1,0 +1,103 @@
+# juno-iii: RocketPy's example flown from the pad to the ground by both codes
+# (`validation/oracles/rocketpy/flight.py`, M2.1b1), compared metric by metric (M2.1b2).
+#
+# Same-drag mode: both codes fly the C_D0(M) the generator declares (a constant 0.5, on the
+# reference area the reference records and the harness checks), so a difference is in the equations
+# of motion, the environment or the motor, not in the drag. The site, the declared wind, the rail,
+# the parachutes and the motor are the reference's own record, and the harness refuses a design
+# whose dry mass, reference area, total impulse, burn time, propellant mass or reference pressure
+# differs from it. The flight uses RocketPy's gravity, standard atmosphere and frictionless rail
+# (ADR-015), and the thrust curve as measured, with no ambient-pressure correction, as RocketPy's
+# examples fly it.
+#
+# The metrics are measured as RocketPy defines them (L80): speeds and accelerations at the centre
+# of dry mass; heights from that point's height at launch, where RocketPy's starts at the ground
+# (so the main opens, and the flight lands, at RocketPy's heights too); the rail exit when the
+# rocket has travelled RocketPy's `effective_1rl`; the maxima over both ends of each solver step;
+# the power-on maximum over the steps up to burnout; drifts as horizontal distances from where the
+# dry centre of mass started.
+#
+# Every scored metric is held to the milestone's 3%, with no absolute floor. That is the
+# milestone's bar, not a model bound: most metrics agree far inside it. The differences that remain
+# have these sources, measured where stated:
+#
+# - The rail. hpr's rail equation keeps the variable-mass terms (the centre of mass moving inside
+#   the body as propellant burns), which RocketPy's `udot_rail1` leaves out. At a sharp ignition
+#   spike, with thrust and mass the same to five digits, hpr's acceleration is 1.2 to 1.3 m/s^2
+#   higher (Calisto at 0.05 s: 112.34 against 111.18; Bella Lui at 0.007 s: 74.14 against 72.84).
+#   hpr also keeps the rocket guided until its last button leaves, where RocketPy frees it at the
+#   first; releasing both at the same point moved Juno III's apogee gap by about 0.05 points and
+#   Bella Lui's by about 0.15 (measured in review).
+# - The wind. Same-drag mode shares C_D0, not the normal force, the damping (each code's own) or
+#   the drag's dependence on the angle of attack (hpr scales C_D0 by up to 1.3 at 17 degrees;
+#   RocketPy's table does not). In wind, hpr turns into the wind less than RocketPy: its apogee
+#   moves 67 to 85% as far upwind (Juno III 769 m against 1,147 m; Calisto 230 against 313;
+#   Bella Lui 107 against 126), and it flies a little higher. Flown once in calm air for this
+#   comparison (issue #50; not a committed check), the two agree on the apogee to 0.18% and on the
+#   drifts to 1.3 to 3.7%, not always inside 3%. So M2.1's landing offset is not met: the drifts
+#   are reported, as open misses whose cause is unknown (issue #50), not scored and not passed.
+# - Parachutes. RocketPy counts a canopy's added mass for the whole parachute phase and samples
+#   its triggers at 100 to 105 Hz; hpr has no added mass and fires its triggers at the instant
+#   (ADR-012). This leaves the descent rates at landing within 0.03%.
+#
+# RocketPy's own solver moves the metrics by at most 0.39% between rtol 1e-6 and 1e-8 (the time of
+# the peak acceleration), so the reference is the model's answer to well inside the gate.
+#
+# Juno III: 2,589 m AGL in the suite's strongest wind (8.5 m/s), drogue only. The worst scored
+# difference is the apogee at +1.71%, the largest in the suite: flown in calm air the apogees agree
+# to 0.11%, so the gap is the wind's (issue #50). In the wind hpr's apogee is 228 m from the pad
+# and RocketPy's 582 m, on the upwind side for both; in calm air they are 549 m and 570 m, on the
+# downwind side. The wind moves hpr's 769 m upwind and RocketPy's 1,147 m.
+id = "flight-juno-iii"
+title = "Juno III from the pad to the ground, same-drag"
+reference = "validation/fixtures/flight/rocketpy-whole-flight.json"
+reference_case = "juno-iii"
+
+[flight.whole_flight]
+design = "rocketpy-juno-iii"
+configuration = "example"
+
+[metrics.apogee_agl_m]
+relative = 0.03
+
+[metrics.apogee_time_s]
+relative = 0.03
+
+[metrics.max_speed_m_s]
+relative = 0.03
+
+[metrics.max_mach]
+relative = 0.03
+
+[metrics.max_acceleration_m_s2]
+relative = 0.03
+
+[metrics.max_acceleration_time_s]
+relative = 0.03
+
+[metrics.max_acceleration_power_on_m_s2]
+relative = 0.03
+
+[metrics.rail_exit_speed_m_s]
+relative = 0.03
+
+[metrics.rail_exit_time_s]
+relative = 0.03
+
+[metrics.burnout_altitude_agl_m]
+relative = 0.03
+
+[metrics.burnout_speed_m_s]
+relative = 0.03
+
+[metrics.flight_time_s]
+relative = 0.03
+
+[metrics.apogee_drift_m]
+not_scored = "an open miss, not a definitional difference: in wind hpr turns into the wind less than RocketPy (apogee drift -60.8%); flown once in calm air the codes agree to 1.3 to 3.7% (issue #50), so the gap is mostly the response to wind, which same-drag mode does not share (normal force, damping, drag at an angle). M2.1's landing offset is not met; reported, not scored, until #50 finds the cause."
+
+[metrics.landing_drift_m]
+not_scored = "an open miss, not a definitional difference: the landing point follows the apogee's (landing drift +151%); the horizontal path in wind is issue #50, and flown once in calm air the codes agree to 1.3 to 3.7%. M2.1's landing offset is not met; reported, not scored, until #50 finds the cause."
+
+[metrics.impact_speed_m_s]
+relative = 0.03
