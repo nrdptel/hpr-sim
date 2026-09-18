@@ -23,7 +23,10 @@
 //! `O`, and `S_k = (r_e²/4) diag(1, 1, 2) + |n_k|² 1 − n_k n_kᵀ` the gyration tensor of motor
 //! `k`'s exit disc of radius `r_e` about `O`. `a_O` is `O`'s acceleration relative to the launch
 //! frame, whose rotation enters only through the Coriolis force (normal gravity already holds the
-//! centrifugal term) and not through the rotational equations (at most 7.3e-5 rad/s; ADR-011).
+//! centrifugal term) and not through the rotational equations (at most 7.3e-5 rad/s; the decision
+//! record on rigid-body flight, [ADR-011][adr-011]).
+//!
+//! [adr-011]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-011-rigid-body-flight-equations-of-motion-aerodynamic-coupling-rail-phases-and-termination-2026-09-17
 
 use hpr_aero::{AeroModel, DragConditions, Flow};
 use hpr_core::attitude::quaternion_derivative;

@@ -6,8 +6,10 @@ use serde::{Deserialize, Serialize};
 
 /// One reference value and where it comes from.
 ///
-/// Loft lesson L77: Loft shipped "stored results" that were hand-written, one set internally
-/// inconsistent. A value without a source is not a reference, so `source` is required.
+/// [Loft lesson L77][l77]: Loft shipped "stored results" that were hand-written, one set
+/// internally inconsistent. A value without a source is not a reference, so `source` is required.
+///
+/// [l77]: https://nrdptel.github.io/hpr-sim/decisions-and-roadmap.html#l77
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct ReferenceValue {
@@ -41,7 +43,10 @@ pub struct Reference {
 }
 
 impl Reference {
-    /// The metrics that carry no source, which is what L77 refuses.
+    /// The metrics that carry no source, which is what [Loft lesson L77][l77] refuses: a value
+    /// without a source is not a reference.
+    ///
+    /// [l77]: https://nrdptel.github.io/hpr-sim/decisions-and-roadmap.html#l77
     #[must_use]
     pub fn without_provenance(&self) -> Vec<String> {
         self.values

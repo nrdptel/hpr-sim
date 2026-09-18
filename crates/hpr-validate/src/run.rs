@@ -76,8 +76,13 @@ const MASS_AGREEMENT: f64 = 1e-9;
 /// # Errors
 ///
 /// [`ValidateError`] if a file is missing or malformed, if the lock names a case that is not
-/// there or a committed case is not locked (Loft lesson L78), if a reference has no provenance
-/// (L77), if a metric is neither gated nor declared (L79), or if a flight fails.
+/// there or a committed case is not locked ([Loft lesson L78][l78]), if a reference has no
+/// provenance ([L77][l77]), if a metric is neither gated nor declared ([L79][l79]), or if a flight
+/// fails.
+///
+/// [l77]: https://nrdptel.github.io/hpr-sim/decisions-and-roadmap.html#l77
+/// [l78]: https://nrdptel.github.io/hpr-sim/decisions-and-roadmap.html#l78
+/// [l79]: https://nrdptel.github.io/hpr-sim/decisions-and-roadmap.html#l79
 pub fn run_lock(root: &Path, fast: bool) -> Result<Report, ValidateError> {
     let lock_path = cases_dir(root).join("lock.toml");
     let lock: CaseLock =

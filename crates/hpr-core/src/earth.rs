@@ -4,7 +4,10 @@
 //! `L` is fixed to the rotating Earth, so a body in it feels normal gravity (gravitation plus
 //! centrifugal, [`crate::gravity`]) and, when it moves, the Coriolis acceleration `−2 Ω × v`.
 //! The centrifugal term is already inside normal gravity and is never added separately.
-//! Equations and choices are in `docs/physics/gravity.md` and ADR-003.
+//! Equations and choices are in `docs/physics/gravity.md` and the decision record on frames,
+//! geodesy and gravity, [ADR-003][adr-003].
+//!
+//! [adr-003]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-003-frames-attitude-geodesy-and-the-gravity-model-2026-09-17
 
 use glam::DVec3;
 use serde::{Deserialize, Serialize};
@@ -32,7 +35,9 @@ pub enum GravityModel {
     /// `max_expected_height` (80 km by default; at 100 km that is 0.6% high); and it does not fly
     /// the formula at all but a 100-point cubic spline through it
     /// (`Environment.set_gravity_model` → `Function.set_discrete`), which over the 0 to 4.4 km of
-    /// M1.7a's descents differs from the formula by at most 4.6e-8 m/s².
+    /// the parachute descents of [M1.7a][m1-7a] differs from the formula by at most 4.6e-8 m/s².
+    ///
+    /// [m1-7a]: https://nrdptel.github.io/hpr-sim/decisions-and-roadmap.html#m1-7a
     VerticalTaylor,
     /// `(0, 0, −|γ|)` with the exact magnitude (eq. 4-4) at the launch latitude and longitude and
     /// height `h₀ + z`: altitude-dependent, but always along the launch site's vertical.

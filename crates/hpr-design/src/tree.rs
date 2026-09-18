@@ -26,7 +26,9 @@
 //! stage's overrides replace the whole stage. Overrides nested deeper apply first. Motors are never
 //! part of the structure ([`crate::config`]).
 //!
-//! See `docs/physics/design.md` and ADR-007.
+//! See `docs/physics/design.md` and the decision record on the design tree, [ADR-007][adr-007].
+//!
+//! [adr-007]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-007-design-tree-stations-placement-automatic-radii-overrides-motors-and-checks-2026-09-17
 
 use std::collections::BTreeSet;
 

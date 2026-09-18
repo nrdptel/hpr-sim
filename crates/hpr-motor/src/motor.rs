@@ -156,14 +156,16 @@ pub struct MotorState {
 /// Measured over the 1,708 ThrustCurve.org simulator files with both a parsed impulse and a
 /// catalog propellant mass — the mass [`crate::CatalogMotor::motor`] uses, which prefers the
 /// metadata over the curve file's header — `c` runs 236 to 3,031 m/s, with a median of 1,867 and
-/// 90% of them between 928 and 2,210 (`docs/physics/motor.md`). The bulk is APCP; the tail below
+/// 90% of them between 928 and 2,210 (the full table is in
+/// `docs/research/exhaust-velocity-guard.md`). The bulk is APCP; the tail below
 /// about 900 m/s is black powder, read low because Estes and Quest count the delay grain and the
 /// ejection charge as propellant.
 ///
 /// **The bound rejects none of those 1,708.** It is not a filter on propellant: it is there to
-/// catch a units slip, which moves `c` by a factor of 1,000 — the worked example in
-/// [`SolidMotor::from_envelope`]'s test lands at 1.8 m/s. The headroom is real but not enormous at
-/// the low end (the lowest catalog entry is 1.2x above the floor, the highest 1.65x below the
+/// catch a mass-unit slip, grams given as kilograms, which moves `c` by a factor of 1,000 — the
+/// worked example in [`SolidMotor::from_envelope`]'s test lands at 1.8 m/s. `c` doesn't depend on
+/// the motor's size, so sizes given in millimetres pass it. The headroom is real but not enormous
+/// at the low end (the lowest catalog entry is 1.2x above the floor, the highest 1.65x below the
 /// ceiling), and a 1/8A whose recorded propellant mass is mostly delay grain could fall through
 /// the floor; issue #11 records the fallback, which is to apply the bound only above a couple of
 /// grams.
@@ -183,7 +185,7 @@ impl SolidMotor {
     /// - [`MotorError::Inconsistent`] for a column bore at least as wide as the column, bad grain
     ///   geometry ([`BatesGrains::validate`]), or a curve and propellant mass whose effective
     ///   exhaust velocity `I/m_p` is outside [`EXHAUST_VELOCITY_RANGE_M_S`], which is what a
-    ///   units slip looks like.
+    ///   propellant mass in the wrong unit looks like. Sizes can't be checked this way.
     pub fn new(
         curve: ThrustCurve,
         propellant: Propellant,
@@ -260,9 +262,9 @@ impl SolidMotor {
                 });
             }
         }
-        // A units slip is the failure this catches: the 411I175 built from millimetres and grams
-        // read as metres and kilograms is accepted by every check above, and flies with an
-        // effective exhaust velocity of 1.8 m/s.
+        // A mass-unit slip is the failure this catches: the 411I175 built from grams read as
+        // kilograms is accepted by every check above, and flies with an effective exhaust velocity
+        // of 1.8 m/s. Its sizes in millimetres don't change `c`, so nothing here can catch them.
         let exhaust_velocity_m_s = curve.total_impulse_ns() / propellant_mass_kg;
         if !EXHAUST_VELOCITY_RANGE_M_S.contains(&exhaust_velocity_m_s) {
             return Err(MotorError::Inconsistent(format!(
@@ -299,8 +301,9 @@ impl SolidMotor {
     /// [`MotorError::Domain`] for a non-positive or non-finite dimension or propellant mass, and
     /// [`MotorError::Inconsistent`] when the propellant mass is not below the loaded mass (the
     /// motor would weigh nothing at burnout), or when the curve and the propellant mass imply an
-    /// effective exhaust velocity outside [`EXHAUST_VELOCITY_RANGE_M_S`] — which is what this
-    /// constructor's arguments look like in millimetres and grams.
+    /// effective exhaust velocity outside [`EXHAUST_VELOCITY_RANGE_M_S`] — which is what masses
+    /// given in grams look like. Sizes given in millimetres don't change it, so this check can't
+    /// catch them.
     pub fn from_envelope(
         curve: ThrustCurve,
         diameter_m: f64,

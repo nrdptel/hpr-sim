@@ -21,7 +21,10 @@
 //!
 //! Interference drag and fin-tip vortices are neglected, as in Niskanen p. 41.
 //!
-//! See `docs/physics/aero.md` and ADR-009.
+//! See `docs/physics/aero.md` and the decision record on subsonic drag and drag override tables,
+//! [ADR-009][adr-009].
+//!
+//! [adr-009]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-009-subsonic-drag-buildup-surface-finishes-and-drag-override-tables-2026-09-17
 
 use hpr_core::interp::Lookup;
 use hpr_design::{FinCrossSection, FinSet, LaunchLug, PlacedComponent, RailButton};
@@ -41,8 +44,11 @@ pub const LOW_REYNOLDS_FRICTION: f64 = 1.48e-2;
 /// The top of the subsonic region, Mach 0.8 (Niskanen 2009 Table 3.1, p. 19), where Niskanen's
 /// semi-empirical transonic method starts (p. 47). The buildup accepts Mach numbers up to 1 and
 /// flags results above this ([`Drag::beyond_subsonic_methods`]). The flag marks the region's edge,
-/// not the start of the error: without eq. 3.87's high-subsonic interpolation (M1.8), nose and
-/// shoulder pressure drag already reads low from about Mach 0.6.
+/// not the start of the error: without eq. 3.87's high-subsonic interpolation, which comes with
+/// the transonic aerodynamics of [M1.8][m1-8], nose and shoulder pressure drag already reads low
+/// from about Mach 0.6.
+///
+/// [m1-8]: https://nrdptel.github.io/hpr-sim/decisions-and-roadmap.html#m1-8
 pub const SUBSONIC_MACH_LIMIT: f64 = 0.8;
 
 /// Checks a Mach number of any speed regime: finite and non-negative.
@@ -222,7 +228,10 @@ pub fn base_drag_coefficient(mach: f64) -> Result<f64, AeroError> {
 /// p. 237). A smooth joint (`φ = 0`) has none; a bare step (`φ = π/2`) has 0.8.
 ///
 /// Niskanen interpolates from this value toward the transonic method above low subsonic speeds
-/// (eq. 3.87); that arrives with the transonic method in M1.8, and until then the value is held.
+/// (eq. 3.87); that arrives with the transonic method in [M1.8][m1-8], and until then the value
+/// is held.
+///
+/// [m1-8]: https://nrdptel.github.io/hpr-sim/decisions-and-roadmap.html#m1-8
 ///
 /// # Errors
 ///
@@ -397,7 +406,10 @@ pub fn rail_button_drag_coefficient(mach: f64) -> Result<f64, AeroError> {
 ///
 /// Past 90° the flow meets the tail first and drag pushes toward the nose; hpr mirrors with the
 /// sign reversed, `f(α) = −f(180° − α)` (an assumption; the source stops at 90°), so `f` is
-/// continuous through 0 at 90°. The coefficients are derived, not published (ADR-009).
+/// continuous through 0 at 90°. The coefficients are derived, not published (the decision record
+/// on subsonic drag, [ADR-009][adr-009]).
+///
+/// [adr-009]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-009-subsonic-drag-buildup-surface-finishes-and-drag-override-tables-2026-09-17
 ///
 /// # Errors
 ///
@@ -501,9 +513,11 @@ pub struct Drag {
     /// table's own reference area, and whether it extrapolated.
     pub table: Option<Lookup>,
     /// Whether the buildup ran above [`SUBSONIC_MACH_LIMIT`], the top of Niskanen's subsonic
-    /// region. Nose, shoulder and step pressure drag miss their rise toward Mach 1 until M1.8, so
-    /// `C_D0` is low there (and somewhat low from about Mach 0.6). Never set with an override
-    /// table.
+    /// region. Nose, shoulder and step pressure drag miss their rise toward Mach 1 until the
+    /// transonic aerodynamics of [M1.8][m1-8], so `C_D0` is low there (and somewhat low from about
+    /// Mach 0.6). Never set with an override table.
+    ///
+    /// [m1-8]: https://nrdptel.github.io/hpr-sim/decisions-and-roadmap.html#m1-8
     pub beyond_subsonic_methods: bool,
 }
 

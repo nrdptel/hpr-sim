@@ -3,14 +3,20 @@
 //!
 //! [`Catalog::bundled`] is the catalog compiled into the crate: public-domain curves from
 //! ThrustCurve.org whose total impulse, NFPA 1125 burn time and average thrust each match
-//! ThrustCurve's stored values within 1% (ADR-005; the selection and the curves left out are in
+//! ThrustCurve's stored values within 1% (the decision record on solid motors and the bundled
+//! catalog, [ADR-005][adr-005]; the selection and the curves left out are in
 //! `docs/research/thrustcurve-data.md`). `validation/oracles/thrustcurve/bundle.py` regenerates it.
-//! Other curves are fetched and cached later, by `hpr-net` (M5).
+//! Other curves are fetched and cached later, by `hpr-net`, the online layer that starts at
+//! [M5.1][m5-1].
 //!
 //! The index keeps ThrustCurve's own units and values verbatim (mm, g, N·s, N, s), in fields named
 //! for them. [`CatalogMotor::motor`] converts to SI and takes the envelope (diameter, length and
-//! masses) from the metadata rather than the curve file's header, which can be wrong (Loft lesson
-//! L43).
+//! masses) from the metadata rather than the curve file's header, which can be wrong
+//! ([Loft lesson L43][l43]: one said 75 mm for a 54 mm motor).
+//!
+//! [adr-005]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-005-solid-motors-statistics-consumption-grains-file-models-and-the-bundled-catalog-2026-09-17
+//! [l43]: https://nrdptel.github.io/hpr-sim/decisions-and-roadmap.html#l43
+//! [m5-1]: https://nrdptel.github.io/hpr-sim/decisions-and-roadmap.html#m5-1
 
 use serde::{Deserialize, Serialize};
 

@@ -27,7 +27,9 @@ pub enum SimError {
     #[error(transparent)]
     Design(#[from] DesignError),
     /// The aerodynamic models refused the design or a flow condition (for example `M ≥ 1` before
-    /// M1.8).
+    /// the transonic and supersonic aerodynamics of [M1.8][m1-8]).
+    ///
+    /// [m1-8]: https://nrdptel.github.io/hpr-sim/decisions-and-roadmap.html#m1-8
     #[error(transparent)]
     Aero(#[from] AeroError),
     /// The atmosphere or wind model refused a height.

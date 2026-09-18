@@ -8,9 +8,12 @@ pub const STATE_LEN: usize = 13;
 
 /// A rigid body's state in the launch frame `L` (`docs/physics/frames.md`).
 ///
-/// The reference point is the body origin, the nose tip (ADR-007), which is fixed in the body; the
-/// centre of mass moves relative to it as propellant burns. As an array the order is position,
-/// velocity, attitude `(w, x, y, z)` and body rates.
+/// The reference point is the body origin, the nose tip (the decision record on the design tree,
+/// [ADR-007][adr-007]), which is fixed in the body; the centre of mass moves relative to it as
+/// propellant burns. As an array the order is position, velocity, attitude `(w, x, y, z)` and body
+/// rates.
+///
+/// [adr-007]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-007-design-tree-stations-placement-automatic-radii-overrides-motors-and-checks-2026-09-17
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
 pub struct State {
     /// The nose tip's position in `L`, m.

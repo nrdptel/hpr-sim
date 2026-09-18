@@ -2,17 +2,32 @@
 
 This page gathers every check hpr-sim has passed so far, and every known gap, in words and numbers.
 Start with the bottom line: **no whole flight has been validated yet.** hpr's apogee, top speed and
-landing point have not been compared with another simulator's or with a real flight's. What has been
-checked is each model on its own, against exact answers, its published source and in places
-RocketPy, and the descent under a parachute, against RocketPy, for five rockets.
+landing point have not been compared with another simulator's or with a real flight's.
 
-Each number here appears, written the same way (the same digits, and the same sign and percent sign
-where it writes them), in the model page, report or case file that its sentence or table row links
-to, and the descent table matches the report cell by cell. The site's build checks both, so a number
-that changes at its source fails it, unless the same number still appears elsewhere in that file.
-The check can't tell whether a number is quoted in the right context; the model pages say what each
-one means. [Checking a claim](checking-a-claim.md) shows how to follow a number back to its source
-and its test.
+What has been checked so far:
+
+- each model on its own, against exact answers, its published source and, in places,
+  [RocketPy](glossary.md#rocketpy), an open-source flight simulator;
+- the descent under a parachute, against RocketPy, for five rockets.
+
+Every number here links to the page or file it comes from. [Checking a claim](checking-a-claim.md)
+shows how to follow one back to its source and its test, and
+[how the site keeps the two in step](checking-a-claim.md#rules-that-keep-the-trail-honest).
+
+## How to read the numbers
+
+- **Powers of ten.** Very small and very large numbers are written the way programs print them.
+  The number after the `e` says how many places the decimal point moves, to the left when it is
+  negative. So 1e-12 is a millionth of a millionth, a 1 in the twelfth decimal place, and 1e6 is a
+  million. Both appear in the two [Frames](physics/frames.md) rows of the results table below.
+- **Absolute differences** carry a unit: they say how far apart two values are, in that unit.
+  [Geodesy](physics/geodesy.md)'s round trips return heights within 2e-8 m, twenty billionths of a
+  metre.
+- **Relative differences** are marked *relative*: the difference as a fraction of the value it is
+  compared with. [Gravity](physics/gravity.md) within 2e-14 relative means within two parts in a
+  hundred million million. A percentage is a relative difference counted in hundredths.
+- **Signs.** A signed difference is hpr's value less the one it is compared with, over that one.
+  A plus means hpr's value is the larger in size, a minus the smaller.
 
 ## Four kinds of evidence
 
@@ -21,35 +36,36 @@ reality. They are set out in the project's [validation plan][plan].
 
 | kind | what is compared | what agreement shows |
 |---|---|---|
-| **Analytic** | The code against exact answers: closed-form solutions, conservation laws, round trips | The code computes what its equations say |
+| **Analytic** | The code against exact answers: formulas solved by hand (closed forms), conservation laws, and round trips (converting a value and converting it back) | The code computes what its equations say |
 | **Published source** | The code against a source's printed tables and worked examples | The code implements the source correctly |
 | **Another code** | hpr against another simulator, such as RocketPy, flying the same inputs | The two codes agree on the physics; not that either matches reality |
 | **Real flights** | hpr against measured flights | The model matches reality, within the flight's own uncertainty |
 
 The first three check the code. Only the fourth checks the physics against the world, and no
-flight has been compared yet: that is [M2.3][roadmap], the real-flights milestone. The nearest
+flight has been compared yet: that is [M2.3](decisions-and-roadmap.md#m2-3), the real-flights milestone. The nearest
 thing so far is two recovery models checked against published drop tests, which are measurements
 but not flights ([Recovery](physics/recovery.md)).
 
 ## Where each model stands
 
-A tick means the model has been checked that way; a dash means it hasn't yet. "Sampled in the
-descents" means RocketPy's values were compared at the heights its parachute descents pass
-through, as part of that comparison.
+A tick means the model has been checked that way; a dash means it hasn't yet. *In the descents
+only* means RocketPy's air density and wind were compared with hpr's at just the 23 heights its
+parachute descents sample, as part of that comparison, and nowhere else
+([Recovery](physics/recovery.md#against-rocketpy)).
 
 | model | analytic | published source | another code | real flights |
 |---|---|---|---|---|
 | [Frames](physics/frames.md) | ✓ | — | ✓ RocketPy | — |
 | [Geodesy](physics/geodesy.md) | ✓ | ✓ | — | — |
 | [Gravity](physics/gravity.md) | ✓ | ✓ | ✓ RocketPy | — |
-| [Atmosphere](physics/atmosphere.md) | ✓ | ✓ | ✓ RocketPy, sampled in the descents | — |
-| [Wind](physics/wind.md) | ✓ | — | ✓ RocketPy, sampled in the descents | — |
+| [Atmosphere](physics/atmosphere.md) | ✓ | ✓ | ✓ RocketPy, in the descents only | — |
+| [Wind](physics/wind.md) | ✓ | — | ✓ RocketPy, in the descents only | — |
 | [Turbulence](physics/turbulence.md) | ✓ | — | — | — |
 | [Design tree](physics/design.md) | ✓ | — | ✓ RocketPy, mass properties only | — |
 | [Shapes](physics/shapes.md) | ✓ | — | — | — |
 | [Mass properties](physics/mass.md) | ✓ | — | — | — |
 | [Solid motors](physics/motor.md) | ✓ | — | ✓ RocketPy, ThrustCurve.org | — |
-| [Aerodynamics](physics/aero.md) | ✓ | ✓ Barrowman's examples | partial: drag only, inputs not matched | — |
+| [Aerodynamics](physics/aero.md) | ✓ | ✓ Barrowman's examples | partial: drag only, with the fins and finish guessed | — |
 | [Rigid-body flight](physics/flight.md) | ✓ | — | — | — |
 | [Time integration](physics/integration.md) | ✓ | — | — | — |
 | [Recovery](physics/recovery.md) | ✓ | ✓ | ✓ RocketPy | — (drop tests ✓) |
@@ -58,39 +74,73 @@ through, as part of that comparison.
 
 ## Results by model
 
-Each model page opens with *In short*, and its verification section has every test and its
-tolerance. The headline results, as relative differences unless a unit is given:
+The headline results, one check to a row. Each model page opens with *In short*, and its
+verification section lists every test and its [tolerance](glossary.md#tolerance), how far a result
+may be from its reference and still pass.
 
-| model | checked against | result |
+| model | compared with | how close |
 |---|---|---|
-| [Frames](physics/frames.md) | exact rotations; RocketPy's starting attitude | 8 rail setups match RocketPy to 1e-12 rad; attitude stays within 1e-9 rad of exact over 1e6 steps |
-| [Geodesy](physics/geodesy.md) | the WGS 84 standard's Table 3.5; round trips | the table to its printed digits; round trips within 1e-14 rad and 2e-8 m |
-| [Gravity](physics/gravity.md) | the WGS 84 standard's formulas at 40 digits; RocketPy's formula | 11 points within 2e-14; RocketPy at 8 points to under 1e-12 |
-| [Atmosphere](physics/atmosphere.md) | the 1976 standard's tables; the CIPM-2007 moist-air formula; RocketPy | within 0.1% at 32 altitudes; humid density within 0.047%; RocketPy's density within 3.7e-4 ([Recovery](physics/recovery.md#against-rocketpy)) |
-| [Wind](physics/wind.md) | unit tests; RocketPy's wind in its descents | RocketPy's wind to 1e-9 m/s, and drift within 0.28% in the four cases with wind ([Recovery](physics/recovery.md#against-rocketpy)) |
-| [Turbulence](physics/turbulence.md) | the Dryden spectra, over 2²⁰ samples | within 4 standard errors in every octave band; unvalidated for rockets |
-| [Design tree](physics/design.md) | a hand-worked rocket; eight cases of RocketPy's example rockets | 1e-12 by hand; RocketPy within 8.0e-10 at its solver's times, and between them 1.1e-5 in mass and 2.6e-5 in inertia; grain propellant mass 2.4e-9 and 4.9e-5 of its initial value |
-| [Shapes](physics/shapes.md) | closed forms; independent high-precision integrals | 1e-10 and 1e-12 on 22 noses and transitions; 20 walls to 1e-10 |
-| [Mass properties](physics/mass.md) | hand calculation; exact integration | 1e-11 by hand; fin sections to 1e-13; densities converted as their sources print them |
-| [Solid motors](physics/motor.md) | ThrustCurve.org's statistics code; RocketPy's motor | 1.8e-15 on all 32 bundled curves; RocketPy within 7.9e-5 on three, the propellant's quantities within 1e-4 of their values at ignition |
-| [Aerodynamics](physics/aero.md) | Barrowman's worked examples, at Mach 0; drag curves labelled RASAero, at Mach 0.3 | four of five examples within 1%, the Recruiter +2.87% (+3.42% on its fins); drag within 10% in four of seven cases with guessed inputs, −18.3% for Cavour under power, and −47.0% and −50.4% for Valetudo, whose table is 1.44 times its own OpenRocket export (hpr is 23.5% under that export as designed here, 1.9% with the export's own finish and lugs) |
-| [Rigid-body flight](physics/flight.md) | exact motion in a vacuum | the centre of mass on the exact parabola to 1.7e-6 m over 22 s; no whole flight compared |
-| [Time integration](physics/integration.md) | an independent `DOPRI5`; a flight with an exact solution | the same step counts; event times within 1.5e-8 s |
-| [Recovery](physics/recovery.md) | RocketPy's descents; published drop tests | every descent metric within 3% (below); the later triggers within 0.17% and the drogue's descent rate to 0.01%; tumbling −10 to +19% off its drops; streamers +9% fast on a flat one and +58% on a pleated one |
-| [Interpolation](physics/interpolation.md) | a spline's closed form; property tests | the closed form `y = 3x/2 − x³/2` matched; every table hits its points |
-| [Quadrature](physics/quadrature.md) | exact integrals | polynomials to degree 22 exactly; six test integrals to 1e-11 |
+| [Frames](physics/frames.md) | RocketPy's starting attitude, worked out from the launch rail's angles, for 8 rail setups | within 1e-12 rad |
+| [Frames](physics/frames.md) | an exactly solvable spin whose axis sweeps round a cone (coning), over 1e6 integration steps | attitude within 1e-9 rad |
+| [Geodesy](physics/geodesy.md) | the ellipsoid values printed in Table 3.5 of the [WGS 84](glossary.md#wgs-84) standard | to their printed digits |
+| [Geodesy](physics/geodesy.md) | round trips at random points from −10 km to +1000 km: latitude, longitude and height to Earth-centred x, y, z, and back | latitude within 1e-14 rad, height within 2e-8 m |
+| [Gravity](physics/gravity.md) | the WGS 84 formulas, worked to 40 digits by a separate script, at 11 points from the equator to both poles and up to 200 km high | gravity's strength within 2e-14 relative |
+| [Gravity](physics/gravity.md) | RocketPy's gravity formula, at 8 points | under 1e-12 relative |
+| [Atmosphere](physics/atmosphere.md) | the tables of the 1976 [standard atmosphere](glossary.md#standard-atmosphere), at 32 heights from −2 to 86 km | every value within 0.1% |
+| [Atmosphere](physics/atmosphere.md) | CIPM-2007 (Picard et al., 2008), a published reference formula for the density of humid air that treats air as a real gas, from 15 to 27 °C | humid-air density within 0.047% |
+| [Atmosphere](physics/atmosphere.md) | RocketPy's air density, at the 23 heights its descents sample ([Recovery](physics/recovery.md#against-rocketpy)) | within 3.7e-4 relative |
+| [Wind](physics/wind.md) | RocketPy's wind, at the same heights ([Recovery](physics/recovery.md#against-rocketpy)) | each component within 1e-9 m/s |
+| [Wind](physics/wind.md) | the drift of RocketPy's four descents with wind ([Recovery](physics/recovery.md#against-rocketpy)) | the distance drifted within 0.28% |
+| [Turbulence](physics/turbulence.md) | the [Dryden](glossary.md#turbulence-dryden) gust spectra, published formulas for how gust strength spreads over wavelength, over 2²⁰ random samples (about a million) | within 4 standard errors (the scatter expected by chance) in every octave band (a range of wavelengths spanning a factor of two): ±1–3% in the wide bands. Unvalidated for rockets |
+| [Design tree](physics/design.md) | a rocket worked by hand, loaded, burning and burnt out | mass within 1e-12 kg, centre of mass within 1e-12 m, inertia within 1e-12 relative |
+| [Design tree](physics/design.md) | RocketPy, for eight cases of its example rockets, at the times its equation solver computed the burning grains (up to 60 per case) | mass, centre of mass and inertia within 8.0e-10 relative (the centre as a fraction of the rocket's length) |
+| [Design tree](physics/design.md) | the same, at 103 even times through the burn and after it, where RocketPy interpolates between its solver's times | mass within 1.1e-5 relative, inertia within 2.6e-5 relative |
+| [Design tree](physics/design.md) | the propellant mass left in the grains, at both sets of times | within 2.4e-9 of the initial propellant mass at the solver's times, and 4.9e-5 between them |
+| [Shapes](physics/shapes.md) | exact formulas (closed forms) for filled noses and transitions | within 1e-10 relative |
+| [Shapes](physics/shapes.md) | separately computed high-precision integrals, for 22 noses and transitions | within 1e-12 relative |
+| [Shapes](physics/shapes.md) | the same kind of integrals, for 20 hollow shells of a given wall thickness | within 1e-10 relative |
+| [Mass properties](physics/mass.md) | a cone, a tube, four fins and an off-axis payload, added up by hand | within 1e-11 relative |
+| [Mass properties](physics/mass.md) | fin cross-sections, against exact numerical integration | within 1e-13 relative |
+| [Mass properties](physics/mass.md) | material densities, converted from the units their sources print | the sources' values, such as white ash at 678 kg/m³ |
+| [Solid motors](physics/motor.md) | [ThrustCurve.org](glossary.md#thrustcurveorg)'s own statistics code (total impulse, burn time, average and peak thrust), on all 32 bundled curves | within 1.8e-15 relative |
+| [Solid motors](physics/motor.md) | RocketPy's solid-motor model, on three bundled motors, at 203 times each | total mass and inertias within 7.9e-5 relative; the propellant's own mass and inertias within 1e-4 of their values at ignition |
+| [Aerodynamics](physics/aero.md) | [Barrowman's](glossary.md#barrowmans-method) five worked examples, at Mach 0 (low speed): each rocket's [normal-force slope](glossary.md#normal-force-slope) and [centre of pressure](glossary.md#centre-of-pressure-cp) | every centre of pressure within 1%. Every slope within 1% too, except the six-fin Recruiter's: +2.87% (+3.42% on its fins alone) |
+| [Aerodynamics](physics/aero.md) | drag curves labelled [RASAero](glossary.md#rasaero-ii) in RocketPy's examples, at [Mach](glossary.md#mach-number) 0.3, with the fins and surface finish guessed because the curves don't record them | within 10% in four of seven cases; −18.3% for Cavour [power-on](glossary.md#power-on-and-power-off-drag) (motor burning), cause open |
+| [Aerodynamics](physics/aero.md) | Valetudo's drag table, which is 1.44 times the drag in the [OpenRocket](glossary.md#openrocket) export for the same rocket | −47.0% power-off and −50.4% power-on. Against the OpenRocket export, hpr is 23.5% under as designed here, and 1.9% under with the export's own surface finish and launch lugs |
+| [Rigid-body flight](physics/flight.md) | the exact motion of a tumbling, spinning rocket in a vacuum, over 22 s | the centre of mass within 1.7e-6 m of the exact parabola. No whole flight compared |
+| [Time integration](physics/integration.md) | a separate line-by-line transcription of `DOPRI5`, the published Fortran integrator by Hairer and Wanner that hpr's [Dormand–Prince](glossary.md#dormandprince-and-rk4) stepper follows, on the problem Hairer's own example program for `DOPRI5` solves: the Arenstorf orbit, the closed, looping path of a small body pulled by two large ones that circle each other | the same step counts |
+| [Time integration](physics/integration.md) | a vertical flight with drag that has an exact solution | apogee, deployment and landing times within 1.5e-8 s |
+| [Recovery](physics/recovery.md) | RocketPy's descents under a parachute, for five rockets | every descent metric within 3% ([below](#the-descent-under-a-parachute-against-rocketpy)) |
+| [Recovery](physics/recovery.md) | the same descents: the heights where the later parachutes fire, and the descent rate under the drogue | within 0.17% and 0.01% |
+| [Recovery](physics/recovery.md) | published drop tests of five small models falling with nothing deployed ([tumbling](glossary.md#tumble-recovery)) | descent rate −10 to +19% off |
+| [Recovery](physics/recovery.md) | Kidwell's [streamer](glossary.md#streamer) drop tests (2001) | descent rate +9% fast for his one flat streamer, and +58% fast for one folded into pleats, which hpr doesn't model |
+| [Interpolation](physics/interpolation.md) | the exact formula of a smooth curve (a spline) through three points, `y = 3x/2 − x³/2` | matched |
+| [Interpolation](physics/interpolation.md) | property tests, which check a rule on many randomly generated tables | every table passes exactly through its own points |
+| [Quadrature](physics/quadrature.md) | polynomials, whose integrals are known exactly | exact up to degree 22 |
+| [Quadrature](physics/quadrature.md) | six test integrals with known answers, one of them infinite at an end | within 1e-11 relative |
 
 ## The descent under a parachute, against RocketPy
 
-This is the one comparison the validation harness runs so far. Five of RocketPy's example rockets
-start from the same state near apogee in both codes, with the first parachute opening at once, the
-same drag areas, triggers and wind, and RocketPy's random noise off. To compare like with like, hpr
-uses RocketPy's gravity formula and interpolates the wind the way RocketPy does, by its east and
-north components, rather than its own defaults. The committed [validation report][report] says:
-5 cases, 30 metrics, 30 scored, all within tolerance, the largest difference +2.865%.
+This is the one comparison the validation harness runs so far. The harness is the program behind
+`cargo xtask validate`, which flies every [validation case](glossary.md#validation-case) and
+writes the committed report.
 
-Each metric must agree within 3%, with no absolute floor, as each case file argues (for example,
-[NDRT's][ndrt-case]). The metrics:
+Five of RocketPy's [example rockets](glossary.md#example-rockets) are flown down in both codes,
+set up the same way:
+
+- the same starting state near apogee, with the first parachute opening at once;
+- the same [drag areas](glossary.md#drag-area), deployment triggers and wind;
+- the random noise RocketPy can add to each parachute switched off, so its runs repeat exactly;
+- RocketPy's gravity formula, and its way of interpolating the wind (by its east and north
+  components), in place of hpr's own defaults, to compare like with like.
+
+The committed [validation report][report] sums it up: 5 cases, one per rocket, and 30 metrics, the
+six numbers below for each descent. All 30 were scored and all are within tolerance; the largest
+difference is +2.865%.
+
+Each metric must agree within 3% of RocketPy's value, with no absolute floor (a fixed allowance,
+in metres or seconds, that would pass any smaller difference). Each case file argues why, for
+example [NDRT's][ndrt-case]. The metrics:
 
 - `descent_time_s`: the time from the shared start to landing.
 - `impact_speed_m_s`: the vertical speed at landing; the wind adds to the speed over the ground.
@@ -113,9 +163,28 @@ Every result of the report, as hpr's difference from RocketPy:
 | [`descent-prometheus-2022-generic-motor`][report] | +0.083% | −0.030% | −0.083% | +0.083% | +0.086% | +0.082% |
 | [`descent-juno-iii`][report] | −0.018% | −0.008% | +0.018% | −0.018% | −0.018% | −0.018% |
 
-Valetudo falls in still air, so its drift, 0.19 m, comes only from the Earth's rotation, and its
-north part is 19 µm; a small difference there is a large fraction
-([Recovery](physics/recovery.md#against-rocketpy)).
+Each case is named after the RocketPy example it flies. Three names carry more:
+
+- `descent-calisto-tests-motor-at-minus-1.373` is Calisto as RocketPy's own tests build it, with
+  the motor at −1.373 m in RocketPy's coordinates, where its getting-started notebook puts it at
+  −1.255 m ([notes on RocketPy's example rockets][rocket-notes]).
+- `descent-ndrt-2020-nose-to-tail` is the NDRT 2020 rocket, which RocketPy's example measures from
+  the nose toward the tail ([notes on RocketPy's example rockets][rocket-notes]).
+- `descent-prometheus-2022-generic-motor` is Prometheus 2022, whose motor RocketPy describes with
+  its generic-motor model, which treats the propellant as a solid cylinder
+  ([notes on RocketPy's example rockets][rocket-notes],
+  [Recovery](physics/recovery.md#against-rocketpy)).
+
+The Valetudo case flies RocketPy's own Valetudo example, not the flight on
+[Getting started](getting-started.md). From the shared start, 800 m above the ground, it falls in
+still air under the example's one drogue, with RocketPy's drag area of 0.4537 m², and lands at
+17.627 m/s. Getting started flies the same airframe from the pad, with its own drogue, a main
+parachute and a 5 m/s wind ([case file][valetudo-case],
+[Recovery](physics/recovery.md#against-rocketpy)).
+
+In still air, Valetudo's drift, 0.19 m, comes only from the Earth's rotation (the
+[Coriolis acceleration](glossary.md#coriolis-acceleration)), and its north part is 19 µm. So a
+small difference there is a large fraction ([Recovery](physics/recovery.md#against-rocketpy)).
 
 The largest gap, NDRT's north drift, most likely comes from [added mass](glossary.md#added-mass):
 RocketPy counts the air a canopy drags along, 15.9 kg for NDRT's main against the rocket's 20.8 kg,
@@ -129,12 +198,13 @@ either matches a real parachute on a real day.
 ## Whole flights
 
 Not validated yet. RocketPy's five example rockets have been flown from the pad to landing, with a
-drag coefficient declared the same for both codes, and the result is committed as a reference
-([validation plan][plan-refs]). hpr will be scored against it in [M2.1b2][roadmap], the
-whole-flight comparison. One case will show a gap from the start: RocketPy's Prometheus peaks at
-Mach 1.014, and hpr stops any flight that reaches Mach 1 until [M1.8][roadmap] adds transonic and
-supersonic aerodynamics. The comparisons with OpenRocket ([M2.2][roadmap]) and with real flights
-([M2.3][roadmap]) come after.
+[drag coefficient](glossary.md#drag-coefficient) declared the same for both codes, and the result
+is committed as a reference ([validation plan][plan-refs]). hpr will be scored against it in
+[M2.1b2](decisions-and-roadmap.md#m2-1b2), the whole-flight comparison. One case will show a gap from the start: RocketPy's
+Prometheus peaks at Mach 1.014, and hpr stops any flight that reaches Mach 1 until [M1.8](decisions-and-roadmap.md#m1-8)
+adds transonic and supersonic aerodynamics. The comparisons with OpenRocket ([M2.2](decisions-and-roadmap.md#m2-2), the
+OpenRocket comparison) and with real flights ([M2.3](decisions-and-roadmap.md#m2-3), the real-flights milestone) come
+after.
 
 ## Known gaps
 
@@ -142,34 +212,39 @@ These are the largest known differences and missing pieces. Each model page's *I
 rest.
 
 - **Aerodynamics were checked at two speeds only:** Mach 0 for the normal force and centre of
-  pressure, and Mach 0.3 for drag. Nose and shoulder pressure drag is held at its low-speed value,
-  so from about
-  Mach 0.6 it reads low against the source's own high-subsonic correction, and the models are
+  pressure, and Mach 0.3 for drag. The drag from air pressure on the nose, and on any shoulder (a
+  transition that widens toward the tail), is held at its low-speed value. So from about Mach 0.6
+  it reads low: the source's own correction for high subsonic speeds gives more. The models are
   documented only to Mach 0.8 ([Aerodynamics](physics/aero.md)).
 - **Drag against the RASAero curves** is within 10% in four of seven cases, with the fins and
-  finish guessed, because the curves don't record them. Cavour under power is −18.3%, cause open.
-  Valetudo's −47.0% and −50.4% are against a table 1.44 times its own OpenRocket export
-  ([Aerodynamics](physics/aero.md#verification)).
-- **Six fins.** The normal-force slope of Barrowman's six-fin Recruiter is +2.87% above his printed
-  value, and +3.42% on the fins alone, mostly because hpr uses a different six-fin rule
-  ([Aerodynamics](physics/aero.md#verification)).
+  surface finish guessed, because the curves don't record them. Cavour power-on is −18.3%, cause
+  open. Valetudo's −47.0% and −50.4% are against a table 1.44 times the drag in the OpenRocket
+  export for the same rocket ([Aerodynamics](physics/aero.md#verification)).
+- **Six fins.** The [normal-force slope](glossary.md#normal-force-slope) of Barrowman's six-fin
+  Recruiter is +2.87% above his printed value, and +3.42% on the fins alone, mostly because hpr
+  uses a different six-fin rule ([Aerodynamics](physics/aero.md#verification)).
 - **Tumbling** is −10 to +19% off its source's own drop tests, and is used far outside the fit
-  behind it: Valetudo tumbles at 37 m/s against a fit from 5.0 to 6.6 m/s. The default streamer
-  model reads +58% fast on a pleated streamer ([Recovery](physics/recovery.md)).
-- **Opening loads** are no safe bound either way: with a filling time hpr leaves out the canopy's
-  overshoot, and opening at once it ignores how a light rocket slows while the canopy fills. The
-  deployment speed can itself read high: a separated body falls with no drag until its device
-  opens ([Recovery](physics/recovery.md#inflation)).
+  behind it. That fit comes from small models falling at 5.0 to 6.6 m/s; if Valetudo came down
+  tumbling, with nothing deployed, hpr would bring it down at 37 m/s. The default streamer model
+  reads +58% fast on a pleated streamer ([Recovery](physics/recovery.md)).
+- **Opening loads,** the force on the rocket as a canopy opens, are no safe bound either way. With
+  a [filling time](glossary.md#inflation-and-filling-time), hpr leaves out the brief rise of drag
+  above its steady value while the canopy fills. Opening at once, it ignores how a light rocket
+  slows while the canopy fills. The deployment speed can itself read high: a
+  [separated](glossary.md#separation) body falls with no drag until its device opens
+  ([Recovery](physics/recovery.md#inflation)).
 - **No added mass under a canopy,** the likely cause of the 2.86% drift difference above
   ([Recovery](physics/recovery.md#against-rocketpy)).
 - **Turbulence** is an aircraft model, unvalidated for rockets, and no flight uses it yet
   ([Turbulence](physics/turbulence.md)).
 - **Wall and fin mass** may follow different conventions from OpenRocket's, which its documentation
-  doesn't state: measuring a wall radially changes its volume by 1.4% on one cone
-  ([Shapes](physics/shapes.md)).
+  doesn't state. Measuring a nose cone's wall thickness straight out from the axis, rather than
+  square to its surface, changes the wall's volume by 1.4% on a cone three
+  [calibres](glossary.md#calibre-caliber) long ([Shapes](physics/shapes.md)).
 
 [ndrt-case]: https://github.com/nrdptel/hpr-sim/blob/main/validation/cases/descent-ndrt-2020-nose-to-tail.toml
 [plan]: https://github.com/nrdptel/hpr-sim/blob/main/docs/VALIDATION.md#principles
 [plan-refs]: https://github.com/nrdptel/hpr-sim/blob/main/docs/VALIDATION.md
 [report]: https://github.com/nrdptel/hpr-sim/blob/main/validation/reports/latest.md
-[roadmap]: https://github.com/nrdptel/hpr-sim/blob/main/docs/ROADMAP.md
+[rocket-notes]: https://github.com/nrdptel/hpr-sim/blob/main/docs/research/rocketpy-rocket-mass.md
+[valetudo-case]: https://github.com/nrdptel/hpr-sim/blob/main/validation/cases/descent-valetudo.toml

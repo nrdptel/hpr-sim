@@ -40,6 +40,10 @@ site, and a flight ends when the centre of mass comes back down to the site's he
 [Rigid-body flight](physics/flight.md#events-and-termination).
 
 
+## Air start
+
+A motor lit in flight, after liftoff, rather than on the pad. hpr can't fly one yet, because every motor in a configuration ignites at time zero. Air starts are planned for [M1.9](decisions-and-roadmap.md#m1-9), the staging and clusters milestone. See [The design tree](physics/design.md#motors-and-configurations).
+
 ## Angle of attack
 
 The angle between the rocket's axis and the airflow it meets. In hpr it is the total angle `α`
@@ -81,6 +85,10 @@ Niskanen's 2009 thesis. Four of Barrowman's five printed examples agree within 1
 Recruiter's slope is 2.87% high. See [Aerodynamics](physics/aero.md#verification).
 
 
+## Base drag
+
+The drag on a rocket's flat aft end, its base. hpr works it out on the base's area, with a coefficient of `0.12 + 0.13 M²` below Mach 1 (`M` the [Mach number](#mach-number)). While a motor burns, the part of the base the motor covers has no base drag, so hpr subtracts the burning motors' cross-section from that area ([power-on drag](#power-on-and-power-off-drag)). See [Aerodynamics](physics/aero.md#drag).
+
 ## BATES grain
 
 A cylindrical propellant grain with a hole along its axis (the bore), which burns on the bore and,
@@ -96,6 +104,10 @@ and 270° west. [Getting started](getting-started.md#what-it-printed) gives the 
 distance and a bearing from the pad. A [wind direction](#wind-direction) is a bearing too: the one
 the wind blows from.
 
+
+## Boattail
+
+A transition at the tail that narrows toward the aft end. Its normal-force slope is negative, so it moves the [centre of pressure](#centre-of-pressure-cp) forward. hpr counts its pressure drag as a share of the base drag on the area it removes: all of it for a short, steep boattail and none for a long, gentle one. See [Aerodynamics](physics/aero.md#drag).
 
 ## Body frame
 
@@ -128,6 +140,10 @@ calibres, and a nose cone three calibres long is three times as long as its base
 [Shapes](physics/shapes.md#solids-of-revolution).
 
 
+## Canard
+
+A fin set near the nose, ahead of the main fins. Its normal force acts well forward, so it moves the [centre of pressure](#centre-of-pressure-cp) forward, and as speed rises its slope grows too. See [Aerodynamics](physics/aero.md#your-rockets-centre-of-pressure).
+
 ## Centre of gravity (CG)
 
 The point where the rocket's mass balances. The model pages call it the centre of mass, which in
@@ -146,6 +162,18 @@ rocket is statically stable when its CP is behind its [centre of gravity](#centr
 See [Aerodynamics](physics/aero.md#conventions).
 
 
+## CIPM-2007
+
+The formula for the density of moist air, from its temperature, pressure and humidity, that the International Committee for Weights and Measures (CIPM) adopted in 2007. hpr's humid-air density is checked against it, within 0.047% over 15 to 27 °C. See [Atmosphere](physics/atmosphere.md).
+
+## Closed form
+
+An answer written as an exact formula, such as the parabola a body follows in a vacuum, rather than one computed step by step. hpr's analytic tests compare the code with closed forms, the first of the [four kinds of evidence](accuracy.md#four-kinds-of-evidence) on Accuracy.
+
+## Cluster
+
+Several motors in one rocket, burning side by side, each in its own mount. hpr lights every motor in a configuration together at time zero. It sums their thrusts along the rocket's axis, and adds the turning moment of any motor set off the axis. No test or comparison checks a cluster flight yet, and clusters with delayed ignition come with [M1.9](decisions-and-roadmap.md#m1-9), the staging and clusters milestone. See [The design tree](physics/design.md#motors-and-configurations).
+
 ## Code-to-code comparison
 
 Flying the same rocket, or the same part of a flight, in hpr and in another simulator from the same
@@ -154,6 +182,10 @@ shows that two codes agree, not that either matches a real flight. hpr's parachu
 RocketPy's within 3% on all 30 numbers compared; whole flights come next. See
 [Recovery](physics/recovery.md#against-rocketpy).
 
+
+## Configuration
+
+One choice of motors for a rocket design, at most one in each motor mount, named by an id such as `h54`. A design can hold several, such as the same rocket on different motors, and a flight names the one it flies. Every motor in a configuration lights at time zero until staging arrives with [M1.9](decisions-and-roadmap.md#m1-9). See [Your own rocket](your-own-rocket.md#the-program-step-by-step) and [The design tree](physics/design.md#motors-and-configurations).
 
 ## Coriolis acceleration
 
@@ -169,7 +201,7 @@ landing point of a 3 km parachute descent 0.37 m east. See
 
 A commercial off-the-shelf motor: a solid rocket motor bought from a manufacturer, single-use or as
 a reload for a reusable case. hpr-sim covers only these for now, and bundles 32 of their thrust
-curves. See [Solid motors](physics/motor.md) and [Start here](start-here.md#what-hpr-sim-is).
+curves, listed under [The bundled motors](physics/motor.md#the-bundled-motors). See [Solid motors](physics/motor.md) and [Start here](start-here.md#what-hpr-sim-is).
 
 
 ## Crate
@@ -204,6 +236,10 @@ air density and `C_D S` the [drag area](#drag-area). A 1.1 kg rocket under a 1 m
 [Recovery](physics/recovery.md#the-descent).
 
 
+## Design file
+
+A rocket design saved as text, so it can be kept, shared and read back. Today it is the JSON of hpr's `Rocket` type: each key is a Rust field's name, with its unit in the name (`length_m`), and a mounted motor is written out in full, thrust curve included. The format is provisional until the open design format, [M3.3](decisions-and-roadmap.md#m3-3). See [Your own rocket](your-own-rocket.md#as-a-design-file).
+
 ## Dormand–Prince and RK4
 
 Two ways of stepping the equations of motion through time. Dormand–Prince 5(4), also called
@@ -229,6 +265,10 @@ friction, pressure, base and fin terms, or read from a table instead. For a para
 `C_D0` is on the canopy's [nominal area](#nominal-area), a different convention. See
 [Aerodynamics](physics/aero.md#drag) and [Recovery](physics/recovery.md#drag-area).
 
+
+## Drag crisis
+
+A sudden fall in a blunt body's drag coefficient over a narrow range of [Reynolds number](#reynolds-number), as the flow along its surface turns turbulent and stays attached further round. For a cylinder lying across the flow it comes at a Reynolds number of a few hundred thousand. For streamers, Carruthers and Filippone report a sudden drop near 7.2e5, which they put down to a change in how the streamer oscillates. hpr's recovery models include none. See [Recovery](physics/recovery.md#tumble).
 
 ## Drift
 
@@ -271,7 +311,8 @@ ellipsoid. See [Frames](physics/frames.md#earth-centred-earth-fixed-ecef) and
 A motor's thrust divided by its propellant mass flow, `c = F/ṁ`, in m/s. hpr holds it constant
 through the burn, `c = I/m_p` (total impulse over propellant mass), so propellant burns in
 proportion to the impulse delivered. It also refuses a motor whose `c` falls outside 200 to
-5,000 m/s, which catches units slips; ThrustCurve.org's catalog has a median of 1,867 m/s. See
+5,000 m/s, which catches a propellant mass given in the wrong unit, such as grams for
+kilograms; ThrustCurve.org's catalog has a median of 1,867 m/s. See
 [Solid motors](physics/motor.md#propellant-consumption).
 
 
@@ -353,6 +394,14 @@ a light rocket slows while the canopy fills, so the opening load it reports is n
 way. See [Recovery](physics/recovery.md#inflation).
 
 
+## Internal momentum
+
+The momentum of the propellant and gas moving inside a burning motor. A thrust curve measured on a test stand already includes its effect. hpr's equations of motion, like RocketPy's, add it again, so it is counted twice; hpr keeps it that way so the two codes can be compared like for like. On Valetudo it adds 21 N to the push at liftoff and changes the burnout speed by at most 0.05 m/s. See [Rigid-body flight](physics/flight.md#equations-of-motion).
+
+## Jet damping
+
+The damping of a rocket's turning by its own exhaust: gas leaving the nozzle carries away some of the rocket's rotation. hpr includes it through RocketPy's equations of motion, so it acts only while a motor burns. See [Rigid-body flight](physics/flight.md#equations-of-motion).
+
 ## Launch frame (ENU)
 
 The frame fixed at the launch pad, which the flight's position and velocity are kept in: `x_L`
@@ -374,7 +423,7 @@ little earlier, at time zero. If the motors burn out first, the flight ends on t
 ## Loft lesson
 
 A mistake found in Loft, the project that came before hpr-sim, such as
-[Loft lesson L15][lessons] (a shoulder's drag as its length goes to zero). A test here guards
+[Loft lesson L15](decisions-and-roadmap.md#l15) (a shoulder's drag as its length goes to zero). A test here guards
 against each one, or will once its milestone ships. See
 [Start here](start-here.md#reading-these-pages) and [Lessons from Loft][lessons].
 
@@ -384,9 +433,13 @@ against each one, or will once its milestone ships. See
 Airspeed divided by the local speed of sound, which the atmosphere gives from the air's
 temperature. hpr's aerodynamics were checked only at Mach 0 (the normal force) and Mach 0.3 (the
 drag), and are documented up to Mach 0.8; from 0.8 to 1 they are extrapolations. A flight that reaches Mach 1 stops with an error until transonic (near
-Mach 1) and supersonic (above it) aerodynamics arrive with [M1.8][roadmap]. See
+Mach 1) and supersonic (above it) aerodynamics arrive with [M1.8](decisions-and-roadmap.md#m1-8). See
 [Aerodynamics](physics/aero.md#validity-and-open-questions).
 
+
+## Mean aerodynamic chord (MAC)
+
+An average of a fin's chords (its lengths along the airflow, root to tip), weighted so that the long chords count more: `c̄ = (1/A)∫c² dy` over the span, `A` being one fin's area. hpr puts each fin set's [centre of pressure](#centre-of-pressure-cp) a quarter of the way back along it, at every speed below Mach 1; real fins' centre of pressure moves further aft at high subsonic speeds, which hpr leaves out. See [Aerodynamics](physics/aero.md#fins).
 
 ## Metric
 
@@ -396,7 +449,7 @@ called its gate. See [Accuracy](accuracy.md#the-descent-under-a-parachute-agains
 
 ## Milestone
 
-A step of the [roadmap][roadmap], the ordered plan of work, labelled like [M1.8][roadmap]
+A step of the [roadmap][roadmap], the ordered plan of work, labelled like [M1.8](decisions-and-roadmap.md#m1-8)
 (transonic and supersonic aerodynamics). The pages link a milestone where they say what it will
 add. See [Decisions and the roadmap](decisions-and-roadmap.md).
 
@@ -409,6 +462,10 @@ propellant letter (the `R` of `L1150R`), the total impulse in N·s in front (`41
 after a dash. A RASP `.eng` file's name field is meant to hold only the class and average thrust,
 but often holds the full designation. See [RASP `.eng` files](format/eng.md#header-fields-r-header).
 
+
+## NFPA 1125
+
+The US National Fire Protection Association's code for making model and high-power rocket motors. ThrustCurve.org measures a motor's [burn time](#burn-time) by its rule: from the moment the thrust first reaches 5% of its peak to the moment it last falls to 5%. hpr does the same. See [Solid motors](physics/motor.md#thrust-curve).
 
 ## Nominal area
 
@@ -447,11 +504,19 @@ fin set has its own, and the rocket's is their sum; a pointed nose cone's is 2. 
 slopes as weights. See [Aerodynamics](physics/aero.md#conventions).
 
 
+## Octave band
+
+A range of frequencies, or of wavelengths, whose top is twice its bottom. The turbulence test splits the gust spectrum into octave bands and checks each against the Dryden formula. See [Turbulence](physics/turbulence.md#tests-that-pin-this).
+
+## Opening load
+
+The peak force a parachute puts on the rocket as it opens. Knacke writes it as `F = (C_D S) q C_x X1`: the steady drag at the [dynamic pressure](#dynamic-pressure) `q` at line stretch, times `C_x` for the canopy's overshoot when the load doesn't slow (1.7 for a flat circular canopy), times `X1` for how much the rocket slows while the canopy fills. hpr leaves out the overshoot. With a filling time it already includes the slowing, so `X1` must not be applied on top; a canopy that opens at once has none. So the opening load it reports is no safe bound either way: don't size recovery hardware from it. See [Recovery](physics/recovery.md#the-opening-load).
+
 ## OpenRocket
 
 A widely used open-source rocket design and simulation program. hpr may run it as an external
 program to compare results, but never reads or copies its source code, whose licence (GPL) is
-incompatible with hpr's. The comparison with it is planned for [M2.2][roadmap], the OpenRocket
+incompatible with hpr's. The comparison with it is planned for [M2.2](decisions-and-roadmap.md#m2-2), the OpenRocket
 milestone.
 
 ## Oracle
@@ -462,6 +527,10 @@ evaluate a published formula in high precision, and ThrustCurve.org's own statis
 oracles too; all of them live under `validation/oracles/`. See
 [Recovery](physics/recovery.md#against-rocketpy) and the [list of simulator oracles][oracles].
 
+
+## Override
+
+A measured mass, centre of mass or inertia that replaces the value hpr computes, for one part, a part with everything attached to it, or a whole stage. Motors are never covered by one. See [The design tree](physics/design.md#overrides).
 
 ## Parallel-axis theorem
 
@@ -478,6 +547,14 @@ burning motor covers has no base drag, so hpr subtracts the burning motors' cros
 base area, and a drag table can carry separate power-on and power-off curves. A flight uses
 power-on drag while any motor burns. See [Aerodynamics](physics/aero.md#drag).
 
+
+## Property test
+
+A test that checks a rule on many randomly generated inputs rather than a few chosen ones, such as that every interpolation table passes exactly through its own points. hpr writes them with the `proptest` library. See [Interpolation tables](physics/interpolation.md).
+
+## QUADPACK
+
+A library of routines for computing integrals numerically, published by Piessens and others in 1983 and in the public domain. hpr's adaptive quadrature uses its 15-point Gauss–Kronrod rule, without its extrapolation. See [Adaptive quadrature](physics/quadrature.md).
 
 ## Rail exit and rail-exit velocity
 
@@ -496,6 +573,10 @@ carry drag curves labelled as RASAero's, though only Calisto's traces to an expo
 Mach 0.3 is compared with those curves, with the fin shapes and surface finish guessed, because
 the curves don't record them. See
 [Aerodynamics](physics/aero.md#verification).
+
+## RASP and RockSim files
+
+The two thrust-curve file formats [ThrustCurve.org](#thrustcurveorg) serves. A RASP `.eng` file is plain text, named after RASP, the rocket simulation program it comes from; a RockSim `.rse` file is XML, from the RockSim simulator. hpr reads and writes both. See [Solid motors](physics/motor.md#a-motor-from-a-file).
 
 ## Reference area
 
@@ -516,6 +597,10 @@ write them: a reference changes only when its generator runs again. See
 [the validation harness][harness].
 
 
+## Relative and absolute difference
+
+Two ways to say how far a result is from its reference. An absolute difference carries a unit, such as 2e-8 m. A relative difference is the gap as a fraction of the reference value, so 2e-14 relative means two parts in a hundred million million, and a percentage is a relative difference in hundredths. hpr's pages mark relative differences with the word *relative* or a percent sign. See [Accuracy](accuracy.md#how-to-read-the-numbers).
+
 ## Reynolds number
 
 The ratio of the air's inertia to its viscosity over a length, `R = V L/ν` (often written Re),
@@ -530,13 +615,33 @@ An open-source (MIT) rocket flight simulator written in Python, and hpr's main p
 [code-to-code comparisons](#code-to-code-comparison). hpr runs RocketPy 1.13.0, pinned to one
 commit, to produce its reference values. See [Checking a claim](checking-a-claim.md).
 
+## Roughness length
+
+The height above the ground at which the logarithmic wind law's wind falls to zero, written `z₀`. Rougher ground has a larger one: 0.03 m for open flat terrain with grass, and 0.001–0.01 m for mown grass. hpr's `LogLawWind` takes it as `roughness_length_m`. See [Wind](physics/wind.md#models).
+
+## Scientific notation
+
+Writing a very small or very large number as a power of ten, the way programs print it. The number after the `e` says how many places the decimal point moves, to the left when it is negative: 1e-12 is a millionth of a millionth, and 1e6 is a million. 2²⁰ is 2 multiplied by itself 20 times, about a million. See [Accuracy](accuracy.md#how-to-read-the-numbers).
+
+## Seed
+
+A number that starts a random-number generator. The same seed gives the same sequence of numbers, so a run that uses random numbers, such as [turbulence](#turbulence-dryden), repeats exactly on the same platform (operating system and processor). The program that runs it chooses the seed. On another platform each random draw can differ in its last binary digit, and over a whole flight such differences can grow. See [Turbulence](physics/turbulence.md#generator).
+
 ## Separation
 
 A stack coming apart for recovery. At its trigger hpr splits the rocket into bodies (body 0 keeps
 the nose), and each descends on its own under its own recovery devices, which it must have. It adds
 no impulse and must come after the last burnout; staging under power is planned for
-[M1.9][roadmap]. See [Recovery](physics/recovery.md#separation).
+[M1.9](decisions-and-roadmap.md#m1-9). See [Recovery](physics/recovery.md#separation).
 
+
+## Shoulder
+
+The sleeve at the end of a nose cone or transition that slides into the next body tube. It counts toward the rocket's mass, but it is inside the body, so it adds no aerodynamic force. The drag buildup also uses the word for a transition that widens toward the tail, whose pressure drag is counted like a nose's. See [Aerodynamics](physics/aero.md#bodies-of-revolution).
+
+## SI units
+
+The International System of Units: metres, kilograms and seconds, and units built from them, such as newtons for force and pascals for pressure. hpr works in SI throughout, with angles in radians. Degrees appear only where values come in or go out, as in `Geodetic::from_degrees`. In the code, a quantity's name ends in its unit, such as `mass_kg` or `vertical_speed_m_s`. See [Frames](physics/frames.md#units-and-angles).
 
 ## Sounding
 
@@ -560,11 +665,17 @@ carry it as `Isp`; hpr works with the exhaust velocity instead. See
 
 How far the [centre of pressure](#centre-of-pressure-cp) lies behind the
 [centre of gravity](#centre-of-gravity-cg), usually in [calibres](#calibre-caliber). A positive
-margin turns the rocket back toward its flight path when it is disturbed; it changes through a
+margin turns the rocket's nose back into the oncoming air when it is disturbed, which in a
+crosswind is not quite its flight path ([weathercocking](#weathercocking)). It changes through a
 flight as propellant burns and speed changes. hpr doesn't report it yet: you can compute both
-centres, and a margin over the flight comes with the outputs milestone, [M1.10][roadmap]. See
+centres, as [Your own rocket](your-own-rocket.md) shows, and a margin over the flight comes with
+the outputs milestone, [M1.10](decisions-and-roadmap.md#m1-10). See
 [Start here](start-here.md#what-doesnt-work-yet).
 
+
+## Stage
+
+A section of a rocket's stack in the design tree, listed forward to aft. A [separation](#separation) splits the rocket at the boundary between two stages, so a rocket that stays in one piece needs only one stage. Stages don't yet fire in sequence: every motor ignites at time zero until [M1.9](decisions-and-roadmap.md#m1-9), the staging and clusters milestone. See [The design tree](physics/design.md#the-tree).
 
 ## Stall
 
@@ -583,6 +694,10 @@ U.S. Standard Atmosphere from −5 to 86 km (288.15 K and 101,325 Pa at sea leve
 to match conditions at the field, or replaced by a [sounding](#sounding). See
 [Atmosphere](physics/atmosphere.md#the-1976-standard-5-km-to-86-km).
 
+
+## Standard error
+
+The scatter expected by chance in an average taken from a random sample; it shrinks as the sample grows. hpr's turbulence test requires each band's average to lie within 4 standard errors of the Dryden formula. See [Turbulence](physics/turbulence.md#tests-that-pin-this).
 
 ## Station
 
@@ -614,6 +729,14 @@ in Kidwell's drop tests, and models no pleats, so it predicts a faster descent f
 See [Recovery](physics/recovery.md#streamers).
 
 
+## Surface layer
+
+The air nearest the ground, where friction with the ground sets how fast the wind grows with height. hpr's power-law and log-law winds describe it, but keep growing above it, so winds aloft should come from a table of levels. See [Wind](physics/wind.md#models).
+
+## Tangent ogive
+
+A nose cone whose sides are a circular arc that meets the body tube without a kink: its slope is zero at the base. A 3:1 tangent ogive is three times as long as its base is wide, a [fineness ratio](#fineness-ratio) of 3. hpr models it as the secant ogive whose arc radius equals the tangent radius. See [Shapes](physics/shapes.md#profiles).
+
 ## Thrust curve
 
 A motor's thrust against time since ignition: (time, thrust) points joined by straight lines, read
@@ -625,7 +748,8 @@ thrust as zero from the last point on, and treats two points at the same time as
 ## ThrustCurve.org
 
 A public database of motor thrust curves and data. hpr bundles 32 of its curves, and runs its
-statistics code to check its own. See [Solid motors](physics/motor.md).
+statistics code to check its own. A file downloaded from it can be read and flown
+([A motor from a file](physics/motor.md#a-motor-from-a-file)). See [Solid motors](physics/motor.md).
 
 ## Tip-off
 
@@ -655,7 +779,7 @@ curve exactly. See [Solid motors](physics/motor.md#thrust-curve).
 ## Transonic and supersonic
 
 Flight near the speed of sound (transonic) and above it (supersonic), where shock waves change
-the drag and the lift. hpr refuses Mach 1 and above until [M1.8][roadmap], the transonic and
+the drag and the lift. hpr refuses Mach 1 and above until [M1.8](decisions-and-roadmap.md#m1-8), the transonic and
 supersonic aerodynamics milestone. Its aerodynamics were compared only at Mach 0 and 0.3, and are
 documented to Mach 0.8. See
 [Aerodynamics](physics/aero.md#validity-and-open-questions).
@@ -690,8 +814,9 @@ the committed [validation report][report], with every number and its verdict. Se
 
 Verification checks that the code does what its model says, against closed-form answers, printed
 tables and worked examples. Validation checks that the model matches the real world. hpr ranks its
-evidence in four [kinds][levels]: analytic and unit tests, component references such as tables
-and worked examples, [code-to-code comparison](#code-to-code-comparison), and real flights. See
+evidence in [four kinds][levels], named as on Accuracy: *analytic* (exact answers), *published
+source* (printed tables and worked examples), *another code*
+([code-to-code comparison](#code-to-code-comparison)), and *real flights*. See
 [Accuracy](accuracy.md).
 
 

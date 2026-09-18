@@ -5,7 +5,13 @@ the JSON of an `hpr_design::Rocket`. The format is provisional: M3.3 defines the
 and migrates these files.
 
 `cargo xtask designs` writes every file here, and `cargo xtask designs --check` (run by a test)
-fails if a committed file differs from what it writes. Don't edit them by hand.
+fails if a committed file differs from what it writes. So a change to one of these files belongs
+in the generator, `xtask/src/designs.rs`, not in the file: a hand edit to their content fails
+that test.
+
+That rule is for the files in this folder only. A design of your own is yours to write and edit by
+hand: copy one of these files as a starting point, or build the rocket in Rust and save it as JSON,
+as the documentation site's *Your own rocket* page (`docs/your-own-rocket.md`) shows.
 
 ## RocketPy examples (`rocketpy-*.json`)
 

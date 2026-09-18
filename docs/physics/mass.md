@@ -16,7 +16,7 @@
 - **What it leaves out:** fin fillets, the sliver between a flat fin root and the round tube, and
   the step ring at a nose shoulder. Parachutes weigh as flat circular canopies. Wall and fin mass
   may differ from OpenRocket's undocumented conventions until the OpenRocket comparison
-  ([M2.2][roadmap]) measures them.
+  ([M2.2](../decisions-and-roadmap.md#m2-2)) measures them.
 
 ## Code and sources
 
@@ -66,7 +66,7 @@ properties.
 - **Hollow cylinder**, radii `R > r`, length `L`: `I_axis = m(R² + r²)/2` and
   `I_across = m((R² + r²)/4 + L²/12)`. This covers body tubes, inner tubes and couplers, centering
   rings, bulkheads (`r = 0`), launch lugs, tube fins, and shoulders.
-  - Loft used `mL²/12` with no radial term, and no roll inertia at all ([Loft lesson L44][lessons]).
+  - Loft used `mL²/12` with no radial term, and no roll inertia at all ([Loft lesson L44](../decisions-and-roadmap.md#l44)).
 - **Solid cylinder**, radius `a`, height `h`: `I_axis = m a²/2` and `I_across = m(3a² + h²)/12`.
   This covers mass components, packed parachutes, streamers and shock cords ([TD] Table 5.1
   treats recovery parts as cylinders too), and each disc of a rail button.
@@ -114,10 +114,10 @@ properties.
   - With the fin at roll 0 (points at `(r, τ, −x)`):
     `I_xx = ∫(τ² + x²)`, `I_yy = ∫(r² + x²)`, `I_zz = ∫(r² + τ²)` and `I_xz = ∫ r x`, all `dm`.
   - Loft ignored the span and fixed a freeform fin's CG at `0.42 c_r`
-    ([Loft lessons L44, L45][lessons]).
+    (Loft lessons [L44](../decisions-and-roadmap.md#l44) and [L45](../decisions-and-roadmap.md#l45)).
 - **Tabs** are square slabs below the root, `−h_tab ≤ h ≤ 0`, with closed-form integrals. A tab
   must lie along the root chord and reach no deeper than the body radius. Loft never
-  read them ([Loft lesson L46][lessons]).
+  read them ([Loft lesson L46](../decisions-and-roadmap.md#l46)).
 - **Root.** The flat root is placed at radius `R_b`; the sliver between it and the curved tube,
   `t²/8R_b` deep, is ignored. Fillets are not modeled yet.
 - **Cant** `δ` turns each fin and its tab about the fin's outward span axis through the root
@@ -185,12 +185,10 @@ the URL it was read from, and a basis:
 - **Materials:** ids are unique, sources present, and the unit conversions reproduce the sources
   (1.1 oz/yd² = 37.3 g/m², 225 ft/lb = 6.61 g/m, white ash 678 kg/m³).
 - **Loft lessons:**
-  - [L44][lessons] `thin_tube_inertia_includes_radial_term`.
-  - [L45][lessons] `hollow_transition_and_freeform_fin_cg_are_exact_centroids`: a conical wall's
+  - [L44](../decisions-and-roadmap.md#l44) `thin_tube_inertia_includes_radial_term`.
+  - [L45](../decisions-and-roadmap.md#l45) `hollow_transition_and_freeform_fin_cg_are_exact_centroids`: a conical wall's
     exact centroid, and an M-shaped fin against the shoelace centroid.
-  - [L46][lessons] `fin_tab_and_rail_button_mass_counted`.
+  - [L46](../decisions-and-roadmap.md#l46) `fin_tab_and_rail_button_mass_counted`.
 
 [adr-006]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-006-component-geometry-and-mass-properties-frames-shapes-walls-fins-and-materials-2026-09-17
-[lessons]: https://github.com/nrdptel/hpr-sim/blob/main/docs/research/loft-lessons.md
 [levels]: ../accuracy.md#four-kinds-of-evidence
-[roadmap]: https://github.com/nrdptel/hpr-sim/blob/main/docs/ROADMAP.md

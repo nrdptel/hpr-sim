@@ -452,7 +452,9 @@ pub struct WindLevel {
 /// Below the lowest level and above the highest, it holds the end level's wind and flags the
 /// sample. Put the surface observation (for example the 10 m wind) in the table as its lowest
 /// level, so the profile blends from the surface up instead of stepping at the first level
-/// aloft (Loft lesson L6).
+/// aloft ([Loft lesson L6][l6]: Loft's forecast profiles stepped at the lowest level).
+///
+/// [l6]: https://nrdptel.github.io/hpr-sim/decisions-and-roadmap.html#l6
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(try_from = "LayeredWindData", into = "LayeredWindData")]
 pub struct LayeredWind {

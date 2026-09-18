@@ -1,0 +1,53 @@
+My 54 mm rocket (Cesaroni 168H54-10A): 1.120 m long, 56.3 mm across
+Not yet validated: see the Accuracy page before trusting these numbers.
+
+                                   liftoff   burnout
+mass (kg)                            0.675     0.579
+centre of gravity (m from nose)      0.671     0.610
+centre of pressure (m from nose)     0.779     0.779
+stability margin (calibres)           1.92      2.99
+
+Normal-force slope (per radian) and centre of pressure, at Mach 0.3:
+nose        2.00 at 0.102 m
+fins        4.82 at 1.060 m
+rocket      6.82 at 0.779 m
+
+From a 1.8 m vertical rail, with no wind:
+Rail exit:  21.7 m/s
+Apogee:     1144.6 m above the pad, at 13.92 s
+Top speed:  187 m/s (Mach 0.56)
+Ejection:   at 13.50 s, at 5.5 m/s
+
+The fin set, as the design file stores it:
+{
+  "id": "fins",
+  "name": "",
+  "part": {
+    "fin_set": {
+      "count": 3,
+      "planform": {
+        "kind": "trapezoidal",
+        "root_chord_m": 0.1,
+        "tip_chord_m": 0.04,
+        "span_m": 0.045,
+        "sweep_m": 0.05
+      },
+      "thickness_m": 0.003175,
+      "cross_section": "rounded",
+      "tab": null,
+      "cant_rad": 0.0,
+      "base_angle_rad": 0.0,
+      "material": {
+        "name": "Birch plywood",
+        "density": {
+          "kind": "bulk",
+          "kg_m3": 680.0
+        }
+      }
+    }
+  },
+  "position": {
+    "from": "bottom",
+    "aft_offset_m": 0.0
+  }
+}

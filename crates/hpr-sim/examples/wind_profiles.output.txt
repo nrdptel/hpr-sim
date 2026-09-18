@@ -1,0 +1,34 @@
+Wind at a site 1400 m above sea level: speed in m/s, from a direction in °
+
+above ground (m)      constant      power law        log law        layered    wrong datum
+               2  5.0 from 270   4.0 from 270   3.6 from 270   5.0 from 270* 11.6 from 298
+              10  5.0 from 270   5.0 from 270   5.0 from 270   5.0 from 270  11.6 from 298
+              50  5.0 from 270   6.3 from 270   6.4 from 270   5.2 from 271  11.8 from 299
+             100  5.0 from 270   6.9 from 270   7.0 from 270   5.6 from 272  12.0 from 300
+             500  5.0 from 270   8.7 from 270   8.4 from 270   8.0 from 280  12.0 from 300*
+            1000  5.0 from 270   9.7 from 270   9.0 from 270  10.0 from 290  12.0 from 300*
+            2000  5.0 from 270  10.7 from 270   9.6 from 270  12.0 from 300* 12.0 from 300*
+
+* beyond the table's levels: the end level's wind, held, and the sample flagged
+
+{
+  "model": "layered",
+  "levels": [
+    {
+      "height_msl_m": 1410.0,
+      "speed_m_s": 5.0,
+      "direction_from_rad": 4.71238898038469
+    },
+    {
+      "height_msl_m": 1900.0,
+      "speed_m_s": 8.0,
+      "direction_from_rad": 4.886921905584122
+    },
+    {
+      "height_msl_m": 2900.0,
+      "speed_m_s": 12.0,
+      "direction_from_rad": 5.235987755982989
+    }
+  ],
+  "interpolation": "speed_direction"
+}

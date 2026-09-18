@@ -7,9 +7,12 @@ use serde::{Deserialize, Serialize};
 
 /// One validation case, read from a TOML file under `validation/cases/`.
 ///
-/// Every metric it reports has to name a tolerance (Loft lesson L79) or say in writing why it is
-/// not scored, and the reference it compares against has to carry provenance (L77). The harness
-/// checks both before it flies anything.
+/// Every metric it reports has to name a tolerance ([Loft lesson L79][l79]) or say in writing why
+/// it is not scored, and the reference it compares against has to carry provenance ([L77][l77]).
+/// The harness checks both before it flies anything.
+///
+/// [l77]: https://nrdptel.github.io/hpr-sim/decisions-and-roadmap.html#l77
+/// [l79]: https://nrdptel.github.io/hpr-sim/decisions-and-roadmap.html#l79
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct Case {
@@ -34,11 +37,15 @@ pub struct Case {
 #[non_exhaustive]
 pub enum Flight {
     /// A descent from a state the reference declares, under the devices the reference declares:
-    /// M1.7a's recovery comparison, run through the harness.
+    /// the recovery comparison of [M1.7a][m1-7a] (parachutes, and the descent under them), run
+    /// through the harness.
     ///
     /// Everything about the flight comes from the reference's own case (the site, the wind, the
     /// devices, the state at the first deployment), which is the point: the oracle's inputs are
-    /// the case's, not hpr's output (L75).
+    /// the case's, not hpr's output ([Loft lesson L75][l75]).
+    ///
+    /// [m1-7a]: https://nrdptel.github.io/hpr-sim/decisions-and-roadmap.html#m1-7a
+    /// [l75]: https://nrdptel.github.io/hpr-sim/decisions-and-roadmap.html#l75
     RecoveryDescent {
         /// The design to fly, by file name under `validation/designs/`.
         design: String,
@@ -60,8 +67,8 @@ pub enum Flight {
 /// absolute = 0.002    # this component passes through zero, so a fraction alone means nothing
 /// ```
 ///
-/// A metric whose table sets neither is refused, because that is the "ungated metric" of Loft
-/// lesson L79 by another name.
+/// A metric whose table sets neither is refused, because that is the "ungated metric" of
+/// [Loft lesson L79][l79] by another name.
 ///
 /// The one alternative to a gate is to say, in the case file, that the metric is not scored and
 /// why:
@@ -73,9 +80,13 @@ pub enum Flight {
 ///
 /// Such a metric is still measured and still printed, with both numbers, the difference and the
 /// reason: it is a gap on the face of the report, not a quiet omission and not a pass. Loft
-/// excused its two largest misses as "no single target" (L82), so the reason has to be written
-/// down, and `hpr_validate::tests::the_metrics_that_are_not_scored_are_these_and_no_others` pins
-/// the whole set: a new excuse has to be argued in a test whose name says what it is.
+/// excused its two largest misses as "no single target" ([Loft lesson L82][l82]), so the reason
+/// has to be written down, and
+/// `hpr_validate::tests::the_metrics_that_are_not_scored_are_these_and_no_others` pins the whole
+/// set: a new excuse has to be argued in a test whose name says what it is.
+///
+/// [l79]: https://nrdptel.github.io/hpr-sim/decisions-and-roadmap.html#l79
+/// [l82]: https://nrdptel.github.io/hpr-sim/decisions-and-roadmap.html#l82
 #[derive(Debug, Clone, PartialEq, Default, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct Metric {
@@ -180,7 +191,9 @@ impl Tolerance {
     }
 
     /// Whether this bounds anything at all. A bound that is not a positive, finite number gates
-    /// nothing (L79), so it does not count as set.
+    /// nothing, the "ungated metric" of [Loft lesson L79][l79], so it does not count as set.
+    ///
+    /// [l79]: https://nrdptel.github.io/hpr-sim/decisions-and-roadmap.html#l79
     #[must_use]
     pub fn is_set(self) -> bool {
         [self.relative, self.absolute]
@@ -228,8 +241,10 @@ impl Tolerance {
 
 /// The cases a run must cover, read from `validation/cases/lock.toml`.
 ///
-/// Loft lesson L78: a suite that quietly skips a case and reports green is worse than a red one,
-/// so the lock names every case that has to run and the harness fails if one is missing.
+/// [Loft lesson L78][l78]: a suite that quietly skips a case and reports green is worse than a
+/// red one, so the lock names every case that has to run and the harness fails if one is missing.
+///
+/// [l78]: https://nrdptel.github.io/hpr-sim/decisions-and-roadmap.html#l78
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct CaseLock {
@@ -280,7 +295,10 @@ pub fn cases_dir(root: &Path) -> PathBuf {
 
 /// Every case id committed under `validation/cases/`, sorted.
 ///
-/// A case that is committed but not locked would never run, which is the other half of L78.
+/// A case that is committed but not locked would never run, which is the other half of
+/// [Loft lesson L78][l78]: a suite must not quietly skip a case.
+///
+/// [l78]: https://nrdptel.github.io/hpr-sim/decisions-and-roadmap.html#l78
 ///
 /// # Errors
 ///

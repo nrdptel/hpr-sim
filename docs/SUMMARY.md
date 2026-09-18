@@ -4,6 +4,10 @@
 
 [Getting started](getting-started.md)
 
+[Recording a trajectory](recording-a-trajectory.md)
+
+[Your own rocket](your-own-rocket.md)
+
 [How a flight is simulated](how-a-flight-is-simulated.md)
 
 [Accuracy](accuracy.md)
