@@ -240,13 +240,13 @@ parasitic term on its own area. The axial coefficient is `C_A = C_D0 f(α)`.
 - The buildup refuses `M ≥ 1` until [M1.8][roadmap] (transonic and supersonic aerodynamics), like
   the normal force. The term functions are defined to any Mach number and stay finite to Mach 5
   (tested), for [M1.8][roadmap] to build on.
-- **High subsonic drag is low; above Mach 0.8 it is flagged.** [N09] eq. 3.87 interpolates nose
-  and shoulder pressure drag from its Mach 0 value (eq. 3.86) to appendix B's value and slope at
-  Mach 1: closed forms for cones and ogives, Stoney's data (NASA TR-R-100) for other shapes. That
-  arrives with [M1.8][roadmap]; until then pressure drag is held at its low-subsonic value, so it
-  reads low from about Mach 0.6. A 3:1 tangent ogive misses 0.006 at Mach 0.7 and 0.021 at 0.8
-  (4–5% of `C_D0`), a 2:1 cone 0.037 at 0.8, a 3:1 cone about 0.05 at 0.9, and flat faces and steps
-  would rise from 0.80 toward 1.04. `Drag::beyond_subsonic_methods` marks the top of [N09]'s
+- **High subsonic drag is low; above Mach 0.8 it is flagged.** [N09] eq. 3.87 interpolates nose and
+  shoulder pressure drag from its Mach 0 value (eq. 3.86) to appendix B's value and slope at Mach 1:
+  closed forms for cones and ogives, Stoney's data (NASA TR-R-100) for other shapes. That arrives
+  with [M1.8][roadmap]; until then nose and shoulder pressure drag is held at its low-subsonic
+  value, so it reads low from about Mach 0.6. A 3:1 tangent ogive misses 0.006 at Mach 0.7 and 0.021
+  at 0.8 (4–5% of `C_D0`), a 2:1 cone 0.037 at 0.8, a 3:1 cone about 0.05 at 0.9, and flat faces and
+  steps would rise from 0.80 toward 1.04. `Drag::beyond_subsonic_methods` marks the top of [N09]'s
   subsonic region, Mach 0.8 (Table 3.1), not the start of the error.
 - Nothing models laminar flow, fin-tip vortices, interference drag, fin tabs, fillets, canted fins
   or the flow a boattail guides into the base ([N09] p. 51).

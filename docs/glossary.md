@@ -282,10 +282,10 @@ solution's own, and stops there so the flight can change phase. See
 
 ## Example rockets
 
-The rockets that hpr flies to compare itself with other codes. Calisto, Valetudo, NDRT 2020,
-Prometheus, Juno III, Cavour and Bella Lui come from RocketPy's own examples; their designs, as
-hpr reads them, are in the repository's [`validation/designs/`][designs] folder. The Recruiter and
-Barrowman's other rockets are worked examples from his papers, with their printed values in
+The rockets hpr is compared on. Calisto, Valetudo, NDRT 2020, Prometheus, Juno III, Cavour and Bella
+Lui come from RocketPy's own examples; their designs, as hpr reads them, are in the repository's
+[`validation/designs/`][designs] folder. The Recruiter and Barrowman's other rockets are worked
+examples from his papers, with their printed values in
 [`barrowman-worked-examples.json`][barrowman]. See [Accuracy](accuracy.md).
 
 ## Fineness ratio

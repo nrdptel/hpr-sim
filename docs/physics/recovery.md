@@ -15,8 +15,9 @@
   descent has been compared with a real flight. Against measured drop tests, tumbling is −10 to
   +19% off, and the default streamer model predicts a descent +9% faster than Kidwell's one flat
   streamer.
-- **What it leaves out:** the drag overshoot as a canopy fills, and the way a light rocket slows
-  while it fills, so hpr's peak opening load is no safe bound either way: size hardware from Knacke.
+- **What it leaves out:** the drag overshoot as a canopy fills, and, when the canopy opens at
+  once (the default), the way a light rocket slows while it fills, so hpr's peak opening load is no
+  safe bound either way: size hardware from Knacke.
   The deployment speed can itself read high, because a separated body falls with no drag until its
   device opens, and the airframe's drag under a canopy is left out too. Also left out: added mass
   (air carried along), the swing (the attitude freezes at deployment), and streamer pleats (+58%
@@ -234,8 +235,10 @@ released, each contributing
 with `t_d` its deployment, `t_f` its filling time and `j` its growth exponent. `Inflation` chooses
 `t_f`:
 
-- `Instant`: `t_f = 0`, the full drag area at line stretch. This is RocketPy's model, and the
-  upper bound on hpr's opening load.
+- `Instant`: `t_f = 0`, the full drag area at line stretch. This is RocketPy's model. For a
+  deployment well above the canopy's terminal speed it gives hpr's highest opening load; near
+  terminal speed, as at apogee, a filling time can give a higher one, because the rocket speeds up
+  while the canopy fills.
 - `FillingTime { time_s, exponent }`: a filling time fixed in advance.
 - `FillConstant { constant, exponent }`: Knacke's `t_f = n D₀/v` (printed page 5-43), with `v` the
   airspeed at line stretch and `n` the canopy fill constant, from Table 5-6's **unreefed** column
@@ -255,14 +258,13 @@ solid cloth (Pflanz, Figure 5-51). Knacke's measured drag area **overshoots** th
 10 to 80% near the end of filling (Figure 5-40, printed page 5-47), and his infinite-mass opening
 force is `C_x = 1.7` for a flat circular canopy. hpr models neither: its drag area rises to the
 steady value and stays. So the peak load hpr reports is no safe bound on the real one, in either
-direction. With a filling time, it leaves out the overshoot, so for that filling time and
-deployment speed the real peak is higher. Opening at once, it applies the full drag area at line
-stretch, the infinite-mass case: Knacke's opening force is `F = (C_D S) q C_x X1` (printed page
-5-49), where the force-reduction factor `X1` is 1 at infinite mass and as low as 0.02 for a
-final-descent parachute with a low canopy loading, which slows its load while it fills. A big
-main on a light rocket can therefore see far less than hpr's instant peak. Instant inflation is
-hpr's own upper bound. For scale, the 1.5 m flat circular canopy
-of the test above peaks at 1.6 kN filling and 3.0 kN opening instantly, where Knacke's
+direction. With a filling time, the missing overshoot alone can only raise the real peak, but the
+growth law and the filling time, extrapolated at hobby speeds, can move it either way. Opening at
+once, it applies the full drag area at line stretch, the infinite-mass case: Knacke's opening
+force is `F = (C_D S) q C_x X1` (printed page 5-50), where the force-reduction factor `X1` is 1 at
+infinite mass and as low as 0.02 for a final-descent parachute with a low canopy loading, whose
+rocket slows while the canopy fills. A big main on a light rocket can therefore see far less than
+hpr's instant peak. For scale, the 1.5 m flat circular canopy of the test above peaks at 1.6 kN filling and 3.0 kN opening instantly, where Knacke's
 infinite-mass `C_x = 1.7` on the same dynamic pressure would be 5.1 kN: size hardware from the
 source, not from hpr. Ludtke's law and Pflanz's `X1` reduction factor are candidates for a later
 milestone.

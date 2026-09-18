@@ -1034,6 +1034,11 @@ and L26 set tests.
     `C_x`/`X1` opening-load methods are **not** modelled. hpr's peak load is therefore a lower
     bound on the real opening shock, and instant inflation is hpr's own upper bound. Both are
     stated in `docs/physics/recovery.md`; Ludtke's and Pflanz's laws are later work.
+    - *Corrected 2026-09-18 (M0.4b's physics review):* neither bound holds in general. Opening at
+      once is Knacke's infinite-mass case, and his force-reduction factor `X1` (printed page 5-50)
+      falls as low as 0.02 for a canopy large for its load, so the real peak can be far below
+      hpr's. Near the canopy's terminal speed, as at apogee, a filling time gives hpr a higher
+      peak than an instant opening. `docs/physics/recovery.md` states the corrected limits.
   - A deployment at zero airspeed has no filling time in `n D₀/v`, so the canopy opens at once.
 - **Triggers: apogee, a height above the site while descending, a time after ignition, and a
   motor's ejection delay after its burnout.** Both the apogee and the height trigger are numeric as
