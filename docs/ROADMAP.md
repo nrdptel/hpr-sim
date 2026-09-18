@@ -585,8 +585,9 @@
         and each passes or is a gap its case file explains.
 
     - [ ] **M2.1d3 The path in wind (issue #50).**
-      - Fly the windy cases with each candidate matched in turn: rail release at the first button,
-        drag without the angle-of-attack factor, and each code's normal force and damping.
+      - Fly the windy cases with each suspected cause of the gap matched to RocketPy in turn: rail
+        release at the first rail button, drag without the angle-of-attack factor, and each code's
+        normal force and damping.
 
       *Done when:*
       - Issue #50's cause is found and the drifts are scored within their tolerances, or an ADR
