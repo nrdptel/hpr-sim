@@ -371,10 +371,12 @@ state after burnout, near apogee, with the first device opening at once (its lag
 zero, so no ballistic segment under either model's aerodynamics separates them), the same `C_D S`,
 the same deployment settings and the same wind, and RocketPy's noise set to zero. The oracle runs
 at `rtol = atol = 1e-8`; run again at 1e-6 it moves every compared metric by at most 3.5e-6
-(the fixture's `solver.relative_change_from_loose`. Its one larger entry, 2.1e-3, is on Valetudo's
-20 µm *north* drift component, which the parachute milestone ([M1.7a][roadmap]) did not compare;
-the validation harness ([M2.1a][roadmap]) measures it, and hpr comes out 28x above RocketPy at
-0.55 mm, and reading that high is what found the gravity-model difference below, issue #27).
+(the fixture's `solver.relative_change_from_loose`). Its one larger entry, 2.1e-3, is on
+Valetudo's 20 µm *north* drift component, which the parachute milestone ([M1.7a][roadmap]) did not
+compare. The validation harness ([M2.1a][roadmap]) does. When it first did, hpr read 28x above
+RocketPy, at 0.55 mm, and that is what found the gravity-model difference below
+([issue #27](https://github.com/nrdptel/hpr-sim/issues/27)). With that fixed, the two agree within
+1.8% ([validation report][report]).
 
 What still differs, and by how much:
 
@@ -456,4 +458,5 @@ gap.
 [adr-013]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-013-streamer-and-tumble-drag-2026-09-17
 [adr-014]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-014-separation-bodies-their-masses-and-their-descents-2026-09-17
 [lessons]: https://github.com/nrdptel/hpr-sim/blob/main/docs/research/loft-lessons.md
+[report]: https://github.com/nrdptel/hpr-sim/blob/main/validation/reports/latest.md
 [roadmap]: https://github.com/nrdptel/hpr-sim/blob/main/docs/ROADMAP.md

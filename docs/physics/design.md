@@ -15,8 +15,8 @@ Sources:
 
 Most of this file defines conventions rather than physical models. OpenRocket has its own
 conventions for positions, automatic radii and overrides. The clean-room rule rules out its
-source, so the planned OpenRocket import ([M3.1][roadmap]) and OpenRocket oracle ([M2.2][roadmap],
-the jar as an oracle) will map them by running the jar.
+source, so the planned OpenRocket import ([M3.1][roadmap]) and comparison ([M2.2][roadmap]) will
+map them by running OpenRocket itself.
 
 ## Stations and the body origin
 
@@ -115,8 +115,8 @@ Errors inside a stage or component name it (`DesignError::InComponent`).
 
 - `maximum` (the default): twice the largest outer radius of any body component in any stage,
   including a bulged ogive's peak (`Profile::max_radius_m`). Internal parts, shoulders, fins, tube
-  fins, lugs and rail buttons never count ([Loft lesson L47][lessons], where an internal part could
-  set it).
+  fins, lugs and rail buttons never count. In Loft an internal part could set it
+  ([Loft lesson L47][lessons]).
 - `nose_base`: the first nose cone's base diameter.
 - `custom`: a given diameter.
 
@@ -176,8 +176,8 @@ The reference area is `π d²/4`.
 
 Errors mark designs that can't exist as described. A simulation of one would be wrong, usually
 on the flattering side: Loft flew a 54 mm motor in a 38 mm mount 69% high. The flight engine
-([M1.6][roadmap], the 6-DOF flight milestone) must refuse them unless the caller explicitly accepts
-them.
+refuses them with `SimError::DesignChecks` unless the caller sets
+`FlightSettings::accept_design_errors`.
 
 ## Verification
 

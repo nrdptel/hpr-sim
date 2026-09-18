@@ -20,36 +20,48 @@ It is a Rust library first, meant to be built into other programs, in the spirit
 design-file import and a graphical app are planned. None of them exists yet.
 
 It is also built to be checked. Every model cites a published source, and tests pin every model.
-The simulator is compared against other simulators, and later against real flights, and the
-results are committed to the repository.
+The simulator is being compared against RocketPy, and will be compared against
+[OpenRocket](https://openrocket.info/) and real flights, with the results committed to the
+repository.
 
 For now it covers only commercial off-the-shelf (COTS) solid rocket motors.
 
 ## What works today
 
-These parts are built and tested. Each page gives its sources and says what it leaves out.
+These parts are built and tested. Each page gives its sources, and most say what they leave out.
 
 | part | what it does | pages |
 |---|---|---|
-| Earth | Gravity from WGS 84 (the model of the Earth's shape and gravity that GPS uses), varying with latitude and height; the Earth's rotation; launch-site coordinates | [Gravity](physics/gravity.md), [Geodesy](physics/geodesy.md), [Frames](physics/frames.md) |
-| Air | The 1976 US Standard Atmosphere up to 86 km, with temperature offsets, humidity and measured soundings | [Atmosphere](physics/atmosphere.md) |
-| Wind | Constant, layered, power-law and logarithmic wind profiles; seeded turbulence, which repeats exactly for the same seed | [Wind](physics/wind.md), [Turbulence](physics/turbulence.md) |
+| Earth | Gravity from WGS 84 (the model of the Earth's shape and gravity that GPS uses), varying with latitude and height; the Earth's rotation; launch-site coordinates | [Frames](physics/frames.md), [Geodesy](physics/geodesy.md), [Gravity](physics/gravity.md) |
+| Air | The 1976 US Standard Atmosphere up to 86 km, with temperature offsets, humidity, and soundings (measured or forecast profiles of pressure, temperature and wind against height) | [Atmosphere](physics/atmosphere.md) |
+| Wind | Constant, layered, power-law and logarithmic wind profiles; seeded turbulence, which repeats exactly for the same seed on the same platform | [Wind](physics/wind.md), [Turbulence](physics/turbulence.md) |
 | Motors | Reads `.eng` and `.rse` thrust curves; thrust, mass, centre of gravity and inertia through the burn; 32 bundled curves | [Solid motors](physics/motor.md), [`.eng` files](format/eng.md), [`.rse` files](format/rse.md) |
-| Rocket | Nose cones, body tubes, transitions, fins and other parts, their materials, the whole rocket's mass properties, and design checks | [Shapes](physics/shapes.md), [Mass](physics/mass.md), [Design tree](physics/design.md) |
-| Aerodynamics | Centre of pressure, normal force (the sideways force at an angle of attack) and drag, below Mach 1 | [Aerodynamics](physics/aero.md) |
+| Rocket | Nose cones, body tubes, transitions, fins and other parts, their materials, the whole rocket's mass properties, and design checks | [Design tree](physics/design.md), [Shapes](physics/shapes.md), [Mass properties](physics/mass.md) |
+| Aerodynamics | The centre of pressure (where the aerodynamic force acts; its distance behind the centre of gravity is the stability margin), the normal force (the sideways force when the rocket flies at an angle to the airflow, its *angle of attack*) and drag. Documented up to Mach 0.8, for small angles of attack | [Aerodynamics](physics/aero.md) |
 | Flight | The launch rail, powered flight and coast to apogee, with an adaptive time step and events such as burnout and apogee | [Rigid-body flight](physics/flight.md), [Time integration](physics/integration.md) |
-| Recovery | Parachutes, streamers and tumbling, and a rocket that separates into bodies that each descend on their own | [Recovery](physics/recovery.md) |
+| Recovery | Parachutes, streamers and tumbling, the drift they carry the rocket downwind, and a rocket that separates into bodies that each descend on their own | [Recovery](physics/recovery.md) |
 
 ## What doesn't work yet
 
-- **Nothing at or above Mach 1.** The aerodynamics are only valid below Mach 1, so a flight that
-  reaches it stops with an error. Drag also reads low from about Mach 0.6. Transonic and supersonic
-  aerodynamics are planned for [M1.8][roadmap], the second aerodynamics milestone.
+- **Nothing at or above Mach 1.** A flight that reaches Mach 1 stops with an error. From Mach 0.8
+  to 1 the aerodynamics are unvalidated extrapolations, and drag reads low from about Mach 0.6:
+  for a 3:1 tangent ogive nose, by 4–5% of the drag coefficient at Mach 0.8. Transonic and
+  supersonic aerodynamics are planned for [M1.8][roadmap], the second aerodynamics milestone.
+- **Small angles of attack only.** Nothing models stall, yet a flight uses the same models at
+  every angle, so results near rail exit in a strong crosswind, and near apogee, are the least
+  trustworthy.
 - **No staging under power, clusters or air starts** ([M1.9][roadmap]). A rocket can separate for
   recovery, after the motor has burnt out.
-- **Some effects are left out of a flight:** roll forcing and roll damping, tip-off as the rocket
-  leaves the rail, thrust misalignment, and turbulence (the model exists, but a flight doesn't use
-  it yet). Each page lists what it leaves out.
+- **Some effects are left out of a flight:**
+  - roll forcing and roll damping (the torques that spin a rocket up and slow its spin), planned
+    for [M1.8][roadmap];
+  - tip-off (the rocket pitching as it leaves the rail), thrust misalignment, and turbulence (the
+    model exists, but a flight doesn't use it), none of which a milestone plans yet
+    ([issue #39](https://github.com/nrdptel/hpr-sim/issues/39) tracks turbulence);
+  - the shock load when a parachute opens, and the canopy's overshoot of its steady drag
+    ([Recovery](physics/recovery.md)).
+- **No stability margin output yet.** You can compute the centre of pressure and the centre of
+  gravity; a margin over the flight comes with [M1.10][roadmap], the outputs milestone.
 - **No way to use it without writing Rust.** A simpler library interface ([M4.1][roadmap]), a
   command-line tool ([M4.2][roadmap]), Python ([M4.3][roadmap]) and OpenRocket `.ork` import
   ([M3.1][roadmap]) are planned. A first runnable example comes with the *Getting started* page
@@ -59,23 +71,34 @@ These parts are built and tested. Each page gives its sources and says what it l
 
 ## How far to trust it
 
-- **Each model is checked against its published source**: printed tables, worked examples and
-  closed-form results. Its page names the source, and its tests pin the numbers.
-- **Whole flights have not been validated yet.** The one comparison so far covers descent only.
-  Five of RocketPy's example rockets descend under their own parachutes, starting from the state
-  RocketPy recorded. hpr's descent time, landing speed and drift agree with RocketPy's within 3% on
-  all 30 numbers compared. The largest difference is 2.87%. That shows the two codes agree on the
-  descent physics. It does not show that either one matches a real flight. The results are in the
-  committed [validation report][report].
-- **Next come** whole flights against RocketPy ([M2.1b2][roadmap]), comparisons with OpenRocket
-  ([M2.2][roadmap]), and real flights ([M2.3][roadmap]).
+- **No whole flight has been validated.** hpr's apogee, top speed and landing point have not yet
+  been compared with another simulator's or with a real flight's. That is the next work: whole
+  flights against RocketPy ([M2.1b2][roadmap]), then OpenRocket ([M2.2][roadmap]) and real
+  flights ([M2.3][roadmap]).
+- **The descent under a parachute matches RocketPy's.** Five of RocketPy's example rockets start
+  from the same state near apogee in both codes, with the first parachute opening at once, the
+  same drag areas and wind, RocketPy's random noise off, and RocketPy's gravity formula. hpr's
+  descent time, landing speed and drift agree with RocketPy's within 3% on all 30 numbers
+  compared; the largest difference is 2.87%. That shows the two codes agree on the descent
+  physics, not that either matches a real flight. The committed [validation report][report] has
+  every number, and [Recovery](physics/recovery.md) explains the comparison.
+- **Each model is tested against its published source**: printed tables, worked examples and
+  closed-form results. Each test states its tolerance. The known gaps:
+  - Drag, against the RASAero curves in RocketPy's examples, is within 10% for four of seven
+    curves. It is 18% low for Cavour under power, and about 50% low for Valetudo
+    ([Aerodynamics](physics/aero.md)).
+  - The normal-force slope of Barrowman's six-fin Recruiter example is 2.9% above his printed
+    value ([Aerodynamics](physics/aero.md)).
+  - Tumbling drag is −10% to +19% off its source's own drop tests
+    ([Recovery](physics/recovery.md)).
 
 ## Reading these pages
 
 Each model page names the code that implements it, the sources it follows and the tests that pin
 it. Sources are cited by a short key in square brackets, such as **[NGA]**, with the full reference
-near the top of the page. Equations are written in plain text, such as `γ_e = GM/(ab)`, so they
-read the same here, on GitHub and in the code's documentation.
+near the top of the page. Equations are written in plain text, such as the normal gravity on the
+ellipsoid, `γ = γ_e (1 + k sin²φ)/√(1 − e² sin²φ)`, so they read the same here, on GitHub and in
+the code's documentation.
 
 Three kinds of label link to the project's records on GitHub:
 
@@ -84,12 +107,12 @@ Three kinds of label link to the project's records on GitHub:
 - A **decision record**, such as [ADR-011][adr-011], explains a significant choice and the
   alternatives that were considered. All of them are in the [decision log][decisions].
 - A **Loft lesson**, such as [Loft lesson L15][lessons], is a mistake found in Loft, the project
-  that came before hpr-sim, which a test here now guards against. They are listed in
-  [Lessons from Loft][lessons].
+  that came before hpr-sim. A test here guards against it, or will once its milestone ships. They
+  are listed in [Lessons from Loft][lessons].
 
 Every page's source is a Markdown file in the repository's
 [`docs/` folder](https://github.com/nrdptel/hpr-sim/tree/main/docs). The pencil icon at the top of
-a page opens it on GitHub.
+a page opens its source in GitHub's editor, where you can propose a fix.
 
 [adr-011]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-011-rigid-body-flight-equations-of-motion-aerodynamic-coupling-rail-phases-and-termination-2026-09-17
 [decisions]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md

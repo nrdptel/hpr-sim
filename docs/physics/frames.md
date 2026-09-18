@@ -44,9 +44,9 @@ converted before use. `docs/physics/geodesy.md` gives the conversions.
   gravity and must not be added again (`docs/physics/gravity.md`).
 - **`z_L` is not altitude.** `L` is a tangent plane, so a point at `z_L = 0` at horizontal
   distance `d` from the pad is about `d²/(2R)` above the ellipsoid: 7.8 m at 10 km. Height above
-  the ellipsoid comes from `LaunchFrame::geodetic_from_enu`. The flight engine ([M1.6][roadmap])
-  must detect ground contact and state its apogee datum with that height, not with `z_L`
-  ([Loft lesson L35][lessons]).
+  the ellipsoid comes from `LaunchFrame::geodetic_from_enu`. The flight engine detects apogee and
+  ground contact with that height, not with `z_L` ([Rigid-body flight](flight.md),
+  [Loft lesson L35][lessons]).
 
 ## Body frame `B`
 
@@ -86,8 +86,8 @@ v_L = q ⊗ v_B ⊗ q*        (glam: q.mul_vec3(v_B))
 - The kinematics are `q̇ = ½ q ⊗ (0, ω_B)` (Solà 2017, eq. 200). The integrator renormalizes `q`
   after every step (`attitude::renormalize`).
 - `L` itself turns at `Ω` (above), so `ω_B` differs from the inertial rate by `R(q)ᵀ Ω`, at most
-  7.3e-5 rad/s. The flight engine ([M1.6][roadmap]) decides whether its rotational dynamics
-  include that term, and records the decision.
+  7.3e-5 rad/s. The flight engine's rotational equations leave that term out ([ADR-011][adr-011],
+  the rigid-body flight decision).
 
 ## Launch angles
 
@@ -139,5 +139,5 @@ z_B in L = (sin A cos E, cos A cos E, sin E)
 
 [adr-003]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-003-frames-attitude-geodesy-and-the-gravity-model-2026-09-17
 [adr-007]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-007-design-tree-stations-placement-automatic-radii-overrides-motors-and-checks-2026-09-17
+[adr-011]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-011-rigid-body-flight-equations-of-motion-aerodynamic-coupling-rail-phases-and-termination-2026-09-17
 [lessons]: https://github.com/nrdptel/hpr-sim/blob/main/docs/research/loft-lessons.md
-[roadmap]: https://github.com/nrdptel/hpr-sim/blob/main/docs/ROADMAP.md

@@ -62,8 +62,8 @@ stepped at the lowest level instead of blending from the surface.
 - Terrain effects.
 - A blend below the lowest tabulated level (the table holds the lowest level's wind).
 
-The flight-engine milestone ([M1.6][roadmap]) and the planned weather milestone
-([M5.2][roadmap]) decide how the flight engine composes a surface law with levels aloft.
+A flight takes one wind model and does not join a surface law to levels aloft. The planned
+weather milestone ([M5.2][roadmap]) decides how to.
 
 ## Tests that pin this
 

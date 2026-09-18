@@ -52,8 +52,8 @@ Nose cones, transitions and body tubes, from the outer profile (shoulders are in
   goes beyond the source; leaving the step out would silently drop its slope (a 27 mm nose base on
   a 29 mm tube loses 13%). It is reported with the aft component (`BodyAero::step_area_m2`). A
   blunt front face gets no term, as eq. 10 gives. The design checks warn about steps
-  (`radius_step`); the real flow separates there, which the subsonic drag milestone
-  ([M1.5b][roadmap]) must count.
+  (`radius_step`); the real flow separates there, and the drag buildup counts it as a zero-length
+  shoulder or boattail (*Steps in radius*, under Drag).
 - `V` and the planform come from integrating the real profile (`hpr_design::revolve`), so ogive,
   power, parabolic and Haack transitions get their own CP ([Loft lesson L9][lessons]). [B66] fits
   tangent ogives with 0.466 L instead: 0.2–0.9% different at fineness 2.8–5.
@@ -232,8 +232,9 @@ parasitic term on its own area. The axial coefficient is `C_A = C_D0 f(α)`.
 ## Validity and open questions
 
 - These are small-angle models. `α` is accepted over `[0, π]`, but fin slopes stay linear in `α`
-  and nothing models stall. The flight engine ([M1.6][roadmap], the 6-DOF flight milestone) must
-  decide how to treat large angles near rail exit and apogee.
+  and nothing models stall. The flight engine uses them at every angle all the same
+  ([Rigid-body flight](flight.md)), so its results are least trustworthy where large angles occur:
+  off the rail in a strong crosswind, and near apogee.
 - In one measured case, fins at `α = π/2` give `C_N` 17.4 against a flat-plate estimate near 5, and
   at `α = π` the fins still give 34.7 while every body term vanishes. That case is a 54 mm
   four-fin rocket at Mach 0.3.

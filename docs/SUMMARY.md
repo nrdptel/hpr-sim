@@ -5,7 +5,7 @@
 # The environment
 
 - [Frames and sign conventions](physics/frames.md)
-- [Geodesy: the ellipsoid and coordinates](physics/geodesy.md)
+- [Geodesy: the ellipsoid and coordinate conversions](physics/geodesy.md)
 - [Gravity and Earth rotation](physics/gravity.md)
 - [Atmosphere](physics/atmosphere.md)
 - [Wind](physics/wind.md)
@@ -13,10 +13,10 @@
 
 # The rocket
 
-- [Solid motors](physics/motor.md)
-- [Nose cones, transitions and solids](physics/shapes.md)
-- [Mass properties of components](physics/mass.md)
 - [The design tree, configurations and checks](physics/design.md)
+- [Nose cones, transitions and solids of revolution](physics/shapes.md)
+- [Mass properties of components](physics/mass.md)
+- [Solid motors](physics/motor.md)
 - [Aerodynamics](physics/aero.md)
 
 # The flight

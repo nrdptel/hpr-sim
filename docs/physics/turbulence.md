@@ -60,7 +60,9 @@ uses [8785C]'s form and lengths throughout.
 - **Axes of the gust field:** `u` is the longitudinal component and `v`, `w` the transverse ones.
   - The longitudinal spectrum belongs to the component along the path through the frozen
     field. For a climbing rocket that is nearly vertical. The flight engine ([M1.6][roadmap])
-    doesn't use turbulence yet; when it does, it must align `u` with the path.
+    doesn't use turbulence, and no milestone plans it yet
+    ([issue #39](https://github.com/nrdptel/hpr-sim/issues/39)); whoever adds it must align `u`
+    with the path.
   - Getting that wrong changes the statistics: a horizontal gust given the longitudinal spectrum
     has twice the transverse power at low frequency and 2/3 of it at high frequency.
   - The axes' signs don't matter.
@@ -109,9 +111,9 @@ repeatedly and on rejected steps.
   level. A rocket climbs through the low-altitude model's height dependence in seconds. The
   frozen-field assumption holds when airspeed is well above the gust velocities. That is false on
   the rail and near apogee, where the gust field barely moves past the vehicle.
-- **Path coordinate:** when the flight engine ([M1.6][roadmap], the 6-DOF flight milestone) takes
-  up turbulence, it decides what to key the field on: distance flown through the air, or altitude.
-  It also decides how to fade gusts in on the rail. This module does neither.
+- **Path coordinate:** whoever adds turbulence to a flight decides what to key the field on:
+  distance flown through the air, or altitude, and how to fade gusts in on the rail. This module
+  does neither.
 
 ## Tests that pin this
 
