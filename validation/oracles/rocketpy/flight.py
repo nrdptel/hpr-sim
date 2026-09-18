@@ -56,32 +56,27 @@ COMMAND = "refs/venv/bin/python validation/oracles/rocketpy/flight.py"
 # see the module docstring. Constant, so that nothing about the curve's shape is invented.
 DECLARED_CD0 = [[0.0, 0.5], [3.0, 0.5]]
 
-# Tighter than RocketPy's defaults (rtol 1e-6, atol 1e-3 on position), so the reference is the
-# model's answer and not the solver's, and a looser run of every case to show how much is which.
-SOLVER = {"rtol": 1e-8, "atol": 1e-8, "max_time": 6000}
+# RocketPy's `.eng` reader puts a (0, 0) point before the file's first one (RocketPy's
+# rocketpy/motors/motor.py:1133, not this file), so thrust ramps linearly from exactly 0 at t = 0.
+# On the rail `Flight.udot_rail1` then clamps the acceleration to zero (RocketPy's
+# rocketpy/simulation/flight.py:1862-1871), so the derivative at the initial state is the zero
+# vector. With no step bound (`max_time_step=inf`, RocketPy's default) the rail phase's bound is
+# `max_time`, and this script's 6000 s horizon, ten times RocketPy's default 600 s, lets LSODA's
+# first step go straight over the whole burn: the rocket never leaves the rail.
+#
+# Bounding `max_time_step` is the fix. Measured at rtol 1e-6 with nothing else changed, all five
+# cases: RocketPy's own defaults (`max_time` 600, no bound) fly (valetudo 778.812 m AGL); a
+# `max_time` of 6000 with no bound leaves every one on the rail; 6000 with a 0.05 s bound flies
+# every one again (valetudo 778.881 m, rail exit 0.4557 s).
+MAX_TIME_STEP_S = 0.05
 
-# The second run of every case, to show how much of each metric is the solver's. `recovery.py`
-# perturbs a descent by *loosening* to 1e-6; a whole flight cannot be, so this one tightens.
-#
-# Measured, with nothing else changed: at rtol = atol = 1e-6 and at RocketPy's own defaults, none
-# of these cases flies at all, and at 1e-7 `ndrt-2020-nose-to-tail` still does not. A run that does
-# not fly reports apogee 0, deploys no parachute and reaches `max_time`: the rocket never leaves
-# the rail. The cause is open, and it is *not* a marginal thrust-to-weight from the bundled
-# substitute curve (ADR-007), which was the first guess: the measured
-# `thrust_to_weight_at_ignition` is 5.8 to 12.3 over the five cases. It is recorded per case so
-# that the next reader does not have to rule it out again.
-#
-# So the perturbation goes the other way, and says so. It still answers the question the loose run
-# answers -- is the metric the model's or the integrator's -- and it is not a loosened gate: the
-# reference itself stays at 1e-8, and the sensitivity is reported, never used as a tolerance.
-SENSITIVITY_SOLVER = {"rtol": 1e-9, "atol": 1e-9, "max_time": 6000}
-SENSITIVITY_NOTE = (
-    "The reference is rtol = atol = 1e-8; the sensitivity run tightens to 1e-9 rather than "
-    "loosening, because at 1e-6 (RocketPy's default) no case flies and at 1e-7 "
-    "ndrt-2020-nose-to-tail does not: a run that does not fly reports apogee 0, deploys nothing "
-    "and hits max_time. The cause is open; thrust_to_weight_at_ignition (5.8 to 12.3 here) "
-    "rules out a marginal liftoff."
-)
+# Tighter than RocketPy's defaults (rtol 1e-6, atol 1e-3 on position), so the reference is the
+# model's answer and not the solver's.
+SOLVER = {"rtol": 1e-8, "atol": 1e-8, "max_time": 6000, "max_time_step": MAX_TIME_STEP_S}
+
+# The same case at RocketPy's looser tolerances, as `recovery.py` does for a descent: how much of
+# each metric is the solver's rather than the model's.
+LOOSE_SOLVER = {"rtol": 1e-6, "atol": 1e-6, "max_time": 6000, "max_time_step": MAX_TIME_STEP_S}
 
 # The time series the RMS comparison aligns on: this many samples from launch to landing.
 SERIES_SAMPLES = 120
@@ -170,11 +165,13 @@ def zero_noise(rocket):
         parachute.noise_bias, parachute.noise_deviation, parachute.noise_corr = 0, 0, (0, 1)
 
 
-def thrust_to_weight(rocket, env, case):
-    """Peak thrust over the weight on the pad, which is what decides whether it leaves the rail.
+def peak_thrust_to_weight(rocket, env, case):
+    """Peak thrust over the weight on the pad, sampled on a grid over the burn.
 
-    The thrust is the bundled substitute curve's (ADR-007), not the example motor's, so a value
-    near 1 is a property of this comparison and not of the real rocket.
+    Context, not a liftoff criterion: what decides whether RocketPy's rocket leaves the rail is
+    the *instantaneous* thrust at t = 0, which is zero for every bundled curve (see
+    `MAX_TIME_STEP_S`). The thrust here is the substitute curve's (ADR-007), not the example
+    motor's.
     """
     peak = max(
         rocket.motor.thrust.get_value_opt(t)
@@ -195,10 +192,10 @@ def fly(rocket, env, rail, solver):
     )
 
 
-def metrics_of(flight, case, name):
+def metrics_of(flight, case, name, solver):
     """The metrics M2.1 names, from a finished flight."""
     elevation = case["elevation"]
-    if flight.t_final >= SOLVER["max_time"]:
+    if flight.t_final >= solver["max_time"]:
         fail(f"{name}: the flight did not land before the time cap")
     if flight.apogee <= elevation:
         fail(f"{name}: apogee {flight.apogee} is not above the site")
@@ -208,7 +205,19 @@ def metrics_of(flight, case, name):
         "apogee_time_s": finite(flight.apogee_time, "time to apogee"),
         "max_speed_m_s": finite(flight.max_speed, "maximum speed"),
         "max_mach": finite(flight.max_mach_number, "maximum Mach"),
+        # RocketPy's `max_acceleration` is the largest |a| over the *whole* flight, which for
+        # ndrt-2020 and prometheus-2022 is the parachute inflating, not the airframe's flight
+        # load, and the two models deliberately differ there (recovery.py:15-18: hpr carries no
+        # added mass and releases the drogue rather than replacing it). Both are recorded, with
+        # the instant of each, so a case can gate the power-on load and say in writing what it
+        # does with the other.
         "max_acceleration_m_s2": finite(flight.max_acceleration, "maximum acceleration"),
+        "max_acceleration_time_s": finite(
+            flight.max_acceleration_time, "time of maximum acceleration"
+        ),
+        "max_acceleration_power_on_m_s2": finite(
+            flight.max_acceleration_power_on, "maximum power-on acceleration"
+        ),
         "rail_exit_speed_m_s": finite(flight.out_of_rail_velocity, "rail-exit speed"),
         "rail_exit_time_s": finite(flight.out_of_rail_time, "rail-exit time"),
         "burnout_altitude_agl_m": finite(
@@ -257,12 +266,12 @@ def run(document, case):
     ]
     if not events:
         fail(f"{name}: no parachute deployed, so the descent is ballistic")
-    metrics = metrics_of(flight, case, name)
+    metrics = metrics_of(flight, case, name, SOLVER)
 
-    other_inputs = recovery.mass_case(document, name)
-    other_inputs["name"] = name
-    other_rocket, _ = build_rocket(other_inputs)
-    other_metrics = metrics_of(fly(other_rocket, env, rail, SENSITIVITY_SOLVER), case, name)
+    loose_inputs = recovery.mass_case(document, name)
+    loose_inputs["name"] = name
+    loose_rocket, _ = build_rocket(loose_inputs)
+    other_metrics = metrics_of(fly(loose_rocket, env, rail, LOOSE_SOLVER), case, name, LOOSE_SOLVER)
     solver_change_by_metric = {
         key: abs(other_metrics[key] - value) / abs(value)
         for key, value in metrics.items()
@@ -282,6 +291,11 @@ def run(document, case):
             "cd0_vs_mach": [list(row) for row in DECLARED_CD0],
             "source": "declared by validation/oracles/rocketpy/flight.py; both codes fly it",
             "applies_to": "power_off_drag and power_on_drag alike",
+            # The drag *force* is 0.5 rho V^2 A C_D, so "same drag" is only pinned if A is too.
+            # RocketPy takes it from Rocket(radius); hpr takes its reference diameter from the
+            # design file, a different source that agrees today. Recorded so a case can assert it.
+            "reference_radius_m": finite(rocket.radius, "reference radius"),
+            "reference_area_m2": finite(rocket.area, "reference area"),
         },
         "rail": dict(rail),
         "environment": {
@@ -295,7 +309,7 @@ def run(document, case):
             "wind_v": case["wind_v"],
         },
         "dry_mass_kg": finite(rocket.dry_mass, "dry mass"),
-        "thrust_to_weight_at_ignition": thrust_to_weight(rocket, env, case),
+        "peak_thrust_to_weight": peak_thrust_to_weight(rocket, env, case),
         "events": events,
         "impact": {
             "time_s": finite(flight.t_final, "impact time"),
@@ -313,11 +327,10 @@ def run(document, case):
             SOLVER,
             integrator="LSODA",
             source="flight.py:489-509, :611-628",
-            sensitivity=SENSITIVITY_SOLVER,
-            sensitivity_note=SENSITIVITY_NOTE,
-            sensitivity_metrics=other_metrics,
-            relative_change_from_sensitivity=solver_change_by_metric,
-            worst_relative_change_from_sensitivity=max(solver_change_by_metric.values()),
+            loose=LOOSE_SOLVER,
+            loose_metrics=other_metrics,
+            relative_change_from_loose=solver_change_by_metric,
+            worst_relative_change_from_loose=max(solver_change_by_metric.values()),
         ),
     }
 
