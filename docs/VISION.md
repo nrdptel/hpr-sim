@@ -34,6 +34,11 @@
 > just not what I want it to be so I am going to shutdown that project. Feel free to use resources
 > from that repo (fusionspace-loft) and my private repo with resources as well (loft-fixtures).
 
+Neer's addendum, verbatim (2026-09-17; the same elision):
+
+> something I did not mention in my original prompt is a heavy emphasis on easy to reach and read
+> documentation. [...]
+
 Decisions Neer confirmed at kickoff:
 
 - **Name:** keep `hpr-sim` for now.
@@ -58,6 +63,7 @@ Decisions Neer confirmed at kickoff:
 | V12 | Later: a client-side web version (installable PWA), then mobile (offline PWA and/or iOS/Android apps) | M9.x |
 | V13 | COTS solid motors only, for now | scope rule |
 | V14 | Open source, in the style of the other Fusion Space projects | M0.1 |
+| V15 | Documentation that is easy to reach and easy to read: one searchable site linked from the README, plain language first, every term defined, every claim traceable to its source, test and validation, so a person can check the work without reading the code | M0.4, then every milestone |
 
 ## North stars
 
@@ -70,6 +76,8 @@ Decisions Neer confirmed at kickoff:
 4. **Honest about uncertainty.** A flight is a distribution, not a single number. Dispersion and
    sensitivity analysis are first-class features.
 5. **Offline at the pad.** Nothing essential depends on a network.
+6. **Readable by people.** The documentation is how a person understands and checks this code. A
+   newcomer finds any answer in two clicks and follows it without reading the source.
 
 ## Beyond the brief: ideas to consider (keep, drop, or queue each through the roadmap)
 
