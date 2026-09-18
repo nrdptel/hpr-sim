@@ -32,16 +32,27 @@ if [[ ! -x $python ]]; then
     exit 1
 fi
 
-# Runs a generator from the repository root and replaces its fixture only if it succeeded.
+# `cargo xtask` without its alias, so the build is --locked, as in CI.
+xtask() {
+    cargo run --locked --quiet --package xtask -- "$@"
+}
+
+# Runs a generator from the repository root and replaces its fixture only if it succeeded. The
+# temporary file sits beside the fixture, so the move is atomic, and is removed if the script stops.
+tmp=
+trap 'rm -f -- "$tmp"' EXIT
 generate() {
     local script=$1 fixture=$2
-    echo "regenerate: $script > $fixture"
-    "$python" "$script" > "$fixture.new"
-    mv "$fixture.new" "$fixture"
+    shift 2
+    echo "regenerate: $script $* > $fixture"
+    tmp="$fixture.new"
+    "$python" "$script" "$@" > "$tmp"
+    mv "$tmp" "$fixture"
+    tmp=
 }
 
 generate validation/oracles/rocketpy/rocket_mass.py validation/fixtures/design/rocketpy-rocket-mass.json
-cargo xtask designs
+xtask designs
 generate validation/oracles/rocketpy/recovery.py validation/fixtures/recovery/rocketpy-descent.json
 generate validation/oracles/rocketpy/flight.py validation/fixtures/flight/rocketpy-whole-flight.json
 
@@ -50,10 +61,10 @@ generate validation/oracles/rocketpy/flight.py validation/fixtures/flight/rocket
 # (`cargo xtask validate --check`, to the digits the platforms share). A fixture that moved at all
 # changes its hash, which the report records, so the report is then rewritten.
 status=0
-if cargo xtask validate --check; then
+if xtask validate --check; then
     echo "regenerate: the committed report reproduces; leaving it as it is"
 else
-    cargo xtask validate || status=$?
+    xtask validate || status=$?
 fi
 
 # Only validation/ is written above, so only it is summarised: other local edits are not ours.

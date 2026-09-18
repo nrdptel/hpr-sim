@@ -76,10 +76,11 @@ Every pull request runs `cargo xtask validate --check` on macOS, Windows and Lin
 integration (CI): the `validate` job in `.github/workflows/ci.yml`. It flies every locked case,
 compares each result with the stored RocketPy numbers (RocketPy itself is not run), and writes
 nothing. It fails if a scored metric is outside its tolerance, or if the committed report differs
-from this run's. Numbers may differ in their last digits, because platforms round differently: by
-up to 2e-6 or 1e-7 of the value, whichever is larger. Everything else must match exactly: the
-cases, sources, tolerances, verdicts, notes, known gaps and the harness version
-(`Report::reproduces`;
+from this run's. Numbers may differ in their last digits, because platforms round differently: hpr's
+value and the reference's, read at full precision from `latest.json`, by up to 2e-6 or 1e-7 of the
+value, whichever is larger. Everything else must match exactly: the cases, sources, tolerances,
+verdicts, notes, known gaps and the harness version, and `latest.md` must be `latest.json`'s own
+rendering (`Report::reproduces`;
 [ADR-022](DECISIONS.md#adr-022-validation-in-ci-and-regenerating-references-only-by-hand-2026-09-18),
 the decision behind this section). So a change that moves a number has to commit the report that
 shows it.
@@ -97,13 +98,14 @@ only when a person regenerates the references.
 - **On GitHub:** the *Regenerate references* workflow (`regenerate-references.yml`). Only someone
   with write access can start it, from the Actions tab or with
   `gh workflow run regenerate-references.yml`, and only from a branch that has the workflow
-  (GitHub dispatches only workflows the default branch has). It runs the same script on Linux and
-  uploads the diff as the `references-diff` artifact. Its token can read the repository and
-  nothing more, so it cannot commit.
+  (GitHub dispatches only workflows the default branch has). It runs the same script on an arm64
+  Mac, like the one the committed references came from, and uploads the diff as the
+  `references-diff` artifact. Its token can read the repository and nothing more, so it cannot
+  commit.
 
-The committed references and report were generated on macOS. On Linux the regenerated fixtures may
-differ from them in their last digits; the diff shows that, and a fixture that moved at all makes
-the report be rewritten too. Either way the result is a diff to read, not a new reference.
+On Linux the regenerated fixtures may differ from the committed ones in their last digits, and a
+fixture that moved at all makes the report be rewritten too; that is why the workflow runs on a
+Mac. Either way the result is a diff to read, not a new reference.
 Committing it is a decision a PR has to argue:
 [Loft lesson L76](decisions-and-roadmap.md#l76), where a reference regenerated whenever a check
 failed ended up following the simulator it was meant to check.

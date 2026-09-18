@@ -1797,7 +1797,10 @@ reference follow Loft's own drag.
   comparison is `Report::reproduces`, moved from the report test into `hpr-validate` so the test
   and the command share one definition: everything that cannot differ by platform (cases, sources,
   tolerances, verdicts, notes, gaps but for the Mach number the integrator narrowed onto) exactly,
-  and every number through the Markdown to two units in its sixth decimal or 1e-7 of itself.
+  and hpr's and the reference's value at full precision from the JSON, to 2e-6 or 1e-7 of
+  itself, whichever is larger. `latest.md` must be `latest.json`'s rendering exactly, since both
+  come from one platform. The old test compared the rendered Markdown instead, where a printed
+  percentage's last digit can round the other way on another platform.
   `--check` with `--fast` is refused: a partial run cannot check the whole suite's record.
 - **A `validate` job** in `ci.yml` runs it on `ubuntu-latest`, `macos-latest` and
   `windows-latest`, with no oracle and no network; the Pages deploy waits for it.
@@ -1810,7 +1813,8 @@ reference follow Loft's own drag.
   is then rewritten. It is written even when a metric fails, so the diff shows what moved, and the
   script then exits non-zero.
 - **The *Regenerate references* workflow** (`regenerate-references.yml`) runs the script on
-  Linux, and only on `workflow_dispatch`. Its token has `contents: read` and the checkout keeps no
+  `macos-latest`, an arm64 Mac like the one the committed references came from, so that an empty
+  diff means something, and only on `workflow_dispatch`. Its token has `contents: read` and the checkout keeps no
   credentials, so it cannot push. It uploads `references.diff` and a summary as an artifact, and
   collects them even when the script fails.
 - The script covers the harness's references and the design fixture they are built from. The
@@ -1833,6 +1837,5 @@ reference follow Loft's own drag.
   of the three OSes.
 - The workflow could not run before it was on `main` (GitHub only dispatches workflows the default
   branch has). The script ran locally first, on macOS: in 41 s it reproduced every committed fixture
-  and the report byte for byte. On Linux the fixtures may differ in their last digits; that is
-  measured the first time the workflow runs.
+  and the report byte for byte.
 - M2.1c2's predicted-mode reference joins the chain when it lands.

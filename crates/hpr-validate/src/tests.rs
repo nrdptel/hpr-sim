@@ -4,7 +4,7 @@ use std::path::{Path, PathBuf};
 
 use crate::case::{Case, CaseLock, Metric, Tolerance, cases_dir, committed_cases};
 use crate::metrics::{Reference, ReferenceValue};
-use crate::report::{Comparison, Report, Verdict, same_but_for_platform_rounding};
+use crate::report::{Comparison, Report, Verdict};
 use crate::run::{ValidateError, run_case, run_lock};
 
 /// The repository root, from this crate's manifest.
@@ -610,27 +610,105 @@ fn the_committed_cases_all_pass_and_the_report_says_so() {
     }
     // It catches a report that moved, in either file.
     let moved = read("latest.md").replacen("| pass |", "| **fail** |", 1);
-    assert!(report.reproduces(&moved, &read("latest.json")).is_err());
+    let error = report
+        .reproduces(&moved, &read("latest.json"))
+        .expect_err("a verdict flipped in latest.md");
+    assert!(
+        error.0.starts_with("latest.md is not latest.json's"),
+        "{error}"
+    );
     let mut moved: Report = serde_json::from_str(&read("latest.json")).expect("it parses");
     moved.cases.pop();
     let moved = serde_json::to_string(&moved).expect("it serialises");
-    assert!(report.reproduces(&read("latest.md"), &moved).is_err());
+    let moved_markdown = serde_json::from_str::<Report>(&moved)
+        .expect("it parses")
+        .to_markdown();
+    let error = report
+        .reproduces(&moved_markdown, &moved)
+        .expect_err("a case left out");
+    assert!(error.0.starts_with("latest.json: the cases"), "{error}");
 }
 
 #[test]
-fn platform_rounding_forgives_the_last_digits_and_nothing_else() {
-    // The looser comparison of the committed report must still catch a number that moved, a word
-    // that changed, and a verdict that flipped.
-    let row =
-        "| flight-x | landing_drift_m | 354.240893 | 340.986523 | +3.887% | 3.000% | pass |  |";
-    let check = |other: &str| same_but_for_platform_rounding(row, other);
-    assert!(check(&row.replace("354.240893", "354.240895")).is_ok());
-    assert!(check(&row.replace("354.240893", "354.240993")).is_err());
-    assert!(check(&row.replace("+3.887%", "+3.888%")).is_err());
-    assert!(check(&row.replace("pass", "**fail**")).is_err());
-    assert!(check(&row.replace("landing_drift_m", "apogee_drift_m")).is_err());
-    assert!(check(&format!("{row}\n")).is_ok());
-    assert!(check(&format!("{row}\n| another |")).is_err());
+fn reproducing_forgives_the_last_digits_and_nothing_else() {
+    // A committed report of one row, and this run's, which differs in what each case says.
+    let row = |measured: f64| {
+        Comparison::new(
+            "flight-x",
+            "landing_drift_m",
+            measured,
+            340.986523,
+            "rocketpy",
+            Tolerance::relative(0.03),
+        )
+    };
+    let report = |measured: f64| Report {
+        harness_version: "0.0.0".to_owned(),
+        fast: false,
+        cases: vec!["flight-x".to_owned()],
+        skipped: Vec::new(),
+        comparisons: vec![row(measured)],
+        gaps: Vec::new(),
+        sources: Vec::new(),
+    };
+    let committed = report(345.240893);
+    let json = serde_json::to_string(&committed).expect("it serialises");
+    let markdown = committed.to_markdown();
+    let check = |run: &Report, markdown: &str, json: &str| run.reproduces(markdown, json);
+    assert_eq!(check(&committed, &markdown, &json), Ok(()));
+    // Another platform's last digits, even where they move a printed percentage's last digit.
+    assert_eq!(check(&report(345.240895), &markdown, &json), Ok(()));
+    let at_a_boundary = report(340.986523 * 1.030_004_999_9);
+    let json_there = serde_json::to_string(&at_a_boundary).expect("it serialises");
+    assert_eq!(
+        check(
+            &report(340.986523 * 1.030_005_000_1),
+            &at_a_boundary.to_markdown(),
+            &json_there
+        ),
+        Ok(())
+    );
+    // A number that moved, which only the JSON shows at full precision.
+    let error = check(&report(345.240993), &markdown, &json).expect_err("a number moved");
+    assert!(
+        error
+            .0
+            .starts_with("latest.json: flight-x's landing_drift_m's hpr value"),
+        "{error}"
+    );
+    // A committed Markdown that is not its JSON's rendering.
+    let edited = markdown.replace("| pass |", "| **fail** |");
+    let error = check(&committed, &edited, &json).expect_err("the files disagree");
+    assert!(
+        error.0.starts_with("latest.md is not latest.json's"),
+        "{error}"
+    );
+    let error =
+        check(&committed, &format!("{markdown}more\n"), &json).expect_err("a line too many");
+    assert!(error.0.contains("(the end)"), "{error}");
+    // A committed difference that is not its own values' difference.
+    let mut hand_edited = committed.clone();
+    hand_edited.comparisons[0].relative = Some(0.02);
+    let error = check(
+        &committed,
+        &hand_edited.to_markdown(),
+        &serde_json::to_string(&hand_edited).expect("it serialises"),
+    )
+    .expect_err("a relative difference written by hand");
+    assert!(
+        error.0.contains("not its own values' difference"),
+        "{error}"
+    );
+    // A note, a source or a case that changed.
+    let mut noted = committed.clone();
+    noted.comparisons[0].note = Some("a note".to_owned());
+    assert!(check(&noted, &markdown, &json).is_err());
+    let mut sourced = committed.clone();
+    sourced.comparisons[0].source = "openrocket".to_owned();
+    assert!(check(&sourced, &markdown, &json).is_err());
+    let mut renamed = committed.clone();
+    renamed.cases[0] = "flight-y".to_owned();
+    assert!(check(&renamed, &markdown, &json).is_err());
 }
 
 #[test]

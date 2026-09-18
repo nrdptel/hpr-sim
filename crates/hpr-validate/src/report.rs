@@ -232,36 +232,62 @@ impl Report {
     /// `latest.json`.
     ///
     /// hpr is bit-identical on one platform, not across three ([ADR-015][adr-015], the validation
-    /// harness's decisions), so the JSON is not compared by its bytes: it carries full-precision
-    /// floats. Everything that cannot differ by
-    /// platform is compared exactly: the harness version, the cases, what was left out, the
-    /// sources, each comparison's case, metric, source, tolerance, verdict and note, and each gap
-    /// but for the Mach number the integrator narrowed onto 1. The numbers are compared through the
-    /// Markdown, the committed file's and the committed JSON's rendering alike, which must match
-    /// this run's letter for letter except that a number may differ by two units in its sixth
-    /// decimal or by 1e-7 of itself, whichever is larger. A tighter check would assert a
-    /// cross-platform bit-identity hpr does not claim.
+    /// harness's decisions), so the numbers are compared at full precision from the JSON, where
+    /// hpr's value and the reference's may each differ from the committed one by 2e-6 or by 1e-7
+    /// of itself, whichever is larger. Everything else is compared exactly: the harness version,
+    /// the cases, what was left out, the sources, each comparison's case, metric, source,
+    /// tolerance, verdict and note, and each gap but for the Mach number the integrator narrowed
+    /// onto 1. The two committed files come from one run on one platform, so `latest.md` must be
+    /// `latest.json`'s rendering letter for letter, and each committed difference must be its
+    /// own two values' difference. A tighter check would assert a cross-platform bit-identity hpr
+    /// does not claim; comparing the rendered Markdown instead would fail on a platform whose last
+    /// digit rounds a printed percentage the other way.
     ///
     /// # Errors
     ///
-    /// The first difference found, or why the committed JSON does not parse.
+    /// [`NotReproduced`], naming the first difference found, or why the committed JSON does not
+    /// parse.
     ///
     /// [adr-015]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-015-the-validation-harness-cases-references-tolerances-and-reports-2026-09-17
-    pub fn reproduces(&self, committed_markdown: &str, committed_json: &str) -> Result<(), String> {
-        let markdown = self.to_markdown();
-        same_but_for_platform_rounding(committed_markdown, &markdown)
-            .map_err(|what| format!("latest.md: {what}"))?;
+    pub fn reproduces(
+        &self,
+        committed_markdown: &str,
+        committed_json: &str,
+    ) -> Result<(), NotReproduced> {
+        let differs = |what: String| Err(NotReproduced(format!("latest.json: {what}")));
         let committed: Self = serde_json::from_str(committed_json)
-            .map_err(|error| format!("latest.json does not parse: {error}"))?;
-        let differs = |what: &str| Err(format!("latest.json: {what} differ"));
+            .map_err(|error| NotReproduced(format!("latest.json does not parse: {error}")))?;
+        if let Some((line, (file, rendered))) = committed_markdown
+            .lines()
+            .map(Some)
+            .chain(std::iter::repeat(None))
+            .zip(
+                committed
+                    .to_markdown()
+                    .lines()
+                    .map(Some)
+                    .chain(std::iter::repeat(None)),
+            )
+            .take_while(|pair| *pair != (None, None))
+            .enumerate()
+            .find(|(_, (file, rendered))| file != rendered)
+        {
+            return Err(NotReproduced(format!(
+                "latest.md is not latest.json's rendering at line {}:\n  latest.md:   {}\n  \
+                 latest.json: {}",
+                line + 1,
+                file.unwrap_or("(the end)"),
+                rendered.unwrap_or("(the end)")
+            )));
+        }
         if committed.harness_version != self.harness_version {
-            return differs("the harness versions");
+            return differs("the harness versions differ".to_owned());
         }
         if committed.fast != self.fast || committed.skipped != self.skipped {
-            return differs("the cases left out");
+            return differs("the cases left out differ".to_owned());
         }
         if committed.cases != self.cases {
-            return differs("the cases");
+            return differs("the cases differ".to_owned());
         }
         // A gap's Mach number is where the integrator narrowed onto 1, to the last bits of which
         // the platforms need not agree; everything else about it must.
@@ -281,10 +307,10 @@ impl Report {
                 .collect::<Vec<_>>()
         };
         if gap_shape(&committed) != gap_shape(self) {
-            return differs("the known gaps");
+            return differs("the known gaps differ".to_owned());
         }
         if committed.sources != self.sources {
-            return differs("the sources");
+            return differs("the sources differ".to_owned());
         }
         let shape = |report: &Self| {
             report
@@ -303,10 +329,34 @@ impl Report {
                 .collect::<Vec<_>>()
         };
         if shape(&committed) != shape(self) {
-            return differs("the comparisons' metrics, sources, tolerances, verdicts or notes");
+            return differs(
+                "the comparisons' metrics, sources, tolerances, verdicts or notes differ"
+                    .to_owned(),
+            );
         }
-        same_but_for_platform_rounding(&committed.to_markdown(), &markdown)
-            .map_err(|what| format!("latest.json: {what}"))
+        for (old, new) in committed.comparisons.iter().zip(&self.comparisons) {
+            let row = format!("{}'s {}", old.case, old.metric);
+            // Derived on the committing platform by the formula `build` uses, so exactly.
+            if old.difference.to_bits() != (old.measured - old.reference).to_bits()
+                || old.relative.map(f64::to_bits)
+                    != (old.reference != 0.0).then(|| (old.difference / old.reference).to_bits())
+            {
+                return differs(format!(
+                    "{row}'s difference is not its own values' difference"
+                ));
+            }
+            for (what, was, is) in [
+                ("hpr value", old.measured, new.measured),
+                ("reference value", old.reference, new.reference),
+            ] {
+                if !same_but_for_platform_rounding(was, is) {
+                    return differs(format!(
+                        "{row}'s {what} is {was} there and {is} in this run"
+                    ));
+                }
+            }
+        }
+        Ok(())
     }
 
     /// The report as Markdown: a summary line, then one table row per metric.
@@ -441,52 +491,19 @@ impl Report {
     }
 }
 
-/// Whether two renderings of the report are the same, letter for letter, except that a number
-/// may differ by two units in its sixth decimal or by 1e-7 of itself, whichever is larger.
+/// Whether a committed number and this run's are the same but for the last digits the platforms
+/// round differently: within 2e-6, or 1e-7 of this run's value, whichever is larger.
 ///
 /// hpr is bit-identical on one platform, not across three (ADR-015). The descents reproduce to
-/// the six decimals the report prints; a whole flight does to about 1e-8 of each value, not
-/// always to its sixth decimal: NDRT 2020's landing drift is 354.240893 m on macOS and
-/// 354.240895 m on Linux, after 84 s of six-degree-of-freedom flight in a sheared wind. Every
-/// word, case, metric, tolerance and verdict must still match exactly.
-pub(crate) fn same_but_for_platform_rounding(
-    committed: &str,
-    computed: &str,
-) -> Result<(), String> {
-    let (committed, computed): (Vec<&str>, Vec<&str>) =
-        (committed.lines().collect(), computed.lines().collect());
-    if committed.len() != computed.len() {
-        return Err(format!(
-            "the committed report has {} lines and this run's {}",
-            committed.len(),
-            computed.len()
-        ));
-    }
-    let number = |cell: &str| {
-        cell.trim()
-            .trim_end_matches('%')
-            .trim_start_matches('+')
-            .parse::<f64>()
-            .ok()
-    };
-    for (line, (old, new)) in committed.iter().zip(&computed).enumerate() {
-        if old == new {
-            continue;
-        }
-        let (old_cells, new_cells): (Vec<&str>, Vec<&str>) =
-            (old.split('|').collect(), new.split('|').collect());
-        let close = old_cells.len() == new_cells.len()
-            && old_cells.iter().zip(&new_cells).all(|(a, b)| {
-                a == b
-                    || matches!((number(a), number(b)), (Some(a), Some(b))
-                        if (a - b).abs() <= (2e-6_f64).max(1e-7 * b.abs()))
-            });
-        if !close {
-            return Err(format!(
-                "line {} differs beyond platform rounding:\n  committed: {old}\n  this run:  {new}",
-                line + 1
-            ));
-        }
-    }
-    Ok(())
+/// about 1e-12; a whole flight does to about 1e-8 of each value: NDRT 2020's landing drift is
+/// 354.240893 m on macOS and 354.240895 m on Linux, after 84 s of six-degree-of-freedom flight in
+/// a sheared wind.
+pub(crate) fn same_but_for_platform_rounding(committed: f64, computed: f64) -> bool {
+    (committed - computed).abs() <= (2e-6_f64).max(1e-7 * computed.abs())
 }
+
+/// Why a run does not reproduce a committed report ([`Report::reproduces`]): the first difference
+/// found, in words.
+#[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)]
+#[error("{0}")]
+pub struct NotReproduced(pub String);

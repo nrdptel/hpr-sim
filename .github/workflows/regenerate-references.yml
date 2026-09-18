@@ -18,7 +18,10 @@ env:
 jobs:
   regenerate:
     name: regenerate
-    runs-on: ubuntu-latest
+    # The committed references and report were generated on an arm64 Mac, which macos-latest is,
+    # with the same wheels from uv.lock; on Linux the last digits of RocketPy's floats move, so the
+    # diff would never be empty and a real change would hide in the noise (ADR-022).
+    runs-on: macos-latest
     steps:
       - uses: actions/checkout@v7
         with:
@@ -26,24 +29,32 @@ jobs:
       - run: rustup toolchain install
       - uses: Swatinem/rust-cache@v2
       # uv builds the oracle environment from validation/oracles/uv.lock (it needs uv 0.12 or later).
-      - uses: astral-sh/setup-uv@v10
+      # setup-uv publishes no moving major tag, so it is pinned to a release's commit.
+      - uses: astral-sh/setup-uv@bec219d24cd3e171d82865faccec33120bb574f4 # v10.1.0
       # RocketPy and its dependencies, pinned by uv.lock, into the gitignored refs/venv, and the
       # RocketPy checkout pinned by validation/refs.lock.toml, each checked against its hash.
       - run: cargo run --locked --quiet --package xtask -- refs fetch python rocketpy
       # Writes the fixtures and the report in the working tree; fails if a generator fails or a
       # metric falls outside tolerance, having written what it could.
-      - run: scripts/regenerate-references.sh
+      - id: regenerate
+        run: scripts/regenerate-references.sh
       # The diff is the output, whatever the step above said: a failure is the case it matters most.
       - name: Collect the diff
         if: always()
+        env:
+          OUTCOME: ${{ steps.regenerate.outcome }}
         run: |
           git add --intent-to-add validation
           git diff -- validation > references.diff
           git diff --stat -- validation | tee references.stat
-          if [[ -s references.diff ]]; then
+          if [[ $OUTCOME != success && $OUTCOME != failure ]]; then
+            echo "::error title=Regeneration did not run::A step before it failed; the diff is empty for that reason, not because the references reproduce."
+          elif [[ -s references.diff ]]; then
             echo "::notice title=References changed::Download the references-diff artifact and review it; nothing was committed."
-          else
+          elif [[ $OUTCOME == success ]]; then
             echo "::notice title=References reproduce::Regenerating changed no committed file."
+          else
+            echo "::error title=Regeneration failed::It stopped before changing anything; see the script's step."
           fi
       - if: always()
         uses: actions/upload-artifact@v7

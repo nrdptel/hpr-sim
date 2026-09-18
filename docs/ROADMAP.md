@@ -528,7 +528,8 @@
       push; it runs the RocketPy chain (`rocket_mass.py`, `cargo xtask designs`, `recovery.py`,
       `flight.py`, `cargo xtask validate --check`, rewriting the report only if that fails) and
       uploads the diff. Run locally on macOS in 41 s, the chain reproduced every committed fixture
-      and the report byte for byte.
+      and the report byte for byte; GitHub dispatches a workflow only once it is on `main`, so its
+      first run follows the merge.
 
     - [ ] **M2.1c2 Predicted mode.**
       - The same cases flown with hpr's own aero, against a reference in which RocketPy flies each
