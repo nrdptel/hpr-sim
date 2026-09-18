@@ -28,6 +28,10 @@
 #   the main parachute opening, where RocketPy counts the canopy's added mass and hpr does not
 #   (ADR-012; +83.06% and not scored in the same-drag case). Its time is later because the apogee
 #   is. The power-on peak, the flight load, is within target at +0.67%.
+# - series_height_rms_m (115.7 m, target 38.2) and series_speed_rms_m_s (6.7 m/s, target 5.5): the
+#   drag again, over the whole trace: hpr climbs 130 m higher and lands 5.9 s later, and while
+#   RocketPy's rocket is already under its main hpr's is still falling faster under the drogue.
+#   Flown on the same drag they are 2.0 m and 0.13 m/s.
 id = "predicted-ndrt-2020-nose-to-tail"
 title = "NDRT 2020 from the pad to the ground, predicted: hpr's own aerodynamics"
 reference = "validation/fixtures/flight/rocketpy-whole-flight-own-drag.json"
@@ -82,3 +86,14 @@ relative = 0.03
 
 [metrics.impact_speed_m_s]
 relative = 0.03
+
+# The time-series RMS (M2.1d1): hpr's height and speed at the reference's 120 series times, from
+# ignition until hpr lands, less RocketPy's; the reference value is 0, exact agreement. Each is held
+# (a target) to 3% of the scale of its trace, the reference's apogee (1273.7 m) and max speed
+# (184.3 m/s), rounded down to 0.1: M2.1's 3% for a point metric, applied to a whole trace, so a
+# trace passes only if it is on average no further off than its peak may be.
+[metrics.series_height_rms_m]
+absolute = 38.2
+
+[metrics.series_speed_rms_m_s]
+absolute = 5.5

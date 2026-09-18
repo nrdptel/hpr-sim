@@ -105,3 +105,14 @@ not_scored = "an open miss, not a definitional difference: the landing point fol
 
 [metrics.impact_speed_m_s]
 relative = 0.03
+
+# The time-series RMS (M2.1d1): hpr's height and speed at the reference's 120 series times, from
+# ignition until hpr lands, less RocketPy's; the reference value is 0, exact agreement. Each is held
+# (gated) to 3% of the scale of its trace, the reference's apogee (3622.5 m) and max speed
+# (333.4 m/s), rounded down to 0.1: M2.1's 3% for a point metric, applied to a whole trace, so a
+# trace passes only if it is on average no further off than its peak may be.
+[metrics.series_height_rms_m]
+absolute = 108.6
+
+[metrics.series_speed_rms_m_s]
+absolute = 10.0

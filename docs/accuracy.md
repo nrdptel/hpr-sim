@@ -229,7 +229,8 @@ off. So the landing offset that [M2.1](decisions-and-roadmap.md#m2-1) asks for i
 
 Each of fifteen numbers per flight must agree within 3% of RocketPy's, with no absolute floor, or
 say in its case file why it is not scored. Each case file argues why, for example
-[Juno III's][juno-case].
+[Juno III's][juno-case]. Two more numbers compare the whole trace; they are explained after the
+tables.
 
 The numbers are measured as RocketPy defines them, with one exception. Each code's solver advances
 the flight in [time steps](glossary.md#adaptive-time-step) and keeps the state at each step's end.
@@ -291,6 +292,34 @@ a reason written in its case file (below). Prometheus 2022, the sixth rocket, is
 | [`flight-ndrt-2020-nose-to-tail`][report] | −0.001% | +83.060% | +0.147% | −18.646% | +3.887% |
 | [`flight-juno-iii`][report] | −0.235% | −0.235% | −0.002% | −60.848% | +151.334% |
 | [`flight-bella-lui`][report] | +1.783% | +1.783% | +0.001% | −15.589% | −31.320% |
+
+The last two numbers compare the whole trace, not one point of it. The series height RMS
+(`series_height_rms_m`) is the root mean square of hpr's height less RocketPy's: square each
+difference, average the squares, and take the square root. The series speed RMS
+(`series_speed_rms_m_s`) is the same for speed. Both follow the centre of mass without propellant,
+at RocketPy's 120 series times, from ignition until hpr lands. Both codes' clocks start at ignition
+on the rail, so no time shift is fitted: a fitted shift would hide a real difference in the burn
+or on the rail ([case file][juno-case]). The centre of mass without propellant is the point
+RocketPy's series records. Every time counts the same, so the long descent weighs most; a
+difference during the burn shows in the burnout and top-speed numbers instead.
+
+Exact agreement would give 0, so these two are given in metres and metres per second, not as a
+percentage. Each is held to 3% of RocketPy's apogee (for height) or top speed (for speed). That is
+[M2.1](decisions-and-roadmap.md#m2-1)'s 3% for one number, applied to the whole trace
+([case file][juno-case]).
+
+All five flights pass, each well inside its bound. The largest height RMS is Juno III's,
+39.200769 m against its 77.6 m bound, about half of it; its apogee is also the furthest off. The
+other four are under a sixth of theirs. The speed RMS runs from 0.132323 to 2.058916 m/s
+([report][report]).
+
+| case | `series_height_rms_m` | height bound, m | `series_speed_rms_m_s` | speed bound, m/s |
+|---|---|---|---|---|
+| [`flight-calisto-tests-motor-at-minus-1.373`][report] | +3.166705 | 78.3 | +0.160127 | 7.3 |
+| [`flight-valetudo`][report] | +1.441957 | 23.3 | +0.228240 | 3.3 |
+| [`flight-ndrt-2020-nose-to-tail`][report] | +2.037097 | 36.5 | +0.132323 | 5.4 |
+| [`flight-juno-iii`][report] | +39.200769 | 77.6 | +2.058916 | 6.7 |
+| [`flight-bella-lui`][report] | +2.302356 | 15.8 | +0.444735 | 2.9 |
 
 What the two codes still do differently, and what it moves:
 
@@ -380,6 +409,21 @@ Every predicted result of the report, as hpr's difference from RocketPy:
 | [`predicted-ndrt-2020-nose-to-tail`][report] | +0.674% | +83.058% | +9.606% | −4.440% | +14.981% |
 | [`predicted-juno-iii`][report] | +0.072% | +0.072% | −0.045% | −59.133% | +171.819% |
 | [`predicted-bella-lui`][report] | +1.797% | +1.797% | −0.029% | −14.798% | −30.341% |
+
+The whole-trace numbers, in metres and metres per second, defined as for the same-drag flights
+above. [Valetudo's][valetudo-predicted-case] and [NDRT 2020's][ndrt-predicted-case] height RMS
+are outside the target, and so is NDRT 2020's speed RMS, for the same reason as their apogees:
+hpr's own drag is lower than those examples' drag. Each bound is 3% of that case's own RocketPy
+apogee or top speed, so it differs from the same-drag bound: Juno III's 80.919560 m is inside its
+83.1 m here ([report][report]).
+
+| case | `series_height_rms_m` | height bound, m | `series_speed_rms_m_s` | speed bound, m/s |
+|---|---|---|---|---|
+| [`predicted-calisto-tests-motor-at-minus-1.373`][report] | +10.937445 | 84.5 | +0.398035 | 7.4 |
+| [`predicted-valetudo`][report] | +74.842332 | 21 | +2.742051 | 3.3 |
+| [`predicted-ndrt-2020-nose-to-tail`][report] | +115.696314 | 38.2 | +6.741165 | 5.5 |
+| [`predicted-juno-iii`][report] | +80.919560 | 83.1 | +1.940801 | 6.8 |
+| [`predicted-bella-lui`][report] | +5.953813 | 16.1 | +0.422442 | 2.9 |
 
 Why the misses, largest first:
 

@@ -605,6 +605,32 @@
       "verdict": "pass"
     },
     {
+      "case": "flight-calisto-tests-motor-at-minus-1.373",
+      "metric": "series_height_rms_m",
+      "measured": 3.166705210124178,
+      "reference": 0.0,
+      "source": "0, exact agreement with validation/oracles/rocketpy/flight.py, case calisto-tests-motor-at-minus-1.373, series: the RMS of hpr's value less the reference's at its times",
+      "tolerance": {
+        "absolute": 78.3
+      },
+      "difference": 3.166705210124178,
+      "relative": null,
+      "verdict": "pass"
+    },
+    {
+      "case": "flight-calisto-tests-motor-at-minus-1.373",
+      "metric": "series_speed_rms_m_s",
+      "measured": 0.16012730191769298,
+      "reference": 0.0,
+      "source": "0, exact agreement with validation/oracles/rocketpy/flight.py, case calisto-tests-motor-at-minus-1.373, series: the RMS of hpr's value less the reference's at its times",
+      "tolerance": {
+        "absolute": 7.3
+      },
+      "difference": 0.16012730191769298,
+      "relative": null,
+      "verdict": "pass"
+    },
+    {
       "case": "flight-valetudo",
       "metric": "apogee_agl_m",
       "measured": 778.8402516034951,
@@ -799,6 +825,32 @@
       "verdict": "pass"
     },
     {
+      "case": "flight-valetudo",
+      "metric": "series_height_rms_m",
+      "measured": 1.4419565040056403,
+      "reference": 0.0,
+      "source": "0, exact agreement with validation/oracles/rocketpy/flight.py, case valetudo, series: the RMS of hpr's value less the reference's at its times",
+      "tolerance": {
+        "absolute": 23.3
+      },
+      "difference": 1.4419565040056403,
+      "relative": null,
+      "verdict": "pass"
+    },
+    {
+      "case": "flight-valetudo",
+      "metric": "series_speed_rms_m_s",
+      "measured": 0.22824035758454517,
+      "reference": 0.0,
+      "source": "0, exact agreement with validation/oracles/rocketpy/flight.py, case valetudo, series: the RMS of hpr's value less the reference's at its times",
+      "tolerance": {
+        "absolute": 3.3
+      },
+      "difference": 0.22824035758454517,
+      "relative": null,
+      "verdict": "pass"
+    },
+    {
       "case": "flight-ndrt-2020-nose-to-tail",
       "metric": "apogee_agl_m",
       "measured": 1217.256053127962,
@@ -988,6 +1040,32 @@
       },
       "difference": -0.00018209754607928508,
       "relative": -0.000846384738276331,
+      "verdict": "pass"
+    },
+    {
+      "case": "flight-ndrt-2020-nose-to-tail",
+      "metric": "series_height_rms_m",
+      "measured": 2.0370969737534512,
+      "reference": 0.0,
+      "source": "0, exact agreement with validation/oracles/rocketpy/flight.py, case ndrt-2020-nose-to-tail, series: the RMS of hpr's value less the reference's at its times",
+      "tolerance": {
+        "absolute": 36.5
+      },
+      "difference": 2.0370969737534512,
+      "relative": null,
+      "verdict": "pass"
+    },
+    {
+      "case": "flight-ndrt-2020-nose-to-tail",
+      "metric": "series_speed_rms_m_s",
+      "measured": 0.1323230959579622,
+      "reference": 0.0,
+      "source": "0, exact agreement with validation/oracles/rocketpy/flight.py, case ndrt-2020-nose-to-tail, series: the RMS of hpr's value less the reference's at its times",
+      "tolerance": {
+        "absolute": 5.4
+      },
+      "difference": 0.1323230959579622,
+      "relative": null,
       "verdict": "pass"
     },
     {
@@ -1184,6 +1262,32 @@
       "verdict": "pass"
     },
     {
+      "case": "flight-juno-iii",
+      "metric": "series_height_rms_m",
+      "measured": 39.200768620866036,
+      "reference": 0.0,
+      "source": "0, exact agreement with validation/oracles/rocketpy/flight.py, case juno-iii, series: the RMS of hpr's value less the reference's at its times",
+      "tolerance": {
+        "absolute": 77.6
+      },
+      "difference": 39.200768620866036,
+      "relative": null,
+      "verdict": "pass"
+    },
+    {
+      "case": "flight-juno-iii",
+      "metric": "series_speed_rms_m_s",
+      "measured": 2.0589158184732335,
+      "reference": 0.0,
+      "source": "0, exact agreement with validation/oracles/rocketpy/flight.py, case juno-iii, series: the RMS of hpr's value less the reference's at its times",
+      "tolerance": {
+        "absolute": 6.7
+      },
+      "difference": 2.0589158184732335,
+      "relative": null,
+      "verdict": "pass"
+    },
+    {
       "case": "flight-bella-lui",
       "metric": "apogee_agl_m",
       "measured": 532.2943639163265,
@@ -1374,6 +1478,32 @@
       },
       "difference": -0.0000996583109696414,
       "relative": -0.0002899133944222132,
+      "verdict": "pass"
+    },
+    {
+      "case": "flight-bella-lui",
+      "metric": "series_height_rms_m",
+      "measured": 2.302355589720785,
+      "reference": 0.0,
+      "source": "0, exact agreement with validation/oracles/rocketpy/flight.py, case bella-lui, series: the RMS of hpr's value less the reference's at its times",
+      "tolerance": {
+        "absolute": 15.8
+      },
+      "difference": 2.302355589720785,
+      "relative": null,
+      "verdict": "pass"
+    },
+    {
+      "case": "flight-bella-lui",
+      "metric": "series_speed_rms_m_s",
+      "measured": 0.4447346425759263,
+      "reference": 0.0,
+      "source": "0, exact agreement with validation/oracles/rocketpy/flight.py, case bella-lui, series: the RMS of hpr's value less the reference's at its times",
+      "tolerance": {
+        "absolute": 2.9
+      },
+      "difference": 0.4447346425759263,
+      "relative": null,
       "verdict": "pass"
     },
     {
@@ -1572,6 +1702,32 @@
       "verdict": "within_target"
     },
     {
+      "case": "predicted-calisto-tests-motor-at-minus-1.373",
+      "metric": "series_height_rms_m",
+      "measured": 10.937445180181191,
+      "reference": 0.0,
+      "source": "0, exact agreement with validation/oracles/rocketpy/flight.py, case calisto-tests-motor-at-minus-1.373, series: the RMS of hpr's value less the reference's at its times",
+      "tolerance": {
+        "absolute": 84.5
+      },
+      "difference": 10.937445180181191,
+      "relative": null,
+      "verdict": "within_target"
+    },
+    {
+      "case": "predicted-calisto-tests-motor-at-minus-1.373",
+      "metric": "series_speed_rms_m_s",
+      "measured": 0.3980351325762522,
+      "reference": 0.0,
+      "source": "0, exact agreement with validation/oracles/rocketpy/flight.py, case calisto-tests-motor-at-minus-1.373, series: the RMS of hpr's value less the reference's at its times",
+      "tolerance": {
+        "absolute": 7.4
+      },
+      "difference": 0.3980351325762522,
+      "relative": null,
+      "verdict": "within_target"
+    },
+    {
       "case": "predicted-valetudo",
       "metric": "apogee_agl_m",
       "measured": 770.3167617690156,
@@ -1764,6 +1920,32 @@
       },
       "difference": -0.0004985905506628696,
       "relative": -0.0010940501008591824,
+      "verdict": "within_target"
+    },
+    {
+      "case": "predicted-valetudo",
+      "metric": "series_height_rms_m",
+      "measured": 74.84233164309151,
+      "reference": 0.0,
+      "source": "0, exact agreement with validation/oracles/rocketpy/flight.py, case valetudo, series: the RMS of hpr's value less the reference's at its times",
+      "tolerance": {
+        "absolute": 21.0
+      },
+      "difference": 74.84233164309151,
+      "relative": null,
+      "verdict": "outside_target"
+    },
+    {
+      "case": "predicted-valetudo",
+      "metric": "series_speed_rms_m_s",
+      "measured": 2.742051389522785,
+      "reference": 0.0,
+      "source": "0, exact agreement with validation/oracles/rocketpy/flight.py, case valetudo, series: the RMS of hpr's value less the reference's at its times",
+      "tolerance": {
+        "absolute": 3.3
+      },
+      "difference": 2.742051389522785,
+      "relative": null,
       "verdict": "within_target"
     },
     {
@@ -1962,6 +2144,32 @@
       "verdict": "within_target"
     },
     {
+      "case": "predicted-ndrt-2020-nose-to-tail",
+      "metric": "series_height_rms_m",
+      "measured": 115.69631362650954,
+      "reference": 0.0,
+      "source": "0, exact agreement with validation/oracles/rocketpy/flight.py, case ndrt-2020-nose-to-tail, series: the RMS of hpr's value less the reference's at its times",
+      "tolerance": {
+        "absolute": 38.2
+      },
+      "difference": 115.69631362650954,
+      "relative": null,
+      "verdict": "outside_target"
+    },
+    {
+      "case": "predicted-ndrt-2020-nose-to-tail",
+      "metric": "series_speed_rms_m_s",
+      "measured": 6.741165417716753,
+      "reference": 0.0,
+      "source": "0, exact agreement with validation/oracles/rocketpy/flight.py, case ndrt-2020-nose-to-tail, series: the RMS of hpr's value less the reference's at its times",
+      "tolerance": {
+        "absolute": 5.5
+      },
+      "difference": 6.741165417716753,
+      "relative": null,
+      "verdict": "outside_target"
+    },
+    {
       "case": "predicted-juno-iii",
       "metric": "apogee_agl_m",
       "measured": 2858.700302284092,
@@ -2154,6 +2362,32 @@
       },
       "difference": -0.0006360466555268007,
       "relative": -0.0014302867111419828,
+      "verdict": "within_target"
+    },
+    {
+      "case": "predicted-juno-iii",
+      "metric": "series_height_rms_m",
+      "measured": 80.91956002603234,
+      "reference": 0.0,
+      "source": "0, exact agreement with validation/oracles/rocketpy/flight.py, case juno-iii, series: the RMS of hpr's value less the reference's at its times",
+      "tolerance": {
+        "absolute": 83.1
+      },
+      "difference": 80.91956002603234,
+      "relative": null,
+      "verdict": "within_target"
+    },
+    {
+      "case": "predicted-juno-iii",
+      "metric": "series_speed_rms_m_s",
+      "measured": 1.9408007605247215,
+      "reference": 0.0,
+      "source": "0, exact agreement with validation/oracles/rocketpy/flight.py, case juno-iii, series: the RMS of hpr's value less the reference's at its times",
+      "tolerance": {
+        "absolute": 6.8
+      },
+      "difference": 1.9408007605247215,
+      "relative": null,
       "verdict": "within_target"
     },
     {
@@ -2350,6 +2584,32 @@
       "difference": -0.00009861613523343138,
       "relative": -0.0002868891888125892,
       "verdict": "within_target"
+    },
+    {
+      "case": "predicted-bella-lui",
+      "metric": "series_height_rms_m",
+      "measured": 5.953813041613866,
+      "reference": 0.0,
+      "source": "0, exact agreement with validation/oracles/rocketpy/flight.py, case bella-lui, series: the RMS of hpr's value less the reference's at its times",
+      "tolerance": {
+        "absolute": 16.1
+      },
+      "difference": 5.953813041613866,
+      "relative": null,
+      "verdict": "within_target"
+    },
+    {
+      "case": "predicted-bella-lui",
+      "metric": "series_speed_rms_m_s",
+      "measured": 0.42244229643379105,
+      "reference": 0.0,
+      "source": "0, exact agreement with validation/oracles/rocketpy/flight.py, case bella-lui, series: the RMS of hpr's value less the reference's at its times",
+      "tolerance": {
+        "absolute": 2.9
+      },
+      "difference": 0.42244229643379105,
+      "relative": null,
+      "verdict": "within_target"
     }
   ],
   "gaps": [
@@ -2358,14 +2618,14 @@
       "reason": "The reference peaks at Mach 1.014 near burnout, and hpr's aerodynamics refuse M >= 1 until M1.8 (ADR-008, ADR-011), so the flight stops at Mach 1 and no metric can be compared.",
       "refusal": "refused the flight at Mach 1.000, outside its subsonic models' range of [0, 1)",
       "mach": 1.0000000000000009,
-      "metric_count": 15
+      "metric_count": 17
     },
     {
       "case": "predicted-prometheus-2022-generic-motor",
       "reason": "RocketPy flying the example's own drag peaks at Mach 1.049 near burnout, and hpr's aerodynamics refuse M >= 1 until M1.8 (ADR-008, ADR-011), so the flight stops at Mach 1 and no metric can be compared.",
       "refusal": "refused the flight at Mach 1.000, outside its subsonic models' range of [0, 1)",
       "mach": 1.0000000000000004,
-      "metric_count": 15
+      "metric_count": 17
     }
   ],
   "sources": [

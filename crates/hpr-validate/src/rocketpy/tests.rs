@@ -2,7 +2,7 @@
 
 use serde_json::{Value, json};
 
-use super::whole_flight_case;
+use super::{series, whole_flight_case};
 use crate::case::Flight;
 use crate::run::run_lock;
 use crate::tests::{cases, root, scratch_case};
@@ -275,4 +275,45 @@ fn the_own_drag_reference_differs_from_the_same_drag_one_only_in_its_drag() {
     }
     assert_eq!(own["mass_fixture"], same["mass_fixture"]);
     assert_eq!(own["oracle"], same["oracle"]);
+}
+
+#[test]
+fn a_series_is_read_only_as_time_height_speed_rising_from_ignition() {
+    let good = json!({
+        "columns": ["time_s", "height_above_ground_m", "speed_m_s"],
+        "rows": [[0.0, 0.0, 0.0], [1.5, 20.0, 30.0], [3.0, 70.0, 35.0]],
+    });
+    assert_eq!(
+        series(Some(&good)),
+        Some(vec![(0.0, 0.0, 0.0), (1.5, 20.0, 30.0), (3.0, 70.0, 35.0)])
+    );
+    // Every way a series could be misread is refused rather than compared.
+    let with = |key: &str, value: Value| {
+        let mut changed = good.clone();
+        changed[key] = value;
+        series(Some(&changed))
+    };
+    let swapped = json!(["time_s", "speed_m_s", "height_above_ground_m"]);
+    assert_eq!(with("columns", swapped), None, "columns in another order");
+    let late = json!([[0.5, 0.0, 0.0], [1.5, 20.0, 30.0]]);
+    assert_eq!(with("rows", late), None, "a clock that is not at ignition");
+    let back = json!([[0.0, 0.0, 0.0], [1.5, 20.0, 30.0], [1.5, 21.0, 30.0]]);
+    assert_eq!(with("rows", back), None, "times that do not rise");
+    let short = json!([[0.0, 0.0, 0.0], [1.5, 20.0]]);
+    assert_eq!(with("rows", short), None, "a row missing a column");
+    assert_eq!(with("rows", json!([])), None, "no rows");
+    assert_eq!(series(None), None, "no series");
+    // And each committed whole flight carries its 120 rows, into both RMS references at 0.
+    let document = fixture(WHOLE_FLIGHT);
+    let (reference, setup) = whole_flight_case(
+        &document,
+        "calisto-tests-motor-at-minus-1.373",
+        WHOLE_FLIGHT,
+        "0",
+    )
+    .expect("the Calisto case reads");
+    assert_eq!(setup.series.len(), 120);
+    for name in ["series_height_rms_m", "series_speed_rms_m_s"] {
+        assert_eq!(reference.values[name].value, 0.0, "{name}");
+    }
 }

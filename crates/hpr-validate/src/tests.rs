@@ -206,14 +206,29 @@ fn no_committed_gate_is_looser_than_the_milestone_says() {
     // Predicted mode's targets too (ADR-023): a target widened past 3% would turn misses into
     // "within target" with nothing failing.
     let report = run_lock(&root(), false).expect("the committed cases run");
+    // The time-series RMS has 0 for its reference, so its 3% is of the scale of its trace, the
+    // same case's reference apogee or max speed (M2.1d1), as its case file argues.
+    let reference_of = |case: &str, metric: &str| {
+        report
+            .comparisons
+            .iter()
+            .find(|c| c.case == case && c.metric == metric)
+            .map(|c| c.reference)
+            .expect("every whole flight reports its apogee and max speed")
+    };
     let bounded = report
         .comparisons
         .iter()
         .filter(|c| c.scored() || c.targeted_row());
-    assert_eq!(bounded.clone().count(), 94 + 75);
+    assert_eq!(bounded.clone().count(), 94 + 10 + 75 + 10);
     for comparison in bounded {
         let allowed = comparison.tolerance.allowed(comparison.reference);
-        let claimed = 0.03 * comparison.reference.abs();
+        let scale = match comparison.metric.as_str() {
+            "series_height_rms_m" => reference_of(&comparison.case, "apogee_agl_m"),
+            "series_speed_rms_m_s" => reference_of(&comparison.case, "max_speed_m_s"),
+            _ => comparison.reference,
+        };
+        let claimed = 0.03 * scale.abs();
         assert!(
             allowed <= claimed * (1.0 + 1e-12),
             "{}'s {} may move by {allowed} where the milestone allows {claimed}",
@@ -290,6 +305,7 @@ fn the_metrics_that_are_not_scored_are_these_and_no_others() {
         "apogee_time_s",
         "flight_time_s",
         "landing_drift_m",
+        "series_height_rms_m",
     ] {
         expected_outside.push(("predicted-valetudo", metric));
     }
@@ -301,6 +317,8 @@ fn the_metrics_that_are_not_scored_are_these_and_no_others() {
         "landing_drift_m",
         "max_acceleration_m_s2",
         "max_acceleration_time_s",
+        "series_height_rms_m",
+        "series_speed_rms_m_s",
     ] {
         expected_outside.push(("predicted-ndrt-2020-nose-to-tail", metric));
     }
@@ -611,18 +629,18 @@ fn the_committed_cases_all_pass_and_the_report_says_so() {
     // report that `cargo xtask validate` writes is the one this produces.
     let report = run_lock(&root(), false).expect("the committed cases run");
     assert_eq!(report.cases.len(), 17, "{:?}", report.cases);
-    // Five descents of six metrics, and five whole flights of fifteen in each mode; the sixth whole
-    // flight is a known gap in both and compares nothing.
-    assert_eq!(report.comparisons.len(), 180);
+    // Five descents of six metrics, and five whole flights of seventeen in each mode; the sixth
+    // whole flight is a known gap in both and compares nothing.
+    assert_eq!(report.comparisons.len(), 200);
     assert_eq!(report.not_scored().len(), 11, "argued in the case files");
     assert_eq!(report.gaps.len(), 2);
-    // Predicted mode's 75 rows are reported against a target and never count towards the verdict.
+    // Predicted mode's 85 rows are reported against a target and never count towards the verdict.
     let targeted = report
         .comparisons
         .iter()
         .filter(|comparison| comparison.targeted_row())
         .count();
-    assert_eq!(targeted, 75);
+    assert_eq!(targeted, 85);
     assert!(report.passed(), "{:?}", report.failures());
     // M2.1b2's own bar: at least five whole flights, every metric scored or argued, all passing.
     let whole_flights: Vec<&String> = report
@@ -641,12 +659,12 @@ fn the_committed_cases_all_pass_and_the_report_says_so() {
     );
     let markdown = report.to_markdown();
     assert!(
-        markdown.contains("94 scored, all within tolerance"),
+        markdown.contains("104 scored, all within tolerance"),
         "{markdown}"
     );
     assert!(
         markdown
-            .contains("## Known gaps\n\n- **flight-prometheus-2022-generic-motor**: 15 metric(s)"),
+            .contains("## Known gaps\n\n- **flight-prometheus-2022-generic-motor**: 17 metric(s)"),
         "{markdown}"
     );
     assert!(
@@ -978,7 +996,7 @@ fn a_known_gap_is_checked_not_trusted() {
         .expect("Prometheus is a gap");
     assert!(gap.reason.contains("Mach 1.014"), "{gap:?}");
     assert!(gap.refusal.contains("Mach 1.000"), "{gap:?}");
-    assert_eq!(gap.metric_count, 15);
+    assert_eq!(gap.metric_count, 17);
     assert!(
         !report
             .comparisons

@@ -4,11 +4,11 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
 
 ## Now
 
-- **Current milestone:** M2.1d The time-series RMS and the path in wind
-- **Order:** M2.1d, then M1.8; M0.4 waits only on M0.4d's deploy, blocked on Pages (Needs Neer)
-- **Run:** the first autopilot run; M0.1-M0.4c, M0.4e, M1.1-M1.7 and M2.1a-M2.1c have shipped,
-  and M0.4d all but its deploy
-- **Last updated:** 2026-09-18 (M2.1c2 shipped; M2.1d not started)
+- **Current milestone:** M2.1d2 The path in wind (issue #50)
+- **Order:** M2.1d2, then M1.8; M0.4 waits only on M0.4d's deploy, blocked on Pages (Needs Neer)
+- **Run:** the first autopilot run; M0.1-M0.4c, M0.4e, M1.1-M1.7, M2.1a-M2.1c and M2.1d1 have
+  shipped, and M0.4d all but its deploy
+- **Last updated:** 2026-09-18 (M2.1d1 shipped; M2.1d2 not started)
 
 ## Handoff (overwrite each session)
 
@@ -22,16 +22,14 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
 - **When Pages is on:** `gh workflow run CI --ref main`; once `deploy` passes, drop the README's
   "goes live once" sentence, check M0.4d and M0.4 off, and set both rows to `done`.
 
-M2.1c (ADR-022, ADR-023): CI's `validate (os)` job checks the committed report on three OSes;
-*Regenerate references* runs only by hand and uploads a diff. Predicted mode flies hpr's own drag
-against RocketPy on each example's own drag (`flight.py --own-drag`) at rtol 1e-11, each metric
-held to a 3% *target*, never gated: apogees −0.527% to +10.232%, misses explained and pinned.
-Peaks are found inside steps on the dense output, so they no longer move with the step sequence.
-M2.1 stays open for M2.1d: its list names a time-series RMS nobody built, and the landing offset.
+M2.1c (ADR-022, ADR-023): CI checks the committed report on three OSes; predicted mode flies hpr's
+own drag at rtol 1e-11 against 3% *targets*, never gated. M2.1 stays open for M2.1d2.
 
-- **M2.1d, the RMS:** each whole-flight fixture has a 120-row `series` (time, height, speed);
-  `hpr_validate` reads none of it. Align, compute the RMS, gate it with an argued tolerance.
-- **M2.1d, issue #50** (the path in wind): bisect the rail release, hpr's drag growth with angle of
+- **M2.1d1, the RMS (ADR-024):** `series_height_rms_m` and `series_speed_rms_m_s` on every flown
+  whole-flight case (Prometheus stays the `M ≥ 1` gap), sampled from each step's dense output at
+  the fixture's 120 times, held to 3% of the reference's apogee and max speed (the gate test holds
+  them no looser). A new whole-flight case must name both.
+- **M2.1d2, issue #50** (the path in wind): bisect the rail release, hpr's drag growth with angle of
   attack, and each code's normal force and damping (only C_D0 differs between the modes).
 - **M1.8** after: don't read predicted mode's +10% (Valetudo, NDRT) as gaps to close. hpr's drag
   there runs on placeholder fin edges and finishes, and Valetudo's table is suspect (ADR-009).
@@ -45,6 +43,8 @@ M2.1 stays open for M2.1d: its list names a time-series RMS nobody built, and th
 
 ## Done log (newest first, keep about 15)
 
+- 2026-09-18: M2.1d1 The time-series RMS (ADR-024): height and speed RMS on the ten flown whole
+  flights, aligned at ignition; ten same-drag RMS rows pass, three predicted outside target.
 - 2026-09-18: M2.1c2 Predicted mode (PR #52, ADR-023): hpr's own drag against RocketPy on each
   example's own drag; 3% targets, not gates; 56 of 75 within; M2.1d split off for the RMS and #50.
 - 2026-09-18: M2.1c1 Validation in CI and regeneration by hand (PR #51, ADR-022): `validate

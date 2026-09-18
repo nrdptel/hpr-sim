@@ -559,11 +559,29 @@
       alignment (each whole-flight fixture already carries its series), and the landing offset,
       reported but not scored until issue #50 finds why hpr turns into the wind less than RocketPy.
 
-    *Done when:*
-    - Every whole-flight case reports its time-series RMS after alignment against the reference's
-      series, gated with its tolerance argued in the case file.
-    - Issue #50's cause is found and the drifts are scored within their tolerances, or an ADR
-      records the measured cause and why they cannot be, and the gap stays visible in the report.
+    *Done when:* split below into M2.1d1 and M2.1d2, which carry these two bullets between them.
+
+    - [x] **M2.1d1 The time-series RMS.**
+
+      *Done when:*
+      - Every whole-flight case reports its time-series RMS after alignment against the
+        reference's series, gated with its tolerance argued in the case file.
+
+      *Result (ADR-024):* met for every case hpr flies. `series_height_rms_m` and
+      `series_speed_rms_m_s` at RocketPy's 120 series times from ignition (the shared clock, no
+      fitted shift) until hpr lands, from each step's dense output, reported by the ten flown cases.
+      Held to 3% of the reference's apogee and max speed, set before measuring; the gate test holds
+      each bound no looser than that. Same-drag, gated: height 1.4 to 39.2 m, speed 0.13 to
+      2.06 m/s, all ten RMS rows pass. Predicted, targets (ADR-023): three outside (Valetudo,
+      NDRT 2020: the drag), explained and pinned. Both Prometheus 2022 cases name both metrics
+      with their bounds and stay the checked `M ≥ 1` gap, flying nothing, until M1.8.
+
+    - [ ] **M2.1d2 The path in wind (issue #50).**
+
+      *Done when:*
+      - Issue #50's cause is found and the drifts are scored within their tolerances, or an ADR
+        records the measured cause and why they cannot be, and the gap stays visible in the
+        report.
 
 - [ ] **M1.8 Aerodynamics II (transonic and supersonic, damping, overrides).**
   - Transonic drag rise and supersonic wave drag.

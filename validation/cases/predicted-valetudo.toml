@@ -24,6 +24,9 @@
 #   inputs that ADR-009 calls suspect. Flown on the same drag the two codes agree on the apogee to
 #   +0.003% (`flight-valetudo.toml`), so the 10% is the drag: less of it flies the rocket higher,
 #   and a higher apogee means a longer descent under the drogue and further to drift.
+# - series_height_rms_m (74.8 m, target 21.0): the same drag, over the whole trace: hpr climbs 70 m
+#   higher and lands 4.7 s later, so its height sits above RocketPy's from the coast to the ground.
+#   Its speed RMS, 2.7 m/s, is within target. Flown on the same drag the height RMS is 1.4 m.
 id = "predicted-valetudo"
 title = "Valetudo from the pad to the ground, predicted: hpr's own aerodynamics"
 reference = "validation/fixtures/flight/rocketpy-whole-flight-own-drag.json"
@@ -78,3 +81,14 @@ relative = 0.03
 
 [metrics.impact_speed_m_s]
 relative = 0.03
+
+# The time-series RMS (M2.1d1): hpr's height and speed at the reference's 120 series times, from
+# ignition until hpr lands, less RocketPy's; the reference value is 0, exact agreement. Each is held
+# (a target) to 3% of the scale of its trace, the reference's apogee (700.2 m) and max speed
+# (110.1 m/s), rounded down to 0.1: M2.1's 3% for a point metric, applied to a whole trace, so a
+# trace passes only if it is on average no further off than its peak may be.
+[metrics.series_height_rms_m]
+absolute = 21.0
+
+[metrics.series_speed_rms_m_s]
+absolute = 3.3
