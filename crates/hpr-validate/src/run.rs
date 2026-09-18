@@ -673,9 +673,10 @@ fn rocketpy_environment(
 ///   ([Loft lesson L26][l26]). hpr is still on its rail then, so the harness finds the instant the
 ///   forward guide's travel is reached and reads the speed there.
 /// - The maxima are over the solver's steps, both ends of each, as RocketPy's are over its
-///   solution array, which starts each phase at its first instant, and over each peak that falls
-///   inside a step, found on the step's dense output (`Peaks::peaks_within`); the power-on
-///   maximum is over those up to burnout (`max_acceleration_power_on`).
+///   solution array, which starts each phase at its first instant. Unlike RocketPy's, they are
+///   also over the peaks found inside a step on its dense output (`Peaks::peaks_within`), so that
+///   they do not move with the step sequence (ADR-023). The power-on maximum is over those up to
+///   burnout (`max_acceleration_power_on`).
 ///
 /// [l26]: https://nrdptel.github.io/hpr-sim/decisions-and-roadmap.html#l26
 /// [l80]: https://github.com/nrdptel/hpr-sim/blob/main/docs/research/loft-lessons.md
@@ -1164,15 +1165,21 @@ impl Peaks {
 
     /// The rows at the peaks of speed, Mach and acceleration that fall inside `step`.
     ///
-    /// A peak read only where steps end is off by wherever the step control put them: by O(h²) of
-    /// the step length h at a smooth peak, by O(h) at a kink such as a thrust curve's point. The
-    /// step control is not the same on every platform (predicted mode's drag calls `ln` and
-    /// `powf`), so neither is such a peak: moving predicted mode's solver tolerance by 1e-8 of
-    /// itself moved NDRT 2020's max speed by 2.4e-6 of itself, where the event-located apogee
-    /// moved by 1.3e-9. So where a quantity rises out of the step's start and falls into its end,
+    /// A peak read only where steps end is off by wherever the step control put them, by O(h²) of
+    /// the step length h at a smooth peak. (A thrust curve's points are stop times, so a peak there
+    /// is a step's end and read exactly.) The step control is not the same on every platform
+    /// (predicted mode's drag calls `ln` and `powf`), so neither is such a peak: moving predicted
+    /// mode's solver tolerance by 1e-7 of itself moved NDRT 2020's max speed by 2.4e-6 of itself,
+    /// where the event-located apogee moved by 1.3e-9. So where a quantity rises out of the step's start and falls into its end,
     /// as read one microsecond (or a quarter of the step) inside each, a golden-section search on
     /// the step's dense output narrows onto the peak between them. What it finds is the
     /// interpolant's peak, which the tolerance controls, wherever the steps fall.
+    ///
+    /// Its limits, measured by sampling every step at 400 points: a step whose quantity turns more
+    /// than once, or jumps (the skin friction at the critical Reynolds number), is not searched;
+    /// none of those is a flight's maximum today. And the acceleration an evaluation of the
+    /// equations of motion gives is smooth only to about 1e-7 m/s², so a smooth acceleration peak
+    /// is found to about 1e-8 of itself and its time only to about 1e-4 s (issue #53).
     ///
     /// `first` and `last` are the rows at the step's start and end. A sample inside the step that
     /// is not a number comes back as a row of its own, so that the flight is refused for it rather

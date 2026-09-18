@@ -902,8 +902,7 @@ fn a_peak_inside_a_step_is_found_smooth_or_kinked() {
     let smooth = found(speed);
     assert!((smooth - 0.0317).abs() < 5e-9, "{smooth}");
     assert!((speed(smooth) - 186.68).abs() < 1e-13, "{}", speed(smooth));
-    // A kinked one, as acceleration's at a thrust curve's point: within 3.5e-11 of the 0.05 s
-    // bracket.
+    // A kinked one, as where a wind table changes level: within 3.5e-11 of the 0.05 s bracket.
     let kinked = found(|t| 115.3 - 900.0 * (t - 0.0083).abs());
     assert!((kinked - 0.0083).abs() < 2e-12, "{kinked}");
     // At an end of the bracket it finds that end.
