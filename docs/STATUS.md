@@ -4,11 +4,11 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
 
 ## Now
 
-- **Current milestone:** M2.1d2 The calm-air cases (issue #50)
-- **Order:** M2.1d2, M2.1d3, then M1.8; M0.4 waits only on M0.4d's deploy, blocked on Pages (Needs Neer)
-- **Run:** the first autopilot run; M0.1-M0.4c, M0.4e, M1.1-M1.7, M2.1a-M2.1c and M2.1d1 have
-  shipped, and M0.4d all but its deploy
-- **Last updated:** 2026-09-18 (M2.1d2 in progress on a draft PR; M2.1d3 not started)
+- **Current milestone:** M2.1d3 The path in wind (issue #50)
+- **Order:** M2.1d3, then M1.8; M0.4 waits only on M0.4d's deploy, blocked on Pages (Needs Neer)
+- **Run:** the first autopilot run; M0.1-M0.4c, M0.4e, M1.1-M1.7, M2.1a-M2.1c and M2.1d1-d2
+  have shipped, and M0.4d all but its deploy
+- **Last updated:** 2026-09-18 (M2.1d2 shipped; M2.1d3 not started)
 
 ## Handoff (overwrite each session)
 
@@ -28,17 +28,12 @@ M2.1c (ADR-022, 023): CI checks the report on three OSes; predicted mode's 3% ar
   whole-flight case (Prometheus stays the `M ≥ 1` gap), sampled from each step's dense output at
   the fixture's 120 times, held to 3% of the reference's apogee and max speed (the gate test holds
   them no looser). A new whole-flight case must name both.
-- **Resume here, M2.1d2 (draft PR on `m2.1d2-calm-air`):** done: `CALM_AIR_BASES` in `flight.py`,
-  the fixture regenerated (the old cases bit-identical), three locked `flight-*-calm` cases. Calisto
-  and Bella Lui pass every metric (drifts -1.3 to -2.6%). Juno III calm misses its drifts at -3.7%
-  (549 vs 570 m; apogee +0.06%): hpr turns less off the 85-degree rail even without wind.
-  `rail_release.py` (RocketPy's rail longer by its button spacing, so it frees the rocket where hpr
-  does; all three calm cases then within -0.5 to -2.2%): RocketPy's drifts become 561.0 and 641.0 m, hpr within -2.1% of both. So the rail release
-  (hpr: last button, RocketPy: first) is most of it. Left: pin that as a check, argue the case in its
-  file and an ADR (or match the release); `docs/accuracy.md` has the rows and a first paragraph (its
-  *In wind* item) to finish with the result; physics-reviewer, validation-auditor, docs-reviewer; check M2.1d2 off.
-- **Then M2.1d3** (the path in wind): bisect the rail release, hpr's drag growth with angle of attack,
-  and each code's normal force and damping (only C_D0 differs between the modes).
+- **M2.1d2, the calm-air cases (ADR-025):** three `flight-*-calm` cases, flown on `flight.py`'s
+  `CALM_AIR_BASES`, drifts scored at 3%; Juno III's drifts are not scored (the rail release,
+  measured by `rail_release.py`: with it matched, every calm drift is within 2.2%).
+- **M2.1d3, issue #50** (the path in wind): start with the rail release (ADR-025), then hpr's
+  drag growth with angle of attack, and each code's normal force and damping (only C_D0 differs
+  between the modes). In wind the gap is far more than the release explains.
 - **M1.8** after: don't read predicted mode's +10% (Valetudo, NDRT) as gaps to close. hpr's drag
   there runs on placeholder fin edges and finishes, and Valetudo's table is suspect (ADR-009).
   Both Prometheus cases are checked `M ≥ 1` gaps that fail the run once hpr flies them.
@@ -51,8 +46,10 @@ M2.1c (ADR-022, 023): CI checks the report on three OSes; predicted mode's 3% ar
 
 ## Done log (newest first, keep about 15)
 
-- 2026-09-18: M2.1d1 The time-series RMS (PR #54, ADR-024): height and speed RMS on the ten flown whole
-  flights, aligned at ignition; ten same-drag RMS rows pass, three predicted outside target.
+- 2026-09-18: M2.1d2 The calm-air cases (PR #57, ADR-025): Calisto and Bella Lui pass; Juno III's
+  drifts not scored, the rail release measured as their cause.
+- 2026-09-18: M2.1d1 The time-series RMS (PR #54, ADR-024): height and speed RMS on the ten flown
+  whole flights, aligned at ignition; ten same-drag RMS rows pass, three predicted outside target.
 - 2026-09-18: M2.1c2 Predicted mode (PR #52, ADR-023): hpr's own drag against RocketPy on each
   example's own drag; 3% targets, not gates; 56 of 75 within; M2.1d split off for the RMS and #50.
 - 2026-09-18: M2.1c1 Validation in CI and regeneration by hand (PR #51, ADR-022): `validate

@@ -1,11 +1,13 @@
-# calisto-tests-motor-at-minus-1.373-calm: the same rocket, rail, site and declared drag as `flight-calisto-tests-motor-at-minus-1.373.toml`, flown by both codes
-# with no wind (`validation/oracles/rocketpy/flight.py`, `CALM_AIR_BASES`; M2.1d2, issue #50).
+# calisto-tests-motor-at-minus-1.373-calm: the rocket, rail, site and declared drag of
+# `flight-calisto-tests-motor-at-minus-1.373.toml`, flown by both codes with no wind
+# (`validation/oracles/rocketpy/flight.py`, `CALM_AIR_BASES`; M2.1d2, issue #50).
 #
 # Everything that case's header says about the metrics, the rail and the sources of the remaining
 # differences holds here. What differs: with no wind, the horizontal path comes only from the
 # rail's inclination and heading, so the apogee and landing drifts are scored at the milestone's 3%
-# like every other metric. In wind the drifts are open misses (issue #50); these cases measure how
-# much of that miss is the response to wind.
+# like every other metric.
+# In wind the drifts are open misses (issue #50); these cases measure how much of that miss is the
+# response to wind.
 
 id = "flight-calisto-tests-motor-at-minus-1.373-calm"
 title = "Calisto, RocketPy's test rocket, from the pad to the ground in calm air, same-drag"
