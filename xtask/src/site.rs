@@ -5,7 +5,8 @@
 //! render, so the checks hold it to both:
 //!
 //! - **Links.** A relative link reaches another page of the site, or a file under `docs/` that
-//!   mdBook copies, and its `#fragment` a heading there. The rest of the repository is linked by
+//!   mdBook copies, and its `#fragment` a heading there, or an `<a id="...">` such as a table
+//!   row's. The rest of the repository is linked by
 //!   its `https://github.com/nrdptel/hpr-sim/blob/main/...` URL, which is checked against the
 //!   working tree, fragment included, so a PR that moves or renames a file fails until its links
 //!   follow. Other web links are counted, not fetched: a PR's checks don't depend on the network.
@@ -30,6 +31,10 @@
 //!   until the page follows (ADR-017).
 //! - **Decisions and the roadmap** (`docs/decisions-and-roadmap.md`) links every decision record
 //!   in `docs/DECISIONS.md` and every phase of `docs/ROADMAP.md`, so a new one can't be missed.
+//!   Its table of milestones has a row for each milestone and increment of the roadmap, anchored
+//!   by its id (`M1.10` as `#m1-10`) and with the roadmap's status, so pages can link a label to
+//!   a line of plain words, and a milestone checked off in the roadmap fails here until its row
+//!   follows (M0.4e).
 //! - **Quotes** (M0.4c). A fenced code block right under a `<!-- quote: <path> -->` comment must
 //!   be that file of the repository, line for line. So the code and output a page shows, such as
 //!   *Getting started*'s example and what it prints, can't drift from the files CI compiles and
@@ -44,7 +49,11 @@
 //! library in the workspace into `target/site/api`, so the site serves it beside the guide, and
 //! the two must link each other: a page of the site links each crate's front page, and each
 //! crate's documentation links the guide by its published address, [`SITE_URL`], which the check
-//! reads as a page of the built site. CI deploys `target/site` to GitHub Pages from `main`.
+//! reads as a page of the built site. Its pages are held to the guide's rule on **bare labels**
+//! (M0.4e): a label in the text a reader sees fails, and one in a link's text, in code, or on
+//! rustdoc's source pages, which quote the code as written, does not. A doc comment links a label
+//! to its row in *Decisions and the roadmap* by the site's address. CI deploys `target/site` to
+//! GitHub Pages from `main`.
 
 use std::collections::{BTreeMap, BTreeSet};
 use std::fs;
@@ -142,8 +151,8 @@ pub fn run(args: &[String]) -> Result<(), String> {
         built.pages
     );
     println!(
-        "API reference: {} crates in {OUTPUT}/{API} ({} HTML files), every link resolves, and \
-         each crate is linked from the site and links the guide",
+        "API reference: {} crates in {OUTPUT}/{API} ({} HTML files), every link resolves, each \
+         crate is linked from the site and links the guide, and no page has a bare label",
         crates.len(),
         built.api
     );
@@ -614,7 +623,7 @@ fn has_anchor(anchors: &BTreeSet<String>, fragment: &str, what: &str) -> Result<
         Ok(())
     } else {
         Err(format!(
-            "`{what}` has no heading with the anchor `#{fragment}`"
+            "`{what}` has no heading or `<a id>` with the anchor `#{fragment}`"
         ))
     }
 }
@@ -663,7 +672,8 @@ fn join(dir: &str, rel: &str) -> Option<String> {
 /// What the checks need from one Markdown file.
 #[derive(Debug, Default)]
 struct Page {
-    /// The anchors of its headings, as GitHub derives them.
+    /// The anchors of its headings, as GitHub derives them, and the `id`s of its `<a id="...">`
+    /// elements, which label a table's rows.
     anchors: BTreeSet<String>,
     /// Its links and images, as (line, destination).
     links: Vec<(usize, String)>,
@@ -690,6 +700,7 @@ fn read_page(text: &str) -> Page {
     let mut page = Page::default();
     let mut undefined = Vec::new();
     let mut headings = Vec::new();
+    let mut ids = Vec::new();
     {
         // `[text][ref]` and `[ref][]` are meant as links. `[ref]` alone may be a citation key such
         // as `[NGA]`, which GitHub and the site both show as text.
@@ -723,6 +734,9 @@ fn read_page(text: &str) -> Page {
             }
             if dollar_code {
                 page.problems.push((line(range.start), MATH.to_owned()));
+            }
+            if let Event::Html(html) | Event::InlineHtml(html) = &event {
+                ids.extend(anchor_ids(html));
             }
             match event {
                 Event::Start(Tag::Link {
@@ -796,6 +810,7 @@ fn read_page(text: &str) -> Page {
     }
     page.problems.sort_by_key(|(line, _)| *line);
     page.anchors = anchors(headings);
+    page.anchors.extend(ids);
     page
 }
 
@@ -881,6 +896,119 @@ fn page_rules(
                     ));
                 }
             }
+        }
+        // A roadmap that can't be read is reported above.
+        if let Ok(roadmap) = fs::read_to_string(root.join(ROADMAP)) {
+            problems.extend(milestone_rows(text, &roadmap));
+        }
+    }
+    problems
+}
+
+/// The roadmap, relative to the workspace root, whose milestones [`RECORDS`] has a row for each.
+const ROADMAP: &str = "docs/ROADMAP.md";
+
+/// The milestones and increments of the roadmap, in order, as (id, status): `done` once checked
+/// off, `blocked` when marked so, and `not yet done` otherwise. Each is a task-list item whose
+/// bold text opens with its id: `- [x] **M1.1 Core math.**`, `- [ ] [blocked] **M0.4d Publish.**`.
+fn roadmap_milestones(roadmap: &str) -> Vec<(String, &'static str)> {
+    roadmap
+        .lines()
+        .filter_map(|line| {
+            let (mark, rest) = line.trim_start().strip_prefix("- [")?.split_once("] ")?;
+            let (blocked, rest) = match rest.strip_prefix("[blocked] ") {
+                Some(rest) => (true, rest),
+                None => (false, rest),
+            };
+            let id = rest.strip_prefix("**")?.split_whitespace().next()?;
+            let status = match (mark, blocked) {
+                ("x", _) => "done",
+                (" ", true) => "blocked",
+                (" ", false) => "not yet done",
+                _ => return None,
+            };
+            is_milestone_id(id).then(|| (id.to_owned(), status))
+        })
+        .collect()
+}
+
+/// Whether `id` is a milestone's: `M`, a number, a dot, a number, and an increment's letter and
+/// number if any (`M1.10`, `M2.1b2`).
+fn is_milestone_id(id: &str) -> bool {
+    let Some((topic, rest)) = id.strip_prefix('M').and_then(|rest| rest.split_once('.')) else {
+        return false;
+    };
+    let number = |text: &str| !text.is_empty() && text.chars().all(|c| c.is_ascii_digit());
+    // After the place, an increment is a letter and perhaps a number.
+    let increment = rest.trim_start_matches(|c: char| c.is_ascii_digit());
+    let after_letter = increment.strip_prefix(|c: char| c.is_ascii_lowercase());
+    number(topic)
+        && increment.len() < rest.len()
+        && match after_letter {
+            None => increment.is_empty(),
+            Some(after) => after.is_empty() || number(after),
+        }
+}
+
+/// The anchor of a milestone's row in [`RECORDS`]: its id in lower case, the dot a hyphen.
+fn milestone_anchor(id: &str) -> String {
+    id.to_lowercase().replace('.', "-")
+}
+
+/// Holds [`RECORDS`]'s table of milestones to the roadmap, as (line, message). A row opens with
+/// `| <a id="<anchor>"></a>[<id>]...` and ends with the status; rows whose label is not a
+/// milestone id, such as the Loft lessons', are someone else's.
+fn milestone_rows(text: &str, roadmap: &str) -> Vec<(usize, String)> {
+    let expected = roadmap_milestones(roadmap);
+    let mut problems = Vec::new();
+    let mut rows = BTreeSet::new();
+    for (index, line) in text.lines().enumerate() {
+        let Some(row) = line.strip_prefix("| <a id=\"") else {
+            continue;
+        };
+        let Some((anchor, rest)) = row.split_once('"') else {
+            continue;
+        };
+        let Some(id) = rest
+            .split_once('[')
+            .and_then(|(_, label)| label.split_once(']'))
+            .map(|(id, _)| id)
+            .filter(|id| is_milestone_id(id))
+        else {
+            continue;
+        };
+        let at = index + 1;
+        let status = line.trim_end().trim_end_matches('|').rsplit('|').next();
+        let status = status.map_or("", str::trim);
+        match expected.iter().find(|(milestone, _)| milestone == id) {
+            None => problems.push((at, format!("`{id}` is not a milestone of {ROADMAP}"))),
+            Some((_, want)) if *want != status => problems.push((
+                at,
+                format!("`{id}` is {want} in {ROADMAP}, and its row says `{status}`"),
+            )),
+            Some(_) => {}
+        }
+        let want = milestone_anchor(id);
+        if anchor != want {
+            problems.push((
+                at,
+                format!("`{id}`'s row is anchored `#{anchor}`: anchor it `#{want}`"),
+            ));
+        }
+        if !rows.insert(id.to_owned()) {
+            problems.push((at, format!("`{id}` has two rows")));
+        }
+    }
+    for (id, status) in &expected {
+        if !rows.contains(id) {
+            problems.push((
+                1,
+                format!(
+                    "`{id}`, {status} in {ROADMAP}, has no row in the table of milestones: add \
+                     `| <a id=\"{}\"></a>[{id}][phase-N] | what it covers | {status} |`",
+                    milestone_anchor(id)
+                ),
+            ));
         }
     }
     problems
@@ -1754,9 +1882,12 @@ fn in_short(text: &str) -> Option<(usize, String)> {
     None
 }
 
-/// The anchors GitHub gives the headings of a Markdown file, which is read for nothing else.
+/// The anchors GitHub gives the headings of a Markdown file, which is read for nothing else, and
+/// the `id`s of its `<a id="...">` elements.
 fn anchors_of(text: &str) -> BTreeSet<String> {
-    anchors(headings(text, None))
+    let mut found = anchors(headings(text, None));
+    found.extend(anchor_ids(text));
+    found
 }
 
 /// The anchors of headings with these texts, in order: each one's [`slug`], a repeat numbered
@@ -1793,6 +1924,69 @@ fn visible_text(html: &str) -> String {
         }
     }
     out
+}
+
+/// The elements of a built page whose text isn't prose to scan for bare labels: a link's text
+/// already leads to what the label means, code and preformatted blocks quote code as written, and
+/// no reader sees a script or a style.
+const NOT_PROSE: [&str; 5] = ["a", "code", "pre", "script", "style"];
+
+/// The prose a reader sees on a built page: its [`visible_text`], without the text of its
+/// comments and of its [`NOT_PROSE`] elements. An element ends at the first closing tag of its
+/// name, as none of them nests in itself.
+fn prose_text(html: &str) -> String {
+    let mut kept = String::with_capacity(html.len());
+    let mut rest = html;
+    while let Some(at) = rest.find('<') {
+        kept.push_str(&rest[..at]);
+        rest = &rest[at..];
+        if let Some(comment) = rest.strip_prefix("<!--") {
+            rest = comment.split_once("-->").map_or("", |(_, after)| after);
+        } else if let Some(name) = NOT_PROSE.into_iter().find(|name| opens(rest, name)) {
+            let close = format!("</{name}>");
+            rest = rest.split_once(&close).map_or("", |(_, after)| after);
+            // What was on either side of the element stays two words.
+            kept.push(' ');
+        } else {
+            // Any other tag goes through, for `visible_text` to drop.
+            let end = rest.find('>').map_or(rest.len(), |end| end + 1);
+            kept.push_str(&rest[..end]);
+            rest = &rest[end..];
+        }
+    }
+    kept.push_str(rest);
+    visible_text(&kept)
+}
+
+/// Whether `html` starts with a start tag of the element `name`: `<a>` or `<a href="...">` for
+/// `a`, but not `<abbr>`.
+fn opens(html: &str, name: &str) -> bool {
+    html.strip_prefix('<')
+        .and_then(|tag| tag.strip_prefix(name))
+        .is_some_and(|after| after.starts_with(['>', ' ', '\t', '\n', '\r']))
+}
+
+/// The `id` of each `<a id="...">` in raw HTML: an anchor for a place that isn't a heading, such
+/// as a row of a table. mdBook keeps the `id`; GitHub prefixes it with `user-content-` and still
+/// scrolls to `#id`.
+fn anchor_ids(html: &str) -> Vec<String> {
+    let mut ids = Vec::new();
+    let mut rest = html;
+    while let Some(start) = rest.find("<a ") {
+        let tag = &rest[start + 3..];
+        let tag = tag.split_once('>').map_or(tag, |(inside, _)| inside);
+        if let Some(id) = tag
+            .split_whitespace()
+            .find_map(|attribute| attribute.strip_prefix("id=\""))
+            .and_then(|value| value.split_once('"'))
+            .map(|(id, _)| id)
+            .filter(|id| !id.is_empty())
+        {
+            ids.push(id.to_owned());
+        }
+        rest = &rest[start + 3 + tag.len()..];
+    }
+    ids
 }
 
 /// Scans prose (text outside links and code) for bare labels and for math only GitHub renders.
@@ -1927,8 +2121,10 @@ const MDBOOK_404: &str = "404.html";
 /// - The API reference under [`API`] is held to the same, with three exceptions for what rustdoc
 ///   writes and a browser forgives ([`rustdoc_may_miss`]). Each library of `crates` (rustdoc's
 ///   names, `hpr_core`) has a front page there, which a page of the site links and which links
-///   the guide by [`SITE_URL`]. And no page leaves a link to another crate as text, which rustdoc
-///   does without a warning when that crate's pages aren't built yet.
+///   the guide by [`SITE_URL`]. No page leaves a link to another crate as text, which rustdoc
+///   does without a warning when that crate's pages aren't built yet. And no page but a source
+///   page (under `api/src/`) has a bare label in its [`prose_text`], as [`scan_labels`] finds
+///   them on the guide's pages.
 fn check_html(dir: &Path, crates: &[String]) -> Result<Built, String> {
     let mut names = Vec::new();
     html_files(dir, "", &mut names)?;
@@ -1965,6 +2161,12 @@ fn check_html(dir: &Path, crates: &[String]) -> Result<Built, String> {
                      pages weren't built before this one's"
                 ));
             }
+            let mut bare = Vec::new();
+            scan_labels(&prose_text(&text), 0, &mut bare);
+            built.problems.extend(
+                bare.into_iter()
+                    .map(|(_, why)| format!("{name}: a doc comment has a {why}")),
+            );
         }
         let links = attributes(&text, "href")
             .map(|raw| ("href", raw))
@@ -2358,7 +2560,7 @@ mod tests {
                  below",
                 "docs/start-here.md:3: link `missing.md`: no page `docs/missing.md`",
                 "docs/start-here.md:4: link `physics/gravity.md#nowhere`: \
-                 `docs/physics/gravity.md` has no heading with the anchor `#nowhere`",
+                 `docs/physics/gravity.md` has no heading or `<a id>` with the anchor `#nowhere`",
                 "docs/start-here.md:5: link `../ROADMAP.md`: leaves `docs/`, which the site can't \
                  follow: link it by its GitHub URL, https://github.com/nrdptel/hpr-sim/blob/main/...",
                 "docs/start-here.md:6: link `notes.md`: `docs/notes.md` is not a page of the site \
@@ -2371,9 +2573,9 @@ mod tests {
                  `crates/nope.rs` in the repository",
                 "docs/start-here.md:9: link \
                  `https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-999`: \
-                 `docs/DECISIONS.md` has no heading with the anchor `#adr-999`",
-                "docs/start-here.md:11: link `#nowhere`: `docs/start-here.md` has no heading \
-                 with the anchor `#nowhere`",
+                 `docs/DECISIONS.md` has no heading or `<a id>` with the anchor `#adr-999`",
+                "docs/start-here.md:11: link `#nowhere`: `docs/start-here.md` has no heading or \
+                 `<a id>` with the anchor `#nowhere`",
                 "docs/start-here.md:12: link `physics`: `docs/physics` is a directory, which has \
                  no page on the site",
                 "docs/start-here.md:13: link `SUMMARY.md`: `docs/SUMMARY.md` is the site's table \
@@ -2920,6 +3122,61 @@ mod tests {
     }
 
     #[test]
+    fn the_records_page_has_a_row_for_every_milestone_with_its_status() {
+        let roadmap = "# Roadmap\n\n## Phase 0: Foundations\n\n\
+                       - [x] **M0.1 Workspace.**\n\
+                       - [ ] **M0.4 A site.**\n  - [x] **M0.4a Checks.**\n\
+                       \x20 - [ ] [blocked] **M0.4d Publish.**\n\
+                       - [ ] **M1.10 Outputs.**\n- [ ] **Not a milestone.**\n";
+        assert_eq!(
+            roadmap_milestones(roadmap),
+            [
+                ("M0.1".to_owned(), "done"),
+                ("M0.4".to_owned(), "not yet done"),
+                ("M0.4a".to_owned(), "done"),
+                ("M0.4d".to_owned(), "blocked"),
+                ("M1.10".to_owned(), "not yet done"),
+            ]
+        );
+        let page = "| milestone | what | status |\n|---|---|---|\n\
+                    | <a id=\"m0-1\"></a>[M0.1][phase-0] | the workspace | done |\n\
+                    | <a id=\"m0-4\"></a>[M0.4][phase-0] | a site | done |\n\
+                    | <a id=\"m04a\"></a>[M0.4a][phase-0] | checks | done |\n\
+                    | <a id=\"m0-4d\"></a>[M0.4d][phase-0] | publish | blocked |\n\
+                    | <a id=\"m0-4d\"></a>[M0.4d][phase-0] | publish | blocked |\n\
+                    | <a id=\"m9-9\"></a>[M9.9][phase-9] | nothing | not yet done |\n\
+                    | <a id=\"l15\"></a>[L15][lessons] | a lesson | [M1.5b](#m1-5b) |\n";
+        assert_eq!(
+            milestone_rows(page, roadmap),
+            [
+                (
+                    4,
+                    "`M0.4` is not yet done in docs/ROADMAP.md, and its row says `done`".to_owned()
+                ),
+                (
+                    5,
+                    "`M0.4a`'s row is anchored `#m04a`: anchor it `#m0-4a`".to_owned()
+                ),
+                (7, "`M0.4d` has two rows".to_owned()),
+                (8, "`M9.9` is not a milestone of docs/ROADMAP.md".to_owned()),
+                (
+                    1,
+                    "`M1.10`, not yet done in docs/ROADMAP.md, has no row in the table of \
+                     milestones: add `| <a id=\"m1-10\"></a>[M1.10][phase-N] | what it covers | \
+                     not yet done |`"
+                        .to_owned()
+                ),
+            ]
+        );
+        for id in ["M1.1", "M1.10", "M2.1b2", "M0.4e"] {
+            assert!(is_milestone_id(id), "{id}");
+        }
+        for id in ["M1", "M.1", "Mx.1", "M1.", "M1.1bb", "M1.1b2c", "L15"] {
+            assert!(!is_milestone_id(id), "{id}");
+        }
+    }
+
+    #[test]
     fn the_summary_lists_pages_once_by_relative_path() {
         assert_eq!(
             problems(&[
@@ -3104,6 +3361,20 @@ mod tests {
             page.anchors.into_iter().collect::<Vec<_>>(),
             ["tests", "tests-1", "tests-2"]
         );
+    }
+
+    #[test]
+    fn an_a_id_is_an_anchor_and_other_ids_are_not() {
+        let page = read_page(
+            "# Records\n\n| id | what |\n|---|---|\n| <a id=\"m1-9\"></a>M | staging |\n\
+             | <a  href=\"x.md\" id=\"l15\">L</a> | a lesson |\n\n<span id=\"not-a\"></span>\n\
+             <a id=\"\"></a> <a name=\"old\"></a> <abbr id=\"abbr\">x</abbr>\n",
+        );
+        assert_eq!(
+            page.anchors.into_iter().collect::<Vec<_>>(),
+            ["l15", "m1-9", "records"]
+        );
+        assert_eq!(anchor_ids("<a id=\"a\"><a id=\"b\">"), ["a", "b"]);
     }
 
     #[test]
@@ -3349,6 +3620,96 @@ mod tests {
                  crate's pages weren't built before this one's",
             ]
         );
+    }
+
+    /// The problems of a built site with the API reference of one crate, `b`, whose page for an
+    /// item says `item` and whose source page says `source`.
+    fn api_label_problems(item: &str, source: &str) -> Vec<String> {
+        let front = format!("<a href=\"{SITE_URL}\">guide</a>");
+        let dir = workspace(&[
+            ("index.html", "<a href=\"api/b/index.html\">b</a>"),
+            ("api/b/index.html", &front),
+            ("api/b/struct.B.html", item),
+            ("api/src/b/lib.rs.html", source),
+        ]);
+        let built = check_html(dir.path(), &["b".to_owned()]).unwrap();
+        assert_eq!((built.pages, built.api), (1, 3));
+        built.problems
+    }
+
+    #[test]
+    fn a_bare_label_in_the_api_reference_fails() {
+        // Seen as the guide's pages are: in prose, headings and tables, and in any element but a
+        // link, code, a script or a style, whatever comes before it.
+        let item = "<h1>Struct <span>B</span></h1>\n\
+                    <p>Staging comes with M1.9 (ADR-014).</p><!-- <code> -->\n\
+                    <h2 id=\"x\"><a class=\"doc-anchor\" href=\"#x\">§</a>Loft lesson L25</h2>\n\
+                    <table><tr><td><abbr>M2.1b1</abbr></td></tr></table>\n\
+                    <pre><code>L77</code></pre><em>M1.8</em>";
+        let found = api_label_problems(item, "");
+        let labels: Vec<(&str, &str)> = found
+            .iter()
+            .map(|problem| {
+                let (at, rest) = problem
+                    .split_once(": a doc comment has a bare label `")
+                    .unwrap();
+                (at, rest.split_once('`').unwrap().0)
+            })
+            .collect();
+        let at = "api/b/struct.B.html";
+        assert_eq!(
+            labels,
+            [
+                (at, "M1.9"),
+                (at, "ADR-014"),
+                (at, "L25"),
+                (at, "M2.1b1"),
+                (at, "M1.8")
+            ]
+        );
+        assert_eq!(
+            found[0],
+            "api/b/struct.B.html: a doc comment has a bare label `M1.9`: make it a link, with a \
+             few words saying what it is (ADR-016). A motor designation is written in full, such \
+             as `L1150R`, and a certification level in words, such as \"Level 2\""
+        );
+    }
+
+    #[test]
+    fn a_linked_or_quoted_label_in_the_api_reference_passes() {
+        let item = "<p>A value needs a source \
+                    (<a href=\"https://github.com/nrdptel/hpr-sim/blob/main/docs/research/loft-lessons.md\">\
+                    Loft lesson L77</a>), and staging comes with <a href=\"index.html\">\
+                    <code>M1.9</code></a>.</p>\n\
+                    <pre class=\"rust\"><code>// ADR-009, <span>M1.8</span></code></pre> \
+                    <code>M1.5b</code>\n\
+                    <script>let m = \"M1.9\";</script><style>/* L6 */</style>\n\
+                    <!-- L25, which no reader sees --> L1150R and M1297 are motors, Mach 1.8 a speed";
+        assert_eq!(api_label_problems(item, ""), Vec::<String>::new());
+    }
+
+    #[test]
+    fn the_api_references_source_pages_quote_labels_as_written() {
+        let source =
+            "<p>/// Loft lesson L77: Loft shipped hand-written results (ADR-015, M2.1a).</p>";
+        assert_eq!(api_label_problems("", source), Vec::<String>::new());
+        // The same text on an item's page fails.
+        assert_eq!(api_label_problems(source, "").len(), 3);
+    }
+
+    #[test]
+    fn prose_is_what_a_reader_sees_outside_links_and_code() {
+        assert_eq!(
+            prose_text(
+                "<p>A <a href=\"x\">L1</a> b <abbr>c</abbr> <code>L2</code>d<pre>L3</pre>\
+                 <!-- <a> --> e <aside>f</aside> <script>L4</script><style>L5</style>g</p> h"
+            ),
+            "A   b c  d  e f   g h"
+        );
+        // An element that never closes hides the rest of the page, as an unclosed tag does.
+        assert_eq!(prose_text("a <code>b c"), "a  ");
+        assert!(opens("<a>", "a") && opens("<a\nhref=\"x\">", "a"));
+        assert!(!opens("<abbr>", "a") && !opens("</a>", "a") && !opens("<code/>", "code"));
     }
 
     #[test]
