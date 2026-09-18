@@ -684,6 +684,41 @@
   The failing run is linked from the real PR's description, and the throwaway PR is closed with
   `gh pr close --delete-branch`.
 
+- [ ] **M1.11 Ejected sections and payloads.** Added by Neer on 2026-09-18 (VISION V17).
+  - A separation at any joint, not only a stage boundary (ADR-014): an ejected nose cone, a body
+    section, or a payload carried inside, each flown to its own landing under its own recovery
+    device, or tumbling. Pieces joined by a shock cord fly as one.
+  - Ejection triggers as for recovery devices (apogee, altitude, timer, motor delay), and an
+    optional ejection impulse.
+
+  *Done when:*
+  - A design that ejects its nose cone and a payload, each under its own parachute, lands every
+    piece and reports each landing point.
+  - The pieces' masses sum to the rocket's and momentum is conserved at each split, to M1.7c's
+    tolerances; each descent rate matches the analytic terminal velocity for its device and mass.
+
+- [ ] **M1.12 Mass that moves or leaves in flight.** Added by Neer on 2026-09-18 (VISION V18).
+  - Payload mass that moves along the airframe, or leaves it (released ballast or payload), on an
+    event or a schedule, with the mass, centre of gravity and inertia updated through the flight.
+  - The equations of motion carry the moving mass's relative-motion terms, or an ADR shows, with
+    numbers, that they are negligible.
+
+  *Done when:*
+  - Mass properties before, during and after a change match hand-computed values, and a release
+    conserves mass and momentum.
+  - A test shows a moving mass shifting the stability margin as the hand calculation predicts.
+
+- [ ] **M1.13 Pods.** Added by Neer on 2026-09-18 (VISION V19).
+  - External bodies beside the airframe: side pods, and outboard motor pods using M1.9's clusters.
+    Mass properties off the axis; each pod's normal force and drag, and its interference with the
+    body, from a cited source.
+  - The `.ork` importer (M3.1) reads pods.
+
+  *Done when:*
+  - A pod's mass properties match the hand-computed parallel-axis values.
+  - A pod design matches OpenRocket within the per-case tolerance, with the limits of both codes'
+    pod models stated in the docs.
+
 ## Phase 2: Library surfaces and interop
 
 - [ ] **M4.1 Facade API.** The `hpr` crate offers a RocketPy-like builder (`Environment`, `Motor`,
@@ -809,6 +844,32 @@
   *Done when:* each preset is solved end to end from both the CLI and Python, with a Pareto report
   and a check that the winners satisfy every constraint by re-simulation.
 
+- [ ] **M6.4 Airbrakes.** Added by Neer on 2026-09-18 (VISION V16).
+  - Deployable drag surfaces: added drag as a function of deployment and Mach, from a table or a
+    cited semi-empirical estimate; deployment rate limits.
+  - A controller interface: a user's controller, sampled at a fixed rate, reads simulated sensors
+    (seeded noise) and commands deployment. A reference apogee-targeting controller ships.
+
+  *Done when:*
+  - RocketPy's air-brakes example, flown with the same drag table and controller, matches RocketPy
+    within 3% in apogee and in the deployment history.
+  - A challenge spec (M6.3) can target an apogee using airbrakes.
+
+- [ ] **M6.5 Canards.** Added by Neer on 2026-09-18 (VISION V16).
+  - Fixed canards first: fins ahead of the centre of gravity, with the canards' downwash on the aft
+    fins from a cited interference model (Pitts, Nielsen and Kaattari, NACA Report 1307, is the
+    first candidate).
+  - Then movable canards: lift from deflection, actuator rate limits, and roll control using
+    M1.8's roll damping and M6.4's controller interface.
+  - Scope: stabilization and roll control, as student competitions fly them. Steering to a target
+    point is out of scope.
+
+  *Done when:*
+  - Fixed canards match OpenRocket's normal force and centre of pressure within the per-case
+    tolerance.
+  - A roll-control case damps a step roll disturbance as the linearised analytic response
+    predicts.
+
 ## Phase 4: More formats and embeddings
 
 - [ ] **M3.4 RockSim `.rkt` import/export** (clean room, from the RockSim XML doc and samples).
@@ -917,3 +978,16 @@
   mode.
 
 (The M9.1–M9.4 *done when* criteria are written in M9.0.)
+
+- [ ] **M9.5 Accounts and cloud saves.** Added by Neer on 2026-09-18 (VISION V20).
+  - Optional accounts that save designs and flights and sync them across devices. Everything still
+    works signed out and offline; accounts only add sync and sharing.
+  - A saved flight stores its inputs and seed and is re-flown on open, so storage stays small.
+  - Neer will pay for hosting if the project takes off. Choosing and signing up for a provider is
+    his call ("Needs Neer" when this milestone starts).
+
+  *Done when:*
+  - An ADR is merged comparing hosted and self-hostable options, with monthly costs at 100, 1,000
+    and 10,000 users.
+  - Sign-in, save, sync and delete-my-data are tested end to end, and edits made offline merge on
+    reconnect without loss (a property test).
