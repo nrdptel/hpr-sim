@@ -4,9 +4,11 @@
 //! [`Integrator::advance`] takes accepted steps from the current time toward a stop time and
 //! returns at the stop time, at the first events on the way, or when the system asks to stop. A
 //! stop time is always a step boundary, so a caller puts discontinuities there (burnout, a
-//! thrust-curve knot, a phase change) and never lets one fall inside a step (Loft lesson L23). The
-//! system declares its events and sees each accepted step, with its dense output, through
-//! [`OdeSystem`]'s provided methods.
+//! thrust-curve knot, a phase change) and never lets one fall inside a step
+//! ([Loft lesson L23][l23]: Loft let burnout fall inside steps). The system declares its events
+//! and sees each accepted step, with its dense output, through [`OdeSystem`]'s provided methods.
+//!
+//! [l23]: https://nrdptel.github.io/hpr-sim/decisions-and-roadmap.html#l23
 //!
 //! - **Dormand–Prince 5(4)** ([`Method::DormandPrince54`]): the pair of J. R. Dormand and
 //!   P. J. Prince, "A family of embedded Runge-Kutta formulae", *J. Comput. Appl. Math.* 6 (1980)

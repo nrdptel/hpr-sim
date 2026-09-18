@@ -9,11 +9,13 @@
 //!
 //! **Composition.** The rocket at time `t` after ignition is the structure ([`Layout::structure`])
 //! combined with each motor's loaded, burning or spent mass properties ([`SolidMotor::state`]).
-//! Every motor in a configuration ignites at `t = 0`; staging and air starts come with M1.9. This
-//! is RocketPy's composition (`Rocket.total_mass`, `center_of_mass`, and the inertias of
-//! `rocketpy/rocket/rocket.py`), checked against RocketPy 1.13.0 in the tests.
+//! Every motor in a configuration ignites at `t = 0`; staging and air starts come with
+//! [M1.9][m1-9]. This is RocketPy's composition (`Rocket.total_mass`, `center_of_mass`, and the
+//! inertias of `rocketpy/rocket/rocket.py`), checked against RocketPy 1.13.0 in the tests.
 //!
 //! See `docs/physics/design.md`.
+//!
+//! [m1-9]: https://nrdptel.github.io/hpr-sim/decisions-and-roadmap.html#m1-9
 
 use std::collections::BTreeSet;
 

@@ -112,7 +112,9 @@ pub struct FlightEvent {
     pub sample: Sample,
 }
 
-/// Why a flight ended (Loft lesson L25: every way of stopping is named).
+/// Why a flight ended ([Loft lesson L25][l25]: every way of stopping is named).
+///
+/// [l25]: https://nrdptel.github.io/hpr-sim/decisions-and-roadmap.html#l25
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 #[non_exhaustive]

@@ -5,6 +5,8 @@
 //! and what they leave out.
 //!
 //! [guide-aero]: https://nrdptel.github.io/hpr-sim/physics/aero.html
+//! [guide-cp]: https://nrdptel.github.io/hpr-sim/physics/aero.html#your-rockets-centre-of-pressure
+//! [guide-flight]: https://nrdptel.github.io/hpr-sim/physics/flight.html#aerodynamics-in-flight
 //! [roadmap]: https://github.com/nrdptel/hpr-sim/blob/main/docs/ROADMAP.md
 //!
 //! - [`body`]: nose cones, body tubes and transitions: Barrowman's slope and centre of pressure,
@@ -16,9 +18,16 @@
 //! - [`table`]: drag override tables, the drag coefficient against Mach number from another tool.
 //! - [`model`]: a rocket's terms built from a [`hpr_design::Layout`] and summed at a [`Flow`].
 //!
+//! A rocket's centre of pressure is [`NormalForce::cp_station_m`], in metres aft of the nose tip,
+//! from [`AeroModel::normal_force`] at [`Flow::axial`] ([Your rocket's centre of
+//! pressure][guide-cp] in the guide).
+//!
 //! Status: subsonic flow only (`M < 1`): normal force, centre of pressure, drag and override
-//! tables. Transonic and supersonic flow, and pitch, yaw and roll damping, are planned for
-//! milestone [M1.8][roadmap] of the roadmap.
+//! tables. The crate has no damping coefficients. The flight engine (`hpr_sim`) gets pitch and yaw
+//! damping by evaluating each component in its own local flow, which includes the speed the
+//! rocket's rotation adds there ([Rigid-body flight][guide-flight] in the guide). Transonic and
+//! supersonic flow, and roll forcing and roll damping, are planned for milestone [M1.8][roadmap]
+//! of the roadmap.
 
 pub mod body;
 pub mod drag;

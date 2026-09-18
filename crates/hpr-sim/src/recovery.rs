@@ -89,7 +89,9 @@ impl CanopyType {
 
     /// The middle of [`Self::drag_coefficient_range`], which is what hpr uses when the user gives
     /// no `C_D0`. Knacke prints a range for every type and no single value; the middle is hpr's
-    /// choice, not his (ADR-012).
+    /// choice, not his (the decision record on recovery, [ADR-012][adr-012]).
+    ///
+    /// [adr-012]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-012-recovery-drag-areas-triggers-inflation-and-the-descent-phase-2026-09-17
     #[must_use]
     pub const fn drag_coefficient(self) -> f64 {
         let (low, high) = self.drag_coefficient_range();
@@ -171,7 +173,9 @@ impl CanopyType {
 ///
 /// The two models disagree by a factor of about four in drag area, so
 /// `docs/physics/recovery.md` sets out what each is fitted to and how each compares with the only
-/// free-drop data in hand (ADR-013).
+/// free-drop data in hand (the decision record on streamer and tumble drag, [ADR-013][adr-013]).
+///
+/// [adr-013]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-013-streamer-and-tumble-drag-2026-09-17
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 #[non_exhaustive]
@@ -603,7 +607,11 @@ impl Inflation {
 /// A recovery device: a drag area, when it opens, and how it fills.
 ///
 /// Build one with [`Device::new`] and the builders: the struct is `#[non_exhaustive]` so that
-/// M1.7b's streamers and separation can add fields without breaking callers.
+/// streamers ([M1.7b][m1-7b]) and separation ([M1.7c][m1-7c]) can add fields without breaking
+/// callers.
+///
+/// [m1-7b]: https://nrdptel.github.io/hpr-sim/decisions-and-roadmap.html#m1-7b
+/// [m1-7c]: https://nrdptel.github.io/hpr-sim/decisions-and-roadmap.html#m1-7c
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 #[non_exhaustive]
@@ -848,17 +856,21 @@ fn check_exponent(exponent: f64) -> Result<(), SimError> {
 }
 
 /// A separation: the stack comes apart at a stage boundary and every body descends under its own
-/// devices (`docs/physics/recovery.md`, ADR-014).
+/// devices (`docs/physics/recovery.md`, and the decision record on separation, [ADR-014][adr-014]).
 ///
 /// Bodies are contiguous runs of stages. Stages `0..=after_stage` keep the nose and are body 0;
 /// the stages aft of the split are body 1. Each body flies as a point mass from the separation,
 /// with the mass properties of its own stages and motors, so every body must carry at least one
-/// device: the descent phase has no airframe drag (ADR-012), and a body with nothing open would
-/// fall as if in a vacuum.
+/// device: the descent phase has no airframe drag (the decision record on recovery,
+/// [ADR-012][adr-012]), and a body with nothing open would fall as if in a vacuum.
 ///
 /// A separation is an ideal one: no impulse, so each body leaves with the velocity its own centre
 /// of mass already had. It must come after the last burnout, because a body's mass is taken as
-/// constant through its descent; powered staging is M1.9.
+/// constant through its descent; powered staging is [M1.9][m1-9].
+///
+/// [adr-012]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-012-recovery-drag-areas-triggers-inflation-and-the-descent-phase-2026-09-17
+/// [adr-014]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-014-separation-bodies-their-masses-and-their-descents-2026-09-17
+/// [m1-9]: https://nrdptel.github.io/hpr-sim/decisions-and-roadmap.html#m1-9
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct Separation {

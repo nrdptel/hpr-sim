@@ -18,7 +18,9 @@ pub enum AeroError {
         value: f64,
     },
     /// A Mach number the models don't cover yet. The subsonic models need `0 ≤ M < 1`; transonic
-    /// and supersonic flow arrive in M1.8.
+    /// and supersonic flow arrive in [M1.8][m1-8].
+    ///
+    /// [m1-8]: https://nrdptel.github.io/hpr-sim/decisions-and-roadmap.html#m1-8
     #[error("Mach {mach} is outside the subsonic models' range [0, 1)")]
     Mach {
         /// The Mach number.

@@ -156,7 +156,8 @@ pub struct MotorState {
 /// Measured over the 1,708 ThrustCurve.org simulator files with both a parsed impulse and a
 /// catalog propellant mass — the mass [`crate::CatalogMotor::motor`] uses, which prefers the
 /// metadata over the curve file's header — `c` runs 236 to 3,031 m/s, with a median of 1,867 and
-/// 90% of them between 928 and 2,210 (`docs/physics/motor.md`). The bulk is APCP; the tail below
+/// 90% of them between 928 and 2,210 (the full table is in
+/// `docs/research/exhaust-velocity-guard.md`). The bulk is APCP; the tail below
 /// about 900 m/s is black powder, read low because Estes and Quest count the delay grain and the
 /// ejection charge as propellant.
 ///

@@ -5,9 +5,11 @@
 //! knows those shapes: it turns one of the generator's cases into a [`Reference`] (what the oracle
 //! said, with a source for every value) and a [`DescentSetup`] (the inputs hpr must fly).
 //!
-//! Loft lesson L75: the inputs come from **the reference's own record of what it flew**, never
-//! from an hpr output, so a case cannot quietly compare hpr against itself. That includes which
-//! rocket it flew and what that rocket weighed, which the harness checks rather than trusts.
+//! [Loft lesson L75][l75]: the inputs come from **the reference's own record of what it flew**,
+//! never from an hpr output, so a case cannot quietly compare hpr against itself. That includes
+//! which rocket it flew and what that rocket weighed, which the harness checks rather than trusts.
+//!
+//! [l75]: https://nrdptel.github.io/hpr-sim/decisions-and-roadmap.html#l75
 
 use serde_json::Value;
 

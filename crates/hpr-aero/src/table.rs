@@ -3,9 +3,11 @@
 //!
 //! An override lets the flight engine fly with an oracle's drag, so that a comparison isolates the
 //! dynamics, the environment and the motor from the aerodynamic prediction (`docs/VALIDATION.md`,
-//! M2.1's same-drag mode). A table gives the zero-lift drag coefficient `C_D0(M)` on the rocket's
-//! reference area; [`crate::AeroModel::drag`] applies the same angle-of-attack scaling to it as to
-//! the buildup.
+//! the same-drag mode of [M2.1][m2-1], the comparisons with RocketPy). A table gives the zero-lift
+//! drag coefficient `C_D0(M)` on the rocket's reference area; [`crate::AeroModel::drag`] applies
+//! the same angle-of-attack scaling to it as to the buildup.
+//!
+//! [m2-1]: https://nrdptel.github.io/hpr-sim/decisions-and-roadmap.html#m2-1
 //!
 //! [`parse_mach_csv`] reads CSV text (no I/O: the caller supplies the text):
 //!
