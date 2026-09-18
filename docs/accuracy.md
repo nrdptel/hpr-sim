@@ -337,10 +337,13 @@ What the two codes still do differently, and what it moves:
 
 - **In wind, the path.** hpr turns into the wind less than RocketPy. In Juno III's 8.5 m/s wind,
   RocketPy's apogee moves 1,147 m upwind of where it is in calm air, and hpr's 769 m, so hpr's
-  apogee ends 228 m from the pad and RocketPy's 582 m. Flown once with no wind for this comparison
-  (not a committed check), the same rockets agree on the apogee to within 0.18% and on the drifts
-  to within 1.3 to 3.7%, not always inside 3%. So most of the gap is in the response to wind, which
-  same-drag mode doesn't share: each code's own normal force and damping, and how hpr's drag grows
+  apogee ends 228 m from the pad and RocketPy's 582 m. Flown with no wind, as three cases whose ids
+  end in `-calm`, the same rockets agree on the apogee to within 0.060%. Calisto's and Bella Lui's
+  drifts agree to within −1.258% to −2.583%, and pass. Juno III's miss, −3.670% and −3.695%, and
+  fail: RocketPy frees the rocket at its first rail button and hpr at its last, and one run with
+  both freeing it at the same point brought hpr within −2.1% ([case file][juno-calm-case]; not yet
+  a committed check). So most of the gap in wind is in the response to wind, which same-drag mode
+  doesn't share: each code's own normal force and damping, and how hpr's drag grows
   at an angle. The drifts of the four windy cases, and Valetudo's still-air landing drift,
   −3.410%, are open misses: reported, not scored and not passed, until [issue #50][issue-50] finds
   the cause. Turning less, hpr also flies higher, the likely source of Juno III's +1.710% apogee
@@ -532,5 +535,6 @@ rest.
 [prometheus-predicted-case]: https://github.com/nrdptel/hpr-sim/blob/main/validation/cases/predicted-prometheus-2022-generic-motor.toml
 [valetudo-predicted-case]: https://github.com/nrdptel/hpr-sim/blob/main/validation/cases/predicted-valetudo.toml
 [juno-case]: https://github.com/nrdptel/hpr-sim/blob/main/validation/cases/flight-juno-iii.toml
+[juno-calm-case]: https://github.com/nrdptel/hpr-sim/blob/main/validation/cases/flight-juno-iii-calm.toml
 [ndrt-flight-case]: https://github.com/nrdptel/hpr-sim/blob/main/validation/cases/flight-ndrt-2020-nose-to-tail.toml
 [prometheus-case]: https://github.com/nrdptel/hpr-sim/blob/main/validation/cases/flight-prometheus-2022-generic-motor.toml

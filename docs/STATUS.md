@@ -35,8 +35,8 @@ M2.1c (ADR-022, 023): CI checks the report on three OSes; predicted mode's 3% ar
   once (RocketPy's rail lengthened by the 1.41 m button spacing, so it frees the rocket where hpr
   does): RocketPy's drifts become 561.0 and 641.0 m, hpr within -2.1% of both. So the rail release
   (hpr: last button, RocketPy: first) is most of it. Left: pin that as a check, argue the case in its
-  file and an ADR (or match the release); `docs/accuracy.md` has the rows but no words on the calm
-  cases yet; physics-reviewer, validation-auditor, docs-reviewer; check M2.1d2 off.
+  file and an ADR (or match the release); `docs/accuracy.md` has the rows and a first paragraph (its
+  *In wind* item) to finish with the result; physics-reviewer, validation-auditor, docs-reviewer; check M2.1d2 off.
 - **Then M2.1d3** (the path in wind): bisect the rail release, hpr's drag growth with angle of attack,
   and each code's normal force and damping (only C_D0 differs between the modes).
 - **M1.8** after: don't read predicted mode's +10% (Valetudo, NDRT) as gaps to close. hpr's drag
