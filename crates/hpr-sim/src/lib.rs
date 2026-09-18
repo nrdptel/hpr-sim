@@ -1,4 +1,4 @@
-//! The 6-DOF flight engine: state, launch rail phase, integrators, events, recovery, staging and
+//! The 6-DOF flight engine: state, launch rail phase, integrators, events, recovery, separation and
 //! the recorder.
 //!
 //! **Guide:** [How a flight is simulated][guide-flight], [Rigid-body flight][guide-rigid-body],

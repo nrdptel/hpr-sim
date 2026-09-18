@@ -1,5 +1,5 @@
 //! Aerodynamics: Barrowman normal force and centre of pressure with extensions, drag buildup,
-//! compressibility, damping and override tables.
+//! compressibility and override tables.
 //!
 //! **Guide:** [Aerodynamics][guide-aero]: the models, their sources, how well they are validated
 //! and what they leave out.
@@ -17,7 +17,8 @@
 //! - [`model`]: a rocket's terms built from a [`hpr_design::Layout`] and summed at a [`Flow`].
 //!
 //! Status: subsonic flow only (`M < 1`): normal force, centre of pressure, drag and override
-//! tables. Transonic and supersonic flow are planned for milestone [M1.8][roadmap] of the roadmap.
+//! tables. Transonic and supersonic flow, and pitch, yaw and roll damping, are planned for
+//! milestone [M1.8][roadmap] of the roadmap.
 
 pub mod body;
 pub mod drag;
