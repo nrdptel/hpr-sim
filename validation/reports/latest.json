@@ -429,7 +429,7 @@
       "difference": -24.9169424679219,
       "relative": -0.05573341193320706,
       "verdict": "not_scored",
-      "note": "the horizontal path in wind: hpr turns into the wind far more than RocketPy (apogee drift -5.6%); flown in calm air the codes agree to 1.3 to 3.7% (issue #50), so the gap is the response to wind, which same-drag mode does not share (normal force, damping, drag at an angle). Reported, not scored, until #50 finds its cause."
+      "note": "an open miss, not a definitional difference: in wind hpr turns into the wind less than RocketPy (apogee drift -5.6%); flown once in calm air the codes agree to 1.3 to 3.7% (issue #50), so the gap is mostly the response to wind, which same-drag mode does not share (normal force, damping, drag at an angle). M2.1's landing offset is not met; reported, not scored, until #50 finds the cause."
     },
     {
       "case": "flight-calisto-tests-motor-at-minus-1.373",
@@ -506,7 +506,7 @@
       "difference": 84.08909130959046,
       "relative": 0.0703383641542087,
       "verdict": "not_scored",
-      "note": "the landing point follows the apogee's (landing drift +7.0%); the horizontal path in wind is issue #50, and flown in calm air the codes agree to 1.3 to 3.7%. Reported, not scored, until #50 finds its cause."
+      "note": "an open miss, not a definitional difference: the landing point follows the apogee's (landing drift +7.0%); the horizontal path in wind is issue #50, and flown once in calm air the codes agree to 1.3 to 3.7%. M2.1's landing offset is not met; reported, not scored, until #50 finds the cause."
     },
     {
       "case": "flight-calisto-tests-motor-at-minus-1.373",
@@ -699,7 +699,7 @@
       "difference": -7.038817843136286,
       "relative": -0.03410089262627108,
       "verdict": "not_scored",
-      "note": "in still air the codes' horizontal paths differ by a few per cent (apogee drift -2.43%, gated; the calm-air runs of issue #50 give 1.3 to 3.7%), and the landing drift carries it to -3.41%, just past the gate; the cause is among those of issue #50 (the rail release, drag at an angle, damping). Reported, not scored, until #50 finds it."
+      "note": "an open miss, not a definitional difference: in still air the codes' horizontal paths differ by a few per cent (apogee drift -2.43%, gated; the calm-air runs of issue #50 give 1.3 to 3.7%), and the landing drift carries it to -3.41%, just past the gate; the cause is unknown and among the candidates of issue #50 (the rail release, drag at an angle, the normal force). M2.1's landing offset is not met here; reported, not scored, until #50 finds the cause."
     },
     {
       "case": "flight-valetudo",
@@ -815,7 +815,7 @@
       "difference": -12.977316542400686,
       "relative": -0.1864639927466014,
       "verdict": "not_scored",
-      "note": "the horizontal path in wind: hpr turns into the wind far more than RocketPy (apogee drift -18.6%); flown in calm air the codes agree to 1.3 to 3.7% (issue #50), so the gap is the response to wind, which same-drag mode does not share (normal force, damping, drag at an angle). Reported, not scored, until #50 finds its cause."
+      "note": "an open miss, not a definitional difference: in wind hpr turns into the wind less than RocketPy (apogee drift -18.6%); flown once in calm air the codes agree to 1.3 to 3.7% (issue #50), so the gap is mostly the response to wind, which same-drag mode does not share (normal force, damping, drag at an angle). M2.1's landing offset is not met; reported, not scored, until #50 finds the cause."
     },
     {
       "case": "flight-ndrt-2020-nose-to-tail",
@@ -892,7 +892,7 @@
       "difference": 13.254370362446593,
       "relative": 0.038870657574876115,
       "verdict": "not_scored",
-      "note": "the landing point follows the apogee's (landing drift +3.9%); the horizontal path in wind is issue #50, and flown in calm air the codes agree to 1.3 to 3.7%. Reported, not scored, until #50 finds its cause."
+      "note": "an open miss, not a definitional difference: the landing point follows the apogee's (landing drift +3.9%); the horizontal path in wind is issue #50, and flown once in calm air the codes agree to 1.3 to 3.7%. M2.1's landing offset is not met; reported, not scored, until #50 finds the cause."
     },
     {
       "case": "flight-ndrt-2020-nose-to-tail",
@@ -1007,7 +1007,7 @@
       "difference": -354.38442784443936,
       "relative": -0.608484246014271,
       "verdict": "not_scored",
-      "note": "the horizontal path in wind: hpr turns into the wind far more than RocketPy (apogee drift -60.8%); flown in calm air the codes agree to 1.3 to 3.7% (issue #50), so the gap is the response to wind, which same-drag mode does not share (normal force, damping, drag at an angle). Reported, not scored, until #50 finds its cause."
+      "note": "an open miss, not a definitional difference: in wind hpr turns into the wind less than RocketPy (apogee drift -60.8%); flown once in calm air the codes agree to 1.3 to 3.7% (issue #50), so the gap is mostly the response to wind, which same-drag mode does not share (normal force, damping, drag at an angle). M2.1's landing offset is not met; reported, not scored, until #50 finds the cause."
     },
     {
       "case": "flight-juno-iii",
@@ -1084,7 +1084,7 @@
       "difference": 406.05603765961837,
       "relative": 1.5133449741310931,
       "verdict": "not_scored",
-      "note": "the landing point follows the apogee's (landing drift +151%); the horizontal path in wind is issue #50, and flown in calm air the codes agree to 1.3 to 3.7%. Reported, not scored, until #50 finds its cause."
+      "note": "an open miss, not a definitional difference: the landing point follows the apogee's (landing drift +151%); the horizontal path in wind is issue #50, and flown once in calm air the codes agree to 1.3 to 3.7%. M2.1's landing offset is not met; reported, not scored, until #50 finds the cause."
     },
     {
       "case": "flight-juno-iii",
@@ -1200,7 +1200,7 @@
       "difference": -19.319187581204062,
       "relative": -0.15589056721907252,
       "verdict": "not_scored",
-      "note": "the horizontal path in wind: hpr turns into the wind far more than RocketPy (apogee drift -15.6%); flown in calm air the codes agree to 1.3 to 3.7% (issue #50), so the gap is the response to wind, which same-drag mode does not share (normal force, damping, drag at an angle). Reported, not scored, until #50 finds its cause."
+      "note": "an open miss, not a definitional difference: in wind hpr turns into the wind less than RocketPy (apogee drift -15.6%); flown once in calm air the codes agree to 1.3 to 3.7% (issue #50), so the gap is mostly the response to wind, which same-drag mode does not share (normal force, damping, drag at an angle). M2.1's landing offset is not met; reported, not scored, until #50 finds the cause."
     },
     {
       "case": "flight-bella-lui",
@@ -1277,7 +1277,7 @@
       "difference": -23.350428680046427,
       "relative": -0.31320498454973345,
       "verdict": "not_scored",
-      "note": "the landing point follows the apogee's (landing drift -31.3%); the horizontal path in wind is issue #50, and flown in calm air the codes agree to 1.3 to 3.7%. Reported, not scored, until #50 finds its cause."
+      "note": "an open miss, not a definitional difference: the landing point follows the apogee's (landing drift -31.3%); the horizontal path in wind is issue #50, and flown once in calm air the codes agree to 1.3 to 3.7%. M2.1's landing offset is not met; reported, not scored, until #50 finds the cause."
     },
     {
       "case": "flight-bella-lui",

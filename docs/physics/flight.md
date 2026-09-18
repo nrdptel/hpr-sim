@@ -13,7 +13,7 @@
   agree on height, speed, time and acceleration within 3%; the largest scored difference is
   +1.783%, a peak acceleration on the rail ([validation report][report],
   [whole flights against RocketPy](#whole-flights-against-rocketpy)). **The path in wind does not
-  agree:** hpr turns into the wind far more than RocketPy, and the cause is open
+  agree:** hpr turns into the wind less than RocketPy, and the cause is open
   ([issue #50](https://github.com/nrdptel/hpr-sim/issues/50)). A sixth rocket reaches Mach 1,
   which hpr refuses. hpr's own drag has not been checked in a whole flight yet
   ([M2.1c](../decisions-and-roadmap.md#m2-1c)), and no flight has been compared with a real one.
@@ -350,16 +350,16 @@ and a declared wind.
 | height, speed, time, acceleration | all scored, all within 3% of RocketPy's |
 | largest of those | +1.783%, Bella Lui's peak acceleration, on the rail |
 | largest in apogee | +1.710%, Juno III, in the suite's strongest wind |
-| path in wind (drift of apogee and landing) | far off: Juno III's apogee is 228 m from the pad in hpr, 582 m in RocketPy; reported, not scored |
-| path in calm air | within 1.3 to 3.7% (three cases flown with no wind in both codes) |
+| path in wind (drift of apogee and landing) | far off: Juno III's apogee is 228 m from the pad in hpr, 582 m in RocketPy; reported, not scored, an open miss |
+| path in calm air | within 1.3 to 3.7% (three cases flown once with no wind in both codes; not a committed check) |
 
 What the two codes still do differently, and how much it moves:
 
-- **The wind.** In wind, hpr turns into the wind far more than RocketPy. Flown with no wind, the
-  same rockets agree on the apogee to 0.18% and on the drifts to 1.3 to 3.7%. So the difference is
-  in the response to wind: each code's own normal force, the pitch damping hpr doesn't have until
-  [M1.8](../decisions-and-roadmap.md#m1-8), and hpr's growth of drag with the angle of attack,
-  which RocketPy's drag table doesn't have. Which one it is, is open
+- **The wind.** In wind, hpr turns into the wind less than RocketPy: its apogee moves 67 to 85% as
+  far upwind (Juno III: 769 m against 1,147 m). Flown with no wind, the same rockets agree on the
+  apogee to 0.18% and on the drifts to 1.3 to 3.7%. So most of the difference is in the response
+  to wind: each code's own normal force and damping, and hpr's growth of drag with the angle of
+  attack, which RocketPy's drag table doesn't have. Which one it is, is open
   ([issue #50](https://github.com/nrdptel/hpr-sim/issues/50)).
 - **The rail.** hpr's rail equation keeps the terms for the centre of mass moving inside the
   body as the propellant burns. RocketPy's rail equation (`udot_rail1`) leaves them out. At a

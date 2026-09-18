@@ -63,7 +63,8 @@ It was written for Valetudo's northward drift, which read 28x RocketPy's, and th
 there turned out to be to fix the comparison rather than to excuse the number. Eleven whole-flight
 metrics use it today, each argued in its case file (ADR-021): the drifts of the apogee and the
 landing point in the four windy cases and Valetudo's still-air landing drift (in wind, hpr turns
-into the wind far more than RocketPy; in calm air they agree within a few per cent; issue #50),
+into the wind less than RocketPy; in calm air they agree within a few per cent; open misses whose
+cause is unknown, issue #50, so M2.1's landing offset is not met),
 Calisto's time of peak acceleration, whose two peaks are 0.9% apart, and NDRT 2020's
 whole-flight peak, which is its main opening, where RocketPy has added mass and hpr has none. No
 case carries an absolute floor: every gate is the milestone's 3%.

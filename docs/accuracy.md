@@ -221,8 +221,8 @@ motion, the motor and the air, not the drag. hpr's own drag is compared in
 **In short: how high, how fast and how long agree; where the rocket goes in wind does not.** The
 heights, speeds, times and accelerations of five flights agree within the 3% of each case's gate
 ([case file][juno-case]); the largest difference is +1.783% ([report][report]). The horizontal path
-agrees within a few per cent in calm air, but in wind hpr turns into the wind far more than
-RocketPy does, and its landing points are far off ([issue #50][issue-50]).
+does not: in wind hpr turns into the wind less than RocketPy does, and its landing points are far
+off. So the landing offset that [M2.1](decisions-and-roadmap.md#m2-1) asks for is not met ([issue #50][issue-50]).
 
 Each of fifteen numbers per flight must agree within 3% of RocketPy's, with no absolute floor, or
 say in its case file why it is not scored. Each case file argues why, for example
@@ -280,14 +280,15 @@ a reason written in its case file (below). Prometheus 2022, the sixth rocket, is
 
 What the two codes still do differently, and what it moves:
 
-- **In wind, the path.** hpr turns into the wind far more than RocketPy. Juno III, in an 8.5 m/s
-  wind, reaches apogee 228 m from the pad in hpr and 582 m in RocketPy. Flown with no wind, the
-  same rockets agree on the apogee to within 0.18% and on the drifts to within 1.3 to 3.7%. So the
-  gap is in the response to wind, which same-drag mode doesn't share: each code's own normal force,
-  its damping (hpr has none until [M1.8](decisions-and-roadmap.md#m1-8)), and how its drag grows at
-  an angle. The apogee and landing drifts of the four windy cases are reported but not scored
-  until [issue #50][issue-50] finds the cause, and so is Valetudo's still-air landing drift,
-  −3.410%. The same turn is the likely source of Juno III's +1.710% apogee
+- **In wind, the path.** hpr turns into the wind less than RocketPy. In Juno III's 8.5 m/s wind,
+  RocketPy's apogee moves 1,147 m upwind of where it is in calm air, and hpr's 769 m, so hpr's
+  apogee ends 228 m from the pad and RocketPy's 582 m. Flown once with no wind for this comparison
+  (not a committed check), the same rockets agree on the apogee to within 0.18% and on the drifts
+  to within 1.3 to 3.7%, not always inside 3%. So most of the gap is in the response to wind, which
+  same-drag mode doesn't share: each code's own normal force and damping, and how hpr's drag grows
+  at an angle. The drifts of the four windy cases, and Valetudo's still-air landing drift,
+  −3.410%, are open misses: reported, not scored and not passed, until [issue #50][issue-50] finds
+  the cause. Turning less, hpr also flies higher, the likely source of Juno III's +1.710% apogee
   ([report][report], [case file][juno-case]).
 - **On the rail,** hpr keeps the terms for the centre of mass moving inside the body as the
   propellant burns, and RocketPy's rail equation leaves them out. At a sharp ignition spike, with
@@ -312,8 +313,8 @@ outlive its cause ([case file][prometheus-case]). Bella Lui was added so that fi
 still be scored while Prometheus can't.
 
 What this shows: with the drag given, the two codes agree on how high, how fast and how long a
-rocket flies, and on where it goes in calm air. They disagree on where it goes in wind, which is
-open. Nothing here says anything yet about hpr's own drag, or about a real flight. The
+rocket flies. They don't agree well enough on where it goes: within a few per cent in calm air, and
+far apart in wind, which is open. [M2.1](decisions-and-roadmap.md#m2-1)'s landing offset is not met. Nothing here says anything yet about hpr's own drag, or about a real flight. The
 comparisons with OpenRocket ([M2.2](decisions-and-roadmap.md#m2-2), the OpenRocket comparison)
 and with real flights ([M2.3](decisions-and-roadmap.md#m2-3), the real-flights milestone) come
 after.
@@ -348,9 +349,10 @@ rest.
 - **No added mass under a canopy,** the likely cause of the 2.86% drift difference above
   ([Recovery](physics/recovery.md#against-rocketpy)), and the cause of NDRT's +83.060% peak as
   its main opens in the whole flight ([report][report], [case file][ndrt-flight-case]).
-- **The path in wind.** In a whole flight in wind, hpr turns into the wind far more than RocketPy:
+- **The path in wind.** In a whole flight in wind, hpr turns into the wind less than RocketPy:
   Juno III's apogee is 228 m from the pad in hpr and 582 m in RocketPy. In calm air they agree
-  within a few per cent. The cause is open ([issue #50][issue-50], [case file][juno-case]).
+  within a few per cent. The cause is open, and [M2.1](decisions-and-roadmap.md#m2-1)'s landing offset is not met
+  ([issue #50][issue-50], [case file][juno-case]).
 - **Mach 1.** hpr stops any flight that reaches Mach 1, so Prometheus 2022 can't be compared
   until [M1.8](decisions-and-roadmap.md#m1-8) ([case file][prometheus-case]).
 - **Turbulence** is an aircraft model, unvalidated for rockets, and no flight uses it yet

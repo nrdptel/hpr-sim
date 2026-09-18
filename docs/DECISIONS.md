@@ -1720,17 +1720,31 @@ landing points, recorded but not compared, were far apart in wind.
   ends of every solver step, so a peak at an event, such as a canopy opening, is read at its
   instant. The drifts of the apogee and the landing point, and the landing speed, are added to
   `flight.py`'s metrics, as M2.1 lists them.
+- **The committed report is pinned where the platforms agree.** A whole flight reproduces across
+  macOS, Windows and Linux to about 1e-8 of each value, not always to the sixth decimal the report
+  prints (NDRT's landing drift is 354.240893 m on macOS and 354.240895 m on Linux; one number of
+  75 differed). ADR-015 asks to find out why before loosening. hpr is deterministic on each
+  platform, and the likely source is the platforms' maths libraries, whose `sin`, `cos` and `exp`
+  differ in their last bit between macOS, glibc and MSVC; an 84 s flight in a sheared wind carries
+  that to 6e-9 of the drift. This amends ADR-015's six-decimal rule for whole flights: the test
+  that holds the committed report to this run's allows a number two units of its sixth decimal
+  or 1e-7 of itself, and nothing else; every word, tolerance and verdict must match. It is still
+  a million times tighter than any gate.
 - **A known gap is declared, checked and pinned.** A case may say `known_gap = "..."`. The harness
   accepts one kind, hpr's refusal of a real Mach number at or past 1; it checks that the reference
   reaches Mach 1 and fails the run once hpr flies the case
   ([Loft lesson L85](https://github.com/nrdptel/hpr-sim/blob/main/docs/research/loft-lessons.md)).
   The report lists gaps in a section of their own; they count neither as a pass nor as a fail, and
   a test pins the set.
-- **What does not agree is reported, not scored, and each reason is measured.** In wind, hpr turns
-  into the wind far more than RocketPy (Juno III's apogee is 228 m from the pad in hpr, 582 m in
-  RocketPy), while in calm air the two agree on the apogee to 0.18% and on the drifts to 1.3 to
-  3.7%. So the drifts of the four windy cases, and Valetudo's still-air landing drift (−3.41%), are
-  not scored until issue #50 finds the cause. So are Calisto's time of peak acceleration (two peaks
+- **What does not agree is reported, not scored, and not called a pass.** In wind, hpr turns into
+  the wind less than RocketPy: its apogee moves 67 to 85% as far upwind (Juno III 769 m against
+  1,147 m, ending 228 m from the pad against 582 m). Flown once in calm air, the two agree on the
+  apogee to 0.18% and on the drifts to 1.3 to 3.7%. The drifts of the four windy cases, and
+  Valetudo's still-air landing drift (−3.41%), are open misses whose cause is unknown: they are
+  printed with both numbers and pinned, issue #50 tracks them, and **M2.1's landing offset is not
+  met** until it closes. A reviewer argued they should count as failures; they don't, because a
+  suite that fails on a known, tracked gap can't gate anything else, but the roadmap, the status
+  and *Accuracy* say plainly that the metric is not met. So are Calisto's time of peak acceleration (two peaks
   0.9% apart, which hpr's rail terms reorder) and NDRT's whole-flight peak, the main opening, where
   RocketPy has added mass and hpr has none (ADR-012). Every other metric is gated at 3% with no
   floor, as ADR-015 requires.
@@ -1754,8 +1768,8 @@ landing points, recorded but not compared, were far apart in wind.
   +1.783% (Bella Lui's 7 ms ignition spike on the rail, where hpr keeps variable-mass terms that
   RocketPy's `udot_rail1` leaves out: +1.2 to 1.3 m/s² with thrust and mass the same to five
   digits) and +1.710% (Juno III's apogee, in the strongest wind). The path in wind is open
-  (issue #50): each code's own normal force, hpr's missing pitch damping (M1.8), hpr's drag growth
-  with the angle of attack and the rail release are the candidates.
+  (issue #50): each code's own normal force and damping, hpr's drag growth with the angle of
+  attack and the rail release are the candidates.
 - No motor gets the sea-level correction by default: catalog and `.eng` motors carry no nozzle,
   and a design's nozzle must say which reference pressure it means.
 - When M1.8 lifts the Mach limit, the Prometheus case fails until its gap is removed. Its

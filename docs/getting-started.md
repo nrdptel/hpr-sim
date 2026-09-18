@@ -152,8 +152,8 @@ Below the table:
   declared drag coefficient, agree within 3% on how high, how fast and how long
   ([M2.1b2](decisions-and-roadmap.md#m2-1b2), the whole-flight comparison). That checks the
   equations of motion, the motor and the air, not the drag.
-- **Where it goes in wind does not match.** In wind, hpr turns the rocket into the wind far more
-  than RocketPy does ([issue #50](https://github.com/nrdptel/hpr-sim/issues/50)), so this
+- **Where it goes in wind does not match.** In wind, hpr turns the rocket into the wind less than
+  RocketPy does ([issue #50](https://github.com/nrdptel/hpr-sim/issues/50)), so this
   example's apogee 86 m upwind and its landing point are the least trustworthy numbers it
   prints. With hpr's own drag, as here, the
   comparison is [M2.1c](decisions-and-roadmap.md#m2-1c), not done yet, and no flight has been

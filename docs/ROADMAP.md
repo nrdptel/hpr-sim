@@ -485,9 +485,10 @@
       pass: every scored metric within 3% with no floor, 64 of them; the largest in height, speed
       and acceleration are Bella Lui's power-on peak at +1.783% and Juno III's apogee at +1.710%,
       and Valetudo's apogee drift is −2.426%. Eleven are argued as not scored. Nine are the drifts
-      in wind and Valetudo's still-air landing drift: in wind hpr turns into the wind far more
-      than RocketPy (Juno III's apogee 228 m from the pad against 582 m), while flown calm the two
-      agree within 0.18% on apogee and 1.3 to 3.7% on the drifts (issue #50). The others are
+      in wind and Valetudo's still-air landing drift, open misses: in wind hpr turns into the wind
+      less than RocketPy (Juno III's apogee 228 m from the pad against 582 m), while flown calm
+      the two agree within 0.18% on apogee and 1.3 to 3.7% on the drifts. **M2.1's landing offset
+      is not met** until issue #50 closes. The others are
       Calisto's time of peak acceleration and NDRT's main-opening peak. Prometheus (Mach 1.014) is
       a known gap that the harness checks and that fails the run once hpr flies it (L85). Bella
       Lui is the sixth rocket. The L75 test passes, and the reference now records the motor and

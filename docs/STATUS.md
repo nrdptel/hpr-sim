@@ -13,8 +13,8 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
 ## Handoff (overwrite each session)
 
 M2.1b2 (ADR-021): six whole-flight cases. Five pass (64 metrics within 3%), Prometheus is a known
-gap (Mach 1.014), and eleven metrics are argued as not scored, nine of them the path in wind:
-hpr turns into the wind far more than RocketPy (issue #50, open). The designs fly RocketPy's
+gap (Mach 1.014), and eleven metrics are not scored, nine of them the path in wind, where hpr
+turns into the wind less than RocketPy: M2.1's landing offset is not met (issue #50, open). The designs fly RocketPy's
 thrust as measured (`reference_pressure_pa: null`); the first flight went from 874.0 to 779.0 m.
 
 - **Page rules** (ADR-016 to ADR-020): relative links between pages, GitHub URLs for the rest,
@@ -146,5 +146,5 @@ Next, M2.1c: predicted mode, a CI job for `cargo xtask validate`, and manual reg
   Streamer pleats are not modelled (hpr reads +58% fast on Kidwell's pleated streamer, +9% on his
   flat one); tumble misses its own finless drop by +19% (M1.7b).
 - `refs doctor` "runnable" means the oracle's runtime starts; no oracle runs in CI (M2.1b).
-- hpr's descent results are not bit-identical across macOS, Windows and Linux: the committed report
-  is pinned to six decimals, where they agree; CI proved full precision does not (M2.1a).
+- Results are not bit-identical across macOS, Windows and Linux: the committed report is pinned to
+  six decimals, or 1e-7 relative for whole flights, where they agree (M2.1a, M2.1b2).

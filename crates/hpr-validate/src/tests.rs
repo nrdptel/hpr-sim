@@ -233,9 +233,10 @@ fn the_metrics_that_are_not_scored_are_these_and_no_others() {
     //   is the higher, so its *time* jumps between the peaks; the value is gated.
     // - NDRT 2020's whole-flight maximum is the main opening, where RocketPy has added mass and hpr
     //   has none (ADR-012); the power-on maximum and the opening's time are gated.
-    // - The horizontal path in wind, where hpr turns into the wind far more than RocketPy
+    // - The horizontal path in wind, where hpr turns into the wind less than RocketPy
     //   (issue #50); in calm air the drifts agree to 1.3 to 3.7%, and Valetudo, in still air,
-    //   keeps its apogee drift gated while its landing drift (-3.41%) is reported.
+    //   keeps its apogee drift gated while its landing drift (-3.41%) is reported. These are open
+    //   misses, not definitional differences: M2.1's landing offset is not met until #50 closes.
     //
     // Adding an excuse means editing this list.
     let drifts = |case| [(case, "apogee_drift_m"), (case, "landing_drift_m")];
@@ -600,7 +601,9 @@ fn the_committed_cases_all_pass_and_the_report_says_so() {
     // The committed reports are these reports, so a number that moves shows up in the diff.
     let committed = std::fs::read_to_string(root().join("validation/reports/latest.md"))
         .expect("the report is committed");
-    assert_eq!(committed, markdown, "run `cargo xtask validate`");
+    if let Err(what) = same_but_for_platform_rounding(&committed, &markdown) {
+        panic!("{what}; run `cargo xtask validate`");
+    }
     // The JSON is pinned too, but not by its bytes: it carries full-precision floats, and hpr
     // promises bit-identical results on one platform, not across three (ADR-015). So everything
     // that cannot differ by platform is compared exactly...
@@ -660,14 +663,74 @@ fn the_committed_cases_all_pass_and_the_report_says_so() {
         shape(&report),
         "run `cargo xtask validate`"
     );
-    // ...and its numbers through the Markdown it renders, to the six decimals that report prints,
-    // which is where the descent reproduces on macOS, Windows and Linux. A tighter check here
-    // would assert a cross-platform bit-identity hpr does not claim.
-    assert_eq!(
-        committed.to_markdown(),
-        markdown,
-        "run `cargo xtask validate`"
-    );
+    // ...and its numbers through the Markdown it renders, to the precision the platforms share.
+    // A tighter check here would assert a cross-platform bit-identity hpr does not claim.
+    if let Err(what) = same_but_for_platform_rounding(&committed.to_markdown(), &markdown) {
+        panic!("{what}; run `cargo xtask validate`");
+    }
+}
+
+#[test]
+fn platform_rounding_forgives_the_last_digits_and_nothing_else() {
+    // The looser comparison of the committed report must still catch a number that moved, a word
+    // that changed, and a verdict that flipped.
+    let row =
+        "| flight-x | landing_drift_m | 354.240893 | 340.986523 | +3.887% | 3.000% | pass |  |";
+    let check = |other: &str| same_but_for_platform_rounding(row, other);
+    assert!(check(&row.replace("354.240893", "354.240895")).is_ok());
+    assert!(check(&row.replace("354.240893", "354.240993")).is_err());
+    assert!(check(&row.replace("+3.887%", "+3.888%")).is_err());
+    assert!(check(&row.replace("pass", "**fail**")).is_err());
+    assert!(check(&row.replace("landing_drift_m", "apogee_drift_m")).is_err());
+    assert!(check(&format!("{row}\n")).is_ok());
+    assert!(check(&format!("{row}\n| another |")).is_err());
+}
+
+/// Whether two renderings of the report are the same, letter for letter, except that a number
+/// may differ by two units in its sixth decimal or by 1e-7 of itself, whichever is larger.
+///
+/// hpr is bit-identical on one platform, not across three (ADR-015). The descents reproduce to
+/// the six decimals the report prints; a whole flight does to about 1e-8 of each value, not
+/// always to its sixth decimal: NDRT 2020's landing drift is 354.240893 m on macOS and
+/// 354.240895 m on Linux, after 84 s of six-degree-of-freedom flight in a sheared wind. Every
+/// word, case, metric, tolerance and verdict must still match exactly.
+fn same_but_for_platform_rounding(committed: &str, computed: &str) -> Result<(), String> {
+    let (committed, computed): (Vec<&str>, Vec<&str>) =
+        (committed.lines().collect(), computed.lines().collect());
+    if committed.len() != computed.len() {
+        return Err(format!(
+            "the committed report has {} lines and this run's {}",
+            committed.len(),
+            computed.len()
+        ));
+    }
+    let number = |cell: &str| {
+        cell.trim()
+            .trim_end_matches('%')
+            .trim_start_matches('+')
+            .parse::<f64>()
+            .ok()
+    };
+    for (line, (old, new)) in committed.iter().zip(&computed).enumerate() {
+        if old == new {
+            continue;
+        }
+        let (old_cells, new_cells): (Vec<&str>, Vec<&str>) =
+            (old.split('|').collect(), new.split('|').collect());
+        let close = old_cells.len() == new_cells.len()
+            && old_cells.iter().zip(&new_cells).all(|(a, b)| {
+                a == b
+                    || matches!((number(a), number(b)), (Some(a), Some(b))
+                        if (a - b).abs() <= (2e-6_f64).max(1e-7 * b.abs()))
+            });
+        if !close {
+            return Err(format!(
+                "line {} differs beyond platform rounding:\n  committed: {old}\n  this run:  {new}",
+                line + 1
+            ));
+        }
+    }
+    Ok(())
 }
 
 #[test]

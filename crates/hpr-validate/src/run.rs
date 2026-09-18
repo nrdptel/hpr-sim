@@ -298,12 +298,15 @@ pub fn run_case(root: &Path, case: &Case) -> Result<CaseRun, ValidateError> {
             });
         }
         (Flown::RefusedAtMach { mach }, None) => {
-            // The error hpr raised, which carries nothing but this Mach number.
-            let error = SimError::Aero(AeroError::Mach { mach });
+            // The error hpr raised, which carries nothing but this Mach number; the words are
+            // rounded as the gap's are, since the Mach number's last bits differ by platform.
             return Err(ValidateError::Flight {
                 case: case.id.clone(),
-                what: error.to_string(),
-                source: Some(Box::new(error)),
+                what: format!(
+                    "refused the flight at Mach {mach:.3}, outside its subsonic models' range of \
+                     [0, 1), and the case declares no known gap"
+                ),
+                source: Some(Box::new(SimError::Aero(AeroError::Mach { mach }))),
             });
         }
     };
