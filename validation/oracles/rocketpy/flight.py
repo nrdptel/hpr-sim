@@ -334,9 +334,11 @@ def main():
                 "oracle": f"rocketpy {importlib.metadata.version('rocketpy')}",
                 "generator": "validation/oracles/rocketpy/flight.py",
                 "command": COMMAND,
-                "model": "Flight.u_dot_generalized (flight.py:2270-2520): RocketPy's 6-DOF "
-                         "variable-mass rigid body from the rail to apogee, then its point-mass "
-                         "parachute phase, under the drag table this script declares",
+                "model": "Flight.u_dot_generalized (flight.py:2471-2709, the default "
+                         "equations_of_motion='standard'): RocketPy's 6-DOF variable-mass rigid "
+                         "body from the rail to apogee, then its point-mass parachute phase "
+                         "(u_dot_parachute, flight.py:2710-2790), under the drag table this "
+                         "script declares",
                 "overrides": "the drag is the constant C_D0 this script declares, handed to "
                              "power_off_drag and power_on_drag, because RocketPy's own exports "
                              "carry their own terms and are never committed (ADR-009); every "
