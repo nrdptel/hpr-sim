@@ -559,7 +559,7 @@
       alignment (each whole-flight fixture already carries its series), and the landing offset,
       reported but not scored until issue #50 finds why hpr turns into the wind less than RocketPy.
 
-    *Done when:* split below into M2.1d1 and M2.1d2, which carry these two bullets between them.
+    *Done when:* split below into M2.1d1 to M2.1d3, which carry these two bullets between them.
 
     - [x] **M2.1d1 The time-series RMS.**
 
@@ -576,7 +576,17 @@
       NDRT 2020: the drag), explained and pinned. Both Prometheus 2022 cases name both metrics
       with their bounds and stay the checked `M ≥ 1` gap, flying nothing, until M1.8.
 
-    - [ ] **M2.1d2 The path in wind (issue #50).**
+    - [ ] **M2.1d2 The calm-air cases (issue #50).**
+      - Issue #50's zero-wind runs of Juno III, Calisto and Bella Lui, committed as same-drag
+        whole-flight cases with RocketPy references, to measure the wind's effect against.
+
+      *Done when:*
+      - The three calm-air cases are in the suite, their apogee and landing drifts scored at 3%,
+        and each passes or is a gap its case file explains.
+
+    - [ ] **M2.1d3 The path in wind (issue #50).**
+      - Fly the windy cases with each candidate matched in turn: rail release at the first button,
+        drag without the angle-of-attack factor, and each code's normal force and damping.
 
       *Done when:*
       - Issue #50's cause is found and the drifts are scored within their tolerances, or an ADR

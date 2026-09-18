@@ -119,7 +119,8 @@ missing or its status disagrees.
 | <a id="m2-1c2"></a>[M2.1c2][phase-1] | The same cases flown with each code's own drag | done |
 | <a id="m2-1d"></a>[M2.1d][phase-1] | The time-series comparison, and where a rocket goes in wind (issue #50) | not yet done |
 | <a id="m2-1d1"></a>[M2.1d1][phase-1] | Each whole flight's height and speed, compared over time with RocketPy's | done |
-| <a id="m2-1d2"></a>[M2.1d2][phase-1] | Why hpr turns into the wind less than RocketPy (issue #50) | not yet done |
+| <a id="m2-1d2"></a>[M2.1d2][phase-1] | The same rockets in still air, as committed cases to measure the wind against (issue #50) | not yet done |
+| <a id="m2-1d3"></a>[M2.1d3][phase-1] | Why hpr turns into the wind less than RocketPy (issue #50) | not yet done |
 | <a id="m1-8"></a>[M1.8][phase-1] | Transonic and supersonic aerodynamics, damping, and overriding the aerodynamics | not yet done |
 | <a id="m3-1"></a>[M3.1][phase-1] | Reading OpenRocket `.ork` design files | not yet done |
 | <a id="m2-2"></a>[M2.2][phase-1] | OpenRocket as a reference program, and a corpus of designs to compare | not yet done |
