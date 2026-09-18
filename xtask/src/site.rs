@@ -17,6 +17,10 @@
 //! - **Equations** are written in Unicode, which reads the same on GitHub, on the site and in
 //!   rustdoc. `$x$`, `$$` and ```` ```math ```` render as math on GitHub only, so they fail.
 //! - **Coverage.** Every page under `docs/physics/` and `docs/format/` is in the summary.
+//! - **In short** (M0.4b). Every model page, one per file under `docs/physics/`, opens with a
+//!   `## In short` section right under its title: a bulleted list of four items, each opening with
+//!   its label in bold, saying what it models, its sources, how well it is validated and what it
+//!   leaves out ([`IN_SHORT_ITEMS`]). A reader who stops there knows how far to trust the page.
 //!
 //! `cargo test` runs these on the real pages. `cargo xtask site` runs them, builds the site into
 //! `target/site` with mdBook, and checks the built HTML as well: every relative `href` and `src`
@@ -28,7 +32,9 @@ use std::fs;
 use std::path::Path;
 use std::process::Command;
 
-use pulldown_cmark::{BrokenLink, CodeBlockKind, Event, LinkType, Options, Parser, Tag, TagEnd};
+use pulldown_cmark::{
+    BrokenLink, CodeBlockKind, Event, HeadingLevel, LinkType, Options, Parser, Tag, TagEnd,
+};
 
 pub const USAGE: &str =
     "  site [--no-build]        Check the documentation site's pages, build the site with
@@ -45,6 +51,20 @@ const OUTPUT: &str = "target/site";
 const GITHUB: &str = "https://github.com/nrdptel/hpr-sim/";
 /// Directories under [`SOURCE`] whose every page must be in the summary.
 const COVERED: [&str; 2] = ["physics", "format"];
+/// The directory under [`SOURCE`] that holds the model pages, one per model. Each opens with
+/// *In short*.
+const MODELS: &str = "physics";
+/// The heading of the section a model page opens with.
+const IN_SHORT: &str = "In short";
+/// The bold labels that open the items of a model page's *In short* list, in this order: what it
+/// models, its source, how well it is validated, and what it leaves out (M0.4 in
+/// `docs/ROADMAP.md`).
+const IN_SHORT_ITEMS: [&str; 4] = [
+    "What it models:",
+    "Sources:",
+    "How well it is validated:",
+    "What it leaves out:",
+];
 /// What `mdbook --version` prints for the release series `book.toml` is written for.
 const MDBOOK_SERIES: &str = "mdbook v0.5.";
 /// How to install the mdBook release CI uses.
@@ -178,7 +198,14 @@ fn check_sources(root: &Path) -> Result<Report, String> {
     for name in &names {
         match fs::read_to_string(source.join(name)) {
             Ok(text) => {
-                pages.insert(name.clone(), read_page(&text));
+                let mut page = read_page(&text);
+                if parent(name) == MODELS
+                    && let Some(problem) = in_short(&text)
+                {
+                    page.problems.push(problem);
+                    page.problems.sort_by_key(|(line, _)| *line);
+                }
+                pages.insert(name.clone(), page);
             }
             Err(err) => report.problems.push(format!(
                 "{SOURCE}/{name}: listed in {SOURCE}/{SUMMARY}, but can't be read: {err}"
@@ -541,6 +568,174 @@ fn read_page(text: &str) -> Page {
 const HEADING_LINK: &str = "a link inside a heading: mdBook already makes each heading a link, and \
                             a link inside a link is invalid HTML; move it to the text below";
 
+/// How a model page opens, for the messages of [`in_short`].
+const IN_SHORT_FORM: &str = "a model page opens with *In short*: right under its `# title`, a \
+                             `## In short` section holding only a bulleted list of four items, \
+                             which open with `**What it models:**`, `**Sources:**`, `**How well it \
+                             is validated:**` and `**What it leaves out:**`, in that order, each \
+                             followed by its answer";
+
+/// What is wrong with the *In short* a model page opens with, if anything, as (line, message):
+/// the first thing that departs from [`IN_SHORT_FORM`].
+fn in_short(text: &str) -> Option<(usize, String)> {
+    let newlines: Vec<usize> = text.match_indices('\n').map(|(at, _)| at).collect();
+    let line = |offset: usize| 1 + newlines.partition_point(|&at| at < offset);
+    let fail = |offset: usize, what: &str| Some((line(offset), format!("{what}: {IN_SHORT_FORM}")));
+    let events: Vec<(Event<'_>, std::ops::Range<usize>)> = Parser::new_ext(text, options())
+        .into_offset_iter()
+        .collect();
+    let offset = |at: usize| events.get(at).map_or(text.len(), |(_, range)| range.start);
+
+    // The title.
+    if !matches!(
+        events.first(),
+        Some((
+            Event::Start(Tag::Heading {
+                level: HeadingLevel::H1,
+                ..
+            }),
+            _
+        ))
+    ) {
+        return fail(offset(0), "the page doesn't open with its title, `# ...`");
+    }
+    let Some(title_end) = events
+        .iter()
+        .position(|(event, _)| matches!(event, Event::End(TagEnd::Heading(_))))
+    else {
+        return fail(text.len(), "the title never ends");
+    };
+
+    // `## In short`, right under it.
+    let mut at = title_end + 1;
+    if !matches!(
+        events.get(at),
+        Some((
+            Event::Start(Tag::Heading {
+                level: HeadingLevel::H2,
+                ..
+            }),
+            _
+        ))
+    ) {
+        return fail(offset(at), "the title is not followed by `## In short`");
+    }
+    let heading_at = offset(at);
+    let mut heading = String::new();
+    at += 1;
+    while let Some((event, _)) = events.get(at) {
+        at += 1;
+        match event {
+            Event::End(TagEnd::Heading(_)) => break,
+            Event::Text(text) | Event::Code(text) => heading.push_str(text),
+            _ => {}
+        }
+    }
+    if heading.trim() != IN_SHORT {
+        return fail(
+            heading_at,
+            &format!(
+                "the first section is `## {}`, not `## {IN_SHORT}`",
+                heading.trim()
+            ),
+        );
+    }
+
+    // Its bulleted list, split into items.
+    if !matches!(events.get(at), Some((Event::Start(Tag::List(None)), _))) {
+        return fail(
+            offset(at),
+            "`## In short` doesn't open with a bulleted list",
+        );
+    }
+    let list_at = offset(at);
+    at += 1;
+    let mut items: Vec<(usize, &[(Event<'_>, std::ops::Range<usize>)])> = Vec::new();
+    let mut depth = 0usize;
+    let mut item_from = at;
+    let list_end = loop {
+        let Some((event, _)) = events.get(at) else {
+            return fail(text.len(), "the list never ends");
+        };
+        match event {
+            Event::Start(_) => {
+                if depth == 0 {
+                    item_from = at;
+                }
+                depth += 1;
+            }
+            Event::End(_) if depth == 0 => break at,
+            Event::End(_) => {
+                depth -= 1;
+                if depth == 0 {
+                    items.push((offset(item_from), &events[item_from + 1..at]));
+                }
+            }
+            _ => {}
+        }
+        at += 1;
+    };
+    // The section holds nothing else: the next thing is a heading, or the end of the page.
+    match events.get(list_end + 1) {
+        None | Some((Event::Start(Tag::Heading { .. }), _)) => {}
+        Some((_, range)) => {
+            return fail(
+                range.start,
+                "`## In short` holds more than its list; move the rest under a heading of its own",
+            );
+        }
+    }
+
+    // Each item: a bold label, then its answer.
+    let mut labels = Vec::new();
+    for (item_at, item) in &items {
+        let body = match item.first() {
+            Some((Event::Start(Tag::Paragraph), _)) => &item[1..],
+            _ => item,
+        };
+        let mut label = None;
+        if let Some((Event::Start(Tag::Strong), _)) = body.first()
+            && let Some(close) = body
+                .iter()
+                .position(|(event, _)| matches!(event, Event::End(TagEnd::Strong)))
+        {
+            let text: String = body[1..close]
+                .iter()
+                .filter_map(|(event, _)| match event {
+                    Event::Text(text) | Event::Code(text) => Some(text.as_ref()),
+                    _ => None,
+                })
+                .collect();
+            let answered = body[close + 1..].iter().any(|(event, _)| match event {
+                Event::Text(text) | Event::Code(text) => !text.trim().is_empty(),
+                _ => false,
+            });
+            if !answered {
+                return fail(*item_at, &format!("`**{text}**` has no answer after it"));
+            }
+            label = Some(text);
+        }
+        let Some(label) = label else {
+            return fail(*item_at, "an item doesn't open with its label in bold");
+        };
+        labels.push(label);
+    }
+    if labels != IN_SHORT_ITEMS {
+        return fail(
+            list_at,
+            &format!(
+                "its items open with {}",
+                labels
+                    .iter()
+                    .map(|label| format!("`**{label}**`"))
+                    .collect::<Vec<_>>()
+                    .join(", ")
+            ),
+        );
+    }
+    None
+}
+
 /// The anchors GitHub gives the headings of a Markdown file, which is read for nothing else.
 fn anchors_of(text: &str) -> BTreeSet<String> {
     let mut headings = Vec::new();
@@ -894,11 +1089,11 @@ mod tests {
                 ),
                 (
                     "docs/physics/gravity.md",
-                    "# Gravity\n\n## Formulas\n\nBack to [the start](../start-here.md#start-here), \
+                    &format!("{IN_SHORT_OK}\nBack to [the start](../start-here.md#start-here), \
                      [here](#formulas), [NGA] as a citation, and [the crate](https://github.com/nrdptel/hpr-sim/tree/main/crates/).\n\n\
                      ![A plot of gravity](plot%20one.png?raw=true), <neer@example.com>, \
                      [the source](https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md?plain=1#adr-003-frames-2026-09-17) \
-                     and [raw](https://github.com/nrdptel/hpr-sim/raw/main/crates/README.md).\n",
+                     and [raw](https://github.com/nrdptel/hpr-sim/raw/main/crates/README.md).\n"),
                 ),
                 ("docs/physics/plot one.png", "png"),
                 ("docs/DECISIONS.md", "# Decisions\n\n## ADR-003: Frames (2026-09-17)\n"),
@@ -932,7 +1127,7 @@ mod tests {
             problems(&[
                 ("docs/SUMMARY.md", SUMMARY_TWO_PAGES),
                 ("docs/start-here.md", page),
-                ("docs/physics/gravity.md", "# Gravity\n"),
+                ("docs/physics/gravity.md", IN_SHORT_OK),
                 ("docs/notes.md", "# Notes\n"),
                 ("docs/DECISIONS.md", "# Decisions\n\n## ADR-001: One\n"),
                 ("ROADMAP.md", "# Roadmap\n"),
@@ -1061,7 +1256,7 @@ mod tests {
             problems(&[
                 ("docs/SUMMARY.md", SUMMARY_TWO_PAGES),
                 ("docs/start-here.md", "# Start here\n"),
-                ("docs/physics/gravity.md", "# Gravity\n"),
+                ("docs/physics/gravity.md", IN_SHORT_OK),
                 ("docs/physics/wind.md", "# Wind\n"),
                 ("docs/format/eng.md", "# eng\n"),
             ]),
@@ -1069,6 +1264,110 @@ mod tests {
                 "docs/physics/wind.md: not in docs/SUMMARY.md, so the site doesn't show it",
                 "docs/format/eng.md: not in docs/SUMMARY.md, so the site doesn't show it",
             ]
+        );
+    }
+
+    /// A model page's opening, as the check wants it.
+    const IN_SHORT_OK: &str = "# Gravity\n\n## In short\n\n\
+                               - **What it models:** the pull of the Earth.\n\
+                               - **Sources:** the WGS 84 standard.\n\
+                               - **How well it is validated:** against its printed values, to 1e-6.\n\
+                               - **What it leaves out:** the Moon.\n\n\
+                               ## Formulas\n";
+
+    /// The line and first words of each problem on a site whose one model page is `gravity`.
+    fn in_short_problems(gravity: &str) -> Vec<String> {
+        problems(&[
+            ("docs/SUMMARY.md", SUMMARY_TWO_PAGES),
+            ("docs/start-here.md", "# Start here\n"),
+            ("docs/physics/gravity.md", gravity),
+        ])
+        .iter()
+        .map(|problem| {
+            problem
+                .split(": a model page opens")
+                .next()
+                .unwrap()
+                .to_owned()
+        })
+        .collect()
+    }
+
+    #[test]
+    fn a_model_page_without_in_short_fails() {
+        assert_eq!(in_short_problems(IN_SHORT_OK), Vec::<String>::new());
+        // A loose list, links and code in the answers, and nothing after the list are fine too.
+        assert_eq!(
+            in_short_problems(
+                "# Gravity\n\n## In short\n\n- **What it models:** `γ(φ, h)`.\n\n\
+                 - **Sources:** [NGA](https://example.com).\n\n\
+                 - **How well it is validated:** [well](#in-short).\n\n\
+                 - **What it leaves out:** tides,\n  - and the Moon.\n"
+            ),
+            Vec::<String>::new()
+        );
+        for (page, problem) in [
+            (
+                "# Gravity\n\nCode: `hpr_core::gravity`.\n\n## Formulas\n",
+                "docs/physics/gravity.md:3: the title is not followed by `## In short`",
+            ),
+            (
+                "Gravity, with no title.\n",
+                "docs/physics/gravity.md:1: the page doesn't open with its title, `# ...`",
+            ),
+            (
+                "# Gravity\n\n## Formulas\n\n## In short\n",
+                "docs/physics/gravity.md:3: the first section is `## Formulas`, not `## In short`",
+            ),
+            (
+                "# Gravity\n\n### In short\n",
+                "docs/physics/gravity.md:3: the title is not followed by `## In short`",
+            ),
+            (
+                "# Gravity\n\n## In short\n\nIt pulls.\n",
+                "docs/physics/gravity.md:5: `## In short` doesn't open with a bulleted list",
+            ),
+            (
+                "# Gravity\n\n## In short\n\n1. **What it models:** the pull.\n",
+                "docs/physics/gravity.md:5: `## In short` doesn't open with a bulleted list",
+            ),
+            (
+                &IN_SHORT_OK.replace("## Formulas", "More words."),
+                "docs/physics/gravity.md:10: `## In short` holds more than its list; move the \
+                 rest under a heading of its own",
+            ),
+            (
+                &IN_SHORT_OK.replace("the Moon.", ""),
+                "docs/physics/gravity.md:8: `**What it leaves out:**` has no answer after it",
+            ),
+            (
+                &IN_SHORT_OK.replace("**Sources:**", "Sources:"),
+                "docs/physics/gravity.md:6: an item doesn't open with its label in bold",
+            ),
+            (
+                &IN_SHORT_OK.replace("**Sources:**", "**Sources**:"),
+                "docs/physics/gravity.md:5: its items open with `**What it models:**`, \
+                 `**Sources**`, `**How well it is validated:**`, `**What it leaves out:**`",
+            ),
+            (
+                &IN_SHORT_OK.replace("- **What it leaves out:** the Moon.\n", ""),
+                "docs/physics/gravity.md:5: its items open with `**What it models:**`, \
+                 `**Sources:**`, `**How well it is validated:**`",
+            ),
+        ] {
+            assert_eq!(in_short_problems(page), [problem], "{page}");
+        }
+        // Only model pages open with it: not *Start here*, and not a file format's page.
+        assert_eq!(
+            problems(&[
+                (
+                    "docs/SUMMARY.md",
+                    "[Start here](start-here.md)\n- [eng](format/eng.md)\n"
+                ),
+                ("docs/start-here.md", "# Start here\n\nWords.\n"),
+                ("docs/format/eng.md", "# eng\n\nWords.\n"),
+            ]),
+            Vec::<String>::new()
         );
     }
 
