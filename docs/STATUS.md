@@ -4,48 +4,46 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
 
 ## Now
 
-- **Current milestone:** M2.1b Whole flights against RocketPy, same-drag (M2.1a shipped)
-- **Run:** the first autopilot run; M0.1–M0.3, M1.1–M1.7 and M2.1a have shipped
-- **Last updated:** 2026-09-17 (M2.1a, then #27 and #11 closed)
+- **Current milestone:** M2.1b1 The whole-flight oracle (M2.1b split; M2.1a shipped)
+- **Run:** the first autopilot run; M0.1-M0.3, M1.1-M1.7 and M2.1a have shipped
+- **Last updated:** 2026-09-17 (M2.1b split, and the drag-provenance call that unblocks it)
 
 ## Handoff (overwrite each session)
 
-M2.1a shipped the validation harness (ADR-015, `docs/VALIDATION.md`): `cargo xtask validate
-[--fast]` runs the cases in `validation/cases/lock.toml` against stored references and writes
-`validation/reports/latest.{md,json}`. Five descent cases, 30 metrics, all scored and all inside
-the milestone's 3% (worst +2.86%). M2.1b is the suite itself. Start from these notes:
+M2.1b was split: **M2.1b1** is the RocketPy whole-flight oracle, **M2.1b2** the `WholeFlight` case
+variant and the five cases. Nothing was built this cycle; the cycle's work was finding and
+settling the question that blocked b1, so start by writing `validation/oracles/rocketpy/flight.py`.
 
-- **The harness:** a case is `validation/cases/<id>.toml` (`Flight` says what to fly, `metrics`
-  names each metric's tolerance, `reference` points at a fixture); `hpr-validate` reads it, flies
-  hpr and reports, and `rocketpy.rs` is the only place that knows a generator's JSON shape. It
-  never writes a reference (L76), refuses a value with no source (L77) or a metric with no gate
-  (L79), and fails on a locked case it cannot find or a committed case the lock does not name
-  (L78). A metric that cannot honestly be gated can be declared `not_scored = "<reason>"`: printed,
-  never a pass, the set pinned by a test and empty today. No absolute floors anywhere.
-- **Compare like for like, and say so.** The suite flies `GravityModel::VerticalTaylor` because
-  that is RocketPy's gravity; hpr's default vector gravity put Valetudo's 20 µm north drift 28x
-  high (#27, ADR-015). When an oracle's model is a documented simplification hpr can also be asked
-  for, use it rather than reporting the modelling gap as a physics gap.
-- **What M2.1b adds:** a `validation/oracles/rocketpy/flight.py` generator (none exists: the five
-  generators cover attitude, gravity, recovery, mass and motors) and a `Flight::WholeFlight`
-  variant taking the oracle's `C_D0(M)` through `Simulation::with_drag_table`. M2.1c then adds
-  predicted mode, the CI job and the regeneration workflow.
-- **Both modes are required:** **same-drag** (the oracle's `C_D0(M)` through
-  `Simulation::with_drag_table`) and **predicted** (hpr's own aero, which refuses `M ≥ 1` until
-  M1.8, so supersonic cases are gaps, not hidden, and need their own stated tolerance).
-- **Oracle notes:** RocketPy's motor files have unclear terms, so cases use the bundled curves
-  (ADR-007); its weather files are Copernicus, so declare the environment as `recovery.py` does.
-  Zero the parachute noise (global `np.random`); a deployment on a phase start gives NaNs. Expect
-  differences from its added mass, its rail exit at the forward button and `0.25·n²` (ADR-011).
+- **The blocker, and the call.** Same-drag mode needs hpr to fly the oracle's `C_D0(M)`, but
+  RocketPy's drag exports carry their own terms: ADR-009 and `THIRD-PARTY-NOTICES.md:34-40` commit
+  only derived numbers from them, and `refs/` is gitignored (`.gitignore:6`), so M2.1c's CI cannot
+  read them either. **Decision: the case declares its own `C_D0(M)` and the generator hands it to
+  RocketPy's `power_off_drag`/`power_on_drag`**, as `recovery.py` already declares the wind of
+  examples whose weather files are Copernicus. Rejected: committing a resampled table (still
+  redistribution) and reading `refs/` at validate time (a case CI cannot run is L78's silent skip).
+  The flight is then not the example's published one, which is fine: same-drag mode exists to
+  isolate dynamics, environment and motor, and the examples' own aero is M2.1c's predicted mode.
+- **Build b1 on `recovery.py`.** It already reads each example's rocket, motor and geometry from
+  `validation/fixtures/design/rocketpy-rocket-mass.json`, substitutes a bundled curve (ADR-007),
+  declares site and wind, zeroes parachute noise, and reruns each case loose to show the metric is
+  the model's. Copy that shape; a whole flight adds the rail and the metrics M2.1 names.
+- **Watch for:** a deployment landing on a phase start gives NaNs (`recovery.py`'s `START_S`);
+  expect differences from RocketPy's added mass, its rail exit at the forward button and `0.25*n^2`
+  (ADR-011); hpr refuses `M >= 1` until M1.8, so a supersonic case is a b2/M2.1c gap to report, not
+  to hide. Fly `GravityModel::VerticalTaylor` (ADR-015).
+- **The harness, unchanged from M2.1a:** a case is `validation/cases/<id>.toml`;
+  `crates/hpr-validate/src/rocketpy.rs` is the only place that knows a generator's JSON shape, and
+  `Simulation::with_drag_table` is `crates/hpr-sim/src/flight.rs:292`. It never writes a reference
+  (L76), refuses a value with no source (L77) or a metric with no gate (L79), and fails on a
+  locked case it cannot find or a committed case the lock does not name (L78).
 - **Open conventions for the jar (M2.2/M3.1):** override order (L51), radii, positions, ogive,
   walls, fin mass, cant pivot, the drag-at-angle polynomial, lug diameter.
-- **Process notes:**
-  - `cargo test -p xtask` checks STATUS against ROADMAP, notices rows against lock titles, lesson
-    tests once checked off, lock URLs and the generated designs.
-  - `cargo xtask aero` and the oracles need `refs/rocketpy`; its data files are never committed.
-    Scanned PDFs need `pdftoppm -f N -l N -r 90 -gray -png`, born-digital ones `pdftotext -layout`;
-    archive.org rate-limits (429) and ScienceDirect refuses scripts (403). On snapshot drift, run
-    `cargo xtask refs fetch --adopt-snapshots`.
+- **Process notes:** `cargo test -p xtask` checks STATUS against ROADMAP, notices rows against lock
+  titles, lesson tests once checked off, lock URLs and the generated designs. `cargo xtask aero`
+  and the oracles need `refs/rocketpy`; its data files are never committed. Scanned PDFs need
+  `pdftoppm -f N -l N -r 90 -gray -png`, born-digital ones `pdftotext -layout`; archive.org
+  rate-limits (429) and ScienceDirect refuses scripts (403). On snapshot drift, run
+  `cargo xtask refs fetch --adopt-snapshots`.
 
 ## Done log (newest first, keep about 15)
 
@@ -96,7 +94,7 @@ the milestone's 3% (worst +2.86%). M2.1b is the suite itself. Start from these n
 - ADR-006: full inertia tensors; part frames forward; Crowell's secant ogive; materials by value.
 - ADR-007: origin at the nose tip; one `Component` with a `Part` enum; offsets aft; overrides
   rescale the tensor; comparisons use bundled public-domain curves.
-- M1.4, M1.5, M1.6 and M1.7 were split into increments, done-when bullets divided unchanged.
+- M1.4, M1.5, M1.6, M1.7 and M2.1b were split into increments, done-when bullets unchanged.
 - ADR-008: body CP from the real volume with `sin α/α` and Galejs lift (`K` 1.1); Diederich fins;
   over eight fins, tube fins (#15) and `M ≥ 1` refused.
 - ADR-009: Niskanen's drag as printed; lug `d` outer; buttons as pins; 20 µm finish.
@@ -111,6 +109,8 @@ the milestone's 3% (worst +2.86%). M2.1b is the suite itself. Start from these n
   device, only body 0's act before the split, and it must follow the last burnout (M1.9 stages).
 - #11: `SolidMotor` refuses `c = I/m_p` outside 200–5,000 m/s: a units guard, not a propellant
   filter (it rejects none of the 1,708 surveyed motors, 236 to 3,031 m/s), and a behaviour change.
+- M2.1b1: a same-drag case declares its own `C_D0(M)`, which both codes then fly, rather than
+  committing or reading RocketPy's exports (their own terms, ADR-009; absent from CI).
 - ADR-015: a run reads references and never writes them (no update flag); every value carries its
   generator's source and the file its hash; every reported metric is gated at the milestone's 3%
   with no absolute floor, or declared not scored in writing; the locked cases must all run; a
