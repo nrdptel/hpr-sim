@@ -12,8 +12,9 @@ use hpr_core::gravity::NormalGravity;
 use hpr_core::interp::{Extrapolation, Interpolation, Table1D};
 use hpr_design::{MassProperties, Rocket};
 use hpr_sim::{
-    Device, DeviceDrag, Direction, Environment, EventKind, FlightSettings, FlightStep, Observer,
-    Phase, Rail, Sample, SimError, Simulation, State, Termination, Trigger, UserEvent,
+    Adaptive, Device, DeviceDrag, Direction, Environment, EventKind, FlightSettings, FlightStep,
+    Method, Observer, Phase, Rail, Sample, SimError, Simulation, State, Termination, Trigger,
+    UserEvent,
 };
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
@@ -656,8 +657,9 @@ fn rocketpy_environment(
     ))
 }
 
-/// A flight from the pad to the ground under the drag table, rail, site, wind and devices the
-/// reference declares: `flight.py`'s flight, through hpr.
+/// A flight from the pad to the ground under the rail, site, wind and devices the reference
+/// declares, and in same-drag mode its drag table (in predicted mode, the design's own drag):
+/// `flight.py`'s flight, through hpr.
 ///
 /// The metrics are measured as RocketPy defines them, which is not always as hpr's own events
 /// would ([Loft lesson L80][l80]: the same word can name a different quantity):
@@ -780,6 +782,14 @@ fn fly_whole_flight(
             rail,
             FlightSettings {
                 max_time_s: 6000.0,
+                method: match mode {
+                    DragMode::Predicted => Method::DormandPrince54(Adaptive {
+                        relative_tolerance: PREDICTED_TOLERANCE,
+                        absolute_tolerance: PREDICTED_TOLERANCE,
+                        ..Adaptive::default()
+                    }),
+                    _ => FlightSettings::default().method,
+                },
                 ..FlightSettings::default()
             },
         )?;
@@ -1178,6 +1188,18 @@ pub const WHOLE_FLIGHT_METRICS: [&str; 15] = [
     "landing_drift_m",
     "impact_speed_m_s",
 ];
+
+/// The solver tolerance, `rtol` and `atol` alike, predicted mode flies at (ADR-023).
+///
+/// Its aerodynamics call `ln` and `powf` (the skin friction), whose last bits differ between the
+/// platforms' maths libraries, so the adaptive step sequence can differ between them, and the answer
+/// then differs by the solver's global error. At the default 1e-8, NDRT 2020's predicted apogee was
+/// 1404.058522 m on macOS and 1404.058761 m on Linux, 1.7e-7 apart, past the committed report's
+/// 1e-7 reproduction bound (ADR-022). Measured on macOS, that apogee is 1404.058522, .057883,
+/// .058122 and .058145 m at 1e-8, 1e-9, 1e-10 and 1e-11: converged at 1e-11 to about 1e-5 m, far
+/// inside the bound, for 0.5 s more over the whole suite. Same-drag mode's table interpolation
+/// reproduces at the default and keeps it.
+const PREDICTED_TOLERANCE: f64 = 1e-11;
 
 /// The parts of a reference a whole-flight case needs, read from the generator's own JSON.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]

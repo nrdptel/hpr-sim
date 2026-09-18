@@ -1,14 +1,17 @@
 # Bella Lui: RocketPy's example flown from the pad to the ground, each code with its own drag
 # (`validation/oracles/rocketpy/flight.py --own-drag`, M2.1c2).
 #
-# Predicted mode (ADR-023): hpr flies its own aerodynamics, drag and normal force alike, from the
-# design's geometry; the reference is RocketPy flying the example's own drag as RocketPy 1.13.0
-# flies the example (a constant C_D 0.43, power-on and power-off, since the notebook's later
-# replacement curve never reaches the flight), with RocketPy's own normal force. Everything else is
-# the same-drag case's (`flight-bella-lui.toml`): the site, the declared wind, the rail, the
-# parachutes, the motor, RocketPy's gravity and atmosphere, and the same checks that hpr's design is
-# the rocket the reference flew. So a difference here is the same-drag difference plus the two
-# codes' aerodynamics, mostly their drag, and neither drag is the truth.
+# Predicted mode (ADR-023): hpr flies its own drag, from the design's geometry, where the same-drag
+# case flies the declared table (its normal force is its own in both modes, so only the drag
+# differs); the reference is RocketPy flying the example's own drag as RocketPy 1.13.0 flies the
+# example (a constant C_D 0.43, power-on and power-off, since the notebook's later replacement curve
+# never reaches the flight), with RocketPy's own normal force. Everything else is the same-drag
+# case's (`flight-bella-lui.toml`): the site, the declared wind, the rail, the parachutes, the
+# motor, RocketPy's gravity and atmosphere, and the same checks that hpr's design is the rocket the
+# reference flew. So a difference here is the same-drag difference plus the two codes' drag, and
+# neither drag is the truth. hpr's is for the design as transcribed: its fin thickness and edges and
+# its surface finish are placeholders where RocketPy's example records none
+# (`xtask/src/designs.rs`), so a miss is not a gap for hpr to close toward the example's drag.
 #
 # Every metric carries M2.1's 3% as a target: reported as within or outside it, never gated, so a
 # miss does not fail the run and a number that moves still shows in the committed report. The
@@ -18,7 +21,10 @@
 #   same-drag case misses them by -15.59% and -31.32% and does not score them. Nothing else misses:
 #   hpr's coasting C_D0 at Mach 0.3 is 0.423 against the example's 0.43 (computed as `cargo xtask
 #   aero` computes it, pinned by `aero::tests::the_drags_the_predicted_cases_quote_are_hpr_s`), and
-#   the apogee is +1.12%, against +0.48% flown on the same drag.
+#   the apogee is +1.12%, against +0.48% flown on the same drag. RocketPy's own Bella Lui acceptance
+#   test (tests/acceptance/test_bella_lui_rocket.py) flies the notebook's replacement curve by
+#   setting power_off_drag_7d directly; this reference flies the notebook as it runs, and the curve
+#   would move RocketPy's apogee by -0.037% (measured in review), changing no verdict.
 id = "predicted-bella-lui"
 title = "Bella Lui from the pad to the ground, predicted: hpr's own aerodynamics"
 reference = "validation/fixtures/flight/rocketpy-whole-flight-own-drag.json"

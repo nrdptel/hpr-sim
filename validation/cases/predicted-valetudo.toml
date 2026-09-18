@@ -1,20 +1,23 @@
 # Valetudo: RocketPy's example flown from the pad to the ground, each code with its own drag
 # (`validation/oracles/rocketpy/flight.py --own-drag`, M2.1c2).
 #
-# Predicted mode (ADR-023): hpr flies its own aerodynamics, drag and normal force alike, from the
-# design's geometry; the reference is RocketPy flying the example's own drag as RocketPy 1.13.0
-# flies the example (the RASAero tables `Cd_PowerOff_RASAero.csv` and `Cd_PowerOn_RASAero.csv`),
-# with RocketPy's own normal force. Everything else is the same-drag case's
-# (`flight-valetudo.toml`): the site, the declared wind, the rail, the parachutes, the motor,
-# RocketPy's gravity and atmosphere, and the same checks that hpr's design is the rocket the
-# reference flew. So a difference here is the same-drag difference plus the two codes' aerodynamics,
-# mostly their drag, and neither drag is the truth.
+# Predicted mode (ADR-023): hpr flies its own drag, from the design's geometry, where the same-drag
+# case flies the declared table (its normal force is its own in both modes, so only the drag
+# differs); the reference is RocketPy flying the example's own drag as RocketPy 1.13.0 flies the
+# example (the RASAero tables `Cd_PowerOff_RASAero.csv` and `Cd_PowerOn_RASAero.csv`), with
+# RocketPy's own normal force. Everything else is the same-drag case's (`flight-valetudo.toml`): the
+# site, the declared wind, the rail, the parachutes, the motor, RocketPy's gravity and atmosphere,
+# and the same checks that hpr's design is the rocket the reference flew. So a difference here is
+# the same-drag difference plus the two codes' drag, and neither drag is the truth. hpr's is for the
+# design as transcribed: its fin thickness and edges and its surface finish are placeholders where
+# RocketPy's example records none (`xtask/src/designs.rs`), so a miss is not a gap for hpr to close
+# toward the example's drag.
 #
 # Every metric carries M2.1's 3% as a target: reported as within or outside it, never gated, so a
 # miss does not fail the run and a number that moves still shows in the committed report. The
 # misses, and why:
 #
-# - apogee_agl_m (+10.01%), apogee_time_s (+6.17%), flight_time_s (+8.85%), apogee_drift_m (+10.55%)
+# - apogee_agl_m (+10.01%), apogee_time_s (+6.16%), flight_time_s (+8.85%), apogee_drift_m (+10.55%)
 #   and landing_drift_m (+8.69%): the drag. hpr's C_D0 at Mach 0.3 is 47% below the example's
 #   power-off table and 50% below its power-on one
 #   (`validation/fixtures/aero/rocketpy-drag-curves.json`), a 3-decimal, hand-edited table with no

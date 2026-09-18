@@ -361,7 +361,7 @@
     at 16.74 m/s tumbling), the masses add to the stack's to 1e-12 and the momenta to 1e-9. Every
     body must carry a device, and a separation must follow the last burnout.
 
-- [x] **M2.1 Validation harness plus the RocketPy code-to-code suite.** This is the first
+- [ ] **M2.1 Validation harness plus the RocketPy code-to-code suite.** This is the first
   end-to-end milestone.
   - `hpr-validate` and `cargo xtask validate [--fast]`.
   - Case files (TOML) and reference JSON with provenance.
@@ -388,10 +388,6 @@
   - `validation/reports/latest.md` is generated.
   - The CI job is green.
   - A separate, manually triggered workflow regenerates the references.
-
-  *Result:* met through M2.1a, M2.1b and M2.1c (ADR-015, ADR-021 to ADR-023). One miss stays
-  visible: the landing offset is measured and reported but not scored, an open difference in the
-  path in wind (issue #50, ADR-021), to be found before M2.2.
 
   - [x] **M2.1a The harness.**
     - `hpr-validate` and `cargo xtask validate [--fast]`: case files (TOML), reference JSON with
@@ -552,8 +548,22 @@
       and never gated: 56 of 75 within it. Apogees: Calisto −0.527%, Bella Lui +1.118%, Juno III
       +3.181%, Valetudo +10.007% and NDRT 2020 +10.232%, where hpr's drag is 47% below Valetudo's
       table and 0.318 against NDRT's 0.44; flown on the same drag all five agree within 1.710%.
-      Every miss is explained in its case file. Prometheus 2022 is a checked `M ≥ 1` gap (Mach
-      1.049). Each mode refuses the other's reference, tested.
+      Every miss is explained in its case file, and the set of misses is pinned by a test.
+      Prometheus 2022 is a checked `M ≥ 1` gap (Mach 1.049). Each mode refuses the other's
+      reference, tested. hpr flies predicted mode at rtol = atol = 1e-11: at the default 1e-8 its
+      NDRT apogee differed by 1.7e-7 between macOS and Linux, past the report's reproduction bound,
+      because the drag's `ln` and `powf` differ in their last bits and so move the step sequence.
+
+  - [ ] **M2.1d The time-series RMS and the path in wind.**
+    - The two items of M2.1's list that M2.1a to M2.1c leave open: the time-series RMS after
+      alignment (each whole-flight fixture already carries its series), and the landing offset,
+      reported but not scored until issue #50 finds why hpr turns into the wind less than RocketPy.
+
+    *Done when:*
+    - Every whole-flight case reports its time-series RMS after alignment against the reference's
+      series, gated with its tolerance argued in the case file.
+    - Issue #50's cause is found and the drifts are scored within their tolerances, or an ADR
+      records the measured cause and why they cannot be, and the gap stays visible in the report.
 
 - [ ] **M1.8 Aerodynamics II (transonic and supersonic, damping, overrides).**
   - Transonic drag rise and supersonic wave drag.

@@ -1379,131 +1379,131 @@
     {
       "case": "predicted-calisto-tests-motor-at-minus-1.373",
       "metric": "apogee_agl_m",
-      "measured": 2803.56202104307,
+      "measured": 2803.562023621996,
       "reference": 2818.413118025781,
       "source": "rocketpy 1.13.0, validation/oracles/rocketpy/flight.py, case calisto-tests-motor-at-minus-1.373, metrics.apogee_agl_m",
       "tolerance": {
         "relative": 0.03
       },
-      "difference": -14.851096982710715,
-      "relative": -0.005269311616429564,
+      "difference": -14.851094403784828,
+      "relative": -0.00526931070140193,
       "verdict": "within_target"
     },
     {
       "case": "predicted-calisto-tests-motor-at-minus-1.373",
       "metric": "apogee_drift_m",
-      "measured": 460.8255722094691,
+      "measured": 460.8255700378769,
       "reference": 495.5245118795692,
       "source": "rocketpy 1.13.0, validation/oracles/rocketpy/flight.py, case calisto-tests-motor-at-minus-1.373, metrics.apogee_drift_m",
       "tolerance": {
         "relative": 0.03
       },
-      "difference": -34.69893967010012,
-      "relative": -0.0700246684840754,
+      "difference": -34.69894184169232,
+      "relative": -0.07002467286648666,
       "verdict": "outside_target"
     },
     {
       "case": "predicted-calisto-tests-motor-at-minus-1.373",
       "metric": "apogee_time_s",
-      "measured": 23.86536810665306,
+      "measured": 23.865368113584356,
       "reference": 23.986495720858322,
       "source": "rocketpy 1.13.0, validation/oracles/rocketpy/flight.py, case calisto-tests-motor-at-minus-1.373, metrics.apogee_time_s",
       "tolerance": {
         "relative": 0.03
       },
-      "difference": -0.12112761420526041,
-      "relative": -0.00504982535235147,
+      "difference": -0.12112760727396576,
+      "relative": -0.005049825063384932,
       "verdict": "within_target"
     },
     {
       "case": "predicted-calisto-tests-motor-at-minus-1.373",
       "metric": "burnout_altitude_agl_m",
-      "measured": 692.7981131481067,
+      "measured": 692.7981138378507,
       "reference": 690.8289661684062,
       "source": "rocketpy 1.13.0, validation/oracles/rocketpy/flight.py, case calisto-tests-motor-at-minus-1.373, metrics.burnout_altitude_agl_m",
       "tolerance": {
         "relative": 0.03
       },
-      "difference": 1.9691469797005539,
-      "relative": 0.0028504117171319174,
+      "difference": 1.96914766944451,
+      "relative": 0.002850412715561326,
       "verdict": "within_target"
     },
     {
       "case": "predicted-calisto-tests-motor-at-minus-1.373",
       "metric": "burnout_speed_m_s",
-      "measured": 241.9332683151706,
+      "measured": 241.93326843978426,
       "reference": 240.7537112258825,
       "source": "rocketpy 1.13.0, validation/oracles/rocketpy/flight.py, case calisto-tests-motor-at-minus-1.373, metrics.burnout_speed_m_s",
       "tolerance": {
         "relative": 0.03
       },
-      "difference": 1.179557089288096,
-      "relative": 0.004899434709778573,
+      "difference": 1.1795572139017452,
+      "relative": 0.004899435227376613,
       "verdict": "within_target"
     },
     {
       "case": "predicted-calisto-tests-motor-at-minus-1.373",
       "metric": "flight_time_s",
-      "measured": 271.45532221902533,
+      "measured": 271.455322329309,
       "reference": 272.1181240184856,
       "source": "rocketpy 1.13.0, validation/oracles/rocketpy/flight.py, case calisto-tests-motor-at-minus-1.373, metrics.flight_time_s",
       "tolerance": {
         "relative": 0.03
       },
-      "difference": -0.6628017994602828,
-      "relative": -0.0024357135411357503,
+      "difference": -0.6628016891766038,
+      "relative": -0.002435713135857052,
       "verdict": "within_target"
     },
     {
       "case": "predicted-calisto-tests-motor-at-minus-1.373",
       "metric": "impact_speed_m_s",
-      "measured": 5.454906484919271,
+      "measured": 5.454906464337624,
       "reference": 5.456019564837057,
       "source": "rocketpy 1.13.0, validation/oracles/rocketpy/flight.py, case calisto-tests-motor-at-minus-1.373, metrics.impact_speed_m_s",
       "tolerance": {
         "relative": 0.03
       },
-      "difference": -0.00111307991778542,
-      "relative": -0.00020400951729700442,
+      "difference": -0.0011131004994329174,
+      "relative": -0.00020401328957957285,
       "verdict": "within_target"
     },
     {
       "case": "predicted-calisto-tests-motor-at-minus-1.373",
       "metric": "landing_drift_m",
-      "measured": 1330.7517629288973,
+      "measured": 1330.751772701661,
       "reference": 1244.646616533845,
       "source": "rocketpy 1.13.0, validation/oracles/rocketpy/flight.py, case calisto-tests-motor-at-minus-1.373, metrics.landing_drift_m",
       "tolerance": {
         "relative": 0.03
       },
-      "difference": 86.10514639505232,
-      "relative": 0.06918039646855129,
+      "difference": 86.10515616781595,
+      "relative": 0.06918040432038931,
       "verdict": "outside_target"
     },
     {
       "case": "predicted-calisto-tests-motor-at-minus-1.373",
       "metric": "max_acceleration_m_s2",
-      "measured": 113.5310094328295,
+      "measured": 113.53100942308461,
       "reference": 113.4293664853628,
       "source": "rocketpy 1.13.0, validation/oracles/rocketpy/flight.py, case calisto-tests-motor-at-minus-1.373, metrics.max_acceleration_m_s2",
       "tolerance": {
         "relative": 0.03
       },
-      "difference": 0.10164294746670066,
-      "relative": 0.0008960902332097297,
+      "difference": 0.10164293772180599,
+      "relative": 0.0008960901472981623,
       "verdict": "within_target"
     },
     {
       "case": "predicted-calisto-tests-motor-at-minus-1.373",
       "metric": "max_acceleration_power_on_m_s2",
-      "measured": 113.5310094328295,
+      "measured": 113.53100942308461,
       "reference": 113.4293664853628,
       "source": "rocketpy 1.13.0, validation/oracles/rocketpy/flight.py, case calisto-tests-motor-at-minus-1.373, metrics.max_acceleration_power_on_m_s2",
       "tolerance": {
         "relative": 0.03
       },
-      "difference": 0.10164294746670066,
-      "relative": 0.0008960902332097297,
+      "difference": 0.10164293772180599,
+      "relative": 0.0008960901472981623,
       "verdict": "within_target"
     },
     {
@@ -1522,183 +1522,183 @@
     {
       "case": "predicted-calisto-tests-motor-at-minus-1.373",
       "metric": "max_mach",
-      "measured": 0.7457374100147217,
+      "measured": 0.745737632361869,
       "reference": 0.744455617686554,
       "source": "rocketpy 1.13.0, validation/oracles/rocketpy/flight.py, case calisto-tests-motor-at-minus-1.373, metrics.max_mach",
       "tolerance": {
         "relative": 0.03
       },
-      "difference": 0.001281792328167719,
-      "relative": 0.0017217847480968376,
+      "difference": 0.0012820146753149686,
+      "relative": 0.0017220834188865625,
       "verdict": "within_target"
     },
     {
       "case": "predicted-calisto-tests-motor-at-minus-1.373",
       "metric": "max_speed_m_s",
-      "measured": 248.05061975330466,
+      "measured": 248.05057663309174,
       "reference": 247.21643308583887,
       "source": "rocketpy 1.13.0, validation/oracles/rocketpy/flight.py, case calisto-tests-motor-at-minus-1.373, metrics.max_speed_m_s",
       "tolerance": {
         "relative": 0.03
       },
-      "difference": 0.8341866674657865,
-      "relative": 0.0033743172209597366,
+      "difference": 0.8341435472528644,
+      "relative": 0.003374142798036536,
       "verdict": "within_target"
     },
     {
       "case": "predicted-calisto-tests-motor-at-minus-1.373",
       "metric": "rail_exit_speed_m_s",
-      "measured": 28.199793696665008,
+      "measured": 28.199793661384597,
       "reference": 28.20242503996835,
       "source": "rocketpy 1.13.0, validation/oracles/rocketpy/flight.py, case calisto-tests-motor-at-minus-1.373, metrics.rail_exit_speed_m_s",
       "tolerance": {
         "relative": 0.03
       },
-      "difference": -0.0026313433033422484,
-      "relative": -0.00009330202277332962,
+      "difference": -0.0026313785837537296,
+      "relative": -0.00009330327374417454,
       "verdict": "within_target"
     },
     {
       "case": "predicted-calisto-tests-motor-at-minus-1.373",
       "metric": "rail_exit_time_s",
-      "measured": 0.2944854659836841,
+      "measured": 0.2944854648393405,
       "reference": 0.29469565048146706,
       "source": "rocketpy 1.13.0, validation/oracles/rocketpy/flight.py, case calisto-tests-motor-at-minus-1.373, metrics.rail_exit_time_s",
       "tolerance": {
         "relative": 0.03
       },
-      "difference": -0.00021018449778298365,
-      "relative": -0.0007132256531088565,
+      "difference": -0.000210185642126548,
+      "relative": -0.0007132295362457894,
       "verdict": "within_target"
     },
     {
       "case": "predicted-valetudo",
       "metric": "apogee_agl_m",
-      "measured": 770.3167636559094,
+      "measured": 770.3167617690156,
       "reference": 700.2434420894613,
       "source": "rocketpy 1.13.0, validation/oracles/rocketpy/flight.py, case valetudo, metrics.apogee_agl_m",
       "tolerance": {
         "relative": 0.03
       },
-      "difference": 70.07332156644816,
-      "relative": 0.10006994332907408,
+      "difference": 70.07331967955429,
+      "relative": 0.10006994063444853,
       "verdict": "outside_target"
     },
     {
       "case": "predicted-valetudo",
       "metric": "apogee_drift_m",
-      "measured": 160.98058754480329,
+      "measured": 160.9805846790763,
       "reference": 145.62171551747815,
       "source": "rocketpy 1.13.0, validation/oracles/rocketpy/flight.py, case valetudo, metrics.apogee_drift_m",
       "tolerance": {
         "relative": 0.03
       },
-      "difference": 15.358872027325134,
-      "relative": 0.1054710279489991,
+      "difference": 15.358869161598136,
+      "relative": 0.10547100826974325,
       "verdict": "outside_target"
     },
     {
       "case": "predicted-valetudo",
       "metric": "apogee_time_s",
-      "measured": 13.768599167312406,
+      "measured": 13.768599009063342,
       "reference": 12.969078942950489,
       "source": "rocketpy 1.13.0, validation/oracles/rocketpy/flight.py, case valetudo, metrics.apogee_time_s",
       "tolerance": {
         "relative": 0.03
       },
-      "difference": 0.7995202243619168,
-      "relative": 0.06164818857830351,
+      "difference": 0.7995200661128532,
+      "relative": 0.061648176376275565,
       "verdict": "outside_target"
     },
     {
       "case": "predicted-valetudo",
       "metric": "burnout_altitude_agl_m",
-      "measured": 214.29143172630083,
+      "measured": 214.29143156087454,
       "reference": 211.52019237462662,
       "source": "rocketpy 1.13.0, validation/oracles/rocketpy/flight.py, case valetudo, metrics.burnout_altitude_agl_m",
       "tolerance": {
         "relative": 0.03
       },
-      "difference": 2.771239351674211,
-      "relative": 0.01310153570003391,
+      "difference": 2.771239186247925,
+      "relative": 0.013101534917951197,
       "verdict": "within_target"
     },
     {
       "case": "predicted-valetudo",
       "metric": "burnout_speed_m_s",
-      "measured": 111.15592434180593,
+      "measured": 111.15592430916728,
       "reference": 108.15899501269111,
       "source": "rocketpy 1.13.0, validation/oracles/rocketpy/flight.py, case valetudo, metrics.burnout_speed_m_s",
       "tolerance": {
         "relative": 0.03
       },
-      "difference": 2.9969293291148205,
-      "relative": 0.02770855377089227,
+      "difference": 2.996929296476168,
+      "relative": 0.027708553469126776,
       "verdict": "within_target"
     },
     {
       "case": "predicted-valetudo",
       "metric": "flight_time_s",
-      "measured": 58.099197012112576,
+      "measured": 58.09919671363608,
       "reference": 53.37711398637537,
       "source": "rocketpy 1.13.0, validation/oracles/rocketpy/flight.py, case valetudo, metrics.flight_time_s",
       "tolerance": {
         "relative": 0.03
       },
-      "difference": 4.722083025737206,
-      "relative": 0.08846643576388427,
+      "difference": 4.722082727260712,
+      "relative": 0.0884664301720403,
       "verdict": "outside_target"
     },
     {
       "case": "predicted-valetudo",
       "metric": "impact_speed_m_s",
-      "measured": 17.627805592725114,
+      "measured": 17.6278054116164,
       "reference": 17.62626123183307,
       "source": "rocketpy 1.13.0, validation/oracles/rocketpy/flight.py, case valetudo, metrics.impact_speed_m_s",
       "tolerance": {
         "relative": 0.03
       },
-      "difference": 0.0015443608920442387,
-      "relative": 0.0000876170432136294,
+      "difference": 0.001544179783330435,
+      "relative": 0.000087606768277191,
       "verdict": "within_target"
     },
     {
       "case": "predicted-valetudo",
       "metric": "landing_drift_m",
-      "measured": 196.11234548078045,
+      "measured": 196.11233819214914,
       "reference": 180.43880660338382,
       "source": "rocketpy 1.13.0, validation/oracles/rocketpy/flight.py, case valetudo, metrics.landing_drift_m",
       "tolerance": {
         "relative": 0.03
       },
-      "difference": 15.673538877396624,
-      "relative": 0.08686345898888634,
+      "difference": 15.673531588765314,
+      "relative": 0.08686341859496306,
       "verdict": "outside_target"
     },
     {
       "case": "predicted-valetudo",
       "metric": "max_acceleration_m_s2",
-      "measured": 47.19769358830087,
+      "measured": 47.19769358834198,
       "reference": 47.07983496671787,
       "source": "rocketpy 1.13.0, validation/oracles/rocketpy/flight.py, case valetudo, metrics.max_acceleration_m_s2",
       "tolerance": {
         "relative": 0.03
       },
-      "difference": 0.11785862158300375,
-      "relative": 0.002503377967792825,
+      "difference": 0.11785862162410865,
+      "relative": 0.002503377968665914,
       "verdict": "within_target"
     },
     {
       "case": "predicted-valetudo",
       "metric": "max_acceleration_power_on_m_s2",
-      "measured": 47.19769358830087,
+      "measured": 47.19769358834198,
       "reference": 47.07983496671787,
       "source": "rocketpy 1.13.0, validation/oracles/rocketpy/flight.py, case valetudo, metrics.max_acceleration_power_on_m_s2",
       "tolerance": {
         "relative": 0.03
       },
-      "difference": 0.11785862158300375,
-      "relative": 0.002503377967792825,
+      "difference": 0.11785862162410865,
+      "relative": 0.002503377968665914,
       "verdict": "within_target"
     },
     {
@@ -1717,378 +1717,378 @@
     {
       "case": "predicted-valetudo",
       "metric": "max_mach",
-      "measured": 0.3338082987760802,
+      "measured": 0.3338096410463615,
       "reference": 0.3267669982753719,
       "source": "rocketpy 1.13.0, validation/oracles/rocketpy/flight.py, case valetudo, metrics.max_mach",
       "tolerance": {
         "relative": 0.03
       },
-      "difference": 0.007041300500708281,
-      "relative": 0.021548383214557244,
+      "difference": 0.007042642770989593,
+      "relative": 0.021552490943576384,
       "verdict": "within_target"
     },
     {
       "case": "predicted-valetudo",
       "metric": "max_speed_m_s",
-      "measured": 112.49288787205433,
+      "measured": 112.49288784025126,
       "reference": 110.06028183725117,
       "source": "rocketpy 1.13.0, validation/oracles/rocketpy/flight.py, case valetudo, metrics.max_speed_m_s",
       "tolerance": {
         "relative": 0.03
       },
-      "difference": 2.4326060348031575,
-      "relative": 0.022102487783924738,
+      "difference": 2.432606003000089,
+      "relative": 0.022102487494964285,
       "verdict": "within_target"
     },
     {
       "case": "predicted-valetudo",
       "metric": "rail_exit_speed_m_s",
-      "measured": 20.063743043594926,
+      "measured": 20.063743075343535,
       "reference": 20.057835669837107,
       "source": "rocketpy 1.13.0, validation/oracles/rocketpy/flight.py, case valetudo, metrics.rail_exit_speed_m_s",
       "tolerance": {
         "relative": 0.03
       },
-      "difference": 0.005907373757818135,
-      "relative": 0.00029451700846774907,
+      "difference": 0.00590740550642721,
+      "relative": 0.00029451859132093413,
       "verdict": "within_target"
     },
     {
       "case": "predicted-valetudo",
       "metric": "rail_exit_time_s",
-      "measured": 0.455230583441969,
+      "measured": 0.45523058517110265,
       "reference": 0.4557291757217655,
       "source": "rocketpy 1.13.0, validation/oracles/rocketpy/flight.py, case valetudo, metrics.rail_exit_time_s",
       "tolerance": {
         "relative": 0.03
       },
-      "difference": -0.0004985922797965392,
-      "relative": -0.0010940538950724161,
+      "difference": -0.0004985905506628696,
+      "relative": -0.0010940501008591824,
       "verdict": "within_target"
     },
     {
       "case": "predicted-ndrt-2020-nose-to-tail",
       "metric": "apogee_agl_m",
-      "measured": 1404.0585223607968,
+      "measured": 1404.0581453160028,
       "reference": 1273.7251936172188,
       "source": "rocketpy 1.13.0, validation/oracles/rocketpy/flight.py, case ndrt-2020-nose-to-tail, metrics.apogee_agl_m",
       "tolerance": {
         "relative": 0.03
       },
-      "difference": 130.33332874357802,
-      "relative": 0.10232452761136633,
+      "difference": 130.33295169878397,
+      "relative": 0.1023242315939868,
       "verdict": "outside_target"
     },
     {
       "case": "predicted-ndrt-2020-nose-to-tail",
       "metric": "apogee_drift_m",
-      "measured": 71.49800344680436,
+      "measured": 71.49801621153898,
       "reference": 74.81994416329671,
       "source": "rocketpy 1.13.0, validation/oracles/rocketpy/flight.py, case ndrt-2020-nose-to-tail, metrics.apogee_drift_m",
       "tolerance": {
         "relative": 0.03
       },
-      "difference": -3.3219407164923496,
-      "relative": -0.044399133862518224,
+      "difference": -3.321927951757729,
+      "relative": -0.0443989632564751,
       "verdict": "outside_target"
     },
     {
       "case": "predicted-ndrt-2020-nose-to-tail",
       "metric": "apogee_time_s",
-      "measured": 16.877605201915603,
+      "measured": 16.87760369684157,
       "reference": 15.842748087921525,
       "source": "rocketpy 1.13.0, validation/oracles/rocketpy/flight.py, case ndrt-2020-nose-to-tail, metrics.apogee_time_s",
       "tolerance": {
         "relative": 0.03
       },
-      "difference": 1.0348571139940788,
-      "relative": 0.06532055602039469,
+      "difference": 1.0348556089200471,
+      "relative": 0.06532046101957643,
       "verdict": "outside_target"
     },
     {
       "case": "predicted-ndrt-2020-nose-to-tail",
       "metric": "burnout_altitude_agl_m",
-      "measured": 188.5189599045441,
+      "measured": 188.51890764819143,
       "reference": 187.09835190607566,
       "source": "rocketpy 1.13.0, validation/oracles/rocketpy/flight.py, case ndrt-2020-nose-to-tail, metrics.burnout_altitude_agl_m",
       "tolerance": {
         "relative": 0.03
       },
-      "difference": 1.4206079984684266,
-      "relative": 0.007592840792000023,
+      "difference": 1.4205557421157664,
+      "relative": 0.007592561493159986,
       "verdict": "within_target"
     },
     {
       "case": "predicted-ndrt-2020-nose-to-tail",
       "metric": "burnout_speed_m_s",
-      "measured": 185.80677917284206,
+      "measured": 185.80674113810142,
       "reference": 183.1957115513334,
       "source": "rocketpy 1.13.0, validation/oracles/rocketpy/flight.py, case ndrt-2020-nose-to-tail, metrics.burnout_speed_m_s",
       "tolerance": {
         "relative": 0.03
       },
-      "difference": 2.611067621508653,
-      "relative": 0.014252886158729779,
+      "difference": 2.6110295867680122,
+      "relative": 0.014252678540656634,
       "verdict": "within_target"
     },
     {
       "case": "predicted-ndrt-2020-nose-to-tail",
       "metric": "flight_time_s",
-      "measured": 92.36458157729871,
+      "measured": 92.36456750196376,
       "reference": 86.45639097915563,
       "source": "rocketpy 1.13.0, validation/oracles/rocketpy/flight.py, case ndrt-2020-nose-to-tail, metrics.flight_time_s",
       "tolerance": {
         "relative": 0.03
       },
-      "difference": 5.908190598143079,
-      "relative": 0.06833723373402813,
+      "difference": 5.908176522808134,
+      "relative": 0.06833707093131584,
       "verdict": "outside_target"
     },
     {
       "case": "predicted-ndrt-2020-nose-to-tail",
       "metric": "impact_speed_m_s",
-      "measured": 4.60479661955445,
+      "measured": 4.604796664347716,
       "reference": 4.603800806635796,
       "source": "rocketpy 1.13.0, validation/oracles/rocketpy/flight.py, case ndrt-2020-nose-to-tail, metrics.impact_speed_m_s",
       "tolerance": {
         "relative": 0.03
       },
-      "difference": 0.0009958129186538045,
-      "relative": 0.000216302346795384,
+      "difference": 0.0009958577119197898,
+      "relative": 0.0002163120764226782,
       "verdict": "within_target"
     },
     {
       "case": "predicted-ndrt-2020-nose-to-tail",
       "metric": "landing_drift_m",
-      "measured": 413.0356102672179,
+      "measured": 413.03545170445483,
       "reference": 359.22053854823196,
       "source": "rocketpy 1.13.0, validation/oracles/rocketpy/flight.py, case ndrt-2020-nose-to-tail, metrics.landing_drift_m",
       "tolerance": {
         "relative": 0.03
       },
-      "difference": 53.81507171898596,
-      "relative": 0.14981067601667855,
+      "difference": 53.81491315622287,
+      "relative": 0.14981023460883552,
       "verdict": "outside_target"
     },
     {
       "case": "predicted-ndrt-2020-nose-to-tail",
       "metric": "max_acceleration_m_s2",
-      "measured": 351.12592383327717,
+      "measured": 351.1259236708052,
       "reference": 191.81114488427735,
       "source": "rocketpy 1.13.0, validation/oracles/rocketpy/flight.py, case ndrt-2020-nose-to-tail, metrics.max_acceleration_m_s2",
       "tolerance": {
         "relative": 0.03
       },
-      "difference": 159.31477894899982,
-      "relative": 0.8305814505466661,
+      "difference": 159.31477878652785,
+      "relative": 0.8305814496996248,
       "verdict": "outside_target"
     },
     {
       "case": "predicted-ndrt-2020-nose-to-tail",
       "metric": "max_acceleration_power_on_m_s2",
-      "measured": 115.3116789020666,
+      "measured": 115.31218065468823,
       "reference": 114.53992348224,
       "source": "rocketpy 1.13.0, validation/oracles/rocketpy/flight.py, case ndrt-2020-nose-to-tail, metrics.max_acceleration_power_on_m_s2",
       "tolerance": {
         "relative": 0.03
       },
-      "difference": 0.7717554198266043,
-      "relative": 0.006737872668007055,
+      "difference": 0.772257172448235,
+      "relative": 0.00674225325956305,
       "verdict": "within_target"
     },
     {
       "case": "predicted-ndrt-2020-nose-to-tail",
       "metric": "max_acceleration_time_s",
-      "measured": 62.76786747409575,
+      "measured": 62.76785339051455,
       "reference": 57.26667893067138,
       "source": "rocketpy 1.13.0, validation/oracles/rocketpy/flight.py, case ndrt-2020-nose-to-tail, metrics.max_acceleration_time_s",
       "tolerance": {
         "relative": 0.03
       },
-      "difference": 5.5011885434243695,
-      "relative": 0.0960626431660942,
+      "difference": 5.50117445984317,
+      "relative": 0.09606239723632383,
       "verdict": "outside_target"
     },
     {
       "case": "predicted-ndrt-2020-nose-to-tail",
       "metric": "max_mach",
-      "measured": 0.5515146023930516,
+      "measured": 0.5515181238004515,
       "reference": 0.5446637429917646,
       "source": "rocketpy 1.13.0, validation/oracles/rocketpy/flight.py, case ndrt-2020-nose-to-tail, metrics.max_mach",
       "tolerance": {
         "relative": 0.03
       },
-      "difference": 0.006850859401287046,
-      "relative": 0.012578144753414644,
+      "difference": 0.006854380808686944,
+      "relative": 0.012584610040383363,
       "verdict": "within_target"
     },
     {
       "case": "predicted-ndrt-2020-nose-to-tail",
       "metric": "max_speed_m_s",
-      "measured": 186.6803716610727,
+      "measured": 186.68077941023267,
       "reference": 184.28957464679056,
       "source": "rocketpy 1.13.0, validation/oracles/rocketpy/flight.py, case ndrt-2020-nose-to-tail, metrics.max_speed_m_s",
       "tolerance": {
         "relative": 0.03
       },
-      "difference": 2.390797014282157,
-      "relative": 0.012973045376355982,
+      "difference": 2.3912047634421185,
+      "relative": 0.01297525792234912,
       "verdict": "within_target"
     },
     {
       "case": "predicted-ndrt-2020-nose-to-tail",
       "metric": "rail_exit_speed_m_s",
-      "measured": 16.543534460497128,
+      "measured": 16.543535027608083,
       "reference": 16.543491380153718,
       "source": "rocketpy 1.13.0, validation/oracles/rocketpy/flight.py, case ndrt-2020-nose-to-tail, metrics.rail_exit_speed_m_s",
       "tolerance": {
         "relative": 0.03
       },
-      "difference": 0.00004308034340994027,
-      "relative": 2.604065999128896e-6,
+      "difference": 0.000043647454365469684,
+      "relative": 2.638346003421687e-6,
       "verdict": "within_target"
     },
     {
       "case": "predicted-ndrt-2020-nose-to-tail",
       "metric": "rail_exit_time_s",
-      "measured": 0.21495747137621876,
+      "measured": 0.21495747207001373,
       "reference": 0.21514442683587692,
       "source": "rocketpy 1.13.0, validation/oracles/rocketpy/flight.py, case ndrt-2020-nose-to-tail, metrics.rail_exit_time_s",
       "tolerance": {
         "relative": 0.03
       },
-      "difference": -0.0001869554596581613,
-      "relative": -0.0008689765401210249,
+      "difference": -0.00018695476586319537,
+      "relative": -0.0008689733153339545,
       "verdict": "within_target"
     },
     {
       "case": "predicted-juno-iii",
       "metric": "apogee_agl_m",
-      "measured": 2858.7003141378063,
+      "measured": 2858.700302284092,
       "reference": 2770.57747358946,
       "source": "rocketpy 1.13.0, validation/oracles/rocketpy/flight.py, case juno-iii, metrics.apogee_agl_m",
       "tolerance": {
         "relative": 0.03
       },
-      "difference": 88.12284054834618,
-      "relative": 0.03180666896644381,
+      "difference": 88.12282869463161,
+      "relative": 0.03180666468801641,
       "verdict": "outside_target"
     },
     {
       "case": "predicted-juno-iii",
       "metric": "apogee_drift_m",
-      "measured": 264.0516394583554,
+      "measured": 264.0517185868846,
       "reference": 646.1276699551765,
       "source": "rocketpy 1.13.0, validation/oracles/rocketpy/flight.py, case juno-iii, metrics.apogee_drift_m",
       "tolerance": {
         "relative": 0.03
       },
-      "difference": -382.07603049682115,
-      "relative": -0.5913320977622375,
+      "difference": -382.07595136829195,
+      "relative": -0.5913319752964573,
       "verdict": "outside_target"
     },
     {
       "case": "predicted-juno-iii",
       "metric": "apogee_time_s",
-      "measured": 25.81958706912372,
+      "measured": 25.819587019194284,
       "reference": 25.407973701626744,
       "source": "rocketpy 1.13.0, validation/oracles/rocketpy/flight.py, case juno-iii, metrics.apogee_time_s",
       "tolerance": {
         "relative": 0.03
       },
-      "difference": 0.41161336749697597,
-      "relative": 0.016200165047818137,
+      "difference": 0.4116133175675394,
+      "relative": 0.016200163082709183,
       "verdict": "within_target"
     },
     {
       "case": "predicted-juno-iii",
       "metric": "burnout_altitude_agl_m",
-      "measured": 687.0452873469179,
+      "measured": 687.0452856313335,
       "reference": 678.3283006204751,
       "source": "rocketpy 1.13.0, validation/oracles/rocketpy/flight.py, case juno-iii, metrics.burnout_altitude_agl_m",
       "tolerance": {
         "relative": 0.03
       },
-      "difference": 8.71698672644277,
-      "relative": 0.012850690024976455,
+      "difference": 8.716985010858366,
+      "relative": 0.012850687495840634,
       "verdict": "within_target"
     },
     {
       "case": "predicted-juno-iii",
       "metric": "burnout_speed_m_s",
-      "measured": 230.1500055313817,
+      "measured": 230.15000522808398,
       "reference": 227.6286455380625,
       "source": "rocketpy 1.13.0, validation/oracles/rocketpy/flight.py, case juno-iii, metrics.burnout_speed_m_s",
       "tolerance": {
         "relative": 0.03
       },
-      "difference": 2.5213599933192086,
-      "relative": 0.011076637509129333,
+      "difference": 2.521359690021484,
+      "relative": 0.011076636176705974,
       "verdict": "within_target"
     },
     {
       "case": "predicted-juno-iii",
       "metric": "flight_time_s",
-      "measured": 146.51153216143877,
+      "measured": 146.51153170876103,
       "reference": 142.92354320836745,
       "source": "rocketpy 1.13.0, validation/oracles/rocketpy/flight.py, case juno-iii, metrics.flight_time_s",
       "tolerance": {
         "relative": 0.03
       },
-      "difference": 3.587988953071317,
-      "relative": 0.025104254152448543,
+      "difference": 3.5879885003935783,
+      "relative": 0.025104250985176525,
       "verdict": "within_target"
     },
     {
       "case": "predicted-juno-iii",
       "metric": "impact_speed_m_s",
-      "measured": 22.43163700565302,
+      "measured": 22.431637068744806,
       "reference": 22.43230011637578,
       "source": "rocketpy 1.13.0, validation/oracles/rocketpy/flight.py, case juno-iii, metrics.impact_speed_m_s",
       "tolerance": {
         "relative": 0.03
       },
-      "difference": -0.0006631107227619282,
-      "relative": -0.000029560531881340662,
+      "difference": -0.0006630476309759104,
+      "relative": -0.000029557719339350298,
       "verdict": "within_target"
     },
     {
       "case": "predicted-juno-iii",
       "metric": "landing_drift_m",
-      "measured": 709.2695845033478,
+      "measured": 709.2694902468756,
       "reference": 260.934680274996,
       "source": "rocketpy 1.13.0, validation/oracles/rocketpy/flight.py, case juno-iii, metrics.landing_drift_m",
       "tolerance": {
         "relative": 0.03
       },
-      "difference": 448.3349042283518,
-      "relative": 1.7181882598198783,
+      "difference": 448.3348099718796,
+      "relative": 1.7181878985935668,
       "verdict": "outside_target"
     },
     {
       "case": "predicted-juno-iii",
       "metric": "max_acceleration_m_s2",
-      "measured": 52.88418123482221,
+      "measured": 52.88418129972443,
       "reference": 52.845974780558166,
       "source": "rocketpy 1.13.0, validation/oracles/rocketpy/flight.py, case juno-iii, metrics.max_acceleration_m_s2",
       "tolerance": {
         "relative": 0.03
       },
-      "difference": 0.03820645426404212,
-      "relative": 0.0007229775668382246,
+      "difference": 0.03820651916626616,
+      "relative": 0.0007229787949776299,
       "verdict": "within_target"
     },
     {
       "case": "predicted-juno-iii",
       "metric": "max_acceleration_power_on_m_s2",
-      "measured": 52.88418123482221,
+      "measured": 52.88418129972443,
       "reference": 52.84597478055816,
       "source": "rocketpy 1.13.0, validation/oracles/rocketpy/flight.py, case juno-iii, metrics.max_acceleration_power_on_m_s2",
       "tolerance": {
         "relative": 0.03
       },
-      "difference": 0.03820645426404923,
-      "relative": 0.0007229775668383591,
+      "difference": 0.03820651916627327,
+      "relative": 0.0007229787949777645,
       "verdict": "within_target"
     },
     {
@@ -2107,183 +2107,183 @@
     {
       "case": "predicted-juno-iii",
       "metric": "max_mach",
-      "measured": 0.7013161730824363,
+      "measured": 0.7013200726738704,
       "reference": 0.6974177728133982,
       "source": "rocketpy 1.13.0, validation/oracles/rocketpy/flight.py, case juno-iii, metrics.max_mach",
       "tolerance": {
         "relative": 0.03
       },
-      "difference": 0.0038984002690380937,
-      "relative": 0.00558976329684267,
+      "difference": 0.0039022998604721915,
+      "relative": 0.005595354768104389,
       "verdict": "within_target"
     },
     {
       "case": "predicted-juno-iii",
       "metric": "max_speed_m_s",
-      "measured": 232.2046582603923,
+      "measured": 232.20468545455196,
       "reference": 229.88912783073928,
       "source": "rocketpy 1.13.0, validation/oracles/rocketpy/flight.py, case juno-iii, metrics.max_speed_m_s",
       "tolerance": {
         "relative": 0.03
       },
-      "difference": 2.3155304296530232,
-      "relative": 0.010072379026805831,
+      "difference": 2.31555762381268,
+      "relative": 0.010072497319305844,
       "verdict": "within_target"
     },
     {
       "case": "predicted-juno-iii",
       "metric": "rail_exit_speed_m_s",
-      "measured": 18.21064996798309,
+      "measured": 18.210649941032546,
       "reference": 18.210796378901822,
       "source": "rocketpy 1.13.0, validation/oracles/rocketpy/flight.py, case juno-iii, metrics.rail_exit_speed_m_s",
       "tolerance": {
         "relative": 0.03
       },
-      "difference": -0.0001464109187310214,
-      "relative": -8.03978671139535e-6,
+      "difference": -0.00014643786927592828,
+      "relative": -8.041266632665463e-6,
       "verdict": "within_target"
     },
     {
       "case": "predicted-juno-iii",
       "metric": "rail_exit_time_s",
-      "measured": 0.4440626619581709,
+      "measured": 0.4440626634506186,
       "reference": 0.4446987101061454,
       "source": "rocketpy 1.13.0, validation/oracles/rocketpy/flight.py, case juno-iii, metrics.rail_exit_time_s",
       "tolerance": {
         "relative": 0.03
       },
-      "difference": -0.0006360481479745217,
-      "relative": -0.001430290067229345,
+      "difference": -0.0006360466555268007,
+      "relative": -0.0014302867111419828,
       "verdict": "within_target"
     },
     {
       "case": "predicted-bella-lui",
       "metric": "apogee_agl_m",
-      "measured": 545.7477664017522,
+      "measured": 545.7477374398428,
       "reference": 539.7124987260696,
       "source": "rocketpy 1.13.0, validation/oracles/rocketpy/flight.py, case bella-lui, metrics.apogee_agl_m",
       "tolerance": {
         "relative": 0.03
       },
-      "difference": 6.035267675682576,
-      "relative": 0.011182375227418568,
+      "difference": 6.035238713773197,
+      "relative": 0.011182321565683018,
       "verdict": "within_target"
     },
     {
       "case": "predicted-bella-lui",
       "metric": "apogee_drift_m",
-      "measured": 108.6614074960757,
+      "measured": 108.66145681350496,
       "reference": 127.53395963342221,
       "source": "rocketpy 1.13.0, validation/oracles/rocketpy/flight.py, case bella-lui, metrics.apogee_drift_m",
       "tolerance": {
         "relative": 0.03
       },
-      "difference": -18.872552137346517,
-      "relative": -0.14798060212035224,
+      "difference": -18.87250281991726,
+      "relative": -0.14798021541998319,
       "verdict": "outside_target"
     },
     {
       "case": "predicted-bella-lui",
       "metric": "apogee_time_s",
-      "measured": 11.363581103001621,
+      "measured": 11.363583026536933,
       "reference": 11.294040751198871,
       "source": "rocketpy 1.13.0, validation/oracles/rocketpy/flight.py, case bella-lui, metrics.apogee_time_s",
       "tolerance": {
         "relative": 0.03
       },
-      "difference": 0.06954035180275042,
-      "relative": 0.006157260570834107,
+      "difference": 0.0695422753380619,
+      "relative": 0.006157430885016059,
       "verdict": "within_target"
     },
     {
       "case": "predicted-bella-lui",
       "metric": "burnout_altitude_agl_m",
-      "measured": 120.2994176568687,
+      "measured": 120.29937935154176,
       "reference": 119.87094300927356,
       "source": "rocketpy 1.13.0, validation/oracles/rocketpy/flight.py, case bella-lui, metrics.burnout_altitude_agl_m",
       "tolerance": {
         "relative": 0.03
       },
-      "difference": 0.428474647595138,
-      "relative": 0.003574466312173668,
+      "difference": 0.42843634226819916,
+      "relative": 0.0035741467574427446,
       "verdict": "within_target"
     },
     {
       "case": "predicted-bella-lui",
       "metric": "burnout_speed_m_s",
-      "measured": 97.26961266678036,
+      "measured": 97.26957507891494,
       "reference": 97.02462996231527,
       "source": "rocketpy 1.13.0, validation/oracles/rocketpy/flight.py, case bella-lui, metrics.burnout_speed_m_s",
       "tolerance": {
         "relative": 0.03
       },
-      "difference": 0.2449827044650874,
-      "relative": 0.0025249537623615735,
+      "difference": 0.24494511659966633,
+      "relative": 0.0025245663569632157,
       "verdict": "within_target"
     },
     {
       "case": "predicted-bella-lui",
       "metric": "flight_time_s",
-      "measured": 40.26030099427782,
+      "measured": 40.26030158433765,
       "reference": 39.92383838604077,
       "source": "rocketpy 1.13.0, validation/oracles/rocketpy/flight.py, case bella-lui, metrics.flight_time_s",
       "tolerance": {
         "relative": 0.03
       },
-      "difference": 0.3364626082370492,
-      "relative": 0.008427611718684148,
+      "difference": 0.336463198296876,
+      "relative": 0.008427626498320842,
       "verdict": "within_target"
     },
     {
       "case": "predicted-bella-lui",
       "metric": "impact_speed_m_s",
-      "measured": 19.678058456608976,
+      "measured": 19.67805830560281,
       "reference": 19.67389056636401,
       "source": "rocketpy 1.13.0, validation/oracles/rocketpy/flight.py, case bella-lui, metrics.impact_speed_m_s",
       "tolerance": {
         "relative": 0.03
       },
-      "difference": 0.00416789024496822,
-      "relative": 0.00021184880697130463,
+      "difference": 0.004167739238802426,
+      "relative": 0.00021184113151101453,
       "verdict": "within_target"
     },
     {
       "case": "predicted-bella-lui",
       "metric": "landing_drift_m",
-      "measured": 53.77054449034436,
+      "measured": 53.77061478567825,
       "reference": 77.19118923991923,
       "source": "rocketpy 1.13.0, validation/oracles/rocketpy/flight.py, case bella-lui, metrics.landing_drift_m",
       "tolerance": {
         "relative": 0.03
       },
-      "difference": -23.420644749574862,
-      "relative": -0.3034108553086385,
+      "difference": -23.420574454240978,
+      "relative": -0.3034099446433854,
       "verdict": "outside_target"
     },
     {
       "case": "predicted-bella-lui",
       "metric": "max_acceleration_m_s2",
-      "measured": 74.13773275446536,
+      "measured": 74.1377327544795,
       "reference": 72.82919349575171,
       "source": "rocketpy 1.13.0, validation/oracles/rocketpy/flight.py, case bella-lui, metrics.max_acceleration_m_s2",
       "tolerance": {
         "relative": 0.03
       },
-      "difference": 1.308539258713651,
-      "relative": 0.017967235333863487,
+      "difference": 1.3085392587277909,
+      "relative": 0.017967235334057637,
       "verdict": "within_target"
     },
     {
       "case": "predicted-bella-lui",
       "metric": "max_acceleration_power_on_m_s2",
-      "measured": 74.13773275446536,
+      "measured": 74.1377327544795,
       "reference": 72.82919349575172,
       "source": "rocketpy 1.13.0, validation/oracles/rocketpy/flight.py, case bella-lui, metrics.max_acceleration_power_on_m_s2",
       "tolerance": {
         "relative": 0.03
       },
-      "difference": 1.3085392587136369,
-      "relative": 0.01796723533386329,
+      "difference": 1.3085392587277767,
+      "relative": 0.01796723533405744,
       "verdict": "within_target"
     },
     {
@@ -2302,53 +2302,53 @@
     {
       "case": "predicted-bella-lui",
       "metric": "max_mach",
-      "measured": 0.29278547658238724,
+      "measured": 0.29279011164219,
       "reference": 0.29252111158161864,
       "source": "rocketpy 1.13.0, validation/oracles/rocketpy/flight.py, case bella-lui, metrics.max_mach",
       "tolerance": {
         "relative": 0.03
       },
-      "difference": 0.00026436500076859604,
-      "relative": 0.0009037467393010144,
+      "difference": 0.00026900006057134496,
+      "relative": 0.0009195919539512933,
       "verdict": "within_target"
     },
     {
       "case": "predicted-bella-lui",
       "metric": "max_speed_m_s",
-      "measured": 98.56825259266368,
+      "measured": 98.56883142706398,
       "reference": 98.36373082899858,
       "source": "rocketpy 1.13.0, validation/oracles/rocketpy/flight.py, case bella-lui, metrics.max_speed_m_s",
       "tolerance": {
         "relative": 0.03
       },
-      "difference": 0.2045217636650989,
-      "relative": 0.002079239593104208,
+      "difference": 0.2051005980653997,
+      "relative": 0.0020851242255334836,
       "verdict": "within_target"
     },
     {
       "case": "predicted-bella-lui",
       "metric": "rail_exit_speed_m_s",
-      "measured": 16.998677350691707,
+      "measured": 16.998677184408937,
       "reference": 17.000560284981056,
       "source": "rocketpy 1.13.0, validation/oracles/rocketpy/flight.py, case bella-lui, metrics.rail_exit_speed_m_s",
       "tolerance": {
         "relative": 0.03
       },
-      "difference": -0.0018829342893482703,
-      "relative": -0.0001107571902210615,
+      "difference": -0.0018831005721189342,
+      "relative": -0.00011076697123815014,
       "verdict": "within_target"
     },
     {
       "case": "predicted-bella-lui",
       "metric": "rail_exit_time_s",
-      "measured": 0.3436443283115561,
+      "measured": 0.3436443308945779,
       "reference": 0.34374294702981134,
       "source": "rocketpy 1.13.0, validation/oracles/rocketpy/flight.py, case bella-lui, metrics.rail_exit_time_s",
       "tolerance": {
         "relative": 0.03
       },
-      "difference": -0.00009861871825522783,
-      "relative": -0.00028689670321199365,
+      "difference": -0.00009861613523343138,
+      "relative": -0.0002868891888125892,
       "verdict": "within_target"
     }
   ],
@@ -2364,7 +2364,7 @@
       "case": "predicted-prometheus-2022-generic-motor",
       "reason": "RocketPy flying the example's own drag peaks at Mach 1.049 near burnout, and hpr's aerodynamics refuse M >= 1 until M1.8 (ADR-008, ADR-011), so the flight stops at Mach 1 and no metric can be compared.",
       "refusal": "refused the flight at Mach 1.000, outside its subsonic models' range of [0, 1)",
-      "mach": 1.0000000000000022,
+      "mach": 1.0000000000000004,
       "metric_count": 15
     }
   ],

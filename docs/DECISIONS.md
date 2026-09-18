@@ -1879,6 +1879,15 @@ below Valetudo's table and 6.0% below Juno III's at Mach 0.3.
   committed. A test pins that every predicted row, and no other, is a target row.
 - **Prometheus 2022 is a known gap in predicted mode too:** RocketPy on its own drag peaks at
   Mach 1.049, and the harness checks the gap as it does the same-drag one (L85).
+- **Predicted mode flies at rtol = atol = 1e-11,** same-drag mode at the default 1e-8. Its
+  drag calls `ln` and `powf`, whose last bits differ between platforms' maths libraries, which
+  moves the adaptive step sequence, so the answer differs by the solver's global error: at 1e-8,
+  CI measured NDRT 2020's predicted apogee 1.7e-7 apart on macOS and Linux (1404.058522 against
+  1404.058761 m), past ADR-022's 1e-7 reproduction bound. On macOS that apogee is 1404.058522,
+  .057883, .058122 and .058145 m at 1e-8 to 1e-11, so 1e-11 converges it to about 1e-5 m, for
+  0.5 s more over the suite. The bound is not loosened.
+- The set of predicted rows outside their target is pinned by a test, as the not-scored set is,
+  so a case file's "nothing else misses" cannot go stale unnoticed.
 - `scripts/regenerate-references.sh` regenerates the new reference with the others, and now
   prints how far each fixture moved, number by number. ADR-022's first dispatched run, on GitHub's
   macOS runner, showed why: RocketPy's fixtures moved in their last digits (the descents by at most
@@ -1889,8 +1898,12 @@ below Valetudo's table and 6.0% below Juno III's at Mach 0.3.
 
 - Scoring predicted mode against the same-drag reference: it measures hpr's drag against 0.5.
 - Gating it at 3%: two of five apogees miss by 10%, from drag tables that are not the truth
-  either. A gate would fail the suite on a disagreement nobody can yet settle, or be loosened to
-  pass, which rule 2 forbids. M2.1 itself calls these "targets, not gates".
+  either, and hpr's drag runs on placeholder fin edges and finishes where the examples record
+  none. A gate would fail the suite on a disagreement nobody can yet settle, or be loosened to
+  pass, which rule 2 forbids. M2.1's own done-when asks for predicted-mode results "reported, with
+  explained gaps", not passed. `VALIDATION.md`'s initial targets called the 3% "targets, not
+  gates, until the first report exists"; since then it is a gate in same-drag mode and, by this
+  decision, a target in predicted mode.
 - Declaring every predicted metric *not scored*: it would bury the same-drag suite's eleven open
   misses among 75 routine notes, and a target that is met would read like one that is not.
 - Committing the examples' curves, or reading them in CI: their terms forbid the first (ADR-009),
@@ -1908,3 +1921,5 @@ below Valetudo's table and 6.0% below Juno III's at Mach 0.3.
   one's is. hpr's own drag could take a rocket past Mach 1 where RocketPy's example stays below
   it; no case does that today (both Prometheus references exceed Mach 1), and such a case would
   have to leave the lock or wait for M1.8.
+- A predicted flight past Mach 0.8 would fly hpr's drag beyond the range its build-up is
+  documented for, and the harness does not flag it; none does today (Calisto peaks at Mach 0.746).

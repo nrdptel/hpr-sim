@@ -41,14 +41,17 @@ pub(crate) fn cases() -> Vec<Case> {
 pub(crate) struct Scratch(PathBuf);
 
 impl Scratch {
-    /// A fresh directory.
+    /// A fresh directory. Tests run in parallel and the clock may tick coarsely, so a counter
+    /// keeps two made in the same instant apart.
     fn new() -> Self {
+        static MADE: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
         let path = std::env::temp_dir().join(format!(
-            "hpr-validate-{}-{}",
+            "hpr-validate-{}-{}-{}",
             std::process::id(),
             std::time::SystemTime::now()
                 .duration_since(std::time::UNIX_EPOCH)
-                .map_or(0, |since| since.as_nanos())
+                .map_or(0, |since| since.as_nanos()),
+            MADE.fetch_add(1, std::sync::atomic::Ordering::Relaxed)
         ));
         std::fs::create_dir_all(&path).expect("a temporary directory");
         Self(path)
@@ -270,6 +273,41 @@ fn the_metrics_that_are_not_scored_are_these_and_no_others() {
             "predicted-prometheus-2022-generic-motor"
         ]
     );
+    // Predicted mode's misses are pinned too, so a case file's account of them ("nothing else
+    // misses") cannot go stale unnoticed (ADR-023). Adding a miss means editing this list and
+    // explaining it in the case file.
+    let outside: Vec<(&str, &str)> = report
+        .comparisons
+        .iter()
+        .filter(|comparison| comparison.verdict == Verdict::OutsideTarget)
+        .map(|comparison| (comparison.case.as_str(), comparison.metric.as_str()))
+        .collect();
+    let mut expected_outside = vec![];
+    expected_outside.extend(drifts("predicted-calisto-tests-motor-at-minus-1.373"));
+    for metric in [
+        "apogee_agl_m",
+        "apogee_drift_m",
+        "apogee_time_s",
+        "flight_time_s",
+        "landing_drift_m",
+    ] {
+        expected_outside.push(("predicted-valetudo", metric));
+    }
+    for metric in [
+        "apogee_agl_m",
+        "apogee_drift_m",
+        "apogee_time_s",
+        "flight_time_s",
+        "landing_drift_m",
+        "max_acceleration_m_s2",
+        "max_acceleration_time_s",
+    ] {
+        expected_outside.push(("predicted-ndrt-2020-nose-to-tail", metric));
+    }
+    expected_outside.push(("predicted-juno-iii", "apogee_agl_m"));
+    expected_outside.extend(drifts("predicted-juno-iii"));
+    expected_outside.extend(drifts("predicted-bella-lui"));
+    assert_eq!(outside, expected_outside);
     // Predicted mode is the third, and it is reported against a target rather than excused: every
     // metric of every predicted case, and no other, is a target row (ADR-023).
     for comparison in &report.comparisons {

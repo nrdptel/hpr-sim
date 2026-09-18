@@ -28,6 +28,10 @@ small extracted fixtures with a clear license are committed, each with its prove
   - Real-flight apogee mean absolute error at or below 5% on well-characterized flights.
   - Every miss is explained in the report.
 
+  Since the first report (M2.1a), the code-to-code 3% is a gate in same-drag mode and stays a
+  target in predicted mode, where neither code's drag is the truth (ADR-023); a predicted miss is
+  explained in its case file, and the set of misses is pinned by a test.
+
 ## The harness (M2.1a)
 
 `cargo xtask validate [--fast|--check]` runs every case in `validation/cases/lock.toml` and writes
@@ -154,7 +158,10 @@ Each predicted metric keeps M2.1's 3% as a target, not a gate: its verdict is `w
 (ADR-023). Neither code's drag is the truth, so a miss is a measurement to explain, and each case
 file explains its own. In short, 56 of 75 are within target; the apogees are −0.527% (Calisto),
 +1.118% (Bella Lui), +3.181% (Juno III), +10.007% (Valetudo) and +10.232% (NDRT 2020), the last two
-where hpr's drag is well below the example's; the drifts miss as in same-drag mode (issue #50).
+where hpr's drag is well below the example's, which also moves their times and drifts; in the
+windy cases the drifts miss as in same-drag mode (issue #50). hpr's drag is for the designs as
+transcribed, whose fin edges and finishes are placeholders where the examples record none.
+Predicted mode flies at rtol = atol = 1e-11, so its report reproduces across platforms (ADR-023).
 Prometheus 2022 is a known gap the harness checks: on its own drag RocketPy's flight reaches Mach
 1.049, past hpr's subsonic limit.
 

@@ -101,8 +101,9 @@ pub enum DragMode {
     /// of motion, the environment or the motor. Its metrics are gated.
     #[default]
     SameDrag,
-    /// hpr flies its own aerodynamics against a reference in which RocketPy flies the example's
-    /// own drag, so a difference is mostly the two drags ([M2.1c2][m2-1c2]). Its metrics are
+    /// hpr flies its own drag against a reference in which RocketPy flies the example's own drag,
+    /// so a difference is mostly the two drags ([M2.1c2][m2-1c2]). hpr's normal force is its own
+    /// in both modes; only the zero-lift drag differs. Its metrics are
     /// held to a target and reported, never gated ([`crate::Verdict::WithinTarget`]).
     ///
     /// [m2-1c2]: https://nrdptel.github.io/hpr-sim/decisions-and-roadmap.html#m2-1c2

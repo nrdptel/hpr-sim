@@ -108,7 +108,7 @@ missing or its status disagrees.
 | <a id="m1-7a"></a>[M1.7a][phase-1] | Parachutes, and the descent under them | done |
 | <a id="m1-7b"></a>[M1.7b][phase-1] | Streamers and tumble recovery | done |
 | <a id="m1-7c"></a>[M1.7c][phase-1] | Separated bodies, each flown to its own landing | done |
-| <a id="m2-1"></a>[M2.1][phase-1] | The validation harness, and comparisons with RocketPy; closed with the landing offset in wind still open ([issue #50](https://github.com/nrdptel/hpr-sim/issues/50)) | done |
+| <a id="m2-1"></a>[M2.1][phase-1] | The validation harness, and comparisons with RocketPy | not yet done |
 | <a id="m2-1a"></a>[M2.1a][phase-1] | The harness itself: cases, reference data, tolerances and reports | done |
 | <a id="m2-1b"></a>[M2.1b][phase-1] | Whole flights against RocketPy, with both codes given the same drag | done |
 | <a id="m2-1b1"></a>[M2.1b1][phase-1] | The script that flies RocketPy's example rockets from pad to landing, as the reference | done |
@@ -116,6 +116,7 @@ missing or its status disagrees.
 | <a id="m2-1c"></a>[M2.1c][phase-1] | The same cases flown with each code's own drag, a CI job, and regenerating references | done |
 | <a id="m2-1c1"></a>[M2.1c1][phase-1] | A CI job that checks every case against its stored reference, and a workflow, run only by hand, that regenerates the references | done |
 | <a id="m2-1c2"></a>[M2.1c2][phase-1] | The same cases flown with each code's own drag | done |
+| <a id="m2-1d"></a>[M2.1d][phase-1] | The time-series comparison, and where a rocket goes in wind (issue #50) | not yet done |
 | <a id="m1-8"></a>[M1.8][phase-1] | Transonic and supersonic aerodynamics, damping, and overriding the aerodynamics | not yet done |
 | <a id="m3-1"></a>[M3.1][phase-1] | Reading OpenRocket `.ork` design files | not yet done |
 | <a id="m2-2"></a>[M2.2][phase-1] | OpenRocket as a reference program, and a corpus of designs to compare | not yet done |

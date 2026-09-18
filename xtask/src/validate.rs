@@ -190,14 +190,17 @@ fn print_summary(report: &Report) {
         .iter()
         .filter(|comparison| comparison.targeted_row())
         .count();
-    let aside: Vec<String> = [
-        (not_scored, "not scored"),
-        (targeted, "predicted, against a target"),
-    ]
-    .into_iter()
-    .filter(|(count, _)| *count > 0)
-    .map(|(count, what)| format!("{count} {what}"))
-    .collect();
+    let outside = report
+        .comparisons
+        .iter()
+        .filter(|comparison| comparison.verdict == hpr_validate::Verdict::OutsideTarget)
+        .count();
+    let predicted = format!("predicted, against a target, {outside} outside it");
+    let aside: Vec<String> = [(not_scored, "not scored"), (targeted, predicted.as_str())]
+        .into_iter()
+        .filter(|(count, _)| *count > 0)
+        .map(|(count, what)| format!("{count} {what}"))
+        .collect();
     println!(
         "validate: {} case(s), {} metric(s){}, {}",
         report.cases.len(),
