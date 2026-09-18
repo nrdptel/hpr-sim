@@ -1,0 +1,65 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="820" height="440" viewBox="0 0 820 440" font-family="Helvetica, Arial, sans-serif" font-size="14" fill="#222">
+  <title>A rocket's flight from the pad to landing, seen from the side</title>
+  <desc>The rocket lifts off the pad, leaves the rail, burns out, and coasts to apogee west of the pad, into the wind. It then drifts east under a drogue and a main parachute, and lands east of the pad. Seven numbered points mark the events.</desc>
+  <rect width="820" height="440" fill="#ffffff"/>
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto">
+      <path d="M0,0 L10,5 L0,10 z" fill="#555"/>
+    </marker>
+  </defs>
+
+  <!-- The wind -->
+  <text x="30" y="32" fill="#555">wind from the west</text>
+  <line x1="30" y1="46" x2="150" y2="46" stroke="#555" stroke-width="2" marker-end="url(#arrow)"/>
+
+  <!-- The ground and the rail -->
+  <line x1="20" y1="390" x2="800" y2="390" stroke="#8a6d3b" stroke-width="3"/>
+  <text x="24" y="414" fill="#555">west</text>
+  <text x="796" y="414" fill="#555" text-anchor="end">east</text>
+  <text x="360" y="424" text-anchor="middle" fill="#555">pad</text>
+  <line x1="360" y1="390" x2="360" y2="352" stroke="#999" stroke-width="7"/>
+
+  <!-- The flight -->
+  <path d="M360,362 C358,320 345,285 330,250" fill="none" stroke="#d9480f" stroke-width="4"/>
+  <path d="M330,250 C322,160 285,100 250,70" fill="none" stroke="#1c5d99" stroke-width="3"/>
+  <path d="M250,70 C300,110 380,220 430,338" fill="none" stroke="#2b8a3e" stroke-width="3" stroke-dasharray="8 5"/>
+  <path d="M430,338 C438,360 447,375 455,390" fill="none" stroke="#2b8a3e" stroke-width="3" stroke-dasharray="3 4"/>
+
+  <!-- The phases -->
+  <text x="346" y="382" text-anchor="end" font-size="13" fill="#555">on the rail</text>
+  <text x="338" y="316" text-anchor="end" font-size="13" fill="#d9480f">powered flight</text>
+  <text x="290" y="160" text-anchor="end" font-size="13" fill="#1c5d99">coast</text>
+  <text x="362" y="184" font-size="13" fill="#2b8a3e">under the drogue</text>
+  <text x="454" y="364" font-size="13" fill="#2b8a3e">under the main</text>
+
+  <!-- The events on the path -->
+  <g font-size="12" font-weight="bold" text-anchor="middle">
+    <circle cx="360" cy="390" r="10" fill="#fff" stroke="#222" stroke-width="1.5"/><text x="360" y="394">1</text>
+    <circle cx="360" cy="352" r="10" fill="#fff" stroke="#222" stroke-width="1.5"/><text x="360" y="356">2</text>
+    <circle cx="330" cy="250" r="10" fill="#fff" stroke="#222" stroke-width="1.5"/><text x="330" y="254">3</text>
+    <circle cx="250" cy="70" r="10" fill="#fff" stroke="#222" stroke-width="1.5"/><text x="250" y="74">4</text>
+    <circle cx="274" cy="92" r="10" fill="#fff" stroke="#222" stroke-width="1.5"/><text x="274" y="96">5</text>
+    <circle cx="430" cy="338" r="10" fill="#fff" stroke="#222" stroke-width="1.5"/><text x="430" y="342">6</text>
+    <circle cx="455" cy="390" r="10" fill="#fff" stroke="#222" stroke-width="1.5"/><text x="455" y="394">7</text>
+  </g>
+
+  <!-- The legend -->
+  <g font-size="13">
+    <g font-size="12" font-weight="bold" text-anchor="middle">
+      <circle cx="520" cy="96" r="10" fill="#fff" stroke="#222" stroke-width="1.5"/><text x="520" y="100">1</text>
+      <circle cx="520" cy="130" r="10" fill="#fff" stroke="#222" stroke-width="1.5"/><text x="520" y="134">2</text>
+      <circle cx="520" cy="164" r="10" fill="#fff" stroke="#222" stroke-width="1.5"/><text x="520" y="168">3</text>
+      <circle cx="520" cy="198" r="10" fill="#fff" stroke="#222" stroke-width="1.5"/><text x="520" y="202">4</text>
+      <circle cx="520" cy="232" r="10" fill="#fff" stroke="#222" stroke-width="1.5"/><text x="520" y="236">5</text>
+      <circle cx="520" cy="266" r="10" fill="#fff" stroke="#222" stroke-width="1.5"/><text x="520" y="270">6</text>
+      <circle cx="520" cy="300" r="10" fill="#fff" stroke="#222" stroke-width="1.5"/><text x="520" y="304">7</text>
+    </g>
+    <text x="540" y="101">Liftoff: the thrust beats the weight</text>
+    <text x="540" y="135">Rail exit: the rocket flies free</text>
+    <text x="540" y="169">Burnout: the thrust curve ends</text>
+    <text x="540" y="203">Apogee: the drogue's charge fires</text>
+    <text x="540" y="237">The drogue opens, after its lag</text>
+    <text x="540" y="271">The main opens, at its set height</text>
+    <text x="540" y="305">Landing: back at the pad's height</text>
+  </g>
+</svg>

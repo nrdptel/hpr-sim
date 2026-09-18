@@ -62,6 +62,13 @@ impl Environment {
         self
     }
 
+    /// The same environment with `wind` in place of its wind.
+    #[must_use]
+    pub fn with_wind(mut self, wind: impl Wind + 'static) -> Self {
+        self.wind = Arc::new(wind);
+        self
+    }
+
     /// The launch site.
     #[must_use]
     pub fn site(&self) -> Geodetic {
