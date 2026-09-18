@@ -52,8 +52,9 @@
 //! reads as a page of the built site. Its pages are held to the guide's rule on **bare labels**
 //! (M0.4e): a label in the text a reader sees fails, and one in a link's text, in code, or on
 //! rustdoc's source pages, which quote the code as written, does not. A doc comment links a label
-//! to its row in *Decisions and the roadmap* by the site's address. CI deploys `target/site` to
-//! GitHub Pages from `main`.
+//! to its row in *Decisions and the roadmap* by the site's address, and a decision record by its
+//! GitHub URL, which is checked against the working tree as the guide's are. CI deploys
+//! `target/site` to GitHub Pages from `main`.
 
 use std::collections::{BTreeMap, BTreeSet};
 use std::fs;
@@ -107,7 +108,9 @@ const REPORT: &str = "validation/reports/latest.md";
 const RECORDS: &str = "decisions-and-roadmap.md";
 /// The files [`RECORDS`] indexes, relative to the workspace root, and the prefix of the level-2
 /// headings in each that it must link: every decision, and every phase of the roadmap.
-const INDEXED: [(&str, &str); 2] = [("docs/DECISIONS.md", "ADR-"), ("docs/ROADMAP.md", "Phase ")];
+/// The roadmap, relative to the workspace root, whose milestones [`RECORDS`] has a row for each.
+const ROADMAP: &str = "docs/ROADMAP.md";
+const INDEXED: [(&str, &str); 2] = [("docs/DECISIONS.md", "ADR-"), (ROADMAP, "Phase ")];
 /// Where GitHub Pages serves the site: the project page of `nrdptel/hpr-sim`. The crates'
 /// documentation links the guide by this address, and the README's first lines link it.
 const SITE_URL: &str = "https://nrdptel.github.io/hpr-sim/";
@@ -142,7 +145,7 @@ pub fn run(args: &[String]) -> Result<(), String> {
     let output = root.join(OUTPUT);
     let workspace = crate::workspace::load(&root)?;
     let crates = rustdoc_build(&root, &workspace, &output.join(API), locked)?;
-    let built = check_html(&output, &crates)?;
+    let built = check_html(&root, &output, &crates)?;
     if !built.problems.is_empty() {
         return Err(failure("the built site", &built.problems));
     }
@@ -522,36 +525,13 @@ fn check_link(
         return Err("empty destination".to_owned());
     }
     if let Some(rest) = dest.strip_prefix(GITHUB) {
-        // Issues, pull requests and the like are on the web; files on `main` are checked here.
-        let Some(target) = ON_MAIN.iter().find_map(|prefix| rest.strip_prefix(prefix)) else {
-            return Ok(Reach::Web);
-        };
-        let (path, fragment) = split_target(target);
-        let path = path.trim_end_matches('/');
-        if path.is_empty() || join("", path).as_deref() != Some(path) || !root.join(path).exists() {
-            return Err(format!("no `{path}` in the repository"));
-        }
-        if let Some(fragment) = fragment
-            && path.ends_with(".md")
-        {
-            let anchors = match path
-                .strip_prefix(SOURCE)
-                .and_then(|name| name.strip_prefix('/'))
-                .and_then(|name| pages.get(name))
-            {
-                Some(page) => &page.anchors,
-                None => {
-                    if !others.contains_key(path) {
-                        let text = fs::read_to_string(root.join(path))
-                            .map_err(|err| format!("can't read `{path}`: {err}"))?;
-                        others.insert(path.to_owned(), anchors_of(&text));
-                    }
-                    &others[path]
-                }
-            };
-            return has_anchor(anchors, fragment, path).map(|()| Reach::Repository);
-        }
-        return Ok(Reach::Repository);
+        return on_main(root, Some(pages), others, rest).map(|checked| {
+            if checked {
+                Reach::Repository
+            } else {
+                Reach::Web
+            }
+        });
     }
     if is_web(dest) {
         return Ok(Reach::Web);
@@ -615,6 +595,47 @@ fn check_link(
         return Err("only a page has anchors".to_owned());
     }
     Ok(Reach::Repository)
+}
+
+/// Checks a link into this repository, `rest` being what follows [`GITHUB`]. A file on `main` must
+/// be in the working tree, and a fragment in a Markdown file must name one of its anchors; the
+/// result is `true` once checked. Issues, pull requests and the like are on the web: `false`.
+/// `pages`, the site's pages if read, and `others` hold the anchors of the files already read.
+fn on_main(
+    root: &Path,
+    pages: Option<&BTreeMap<String, Page>>,
+    others: &mut BTreeMap<String, BTreeSet<String>>,
+    rest: &str,
+) -> Result<bool, String> {
+    let Some(target) = ON_MAIN.iter().find_map(|prefix| rest.strip_prefix(prefix)) else {
+        return Ok(false);
+    };
+    let (path, fragment) = split_target(target);
+    let path = path.trim_end_matches('/');
+    if path.is_empty() || join("", path).as_deref() != Some(path) || !root.join(path).exists() {
+        return Err(format!("no `{path}` in the repository"));
+    }
+    if let Some(fragment) = fragment
+        && path.ends_with(".md")
+    {
+        let page = path
+            .strip_prefix(SOURCE)
+            .and_then(|name| name.strip_prefix('/'))
+            .and_then(|name| pages?.get(name));
+        let anchors = match page {
+            Some(page) => &page.anchors,
+            None => {
+                if !others.contains_key(path) {
+                    let text = fs::read_to_string(root.join(path))
+                        .map_err(|err| format!("can't read `{path}`: {err}"))?;
+                    others.insert(path.to_owned(), anchors_of(&text));
+                }
+                &others[path]
+            }
+        };
+        has_anchor(anchors, fragment, path)?;
+    }
+    Ok(true)
 }
 
 /// Whether `anchors` (of the file `what`) has `fragment`, which may be percent-encoded.
@@ -874,6 +895,7 @@ fn page_rules(
         }
     }
     if name == RECORDS {
+        let mut roadmap = None;
         for (file, prefix) in INDEXED {
             let indexed = match fs::read_to_string(root.join(file)) {
                 Ok(indexed) => indexed,
@@ -896,17 +918,17 @@ fn page_rules(
                     ));
                 }
             }
+            if file == ROADMAP {
+                roadmap = Some(indexed);
+            }
         }
         // A roadmap that can't be read is reported above.
-        if let Ok(roadmap) = fs::read_to_string(root.join(ROADMAP)) {
+        if let Some(roadmap) = roadmap {
             problems.extend(milestone_rows(text, &roadmap));
         }
     }
     problems
 }
-
-/// The roadmap, relative to the workspace root, whose milestones [`RECORDS`] has a row for each.
-const ROADMAP: &str = "docs/ROADMAP.md";
 
 /// The milestones and increments of the roadmap, in order, as (id, status): `done` once checked
 /// off, `blocked` when marked so, and `not yet done` otherwise. Each is a task-list item whose
@@ -922,12 +944,36 @@ fn roadmap_milestones(roadmap: &str) -> Vec<(String, &'static str)> {
             };
             let id = rest.strip_prefix("**")?.split_whitespace().next()?;
             let status = match (mark, blocked) {
-                ("x", _) => "done",
+                ("x" | "X", _) => "done",
                 (" ", true) => "blocked",
                 (" ", false) => "not yet done",
                 _ => return None,
             };
             is_milestone_id(id).then(|| (id.to_owned(), status))
+        })
+        .collect()
+}
+
+/// The roadmap's task-list items that look like a milestone, their bold text opening with `M` and
+/// a digit, but that [`roadmap_milestones`] can't read: an id it doesn't recognise (`**M1.11**
+/// Foo`, `**M1.11: Foo**`) or a mark other than `x`, `X` or a space. Each would need no row, so
+/// each is a problem.
+fn unreadable_milestones(roadmap: &str) -> Vec<String> {
+    let read: BTreeSet<String> = roadmap_milestones(roadmap)
+        .into_iter()
+        .map(|(id, _)| id)
+        .collect();
+    roadmap
+        .lines()
+        .filter_map(|line| {
+            let (_, rest) = line.trim_start().strip_prefix("- [")?.split_once("] ")?;
+            let rest = rest.strip_prefix("[blocked] ").unwrap_or(rest);
+            let bold = rest.strip_prefix("**M")?;
+            if !bold.starts_with(|c: char| c.is_ascii_digit()) {
+                return None;
+            }
+            let id = rest.strip_prefix("**")?.split_whitespace().next()?;
+            (!read.contains(id)).then(|| line.trim().to_owned())
         })
         .collect()
 }
@@ -960,7 +1006,18 @@ fn milestone_anchor(id: &str) -> String {
 /// milestone id, such as the Loft lessons', are someone else's.
 fn milestone_rows(text: &str, roadmap: &str) -> Vec<(usize, String)> {
     let expected = roadmap_milestones(roadmap);
-    let mut problems = Vec::new();
+    let mut problems: Vec<(usize, String)> = unreadable_milestones(roadmap)
+        .into_iter()
+        .map(|line| {
+            (
+                1,
+                format!(
+                    "{ROADMAP} has `{line}`, which reads like a milestone and isn't one: write it \
+                     `- [ ] **M<topic>.<place> Title.**`, with `x` in the box once it is done"
+                ),
+            )
+        })
+        .collect();
     let mut rows = BTreeSet::new();
     for (index, line) in text.lines().enumerate() {
         let Some(row) = line.strip_prefix("| <a id=\"") else {
@@ -1886,7 +1943,12 @@ fn in_short(text: &str) -> Option<(usize, String)> {
 /// the `id`s of its `<a id="...">` elements.
 fn anchors_of(text: &str) -> BTreeSet<String> {
     let mut found = anchors(headings(text, None));
-    found.extend(anchor_ids(text));
+    // Only raw HTML names an anchor: not code, which may show a tag as an example.
+    for event in Parser::new_ext(text, options()) {
+        if let Event::Html(html) | Event::InlineHtml(html) = event {
+            found.extend(anchor_ids(&html));
+        }
+    }
     found
 }
 
@@ -1948,9 +2010,12 @@ fn prose_text(html: &str) -> String {
             // What was on either side of the element stays two words.
             kept.push(' ');
         } else {
-            // Any other tag goes through, for `visible_text` to drop.
+            // Any other tag goes through, for `visible_text` to drop, and leaves a space: rustdoc
+            // closes a heading, a summary or a table cell right before the next text, which is a
+            // word of its own.
             let end = rest.find('>').map_or(rest.len(), |end| end + 1);
             kept.push_str(&rest[..end]);
+            kept.push(' ');
             rest = &rest[end..];
         }
     }
@@ -1971,7 +2036,15 @@ fn opens(html: &str, name: &str) -> bool {
 /// scrolls to `#id`.
 fn anchor_ids(html: &str) -> Vec<String> {
     let mut ids = Vec::new();
+    // A tag inside a comment is not in the page.
+    let mut uncommented = String::with_capacity(html.len());
     let mut rest = html;
+    while let Some((before, after)) = rest.split_once("<!--") {
+        uncommented.push_str(before);
+        rest = after.split_once("-->").map_or("", |(_, after)| after);
+    }
+    uncommented.push_str(rest);
+    let mut rest = uncommented.as_str();
     while let Some(start) = rest.find("<a ") {
         let tag = &rest[start + 3..];
         let tag = tag.split_once('>').map_or(tag, |(inside, _)| inside);
@@ -2124,8 +2197,9 @@ const MDBOOK_404: &str = "404.html";
 ///   the guide by [`SITE_URL`]. No page leaves a link to another crate as text, which rustdoc
 ///   does without a warning when that crate's pages aren't built yet. And no page but a source
 ///   page (under `api/src/`) has a bare label in its [`prose_text`], as [`scan_labels`] finds
-///   them on the guide's pages.
-fn check_html(dir: &Path, crates: &[String]) -> Result<Built, String> {
+///   them on the guide's pages. Its links into this repository on GitHub must reach a file of
+///   `root`, the workspace, and a fragment an anchor there, as the guide's must ([`on_main`]).
+fn check_html(root: &Path, dir: &Path, crates: &[String]) -> Result<Built, String> {
     let mut names = Vec::new();
     html_files(dir, "", &mut names)?;
     let api_dir = format!("{API}/");
@@ -2141,6 +2215,8 @@ fn check_html(dir: &Path, crates: &[String]) -> Result<Built, String> {
         problems: Vec::new(),
     };
     let mut ids: BTreeMap<String, BTreeSet<String>> = BTreeMap::new();
+    // The anchors of the repository's Markdown files that the API reference links on GitHub.
+    let mut repository = BTreeMap::new();
     // The files the site's own pages link, so a crate's front page can't go unlinked.
     let mut linked = BTreeSet::new();
     for name in site.iter().chain(&api) {
@@ -2177,6 +2253,14 @@ fn check_html(dir: &Path, crates: &[String]) -> Result<Built, String> {
                 continue;
             }
             let link = format!("`{attribute}=\"{value}\"`");
+            // The guide's links into the repository are checked on its pages; the API
+            // reference's are checked here, against the same working tree.
+            if in_api && let Some(rest) = value.strip_prefix(GITHUB) {
+                if let Err(why) = on_main(root, None, &mut repository, rest) {
+                    built.problems.push(format!("{name}: {link}: {why}"));
+                }
+                continue;
+            }
             let (target, fragment) = match html_target(dir, name, base.as_deref(), &value) {
                 Ok(Some(found)) => found,
                 Ok(None) => continue,
@@ -3168,6 +3252,18 @@ mod tests {
                 ),
             ]
         );
+        let odd = "- [X] **M0.1 Done.**\n- [ ] **M1.11** Foo\n- [ ] **M1.12: Bar.**\n\
+                   - [?] **M1.13 Baz.**\n- [ ] **Mars.**\n";
+        assert_eq!(roadmap_milestones(odd), [("M0.1".to_owned(), "done")]);
+        assert_eq!(
+            unreadable_milestones(odd),
+            [
+                "- [ ] **M1.11** Foo",
+                "- [ ] **M1.12: Bar.**",
+                "- [?] **M1.13 Baz.**"
+            ]
+        );
+        assert_eq!(milestone_rows("", odd).len(), 4);
         for id in ["M1.1", "M1.10", "M2.1b2", "M0.4e"] {
             assert!(is_milestone_id(id), "{id}");
         }
@@ -3375,6 +3471,17 @@ mod tests {
             ["l15", "m1-9", "records"]
         );
         assert_eq!(anchor_ids("<a id=\"a\"><a id=\"b\">"), ["a", "b"]);
+        // A tag shown in code, or inside a comment, names no anchor.
+        let text = "# T\n\n`<a id=\"code\">`\n\n```html\n<a id=\"block\"></a>\n```\n\n\
+                    <!-- <a id=\"comment\"></a> -->\n\n<a id=\"real\"></a>\n";
+        assert_eq!(
+            anchors_of(text).into_iter().collect::<Vec<_>>(),
+            ["real", "t"]
+        );
+        assert_eq!(
+            read_page(text).anchors.into_iter().collect::<Vec<_>>(),
+            ["real", "t"]
+        );
     }
 
     #[test]
@@ -3396,7 +3503,7 @@ mod tests {
             ("physics/index.html", "<p>index</p>"),
             ("css/site.css", "body {}"),
         ]);
-        let built = check_html(dir.path(), &[]).unwrap();
+        let built = check_html(dir.path(), dir.path(), &[]).unwrap();
         assert_eq!((built.pages, built.api), (3, 0));
         assert_eq!(
             built.problems,
@@ -3444,7 +3551,7 @@ mod tests {
             ("index.html", "<h1 id=\"top\">home</h1>"),
             ("css/site.css", "body {}"),
         ]);
-        let built = check_html(dir.path(), &[]).unwrap();
+        let built = check_html(dir.path(), dir.path(), &[]).unwrap();
         assert_eq!(
             built.problems,
             [
@@ -3542,7 +3649,7 @@ mod tests {
             ("api/static.files/x.css", "body {}"),
             ("api/b/index.html", b_front),
         ]);
-        let built = check_html(dir.path(), &["a".to_owned(), "b".to_owned()]).unwrap();
+        let built = check_html(dir.path(), dir.path(), &["a".to_owned(), "b".to_owned()]).unwrap();
         assert_eq!((built.pages, built.api), (2, 4));
         built.problems
     }
@@ -3631,8 +3738,10 @@ mod tests {
             ("api/b/index.html", &front),
             ("api/b/struct.B.html", item),
             ("api/src/b/lib.rs.html", source),
+            // A file its GitHub links may reach, in the workspace the check reads.
+            ("docs/research/loft-lessons.md", "# Lessons\n"),
         ]);
-        let built = check_html(dir.path(), &["b".to_owned()]).unwrap();
+        let built = check_html(dir.path(), dir.path(), &["b".to_owned()]).unwrap();
         assert_eq!((built.pages, built.api), (1, 3));
         built.problems
     }
@@ -3704,8 +3813,15 @@ mod tests {
                 "<p>A <a href=\"x\">L1</a> b <abbr>c</abbr> <code>L2</code>d<pre>L3</pre>\
                  <!-- <a> --> e <aside>f</aside> <script>L4</script><style>L5</style>g</p> h"
             ),
-            "A   b c  d  e f   g h"
+            " A   b  c   d  e  f    g  h"
         );
+        // Rustdoc closes one element right before the next text; the two stay apart, so a doc
+        // comment that opens with a label is seen.
+        let glued = "<span>Expand description</span></summary><div class=\"docblock\"><p>M1.9 adds\
+                     </p><table><tr><td>x</td><td>L25</td></tr></table>";
+        let mut bare = Vec::new();
+        scan_labels(&prose_text(glued), 0, &mut bare);
+        assert_eq!(bare.len(), 2, "{bare:?}");
         // An element that never closes hides the rest of the page, as an unclosed tag does.
         assert_eq!(prose_text("a <code>b c"), "a  ");
         assert!(opens("<a>", "a") && opens("<a\nhref=\"x\">", "a"));
@@ -3713,9 +3829,39 @@ mod tests {
     }
 
     #[test]
+    fn the_api_references_links_into_the_repository_are_checked() {
+        let front = format!(
+            "<a href=\"https://nrdptel.github.io/hpr-sim/start-here.html\">guide</a>\
+             <a href=\"{GITHUB}blob/main/docs/DECISIONS.md#adr-001-licence\">ok</a>\
+             <a href=\"{GITHUB}blob/main/docs/DECISIONS.md#adr-999\">x</a>\
+             <a href=\"{GITHUB}blob/main/crates/nope.rs\">x</a>\
+             <a href=\"{GITHUB}issues/27\">web</a>"
+        );
+        let dir = workspace(&[
+            ("start-here.html", "<a href=\"api/a/index.html\">api</a>"),
+            ("api/a/index.html", &front),
+            ("docs/DECISIONS.md", "# Decisions\n\n## ADR-001: Licence\n"),
+        ]);
+        let built = check_html(dir.path(), dir.path(), &["a".to_owned()]).unwrap();
+        assert_eq!(
+            built.problems,
+            [
+                format!(
+                    "api/a/index.html: `href=\"{GITHUB}blob/main/docs/DECISIONS.md#adr-999\"`: \
+                     `docs/DECISIONS.md` has no heading or `<a id>` with the anchor `#adr-999`"
+                ),
+                format!(
+                    "api/a/index.html: `href=\"{GITHUB}blob/main/crates/nope.rs\"`: no \
+                     `crates/nope.rs` in the repository"
+                ),
+            ]
+        );
+    }
+
+    #[test]
     fn a_crate_without_an_api_reference_fails() {
         let dir = workspace(&[("index.html", "<p>home</p>")]);
-        let built = check_html(dir.path(), &["hpr_core".to_owned()]).unwrap();
+        let built = check_html(dir.path(), dir.path(), &["hpr_core".to_owned()]).unwrap();
         assert_eq!(
             built.problems,
             ["api/hpr_core/index.html: missing, so the crate `hpr_core` has no API reference"]
