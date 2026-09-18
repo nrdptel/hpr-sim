@@ -1957,11 +1957,12 @@ fn check_html(dir: &Path, crates: &[String]) -> Result<Built, String> {
                 continue;
             }
         };
-        if in_api {
-            for path in unplaced_links(&text) {
+        // Rustdoc's source pages quote the code, doc comments included, as written.
+        if in_api && !name.starts_with(&format!("{API}/src/")) {
+            for path in unplaced_links(&text, crates) {
                 built.problems.push(format!(
-                    "{name}: rustdoc left the link to `{path}` as text, because that crate's pages \
-                     weren't built before this one's"
+                    "{name}: rustdoc left the link to `{path}` unresolved, because that crate's \
+                     pages weren't built before this one's"
                 ));
             }
         }
@@ -2049,29 +2050,47 @@ fn check_html(dir: &Path, crates: &[String]) -> Result<Built, String> {
 ///   its pages load from `trait.impl/` and `type.impl/` when there are any;
 /// - a link in documentation that rustdoc copies from a dependency, such as glam's for
 ///   `hpr_core::DVec3`, which it passes on as written (`crate::DAffine2`) when it can't place it.
-///   A link in hpr's own documentation that doesn't resolve fails `cargo doc` instead.
+///   A path into one of the workspace's crates is reported by [`unplaced_links`] instead, and a
+///   link in hpr's own documentation that doesn't resolve at all fails `cargo doc`.
 fn rustdoc_may_miss(attribute: &str, value: &str) -> bool {
     let optional_script = attribute == "src"
         && (value.contains("trait.impl/") || value.contains("type.impl/"))
         && value.ends_with(".js");
-    let copied_path = value.contains("::") && !value.contains('/');
+    let copied_path = is_path(value) && value.contains("::");
     optional_script || copied_path
 }
 
-/// The paths of the links to items that rustdoc left as text on a page, `[<code>path</code>]`:
-/// a name or a path of names (`hpr_design::Layout`), not other code in brackets (`[self.xy()]`).
-fn unplaced_links(html: &str) -> Vec<&str> {
-    html.match_indices("[<code>")
-        .filter_map(|(at, open)| {
-            let rest = &html[at + open.len()..];
-            let path = &rest[..rest.find("</code>]")?];
-            let is_path = !path.is_empty()
-                && path
-                    .chars()
-                    .all(|c| c.is_alphanumeric() || c == '_' || c == ':');
-            is_path.then_some(path)
-        })
-        .collect()
+/// Whether `text` is a name or a path of names (`hpr_design::Layout`).
+fn is_path(text: &str) -> bool {
+    !text.is_empty()
+        && text
+            .chars()
+            .all(|c| c.is_alphanumeric() || c == '_' || c == ':')
+}
+
+/// Whether the path `text` starts with one of the workspace's `crates`.
+fn is_ours(text: &str, crates: &[String]) -> bool {
+    text.split("::")
+        .next()
+        .is_some_and(|first| crates.iter().any(|krate| krate == first))
+}
+
+/// The paths of the links to items that rustdoc couldn't place on a page, which it does without a
+/// warning when the item's crate has no pages yet. It leaves them as text, `[<code>path</code>]`
+/// or `[hpr_design::Layout]`, or as a link to the path itself, `href="hpr_design::Layout"`. Other
+/// code in brackets (`[self.xy()]`) is not a link.
+fn unplaced_links<'a>(html: &'a str, crates: &[String]) -> Vec<&'a str> {
+    let in_code = html.match_indices("[<code>").filter_map(|(at, open)| {
+        let rest = &html[at + open.len()..];
+        Some(&rest[..rest.find("</code>]")?]).filter(|path| is_path(path))
+    });
+    let in_text = html.match_indices('[').filter_map(|(at, _)| {
+        let rest = &html[at + 1..];
+        Some(&rest[..rest.find(']')?]).filter(|path| is_path(path) && is_ours(path, crates))
+    });
+    let as_href = attributes(html, "href")
+        .filter(|href| is_path(href) && href.contains("::") && is_ours(href, crates));
+    in_code.chain(in_text).chain(as_href).collect()
 }
 
 /// Reads the built file `name` (relative to `dir`).
@@ -2110,8 +2129,10 @@ fn base_of(html: &str) -> Result<Option<String>, String> {
     let outside = || {
         format!("`<base href=\"{value}\">` isn't under `{SITE_PATH}`, where Pages serves the site")
     };
-    let rest = by_address(&value)
-        .or_else(|| under(&value, SITE_PATH))
+    // Unlike a link, a base must end in `/` to name the root: `/hpr-sim` is a file in `/`.
+    let rest = value
+        .strip_prefix(SITE_URL)
+        .or_else(|| value.strip_prefix(SITE_PATH))
         .ok_or_else(outside)?;
     let (path, _) = split_target(rest);
     join("", &path).map(Some).ok_or_else(outside)
@@ -3140,6 +3161,7 @@ mod tests {
             ),
             ("physics/climbs.html", "<base href=\"/hpr-sim/../\">"),
             ("physics/moved.html", "<base href=\"/other/\">"),
+            ("physics/slashless.html", "<base href=\"/hpr-sim\">"),
             // A base without an `href` moves nothing; the next tag's `href` is not the base.
             (
                 "physics/tagged.html",
@@ -3167,6 +3189,8 @@ mod tests {
                  where Pages serves the site",
                 "physics/moved.html: `<base href=\"/other/\">` isn't under `/hpr-sim/`, where Pages \
                  serves the site",
+                "physics/slashless.html: `<base href=\"/hpr-sim\">` isn't under `/hpr-sim/`, \
+                 where Pages serves the site",
             ]
         );
     }
@@ -3311,13 +3335,18 @@ mod tests {
             api_problems(
                 guide,
                 &front(
-                    "<p>From a [<code>a::Layout</code>], [<code>x</code>, <code>y</code>] and \
-                     [<code>self.xy()</code>]</p>"
+                    "<p>From a [<code>a::Layout</code>], [a::Thing], [<code>x</code>, <code>y</code>], \
+                     [<code>self.xy()</code>] and [glam::Vec3]</p>\n\
+                     <a href=\"a::Model\">x</a> <a href=\"crate::DAffine2\">copied</a>"
                 )
             ),
             [
-                "api/b/index.html: rustdoc left the link to `a::Layout` as text, because that \
-                 crate's pages weren't built before this one's"
+                "api/b/index.html: rustdoc left the link to `a::Layout` unresolved, because that \
+                 crate's pages weren't built before this one's",
+                "api/b/index.html: rustdoc left the link to `a::Thing` unresolved, because that \
+                 crate's pages weren't built before this one's",
+                "api/b/index.html: rustdoc left the link to `a::Model` unresolved, because that \
+                 crate's pages weren't built before this one's",
             ]
         );
     }
