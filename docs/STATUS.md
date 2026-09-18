@@ -31,10 +31,12 @@ M2.1c (ADR-022, 023): CI checks the report on three OSes; predicted mode's 3% ar
 - **Resume here, M2.1d2 (draft PR on `m2.1d2-calm-air`):** done: `CALM_AIR_BASES` in `flight.py`,
   the fixture regenerated (the old cases bit-identical), three locked `flight-*-calm` cases. Calisto
   and Bella Lui pass every metric (drifts -1.3 to -2.6%). Juno III calm misses its drifts at -3.7%
-  (549 vs 570 m; apogee +0.06%): hpr turns less off the 85-degree rail even without wind. Left:
-  measure why (first suspect the rail release, Juno's 18.2 m/s exit the slowest), then pass it or
-  argue the gap in its case file and an ADR; update `docs/accuracy.md` (every report row) and
-  `latest.md`; physics-reviewer and validation-auditor; check M2.1d2 off.
+  (549 vs 570 m; apogee +0.06%): hpr turns less off the 85-degree rail even without wind. Measured
+  once (RocketPy's rail lengthened by the 1.41 m button spacing, so it frees the rocket where hpr
+  does): RocketPy's drifts become 561.0 and 641.0 m, hpr within -2.1% of both. So the rail release
+  (hpr: last button, RocketPy: first) is most of it. Left: pin that as a check, argue the case in its
+  file and an ADR (or match the release); `docs/accuracy.md` must hold every report row (the site
+  check fails until it does); physics-reviewer and validation-auditor; check M2.1d2 off.
 - **Then M2.1d3** (the path in wind): bisect the rail release, hpr's drag growth with angle of attack,
   and each code's normal force and damping (only C_D0 differs between the modes).
 - **M1.8** after: don't read predicted mode's +10% (Valetudo, NDRT) as gaps to close. hpr's drag
@@ -55,8 +57,7 @@ M2.1c (ADR-022, 023): CI checks the report on three OSes; predicted mode's 3% ar
   example's own drag; 3% targets, not gates; 56 of 75 within; M2.1d split off for the RMS and #50.
 - 2026-09-18: M2.1c1 Validation in CI and regeneration by hand (PR #51, ADR-022): `validate
   --check` on three OSes; a `workflow_dispatch`-only workflow that uploads the references' diff.
-- 2026-09-18: M2.1b2 The whole-flight cases (PR #49, ADR-021): five pass (64 metrics within
-  3%), Prometheus a checked gap, the path in wind not scored (#50); the L75 test; Bella Lui added.
+- 2026-09-18: M2.1b2 The whole-flight cases (PR #49, ADR-021): five pass, Prometheus a checked gap.
 - 2026-09-18: M0.4e The reader test (PR #47, ADR-020): cold readers answered 9 of 10, then all.
 
 ## Needs Neer (blocking or one-way decisions; the session keeps working on other things)
