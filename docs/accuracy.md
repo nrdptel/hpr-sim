@@ -276,6 +276,9 @@ a reason written in its case file (below). Prometheus 2022, the sixth rocket, is
 | [`flight-ndrt-2020-nose-to-tail`][report] | −0.010% | +0.150% | +0.630% | −0.049% | −0.089% |
 | [`flight-juno-iii`][report] | +1.710% | +0.956% | +1.293% | +0.059% | −0.392% |
 | [`flight-bella-lui`][report] | +0.476% | +0.275% | +0.319% | −0.018% | −0.134% |
+| [`flight-juno-iii-calm`][report] | +0.060% | +0.069% | +0.042% | −0.034% | −0.172% |
+| [`flight-calisto-tests-motor-at-minus-1.373-calm`][report] | −0.004% | +0.096% | +0.091% | −0.025% | −0.152% |
+| [`flight-bella-lui-calm`][report] | −0.029% | −0.013% | −0.065% | −0.018% | −0.056% |
 
 | case | `rail_exit_speed_m_s` | `rail_exit_time_s` | `burnout_altitude_agl_m` | `burnout_speed_m_s` | `impact_speed_m_s` |
 |---|---|---|---|---|---|
@@ -284,6 +287,9 @@ a reason written in its case file (below). Prometheus 2022, the sixth rocket, is
 | [`flight-ndrt-2020-nose-to-tail`][report] | −0.009% | −0.085% | +0.032% | −0.066% | +0.022% |
 | [`flight-juno-iii`][report] | −0.005% | −0.142% | +0.782% | +0.040% | −0.003% |
 | [`flight-bella-lui`][report] | −0.013% | −0.029% | +0.228% | −0.029% | +0.021% |
+| [`flight-juno-iii-calm`][report] | −0.002% | −0.137% | +0.062% | −0.049% | +0.001% |
+| [`flight-calisto-tests-motor-at-minus-1.373-calm`][report] | −0.001% | −0.074% | +0.005% | −0.032% | −0.003% |
+| [`flight-bella-lui-calm`][report] | −0.000% | −0.032% | +0.007% | −0.025% | +0.021% |
 
 | case | `max_acceleration_power_on_m_s2` | `max_acceleration_m_s2` | `max_acceleration_time_s` | `apogee_drift_m` | `landing_drift_m` |
 |---|---|---|---|---|---|
@@ -292,6 +298,9 @@ a reason written in its case file (below). Prometheus 2022, the sixth rocket, is
 | [`flight-ndrt-2020-nose-to-tail`][report] | −0.001% | +83.060% | +0.147% | −18.646% | +3.887% |
 | [`flight-juno-iii`][report] | −0.235% | −0.235% | −0.002% | −60.848% | +151.334% |
 | [`flight-bella-lui`][report] | +1.783% | +1.783% | +0.001% | −15.589% | −31.320% |
+| [`flight-juno-iii-calm`][report] | −0.020% | −0.020% | −0.036% | −3.670% | −3.695% |
+| [`flight-calisto-tests-motor-at-minus-1.373-calm`][report] | +0.070% | +0.070% | −96.811% | −1.258% | −1.438% |
+| [`flight-bella-lui-calm`][report] | +1.778% | +1.778% | +0.001% | −1.593% | −2.583% |
 
 The last two numbers compare the whole trace, not one point of it. The series height RMS
 (`series_height_rms_m`) is the root mean square of hpr's height less RocketPy's: square each
@@ -320,6 +329,9 @@ other four are under a sixth of theirs. The speed RMS runs from 0.132323 to 2.05
 | [`flight-ndrt-2020-nose-to-tail`][report] | +2.037097 | 36.5 | +0.132323 | 5.4 |
 | [`flight-juno-iii`][report] | +39.200769 | 77.6 | +2.058916 | 6.7 |
 | [`flight-bella-lui`][report] | +2.302356 | 15.8 | +0.444735 | 2.9 |
+| [`flight-juno-iii-calm`][report] | +1.296871 | 78.7 | +0.156012 | 6.8 |
+| [`flight-calisto-tests-motor-at-minus-1.373-calm`][report] | +1.141118 | 78.4 | +0.094629 | 7.3 |
+| [`flight-bella-lui-calm`][report] | +0.389902 | 16.2 | +0.024575 | 2.9 |
 
 What the two codes still do differently, and what it moves:
 
