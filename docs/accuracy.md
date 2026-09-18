@@ -229,7 +229,8 @@ off. So the landing offset that [M2.1](decisions-and-roadmap.md#m2-1) asks for i
 
 Each of fifteen numbers per flight must agree within 3% of RocketPy's, with no absolute floor, or
 say in its case file why it is not scored. Each case file argues why, for example
-[Juno III's][juno-case].
+[Juno III's][juno-case]. Two more numbers compare the whole trace; they are explained after the
+tables.
 
 The numbers are measured as RocketPy defines them, with one exception. Each code's solver advances
 the flight in [time steps](glossary.md#adaptive-time-step) and keeps the state at each step's end.
@@ -291,6 +292,31 @@ a reason written in its case file (below). Prometheus 2022, the sixth rocket, is
 | [`flight-ndrt-2020-nose-to-tail`][report] | −0.001% | +83.060% | +0.147% | −18.646% | +3.887% |
 | [`flight-juno-iii`][report] | −0.235% | −0.235% | −0.002% | −60.848% | +151.334% |
 | [`flight-bella-lui`][report] | +1.783% | +1.783% | +0.001% | −15.589% | −31.320% |
+
+The last two numbers compare the whole trace, not one point of it. The series height RMS
+(`series_height_rms_m`) is the root mean square of hpr's height less RocketPy's: square each
+difference, average the squares, and take the square root. The series speed RMS
+(`series_speed_rms_m_s`) is the same for speed. Both follow the centre of mass without propellant,
+at RocketPy's 120 series times, from ignition until hpr lands. Both codes' clocks start at ignition
+on the rail, so no time shift is fitted ([case file][juno-case]).
+
+Exact agreement would give 0, so these two are given in metres and metres per second, not as a
+percentage. Each is held to 3% of RocketPy's apogee (for height) or top speed (for speed). That is
+[M2.1](decisions-and-roadmap.md#m2-1)'s 3% for one number, applied to the whole trace
+([case file][juno-case]).
+
+All five flights pass, each well inside its bound. The largest height RMS is Juno III's,
+39.200769 m against its 77.6 m bound, about half of it; its apogee is also the furthest off. The
+other four are under a sixth of theirs. The speed RMS runs from 0.132323 to 2.058916 m/s
+([report][report]).
+
+| case | `series_height_rms_m` | `series_speed_rms_m_s` |
+|---|---|---|
+| [`flight-calisto-tests-motor-at-minus-1.373`][report] | +3.166705 | +0.160127 |
+| [`flight-valetudo`][report] | +1.441957 | +0.228240 |
+| [`flight-ndrt-2020-nose-to-tail`][report] | +2.037097 | +0.132323 |
+| [`flight-juno-iii`][report] | +39.200769 | +2.058916 |
+| [`flight-bella-lui`][report] | +2.302356 | +0.444735 |
 
 What the two codes still do differently, and what it moves:
 
@@ -380,6 +406,19 @@ Every predicted result of the report, as hpr's difference from RocketPy:
 | [`predicted-ndrt-2020-nose-to-tail`][report] | +0.674% | +83.058% | +9.606% | −4.440% | +14.981% |
 | [`predicted-juno-iii`][report] | +0.072% | +0.072% | −0.045% | −59.133% | +171.819% |
 | [`predicted-bella-lui`][report] | +1.797% | +1.797% | −0.029% | −14.798% | −30.341% |
+
+The whole-trace numbers, in metres and metres per second, defined as for the same-drag flights
+above. [Valetudo's][valetudo-predicted-case] and [NDRT 2020's][ndrt-predicted-case] height RMS
+are outside the target, and so is NDRT 2020's speed RMS, for the same reason as their apogees:
+hpr's own drag is lower than those examples' drag.
+
+| case | `series_height_rms_m` | `series_speed_rms_m_s` |
+|---|---|---|
+| [`predicted-calisto-tests-motor-at-minus-1.373`][report] | +10.937445 | +0.398035 |
+| [`predicted-valetudo`][report] | +74.842332 | +2.742051 |
+| [`predicted-ndrt-2020-nose-to-tail`][report] | +115.696314 | +6.741165 |
+| [`predicted-juno-iii`][report] | +80.919560 | +1.940801 |
+| [`predicted-bella-lui`][report] | +5.953813 | +0.422442 |
 
 Why the misses, largest first:
 

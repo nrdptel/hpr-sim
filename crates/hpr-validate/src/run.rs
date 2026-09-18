@@ -938,6 +938,9 @@ fn fly_whole_flight(
             forward_guide_travel_m: setup.effective_1rl_m,
             forward_guide_exit: None,
             rows: Vec::new(),
+            start_height_m: h0,
+            grid_s: setup.series.iter().map(|&(t_s, _, _)| t_s).collect(),
+            on_grid: Vec::new(),
         };
         let result = match simulation.run(&mut peaks) {
             Ok(result) => result,
@@ -1029,6 +1032,47 @@ fn fly_whole_flight(
         measured.insert("apogee_drift_m", drift(&apogee.state));
         measured.insert("landing_drift_m", drift(&landing.state));
         measured.insert("impact_speed_m_s", -landing.vertical_speed_m_s);
+        // The two trajectories at the reference's times: both clocks start at ignition with the
+        // rocket on the rail, so the times align as they are, and no shift is fitted, which would
+        // hide a difference in the burn. The comparison runs while both fly: until hpr lands, as
+        // the reference's series ends where it does.
+        let both_fly: Vec<(&SeriesRow, &SeriesRow)> = setup
+            .series
+            .iter()
+            .zip(&peaks.on_grid)
+            .filter(|(_, ours)| ours.0 <= landing.time_s)
+            .collect();
+        if let Some((_, ours)) = both_fly
+            .iter()
+            .find(|(_, ours)| !(ours.1.is_finite() && ours.2.is_finite()))
+        {
+            return Ok(Err(format!(
+                "the flight's trajectory is not a number at {} s: {ours:?}",
+                ours.0
+            )));
+        }
+        if both_fly.is_empty() {
+            return Ok(Err(
+                "the flight reached none of the reference's series times".into(),
+            ));
+        }
+        let rms = |difference: fn(&SeriesRow, &SeriesRow) -> f64| {
+            let sum: f64 = both_fly
+                .iter()
+                .map(|(theirs, ours)| difference(theirs, ours).powi(2))
+                .sum();
+            #[allow(
+                clippy::cast_precision_loss,
+                reason = "a count of at most the series' 120 rows is exact in an f64"
+            )]
+            let count = both_fly.len() as f64;
+            (sum / count).sqrt()
+        };
+        measured.insert("series_height_rms_m", rms(|theirs, ours| ours.1 - theirs.1));
+        measured.insert(
+            "series_speed_rms_m_s",
+            rms(|theirs, ours| ours.2 - theirs.2),
+        );
         Ok(Ok(Flown::Measured(measured)))
     };
     match flight() {
@@ -1124,6 +1168,13 @@ struct Peaks {
     forward_guide_exit: Option<(f64, f64)>,
     /// A row at every step's start and end, and at every peak inside a step.
     rows: Vec<Row>,
+    /// The height the dry centre of mass started at, m: RocketPy's zero.
+    start_height_m: f64,
+    /// The reference's series times, s since ignition.
+    grid_s: Vec<f64>,
+    /// `(time, height from the start, speed)` of the dry centre of mass at each of those times the
+    /// flight has reached, from the dense output of the step that holds it, s, m and m/s.
+    on_grid: Vec<SeriesRow>,
 }
 
 impl Peaks {
@@ -1247,6 +1298,18 @@ impl Observer for Peaks {
         self.rows.extend(first);
         self.rows.extend(last);
         self.rows.extend(peaks);
+        // Each series time in the first step that reaches it: the one before ended short of it,
+        // so it lies inside this step.
+        while let Some(&t_s) = self.grid_s.get(self.on_grid.len()) {
+            if t_s > end_s {
+                break;
+            }
+            let state = step.state_at(t_s);
+            let height_m = (state.position_enu_m + state.attitude.mul_vec3(self.dry_cg_m)).z
+                - self.start_height_m;
+            let speed_m_s = point_velocity(&state, self.dry_cg_m).length();
+            self.on_grid.push((t_s, height_m, speed_m_s));
+        }
         if self.forward_guide_exit.is_none()
             && step.phase() == Phase::Rail
             && self.past_forward_guide(step, end_s) >= 0.0
@@ -1288,8 +1351,10 @@ pub const DESCENT_METRICS: [&str; 6] = [
     "mean_descent_rate_m_s",
 ];
 
-/// The metric names a whole-flight case can report: `flight.py`'s, as RocketPy defines them.
-pub const WHOLE_FLIGHT_METRICS: [&str; 15] = [
+/// The metric names a whole-flight case can report: `flight.py`'s, as RocketPy defines them, and
+/// the root mean square of hpr's height and speed less the reference's `series`, whose
+/// reference is 0, exact agreement.
+pub const WHOLE_FLIGHT_METRICS: [&str; 17] = [
     "apogee_agl_m",
     "apogee_time_s",
     "max_speed_m_s",
@@ -1305,6 +1370,8 @@ pub const WHOLE_FLIGHT_METRICS: [&str; 15] = [
     "apogee_drift_m",
     "landing_drift_m",
     "impact_speed_m_s",
+    "series_height_rms_m",
+    "series_speed_rms_m_s",
 ];
 
 /// The solver tolerance, `rtol` and `atol` alike, predicted mode flies at (ADR-023).
@@ -1362,7 +1429,15 @@ pub struct WholeFlightSetup {
     pub reference_area_m2: f64,
     /// The recovery devices, in the order they open.
     pub devices: Vec<FlightDevice>,
+    /// The reference's trajectory as `(time since ignition s, height above the ground m, speed
+    /// m/s)` rows, of the centre of dry mass, from ignition to its impact: what the RMS metrics
+    /// compare hpr's against.
+    pub series: Vec<SeriesRow>,
 }
+
+/// One instant of a trajectory: time since ignition, height of the centre of dry mass above where
+/// it started, and its speed, s, m and m/s.
+pub type SeriesRow = (f64, f64, f64);
 
 /// The motor of a whole flight, as the reference records RocketPy flying it.
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
@@ -1495,6 +1570,9 @@ mod peak_tests {
             forward_guide_travel_m: 1.0,
             forward_guide_exit: None,
             rows: Vec::new(),
+            start_height_m: 0.0,
+            grid_s: Vec::new(),
+            on_grid: Vec::new(),
         };
         let step = Climb {
             start_s,

@@ -15,7 +15,9 @@
 use serde_json::Value;
 
 use crate::metrics::{Reference, ReferenceValue};
-use crate::run::{DescentDevice, DescentSetup, FlightDevice, FlightMotor, WholeFlightSetup};
+use crate::run::{
+    DescentDevice, DescentSetup, FlightDevice, FlightMotor, SeriesRow, WholeFlightSetup,
+};
 
 /// The case named `case` of a recovery-descent fixture, as the oracle's answers and the inputs it
 /// flew. `None` if the document has no such case, does not name the run that produced it, or is
@@ -160,7 +162,22 @@ pub fn whole_flight_case(
         reference_radius_m: positive(number(drag.get("reference_radius_m"))?)?,
         reference_area_m2: positive(number(drag.get("reference_area_m2"))?)?,
         devices,
+        series: series(found.get("series"))?,
     };
+    let mut reference = reference;
+    for name in ["series_height_rms_m", "series_speed_rms_m_s"] {
+        reference.values.insert(
+            name.to_owned(),
+            ReferenceValue {
+                value: 0.0,
+                source: format!(
+                    "0, exact agreement with {}, case {case}, series: the RMS of hpr's value less \
+                     the reference's at its times",
+                    reference.generator
+                ),
+            },
+        );
+    }
     Some((reference, setup))
 }
 
@@ -219,6 +236,36 @@ fn pairs(value: Option<&Value>) -> Option<Vec<(f64, f64)>> {
             Some((number(row.first())?, number(row.get(1))?))
         })
         .collect()
+}
+
+/// The `(time, height, speed)` rows of a whole flight's `series`, if its columns are those, in that
+/// order, and its times rise from 0.
+fn series(value: Option<&Value>) -> Option<Vec<SeriesRow>> {
+    let value = value?;
+    let columns: Vec<&str> = value
+        .get("columns")?
+        .as_array()?
+        .iter()
+        .map(Value::as_str)
+        .collect::<Option<_>>()?;
+    (columns == ["time_s", "height_above_ground_m", "speed_m_s"]).then_some(())?;
+    let rows = value
+        .get("rows")?
+        .as_array()?
+        .iter()
+        .map(|row| {
+            let row = row.as_array()?;
+            (row.len() == 3).then_some(())?;
+            Some((
+                number(row.first())?,
+                number(row.get(1))?,
+                number(row.get(2))?,
+            ))
+        })
+        .collect::<Option<Vec<_>>>()?;
+    let starts_at_ignition = rows.first()?.0 == 0.0;
+    let rising = rows.windows(2).all(|pair| pair[1].0 > pair[0].0);
+    (starts_at_ignition && rising).then_some(rows)
 }
 
 /// The wind the oracle flew, as `(height above sea level, east, north)` levels. A scalar is one
