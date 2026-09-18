@@ -359,7 +359,7 @@
     at 16.74 m/s tumbling), the masses add to the stack's to 1e-12 and the momenta to 1e-9. Every
     body must carry a device, and a separation must follow the last burnout.
 
-- [ ] **M2.1 Validation harness plus the RocketPy code-to-code suite.** This is the first
+- [x] **M2.1 Validation harness plus the RocketPy code-to-code suite.** This is the first
   end-to-end milestone.
   - `hpr-validate` and `cargo xtask validate [--fast]`.
   - Case files (TOML) and reference JSON with provenance.
@@ -517,17 +517,10 @@
       - The regeneration workflow runs only when a human triggers it, and its output is a diff to
         review, never an automatic commit.
 
-      *Result (ADR-022):* met. `cargo xtask validate --check` runs all eleven locked cases, writes
-      nothing, and fails if a metric is outside its tolerance or the committed report is not this
-      run's to the digits the platforms share (`Report::reproduces`, which the report test now
-      shares); it exits 1 on a report with one verdict flipped. CI's `validate` job runs it on
-      macOS, Windows and Linux, and the deploy waits for it. *Regenerate references* is
-      `workflow_dispatch` only, with a read-only token and no stored credentials, so it cannot
-      push; it runs the RocketPy chain (`rocket_mass.py`, `cargo xtask designs`, `recovery.py`,
-      `flight.py`, `cargo xtask validate --check`, rewriting the report only if that fails) and
-      uploads the diff. Run locally on macOS in 41 s, the chain reproduced every committed fixture
-      and the report byte for byte; GitHub dispatches a workflow only once it is on `main`, so its
-      first run follows the merge.
+      *Result (ADR-022):* met. `cargo xtask validate --check` writes nothing and fails on a metric
+      outside tolerance or a committed report this run does not reproduce; CI runs it on three
+      OSes. *Regenerate references* is `workflow_dispatch` only, with a read-only token, and
+      uploads the diff; run locally it reproduced every fixture and the report byte for byte.
 
     - [x] **M2.1c2 Predicted mode.**
       - The same cases flown with hpr's own aero, against a reference in which RocketPy flies each
@@ -552,7 +545,7 @@
       NDRT apogee differed by 1.7e-7 between macOS and Linux, past the report's reproduction bound,
       because the drag's `ln` and `powf` differ in their last bits and so move the step sequence.
 
-  - [ ] **M2.1d The time-series RMS and the path in wind.**
+  - [x] **M2.1d The time-series RMS and the path in wind.**
     - The two items of M2.1's list that M2.1a to M2.1c leave open: the time-series RMS after
       alignment (each whole-flight fixture already carries its series), and the landing offset,
       reported but not scored until issue #50 finds why hpr turns into the wind less than RocketPy.
@@ -588,7 +581,7 @@
       at its last rail button, RocketPy at its first; `rail_release.py`). A same-sign rest remains in
       every calm drift, for M2.1d3.
 
-    - [ ] **M2.1d3 The path in wind (issue #50).**
+    - [x] **M2.1d3 The path in wind (issue #50).**
       - Fly the windy cases with each suspected cause of the gap matched to RocketPy in turn: rail
         release at the first rail button, drag without the angle-of-attack factor, and each code's
         normal force and damping.
@@ -597,6 +590,13 @@
       - Issue #50's cause is found and the drifts are scored within their tolerances, or an ADR
         records the measured cause and why they cannot be, and the gap stays visible in the
         report.
+
+      *Result (ADR-026):* met. Mostly RocketPy's: during the burn `u_dot_generalized` took its
+      moments about a point mirrored across the dry centre of mass (upstream #1186, PR #1196; and
+      PR #1188's jet-damping lever). The oracle flies both corrections (`corrections.py`). The
+      rest is measured (`wind_response.py`): hpr's body lift at a slow rocket's rail exit, its
+      last-button release and Juno III's thin fins put RocketPy within 1.4% of hpr in every windy
+      case. Six drifts are now gated and pass; five stay reported as model differences.
 
 - [ ] **M1.8 Aerodynamics II (transonic and supersonic, damping, overrides).**
   - Transonic drag rise and supersonic wave drag.

@@ -5,10 +5,14 @@
 # Everything that case's header says about the metrics, the rail and the sources of the remaining
 # differences holds here. What differs: with no wind, the horizontal path comes only from the
 # rail's inclination and heading, so the apogee and landing drifts are scored at the milestone's 3%
-# like every other metric, except Juno III's here, which miss by 3.7%, partly because the two
-# codes free the rocket from the rail at different points (ADR-025).
-# In wind the drifts are open misses (issue #50); these cases measure how much of that miss is the
-# response to wind.
+# like every other metric. hpr's are 1.75% and 1.81% short of RocketPy's: hpr guides the rocket
+# until its last rail button leaves, 1.41 m further along its 85-degree rail than RocketPy's first
+# button, and its path stays steeper (ADR-025). Freed where hpr frees it, RocketPy's drifts are
+# 551.2 and 630.2 m, within 0.5% of hpr's (`wind_response.py`). Against RocketPy as released
+# they missed by 3.7% and were not scored (ADR-025); the corrected reference (ADR-026) scores them.
+# In wind, where the two codes' normal force differs at the rail exit's angle of attack, some
+# drifts are reported as measured model differences (ADR-026); these cases fly the same rockets
+# without it.
 
 id = "flight-juno-iii-calm"
 title = "Juno III from the pad to the ground in calm air, same-drag"
@@ -56,21 +60,21 @@ relative = 0.03
 relative = 0.03
 
 [metrics.apogee_drift_m]
-not_scored = "partly a model difference, measured (ADR-025): hpr keeps the rocket guided until its last rail button leaves and RocketPy frees it at its first, and Juno III's buttons are 1.41 m apart, twice Calisto's, so hpr guides it along its 85-degree rail for 1.41 m more and its path stays steeper: apogee drift -3.670%, with the apogee within 0.060%. With RocketPy's rail 1.41 m longer, so both codes free the rocket at the same point (validation/oracles/rocketpy/rail_release.py), RocketPy's apogee drift is 561.0 m and hpr's 549.2 m is within -2.1%: the release is 1.6 of the 3.7 points, and the rest has the same sign in every calm case, a steeper path not yet explained. Reported, not scored; M2.1d3 (issue #50) takes up the rail release."
+relative = 0.03
 
 [metrics.landing_drift_m]
-not_scored = "partly a model difference, measured (ADR-025): the landing point follows the apogee's (landing drift -3.695%), and the rail release is part of the gap, as for apogee_drift_m. With RocketPy freeing the rocket where hpr does (a rail 1.41 m longer, validation/oracles/rocketpy/rail_release.py), RocketPy's landing drift is 641.0 m and hpr's 627.2 m is within -2.2%. Reported, not scored; M2.1d3 (issue #50) takes up the rail release."
+relative = 0.03
 
 [metrics.impact_speed_m_s]
 relative = 0.03
 
 # The time-series RMS (M2.1d1): hpr's height and speed at the reference's 120 series times, from
 # ignition until hpr lands, less RocketPy's; the reference value is 0, exact agreement. Each is held
-# (gated) to 3% of the scale of its trace, the reference's apogee (2623.7 m) and max speed
-# (227.8 m/s), rounded down to 0.1: M2.1's 3% for a point metric, applied to a whole trace, so a
+# (gated) to 3% of the scale of its trace, the reference's apogee (2623.0 m) and max speed
+# (227.6 m/s), rounded down to 0.1: M2.1's 3% for a point metric, applied to a whole trace, so a
 # trace passes only if it is on average no further off than its peak may be.
 [metrics.series_height_rms_m]
-absolute = 78.7
+absolute = 78.6
 
 [metrics.series_speed_rms_m_s]
 absolute = 6.8

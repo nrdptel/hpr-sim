@@ -35,6 +35,13 @@ Run from the repository root with the oracle environment:
     refs/venv/bin/python validation/oracles/rocketpy/flight.py \
         > validation/fixtures/flight/rocketpy-whole-flight.json
 
+**RocketPy's equations as corrected upstream.** Every flight here uses `corrections.py`: RocketPy
+1.13.0 with PR #1188 (merged, unreleased) and PR #1196 (open) applied, which correct the nozzle's
+jet-damping lever and the sign of the centre-of-mass and nozzle vectors in `u_dot_generalized`
+(issue #50, ADR-026). As released, RocketPy takes its moments during the burn about the wrong
+point, which is most of why it turned into the wind further than hpr. The fixture records both
+corrections (`corrections`), and `wind_response.py` flies each case both ways.
+
 **`--own-drag`** flies the same cases with each example's *own* drag instead, as RocketPy 1.13.0
 flies the example (`OWN_DRAG`): the reference for M2.1c2's predicted mode, in which hpr flies its own
 aerodynamics. The curves live in the RocketPy checkout under the gitignored `refs/` and carry their
@@ -56,9 +63,10 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
+import corrections
 import recovery
 import numpy as np
-from rocketpy import Environment, Flight, Rocket
+from rocketpy import Environment, Rocket
 
 warnings.filterwarnings("ignore")
 
@@ -202,7 +210,7 @@ RAILS = {
 
 # Examples flown pad to landing but not in `recovery.py`'s descent cases, declared in its form.
 #
-# Bella Lui is the sixth rocket because Prometheus 2022 peaks at Mach 1.014, which hpr refuses
+# Bella Lui is the sixth rocket because Prometheus 2022 peaks at Mach 1.013, which hpr refuses
 # until M1.8, so five examples alone could never give M2.1 its five same-drag passes; it is on
 # M2.1's own list of example rockets. Its example takes its weather from an ERA5 reanalysis file
 # (Copernicus), so the wind is declared here, as `recovery.py` declares the winds it cannot use.
@@ -299,6 +307,7 @@ def build_rocket(inputs, own_drag):
         coordinate_system_orientation=rocket_inputs["coordinate_system_orientation"],
     )
     rocket.add_motor(motor, position=rocket_inputs["motor_position"])
+    corrections.correct_nozzle_gyration(rocket)
     recovery.add_geometry(rocket, inputs["geometry"])
     if not rocket.parachutes:
         fail(f"{inputs['name']} has no parachutes, so it would not come down under one")
@@ -355,8 +364,10 @@ def peak_thrust_to_weight(rocket, env, case):
     return finite(peak / weight, "thrust to weight")
 
 
-def fly(rocket, env, rail, solver):
-    return Flight(
+def fly(rocket, env, rail, solver, flight_class=corrections.CorrectedFlight):
+    """RocketPy's flight with the upstream corrections to its equations (`corrections.py`), or,
+    given `rocketpy.Flight` as `flight_class`, as released."""
+    return flight_class(
         rocket=rocket,
         environment=env,
         rail_length=rail["rail_length_m"],
@@ -553,10 +564,11 @@ def main():
     if own_drag:
         drag_fields = {
             "model": "Flight.u_dot_generalized (flight.py:2471-2709, the default "
-                     "equations_of_motion='standard'): RocketPy's 6-DOF variable-mass rigid "
-                     "body from the rail to apogee, then its point-mass parachute phase "
-                     "(u_dot_parachute, flight.py:2710-2790), under each example's own drag "
-                     "and RocketPy's Barrowman lift",
+                     "equations_of_motion='standard') with upstream PRs #1188 and #1196 "
+                     "applied (corrections.py): RocketPy's 6-DOF variable-mass rigid body from "
+                     "the rail to apogee, then its point-mass parachute phase (u_dot_parachute, "
+                     "flight.py:2710-2790), under each example's own drag and RocketPy's "
+                     "Barrowman lift",
             "overrides": "none to the drag: each example flies its own, as RocketPy 1.13.0 "
                          "flies the example (the curves stay under refs/, ADR-009; each case "
                          "records its file and SHA-256); every parachute's noise is zero (it "
@@ -570,10 +582,10 @@ def main():
     else:
         drag_fields = {
             "model": "Flight.u_dot_generalized (flight.py:2471-2709, the default "
-                     "equations_of_motion='standard'): RocketPy's 6-DOF variable-mass rigid "
-                     "body from the rail to apogee, then its point-mass parachute phase "
-                     "(u_dot_parachute, flight.py:2710-2790), under the drag table this "
-                     "script declares",
+                     "equations_of_motion='standard') with upstream PRs #1188 and #1196 "
+                     "applied (corrections.py): RocketPy's 6-DOF variable-mass rigid body from "
+                     "the rail to apogee, then its point-mass parachute phase (u_dot_parachute, "
+                     "flight.py:2710-2790), under the drag table this script declares",
             "overrides": "the drag is the constant C_D0 this script declares, handed to "
                          "power_off_drag and power_on_drag, because RocketPy's own exports "
                          "carry their own terms and are never committed (ADR-009); every "
@@ -589,10 +601,12 @@ def main():
     print(
         json.dumps(
             {
-                "oracle": f"rocketpy {importlib.metadata.version('rocketpy')}",
+                "oracle": f"rocketpy {importlib.metadata.version('rocketpy')} with upstream PRs "
+                          "#1188 and #1196 applied (corrections.py)",
                 "generator": "validation/oracles/rocketpy/flight.py",
                 "command": f"{COMMAND} {OWN_DRAG_FLAG}" if own_drag else COMMAND,
                 **drag_fields,
+                "corrections": corrections.CORRECTIONS,
                 "mass_fixture": {
                     "file": recovery.MASS_FIXTURE,
                     "generator": document["generator"],

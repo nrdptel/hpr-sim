@@ -117,6 +117,15 @@ buttons are placed from), and `y_B` completes a right-handed set, so every part 
 See [Frames](physics/frames.md#body-frame-b).
 
 
+## Body lift
+
+A sideways force on the body itself, not the fins, when the rocket flies at an angle to the
+airflow. It grows with the square of the sine of the [angle of attack](#angle-of-attack), so it is
+nothing at small angles and large at steep ones, such as a slow rocket leaving the rail into a
+crosswind. hpr includes it (Galejs's method, with a constant `K` whose value is uncertain); RocketPy
+leaves it out. See [Aerodynamics](physics/aero.md#bodies-of-revolution).
+
+
 ## Burn time
 
 How long a motor burns, by the NFPA 1125 rule that ThrustCurve.org uses: from the moment the thrust
@@ -143,6 +152,15 @@ calibres, and a nose cone three calibres long is three times as long as its base
 ## Canard
 
 A fin set near the nose, ahead of the main fins. Its normal force acts well forward, so it moves the [centre of pressure](#centre-of-pressure-cp) forward, and as speed rises its slope grows too. See [Aerodynamics](physics/aero.md#your-rockets-centre-of-pressure).
+
+## Centre of dry mass
+
+The centre of mass of the rocket with its motor's propellant gone: the empty rocket, motor casing
+included. It does not move during the flight, so RocketPy follows this point, and the comparisons
+with RocketPy measure speeds and drifts there. The [centre of gravity](#centre-of-gravity-cg) of
+the loaded rocket lies aft of it while the motor burns. See
+[Accuracy](accuracy.md#whole-flights-against-rocketpy).
+
 
 ## Centre of gravity (CG)
 

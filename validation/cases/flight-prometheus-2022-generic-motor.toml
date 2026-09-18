@@ -27,16 +27,26 @@
 #   spike, with thrust and mass the same to five digits, hpr's acceleration is 1.2 to 1.3 m/s^2
 #   higher (Calisto at 0.05 s: 112.34 against 111.18; Bella Lui at 0.007 s: 74.14 against 72.84).
 #   hpr also keeps the rocket guided until its last button leaves, where RocketPy frees it at the
-#   first; releasing both at the same point moved Juno III's apogee gap by about 0.05 points and
-#   Bella Lui's by about 0.15 (measured in review).
-# - The wind. Same-drag mode shares C_D0, not the normal force, the damping (each code's own) or
-#   the drag's dependence on the angle of attack (hpr scales C_D0 by up to 1.3 at 17 degrees;
-#   RocketPy's table does not). In wind, hpr turns into the wind less than RocketPy: its apogee
-#   moves 67 to 85% as far upwind (Juno III 769 m against 1,147 m; Calisto 230 against 313;
-#   Bella Lui 107 against 126), and it flies a little higher. Flown once in calm air for this
-#   comparison (issue #50; not a committed check), the two agree on the apogee to 0.18% and on the
-#   drifts to 1.3 to 3.7%, not always inside 3%. So M2.1's landing offset is not met: the drifts
-#   are reported, as open misses whose cause is unknown (issue #50), not scored and not passed.
+#   first. Freed where hpr frees it, RocketPy's apogee moves by at most 0.19% (Bella Lui) and its
+#   drifts by up to 12% (Bella Lui's landing in wind; `wind_response.py`, ADR-026).
+# - The wind. Same-drag mode shares C_D0, not the normal force. In wind a rocket leaves the rail
+#   at an angle of attack of up to 26 degrees here (Juno III: 18 m/s in an 8.5 m/s wind), where
+#   hpr's normal force includes body lift (Galejs, C_N = K (A_plan/A_ref) sin^2 alpha, K = 1.1;
+#   ADR-008) and RocketPy's is linear in alpha with no body term. Much of body lift acts ahead of
+#   the rocket's centre of mass, the nose's above all, so at a steep angle it moves the centre of
+#   pressure forward and weakens the moment that turns the rocket into the wind: hpr turns into it
+#   less. Its sideways push alone is about a sixth of the effect (ADR-026). Added to RocketPy with hpr's rail release (and, for Juno III, its thin-plate fins),
+#   it brings RocketPy's drifts to within 1.4% of hpr's in every windy case
+#   (`validation/oracles/rocketpy/wind_response.py`). Where the two models' difference carries a
+#   drift past 3%, the drift is reported as a measured model difference and not scored (ADR-026).
+#   hpr's growth of C_D0 with the angle of attack (up to 1.3 times at 17 degrees; RocketPy's table
+#   has none) moves no drift by more than 0.1%.
+# - The reference's equations. RocketPy 1.13.0 flies with two corrections to its 6-DOF equations
+#   made or proposed upstream, PR #1188 (merged) and PR #1196 (open) (`corrections.py`, ADR-026).
+#   As released it takes the moments during the burn about a point as far forward of the dry
+#   centre of mass as the centre of mass is behind it, which overstates its stability while the
+#   motor burns, and its jet damping uses a quarter of the nozzle's lever squared. Flown as
+#   released, the drifts in wind missed by up to -60.8% at apogee and +151% at landing (issue #50).
 # - Parachutes. RocketPy counts a canopy's added mass for the whole parachute phase and samples
 #   its triggers at 100 to 105 Hz; hpr has no added mass and fires its triggers at the instant
 #   (ADR-012). This leaves the descent rates at landing within 0.03%.
@@ -44,18 +54,19 @@
 # RocketPy's own solver moves the metrics by at most 0.39% between rtol 1e-6 and 1e-8 (the time of
 # the peak acceleration), so the reference is the model's answer to well inside the gate.
 #
-# Prometheus 2022: 3,622 m AGL, and the reference peaks at Mach 1.014 near burnout. hpr's
+# Prometheus 2022: 3,679 m AGL, and the reference peaks at Mach 1.013 near burnout. hpr's
 # aerodynamics refuse Mach 1 until M1.8 (ADR-008, ADR-011), so the flight stops there and nothing
 # can be scored: the case is a known gap. It still runs, so the harness checks that hpr refuses it
 # for this reason and no other, and it fails the run once hpr flies it, so the gap cannot outlive
 # its cause. The tolerances below are the ones it will be held to then, argued as for the other
-# five cases: the whole-flight maximum acceleration is the main opening, as for NDRT 2020, and the
-# drifts are in wind.
+# five cases: the whole-flight maximum acceleration is the main opening, as for NDRT 2020. The drifts
+# are held to 3% like every other metric: a drift may be excused only by a measurement of why it
+# misses (ADR-026), and there is none until hpr flies the case.
 id = "flight-prometheus-2022-generic-motor"
 title = "Prometheus 2022 from the pad to the ground, same-drag"
 reference = "validation/fixtures/flight/rocketpy-whole-flight.json"
 reference_case = "prometheus-2022-generic-motor"
-known_gap = "The reference peaks at Mach 1.014 near burnout, and hpr's aerodynamics refuse M >= 1 until M1.8 (ADR-008, ADR-011), so the flight stops at Mach 1 and no metric can be compared."
+known_gap = "The reference peaks at Mach 1.013 near burnout, and hpr's aerodynamics refuse M >= 1 until M1.8 (ADR-008, ADR-011), so the flight stops at Mach 1 and no metric can be compared."
 
 [flight.whole_flight]
 design = "rocketpy-prometheus-2022-generic-motor"
@@ -98,21 +109,21 @@ relative = 0.03
 relative = 0.03
 
 [metrics.apogee_drift_m]
-not_scored = "an open miss, not a definitional difference: in wind hpr turns into the wind less than RocketPy (apogee drift not flown); flown once in calm air the codes agree to 1.3 to 3.7% (issue #50), so the gap is mostly the response to wind, which same-drag mode does not share (normal force, damping, drag at an angle). M2.1's landing offset is not met; reported, not scored, until #50 finds the cause."
+relative = 0.03
 
 [metrics.landing_drift_m]
-not_scored = "an open miss, not a definitional difference: the landing point follows the apogee's (landing drift not flown); the horizontal path in wind is issue #50, and flown once in calm air the codes agree to 1.3 to 3.7%. M2.1's landing offset is not met; reported, not scored, until #50 finds the cause."
+relative = 0.03
 
 [metrics.impact_speed_m_s]
 relative = 0.03
 
 # The time-series RMS (M2.1d1): hpr's height and speed at the reference's 120 series times, from
 # ignition until hpr lands, less RocketPy's; the reference value is 0, exact agreement. Each is held
-# (gated) to 3% of the scale of its trace, the reference's apogee (3622.5 m) and max speed
+# (gated) to 3% of the scale of its trace, the reference's apogee (3679.2 m) and max speed
 # (333.4 m/s), rounded down to 0.1: M2.1's 3% for a point metric, applied to a whole trace, so a
 # trace passes only if it is on average no further off than its peak may be.
 [metrics.series_height_rms_m]
-absolute = 108.6
+absolute = 110.3
 
 [metrics.series_speed_rms_m_s]
 absolute = 10.0

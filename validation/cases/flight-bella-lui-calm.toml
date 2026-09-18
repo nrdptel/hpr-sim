@@ -6,8 +6,9 @@
 # differences holds here. What differs: with no wind, the horizontal path comes only from the
 # rail's inclination and heading, so the apogee and landing drifts are scored at the milestone's 3%
 # like every other metric.
-# In wind the drifts are open misses (issue #50); these cases measure how much of that miss is the
-# response to wind.
+# In wind, where the two codes' normal force differs at the rail exit's angle of attack, some
+# drifts are reported as measured model differences (ADR-026); these cases fly the same rockets
+# without it.
 
 id = "flight-bella-lui-calm"
 title = "Bella Lui from the pad to the ground in calm air, same-drag"
@@ -65,7 +66,7 @@ relative = 0.03
 
 # The time-series RMS (M2.1d1): hpr's height and speed at the reference's 120 series times, from
 # ignition until hpr lands, less RocketPy's; the reference value is 0, exact agreement. Each is held
-# (gated) to 3% of the scale of its trace, the reference's apogee (540.5 m) and max speed
+# (gated) to 3% of the scale of its trace, the reference's apogee (540.1 m) and max speed
 # (98.2 m/s), rounded down to 0.1: M2.1's 3% for a point metric, applied to a whole trace, so a
 # trace passes only if it is on average no further off than its peak may be.
 [metrics.series_height_rms_m]

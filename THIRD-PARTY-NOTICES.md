@@ -59,6 +59,10 @@ adds a source.
   `hpr_sim::recovery` and the descent branch of `hpr_sim::dynamics`. And
   `tests/fixtures/rockets/rocket_fixtures.py:354-380` at v1.13.0: Prometheus 2022's piecewise-linear
   drag, `prometheus_cd_at_ma`, as `PROMETHEUS_CD_POINTS` in `validation/oracles/rocketpy/flight.py`.
+  And two upstream corrections to `rocketpy/simulation/flight.py` and `rocketpy/rocket/rocket.py`,
+  applied to v1.13.0 by `validation/oracles/rocketpy/corrections.py` (ADR-026): the edited lines of
+  pull request #1196 (open, head `927e771e`), quoted there as substitutions into RocketPy's own
+  `u_dot_generalized`, and the nozzle gyration tensor of pull request #1188 (merged 2026-09-09).
   RocketPy's license applies
   to those portions:
 

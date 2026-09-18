@@ -12,11 +12,14 @@
   its example rockets, flown from the pad to the ground by both codes with the same declared drag,
   agree on height, speed, time and acceleration within 3%; the largest scored difference is
   +1.783%, a peak acceleration on the rail ([validation report][report],
-  [whole flights against RocketPy](#whole-flights-against-rocketpy)). **The path in wind does not
-  agree:** hpr turns into the wind less than RocketPy, and the cause is open
-  ([issue #50](https://github.com/nrdptel/hpr-sim/issues/50)). A sixth rocket reaches Mach 1,
-  which hpr refuses. With hpr's own drag, against RocketPy flying the drag its examples ship, hpr's
-  heights differ from RocketPy's by −0.527% to +10.232%, the larger gaps where its drag is well below the example's
+  [whole flights against RocketPy](#whole-flights-against-rocketpy)). So does the path, except
+  for rockets that leave the rail slowly in a wind. There hpr's
+  [body lift](../glossary.md#body-lift), which RocketPy's normal force leaves out, its later
+  release from the rail and, for Juno III, its simpler fin model put the drift 4.7 to 43% from
+  RocketPy's ([ADR-026][adr-026]). A sixth rocket
+  reaches Mach 1, which hpr refuses. With hpr's own drag, against RocketPy flying the drag its
+  examples ship, hpr's heights differ from RocketPy's by −0.604% to +10.322%, the larger gaps where
+  its drag is well below the example's
   ([Accuracy](../accuracy.md#whole-flights-with-each-codes-own-drag)). No flight has been compared
   with a real one.
 - **What it leaves out:** staging and delayed ignition, tip-off (the pivot as the rocket leaves the
@@ -351,18 +354,32 @@ and a declared wind.
 | cases scored | 5, and a sixth, which reaches Mach 1, reported as a known gap |
 | height, speed, time, acceleration | all scored, all within 3% of RocketPy's |
 | largest of those | +1.783%, Bella Lui's peak acceleration, on the rail |
-| largest in apogee | +1.710%, Juno III, in the suite's strongest wind |
-| path in wind (drift of apogee and landing) | far off: Juno III's apogee is 228 m from the pad in hpr, 582 m in RocketPy; reported, not scored, an open miss |
-| path in calm air | within 1.3 to 3.7% (three cases flown once with no wind in both codes; not a committed check) |
+| largest in apogee | +0.700%, Juno III, in the suite's strongest wind |
+| path without wind (drift of apogee and landing) | all scored, within 2.2% (largest −2.141%, Bella Lui's calm landing) |
+| path in wind | Calisto's scored (largest +1.433%), and NDRT 2020's landing; Juno III's and Bella Lui's, and NDRT 2020's apogee drift, differ by 4.7 to 43% and are reported, not scored: hpr's body lift and rail release, and Juno III's fin slope ([ADR-026][adr-026]) |
 
 What the two codes still do differently, and how much it moves:
 
-- **The wind.** In wind, hpr turns into the wind less than RocketPy: its apogee moves 67 to 85% as
-  far upwind (Juno III: 769 m against 1,147 m). Flown with no wind, the same rockets agree on the
-  apogee to 0.18% and on the drifts to 1.3 to 3.7%. So most of the difference is in the response
-  to wind: each code's own normal force and damping, and hpr's growth of drag with the angle of
-  attack, which RocketPy's drag table doesn't have. Which one it is, is open
-  ([issue #50](https://github.com/nrdptel/hpr-sim/issues/50)).
+- **The wind.** A rocket that leaves the rail slowly in a wind meets the air at a steep angle:
+  Juno III at 18 m/s in an 8.5 m/s wind, 26° off the airflow. There hpr's normal force includes
+  body lift ([Aerodynamics](aero.md#bodies-of-revolution)), which RocketPy's leaves out. Much of
+  it acts ahead of the centre of mass, the nose's above all, so it moves the centre of pressure
+  forward and weakens the turn into the wind, and hpr turns into it less: Juno III's apogee is
+  228.0 m from the pad in hpr and 396.6 m in RocketPy. Given hpr's body lift, its rail release and
+  its flat-plate fin slope (it cannot model the airfoil lift curve Juno III's example gives its
+  fins), RocketPy puts it 231.1 m out, and every windy drift within 1.4% of hpr's
+  ([ADR-026][adr-026]). hpr's growth of drag with the angle of attack moves no drift by more than
+  0.1%.
+- **RocketPy's equations, corrected.** hpr's equations of motion follow RocketPy's technical
+  documentation, which measures the centre of mass from the
+  [centre of dry mass](../glossary.md#centre-of-dry-mass). RocketPy 1.13.0's code reads that
+  vector the other way round, so during the burn it takes the turning moments about the wrong point
+  and its rockets turn into the wind too far. The fix is proposed in [a pull request to RocketPy](https://github.com/RocketPy-Team/RocketPy/pull/1196),
+  still open, built on [one that is merged](https://github.com/RocketPy-Team/RocketPy/pull/1188) but not yet released; RocketPy 1.13.0 as installed still has
+  the error, and the comparison applies both fixes. Without them,
+  hpr's drifts in wind were up to −60.8% short of RocketPy's at apogee and +151% beyond it at
+  landing ([ADR-026][adr-026],
+  [issue #50](https://github.com/nrdptel/hpr-sim/issues/50)).
 - **The rail.** hpr's rail equation keeps the terms for the centre of mass moving inside the
   body as the propellant burns. RocketPy's rail equation (`udot_rail1`) leaves them out. At a
   sharp ignition spike, with thrust and mass the same to five digits, hpr's acceleration is 1.2
@@ -384,4 +401,5 @@ tolerances; [Accuracy][accuracy] gives every result.
 [adr-011]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-011-rigid-body-flight-equations-of-motion-aerodynamic-coupling-rail-phases-and-termination-2026-09-17
 [report]: https://github.com/nrdptel/hpr-sim/blob/main/validation/reports/latest.md
 [adr-021]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-021-whole-flights-against-rocketpy-what-is-compared-and-the-gaps-it-may-declare-2026-09-18
+[adr-026]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-026-the-path-in-wind-rocketpys-corrected-equations-and-hprs-body-lift-2026-09-18
 [accuracy]: ../accuracy.md#whole-flights-against-rocketpy

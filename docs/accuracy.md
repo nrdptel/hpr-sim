@@ -3,10 +3,11 @@
 This page gathers every check hpr-sim has passed so far, and every known gap, in words and numbers.
 Start with the bottom line: **when both codes fly the same drag
 ([same-drag](glossary.md#same-drag-and-predicted-mode)), hpr's whole flights match RocketPy's in
-height, speed and time, but not in where they go in wind.** With each code's own drag
-([predicted](glossary.md#same-drag-and-predicted-mode)), hpr's heights differ from RocketPy's by
-−0.527% to +10.232% ([report][report]), the larger gaps where its drag is well below the example's.
-No flight has been compared with a real one.
+height, speed and time, and in where they land without wind. In wind they agree for a rocket that
+leaves the rail fast. For one that leaves it slowly they differ, mostly because hpr includes a
+sideways force on the body that RocketPy leaves out.** With each code's own drag ([predicted](glossary.md#same-drag-and-predicted-mode)), hpr's
+heights differ from RocketPy's by −0.604% to +10.322% ([report][report]), the larger gaps where
+its drag is well below the example's. No flight has been compared with a real one.
 
 What has been checked so far:
 
@@ -14,8 +15,8 @@ What has been checked so far:
   [RocketPy](glossary.md#rocketpy), an open-source flight simulator;
 - the descent under a parachute, against RocketPy, for five rockets;
 - whole flights from the pad to the ground, against RocketPy, for five rockets flown with one
-  declared drag coefficient, with a sixth reported as a gap: heights, speeds and times agree, the
-  path in wind does not;
+  declared drag coefficient, with a sixth reported as a gap: heights, speeds and times agree, and
+  so does the path, except for rockets that leave the rail slowly in a wind;
 - the same flights with each code's own drag, reported against a target rather than gated.
 
 Every number here links to the page or file it comes from. [Checking a claim](checking-a-claim.md)
@@ -116,7 +117,7 @@ may be from its reference and still pass.
 | [Aerodynamics](physics/aero.md) | drag curves labelled [RASAero](glossary.md#rasaero-ii) in RocketPy's examples, at [Mach](glossary.md#mach-number) 0.3, with the fins and surface finish guessed because the curves don't record them | within 10% in four of seven cases; −18.3% for Cavour [power-on](glossary.md#power-on-and-power-off-drag) (motor burning), cause open |
 | [Aerodynamics](physics/aero.md) | Valetudo's drag table, which is 1.44 times the drag in the [OpenRocket](glossary.md#openrocket) export for the same rocket | −47.0% power-off and −50.4% power-on. Against the OpenRocket export, hpr is 23.5% under as designed here, and 1.9% under with the export's own surface finish and launch lugs |
 | [Rigid-body flight](physics/flight.md) | the exact motion of a tumbling, spinning rocket in a vacuum, over 22 s | the centre of mass within 1.7e-6 m of the exact parabola |
-| [Rigid-body flight](physics/flight.md) | RocketPy's whole flights from the pad to the ground, for five rockets, both codes flying one declared drag coefficient | heights, speeds, times and accelerations within 3% ([below](#whole-flights-against-rocketpy)), the largest +1.783% in the [report][report]; in wind the horizontal path is far off, reported but not scored ([issue #50][issue-50]) |
+| [Rigid-body flight](physics/flight.md) | RocketPy's whole flights from the pad to the ground, for five rockets, both codes flying one declared drag coefficient | heights, speeds, times and accelerations within 3% ([below](#whole-flights-against-rocketpy)), the largest +1.783% in the [report][report]; the path too, except the drifts of Juno III and Bella Lui in wind and NDRT 2020's apogee drift, reported, not scored, as measured differences between the models ([ADR-026][adr-026]) |
 | [Time integration](physics/integration.md) | a separate line-by-line transcription of `DOPRI5`, the published Fortran integrator by Hairer and Wanner that hpr's [Dormand–Prince](glossary.md#dormandprince-and-rk4) stepper follows, on the problem Hairer's own example program for `DOPRI5` solves: the Arenstorf orbit, the closed, looping path of a small body pulled by two large ones that circle each other | the same step counts |
 | [Time integration](physics/integration.md) | a vertical flight with drag that has an exact solution | apogee, deployment and landing times within 1.5e-8 s |
 | [Recovery](physics/recovery.md) | RocketPy's descents under a parachute, for five rockets | every descent metric within 3% ([below](#the-descent-under-a-parachute-against-rocketpy)) |
@@ -221,12 +222,19 @@ This is [same-drag](glossary.md#same-drag-and-predicted-mode) mode. It checks th
 motion, the motor and the air, not the drag. hpr's own drag is compared
 [below](#whole-flights-with-each-codes-own-drag).
 
-**In short: how high, how fast and how long agree; where the rocket goes in wind does not.** The
-heights, speeds, times and accelerations of five flights, and of three of them again in calm air,
-agree within the 3% of each case's gate
-([case file][juno-case]); the largest difference is +1.783% ([report][report]). The horizontal path
-does not: in wind hpr turns into the wind less than RocketPy does, and its landing points are far
-off. So the landing offset that [M2.1](decisions-and-roadmap.md#m2-1) asks for is not met ([issue #50][issue-50]).
+**In short: how high, how fast and how long agree, and so does where the rocket goes, except for
+rockets that leave the rail slowly in a wind.** The heights, speeds, times and accelerations of
+five flights, and of three of them again in calm air, agree within the 3% of each case's gate
+([case file][juno-case]); the largest difference is +1.783% ([report][report]). Here *still air*
+is an example flown with no wind (Valetudo's), and *calm air* a windy case flown again with its
+wind switched off. The apogee and landing points agree too, within 2.2%, in every flight without
+wind and for Calisto in wind ([ADR-026][adr-026]). Juno III and Bella Lui leave the rail slowly
+in the wind, at a steep angle to the airflow. There hpr's [body lift](glossary.md#body-lift),
+which RocketPy leaves out, its later release from the rail and, for Juno III, its simpler fin
+model put their drifts 11 to 43% from RocketPy's. NDRT 2020's apogee drift differs by −4.654%,
+mostly from the rail release. These five drifts are reported, not scored. So the landing offset
+that [M2.1](decisions-and-roadmap.md#m2-1) asks for is met except where the two codes' models
+differ.
 
 Each of fifteen numbers per flight must agree within 3% of RocketPy's, with no absolute floor, or
 say in its case file why it is not scored. Each case file argues why, for example
@@ -260,49 +268,49 @@ The definitions:
 - `apogee_drift_m` and `landing_drift_m`: how far from the pad, along the ground, the apogee and
   the landing point are.
 
-Speeds and accelerations are those of the rocket's centre of mass without propellant, the point
-RocketPy's flight follows; hpr's own output follows the centre of mass of the loaded rocket.
+Speeds and accelerations are those of the rocket's [centre of dry mass](glossary.md#centre-of-dry-mass),
+the point RocketPy's flight follows; hpr's own output follows the centre of mass of the loaded rocket.
 Heights are measured from where that point starts, as RocketPy's are. A difference is hpr's value
 less RocketPy's, over RocketPy's.
 
-The [validation report][report] scores all but fourteen of the numbers of the eight flights (the
+The [validation report][report] scores all but eight of the numbers of the eight flights (the
 five, and Juno III, Calisto and Bella Lui again in calm air), and all of the scored ones are within
-tolerance. The fourteen are measured and reported but not scored, each for a reason written in its
+tolerance. The eight are measured and reported but not scored, each for a reason written in its
 case file (below). Prometheus 2022, the sixth rocket, is a known gap
 (below). Every result of the report, as hpr's difference from RocketPy:
 
 | case | `apogee_agl_m` | `apogee_time_s` | `flight_time_s` | `max_speed_m_s` | `max_mach` |
 |---|---|---|---|---|---|
-| [`flight-calisto-tests-motor-at-minus-1.373`][report] | +0.136% | +0.167% | +0.165% | −0.009% | −0.178% |
-| [`flight-valetudo`][report] | +0.003% | +0.217% | +0.160% | −0.049% | −0.110% |
-| [`flight-ndrt-2020-nose-to-tail`][report] | −0.010% | +0.150% | +0.630% | −0.049% | −0.089% |
-| [`flight-juno-iii`][report] | +1.710% | +0.956% | +1.293% | +0.059% | −0.392% |
-| [`flight-bella-lui`][report] | +0.476% | +0.275% | +0.319% | −0.018% | −0.134% |
-| [`flight-juno-iii-calm`][report] | +0.060% | +0.069% | +0.042% | −0.034% | −0.172% |
-| [`flight-calisto-tests-motor-at-minus-1.373-calm`][report] | −0.004% | +0.096% | +0.091% | −0.025% | −0.152% |
-| [`flight-bella-lui-calm`][report] | −0.029% | −0.013% | −0.065% | −0.018% | −0.056% |
+| [`flight-calisto-tests-motor-at-minus-1.373`][report] | +0.057% | +0.123% | +0.130% | +0.015% | −0.120% |
+| [`flight-valetudo`][report] | +0.116% | +0.275% | +0.262% | +0.035% | −0.026% |
+| [`flight-ndrt-2020-nose-to-tail`][report] | +0.068% | +0.194% | +0.667% | +0.031% | +0.003% |
+| [`flight-juno-iii`][report] | +0.700% | +0.417% | +0.520% | +0.058% | −0.229% |
+| [`flight-bella-lui`][report] | +0.375% | +0.229% | +0.261% | +0.017% | −0.075% |
+| [`flight-juno-iii-calm`][report] | +0.086% | +0.080% | +0.068% | +0.015% | −0.123% |
+| [`flight-calisto-tests-motor-at-minus-1.373-calm`][report] | +0.046% | +0.118% | +0.123% | +0.022% | −0.105% |
+| [`flight-bella-lui-calm`][report] | +0.038% | +0.020% | −0.011% | +0.020% | −0.018% |
 
 | case | `rail_exit_speed_m_s` | `rail_exit_time_s` | `burnout_altitude_agl_m` | `burnout_speed_m_s` | `impact_speed_m_s` |
 |---|---|---|---|---|---|
-| [`flight-calisto-tests-motor-at-minus-1.373`][report] | −0.010% | −0.072% | +0.065% | −0.016% | −0.020% |
-| [`flight-valetudo`][report] | −0.002% | −0.100% | +0.033% | −0.066% | +0.009% |
-| [`flight-ndrt-2020-nose-to-tail`][report] | −0.009% | −0.085% | +0.032% | −0.066% | +0.022% |
-| [`flight-juno-iii`][report] | −0.005% | −0.142% | +0.782% | +0.040% | −0.003% |
-| [`flight-bella-lui`][report] | −0.013% | −0.029% | +0.228% | −0.029% | +0.021% |
-| [`flight-juno-iii-calm`][report] | −0.002% | −0.137% | +0.062% | −0.049% | +0.001% |
-| [`flight-calisto-tests-motor-at-minus-1.373-calm`][report] | −0.001% | −0.074% | +0.005% | −0.032% | −0.003% |
-| [`flight-bella-lui-calm`][report] | −0.000% | −0.032% | +0.007% | −0.025% | +0.021% |
+| [`flight-calisto-tests-motor-at-minus-1.373`][report] | −0.010% | −0.072% | +0.021% | +0.019% | −0.020% |
+| [`flight-valetudo`][report] | −0.002% | −0.100% | +0.048% | +0.042% | +0.009% |
+| [`flight-ndrt-2020-nose-to-tail`][report] | −0.009% | −0.085% | −0.004% | +0.043% | +0.022% |
+| [`flight-juno-iii`][report] | −0.005% | −0.142% | +0.294% | +0.063% | −0.003% |
+| [`flight-bella-lui`][report] | −0.013% | −0.029% | +0.155% | +0.018% | +0.021% |
+| [`flight-juno-iii-calm`][report] | −0.002% | −0.137% | +0.042% | +0.020% | +0.001% |
+| [`flight-calisto-tests-motor-at-minus-1.373-calm`][report] | −0.001% | −0.074% | +0.023% | +0.025% | −0.003% |
+| [`flight-bella-lui-calm`][report] | −0.000% | −0.032% | +0.012% | +0.024% | +0.021% |
 
 | case | `max_acceleration_power_on_m_s2` | `max_acceleration_m_s2` | `max_acceleration_time_s` | `apogee_drift_m` | `landing_drift_m` |
 |---|---|---|---|---|---|
-| [`flight-calisto-tests-motor-at-minus-1.373`][report] | +0.074% | +0.074% | −96.812% | −5.573% | +7.034% |
-| [`flight-valetudo`][report] | +0.248% | +0.248% | +0.006% | −2.426% | −3.410% |
-| [`flight-ndrt-2020-nose-to-tail`][report] | −0.001% | +83.060% | +0.147% | −18.646% | +3.887% |
-| [`flight-juno-iii`][report] | −0.235% | −0.235% | −0.002% | −60.848% | +151.334% |
-| [`flight-bella-lui`][report] | +1.783% | +1.783% | +0.001% | −15.589% | −31.320% |
-| [`flight-juno-iii-calm`][report] | −0.020% | −0.020% | −0.036% | −3.670% | −3.695% |
-| [`flight-calisto-tests-motor-at-minus-1.373-calm`][report] | +0.070% | +0.070% | −96.811% | −1.258% | −1.438% |
-| [`flight-bella-lui-calm`][report] | +1.778% | +1.778% | +0.001% | −1.593% | −2.583% |
+| [`flight-calisto-tests-motor-at-minus-1.373`][report] | +0.099% | +0.099% | −96.811% | −0.986% | +1.433% |
+| [`flight-valetudo`][report] | +0.248% | +0.248% | +0.006% | −0.932% | −1.949% |
+| [`flight-ndrt-2020-nose-to-tail`][report] | −0.020% | +83.059% | +0.234% | −4.654% | +1.950% |
+| [`flight-juno-iii`][report] | −0.211% | −0.211% | +0.001% | −42.510% | +40.926% |
+| [`flight-bella-lui`][report] | +1.783% | +1.783% | +0.001% | −11.264% | −23.833% |
+| [`flight-juno-iii-calm`][report] | −0.012% | −0.012% | +0.046% | −1.752% | −1.812% |
+| [`flight-calisto-tests-motor-at-minus-1.373-calm`][report] | +0.108% | +0.108% | −96.811% | −0.239% | −0.421% |
+| [`flight-bella-lui-calm`][report] | +1.778% | +1.778% | +0.001% | −1.160% | −2.141% |
 
 The last two numbers compare the whole trace, not one point of it. The series height RMS
 (`series_height_rms_m`) is the root mean square of hpr's height less RocketPy's: square each
@@ -320,39 +328,55 @@ percentage. Each is held to 3% of RocketPy's apogee (for height) or top speed (f
 ([case file][juno-case]).
 
 All eight flights pass, each well inside its bound. The largest height RMS is Juno III's,
-39.200769 m against its 77.6 m bound, about half of it; its apogee is also the furthest off. The
-other seven are under a sixth of theirs. The speed RMS runs from 0.024575 to 2.058916 m/s
-([report][report]).
+15.931091 m against its 78.4 m bound, about a fifth of it; its apogee is also among the furthest
+off. The other seven are at an eighth of theirs or less. The speed RMS runs from 0.021952 to
+0.899478 m/s ([report][report]).
 
 | case | `series_height_rms_m` | height bound, m | `series_speed_rms_m_s` | speed bound, m/s |
 |---|---|---|---|---|
-| [`flight-calisto-tests-motor-at-minus-1.373`][report] | +3.166705 | 78.3 | +0.160127 | 7.3 |
-| [`flight-valetudo`][report] | +1.441957 | 23.3 | +0.228240 | 3.3 |
-| [`flight-ndrt-2020-nose-to-tail`][report] | +2.037097 | 36.5 | +0.132323 | 5.4 |
-| [`flight-juno-iii`][report] | +39.200769 | 77.6 | +2.058916 | 6.7 |
-| [`flight-bella-lui`][report] | +2.302356 | 15.8 | +0.444735 | 2.9 |
-| [`flight-juno-iii-calm`][report] | +1.296871 | 78.7 | +0.156012 | 6.8 |
-| [`flight-calisto-tests-motor-at-minus-1.373-calm`][report] | +1.141118 | 78.4 | +0.094629 | 7.3 |
-| [`flight-bella-lui-calm`][report] | +0.389902 | 16.2 | +0.024575 | 2.9 |
+| [`flight-calisto-tests-motor-at-minus-1.373`][report] | +2.027529 | 78.3 | +0.064755 | 7.3 |
+| [`flight-valetudo`][report] | +2.373260 | 23.3 | +0.196853 | 3.3 |
+| [`flight-ndrt-2020-nose-to-tail`][report] | +2.768886 | 36.4 | +0.231944 | 5.4 |
+| [`flight-juno-iii`][report] | +15.931091 | 78.4 | +0.899478 | 6.7 |
+| [`flight-bella-lui`][report] | +1.871751 | 15.9 | +0.304555 | 2.9 |
+| [`flight-juno-iii-calm`][report] | +2.068744 | 78.6 | +0.066644 | 6.8 |
+| [`flight-calisto-tests-motor-at-minus-1.373-calm`][report] | +1.965173 | 78.4 | +0.058215 | 7.3 |
+| [`flight-bella-lui-calm`][report] | +0.087252 | 16.2 | +0.021952 | 2.9 |
 
 What the two codes still do differently, and what it moves:
 
-- **In wind, the path.** hpr turns into the wind less than RocketPy. In Juno III's 8.5 m/s wind,
-  RocketPy's apogee moves 1,147 m upwind of where it is in calm air, and hpr's 769 m, so hpr's
-  apogee ends 228 m from the pad and RocketPy's 582 m. Flown with no wind, as three cases whose ids
-  end in `-calm`, the same rockets agree on the apogee to within 0.060%. Calisto's and Bella Lui's
-  drifts agree to within −1.258% to −2.583%, and pass. Juno III's miss by −3.670% and −3.695%,
-  and are reported but not scored ([case file][juno-calm-case], [ADR-025][adr-025]): RocketPy
-  frees the rocket from the rail when its first rail button leaves, and hpr when its last one does.
-  Flown so both free it at the same point, every calm drift agrees to within 2.2% (measured once by
-  `rail_release.py`, not a committed check; the table is in [ADR-025][adr-025]). The release is
-  about 1.6 of Juno III's 3.7 points; what remains has the same sign in every calm case, a steeper
-  path in hpr not yet explained. So most of the
-  gap in wind is in the response to wind, which same-drag mode doesn't share: each code's own normal force and damping, and how hpr's drag grows
-  at an angle. The drifts of the four windy cases, and Valetudo's still-air landing drift,
-  −3.410%, are open misses: reported, not scored and not passed, until [issue #50][issue-50] finds
-  the cause. Turning less, hpr also flies higher, the likely source of Juno III's +1.710% apogee
-  ([report][report], [case file][juno-case]).
+- **In wind: body lift, the rail release and Juno III's fins.** A rocket that leaves the rail
+  slowly in a wind meets the airflow at a steep angle: Juno III leaves at 18 m/s in an 8.5 m/s
+  wind, 26° off it ([ADR-026][adr-026]). Three things differ there.
+  - hpr's normal force includes [body lift](glossary.md#body-lift), which grows with the square
+    of that angle; RocketPy's does not. Much of it acts ahead of the rocket's centre of mass, the
+    nose's above all, so it moves the centre of pressure forward and weakens the moment that
+    [turns the rocket into the wind](glossary.md#weathercocking): hpr turns into it less.
+  - hpr keeps the rocket guided until its last
+    [rail button](glossary.md#rail-exit-and-rail-exit-velocity) leaves the rail; RocketPy frees it
+    at the first.
+  - Juno III's example gives its fins an airfoil lift curve, which RocketPy uses and hpr cannot
+    model. RocketPy's fin slope is 7.6% steeper than hpr's flat-plate one ([ADR-026][adr-026]).
+
+  Juno III's apogee is 228.0 m from the pad in hpr and 396.6 m in RocketPy (−42.510%). Adding
+  hpr's choices to RocketPy one at a time moves RocketPy's to 360.7 m with hpr's rail release,
+  270.6 m with its body lift too, and 231.1 m with its fin slope as well ([ADR-026][adr-026],
+  measured by [`wind_response.py`](https://github.com/nrdptel/hpr-sim/blob/main/validation/oracles/rocketpy/wind_response.py)). Every windy drift lands within 1.4% of hpr's the
+  same way. Bella Lui's drifts are −11.264% and −23.833%, and NDRT 2020's apogee drift −4.654%,
+  mostly its rail release. These five are reported but not scored, as measured differences
+  between the models. Every other drift is scored and passes: Calisto's in wind, Valetudo's in
+  still air, NDRT 2020's landing, and all six in calm air ([report][report],
+  [case file][juno-case]).
+- **RocketPy's own equations, corrected.** RocketPy 1.13.0 takes the turning moments during the
+  burn about the wrong point: as far in front of the rocket's
+  [centre of dry mass](glossary.md#centre-of-dry-mass) as the real centre of mass is behind it.
+  That makes its rockets too stable while the motor burns, so they turn into the wind too far. The
+  fix is proposed in [a pull request to RocketPy](https://github.com/RocketPy-Team/RocketPy/pull/1196), still open, built on
+  [one that is merged](https://github.com/RocketPy-Team/RocketPy/pull/1188) but not yet released. RocketPy 1.13.0 as installed still has the
+  error; the comparison applies both fixes ([ADR-026][adr-026]). Without them, Juno III's apogee drift was
+  582.4 m, and hpr's drifts in wind were up to −60.8% short of RocketPy's at apogee and +151%
+  beyond it at landing (the question of
+  [issue #50][issue-50]).
 - **On the rail,** hpr keeps the terms for the centre of mass moving inside the body as the
   propellant burns, and RocketPy's rail equation leaves them out. At a sharp ignition spike, with
   thrust and mass the same to five digits, hpr's acceleration is 1.2 to 1.3 m/s² higher. That is
@@ -360,15 +384,15 @@ What the two codes still do differently, and what it moves:
   [case file][bella-case]).
 - **Calisto's two peaks.** Calisto's acceleration peaks twice, 0.9% apart: on the rail at 0.05 s
   and at 1.568 s. The same rail terms make hpr's first peak the higher, so `max_acceleration_time_s`
-  moves from one peak to the other (−96.812%); it is reported but not scored. The peak's size is
+  moves from one peak to the other (−96.811%); it is reported but not scored. The peak's size is
   scored, but its +0.074% compares two instants; at 0.05 s hpr is 1.05% higher
   ([report][report], [case file][calisto-case]).
 - **The main opening.** RocketPy adds the air a canopy drags along
   ([added mass](glossary.md#added-mass)), and hpr has none. So NDRT's peak deceleration as its
-  main opens is +83.060% in hpr, reported but not scored. Its time is scored, since both codes put
+  main opens is +83.059% in hpr, reported but not scored. Its time is scored, since both codes put
   it where the main opens ([report][report], [case file][ndrt-flight-case]).
 
-**Prometheus 2022 is a known gap.** RocketPy's flight peaks at Mach 1.014, and hpr stops any
+**Prometheus 2022 is a known gap.** RocketPy's flight peaks at Mach 1.013, and hpr stops any
 flight at Mach 1 until [M1.8](decisions-and-roadmap.md#m1-8) adds transonic and supersonic
 aerodynamics. The case still runs: the harness checks that hpr stops it for that reason and no
 other, lists it under the report's *Known gaps*, and fails once hpr flies it, so the gap can't
@@ -376,9 +400,12 @@ outlive its cause ([case file][prometheus-case]). Bella Lui was added so that fi
 still be scored while Prometheus can't.
 
 What this shows: with the drag given, the two codes agree on how high, how fast and how long a
-rocket flies. They don't agree well enough on where it goes: within a few per cent in calm air, and
-far apart in wind, which is open. [M2.1](decisions-and-roadmap.md#m2-1)'s landing offset is
-reported but not met ([issue #50][issue-50]). Nothing here says anything about hpr's own drag, which the next section compares, or about a real flight. The
+rocket flies, and on where it goes, except for rockets that leave the rail slowly in a wind,
+where their models differ. [M2.1](decisions-and-roadmap.md#m2-1)'s landing offset is met
+everywhere else ([ADR-026][adr-026]). Which code is nearer the truth for those is for real flights
+to say.
+Nothing here says anything about hpr's own drag, which the next section compares, or about a real
+flight. The
 comparisons with OpenRocket ([M2.2](decisions-and-roadmap.md#m2-2), the OpenRocket comparison)
 and with real flights ([M2.3](decisions-and-roadmap.md#m2-3), the real-flights milestone) come
 after.
@@ -393,9 +420,9 @@ a drag curve for Calisto, Valetudo and Juno III, a constant for NDRT 2020 (0.44,
 Everything else is set up as in the same-drag flights above ([ADR-023][adr-023], the
 predicted-mode comparison).
 
-**In short: hpr's heights are within 3% of RocketPy's for Calisto (−0.527%) and Bella Lui
-(+1.118%), just outside for Juno III (+3.181%), and well above for Valetudo (+10.007%) and NDRT
-2020 (+10.232%), where its drag is well below the example's** ([report][report]). These are
+**In short: hpr's heights are within 3% of RocketPy's for Calisto (−0.604%), Bella Lui
+(+1.018%) and Juno III (+2.157%), and well above for Valetudo (+10.118%) and NDRT 2020
+(+10.322%), where its drag is well below the example's** ([report][report]). These are
 results, not a pass or fail. Neither code's drag is the truth: each example's drag came from
 RASAero, OpenRocket or its team's own estimate. So each number is compared with the same 3% as the
 same-drag flights ([M2.1](decisions-and-roadmap.md#m2-1), the validation milestone), but only as a
@@ -408,70 +435,69 @@ Every predicted result of the report, as hpr's difference from RocketPy:
 
 | case | `apogee_agl_m` | `apogee_time_s` | `flight_time_s` | `max_speed_m_s` | `max_mach` |
 |---|---|---|---|---|---|
-| [`predicted-calisto-tests-motor-at-minus-1.373`][report] | −0.527% | −0.505% | −0.244% | +0.337% | +0.172% |
-| [`predicted-valetudo`][report] | +10.007% | +6.165% | +8.847% | +2.210% | +2.155% |
-| [`predicted-ndrt-2020-nose-to-tail`][report] | +10.232% | +6.532% | +6.834% | +1.298% | +1.258% |
-| [`predicted-juno-iii`][report] | +3.181% | +1.620% | +2.510% | +1.007% | +0.560% |
-| [`predicted-bella-lui`][report] | +1.118% | +0.616% | +0.843% | +0.209% | +0.092% |
+| [`predicted-calisto-tests-motor-at-minus-1.373`][report] | −0.604% | −0.548% | −0.282% | +0.364% | +0.232% |
+| [`predicted-valetudo`][report] | +10.118% | +6.217% | +8.947% | +2.292% | +2.237% |
+| [`predicted-ndrt-2020-nose-to-tail`][report] | +10.322% | +6.583% | +6.905% | +1.381% | +1.353% |
+| [`predicted-juno-iii`][report] | +2.157% | +1.086% | +1.731% | +1.012% | +0.728% |
+| [`predicted-bella-lui`][report] | +1.018% | +0.570% | +0.790% | +0.244% | +0.152% |
 
 | case | `rail_exit_speed_m_s` | `rail_exit_time_s` | `burnout_altitude_agl_m` | `burnout_speed_m_s` | `impact_speed_m_s` |
 |---|---|---|---|---|---|
-| [`predicted-calisto-tests-motor-at-minus-1.373`][report] | −0.009% | −0.071% | +0.285% | +0.490% | −0.020% |
-| [`predicted-valetudo`][report] | +0.029% | −0.109% | +1.310% | +2.771% | +0.009% |
-| [`predicted-ndrt-2020-nose-to-tail`][report] | +0.000% | −0.087% | +0.759% | +1.425% | +0.022% |
-| [`predicted-juno-iii`][report] | −0.001% | −0.143% | +1.285% | +1.108% | −0.003% |
-| [`predicted-bella-lui`][report] | −0.011% | −0.029% | +0.357% | +0.252% | +0.021% |
+| [`predicted-calisto-tests-motor-at-minus-1.373`][report] | −0.009% | −0.071% | +0.241% | +0.526% | −0.020% |
+| [`predicted-valetudo`][report] | +0.029% | −0.109% | +1.326% | +2.883% | +0.009% |
+| [`predicted-ndrt-2020-nose-to-tail`][report] | +0.000% | −0.087% | +0.723% | +1.535% | +0.022% |
+| [`predicted-juno-iii`][report] | −0.001% | −0.143% | +0.796% | +1.135% | −0.003% |
+| [`predicted-bella-lui`][report] | −0.011% | −0.029% | +0.285% | +0.300% | +0.021% |
 
 | case | `max_acceleration_power_on_m_s2` | `max_acceleration_m_s2` | `max_acceleration_time_s` | `apogee_drift_m` | `landing_drift_m` |
 |---|---|---|---|---|---|
-| [`predicted-calisto-tests-motor-at-minus-1.373`][report] | +0.090% | +0.090% | −0.005% | −7.002% | +6.918% |
-| [`predicted-valetudo`][report] | +0.250% | +0.250% | −0.030% | +10.547% | +8.686% |
-| [`predicted-ndrt-2020-nose-to-tail`][report] | +0.674% | +83.058% | +9.606% | −4.440% | +14.981% |
-| [`predicted-juno-iii`][report] | +0.072% | +0.072% | −0.045% | −59.133% | +171.819% |
-| [`predicted-bella-lui`][report] | +1.797% | +1.797% | −0.029% | −14.798% | −30.341% |
+| [`predicted-calisto-tests-motor-at-minus-1.373`][report] | +0.123% | +0.123% | +0.002% | −2.321% | +1.082% |
+| [`predicted-valetudo`][report] | +0.250% | +0.250% | −0.030% | +12.213% | +10.276% |
+| [`predicted-ndrt-2020-nose-to-tail`][report] | +0.656% | +83.059% | +9.697% | +11.906% | +12.965% |
+| [`predicted-juno-iii`][report] | +0.090% | +0.090% | +0.002% | −40.404% | +45.056% |
+| [`predicted-bella-lui`][report] | +1.797% | +1.797% | −0.029% | −10.446% | −22.934% |
 
 The whole-trace numbers, in metres and metres per second, defined as for the same-drag flights
 above. [Valetudo's][valetudo-predicted-case] and [NDRT 2020's][ndrt-predicted-case] height RMS
 are outside the target, and so is NDRT 2020's speed RMS, for the same reason as their apogees:
 hpr's own drag is lower than those examples' drag. Each bound is 3% of that case's own RocketPy
-apogee or top speed, so it differs from the same-drag bound: Juno III's 80.919560 m is inside its
-83.1 m here ([report][report]).
+apogee or top speed, so it differs from the same-drag bound: Juno III's 56.175322 m is inside its
+83.9 m here ([report][report]).
 
 | case | `series_height_rms_m` | height bound, m | `series_speed_rms_m_s` | speed bound, m/s |
 |---|---|---|---|---|
-| [`predicted-calisto-tests-motor-at-minus-1.373`][report] | +10.937445 | 84.5 | +0.398035 | 7.4 |
-| [`predicted-valetudo`][report] | +74.842332 | 21 | +2.742051 | 3.3 |
-| [`predicted-ndrt-2020-nose-to-tail`][report] | +115.696314 | 38.2 | +6.741165 | 5.5 |
-| [`predicted-juno-iii`][report] | +80.919560 | 83.1 | +1.940801 | 6.8 |
-| [`predicted-bella-lui`][report] | +5.953813 | 16.1 | +0.422442 | 2.9 |
+| [`predicted-calisto-tests-motor-at-minus-1.373`][report] | +12.228083 | 84.6 | +0.332187 | 7.4 |
+| [`predicted-valetudo`][report] | +75.617678 | 20.9 | +2.793871 | 3.2 |
+| [`predicted-ndrt-2020-nose-to-tail`][report] | +116.729868 | 38.1 | +6.783353 | 5.5 |
+| [`predicted-juno-iii`][report] | +56.175322 | 83.9 | +0.997574 | 6.8 |
+| [`predicted-bella-lui`][report] | +5.555866 | 16.2 | +0.306749 | 2.9 |
 
 Why the misses, largest first:
 
 - **Valetudo and NDRT 2020 fly high: the drag.** hpr's drag coefficient at Mach 0.3 is −47.0%
   from Valetudo's table, a hand-edited table 1.44 times the drag of the OpenRocket export for the
   same rocket ([Aerodynamics](physics/aero.md#verification)). For NDRT 2020 it is 0.318 against
-  the example's constant 0.44 ([case file][ndrt-predicted-case]). These drags are compared at Mach 0.3 only. Flown on the same drag, the
-  apogees agree with RocketPy's to +0.003% and −0.010% ([report][report]). Less drag also means a
+  the example's constant 0.44 ([case file][ndrt-predicted-case]). These drags are compared at Mach
+  0.3 only. Flown on the same drag, the apogees agree with RocketPy's to +0.116% and +0.068%
+  ([report][report]). Less drag also means a
   later apogee, a longer descent and further to drift, which moves their times and drifts too.
-- **Juno III is +3.181% high.** hpr's drag is 6.0% below the example's curve at Mach 0.3, and the
-  same-drag flight is already +1.710% ([report][report], [case file][juno-predicted-case]).
 - **hpr's drag here is for the design as transcribed.** Where RocketPy's examples say nothing, the
   designs' fin thickness and edges and their surface finish are placeholders, so these results
   compare hpr's drag for those designs, not for the rockets as built. For Valetudo, the rocket's own
   OpenRocket finish and launch lugs take hpr's drag coefficient from 0.5566 to 0.714
   ([Aerodynamics](physics/aero.md#drag-verification)). So a miss here is not a gap for hpr
   to close toward the example's drag.
-- **The drifts in wind,** in every windy case: the open question of [issue #50][issue-50], as in
-  same-drag mode.
-- **NDRT 2020's peak deceleration** at its main opening, +83.058%, is the added-mass difference
-  explained above. Its time moves +9.606% with the later apogee ([report][report],
+- **The drifts of Juno III and Bella Lui in wind:** hpr's body lift and rail release, and Juno
+  III's fin slope, as in same-drag mode ([ADR-026][adr-026]).
+- **NDRT 2020's peak deceleration** at its main opening, +83.059%, is the added-mass difference
+  explained above. Its time moves +9.697% with the later apogee ([report][report],
   [case file][ndrt-predicted-case]).
 
-**Prometheus 2022 is a known gap here too.** On its own drag RocketPy's flight peaks at Mach 1.049,
+**Prometheus 2022 is a known gap here too.** On its own drag RocketPy's flight peaks at Mach 1.048,
 and hpr stops at Mach 1 until [M1.8](decisions-and-roadmap.md#m1-8)
 ([case file][prometheus-predicted-case]).
 
-What this shows: with its own drag, hpr's heights differ from RocketPy's by −0.527% to +10.232%
+What this shows: with its own drag, hpr's heights differ from RocketPy's by −0.604% to +10.322%
 ([report][report]), and the larger gaps are the two drags differing, not the flight. It does not
 say which drag is right; only real flights can ([M2.3](decisions-and-roadmap.md#m2-3), the
 real-flights milestone).
@@ -481,7 +507,7 @@ real-flights milestone).
 These are the largest known differences and missing pieces. Each model page's *In short* lists the
 rest.
 
-- **hpr's own drag in a whole flight.** Its heights are +10.007% and +10.232% above RocketPy's for
+- **hpr's own drag in a whole flight.** Its heights are +10.118% and +10.322% above RocketPy's for
   Valetudo and NDRT 2020, where its drag is well below the examples' ([report][report]). Which
   drag is right is open until real flights ([M2.3](decisions-and-roadmap.md#m2-3), the
   real-flights milestone).
@@ -508,12 +534,18 @@ rest.
   [separated](glossary.md#separation) body falls with no drag until its device opens
   ([Recovery](physics/recovery.md#inflation)).
 - **No added mass under a canopy,** the likely cause of the 2.86% drift difference above
-  ([Recovery](physics/recovery.md#against-rocketpy)), and the cause of NDRT's +83.060% peak as
+  ([Recovery](physics/recovery.md#against-rocketpy)), and the cause of NDRT's +83.059% peak as
   its main opens in the whole flight ([report][report], [case file][ndrt-flight-case]).
-- **The path in wind.** In a whole flight in wind, hpr turns into the wind less than RocketPy:
-  Juno III's apogee is 228 m from the pad in hpr and 582 m in RocketPy. In calm air they agree
-  within a few per cent. The cause is open, and [M2.1](decisions-and-roadmap.md#m2-1)'s landing offset is not met
-  ([issue #50][issue-50], [case file][juno-case]).
+- **Body lift in wind.** A slow rocket leaves the rail at a steep angle to a crosswind, and there
+  hpr's body lift, which RocketPy leaves out, is the largest reason its drift differs: Juno III's
+  apogee drift is −42.510% against RocketPy's ([report][report]). How much body lift a rocket body
+  makes is itself uncertain. Across its source's range of `K`, Juno III's apogee drift runs from
+  194.1 m at 1.5 to 240.2 m at 1.0, and would be 328.0 m with no body lift, flown in RocketPy with
+  hpr's model; hpr itself gives 228 m at its 1.1 ([ADR-026][adr-026]). Only real flights can say which is right
+  ([M2.3](decisions-and-roadmap.md#m2-3)).
+- **Airfoil fins.** hpr's fins use the flat-plate lift slope. It cannot model an airfoil lift
+  curve such as the one Juno III's example gives its fins, which makes RocketPy's fin slope 7.6%
+  steeper ([ADR-026][adr-026]).
 - **Mach 1.** hpr stops any flight that reaches Mach 1, so Prometheus 2022 can't be compared
   until [M1.8](decisions-and-roadmap.md#m1-8) ([case file][prometheus-case]).
 - **Turbulence** is an aircraft model, unvalidated for rockets, and no flight uses it yet
@@ -525,7 +557,6 @@ rest.
 
 [ndrt-case]: https://github.com/nrdptel/hpr-sim/blob/main/validation/cases/descent-ndrt-2020-nose-to-tail.toml
 [plan]: https://github.com/nrdptel/hpr-sim/blob/main/docs/VALIDATION.md#principles
-[plan-refs]: https://github.com/nrdptel/hpr-sim/blob/main/docs/VALIDATION.md
 [report]: https://github.com/nrdptel/hpr-sim/blob/main/validation/reports/latest.md
 [rocket-notes]: https://github.com/nrdptel/hpr-sim/blob/main/docs/research/rocketpy-rocket-mass.md
 [valetudo-case]: https://github.com/nrdptel/hpr-sim/blob/main/validation/cases/descent-valetudo.toml
@@ -535,12 +566,10 @@ rest.
 [calisto-case]: https://github.com/nrdptel/hpr-sim/blob/main/validation/cases/flight-calisto-tests-motor-at-minus-1.373.toml
 [issue-50]: https://github.com/nrdptel/hpr-sim/issues/50
 [bella-predicted-case]: https://github.com/nrdptel/hpr-sim/blob/main/validation/cases/predicted-bella-lui.toml
-[juno-predicted-case]: https://github.com/nrdptel/hpr-sim/blob/main/validation/cases/predicted-juno-iii.toml
 [ndrt-predicted-case]: https://github.com/nrdptel/hpr-sim/blob/main/validation/cases/predicted-ndrt-2020-nose-to-tail.toml
 [prometheus-predicted-case]: https://github.com/nrdptel/hpr-sim/blob/main/validation/cases/predicted-prometheus-2022-generic-motor.toml
 [valetudo-predicted-case]: https://github.com/nrdptel/hpr-sim/blob/main/validation/cases/predicted-valetudo.toml
 [juno-case]: https://github.com/nrdptel/hpr-sim/blob/main/validation/cases/flight-juno-iii.toml
-[adr-025]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-025-the-calm-air-cases-and-juno-iiis-drifts-left-to-the-rail-release-2026-09-18
-[juno-calm-case]: https://github.com/nrdptel/hpr-sim/blob/main/validation/cases/flight-juno-iii-calm.toml
+[adr-026]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-026-the-path-in-wind-rocketpys-corrected-equations-and-hprs-body-lift-2026-09-18
 [ndrt-flight-case]: https://github.com/nrdptel/hpr-sim/blob/main/validation/cases/flight-ndrt-2020-nose-to-tail.toml
 [prometheus-case]: https://github.com/nrdptel/hpr-sim/blob/main/validation/cases/flight-prometheus-2022-generic-motor.toml

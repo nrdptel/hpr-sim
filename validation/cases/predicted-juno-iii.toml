@@ -17,13 +17,16 @@
 # miss does not fail the run and a number that moves still shows in the committed report. The
 # misses, and why:
 #
-# - apogee_agl_m (+3.18%): just outside. hpr's C_D0 at Mach 0.3 is 6.0% below the example's curve
-#   (`validation/fixtures/aero/rocketpy-drag-curves.json`) and the same-drag case is already +1.71%.
-#   Read literally, the notebook's rescaling to C_D(0.6) = 0.38 never reaches RocketPy's flight;
-#   applied, it lowers RocketPy's apogee 0.66% and takes this miss to +3.87% and flight_time_s to
-#   +3.10% (measured in review).
-# - apogee_drift_m (-59.13%) and landing_drift_m (+171.82%): the path in wind (issue #50); the
-#   same-drag case misses them by -60.85% and +151.33% and does not score them.
+# - apogee_drift_m (-40.40%) and landing_drift_m (+45.06%): the path in wind, a measured model
+#   difference (ADR-026): hpr's body lift at the rail exit's 26-degree angle of attack, its release
+#   at the last rail button, and its thin-plate fins where the example gives an airfoil lift curve.
+#   The same-drag case reports them at -42.51% and +40.93% and does not score them.
+#
+# Nothing else misses. The apogee is +2.16%: hpr's C_D0 at Mach 0.3 is 6.0% below the example's
+# curve (`validation/fixtures/aero/rocketpy-drag-curves.json`), and the same-drag case is +0.70%.
+# Read literally, the notebook's rescaling to C_D(0.6) = 0.38 never reaches RocketPy's flight;
+# applied, it lowered RocketPy's apogee by 0.66% in M2.1c2's review (before ADR-026's
+# corrections), which would put this row near +2.8%.
 id = "predicted-juno-iii"
 title = "Juno III from the pad to the ground, predicted: hpr's own aerodynamics"
 reference = "validation/fixtures/flight/rocketpy-whole-flight-own-drag.json"
@@ -81,11 +84,11 @@ relative = 0.03
 
 # The time-series RMS (M2.1d1): hpr's height and speed at the reference's 120 series times, from
 # ignition until hpr lands, less RocketPy's; the reference value is 0, exact agreement. Each is held
-# (a target) to 3% of the scale of its trace, the reference's apogee (2770.6 m) and max speed
+# (a target) to 3% of the scale of its trace, the reference's apogee (2798.3 m) and max speed
 # (229.9 m/s), rounded down to 0.1: M2.1's 3% for a point metric, applied to a whole trace, so a
 # trace passes only if it is on average no further off than its peak may be.
 [metrics.series_height_rms_m]
-absolute = 83.1
+absolute = 83.9
 
 [metrics.series_speed_rms_m_s]
 absolute = 6.8

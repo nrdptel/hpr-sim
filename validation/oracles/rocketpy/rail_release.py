@@ -7,6 +7,11 @@ RocketPy's rail by the distance between the two buttons makes its first button l
 last one does, with everything else as `flight.py` flies the calm-air case. The script prints each
 calm case's apogee and landing drift as committed and with the longer rail.
 
+Since M2.1d3 `flight.fly` flies RocketPy's equations with the upstream corrections
+(`corrections.py`, ADR-026), so this script's numbers are no longer the ones ADR-025 quotes, which
+were measured on RocketPy as released. `wind_response.py` measures the release in every case, in
+wind too, alongside the other differences between the codes.
+
 Run from the repo root:
 
     refs/venv/bin/python validation/oracles/rocketpy/rail_release.py [case ...]
