@@ -1,5 +1,23 @@
 # Turbulence
 
+## In short
+
+- **What it models:** random gusts from the Dryden model: a gust pattern with a published
+  spectrum (how gust strength spreads over wavelength), sized by height and the wind at 20 ft, and
+  repeatable from a seed.
+- **Sources:** MIL-F-8785C, the US military flying-qualities specification (1980), noting where
+  MIL-HDBK-1797 (1997) differs; xoshiro256++ (Blackman and Vigna, 2021) and Marsaglia and Bray's
+  polar method (1964) for random numbers.
+- **How well it is validated:** analytic and unit tests only: over 2²⁰ samples, each component's
+  spectrum is within 4 standard errors of theory in every octave band (±1–3% in the wide bands).
+  Not compared with another simulator or a real flight.
+- **What it leaves out:** Dryden is an aircraft model, unvalidated for rockets. Its frozen gust
+  pattern needs airspeed well above the gusts, which fails on the rail and near apogee. No flight
+  uses it, and none is planned ([issue #39](https://github.com/nrdptel/hpr-sim/issues/39)).
+  Above 2000 ft the caller supplies the intensity.
+
+## Code and sources
+
 Code: `hpr_atmos::dryden`, using the seeded generator in `hpr_core::random`.
 
 Sources:

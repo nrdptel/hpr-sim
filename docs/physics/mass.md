@@ -1,8 +1,28 @@
 # Mass properties of components
 
+## In short
+
+- **What it models:** the mass, centre of mass and inertia of each part (tubes, rings, shoulders,
+  fins, rail buttons, lugs, mass components, recovery gear), how they add up, and 49 built-in
+  material densities.
+- **Sources:** Meriam and Kraige's *Engineering Mechanics: Dynamics*, the *OpenRocket technical
+  documentation* v13.05, Abbott and von Doenhoff's *Theory of Wing Sections*, Golub and Van
+  Loan's *Matrix Computations*, and data sheets, specifications and handbooks for densities.
+- **How well it is validated:** by analytic tests, the first of four [kinds of evidence][levels]:
+  a cone, a tube, four fins and an off-axis payload agree with hand calculation to 1e-11, and fin
+  cross-sections with exact numerical integration to 1e-13. Density unit conversions reproduce
+  their sources, such as the *Wood Handbook*'s white ash at 678 kg/m³. Not compared with
+  OpenRocket, weighed parts or a real flight.
+- **What it leaves out:** fin fillets, the sliver between a flat fin root and the round tube, and
+  the step ring at a nose shoulder. Parachutes weigh as flat circular canopies. Wall and fin mass
+  may differ from OpenRocket's undocumented conventions until the OpenRocket comparison
+  ([M2.2][roadmap]) measures them.
+
+## Code and sources
+
 Code: `hpr_design::mass` (`MassProperties`), `hpr_design::parts`, `hpr_design::fins`,
 `hpr_design::material`, `hpr_design::materials`. The nose and transition solids are in
-`shapes.md`.
+[Shapes](shapes.md).
 
 Sources:
 
@@ -21,11 +41,11 @@ Sources:
 These conventions were set in [ADR-006][adr-006], the decision on component geometry and mass
 properties.
 
-- **Body axes** follow `frames.md`: `z` along the axis toward the nose, `x` the zero radial
+- **Body axes** follow [Frames](frames.md): `z` along the axis toward the nose, `x` the zero radial
   direction, `y = z × x`. Roll angles run from `x` toward `y`.
 - **A component's frame** has body axes and its origin on the axis at the component's forward end,
   or at a nose cone's tip, so the component lies at `z ≤ 0`. The design tree places it by
-  translating it to its station (`design.md`).
+  translating it to its station ([Design tree](design.md)).
 - **`MassProperties`** holds the mass, the centre of mass in body axes, and the **full** inertia
   tensor about the centre of mass. The tensor is taken with the positive products-of-inertia
   convention: `I = ∫ (|r|² E − r rᵀ) dm`, so `I_xy = −∫ x y dm`.
@@ -60,7 +80,7 @@ properties.
   radius and its shoulder is not modeled.
 - **Parachute:** `m = ρ_s π D²/4 + n ℓ ρ_l`, the nominal area of a flat circular canopy plus its
   shroud lines. A conical or hemispherical canopy has more cloth than `πD²/4`; give its mass
-  through an override (`design.md`) or a matching nominal diameter.
+  through an override ([Design tree](design.md)) or a matching nominal diameter.
 - **Streamer:** `ρ_s × length × width`. **Shock cord:** `ρ_l × length`.
 
 ## Fins
@@ -172,3 +192,5 @@ the URL it was read from, and a basis:
 
 [adr-006]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-006-component-geometry-and-mass-properties-frames-shapes-walls-fins-and-materials-2026-09-17
 [lessons]: https://github.com/nrdptel/hpr-sim/blob/main/docs/research/loft-lessons.md
+[levels]: ../accuracy.md#four-kinds-of-evidence
+[roadmap]: https://github.com/nrdptel/hpr-sim/blob/main/docs/ROADMAP.md

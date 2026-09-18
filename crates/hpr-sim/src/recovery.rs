@@ -1644,7 +1644,9 @@ mod tests {
         // the canopy builds its area while the rocket is already slowing down.
         //
         // hpr does not model Knacke's measured overshoot (C_x = 1.7 for a flat circular canopy at
-        // infinite mass), so the instant opening is hpr's upper bound on the load.
+        // infinite mass). For a deployment well above the canopy's terminal speed, as here, the
+        // instant opening gives hpr's highest load; near terminal speed a filling time can give a
+        // higher one, because the rocket speeds up while the canopy fills.
         let air = UniformAir::sea_level();
         let rho = air.0.density_kg_m3;
         let diameter_m = 1.5;

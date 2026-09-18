@@ -43,10 +43,11 @@ These parts are built and tested. Each page gives its sources, and most say what
 
 ## What doesn't work yet
 
-- **Nothing at or above Mach 1.** A flight that reaches Mach 1 stops with an error. From Mach 0.8
-  to 1 the aerodynamics are unvalidated extrapolations, and drag reads low from about Mach 0.6:
-  for a 3:1 tangent ogive nose, by 4–5% of the drag coefficient at Mach 0.8. Transonic and
-  supersonic aerodynamics are planned for [M1.8][roadmap], the second aerodynamics milestone.
+- **Nothing at or above Mach 1.** A flight that reaches Mach 1 stops with an error. From Mach 0.8 to
+  1 the aerodynamics are unvalidated extrapolations. Nose and shoulder pressure drag is held at its
+  low-speed value, so from about Mach 0.6 it reads low against its own source's high-subsonic
+  correction: for a 3:1 tangent ogive nose, by 4–5% of the drag coefficient at Mach 0.8. Transonic
+  and supersonic aerodynamics are planned for [M1.8][roadmap], the second aerodynamics milestone.
 - **Small angles of attack only.** Nothing models stall, yet a flight uses the same models at
   every angle, so results near rail exit in a strong crosswind, and near apogee, are the least
   trustworthy.
@@ -71,36 +72,49 @@ These parts are built and tested. Each page gives its sources, and most say what
 
 ## How far to trust it
 
+[Accuracy](accuracy.md) gathers every result so far, gaps included. In brief:
+
 - **No whole flight has been validated.** hpr's apogee, top speed and landing point have not yet
   been compared with another simulator's or with a real flight's. That is the next work: whole
   flights against RocketPy ([M2.1b2][roadmap]), then OpenRocket ([M2.2][roadmap]) and real
   flights ([M2.3][roadmap]).
 - **The descent under a parachute matches RocketPy's.** Five of RocketPy's example rockets start
-  from the same state near apogee in both codes, with the first parachute opening at once, the
-  same drag areas and wind, RocketPy's random noise off, and RocketPy's gravity formula. hpr's
-  descent time, landing speed and drift agree with RocketPy's within 3% on all 30 numbers
-  compared; the largest difference is 2.87%. That shows the two codes agree on the descent
-  physics, not that either matches a real flight. The committed [validation report][report] has
-  every number, and [Recovery](physics/recovery.md) explains the comparison.
-- **Each model is tested against its published source**: printed tables, worked examples and
-  closed-form results. Each test states its tolerance. The known gaps:
-  - Drag, against the RASAero curves in RocketPy's examples, is within 10% for four of seven
-    curves. It is 18% low for Cavour under power, and about 50% low for Valetudo
+  from the same state near apogee in both codes, with the first parachute opening at once, the same
+  drag areas and wind, RocketPy's random noise off, and RocketPy's gravity formula and wind
+  interpolation. hpr's descent time, vertical landing speed and drift from that start agree with
+  RocketPy's within 3% on all 30 numbers compared; the largest difference is +2.865%. That shows the
+  two codes agree on the descent physics, not that either matches a real flight. The committed
+  [validation report][report] has every number, and [Recovery](physics/recovery.md) explains the
+  comparison.
+- **Each model is tested on its own**: against exact answers, and where its source prints tables
+  or worked examples, against those; several parts also against RocketPy. Each test states its
+  tolerance. The largest known gaps:
+  - The aerodynamics were checked at Mach 0 (the normal force and centre of pressure) and at
+    Mach 0.3 (drag) only. Drag against the RASAero curves in RocketPy's examples, whose fins and
+    finish were guessed, is within 10% in four of seven cases. It is 18% low for Cavour under
+    power, and 47% to 50% low for Valetudo, whose table is 1.44 times its own OpenRocket export
     ([Aerodynamics](physics/aero.md)).
-  - The normal-force slope of Barrowman's six-fin Recruiter example is 2.9% above his printed
-    value ([Aerodynamics](physics/aero.md)).
-  - Tumbling drag is −10% to +19% off its source's own drop tests
-    ([Recovery](physics/recovery.md)).
+  - The normal-force slope of Barrowman's six-fin Recruiter example is 2.87% above his printed
+    value, 3.42% on the fins alone ([Aerodynamics](physics/aero.md)).
+  - Tumbling drag is −10 to +19% off its source's own drop tests, and a separated body's
+    parachute can open at a higher speed than it would for real, because the body falls with no
+    drag until then ([Recovery](physics/recovery.md)).
 
 ## Reading these pages
 
-Each model page names the code that implements it, the sources it follows and the tests that pin
-it. Sources are cited by a short key in square brackets, such as **[NGA]**, with the full reference
-near the top of the page. Equations are written in plain text, such as the normal gravity on the
-ellipsoid, `γ = γ_e (1 + k sin²φ)/√(1 − e² sin²φ)`, so they read the same here, on GitHub and in
-the code's documentation.
+Each model page opens with *In short*: what it models, its sources, how well it is validated and
+what it leaves out. Below that, it names the code that implements the model, the sources it follows
+and the tests that pin it. Sources are cited by a short key in square brackets, such as **[NGA]**,
+with the full reference near the top of the page. Equations are written in plain text, such as the
+normal gravity on the ellipsoid, `γ = γ_e (1 + k sin²φ)/√(1 − e² sin²φ)`, so they read the same
+here, on GitHub and in the code's documentation.
 
-Three kinds of label link to the project's records on GitHub:
+Terms are defined in the [Glossary](glossary.md), and
+[Checking a claim](checking-a-claim.md) shows how to trace any number to its source, its test and
+its validation.
+
+Three kinds of label link to the project's records on GitHub, which
+[Decisions and the roadmap](decisions-and-roadmap.md) introduces:
 
 - A **milestone**, such as [M1.8][roadmap], is a step of the [roadmap][roadmap], the ordered plan
   of work.

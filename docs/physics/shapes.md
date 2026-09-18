@@ -1,5 +1,24 @@
 # Nose cones, transitions and solids of revolution
 
+## In short
+
+- **What it models:** the outer shape of nose cones and transitions (conical, ogive, elliptical,
+  power, parabolic and Haack series), and the volume, centre of mass, inertia and surface areas
+  of each, solid or as a shell of given wall thickness.
+- **Sources:** G. A. Crowell Sr., *The Descriptive Geometry of Nose Cones* (1996), and appendix A
+  of the published *OpenRocket technical documentation* v13.05 (2013).
+- **How well it is validated:** by analytic tests only, the first of four
+  [kinds of evidence][levels]. Filled shapes match closed forms to 1e-10 (relative), and
+  independent high-precision integrals to 1e-12 on 22 noses and transitions; 20 walls match to
+  1e-10. Not compared with OpenRocket, weighed parts or a real flight.
+- **What it leaves out:** OpenRocket's documentation doesn't say how it measures wall thickness.
+  Measuring it radially instead of square to the surface changes wall volume by 1.4% on a cone
+  three calibres (base diameters) long. Where a steep end is cut square to the axis, rather than
+  following the wall's inner corner as hpr does, the part gains up to 2.24% of wall mass in this
+  page's examples. The OpenRocket comparison ([M2.2][roadmap]) is to check both.
+
+## Code and sources
+
 Code: `hpr_design::shapes` (profiles) and `hpr_design::solids` (volume, centroid, moments, areas).
 
 Sources:
@@ -83,7 +102,7 @@ diameter, moved to the reference plane by the parallel-axis theorem. `S` exclude
 - **Numerics.** Each half of the profile is integrated from its own end in `u = s²`, where `u` is
   the normalized distance from that end. The substitution removes the `u^(−1/2)` singularity of a
   blunt tip's surface integrand, and measuring from the end keeps the tip exact. The integrals use
-  `hpr_core::quadrature` (`quadrature.md`) at a relative tolerance of 1e-12.
+  `hpr_core::quadrature` ([Quadrature](quadrature.md)) at a relative tolerance of 1e-12.
 - **Walls** ([ADR-006][adr-006], component geometry and mass properties).
   - A wall of thickness `t` is the part of the solid within `t` of the outer surface, so `t` is
     measured normal to the surface, which is how molded and laid-up shells are made.
@@ -177,4 +196,5 @@ diameter, moved to the reference plane by the parallel-axis theorem. `S` exclude
 [adr-002]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-002-the-reference-library-lock-file-fetch-verify-and-doctor-2026-09-17
 [adr-006]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-006-component-geometry-and-mass-properties-frames-shapes-walls-fins-and-materials-2026-09-17
 [lessons]: https://github.com/nrdptel/hpr-sim/blob/main/docs/research/loft-lessons.md
+[levels]: ../accuracy.md#four-kinds-of-evidence
 [roadmap]: https://github.com/nrdptel/hpr-sim/blob/main/docs/ROADMAP.md

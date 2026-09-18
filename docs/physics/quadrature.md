@@ -1,5 +1,22 @@
 # Adaptive quadrature
 
+## In short
+
+- **What it models:** a definite integral (the area under a curve) to a requested accuracy,
+  splitting the range where the error estimate is largest. It gives the volume, centre of mass and
+  inertia of parts such as nose cones and fins.
+- **Sources:** QUADPACK (Piessens, de Doncker-Kapenga, Überhuber and Kahaner, Springer, 1983),
+  public domain: its 15-point rule, which carries its own error estimate, and its adaptive scheme.
+- **How well it is validated:** analytic tests only. The rule integrates polynomials up to degree
+  22 exactly, and six test integrals, one infinite at an end, reach 1e-11 relative. The integrals
+  of 22 nose cones and transitions agree with 40-digit references to 1e-12 relative
+  ([Nose cones](shapes.md)). Not compared with another simulator or a flight.
+- **What it leaves out:** QUADPACK's extrapolation for singular integrands. It relies on splitting,
+  plus changes of variable at known singularities, and reports an error when it runs out of
+  subintervals.
+
+## Code and sources
+
 Code: `hpr_core::quadrature`.
 
 Source: **[QP]** R. Piessens, E. de Doncker-Kapenga, C. Überhuber and D. Kahaner, *QUADPACK: A
@@ -19,7 +36,7 @@ routine `qk15` has the rule's nodes and weights to 33 digits.
   - Stop with `QuadratureDidNotConverge` at the subinterval budget, or when a bisection point can
     no longer be represented.
   - QUADPACK's `QAGS` also extrapolates with the ε-algorithm; hpr does not, and relies on
-    bisection plus variable substitutions at known singularities (`shapes.md`).
+    bisection plus variable substitutions at known singularities ([Shapes](shapes.md)).
 - **Vector integrands** share one set of subintervals, so the moments of a solid come from the same
   integrand evaluations. Integrands should be scaled to order one so that one absolute tolerance
   suits every component.

@@ -1,8 +1,26 @@
 # Rigid-body flight
 
+## In short
+
+- **What it models:** a rocket's flight from the pad to the ground, rail included: a rigid body
+  free to move and turn in every direction (six degrees of freedom) that gets lighter as its motor
+  burns.
+- **Sources:** the equations of motion in RocketPy's technical documentation (RocketPy 1.13.0),
+  and the RocketPy paper (Ceotto et al., 2021), which is cited but was not fetched.
+- **How well it is validated:** by analytic and unit tests only. For example, a tumbling rocket's
+  centre of mass stays on the exact parabola in a vacuum to 1.7e-6 m over 22 s. No whole flight
+  (apogee, top speed, landing point) has been compared with another simulator or a real flight
+  yet; the comparison with RocketPy is planned as [M2.1b2][roadmap].
+- **What it leaves out:** staging and delayed ignition, tip-off (the pivot as the rocket leaves the
+  rail), roll forcing and damping, turbulence and thrust misalignment. Its small-angle aerodynamics
+  are used at every angle of attack (between the axis and the airflow), with no stall, and a flight
+  that reaches Mach 1 stops with an error.
+
+## Code and sources
+
 Code: `hpr_sim::{dynamics, flight, rail, recorder, state}`. Decisions: [ADR-011][adr-011]
 (equations of motion, aerodynamic coupling, rail, phases and termination). The integrator and
-events are in `integration.md`, and the frames in `frames.md`.
+events are in [Time integration](integration.md), and the frames in [Frames](frames.md).
 
 Sources:
 
@@ -21,7 +39,7 @@ Sources:
 - **Why the nose tip.** It is fixed in the body and is the body origin ([ADR-007][adr-007], the
   design tree). The centre of mass `r` (from `O`, body axes) moves as propellant burns.
 - **The quaternion.** Its norm drifts slightly between steps. Every use normalizes it, and it is
-  never reset at an event (`integration.md`).
+  never reset at an event ([Time integration](integration.md)).
 
 ## Equations of motion
 
@@ -93,12 +111,12 @@ q̇   = ½ q ⊗ (0, ω)
     95 N of weight, 21 N coming from `m̈(n − r)`, and it changes the burnout speed by at most
     0.05 m/s.
 - **Earth's rotation.** It enters only through the Coriolis force. The rotational equations use
-  `ω` relative to `L`, which differs from the inertial rate by at most 7.3e-5 rad/s (`frames.md`,
+  `ω` relative to `L`, which differs from the inertial rate by at most 7.3e-5 rad/s ([Frames](frames.md),
   and the rigid-body flight decision [ADR-011][adr-011]).
 
 ## Aerodynamics in flight
 
-`hpr-aero` gives coefficients at a flow condition (`aero.md`). The engine applies them as follows.
+`hpr-aero` gives coefficients at a flow condition ([Aerodynamics](aero.md)). The engine applies them as follows.
 
 - **Airspeed.** The air velocity uses the wind at the centre of mass's height. Wind vectors are
   taken in `L`'s axes.
@@ -109,7 +127,7 @@ q̇   = ½ q ⊗ (0, ω)
 - **Normal and side forces, component by component.** Each body and fin set is evaluated at its
   own local flow: `v_O − wind + ω × p_i` at its small-angle centre of pressure `p_i`
   (`AeroModel::component_station_m`). Its `C_N` acts along the crossing air `ŵ` and its `C_Y`
-  along `z_B × ŵ` (`frames.md`), with moments `−q A M_N (z_B × ŵ) + q A M_Y ŵ` about `O` from the
+  along `z_B × ŵ` ([Frames](frames.md)), with moments `−q A M_N (z_B × ŵ) + q A M_Y ŵ` about `O` from the
   component's moment coefficients.
 - **Fins at any angle of attack.** A fin set's normal force follows the crossflow `V sin α`: its
   model's `C_N = C_Nα α` is used as `C_Nα sin α`, the substitution Niskanen keeps for bodies (eq.
@@ -170,7 +188,7 @@ q̇   = ½ q ⊗ (0, ω)
 - **Apogee.** The centre of mass's ellipsoidal-height rate, `û(r_cg) · v_cg`, falling through
   zero. `û` is the ellipsoid normal at its position.
 - **Ground hit.** The centre of mass's ellipsoidal height reaching the launch site's, descending
-  (`frames.md`, [Loft lesson L35][lessons]).
+  ([Frames](frames.md), [Loft lesson L35][lessons]).
 - **User events.** A function of the `Sample`, in free flight.
 - **Heights.** Atmosphere and wind heights are `h − N`, with the geoid undulation `N` given in
   `Environment` (no geoid model).

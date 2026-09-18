@@ -104,7 +104,7 @@
     *Done when:* CI builds the site on every PR and checks its links. A broken link, or a bare
     internal label (`L\d+`, `ADR-\d+`, a milestone id that isn't a link), fails CI, and a test
     shows each failing.
-  - [ ] **M0.4b Model pages, Accuracy, Glossary, Checking a claim.** Every model page opens with
+  - [x] **M0.4b Model pages, Accuracy, Glossary, Checking a claim.** Every model page opens with
     *In short*: what it models, its source, how well it is validated, what it leaves out.
     *Accuracy* gives every validation result so far, gaps included, from the committed report.
     The decisions and the roadmap are reachable from the site.

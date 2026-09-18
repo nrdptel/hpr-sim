@@ -1,7 +1,27 @@
 # Solid motors
 
+## In short
+
+- **What it models:** commercial solid motors: the thrust curve and its statistics (total
+  impulse, burn time, average thrust, class), how the propellant burns away, the motor's mass,
+  centre of mass and inertia as it burns, thrust at altitude, and ejection delays.
+- **Sources:** NASA SP-8039 (1971), the National Association of Rocketry's *Standard Motor
+  Codes*, ThrustCurve.org's glossary, statistics page and code, and RocketPy 1.13.0's motor code.
+- **How well it is validated:** by unit tests and code-to-code, the first and third of four
+  [kinds of evidence][levels]. ThrustCurve.org's own statistics code agrees to 1.8e-15 on all 32
+  bundled curves. On three of them, RocketPy agrees within 7.9e-5 (relative) in total mass and
+  inertias, with the centre of mass within 5.8e-6 motor lengths and the propellant's own
+  quantities within 1e-4 of their values at ignition. Not compared with OpenRocket or a real
+  flight.
+- **What it leaves out:** anything but commercial off-the-shelf solids. Only 32 curves are
+  bundled, none in class A. Propellant burns in proportion to the impulse delivered, an
+  approximation. With only catalog data, the centre of mass stays at mid-length. Commercial motor
+  files give no nozzle exit size, so thrust at altitude goes uncorrected unless one is supplied.
+
+## Code and sources
+
 Code: `hpr_motor` (`curve`, `class`, `motor`, `grains`, `mass`, `delay`, `catalog`). File formats
-are in `docs/format/eng.md` and `docs/format/rse.md`.
+are in [`.eng` files](../format/eng.md) and [`.rse` files](../format/rse.md).
 
 Sources:
 
@@ -18,7 +38,7 @@ Sources:
 
 - **Time** `t` is seconds from ignition.
 - **Motor axis:** positions are metres along the motor's axis **from the nozzle exit plane toward
-  the forward closure**, so `+z` points toward the nose like the body frame (`frames.md`). The
+  the forward closure**, so `+z` points toward the nose like the body frame ([Frames](frames.md)). The
   design model (from [M1.4][roadmap], the design and mass-properties milestone) places the
   motor's nozzle exit in the body frame.
 - **Inertia:** every part is symmetric about the axis. `I_a` is about the axis and `I_t` about a
@@ -65,7 +85,7 @@ c = I / m_p0,    ṁ(t) = F(t) / c,    m_p(t) = m_p0 (1 − I(t)/I)
 ```
 
 - This is [RP] `SolidMotor` (`solid_motor.py:401-418`; `motor.py:483-524`). ThrustCurve's `.rse`
-  files tabulate their mass column the same way (`docs/format/rse.md`).
+  files tabulate their mass column the same way ([`.rse` files](../format/rse.md)).
 - **It is an approximation.** [SP] defines `c` only instantaneously. Measured `I_sp` drifts during
   a burn with chamber pressure and nozzle erosion ([SP] p. 14), so real consumption is not
   exactly proportional. No COTS data resolves the difference.
@@ -205,7 +225,7 @@ F(p_a) = F_curve + (p_ref − p_a) A_e,    A_e = π r_e²
 ## Delays
 
 [TC-G] lists every achievable delay, adjustable ones included. Plugged motors are `P`. See
-`hpr_motor::delay` and `docs/format/eng.md` for the markers files use. A `0` is read as its own
+`hpr_motor::delay` and [`.eng` files](../format/eng.md) for the markers files use. A `0` is read as its own
 "zero or plugged" setting, because the RASP spec says it means ejection at burnout but most files
 mean plugged; it never becomes an ejection event without a decision.
 
@@ -241,4 +261,5 @@ mean plugged; it never becomes an ejection event without a decision.
   parallel-axis theorem, and the impulse-fraction flow integrating to `m_p0`.
 
 [lessons]: https://github.com/nrdptel/hpr-sim/blob/main/docs/research/loft-lessons.md
+[levels]: ../accuracy.md#four-kinds-of-evidence
 [roadmap]: https://github.com/nrdptel/hpr-sim/blob/main/docs/ROADMAP.md

@@ -1,5 +1,27 @@
 # Aerodynamics
 
+## In short
+
+- **What it models:** the air's forces on a rocket below Mach 1: the normal force (the sideways
+  push when flying at an angle to the airflow), the centre of pressure (where it acts) and drag.
+- **Sources:** Barrowman's 1966 report, 1967 thesis and Centuri TIR-33 (1970); for drag, mainly
+  Niskanen's 2009 OpenRocket thesis.
+- **How well it is validated:** the normal force and centre of pressure only at Mach 0, against
+  Barrowman's worked examples: four of five agree within 1%, and his six-fin Recruiter is +2.87%
+  high (+3.42% on its fins), mostly from a different six-fin rule. Drag only at Mach 0.3, against
+  curves labelled RASAero in RocketPy's examples, which don't record their fins or finish, so
+  hpr's follow a declared rule: within 10% in four of seven cases, and −18.3% for Cavour under
+  power, cause open. Valetudo's −47.0% and −50.4% are against a table 1.44 times its own
+  OpenRocket export; hpr is 23.5% under that export as designed here, and 1.9% under it with the
+  export's own finish and lugs. Nothing against a real flight.
+- **What it leaves out:** large angles and stall, though a flight uses these models at every angle.
+  Nose and shoulder pressure drag is held at its low-speed value, so from about Mach 0.6 it reads
+  low against the source's own high-subsonic correction; the models are documented to Mach 0.8 and
+  refuse Mach 1 until [M1.8][roadmap] (transonic and supersonic aerodynamics), which also brings
+  roll torques.
+
+## Code and sources
+
 Code: `hpr_aero::body` (bodies of revolution), `hpr_aero::fins` (fin sets) and `hpr_aero::model`
 (a rocket's terms over a `Layout`). Decisions: [ADR-008][adr-008] (normal force and centre of
 pressure) and [ADR-009][adr-009] (drag). The milestone [M1.5a][roadmap] covers the subsonic normal
@@ -23,7 +45,7 @@ Sources:
 ## Conventions
 
 - Coefficients use the reference area `A_ref = π d_ref²/4` from `Layout::reference_diameter_m`.
-  Stations are metres aft of the nose tip (`frames.md`, `design.md`).
+  Stations are metres aft of the nose tip ([Frames](frames.md), [Design tree](design.md)).
 - `Flow` holds the Mach number, the total angle of attack `α ∈ [0, π]` between `+z_B` and the
   air-relative velocity, and the roll `φ` of the lateral airflow, measured from `x_B` toward `y_B`.
 - `C_N` lies in the plane of the flow. The side coefficient `C_Y` lies across it, along `z_B` × the
@@ -218,13 +240,13 @@ parasitic term on its own area. The axial coefficient is `C_A = C_D0 f(α)`.
 - The buildup refuses `M ≥ 1` until [M1.8][roadmap] (transonic and supersonic aerodynamics), like
   the normal force. The term functions are defined to any Mach number and stay finite to Mach 5
   (tested), for [M1.8][roadmap] to build on.
-- **High subsonic drag is low; above Mach 0.8 it is flagged.** [N09] eq. 3.87 interpolates nose
-  and shoulder pressure drag from its Mach 0 value (eq. 3.86) to appendix B's value and slope at
-  Mach 1: closed forms for cones and ogives, Stoney's data (NASA TR-R-100) for other shapes. That
-  arrives with [M1.8][roadmap]; until then pressure drag is held at its low-subsonic value, so it
-  reads low from about Mach 0.6. A 3:1 tangent ogive misses 0.006 at Mach 0.7 and 0.021 at 0.8
-  (4–5% of `C_D0`), a 2:1 cone 0.037 at 0.8, a 3:1 cone about 0.05 at 0.9, and flat faces and steps
-  would rise from 0.80 toward 1.04. `Drag::beyond_subsonic_methods` marks the top of [N09]'s
+- **High subsonic drag is low; above Mach 0.8 it is flagged.** [N09] eq. 3.87 interpolates nose and
+  shoulder pressure drag from its Mach 0 value (eq. 3.86) to appendix B's value and slope at Mach 1:
+  closed forms for cones and ogives, Stoney's data (NASA TR-R-100) for other shapes. That arrives
+  with [M1.8][roadmap]; until then nose and shoulder pressure drag is held at its low-subsonic
+  value, so it reads low from about Mach 0.6. A 3:1 tangent ogive misses 0.006 at Mach 0.7 and 0.021
+  at 0.8 (4–5% of `C_D0`), a 2:1 cone 0.037 at 0.8, a 3:1 cone about 0.05 at 0.9, and flat faces and
+  steps would rise from 0.80 toward 1.04. `Drag::beyond_subsonic_methods` marks the top of [N09]'s
   subsonic region, Mach 0.8 (Table 3.1), not the start of the error.
 - Nothing models laminar flow, fin-tip vortices, interference drag, fin tabs, fillets, canted fins
   or the flow a boattail guides into the base ([N09] p. 51).
@@ -339,7 +361,8 @@ parasitic term on its own area. The axial coefficient is `C_A = C_D0 f(α)`.
     or tables sampled along a flight (their uneven Mach spacing suggests it; unconfirmed).
   - **Valetudo.** Its table (1.05) is 1.44 times the OpenRocket export for the same rocket (0.728).
     With that file's own inputs (60 µm, two 14 mm × 30 mm lugs, 3 mm square fins), hpr gives
-    0.714, 1.9% under the OpenRocket export and 32% under the table.
+    0.714, 1.9% under the OpenRocket export and 32% under the table. As designed for this
+    comparison, its 0.5566 is 23.5% under the export.
   - **Not compared.**
     - Calisto's power-on curve, which equals its power-off curve (no nozzle exit diameter in
       RASAero).

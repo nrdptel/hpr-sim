@@ -2,6 +2,8 @@
 
 [Start here](start-here.md)
 
+[Accuracy](accuracy.md)
+
 # The environment
 
 - [Frames and sign conventions](physics/frames.md)
@@ -34,3 +36,9 @@
 
 - [RASP `.eng` motor files](format/eng.md)
 - [RockSim `.rse` motor files](format/rse.md)
+
+# Reference
+
+- [Checking a claim](checking-a-claim.md)
+- [Glossary](glossary.md)
+- [Decisions and the roadmap](decisions-and-roadmap.md)

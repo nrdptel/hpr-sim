@@ -1,5 +1,23 @@
 # Frames and sign conventions
 
+## In short
+
+- **What it models:** the directions and signs the whole simulator shares: a frame fixed to the
+  Earth at its centre, the launch-site frame (east, north, up), the rocket's body frame and its
+  angle to the airflow, and its attitude (which way it points) and launch angles.
+- **Sources:** the WGS 84 standard, NGA.STND.0036 (2014), as in [Geodesy](geodesy.md); J. Solà,
+  *Quaternion kinematics for the error-state Kalman filter* (2017); RocketPy 1.13.0, for its
+  launch-angle convention.
+- **How well it is validated:** unit tests, and one check against another simulator: for 8 rail
+  setups, launch angles give RocketPy's starting attitude to 1e-12 rad. Over 1e6 integration
+  steps, attitude stays within 1e-9 rad of the exact answer. No real-flight check.
+- **What it leaves out:** heights are above the WGS 84 ellipsoid, not sea level; the two are up to
+  about 100 m apart. The attitude equations leave out the Earth's rotation rate, 7.3e-5 rad/s,
+  which is tiny next to a rocket's pitch rates ([ADR-011][adr-011], the rigid-body flight
+  decision).
+
+## Code and sources
+
 This is the single definition of the frames, and every crate follows it. Code:
 `hpr_core::{geodesy, frames, attitude}`. [ADR-003][adr-003], the frames and gravity decision,
 records why these choices were made.
@@ -24,7 +42,8 @@ A **geodetic position** `(φ, λ, h)` gives the latitude `φ` (positive north, i
 the longitude `λ` (positive east), and the height `h` above the ellipsoid along its normal.
 `h` is **ellipsoidal height, not height above mean sea level**. The two differ by the geoid
 undulation `N` (`h = H + N`, with `|N|` up to about 100 m). Inputs quoted above sea level must be
-converted before use. `docs/physics/geodesy.md` gives the conversions.
+converted before use. hpr has no geoid model, so a flight takes `N` at the launch site as an input;
+[Atmosphere](atmosphere.md#height-datum) shows where it is used.
 
 ## Launch frame `L` (East-North-Up)
 
@@ -41,7 +60,7 @@ converted before use. `docs/physics/geodesy.md` gives the conversions.
 - **Earth-fixed, so non-inertial.** It turns with the Earth at
   `Ω = ω (0, cos φ₀, sin φ₀)` in `L` components, with `ω = 7.292115e-5 rad/s`. The translational
   equations in `L` add the Coriolis term `−2Ω × v`. The centrifugal term is already inside normal
-  gravity and must not be added again (`docs/physics/gravity.md`).
+  gravity and must not be added again ([Gravity](gravity.md)).
 - **`z_L` is not altitude.** `L` is a tangent plane, so a point at `z_L = 0` at horizontal
   distance `d` from the pad is about `d²/(2R)` above the ellipsoid: 7.8 m at 10 km. Height above
   the ellipsoid comes from `LaunchFrame::geodetic_from_enu`. The flight engine detects apogee and
@@ -57,7 +76,7 @@ converted before use. `docs/physics/geodesy.md` gives the conversions.
 - **Thrust** of a motor aligned with the axis acts along `+z_B`.
 - **Design stations** measured aft from the nose tip, as design files state them, map to
   `z_B = z_ref − s` with `z_ref = 0`, so `z_B = −s` and the whole rocket lies at `z_B ≤ 0`
-  (`docs/physics/design.md`).
+  ([Design tree](design.md)).
 
 ## Aerodynamic angles
 
@@ -68,7 +87,7 @@ converted before use. `docs/physics/geodesy.md` gives the conversions.
   airflow, with `θ₀` the set's base angle.
 - **Force directions.** With `ŵ = (cos φ, sin φ, 0)` the lateral air direction in `B`, the normal
   and side forces are `q A_ref (C_N ŵ + C_Y (z_B × ŵ))`: `C_N` is positive along `ŵ`, the way the
-  crossing air pushes the body, and `C_Y` is across the flow's plane (`docs/physics/aero.md`). The
+  crossing air pushes the body, and `C_Y` is across the flow's plane ([Aerodynamics](aero.md)). The
   axial force is `−q A_ref C_A z_B`: `C_A` is positive when the flow meets the nose and drag pushes
   toward the tail, and negative past `α = 90°`, when the rocket moves tail first.
 

@@ -1,8 +1,23 @@
 # Geodesy: the ellipsoid and coordinate conversions
 
-Code: `hpr_core::geodesy`. Conventions: `docs/physics/frames.md`.
+## In short
+
+- **What it models:** the Earth's shape, as the WGS 84 ellipsoid (a sphere slightly flattened at
+  the poles); conversions between latitude, longitude and height and Earth-centred x, y, z; and
+  the local east, north and up directions.
+- **Sources:** the NGA's WGS 84 standard, NGA.STND.0036 (2014); C. F. F. Karney, *Geodesics on
+  an ellipsoid of revolution* (2011), appendix B.
+- **How well it is validated:** the derived ellipsoid values reproduce the standard's Table 3.5
+  to its printed digits. In unit tests, random round trips return latitude within 1e-14 rad and
+  height within 2e-8 m, from −10 km to +1000 km. Not compared with another library, a simulator
+  or a real flight.
+- **What it leaves out:** height above sea level, which needs the geoid, up to about 100 m from
+  the ellipsoid ([Frames](frames.md#earth-centred-earth-fixed-ecef)). hpr has no geoid model; a
+  flight takes that difference at the site as an input.
 
 ## Sources
+
+Code: `hpr_core::geodesy`. Conventions: [Frames](frames.md).
 
 - **[NGA]** NGA.STND.0036_1.0.0_WGS84, *Department of Defense World Geodetic System 1984, Its
   Definition and Relationships with Local Geodetic Systems*, 2014-07-08. Pinned as
@@ -82,6 +97,6 @@ the paper needs its limiting forms (B6)–(B7); the code returns `CoreError::Dom
 
 ## Local ENU axes
 
-`ecef_from_enu_rotation(φ, λ)` has columns `ê`, `n̂` and `û` (`frames.md`). A test checks that `û`
+`ecef_from_enu_rotation(φ, λ)` has columns `ê`, `n̂` and `û` ([Frames](frames.md)). A test checks that `û`
 equals the normalized gradient of `x²/a² + y²/a² + z²/b²` at the foot point, i.e. the ellipsoid
 normal.

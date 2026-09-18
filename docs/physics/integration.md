@@ -1,5 +1,23 @@
 # Time integration and events
 
+## In short
+
+- **What it models:** stepping a flight through time, by Dormand–Prince 5(4), which adapts its
+  steps to an error tolerance, or fixed-step Runge–Kutta (RK4). It lands exactly on set times such
+  as burnout, and finds events such as apogee.
+- **Sources:** Dormand and Prince (1980); Hairer, Nørsett and Wanner's *Solving Ordinary
+  Differential Equations I* (1993), whose `DOPRI5` code the port follows; Brent (1973), for the
+  root finding that locates events.
+- **How well it is validated:** by analytic and unit tests only, not yet on its own against another
+  simulator or a real flight. Its step counts match an independent transcription of `DOPRI5`, and
+  its error shrinks as theory predicts. In an exactly solvable flight with drag, apogee, deployment
+  and landing times are right to 1.5e-8 s at default tolerances.
+- **What it leaves out:** it can't detect a stiff problem, where very fast, heavily damped motion
+  forces tiny steps; the run then stops with an error. Fixed 10 ms RK4 steps can diverge for a
+  light body under a big canopy. An event that crosses zero and back within one step goes unseen.
+
+## Code and sources
+
 Code: `hpr_sim::integrator` and `hpr_sim::events`. Decisions: [ADR-010][adr-010] (Dormand–Prince
 with dense output, RK4, stop times and events).
 
@@ -100,8 +118,9 @@ Sources:
 ## Defaults and limits
 
 - `rtol = atol = 1e-8`, no maximum step, and a limit of 10⁶ attempted steps.
-- The flight keeps these defaults with unit weights (`flight.md`: 1.1 ms per Level 2 flight, apogee
-  converged to 3e-5 m).
+- The flight keeps these defaults with unit weights. On Valetudo's flight on a K400C motor they
+  take 1.13 ms, and put the apogee within 1.1e-6 m of a run at 1e-11
+  ([Rigid-body flight](flight.md#integration-settings)).
 - A stiff flight phase shows up as `StepTooSmall` or the step limit.
 - **A fixed step has to respect the drag's own time scale.** Quadratic drag `v̇ = −k|v|v`, with
   `k = ρ (C_D S)/2m`, linearises to `λ = 2k|v|`, and RK4 is stable only for `h ≲ 2.78/λ`. A light
