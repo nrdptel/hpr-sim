@@ -50,6 +50,13 @@ a strong crosswind and near apogee, are the least trustworthy. See
 [Aerodynamics](physics/aero.md#validity-and-open-questions).
 
 
+## API reference
+
+The documentation of hpr-sim's code: every public type, function and constant, generated from the
+source by rustdoc, Rust's documentation tool. It is part of this site; see
+[The API reference](api.md).
+
+
 ## Apogee
 
 The highest point of a flight, where the rocket stops climbing. hpr finds it as the moment the
@@ -163,6 +170,13 @@ landing point of a 3 km parachute descent 0.37 m east. See
 A commercial off-the-shelf motor: a solid rocket motor bought from a manufacturer, single-use or as
 a reload for a reusable case. hpr-sim covers only these for now, and bundles 32 of their thrust
 curves. See [Solid motors](physics/motor.md) and [Start here](start-here.md#what-hpr-sim-is).
+
+
+## Crate
+
+A Rust package: the unit that Rust code is built, versioned and shared in. hpr-sim is split into
+crates, such as `hpr-core` for the maths and the Earth and `hpr-sim` for the flight, so a program
+takes only the ones it needs. See [The API reference](api.md#the-crates).
 
 
 ## Decision record (ADR)

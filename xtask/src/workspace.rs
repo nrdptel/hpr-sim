@@ -5,10 +5,12 @@ use std::process::Command;
 
 use serde_json::Value;
 
-/// The workspace root and its member crates.
+/// The workspace root, its build directory and its member crates.
 #[derive(Debug)]
 pub struct Workspace {
     pub root: PathBuf,
+    /// Where cargo builds, `target/` unless `CARGO_TARGET_DIR` or a config moves it.
+    pub target_dir: PathBuf,
     pub packages: Vec<Package>,
 }
 
@@ -18,6 +20,9 @@ pub struct Package {
     pub name: String,
     /// `[package.metadata.hpr] wasm = true`: the crate belongs to the pure core.
     pub wasm: bool,
+    /// The crate name of its library (`hpr_core` for `hpr-core`), if it has one, which is where
+    /// rustdoc writes its documentation (`target/doc/hpr_core/`).
+    pub lib: Option<String>,
     /// Its example programs (`cargo run --example`), in the order cargo lists them.
     pub examples: Vec<Example>,
 }
@@ -66,6 +71,9 @@ pub fn parse(json: &str) -> Result<Workspace, String> {
     let root = metadata["workspace_root"]
         .as_str()
         .ok_or("`cargo metadata` JSON has no workspace_root")?;
+    let target_dir = metadata["target_directory"]
+        .as_str()
+        .ok_or("`cargo metadata` JSON has no target_directory")?;
     let packages = metadata["packages"]
         .as_array()
         .ok_or("`cargo metadata` JSON has no packages array")?
@@ -74,6 +82,7 @@ pub fn parse(json: &str) -> Result<Workspace, String> {
         .collect::<Result<_, _>>()?;
     Ok(Workspace {
         root: PathBuf::from(root),
+        target_dir: PathBuf::from(target_dir),
         packages,
     })
 }
@@ -92,12 +101,21 @@ fn parse_package(package: &Value) -> Result<Package, String> {
             ));
         }
     };
+    let mut lib = None;
     let mut examples = Vec::new();
     for target in package["targets"].as_array().map_or(&[][..], Vec::as_slice) {
-        let is_example = target["kind"]
-            .as_array()
-            .is_some_and(|kinds| kinds.iter().any(|kind| kind == "example"));
-        if !is_example {
+        let has_kind = |wanted: &[&str]| {
+            target["kind"].as_array().is_some_and(|kinds| {
+                kinds
+                    .iter()
+                    .any(|kind| wanted.iter().any(|wanted| kind == wanted))
+            })
+        };
+        // A library is `lib`, or a crate type named for how it is linked (`cdylib` for Python).
+        if has_kind(&["lib", "rlib", "dylib", "cdylib", "staticlib", "proc-macro"]) {
+            lib = target["name"].as_str().map(str::to_owned);
+        }
+        if !has_kind(&["example"]) {
             continue;
         }
         let (Some(example), Some(src_path)) =
@@ -127,6 +145,7 @@ fn parse_package(package: &Value) -> Result<Package, String> {
     Ok(Package {
         name,
         wasm,
+        lib,
         examples,
     })
 }
@@ -137,6 +156,7 @@ mod tests {
 
     const METADATA: &str = r#"{
         "workspace_root": "/work/hpr-sim",
+        "target_directory": "/work/hpr-sim/target",
         "packages": [
             { "name": "pure", "metadata": { "hpr": { "wasm": true } }, "targets": [
                 { "kind": ["lib"], "name": "pure", "src_path": "/work/hpr-sim/pure/src/lib.rs" },
@@ -144,21 +164,47 @@ mod tests {
                 { "kind": ["example"], "crate_types": ["lib"], "name": "part", "src_path": "/work/hpr-sim/pure/examples/part.rs",
                   "required-features": ["net"] }
             ] },
-            { "name": "tool", "metadata": null },
-            { "name": "other", "metadata": { "docs": {} } }
+            { "name": "tool", "metadata": null, "targets": [
+                { "kind": ["bin"], "name": "tool", "src_path": "/work/hpr-sim/tool/src/main.rs" }
+            ] },
+            { "name": "other-py", "metadata": { "docs": {} }, "targets": [
+                { "kind": ["cdylib", "rlib"], "name": "other_py", "src_path": "/work/hpr-sim/other-py/src/lib.rs" }
+            ] }
         ]
     }"#;
 
     #[test]
-    fn parses_the_root_and_the_wasm_flags() {
+    fn parses_the_root_the_target_and_the_wasm_flags() {
         let workspace = parse(METADATA).unwrap();
         assert_eq!(workspace.root, PathBuf::from("/work/hpr-sim"));
+        assert_eq!(workspace.target_dir, PathBuf::from("/work/hpr-sim/target"));
         let flags: Vec<_> = workspace
             .packages
             .iter()
             .map(|p| (p.name.as_str(), p.wasm))
             .collect();
-        assert_eq!(flags, [("pure", true), ("tool", false), ("other", false)]);
+        assert_eq!(
+            flags,
+            [("pure", true), ("tool", false), ("other-py", false)]
+        );
+    }
+
+    #[test]
+    fn names_each_packages_library() {
+        let workspace = parse(METADATA).unwrap();
+        let libs: Vec<_> = workspace
+            .packages
+            .iter()
+            .map(|p| (p.name.as_str(), p.lib.as_deref()))
+            .collect();
+        assert_eq!(
+            libs,
+            [
+                ("pure", Some("pure")),
+                ("tool", None),
+                ("other-py", Some("other_py"))
+            ]
+        );
     }
 
     #[test]

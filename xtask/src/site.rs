@@ -39,6 +39,12 @@
 //! `target/site` with mdBook, and checks the built HTML as well: every relative `href` and `src`
 //! must reach a file, and every fragment an `id`, in the output, which catches what mdBook itself
 //! rewrites.
+//!
+//! **The API reference** (M0.4d; ADR-019). `cargo xtask site` also builds the rustdoc of every
+//! library in the workspace into `target/site/api`, so the site serves it beside the guide, and
+//! the two must link each other: a page of the site links each crate's front page, and each
+//! crate's documentation links the guide by its published address, [`SITE_URL`], which the check
+//! reads as a page of the built site. CI deploys `target/site` to GitHub Pages from `main`.
 
 use std::collections::{BTreeMap, BTreeSet};
 use std::fs;
@@ -49,10 +55,13 @@ use pulldown_cmark::{
     BrokenLink, CodeBlockKind, Event, HeadingLevel, LinkType, Options, Parser, Tag, TagEnd,
 };
 
-pub const USAGE: &str =
-    "  site [--no-build]        Check the documentation site's pages, build the site with
-                           mdBook 0.5 into target/site and check the built HTML.
-                           --no-build checks the pages only.";
+use crate::workspace::Workspace;
+
+pub const USAGE: &str = "  site [--no-build] [--locked]
+                           Check the documentation site's pages, build the site with
+                           mdBook 0.5 into target/site and the workspace's rustdoc into
+                           target/site/api, and check the built HTML. --no-build checks the
+                           pages only; --locked is passed on to `cargo doc`.";
 
 /// The site's source directory, relative to the workspace root, as `book.toml` sets it.
 const SOURCE: &str = "docs";
@@ -90,17 +99,29 @@ const RECORDS: &str = "decisions-and-roadmap.md";
 /// The files [`RECORDS`] indexes, relative to the workspace root, and the prefix of the level-2
 /// headings in each that it must link: every decision, and every phase of the roadmap.
 const INDEXED: [(&str, &str); 2] = [("docs/DECISIONS.md", "ADR-"), ("docs/ROADMAP.md", "Phase ")];
+/// Where GitHub Pages serves the site: the project page of `nrdptel/hpr-sim`. The crates'
+/// documentation links the guide by this address, and the README's first lines link it.
+const SITE_URL: &str = "https://nrdptel.github.io/hpr-sim/";
+/// The path of [`SITE_URL`] on its host, which `book.toml` gives mdBook as `site-url`. A
+/// root-absolute link on the built site, such as those on mdBook's 404 page, starts with it.
+const SITE_PATH: &str = "/hpr-sim/";
+/// Where the site holds the workspace's rustdoc, relative to [`OUTPUT`]: the API reference.
+const API: &str = "api";
 /// What `mdbook --version` prints for the release series `book.toml` is written for.
 const MDBOOK_SERIES: &str = "mdbook v0.5.";
 /// How to install the mdBook release CI uses.
 const MDBOOK_INSTALL: &str = "install mdBook 0.5.4: `cargo install mdbook --version 0.5.4 --locked` or `brew install mdbook`";
 
 pub fn run(args: &[String]) -> Result<(), String> {
-    let build = match args {
-        [] => true,
-        [flag] if flag == "--no-build" => false,
-        _ => return Err(format!("unexpected arguments {args:?}\n\n{USAGE}")),
-    };
+    let mut build = true;
+    let mut locked = false;
+    for arg in args {
+        match arg.as_str() {
+            "--no-build" => build = false,
+            "--locked" => locked = true,
+            _ => return Err(format!("unexpected argument `{arg}`\n\n{USAGE}")),
+        }
+    }
     let root = crate::designs::root()?;
     let report = check_sources(&root)?;
     if !report.problems.is_empty() {
@@ -115,11 +136,22 @@ pub fn run(args: &[String]) -> Result<(), String> {
     }
     mdbook_build(&root)?;
     let output = root.join(OUTPUT);
-    let (files, problems) = check_html(&output)?;
-    if !problems.is_empty() {
-        return Err(failure("the built site", &problems));
+    let workspace = crate::workspace::load(&root)?;
+    let crates = rustdoc_build(&workspace, &output.join(API), locked)?;
+    let built = check_html(&output, &crates)?;
+    if !built.problems.is_empty() {
+        return Err(failure("the built site", &built.problems));
     }
-    println!("built site: {files} HTML files in {OUTPUT}, every relative link resolves");
+    println!(
+        "built site: {} HTML files in {OUTPUT}, every relative link resolves",
+        built.pages
+    );
+    println!(
+        "API reference: {} crates in {OUTPUT}/{API} ({} HTML files), each linked from the site \
+         and linking the guide",
+        crates.len(),
+        built.api
+    );
     Ok(())
 }
 
@@ -169,6 +201,74 @@ fn mdbook_build(root: &Path) -> Result<(), String> {
         .collect();
     if !output.status.success() || !complaints.is_empty() {
         return Err(format!("`mdbook build` failed or warned:\n{log}"));
+    }
+    Ok(())
+}
+
+/// Builds the rustdoc of every library in the workspace and copies it to `dest`, under the site,
+/// so the site serves the API reference beside the guide. Returns the libraries' crate names,
+/// which name rustdoc's directories (`hpr_core`), sorted.
+///
+/// The documentation starts from scratch: rustdoc merges its search index and list of crates with
+/// whatever an earlier run left in `target/doc`, so a crate since renamed, or `xtask`, would be
+/// published too. Cargo sees the missing output and documents the crates again, in seconds. A
+/// warning fails, as in CI's `doc` job.
+fn rustdoc_build(workspace: &Workspace, dest: &Path, locked: bool) -> Result<Vec<String>, String> {
+    let libraries: Vec<(&str, &str)> = workspace
+        .packages
+        .iter()
+        .filter_map(|package| Some((package.name.as_str(), package.lib.as_deref()?)))
+        .collect();
+    let doc = workspace.target_dir.join("doc");
+    if doc.exists() {
+        fs::remove_dir_all(&doc)
+            .map_err(|err| format!("could not clear {}: {err}", doc.display()))?;
+    }
+    let mut command = Command::new(crate::workspace::cargo());
+    command.args(["doc", "--no-deps", "--all-features", "--lib"]);
+    for (package, _) in &libraries {
+        command.args(["--package", package]);
+    }
+    if locked {
+        command.arg("--locked");
+    }
+    let output = command
+        .env("RUSTDOCFLAGS", "-D warnings")
+        .current_dir(&workspace.root)
+        .output()
+        .map_err(|err| format!("could not run `cargo doc`: {err}"))?;
+    if !output.status.success() {
+        return Err(format!(
+            "`cargo doc` failed ({}):\n{}",
+            output.status,
+            String::from_utf8_lossy(&output.stderr)
+        ));
+    }
+    copy_dir(&doc, dest)?;
+    let mut crates: Vec<String> = libraries
+        .into_iter()
+        .map(|(_, lib)| lib.to_owned())
+        .collect();
+    crates.sort();
+    Ok(crates)
+}
+
+/// Copies the directory `from` to `to`, recursively, leaving out the `.lock` file cargo keeps in
+/// `target/doc`.
+fn copy_dir(from: &Path, to: &Path) -> Result<(), String> {
+    fs::create_dir_all(to).map_err(|err| format!("could not create {}: {err}", to.display()))?;
+    let entries =
+        fs::read_dir(from).map_err(|err| format!("could not read {}: {err}", from.display()))?;
+    for entry in entries {
+        let entry = entry.map_err(|err| format!("could not read {}: {err}", from.display()))?;
+        let path = entry.path();
+        let dest = to.join(entry.file_name());
+        if path.is_dir() {
+            copy_dir(&path, &dest)?;
+        } else if entry.file_name() != ".lock" {
+            fs::copy(&path, &dest)
+                .map_err(|err| format!("could not copy {}: {err}", path.display()))?;
+        }
     }
     Ok(())
 }
@@ -373,6 +473,11 @@ fn check_link(
             "`{SOURCE}/{SUMMARY}` is the site's table of contents, which mdBook doesn't write as a \
              page"
         ));
+    }
+    // The API reference is rustdoc's output, which `cargo xtask site` builds into the site under
+    // `api/`; the check of the built site follows these links (`check_html`).
+    if name.starts_with(&format!("{API}/")) && name.ends_with(".html") {
+        return Ok(Reach::Repository);
     }
     if let Some(page) = pages.get(&name) {
         return match fragment {
@@ -1700,70 +1805,189 @@ fn slug(heading: &str) -> String {
         .collect()
 }
 
-/// Checks the built site in `dir`: every relative `href` and `src` in its HTML reaches a file,
-/// and its `#fragment` an `id` in that file. Returns the number of HTML files and the problems.
-fn check_html(dir: &Path) -> Result<(usize, Vec<String>), String> {
+/// What checking the built site found.
+#[derive(Debug, Default)]
+struct Built {
+    /// The site's own HTML files, whose every link was checked.
+    pages: usize,
+    /// The HTML files of the API reference under [`API`], whose links to the guide were checked.
+    api: usize,
+    /// One line each, `<file>: <what is wrong>`.
+    problems: Vec<String>,
+}
+
+/// Checks the built site in `dir`.
+///
+/// - On the site's own pages, every `href` and `src` that stays on the site reaches a file, and
+///   its `#fragment` an `id` in that file. A root-absolute link, such as the one on mdBook's 404
+///   page, and a link by the site's address, [`SITE_URL`], are read under the path Pages serves
+///   the site at, [`SITE_PATH`]; a `<base href>` moves where relative links start, as in a
+///   browser.
+/// - The API reference under [`API`] is rustdoc's to check: `cargo doc` with `-D warnings` fails
+///   on a broken intra-doc link. Here, each library of `crates` (rustdoc's names, `hpr_core`) has a
+///   front page, which a page of the site links and which links the guide by [`SITE_URL`]; and
+///   every such link from the API reference reaches a page of the site.
+fn check_html(dir: &Path, crates: &[String]) -> Result<Built, String> {
     let mut names = Vec::new();
     html_files(dir, "", &mut names)?;
-    if names.is_empty() {
+    let api_dir = format!("{API}/");
+    let (api, site): (Vec<String>, Vec<String>) = names
+        .into_iter()
+        .partition(|name| name.starts_with(&api_dir));
+    if site.is_empty() {
         return Err(format!("no HTML files in {}", dir.display()));
     }
-    let mut texts = BTreeMap::new();
+    let mut built = Built {
+        pages: site.len(),
+        api: api.len(),
+        problems: Vec::new(),
+    };
     let mut ids: BTreeMap<String, BTreeSet<String>> = BTreeMap::new();
-    for name in &names {
-        let text = fs::read_to_string(dir.join(name))
-            .map_err(|err| format!("could not read {}: {err}", dir.join(name).display()))?;
-        ids.insert(
-            name.clone(),
-            attributes(&text, "id")
-                .map(|id| percent_decode(&unescape(id)))
-                .collect(),
-        );
-        texts.insert(name.clone(), text);
-    }
-    let mut problems = Vec::new();
-    for (name, text) in &texts {
-        let links = attributes(text, "href")
+    // The files the site's own pages link, so a crate's front page can't go unlinked.
+    let mut linked = BTreeSet::new();
+    for name in site.iter().chain(&api) {
+        let in_api = name.starts_with(&api_dir);
+        let text = read_html(dir, name)?;
+        let base = match base_dir(&text) {
+            Ok(base) => base,
+            Err(why) => {
+                built.problems.push(format!("{name}: {why}"));
+                continue;
+            }
+        };
+        let links = attributes(&text, "href")
             .map(|raw| ("href", raw))
-            .chain(attributes(text, "src").map(|raw| ("src", raw)));
+            .chain(attributes(&text, "src").map(|raw| ("src", raw)));
         for (attribute, raw) in links {
             let value = unescape(raw);
-            if is_web(&value) || value.starts_with("javascript:") || value.starts_with("data:") {
+            if in_api && !value.starts_with(SITE_URL) {
                 continue;
             }
             let link = format!("`{attribute}=\"{value}\"`");
-            let (path, fragment) = split_target(&value);
-            let target = if path.is_empty() {
-                name.clone()
-            } else {
-                let Some(target) = join(parent(name), &path) else {
-                    problems.push(format!("{name}: {link} climbs out of the site"));
+            let (target, fragment) = match html_target(dir, name, base.as_deref(), &value) {
+                Ok(Some(found)) => found,
+                Ok(None) => continue,
+                Err(why) => {
+                    built.problems.push(format!("{name}: {link} {why}"));
                     continue;
-                };
-                if target.is_empty() || target.ends_with('/') || dir.join(&target).is_dir() {
-                    format!("{}/index.html", target.trim_end_matches('/'))
-                        .trim_start_matches('/')
-                        .to_owned()
-                } else {
-                    target
                 }
             };
-            let Some(target_ids) = ids.get(&target) else {
-                if !dir.join(&target).is_file() {
-                    problems.push(format!("{name}: {link}: no `{target}` in the site"));
-                }
+            if !in_api {
+                linked.insert(target.clone());
+            }
+            if !dir.join(&target).is_file() {
+                built
+                    .problems
+                    .push(format!("{name}: {link}: no `{target}` in the site"));
+                continue;
+            }
+            let Some(fragment) = fragment.filter(|_| target.ends_with(".html")) else {
                 continue;
             };
-            if let Some(fragment) = fragment
-                && !target_ids.contains(&percent_decode(fragment))
-            {
-                problems.push(format!(
+            if !ids.contains_key(&target) {
+                let found = attributes(&read_html(dir, &target)?, "id")
+                    .map(|id| percent_decode(&unescape(id)))
+                    .collect();
+                ids.insert(target.clone(), found);
+            }
+            if !ids[&target].contains(&percent_decode(&fragment)) {
+                built.problems.push(format!(
                     "{name}: {link}: `{target}` has no `id=\"{fragment}\"`"
                 ));
             }
         }
     }
-    Ok((names.len(), problems))
+    for krate in crates {
+        let front = format!("{API}/{krate}/index.html");
+        if !dir.join(&front).is_file() {
+            built.problems.push(format!(
+                "{front}: missing, so the crate `{krate}` has no API reference"
+            ));
+            continue;
+        }
+        if !linked.contains(&front) {
+            built.problems.push(format!(
+                "{front}: no page of the site links it, so a reader of the guide can't find it"
+            ));
+        }
+        let text = read_html(dir, &front)?;
+        if !attributes(&text, "href").any(|href| unescape(href).starts_with(SITE_URL)) {
+            built.problems.push(format!(
+                "{front}: doesn't link the guide: the crate's documentation (`//!` in its \
+                 `lib.rs`) must link a page of {SITE_URL}"
+            ));
+        }
+    }
+    Ok(built)
+}
+
+/// Reads the built file `name` (relative to `dir`).
+fn read_html(dir: &Path, name: &str) -> Result<String, String> {
+    fs::read_to_string(dir.join(name))
+        .map_err(|err| format!("could not read {}: {err}", dir.join(name).display()))
+}
+
+/// The directory, relative to the site's root, that a page's `<base href>` starts relative links
+/// from; `None` if it has none. mdBook's 404 page has one, [`SITE_PATH`], so that it works at any
+/// address.
+fn base_dir(html: &str) -> Result<Option<String>, String> {
+    let Some(at) = html.find("<base ") else {
+        return Ok(None);
+    };
+    let Some(value) = attributes(&html[at..], "href").next() else {
+        return Ok(None);
+    };
+    let value = unescape(value);
+    let rest = value
+        .strip_prefix(SITE_URL)
+        .or_else(|| value.strip_prefix(SITE_PATH))
+        .ok_or_else(|| {
+            format!(
+                "`<base href=\"{value}\">` isn't under `{SITE_PATH}`, where Pages serves the site"
+            )
+        })?;
+    // Up to its last `/`, a base names a directory.
+    Ok(Some(parent(rest).to_owned()))
+}
+
+/// The file that `value`, an `href` or `src` on the built page `name`, reaches in the site
+/// (relative to its root, `dir`), with its fragment; `None` if it leaves for the web, which isn't
+/// fetched. `base` is where the page's `<base href>` starts relative links, if it has one.
+fn html_target(
+    dir: &Path,
+    name: &str,
+    base: Option<&str>,
+    value: &str,
+) -> Result<Option<(String, Option<String>)>, String> {
+    let (start, rest) = if let Some(rest) = value.strip_prefix(SITE_URL) {
+        ("", rest)
+    } else if is_web(value) || value.starts_with("javascript:") || value.starts_with("data:") {
+        return Ok(None);
+    } else if value.starts_with('/') {
+        let rest = value
+            .strip_prefix(SITE_PATH)
+            .or_else(|| (value == SITE_PATH.trim_end_matches('/')).then_some(""))
+            .ok_or_else(|| format!("isn't under `{SITE_PATH}`, where Pages serves the site"))?;
+        ("", rest)
+    } else {
+        let (path, fragment) = split_target(value);
+        // A fragment alone names an `id` on its own page. (Under a `<base href>` a browser sends
+        // it to the base instead, as mdBook's 404 page does with the link on its own heading.)
+        if path.is_empty() {
+            return Ok(Some((name.to_owned(), fragment.map(str::to_owned))));
+        }
+        (base.unwrap_or(parent(name)), value)
+    };
+    let (path, fragment) = split_target(rest);
+    let target = join(start, &path).ok_or_else(|| "climbs out of the site".to_owned())?;
+    let target = if target.is_empty() || target.ends_with('/') || dir.join(&target).is_dir() {
+        format!("{}/index.html", target.trim_end_matches('/'))
+            .trim_start_matches('/')
+            .to_owned()
+    } else {
+        target
+    };
+    Ok(Some((target, fragment.map(str::to_owned))))
 }
 
 /// The `.html` files under `dir`, as `/`-separated paths relative to it, appended to `out`.
@@ -2710,10 +2934,10 @@ mod tests {
             ("physics/index.html", "<p>index</p>"),
             ("css/site.css", "body {}"),
         ]);
-        let (files, problems) = check_html(dir.path()).unwrap();
-        assert_eq!(files, 3);
+        let built = check_html(dir.path(), &[]).unwrap();
+        assert_eq!((built.pages, built.api), (3, 0));
         assert_eq!(
-            problems,
+            built.problems,
             [
                 "index.html: `href=\"physics/aero.html#drag\"`: `physics/aero.html` has no \
                  `id=\"drag\"`",
@@ -2721,6 +2945,126 @@ mod tests {
                 "index.html: `href=\"../outside.html\"` climbs out of the site",
                 "index.html: `src=\"missing.png\"`: no `missing.png` in the site",
             ]
+        );
+    }
+
+    #[test]
+    fn root_absolute_links_and_a_base_are_read_under_the_site_path() {
+        let dir = workspace(&[
+            // As mdBook writes its 404 page when `book.toml` sets `site-url`.
+            (
+                "404.html",
+                "<base href=\"/hpr-sim/\"><link href=\"css/site.css\">\n\
+                 <h1 id=\"not-found\"><a href=\"#not-found\">Not found</a></h1>\n\
+                 <a href=\"/hpr-sim/\">home</a> <a href=\"/hpr-sim\">home</a>\n\
+                 <a href=\"/hpr-sim/physics/aero.html#lift\">ok</a> <a href=\"/elsewhere/\">x</a>\n\
+                 <a href=\"https://nrdptel.github.io/hpr-sim/physics/aero.html#drag\">x</a>",
+            ),
+            (
+                "physics/aero.html",
+                "<base href=\"/hpr-sim/physics/\"><a href=\"../index.html\">ok</a>\n\
+                 <h2 id=\"lift\">Lift</h2><a href=\"aero.html#lift\">ok</a>",
+            ),
+            ("physics/moved.html", "<base href=\"/other/\">"),
+            // A base is an `href` too, so it must reach a page.
+            ("physics/index.html", "<p>physics</p>"),
+            ("index.html", "<p>home</p>"),
+            ("css/site.css", "body {}"),
+        ]);
+        let built = check_html(dir.path(), &[]).unwrap();
+        assert_eq!(
+            built.problems,
+            [
+                "404.html: `href=\"/elsewhere/\"` isn't under `/hpr-sim/`, where Pages serves the \
+                 site",
+                "404.html: `href=\"https://nrdptel.github.io/hpr-sim/physics/aero.html#drag\"`: \
+                 `physics/aero.html` has no `id=\"drag\"`",
+                "physics/moved.html: `<base href=\"/other/\">` isn't under `/hpr-sim/`, where Pages \
+                 serves the site",
+            ]
+        );
+    }
+
+    /// A built site with the API reference of the crates `a` and `b` under `api/`, where `b`'s
+    /// front page says `b_front`, and whose guide page says `guide`.
+    fn api_problems(guide: &str, b_front: &str) -> Vec<String> {
+        let dir = workspace(&[
+            ("index.html", "<h1 id=\"start\">Start</h1>"),
+            ("api.html", guide),
+            (
+                "api/a/index.html",
+                "<a href=\"https://nrdptel.github.io/hpr-sim/#start\">guide</a>\n\
+                 <a href=\"../static.files/x.css\">rustdoc's own</a> <a href=\"https://docs.rs/\">web</a>",
+            ),
+            (
+                "api/a/struct.A.html",
+                "<a href=\"https://nrdptel.github.io/hpr-sim/api.html\">ok</a>",
+            ),
+            ("api/b/index.html", b_front),
+        ]);
+        let built = check_html(dir.path(), &["a".to_owned(), "b".to_owned()]).unwrap();
+        assert_eq!((built.pages, built.api), (2, 3));
+        built.problems
+    }
+
+    #[test]
+    fn the_api_reference_and_the_guide_link_each_other() {
+        let guide = "<a href=\"api/a/index.html\">a</a> <a href=\"api/b/\">b</a>";
+        let b_front = "<a href=\"https://nrdptel.github.io/hpr-sim/api.html\">guide</a>";
+        assert_eq!(api_problems(guide, b_front), Vec::<String>::new());
+        // `b` doesn't link the guide, and the guide doesn't link `b`.
+        assert_eq!(
+            api_problems(
+                "<a href=\"api/a/index.html\">a</a> <a href=\"api/b/struct.B.html\">b</a>",
+                "<a href=\"https://nrdptel.github.io/hpr-sim-old/\">elsewhere</a>"
+            ),
+            [
+                "api.html: `href=\"api/b/struct.B.html\"`: no `api/b/struct.B.html` in the site",
+                "api/b/index.html: no page of the site links it, so a reader of the guide can't \
+                 find it",
+                "api/b/index.html: doesn't link the guide: the crate's documentation (`//!` in its \
+                 `lib.rs`) must link a page of https://nrdptel.github.io/hpr-sim/",
+            ]
+        );
+        // A link from the API reference to a page the guide doesn't have.
+        assert_eq!(
+            api_problems(
+                guide,
+                "<a href=\"https://nrdptel.github.io/hpr-sim/physics/gone.html\">x</a>"
+            ),
+            [
+                "api/b/index.html: `href=\"https://nrdptel.github.io/hpr-sim/physics/gone.html\"`: \
+                 no `physics/gone.html` in the site"
+            ]
+        );
+    }
+
+    #[test]
+    fn a_crate_without_an_api_reference_fails() {
+        let dir = workspace(&[("index.html", "<p>home</p>")]);
+        let built = check_html(dir.path(), &["hpr_core".to_owned()]).unwrap();
+        assert_eq!(
+            built.problems,
+            ["api/hpr_core/index.html: missing, so the crate `hpr_core` has no API reference"]
+        );
+    }
+
+    #[test]
+    fn the_site_is_built_for_the_address_pages_serves_it_at() {
+        assert!(SITE_URL.ends_with(SITE_PATH), "{SITE_URL} {SITE_PATH}");
+        let root = crate::designs::root().unwrap();
+        let book = fs::read_to_string(root.join("book.toml")).unwrap();
+        let site_url = format!("site-url = \"{SITE_PATH}\"");
+        assert!(
+            book.lines().any(|line| line.trim() == site_url),
+            "book.toml must set `{site_url}` under [output.html]"
+        );
+        // The README's first lines link the published site (M0.4d).
+        let readme = fs::read_to_string(root.join("README.md")).unwrap();
+        let top: String = readme.lines().take(8).collect::<Vec<_>>().join("\n");
+        assert!(
+            top.contains(SITE_URL),
+            "README.md's first lines must link {SITE_URL}"
         );
     }
 

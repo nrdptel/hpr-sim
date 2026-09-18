@@ -110,7 +110,9 @@ adds a source.
 ## Documentation site tools
 
 The site is built from `docs/` by `cargo xtask site` into the gitignored `target/site` (ADR-016 in
-`docs/DECISIONS.md`). Nothing below is a Rust dependency, and none of it is committed.
+`docs/DECISIONS.md`), with the workspace's rustdoc, the API reference, under `target/site/api`
+(ADR-019). CI publishes it to GitHub Pages from `main`. Nothing below is a Rust dependency, and none
+of it is committed.
 
 | tool | license | mode | notes |
 |---|---|---|---|
@@ -118,6 +120,9 @@ The site is built from `docs/` by `cargo xtask site` into the gitignored `target
 | mdBook's theme: its HTML templates, CSS and JavaScript | MPL-2.0 | bundled in the built site | copied into every build unchanged, so publishing the site (M0.4d) distributes them under their own licence, with their source at `rust-lang/mdBook` |
 | highlight.js 10.1.1, elasticlunr 0.9.5, mark.js 8.11.1, clipboard.js 2.0.4 | BSD-3-Clause; MIT; MIT; MIT | bundled in the built site | shipped by mdBook's theme, each with its licence header intact |
 | Open Sans and Source Code Pro fonts | Apache-2.0; OFL-1.1 | bundled in the built site | shipped by mdBook's theme with their licence texts (`fonts/OPEN-SANS-LICENSE.txt`, `fonts/SOURCE-CODE-PRO-LICENSE.txt`) |
+| rustdoc (part of the pinned Rust toolchain) | MIT OR Apache-2.0 | run-only | builds the API reference (ADR-019) |
+| rustdoc's static files: its CSS and JavaScript, and normalize.css | MIT OR Apache-2.0; MIT | bundled in the built site | copied into `api/static.files/` by every `cargo doc`, with rustdoc's `COPYRIGHT` file naming each resource's terms and the licence texts beside it |
+| Fira, Source Serif 4, Source Code Pro and Nanum Barun Gothic fonts | OFL-1.1 | bundled in the built site | shipped by rustdoc with their licence texts in `api/static.files/` |
 
 ## Reference library (`validation/refs.lock.toml`)
 

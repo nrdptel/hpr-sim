@@ -1,6 +1,14 @@
 //! Atmosphere and wind models: the US Standard Atmosphere 1976, ISA offsets, custom soundings, wind
 //! profiles and turbulence.
 //!
+//! **Guide:** [Atmosphere][guide-atmosphere], [Wind][guide-wind] and
+//! [Turbulence][guide-turbulence]: the models, their sources, how well they are validated and what
+//! they leave out.
+//!
+//! [guide-atmosphere]: https://nrdptel.github.io/hpr-sim/physics/atmosphere.html
+//! [guide-wind]: https://nrdptel.github.io/hpr-sim/physics/wind.html
+//! [guide-turbulence]: https://nrdptel.github.io/hpr-sim/physics/turbulence.html
+//!
 //! - [`ussa76`]: the 1976 standard from −5 to 86 km, with temperature offsets and launch-site
 //!   anchoring (`docs/physics/atmosphere.md`).
 //! - [`moist`]: saturation vapour pressure and humid-air density and speed of sound.

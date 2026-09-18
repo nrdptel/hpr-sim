@@ -433,7 +433,7 @@ update the quotes on this page; `cargo xtask site` checks that they match.
   ([M3.1][roadmap]) are planned.
 - [Accuracy](accuracy.md) gathers every validation result, and
   [Checking a claim](checking-a-claim.md) shows how to trace a number to its source and its test.
-- The API documentation for every type used here builds with
-  `cargo doc --open -p hpr-sim`.
+- [The API reference](api.md) documents every type used here, and
+  `cargo doc --open -p hpr-sim` builds it on your machine.
 
 [roadmap]: https://github.com/nrdptel/hpr-sim/blob/main/docs/ROADMAP.md

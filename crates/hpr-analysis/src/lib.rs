@@ -1,3 +1,7 @@
 //! Monte Carlo dispersion, sensitivity analysis, optimization and challenge specifications.
 //!
+//! **Guide:** [Start here][guide-start] says what works today and what is planned.
+//!
+//! [guide-start]: https://nrdptel.github.io/hpr-sim/start-here.html
+//!
 //! Status: pre-alpha skeleton. The analysis tools arrive in M6.1 to M6.3.

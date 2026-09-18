@@ -1,6 +1,15 @@
 //! The 6-DOF flight engine: state, launch rail phase, integrators, events, recovery, staging and
 //! the recorder.
 //!
+//! **Guide:** [How a flight is simulated][guide-flight], [Rigid-body flight][guide-rigid-body],
+//! [Time integration][guide-integration] and [Recovery][guide-recovery]: the models, their sources,
+//! how well they are validated and what they leave out.
+//!
+//! [guide-flight]: https://nrdptel.github.io/hpr-sim/how-a-flight-is-simulated.html
+//! [guide-rigid-body]: https://nrdptel.github.io/hpr-sim/physics/flight.html
+//! [guide-integration]: https://nrdptel.github.io/hpr-sim/physics/integration.html
+//! [guide-recovery]: https://nrdptel.github.io/hpr-sim/physics/recovery.html
+//!
 //! - [`flight`]: a [`Simulation`] of a rocket, its [`Environment`] and its [`Rail`], flown from
 //!   ignition through the pad, rail and free-flight phases to the ground.
 //! - [`dynamics`]: the rigid-body equations of motion with varying mass and jet damping.

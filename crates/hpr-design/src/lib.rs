@@ -1,6 +1,14 @@
 //! The canonical rocket design model: component tree, shapes, materials, mass properties, stages
 //! and configurations, and design checks.
 //!
+//! **Guide:** [The design tree][guide-design], [Shapes][guide-shapes] and [Mass
+//! properties][guide-mass]: the models, their sources, how well they are validated and what they
+//! leave out.
+//!
+//! [guide-design]: https://nrdptel.github.io/hpr-sim/physics/design.html
+//! [guide-shapes]: https://nrdptel.github.io/hpr-sim/physics/shapes.html
+//! [guide-mass]: https://nrdptel.github.io/hpr-sim/physics/mass.html
+//!
 //! - [`mass`]: mass, centre of mass and full inertia tensor, and how bodies combine.
 //! - [`shapes`]: nose cone and transition profiles.
 //! - [`solids`]: solids of revolution, filled or with a wall.

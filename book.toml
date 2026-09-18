@@ -14,6 +14,9 @@ build-dir = "target/site"
 create-missing = false
 
 [output.html]
+# Where GitHub Pages serves the site (ADR-019). mdBook's 404 page, which works at any address,
+# links the rest of the site under this path.
+site-url = "/hpr-sim/"
 git-repository-url = "https://github.com/nrdptel/hpr-sim"
 edit-url-template = "https://github.com/nrdptel/hpr-sim/edit/main/{path}"
 

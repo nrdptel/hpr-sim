@@ -1,5 +1,11 @@
 //! The validation harness: case files, oracle references, metrics and reports.
 //!
+//! **Guide:** [Accuracy][guide-accuracy] gives every validation result, and [Checking a
+//! claim][guide-claim] traces a number to its source, its test and its validation.
+//!
+//! [guide-accuracy]: https://nrdptel.github.io/hpr-sim/accuracy.html
+//! [guide-claim]: https://nrdptel.github.io/hpr-sim/checking-a-claim.html
+//!
 //! A **case** ([`Case`]) is a TOML file under `validation/cases/`: what to fly, how, and which
 //! metrics to compare against which reference, each with its own tolerance. A **reference**
 //! ([`Reference`]) is a JSON file under `validation/fixtures/`, written by a generator script

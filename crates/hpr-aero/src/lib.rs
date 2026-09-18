@@ -1,6 +1,11 @@
 //! Aerodynamics: Barrowman normal force and centre of pressure with extensions, drag buildup,
 //! compressibility, damping and override tables.
 //!
+//! **Guide:** [Aerodynamics][guide-aero]: the models, their sources, how well they are validated
+//! and what they leave out.
+//!
+//! [guide-aero]: https://nrdptel.github.io/hpr-sim/physics/aero.html
+//!
 //! - [`body`]: nose cones, body tubes and transitions: Barrowman's slope and centre of pressure,
 //!   and Galejs's body lift.
 //! - [`fins`]: fin sets: Barrowman's slope with Prandtl–Glauert, the mean aerodynamic chord,
