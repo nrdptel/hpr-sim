@@ -7,7 +7,7 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
 - **Current milestone:** M0.4c Getting started, and how a flight is simulated
 - **Order:** M0.4c to M0.4e, then M2.1b2 (handoff below)
 - **Run:** the first autopilot run; M0.1-M0.4b, M1.1-M1.7, M2.1a and M2.1b1 have shipped
-- **Last updated:** 2026-09-18 (M0.4b in PR #PRNUM; M0.4c not started)
+- **Last updated:** 2026-09-18 (M0.4b in PR #40; M0.4c not started)
 
 ## Handoff (overwrite each session)
 
@@ -53,7 +53,7 @@ After M0.4 comes M2.1b2: a `Flight::WholeFlight` variant, five cases in the lock
 
 ## Done log (newest first, keep about 15)
 
-- 2026-09-18: M0.4b Model pages, Accuracy, Glossary, Checking a claim (PR #PRNUM, ADR-017): all 16
+- 2026-09-18: M0.4b Model pages, Accuracy, Glossary, Checking a claim (PR #40, ADR-017): all 16
   model pages open with *In short*, which the site check enforces; *Accuracy*'s numbers are traced
   to their sources by the check; a 70-term Glossary; stale lines fixed (geoid, timing, scope).
 - 2026-09-18: M0.4a The site and its link checks (PR #37, ADR-016): `cargo xtask site` checks 19
