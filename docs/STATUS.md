@@ -5,10 +5,10 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
 ## Now
 
 - **Current milestone:** M2.1d3 The path in wind (issue #50)
-- **Order:** M2.1d3, then M1.8; M0.4 waits only on M0.4d's deploy, blocked on Pages (Needs Neer)
-- **Run:** the first autopilot run; M0.1-M0.4c, M0.4e, M1.1-M1.7, M2.1a-M2.1c and M2.1d1-d2
-  have shipped, and M0.4d all but its deploy
-- **Last updated:** 2026-09-18 (M2.1d2 shipped; M2.1d3 not started)
+- **Order:** M2.1d3, then M1.8
+- **Run:** the first autopilot run has ended; M0.1-M0.4, M1.1-M1.7, M2.1a-M2.1c and M2.1d1-d2
+  have shipped. The site is live at https://nrdptel.github.io/hpr-sim/
+- **Last updated:** 2026-09-18 (M0.4 done; M2.1d3 not started)
 
 ## Handoff (overwrite each session)
 
@@ -19,8 +19,6 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
   every row of the report, cell for cell.
 - **Checking a milestone off** in `ROADMAP.md` fails `cargo xtask site` until its row in
   `docs/decisions-and-roadmap.md` says `done`; a new milestone needs a row.
-- **When Pages is on:** `gh workflow run CI --ref main`; once `deploy` passes, drop the README's
-  "goes live once" sentence, check M0.4d and M0.4 off, and set both rows to `done`.
 
 M2.1c (ADR-022, 023): CI checks the report on three OSes; predicted mode's 3% are *targets*.
 
@@ -46,6 +44,9 @@ M2.1c (ADR-022, 023): CI checks the report on three OSes; predicted mode's 3% ar
 
 ## Done log (newest first, keep about 15)
 
+- 2026-09-18: M0.4d Publish, and with it M0.4 (PR #59, ADR-019): Neer turned Pages on; CI run
+  35396233336 on `main` deployed the guide and the rustdoc. ThrustCurve's catalog values confirmed
+  as facts (ADR-005).
 - 2026-09-18: M2.1d2 The calm-air cases (PR #57, ADR-025): Calisto and Bella Lui pass; Juno III's
   drifts not scored, 1.6 of their 3.7 points measured as the rail release.
 - 2026-09-18: M2.1d1 The time-series RMS (PR #54, ADR-024): height and speed RMS on the ten flown
@@ -59,11 +60,6 @@ M2.1c (ADR-022, 023): CI checks the report on three OSes; predicted mode's 3% ar
 
 ## Needs Neer (blocking or one-way decisions; the session keeps working on other things)
 
-- **Turn on GitHub Pages** (1 minute; the only thing M0.4d waits for). Settings → Pages →
-  Build and deployment → Source: **GitHub Actions**. Then `gh workflow run CI --ref main` (or
-  merge anything) deploys the guide and the API reference to https://nrdptel.github.io/hpr-sim/,
-  which the README already links. They ship mdBook's MPL-2.0 theme and rustdoc's OFL fonts, each
-  with its licence (ADR-016, ADR-019). The autopilot may not change repo settings.
 - **Protect `main`** (2 minutes, optional). Settings → Branches → rule for `main`: require the
   `fmt`, `clippy`, `doc`, `deny`, `wasm-check`, `site` and the three `test (...)` and three
   `validate (...)` checks; block force

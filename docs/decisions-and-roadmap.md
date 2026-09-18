@@ -88,11 +88,11 @@ missing or its status disagrees.
 | <a id="m0-1"></a>[M0.1][phase-0] | The code workspace, the automated checks (CI) and the licences | done |
 | <a id="m0-2"></a>[M0.2][phase-0] | The library of published sources and reference programs, each pinned so results can be reproduced | done |
 | <a id="m0-3"></a>[M0.3][phase-0] | The lessons from Loft, the project that came before this one | done |
-| <a id="m0-4"></a>[M0.4][phase-0] | This documentation site | blocked |
+| <a id="m0-4"></a>[M0.4][phase-0] | This documentation site | done |
 | <a id="m0-4a"></a>[M0.4a][phase-0] | The site itself, and the checks on its links and labels | done |
 | <a id="m0-4b"></a>[M0.4b][phase-0] | The model pages' *In short*, Accuracy, the Glossary and Checking a claim | done |
 | <a id="m0-4c"></a>[M0.4c][phase-0] | Getting started, and How a flight is simulated | done |
-| <a id="m0-4d"></a>[M0.4d][phase-0] | Publishing the site and the API reference on the web | blocked |
+| <a id="m0-4d"></a>[M0.4d][phase-0] | Publishing the site and the API reference on the web | done |
 | <a id="m0-4e"></a>[M0.4e][phase-0] | A new reader answers ten questions from the site alone, and what they find unclear is fixed | done |
 | <a id="m1-1"></a>[M1.1][phase-1] | Vectors and rotations, frames, the Earth's shape and gravity | done |
 | <a id="m1-2"></a>[M1.2][phase-1] | The atmosphere and wind | done |
