@@ -39,6 +39,18 @@ Neer's addendum, verbatim (2026-09-17; the same elision):
 > something I did not mention in my original prompt is a heavy emphasis on easy to reach and read
 > documentation. [...]
 
+Neer's ideas, verbatim (2026-09-18; the same elision):
+
+> [...] Some things I though of today that would be cool at some point is modeling airbrakes and
+> then later on modeling canards. These may be hard though considering the fluid modeling. This one
+> may not be as difficult. Support payloads where the weight distribution may change during
+> flight, ejected payloads (this may also mean support for ejected nosecones and body tubes). For
+> the ejections, it would also be cool to support landing for that as well is its under parachute.
+> Another thing that would be cool and I doubt this would be free like I'd like the whole project
+> to be is accounts where you can save designs and sim runs. I will say that if we expect this to
+> take off a bit, I don't mind paying for my goals to be accomplished. This stuff may be on the
+> eventual path anyways but multistage, transitions, clusters, sidepod would be a good add too.
+
 Decisions Neer confirmed at kickoff:
 
 - **Name:** keep `hpr-sim` for now.
@@ -64,6 +76,11 @@ Decisions Neer confirmed at kickoff:
 | V13 | COTS solid motors only, for now | scope rule |
 | V14 | Open source, in the style of the other Fusion Space projects | M0.1 |
 | V15 | Documentation that is easy to reach and easy to read: one searchable site linked from the README, plain language first, every term defined, every claim traceable to its source, test and validation, so a person can check the work without reading the code | M0.4, then every milestone |
+| V16 | Airbrakes, then canards: active drag and roll control, as competitions fly them | M6.4, M6.5 |
+| V17 | Ejected nose cones, body sections and payloads, each landed under its own recovery | M1.11 |
+| V18 | Payload mass that moves or is released during flight | M1.12 |
+| V19 | Multistage, transitions, clusters and side pods | M1.4 (transitions, done), M1.9, M1.13 |
+| V20 | Optional accounts that save designs and flights; paid hosting is acceptable if the project takes off, and the rest stays free and offline | M9.5 |
 
 ## North stars
 
@@ -101,5 +118,5 @@ Decisions Neer confirmed at kickoff:
 ## Not now
 
 - Hybrid, liquid and research (EX) motors.
-- Active control.
+- Active control, until airbrakes (M6.4) and canards (M6.5). Steering to a target point stays out.
 - Any GUI work before the core, validation and interop milestones are done (see `ROADMAP.md`).

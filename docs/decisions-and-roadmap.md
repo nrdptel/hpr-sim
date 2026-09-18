@@ -129,6 +129,9 @@ missing or its status disagrees.
 | <a id="m1-10"></a>[M1.10][phase-1] | Flight outputs: the stability margin over the flight, the best ejection delay, the peak dynamic pressure, fin flutter and the landing point | not yet done |
 | <a id="m2-3"></a>[M2.3][phase-1] | Comparisons with real flights | not yet done |
 | <a id="m2-4"></a>[M2.4][phase-1] | A summary of accuracy for the README, and CI that fails on any regression | not yet done |
+| <a id="m1-11"></a>[M1.11][phase-1] | Ejected nose cones, body sections and payloads, each flown to its own landing | not yet done |
+| <a id="m1-12"></a>[M1.12][phase-1] | Payload mass that moves, or is released, during the flight | not yet done |
+| <a id="m1-13"></a>[M1.13][phase-1] | Pods: bodies mounted beside the airframe, with or without motors | not yet done |
 | <a id="m4-1"></a>[M4.1][phase-2] | A simpler interface, with a builder for environments, motors, rockets and flights | not yet done |
 | <a id="m4-2"></a>[M4.2][phase-2] | A command-line tool | not yet done |
 | <a id="m3-2"></a>[M3.2][phase-2] | Writing OpenRocket `.ork` files | not yet done |
@@ -142,6 +145,8 @@ missing or its status disagrees.
 | <a id="m6-1"></a>[M6.1][phase-3] | Monte Carlo runs and sensitivity | not yet done |
 | <a id="m6-2"></a>[M6.2][phase-3] | Design optimization | not yet done |
 | <a id="m6-3"></a>[M6.3][phase-3] | Competition rules as files, with scoring, limits and presets | not yet done |
+| <a id="m6-4"></a>[M6.4][phase-3] | Airbrakes, with a controller that aims for a target apogee | not yet done |
+| <a id="m6-5"></a>[M6.5][phase-3] | Canards, fixed and then movable for roll control | not yet done |
 | <a id="m3-4"></a>[M3.4][phase-4] | RockSim `.rkt` files in and out | not yet done |
 | <a id="m3-5"></a>[M3.5][phase-4] | RASAero `.CDX1` files in and out | not yet done |
 | <a id="m3-6"></a>[M3.6][phase-4] | RocketPy scripts and files in and out | not yet done |
@@ -157,6 +162,7 @@ missing or its status disagrees.
 | <a id="m9-2"></a>[M9.2][phase-7] | 3D flight replay, the real flight beside the simulated one | not yet done |
 | <a id="m9-3"></a>[M9.3][phase-7] | A web app that works offline | not yet done |
 | <a id="m9-4"></a>[M9.4][phase-7] | Mobile apps | not yet done |
+| <a id="m9-5"></a>[M9.5][phase-7] | Optional accounts that save designs and flights and sync them across devices | not yet done |
 
 ## Lessons from Loft
 
