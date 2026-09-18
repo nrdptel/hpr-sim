@@ -5,7 +5,7 @@
 # Everything that case's header says about the metrics, the rail and the sources of the remaining
 # differences holds here. What differs: with no wind, the horizontal path comes only from the
 # rail's inclination and heading, so the apogee and landing drifts are scored at the milestone's 3%
-# like every other metric.
+# like every other metric (its acceleration time is not scored, for its windy case's reason).
 # In wind the drifts are open misses (issue #50); these cases measure how much of that miss is the
 # response to wind.
 

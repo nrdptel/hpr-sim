@@ -29,8 +29,8 @@ M2.1c (ADR-022, 023): CI checks the report on three OSes; predicted mode's 3% ar
   the fixture's 120 times, held to 3% of the reference's apogee and max speed (the gate test holds
   them no looser). A new whole-flight case must name both.
 - **M2.1d2, the calm-air cases (ADR-025):** three `flight-*-calm` cases, flown on `flight.py`'s
-  `CALM_AIR_BASES`, drifts scored at 3%; Juno III's drifts are not scored (the rail release,
-  measured by `rail_release.py`: with it matched, every calm drift is within 2.2%).
+  `CALM_AIR_BASES`, drifts scored at 3%; Juno III's are not scored (-3.7%; the rail release is 1.6 points of it,
+  per `rail_release.py`; a same-sign rest, -0.5 to -2.2%, remains in every calm drift).
 - **M2.1d3, issue #50** (the path in wind): start with the rail release (ADR-025), then hpr's
   drag growth with angle of attack, and each code's normal force and damping (only C_D0 differs
   between the modes). In wind the gap is far more than the release explains.
@@ -47,7 +47,7 @@ M2.1c (ADR-022, 023): CI checks the report on three OSes; predicted mode's 3% ar
 ## Done log (newest first, keep about 15)
 
 - 2026-09-18: M2.1d2 The calm-air cases (PR #57, ADR-025): Calisto and Bella Lui pass; Juno III's
-  drifts not scored, the rail release measured as their cause.
+  drifts not scored, 1.6 of their 3.7 points measured as the rail release.
 - 2026-09-18: M2.1d1 The time-series RMS (PR #54, ADR-024): height and speed RMS on the ten flown
   whole flights, aligned at ignition; ten same-drag RMS rows pass, three predicted outside target.
 - 2026-09-18: M2.1c2 Predicted mode (PR #52, ADR-023): hpr's own drag against RocketPy on each

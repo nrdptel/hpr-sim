@@ -586,8 +586,9 @@
 
       *Result (ADR-025):* met. Calisto and Bella Lui pass every scored metric (drifts −1.258% to
       −2.583%). Juno III's drifts miss by −3.670% and −3.695% with its apogee within 0.060%, and are
-      reported, not scored: RocketPy frees the rocket at its first rail button and hpr at its last.
-      With both freeing it at the same point (`rail_release.py`), every calm drift is within 2.2%.
+      reported, not scored: about 1.6 of the 3.7 points are the rail release (hpr frees the rocket
+      at its last rail button, RocketPy at its first; `rail_release.py`). A same-sign rest remains in
+      every calm drift, for M2.1d3.
 
     - [ ] **M2.1d3 The path in wind (issue #50).**
       - Fly the windy cases with each suspected cause of the gap matched to RocketPy in turn: rail

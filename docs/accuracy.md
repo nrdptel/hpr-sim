@@ -345,7 +345,9 @@ What the two codes still do differently, and what it moves:
   and are reported but not scored ([case file][juno-calm-case], [ADR-025][adr-025]): RocketPy
   frees the rocket from the rail when its first rail button leaves, and hpr when its last one does.
   Flown so both free it at the same point, every calm drift agrees to within 2.2% (measured once by
-  `rail_release.py`, not a committed check; the table is in [ADR-025][adr-025]). So most of the
+  `rail_release.py`, not a committed check; the table is in [ADR-025][adr-025]). The release is
+  about 1.6 of Juno III's 3.7 points; what remains has the same sign in every calm case, a steeper
+  path in hpr not yet explained. So most of the
   gap in wind is in the response to wind, which same-drag mode doesn't share: each code's own normal force and damping, and how hpr's drag grows
   at an angle. The drifts of the four windy cases, and Valetudo's still-air landing drift,
   −3.410%, are open misses: reported, not scored and not passed, until [issue #50][issue-50] finds

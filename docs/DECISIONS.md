@@ -2014,10 +2014,12 @@ those calm-air runs as cases, with the drifts scored at M2.1's 3%.
   apogee and max speed, as ADR-024 sets. Calisto and Bella Lui pass every scored metric: drifts
   −1.258% to −2.583%, every other within 1.8%. Calisto's `max_acceleration_time_s` is not scored,
   for the reason its windy case gives (two peaks 0.9% apart).
-- **Juno III's two drifts are reported, not scored,** because they miss for a measured reason
-  that is a difference between the codes' rail models, not an error in either. hpr keeps the
+- **Juno III's two drifts are reported, not scored,** because they miss by 3.7%, and a measured
+  difference between the codes' rail models accounts for about 1.6 of those points. hpr keeps the
   rocket guided until its last rail button leaves the rail; RocketPy frees it when its first
-  button does (`effective_1rl`). Juno III's buttons are 1.41 m apart, twice Calisto's, so hpr
+  button does (`effective_1rl`). Neither models tip-off, the nose dipping as the rocket pivots on
+  its last button (hpr's `rail.rs` says so), and tip-off would add drift, so hpr's full guidance
+  is the further of the two from a real launch. Juno III's buttons are 1.41 m apart, twice Calisto's, so hpr
   guides it along its 85° rail for 1.41 m more, and its path stays steeper: apogee drift −3.670% and
   landing drift −3.695%, with the apogee within 0.060%. `rail_release.py` flies each calm case in
   RocketPy on a rail longer by its button spacing, so both codes free the rocket at the same
@@ -2029,8 +2031,10 @@ those calm-air runs as cases, with the drifts scored at M2.1's 3%.
   | Calisto | 0.700 m | 453.5 / 515.8 m | 451.9 / 514.0 m | −0.9% / −1.1% |
   | Bella Lui | 0.600 m | 21.5 / 27.7 m | 21.3 / 27.3 m | −0.5% / −1.3% |
 
-  With the release matched, every calm drift is within 2.2%. That is why Juno III's are not scored,
-  and the case file says so with these numbers.
+  With the release matched, every calm drift is within 2.2%, and Juno III's would pass. The
+  release closes 43% of Juno III's gap (9.1 of 20.9 m at apogee), 25% to 28% of Calisto's and 50%
+  to 66% of Bella Lui's. What remains is negative in all six drifts, −0.5% to −2.2%: hpr's path is
+  steeper for a second reason, not yet named. The case file gives these numbers.
 
 **Alternatives rejected.**
 
@@ -2039,14 +2043,18 @@ those calm-air runs as cases, with the drifts scored at M2.1's 3%.
 - *Flying the calm references on the longer rail.* hpr reads its rail from the reference, so it
   would fly the longer rail too and still free the rocket later. Matching the release needs a
   change to one code's rail model, which is M2.1d3's first candidate for issue #50.
-- *Leaving Juno III failing.* The suite has to be green to merge, and the miss is explained and
-  measured. It stays visible in the report as a not-scored row with its value.
+- *Leaving Juno III failing.* The suite has to be green to merge, and the miss is measured and
+  partly explained. It stays visible in the report as a not-scored row with its value.
+- *Scoring Juno III's drifts against a release-matched RocketPy drift, at 3%.* That keeps a live
+  bound (it would pass at −2.1% and −2.2%), but it needs the release-matched run committed as a
+  fixture the harness reads. M2.1d3 takes it up with the rail release.
 
 **Consequences.**
 
-- In calm air, most of the drift gap is the rail release. In wind, the gap is 67% to 85% of
-  RocketPy's upwind shift (issue #50), far more than the release explains, so M2.1d3 still looks
-  at the response to wind.
+- In calm air, the rail release is a quarter to two thirds of each drift gap, and the rest has
+  one sign in every case. In wind, hpr's upwind shift is 67% to 85% of RocketPy's (issue #50):
+  Juno III's in-wind gap is 378 m, against about 9 m from the release. So M2.1d3 still looks at
+  the response to wind, and at the steeper path that remains in calm air.
 - `rail_release.py` is a measurement, not a fixture or a check. If M2.1d3 matches the release,
   Juno III's drifts should be scored again.
 

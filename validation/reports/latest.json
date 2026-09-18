@@ -1532,7 +1532,7 @@
       "difference": -20.925286032811982,
       "relative": -0.03670270036071051,
       "verdict": "not_scored",
-      "note": "a model difference, measured (ADR-025): hpr keeps the rocket guided until its last rail button leaves and RocketPy frees it at its first, and Juno III's buttons are 1.41 m apart, twice Calisto's, so hpr guides it along its 85-degree rail for 1.41 m more and its path stays steeper: apogee drift -3.670%, with the apogee within 0.060%. With RocketPy's rail 1.41 m longer, so both codes free the rocket at the same point (validation/oracles/rocketpy/rail_release.py), RocketPy's apogee drift is 561.0 m and hpr's 549.2 m is within -2.1%. Reported, not scored; M2.1d3 (issue #50) takes up the rail release."
+      "note": "partly a model difference, measured (ADR-025): hpr keeps the rocket guided until its last rail button leaves and RocketPy frees it at its first, and Juno III's buttons are 1.41 m apart, twice Calisto's, so hpr guides it along its 85-degree rail for 1.41 m more and its path stays steeper: apogee drift -3.670%, with the apogee within 0.060%. With RocketPy's rail 1.41 m longer, so both codes free the rocket at the same point (validation/oracles/rocketpy/rail_release.py), RocketPy's apogee drift is 561.0 m and hpr's 549.2 m is within -2.1%: the release is 1.6 of the 3.7 points, and the rest has the same sign in every calm case, a steeper path not yet explained. Reported, not scored; M2.1d3 (issue #50) takes up the rail release."
     },
     {
       "case": "flight-juno-iii-calm",
@@ -1609,7 +1609,7 @@
       "difference": -24.06493531546414,
       "relative": -0.0369504551617737,
       "verdict": "not_scored",
-      "note": "a model difference, measured (ADR-025): the landing point follows the apogee's (landing drift -3.695%), and the gap is the rail release, as for apogee_drift_m. With RocketPy freeing the rocket where hpr does (a rail 1.41 m longer, validation/oracles/rocketpy/rail_release.py), RocketPy's landing drift is 641.0 m and hpr's 627.2 m is within -2.2%. Reported, not scored; M2.1d3 (issue #50) takes up the rail release."
+      "note": "partly a model difference, measured (ADR-025): the landing point follows the apogee's (landing drift -3.695%), and the rail release is part of the gap, as for apogee_drift_m. With RocketPy freeing the rocket where hpr does (a rail 1.41 m longer, validation/oracles/rocketpy/rail_release.py), RocketPy's landing drift is 641.0 m and hpr's 627.2 m is within -2.2%. Reported, not scored; M2.1d3 (issue #50) takes up the rail release."
     },
     {
       "case": "flight-juno-iii-calm",
