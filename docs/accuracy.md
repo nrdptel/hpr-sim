@@ -259,10 +259,10 @@ a reason written in its case file (below). Prometheus 2022, the sixth rocket, is
 
 | case | `apogee_agl_m` | `apogee_time_s` | `flight_time_s` | `max_speed_m_s` | `max_mach` |
 |---|---|---|---|---|---|
-| [`flight-calisto-tests-motor-at-minus-1.373`][report] | +0.136% | +0.167% | +0.165% | −0.009% | −0.179% |
-| [`flight-valetudo`][report] | +0.003% | +0.217% | +0.160% | −0.049% | −0.112% |
-| [`flight-ndrt-2020-nose-to-tail`][report] | −0.010% | +0.150% | +0.630% | −0.056% | −0.094% |
-| [`flight-juno-iii`][report] | +1.710% | +0.956% | +1.293% | +0.059% | −0.393% |
+| [`flight-calisto-tests-motor-at-minus-1.373`][report] | +0.136% | +0.167% | +0.165% | −0.009% | −0.178% |
+| [`flight-valetudo`][report] | +0.003% | +0.217% | +0.160% | −0.049% | −0.110% |
+| [`flight-ndrt-2020-nose-to-tail`][report] | −0.010% | +0.150% | +0.630% | −0.049% | −0.089% |
+| [`flight-juno-iii`][report] | +1.710% | +0.956% | +1.293% | +0.059% | −0.392% |
 | [`flight-bella-lui`][report] | +0.476% | +0.275% | +0.319% | −0.018% | −0.134% |
 
 | case | `rail_exit_speed_m_s` | `rail_exit_time_s` | `burnout_altitude_agl_m` | `burnout_speed_m_s` | `impact_speed_m_s` |

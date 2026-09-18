@@ -1886,6 +1886,17 @@ below Valetudo's table and 6.0% below Juno III's at Mach 0.3.
   1404.058761 m), past ADR-022's 1e-7 reproduction bound. On macOS that apogee is 1404.058522,
   .057883, .058122 and .058145 m at 1e-8 to 1e-11, so 1e-11 converges it to about 1e-5 m, for
   0.5 s more over the suite. The bound is not loosened.
+- **Peaks are found between the solver's steps, not only at them.** At 1e-11, CI still found
+  NDRT 2020's predicted max speed and max Mach 1.2e-7 and 6.6e-6 apart on macOS and Linux, and
+  Windows apart again. The harness read each peak at the steps' ends, so a peak was off by
+  wherever the step control put them, and that differs between platforms. Moving predicted mode's
+  tolerance by 1e-8 of itself stands in for that: it moved NDRT's max speed by 2.4e-6 and Bella
+  Lui's by 2.7e-6, but the event-located apogee by only 1.3e-9. Now, wherever speed, Mach or
+  acceleration rises out of a step's start and into its end, a golden-section search on the step's
+  dense output finds the peak between them. The same perturbation then moves no metric by more
+  than 7.9e-9. The step-end reading had been low by up to 6.3e-5 (same-drag NDRT's max speed).
+  Every verdict stands, and five of *Accuracy*'s cells moved in the third decimal. The bound is
+  not loosened.
 - The set of predicted rows outside their target is pinned by a test, as the not-scored set is,
   so a case file's "nothing else misses" cannot go stale unnoticed.
 - `scripts/regenerate-references.sh` regenerates the new reference with the others, and now

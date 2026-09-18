@@ -892,6 +892,34 @@ fn a_metric_the_flight_cannot_measure_is_refused_before_it_flies() {
 }
 
 #[test]
+fn a_peak_inside_a_step_is_found_smooth_or_kinked() {
+    use crate::run::peak_between;
+    let found = |value: fn(f64) -> f64| {
+        peak_between::<()>(0.0, 0.05, |t| Ok(value(t))).expect("the value never fails")
+    };
+    // A smooth peak, as speed's at burnout: its top is flat to rounding within 2.6e-9 s of it,
+    // so that is how near it can be found, and the value there is the peak's to rounding.
+    let speed = |t: f64| 186.68 - 4e3 * (t - 0.0317).powi(2);
+    let smooth = found(speed);
+    assert!((smooth - 0.0317).abs() < 5e-9, "{smooth}");
+    assert!((speed(smooth) - 186.68).abs() < 1e-13, "{}", speed(smooth));
+    // A kinked one, as acceleration's at a thrust curve's point: within 3.5e-11 of the 0.05 s
+    // bracket.
+    let kinked = found(|t| 115.3 - 900.0 * (t - 0.0083).abs());
+    assert!((kinked - 0.0083).abs() < 2e-12, "{kinked}");
+    // At an end of the bracket it finds that end.
+    let rising = found(|t| t);
+    assert!((rising - 0.05).abs() < 2e-12, "{rising}");
+    // And it stops at the first error.
+    let mut calls = 0;
+    let failed = peak_between(0.0, 1.0, |_| {
+        calls += 1;
+        if calls < 3 { Ok(0.0) } else { Err("no sample") }
+    });
+    assert_eq!((failed, calls), (Err("no sample"), 3));
+}
+
+#[test]
 fn a_tolerance_accepts_what_it_says() {
     // The values stay off the boundary itself, where the comparison is at the mercy of rounding
     // (`1.03 - 1.0` is 0.030000000000000027, which is not `<= 0.03`).

@@ -673,8 +673,9 @@ fn rocketpy_environment(
 ///   ([Loft lesson L26][l26]). hpr is still on its rail then, so the harness finds the instant the
 ///   forward guide's travel is reached and reads the speed there.
 /// - The maxima are over the solver's steps, both ends of each, as RocketPy's are over its
-///   solution array, which starts each phase at its first instant; the power-on maximum is over
-///   the steps up to burnout (`max_acceleration_power_on`).
+///   solution array, which starts each phase at its first instant, and over each peak that falls
+///   inside a step, found on the step's dense output (`Peaks::peaks_within`); the power-on
+///   maximum is over those up to burnout (`max_acceleration_power_on`).
 ///
 /// [l26]: https://nrdptel.github.io/hpr-sim/decisions-and-roadmap.html#l26
 /// [l80]: https://github.com/nrdptel/hpr-sim/blob/main/docs/research/loft-lessons.md
@@ -1049,7 +1050,7 @@ fn point_velocity(state: &State, p: DVec3) -> DVec3 {
     state.velocity_enu_m_s + state.attitude.mul_vec3(state.body_rate_rad_s.cross(p))
 }
 
-/// One step's end, as the whole-flight metrics need it.
+/// One instant of the flight, as the whole-flight metrics need it.
 #[derive(Debug, Clone, Copy)]
 struct Row {
     time_s: f64,
@@ -1058,8 +1059,55 @@ struct Row {
     acceleration_m_s2: f64,
 }
 
-/// Watches a whole flight for what its metrics need: every step's speed, Mach and acceleration at
-/// the dry centre of mass, and the instant the forward guide leaves the rail.
+impl Row {
+    /// The quantities whose peaks the metrics report, each as a function of a row.
+    const PEAKED: [fn(&Row) -> f64; 3] = [
+        |row| row.speed_m_s,
+        |row| row.mach,
+        |row| row.acceleration_m_s2,
+    ];
+}
+
+/// Golden-section iterations that narrow onto a peak inside one step: each keeps 0.618 of the
+/// bracket, so 50 leave 3.5e-11 of the step's length.
+const PEAK_ITERATIONS: usize = 50;
+
+/// Where `value` peaks between `low` and `high`, by golden-section search (Kiefer 1953, "Sequential
+/// minimax search for a maximum", Proc. AMS 4(3), 502-506): each iteration keeps 0.618 of the
+/// bracket, for [`PEAK_ITERATIONS`] iterations. For a `value` that rises to one peak and then
+/// falls, the answer is within 3.5e-11 of the bracket's length of a kinked peak. A smooth peak's
+/// top is flat to the value's rounding over a wider span, so the answer is somewhere on it and
+/// the value there is the peak's to rounding.
+///
+/// # Errors
+///
+/// The first error `value` returns.
+pub(crate) fn peak_between<E>(
+    low: f64,
+    high: f64,
+    mut value: impl FnMut(f64) -> Result<f64, E>,
+) -> Result<f64, E> {
+    let keep = 0.5 * (5.0_f64.sqrt() - 1.0);
+    let (mut low, mut high) = (low, high);
+    let (mut left, mut right) = (high - keep * (high - low), low + keep * (high - low));
+    let (mut at_left, mut at_right) = (value(left)?, value(right)?);
+    for _ in 0..PEAK_ITERATIONS {
+        if at_left > at_right {
+            (high, right, at_right) = (right, left, at_left);
+            left = high - keep * (high - low);
+            at_left = value(left)?;
+        } else {
+            (low, left, at_left) = (left, right, at_right);
+            right = low + keep * (high - low);
+            at_right = value(right)?;
+        }
+    }
+    Ok(if at_left > at_right { left } else { right })
+}
+
+/// Watches a whole flight for what its metrics need: speed, Mach and acceleration at the dry centre
+/// of mass at every step's ends and at each of their peaks inside a step, and the instant the
+/// forward guide leaves the rail.
 struct Peaks {
     /// The dry centre of mass, body axes from the nose tip, m.
     dry_cg_m: DVec3,
@@ -1072,7 +1120,7 @@ struct Peaks {
     forward_guide_travel_m: f64,
     /// When that happened and the speed then, once it has.
     forward_guide_exit: Option<(f64, f64)>,
-    /// A row at every step's start and end.
+    /// A row at every step's start and end, and at every peak inside a step.
     rows: Vec<Row>,
 }
 
@@ -1113,6 +1161,45 @@ impl Peaks {
         }))
     }
 
+    /// The rows at the peaks of speed, Mach and acceleration that fall inside `step`.
+    ///
+    /// A peak read only where steps end is off by wherever the step control put them: by O(h²) of
+    /// the step length h at a smooth peak, by O(h) at a kink such as a thrust curve's point. The
+    /// step control is not the same on every platform (predicted mode's drag calls `ln` and
+    /// `powf`), so neither is such a peak: moving predicted mode's solver tolerance by 1e-8 of
+    /// itself moved NDRT 2020's max speed by 2.4e-6 of itself, where the event-located apogee
+    /// moved by 1.3e-9. So where a quantity rises out of the step's start and into its end, one
+    /// microsecond (or a quarter of the step) inside each, a golden-section search on the
+    /// step's dense output narrows onto the peak between them. What it finds is the
+    /// interpolant's peak, which the tolerance controls, wherever the steps fall.
+    fn peaks_within(&self, step: &dyn FlightStep) -> Result<Vec<Row>, SimError> {
+        let (start_s, end_s) = (step.start_s(), step.end_s());
+        let inside = (0.25 * (end_s - start_s)).min(1e-6);
+        // `row` gives none only for a step of no length, which has no inside.
+        let (Some(first), Some(second), Some(penultimate), Some(last)) = (
+            self.row(step, start_s)?,
+            self.row(step, start_s + inside)?,
+            self.row(step, end_s - inside)?,
+            self.row(step, end_s)?,
+        ) else {
+            return Ok(Vec::new());
+        };
+        let mut peaks = Vec::new();
+        for quantity in Row::PEAKED {
+            if !(quantity(&second) > quantity(&first) && quantity(&penultimate) > quantity(&last)) {
+                continue;
+            }
+            let peak_s = peak_between(start_s, end_s, |t_s| -> Result<f64, SimError> {
+                Ok(self
+                    .row(step, t_s)?
+                    .as_ref()
+                    .map_or(f64::NEG_INFINITY, quantity))
+            })?;
+            peaks.extend(self.row(step, peak_s)?);
+        }
+        Ok(peaks)
+    }
+
     /// How far past the forward guide's exit the rocket has travelled at `t_s`, m.
     fn past_forward_guide(&self, step: &dyn FlightStep, t_s: f64) -> f64 {
         (step.state_at(t_s).position_enu_m - self.start_enu_m).dot(self.rail_axis_enu)
@@ -1129,6 +1216,8 @@ impl Observer for Peaks {
         // differs across platforms in the sixth figure where the peak falls steeply.
         self.rows.extend(self.row(step, start_s)?);
         self.rows.extend(self.row(step, end_s)?);
+        let peaks = self.peaks_within(step)?;
+        self.rows.extend(peaks);
         if self.forward_guide_exit.is_none()
             && step.phase() == Phase::Rail
             && self.past_forward_guide(step, end_s) >= 0.0
