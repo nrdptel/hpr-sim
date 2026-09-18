@@ -4,31 +4,27 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
 
 ## Now
 
-- **Current milestone:** M0.4b Model pages, Accuracy, Glossary, Checking a claim
-- **Order:** M0.4b to M0.4e, then M2.1b2 (handoff below)
-- **Run:** the first autopilot run; M0.1-M0.4a, M1.1-M1.7, M2.1a and M2.1b1 have shipped
-- **Last updated:** 2026-09-18 (M0.4a merged in PR #37; M0.4b not started)
+- **Current milestone:** M0.4c Getting started, and how a flight is simulated
+- **Order:** M0.4c to M0.4e, then M2.1b2 (handoff below)
+- **Run:** the first autopilot run; M0.1-M0.4b, M1.1-M1.7, M2.1a and M2.1b1 have shipped
+- **Last updated:** 2026-09-18 (M0.4b in PR #PRNUM; M0.4c not started)
 
 ## Handoff (overwrite each session)
 
-M0.4a built the site (ADR-016): mdBook 0.5.4 renders `docs/` in place, listed by
-`docs/SUMMARY.md`, and `cargo xtask site` (`xtask/src/site.rs`) checks links, labels and math on
-the pages, then every `href`/`src` in the built HTML. Start M0.4b here:
+M0.4b gave every model page an *In short* and wrote *Accuracy*, *Glossary*, *Checking a claim* and
+*Decisions and the roadmap*; `cargo xtask site` now enforces all four (ADR-017). Start M0.4c here:
 
-- **The *In short* check** goes in `site.rs` beside the others, over `docs/physics/*.md` (the
-  model pages; format pages are not models). Fix its form first (for example, the first section
-  is `## In short`, naming what it models, its source, how well it is validated and what it
-  leaves out), with a test showing a page without it failing.
-- **Accuracy** gives every result from `validation/reports/latest.md` and the pages' own
-  verification tables, gaps included; *Start here* already lists the gaps. CLAUDE.md wants quoted
-  numbers to come from the committed report: check or generate them, don't retype them.
-- **Decisions and roadmap:** today *Start here* links them on GitHub. As pages, the label check
-  would need to accept a label where it is defined (an ADR heading, a roadmap entry, a lesson row).
-- **Page rules (ADR-016):** relative links only between pages, the rest by
-  `https://github.com/nrdptel/hpr-sim/blob/main/...`; labels as `[M1.8][roadmap]`,
-  `[ADR-009][adr-009]`, `[Loft lesson L10][lessons]`, defined at the page's end; nothing linked
-  in a heading; Unicode equations; "Level 2", not "L2". The docs review's term list (stability
-  margin, calibers, tip-off, drift) seeds the Glossary.
+- **The example.** Put it in `crates/hpr-sim/examples/` and run it in CI with `cargo run --locked
+  --example <name> -p hpr-sim`. `Simulation::new` and `run` (`crates/hpr-sim/src/flight.rs:247`)
+  fly a design such as `validation/designs/synthetic-54mm-three-fin.json` (see
+  `testing::design`, `testing::site`). Print apogee, top speed, rail-exit speed and the landing,
+  with units, and say they are unvalidated until M2.1b2.
+- **Keep the page's code honest.** `{{#include}}` renders on the site only: quote the example in
+  the page and add a site check that the quote equals the file, as *Accuracy*'s numbers are.
+- **How a flight is simulated:** pad to landing in plain words, linking each model page. The
+  diagram must render on both: an SVG under `docs/` or a ```` ```text ```` sketch, not mermaid.
+- **Page rules** (ADR-016, ADR-017): relative links between pages, GitHub URLs for the rest,
+  labels as links, none in headings, Unicode equations, "Level 2"; new pages go in `SUMMARY.md`.
 - **For M0.4d:** GitHub Pages serves under `/hpr-sim/`, so set `site-url` in `book.toml`, and teach
   `check_html` to resolve root-absolute hrefs (`404.html` has `<base href="/">`) against it.
 
@@ -57,16 +53,17 @@ After M0.4 comes M2.1b2: a `Flight::WholeFlight` variant, five cases in the lock
 
 ## Done log (newest first, keep about 15)
 
+- 2026-09-18: M0.4b Model pages, Accuracy, Glossary, Checking a claim (PR #PRNUM, ADR-017): all 16
+  model pages open with *In short*, which the site check enforces; *Accuracy*'s numbers are traced
+  to their sources by the check; a 70-term Glossary; stale lines fixed (geoid, timing, scope).
 - 2026-09-18: M0.4a The site and its link checks (PR #37, ADR-016): `cargo xtask site` checks 19
   pages' 209 links and labels, builds with mdBook and checks 23 HTML files; a CI `site` job runs
   it. 146 bare labels became links; *Start here* written; stale lines fixed (#38, #39 filed).
 - 2026-09-17: PR #34 merged after a physics review and a validation audit: the M2.1b1 oracle's
   step is bounded, and the cliff is its own 6000 s `max_time`, not RocketPy's defaults (#33).
 - 2026-09-17: M2.1b1 The whole-flight oracle: `validation/oracles/rocketpy/flight.py` flies the
-  five examples pad to landing under a declared constant `C_D0` (RocketPy's own exports carry
-  their own terms), reproducible byte for byte. Apogees 779 to 3,623 m AGL; Prometheus reaches
-  Mach 1.014. Bounding `max_time_step` fixed a step-size cliff, of the oracle's own 6000 s
-  `max_time`, that kept every case on the rail (#33).
+  five examples pad to landing under a declared constant `C_D0`, byte for byte. Apogees 779 to
+  3,623 m AGL; Prometheus reaches Mach 1.014.
 - 2026-09-17: #11 closed (PR #30): `SolidMotor` refuses an impossible exhaust velocity, the range
   measured over 1,708 catalog motors. #27 closed (PR #28): the M1.7a RocketPy comparison flies
   RocketPy's gravity and asserts the vector, not the magnitude, which is what hid the difference.
@@ -92,6 +89,9 @@ After M0.4 comes M2.1b2: a `Flight::WholeFlight` variant, five cases in the lock
 ## Decided without Neer (one line each; significant ones get an ADR)
 
 - M0.4, M1.4, M1.5, M1.6, M1.7 and M2.1b were split into increments, done-when bullets unchanged.
+- ADR-017: *In short* is four bold-labelled items under the title; *Accuracy*'s numbers are
+  checked against the files they link, not generated; the decisions and roadmap stay files, indexed
+  by a page the check keeps complete.
 - ADR-016: mdBook 0.5.4 (MPL-2.0, run only; its theme's files ship in the built site under their
   own licences) over `docs/` in place; Unicode equations, no LaTeX; our own link and label checks
   on pulldown-cmark rather than lychee; external links counted, not fetched (#38).
@@ -119,7 +119,8 @@ After M0.4 comes M2.1b2: a `Flight::WholeFlight` variant, five cases in the lock
 ## Known issues and risks
 
 - Two M1.2 sources are pinned from third-party mirrors (MIL-F-8785C from Abbott Aerospace; WMO-No. 8
-  from Mongolia's weather service). Dryden turbulence is an aircraft model, unvalidated until M2.3.
+  from Mongolia's weather service). Dryden turbulence is an aircraft model, unvalidated for
+  rockets, and no flight uses it (#39).
 - Only 32 curves are bundled (none in class A); the rest wait for M5's cache. Its checks and the
   1710-file sweep ran on unpinned `refs/samples/` caches.
 - Wall and fin mass may differ from OpenRocket's undocumented conventions; M2.2 measures it.
@@ -128,7 +129,7 @@ After M0.4 comes M2.1b2: a `Flight::WholeFlight` variant, five cases in the lock
   reason. API snapshots can't be reproduced once an API moves: CI checks committed fixtures only.
 - Barrowman 1966, TIR-33, Galejs, the `.rse` spec and Knacke have no clear terms: never redistribute.
 - Aero (M1.5a) is small-angle only and documented to Mach 0.8; body-lift `K` is uncertain (Galejs:
-  1.0 to 1.5) and the Recruiter's six fins miss TIR-33 by +3.4% (ADR-008).
+  1.0 to 1.5) and the Recruiter's six fins miss the printed slope by +3.42% (+2.87% whole; ADR-008).
 - Drag (M1.5b): the RASAero comparison can't show 10% agreement without the exports' inputs (fins
   and finish move each case by 20%+). hpr misses Valetudo's suspect table by 47% and Cavour's
   power-on by 18% (open; ADR-009); drag reads low from about Mach 0.6 until M1.8.
@@ -138,12 +139,9 @@ After M0.4 comes M2.1b2: a `Flight::WholeFlight` variant, five cases in the lock
 - Recovery: no canopy overshoot or opening-load factor (a 1.5 m canopy peaks at 1.6 kN where
   Knacke's infinite-mass `C_x` gives 5.1 kN), no added mass or airframe drag under a canopy, the
   attitude freezes at deployment, and his filling time is stated only for 150 to 500 ft/s (M1.7a).
-  Streamer pleats are not modelled (Kidwell's pleated streamer descends 27% slower); tumble misses
-  its own finless drop by +19% (M1.7b).
+  Streamer pleats are not modelled (hpr reads +58% fast on Kidwell's pleated streamer, +9% on his
+  flat one); tumble misses its own finless drop by +19% (M1.7b).
 - `refs doctor` "runnable" means the oracle's runtime starts, not that a flight ran; no oracle runs
   in CI, which compares against stored output (M2.1b).
 - hpr's descent results are not bit-identical across macOS, Windows and Linux: the committed report
   is pinned to six decimals, where they agree; CI proved full precision does not (M2.1a).
-- Normal gravity's meridional term is pinned only where M1.7a's fixtures sample it (23°S to 41°N,
-  under 4.4 km). It is asserted against its first-order closed form to 2%; higher or nearer the
-  poles is unmeasured (#27, closed).
