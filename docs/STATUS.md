@@ -6,7 +6,7 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
 
 - **Current milestone:** M2.1b Whole flights against RocketPy, same-drag (M2.1a shipped)
 - **Run:** the first autopilot run; M0.1–M0.3, M1.1–M1.7 and M2.1a have shipped
-- **Last updated:** 2026-09-17 (M2.1a merged)
+- **Last updated:** 2026-09-17 (M2.1a, then #27 and #11 closed)
 
 ## Handoff (overwrite each session)
 
@@ -49,15 +49,15 @@ the milestone's 3% (worst +2.86%). M2.1b is the suite itself. Start from these n
 
 ## Done log (newest first, keep about 15)
 
-- 2026-09-17: #27 closed (PR #28): the M1.7a RocketPy comparison flies RocketPy's gravity model and
-  asserts the vector, not the magnitude, which is what hid the difference; M2.1b split in two.
+- 2026-09-17: #11 closed (PR #30): `SolidMotor` refuses an impossible exhaust velocity, the range
+  measured over 1,708 catalog motors. #27 closed (PR #28): the M1.7a RocketPy comparison flies
+  RocketPy's gravity and asserts the vector, not the magnitude, which is what hid the difference.
 - 2026-09-17: M2.1a Validation harness (ADR-015): TOML cases, references with per-value provenance
   and a hash, per-metric 3% gates, a case lock and committed reports. Five descent cases, 30
   metrics, all inside 3% (worst +2.86%). L76–L79 have live tests. It found a gravity-model
   mismatch in its own comparison on the way in (#27).
-- 2026-09-17: M1.7c Separated bodies (ADR-014): a separation splits the stack at a stage boundary
-  and flies each body as a point mass with its own mass and devices. Both bodies land, the masses
-  add to the stack's to 1e-12 and the momenta to 1e-9.
+- 2026-09-17: M1.7c Separated bodies (ADR-014): a separation splits the stack at a stage boundary,
+  each body flying as a point mass. Masses add to 1e-12, momenta to 1e-9.
 - 2026-09-17: M1.7b Streamers and tumble (ADR-013): Filippone's three curves by default (+9% on
   Kidwell's flat drop), appendix C's on request (+88%), tumble from the airframe (−10 to +19%).
 - 2026-09-17: M1.7a Parachutes and descent (ADR-012): Knacke's canopy tables and filling law, four
