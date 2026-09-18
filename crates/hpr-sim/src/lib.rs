@@ -1,5 +1,15 @@
-//! The 6-DOF flight engine: state, launch rail phase, integrators, events, recovery, staging and
+//! The 6-DOF flight engine: state, launch rail phase, integrators, events, recovery, separation and
 //! the recorder.
+//!
+//! **Guide:** [How a flight is simulated][guide-flight], [Rigid-body flight][guide-rigid-body],
+//! [Time integration][guide-integration] and [Recovery][guide-recovery]: the models, their sources,
+//! how well they are validated and what they leave out.
+//!
+//! [guide-flight]: https://nrdptel.github.io/hpr-sim/how-a-flight-is-simulated.html
+//! [guide-rigid-body]: https://nrdptel.github.io/hpr-sim/physics/flight.html
+//! [guide-integration]: https://nrdptel.github.io/hpr-sim/physics/integration.html
+//! [guide-recovery]: https://nrdptel.github.io/hpr-sim/physics/recovery.html
+//! [roadmap]: https://github.com/nrdptel/hpr-sim/blob/main/docs/ROADMAP.md
 //!
 //! - [`flight`]: a [`Simulation`] of a rocket, its [`Environment`] and its [`Rail`], flown from
 //!   ignition through the pad, rail and free-flight phases to the ground.
@@ -12,12 +22,9 @@
 //!   to stop times and events.
 //! - [`events`]: event directions and Brent's root finder.
 //!
-//! Status: M1.7 covers the flight from the pad to the ground under parachutes, streamers or
-//! tumbling, and a separation whose bodies each land. Staging (M1.9) is not here yet: every motor
-//! ignites at `t = 0`, and a separation must follow the last burnout.
-//!
-//! Method: `docs/physics/flight.md`, `docs/physics/recovery.md` and
-//! `docs/physics/integration.md`.
+//! Status: the flight from the pad to the ground under parachutes, streamers or tumbling, and a
+//! separation whose bodies each land. Staging is not here yet (milestone [M1.9][roadmap] of the
+//! roadmap): every motor ignites at `t = 0`, and a separation must follow the last burnout.
 
 pub mod dynamics;
 pub mod environment;

@@ -18,6 +18,12 @@ pub struct Package {
     pub name: String,
     /// `[package.metadata.hpr] wasm = true`: the crate belongs to the pure core.
     pub wasm: bool,
+    /// The crate name of its library (`hpr_core` for `hpr-core`), if it has one, which is where
+    /// rustdoc writes its documentation (`target/doc/hpr_core/`).
+    pub lib: Option<String>,
+    /// The packages its library and programs depend on (normal and build dependencies, not
+    /// dev-dependencies), by package name, in the order cargo lists them.
+    pub dependencies: Vec<String>,
     /// Its example programs (`cargo run --example`), in the order cargo lists them.
     pub examples: Vec<Example>,
 }
@@ -92,12 +98,28 @@ fn parse_package(package: &Value) -> Result<Package, String> {
             ));
         }
     };
+    let dependencies = package["dependencies"]
+        .as_array()
+        .map_or(&[][..], Vec::as_slice)
+        .iter()
+        .filter(|dependency| dependency["kind"].as_str() != Some("dev"))
+        .filter_map(|dependency| dependency["name"].as_str().map(str::to_owned))
+        .collect();
+    let mut lib = None;
     let mut examples = Vec::new();
     for target in package["targets"].as_array().map_or(&[][..], Vec::as_slice) {
-        let is_example = target["kind"]
-            .as_array()
-            .is_some_and(|kinds| kinds.iter().any(|kind| kind == "example"));
-        if !is_example {
+        let has_kind = |wanted: &[&str]| {
+            target["kind"].as_array().is_some_and(|kinds| {
+                kinds
+                    .iter()
+                    .any(|kind| wanted.iter().any(|wanted| kind == wanted))
+            })
+        };
+        // A library is `lib`, or a crate type named for how it is linked (`cdylib` for Python).
+        if has_kind(&["lib", "rlib", "dylib", "cdylib", "staticlib", "proc-macro"]) {
+            lib = target["name"].as_str().map(str::to_owned);
+        }
+        if !has_kind(&["example"]) {
             continue;
         }
         let (Some(example), Some(src_path)) =
@@ -127,6 +149,8 @@ fn parse_package(package: &Value) -> Result<Package, String> {
     Ok(Package {
         name,
         wasm,
+        lib,
+        dependencies,
         examples,
     })
 }
@@ -144,8 +168,15 @@ mod tests {
                 { "kind": ["example"], "crate_types": ["lib"], "name": "part", "src_path": "/work/hpr-sim/pure/examples/part.rs",
                   "required-features": ["net"] }
             ] },
-            { "name": "tool", "metadata": null },
-            { "name": "other", "metadata": { "docs": {} } }
+            { "name": "tool", "metadata": null, "dependencies": [
+                { "name": "pure", "kind": null }, { "name": "serde", "kind": "build" },
+                { "name": "other-py", "kind": "dev" }
+            ], "targets": [
+                { "kind": ["bin"], "name": "tool", "src_path": "/work/hpr-sim/tool/src/main.rs" }
+            ] },
+            { "name": "other-py", "metadata": { "docs": {} }, "targets": [
+                { "kind": ["cdylib", "rlib"], "name": "other_py", "src_path": "/work/hpr-sim/other-py/src/lib.rs" }
+            ] }
         ]
     }"#;
 
@@ -158,7 +189,35 @@ mod tests {
             .iter()
             .map(|p| (p.name.as_str(), p.wasm))
             .collect();
-        assert_eq!(flags, [("pure", true), ("tool", false), ("other", false)]);
+        assert_eq!(
+            flags,
+            [("pure", true), ("tool", false), ("other-py", false)]
+        );
+    }
+
+    #[test]
+    fn lists_what_each_package_depends_on_but_its_tests() {
+        let workspace = parse(METADATA).unwrap();
+        assert_eq!(workspace.packages[1].dependencies, ["pure", "serde"]);
+        assert!(workspace.packages[0].dependencies.is_empty());
+    }
+
+    #[test]
+    fn names_each_packages_library() {
+        let workspace = parse(METADATA).unwrap();
+        let libs: Vec<_> = workspace
+            .packages
+            .iter()
+            .map(|p| (p.name.as_str(), p.lib.as_deref()))
+            .collect();
+        assert_eq!(
+            libs,
+            [
+                ("pure", Some("pure")),
+                ("tool", None),
+                ("other-py", Some("other_py"))
+            ]
+        );
     }
 
     #[test]

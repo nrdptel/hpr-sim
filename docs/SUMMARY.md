@@ -44,5 +44,6 @@
 # Reference
 
 - [Checking a claim](checking-a-claim.md)
+- [The API reference](api.md)
 - [Glossary](glossary.md)
 - [Decisions and the roadmap](decisions-and-roadmap.md)

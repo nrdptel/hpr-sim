@@ -1,14 +1,19 @@
 //! Solid rocket motor model (thrust, propellant mass, CG and inertia over time), `.eng`/`.rse`
 //! reading and writing, and catalog types.
 //!
+//! **Guide:** [Solid motors][guide-motor], [`.eng` files][guide-eng] and [`.rse` files][guide-rse]:
+//! the models, their sources, how well they are validated and what they leave out.
+//!
+//! [guide-motor]: https://nrdptel.github.io/hpr-sim/physics/motor.html
+//! [guide-eng]: https://nrdptel.github.io/hpr-sim/format/eng.html
+//! [guide-rse]: https://nrdptel.github.io/hpr-sim/format/rse.html
+//!
 //! - [`curve`]: thrust curves, total impulse, NFPA 1125 burn time and average thrust.
 //! - [`class`]: impulse classes (`1/8A` to `O` and beyond).
 //! - [`motor`]: the solid motor: consumption, mass properties and ambient-pressure thrust, with
 //!   [`grains`] (BATES grains) and [`mass`] (axisymmetric mass elements).
 //! - [`eng`] and [`rse`]: RASP and RockSim motor files, with [`delay`] strings.
 //! - [`catalog`]: the offline catalog and its bundled ThrustCurve.org curves.
-//!
-//! Physics: `docs/physics/motor.md`. Formats: `docs/format/eng.md`, `docs/format/rse.md`.
 
 mod bundled;
 pub mod catalog;

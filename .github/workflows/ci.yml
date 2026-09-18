@@ -92,6 +92,12 @@ jobs:
   site:
     name: site
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      # Only to ask whether GitHub Pages is on, below.
+      pages: read
+    outputs:
+      pages: ${{ steps.pages.outputs.on }}
     steps:
       - uses: actions/checkout@v7
       - run: rustup toolchain install
@@ -100,6 +106,50 @@ jobs:
         with:
           # book.toml is written for this version (ADR-016); bump both together.
           tool: mdbook@0.5.4
-      # Checks the pages' links and labels, builds the site with mdBook into target/site, and
-      # checks every link in the built HTML.
-      - run: cargo run --locked --quiet --package xtask -- site
+      # Checks the pages' links and labels, builds the site with mdBook into target/site and the
+      # workspace's rustdoc into target/site/api, and checks every link in the built HTML.
+      - run: cargo run --locked --quiet --package xtask -- site --locked
+      # The built site, packed as GitHub Pages takes it. The deploy job publishes it from main.
+      - uses: actions/upload-pages-artifact@v5
+        with:
+          path: target/site
+      # Pages must be on, deploying from GitHub Actions, for the deploy job to work (ADR-019).
+      # Until the owner turns it on, the site is built and checked but not deployed, and CI says
+      # so with a warning rather than failing on main. Only main deploys, so only main asks.
+      - name: Is GitHub Pages on?
+        id: pages
+        if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if source=$(gh api "repos/$GITHUB_REPOSITORY/pages" --jq .build_type 2>"$RUNNER_TEMP/pages.err"); then
+            :
+          elif grep -q "HTTP 404" "$RUNNER_TEMP/pages.err"; then
+            source=off
+          else
+            echo "::error::could not ask GitHub whether Pages is on: $(cat "$RUNNER_TEMP/pages.err")"
+            exit 1
+          fi
+          if [[ $source == workflow ]]; then
+            echo "on=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "on=false" >> "$GITHUB_OUTPUT"
+            echo "::warning title=The site is not deployed::GitHub Pages is '$source'. Turn it on in Settings, Pages, Build and deployment, Source: GitHub Actions; the next run on main deploys."
+          fi
+
+  # Publishes the site and the API reference to GitHub Pages, from main only, and only once every
+  # other check has passed on that commit.
+  deploy:
+    name: deploy
+    needs: [fmt, clippy, test, doc, wasm-check, deny, site]
+    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request' && needs.site.outputs.pages == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v5

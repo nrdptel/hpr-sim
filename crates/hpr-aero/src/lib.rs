@@ -1,16 +1,24 @@
 //! Aerodynamics: Barrowman normal force and centre of pressure with extensions, drag buildup,
-//! compressibility, damping and override tables.
+//! compressibility and override tables.
+//!
+//! **Guide:** [Aerodynamics][guide-aero]: the models, their sources, how well they are validated
+//! and what they leave out.
+//!
+//! [guide-aero]: https://nrdptel.github.io/hpr-sim/physics/aero.html
+//! [roadmap]: https://github.com/nrdptel/hpr-sim/blob/main/docs/ROADMAP.md
 //!
 //! - [`body`]: nose cones, body tubes and transitions: Barrowman's slope and centre of pressure,
 //!   and Galejs's body lift.
 //! - [`fins`]: fin sets: Barrowman's slope with Prandtl–Glauert, the mean aerodynamic chord,
 //!   fin-count and roll terms, and fin–body interference.
+//! - [`drag`]: the terms of Niskanen's zero-lift drag buildup, and axial drag at an angle of
+//!   attack.
+//! - [`table`]: drag override tables, the drag coefficient against Mach number from another tool.
 //! - [`model`]: a rocket's terms built from a [`hpr_design::Layout`] and summed at a [`Flow`].
 //!
-//! Status: M1.5a covers subsonic (`M < 1`) normal force and centre of pressure. Drag and override
-//! tables arrive in M1.5b, transonic and supersonic flow in M1.8.
-//!
-//! Physics: `docs/physics/aero.md`.
+//! Status: subsonic flow only (`M < 1`): normal force, centre of pressure, drag and override
+//! tables. Transonic and supersonic flow, and pitch, yaw and roll damping, are planned for
+//! milestone [M1.8][roadmap] of the roadmap.
 
 pub mod body;
 pub mod drag;

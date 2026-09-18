@@ -117,6 +117,10 @@ Terms are defined in the [Glossary](glossary.md), and
 [Checking a claim](checking-a-claim.md) shows how to trace any number to its source, its test and
 its validation.
 
+The code itself is documented in [the API reference](api.md), which Rust's documentation tool
+generates from the source. It lists every public type and function, and each crate's front page
+links back to the pages here that explain its models.
+
 Three kinds of label link to the project's records on GitHub, which
 [Decisions and the roadmap](decisions-and-roadmap.md) introduces:
 

@@ -115,11 +115,16 @@
     flies a first rocket; *How a flight is simulated* walks pad to landing with a diagram.
 
     *Done when:* the *Getting started* example runs in CI.
-  - [ ] **M0.4d Publish.** Workspace rustdoc sits next to the guide, each linking to the other.
+  - [ ] [blocked] **M0.4d Publish.** Workspace rustdoc sits next to the guide, each linking to the
+    other.
 
     *Done when:* a workflow deploys the site and the rustdoc to GitHub Pages from `main`, and the
     README's first lines link to it. (Needs Neer to enable Pages. Until he does, only this bullet
     is blocked.)
+
+    *Blocked* on Pages being off (`STATUS.md`, Needs Neer). Everything else shipped (ADR-019): the
+    rustdoc under the site's `api/`, links both ways checked, the README link, and a `deploy` job
+    that is skipped, with a warning, until Pages is on. Check it off once a run on `main` deploys.
   - [ ] **M0.4e The reader test.**
 
     *Done when:* a reviewer with no project context, given only the site, answers ten questions a
