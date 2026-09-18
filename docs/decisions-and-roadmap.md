@@ -112,7 +112,7 @@ missing or its status disagrees.
 | <a id="m2-1b"></a>[M2.1b][phase-1] | Whole flights against RocketPy, with both codes given the same drag | done |
 | <a id="m2-1b1"></a>[M2.1b1][phase-1] | The script that flies RocketPy's example rockets from pad to landing, as the reference | done |
 | <a id="m2-1b2"></a>[M2.1b2][phase-1] | hpr's whole flights compared with that reference | done |
-| <a id="m2-1c"></a>[M2.1c][phase-1] | The same cases flown with each code's own drag, a CI job, and regenerating references | partly done: [M2.1c1](#m2-1c1) done, [M2.1c2](#m2-1c2) not yet |
+| <a id="m2-1c"></a>[M2.1c][phase-1] | The same cases flown with each code's own drag, a CI job, and regenerating references | not yet done |
 | <a id="m2-1c1"></a>[M2.1c1][phase-1] | A CI job that checks every case against its stored reference, and a workflow, run only by hand, that regenerates the references | done |
 | <a id="m2-1c2"></a>[M2.1c2][phase-1] | The same cases flown with each code's own drag | not yet done |
 | <a id="m1-8"></a>[M1.8][phase-1] | Transonic and supersonic aerodynamics, damping, and overriding the aerodynamics | not yet done |
