@@ -17,16 +17,16 @@
 # miss does not fail the run and a number that moves still shows in the committed report. The
 # misses, and why:
 #
-# - Every metric: a known gap. RocketPy flying the example's own drag peaks at Mach 1.049 near
+# - Every metric: a known gap. RocketPy flying the example's own drag peaks at Mach 1.048 near
 #   burnout, and hpr's aerodynamics refuse M >= 1 until M1.8 (ADR-008, ADR-011), so hpr's flight
 #   stops at Mach 1 and nothing can be compared. The harness checks this rather than trusting it:
 #   the reference must reach Mach 1, hpr must refuse with that error, and the run fails once hpr
-#   flies it (L85). The same-drag case is the same gap, at Mach 1.014.
+#   flies it (L85). The same-drag case is the same gap, at Mach 1.013.
 id = "predicted-prometheus-2022-generic-motor"
 title = "Prometheus 2022 from the pad to the ground, predicted: hpr's own aerodynamics"
 reference = "validation/fixtures/flight/rocketpy-whole-flight-own-drag.json"
 reference_case = "prometheus-2022-generic-motor"
-known_gap = "RocketPy flying the example's own drag peaks at Mach 1.049 near burnout, and hpr's aerodynamics refuse M >= 1 until M1.8 (ADR-008, ADR-011), so the flight stops at Mach 1 and no metric can be compared."
+known_gap = "RocketPy flying the example's own drag peaks at Mach 1.048 near burnout, and hpr's aerodynamics refuse M >= 1 until M1.8 (ADR-008, ADR-011), so the flight stops at Mach 1 and no metric can be compared."
 
 [flight.whole_flight]
 design = "rocketpy-prometheus-2022-generic-motor"
@@ -80,11 +80,11 @@ relative = 0.03
 
 # The time-series RMS (M2.1d1): hpr's height and speed at the reference's 120 series times, from
 # ignition until hpr lands, less RocketPy's; the reference value is 0, exact agreement. Each is held
-# (a target) to 3% of the scale of its trace, the reference's apogee (4225.3 m) and max speed
-# (345.1 m/s), rounded down to 0.1: M2.1's 3% for a point metric, applied to a whole trace, so a
+# (a target) to 3% of the scale of its trace, the reference's apogee (4293.6 m) and max speed
+# (345.0 m/s), rounded down to 0.1: M2.1's 3% for a point metric, applied to a whole trace, so a
 # trace passes only if it is on average no further off than its peak may be.
 [metrics.series_height_rms_m]
-absolute = 126.7
+absolute = 128.8
 
 [metrics.series_speed_rms_m_s]
 absolute = 10.3

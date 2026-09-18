@@ -17,11 +17,13 @@
 # miss does not fail the run and a number that moves still shows in the committed report. The
 # misses, and why:
 #
-# - apogee_drift_m (-14.80%) and landing_drift_m (-30.34%): the path in wind (issue #50); the
-#   same-drag case misses them by -15.59% and -31.32% and does not score them. Nothing else misses:
-#   hpr's coasting C_D0 at Mach 0.3 is 0.423 against the example's 0.43 (computed as `cargo xtask
-#   aero` computes it, pinned by `aero::tests::the_drags_the_predicted_cases_quote_are_hpr_s`), and
-#   the apogee is +1.12%, against +0.48% flown on the same drag. RocketPy's own Bella Lui acceptance
+# - apogee_drift_m (-10.45%) and landing_drift_m (-22.93%): the path in wind, a measured model
+#   difference (ADR-026): hpr's body lift and its release at the last rail button, which RocketPy
+#   has neither of. The same-drag case reports them at -11.26% and -23.83% and does not score them.
+#   Nothing else misses: hpr's coasting C_D0 at Mach 0.3 is 0.423 against the example's 0.43
+#   (computed as `cargo xtask aero` computes it, pinned by
+#   `aero::tests::the_drags_the_predicted_cases_quote_are_hpr_s`), and the apogee is +1.02%,
+#   against +0.38% flown on the same drag. RocketPy's own Bella Lui acceptance
 #   test (tests/acceptance/test_bella_lui_rocket.py) flies the notebook's replacement curve by
 #   setting power_off_drag_7d directly; this reference flies the notebook as it runs, and the curve
 #   would move RocketPy's apogee by -0.037% (measured in review), changing no verdict.
@@ -82,11 +84,11 @@ relative = 0.03
 
 # The time-series RMS (M2.1d1): hpr's height and speed at the reference's 120 series times, from
 # ignition until hpr lands, less RocketPy's; the reference value is 0, exact agreement. Each is held
-# (a target) to 3% of the scale of its trace, the reference's apogee (539.7 m) and max speed
-# (98.4 m/s), rounded down to 0.1: M2.1's 3% for a point metric, applied to a whole trace, so a
+# (a target) to 3% of the scale of its trace, the reference's apogee (540.2 m) and max speed
+# (98.3 m/s), rounded down to 0.1: M2.1's 3% for a point metric, applied to a whole trace, so a
 # trace passes only if it is on average no further off than its peak may be.
 [metrics.series_height_rms_m]
-absolute = 16.1
+absolute = 16.2
 
 [metrics.series_speed_rms_m_s]
 absolute = 2.9

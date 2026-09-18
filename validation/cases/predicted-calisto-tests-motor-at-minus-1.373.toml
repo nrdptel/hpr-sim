@@ -14,13 +14,11 @@
 # (`xtask/src/designs.rs`), so a miss is not a gap for hpr to close toward the example's drag.
 #
 # Every metric carries M2.1's 3% as a target: reported as within or outside it, never gated, so a
-# miss does not fail the run and a number that moves still shows in the committed report. The
-# misses, and why:
-#
-# - apogee_drift_m (-7.00%) and landing_drift_m (+6.92%): the path in wind, where hpr turns into the
-#   wind less than RocketPy (issue #50). The same-drag case misses them by -5.57% and +7.03% and
-#   does not score them. Nothing else misses: the apogee is -0.53%, with hpr's C_D0 4.4% above the
-#   example's curve at Mach 0.3 (`validation/fixtures/aero/rocketpy-drag-curves.json`).
+# miss does not fail the run and a number that moves still shows in the committed report. Nothing
+# misses. The apogee is -0.60%, with hpr's C_D0 4.4% above the example's curve at Mach 0.3
+# (`validation/fixtures/aero/rocketpy-drag-curves.json`), and the drifts are -2.32% and +1.08%
+# (-0.99% and +1.43% on the same drag, where they are gated). Against RocketPy as released the
+# drifts missed by -7.00% and +6.92% (issue #50); the corrected reference (ADR-026) closes them.
 id = "predicted-calisto-tests-motor-at-minus-1.373"
 title = "Calisto from the pad to the ground, predicted: hpr's own aerodynamics"
 reference = "validation/fixtures/flight/rocketpy-whole-flight-own-drag.json"
@@ -78,11 +76,11 @@ relative = 0.03
 
 # The time-series RMS (M2.1d1): hpr's height and speed at the reference's 120 series times, from
 # ignition until hpr lands, less RocketPy's; the reference value is 0, exact agreement. Each is held
-# (a target) to 3% of the scale of its trace, the reference's apogee (2818.4 m) and max speed
+# (a target) to 3% of the scale of its trace, the reference's apogee (2820.6 m) and max speed
 # (247.2 m/s), rounded down to 0.1: M2.1's 3% for a point metric, applied to a whole trace, so a
 # trace passes only if it is on average no further off than its peak may be.
 [metrics.series_height_rms_m]
-absolute = 84.5
+absolute = 84.6
 
 [metrics.series_speed_rms_m_s]
 absolute = 7.4

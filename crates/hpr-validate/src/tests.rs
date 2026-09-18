@@ -220,9 +220,10 @@ fn no_committed_gate_is_looser_than_the_milestone_says() {
         .comparisons
         .iter()
         .filter(|c| c.scored() || c.targeted_row());
-    // M2.1d2's calm-air cases add 42 point metrics and 6 RMS rows (Juno III's drifts and Calisto's
-    // acceleration time are not scored, ADR-025).
-    assert_eq!(bounded.clone().count(), 94 + 10 + 75 + 10 + 42 + 6);
+    // M2.1d2's calm-air cases add 42 point metrics and 6 RMS rows (Calisto's acceleration time is
+    // not scored); M2.1d3 scores six drifts that were not (ADR-026): Calisto's two in wind, Valetudo's
+    // and NDRT 2020's landing drift, and Juno III's two in calm air.
+    assert_eq!(bounded.clone().count(), 94 + 10 + 75 + 10 + 42 + 6 + 6);
     for comparison in bounded {
         let allowed = comparison.tolerance.allowed(comparison.reference);
         let scale = match comparison.metric.as_str() {
@@ -260,35 +261,30 @@ fn the_metrics_that_are_not_scored_are_these_and_no_others() {
     //   is the higher, so its *time* jumps between the peaks; the value is gated.
     // - NDRT 2020's whole-flight maximum is the main opening, where RocketPy has added mass and hpr
     //   has none (ADR-012); the power-on maximum and the opening's time are gated.
-    // - The horizontal path in wind, where hpr turns into the wind less than RocketPy
-    //   (issue #50); in calm air the drifts agree to 1.3 to 3.7%, and Valetudo, in still air,
-    //   keeps its apogee drift gated while its landing drift (-3.41%) is reported. These are open
-    //   misses, not definitional differences: M2.1's landing offset is not met until #50 closes.
-    // - In calm air (M2.1d2, ADR-025), Calisto's acceleration time for the same reason as in wind,
-    //   and Juno III's drifts: hpr keeps the rocket guided to its last rail button and RocketPy frees
-    //   it at its first; with the release matched (`rail_release.py`) they are within 2.2%.
+    // - The drifts in wind where the two codes' models, not an error in either, carry them past 3%
+    //   (ADR-026): Juno III's and Bella Lui's, and NDRT 2020's apogee drift. hpr's body lift at the
+    //   rail exit's angle of attack, which RocketPy's linear normal force leaves out, and its release
+    //   at the last rail button; with both added to RocketPy (`wind_response.py`) the drifts land
+    //   within 1.4% of hpr's. Every other drift is gated.
+    // - In calm air (M2.1d2), Calisto's acceleration time for the same reason as in wind.
     //
     // Adding an excuse means editing this list.
     let drifts = |case| [(case, "apogee_drift_m"), (case, "landing_drift_m")];
-    let mut expected = vec![];
-    expected.extend(drifts("flight-calisto-tests-motor-at-minus-1.373"));
-    expected.push((
+    let mut expected = vec![(
         "flight-calisto-tests-motor-at-minus-1.373",
         "max_acceleration_time_s",
-    ));
-    expected.push(("flight-valetudo", "landing_drift_m"));
-    expected.extend(drifts("flight-ndrt-2020-nose-to-tail"));
+    )];
+    expected.push(("flight-ndrt-2020-nose-to-tail", "apogee_drift_m"));
     expected.push(("flight-ndrt-2020-nose-to-tail", "max_acceleration_m_s2"));
     expected.extend(drifts("flight-juno-iii"));
     expected.extend(drifts("flight-bella-lui"));
-    expected.extend(drifts("flight-juno-iii-calm"));
     expected.push((
         "flight-calisto-tests-motor-at-minus-1.373-calm",
         "max_acceleration_time_s",
     ));
     assert_eq!(excused, expected);
     // A known gap is the other way a case goes unscored, and the set of them is pinned the same
-    // way: Prometheus 2022 reaches Mach 1.014 on the declared drag and Mach 1.049 on its own, both
+    // way: Prometheus 2022 reaches Mach 1.013 on the declared drag and Mach 1.048 on its own, both
     // of which hpr refuses until M1.8.
     let gaps: Vec<&str> = report.gaps.iter().map(|gap| gap.case.as_str()).collect();
     assert_eq!(
@@ -308,7 +304,6 @@ fn the_metrics_that_are_not_scored_are_these_and_no_others() {
         .map(|comparison| (comparison.case.as_str(), comparison.metric.as_str()))
         .collect();
     let mut expected_outside = vec![];
-    expected_outside.extend(drifts("predicted-calisto-tests-motor-at-minus-1.373"));
     for metric in [
         "apogee_agl_m",
         "apogee_drift_m",
@@ -332,7 +327,6 @@ fn the_metrics_that_are_not_scored_are_these_and_no_others() {
     ] {
         expected_outside.push(("predicted-ndrt-2020-nose-to-tail", metric));
     }
-    expected_outside.push(("predicted-juno-iii", "apogee_agl_m"));
     expected_outside.extend(drifts("predicted-juno-iii"));
     expected_outside.extend(drifts("predicted-bella-lui"));
     assert_eq!(outside, expected_outside);
@@ -643,7 +637,8 @@ fn the_committed_cases_all_pass_and_the_report_says_so() {
     // whole flight is a known gap in both and compares nothing. Three calm-air whole flights of
     // seventeen fly in same-drag mode only (ADR-025).
     assert_eq!(report.comparisons.len(), 251);
-    assert_eq!(report.not_scored().len(), 14, "argued in the case files");
+    // Six drifts that M2.1b2 and M2.1d2 left unscored are gated since M2.1d3 (ADR-026).
+    assert_eq!(report.not_scored().len(), 8, "argued in the case files");
     assert_eq!(report.gaps.len(), 2);
     // Predicted mode's 85 rows are reported against a target and never count towards the verdict.
     let targeted = report
@@ -670,7 +665,7 @@ fn the_committed_cases_all_pass_and_the_report_says_so() {
     );
     let markdown = report.to_markdown();
     assert!(
-        markdown.contains("152 scored, all within tolerance"),
+        markdown.contains("158 scored, all within tolerance"),
         "{markdown}"
     );
     assert!(
@@ -1005,7 +1000,7 @@ fn a_known_gap_is_checked_not_trusted() {
         .iter()
         .find(|gap| gap.case == "flight-prometheus-2022-generic-motor")
         .expect("Prometheus is a gap");
-    assert!(gap.reason.contains("Mach 1.014"), "{gap:?}");
+    assert!(gap.reason.contains("Mach 1.013"), "{gap:?}");
     assert!(gap.refusal.contains("Mach 1.000"), "{gap:?}");
     assert_eq!(gap.metric_count, 17);
     assert!(
