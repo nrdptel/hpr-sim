@@ -67,6 +67,32 @@
   *Done when:* the file exists, and every quirk or weakness it lists maps to a roadmap milestone or
   a named test to write.
 
+- [ ] **M0.4 A documentation site people can read.** Added by Neer on 2026-09-17 (VISION V15,
+  CLAUDE.md "Documentation is a deliverable"). Retrofit everything shipped so far; later milestones
+  keep the site current. Split it into increments if it is bigger than one session.
+  - Tool and layout by ADR (mdBook is the first candidate). Each page has one source:
+    `docs/physics/` and the like move into the site's source instead of being copied. Equations
+    render both on the site and on GitHub.
+  - Pages: *Start here* (what hpr is, what works today, what doesn't yet); *Getting started* (build,
+    then fly a first rocket with a runnable `examples/` program); *How a flight is simulated* (pad
+    to landing in plain words, with a diagram); one page per model; *Accuracy* (every validation
+    result so far, in words and numbers, gaps included); *Glossary*; *Checking a claim* (how to
+    trace any number to its source, its test and its validation); the decisions; the roadmap.
+  - Every model page opens with *In short*: what it models, its source, how well it is validated,
+    and what it leaves out.
+  - Workspace rustdoc is published next to the guide, and each links to the other.
+
+  *Done when:*
+  - CI builds the site on every PR and checks its links. A broken link, a model page without *In
+    short*, or a bare internal label (`L\d+`, `ADR-\d+`, a milestone id that isn't a link) fails
+    CI.
+  - A workflow deploys the site and the rustdoc to GitHub Pages from `main`, and the README's first
+    lines link to it. (Needs Neer to enable Pages. Until he does, only this bullet is blocked.)
+  - The *Getting started* example runs in CI.
+  - A reviewer with no project context, given only the site, answers ten questions a new user
+    would ask, listed in the PR (for example: "How far can I trust the descent drift, and what was
+    it checked against?"). Each answer cites a page. Every term it flags as unclear is fixed.
+
 ## Phase 1: Physics core (the heart), with validation interleaved
 
 - [x] **M1.1 Core math, frames, Earth.**

@@ -62,7 +62,8 @@ At the start of every session, read these in order. They are short on purpose; k
      the "Decided without Neer" list in `STATUS.md`, and keep going.
    - If something truly needs Neer, add it under "Needs Neer" in `STATUS.md` and move on to other
      work. Examples: money, account settings, publishing to crates.io/PyPI, legal/licensing
-     calls, or deleting his data.
+     calls, or deleting his data. Write each entry so he can act on it in a minute: what it is,
+     why it matters, and the exact click or command.
 9. **Irreversible or external actions are off limits.**
    - Don't publish packages, create releases or tags, change repo or account settings, or
      force-push.
@@ -94,13 +95,15 @@ At the start of every session, read these in order. They are short on purpose; k
 
 - **Review before merge.** Before merging anything that touches physics, numerics, or file formats,
   run the `physics-reviewer` and/or `code-reviewer` subagents on the diff. Fix what they find or
-  record why not. Validation-report changes also go through `validation-auditor`.
+  record why not. Validation-report changes also go through `validation-auditor`. Anything that
+  adds or changes user-facing docs goes through `docs-reviewer`, which reads them cold.
 - **PR, then CI, then merge.** Open the PR with `gh pr create`. The body says what changed, how it
   was verified (with numbers), and what's left. Wait with `gh pr checks --watch`. Merge with
   `gh pr merge --squash --delete-branch` only when every check on macOS, Windows and Linux is
   green. Never push straight to `main`; the guard hook blocks it.
 - **After merge:**
   - Check the milestone off in `ROADMAP.md`.
+  - Make sure the docs site covers what shipped (see "Documentation is a deliverable").
   - Update `STATUS.md`: current milestone, a one-line done entry, handoff notes.
   - Commit those doc updates through a small PR, or include them in the milestone PR before
     merging. Including them is preferred.
@@ -135,6 +138,31 @@ At the start of every session, read these in order. They are short on purpose; k
 - **Performance matters:** Monte Carlo and optimization run thousands of flights. Measure before
   optimizing, and keep benchmark numbers in `docs/perf.md`.
 
+## Documentation is a deliverable
+
+Neer, 2026-09-17: "a heavy emphasis on easy to reach and read documentation. since this is all
+developed by ai, that is important." Nobody watches this code being written, so the docs are how a
+person understands and checks it. Treat them like the physics: part of every milestone, reviewed
+and tested.
+
+- **Easy to reach.** One searchable documentation site (M0.4), linked from the top of the README.
+  Any answer a user or reviewer needs is at most two clicks from its landing page. Nothing a reader
+  needs lives only in a PR body, a commit message, `STATUS.md` or an ADR.
+- **Easy to read.** Write for a hobby rocketeer who knows some physics and some code, but not this
+  codebase.
+  - Every page opens with a plain-language summary: what it covers, what it is for, and how far to
+    trust it.
+  - Words before equations, then a worked example with real numbers.
+  - Define every term on first use or link the glossary. Internal labels (`L75`, `ADR-015`,
+    `M2.1b1`) are links with a few words of meaning, never bare.
+  - Short sentences, one idea per paragraph, tables for numbers.
+- **Honest.** Each model page says what it was validated against, how well (with numbers), and
+  what it leaves out. If something is unvalidated, the first paragraph says so.
+- **Never stale.** Code in the docs compiles and runs in CI (doctests or `examples/`), links are
+  checked, and quoted accuracy numbers come from the committed validation report.
+- **Shipped with the work.** A milestone is not done until the site explains what it added, to
+  this standard. Rustdoc is required but not enough: users start at the guide.
+
 ## Working style for long unattended runs
 
 - **Keep the main context lean.** Use subagents (Explore/general-purpose) for broad reading and web
@@ -148,7 +176,7 @@ At the start of every session, read these in order. They are short on purpose; k
   workflows for small edits.
 - **Research first.** Before implementing a physics model, find and read the primary source.
   Download public PDFs to `refs/papers/` (gitignored) and cite them.
-- **Keep docs short** (a lesson from Loft, whose roadmap grew to 689 KB):
+- **Keep the working files short** (a lesson from Loft, whose roadmap grew to 689 KB):
   - `STATUS.md` stays under ~150 lines; trim the done log to the last ~15 entries.
   - `ROADMAP.md` entries stay terse.
   - Put detailed findings in `docs/physics/` or `docs/research/`, one topic per file.
