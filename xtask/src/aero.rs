@@ -284,4 +284,34 @@ mod tests {
         }
         super::run(&["--check".to_owned()]).unwrap();
     }
+
+    /// The predicted-mode case files of NDRT 2020 and Bella Lui (ADR-023) explain their results
+    /// by hpr's coasting `C_D0` at Mach 0.3, sea level, against their examples' constant drags,
+    /// 0.44 and 0.43. Those two examples ship no curve for `cargo xtask aero` to record, so the
+    /// quoted values are pinned here, computed as it computes the others.
+    #[test]
+    #[expect(
+        clippy::approx_constant,
+        reason = "NDRT's 0.318 is a drag coefficient, not an approximation of 1/π"
+    )]
+    fn the_drags_the_predicted_cases_quote_are_hpr_s() {
+        let root = crate::designs::root().unwrap();
+        let air = super::Ussa76::standard().sample(0.0).unwrap().air;
+        let speed = super::MACH * air.speed_of_sound_m_s;
+        let nu = air.kinematic_viscosity_m2_s();
+        for (design, quoted) in [
+            ("rocketpy-ndrt-2020-nose-to-tail", 0.318),
+            ("rocketpy-bella-lui", 0.423),
+        ] {
+            let text =
+                std::fs::read_to_string(root.join(format!("validation/designs/{design}.json")))
+                    .unwrap();
+            let rocket: super::Rocket = serde_json::from_str(&text).unwrap();
+            let drag = super::hpr_drag(&rocket, speed, nu, false).unwrap();
+            assert!(
+                (drag - quoted).abs() < 5e-4,
+                "{design}: hpr's C_D0 is {drag:.4}, where its predicted case quotes {quoted}"
+            );
+        }
+    }
 }

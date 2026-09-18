@@ -15,8 +15,9 @@
 # misses, and why:
 #
 # - apogee_agl_m (+10.23%), apogee_time_s (+6.53%), flight_time_s (+6.83%) and landing_drift_m
-#   (+14.98%): the drag. hpr's coasting C_D0 is 0.318 at Mach 0.3 and 0.333 at Mach 0.5 (sea level,
-#   computed as `cargo xtask aero` computes it; not committed), 24 to 28% below the example's 0.44.
+#   (+14.98%): the drag. hpr's coasting C_D0 at Mach 0.3, sea level, is 0.318 (computed as `cargo
+#   xtask aero` computes it, pinned by
+#   `aero::tests::the_drags_the_predicted_cases_quote_are_hpr_s`), 28% below the example's 0.44.
 #   Flown on the same drag the apogees agree to -0.010% (`flight-ndrt-2020-nose-to-tail.toml`). So
 #   it flies 10% higher and comes down later and further.
 # - apogee_drift_m (-4.44%): the path in wind (issue #50); -18.65% in the same-drag case.

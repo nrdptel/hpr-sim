@@ -17,8 +17,8 @@
 # - apogee_drift_m (-14.80%) and landing_drift_m (-30.34%): the path in wind (issue #50); the
 #   same-drag case misses them by -15.59% and -31.32% and does not score them. Nothing else misses:
 #   hpr's coasting C_D0 at Mach 0.3 is 0.423 against the example's 0.43 (computed as `cargo xtask
-#   aero` computes it; not committed), and the apogee is +1.12%, against +0.48% flown on the same
-#   drag.
+#   aero` computes it, pinned by `aero::tests::the_drags_the_predicted_cases_quote_are_hpr_s`), and
+#   the apogee is +1.12%, against +0.48% flown on the same drag.
 id = "predicted-bella-lui"
 title = "Bella Lui from the pad to the ground, predicted: hpr's own aerodynamics"
 reference = "validation/fixtures/flight/rocketpy-whole-flight-own-drag.json"

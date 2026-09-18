@@ -375,8 +375,7 @@ Why the misses, largest first:
 - **Valetudo and NDRT 2020 fly high: the drag.** hpr's drag coefficient at Mach 0.3 is −47.0%
   from Valetudo's table, a hand-edited table 1.44 times the drag of the OpenRocket export for the
   same rocket ([Aerodynamics](physics/aero.md#verification)). For NDRT 2020 it is 0.318 against
-  the example's constant 0.44 ([case file][ndrt-predicted-case]; computed locally, not yet pinned
-  by a test). These drags are compared at Mach 0.3 only, where both rockets fly most of the way. Flown on the same drag, the
+  the example's constant 0.44 ([case file][ndrt-predicted-case]). These drags are compared at Mach 0.3 only, where both rockets fly most of the way. Flown on the same drag, the
   apogees agree with RocketPy's to +0.003% and −0.010% ([report][report]). Less drag also means a
   later apogee, a longer descent and further to drift, which moves their times and drifts too.
 - **Juno III is +3.181% high.** hpr's drag is 6.0% below the example's curve at Mach 0.3, and the
