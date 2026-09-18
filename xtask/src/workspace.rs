@@ -29,6 +29,10 @@ pub struct Example {
     pub name: String,
     /// Its main source file.
     pub src_path: PathBuf,
+    /// The features it needs (`required-features`), which `cargo run` must be given.
+    pub required_features: Vec<String>,
+    /// Whether it builds a program, which `cargo run` can run, rather than a library.
+    pub runnable: bool,
 }
 
 /// The cargo binary that is running this xtask, so the pinned toolchain is used throughout.
@@ -103,9 +107,21 @@ fn parse_package(package: &Value) -> Result<Package, String> {
                 "{name}: an example target in `cargo metadata` JSON has no name or src_path"
             ));
         };
+        let strings = |key: &str| -> Vec<String> {
+            target[key]
+                .as_array()
+                .map_or(&[][..], Vec::as_slice)
+                .iter()
+                .filter_map(|value| value.as_str().map(str::to_owned))
+                .collect()
+        };
+        // An example without `crate_types` is a program, as cargo's default is.
+        let crate_types = strings("crate_types");
         examples.push(Example {
             name: example.to_owned(),
             src_path: PathBuf::from(src_path),
+            required_features: strings("required-features"),
+            runnable: crate_types.is_empty() || crate_types.iter().any(|kind| kind == "bin"),
         });
     }
     Ok(Package {
@@ -124,7 +140,9 @@ mod tests {
         "packages": [
             { "name": "pure", "metadata": { "hpr": { "wasm": true } }, "targets": [
                 { "kind": ["lib"], "name": "pure", "src_path": "/work/hpr-sim/pure/src/lib.rs" },
-                { "kind": ["example"], "name": "fly", "src_path": "/work/hpr-sim/pure/examples/fly.rs" }
+                { "kind": ["example"], "crate_types": ["bin"], "name": "fly", "src_path": "/work/hpr-sim/pure/examples/fly.rs" },
+                { "kind": ["example"], "crate_types": ["lib"], "name": "part", "src_path": "/work/hpr-sim/pure/examples/part.rs",
+                  "required-features": ["net"] }
             ] },
             { "name": "tool", "metadata": null },
             { "name": "other", "metadata": { "docs": {} } }
@@ -148,10 +166,20 @@ mod tests {
         let workspace = parse(METADATA).unwrap();
         assert_eq!(
             workspace.packages[0].examples,
-            [Example {
-                name: "fly".to_owned(),
-                src_path: PathBuf::from("/work/hpr-sim/pure/examples/fly.rs"),
-            }]
+            [
+                Example {
+                    name: "fly".to_owned(),
+                    src_path: PathBuf::from("/work/hpr-sim/pure/examples/fly.rs"),
+                    required_features: Vec::new(),
+                    runnable: true,
+                },
+                Example {
+                    name: "part".to_owned(),
+                    src_path: PathBuf::from("/work/hpr-sim/pure/examples/part.rs"),
+                    required_features: vec!["net".to_owned()],
+                    runnable: false,
+                }
+            ]
         );
         assert!(workspace.packages[1].examples.is_empty());
     }

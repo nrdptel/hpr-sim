@@ -5,6 +5,11 @@
 //! `cargo xtask examples` runs every example and writes those files. `--check` writes nothing and
 //! fails if an example fails, has no committed output, or prints anything else. CI runs `--check`
 //! on macOS, Windows and Linux, which also shows that the output is the same on each.
+//!
+//! Results are bit-identical only on one platform (CLAUDE.md), so an example prints rounded
+//! values, which the platforms agree on. If one OS ever prints a different digit, print fewer
+//! digits or change the example's inputs; never loosen the check. An example that builds a library
+//! rather than a program has nothing to run and is skipped.
 
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -23,12 +28,16 @@ const OUTPUT_SUFFIX: &str = ".output.txt";
 
 pub fn run(args: &[String]) -> Result<(), String> {
     let check = args.iter().any(|arg| arg == "--check");
-    let cargo_args: Vec<&String> = args.iter().filter(|arg| *arg != "--check").collect();
+    // `cargo run` is always quiet here, and takes `--quiet` only once.
+    let cargo_args: Vec<&String> = args
+        .iter()
+        .filter(|arg| !matches!(arg.as_str(), "--check" | "-q" | "--quiet"))
+        .collect();
     let workspace = workspace::load(Path::new(env!("CARGO_MANIFEST_DIR")))?;
     let mut problems = Vec::new();
     let mut count = 0;
     for package in &workspace.packages {
-        for example in &package.examples {
+        for example in package.examples.iter().filter(|example| example.runnable) {
             count += 1;
             let path = output_path(&example.src_path);
             let shown = path
@@ -97,24 +106,24 @@ fn run_example(
     example: &Example,
     cargo_args: &[&String],
 ) -> Result<String, String> {
-    let output = Command::new(workspace::cargo())
-        .current_dir(root)
-        .args([
-            "run",
-            "--quiet",
-            "--package",
-            package,
-            "--example",
-            &example.name,
-        ])
-        .args(cargo_args)
-        .output()
-        .map_err(|err| {
-            format!(
-                "could not run `cargo run --example {}`: {err}",
-                example.name
-            )
-        })?;
+    let mut command = Command::new(workspace::cargo());
+    command.current_dir(root).args([
+        "run",
+        "--quiet",
+        "--package",
+        package,
+        "--example",
+        &example.name,
+    ]);
+    if !example.required_features.is_empty() {
+        command.args(["--features", &example.required_features.join(",")]);
+    }
+    let output = command.args(cargo_args).output().map_err(|err| {
+        format!(
+            "could not run `cargo run --example {}`: {err}",
+            example.name
+        )
+    })?;
     if !output.status.success() {
         return Err(format!(
             "`cargo run --package {package} --example {}` failed ({}):\n{}",

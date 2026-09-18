@@ -54,12 +54,12 @@
       <circle cx="520" cy="266" r="10" fill="#fff" stroke="#222" stroke-width="1.5"/><text x="520" y="270">6</text>
       <circle cx="520" cy="300" r="10" fill="#fff" stroke="#222" stroke-width="1.5"/><text x="520" y="304">7</text>
     </g>
-    <text x="540" y="101">Liftoff: the thrust beats the weight</text>
+    <text x="540" y="101">Liftoff: it starts up the rail</text>
     <text x="540" y="135">Rail exit: the rocket flies free</text>
     <text x="540" y="169">Burnout: the thrust curve ends</text>
     <text x="540" y="203">Apogee: the drogue's charge fires</text>
     <text x="540" y="237">The drogue opens, after its lag</text>
-    <text x="540" y="271">The main opens, at its set height</text>
+    <text x="540" y="271">The main opens, after its height and lag</text>
     <text x="540" y="305">Landing: back at the pad's height</text>
   </g>
 </svg>

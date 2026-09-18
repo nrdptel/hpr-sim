@@ -111,7 +111,7 @@
 
     *Done when:* a model page without *In short* fails CI, a test shows it, and every model page
     passes.
-  - [ ] **M0.4c Getting started, and how a flight is simulated.** A runnable `examples/` program
+  - [x] **M0.4c Getting started, and how a flight is simulated.** A runnable `examples/` program
     flies a first rocket; *How a flight is simulated* walks pad to landing with a diagram.
 
     *Done when:* the *Getting started* example runs in CI.

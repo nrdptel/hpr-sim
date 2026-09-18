@@ -34,6 +34,7 @@ new record replaces it and points back. All of them are in the [decision log][de
 | [ADR-015: The validation harness][adr-015] | How comparisons with other programs are run, gated and reported | [Accuracy](accuracy.md), [Checking a claim](checking-a-claim.md) |
 | [ADR-016: The documentation site][adr-016] | This site: how it is built, and the checks every page passes | [Start here](start-here.md) |
 | [ADR-017: In short, traced numbers and this page][adr-017] | How every model page opens, how Accuracy's numbers are checked against their sources, and why these records are files rather than pages | [Accuracy](accuracy.md) |
+| [ADR-018: Examples and quotes][adr-018] | Every example program runs in CI and must print its committed output, and a page's quote of a file must match it line for line | [Getting started](getting-started.md) |
 
 ## The roadmap
 
@@ -92,6 +93,7 @@ will add one. The [list of lessons][lessons] says what went wrong and how hpr av
 [adr-015]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-015-the-validation-harness-cases-references-tolerances-and-reports-2026-09-17
 [adr-016]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-016-the-documentation-site-mdbook-over-docs-and-checks-for-links-labels-and-equations-2026-09-18
 [adr-017]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-017-model-pages-open-with-in-short-accuracy-traces-its-numbers-the-records-stay-files-2026-09-18
+[adr-018]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-018-examples-run-in-ci-against-committed-output-pages-quote-files-checked-line-for-line-2026-09-18
 [decisions]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md
 [lessons]: https://github.com/nrdptel/hpr-sim/blob/main/docs/research/loft-lessons.md
 [phase-0]: https://github.com/nrdptel/hpr-sim/blob/main/docs/ROADMAP.md#phase-0-foundations

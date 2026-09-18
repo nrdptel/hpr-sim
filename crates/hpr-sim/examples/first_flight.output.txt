@@ -1,4 +1,4 @@
-Valetudo on a K400C: 9.67 kg at liftoff, a 3 m rail, 5 m/s of wind from the west
+Valetudo on a K400C: 9.67 kg at liftoff, a 3 m rail, 5 m/s of wind from 270°
 Not yet validated: see the Accuracy page before trusting these numbers.
 
 event                time (s)   CG height (m)   speed (m/s)
@@ -12,7 +12,7 @@ main charge fires       43.43           150.0          27.0
 main opens              44.43           123.5          27.0
 landing                 63.13             0.0           8.1
 
-Apogee:     874.0 m (2867 ft) above the pad, 14.55 s after ignition
-Top speed:  120.3 m/s (Mach 0.36), 3.1 s after ignition
+Apogee:     874.0 m (2867 ft) above the pad, 95.7 m from it at a bearing of 270°, at 14.55 s
+Top speed:  120.3 m/s (Mach 0.36), at 3.1 s
 Rail exit:  16.7 m/s
-Landing:    100.4 m from the pad at a bearing of 90°, falling at 6.4 m/s, 63.13 s after ignition
+Landing:    100.4 m from the pad at a bearing of 90°, falling at 6.4 m/s, at 63.13 s

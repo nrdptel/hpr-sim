@@ -8,38 +8,20 @@ validated yet, and [Accuracy](accuracy.md) keeps every result so far.
 ![A rocket's flight seen from the side. It lifts off the pad, leaves the rail, burns out, and coasts to apogee west of the pad, into the wind. It then drifts east under a drogue and a main parachute, and lands east of the pad. Seven numbered points mark the events: liftoff, rail exit, burnout, apogee, the drogue opening, the main opening, and landing.](images/flight-phases.svg)
 
 The drawing is the shape of the [Getting started](getting-started.md) example's flight, not to
-scale: its apogee is 874 m up and about 100 m west of the pad, and it lands about 100 m east.
+scale: its apogee is 874 m up and 96 m west of the pad, and it lands 100 m east of it.
 
 ## What goes in
 
 Building a simulation gathers five inputs, and works out once everything that doesn't change
 during the flight.
 
-- **The rocket.** A tree of parts, such as a nose cone, body tubes and a fin set, with their
-  positions ([The design tree](physics/design.md)). Their shapes
-  ([Nose cones and transitions](physics/shapes.md)) and materials give each part's mass,
-  [centre of gravity](glossary.md#centre-of-gravity-cg) and inertia
-  ([Mass properties](physics/mass.md)). The design's checks run first, and a rocket that can't
-  exist, such as one with a motor wider than its mount, is refused.
-- **The motor.** Its thrust curve gives the thrust at every instant. The way its propellant burns
-  away gives the motor's mass, centre of gravity and inertia as it burns
-  ([Solid motors](physics/motor.md)). So the whole rocket gets lighter, and its centre of gravity
-  moves, during the burn.
-- **The aerodynamics.** From the rocket's shape and surface, hpr builds its model of the air's
-  forces: the [normal force](glossary.md#normal-force) on each body part and fin set, the
-  [centre of pressure](glossary.md#centre-of-pressure-cp) where it acts, and the drag. They depend
-  on the [Mach number](glossary.md#mach-number), the
-  [angle of attack](glossary.md#angle-of-attack) and the [Reynolds number](glossary.md#reynolds-number)
-  ([Aerodynamics](physics/aero.md)).
-- **The surroundings.** The launch site, on the WGS 84 model of the Earth's shape
-  ([Geodesy](physics/geodesy.md)), with the [launch frame](glossary.md#launch-frame-enu): east,
-  north and up from the pad ([Frames](physics/frames.md)). Gravity that changes with latitude and
-  height, and the Coriolis effect of the Earth's rotation ([Gravity](physics/gravity.md)). The air's
-  density, pressure, temperature and speed of sound at each height
-  ([Atmosphere](physics/atmosphere.md)), and the wind at each height ([Wind](physics/wind.md)).
-  A turbulence model exists ([Turbulence](physics/turbulence.md)), but no flight uses it yet.
-- **The rail, the recovery devices and the settings.** The rail's length, direction and friction;
-  each parachute or streamer and when it fires; and how finely to step through time.
+| input | what hpr takes from it | pages |
+|---|---|---|
+| the rocket | A tree of parts, such as a nose cone, body tubes and a fin set, with their positions. Their shapes and materials give each part's mass, [centre of gravity](glossary.md#centre-of-gravity-cg) and inertia. The design's checks run first, and a rocket that can't exist, such as one with a motor wider than its mount, is refused | [Design tree](physics/design.md), [Shapes](physics/shapes.md), [Mass properties](physics/mass.md) |
+| the motor | The thrust at every instant, from its thrust curve. Its mass, centre of gravity and inertia as its propellant burns away, so the whole rocket gets lighter, and its centre of gravity moves, during the burn | [Solid motors](physics/motor.md) |
+| the aerodynamics | Built from the rocket's shape and surface: the [normal force](glossary.md#normal-force) on each body part and fin set, the [centre of pressure](glossary.md#centre-of-pressure-cp) where it acts, and the drag. They depend on the [Mach number](glossary.md#mach-number), the [angle of attack](glossary.md#angle-of-attack) and the [Reynolds number](glossary.md#reynolds-number) | [Aerodynamics](physics/aero.md) |
+| the surroundings | The launch site on the WGS 84 model of the Earth's shape, and the [launch frame](glossary.md#launch-frame-enu): east, north and up from the pad. Gravity that changes with latitude and height, and the Coriolis effect of the Earth's rotation. The air's density, pressure, temperature and speed of sound, and the wind, at each height. A turbulence model exists, but no flight uses it yet | [Geodesy](physics/geodesy.md), [Frames](physics/frames.md), [Gravity](physics/gravity.md), [Atmosphere](physics/atmosphere.md), [Wind](physics/wind.md), [Turbulence](physics/turbulence.md) |
+| the rail, recovery and settings | The rail's length, direction and friction; each parachute or streamer and when it fires; how finely to step through time | [Rigid-body flight](physics/flight.md), [Recovery](physics/recovery.md), [Time integration](physics/integration.md) |
 
 ## From the pad to the ground
 
@@ -47,8 +29,8 @@ The numbers match the drawing.
 
 1. **Ignition and liftoff.** Every motor ignites at time zero; there is no staging or delayed
    ignition yet. The rocket stands on the rail, its aft end at the rail's foot, and holds still
-   until the forces along the rail, mostly the thrust against the weight, push it up harder than
-   the rail's friction holds it. That instant is liftoff. If the motors burn out first, the flight
+   until the push up the rail, mostly the thrust, beats the weight's pull down it and the rail's
+   friction. That instant is [liftoff](glossary.md#liftoff). If the motors burn out first, the flight
    ends on the pad.
 2. **On the rail.** The rocket slides along the rail without turning: one degree of freedom.
    [Rail exit](glossary.md#rail-exit-and-rail-exit-velocity) comes when its last rail button or
@@ -68,7 +50,7 @@ The numbers match the drawing.
    From these it works out how the rocket speeds up and turns
    ([Rigid-body flight](physics/flight.md)). A crosswind meets the rocket partly from the side, and
    the fins' normal force, behind the centre of gravity, swings the nose into it, so the rocket
-   climbs upwind ([weathercocking](glossary.md#weathercocking)). The top speed comes just before
+   climbs upwind ([weathercocking](glossary.md#weathercocking)). The top speed usually comes just before
    [burnout](glossary.md#burnout), the end of the last motor's thrust curve, once the thrust no
    longer beats the drag and the weight.
 4. **Coast, to apogee.** The same equations with no thrust: drag and gravity slow the climb.
@@ -85,15 +67,17 @@ The numbers match the drawing.
 7. **Landing.** The flight ends when the centre of gravity comes back down to the launch site's
    height. The ground is flat, at the height of the pad: there is no terrain.
 
-A flight can also end on the pad, stalled on the rail, at a time cap (an hour by default) or at a
-step limit, and each of these is reported by name. Anything else that stops a flight is an error:
+A flight can also end on the pad, stalled on the rail, at a time cap (an hour by default), at a
+step limit, or split into parts that each land on their own, and each of these is reported by
+name. Anything else that stops a flight is an error:
 reaching Mach 1, for example, because there are no supersonic aerodynamics yet
 ([Rigid-body flight](physics/flight.md#events-and-termination)).
 
 ## How hpr steps through time
 
-At any instant, the rocket's state is 13 numbers: where it is, how fast it moves, which way it
-points and how fast it turns. The equations above turn a state into its rate of change. An
+At any instant, the rocket's state is 13 numbers: where it is (three), how fast it moves (three),
+which way it points (four, as a quaternion, a compact way to store a rotation) and how fast it
+turns (three). The equations above turn a state into its rate of change. An
 integrator builds the flight from them by stepping forward in time, one short step after another
 ([Time integration](physics/integration.md)).
 
@@ -114,8 +98,9 @@ integrator builds the flight from them by stepping forward in time, one short st
   that step.
 - **What you get back.** Every event, with a snapshot of the flight at that instant: time,
   position, velocity, height, airspeed, Mach number, angle of attack, thrust, mass and more. A
-  program can also watch every step as it happens, or record chosen quantities at a fixed
-  interval; [Getting started](getting-started.md#the-program-step-by-step) does both.
+  program can also watch every step as it happens, as
+  [Getting started](getting-started.md#the-program-step-by-step) does to find the top speed, or
+  record chosen quantities at a fixed interval with a `Recorder`.
 
 ## What is left out
 
@@ -123,16 +108,18 @@ Each model page lists what its model leaves out. These are the gaps that matter 
 flight:
 
 - **Mach 1 and above.** A flight that reaches Mach 1 stops with an error until the transonic and
-  supersonic aerodynamics of [M1.8][roadmap] arrive, and from Mach 0.8 to 1 the aerodynamics are
-  unvalidated ([Aerodynamics](physics/aero.md)).
+  supersonic aerodynamics of [M1.8][roadmap] arrive. Below that, the aerodynamics were checked only
+  at Mach 0 (the normal force) and Mach 0.3 (the drag); the drag reads low from about Mach 0.6,
+  and the models are documented only to Mach 0.8 ([Aerodynamics](physics/aero.md)).
 - **Large angles of attack.** The aerodynamics are for small angles, with no
   [stall](glossary.md#stall), but a flight uses them at every angle: just off the rail in a strong
   crosswind, and near apogee.
 - **Staging, clusters with delayed ignition, and air starts**, planned for [M1.9][roadmap].
 - **Roll**, the torques that spin a rocket up and slow its spin, planned for [M1.8][roadmap];
   [tip-off](glossary.md#tip-off), thrust misalignment and turbulence, which no milestone plans yet.
-- **Under a parachute:** the shock and overshoot as a canopy opens, the air carried along with it
-  ([added mass](glossary.md#added-mass)), the airframe's own drag, and the rocket swinging below
+- **Under a parachute:** the drag overshoot as a canopy fills, so the opening load hpr reports is
+  no safe bound (by default a canopy opens at once); the air carried along with it
+  ([added mass](glossary.md#added-mass)); the airframe's own drag; and the rocket swinging below
   the canopy ([Recovery](physics/recovery.md)).
 - **Terrain.** The ground is flat, at the pad's height.
 

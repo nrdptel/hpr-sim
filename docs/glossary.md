@@ -351,8 +351,8 @@ from the pad the plane is 7.8 m above the ellipsoid. See
 
 ## Liftoff
 
-The moment the rocket starts to move up the rail: the forces along the rail, mostly the thrust
-against the weight, first push it harder than the rail's friction holds it. The motor ignites a
+The moment the rocket starts to move up the rail: the push up the rail, mostly the thrust, first
+beats the weight's pull down it and the rail's friction. The motor ignites a
 little earlier, at time zero. If the motors burn out first, the flight ends on the pad. See
 [Rigid-body flight](physics/flight.md#phases).
 

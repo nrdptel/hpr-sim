@@ -75,3 +75,30 @@ impl Environment {
         self.earth.frame().origin()
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use hpr_atmos::ConstantWind;
+
+    use super::Environment;
+    use crate::testing::site;
+
+    #[test]
+    fn with_wind_replaces_only_the_wind() {
+        let calm = Environment::standard(site()).unwrap();
+        // 5 m/s from the west blows toward the east.
+        let windy = calm
+            .clone()
+            .with_wind(ConstantWind::new(5.0, 1.5 * std::f64::consts::PI).unwrap());
+        let at =
+            |environment: &Environment| environment.wind.wind(1500.0).unwrap().velocity_enu_m_s;
+        assert_eq!(at(&calm).length(), 0.0);
+        assert!((at(&windy).x - 5.0).abs() < 1e-12 && at(&windy).y.abs() < 1e-12);
+        assert_eq!(windy.site(), calm.site());
+        assert_eq!(windy.geoid_undulation_m, calm.geoid_undulation_m);
+        assert_eq!(
+            windy.atmosphere.air(1500.0).unwrap(),
+            calm.atmosphere.air(1500.0).unwrap()
+        );
+    }
+}

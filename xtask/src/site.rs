@@ -689,7 +689,8 @@ const QUOTE: &str = "quote:";
 
 /// Each fenced code block marked as a quote, by a `<!-- quote: <path> -->` comment on its own
 /// right above it, must be that file of the repository, `path` relative to the workspace root, line
-/// for line. Problems as (line of the marker, message).
+/// for line. A comment that mentions `quote:` and isn't such a marker fails too, so a mistyped
+/// marker can't leave its block unchecked. Problems as (line of the marker, message).
 fn quotes(root: &Path, text: &str) -> Vec<(usize, String)> {
     let line = line_index(text);
     let mut problems = Vec::new();
@@ -702,23 +703,39 @@ fn quotes(root: &Path, text: &str) -> Vec<(usize, String)> {
             ),
         )
     };
+    let malformed = |at: usize| {
+        (
+            at,
+            format!(
+                "this looks like a quote marker, and isn't one: a marker is a comment \
+                 `<!-- {QUOTE} <path> -->` on its own, right above a fenced code block"
+            ),
+        )
+    };
     // The quote a marker is waiting to see, then the one being read, as (line, path, text).
     let mut marked: Option<(usize, String)> = None;
     let mut quoting: Option<(usize, String, String)> = None;
+    // An HTML block's text, which the parser hands over a line at a time, and its first line.
+    let mut html: Option<(usize, String)> = None;
     for (event, range) in Parser::new_ext(text, options()).into_offset_iter() {
         match event {
-            Event::Start(Tag::HtmlBlock) | Event::End(TagEnd::HtmlBlock) => {}
-            Event::Html(html) if quoting.is_none() => {
-                let marker = html
-                    .trim()
-                    .strip_prefix("<!--")
-                    .and_then(|rest| rest.strip_suffix("-->"))
-                    .and_then(|comment| comment.trim().strip_prefix(QUOTE))
-                    .map(|path| path.trim().to_owned());
-                if let Some(path) = marker
-                    && let Some((at, path)) = marked.replace((line(range.start), path))
-                {
+            Event::Start(Tag::HtmlBlock) => html = Some((line(range.start), String::new())),
+            Event::Html(part) if html.is_some() => {
+                if let Some((_, block)) = html.as_mut() {
+                    block.push_str(&part);
+                }
+            }
+            Event::End(TagEnd::HtmlBlock) => {
+                // Any HTML between a marker and its block parts them.
+                if let Some((at, path)) = marked.take() {
                     problems.push(unused(at, &path));
+                }
+                if let Some((at, block)) = html.take() {
+                    match quote_marker(&block) {
+                        Some(path) => marked = Some((at, path)),
+                        None if mentions_quote(&block) => problems.push(malformed(at)),
+                        None => {}
+                    }
                 }
             }
             Event::Start(Tag::CodeBlock(CodeBlockKind::Fenced(_))) if marked.is_some() => {
@@ -736,9 +753,15 @@ fn quotes(root: &Path, text: &str) -> Vec<(usize, String)> {
                     problems.push((at, why));
                 }
             }
-            _ => {
+            other => {
                 if let Some((at, path)) = marked.take() {
                     problems.push(unused(at, &path));
+                }
+                // A marker inside a paragraph is inline HTML, and marks nothing.
+                if let Event::InlineHtml(inline) | Event::Html(inline) = other
+                    && mentions_quote(&inline)
+                {
+                    problems.push(malformed(line(range.start)));
                 }
             }
         }
@@ -747,6 +770,25 @@ fn quotes(root: &Path, text: &str) -> Vec<(usize, String)> {
         problems.push(unused(at, &path));
     }
     problems
+}
+
+/// The path an HTML block names, if the block is only a quote marker, `<!-- quote: <path> -->`,
+/// on one line or several.
+fn quote_marker(block: &str) -> Option<String> {
+    let path = block
+        .trim()
+        .strip_prefix("<!--")?
+        .strip_suffix("-->")?
+        .trim()
+        .strip_prefix(QUOTE)?
+        .trim();
+    Some(path.to_owned())
+}
+
+/// Whether HTML holds a comment that mentions `quote:`, in any case.
+fn mentions_quote(html: &str) -> bool {
+    let html = html.to_ascii_lowercase();
+    html.contains("<!--") && html.contains(QUOTE)
 }
 
 /// Whether `quoted` is the file `path` of the repository, line for line (a `\r\n` reads as `\n`).
@@ -2567,6 +2609,38 @@ mod tests {
         // Other comments are not markers, and a blank line before the block is fine.
         assert!(lines("<!-- a note -->\n```\ny\n```\n").is_empty());
         assert!(lines("<!-- quote: fly.rs -->\n\n```text\nx\n```\n").is_empty());
+    }
+
+    #[test]
+    fn a_mistyped_quote_marker_fails_rather_than_checking_nothing() {
+        let dir = workspace(&[("fly.rs", "x\n")]);
+        let found = |page: &str| -> Vec<(usize, bool)> {
+            quotes(dir.path(), page)
+                .into_iter()
+                .map(|(line, why)| (line, why.contains("looks like a quote marker")))
+                .collect()
+        };
+        // A marker may span lines.
+        assert!(found("<!--\nquote: fly.rs\n-->\n```\nx\n```\n").is_empty());
+        // Text after it, a capital letter, or a marker inside a paragraph are mistakes.
+        assert_eq!(
+            found("<!-- quote: fly.rs --> note\n```\nx\n```\n"),
+            [(1, true)]
+        );
+        assert_eq!(found("<!-- Quote: fly.rs -->\n```\nx\n```\n"), [(1, true)]);
+        assert_eq!(
+            found("Some text <!-- quote: fly.rs --> here.\n\n```\nx\n```\n"),
+            [(1, true)]
+        );
+        // Other HTML between a marker and its block parts them.
+        assert_eq!(
+            found("<!-- quote: fly.rs -->\n<!-- a note -->\n```\nx\n```\n"),
+            [(1, false)]
+        );
+        assert_eq!(
+            found("<!-- quote: fly.rs -->\n<div>\n\n```\nx\n```\n"),
+            [(1, false)]
+        );
     }
 
     #[test]

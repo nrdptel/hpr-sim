@@ -4,32 +4,31 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
 
 ## Now
 
-- **Current milestone:** M0.4c Getting started, and how a flight is simulated
-- **Order:** M0.4c to M0.4e, then M2.1b2 (handoff below)
-- **Run:** the first autopilot run; M0.1-M0.4b, M1.1-M1.7, M2.1a and M2.1b1 have shipped
-- **Last updated:** 2026-09-18 (M0.4b in PR #40; M0.4c not started)
+- **Current milestone:** M0.4d Publish
+- **Order:** M0.4d and M0.4e, then M2.1b2 (handoff below)
+- **Run:** the first autopilot run; M0.1-M0.4c, M1.1-M1.7, M2.1a and M2.1b1 have shipped
+- **Last updated:** 2026-09-18 (M0.4c in PR #@@PR@@; M0.4d not started)
 
 ## Handoff (overwrite each session)
 
-M0.4b gave every model page an *In short* and wrote *Accuracy*, *Glossary*, *Checking a claim* and
-*Decisions and the roadmap*; `cargo xtask site` now enforces all four (ADR-017). Start M0.4c here:
+M0.4c added *Getting started* (examples `first_flight`, `drag_what_if`) and *How a flight is
+simulated*; examples run in CI against committed output, quotes match files (ADR-018). Next, M0.4d:
 
-- **The example.** Put it in `crates/hpr-sim/examples/` and run it in CI with `cargo run --locked
-  --example <name> -p hpr-sim`. `Simulation::new` and `run` (`crates/hpr-sim/src/flight.rs:247`)
-  fly a design such as `validation/designs/synthetic-54mm-three-fin.json` (see
-  `testing::design`, `testing::site`). Print apogee, top speed, rail-exit speed and the landing,
-  with units, and say they are unvalidated until M2.1b2.
-- **Keep the page's code honest.** `{{#include}}` renders on the site only: quote the example in
-  the page and add a site check that the quote equals the file, as *Accuracy*'s numbers are.
-- **How a flight is simulated:** pad to landing in plain words, linking each model page. The
-  diagram must render on both: an SVG under `docs/` or a ```` ```text ```` sketch, not mermaid.
-- **Page rules** (ADR-016, ADR-017): relative links between pages, GitHub URLs for the rest,
+- **Publish.** On push to `main`, build the site and the workspace rustdoc (under the site, e.g.
+  `target/site/api/`) and deploy with `actions/upload-pages-artifact` and `actions/deploy-pages`.
+  Pages is off until Neer turns it on, so a deploy fails until then: keep `main` green.
+- **Each links the other:** a site page links the rustdoc (build it before `check_html` runs), and
+  each crate's docs link the guide. Pages serves under `/hpr-sim/`: set `site-url` in `book.toml`,
+  and resolve root-absolute hrefs (`404.html` has `<base href="/">`) against it in `check_html`.
+  The README's first lines then link to `https://nrdptel.github.io/hpr-sim/`.
+- **Examples.** When a printed digit moves, `cargo xtask examples` rewrites the outputs; copy them
+  into `docs/getting-started.md`'s quotes (the site check names the line).
+- **Page rules** (ADR-016 to ADR-018): relative links between pages, GitHub URLs for the rest,
   labels as links, none in headings, Unicode equations, "Level 2"; new pages go in `SUMMARY.md`.
-- **For M0.4e, from M0.4b's docs review:** model pages rarely link the Glossary; recovery's
-  "Against RocketPy" is a wall of text; QUADPACK, CIPM, octave band and stiffness-style terms have
-  no entry.
-- **For M0.4d:** GitHub Pages serves under `/hpr-sim/`, so set `site-url` in `book.toml`, and teach
-  `check_html` to resolve root-absolute hrefs (`404.html` has `<base href="/">`) against it.
+- **For M0.4e, from the docs reviews:** model pages rarely link the Glossary; recovery's "Against
+  RocketPy" is a wall of text; QUADPACK, CIPM, octave band and stiffness-style terms have no entry.
+  Readers still ask how to fly their own rocket (no builder until M4.1) and how to get a trajectory
+  out (a `Recorder` is described, not shown).
 
 After M0.4 comes M2.1b2: a `Flight::WholeFlight` variant, five cases in the lock, the L75 test.
 
@@ -56,12 +55,14 @@ After M0.4 comes M2.1b2: a `Flight::WholeFlight` variant, five cases in the lock
 
 ## Done log (newest first, keep about 15)
 
+- 2026-09-18: M0.4c Getting started, and how a flight is simulated (PR #@@PR@@, ADR-018): a
+  first flight (Valetudo, 874.0 m apogee) and a drag what-if run in CI on three OSes against
+  committed output; pages quote them, checked line for line; a flight diagram; `with_wind`.
 - 2026-09-18: M0.4b Model pages, Accuracy, Glossary, Checking a claim (PR #40, ADR-017): all 16
   model pages open with *In short*, which the site check enforces; *Accuracy*'s numbers are traced
   to their sources by the check; a 70-term Glossary; stale lines fixed (geoid, timing, scope).
-- 2026-09-18: M0.4a The site and its link checks (PR #37, ADR-016): `cargo xtask site` checks 19
-  pages' 209 links and labels, builds with mdBook and checks 23 HTML files; a CI `site` job runs
-  it. 146 bare labels became links; *Start here* written; stale lines fixed (#38, #39 filed).
+- 2026-09-18: M0.4a The site and its link checks (PR #37, ADR-016): `cargo xtask site` checks
+  links and labels, builds with mdBook and checks the HTML in CI; *Start here*; #38, #39 filed.
 - 2026-09-17: PR #34 merged after a physics review and a validation audit: the M2.1b1 oracle's
   step is bounded, and the cliff is its own 6000 s `max_time`, not RocketPy's defaults (#33).
 - 2026-09-17: M2.1b1 The whole-flight oracle: `validation/oracles/rocketpy/flight.py` flies the
@@ -92,12 +93,10 @@ After M0.4 comes M2.1b2: a `Flight::WholeFlight` variant, five cases in the lock
 ## Decided without Neer (one line each; significant ones get an ADR)
 
 - M0.4, M1.4, M1.5, M1.6, M1.7 and M2.1b were split into increments, done-when bullets unchanged.
-- ADR-017: *In short* is four bold-labelled items under the title; *Accuracy*'s numbers are
-  checked against the files they link, not generated; the decisions and roadmap stay files, indexed
-  by a page the check keeps complete.
-- ADR-016: mdBook 0.5.4 (MPL-2.0, run only; its theme's files ship in the built site under their
-  own licences) over `docs/` in place; Unicode equations, no LaTeX; our own link and label checks
-  on pulldown-cmark rather than lychee; external links counted, not fetched (#38).
+- ADR-016 to ADR-018, the site: mdBook 0.5.4 over `docs/` (its MPL-2.0 theme files ship in the
+  site); Unicode equations; our own link and label checks; web links counted, not fetched (#38);
+  *In short* in a fixed form; *Accuracy*'s numbers checked against the files they link; the
+  records stay files; examples run in CI against committed output, and quotes match line for line.
 - ADR-001 to ADR-007 and M0.3 (details in `DECISIONS.md`): licence and layout; refs pinned by hash;
   body `+z` to the nose, WGS 84 gravity and Coriolis; atmosphere and wind by height above sea
   level; NFPA 1125 motor statistics, 32 curves; full inertia tensors, Crowell's secant ogive;
