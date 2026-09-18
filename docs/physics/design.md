@@ -23,7 +23,7 @@
 Code: `hpr_design::tree` (the tree, placement, automatic radii, overrides, reference diameter),
 `hpr_design::config` (motor mounts, configurations, assembly) and `hpr_design::checks`. Decisions:
 [ADR-007][adr-007] (stations, placement, automatic radii, overrides, motors and checks). Part
-geometry and mass are in `mass.md` and `shapes.md`.
+geometry and mass are in [Mass properties](mass.md) and [Shapes](shapes.md).
 
 Sources:
 
@@ -31,7 +31,7 @@ Sources:
   mass and inertia combine with a placed motor. `docs/research/rocketpy-rocket-mass.md` has the
   formulas with line numbers.
 - **[MK]** Meriam and Kraige, *Engineering Mechanics: Dynamics*, appendix B: the parallel-axis
-  theorem (`mass.md`).
+  theorem ([Mass properties](mass.md)).
 
 Most of this file defines conventions rather than physical models. OpenRocket has its own
 conventions for positions, automatic radii and overrides. The clean-room rule rules out its
@@ -41,9 +41,9 @@ map them by running OpenRocket itself.
 ## Stations and the body origin
 
 - A **station** `s` is a distance aft of the nose tip, the way design files give positions.
-- The body frame's origin is the nose tip, on the axis: `z_ref = 0` in `frames.md`. Station `s` is
+- The body frame's origin is the nose tip, on the axis: `z_ref = 0` in [Frames](frames.md). Station `s` is
   body `z = −s`, and the rocket lies at `z ≤ 0`.
-- A part's own frame has its origin at its forward end (`mass.md`). A part placed at station `s` is
+- A part's own frame has its origin at its forward end ([Mass properties](mass.md)). A part placed at station `s` is
   translated by `(0, 0, −s)`. Radial offsets and roll angles stay as the part states them, always
   measured from the body axis.
 
@@ -116,7 +116,7 @@ An `auto` list names dimensions that the tree resolves. The part's stored value 
    `cg_xy_m` sets `c′_x` and `c′_y`; without it they are kept. The tensor about the centre is
    unchanged.
 3. **Inertia**: the tensor about the centre is replaced. `InertiaOverride` gives its six entries
-   with the sign convention of `mass.md` (`I_xy = −∫ x y dm`); the off-diagonal ones default to zero.
+   with the sign convention of [Mass properties](mass.md) (`I_xy = −∫ x y dm`); the off-diagonal ones default to zero.
 
 The result must pass `MassProperties::validate`, which also refuses inertia on a body with no mass.
 Errors inside a stage or component name it (`DesignError::InComponent`).
@@ -149,7 +149,7 @@ The reference area is `π d²/4`.
 - **Configurations.** A `Configuration` puts at most one `MountedMotor` in each mount. A mounted
   motor is a `SolidMotor` with its case diameter and length (for the checks) and an optional
   delay.
-- **Placement.** The motor's axis runs forward from the nozzle exit (`motor.md`). The nozzle exit
+- **Placement.** The motor's axis runs forward from the nozzle exit ([Solid motors](motor.md)). The nozzle exit
   is at station `s_aft + overhang`, on the mount's axis: the inner tube's
   `(r cos θ, r sin θ)`, or the body axis. A motor element at `z_m` is at body
   `z = −(s_aft + overhang) + z_m`.

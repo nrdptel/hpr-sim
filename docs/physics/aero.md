@@ -41,7 +41,7 @@ Sources:
 ## Conventions
 
 - Coefficients use the reference area `A_ref = π d_ref²/4` from `Layout::reference_diameter_m`.
-  Stations are metres aft of the nose tip (`frames.md`, `design.md`).
+  Stations are metres aft of the nose tip ([Frames](frames.md), [Design tree](design.md)).
 - `Flow` holds the Mach number, the total angle of attack `α ∈ [0, π]` between `+z_B` and the
   air-relative velocity, and the roll `φ` of the lateral airflow, measured from `x_B` toward `y_B`.
 - `C_N` lies in the plane of the flow. The side coefficient `C_Y` lies across it, along `z_B` × the

@@ -265,7 +265,7 @@ gravity:
 m a_cg = −½ ρ (C_D S)(t) |v_cg − w| (v_cg − w) + m (g + a_Coriolis) + T
 ```
 
-- In code this is the free-flight translational equation of `docs/physics/flight.md` with `ω = 0`
+- In code this is the free-flight translational equation of [Rigid-body flight](flight.md) with `ω = 0`
   and the canopy drag in place of the airframe's aerodynamics, so the mass terms of `T20` (the
   centre of mass's motion inside the body, `−m r″ − 2ṁ r′`, and the jet terms) are still there and
   the integrated point is still the nose tip. After burnout every one of them is zero and the
@@ -284,7 +284,7 @@ m a_cg = −½ ρ (C_D S)(t) |v_cg − w| (v_cg − w) + m (g + a_Coriolis) + T
   (an off-nominal case) is not silently thrust-free. Its direction is wrong the moment the rocket
   would have swung under the canopy.
 - Gravity, the Coriolis force, the atmosphere and the wind are the same models the rest of the
-  flight uses (`docs/physics/flight.md`).
+  flight uses ([Rigid-body flight](flight.md)).
 - **Added mass is not modelled.** Knacke gives no closed-form apparent mass (printed page 5-40
   says only that it is the enclosed volume times density times a form factor), and RocketPy's
   `m_a = k_a ρ (2/3) π R² H` has no citation in its code. It carries no weight in RocketPy either,
@@ -422,7 +422,7 @@ What still differs, and by how much:
   `GravityModel::Ellipsoidal` uses the full normal-gravity **vector**, which above the ellipsoid
   leans a few parts in 10⁶ toward the pole: 4.0e-6 m/s² at Valetudo's site at ground level and
   8.7e-6 m/s² at 1,468 m, growing in proportion to height above the ellipsoid and pointing toward
-  the equator (`docs/physics/gravity.md`): over these five sites it runs from +6.9e-6 m/s² at
+  the equator ([Gravity](gravity.md)): over these five sites it runs from +6.9e-6 m/s² at
   Valetudo's topmost gravity sample to −3.3e-5 m/s² at Calisto's 4,400 m. hpr's vector also turns
   with the local vertical downrange, `g·d/R`, which is 2.1e-3 m/s² at Calisto's 1.4 km of drift and
   is much the larger of the two wherever a rocket drifts at all. The parachute milestone's test

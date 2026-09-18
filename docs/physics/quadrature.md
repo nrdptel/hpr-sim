@@ -36,7 +36,7 @@ routine `qk15` has the rule's nodes and weights to 33 digits.
   - Stop with `QuadratureDidNotConverge` at the subinterval budget, or when a bisection point can
     no longer be represented.
   - QUADPACK's `QAGS` also extrapolates with the ε-algorithm; hpr does not, and relies on
-    bisection plus variable substitutions at known singularities (`shapes.md`).
+    bisection plus variable substitutions at known singularities ([Shapes](shapes.md)).
 - **Vector integrands** share one set of subintervals, so the moments of a solid come from the same
   integrand evaluations. Integrands should be scaled to order one so that one absolute tolerance
   suits every component.

@@ -101,7 +101,7 @@ diameter, moved to the reference plane by the parallel-axis theorem. `S` exclude
 - **Numerics.** Each half of the profile is integrated from its own end in `u = s²`, where `u` is
   the normalized distance from that end. The substitution removes the `u^(−1/2)` singularity of a
   blunt tip's surface integrand, and measuring from the end keeps the tip exact. The integrals use
-  `hpr_core::quadrature` (`quadrature.md`) at a relative tolerance of 1e-12.
+  `hpr_core::quadrature` ([Quadrature](quadrature.md)) at a relative tolerance of 1e-12.
 - **Walls** ([ADR-006][adr-006], component geometry and mass properties).
   - A wall of thickness `t` is the part of the solid within `t` of the outer surface, so `t` is
     measured normal to the surface, which is how molded and laid-up shells are made.

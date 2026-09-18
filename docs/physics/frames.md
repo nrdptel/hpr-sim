@@ -58,7 +58,7 @@ converted before use. hpr has no geoid model, so a flight takes `N` at the launc
 - **Earth-fixed, so non-inertial.** It turns with the Earth at
   `Ω = ω (0, cos φ₀, sin φ₀)` in `L` components, with `ω = 7.292115e-5 rad/s`. The translational
   equations in `L` add the Coriolis term `−2Ω × v`. The centrifugal term is already inside normal
-  gravity and must not be added again (`docs/physics/gravity.md`).
+  gravity and must not be added again ([Gravity](gravity.md)).
 - **`z_L` is not altitude.** `L` is a tangent plane, so a point at `z_L = 0` at horizontal
   distance `d` from the pad is about `d²/(2R)` above the ellipsoid: 7.8 m at 10 km. Height above
   the ellipsoid comes from `LaunchFrame::geodetic_from_enu`. The flight engine detects apogee and
@@ -74,7 +74,7 @@ converted before use. hpr has no geoid model, so a flight takes `N` at the launc
 - **Thrust** of a motor aligned with the axis acts along `+z_B`.
 - **Design stations** measured aft from the nose tip, as design files state them, map to
   `z_B = z_ref − s` with `z_ref = 0`, so `z_B = −s` and the whole rocket lies at `z_B ≤ 0`
-  (`docs/physics/design.md`).
+  ([Design tree](design.md)).
 
 ## Aerodynamic angles
 
@@ -85,7 +85,7 @@ converted before use. hpr has no geoid model, so a flight takes `N` at the launc
   airflow, with `θ₀` the set's base angle.
 - **Force directions.** With `ŵ = (cos φ, sin φ, 0)` the lateral air direction in `B`, the normal
   and side forces are `q A_ref (C_N ŵ + C_Y (z_B × ŵ))`: `C_N` is positive along `ŵ`, the way the
-  crossing air pushes the body, and `C_Y` is across the flow's plane (`docs/physics/aero.md`). The
+  crossing air pushes the body, and `C_Y` is across the flow's plane ([Aerodynamics](aero.md)). The
   axial force is `−q A_ref C_A z_B`: `C_A` is positive when the flow meets the nose and drag pushes
   toward the tail, and negative past `α = 90°`, when the rocket moves tail first.
 

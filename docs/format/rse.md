@@ -136,7 +136,7 @@ With every observed file setting both auto-calc flags to `1`, RockSim may ignore
    to SI only when building the physical motor: g → kg → g is not bit-exact (`4030.` comes back
    as `4030.0000000000005`; 14 of 1330 distinct mass and length values in the sets fail).
 6. Keep strings verbatim, including the spaces in `mfg`; normalize names in the catalog layer.
-   Delays: keep the raw string; interpret it as in `eng.md` (`1000`/`100` → plugged, `0` ambiguous).
+   Delays: keep the raw string; interpret it as in [`.eng` files](eng.md) (`1000`/`100` → plugged, `0` ambiguous).
 7. Point checks match `.eng`: error on negative or decreasing `t`; warn on a last `f` ≠ 0, on
    negative thrust, and on an `Itot` or `peakThrust` that disagrees with the curve by more than 1%.
    `burn-time` is not checked: files round it from the last time.

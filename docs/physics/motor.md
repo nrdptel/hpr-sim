@@ -20,7 +20,7 @@
 ## Code and sources
 
 Code: `hpr_motor` (`curve`, `class`, `motor`, `grains`, `mass`, `delay`, `catalog`). File formats
-are in `docs/format/eng.md` and `docs/format/rse.md`.
+are in [`.eng` files](../format/eng.md) and [`.rse` files](../format/rse.md).
 
 Sources:
 
@@ -37,7 +37,7 @@ Sources:
 
 - **Time** `t` is seconds from ignition.
 - **Motor axis:** positions are metres along the motor's axis **from the nozzle exit plane toward
-  the forward closure**, so `+z` points toward the nose like the body frame (`frames.md`). The
+  the forward closure**, so `+z` points toward the nose like the body frame ([Frames](frames.md)). The
   design model (from [M1.4][roadmap], the design and mass-properties milestone) places the
   motor's nozzle exit in the body frame.
 - **Inertia:** every part is symmetric about the axis. `I_a` is about the axis and `I_t` about a
@@ -84,7 +84,7 @@ c = I / m_p0,    ṁ(t) = F(t) / c,    m_p(t) = m_p0 (1 − I(t)/I)
 ```
 
 - This is [RP] `SolidMotor` (`solid_motor.py:401-418`; `motor.py:483-524`). ThrustCurve's `.rse`
-  files tabulate their mass column the same way (`docs/format/rse.md`).
+  files tabulate their mass column the same way ([`.rse` files](../format/rse.md)).
 - **It is an approximation.** [SP] defines `c` only instantaneously. Measured `I_sp` drifts during
   a burn with chamber pressure and nozzle erosion ([SP] p. 14), so real consumption is not
   exactly proportional. No COTS data resolves the difference.
@@ -224,7 +224,7 @@ F(p_a) = F_curve + (p_ref − p_a) A_e,    A_e = π r_e²
 ## Delays
 
 [TC-G] lists every achievable delay, adjustable ones included. Plugged motors are `P`. See
-`hpr_motor::delay` and `docs/format/eng.md` for the markers files use. A `0` is read as its own
+`hpr_motor::delay` and [`.eng` files](../format/eng.md) for the markers files use. A `0` is read as its own
 "zero or plugged" setting, because the RASP spec says it means ejection at burnout but most files
 mean plugged; it never becomes an ejection event without a decision.
 

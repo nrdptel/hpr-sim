@@ -32,7 +32,7 @@ Sources:
 ## Height datum
 
 Every atmosphere is queried with **geometric height above mean sea level** (`height_msl_m`). The
-core's heights are ellipsoidal (`frames.md`), so the flight engine subtracts the geoid undulation
+core's heights are ellipsoidal ([Frames](frames.md)), so the flight engine subtracts the geoid undulation
 first: `H_msl = h − N`. Samples carry an `extrapolated` flag, set whenever a model answers outside
 the range it is defined or tabulated over.
 

@@ -16,7 +16,7 @@
 
 ## Sources
 
-Code: `hpr_core::geodesy`. Conventions: `docs/physics/frames.md`.
+Code: `hpr_core::geodesy`. Conventions: [Frames](frames.md).
 
 - **[NGA]** NGA.STND.0036_1.0.0_WGS84, *Department of Defense World Geodetic System 1984, Its
   Definition and Relationships with Local Geodetic Systems*, 2014-07-08. Pinned as
@@ -96,6 +96,6 @@ the paper needs its limiting forms (B6)–(B7); the code returns `CoreError::Dom
 
 ## Local ENU axes
 
-`ecef_from_enu_rotation(φ, λ)` has columns `ê`, `n̂` and `û` (`frames.md`). A test checks that `û`
+`ecef_from_enu_rotation(φ, λ)` has columns `ê`, `n̂` and `û` ([Frames](frames.md)). A test checks that `û`
 equals the normalized gradient of `x²/a² + y²/a² + z²/b²` at the foot point, i.e. the ellipsoid
 normal.

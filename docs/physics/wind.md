@@ -18,7 +18,7 @@
 
 ## Code and sources
 
-Code: `hpr_atmos::wind`. Turbulence is in `turbulence.md`.
+Code: `hpr_atmos::wind`. Turbulence is in [Turbulence](turbulence.md).
 
 Sources:
 
