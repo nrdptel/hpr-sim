@@ -447,12 +447,14 @@ parasitic term on its own area. The axial coefficient is `C_A = C_D0 f(α)`.
   ([Rigid-body flight](flight.md)), so its results are least trustworthy where large angles occur:
   off the rail in a strong crosswind, and near apogee.
 - **Body lift in wind** (measured by flying both codes, not against a real flight;
-  [ADR-026][adr-026]). A rocket that leaves the rail slowly into
+  [ADR-026][adr-026]). A rocket that leaves the rail slowly in
   a crosswind meets the air at a steep angle. Juno III, one of RocketPy's example rockets, leaves
-  at 18 m/s into an 8.5 m/s wind, 26° off the airflow, and there body lift is about half its normal
-  force. Acting near the middle of the body, it pushes the rocket downwind with little turning,
-  so hpr [turns into the wind](../glossary.md#weathercocking) less than RocketPy, whose normal
-  force has no body term. Juno III's apogee ends 228.0 m from the pad in hpr and 396.6 m in
+  at 18 m/s in an 8.5 m/s wind, 26° off the airflow, and there body lift is about half its normal
+  force. Much of it acts ahead of the rocket's centre of mass, the nose's above all, so it moves
+  the centre of pressure forward and weakens the moment that
+  [turns the rocket into the wind](../glossary.md#weathercocking); hpr turns into it less than
+  RocketPy, whose normal force has no body term. Its sideways push alone is about a sixth of the
+  effect. Juno III's apogee ends 228.0 m from the pad in hpr and 396.6 m in
   RocketPy; body lift is about half of that difference, and hpr's rail release and fin slope most
   of the rest. `K` matters there: across [G]'s range, Juno III's apogee drift runs from 194.1 m at
   `K = 1.5` to 240.2 m at 1.0, and would be 328.0 m with no body lift (flown in RocketPy with

@@ -23,10 +23,17 @@ After step 5 RocketPy flies hpr's choices on every point the two codes' normal f
 differ on but two small ones (hpr's `sin alpha` in place of `alpha`, and its drag factor at an
 angle of attack), so its drifts should land on hpr's.
 
-Two more measurements follow each case: RocketPy's fin slope at Mach 0.1 with and without the
-airfoil, for a case whose fins carry one, and the drifts of step 5 with body lift's `K` at 0
-(none), 1.0 and 1.5, the ends of the range Galejs cites, to show how much a drift in wind rests on
-that constant.
+Three more measurements follow each case: RocketPy's fin slope at Mach 0.1 with and without the
+airfoil, for a case whose fins carry one; the drifts of step 5 with body lift's `K` at 0 (none),
+1.0 and 1.5, the ends of the range Galejs cites, to show how much a drift in wind rests on that
+constant; and the drifts of step 5 with the nose's body lift alone, and with all of it placed at
+the centre of mass at the rail exit, where it could only push the rocket sideways, not turn it.
+The two show how body lift acts: mostly by turning the rocket, through the lift ahead of its
+centre of mass.
+
+hpr takes each body component's airflow at its small-angle centre of pressure and applies body
+lift at its planform centroid; `BodyLift` takes the airflow at the centroid too. That, and the two
+small differences above, are why step 5 lands within 1.4% of hpr rather than on it.
 
 It also prints, for each case, the check that found the first correction: at the released
 flight's rail exit, where the rotation rate is zero and so no damping acts, RocketPy's angular
@@ -128,8 +135,10 @@ def body_planforms(design, nose):
     return planforms
 
 
-def add_body_lift(rocket, design, k):
-    """Adds `BodyLift` with constant `k` for each body component, at its planform centroid."""
+def add_body_lift(rocket, design, k, only=None, at_station_m=None):
+    """Adds `BodyLift` with constant `k` for each body component, at its planform centroid, or
+    for component `only` alone, or with every component's placed at `at_station_m` from the nose
+    tip instead."""
     nose, nose_position = next(
         (surface, position)
         for surface, position in rocket.aerodynamic_surfaces
@@ -137,6 +146,10 @@ def add_body_lift(rocket, design, k):
     )
     surfaces, positions = [], []
     for name, area, station in body_planforms(design, nose):
+        if only is not None and name != only:
+            continue
+        if at_station_m is not None:
+            station = at_station_m
         factor = k * area / rocket.area
         surfaces.append(BodyLift(f"body lift, {name}", factor, rocket.radius))
         positions.append(nose_position.z - station * rocket._csys)
@@ -191,7 +204,13 @@ def fly(case, inputs, env, variant):
     lifts = None
     if variant["body_lift"]:
         with open(f"validation/designs/rocketpy-{base}.json") as file:
-            lifts = add_body_lift(rocket, json.load(file), variant.get("k", BODY_LIFT_K))
+            lifts = add_body_lift(
+                rocket,
+                json.load(file),
+                variant.get("k", BODY_LIFT_K),
+                variant.get("only"),
+                variant.get("at_station_m"),
+            )
     rail = dict(flight.RAILS[base])
     if variant["release"]:
         buttons = inputs["geometry"].get("rail_buttons") or fail(f"{base} has no rail buttons")
@@ -277,6 +296,23 @@ def main():
                 f"{slopes[True]:.4f} thin-plate, a ratio of {slopes[False] / slopes[True]:.4f}"
             )
         last = dict(VARIANTS[-1] if has_airfoil else VARIANTS[-2])
+        flown, _, _, _ = fly(case, inputs, env, last)
+        rocket = flown.rocket
+        nose_z = next(
+            position.z
+            for surface, position in rocket.aerodynamic_surfaces
+            if type(surface).__name__ == "NoseCone"
+        )
+        t_exit = flown.out_of_rail_time
+        centre_m = (nose_z - rocket.center_of_mass.get_value_opt(t_exit)) * rocket._csys
+        _, nose_only, _, _ = fly(case, inputs, env, dict(last, only="nose"))
+        _, at_centre, _, _ = fly(case, inputs, env, dict(last, at_station_m=centre_m))
+        print(
+            f"  body lift placed, apogee / landing drift in m: the nose's alone "
+            f"{nose_only['apogee_drift_m']:.1f} / {nose_only['landing_drift_m']:.1f}; all at the "
+            f"centre of mass at the rail exit, {centre_m:.3f} m from the nose tip, "
+            f"{at_centre['apogee_drift_m']:.1f} / {at_centre['landing_drift_m']:.1f}"
+        )
         swept = []
         for k in (0.0, 1.0, 1.5):
             _, metrics, _, _ = fly(case, inputs, env, dict(last, k=k))

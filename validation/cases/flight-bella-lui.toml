@@ -30,11 +30,12 @@
 #   first. Freed where hpr frees it, RocketPy's apogee moves by at most 0.19% (Bella Lui) and its
 #   drifts by up to 12% (Bella Lui's landing in wind; `wind_response.py`, ADR-026).
 # - The wind. Same-drag mode shares C_D0, not the normal force. In wind a rocket leaves the rail
-#   at an angle of attack of up to 26 degrees here (Juno III: 18 m/s into an 8.5 m/s wind), where
+#   at an angle of attack of up to 26 degrees here (Juno III: 18 m/s in an 8.5 m/s wind), where
 #   hpr's normal force includes body lift (Galejs, C_N = K (A_plan/A_ref) sin^2 alpha, K = 1.1;
-#   ADR-008) and RocketPy's is linear in alpha with no body term. Body lift acts near the middle of
-#   the body, so it pushes the rocket downwind with little turning moment, and hpr turns into the
-#   wind less. Added to RocketPy with hpr's rail release (and, for Juno III, its thin-plate fins),
+#   ADR-008) and RocketPy's is linear in alpha with no body term. Much of body lift acts ahead of
+#   the rocket's centre of mass, the nose's above all, so at a steep angle it moves the centre of
+#   pressure forward and weakens the moment that turns the rocket into the wind: hpr turns into it
+#   less. Its sideways push alone is about a sixth of the effect (ADR-026). Added to RocketPy with hpr's rail release (and, for Juno III, its thin-plate fins),
 #   it brings RocketPy's drifts to within 1.4% of hpr's in every windy case
 #   (`validation/oracles/rocketpy/wind_response.py`). Where the two models' difference carries a
 #   drift past 3%, the drift is reported as a measured model difference and not scored (ADR-026).
@@ -104,7 +105,7 @@ relative = 0.03
 relative = 0.03
 
 [metrics.apogee_drift_m]
-not_scored = "a measured model difference, not an open miss (ADR-026): hpr's apogee drift is 11.3% short of RocketPy's (104.6 m against 117.9). Bella Lui leaves its rail at 17 m/s into a 3.6 m/s wind, 12 degrees off the airflow, where hpr's body lift (Galejs, K = 1.1), which RocketPy's linear normal force leaves out, pushes the rocket downwind. Measured in RocketPy (validation/oracles/rocketpy/wind_response.py): freeing the rocket at its last rail button, as hpr does, moves the drift to 110.9 m and hpr's body lift to 104.7 m, within 0.1% of hpr. Reported, not scored: at 3% it would score one code's normal-force model against the other's."
+not_scored = "a measured model difference, not an open miss (ADR-026): hpr's apogee drift is 11.3% short of RocketPy's (104.6 m against 117.9). Bella Lui leaves its rail at 17 m/s in a 3.6 m/s wind, 12 degrees off the airflow, where hpr's body lift (Galejs, K = 1.1), which RocketPy's linear normal force leaves out, acts ahead of the centre of mass and weakens the turn into the wind. Measured in RocketPy (validation/oracles/rocketpy/wind_response.py): freeing the rocket at its last rail button, as hpr does, moves the drift to 110.9 m and hpr's body lift to 104.7 m, within 0.1% of hpr. Reported, not scored: at 3% it would score one code's normal-force model against the other's."
 
 [metrics.landing_drift_m]
 not_scored = "a measured model difference, as the apogee drift is (ADR-026): hpr lands 23.8% nearer the pad (51.2 m against 67.2). With hpr's rail release RocketPy lands 58.9 m out, and with its body lift too 51.7 m (validation/oracles/rocketpy/wind_response.py), within 1.0% of hpr. Reported, not scored, for the apogee drift's reason."

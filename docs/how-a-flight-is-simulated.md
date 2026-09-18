@@ -4,7 +4,7 @@ This page follows a flight from ignition to landing, and says in plain words wha
 each stage and which model does it. Read it to learn what lies behind a number hpr prints, before
 the model pages it links. It describes the method, not how well it works. When both codes fly
 the same drag, whole flights match RocketPy's in height, speed and time, and in where they go,
-except for rockets that leave the rail slowly into a wind
+except for rockets that leave the rail slowly in a wind
 ([Accuracy](accuracy.md#whole-flights-against-rocketpy)). With hpr's own drag, against RocketPy
 flying the drag its examples ship, heights differ by −0.604% to +10.322%
 ([Accuracy](accuracy.md#whole-flights-with-each-codes-own-drag)). [Accuracy](accuracy.md) keeps

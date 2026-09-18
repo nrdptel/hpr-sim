@@ -16,7 +16,7 @@ What has been checked so far:
 - the descent under a parachute, against RocketPy, for five rockets;
 - whole flights from the pad to the ground, against RocketPy, for five rockets flown with one
   declared drag coefficient, with a sixth reported as a gap: heights, speeds and times agree, and
-  so does the path, except for rockets that leave the rail slowly into a wind;
+  so does the path, except for rockets that leave the rail slowly in a wind;
 - the same flights with each code's own drag, reported against a target rather than gated.
 
 Every number here links to the page or file it comes from. [Checking a claim](checking-a-claim.md)
@@ -223,13 +223,13 @@ motion, the motor and the air, not the drag. hpr's own drag is compared
 [below](#whole-flights-with-each-codes-own-drag).
 
 **In short: how high, how fast and how long agree, and so does where the rocket goes, except for
-rockets that leave the rail slowly into a wind.** The heights, speeds, times and accelerations of
+rockets that leave the rail slowly in a wind.** The heights, speeds, times and accelerations of
 five flights, and of three of them again in calm air, agree within the 3% of each case's gate
 ([case file][juno-case]); the largest difference is +1.783% ([report][report]). Here *still air*
 is an example flown with no wind (Valetudo's), and *calm air* a windy case flown again with its
 wind switched off. The apogee and landing points agree too, within 2.2%, in every flight without
 wind and for Calisto in wind ([ADR-026][adr-026]). Juno III and Bella Lui leave the rail slowly
-into the wind, at a steep angle to the airflow. There hpr's [body lift](glossary.md#body-lift),
+in the wind, at a steep angle to the airflow. There hpr's [body lift](glossary.md#body-lift),
 which RocketPy leaves out, its later release from the rail and, for Juno III, its simpler fin
 model put their drifts 11 to 43% from RocketPy's. NDRT 2020's apogee drift differs by −4.654%,
 mostly from the rail release. These five drifts are reported, not scored. So the landing offset
@@ -346,12 +346,12 @@ off. The other seven are at an eighth of theirs or less. The speed RMS runs from
 What the two codes still do differently, and what it moves:
 
 - **In wind: body lift, the rail release and Juno III's fins.** A rocket that leaves the rail
-  slowly into a wind meets the airflow at a steep angle: Juno III leaves at 18 m/s into an
-  8.5 m/s wind, 26° off it ([ADR-026][adr-026]). Three things differ there.
+  slowly in a wind meets the airflow at a steep angle: Juno III leaves at 18 m/s in an 8.5 m/s
+  wind, 26° off it ([ADR-026][adr-026]). Three things differ there.
   - hpr's normal force includes [body lift](glossary.md#body-lift), which grows with the square
-    of that angle; RocketPy's does not. Body lift acts near the middle of the rocket, so it pushes
-    it downwind with little turning, and hpr [turns into the wind](glossary.md#weathercocking)
-    less.
+    of that angle; RocketPy's does not. Much of it acts ahead of the rocket's centre of mass, the
+    nose's above all, so it moves the centre of pressure forward and weakens the moment that
+    [turns the rocket into the wind](glossary.md#weathercocking): hpr turns into it less.
   - hpr keeps the rocket guided until its last
     [rail button](glossary.md#rail-exit-and-rail-exit-velocity) leaves the rail; RocketPy frees it
     at the first.
@@ -400,7 +400,7 @@ outlive its cause ([case file][prometheus-case]). Bella Lui was added so that fi
 still be scored while Prometheus can't.
 
 What this shows: with the drag given, the two codes agree on how high, how fast and how long a
-rocket flies, and on where it goes, except for rockets that leave the rail slowly into a wind,
+rocket flies, and on where it goes, except for rockets that leave the rail slowly in a wind,
 where their models differ. [M2.1](decisions-and-roadmap.md#m2-1)'s landing offset is met
 everywhere else ([ADR-026][adr-026]). Which code is nearer the truth for those is for real flights
 to say.

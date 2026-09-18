@@ -2117,7 +2117,7 @@ Two checks:
   corrected ones.
 
 **What remains is the two codes' models.** With the corrections, RocketPy's drifts in wind move
-by up to 87% (Juno III's landing). hpr against them: Juno III −42.5% (apogee drift) and +40.9%
+by up to 78% (Juno III's landing; 87% on its own drag). hpr against them: Juno III −42.5% (apogee drift) and +40.9%
 (landing drift), Bella Lui −11.3% and −23.8%, NDRT 2020 −4.65% and +1.95%, Calisto −0.99% and
 +1.43%, Valetudo −0.93% and −1.95%. In calm air every drift agrees within 2.2%. `wind_response.py`
 then adds hpr's choices to the corrected RocketPy one at a time. The drifts, in metres:
@@ -2140,13 +2140,20 @@ agrees from the other side: hpr with its normal force linear, no body lift, the 
 release, no drag factor and Juno III's fin slope matched is within 0.7% of the corrected RocketPy
 in every windy case (Juno III 396.4 against 396.6 m). The three choices:
 
-- **Body lift** (ADR-008): `C_N = K (A_plan/A_ref) sin² α`, `K = 1.1` (Galejs), acting near the
-  middle of the body. It is zero at small angles, but a slow rocket leaves the rail at a large one:
-  Juno III at 18 m/s into an 8.5 m/s wind, 26° off the airflow, where body lift is about half its
-  normal force. Acting near the centre of mass, it pushes the rocket downwind with little turning
-  moment. RocketPy's normal force is linear in `α` and has no body term.
+- **Body lift** (ADR-008): `C_N = K (A_plan/A_ref) sin² α`, `K = 1.1` (Galejs), acting at each
+  body component's planform centroid. It is zero at small angles, but a slow rocket leaves the rail
+  at a large one: Juno III at 18 m/s in an 8.5 m/s wind, its rail leaning 5° downwind, 26° off the
+  airflow, where body lift is about half its normal force. Much of it acts ahead of the loaded
+  rocket's centre of mass, the nose's above all (its planform centroid is 0.35 m from the tip, the
+  centre of mass 1.64 m), so at a steep angle it moves the centre of pressure forward by about
+  0.3 m and weakens the moment that turns the rocket into the wind. It turns the rocket more than
+  it pushes it: in RocketPy with hpr's release and fins, Juno III's apogee drift is 328.0 m with no
+  body lift and 231.1 m with it, 232.6 m with the nose's alone, and 311.2 m with all of it placed
+  at the centre of mass, where it can only push (Bella Lui: 110.9, 104.7, 108.2 and 110.0 m).
+  RocketPy's normal force is linear in `α` and has no body term.
 - **The rail release** (ADR-025): hpr guides the rocket until its last button leaves the rail;
-  RocketPy frees it at the first.
+  RocketPy frees it at the first. Neither models tip-off, the pivot about the last button between
+  the two, so the real release lies between them: each is a modelling choice.
 - **Juno III's fins:** the example gives them an airfoil lift curve, which RocketPy uses in place
   of the thin-plate `2π`, and which hpr does not model; RocketPy's fin slope is 7.6% steeper.
 
@@ -2168,7 +2175,8 @@ build).
   scored, each as a measured model difference: Juno III's and Bella Lui's two, and NDRT 2020's
   apogee drift. Prometheus 2022's drifts, excused before, are held to 3% for when hpr flies it.
 - **hpr keeps its body lift and its rail release.** Body lift is a real force at these angles, and
-  OpenRocket carries it too. A rocket stays guided while any button is on the rail.
+  OpenRocket carries it too. The release at the last button is hpr's modelling choice (ADR-025);
+  with no tip-off in either code, neither end is the real one.
 - **Drop the corrections when RocketPy releases them.** Then re-pin the oracle and delete
   `corrections.py`, or keep only what the release still lacks.
 
@@ -2182,8 +2190,12 @@ build).
 - *Only #1196.* It is written on top of #1188, which is merged upstream.
 - *RocketPy's `develop` branch with #1196.* Unreleased, and it would move every reference for
   reasons unrelated to this one.
-- *Scoring Juno III's and Bella Lui's drifts against RocketPy with hpr's body lift added.* The
-  reference would then carry hpr's own model, and the comparison would prove nothing.
+- *Gating the five drifts now against RocketPy flying hpr's body lift, release and fin slope.* It
+  would check hpr's equations at steep angles as same-drag mode checks them with the drag shared,
+  but not hpr's normal force against another's, and it needs a reference whose rail differs from
+  the one hpr flies, which the harness does not read yet. Until then the five are pinned as the
+  committed report pins every number (`validate --check` fails if one moves) and the regeneration
+  script prints `wind_response.py` beside them. Filed as issue #61.
 - *Dropping or shrinking hpr's body lift to agree.* That fits hpr to a code that leaves a real
   force out. `K` is uncertain (Galejs gives 1.0 to 1.5) but it is not zero.
 - *Loosening the drifts' gate.* That would widen a gate to fit a result, which the hard rules
@@ -2195,6 +2207,8 @@ build).
   Calisto in wind and for NDRT 2020's landing. It is not met for Juno III and Bella Lui in wind,
   where the two codes' models differ: body lift and the rail release by design, Juno III's airfoil
   fins a feature hpr lacks. The report shows both numbers.
+- Whether `K` should be lower at these rockets' crossflow Reynolds numbers is open: crossflow
+  methods other than Galejs's (Allen and Perkins; Jorgensen, NASA TR R-474) are not yet read.
 - In wind, a slow rocket's drift in hpr depends on body lift's uncertain `K`. Flown in RocketPy
   with hpr's body lift, rail release and fin slope (`wind_response.py`), Juno III's apogee drift is
   240.2 m at `K = 1.0`, 231.1 m at 1.1 and 194.1 m at 1.5, and 328.0 m with no body lift; its
@@ -2204,7 +2218,11 @@ build).
 - The corrections do not only move RocketPy toward hpr: Valetudo's apogee difference grew from
   +0.003% to +0.116%, and predicted NDRT 2020's apogee drift from −4.44% to +11.906% (outside its
   target before and after).
-- The time-series RMS tightens: Juno III's height RMS is 15.9 m, from 39.2.
+- The time-series RMS: Juno III's height RMS is 15.9 m, from 39.2, and Bella Lui's 1.9 m, from
+  2.3; four others grow by under a metre (Valetudo 1.4 to 2.4 m, NDRT 2020 2.0 to 2.8 m, and
+  Juno III's and Calisto's calm cases 1.3 and 1.1 to 2.1 and 2.0 m). Burnout speed now reads
+  +0.018% to +0.063% in every case, where it read −0.066% to +0.040%: a small rest of one sign,
+  far inside the gate.
 - Predicted mode: 66 of 85 metrics within target, from 63; Calisto's drifts and Juno III's apogee
   are now within, and nothing new misses.
 - `rail_release.py` now flies the corrected equations. The numbers ADR-025 quotes from it were

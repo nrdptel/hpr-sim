@@ -13,7 +13,7 @@
   agree on height, speed, time and acceleration within 3%; the largest scored difference is
   +1.783%, a peak acceleration on the rail ([validation report][report],
   [whole flights against RocketPy](#whole-flights-against-rocketpy)). So does the path, except
-  for rockets that leave the rail slowly into a wind. There hpr's
+  for rockets that leave the rail slowly in a wind. There hpr's
   [body lift](../glossary.md#body-lift), which RocketPy's normal force leaves out, its later
   release from the rail and, for Juno III, its simpler fin model put the drift 4.7 to 43% from
   RocketPy's ([ADR-026][adr-026]). A sixth rocket
@@ -360,10 +360,11 @@ and a declared wind.
 
 What the two codes still do differently, and how much it moves:
 
-- **The wind.** A rocket that leaves the rail slowly into a wind meets the air at a steep angle:
-  Juno III at 18 m/s into an 8.5 m/s wind, 26° off the airflow. There hpr's normal force includes
-  body lift ([Aerodynamics](aero.md#bodies-of-revolution)), which RocketPy's leaves out. It pushes
-  the rocket downwind more than it turns it, so hpr turns into the wind less: Juno III's apogee is
+- **The wind.** A rocket that leaves the rail slowly in a wind meets the air at a steep angle:
+  Juno III at 18 m/s in an 8.5 m/s wind, 26° off the airflow. There hpr's normal force includes
+  body lift ([Aerodynamics](aero.md#bodies-of-revolution)), which RocketPy's leaves out. Much of
+  it acts ahead of the centre of mass, the nose's above all, so it moves the centre of pressure
+  forward and weakens the turn into the wind, and hpr turns into it less: Juno III's apogee is
   228.0 m from the pad in hpr and 396.6 m in RocketPy. Given hpr's body lift, its rail release and
   its flat-plate fin slope (it cannot model the airfoil lift curve Juno III's example gives its
   fins), RocketPy puts it 231.1 m out, and every windy drift within 1.4% of hpr's
