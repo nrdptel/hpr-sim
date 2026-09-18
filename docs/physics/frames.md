@@ -1,5 +1,21 @@
 # Frames and sign conventions
 
+## In short
+
+- **What it models:** the directions and signs the whole simulator shares: a frame fixed to the
+  Earth at its centre, the launch-site frame (east, north, up), the rocket's body frame and its
+  angle to the airflow, and its attitude (which way it points) and launch angles.
+- **Sources:** the NGA's WGS 84 standard, NGA.STND.0036 (2014); J. Solà, *Quaternion kinematics
+  for the error-state Kalman filter* (2017); RocketPy 1.13.0, for its launch-angle convention.
+- **How well it is validated:** unit tests, and one check against another simulator: for 8 rail
+  setups, launch angles give RocketPy's starting attitude to 1e-12 rad. Over 1e6 integration
+  steps, attitude stays within 1e-9 rad of the exact answer. No real-flight check.
+- **What it leaves out:** sea level. Heights are above the WGS 84 ellipsoid, which lies up to
+  about 100 m from sea level. The rotation equations ignore the Earth's turn, at most
+  7.3e-5 rad/s ([ADR-011][adr-011], the rigid-body flight decision).
+
+## Code and sources
+
 This is the single definition of the frames, and every crate follows it. Code:
 `hpr_core::{geodesy, frames, attitude}`. [ADR-003][adr-003], the frames and gravity decision,
 records why these choices were made.
@@ -24,7 +40,8 @@ A **geodetic position** `(φ, λ, h)` gives the latitude `φ` (positive north, i
 the longitude `λ` (positive east), and the height `h` above the ellipsoid along its normal.
 `h` is **ellipsoidal height, not height above mean sea level**. The two differ by the geoid
 undulation `N` (`h = H + N`, with `|N|` up to about 100 m). Inputs quoted above sea level must be
-converted before use. `docs/physics/geodesy.md` gives the conversions.
+converted before use. hpr has no geoid model, so a flight takes `N` at the launch site as an input;
+[Atmosphere](atmosphere.md#height-datum) shows where it is used.
 
 ## Launch frame `L` (East-North-Up)
 

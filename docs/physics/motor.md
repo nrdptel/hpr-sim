@@ -1,5 +1,24 @@
 # Solid motors
 
+## In short
+
+- **What it models:** commercial solid motors: the thrust curve and its statistics (total
+  impulse, burn time, average thrust, class), how the propellant burns away, the motor's mass,
+  centre of mass and inertia as it burns, thrust at altitude, and ejection delays.
+- **Sources:** NASA SP-8039 (1971), the National Association of Rocketry's *Standard Motor
+  Codes*, ThrustCurve.org's glossary, statistics page and code, and RocketPy 1.13.0's motor code.
+- **How well it is validated:** by unit tests and code-to-code, the first and third of four
+  [levels of evidence][levels]. ThrustCurve.org's own statistics code agrees to 1.8e-15 on all 32
+  bundled curves. On three of them, RocketPy agrees within 7.9e-5 in total mass and inertias,
+  and within 5.8e-6 of the motor length in centre of mass. Not compared with OpenRocket or a real
+  flight.
+- **What it leaves out:** anything but commercial off-the-shelf solids. Only 32 curves are
+  bundled, none in class A. Propellant burns in proportion to the impulse delivered, an
+  approximation. With only catalog data, the centre of mass stays at mid-length. Commercial motor
+  files give no nozzle exit size, so thrust at altitude goes uncorrected unless one is supplied.
+
+## Code and sources
+
 Code: `hpr_motor` (`curve`, `class`, `motor`, `grains`, `mass`, `delay`, `catalog`). File formats
 are in `docs/format/eng.md` and `docs/format/rse.md`.
 
@@ -241,4 +260,5 @@ mean plugged; it never becomes an ejection event without a decision.
   parallel-axis theorem, and the impulse-fraction flow integrating to `m_p0`.
 
 [lessons]: https://github.com/nrdptel/hpr-sim/blob/main/docs/research/loft-lessons.md
+[levels]: ../accuracy.md#four-kinds-of-evidence
 [roadmap]: https://github.com/nrdptel/hpr-sim/blob/main/docs/ROADMAP.md

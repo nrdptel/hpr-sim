@@ -1,9 +1,26 @@
 # Recovery
 
-How hpr flies a rocket under a parachute, a streamer or tumbling, and how a separated stack flies
-every body to its own landing: the drag area of a device, when it opens, how it fills, and the
-equations of the descent. Code: `crates/hpr-sim/src/recovery.rs` and the descent branch of
-`crates/hpr-sim/src/dynamics.rs`. Decisions: [ADR-012][adr-012] (parachutes and the descent),
+## In short
+
+- **What it models:** how a rocket comes down under a parachute, a streamer or tumbling: when each
+  device fires, how a canopy fills, the descent in the wind, and a stack that splits into parts
+  that each land.
+- **Sources:** Knacke's *Parachute Recovery Systems Design Manual* (1991) for parachutes;
+  Carruthers and Filippone's streamer tests (2005) and the OpenRocket technical documentation for
+  streamers and tumbling.
+- **How well it is validated:** the descent under a parachute matches RocketPy's for five example
+  rockets, from the same state near apogee: all 30 metrics within 3%, the largest +2.865%
+  ([validation report][report]). No parachute descent has been compared with a real flight.
+  Tumbling is −10% to +19% off its source's own drop tests, and the default streamer model reads
+  9% fast on the one flat streamer in Kidwell's drop tests.
+- **What it leaves out:** the drag overshoot and shock as a canopy opens (hpr's peak load is a
+  lower bound), added mass (air carried along) and airframe drag under a canopy, the swing (the
+  attitude freezes at deployment), and streamer pleats (the default model reads 58% fast on a
+  pleated one).
+
+## Code and sources
+
+Code: `crates/hpr-sim/src/recovery.rs` and the descent branch of `crates/hpr-sim/src/dynamics.rs`. Decisions: [ADR-012][adr-012] (parachutes and the descent),
 [ADR-013][adr-013] (streamers and tumble), [ADR-014][adr-014] (separation).
 
 Sources:

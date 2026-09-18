@@ -1,5 +1,21 @@
 # Interpolation tables
 
+## In short
+
+- **What it models:** reading values between a table's points, such as drag coefficient against
+  Mach number, along straight lines or a smooth natural cubic spline. Each table sets what
+  happens past its ends, and every lookup says if it went there.
+- **Sources:** the slope form of the cubic spline in C. de Boor, *A Practical Guide to Splines*
+  (Springer, 2001).
+- **How well it is validated:** analytic and unit tests only. The spline through (0, 0), (1, 1)
+  and (2, 0) matches its closed form, `y = 3x/2 − x³/2` on `[0, 1]`, and property tests check
+  that both kinds hit every point. Not compared with another simulator or a flight.
+- **What it leaves out:** tables of more than one input. A natural spline can overshoot where data
+  turn sharply (a thrust spike, a transonic drag peak), and there is no overshoot-free (monotone)
+  cubic yet, so use linear tables there.
+
+## Code and sources
+
 Code: `hpr_core::interp` (`Table1D`). Tables carry curves such as Cd(M), thrust(t) and
 atmosphere soundings. Every table states how it interpolates and what happens outside its range,
 and every lookup reports whether it extrapolated.

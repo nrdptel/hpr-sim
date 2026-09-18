@@ -1,5 +1,25 @@
 # The design tree, configurations and checks
 
+## In short
+
+- **What it models:** how parts become a rocket: where each part sits, automatic radii,
+  overrides, the reference diameter and the motor in its mount. It gives the rocket's mass,
+  centre of mass and inertia through the burn, and flags designs that can't exist, such as a
+  motor wider than its mount. Most of it is convention, not physics.
+- **Sources:** RocketPy 1.13.0's `Rocket` code, and Meriam and Kraige's *Engineering Mechanics:
+  Dynamics* for the parallel-axis theorem.
+- **How well it is validated:** by analytic tests and code-to-code, the first and third of four
+  [levels of evidence][levels]. A hand-worked rocket agrees to 1e-12 through the burn. Eight
+  cases from RocketPy's example rockets agree in mass, centre and inertia within 8.0e-10 at its
+  solver steps, and between them within 1.1e-5 in mass and 2.6e-5 in inertia. Overrides are
+  checked by hand only. Not compared with OpenRocket or a real flight.
+- **What it leaves out:** all motors ignite together at `t = 0` until staging arrives
+  ([M1.9][roadmap]). Fins on a nose cone or transition are refused. OpenRocket has its own
+  conventions for positions, radii and overrides; the OpenRocket comparison ([M2.2][roadmap]) will
+  map them.
+
+## Code and sources
+
 Code: `hpr_design::tree` (the tree, placement, automatic radii, overrides, reference diameter),
 `hpr_design::config` (motor mounts, configurations, assembly) and `hpr_design::checks`. Decisions:
 [ADR-007][adr-007] (stations, placement, automatic radii, overrides, motors and checks). Part
@@ -238,4 +258,5 @@ refuses them with `SimError::DesignChecks` unless the caller sets
 
 [adr-007]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-007-design-tree-stations-placement-automatic-radii-overrides-motors-and-checks-2026-09-17
 [lessons]: https://github.com/nrdptel/hpr-sim/blob/main/docs/research/loft-lessons.md
+[levels]: ../accuracy.md#four-kinds-of-evidence
 [roadmap]: https://github.com/nrdptel/hpr-sim/blob/main/docs/ROADMAP.md

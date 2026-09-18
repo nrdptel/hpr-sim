@@ -1,5 +1,23 @@
 # Nose cones, transitions and solids of revolution
 
+## In short
+
+- **What it models:** the outer shape of nose cones and transitions (conical, ogive, elliptical,
+  power, parabolic and Haack series), and the volume, centre of mass, inertia and surface areas
+  of each, solid or as a shell of given wall thickness.
+- **Sources:** G. A. Crowell Sr., *The Descriptive Geometry of Nose Cones* (1996), and appendix A
+  of the published *OpenRocket technical documentation* v13.05 (2013).
+- **How well it is validated:** by analytic tests only, the first of four
+  [levels of evidence][levels]. Filled shapes match closed forms to 1e-10, and independent
+  high-precision integrals to 1e-12 on 22 noses and transitions; 20 walls match to 1e-10. Not
+  compared with OpenRocket, weighed parts or a real flight.
+- **What it leaves out:** OpenRocket's documentation doesn't say how it measures wall thickness.
+  Measuring it radially instead of square to the surface changes wall volume by 1.4% on a cone
+  three calibres (base diameters) long; squaring off a steep cut end adds up to 2.24% of wall
+  mass in this page's examples. The OpenRocket comparison ([M2.2][roadmap]) is to check both.
+
+## Code and sources
+
 Code: `hpr_design::shapes` (profiles) and `hpr_design::solids` (volume, centroid, moments, areas).
 
 Sources:
@@ -177,4 +195,5 @@ diameter, moved to the reference plane by the parallel-axis theorem. `S` exclude
 [adr-002]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-002-the-reference-library-lock-file-fetch-verify-and-doctor-2026-09-17
 [adr-006]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-006-component-geometry-and-mass-properties-frames-shapes-walls-fins-and-materials-2026-09-17
 [lessons]: https://github.com/nrdptel/hpr-sim/blob/main/docs/research/loft-lessons.md
+[levels]: ../accuracy.md#four-kinds-of-evidence
 [roadmap]: https://github.com/nrdptel/hpr-sim/blob/main/docs/ROADMAP.md

@@ -1,5 +1,23 @@
 # Aerodynamics
 
+## In short
+
+- **What it models:** the air's forces on a rocket below Mach 1: the normal force (the sideways
+  push when flying at an angle to the airflow), the centre of pressure (where it acts) and drag.
+- **Sources:** Barrowman's 1966 report, 1967 thesis and Centuri TIR-33 (1970); for drag, mainly
+  Niskanen's 2009 OpenRocket thesis.
+- **How well it is validated:** by unit tests, published worked examples and, for drag at Mach 0.3,
+  the RASAero curves in RocketPy's examples; nothing yet against OpenRocket or a real flight. Four
+  of Barrowman's five examples agree within 1%. His six-fin Recruiter's normal-force slope is
+  +2.87% high, mostly from a different six-fin rule. Drag is within 10% in four of seven cases,
+  but −18.3% for Cavour under power and −47.0% and −50.4% for Valetudo. It reads low from about
+  Mach 0.6.
+- **What it leaves out:** large angles and stall, though a flight uses these models at every
+  angle. Above Mach 0.8 results are unvalidated, and the models refuse Mach 1 and above until
+  [M1.8][roadmap] (transonic and supersonic aerodynamics), which also brings roll torques.
+
+## Code and sources
+
 Code: `hpr_aero::body` (bodies of revolution), `hpr_aero::fins` (fin sets) and `hpr_aero::model`
 (a rocket's terms over a `Layout`). Decisions: [ADR-008][adr-008] (normal force and centre of
 pressure) and [ADR-009][adr-009] (drag). The milestone [M1.5a][roadmap] covers the subsonic normal

@@ -1,5 +1,25 @@
 # Mass properties of components
 
+## In short
+
+- **What it models:** the mass, centre of mass and inertia of each part (tubes, rings, shoulders,
+  fins, rail buttons, lugs, mass components, recovery gear), how they add up, and 49 built-in
+  material densities.
+- **Sources:** Meriam and Kraige's *Engineering Mechanics: Dynamics*, the *OpenRocket technical
+  documentation* v13.05, Abbott and von Doenhoff's *Theory of Wing Sections*, Golub and Van
+  Loan's *Matrix Computations*, and data sheets, specifications and handbooks for densities.
+- **How well it is validated:** by analytic tests, the first of four [levels of evidence][levels]:
+  a cone, a tube, four fins and an off-axis payload agree with hand calculation to 1e-11, and fin
+  cross-sections with exact numerical integration to 1e-13. Density unit conversions reproduce
+  their sources, such as the *Wood Handbook*'s white ash at 678 kg/m³. Not compared with
+  OpenRocket, weighed parts or a real flight.
+- **What it leaves out:** fin fillets, the sliver between a flat fin root and the round tube, and
+  the step ring at a nose shoulder. Parachutes weigh as flat circular canopies. Wall and fin mass
+  may differ from OpenRocket's undocumented conventions until the OpenRocket comparison
+  ([M2.2][roadmap]) measures them.
+
+## Code and sources
+
 Code: `hpr_design::mass` (`MassProperties`), `hpr_design::parts`, `hpr_design::fins`,
 `hpr_design::material`, `hpr_design::materials`. The nose and transition solids are in
 `shapes.md`.
@@ -172,3 +192,5 @@ the URL it was read from, and a basis:
 
 [adr-006]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-006-component-geometry-and-mass-properties-frames-shapes-walls-fins-and-materials-2026-09-17
 [lessons]: https://github.com/nrdptel/hpr-sim/blob/main/docs/research/loft-lessons.md
+[levels]: ../accuracy.md#four-kinds-of-evidence
+[roadmap]: https://github.com/nrdptel/hpr-sim/blob/main/docs/ROADMAP.md

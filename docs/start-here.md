@@ -71,6 +71,8 @@ These parts are built and tested. Each page gives its sources, and most say what
 
 ## How far to trust it
 
+[Accuracy](accuracy.md) gathers every result so far, gaps included. In brief:
+
 - **No whole flight has been validated.** hpr's apogee, top speed and landing point have not yet
   been compared with another simulator's or with a real flight's. That is the next work: whole
   flights against RocketPy ([M2.1b2][roadmap]), then OpenRocket ([M2.2][roadmap]) and real
@@ -84,23 +86,29 @@ These parts are built and tested. Each page gives its sources, and most say what
   every number, and [Recovery](physics/recovery.md) explains the comparison.
 - **Each model is tested against its published source**: printed tables, worked examples and
   closed-form results. Each test states its tolerance. The known gaps:
-  - Drag, against the RASAero curves in RocketPy's examples, is within 10% for four of seven
-    curves. It is 18% low for Cavour under power, and about 50% low for Valetudo
+  - Drag at Mach 0.3, against the RASAero curves in RocketPy's examples, is within 10% in four of
+    seven cases. It is 18% low for Cavour under power, and 47% to 50% low for Valetudo
     ([Aerodynamics](physics/aero.md)).
-  - The normal-force slope of Barrowman's six-fin Recruiter example is 2.9% above his printed
+  - The normal-force slope of Barrowman's six-fin Recruiter example is 2.87% above his printed
     value ([Aerodynamics](physics/aero.md)).
   - Tumbling drag is −10% to +19% off its source's own drop tests
     ([Recovery](physics/recovery.md)).
 
 ## Reading these pages
 
-Each model page names the code that implements it, the sources it follows and the tests that pin
-it. Sources are cited by a short key in square brackets, such as **[NGA]**, with the full reference
+Each model page opens with *In short*: what it models, its sources, how well it is validated and
+what it leaves out. Below that, it names the code that implements the model, the sources it follows
+and the tests that pin it. Sources are cited by a short key in square brackets, such as **[NGA]**, with the full reference
 near the top of the page. Equations are written in plain text, such as the normal gravity on the
 ellipsoid, `γ = γ_e (1 + k sin²φ)/√(1 − e² sin²φ)`, so they read the same here, on GitHub and in
 the code's documentation.
 
-Three kinds of label link to the project's records on GitHub:
+Terms are defined in the [Glossary](glossary.md), and
+[Checking a claim](checking-a-claim.md) shows how to trace any number to its source, its test and
+its validation.
+
+Three kinds of label link to the project's records on GitHub, which
+[Decisions and the roadmap](decisions-and-roadmap.md) introduces:
 
 - A **milestone**, such as [M1.8][roadmap], is a step of the [roadmap][roadmap], the ordered plan
   of work.

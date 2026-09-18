@@ -1,5 +1,22 @@
 # Gravity and Earth rotation
 
+## In short
+
+- **What it models:** the pull a rocket feels: WGS 84 normal gravity, the gravity of a smooth,
+  spinning model Earth, which changes with latitude and height; and the Coriolis effect, the
+  sideways push on anything that moves over the spinning Earth.
+- **Sources:** the NGA's WGS 84 standard, NGA.STND.0036 (2014), chapter 4 and appendix B.
+- **How well it is validated:** the derived constants reproduce the standard's printed values to
+  their last digit. At 11 points, both poles and heights up to 200 km included, gravity's
+  strength matches the published formulas, evaluated in 40-digit arithmetic, within 2e-14
+  relative. hpr's copy of RocketPy's formula matches RocketPy at 8 points, to under 1e-12
+  relative. No real-flight check.
+- **What it leaves out:** the real Earth's gravity anomalies, typically within ±1e-4 relative.
+  RocketPy's formula, an option for like-for-like comparisons, differs from the exact field by
+  1.4e-5 relative at 100 km.
+
+## Code and sources
+
 Code: `hpr_core::gravity` (the normal gravity field) and `hpr_core::earth` (what the flight engine
 uses). Source: **[NGA]** NGA.STND.0036_1.0.0_WGS84 (2014), chapter 4 and appendix B, pinned as
 `wgs84-nga-stnd-0036`.
