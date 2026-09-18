@@ -34,7 +34,11 @@ version on first use.
 cargo test --workspace --all-features   # unit tests
 cargo xtask wasm-check                  # the pure core builds for wasm32-unknown-unknown
 cargo deny check                        # dependency licenses, advisories and sources
+cargo xtask site                        # build the documentation site and check its links (mdBook 0.5.4)
 ```
+
+The documentation site is built from `docs/` into `target/site`; open `target/site/index.html`, or
+read [`docs/start-here.md`](docs/start-here.md) on GitHub.
 
 Validation work uses a local reference library (other simulators, papers, motor data), pinned in
 `validation/refs.lock.toml` and downloaded into the gitignored `refs/`. Fetching it needs `git`,

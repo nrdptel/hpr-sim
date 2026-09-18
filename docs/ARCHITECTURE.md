@@ -37,7 +37,7 @@ or a public trait gets an entry in `DECISIONS.md` first.
 | `hpr-ffi` | stable C ABI plus a cbindgen header | facade |
 | `hpr-wasm` | wasm-bindgen package with generated TS types (`tsify`) | facade (no net) |
 | `hpr-validate` | validation harness: cases, oracle references, metrics, reports | facade, flightdata |
-| `xtask` | dev automation: `wasm-check`, `refs`, `validate`, `schema`, `bench`, `notices` | — |
+| `xtask` | dev automation: `wasm-check`, `refs`, `validate`, `site` (the documentation site, ADR-016), `schema`, `bench`, `notices` | — |
 
 **Pure core** (ADR-001): the crates that do no I/O and must build for `wasm32-unknown-unknown`
 declare `[package.metadata.hpr] wasm = true`. They are `hpr-core`, `hpr-atmos`, `hpr-motor`,

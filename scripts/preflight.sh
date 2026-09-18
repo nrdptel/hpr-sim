@@ -55,7 +55,7 @@ else
   bad "python3 ≥ 3.9 is required by .claude/hooks/guard-bash.py (xcode-select --install, or brew install python)"
 fi
 
-for tool in gh jq uv; do
+for tool in gh jq uv mdbook; do
   if have "$tool"; then ok "$tool"
   elif have brew && ask "Install $tool with Homebrew?"; then brew install "$tool" && ok "$tool installed" || bad "brew install $tool failed"
   else warn "$tool not found (brew install $tool)"; fi
