@@ -4,45 +4,57 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
 
 ## Now
 
-- **Current milestone:** M0.4 A documentation site people can read (Neer added it on 2026-09-17)
-- **Order:** review and merge PR #34 (green, unreviewed), then M0.4, then M2.1b2 (handoff below)
+- **Current milestone:** M0.4a The site and its link checks (M0.4 is split into M0.4a-e)
+- **Order:** M0.4a to M0.4e, then M2.1b2 (handoff below)
 - **Run:** the first autopilot run; M0.1-M0.3, M1.1-M1.7, M2.1a and M2.1b1 have shipped
-- **Last updated:** 2026-09-17 (Neer's documentation steer)
+- **Last updated:** 2026-09-17 (PR #34 merged after review; M0.4 split, M0.4a not started)
 
 ## Handoff (overwrite each session)
 
-M2.1b1 shipped the whole-flight oracle. M2.1b2 is the Rust half: a `Flight::WholeFlight` variant
-beside `RecoveryDescent`, five cases in the lock, and the L75 test. Start here:
+M0.4 is split into M0.4a-e (ROADMAP). Nothing of M0.4a is built yet (this cycle went on
+reviewing and merging PR #34). Start M0.4a here:
+
+- **Write the tool ADR first** (ADR-016). A research pass on 2026-09-17, not yet reproduced,
+  suggests mdBook 0.5.4 (MPL-2.0: a build tool we only run, never link; say so in the ADR and
+  `THIRD-PARTY-NOTICES.md`), `mdbook-katex` 0.10.0 (MIT) for math, because mdBook's built-in
+  MathJax does not accept `$...$` and GitHub renders only `$...$` and `$$...$$`, and lychee 0.24
+  (MIT OR Apache-2.0) with `--offline --include-fragments` over the built HTML and the `.md`
+  sources. `mdbook-linkcheck` is abandoned. Check every version and licence before citing it.
+- **One source per page:** move `docs/physics/` and `docs/format/` into the book's source, or
+  point `SUMMARY.md` at them; never copy. Keep every path `xtask/src/docs.rs` reads working, or
+  change it in the same PR.
+- **The bare-label check** goes in `xtask/src/docs.rs` beside the existing guards: `L\d+`,
+  `ADR-\d+` and milestone ids outside a link fail, each with a test. Fix the pages it flags; don't
+  exempt them. CI gets a Linux `docs` job that builds the book and checks links on every PR.
+  Pages is still under "Needs Neer"; only M0.4d waits on it.
+
+After M0.4 comes M2.1b2: a `Flight::WholeFlight` variant, five cases in the lock, the L75 test.
 
 - **The reference** is `validation/fixtures/flight/rocketpy-whole-flight.json`. Teach
   `crates/hpr-validate/src/rocketpy.rs` its shape, as it knows `recovery.py`'s; only it may.
 - **The drag is the case's, not RocketPy's.** Its exports carry their own terms (ADR-009) and CI
   has no `refs/`, so the fixture declares a constant `C_D0` of 0.5 for both codes. Feed it to hpr
   through `Simulation::with_drag_table` (`crates/hpr-sim/src/flight.rs:292`); do not invent a Mach
-  curve there, which is L18 rebuilt inside the reference.
-- **One gap to report, not hide:** Prometheus peaks at Mach 1.014 and hpr refuses `M >= 1` until
-  M1.8, so that case is a declared gap.
-- **Gate `max_acceleration_power_on_m_s2`, not the whole-flight maximum**, which for NDRT and
-  Prometheus is the parachute inflating (191.8 at 54.9 s against 114.2 power-on), a transient the
-  two codes model differently. Or declare the other `not_scored` in writing.
-- **Pin the reference area too.** "Same drag" is a force, `0.5 rho V^2 A C_D`: RocketPy takes `A`
-  from `Rocket(radius)`, hpr from the design. The fixture records `reference_radius_m` and
-  `reference_area_m2` so the L75 test can assert they agree.
+  curve there, which is L18 rebuilt inside the reference. Pin the area too: the fixture records
+  `reference_radius_m` and `reference_area_m2` for the L75 test to assert.
+- **Thrust starts at (0, 0):** RocketPy's `.eng` reader inserts that point, so thrust ramps
+  linearly to the file's first (0.008 to 0.038 s). Model it the same way or argue the difference.
+- **Gate `max_acceleration_power_on_m_s2`**, not the whole-flight maximum (the parachute for NDRT
+  and Prometheus). It is sampled at solver steps; see #36 for that and the oracle's follow-ups.
+- **One gap to report, not hide:** Prometheus peaks at Mach 1.014; hpr refuses `M >= 1` until M1.8.
 - **Argue each tolerance in the case file** and fly `GravityModel::VerticalTaylor` (ADR-015);
   expect differences from RocketPy's added mass, its rail exit and `0.25*n^2` (ADR-011).
-- **The harness, unchanged from M2.1a:** it never writes a reference (L76), refuses an unsourced
-  value (L77) or an ungated metric (L79), and fails on a missing locked case (L78).
 - **Open conventions for the jar (M2.2/M3.1):** override order (L51), radii, positions, ogive,
   walls, fin mass, cant pivot, drag-at-angle, lug diameter.
-- **Process notes:** `cargo test -p xtask` checks STATUS against ROADMAP, notices rows against lock
-  titles, lesson tests once checked off, lock URLs and the generated designs. `cargo xtask aero`
-  and the oracles need `refs/rocketpy`; its data files are never committed. Scanned PDFs need
-  `pdftoppm -f N -l N -r 90 -gray -png`, born-digital ones `pdftotext -layout`; archive.org
-  rate-limits (429) and ScienceDirect refuses scripts (403). On snapshot drift, run
-  `cargo xtask refs fetch --adopt-snapshots`.
+- **Process notes:** `cargo test -p xtask` guards STATUS, ROADMAP, notices, lessons and the lock.
+  The oracles need `refs/rocketpy` (run from the repo root with `refs/venv/bin/python`); its data
+  is never committed. Scanned PDFs: `pdftoppm -r 90 -gray -png`; born-digital: `pdftotext -layout`.
+  On snapshot drift, run `cargo xtask refs fetch --adopt-snapshots`.
 
 ## Done log (newest first, keep about 15)
 
+- 2026-09-17: PR #34 merged after a physics review and a validation audit: the M2.1b1 oracle's
+  step is bounded, and the cliff is its own 6000 s `max_time`, not RocketPy's defaults (#33).
 - 2026-09-17: M2.1b1 The whole-flight oracle: `validation/oracles/rocketpy/flight.py` flies the
   five examples pad to landing under a declared constant `C_D0` (RocketPy's own exports carry
   their own terms), reproducible byte for byte. Apogees 779 to 3,623 m AGL; Prometheus reaches
@@ -55,19 +67,6 @@ beside `RecoveryDescent`, five cases in the lock, and the L75 test. Start here:
   and a hash, per-metric 3% gates, a case lock and committed reports. Five descent cases, 30
   metrics, all inside 3% (worst +2.86%). L76–L79 have live tests. It found a gravity-model
   mismatch in its own comparison on the way in (#27).
-- 2026-09-17: M1.7c Separated bodies (ADR-014): a separation splits the stack at a stage boundary,
-  each body flying as a point mass. Masses add to 1e-12, momenta to 1e-9.
-- 2026-09-17: M1.7b Streamers and tumble (ADR-013): Filippone's three curves by default (+9% on
-  Kidwell's flat drop), appendix C's on request (+88%), tumble from the airframe (−10 to +19%).
-- 2026-09-17: M1.7a Parachutes and descent (ADR-012): Knacke's canopy tables and filling law, four
-  triggers, drogue release, a point-mass descent. A descent follows the closed form to 2.1e-8 of
-  `v_t`; five RocketPy examples within 0.71% in descent time, 0.28% in drift.
-- 2026-09-17: M1.6b Rigid-body flight (ADR-011): variable-mass equations about the nose tip, rail
-  to the last button; pitch period 8e-5 from linear theory. M1.6a (ADR-010): DOPRI5 with dense
-  output, RK4, Brent events; orders 5.09 and 4.01.
-- 2026-09-17: M1.5b Drag and overrides (ADR-009): Niskanen's buildup, drag at angle, roughness, CSV
-  overrides. At Mach 0.3 against RASAero: Calisto +4.4%, Juno III −6.0%, Cavour −8.3%; gaps:
-  Valetudo −47%, Cavour power-on −18%. M1.5a CP within 1% of Barrowman; M1.1–M1.4, M0.1–M0.3.
 
 ## Needs Neer (blocking or one-way decisions; the session keeps working on other things)
 
@@ -87,6 +86,7 @@ beside `RecoveryDescent`, five cases in the lock, and the L75 test. Start here:
 
 ## Decided without Neer (one line each; significant ones get an ADR)
 
+- M0.4 split into M0.4a-e; its four *done when* bullets are unchanged, shared out among them.
 - ADR-001 to ADR-004 and M0.3, all in `DECISIONS.md`: the licence and workspace layout; refs
   pinned by hash; body `+z` toward the nose with WGS 84 normal gravity and Coriolis by default;
   the atmosphere and wind by height above sea level; and the doc guards `cargo test -p xtask` runs.
