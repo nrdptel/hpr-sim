@@ -15,8 +15,10 @@
   [whole flights against RocketPy](#whole-flights-against-rocketpy)). **The path in wind does not
   agree:** hpr turns into the wind less than RocketPy, and the cause is open
   ([issue #50](https://github.com/nrdptel/hpr-sim/issues/50)). A sixth rocket reaches Mach 1,
-  which hpr refuses. hpr's own drag has not been checked in a whole flight yet
-  ([M2.1c](../decisions-and-roadmap.md#m2-1c)), and no flight has been compared with a real one.
+  which hpr refuses. With each code's own drag, hpr's heights differ from RocketPy's by −0.527% to
+  +10.232%, the larger gaps where its drag is well below the example's
+  ([Accuracy](../accuracy.md#whole-flights-with-each-codes-own-drag)). No flight has been compared
+  with a real one.
 - **What it leaves out:** staging and delayed ignition, tip-off (the pivot as the rocket leaves the
   rail), roll forcing and aerodynamic roll damping, turbulence and thrust misalignment. Its
   small-angle aerodynamics are used at every angle of attack (the angle between the rocket's axis

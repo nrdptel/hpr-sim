@@ -34,6 +34,11 @@ adds a source.
   `validation/designs/rocketpy-*.json` by `cargo xtask designs`. RocketPy's motor thrust files carry
   their own terms and are **not** committed; the fixture pairs each example with a bundled
   public-domain curve instead (ADR-007). RocketPy's license, quoted under Ported, applies.
+- **Whole flights on RocketPy's own drag** (ADR-023): `flight.py --own-drag` flies the Calisto,
+  Valetudo and Juno III curves from the `refs/rocketpy` checkout and commits only the flights'
+  results, each curve's path and sha256, to
+  `validation/fixtures/flight/rocketpy-whole-flight-own-drag.json`; the curves are **not**
+  committed. Prometheus 2022's drag function is ported under Ported, below.
 - **Comparisons with RocketPy's drag curves** (ADR-009): `cargo xtask aero` reads the Calisto,
   Juno III, Cavour and Valetudo curves from the `refs/rocketpy` checkout and commits only derived
   numbers to `validation/fixtures/aero/rocketpy-drag-curves.json` (each curve's value at Mach 0.3,
@@ -51,7 +56,10 @@ adds a source.
   variable-mass rigid-body equations of motion in `hpr_sim::dynamics`. And
   `rocketpy/simulation/flight.py:2710-2790` at v1.13.0: the point-mass descent under a parachute's
   drag area, and its numeric deployment trigger (`rocketpy/rocket/parachute.py:354-364`), in
-  `hpr_sim::recovery` and the descent branch of `hpr_sim::dynamics`. RocketPy's license applies
+  `hpr_sim::recovery` and the descent branch of `hpr_sim::dynamics`. And
+  `tests/fixtures/rockets/rocket_fixtures.py:354-380` at v1.13.0: Prometheus 2022's piecewise-linear
+  drag, `prometheus_cd_at_ma`, as `PROMETHEUS_CD_POINTS` in `validation/oracles/rocketpy/flight.py`.
+  RocketPy's license applies
   to those portions:
 
   > MIT License. Copyright (c) 2018 Giovani Hidalgo Ceotto. Permission is hereby granted, free of

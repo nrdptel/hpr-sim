@@ -14,7 +14,9 @@
 # 2. `cargo xtask designs`: hpr's design files for those rockets (validation/designs/).
 # 3. recovery.py: RocketPy's descents under each rocket's parachutes
 #    (validation/fixtures/recovery/rocketpy-descent.json).
-# 4. flight.py: RocketPy's whole flights, pad to landing (validation/fixtures/flight/).
+# 4. flight.py: RocketPy's whole flights, pad to landing, on the declared drag and, with
+#    `--own-drag`, on each example's own (validation/fixtures/flight/; the second reads the drag
+#    curves from refs/rocketpy).
 # 5. `cargo xtask validate`: the report, validation/reports/latest.{md,json}, rewritten only when
 #    the run does not reproduce the committed one.
 #
@@ -55,6 +57,8 @@ generate validation/oracles/rocketpy/rocket_mass.py validation/fixtures/design/r
 xtask designs
 generate validation/oracles/rocketpy/recovery.py validation/fixtures/recovery/rocketpy-descent.json
 generate validation/oracles/rocketpy/flight.py validation/fixtures/flight/rocketpy-whole-flight.json
+generate validation/oracles/rocketpy/flight.py validation/fixtures/flight/rocketpy-whole-flight-own-drag.json \
+    --own-drag
 
 # The committed report was written on macOS, and another platform rounds a whole flight's last
 # digits differently, so the report is rewritten only when this run does not reproduce it

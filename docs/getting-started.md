@@ -7,8 +7,9 @@ some Rust, but no knowledge of this project.
 
 > **The numbers this example prints are not validated.** hpr's whole flights match RocketPy's in
 > height, speed and time when both codes are given the same drag, but not in where they go in
-> wind. hpr's own drag, which this example flies, has not been checked that way, and no flight has
-> been compared with a real one.
+> wind. With hpr's own drag, which this example flies, Valetudo reaches 10% higher than RocketPy
+> flying the example's own drag table, which hpr's drag is 47% below. No flight has been compared
+> with a real one.
 > [How far to trust it](#how-far-to-trust-it) below says what that means for this one.
 
 ## What you need
@@ -155,9 +156,9 @@ Below the table:
 - **Where it goes in wind does not match.** In wind, hpr turns the rocket into the wind less than
   RocketPy does ([issue #50](https://github.com/nrdptel/hpr-sim/issues/50)), so this
   example's apogee 86 m upwind and its landing point are the least trustworthy numbers it
-  prints. With hpr's own drag, as here, the
-  comparison is [M2.1c2](decisions-and-roadmap.md#m2-1c2), not done yet, and no flight has been
-  compared with a real one. [Accuracy](accuracy.md#whole-flights-against-rocketpy) keeps every
+  prints. With hpr's own drag, as here, Valetudo flies 10% higher than RocketPy does on the
+  example's own drag table ([Accuracy](accuracy.md#whole-flights-with-each-codes-own-drag)), and no
+  flight has been compared with a real one. [Accuracy](accuracy.md#whole-flights-against-rocketpy) keeps every
   result so far.
 - **The thrust is likely a little low for this site.** hpr flies the curve as measured, to match
   RocketPy's example. A motor fired on a test stand near sea level gives somewhat more thrust in
@@ -250,7 +251,7 @@ You don't have to take these numbers on trust. Four ways to test them:
 
 The project's own comparison of whole flights against RocketPy, with the drag given to both codes,
 is [M2.1b2](decisions-and-roadmap.md#m2-1b2); with each code's own drag it is
-[M2.1c2](decisions-and-roadmap.md#m2-1c2), not done yet.
+[M2.1c2](decisions-and-roadmap.md#m2-1c2).
 
 ## The program, step by step
 

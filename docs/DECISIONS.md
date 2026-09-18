@@ -28,6 +28,7 @@ renumber. Supersede an entry by adding a new one that points back to it.
 | ADR-020 | The reader test, and labels that lead to plain words | accepted |
 | ADR-021 | Whole flights against RocketPy: what is compared, and the gaps it may declare | accepted |
 | ADR-022 | Validation in CI, and regenerating references only by hand | accepted |
+| ADR-023 | Predicted mode: each code's own drag, reported against a target | accepted |
 
 ---
 
@@ -1839,3 +1840,63 @@ reference follow Loft's own drag.
   branch has). The script ran locally first, on macOS: in 41 s it reproduced every committed fixture
   and the report byte for byte.
 - M2.1c2's predicted-mode reference joins the chain when it lands.
+
+## ADR-023: Predicted mode: each code's own drag, reported against a target (2026-09-18)
+
+**Context.** M2.1 asks for every whole-flight case to run in two modes: same-drag, which M2.1b2
+scores, and predicted, in which hpr flies its own aerodynamics. Its done-when asks for
+predicted-mode results in the report, "with explained gaps", and for `M ≥ 1` cases to be reported
+as gaps until M1.8. The committed whole-flight reference flies a declared constant `C_D0` of 0.5,
+so hpr's own drag scored against it would measure hpr's drag against an arbitrary number. The
+like-for-like reference is RocketPy flying each example's own drag, whose curves carry their own
+terms and stay in the gitignored `refs/` (ADR-009). And neither code's drag is the truth: each
+example's came from RASAero, OpenRocket or its team, and M1.5b already measured hpr's drag 47%
+below Valetudo's table and 6.0% below Juno III's at Mach 0.3.
+
+**Decision.**
+
+- **A second reference,** `validation/fixtures/flight/rocketpy-whole-flight-own-drag.json`, from
+  `flight.py --own-drag`: the same six cases, each with the drag its example flies in RocketPy
+  1.13.0. That is the Calisto, Valetudo and Juno III curves read from `refs/rocketpy`, NDRT 2020's
+  constant 0.44, Bella Lui's 0.43, and Prometheus 2022's `prometheus_cd_at_ma` (ported from
+  RocketPy's MIT test fixtures, with 1.02 times it power-on). "As RocketPy flies it" was checked in
+  RocketPy's source: `Rocket.__init__` fixes the drag the flight reads (`power_off_drag_7d`), so
+  the Juno III notebook's rescaling and Bella Lui's replacement curve, both applied to the rocket
+  afterwards, never reach the flight, and the reference does not apply them either. The fixture
+  records each curve's path and SHA-256 and each constant, never a curve's values. It reproduces
+  byte for byte, and the same-drag fixture is unchanged by the new flag.
+- **A case says its mode:** `mode = "predicted"` under `[flight.whole_flight]` (`DragMode`;
+  same-drag is the default). A predicted case flies the design with no drag table. Each mode
+  refuses the other's reference: a predicted case against a declared table would score hpr's drag
+  against a constant, and a same-drag case against the own-drag reference would fly a table the
+  reference never flew. The L75 checks (design, dry mass, reference area, motor) apply to both.
+- **Targets, not gates.** Each predicted metric keeps M2.1's 3% as a *target* and gets a verdict of
+  `within target` or `outside target` (`Verdict::WithinTarget`, `Verdict::OutsideTarget`, from
+  `Comparison::targeted`). Neither counts as scored, neither fails the run, and the rows sit in the
+  report's own *Predicted mode* section, apart from the gated table and from *not scored*, the
+  harness's escape hatch. Every miss is explained in its case file with its measurement. The
+  report is pinned like the rest (ADR-022), so a predicted number that moves still has to be
+  committed. A test pins that every predicted row, and no other, is a target row.
+- **Prometheus 2022 is a known gap in predicted mode too:** RocketPy on its own drag peaks at
+  Mach 1.049, and the harness checks the gap as it does the same-drag one (L85).
+- `scripts/regenerate-references.sh` regenerates the new reference with the others.
+
+**Alternatives.**
+
+- Scoring predicted mode against the same-drag reference: it measures hpr's drag against 0.5.
+- Gating it at 3%: two of five apogees miss by 10%, from drag tables that are not the truth
+  either. A gate would fail the suite on a disagreement nobody can yet settle, or be loosened to
+  pass, which rule 2 forbids. M2.1 itself calls these "targets, not gates".
+- Declaring every predicted metric *not scored*: 75 excuses would drown the eleven that mean "an
+  open miss", and a target that is met would read like one that is not.
+- Committing the examples' curves, or reading them in CI: their terms forbid the first (ADR-009),
+  and CI has no RocketPy checkout.
+
+**Consequences.**
+
+- The heights: Calisto −0.527%, Bella Lui +1.118%, Juno III +3.181%, Valetudo +10.007% and NDRT
+  2020 +10.232%, each where hpr's drag sits against the example's. Flown on the same drag, all five
+  agree within 1.710%.
+- A reader can see how hpr's own aerodynamics compare with the drag RocketPy's examples ship, and
+  why; nothing says which drag is right until real flights (M2.3).
+- When M1.8 lifts the Mach limit, both Prometheus cases fail until their gaps are removed.

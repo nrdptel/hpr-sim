@@ -139,6 +139,23 @@ The committed report carries no timestamp, so a number that moves shows up in th
 run writes `latest-fast.{md,json}` instead, which is not committed: a partial report never stands
 in for the whole suite's record.
 
+
+### Predicted mode (M2.1c2)
+
+The `predicted-*` cases fly the same six examples with hpr's own aerodynamics
+(`mode = "predicted"`), against `validation/fixtures/flight/rocketpy-whole-flight-own-drag.json`:
+RocketPy flying each example's own drag, as RocketPy 1.13.0 flies the example
+(`flight.py --own-drag`). The curves stay in `refs/`; the reference records each one's path and
+SHA-256 (ADR-009). Each mode refuses the other's reference.
+
+Each predicted metric keeps M2.1's 3% as a target, not a gate: its verdict is `within target` or
+`outside target`, it sits in the report's own *Predicted mode* section, and it never fails the run
+(ADR-023). Neither code's drag is the truth, so a miss is a measurement to explain, and each case
+file explains its own. In short, 56 of 75 are within target; the apogees are −0.527% (Calisto),
++1.118% (Bella Lui), +3.181% (Juno III), +10.007% (Valetudo) and +10.232% (NDRT 2020), the last two
+where hpr's drag is well below the example's; the drifts miss as in same-drag mode (issue #50).
+Prometheus 2022 is a checked `M ≥ 1` gap, at Mach 1.049 on its own drag.
+
 ## Reference simulators (oracles)
 
 | tool | use | license | where | notes |

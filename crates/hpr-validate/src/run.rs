@@ -1212,7 +1212,9 @@ pub struct WholeFlightSetup {
     /// reference that flew the example's own drag.
     pub declared_cd0_vs_mach: Option<Vec<(f64, f64)>>,
     /// Where the example's own drag came from, in a reference that flew it: recorded by its
-    /// source and hash, never its values, which carry their own terms (ADR-009).
+    /// source and hash, never its values, which carry their own terms
+    /// ([ADR-009](https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-009-subsonic-drag-buildup-surface-finishes-and-drag-override-tables-2026-09-17),
+    /// the drag decisions).
     pub own_drag_source: Option<String>,
     /// The radius the drag coefficients are on, m (RocketPy's `Rocket(radius)`).
     pub reference_radius_m: f64,

@@ -3,8 +3,10 @@
 This page gathers every check hpr-sim has passed so far, and every known gap, in words and numbers.
 Start with the bottom line: **when both codes fly the same drag
 ([same-drag](glossary.md#same-drag-and-predicted-mode)), hpr's whole flights match RocketPy's in
-height, speed and time, but not in where they go in wind.** hpr's own drag has not been checked in
-a whole flight, and no flight has been compared with a real one.
+height, speed and time, but not in where they go in wind.** With each code's own drag
+([predicted](glossary.md#same-drag-and-predicted-mode)), hpr's heights differ from RocketPy's by
+−0.527% to +10.232% ([report][report]), the larger gaps where its drag is well below the example's.
+No flight has been compared with a real one.
 
 What has been checked so far:
 
@@ -13,7 +15,8 @@ What has been checked so far:
 - the descent under a parachute, against RocketPy, for five rockets;
 - whole flights from the pad to the ground, against RocketPy, for five rockets flown with one
   declared drag coefficient, with a sixth reported as a gap: heights, speeds and times agree, the
-  path in wind does not.
+  path in wind does not;
+- the same flights with each code's own drag, reported against a target rather than gated.
 
 Every number here links to the page or file it comes from. [Checking a claim](checking-a-claim.md)
 shows how to follow one back to its source and its test, and
@@ -215,8 +218,8 @@ Valetudo, NDRT 2020, Juno III, Bella Lui and Prometheus 2022. They are set up th
 - the random noise RocketPy can add to each parachute switched off.
 
 This is [same-drag](glossary.md#same-drag-and-predicted-mode) mode. It checks the equations of
-motion, the motor and the air, not the drag. hpr's own drag is compared in
-[M2.1c2](decisions-and-roadmap.md#m2-1c2), not done yet.
+motion, the motor and the air, not the drag. hpr's own drag is compared
+[below](#whole-flights-with-each-codes-own-drag).
 
 **In short: how high, how fast and how long agree; where the rocket goes in wind does not.** The
 heights, speeds, times and accelerations of five flights agree within the 3% of each case's gate
@@ -314,10 +317,81 @@ still be scored while Prometheus can't.
 
 What this shows: with the drag given, the two codes agree on how high, how fast and how long a
 rocket flies. They don't agree well enough on where it goes: within a few per cent in calm air, and
-far apart in wind, which is open. [M2.1](decisions-and-roadmap.md#m2-1)'s landing offset is not met. Nothing here says anything yet about hpr's own drag, or about a real flight. The
+far apart in wind, which is open. [M2.1](decisions-and-roadmap.md#m2-1)'s landing offset is not met. Nothing here says anything about hpr's own drag, which the next section compares, or about a real flight. The
 comparisons with OpenRocket ([M2.2](decisions-and-roadmap.md#m2-2), the OpenRocket comparison)
 and with real flights ([M2.3](decisions-and-roadmap.md#m2-3), the real-flights milestone) come
 after.
+
+## Whole flights with each code's own drag
+
+The same five flights again, in [predicted](glossary.md#same-drag-and-predicted-mode) mode: hpr
+flies its own [aerodynamics](physics/aero.md), drag and normal force alike, from each design's
+shape. RocketPy flies the drag each of its examples ships, as RocketPy 1.13.0 flies the example:
+a drag curve for Calisto, Valetudo and Juno III, a constant for NDRT 2020 (0.44,
+[case file][ndrt-predicted-case]) and Bella Lui (0.43, [case file][bella-predicted-case]).
+Everything else is set up as in the same-drag flights above ([ADR-023][adr-023], the
+predicted-mode comparison).
+
+**In short: hpr's heights are within 3% of RocketPy's for Calisto (−0.527%) and Bella Lui
+(+1.118%), just outside for Juno III (+3.181%), and well above for Valetudo (+10.007%) and NDRT
+2020 (+10.232%), where its drag is well below the example's** ([report][report]). These are
+results, not a pass or fail. Neither code's drag is the truth: each example's drag came from
+RASAero, OpenRocket or its team's own estimate. So each number is held to the 3% of
+[M2.1](decisions-and-roadmap.md#m2-1), the validation milestone, as a *target*, reported as within
+or outside it, and never gated. Each case file explains its misses
+([Valetudo's][valetudo-predicted-case] and [NDRT 2020's][ndrt-predicted-case], for example).
+
+Every predicted result of the report, as hpr's difference from RocketPy:
+
+| case | `apogee_agl_m` | `apogee_time_s` | `flight_time_s` | `max_speed_m_s` | `max_mach` |
+|---|---|---|---|---|---|
+| [`predicted-calisto-tests-motor-at-minus-1.373`][report] | −0.527% | −0.505% | −0.244% | +0.337% | +0.172% |
+| [`predicted-valetudo`][report] | +10.007% | +6.165% | +8.847% | +2.210% | +2.155% |
+| [`predicted-ndrt-2020-nose-to-tail`][report] | +10.232% | +6.532% | +6.834% | +1.297% | +1.258% |
+| [`predicted-juno-iii`][report] | +3.181% | +1.620% | +2.510% | +1.007% | +0.559% |
+| [`predicted-bella-lui`][report] | +1.118% | +0.616% | +0.843% | +0.208% | +0.090% |
+
+| case | `rail_exit_speed_m_s` | `rail_exit_time_s` | `burnout_altitude_agl_m` | `burnout_speed_m_s` | `impact_speed_m_s` |
+|---|---|---|---|---|---|
+| [`predicted-calisto-tests-motor-at-minus-1.373`][report] | −0.009% | −0.071% | +0.285% | +0.490% | −0.020% |
+| [`predicted-valetudo`][report] | +0.029% | −0.109% | +1.310% | +2.771% | +0.009% |
+| [`predicted-ndrt-2020-nose-to-tail`][report] | +0.000% | −0.087% | +0.759% | +1.425% | +0.022% |
+| [`predicted-juno-iii`][report] | −0.001% | −0.143% | +1.285% | +1.108% | −0.003% |
+| [`predicted-bella-lui`][report] | −0.011% | −0.029% | +0.357% | +0.252% | +0.021% |
+
+| case | `max_acceleration_power_on_m_s2` | `max_acceleration_m_s2` | `max_acceleration_time_s` | `apogee_drift_m` | `landing_drift_m` |
+|---|---|---|---|---|---|
+| [`predicted-calisto-tests-motor-at-minus-1.373`][report] | +0.090% | +0.090% | −0.005% | −7.002% | +6.918% |
+| [`predicted-valetudo`][report] | +0.250% | +0.250% | −0.030% | +10.547% | +8.686% |
+| [`predicted-ndrt-2020-nose-to-tail`][report] | +0.674% | +83.058% | +9.606% | −4.440% | +14.981% |
+| [`predicted-juno-iii`][report] | +0.072% | +0.072% | −0.045% | −59.133% | +171.819% |
+| [`predicted-bella-lui`][report] | +1.797% | +1.797% | −0.029% | −14.798% | −30.341% |
+
+Why the misses, largest first:
+
+- **Valetudo and NDRT 2020 fly high: the drag.** hpr's drag coefficient at Mach 0.3 is −47.0%
+  from Valetudo's table, a hand-edited table 1.44 times the drag of the OpenRocket export for the
+  same rocket ([Aerodynamics](physics/aero.md#verification)). For NDRT 2020 it is 0.318 against
+  the example's constant 0.44 ([case file][ndrt-predicted-case]). Flown on the same drag, the
+  apogees agree with RocketPy's to +0.003% and −0.010% ([report][report]). Less drag also means a
+  later apogee, a longer descent and further to drift, which moves their times and drifts too.
+- **Juno III is +3.181% high.** hpr's drag is 6.0% below the example's curve at Mach 0.3, and the
+  same-drag flight is already +1.710% in the strongest wind of the six ([report][report],
+  [case file][juno-predicted-case]).
+- **The drifts in wind,** in every windy case: the open question of [issue #50][issue-50], as in
+  same-drag mode.
+- **NDRT 2020's peak deceleration** at its main opening, +83.058%, is the added-mass difference
+  explained above. Its time moves +9.606% with the later apogee ([report][report],
+  [case file][ndrt-predicted-case]).
+
+**Prometheus 2022 is a known gap here too.** On its own drag RocketPy's flight peaks at Mach 1.049,
+and hpr stops at Mach 1 until [M1.8](decisions-and-roadmap.md#m1-8)
+([case file][prometheus-predicted-case]).
+
+What this shows: with its own drag, hpr's heights differ from RocketPy's by −0.527% to +10.232%
+([report][report]), and the larger gaps are the two drags differing, not the flight. It does not
+say which drag is right; only real flights can ([M2.3](decisions-and-roadmap.md#m2-3), the
+real-flights milestone).
 
 ## Known gaps
 
@@ -369,9 +443,15 @@ rest.
 [rocket-notes]: https://github.com/nrdptel/hpr-sim/blob/main/docs/research/rocketpy-rocket-mass.md
 [valetudo-case]: https://github.com/nrdptel/hpr-sim/blob/main/validation/cases/descent-valetudo.toml
 [adr-021]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-021-whole-flights-against-rocketpy-what-is-compared-and-the-gaps-it-may-declare-2026-09-18
+[adr-023]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-023-predicted-mode-each-codes-own-drag-reported-against-a-target-2026-09-18
 [bella-case]: https://github.com/nrdptel/hpr-sim/blob/main/validation/cases/flight-bella-lui.toml
 [calisto-case]: https://github.com/nrdptel/hpr-sim/blob/main/validation/cases/flight-calisto-tests-motor-at-minus-1.373.toml
 [issue-50]: https://github.com/nrdptel/hpr-sim/issues/50
+[bella-predicted-case]: https://github.com/nrdptel/hpr-sim/blob/main/validation/cases/predicted-bella-lui.toml
+[juno-predicted-case]: https://github.com/nrdptel/hpr-sim/blob/main/validation/cases/predicted-juno-iii.toml
+[ndrt-predicted-case]: https://github.com/nrdptel/hpr-sim/blob/main/validation/cases/predicted-ndrt-2020-nose-to-tail.toml
+[prometheus-predicted-case]: https://github.com/nrdptel/hpr-sim/blob/main/validation/cases/predicted-prometheus-2022-generic-motor.toml
+[valetudo-predicted-case]: https://github.com/nrdptel/hpr-sim/blob/main/validation/cases/predicted-valetudo.toml
 [juno-case]: https://github.com/nrdptel/hpr-sim/blob/main/validation/cases/flight-juno-iii.toml
 [ndrt-flight-case]: https://github.com/nrdptel/hpr-sim/blob/main/validation/cases/flight-ndrt-2020-nose-to-tail.toml
 [prometheus-case]: https://github.com/nrdptel/hpr-sim/blob/main/validation/cases/flight-prometheus-2022-generic-motor.toml
