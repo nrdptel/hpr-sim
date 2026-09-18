@@ -58,7 +58,8 @@ struct Milestone {
     lessons: Vec<String>,
 }
 
-/// `M1.2` or `M1.2a` at the start of `tail` (after the `M`), ending at a non-alphanumeric char.
+/// `M1.2`, `M1.2a` or `M1.2a3` at the start of `tail` (after the `M`), ending at a
+/// non-alphanumeric char. The last form is an increment that was itself split.
 fn milestone_number(tail: &str) -> Option<&str> {
     let bytes = tail.as_bytes();
     let digits = |from: usize| {
@@ -76,6 +77,8 @@ fn milestone_number(tail: &str) -> Option<&str> {
     let mut end = digits(major + 1)?;
     if bytes.get(end).is_some_and(u8::is_ascii_lowercase) {
         end += 1;
+        // An increment split again is numbered under its letter: M2.1b1, M2.1b2.
+        end = digits(end).unwrap_or(end);
     }
     (!bytes.get(end).is_some_and(u8::is_ascii_alphanumeric)).then(|| &tail[..end])
 }
@@ -368,8 +371,9 @@ fn check(
 }
 
 /// Checks that `STATUS.md`'s `- **Current milestone:** M1.2 ...` line names the first milestone
-/// that is neither checked off nor blocked. When that milestone is split, its first open increment
-/// (`M1.2a`, listed right after it) is accepted too.
+/// that is neither checked off nor blocked, or any link of the chain of first open increments
+/// under it: `M1.2`, then `M1.2a` if it is split, then `M1.2a1` if *that* is split again. Nothing
+/// else is accepted, so naming a later increment is still a problem.
 fn current_milestone_problem(status: &str, roadmap: &str) -> Option<String> {
     let Some(named) = status.lines().find_map(|line| {
         let rest = line.trim_start().strip_prefix("- **Current milestone:**")?;
@@ -383,14 +387,33 @@ fn current_milestone_problem(status: &str, roadmap: &str) -> Option<String> {
     let Some(first) = open.next() else {
         return Some("ROADMAP.md has no open milestone".to_owned());
     };
-    let increment = open.next().filter(|next| {
-        next.id
-            .strip_prefix(first.id.as_str())
-            .is_some_and(|suffix| {
-                suffix.len() == 1 && suffix.bytes().all(|b| b.is_ascii_lowercase())
-            })
-    });
-    let accepted = named == first.id || increment.is_some_and(|inc| named == inc.id);
+    // A milestone may be split into increments, and an increment split again: M2.1 -> M2.1b ->
+    // M2.1b1. STATUS may name any link of that chain of first-open entries, and nothing else.
+    let mut chain = vec![first.id.clone()];
+    for next in open {
+        let Some(suffix) = chain
+            .last()
+            .and_then(|last| next.id.strip_prefix(last.as_str()))
+        else {
+            break;
+        };
+        // A milestone is split into lettered increments (M2.1 -> M2.1b), and an increment is
+        // split into numbered ones under its letter (M2.1b -> M2.1b1). Requiring the letter
+        // first is what keeps M1.10 from reading as an increment of M1.1.
+        let step_is_an_increment = if chain
+            .last()
+            .is_some_and(|last| last.bytes().last().is_some_and(|b| b.is_ascii_lowercase()))
+        {
+            !suffix.is_empty() && suffix.bytes().all(|b| b.is_ascii_digit())
+        } else {
+            suffix.len() == 1 && suffix.bytes().all(|b| b.is_ascii_lowercase())
+        };
+        if !step_is_an_increment {
+            break;
+        }
+        chain.push(next.id.clone());
+    }
+    let accepted = chain.iter().any(|id| named == id);
     (!accepted).then(|| {
         format!(
             "STATUS.md names {named} as current, but the first open milestone in ROADMAP.md is {}",
@@ -579,6 +602,26 @@ fn helper() {}
     }
 
     #[test]
+    fn a_milestone_id_may_be_split_once_and_then_split_again() {
+        for (tail, want) in [
+            ("1.2 Atmosphere.**", Some("1.2")),
+            ("1.2a Tables.**", Some("1.2a")),
+            ("1.2b1 Shear.**", Some("1.2b1")),
+            ("1.10 Outputs.**", Some("1.10")),
+            // A letter after the increment's digits is not an id: M1.2b1a would make the chain
+            // ambiguous, and `- [ ] **M1.2b-1**` parses as M1.2b, which shows up as a duplicate
+            // entry rather than passing for a third level.
+            ("1.2ab Nope.**", None),
+            ("1.2a3b Nope.**", None),
+            ("1.2b-1 Nope.**", Some("1.2b")),
+            ("1 Nope.**", None),
+            ("x.2 Nope.**", None),
+        ] {
+            assert_eq!(milestone_number(tail), want, "{tail}");
+        }
+    }
+
+    #[test]
     fn the_current_milestone_is_the_first_open_one() {
         let roadmap = "\
 - [x] **M0.3 Lessons.**
@@ -596,6 +639,25 @@ fn helper() {}
         assert_eq!(current_milestone_problem(&status("M1.2"), roadmap), None);
         assert_eq!(current_milestone_problem(&status("M1.2,"), roadmap), None);
         assert_eq!(current_milestone_problem(&status("M1.2b"), roadmap), None);
+        // An increment split again: the chain M1.2 -> M1.2b -> M1.2b1 is the open work, and
+        // M1.2b2 is not, because M1.2b1 is still open before it.
+        let nested = "\
+- [ ] **M1.2 Atmosphere.**
+  - [x] **M1.2a Tables.**
+  - [ ] **M1.2b Wind.**
+    - [ ] **M1.2b1 Shear.**
+    - [ ] **M1.2b2 Turbulence.**
+- [ ] **M1.3 Motors.**
+";
+        for id in ["M1.2", "M1.2b", "M1.2b1"] {
+            assert_eq!(current_milestone_problem(&status(id), nested), None, "{id}");
+        }
+        for id in ["M1.2b2", "M1.2a", "M1.3"] {
+            assert!(
+                current_milestone_problem(&status(id), nested).is_some(),
+                "{id}"
+            );
+        }
         assert_eq!(
             current_milestone_problem(&status("M1.3"), roadmap).as_deref(),
             Some(

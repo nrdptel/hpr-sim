@@ -139,7 +139,7 @@ Loft's claims are leads: every test re-derives its numbers from a primary source
 
 | id | lesson | Loft evidence | milestone | test to write |
 |---|---|---|---|---|
-| L75 | The RocketPy check wasn't like-for-like: ISA against stored conditions, unstated latitude and gravity, Loft's own drag and mass fed to the oracle | scripts/rocketpy/fly.py:30-46; lib/validation/rocketpy-spec.ts:127-259 | M2.1b | `hpr_validate::rocketpy::tests::oracle_inputs_come_from_the_case_file_not_hpr_outputs` |
+| L75 | The RocketPy check wasn't like-for-like: ISA against stored conditions, unstated latitude and gravity, Loft's own drag and mass fed to the oracle | scripts/rocketpy/fly.py:30-46; lib/validation/rocketpy-spec.ts:127-259 | M2.1b, M2.1b2 | `hpr_validate::rocketpy::tests::oracle_inputs_come_from_the_case_file_not_hpr_outputs` |
 | L76 | "If the drift guard fails, regenerate the reference", and the reference moved with Loft's drag | scripts/rocketpy/README.md:23-29 | M2.1a | `hpr_validate::tests::references_unchanged_when_hpr_drag_is_perturbed` |
 | L77 | Hand-written "stored" results in demo designs, one set internally inconsistent | app/docs/validation/page.tsx:152-170 | M2.1a | `hpr_validate::tests::every_reference_value_has_provenance` |
 | L78 | Suites skipped themselves without fixtures and reported green; a filter ignored 2 of 5 tool families | MAINTAINING.md:45-55; BACKLOG.md:1075-1082 | M2.1a | `hpr_validate::tests::fewer_cases_run_than_the_lock_expects_fails` |

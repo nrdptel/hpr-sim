@@ -354,21 +354,55 @@
     `docs/physics/recovery.md` claiming the two codes used the same gravity model is corrected.
 
   - [ ] **M2.1b Whole flights against RocketPy, same-drag.**
-    - A `validation/oracles/rocketpy/flight.py` generator: the five example rockets flown from the
-      pad, with the environment declared as `recovery.py` declares it, writing apogee and time to
-      it, maximum velocity, Mach and acceleration, rail-exit velocity, burnout altitude and
-      velocity, and a time series for the RMS comparison.
-    - A `Flight::WholeFlight` case variant beside `RecoveryDescent`, taking the oracle's `C_D0(M)`
-      through `Simulation::with_drag_table`, so the case isolates dynamics, environment and motor.
+    - A `validation/oracles/rocketpy/flight.py` generator (M2.1b1) and a `Flight::WholeFlight`
+      case variant taking the oracle's `C_D0(M)` through `Simulation::with_drag_table` (M2.1b2).
     - Loft lessons: L75 (tests named in `docs/research/loft-lessons.md`).
 
-    *Done when:*
+    *Done when:* split below into M2.1b1 and M2.1b2, which carry these three bullets between them.
     - At least 5 whole-flight cases run in the lock and pass their same-drag tolerances, with the
       tolerance for each metric argued in the case file.
     - `hpr_validate::rocketpy::tests::oracle_inputs_come_from_the_case_file_not_hpr_outputs`
       exists and passes.
     - `validation/reports/latest.md` carries them, and the gravity rule of ADR-015 is applied:
       the comparison flies the oracle's models where hpr has them.
+
+    - [x] **M2.1b1 The whole-flight oracle.**
+      - `validation/oracles/rocketpy/flight.py`: the five example rockets of M2.1b flown from the
+        pad to landing, built from `validation/fixtures/design/rocketpy-rocket-mass.json` the way
+        `recovery.py` builds them, with the rail, inclination and heading cited per case.
+      - The drag each case flies is **declared by the case**, not read from RocketPy's data files,
+        which carry their own terms (ADR-009) and are absent from M2.1c's CI: the generator hands
+        the declared table to RocketPy's `power_off_drag`/`power_on_drag`, as `recovery.py`
+        declares the wind of examples whose weather files are licensed.
+
+      *Done when:*
+      - `refs/venv/bin/python validation/oracles/rocketpy/flight.py` writes a fixture of all five
+        cases, each with the metrics M2.1 names, a time series, a loose-solver run and a source for
+        every value, and re-running it reproduces the committed fixture byte for byte.
+      - No RocketPy data file is committed, and `git status` shows nothing from `refs/`.
+      - Every case's declared drag table is argued in the generator, with its source.
+
+      *Result:* met. `flight.py` flies all five examples pad to landing under a declared constant
+      `C_D0` of 0.5 and writes `validation/fixtures/flight/rocketpy-whole-flight.json`, identical
+      byte for byte on a second run. Apogees 779 to 3,623 m AGL; Prometheus peaks at Mach 1.014,
+      so it is an `M >= 1` gap for M2.1b2 to report, not to hide. The looseness check had to be
+      inverted and says so: at rtol 1e-6, which is RocketPy's own default, none of the five cases
+      leaves the rail, and at 1e-7 NDRT still does not, so the second run tightens to 1e-9
+      (worst metric change 4.2e-4). The cause is open; thrust-to-weight, measured at 5.8 to 12.3,
+      rules out a marginal liftoff.
+
+    - [ ] **M2.1b2 The whole-flight cases.**
+      - A `Flight::WholeFlight` case variant beside `RecoveryDescent`, taking the case's `C_D0(M)`
+        through `Simulation::with_drag_table`, and the five cases in the lock.
+      - Loft lessons: L75 (tests named in `docs/research/loft-lessons.md`).
+
+      *Done when:*
+      - At least 5 whole-flight cases run in the lock and pass their same-drag tolerances, with the
+        tolerance for each metric argued in the case file.
+      - `hpr_validate::rocketpy::tests::oracle_inputs_come_from_the_case_file_not_hpr_outputs`
+        exists and passes.
+      - `validation/reports/latest.md` carries them, and the gravity rule of ADR-015 is applied:
+        the comparison flies the oracle's models where hpr has them.
 
   - [ ] **M2.1c Predicted mode, CI and regeneration.**
     - The same cases flown with hpr's own aero, reported beside the same-drag ones.
