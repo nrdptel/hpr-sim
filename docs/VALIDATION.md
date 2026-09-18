@@ -124,8 +124,11 @@ the ground in the same-drag mode: hpr flies the reference's declared `C_D0(M)` t
 measured as RocketPy defines them (L80): at the centre of dry mass, with the rail exit when the
 forward button reaches the top of the rail. The maxima depart from RocketPy's on purpose: RocketPy
 takes them at its solution's points, and hpr finds each peak between its solver's steps as well
-(ADR-023), because a peak read only at the steps moves with the step sequence, which differs
-across platforms. That can only raise hpr's reading; it rose by at most 6.3e-5 of itself.
+([ADR-023](DECISIONS.md#adr-023-predicted-mode-each-codes-own-drag-reported-against-a-target-2026-09-18),
+which sets how peaks are found in both modes), because a peak read only at the steps moves with
+the step sequence, which differs across platforms. That can only raise hpr's reading; against its
+old step-end reading it rose by at most 6.3e-5 of itself. RocketPy's own shortfall is not
+measured.
 
 The first run found an input, not a model, difference: the transcribed designs corrected the
 thrust for ambient pressure with a sea-level stand-in, which RocketPy's examples never do

@@ -14,9 +14,9 @@
 # of dry mass; heights from that point's height at launch, where RocketPy's starts at the ground
 # (so the main opens, and the flight lands, at RocketPy's heights too); the rail exit when the
 # rocket has travelled RocketPy's `effective_1rl`; the maxima over both ends of each solver step
-# and over the peaks found inside a step (ADR-023), where RocketPy reads only its solution's points;
-# the power-on maximum over the steps up to burnout; drifts as horizontal distances from where the
-# dry centre of mass started.
+# and over the peaks found inside a step (ADR-023, which sets how peaks are found), where RocketPy
+# reads only its solution's points; the power-on maximum likewise, over the steps up to burnout;
+# drifts as horizontal distances from where the dry centre of mass started.
 #
 # Every scored metric is held to the milestone's 3%, with no absolute floor. That is the
 # milestone's bar, not a model bound: most metrics agree far inside it. The differences that remain

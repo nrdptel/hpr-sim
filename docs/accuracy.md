@@ -229,11 +229,18 @@ off. So the landing offset that [M2.1](decisions-and-roadmap.md#m2-1) asks for i
 
 Each of fifteen numbers per flight must agree within 3% of RocketPy's, with no absolute floor, or
 say in its case file why it is not scored. Each case file argues why, for example
-[Juno III's][juno-case]. The numbers are measured as RocketPy defines them, but for one thing:
-RocketPy reads each maximum at its solver's points, and hpr also finds the peak between its own,
-so that the number does not move with where the solver happened to step. That can only read
-higher, by at most 6.3e-5 of itself ([ADR-023][adr-023], the decision on predicted mode). The
-definitions:
+[Juno III's][juno-case].
+
+The numbers are measured as RocketPy defines them, with one exception. Each code's solver advances
+the flight in [time steps](glossary.md#adaptive-time-step) and keeps the state at each step's end.
+RocketPy takes each maximum (top speed, top Mach, top acceleration) only at those step ends. hpr
+also searches between its own step ends for the true peak, so that its number does not depend on
+where its solver happened to step. That search can only raise a maximum. Against hpr's old
+step-end readings it raised them by at most 6.3e-5 of themselves (NDRT 2020's top speed). How much
+RocketPy's own step ends miss was not measured. Either way it is far inside the 3% gate
+([ADR-023][adr-023], the decision that also sets how peaks are found in both modes).
+
+The definitions:
 
 - `apogee_agl_m` and `apogee_time_s`: the highest point, and when.
 - `flight_time_s`: the time from ignition to landing.
