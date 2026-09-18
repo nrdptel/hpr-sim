@@ -41,6 +41,7 @@ new record replaces it and points back. All of them are in the [decision log][de
 | [ADR-022: Validation in CI, and regenerating references only by hand][adr-022] | How every pull request reruns the validation cases on three operating systems, and why the references change only when a person regenerates them and reviews the diff | [Checking a claim](checking-a-claim.md#rules-that-keep-the-trail-honest) |
 | [ADR-023: Predicted mode][adr-023] | How hpr's own aerodynamics are compared with RocketPy flying each example's own drag, and why those results are reported against a target rather than gated | [Accuracy](accuracy.md#whole-flights-with-each-codes-own-drag) |
 | [ADR-024: The time-series RMS][adr-024] | How each whole flight's height and speed over time are compared with RocketPy's, on what clock, and why each is held to 3% of its apogee or max speed | [Accuracy](accuracy.md#whole-flights-against-rocketpy) |
+| [ADR-025: The calm-air cases][adr-025] | Juno III, Calisto and Bella Lui flown with no wind, and why Juno III's drifts are reported but not scored: the two codes free the rocket from the rail at different points | [Accuracy](accuracy.md#whole-flights-against-rocketpy) |
 
 ## The roadmap
 
@@ -119,7 +120,7 @@ missing or its status disagrees.
 | <a id="m2-1c2"></a>[M2.1c2][phase-1] | The same cases flown with each code's own drag | done |
 | <a id="m2-1d"></a>[M2.1d][phase-1] | The time-series comparison, and where a rocket goes in wind (issue #50) | not yet done |
 | <a id="m2-1d1"></a>[M2.1d1][phase-1] | Each whole flight's height and speed, compared over time with RocketPy's | done |
-| <a id="m2-1d2"></a>[M2.1d2][phase-1] | Juno III, Calisto and Bella Lui in still air, as committed cases to measure the wind against (issue #50) | not yet done |
+| <a id="m2-1d2"></a>[M2.1d2][phase-1] | Juno III, Calisto and Bella Lui in still air, as committed cases to measure the wind against (issue #50) | done |
 | <a id="m2-1d3"></a>[M2.1d3][phase-1] | Why hpr turns into the wind less than RocketPy (issue #50) | not yet done |
 | <a id="m1-8"></a>[M1.8][phase-1] | Transonic and supersonic aerodynamics, damping, and overriding the aerodynamics | not yet done |
 | <a id="m3-1"></a>[M3.1][phase-1] | Reading OpenRocket `.ork` design files | not yet done |
@@ -248,6 +249,7 @@ is the milestone that added or will add that test.
 [adr-022]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-022-validation-in-ci-and-regenerating-references-only-by-hand-2026-09-18
 [adr-023]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-023-predicted-mode-each-codes-own-drag-reported-against-a-target-2026-09-18
 [adr-024]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-024-the-time-series-rms-aligned-at-ignition-held-to-3-of-its-traces-scale-2026-09-18
+[adr-025]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-025-the-calm-air-cases-and-juno-iiis-drifts-left-to-the-rail-release-2026-09-18
 [decisions]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md
 [lessons]: https://github.com/nrdptel/hpr-sim/blob/main/docs/research/loft-lessons.md
 [lessons-motors]: https://github.com/nrdptel/hpr-sim/blob/main/docs/research/loft-lessons.md#motors-mass-and-design-checks

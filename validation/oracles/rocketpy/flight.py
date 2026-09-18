@@ -222,6 +222,28 @@ WHOLE_FLIGHT_ONLY_CASES = [
 ]
 
 
+# Issue #50 (M2.1d2): three of the windy cases flown again in calm air, each on its base case's
+# rocket, rail and site with both wind components zero, so that the wind's effect on each code's
+# path can be measured against a flight without it.
+CALM_AIR_BASES = ["juno-iii", "calisto-tests-motor-at-minus-1.373", "bella-lui"]
+
+
+def calm_air_cases(cases):
+    """The calm-air copy of each case named in `CALM_AIR_BASES`, named `<base>-calm`."""
+    by_name = {case["name"]: case for case in cases}
+    return [
+        {
+            **by_name[base],
+            "name": f"{base}-calm",
+            "base": base,
+            "site": f"{by_name[base]['site']}; flown in calm air (wind_u = wind_v = 0, issue #50)",
+            "wind_u": 0,
+            "wind_v": 0,
+        }
+        for base in CALM_AIR_BASES
+    ]
+
+
 def fail(message):
     sys.exit(f"flight.py: {message}")
 
@@ -404,9 +426,11 @@ def series_of(flight, case):
 
 def run(document, case, own_drag):
     name = case["name"]
-    rail = RAILS.get(name) or fail(f"{name} has no rail declared")
-    inputs = recovery.mass_case(document, name)
-    inputs["name"] = name
+    # A calm-air copy flies its base case's rocket, rail and drag.
+    base = case.get("base", name)
+    rail = RAILS.get(base) or fail(f"{base} has no rail declared")
+    inputs = recovery.mass_case(document, base)
+    inputs["name"] = base
     rocket, thrust_path = build_rocket(inputs, own_drag)
     env = recovery.environment_of(case)
     flight = fly(rocket, env, rail, SOLVER)
@@ -428,8 +452,8 @@ def run(document, case, own_drag):
     devices = devices_of(inputs, rocket)
     metrics = metrics_of(flight, case, name, SOLVER)
 
-    loose_inputs = recovery.mass_case(document, name)
-    loose_inputs["name"] = name
+    loose_inputs = recovery.mass_case(document, base)
+    loose_inputs["name"] = base
     loose_rocket, _ = build_rocket(loose_inputs, own_drag)
     other_metrics = metrics_of(fly(loose_rocket, env, rail, LOOSE_SOLVER), case, name, LOOSE_SOLVER)
     solver_change_by_metric = {
@@ -441,14 +465,14 @@ def run(document, case, own_drag):
     return {
         "name": name,
         "source": f"{inputs['source']}; site and wind: {case['site']}; rail: {rail['source']}",
-        "design": f"validation/designs/rocketpy-{name}.json",
+        "design": f"validation/designs/rocketpy-{base}.json",
         "thrust_substitute": {
             "file": str(thrust_path),
             "sha256": inputs["motor"]["thrust_file_sha256"],
             "example_file": inputs["original_thrust_source"],
         },
         "drag": ({
-            "own": own_drag_record(name),
+            "own": own_drag_record(base),
             "source": OWN_DRAG[name]["source"],
         } if own_drag else {
             "cd0_vs_mach": [list(row) for row in DECLARED_CD0],
@@ -519,6 +543,9 @@ def main():
     own_drag = OWN_DRAG_FLAG in arguments
     keep = {argument for argument in arguments if argument != OWN_DRAG_FLAG}
     every = recovery.CASES + WHOLE_FLIGHT_ONLY_CASES
+    if not own_drag:
+        # Calm air is a same-drag comparison only: it measures the response to wind (issue #50).
+        every = every + calm_air_cases(every)
     cases = [case for case in every if not keep or case["name"] in keep]
     if keep and len(cases) != len(keep):
         fail(f"unknown case(s): {sorted(keep - {case['name'] for case in cases})}")

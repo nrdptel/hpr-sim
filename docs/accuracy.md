@@ -222,7 +222,8 @@ motion, the motor and the air, not the drag. hpr's own drag is compared
 [below](#whole-flights-with-each-codes-own-drag).
 
 **In short: how high, how fast and how long agree; where the rocket goes in wind does not.** The
-heights, speeds, times and accelerations of five flights agree within the 3% of each case's gate
+heights, speeds, times and accelerations of five flights, and of three of them again in calm air,
+agree within the 3% of each case's gate
 ([case file][juno-case]); the largest difference is +1.783% ([report][report]). The horizontal path
 does not: in wind hpr turns into the wind less than RocketPy does, and its landing points are far
 off. So the landing offset that [M2.1](decisions-and-roadmap.md#m2-1) asks for is not met ([issue #50][issue-50]).
@@ -264,9 +265,10 @@ RocketPy's flight follows; hpr's own output follows the centre of mass of the lo
 Heights are measured from where that point starts, as RocketPy's are. A difference is hpr's value
 less RocketPy's, over RocketPy's.
 
-The [validation report][report] scores all but eleven of the numbers of the five flights, and all
-of the scored ones are within tolerance. The eleven are measured and reported but not scored, each for
-a reason written in its case file (below). Prometheus 2022, the sixth rocket, is a known gap
+The [validation report][report] scores all but fourteen of the numbers of the eight flights (the
+five, and Juno III, Calisto and Bella Lui again in calm air), and all of the scored ones are within
+tolerance. The fourteen are measured and reported but not scored, each for a reason written in its
+case file (below). Prometheus 2022, the sixth rocket, is a known gap
 (below). Every result of the report, as hpr's difference from RocketPy:
 
 | case | `apogee_agl_m` | `apogee_time_s` | `flight_time_s` | `max_speed_m_s` | `max_mach` |
@@ -276,6 +278,9 @@ a reason written in its case file (below). Prometheus 2022, the sixth rocket, is
 | [`flight-ndrt-2020-nose-to-tail`][report] | −0.010% | +0.150% | +0.630% | −0.049% | −0.089% |
 | [`flight-juno-iii`][report] | +1.710% | +0.956% | +1.293% | +0.059% | −0.392% |
 | [`flight-bella-lui`][report] | +0.476% | +0.275% | +0.319% | −0.018% | −0.134% |
+| [`flight-juno-iii-calm`][report] | +0.060% | +0.069% | +0.042% | −0.034% | −0.172% |
+| [`flight-calisto-tests-motor-at-minus-1.373-calm`][report] | −0.004% | +0.096% | +0.091% | −0.025% | −0.152% |
+| [`flight-bella-lui-calm`][report] | −0.029% | −0.013% | −0.065% | −0.018% | −0.056% |
 
 | case | `rail_exit_speed_m_s` | `rail_exit_time_s` | `burnout_altitude_agl_m` | `burnout_speed_m_s` | `impact_speed_m_s` |
 |---|---|---|---|---|---|
@@ -284,6 +289,9 @@ a reason written in its case file (below). Prometheus 2022, the sixth rocket, is
 | [`flight-ndrt-2020-nose-to-tail`][report] | −0.009% | −0.085% | +0.032% | −0.066% | +0.022% |
 | [`flight-juno-iii`][report] | −0.005% | −0.142% | +0.782% | +0.040% | −0.003% |
 | [`flight-bella-lui`][report] | −0.013% | −0.029% | +0.228% | −0.029% | +0.021% |
+| [`flight-juno-iii-calm`][report] | −0.002% | −0.137% | +0.062% | −0.049% | +0.001% |
+| [`flight-calisto-tests-motor-at-minus-1.373-calm`][report] | −0.001% | −0.074% | +0.005% | −0.032% | −0.003% |
+| [`flight-bella-lui-calm`][report] | −0.000% | −0.032% | +0.007% | −0.025% | +0.021% |
 
 | case | `max_acceleration_power_on_m_s2` | `max_acceleration_m_s2` | `max_acceleration_time_s` | `apogee_drift_m` | `landing_drift_m` |
 |---|---|---|---|---|---|
@@ -292,6 +300,9 @@ a reason written in its case file (below). Prometheus 2022, the sixth rocket, is
 | [`flight-ndrt-2020-nose-to-tail`][report] | −0.001% | +83.060% | +0.147% | −18.646% | +3.887% |
 | [`flight-juno-iii`][report] | −0.235% | −0.235% | −0.002% | −60.848% | +151.334% |
 | [`flight-bella-lui`][report] | +1.783% | +1.783% | +0.001% | −15.589% | −31.320% |
+| [`flight-juno-iii-calm`][report] | −0.020% | −0.020% | −0.036% | −3.670% | −3.695% |
+| [`flight-calisto-tests-motor-at-minus-1.373-calm`][report] | +0.070% | +0.070% | −96.811% | −1.258% | −1.438% |
+| [`flight-bella-lui-calm`][report] | +1.778% | +1.778% | +0.001% | −1.593% | −2.583% |
 
 The last two numbers compare the whole trace, not one point of it. The series height RMS
 (`series_height_rms_m`) is the root mean square of hpr's height less RocketPy's: square each
@@ -308,9 +319,9 @@ percentage. Each is held to 3% of RocketPy's apogee (for height) or top speed (f
 [M2.1](decisions-and-roadmap.md#m2-1)'s 3% for one number, applied to the whole trace
 ([case file][juno-case]).
 
-All five flights pass, each well inside its bound. The largest height RMS is Juno III's,
+All eight flights pass, each well inside its bound. The largest height RMS is Juno III's,
 39.200769 m against its 77.6 m bound, about half of it; its apogee is also the furthest off. The
-other four are under a sixth of theirs. The speed RMS runs from 0.132323 to 2.058916 m/s
+other seven are under a sixth of theirs. The speed RMS runs from 0.024575 to 2.058916 m/s
 ([report][report]).
 
 | case | `series_height_rms_m` | height bound, m | `series_speed_rms_m_s` | speed bound, m/s |
@@ -320,15 +331,24 @@ other four are under a sixth of theirs. The speed RMS runs from 0.132323 to 2.05
 | [`flight-ndrt-2020-nose-to-tail`][report] | +2.037097 | 36.5 | +0.132323 | 5.4 |
 | [`flight-juno-iii`][report] | +39.200769 | 77.6 | +2.058916 | 6.7 |
 | [`flight-bella-lui`][report] | +2.302356 | 15.8 | +0.444735 | 2.9 |
+| [`flight-juno-iii-calm`][report] | +1.296871 | 78.7 | +0.156012 | 6.8 |
+| [`flight-calisto-tests-motor-at-minus-1.373-calm`][report] | +1.141118 | 78.4 | +0.094629 | 7.3 |
+| [`flight-bella-lui-calm`][report] | +0.389902 | 16.2 | +0.024575 | 2.9 |
 
 What the two codes still do differently, and what it moves:
 
 - **In wind, the path.** hpr turns into the wind less than RocketPy. In Juno III's 8.5 m/s wind,
   RocketPy's apogee moves 1,147 m upwind of where it is in calm air, and hpr's 769 m, so hpr's
-  apogee ends 228 m from the pad and RocketPy's 582 m. Flown once with no wind for this comparison
-  (not a committed check), the same rockets agree on the apogee to within 0.18% and on the drifts
-  to within 1.3 to 3.7%, not always inside 3%. So most of the gap is in the response to wind, which
-  same-drag mode doesn't share: each code's own normal force and damping, and how hpr's drag grows
+  apogee ends 228 m from the pad and RocketPy's 582 m. Flown with no wind, as three cases whose ids
+  end in `-calm`, the same rockets agree on the apogee to within 0.060%. Calisto's and Bella Lui's
+  drifts agree to within −1.258% to −2.583%, and pass. Juno III's miss by −3.670% and −3.695%,
+  and are reported but not scored ([case file][juno-calm-case], [ADR-025][adr-025]): RocketPy
+  frees the rocket from the rail when its first rail button leaves, and hpr when its last one does.
+  Flown so both free it at the same point, every calm drift agrees to within 2.2% (measured once by
+  `rail_release.py`, not a committed check; the table is in [ADR-025][adr-025]). The release is
+  about 1.6 of Juno III's 3.7 points; what remains has the same sign in every calm case, a steeper
+  path in hpr not yet explained. So most of the
+  gap in wind is in the response to wind, which same-drag mode doesn't share: each code's own normal force and damping, and how hpr's drag grows
   at an angle. The drifts of the four windy cases, and Valetudo's still-air landing drift,
   −3.410%, are open misses: reported, not scored and not passed, until [issue #50][issue-50] finds
   the cause. Turning less, hpr also flies higher, the likely source of Juno III's +1.710% apogee
@@ -520,5 +540,7 @@ rest.
 [prometheus-predicted-case]: https://github.com/nrdptel/hpr-sim/blob/main/validation/cases/predicted-prometheus-2022-generic-motor.toml
 [valetudo-predicted-case]: https://github.com/nrdptel/hpr-sim/blob/main/validation/cases/predicted-valetudo.toml
 [juno-case]: https://github.com/nrdptel/hpr-sim/blob/main/validation/cases/flight-juno-iii.toml
+[adr-025]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-025-the-calm-air-cases-and-juno-iiis-drifts-left-to-the-rail-release-2026-09-18
+[juno-calm-case]: https://github.com/nrdptel/hpr-sim/blob/main/validation/cases/flight-juno-iii-calm.toml
 [ndrt-flight-case]: https://github.com/nrdptel/hpr-sim/blob/main/validation/cases/flight-ndrt-2020-nose-to-tail.toml
 [prometheus-case]: https://github.com/nrdptel/hpr-sim/blob/main/validation/cases/flight-prometheus-2022-generic-motor.toml
