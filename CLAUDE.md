@@ -92,6 +92,7 @@ At the start of every session, read these in order. They are short on purpose; k
   cargo xtask validate --fast                     # once it exists (M2.1)
   cargo deny check                                # once configured (M0.1)
   cargo xtask site                                # the docs site; needs mdBook 0.5.4 (M0.4a)
+  cargo xtask examples --check                    # examples print their committed output (M0.4c)
   ```
 
 - **Review before merge.** Before merging anything that touches physics, numerics, or file formats,

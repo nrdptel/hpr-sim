@@ -2,6 +2,10 @@
 
 [Start here](start-here.md)
 
+[Getting started](getting-started.md)
+
+[How a flight is simulated](how-a-flight-is-simulated.md)
+
 [Accuracy](accuracy.md)
 
 # The environment

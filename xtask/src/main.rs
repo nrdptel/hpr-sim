@@ -17,6 +17,7 @@ mod aero;
 mod designs;
 #[cfg(test)]
 mod docs;
+mod examples;
 mod refs;
 mod site;
 mod validate;
@@ -36,6 +37,7 @@ Commands:
 {AERO}
 {VALIDATE}
 {SITE}
+{EXAMPLES}
   help                     Print this message.";
 
 fn usage() -> String {
@@ -45,6 +47,7 @@ fn usage() -> String {
         .replace("{AERO}", aero::USAGE)
         .replace("{VALIDATE}", validate::USAGE)
         .replace("{SITE}", site::USAGE)
+        .replace("{EXAMPLES}", examples::USAGE)
 }
 
 fn main() -> ExitCode {
@@ -56,6 +59,7 @@ fn main() -> ExitCode {
         Some("aero") => aero::run(&args.collect::<Vec<_>>()),
         Some("validate") => validate::run(&args.collect::<Vec<_>>()),
         Some("site") => site::run(&args.collect::<Vec<_>>()),
+        Some("examples") => examples::run(&args.collect::<Vec<_>>()),
         Some("help" | "-h" | "--help") => {
             println!("{}", usage());
             Ok(())

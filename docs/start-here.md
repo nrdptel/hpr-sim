@@ -65,8 +65,8 @@ These parts are built and tested. Each page gives its sources, and most say what
   gravity; a margin over the flight comes with [M1.10][roadmap], the outputs milestone.
 - **No way to use it without writing Rust.** A simpler library interface ([M4.1][roadmap]), a
   command-line tool ([M4.2][roadmap]), Python ([M4.3][roadmap]) and OpenRocket `.ork` import
-  ([M3.1][roadmap]) are planned. A first runnable example comes with the *Getting started* page
-  ([M0.4c][roadmap]).
+  ([M3.1][roadmap]) are planned. Until then, [Getting started](getting-started.md) flies a first
+  rocket with a short Rust program.
 - **No Monte Carlo, optimization, flight-log analysis or app.** They are on the
   [roadmap][roadmap].
 
@@ -101,6 +101,10 @@ These parts are built and tested. Each page gives its sources, and most say what
     drag until then ([Recovery](physics/recovery.md)).
 
 ## Reading these pages
+
+New here? [Getting started](getting-started.md) builds hpr-sim and flies a first rocket, and
+[How a flight is simulated](how-a-flight-is-simulated.md) follows a flight from the pad to the
+ground, linking the page for each model on the way.
 
 Each model page opens with *In short*: what it models, its sources, how well it is validated and
 what it leaves out. Below that, it names the code that implements the model, the sources it follows

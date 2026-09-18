@@ -18,6 +18,21 @@ pub struct Package {
     pub name: String,
     /// `[package.metadata.hpr] wasm = true`: the crate belongs to the pure core.
     pub wasm: bool,
+    /// Its example programs (`cargo run --example`), in the order cargo lists them.
+    pub examples: Vec<Example>,
+}
+
+/// An example program of a package.
+#[derive(Debug, PartialEq, Eq)]
+pub struct Example {
+    /// The name `cargo run --example` takes.
+    pub name: String,
+    /// Its main source file.
+    pub src_path: PathBuf,
+    /// The features it needs (`required-features`), which `cargo run` must be given.
+    pub required_features: Vec<String>,
+    /// Whether it builds a program, which `cargo run` can run, rather than a library.
+    pub runnable: bool,
 }
 
 /// The cargo binary that is running this xtask, so the pinned toolchain is used throughout.
@@ -77,7 +92,43 @@ fn parse_package(package: &Value) -> Result<Package, String> {
             ));
         }
     };
-    Ok(Package { name, wasm })
+    let mut examples = Vec::new();
+    for target in package["targets"].as_array().map_or(&[][..], Vec::as_slice) {
+        let is_example = target["kind"]
+            .as_array()
+            .is_some_and(|kinds| kinds.iter().any(|kind| kind == "example"));
+        if !is_example {
+            continue;
+        }
+        let (Some(example), Some(src_path)) =
+            (target["name"].as_str(), target["src_path"].as_str())
+        else {
+            return Err(format!(
+                "{name}: an example target in `cargo metadata` JSON has no name or src_path"
+            ));
+        };
+        let strings = |key: &str| -> Vec<String> {
+            target[key]
+                .as_array()
+                .map_or(&[][..], Vec::as_slice)
+                .iter()
+                .filter_map(|value| value.as_str().map(str::to_owned))
+                .collect()
+        };
+        // An example without `crate_types` is a program, as cargo's default is.
+        let crate_types = strings("crate_types");
+        examples.push(Example {
+            name: example.to_owned(),
+            src_path: PathBuf::from(src_path),
+            required_features: strings("required-features"),
+            runnable: crate_types.is_empty() || crate_types.iter().any(|kind| kind == "bin"),
+        });
+    }
+    Ok(Package {
+        name,
+        wasm,
+        examples,
+    })
 }
 
 #[cfg(test)]
@@ -87,7 +138,12 @@ mod tests {
     const METADATA: &str = r#"{
         "workspace_root": "/work/hpr-sim",
         "packages": [
-            { "name": "pure", "metadata": { "hpr": { "wasm": true } } },
+            { "name": "pure", "metadata": { "hpr": { "wasm": true } }, "targets": [
+                { "kind": ["lib"], "name": "pure", "src_path": "/work/hpr-sim/pure/src/lib.rs" },
+                { "kind": ["example"], "crate_types": ["bin"], "name": "fly", "src_path": "/work/hpr-sim/pure/examples/fly.rs" },
+                { "kind": ["example"], "crate_types": ["lib"], "name": "part", "src_path": "/work/hpr-sim/pure/examples/part.rs",
+                  "required-features": ["net"] }
+            ] },
             { "name": "tool", "metadata": null },
             { "name": "other", "metadata": { "docs": {} } }
         ]
@@ -103,6 +159,29 @@ mod tests {
             .map(|p| (p.name.as_str(), p.wasm))
             .collect();
         assert_eq!(flags, [("pure", true), ("tool", false), ("other", false)]);
+    }
+
+    #[test]
+    fn lists_each_packages_examples() {
+        let workspace = parse(METADATA).unwrap();
+        assert_eq!(
+            workspace.packages[0].examples,
+            [
+                Example {
+                    name: "fly".to_owned(),
+                    src_path: PathBuf::from("/work/hpr-sim/pure/examples/fly.rs"),
+                    required_features: Vec::new(),
+                    runnable: true,
+                },
+                Example {
+                    name: "part".to_owned(),
+                    src_path: PathBuf::from("/work/hpr-sim/pure/examples/part.rs"),
+                    required_features: vec!["net".to_owned()],
+                    runnable: false,
+                }
+            ]
+        );
+        assert!(workspace.packages[1].examples.is_empty());
     }
 
     #[test]

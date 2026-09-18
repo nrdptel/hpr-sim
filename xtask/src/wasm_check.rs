@@ -157,6 +157,7 @@ mod tests {
         Package {
             name: name.to_owned(),
             wasm,
+            examples: Vec::new(),
         }
     }
 

@@ -30,6 +30,10 @@
 //!   until the page follows (ADR-017).
 //! - **Decisions and the roadmap** (`docs/decisions-and-roadmap.md`) links every decision record
 //!   in `docs/DECISIONS.md` and every phase of `docs/ROADMAP.md`, so a new one can't be missed.
+//! - **Quotes** (M0.4c). A fenced code block right under a `<!-- quote: <path> -->` comment must
+//!   be that file of the repository, line for line. So the code and output a page shows, such as
+//!   *Getting started*'s example and what it prints, can't drift from the files CI compiles and
+//!   runs. mdBook's `{{#include}}` would render on the site only, not on GitHub.
 //!
 //! `cargo test` runs these on the real pages. `cargo xtask site` runs them, builds the site into
 //! `target/site` with mdBook, and checks the built HTML as well: every relative `href` and `src`
@@ -607,7 +611,7 @@ fn page_rules(
     links: &[(usize, String)],
     guides: &BTreeSet<String>,
 ) -> Vec<(usize, String)> {
-    let mut problems = Vec::new();
+    let mut problems = quotes(root, text);
     if parent(name) == MODELS {
         problems.extend(in_short(text));
         // Each number *In short* quotes is in the rest of the page, or in a file its item links.
@@ -678,6 +682,145 @@ fn page_rules(
         }
     }
     problems
+}
+
+/// What opens the comment that marks a quote: `<!-- quote: <path> -->`.
+const QUOTE: &str = "quote:";
+
+/// Each fenced code block marked as a quote, by a `<!-- quote: <path> -->` comment on its own
+/// right above it, must be that file of the repository, `path` relative to the workspace root, line
+/// for line. A comment that mentions `quote:` and isn't such a marker fails too, so a mistyped
+/// marker can't leave its block unchecked. Problems as (line of the marker, message).
+fn quotes(root: &Path, text: &str) -> Vec<(usize, String)> {
+    let line = line_index(text);
+    let mut problems = Vec::new();
+    let unused = |at: usize, path: &str| {
+        (
+            at,
+            format!(
+                "`<!-- {QUOTE} {path} -->` marks the block right after it as a quote of that \
+                 file, and no fenced code block follows it"
+            ),
+        )
+    };
+    let malformed = |at: usize| {
+        (
+            at,
+            format!(
+                "this looks like a quote marker, and isn't one: a marker is a comment \
+                 `<!-- {QUOTE} <path> -->` on its own, right above a fenced code block"
+            ),
+        )
+    };
+    // The quote a marker is waiting to see, then the one being read, as (line, path, text).
+    let mut marked: Option<(usize, String)> = None;
+    let mut quoting: Option<(usize, String, String)> = None;
+    // An HTML block's text, which the parser hands over a line at a time, and its first line.
+    let mut html: Option<(usize, String)> = None;
+    for (event, range) in Parser::new_ext(text, options()).into_offset_iter() {
+        match event {
+            Event::Start(Tag::HtmlBlock) => html = Some((line(range.start), String::new())),
+            Event::Html(part) if html.is_some() => {
+                if let Some((_, block)) = html.as_mut() {
+                    block.push_str(&part);
+                }
+            }
+            Event::End(TagEnd::HtmlBlock) => {
+                // Any HTML between a marker and its block parts them.
+                if let Some((at, path)) = marked.take() {
+                    problems.push(unused(at, &path));
+                }
+                if let Some((at, block)) = html.take() {
+                    match quote_marker(&block) {
+                        Some(path) => marked = Some((at, path)),
+                        None if mentions_quote(&block) => problems.push(malformed(at)),
+                        None => {}
+                    }
+                }
+            }
+            Event::Start(Tag::CodeBlock(CodeBlockKind::Fenced(_))) if marked.is_some() => {
+                quoting = marked.take().map(|(at, path)| (at, path, String::new()));
+            }
+            Event::Text(code) if quoting.is_some() => {
+                if let Some((_, _, quoted)) = quoting.as_mut() {
+                    quoted.push_str(&code);
+                }
+            }
+            Event::End(TagEnd::CodeBlock) if quoting.is_some() => {
+                if let Some((at, path, quoted)) = quoting.take()
+                    && let Err(why) = quote_matches(root, &path, &quoted)
+                {
+                    problems.push((at, why));
+                }
+            }
+            other => {
+                if let Some((at, path)) = marked.take() {
+                    problems.push(unused(at, &path));
+                }
+                // A marker inside a paragraph is inline HTML, and marks nothing.
+                if let Event::InlineHtml(inline) | Event::Html(inline) = other
+                    && mentions_quote(&inline)
+                {
+                    problems.push(malformed(line(range.start)));
+                }
+            }
+        }
+    }
+    if let Some((at, path)) = marked {
+        problems.push(unused(at, &path));
+    }
+    problems
+}
+
+/// The path an HTML block names, if the block is only a quote marker, `<!-- quote: <path> -->`,
+/// on one line or several.
+fn quote_marker(block: &str) -> Option<String> {
+    let path = block
+        .trim()
+        .strip_prefix("<!--")?
+        .strip_suffix("-->")?
+        .trim()
+        .strip_prefix(QUOTE)?
+        .trim();
+    Some(path.to_owned())
+}
+
+/// Whether HTML holds a comment that mentions `quote:`, in any case.
+fn mentions_quote(html: &str) -> bool {
+    let html = html.to_ascii_lowercase();
+    html.contains("<!--") && html.contains(QUOTE)
+}
+
+/// Whether `quoted` is the file `path` of the repository, line for line (a `\r\n` reads as `\n`).
+fn quote_matches(root: &Path, path: &str, quoted: &str) -> Result<(), String> {
+    let Some(file) = join("", path).filter(|file| !file.is_empty() && !path.starts_with('/'))
+    else {
+        return Err(format!(
+            "`{path}` is not a file of the repository: a quote names one by its path from the \
+             workspace root"
+        ));
+    };
+    let text = fs::read_to_string(root.join(&file))
+        .map_err(|err| format!("the quote of `{file}` can't be checked: {err}"))?;
+    let (text, quoted) = (text.replace("\r\n", "\n"), quoted.replace("\r\n", "\n"));
+    if text == quoted {
+        return Ok(());
+    }
+    let (ours, theirs): (Vec<&str>, Vec<&str>) = (quoted.lines().collect(), text.lines().collect());
+    let Some(n) = (0..ours.len().max(theirs.len())).find(|&n| ours.get(n) != theirs.get(n)) else {
+        return Err(format!(
+            "the quote of `{file}` differs from it only in its final newline; a fenced code block \
+             ends with one, so the file must too"
+        ));
+    };
+    let shown = |line: Option<&&str>| line.map_or("nothing".to_owned(), |line| format!("`{line}`"));
+    Err(format!(
+        "the quote of `{file}` differs from it at its line {}: the page has {}, the file {}; copy \
+         the file into the block again",
+        n + 1,
+        shown(ours.get(n)),
+        shown(theirs.get(n)),
+    ))
 }
 
 /// The file of the repository a link on page `from` reaches, relative to the workspace root, and
@@ -2379,6 +2522,145 @@ mod tests {
                 "docs/SUMMARY.md:3: `https://example.com` is not a page",
                 "docs/gone.md: listed in docs/SUMMARY.md, but can't be read",
                 "docs/SUMMARY.md:4: link `gone.md`",
+            ]
+        );
+    }
+
+    #[test]
+    fn a_quote_is_its_file_line_for_line() {
+        let dir = workspace(&[
+            ("crates/a/examples/fly.rs", "fn main() {\n    fly();\n}\n"),
+            ("crates/a/examples/crlf.rs", "fn main() {}\r\n"),
+        ]);
+        let check = |page: &str| -> Vec<String> {
+            quotes(dir.path(), page)
+                .into_iter()
+                .map(|(line, why)| format!("{line}: {why}"))
+                .collect()
+        };
+        let quote = |path: &str, block: &str| {
+            format!("# Page\n\nThe example:\n\n<!-- quote: {path} -->\n```rust\n{block}```\n")
+        };
+        // The file as it is, whatever its line endings; an unmarked block isn't a quote.
+        assert!(
+            check(&quote(
+                "crates/a/examples/fly.rs",
+                "fn main() {\n    fly();\n}\n"
+            ))
+            .is_empty()
+        );
+        assert!(check(&quote("crates/a/examples/crlf.rs", "fn main() {}\n")).is_empty());
+        assert!(check("# Page\n\n```rust\nanything\n```\n").is_empty());
+
+        assert_eq!(
+            check(&quote(
+                "crates/a/examples/fly.rs",
+                "fn main() {\n    walk();\n}\n"
+            )),
+            [
+                "5: the quote of `crates/a/examples/fly.rs` differs from it at its line 2: the page \
+              has `    walk();`, the file `    fly();`; copy the file into the block again"
+            ]
+        );
+        assert_eq!(
+            check(&quote("crates/a/examples/fly.rs", "fn main() {\n")),
+            [
+                "5: the quote of `crates/a/examples/fly.rs` differs from it at its line 2: the page \
+              has nothing, the file `    fly();`; copy the file into the block again"
+            ]
+        );
+        let missing = check(&quote("crates/a/examples/walk.rs", "fn main() {}\n"));
+        assert!(
+            missing[0].starts_with("5: the quote of `crates/a/examples/walk.rs` can't be checked"),
+            "{missing:?}"
+        );
+        for path in ["../outside.rs", "/etc/hosts", ""] {
+            let outside = check(&quote(path, "x\n"));
+            assert!(
+                outside[0].contains("is not a file of the repository"),
+                "{path}: {outside:?}"
+            );
+        }
+    }
+
+    #[test]
+    fn a_quote_marker_needs_a_fenced_block_right_after_it() {
+        let dir = workspace(&[("fly.rs", "x\n")]);
+        let lines = |page: &str| -> Vec<usize> {
+            quotes(dir.path(), page)
+                .into_iter()
+                .inspect(|(_, why)| {
+                    assert!(why.contains("no fenced code block follows it"), "{why}")
+                })
+                .map(|(line, _)| line)
+                .collect()
+        };
+        // Prose in between, an indented block, another marker, or the end of the page.
+        assert_eq!(
+            lines("<!-- quote: fly.rs -->\n\nSome prose.\n\n```\nx\n```\n"),
+            [1]
+        );
+        assert_eq!(lines("<!-- quote: fly.rs -->\n\n    x\n"), [1]);
+        assert_eq!(
+            lines("<!-- quote: fly.rs -->\n<!-- quote: fly.rs -->\n```\nx\n```\n"),
+            [1]
+        );
+        assert_eq!(lines("Text.\n\n<!-- quote: fly.rs -->\n"), [3]);
+        // Other comments are not markers, and a blank line before the block is fine.
+        assert!(lines("<!-- a note -->\n```\ny\n```\n").is_empty());
+        assert!(lines("<!-- quote: fly.rs -->\n\n```text\nx\n```\n").is_empty());
+    }
+
+    #[test]
+    fn a_mistyped_quote_marker_fails_rather_than_checking_nothing() {
+        let dir = workspace(&[("fly.rs", "x\n")]);
+        let found = |page: &str| -> Vec<(usize, bool)> {
+            quotes(dir.path(), page)
+                .into_iter()
+                .map(|(line, why)| (line, why.contains("looks like a quote marker")))
+                .collect()
+        };
+        // A marker may span lines.
+        assert!(found("<!--\nquote: fly.rs\n-->\n```\nx\n```\n").is_empty());
+        // Text after it, a capital letter, or a marker inside a paragraph are mistakes.
+        assert_eq!(
+            found("<!-- quote: fly.rs --> note\n```\nx\n```\n"),
+            [(1, true)]
+        );
+        assert_eq!(found("<!-- Quote: fly.rs -->\n```\nx\n```\n"), [(1, true)]);
+        assert_eq!(
+            found("Some text <!-- quote: fly.rs --> here.\n\n```\nx\n```\n"),
+            [(1, true)]
+        );
+        // Other HTML between a marker and its block parts them.
+        assert_eq!(
+            found("<!-- quote: fly.rs -->\n<!-- a note -->\n```\nx\n```\n"),
+            [(1, false)]
+        );
+        assert_eq!(
+            found("<!-- quote: fly.rs -->\n<div>\n\n```\nx\n```\n"),
+            [(1, false)]
+        );
+    }
+
+    #[test]
+    fn a_page_that_misquotes_a_file_fails_the_site() {
+        let found = problems(&[
+            (
+                "docs/SUMMARY.md",
+                "# Summary\n\n[Start here](start-here.md)\n",
+            ),
+            (
+                "docs/start-here.md",
+                "# Start here\n\n<!-- quote: out.txt -->\n```text\nold\n```\n",
+            ),
+            ("out.txt", "new\n"),
+        ]);
+        assert_eq!(
+            found,
+            [
+                "docs/start-here.md:3: the quote of `out.txt` differs from it at its line 1: the page \
+              has `old`, the file `new`; copy the file into the block again"
             ]
         );
     }

@@ -329,18 +329,12 @@ pub(crate) fn analytic_wind_environment(
     g_mps2: f64,
     wind: impl Wind + 'static,
 ) -> Environment {
-    Environment {
-        wind: std::sync::Arc::new(wind),
-        ..analytic_environment(air, g_mps2)
-    }
+    analytic_environment(air, g_mps2).with_wind(wind)
 }
 
 /// A standard environment at [`site`] with `wind`.
 pub(crate) fn windy_environment(wind: impl Wind + 'static) -> Environment {
-    Environment {
-        wind: std::sync::Arc::new(wind),
-        ..Environment::standard(site()).unwrap()
-    }
+    Environment::standard(site()).unwrap().with_wind(wind)
 }
 
 /// A drag table with the same power-off `C_D0` at every Mach number.

@@ -3,7 +3,8 @@
 **Pre-alpha, under active construction.** Nothing here is ready to rely on yet.
 
 **Documentation:** start at [docs/start-here.md](docs/start-here.md), which says what works, what
-doesn't and how far to trust it; [docs/accuracy.md](docs/accuracy.md) has every validation result.
+doesn't and how far to trust it; [docs/getting-started.md](docs/getting-started.md) flies a first
+rocket; [docs/accuracy.md](docs/accuracy.md) has every validation result.
 `cargo xtask site` builds the searchable site.
 
 hpr-sim is an open-source flight simulator for hobby and high-power rockets, written in Rust. It

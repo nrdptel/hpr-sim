@@ -82,6 +82,14 @@ grains, which sets how its centre of mass and inertia change as it burns. See
 [Solid motors](physics/motor.md#where-the-propellant-is).
 
 
+## Bearing
+
+A direction on the ground, measured clockwise from true north: 0° is north, 90° east, 180° south
+and 270° west. [Getting started](getting-started.md#what-it-printed) gives the landing point as a
+distance and a bearing from the pad. A [wind direction](#wind-direction) is a bearing too: the one
+the wind blows from.
+
+
 ## Body frame
 
 The axes fixed to the rocket. The origin is the nose tip, on the axis. `z_B` points along the axis
@@ -341,6 +349,14 @@ from the pad the plane is 7.8 m above the ellipsoid. See
 [Frames](physics/frames.md#launch-frame-l-east-north-up).
 
 
+## Liftoff
+
+The moment the rocket starts to move up the rail: the push up the rail, mostly the thrust, first
+beats the weight's pull down it and the rail's friction. The motor ignites a
+little earlier, at time zero. If the motors burn out first, the flight ends on the pad. See
+[Rigid-body flight](physics/flight.md#phases).
+
+
 ## Loft lesson
 
 A mistake found in Loft, the project that came before hpr-sim, such as
@@ -352,8 +368,8 @@ against each one, or will once its milestone ships. See
 ## Mach number
 
 Airspeed divided by the local speed of sound, which the atmosphere gives from the air's
-temperature. hpr's aerodynamics are documented up to Mach 0.8, and from 0.8 to 1 they are
-unvalidated extrapolations. A flight that reaches Mach 1 stops with an error until transonic (near
+temperature. hpr's aerodynamics were checked only at Mach 0 (the normal force) and Mach 0.3 (the
+drag), and are documented up to Mach 0.8; from 0.8 to 1 they are extrapolations. A flight that reaches Mach 1 stops with an error until transonic (near
 Mach 1) and supersonic (above it) aerodynamics arrive with [M1.8][roadmap]. See
 [Aerodynamics](physics/aero.md#validity-and-open-questions).
 

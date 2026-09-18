@@ -52,6 +52,9 @@ jobs:
       - run: rustup toolchain install
       - uses: Swatinem/rust-cache@v2
       - run: cargo test --workspace --all-features --locked
+      # Runs every example program, such as the Getting started page's first flight, and checks
+      # that it prints what its committed `<name>.output.txt` says, on each OS.
+      - run: cargo run --locked --quiet --package xtask -- examples --check --locked
 
   doc:
     name: doc
