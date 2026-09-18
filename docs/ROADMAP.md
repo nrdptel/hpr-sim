@@ -567,12 +567,14 @@
       - Every whole-flight case reports its time-series RMS after alignment against the
         reference's series, gated with its tolerance argued in the case file.
 
-      *Result (ADR-024):* met. `series_height_rms_m` and `series_speed_rms_m_s` on all twelve
-      whole-flight cases, at RocketPy's 120 series times from ignition (the shared clock, no fitted
-      shift) until hpr lands, from each step's dense output. Held to 3% of the reference's apogee
-      and max speed, set before measuring and pinned by the gate test. Same-drag: height 1.4 to
-      39.2 m, speed 0.13 to 2.06 m/s, all ten pass. Predicted: three outside target (Valetudo,
-      NDRT 2020: the drag), explained and pinned.
+      *Result (ADR-024):* met for every case hpr flies. `series_height_rms_m` and
+      `series_speed_rms_m_s` at RocketPy's 120 series times from ignition (the shared clock, no
+      fitted shift) until hpr lands, from each step's dense output, reported by the ten flown cases.
+      Held to 3% of the reference's apogee and max speed, set before measuring; the gate test holds
+      each bound no looser than that. Same-drag, gated: height 1.4 to 39.2 m, speed 0.13 to
+      2.06 m/s, all ten RMS rows pass. Predicted, targets (ADR-023): three outside (Valetudo,
+      NDRT 2020: the drag), explained and pinned. Both Prometheus 2022 cases name both metrics
+      with their bounds and stay the checked `M ≥ 1` gap, flying nothing, until M1.8.
 
     - [ ] **M2.1d2 The path in wind (issue #50).**
 

@@ -1034,8 +1034,9 @@ fn fly_whole_flight(
         measured.insert("impact_speed_m_s", -landing.vertical_speed_m_s);
         // The two trajectories at the reference's times: both clocks start at ignition with the
         // rocket on the rail, so the times align as they are, and no shift is fitted, which would
-        // hide a difference in the burn. The comparison runs while both fly: until hpr lands, as
-        // the reference's series ends where it does.
+        // hide a difference in the burn. The comparison runs while both fly: the reference's series
+        // ends at RocketPy's impact and this one stops at hpr's landing, so whichever lands first
+        // ends it, and the landing-time difference is left to `flight_time_s`.
         let both_fly: Vec<(&SeriesRow, &SeriesRow)> = setup
             .series
             .iter()
@@ -1063,7 +1064,7 @@ fn fly_whole_flight(
                 .sum();
             #[allow(
                 clippy::cast_precision_loss,
-                reason = "a count of at most the series' 120 rows is exact in an f64"
+                reason = "a count of rows is exact in an f64 below 2^53; the fixtures have 120"
             )]
             let count = both_fly.len() as f64;
             (sum / count).sqrt()
@@ -1531,7 +1532,8 @@ mod peak_tests {
         }
         fn state_at(&self, t_s: f64) -> State {
             State {
-                position_enu_m: DVec3::ZERO,
+                // Rising a metre a second, for the series samples' heights.
+                position_enu_m: DVec3::new(0.0, 0.0, t_s),
                 velocity_enu_m_s: DVec3::new(0.0, 0.0, (self.speed)(t_s)),
                 attitude: DQuat::IDENTITY,
                 body_rate_rad_s: DVec3::ZERO,
@@ -1562,6 +1564,38 @@ mod peak_tests {
     }
 
     /// The rows the observer keeps for one step.
+    #[test]
+    fn each_series_time_is_sampled_once_from_the_step_that_holds_it() {
+        // The dry centre of mass half a metre below the stub's origin, which rises at 1 m/s from
+        // 0, so the centre of mass starts at -0.5 m and its height from there is the time.
+        let mut peaks = Peaks {
+            dry_cg_m: DVec3::new(0.0, 0.0, -0.5),
+            rail_axis_enu: DVec3::Z,
+            start_enu_m: DVec3::ZERO,
+            forward_guide_travel_m: 1.0,
+            forward_guide_exit: None,
+            rows: Vec::new(),
+            start_height_m: -0.5,
+            grid_s: vec![0.0, 0.5, 1.0, 1.5, 2.0, 2.5],
+            on_grid: Vec::new(),
+        };
+        let speed = |t_s: f64| 10.0 + t_s;
+        // Two steps back to back, one of no length at their shared end, and none past 2 s.
+        for (start_s, end_s) in [(0.0, 1.0), (1.0, 2.0), (2.0, 2.0)] {
+            let step = Climb {
+                start_s,
+                end_s,
+                speed,
+            };
+            peaks.step(&step).expect("the stub's samples never fail");
+        }
+        let expected: Vec<SeriesRow> = [0.0, 0.5, 1.0, 1.5, 2.0]
+            .into_iter()
+            .map(|t_s| (t_s, t_s, speed(t_s)))
+            .collect();
+        assert_eq!(peaks.on_grid, expected);
+    }
+
     fn rows(start_s: f64, end_s: f64, speed: fn(f64) -> f64) -> Vec<Row> {
         let mut peaks = Peaks {
             dry_cg_m: DVec3::ZERO,

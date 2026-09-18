@@ -40,7 +40,7 @@ new record replaces it and points back. All of them are in the [decision log][de
 | [ADR-021: Whole flights against RocketPy][adr-021] | What a whole-flight comparison measures and how, why a sixth rocket was added, and how a case declares a limit of hpr's as a known gap | [Accuracy](accuracy.md#whole-flights-against-rocketpy) |
 | [ADR-022: Validation in CI, and regenerating references only by hand][adr-022] | How every pull request reruns the validation cases on three operating systems, and why the references change only when a person regenerates them and reviews the diff | [Checking a claim](checking-a-claim.md#rules-that-keep-the-trail-honest) |
 | [ADR-023: Predicted mode][adr-023] | How hpr's own aerodynamics are compared with RocketPy flying each example's own drag, and why those results are reported against a target rather than gated | [Accuracy](accuracy.md#whole-flights-with-each-codes-own-drag) |
-| [ADR-024: The time-series RMS][adr-024] | How each whole flight's height and speed over time are compared with RocketPy's, on what clock, and why each is held to 3% of its apogee or max speed | [Accuracy](accuracy.md) |
+| [ADR-024: The time-series RMS][adr-024] | How each whole flight's height and speed over time are compared with RocketPy's, on what clock, and why each is held to 3% of its apogee or max speed | [Accuracy](accuracy.md#whole-flights-against-rocketpy) |
 
 ## The roadmap
 

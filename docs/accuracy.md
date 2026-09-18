@@ -298,7 +298,10 @@ The last two numbers compare the whole trace, not one point of it. The series he
 difference, average the squares, and take the square root. The series speed RMS
 (`series_speed_rms_m_s`) is the same for speed. Both follow the centre of mass without propellant,
 at RocketPy's 120 series times, from ignition until hpr lands. Both codes' clocks start at ignition
-on the rail, so no time shift is fitted ([case file][juno-case]).
+on the rail, so no time shift is fitted: a fitted shift would hide a real difference in the burn
+or on the rail ([case file][juno-case]). The centre of mass without propellant is the point
+RocketPy's series records. Every time counts the same, so the long descent weighs most; a
+difference during the burn shows in the burnout and top-speed numbers instead.
 
 Exact agreement would give 0, so these two are given in metres and metres per second, not as a
 percentage. Each is held to 3% of RocketPy's apogee (for height) or top speed (for speed). That is
@@ -310,13 +313,13 @@ All five flights pass, each well inside its bound. The largest height RMS is Jun
 other four are under a sixth of theirs. The speed RMS runs from 0.132323 to 2.058916 m/s
 ([report][report]).
 
-| case | `series_height_rms_m` | `series_speed_rms_m_s` |
-|---|---|---|
-| [`flight-calisto-tests-motor-at-minus-1.373`][report] | +3.166705 | +0.160127 |
-| [`flight-valetudo`][report] | +1.441957 | +0.228240 |
-| [`flight-ndrt-2020-nose-to-tail`][report] | +2.037097 | +0.132323 |
-| [`flight-juno-iii`][report] | +39.200769 | +2.058916 |
-| [`flight-bella-lui`][report] | +2.302356 | +0.444735 |
+| case | `series_height_rms_m` | height bound, m | `series_speed_rms_m_s` | speed bound, m/s |
+|---|---|---|---|---|
+| [`flight-calisto-tests-motor-at-minus-1.373`][report] | +3.166705 | 78.3 | +0.160127 | 7.3 |
+| [`flight-valetudo`][report] | +1.441957 | 23.3 | +0.228240 | 3.3 |
+| [`flight-ndrt-2020-nose-to-tail`][report] | +2.037097 | 36.5 | +0.132323 | 5.4 |
+| [`flight-juno-iii`][report] | +39.200769 | 77.6 | +2.058916 | 6.7 |
+| [`flight-bella-lui`][report] | +2.302356 | 15.8 | +0.444735 | 2.9 |
 
 What the two codes still do differently, and what it moves:
 
@@ -410,15 +413,17 @@ Every predicted result of the report, as hpr's difference from RocketPy:
 The whole-trace numbers, in metres and metres per second, defined as for the same-drag flights
 above. [Valetudo's][valetudo-predicted-case] and [NDRT 2020's][ndrt-predicted-case] height RMS
 are outside the target, and so is NDRT 2020's speed RMS, for the same reason as their apogees:
-hpr's own drag is lower than those examples' drag.
+hpr's own drag is lower than those examples' drag. Each bound is 3% of that case's own RocketPy
+apogee or top speed, so it differs from the same-drag bound: Juno III's 80.919560 m is inside its
+83.1 m here ([report][report]).
 
-| case | `series_height_rms_m` | `series_speed_rms_m_s` |
-|---|---|---|
-| [`predicted-calisto-tests-motor-at-minus-1.373`][report] | +10.937445 | +0.398035 |
-| [`predicted-valetudo`][report] | +74.842332 | +2.742051 |
-| [`predicted-ndrt-2020-nose-to-tail`][report] | +115.696314 | +6.741165 |
-| [`predicted-juno-iii`][report] | +80.919560 | +1.940801 |
-| [`predicted-bella-lui`][report] | +5.953813 | +0.422442 |
+| case | `series_height_rms_m` | height bound, m | `series_speed_rms_m_s` | speed bound, m/s |
+|---|---|---|---|---|
+| [`predicted-calisto-tests-motor-at-minus-1.373`][report] | +10.937445 | 84.5 | +0.398035 | 7.4 |
+| [`predicted-valetudo`][report] | +74.842332 | 21 | +2.742051 | 3.3 |
+| [`predicted-ndrt-2020-nose-to-tail`][report] | +115.696314 | 38.2 | +6.741165 | 5.5 |
+| [`predicted-juno-iii`][report] | +80.919560 | 83.1 | +1.940801 | 6.8 |
+| [`predicted-bella-lui`][report] | +5.953813 | 16.1 | +0.422442 | 2.9 |
 
 Why the misses, largest first:
 

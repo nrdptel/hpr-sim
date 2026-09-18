@@ -1975,16 +1975,22 @@ held to 3% of their own reference.
   the speed RMS to 3% of its max speed, rounded down to 0.1. That is M2.1's 3% for a point metric,
   applied to a whole trace, so a trace passes only if it is on average no further off than its
   peak may be. The bound was set before the first measurement. The gate test holds each RMS gate
-  to exactly that scale, so no absolute floor can widen it. In predicted mode the same bound is a
-  target (ADR-023).
+  no looser than that scale, so no absolute floor can widen it. In predicted mode the same bound is
+  a target (ADR-023).
 
 **Consequences.**
 
 - Measured, same-drag: height RMS 1.4 to 39.2 m (0.12% to 1.5% of apogee, Juno III the largest)
-  and speed RMS 0.13 to 2.06 m/s; all ten pass. Predicted: Valetudo's height RMS and NDRT 2020's
+  and speed RMS 0.13 to 2.06 m/s; all ten RMS rows pass. Both Prometheus 2022 cases name both
+  metrics with their bounds but fly nothing: they stay the checked `M ≥ 1` gap until M1.8, so ten
+  of the twelve whole-flight cases report an RMS. Predicted: Valetudo's height RMS and NDRT 2020's
   height and speed RMS are outside target, for the drag that puts their apogees 10% high; each is
   explained in its case file and pinned with the other misses.
 - The RMS weights every grid time equally, so a long descent weighs more than a short burn. A
   difference in the burn shows in the point metrics (burnout, max speed and acceleration), which
-  remain gated; the RMS is the check that the whole path between them agrees.
+  remain gated. The speed RMS is loose on the descent, where speeds are 5 to 25 m/s against a bound
+  set by the top speed (Calisto falling under its main at twice RocketPy's rate would give about
+  5 m/s, inside 7.3); the descent rate is gated by `impact_speed_m_s` instead.
+- The window ends where the first code lands, so the tail where the heights differ most is not
+  counted; the same-drag `flight_time_s` gate covers it, and in predicted mode it is a target.
 - The horizontal path is not in the series, so the drifts stay with issue #50 (M2.1d2).

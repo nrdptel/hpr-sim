@@ -25,9 +25,9 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
 M2.1c (ADR-022, ADR-023): CI checks the committed report on three OSes; predicted mode flies hpr's
 own drag at rtol 1e-11 against 3% *targets*, never gated. M2.1 stays open for M2.1d2.
 
-- **M2.1d1, the RMS (ADR-024):** `series_height_rms_m` and `series_speed_rms_m_s` on every
-  whole-flight case, sampled from each step's dense output at the fixture's 120 times, held to 3%
-  of the reference's apogee and max speed (the gate test enforces that scale). A new whole-flight
+- **M2.1d1, the RMS (ADR-024):** `series_height_rms_m` and `series_speed_rms_m_s` on every flown
+  whole-flight case (Prometheus stays the `M ≥ 1` gap), sampled from each step's dense output at the fixture's 120 times, held to 3%
+  of the reference's apogee and max speed (the gate test holds them no looser). A new whole-flight
   case must name both.
 - **M2.1d2, issue #50** (the path in wind): bisect the rail release, hpr's drag growth with angle of
   attack, and each code's normal force and damping (only C_D0 differs between the modes).
@@ -43,8 +43,8 @@ own drag at rtol 1e-11 against 3% *targets*, never gated. M2.1 stays open for M2
 
 ## Done log (newest first, keep about 15)
 
-- 2026-09-18: M2.1d1 The time-series RMS (ADR-024): height and speed RMS on all twelve whole
-  flights, aligned at ignition; ten same-drag pass, three predicted outside target (the drag).
+- 2026-09-18: M2.1d1 The time-series RMS (ADR-024): height and speed RMS on the ten flown whole
+  flights, aligned at ignition; ten same-drag RMS rows pass, three predicted outside target.
 - 2026-09-18: M2.1c2 Predicted mode (PR #52, ADR-023): hpr's own drag against RocketPy on each
   example's own drag; 3% targets, not gates; 56 of 75 within; M2.1d split off for the RMS and #50.
 - 2026-09-18: M2.1c1 Validation in CI and regeneration by hand (PR #51, ADR-022): `validate
