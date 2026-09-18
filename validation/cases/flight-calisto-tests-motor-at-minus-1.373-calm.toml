@@ -34,7 +34,7 @@ relative = 0.03
 relative = 0.03
 
 [metrics.max_acceleration_time_s]
-not_scored = "two peaks 0.9% apart in RocketPy: 111.18 m/s^2 on the rail at 0.05 s and 112.26 at 1.568 s, so its maximum is the later one; hpr's rail equation adds 1.16 m/s^2 of variable-mass terms at 0.05 s (thrust and mass equal to five digits), which lifts that peak to 112.35 and moves the maximum's time from one peak to the other. The size is gated."
+not_scored = "as in the windy case, whose figures these are (in calm air RocketPy's later peak is 112.27 m/s^2 at 1.568 s): two peaks 0.9% apart in RocketPy: 111.18 m/s^2 on the rail at 0.05 s and 112.26 at 1.568 s, so its maximum is the later one; hpr's rail equation adds 1.16 m/s^2 of variable-mass terms at 0.05 s (thrust and mass equal to five digits), which lifts that peak to 112.35 and moves the maximum's time from one peak to the other. The size is gated."
 
 [metrics.max_acceleration_power_on_m_s2]
 relative = 0.03

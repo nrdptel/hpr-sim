@@ -220,7 +220,9 @@ fn no_committed_gate_is_looser_than_the_milestone_says() {
         .comparisons
         .iter()
         .filter(|c| c.scored() || c.targeted_row());
-    assert_eq!(bounded.clone().count(), 94 + 10 + 75 + 10);
+    // M2.1d2's calm-air cases add 42 point metrics and 6 RMS rows (Juno III's drifts and Calisto's
+    // acceleration time are not scored, ADR-025).
+    assert_eq!(bounded.clone().count(), 94 + 10 + 75 + 10 + 42 + 6);
     for comparison in bounded {
         let allowed = comparison.tolerance.allowed(comparison.reference);
         let scale = match comparison.metric.as_str() {
@@ -262,6 +264,9 @@ fn the_metrics_that_are_not_scored_are_these_and_no_others() {
     //   (issue #50); in calm air the drifts agree to 1.3 to 3.7%, and Valetudo, in still air,
     //   keeps its apogee drift gated while its landing drift (-3.41%) is reported. These are open
     //   misses, not definitional differences: M2.1's landing offset is not met until #50 closes.
+    // - In calm air (M2.1d2, ADR-025), Calisto's acceleration time for the same reason as in wind,
+    //   and Juno III's drifts: hpr keeps the rocket guided to its last rail button and RocketPy frees
+    //   it at its first; with the release matched (`rail_release.py`) they are within 2.2%.
     //
     // Adding an excuse means editing this list.
     let drifts = |case| [(case, "apogee_drift_m"), (case, "landing_drift_m")];
@@ -276,6 +281,11 @@ fn the_metrics_that_are_not_scored_are_these_and_no_others() {
     expected.push(("flight-ndrt-2020-nose-to-tail", "max_acceleration_m_s2"));
     expected.extend(drifts("flight-juno-iii"));
     expected.extend(drifts("flight-bella-lui"));
+    expected.extend(drifts("flight-juno-iii-calm"));
+    expected.push((
+        "flight-calisto-tests-motor-at-minus-1.373-calm",
+        "max_acceleration_time_s",
+    ));
     assert_eq!(excused, expected);
     // A known gap is the other way a case goes unscored, and the set of them is pinned the same
     // way: Prometheus 2022 reaches Mach 1.014 on the declared drag and Mach 1.049 on its own, both
@@ -628,11 +638,12 @@ fn the_committed_cases_all_pass_and_the_report_says_so() {
     // The milestone's own check: every locked case runs against its stored reference, and the
     // report that `cargo xtask validate` writes is the one this produces.
     let report = run_lock(&root(), false).expect("the committed cases run");
-    assert_eq!(report.cases.len(), 17, "{:?}", report.cases);
+    assert_eq!(report.cases.len(), 20, "{:?}", report.cases);
     // Five descents of six metrics, and five whole flights of seventeen in each mode; the sixth
-    // whole flight is a known gap in both and compares nothing.
-    assert_eq!(report.comparisons.len(), 200);
-    assert_eq!(report.not_scored().len(), 11, "argued in the case files");
+    // whole flight is a known gap in both and compares nothing. Three calm-air whole flights of
+    // seventeen fly in same-drag mode only (ADR-025).
+    assert_eq!(report.comparisons.len(), 251);
+    assert_eq!(report.not_scored().len(), 14, "argued in the case files");
     assert_eq!(report.gaps.len(), 2);
     // Predicted mode's 85 rows are reported against a target and never count towards the verdict.
     let targeted = report
@@ -659,7 +670,7 @@ fn the_committed_cases_all_pass_and_the_report_says_so() {
     );
     let markdown = report.to_markdown();
     assert!(
-        markdown.contains("104 scored, all within tolerance"),
+        markdown.contains("152 scored, all within tolerance"),
         "{markdown}"
     );
     assert!(

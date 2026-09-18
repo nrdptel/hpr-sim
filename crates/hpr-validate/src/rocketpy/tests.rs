@@ -115,7 +115,8 @@ fn oracle_inputs_come_from_the_case_file_not_hpr_outputs() {
 
         // 4. The mass RocketPy flew is its own: the example's rocket and motor dry masses as
         //    RocketPy's inputs (`rocket_mass.py` recorded them), not a mass hpr computed.
-        let inputs = case_of(&masses, name);
+        //    A calm-air copy flies its base case's rocket (ADR-025).
+        let inputs = case_of(&masses, name.strip_suffix("-calm").unwrap_or(name));
         let rocketpy_dry = inputs["rocket"]["mass"].as_f64().expect("rocket mass")
             + inputs["motor"]["dry_mass"]
                 .as_f64()
@@ -234,6 +235,54 @@ fn the_harness_flies_the_references_rail_and_wind() {
 }
 
 #[test]
+fn each_calm_air_case_is_its_base_case_with_no_wind() {
+    // M2.1d2 (ADR-025): a calm-air copy measures the response to wind, so it must be its base
+    // case in everything the codes fly but the wind, which is zero.
+    let same = fixture(WHOLE_FLIGHT);
+    let mut calm_cases = 0;
+    for case in same["cases"].as_array().expect("cases") {
+        let name = case["name"].as_str().expect("a name");
+        let Some(base_name) = name.strip_suffix("-calm") else {
+            continue;
+        };
+        calm_cases += 1;
+        let base = case_of(&same, base_name);
+        for input in [
+            "design",
+            "thrust_substitute",
+            "drag",
+            "rail",
+            "motor",
+            "dry_mass_kg",
+            "devices",
+        ] {
+            assert_eq!(case[input], base[input], "{name}: {input}");
+        }
+        let (environment, base_environment) = (&case["environment"], &base["environment"]);
+        for input in [
+            "latitude_deg",
+            "longitude_deg",
+            "elevation_m",
+            "atmosphere",
+            "gravity",
+        ] {
+            assert_eq!(
+                environment[input], base_environment[input],
+                "{name}: {input}"
+            );
+        }
+        assert_eq!(environment["wind_u"], json!(0), "{name}");
+        assert_eq!(environment["wind_v"], json!(0), "{name}");
+        assert_ne!(
+            (&base_environment["wind_u"], &base_environment["wind_v"]),
+            (&json!(0), &json!(0)),
+            "{base_name} has a wind to take away"
+        );
+    }
+    assert_eq!(calm_cases, 3, "Juno III, Calisto and Bella Lui");
+}
+
+#[test]
 fn the_own_drag_reference_differs_from_the_same_drag_one_only_in_its_drag() {
     // Predicted mode's case files say that everything but the drag is the same-drag case's
     // (ADR-023): the rocket, the site and wind, the rail, the motor and the parachutes. So a
@@ -248,8 +297,15 @@ fn the_own_drag_reference_differs_from_the_same_drag_one_only_in_its_drag() {
             .map(|case| case["name"].clone())
             .collect()
     };
-    assert_eq!(names(&own), names(&same));
-    for name in names(&same) {
+    // Predicted mode flies every same-drag case but the calm-air copies, which measure the response
+    // to wind and so fly the declared drag only (ADR-025).
+    let calm = |name: &Value| name.as_str().is_some_and(|name| name.ends_with("-calm"));
+    let windy: Vec<Value> = names(&same)
+        .into_iter()
+        .filter(|name| !calm(name))
+        .collect();
+    assert_eq!(names(&own), windy);
+    for name in windy {
         let name = name.as_str().expect("a name");
         let (a, b) = (case_of(&same, name), case_of(&own, name));
         for input in [

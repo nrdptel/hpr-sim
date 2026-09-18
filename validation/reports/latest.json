@@ -1532,7 +1532,7 @@
       "difference": -20.925286032811982,
       "relative": -0.03670270036071051,
       "verdict": "not_scored",
-      "note": "a model difference, measured (ADR-025): hpr keeps the rocket guided until its last rail button leaves and RocketPy frees it at its first, and Juno III leaves its 85-degree rail slowest of the cases (18.2 m/s), so the extra 1.41 m of guidance keeps its path steeper: apogee drift -3.670%, with the apogee within 0.060%. With RocketPy's rail 1.41 m longer, so both codes free the rocket at the same point (validation/oracles/rocketpy/rail_release.py), RocketPy's apogee drift is 561.0 m and hpr's 549.2 m is within -2.1%. Reported, not scored; M2.1d3 (issue #50) takes up the rail release."
+      "note": "a model difference, measured (ADR-025): hpr keeps the rocket guided until its last rail button leaves and RocketPy frees it at its first, and Juno III's buttons are 1.41 m apart, twice Calisto's, so hpr guides it along its 85-degree rail for 1.41 m more and its path stays steeper: apogee drift -3.670%, with the apogee within 0.060%. With RocketPy's rail 1.41 m longer, so both codes free the rocket at the same point (validation/oracles/rocketpy/rail_release.py), RocketPy's apogee drift is 561.0 m and hpr's 549.2 m is within -2.1%. Reported, not scored; M2.1d3 (issue #50) takes up the rail release."
     },
     {
       "case": "flight-juno-iii-calm",
@@ -1868,7 +1868,7 @@
       "difference": -1.5180781311068192,
       "relative": -0.9681138337381774,
       "verdict": "not_scored",
-      "note": "two peaks 0.9% apart in RocketPy: 111.18 m/s^2 on the rail at 0.05 s and 112.26 at 1.568 s, so its maximum is the later one; hpr's rail equation adds 1.16 m/s^2 of variable-mass terms at 0.05 s (thrust and mass equal to five digits), which lifts that peak to 112.35 and moves the maximum's time from one peak to the other. The size is gated."
+      "note": "as in the windy case, whose figures these are (in calm air RocketPy's later peak is 112.27 m/s^2 at 1.568 s): two peaks 0.9% apart in RocketPy: 111.18 m/s^2 on the rail at 0.05 s and 112.26 at 1.568 s, so its maximum is the later one; hpr's rail equation adds 1.16 m/s^2 of variable-mass terms at 0.05 s (thrust and mass equal to five digits), which lifts that peak to 112.35 and moves the maximum's time from one peak to the other. The size is gated."
     },
     {
       "case": "flight-calisto-tests-motor-at-minus-1.373-calm",

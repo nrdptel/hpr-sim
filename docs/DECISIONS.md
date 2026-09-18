@@ -2011,13 +2011,14 @@ those calm-air runs as cases, with the drifts scored at M2.1's 3%.
   predicted mode would mix with the drag. Regenerating the fixture left every earlier case
   bit-identical.
 - **Every metric scored at 3%, drifts included,** with each RMS held to 3% of the calm reference's
-  apogee and max speed, as ADR-024 sets. Calisto and Bella Lui pass all of them: drifts −1.258% to
-  −2.583%, every other metric within 1.8%.
+  apogee and max speed, as ADR-024 sets. Calisto and Bella Lui pass every scored metric: drifts
+  −1.258% to −2.583%, every other within 1.8%. Calisto's `max_acceleration_time_s` is not scored,
+  for the reason its windy case gives (two peaks 0.9% apart).
 - **Juno III's two drifts are reported, not scored,** because they miss for a measured reason
   that is a difference between the codes' rail models, not an error in either. hpr keeps the
   rocket guided until its last rail button leaves the rail; RocketPy frees it when its first
-  button does (`effective_1rl`). Juno III's buttons are 1.41 m apart and it leaves its 85° rail
-  slowest (18.2 m/s), so the extra guidance keeps hpr's path steeper: apogee drift −3.670% and
+  button does (`effective_1rl`). Juno III's buttons are 1.41 m apart, twice Calisto's, so hpr
+  guides it along its 85° rail for 1.41 m more, and its path stays steeper: apogee drift −3.670% and
   landing drift −3.695%, with the apogee within 0.060%. `rail_release.py` flies each calm case in
   RocketPy on a rail longer by its button spacing, so both codes free the rocket at the same
   point:

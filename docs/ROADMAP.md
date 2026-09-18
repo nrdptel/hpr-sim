@@ -584,7 +584,7 @@
       - The three calm-air cases are in the suite, their apogee and landing drifts scored at 3%,
         and each passes or is a gap its case file explains.
 
-      *Result (ADR-025):* met. Calisto and Bella Lui pass every metric (drifts −1.258% to
+      *Result (ADR-025):* met. Calisto and Bella Lui pass every scored metric (drifts −1.258% to
       −2.583%). Juno III's drifts miss by −3.670% and −3.695% with its apogee within 0.060%, and are
       reported, not scored: RocketPy frees the rocket at its first rail button and hpr at its last.
       With both freeing it at the same point (`rail_release.py`), every calm drift is within 2.2%.

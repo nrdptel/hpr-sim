@@ -222,7 +222,8 @@ motion, the motor and the air, not the drag. hpr's own drag is compared
 [below](#whole-flights-with-each-codes-own-drag).
 
 **In short: how high, how fast and how long agree; where the rocket goes in wind does not.** The
-heights, speeds, times and accelerations of five flights agree within the 3% of each case's gate
+heights, speeds, times and accelerations of five flights, and of three of them again in calm air,
+agree within the 3% of each case's gate
 ([case file][juno-case]); the largest difference is +1.783% ([report][report]). The horizontal path
 does not: in wind hpr turns into the wind less than RocketPy does, and its landing points are far
 off. So the landing offset that [M2.1](decisions-and-roadmap.md#m2-1) asks for is not met ([issue #50][issue-50]).
@@ -264,9 +265,10 @@ RocketPy's flight follows; hpr's own output follows the centre of mass of the lo
 Heights are measured from where that point starts, as RocketPy's are. A difference is hpr's value
 less RocketPy's, over RocketPy's.
 
-The [validation report][report] scores all but eleven of the numbers of the five flights, and all
-of the scored ones are within tolerance. The eleven are measured and reported but not scored, each for
-a reason written in its case file (below). Prometheus 2022, the sixth rocket, is a known gap
+The [validation report][report] scores all but fourteen of the numbers of the eight flights (the
+five, and Juno III, Calisto and Bella Lui again in calm air), and all of the scored ones are within
+tolerance. The fourteen are measured and reported but not scored, each for a reason written in its
+case file (below). Prometheus 2022, the sixth rocket, is a known gap
 (below). Every result of the report, as hpr's difference from RocketPy:
 
 | case | `apogee_agl_m` | `apogee_time_s` | `flight_time_s` | `max_speed_m_s` | `max_mach` |
@@ -317,9 +319,9 @@ percentage. Each is held to 3% of RocketPy's apogee (for height) or top speed (f
 [M2.1](decisions-and-roadmap.md#m2-1)'s 3% for one number, applied to the whole trace
 ([case file][juno-case]).
 
-All five flights pass, each well inside its bound. The largest height RMS is Juno III's,
+All eight flights pass, each well inside its bound. The largest height RMS is Juno III's,
 39.200769 m against its 77.6 m bound, about half of it; its apogee is also the furthest off. The
-other four are under a sixth of theirs. The speed RMS runs from 0.132323 to 2.058916 m/s
+other seven are under a sixth of theirs. The speed RMS runs from 0.024575 to 2.058916 m/s
 ([report][report]).
 
 | case | `series_height_rms_m` | height bound, m | `series_speed_rms_m_s` | speed bound, m/s |
@@ -342,7 +344,8 @@ What the two codes still do differently, and what it moves:
   drifts agree to within −1.258% to −2.583%, and pass. Juno III's miss by −3.670% and −3.695%,
   and are reported but not scored ([case file][juno-calm-case], [ADR-025][adr-025]): RocketPy
   frees the rocket from the rail when its first rail button leaves, and hpr when its last one does.
-  Flown so both free it at the same point, every calm drift agrees to within 2.2%. So most of the
+  Flown so both free it at the same point, every calm drift agrees to within 2.2% (measured once by
+  `rail_release.py`, not a committed check; the table is in [ADR-025][adr-025]). So most of the
   gap in wind is in the response to wind, which same-drag mode doesn't share: each code's own normal force and damping, and how hpr's drag grows
   at an angle. The drifts of the four windy cases, and Valetudo's still-air landing drift,
   −3.410%, are open misses: reported, not scored and not passed, until [issue #50][issue-50] finds
