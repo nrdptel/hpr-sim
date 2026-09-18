@@ -34,7 +34,18 @@ Run from the repository root with the oracle environment:
 
     refs/venv/bin/python validation/oracles/rocketpy/flight.py \
         > validation/fixtures/flight/rocketpy-whole-flight.json
+
+**`--own-drag`** flies the same cases with each example's *own* drag instead, as RocketPy 1.13.0
+flies the example (`OWN_DRAG`): the reference for M2.1c2's predicted mode, in which hpr flies its own
+aerodynamics. The curves live in the RocketPy checkout under the gitignored `refs/` and carry their
+own terms (ADR-009), so this mode needs `cargo xtask refs fetch rocketpy`, and its output records
+each curve's path and SHA-256, never the curve:
+
+    refs/venv/bin/python validation/oracles/rocketpy/flight.py --own-drag \
+        > validation/fixtures/flight/rocketpy-whole-flight-own-drag.json
 """
+
+import hashlib
 
 import importlib.metadata
 import json
@@ -46,15 +57,78 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 import recovery
+import numpy as np
 from rocketpy import Environment, Flight, Rocket
 
 warnings.filterwarnings("ignore")
 
 COMMAND = "refs/venv/bin/python validation/oracles/rocketpy/flight.py"
+OWN_DRAG_FLAG = "--own-drag"
 
 # The drag both codes fly, as (Mach, C_D0) rows. Declared here, not read from RocketPy's exports:
 # see the module docstring. Constant, so that nothing about the curve's shape is invented.
 DECLARED_CD0 = [[0.0, 0.5], [3.0, 0.5]]
+
+# Prometheus 2022's own drag, ported from RocketPy's MIT-licensed test fixtures
+# (tests/fixtures/rockets/rocket_fixtures.py:354-380 at v1.13.0, `prometheus_cd_at_ma`, the same
+# function as docs/examples/prometheus_2022_flight_sim.ipynb's cell 9): piecewise linear through
+# these (Mach, C_D) points and constant outside them, which `np.interp` reproduces.
+PROMETHEUS_CD_POINTS = [
+    (0.15, 0.422), (0.45, 0.38), (0.77, 0.32), (0.82, 0.3), (0.88, 0.3), (0.94, 0.32),
+    (0.99, 0.37), (1.04, 0.44), (1.24, 0.43), (1.33, 0.42), (1.49, 0.39),
+]
+
+
+def prometheus_cd_at_ma(mach):
+    machs, cds = zip(*PROMETHEUS_CD_POINTS)
+    return float(np.interp(mach, machs, cds))
+
+
+# The drag each example flies in RocketPy 1.13.0, for `--own-drag`, power-off and power-on. A string
+# is a curve under refs/rocketpy/ (Mach, C_D rows, which RocketPy reads itself), a number a constant,
+# and a callable RocketPy's own function. "As RocketPy flies it" matters twice: `Rocket.__init__`
+# fixes the drag the flight uses (`power_off_drag_7d`, rocketpy/rocket/rocket.py:399-424, read by
+# `Flight` at flight.py:2032-2042), so an example that rescales `rocket.power_off_drag` after
+# building the rocket only rebinds a public attribute the flight never reads. Juno III's scaling to
+# C_D(0.6) = 0.38 and Bella Lui's replacement curve are two such; the flights use what the
+# constructor was given, and so does this reference. Checked against RocketPy's source.
+OWN_DRAG = {
+    "calisto-tests-motor-at-minus-1.373": {
+        "power_off": "refs/rocketpy/data/rockets/calisto/powerOffDragCurve.csv",
+        "power_on": "refs/rocketpy/data/rockets/calisto/powerOnDragCurve.csv",
+        "source": "tests/fixtures/rockets/rocket_fixtures.py:22-23",
+    },
+    "valetudo": {
+        "power_off": "refs/rocketpy/data/rockets/valetudo/Cd_PowerOff_RASAero.csv",
+        "power_on": "refs/rocketpy/data/rockets/valetudo/Cd_PowerOn_RASAero.csv",
+        "source": "docs/examples/valetudo_flight_sim.ipynb, cell 18 (the `parameters` dict's "
+                  "drag factors are for its Monte Carlo and are not applied)",
+    },
+    "ndrt-2020-nose-to-tail": {
+        "power_off": 0.44,
+        "power_on": 0.44,
+        "source": "docs/examples/ndrt_2020_flight_sim.ipynb, cell 19: "
+                  "parameters.get('drag_coefficient')[0], which is 0.44 (cell 6)",
+    },
+    "prometheus-2022-generic-motor": {
+        "power_off": prometheus_cd_at_ma,
+        "power_on": lambda mach: prometheus_cd_at_ma(mach) * 1.02,
+        "source": "tests/fixtures/rockets/rocket_fixtures.py:354-390 (`prometheus_cd_at_ma`, "
+                  "and 1.02 times it power-on), ported in PROMETHEUS_CD_POINTS",
+    },
+    "juno-iii": {
+        "power_off": "refs/rocketpy/data/rockets/juno3/drag_curve.csv",
+        "power_on": "refs/rocketpy/data/rockets/juno3/drag_curve.csv",
+        "source": "docs/examples/juno3_flight_sim.ipynb, cell 8 (cell 14's rescaling of "
+                  "power_off_drag and power_on_drag never reaches the flight)",
+    },
+    "bella-lui": {
+        "power_off": 0.43,
+        "power_on": 0.43,
+        "source": "docs/examples/bella_lui_flight_sim.ipynb, cell 19 (cell 25's replacement "
+                  "Function never reaches the flight)",
+    },
+}
 
 # RocketPy's `.eng` reader puts a (0, 0) point before the file's first one (RocketPy's
 # rocketpy/motors/motor.py:1133, not this file), so thrust ramps linearly from exactly 0 at t = 0.
@@ -159,16 +233,46 @@ def finite(value, label):
     return value
 
 
-def build_rocket(inputs):
-    """The example rocket with the declared drag, built as `recovery.py` builds it."""
+def drag_of(name, own_drag):
+    """The drag a case flies: the declared table, or with `--own-drag` the example's own."""
+    if not own_drag:
+        return [list(row) for row in DECLARED_CD0], [list(row) for row in DECLARED_CD0]
+    own = OWN_DRAG.get(name) or fail(f"{name} has no own drag declared")
+    for key in ("power_off", "power_on"):
+        if isinstance(own[key], str) and not Path(own[key]).is_file():
+            fail(f"{own[key]} is missing; run `cargo xtask refs fetch rocketpy`")
+    return own["power_off"], own["power_on"]
+
+
+def own_drag_record(name):
+    """What the reference records of an example's own drag: where it came from, never the curve."""
+    own = OWN_DRAG[name]
+
+    def one(value):
+        if isinstance(value, str):
+            return {
+                "kind": "file",
+                "file": value,
+                "sha256": hashlib.sha256(Path(value).read_bytes()).hexdigest(),
+            }
+        if callable(value):
+            return {"kind": "function", "at_mach_0_3": finite(value(0.3), "drag at Mach 0.3")}
+        return {"kind": "constant", "value": finite(value, "constant drag")}
+
+    return {"power_off": one(own["power_off"]), "power_on": one(own["power_on"])}
+
+
+def build_rocket(inputs, own_drag):
+    """The example rocket with the declared drag, or its own, built as `recovery.py` builds it."""
     motor, thrust_path = recovery.build_motor(inputs["motor"])
     rocket_inputs = inputs["rocket"]
+    power_off_drag, power_on_drag = drag_of(inputs["name"], own_drag)
     rocket = Rocket(
         radius=rocket_inputs["radius"],
         mass=rocket_inputs["mass"],
         inertia=tuple(rocket_inputs["inertia"]),
-        power_off_drag=[list(row) for row in DECLARED_CD0],
-        power_on_drag=[list(row) for row in DECLARED_CD0],
+        power_off_drag=power_off_drag,
+        power_on_drag=power_on_drag,
         center_of_mass_without_motor=rocket_inputs["center_of_mass_without_motor"],
         coordinate_system_orientation=rocket_inputs["coordinate_system_orientation"],
     )
@@ -298,12 +402,12 @@ def series_of(flight, case):
     return rows
 
 
-def run(document, case):
+def run(document, case, own_drag):
     name = case["name"]
     rail = RAILS.get(name) or fail(f"{name} has no rail declared")
     inputs = recovery.mass_case(document, name)
     inputs["name"] = name
-    rocket, thrust_path = build_rocket(inputs)
+    rocket, thrust_path = build_rocket(inputs, own_drag)
     env = recovery.environment_of(case)
     flight = fly(rocket, env, rail, SOLVER)
 
@@ -326,7 +430,7 @@ def run(document, case):
 
     loose_inputs = recovery.mass_case(document, name)
     loose_inputs["name"] = name
-    loose_rocket, _ = build_rocket(loose_inputs)
+    loose_rocket, _ = build_rocket(loose_inputs, own_drag)
     other_metrics = metrics_of(fly(loose_rocket, env, rail, LOOSE_SOLVER), case, name, LOOSE_SOLVER)
     solver_change_by_metric = {
         key: abs(other_metrics[key] - value) / abs(value)
@@ -343,10 +447,14 @@ def run(document, case):
             "sha256": inputs["motor"]["thrust_file_sha256"],
             "example_file": inputs["original_thrust_source"],
         },
-        "drag": {
+        "drag": ({
+            "own": own_drag_record(name),
+            "source": OWN_DRAG[name]["source"],
+        } if own_drag else {
             "cd0_vs_mach": [list(row) for row in DECLARED_CD0],
             "source": "declared by validation/oracles/rocketpy/flight.py; both codes fly it",
             "applies_to": "power_off_drag and power_on_drag alike",
+        }) | {
             # The drag *force* is 0.5 rho V^2 A C_D, so "same drag" is only pinned if A is too.
             # RocketPy takes it from Rocket(radius); hpr takes its reference diameter from the
             # design file, a different source that agrees today. Recorded so a case can assert it.
@@ -407,40 +515,63 @@ def run(document, case):
 
 
 def main():
-    keep = set(sys.argv[1:])
+    arguments = sys.argv[1:]
+    own_drag = OWN_DRAG_FLAG in arguments
+    keep = {argument for argument in arguments if argument != OWN_DRAG_FLAG}
     every = recovery.CASES + WHOLE_FLIGHT_ONLY_CASES
     cases = [case for case in every if not keep or case["name"] in keep]
     if keep and len(cases) != len(keep):
         fail(f"unknown case(s): {sorted(keep - {case['name'] for case in cases})}")
     document = recovery.mass_fixture()
+    if own_drag:
+        drag_fields = {
+            "model": "Flight.u_dot_generalized (flight.py:2471-2709, the default "
+                     "equations_of_motion='standard'): RocketPy's 6-DOF variable-mass rigid "
+                     "body from the rail to apogee, then its point-mass parachute phase "
+                     "(u_dot_parachute, flight.py:2710-2790), under each example's own drag "
+                     "and RocketPy's Barrowman lift",
+            "overrides": "none to the drag: each example flies its own, as RocketPy 1.13.0 "
+                         "flies the example (the curves stay under refs/, ADR-009; each case "
+                         "records its file and SHA-256); every parachute's noise is zero (it "
+                         "draws from the global np.random), and the lags are the examples' own",
+            "own_drag": {
+                "why": "predicted mode compares hpr's own aerodynamics with the drag each "
+                       "example ships, which RocketPy's authors took from RASAero, OpenRocket "
+                       "or a team's own estimate; neither code's drag is the truth",
+            },
+        }
+    else:
+        drag_fields = {
+            "model": "Flight.u_dot_generalized (flight.py:2471-2709, the default "
+                     "equations_of_motion='standard'): RocketPy's 6-DOF variable-mass rigid "
+                     "body from the rail to apogee, then its point-mass parachute phase "
+                     "(u_dot_parachute, flight.py:2710-2790), under the drag table this "
+                     "script declares",
+            "overrides": "the drag is the constant C_D0 this script declares, handed to "
+                         "power_off_drag and power_on_drag, because RocketPy's own exports "
+                         "carry their own terms and are never committed (ADR-009); every "
+                         "parachute's noise is zero (it draws from the global np.random), and "
+                         "the lags are the examples' own",
+            "declared_drag": {
+                "cd0_vs_mach": [list(row) for row in DECLARED_CD0],
+                "why": "same-drag mode scores the equations of motion, not the aerodynamics, "
+                       "so both codes fly one declared table; a Mach-dependent curve written "
+                       "here would be an uncited drag model inside the reference (L18)",
+            },
+        }
     print(
         json.dumps(
             {
                 "oracle": f"rocketpy {importlib.metadata.version('rocketpy')}",
                 "generator": "validation/oracles/rocketpy/flight.py",
-                "command": COMMAND,
-                "model": "Flight.u_dot_generalized (flight.py:2471-2709, the default "
-                         "equations_of_motion='standard'): RocketPy's 6-DOF variable-mass rigid "
-                         "body from the rail to apogee, then its point-mass parachute phase "
-                         "(u_dot_parachute, flight.py:2710-2790), under the drag table this "
-                         "script declares",
-                "overrides": "the drag is the constant C_D0 this script declares, handed to "
-                             "power_off_drag and power_on_drag, because RocketPy's own exports "
-                             "carry their own terms and are never committed (ADR-009); every "
-                             "parachute's noise is zero (it draws from the global np.random), and "
-                             "the lags are the examples' own",
-                "declared_drag": {
-                    "cd0_vs_mach": [list(row) for row in DECLARED_CD0],
-                    "why": "same-drag mode scores the equations of motion, not the aerodynamics, "
-                           "so both codes fly one declared table; a Mach-dependent curve written "
-                           "here would be an uncited drag model inside the reference (L18)",
-                },
+                "command": f"{COMMAND} {OWN_DRAG_FLAG}" if own_drag else COMMAND,
+                **drag_fields,
                 "mass_fixture": {
                     "file": recovery.MASS_FIXTURE,
                     "generator": document["generator"],
                     "thrust_curves": document["thrust_curves"],
                 },
-                "cases": [run(document, case) for case in cases],
+                "cases": [run(document, case, own_drag) for case in cases],
             },
             indent=1,
             sort_keys=False,
