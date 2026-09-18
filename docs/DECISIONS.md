@@ -24,6 +24,7 @@ renumber. Supersede an entry by adding a new one that points back to it.
 | ADR-016 | The documentation site: mdBook over `docs/`, and checks for links, labels and equations | accepted |
 | ADR-017 | Model pages open with *In short*; Accuracy traces its numbers; the records stay files | accepted |
 | ADR-018 | Examples run in CI against committed output; pages quote files, checked line for line | accepted |
+| ADR-019 | Publishing the site and the API reference to GitHub Pages | accepted |
 
 ---
 
@@ -1552,3 +1553,58 @@ a program prints quotes numbers that move whenever a model does.
 - A block without a marker is not checked, and code in prose (such as the page's suggested edits)
   is not compiled. Reviews cover those.
 
+## ADR-019: Publishing the site and the API reference to GitHub Pages (2026-09-18)
+
+**Context.** M0.4d asks for the site to be published from `main`, with the workspace's rustdoc
+beside it and each linking the other. GitHub Pages hosts a public repository's site for free, but
+turning it on is a repository setting, which only the owner may change (CLAUDE.md, rule 9); until
+then, a deploy fails. Rustdoc merges its search index and list of crates with whatever an
+earlier run left in `target/doc`. And the crates' documentation is also read outside the site, in
+`cargo doc --open` and later perhaps on docs.rs, so it can only link the guide by its address.
+
+**Decision.**
+
+- **The API reference is part of the site, under `api/`.** `cargo xtask site` builds the rustdoc
+  of every library crate (not `xtask`, not the command-line binary), with all features and
+  `-D warnings`, from an empty `target/doc`, and copies it to `target/site/api`. The site is one
+  artifact, and a local build has both halves.
+- **They link each other, and the check holds both ends.** A page of the site, *The API
+  reference*, links each crate's front page by a relative link. Each crate's `//!` documentation
+  links the guide's pages for its models by address, `https://nrdptel.github.io/hpr-sim/...`,
+  which the built-site check reads as the local build. So a crate the site doesn't link fails, as
+  does a crate that links no page of the guide, or a link to a page the guide doesn't have.
+  Rustdoc's links among its own pages are left to `cargo doc` with `-D warnings`.
+- **The site knows its path.** Pages serves a project's site under `/hpr-sim/`. `book.toml` sets
+  `site-url` to it, so mdBook's 404 page works at any address, and the check resolves
+  root-absolute links and a `<base href>` against it.
+- **CI deploys from `main`, after every other check.** The `site` job uploads `target/site` as
+  the Pages artifact on every run (`actions/upload-pages-artifact@v5`). A `deploy` job publishes
+  it (`actions/deploy-pages@v5`) on `main` only, once fmt, clippy, the three test jobs, doc,
+  wasm-check, deny and site have passed on that commit. It alone may write to Pages.
+- **Until Pages is on, the deploy is skipped, and says so.** The `site` job asks GitHub's API
+  whether Pages is on and deploys from GitHub Actions. If not (a 404, or another source), it
+  prints a warning and the deploy job is skipped, so `main` stays green. Any other answer from the
+  API fails the job, so a broken check can't pass for "off".
+- **The README's first lines link the address.** The link leads nowhere until Pages is on.
+
+**Alternatives.**
+
+- A workflow of its own for Pages: it would publish a commit whose other checks failed.
+- Letting the deploy fail until Pages is on: `main` would be red for a reason outside the code,
+  which hides real failures.
+- `actions/configure-pages` with `enablement: true`, which turns Pages on from CI: a change to a
+  repository setting, which is the owner's call.
+- docs.rs for the rustdoc: it needs the crates published on crates.io, also the owner's call.
+- Linking the guide relatively from the crates (`../../physics/aero.html`): it works inside the
+  site only, not in `cargo doc --open` or on docs.rs.
+
+**Consequences.**
+
+- The deploy bullet of M0.4d waits for the owner to turn Pages on (`STATUS.md`, Needs Neer).
+  Then the next push to `main` deploys, or `gh workflow run CI --ref main` without one.
+- `cargo xtask site` also runs `cargo doc`, which takes seconds when the build is cached, and
+  clears `target/doc` first.
+- A library crate added to the workspace fails the site until *The API reference* links it and its
+  documentation links the guide.
+- Only the API reference's links into the guide are checked here; its internal links are
+  rustdoc's.

@@ -4,31 +4,29 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
 
 ## Now
 
-- **Current milestone:** M0.4d Publish
-- **Order:** M0.4d and M0.4e, then M2.1b2 (handoff below)
-- **Run:** the first autopilot run; M0.1-M0.4c, M1.1-M1.7, M2.1a and M2.1b1 have shipped
-- **Last updated:** 2026-09-18 (M0.4c in PR #42; M0.4d not started)
+- **Current milestone:** M0.4e The reader test
+- **Order:** M0.4e, then M2.1b2 (handoff below); M0.4d is blocked on Pages (Needs Neer)
+- **Run:** the first autopilot run; M0.1-M0.4c, M1.1-M1.7, M2.1a and M2.1b1 have shipped, and
+  M0.4d all but its deploy
+- **Last updated:** 2026-09-18 (M0.4d built, deploy blocked on Pages; M0.4e not started)
 
 ## Handoff (overwrite each session)
 
-M0.4c added *Getting started* (examples `first_flight`, `drag_what_if`) and *How a flight is
-simulated*; examples run in CI against committed output, quotes match files (ADR-018). Next, M0.4d:
+M0.4d (ADR-019): `cargo xtask site` builds the rustdoc of every library into `target/site/api`;
+*The API reference* (`docs/api.md`) links each crate, each crate's `//!` links its guide pages by
+`https://nrdptel.github.io/hpr-sim/...`, and the check reads those as the local build. CI uploads
+the site as the Pages artifact; `deploy` runs on `main` once Pages is on. Next, M0.4e:
 
-- **Publish.** On push to `main`, build the site and the workspace rustdoc (under the site, e.g.
-  `target/site/api/`) and deploy with `actions/upload-pages-artifact` and `actions/deploy-pages`.
-  Pages is off until Neer turns it on, so a deploy fails until then: keep `main` green.
-- **Each links the other:** a site page links the rustdoc (build it before `check_html` runs), and
-  each crate's docs link the guide. Pages serves under `/hpr-sim/`: set `site-url` in `book.toml`,
-  and resolve root-absolute hrefs (`404.html` has `<base href="/">`) against it in `check_html`.
-  The README's first lines then link to `https://nrdptel.github.io/hpr-sim/`.
-- **Examples.** When a printed digit moves, `cargo xtask examples` rewrites the outputs; copy them
-  into `docs/getting-started.md`'s quotes (the site check names the line).
-- **Page rules** (ADR-016 to ADR-018): relative links between pages, GitHub URLs for the rest,
-  labels as links, none in headings, Unicode equations, "Level 2"; new pages go in `SUMMARY.md`.
-- **For M0.4e, from the docs reviews:** model pages rarely link the Glossary; recovery's "Against
-  RocketPy" is a wall of text; QUADPACK, CIPM, octave band and stiffness-style terms have no entry.
-  Readers still ask how to fly their own rocket (no builder until M4.1) and how to get a trajectory
-  out (a `Recorder` is described, not shown).
+- **The reader test.** Give a `docs-reviewer` only the built site (`target/site`, rustdoc too) and
+  ten new-user questions, listed in the PR; each answer cites a page; fix every term it flags.
+- **Known gaps, from earlier docs reviews:** model pages rarely link the Glossary; recovery's
+  "Against RocketPy" is a wall of text; QUADPACK, CIPM, octave band and stiffness-style terms have
+  no entry. Readers ask how to fly their own rocket (no builder until M4.1) and how to get a
+  trajectory out (a `Recorder` is described, not shown).
+- **Page rules** (ADR-016 to ADR-019): relative links between pages, GitHub URLs for the rest,
+  labels as links, none in headings, Unicode equations, "Level 2"; new pages go in `SUMMARY.md`;
+  a new library crate needs a row in `docs/api.md` and a guide link in its `//!`.
+- **When Pages is on:** `gh workflow run CI --ref main`; once `deploy` passes, check M0.4d off.
 
 After M0.4 comes M2.1b2: a `Flight::WholeFlight` variant, five cases in the lock, the L75 test.
 
@@ -55,6 +53,9 @@ After M0.4 comes M2.1b2: a `Flight::WholeFlight` variant, five cases in the lock
 
 ## Done log (newest first, keep about 15)
 
+- 2026-09-18: M0.4d Publish, all but the deploy (PR #43, ADR-019): the rustdoc of 16 crates
+  under the site's `api/`, linked from *The API reference* and linking the guide, both ways
+  checked; `site-url`; a `deploy` job that waits for Pages; the README links the site.
 - 2026-09-18: M0.4c Getting started, and how a flight is simulated (PR #42, ADR-018): a
   first flight (Valetudo, 874.0 m apogee) and a drag what-if run in CI on three OSes against
   committed output; pages quote them, checked line for line; a flight diagram; `with_wind`.
@@ -63,20 +64,18 @@ After M0.4 comes M2.1b2: a `Flight::WholeFlight` variant, five cases in the lock
   to their sources by the check; a 70-term Glossary; stale lines fixed (geoid, timing, scope).
 - 2026-09-18: M0.4a The site and its link checks (PR #37, ADR-016): `cargo xtask site` checks
   links and labels, builds with mdBook and checks the HTML in CI; *Start here*; #38, #39 filed.
-- 2026-09-17: PR #34 merged after a physics review and a validation audit: the M2.1b1 oracle's
-  step is bounded, and the cliff is its own 6000 s `max_time`, not RocketPy's defaults (#33).
+- 2026-09-17: PR #34: the M2.1b1 oracle's step is bounded; the cliff was its `max_time` (#33).
 - 2026-09-17: M2.1b1 The whole-flight oracle: `validation/oracles/rocketpy/flight.py` flies the
   five examples pad to landing under a declared constant `C_D0`, byte for byte. Apogees 779 to
   3,623 m AGL; Prometheus reaches Mach 1.014.
-- 2026-09-17: #11 closed (PR #30): `SolidMotor` refuses an impossible exhaust velocity, the range
-  measured over 1,708 catalog motors. #27 closed (PR #28): the M1.7a RocketPy comparison flies
-  RocketPy's gravity and asserts the vector, not the magnitude, which is what hid the difference.
 
 ## Needs Neer (blocking or one-way decisions; the session keeps working on other things)
 
-- **Turn on GitHub Pages** (1 minute; M0.4d publishes the docs there, with mdBook's MPL-2.0
-  theme files inside, as every mdBook site has; ADR-016). Settings → Pages → Build and
-  deployment → Source: **GitHub Actions**. The autopilot may not change repo settings.
+- **Turn on GitHub Pages** (1 minute; the only thing M0.4d waits for). Settings → Pages →
+  Build and deployment → Source: **GitHub Actions**. Then `gh workflow run CI --ref main` (or
+  merge anything) deploys the guide and the API reference to https://nrdptel.github.io/hpr-sim/,
+  which the README already links. They ship mdBook's MPL-2.0 theme and rustdoc's OFL fonts, each
+  with its licence (ADR-016, ADR-019). The autopilot may not change repo settings.
 - **Protect `main`** (2 minutes, optional). Settings → Branches → rule for `main`: require the
   `fmt`, `clippy`, `doc`, `deny`, `wasm-check`, `site` and three `test (...)` checks; block force
   pushes. Don't require approvals: the autopilot merges its own PRs as you, and authors can't
@@ -97,6 +96,8 @@ After M0.4 comes M2.1b2: a `Flight::WholeFlight` variant, five cases in the lock
   site); Unicode equations; our own link and label checks; web links counted, not fetched (#38);
   *In short* in a fixed form; *Accuracy*'s numbers checked against the files they link; the
   records stay files; examples run in CI against committed output, and quotes match line for line.
+- ADR-019: the rustdoc is part of the site (`api/`), crates link the guide by its address; CI
+  deploys from `main` after every check, and skips with a warning while Pages is off.
 - ADR-001 to ADR-007 and M0.3 (details in `DECISIONS.md`): licence and layout; refs pinned by hash;
   body `+z` to the nose, WGS 84 gravity and Coriolis; atmosphere and wind by height above sea
   level; NFPA 1125 motor statistics, 32 curves; full inertia tensors, Crowell's secant ogive;
