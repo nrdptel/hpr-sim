@@ -93,12 +93,13 @@ test checks both at 20 km, to 1e-4 east and 1e-3 north (the curvature changes al
 
 **`STANDARD_GRAVITY_MPS2 = 9.80665`** is the conventional `g₀` (3rd CGPM, 1901; also used by the
 U.S. Standard Atmosphere 1976). It is a unit convention, not a model of local gravity. Loft used it
-as gravity, which put Loft 0.3% off RocketPy at the equator (Loft lesson L1).
+as gravity, which put Loft 0.3% off RocketPy at the equator ([Loft lesson L1][lessons]).
 
-## RocketPy 1.13.0, for M2.1 like-for-like cases
+## RocketPy 1.13.0, for like-for-like cases
 
 Recorded by `validation/oracles/rocketpy/gravity.py` into
-`validation/fixtures/earth/rocketpy-gravity.json`.
+`validation/fixtures/earth/rocketpy-gravity.json`, for the RocketPy comparison of the validation
+milestone ([M2.1][roadmap]).
 
 - **Formula:** Somigliana (4-1) times the Taylor factor (4-3), with Table 3.6 constants
   (`rocketpy/environment/environment.py`, `somigliana_gravity`). It matches
@@ -113,7 +114,8 @@ Recorded by `validation/oracles/rocketpy/gravity.py` into
 
 ## Tests that pin this
 
-- **`gravity::tests::somigliana_matches_published_values`** (Loft lesson L1, the M1.1 *done when*):
+- **`gravity::tests::somigliana_matches_published_values`** ([Loft lesson L1][lessons], and the
+  *done when* of [M1.1][roadmap], the core math, frames and Earth milestone):
   - Table 3.6 constants to their printed digits.
   - At 11 latitude/longitude/height points, including the equator, both poles, launch sites and
     heights up to 200 km:
@@ -130,3 +132,6 @@ Recorded by `validation/oracles/rocketpy/gravity.py` into
   hands over to the closed form.
 - **`earth::tests`:** the models agree at the pad; the ellipsoidal model follows the vertical
   downrange; the Coriolis direction and magnitude.
+
+[lessons]: https://github.com/nrdptel/hpr-sim/blob/main/docs/research/loft-lessons.md
+[roadmap]: https://github.com/nrdptel/hpr-sim/blob/main/docs/ROADMAP.md

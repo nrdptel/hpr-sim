@@ -1,9 +1,10 @@
 # Aerodynamics
 
 Code: `hpr_aero::body` (bodies of revolution), `hpr_aero::fins` (fin sets) and `hpr_aero::model`
-(a rocket's terms over a `Layout`). Decisions: ADR-008 and ADR-009. M1.5a covers the subsonic normal
-force and centre of pressure, M1.5b the subsonic drag and override tables; transonic and supersonic
-flow arrive in M1.8.
+(a rocket's terms over a `Layout`). Decisions: [ADR-008][adr-008] (normal force and centre of
+pressure) and [ADR-009][adr-009] (drag). The milestone [M1.5a][roadmap] covers the subsonic normal
+force and centre of pressure, [M1.5b][roadmap] the subsonic drag and override tables; transonic and
+supersonic flow arrive with [M1.8][roadmap], the supersonic aerodynamics milestone.
 
 Sources:
 
@@ -51,10 +52,11 @@ Nose cones, transitions and body tubes, from the outer profile (shoulders are in
   goes beyond the source; leaving the step out would silently drop its slope (a 27 mm nose base on
   a 29 mm tube loses 13%). It is reported with the aft component (`BodyAero::step_area_m2`). A
   blunt front face gets no term, as eq. 10 gives. The design checks warn about steps
-  (`radius_step`); the real flow separates there, which M1.5b's drag must count.
+  (`radius_step`); the real flow separates there, and the drag buildup counts it as a zero-length
+  shoulder or boattail (*Steps in radius*, under Drag).
 - `V` and the planform come from integrating the real profile (`hpr_design::revolve`), so ogive,
-  power, parabolic and Haack transitions get their own CP (Loft lesson L9). [B66] fits tangent
-  ogives with 0.466 L instead: 0.2–0.9% different at fineness 2.8–5.
+  power, parabolic and Haack transitions get their own CP ([Loft lesson L9][lessons]). [B66] fits
+  tangent ogives with 0.466 L instead: 0.2–0.9% different at fineness 2.8–5.
 - The body's slope has no Mach term: [B67] p. 18 leaves body compressibility out as a
   conservative choice, and [N09] p. 22 takes the body's normal force as the same at all speeds.
 - `K` is uncertain: [G] cites Hoerner's 1.1 to 1.5, fitted 1.0 to his own data, and says 1.2
@@ -76,7 +78,7 @@ Nose cones, transitions and body tubes, from the outer profile (shoulders are in
   76a exactly.
 - **Ellipses** on the root chord. `Γ_c = 0`, `c̄ = 8c_r/(3π)`, `y_MAC = 4s/(3π)` and
   `X_f = (½ − 2/(3π)) c_r = 0.28779 c_r`. Loft replaced the ellipse with an equal-area trapezoid,
-  whose sweep made the slope 1.3% low (L10).
+  whose sweep made the slope 1.3% low ([Loft lesson L10][lessons]).
 - **Freeform outlines.** `c(y)` runs from the leading edge to the trailing edge, so a jagged edge's
   gap counts toward the CP but not toward `A_fin` ([N09] pp. 27–28). `Γ_c` is the span average of
   the mid-chord angle ([N09] p. 29), which gives the natural angle for trapezoids and ellipses. The
@@ -85,14 +87,14 @@ Nose cones, transitions and body tubes, from the outer profile (shoulders are in
   apart, as when a tip is converted from inches) are skipped.
 - **Prandtl–Glauert** enters through `β` in the fin slope only. As `M → 1` the slope tends to
   `π s²/A_ref`. The CP stays at the quarter chord for all subsonic Mach ([B67] p. 6). Niskanen's aft
-  shift above Mach 0.5 ([N09] eq. 3.35–3.36) moves to M1.8, together with the supersonic fit it
-  interpolates to.
+  shift above Mach 0.5 ([N09] eq. 3.35–3.36) moves to the planned transonic and supersonic
+  milestone ([M1.8][roadmap]), together with the supersonic fit it interpolates to.
 - **Fin count.** A fin at angle `Λ_k` to the lateral airflow adds `(C_Nα)₁ sin² Λ_k` in the plane of
   the flow. The sum is `N/2` for three or more evenly spaced fins, at any roll. `f_N` is 1 up to four
   fins, then 0.948, 0.913, 0.854 and 0.810 for five to eight ([TD] eq. 3.54). Those factors make
-  six and eight fins 1.37 and 1.62 times four ([762] p. 5-24), and interpolate five and seven (L8).
-  More than eight fins are refused: [TD]'s 0.750 has no data behind it. [N09]'s roll-dependent
-  15% and 6% reductions for three and four fins were dropped in [TD].
+  six and eight fins 1.37 and 1.62 times four ([762] p. 5-24), and interpolate five and seven
+  ([Loft lesson L8][lessons]). More than eight fins are refused: [TD]'s 0.750 has no data behind
+  it. [N09]'s roll-dependent 15% and 6% reductions for three and four fins were dropped in [TD].
 - **Side force of one- and two-fin sets.** Each fin sees `α sin Λ_k` ([N09] eq. 3.50) and pushes
   along its own normal. Eq. 3.51 keeps the in-plane share `sin² Λ_k`; the share across the plane is
   `sin Λ_k cos Λ_k`, which cancels for three or more fins but not for one or two. [N09] pp. 31–32
@@ -103,9 +105,10 @@ Nose cones, transitions and body tubes, from the outer profile (shoulders are in
 - **Not modelled.**
   - The body lift the fins induce, `K_B(T)` ([B66] p. 36 neglects it; [B67] eq. 3-98 has it).
   - The roll moment of a single fin: its force acts at `r_t + y_MAC` along the fin's normal. Two or
-    more even fins cancel it; one fin doesn't (roll arrives in M1.8).
+    more even fins cancel it; one fin doesn't (roll arrives with [M1.8][roadmap], a planned
+    aerodynamics milestone).
   - Interference between fin sets at the same station.
-  - Cant, which matters for roll (M1.8).
+  - Cant, which matters for roll ([M1.8][roadmap]).
   - Tube fins, which are refused until a cited method exists (issue #15). Any part kind the model
     doesn't know is refused too.
   - Launch lugs and rail buttons add drag only.
@@ -114,7 +117,7 @@ Nose cones, transitions and body tubes, from the outer profile (shoulders are in
 
 Code: `hpr_aero::drag` (the terms), `AeroModel::drag` and `AeroModel::buildup_components` (their
 sum over a rocket), `hpr_aero::table` (override tables), `hpr_design::Finish` (roughness).
-Decisions: ADR-009. Extra sources:
+Decisions: [ADR-009][adr-009] (drag buildup, surface finishes and override tables). Extra sources:
 
 - **[B67] ch. 4** (pp. 43–62): the friction, roughness and leading-edge formulas Niskanen adopts,
   and Table 4-1 of roughness heights (p. 46, after Hoerner p. 5-3).
@@ -144,57 +147,61 @@ parasitic term on its own area. The axial coefficient is `C_A = C_D0 f(α)`.
 - **Roughness.** `hpr_design::Finish` names the fifteen rows of [B67] Table 4-1 (0 to 1000 µm;
   [N09] Table 3.2 reprints ten) or takes a custom height. The default is "paint in aircraft mass
   production", 20 µm. Each component has its own finish; the Reynolds number and `R_s/L` use the
-  whole rocket's length, as [N09] does (L12). Loft cited none of its values: its 60 µm is
-  OpenRocket's "regular paint" ([N09] p. 83), its 2 µm isn't in either table, and its
-  `1 + 60/f³ + 0.0025f` is Raymer's aircraft fuselage form factor, not [N09]'s.
+  whole rocket's length, as [N09] does ([Loft lesson L12][lessons]). Loft cited none of its
+  values: its 60 µm is OpenRocket's "regular paint" ([N09] p. 83), its 2 µm isn't in either table,
+  and its `1 + 60/f³ + 0.0025f` is Raymer's aircraft fuselage form factor, not [N09]'s.
 - **Fully turbulent.** [N09] p. 43 found laminar runs changed apogee by under 5% and dropped them.
   Eq. 3.81's `R < 1e4` branch applies first, even on surfaces rough enough that `R_crit < 1e4`.
 - **Friction jumps where [N09] does.** Eq. 3.79 is not where eq. 3.78 and 3.80 cross, so eq. 3.81
   jumps at `R_crit`: +9% for 60 µm on a 1 m rocket (0.00419 to 0.00458). The subsonic and
   supersonic corrections also differ at Mach 1 (0.900 against 0.922 turbulent). hpr keeps the
-  published forms, and the tests pin both jumps (L90).
+  published forms, and the tests pin both jumps ([Loft lesson L90][lessons]).
 - **Friction on the axial projection (a departure).** Wall shear acts along the surface, so its
   axial share is `τ cos θ dA`, and the body's friction area is `2π ∫ r dx = π A_plan` rather than
   the slant surface in [N09] eq. 3.85. On slender noses the difference is small: a tangent ogive
   loses 1.1% of its own friction area at fineness 3 and 2.4% at fineness 2. On a short, steep
   shoulder it removes friction on what is nearly a flat face, so a shoulder's drag tends to a bare
-  step's as its length goes to zero (L15); with the slant surface it would stay about
-  `C_fc ΔA/A_ref` above it. M2.2 will see the difference against OpenRocket.
+  step's as its length goes to zero ([Loft lesson L15][lessons]); with the slant surface it would
+  stay about `C_fc ΔA/A_ref` above it. The OpenRocket comparison ([M2.2][roadmap]) will measure the
+  difference.
 - **Steps in radius.** Where one body component meets the next with a different radius, a step up
   is a zero-length shoulder, `0.8 ΔA`, and a step down a zero-length boattail, the base drag of the
   uncovered area. A body with no nose cone gets `0.8 A` on its front face. Each is the limit of the
-  transition it replaces (L15), and it is reported with the aft component.
+  transition it replaces ([Loft lesson L15][lessons]), and it is reported with the aft component.
 - **Boattails.** [N09] eq. 3.88 writes `A_base/A_boattail` without defining the areas, and p. 48
   says a zero-length boattail drags like "the total base drag". Taking `A_base` as the aft base
   would count that base twice and leave the uncovered annulus out, so hpr reads both as the
   boattail's decrease in area (Calisto's boattail: 0.052, against 0.046 the other way). The joint
   angle is `atan(dr/dx)` at the aft end, `±π/2` where a curved transition ends in a blunt tip.
 - **Base drag under power** subtracts the thrusting motors' cross-section from the aft base, down
-  to zero ([N09] p. 50: "if the base is the same size as the motor itself, no base drag"; L13).
+  to zero ([N09] p. 50: "if the base is the same size as the motor itself, no base drag";
+  [Loft lesson L13][lessons]).
   `DragConditions::thrusting(reynolds_per_m, motor_area_m2)` takes the cross-section of the
   burning motors from the flight engine (zero when unknown: no relief). The base belongs to the
   last body component.
 - **Fins.** Each fin set is its own term with its own thickness, chord and cross-section, so their
-  order doesn't matter (L11). `c̄` is the mean aerodynamic chord and `Γ_L` the leading-edge sweep:
-  `atan(x_t/s)` for a trapezoid, the span average for freeform outlines ([N09] p. 50), and for an
-  ellipse `π/2 − acos(k)/√(1 − k²)`, `k = c_r/(2s)` (the closed-form average, with its `acosh` form
-  for `k > 1`). The drag goes as `cos² Γ`, whose span average is 6% lower than `cos²` of the
-  average angle for an ellipse of `k = 1`. Fin–body interference drag and tip vortices are
-  neglected ([N09] p. 41).
+  order doesn't matter ([Loft lesson L11][lessons]). `c̄` is the mean aerodynamic chord and `Γ_L`
+  the leading-edge sweep: `atan(x_t/s)` for a trapezoid, the span average for freeform outlines
+  ([N09] p. 50), and for an ellipse `π/2 − acos(k)/√(1 − k²)`, `k = c_r/(2s)` (the closed-form
+  average, with its `acosh` form for `k > 1`). The drag goes as `cos² Γ`, whose span average is 6%
+  lower than `cos²` of the average angle for an ellipse of `k = 1`. Fin–body interference drag and
+  tip vortices are neglected ([N09] p. 41).
 - **Launch lugs.** `d` in eq. 3.95–3.96 is taken as the outer diameter: [N09] p. 52 treats a solid
-  rail pin as a lug "with a length equal to its diameter", which only reads that way (L14). A row
-  of `count` lugs is `count` lugs. **Rail buttons** follow [N09]'s rail-pin rule on their side
-  profile (base and flange at the outer diameter, waist at the inner).
+  rail pin as a lug "with a length equal to its diameter", which only reads that way
+  ([Loft lesson L14][lessons]). A row of `count` lugs is `count` lugs. **Rail buttons** follow
+  [N09]'s rail-pin rule on their side profile (base and flange at the outer diameter, waist at the
+  inner).
 - **Angle of attack (derived coefficients).** [N09] §3.4.7 describes, without an equation, a
   two-part polynomial from 1 at 0° to 1.3 at 17° and 0 at 90°, with zero slope at each. hpr uses
   the unique cubic on each part that meets those four conditions. `C_A` is positive toward the
   tail. Past 90° the flow meets the tail, and hpr mirrors with the sign reversed, `−f(180° − α)`,
-  an assumption that keeps drag opposing the motion. M2.2 compares against OpenRocket, whose
-  polynomial may differ.
-- **Refusals, not clamps (L16).** Geometry the terms can't use (a lug wall thicker than its
-  radius, a button's base and flange taller than the button, a negative roughness, which
-  `Rocket::layout` already refuses) is an error naming the component; a coasting condition with a
-  motor area and a non-finite result are errors; large coefficients are returned as they are.
+  an assumption that keeps drag opposing the motion. The planned OpenRocket comparison
+  ([M2.2][roadmap]) will check it against OpenRocket, whose polynomial may differ.
+- **Refusals, not clamps ([Loft lesson L16][lessons]).** Geometry the terms can't use (a lug wall
+  thicker than its radius, a button's base and flange taller than the button, a negative roughness,
+  which `Rocket::layout` already refuses) is an error naming the component; a coasting condition
+  with a motor area and a non-finite result are errors; large coefficients are returned as they
+  are.
 - **Override tables** (`DragTable`) replace `C_D0` with `C_D0(M)` curves, power-off and power-on,
   read from CSV text: two columns, optionally under a header (RocketPy's curves; `\r\n`, a
   byte-order mark and `01.05` accepted), or a header naming the column, with rows at non-zero
@@ -208,32 +215,35 @@ parasitic term on its own area. The axial coefficient is `C_A = C_D0 f(α)`.
 
 ### Drag limits
 
-- The buildup refuses `M ≥ 1` until M1.8, like the normal force. The term functions are defined to
-  any Mach number and stay finite to Mach 5 (tested), for M1.8 to build on.
+- The buildup refuses `M ≥ 1` until [M1.8][roadmap] (transonic and supersonic aerodynamics), like
+  the normal force. The term functions are defined to any Mach number and stay finite to Mach 5
+  (tested), for [M1.8][roadmap] to build on.
 - **High subsonic drag is low; above Mach 0.8 it is flagged.** [N09] eq. 3.87 interpolates nose
   and shoulder pressure drag from its Mach 0 value (eq. 3.86) to appendix B's value and slope at
   Mach 1: closed forms for cones and ogives, Stoney's data (NASA TR-R-100) for other shapes. That
-  arrives with M1.8; until then pressure drag is held at its low-subsonic value, so it reads low
-  from about Mach 0.6. A 3:1 tangent ogive misses 0.006 at Mach 0.7 and 0.021 at 0.8 (4–5% of
-  `C_D0`), a 2:1 cone 0.037 at 0.8, a 3:1 cone about 0.05 at 0.9, and flat faces and steps would
-  rise from 0.80 toward 1.04. `Drag::beyond_subsonic_methods` marks the top of [N09]'s subsonic region,
-  Mach 0.8 (Table 3.1), not the start of the error.
+  arrives with [M1.8][roadmap]; until then pressure drag is held at its low-subsonic value, so it
+  reads low from about Mach 0.6. A 3:1 tangent ogive misses 0.006 at Mach 0.7 and 0.021 at 0.8
+  (4–5% of `C_D0`), a 2:1 cone 0.037 at 0.8, a 3:1 cone about 0.05 at 0.9, and flat faces and steps
+  would rise from 0.80 toward 1.04. `Drag::beyond_subsonic_methods` marks the top of [N09]'s
+  subsonic region, Mach 0.8 (Table 3.1), not the start of the error.
 - Nothing models laminar flow, fin-tip vortices, interference drag, fin tabs, fillets, canted fins
   or the flow a boattail guides into the base ([N09] p. 51).
 
 ## Validity and open questions
 
 - These are small-angle models. `α` is accepted over `[0, π]`, but fin slopes stay linear in `α`
-  and nothing models stall. The flight engine (M1.6) must decide how to treat large angles near
-  rail exit and apogee.
+  and nothing models stall. The flight engine uses them at every angle all the same
+  ([Rigid-body flight](flight.md)), so its results are least trustworthy where large angles occur:
+  off the rail in a strong crosswind, and near apogee.
 - In one measured case, fins at `α = π/2` give `C_N` 17.4 against a flat-plate estimate near 5, and
   at `α = π` the fins still give 34.7 while every body term vanishes. That case is a 54 mm
   four-fin rocket at Mach 0.3.
-- `M ≥ 1` is an error until M1.8, but the models are only documented to Mach 0.8.
+- `M ≥ 1` is an error until [M1.8][roadmap] (transonic and supersonic aerodynamics), but the
+  models are only documented to Mach 0.8.
   - [N09]'s subsonic range is 0–0.8, and [B67] p. 18 notes that `C_Nα` rises near Mach 1.
   - [N09] eq. 3.35–3.36 would move the fin CP from 0.25 to about 0.30 of the MAC at Mach 0.8 and
     about 0.33 at 0.9 (aspect ratio 1.6); hpr keeps 0.25.
-  - Between 0.8 and 1, results are unvalidated extrapolations; M1.8 replaces them.
+  - Between 0.8 and 1, results are unvalidated extrapolations; [M1.8][roadmap] will replace them.
 
 ## Verification
 
@@ -268,11 +278,11 @@ parasitic term on its own area. The axial coefficient is `C_A = C_D0 f(α)`.
     (Aerobee: 39.7 in printed, 40.50 in geometric). The fixture's notes list each slip in the
     printed arithmetic.
 - **Loft lessons.**
-  - L8: `fins::tests::six_fin_cna_applies_fin_count_factor`
-  - L9: `body::tests::ogive_transition_cp_uses_volume_form`
-  - L10: `fins::tests::elliptical_fin_cna_uses_zero_midchord_sweep`
-  - L89: `tests::barrowman_hand_values` (cone 2 at 2L/3; a 20→40 mm conical transition over 0.1 m
-    is 1.5 at 0.05556 m; an elliptical fin's CP is 0.28779 `c_r`)
+  - [L8][lessons]: `fins::tests::six_fin_cna_applies_fin_count_factor`
+  - [L9][lessons]: `body::tests::ogive_transition_cp_uses_volume_form`
+  - [L10][lessons]: `fins::tests::elliptical_fin_cna_uses_zero_midchord_sweep`
+  - [L89][lessons]: `tests::barrowman_hand_values` (cone 2 at 2L/3; a 20→40 mm conical transition
+    over 0.1 m is 1.5 at 0.05556 m; an elliptical fin's CP is 0.28779 `c_r`)
 - **Limits and invariants** (`body::tests`, `fins::tests`, `model::tests`):
   - Cylinders and thin transitions; body lift at 0 and 90°.
   - Eq. 57 and 76a closed forms against the same trapezoid as a polygon (1e-13).
@@ -304,7 +314,8 @@ parasitic term on its own area. The axial coefficient is `C_A = C_D0 f(α)`.
   | **Valetudo, power-off (outside 10%)** | labelled RASAero, 3-decimal table | 0.5566 | **−47.0%** | −59.4% to −42.5% |
   | **Valetudo, power-on (outside 10%)** | the same, power-on | 0.5189 | **−50.4%** | −62.8% to −45.9% |
 
-  - **Inputs (ADR-009).** The exports record none, so the designs follow one declared rule:
+  - **Inputs ([ADR-009][adr-009], the drag decision).** The exports record none, so the designs
+    follow one declared rule:
     - RASAero II's default smooth finish.
     - A NACA 00xx airfoil file in the example gives an airfoil section that thick at the mean
       aerodynamic chord (Calisto's getting-started fins).
@@ -336,13 +347,13 @@ parasitic term on its own area. The axial coefficient is `C_A = C_D0 f(α)`.
     - Calisto's power-on result would be −5.0% (its power-on file is its power-off file).
     - The other examples, whose drag is a constant, CFD or of unknown origin.
 - **Loft lessons.**
-  - L11: `drag::tests::drag_invariant_to_fin_set_order`
-  - L12: `drag::tests::form_factor_and_roughness_match_cited_values`
-  - L13: `drag::tests::power_on_base_drag_subtracts_thrusting_motor_area`
-  - L14: `drag::tests::launch_lug_drag_matches_cited_hollow_tube_formula`
-  - L15: `drag::tests::shoulder_drag_continuous_as_transition_length_tends_to_zero`
-  - L16: `drag::tests::malformed_geometry_is_an_error_not_a_clamped_cd`
-  - L90: `drag::tests::skin_friction_follows_eq_3_81_and_drag_invariants_hold`
+  - [L11][lessons]: `drag::tests::drag_invariant_to_fin_set_order`
+  - [L12][lessons]: `drag::tests::form_factor_and_roughness_match_cited_values`
+  - [L13][lessons]: `drag::tests::power_on_base_drag_subtracts_thrusting_motor_area`
+  - [L14][lessons]: `drag::tests::launch_lug_drag_matches_cited_hollow_tube_formula`
+  - [L15][lessons]: `drag::tests::shoulder_drag_continuous_as_transition_length_tends_to_zero`
+  - [L16][lessons]: `drag::tests::malformed_geometry_is_an_error_not_a_clamped_cd`
+  - [L90][lessons]: `drag::tests::skin_friction_follows_eq_3_81_and_drag_invariants_hold`
 - **Limits of every term** (`drag::tests`): friction below `1e4`, at `R_crit` and to Mach 5;
   stagnation pressure against the isentropic series and its limits either side of Mach 1; base drag
   at rest, at Mach 1 and far above; the joint term from smooth to a step; the boattail factor's
@@ -356,3 +367,8 @@ parasitic term on its own area. The axial coefficient is `C_A = C_D0 f(α)`.
 - **Tables** (`table::tests`): RocketPy's quirks (`\r\n`, `01.05`, a repeated row), a byte-order
   mark, quoted fields and trailing commas, RASAero II's header with rows at 2° and 4° skipped, and
   malformed text (a bad first row, repeated or unsorted Mach numbers, `nan`) by line.
+
+[adr-008]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-008-subsonic-normal-force-and-centre-of-pressure-2026-09-17
+[adr-009]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-009-subsonic-drag-buildup-surface-finishes-and-drag-override-tables-2026-09-17
+[lessons]: https://github.com/nrdptel/hpr-sim/blob/main/docs/research/loft-lessons.md
+[roadmap]: https://github.com/nrdptel/hpr-sim/blob/main/docs/ROADMAP.md

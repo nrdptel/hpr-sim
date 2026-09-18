@@ -33,6 +33,9 @@ hpr-validate = { path = "crates/hpr-validate", version = "0.1.0" }
 criterion = { version = "0.8.2", default-features = false, features = ["cargo_bench_support"] }
 glam = { version = "0.33.7", default-features = false, features = ["f64", "serde", "std"] }
 proptest = "1.11.0"
+# xtask only: reads the documentation site's Markdown with the parser mdBook itself uses, to check
+# its links and labels. Parser only: no HTML renderer, no command-line tool.
+pulldown-cmark = { version = "0.13.4", default-features = false }
 # Tests only: an independent xoshiro256++ and SplitMix64 to check `hpr_core::random` against.
 rand_core = "0.10"
 rand_xoshiro = "0.8.1"

@@ -4,45 +4,64 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
 
 ## Now
 
-- **Current milestone:** M0.4 A documentation site people can read (Neer added it on 2026-09-17)
-- **Order:** review and merge PR #34 (green, unreviewed), then M0.4, then M2.1b2 (handoff below)
-- **Run:** the first autopilot run; M0.1-M0.3, M1.1-M1.7, M2.1a and M2.1b1 have shipped
-- **Last updated:** 2026-09-17 (Neer's documentation steer)
+- **Current milestone:** M0.4b Model pages, Accuracy, Glossary, Checking a claim
+- **Order:** M0.4b to M0.4e, then M2.1b2 (handoff below)
+- **Run:** the first autopilot run; M0.1-M0.4a, M1.1-M1.7, M2.1a and M2.1b1 have shipped
+- **Last updated:** 2026-09-18 (M0.4a merged in PR #37; M0.4b not started)
 
 ## Handoff (overwrite each session)
 
-M2.1b1 shipped the whole-flight oracle. M2.1b2 is the Rust half: a `Flight::WholeFlight` variant
-beside `RecoveryDescent`, five cases in the lock, and the L75 test. Start here:
+M0.4a built the site (ADR-016): mdBook 0.5.4 renders `docs/` in place, listed by
+`docs/SUMMARY.md`, and `cargo xtask site` (`xtask/src/site.rs`) checks links, labels and math on
+the pages, then every `href`/`src` in the built HTML. Start M0.4b here:
+
+- **The *In short* check** goes in `site.rs` beside the others, over `docs/physics/*.md` (the
+  model pages; format pages are not models). Fix its form first (for example, the first section
+  is `## In short`, naming what it models, its source, how well it is validated and what it
+  leaves out), with a test showing a page without it failing.
+- **Accuracy** gives every result from `validation/reports/latest.md` and the pages' own
+  verification tables, gaps included; *Start here* already lists the gaps. CLAUDE.md wants quoted
+  numbers to come from the committed report: check or generate them, don't retype them.
+- **Decisions and roadmap:** today *Start here* links them on GitHub. As pages, the label check
+  would need to accept a label where it is defined (an ADR heading, a roadmap entry, a lesson row).
+- **Page rules (ADR-016):** relative links only between pages, the rest by
+  `https://github.com/nrdptel/hpr-sim/blob/main/...`; labels as `[M1.8][roadmap]`,
+  `[ADR-009][adr-009]`, `[Loft lesson L10][lessons]`, defined at the page's end; nothing linked
+  in a heading; Unicode equations; "Level 2", not "L2". The docs review's term list (stability
+  margin, calibers, tip-off, drift) seeds the Glossary.
+- **For M0.4d:** GitHub Pages serves under `/hpr-sim/`, so set `site-url` in `book.toml`, and teach
+  `check_html` to resolve root-absolute hrefs (`404.html` has `<base href="/">`) against it.
+
+After M0.4 comes M2.1b2: a `Flight::WholeFlight` variant, five cases in the lock, the L75 test.
 
 - **The reference** is `validation/fixtures/flight/rocketpy-whole-flight.json`. Teach
   `crates/hpr-validate/src/rocketpy.rs` its shape, as it knows `recovery.py`'s; only it may.
 - **The drag is the case's, not RocketPy's.** Its exports carry their own terms (ADR-009) and CI
   has no `refs/`, so the fixture declares a constant `C_D0` of 0.5 for both codes. Feed it to hpr
   through `Simulation::with_drag_table` (`crates/hpr-sim/src/flight.rs:292`); do not invent a Mach
-  curve there, which is L18 rebuilt inside the reference.
-- **One gap to report, not hide:** Prometheus peaks at Mach 1.014 and hpr refuses `M >= 1` until
-  M1.8, so that case is a declared gap.
-- **Gate `max_acceleration_power_on_m_s2`, not the whole-flight maximum**, which for NDRT and
-  Prometheus is the parachute inflating (191.8 at 54.9 s against 114.2 power-on), a transient the
-  two codes model differently. Or declare the other `not_scored` in writing.
-- **Pin the reference area too.** "Same drag" is a force, `0.5 rho V^2 A C_D`: RocketPy takes `A`
-  from `Rocket(radius)`, hpr from the design. The fixture records `reference_radius_m` and
-  `reference_area_m2` so the L75 test can assert they agree.
+  curve there, which is L18 rebuilt inside the reference. Pin the area too: the fixture records
+  `reference_radius_m` and `reference_area_m2` for the L75 test to assert.
+- **Thrust starts at (0, 0):** RocketPy's `.eng` reader inserts that point, so thrust ramps
+  linearly to the file's first (0.008 to 0.038 s). Model it the same way or argue the difference.
+- **Gate `max_acceleration_power_on_m_s2`**, not the whole-flight maximum (the parachute for NDRT
+  and Prometheus). It is sampled at solver steps; see #36 for that and the oracle's follow-ups.
+- **One gap to report, not hide:** Prometheus peaks at Mach 1.014; hpr refuses `M >= 1` until M1.8.
 - **Argue each tolerance in the case file** and fly `GravityModel::VerticalTaylor` (ADR-015);
   expect differences from RocketPy's added mass, its rail exit and `0.25*n^2` (ADR-011).
-- **The harness, unchanged from M2.1a:** it never writes a reference (L76), refuses an unsourced
-  value (L77) or an ungated metric (L79), and fails on a missing locked case (L78).
 - **Open conventions for the jar (M2.2/M3.1):** override order (L51), radii, positions, ogive,
   walls, fin mass, cant pivot, drag-at-angle, lug diameter.
-- **Process notes:** `cargo test -p xtask` checks STATUS against ROADMAP, notices rows against lock
-  titles, lesson tests once checked off, lock URLs and the generated designs. `cargo xtask aero`
-  and the oracles need `refs/rocketpy`; its data files are never committed. Scanned PDFs need
-  `pdftoppm -f N -l N -r 90 -gray -png`, born-digital ones `pdftotext -layout`; archive.org
-  rate-limits (429) and ScienceDirect refuses scripts (403). On snapshot drift, run
-  `cargo xtask refs fetch --adopt-snapshots`.
+- **Process notes:** `cargo test -p xtask` guards STATUS, ROADMAP, notices, lessons and the lock.
+  The oracles need `refs/rocketpy` (run from the repo root with `refs/venv/bin/python`); its data
+  is never committed. Scanned PDFs: `pdftoppm -r 90 -gray -png`; born-digital: `pdftotext -layout`.
+  On snapshot drift, run `cargo xtask refs fetch --adopt-snapshots`.
 
 ## Done log (newest first, keep about 15)
 
+- 2026-09-18: M0.4a The site and its link checks (PR #37, ADR-016): `cargo xtask site` checks 19
+  pages' 209 links and labels, builds with mdBook and checks 23 HTML files; a CI `site` job runs
+  it. 146 bare labels became links; *Start here* written; stale lines fixed (#38, #39 filed).
+- 2026-09-17: PR #34 merged after a physics review and a validation audit: the M2.1b1 oracle's
+  step is bounded, and the cliff is its own 6000 s `max_time`, not RocketPy's defaults (#33).
 - 2026-09-17: M2.1b1 The whole-flight oracle: `validation/oracles/rocketpy/flight.py` flies the
   five examples pad to landing under a declared constant `C_D0` (RocketPy's own exports carry
   their own terms), reproducible byte for byte. Apogees 779 to 3,623 m AGL; Prometheus reaches
@@ -51,31 +70,16 @@ beside `RecoveryDescent`, five cases in the lock, and the L75 test. Start here:
 - 2026-09-17: #11 closed (PR #30): `SolidMotor` refuses an impossible exhaust velocity, the range
   measured over 1,708 catalog motors. #27 closed (PR #28): the M1.7a RocketPy comparison flies
   RocketPy's gravity and asserts the vector, not the magnitude, which is what hid the difference.
-- 2026-09-17: M2.1a Validation harness (ADR-015): TOML cases, references with per-value provenance
-  and a hash, per-metric 3% gates, a case lock and committed reports. Five descent cases, 30
-  metrics, all inside 3% (worst +2.86%). L76–L79 have live tests. It found a gravity-model
-  mismatch in its own comparison on the way in (#27).
-- 2026-09-17: M1.7c Separated bodies (ADR-014): a separation splits the stack at a stage boundary,
-  each body flying as a point mass. Masses add to 1e-12, momenta to 1e-9.
-- 2026-09-17: M1.7b Streamers and tumble (ADR-013): Filippone's three curves by default (+9% on
-  Kidwell's flat drop), appendix C's on request (+88%), tumble from the airframe (−10 to +19%).
-- 2026-09-17: M1.7a Parachutes and descent (ADR-012): Knacke's canopy tables and filling law, four
-  triggers, drogue release, a point-mass descent. A descent follows the closed form to 2.1e-8 of
-  `v_t`; five RocketPy examples within 0.71% in descent time, 0.28% in drift.
-- 2026-09-17: M1.6b Rigid-body flight (ADR-011): variable-mass equations about the nose tip, rail
-  to the last button; pitch period 8e-5 from linear theory. M1.6a (ADR-010): DOPRI5 with dense
-  output, RK4, Brent events; orders 5.09 and 4.01.
-- 2026-09-17: M1.5b Drag and overrides (ADR-009): Niskanen's buildup, drag at angle, roughness, CSV
-  overrides. At Mach 0.3 against RASAero: Calisto +4.4%, Juno III −6.0%, Cavour −8.3%; gaps:
-  Valetudo −47%, Cavour power-on −18%. M1.5a CP within 1% of Barrowman; M1.1–M1.4, M0.1–M0.3.
 
 ## Needs Neer (blocking or one-way decisions; the session keeps working on other things)
 
-- **Turn on GitHub Pages** (1 minute; M0.4 publishes the docs there). Settings → Pages → Build and
+- **Turn on GitHub Pages** (1 minute; M0.4d publishes the docs there, with mdBook's MPL-2.0
+  theme files inside, as every mdBook site has; ADR-016). Settings → Pages → Build and
   deployment → Source: **GitHub Actions**. The autopilot may not change repo settings.
 - **Protect `main`** (2 minutes, optional). Settings → Branches → rule for `main`: require the
-  `fmt`, `clippy`, `doc`, `deny`, `wasm-check` and three `test (...)` checks; block force pushes.
-  Don't require approvals: the autopilot merges its own PRs as you, and authors can't self-approve.
+  `fmt`, `clippy`, `doc`, `deny`, `wasm-check`, `site` and three `test (...)` checks; block force
+  pushes. Don't require approvals: the autopilot merges its own PRs as you, and authors can't
+  self-approve.
 - **Loft's flutter calculator overstates flutter speed by √2** (safety). fusionspace-loft
   `lib/sim/flutter.ts:287` uses 1.337·(λ+1)/2; NACA TN 4197 eq. 18 gives 2.674·(λ+1)/2 (39.3 over
   14.7 psi), so its "1.5 margin" is about 1.06. Fix it or post a notice before Loft shuts down.
@@ -87,35 +91,30 @@ beside `RecoveryDescent`, five cases in the lock, and the L75 test. Start here:
 
 ## Decided without Neer (one line each; significant ones get an ADR)
 
-- ADR-001 to ADR-004 and M0.3, all in `DECISIONS.md`: the licence and workspace layout; refs
-  pinned by hash; body `+z` toward the nose with WGS 84 normal gravity and Coriolis by default;
-  the atmosphere and wind by height above sea level; and the doc guards `cargo test -p xtask` runs.
-- ADR-005: NFPA 1125 statistics as ThrustCurve computes them; constant exhaust velocity; 32 curves.
-- ADR-006: full inertia tensors; part frames forward; Crowell's secant ogive; materials by value.
-- ADR-007: origin at the nose tip; one `Component` with a `Part` enum; offsets aft; overrides
-  rescale the tensor; comparisons use bundled public-domain curves.
-- M1.4, M1.5, M1.6, M1.7 and M2.1b were split into increments, done-when bullets unchanged.
-- ADR-008: body CP from the real volume with `sin α/α` and Galejs lift (`K` 1.1); Diederich fins;
-  over eight fins, tube fins (#15) and `M ≥ 1` refused.
-- ADR-009: Niskanen's drag as printed; lug `d` outer; buttons as pins; 20 µm finish.
-- ADR-010: own DOPRI5 (no ODE crate); events stop past the zero; discontinuities are stop times.
-- ADR-011: nose-tip reference; nozzle gyration from the integral; `M ≥ 1` stops a flight; rail `μ` 0.
+- M0.4, M1.4, M1.5, M1.6, M1.7 and M2.1b were split into increments, done-when bullets unchanged.
+- ADR-016: mdBook 0.5.4 (MPL-2.0, run only; its theme's files ship in the built site under their
+  own licences) over `docs/` in place; Unicode equations, no LaTeX; our own link and label checks
+  on pulldown-cmark rather than lychee; external links counted, not fetched (#38).
+- ADR-001 to ADR-007 and M0.3 (details in `DECISIONS.md`): licence and layout; refs pinned by hash;
+  body `+z` to the nose, WGS 84 gravity and Coriolis; atmosphere and wind by height above sea
+  level; NFPA 1125 motor statistics, 32 curves; full inertia tensors, Crowell's secant ogive;
+  origin at the nose tip, one `Component` with a `Part` enum; the doc guards `cargo test` runs.
+- ADR-008 to ADR-011: body CP from the real volume with Galejs lift (`K` 1.1) and Diederich fins;
+  Niskanen's drag as printed, 20 µm finish; own DOPRI5, discontinuities as stop times; nose-tip
+  reference, `M ≥ 1` refused and stops a flight, rail `μ` 0.
 - ADR-012: recovery devices live in `hpr-sim`; `C_D0` on Knacke's nominal area, mid-range; a
   point-mass descent, no added mass; devices add and can release one another.
 - ADR-013: streamers take Filippone's three curves by default, appendix C's on request; tumble takes
   OpenRocket's §3.5 (−10 to +19% on its own drops, not the 3 to 14% claimed).
-- ADR-014: a separation splits the stack at a stage boundary into two point-mass bodies with their
-  own stages' mass and devices; no ejection impulse (linear momentum only), every body needs a
-  device, only body 0's act before the split, and it must follow the last burnout (M1.9 stages).
+- ADR-014: a separation splits the stack at a stage boundary into point-mass bodies with their own
+  stages' mass and devices; no ejection impulse; it must follow the last burnout (M1.9 stages).
 - #11: `SolidMotor` refuses `c = I/m_p` outside 200–5,000 m/s: a units guard, not a propellant
   filter (it rejects none of the 1,708 surveyed motors, 236 to 3,031 m/s), and a behaviour change.
 - M2.1b1: a same-drag case declares its own `C_D0(M)`, which both codes then fly, rather than
   committing or reading RocketPy's exports (their own terms, ADR-009; absent from CI).
-- ADR-015: a run reads references and never writes them (no update flag); every value carries its
-  generator's source and the file its hash; every reported metric is gated at the milestone's 3%
-  with no absolute floor, or declared not scored in writing; the locked cases must all run; a
-  case's inputs, design and mass come from the reference's own record of what the oracle flew; a
-  RocketPy comparison flies RocketPy's gravity model; the report is committed and carries no date.
+- ADR-015: a run reads references, never writes them; every value carries its source and the file
+  its hash; every metric is gated at 3% with no floor, or declared not scored; locked cases must
+  run; inputs come from the oracle's own record; RocketPy comparisons fly RocketPy's gravity.
 
 ## Known issues and risks
 

@@ -53,7 +53,7 @@ a   = (γ R* T_M / M₀)^½                                (50)
   is isothermal at 186.87 K. Both are flagged. The real standard is also isothermal from 86 to
   91 km, then warms, and its composition changes above 86 km. Pressure and density there are
   rough, but tiny.
-- **Loft got this wrong** (lessons L2–L4):
+- **Loft got this wrong** ([Loft lessons L2–L4][lessons]):
   - It fed geometric altitude to geopotential formulas: at 11 km it gave 216.65 K and 22 632 Pa,
     against 216.774 K and 22 699.96 Pa.
   - It had only four layers, so at 70 km it gave 335 K against 219.6 K.
@@ -69,7 +69,7 @@ This is **not** the aviation convention (ESDU 77022), which offsets temperature 
 altitude. Both are hydrostatic, but they differ aloft. At `H = 3000 m′` with `ΔT = +20 K`, the
 aviation convention gives 289.95 K where this gives 288.65 K, and densities 0.38% apart
 (`validation/oracles/atmosphere/conventions.py`). This choice keeps the lapse rate attached to
-height, like a sounding; see ADR-004.
+height, like a sounding; see the atmosphere decision, [ADR-004][adr-004].
 
 **An anchor's offset holds all the way up,** which a real hot or cold day doesn't. Anchoring
 +20 K at a 1400 m field, at the standard's pressure there, gives these densities against the
@@ -148,12 +148,13 @@ catches hPa entered as Pa.
   `geometric_from_wmo_geopotential_m`. At 30 km that is 29.7785 km of geopotential at the
   equator and 29.932 km at 80° N. The standard's latitude-free `r₀` formula is only for the
   standard itself.
-- **Loft lesson L5:** "today's conditions" kept the standard lapse from the field up, ignored
-  humidity and never used sounding temperatures.
+- **[Loft lesson L5][lessons]:** "today's conditions" kept the standard lapse from the field up,
+  ignored humidity and never used sounding temperatures.
 
-## RocketPy 1.13.0, for M2.1
+## RocketPy 1.13.0, for the code-to-code comparison
 
-These are findings from reading `refs/rocketpy`, not yet pinned by fixtures:
+These are findings from reading `refs/rocketpy` for the RocketPy comparison of the validation
+milestone ([M2.1][roadmap]), not yet pinned by fixtures:
 
 - **Standard atmosphere:** ISO 2533 layers from −2 to 80 km, with `R = 287.05287` (the same as
   `R*/M₀`). Temperature is linear in geometric height between converted layer boundaries.
@@ -163,17 +164,18 @@ These are findings from reading `refs/rocketpy`, not yet pinned by fixtures:
     extrapolation.
   - Linear pressure is off hydrostatic by up to 0.06% between 1000 and 925 hPa, 1.15% between
     700 and 500 hPa, and 3.4% between 50 and 30 hPa (`conventions.py`).
-  - M2.1 comparisons need a RocketPy-compatible option or levels dense enough that this
-    doesn't matter.
+  - [M2.1][roadmap] comparisons need a RocketPy-compatible option or levels dense enough that
+    this doesn't matter.
 - **Humidity** is not used anywhere.
 - **Wyoming heights** are converted from geopotential with a radius only (no latitude).
   - The helper's default radius, 63 781 370 m in `rocketpy/tools.py:972`, is ten times the
     Earth's.
-  - Check which callers rely on that default before M2.1.
+  - Check which callers rely on that default before the [M2.1][roadmap] comparisons.
 
 ## Tests that pin this
 
-- **`ussa76::tests::matches_the_1976_tables_at_32_altitudes`** (M1.2 *done when*):
+- **`ussa76::tests::matches_the_1976_tables_at_32_altitudes`** (the *done when* of
+  [M1.2][roadmap], the atmosphere and wind milestone):
   - Covers `T`, `T_M`, `H`, `P`, `ρ`, `a`, `μ` and `ν` at 32 altitudes from −2 to 86 km.
   - Every value is within 0.1%, and within one count of its last printed digit.
   - The exceptions are those above (80–85.5 km, where the printed `T` equals `T_M`) and the
@@ -182,10 +184,10 @@ These are findings from reading `refs/rocketpy`, not yet pinned by fixtures:
   - The fixture was transcribed from the page images and cross-checked by
     `validation/oracles/ussa76/tables.py` against mpmath and `ambiance`.
 - **Loft lessons:**
-  - `geometric_11_km_matches_the_1976_tables` (L2)
-  - `fifty_km_is_270_65_k_and_79_779_pa` (L3)
-  - `sea_level_viscosity_is_1_7894e_5` (L4)
-  - `profile::tests::sounding_temperature_overrides_standard_lapse` (L5)
+  - `geometric_11_km_matches_the_1976_tables` ([Loft lesson L2][lessons])
+  - `fifty_km_is_270_65_k_and_79_779_pa` ([Loft lesson L3][lessons])
+  - `sea_level_viscosity_is_1_7894e_5` ([Loft lesson L4][lessons])
+  - `profile::tests::sounding_temperature_overrides_standard_lapse` ([Loft lesson L5][lessons])
 - **Constants and structure:**
   - `constants_match_the_transcription` checks the constants and Tables 4 and 8.
   - Hydrostatic balance `dP/dZ = −ρg` is checked in every layer, and as a property test over
@@ -203,3 +205,7 @@ These are findings from reading `refs/rocketpy`, not yet pinned by fixtures:
   - The continuation beyond the levels is hydrostatic when dry, with the humid shortfall pinned.
   - WMO geopotential values.
   - Errors (including rising pressures) and serde.
+
+[adr-004]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-004-atmosphere-wind-turbulence-and-the-seeded-generator-2026-09-17
+[lessons]: https://github.com/nrdptel/hpr-sim/blob/main/docs/research/loft-lessons.md
+[roadmap]: https://github.com/nrdptel/hpr-sim/blob/main/docs/ROADMAP.md

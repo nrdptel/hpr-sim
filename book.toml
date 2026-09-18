@@ -1,0 +1,22 @@
+# The documentation site (ADR-016). `cargo xtask site` builds it with mdBook 0.5 and checks it.
+# Its source is `docs/` itself: `docs/SUMMARY.md` lists the pages, and every other file there
+# (STATUS, ROADMAP, DECISIONS, research notes) is linked from the site on GitHub, not rendered.
+
+[book]
+title = "hpr-sim"
+description = "An open-source flight simulator for hobby and high-power rockets: its models, sources and validation."
+language = "en"
+src = "docs"
+
+[build]
+build-dir = "target/site"
+# A page the summary lists must exist; don't create an empty one.
+create-missing = false
+
+[output.html]
+git-repository-url = "https://github.com/nrdptel/hpr-sim"
+edit-url-template = "https://github.com/nrdptel/hpr-sim/edit/main/{path}"
+
+# Code blocks are quotes and output, not Rust to run in the playground.
+[output.html.playground]
+runnable = false

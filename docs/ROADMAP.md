@@ -93,6 +93,40 @@
     would ask, listed in the PR (for example: "How far can I trust the descent drift, and what was
     it checked against?"). Each answer cites a page. Every term it flags as unclear is fixed.
 
+  Split on 2026-09-17, because it is bigger than one session. Between them, the increments' *done
+  when* bullets are the four above, unchanged: the first bullet's checks are shared between M0.4a
+  (links, bare labels) and M0.4b (*In short*).
+
+  - [x] **M0.4a The site and its link checks.** An ADR picks the tool (mdBook is the first
+    candidate) and the layout. `docs/physics/` and `docs/format/` move into the site's source, so
+    each page has one source, and equations render on the site and on GitHub. *Start here* page.
+
+    *Done when:* CI builds the site on every PR and checks its links. A broken link, or a bare
+    internal label (`L\d+`, `ADR-\d+`, a milestone id that isn't a link), fails CI, and a test
+    shows each failing.
+  - [ ] **M0.4b Model pages, Accuracy, Glossary, Checking a claim.** Every model page opens with
+    *In short*: what it models, its source, how well it is validated, what it leaves out.
+    *Accuracy* gives every validation result so far, gaps included, from the committed report.
+    The decisions and the roadmap are reachable from the site.
+
+    *Done when:* a model page without *In short* fails CI, a test shows it, and every model page
+    passes.
+  - [ ] **M0.4c Getting started, and how a flight is simulated.** A runnable `examples/` program
+    flies a first rocket; *How a flight is simulated* walks pad to landing with a diagram.
+
+    *Done when:* the *Getting started* example runs in CI.
+  - [ ] **M0.4d Publish.** Workspace rustdoc sits next to the guide, each linking to the other.
+
+    *Done when:* a workflow deploys the site and the rustdoc to GitHub Pages from `main`, and the
+    README's first lines link to it. (Needs Neer to enable Pages. Until he does, only this bullet
+    is blocked.)
+  - [ ] **M0.4e The reader test.**
+
+    *Done when:* a reviewer with no project context, given only the site, answers ten questions a
+    new user would ask, listed in the PR (for example: "How far can I trust the descent drift, and
+    what was it checked against?"). Each answer cites a page. Every term it flags as unclear is
+    fixed.
+
 ## Phase 1: Physics core (the heart), with validation interleaved
 
 - [x] **M1.1 Core math, frames, Earth.**

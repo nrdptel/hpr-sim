@@ -2,7 +2,8 @@
 
 Code: `hpr_design::tree` (the tree, placement, automatic radii, overrides, reference diameter),
 `hpr_design::config` (motor mounts, configurations, assembly) and `hpr_design::checks`. Decisions:
-ADR-007. Part geometry and mass are in `mass.md` and `shapes.md`.
+[ADR-007][adr-007] (stations, placement, automatic radii, overrides, motors and checks). Part
+geometry and mass are in `mass.md` and `shapes.md`.
 
 Sources:
 
@@ -14,7 +15,8 @@ Sources:
 
 Most of this file defines conventions rather than physical models. OpenRocket has its own
 conventions for positions, automatic radii and overrides. The clean-room rule rules out its
-source, so M3.1 (import) and M2.2 (the jar as an oracle) map them by running the jar.
+source, so the planned OpenRocket import ([M3.1][roadmap]) and comparison ([M2.2][roadmap]) will
+map them by running OpenRocket itself.
 
 ## Stations and the body origin
 
@@ -106,13 +108,15 @@ Errors inside a stage or component name it (`DesignError::InComponent`).
   total, and the stage override applies last.
 - Scaling the tensor with the mass keeps the radii of gyration. That is the natural reading of
   "this part weighs more than its geometry says", but other tools may differ. How OpenRocket orders
-  its overrides on parts with shoulders (Loft lesson L51) is measured in M2.2.
+  its overrides on parts with shoulders ([Loft lesson L51][lessons]) will be measured by the planned
+  OpenRocket oracle ([M2.2][roadmap]).
 
 ## Reference diameter
 
 - `maximum` (the default): twice the largest outer radius of any body component in any stage,
   including a bulged ogive's peak (`Profile::max_radius_m`). Internal parts, shoulders, fins, tube
-  fins, lugs and rail buttons never count (Loft lesson L47, where an internal part could set it).
+  fins, lugs and rail buttons never count. In Loft an internal part could set it
+  ([Loft lesson L47][lessons]).
 - `nose_base`: the first nose cone's base diameter.
 - `custom`: a given diameter.
 
@@ -132,7 +136,7 @@ The reference area is `π d²/4`.
 - **Composition** at `t` seconds after ignition: `Assembly::mass_properties(t)` combines the
   structure with each motor's `SolidMotor::state(t).total` ([MK]). The dry assembly uses each
   motor's dry element. Every motor ignites at `t = 0`; staging, delays between stages and air
-  starts come with M1.9.
+  starts will come with the planned staging milestone ([M1.9][roadmap]).
 - **Against RocketPy** [RP]: `total_mass(t)` and `center_of_mass(t)` are the same combination. Its
   `I_11(t)` is taken about the centre of dry mass, so hpr's tensor is moved there before
   comparing. `I_33` sums the axial moments (every element is on the axis).
@@ -144,9 +148,9 @@ The reference area is `π d²/4`.
 
 | finding | severity | when |
 |---|---|---|
-| `motor_wider_than_mount` | error | case diameter > mount inner diameter (L50) |
+| `motor_wider_than_mount` | error | case diameter > mount inner diameter ([Loft lesson L50][lessons]) |
 | `motor_outside_mount` | error | the case doesn't overlap its mount along the axis at all (an overhang typed in mm as m) |
-| `attachment_off_body` | error | an external part's extent (a fin root) doesn't overlap its body tube at all (L50) |
+| `attachment_off_body` | error | an external part's extent (a fin root) doesn't overlap its body tube at all ([Loft lesson L50][lessons]) |
 | `part_outside_rocket` | error | an internal part lies wholly forward of the nose tip or aft of the rocket's end, and touches none of the parts it hangs from |
 | `internal_part_wider_than_parent` | error | an internal part reaches farther from its parent's axis than the parent's bore (a nose cone's or transition's largest outer radius) |
 | `centre_outside_rocket` | error | a stage with an axial centre-of-mass override (`cg_aft_m`, its own or a component's) has its centre off the rocket although its parts aren't |
@@ -172,7 +176,8 @@ The reference area is `π d²/4`.
 
 Errors mark designs that can't exist as described. A simulation of one would be wrong, usually
 on the flattering side: Loft flew a 54 mm motor in a 38 mm mount 69% high. The flight engine
-(M1.6) must refuse them unless the caller explicitly accepts them.
+refuses them with `SimError::DesignChecks` unless the caller sets
+`FlightSettings::accept_design_errors`.
 
 ## Verification
 
@@ -196,9 +201,9 @@ on the flattering side: Loft flew a 54 mm motor in a 38 mm mount 69% high. The f
   centre lie off the rocket. A layout with a corrupt parent index is skipped, not a panic.
 - **Against RocketPy 1.13.0** (`config::tests::matches_rocketpy_example_rockets`):
   - Eight cases of `validation/fixtures/design/rocketpy-rocket-mass.json`: seven example rockets
-    (Calisto at two motor positions) and Prometheus's `GenericMotor`. Cavour (added in M1.5b for
-    its drag curve) has no motor dry mass; its design gives the motor 1e-15 kg, since hpr needs a
-    positive one.
+    (Calisto at two motor positions) and Prometheus's `GenericMotor`. Cavour (added for its drag
+    curve in [M1.5b][roadmap], the drag milestone) has no motor dry mass; its design gives the
+    motor 1e-15 kg, since hpr needs a positive one.
     `docs/research/rocketpy-rocket-mass.md` gives the curve substitution and the examples left out.
   - The test derives the stage override, nozzle station and motor inputs from the fixture itself,
     independently of the design generator.
@@ -227,5 +232,10 @@ on the flattering side: Loft flew a 54 mm motor in a 38 mm mount 69% high. The f
 - **Public designs** (`validation/designs/`, written by `cargo xtask designs`, which a test keeps in
   sync): the eight RocketPy cases and two synthetic rockets resolve with no findings and assemble
   into valid bodies at ignition, mid-burn and burnout.
-- **Lessons:** L47 `tests::reference_diameter_ignores_internal_components`; L50
-  `checks::tests::motor_wider_than_mount_is_rejected` and `checks::tests::fin_root_must_touch_body`.
+- **Lessons:** [Loft lesson L47][lessons] `tests::reference_diameter_ignores_internal_components`;
+  [Loft lesson L50][lessons] `checks::tests::motor_wider_than_mount_is_rejected` and
+  `checks::tests::fin_root_must_touch_body`.
+
+[adr-007]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-007-design-tree-stations-placement-automatic-radii-overrides-motors-and-checks-2026-09-17
+[lessons]: https://github.com/nrdptel/hpr-sim/blob/main/docs/research/loft-lessons.md
+[roadmap]: https://github.com/nrdptel/hpr-sim/blob/main/docs/ROADMAP.md

@@ -96,6 +96,7 @@ adds a source.
 | `criterion` | Apache-2.0 OR MIT | `hpr-core` (benchmarks only) | statistics for `cargo bench` (`docs/perf.md`) |
 | `glam` | MIT OR Apache-2.0 | `hpr-core` | `f64` vectors, quaternions and matrices (`ARCHITECTURE.md`) |
 | `proptest` | MIT OR Apache-2.0 | `hpr-core`, `hpr-atmos`, `hpr-motor` (tests only) | property tests |
+| `pulldown-cmark` | MIT | `xtask` | reads the documentation site's Markdown, with the parser mdBook itself uses, to check its links and labels (ADR-016) |
 | `rand_core` | MIT OR Apache-2.0 | `hpr-core` (tests only) | the generator traits `rand_xoshiro` implements |
 | `rand_xoshiro` | MIT OR Apache-2.0 | `hpr-core` (tests only) | an independent xoshiro256++ and SplitMix64 that `hpr_core::random` is checked against, bit for bit |
 | `roxmltree` | MIT OR Apache-2.0 | `hpr-motor` | a strict, read-only XML 1.0 parser for `.rse` motor files |
@@ -105,6 +106,18 @@ adds a source.
 | `sha2` | MIT OR Apache-2.0 | `xtask`; `hpr-motor` (tests only) | SHA-256 of fetched references and of the bundled motor curves |
 | `toml` | MIT OR Apache-2.0 | `xtask` | reads `validation/refs.lock.toml` |
 | `tempfile` | MIT OR Apache-2.0 | `xtask` (tests only) | temporary directories for the `refs` tests |
+
+## Documentation site tools
+
+The site is built from `docs/` by `cargo xtask site` into the gitignored `target/site` (ADR-016 in
+`docs/DECISIONS.md`). Nothing below is a Rust dependency, and none of it is committed.
+
+| tool | license | mode | notes |
+|---|---|---|---|
+| mdBook 0.5.4 (`rust-lang/mdBook`) | MPL-2.0 | run-only | builds the site; installed by the user or by CI, never linked or ported |
+| mdBook's theme: its HTML templates, CSS and JavaScript | MPL-2.0 | bundled in the built site | copied into every build unchanged, so publishing the site (M0.4d) distributes them under their own licence, with their source at `rust-lang/mdBook` |
+| highlight.js 10.1.1, elasticlunr 0.9.5, mark.js 8.11.1, clipboard.js 2.0.4 | BSD-3-Clause; MIT; MIT; MIT | bundled in the built site | shipped by mdBook's theme, each with its licence header intact |
+| Open Sans and Source Code Pro fonts | Apache-2.0; OFL-1.1 | bundled in the built site | shipped by mdBook's theme with their licence texts (`fonts/OPEN-SANS-LICENSE.txt`, `fonts/SOURCE-CODE-PRO-LICENSE.txt`) |
 
 ## Reference library (`validation/refs.lock.toml`)
 
