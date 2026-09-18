@@ -375,6 +375,7 @@ mod tests {
                 if printed.six_fin_rule {
                     let set = six_fin.expect("a six-fin set");
                     let set_slope = set
+                        .fin
                         .geometry
                         .single_fin_slope(model.reference_area_m2(), 0.0)
                         .unwrap()
@@ -407,7 +408,7 @@ mod tests {
                         printed.what,
                         cp_m / INCH - example.station_offset_in
                     );
-                    cp_m = (cp_m * slope + extra * set.cp_station_m) / tir33_slope;
+                    cp_m = (cp_m * slope + extra * set.cp_station_m(0.0).unwrap()) / tir33_slope;
                     slope = tir33_slope;
                 }
                 let cp_in = cp_m / INCH - example.station_offset_in;

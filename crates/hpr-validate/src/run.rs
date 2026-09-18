@@ -280,7 +280,7 @@ pub fn run_case(root: &Path, case: &Case) -> Result<CaseRun, ValidateError> {
                 case.id
             )));
         }
-        (Flown::RefusedAtMach { mach }, Some(reason)) => {
+        (Flown::RefusedAtMach { mach, limit }, Some(reason)) => {
             return Ok(CaseRun {
                 comparisons: Vec::new(),
                 source,
@@ -290,24 +290,24 @@ pub fn run_case(root: &Path, case: &Case) -> Result<CaseRun, ValidateError> {
                     // Rounded: the report is pinned across platforms. The integrator narrows its
                     // step onto the boundary, so this is Mach 1.000 wherever it runs.
                     refusal: format!(
-                        "refused the flight at Mach {mach:.3}, outside its subsonic models' range \
-                         of [0, 1)"
+                        "refused the flight at Mach {mach:.3}, outside its models' range of \
+                         [0, {limit})"
                     ),
                     mach,
                     metric_count: case.metrics.len(),
                 }),
             });
         }
-        (Flown::RefusedAtMach { mach }, None) => {
+        (Flown::RefusedAtMach { mach, limit }, None) => {
             // The error hpr raised, which carries nothing but this Mach number; the words are
             // rounded as the gap's are, since the Mach number's last bits differ by platform.
             return Err(ValidateError::Flight {
                 case: case.id.clone(),
                 what: format!(
-                    "refused the flight at Mach {mach:.3}, outside its subsonic models' range of \
-                     [0, 1), and the case declares no known gap"
+                    "refused the flight at Mach {mach:.3}, outside its models' range of \
+                     [0, {limit}), and the case declares no known gap"
                 ),
-                source: Some(Box::new(SimError::Aero(AeroError::Mach { mach }))),
+                source: Some(Box::new(SimError::Aero(AeroError::Mach { mach, limit }))),
             });
         }
     };
@@ -391,11 +391,13 @@ enum Setup {
 enum Flown {
     /// It reached the ground, and these are its metrics.
     Measured(Measured),
-    /// hpr refused it at this Mach number, at or past 1, which its aerodynamics do not cover
-    /// until M1.8.
+    /// hpr refused it at this Mach number, at or past 1, past the range of the model that
+    /// refused it: the drag buildup's until M1.8b.
     RefusedAtMach {
         /// The Mach number it refused.
         mach: f64,
+        /// The top of the refusing model's range.
+        limit: f64,
     },
 }
 
@@ -946,8 +948,10 @@ fn fly_whole_flight(
             Ok(result) => result,
             // Only a real Mach number at or past 1: the aerodynamics raise the same error for a
             // NaN, and that is a failure, not the known gap.
-            Err(SimError::Aero(AeroError::Mach { mach })) if mach.is_finite() && mach >= 1.0 => {
-                return Ok(Ok(Flown::RefusedAtMach { mach }));
+            Err(SimError::Aero(AeroError::Mach { mach, limit }))
+                if mach.is_finite() && mach >= 1.0 =>
+            {
+                return Ok(Ok(Flown::RefusedAtMach { mach, limit }));
             }
             Err(error) => return Err(error),
         };

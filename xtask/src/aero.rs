@@ -1,6 +1,8 @@
 //! `cargo xtask aero [--check]`: compares hpr's subsonic drag with the drag curves that ship with
 //! RocketPy's example rockets, and writes the derived numbers to
-//! `validation/fixtures/aero/rocketpy-drag-curves.json`.
+//! `validation/fixtures/aero/rocketpy-drag-curves.json`; and compares hpr's normal force against
+//! Mach with two references ([`crate::aero_mach`]), written to
+//! `validation/fixtures/aero/normal-force-vs-mach.json`.
 //!
 //! RocketPy's data files carry their own terms (`THIRD-PARTY-NOTICES.md`), so the curves are read
 //! from the `refs/rocketpy` checkout (`cargo xtask refs fetch`) and never committed. The fixture
@@ -21,8 +23,11 @@ use sha2::{Digest, Sha256};
 pub const USAGE: &str = "\
   aero [--check]           Compare hpr's drag at Mach 0.3 with the drag curves of RocketPy's
                            example rockets (from refs/rocketpy) and write
-                           validation/fixtures/aero/rocketpy-drag-curves.json. --check fails
-                           if the committed fixture differs instead of writing.";
+                           validation/fixtures/aero/rocketpy-drag-curves.json; compare its
+                           normal force against Mach with RASAero II's Calisto export and the
+                           Arcas Robin wind tunnel and write
+                           validation/fixtures/aero/normal-force-vs-mach.json. --check fails
+                           if a committed fixture differs instead of writing.";
 
 const FIXTURE: &str = "validation/fixtures/aero/rocketpy-drag-curves.json";
 const CHECKOUT: &str = "refs/rocketpy";
@@ -124,24 +129,31 @@ pub fn run(args: &[String]) -> Result<(), String> {
         _ => return Err(format!("usage:\n{USAGE}")),
     };
     let root = crate::designs::root()?;
-    let fixture = generate(&root)?;
-    let path = root.join(FIXTURE);
-    if check {
-        let committed = fs::read_to_string(&path).map_err(|e| format!("{FIXTURE}: {e}"))?;
-        let committed: Value =
-            serde_json::from_str(&committed).map_err(|e| format!("{FIXTURE}: {e}"))?;
-        if !crate::designs::same(&committed, &fixture) {
-            return Err(format!("{FIXTURE} differs from `cargo xtask aero`"));
+    for (name, fixture) in [
+        (FIXTURE, generate(&root)?),
+        (
+            crate::aero_mach::FIXTURE,
+            crate::aero_mach::generate(&root)?,
+        ),
+    ] {
+        let path = root.join(name);
+        if check {
+            let committed = fs::read_to_string(&path).map_err(|e| format!("{name}: {e}"))?;
+            let committed: Value =
+                serde_json::from_str(&committed).map_err(|e| format!("{name}: {e}"))?;
+            if !crate::designs::same(&committed, &fixture) {
+                return Err(format!("{name} differs from `cargo xtask aero`"));
+            }
+            println!("{name} matches its references");
+            continue;
         }
-        println!("{FIXTURE} matches {} curves in {CHECKOUT}", CASES.len());
-        return Ok(());
+        let text = serde_json::to_string_pretty(&fixture).map_err(|e| e.to_string())? + "\n";
+        if let Some(dir) = path.parent() {
+            fs::create_dir_all(dir).map_err(|e| format!("{}: {e}", dir.display()))?;
+        }
+        fs::write(&path, text).map_err(|e| format!("{name}: {e}"))?;
+        println!("wrote {name}");
     }
-    let text = serde_json::to_string_pretty(&fixture).map_err(|e| e.to_string())? + "\n";
-    if let Some(dir) = path.parent() {
-        fs::create_dir_all(dir).map_err(|e| format!("{}: {e}", dir.display()))?;
-    }
-    fs::write(&path, text).map_err(|e| format!("{FIXTURE}: {e}"))?;
-    println!("wrote {FIXTURE}");
     Ok(())
 }
 

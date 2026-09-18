@@ -612,6 +612,42 @@
   - The supersonic cases in the M2.1 suite are within their tolerances.
   - Roll-rate steady state matches the analytic cant/damping balance.
 
+  Split into M1.8a to M1.8d. The measured reference throughout is NASA's Arcas Robin wind-tunnel
+  model: TN D-4013 (Mach 0.6–1.2) and TN D-4014 (Mach 1.5–4.63).
+
+  - [ ] **M1.8a Normal force and centre of pressure through Mach 1.**
+    - Fin slope through the transonic region to supersonic linear theory, and the fin CP shift
+      with Mach. The normal force accepts Mach numbers past 1, so a flight on a drag table flies
+      through Mach 1. Loft lesson L7.
+
+    *Done when:*
+    - L7's test passes: the fin slope and CP are Barrowman's at Mach 0 and change with Mach.
+    - A committed fixture, pinned by a test, holds hpr's `C_Nα` and CP against two references:
+      the Arcas Robin measurements at every Mach they give, and RASAero II's Calisto export from
+      Mach 0.1 to 2.0. Targets, set before measuring: CP within 0.5 calibers, `C_Nα` within 15%.
+      Every miss is explained.
+    - The same-drag Prometheus 2022 case flies through Mach 1 and passes its tolerances.
+
+  - [ ] **M1.8b Transonic and supersonic drag.**
+    - Every drag term's transonic and supersonic branch, and nose wave drag. Loft lessons L17 and
+      L18.
+
+    *Done when:* M1.8's Cd bullet is met or an ADR records why not, with the gap in the report;
+    the Arcas Robin's measured axial force is compared; the predicted Prometheus case flies.
+
+  - [ ] **M1.8c Roll and damping.**
+    - Roll forcing from fin cant and roll damping. Pitch and yaw damping keep hpr's local-flow
+      damping (ADR-026).
+
+    *Done when:* M1.8's roll bullet is met, and hpr's roll forcing is compared with the Arcas
+    Robin's measured roll effectiveness (TN D-4014).
+
+  - [ ] **M1.8d Normal-force overrides.**
+    - `C_Nα` and CP tables against Mach and angle of attack, read from a RASAero II export.
+
+    *Done when:* a RASAero II export's `C_Nα` and CP columns replace hpr's in a flight, and the
+    reading is tested on the Calisto export.
+
 - [ ] **M3.1 OpenRocket `.ork` import.**
   - Handles zip, gz and raw XML, schema 1.0 to 1.10, plus the documented 1.11 additions.
   - Reads components, materials, finishes, motor configurations, recovery, stages, and stored

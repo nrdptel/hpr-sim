@@ -1076,6 +1076,226 @@
       "verdict": "pass"
     },
     {
+      "case": "flight-prometheus-2022-generic-motor",
+      "metric": "apogee_agl_m",
+      "measured": 3735.279971480468,
+      "reference": 3679.1884954885254,
+      "source": "rocketpy 1.13.0 with upstream PRs #1188 and #1196 applied (corrections.py), validation/oracles/rocketpy/flight.py, case prometheus-2022-generic-motor, metrics.apogee_agl_m",
+      "tolerance": {
+        "relative": 0.03
+      },
+      "difference": 56.09147599194239,
+      "relative": 0.015245610835303104,
+      "verdict": "pass"
+    },
+    {
+      "case": "flight-prometheus-2022-generic-motor",
+      "metric": "apogee_drift_m",
+      "measured": 1483.1345732233171,
+      "reference": 1634.688698522452,
+      "source": "rocketpy 1.13.0 with upstream PRs #1188 and #1196 applied (corrections.py), validation/oracles/rocketpy/flight.py, case prometheus-2022-generic-motor, metrics.apogee_drift_m",
+      "tolerance": {
+        "relative": 0.03
+      },
+      "difference": -151.55412529913474,
+      "relative": -0.09271130670697128,
+      "verdict": "fail"
+    },
+    {
+      "case": "flight-prometheus-2022-generic-motor",
+      "metric": "apogee_time_s",
+      "measured": 26.868877050126706,
+      "reference": 26.64959627811421,
+      "source": "rocketpy 1.13.0 with upstream PRs #1188 and #1196 applied (corrections.py), validation/oracles/rocketpy/flight.py, case prometheus-2022-generic-motor, metrics.apogee_time_s",
+      "tolerance": {
+        "relative": 0.03
+      },
+      "difference": 0.21928077201249607,
+      "relative": 0.008228296208471228,
+      "verdict": "pass"
+    },
+    {
+      "case": "flight-prometheus-2022-generic-motor",
+      "metric": "burnout_altitude_agl_m",
+      "measured": 1019.7827104459892,
+      "reference": 1012.1204260058103,
+      "source": "rocketpy 1.13.0 with upstream PRs #1188 and #1196 applied (corrections.py), validation/oracles/rocketpy/flight.py, case prometheus-2022-generic-motor, metrics.burnout_altitude_agl_m",
+      "tolerance": {
+        "relative": 0.03
+      },
+      "difference": 7.662284440178951,
+      "relative": 0.007570526434702113,
+      "verdict": "pass"
+    },
+    {
+      "case": "flight-prometheus-2022-generic-motor",
+      "metric": "burnout_speed_m_s",
+      "measured": 326.5715630389107,
+      "reference": 326.5904679382808,
+      "source": "rocketpy 1.13.0 with upstream PRs #1188 and #1196 applied (corrections.py), validation/oracles/rocketpy/flight.py, case prometheus-2022-generic-motor, metrics.burnout_speed_m_s",
+      "tolerance": {
+        "relative": 0.03
+      },
+      "difference": -0.018904899370113526,
+      "relative": -0.00005788564341591923,
+      "verdict": "pass"
+    },
+    {
+      "case": "flight-prometheus-2022-generic-motor",
+      "metric": "flight_time_s",
+      "measured": 204.99633156331413,
+      "reference": 202.90404866812318,
+      "source": "rocketpy 1.13.0 with upstream PRs #1188 and #1196 applied (corrections.py), validation/oracles/rocketpy/flight.py, case prometheus-2022-generic-motor, metrics.flight_time_s",
+      "tolerance": {
+        "relative": 0.03
+      },
+      "difference": 2.092282895190948,
+      "relative": 0.010311686281889613,
+      "verdict": "pass"
+    },
+    {
+      "case": "flight-prometheus-2022-generic-motor",
+      "metric": "impact_speed_m_s",
+      "measured": 7.323977728801267,
+      "reference": 7.324998673182699,
+      "source": "rocketpy 1.13.0 with upstream PRs #1188 and #1196 applied (corrections.py), validation/oracles/rocketpy/flight.py, case prometheus-2022-generic-motor, metrics.impact_speed_m_s",
+      "tolerance": {
+        "relative": 0.03
+      },
+      "difference": -0.0010209443814321872,
+      "relative": -0.0001393780977967862,
+      "verdict": "pass"
+    },
+    {
+      "case": "flight-prometheus-2022-generic-motor",
+      "metric": "landing_drift_m",
+      "measured": 1469.4345558269129,
+      "reference": 1382.554383116282,
+      "source": "rocketpy 1.13.0 with upstream PRs #1188 and #1196 applied (corrections.py), validation/oracles/rocketpy/flight.py, case prometheus-2022-generic-motor, metrics.landing_drift_m",
+      "tolerance": {
+        "relative": 0.03
+      },
+      "difference": 86.88017271063086,
+      "relative": 0.06284032930032211,
+      "verdict": "fail"
+    },
+    {
+      "case": "flight-prometheus-2022-generic-motor",
+      "metric": "max_acceleration_m_s2",
+      "measured": 111.79787980474215,
+      "reference": 93.89852954374328,
+      "source": "rocketpy 1.13.0 with upstream PRs #1188 and #1196 applied (corrections.py), validation/oracles/rocketpy/flight.py, case prometheus-2022-generic-motor, metrics.max_acceleration_m_s2",
+      "tolerance": {},
+      "difference": 17.899350260998872,
+      "relative": 0.1906243936723241,
+      "verdict": "not_scored",
+      "note": "the whole flight's maximum is the main parachute opening at 139.9 s (93.9 m/s^2 in RocketPy), not a flight load; RocketPy counts the canopy's added mass and hpr has none (ADR-012). The power-on maximum is gated instead."
+    },
+    {
+      "case": "flight-prometheus-2022-generic-motor",
+      "metric": "max_acceleration_power_on_m_s2",
+      "measured": 81.65249170348832,
+      "reference": 81.65063194884658,
+      "source": "rocketpy 1.13.0 with upstream PRs #1188 and #1196 applied (corrections.py), validation/oracles/rocketpy/flight.py, case prometheus-2022-generic-motor, metrics.max_acceleration_power_on_m_s2",
+      "tolerance": {
+        "relative": 0.03
+      },
+      "difference": 0.0018597546417424837,
+      "relative": 0.000022776977928445234,
+      "verdict": "pass"
+    },
+    {
+      "case": "flight-prometheus-2022-generic-motor",
+      "metric": "max_acceleration_time_s",
+      "measured": 143.90061970989692,
+      "reference": 141.94002289182987,
+      "source": "rocketpy 1.13.0 with upstream PRs #1188 and #1196 applied (corrections.py), validation/oracles/rocketpy/flight.py, case prometheus-2022-generic-motor, metrics.max_acceleration_time_s",
+      "tolerance": {
+        "relative": 0.03
+      },
+      "difference": 1.9605968180670459,
+      "relative": 0.013812854035969714,
+      "verdict": "pass"
+    },
+    {
+      "case": "flight-prometheus-2022-generic-motor",
+      "metric": "max_mach",
+      "measured": 1.01015329385682,
+      "reference": 1.0127489839118518,
+      "source": "rocketpy 1.13.0 with upstream PRs #1188 and #1196 applied (corrections.py), validation/oracles/rocketpy/flight.py, case prometheus-2022-generic-motor, metrics.max_mach",
+      "tolerance": {
+        "relative": 0.03
+      },
+      "difference": -0.0025956900550316853,
+      "relative": -0.002563014227874664,
+      "verdict": "pass"
+    },
+    {
+      "case": "flight-prometheus-2022-generic-motor",
+      "metric": "max_speed_m_s",
+      "measured": 333.3475200779009,
+      "reference": 333.3623927875775,
+      "source": "rocketpy 1.13.0 with upstream PRs #1188 and #1196 applied (corrections.py), validation/oracles/rocketpy/flight.py, case prometheus-2022-generic-motor, metrics.max_speed_m_s",
+      "tolerance": {
+        "relative": 0.03
+      },
+      "difference": -0.014872709676581053,
+      "relative": -0.00004461423963337737,
+      "verdict": "pass"
+    },
+    {
+      "case": "flight-prometheus-2022-generic-motor",
+      "metric": "rail_exit_speed_m_s",
+      "measured": 25.974512362046685,
+      "reference": 25.97824073050822,
+      "source": "rocketpy 1.13.0 with upstream PRs #1188 and #1196 applied (corrections.py), validation/oracles/rocketpy/flight.py, case prometheus-2022-generic-motor, metrics.rail_exit_speed_m_s",
+      "tolerance": {
+        "relative": 0.03
+      },
+      "difference": -0.003728368461533904,
+      "relative": -0.00014351889722676248,
+      "verdict": "pass"
+    },
+    {
+      "case": "flight-prometheus-2022-generic-motor",
+      "metric": "rail_exit_time_s",
+      "measured": 0.3828892811376605,
+      "reference": 0.38301427458383214,
+      "source": "rocketpy 1.13.0 with upstream PRs #1188 and #1196 applied (corrections.py), validation/oracles/rocketpy/flight.py, case prometheus-2022-generic-motor, metrics.rail_exit_time_s",
+      "tolerance": {
+        "relative": 0.03
+      },
+      "difference": -0.00012499344617161734,
+      "relative": -0.00032634148246153536,
+      "verdict": "pass"
+    },
+    {
+      "case": "flight-prometheus-2022-generic-motor",
+      "metric": "series_height_rms_m",
+      "measured": 44.673232786229576,
+      "reference": 0.0,
+      "source": "0, exact agreement with validation/oracles/rocketpy/flight.py, case prometheus-2022-generic-motor, series: the RMS of hpr's value less the reference's at its times",
+      "tolerance": {
+        "absolute": 110.3
+      },
+      "difference": 44.673232786229576,
+      "relative": null,
+      "verdict": "pass"
+    },
+    {
+      "case": "flight-prometheus-2022-generic-motor",
+      "metric": "series_speed_rms_m_s",
+      "measured": 1.59367539027936,
+      "reference": 0.0,
+      "source": "0, exact agreement with validation/oracles/rocketpy/flight.py, case prometheus-2022-generic-motor, series: the RMS of hpr's value less the reference's at its times",
+      "tolerance": {
+        "absolute": 10.0
+      },
+      "difference": 1.59367539027936,
+      "relative": null,
+      "verdict": "pass"
+    },
+    {
       "case": "flight-juno-iii",
       "metric": "apogee_agl_m",
       "measured": 2633.1246028792903,
@@ -3283,17 +3503,10 @@
   ],
   "gaps": [
     {
-      "case": "flight-prometheus-2022-generic-motor",
-      "reason": "The reference peaks at Mach 1.013 near burnout, and hpr's aerodynamics refuse M >= 1 until M1.8 (ADR-008, ADR-011), so the flight stops at Mach 1 and no metric can be compared.",
-      "refusal": "refused the flight at Mach 1.000, outside its subsonic models' range of [0, 1)",
-      "mach": 1.0000000000000009,
-      "metric_count": 17
-    },
-    {
       "case": "predicted-prometheus-2022-generic-motor",
       "reason": "RocketPy flying the example's own drag peaks at Mach 1.048 near burnout, and hpr's aerodynamics refuse M >= 1 until M1.8 (ADR-008, ADR-011), so the flight stops at Mach 1 and no metric can be compared.",
-      "refusal": "refused the flight at Mach 1.000, outside its subsonic models' range of [0, 1)",
-      "mach": 1.0000000000000004,
+      "refusal": "refused the flight at Mach 1.000, outside its models' range of [0, 1)",
+      "mach": 1.0000000000000002,
       "metric_count": 17
     }
   ],

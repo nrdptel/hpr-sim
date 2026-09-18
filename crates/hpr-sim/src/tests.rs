@@ -351,7 +351,7 @@ fn pitch_oscillation_matches_linear_theory() {
             .component_normal_force(index, &Flow::new(mach, 1e-7, 0.0))
             .unwrap()
             .slope_per_rad;
-        let lever = aero.component_station_m(index).unwrap() - x_cg;
+        let lever = aero.component_station_m(index, mach).unwrap() - x_cg;
         z += q_area * slope;
         k1 += q_area * slope * lever;
         k2 += q_area * slope * lever * lever;
@@ -684,9 +684,36 @@ fn flight_events_come_in_order_and_the_recorder_keeps_its_interval() {
 }
 
 #[test]
+fn a_flight_on_a_drag_table_flies_through_mach_1() {
+    // The normal force covers Mach 0 to 5 since M1.8a, so with a drag table in place of the
+    // buildup the same rocket passes Mach 1 and lands; its fins' centre of pressure moves aft
+    // through the transonic join and back as it slows.
+    struct Fastest(f64);
+    impl crate::recorder::Observer for Fastest {
+        fn step(&mut self, step: &dyn crate::recorder::FlightStep) -> Result<(), SimError> {
+            self.0 = self.0.max(step.sample(step.end_s())?.mach);
+            Ok(())
+        }
+    }
+    let sim = Simulation::new(
+        &design("synthetic-54mm-three-fin"),
+        "i175",
+        Environment::standard(site()).unwrap(),
+        Rail::vertical(2.0),
+        FlightSettings::default(),
+    )
+    .unwrap()
+    .with_drag_table(constant_drag(0.5));
+    let mut fastest = Fastest(0.0);
+    let result = sim.run(&mut fastest).unwrap();
+    assert_eq!(result.termination, Termination::GroundHit);
+    assert!((1.05..1.6).contains(&fastest.0), "{}", fastest.0);
+}
+
+#[test]
 fn a_supersonic_flight_is_refused_until_m1_8() {
-    // The subsonic aerodynamics refuse Mach 1 (ADR-008); a flight that gets there stops with that
-    // error rather than flying on with wrong forces.
+    // The drag buildup refuses Mach 1 until M1.8b (ADR-008); a flight that gets there on it stops
+    // with that error rather than flying on with wrong forces.
     let sim = Simulation::new(
         &design("synthetic-54mm-three-fin"),
         "i175",
@@ -697,7 +724,7 @@ fn a_supersonic_flight_is_refused_until_m1_8() {
     .unwrap();
     let error = sim.run(&mut ()).unwrap_err();
     assert!(
-        matches!(error, SimError::Aero(AeroError::Mach { mach }) if mach >= 1.0),
+        matches!(error, SimError::Aero(AeroError::Mach { mach, limit }) if mach >= 1.0 && limit == 1.0),
         "{error:?}"
     );
 }
