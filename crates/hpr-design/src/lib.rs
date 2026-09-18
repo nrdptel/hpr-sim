@@ -20,8 +20,6 @@
 //!   the reference diameter.
 //! - [`config`]: motor mounts, configurations, and the rocket's mass properties through the burn.
 //! - [`checks`]: structural checks with typed findings.
-//!
-//! Physics: `docs/physics/shapes.md`, `docs/physics/mass.md` and `docs/physics/design.md`.
 
 pub mod checks;
 pub mod config;

@@ -6,6 +6,7 @@
 //!
 //! [guide-start]: https://nrdptel.github.io/hpr-sim/start-here.html
 //! [guide-first]: https://nrdptel.github.io/hpr-sim/getting-started.html
+//! [roadmap]: https://github.com/nrdptel/hpr-sim/blob/main/docs/ROADMAP.md
 //!
-//! Status: pre-alpha skeleton. The builder API arrives in M4.1. The `net` feature adds the online
-//! data sources from `hpr-net`.
+//! Status: pre-alpha skeleton. The builder API is planned for milestone [M4.1][roadmap] of the
+//! roadmap. The `net` feature adds the online data sources from `hpr-net`.

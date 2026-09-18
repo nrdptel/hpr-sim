@@ -14,8 +14,6 @@
 //!   [`grains`] (BATES grains) and [`mass`] (axisymmetric mass elements).
 //! - [`eng`] and [`rse`]: RASP and RockSim motor files, with [`delay`] strings.
 //! - [`catalog`]: the offline catalog and its bundled ThrustCurve.org curves.
-//!
-//! Physics: `docs/physics/motor.md`. Formats: `docs/format/eng.md`, `docs/format/rse.md`.
 
 mod bundled;
 pub mod catalog;

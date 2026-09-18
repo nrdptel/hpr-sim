@@ -12,10 +12,9 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
 
 ## Handoff (overwrite each session)
 
-M0.4d (ADR-019): `cargo xtask site` builds the rustdoc of every library into `target/site/api`;
-*The API reference* (`docs/api.md`) links each crate, each crate's `//!` links its guide pages by
-`https://nrdptel.github.io/hpr-sim/...`, and the check reads those as the local build. CI uploads
-the site as the Pages artifact; `deploy` runs on `main` once Pages is on. Next, M0.4e:
+M0.4d (ADR-019): `cargo xtask site` builds each library's rustdoc, in dependency order, into
+`target/site/api` and checks every link; *The API reference* (`docs/api.md`) links each crate,
+and each crate's `//!` links its guide pages by address; `deploy` waits for Pages. Next, M0.4e:
 
 - **The reader test.** Give a `docs-reviewer` only the built site (`target/site`, rustdoc too) and
   ten new-user questions, listed in the PR; each answer cites a page; fix every term it flags.
@@ -24,9 +23,10 @@ the site as the Pages artifact; `deploy` runs on `main` once Pages is on. Next, 
   no entry. Readers ask how to fly their own rocket (no builder until M4.1) and how to get a
   trajectory out (a `Recorder` is described, not shown).
 - **Page rules** (ADR-016 to ADR-019): relative links between pages, GitHub URLs for the rest,
-  labels as links, none in headings, Unicode equations, "Level 2"; new pages go in `SUMMARY.md`;
-  a new library crate needs a row in `docs/api.md` and a guide link in its `//!`.
-- **When Pages is on:** `gh workflow run CI --ref main`; once `deploy` passes, check M0.4d off.
+  labels as links, none in headings, Unicode equations, "Level 2"; new pages in `SUMMARY.md`; a new
+  library needs a row in `docs/api.md` and a guide link in its `//!`. Rustdoc labels: #44.
+- **When Pages is on:** `gh workflow run CI --ref main`; once `deploy` passes, drop the README's
+  "goes live once" sentence and check M0.4d off.
 
 After M0.4 comes M2.1b2: a `Flight::WholeFlight` variant, five cases in the lock, the L75 test.
 

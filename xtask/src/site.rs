@@ -48,14 +48,14 @@
 
 use std::collections::{BTreeMap, BTreeSet};
 use std::fs;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::process::Command;
 
 use pulldown_cmark::{
     BrokenLink, CodeBlockKind, Event, HeadingLevel, LinkType, Options, Parser, Tag, TagEnd,
 };
 
-use crate::workspace::Workspace;
+use crate::workspace::{Package, Workspace};
 
 pub const USAGE: &str = "  site [--no-build] [--locked]
                            Check the documentation site's pages, build the site with
@@ -107,21 +107,16 @@ const SITE_URL: &str = "https://nrdptel.github.io/hpr-sim/";
 const SITE_PATH: &str = "/hpr-sim/";
 /// Where the site holds the workspace's rustdoc, relative to [`OUTPUT`]: the API reference.
 const API: &str = "api";
+/// Cargo's target directory for building the API reference, relative to the workspace root. It
+/// is the site's own, so clearing its documentation touches no other build.
+const RUSTDOC_TARGET: &str = "target/site-rustdoc";
 /// What `mdbook --version` prints for the release series `book.toml` is written for.
 const MDBOOK_SERIES: &str = "mdbook v0.5.";
 /// How to install the mdBook release CI uses.
 const MDBOOK_INSTALL: &str = "install mdBook 0.5.4: `cargo install mdbook --version 0.5.4 --locked` or `brew install mdbook`";
 
 pub fn run(args: &[String]) -> Result<(), String> {
-    let mut build = true;
-    let mut locked = false;
-    for arg in args {
-        match arg.as_str() {
-            "--no-build" => build = false,
-            "--locked" => locked = true,
-            _ => return Err(format!("unexpected argument `{arg}`\n\n{USAGE}")),
-        }
-    }
+    let (build, locked) = parse_args(args)?;
     let root = crate::designs::root()?;
     let report = check_sources(&root)?;
     if !report.problems.is_empty() {
@@ -137,7 +132,7 @@ pub fn run(args: &[String]) -> Result<(), String> {
     mdbook_build(&root)?;
     let output = root.join(OUTPUT);
     let workspace = crate::workspace::load(&root)?;
-    let crates = rustdoc_build(&workspace, &output.join(API), locked)?;
+    let crates = rustdoc_build(&root, &workspace, &output.join(API), locked)?;
     let built = check_html(&output, &crates)?;
     if !built.problems.is_empty() {
         return Err(failure("the built site", &built.problems));
@@ -147,12 +142,26 @@ pub fn run(args: &[String]) -> Result<(), String> {
         built.pages
     );
     println!(
-        "API reference: {} crates in {OUTPUT}/{API} ({} HTML files), each linked from the site \
-         and linking the guide",
+        "API reference: {} crates in {OUTPUT}/{API} ({} HTML files), every link resolves, and \
+         each crate is linked from the site and links the guide",
         crates.len(),
         built.api
     );
     Ok(())
+}
+
+/// Reads `site`'s arguments: whether to build the site, and whether `cargo doc` runs `--locked`.
+fn parse_args(args: &[String]) -> Result<(bool, bool), String> {
+    let mut build = true;
+    let mut locked = false;
+    for arg in args {
+        match arg.as_str() {
+            "--no-build" => build = false,
+            "--locked" => locked = true,
+            _ => return Err(format!("unexpected argument `{arg}`\n\n{USAGE}")),
+        }
+    }
+    Ok((build, locked))
 }
 
 fn failure(what: &str, problems: &[String]) -> String {
@@ -209,48 +218,136 @@ fn mdbook_build(root: &Path) -> Result<(), String> {
 /// so the site serves the API reference beside the guide. Returns the libraries' crate names,
 /// which name rustdoc's directories (`hpr_core`), sorted.
 ///
-/// The documentation starts from scratch: rustdoc merges its search index and list of crates with
-/// whatever an earlier run left in `target/doc`, so a crate since renamed, or `xtask`, would be
-/// published too. Cargo sees the missing output and documents the crates again, in seconds. A
-/// warning fails, as in CI's `doc` job.
-fn rustdoc_build(workspace: &Workspace, dest: &Path, locked: bool) -> Result<Vec<String>, String> {
-    let libraries: Vec<(&str, &str)> = workspace
-        .packages
-        .iter()
-        .filter_map(|package| Some((package.name.as_str(), package.lib.as_deref()?)))
-        .collect();
-    let doc = workspace.target_dir.join("doc");
-    if doc.exists() {
+/// - **Its own target directory,** [`RUSTDOC_TARGET`], which starts without documentation each
+///   time: rustdoc merges its search index and list of crates with whatever an earlier run left,
+///   so a crate since renamed, or `xtask`, would be published too. Only the documentation is
+///   cleared, so the dependencies stay built and a rebuild takes seconds.
+/// - **One crate at a time, each after the crates it depends on.** Rustdoc links another crate's
+///   item (`[hpr_design::Layout]`) only if that crate's pages are already there, and otherwise
+///   leaves the link as text, without a warning; with `--no-deps`, cargo documents the crates in
+///   no set order.
+/// - A warning fails, as in CI's `doc` job.
+fn rustdoc_build(
+    root: &Path,
+    workspace: &Workspace,
+    dest: &Path,
+    locked: bool,
+) -> Result<Vec<String>, String> {
+    let target = root.join(RUSTDOC_TARGET);
+    for doc in doc_dirs(&target) {
         fs::remove_dir_all(&doc)
             .map_err(|err| format!("could not clear {}: {err}", doc.display()))?;
     }
-    let mut command = Command::new(crate::workspace::cargo());
-    command.args(["doc", "--no-deps", "--all-features", "--lib"]);
-    for (package, _) in &libraries {
-        command.args(["--package", package]);
+    for package in doc_order(&workspace.packages)? {
+        let mut command = Command::new(crate::workspace::cargo());
+        command.args(["doc", "--no-deps", "--all-features", "--lib", "--package"]);
+        command.arg(&package.name).arg("--target-dir").arg(&target);
+        if locked {
+            command.arg("--locked");
+        }
+        let output = command
+            .env("RUSTDOCFLAGS", "-D warnings")
+            .current_dir(root)
+            .output()
+            .map_err(|err| format!("could not run `cargo doc`: {err}"))?;
+        if !output.status.success() {
+            return Err(format!(
+                "`cargo doc --package {}` failed ({}):\n{}",
+                package.name,
+                output.status,
+                String::from_utf8_lossy(&output.stderr)
+            ));
+        }
     }
-    if locked {
-        command.arg("--locked");
-    }
-    let output = command
-        .env("RUSTDOCFLAGS", "-D warnings")
-        .current_dir(&workspace.root)
-        .output()
-        .map_err(|err| format!("could not run `cargo doc`: {err}"))?;
-    if !output.status.success() {
+    // `target/doc`, or `target/<triple>/doc` when a cargo config sets `build.target`.
+    let doc = match doc_dirs(&target).as_slice() {
+        [doc] => doc.clone(),
+        found => {
+            return Err(format!(
+                "expected rustdoc's output in one directory under {}, found {found:?}",
+                target.display()
+            ));
+        }
+    };
+    if dest.exists() {
         return Err(format!(
-            "`cargo doc` failed ({}):\n{}",
-            output.status,
-            String::from_utf8_lossy(&output.stderr)
+            "{} already exists; the API reference is copied into a fresh site",
+            dest.display()
         ));
     }
     copy_dir(&doc, dest)?;
-    let mut crates: Vec<String> = libraries
-        .into_iter()
-        .map(|(_, lib)| lib.to_owned())
+    // Rustdoc writes no page for the directory itself, and its help and settings pages link one.
+    fs::write(dest.join("index.html"), API_INDEX)
+        .map_err(|err| format!("could not write {}/index.html: {err}", dest.display()))?;
+    let mut crates: Vec<String> = workspace
+        .packages
+        .iter()
+        .filter_map(|package| package.lib.clone())
         .collect();
     crates.sort();
     Ok(crates)
+}
+
+/// The front page of [`API`]: it sends a reader to the guide's page that lists the crates.
+const API_INDEX: &str = r#"<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>hpr-sim: the API reference</title>
+<meta http-equiv="refresh" content="0; url=../api.html">
+</head>
+<body>
+<p>The API reference starts at <a href="../api.html">its page in the guide</a>, which lists every
+crate.</p>
+</body>
+</html>
+"#;
+
+/// The directories under `target` that hold rustdoc's output: `doc`, and `<triple>/doc` for a
+/// build for a named target.
+fn doc_dirs(target: &Path) -> Vec<PathBuf> {
+    let mut found: Vec<PathBuf> = fs::read_dir(target)
+        .into_iter()
+        .flatten()
+        .filter_map(Result::ok)
+        .map(|entry| entry.path())
+        .filter(|path| path.is_dir())
+        .flat_map(|path| {
+            let own = path.file_name().is_some_and(|name| name == "doc");
+            if own {
+                vec![path]
+            } else {
+                vec![path.join("doc")]
+            }
+        })
+        .filter(|path| path.is_dir())
+        .collect();
+    found.sort();
+    found
+}
+
+/// The workspace's packages that have a library, each after the others it depends on, and
+/// otherwise by name, so rustdoc can link from each to what it uses.
+fn doc_order(packages: &[Package]) -> Result<Vec<&Package>, String> {
+    let mut left: Vec<&Package> = packages.iter().filter(|p| p.lib.is_some()).collect();
+    left.sort_by(|a, b| a.name.cmp(&b.name));
+    let mut order: Vec<&Package> = Vec::new();
+    while !left.is_empty() {
+        let waits = |package: &Package| {
+            package
+                .dependencies
+                .iter()
+                .any(|dependency| left.iter().any(|other| &other.name == dependency))
+        };
+        let Some(at) = left.iter().position(|package| !waits(package)) else {
+            let names: Vec<&str> = left.iter().map(|package| package.name.as_str()).collect();
+            return Err(format!(
+                "the libraries {names:?} depend on each other in a cycle"
+            ));
+        };
+        order.push(left.remove(at));
+    }
+    Ok(order)
 }
 
 /// Copies the directory `from` to `to`, recursively, leaving out the `.lock` file cargo keeps in
@@ -1808,25 +1905,30 @@ fn slug(heading: &str) -> String {
 /// What checking the built site found.
 #[derive(Debug, Default)]
 struct Built {
-    /// The site's own HTML files, whose every link was checked.
+    /// The site's own HTML files.
     pages: usize,
-    /// The HTML files of the API reference under [`API`], whose links to the guide were checked.
+    /// The HTML files of the API reference under [`API`].
     api: usize,
     /// One line each, `<file>: <what is wrong>`.
     problems: Vec<String>,
 }
 
-/// Checks the built site in `dir`.
+/// mdBook's page for an address the site doesn't have. It links its own heading, which its
+/// `<base href>` sends to the front page instead, as on every mdBook site; nothing else it links
+/// is exempt.
+const MDBOOK_404: &str = "404.html";
+
+/// Checks the built site in `dir`: every `href` and `src` that stays on the site reaches a file,
+/// and its `#fragment` an `id` in that file.
 ///
-/// - On the site's own pages, every `href` and `src` that stays on the site reaches a file, and
-///   its `#fragment` an `id` in that file. A root-absolute link, such as the one on mdBook's 404
-///   page, and a link by the site's address, [`SITE_URL`], are read under the path Pages serves
-///   the site at, [`SITE_PATH`]; a `<base href>` moves where relative links start, as in a
-///   browser.
-/// - The API reference under [`API`] is rustdoc's to check: `cargo doc` with `-D warnings` fails
-///   on a broken intra-doc link. Here, each library of `crates` (rustdoc's names, `hpr_core`) has a
-///   front page, which a page of the site links and which links the guide by [`SITE_URL`]; and
-///   every such link from the API reference reaches a page of the site.
+/// - A root-absolute link, and a link by the site's address, [`SITE_URL`], are read under the
+///   path Pages serves the site at, [`SITE_PATH`]; a `<base href>` moves where relative links and
+///   fragments start, as in a browser.
+/// - The API reference under [`API`] is held to the same, with three exceptions for what rustdoc
+///   writes and a browser forgives ([`rustdoc_may_miss`]). Each library of `crates` (rustdoc's
+///   names, `hpr_core`) has a front page there, which a page of the site links and which links
+///   the guide by [`SITE_URL`]. And no page leaves a link to another crate as text, which rustdoc
+///   does without a warning when that crate's pages aren't built yet.
 fn check_html(dir: &Path, crates: &[String]) -> Result<Built, String> {
     let mut names = Vec::new();
     html_files(dir, "", &mut names)?;
@@ -1848,19 +1950,27 @@ fn check_html(dir: &Path, crates: &[String]) -> Result<Built, String> {
     for name in site.iter().chain(&api) {
         let in_api = name.starts_with(&api_dir);
         let text = read_html(dir, name)?;
-        let base = match base_dir(&text) {
+        let base = match base_of(&text) {
             Ok(base) => base,
             Err(why) => {
                 built.problems.push(format!("{name}: {why}"));
                 continue;
             }
         };
+        if in_api {
+            for path in unplaced_links(&text) {
+                built.problems.push(format!(
+                    "{name}: rustdoc left the link to `{path}` as text, because that crate's pages \
+                     weren't built before this one's"
+                ));
+            }
+        }
         let links = attributes(&text, "href")
             .map(|raw| ("href", raw))
             .chain(attributes(&text, "src").map(|raw| ("src", raw)));
         for (attribute, raw) in links {
             let value = unescape(raw);
-            if in_api && !value.starts_with(SITE_URL) {
+            if in_api && rustdoc_may_miss(attribute, &value) {
                 continue;
             }
             let link = format!("`{attribute}=\"{value}\"`");
@@ -1884,6 +1994,17 @@ fn check_html(dir: &Path, crates: &[String]) -> Result<Built, String> {
             let Some(fragment) = fragment.filter(|_| target.ends_with(".html")) else {
                 continue;
             };
+            // Rustdoc's source pages take a range of lines, `#12-40`, which their script reads.
+            if target.starts_with(&format!("{API}/src/")) {
+                continue;
+            }
+            let own_heading = || {
+                attributes(&text, "id")
+                    .any(|id| percent_decode(&unescape(id)) == percent_decode(&fragment))
+            };
+            if name == MDBOOK_404 && value.starts_with('#') && own_heading() {
+                continue;
+            }
             if !ids.contains_key(&target) {
                 let found = attributes(&read_html(dir, &target)?, "id")
                     .map(|id| percent_decode(&unescape(id)))
@@ -1911,7 +2032,7 @@ fn check_html(dir: &Path, crates: &[String]) -> Result<Built, String> {
             ));
         }
         let text = read_html(dir, &front)?;
-        if !attributes(&text, "href").any(|href| unescape(href).starts_with(SITE_URL)) {
+        if !attributes(&text, "href").any(|href| by_address(&unescape(href)).is_some()) {
             built.problems.push(format!(
                 "{front}: doesn't link the guide: the crate's documentation (`//!` in its \
                  `lib.rs`) must link a page of {SITE_URL}"
@@ -1921,73 +2042,122 @@ fn check_html(dir: &Path, crates: &[String]) -> Result<Built, String> {
     Ok(built)
 }
 
+/// Whether a link on a page of the API reference is one that rustdoc writes without its target,
+/// and a reader never misses:
+///
+/// - the implementors of a trait, or the implementations of a type alias, in other crates, which
+///   its pages load from `trait.impl/` and `type.impl/` when there are any;
+/// - a link in documentation that rustdoc copies from a dependency, such as glam's for
+///   `hpr_core::DVec3`, which it passes on as written (`crate::DAffine2`) when it can't place it.
+///   A link in hpr's own documentation that doesn't resolve fails `cargo doc` instead.
+fn rustdoc_may_miss(attribute: &str, value: &str) -> bool {
+    let optional_script = attribute == "src"
+        && (value.contains("trait.impl/") || value.contains("type.impl/"))
+        && value.ends_with(".js");
+    let copied_path = value.contains("::") && !value.contains('/');
+    optional_script || copied_path
+}
+
+/// The paths of the links to items that rustdoc left as text on a page, `[<code>path</code>]`:
+/// a name or a path of names (`hpr_design::Layout`), not other code in brackets (`[self.xy()]`).
+fn unplaced_links(html: &str) -> Vec<&str> {
+    html.match_indices("[<code>")
+        .filter_map(|(at, open)| {
+            let rest = &html[at + open.len()..];
+            let path = &rest[..rest.find("</code>]")?];
+            let is_path = !path.is_empty()
+                && path
+                    .chars()
+                    .all(|c| c.is_alphanumeric() || c == '_' || c == ':');
+            is_path.then_some(path)
+        })
+        .collect()
+}
+
 /// Reads the built file `name` (relative to `dir`).
 fn read_html(dir: &Path, name: &str) -> Result<String, String> {
     fs::read_to_string(dir.join(name))
         .map_err(|err| format!("could not read {}: {err}", dir.join(name).display()))
 }
 
-/// The directory, relative to the site's root, that a page's `<base href>` starts relative links
-/// from; `None` if it has none. mdBook's 404 page has one, [`SITE_PATH`], so that it works at any
-/// address.
-fn base_dir(html: &str) -> Result<Option<String>, String> {
+/// What follows the site's root in `value`, a link by the site's address, [`SITE_URL`], with or
+/// without its last `/`; `None` for any other link.
+fn by_address(value: &str) -> Option<&str> {
+    under(value, SITE_URL)
+}
+
+/// What follows `root` in `value`: the rest of a link under it, such as `physics/aero.html`, or
+/// what follows the root itself without its last `/` (nothing, `?...` or `#...`).
+fn under<'a>(value: &'a str, root: &str) -> Option<&'a str> {
+    if let Some(rest) = value.strip_prefix(root) {
+        return Some(rest);
+    }
+    let rest = value.strip_prefix(root.trim_end_matches('/'))?;
+    (rest.is_empty() || rest.starts_with(['?', '#'])).then_some(rest)
+}
+
+/// The path, relative to the site's root, of a page's `<base href>`, if it has one. mdBook's 404
+/// page has one, [`SITE_PATH`], so that it works at any address.
+fn base_of(html: &str) -> Result<Option<String>, String> {
     let Some(at) = html.find("<base ") else {
         return Ok(None);
     };
-    let Some(value) = attributes(&html[at..], "href").next() else {
+    let tag = &html[at..at + html[at..].find('>').unwrap_or(html.len() - at)];
+    let Some(value) = attributes(tag, "href").next() else {
         return Ok(None);
     };
     let value = unescape(value);
-    let rest = value
-        .strip_prefix(SITE_URL)
-        .or_else(|| value.strip_prefix(SITE_PATH))
-        .ok_or_else(|| {
-            format!(
-                "`<base href=\"{value}\">` isn't under `{SITE_PATH}`, where Pages serves the site"
-            )
-        })?;
-    // Up to its last `/`, a base names a directory.
-    Ok(Some(parent(rest).to_owned()))
+    let outside = || {
+        format!("`<base href=\"{value}\">` isn't under `{SITE_PATH}`, where Pages serves the site")
+    };
+    let rest = by_address(&value)
+        .or_else(|| under(&value, SITE_PATH))
+        .ok_or_else(outside)?;
+    let (path, _) = split_target(rest);
+    join("", &path).map(Some).ok_or_else(outside)
 }
 
 /// The file that `value`, an `href` or `src` on the built page `name`, reaches in the site
 /// (relative to its root, `dir`), with its fragment; `None` if it leaves for the web, which isn't
-/// fetched. `base` is where the page's `<base href>` starts relative links, if it has one.
+/// fetched. `base` is the page's `<base href>`, relative to the site's root, if it has one.
 fn html_target(
     dir: &Path,
     name: &str,
     base: Option<&str>,
     value: &str,
 ) -> Result<Option<(String, Option<String>)>, String> {
-    let (start, rest) = if let Some(rest) = value.strip_prefix(SITE_URL) {
+    let (start, rest) = if let Some(rest) = by_address(value) {
         ("", rest)
     } else if is_web(value) || value.starts_with("javascript:") || value.starts_with("data:") {
         return Ok(None);
     } else if value.starts_with('/') {
-        let rest = value
-            .strip_prefix(SITE_PATH)
-            .or_else(|| (value == SITE_PATH.trim_end_matches('/')).then_some(""))
+        let rest = under(value, SITE_PATH)
             .ok_or_else(|| format!("isn't under `{SITE_PATH}`, where Pages serves the site"))?;
         ("", rest)
     } else {
         let (path, fragment) = split_target(value);
-        // A fragment alone names an `id` on its own page. (Under a `<base href>` a browser sends
-        // it to the base instead, as mdBook's 404 page does with the link on its own heading.)
+        // A fragment alone names an `id` on the page, or, under a `<base href>`, on the base.
         if path.is_empty() {
-            return Ok(Some((name.to_owned(), fragment.map(str::to_owned))));
+            let page = base.map_or_else(|| name.to_owned(), |base| page_of(dir, base));
+            return Ok(Some((page, fragment.map(str::to_owned))));
         }
-        (base.unwrap_or(parent(name)), value)
+        (base.map_or_else(|| parent(name), parent), value)
     };
     let (path, fragment) = split_target(rest);
     let target = join(start, &path).ok_or_else(|| "climbs out of the site".to_owned())?;
-    let target = if target.is_empty() || target.ends_with('/') || dir.join(&target).is_dir() {
-        format!("{}/index.html", target.trim_end_matches('/'))
+    Ok(Some((page_of(dir, &target), fragment.map(str::to_owned))))
+}
+
+/// The file a path of the site (relative to its root, `dir`) serves: itself, or the `index.html`
+/// of a directory.
+fn page_of(dir: &Path, path: &str) -> String {
+    if path.is_empty() || path.ends_with('/') || dir.join(path).is_dir() {
+        format!("{}/index.html", path.trim_end_matches('/'))
             .trim_start_matches('/')
             .to_owned()
     } else {
-        target
-    };
-    Ok(Some((target, fragment.map(str::to_owned))))
+        path.to_owned()
+    }
 }
 
 /// The `.html` files under `dir`, as `/`-separated paths relative to it, appended to `out`.
@@ -2955,34 +3125,103 @@ mod tests {
             (
                 "404.html",
                 "<base href=\"/hpr-sim/\"><link href=\"css/site.css\">\n\
-                 <h1 id=\"not-found\"><a href=\"#not-found\">Not found</a></h1>\n\
-                 <a href=\"/hpr-sim/\">home</a> <a href=\"/hpr-sim\">home</a>\n\
-                 <a href=\"/hpr-sim/physics/aero.html#lift\">ok</a> <a href=\"/elsewhere/\">x</a>\n\
-                 <a href=\"https://nrdptel.github.io/hpr-sim/physics/aero.html#drag\">x</a>",
+                 <h1 id=\"not-found\"><a href=\"#not-found\">Not found</a></h1> <a href=\"#gone\">x</a>\n\
+                 <a href=\"/hpr-sim/\">ok</a> <a href=\"/hpr-sim\">ok</a> <a href=\"/hpr-sim#top\">ok</a>\n\
+                 <a href=\"/hpr-sim?q=1\">ok</a> <a href=\"/hpr-sim/physics/aero.html#lift\">ok</a>\n\
+                 <a href=\"/elsewhere/\">x</a> <a href=\"/hpr-simulator/\">x</a>\n\
+                 <a href=\"https://nrdptel.github.io/hpr-sim/physics/aero.html#drag\">x</a>\n\
+                 <a href=\"https://nrdptel.github.io/hpr-sim\">ok</a>",
             ),
+            // Under a base, a fragment alone names an `id` on the base's page, not this one.
             (
                 "physics/aero.html",
                 "<base href=\"/hpr-sim/physics/\"><a href=\"../index.html\">ok</a>\n\
-                 <h2 id=\"lift\">Lift</h2><a href=\"aero.html#lift\">ok</a>",
+                 <h2 id=\"lift\">Lift</h2><a href=\"aero.html#lift\">ok</a> <a href=\"#lift\">x</a>",
             ),
+            ("physics/climbs.html", "<base href=\"/hpr-sim/../\">"),
             ("physics/moved.html", "<base href=\"/other/\">"),
+            // A base without an `href` moves nothing; the next tag's `href` is not the base.
+            (
+                "physics/tagged.html",
+                "<base target=\"_blank\"><a href=\"/hpr-sim/physics/aero.html\">ok</a>\n\
+                 <a href=\"aero.html\">ok</a>",
+            ),
             // A base is an `href` too, so it must reach a page.
             ("physics/index.html", "<p>physics</p>"),
-            ("index.html", "<p>home</p>"),
+            ("index.html", "<h1 id=\"top\">home</h1>"),
             ("css/site.css", "body {}"),
         ]);
         let built = check_html(dir.path(), &[]).unwrap();
         assert_eq!(
             built.problems,
             [
+                "404.html: `href=\"#gone\"`: `index.html` has no `id=\"gone\"`",
                 "404.html: `href=\"/elsewhere/\"` isn't under `/hpr-sim/`, where Pages serves the \
                  site",
+                "404.html: `href=\"/hpr-simulator/\"` isn't under `/hpr-sim/`, where Pages serves \
+                 the site",
                 "404.html: `href=\"https://nrdptel.github.io/hpr-sim/physics/aero.html#drag\"`: \
                  `physics/aero.html` has no `id=\"drag\"`",
+                "physics/aero.html: `href=\"#lift\"`: `physics/index.html` has no `id=\"lift\"`",
+                "physics/climbs.html: `<base href=\"/hpr-sim/../\">` isn't under `/hpr-sim/`, \
+                 where Pages serves the site",
                 "physics/moved.html: `<base href=\"/other/\">` isn't under `/hpr-sim/`, where Pages \
                  serves the site",
             ]
         );
+    }
+
+    #[test]
+    fn links_resolve_as_a_browser_reads_them_on_the_site() {
+        let dir = workspace(&[("physics/index.html", ""), ("index.html", "")]);
+        let target = |name: &str, base: Option<&str>, value: &str| {
+            html_target(dir.path(), name, base, value)
+        };
+        let found = |target: &str, fragment: Option<&str>| {
+            Ok(Some((target.to_owned(), fragment.map(str::to_owned))))
+        };
+        let aero = "physics/aero.html";
+        assert_eq!(
+            target(aero, None, "wind.html#gust"),
+            found("physics/wind.html", Some("gust"))
+        );
+        assert_eq!(target(aero, None, "#lift"), found(aero, Some("lift")));
+        assert_eq!(
+            target(aero, Some(""), "#lift"),
+            found("index.html", Some("lift"))
+        );
+        assert_eq!(
+            target(aero, Some(""), "wind.html"),
+            found("wind.html", None)
+        );
+        // A directory, with or without its `/`.
+        assert_eq!(
+            target("a.html", None, "physics"),
+            found("physics/index.html", None)
+        );
+        assert_eq!(
+            target("a.html", None, "physics/"),
+            found("physics/index.html", None)
+        );
+        assert_eq!(target("a.html", None, SITE_URL), found("index.html", None));
+        assert_eq!(
+            target(
+                "a.html",
+                None,
+                &format!("{SITE_URL}physics/aero.html?x=1#drag")
+            ),
+            found(aero, Some("drag"))
+        );
+        assert_eq!(
+            target("a.html", None, "physics/%C2%B5.html"),
+            found("physics/µ.html", None)
+        );
+        assert_eq!(
+            target("a.html", None, &format!("{SITE_URL}../x.html")),
+            Err("climbs out of the site".to_owned())
+        );
+        assert_eq!(target("a.html", None, "https://example.com/"), Ok(None));
+        assert_eq!(target("a.html", None, "mailto:neer@example.com"), Ok(None));
     }
 
     /// A built site with the API reference of the crates `a` and `b` under `api/`, where `b`'s
@@ -2994,16 +3233,22 @@ mod tests {
             (
                 "api/a/index.html",
                 "<a href=\"https://nrdptel.github.io/hpr-sim/#start\">guide</a>\n\
-                 <a href=\"../static.files/x.css\">rustdoc's own</a> <a href=\"https://docs.rs/\">web</a>",
+                 <link href=\"../static.files/x.css\"> <a href=\"https://docs.rs/\">web</a>\n\
+                 <a href=\"struct.A.html#method.fly\">ok</a> <a href=\"../src/a/lib.rs.html#10-20\">ok</a>\n\
+                 <script src=\"../trait.impl/a/trait.T.js\" async></script>\n\
+                 <a href=\"crate::DAffine2\">copied from a dependency's documentation</a>",
             ),
             (
                 "api/a/struct.A.html",
-                "<a href=\"https://nrdptel.github.io/hpr-sim/api.html\">ok</a>",
+                "<h4 id=\"method.fly\">fly</h4>\n\
+                 <a href=\"https://nrdptel.github.io/hpr-sim/api.html\">ok</a>",
             ),
+            ("api/src/a/lib.rs.html", "<a href=\"#10\" id=\"10\">10</a>"),
+            ("api/static.files/x.css", "body {}"),
             ("api/b/index.html", b_front),
         ]);
         let built = check_html(dir.path(), &["a".to_owned(), "b".to_owned()]).unwrap();
-        assert_eq!((built.pages, built.api), (2, 3));
+        assert_eq!((built.pages, built.api), (2, 4));
         built.problems
     }
 
@@ -3040,6 +3285,44 @@ mod tests {
     }
 
     #[test]
+    fn the_api_reference_is_checked_like_the_guide() {
+        let guide = "<a href=\"api/a/index.html\">a</a> <a href=\"api/b/\">b</a>";
+        let front = |rest: &str| format!("<a href=\"{SITE_URL}api.html\">guide</a>\n{rest}");
+        assert_eq!(
+            api_problems(
+                guide,
+                &front(
+                    "<a href=\"struct.Gone.html\">x</a> <a href=\"../a/struct.A.html#method.run\">x</a>\n\
+                     <script src=\"../static.files/gone.js\"></script>"
+                )
+            ),
+            [
+                "api/b/index.html: `href=\"struct.Gone.html\"`: no `api/b/struct.Gone.html` in the \
+                 site",
+                "api/b/index.html: `href=\"../a/struct.A.html#method.run\"`: `api/a/struct.A.html` \
+                 has no `id=\"method.run\"`",
+                "api/b/index.html: `src=\"../static.files/gone.js\"`: no `api/static.files/gone.js` \
+                 in the site",
+            ]
+        );
+        // A link to another crate's item that rustdoc could only leave as text; a list of code
+        // in brackets is not one.
+        assert_eq!(
+            api_problems(
+                guide,
+                &front(
+                    "<p>From a [<code>a::Layout</code>], [<code>x</code>, <code>y</code>] and \
+                     [<code>self.xy()</code>]</p>"
+                )
+            ),
+            [
+                "api/b/index.html: rustdoc left the link to `a::Layout` as text, because that \
+                 crate's pages weren't built before this one's"
+            ]
+        );
+    }
+
+    #[test]
     fn a_crate_without_an_api_reference_fails() {
         let dir = workspace(&[("index.html", "<p>home</p>")]);
         let built = check_html(dir.path(), &["hpr_core".to_owned()]).unwrap();
@@ -3047,6 +3330,76 @@ mod tests {
             built.problems,
             ["api/hpr_core/index.html: missing, so the crate `hpr_core` has no API reference"]
         );
+    }
+
+    fn package(name: &str, lib: bool, dependencies: &[&str]) -> Package {
+        Package {
+            name: name.to_owned(),
+            wasm: false,
+            lib: lib.then(|| name.replace('-', "_")),
+            dependencies: dependencies.iter().map(|&d| d.to_owned()).collect(),
+            examples: Vec::new(),
+        }
+    }
+
+    #[test]
+    fn crates_are_documented_after_the_crates_they_use() {
+        let packages = [
+            package("sim", true, &["core", "aero", "serde"]),
+            package("cli", false, &["sim"]),
+            package("aero", true, &["core"]),
+            package("core", true, &[]),
+            package("atmos", true, &["core"]),
+        ];
+        let order: Vec<&str> = doc_order(&packages)
+            .unwrap()
+            .iter()
+            .map(|package| package.name.as_str())
+            .collect();
+        assert_eq!(order, ["core", "aero", "atmos", "sim"]);
+        let cycle = [package("a", true, &["b"]), package("b", true, &["a"])];
+        assert_eq!(
+            doc_order(&cycle).unwrap_err(),
+            "the libraries [\"a\", \"b\"] depend on each other in a cycle"
+        );
+    }
+
+    #[test]
+    fn rustdocs_output_is_found_for_any_target() {
+        let host = workspace(&[("doc/a/index.html", ""), ("debug/x", "")]);
+        assert_eq!(doc_dirs(host.path()), [host.path().join("doc")]);
+        let named = workspace(&[("x86_64-unknown-linux-gnu/doc/a/index.html", "")]);
+        assert_eq!(
+            doc_dirs(named.path()),
+            [named.path().join("x86_64-unknown-linux-gnu").join("doc")]
+        );
+        assert!(doc_dirs(&host.path().join("missing")).is_empty());
+    }
+
+    #[test]
+    fn copying_the_reference_leaves_out_cargos_lock() {
+        let from = workspace(&[
+            ("doc/.lock", ""),
+            ("doc/a/index.html", "a"),
+            ("doc/a/b/c.js", "c"),
+        ]);
+        let to = tempfile::tempdir().unwrap();
+        let dest = to.path().join("api");
+        copy_dir(&from.path().join("doc"), &dest).unwrap();
+        assert_eq!(fs::read_to_string(dest.join("a/index.html")).unwrap(), "a");
+        assert_eq!(fs::read_to_string(dest.join("a/b/c.js")).unwrap(), "c");
+        assert!(!dest.join(".lock").exists());
+    }
+
+    #[test]
+    fn the_arguments_are_read_in_any_order() {
+        let args =
+            |list: &[&str]| parse_args(&list.iter().map(|&arg| arg.to_owned()).collect::<Vec<_>>());
+        assert_eq!(args(&[]), Ok((true, false)));
+        assert_eq!(args(&["--locked"]), Ok((true, true)));
+        assert_eq!(args(&["--locked", "--no-build"]), Ok((false, true)));
+        let err = args(&["--fast"]).unwrap_err();
+        assert!(err.starts_with("unexpected argument `--fast`"), "{err}");
     }
 
     #[test]

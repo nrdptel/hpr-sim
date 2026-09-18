@@ -115,18 +115,19 @@ jobs:
           path: target/site
       # Pages must be on, deploying from GitHub Actions, for the deploy job to work (ADR-019).
       # Until the owner turns it on, the site is built and checked but not deployed, and CI says
-      # so with a warning rather than failing on main.
+      # so with a warning rather than failing on main. Only main deploys, so only main asks.
       - name: Is GitHub Pages on?
         id: pages
+        if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          if answer=$(gh api "repos/$GITHUB_REPOSITORY/pages" --jq .build_type 2>&1); then
-            source=$answer
-          elif [[ $answer == *"HTTP 404"* ]]; then
+          if source=$(gh api "repos/$GITHUB_REPOSITORY/pages" --jq .build_type 2>"$RUNNER_TEMP/pages.err"); then
+            :
+          elif grep -q "HTTP 404" "$RUNNER_TEMP/pages.err"; then
             source=off
           else
-            echo "::error::could not ask GitHub whether Pages is on: $answer"
+            echo "::error::could not ask GitHub whether Pages is on: $(cat "$RUNNER_TEMP/pages.err")"
             exit 1
           fi
           if [[ $source == workflow ]]; then

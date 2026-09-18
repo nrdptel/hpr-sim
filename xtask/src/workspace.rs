@@ -5,12 +5,10 @@ use std::process::Command;
 
 use serde_json::Value;
 
-/// The workspace root, its build directory and its member crates.
+/// The workspace root and its member crates.
 #[derive(Debug)]
 pub struct Workspace {
     pub root: PathBuf,
-    /// Where cargo builds, `target/` unless `CARGO_TARGET_DIR` or a config moves it.
-    pub target_dir: PathBuf,
     pub packages: Vec<Package>,
 }
 
@@ -23,6 +21,9 @@ pub struct Package {
     /// The crate name of its library (`hpr_core` for `hpr-core`), if it has one, which is where
     /// rustdoc writes its documentation (`target/doc/hpr_core/`).
     pub lib: Option<String>,
+    /// The packages its library and programs depend on (normal and build dependencies, not
+    /// dev-dependencies), by package name, in the order cargo lists them.
+    pub dependencies: Vec<String>,
     /// Its example programs (`cargo run --example`), in the order cargo lists them.
     pub examples: Vec<Example>,
 }
@@ -71,9 +72,6 @@ pub fn parse(json: &str) -> Result<Workspace, String> {
     let root = metadata["workspace_root"]
         .as_str()
         .ok_or("`cargo metadata` JSON has no workspace_root")?;
-    let target_dir = metadata["target_directory"]
-        .as_str()
-        .ok_or("`cargo metadata` JSON has no target_directory")?;
     let packages = metadata["packages"]
         .as_array()
         .ok_or("`cargo metadata` JSON has no packages array")?
@@ -82,7 +80,6 @@ pub fn parse(json: &str) -> Result<Workspace, String> {
         .collect::<Result<_, _>>()?;
     Ok(Workspace {
         root: PathBuf::from(root),
-        target_dir: PathBuf::from(target_dir),
         packages,
     })
 }
@@ -101,6 +98,13 @@ fn parse_package(package: &Value) -> Result<Package, String> {
             ));
         }
     };
+    let dependencies = package["dependencies"]
+        .as_array()
+        .map_or(&[][..], Vec::as_slice)
+        .iter()
+        .filter(|dependency| dependency["kind"].as_str() != Some("dev"))
+        .filter_map(|dependency| dependency["name"].as_str().map(str::to_owned))
+        .collect();
     let mut lib = None;
     let mut examples = Vec::new();
     for target in package["targets"].as_array().map_or(&[][..], Vec::as_slice) {
@@ -146,6 +150,7 @@ fn parse_package(package: &Value) -> Result<Package, String> {
         name,
         wasm,
         lib,
+        dependencies,
         examples,
     })
 }
@@ -156,7 +161,6 @@ mod tests {
 
     const METADATA: &str = r#"{
         "workspace_root": "/work/hpr-sim",
-        "target_directory": "/work/hpr-sim/target",
         "packages": [
             { "name": "pure", "metadata": { "hpr": { "wasm": true } }, "targets": [
                 { "kind": ["lib"], "name": "pure", "src_path": "/work/hpr-sim/pure/src/lib.rs" },
@@ -164,7 +168,10 @@ mod tests {
                 { "kind": ["example"], "crate_types": ["lib"], "name": "part", "src_path": "/work/hpr-sim/pure/examples/part.rs",
                   "required-features": ["net"] }
             ] },
-            { "name": "tool", "metadata": null, "targets": [
+            { "name": "tool", "metadata": null, "dependencies": [
+                { "name": "pure", "kind": null }, { "name": "serde", "kind": "build" },
+                { "name": "other-py", "kind": "dev" }
+            ], "targets": [
                 { "kind": ["bin"], "name": "tool", "src_path": "/work/hpr-sim/tool/src/main.rs" }
             ] },
             { "name": "other-py", "metadata": { "docs": {} }, "targets": [
@@ -174,10 +181,9 @@ mod tests {
     }"#;
 
     #[test]
-    fn parses_the_root_the_target_and_the_wasm_flags() {
+    fn parses_the_root_and_the_wasm_flags() {
         let workspace = parse(METADATA).unwrap();
         assert_eq!(workspace.root, PathBuf::from("/work/hpr-sim"));
-        assert_eq!(workspace.target_dir, PathBuf::from("/work/hpr-sim/target"));
         let flags: Vec<_> = workspace
             .packages
             .iter()
@@ -187,6 +193,13 @@ mod tests {
             flags,
             [("pure", true), ("tool", false), ("other-py", false)]
         );
+    }
+
+    #[test]
+    fn lists_what_each_package_depends_on_but_its_tests() {
+        let workspace = parse(METADATA).unwrap();
+        assert_eq!(workspace.packages[1].dependencies, ["pure", "serde"]);
+        assert!(workspace.packages[0].dependencies.is_empty());
     }
 
     #[test]

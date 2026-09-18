@@ -53,8 +53,8 @@ a strong crosswind and near apogee, are the least trustworthy. See
 ## API reference
 
 The documentation of hpr-sim's code: every public type, function and constant, generated from the
-source by rustdoc, Rust's documentation tool. It is part of this site; see
-[The API reference](api.md).
+source by rustdoc, Rust's documentation tool. It is part of this site, and on GitHub it has to be
+built; see [The API reference](api.md).
 
 
 ## Apogee

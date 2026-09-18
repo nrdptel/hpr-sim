@@ -12,7 +12,8 @@
 //! [guide-quadrature]: https://nrdptel.github.io/hpr-sim/physics/quadrature.html
 //!
 //! Vectors, quaternions and matrices are glam's `f64` types, re-exported here so every crate uses
-//! the same ones. Quantities are SI; frames and sign conventions follow `docs/physics/frames.md`.
+//! the same ones. Quantities are SI; frames and sign conventions follow
+//! [Frames and sign conventions][guide-frames].
 
 pub mod attitude;
 pub mod earth;
