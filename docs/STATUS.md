@@ -31,9 +31,9 @@ M2.1c (ADR-022, 023): CI checks the report on three OSes; predicted mode's 3% ar
 - **Resume here, M2.1d2 (draft PR on `m2.1d2-calm-air`):** done: `CALM_AIR_BASES` in `flight.py`,
   the fixture regenerated (the old cases bit-identical), three locked `flight-*-calm` cases. Calisto
   and Bella Lui pass every metric (drifts -1.3 to -2.6%). Juno III calm misses its drifts at -3.7%
-  (549 vs 570 m; apogee +0.06%): hpr turns less off the 85-degree rail even without wind. Measured
-  once (RocketPy's rail lengthened by the 1.41 m button spacing, so it frees the rocket where hpr
-  does): RocketPy's drifts become 561.0 and 641.0 m, hpr within -2.1% of both. So the rail release
+  (549 vs 570 m; apogee +0.06%): hpr turns less off the 85-degree rail even without wind.
+  `rail_release.py` (RocketPy's rail longer by its button spacing, so it frees the rocket where hpr
+  does; all three calm cases then within -0.5 to -2.2%): RocketPy's drifts become 561.0 and 641.0 m, hpr within -2.1% of both. So the rail release
   (hpr: last button, RocketPy: first) is most of it. Left: pin that as a check, argue the case in its
   file and an ADR (or match the release); `docs/accuracy.md` has the rows and a first paragraph (its
   *In wind* item) to finish with the result; physics-reviewer, validation-auditor, docs-reviewer; check M2.1d2 off.
