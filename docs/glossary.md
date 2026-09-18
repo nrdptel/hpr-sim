@@ -368,8 +368,8 @@ against each one, or will once its milestone ships. See
 ## Mach number
 
 Airspeed divided by the local speed of sound, which the atmosphere gives from the air's
-temperature. hpr's aerodynamics are documented up to Mach 0.8, and from 0.8 to 1 they are
-unvalidated extrapolations. A flight that reaches Mach 1 stops with an error until transonic (near
+temperature. hpr's aerodynamics were checked only at Mach 0 (the normal force) and Mach 0.3 (the
+drag), and are documented up to Mach 0.8; from 0.8 to 1 they are extrapolations. A flight that reaches Mach 1 stops with an error until transonic (near
 Mach 1) and supersonic (above it) aerodynamics arrive with [M1.8][roadmap]. See
 [Aerodynamics](physics/aero.md#validity-and-open-questions).
 
