@@ -598,139 +598,117 @@ fn the_committed_cases_all_pass_and_the_report_says_so() {
         .cloned()
         .collect();
     assert_eq!(compared, flown);
-    // The committed reports are these reports, so a number that moves shows up in the diff.
-    let committed = std::fs::read_to_string(root().join("validation/reports/latest.md"))
-        .expect("the report is committed");
-    if let Err(what) = same_but_for_platform_rounding(&committed, &markdown) {
+    // The committed reports are these reports, so a number that moves shows up in the diff. The
+    // JSON is pinned too, to what the platforms share (`Report::reproduces`); CI's `validate` job
+    // runs the same check through `cargo xtask validate --check`.
+    let read = |name: &str| {
+        std::fs::read_to_string(root().join("validation/reports").join(name))
+            .expect("the report is committed")
+    };
+    if let Err(what) = report.reproduces(&read("latest.md"), &read("latest.json")) {
         panic!("{what}; run `cargo xtask validate`");
     }
-    // The JSON is pinned too, but not by its bytes: it carries full-precision floats, and hpr
-    // promises bit-identical results on one platform, not across three (ADR-015). So everything
-    // that cannot differ by platform is compared exactly...
-    let committed: Report = serde_json::from_str(
-        &std::fs::read_to_string(root().join("validation/reports/latest.json"))
-            .expect("the JSON report is committed"),
-    )
-    .expect("the JSON report parses");
-    assert_eq!(committed.harness_version, report.harness_version);
-    assert_eq!(committed.fast, report.fast);
-    assert_eq!(committed.cases, report.cases, "run `cargo xtask validate`");
-    assert_eq!(committed.skipped, report.skipped);
-    // A gap's Mach number is where the integrator narrowed onto 1, to the last bits of which the
-    // platforms need not agree; everything else about it must.
-    let gap_shape = |report: &Report| {
-        report
-            .gaps
-            .iter()
-            .map(|gap| {
-                (
-                    gap.case.clone(),
-                    gap.reason.clone(),
-                    gap.refusal.clone(),
-                    gap.metric_count,
-                    (gap.mach - 1.0).abs() < 1e-9,
-                )
-            })
-            .collect::<Vec<_>>()
-    };
-    assert_eq!(
-        gap_shape(&committed),
-        gap_shape(&report),
-        "run `cargo xtask validate`"
+    // It catches a report that moved, in either file.
+    let moved = read("latest.md").replacen("| pass |", "| **fail** |", 1);
+    let error = report
+        .reproduces(&moved, &read("latest.json"))
+        .expect_err("a verdict flipped in latest.md");
+    assert!(
+        error.0.starts_with("latest.md is not latest.json's"),
+        "{error}"
     );
-    assert_eq!(
-        committed.sources, report.sources,
-        "run `cargo xtask validate`"
-    );
-    let shape = |report: &Report| {
-        report
-            .comparisons
-            .iter()
-            .map(|comparison| {
-                (
-                    comparison.case.clone(),
-                    comparison.metric.clone(),
-                    comparison.source.clone(),
-                    comparison.tolerance,
-                    comparison.verdict,
-                    comparison.note.clone(),
-                )
-            })
-            .collect::<Vec<_>>()
-    };
-    assert_eq!(
-        shape(&committed),
-        shape(&report),
-        "run `cargo xtask validate`"
-    );
-    // ...and its numbers through the Markdown it renders, to the precision the platforms share.
-    // A tighter check here would assert a cross-platform bit-identity hpr does not claim.
-    if let Err(what) = same_but_for_platform_rounding(&committed.to_markdown(), &markdown) {
-        panic!("{what}; run `cargo xtask validate`");
-    }
+    let mut moved: Report = serde_json::from_str(&read("latest.json")).expect("it parses");
+    moved.cases.pop();
+    let moved = serde_json::to_string(&moved).expect("it serialises");
+    let moved_markdown = serde_json::from_str::<Report>(&moved)
+        .expect("it parses")
+        .to_markdown();
+    let error = report
+        .reproduces(&moved_markdown, &moved)
+        .expect_err("a case left out");
+    assert!(error.0.starts_with("latest.json: the cases"), "{error}");
 }
 
 #[test]
-fn platform_rounding_forgives_the_last_digits_and_nothing_else() {
-    // The looser comparison of the committed report must still catch a number that moved, a word
-    // that changed, and a verdict that flipped.
-    let row =
-        "| flight-x | landing_drift_m | 354.240893 | 340.986523 | +3.887% | 3.000% | pass |  |";
-    let check = |other: &str| same_but_for_platform_rounding(row, other);
-    assert!(check(&row.replace("354.240893", "354.240895")).is_ok());
-    assert!(check(&row.replace("354.240893", "354.240993")).is_err());
-    assert!(check(&row.replace("+3.887%", "+3.888%")).is_err());
-    assert!(check(&row.replace("pass", "**fail**")).is_err());
-    assert!(check(&row.replace("landing_drift_m", "apogee_drift_m")).is_err());
-    assert!(check(&format!("{row}\n")).is_ok());
-    assert!(check(&format!("{row}\n| another |")).is_err());
-}
-
-/// Whether two renderings of the report are the same, letter for letter, except that a number
-/// may differ by two units in its sixth decimal or by 1e-7 of itself, whichever is larger.
-///
-/// hpr is bit-identical on one platform, not across three (ADR-015). The descents reproduce to
-/// the six decimals the report prints; a whole flight does to about 1e-8 of each value, not
-/// always to its sixth decimal: NDRT 2020's landing drift is 354.240893 m on macOS and
-/// 354.240895 m on Linux, after 84 s of six-degree-of-freedom flight in a sheared wind. Every
-/// word, case, metric, tolerance and verdict must still match exactly.
-fn same_but_for_platform_rounding(committed: &str, computed: &str) -> Result<(), String> {
-    let (committed, computed): (Vec<&str>, Vec<&str>) =
-        (committed.lines().collect(), computed.lines().collect());
-    if committed.len() != computed.len() {
-        return Err(format!(
-            "the committed report has {} lines and this run's {}",
-            committed.len(),
-            computed.len()
-        ));
-    }
-    let number = |cell: &str| {
-        cell.trim()
-            .trim_end_matches('%')
-            .trim_start_matches('+')
-            .parse::<f64>()
-            .ok()
+fn reproducing_forgives_the_last_digits_and_nothing_else() {
+    // A committed report of one row, and this run's, which differs in what each case says.
+    let row = |measured: f64| {
+        Comparison::new(
+            "flight-x",
+            "landing_drift_m",
+            measured,
+            340.986523,
+            "rocketpy",
+            Tolerance::relative(0.03),
+        )
     };
-    for (line, (old, new)) in committed.iter().zip(&computed).enumerate() {
-        if old == new {
-            continue;
-        }
-        let (old_cells, new_cells): (Vec<&str>, Vec<&str>) =
-            (old.split('|').collect(), new.split('|').collect());
-        let close = old_cells.len() == new_cells.len()
-            && old_cells.iter().zip(&new_cells).all(|(a, b)| {
-                a == b
-                    || matches!((number(a), number(b)), (Some(a), Some(b))
-                        if (a - b).abs() <= (2e-6_f64).max(1e-7 * b.abs()))
-            });
-        if !close {
-            return Err(format!(
-                "line {} differs beyond platform rounding:\n  committed: {old}\n  this run:  {new}",
-                line + 1
-            ));
-        }
-    }
-    Ok(())
+    let report = |measured: f64| Report {
+        harness_version: "0.0.0".to_owned(),
+        fast: false,
+        cases: vec!["flight-x".to_owned()],
+        skipped: Vec::new(),
+        comparisons: vec![row(measured)],
+        gaps: Vec::new(),
+        sources: Vec::new(),
+    };
+    let committed = report(345.240893);
+    let json = serde_json::to_string(&committed).expect("it serialises");
+    let markdown = committed.to_markdown();
+    let check = |run: &Report, markdown: &str, json: &str| run.reproduces(markdown, json);
+    assert_eq!(check(&committed, &markdown, &json), Ok(()));
+    // Another platform's last digits, even where they move a printed percentage's last digit.
+    assert_eq!(check(&report(345.240895), &markdown, &json), Ok(()));
+    let at_a_boundary = report(340.986523 * 1.030_004_999_9);
+    let json_there = serde_json::to_string(&at_a_boundary).expect("it serialises");
+    assert_eq!(
+        check(
+            &report(340.986523 * 1.030_005_000_1),
+            &at_a_boundary.to_markdown(),
+            &json_there
+        ),
+        Ok(())
+    );
+    // A number that moved, which only the JSON shows at full precision.
+    let error = check(&report(345.240993), &markdown, &json).expect_err("a number moved");
+    assert!(
+        error
+            .0
+            .starts_with("latest.json: flight-x's landing_drift_m's hpr value"),
+        "{error}"
+    );
+    // A committed Markdown that is not its JSON's rendering.
+    let edited = markdown.replace("| pass |", "| **fail** |");
+    let error = check(&committed, &edited, &json).expect_err("the files disagree");
+    assert!(
+        error.0.starts_with("latest.md is not latest.json's"),
+        "{error}"
+    );
+    let error =
+        check(&committed, &format!("{markdown}more\n"), &json).expect_err("a line too many");
+    assert!(error.0.contains("(the end)"), "{error}");
+    // A committed difference that is not its own values' difference.
+    let mut hand_edited = committed.clone();
+    hand_edited.comparisons[0].relative = Some(0.02);
+    let error = check(
+        &committed,
+        &hand_edited.to_markdown(),
+        &serde_json::to_string(&hand_edited).expect("it serialises"),
+    )
+    .expect_err("a relative difference written by hand");
+    assert!(
+        error.0.contains("not its own values' difference"),
+        "{error}"
+    );
+    // A note, a source or a case that changed.
+    let mut noted = committed.clone();
+    noted.comparisons[0].note = Some("a note".to_owned());
+    assert!(check(&noted, &markdown, &json).is_err());
+    let mut sourced = committed.clone();
+    sourced.comparisons[0].source = "openrocket".to_owned();
+    assert!(check(&sourced, &markdown, &json).is_err());
+    let mut renamed = committed.clone();
+    renamed.cases[0] = "flight-y".to_owned();
+    assert!(check(&renamed, &markdown, &json).is_err());
 }
 
 #[test]

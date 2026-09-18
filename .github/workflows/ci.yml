@@ -56,6 +56,23 @@ jobs:
       # that it prints what its committed `<name>.output.txt` says, on each OS.
       - run: cargo run --locked --quiet --package xtask -- examples --check --locked
 
+  # Runs every case in the validation lock against its committed reference, with no oracle and no
+  # network, and fails if a metric is outside its tolerance or if the committed report is not this
+  # run's, to the digits the platforms share (M2.1c1, ADR-015, ADR-022). The references themselves
+  # are regenerated only by hand, by the `Regenerate references` workflow.
+  validate:
+    name: validate (${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v7
+      - run: rustup toolchain install
+      - uses: Swatinem/rust-cache@v2
+      - run: cargo run --locked --quiet --package xtask -- validate --check
+
   doc:
     name: doc
     runs-on: ubuntu-latest
@@ -141,7 +158,7 @@ jobs:
   # other check has passed on that commit.
   deploy:
     name: deploy
-    needs: [fmt, clippy, test, doc, wasm-check, deny, site]
+    needs: [fmt, clippy, test, validate, doc, wasm-check, deny, site]
     if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request' && needs.site.outputs.pages == 'true'
     runs-on: ubuntu-latest
     permissions:

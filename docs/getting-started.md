@@ -156,7 +156,7 @@ Below the table:
   RocketPy does ([issue #50](https://github.com/nrdptel/hpr-sim/issues/50)), so this
   example's apogee 86 m upwind and its landing point are the least trustworthy numbers it
   prints. With hpr's own drag, as here, the
-  comparison is [M2.1c](decisions-and-roadmap.md#m2-1c), not done yet, and no flight has been
+  comparison is [M2.1c2](decisions-and-roadmap.md#m2-1c2), not done yet, and no flight has been
   compared with a real one. [Accuracy](accuracy.md#whole-flights-against-rocketpy) keeps every
   result so far.
 - **The thrust is likely a little low for this site.** hpr flies the curve as measured, to match
@@ -250,7 +250,7 @@ You don't have to take these numbers on trust. Four ways to test them:
 
 The project's own comparison of whole flights against RocketPy, with the drag given to both codes,
 is [M2.1b2](decisions-and-roadmap.md#m2-1b2); with each code's own drag it is
-[M2.1c](decisions-and-roadmap.md#m2-1c), not done yet.
+[M2.1c2](decisions-and-roadmap.md#m2-1c2), not done yet.
 
 ## The program, step by step
 

@@ -30,8 +30,9 @@ small extracted fixtures with a clear license are committed, each with its prove
 
 ## The harness (M2.1a)
 
-`cargo xtask validate [--fast]` runs every case in `validation/cases/lock.toml` and writes
-`validation/reports/latest.md` and `latest.json`. A case (`validation/cases/<id>.toml`) says what
+`cargo xtask validate [--fast|--check]` runs every case in `validation/cases/lock.toml` and writes
+`validation/reports/latest.md` and `latest.json`. `--check` writes nothing (see below); it runs
+the whole suite, so it cannot be combined with `--fast`. A case (`validation/cases/<id>.toml`) says what
 to fly and which metrics to compare, each with its own tolerance, against which reference
 (`validation/fixtures/**`, written by a generator under `validation/oracles/`). Decisions:
 ADR-015; code: `crates/hpr-validate/`.
@@ -68,6 +69,46 @@ cause is unknown, issue #50, so M2.1's landing offset is not met),
 Calisto's time of peak acceleration, whose two peaks are 0.9% apart, and NDRT 2020's
 whole-flight peak, which is its main opening, where RocketPy has added mass and hpr has none. No
 case carries an absolute floor: every gate is the milestone's 3%.
+
+### In CI, and regenerating the references (M2.1c1)
+
+Every pull request runs `cargo xtask validate --check` on macOS, Windows and Linux, in continuous
+integration (CI): the `validate` job in `.github/workflows/ci.yml`. It flies every locked case,
+compares each result with the stored RocketPy numbers (RocketPy itself is not run), and writes
+nothing. It fails if a scored metric is outside its tolerance, or if the committed report differs
+from this run's. Numbers may differ in their last digits, because platforms round differently: hpr's
+value and the reference's, read at full precision from `latest.json`, by up to 2e-6 or 1e-7 of the
+value, whichever is larger. Everything else must match exactly: the cases, sources, tolerances,
+verdicts, notes, known gaps and the harness version, and `latest.md` must be `latest.json`'s own
+rendering (`Report::reproduces`;
+[ADR-022](DECISIONS.md#adr-022-validation-in-ci-and-regenerating-references-only-by-hand-2026-09-18),
+the decision behind this section). So a change that moves a number has to commit the report that
+shows it.
+
+CI never runs RocketPy. So it shows that hpr still reproduces the committed report, not that the
+stored references are still what RocketPy produces: a change in RocketPy or in a generator shows up
+only when a person regenerates the references.
+
+- **Locally:** `scripts/regenerate-references.sh`, a bash script for macOS and Linux. It needs
+  `uv` 0.12 or later and a one-time `cargo xtask refs fetch python rocketpy`. It runs
+  `rocket_mass.py`, `cargo xtask designs`, `recovery.py` and `flight.py`, in that order, then
+  `cargo xtask validate --check`, and rewrites the report only if that check fails. It overwrites
+  files under `validation/` in the working tree (`git checkout validation` undoes it) and lists
+  what changed. It took about 40 s on the Mac it was measured on, after the fetch.
+- **On GitHub:** the *Regenerate references* workflow (`regenerate-references.yml`). Only someone
+  with write access can start it, from the Actions tab or with
+  `gh workflow run regenerate-references.yml`, and only from a branch that has the workflow
+  (GitHub dispatches only workflows the default branch has). It runs the same script on an arm64
+  Mac, like the one the committed references came from, and uploads the diff as the
+  `references-diff` artifact. Its token can read the repository and nothing more, so it cannot
+  commit.
+
+On Linux the regenerated fixtures may differ from the committed ones in their last digits, and a
+fixture that moved at all makes the report be rewritten too; that is why the workflow runs on a
+Mac. Either way the result is a diff to read, not a new reference.
+Committing it is a decision a PR has to argue:
+[Loft lesson L76](decisions-and-roadmap.md#l76), where a reference regenerated whenever a check
+failed ended up following the simulator it was meant to check.
 
 ### Whole flights (M2.1b2)
 

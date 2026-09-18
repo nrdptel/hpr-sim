@@ -9,26 +9,44 @@
 //! `--fast` leaves out the cases the lock marks slow. It never leaves out a case silently: it
 //! says so on the console, its report says so too, and it writes `latest-fast.{md,json}` rather
 //! than the committed report, so a partial run can never stand in for the whole suite's record.
+//!
+//! `--check` runs every case, writes nothing, and fails unless the run reproduces the committed
+//! report, to the digits the platforms share (`Report::reproduces`). CI runs it on macOS, Windows
+//! and Linux, so a change that moves a number cannot merge without the report that says so.
 
 use std::path::Path;
 
 use hpr_validate::{Report, run_lock};
 
-pub const USAGE: &str = "  validate [--fast]        Run the validation cases and write
+pub const USAGE: &str = "  validate [--fast|--check]
+                           Run the validation cases and write
                            validation/reports/latest.{md,json}. --fast leaves out the cases the
-                           lock marks slow and writes latest-fast.{md,json} instead.";
+                           lock marks slow and writes latest-fast.{md,json} instead. --check
+                           writes nothing and fails unless the committed report reproduces.";
 
 /// Runs the suite and writes the reports.
 pub fn run(args: &[String]) -> Result<(), String> {
     let mut fast = false;
+    let mut check = false;
     for arg in args {
         match arg.as_str() {
             "--fast" => fast = true,
+            "--check" => check = true,
             other => return Err(format!("unknown argument `{other}`\n\n{USAGE}")),
         }
     }
+    if fast && check {
+        return Err(
+            "`--check` compares the whole suite with its committed report, so it cannot be `--fast`"
+                .to_owned(),
+        );
+    }
     let root = crate::designs::root()?;
     let report = run_lock(&root, fast).map_err(|error| error.to_string())?;
+    if check {
+        print_summary(&report);
+        return check_committed(&root, &report);
+    }
     let written = write_reports(&root, &report)?;
     print_summary(&report);
     println!("validate: wrote validation/reports/{written}.md and {written}.json");
@@ -39,6 +57,38 @@ pub fn run(args: &[String]) -> Result<(), String> {
             "{} metric(s) outside tolerance; see validation/reports/{written}.md",
             report.failures().len()
         ))
+    }
+}
+
+/// Fails unless every scored metric passed and the run reproduces the committed report.
+fn check_committed(root: &Path, report: &Report) -> Result<(), String> {
+    let read = |name: &str| {
+        let path = root.join("validation/reports").join(name);
+        std::fs::read_to_string(&path)
+            .map_err(|error| format!("reading {}: {error}", path.display()))
+    };
+    let reproduced = report.reproduces(&read("latest.md")?, &read("latest.json")?);
+    match (report.passed(), reproduced) {
+        (true, Ok(())) => {
+            println!("validate: the committed report reproduces");
+            Ok(())
+        }
+        (passed, reproduced) => {
+            let mut problems = Vec::new();
+            if !passed {
+                problems.push(format!(
+                    "{} metric(s) outside tolerance",
+                    report.failures().len()
+                ));
+            }
+            if let Err(what) = reproduced {
+                problems.push(format!(
+                    "the committed report is not this run's ({what}); run `cargo xtask validate` \
+                     and commit validation/reports/latest.{{md,json}}"
+                ));
+            }
+            Err(problems.join("; "))
+        }
     }
 }
 
