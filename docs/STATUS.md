@@ -7,7 +7,7 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
 - **Current milestone:** M0.4d Publish
 - **Order:** M0.4d and M0.4e, then M2.1b2 (handoff below)
 - **Run:** the first autopilot run; M0.1-M0.4c, M1.1-M1.7, M2.1a and M2.1b1 have shipped
-- **Last updated:** 2026-09-18 (M0.4c in PR #@@PR@@; M0.4d not started)
+- **Last updated:** 2026-09-18 (M0.4c in PR #42; M0.4d not started)
 
 ## Handoff (overwrite each session)
 
@@ -55,7 +55,7 @@ After M0.4 comes M2.1b2: a `Flight::WholeFlight` variant, five cases in the lock
 
 ## Done log (newest first, keep about 15)
 
-- 2026-09-18: M0.4c Getting started, and how a flight is simulated (PR #@@PR@@, ADR-018): a
+- 2026-09-18: M0.4c Getting started, and how a flight is simulated (PR #42, ADR-018): a
   first flight (Valetudo, 874.0 m apogee) and a drag what-if run in CI on three OSes against
   committed output; pages quote them, checked line for line; a flight diagram; `with_wind`.
 - 2026-09-18: M0.4b Model pages, Accuracy, Glossary, Checking a claim (PR #40, ADR-017): all 16
