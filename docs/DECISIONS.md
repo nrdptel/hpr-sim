@@ -1803,9 +1803,12 @@ reference follow Loft's own drag.
   `windows-latest`, with no oracle and no network; the Pages deploy waits for it.
 - **`scripts/regenerate-references.sh`** runs the chain behind the references the harness reads, in
   order: `rocket_mass.py`, `cargo xtask designs`, `recovery.py`, `flight.py`, then
-  `cargo xtask validate`. Each generator writes to a temporary file, so a failure leaves the
-  committed fixture alone. The report is written even when a metric fails, so the diff shows what
-  moved; the script then exits non-zero.
+  `cargo xtask validate --check`. Each generator writes to a temporary file, so a failure leaves
+  the committed fixture alone. The report is rewritten only when the check fails: the committed
+  one holds macOS digits, and a Linux run would otherwise rewrite it on every run for last-digit
+  rounding alone. A fixture that moved at all changes the hash the report records, so the report
+  is then rewritten. It is written even when a metric fails, so the diff shows what moved, and the
+  script then exits non-zero.
 - **The *Regenerate references* workflow** (`regenerate-references.yml`) runs the script on
   Linux, and only on `workflow_dispatch`. Its token has `contents: read` and the checkout keeps no
   credentials, so it cannot push. It uploads `references.diff` and a summary as an artifact, and
@@ -1829,6 +1832,7 @@ reference follow Loft's own drag.
 - A change that moves a validation number cannot merge without the report that says so, on any
   of the three OSes.
 - The workflow could not run before it was on `main` (GitHub only dispatches workflows the default
-  branch has). The script ran locally first: in 41 s it reproduced every committed fixture and the
-  report byte for byte.
+  branch has). The script ran locally first, on macOS: in 41 s it reproduced every committed fixture
+  and the report byte for byte. On Linux the fixtures may differ in their last digits; that is
+  measured the first time the workflow runs.
 - M2.1c2's predicted-mode reference joins the chain when it lands.

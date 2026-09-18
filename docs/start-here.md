@@ -123,7 +123,7 @@ out.
   ([M2.1b2](decisions-and-roadmap.md#m2-1b2), the whole-flight comparison). Where they go in wind
   does not agree: hpr turns into the wind less than RocketPy
   ([issue #50](https://github.com/nrdptel/hpr-sim/issues/50)). hpr's own drag has
-  not been compared in a whole flight yet ([M2.1c](decisions-and-roadmap.md#m2-1c)), nor has any
+  not been compared in a whole flight yet ([M2.1c2](decisions-and-roadmap.md#m2-1c2)), nor has any
   flight been compared with OpenRocket ([M2.2](decisions-and-roadmap.md#m2-2)) or a real one
   ([M2.3](decisions-and-roadmap.md#m2-3)).
 - **The descent under a parachute matches RocketPy's.** The comparison flies the descents of five

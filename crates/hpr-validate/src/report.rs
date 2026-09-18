@@ -231,8 +231,9 @@ impl Report {
     /// Whether this run reproduces a committed report, given the text of its `latest.md` and
     /// `latest.json`.
     ///
-    /// hpr is bit-identical on one platform, not across three (ADR-015), so the JSON is not
-    /// compared by its bytes: it carries full-precision floats. Everything that cannot differ by
+    /// hpr is bit-identical on one platform, not across three ([ADR-015][adr-015], the validation
+    /// harness's decisions), so the JSON is not compared by its bytes: it carries full-precision
+    /// floats. Everything that cannot differ by
     /// platform is compared exactly: the harness version, the cases, what was left out, the
     /// sources, each comparison's case, metric, source, tolerance, verdict and note, and each gap
     /// but for the Mach number the integrator narrowed onto 1. The numbers are compared through the
@@ -244,6 +245,8 @@ impl Report {
     /// # Errors
     ///
     /// The first difference found, or why the committed JSON does not parse.
+    ///
+    /// [adr-015]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-015-the-validation-harness-cases-references-tolerances-and-reports-2026-09-17
     pub fn reproduces(&self, committed_markdown: &str, committed_json: &str) -> Result<(), String> {
         let markdown = self.to_markdown();
         same_but_for_platform_rounding(committed_markdown, &markdown)

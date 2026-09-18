@@ -15,7 +15,8 @@
 # 3. recovery.py: RocketPy's descents under each rocket's parachutes
 #    (validation/fixtures/recovery/rocketpy-descent.json).
 # 4. flight.py: RocketPy's whole flights, pad to landing (validation/fixtures/flight/).
-# 5. `cargo xtask validate`: the report, validation/reports/latest.{md,json}.
+# 5. `cargo xtask validate`: the report, validation/reports/latest.{md,json}, rewritten only when
+#    the run does not reproduce the committed one.
 #
 # A generator writes to a temporary file first, so one that fails leaves the committed fixture as
 # it was. The script stops at the first generator that fails. A report whose metrics fall outside
@@ -44,8 +45,16 @@ cargo xtask designs
 generate validation/oracles/rocketpy/recovery.py validation/fixtures/recovery/rocketpy-descent.json
 generate validation/oracles/rocketpy/flight.py validation/fixtures/flight/rocketpy-whole-flight.json
 
+# The committed report was written on macOS, and another platform rounds a whole flight's last
+# digits differently, so the report is rewritten only when this run does not reproduce it
+# (`cargo xtask validate --check`, to the digits the platforms share). A fixture that moved at all
+# changes its hash, which the report records, so the report is then rewritten.
 status=0
-cargo xtask validate || status=$?
+if cargo xtask validate --check; then
+    echo "regenerate: the committed report reproduces; leaving it as it is"
+else
+    cargo xtask validate || status=$?
+fi
 
 # Only validation/ is written above, so only it is summarised: other local edits are not ours.
 echo
