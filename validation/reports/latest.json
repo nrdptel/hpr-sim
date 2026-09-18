@@ -13,6 +13,9 @@
     "flight-prometheus-2022-generic-motor",
     "flight-juno-iii",
     "flight-bella-lui",
+    "flight-juno-iii-calm",
+    "flight-calisto-tests-motor-at-minus-1.373-calm",
+    "flight-bella-lui-calm",
     "predicted-calisto-tests-motor-at-minus-1.373",
     "predicted-valetudo",
     "predicted-ndrt-2020-nose-to-tail",
@@ -1507,6 +1510,668 @@
       "verdict": "pass"
     },
     {
+      "case": "flight-juno-iii-calm",
+      "metric": "apogee_agl_m",
+      "measured": 2625.238169903605,
+      "reference": 2623.6551733524466,
+      "source": "rocketpy 1.13.0, validation/oracles/rocketpy/flight.py, case juno-iii-calm, metrics.apogee_agl_m",
+      "tolerance": {
+        "relative": 0.03
+      },
+      "difference": 1.5829965511584305,
+      "relative": 0.0006033554131794362,
+      "verdict": "pass"
+    },
+    {
+      "case": "flight-juno-iii-calm",
+      "metric": "apogee_drift_m",
+      "measured": 549.2040457918315,
+      "reference": 570.1293318246435,
+      "source": "rocketpy 1.13.0, validation/oracles/rocketpy/flight.py, case juno-iii-calm, metrics.apogee_drift_m",
+      "tolerance": {
+        "relative": 0.03
+      },
+      "difference": -20.925286032811982,
+      "relative": -0.03670270036071051,
+      "verdict": "fail"
+    },
+    {
+      "case": "flight-juno-iii-calm",
+      "metric": "apogee_time_s",
+      "measured": 24.580410231002233,
+      "reference": 24.563357624593394,
+      "source": "rocketpy 1.13.0, validation/oracles/rocketpy/flight.py, case juno-iii-calm, metrics.apogee_time_s",
+      "tolerance": {
+        "relative": 0.03
+      },
+      "difference": 0.01705260640883921,
+      "relative": 0.0006942294563087642,
+      "verdict": "pass"
+    },
+    {
+      "case": "flight-juno-iii-calm",
+      "metric": "burnout_altitude_agl_m",
+      "measured": 677.796678717947,
+      "reference": 677.3756089506928,
+      "source": "rocketpy 1.13.0, validation/oracles/rocketpy/flight.py, case juno-iii-calm, metrics.burnout_altitude_agl_m",
+      "tolerance": {
+        "relative": 0.03
+      },
+      "difference": 0.4210697672541528,
+      "relative": 0.0006216193227069726,
+      "verdict": "pass"
+    },
+    {
+      "case": "flight-juno-iii-calm",
+      "metric": "burnout_speed_m_s",
+      "measured": 224.9483500127436,
+      "reference": 225.05825793723602,
+      "source": "rocketpy 1.13.0, validation/oracles/rocketpy/flight.py, case juno-iii-calm, metrics.burnout_speed_m_s",
+      "tolerance": {
+        "relative": 0.03
+      },
+      "difference": -0.10990792449243258,
+      "relative": -0.0004883532179613848,
+      "verdict": "pass"
+    },
+    {
+      "case": "flight-juno-iii-calm",
+      "metric": "flight_time_s",
+      "measured": 136.2520149603046,
+      "reference": 136.19512047532703,
+      "source": "rocketpy 1.13.0, validation/oracles/rocketpy/flight.py, case juno-iii-calm, metrics.flight_time_s",
+      "tolerance": {
+        "relative": 0.03
+      },
+      "difference": 0.05689448497756189,
+      "relative": 0.00041774246227763227,
+      "verdict": "pass"
+    },
+    {
+      "case": "flight-juno-iii-calm",
+      "metric": "impact_speed_m_s",
+      "measured": 22.43370548929767,
+      "reference": 22.43343110827765,
+      "source": "rocketpy 1.13.0, validation/oracles/rocketpy/flight.py, case juno-iii-calm, metrics.impact_speed_m_s",
+      "tolerance": {
+        "relative": 0.03
+      },
+      "difference": 0.0002743810200200869,
+      "relative": 0.00001223089855028212,
+      "verdict": "pass"
+    },
+    {
+      "case": "flight-juno-iii-calm",
+      "metric": "landing_drift_m",
+      "measured": 627.2108124420358,
+      "reference": 651.2757477575,
+      "source": "rocketpy 1.13.0, validation/oracles/rocketpy/flight.py, case juno-iii-calm, metrics.landing_drift_m",
+      "tolerance": {
+        "relative": 0.03
+      },
+      "difference": -24.06493531546414,
+      "relative": -0.0369504551617737,
+      "verdict": "fail"
+    },
+    {
+      "case": "flight-juno-iii-calm",
+      "metric": "max_acceleration_m_s2",
+      "measured": 52.43950229892471,
+      "reference": 52.44986167988786,
+      "source": "rocketpy 1.13.0, validation/oracles/rocketpy/flight.py, case juno-iii-calm, metrics.max_acceleration_m_s2",
+      "tolerance": {
+        "relative": 0.03
+      },
+      "difference": -0.01035938096315192,
+      "relative": -0.00019751016745053252,
+      "verdict": "pass"
+    },
+    {
+      "case": "flight-juno-iii-calm",
+      "metric": "max_acceleration_power_on_m_s2",
+      "measured": 52.43950229892471,
+      "reference": 52.44986167988786,
+      "source": "rocketpy 1.13.0, validation/oracles/rocketpy/flight.py, case juno-iii-calm, metrics.max_acceleration_power_on_m_s2",
+      "tolerance": {
+        "relative": 0.03
+      },
+      "difference": -0.01035938096315192,
+      "relative": -0.00019751016745053252,
+      "verdict": "pass"
+    },
+    {
+      "case": "flight-juno-iii-calm",
+      "metric": "max_acceleration_time_s",
+      "measured": 1.856,
+      "reference": 1.856666245689186,
+      "source": "rocketpy 1.13.0, validation/oracles/rocketpy/flight.py, case juno-iii-calm, metrics.max_acceleration_time_s",
+      "tolerance": {
+        "relative": 0.03
+      },
+      "difference": -0.0006662456891859403,
+      "relative": -0.0003588397703318148,
+      "verdict": "pass"
+    },
+    {
+      "case": "flight-juno-iii-calm",
+      "metric": "max_mach",
+      "measured": 0.6854916207639155,
+      "reference": 0.6866744259327039,
+      "source": "rocketpy 1.13.0, validation/oracles/rocketpy/flight.py, case juno-iii-calm, metrics.max_mach",
+      "tolerance": {
+        "relative": 0.03
+      },
+      "difference": -0.0011828051687884367,
+      "relative": -0.001722512334985889,
+      "verdict": "pass"
+    },
+    {
+      "case": "flight-juno-iii-calm",
+      "metric": "max_speed_m_s",
+      "measured": 227.67740545430027,
+      "reference": 227.75524050046488,
+      "source": "rocketpy 1.13.0, validation/oracles/rocketpy/flight.py, case juno-iii-calm, metrics.max_speed_m_s",
+      "tolerance": {
+        "relative": 0.03
+      },
+      "difference": -0.07783504616460846,
+      "relative": -0.0003417486508480563,
+      "verdict": "pass"
+    },
+    {
+      "case": "flight-juno-iii-calm",
+      "metric": "rail_exit_speed_m_s",
+      "measured": 18.21096468436581,
+      "reference": 18.21134983694347,
+      "source": "rocketpy 1.13.0, validation/oracles/rocketpy/flight.py, case juno-iii-calm, metrics.rail_exit_speed_m_s",
+      "tolerance": {
+        "relative": 0.03
+      },
+      "difference": -0.0003851525776603637,
+      "relative": -0.000021149040631740804,
+      "verdict": "pass"
+    },
+    {
+      "case": "flight-juno-iii-calm",
+      "metric": "rail_exit_time_s",
+      "measured": 0.4440594271205929,
+      "reference": 0.44466710149675975,
+      "source": "rocketpy 1.13.0, validation/oracles/rocketpy/flight.py, case juno-iii-calm, metrics.rail_exit_time_s",
+      "tolerance": {
+        "relative": 0.03
+      },
+      "difference": -0.0006076743761668779,
+      "relative": -0.0013665827179960737,
+      "verdict": "pass"
+    },
+    {
+      "case": "flight-juno-iii-calm",
+      "metric": "series_height_rms_m",
+      "measured": 1.2968712671942988,
+      "reference": 0.0,
+      "source": "0, exact agreement with validation/oracles/rocketpy/flight.py, case juno-iii-calm, series: the RMS of hpr's value less the reference's at its times",
+      "tolerance": {
+        "absolute": 78.7
+      },
+      "difference": 1.2968712671942988,
+      "relative": null,
+      "verdict": "pass"
+    },
+    {
+      "case": "flight-juno-iii-calm",
+      "metric": "series_speed_rms_m_s",
+      "measured": 0.15601240483109885,
+      "reference": 0.0,
+      "source": "0, exact agreement with validation/oracles/rocketpy/flight.py, case juno-iii-calm, series: the RMS of hpr's value less the reference's at its times",
+      "tolerance": {
+        "absolute": 6.8
+      },
+      "difference": 0.15601240483109885,
+      "relative": null,
+      "verdict": "pass"
+    },
+    {
+      "case": "flight-calisto-tests-motor-at-minus-1.373-calm",
+      "metric": "apogee_agl_m",
+      "measured": 2615.5134550941275,
+      "reference": 2615.6062671638006,
+      "source": "rocketpy 1.13.0, validation/oracles/rocketpy/flight.py, case calisto-tests-motor-at-minus-1.373-calm, metrics.apogee_agl_m",
+      "tolerance": {
+        "relative": 0.03
+      },
+      "difference": -0.09281206967307298,
+      "relative": -0.000035483960578559314,
+      "verdict": "pass"
+    },
+    {
+      "case": "flight-calisto-tests-motor-at-minus-1.373-calm",
+      "metric": "apogee_drift_m",
+      "measured": 447.77112174923724,
+      "reference": 453.47538275006247,
+      "source": "rocketpy 1.13.0, validation/oracles/rocketpy/flight.py, case calisto-tests-motor-at-minus-1.373-calm, metrics.apogee_drift_m",
+      "tolerance": {
+        "relative": 0.03
+      },
+      "difference": -5.704261000825227,
+      "relative": -0.012578987124355519,
+      "verdict": "pass"
+    },
+    {
+      "case": "flight-calisto-tests-motor-at-minus-1.373-calm",
+      "metric": "apogee_time_s",
+      "measured": 22.89162950620069,
+      "reference": 22.86975041810538,
+      "source": "rocketpy 1.13.0, validation/oracles/rocketpy/flight.py, case calisto-tests-motor-at-minus-1.373-calm, metrics.apogee_time_s",
+      "tolerance": {
+        "relative": 0.03
+      },
+      "difference": 0.021879088095310806,
+      "relative": 0.000956682416524743,
+      "verdict": "pass"
+    },
+    {
+      "case": "flight-calisto-tests-motor-at-minus-1.373-calm",
+      "metric": "burnout_altitude_agl_m",
+      "measured": 684.5037613711118,
+      "reference": 684.4668011831222,
+      "source": "rocketpy 1.13.0, validation/oracles/rocketpy/flight.py, case calisto-tests-motor-at-minus-1.373-calm, metrics.burnout_altitude_agl_m",
+      "tolerance": {
+        "relative": 0.03
+      },
+      "difference": 0.036960187989507176,
+      "relative": 0.000053998510849058476,
+      "verdict": "pass"
+    },
+    {
+      "case": "flight-calisto-tests-motor-at-minus-1.373-calm",
+      "metric": "burnout_speed_m_s",
+      "measured": 235.87247909006066,
+      "reference": 235.94741829722258,
+      "source": "rocketpy 1.13.0, validation/oracles/rocketpy/flight.py, case calisto-tests-motor-at-minus-1.373-calm, metrics.burnout_speed_m_s",
+      "tolerance": {
+        "relative": 0.03
+      },
+      "difference": -0.07493920716191838,
+      "relative": -0.00031760977807147514,
+      "verdict": "pass"
+    },
+    {
+      "case": "flight-calisto-tests-motor-at-minus-1.373-calm",
+      "metric": "flight_time_s",
+      "measured": 260.94548175039756,
+      "reference": 260.70890634386546,
+      "source": "rocketpy 1.13.0, validation/oracles/rocketpy/flight.py, case calisto-tests-motor-at-minus-1.373-calm, metrics.flight_time_s",
+      "tolerance": {
+        "relative": 0.03
+      },
+      "difference": 0.23657540653209708,
+      "relative": 0.0009074312414170569,
+      "verdict": "pass"
+    },
+    {
+      "case": "flight-calisto-tests-motor-at-minus-1.373-calm",
+      "metric": "impact_speed_m_s",
+      "measured": 5.456113619623795,
+      "reference": 5.456270497394508,
+      "source": "rocketpy 1.13.0, validation/oracles/rocketpy/flight.py, case calisto-tests-motor-at-minus-1.373-calm, metrics.impact_speed_m_s",
+      "tolerance": {
+        "relative": 0.03
+      },
+      "difference": -0.00015687777071260456,
+      "relative": -0.000028751831638024037,
+      "verdict": "pass"
+    },
+    {
+      "case": "flight-calisto-tests-motor-at-minus-1.373-calm",
+      "metric": "landing_drift_m",
+      "measured": 508.4157495304875,
+      "reference": 515.8345309862844,
+      "source": "rocketpy 1.13.0, validation/oracles/rocketpy/flight.py, case calisto-tests-motor-at-minus-1.373-calm, metrics.landing_drift_m",
+      "tolerance": {
+        "relative": 0.03
+      },
+      "difference": -7.418781455796932,
+      "relative": -0.014382095439814963,
+      "verdict": "pass"
+    },
+    {
+      "case": "flight-calisto-tests-motor-at-minus-1.373-calm",
+      "metric": "max_acceleration_m_s2",
+      "measured": 112.34792028497083,
+      "reference": 112.2689703951554,
+      "source": "rocketpy 1.13.0, validation/oracles/rocketpy/flight.py, case calisto-tests-motor-at-minus-1.373-calm, metrics.max_acceleration_m_s2",
+      "tolerance": {
+        "relative": 0.03
+      },
+      "difference": 0.07894988981541928,
+      "relative": 0.000703220930391877,
+      "verdict": "pass"
+    },
+    {
+      "case": "flight-calisto-tests-motor-at-minus-1.373-calm",
+      "metric": "max_acceleration_power_on_m_s2",
+      "measured": 112.34792028497083,
+      "reference": 112.2689703951554,
+      "source": "rocketpy 1.13.0, validation/oracles/rocketpy/flight.py, case calisto-tests-motor-at-minus-1.373-calm, metrics.max_acceleration_power_on_m_s2",
+      "tolerance": {
+        "relative": 0.03
+      },
+      "difference": 0.07894988981541928,
+      "relative": 0.000703220930391877,
+      "verdict": "pass"
+    },
+    {
+      "case": "flight-calisto-tests-motor-at-minus-1.373-calm",
+      "metric": "max_acceleration_time_s",
+      "measured": 0.05,
+      "reference": 1.5680781311068193,
+      "source": "rocketpy 1.13.0, validation/oracles/rocketpy/flight.py, case calisto-tests-motor-at-minus-1.373-calm, metrics.max_acceleration_time_s",
+      "tolerance": {},
+      "difference": -1.5180781311068192,
+      "relative": -0.9681138337381774,
+      "verdict": "not_scored",
+      "note": "two peaks 0.9% apart in RocketPy: 111.18 m/s^2 on the rail at 0.05 s and 112.26 at 1.568 s, so its maximum is the later one; hpr's rail equation adds 1.16 m/s^2 of variable-mass terms at 0.05 s (thrust and mass equal to five digits), which lifts that peak to 112.35 and moves the maximum's time from one peak to the other. The size is gated."
+    },
+    {
+      "case": "flight-calisto-tests-motor-at-minus-1.373-calm",
+      "metric": "max_mach",
+      "measured": 0.7322074452643894,
+      "reference": 0.7333203128182108,
+      "source": "rocketpy 1.13.0, validation/oracles/rocketpy/flight.py, case calisto-tests-motor-at-minus-1.373-calm, metrics.max_mach",
+      "tolerance": {
+        "relative": 0.03
+      },
+      "difference": -0.0011128675538213395,
+      "relative": -0.0015175736091974559,
+      "verdict": "pass"
+    },
+    {
+      "case": "flight-calisto-tests-motor-at-minus-1.373-calm",
+      "metric": "max_speed_m_s",
+      "measured": 243.78036290052285,
+      "reference": 243.84036654401277,
+      "source": "rocketpy 1.13.0, validation/oracles/rocketpy/flight.py, case calisto-tests-motor-at-minus-1.373-calm, metrics.max_speed_m_s",
+      "tolerance": {
+        "relative": 0.03
+      },
+      "difference": -0.06000364348992093,
+      "relative": -0.0002460775643522927,
+      "verdict": "pass"
+    },
+    {
+      "case": "flight-calisto-tests-motor-at-minus-1.373-calm",
+      "metric": "rail_exit_speed_m_s",
+      "measured": 28.200886578956258,
+      "reference": 28.201097923815514,
+      "source": "rocketpy 1.13.0, validation/oracles/rocketpy/flight.py, case calisto-tests-motor-at-minus-1.373-calm, metrics.rail_exit_speed_m_s",
+      "tolerance": {
+        "relative": 0.03
+      },
+      "difference": -0.00021134485925600188,
+      "relative": -7.4942067797127675e-6,
+      "verdict": "pass"
+    },
+    {
+      "case": "flight-calisto-tests-motor-at-minus-1.373-calm",
+      "metric": "rail_exit_time_s",
+      "measured": 0.294478618581626,
+      "reference": 0.29469573955218215,
+      "source": "rocketpy 1.13.0, validation/oracles/rocketpy/flight.py, case calisto-tests-motor-at-minus-1.373-calm, metrics.rail_exit_time_s",
+      "tolerance": {
+        "relative": 0.03
+      },
+      "difference": -0.00021712097055615054,
+      "relative": -0.0007367631811918498,
+      "verdict": "pass"
+    },
+    {
+      "case": "flight-calisto-tests-motor-at-minus-1.373-calm",
+      "metric": "series_height_rms_m",
+      "measured": 1.1411183898485564,
+      "reference": 0.0,
+      "source": "0, exact agreement with validation/oracles/rocketpy/flight.py, case calisto-tests-motor-at-minus-1.373-calm, series: the RMS of hpr's value less the reference's at its times",
+      "tolerance": {
+        "absolute": 78.4
+      },
+      "difference": 1.1411183898485564,
+      "relative": null,
+      "verdict": "pass"
+    },
+    {
+      "case": "flight-calisto-tests-motor-at-minus-1.373-calm",
+      "metric": "series_speed_rms_m_s",
+      "measured": 0.09462919670188448,
+      "reference": 0.0,
+      "source": "0, exact agreement with validation/oracles/rocketpy/flight.py, case calisto-tests-motor-at-minus-1.373-calm, series: the RMS of hpr's value less the reference's at its times",
+      "tolerance": {
+        "absolute": 7.3
+      },
+      "difference": 0.09462919670188448,
+      "relative": null,
+      "verdict": "pass"
+    },
+    {
+      "case": "flight-bella-lui-calm",
+      "metric": "apogee_agl_m",
+      "measured": 540.3408647394375,
+      "reference": 540.5000345404638,
+      "source": "rocketpy 1.13.0, validation/oracles/rocketpy/flight.py, case bella-lui-calm, metrics.apogee_agl_m",
+      "tolerance": {
+        "relative": 0.03
+      },
+      "difference": -0.15916980102633715,
+      "relative": -0.0002944861995460633,
+      "verdict": "pass"
+    },
+    {
+      "case": "flight-bella-lui-calm",
+      "metric": "apogee_drift_m",
+      "measured": 21.18534837694643,
+      "reference": 21.528196923057262,
+      "source": "rocketpy 1.13.0, validation/oracles/rocketpy/flight.py, case bella-lui-calm, metrics.apogee_drift_m",
+      "tolerance": {
+        "relative": 0.03
+      },
+      "difference": -0.34284854611083304,
+      "relative": -0.01592555787817201,
+      "verdict": "pass"
+    },
+    {
+      "case": "flight-bella-lui-calm",
+      "metric": "apogee_time_s",
+      "measured": 11.259094538434757,
+      "reference": 11.260554205754698,
+      "source": "rocketpy 1.13.0, validation/oracles/rocketpy/flight.py, case bella-lui-calm, metrics.apogee_time_s",
+      "tolerance": {
+        "relative": 0.03
+      },
+      "difference": -0.0014596673199402943,
+      "relative": -0.000129626596814776,
+      "verdict": "pass"
+    },
+    {
+      "case": "flight-bella-lui-calm",
+      "metric": "burnout_altitude_agl_m",
+      "measured": 120.70028556235839,
+      "reference": 120.69128079993891,
+      "source": "rocketpy 1.13.0, validation/oracles/rocketpy/flight.py, case bella-lui-calm, metrics.burnout_altitude_agl_m",
+      "tolerance": {
+        "relative": 0.03
+      },
+      "difference": 0.009004762419479562,
+      "relative": 0.00007460988366182057,
+      "verdict": "pass"
+    },
+    {
+      "case": "flight-bella-lui-calm",
+      "metric": "burnout_speed_m_s",
+      "measured": 96.78834860044772,
+      "reference": 96.81262585665164,
+      "source": "rocketpy 1.13.0, validation/oracles/rocketpy/flight.py, case bella-lui-calm, metrics.burnout_speed_m_s",
+      "tolerance": {
+        "relative": 0.03
+      },
+      "difference": -0.02427725620391641,
+      "relative": -0.00025076539334717787,
+      "verdict": "pass"
+    },
+    {
+      "case": "flight-bella-lui-calm",
+      "metric": "flight_time_s",
+      "measured": 39.74773250454861,
+      "reference": 39.77360995536791,
+      "source": "rocketpy 1.13.0, validation/oracles/rocketpy/flight.py, case bella-lui-calm, metrics.flight_time_s",
+      "tolerance": {
+        "relative": 0.03
+      },
+      "difference": -0.025877450819301373,
+      "relative": -0.0006506186098857972,
+      "verdict": "pass"
+    },
+    {
+      "case": "flight-bella-lui-calm",
+      "metric": "impact_speed_m_s",
+      "measured": 19.678330352260613,
+      "reference": 19.674191634213212,
+      "source": "rocketpy 1.13.0, validation/oracles/rocketpy/flight.py, case bella-lui-calm, metrics.impact_speed_m_s",
+      "tolerance": {
+        "relative": 0.03
+      },
+      "difference": 0.004138718047400403,
+      "relative": 0.0002103628003807392,
+      "verdict": "pass"
+    },
+    {
+      "case": "flight-bella-lui-calm",
+      "metric": "landing_drift_m",
+      "measured": 26.94347555856239,
+      "reference": 27.65796981528261,
+      "source": "rocketpy 1.13.0, validation/oracles/rocketpy/flight.py, case bella-lui-calm, metrics.landing_drift_m",
+      "tolerance": {
+        "relative": 0.03
+      },
+      "difference": -0.7144942567202186,
+      "relative": -0.025833214132926694,
+      "verdict": "pass"
+    },
+    {
+      "case": "flight-bella-lui-calm",
+      "metric": "max_acceleration_m_s2",
+      "measured": 74.13775139538154,
+      "reference": 72.84290804213326,
+      "source": "rocketpy 1.13.0, validation/oracles/rocketpy/flight.py, case bella-lui-calm, metrics.max_acceleration_m_s2",
+      "tolerance": {
+        "relative": 0.03
+      },
+      "difference": 1.2948433532482824,
+      "relative": 0.017775832789368163,
+      "verdict": "pass"
+    },
+    {
+      "case": "flight-bella-lui-calm",
+      "metric": "max_acceleration_power_on_m_s2",
+      "measured": 74.13775139538154,
+      "reference": 72.84290804213326,
+      "source": "rocketpy 1.13.0, validation/oracles/rocketpy/flight.py, case bella-lui-calm, metrics.max_acceleration_power_on_m_s2",
+      "tolerance": {
+        "relative": 0.03
+      },
+      "difference": 1.2948433532482824,
+      "relative": 0.017775832789368163,
+      "verdict": "pass"
+    },
+    {
+      "case": "flight-bella-lui-calm",
+      "metric": "max_acceleration_time_s",
+      "measured": 0.007,
+      "reference": 0.0069999243356728075,
+      "source": "rocketpy 1.13.0, validation/oracles/rocketpy/flight.py, case bella-lui-calm, metrics.max_acceleration_time_s",
+      "tolerance": {
+        "relative": 0.03
+      },
+      "difference": 7.566432719263716e-8,
+      "relative": 0.000010809306438790895,
+      "verdict": "pass"
+    },
+    {
+      "case": "flight-bella-lui-calm",
+      "metric": "max_mach",
+      "measured": 0.2903020681391776,
+      "reference": 0.2904635321696235,
+      "source": "rocketpy 1.13.0, validation/oracles/rocketpy/flight.py, case bella-lui-calm, metrics.max_mach",
+      "tolerance": {
+        "relative": 0.03
+      },
+      "difference": -0.0001614640304459236,
+      "relative": -0.0005558840011338587,
+      "verdict": "pass"
+    },
+    {
+      "case": "flight-bella-lui-calm",
+      "metric": "max_speed_m_s",
+      "measured": 98.21682541682084,
+      "reference": 98.23482471233498,
+      "source": "rocketpy 1.13.0, validation/oracles/rocketpy/flight.py, case bella-lui-calm, metrics.max_speed_m_s",
+      "tolerance": {
+        "relative": 0.03
+      },
+      "difference": -0.017999295514144364,
+      "relative": -0.00018322723705012383,
+      "verdict": "pass"
+    },
+    {
+      "case": "flight-bella-lui-calm",
+      "metric": "rail_exit_speed_m_s",
+      "measured": 17.000050489212796,
+      "reference": 17.00006385128864,
+      "source": "rocketpy 1.13.0, validation/oracles/rocketpy/flight.py, case bella-lui-calm, metrics.rail_exit_speed_m_s",
+      "tolerance": {
+        "relative": 0.03
+      },
+      "difference": -0.000013362075844014498,
+      "relative": -7.860015092238389e-7,
+      "verdict": "pass"
+    },
+    {
+      "case": "flight-bella-lui-calm",
+      "metric": "rail_exit_time_s",
+      "measured": 0.3436281763565557,
+      "reference": 0.3437386338597815,
+      "source": "rocketpy 1.13.0, validation/oracles/rocketpy/flight.py, case bella-lui-calm, metrics.rail_exit_time_s",
+      "tolerance": {
+        "relative": 0.03
+      },
+      "difference": -0.00011045750322580261,
+      "relative": -0.00032134154367664315,
+      "verdict": "pass"
+    },
+    {
+      "case": "flight-bella-lui-calm",
+      "metric": "series_height_rms_m",
+      "measured": 0.3899017277409139,
+      "reference": 0.0,
+      "source": "0, exact agreement with validation/oracles/rocketpy/flight.py, case bella-lui-calm, series: the RMS of hpr's value less the reference's at its times",
+      "tolerance": {
+        "absolute": 16.2
+      },
+      "difference": 0.3899017277409139,
+      "relative": null,
+      "verdict": "pass"
+    },
+    {
+      "case": "flight-bella-lui-calm",
+      "metric": "series_speed_rms_m_s",
+      "measured": 0.02457489537648781,
+      "reference": 0.0,
+      "source": "0, exact agreement with validation/oracles/rocketpy/flight.py, case bella-lui-calm, series: the RMS of hpr's value less the reference's at its times",
+      "tolerance": {
+        "absolute": 2.9
+      },
+      "difference": 0.02457489537648781,
+      "relative": null,
+      "verdict": "pass"
+    },
+    {
       "case": "predicted-calisto-tests-motor-at-minus-1.373",
       "metric": "apogee_agl_m",
       "measured": 2803.562023621996,
@@ -2685,7 +3350,7 @@
       "generator": "validation/oracles/rocketpy/flight.py",
       "command": "refs/venv/bin/python validation/oracles/rocketpy/flight.py",
       "file": "validation/fixtures/flight/rocketpy-whole-flight.json",
-      "sha256": "4ee2f08195ed1b2980f18612858e543cbd0b6829db0107e13ef351a9cb6487fc",
+      "sha256": "92bdf4b56f411a0f198bbb36c3154b7f86608db8a2f7cb435951ae598ccdde81",
       "model": "Flight.u_dot_generalized (flight.py:2471-2709, the default equations_of_motion='standard'): RocketPy's 6-DOF variable-mass rigid body from the rail to apogee, then its point-mass parachute phase (u_dot_parachute, flight.py:2710-2790), under the drag table this script declares",
       "overrides": "the drag is the constant C_D0 this script declares, handed to power_off_drag and power_on_drag, because RocketPy's own exports carry their own terms and are never committed (ADR-009); every parachute's noise is zero (it draws from the global np.random), and the lags are the examples' own"
     },
@@ -2695,7 +3360,7 @@
       "generator": "validation/oracles/rocketpy/flight.py",
       "command": "refs/venv/bin/python validation/oracles/rocketpy/flight.py",
       "file": "validation/fixtures/flight/rocketpy-whole-flight.json",
-      "sha256": "4ee2f08195ed1b2980f18612858e543cbd0b6829db0107e13ef351a9cb6487fc",
+      "sha256": "92bdf4b56f411a0f198bbb36c3154b7f86608db8a2f7cb435951ae598ccdde81",
       "model": "Flight.u_dot_generalized (flight.py:2471-2709, the default equations_of_motion='standard'): RocketPy's 6-DOF variable-mass rigid body from the rail to apogee, then its point-mass parachute phase (u_dot_parachute, flight.py:2710-2790), under the drag table this script declares",
       "overrides": "the drag is the constant C_D0 this script declares, handed to power_off_drag and power_on_drag, because RocketPy's own exports carry their own terms and are never committed (ADR-009); every parachute's noise is zero (it draws from the global np.random), and the lags are the examples' own"
     },
@@ -2705,7 +3370,7 @@
       "generator": "validation/oracles/rocketpy/flight.py",
       "command": "refs/venv/bin/python validation/oracles/rocketpy/flight.py",
       "file": "validation/fixtures/flight/rocketpy-whole-flight.json",
-      "sha256": "4ee2f08195ed1b2980f18612858e543cbd0b6829db0107e13ef351a9cb6487fc",
+      "sha256": "92bdf4b56f411a0f198bbb36c3154b7f86608db8a2f7cb435951ae598ccdde81",
       "model": "Flight.u_dot_generalized (flight.py:2471-2709, the default equations_of_motion='standard'): RocketPy's 6-DOF variable-mass rigid body from the rail to apogee, then its point-mass parachute phase (u_dot_parachute, flight.py:2710-2790), under the drag table this script declares",
       "overrides": "the drag is the constant C_D0 this script declares, handed to power_off_drag and power_on_drag, because RocketPy's own exports carry their own terms and are never committed (ADR-009); every parachute's noise is zero (it draws from the global np.random), and the lags are the examples' own"
     },
@@ -2715,7 +3380,7 @@
       "generator": "validation/oracles/rocketpy/flight.py",
       "command": "refs/venv/bin/python validation/oracles/rocketpy/flight.py",
       "file": "validation/fixtures/flight/rocketpy-whole-flight.json",
-      "sha256": "4ee2f08195ed1b2980f18612858e543cbd0b6829db0107e13ef351a9cb6487fc",
+      "sha256": "92bdf4b56f411a0f198bbb36c3154b7f86608db8a2f7cb435951ae598ccdde81",
       "model": "Flight.u_dot_generalized (flight.py:2471-2709, the default equations_of_motion='standard'): RocketPy's 6-DOF variable-mass rigid body from the rail to apogee, then its point-mass parachute phase (u_dot_parachute, flight.py:2710-2790), under the drag table this script declares",
       "overrides": "the drag is the constant C_D0 this script declares, handed to power_off_drag and power_on_drag, because RocketPy's own exports carry their own terms and are never committed (ADR-009); every parachute's noise is zero (it draws from the global np.random), and the lags are the examples' own"
     },
@@ -2725,7 +3390,7 @@
       "generator": "validation/oracles/rocketpy/flight.py",
       "command": "refs/venv/bin/python validation/oracles/rocketpy/flight.py",
       "file": "validation/fixtures/flight/rocketpy-whole-flight.json",
-      "sha256": "4ee2f08195ed1b2980f18612858e543cbd0b6829db0107e13ef351a9cb6487fc",
+      "sha256": "92bdf4b56f411a0f198bbb36c3154b7f86608db8a2f7cb435951ae598ccdde81",
       "model": "Flight.u_dot_generalized (flight.py:2471-2709, the default equations_of_motion='standard'): RocketPy's 6-DOF variable-mass rigid body from the rail to apogee, then its point-mass parachute phase (u_dot_parachute, flight.py:2710-2790), under the drag table this script declares",
       "overrides": "the drag is the constant C_D0 this script declares, handed to power_off_drag and power_on_drag, because RocketPy's own exports carry their own terms and are never committed (ADR-009); every parachute's noise is zero (it draws from the global np.random), and the lags are the examples' own"
     },
@@ -2735,7 +3400,37 @@
       "generator": "validation/oracles/rocketpy/flight.py",
       "command": "refs/venv/bin/python validation/oracles/rocketpy/flight.py",
       "file": "validation/fixtures/flight/rocketpy-whole-flight.json",
-      "sha256": "4ee2f08195ed1b2980f18612858e543cbd0b6829db0107e13ef351a9cb6487fc",
+      "sha256": "92bdf4b56f411a0f198bbb36c3154b7f86608db8a2f7cb435951ae598ccdde81",
+      "model": "Flight.u_dot_generalized (flight.py:2471-2709, the default equations_of_motion='standard'): RocketPy's 6-DOF variable-mass rigid body from the rail to apogee, then its point-mass parachute phase (u_dot_parachute, flight.py:2710-2790), under the drag table this script declares",
+      "overrides": "the drag is the constant C_D0 this script declares, handed to power_off_drag and power_on_drag, because RocketPy's own exports carry their own terms and are never committed (ADR-009); every parachute's noise is zero (it draws from the global np.random), and the lags are the examples' own"
+    },
+    {
+      "case": "flight-juno-iii-calm",
+      "oracle": "rocketpy 1.13.0",
+      "generator": "validation/oracles/rocketpy/flight.py",
+      "command": "refs/venv/bin/python validation/oracles/rocketpy/flight.py",
+      "file": "validation/fixtures/flight/rocketpy-whole-flight.json",
+      "sha256": "92bdf4b56f411a0f198bbb36c3154b7f86608db8a2f7cb435951ae598ccdde81",
+      "model": "Flight.u_dot_generalized (flight.py:2471-2709, the default equations_of_motion='standard'): RocketPy's 6-DOF variable-mass rigid body from the rail to apogee, then its point-mass parachute phase (u_dot_parachute, flight.py:2710-2790), under the drag table this script declares",
+      "overrides": "the drag is the constant C_D0 this script declares, handed to power_off_drag and power_on_drag, because RocketPy's own exports carry their own terms and are never committed (ADR-009); every parachute's noise is zero (it draws from the global np.random), and the lags are the examples' own"
+    },
+    {
+      "case": "flight-calisto-tests-motor-at-minus-1.373-calm",
+      "oracle": "rocketpy 1.13.0",
+      "generator": "validation/oracles/rocketpy/flight.py",
+      "command": "refs/venv/bin/python validation/oracles/rocketpy/flight.py",
+      "file": "validation/fixtures/flight/rocketpy-whole-flight.json",
+      "sha256": "92bdf4b56f411a0f198bbb36c3154b7f86608db8a2f7cb435951ae598ccdde81",
+      "model": "Flight.u_dot_generalized (flight.py:2471-2709, the default equations_of_motion='standard'): RocketPy's 6-DOF variable-mass rigid body from the rail to apogee, then its point-mass parachute phase (u_dot_parachute, flight.py:2710-2790), under the drag table this script declares",
+      "overrides": "the drag is the constant C_D0 this script declares, handed to power_off_drag and power_on_drag, because RocketPy's own exports carry their own terms and are never committed (ADR-009); every parachute's noise is zero (it draws from the global np.random), and the lags are the examples' own"
+    },
+    {
+      "case": "flight-bella-lui-calm",
+      "oracle": "rocketpy 1.13.0",
+      "generator": "validation/oracles/rocketpy/flight.py",
+      "command": "refs/venv/bin/python validation/oracles/rocketpy/flight.py",
+      "file": "validation/fixtures/flight/rocketpy-whole-flight.json",
+      "sha256": "92bdf4b56f411a0f198bbb36c3154b7f86608db8a2f7cb435951ae598ccdde81",
       "model": "Flight.u_dot_generalized (flight.py:2471-2709, the default equations_of_motion='standard'): RocketPy's 6-DOF variable-mass rigid body from the rail to apogee, then its point-mass parachute phase (u_dot_parachute, flight.py:2710-2790), under the drag table this script declares",
       "overrides": "the drag is the constant C_D0 this script declares, handed to power_off_drag and power_on_drag, because RocketPy's own exports carry their own terms and are never committed (ADR-009); every parachute's noise is zero (it draws from the global np.random), and the lags are the examples' own"
     },
