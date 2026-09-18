@@ -56,11 +56,9 @@ COMMAND = "refs/venv/bin/python validation/oracles/rocketpy/flight.py"
 # see the module docstring. Constant, so that nothing about the curve's shape is invented.
 DECLARED_CD0 = [[0.0, 0.5], [3.0, 0.5]]
 
-# Tighter than RocketPy's defaults (rtol 1e-6, atol 1e-3 on position), so the reference is the
-# model's answer and not the solver's, and a looser run of every case to show how much is which.
 # RocketPy's thrust `Function` extrapolates to zero, and every bundled substitute curve starts at
 # t = 0.008 s, so thrust(0) is exactly 0. On the rail `Flight.udot_rail1` then clamps the
-# acceleration to zero (flight.py:1862-1871), so the derivative at the initial state is the zero
+# acceleration to zero (RocketPy's rocketpy/simulation/flight.py:1862-1871, not this file), so the derivative at the initial state is the zero
 # vector. With RocketPy's defaults (`time_overshoot=True`, `max_time_step=inf`) the rail phase's
 # bound is `max_time`, and LSODA, handed a zero derivative and a 6000 s horizon, takes one step
 # straight over the whole burn: the rocket never leaves the rail and the run reports apogee 0.
