@@ -97,7 +97,7 @@
   when* bullets are the four above, unchanged: the first bullet's checks are shared between M0.4a
   (links, bare labels) and M0.4b (*In short*).
 
-  - [ ] **M0.4a The site and its link checks.** An ADR picks the tool (mdBook is the first
+  - [x] **M0.4a The site and its link checks.** An ADR picks the tool (mdBook is the first
     candidate) and the layout. `docs/physics/` and `docs/format/` move into the site's source, so
     each page has one source, and equations render on the site and on GitHub. *Start here* page.
 
