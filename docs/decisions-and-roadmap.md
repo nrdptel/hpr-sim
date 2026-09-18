@@ -38,10 +38,14 @@ new record replaces it and points back. All of them are in the [decision log][de
 ## The roadmap
 
 The [roadmap][roadmap] is the ordered plan of work. It is split into phases, and each phase into
-milestones. A milestone's id is `M`, the phase's group number, a dot and its place, such as the
-second aerodynamics milestone, [M1.8][roadmap]. A milestone too big to ship at once is split into
-increments with a letter, and sometimes a digit after it, such as [M2.1b2][roadmap]. Each one ends
-with *done when* conditions, and it is checked off only when all of them hold.
+milestones. A milestone's id is `M`, a topic number, a dot and its place in that topic. The topic
+is not the phase: 0 is foundations, 1 physics, 2 validation, 3 file formats, 4 library interfaces,
+5 online data, 6 Monte Carlo and optimization, 7 flight logs, 8 design help and 9 the app. Phases
+mix topics, so [M2.3][roadmap], the real-flights milestone, sits in Phase 1 beside
+[M1.8][roadmap], the second aerodynamics milestone. A milestone too big to ship at once is split
+into increments with a letter, and sometimes a digit after it, such as [M2.1b2][roadmap]. Each one
+ends with *done when* conditions, and it is checked off only when all of them hold. To find one,
+search the roadmap for its id.
 
 The work runs in this order: the physics and its validation first, then the ways to use it, then
 the analysis tools, and an app last.

@@ -5,14 +5,16 @@
 - **What it models:** the directions and signs the whole simulator shares: a frame fixed to the
   Earth at its centre, the launch-site frame (east, north, up), the rocket's body frame and its
   angle to the airflow, and its attitude (which way it points) and launch angles.
-- **Sources:** the NGA's WGS 84 standard, NGA.STND.0036 (2014); J. Solà, *Quaternion kinematics
-  for the error-state Kalman filter* (2017); RocketPy 1.13.0, for its launch-angle convention.
+- **Sources:** the WGS 84 standard, NGA.STND.0036 (2014), as in [Geodesy](geodesy.md); J. Solà,
+  *Quaternion kinematics for the error-state Kalman filter* (2017); RocketPy 1.13.0, for its
+  launch-angle convention.
 - **How well it is validated:** unit tests, and one check against another simulator: for 8 rail
   setups, launch angles give RocketPy's starting attitude to 1e-12 rad. Over 1e6 integration
   steps, attitude stays within 1e-9 rad of the exact answer. No real-flight check.
-- **What it leaves out:** sea level. Heights are above the WGS 84 ellipsoid, which lies up to
-  about 100 m from sea level. The rotation equations ignore the Earth's turn, at most
-  7.3e-5 rad/s ([ADR-011][adr-011], the rigid-body flight decision).
+- **What it leaves out:** heights are above the WGS 84 ellipsoid, not sea level; the two are up to
+  about 100 m apart. The attitude equations leave out the Earth's rotation rate, 7.3e-5 rad/s,
+  which is tiny next to a rocket's pitch rates ([ADR-011][adr-011], the rigid-body flight
+  decision).
 
 ## Code and sources
 

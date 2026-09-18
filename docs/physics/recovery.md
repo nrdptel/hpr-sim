@@ -9,14 +9,18 @@
   Carruthers and Filippone's streamer tests (2005) and the OpenRocket technical documentation for
   streamers and tumbling.
 - **How well it is validated:** the descent under a parachute matches RocketPy's for five example
-  rockets, from the same state near apogee: all 30 metrics within 3%, the largest +2.865%
-  ([validation report][report]). No parachute descent has been compared with a real flight.
-  Tumbling is −10% to +19% off its source's own drop tests, and the default streamer model reads
-  9% fast on the one flat streamer in Kidwell's drop tests.
-- **What it leaves out:** the drag overshoot and shock as a canopy opens (hpr's peak load is a
-  lower bound), added mass (air carried along) and airframe drag under a canopy, the swing (the
-  attitude freezes at deployment), and streamer pleats (the default model reads 58% fast on a
-  pleated one).
+  rockets, started from the same state near apogee, with RocketPy's gravity formula and its way of
+  interpolating the wind: all 30 metrics within 3%, the largest +2.865%
+  ([validation report][report]). Drift is measured from that shared start, not from the pad. No
+  descent has been compared with a real flight. Against measured drop tests, tumbling is −10 to
+  +19% off, and the default streamer model predicts a descent +9% faster than Kidwell's one flat
+  streamer.
+- **What it leaves out:** the drag overshoot and shock as a canopy opens: for a given deployment
+  speed hpr's peak load is a lower bound, so size hardware from Knacke. The deployment speed can
+  itself read high, because a separated body falls with no drag until its device opens, and the
+  airframe's drag under a canopy is left out too. Also left out: added mass (air carried along),
+  the swing (the attitude freezes at deployment), and streamer pleats (+58% fast on a pleated one).
+  Tumbling is used far outside its fit: 37 m/s for Valetudo, against 5.0 to 6.6 m/s.
 
 ## Code and sources
 
@@ -417,7 +421,7 @@ What still differs, and by how much:
   density, which the test gates at 5e-4.
 - **Gravity.** The same *magnitude*, and for a long time that was all this said. RocketPy's
   "Somigliana" formula is WGS 84 normal gravity and hpr's agrees with the fixture's samples to
-  1e-6 — but RocketPy applies it to the vertical axis alone (`Flight.u_dot_parachute`,
+  1e-8 (the worst of 23 is 4.7e-9 relative) — but RocketPy applies it to the vertical axis alone (`Flight.u_dot_parachute`,
   `flight.py:2777`, where only `az` carries a gravity term), while hpr's default
   `GravityModel::Ellipsoidal` uses the full normal-gravity **vector**, which above the ellipsoid
   leans a few parts in 10⁶ toward the pole: 4.0e-6 m/s² at Valetudo's site at ground level and

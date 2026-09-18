@@ -44,7 +44,8 @@ These parts are built and tested. Each page gives its sources, and most say what
 ## What doesn't work yet
 
 - **Nothing at or above Mach 1.** A flight that reaches Mach 1 stops with an error. From Mach 0.8
-  to 1 the aerodynamics are unvalidated extrapolations, and drag reads low from about Mach 0.6:
+  to 1 the aerodynamics are unvalidated extrapolations. Pressure drag is held at its low-speed
+  value, so from about Mach 0.6 it reads low against its own source's high-subsonic correction:
   for a 3:1 tangent ogive nose, by 4–5% of the drag coefficient at Mach 0.8. Transonic and
   supersonic aerodynamics are planned for [M1.8][roadmap], the second aerodynamics milestone.
 - **Small angles of attack only.** Nothing models stall, yet a flight uses the same models at
@@ -79,20 +80,24 @@ These parts are built and tested. Each page gives its sources, and most say what
   flights ([M2.3][roadmap]).
 - **The descent under a parachute matches RocketPy's.** Five of RocketPy's example rockets start
   from the same state near apogee in both codes, with the first parachute opening at once, the
-  same drag areas and wind, RocketPy's random noise off, and RocketPy's gravity formula. hpr's
-  descent time, landing speed and drift agree with RocketPy's within 3% on all 30 numbers
-  compared; the largest difference is 2.87%. That shows the two codes agree on the descent
+  same drag areas and wind, RocketPy's random noise off, and RocketPy's gravity formula and wind
+  interpolation. hpr's descent time, vertical landing speed and drift from that start agree with
+  RocketPy's within 3% on all 30 numbers compared; the largest difference is +2.865%. That shows the two codes agree on the descent
   physics, not that either matches a real flight. The committed [validation report][report] has
   every number, and [Recovery](physics/recovery.md) explains the comparison.
-- **Each model is tested against its published source**: printed tables, worked examples and
-  closed-form results. Each test states its tolerance. The known gaps:
-  - Drag at Mach 0.3, against the RASAero curves in RocketPy's examples, is within 10% in four of
-    seven cases. It is 18% low for Cavour under power, and 47% to 50% low for Valetudo
+- **Each model is tested on its own**: against exact answers, and where its source prints tables
+  or worked examples, against those; several parts also against RocketPy. Each test states its
+  tolerance. The largest known gaps:
+  - The aerodynamics were checked at Mach 0 (the normal force and centre of pressure) and at
+    Mach 0.3 (drag) only. Drag against the RASAero curves in RocketPy's examples, whose fins and
+    finish were guessed, is within 10% in four of seven cases. It is 18% low for Cavour under
+    power, and 47% to 50% low for Valetudo, whose table is 1.44 times its own OpenRocket export
     ([Aerodynamics](physics/aero.md)).
   - The normal-force slope of Barrowman's six-fin Recruiter example is 2.87% above his printed
-    value ([Aerodynamics](physics/aero.md)).
-  - Tumbling drag is −10% to +19% off its source's own drop tests
-    ([Recovery](physics/recovery.md)).
+    value, 3.42% on the fins alone ([Aerodynamics](physics/aero.md)).
+  - Tumbling drag is −10 to +19% off its source's own drop tests, and a separated body's
+    parachute opens at a higher speed than it would for real, because the body falls with no drag
+    until then ([Recovery](physics/recovery.md)).
 
 ## Reading these pages
 

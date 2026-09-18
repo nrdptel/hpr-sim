@@ -6,15 +6,18 @@
   push when flying at an angle to the airflow), the centre of pressure (where it acts) and drag.
 - **Sources:** Barrowman's 1966 report, 1967 thesis and Centuri TIR-33 (1970); for drag, mainly
   Niskanen's 2009 OpenRocket thesis.
-- **How well it is validated:** by unit tests, published worked examples and, for drag at Mach 0.3,
-  the RASAero curves in RocketPy's examples; nothing yet against OpenRocket or a real flight. Four
-  of Barrowman's five examples agree within 1%. His six-fin Recruiter's normal-force slope is
-  +2.87% high, mostly from a different six-fin rule. Drag is within 10% in four of seven cases,
-  but −18.3% for Cavour under power and −47.0% and −50.4% for Valetudo. It reads low from about
-  Mach 0.6.
+- **How well it is validated:** the normal force and centre of pressure only at Mach 0, against
+  Barrowman's worked examples: four of five agree within 1%, and his six-fin Recruiter is +2.87%
+  high (+3.42% on its fins), mostly from a different six-fin rule. Drag only at Mach 0.3, against
+  curves labelled RASAero in RocketPy's examples, which don't record their fins or finish, so
+  hpr's follow a declared rule: within 10% in four of seven cases, and −18.3% for Cavour under
+  power, cause open. Valetudo's −47.0% and −50.4% are against a table 1.44 times its own
+  OpenRocket export, which hpr's drag is 1.9% under. Nothing against a real flight.
 - **What it leaves out:** large angles and stall, though a flight uses these models at every
-  angle. Above Mach 0.8 results are unvalidated, and the models refuse Mach 1 and above until
-  [M1.8][roadmap] (transonic and supersonic aerodynamics), which also brings roll torques.
+  angle. Pressure drag is held at its low-speed value, so from about Mach 0.6 it reads low against
+  the source's own high-subsonic correction; the models are documented to Mach 0.8 and refuse
+  Mach 1 until [M1.8][roadmap] (transonic and supersonic aerodynamics), which also brings roll
+  torques.
 
 ## Code and sources
 

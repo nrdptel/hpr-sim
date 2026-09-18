@@ -8,9 +8,10 @@
 - **Sources:** NASA SP-8039 (1971), the National Association of Rocketry's *Standard Motor
   Codes*, ThrustCurve.org's glossary, statistics page and code, and RocketPy 1.13.0's motor code.
 - **How well it is validated:** by unit tests and code-to-code, the first and third of four
-  [levels of evidence][levels]. ThrustCurve.org's own statistics code agrees to 1.8e-15 on all 32
-  bundled curves. On three of them, RocketPy agrees within 7.9e-5 in total mass and inertias,
-  and within 5.8e-6 of the motor length in centre of mass. Not compared with OpenRocket or a real
+  [kinds of evidence][levels]. ThrustCurve.org's own statistics code agrees to 1.8e-15 on all 32
+  bundled curves. On three of them, RocketPy agrees within 7.9e-5 (relative) in total mass and
+  inertias, with the centre of mass within 5.8e-6 motor lengths and the propellant's own
+  quantities within 1e-4 of their values at ignition. Not compared with OpenRocket or a real
   flight.
 - **What it leaves out:** anything but commercial off-the-shelf solids. Only 32 curves are
   bundled, none in class A. Propellant burns in proportion to the impulse delivered, an

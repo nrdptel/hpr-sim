@@ -8,7 +8,7 @@
 - **Sources:** Meriam and Kraige's *Engineering Mechanics: Dynamics*, the *OpenRocket technical
   documentation* v13.05, Abbott and von Doenhoff's *Theory of Wing Sections*, Golub and Van
   Loan's *Matrix Computations*, and data sheets, specifications and handbooks for densities.
-- **How well it is validated:** by analytic tests, the first of four [levels of evidence][levels]:
+- **How well it is validated:** by analytic tests, the first of four [kinds of evidence][levels]:
   a cone, a tube, four fins and an off-axis payload agree with hand calculation to 1e-11, and fin
   cross-sections with exact numerical integration to 1e-13. Density unit conversions reproduce
   their sources, such as the *Wood Handbook*'s white ash at 678 kg/m³. Not compared with

@@ -6,13 +6,13 @@
   free to move and turn in every direction (six degrees of freedom) that gets lighter as its motor
   burns.
 - **Sources:** the equations of motion in RocketPy's technical documentation (RocketPy 1.13.0),
-  and the RocketPy paper (Ceotto et al., 2021).
+  and the RocketPy paper (Ceotto et al., 2021), which is cited but was not fetched.
 - **How well it is validated:** by analytic and unit tests only. For example, a tumbling rocket's
   centre of mass stays on the exact parabola in a vacuum to 1.7e-6 m over 22 s. No whole flight
   (apogee, top speed, landing point) has been compared with another simulator or a real flight
   yet; the comparison with RocketPy is planned as [M2.1b2][roadmap].
-- **What it leaves out:** tip-off (the pivot as the rocket leaves the rail), roll forcing and
-  damping, turbulence and thrust misalignment. Its small-angle aerodynamics are used at every
+- **What it leaves out:** staging and delayed ignition, tip-off (the pivot as the rocket leaves
+  the rail), roll forcing and damping, turbulence and thrust misalignment. Its small-angle aerodynamics are used at every
   angle of attack (between the axis and the airflow), with no stall, and a flight that reaches
   Mach 1 stops with an error.
 

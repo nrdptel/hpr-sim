@@ -1475,14 +1475,23 @@ roadmap be reachable from the site. ADR-016 left open whether the last two becom
   has not been compared with another code or a real flight. The check can't judge that; the
   physics review does.
 - ***Accuracy* traces every number it quotes.** Each number in a paragraph, list item or table row
-  (outside code and link text) must appear, as a whole number, in a repository file that the same
-  paragraph, item or row links to: a model page, the report, a case file. So a reader checks it
-  in one click, and a number that moves at its source fails the site check until the page
-  follows. A number is anything with a decimal point, an exponent, a percent sign or two digits;
-  "Level 2", "6-DOF" and "3 fins" are words. The page must also name every case of the committed
-  report and link every model page, so a new case or model can't be left off. Numbers are checked,
-  not generated: a generated table would read worse than one written for people, and the check
-  gives the same guarantee.
+  (outside code) must appear in a repository file that the same paragraph, item or row links to:
+  a model page (less its own *In short*), the report, a case file. The pages at the top of the
+  site don't count, so a page can't vouch for itself. A number is anything with a decimal point,
+  an exponent (`1e-6`, `10⁻¹²`), a percent sign or two digits; "Level 2", "6-DOF" and "3 fins"
+  are words. It matches only a number written the same way: the same digits as a whole number,
+  and the same sign and percent sign where the page writes them. So a reader checks it in one
+  click, and a number that moves at its source fails the site check until the page follows. The
+  check can't tell whether a number is quoted in the right context; reviews do that.
+- **The report's results are checked cell by cell.** A table on *Accuracy* whose header opens
+  with `case`, and names a report metric in code in each other column, must give each case's
+  difference exactly as the report writes it, and all the report's results must be in such a
+  table. So the page gives every validation result, and each one right. Numbers are checked, not
+  generated: a generated page would read worse than one written for people, and the check gives
+  the same guarantee. The page must also link every model page.
+- ***In short* traces its numbers too.** Each number in a model page's *In short* must appear in
+  the rest of that page, or in a file its item links to, so the summary can't claim what the page
+  doesn't show.
 - **The decisions and the roadmap stay files, with a page that indexes them.** Rendered as pages,
   `DECISIONS.md` and `ROADMAP.md` would carry hundreds of labels at the places that define them,
   which the label check would have to learn to accept, and they are working files that change
@@ -1493,8 +1502,8 @@ roadmap be reachable from the site. ADR-016 left open whether the last two becom
 **Consequences.**
 
 - A new model page fails CI until it opens with *In short*, and until *Accuracy* links it.
-- A regenerated report that moves a quoted number, or adds a case, fails CI until *Accuracy*
-  follows. So does a model page whose quoted number changes.
+- A regenerated report that moves a quoted number, or adds a case or a metric, fails CI until
+  *Accuracy* follows. So does a model page whose quoted number changes.
 - A new decision record fails CI until the records page links it.
 - The check can't tell a true *In short* from a false one. Reviews do that, against the page's
   body, `VALIDATION.md` and the report.

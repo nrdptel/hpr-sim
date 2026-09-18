@@ -6,14 +6,15 @@
   steps to an error tolerance, or fixed-step Runge–Kutta (RK4). It lands exactly on set times such
   as burnout, and finds events such as apogee.
 - **Sources:** Dormand and Prince (1980); Hairer, Nørsett and Wanner's *Solving Ordinary
-  Differential Equations I* (1993), whose `DOPRI5` code the port follows; Brent (1973).
+  Differential Equations I* (1993), whose `DOPRI5` code the port follows; Brent (1973), for the
+  root finding that locates events.
 - **How well it is validated:** by analytic and unit tests only, not yet on its own against another
   simulator or a real flight. Its step counts match an independent transcription of `DOPRI5`, and
   its error shrinks as theory predicts. In an exactly solvable flight with drag, apogee, deployment
   and landing times are right to 1.5e-8 s at default tolerances.
-- **What it leaves out:** stiffness detection (very fast, damped motion ends in an error). Fixed
-  10 ms RK4 steps can diverge for a light body under a big canopy. An event that crosses zero and
-  back within one step goes unseen.
+- **What it leaves out:** it can't detect a stiff problem, where very fast, heavily damped motion
+  forces tiny steps; the run then stops with an error. Fixed 10 ms RK4 steps can diverge for a
+  light body under a big canopy. An event that crosses zero and back within one step goes unseen.
 
 ## Code and sources
 

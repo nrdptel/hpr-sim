@@ -9,8 +9,9 @@
   of Observation* (WMO-No. 8, 2023); the CIPM-2007 moist-air density formula (Picard et al.,
   2008).
 - **How well it is validated:** every value within 0.1% of the 1976 tables at 32 altitudes from
-  −2 to 86 km; humid density within 0.047% of CIPM-2007 over 15–27 °C. Not yet compared directly
-  with another simulator's atmosphere or a real flight.
+  −2 to 86 km; humid density within 0.047% of CIPM-2007 over 15–27 °C. Against RocketPy, its
+  density agrees within 3.7e-4 over the 23 heights its parachute descents sample
+  ([Recovery](recovery.md#against-rocketpy)). No real-flight check.
 - **What it leaves out:** a real day's changes aloft. A field-condition offset holds all the way
   up (+20 K at a 1400 m field puts density +30% off the standard's at 30 km), so higher flights
   need a sounding. Viscosity ignores humidity, which lowers it 2.1% at 30 °C and saturation.

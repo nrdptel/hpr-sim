@@ -8,13 +8,14 @@
 - **Sources:** G. A. Crowell Sr., *The Descriptive Geometry of Nose Cones* (1996), and appendix A
   of the published *OpenRocket technical documentation* v13.05 (2013).
 - **How well it is validated:** by analytic tests only, the first of four
-  [levels of evidence][levels]. Filled shapes match closed forms to 1e-10, and independent
-  high-precision integrals to 1e-12 on 22 noses and transitions; 20 walls match to 1e-10. Not
-  compared with OpenRocket, weighed parts or a real flight.
+  [kinds of evidence][levels]. Filled shapes match closed forms to 1e-10 (relative), and
+  independent high-precision integrals to 1e-12 on 22 noses and transitions; 20 walls match to
+  1e-10. Not compared with OpenRocket, weighed parts or a real flight.
 - **What it leaves out:** OpenRocket's documentation doesn't say how it measures wall thickness.
   Measuring it radially instead of square to the surface changes wall volume by 1.4% on a cone
-  three calibres (base diameters) long; squaring off a steep cut end adds up to 2.24% of wall
-  mass in this page's examples. The OpenRocket comparison ([M2.2][roadmap]) is to check both.
+  three calibres (base diameters) long. Where a steep end is cut square to the axis, rather than
+  following the wall's inner corner as hpr does, the part gains up to 2.24% of wall mass in this
+  page's examples. The OpenRocket comparison ([M2.2][roadmap]) is to check both.
 
 ## Code and sources
 

@@ -8,10 +8,12 @@
 - **Sources:** the US military flying-qualities specification MIL-F-8785C (1980), NASA's climatic
   criteria for aerospace vehicles NASA/TM-2008-215633 (2008), and the World Meteorological
   Organization's observing guide WMO-No. 8 (2023).
-- **How well it is validated:** unit tests pin each model: halfway between 4 m/s from 350° and
-  12 m/s from 30°, a table gives 8 m/s from 10°. Against RocketPy only indirectly: parachute
-  descents in the same constant and tabulated winds agree on drift magnitude within 0.28%
-  ([Recovery](recovery.md)). No real flights yet.
+- **How well it is validated:** unit tests pin each model: with speed and direction interpolated
+  separately (the default), halfway between 4 m/s from 350° and 12 m/s from 30° a table gives 8 m/s
+  from 10°. In RocketPy's parachute descents, hpr's wind matches RocketPy's samples to 1e-9 m/s,
+  NDRT's sheared profile included, interpolated by components as RocketPy does, and the drift
+  agrees within 0.28% in the four cases with wind ([Recovery](recovery.md#against-rocketpy)). No
+  real flights yet.
 - **What it leaves out:** wind varying in time or across the field, vertical wind, terrain, and
   gusts (no flight uses [Turbulence](turbulence.md)). A flight takes one wind model, so a surface
   law, which keeps growing with height, can't hand over to winds aloft.

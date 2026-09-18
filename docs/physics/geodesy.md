@@ -12,7 +12,8 @@
   height within 2e-8 m, from −10 km to +1000 km. Not compared with another library, a simulator
   or a real flight.
 - **What it leaves out:** height above sea level, which needs the geoid, up to about 100 m from
-  the ellipsoid. hpr has no geoid model; a flight takes that difference at the site as an input.
+  the ellipsoid ([Frames](frames.md#earth-centred-earth-fixed-ecef)). hpr has no geoid model; a
+  flight takes that difference at the site as an input.
 
 ## Sources
 
