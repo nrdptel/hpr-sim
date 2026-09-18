@@ -81,7 +81,7 @@ Sources:
   accepted step with its dense output and can stop the run (`Advance::Stopped`). So a flight phase
   can record from, and stop on, its own state.
 - A discontinuity in the right-hand side (burnout, a staging, a phase change) must be a stop time.
-  An RK step across a jump drops to first order ([Loft lesson L23][lessons]).
+  An RK step across a jump drops to first order ([Loft lesson L23](../decisions-and-roadmap.md#l23)).
 - **Which side a stop time belongs to.** The last stage of the step ending at `t_stop` is evaluated
   *at* `t_stop` and belongs to the phase before it. The first stage of the next call belongs to the
   phase after it. A system that picks its phase from `t` alone gets one of the two wrong, so the
@@ -156,18 +156,18 @@ measured on 2026-09-17.
 - **Tolerance proportionality.** Over `[0, 10]` with `rtol = atol` from 1e-4 to 1e-9, the error
   falls from 2.7e-5 to 2.2e-10, 0.22 to 0.28 of the tolerance throughout (asserted within 0.07 to
   0.85).
-- **Apogee under tolerance halving ([Loft lesson L21][lessons]).** A vertical flight with quadratic
+- **Apogee under tolerance halving ([Loft lesson L21](../decisions-and-roadmap.md#l21)).** A vertical flight with quadratic
   drag, `v' = −g − kv|v|`, has a closed-form apogee (`testing::closed_form_quadratic_drag`). As the
   tolerance halves from 1e-5 to 2e-8, the apogee time error falls from 5.7e-4 s to 1.2e-8 s and the
   height error from 3.4e-4 m to 8.3e-8 m. The fall is not monotone step by step: `v|v|` has a kink
   at apogee. The log–log slope of the height error against the tolerance is 1.36, and the worst
   errors are 117·tol (time) and 91·tol (height).
-- **Vacuum with constant thrust ([Loft lesson L23][lessons]).** Burnout is a stop time. At burnout
+- **Vacuum with constant thrust ([Loft lesson L23](../decisions-and-roadmap.md#l23)).** Burnout is a stop time. At burnout
   the state matches Tsiolkovsky's equation with gravity loss to 1e-9 relative, for both methods. The
   coast apogee is within 6.3e-9 s and 5.2e-6 m of 48.8 km (Dormand–Prince, 20 steps) and 4e-11 s and
   1.6e-8 m (RK4, 0.01 s). Integrated straight through the jump, RK4 misses the velocity by
   0.56 m/s; with the stop time the miss is 1e-12 m/s.
-- **Events within 1e-6 s ([Loft lesson L22][lessons]).**
+- **Events within 1e-6 s ([Loft lesson L22](../decisions-and-roadmap.md#l22)).**
   - For the quadratic-drag flight, the apogee, a 300 m descending deploy and landing are all
     located against the closed forms. Errors: 1.2e-8, 1.5e-8 and 1.4e-8 s at the default
     tolerances, and 3e-12 to 1.3e-11 s with RK4 at 0.01 s. `g` at the stop is below 1e-13.
@@ -192,4 +192,3 @@ measured on 2026-09-17.
   the old tag names are refused in settings files.
 
 [adr-010]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-010-time-integration-dormandprince-with-dense-output-rk4-stop-times-and-events-2026-09-17
-[lessons]: https://github.com/nrdptel/hpr-sim/blob/main/docs/research/loft-lessons.md

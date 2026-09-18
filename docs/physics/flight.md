@@ -10,7 +10,7 @@
 - **How well it is validated:** by analytic and unit tests only. For example, a tumbling rocket's
   centre of mass stays on the exact parabola in a vacuum to 1.7e-6 m over 22 s. No whole flight
   (apogee, top speed, landing point) has been compared with another simulator or a real flight
-  yet; the comparison with RocketPy is planned as [M2.1b2][roadmap].
+  yet; the comparison with RocketPy is planned as [M2.1b2](../decisions-and-roadmap.md#m2-1b2).
 - **What it leaves out:** staging and delayed ignition, tip-off (the pivot as the rocket leaves the
   rail), roll forcing and damping, turbulence and thrust misalignment. Its small-angle aerodynamics
   are used at every angle of attack (between the axis and the airflow), with no stall, and a flight
@@ -79,7 +79,7 @@ q̇   = ½ q ⊗ (0, ω)
   - RocketPy 1.13.0's code (`rocket.py:984-985`, `evaluate_nozzle_gyration_tensor`) uses
     `0.25·n²` for the transverse distance term instead of `n²`. Its `n` is measured from the centre
     of dry mass, not from the nose tip, so the entries can't be compared directly. The RocketPy
-    code-to-code suite ([M2.1][roadmap]) should compare the jet-damping coefficient about the
+    code-to-code suite ([M2.1](../decisions-and-roadmap.md#m2-1)) should compare the jet-damping coefficient about the
     centre of mass.
   - A motor that gives no nozzle exit radius contributes `r_e = 0`.
 - **The classical limit.** For an axisymmetric rocket turning slowly about a transverse axis, the
@@ -105,7 +105,7 @@ q̇   = ½ q ⊗ (0, ω)
   `T_exit − dP_int/dt`, where `P_int = m r′ − ṁ(n − r)` is the internal momentum of the burning
   propellant, so a `.eng` curve already contains it. `T04` subtracts `−m r″ − 2ṁ r′ + m̈(n − r)`
   again.
-  - hpr keeps the terms as RocketPy does, for parity in the RocketPy comparison ([M2.1][roadmap]).
+  - hpr keeps the terms as RocketPy does, for parity in the RocketPy comparison ([M2.1](../decisions-and-roadmap.md#m2-1)).
     The form is exact for the [RP-EOM] model, not for a measured curve.
   - The size of the double count on Valetudo: it lifts off at 1.07 ms with 73 N of thrust against
     95 N of weight, 21 N coming from `m̈(n − r)`, and it changes the burnout speed by at most
@@ -139,7 +139,7 @@ q̇   = ½ q ⊗ (0, ω)
     and never landed (`tests::a_calm_vertical_flight_falls_tail_first_and_lands`).
 - **Damping.** The rotation's contribution to each local flow is the only pitch and yaw damping.
   `hpr-aero` has no damping coefficients, and roll forcing and damping will arrive with the planned
-  second aerodynamics milestone ([M1.8][roadmap]), so the roll rate changes only through inertia
+  second aerodynamics milestone ([M1.8](../decisions-and-roadmap.md#m1-8)), so the roll rate changes only through inertia
   coupling. At a component's CP the rotation adds a speed of `|ω × p_i|`.
 - **Limits.**
   - The models are small-angle: no stall, and body lift and fins extended by `sin α`. They
@@ -147,7 +147,7 @@ q̇   = ½ q ⊗ (0, ω)
     dynamic pressure is small, and off the rail in strong crosswinds. `Sample::angle_of_attack_rad`
     shows where it happens.
   - A Mach number of 1 or more anywhere stops the flight with `SimError::Aero` until transonic
-    and supersonic aerodynamics arrive ([M1.8][roadmap]). A drag override table covers drag at any
+    and supersonic aerodynamics arrive ([M1.8](../decisions-and-roadmap.md#m1-8)). A drag override table covers drag at any
     Mach, but not normal force.
 
 ## Phases
@@ -170,7 +170,7 @@ q̇   = ½ q ⊗ (0, ω)
   - A button's axial extent is its outer diameter, and a lug's is its length.
   - The rocket leaves after travelling `L − (s_aft − s_guide)`. RocketPy ends its rail phase when
     the forward button reaches the top (`flight.py:1716-1730`, `effective_1rl`). hpr keeps the
-    rocket guided to the last guide ([Loft lesson L26][lessons]).
+    rocket guided to the last guide ([Loft lesson L26](../decisions-and-roadmap.md#l26)).
   - The pivot about the last guide ("tip-off") is not modelled, and the rocket leaves the rail
     with no angular velocity.
   - Friction is Coulomb friction with a user coefficient, on the net reaction `|ΣN|`. With a
@@ -188,11 +188,11 @@ q̇   = ½ q ⊗ (0, ω)
 - **Apogee.** The centre of mass's ellipsoidal-height rate, `û(r_cg) · v_cg`, falling through
   zero. `û` is the ellipsoid normal at its position.
 - **Ground hit.** The centre of mass's ellipsoidal height reaching the launch site's, descending
-  ([Frames](frames.md), [Loft lesson L35][lessons]).
+  ([Frames](frames.md), [Loft lesson L35](../decisions-and-roadmap.md#l35)).
 - **User events.** A function of the `Sample`, in free flight.
 - **Heights.** Atmosphere and wind heights are `h − N`, with the geoid undulation `N` given in
   `Environment` (no geoid model).
-- **Termination** ([Loft lesson L25][lessons]). The flight ends in exactly one of these ways:
+- **Termination** ([Loft lesson L25](../decisions-and-roadmap.md#l25)). The flight ends in exactly one of these ways:
   - `GroundHit`;
   - `NoLiftoff` (the last burnout passes on the pad);
   - `StalledOnRail` (it lifted off, then stopped on the rail after burnout);
@@ -201,7 +201,7 @@ q̇   = ½ q ⊗ (0, ω)
 
   Any other failure is an error.
 - **Not yet modelled.** Staging, delayed ignition (planned with staging and airstarts in
-  [M1.9][roadmap]), turbulence and thrust misalignment. Recovery is modelled, and has
+  [M1.9](../decisions-and-roadmap.md#m1-9)), turbulence and thrust misalignment. Recovery is modelled, and has
   [its own page](recovery.md).
 
 ## Integration settings
@@ -244,7 +244,7 @@ default settings. The numbers were measured on 2026-09-17.
   equation, integrated independently from the motor and the assembly, to 4.3e-8 m/s.
 - **Rail friction.** At 60°, `μ = 0.3` removes exactly `μ g cos E` from the acceleration along the
   rail.
-- **[Loft lesson L20][lessons], weathercocking.** In a 5 m/s wind from the west, Valetudo's unit
+- **[Loft lesson L20](../decisions-and-roadmap.md#l20), weathercocking.** In a 5 m/s wind from the west, Valetudo's unit
   axis has an east component of −0.12 at burnout. Its apogee is 96 m upwind, against 1.0 m (Earth
   rotation) in calm air.
 - **Calm vertical.** With no wind and no Earth rotation the rocket falls tail first after apogee
@@ -257,12 +257,12 @@ default settings. The numbers were measured on 2026-09-17.
 - **Errors and reuse.** Observer errors end the flight with that error. Starts before ignition
   or underground are refused. A cleared recorder records the same rows again. `Simulation`,
   `Environment` and `Recorder` are `Send + Sync`.
-- **[Loft lesson L24][lessons].** Two runs of one `Simulation`, and a second `Simulation` built the
+- **[Loft lesson L24](../decisions-and-roadmap.md#l24).** Two runs of one `Simulation`, and a second `Simulation` built the
   same way, record the same bits for every channel at every step.
-- **[Loft lesson L25][lessons].** A normal flight hits the ground. A rail with `μ = 20` at 60° gives
+- **[Loft lesson L25](../decisions-and-roadmap.md#l25).** A normal flight hits the ground. A rail with `μ = 20` at 60° gives
   `NoLiftoff` at rest. A 5 s cap gives `TimeCap` at exactly 5 s, and a 40-step limit gives
   `StepLimit`.
-- **[Loft lesson L26][lessons].** On a 3 m rail tilted to 1.3 rad, the rail exit comes at the last
+- **[Loft lesson L26](../decisions-and-roadmap.md#l26).** On a 3 m rail tilted to 1.3 rad, the rail exit comes at the last
   button's travel to 1e-6 m. Across the rail the rocket stays within 1e-9 m, with no rotation.
   Friction (`μ = 0.3`) delays the exit and slows it.
 - **Events and recorder.** Events come in order: liftoff, rail exit, burnout, apogee, ground hit.
@@ -274,5 +274,3 @@ default settings. The numbers were measured on 2026-09-17.
 
 [adr-007]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-007-design-tree-stations-placement-automatic-radii-overrides-motors-and-checks-2026-09-17
 [adr-011]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-011-rigid-body-flight-equations-of-motion-aerodynamic-coupling-rail-phases-and-termination-2026-09-17
-[lessons]: https://github.com/nrdptel/hpr-sim/blob/main/docs/research/loft-lessons.md
-[roadmap]: https://github.com/nrdptel/hpr-sim/blob/main/docs/ROADMAP.md

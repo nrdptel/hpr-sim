@@ -77,7 +77,7 @@ uses [8785C]'s form and lengths throughout.
     interpolates linearly, but that is its own choice.
 - **Axes of the gust field:** `u` is the longitudinal component and `v`, `w` the transverse ones.
   - The longitudinal spectrum belongs to the component along the path through the frozen
-    field. For a climbing rocket that is nearly vertical. The flight engine ([M1.6][roadmap])
+    field. For a climbing rocket that is nearly vertical. The flight engine ([M1.6](../decisions-and-roadmap.md#m1-6))
     doesn't use turbulence, and no milestone plans it yet
     ([issue #39](https://github.com/nrdptel/hpr-sim/issues/39)); whoever adds it must align `u`
     with the path.
@@ -135,7 +135,7 @@ repeatedly and on rejected steps.
 
 ## Tests that pin this
 
-- **`dryden::tests::dryden_spectrum_matches_theory`** (the *done when* of [M1.2][roadmap], the
+- **`dryden::tests::dryden_spectrum_matches_theory`** (the *done when* of [M1.2](../decisions-and-roadmap.md#m1-2), the
   atmosphere and wind milestone):
   - Setup: 2²⁰ samples at 1 m, with `σ = (1.5, 1.2, 0.9)` m/s and `L = (40, 40, 20)` m.
   - Estimate: 256 Hann-windowed segments of 4096 samples, averaged (Bartlett's method).
@@ -172,4 +172,3 @@ repeatedly and on rejected steps.
   - Bit-identical to `rand_xoshiro` over 10⁴ draws for 5 seeds.
   - The normal sampler's moments and CDF at ±2σ, within 5 standard errors.
 
-[roadmap]: https://github.com/nrdptel/hpr-sim/blob/main/docs/ROADMAP.md

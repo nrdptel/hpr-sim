@@ -1,21 +1,39 @@
 # RASP `.eng` motor files
 
-Code: `hpr_motor::eng`, written for the solid-motor milestone ([M1.3][roadmap]). A plain-text
-thrust curve with a one-line header. The rules below are from the spec unless marked **Observed**
-or **Policy**.
+A `.eng` file is a motor's [thrust curve](../glossary.md#thrust-curve) in plain text: a one-line
+header with the motor's name, size, delays and masses, then one time and thrust per line. The
+format is named after RASP, the rocket simulation program it comes from. It is the more common of
+the two formats [ThrustCurve.org](../glossary.md#thrustcurveorg) serves (the other is
+[RockSim `.rse`](rse.md)).
+
+**To fly a motor from a `.eng` file**, see
+[A motor from a file](../physics/motor.md#a-motor-from-a-file) on the Solid motors page. It reads a
+file, builds the motor and puts it in a rocket, with a program that CI runs.
+
+This page is the reference for hpr's reader and writer: what the published spec says, what real
+files do, and what hpr does with each. All 889 RASP files ThrustCurve.org held on 2026-09-17
+read, and write back with every value unchanged
+([Checked against real files](#checked-against-real-files)).
+
+Code: `hpr_motor::eng` ([API reference](../api/hpr_motor/eng/index.html)), written for the
+solid-motor milestone ([M1.3](../decisions-and-roadmap.md#m1-3)). The rules below are from the spec unless marked
+**Observed** (seen in real files) or **Policy** (hpr's own choice).
 
 ## Sources
 
 - **[R]** ThrustCurve.org, "RASP File Format", <https://www.thrustcurve.org/info/raspformat.html>,
-  captured 2026-09-17 and pinned as `thrustcurve-rasp-format` (sha256 `69573e9f…`). Sections are
-  cited as [R Header], [R Data],
+  captured 2026-09-17 and pinned as `thrustcurve-rasp-format` (sha256 `69573e9f…`) in the
+  [reference lock file](https://github.com/nrdptel/hpr-sim/blob/main/validation/refs.lock.toml),
+  which records each source's address and checksum. Sections are cited as [R Header], [R Data],
   [R Problems]. The page names the RASP C source as "the ultimate authority"; its license is not
   stated, so it was not consulted.
 - **Observed:** 734 entries in the ThrustCurve manufacturer file sets (12 `.eng` sets) and 13
-  single-motor API downloads, fetched 2026-09-17 into `refs/samples/formats/` (never committed).
-  Counts below are over those entries.
+  single-motor API downloads, fetched 2026-09-17 into a local cache, `refs/samples/formats/`,
+  that is never committed. Counts below are over those entries.
 
 ## Grammar
+
+Read `:=` as "is made of", `*` as "any number of", `+` as "one or more", and `|` as "or".
 
 ```text
 file    := entry+
@@ -42,7 +60,7 @@ point   := time thrust                 "usually preceded by a few spaces" [R Dat
 | 4 | delays | s | Available delays "separated by dashes"; `0` = ejection charge, no delay; `P` = plugged, no ejection charge |
 | 5 | propellant mass | kg | "Weight of all consumables" (the propellant, for a solid) |
 | 6 | total mass | kg | Motor "loaded and ready for flight" |
-| 7 | manufacturer | — | Abbreviation, per the NAR combined motor list |
+| 7 | manufacturer | — | Abbreviation, per the combined motor list of the NAR (National Association of Rocketry) |
 
 ## Thrust curve [R Data], [R Problems]
 
@@ -50,8 +68,9 @@ point   := time thrust                 "usually preceded by a few spaces" [R Dat
 - An implicit first point at (0, 0) "is assumed and should not be specified explicitly". An
   explicit (0, 0) is called "a common mistake".
 - "The final point must have a thrust of zero and it indicates the motor's burn time." A zero
-  thrust anywhere else is rejected by ThrustCurve. (ThrustCurve's *metadata* burn time uses the
-  NFPA 1125 5% rule instead; see [Loft lesson L39][lessons].)
+  thrust anywhere else is rejected by ThrustCurve. (ThrustCurve's *metadata* uses the
+  [burn time](../glossary.md#burn-time) of the [NFPA 1125](../glossary.md#nfpa-1125) 5% rule
+  instead; see [Loft lesson L39](../decisions-and-roadmap.md#l39), where Loft took the last point as the burn time.)
 - Points "must be in order of time". ThrustCurve rejects a point "before the previous point" and a
   first point at negative time. Equal times are not addressed.
 - RASP allowed at most 32 points, including the final zero; modern tools don't enforce this.
@@ -59,18 +78,20 @@ point   := time thrust                 "usually preceded by a few spaces" [R Dat
 ## Where the spec is silent
 
 Number syntax (exponents, sign; its own example uses `.0377`). Whether tabs or several spaces
-separate fields. Line endings, encoding and BOM. Delay lists that mix numbers with `P`, or use other
+separate fields. Line endings, text encoding, and a BOM (byte-order mark: an invisible character
+some editors put at the start of a file). Delay lists that mix numbers with `P`, or use other
 separators. Equal consecutive times. Inline comments. An entry with no comment separator before the
 next header.
 
 ## Observed in real files
 
 - **Whitespace:** tabs separate data fields in 4 of 12 sets. 52 headers use several spaces or
-  column alignment; one header is indented. Trailing spaces are common. 8 of 25 files use CRLF;
+  column alignment; one header is indented. Trailing spaces are common. 8 of 25 files use CRLF
+  (Windows line endings, a carriage return then a line feed; other systems use LF alone);
   13 of 13 single downloads lack a final newline. There is no BOM, no non-ASCII byte, no inline
   `;`, no blank or comment line inside the data, and no indented comment.
 - **Entries:** always separated by a comment; there are 470 lone `;` lines. A reader that stops
-  at the first header loses the rest of the file ([Loft lesson L36][lessons]).
+  at the first header loses the rest of the file ([Loft lesson L36](../decisions-and-roadmap.md#l36)).
 - **Header:** never more than 7 fields; spaces in a manufacturer name become `_`
   (`Contrail_Rockets`). Manufacturer spellings vary (`AT`, `A`, `Aerotech`, `AERO`, `AT-RMS`,
   `AT/RCS`; `CTI`, `Ces`, `CSR`, `Pro38`). The name is often the full designation, not class plus
@@ -83,7 +104,7 @@ next header.
   (`6-10-14-P`), 1 lowercase `p`, and 4 malformed (`4-7-10,`, `-`, `1-3--4-6-7-9-10`). 58 lists
   are descending (`14-12-10-8-6`). 27 contain `100` or `1000`. Checked against ThrustCurve search
   metadata, `100`/`1000` mean plugged in 14 of 14 cases, and `0` means plugged in 120 of 149, against
-  the spec's "no delay" ([Loft lesson L37][lessons]).
+  the spec's "no delay" ([Loft lesson L37](../decisions-and-roadmap.md#l37): Loft read `100` and `1000` as seconds).
 - **Curve:** 32 entries have an explicit first point at t = 0 with nonzero thrust. Loft's bundle
   also had an explicit (0, 0). 4 entries don't end at zero thrust. 4 have equal consecutive
   times (a vertical drop to zero, or rounded times). 69 have more than 32 points. None have
@@ -91,11 +112,11 @@ next header.
 
 ## Reader policy (lenient, with diagnostics)
 
-1. The reader takes text and strips a UTF-8 BOM. Decoding bytes (and any Windows-1252 fallback)
-   is the caller's job, in `hpr-io`. Lines split on LF, CRLF or a bare CR and are trimmed.
+1. The reader takes text and strips a UTF-8 BOM. Decoding bytes into text (and any fallback to
+   Windows-1252, an older Windows character set) is the caller's job, in `hpr-io`. Lines split on LF, CRLF or a bare CR and are trimmed.
 2. A line whose first non-blank character is `;` is a comment. Fields split on runs of spaces
    and tabs.
-3. State machine per entry. Before the header, skip blanks and collect comments. The header is the
+3. Each entry is read in stages (a state machine). Before the header, skip blanks and collect comments. The header is the
    first other line. In the data, a 2-field numeric line is a point; skip blank lines; a comment
    ends the data, and an entry that ends with no points is an error. A line with 7 or more fields
    starts a new entry, with a warning about the missing separator. Anything else is an error, with
@@ -131,6 +152,8 @@ an error there.
 
 ## Writer policy (strict, round-trip stable)
 
+Round-trip stable: a file hpr writes reads back to exactly the values it was written from.
+
 - Each entry: its comments as `;text`, then the header with single spaces, then one `   t F` line
   per point, then a lone `;`. Finally the trailer comments. LF endings, a final newline, UTF-8.
 - The name must be one token that doesn't start with `;` (the line would read as a comment), and
@@ -152,9 +175,8 @@ an error there.
 ## Checked against real files
 
 On 2026-09-17, all 889 RASP files in ThrustCurve.org's solid-motor survey
-(`docs/research/thrustcurve-data.md`) and the 721 entries of its manufacturer sets read, and
+([data notes](https://github.com/nrdptel/hpr-sim/blob/main/docs/research/thrustcurve-data.md)) and
+the 721 entries of its manufacturer sets read, and
 write-parse-write reproduces every value bit for bit. The files are cached under `refs/samples/`
 and never committed; the committed test covers the bundled curves.
 
-[lessons]: https://github.com/nrdptel/hpr-sim/blob/main/docs/research/loft-lessons.md
-[roadmap]: https://github.com/nrdptel/hpr-sim/blob/main/docs/ROADMAP.md

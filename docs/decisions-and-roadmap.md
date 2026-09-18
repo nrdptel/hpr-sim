@@ -36,6 +36,7 @@ new record replaces it and points back. All of them are in the [decision log][de
 | [ADR-017: In short, traced numbers and this page][adr-017] | How every model page opens, how Accuracy's numbers are checked against their sources, and why these records are files rather than pages | [Accuracy](accuracy.md) |
 | [ADR-018: Examples and quotes][adr-018] | Every example program runs in CI and must print its committed output, and a page's quote of a file must match it line for line | [Getting started](getting-started.md) |
 | [ADR-019: Publishing the site][adr-019] | How this site and the API reference are built together, link each other, and are published from `main` | [The API reference](api.md) |
+| [ADR-020: The reader test][adr-020] | How the site was tested on a new reader, and why every milestone and lesson label links a row of plain words on this page | [Decisions and the roadmap](#every-milestone) |
 
 ## The roadmap
 
@@ -43,11 +44,11 @@ The [roadmap][roadmap] is the ordered plan of work. It is split into phases, and
 milestones. A milestone's id is `M`, a topic number, a dot and its place in that topic. The topic
 is not the phase: 0 is foundations, 1 physics, 2 validation, 3 file formats, 4 library interfaces,
 5 online data, 6 Monte Carlo and optimization, 7 flight logs, 8 design help and 9 the app. Phases
-mix topics, so [M2.3][roadmap], the real-flights milestone, sits in Phase 1 beside
-[M1.8][roadmap], the second aerodynamics milestone. A milestone too big to ship at once is split
-into increments with a letter, and sometimes a digit after it, such as [M2.1b2][roadmap]. Each one
-ends with *done when* conditions, and it is checked off only when all of them hold. To find one,
-search the roadmap for its id.
+mix topics, so [M2.3](#m2-3), the real-flights milestone, sits in Phase 1 beside
+[M1.8](#m1-8), the second aerodynamics milestone. A milestone too big to ship at once is split
+into increments with a letter, and sometimes a digit after it, such as [M2.1b2](#m2-1b2). Each one
+ends with *done when* conditions, and it is checked off only when all of them hold. Every
+milestone has a row in [the table below](#every-milestone).
 
 The work runs in this order: the physics and its validation first, then the ways to use it, then
 the analysis tools, and an app last.
@@ -70,11 +71,146 @@ the analysis tools, and an app last.
 
 What is done so far, and what is not, is on [Start here](start-here.md#what-works-today).
 
+### Every milestone
+
+Each milestone and increment has a row here, so a milestone label on any page leads to a line of
+plain words. The label in the first column opens its phase of the roadmap, where its full plan and
+its *done when* conditions are. The status is the roadmap's: the site check fails if a row is
+missing or its status disagrees.
+
+| milestone | what it covers | status |
+|---|---|---|
+| <a id="m0-1"></a>[M0.1][phase-0] | The code workspace, the automated checks (CI) and the licences | done |
+| <a id="m0-2"></a>[M0.2][phase-0] | The library of published sources and reference programs, each pinned so results can be reproduced | done |
+| <a id="m0-3"></a>[M0.3][phase-0] | The lessons from Loft, the project that came before this one | done |
+| <a id="m0-4"></a>[M0.4][phase-0] | This documentation site | not yet done |
+| <a id="m0-4a"></a>[M0.4a][phase-0] | The site itself, and the checks on its links and labels | done |
+| <a id="m0-4b"></a>[M0.4b][phase-0] | The model pages' *In short*, Accuracy, the Glossary and Checking a claim | done |
+| <a id="m0-4c"></a>[M0.4c][phase-0] | Getting started, and How a flight is simulated | done |
+| <a id="m0-4d"></a>[M0.4d][phase-0] | Publishing the site and the API reference on the web | blocked |
+| <a id="m0-4e"></a>[M0.4e][phase-0] | A new reader answers ten questions from the site alone, and what they find unclear is fixed | not yet done |
+| <a id="m1-1"></a>[M1.1][phase-1] | Vectors and rotations, frames, the Earth's shape and gravity | done |
+| <a id="m1-2"></a>[M1.2][phase-1] | The atmosphere and wind | done |
+| <a id="m1-3"></a>[M1.3][phase-1] | Solid motors: thrust curves, motor files, and mass through the burn | done |
+| <a id="m1-4"></a>[M1.4][phase-1] | The rocket's design and its mass properties | done |
+| <a id="m1-4a"></a>[M1.4a][phase-1] | Part shapes and materials, and each part's mass, centre of gravity and inertia | done |
+| <a id="m1-4b"></a>[M1.4b][phase-1] | The design tree: where parts sit, motor configurations and design checks | done |
+| <a id="m1-5"></a>[M1.5][phase-1] | Aerodynamics below the speed of sound | done |
+| <a id="m1-5a"></a>[M1.5a][phase-1] | Normal force and centre of pressure | done |
+| <a id="m1-5b"></a>[M1.5b][phase-1] | Drag, and tables that override it | done |
+| <a id="m1-6"></a>[M1.6][phase-1] | The six-degree-of-freedom flight | done |
+| <a id="m1-6a"></a>[M1.6a][phase-1] | The time integrator, and how events such as burnout and apogee are found | done |
+| <a id="m1-6b"></a>[M1.6b][phase-1] | The rigid-body flight: the rail, the equations of motion and the phases of a flight | done |
+| <a id="m1-7"></a>[M1.7][phase-1] | Recovery | done |
+| <a id="m1-7a"></a>[M1.7a][phase-1] | Parachutes, and the descent under them | done |
+| <a id="m1-7b"></a>[M1.7b][phase-1] | Streamers and tumble recovery | done |
+| <a id="m1-7c"></a>[M1.7c][phase-1] | Separated bodies, each flown to its own landing | done |
+| <a id="m2-1"></a>[M2.1][phase-1] | The validation harness, and comparisons with RocketPy | not yet done |
+| <a id="m2-1a"></a>[M2.1a][phase-1] | The harness itself: cases, reference data, tolerances and reports | done |
+| <a id="m2-1b"></a>[M2.1b][phase-1] | Whole flights against RocketPy, with both codes given the same drag | not yet done |
+| <a id="m2-1b1"></a>[M2.1b1][phase-1] | The script that flies RocketPy's example rockets from pad to landing, as the reference | done |
+| <a id="m2-1b2"></a>[M2.1b2][phase-1] | hpr's whole flights compared with that reference | not yet done |
+| <a id="m2-1c"></a>[M2.1c][phase-1] | The same cases flown with each code's own drag, a CI job, and regenerating references | not yet done |
+| <a id="m1-8"></a>[M1.8][phase-1] | Transonic and supersonic aerodynamics, damping, and overriding the aerodynamics | not yet done |
+| <a id="m3-1"></a>[M3.1][phase-1] | Reading OpenRocket `.ork` design files | not yet done |
+| <a id="m2-2"></a>[M2.2][phase-1] | OpenRocket as a reference program, and a corpus of designs to compare | not yet done |
+| <a id="m1-9"></a>[M1.9][phase-1] | Staging, clusters and air starts, for COTS motors | not yet done |
+| <a id="m1-10"></a>[M1.10][phase-1] | Flight outputs: the stability margin over the flight, the best ejection delay, the peak dynamic pressure, fin flutter and the landing point | not yet done |
+| <a id="m2-3"></a>[M2.3][phase-1] | Comparisons with real flights | not yet done |
+| <a id="m2-4"></a>[M2.4][phase-1] | A summary of accuracy for the README, and CI that fails on any regression | not yet done |
+| <a id="m4-1"></a>[M4.1][phase-2] | A simpler interface, with a builder for environments, motors, rockets and flights | not yet done |
+| <a id="m4-2"></a>[M4.2][phase-2] | A command-line tool | not yet done |
+| <a id="m3-2"></a>[M3.2][phase-2] | Writing OpenRocket `.ork` files | not yet done |
+| <a id="m3-3"></a>[M3.3][phase-2] | hpr's own open design file format | not yet done |
+| <a id="m4-3"></a>[M4.3][phase-2] | Python bindings | not yet done |
+| <a id="m5-1"></a>[M5.1][phase-2] | The online layer, with an on-disk cache for working offline | not yet done |
+| <a id="m5-2"></a>[M5.2][phase-2] | Weather forecasts, turned into atmosphere and wind profiles | not yet done |
+| <a id="m5-3"></a>[M5.3][phase-2] | Launch-site data: ground elevation and magnetic declination | not yet done |
+| <a id="m5-4"></a>[M5.4][phase-2] | Motor stock and prices | not yet done |
+| <a id="m5-5"></a>[M5.5][phase-2] | A catalogue of parts | not yet done |
+| <a id="m6-1"></a>[M6.1][phase-3] | Monte Carlo runs and sensitivity | not yet done |
+| <a id="m6-2"></a>[M6.2][phase-3] | Design optimization | not yet done |
+| <a id="m6-3"></a>[M6.3][phase-3] | Competition rules as files, with scoring, limits and presets | not yet done |
+| <a id="m3-4"></a>[M3.4][phase-4] | RockSim `.rkt` files in and out | not yet done |
+| <a id="m3-5"></a>[M3.5][phase-4] | RASAero `.CDX1` files in and out | not yet done |
+| <a id="m3-6"></a>[M3.6][phase-4] | RocketPy scripts and files in and out | not yet done |
+| <a id="m4-4"></a>[M4.4][phase-4] | Use from C, and in the browser through WebAssembly | not yet done |
+| <a id="m7-1"></a>[M7.1][phase-5] | Reading flight logs from altimeters and trackers | not yet done |
+| <a id="m7-2"></a>[M7.2][phase-5] | Reconstructing a flight from its log, and comparing it with the simulation | not yet done |
+| <a id="m7-3"></a>[M7.3][phase-5] | Fitting drag, mass, impulse and wind to a flight log | not yet done |
+| <a id="m7-4"></a>[M7.4][phase-5] | Diagnosing what went wrong in a flight | not yet done |
+| <a id="m8-1"></a>[M8.1][phase-6] | A design assistant | not yet done |
+| <a id="m8-2"></a>[M8.2][phase-6] | An editing model for apps: commands, undo and stable ids | not yet done |
+| <a id="m9-0"></a>[M9.0][phase-7] | Choosing how the app is built, with trial builds | not yet done |
+| <a id="m9-1"></a>[M9.1][phase-7] | A desktop app | not yet done |
+| <a id="m9-2"></a>[M9.2][phase-7] | 3D flight replay, the real flight beside the simulated one | not yet done |
+| <a id="m9-3"></a>[M9.3][phase-7] | A web app that works offline | not yet done |
+| <a id="m9-4"></a>[M9.4][phase-7] | Mobile apps | not yet done |
+
 ## Lessons from Loft
 
 Loft was the project that came before hpr-sim. Its mistakes are listed as numbered lessons, such as
-[Loft lesson L18][lessons], each with the test that guards against it here, or the milestone that
-will add one. The [list of lessons][lessons] says what went wrong and how hpr avoids it.
+[Loft lesson L18](#l18), its made-up transonic drag curve, each with the test that guards against it
+here, or the milestone that will add one. The [list of lessons][lessons] says what went wrong, where
+in Loft, and how hpr avoids it.
+
+### The lessons these pages name
+
+Each lesson that a page of this site names has a row here. Its label opens its section of the list
+of lessons, which gives Loft's evidence and the name of the test that guards it; the last column
+is the milestone that added or will add that test.
+
+| lesson | what went wrong in Loft, or what the lesson records | guarded by |
+|---|---|---|
+| <a id="l1"></a>[L1][lessons-physics] | Loft used one constant gravity on a flat Earth, so it read low against RocketPy | [M1.1](#m1-1) |
+| <a id="l2"></a>[L2][lessons-physics] | Loft treated geometric altitude as geopotential, so its temperature and pressure were off at 11 km | [M1.2](#m1-2) |
+| <a id="l3"></a>[L3][lessons-physics] | Loft's atmosphere had four layers, and its last temperature gradient ran on forever: 335 K at 70 km, against 219.6 K | [M1.2](#m1-2) |
+| <a id="l4"></a>[L4][lessons-physics] | Loft's air viscosity constants weren't the 1976 standard's, 1.3% high at sea level | [M1.2](#m1-2) |
+| <a id="l5"></a>[L5][lessons-physics] | Loft's "today's conditions" kept the standard temperature gradient above the field, with dry air and no sounding temperatures | [M1.2](#m1-2) |
+| <a id="l6"></a>[L6][lessons-physics] | Loft flew one wind vector; forecast profiles stepped at the lowest level; no gusts | [M1.2](#m1-2) |
+| <a id="l8"></a>[L8][lessons-physics] | Loft's fin lift grew in proportion to the fin count, with no correction for 5 to 8 fins | [M1.5a](#m1-5a) |
+| <a id="l9"></a>[L9][lessons-physics] | Loft used the conical transition's centre-of-pressure formula for every transition shape | [M1.5a](#m1-5a) |
+| <a id="l10"></a>[L10][lessons-physics] | Loft took elliptical fins' lift from an equal-area trapezoid with the wrong sweep | [M1.5a](#m1-5a) |
+| <a id="l11"></a>[L11][lessons-physics] | Loft merged fin sets into one for drag, so the result depended on their order | [M1.5b](#m1-5b) |
+| <a id="l12"></a>[L12][lessons-physics] | Loft's drag used uncited constants, such as a body form factor of 1.95 where Niskanen gives 1.13 | [M1.5b](#m1-5b) |
+| <a id="l13"></a>[L13][lessons-physics] | Loft had no power-on base drag relief, which Niskanen's drag method includes | [M1.5b](#m1-5b) |
+| <a id="l14"></a>[L14][lessons-physics] | Loft's launch-lug drag was uncited, and rail buttons dragged as lugs | [M1.5b](#m1-5b) |
+| <a id="l15"></a>[L15][lessons-physics] | Loft gave a bare step in diameter no drag, and shoulder drag jumped to zero as a transition shrank | [M1.5b](#m1-5b) |
+| <a id="l16"></a>[L16][lessons-physics] | Loft silently capped the drag coefficient at 10, which hid malformed designs | [M1.5b](#m1-5b) |
+| <a id="l18"></a>[L18][lessons-physics] | Loft's transonic wave drag was an invented curve, never checked against RASAero | [M1.8](#m1-8) |
+| <a id="l20"></a>[L20][lessons-physics] | Loft flew in 3-DOF: no angle of attack, body lift, damping or roll, and no weathercocking | [M1.6b](#m1-6b) |
+| <a id="l21"></a>[L21][lessons-physics] | Loft stepped with RK4 without error control, and never tested that the apogee converges | [M1.6a](#m1-6a) |
+| <a id="l22"></a>[L22][lessons-physics] | Loft didn't locate events exactly: apogee fell on a step, altitude deployments overshot, landings were below ground | [M1.6a](#m1-6a) |
+| <a id="l23"></a>[L23][lessons-physics] | Loft let discontinuities such as burnout fall inside steps, and checked its vacuum case to only ±2% | [M1.6a](#m1-6a) |
+| <a id="l24"></a>[L24][lessons-physics] | Loft's `simulate()` changed its inputs, so a second run of the same flight differed from the first | [M1.6b](#m1-6b) |
+| <a id="l25"></a>[L25][lessons-physics] | Loft labelled any early stop "step budget", even a rocket that never lifted off | [M1.6b](#m1-6b) |
+| <a id="l26"></a>[L26][lessons-physics] | Loft's launch rail had no friction and no button geometry | [M1.6b](#m1-6b) |
+| <a id="l35"></a>[L35][lessons-physics] | Loft used zeros for "never happened", and never said which height apogee was measured from | [M1.10](#m1-10) |
+| <a id="l36"></a>[L36][lessons-motors] | Loft's `.eng` reader read only the first header, and appended a second motor's points to the first curve | [M1.3](#m1-3) |
+| <a id="l37"></a>[L37][lessons-motors] | Loft's delay parsing lost `P` (plugged) and lists of delays, and read marker values as seconds | [M1.3](#m1-3) |
+| <a id="l38"></a>[L38][lessons-motors] | Loft's impulse class letter was off by one at the top of each band | [M1.3](#m1-3) |
+| <a id="l39"></a>[L39][lessons-motors] | Loft didn't check that a curve's times increase, and took the last point as burnout instead of NFPA 1125's rule | [M1.3](#m1-3) |
+| <a id="l40"></a>[L40][lessons-motors] | Loft fixed the motor's centre of gravity at the casing's middle, with no inertia of its own | [M1.3](#m1-3) |
+| <a id="l41"></a>[L41][lessons-motors] | Loft bundled thrust curves under mixed or unknown licences | [M1.3](#m1-3) |
+| <a id="l42"></a>[L42][lessons-motors] | Loft's impulse checks were loose (±8%); a mis-sourced curve flew about 26% high until caught | [M1.3](#m1-3) |
+| <a id="l43"></a>[L43][lessons-motors] | ThrustCurve's data must override a `.eng` header's size: one said 75 mm for a 54 mm motor | [M1.3](#m1-3) |
+| <a id="l44"></a>[L44][lessons-motors] | Loft's inertia was pitch only, with simplified formulas, and zero for rings and masses | [M1.4a](#m1-4a) |
+| <a id="l45"></a>[L45][lessons-motors] | Loft put a hollow transition's centre of gravity at the solid's centroid | [M1.4a](#m1-4a) |
+| <a id="l46"></a>[L46][lessons-motors] | Loft never read fin tabs (100 to 120 g lost on two designs), and rail buttons weighed nothing | [M1.4a](#m1-4a) |
+| <a id="l47"></a>[L47][lessons-motors] | Loft's reference diameter was the widest part, even an internal one | [M1.4b](#m1-4b) |
+| <a id="l48"></a>[L48][lessons-motors] | Loft had tangent ogives only, a silent default nose shape, and swapped Haack names | [M1.4a](#m1-4a) |
+| <a id="l49"></a>[L49][lessons-motors] | Loft's transitions used a kinked profile, never checked against what OpenRocket means | [M1.4a](#m1-4a), [M3.1](#m3-1) |
+| <a id="l50"></a>[L50][lessons-motors] | Loft let a motor wider than its mount fly (+69% apogee), and fins could sit off the airframe | [M1.4b](#m1-4b) |
+| <a id="l51"></a>[L51][lessons-motors] | Loft's rule for which centre-of-gravity override wins was unsettled (up to 133 mm) and came from OpenRocket's source | [M2.2](#m2-2) |
+| <a id="l75"></a>[L75][lessons-validation] | Loft's RocketPy check wasn't like for like: a different atmosphere, unstated latitude and gravity, and Loft's own drag and mass fed to RocketPy | [M2.1b](#m2-1b), [M2.1b2](#m2-1b2) |
+| <a id="l76"></a>[L76][lessons-validation] | Loft's advice to regenerate a reference when a check failed let the reference follow Loft's own drag | [M2.1a](#m2-1a) |
+| <a id="l77"></a>[L77][lessons-validation] | Loft shipped hand-written "stored" results, one set inconsistent with itself | [M2.1a](#m2-1a) |
+| <a id="l78"></a>[L78][lessons-validation] | Loft's test suites skipped themselves when their data was missing, and still reported a pass | [M2.1a](#m2-1a) |
+| <a id="l79"></a>[L79][lessons-validation] | Only 2 of Loft's 12 metrics had a tolerance per case; a deployment speed 204% off passed as "ungated" | [M2.1a](#m2-1a) |
+| <a id="l82"></a>[L82][lessons-validation] | References 60% apart were excused as "no single target", and known issues excused the two largest misses | [M2.2](#m2-2) |
+| <a id="l89"></a>[L89][lessons-tests] | Barrowman's hand-worked values for a cone, a conical transition and an elliptical fin, which hpr's tests check | [M1.5a](#m1-5a) |
+| <a id="l90"></a>[L90][lessons-tests] | Properties any drag model must keep, such as split fin sets dragging like one set, which hpr's tests check | [M1.5b](#m1-5b) |
+| <a id="l91"></a>[L91][lessons-tests] | Exact volumes of nose cones (cone, tangent ogive, Haack), which hpr's tests check | [M1.4a](#m1-4a) |
 
 [adr-000]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-000-kickoff-decisions-2026-09-16
 [adr-001]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-001-license-and-workspace-layout-2026-09-17
@@ -96,8 +232,13 @@ will add one. The [list of lessons][lessons] says what went wrong and how hpr av
 [adr-017]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-017-model-pages-open-with-in-short-accuracy-traces-its-numbers-the-records-stay-files-2026-09-18
 [adr-018]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-018-examples-run-in-ci-against-committed-output-pages-quote-files-checked-line-for-line-2026-09-18
 [adr-019]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-019-publishing-the-site-and-the-api-reference-to-github-pages-2026-09-18
+[adr-020]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-020-the-reader-test-and-labels-that-lead-to-plain-words-2026-09-18
 [decisions]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md
 [lessons]: https://github.com/nrdptel/hpr-sim/blob/main/docs/research/loft-lessons.md
+[lessons-motors]: https://github.com/nrdptel/hpr-sim/blob/main/docs/research/loft-lessons.md#motors-mass-and-design-checks
+[lessons-physics]: https://github.com/nrdptel/hpr-sim/blob/main/docs/research/loft-lessons.md#physics-and-numerics
+[lessons-tests]: https://github.com/nrdptel/hpr-sim/blob/main/docs/research/loft-lessons.md#tests-worth-porting-closed-forms-lofts-tolerances-were-loose
+[lessons-validation]: https://github.com/nrdptel/hpr-sim/blob/main/docs/research/loft-lessons.md#validation
 [phase-0]: https://github.com/nrdptel/hpr-sim/blob/main/docs/ROADMAP.md#phase-0-foundations
 [phase-1]: https://github.com/nrdptel/hpr-sim/blob/main/docs/ROADMAP.md#phase-1-physics-core-the-heart-with-validation-interleaved
 [phase-2]: https://github.com/nrdptel/hpr-sim/blob/main/docs/ROADMAP.md#phase-2-library-surfaces-and-interop

@@ -2,58 +2,76 @@
 
 ## In short
 
-- **What it models:** how parts become a rocket: where each part sits, automatic radii,
-  overrides, the reference diameter and the motor in its mount. It gives the rocket's mass,
-  centre of mass and inertia through the burn, and flags designs that can't exist, such as a
-  motor wider than its mount. Most of it is convention, not physics.
+- **What it models:** how parts become a rocket: where each part sits, automatic radii (taken
+  from the neighbouring parts), overrides (measured values that replace computed masses, centres
+  and inertias), the [reference diameter](../glossary.md#reference-area) and the motor in its
+  mount. It gives the
+  rocket's mass, [centre of mass](../glossary.md#centre-of-gravity-cg) and inertia (its resistance
+  to turning) through the burn, and flags designs that can't exist, such as a motor wider than its
+  mount. Most of it is convention, not physics.
 - **Sources:** RocketPy 1.13.0's `Rocket` code, and Meriam and Kraige's *Engineering Mechanics:
-  Dynamics* for the parallel-axis theorem.
-- **How well it is validated:** by analytic tests and code-to-code, the first and third of four
+  Dynamics* for the [parallel-axis theorem](../glossary.md#parallel-axis-theorem).
+- **How well it is validated:** by analytic tests and
+  [code-to-code comparison](../glossary.md#code-to-code-comparison), the first and third of four
   [kinds of evidence][levels]. A hand-worked rocket agrees to 1e-12 through the burn. For eight
-  cases of RocketPy's example rockets, a given structure with its motor placed agrees in mass,
-  centre and inertia within 8.0e-10 (relative) at the times RocketPy computed, and within 1.1e-5
-  in mass and 2.6e-5 in inertia between them; grain propellant mass within 2.4e-9 and 4.9e-5
-  of its initial value.
+  cases of [RocketPy](../glossary.md#rocketpy)'s [example rockets](../glossary.md#example-rockets),
+  a given structure with its motor placed agrees in mass, centre and inertia within 8.0e-10
+  (relative) at the times RocketPy computed, and within 1.1e-5 in mass and 2.6e-5 in inertia
+  between them; the propellant grains' mass within 2.4e-9 and 4.9e-5 of its initial value.
   Placement, automatic radii and overrides are checked by hand only. Not compared with OpenRocket
   or a real flight.
-- **What it leaves out:** all motors ignite together at `t = 0` until staging arrives
-  ([M1.9][roadmap]). Fins on a nose cone or transition are refused. OpenRocket has its own
-  conventions for positions, radii and overrides; the OpenRocket comparison ([M2.2][roadmap]) will
-  map them.
+- **What it leaves out:** staged flight. Every motor in a configuration ignites together at
+  `t = 0`, on the pad. So a [cluster](../glossary.md#cluster) whose motors all light together is
+  flown (no test or comparison checks one yet), but a two-stage design flies with every motor lit
+  at once, which is not a staged flight, and nothing warns. Staging under power, delayed ignition
+  and [air starts](../glossary.md#air-start) are planned for [M1.9](../decisions-and-roadmap.md#m1-9) (staging, clusters
+  and air starts). Fins on a nose cone or transition are refused.
+  [OpenRocket](../glossary.md#openrocket) has its own conventions for positions, radii and
+  overrides; the OpenRocket comparison ([M2.2](../decisions-and-roadmap.md#m2-2)) will map them.
 
 ## Code and sources
 
-Code: `hpr_design::tree` (the tree, placement, automatic radii, overrides, reference diameter),
-`hpr_design::config` (motor mounts, configurations, assembly) and `hpr_design::checks`. Decisions:
+Code: [`hpr_design::tree`](../api/hpr_design/tree/index.html) (the tree, placement, automatic
+radii, overrides, reference diameter), [`hpr_design::config`](../api/hpr_design/config/index.html)
+(motor mounts, configurations, assembly) and [`hpr_design::checks`](../api/hpr_design/checks/index.html).
+Decisions:
 [ADR-007][adr-007] (stations, placement, automatic radii, overrides, motors and checks). Part
 geometry and mass are in [Mass properties](mass.md) and [Shapes](shapes.md).
 
 Sources:
 
 - **[RP]** RocketPy v1.13.0 (MIT), `rocketpy/rocket/rocket.py`: how a rocket's mass, centre of
-  mass and inertia combine with a placed motor. `docs/research/rocketpy-rocket-mass.md` has the
-  formulas with line numbers.
+  mass and inertia combine with a placed motor.
+  [`docs/research/rocketpy-rocket-mass.md`](https://github.com/nrdptel/hpr-sim/blob/main/docs/research/rocketpy-rocket-mass.md)
+  has the formulas with line numbers.
 - **[MK]** Meriam and Kraige, *Engineering Mechanics: Dynamics*, appendix B: the parallel-axis
   theorem ([Mass properties](mass.md)).
 
 Most of this file defines conventions rather than physical models. OpenRocket has its own
-conventions for positions, automatic radii and overrides. The clean-room rule rules out its
-source, so the planned OpenRocket import ([M3.1][roadmap]) and comparison ([M2.2][roadmap]) will
+conventions for positions, automatic radii and overrides. hpr never reads OpenRocket's source
+code, whose licence (GPL) is incompatible with hpr's (the clean-room rule). So the planned
+OpenRocket import ([M3.1](../decisions-and-roadmap.md#m3-1), reading `.ork` files) and comparison ([M2.2](../decisions-and-roadmap.md#m2-2)) will
 map them by running OpenRocket itself.
 
 ## Stations and the body origin
 
-- A **station** `s` is a distance aft of the nose tip, the way design files give positions.
-- The body frame's origin is the nose tip, on the axis: `z_ref = 0` in [Frames](frames.md). Station `s` is
-  body `z = −s`, and the rocket lies at `z ≤ 0`.
+- A **[station](../glossary.md#station)** `s` is a distance aft of the nose tip, the way design
+  files give positions.
+- The [body frame](../glossary.md#body-frame)'s origin is the nose tip, on the axis: `z_ref = 0` in
+  [Frames](frames.md). Its `z` axis points along the rocket toward the nose, so station `s` is body
+  `z = −s`, and the rocket lies at `z ≤ 0`.
 - A part's own frame has its origin at its forward end ([Mass properties](mass.md)). A part placed at station `s` is
   translated by `(0, 0, −s)`. Radial offsets and roll angles stay as the part states them, always
   measured from the body axis.
 
 ## The tree
 
-A `Rocket` has stages. Each `Stage` lists **body components**, and each `Component` holds a
-`Part` and its children.
+A [`Rocket`](../api/hpr_design/tree/struct.Rocket.html) has stages: sections of the stack, forward
+to aft. A [separation](../glossary.md#separation) splits the rocket at a boundary between two
+stages, so a rocket that stays in one piece needs only one.
+Each [`Stage`](../api/hpr_design/tree/struct.Stage.html) lists **body components**, and each
+[`Component`](../api/hpr_design/tree/struct.Component.html) holds a
+[`Part`](../api/hpr_design/tree/enum.Part.html) and its children.
 
 | role | parts | where |
 |---|---|---|
@@ -62,7 +80,8 @@ A `Rocket` has stages. Each `Stage` lists **body components**, and each `Compone
 | internal | inner tube, centering ring, mass component, parachute, streamer, shock cord | children of a body component or an inner tube |
 
 - **Stacking.** Body components start at `s = 0` and follow one another through every stage, forward
-  to aft. Each one's extent is its length without shoulders.
+  to aft. Each one's extent is its length without shoulders (the sleeves of a nose or transition
+  that slide into the next tube).
 - **Axial extent** of an attached part:
   - a fin set's root chord;
   - a row of lugs or buttons from the first one's forward end to the last one's aft end,
@@ -100,8 +119,9 @@ An `auto` list names dimensions that the tree resolves. The part's stored value 
   the next component's forward radius instead: only the first such tube, and then the sweep
   repeats. So a fixed radius forward of a tube wins over one aft of it. A radius with no fixed
   radius to reach is refused.
-- **Shoulders** take the inner radius (`R − t`) of the adjoining body tube: behind a nose; ahead
-  of a transition for its forward shoulder, behind it for its aft one.
+- **Shoulders** take the inner radius (`R − t`, outer radius less wall thickness) of the adjoining
+  body tube: behind a nose; ahead of a transition for its forward shoulder, behind it for its aft
+  one.
 - **Centering rings:** the outer radius is the parent's inner radius. The inner radius is the
   outer radius of the widest on-axis inner tube among its siblings that overlaps it along the axis
   (by a positive length). With none, it is zero: a bulkhead.
@@ -110,12 +130,16 @@ An `auto` list names dimensions that the tree resolves. The part's stored value 
 
 ## Overrides
 
-`Overrides` replace computed mass properties `(m, c, I)`, in this order:
+[`Overrides`](../api/hpr_design/tree/struct.Overrides.html) replace computed mass properties with
+measured ones: the mass `m`, the centre of mass `c` and the inertia tensor `I` (the 3×3 table of
+moments and products of inertia; see [Mass properties](mass.md)). Primes mark the new values.
+They apply in this order:
 
 1. **Mass** `m′`: `I′ = I m′/m`, same centre. The body keeps its shape. A body with `m = 0` becomes
    a point mass `m′` at `c`.
-2. **Centre** `a` (`cg_aft_m`): `c′_z = −(s_fore + a)`, measured from the component's own forward
-   end (a stage's for a stage, and never a shoulder's), whether or not the children are covered.
+2. **Centre** `a` (`cg_aft_m`): `c′_z = −(s_fore + a)`, with `s_fore` the station of the
+   component's own forward end (a stage's for a stage, and never a shoulder's), whether or not the
+   children are covered.
    `cg_xy_m` sets `c′_x` and `c′_y`; without it they are kept. The tensor about the centre is
    unchanged.
 3. **Inertia**: the tensor about the centre is replaced. `InertiaOverride` gives its six entries
@@ -129,17 +153,18 @@ Errors inside a stage or component name it (`DesignError::InComponent`).
   overrides cover the whole stage, measured from its forward end. Motors are never covered.
 - **Precedence.** Deeper overrides apply first. A child's override is inside its parent's subtree
   total, and the stage override applies last.
-- Scaling the tensor with the mass keeps the radii of gyration. That is the natural reading of
+- Scaling the tensor with the mass keeps the radii of gyration (`√(I/m)`: how far out, on
+  average, the mass sits). That is the natural reading of
   "this part weighs more than its geometry says", but other tools may differ. How OpenRocket orders
-  its overrides on parts with shoulders ([Loft lesson L51][lessons]) will be measured by the planned
-  OpenRocket oracle ([M2.2][roadmap]).
+  its overrides on parts with shoulders ([Loft lesson L51](../decisions-and-roadmap.md#l51)) will be measured by the planned
+  OpenRocket oracle ([M2.2](../decisions-and-roadmap.md#m2-2)).
 
 ## Reference diameter
 
 - `maximum` (the default): twice the largest outer radius of any body component in any stage,
   including a bulged ogive's peak (`Profile::max_radius_m`). Internal parts, shoulders, fins, tube
-  fins, lugs and rail buttons never count. In Loft an internal part could set it
-  ([Loft lesson L47][lessons]).
+  fins, lugs and rail buttons never count. In Loft, the project before hpr-sim, an internal part
+  could set it ([Loft lesson L47](../decisions-and-roadmap.md#l47)).
 - `nose_base`: the first nose cone's base diameter.
 - `custom`: a given diameter.
 
@@ -147,33 +172,52 @@ The reference area is `π d²/4`.
 
 ## Motors and configurations
 
-- **Mounts.** A `MotorMount` on a body tube or inner tube holds a motor. Its `overhang_m` is how far
-  the nozzle exit sits aft of the mount's aft end.
-- **Configurations.** A `Configuration` puts at most one `MountedMotor` in each mount. A mounted
-  motor is a `SolidMotor` with its case diameter and length (for the checks) and an optional
-  delay.
-- **Placement.** The motor's axis runs forward from the nozzle exit ([Solid motors](motor.md)). The nozzle exit
-  is at station `s_aft + overhang`, on the mount's axis: the inner tube's
-  `(r cos θ, r sin θ)`, or the body axis. A motor element at `z_m` is at body
-  `z = −(s_aft + overhang) + z_m`.
-- **Composition** at `t` seconds after ignition: `Assembly::mass_properties(t)` combines the
-  structure with each motor's `SolidMotor::state(t).total` ([MK]). The dry assembly uses each
-  motor's dry element. Every motor ignites at `t = 0`; staging, delays between stages and air
-  starts will come with the planned staging milestone ([M1.9][roadmap]).
-- **Against RocketPy** [RP]: `total_mass(t)` and `center_of_mass(t)` are the same combination. Its
-  `I_11(t)` is taken about the centre of dry mass, so hpr's tensor is moved there before
-  comparing. `I_33` sums the axial moments (every element is on the axis).
+- **Mounts.** A [`MotorMount`](../api/hpr_design/config/struct.MotorMount.html) on a body tube or
+  inner tube holds a motor. Its `overhang_m` is how far the nozzle exit sits aft of the mount's aft
+  end. Each mount holds at most one motor, so a cluster has a mount per motor, such as inner tubes
+  set off the body axis.
+- **Configurations.** A [`Configuration`](../api/hpr_design/config/struct.Configuration.html)
+  puts at most one [`MountedMotor`](../api/hpr_design/config/struct.MountedMotor.html) in each
+  mount. A mounted motor is a [`SolidMotor`](../api/hpr_motor/motor/struct.SolidMotor.html) with its case diameter and length (for the checks) and
+  an optional [ejection delay](../glossary.md#ejection-delay): the time from burnout to its
+  ejection charge. It doesn't delay ignition.
+- **Placement.** The motor's axis runs forward from the nozzle exit ([Solid motors](motor.md)).
+  With `s_aft` the station of the mount's aft end, the nozzle exit is at station
+  `s_aft + overhang`, on the mount's axis: for an inner tube offset `r` from the body axis at
+  angle `θ` (from `x_B` toward `y_B`), at `(r cos θ, r sin θ)`; otherwise on the body axis. A motor
+  element at `z_m` along the motor's own axis is at body `z = −(s_aft + overhang) + z_m`.
+- **Composition** at `t` seconds after ignition:
+  [`Assembly::mass_properties`](../api/hpr_design/config/struct.Assembly.html#method.mass_properties)`(t)`
+  combines the structure with each motor's `SolidMotor::state(t).total` ([MK]). The dry assembly
+  uses each motor's dry element.
+- **More than one motor.** Every motor in a configuration ignites together at `t = 0`, on the pad.
+  In a flight, each burning motor's thrust points along the rocket's axis (`z_B`) and acts at its
+  own nozzle exit, and the thrusts and their moments are summed
+  ([Rigid-body flight](flight.md#equations-of-motion)):
+  - A cluster whose motors all light together is flown, and a motor off the body axis adds a
+    turning moment. No test or comparison checks a cluster flight yet.
+  - A two-stage design flies with every motor lit at `t = 0`, booster and sustainer together.
+    That is not a staged flight, and
+    [`Simulation::new`](../api/hpr_sim/flight/struct.Simulation.html#method.new) doesn't warn.
+  - Staging under power, delayed ignition and air starts are planned for [M1.9](../decisions-and-roadmap.md#m1-9), the
+    staging, clusters and air starts milestone.
+- **Against RocketPy** [RP]: `total_mass(t)` and `center_of_mass(t)` are the same combination.
+  RocketPy names the moment of inertia in pitch and yaw `I_11` and the one in roll `I_33`. Its
+  `I_11(t)` is taken about the centre of dry mass (the rocket without propellant), so hpr's tensor
+  is moved there before comparing. `I_33` sums the axial moments (every element is on the axis).
 
 ## Checks
 
-`checks::check` resolves a design and returns typed `Finding`s. Lengths compare with 1 nm of slack
-(`LENGTH_TOLERANCE_M`), so round-off never raises one.
+[`checks::check`](../api/hpr_design/checks/fn.check.html) resolves a design and returns typed
+[`Finding`](../api/hpr_design/checks/enum.Finding.html)s, each an error (impossible as described,
+so a simulation would be wrong) or a warning (unusual, but it can be built and flown). Lengths compare with 1 nm of
+slack (`LENGTH_TOLERANCE_M`), so round-off never raises one.
 
 | finding | severity | when |
 |---|---|---|
-| `motor_wider_than_mount` | error | case diameter > mount inner diameter ([Loft lesson L50][lessons]) |
+| `motor_wider_than_mount` | error | case diameter > mount inner diameter ([Loft lesson L50](../decisions-and-roadmap.md#l50)) |
 | `motor_outside_mount` | error | the case doesn't overlap its mount along the axis at all (an overhang typed in mm as m) |
-| `attachment_off_body` | error | an external part's extent (a fin root) doesn't overlap its body tube at all ([Loft lesson L50][lessons]) |
+| `attachment_off_body` | error | an external part's extent (a fin root) doesn't overlap its body tube at all ([Loft lesson L50](../decisions-and-roadmap.md#l50)) |
 | `part_outside_rocket` | error | an internal part lies wholly forward of the nose tip or aft of the rocket's end, and touches none of the parts it hangs from |
 | `internal_part_wider_than_parent` | error | an internal part reaches farther from its parent's axis than the parent's bore (a nose cone's or transition's largest outer radius) |
 | `centre_outside_rocket` | error | a stage with an axial centre-of-mass override (`cg_aft_m`, its own or a component's) has its centre off the rocket although its parts aren't |
@@ -199,8 +243,9 @@ The reference area is `π d²/4`.
 
 Errors mark designs that can't exist as described. A simulation of one would be wrong, usually
 on the flattering side: Loft flew a 54 mm motor in a 38 mm mount 69% high. The flight engine
-refuses them with `SimError::DesignChecks` unless the caller sets
-`FlightSettings::accept_design_errors`.
+refuses them with [`SimError::DesignChecks`](../api/hpr_sim/error/enum.SimError.html#variant.DesignChecks)
+unless the caller sets
+[`FlightSettings::accept_design_errors`](../api/hpr_sim/flight/struct.FlightSettings.html#structfield.accept_design_errors).
 
 ## Verification
 
@@ -217,21 +262,27 @@ refuses them with `SimError::DesignChecks` unless the caller sets
 - **Overrides** (`overrides_rescale_move_and_replace`, `nested_overrides_apply_deepest_first`):
   each step, the scopes, a stage override, deeper overrides first, the massless case, and refusal
   of non-finite and unphysical results.
-- **Property** (proptest): randomly placed masses sum to the structure's mass and centre, and
+- **Property** (a proptest, which checks a rule on many random inputs): randomly placed masses sum to the structure's mass and centre, and
   sliding every part moves the centre rigidly without changing the tensor.
 - **Checks** (`checks::tests`): each finding and its severity. A cluster pod's block fits and an
   on-axis part in the pod doesn't. Motors miss their mounts in both directions. Parts and a stage
   centre lie off the rocket. A layout with a corrupt parent index is skipped, not a panic.
 - **Against RocketPy 1.13.0** (`config::tests::matches_rocketpy_example_rockets`):
-  - Eight cases of `validation/fixtures/design/rocketpy-rocket-mass.json`: seven example rockets
-    (Calisto at two motor positions) and Prometheus's `GenericMotor`. Cavour (added for its drag
-    curve in [M1.5b][roadmap], the drag milestone) has no motor dry mass; its design gives the
+  - Eight cases of the [fixture](../glossary.md#reference-value-and-fixture)
+    [`validation/fixtures/design/rocketpy-rocket-mass.json`](https://github.com/nrdptel/hpr-sim/blob/main/validation/fixtures/design/rocketpy-rocket-mass.json):
+    seven [example rockets](../glossary.md#example-rockets) (Calisto at two motor positions) and
+    Prometheus's `GenericMotor` (RocketPy's motor described by its masses alone, with no grain
+    geometry). Cavour (added for its drag
+    curve in [M1.5b](../decisions-and-roadmap.md#m1-5b), the drag milestone) has no motor dry mass; its design gives the
     motor 1e-15 kg, since hpr needs a positive one.
-    `docs/research/rocketpy-rocket-mass.md` gives the curve substitution and the examples left out.
+    [`docs/research/rocketpy-rocket-mass.md`](https://github.com/nrdptel/hpr-sim/blob/main/docs/research/rocketpy-rocket-mass.md)
+    gives the curve substitution and the examples left out.
   - The test derives the stage override, nozzle station and motor inputs from the fixture itself,
     independently of the design generator.
   - The rockets are compared at 103 even times through the burn and after it, and at up to 60 of
-    RocketPy's LSODA knots.
+    RocketPy's LSODA knots: the times at which its ODE solver, LSODA, computed the grain geometry.
+    Errors are relative: to the value itself, or to what a row names in brackets (the rocket's
+    length for a centre).
   - Worst measured, with the test's tolerance:
 
     | quantity | worst | tolerance |
@@ -252,14 +303,12 @@ refuses them with `SimError::DesignChecks` unless the caller sets
     exact for a piecewise-linear curve.
   - The comparison sets mass, centre and inertia together. So the override steps (rescaling the
     tensor with mass, moving the centre) are checked by hand-worked tests, not against RocketPy.
-- **Public designs** (`validation/designs/`, written by `cargo xtask designs`, which a test keeps in
+- **Public designs** ([`validation/designs/`](https://github.com/nrdptel/hpr-sim/tree/main/validation/designs), written by `cargo xtask designs`, which a test keeps in
   sync): the eight RocketPy cases and two synthetic rockets resolve with no findings and assemble
   into valid bodies at ignition, mid-burn and burnout.
-- **Lessons:** [Loft lesson L47][lessons] `tests::reference_diameter_ignores_internal_components`;
-  [Loft lesson L50][lessons] `checks::tests::motor_wider_than_mount_is_rejected` and
+- **Lessons:** [Loft lesson L47](../decisions-and-roadmap.md#l47) `tests::reference_diameter_ignores_internal_components`;
+  [Loft lesson L50](../decisions-and-roadmap.md#l50) `checks::tests::motor_wider_than_mount_is_rejected` and
   `checks::tests::fin_root_must_touch_body`.
 
 [adr-007]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-007-design-tree-stations-placement-automatic-radii-overrides-motors-and-checks-2026-09-17
-[lessons]: https://github.com/nrdptel/hpr-sim/blob/main/docs/research/loft-lessons.md
 [levels]: ../accuracy.md#four-kinds-of-evidence
-[roadmap]: https://github.com/nrdptel/hpr-sim/blob/main/docs/ROADMAP.md

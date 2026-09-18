@@ -64,11 +64,13 @@ the file quoted above.
 
 The rocket is Valetudo, which Projeto Jupiter, a student team at the University of São Paulo, flew
 in 2019. [RocketPy](glossary.md#rocketpy), another open-source simulator, uses it as an example, and
-hpr's copy of it is one of the project's [example rockets](glossary.md#example-rockets). Its motor
-keeps the size and mass of the one in RocketPy's example. Its thrust curve is that of a K400C, a
-commercial motor ([motor designation](glossary.md#motor-designation)), in place of the original's.
-It launches from a 3 m vertical rail, in a 5 m/s wind that blows from the west at every height, and
-comes down on a [drogue and a main](glossary.md#drogue-and-main) parachute.
+hpr's copy of it is one of the project's [example rockets](glossary.md#example-rockets).
+
+Its motor is not a real K400C. It keeps the size and mass of the motor in RocketPy's example, and
+takes the thrust curve of a K400C, a commercial motor
+([motor designation](glossary.md#motor-designation)) whose curve hpr bundles, in place of the
+original's. The rocket launches from a 3 m vertical rail, in a 5 m/s wind that blows from the west
+at every height, and comes down on a [drogue and a main](glossary.md#drogue-and-main) parachute.
 
 The table lists the flight's [events](glossary.md#event) in order:
 
@@ -93,9 +95,17 @@ And the events:
 | landing | the centre of gravity reaches the ground |
 
 Liftoff comes a millisecond after ignition, when the thrust is only 73 N against 95 N of weight.
-Most of the rest of the push comes from a term for the propellant's motion inside the motor. A
-measured thrust curve already includes it, so hpr counts it twice, as RocketPy does; it changes the
-burnout speed by at most 0.05 m/s ([Rigid-body flight](physics/flight.md#equations-of-motion)).
+Most of the rest of the push, 21 N, comes from the propellant's
+[internal momentum](glossary.md#internal-momentum): the propellant and gas moving inside the motor
+as it burns.
+
+- A thrust curve measured on a test stand already includes that effect, and hpr's equations of
+  motion add it again, so it is counted twice.
+- hpr does this on purpose, as RocketPy does, so that the two codes can be compared like for like.
+  It is a known approximation, listed with the other gaps on
+  [Start here](start-here.md#what-doesnt-work-yet).
+- It is small here: it changes the burnout speed by at most 0.05 m/s
+  ([Rigid-body flight](physics/flight.md#equations-of-motion)).
 
 The speed is over the ground, so it includes the drift. At apogee the rocket is still moving
 sideways at 6.5 m/s. At landing it falls at 6.4 m/s while the 5 m/s wind carries it east, 8.1 m/s
@@ -110,9 +120,12 @@ Below the table:
   [Mach number](glossary.md#mach-number) (its speed through the air as a fraction of the speed of
   sound). It comes just before burnout, once the dwindling thrust no longer beats the drag and the
   weight.
-- **Rail exit** is the speed as the rocket leaves the rail. The slower it is, the more a crosswind
-  tips the rocket just after, where hpr's models are least trustworthy (see
-  [what is left out](how-a-flight-is-simulated.md#what-is-left-out)).
+- **Rail exit** is the speed as the rocket leaves the rail. The slower it is in a crosswind, the
+  larger the [angle of attack](glossary.md#angle-of-attack) just after it, and that is where hpr's
+  models are least trustworthy (see
+  [what is left out](how-a-flight-is-simulated.md#what-is-left-out)). hpr sets no minimum
+  rail-exit speed and doesn't judge whether this one is enough; that call is your range safety
+  officer's.
 - **Landing** is where the rocket came down, 100.4 m due east of the pad, and how fast it was
   falling. The rocket [weathercocks](glossary.md#weathercocking): it turns into the wind as it
   climbs, so its apogee is west of the pad. It then drifts east under its parachutes, past the
@@ -122,16 +135,20 @@ Below the table:
 
 - **No whole flight has been validated.** hpr's apogee, top speed and landing point have not yet
   been compared with another simulator's or a real flight's. Comparing whole flights with
-  RocketPy's is the next validation milestone, [M2.1b2][roadmap]; [Accuracy](accuracy.md) keeps
+  RocketPy's is the next validation milestone, [M2.1b2](decisions-and-roadmap.md#m2-1b2); [Accuracy](accuracy.md) keeps
   every result so far.
 - **The drag is the largest doubt, and it moves the apogee by up to a tenth.** hpr computes the
   [drag coefficient](glossary.md#drag-coefficient) from the rocket's shape and surface. For this
-  design it is 0.5566 at Mach 0.3 with the motor off, a mirror-smooth finish and rail buttons.
-  That is 23.5%
-  under the 0.728 in the rocket's own [OpenRocket](glossary.md#openrocket) file. With that file's
-  rougher finish and launch lugs, hpr gives 0.714, 1.9% under it. The drag curve in RocketPy's
-  example says 1.05, which the comparison leaves unexplained ([Aerodynamics](physics/aero.md)). A
-  second program,
+  design it is 0.5566 at Mach 0.3, coasting with the motor burnt out
+  ([power-off drag](glossary.md#power-on-and-power-off-drag)), with a mirror-smooth surface finish
+  (0 µm of roughness; a rougher surface adds skin-friction drag) and rail buttons.
+  - That is 23.5% under the 0.728 in the rocket's own [OpenRocket](glossary.md#openrocket) file.
+  - With that file's rougher finish (60 µm) and its two launch lugs (short tubes on the outside of
+    the body that ride along the rail, like rail buttons), hpr gives 0.714, 1.9% under it.
+  - The drag curve in RocketPy's example says 1.05, which the comparison leaves unexplained
+    ([Aerodynamics](physics/aero.md#drag-verification)).
+
+  A second program,
   [`drag_what_if.rs`](https://github.com/nrdptel/hpr-sim/blob/main/crates/hpr-sim/examples/drag_what_if.rs),
   flies the same rocket with each of the other two values in place of hpr's drag, held at every
   Mach number, and prints:
@@ -148,10 +165,12 @@ Below the table:
 
   So 874 m is this design's answer, and with more drag the same design would peak lower. The
   rocket that flew had a different motor, so none of these is a prediction of its flight.
-- **The parachutes are simple.** Each opens fully the moment its lines stretch, with no filling
-  time and no drag overshoot, so the opening load hpr reports is no safe bound either way. Its drag
-  coefficient is the middle of the range printed for its type in Knacke's *Parachute Recovery
-  Systems Design Manual*, a standard handbook ([Recovery](physics/recovery.md)).
+- **The parachutes are simple.** Each opens fully the moment its lines stretch, with no
+  [filling time](glossary.md#inflation-and-filling-time) and no drag overshoot (the canopy's drag
+  briefly rising above its steady value as it fills). So the opening load hpr reports is no safe
+  bound either way. Each canopy's drag coefficient is the middle of the range printed for its type
+  in Knacke's *Parachute Recovery Systems Design Manual*, a standard handbook
+  ([Recovery](physics/recovery.md)).
 - **The descent is the best-checked part.** From the same start near apogee, with the first
   parachute opening at once and RocketPy's formula for gravity, hpr's descent agrees with
   RocketPy's within 3% for five rockets ([Recovery](physics/recovery.md)). This example opens the
@@ -366,8 +385,8 @@ It has six steps.
 1. **The rocket.** The program reads Valetudo's design from
    [`validation/designs/rocketpy-valetudo.json`](https://github.com/nrdptel/hpr-sim/blob/main/validation/designs/rocketpy-valetudo.json)
    into a `Rocket`: its parts, their shapes, materials and positions, and its motor. The format is
-   hpr's own and provisional: the open design format ([M3.3][roadmap]) will replace it, and import
-   from OpenRocket ([M3.1][roadmap]) comes later. The
+   hpr's own and provisional: the open design format ([M3.3](decisions-and-roadmap.md#m3-3)) will replace it, and import
+   from OpenRocket ([M3.1](decisions-and-roadmap.md#m3-1)) comes later. The
    [designs folder](https://github.com/nrdptel/hpr-sim/tree/main/validation/designs) holds the other
    example rockets, and its README says how each was built.
 2. **The surroundings.** `Geodetic::from_degrees` places the launch site by latitude, longitude
@@ -381,31 +400,46 @@ It has six steps.
    friction. Its fields also set its heading, its angle above the horizon and its friction.
 4. **The simulation.** `Simulation::new` takes the rocket, the name of the configuration to fly
    (a design can hold several, one per motor choice), the surroundings, the rail and the
-   integration settings. It runs the design's checks first, and refuses a rocket that can't exist,
-   such as a motor wider than its mount. `FlightSettings::default()` steps through time to a
-   tight tolerance ([Time integration](physics/integration.md)).
+   integration settings, which say how finely to step through time. It runs the design's checks
+   first, and refuses a rocket that can't exist, such as a motor wider than its mount.
+   `FlightSettings::default()` steps through time to a tight
+   [tolerance](glossary.md#tolerance) ([Time integration](physics/integration.md)).
 5. **The parachutes.** Each `Device` has a name, a drag, and a trigger that fires its charge.
    `DeviceDrag::canopy` is a parachute of the given type and
    [nominal diameter](glossary.md#nominal-area) in metres: 0.6 m for the drogue and 2.4 m for the
-   main. `Trigger::Apogee` fires at apogee; `Trigger::Altitude` fires
-   when the rocket falls past a height above the pad. `with_lag_s` is the time from the charge to
-   the lines stretching. With no filling law given, each parachute opens fully at once.
-6. **The flight.** `run` flies the rocket until it lands, and returns a `FlightResult`: how the
-   flight ended (`termination`), its `events`, each with a `Sample` of the flight at that moment,
-   and the final sample. The argument is an `Observer`, which sees every step of the flight as it
-   runs. `TopSpeed`, at the bottom of the program, is one: it keeps the fastest moment. For a
-   whole trajectory, to plot or save, pass a `Recorder` instead. For example,
-   `Recorder::new(vec![Channel::Time, Channel::HeightAboveGround], Some(0.1))` keeps the time and
-   the height every 0.1 s, and after the flight its `rows()` hold them.
+   main.
+   - `CanopyType::FlatCircular` is a flat circular canopy. It is one of thirteen canopy types,
+     such as conical, hemispherical, cross and ringslot, each with drag data from Knacke's
+     parachute handbook. The [`CanopyType` page](api/hpr_sim/recovery/enum.CanopyType.html) of
+     the API reference lists them all, and [Recovery](physics/recovery.md#drag-area) explains the
+     data.
+   - `Trigger::Apogee` fires at apogee; `Trigger::Altitude` fires when the rocket falls past a
+     height above the pad.
+   - `with_lag_s` is the time from the charge to the lines stretching. With no filling law given,
+     each parachute opens fully at once.
+6. **The flight.** `run` flies the rocket until it lands. It returns a
+   [`FlightResult`](api/hpr_sim/flight/struct.FlightResult.html), the record of the finished
+   flight: how it ended (`termination`), its `events`, each with a `Sample` of the flight at that
+   moment, and the final sample.
+   - The argument to `run` is an [`Observer`](api/hpr_sim/recorder/trait.Observer.html): any
+     type that is shown every step of the flight as it runs. `TopSpeed`, at the bottom of the
+     program, is one: it keeps the fastest moment.
+   - For a whole trajectory, to plot or save, pass a `Recorder` instead. It keeps the quantities
+     you choose, each a `Channel`, such as the height or the Mach number, as a table.
+     [Recording a trajectory](recording-a-trajectory.md) shows one, lists the channels, and shows
+     what it prints.
 
-A `Sample` holds what the program prints, and more: the time, the centre of gravity's position
+A [`Sample`](api/hpr_sim/recorder/struct.Sample.html) is a snapshot of the flight at one instant.
+It holds what the program prints, and more: the time, the centre of gravity's position
 (`cg_enu_m`, metres east, north and up of the pad) and velocity (`cg_velocity_enu_m_s`), the
 height above the pad, the vertical speed, the airspeed, the Mach number, the angle of attack, the
 thrust and the mass. Every quantity is in SI units, and its name says which.
 
 ## Change it
 
-Edit the program and run it again. For example:
+Edit the program and run it again. The edits below are for you to try. Each says which way the
+results move; run it to see by how much. Nothing checks these edits or what they print, so this
+page gives no numbers for them. For example:
 
 - **More wind.** Change `let wind_speed_m_s = 5.0;` to `10.0`. The apogee drops a little and the
   landing moves farther east.
@@ -419,21 +453,29 @@ Edit the program and run it again. For example:
   deceleration as it opens, but it has no model of a parachute or its harness failing, so the
   flight still ends in a gentle landing ([Recovery](physics/recovery.md)).
 
-Your edited program no longer prints what `first_flight.output.txt` says, which is expected. If you
-propose the change in a pull request, run `cargo xtask examples` to write the new output, and
-update the quotes on this page; `cargo xtask site` checks that they match.
+Your edited program no longer prints what `first_flight.output.txt` says, which is expected.
+
+If you propose a change to the program itself in a pull request, two more commands help.
+`cargo xtask` runs the project's own maintenance tasks, a Rust program in the repository's
+[`xtask` folder](https://github.com/nrdptel/hpr-sim/tree/main/xtask):
+
+- `cargo xtask examples` runs every example program and writes its new output next to it;
+- `cargo xtask site` builds this documentation site, and checks that the quotes on this page still
+  match the program and its output.
 
 ## Where next
 
+- [Recording a trajectory](recording-a-trajectory.md) keeps the whole flight as a table, to plot
+  or save.
 - [How a flight is simulated](how-a-flight-is-simulated.md) explains what happens between ignition
   and landing, and links the page for each model.
-- **To fly your own rocket** today, write its design in the same format as the files in the
-  [designs folder](https://github.com/nrdptel/hpr-sim/tree/main/validation/designs), or build it
-  in Rust from the types in `hpr_design`. A simpler builder ([M4.1][roadmap]) and OpenRocket import
-  ([M3.1][roadmap]) are planned.
+- [Your own rocket](your-own-rocket.md) builds a rocket of your own, with your dimensions and a
+  bundled motor, and shows its centre of pressure, centre of gravity and
+  [stability margin](glossary.md#stability-margin). A
+  simpler builder ([M4.1](decisions-and-roadmap.md#m4-1), the simpler library interface) and OpenRocket import
+  ([M3.1](decisions-and-roadmap.md#m3-1)) are planned.
 - [Accuracy](accuracy.md) gathers every validation result, and
   [Checking a claim](checking-a-claim.md) shows how to trace a number to its source and its test.
 - [The API reference](api.md) documents every type used here, and
   `cargo doc --open -p hpr-sim` builds it on your machine.
 
-[roadmap]: https://github.com/nrdptel/hpr-sim/blob/main/docs/ROADMAP.md

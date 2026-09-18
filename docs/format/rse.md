@@ -1,23 +1,39 @@
 # RockSim `.rse` motor files
 
-Code: `hpr_motor::rse`, written for the solid-motor milestone ([M1.3][roadmap]). An XML motor
-database: one or more engines, each with its attributes and a sampled thrust, mass and CG curve.
-The rules below are from the spec unless marked **Observed** or **Policy**. The spec is thin and
-disagrees with every real file on element and attribute names, so a reader must follow the
-observed structure.
+A `.rse` file is a motor database in XML, a text format of nested, named elements, from the RockSim
+flight simulator. It holds one or more motors ("engines"). Each has its size, masses and delays
+as attributes, and a table of thrust, mass and [centre of gravity](../glossary.md#centre-of-gravity-cg)
+(CG) over time. [ThrustCurve.org](../glossary.md#thrustcurveorg) serves it beside
+[RASP `.eng`](eng.md).
+
+**To fly a motor from a `.rse` file**, see
+[A motor from a file](../physics/motor.md#a-motor-from-a-file) on the Solid motors page. It reads a
+`.eng` file, and says what changes for a `.rse` one.
+
+This page is the reference for hpr's reader and writer. The spec is thin and disagrees with every
+real file on element and attribute names, so a reader must follow the observed structure. Of the
+823 RockSim files ThrustCurve.org held on 2026-09-17, 821 read and write back with every value
+unchanged; the other two have a time that goes backwards
+([Checked against real files](#checked-against-real-files)).
+
+Code: `hpr_motor::rse` ([API reference](../api/hpr_motor/rse/index.html)), written for the
+solid-motor milestone ([M1.3](../decisions-and-roadmap.md#m1-3)). The rules below are from the spec unless marked
+**Observed** (seen in real files) or **Policy** (hpr's own choice).
 
 ## Sources
 
-- **[P]** "RockSim & EngEdit – Engine File (.rse) Format Guide", 3 pp., PDF hosted by ThrustCurve.org
-  (`validation/refs.lock.toml` entry `rocksim-rse-spec`, sha256 `c47a04f4…`,
-  `refs/papers/rocksim-rse-spec.pdf`). Cited as [P p.N].
+- **[P]** "RockSim & EngEdit – Engine File (.rse) Format Guide", 3 pp., PDF hosted by ThrustCurve.org,
+  pinned as `rocksim-rse-spec` (sha256 `c47a04f4…`) in the
+  [reference lock file](https://github.com/nrdptel/hpr-sim/blob/main/validation/refs.lock.toml),
+  which records each source's address and checksum, and fetched to
+  `refs/papers/rocksim-rse-spec.pdf`, a local folder that is never committed. Cited as [P p.N].
 - **[S]** ThrustCurve.org, "Flight Simulators", RockSim section,
   <https://www.thrustcurve.org/info/simulators.html>, captured 2026-09-17 and pinned as
   `thrustcurve-simulators` (sha256 `5bb2bad7…`).
 - **[X]** W3C, *XML 1.0* 5th ed., <https://www.w3.org/TR/xml/>, §2.11 (end of line), §3.3.3 (attributes).
 - **Observed:** 715 engines and 15,149 points in the ThrustCurve manufacturer file sets (9 `.rse`
-  sets) and 10 single-motor API downloads, fetched 2026-09-17 into `refs/samples/formats/`
-  (never committed).
+  sets) and 10 single-motor API downloads, fetched 2026-09-17 into a local cache,
+  `refs/samples/formats/`, that is never committed.
 
 ## Structure
 
@@ -58,8 +74,8 @@ children [P p.2]. Observed in 715 of 715 engines:
 | `auto-calc-mass` | no | flag | `1`: RockSim computes mass as m(t) = initMass − (propMass / burnTime)·t [P p.2] |
 | `auto-calc-cg` | no | flag | `1`: "CG is fixed at engine center" [P p.2] |
 | `massFrac` | — | % | Not in spec. Observed: 100·m₀/initWt (703 of 710), where m₀ is the first point's `m` |
-| `Isp` | — | s | Not in spec. Observed: Itot / (m₀[kg]·9.80665), within ±0.006 in 696 of 710 |
-| `throatDia`, `exitDia` | — | mm? | Not in spec. Always `0.` |
+| `Isp` | — | s | [Specific impulse](../glossary.md#specific-impulse). Not in spec. Observed: Itot / (m₀[kg]·9.80665), within ±0.006 in 696 of 710 |
+| `throatDia`, `exitDia` | — | mm? | Nozzle throat and exit diameters. Not in spec. Always `0.` |
 | `tDiv tStep tFix FDiv FStep FFix mDiv mStep mFix cgDiv cgStep cgFix` | no | — | "Rendering attributes … control how graphs are drawn" [P p.2]. Always Div `10`, Step `-1.`, Fix `1` |
 
 The spec contradicts itself: its summary names `initMass` and `propMass` [P p.2], while its
@@ -112,8 +128,9 @@ With every observed file setting both auto-calc flags to `1`, RockSim may ignore
 
 ## Reader policy (lenient, with diagnostics)
 
-1. Use a conforming XML parser (`roxmltree`): it handles CDATA, entities and end-of-line
-   normalization [X §2.11]. Refuse DTDs and external entities (core crates do no I/O). The reader
+1. Use a conforming XML parser (`roxmltree`): it handles CDATA (raw-text sections), entities
+   (escapes such as `&amp;`) and end-of-line normalization [X §2.11]. Refuse DTDs and external
+   entities, declarations that can make a parser fetch other files (core crates do no I/O). The reader
    takes text and strips a BOM; decoding bytes is the caller's job, in `hpr-io`.
 2. Take every `engine` element at any depth, so a bare `<engine>` root [P p.2] also works, but not
    one nested inside another engine. An engine with an error is skipped, with the error as a
@@ -143,6 +160,8 @@ With every observed file setting both auto-calc flags to `1`, RockSim may ignore
 
 ## Writer policy (strict, round-trip stable)
 
+Round-trip stable: a file hpr writes reads back to exactly the values it was written from.
+
 - Emit `<engine-database>`, `<engine-list>` and one `<engine>` per motor. Use 2-space indent, LF
   endings, a final newline, UTF-8, and no XML declaration (none was observed; whether RockSim
   accepts one is unverified).
@@ -171,4 +190,3 @@ backwards and are rejected with its line. In the manufacturer sets, 704 engines 
 with a backwards time is skipped with a warning. The files are cached under `refs/samples/` and
 never committed.
 
-[roadmap]: https://github.com/nrdptel/hpr-sim/blob/main/docs/ROADMAP.md

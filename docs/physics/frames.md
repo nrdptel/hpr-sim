@@ -65,7 +65,7 @@ converted before use. hpr has no geoid model, so a flight takes `N` at the launc
   distance `d` from the pad is about `d²/(2R)` above the ellipsoid: 7.8 m at 10 km. Height above
   the ellipsoid comes from `LaunchFrame::geodetic_from_enu`. The flight engine detects apogee and
   ground contact with that height, not with `z_L` ([Rigid-body flight](flight.md),
-  [Loft lesson L35][lessons]).
+  [Loft lesson L35](../decisions-and-roadmap.md#l35)).
 
 ## Body frame `B`
 
@@ -159,4 +159,3 @@ z_B in L = (sin A cos E, cos A cos E, sin E)
 [adr-003]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-003-frames-attitude-geodesy-and-the-gravity-model-2026-09-17
 [adr-007]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-007-design-tree-stations-placement-automatic-radii-overrides-motors-and-checks-2026-09-17
 [adr-011]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-011-rigid-body-flight-equations-of-motion-aerodynamic-coupling-rail-phases-and-termination-2026-09-17
-[lessons]: https://github.com/nrdptel/hpr-sim/blob/main/docs/research/loft-lessons.md

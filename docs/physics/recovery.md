@@ -37,7 +37,7 @@ Sources:
   limits distribution, so it is cited, never redistributed (`docs/VALIDATION.md`).
 - RocketPy 1.13.0 (MIT), `rocketpy/simulation/flight.py:2710-2790` and
   `rocketpy/rocket/parachute.py`, for the point-mass descent that the parachute milestone
-  ([M1.7a][roadmap]) is compared against.
+  ([M1.7a](../decisions-and-roadmap.md#m1-7a)) is compared against.
 - J. Carruthers and A. Filippone, "Aerodynamic Drag of Streamers and Flags", *Journal of Aircraft*
   42(4), 2005, and the OpenRocket technical documentation v13.05 (CC BY-SA), Appendix C, for
   streamers; the same documentation's §3.5 for tumbling bodies; and C. Kidwell's NARAM-43 drop
@@ -293,7 +293,7 @@ m a_cg = −½ ρ (C_D S)(t) |v_cg − w| (v_cg − w) + m (g + a_Coriolis) + T
 - The airframe's own drag is **left out**, as RocketPy leaves it out. A rocket's attitude under a
   canopy, and so the area it presents, is not modelled. For a drogue whose drag area is close to
   the airframe's broadside area this is a real omission; it is the same omission the oracle makes,
-  and the tumble model ([M1.7b][roadmap], streamers and tumble) is where a body's own drag belongs.
+  and the tumble model ([M1.7b](../decisions-and-roadmap.md#m1-7b), streamers and tumble) is where a body's own drag belongs.
 - The thrust `T` is kept, along the frozen axis, so a device that opens while a motor still burns
   (an off-nominal case) is not silently thrust-free. Its direction is wrong the moment the rocket
   would have swung under the canopy.
@@ -360,7 +360,7 @@ ends there: its `FlightResult` has `Termination::Separated`, a `Separation` even
   descent. A trigger that fires earlier is a flight-time error, not a silent approximation, since
   whether it does depends on the flight. A release across the separation is refused too: a line
   cuts a device on its own body. Powered staging, where a sustainer lights and keeps flying, is
-  planned for the staging milestone ([M1.9][roadmap]).
+  planned for the staging milestone ([M1.9](../decisions-and-roadmap.md#m1-9)).
 - Bodies are not watched by the `Observer`: their events and samples are in their `BodyFlight`.
 
 ## Verification
@@ -383,7 +383,7 @@ ends there: its `FlightResult` has `Termination::Separated`, a `Separation` even
 | A drogue released by a main that fills over 2 s | the release waits for the end of filling, the drag area never falls below the drogue's, and the descent never speeds up |
 | An apogee charge on a flight that starts descending | it fires at the first step (there is no apogee event to find), and a climbing start still waits for the apogee |
 | Two user events and an altitude device on one flight | the user events keep their numbers and fire during the descent, in height order |
-| The same recovered flight flown twice | bit-identical rows, events, final sample and step counts ([Loft lesson L24][lessons]: a run does not mutate the simulation) |
+| The same recovered flight flown twice | bit-identical rows, events, final sample and step counts ([Loft lesson L24](../decisions-and-roadmap.md#l24): a run does not mutate the simulation) |
 | A separation at apogee of the two-stage test design, canopy on the sustainer and tumble on the booster | both bodies land: the 0.550 kg sustainer at 729.0 s and 2.11 m/s under its 1.8 m canopy, the 1.125 kg booster at 107.5 s and 16.74 m/s tumbling; the masses add to the 1.675 kg stack to 1e-12 and each lands within 0.1% of its own `v_e` |
 | The linear momenta of the bodies at a separation with a 0.6 rad/s body rate | add to the stack's to 1e-9, and each body starts at its own centre of mass to 1e-12 (0.817 m apart on this design) |
 | A separation before the last burnout | refused in flight, with the burnout time in the error |
@@ -395,64 +395,30 @@ ends there: its `FlightResult` has `Termination::Separated`, a `Separation` even
 
 ### Against RocketPy
 
-`validation/oracles/rocketpy/recovery.py` flies RocketPy's own parachute phase for five of its
-example rockets and writes `validation/fixtures/recovery/rocketpy-descent.json`;
-`descent_matches_rocketpy_examples` replays each case in hpr. Both start from the same declared
-state after burnout, near apogee, with the first device opening at once (its lag is overridden to
-zero, so no ballistic segment under either model's aerodynamics separates them), the same `C_D S`,
-the same deployment settings and the same wind, and RocketPy's noise set to zero. The oracle runs
-at `rtol = atol = 1e-8`; run again at 1e-6 it moves every compared metric by at most 3.5e-6
-(the fixture's `solver.relative_change_from_loose`). Its one larger entry, 2.1e-3, is on
-Valetudo's 20 µm *north* drift component, which the parachute milestone ([M1.7a][roadmap]) did not
-compare. The validation harness ([M2.1a][roadmap]) does. When it first did, hpr read 28x above
-RocketPy, at 0.55 mm, and that is what found the gravity-model difference below
-([issue #27](https://github.com/nrdptel/hpr-sim/issues/27)). With that fixed, the two agree within
-1.8% ([validation report][report]).
+hpr's descent is compared with RocketPy's for five of RocketPy's example rockets, a
+[code-to-code comparison](../glossary.md#code-to-code-comparison). **Every compared number agrees
+within 3%, and most within 0.1%.** The two largest gaps are both NDRT 2020's, whose main has a drag
+area of 16 m²: its descent takes 0.71% longer in hpr, and the smaller component of its drift differs
+by 2.86%. RocketPy's [added mass](../glossary.md#added-mass), which hpr leaves out, is the likely
+cause; no test has isolated it yet.
 
-What still differs, and by how much:
+**How the comparison is run:**
 
-- **Added mass.** hpr has none; RocketPy's carries no weight, so it changes no equilibrium, only
-  the transient after an opening. It is most likely the largest difference (see NDRT below).
-- **Trigger sampling.** RocketPy checks its triggers on a grid of `1/sampling_rate` (100 or
-  105 Hz) anchored at `t = 0`, and only over the span after its first accepted step; hpr has no
-  sampling rate and locates the crossing with its event finder. So RocketPy's first deployment is
-  2.5 ms late in the four 105 Hz cases and 13 ms in Prometheus's, and its `h < setting` predicate
-  can only fire at or **below** the setting, by at most one sample of fall: `v_z/rate` is 0.17 m
-  for Calisto and 0.27 m for NDRT (about 0.01 s of descent). The heights the fixture records at
-  those triggers (800.07 m, 167.93 m, 457.26 m) come from RocketPy's *reporting* spline over its
-  stored samples, not from the dense output its trigger read, so they sit just above the setting
-  instead. The table below compares hpr's trigger height against those reported values, which is
-  the closest the fixture can come; it is a difference of the same size either way.
-- **Release against replacement.** hpr sums its open devices and releases the drogue when the main
-  is full; RocketPy holds one `C_D S` and replaces it. For these cases, whose canopies open
-  instantly, the two are the same.
-- **Wind.** Both codes interpolate the declared wind by its east and north components, and the
-  test holds hpr's to RocketPy's samples within 1e-9 m/s in each, NDRT's sheared profile
-  included.
-- **Atmosphere.** hpr evaluates the 1976 standard atmosphere; RocketPy interpolates a 100-point
-  pressure table over 0 to 80 km. Measured over the fixture's 23 samples: at most 3.7e-4 in
-  density, which the test gates at 5e-4.
-- **Gravity.** The same *magnitude*, and for a long time that was all this said. RocketPy's
-  "Somigliana" formula is WGS 84 normal gravity and hpr's agrees with the fixture's samples to
-  1e-8 (the worst of 23 is 4.7e-9 relative) — but RocketPy applies it to the vertical axis alone (`Flight.u_dot_parachute`,
-  `flight.py:2777`, where only `az` carries a gravity term), while hpr's default
-  `GravityModel::Ellipsoidal` uses the full normal-gravity **vector**, which above the ellipsoid
-  leans a few parts in 10⁶ toward the pole: 4.0e-6 m/s² at Valetudo's site at ground level and
-  8.7e-6 m/s² at 1,468 m, growing in proportion to height above the ellipsoid and pointing toward
-  the equator ([Gravity](gravity.md)): over these five sites it runs from +6.9e-6 m/s² at
-  Valetudo's topmost gravity sample to −3.3e-5 m/s² at Calisto's 4,400 m. hpr's vector also turns
-  with the local vertical downrange, `g·d/R`, which is 2.1e-3 m/s² at Calisto's 1.4 km of drift and
-  is much the larger of the two wherever a rocket drifts at all. The parachute milestone's test
-  ([M1.7a][roadmap]) used to compare gravity by magnitude alone, so it could see neither. Both this
-  comparison and the validation suite now fly `GravityModel::VerticalTaylor`, which hpr ships as
-  RocketPy's own formula for like-for-like comparisons, and both assert the gravity **vector**
-  rather than its length.
-- **Geometry.** hpr flies over the ellipsoid and takes heights along its normal; RocketPy's `z` is
-  flat. Over Calisto's 1.4 km of drift the curvature is 0.15 m of height, 0.03 s of descent.
+- `validation/oracles/rocketpy/recovery.py` flies RocketPy's own parachute phase for the five
+  rockets and writes what it computes to `validation/fixtures/recovery/rocketpy-descent.json`. The
+  test `descent_matches_rocketpy_examples` replays each case in hpr.
+- Both codes start from the same declared state after burnout, near apogee. The first device opens
+  at once: its lag is overridden to zero, so no ballistic stretch, flown under each code's own
+  rocket aerodynamics, comes between them.
+- Both get the same `C_D S`, the same deployment settings and the same wind. RocketPy's noise is set
+  to zero, and hpr flies RocketPy's formula for gravity (see *Gravity* below).
+- The test checks that the two environments agree first, then compares the descents.
+- The oracle runs at `rtol = atol = 1e-8` (its [tolerance](../glossary.md#tolerance)). Run again at
+  1e-6, it moves every compared metric by at most 3.5e-6 (the fixture's
+  `solver.relative_change_from_loose`), far below the gaps. The one larger entry, 2.1e-3, is
+  Valetudo's 20 µm north drift, which has [its own section](#valetudos-north-drift) below.
 
-The test checks the environments agree first, then the descent.
-
-Measured (hpr against RocketPy, 2026-09-17):
+**The results.** Measured (hpr against RocketPy, 2026-09-17):
 
 | case | descent time | descent rate under the drogue | impact descent rate | drift | worst drift component |
 |---|---|---|---|---|---|
@@ -462,35 +428,86 @@ Measured (hpr against RocketPy, 2026-09-17):
 | Prometheus 2022 (drogue 0.467 m², main 5.78 m² at 457.2 m) | +0.08% (153.50 s) | −0.01% (26.400 m/s) | −0.03% (7.323 m/s) | +0.08% (1,237.1 m) | +0.09% |
 | Juno III (drogue 0.885 m²) | −0.02% (53.56 s) | — | −0.01% (22.431 m/s) | −0.02% (457.9 m) | −0.02% |
 
-These numbers are hpr flown under RocketPy's gravity model, as the comparison has been since
-issue #27. Under hpr's own the drifting cases read a little closer — Calisto +0.06% rather than
-+0.08% — because the vertical's turn downrange pushes the rocket back toward the pad and cancels
-part of a real difference. The like-for-like number is the honest one.
+- **Every metric is inside the milestone's 3%.** The descent rate under the drogue, where a case
+  has a main, agrees to 0.01%.
+- **The later devices' trigger heights** agree to −0.01%, −0.17% and −0.01%. RocketPy's trigger
+  sampling (below) accounts for them.
+- **Both simulators land within 1% of Knacke's `v_e`** for the device that is open, computed from
+  hpr's own air and gravity at the site.
+- **These are hpr's numbers under RocketPy's gravity model,** as the comparison has been since
+  issue #27. Under hpr's own gravity the drifting cases read a little closer (Calisto +0.06% rather
+  than +0.08%), because the vertical's turn downrange pushes the rocket back toward the pad and
+  cancels part of a real difference. The like-for-like number is the honest one.
 
-Valetudo's north drift is worth its own paragraph, because it is the number that found the gravity
-difference above. In still air it is Coriolis alone: the horizontal velocity relaxes to a drag
-balance in about `v_t/g` ≈ 1.8 s, so `v_north ≈ −2 ω_z v_east · v_t/g`, which integrates to 2.0e-5 m
-over the descent. RocketPy gives 1.9653e-5 m. Under hpr's default gravity hpr gave 5.51e-4 m, 28x
-high, and `(1/g)∫₀^800 g_north dz` = 5.2e-4 m accounts for the difference to within a few percent.
-Flown against RocketPy's own gravity formula, as the validation suite does, hpr gives 1.93e-5 m,
-−1.8%. Both codes carry the same Coriolis term (hpr in `dynamics.rs`; RocketPy in
-`flight.py:2779-2783`), and on this evidence neither is wrong: they were being asked different
-questions.
+**What still differs between the two codes:**
 
-The later devices' trigger heights agree to −0.01%, −0.17% and −0.01% (RocketPy's trigger
-sampling, above), and in every case both simulators land within 1% of Knacke's `v_e` for the
-device that is open, computed from hpr's own air and gravity at the site.
+- **Added mass.** hpr has none. RocketPy's carries no weight, so it changes no steady descent rate,
+  only the response just after an opening. It is most likely the largest difference.
+  - RocketPy's added mass for NDRT's main is 15.9 kg, against the rocket's 20.8 kg, so its response
+    to the opening is slower.
+  - That most likely lengthens the descent (+0.71%) and, in a wind that shears with height, moves
+    the smaller drift component by 2.86%.
+  - A cited apparent-mass model would show whether it closes that gap.
+- **When a trigger fires.** RocketPy checks its triggers on a grid of `1/sampling_rate` (100 or
+  105 Hz), anchored at `t = 0`, and only over the span after its first accepted step. hpr has no
+  sampling rate: its [event](../glossary.md#event) finder locates the crossing.
+  - So RocketPy's first deployment is 2.5 ms late in the four 105 Hz cases, and 13 ms late in
+    Prometheus's.
+  - Its `h < setting` predicate can fire only at or **below** the setting, by at most one sample of
+    fall: `v_z/rate` is 0.17 m for Calisto and 0.27 m for NDRT (about 0.01 s of descent).
+  - The heights the fixture records at those triggers (800.07 m, 167.93 m, 457.26 m) come from
+    RocketPy's *reporting* spline over its stored samples, not from the dense output its trigger
+    read, so they sit just above the setting instead.
+  - The table compares hpr's trigger heights with those reported values, the closest the fixture
+    can come. The difference is the same size either way.
+- **Release against replacement.** hpr sums its open devices, and releases the drogue when the main
+  is full; RocketPy holds one `C_D S` and replaces it. For these cases, whose canopies open
+  instantly, the two are the same.
+- **Wind: no difference.** Both codes interpolate the declared wind by its east and north
+  components, and the test holds hpr's to RocketPy's samples within 1e-9 m/s in each, NDRT's
+  sheared profile included.
+- **Atmosphere.** hpr evaluates the 1976 standard atmosphere; RocketPy interpolates a 100-point
+  pressure table over 0 to 80 km. Over the fixture's 23 samples they differ by at most 3.7e-4 in
+  density, which the test gates at 5e-4.
+- **Gravity: the same size, a different direction.** RocketPy's "Somigliana" formula is WGS 84
+  normal gravity, and hpr's agrees with the fixture's samples to 1e-8 (the worst of 23 is 4.7e-9
+  relative). The two point it differently, and for a long time this page compared only the size.
+  - RocketPy applies gravity to the vertical axis alone (`Flight.u_dot_parachute`, `flight.py:2777`,
+    where only `az` carries a gravity term).
+  - hpr's default, `GravityModel::Ellipsoidal`, uses the full normal-gravity **vector**. Above the
+    ellipsoid it tilts slightly toward the equator ([Gravity](gravity.md)), in proportion to height
+    above the ellipsoid: 4.0e-6 m/s² sideways at Valetudo's site at ground level, and 8.7e-6 m/s²
+    at 1,468 m. Over these five sites it runs from +6.9e-6 m/s² north at Valetudo's topmost
+    gravity sample to −3.3e-5 m/s² at Calisto's 4,400 m.
+  - hpr's vector also turns with the local vertical downrange, by `g·d/R`: 2.1e-3 m/s² at Calisto's
+    1.4 km of drift. Wherever a rocket drifts at all, that is much the larger of the two.
+  - The parachute milestone's test ([M1.7a](../decisions-and-roadmap.md#m1-7a)) used to compare gravity by its size alone, so
+    it could see neither. This comparison and the validation suite now both fly
+    `GravityModel::VerticalTaylor`, which hpr ships as RocketPy's own formula for like-for-like
+    comparisons, and both check the gravity **vector**, not its length.
+- **Geometry.** hpr flies over the ellipsoid and takes heights along its normal; RocketPy's `z` is
+  flat. Over Calisto's 1.4 km of drift the curvature is 0.15 m of height, 0.03 s of descent.
 
-Every metric is inside the milestone's 3%. The descent rate under the drogue, where a case has a
-main, agrees to 0.01%. The two largest gaps are both NDRT's, whose main has a drag area of 16 m²:
-RocketPy's added mass for it is 15.9 kg against the rocket's 20.8 kg, so its response to the
-opening is slower, which most likely lengthens the descent (+0.71%) and, in a wind that shears
-with height, moves the smaller drift component by 2.86%. No test has isolated it yet; a cited
-apparent-mass model would show whether it closes that gap.
+#### Valetudo's north drift
+
+This tiny number is worth its own section, because it is the one that found the gravity difference
+above.
+
+- **What to expect.** In still air, Valetudo's north drift is Coriolis alone. The horizontal
+  velocity relaxes to a drag balance in about `v_t/g` ≈ 1.8 s, so
+  `v_north ≈ −2 ω_z v_east · v_t/g`, which integrates to 2.0e-5 m over the descent. RocketPy gives
+  1.9653e-5 m.
+- **What hpr gave at first.** The parachute milestone ([M1.7a](../decisions-and-roadmap.md#m1-7a)) didn't compare this
+  component; the validation harness ([M2.1a](../decisions-and-roadmap.md#m2-1a)) does. When it first did, hpr read 28x above
+  RocketPy: 5.51e-4 m (0.55 mm), under hpr's default gravity. The tilt of that gravity,
+  `(1/g)∫₀^800 g_north dz` = 5.2e-4 m, accounts for the difference to within a few percent
+  ([issue #27](https://github.com/nrdptel/hpr-sim/issues/27)).
+- **What it gives now.** Flown against RocketPy's own gravity formula, as the validation suite
+  does, hpr gives 1.93e-5 m, −1.8% ([validation report][report]). Both codes carry the same
+  Coriolis term (hpr in `dynamics.rs`; RocketPy in `flight.py:2779-2783`), and on this evidence
+  neither is wrong: they were being asked different questions.
 
 [adr-012]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-012-recovery-drag-areas-triggers-inflation-and-the-descent-phase-2026-09-17
 [adr-013]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-013-streamer-and-tumble-drag-2026-09-17
 [adr-014]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-014-separation-bodies-their-masses-and-their-descents-2026-09-17
-[lessons]: https://github.com/nrdptel/hpr-sim/blob/main/docs/research/loft-lessons.md
 [report]: https://github.com/nrdptel/hpr-sim/blob/main/validation/reports/latest.md
-[roadmap]: https://github.com/nrdptel/hpr-sim/blob/main/docs/ROADMAP.md
