@@ -4,38 +4,33 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
 
 ## Now
 
-- **Current milestone:** M2.1b1 The whole-flight oracle (M2.1b split; M2.1a shipped)
-- **Run:** the first autopilot run; M0.1-M0.3, M1.1-M1.7 and M2.1a have shipped
-- **Last updated:** 2026-09-17 (M2.1b split, and the drag-provenance call that unblocks it)
+- **Current milestone:** M2.1b2 The whole-flight cases (M2.1b1 shipped)
+- **Run:** the first autopilot run; M0.1-M0.3, M1.1-M1.7, M2.1a and M2.1b1 have shipped
+- **Last updated:** 2026-09-17 (M2.1b1)
 
 ## Handoff (overwrite each session)
 
-M2.1b was split: **M2.1b1** is the RocketPy whole-flight oracle, **M2.1b2** the `WholeFlight` case
-variant and the five cases. Nothing was built this cycle; the cycle's work was finding and
-settling the question that blocked b1, so start by writing `validation/oracles/rocketpy/flight.py`.
+M2.1b1 shipped the whole-flight oracle. M2.1b2 is the Rust half: a `Flight::WholeFlight` case
+variant beside `RecoveryDescent`, five cases in the lock, and the L75 test. Start here:
 
-- **The blocker, and the call.** Same-drag mode needs hpr to fly the oracle's `C_D0(M)`, but
-  RocketPy's drag exports carry their own terms: ADR-009 and `THIRD-PARTY-NOTICES.md:34-40` commit
-  only derived numbers from them, and `refs/` is gitignored (`.gitignore:6`), so M2.1c's CI cannot
-  read them either. **Decision: the case declares its own `C_D0(M)` and the generator hands it to
-  RocketPy's `power_off_drag`/`power_on_drag`**, as `recovery.py` already declares the wind of
-  examples whose weather files are Copernicus. Rejected: committing a resampled table (still
-  redistribution) and reading `refs/` at validate time (a case CI cannot run is L78's silent skip).
-  The flight is then not the example's published one, which is fine: same-drag mode exists to
-  isolate dynamics, environment and motor, and the examples' own aero is M2.1c's predicted mode.
-- **Build b1 on `recovery.py`.** It already reads each example's rocket, motor and geometry from
-  `validation/fixtures/design/rocketpy-rocket-mass.json`, substitutes a bundled curve (ADR-007),
-  declares site and wind, zeroes parachute noise, and reruns each case loose to show the metric is
-  the model's. Copy that shape; a whole flight adds the rail and the metrics M2.1 names.
-- **Watch for:** a deployment landing on a phase start gives NaNs (`recovery.py`'s `START_S`);
-  expect differences from RocketPy's added mass, its rail exit at the forward button and `0.25*n^2`
-  (ADR-011); hpr refuses `M >= 1` until M1.8, so a supersonic case is a b2/M2.1c gap to report, not
-  to hide. Fly `GravityModel::VerticalTaylor` (ADR-015).
-- **The harness, unchanged from M2.1a:** a case is `validation/cases/<id>.toml`;
-  `crates/hpr-validate/src/rocketpy.rs` is the only place that knows a generator's JSON shape, and
-  `Simulation::with_drag_table` is `crates/hpr-sim/src/flight.rs:292`. It never writes a reference
-  (L76), refuses a value with no source (L77) or a metric with no gate (L79), and fails on a
-  locked case it cannot find or a committed case the lock does not name (L78).
+- **The reference** is `validation/fixtures/flight/rocketpy-whole-flight.json`, written by
+  `validation/oracles/rocketpy/flight.py`. Teach `crates/hpr-validate/src/rocketpy.rs` its shape,
+  as it already knows `recovery.py`'s; it is the only place that may.
+- **The drag is the case's, not RocketPy's.** RocketPy's exports carry their own terms (ADR-009)
+  and CI has no `refs/`, so the fixture declares a constant `C_D0` of 0.5 and hands it to both
+  codes. Feed it to hpr through `Simulation::with_drag_table` (`crates/hpr-sim/src/flight.rs:292`).
+  Do not invent a Mach curve there: that is L18 rebuilt inside the reference.
+- **Two gaps the cases must report, not hide.** Prometheus peaks at Mach 1.014 and hpr refuses
+  `M >= 1` until M1.8, so that case is a declared gap. And the oracle's own solver is fragile here:
+  at rtol 1e-6, RocketPy's default, none of the five cases leaves the rail (apogee 0, nothing
+  deployed, the run hits `max_time`), and at 1e-7 NDRT still does not. The cause is open;
+  thrust-to-weight of 5.8 to 12.3 rules out a marginal liftoff. Worth an issue before b2 gates on
+  these numbers.
+- **Argue each tolerance in the case file** and fly `GravityModel::VerticalTaylor` (ADR-015);
+  expect differences from RocketPy's added mass, its rail exit and `0.25*n^2` (ADR-011).
+- **The harness, unchanged from M2.1a:** it never writes a reference (L76), refuses a value with no
+  source (L77) or a metric with no gate (L79), and fails on a locked case it cannot find or a
+  committed case the lock does not name (L78).
 - **Open conventions for the jar (M2.2/M3.1):** override order (L51), radii, positions, ogive,
   walls, fin mass, cant pivot, the drag-at-angle polynomial, lug diameter.
 - **Process notes:** `cargo test -p xtask` checks STATUS against ROADMAP, notices rows against lock
@@ -47,6 +42,11 @@ settling the question that blocked b1, so start by writing `validation/oracles/r
 
 ## Done log (newest first, keep about 15)
 
+- 2026-09-17: M2.1b1 The whole-flight oracle: `validation/oracles/rocketpy/flight.py` flies the
+  five examples pad to landing under a declared constant `C_D0` (RocketPy's own exports carry
+  their own terms), reproducible byte for byte. Apogees 779 to 3,623 m AGL; Prometheus reaches
+  Mach 1.014. RocketPy's default tolerances do not fly these cases at all, so the solver check
+  tightens rather than loosens, and says so.
 - 2026-09-17: #11 closed (PR #30): `SolidMotor` refuses an impossible exhaust velocity, the range
   measured over 1,708 catalog motors. #27 closed (PR #28): the M1.7a RocketPy comparison flies
   RocketPy's gravity and asserts the vector, not the magnitude, which is what hid the difference.

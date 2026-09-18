@@ -366,7 +366,7 @@
     - `validation/reports/latest.md` carries them, and the gravity rule of ADR-015 is applied:
       the comparison flies the oracle's models where hpr has them.
 
-    - [ ] **M2.1b1 The whole-flight oracle.**
+    - [x] **M2.1b1 The whole-flight oracle.**
       - `validation/oracles/rocketpy/flight.py`: the five example rockets of M2.1b flown from the
         pad to landing, built from `validation/fixtures/design/rocketpy-rocket-mass.json` the way
         `recovery.py` builds them, with the rail, inclination and heading cited per case.
@@ -381,6 +381,15 @@
         every value, and re-running it reproduces the committed fixture byte for byte.
       - No RocketPy data file is committed, and `git status` shows nothing from `refs/`.
       - Every case's declared drag table is argued in the generator, with its source.
+
+      *Result:* met. `flight.py` flies all five examples pad to landing under a declared constant
+      `C_D0` of 0.5 and writes `validation/fixtures/flight/rocketpy-whole-flight.json`, identical
+      byte for byte on a second run. Apogees 779 to 3,623 m AGL; Prometheus peaks at Mach 1.014,
+      so it is an `M >= 1` gap for M2.1b2 to report, not to hide. The looseness check had to be
+      inverted and says so: at rtol 1e-6, which is RocketPy's own default, none of the five cases
+      leaves the rail, and at 1e-7 NDRT still does not, so the second run tightens to 1e-9
+      (worst metric change 4.2e-4). The cause is open; thrust-to-weight, measured at 5.8 to 12.3,
+      rules out a marginal liftoff.
 
     - [ ] **M2.1b2 The whole-flight cases.**
       - A `Flight::WholeFlight` case variant beside `RecoveryDescent`, taking the case's `C_D0(M)`

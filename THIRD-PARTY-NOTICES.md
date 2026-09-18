@@ -27,7 +27,10 @@ adds a source.
 - **RocketPy example rocket inputs** (MIT, RocketPy v1.13.0): the masses, inertias, positions,
   motor dimensions and aerodynamic-surface dimensions of seven example rockets, taken from RocketPy's
   notebooks and test code (never from its data files). They are recorded
-  in `validation/fixtures/design/rocketpy-rocket-mass.json` with RocketPy's outputs, and turned into
+  in `validation/fixtures/design/rocketpy-rocket-mass.json` with RocketPy's outputs (and, for five
+  of them, the rail length, inclination and heading in
+  `validation/fixtures/flight/rocketpy-whole-flight.json`, whose drag is declared by the generator
+  rather than taken from RocketPy's exports), and turned into
   `validation/designs/rocketpy-*.json` by `cargo xtask designs`. RocketPy's motor thrust files carry
   their own terms and are **not** committed; the fixture pairs each example with a bundled
   public-domain curve instead (ADR-007). RocketPy's license, quoted under Ported, applies.
