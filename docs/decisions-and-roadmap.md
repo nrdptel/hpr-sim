@@ -48,6 +48,7 @@ new record replaces it and points back. All of them are in the [decision log][de
 | [ADR-029: Drag against RASAero II through Mach 2][adr-029] | How hpr's drag compares with RASAero II's curves by speed band, why it misses faster than sound, and a second reference with every input known: MIL-HDBK-762's worked example | [Aerodynamics](physics/aero.md#drag-against-rasaero-ii-through-mach-2) |
 | [ADR-030: The afterbody faster than sound][adr-030] | A boattail's supersonic wave drag from MIL-HDBK-762's chart held to the Prandtl–Meyer limit, separation on steep boattails, the base pressure behind them, and a lip in a boattail's wake; checked against measured boattails, and why its targets aren't met | [Aerodynamics](physics/aero.md#boattails-faster-than-sound) |
 | [ADR-031: Roll from canted fins][adr-031] | Roll forcing from canted fins and roll damping by Barrowman's strip theory with his body factors, the fin's own slope in the damping, and the comparison with NASA's measured roll effectiveness and the Basic Finner's roll damping | [Aerodynamics](physics/aero.md#roll-forcing-and-damping) |
+| [ADR-032: A peak acceleration reproduces to 1e-6][adr-032] | Why a peak acceleration may differ across macOS, Linux and Windows by 1e-6 of itself in the committed report, where other numbers keep 1e-7: the acceleration's noise floor (issue #53) | [Accuracy](accuracy.md) |
 
 ## The roadmap
 
@@ -278,6 +279,7 @@ is the milestone that added or will add that test.
 [adr-029]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-029-drag-against-rasaero-ii-through-mach-2-the-gap-by-band-mil-hdbk-762s-sample-calculation-and-the-boattails-wave-drag-2026-09-18
 [adr-030]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-030-the-afterbody-faster-than-sound-a-boattails-wave-drag-the-base-behind-it-and-a-lip-in-its-wake-2026-09-18
 [adr-031]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-031-roll-from-canted-fins-and-roll-damping-by-barrowmans-strip-theory-2026-09-19
+[adr-032]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-032-a-peak-acceleration-reproduces-across-platforms-to-1e-6-2026-09-19
 [decisions]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md
 [lessons]: https://github.com/nrdptel/hpr-sim/blob/main/docs/research/loft-lessons.md
 [lessons-motors]: https://github.com/nrdptel/hpr-sim/blob/main/docs/research/loft-lessons.md#motors-mass-and-design-checks

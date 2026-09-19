@@ -42,7 +42,8 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
   ROADMAP is near its 1000-line budget: trim a done entry when adding.
 - **Regeneration is not bit-identical across machines** (last digits). Regenerate reports with
   `cargo xtask validate` (debug), never `--release`: it rounds differently in the 7th digit.
-  Fixture checks (`designs::same`) allow 1e-12 relative, or 1e-13 near zero (M1.8b3's PR).
+  Fixture checks (`designs::same`) allow 1e-12 relative, or 1e-13 near zero (M1.8b3's PR); the
+  report's peak accelerations reproduce to 1e-6 (ADR-032, until #53).
 - **Process notes:** `cargo test -p xtask` guards STATUS, ROADMAP, notices, lessons and the lock.
   Oracles run from the repo root with `refs/venv/bin/python`. `cargo xtask designs` and
   `cargo xtask examples` rewrite designs and example outputs; pages quoting them must follow.

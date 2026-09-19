@@ -512,7 +512,7 @@ apogee or top speed, so it differs from the same-drag bound: Juno III's 56.17532
 | [`predicted-calisto-tests-motor-at-minus-1.373`][report] | +12.228083 | 84.6 | +0.332187 | 7.4 |
 | [`predicted-valetudo`][report] | +75.617613 | 20.9 | +2.793868 | 3.2 |
 | [`predicted-ndrt-2020-nose-to-tail`][report] | +116.557300 | 38.1 | +6.780039 | 5.5 |
-| [`predicted-prometheus-2022-generic-motor`][report] | +253.897342 | 128.8 | +7.128214 | 10.3 |
+| [`predicted-prometheus-2022-generic-motor`][report] | +253.897340 | 128.8 | +7.128214 | 10.3 |
 | [`predicted-juno-iii`][report] | +56.175322 | 83.9 | +0.997574 | 6.8 |
 | [`predicted-bella-lui`][report] | +5.477806 | 16.2 | +0.305877 | 2.9 |
 
