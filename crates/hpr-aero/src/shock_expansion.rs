@@ -1193,6 +1193,10 @@ mod tests {
     }
 
     #[test]
+    #[allow(
+        clippy::approx_constant,
+        reason = "6.28 is one of TN 3527's test Mach numbers, not 2π"
+    )]
     fn segment_shares_sum_to_the_body_and_act_within_their_segments() {
         // A tangent ogive of 4 calibers, a cylinder of 8 and a conical boattail of 1: the nose
         // and the cylinder carry lift, and footnote 8's boattail takes some off.
