@@ -475,8 +475,9 @@ impl NormalForceTable {
     ///
     /// # Errors
     ///
-    /// [`AeroError::Domain`] for a negative or non-finite Mach number or an angle outside
-    /// `[0, π]`, and table errors from a column whose Mach range refuses to extrapolate.
+    /// [`AeroError::Domain`] for a negative or non-finite Mach number, an angle outside `[0, π]`,
+    /// or stations that aren't finite and in order; and table errors from a column whose Mach
+    /// range refuses to extrapolate.
     pub fn lookup_within(
         &self,
         mach: f64,
@@ -484,6 +485,13 @@ impl NormalForceTable {
         stations_m: (f64, f64),
     ) -> Result<NormalForceLookup, AeroError> {
         crate::drag::check_mach_any(mach)?;
+        let (fore, aft) = stations_m;
+        if !(fore.is_finite() && aft.is_finite() && fore <= aft) {
+            return Err(AeroError::Domain {
+                what: "normal-force table's stations, fore end",
+                value: fore,
+            });
+        }
         if !(0.0..=PI).contains(&alpha_rad) {
             return Err(AeroError::Domain {
                 what: "angle of attack",
@@ -1153,6 +1161,48 @@ mod tests {
         }
     }
 
+    /// The case physics review found jumping in the first guarded split: as the 4° column's
+    /// centre of pressure moves past the one that makes the rest's moment zero, near Mach 0.51,
+    /// `C_N` at 30° fell from 8.59 to 5.50. Now it moves smoothly.
+    #[test]
+    fn the_continuation_does_not_jump_where_the_rest_s_moment_changes_sign() {
+        let r4 = 4.0_f64.to_radians();
+        let line = |a: f64, b: f64| {
+            Table1D::new(
+                vec![0.0, 1.0],
+                vec![a, b],
+                Interpolation::Linear,
+                Extrapolation::Clamp,
+            )
+            .unwrap()
+        };
+        let table = NormalForceTable::new(vec![
+            NormalForceColumn::new(0.0, flat(10.0), flat(1.0)),
+            NormalForceColumn::new(r4, flat(11.0), line(0.92, 0.90)),
+        ])
+        .unwrap();
+        let alpha = 30.0_f64.to_radians();
+        let at = |mach: f64| table.lookup_within(mach, alpha, (0.0, 1.3)).unwrap();
+        let mut previous = at(0.4);
+        for step in 1..=2000 {
+            let next = at(0.4 + f64::from(step) * 1e-4);
+            assert!(
+                (next.coefficient - previous.coefficient).abs() < 1e-3,
+                "{previous:?} {next:?}"
+            );
+            let moment = |l: &NormalForceLookup| l.coefficient * l.cp_station_m;
+            assert!((moment(&next) - moment(&previous)).abs() < 1e-3);
+            previous = next;
+        }
+        // Stations out of order, or not finite, are refused rather than panicking.
+        for stations in [(1.3, 0.0), (f64::NAN, 1.3), (0.0, f64::INFINITY)] {
+            assert!(matches!(
+                table.lookup_within(0.5, alpha, stations),
+                Err(AeroError::Domain { .. })
+            ));
+        }
+    }
+
     proptest::proptest! {
         /// Past the last column the normal force never turns round, and while `s ≥ 1` its centre
         /// of pressure stays within the stations given, whatever the table: slopes that grow or
@@ -1193,6 +1243,7 @@ mod tests {
             cp_0 in 0.8..1.2_f64,
             slope_change in -0.2..0.2_f64,
             cp_change in -0.1..0.1_f64,
+            cp_offset in -0.1..0.1_f64,
             alpha_deg in 5.0..170.0_f64,
         ) {
             let r4 = 4.0_f64.to_radians();
@@ -1205,7 +1256,7 @@ mod tests {
                 NormalForceColumn::new(
                     r4,
                     line(slope_0 - slope_change, slope_0 + slope_change),
-                    line(cp_0 - cp_change, cp_0 + cp_change),
+                    line(cp_0 + cp_offset - cp_change, cp_0 + cp_offset + cp_change),
                 ),
             ])
             .unwrap();
