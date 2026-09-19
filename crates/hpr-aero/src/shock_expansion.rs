@@ -732,6 +732,12 @@ fn taylor_maccoll_cone_flow(mach: f64, half_angle_rad: f64) -> Result<ConeFlow, 
             if peak_angle < half_angle_rad {
                 return Err(detached(mach, half_angle_rad));
             }
+            // The cone angle rises from the bracket's low end to the peak: from `lo` when the
+            // peak lies past it, from `before` when it lies between the two (the falling side
+            // past the peak is the strong shock's).
+            if peak <= lo {
+                (lo, lo_angle) = (before, cone_at(before)?);
+            }
             (hi, hi_angle) = (peak, peak_angle);
             break;
         }
@@ -1240,6 +1246,34 @@ mod tests {
                 );
             }
         }
+    }
+
+    #[test]
+    fn cone_flow_keeps_the_weak_shock_up_to_detachment() {
+        // The weak shock's angle rises with the cone's up to the steepest attached cone; the
+        // strong shock's falls. Just under it the solver once returned the strong one.
+        for mach in [1.4, 3.0, 7.4] {
+            // The steepest attached cone, to 1e-7°.
+            let (mut ok, mut bad) = (10.0_f64, 60.0_f64);
+            while bad - ok > 1e-7 {
+                let mid = 0.5 * (ok + bad);
+                if cone_flow(mach, mid.to_radians()).is_ok() {
+                    ok = mid;
+                } else {
+                    bad = mid;
+                }
+            }
+            let mut last = 0.0;
+            for below in [0.5, 0.1, 0.01, 0.003, 0.002, 0.001, 0.0003, 0.0001] {
+                let flow = cone_flow(mach, (ok - below).to_radians()).unwrap();
+                assert!(flow.shock_angle_rad > last, "Mach {mach}, {below}° under");
+                last = flow.shock_angle_rad;
+            }
+        }
+        // A weak-branch value just under the steepest cone at Mach 1.4 (the physics review's
+        // independent solver: 69.180°, where the strong branch is 69.527°).
+        let flow = cone_flow(1.4, 27.494_845_f64.to_radians()).unwrap();
+        assert!((flow.shock_angle_rad.to_degrees() - 69.180).abs() < 0.01);
     }
 
     #[test]

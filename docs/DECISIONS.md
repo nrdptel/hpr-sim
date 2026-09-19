@@ -3196,7 +3196,8 @@ source covers a 15° boattail. Doing all of it, and flying it, is more than one 
   errors of 45% at 0.006° and a wrong `Ok` from a capped run), so there the flow is slender-cone
   linear theory's, blended linearly into Taylor–Maccoll up to twice that angle, and a run whose
   surface misses the cone by over 1e-3 of its angle is an error. Checked against NACA Report
-  1135's cone charts, slender-cone linear theory, monotone from 1e-6 rad and smooth in Mach; Prandtl–Meyer from `afterbody` (ADR-030). The tangent cones' slopes are TN 3527's
+  1135's cone charts, slender-cone linear theory, monotone from 1e-6 rad, smooth in Mach, and on
+  the weak shock up to detachment (a third physics review caught the strong shock just under it); Prandtl–Meyer from `afterbody` (ADR-030). The tangent cones' slopes are TN 3527's
   Fig. 2, read by hand at 0° to 24° for Mach 3 to 10, linear between readings, the Mach 3 curve
   held below Mach 3 and the Mach 10 curve above (an assumption M1.8e2 must measure).
 - **The report's tangent body**: ten elements per curved piece, tangent at `x/l = 0, 0.1, …, 1.0`
