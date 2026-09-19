@@ -5,10 +5,9 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
 ## Now
 
 - **Current milestone:** M1.8e2 The body's supersonic normal force in flight
-- **Order:** M1.8e2, then M3.1
-- **Run:** M0.1-M0.4, M1.1-M1.7, M2.1 and M1.8a to M1.8e1 have shipped.
-  The site is live at https://nrdptel.github.io/hpr-sim/
-- **Last updated:** 2026-09-19 (M1.8e1 done; M1.8e2 not started; autopilot memory work shipped)
+- **Order:** M1.8e2, M1.8e3, then M3.1
+- **Run:** M0.1-M0.4, M1.1-M1.7, M2.1, M1.8a to M1.8e1 shipped; https://nrdptel.github.io/hpr-sim/
+- **Last updated:** 2026-09-19 (M1.8e2 split; its code not started; see the handoff)
 
 ## Handoff (overwrite each session)
 
@@ -31,16 +30,18 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
   rolling-moment plots are unread; #76: M1.8a's other TN D-4014 zeros. M1.8e1's Python check,
   `m18e/sose.py` (patch in hpr's Fig. 2), carries the gradient through reduced elements; hpr
   doesn't (#81).
-- **M1.8e2** next: fly `hpr_aero::shock_expansion`. Open: blunt or vertical tips (hpr's Arcas
-  Robin design is a power series; the fixture's fitted secant ogive has ratio 1.744), Mach below
-  3 (Fig. 2 held), the join from subsonic (Prometheus peaks at Mach 1.01 to 1.06), the boattail
-  (footnote 8 takes only 0.03 to 0.18 off), crossflow (the long model's extra 0.57), Mach over
-  nose fineness outside 0.4 to 2, #81, and `dynamics.rs` caching body stations at Mach 0. Don't read predicted mode's misses as gaps to
-  close (ADR-009, ADR-023). ROADMAP is at 999 of 1000 lines: trim a done entry.
-- **Autopilot memory:** each cycle runs in its own process group and is reaped after a clean
-  finish as well as a watchdog kill. `runs.log` gains a memory line per cycle (% spare from
-  `memory_pressure`, not free pages, which read near-empty when healthy). `scripts/build-memory.sh`
-  reproduces `docs/perf.md`'s numbers; thinning debug info does *not* cut peak memory, so no profile.
+- **Resume M1.8e2 here.** Branch `m1.8e2-body-supersonic-in-flight` (draft PR) holds only the
+  split (M1.8e3 now carries M1.8e's 15% bullet). Next, in order: (1) in `hpr-aero/src/model.rs`
+  (its `//!` says body terms are Mach-free), take `ShockExpansionBody::slope` past a join (it
+  returns `Unsupported` where the method fails), slender-body below, a ±1e-9 probe test; (2) drop the Mach-free `body_stations_m` cache (`crates/hpr-sim/src/dynamics.rs`,
+  line 132; take stations at each Mach as fin sets do); (3) evaluate the Arcas Robin body alone
+  through that path from Mach 1.5, into the report; (4) `cargo xtask validate` (debug), list the
+  changed rows. Open: Fig. 2 held below Mach 3; Prometheus peaks at Mach 1.01 to 1.06; Mach over
+  nose fineness outside 0.4 to 2; hpr's Arcas Robin nose is a power series (fixture: secant ogive,
+  ratio 1.744); #81. Predicted mode's misses aren't gaps (ADR-009, ADR-023). ROADMAP: 998 lines.
+- **Autopilot memory:** cycles run in their own process group, reaped either way; `runs.log`
+  gets a memory line per cycle (% spare from `memory_pressure`). `scripts/build-memory.sh`
+  reproduces `docs/perf.md`; thinning debug info doesn't cut peak memory.
 - **Regeneration is not bit-identical across machines** (last digits). Regenerate reports with
   `cargo xtask validate` (debug), never `--release`: it rounds differently in the 7th digit.
   Fixture checks (`designs::same`) allow 1e-12 relative, or 1e-13 near zero (M1.8b3's PR).
@@ -63,9 +64,6 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
   settles on the closed-form roll rate within 1e-11; TN D-4014's roll effectiveness from Mach 2.3
   8 of 8 within 5.3%, +14.3% to +47.8% at Mach 1.5 and 1.8; the Basic Finner's damping −5.9% to
   −16.2%.
-- 2026-09-18: M1.8b3 The boattail and base faster than sound (ADR-030), and with it M1.8b: not
-  met, recorded. Measured boattails of 3° to 10° −21.9% to +28.3%; Arcas Robin fins off from
-  Mach 1.5 0 of 11 (+13.5% to +24.1%, the steep boattail, #72); Calisto supersonic 8 of 17.
 
 ## Needs Neer (blocking or one-way decisions; the session keeps working on other things)
 
@@ -87,6 +85,7 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
 
 ## Decided without Neer (one line each; significant ones get an ADR)
 
+- M1.8e2 split: e2 flies nose and cylinder; new e3 (boattail, crossflow) carries M1.8e's bullet.
 - ADR-033: M1.8e split into e1 (the method) and e2 (flying it); TN 3527's ten-element tangent
   body; `η < 0` elements reduced to the generalized method with no gradient carried (p. 13); Fig. 2
   held below Mach 3; the Arcas Robin's nose as a fitted secant ogive for the comparison only.

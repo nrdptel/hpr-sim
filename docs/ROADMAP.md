@@ -520,9 +520,8 @@
     pinned, 16 outside the targets, explained. Mach 1.5–2.96: `C_Nα` −13.4% to +3.3%, CP within
     0.42 calibers; past Mach 3, 17–25% low (M1.8e). Prometheus flies through Mach 1.010.
 
-  - [x] **M1.8b Transonic and supersonic drag.**
-    - Every drag term's transonic and supersonic branch, and nose wave drag. Loft lessons L17 and
-      L18.
+  - [x] **M1.8b Transonic and supersonic drag.** Every drag term's transonic and supersonic
+    branch, and nose wave drag. Loft lessons L17 and L18.
 
     *Done when:* M1.8's Cd bullet is met or an ADR records why not, with the gap in the report;
     the Arcas Robin's measured axial force is compared; the predicted Prometheus case flies.
@@ -532,20 +531,15 @@
       - Nose, shoulder and step pressure drag through Mach 1 (Niskanen eq. 3.87 and appendix B,
         Stoney's fineness-3 curves); the buildup accepts Mach 0 to 5. Loft lesson L17.
 
-      *Done when:*
-      - L17's test passes.
-      - The Arcas Robin's measured axial force is compared: a committed fixture, pinned by a
-        test, holds hpr's forebody drag against TN D-4013's and TN D-4014's at every Mach they
-        give, fins on and off.
-      - The predicted Prometheus case flies.
+      *Done when:* L17's test passes; the predicted Prometheus case flies; the Arcas Robin's
+      measured axial force is compared: a committed fixture, pinned by a test, holds hpr's
+      forebody drag against TN D-4013's and TN D-4014's at every Mach they give, fins on and off.
 
       *Result (ADR-028):* met. L17's test passes; `drag_against_mach` pins 44 rows, 8 within 10%
       (misses: blunt fin edges, the base lip, the boattail rule). Predicted Prometheus flies.
 
-    - [x] **M1.8b2 Drag against RASAero through Mach 2.**
-      - Cd against Mach from RocketPy's RASAero CSVs, per band. Loft lesson L18.
-
-      *Done when:* M1.8's Cd bullet is met or an ADR records why not, with the gap in the report.
+    - [x] **M1.8b2 Drag against RASAero through Mach 2.** Cd against Mach from RocketPy's RASAero
+      CSVs, per band (L18). *Done when:* M1.8's Cd bullet is met or an ADR records why not.
 
       *Result (ADR-029):* not met, recorded. Calisto's export: 15/15 subsonic, 2/7 transonic,
       0/17 supersonic within 10%; no fin input is within 10% subsonic and supersonic both.
@@ -563,23 +557,18 @@
       +28.3%; Arcas Robin fins off from Mach 1.5: 0 of 11, +13.5% to +24.1% (#72); Calisto: 8 of
       17, −14.9% to −5.1%.
 
-  - [x] **M1.8c Roll and damping.**
-    - Roll forcing from fin cant and roll damping. Pitch and yaw damping keep hpr's local-flow
-      damping (ADR-011).
-
-    *Done when:* M1.8's roll bullet is met, and hpr's roll forcing is compared with the Arcas
-    Robin's measured roll effectiveness (TN D-4014).
+  - [x] **M1.8c Roll and damping.** Roll forcing from fin cant and roll damping; pitch and yaw keep
+    hpr's local-flow damping (ADR-011). *Done when:* M1.8's roll bullet is met, and hpr's roll
+    forcing is compared with the Arcas Robin's measured roll effectiveness (TN D-4014).
 
     *Result (ADR-031):* met. Barrowman's strip theory with his body factors. Valetudo canted 1° at
     100 m/s settles on the closed-form balance, −16.948 rad/s, within 1e-11. Against TN D-4014:
     from Mach 2.3, 8 of 8 within 5.3%; at Mach 1.5 and 1.8, +14.3% to +47.8%. Damping against the
     Basic Finner: −5.9% to −16.2%.
 
-  - [x] **M1.8d Normal-force overrides.**
-    - `C_Nα` and CP tables against Mach and angle of attack, read from a RASAero II export.
-
-    *Done when:* a RASAero II export's `C_Nα` and CP columns replace hpr's in a flight, and the
-    reading is tested on the Calisto export.
+  - [x] **M1.8d Normal-force overrides.** `C_Nα` and CP tables against Mach and angle of attack
+    from a RASAero II export. *Done when:* its `C_Nα` and CP columns replace hpr's in a flight,
+    and the reading is tested on the Calisto export.
 
     *Result (ADR-032):* met. The table's force at the centre of mass's flow, hpr's damping kept.
     Calisto's export (0°, 2°, 4°): 4,999 rows re-read with `refs/`, M1.8a's 30 values in CI;
@@ -592,7 +581,7 @@
 
     *Done when:* the Arcas Robin's body-alone `C_Nα` (fins off, TN D-4014) is within 15% at every
     Mach number from 1.5, and both configurations' `C_Nα` within 15% at Mach 3.96 and 4.63, or an
-    ADR records why not with the gap in the report. Split below into M1.8e1 and M1.8e2; M1.8e2
+    ADR records why not with the gap in the report. Split below into M1.8e1 to M1.8e3; M1.8e3
     carries this bullet.
 
     - [x] **M1.8e1 The second-order shock-expansion method.**
@@ -613,8 +602,18 @@
       measurements 117 and 109 of 120. Arcas Robin: short −18.7% to +16.4%, long to −26.4%.
 
     - [ ] **M1.8e2 The body's supersonic normal force in flight.**
-      - The body's terms take Mach: M1.8e1's method where it holds, a join from subsonic, the
-        boattail, and crossflow at the angles flown.
+      - The body's terms take Mach: M1.8e1's method for a pointed nose and its cylinder where it
+        holds, joined to slender-body theory below it.
+
+      *Done when* (targets set before measuring):
+      - A flight takes the body's `C_Nα` and CP at its Mach number (`dynamics.rs` caches body
+        stations as Mach-free); a test probes the join at ±1e-9 in Mach and finds no jump.
+      - The Arcas Robin's body alone (TN D-4014) is evaluated through the flight's path at each
+        Mach number from 1.5, beside the measurement and M1.8a's values, and in the report.
+      - The validation report is regenerated; each changed row is listed in the PR.
+
+    - [ ] **M1.8e3 The boattail and crossflow faster than sound.**
+      - The boattail's share (footnote 8), crossflow at the angles flown, blunt tips.
 
       *Done when:* M1.8e's bullet above.
 
