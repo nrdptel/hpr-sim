@@ -605,7 +605,8 @@ pub struct MergedBoattail {
 /// source gives a measure, so the fraction is a judgement: 1 while the lip's top rises no more
 /// than [`WAKE_FULL_RISE`] of the boattail's drop in diameter above the boattail's aft end, 0 from
 /// [`WAKE_NONE_RISE`], linear between; and it fades with any tube or step down between them over
-/// one drop in diameter. A lip may be drawn as a shoulder, as a step up, or as both.
+/// one drop in diameter. A lip may be drawn as a shoulder, as a step up, or as both, and in
+/// several parts: each takes the smallest share any part's top so far leaves.
 #[derive(Debug, Clone, Copy, PartialEq, Serialize)]
 #[non_exhaustive]
 pub struct WakeTerm {
@@ -665,7 +666,7 @@ fn gap_weight(gap_m: f64, scale_m: f64) -> f64 {
     }
 }
 
-/// The last boattail and what follows it, while only tubes, steps and one lip do.
+/// The last boattail and what follows it, while only tubes, steps and lips do.
 #[derive(Clone, Copy)]
 struct Tail {
     /// The start `(x, r)` of the surface a next part would continue: the last part's fore end,
@@ -684,20 +685,15 @@ struct Tail {
     gap_m: f64,
     /// What steps down since the boattail have left of it: each fades it over its drop.
     weight: f64,
-    /// The lip's share by its rise, before any fade, once one has followed.
-    lip: Option<f64>,
+    /// What the lips so far have left of the wake: the smallest share by rise of any lip's top.
+    lip: f64,
 }
 
 impl Tail {
-    /// The share of a lip whose top is at radius `top_m` that its wake removes, by its rise and
-    /// the fades since the boattail.
-    fn lip_share(&self, top_m: f64) -> (f64, f64) {
+    /// The share of a lip whose top is at radius `top_m` that the wake removes by its rise alone.
+    fn share_by_rise(&self, top_m: f64) -> f64 {
         let rise = 2.0 * (top_m - self.end.1) / self.fall_m;
-        let by_rise = ((WAKE_NONE_RISE - rise) / (WAKE_NONE_RISE - WAKE_FULL_RISE)).clamp(0.0, 1.0);
-        (
-            by_rise,
-            by_rise * gap_weight(self.gap_m, self.fall_m) * self.weight,
-        )
+        ((WAKE_NONE_RISE - rise) / (WAKE_NONE_RISE - WAKE_FULL_RISE)).clamp(0.0, 1.0)
     }
 }
 
@@ -733,19 +729,21 @@ pub(crate) fn couple_afterbody(
         tail = tail.filter(|t| t.weight > 0.0);
         let widens = geometry.aft_area_m2 > geometry.fore_area_m2
             && !adjacent(geometry.fore_area_m2, geometry.aft_area_m2);
-        // A step up, a shoulder or both: a lip, once, by where its top rises to.
+        // A step up, a shoulder or both: a lip, by where its top rises to, and by the highest top
+        // of the lips before it.
         if r0 > before || widens {
-            tail = tail.filter(|t| t.lip.is_none()).and_then(|mut t| {
-                let (by_rise, fraction) = t.lip_share(if widens { r1 } else { r0 });
-                (fraction > 0.0).then(|| {
+            if let Some(t) = &mut tail {
+                let by_rise = t.share_by_rise(if widens { r1 } else { r0 });
+                t.lip = t.lip.min(by_rise);
+                let fraction = t.lip * gap_weight(t.gap_m, t.fall_m) * t.weight;
+                if fraction > 0.0 {
                     terms.in_wake_of = Some(WakeTerm {
                         boattail: t.own,
                         fraction,
                     });
-                    t.lip = Some(by_rise);
-                    t
-                })
-            });
+                }
+            }
+            tail = tail.filter(|t| t.lip > 0.0);
             if widens {
                 continue;
             }
@@ -753,12 +751,12 @@ pub(crate) fn couple_afterbody(
         if let Some(term) = terms.boattail {
             let angle = ((r0 - r1) / geometry.length_m).atan();
             // Merge with the boattail before it, if only tubes and steps lie between.
-            let merge = tail.filter(|t| t.lip.is_none()).map_or(0.0, |t| {
+            let merge = tail.map_or(0.0, |t| {
                 let turn = (angle - t.angle_rad).abs();
                 let smooth = ((MERGE_NONE_TURN_RAD - turn)
                     / (MERGE_NONE_TURN_RAD - MERGE_FULL_TURN_RAD))
                     .clamp(0.0, 1.0);
-                smooth * gap_weight(t.gap_m, t.drop_m) * t.weight
+                smooth * gap_weight(t.gap_m, t.drop_m) * t.weight * t.lip
             });
             let own = term.own;
             let mut merged = None;
@@ -796,7 +794,7 @@ pub(crate) fn couple_afterbody(
                 fall_m: fall,
                 gap_m: 0.0,
                 weight: 1.0,
-                lip: None,
+                lip: 1.0,
             });
         } else if adjacent(geometry.fore_area_m2, geometry.aft_area_m2) {
             // A tube: the gap since the boattail grows.
@@ -820,7 +818,7 @@ pub(crate) fn couple_afterbody(
                 .merged
                 .map(|(cone, _)| (cone, (base / area_of(&cone)).min(1.0))),
             merge_weight: t.merged.map_or(0.0, |(_, w)| w),
-            weight: gap_weight(t.gap_m, t.fall_m) * t.weight * t.lip.unwrap_or(1.0),
+            weight: gap_weight(t.gap_m, t.fall_m) * t.weight * t.lip,
         });
     }
     Ok(())
@@ -2667,6 +2665,53 @@ mod tests {
                 assert!(
                     got >= lo - 1e-12 && got <= hi + 1e-12,
                     "{what}: {got} not in [{lo}, {hi}]"
+                );
+            }
+        }
+    }
+
+    /// A lip counts however it is drawn in parts (physics review): a tube a hair above the
+    /// boattail's aft radius ahead of the lip changes the drag by a hair, at every speed, as
+    /// the step up to it goes to zero.
+    #[test]
+    fn a_hairline_step_before_a_lip_changes_nothing() {
+        let (big, small, lip, l) = (0.03, 0.02, 0.0215, 0.04);
+        let rocket = |step: Option<f64>| {
+            let mut components = vec![
+                component(
+                    "nose",
+                    nose(NoseShape::Ogive { radius_ratio: 1.0 }, 0.2, big),
+                    None,
+                ),
+                component("tube", body_part(0.8, big, big), None),
+                component("tail", body_part(l, big, small), None),
+            ];
+            if let Some(step) = step {
+                components.push(component(
+                    "hair",
+                    body_part(0.001, small + step, small + step),
+                    None,
+                ));
+            } else {
+                components.push(component("hair", body_part(0.001, small, small), None));
+            }
+            components.push(component("lip", body_part(0.00135, small, lip), None));
+            model(&one_stage(components, ReferenceDiameter::Maximum {}))
+        };
+        let conditions = DragConditions::coasting(RE_PER_M);
+        let exact = rocket(None);
+        for mach in [0.6, 1.5, 3.0] {
+            let total = |m: &AeroModel| {
+                m.drag(&Flow::axial(mach), &conditions)
+                    .unwrap()
+                    .zero_lift_coefficient
+            };
+            let base = total(&exact);
+            for step in [1e-5, 1e-7, 2e-9] {
+                let got = total(&rocket(Some(step)));
+                assert!(
+                    (got - base).abs() < 1e-3 * base,
+                    "step {step} at Mach {mach}: {got} against {base}"
                 );
             }
         }

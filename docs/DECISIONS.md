@@ -2806,9 +2806,10 @@ What the sources give (all NACA and NASA reports are U.S. Government works; pinn
   which therefore check it in sample; back to 1 from Mach 1 to 0.8; toward 1 with the separation
   weight.
 - **A lip in a boattail's wake**: a lip behind a boattail, drawn as a shoulder, a step up or both,
-  loses its pressure drag while its top rises up to a quarter of the boattail's drop in diameter
-  above the boattail's end, keeps all of it from half, and a straight-line share between; the base
-  behind it takes the same share of the relief. The quarter and half are a judgement made knowing the Arcas Robin's lip, the one
+  in one part or several, loses its pressure drag while its top rises up to a quarter of the
+  boattail's drop in diameter above the boattail's end, keeps all of it from half, and a
+  straight-line share between; each part takes the share its highest top so far leaves, and the
+  base behind it takes the same share of the relief. The quarter and half are a judgement made knowing the Arcas Robin's lip, the one
   measured, rises 0.17, and all 44 Arcas Robin rows depend on it (with the lip as a shoulder in
   undisturbed air each would read 0.065 to 0.086 higher). The first draft gave any shoulder up to
   the boattail's fore diameter no drag, and the second required an exact match of radii; the
@@ -2819,10 +2820,10 @@ What the sources give (all NACA and NASA reports are U.S. Government works; pinn
   down, a corner the flow separates at; a lip's rise is measured from the boattail's end, so a
   step up before it counts in its rise. A micrometre of step or tube changes the drag by under
   0.1%, a boattail closed by a micrometre-long transition drags as it does with a step down, and
-  a lip drawn as a step up drags as one drawn as a shoulder
-  (`drag::tests::a_sharp_corner_keeps_its_boattails_apart`,
+  a lip drawn as a step up drags as one drawn as a shoulder, and a hairline step before a lip
+  changes nothing (`drag::tests::a_sharp_corner_keeps_its_boattails_apart`,
   `a_lip_in_a_boattails_wake_fades_with_its_rise`, `a_lip_drawn_as_a_step_up_is_a_lip`,
-  `soft_merges_stay_between_their_limits`).
+  `a_hairline_step_before_a_lip_changes_nothing`, `soft_merges_stay_between_their_limits`).
 - **Fig. 5-141 is power-off**, as is Fleeman's base drag it scales; under power hpr applies both to
   what the motors leave of the base. Love's value held past Mach 5.5 would ask for less than a
   vacuum, and is clamped there.
