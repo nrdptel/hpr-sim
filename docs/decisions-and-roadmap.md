@@ -52,6 +52,7 @@ new record replaces it and points back. All of them are in the [decision log][de
 | [ADR-033: The body faster than sound][adr-033] | The lift a body's cylinder carries behind its nose faster than sound, by the second-order shock-expansion method: the report's tangent body, its limit, and the cone slopes read by hand | [Aerodynamics](physics/aero.md#bodies-faster-than-sound) |
 | [ADR-034: The body's supersonic normal force in flight][adr-034] | How a flight uses that method: a table of each part's share every 0.05 in Mach, joined in a straight line from slender-body theory over Mach 1.2 to 1.5 | [Aerodynamics](physics/aero.md#the-body-faster-than-sound-in-a-flight) |
 | [ADR-035: Drop the orhelper dependency][adr-035] | The GPL-2.0 wrapper for the OpenRocket jar is removed from the oracle environment, unused; how [the OpenRocket oracle milestone](#m2-2) drives the jar is decided when it starts | [How correctness is proven](https://github.com/nrdptel/hpr-sim/blob/main/docs/VALIDATION.md) |
+| [ADR-036: The Arcas Robin's supersonic body gap][adr-036] | How hpr's body faster than sound is compared with NASA's wind tunnel from now on (as the tunnel measures, at its angles), and why [the next increment](#m1-8e6) takes the size of crossflow lift and the boattail's share together | [Aerodynamics](physics/aero.md#checking-the-shock-expansion-method) |
 
 ## The roadmap
 
@@ -146,7 +147,7 @@ missing or its status disagrees.
 | <a id="m1-8e3"></a>[M1.8e3][phase-1] | Faster than sound: the blend into the shock-expansion method now starts at the exact Mach where the method starts to hold, not rounded to a 0.05 step | done |
 | <a id="m1-8e4"></a>[M1.8e4][phase-1] | Faster than sound: a boattail, and a tube behind it, take their share of the body's normal force from the shock-expansion method | done |
 | <a id="m1-8e5"></a>[M1.8e5][phase-1] | Faster than sound: how much of the Arcas Robin's remaining gap each missing effect (crossflow, the blunt tip, and others) explains, measured before modelling | done |
-| <a id="m1-8e6"></a>[M1.8e6][phase-1] | Crossflow and blunt tips faster than sound, the models chosen by that measurement, in flight | not yet done |
+| <a id="m1-8e6"></a>[M1.8e6][phase-1] | Faster than sound: the size of crossflow lift and the boattail's share, the causes that measurement ranked first, in flight, with blunt tips | not yet done |
 | <a id="m1-8e7"></a>[M1.8e7][phase-1] | Faster than sound: the body's model switches and the boattail angle cap, and the Arcas Robin wind tunnel's 15% target | not yet done |
 | <a id="m3-1"></a>[M3.1][phase-1] | Reading OpenRocket `.ork` design files | not yet done |
 | <a id="m2-2"></a>[M2.2][phase-1] | OpenRocket as a reference program, and a corpus of designs to compare | not yet done |
@@ -293,6 +294,7 @@ is the milestone that added or will add that test.
 [adr-033]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-033-the-body-faster-than-sound-syvertson-and-denniss-second-order-shock-expansion-method-2026-09-19
 [adr-034]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-034-the-bodys-supersonic-normal-force-in-flight-tabulated-shock-expansion-shares-joined-linearly-from-mach-12-2026-09-19
 [adr-035]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-035-drop-the-orhelper-dependency-how-m22-drives-openrocket-is-decided-when-m22-starts-2026-09-19
+[adr-036]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-036-the-arcas-robins-supersonic-body-gap-judged-as-the-tunnel-measures-m18e6-takes-crossflows-size-and-the-boattail-2026-09-19
 [decisions]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md
 [lessons]: https://github.com/nrdptel/hpr-sim/blob/main/docs/research/loft-lessons.md
 [lessons-motors]: https://github.com/nrdptel/hpr-sim/blob/main/docs/research/loft-lessons.md#motors-mass-and-design-checks

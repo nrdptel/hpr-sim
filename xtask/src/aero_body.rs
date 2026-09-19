@@ -193,8 +193,8 @@ pub fn arcas_nose_ratio() -> Result<(f64, f64), String> {
 
 /// The Arcas Robin's body for the method, in metres: the fitted nose, the cylinder to
 /// `cylinder_end_in`, and with `boattail` its 15° conical boattail (1.757 in long, to 1.308 in
-/// across). The lip behind the boattail, a 57° flare, is past the method (its tangent cone is
-/// past Fig. 2).
+/// across). The lip behind the boattail, a face square to it (75° to the axis, Fig. 1(a) Detail
+/// A), is past the method (its tangent cone is past Fig. 2).
 pub fn arcas_body(
     ratio: f64,
     cylinder_end_in: f64,

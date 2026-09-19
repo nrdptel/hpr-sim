@@ -4,7 +4,7 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
 
 ## Now
 
-- **Current milestone:** M1.8e6 Crossflow and blunt tips faster than sound
+- **Current milestone:** M1.8e6 Crossflow and the boattail faster than sound
 - **Order:** M1.8e6, e7, then M3.1
 - **Run:** M0.1-M0.4, M1.1-M1.7, M2.1, M1.8a to M1.8e5 shipped; https://nrdptel.github.io/hpr-sim/
 - **Last updated:** 2026-09-19 (M1.8e5 done)
@@ -31,12 +31,12 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
   Python check) carries the gradient through reduced elements; hpr doesn't (#81).
 - **M1.8e2 to e4** (ADR-034): `SupersonicBody` (`hpr-aero/src/model.rs`) tabulates the method's
   shares every 0.05 Mach, lazily, joined from max(1.2, its bisected start) over 0.3; boattails too.
-- **M1.8e6 next** (M1.8e5: `docs/research/body-supersonic-gap.md`, fixture `arcas-robin-gap.json`
-  from `xtask/src/aero_gap.rs`): the −27% was the comparison. Fitted at the tunnel's angles, hpr's
-  body reads 15–73% *high*: its body lift (`K` 1.1) beats the tunnel's curvature (`K` 0.66–1.05
-  from Mach 2.3; Jorgensen's `η C_dn` ≈ 0.9). Size crossflow, don't add it; decide supersonic-only
-  or every speed (body lift drives M2.1's drift in wind); judge fitted at the plotted angles. Blunt
-  tips are coverage: the committed power-series nose is refused. e7 carries M1.8e's 15% bullet.
+- **M1.8e6 next** (ADR-036; notes `docs/research/body-supersonic-gap*.md`, fixture
+  `arcas-robin-gap.json` from `xtask/src/aero_gap.rs`): like for like hpr's body reads 15–73%
+  *high*. `b` and `c` correlate −0.95, so body lift (`K` 1.1; tunnel 0.66–1.05; Jorgensen ≈ 0.9)
+  and the `α → 0` slope can't be split; at Jorgensen's `K` still 8–61% high, and only the
+  boattail (footnote 8 −0.18..−0.03 vs slender-body −1.32) is that size. Judge at the plotted
+  angles; read Figs. 5(a)/6(a) to 21° to pin `K`; decide body lift below Mach 1 (M2.1's drift).
 - **Autopilot memory:** each command a cycle runs gets its own process group, so the run notes
   them while sampling and reaps them too; the cycle's group alone misses every build.
 - **M2.2's OpenRocket oracle** (ADR-035): orhelper is dropped, so decide how to drive the jar
@@ -51,9 +51,9 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
 
 ## Done log (newest first, keep about 15)
 
-- 2026-09-19: M1.8e5 The remaining gap, source by source: at the tunnel's angles hpr's body reads
-  15–73% high, not low; crossflow's size ranks first, then the slope at `α → 0`, the lip (+0.18),
-  the blunt tip (≤ 0.07), Fig. 2 below Mach 3 (≤ 0.06, SP-3007); #81 zero (no reduced elements).
+- 2026-09-19: M1.8e5 The remaining gap, source by source (ADR-036): like for like hpr's body
+  reads 15–73% high, not low; crossflow's size ranks first, the boattail second, then the lip
+  (+0.18), the blunt tip (≤ 0.07), Fig. 2 below Mach 3 (≤ 0.06, SP-3007); #81 zero.
 - 2026-09-19: M1.8e4 The boattail's share faster than sound: boattails and tubes behind them
   fly the method (their stations slender-body theory's); no jump at ±1e-9; the Arcas Robin
   through the flight with its boattail equals the method's (long −18.3% to −27.0%).
@@ -85,7 +85,7 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
 ## Decided without Neer (one line each; significant ones get an ADR)
 
 - M1.8e splits (one id level): e3 join start, e4 boattail; old e5 → e5 measure, e6 fly, e7 rest.
-- M1.8e5: gap sized at the tunnel's angles; its `α → 0` slope from `a + bα + cα|α|` and `|α| < 3°`.
+- ADR-036: the Arcas Robin judged at the tunnel's angles; e6 retitled to crossflow and the boattail.
 - M1.8e4: boattail shares can cross zero, so it and tubes behind keep slender-body's station.
 - ADR-034: M1.8e2's shares tabulated every 0.05 Mach (lazily; eager took unit tests to 238 s),
   joined over Mach 1.2 to 1.5; boattails fly it since M1.8e4.
