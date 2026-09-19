@@ -237,8 +237,13 @@ struct SupersonicRun {
     fore_m: Vec<f64>,
     /// Each segment that is a boattail, when its share is Washington and Pettis's.
     boattails: Vec<Option<RunBoattail>>,
+    /// How many bodies behind the marched segments are lips wholly in a covered boattail's wake
+    /// ([`LIPS_IN_A_WAKE`]): they carry nothing faster than sound, so the run covers them with a
+    /// share of zero.
+    sheltered_lips: usize,
     // `segments`, `bounds_m`, `fore_m` and `boattails` hold one entry per segment: `from_design`
-    // pushes all four in the same branch, and `shares` indexes them together.
+    // pushes all four in the same branch, and `shares` indexes them together; `shares` then adds
+    // one zero for each sheltered lip.
 }
 
 impl SupersonicRun {
@@ -259,6 +264,11 @@ impl SupersonicRun {
     ) -> Option<Vec<SegmentSlope>> {
         let mut shares = body.segment_slopes(mach, reference_area_m2).ok()?;
         let vertex_m = self.vertex_m;
+        // A lip in a boattail's wake carries nothing faster than sound (ADR-039).
+        shares.extend(std::iter::repeat_n(
+            SegmentSlope::default(),
+            self.sheltered_lips,
+        ));
         for (index, (boattail, cylinder_body)) in
             self.boattails.iter().zip(in_its_place).enumerate()
         {
@@ -387,12 +397,18 @@ impl SupersonicBody {
             }
         }
         Some(Self {
-            covered: run.segments.len(),
+            covered: run.segments.len() + run.sheltered_lips,
             join_start_mach,
             first_step,
             rows,
             lead,
-            stationed: run.bounds_m.iter().map(Option::is_some).collect(),
+            stationed: run
+                .bounds_m
+                .iter()
+                .map(Option::is_some)
+                // A sheltered lip keeps slender-body theory's station, as a boattail does.
+                .chain(std::iter::repeat_n(false, run.sheltered_lips))
+                .collect(),
         })
     }
 
@@ -978,16 +994,33 @@ impl AeroModel {
         // The method flies only a body it covers to the end, or whose later bodies carry no
         // potential-flow slope: its shares beside slender-body theory's for a flare or step would
         // mix the models the way a boattail did before M1.8e4 (physics review, ADR-034).
-        let covered = supersonic_segments.len();
+        let marched = supersonic_segments.len();
+        // A lip wholly in a covered boattail's wake carries nothing faster than sound (ADR-039),
+        // so the run may cover it; the drag buildup's wake already measures the shelter
+        // ([`crate::drag::WakeTerm`]), and takes the lip's own drag away at the same threshold.
+        let sheltered_lips = bodies[marched..]
+            .iter()
+            .zip(&body_terms_at[marched..])
+            .take_while(|(_, (index, _))| {
+                let terms = &drag_terms[*index];
+                terms.in_wake_of.is_some_and(|wake| {
+                    // Whatever the part has of a step and a shoulder must be wholly in the wake.
+                    (terms.step.is_none() || wake.step_fraction >= 1.0)
+                        && (terms.shoulder.is_none() || wake.shoulder_fraction >= 1.0)
+                })
+            })
+            .count();
+        let covered = marched + sheltered_lips;
         let rest_carries_nothing = bodies[covered..]
             .iter()
             .all(|body| body.slope_per_rad.abs() <= 1e-9);
-        let supersonic_run = (covered > 0 && rest_carries_nothing).then_some(SupersonicRun {
+        let supersonic_run = (marched > 0 && rest_carries_nothing).then_some(SupersonicRun {
             segments: supersonic_segments,
             vertex_m,
             bounds_m: supersonic_bounds,
             fore_m: supersonic_fore,
             boattails: supersonic_boattails,
+            sheltered_lips,
         });
         Ok(Self {
             reference_area_m2,
@@ -2525,6 +2558,96 @@ mod tests {
                 "fails {d} above the start"
             );
         }
+    }
+
+    /// A lip in a boattail's wake carries nothing faster than sound (M1.8e8): the committed Arcas
+    /// Robin designs fly the method to their base, the lip's share is zero above the join and
+    /// slender-body theory's below it, and nothing jumps at ±1e-9 in Mach. A lip that rises too
+    /// far out of the wake still keeps the whole body on slender-body theory.
+    #[test]
+    fn a_lip_in_a_boattails_wake_carries_nothing() {
+        for name in [
+            "wind-tunnel-arcas-robin-short.json",
+            "wind-tunnel-arcas-robin-long.json",
+        ] {
+            let rocket = crate::testing::committed_design(name);
+            let model = model(&rocket);
+            let table = model
+                .supersonic_body()
+                .unwrap_or_else(|| panic!("{name}: no table"));
+            // The nose, the tube, the boattail and the lip.
+            assert_eq!(table.covered, 4, "{name}");
+            let lip = model.bodies().last().unwrap();
+            assert!(lip.slope_per_rad > 0.1, "{name}: the lip is a flare");
+            for mach in [1.3, 2.0, 3.0, 5.0] {
+                let (slope, moment) = table.share(3, mach).unwrap();
+                assert_eq!((slope, moment), (0.0, 0.0), "{name} at Mach {mach}");
+            }
+            // Below the join the lip keeps slender-body theory's share; above it, nothing.
+            let start = table.join_start_mach;
+            // At zero angle body lift vanishes, so this is the potential-flow share alone.
+            let lip_slope = |mach: f64| {
+                model
+                    .components(&Flow::axial(mach))
+                    .unwrap()
+                    .into_iter()
+                    .find(|c| c.id == "lip")
+                    .unwrap()
+                    .normal_force
+                    .slope_per_rad
+            };
+            let below = lip_slope(1.0);
+            assert!(
+                (below - lip.slope_per_rad).abs() <= 0.01 * lip.slope_per_rad,
+                "{name}: {below} against slender-body theory's {}",
+                lip.slope_per_rad
+            );
+            let above = lip_slope(start + SUPERSONIC_JOIN_WIDTH_MACH);
+            assert!(above.abs() <= 1e-12, "{name}: {above} above the join");
+            for alpha_deg in [1.0_f64, 10.0] {
+                let mut machs = vec![start, start + SUPERSONIC_JOIN_WIDTH_MACH, 4.999];
+                machs.extend(
+                    (SUPERSONIC_FIRST_STEP..SUPERSONIC_LAST_STEP).flat_map(|step| {
+                        let row = step as f64 / SUPERSONIC_STEPS_PER_MACH;
+                        [row, row + 0.017, row + 0.033]
+                    }),
+                );
+                for mach in machs {
+                    let at = |m: f64| {
+                        let f = model
+                            .normal_force(&flow(m, alpha_deg.to_radians(), 0.0))
+                            .unwrap();
+                        [f.coefficient, f.cp_station_m.unwrap()]
+                    };
+                    let (below, above) = (at(mach - 1e-9), at(mach + 1e-9));
+                    for k in 0..2 {
+                        let scale = below[k].abs().max(1.0);
+                        assert!(
+                            (above[k] - below[k]).abs() <= 1e-7 * scale,
+                            "{name} at {alpha_deg}° and Mach {mach}: {below:?} to {above:?}"
+                        );
+                    }
+                }
+            }
+        }
+        // The shelter's threshold: the drag buildup's wake takes a lip rising a quarter of the
+        // boattail's drop in diameter wholly (`crate::drag::WAKE_FULL_RISE`), and one rising half
+        // of it not at all. The method covers the first and refuses the body of the second.
+        let lipped = |rise: f64| {
+            let mut rocket = finned_rocket(4);
+            // The nose, the tube and the boattail, which drops from 0.027 m to 0.022 m in radius:
+            // 0.010 m in diameter. The lip sits straight behind it, since a wake fades over any
+            // tube between them.
+            rocket.stages[0].components.truncate(3);
+            rocket.stages[0].components.push(component(
+                "lip",
+                body_part(0.01, 0.022, 0.022 + 0.5 * rise * 0.010),
+                None,
+            ));
+            model(&rocket)
+        };
+        assert_eq!(lipped(0.2).supersonic_body().map(|t| t.covered), Some(4));
+        assert!(lipped(0.6).supersonic_body().is_none());
     }
 
     /// Washington and Pettis's boattail: the method's share for a cylinder of the boattail's

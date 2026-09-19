@@ -277,6 +277,16 @@ dest = "refs/papers/nasa-tn-d-4865-jackson-1968.pdf"
 license = "US government work"
 mode = "fetched"
 
+# NTRS's API returns 404 for this one; the Internet Archive serves NTRS's own scan.
+[[file]]
+name = "nasa-tn-d-1304-seiff-1962"
+title = "A. Seiff, Secondary flow fields embedded in hypersonic shock layers, NASA TN D-1304, 1962"
+url = "https://archive.org/download/nasa_techdoc_19620001667/19620001667.pdf"
+sha256 = "3cee98054dfedfa65c36be4d62c01dd62eeae117f1409927aa71f52ebde0bf46"
+dest = "refs/papers/nasa-tn-d-1304-seiff-1962.pdf"
+license = "US government work"
+mode = "fetched"
+
 # NTRS serves this one with a 436-byte header before the %PDF marker; the pin is for the bytes as
 # served.
 [[file]]

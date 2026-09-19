@@ -58,11 +58,10 @@
     (rockets he calculated by hand), where every centre of pressure agrees within 1%, and so does
     every [normal-force slope](../glossary.md#normal-force-slope) but his six-fin Recruiter's:
     +2.87% high for the rocket and +3.42% for its fins, mostly from a different six-fin rule; and
-    from Mach 0.6 to 4.63 against the same wind tunnel: from Mach 1.5 to 2.96 the slope within
-    −16.3% to +1.4% (Mach 2.96 on the short model is outside the 15% target since
-    [M1.8e6](../decisions-and-roadmap.md#m1-8e6)'s smaller body lift) and the centre of pressure
-    within 0.47 [calibres](../glossary.md#calibre-caliber); past Mach 3 the slope reads −20.5% to −28.0% (the
-    body), and between Mach 0.8 and 1.2 both miss
+    from Mach 0.6 to 4.63 against the same wind tunnel: from Mach 1.5 the slope within +8.9% to
+    −3.3% and the centre of pressure within 0.53 [calibres](../glossary.md#calibre-caliber) (the
+    long model misses the half-calibre target at Mach 1.8 and 2.3, where its body reads high), and
+    between Mach 0.8 and 1.2 both miss
     ([Normal force through Mach 1](#normal-force-through-mach-1)).
   - *The body faster than sound*, by the method a flight blends in over 0.3 in Mach from Mach 1.2
     at the earliest, on the bodies it covers: against its report's wind-tunnel measurements of 120
@@ -79,9 +78,9 @@
       and cylinder of the short model within 5% from Mach 1.8 to 2.96, and −15.0% and −18.7% past
       Mach 3; the long model −13.7% to −26.4% throughout.
 
-    hpr's committed Arcas Robin design has a lip, a flare behind the boattail, which keeps it on
-    slender-body theory ([M1.8e8](../decisions-and-roadmap.md#m1-8e8) is to cover it); like for like, its short model's body reads 2.00 to 2.09 per radian from
-    Mach 1.5, where the tunnel reads 2.19 to 4.15
+    hpr's committed Arcas Robin designs fly that method to their base since
+    [M1.8e8](../decisions-and-roadmap.md#m1-8e8); like for like, the short model's body reads 3.02
+    to 3.95 per radian from Mach 1.5, where the tunnel reads 2.19 to 4.15
     ([Normal force through Mach 1](#normal-force-through-mach-1)).
   - *In whole flights* in wind, body lift, which RocketPy leaves out, is the largest reason a slow
     rocket's drift differs from RocketPy's ([ADR-026][adr-026]). Nothing against a real flight.
@@ -199,6 +198,8 @@ Sources:
 - **[J68]** C. M. Jackson Jr., W. C. Sawyer and R. S. Smith, *A Method for Determining Surface
   Pressures on Blunt Bodies of Revolution at Small Angles of Attack in Supersonic Flow*, NASA TN
   D-4865, 1968 (`nasa-tn-d-4865-jackson-1968`).
+- **[S62]** A. Seiff, *Secondary Flow Fields Embedded in Hypersonic Shock Layers*, NASA TN D-1304,
+  1962 (`nasa-tn-d-1304-seiff-1962`).
 - **[R22]** C. E. Rogers, *RASAero II Comparisons with ARCAS Center of Pressure (CP) and Drag
   Coefficient (CD) Wind Tunnel Data*, Rogers Aeroscience, 2022 (slides).
 - **[RAS]** C. E. Rogers and D. Cooper, *Rogers Aeroscience RASAero II Aerodynamic Analysis and
@@ -665,24 +666,26 @@ and these columns leave body lift out: fitted the same way, with the body lift a
 same body reads 3.4% to 41.0% *high*
 ([Checking the shock-expansion method](#checking-the-shock-expansion-method)).
 
-hpr's committed Arcas Robin design has a power-series nose, which the method refuses, and the
-lip, a flare, so it keeps slender-body theory, the last two columns. Slopes are per radian on the body's cross-section, at `α → 0`; the measured
+hpr's committed Arcas Robin design flies the method to its base since
+[Blunt tips](#blunt-tips) and [A lip in a boattail's wake](#a-lip-in-a-boattails-wake): the last
+two columns are the method's own values for its power-series nose, cylinder and boattail, with the
+lip carrying nothing. Slopes are per radian on the body's cross-section, at `α → 0`; the measured
 slope is fitted over the plotted angles with the boattail and lip on, so it also carries some
-crossflow lift and their share.
+crossflow lift and their share, which is why every column reads below it here.
 
 | model | Mach | measured | method | flight, nose and cylinder | flight vs measured | flight, with boattail | with boattail vs measured | design as committed | committed vs measured |
 |---|---|---|---|---|---|---|---|---|---|
-| short | 1.5 | 2.192 | 2.552 | 2.552 | +16.4% | 1.930 | −12.0% | 0.854 | −61.1% |
-| short | 1.8 | 2.613 | 2.724 | 2.724 | +4.3% | 2.171 | −16.9% | 0.854 | −67.3% |
-| short | 2.3 | 3.078 | 2.931 | 2.931 | −4.8% | 2.452 | −20.3% | 0.854 | −72.3% |
-| short | 2.96 | 3.284 | 3.124 | 3.124 | −4.9% | 2.716 | −17.3% | 0.854 | −74.0% |
-| short | 3.96 | 3.884 | 3.300 | 3.300 | −15.0% | 2.963 | −23.7% | 0.854 | −78.0% |
-| short | 4.63 | 4.149 | 3.371 | 3.371 | −18.7% | 3.063 | −26.2% | 0.854 | −79.4% |
-| long | 1.8 | 3.159 | 2.724 | 2.724 | −13.7% | 2.171 | −31.3% | 0.854 | −73.0% |
-| long | 2.3 | 3.525 | 2.932 | 2.932 | −16.8% | 2.453 | −30.4% | 0.854 | −75.8% |
-| long | 2.96 | 3.868 | 3.127 | 3.127 | −19.2% | 2.718 | −29.7% | 0.854 | −77.9% |
-| long | 3.96 | 4.455 | 3.313 | 3.313 | −25.6% | 2.974 | −33.3% | 0.854 | −80.8% |
-| long | 4.63 | 4.615 | 3.395 | 3.395 | −26.4% | 3.082 | −33.2% | 0.854 | −81.5% |
+| short | 1.5 | 2.192 | 2.552 | 2.552 | +16.4% | 1.930 | −12.0% | 1.852 | −15.5% |
+| short | 1.8 | 2.613 | 2.724 | 2.724 | +4.3% | 2.171 | −16.9% | 2.143 | −18.0% |
+| short | 2.3 | 3.078 | 2.931 | 2.931 | −4.8% | 2.452 | −20.3% | 2.394 | −22.2% |
+| short | 2.96 | 3.284 | 3.124 | 3.124 | −4.9% | 2.716 | −17.3% | 2.612 | −20.5% |
+| short | 3.96 | 3.884 | 3.300 | 3.300 | −15.0% | 2.963 | −23.7% | 2.735 | −29.6% |
+| short | 4.63 | 4.149 | 3.371 | 3.371 | −18.7% | 3.063 | −26.2% | 2.718 | −34.5% |
+| long | 1.8 | 3.159 | 2.724 | 2.724 | −13.7% | 2.171 | −31.3% | 2.143 | −32.1% |
+| long | 2.3 | 3.525 | 2.932 | 2.932 | −16.8% | 2.453 | −30.4% | 2.394 | −32.1% |
+| long | 2.96 | 3.868 | 3.127 | 3.127 | −19.2% | 2.718 | −29.7% | 2.614 | −32.4% |
+| long | 3.96 | 4.455 | 3.313 | 3.313 | −25.6% | 2.974 | −33.3% | 2.740 | −38.5% |
+| long | 4.63 | 4.615 | 3.395 | 3.395 | −26.4% | 3.082 | −33.2% | 2.724 | −41.0% |
 
 The rows are in
 [`validation/fixtures/aero/shock-expansion.json`](https://github.com/nrdptel/hpr-sim/blob/main/validation/fixtures/aero/shock-expansion.json)
@@ -692,6 +695,78 @@ The rows are in
 **What it leaves out.** Flares and steps, as above; a blunt or vertical tip takes the cap of
 [Blunt tips](#blunt-tips), below. The method itself has no crossflow lift; a flight adds
 [body lift](#body-lift) on top.
+
+#### A lip in a boattail's wake
+
+What this covers: a short flare at the very base, behind a boattail, like the reflex lip of NASA's
+Arcas Robin models. How far to trust it: hpr gives such a lip no normal force faster than sound,
+which is what the measured pitching moment supports, but the moment bounds the lip rather than
+measuring it.
+
+**The rule.** A lip that sits wholly in a boattail's wake carries no potential-flow slope from the
+Mach number where the method takes over; below the join it keeps slender-body theory's
+`2 ΔA/A_ref`, and the join blends the two, so nothing jumps. The shelter is the drag buildup's,
+measured the same way for the lip's drag ([ADR-030][adr-030]): wholly in the wake up to a rise of a
+quarter of the boattail's drop in diameter, not at all from half of it, and the wake fades over any
+tube between them. A lip that rises further, or sits further back, still keeps the whole body on
+slender-body theory, as any other flare does.
+
+**Why nothing.** Three readings point the same way.
+
+- The tunnel itself. TN D-4014 ([D4014] p. 6) traces an odd chamber axial force at Mach 1.50 and
+  1.80, fins off, to the reflex lip, and says the effect is "masked" once separation runs over the
+  boattail at higher Mach numbers or the fins thicken the boundary layer — and that the longer
+  model shows none of it, "probably because of the thicker boundary layer at the model base".
+- Seiff's own limits. His embedded Newtonian flare method holds for "thin shock layers when the
+  flow is not extensively separated" ([S62] p. 13), and he notes that "a 90° ramp will invariably
+  separate the flow" (p. 4). The Arcas lip's face stands about 57° to the axis, behind a 15°
+  expansion.
+- The size, at most. Taking Seiff's method anyway as an upper bound (eq. 9, p. 12, which for a
+  conical flare at one dynamic pressure is `2 (q₁/q∞) cos²θ ΔA/A_ref`, with `q₁` the flow that has
+  expanded through the boattail's turn) gives 0.044 per radian at Mach 1.5 falling to 0.014 at
+  4.63, against slender-body theory's 0.178 at every speed.
+
+**What the moment says.** For each fins-off row, the share at the lip's station that would put
+hpr's centre of pressure on the measured one runs from −0.256 ± 0.067 per radian (short model,
+Mach 1.5) to +0.229 ± 0.083 (long, Mach 3.96), changing sign with Mach number and with the model's
+length. One share fitted to all eleven rows is **+0.022 ± 0.018 per radian**: slender-body theory's
+0.178 sits 8.5 standard errors above it, or 4 after inflating the error by the rows' own scatter
+(χ² per degree of freedom 4.6). Zero and Seiff's bound both sit inside it. That scatter is the
+point: the rows disagree because hpr's centre of pressure misses by up to a calibre for reasons
+that have nothing to do with the lip, so this bounds the lip rather than measuring it.
+
+**How it was checked.** The committed designs, fins off, through a flight's path, fitted at the
+tunnel's plotted angles as [Checking the shock-expansion method](#checking-the-shock-expansion-method)
+fits them. Slopes are per radian on the body's cross-section; centres of pressure are calibres aft
+of the nose tip. The sixth column is where hpr's centre of pressure would sit if the lip carried
+slender-body theory's share instead of nothing.
+
+| model | Mach | measured | hpr, as committed | vs measured | the lip's CP if it carried slender-body theory's share | measured CP | hpr's |
+|---|---|---|---|---|---|---|---|
+| short | 1.5 | 2.192 | 3.017 | +37.7% | 3.33 | 1.00 | 2.46 |
+| short | 1.8 | 2.613 | 3.290 | +25.9% | 3.84 | 2.36 | 3.06 |
+| short | 2.3 | 3.078 | 3.598 | +16.9% | 4.37 | 3.56 | 3.69 |
+| short | 2.96 | 3.284 | 3.838 | +16.9% | 4.43 | 3.21 | 3.75 |
+| short | 3.96 | 3.884 | 3.946 | +1.6% | 5.16 | 4.88 | 4.57 |
+| short | 4.63 | 4.149 | 3.950 | −4.8% | 5.30 | 5.05 | 4.72 |
+| long | 1.8 | 3.159 | 3.770 | +19.4% | 5.19 | 4.61 | 4.31 |
+| long | 2.3 | 3.525 | 4.071 | +15.5% | 5.68 | 5.04 | 4.89 |
+| long | 2.96 | 3.868 | 4.400 | +13.7% | 5.47 | 5.33 | 4.64 |
+| long | 3.96 | 4.455 | 4.428 | −0.6% | 5.98 | 6.19 | 5.20 |
+| long | 4.63 | 4.615 | 4.425 | −4.1% | 6.65 | 6.40 | 5.96 |
+
+The rows are in
+[`validation/fixtures/aero/arcas-robin-lip.json`](https://github.com/nrdptel/hpr-sim/blob/main/validation/fixtures/aero/arcas-robin-lip.json),
+written by `cargo xtask aero`, and a test holds this table to it cell by cell. With the lip left
+off entirely the same bodies read within 0.1 percentage points of these rows, so the lip changes
+nothing but the parts of the body the method may cover.
+
+**What it leaves out.** The lip still has drag, and its own wake rule there ([ADR-030][adr-030]).
+Nothing here measures a lip's lift directly: the tunnel gives forces for the whole body, and the
+moment bounds the share rather than measuring it. The shelter's threshold is a switch in shape, of
+the family [issue #87](https://github.com/nrdptel/hpr-sim/issues/87) tracks: a lip rising a quarter
+of the boattail's drop flies, one rising half of it keeps the body on slender-body theory. And a
+flare anywhere else on the body still keeps the whole body off the method.
 
 ### Blunt tips
 
@@ -1979,39 +2054,41 @@ from 1.41 to 2.88 with no trend, so they don't settle whether hpr's 1.91 is high
 | **0.95** | 11.88 | 13.74 | +15.6% | 0.7952 | 0.8342 | +0.68 | 2.88 / 1.92 |
 | 1 | 15.79 | 14.69 | −6.9% | 0.8690 | 0.8455 | −0.41 | 1.58 / 1.92 |
 | **1.2** | 15.42 | 18.54 | +20.2% | 0.8862 | 0.8798 | −0.11 | 2.43 / 1.92 |
-| 1.5 | 13.43 | 13.61 | +1.4% | 0.8137 | 0.8408 | +0.47 | 2.19 / 2.02 |
-| 1.8 | 11.99 | 11.17 | −6.8% | 0.7908 | 0.8063 | +0.27 | 2.61 / 2.00 |
-| 2.3 | 9.89 | 8.96 | −9.4% | 0.7505 | 0.7560 | +0.10 | 3.08 / 2.06 |
-| **2.96** | 8.77 | 7.34 | −16.3% | 0.6967 | 0.6982 | +0.03 | 3.28 / 2.08 |
-| **3.96** | 7.73 | 5.97 | −22.7% | 0.6312 | 0.6230 | −0.14 | 3.88 / 2.07 |
-| **4.63** | 7.55 | 5.44 | −28.0% | 0.5876 | 0.5788 | −0.15 | 4.15 / 2.09 |
+| 1.5 | 13.43 | 14.61 | +8.8% | 0.8137 | 0.8282 | +0.25 | 2.19 / 3.02 |
+| 1.8 | 11.99 | 12.46 | +3.9% | 0.7908 | 0.7883 | −0.04 | 2.61 / 3.29 |
+| 2.3 | 9.89 | 10.50 | +6.2% | 0.7505 | 0.7369 | −0.24 | 3.08 / 3.60 |
+| 2.96 | 8.77 | 9.10 | +3.7% | 0.6967 | 0.6858 | −0.19 | 3.28 / 3.84 |
+| 3.96 | 7.73 | 7.85 | +1.6% | 0.6312 | 0.6330 | +0.03 | 3.88 / 3.95 |
+| 4.63 | 7.55 | 7.30 | −3.3% | 0.5876 | 0.6073 | +0.34 | 4.15 / 3.95 |
 
 | reference, Mach | `C_Nα` difference | CP difference, calibres | rows within both targets |
 |---|---|---|---|
 | Arcas, long, 0.6 and 0.8 | +0.7%, +8.9% | −0.36, +0.07 | 2 of 2 |
 | Arcas, long, 0.9 to 1.2 | −8.8% to +27.1% | +0.67 to +2.36 | 0 of 3 |
-| Arcas, long, 1.8 to 2.96 | −11.5% to −1.9% | −0.04 to +0.04 | 3 of 3 |
-| Arcas, long, 3.96 and 4.63 | −20.5%, −25.8% | −0.12, −0.17 | 0 of 2 |
+| Arcas, long, 1.8 to 2.96 | +8.4% to +9.4% | −0.53 to −0.43 | 1 of 3 |
+| Arcas, long, 3.96 and 4.63 | +2.8%, −2.3% | −0.13, +0.21 | 2 of 2 |
 | Calisto against RASAero II, 0.1 to 0.7 | +0.1% to +10.1% | −0.08 to +0.43 | 4 of 4 |
 | Calisto against RASAero II, 0.8 to 2.0 | −6.3% to +21.9% | −0.41 to +0.95 | 7 of 11 |
 
 What the misses come from:
 
-- **Past Mach 3, the body, and at Mach 2.96 on the short model.** The fins' share (the fins-on
-  reading less the fins-off one) agrees with hpr's fins within −1.4% to +7.0% at Mach 3.96 and
-  4.63. The body alone lifts 3.9 to 4.6 per rad there, where hpr gives 2.1 to 2.6: the design's
-  lip keeps the shock-expansion method off, slender-body theory's nose and boattail don't change
-  with Mach, and the real body lifts more as it flies faster. The CP stays within 0.17
-  calibres, so the stability margin holds, but the slope is low. At Mach 2.96 the short model's
-  body reads 37% low fins off (2.08 against 3.28); until [M1.8e6](../decisions-and-roadmap.md#m1-8e6)
-  Galejs's larger body lift covered enough of that to pass (−13.4%), and with Jorgensen's, which the
-  tunnel's own fins-off points support ([Body lift](#body-lift)), the row reads −16.3%
-  ([ADR-037][adr-037]). [M1.8e7](../decisions-and-roadmap.md#m1-8e7) gave the vertical tip the
-  method (with the lip left off, the body reads −4.8% to +37.2% like for like;
-  [Blunt tips](#blunt-tips)); the lip, [M1.8e8](../decisions-and-roadmap.md#m1-8e8), still keeps it
-  off. The fins' agreement carries about 5%
-  of doubt of its own: over the boattail the models' fin roots follow its 15° surface below the
-  cylinder, and the design leaves that strip out, about 0.32 in² of each fin's 5.8 in² (5.5%).
+- **Faster than sound, every slope now passes, and the long model's CP at Mach 1.8 and 2.3 does
+  not.** Until [M1.8e7](../decisions-and-roadmap.md#m1-8e7) and
+  [M1.8e8](../decisions-and-roadmap.md#m1-8e8) the committed designs' vertical tip and lip kept the
+  shock-expansion method off, so their bodies flew slender-body theory past Mach 1 and lifted 2.0
+  to 2.1 per rad where the tunnel's body alone lifts 2.2 to 4.6: the short model read −16.3% at
+  Mach 2.96 and −28.0% at 4.63. With the cap ([Blunt tips](#blunt-tips)) and the lip carrying
+  nothing in the boattail's wake ([A lip in a boattail's wake](#a-lip-in-a-boattails-wake)), the
+  body grows with Mach as the measurement does, and the rows from Mach 1.5 read +8.8% to −3.3%
+  (short) and +8.9% to −2.3% (long). What is left is where the body now reads *high*: fins off it
+  is 15% to 19% above the tunnel at Mach 1.8 and 2.3 on the long model, which pulls the whole
+  rocket's CP 0.52 and 0.53 calibres forward of the measured one, just outside the half-calibre
+  target. [M1.8e6](../decisions-and-roadmap.md#m1-8e6) sized that excess and left it
+  ([ADR-037][adr-037]); [M1.8e9](../decisions-and-roadmap.md#m1-8e9) carries the 15% bullet for
+  the body alone. The fins' share (the fins-on reading less the fins-off one) agrees with hpr's
+  fins within −1.4% to +7.0% at Mach 3.96 and 4.63, with about 5% of doubt of its own: over the
+  boattail the models' fin roots follow its 15° surface below the cylinder, and the design leaves
+  that strip out, about 0.32 in² of each fin's 5.8 in² (5.5%).
 - **Mach 0.6, within the targets by errors that cancel.** Both models pass there, but hpr's body
   is 25% and 19% above the fins-off readings, which are poorly determined at these speeds, and its
   fins' share 9.3% and 3.9% below the measured one.
@@ -2034,9 +2111,9 @@ What the misses come from:
   [M1.8e7](../decisions-and-roadmap.md#m1-8e7)). Calisto has no fins-off data, so its body and fins
   can't be split as the wind tunnel's can.
 
-So, for fins like these, whose linear theory starts at `M_s` = 1.2: from Mach 1.5 to about 3,
-trust hpr's slope to about 15% (the short model reads −16.3% at Mach 2.96) and its CP to about half
-a calibre; past Mach 3 the CP still, but the slope reads low; between Mach 0.8 and `M_s`, in the join, neither. A fin set's own `M_s` is
+So, for fins like these, whose linear theory starts at `M_s` = 1.2: from Mach 1.5 up, trust hpr's
+slope to about 10% (the rows run +8.9% to −3.3%) and its CP to about half a calibre, which the long
+model misses by 0.03 at Mach 1.8 and 2.3; between Mach 0.8 and `M_s`, in the join, neither. A fin set's own `M_s` is
 [`FinSetAero::fin`](../api/hpr_aero/model/struct.FinSetAero.html#structfield.fin)`.supersonic_mach`,
 from [`AeroModel::fin_sets`](../api/hpr_aero/model/struct.AeroModel.html#method.fin_sets). Fins
 swept further back start later: a leading edge swept 48° starts at Mach 1.5, and until then it

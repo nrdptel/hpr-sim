@@ -1,0 +1,403 @@
+{
+  "configurations": [
+    {
+      "design": "wind-tunnel-arcas-robin-short.json",
+      "id": "arcas-robin-short",
+      "lip": {
+        "aft_diameter_in": 1.47,
+        "angle_deg": 56.80243420778352,
+        "boattail_turn_deg": 15.00648862644853,
+        "fore_diameter_in": 1.308,
+        "length_in": 0.053,
+        "station_calibers": 18.18845116390689
+      },
+      "rows": [
+        {
+          "hpr": {
+            "committed": {
+              "cp_calibers": 2.4577075885106363,
+              "cp_error_calibers": 1.4566152688566159,
+              "fitted_c_n_alpha": 3.0173945837020706,
+              "fitted_c_n_alpha_error": 0.37654878884779563
+            },
+            "lip_off": {
+              "cp_calibers": 2.4019184133006948,
+              "cp_error_calibers": 1.4008260936466743,
+              "fitted_c_n_alpha": 3.0066202068231913,
+              "fitted_c_n_alpha_error": 0.3716334703397952
+            }
+          },
+          "lip": {
+            "candidates_per_rad": {
+              "seiff": 0.043976483909808156,
+              "slender_body": 0.1777919999999998,
+              "zero": 0.0
+            },
+            "cp_with_seiff": 2.6836791471536006,
+            "cp_with_slender_body": 3.3330243465437035,
+            "implied_share_per_rad": -0.255721839673776,
+            "implied_share_standard_error": 0.06695524122713035
+          },
+          "mach": 1.5,
+          "measured": {
+            "cp_calibers": 1.0010923196540205,
+            "cp_standard_error_calibers": 0.4166980899393679,
+            "fitted_c_n_alpha": 2.1919997374213684
+          }
+        },
+        {
+          "hpr": {
+            "committed": {
+              "cp_calibers": 3.0642905518799295,
+              "cp_error_calibers": 0.7072121048134998,
+              "fitted_c_n_alpha": 3.2904884143119144,
+              "fitted_c_n_alpha_error": 0.25930655173591877
+            },
+            "lip_off": {
+              "cp_calibers": 3.059193060332181,
+              "cp_error_calibers": 0.7021146132657514,
+              "fitted_c_n_alpha": 3.2892663117497123,
+              "fitted_c_n_alpha_error": 0.2588388394787411
+            }
+          },
+          "lip": {
+            "candidates_per_rad": {
+              "seiff": 0.03837500316987611,
+              "slender_body": 0.1777919999999998,
+              "zero": 0.0
+            },
+            "cp_with_seiff": 3.238641265213582,
+            "cp_with_slender_body": 3.8395896748797536,
+            "implied_share_per_rad": -0.14699124826203885,
+            "implied_share_standard_error": 0.06097869257216471
+          },
+          "mach": 1.8,
+          "measured": {
+            "cp_calibers": 2.3570784470664297,
+            "cp_standard_error_calibers": 0.30710268179075995,
+            "fitted_c_n_alpha": 2.612936786341712
+          }
+        },
+        {
+          "hpr": {
+            "committed": {
+              "cp_calibers": 3.6861537473866934,
+              "cp_error_calibers": 0.1238630915065948,
+              "fitted_c_n_alpha": 3.598301946338325,
+              "fitted_c_n_alpha_error": 0.1692188564066741
+            },
+            "lip_off": {
+              "cp_calibers": 3.681485296999272,
+              "cp_error_calibers": 0.11919464111917355,
+              "fitted_c_n_alpha": 3.5970212465715203,
+              "fitted_c_n_alpha_error": 0.16880271058593
+            }
+          },
+          "lip": {
+            "candidates_per_rad": {
+              "seiff": 0.03149532949801758,
+              "slender_body": 0.1777919999999998,
+              "zero": 0.0
+            },
+            "cp_with_seiff": 3.8119884981735157,
+            "cp_with_slender_body": 4.368973745755172,
+            "implied_share_per_rad": -0.030472577065120066,
+            "implied_share_standard_error": 0.05395793480828268
+          },
+          "mach": 2.3,
+          "measured": {
+            "cp_calibers": 3.5622906558800986,
+            "cp_standard_error_calibers": 0.22119819461779763,
+            "fitted_c_n_alpha": 3.077526441368625
+          }
+        },
+        {
+          "hpr": {
+            "committed": {
+              "cp_calibers": 3.7469365995830177,
+              "cp_error_calibers": 0.5333730008865398,
+              "fitted_c_n_alpha": 3.8381518825339596,
+              "fitted_c_n_alpha_error": 0.16871829307391795
+            },
+            "lip_off": {
+              "cp_calibers": 3.743232981407867,
+              "cp_error_calibers": 0.529669382711389,
+              "fitted_c_n_alpha": 3.8368514736223522,
+              "fitted_c_n_alpha_error": 0.16832231820632937
+            }
+          },
+          "lip": {
+            "candidates_per_rad": {
+              "seiff": 0.024780467864690018,
+              "slender_body": 0.1777919999999998,
+              "zero": 0.0
+            },
+            "cp_with_seiff": 3.8466726890324026,
+            "cp_with_slender_body": 4.433244742416078,
+            "implied_share_per_rad": -0.12691928991381923,
+            "implied_share_standard_error": 0.07140188630260709
+          },
+          "mach": 2.96,
+          "measured": {
+            "cp_calibers": 3.213563598696478,
+            "cp_standard_error_calibers": 0.311145774429003,
+            "fitted_c_n_alpha": 3.284069313605933
+          }
+        },
+        {
+          "hpr": {
+            "committed": {
+              "cp_calibers": 4.569105194354945,
+              "cp_error_calibers": -0.31457384565536994,
+              "fitted_c_n_alpha": 3.9457331055839004,
+              "fitted_c_n_alpha_error": 0.01576939456831239
+            },
+            "lip_off": {
+              "cp_calibers": 4.565122898438312,
+              "cp_error_calibers": -0.31855614157200307,
+              "fitted_c_n_alpha": 3.9444526969049183,
+              "fitted_c_n_alpha_error": 0.015439772692263709
+            }
+          },
+          "lip": {
+            "candidates_per_rad": {
+              "seiff": 0.017381799154661003,
+              "slender_body": 0.1777919999999998,
+              "zero": 0.0
+            },
+            "cp_with_seiff": 4.628838192754145,
+            "cp_with_slender_body": 5.156323823226539,
+            "implied_share_per_rad": 0.09329167199518448,
+            "implied_share_standard_error": 0.044872064052772574
+          },
+          "mach": 3.96,
+          "measured": {
+            "cp_calibers": 4.883679040010315,
+            "cp_standard_error_calibers": 0.14781107317417058,
+            "fitted_c_n_alpha": 3.8844772511193657
+          }
+        },
+        {
+          "hpr": {
+            "committed": {
+              "cp_calibers": 4.722050038926919,
+              "cp_error_calibers": -0.32499847557524486,
+              "fitted_c_n_alpha": 3.9495067284061984,
+              "fitted_c_n_alpha_error": -0.04801995260364533
+            },
+            "lip_off": {
+              "cp_calibers": 4.71805805742835,
+              "cp_error_calibers": -0.3289904570738136,
+              "fitted_c_n_alpha": 3.9482074633234987,
+              "fitted_c_n_alpha_error": -0.04833312448055671
+            }
+          },
+          "lip": {
+            "candidates_per_rad": {
+              "seiff": 0.013648368545052792,
+              "slender_body": 0.1777919999999998,
+              "zero": 0.0
+            },
+            "cp_with_seiff": 4.768425818080915,
+            "cp_with_slender_body": 5.302143350887643,
+            "implied_share_per_rad": 0.0976747840584833,
+            "implied_share_standard_error": 0.04171217978255695
+          },
+          "mach": 4.63,
+          "measured": {
+            "cp_calibers": 5.047048514502164,
+            "cp_standard_error_calibers": 0.13544155314475131,
+            "fitted_c_n_alpha": 4.148728473047325
+          }
+        }
+      ]
+    },
+    {
+      "design": "wind-tunnel-arcas-robin-long.json",
+      "id": "arcas-robin-long",
+      "lip": {
+        "aft_diameter_in": 1.47,
+        "angle_deg": 56.80243420778352,
+        "boattail_turn_deg": 15.00648862644853,
+        "fore_diameter_in": 1.308,
+        "length_in": 0.053,
+        "station_calibers": 23.766228941684663
+      },
+      "rows": [
+        {
+          "hpr": {
+            "committed": {
+              "cp_calibers": 4.309828002708832,
+              "cp_error_calibers": -0.2965035106287264,
+              "fitted_c_n_alpha": 3.770195329768984,
+              "fitted_c_n_alpha_error": 0.19365195087633036
+            },
+            "lip_off": {
+              "cp_calibers": 4.303803048214027,
+              "cp_error_calibers": -0.3025284651235314,
+              "fitted_c_n_alpha": 3.7689064205725957,
+              "fitted_c_n_alpha_error": 0.19324387945238475
+            }
+          },
+          "lip": {
+            "candidates_per_rad": {
+              "seiff": 0.03837500316987611,
+              "slender_body": 0.1777919999999998,
+              "zero": 0.0
+            },
+            "cp_with_seiff": 4.5058699245948945,
+            "cp_with_slender_body": 5.186019374869289,
+            "implied_share_per_rad": 0.05834457909877077,
+            "implied_share_standard_error": 0.07884867412767449
+          },
+          "mach": 1.8,
+          "measured": {
+            "cp_calibers": 4.606331513337558,
+            "cp_standard_error_calibers": 0.3945975605865345,
+            "fitted_c_n_alpha": 3.1585382380526092
+          }
+        },
+        {
+          "hpr": {
+            "committed": {
+              "cp_calibers": 4.89402952433807,
+              "cp_error_calibers": -0.14763972659695668,
+              "fitted_c_n_alpha": 4.071434022457123,
+              "fitted_c_n_alpha_error": 0.1548685734317139
+            },
+            "lip_off": {
+              "cp_calibers": 4.888472441029152,
+              "cp_error_calibers": -0.15319680990587425,
+              "fitted_c_n_alpha": 4.070107478935719,
+              "fitted_c_n_alpha_error": 0.15449229730499558
+            }
+          },
+          "lip": {
+            "candidates_per_rad": {
+              "seiff": 0.03149532949801758,
+              "slender_body": 0.1777919999999998,
+              "zero": 0.0
+            },
+            "cp_with_seiff": 5.0388982481240125,
+            "cp_with_slender_body": 5.683661815271997,
+            "implied_share_per_rad": 0.03210251220113214,
+            "implied_share_standard_error": 0.07305227112760741
+          },
+          "mach": 2.3,
+          "measured": {
+            "cp_calibers": 5.041669250935026,
+            "cp_standard_error_calibers": 0.33333969363273336,
+            "fitted_c_n_alpha": 3.5254522602158787
+          }
+        },
+        {
+          "hpr": {
+            "committed": {
+              "cp_calibers": 4.6438692786066555,
+              "cp_error_calibers": -0.6838610886116312,
+              "fitted_c_n_alpha": 4.399743973777455,
+              "fitted_c_n_alpha_error": 0.1374686805953309
+            },
+            "lip_off": {
+              "cp_calibers": 4.63931930163562,
+              "cp_error_calibers": -0.6884110655826667,
+              "fitted_c_n_alpha": 4.398335455113734,
+              "fitted_c_n_alpha_error": 0.1371045353460696
+            }
+          },
+          "lip": {
+            "candidates_per_rad": {
+              "seiff": 0.024780467864690018,
+              "slender_body": 0.1777919999999998,
+              "zero": 0.0
+            },
+            "cp_with_seiff": 4.764112045367412,
+            "cp_with_slender_body": 5.4743288768247105,
+            "implied_share_per_rad": 0.1452428846169889,
+            "implied_share_standard_error": 0.096396871321178
+          },
+          "mach": 2.96,
+          "measured": {
+            "cp_calibers": 5.327730367218287,
+            "cp_standard_error_calibers": 0.4376430518269498,
+            "fitted_c_n_alpha": 3.8680132902426
+          }
+        },
+        {
+          "hpr": {
+            "committed": {
+              "cp_calibers": 5.201600176488464,
+              "cp_error_calibers": -0.9869550329096519,
+              "fitted_c_n_alpha": 4.427567404164892,
+              "fitted_c_n_alpha_error": -0.006228247422506494
+            },
+            "lip_off": {
+              "cp_calibers": 5.197263141126787,
+              "cp_error_calibers": -0.9912920682713287,
+              "fitted_c_n_alpha": 4.426239664947469,
+              "fitted_c_n_alpha_error": -0.006526259763961151
+            }
+          },
+          "lip": {
+            "candidates_per_rad": {
+              "seiff": 0.017381799154661003,
+              "slender_body": 0.1777919999999998,
+              "zero": 0.0
+            },
+            "cp_with_seiff": 5.28041593778964,
+            "cp_with_slender_body": 5.977382352274789,
+            "implied_share_per_rad": 0.22890547221004115,
+            "implied_share_standard_error": 0.0833185294166404
+          },
+          "mach": 3.96,
+          "measured": {
+            "cp_calibers": 6.188555209398116,
+            "cp_standard_error_calibers": 0.3401401641331049,
+            "fitted_c_n_alpha": 4.455316215903041
+          }
+        },
+        {
+          "hpr": {
+            "committed": {
+              "cp_calibers": 5.962078720306735,
+              "cp_error_calibers": -0.43430208448670093,
+              "fitted_c_n_alpha": 4.425488426079873,
+              "fitted_c_n_alpha_error": -0.041073417433795445
+            },
+            "lip_off": {
+              "cp_calibers": 5.957232901867565,
+              "cp_error_calibers": -0.43914790292587114,
+              "fitted_c_n_alpha": 4.424152789575751,
+              "fitted_c_n_alpha_error": -0.0413628266978443
+            }
+          },
+          "lip": {
+            "candidates_per_rad": {
+              "seiff": 0.013648368545052792,
+              "slender_body": 0.1777919999999998,
+              "zero": 0.0
+            },
+            "cp_with_seiff": 6.016818552642399,
+            "cp_with_slender_body": 6.649726480852769,
+            "implied_share_per_rad": 0.11065144802482126,
+            "implied_share_standard_error": 0.059046563935921115
+          },
+          "mach": 4.63,
+          "measured": {
+            "cp_calibers": 6.396380804793436,
+            "cp_standard_error_calibers": 0.22610190096367308,
+            "fitted_c_n_alpha": 4.615044057113034
+          }
+        }
+      ]
+    }
+  ],
+  "generator": "cargo xtask aero (xtask/src/aero_lip.rs)",
+  "note": "The lip behind a boattail faster than sound (M1.8e8): hpr flies a lip wholly in a boattail's wake with no potential-flow slope above the supersonic join, so the committed Arcas Robin designs fly the shock-expansion method to their base. Rows hold the design as committed and the same design with the lip left off (M1.8e7), both through the flight's path with hpr's current body model, fitted at the tunnel's plotted angles as arcas-robin-crossflow.json fits them, against TN D-4014's fins-off measurement. Slopes are per radian on the body's cross-section; centres of pressure are calibers aft of the nose tip, hpr's from the same fits over |alpha| <= 4.5 deg. candidates_per_rad holds the lip's share under the rule flown (zero), slender-body theory (2 dA/A_ref, which hpr flies below the join) and Seiff's embedded Newtonian bound (NASA TN D-1304 eq. 9). implied_share is the share at the lip's station that would put hpr on the measured centre of pressure, with the standard error the readings leave. No targets.",
+  "one_share_fitted_to_every_row": {
+    "chi_squared_per_degree_of_freedom": 4.628327415684377,
+    "rows": 11,
+    "share_per_rad": 0.02216865313783251,
+    "standard_error": 0.018288771011291408
+  }
+}
