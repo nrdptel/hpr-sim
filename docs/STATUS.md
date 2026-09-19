@@ -38,7 +38,8 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
   through that path from Mach 1.5, into the report; (4) `cargo xtask validate` (debug), list the
   changed rows. Open: Fig. 2 held below Mach 3; Prometheus peaks at Mach 1.01 to 1.06; Mach over
   nose fineness outside 0.4 to 2; hpr's Arcas Robin nose is a power series (fixture: secant ogive,
-  ratio 1.744); #81. Predicted mode's misses aren't gaps (ADR-009, ADR-023). ROADMAP: 998 lines.
+  ratio 1.744); #81. Plan: `docs/research/body-supersonic-join.md`. ROADMAP: 998 lines.
+  Predicted mode's misses aren't gaps to close (ADR-009, ADR-023).
 - **Autopilot memory:** cycles run in their own process group, reaped either way; `runs.log`
   gets a memory line per cycle (% spare from `memory_pressure`). `scripts/build-memory.sh`
   reproduces `docs/perf.md`; thinning debug info doesn't cut peak memory.
