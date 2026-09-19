@@ -1,9 +1,9 @@
 //! The normal force of a pointed body of revolution faster than sound, by Syvertson and Dennis's
 //! second-order shock-expansion method (NACA TN 3527, 1956, also NACA Report 1328).
 //!
-//! **Not yet used in a flight**: the milestone
+//! **Flown faster than sound** for a pointed nose and the cylinders behind it since the milestone
 //! [M1.8e2](https://nrdptel.github.io/hpr-sim/decisions-and-roadmap.html#m1-8e2), the body's
-//! supersonic normal force in flight, will fly it. The guide's
+//! supersonic normal force in flight, through [`crate::model::SupersonicBody`]. The guide's
 //! [Bodies faster than sound](https://nrdptel.github.io/hpr-sim/physics/aero.html#bodies-faster-than-sound)
 //! explains the method and how it was checked.
 //!

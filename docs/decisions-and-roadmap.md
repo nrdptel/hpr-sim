@@ -140,7 +140,7 @@ missing or its status disagrees.
 | <a id="m1-8d"></a>[M1.8d][phase-1] | Tables that override the normal force and centre of pressure, read from RASAero II | done |
 | <a id="m1-8e"></a>[M1.8e][phase-1] | The body's normal force faster than sound, which slender-body theory underestimates past Mach 3 | not yet done |
 | <a id="m1-8e1"></a>[M1.8e1][phase-1] | The second-order shock-expansion method: the lift a body's cylinder carries behind its nose faster than sound, checked against its report's tables | done |
-| <a id="m1-8e2"></a>[M1.8e2][phase-1] | The body's supersonic normal force in a flight: the nose and its cylinder, joined to the subsonic model | not yet done |
+| <a id="m1-8e2"></a>[M1.8e2][phase-1] | The body's supersonic normal force in a flight: the nose and its cylinder, joined to the subsonic model | done |
 | <a id="m1-8e3"></a>[M1.8e3][phase-1] | The boattail and crossflow faster than sound, against the Arcas Robin wind tunnel | not yet done |
 | <a id="m3-1"></a>[M3.1][phase-1] | Reading OpenRocket `.ork` design files | not yet done |
 | <a id="m2-2"></a>[M2.2][phase-1] | OpenRocket as a reference program, and a corpus of designs to compare | not yet done |

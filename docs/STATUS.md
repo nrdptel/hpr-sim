@@ -4,10 +4,10 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
 
 ## Now
 
-- **Current milestone:** M1.8e2 The body's supersonic normal force in flight
-- **Order:** M1.8e2, M1.8e3, then M3.1
-- **Run:** M0.1-M0.4, M1.1-M1.7, M2.1, M1.8a to M1.8e1 shipped; https://nrdptel.github.io/hpr-sim/
-- **Last updated:** 2026-09-19 (M1.8e2 split; its first piece is on a draft PR; see the handoff)
+- **Current milestone:** M1.8e3 The boattail and crossflow faster than sound
+- **Order:** M1.8e3, then M3.1
+- **Run:** M0.1-M0.4, M1.1-M1.7, M2.1, M1.8a to M1.8e2 shipped; https://nrdptel.github.io/hpr-sim/
+- **Last updated:** 2026-09-19 (M1.8e2 done; M1.8e3 not started)
 
 ## Handoff (overwrite each session)
 
@@ -30,19 +30,14 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
   rolling-moment plots are unread; #76: M1.8a's other TN D-4014 zeros. M1.8e1's Python check,
   `m18e/sose.py` (patch in hpr's Fig. 2), carries the gradient through reduced elements; hpr
   doesn't (#81).
-- **Resume M1.8e2 here.** Branch `m1.8e2-body-supersonic-in-flight` (draft PR) holds the split
-  (M1.8e3 now carries M1.8e's 15% bullet) and `ShockExpansionBody::segment_slopes` (each
-  segment's share; physics-reviewed, nothing blocking; a share can cross zero, so carry moments,
-  not stations). Plan: `docs/research/body-supersonic-join.md`.
-  Next: (1) in `hpr-aero/src/model.rs` (its `//!` says body terms are Mach-free), give each body
-  component its segment's share past a join (`Unsupported` where the method fails), slender-body
-  below, a ±1e-9 probe test; (2) drop the Mach-free `body_stations_m` cache
-  (`crates/hpr-sim/src/dynamics.rs`, line 132); (3) the Arcas Robin body alone from Mach 1.5
-  through that path, into the report; (4) `cargo xtask validate` (debug), list changed rows;
-  (5) review the rest. Open: the plan, #81. Predicted misses aren't gaps (ADR-009, ADR-023).
-- **Autopilot memory:** cycles run in their own process group, reaped either way; `runs.log`
-  gets a memory line per cycle (% spare from `memory_pressure`). `scripts/build-memory.sh`
-  reproduces `docs/perf.md`; thinning debug info doesn't cut peak memory.
+- **M1.8e3** next (ADR-034 flies M1.8e2): `SupersonicBody` in `hpr-aero/src/model.rs` tabulates
+  the method's shares (nose and same-radius tubes) every 0.05 Mach, lazily; joined linearly from
+  max(1.2, first valid row) over 0.3. The boattail stays slender-body (−1.15/rad on the Arcas
+  Robin vs footnote 8's −0.03 to −0.18), so the flown body reads 36% to 51% low; extending the
+  run through a transition needs a station rule for shares that cross zero. Also open: blunt
+  tips, crossflow (long model +0.57), Fig. 2 below Mach 3, #81. No case passes Mach 1.06.
+- **Autopilot memory:** per-cycle process groups, reaped; `runs.log` memory lines;
+  `scripts/build-memory.sh` reproduces `docs/perf.md`.
 - **Regeneration is not bit-identical across machines** (last digits). Regenerate reports with
   `cargo xtask validate` (debug), never `--release`: it rounds differently in the 7th digit.
   Fixture checks (`designs::same`) allow 1e-12 relative, or 1e-13 near zero (M1.8b3's PR).
@@ -51,6 +46,10 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
   `cargo xtask examples` rewrite designs and example outputs; pages quoting them must follow.
 
 ## Done log (newest first, keep about 15)
+
+- 2026-09-19: M1.8e2 The body's supersonic normal force in flight (ADR-034): nose and cylinder
+  take the method's shares from Mach 1.2 to 1.5 on, no jump at ±1e-9; Arcas Robin nose and
+  cylinder equal the method on table rows; whole body −35.9% to −51.4% (M1.8a −61% to −82%).
 
 - 2026-09-19: Autopilot memory. Cycles run in their own process group and are reaped either way;
   peak RSS, spare %, pressure and swap per cycle in `runs.log`; jobs and test threads capped at 6
@@ -86,6 +85,8 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
 
 ## Decided without Neer (one line each; significant ones get an ADR)
 
+- ADR-034: M1.8e2's shares tabulated every 0.05 Mach (lazily; eager took unit tests to 238 s),
+  joined linearly over Mach 1.2 to 1.5; boattails keep slender-body theory until M1.8e3.
 - M1.8e2 split: e2 flies nose and cylinder; new e3 (boattail, crossflow) carries M1.8e's bullet.
 - ADR-033: M1.8e split into e1 (the method) and e2 (flying it); TN 3527's ten-element tangent
   body; `η < 0` elements reduced to the generalized method with no gradient carried (p. 13); Fig. 2

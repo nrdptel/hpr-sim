@@ -601,7 +601,7 @@
       within (a second implementation agrees with hpr; #81 at its limit); against its
       measurements 117 and 109 of 120. Arcas Robin: short −18.7% to +16.4%, long to −26.4%.
 
-    - [ ] **M1.8e2 The body's supersonic normal force in flight.**
+    - [x] **M1.8e2 The body's supersonic normal force in flight.**
       - The body's terms take Mach: M1.8e1's method for a pointed nose and its cylinder where it
         holds, joined to slender-body theory below it.
 

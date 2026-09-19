@@ -39,6 +39,7 @@ renumber. Supersede an entry by adding a new one that points back to it.
 | ADR-031 | Roll from canted fins and roll damping by Barrowman's strip theory | accepted |
 | ADR-032 | Normal-force overrides from RASAero II: the static force replaced, hpr's damping kept | accepted |
 | ADR-033 | The body faster than sound: Syvertson and Dennis's second-order shock-expansion method | accepted |
+| ADR-034 | The body's supersonic normal force in flight: tabulated shock-expansion shares, joined linearly from Mach 1.2 | accepted |
 
 ---
 
@@ -3255,3 +3256,55 @@ pins its misses. TN 3527 is pinned in `refs.lock.toml`; its tables are in
 what M1.8e1 leaves: noses with a blunt or vertical tip (power series, elliptical, Haack), the
 boattail, Mach numbers below 3, crossflow at the angles flown, and the join to the subsonic terms.
 
+## ADR-034: The body's supersonic normal force in flight: tabulated shock-expansion shares, joined linearly from Mach 1.2 (2026-09-19)
+
+**Context.** M1.8e1 built the second-order shock-expansion method (ADR-033) as a library model,
+but a flight still took slender-body theory's body terms at every Mach number, and
+`hpr-sim`'s dynamics cached the bodies' damping stations at Mach 0. M1.8e2 flies the method for
+a pointed nose and the cylinder behind it; M1.8e3 takes the boattail, crossflow and blunt tips.
+One run of the method takes about 2.5 ms in a release build and 4 ms in debug, so it can't run at
+each step of a flight. A flight's damping needs each component's own force at its own station
+(ADR-011), so the method's force has to land on components, not only on the whole body.
+
+**Decision.**
+
+- **What it covers.** The nose, if it is the first body and pointed, and the body tubes straight
+  behind it at the same radius. The run stops at the first transition, step in radius (over a
+  millionth of the area) or gap. Each covered component takes its own segment's share
+  (`ShockExpansionBody::segment_slopes`); the rest keep slender-body theory. Body lift (Galejs's
+  `sin² α` term) is unchanged everywhere.
+- **A table, built when first needed.** The shares are tabulated every 0.05 in Mach from Mach 5
+  (the normal force's limit) down to the lowest Mach at which the method holds and every share
+  is positive, and interpolated linearly. The table is built the first time a flow faster than
+  Mach 1.2 asks for it (`OnceLock`), which takes 0.3 s in a debug build, once per model. Built
+  eagerly, it took the `hpr-aero` unit tests from 4.7 s to 238 s. Between rows the interpolation
+  stays within 1e-4 of the method on the Arcas Robin, within 1e-3 in the unit test.
+- **The join.** From `M_j` = the larger of Mach 1.2 and the table's first row, over 0.3 in Mach:
+  each covered component's slope, moment and damping station are slender-body theory's plus
+  `w (shock-expansion − slender-body)`, `w = (M − M_j)/0.3` clamped to [0, 1]. Everything is
+  linear in Mach, so it is continuous by construction; a test probes the join's ends, table rows
+  and a point between rows at ±1e-9 in Mach. Mach 1.2 to 1.5 is a judgement: below Mach 1.2 the
+  flow over the nose is transonic, which the method doesn't cover, and Mach 1.5 is the lowest
+  Mach at which TN D-4014 measured the Arcas Robin and M1.8e1 checked the method. Because every
+  tabulated share is positive, the station `moment/slope` stays finite and moves continuously.
+- **No refusal in flight.** A body the method can't take, or that it doesn't cover across a whole
+  join below Mach 5, keeps slender-body theory at every Mach. The table is only read inside its
+  rows, so a flight never meets the method's own refusals.
+- **Stations.** `dynamics.rs` no longer caches body stations; each evaluation asks for them at
+  its Mach number, as it already did for fins. Below the join they are the same numbers.
+
+**Result.** The Arcas Robin's body alone (TN D-4014) through the flight's path, with the fitted
+secant-ogive nose (ADR-033): the nose and cylinder equal the method's slope at Mach 1.5, 1.8 and
+2.3 (table rows) and within 1e-4 at 2.96, 3.96 and 4.63. The whole body at `α → 0`, its boattail
+and lip still by slender-body theory, reads 36% to 46% low on the short model and 49% to 51% low
+on the long one. With the committed power-series nose, which the method refuses, it stays at
+M1.8a's slender-body values, 61% to 82% low. Most of the remaining gap is slender-body theory's
+boattail, which takes 1.15 per radian off where the method's footnote 8 takes 0.03 to 0.18: that
+is M1.8e3's. No validation case flies past Mach 1.06, so the validation report is unchanged.
+
+**Consequences.** `AeroModel::supersonic_body`, `SupersonicBody`, `SUPERSONIC_JOIN_START_MACH`
+and `SUPERSONIC_JOIN_WIDTH_MACH` in `hpr-aero`. Until M1.8e3, a body the method covers carries
+the method's nose and cylinder next to slender-body theory's boattail, which undoes more of the
+lift than the method would, so a supersonic rocket with a boattail reads less stable at small
+angles than the wind tunnel shows. `cargo xtask aero` adds the flight's values to
+`validation/fixtures/aero/shock-expansion.json`.
