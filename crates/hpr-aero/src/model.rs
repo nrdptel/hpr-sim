@@ -328,7 +328,7 @@ impl AeroModel {
                         ComponentDragTerms::fins(
                             component,
                             set,
-                            &terms.fin.geometry(),
+                            terms.fin.geometry(),
                             length_m,
                             reference_area_m2,
                         )
