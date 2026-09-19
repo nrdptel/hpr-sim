@@ -54,6 +54,7 @@ pub mod error;
 pub mod fins;
 pub mod model;
 pub mod nose_drag;
+pub mod shock_expansion;
 pub mod table;
 
 pub use afterbody::Boattail;

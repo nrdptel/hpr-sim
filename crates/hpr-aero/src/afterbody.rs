@@ -81,7 +81,7 @@ use crate::drag::{base_drag_coefficient, boattail_factor, check_mach_any};
 use crate::error::{AeroError, check_dimension};
 
 /// The ratio of specific heats of air, `γ = 1.4`.
-const GAMMA: f64 = 1.4;
+pub(crate) const GAMMA: f64 = 1.4;
 
 /// `√((γ + 1)/(γ − 1))`, `√6` for `γ = 1.4`.
 const PM_K: f64 = 2.449_489_742_783_178;
@@ -198,7 +198,7 @@ pub fn prandtl_meyer_angle(mach: f64) -> Result<f64, AeroError> {
     Ok(prandtl_meyer(mach))
 }
 
-fn prandtl_meyer(mach: f64) -> f64 {
+pub(crate) fn prandtl_meyer(mach: f64) -> f64 {
     let b = (mach * mach - 1.0).sqrt();
     PM_K * (b / PM_K).atan() - b.atan()
 }
@@ -207,7 +207,7 @@ fn prandtl_meyer(mach: f64) -> f64 {
 /// ([`MAX_TURNING_RAD`]): Newton's method on `ν(M)`, kept inside a bracket, until a step moves
 /// `M` by a few rounding steps, so that every platform lands on the same root to rounding, not
 /// wherever a tolerance first stops it.
-fn inverse_prandtl_meyer(nu_rad: f64) -> f64 {
+pub(crate) fn inverse_prandtl_meyer(nu_rad: f64) -> f64 {
     if nu_rad <= 0.0 {
         return 1.0;
     }

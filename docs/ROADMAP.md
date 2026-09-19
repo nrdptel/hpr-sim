@@ -67,19 +67,9 @@
     leaves out); *Accuracy* (every validation result, gaps included); *Glossary*; *Checking a
     claim* (tracing a number to its source, test and validation); the decisions; the roadmap.
 
-  *Done when:*
-  - CI builds the site on every PR and checks its links. A broken link, a model page without *In
-    short*, or a bare internal label (`L\d+`, `ADR-\d+`, a milestone id that isn't a link) fails
-    CI.
-  - A workflow deploys the site and the rustdoc to GitHub Pages from `main`, and the README's first
-    lines link to it. (Needs Neer to enable Pages. Until he does, only this bullet is blocked.)
-  - The *Getting started* example runs in CI.
-  - A reviewer with no project context, given only the site, answers ten questions a new user
-    would ask, listed in the PR (for example: "How far can I trust the descent drift, and what was
-    it checked against?"). Each answer cites a page. Every term it flags as unclear is fixed.
-
-  Split on 2026-09-17 into M0.4a to M0.4e, which carry the four bullets above, unchanged (M0.4a
-  checks links and bare labels, M0.4b *In short*). Done 2026-09-18, with M0.4d's first deploy.
+  *Done when:* split on 2026-09-17 into M0.4a to M0.4e, which carry its four done-when bullets
+  unchanged (M0.4a checks links and bare labels, M0.4b *In short*). Done 2026-09-18, with M0.4d's
+  first deploy.
 
   - [x] **M0.4a The site and its link checks.** An ADR picks the tool (mdBook is the first
     candidate) and the layout. `docs/physics/` and `docs/format/` move into the site's source, so
@@ -208,11 +198,7 @@
   - Cd-vs-Mach override tables (power-on/off) from CSV, including RocketPy/RASAero exports, so the
     dynamics are validated on the oracle's drag first. `docs/physics/aero.md` cites each term.
 
-  *Done when:*
-  - CNα and CP reproduce Barrowman's worked example(s) within 1%.
-  - Subsonic Cd for the RocketPy example rockets is within 10% of their RASAero CSVs at Mach 0.3
-    (tighten this later).
-  - Unit tests cover every drag term's limits.
+  *Done when:* split below into M1.5a and M1.5b, which carry its three bullets unchanged.
 
   *Result:* see M1.5a (the Recruiter's six-fin slopes, ADR-008) and M1.5b (Valetudo, ADR-009).
   Skin friction is fully turbulent with roughness, as in Niskanen; laminar and transitional
@@ -375,13 +361,7 @@
       case variant taking the oracle's `C_D0(M)` through `Simulation::with_drag_table` (M2.1b2).
     - Loft lessons: L75 (tests named in `docs/research/loft-lessons.md`).
 
-    *Done when:* split below into M2.1b1 and M2.1b2, which carry these three bullets between them.
-    - At least 5 whole-flight cases run in the lock and pass their same-drag tolerances, with the
-      tolerance for each metric argued in the case file.
-    - `hpr_validate::rocketpy::tests::oracle_inputs_come_from_the_case_file_not_hpr_outputs`
-      exists and passes.
-    - `validation/reports/latest.md` carries them, and the gravity rule of ADR-015 is applied:
-      the comparison flies the oracle's models where hpr has them.
+    *Done when:* split below into M2.1b1 and M2.1b2; M2.1b2 carries M2.1b's three bullets.
 
     - [x] **M2.1b1 The whole-flight oracle.**
       - `validation/oracles/rocketpy/flight.py` flies M2.1b's five example rockets pad to landing,
@@ -423,12 +403,8 @@
     - A CI job that runs `cargo xtask validate` against the stored references, and a separate,
       manually triggered workflow that regenerates them.
 
-    *Done when:* split below into M2.1c1 and M2.1c2, which carry these three bullets between them.
-    - Predicted-mode results are in the report for every case, each gap explained in the case file
-      or `docs/VALIDATION.md`; `M ≥ 1` cases are reported as gaps, not hidden, until M1.8.
-    - The CI job is green on macOS, Windows and Linux.
-    - The regeneration workflow runs only when a human triggers it, and its output is a diff to
-      review, never an automatic commit.
+    *Done when:* split below into M2.1c1 and M2.1c2, which carry M2.1c's three bullets between
+    them (the first in M2.1c2, the other two in M2.1c1).
 
     - [x] **M2.1c1 The CI job and the regeneration workflow.**
       - `cargo xtask validate --check`, and a `validate` job running it on three OSes.
@@ -616,7 +592,31 @@
 
     *Done when:* the Arcas Robin's body-alone `C_Nα` (fins off, TN D-4014) is within 15% at every
     Mach number from 1.5, and both configurations' `C_Nα` within 15% at Mach 3.96 and 4.63, or an
-    ADR records why not with the gap in the report.
+    ADR records why not with the gap in the report. Split below into M1.8e1 and M1.8e2; M1.8e2
+    carries this bullet.
+
+    - [x] **M1.8e1 The second-order shock-expansion method.**
+      - NACA TN 3527's method for a pointed body's `C_Nα` and CP at `α → 0`, the cylinder's
+        lift behind the nose included; its Fig. 2's tangent-cone slopes read by hand.
+
+      *Done when* (targets set before measuring):
+      - A committed fixture, pinned by a test, holds hpr's values against every row of TN 3527's
+        Tables I and II (cone and tangent-ogive noses of fineness 3, 5 and 7, cylinders of 0 to
+        10 calibers, Mach 3 to 6.28): within 0.05 per radian and 0.1 calibers of the report's own
+        second-order values, and within its stated ±0.2 per radian and ±0.2 calibers of its
+        measurements. Every miss is explained.
+      - The Arcas Robin's nose and cylinder, with and without its boattail (footnote 8), are
+        computed at each Mach number of TN D-4014 and reported beside the measured body alone.
+
+      *Result (ADR-033):* not met, recorded. Against its values, slopes 102 and CPs 125 of 144
+      within (a second implementation agrees with hpr; #81 at its limit); against its
+      measurements 117 and 109 of 120. Arcas Robin: short −18.7% to +16.4%, long to −26.4%.
+
+    - [ ] **M1.8e2 The body's supersonic normal force in flight.**
+      - The body's terms take Mach: M1.8e1's method where it holds, a join from subsonic, the
+        boattail, and crossflow at the angles flown.
+
+      *Done when:* M1.8e's bullet above.
 
 - [ ] **M3.1 OpenRocket `.ork` import.**
   - Handles zip, gz and raw XML, schema 1.0 to 1.10, plus the documented 1.11 additions.

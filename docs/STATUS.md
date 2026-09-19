@@ -4,11 +4,11 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
 
 ## Now
 
-- **Current milestone:** M1.8e The body's supersonic normal force
-- **Order:** M1.8e, then M3.1
-- **Run:** M0.1-M0.4, M1.1-M1.7, M2.1, M1.8a, M1.8b (b1 to b3), M1.8c and M1.8d have shipped.
+- **Current milestone:** M1.8e2 The body's supersonic normal force in flight
+- **Order:** M1.8e2, then M3.1
+- **Run:** M0.1-M0.4, M1.1-M1.7, M2.1 and M1.8a to M1.8e1 have shipped.
   The site is live at https://nrdptel.github.io/hpr-sim/
-- **Last updated:** 2026-09-19 (M1.8d done; M1.8e not started)
+- **Last updated:** 2026-09-19 (M1.8e1 done; M1.8e2 not started)
 
 ## Handoff (overwrite each session)
 
@@ -25,19 +25,18 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
 - **The path in wind (ADR-026):** the oracle flies RocketPy 1.13.0 with upstream PRs #1188 and
   #1196 applied by `corrections.py`; when RocketPy releases #1196, re-pin, regenerate and delete
   it. `wind_response.py` measures the seven drifts reported as model differences.
-- **M1.8a to c (ADR-027 to ADR-031):** `cargo xtask aero` writes `normal-force-vs-mach.json`,
-  `drag-vs-mach.json`, `rocketpy-drag-curves.json` and `roll-vs-mach.json` (hpr's values and
-  errors only). NTRS serves five of ADR-030's PDFs with a 436-byte header (pinned as served).
-  Scratch: `refs/scratch/{arcas,stoney,m18b2,m18b3,m18c}/`. Roll below Mach 1.5: TN D-4013's
-  rolling-moment plots (fins canted 2°) are unread. #76: M1.8a's other TN D-4014 zeros.
-- **M1.8d (ADR-032):** `hpr_aero::NormalForceTable::from_rasaero_csv` (reference: the largest
-  body) and `Simulation::with_normal_force_table` (fallible; the table's force at the centre of
-  mass's flow, hpr's damping kept). `normal-force-override.json`: the re-read, a table hash,
-  M1.8a's 30 values, four Calisto flights. The RASAero II manual as text: `refs/scratch/m18d/`.
-- **M1.8e** next: a cited supersonic method for the body's normal force (noses, boattails,
-  crossflow); the target is in ROADMAP. M1.8a's rows are in `normal-force-vs-mach.json` (#76 may
-  move some). Issues #67 to #70, #72, #73 hold the drag gaps. Don't read predicted mode's misses
-  as gaps to close (ADR-009, ADR-023). ROADMAP is at 999 of 1000 lines: trim a done entry.
+- **M1.8a to e1 (ADR-027 to ADR-033):** `cargo xtask aero` writes the aero fixtures (hpr's
+  values and errors only). NTRS serves five of ADR-030's PDFs with a 436-byte header (pinned as
+  served). Scratch: `refs/scratch/{arcas,stoney,m18b2,m18b3,m18c,m18d,m18e}/`. TN D-4013's
+  rolling-moment plots are unread; #76: M1.8a's other TN D-4014 zeros. M1.8e1's Python check,
+  `m18e/sose.py` (patch in hpr's Fig. 2), carries the gradient through reduced elements; hpr
+  doesn't (#81).
+- **M1.8e2** next: fly `hpr_aero::shock_expansion`. Open: blunt or vertical tips (hpr's Arcas
+  Robin design is a power series; the fixture's fitted secant ogive has ratio 1.744), Mach below
+  3 (Fig. 2 held), the join from subsonic (Prometheus peaks at Mach 1.01 to 1.06), the boattail
+  (footnote 8 takes only 0.03 to 0.18 off), crossflow (the long model's extra 0.57), Mach over
+  nose fineness outside 0.4 to 2, #81, and `dynamics.rs` caching body stations at Mach 0. Don't read predicted mode's misses as gaps to
+  close (ADR-009, ADR-023). ROADMAP is at 999 of 1000 lines: trim a done entry.
 - **Regeneration is not bit-identical across machines** (last digits). Regenerate reports with
   `cargo xtask validate` (debug), never `--release`: it rounds differently in the 7th digit.
   Fixture checks (`designs::same`) allow 1e-12 relative, or 1e-13 near zero (M1.8b3's PR).
@@ -47,6 +46,9 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
 
 ## Done log (newest first, keep about 15)
 
+- 2026-09-19: M1.8e1 The second-order shock-expansion method (ADR-033): not met, recorded.
+  Against TN 3527's measurements 117 of 120 slopes and 109 of 120 CPs within ±0.2; its printed
+  values 102 and 125 of 144 (#81 at the limit); Arcas Robin short −18.7% to +16.4%, long to −26.4%.
 - 2026-09-19: M1.8d Normal-force overrides (ADR-032): RASAero II's export read per angle of
   attack, flown with hpr's damping kept; every row of Calisto's export re-read, and it flies
   (apogee −1.28 m, 14.2 m upwind); a table's pitch period within 4e-6 of theory.
@@ -64,12 +66,7 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
 - 2026-09-18: M1.8b1 The drag buildup through Mach 1 (ADR-028): Niskanen's appendix B with
   Stoney's digitized curves, Mach 0 to 5; against the Arcas Robin's forebody axial force 8 of 44
   within 10% (high past Mach 1.2 with fins); predicted Prometheus flies; no known gap left.
-- 2026-09-18: M1.8a The normal force through Mach 1 (ADR-027): supersonic linear theory and a
-  transonic join; against NASA's Arcas Robin wind tunnel, Mach 1.5–2.96 within 13.4% and 0.42
-  calibers; Prometheus flies and is scored; M1.8 split into a to e.
-- 2026-09-18: M2.1d3 The path in wind (ADR-026, issue #50), and with it M2.1: RocketPy's equations
-  corrected as upstream PRs #1188 and #1196 do; six drifts now gated, five measured as body lift
-  and rail release.
+
 ## Needs Neer (blocking or one-way decisions; the session keeps working on other things)
 
 - **Protect `main`** (2 minutes, optional). Settings → Branches → rule for `main`: require the
@@ -90,6 +87,9 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
 
 ## Decided without Neer (one line each; significant ones get an ADR)
 
+- ADR-033: M1.8e split into e1 (the method) and e2 (flying it); TN 3527's ten-element tangent
+  body; `η < 0` elements reduced to the generalized method with no gradient carried (p. 13); Fig. 2
+  held below Mach 3; the Arcas Robin's nose as a fitted secant ogive for the comparison only.
 - ADR-032: a normal-force table replaces only the static force, hpr's damping kept; the 0° slope
   from `CN Potential`; past the last angle `sin α` and `sin² α` shares; no new RASAero values.
 - ADR-031: roll damping takes the fin's own slope, not the airfoil's Barrowman's text writes (his
@@ -129,7 +129,7 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
 - Aero (M1.5a) is small-angle only; body-lift `K` is uncertain (Galejs: 1.0 to 1.5) and the
   Recruiter's six fins miss the printed slope by +3.42% (+2.87% whole; ADR-008). Through Mach 1
   (M1.8a) the normal force misses the wind tunnel between Mach 0.8 and 1.2, and past Mach 3 reads
-  17–25% low from the body (M1.8e; ADR-027).
+  17–25% low from the body (M1.8e2; ADR-027, ADR-033).
 - Drag: against RASAero II's Calisto hpr reads −14.9% to −5.1% supersonic, within what the
   unrecorded fins span (ADR-030); against MIL-HDBK-762 the body reads 6–10% low past Mach 1.6 and
   high through Mach 1 (nose #67, base #68). Against the Arcas Robin it reads high at every row:
