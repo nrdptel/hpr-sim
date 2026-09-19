@@ -56,7 +56,7 @@ new record replaces it and points back. All of them are in the [decision log][de
 | [ADR-037: Body lift by Jorgensen's crossflow][adr-037] | Body lift's size at every speed from Jorgensen's crossflow drag, how his two `η` figures are combined, a boattail's share faster than sound from Washington and Pettis's measurements, and why [blunt tips moved to M1.8e7](#m1-8e7) | [Aerodynamics](physics/aero.md#body-lift) |
 | [ADR-038: Blunt tips by a Newtonian cap][adr-038] | How a nose with a blunt or vertical tip (power-series, Haack, elliptical) flies the shock-expansion method faster than sound: NASA TN D-4865's Newtonian cap and handover, the method started behind it from the tangent cone rather than the report's own start, and how both were checked | [Aerodynamics](physics/aero.md#blunt-tips) |
 | [ADR-039: A lip in a boattail's wake carries nothing][adr-039] | Why a short flare at the very base, behind a boattail, gets no normal force faster than sound, what the tunnel's pitching moment says about that, and how far the shelter reaches | [Aerodynamics](physics/aero.md#a-lip-in-a-boattails-wake) |
-| [ADR-040: A separating boattail, and the 15% target judged][adr-040] | How much of a boattail's measured share survives the angles where its flow separates, how footnote 8's size was checked by hand, and where the Arcas Robin's body alone still misses its 15% target | [Aerodynamics](physics/aero.md#the-body-alone-against-the-15-target) |
+| [ADR-040: A steep boattail's correlation, and the 15% target judged][adr-040] | How steep a boattail hpr still reads its measured share for, how footnote 8 and the tube behind it were integrated by hand, and where the Arcas Robin's body alone still misses its 15% target | [Aerodynamics](physics/aero.md#the-body-alone-against-the-15-target) |
 
 ## The roadmap
 
@@ -305,7 +305,7 @@ is the milestone that added or will add that test.
 [adr-037]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-037-body-lift-by-jorgensens-crossflow-at-every-speed-and-a-boattails-measured-share-faster-than-sound-2026-09-19
 [adr-038]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-038-blunt-and-vertical-nose-tips-faster-than-sound-by-a-newtonian-cap-the-method-started-from-the-tangent-cone-2026-09-19
 [adr-039]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-039-a-lip-in-a-boattails-wake-carries-nothing-faster-than-sound-2026-09-19
-[adr-040]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-040-a-separating-boattail-keeps-less-of-its-measured-share-and-m18es-15-target-judged-2026-09-19
+[adr-040]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-040-a-steep-boattail-reads-its-measured-correlation-no-steeper-than-16-and-m18es-15-target-judged-2026-09-19
 [decisions]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md
 [lessons]: https://github.com/nrdptel/hpr-sim/blob/main/docs/research/loft-lessons.md
 [lessons-motors]: https://github.com/nrdptel/hpr-sim/blob/main/docs/research/loft-lessons.md#motors-mass-and-design-checks

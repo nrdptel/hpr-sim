@@ -100,7 +100,8 @@
   blunt edge's formula, which reads far high for thin, sharp fins, and nothing models a thin fin's
   own wave drag or the drag where fins meet the body. Faster than sound a flight takes a pointed
   nose and its cylinder from the method that adds the cylinder's lift, and a boattail behind them
-  from a measured correlation of boattails of 4° to 9.5°, an extrapolation for steeper ones
+  from a measured correlation of boattails of 4° to 9.5°, an extrapolation for steeper ones,
+  which hpr stops reading past the angle where the flow separates
   ([The body faster than sound in a flight](#the-body-faster-than-sound-in-a-flight)). A nose
   with a vertical tip (power-series, Haack, elliptical) takes a Newtonian cap ahead of the method,
   checked on a sphere-cone only ([Blunt tips](#blunt-tips)), and a lip inside a boattail's wake
@@ -532,8 +533,12 @@ share. How far to trust it: as far as the method's own checks above, for a point
 cylinder. A boattail behind them takes Washington and Pettis's measured increment ([WP68]), which
 their data give within about 15% for conical boattails of 4° to 9.5°; a steeper, shorter or
 narrower one, like the Arcas Robin's 15°, is an extrapolation, as is a transition that isn't
-conical (it takes the same correlation from its length and radii), and hpr takes a boattail of
-any angle (issue #90). A tube behind the boattail takes the method's decay of its expansion, which no
+conical (it takes the same correlation from its length and radii). Past 16°, where the flow
+separates, hpr stops reading the correlation any steeper and holds it there
+([A steep boattail reads the correlation no steeper than 16°](#the-body-faster-than-sound-in-a-flight),
+[issue #90: how steep a boattail the correlation should cover](https://github.com/nrdptel/hpr-sim/issues/90));
+nothing measures what such a boattail really carries, and the choice is worth about a calibre of
+centre of pressure at 30°. A tube behind the boattail takes the method's decay of its expansion, which no
 measurement here checks. A blunt or vertical nose tip takes a Newtonian cap ahead of the method
 ([Blunt tips](#blunt-tips)), an extrapolation from spherical caps, and a lip inside a boattail's
 wake rides along carrying nothing ([A lip in a boattail's wake](#a-lip-in-a-boattails-wake)). A
@@ -593,17 +598,37 @@ centre of pressure (test `the_boattail_takes_washington_and_pettis_increment`). 
 gives the same boattail `2[(D_B/D)² − 1]` at every speed, which is Fig. 5's own subsonic line;
 faster than sound the measured increment is less than half of it, and footnote 8's less again.
 
-**A boattail steep enough to separate keeps less of it.** Washington and Pettis measured boattails
-of 4° to 9.5°, where the flow follows the surface. Past about 16° it doesn't: the drag buildup
-already treats a boattail as separating from there, fully by 30°
-([Boattails faster than sound](#boattails-faster-than-sound), Cubbage's shallowest separated and
-steepest attached boattails). A separated surface no longer turns the flow, so its measured
-increment fades out over those same angles — all of it to 16°, none from 30°, straight-line between
-([ADR-040][adr-040], [issue #90](https://github.com/nrdptel/hpr-sim/issues/90)). The Arcas Robin's
-15° boattail keeps all of it; Calisto's 18.4° keeps five sixths; a 30° boattail keeps none, and
-takes just the share the method gives a cylinder in its place. The change is continuous in the
-angle, so a rocket doesn't jump as its boattail is drawn steeper (test
-`a_separating_boattail_keeps_less_of_the_measured_increment`).
+**A steep boattail reads the correlation no steeper than 16°.** Washington and Pettis measured
+boattails of 4° to 9.5°, where the flow follows the surface. Past about 16° it doesn't: the drag
+buildup already treats a boattail as separating from there
+([Boattails faster than sound](#boattails-faster-than-sound), Cubbage's steepest attached
+boattail). Nothing measures what a separated boattail's normal force then does, so hpr reads the
+correlation at the steepest angle where the flow is still attached: a boattail past 16° takes the
+increment of one of the **same radii** drawn out to 16°, and its centre of pressure stays on the
+real boattail ([ADR-040][adr-040],
+[issue #90: how steep a boattail the correlation should cover](https://github.com/nrdptel/hpr-sim/issues/90)).
+The Arcas Robin's 15° boattail is untouched; Calisto's 18.4° reads its correlation as a 16° one.
+The increment is continuous in the angle, so a rocket doesn't jump as its boattail is drawn
+steeper (test `a_separating_boattail_reads_the_correlation_at_its_steepest_measured_angle`).
+
+**Why hold it rather than let it fade.** The two honest limits for a separated boattail are the
+correlation held at 16°, and nothing at all — the body behaving as though the boattail were a
+cylinder, since a separated surface no longer turns the flow. hpr takes the first. The increment
+is negative, so it takes lift off the tail: holding it keeps the centre of pressure forward, and
+letting it fade to zero would move the centre of pressure **aft** and make a steep boattail look
+more stable than anything measured. On the tests' rocket at Mach 2 — an ogive nose, a tube, and a
+30° boattail — the body's centre of pressure sits 0.75 calibres further aft if the increment fades
+away than if it is held. That is the size of the doubt: a boattail steeper than 16° is worth about
+three quarters of a calibre of uncertainty in its own right, and hpr takes the forward end of it
+(test `a_separating_boattail_reads_the_correlation_at_its_steepest_measured_angle` pins the gap).
+
+**How far to trust the 16°.** It is Cubbage's, measured at Mach 0.6 to 1.28 and on *drag*, and it
+is used here on the normal force from Mach 1.2 up. A shoulder turns the flow through a
+Prandtl–Meyer expansion faster than sound, where separation is less likely than transonically, so
+16° is if anything early. No measurement of a steep boattail's supersonic normal force exists to
+check it. The angle is also read on each narrowing part's own chord angle, while the drag merges
+adjacent narrowing parts into one cone before grading, so a boattail drawn in several parts can be
+graded differently by the two.
 
 *A worked example.* The Arcas Robin's boattail narrows from 2.25 in to 1.308 in over 1.757 in, so
 `L_B/D` = 0.781 and `1 − (D_B/D)²` = 0.662. At Mach 2.3, `√(M² − 1)` = 2.071 and Fig. 5's
@@ -2117,7 +2142,7 @@ from 1.41 to 2.88 with no trend, so they don't settle whether hpr's 1.91 is high
 | Arcas, long, 1.8 to 2.96 | +8.4% to +9.4% | −0.53 to −0.43 | 1 of 3 |
 | Arcas, long, 3.96 and 4.63 | +2.8%, −2.3% | −0.13, +0.21 | 2 of 2 |
 | Calisto against RASAero II, 0.1 to 0.7 | +0.1% to +10.1% | −0.08 to +0.43 | 4 of 4 |
-| Calisto against RASAero II, 0.8 to 2.0 | −6.3% to +21.9% | −0.41 to +0.95 | 7 of 11 |
+| Calisto against RASAero II, 0.8 to 2.0 | −6.3% to +21.9% | −0.44 to +0.95 | 7 of 11 |
 
 What the misses come from:
 
@@ -2150,15 +2175,15 @@ What the misses come from:
 - **RASAero II** keeps its slope and CP constant through subsonic flow, where hpr's rise with
   Prandtl–Glauert, so they part from Mach 0.8. Past Mach 1.2 Calisto's von Kármán nose flies the
   shock-expansion method behind a [Newtonian cap](#blunt-tips), so its cylinder carries lift:
-  Mach 1.5 reads +13.2% and Mach 2 +8.8% (−3.1% and −16.8% on slender-body theory, before
+  Mach 1.5 reads +12.9% and Mach 2 +8.3% (−3.1% and −16.8% on slender-body theory, before
   [M1.8e7](../decisions-and-roadmap.md#m1-8e7)). The wind tunnel sides with neither there. Below
   that the agreement is partly by construction: the Calisto design has the 2018 fins because
   they reproduce this export at low speed ([ADR-009][adr-009]). Past Mach 1 the result rests on
   the choice of RASAero's columns: against its secant slope and CP to 4°, which include its
-  crossflow lift, 3 of the 11 rows from Mach 0.8 are within the targets (Mach 1 by 0.00002
-  calibres), not 7, and Mach 2 is
-  −9.2% (−30.6% before its von Kármán nose flew the shock-expansion method,
-  [M1.8e7](../decisions-and-roadmap.md#m1-8e7)). Calisto has no fins-off data, so its body and fins
+  crossflow lift, 3 of the 11 rows from Mach 0.8 are within the targets (the tightest, Mach 1 by
+  0.00002 calibres), not 7, and Mach 2 is −9.6%. That comparison is a summary in the fixture's
+  `secant_comparison`, not a second set of rows: the export stays in `refs/`, and the fixture
+  commits its values once ([ADR-009][adr-009], [ADR-027][adr-027]). Calisto has no fins-off data, so its body and fins
   can't be split as the wind tunnel's can.
 
 So, for fins like these, whose linear theory starts at `M_s` = 1.2: from Mach 1.5 up, trust hpr's
@@ -2172,45 +2197,70 @@ is in the join. Nothing past Mach 4.63 has been checked, though the model runs t
 #### The body alone, against the 15% target
 
 What this covers: how far hpr's body alone is from NASA's measurement of the same body, and where
-what is left of the gap sits. How far to trust it: from Mach 3 the two agree within 5%; below it
-hpr reads up to 38% high, and as far as these readings resolve, the excess is
-[body lift](#body-lift) rather than the [method](#bodies-faster-than-sound).
+what is left of the gap sits. How far to trust it: at Mach 3.96 and 4.63 the two agree within 5%;
+below that hpr reads up to 38% high. On five of the six rows outside the target most of that
+excess is [body lift](#body-lift); on the sixth it is the [method](#bodies-faster-than-sound)
+itself.
 
 The milestone [M1.8e](../decisions-and-roadmap.md#m1-8e) set a target before any of this was
 built: the Arcas Robin's body alone within 15% at every Mach number from 1.5, and both
 configurations' whole-rocket slope within 15% at Mach 3.96 and 4.63. **The second half is met**
 (+2.8% to −3.3%). **The first is not**, on six of eleven rows, and this is where they stand
-([ADR-040][adr-040]). Rows outside the target are in bold. `M/f_n` is the Mach number over the
-nose's fineness, which TN 3527 states its method for from 0.4 to 2. Slopes are per radian on the
-body's cross-section, fitted at the tunnel's plotted angles as
-[ADR-036][adr-036] judges them; the `α → 0` columns are hpr's method alone, where body lift
-vanishes, against the measurement's own `α |α|` fit and its standard error:
+([ADR-040][adr-040]). Reading the table:
 
-| model | Mach | `M/f_n` | measured | hpr | difference | measured at `α → 0` | hpr at `α → 0` | curvature, hpr ÷ measured |
-|---|---|---|---|---|---|---|---|---|
-| short | **1.5** | 0.36 | 2.192 | 3.017 | +37.7% | 1.779 ± 0.32 | 1.852 | 2.82 |
-| short | **1.8** | 0.43 | 2.613 | 3.290 | +25.9% | 2.519 ± 0.33 | 2.143 | 12.20 |
-| short | **2.3** | 0.55 | 3.078 | 3.598 | +16.9% | 2.196 ± 0.32 | 2.394 | 1.37 |
-| short | **2.96** | 0.71 | 3.284 | 3.838 | +16.9% | 2.184 ± 0.30 | 2.612 | 1.11 |
-| short | 3.96 | 0.95 | 3.884 | 3.946 | +1.6% | 2.694 ± 0.32 | 2.735 | 1.02 |
-| short | 4.63 | 1.11 | 4.149 | 3.950 | −4.8% | 2.758 ± 0.32 | 2.718 | 0.89 |
-| long | **1.8** | 0.43 | 3.159 | 3.770 | +19.4% | 1.920 ± 0.42 | 2.143 | 1.31 |
-| long | **2.3** | 0.55 | 3.525 | 4.071 | +15.5% | 2.245 ± 0.41 | 2.394 | 1.31 |
-| long | 2.96 | 0.71 | 3.868 | 4.400 | +13.7% | 2.521 ± 0.36 | 2.614 | 1.33 |
-| long | 3.96 | 0.95 | 4.455 | 4.428 | −0.6% | 3.129 ± 0.41 | 2.740 | 1.27 |
-| long | 4.63 | 1.11 | 4.615 | 4.425 | −4.1% | 2.877 ± 0.41 | 2.724 | 0.98 |
+- **Rows outside the target are in bold.** Slopes are per radian on the body's cross-section.
+- **`M/f_n`** is the Mach number over the nose's
+  [fineness](../glossary.md#fineness-ratio), the argument TN 3527 ([SD56]) states its method for
+  from 0.4 to 2. One row, the short model at Mach 1.5, is below that at 0.36.
+- **measured** and **hpr** are the straight-line slopes fitted at the tunnel's plotted angles, as
+  [ADR-036, which fixes how these comparisons are fitted][adr-036] judges them.
+- **at `α → 0`** is the slope at zero angle. hpr's is the method alone, since body lift vanishes
+  there; the measurement's comes from fitting its points with `C_N = a α + b α |α|`, the form the
+  tunnel's own curves follow, and `a` is quoted with its
+  [standard error](../glossary.md#standard-error).
+- **curvature** is the rest: the fitted slope less the slope at `α → 0`. For hpr it is body lift.
 
-**Where the gap is.** At `α → 0` hpr is within 1.5 standard errors of the measurement on every row
-outside the target (0.2 to 1.5 of one), so the shock-expansion method, the Newtonian cap and the
-boattail's measured share are not resolvably wrong. That is a weak test, because the measurement's
-own `α → 0` slope is uncertain: its widest standard error, ±0.42 per radian, sits on a slope of
-1.920. What the readings do resolve is the curvature — what the rest of the plotted angles add,
-which for hpr is body lift. Past Mach 3 hpr's curvature matches the measured one (×0.89 to ×1.33);
-below it, hpr's is 1.3 to 2.8 times the measured, and at Mach 1.8 on the short model 12 times, where
-the tunnel's own curve barely bends at all (0.094 per radian, against a standard error of 0.33 on
-the slope it is taken from). Jorgensen's crossflow term, which
-[ADR-037][adr-037] chose because the tunnel's high-angle points support its size, is too large at
-these small angles and low speeds.
+| model | Mach | `M/f_n` | measured | hpr | difference | measured at `α → 0` | hpr at `α → 0` | at `α → 0`, hpr ÷ measured | curvature, hpr ÷ measured |
+|---|---|---|---|---|---|---|---|---|---|
+| short | **1.5** | 0.36 | 2.192 | 3.017 | +37.7% | 1.779 ± 0.32 | 1.852 | 1.04 | 2.82 |
+| short | **1.8** | 0.43 | 2.613 | 3.290 | +25.9% | 2.519 ± 0.33 | 2.143 | 0.85 | 12.20 |
+| short | **2.3** | 0.55 | 3.078 | 3.598 | +16.9% | 2.196 ± 0.32 | 2.394 | 1.09 | 1.37 |
+| short | **2.96** | 0.71 | 3.284 | 3.838 | +16.9% | 2.184 ± 0.30 | 2.612 | 1.20 | 1.11 |
+| short | 3.96 | 0.95 | 3.884 | 3.946 | +1.6% | 2.694 ± 0.32 | 2.735 | 1.02 | 1.02 |
+| short | 4.63 | 1.11 | 4.149 | 3.950 | −4.8% | 2.758 ± 0.32 | 2.718 | 0.99 | 0.89 |
+| long | **1.8** | 0.43 | 3.159 | 3.770 | +19.4% | 1.920 ± 0.42 | 2.143 | 1.12 | 1.31 |
+| long | **2.3** | 0.55 | 3.525 | 4.071 | +15.5% | 2.245 ± 0.41 | 2.394 | 1.07 | 1.31 |
+| long | 2.96 | 0.71 | 3.868 | 4.400 | +13.7% | 2.521 ± 0.36 | 2.614 | 1.04 | 1.33 |
+| long | 3.96 | 0.95 | 4.455 | 4.428 | −0.6% | 3.129 ± 0.41 | 2.740 | 0.88 | 1.27 |
+| long | 4.63 | 1.11 | 4.615 | 4.425 | −4.1% | 2.877 ± 0.41 | 2.724 | 0.95 | 0.98 |
+
+**What the rows say, and what they can't.** What is solid is the first three number columns: on six
+rows hpr's fitted slope is 15% to 38% above the tunnel's, and at Mach 3.96 and 4.63 it is within
+5%. The split into a slope at `α → 0` and a curvature is softer, and it is worth saying why before
+leaning on it. The tunnel plots seven points over about ±4.5°, and in a fit of
+`C_N = a α + b α |α|` over so short a span the two terms trade off almost exactly: their
+correlation is −0.96. A fit that reads `a` low must read `b` high. So the measurement's own split
+carries the standard errors in the table — ±0.30 to ±0.42 per radian, the widest of them on a
+slope of 1.920 — and the curvature, being the same slope subtracted from another, carries at least
+as much.
+
+**Where the gap most likely is.** With that said: at `α → 0` hpr is within 1.5 standard errors of
+the measurement on every row outside the target (0.2 to 1.5 of one), so the readings cannot
+convict the shock-expansion method, the Newtonian cap or the boattail's measured share. On five of
+those six rows most of the fitted gap sits in the curvature instead — what the rest of the plotted
+angles add, which for hpr is body lift. The sixth is the short model at Mach 2.96, where 77% of the
+gap is hpr's slope at `α → 0`, 1.2 times the measured one: there the method itself, not body lift,
+carries most of the miss. Hpr's curvature is 1.3 to 2.8 times the measured one below Mach 2.96,
+1.1 to 1.3 times it at Mach 2.96, and 0.89 to 1.27 times it at Mach 3.96 and 4.63. The ×12.20 on
+the short model at Mach 1.8 is not a measurement of anything: the tunnel's own curve barely bends
+there (0.094 per radian, against an uncertainty three times its size), so the ratio's denominator
+is consistent with zero.
+
+The likeliest single cause is Jorgensen's crossflow term, which [ADR-037][adr-037] chose because
+the tunnel's high-angle points support its size: at the few degrees these slopes are fitted over it
+reads too large. Two other explanations are open and the readings do not close them — the short
+model at Mach 1.5, the worst row at +37.7%, sits at `M/f_n` 0.36, below the 0.4 that TN 3527 states
+its method for, and the same model at Mach 2.96 points at the method rather than at body lift.
 
 **What would close it.** A cited rule for how the crossflow term grows from zero over the first few
 degrees, or measurements of this body at finer angles than the reports plot. Neither is in hand,
@@ -2882,5 +2932,5 @@ ellipse's integrals ([N09] eq. 3.70–3.71); the supersonic forcing and damping 
 [adr-037]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-037-body-lift-by-jorgensens-crossflow-at-every-speed-and-a-boattails-measured-share-faster-than-sound-2026-09-19
 [adr-038]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-038-blunt-and-vertical-nose-tips-faster-than-sound-by-a-newtonian-cap-the-method-started-from-the-tangent-cone-2026-09-19
 [adr-039]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-039-a-lip-in-a-boattails-wake-carries-nothing-faster-than-sound-2026-09-19
-[adr-040]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-040-a-separating-boattail-keeps-less-of-its-measured-share-and-m18es-15-target-judged-2026-09-19
+[adr-040]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-040-a-steep-boattail-reads-its-measured-correlation-no-steeper-than-16-and-m18es-15-target-judged-2026-09-19
 [gap-fixture]: https://github.com/nrdptel/hpr-sim/blob/main/validation/fixtures/aero/arcas-robin-gap.json

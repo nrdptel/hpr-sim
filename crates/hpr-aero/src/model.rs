@@ -40,7 +40,7 @@ use std::sync::{Arc, OnceLock};
 use hpr_design::{Layout, Part, PlacedComponent};
 use serde::{Deserialize, Serialize};
 
-use crate::afterbody::{SEPARATION_COMPLETE_RAD, SEPARATION_ONSET_RAD};
+use crate::afterbody::SEPARATION_ONSET_RAD;
 use crate::body::{BodyGeometry, sinc};
 use crate::crossflow::BodyLift;
 use crate::drag::{
@@ -288,25 +288,25 @@ impl SupersonicRun {
                 .ok()?
                 .last()?;
             let fore_radius_m = boattail.fore_radius_m;
-            // A boattail steep enough to separate the flow no longer turns it along its surface,
-            // so the measured increment, which is attached-flow data, fades out over the angles
-            // the drag buildup separates across (Cubbage's 16° to 30°, `crate::afterbody`):
-            // issue #90's cap, graded rather than a switch.
-            let half_angle_rad =
-                ((fore_radius_m - boattail.aft_radius_m) / boattail.length_m).atan();
-            let attached = 1.0
-                - ((half_angle_rad - SEPARATION_ONSET_RAD)
-                    / (SEPARATION_COMPLETE_RAD - SEPARATION_ONSET_RAD))
-                    .clamp(0.0, 1.0);
+            // Issue #90's cap. Washington and Pettis measured boattails of 4° to 9.5°, whose
+            // flow follows the surface; past about 16° it separates (Cubbage, the angle the drag
+            // buildup uses, `crate::afterbody::SEPARATION_ONSET_RAD`) and nothing measures what
+            // the body then carries. So the correlation is read no steeper than 16°: a boattail
+            // past it takes the increment of one of the same radii drawn out to that angle. The
+            // length only enters the correlation; the centre of pressure stays on the real
+            // boattail. Continuous in shape (at 16° the two lengths are equal), and it holds the
+            // lift the boattail takes off rather than letting it go to zero, which would move the
+            // centre of pressure aft and make a steep boattail look more stable than measured.
+            let drop_m = fore_radius_m - boattail.aft_radius_m;
+            let correlation_length_m = boattail.length_m.max(drop_m / SEPARATION_ONSET_RAD.tan());
             let measured = wp_slope(
                 mach,
                 fore_radius_m,
                 boattail.aft_radius_m,
-                boattail.length_m,
+                correlation_length_m,
             )
             .ok()?;
-            let increment =
-                attached * measured * PI * fore_radius_m * fore_radius_m / reference_area_m2;
+            let increment = measured * PI * fore_radius_m * fore_radius_m / reference_area_m2;
             let centre_m =
                 self.fore_m[index] + wp_centre_fraction(mach) * boattail.length_m - vertex_m;
             shares[index] = SegmentSlope {
@@ -2743,13 +2743,13 @@ mod tests {
         assert!(narrowing.supersonic_body().is_none());
     }
 
-    /// A boattail steep enough to separate the flow keeps less and less of Washington and Pettis's
-    /// measured increment, which is attached-flow data: all of it to 16°, none from 30°, linear
-    /// between, over the angles the drag buildup separates across (Cubbage, [issue
-    /// #90](https://github.com/nrdptel/hpr-sim/issues/90)). The share stays continuous in the
-    /// angle, so no rocket jumps as its boattail is drawn steeper.
+    /// Washington and Pettis's correlation is read no steeper than the angle where the flow
+    /// separates, 16° (Cubbage, [issue #90](https://github.com/nrdptel/hpr-sim/issues/90)): a
+    /// steeper boattail takes the increment of one of the same radii drawn out to 16°. Shallower
+    /// boattails are untouched, the increment is continuous in the angle, and it never runs away
+    /// or falls to zero, which would move the centre of pressure aft of where anything measured.
     #[test]
-    fn a_separating_boattail_keeps_less_of_the_measured_increment() {
+    fn a_separating_boattail_reads_the_correlation_at_its_steepest_measured_angle() {
         let mach = 3.0;
         let ogive = nose(NoseShape::Ogive { radius_ratio: 1.0 }, 0.25, 0.027);
         let Part::NoseCone(ogive) = ogive else {
@@ -2763,7 +2763,9 @@ mod tests {
             rocket.stages[0].components[2].part = body_part(length_m, 0.027, 0.022);
             let model = model(&rocket);
             let a_ref = model.reference_area_m2();
-            let table = model.supersonic_body().expect("a table");
+            let table = model
+                .supersonic_body()
+                .unwrap_or_else(|| panic!("a table at {half_angle_deg}°"));
             let share = table.share(2, mach).expect("the boattail's share").0;
             let in_its_place = ShockExpansionBody::new(
                 &[
@@ -2783,35 +2785,88 @@ mod tests {
             )
             .unwrap();
             let cylinder = in_its_place.segment_slopes(mach, a_ref).unwrap()[2].slope_per_rad;
-            let measured = crate::supersonic_boattail::wp_slope(mach, 0.027, 0.022, length_m)
-                .unwrap()
-                * PI
-                * 0.027
-                * 0.027
-                / a_ref;
-            // The share the rocket flies, less the cylinder's, over the increment as measured.
-            (share - cylinder) / measured
+            let raw = |l: f64| {
+                crate::supersonic_boattail::wp_slope(mach, 0.027, 0.022, l).unwrap()
+                    * PI
+                    * 0.027
+                    * 0.027
+                    / a_ref
+            };
+            // The increment the rocket flies, over the correlation read at the true angle.
+            (share - cylinder, raw(length_m))
         };
+        let at_16 = (0.027 - 0.022) / 16.0_f64.to_radians().tan();
         let close = |got: f64, want: f64, what: &str| {
-            assert!((got - want).abs() < 0.02, "{what}: {got} against {want}");
+            assert!(
+                (got - want).abs() < 0.02 * want.abs(),
+                "{what}: {got} against {want}"
+            );
         };
-        close(kept(15.0), 1.0, "attached at 15°");
-        close(kept(16.0), 1.0, "attached at the onset");
-        close(kept(23.0), 0.5, "half at 23°");
-        close(kept(30.0), 0.0, "none at 30°");
-        close(kept(40.0), 0.0, "none past 30°");
-        // Continuous in the angle, at both ends of the band and inside it.
-        for angle in [16.0_f64, 23.0, 30.0] {
-            let (below, above) = (kept(angle - 1e-6), kept(angle + 1e-6));
-            assert!((above - below).abs() < 1e-5, "{angle}°: {below} to {above}");
+        // Shallower than the onset: the correlation as measured, untouched.
+        for angle in [8.0, 15.0, 16.0] {
+            let (flown, raw) = kept(angle);
+            close(flown, raw, "read at the true angle");
         }
+        // Steeper: held at 16°, the same for every angle past it, and never zero.
+        // Past about 45° the method no longer covers the body at all and the rocket keeps
+        // slender-body theory (a switch of its own, issue #87), so the cap is read below that.
+        for angle in [17.0, 23.0, 30.0, 40.0] {
+            let (flown, raw) = kept(angle);
+            let (held, _) = kept(16.0);
+            close(flown, held, "held at 16°");
+            assert!(flown < 0.0, "{angle}°: the boattail still takes lift off");
+            // The correlation read at the true angle would take off less, which is the
+            // optimistic side: holding it keeps the centre of pressure forward of that.
+            assert!(flown <= raw, "{angle}°: {flown} against {raw} read raw");
+        }
+        // What the choice is worth, and which way it runs: the body's centre of pressure with the
+        // increment held at 16°, against the same body with the boattail's increment faded to
+        // nothing (the other honest limit for separated flow, a cylinder's share alone). Letting
+        // it fade moves the centre of pressure aft, so the rocket reads more stable.
+        let body_cp_calibers = |increment_kept: bool| {
+            let length_m = (0.027 - 0.022) / 30.0_f64.to_radians().tan();
+            let mut rocket = finned_rocket(4);
+            rocket.stages[0].components[2].part = body_part(length_m, 0.027, 0.022);
+            rocket.stages[0].components.truncate(3);
+            let model = model(&rocket);
+            let parts = model.components(&Flow::axial(mach)).unwrap();
+            let (mut slope, mut moment) = (0.0, 0.0);
+            for (index, part) in parts.iter().take(model.bodies().len()).enumerate() {
+                let mut share = part.normal_force.slope_per_rad;
+                let station = part.normal_force.cp_station_m.unwrap_or(0.0);
+                if index == 2 && !increment_kept {
+                    share -= kept(30.0).0;
+                }
+                slope += share;
+                moment += share * station;
+            }
+            moment / slope / 0.054
+        };
+        let (held, faded) = (body_cp_calibers(true), body_cp_calibers(false));
+        assert!(
+            faded - held > 0.70 && faded - held < 0.80,
+            "the fading rule's centre of pressure sits {} calibres aft of this one",
+            faded - held
+        );
+        // Continuous in the angle, at the cap and either side of it.
+        for angle in [15.9_f64, 16.0, 16.1] {
+            let (below, above) = (kept(angle - 1e-6).0, kept(angle + 1e-6).0);
+            assert!((above - below).abs() < 1e-9, "{angle}°: {below} to {above}");
+        }
+        assert!((at_16 - (0.027 - 0.022) / 16.0_f64.to_radians().tan()).abs() < 1e-15);
     }
 
-    /// Footnote 8's size, by hand. On one conical boattail element the method's loading is
-    /// `Λ = (1 − e^(−η)) tan δ · 2 + (λ₂/λ₁) e^(−η) Λ₁` with the footnote's `p_c = p₀` and
-    /// `(dC_N/dα)_tc = 2` (TN 3527 p. 12), and `C_Nα = (2π/A_ref) ∫ Λ r dx` over it. This checks
-    /// the library's share of a boattail against that integral evaluated by hand from the flow the
-    /// method reports at its corner ([issue #90](https://github.com/nrdptel/hpr-sim/issues/90)).
+    /// Footnote 8's size, by hand, on a boattail **and the tube behind it**
+    /// ([issue #90](https://github.com/nrdptel/hpr-sim/issues/90)). On each straight element the
+    /// method's loading is `Λ(x) = (1 − e^(−η)) Λ_c + e^(−η) Λ₂`, `x` axial from its corner, and
+    /// `C_Nα = (2π/A_ref) ∫ Λ r dx` over it (TN 3527 eqs. 8, 9, 19). Footnote 8 gives a boattail
+    /// element the free stream's pressure and a tangent cone of 2 per radian (p. 12), checked
+    /// here against hard-coded values; the tube behind relaxes from the boattail's loading toward
+    /// `Λ_c = 0`, so its share is set by the decay rate alone.
+    ///
+    /// What this pins: the integration, the footnote's two tangent-cone terms, and that the two
+    /// segments' shares follow from the reported flow. What it does not pin: the decay rate `η`
+    /// itself, which comes from eq. 9 and is read from the method here.
     #[test]
     fn footnote_eights_boattail_share_by_hand() {
         let a_ref = PI * 0.027 * 0.027;
@@ -2820,6 +2875,7 @@ mod tests {
             unreachable!("`nose` builds a nose cone")
         };
         let (length_m, fore_radius_m, aft_radius_m) = (0.05, 0.027, 0.022);
+        const TUBE_LENGTH_M: f64 = 0.2;
         let body = ShockExpansionBody::new(
             &[
                 BodySegment::Profile {
@@ -2839,6 +2895,10 @@ mod tests {
                     )
                     .unwrap(),
                 },
+                BodySegment::Cylinder {
+                    length_m: TUBE_LENGTH_M,
+                    radius_m: aft_radius_m,
+                },
             ],
             DEFAULT_ELEMENTS_PER_CURVE,
         )
@@ -2848,38 +2908,76 @@ mod tests {
         // The boattail is one straight element: the corner at its fore end, then a cone of
         // half-angle −δ to its aft end.
         let flows = body.element_flows(mach).unwrap();
-        let boattail = flows.last().expect("the boattail's element");
-        let (load, decay) = (boattail.loading, boattail.decay_per_m);
+        let boattail = flows
+            .iter()
+            .rev()
+            .nth(1)
+            .copied()
+            .expect("the boattail's element");
+        let (load, decay) = (boattail.loading_per_rad, boattail.decay_per_m);
+        // Eq. 19's `r` at the corner is the boattail's fore radius.
+        assert!((boattail.corner_radius_m - fore_radius_m).abs() < 1e-12);
         // Footnote 8 gives a boattail element the free stream's pressure and a tangent cone of 2
         // per radian, so its loading relaxes toward `tan δ · 2`.
         let delta = ((aft_radius_m - fore_radius_m) / length_m).atan();
         let cone_load = delta.tan() * 2.0;
-        assert!((boattail.tangent_cone_loading - cone_load).abs() < 1e-12);
+        assert!((boattail.tangent_cone_loading_per_rad - cone_load).abs() < 1e-12);
         assert!((boattail.tangent_cone_pressure_ratio - 1.0).abs() < 1e-12);
-        // C_Nα = (2π/A_ref) ∫ Λ(x) r(x) dx over the boattail, by Simpson's rule on 4001 points.
-        let steps = 4000;
-        let mut sum = 0.0;
-        for i in 0..=steps {
-            let t = f64::from(i) / f64::from(steps);
-            let x = t * length_m;
-            let r = fore_radius_m + (aft_radius_m - fore_radius_m) * t;
-            let e = (-decay * x).exp();
-            let lambda = (1.0 - e) * cone_load + e * load;
-            let weight = if i == 0 || i == steps {
-                1.0
-            } else if i % 2 == 1 {
-                4.0
-            } else {
-                2.0
-            };
-            sum += weight * lambda * r;
-        }
-        let integral = sum * length_m / (3.0 * f64::from(steps));
-        let by_hand = 2.0 * PI * integral / a_ref;
+        // C_Nα = (2π/A_ref) ∫ Λ(x) r(x) dx over a segment, by Simpson's rule on 4001 points.
+        let integrate = |span_m: f64, fore_r: f64, aft_r: f64, load: f64, cone: f64, decay: f64| {
+            let steps = 4000;
+            let mut sum = 0.0;
+            for i in 0..=steps {
+                let t = f64::from(i) / f64::from(steps);
+                let x = t * span_m;
+                let r = fore_r + (aft_r - fore_r) * t;
+                let e = (-decay * x).exp();
+                let lambda = (1.0 - e) * cone + e * load;
+                let weight = if i == 0 || i == steps {
+                    1.0
+                } else if i % 2 == 1 {
+                    4.0
+                } else {
+                    2.0
+                };
+                sum += weight * lambda * r;
+            }
+            2.0 * PI * (sum * span_m / (3.0 * f64::from(steps))) / a_ref
+        };
+        let by_hand = integrate(
+            length_m,
+            fore_radius_m,
+            aft_radius_m,
+            load,
+            cone_load,
+            decay,
+        );
         assert!(
             (shares[2].slope_per_rad - by_hand).abs() < 1e-6,
             "{} against {by_hand}",
             shares[2].slope_per_rad
+        );
+        // The tube behind it, which issue #90 asks for too: a cylinder's tangent cone carries no
+        // loading, so the decay alone takes its share from the boattail's exit loading to zero.
+        let tube = flows.last().expect("the tube's element");
+        assert!(tube.angle_rad.abs() < 1e-12 && tube.tangent_cone_loading_per_rad.abs() < 1e-12);
+        let tube_by_hand = integrate(
+            TUBE_LENGTH_M,
+            aft_radius_m,
+            aft_radius_m,
+            tube.loading_per_rad,
+            0.0,
+            tube.decay_per_m,
+        );
+        assert!(
+            (shares[3].slope_per_rad - tube_by_hand).abs() < 1e-6,
+            "the tube: {} against {tube_by_hand}",
+            shares[3].slope_per_rad
+        );
+        // The tube carries the larger part of the pair, so the decay sets most of the answer.
+        assert!(
+            tube_by_hand < by_hand && tube_by_hand < 0.0,
+            "the tube's {tube_by_hand} against the boattail's {by_hand}"
         );
         // And its size: footnote 8 takes far less lift off than slender-body theory's
         // 2 (A_aft − A_fore)/A_ref.

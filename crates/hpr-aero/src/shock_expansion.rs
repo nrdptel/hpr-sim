@@ -240,9 +240,9 @@ struct March {
 
 /// The flow on one element of the tangent body ([`ShockExpansionBody::element_flows`]): its state
 /// just behind the element's corner, the tangent cone it relaxes toward, and how fast it does so.
-/// Along the element, `x` from its corner, the pressure is `p_c − (p_c − p₂) e^(−η)` and the
+/// At an axial distance `x` aft of its corner the pressure is `p_c − (p_c − p₂) e^(−η)` and the
 /// loading `(1 − e^(−η)) Λ_c + e^(−η) Λ₂`, with `η = `[`Self::decay_per_m`]` · x` (TN 3527 eqs. 8,
-/// 9 and 19).
+/// 9 and 19). Pressures are over the free stream's, `p₀`.
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
 #[non_exhaustive]
 pub struct ElementFlowReport {
@@ -252,16 +252,20 @@ pub struct ElementFlowReport {
     pub angle_rad: f64,
     /// `p₂/p₀`, the pressure just behind its corner.
     pub pressure_ratio: f64,
-    /// `Λ₂`, the loading just behind its corner.
-    pub loading: f64,
+    /// `Λ₂`, the loading just behind its corner, per radian of angle of attack.
+    pub loading_per_rad: f64,
     /// `p_c/p₀` on its tangent cone (the free stream's for a cylinder, and footnote 8's for a
     /// boattail).
     pub tangent_cone_pressure_ratio: f64,
-    /// `Λ_c = tan δ (dC_N/dα)_tc`, the loading it relaxes toward.
-    pub tangent_cone_loading: f64,
-    /// `dη/dx` along the element, per m; zero where the pressure already sits at its tangent
-    /// cone's or the element is reduced (issue #81).
+    /// `Λ_c = tan δ (dC_N/dα)_tc`, the loading it relaxes toward, per radian of angle of attack.
+    pub tangent_cone_loading_per_rad: f64,
+    /// `dη/dx`, per m of axial distance aft of the corner, not of distance along the surface;
+    /// zero where the pressure already sits at its tangent cone's, or where the element is
+    /// reduced ([issue #81: the gradient a reduced element carries
+    /// on](https://github.com/nrdptel/hpr-sim/issues/81)).
     pub decay_per_m: f64,
+    /// The radius at its corner, m: the `r` of eq. 19's `∫ Λ r dx`.
+    pub corner_radius_m: f64,
 }
 
 /// One segment's share of the body's normal-force slope at `α → 0`
@@ -529,7 +533,9 @@ impl ShockExpansionBody {
     }
 
     /// The flow the method computes on each element of the tangent body at Mach `mach`, in order
-    /// from the vertex or a blunt tip's handover: what a hand calculation of eq. 19 needs.
+    /// from the vertex or a blunt tip's handover: what a hand calculation of eq. 19,
+    /// `C_Nα = (2π/A_ref) ∫ Λ r dx`, needs. Behind a blunt tip the list starts at the handover
+    /// ([`Self::handover_m`]), and the lift of the Newtonian cap ahead of it is not in the list.
     ///
     /// # Errors
     ///
@@ -543,10 +549,11 @@ impl ShockExpansionBody {
                 corner_x_m: flow.corner_x_m,
                 angle_rad: flow.angle_rad,
                 pressure_ratio: flow.pressure,
-                loading: flow.load,
+                loading_per_rad: flow.load,
                 tangent_cone_pressure_ratio: flow.cone_pressure,
-                tangent_cone_loading: flow.angle_rad.tan() * flow.cone_slope,
+                tangent_cone_loading_per_rad: flow.angle_rad.tan() * flow.cone_slope,
                 decay_per_m: flow.decay_rate(),
+                corner_radius_m: flow.corner_radius_m,
             })
             .collect())
     }
@@ -650,6 +657,7 @@ impl ShockExpansionBody {
             let vertex_slope = cone_normal_force_slope(mach, vertex.angle_rad)?;
             let first = ElementFlow {
                 corner_x_m: 0.0,
+                corner_radius_m: 0.0,
                 angle_rad: vertex.angle_rad,
                 pressure: cone.surface_pressure_ratio,
                 gradient: 0.0,
@@ -697,6 +705,7 @@ impl ShockExpansionBody {
             };
             let flow = ElementFlow {
                 corner_x_m: element.corner_x_m,
+                corner_radius_m: element.corner_radius_m,
                 angle_rad: element.angle_rad,
                 pressure: p2,
                 gradient: gradient2,
@@ -780,6 +789,7 @@ impl ShockExpansionBody {
         };
         let first = ElementFlow {
             corner_x_m: end_x_m,
+            corner_radius_m: handover.corner_radius_m,
             angle_rad: handover.angle_rad,
             pressure,
             gradient: 0.0,
@@ -915,6 +925,8 @@ const HANDOVER_BISECTIONS: usize = 1100;
 #[derive(Debug, Clone, Copy, PartialEq)]
 struct ElementFlow {
     corner_x_m: f64,
+    /// The radius at the corner, m.
+    corner_radius_m: f64,
     angle_rad: f64,
     /// `p₂/p₀` just behind the corner.
     pressure: f64,

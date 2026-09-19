@@ -171,6 +171,10 @@ fn calisto(root: &Path) -> Result<Value, String> {
         column("CN Potential")?,
         column("CP")?,
     );
+    let (secant_col, secant_cp_col) = (
+        column("CNalpha (0 to 4 deg) (per rad)")?,
+        column("CP (0 to 4 deg)")?,
+    );
     // (Mach, alpha) -> (CN potential, CP in inches).
     let mut table = Vec::new();
     for line in lines {
@@ -186,6 +190,8 @@ fn calisto(root: &Path) -> Result<Value, String> {
             get(alpha_col)?,
             get(potential_col)?,
             get(cp_col)?,
+            get(secant_col)?,
+            get(secant_cp_col)?,
         ));
     }
     let find = |mach: f64, alpha: f64| {
@@ -195,17 +201,45 @@ fn calisto(root: &Path) -> Result<Value, String> {
             .ok_or(format!("{EXPORT} has no row at Mach {mach}, alpha {alpha}"))
     };
     let mut rows = Vec::new();
+    // The same rows against the export's other pair of columns, its secant slope and CP to 4°,
+    // which carry its viscous crossflow lift. Only the summary is committed: the fixture holds
+    // the export's values at the compared Mach numbers (ADR-009, ADR-027), and this is a second
+    // reading of the same rows, so it is reported as counts and one row's error.
+    let mut secant_rows_from_0_8 = 0;
+    let mut secant_within_from_0_8 = 0;
+    let mut secant_at_mach_2 = 0.0;
+    let mut smallest_margin: Option<(f64, f64)> = None;
     for &mach in CALISTO_MACHS {
         let two = find(mach, 2.0)?;
         let zero = find(mach, 0.0)?;
         let cn_alpha = two.2 / 2.0_f64.to_radians();
-        rows.push(compare(
-            mach,
-            (cn_alpha, zero.3 * INCH),
-            hpr_at(&model, mach)?,
-            diameter_m,
-        ));
+        let hpr = hpr_at(&model, mach)?;
+        rows.push(compare(mach, (cn_alpha, zero.3 * INCH), hpr, diameter_m));
+        let secant = compare(mach, (zero.4, zero.5 * INCH), hpr, diameter_m);
+        let (error, margin) = (
+            secant["cn_alpha_error"].as_f64().unwrap_or(f64::NAN),
+            CP_TARGET_CALIBERS
+                - secant["cp_error_calibers"]
+                    .as_f64()
+                    .unwrap_or(f64::NAN)
+                    .abs(),
+        );
+        if (mach - 2.0).abs() < 1e-9 {
+            secant_at_mach_2 = error;
+        }
+        if mach >= 0.8 {
+            secant_rows_from_0_8 += 1;
+            if secant["within_targets"].as_bool().unwrap_or(false) {
+                secant_within_from_0_8 += 1;
+                if smallest_margin.is_none_or(|(_, m)| margin < m) {
+                    smallest_margin = Some((mach, margin));
+                }
+            }
+        }
     }
+    let (tightest_mach, tightest_margin) = smallest_margin.ok_or(format!(
+        "{EXPORT}: no row from Mach 0.8 passes on the secant columns"
+    ))?;
     Ok(json!({
         "id": "calisto-rasaero-ii",
         "design": CALISTO_DESIGN,
@@ -219,6 +253,18 @@ fn calisto(root: &Path) -> Result<Value, String> {
             .map(|b| format!("{b:02x}"))
             .collect::<String>(),
         "rows": rows,
+        "secant_comparison": json!({
+            "note": "The same comparison against the export's `CNalpha (0 to 4 deg) (per rad)` \
+                     and `CP (0 to 4 deg)` columns, its secant slope and centre of pressure to 4 \
+                     degrees, which carry a viscous crossflow term hpr's small-angle slope leaves \
+                     out. Summary only: the rows themselves would commit a second reading of the \
+                     export (ADR-009, ADR-027).",
+            "rows_from_mach_0_8": secant_rows_from_0_8,
+            "rows_within_targets_from_mach_0_8": secant_within_from_0_8,
+            "tightest_pass_mach": tightest_mach,
+            "tightest_pass_cp_margin_calibers": tightest_margin,
+            "mach_2_cn_alpha_error": secant_at_mach_2,
+        }),
     }))
 }
 
@@ -337,4 +383,155 @@ fn wind_tunnel(root: &Path) -> Result<Vec<Value>, String> {
         }));
     }
     Ok(out)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use serde_json::Value;
+
+    fn fixture(root: &Path) -> Value {
+        let text = fs::read_to_string(root.join(FIXTURE)).unwrap();
+        serde_json::from_str(&text).unwrap()
+    }
+
+    /// A signed percentage as the guide writes it: one decimal, a Unicode minus.
+    fn pct(x: f64) -> String {
+        format!("{:+.1}%", 100.0 * x).replace('-', "−")
+    }
+
+    /// A signed CP difference in calibres as the guide writes it: two decimals, a Unicode minus.
+    fn cal(x: f64) -> String {
+        format!("{x:+.2}").replace('-', "−")
+    }
+
+    /// `docs/physics/aero.md` quotes this fixture: the summary table's ranges and counts, the two
+    /// Calisto rows the prose names, and the secant comparison's summary. Without this the
+    /// largest table in the guide could drift from the fixture unnoticed, which is how
+    /// [M1.8e9](https://github.com/nrdptel/hpr-sim/pull/103) found three stale numbers.
+    #[test]
+    fn the_guide_quotes_the_fixture() {
+        let root = crate::designs::root().unwrap();
+        let fixture = fixture(&root);
+        let guide = fs::read_to_string(root.join("docs/physics/aero.md")).unwrap();
+        // Sentences wrap across lines; the table's rows don't.
+        let joined = guide.split_whitespace().collect::<Vec<_>>().join(" ");
+        let groups: [(&str, &str, &[f64]); 6] = [
+            ("arcas-robin-long", "Arcas, long, 0.6 and 0.8", &[0.6, 0.8]),
+            (
+                "arcas-robin-long",
+                "Arcas, long, 0.9 to 1.2",
+                &[0.9, 1.0, 1.2],
+            ),
+            (
+                "arcas-robin-long",
+                "Arcas, long, 1.8 to 2.96",
+                &[1.8, 2.3, 2.96],
+            ),
+            (
+                "arcas-robin-long",
+                "Arcas, long, 3.96 and 4.63",
+                &[3.96, 4.63],
+            ),
+            (
+                "calisto-rasaero-ii",
+                "Calisto against RASAero II, 0.1 to 0.7",
+                &[0.1, 0.3, 0.5, 0.7],
+            ),
+            (
+                "calisto-rasaero-ii",
+                "Calisto against RASAero II, 0.8 to 2.0",
+                &[0.8, 0.9, 0.95, 1.0, 1.05, 1.1, 1.2, 1.3, 1.5, 1.75, 2.0],
+            ),
+        ];
+        for (id, label, machs) in groups {
+            let rows = fixture["references"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .find(|r| r["id"] == id)
+                .unwrap()["rows"]
+                .as_array()
+                .unwrap();
+            let pick = |mach: f64| {
+                rows.iter()
+                    .find(|r| (r["mach"].as_f64().unwrap() - mach).abs() < 1e-9)
+                    .unwrap_or_else(|| panic!("{id} has no row at Mach {mach}"))
+            };
+            let cn: Vec<f64> = machs
+                .iter()
+                .map(|m| pick(*m)["cn_alpha_error"].as_f64().unwrap())
+                .collect();
+            let cp: Vec<f64> = machs
+                .iter()
+                .map(|m| pick(*m)["cp_error_calibers"].as_f64().unwrap())
+                .collect();
+            let within = machs
+                .iter()
+                .filter(|m| pick(**m)["within_targets"].as_bool().unwrap())
+                .count();
+            let span = |values: &[f64], write: &dyn Fn(f64) -> String| {
+                let low = values.iter().copied().fold(f64::MAX, f64::min);
+                let high = values.iter().copied().fold(f64::MIN, f64::max);
+                if values.len() == 2 {
+                    format!("{}, {}", write(values[0]), write(values[1]))
+                } else {
+                    format!("{} to {}", write(low), write(high))
+                }
+            };
+            let line = format!(
+                "| {label} | {} | {} | {within} of {} |",
+                span(&cn, &pct),
+                span(&cp, &cal),
+                machs.len()
+            );
+            assert!(
+                guide.contains(&line),
+                "aero.md doesn't have the row `{line}`"
+            );
+        }
+        // The two Calisto rows the prose names, and the secant comparison it warns with.
+        let calisto = fixture["references"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .find(|r| r["id"] == "calisto-rasaero-ii")
+            .unwrap();
+        let at = |mach: f64| {
+            calisto["rows"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .find(|r| (r["mach"].as_f64().unwrap() - mach).abs() < 1e-9)
+                .unwrap()["cn_alpha_error"]
+                .as_f64()
+                .unwrap()
+        };
+        let sentence = format!(
+            "Mach 1.5 reads {} and Mach 2 {}",
+            pct(at(1.5)),
+            pct(at(2.0))
+        );
+        assert!(
+            joined.contains(&sentence),
+            "aero.md doesn't say `{sentence}`"
+        );
+        let secant = &calisto["secant_comparison"];
+        let claim = format!(
+            "{} of the {} rows from Mach 0.8 are within the targets",
+            secant["rows_within_targets_from_mach_0_8"], secant["rows_from_mach_0_8"]
+        );
+        assert!(joined.contains(&claim), "aero.md doesn't say `{claim}`");
+        let margin = format!(
+            "Mach {} by {:.5} calibres",
+            secant["tightest_pass_mach"].as_f64().unwrap(),
+            secant["tightest_pass_cp_margin_calibers"].as_f64().unwrap()
+        );
+        assert!(joined.contains(&margin), "aero.md doesn't say `{margin}`");
+        let mach_2 = format!(
+            "Mach 2 is {}",
+            pct(secant["mach_2_cn_alpha_error"].as_f64().unwrap())
+        );
+        assert!(joined.contains(&mach_2), "aero.md doesn't say `{mach_2}`");
+    }
 }

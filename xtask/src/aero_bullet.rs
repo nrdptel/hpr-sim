@@ -76,14 +76,29 @@ pub fn generate(root: &Path) -> Result<Value, String> {
                 })
                 .collect::<Result<_, _>>()?;
             let alphas: Vec<f64> = points.iter().map(|p| p.0.to_radians()).collect();
+            // Two distinct angles, or the least-squares slope is 0/0 and the fixture would
+            // commit nulls where its numbers belong.
+            if alphas.iter().all(|a| *a == alphas[0]) {
+                return Err(format!(
+                    "{WIND_TUNNEL}: {id} at Mach {mach} plots fewer than two distinct angles"
+                ));
+            }
             let measured = slope(&alphas, &points.iter().map(|p| p.1).collect::<Vec<_>>());
             let c_n: Vec<f64> = points
                 .iter()
                 .map(|p| hpr_force(&model, mach, p.0, true).map(|f| scale * f.0))
                 .collect::<Result<_, _>>()?;
             let fitted = slope(&alphas, &c_n);
-            // hpr's slope at `α → 0`: body lift vanishes there, so this is the method's own.
-            let (_, zero_alpha, _) = flight_bodies(&model, mach, area)?;
+            // hpr's slope at `α → 0`: body lift vanishes there, so this is the method's own —
+            // as long as the method covers every body. Both committed designs fly it to their
+            // base since M1.8e8; if a switch (issue #87) ever drops a segment from the run, the
+            // column would quietly become part slender-body theory, so refuse that here.
+            let (covered, zero_alpha, _) = flight_bodies(&model, mach, area)?;
+            if (covered - zero_alpha).abs() > 1e-12 * zero_alpha.abs() {
+                return Err(format!(
+                    "{id} at Mach {mach}: the method covers {covered} per rad of the body's                      {zero_alpha}, so the zero-alpha column is not the method's own"
+                ));
+            }
             let gap_row = gap_rows
                 .iter()
                 .find(|r| r["mach"].as_f64() == Some(mach))
@@ -97,6 +112,11 @@ pub fn generate(root: &Path) -> Result<Value, String> {
             let mach_over_fineness = gap_row["mach_over_nose_fineness"]
                 .as_f64()
                 .ok_or("no Mach over nose fineness")?;
+            // How tightly the fit's two terms trade off: near −1 the measurement cannot tell a
+            // low slope at `α → 0` from a high curvature, so the split below is soft.
+            let correlation = gap_row["measured"]["zero_alpha_crossflow_correlation"]
+                .as_f64()
+                .ok_or("no zero-alpha/crossflow correlation")?;
             let error = fitted / measured - 1.0;
             if error.abs() > TARGET {
                 outside.push(format!("{id}@{mach}"));
@@ -108,6 +128,7 @@ pub fn generate(root: &Path) -> Result<Value, String> {
                     "fitted_c_n_alpha": measured,
                     "zero_alpha_c_n_alpha": measured_zero,
                     "zero_alpha_standard_error": measured_zero_error,
+                    "zero_alpha_crossflow_correlation": correlation,
                     "curvature": measured - measured_zero,
                 },
                 "hpr": {
@@ -118,6 +139,9 @@ pub fn generate(root: &Path) -> Result<Value, String> {
                 "fitted_error": error,
                 "within_target": error.abs() <= TARGET,
                 "zero_alpha_error": zero_alpha / measured_zero - 1.0,
+                "zero_alpha_ratio": zero_alpha / measured_zero,
+                "zero_alpha_standard_errors": (zero_alpha - measured_zero) / measured_zero_error,
+                "zero_alpha_share_of_gap": (zero_alpha - measured_zero) / (fitted - measured),
                 "curvature_ratio": (fitted - zero_alpha) / (measured - measured_zero),
             }));
         }
@@ -134,8 +158,15 @@ pub fn generate(root: &Path) -> Result<Value, String> {
                  shock-expansion method's own, against the measurement's alpha|alpha| fit from \
                  arcas-robin-gap.json (M1.8e5); curvature is what the rest of the plotted angles \
                  add, body lift for hpr, and curvature_ratio is hpr's over the measured's. \
-                 mach_over_nose_fineness is the Mach number over the nose's fineness, which \
-                 TN 3527 states its method for from 0.4 to 2.",
+                 zero_alpha_standard_errors is how many of the measurement's own standard errors \
+                 separate the two zero-alpha slopes, and zero_alpha_share_of_gap how much of the \
+                 fitted gap sits there; the share means little where the fitted gap is small, so \
+                 read it on the rows outside the target. The split is soft on the measurement's \
+                 side: zero_alpha_crossflow_correlation is how the fit's two terms trade off, \
+                 near -1, so a low slope at alpha to 0 forces a high curvature and the curvature \
+                 carries at least the zero-alpha standard error. mach_over_nose_fineness is the Mach \
+                 number over the nose's fineness, which TN 3527 states its method for from 0.4 \
+                 to 2.",
         "target": TARGET,
         "configurations": configurations,
         "outside_the_target": outside,
@@ -169,30 +200,52 @@ mod tests {
                 "arcas-robin-long@2.3",
             ]
         );
-        // Every row's gap is in the curvature body lift adds, not the method's slope at α → 0:
-        // that agrees within 1.5 standard errors of the measurement on every row outside.
+        // Where the gap is, as the guide and ADR-040 state it: on every row outside, the two
+        // slopes at α → 0 are within 1.5 of the measurement's own standard errors — a weak test,
+        // its errors being a seventh to a fifth of the slope — and most of the gap is in the
+        // curvature, except on the short model at Mach 2.96, where most of it is the method's own
+        // slope. Both halves are pinned, so neither claim can go stale quietly.
+        let mut most_in_curvature = 0;
+        let mut counterexamples = Vec::new();
         for configuration in fixture["configurations"].as_array().unwrap() {
             for row in configuration["rows"].as_array().unwrap() {
                 if row["within_target"].as_bool().unwrap() {
                     continue;
                 }
-                let measured = row["measured"]["zero_alpha_c_n_alpha"].as_f64().unwrap();
-                let error = row["measured"]["zero_alpha_standard_error"]
-                    .as_f64()
-                    .unwrap();
-                let hpr = row["hpr"]["zero_alpha_c_n_alpha"].as_f64().unwrap();
+                let sigmas = row["zero_alpha_standard_errors"].as_f64().unwrap();
                 assert!(
-                    (hpr - measured).abs() <= 1.5 * error,
-                    "{}: {hpr} against {measured} ± {error}",
+                    sigmas.abs() <= 1.5,
+                    "{}: {sigmas} standard errors",
                     row["mach"]
                 );
-                assert!(row["curvature_ratio"].as_f64().unwrap() > 1.1);
+                // The curvature carries the rest of the gap, `1 − share`: on the short model at
+                // Mach 1.8 it carries more than all of it, the slope at α → 0 reading low.
+                let share = row["zero_alpha_share_of_gap"].as_f64().unwrap();
+                if share < 0.5 {
+                    most_in_curvature += 1;
+                } else {
+                    counterexamples.push((
+                        configuration["id"].as_str().unwrap().to_owned(),
+                        row["mach"].as_f64().unwrap(),
+                        (share * 100.0).round(),
+                    ));
+                }
             }
         }
-        // The bullet's other half: both configurations within 15% at Mach 3.96 and 4.63.
+        assert_eq!(most_in_curvature, 5);
+        assert_eq!(
+            counterexamples,
+            [("arcas-robin-short".to_owned(), 2.96, 77.0)],
+            "the rows where the method's own slope carries most of the gap"
+        );
+        // The bullet's other half: both configurations within 15% at Mach 3.96 and 4.63. Match
+        // the two Arcas references by name, so a reference added later can't be swept in, and
+        // count the rows, so the half can't pass by checking nothing.
         let whole = read(&root, crate::aero_mach::FIXTURE).unwrap();
+        let mut checked = 0;
         for reference in whole["references"].as_array().unwrap() {
-            if reference["id"] == "calisto-rasaero-ii" {
+            let id = reference["id"].as_str().unwrap();
+            if !["arcas-robin-short", "arcas-robin-long"].contains(&id) {
                 continue;
             }
             for row in reference["rows"].as_array().unwrap() {
@@ -201,13 +254,11 @@ mod tests {
                     continue;
                 }
                 let error = row["cn_alpha_error"].as_f64().unwrap();
-                assert!(
-                    error.abs() <= TARGET,
-                    "{} at Mach {mach}: {error}",
-                    reference["id"]
-                );
+                assert!(error.abs() <= TARGET, "{id} at Mach {mach}: {error}");
+                checked += 1;
             }
         }
+        assert_eq!(checked, 4, "Mach 3.96 and 4.63 on both configurations");
     }
 
     #[test]

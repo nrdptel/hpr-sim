@@ -45,7 +45,7 @@ renumber. Supersede an entry by adding a new one that points back to it.
 | ADR-037 | Body lift by Jorgensen's crossflow at every speed, and a boattail's measured share faster than sound | accepted |
 | ADR-038 | Blunt and vertical nose tips faster than sound by a Newtonian cap, the method started from the tangent cone | accepted |
 | ADR-039 | A lip in a boattail's wake carries nothing faster than sound | accepted |
-| ADR-040 | A separating boattail keeps less of its measured share, and M1.8e's 15% target judged | accepted |
+| ADR-040 | A steep boattail reads its measured correlation no steeper than 16°, and M1.8e's 15% target judged | accepted |
 
 ---
 
@@ -3674,60 +3674,83 @@ M1.8a's short model read −16.3% at Mach 2.96 and −28.0% at 4.63.
   wake does to its drag: it keeps slender-body theory's share (the code review found this; a second
   boattail drawn with a small step up would otherwise have been zeroed).
 
-## ADR-040: A separating boattail keeps less of its measured share, and M1.8e's 15% target judged (2026-09-19)
+## ADR-040: A steep boattail reads its measured correlation no steeper than 16°, and M1.8e's 15% target judged (2026-09-19)
 
 **Context.** Issue #90 left two things open from M1.8e4 and M1.8e6. hpr gave *any* narrowing
 transition the supersonic boattail treatment, though Washington and Pettis measured boattails of
 4° to 9.5° and TN 3527's footnote 8 claims only "reasonable results for bodies having moderate
 amounts of boattail": a 30° boattail took about a twentieth of the lift slender-body theory removes,
 which flatters a rocket's stability. And footnote 8's size was pinned only by its sign and its
-continuity, never by an independent calculation. Separately, M1.8e's 15% bullet — the Arcas Robin's
+continuity, never by a hand calculation. Separately, M1.8e's 15% bullet — the Arcas Robin's
 body alone within 15% from Mach 1.5, and both configurations' whole rocket within 15% at Mach 3.96
 and 4.63 — had never been judged, since until M1.8e7 and M1.8e8 the committed designs didn't fly
 the method at all.
 
 **Decision.**
 
-- **A boattail's measured increment fades with separation.** The drag buildup already separates a
-  boattail's flow from 16° (Cubbage's steepest attached boattail) and wholly by 30° (his shallowest
-  separated one, NACA RM L57B21), and grades between. The normal force now takes the same grading:
-  Washington and Pettis's increment, which is attached-flow data, counts in full to 16°, not at all
-  from 30°, and straight-line between. A separated boattail keeps only the share the method gives a
-  cylinder of its length and fore radius in its place. This is issue #90's cap, graded rather than
-  a switch, so nothing jumps as a boattail is drawn steeper.
-  - The Arcas Robin's 15° boattail is unchanged. Calisto's 18.4° keeps five sixths of the
-    increment, which moves its rows against RASAero II by about one point (Mach 2: +8.8% to +9.8%).
-- **Footnote 8's size is pinned by hand.** `footnote_eights_boattail_share_by_hand` integrates
-  eq. 19 over one conical boattail element — `Λ = (1 − e^(−η)) tan δ · 2 + e^(−η) Λ₂` with the
-  footnote's free-stream pressure and its `(dC_N/dα)_tc` of 2 — from the flow the method reports at
-  that element's corner, and matches `segment_slopes` to 1e-6. The new
-  `ShockExpansionBody::element_flows` makes that flow public, so any such check can be written from
-  outside the crate.
+- **The correlation is read no steeper than 16°.** The drag buildup already treats a boattail's
+  flow as separating from 16° (Cubbage's steepest attached boattail, NACA RM L57B21). Past that
+  angle hpr stops reading Washington and Pettis's correlation any steeper: a boattail takes the
+  increment of one of the **same radii** drawn out to 16°, its centre of pressure staying on the
+  real boattail. This is issue #90's cap. It is continuous in shape (at 16° the two lengths are
+  equal), so nothing jumps as a boattail is drawn steeper.
+  - **Why hold it rather than fade it to nothing.** A fade was written first and rejected on
+    review. The increment is negative — it takes lift off the tail — so letting it fade moves the
+    centre of pressure **aft** and makes a steep boattail look *more* stable, which is the very
+    complaint issue #90 filed: with a fade a 30° boattail removed 26 times less lift than
+    slender-body theory, against footnote 8's 21 times that the issue measured. Holding the
+    correlation keeps the centre of pressure at the forward end of the honest range. On the tests'
+    rocket at Mach 2 the two rules differ by 0.75 calibres of body centre of pressure at 30°, which
+    is the size of the doubt and is pinned by a test.
+  - **What is not known.** Nothing measures a separated boattail's supersonic normal force, so
+    neither limit is validated. The 16° itself is Cubbage's, from transonic *drag* data (Mach 0.6
+    to 1.28), used here from Mach 1.2 up, where a shoulder's Prandtl–Meyer turn makes separation
+    less likely — so if anything it is early. The guide says all of this where the rule is
+    described.
+  - The Arcas Robin's 15° boattail is unchanged. Calisto's 18.4° now reads its correlation as a
+    16° boattail, which moves its four supersonic rows against RASAero II by under half a point,
+    each one closer in slope than before (Mach 2: +8.8% to +8.3%).
+- **Footnote 8's size, and the tube behind, are integrated by hand.**
+  `footnote_eights_boattail_share_by_hand` integrates eq. 19 —
+  `Λ = (1 − e^(−η)) Λ_c + e^(−η) Λ₂`, `C_Nα = (2π/A_ref) ∫ Λ r dx` — over both a conical boattail
+  element and the tube behind it, as issue #90 asks, from the flow the method reports at each
+  corner, and matches `segment_slopes` to 1e-6. It pins the integration and footnote 8's two
+  tangent-cone terms (`p_c = p₀`, `Λ_c = 2 tan δ`), checked against hard-coded values. It does
+  **not** pin the decay rate `η`, which comes from eq. 9 and is read from the method; over the tube,
+  where `Λ_c = 0`, `η` alone sets the answer, and the tube carries the larger part of the pair. The
+  new `ShockExpansionBody::element_flows` makes that flow public, so any such check can be written
+  from outside the crate.
 - **M1.8e's 15% bullet: half met, half not, and recorded** (`arcas-robin-body-gap.json`).
   - **Met:** both configurations' whole rocket at Mach 3.96 and 4.63, +2.8% to −3.3%.
   - **Not met:** the body alone is outside 15% on six of eleven rows — the short model at Mach 1.5
     (+37.7%), 1.8 (+25.9%), 2.3 and 2.96 (+16.9%), and the long at 1.8 (+19.4%) and 2.3 (+15.5%).
-    From Mach 3 both are within 5%.
-  - **Where the gap is.** Splitting each fitted slope into its value at `α → 0` and the curvature
-    the plotted angles add: at `α → 0` hpr is within 1.5 standard errors of the measurement on
-    every row outside the target, so the shock-expansion method, the Newtonian cap and the
-    boattail's share are not resolvably wrong — a weak test, since the widest of those standard
-    errors, ±0.42 per radian, sits on a slope of 1.920. The curvature is: past Mach 3 hpr's
-    matches the measured (×0.89 to ×1.33), below it hpr's is 1.3 to 2.8 times it, and 12 times at
-    Mach 1.8 on the short model, where the tunnel's own curve barely bends (0.094 per radian
-    against a standard error of 0.33 on the slope it comes from). For hpr that curvature is body lift: Jorgensen's
-    crossflow term, chosen in ADR-037 because the tunnel's high-angle points support its size, is
-    too large at the small angles these slopes are fitted over.
+    At Mach 3.96 and 4.63 both are within 5%.
+  - **How well the miss can be explained: less than it first looked.** Each fitted slope splits
+    into its value at `α → 0` and the curvature the plotted angles add, but the measurement's own
+    split is soft: over seven points spanning about ±4.5°, the `α |α|` fit's two terms correlate at
+    −0.96, so a low slope forces a high curvature. The measured `α → 0` slopes carry ±0.30 to
+    ±0.42 per radian and the curvatures at least as much.
+  - **What the split still shows.** At `α → 0` hpr is within 1.5 standard errors of the
+    measurement on every row outside the target, so the readings cannot convict the
+    shock-expansion method, the Newtonian cap or the boattail's share. On five of those six rows
+    most of the gap sits in the curvature, which for hpr is body lift — Jorgensen's crossflow
+    term, chosen in ADR-037 on the tunnel's high-angle points, reading too large at a few degrees.
+    The sixth row is a counterexample and is recorded as one: on the short model at Mach 2.96, 77%
+    of the gap is hpr's own `α → 0` slope, 1.2 times the measured. The worst row, the short model
+    at Mach 1.5, also sits at `M/f_n` 0.36, below TN 3527's stated 0.4.
   - **Not tuned.** Closing it needs a cited rule for how the crossflow term grows over the first
     few degrees, or measurements at finer angles than the reports plot. Neither is in hand, so the
     gap stays visible in the guide and in the fixture, as M1.8e's bullet allows.
 
 **Consequences.**
 
-- Steep boattails (past 16°) lose part of their measured increment, so their rockets read slightly
-  higher in normal force and slightly more forward in centre of pressure. Calisto's rows against
-  RASAero II move by about a point, all still within their targets.
+- A boattail steeper than 16° takes the same increment as a 16° one of its radii, so it removes
+  more lift than reading the correlation raw would give, and its rocket's centre of pressure sits
+  forward of that — the conservative end of a range about three quarters of a calibre wide.
+  Calisto's four supersonic rows against RASAero II each move under half a point, all closer in
+  slope; its Mach 1.3 row stays outside both targets, as it was, and moves slightly in
+  (+16.06% to +15.94%, 0.720 to 0.716 calibres).
 - `ShockExpansionBody::element_flows` is new public API: the state behind each element's corner,
-  its tangent cone, and how fast the pressure relaxes toward it.
+  its tangent cone, how fast the pressure relaxes toward it, and the radius eq. 19 needs.
 - M1.8e's bullet is now judged in one place, with a test pinning which rows are outside; M1.8e10
   carries issue #87's model switches, the last of M1.8e's open work.

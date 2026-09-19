@@ -613,8 +613,8 @@
       ADR-040). *Done when:* #90 closed (a bound on the boattail angle, and footnote 8's size
       pinned by a hand calculation); M1.8e's 15% bullet met for the Arcas Robin's body alone, or an
       ADR records why not with the gap in the report.
-      *Result:* met; the increment fades from 16° to 30°, footnote 8 pinned by hand; the bullet met
-      at Mach 3.96 and 4.63 (+2.8% to −3.3%), the body alone outside on six rows (ADR-040).
+      *Result:* met; the correlation is read no steeper than 16° and the boattail with its tube
+      integrated by hand; the bullet met at Mach 3.96 and 4.63, the body alone outside on six rows.
     - [ ] **M1.8e10 #87's model switches.** The body's supersonic normal force is continuous in
       Mach but jumps with small changes of shape. *Done when:* #87 closed, or an ADR records which
       switches remain, each with its measured size.
