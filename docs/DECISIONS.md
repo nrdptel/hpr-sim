@@ -3320,6 +3320,9 @@ optimisation studies ([issue #87](https://github.com/nrdptel/hpr-sim/issues/87))
 **Update (M1.8e3, 2026-09-19).** The join's start no longer snaps to the grid: where the method
 stops holding above Mach 1.2, bisection between the two rows finds that Mach within
 `0.05/2²⁴` (about 3e-9) and the table gains a row there. 24 halvings, not more, because each
-runs the method once; at 3e-9 a start's step moves a slope by about 1e-8 per radian. A 20° cone
+runs the method once; at 3e-9 a start's step moves a slope by about 1e-8 per radian. The lead
+row itself sits where the shares climb steeply from near zero, so last-bit differences between
+operating systems' maths libraries can move it by up to about 1e-4 and the force near the start
+by up to about 5e-6 per radian (the code review's estimate, not measured across platforms). A 20° cone
 now joins from Mach 1.341910, not 1.35. The model switches in #87 remain (M1.8e5). M1.8e3 was
 split: the boattail became M1.8e4, crossflow and blunt tips M1.8e5, which carries M1.8e's bullet.

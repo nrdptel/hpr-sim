@@ -607,10 +607,10 @@
       - The validation report is regenerated; each changed row is listed in the PR.
 
     - [x] **M1.8e3 The supersonic join's start without grid steps** (#87's grid half).
-      *Done when:* a test finds a 20° cone's start off the 0.05 grid, moved under 1e-5 in Mach
-      by 1e-6° and strictly by each 0.1° to 20.5°, no jump at ±1e-9 in Mach at the start, the
-      first even row and the join's end; the report unchanged or each changed row in the PR.
-      *Result:* met. Mach 1.341910 (1.35 before) to 1.355500 at 20.5°; the report unchanged.
+      *Done when* (set after building): a test finds a 20° cone's start off the 0.05 grid, moved
+      under 1e-5 in Mach by 1e-6° and strictly by each 0.1° to 20.5°, no jump at ±1e-9 in Mach at
+      the start, the first even row and the join's end; the report unchanged or each changed row
+      in the PR. *Result:* met: Mach 1.341910 (1.35 before) to 1.355500 at 20.5°; report unchanged.
 
     - [ ] **M1.8e4 The boattail's share faster than sound** (footnote 8; a station rule for
       shares that cross zero). *Done when:* a boattailed body flies the method with no jump at

@@ -199,8 +199,9 @@ impl SupersonicBody {
             return None;
         }
         // Where the method stops holding between two rows, bisect for that Mach: `high` holds,
-        // `low` doesn't. The join's start is then continuous in the body's shape wherever that
-        // Mach is (issue #87).
+        // `low` doesn't. The join's start then moves continuously with the body's shape, except
+        // where the table itself appears or vanishes: the guard above near Mach 4.7, and the
+        // model switches of issue #87.
         let mut lead = None;
         let mut join_start_mach = first_step as f64 / SUPERSONIC_STEPS_PER_MACH;
         if first_step > SUPERSONIC_FIRST_STEP {
@@ -500,7 +501,7 @@ pub struct AeroModel {
     #[serde(skip)]
     supersonic_run: Option<SupersonicRun>,
     /// Their tabulated shares, built the first time a flow faster than
-    /// [`SUPERSONIC_JOIN_START_MACH`] needs them: building takes 77 runs of the method.
+    /// [`SUPERSONIC_JOIN_START_MACH`] needs them: building takes up to 101 runs of the method.
     #[serde(skip)]
     supersonic: SupersonicTable,
     fin_sets: Vec<FinSetAero>,
@@ -739,7 +740,7 @@ impl AeroModel {
         }
         // Boattails, a lip in a boattail's wake, and the base behind them.
         couple_afterbody(&mut drag_terms, &body_terms_at, reference_area_m2)?;
-        // Until the boattail and crossflow faster than sound (M1.8e3), the method flies only a body
+        // Until the boattail's share faster than sound (M1.8e4), the method flies only a body
         // it covers to the end, or whose later bodies carry no potential-flow slope: its nose and
         // cylinder beside slender-body theory's boattail would move the body's centre of pressure
         // further from the wind tunnel's than slender-body theory alone (physics review, ADR-034).
@@ -982,7 +983,7 @@ impl AeroModel {
     /// vertical tip, a tangent cone past TN 3527's Fig. 2, a later body with a slope of its own
     /// such as a boattail) or doesn't hold across a whole join below Mach 5.
     ///
-    /// The first call builds the table, which takes 77 runs of the method; a flow no faster than
+    /// The first call builds the table, which takes up to 101 runs of the method; a flow no faster than
     /// [`SUPERSONIC_JOIN_START_MACH`] never needs it.
     pub fn supersonic_body(&self) -> Option<&SupersonicBody> {
         let run = self.supersonic_run.as_ref()?;
@@ -2014,6 +2015,16 @@ mod tests {
             no_jump(&model, mach);
         }
         assert_eq!(body_values(&model, start), body_values(&model, 0.5));
+        // The start the aerodynamics page quotes, found by the method, not on the grid (1.35).
+        assert!((start - 1.341910).abs() < 1e-6, "{start}");
+        // The lead row is the method's own run there, where the cylinder's share climbs from near
+        // zero (8.6e-5 per radian; 0.41 at the first even row), not a copy of that row.
+        let join = model.supersonic_body().unwrap();
+        let (lead, row) = (
+            join.share(1, start).unwrap(),
+            join.share(1, first_row).unwrap(),
+        );
+        assert!(lead.0 < 1e-2 * row.0, "{lead:?} against {row:?}");
         // A millionth of a degree moves the start by little.
         let (_, nudged) = start_at(20.0 + 1e-6);
         assert!((nudged - start).abs() < 1e-5, "{start} to {nudged}");
@@ -2022,6 +2033,7 @@ mod tests {
             .into_iter()
             .map(|degrees| start_at(degrees).1)
             .collect();
+        assert!((starts[5] - 1.355500).abs() < 1e-6, "{starts:?}");
         for pair in starts.windows(2) {
             assert!(pair[1] > pair[0] && pair[1] - pair[0] < 0.02, "{starts:?}");
         }

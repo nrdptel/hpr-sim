@@ -92,7 +92,8 @@
   ([The body faster than sound in a flight](#the-body-faster-than-sound-in-a-flight)). A rocket
   with a boattail, or whose nose has a blunt or vertical tip, keeps slender-body theory for its
   whole body at every speed, which reads low past Mach 3, until
-  [M1.8e3](../decisions-and-roadmap.md#m1-8e3), the boattail and crossflow. There are no damping coefficients for pitch and
+  [M1.8e4](../decisions-and-roadmap.md#m1-8e4), the boattail, and
+  [M1.8e5](../decisions-and-roadmap.md#m1-8e5), crossflow and blunt tips. There are no damping coefficients for pitch and
   yaw: a flight takes that damping from each part's own local flow. The roll forcing near Mach
   1.5 reads high, and nothing measured checks roll below it
   ([Roll: forcing and damping](#roll-forcing-and-damping)).
@@ -416,9 +417,11 @@ it.
 
 **The join.** Write SB for slender-body theory, SE for the shock-expansion method, and `M_j` for
 where the join starts: Mach 1.2, or the lowest Mach at which the method holds if that is higher.
-hpr finds that Mach by bisection between the table's rows, to about 3e-9, and adds a row there.
-So the start moves smoothly with the nose's shape instead of in 0.05 steps: a 20° cone joins from
-Mach 1.341910, and each 0.1° steeper, to 20.5°, moves it about 0.0027 later, to 1.355500. From `M_j` to
+hpr narrows that Mach down between two rows of the table by halving the gap (bisection) until it
+is within about 3e-9. It then runs the method at that Mach and adds the result as an extra row.
+So the start moves smoothly with the nose's shape instead of in 0.05 steps. A cone with a 20°
+half-angle (the angle between its side and its axis) joins from Mach 1.341910; each 0.1° steeper,
+up to 20.5°, moves the start about 0.0027 later, to 1.355500. From `M_j` to
 `M_j + 0.3`, each covered part's slope, moment and station move in a straight line from SB's to
 SE's:
 
@@ -427,14 +430,18 @@ SE's:
 Every piece is a straight line in Mach, so nothing jumps. The test
 `the_supersonic_join_has_no_jump` looks at ±1e-9 in Mach on each side of the join's ends, of
 table rows, between rows and at Mach 4.999, and `a_blunter_cone_joins_where_the_method_starts_to_hold`
-does the same for a 20° cone whose join starts higher.
-`the_joins_start_moves_with_the_nose_not_in_steps` checks that cone's start is off the grid and
-moves by less than 1e-5 when the cone steepens by a millionth of a degree. Mach 1.2 to 1.5 is a judgement: below Mach
-1.2 the flow over the nose is transonic, which the method doesn't cover, and Mach 1.5 is the
+does the same for the 20° cone, whose join starts higher.
+`the_joins_start_moves_with_the_nose_not_in_steps` pins that cone's start and the 20.5° cone's to
+1e-6, checks the start is off the grid, and checks it moves by less than 1e-5 when the cone
+steepens by a millionth of a degree. The start sits where the method's shares climb steeply from
+near zero, so its last digits, and the force there to about 5e-6 per radian, can differ between
+operating systems. Mach 1.2 to 1.5 is a judgement: below Mach 1.2 the flow over the nose is
+transonic, which the method doesn't cover, and Mach 1.5 is the
 lowest Mach at which NASA measured the Arcas Robin
 ([ADR-034](https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-034-the-bodys-supersonic-normal-force-in-flight-tabulated-shock-expansion-shares-joined-linearly-from-mach-12-2026-09-19),
 the decision behind it). Small changes in shape can still switch a body between the two models,
-for example a nose just steep enough that the method refuses it at every Mach
+for example a nose so steep that the method never holds at any Mach up to 5, so the rocket
+keeps slender-body theory throughout
 ([issue #87](https://github.com/nrdptel/hpr-sim/issues/87)).
 
 **A worked example: the Arcas Robin's nose and cylinder.** NASA measured the Arcas Robin's body
@@ -1694,9 +1701,10 @@ The method's slope grows with Mach number, as the measurement does: 2.55 to 3.37
 model, where slender-body theory keeps its nose at 2. By the end of either cylinder the lift has
 died away, so the long model gets almost nothing more (3.313 against 3.300 at Mach 3.96), while
 its measurement is 0.57 higher. That difference goes with the longer body's larger side area,
-the mark of crossflow lift. Crossflow, the boattail and the lip are
-[M1.8e3](../decisions-and-roadmap.md#m1-8e3)'s to settle, the boattail and crossflow faster than
-sound; below Mach 3 the tangent cones' slopes are an assumption.
+the mark of crossflow lift. The boattail is
+[M1.8e4](../decisions-and-roadmap.md#m1-8e4)'s to settle, the boattail's share faster than sound;
+crossflow and the lip are [M1.8e5](../decisions-and-roadmap.md#m1-8e5)'s, crossflow and blunt tips
+faster than sound. Below Mach 3 the tangent cones' slopes are an assumption.
 
 ### Drag verification
 

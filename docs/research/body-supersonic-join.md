@@ -58,7 +58,7 @@ number over nose fineness from 0.4 to 2; `slope` doesn't enforce that range.
 - Known inputs for the join: Fig. 2 is held below Mach 3 (ADR-033); the Prometheus case peaks at
   Mach 1.01 to 1.06, so it should not change; hpr's Arcas Robin nose is a power series, which the
   method takes as a pointed body (M1.8e1's fixture used a fitted secant ogive, ratio 1.744).
-- Body lift (Galejs's crossflow term) stays as it is until M1.8e3.
+- Body lift (Galejs's crossflow term) stays as it is until M1.8e5.
 
 ## Checks to write first
 
