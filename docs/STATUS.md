@@ -38,9 +38,9 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
   nose fineness outside 0.4 to 2, #81, and `dynamics.rs` caching body stations at Mach 0. Don't read predicted mode's misses as gaps to
   close (ADR-009, ADR-023). ROADMAP is at 999 of 1000 lines: trim a done entry.
 - **Autopilot memory:** each cycle runs in its own process group and is reaped after a clean
-  finish as well as a watchdog kill, so a build the session abandoned cannot outlive it. `runs.log`
-  gains a memory line per cycle, and the run exports `CARGO_BUILD_JOBS=6`. `docs/perf.md` records
-  that thinning debug info does *not* cut peak build memory, so no profile was changed.
+  finish as well as a watchdog kill. `runs.log` gains a memory line per cycle (% spare from
+  `memory_pressure`, not free pages, which read near-empty when healthy). `scripts/build-memory.sh`
+  reproduces `docs/perf.md`'s numbers; thinning debug info does *not* cut peak memory, so no profile.
 - **Regeneration is not bit-identical across machines** (last digits). Regenerate reports with
   `cargo xtask validate` (debug), never `--release`: it rounds differently in the 7th digit.
   Fixture checks (`designs::same`) allow 1e-12 relative, or 1e-13 near zero (M1.8b3's PR).
@@ -51,8 +51,8 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
 ## Done log (newest first, keep about 15)
 
 - 2026-09-19: Autopilot memory. Cycles run in their own process group and are reaped either way;
-  peak RSS, least free and most swap per cycle in `runs.log`; `CARGO_BUILD_JOBS=6` (measured
-  2.42 → 1.72 GB peak for about a second a build). Transcripts older than 20 cycles are gzipped.
+  peak RSS, spare %, pressure and swap per cycle in `runs.log`; jobs and test threads capped at 6
+  (2.58 → 1.72 GB). Transcripts past 20 cycles gzipped, past 60 deleted. Not yet run a window.
 - 2026-09-19: M1.8e1 The second-order shock-expansion method (ADR-033): not met, recorded.
   Against TN 3527's measurements 117 of 120 slopes and 109 of 120 CPs within ±0.2; its printed
   values 102 and 125 of 144 (#81 at the limit); Arcas Robin short −18.7% to +16.4%, long to −26.4%.
