@@ -77,7 +77,100 @@ pub fn generate(root: &Path) -> Result<Value, String> {
         "sphere_cone": sphere_cone_rows(root)?,
         "arcas_robin": arcas_robin(root)?,
         "starts": starts(root)?,
+        "coverage": coverage(root)?,
     }))
+}
+
+/// The Mach numbers the cap's reach is reported at.
+pub const COVERAGE_MACHS: [f64; 4] = [1.25, 1.5, 2.0, 3.0];
+
+/// How far back the cap reaches on a few noses: its end as a share of the nose's length and of
+/// its base radius. The report's own sphere-cone beside them, and the Arcas Robin's committed
+/// nose from its design.
+fn coverage(root: &Path) -> Result<Value, String> {
+    let readings = read(root, READINGS)?;
+    let sphere_cone = sphere_cone_body(&readings)?;
+    let sphere_cone_length = readings["model"]["drawn_length_over_base_diameter"]
+        .as_f64()
+        .ok_or("no drawn length")?;
+    let design = "wind-tunnel-arcas-robin-short.json";
+    let text = fs::read_to_string(root.join("validation/designs").join(design))
+        .map_err(|e| format!("{design}: {e}"))?;
+    let rocket: Rocket = serde_json::from_str(&text).map_err(|e| format!("{design}: {e}"))?;
+    let Some(Part::NoseCone(nose)) = rocket
+        .stages
+        .first()
+        .and_then(|s| s.components.first())
+        .map(|c| &c.part)
+    else {
+        return Err(format!("{design}: its first component isn't a nose cone"));
+    };
+    let arcas = nose.profile().map_err(|e| e.to_string())?;
+    let noses: [(&str, Profile, f64); 4] = [
+        ("arcas robin, the committed nose", arcas, nose.base_radius_m),
+        (
+            "von Karman, five calibres",
+            Profile::nose(NoseShape::VON_KARMAN, 5.0, 0.5).map_err(|e| e.to_string())?,
+            0.5,
+        ),
+        (
+            "power series n = 0.5, five calibres",
+            Profile::nose(NoseShape::PowerSeries { exponent: 0.5 }, 5.0, 0.5)
+                .map_err(|e| e.to_string())?,
+            0.5,
+        ),
+        (
+            "elliptical, two calibres",
+            Profile::nose(NoseShape::Elliptical {}, 2.0, 0.5).map_err(|e| e.to_string())?,
+            0.5,
+        ),
+    ];
+    let mut rows = Vec::new();
+    for (name, profile, base_radius_m) in noses {
+        let body = ShockExpansionBody::new(
+            &[
+                BodySegment::Profile { profile },
+                BodySegment::Cylinder {
+                    length_m: 5.0,
+                    radius_m: base_radius_m,
+                },
+            ],
+            DEFAULT_ELEMENTS_PER_CURVE,
+        )
+        .map_err(|e| e.to_string())?;
+        let mut by_mach = serde_json::Map::new();
+        for mach in COVERAGE_MACHS {
+            let value = match body.handover_m(mach).map_err(|e| e.to_string())? {
+                Some(x) => json!({
+                    "length_share": x / profile.length_m(),
+                    "radius_share": profile.radius_m(x) / base_radius_m,
+                }),
+                None => json!({ "reaches": "the nose's end" }),
+            };
+            by_mach.insert(format!("{mach}"), value);
+        }
+        rows.push(json!({ "nose": name, "cap_ends_at": Value::Object(by_mach) }));
+    }
+    // The report's own model, for scale: its cap is the sphere, and it ends where the cone starts.
+    let mut by_mach = serde_json::Map::new();
+    for mach in COVERAGE_MACHS {
+        // Below about Mach 1.4 the sphere is steeper than the handover all the way to the cone,
+        // so the method doesn't hold there at all.
+        let value = match sphere_cone.handover_m(mach) {
+            Ok(Some(x)) => json!({
+                "length_share": x / sphere_cone_length,
+                "radius_share": (x * (2.0 * 0.175 - x)).sqrt() / 0.5,
+            }),
+            Ok(None) => json!({ "reaches": "no cap" }),
+            Err(_) => json!({ "reaches": "past the sphere: the method doesn't hold" }),
+        };
+        by_mach.insert(format!("{mach}"), value);
+    }
+    rows.push(json!({
+        "nose": "TN D-4865's sphere-cone (model 1)",
+        "cap_ends_at": Value::Object(by_mach),
+    }));
+    Ok(json!(rows))
 }
 
 /// The Mach numbers the two starts are compared at: the tunnel's, Mach 3.5 between them, and 5.
@@ -594,6 +687,29 @@ mod tests {
                 cell(&r["newtonian"]["40"]),
             ));
         }
+        for r in fixture["coverage"].as_array().unwrap() {
+            let by_mach = &r["cap_ends_at"];
+            let cells: Vec<String> = COVERAGE_MACHS
+                .iter()
+                .map(|mach| {
+                    let cell = &by_mach[format!("{mach}")];
+                    match cell.get("length_share").and_then(Value::as_f64) {
+                        Some(length) => format!(
+                            "{} / {}",
+                            format!("{:.1}%", 100.0 * length).replace('-', "−"),
+                            num(f(cell, "/radius_share"), 2)
+                        ),
+                        None => cell["reaches"].as_str().unwrap().to_owned(),
+                    }
+                })
+                .collect();
+            rows.push(format!(
+                "| {} | {} |",
+                r["nose"].as_str().unwrap(),
+                cells.join(" | ")
+            ));
+        }
+
         // hpr's range like for like, which the section's opening quotes.
         let errors: Vec<f64> = sphere_cone
             .iter()
@@ -605,7 +721,7 @@ mod tests {
                 (a.min(e), b.max(e))
             });
         rows.push(format!("hpr reads {} to {}", pct(low), pct(high)));
-        assert_eq!(rows.len(), 2 * 6 + 11 + START_MACHS.len() + 1);
+        assert_eq!(rows.len(), 2 * 6 + 11 + START_MACHS.len() + 5 + 1);
         for row in rows {
             assert!(guide.contains(&row), "aero.md doesn't have the row `{row}`");
         }

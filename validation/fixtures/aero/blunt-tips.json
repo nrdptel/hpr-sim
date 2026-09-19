@@ -321,6 +321,112 @@
       ]
     }
   ],
+  "coverage": [
+    {
+      "cap_ends_at": {
+        "1.25": {
+          "length_share": 0.5908487574637694,
+          "radius_share": 0.7152424339191107
+        },
+        "1.5": {
+          "length_share": 0.05821975544308608,
+          "radius_share": 0.1634832726687533
+        },
+        "2": {
+          "length_share": 0.008930252321764164,
+          "radius_share": 0.04953419501138346
+        },
+        "3": {
+          "length_share": 0.007802464027725924,
+          "radius_share": 0.04545298583283036
+        }
+      },
+      "nose": "arcas robin, the committed nose"
+    },
+    {
+      "cap_ends_at": {
+        "1.25": {
+          "length_share": 0.47847517893451397,
+          "radius_share": 0.6874607001032541
+        },
+        "1.5": {
+          "length_share": 0.04055746661350406,
+          "radius_share": 0.11703063753782476
+        },
+        "2": {
+          "length_share": 0.0028122544797629097,
+          "radius_share": 0.015904939412554213
+        },
+        "3": {
+          "length_share": 0.002313140050385379,
+          "radius_share": 0.013738049330554307
+        }
+      },
+      "nose": "von Karman, five calibres"
+    },
+    {
+      "cap_ends_at": {
+        "1.25": {
+          "length_share": 0.2920660836223885,
+          "radius_share": 0.5404313865999906
+        },
+        "1.5": {
+          "length_share": 0.0542786611172467,
+          "radius_share": 0.23297781249991747
+        },
+        "2": {
+          "length_share": 0.013910804894641141,
+          "radius_share": 0.11794407528418348
+        },
+        "3": {
+          "length_share": 0.01261170297432515,
+          "radius_share": 0.11230183869521082
+        }
+      },
+      "nose": "power series n = 0.5, five calibres"
+    },
+    {
+      "cap_ends_at": {
+        "1.25": {
+          "length_share": 0.6529294727142383,
+          "radius_share": 0.9378390315451706
+        },
+        "1.5": {
+          "length_share": 0.34863668921531055,
+          "radius_share": 0.7587659964466041
+        },
+        "2": {
+          "length_share": 0.1386253475513361,
+          "radius_share": 0.507970184281463
+        },
+        "3": {
+          "length_share": 0.12805555367397922,
+          "radius_share": 0.4896048228124485
+        }
+      },
+      "nose": "elliptical, two calibres"
+    },
+    {
+      "cap_ends_at": {
+        "1.25": {
+          "reaches": "past the sphere: the method doesn't hold"
+        },
+        "1.5": {
+          "length_share": 0.07838940881786176,
+          "radius_share": 0.3422079021569736
+        },
+        "2": {
+          "length_share": 0.06048553052519777,
+          "radius_share": 0.32223983979765913
+        },
+        "3": {
+          "length_share": 0.058855491758353154,
+          "radius_share": 0.3197409101749103
+        }
+      },
+      "nose": "TN D-4865's sphere-cone (model 1)"
+    }
+  ],
   "generator": "cargo xtask aero (xtask/src/aero_blunt.rs)",
   "note": "Blunt and vertical nose tips faster than sound (M1.8e7): TN D-4865's Newtonian cap and handover ahead of TN 3527's method, which starts behind it from the tangent cone's flow. sphere_cone: TN D-4865's model 1 (readings in tn-d-4865-sphere-cone.json), hpr's C_N_alpha on the base area and centre of pressure from the nose tip in base diameters at alpha -> 0, against the measured C_N and C_m fitted with a straight line (with an intercept) over the plotted angles 0 to 12 deg, and the report's own method fitted the same way through the origin's zero. arcas_robin: the committed design's power-series nose, cylinder and boattail, the lip left off, through the flight's path with hpr's current body model, fitted at the tunnel's plotted angles as arcas-robin-crossflow.json fits them (per radian on the body's cross-section), beside the fitted secant ogive's (M1.8e6's comparison) and the slopes at alpha -> 0. Errors are hpr's over the measured, minus 1; centre-of-pressure errors hpr's minus the measured, calibers. No targets.",
   "sphere_cone": {

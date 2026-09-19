@@ -699,12 +699,14 @@ What this covers: the body faster than sound when the nose's tip is blunt or ver
 power-series noses with `n` below 1, Haack series (the von Kármán and L-V Haack) and elliptical
 noses, whose profile leaves the tip at 90°. How far to trust it: the cap comes from a NASA method
 checked only on spherical caps. On that report's own sphere-cone, compared as its tunnel measured
-it (at the plotted angles, body lift included), hpr reads −1.2% to +32.1%: close to Mach 2.3, and
+it (at the plotted angles, body lift included), hpr reads −1.2% to +32.1%: close through Mach 2.3,
 high from Mach 2.96, where the report's own method reads +5.2% to +13.6%. On the Arcas Robin's
-power-series nose it is an extrapolation. There, like for like, the body reads +37.2% at Mach 1.5 and +13.7% to +25.9%
-from Mach 1.8 to 2.96, as high as with the smooth secant ogive fitted to the same nose (never
-above it, and up to 8.2 percentage points below), and within 5% past Mach 3. No validation flight
-reaches the speeds where it applies.
+power-series nose the cap is an extrapolation. There, like for like, the body reads +37.2% at Mach
+1.5 and +13.7% to +25.9% from Mach 1.8 to 2.96 — never worse than the smooth secant ogive fitted to
+the same nose, and up to 8.2 percentage points better — and within 5% past Mach 3. A nose that is
+nearly a cone but for a vanishing tip carries a bias nothing here measures
+([issue #101](https://github.com/nrdptel/hpr-sim/issues/101), below). No validation flight reaches
+the speeds where any of this applies.
 
 **Why a cap.** The [shock-expansion method](#bodies-faster-than-sound) replaces the nose by
 straight *elements*, short cones and frustums each tangent to the profile, and starts at a
@@ -715,9 +717,9 @@ pressures and handing over to the method where the flow behind the cap is fast a
 *handover*. hpr does the same.
 
 **The cap.** Newtonian theory takes the pressure from the angle `δ` between the surface and the
-wind: `C_p = C_p,max sin²δ` ([J68] eq. 1, p. 5). `C_p,max` is the pressure at the *stagnation
-point*, the tip, where the air comes to rest behind a normal shock: the *pitot pressure* a probe
-would read there, from the Rayleigh pitot formula ([R1135] eq. 100). At a small angle of
+wind: `C_p = C_p,max sin²δ` ([J68] eq. 1, p. 5). `C_p,max` is the pressure coefficient at the
+*stagnation point*, the tip, where the air comes to rest behind a normal shock: it follows from the
+*pitot pressure* a probe would read there, the Rayleigh pitot formula ([R1135] eq. 100). At a small angle of
 attack the windward side meets the wind a little more steeply, so the cap carries
 `C_p,max sin δ cos δ` of loading in the method's terms (a hemisphere then carries its Newtonian
 drag turned into the body's axes, `C_p,max/2`, as it must; test
@@ -730,14 +732,21 @@ agreement with the available data in the low supersonic-speed range" ([J68] p. 5
 24° from about Mach 2.1: the method needs the normal-force slope of a cone tangent to the body,
 and its chart stops at 24° ([SD56] Fig. 2).
 
-**How much of the nose the cap covers** depends strongly on speed. On the Arcas Robin's nose it
-reaches 16% of the base radius at Mach 1.5 and 4.5% from Mach 2.3. By length, at Mach 1.25 it
-swallows 59% of that nose and 48% of a five-calibre von Kármán, at Mach 1.5 about 5% of each, and
-past Mach 2 under 1.5%; a stubby two-calibre ellipse keeps 13% of its length capped even at Mach 3.
-The report's own cap was 8% of its sphere-cone's length at Mach 1.5, so near the join's start a
-slender nose leans on Newtonian pressures over far more of itself than anything the report checked.
-The join's weight rises from 0 at its start to 1 a third of a Mach number later, which damps that,
-but read a vertical tip's numbers between the join's ends as the blend they are.
+**How much of the nose the cap covers** depends strongly on speed. Where it ends, as a share of
+the nose's length and of its base radius:
+
+| nose | Mach 1.25 | Mach 1.5 | Mach 2 | Mach 3 |
+|---|---|---|---|---|
+| arcas robin, the committed nose | 59.1% / 0.72 | 5.8% / 0.16 | 0.9% / 0.05 | 0.8% / 0.05 |
+| von Karman, five calibres | 47.8% / 0.69 | 4.1% / 0.12 | 0.3% / 0.02 | 0.2% / 0.01 |
+| power series n = 0.5, five calibres | 29.2% / 0.54 | 5.4% / 0.23 | 1.4% / 0.12 | 1.3% / 0.11 |
+| elliptical, two calibres | 65.3% / 0.94 | 34.9% / 0.76 | 13.9% / 0.51 | 12.8% / 0.49 |
+| TN D-4865's sphere-cone (model 1) | past the sphere: the method doesn't hold | 7.8% / 0.34 | 6.0% / 0.32 | 5.9% / 0.32 |
+
+Near the join's start a slender nose leans on Newtonian pressures over far more of itself than
+anything the report checked; by Mach 2 the cap is a percent or so of the nose, less than the
+report's own. The join's weight rises from 0 at its start to 1 a third of a Mach number later,
+which damps that, but read a vertical tip's numbers between the join's ends as the blend they are.
 
 A power-series nose meets its base at a slope of `n/(2f)`, with `f` its length over its diameter,
 and the cap can't end on the nose while that is steeper than the handover's angle. So such a nose
@@ -749,40 +758,13 @@ slender-body theory: hpr doesn't warn, and
 [`AeroModel::supersonic_body`](../api/hpr_aero/model/struct.AeroModel.html#method.supersonic_body)
 returns `None`. Haack and elliptical noses end level, so the cap always ends on them.
 
-**Behind the handover: hpr's choice.** hpr starts the method at the handover as it starts at a
-pointed tip, with the flow on the *tangent cone*, the cone that touches the body there. The report
-starts it from the Newtonian pressure instead. Read at a small angle, the report's start fails on
-the Arcas Robin's nose from Mach 3.96, where the march *reduces* the element at the nose's end,
-holding its pressure where the method's exponential law would run the wrong way, which hpr refuses
-aft of a nose; from Mach 2.96 its answer drifts as the nose is cut into more elements, for the
-same reason
-([issue #81](https://github.com/nrdptel/hpr-sim/issues/81), the method's open question there). A flight's table is built from Mach 5
-down, so that failure would leave such a rocket no method at all. The tangent cone's start holds
-to Mach 5 and settles: the Arcas nose moves under 0.01 per radian from 10 elements to 40, a
-five-calibre elliptical or von Kármán nose under 0.02 from 10 to 160. On the report's sphere-cone, against the
-measured slope at `α → 0`, the report's start reads closer than hpr's at Mach 1.9, 3.95 and
-4.63, about the same at 2.96 and further at 2.3, and 95% high at Mach 1.5. That last is hpr's
-reading of the report's start at `α → 0`, not the report's method, which reads 1.844 there at
-its own angles: the handover sits 0.6° above the cone, so its linear range is that small. hpr
-takes the start that holds and settles everywhere over one that fits one body better where it
-holds. Both are kept:
-[`HandoverStart`](../api/hpr_aero/shock_expansion/enum.HandoverStart.html) selects the report's
-for comparison ([ADR-038][adr-038]). Slopes per radian on the body's cross-section, at `α → 0`, for
-the committed nose and the short model's cylinder, nothing aft:
-
-| Mach | the tangent cone's start, 10 elements | 40 elements | the report's start, 10 elements | 40 elements |
-|---|---|---|---|---|
-| 1.5 | 2.531 | 2.532 | 2.866 | 2.770 |
-| 1.8 | 2.697 | 2.701 | 2.676 | 2.635 |
-| 2.3 | 2.873 | 2.880 | 2.641 | 2.635 |
-| 2.96 | 3.021 | 3.028 | 2.544 | 2.583 (6 reduced) |
-| 3.5 | 3.071 | 3.078 | 3.361 (9 reduced) | 3.418 (39 reduced) |
-| 3.96 | 3.073 | 3.080 | fails | fails |
-| 4.63 | 3.030 | 3.031 (1 reduced) | fails | fails |
-| 5 | 2.980 | 2.982 (1 reduced) | fails | fails |
+**Behind the handover.** hpr starts the method there as it starts at a pointed tip, with the flow
+on the *tangent cone*, the cone that touches the body at the handover. The report starts it from
+the Newtonian pressure instead. What that choice is worth is set out in
+[The two starts](#the-two-starts), after the checks below.
 
 *A worked example.* The report's sphere-cone at Mach 1.5: a nose radius of 0.175 base diameters
-on an 11.5° cone. The pitot pressure is 3.413 times the free stream's, so `C_p,max` =
+on an 11.5° cone. The pitot pressure is 3.413 times the free stream's, so `C_p,max` = 2.413/(γM²/2) =
 2.413/(0.7 × 1.5²) = 1.532. The wedge's largest angle is 12.11°, reached on the sphere
 0.175 (1 − sin 12.11°) = 0.138 diameters behind the tip. On a sphere, with `θ` the angle from the
 tip, the loading `C_p,max sin δ cos δ` integrates over the cap to `C_p,max sin⁴θ/2` on the
@@ -851,11 +833,45 @@ points of the fitted ogive up to Mach 2.96, and 5.1 to 8.2 points below it past 
 is within 5% of the tunnel (−4.8% to +1.5%). Below Mach 3 both read high, most at Mach 1.5, for
 the reasons in [Checking the shock-expansion method](#checking-the-shock-expansion-method).
 
-**What it means for a rocket.** On Calisto, whose von Kármán nose now takes the method past
-Mach 1.2, the body's slope rises: the whole rocket's by 17% to 31% from Mach 1.5 to 2
+#### The two starts
+
+hpr starts the march from the tangent cone at the handover, the report from the Newtonian pressure
+there. Read at a small angle, the report's start fails on
+the Arcas Robin's nose from Mach 3.96, where the march *reduces* the element at the nose's end,
+holding its pressure where the method's exponential law would run the wrong way, which hpr refuses
+aft of a nose; from Mach 2.96 its answer drifts as the nose is cut into more elements, for the
+same reason
+([issue #81](https://github.com/nrdptel/hpr-sim/issues/81), the method's open question there). A flight's table is built from Mach 5
+down, so that failure would leave such a rocket no method at all. The tangent cone's start holds
+to Mach 5 and settles: the Arcas nose moves under 0.01 per radian from 10 elements to 40, a
+five-calibre elliptical or von Kármán nose under 0.02 from 10 to 160. On the report's sphere-cone, against the
+measured slope at `α → 0`, the report's start reads closer than hpr's at Mach 1.9, 3.95 and
+4.63, about the same at 2.96 and further at 2.3, and 95% high at Mach 1.5. That last is hpr's
+reading of the report's start at `α → 0`, not the report's method, which reads 1.844 there at
+its own angles: the handover sits 0.6° above the cone, so its linear range is that small. hpr
+takes the start that holds and settles everywhere over one that fits one body better where it
+holds. Both are kept:
+[`HandoverStart`](../api/hpr_aero/shock_expansion/enum.HandoverStart.html) selects the report's
+for comparison ([ADR-038][adr-038]). Slopes per radian on the body's cross-section, at `α → 0`, for
+the committed nose and the short model's cylinder, nothing aft:
+
+| Mach | the tangent cone's start, 10 elements | 40 elements | the report's start, 10 elements | 40 elements |
+|---|---|---|---|---|
+| 1.5 | 2.531 | 2.532 | 2.866 | 2.770 |
+| 1.8 | 2.697 | 2.701 | 2.676 | 2.635 |
+| 2.3 | 2.873 | 2.880 | 2.641 | 2.635 |
+| 2.96 | 3.021 | 3.028 | 2.544 | 2.583 (6 reduced) |
+| 3.5 | 3.071 | 3.078 | 3.361 (9 reduced) | 3.418 (39 reduced) |
+| 3.96 | 3.073 | 3.080 | fails | fails |
+| 4.63 | 3.030 | 3.031 (1 reduced) | fails | fails |
+| 5 | 2.980 | 2.982 (1 reduced) | fails | fails |
+
+**What it means for a rocket.** Mostly more force, barely any change of balance. On Calisto,
+whose von Kármán nose now takes the method past Mach 1.2, the whole rocket's normal-force slope
+rises 17% to 31% from Mach 1.5 to 2
 ([Normal force through Mach 1](#normal-force-through-mach-1)), while its centre of pressure moves
-by under 0.15 calibres (forward at Mach 1.5, aft at Mach 2). The stability margin barely changes;
-the restoring force grows.
+by under 0.15 calibres (forward at Mach 1.5, aft at Mach 2). So the stability margin moves by under
+a sixth of a calibre, and the force that holds the rocket into the wind grows by about a quarter.
 
 **What it leaves out.**
 
@@ -869,8 +885,9 @@ the restoring force grows.
   fade as the cap shrinks. A power-series nose of `n` = 0.99 is a 7.1° cone but for a tip 1e-55
   calibres across, yet at Mach 4 its cylinder carries 1.21 per radian where the cone's carries
   1.37, 12% less, because the march runs on the 24° cone's total pressure rather than the 7.1°
-  cone's. The shapes a rocket really uses have caps that are small but not vanishing, and how
-  much of this bias they carry is unknown.
+  cone's. The shapes a rocket really uses have caps that are small but not vanishing — at Mach 1.5
+  the table above puts their ends at 0.12 to 0.76 of the base radius, where that nose's is 1e-55 —
+  and how much of this bias they carry is unknown.
 - **At `α → 0` the handover is held where it sits on the body**, as TN 3527 holds every other
   point. The report's equivalent bodies turn the body about the sphere's centre, which slides the
   handover along the surface instead; hpr leaves that term out. How much it is worth is not
