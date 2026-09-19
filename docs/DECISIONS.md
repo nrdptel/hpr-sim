@@ -2791,10 +2791,15 @@ What the sources give (all NACA and NASA reports are U.S. Government works; pinn
   drags as a blend, by a merge weight, of its own drag as a boattail and its share of the boattail
   it continues: the cone from that boattail's start through its aft end less the cone through its
   fore end, never below 0. The weight is 1 for a turn of up to 3° between the parts, 0 from 10°
-  (a corner), linear between, and faded by any tube or step down between over the first part's
-  drop in diameter. So parts of one smooth surface add up to one cone, a corner keeps each part
-  its own boattail, and a pair drags between the two. The base's relief blends the two the same
-  way. The first draft left each part its own boattail (the same cone drawn as two transitions
+  (a corner), linear between, and faded by what the parts between have left of that boattail
+  (below). So parts of one straight cone add up to one cone, a corner keeps each part its own
+  boattail, and a pair drags between the two. It applies at every speed, so below Mach 0.8 a
+  curved boattail in parts drags as the cones through its ends rather than part by part as eq.
+  3.88 would (physics review: a 6°, 9°, 12° boattail in three 20 mm parts, 0.00716 part by part,
+  0 merged, 2.8% of `C_D0` at Mach 0.5). A straight cone whose first part only partly merges with
+  a boattail ahead (a turn of 3° to 10°) may drag a little differently in parts than whole: the
+  part of the old boattail the first part doesn't take gets a second chance at the next.
+  The first draft left each part its own boattail (the same cone drawn as two transitions
   read +10% at Mach 1.5 on the Arcas Robin); the second merged any adjacent parts into one cone
   (a 15° boattail closed by a near-vertical transition read +13% at Mach 0.6 against a step
   down); the third blended the cones' geometry, which gave a gentler second part negative drag.
@@ -2808,22 +2813,32 @@ What the sources give (all NACA and NASA reports are U.S. Government works; pinn
 - **A lip in a boattail's wake**: a lip behind a boattail, drawn as a shoulder, a step up or both,
   in one part or several, loses its pressure drag while its top rises up to a quarter of the
   boattail's drop in diameter above the boattail's end, keeps all of it from half, and a
-  straight-line share between; each part takes the share its highest top so far leaves, and the
-  base behind it takes the same share of the relief. The quarter and half are a judgement made knowing the Arcas Robin's lip, the one
+  straight-line share between; a step up takes the share its own top leaves and a shoulder the
+  share the highest top so far leaves (the physics review found one fraction for both moved the
+  drag 25% when a nanometre of tube split them), and the base behind it takes the same share of
+  the relief. The quarter and half are a judgement made knowing the Arcas Robin's lip, the one
   measured, rises 0.17, and all 44 Arcas Robin rows depend on it (with the lip as a shoulder in
   undisturbed air each would read 0.065 to 0.086 higher). The first draft gave any shoulder up to
   the boattail's fore diameter no drag, and the second required an exact match of radii; the
   physics review showed both switching abruptly (a flare back to full diameter got none; a
   micrometre of step or tube moved the Arcas Robin 25%).
-- **Gaps and steps are continuous** (physics review): a tube between a boattail and what follows
-  fades the merge, the wake and the base's relief over one drop in diameter, and so does a step
-  down, a corner the flow separates at; a lip's rise is measured from the boattail's end, so a
-  step up before it counts in its rise. A micrometre of step or tube changes the drag by under
-  0.1%, a boattail closed by a micrometre-long transition drags as it does with a step down, and
-  a lip drawn as a step up drags as one drawn as a shoulder, and a hairline step before a lip
-  changes nothing (`drag::tests::a_sharp_corner_keeps_its_boattails_apart`,
-  `a_lip_in_a_boattails_wake_fades_with_its_rise`, `a_lip_drawn_as_a_step_up_is_a_lip`,
-  `a_hairline_step_before_a_lip_changes_nothing`, `soft_merges_stay_between_their_limits`).
+- **Gaps and steps are continuous** (physics and code reviews, second round): every boattail
+  starts a tail the flow behind it may still follow, and everything after it fades what is left
+  of each tail over one drop in diameter: a tube by its length, a step down by its drop (a corner
+  the flow separates at), a lip by its length after its rise, and a narrowing part by its drop
+  and its length, as a step and a tube, less what it merges with that tail, while it also starts
+  a tail of its own. The base and each lip take the strongest tail left; a tail can only fade, so
+  one faded to nothing is dropped. So a part narrowing by nothing is a tube, a part of no length a
+  step, and a change of `ε` in any radius or length changes the drag in proportion to `ε`
+  (`drag::tests::a_part_narrowing_by_nothing_is_a_tube_and_one_of_no_length_a_step`,
+  `a_sharp_corner_keeps_its_boattails_apart`, `a_lip_in_a_boattails_wake_fades_with_its_rise`,
+  `a_lip_drawn_as_a_step_up_is_a_lip`, `a_hairline_step_before_a_lip_changes_nothing`,
+  `soft_merges_stay_between_their_limits`). The earlier rule kept one tail and let each
+  narrowing part replace it, and counted a lip's length as no gap: a part narrowing by one ulp
+  after the Arcas Robin's boattail read +15%, a part widening by a nanometre over 100 mm −5.7%,
+  and a 1 µm closure +4% to +5.6% against a step down. With the lip's 1.3 mm now a gap, the
+  Arcas Robin's base keeps 0.944 of its relief; its forebody rows, which leave the base out,
+  don't move.
 - **Fig. 5-141 is power-off**, as is Fleeman's base drag it scales; under power hpr applies both to
   what the motors leave of the base. Love's value held past Mach 5.5 would ask for less than a
   vacuum, and is clamped there.

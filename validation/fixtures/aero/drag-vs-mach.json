@@ -4092,7 +4092,7 @@
           "band": "transonic",
           "error": 0.5103260427879635,
           "fins": "on",
-          "hpr_base": 0.07553196949018127,
+          "hpr_base": 0.0766930230397429,
           "hpr_forebody_by_part": {
             "boattail": 0.1872642964371562,
             "body": 0.14423364361736069,
@@ -4113,7 +4113,7 @@
           "band": "transonic",
           "error": 0.38802233662918484,
           "fins": "off",
-          "hpr_base": 0.07553196949018127,
+          "hpr_base": 0.0766930230397429,
           "hpr_forebody_by_part": {
             "boattail": 0.1872642964371562,
             "body": 0.14423364361736069,
@@ -4133,7 +4133,7 @@
           "band": "transonic",
           "error": 0.1834828666996524,
           "fins": "on",
-          "hpr_base": 0.06869460878925543,
+          "hpr_base": 0.07052914296801518,
           "hpr_forebody_by_part": {
             "boattail": 0.23929633016983043,
             "body": 0.1427818904035842,
@@ -4154,7 +4154,7 @@
           "band": "transonic",
           "error": 0.44524997983302383,
           "fins": "off",
-          "hpr_base": 0.06869460878925543,
+          "hpr_base": 0.07052914296801518,
           "hpr_forebody_by_part": {
             "boattail": 0.23929633016983043,
             "body": 0.1427818904035842,
@@ -4174,7 +4174,7 @@
           "band": "transonic",
           "error": 0.07093824553716455,
           "fins": "on",
-          "hpr_base": 0.060914209550631655,
+          "hpr_base": 0.06349089297176268,
           "hpr_forebody_by_part": {
             "boattail": 0.2914868528865231,
             "body": 0.14472591899343268,
@@ -4195,7 +4195,7 @@
           "band": "transonic",
           "error": 0.2027590113613278,
           "fins": "off",
-          "hpr_base": 0.060914209550631655,
+          "hpr_base": 0.06349089297176268,
           "hpr_forebody_by_part": {
             "boattail": 0.2914868528865231,
             "body": 0.14472591899343268,
@@ -4215,7 +4215,7 @@
           "band": "supersonic",
           "error": 0.2984283394393037,
           "fins": "on",
-          "hpr_base": 0.05076184129219305,
+          "hpr_base": 0.0529090774764689,
           "hpr_forebody_by_part": {
             "boattail": 0.29127172531017154,
             "body": 0.14011659984259342,
@@ -4236,7 +4236,7 @@
           "band": "supersonic",
           "error": 0.2031979994369255,
           "fins": "off",
-          "hpr_base": 0.05076184129219305,
+          "hpr_base": 0.0529090774764689,
           "hpr_forebody_by_part": {
             "boattail": 0.29127172531017154,
             "body": 0.14011659984259342,
@@ -4256,7 +4256,7 @@
           "band": "supersonic",
           "error": 0.3936418410253424,
           "fins": "on",
-          "hpr_base": 0.04060947303375444,
+          "hpr_base": 0.04232726198117511,
           "hpr_forebody_by_part": {
             "boattail": 0.20179394471429613,
             "body": 0.13258691472593445,
@@ -4277,7 +4277,7 @@
           "band": "supersonic",
           "error": 0.21958577382182476,
           "fins": "off",
-          "hpr_base": 0.04060947303375444,
+          "hpr_base": 0.04232726198117511,
           "hpr_forebody_by_part": {
             "boattail": 0.20179394471429613,
             "body": 0.13258691472593445,
@@ -4297,7 +4297,7 @@
           "band": "supersonic",
           "error": 0.5051683270938947,
           "fins": "on",
-          "hpr_base": 0.0338412275281287,
+          "hpr_base": 0.03527271831764594,
           "hpr_forebody_by_part": {
             "boattail": 0.15626397303680495,
             "body": 0.12473265134670469,
@@ -4318,7 +4318,7 @@
           "band": "supersonic",
           "error": 0.13608547751088174,
           "fins": "off",
-          "hpr_base": 0.0338412275281287,
+          "hpr_base": 0.03527271831764594,
           "hpr_forebody_by_part": {
             "boattail": 0.15626397303680495,
             "body": 0.12473265134670469,
@@ -4338,7 +4338,7 @@
           "band": "supersonic",
           "error": 0.7665223159294081,
           "fins": "on",
-          "hpr_base": 0.02648443893505725,
+          "hpr_base": 0.027604736074679427,
           "hpr_forebody_by_part": {
             "boattail": 0.11096583910484412,
             "body": 0.11184182944127366,
@@ -4359,7 +4359,7 @@
           "band": "supersonic",
           "error": 0.1883495706040763,
           "fins": "off",
-          "hpr_base": 0.02648443893505725,
+          "hpr_base": 0.027604736074679427,
           "hpr_forebody_by_part": {
             "boattail": 0.11096583910484412,
             "body": 0.11184182944127366,
@@ -4379,7 +4379,7 @@
           "band": "supersonic",
           "error": 1.0495202158721675,
           "fins": "on",
-          "hpr_base": 0.025027748488705173,
+          "hpr_base": 0.02564795553308345,
           "hpr_forebody_by_part": {
             "boattail": 0.07787635959216255,
             "body": 0.09647042544578101,
@@ -4400,7 +4400,7 @@
           "band": "supersonic",
           "error": 0.19351089188691217,
           "fins": "off",
-          "hpr_base": 0.025027748488705173,
+          "hpr_base": 0.02564795553308345,
           "hpr_forebody_by_part": {
             "boattail": 0.07787635959216255,
             "body": 0.09647042544578101,
@@ -4420,7 +4420,7 @@
           "band": "supersonic",
           "error": 1.396752876495532,
           "fins": "on",
-          "hpr_base": 0.022663178690949783,
+          "hpr_base": 0.02290421456595041,
           "hpr_forebody_by_part": {
             "boattail": 0.050907451897434106,
             "body": 0.07781381410182413,
@@ -4441,7 +4441,7 @@
           "band": "supersonic",
           "error": 0.24104738540307347,
           "fins": "off",
-          "hpr_base": 0.022663178690949783,
+          "hpr_base": 0.02290421456595041,
           "hpr_forebody_by_part": {
             "boattail": 0.050907451897434106,
             "body": 0.07781381410182413,
@@ -4461,7 +4461,7 @@
           "band": "supersonic",
           "error": 1.5403150093559979,
           "fins": "on",
-          "hpr_base": 0.020550433960588026,
+          "hpr_base": 0.020690941473966613,
           "hpr_forebody_by_part": {
             "boattail": 0.04003183894342701,
             "body": 0.0681297033124321,
@@ -4482,7 +4482,7 @@
           "band": "supersonic",
           "error": 0.22561948415438127,
           "fins": "off",
-          "hpr_base": 0.020550433960588026,
+          "hpr_base": 0.020690941473966613,
           "hpr_forebody_by_part": {
             "boattail": 0.04003183894342701,
             "body": 0.0681297033124321,
@@ -4591,7 +4591,7 @@
           "band": "transonic",
           "error": 0.5134626295190912,
           "fins": "on",
-          "hpr_base": 0.07553196949018127,
+          "hpr_base": 0.0766930230397429,
           "hpr_forebody_by_part": {
             "boattail": 0.18694288416132746,
             "body": 0.1952575606680645,
@@ -4612,7 +4612,7 @@
           "band": "transonic",
           "error": 0.5411593844124329,
           "fins": "off",
-          "hpr_base": 0.07553196949018127,
+          "hpr_base": 0.0766930230397429,
           "hpr_forebody_by_part": {
             "boattail": 0.18694288416132746,
             "body": 0.1952575606680645,
@@ -4632,7 +4632,7 @@
           "band": "transonic",
           "error": 0.07982018436611282,
           "fins": "on",
-          "hpr_base": 0.060914209550631655,
+          "hpr_base": 0.06349089297176268,
           "hpr_forebody_by_part": {
             "boattail": 0.291164343617337,
             "body": 0.19592398277803888,
@@ -4653,7 +4653,7 @@
           "band": "transonic",
           "error": 0.5078265443326926,
           "fins": "off",
-          "hpr_base": 0.060914209550631655,
+          "hpr_base": 0.06349089297176268,
           "hpr_forebody_by_part": {
             "boattail": 0.291164343617337,
             "body": 0.19592398277803888,
@@ -4673,7 +4673,7 @@
           "band": "supersonic",
           "error": 0.3085374859756327,
           "fins": "on",
-          "hpr_base": 0.05076184129219305,
+          "hpr_base": 0.0529090774764689,
           "hpr_forebody_by_part": {
             "boattail": 0.29095948751247525,
             "body": 0.18968407653174657,
@@ -4694,7 +4694,7 @@
           "band": "supersonic",
           "error": 0.34279448644940813,
           "fins": "off",
-          "hpr_base": 0.05076184129219305,
+          "hpr_base": 0.0529090774764689,
           "hpr_forebody_by_part": {
             "boattail": 0.29095948751247525,
             "body": 0.18968407653174657,
@@ -4714,7 +4714,7 @@
           "band": "supersonic",
           "error": 0.5026494742857568,
           "fins": "on",
-          "hpr_base": 0.0338412275281287,
+          "hpr_base": 0.03527271831764594,
           "hpr_forebody_by_part": {
             "boattail": 0.15598601704585838,
             "body": 0.16885792126439936,
@@ -4735,7 +4735,7 @@
           "band": "supersonic",
           "error": 0.22330238605807984,
           "fins": "off",
-          "hpr_base": 0.0338412275281287,
+          "hpr_base": 0.03527271831764594,
           "hpr_forebody_by_part": {
             "boattail": 0.15598601704585838,
             "body": 0.16885792126439936,
@@ -4755,7 +4755,7 @@
           "band": "supersonic",
           "error": 0.6757818111534146,
           "fins": "on",
-          "hpr_base": 0.02648443893505725,
+          "hpr_base": 0.027604736074679427,
           "hpr_forebody_by_part": {
             "boattail": 0.11071660920236079,
             "body": 0.15140685799556608,
@@ -4776,7 +4776,7 @@
           "band": "supersonic",
           "error": 0.13522414482511236,
           "fins": "off",
-          "hpr_base": 0.02648443893505725,
+          "hpr_base": 0.027604736074679427,
           "hpr_forebody_by_part": {
             "boattail": 0.11071660920236079,
             "body": 0.15140685799556608,
@@ -4796,7 +4796,7 @@
           "band": "supersonic",
           "error": 0.9034154516521069,
           "fins": "on",
-          "hpr_base": 0.025027748488705173,
+          "hpr_base": 0.02564795553308345,
           "hpr_forebody_by_part": {
             "boattail": 0.07766138354208817,
             "body": 0.13059768495570553,
@@ -4817,7 +4817,7 @@
           "band": "supersonic",
           "error": 0.16555311223196112,
           "fins": "off",
-          "hpr_base": 0.025027748488705173,
+          "hpr_base": 0.02564795553308345,
           "hpr_forebody_by_part": {
             "boattail": 0.07766138354208817,
             "body": 0.13059768495570553,
@@ -4837,7 +4837,7 @@
           "band": "supersonic",
           "error": 1.2144832345173375,
           "fins": "on",
-          "hpr_base": 0.022663178690949783,
+          "hpr_base": 0.02290421456595041,
           "hpr_forebody_by_part": {
             "boattail": 0.05073405050193353,
             "body": 0.10534113364083124,
@@ -4858,7 +4858,7 @@
           "band": "supersonic",
           "error": 0.15888971648064243,
           "fins": "off",
-          "hpr_base": 0.022663178690949783,
+          "hpr_base": 0.02290421456595041,
           "hpr_forebody_by_part": {
             "boattail": 0.05073405050193353,
             "body": 0.10534113364083124,
@@ -4878,7 +4878,7 @@
           "band": "supersonic",
           "error": 1.3312805181938443,
           "fins": "on",
-          "hpr_base": 0.020550433960588026,
+          "hpr_base": 0.020690941473966613,
           "hpr_forebody_by_part": {
             "boattail": 0.03988001775633089,
             "body": 0.09223118368357747,
@@ -4899,7 +4899,7 @@
           "band": "supersonic",
           "error": 0.1752504574296565,
           "fins": "off",
-          "hpr_base": 0.020550433960588026,
+          "hpr_base": 0.020690941473966613,
           "hpr_forebody_by_part": {
             "boattail": 0.03988001775633089,
             "body": 0.09223118368357747,

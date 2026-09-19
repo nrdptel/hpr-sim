@@ -49,8 +49,9 @@
 //!   boattail gives no relief (weight as above).
 //!
 //! Narrowing parts of one smooth surface drag as one cone ([`crate::drag::BoattailTerm`]), and a
-//! lip right behind a boattail sits in its wake ([`crate::drag::WakeTerm`]); both weights, and the
-//! base's relief, are continuous in the geometry.
+//! lip behind a boattail sits in its wake ([`crate::drag::WakeTerm`]); every part between a
+//! boattail and what follows fades both, and the base's relief, so each is continuous in the
+//! geometry.
 //!
 //! Outside the data: the chart below `a = 0.25` (Jack's theory reaches 0.2), attached flow up to
 //! 16° where Jack's theory stops at 11°, Cubbage's separation angles (measured to Mach 1.28) at

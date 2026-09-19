@@ -544,8 +544,8 @@ parasitic term on its own area. The axial coefficient is `C_A = C_D0 f(α)`.
   would count that base twice and leave out the uncovered ring (annulus), so hpr reads both as the
   boattail's decrease in area (Calisto's boattail: 0.052, against 0.046 the other way). The joint
   angle is `atan(dr/dx)` at the aft end, `±π/2` where a curved transition ends in a blunt tip.
-  From Mach 0.8 a boattail's drag rises to its supersonic wave drag, and a shoulder right behind
-  it is in its wake ([Boattails faster than sound](#boattails-faster-than-sound)).
+  From Mach 0.8 a boattail's drag rises to its supersonic wave drag, and a lip just behind it
+  is in its wake ([Boattails faster than sound](#boattails-faster-than-sound)).
 - **Base drag under power** subtracts the thrusting motors' cross-section from the aft base, down
   to zero ([N09] p. 50: "if the base is the same size as the motor itself, no base drag";
   [Loft lesson L13](../decisions-and-roadmap.md#l13)).
@@ -747,9 +747,9 @@ were made with no motor exhaust.
 | separation | between 16° and 30°, a straight-line blend in `θ` from the attached value to the base drag on the annulus, `(C_D•)_base(1 − a)`, where [flow separates](../glossary.md#flow-separation) | [C57] pp. 6, 8 |
 | through Mach 1 | the rule to Mach 0.8, where the buildup's other transonic terms start; a straight line to Mach 1; from there the attached drag held at its Mach 1.2 value to Mach 1.2 | [N09] p. 47, [762] p. 5-47 |
 | base behind a boattail | from Mach 2.5, `p_cyl/p_bt = 0.442 + 0.558 a_b`, with the cylinder's pressure from Love's correlation of measured bases, turned into the ratio of the two base-pressure coefficients, `k = (1 − p_bt/p)/(1 − p_cyl/p)`, which multiplies hpr's own base drag; below Mach 2.5, `k` at Mach 2.5; back to 1 between Mach 1 and 0.8; none for a separated boattail | [762] Figs. 5-139, 5-141, pp. 5-208, 5-210 |
-| a lip in its wake | a lip behind a boattail, drawn as a shoulder, a step up or both, in one part or several, loses its pressure drag while its top rises up to a quarter of the boattail's drop in diameter above the boattail's end, keeps all of it from half, and a straight-line share between; a lip in parts takes, at each part, the share its highest top so far leaves; the base behind it takes the same share of the relief | [D4014] p. 6, [R22] slide 2; the quarter and half are a judgement |
-| a boattail in parts | a narrowing part right after another drags, as its share of the boattail it continues, as the cone from that boattail's start through its aft end less the cone through its fore end (never below 0); so parts of one smooth surface add up to one cone. Its drag is that share for a turn of up to 3° between the parts, its own drag as a boattail from 10° (a corner), and a straight-line blend of the two between | a judgement |
-| gaps and steps | a tube between a boattail and what follows fades the merge, the wake and the base's relief over one drop in diameter; so does a step down, a corner the flow separates at; a small gap or step changes the drag a little | a judgement |
+| a lip in its wake | a lip behind a boattail, drawn as a shoulder, a step up or both, in one part or several, loses its pressure drag while its top rises up to a quarter of the boattail's drop in diameter above the boattail's end, keeps all of it from half, and a straight-line share between; a step up is judged by its own top, a shoulder by the highest top so far; the base behind it takes the same share of the relief | [D4014] p. 6, [R22] slide 2; the quarter and half are a judgement |
+| a boattail in parts | a narrowing part after another drags, as its share of the boattail it continues, as the cone from that boattail's start through its aft end less the cone through its fore end (never below 0); so parts of one straight cone add up to one cone. Its drag is that share for a turn of up to 3° between the parts, its own drag as a boattail from 10° (a corner), and a straight-line blend of the two between. This holds at every speed, so below Mach 0.8 a curved boattail in parts drags as the cones through its ends, not part by part as eq. 3.88 would | a judgement |
+| gaps and steps | everything after a boattail fades what the flow still takes from it, over one drop in diameter: a tube by its length, a step down by its drop, a lip by its length, and a narrowing part by its drop and its length, as a step and a tube, while it also starts a boattail of its own. The base and each lip take the strongest boattail left. So a part narrowing by nothing drags as a tube, a part of no length as a step, and a small change in any radius or length changes the drag a little | a judgement |
 
 Why each piece is there:
 
@@ -842,7 +842,11 @@ and Cubbage's long, gentle boattails 0 to 0.009 where they measure 0.011 to 0.07
   curves read up to 32% above Jack past `x ≈ 1`, 0.0084 at most.
 - A tube behind a boattail loses the base's relief over one drop in diameter, and the 3°, 10°,
   quarter and half that shape the merge and the wake are judgements, with no measurement behind
-  them but the Arcas Robin's lip.
+  them but the Arcas Robin's lip. Its own 1.3 mm length is a gap too: the base keeps 0.944 of its
+  relief.
+- A straight cone drawn in parts drags as one cone, unless its first part only partly merges with
+  a boattail ahead of it (a turn of 3° to 10°); then the parts may drag a little differently from
+  the one cone, within the two limits above.
 - Nothing models the jet. Fig. 5-141 is measured with the motor off, as is the base drag it
   scales, and under power hpr applies both to what the motors leave of the base.
 
@@ -867,8 +871,8 @@ and Cubbage's long, gentle boattails 0 to 0.009 where they measure 0.011 to 0.07
   curves, and cones and ogives Niskanen's closed form, which reads 45% to 105% above Stoney's
   measured 3:1 cone there (the cross-check above).
 - **Shoulders and boattails past Mach 1.** A shoulder takes the nose method, which [N09] calls
-  "somewhat dubious at supersonic velocities" (p. 48), except right behind a boattail, where it
-  has none. A boattail keeps eq. 3.88 to Mach 0.8, a rule "based primarily on subsonic data"
+  "somewhat dubious at supersonic velocities" (p. 48), except a lip in a boattail's wake, which
+  loses a share of it. A boattail keeps eq. 3.88 to Mach 0.8, a rule "based primarily on subsonic data"
   (p. 49), which over-predicts the Arcas Robin's 15° boattail and gives long boattails nothing
   (issue [#73](https://github.com/nrdptel/hpr-sim/issues/73)). Faster than sound its wave drag
   reads high for steep boattails in a thick boundary layer
