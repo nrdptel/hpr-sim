@@ -300,12 +300,56 @@ impl Simulation {
     /// attack, instead of hpr's own ([`hpr_aero::NormalForceTable`], read from a RASAero II
     /// export). The table sets the static normal force at the centre of mass's airflow; the pitch
     /// and yaw damping stay hpr's, from the airspeed the rotation adds at each component, since a
-    /// table has none (ADR-032). The flight still refuses Mach 5 and faster, where hpr's
-    /// components, which give that damping, end.
-    #[must_use]
-    pub fn with_normal_force_table(mut self, table: NormalForceTable) -> Self {
-        self.vehicle.aero = self.vehicle.aero.clone().with_normal_force_table(table);
-        self
+    /// table has none (the decision record on normal-force overrides, [ADR-032][adr-032]). The
+    /// flight still refuses Mach 5 and faster, where hpr's components, which give that damping,
+    /// end.
+    ///
+    /// [adr-032]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-032-normal-force-overrides-from-rasaero-ii-the-static-force-replaced-hprs-damping-kept-2026-09-19
+    ///
+    /// # Errors
+    ///
+    /// [`SimError::Aero`] around [`hpr_aero::AeroError::Domain`] for a centre of pressure in the
+    /// table outside the rocket ([`hpr_aero::AeroModel::with_normal_force_table`]).
+    ///
+    /// # Examples
+    ///
+    /// Valetudo from a 3 m rail on a small export with invented numbers: 9 per radian, and the
+    /// centre of pressure 55 inches from the nose tip.
+    ///
+    /// ```
+    /// use hpr_aero::NormalForceTable;
+    /// use hpr_core::geodesy::Geodetic;
+    /// use hpr_design::Rocket;
+    /// use hpr_sim::{Environment, EventKind, FlightSettings, Rail, Simulation};
+    ///
+    /// let rocket: Rocket = serde_json::from_str(include_str!(
+    ///     "../../../validation/designs/rocketpy-valetudo.json"
+    /// ))?;
+    /// // The text of a RASAero II export; a program would read it from the file.
+    /// let export = "Mach,Alpha,CN,CN Potential,CP\n\
+    ///               0,0,0,0,55\n\
+    ///               1,0,0,0,55\n\
+    ///               0,2,0.314159,0.314159,55\n\
+    ///               1,2,0.314159,0.314159,55\n";
+    /// // On RASAero II's reference, the body's largest section, which hpr rescales to the
+    /// // rocket's reference area.
+    /// let table = NormalForceTable::from_rasaero_csv(export)?;
+    /// let site = Geodetic::from_degrees(32.99, -106.97, 1400.0)?;
+    /// let simulation = Simulation::new(
+    ///     &rocket,
+    ///     "example",
+    ///     Environment::standard(site)?,
+    ///     Rail::vertical(3.0),
+    ///     FlightSettings::default(),
+    /// )?
+    /// .with_normal_force_table(table)?;
+    /// let flight = simulation.run(&mut ())?;
+    /// assert!(flight.event(EventKind::Apogee).is_some());
+    /// # Ok::<(), Box<dyn std::error::Error>>(())
+    /// ```
+    pub fn with_normal_force_table(mut self, table: NormalForceTable) -> Result<Self, SimError> {
+        self.vehicle.aero = self.vehicle.aero.clone().with_normal_force_table(table)?;
+        Ok(self)
     }
 
     /// Adds a user event, checked during free flight and the descent.

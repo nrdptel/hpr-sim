@@ -6,7 +6,9 @@
   [normal force](../glossary.md#normal-force) (the sideways push when flying at an angle to the
   airflow) and the [centre of pressure](../glossary.md#centre-of-pressure-cp) (where it acts) from
   [Mach](../glossary.md#mach-number) 0 to 5, drag over the same range, and the rolling moment
-  from canted fins and the roll rate.
+  from canted fins and the roll rate. A flight can also take another program's drag, or its
+  normal force and centre of pressure, in place of hpr's own
+  ([The normal force from RASAero II](#the-normal-force-from-rasaero-ii)).
 - **Sources:** Barrowman's 1966 report, 1967 thesis and Centuri TIR-33 (1970), the basis of
   [Barrowman's method](../glossary.md#barrowmans-method); supersonic linear theory for fins past
   Mach 1; for drag, mainly Niskanen's 2009 OpenRocket thesis, with Stoney's 1961 NASA measurements
@@ -68,6 +70,10 @@
     Mach 2.3 to 4.63, and 14.3% to 47.8% high at Mach 1.5 and 1.8; the roll damping reads 5.9% to 16.2% low against the one measured
     set, that of the Basic Finner, a standard finned test body, from Mach 1.5 to 3
     ([Roll against the Arcas Robin and the Basic Finner](#roll-against-the-arcas-robin-and-the-basic-finner)).
+  - *Another program's normal force*, read from RASAero II's export: every row of Calisto's
+    export comes back from hpr's table, and a flight on a table swings in pitch as the equations
+    predict; no real export has flown faster than Mach 0.75
+    ([The normal force from RASAero II](#the-normal-force-from-rasaero-ii)).
 - **What it leaves out:** large angles and [stall](../glossary.md#stall), though a flight uses
   these models at every angle. Faster than sound
   ([transonic and supersonic](../glossary.md#transonic-and-supersonic)), a steep boattail's drag
@@ -85,7 +91,8 @@
 Code: [`hpr_aero::body`](../api/hpr_aero/body/index.html) (bodies of revolution),
 [`hpr_aero::fins`](../api/hpr_aero/fins/index.html) (fin sets),
 [`hpr_aero::nose_drag`](../api/hpr_aero/nose_drag/index.html) (noses' drag through Mach 1),
-[`hpr_aero::afterbody`](../api/hpr_aero/afterbody/index.html) (boattails faster than sound) and
+[`hpr_aero::afterbody`](../api/hpr_aero/afterbody/index.html) (boattails faster than sound),
+[`hpr_aero::table`](../api/hpr_aero/table/index.html) (tables from other programs) and
 [`hpr_aero::model`](../api/hpr_aero/model/index.html) (a whole rocket's terms, built from its
 [`Layout`](../api/hpr_design/tree/struct.Layout.html)). Decisions: [ADR-008][adr-008] (normal force
 and centre of pressure) and [ADR-009][adr-009] (drag). The milestone [M1.5a](../decisions-and-roadmap.md#m1-5a) covers the
@@ -93,7 +100,9 @@ subsonic normal force and centre of pressure, [M1.5b](../decisions-and-roadmap.m
 tables; [M1.8a](../decisions-and-roadmap.md#m1-8a) the normal force through Mach 1
 ([ADR-027][adr-027]); [M1.8b1](../decisions-and-roadmap.md#m1-8b1) the drag through Mach 1
 ([ADR-028][adr-028]); [M1.8b3](../decisions-and-roadmap.md#m1-8b3) boattails faster than sound
-([ADR-030][adr-030]). The rest of transonic and supersonic flow arrives with the rest of
+([ADR-030][adr-030]); [M1.8c](../decisions-and-roadmap.md#m1-8c) roll ([ADR-031][adr-031]);
+[M1.8d](../decisions-and-roadmap.md#m1-8d) the normal force from RASAero II
+([ADR-032][adr-032]). The rest of transonic and supersonic flow arrives with the rest of
 [M1.8](../decisions-and-roadmap.md#m1-8), the supersonic aerodynamics milestone.
 
 A [Loft lesson](../glossary.md#loft-lesson) is something learned from Loft, the project that came
@@ -142,6 +151,8 @@ Sources:
   Report 1135, 1953.
 - **[R22]** C. E. Rogers, *RASAero II Comparisons with ARCAS Center of Pressure (CP) and Drag
   Coefficient (CD) Wind Tunnel Data*, Rogers Aeroscience, 2022 (slides).
+- **[RAS]** C. E. Rogers and D. Cooper, *Rogers Aeroscience RASAero II Aerodynamic Analysis and
+  Flight Simulation Program Users Manual*, version 1.0.2.0, 2019.
 
 ## Conventions
 
@@ -576,6 +587,157 @@ What it leaves out:
   (TN D-4014 Fig. 14); hpr's is the same at every angle. A single fin's roll from its normal
   force, the body's own roll, and fins' airfoil sections are not modelled.
 
+## The normal force from RASAero II
+
+A flight can use another program's normal force and centre of pressure in place of hpr's own.
+Today that program is [RASAero II](../glossary.md#rasaero-ii), read from the table it exports.
+Use it to fly two programs on the same aerodynamics, so that a difference between them comes from
+something else. Or use it to fly RASAero II's numbers faster than sound, where hpr's own normal
+force is less tested ([Fins through Mach 1](#fins-through-mach-1)).
+
+How far to trust it:
+
+- **The reading is exact.** On the export for [Calisto](../glossary.md#example-rockets), every one
+  of its 4,999 rows at a positive angle comes back from hpr's table to 2e-16.
+- **The flight uses the table as the equations say it should.** A rocket flying on a table swings
+  in pitch and yaw as the small-angle equations of motion predict for the table's slope and
+  centre of pressure.
+- **Only up to Mach 0.75 on real data.** Only one real export has been flown, Calisto's.
+  Faster than that, the table is checked by unit tests alone.
+
+Three parts are hpr's choices, not RASAero II's:
+
+- the damping, which stays hpr's own;
+- the normal force past the export's largest angle of attack (4° in the one export tested);
+- the slope at 0°, where the export's normal force is zero.
+
+In code, two calls take a file to a flight:
+
+1. [`NormalForceTable::from_rasaero_csv`](../api/hpr_aero/table/struct.NormalForceTable.html#method.from_rasaero_csv)
+   reads the text.
+2. [`Simulation::with_normal_force_table`](../api/hpr_sim/flight/struct.Simulation.html#method.with_normal_force_table)
+   flies it. Its documentation has a worked program.
+
+The decisions are in the record on normal-force overrides, [ADR-032][adr-032]. The milestone is
+[M1.8d](../decisions-and-roadmap.md#m1-8d).
+
+### What the export holds
+
+RASAero II's Aero Plots screen exports a table to CSV (File, Export, To CSV File; [RAS] p. 76).
+There is one row for each Mach number and [angle of attack](../glossary.md#angle-of-attack)
+(`Alpha`, in degrees). The Calisto export has rows at 0°, 2° and 4°. hpr reads five of the
+columns:
+
+| column | what it is |
+|---|---|
+| `Mach`, `Alpha` | the Mach number, and the angle of attack in degrees |
+| `CN` | the normal-force coefficient at that angle |
+| `CN Potential` | the part of `CN` from potential flow (the air treated as smooth and without friction), which grows in step with the angle |
+| `CP` | the centre of pressure, in inches ([RAS] p. 13) measured from the nose tip (p. 114) |
+
+`CN` also holds a viscous part, `CN Viscous`. It is the extra push, from the air's friction, of
+the air flowing sideways across the body. RASAero II takes it from Jorgensen's method ([RAS]
+p. 55), adds it from Mach 0.91 in Calisto's export, and moves the centre of pressure forward with
+the angle. hpr's own model has neither. Through Mach 1.1 the viscous part grows as the square of
+the angle: at 4° it is 4.00 times its value at 2°. Faster, it grows more slowly: 3.16 times at
+Mach 2, 1.73 times at Mach 3. The export's `CNalpha (0 to 4 deg)` and `CP (0 to 4 deg)` columns
+repeat its 4° values on every row; hpr doesn't read them.
+
+### How hpr reads it
+
+hpr builds one column for each angle in the export. Each column holds `C_N/α` (the normal force
+over the angle, per radian) and the centre of pressure, both against Mach number.
+
+- **At a positive angle**, `C_N/α` is `CN` over the angle in radians.
+- **At 0°**, `CN` is zero, so it can't be divided. hpr takes `CN Potential` at the smallest
+  positive angle, over that angle. The potential part grows in step with the angle: in Calisto's
+  export its `C_N/α` is the same at 2° and 4° to 2e-15. The viscous part grows faster than the
+  angle, so it adds no slope at 0°.
+- **The centre of pressure** is converted from inches to metres at 0.0254 m to the inch. It
+  stays measured from the nose tip, as hpr's stations are
+  ([station](../glossary.md#station)). So the design must start at the same nose tip as the
+  RASAero II file. A centre of pressure outside the rocket, ahead of its nose or behind its tail,
+  is refused: it is the sign of a length in the wrong unit.
+- **Reference area.** RASAero II's coefficients are on the body's largest cross-section ([RAS]
+  p. 72). hpr records that and rescales them to the rocket's own
+  [reference area](../glossary.md#reference-area), when that is something else.
+
+A flight looks up the table at its Mach number and angle of attack:
+
+- Within one column, the values are linear in Mach number. Outside a column's range the end
+  values hold, and the lookup says so.
+- Between two columns, `C_N/α` and the centre of pressure are linear in the angle. Then
+  `C_N = (C_N/α)·α` comes back exactly at each column's angle. Between them it is a part in step
+  with the angle plus one in its square: RASAero II's own shape through Mach 1.1, and an
+  assumption faster than that.
+- **Past the largest angle** `α_n`, the normal force splits in two. The linear share is the
+  slope at 0° times `α_n`, at the 0° centre of pressure; it grows as `sin α`, as hpr's own fins do
+  ([Aerodynamics in flight](flight.md#aerodynamics-in-flight)). The rest of the force, with the
+  rest of the moment, grows as `sin² α`, the form of the air crossing the body that hpr's
+  [body lift](#bodies-of-revolution) also takes ([G] p. 1; [N09] eq. 3.26). The force and centre
+  of pressure are continuous at `α_n`, and the force is zero when the air comes from the tail.
+  This is an assumption, and the lookup reports it.
+
+**A worked example.** Take an export with invented numbers. At Mach 1, `CN Potential` is 10 per
+radian times the angle, `CN Viscous` is 0.03 at 2° and 0.12 at 4°, and the centre of pressure is
+50, 49 and 48 inches at 0°, 2° and 4°. These are the numbers in the CSV reader's unit test,
+`reads_a_rasaero_export_by_angle_of_attack`.
+
+| angle | `CN` | `C_N/α`, per rad | centre of pressure |
+|---|---|---|---|
+| 0° | 0 | 10.000 (`CN Potential` at 2° over 2°) | 1.2700 m |
+| 2° | 0.37907 | 10.8594 | 1.2446 m |
+| 3° (looked up) | 0.59110 | 11.2892, halfway between 2° and 4° | 1.2319 m |
+| 4° | 0.81813 | 11.7189 | 1.2192 m |
+| 10° (past the table) | 2.4815 | 14.2180 | 1.1662 m |
+
+At 10°, `sin 10°/sin 4°` is 2.4893. The linear share, 10 × 0.069813 = 0.69813 at 1.2700 m,
+grows to 1.7379. The rest, 0.12 at 0.9236 m (the station that gives the 4° moment), grows by
+2.4893² to 0.7436. Together they make 2.4815 at 1.1662 m: the centre of pressure moves forward
+with the angle, as RASAero II's does.
+
+### In a flight
+
+The flight takes the table's normal force at the centre of mass's airflow and applies it at the
+table's centre of pressure.
+
+The export has no damping, so hpr keeps its own ([Rigid-body flight](flight.md)). The table gives
+the force as if the rocket weren't turning. When it turns, each part of the rocket meets the air
+at a slightly different angle, and hpr adds that difference: it is the damping. When the rocket
+isn't turning, the difference is exactly zero.
+
+The flight still stops at Mach 5, where hpr's own parts, which give the damping, end. The table
+gives no side force: RASAero II's rockets are symmetric.
+
+### How it was checked
+
+| check | result | where the numbers are |
+|---|---|---|
+| Calisto's export, every row at 2° and 4° read again apart from the library | 4,999 rows; `CN` within 2.2e-16 relative, `CP` exact; columns at 0°, 2° and 4° of 2,500, 2,500 and 2,499 Mach numbers, from Mach 0.01 to 25 (24.99 at 4°) | [`normal-force-override.json`][override-fixture] |
+| The 0° column at 15 Mach numbers against the reading of the export made for [M1.8a](../decisions-and-roadmap.md#m1-8a), the normal force through Mach 1, which [`normal-force-vs-mach.json`][mach-fixture] holds | the same to 1e-12 relative, in CI (that reading applies the same 0° rule, so this checks the reading, not the rule) | both files |
+| [Valetudo](../glossary.md#example-rockets) at 100 m/s on a table of 1.5 times hpr's slope with the centre of pressure 5 cm further aft, against the small-angle equations of motion, in pitch and in yaw | period 1.104077 s against 1.104073 s, within the test's 3e-5 (1.44965 s on hpr's own); the decay within 0.03%, the test's bound 1% | `hpr_sim::tests::pitch_oscillation_follows_a_normal_force_table` |
+| A dense table of hpr's own normal force (every 0.5°, every Mach 0.01), flown in a crosswind | its apogee within 7.8 mm of hpr's own flight, the test's bound 5 cm | `hpr_sim::tests::a_table_of_hpr_s_own_normal_force_flies_as_hpr_does` |
+| Calisto from a 5.2 m rail at 85° in a 5 m/s crosswind, up to Mach 0.746: on the export, on hpr's own normal force, and on hpr's own as a table at the export's angles | the export: apogee 2,793.11 m against 2,794.39 m, 14.2 m further into the wind. hpr's own as a table moves it 0.03 m: the table's method, apart from its numbers. Each flight spends about 2.2 s past 4° before apogee | [`normal-force-override.json`][override-fixture] |
+
+The Calisto flights show how much the change matters. They are not a check of accuracy: nothing
+measured flew. `cargo xtask aero` writes the fixture from the export, which isn't committed. So
+the whole reading is checked where the export is present, and CI checks the 0° column.
+
+[override-fixture]: https://github.com/nrdptel/hpr-sim/blob/main/validation/fixtures/aero/normal-force-override.json
+[mach-fixture]: https://github.com/nrdptel/hpr-sim/blob/main/validation/fixtures/aero/normal-force-vs-mach.json
+
+What it leaves out:
+
+- **No real export has been flown through Mach 1.** Calisto peaks at Mach 0.75. The reader's unit
+  tests cover the transonic columns.
+- **Past the export's largest angle**, the split continuation is hpr's assumption. In a 5 m/s
+  crosswind Calisto flies past 4° for about 0.2 s just after leaving the rail (up to 7.9°) and for
+  the last 1.8 s before apogee, as it slows below 30 m/s.
+- **The nose tip** can't be checked from the export beyond the refusal above. A design that
+  starts somewhere else gets a shifted centre of pressure, with no warning.
+- **Only RASAero II's layout is read.** A table from anywhere else can be built in code with
+  [`NormalForceTable::new`](../api/hpr_aero/table/struct.NormalForceTable.html#method.new).
+
 ## Drag
 
 Code: [`hpr_aero::drag`](../api/hpr_aero/drag/index.html) (the terms),
@@ -721,7 +883,9 @@ parasitic term on its own area. The axial coefficient is `C_A = C_D0 f(α)`.
   hold their end values; `Drag::table` reports any extrapolation. `DragConditions::thrusting`
   selects the power-on curve. A table's `reference_diameter_m`, when set, rescales it to the
   rocket's reference area. The angle-of-attack factor still applies, and an override accepts any
-  Mach number. `AeroModel::buildup_components` always reports the buildup, table or not.
+  Mach number. `AeroModel::buildup_components` always reports the buildup, table or not. The
+  normal force has a table of its own
+  ([The normal force from RASAero II](#the-normal-force-from-rasaero-ii)).
 
 ### Drag through Mach 1
 
@@ -1661,3 +1825,4 @@ ellipse's integrals ([N09] eq. 3.70–3.71); the supersonic forcing and damping 
 [finner-fixture]: https://github.com/nrdptel/hpr-sim/blob/main/validation/fixtures/aero/basic-finner-roll-damping.json
 [adr-011]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-011-rigid-body-flight-equations-of-motion-aerodynamic-coupling-rail-phases-and-termination-2026-09-17
 [adr-031]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-031-roll-from-canted-fins-and-roll-damping-by-barrowmans-strip-theory-2026-09-19
+[adr-032]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-032-normal-force-overrides-from-rasaero-ii-the-static-force-replaced-hprs-damping-kept-2026-09-19

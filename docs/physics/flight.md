@@ -200,6 +200,11 @@ q̇   = ½ q ⊗ (0, ω)
     `sin² α`.
   - `hpr-aero` has no pitch or yaw damping coefficients; they would have to replace the
     local-flow damping, not add to it.
+  - A flight on another tool's normal force keeps this damping. The table
+    ([The normal force from RASAero II](aero.md#the-normal-force-from-rasaero-ii)) gives the
+    normal force at the centre of mass's airflow, and each component adds only its force in its
+    own local flow minus its force in the centre of mass's airflow: the part the rotation makes.
+    Without rotation that part is exactly zero ([ADR-032][adr-032]).
 - **Roll.** The fins' cant drives the roll and the roll rate damps it: a moment
   `q A d (C_l0 cos α + C_lp p d/2V)` about `z_B`, with `q` the dynamic pressure, `A` and `d` the
   reference area and diameter, `C_l0` the cant's rolling moment, `C_lp` the damping and
@@ -411,6 +416,7 @@ tolerances; [Accuracy][accuracy] gives every result.
 
 [adr-007]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-007-design-tree-stations-placement-automatic-radii-overrides-motors-and-checks-2026-09-17
 [adr-011]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-011-rigid-body-flight-equations-of-motion-aerodynamic-coupling-rail-phases-and-termination-2026-09-17
+[adr-032]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-032-normal-force-overrides-from-rasaero-ii-the-static-force-replaced-hprs-damping-kept-2026-09-19
 [report]: https://github.com/nrdptel/hpr-sim/blob/main/validation/reports/latest.md
 [adr-021]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-021-whole-flights-against-rocketpy-what-is-compared-and-the-gaps-it-may-declare-2026-09-18
 [adr-026]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-026-the-path-in-wind-rocketpys-corrected-equations-and-hprs-body-lift-2026-09-18

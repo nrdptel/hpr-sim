@@ -73,7 +73,8 @@ pub use model::{
 };
 pub use nose_drag::{PressureDragCurve, StoneyNose};
 pub use table::{
-    DragTable, NormalForceColumn, NormalForceLookup, NormalForceTable, parse_mach_csv,
+    DragTable, NormalForceColumn, NormalForceLookup, NormalForceTable, TableReference,
+    parse_mach_csv,
 };
 
 #[cfg(test)]

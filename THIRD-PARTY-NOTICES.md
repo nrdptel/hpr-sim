@@ -46,8 +46,10 @@ adds a source.
   values and the errors, which together give each curve's value back at the sampled Mach numbers,
   147 in all, ADR-029). The curve files themselves carry
   their own terms and are **not** committed. The designs' drag inputs cite RASAero II's Users
-  Manual (2019, p. 53) for its default surface finish, and Projeto Jupiter's rocket page
-  (projetojupiter.com/foguetes) for Juno III's fin profile; neither is redistributed.
+  Manual (2019, p. 53) for its default surface finish, and `hpr_aero`'s reader of RASAero II's
+  export cites it for the export's units and datum (pp. 13, 72, 76, 114); Projeto Jupiter's
+  rocket page (projetojupiter.com/foguetes) gives Juno III's fin profile. Neither is
+  redistributed.
 
 ## Ported
 

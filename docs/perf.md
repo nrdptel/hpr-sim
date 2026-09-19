@@ -3,6 +3,24 @@
 Measured numbers only, newest first within each section. Record the machine, the toolchain, and
 the command, so a later run can be compared like for like.
 
+## Normal-force tables (M1.8d)
+
+- **Benchmark:** `cargo bench -p hpr-sim --bench flight -- "K400C to the ground|normal-force
+  table"`, criterion, release profile, 2026-09-19 on an Apple M5 with rustc 1.98.1.
+- **Input:** the M1.6b flight below, and the same flight on a table of hpr's own normal force at
+  0°, 2° and 4° and every Mach 0.01 from 0 to 1, the shape of a RASAero II export.
+
+| flight | median |
+|---|---|
+| Valetudo K400C to the ground | 1.122 ms |
+| the same on a normal-force table | 1.502 ms |
+
+- **Where the time goes.** With a table, each component is evaluated twice per derivative
+  evaluation, in its local flow and in the centre of mass's, and the table is looked up once:
+  34% more here, 3.3 times under the M1.6 budget of 5 ms. The second evaluation repeats the
+  centre of mass's flow angles for every component; passing them in would save part of it if a
+  table flight ever becomes a hot path.
+
 ## Roll (M1.8c)
 
 - **Benchmark:** `cargo bench -p hpr-aero --bench normal_force -- roll`, criterion, release

@@ -401,14 +401,26 @@ fn pitch_oscillation_matches_linear_theory() {
     assert!((decay / expected_decay - 1.0).abs() < 0.01);
 }
 
-#[test]
-fn pitch_oscillation_follows_a_normal_force_table() {
-    // As `pitch_oscillation_matches_linear_theory`, with a normal-force table in place of hpr's
-    // own: a slope of 1.5 times hpr's and a centre of pressure 5 cm further aft. The table sets
-    // the static force and moment, `Z = q̄A C_Nα,T` and `K₁ = q̄A C_Nα,T (X_T − x_cg)`; the damping
-    // stays hpr's, from each component's lever arm: `K₁,h = q̄A Σ C_Nαᵢ ℓᵢ` in the path and
-    // `K₂ = q̄A Σ C_Nαᵢ ℓᵢ²` in the moment. So
-    //   α̇ = −Z/(mV) α + (1 − K₁,h/(mV²)) θ̇,   I θ̈ = −K₁ α − K₂/V θ̇.
+/// The measured and predicted motion of Valetudo at 100 m/s, with no drag and no gravity, on a
+/// normal-force table of 1.5 times hpr's slope with its centre of pressure 5 cm further aft,
+/// started 0.005 rad off in pitch (`yaw` false) or in yaw.
+struct TableOscillation {
+    /// The measured period and its prediction, s.
+    period: (f64, f64),
+    /// The measured decay per half period and its prediction.
+    decay: (f64, f64),
+    /// The period predicted with the table's `K₁` in the path equation in place of hpr's, s.
+    table_k1_in_path: f64,
+    /// The decay predicted with the damping lumped at the table's centre of pressure.
+    lumped_decay: f64,
+}
+
+/// As `pitch_oscillation_matches_linear_theory`, with a normal-force table in place of hpr's own.
+/// The table sets the static force and moment, `Z = q̄A C_Nα,T` and `K₁ = q̄A C_Nα,T (X_T − x_cg)`;
+/// the damping stays hpr's, from each component's lever arm: `K₁,h = q̄A Σ C_Nαᵢ ℓᵢ` in the path
+/// and `K₂ = q̄A Σ C_Nαᵢ ℓᵢ²` in the moment. So
+///   α̇ = −Z/(mV) α + (1 − K₁,h/(mV²)) θ̇,   I θ̈ = −K₁ α − K₂/V θ̇.
+fn table_oscillation(yaw: bool) -> TableOscillation {
     use hpr_aero::{NormalForceColumn, NormalForceTable};
     use hpr_core::interp::{Extrapolation, Interpolation, Table1D};
 
@@ -418,7 +430,12 @@ fn pitch_oscillation_follows_a_normal_force_table() {
     let own = valetudo(analytic_environment(air, 0.0), capped(t0 + 10.0))
         .with_drag_table(constant_drag(0.0));
     let mass = own.assembly().mass_properties(t0);
-    let (m, x_cg, inertia) = (mass.mass_kg, -mass.cg_m.z, mass.inertia_kg_m2.y_axis.y);
+    let inertia = if yaw {
+        mass.inertia_kg_m2.x_axis.x
+    } else {
+        mass.inertia_kg_m2.y_axis.y
+    };
+    let (m, x_cg) = (mass.mass_kg, -mass.cg_m.z);
     let aero = own.aero();
     let mach = speed / air.0.speed_of_sound_m_s;
     let q_area = 0.5 * air.0.density_kg_m3 * speed * speed * aero.reference_area_m2();
@@ -450,23 +467,41 @@ fn pitch_oscillation_follows_a_normal_force_table() {
     };
     let table = NormalForceTable::new(vec![NormalForceColumn::new(0.0, flat(slope_t), flat(cp_t))])
         .unwrap();
-    let sim = own.with_normal_force_table(table).with_event(UserEvent {
-        name: "pitch rate crosses zero".to_owned(),
-        direction: Direction::Either,
-        function: Box::new(|sample| sample.state.body_rate_rad_s.y),
-    });
+    let sim = own
+        .with_normal_force_table(table)
+        .unwrap()
+        .with_event(UserEvent {
+            name: "body rate crosses zero".to_owned(),
+            direction: Direction::Either,
+            function: Box::new(move |sample| {
+                let rate = sample.state.body_rate_rad_s;
+                if yaw { rate.x } else { rate.y }
+            }),
+        });
     let (z, k1) = (q_area * slope_t, q_area * slope_t * (cp_t - x_cg));
-    let (a11, a12) = (-z / (m * speed), 1.0 - k1_h / (m * speed * speed));
-    let (a21, a22) = (-k1 / inertia, -k2 / (inertia * speed));
-    let trace = a11 + a22;
-    let determinant = a11 * a22 - a12 * a21;
-    let damped = (determinant - 0.25 * trace * trace).sqrt();
-    let period = 2.0 * PI / damped;
+    // The damped period and the decay per half period of the linear system.
+    let solve = |a12: f64, a22: f64| {
+        let (a11, a21) = (-z / (m * speed), -k1 / inertia);
+        let trace = a11 + a22;
+        let damped = (a11 * a22 - a12 * a21 - 0.25 * trace * trace).sqrt();
+        let period = 2.0 * PI / damped;
+        (period, 0.25 * trace * period)
+    };
+    let (period, expected_decay) = solve(1.0 - k1_h / (m * speed * speed), -k2 / (inertia * speed));
+    let (table_k1_in_path, _) = solve(1.0 - k1 / (m * speed * speed), -k2 / (inertia * speed));
+    let (_, lumped_decay) = solve(
+        1.0 - k1 / (m * speed * speed),
+        -q_area * slope_t * (cp_t - x_cg).powi(2) / (inertia * speed),
+    );
 
     let state = State {
         position_enu_m: DVec3::new(0.0, 0.0, 1000.0),
         velocity_enu_m_s: DVec3::new(0.0, 0.0, speed),
-        attitude: DQuat::from_rotation_y(0.005),
+        attitude: if yaw {
+            DQuat::from_rotation_x(0.005)
+        } else {
+            DQuat::from_rotation_y(0.005)
+        },
         body_rate_rad_s: DVec3::ZERO,
     };
     let mut recorder = Recorder::new(vec![Channel::Time, Channel::BodyRates], Some(0.001)).unwrap();
@@ -481,7 +516,14 @@ fn pitch_oscillation_follows_a_normal_force_table() {
     let measured =
         2.0 * (crossings[crossings.len() - 1] - crossings[0]) / (crossings.len() - 1) as f64;
     let times = column(&recorder, "time_s");
-    let rates = column(&recorder, "body_rate_y_rad_s");
+    let rates = column(
+        &recorder,
+        if yaw {
+            "body_rate_x_rad_s"
+        } else {
+            "body_rate_y_rad_s"
+        },
+    );
     let peaks: Vec<f64> = crossings
         .windows(2)
         .map(|w| {
@@ -493,23 +535,105 @@ fn pitch_oscillation_follows_a_normal_force_table() {
         })
         .collect();
     let decay = (peaks[peaks.len() - 1] / peaks[0]).ln() / (peaks.len() - 1) as f64;
-    let expected_decay = 0.25 * trace * period;
-    // Damping lumped at the table's centre of pressure instead, `K₂ = q̄A C_Nα,T (X_T − x_cg)²`,
-    // would decay differently: the test tells the two apart.
-    let lumped_a22 = -q_area * slope_t * (cp_t - x_cg).powi(2) / (inertia * speed);
-    let lumped_a12 = 1.0 - k1 / (m * speed * speed);
-    let lumped_trace = a11 + lumped_a22;
-    let lumped_damped =
-        (a11 * lumped_a22 - lumped_a12 * a21 - 0.25 * lumped_trace * lumped_trace).sqrt();
-    let lumped_decay = 0.25 * lumped_trace * 2.0 * PI / lumped_damped;
-    // Measured: the period 1.104077 s against 1.104073 s (4e-6; 1.44965 s with hpr's own normal
-    // force), the decay −0.24376 against −0.24369 (3e-4).
-    assert!((measured / period - 1.0).abs() < 3e-4);
-    assert!((decay / expected_decay - 1.0).abs() < 0.01);
-    assert!(
-        (decay / lumped_decay - 1.0).abs() > 0.05,
-        "{decay} against {lumped_decay} lumped"
+    TableOscillation {
+        period: (measured, period),
+        decay: (decay, expected_decay),
+        table_k1_in_path,
+        lumped_decay,
+    }
+}
+
+#[test]
+fn pitch_oscillation_follows_a_normal_force_table() {
+    for yaw in [false, true] {
+        let run = table_oscillation(yaw);
+        let (measured, period) = run.period;
+        let (decay, expected_decay) = run.decay;
+        // Measured, the same in both planes: the period 1.1040774 s against 1.1040734 s (1.44965
+        // s on hpr's own), 1.1044079 s with the table's `K₁` in the path; the decay −0.24376
+        // against −0.24369, −0.13755 lumped.
+        assert!((measured / period - 1.0).abs() < 3e-5, "yaw {yaw}");
+        assert!((decay / expected_decay - 1.0).abs() < 0.01, "yaw {yaw}");
+        // The test tells hpr's damping apart from the table's `K₁` in the path, and from damping
+        // lumped at the table's centre of pressure.
+        assert!(
+            (measured / run.table_k1_in_path - 1.0).abs() > 1e-4,
+            "yaw {yaw}"
+        );
+        assert!((decay / run.lumped_decay - 1.0).abs() > 0.05, "yaw {yaw}");
+    }
+}
+
+#[test]
+fn a_table_of_hpr_s_own_normal_force_flies_as_hpr_does() {
+    // A dense table of hpr's own whole-rocket normal force (every 0.5° and Mach 0.01), flown in a
+    // crosswind, lands its apogee where hpr's own components do: the table's static force at the
+    // centre of mass's flow and hpr's damping from the components add up to hpr's own. What's left
+    // is the table's interpolation. Measured: 7.8 mm on a 779 m apogee; the same table at 0°, 1°,
+    // 2°, 4°, 8°, 16°, 30°, 60° and 89°, every Mach 0.05, is 1.17 m off, nearly all downwind.
+    use hpr_aero::{NormalForceColumn, NormalForceTable};
+    use hpr_core::interp::{Extrapolation, Interpolation, Table1D};
+
+    let wind = || windy_environment(ConstantWind::new(5.0, 1.5 * PI).unwrap());
+    let own = valetudo(wind(), FlightSettings::default());
+    let aero = own.aero().clone();
+    let machs: Vec<f64> = (0..=100).map(|i| 0.01 * f64::from(i)).collect();
+    let mut columns = Vec::new();
+    for alpha_deg in (0..=178).map(|i| 0.5 * f64::from(i)) {
+        let alpha = alpha_deg.to_radians();
+        let (mut slopes, mut cps) = (Vec::new(), Vec::new());
+        for &mach in &machs {
+            if alpha == 0.0 {
+                let force = aero.normal_force(&Flow::axial(mach)).unwrap();
+                slopes.push(force.slope_per_rad);
+                cps.push(force.cp_station_m.unwrap());
+                continue;
+            }
+            // As the flight sums them: fin sets' force times `sin α/α` (ADR-011).
+            let (mut force, mut moment) = (0.0, 0.0);
+            let components = aero.components(&Flow::new(mach, alpha, 0.0)).unwrap();
+            for (index, component) in components.iter().enumerate() {
+                let scale = if index >= aero.bodies().len() {
+                    alpha.sin() / alpha
+                } else {
+                    1.0
+                };
+                force += component.normal_force.coefficient * scale;
+                moment += component.normal_force.moment_m * scale;
+            }
+            slopes.push(force / alpha);
+            cps.push(moment / force);
+        }
+        let table = |ys| {
+            Table1D::new(
+                machs.clone(),
+                ys,
+                Interpolation::Linear,
+                Extrapolation::Clamp,
+            )
+        };
+        columns.push(NormalForceColumn::new(
+            alpha,
+            table(slopes).unwrap(),
+            table(cps).unwrap(),
+        ));
+    }
+    let table = NormalForceTable::new(columns).unwrap();
+    let apogee = |sim: Simulation| {
+        sim.run(&mut ())
+            .unwrap()
+            .event(EventKind::Apogee)
+            .unwrap()
+            .sample
+    };
+    let tabled = apogee(
+        valetudo(wind(), FlightSettings::default())
+            .with_normal_force_table(table)
+            .unwrap(),
     );
+    let own = apogee(own);
+    let gap = tabled.cg_enu_m - own.cg_enu_m;
+    assert!(gap.length() < 0.05, "{gap:?}");
 }
 
 #[test]

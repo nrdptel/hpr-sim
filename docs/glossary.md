@@ -610,6 +610,10 @@ oracles too; all of them live under `validation/oracles/`. See
 
 A measured mass, centre of mass or inertia that replaces the value hpr computes, for one part, a part with everything attached to it, or a whole stage. Motors are never covered by one. See [The design tree](physics/design.md#overrides).
 
+Aerodynamic override tables are separate: another program's drag, or its normal force and centre
+of pressure, flown in place of hpr's own. See
+[Aerodynamics](physics/aero.md#the-normal-force-from-rasaero-ii).
+
 ## Parallel-axis theorem
 
 The rule for moving a moment of inertia from an axis through a part's own centre of mass to a
@@ -658,7 +662,9 @@ A rocket aerodynamics and flight program. Several of RocketPy's [example rockets
 carry drag curves labelled as RASAero's, though only Calisto's traces to an export. hpr's drag is
 compared with those curves from Mach 0.1 to 2.0, with the fin shapes and surface finish guessed,
 because the curves don't record them. See
-[Aerodynamics](physics/aero.md#drag-against-rasaero-ii-through-mach-2).
+[Aerodynamics](physics/aero.md#drag-against-rasaero-ii-through-mach-2). hpr can also fly the normal
+force and centre of pressure from RASAero II's exported table
+([The normal force from RASAero II](physics/aero.md#the-normal-force-from-rasaero-ii)).
 
 ## RASP and RockSim files
 

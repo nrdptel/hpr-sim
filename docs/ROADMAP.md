@@ -583,11 +583,9 @@
       fins-off rows from Mach 1.5 within 10%, the 2 now within staying; Calisto's 17 supersonic
       rows against RASAero II within 10%; each row's change reported (ADR-029).
 
-      *Result (ADR-030):* not met, recorded. The chart (Jack's second-order theory) held to the
-      Prandtl–Meyer limit, separation from 16° to 30°, Fig. 5-141's base relief, the lip in the
-      wake. Measured boattails of 3° to 10° from Mach 1.2: −21.9% to +28.3%; 16°: +26% to +54%.
-      Arcas Robin fins off from Mach 1.5: 0 of 11, +13.5% to +24.1% (steep boattail, #72); Calisto:
-      8 of 17, −14.9% to −5.1%; plausible fins bring 14 to 17 within 10%.
+      *Result (ADR-030):* not met, recorded. Boattails of 3° to 10° from Mach 1.2: −21.9% to
+      +28.3%; Arcas Robin fins off from Mach 1.5: 0 of 11, +13.5% to +24.1% (#72); Calisto: 8 of
+      17, −14.9% to −5.1%.
 
   - [x] **M1.8c Roll and damping.**
     - Roll forcing from fin cant and roll damping. Pitch and yaw damping keep hpr's local-flow
@@ -601,11 +599,15 @@
     from Mach 2.3, 8 of 8 within 5.3%; at Mach 1.5 and 1.8, +14.3% to +47.8%. Damping against the
     Basic Finner: −5.9% to −16.2%.
 
-  - [ ] **M1.8d Normal-force overrides.**
+  - [x] **M1.8d Normal-force overrides.**
     - `C_Nα` and CP tables against Mach and angle of attack, read from a RASAero II export.
 
     *Done when:* a RASAero II export's `C_Nα` and CP columns replace hpr's in a flight, and the
     reading is tested on the Calisto export.
+
+    *Result (ADR-032):* met. The table's force at the centre of mass's flow, hpr's damping kept.
+    Calisto's export (0°, 2°, 4°): all 4,999 rows re-read, M1.8a's 30 values to 1e-12; Calisto
+    flies on it; a table's pitch period within 4e-6 of linear theory, in pitch and yaw.
 
   - [ ] **M1.8e The body's supersonic normal force.**
     - M1.8a measured the gap: past Mach 3 the Arcas Robin's body alone lifts 3.9 to 4.6 per rad,

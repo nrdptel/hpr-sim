@@ -285,21 +285,50 @@ impl NormalForceColumn {
 /// - reads each column at `M` (linear, holding the end values outside its Mach range, as the
 ///   column's own tables say), then interpolates linearly in `α` between the two columns around
 ///   it. Below the first column's angle it holds that column. So `C_N = (C_N/α)·α` gives the
-///   columns' normal force back at their own angles, and between them a quadratic in `α`, the
-///   shape of a potential-flow term linear in `α` plus a viscous cross-flow term in `α²`.
-/// - Past the last column's angle `α_n`, the slope and centre of pressure hold there and the
-///   normal force follows the cross flow, `C_N = (C_N/α)(α_n) · α_n · sin α / sin α_n`: equal to
-///   the table at `α_n`, largest broadside and zero when the air comes from the tail. hpr's own
-///   fins use `sin α` the same way (ADR-011). This part is an assumption, not the other tool's
-///   result; the lookup reports it.
+///   columns' normal force back at their own angles, and between them a quadratic in `α`: a
+///   potential-flow term linear in `α` plus a viscous cross-flow term in `α²`. RASAero II's
+///   viscous part has that shape through Mach 1.1 in the Calisto export; faster, it grows more
+///   slowly than `α²`, and the quadratic between the columns is an assumption.
+/// - Past the last column's angle `α_n`, the normal force at `α_n` splits in two. The first
+///   column's slope times `α_n` is the linear share, at the first column's centre of pressure;
+///   the rest, with the rest of the moment, is the nonlinear share. The linear share grows as
+///   `sin α / sin α_n`, as hpr's own fins do (the decision record on flight, [ADR-011][adr-011]),
+///   and the nonlinear share as `(sin α / sin α_n)²`, the cross flow's form (Galejs; Niskanen
+///   2009 eq. 3.26), which RASAero II's viscous part takes from Jorgensen (RASAero II Users
+///   Manual, 2019, p. 55). The centre of pressure is the two moments over the two forces. So the
+///   table's force and centre of pressure hold at `α_n`, and the force is zero when the air
+///   comes from the tail. With one column at 0°, the force is its slope times `sin α`. This part
+///   is an assumption, not the other tool's result; the lookup reports it.
 ///
-/// The table serializes as its columns and optional reference diameter, and re-checks them when
-/// read.
+/// The table serializes as its columns and its [`TableReference`], and re-checks them when
+/// read. The decisions are in the record on normal-force overrides, [ADR-032][adr-032].
+///
+/// [adr-011]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-011-rigid-body-flight-equations-of-motion-aerodynamic-coupling-rail-phases-and-termination-2026-09-17
+/// [adr-032]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-032-normal-force-overrides-from-rasaero-ii-the-static-force-replaced-hprs-damping-kept-2026-09-19
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(try_from = "NormalForceTableData", into = "NormalForceTableData")]
 pub struct NormalForceTable {
     columns: Vec<NormalForceColumn>,
-    reference_diameter_m: Option<f64>,
+    reference: TableReference,
+}
+
+/// The area a [`NormalForceTable`]'s coefficients are on. [`crate::AeroModel::normal_force`]
+/// rescales them to the rocket's reference area.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Serialize, Deserialize)]
+#[serde(tag = "kind", rename_all = "snake_case", deny_unknown_fields)]
+#[non_exhaustive]
+pub enum TableReference {
+    /// The rocket's own reference area.
+    #[default]
+    Rocket,
+    /// The largest cross-section of the rocket's bodies, as RASAero II's (RASAero II Users
+    /// Manual, 2019, p. 72).
+    LargestBody,
+    /// A circle of this diameter.
+    Diameter {
+        /// The diameter, m.
+        diameter_m: f64,
+    },
 }
 
 /// The serialized form of a [`NormalForceTable`].
@@ -307,19 +336,15 @@ pub struct NormalForceTable {
 #[serde(deny_unknown_fields)]
 struct NormalForceTableData {
     columns: Vec<NormalForceColumn>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    reference_diameter_m: Option<f64>,
+    #[serde(default)]
+    reference: TableReference,
 }
 
 impl TryFrom<NormalForceTableData> for NormalForceTable {
     type Error = AeroError;
 
     fn try_from(data: NormalForceTableData) -> Result<Self, AeroError> {
-        let table = NormalForceTable::new(data.columns)?;
-        match data.reference_diameter_m {
-            Some(d) => table.with_reference_diameter_m(d),
-            None => Ok(table),
-        }
+        NormalForceTable::new(data.columns)?.with_reference(data.reference)
     }
 }
 
@@ -327,7 +352,7 @@ impl From<NormalForceTable> for NormalForceTableData {
     fn from(table: NormalForceTable) -> Self {
         NormalForceTableData {
             columns: table.columns,
-            reference_diameter_m: table.reference_diameter_m,
+            reference: table.reference,
         }
     }
 }
@@ -378,21 +403,36 @@ impl NormalForceTable {
         }
         Ok(Self {
             columns,
-            reference_diameter_m: None,
+            reference: TableReference::Rocket,
         })
     }
 
-    /// This table with its coefficients on a reference diameter of `diameter_m`. When it differs
-    /// from the rocket's, [`crate::AeroModel::normal_force`] rescales by the ratio of the reference
-    /// areas.
+    /// This table with its coefficients on `reference`. When it differs from the rocket's,
+    /// [`crate::AeroModel::normal_force`] rescales by the ratio of the areas.
+    ///
+    /// # Errors
+    ///
+    /// [`AeroError::Domain`] for a diameter that isn't finite and positive.
+    pub fn with_reference(mut self, reference: TableReference) -> Result<Self, AeroError> {
+        if let TableReference::Diameter { diameter_m } = reference {
+            crate::error::check_dimension(
+                "normal-force table reference diameter",
+                diameter_m,
+                false,
+            )?;
+        }
+        self.reference = reference;
+        Ok(self)
+    }
+
+    /// This table with its coefficients on a circle of diameter `diameter_m`
+    /// ([`NormalForceTable::with_reference`]).
     ///
     /// # Errors
     ///
     /// [`AeroError::Domain`] unless `diameter_m` is finite and positive.
-    pub fn with_reference_diameter_m(mut self, diameter_m: f64) -> Result<Self, AeroError> {
-        crate::error::check_dimension("normal-force table reference diameter", diameter_m, false)?;
-        self.reference_diameter_m = Some(diameter_m);
-        Ok(self)
+    pub fn with_reference_diameter_m(self, diameter_m: f64) -> Result<Self, AeroError> {
+        self.with_reference(TableReference::Diameter { diameter_m })
     }
 
     /// The columns, in increasing angle of attack.
@@ -400,9 +440,9 @@ impl NormalForceTable {
         &self.columns
     }
 
-    /// The reference diameter the coefficients are on, m; `None` for the rocket's.
-    pub fn reference_diameter_m(&self) -> Option<f64> {
-        self.reference_diameter_m
+    /// The area the coefficients are on.
+    pub fn reference(&self) -> TableReference {
+        self.reference
     }
 
     /// The normal force at `mach` and angle of attack `alpha_rad`, on the table's reference area,
@@ -448,16 +488,22 @@ impl NormalForceTable {
             (s0 + t * (s1 - s0), x0 + t * (x1 - x0))
         };
         let beyond_alpha = alpha_rad > alpha_n;
-        let coefficient = if beyond_alpha {
-            // `α_n / sin α_n`, which tends to 1 as `α_n` does.
-            let ratio = if alpha_n > 0.0 {
-                alpha_n / alpha_n.sin()
-            } else {
-                1.0
-            };
-            slope * alpha_rad.sin() * ratio
+        let (coefficient, cp) = if !beyond_alpha {
+            (slope * alpha_rad, cp)
+        } else if alpha_n == 0.0 {
+            // One column, at 0°: its slope, following the cross flow.
+            (slope * alpha_rad.sin(), cp)
         } else {
-            slope * alpha_rad
+            // The first column's slope is the linear share, at its centre of pressure; the rest
+            // of the last column's force and moment grows as the cross flow's square.
+            let (linear_slope, linear_cp) = read(&self.columns[0])?;
+            let (force_n, linear) = (slope * alpha_n, linear_slope * alpha_n);
+            let (moment_n, linear_moment) = (force_n * cp, linear * linear_cp);
+            let s1 = alpha_rad.sin() / alpha_n.sin();
+            let s2 = s1 * s1;
+            let force = linear * s1 + (force_n - linear) * s2;
+            let moment = linear_moment * s1 + (moment_n - linear_moment) * s2;
+            (force, if force != 0.0 { moment / force } else { cp })
         };
         Ok(NormalForceLookup {
             coefficient,
@@ -489,22 +535,42 @@ impl NormalForceTable {
     ///   nose", p. 114), converted at 0.0254 m to the inch. hpr's stations are also aft of the
     ///   nose tip, so the design must start at the same nose tip as RASAero II's.
     /// - The coefficients are on RASAero II's reference area, the largest cross-section of the
-    ///   body (p. 72); when that differs from the rocket's, give its diameter with
-    ///   [`NormalForceTable::with_reference_diameter_m`].
+    ///   body (p. 72): the table's reference is [`TableReference::LargestBody`], which
+    ///   [`crate::AeroModel::normal_force`] rescales to the rocket's reference area.
     ///
-    /// Every field of every row must be a number. Within one angle of attack an identical repeated
-    /// row is skipped, and otherwise the Mach numbers must strictly increase: a Mach number
+    /// The five columns read must hold a number in every row; the others are not read. Within one
+    /// angle of attack an identical repeated row is skipped, and otherwise the Mach numbers must strictly increase: a Mach number
     /// repeated with other values, or out of order, is refused with its line, not sorted. The
     /// angles need not all have the same Mach numbers (the export behind RocketPy's Calisto ends
     /// its 4° rows a row early).
     ///
     /// # Errors
     ///
-    /// - [`AeroError::Csv`] naming the 1-based line for a missing header column, a row that
-    ///   doesn't parse, a non-finite value, an angle outside `[0°, 90°)`, a Mach number that
+    /// - [`AeroError::Csv`] naming the 1-based line for a missing header column, a field read that
+    ///   isn't a number, a non-finite value, an angle outside `[0°, 90°)`, a Mach number that
     ///   doesn't increase within its angle, a row at `α = 0` whose Mach number has no row at `α₁`,
-    ///   or no rows at a positive angle (line 0).
-    /// - [`AeroError::Table`] for an angle with fewer than two Mach numbers.
+    ///   an angle with one Mach number (its row's line), or no rows at a positive angle (line 0).
+    ///
+    /// # Examples
+    ///
+    /// Two Mach numbers at 0° and 2°, with only the columns the reader uses (an export has more):
+    ///
+    /// ```
+    /// use hpr_aero::NormalForceTable;
+    ///
+    /// let export = "Mach,Alpha,CN,CN Potential,CP\n\
+    ///               0.3,0,0,0,40\n\
+    ///               0.5,0,0,0,40\n\
+    ///               0.3,2,0.35,0.35,40\n\
+    ///               0.5,2,0.35,0.35,40\n";
+    /// let table = NormalForceTable::from_rasaero_csv(export)?;
+    /// // At 1°, halfway between the columns at 0° and 2°, which here agree.
+    /// let at = table.lookup(0.4, 1_f64.to_radians())?;
+    /// assert!((at.slope_per_rad - 0.35 / 2_f64.to_radians()).abs() < 1e-12);
+    /// // 40 inches aft of the nose tip, in metres.
+    /// assert!((at.cp_station_m - 1.016).abs() < 1e-12);
+    /// # Ok::<(), hpr_aero::AeroError>(())
+    /// ```
     pub fn from_rasaero_csv(text: &str) -> Result<Self, AeroError> {
         let text = text.strip_prefix('\u{feff}').unwrap_or(text);
         let mut lines = text
@@ -535,16 +601,18 @@ impl NormalForceTable {
         // The rows of each angle of attack (degrees, as written), in the order they come.
         let mut angles: Vec<(f64, Vec<RasaeroRow>)> = Vec::new();
         for (n, line) in lines {
-            let values: Vec<f64> = split_fields(line)
-                .iter()
-                .map(|f| f.parse::<f64>().ok())
-                .collect::<Option<_>>()
-                .ok_or_else(|| csv(n, format!("not a row of numbers: `{line}`")))?;
+            // Only the columns read must be numbers; the export's others may hold anything.
+            let fields = split_fields(line);
             let get = |index: usize| {
-                values
+                let field = fields
                     .get(index)
-                    .copied()
-                    .ok_or_else(|| csv(n, format!("missing column {}", index + 1)))
+                    .ok_or_else(|| csv(n, format!("missing column {}", index + 1)))?;
+                field.parse::<f64>().map_err(|_| {
+                    csv(
+                        n,
+                        format!("column {} is not a number: `{field}`", index + 1),
+                    )
+                })
             };
             let alpha_deg = get(alpha_col)?;
             let row = RasaeroRow {
@@ -626,6 +694,13 @@ impl NormalForceTable {
                     }
                 });
             }
+            if rows.len() < Table1D::MIN_KNOTS {
+                let line = rows.first().map_or(0, |r| r.line);
+                return Err(csv(
+                    line,
+                    format!("{alpha_deg}° has one Mach number; a column needs two"),
+                ));
+            }
             let machs: Vec<f64> = rows.iter().map(|r| r.mach).collect();
             let cps = rows.iter().map(|r| r.cp_in * INCH_M).collect();
             columns.push(NormalForceColumn::new(
@@ -634,7 +709,7 @@ impl NormalForceTable {
                 table(machs, cps)?,
             ));
         }
-        Self::new(columns)
+        Self::new(columns)?.with_reference(TableReference::LargestBody)
     }
 }
 
@@ -766,25 +841,25 @@ mod tests {
         )
     }
 
-    /// A small export in RASAero II's layout: all of 0°'s rows, then 2°'s, then 4°'s, whose last
-    /// Mach number is missing as in the Calisto export. Subsonic, the potential slope is 6 per
-    /// radian with no viscous part; at Mach 1 and 1.5 a viscous part grows as `α²` and the CP moves
-    /// forward with the angle.
+    /// A small export in RASAero II's layout, with invented numbers: all of 0°'s rows, then 2°'s,
+    /// then 4°'s, whose last Mach number is missing as in the Calisto export. At Mach 0.5 the
+    /// potential slope is 7 per radian with no viscous part; at Mach 1 and 1.5 a viscous part
+    /// grows as `α²` and the CP moves forward with the angle.
     fn small_export() -> String {
         let r2 = 2.0_f64.to_radians();
         let r4 = 4.0_f64.to_radians();
         let mut rows = vec![RASAERO_HEADER.to_owned()];
-        for (mach, cp_in) in [(0.5, 66.0), (1.0, 72.0), (1.5, 69.0)] {
+        for (mach, cp_in) in [(0.5, 44.0), (1.0, 50.0), (1.5, 47.0)] {
             rows.push(rasaero_row(mach, 0.0, 0.0, 0.0, cp_in));
         }
         for (mach, slope, viscous, cp_in) in [
-            (0.5, 6.0, 0.0, 66.0),
-            (1.0, 8.0, 0.02, 71.0),
-            (1.5, 7.0, 0.03, 68.0),
+            (0.5, 7.0, 0.0, 44.0),
+            (1.0, 10.0, 0.03, 49.0),
+            (1.5, 9.0, 0.04, 46.0),
         ] {
             rows.push(rasaero_row(mach, 2.0, slope * r2, viscous, cp_in));
         }
-        for (mach, slope, viscous, cp_in) in [(0.5, 6.0, 0.0, 66.0), (1.0, 8.0, 0.08, 70.0)] {
+        for (mach, slope, viscous, cp_in) in [(0.5, 7.0, 0.0, 44.0), (1.0, 10.0, 0.12, 48.0)] {
             rows.push(rasaero_row(mach, 4.0, slope * r4, viscous, cp_in));
         }
         rows.join("\r\n")
@@ -804,69 +879,93 @@ mod tests {
         let alphas: Vec<f64> = table.columns().iter().map(|c| c.alpha_rad).collect();
         assert_eq!(alphas, [0.0, r2, r4]);
         assert_eq!(table.columns()[2].slope_per_rad.xs(), [0.5, 1.0]);
+        assert_eq!(table.reference(), TableReference::LargestBody);
         // At 0°, the potential slope at 2°; at 2° and 4°, `CN/α` with the viscous part in it.
         close(
             table.columns()[0].slope_per_rad.ys()[1],
-            8.0,
+            10.0,
             1e-15,
             "0°, Mach 1",
         );
         close(
             table.columns()[1].slope_per_rad.ys()[1],
-            8.0 + 0.02 / r2,
+            10.0 + 0.03 / r2,
             1e-15,
             "2°, Mach 1",
         );
         // Inches from the nose tip, converted exactly.
-        assert_eq!(table.columns()[0].cp_station_m.ys()[1], 72.0 * 0.0254);
+        let inch = 0.0254;
+        assert_eq!(table.columns()[0].cp_station_m.ys()[1], 50.0 * inch);
 
         let at = |mach, alpha: f64| table.lookup(mach, alpha).unwrap();
         // At a column's own angle and Mach number the export's `CN` and `CP` come back.
         let knot = at(1.0, r4);
-        close(knot.coefficient, 8.0 * r4 + 0.08, 1e-15, "CN at 4°");
-        assert_eq!(knot.cp_station_m, 70.0 * 0.0254);
+        close(knot.coefficient, 10.0 * r4 + 0.12, 1e-15, "CN at 4°");
+        assert_eq!(knot.cp_station_m, 48.0 * inch);
         assert_eq!((knot.mach_extrapolated, knot.beyond_alpha), (None, false));
-        // Between the columns `C_N/α` and the CP are linear in the angle.
-        let s = |alpha| {
-            8.0 + if alpha > 0.0 {
-                0.02 * alpha / (r2 * r2)
-            } else {
-                0.0
-            }
-        };
+        // Between the columns `C_N/α` and the CP are linear in the angle; with a viscous part in
+        // `α²`, `C_N/α` is `10 + 0.03 α/α₂²`, which that reproduces between the columns.
+        let s = |alpha: f64| 10.0 + 0.03 * alpha / (r2 * r2);
         let three = at(1.0, 3.0_f64.to_radians());
         close(
             three.slope_per_rad,
-            0.5 * (s(r2) + s(r4)),
+            s(3.0_f64.to_radians()),
             1e-14,
             "C_N/α at 3°",
         );
-        close(three.cp_station_m, 70.5 * 0.0254, 1e-14, "CP at 3°");
+        close(three.cp_station_m, 48.5 * inch, 1e-14, "CP at 3°");
         let one = at(1.0, 1.0_f64.to_radians());
-        close(one.slope_per_rad, 0.5 * (8.0 + s(r2)), 1e-14, "C_N/α at 1°");
-        close(one.cp_station_m, 71.5 * 0.0254, 1e-14, "CP at 1°");
+        close(
+            one.slope_per_rad,
+            s(1.0_f64.to_radians()),
+            1e-14,
+            "C_N/α at 1°",
+        );
+        close(one.cp_station_m, 49.5 * inch, 1e-14, "CP at 1°");
         // At zero the slope is the 0° column's.
         let zero = at(1.0, 0.0);
-        assert_eq!((zero.coefficient, zero.slope_per_rad), (0.0, 8.0));
+        assert_eq!((zero.coefficient, zero.slope_per_rad), (0.0, 10.0));
         // Between Mach numbers each column is linear in Mach.
-        close(at(0.75, 0.0).slope_per_rad, 7.0, 1e-15, "Mach 0.75");
-        // Past the last angle the normal force follows `sin α` from the last column's.
-        let ten = at(1.0, 10.0_f64.to_radians());
+        close(at(0.75, 0.0).slope_per_rad, 8.5, 1e-15, "Mach 0.75");
+
+        // Past the last angle: the linear share, 10 per radian at 50 in, grows as sin α; the
+        // rest of the 4° column's force (0.12) and moment grows as sin² α.
+        let ten_rad = 10.0_f64.to_radians();
+        let s1 = ten_rad.sin() / r4.sin();
+        let (linear, rest) = (10.0 * r4, 0.12);
+        let rest_moment = (linear + rest) * 48.0 * inch - linear * 50.0 * inch;
+        let ten = at(1.0, ten_rad);
+        let force = linear * s1 + rest * s1 * s1;
+        close(ten.coefficient, force, 1e-14, "C_N at 10°");
         close(
-            ten.coefficient,
-            (8.0 * r4 + 0.08) * 10.0_f64.to_radians().sin() / r4.sin(),
+            ten.cp_station_m,
+            (linear * 50.0 * inch * s1 + rest_moment * s1 * s1) / force,
             1e-14,
-            "10°",
+            "CP at 10°",
         );
         assert!(ten.beyond_alpha);
-        assert_eq!(ten.cp_station_m, 70.0 * 0.0254);
-        // Tail first there is none: `sin π` rounds to 1.2e-16, times a slope of about 9.
+        // The viscous share sits forward (36.4 in), so the CP moves forward with the angle.
+        assert!(ten.cp_station_m < 48.0 * inch);
+        // Continuous where the table ends.
+        let just = at(1.0, r4 * (1.0 + 1e-9));
+        close(just.coefficient, knot.coefficient, 1e-8, "C_N just past 4°");
+        close(
+            just.cp_station_m,
+            knot.cp_station_m,
+            1e-8,
+            "CP just past 4°",
+        );
+        // Tail first there is none: `sin π` rounds to 1.2e-16, times forces of about 1.
         assert!(at(1.0, PI).coefficient.abs() < 1e-14);
         // Past the 4° column's last Mach number its end value holds, and the lookup says so.
         let fast = at(3.0, r4);
-        close(fast.coefficient, 8.0 * r4 + 0.08, 1e-15, "Mach 3 at 4°");
+        close(fast.coefficient, 10.0 * r4 + 0.12, 1e-15, "Mach 3 at 4°");
         assert_eq!(fast.mach_extrapolated, Some(Side::Above));
-        assert_eq!(at(3.0, r2).cp_station_m, 68.0 * 0.0254);
+        assert_eq!(at(3.0, r2).cp_station_m, 46.0 * inch);
+        // Subsonic, where every column is the same, the continuation is the linear share alone.
+        let sub = at(0.5, ten_rad);
+        close(sub.coefficient, 7.0 * r4 * s1, 1e-14, "Mach 0.5 at 10°");
+        close(sub.cp_station_m, 44.0 * inch, 1e-14, "Mach 0.5 CP at 10°");
     }
 
     #[test]
@@ -887,6 +986,11 @@ mod tests {
         assert_eq!(line(&with(&[row(0.1, 2.0), row(0.1, 90.0)])), 3);
         assert_eq!(line(&with(&[row(0.1, -2.0)])), 2);
         assert_eq!(line(&with(&[row(0.1, 2.0), "0.2,2,x".to_owned()])), 3);
+        // A column the reader doesn't use may hold anything.
+        let text_in_unused = row(0.2, 2.0).replacen(",9.9,", ",n/a,", 1);
+        let table =
+            NormalForceTable::from_rasaero_csv(&with(&[row(0.1, 2.0), text_in_unused])).unwrap();
+        assert_eq!(table.columns()[0].slope_per_rad.xs(), [0.1, 0.2]);
         let nan = rasaero_row(0.2, 2.0, f64::NAN, 0.0, 60.0);
         assert_eq!(line(&with(&[row(0.1, 2.0), nan])), 3);
         // An identical repeated row is skipped; one Mach number is too few.
@@ -897,10 +1001,10 @@ mod tests {
         ]))
         .unwrap();
         assert_eq!(table.columns()[0].slope_per_rad.xs(), [0.1, 0.2]);
-        assert!(matches!(
-            NormalForceTable::from_rasaero_csv(&with(&[row(0.1, 2.0)])),
-            Err(AeroError::Table(_))
-        ));
+        assert_eq!(
+            line(&with(&[row(0.1, 2.0), row(0.2, 2.0), row(0.1, 4.0)])),
+            4
+        );
     }
 
     #[test]
@@ -931,6 +1035,10 @@ mod tests {
         domain(table.clone().with_reference_diameter_m(0.0));
         domain(table.clone().with_reference_diameter_m(f64::INFINITY));
         let table = table.with_reference_diameter_m(0.1).unwrap();
+        assert_eq!(
+            table.reference(),
+            TableReference::Diameter { diameter_m: 0.1 }
+        );
         let json = serde_json::to_string(&table).unwrap();
         assert_eq!(
             serde_json::from_str::<NormalForceTable>(&json).unwrap(),
