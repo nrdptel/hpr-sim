@@ -2273,11 +2273,12 @@ Three findings shaped the method:
 - **Where linear theory starts:** `M_s = max(1.2, 1/cos Γ_L, 1/cos Γ_T, √(1 + 1/A²),
   √(1 + (c_t/2s)²))`: the bottom of [N09]'s supersonic region (Table 3.1), supersonic leading and
   trailing edges ([TN2114]'s case), `βA ≥ 1` with `A = 2s²/A_fin`, and the mirror fin's tip cone
-  off this fin's tip, `β ≥ c_t/(2s)`. The last two came from review: `βA ≥ 1` alone let an
-  inverse-tapered fin's two tip cones overlap its tip, and a property test over random
-  trapezoids found forward-swept trailing edges, whose slope rose past `M_s`. Neither binds for
-  any validated fin, so no reported number moved. Leading edges swept forward stay outside the
-  half-load's domain (the tip ahead of the root; documented in `docs/physics/aero.md`).
+  off this fin's tip, `β ≥ c_t/(2s)`. The tip-chord term came from review: `βA ≥ 1` alone let an
+  inverse-tapered fin's two tip cones overlap its tip, and its slope rose past `M_s`. The
+  trailing-edge term is TN 2114's stated case, supersonic trailing edges. Neither binds for any
+  validated fin, so no reported number moved. Leading edges swept forward stay outside the
+  half-load's domain: the tip sits ahead of the root, and the slope rises past `M_s` by up to
+  +7.7% at 40° to 50° forward (issue #64).
 - **The transonic join:** from Mach 0.8, the top of [N09]'s subsonic region and of the drag
   buildup's documented range, to `M_s`, slope and CP each linear in `M` between the subsonic
   method's values at 0.8 and linear theory's at `M_s`. Continuous, with the slope's peak at `M_s`.

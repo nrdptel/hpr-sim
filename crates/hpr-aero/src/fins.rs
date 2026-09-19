@@ -1234,11 +1234,12 @@ mod tests {
     }
 
     proptest::proptest! {
-        /// Any trapezoid, tapered either way, swept either way, with a trailing edge swept either
-        /// way, at any Mach number from linear theory's start: the cone takes no more than the
-        /// fin and its mirror, the slope is positive and lower half a Mach number on (it can
-        /// still rise just past `M_s`, as a rectangle's peaks at `βA = 1`), and the CP stays
-        /// inside the outline's chord.
+        /// Any trapezoid with its leading edge straight or swept aft (up to 65°), tapered either
+        /// way, with its trailing edge swept either way, at any Mach number from linear theory's
+        /// start: the cone takes no more than the fin and its mirror, the slope is positive and
+        /// falls with Mach (a rectangle's peaks exactly at `M_s`, where `βA = 1`), and the CP stays
+        /// inside the outline's chord. Leading edges swept forward are outside the half-load's
+        /// domain (`docs/physics/aero.md`).
         #[test]
         fn supersonic_loading_stays_inside_the_fin(
             c_r in 0.02..0.4_f64,
@@ -1261,8 +1262,8 @@ mod tests {
             proptest::prop_assert!((0.0..=2.0 * area * (1.0 + 1e-12)).contains(&cone));
             let loading = fin.loading(mach).unwrap();
             proptest::prop_assert!(loading.slope_per_rad > 0.0);
-            if mach + 0.5 < 5.0 {
-                let faster = fin.loading(mach + 0.5).unwrap();
+            if mach + 0.01 < 5.0 {
+                let faster = fin.loading(mach + 0.01).unwrap();
                 proptest::prop_assert!(faster.slope_per_rad < loading.slope_per_rad);
             }
             let xs: Vec<f64> = fin.outline().points_m().iter().map(|p| p[0]).collect();

@@ -366,10 +366,11 @@ gives, per fin:
   curved edge counts by its span-averaged sweep, so an elliptical fin, whose edge is swept 90° at
   the tip, or a freeform fin with a raked outboard edge, keeps a subsonic stretch past `M_s`.
 - Leading edges swept forward. The tip then sits ahead of the root and its Mach cone covers much
-  of the fin, where the half-load overstates the loss; for a fin swept 29° forward the slope still
-  rises for half a Mach number past `M_s`. Such fins are rare on rockets; a property test holds
-  every other trapezoid, swept aft up to 65° and tapered either way, to a slope that falls past
-  `M_s`.
+  of the fin, where the half-load overstates the loss, so the slope rises past `M_s` instead of
+  falling: by up to +7.7% for fins swept 40° to 50° forward, peaking up to 0.37 Mach later
+  ([issue #64](https://github.com/nrdptel/hpr-sim/issues/64)). Such fins are rare on rockets. A
+  property test holds every trapezoid whose leading edge is straight or swept aft (to 65°),
+  tapered either way, to a slope that falls with Mach from `M_s`.
 - The fins' lift carried onto the body behind them, `K_B(T)`, as below Mach 1.
 
 **Other choices, and why not.**
