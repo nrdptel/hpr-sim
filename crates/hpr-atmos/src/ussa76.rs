@@ -810,7 +810,14 @@ mod tests {
             z in -4_000.0..79_000.0_f64,
         ) {
             let model = Ussa76::with_offset(offset, p0).unwrap();
-            assert_hydrostatic(&model, z);
+            // The central difference spans ±0.5 m; across a layer's base the lapse rate turns, and
+            // a difference over the corner is not the derivative on either side (issue #74).
+            let at_corner = LAYERS[1..].iter().any(|&(base, _)| {
+                (z - geometric_from_geopotential_m(base).unwrap()).abs() < 1.0
+            });
+            if !at_corner {
+                assert_hydrostatic(&model, z);
+            }
             let standard = Ussa76::standard().sample(z).unwrap().air;
             let air = model.sample(z).unwrap().air;
             prop_assert!((air.temperature_k - standard.temperature_k - offset).abs() < 1e-9);

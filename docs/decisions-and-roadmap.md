@@ -46,6 +46,7 @@ new record replaces it and points back. All of them are in the [decision log][de
 | [ADR-027: The normal force through Mach 1][adr-027] | How the fins' normal force and centre of pressure carry through Mach 1: Barrowman's subsonic method to Mach 0.8, supersonic linear theory once it holds, a straight-line join between, and how they compare with a wind tunnel and with RASAero II | [Aerodynamics](physics/aero.md#fins-through-mach-1) |
 | [ADR-028: Drag through Mach 1][adr-028] | How noses, shoulders and steps drag through Mach 1: Niskanen's method with Stoney's measured nose curves, and how the drag compares with NASA's wind tunnel | [Aerodynamics](physics/aero.md#drag-through-mach-1) |
 | [ADR-029: Drag against RASAero II through Mach 2][adr-029] | How hpr's drag compares with RASAero II's curves by speed band, why it misses faster than sound, and a second reference with every input known: MIL-HDBK-762's worked example | [Aerodynamics](physics/aero.md#drag-against-rasaero-ii-through-mach-2) |
+| [ADR-030: The afterbody faster than sound][adr-030] | A boattail's supersonic wave drag from MIL-HDBK-762's chart held to the Prandtl–Meyer limit, separation on steep boattails, the base pressure behind them, and a lip in a boattail's wake; checked against measured boattails, and why its targets aren't met | [Aerodynamics](physics/aero.md#boattails-faster-than-sound) |
 
 ## The roadmap
 
@@ -128,10 +129,10 @@ missing or its status disagrees.
 | <a id="m2-1d3"></a>[M2.1d3][phase-1] | Why hpr turned into the wind less than RocketPy ([issue #50](https://github.com/nrdptel/hpr-sim/issues/50)): RocketPy's equations, corrected, and hpr's body lift | done |
 | <a id="m1-8"></a>[M1.8][phase-1] | Transonic and supersonic aerodynamics, damping, and overriding the aerodynamics | not yet done |
 | <a id="m1-8a"></a>[M1.8a][phase-1] | The normal force and centre of pressure through Mach 1 | done |
-| <a id="m1-8b"></a>[M1.8b][phase-1] | Drag through Mach 1: the transonic rise and supersonic wave drag | not yet done |
+| <a id="m1-8b"></a>[M1.8b][phase-1] | Drag through Mach 1: the transonic rise and supersonic wave drag | done |
 | <a id="m1-8b1"></a>[M1.8b1][phase-1] | The drag of noses, shoulders and steps through Mach 1, against NASA's Arcas Robin wind tunnel | done |
 | <a id="m1-8b2"></a>[M1.8b2][phase-1] | Drag against RASAero II's from Mach 0.1 to 2 | done |
-| <a id="m1-8b3"></a>[M1.8b3][phase-1] | The drag of a boattail faster than sound, and the base behind it | not yet done |
+| <a id="m1-8b3"></a>[M1.8b3][phase-1] | The drag of a boattail faster than sound, and the base behind it | done |
 | <a id="m1-8c"></a>[M1.8c][phase-1] | Roll from canted fins, roll damping, and pitch and yaw damping | not yet done |
 | <a id="m1-8d"></a>[M1.8d][phase-1] | Tables that override the normal force and centre of pressure, read from RASAero II | not yet done |
 | <a id="m1-8e"></a>[M1.8e][phase-1] | The body's normal force faster than sound, which slender-body theory underestimates past Mach 3 | not yet done |
@@ -274,6 +275,7 @@ is the milestone that added or will add that test.
 [adr-027]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-027-the-normal-force-through-mach-1-supersonic-linear-theory-a-transonic-join-and-the-measured-references-2026-09-18
 [adr-028]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-028-drag-through-mach-1-niskanens-appendix-b-stoneys-curves-and-the-arcas-robins-axial-force-2026-09-18
 [adr-029]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-029-drag-against-rasaero-ii-through-mach-2-the-gap-by-band-mil-hdbk-762s-sample-calculation-and-the-boattails-wave-drag-2026-09-18
+[adr-030]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-030-the-afterbody-faster-than-sound-a-boattails-wave-drag-the-base-behind-it-and-a-lip-in-its-wake-2026-09-18
 [decisions]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md
 [lessons]: https://github.com/nrdptel/hpr-sim/blob/main/docs/research/loft-lessons.md
 [lessons-motors]: https://github.com/nrdptel/hpr-sim/blob/main/docs/research/loft-lessons.md#motors-mass-and-design-checks

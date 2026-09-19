@@ -547,15 +547,11 @@
       Every miss is explained.
     - The same-drag Prometheus 2022 case flies through Mach 1 and passes its tolerances.
 
-    *Result (ADR-027):* met. Linear theory from `M_s`, Diederich to Mach 0.8, a join between. The
-    L7 test passes; `normal_force_against_mach` pins 37 rows, 16 outside the targets, explained. Against the
-    wind tunnel from Mach 1.5 to 2.96: `C_Nα` −13.4% to +3.3%, CP within 0.42 calibers. Past
-    Mach 3 the slope is 17–25% low from the body (M1.8e); from Mach 0.8 to 1.2 the measured fin
-    lift dips where hpr's rises. Prometheus flies through Mach 1.010: 14 metrics scored and
-    passing (largest +1.525%). Its two drifts failed their 3% gates when it first flew; then
-    `wind_response.py` measured them as body lift, reported as ADR-026's are.
+    *Result (ADR-027):* met. Linear theory from `M_s`, a join from Mach 0.8. L7 passes; 37 rows
+    pinned, 16 outside the targets, explained. Mach 1.5–2.96: `C_Nα` −13.4% to +3.3%, CP within
+    0.42 calibers; past Mach 3, 17–25% low (M1.8e). Prometheus flies through Mach 1.010.
 
-  - [ ] **M1.8b Transonic and supersonic drag.**
+  - [x] **M1.8b Transonic and supersonic drag.**
     - Every drag term's transonic and supersonic branch, and nose wave drag. Loft lessons L17 and
       L18.
 
@@ -574,11 +570,8 @@
         give, fins on and off.
       - The predicted Prometheus case flies.
 
-      *Result (ADR-028):* met. L17's test passes. `drag_against_mach` pins 44 rows, 8 within the
-      10% target set before measuring; the misses are the fins' blunt leading-edge formula past
-      Mach 1.2 (fins on, +30% to +191%), the model's base lip taken as a shoulder, and the boattail
-      rule. Predicted Prometheus flies to Mach 1.059: 9 of 17 metrics within target, apogee
-      −6.985%, the misses explained in its case file. No known gap is left.
+      *Result (ADR-028):* met. L17's test passes; `drag_against_mach` pins 44 rows, 8 within 10%
+      (misses: blunt fin edges, the base lip, the boattail rule). Predicted Prometheus flies.
 
     - [x] **M1.8b2 Drag against RASAero through Mach 2.**
       - Cd against Mach from RocketPy's RASAero CSVs, per band. Loft lesson L18.
@@ -589,13 +582,19 @@
       0/17 supersonic within 10%; no fin input is within 10% subsonic and supersonic both.
       MIL-HDBK-762's worked example: 6/12, the body 6–10% low past Mach 1.6. Boattail a candidate.
 
-    - [ ] **M1.8b3 The boattail and base faster than sound.**
+    - [x] **M1.8b3 The boattail and base faster than sound.**
       - A conical boattail's supersonic wave drag (MIL-HDBK-762 Fig. 5-122), the base behind it,
         and a lip in its wake.
 
       *Done when* (targets set before measuring; or an ADR records why not): the Arcas Robin's 11
       fins-off rows from Mach 1.5 within 10%, the 2 now within staying; Calisto's 17 supersonic
       rows against RASAero II within 10%; each row's change reported (ADR-029).
+
+      *Result (ADR-030):* not met, recorded. The chart (Jack's second-order theory) held to the
+      Prandtl–Meyer limit, separation from 16° to 30°, Fig. 5-141's base relief, the lip in the
+      wake. Measured boattails of 3° to 10° from Mach 1.2: −21.9% to +28.3%; 16°: +26% to +54%.
+      Arcas Robin fins off from Mach 1.5: 0 of 11, +13.5% to +24.1% (steep boattail, #72); Calisto:
+      8 of 17, −14.9% to −5.1%; plausible fins bring 14 to 17 within 10%.
 
   - [ ] **M1.8c Roll and damping.**
     - Roll forcing from fin cant and roll damping. Pitch and yaw damping keep hpr's local-flow

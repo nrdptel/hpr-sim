@@ -17,11 +17,15 @@
 //! calculation (Table 5-4) for the rocket of its Fig. 5-155, term by term (M1.8b2, ADR-029): a
 //! calculation with every input known, transcribed into
 //! `validation/fixtures/aero/mil-hdbk-762-sample-drag.json`, not a measurement.
+//!
+//! And it compares hpr's boattail pressure drag and base pressure behind a boattail with measured
+//! conical boattails, and the boattail chart with Jack's second-order theory (M1.8b3, ADR-030),
+//! transcribed into `validation/fixtures/aero/measured-boattails.json`.
 
 use std::fs;
 use std::path::Path;
 
-use hpr_aero::{AeroModel, DragConditions, Flow};
+use hpr_aero::{AeroModel, Boattail, DragConditions, Flow};
 use hpr_design::Rocket;
 use serde_json::{Value, json};
 
@@ -34,6 +38,8 @@ pub const REYNOLDS_PER_M: f64 = 3.0e6 / 0.3048;
 
 /// The fixture, from the committed designs and the wind-tunnel reference.
 pub fn generate(root: &Path) -> Result<Value, String> {
+    let text = fs::read_to_string(root.join(BOATTAILS)).map_err(|e| format!("{BOATTAILS}: {e}"))?;
+    let references: Value = serde_json::from_str(&text).map_err(|e| format!("{BOATTAILS}: {e}"))?;
     Ok(json!({
         "generator": "cargo xtask aero",
         "note": "hpr's forebody drag, C_D0 less the base drag (friction + pressure + parasitic, on \
@@ -58,6 +64,133 @@ pub fn generate(root: &Path) -> Result<Value, String> {
                               out of the comparison: compared is each total less it, and error is \
                               hpr's compared over the handbook's, minus 1.",
         "calculations": [handbook(root)?],
+        "boattails_note": "hpr's boattail pressure drag on the boattail's fore (cylinder) area \
+                           (hpr_aero::afterbody) against measured conical boattails behind a \
+                           cylinder, jet off, at zero angle of attack \
+                           (validation/fixtures/aero/measured-boattails.json). hpr_attached is \
+                           the attached-flow value before the separation blend (from Mach 1); \
+                           error is hpr's \
+                           over the measured value, minus 1.",
+        "boattails": boattail_rows(&references, "boattails", boattail_drag)?,
+        "base_pressures_note": "hpr's base-pressure ratio k = C_p,bt/C_p,cyl behind a boattail \
+                                (hpr_aero::afterbody::Boattail::base_pressure_ratio) against the \
+                                measured ratio, each report's boattail base pressure over its own \
+                                cylinder's. base_cd_difference is (k_hpr − k_measured) times the \
+                                measured cylinder's −C_p,b times the base's area over the \
+                                cylinder's: the error in base drag on the cylinder's area.",
+        "base_pressures": boattail_rows(&references, "base_pressures", base_pressure)?,
+        "second_order_theory_note": "hpr's attached boattail pressure drag (the chart held to the \
+                                     2D limit) against Jack's second-order theory (NACA TN 2972, \
+                                     Fig. 3) at each legible point; x is the chart's abscissa \
+                                     √(M² − 1)/(2 l/d₁), inside the chart up to 1.4.",
+        "second_order_theory": boattail_rows(&references, "second_order_theory", theory)?,
+    }))
+}
+
+const BOATTAILS: &str = "validation/fixtures/aero/measured-boattails.json";
+
+/// A boattail of fore diameter 1 from a reference row: its length ratio `l/d₁` and diameter ratio
+/// `d₂/d₁`, or its area ratio and half-angle.
+fn boattail_of(row: &Value) -> Result<Boattail, String> {
+    let (length, ratio) = match (row["length_ratio"].as_f64(), row["diameter_ratio"].as_f64()) {
+        (Some(l), Some(r)) => (l, r),
+        _ => {
+            let a = row["area_ratio"]
+                .as_f64()
+                .ok_or(format!("{BOATTAILS}: a row without its geometry"))?;
+            let theta = row["half_angle_deg"]
+                .as_f64()
+                .ok_or(format!("{BOATTAILS}: a row without its geometry"))?
+                .to_radians();
+            let r = a.sqrt();
+            ((1.0 - r) / (2.0 * theta.tan()), r)
+        }
+    };
+    Boattail::new(length, 1.0, ratio).map_err(|e| format!("{BOATTAILS}: {e}"))
+}
+
+fn number(row: &Value, key: &str) -> Result<f64, String> {
+    row[key]
+        .as_f64()
+        .ok_or(format!("{BOATTAILS}: a row without `{key}`"))
+}
+
+/// Each reference row with hpr's values added by `add`.
+fn boattail_rows(
+    references: &Value,
+    section: &str,
+    add: fn(&Value, &Boattail) -> Result<Value, String>,
+) -> Result<Value, String> {
+    let mut rows = Vec::new();
+    for row in references[section]["rows"]
+        .as_array()
+        .ok_or(format!("{BOATTAILS} has no `{section}`"))?
+    {
+        let boattail = boattail_of(row)?;
+        let mut out = row.clone();
+        let extra = add(row, &boattail)?;
+        if let (Some(out), Some(extra)) = (out.as_object_mut(), extra.as_object()) {
+            out.insert("length_ratio".into(), json!(boattail.length_ratio));
+            out.insert("area_ratio".into(), json!(boattail.area_ratio));
+            out.insert(
+                "half_angle_deg".into(),
+                json!(boattail.half_angle_rad.to_degrees()),
+            );
+            for (k, v) in extra {
+                out.insert(k.clone(), v.clone());
+            }
+        }
+        rows.push(out);
+    }
+    Ok(json!({ "source": references[section]["source"], "rows": rows }))
+}
+
+fn boattail_drag(row: &Value, boattail: &Boattail) -> Result<Value, String> {
+    let mach = number(row, "mach")?;
+    let hpr = boattail
+        .pressure_drag_coefficient(mach)
+        .map_err(|e| e.to_string())?;
+    // The attached drag is defined from Mach 1.
+    let attached = if mach >= hpr_aero::afterbody::SUPERSONIC_MACH {
+        json!(
+            boattail
+                .attached_pressure_drag(mach)
+                .map_err(|e| e.to_string())?
+        )
+    } else {
+        Value::Null
+    };
+    Ok(json!({
+        "hpr": hpr,
+        "hpr_attached": attached,
+        "separation_weight": boattail.separation_weight,
+        "error": hpr / number(row, "cd")? - 1.0,
+    }))
+}
+
+fn base_pressure(row: &Value, boattail: &Boattail) -> Result<Value, String> {
+    let mach = number(row, "mach")?;
+    let (cylinder, behind) = (number(row, "cylinder_cp")?, number(row, "boattail_cp")?);
+    let measured = behind / cylinder;
+    let hpr = boattail
+        .base_pressure_ratio(mach, boattail.area_ratio)
+        .map_err(|e| e.to_string())?;
+    Ok(json!({
+        "k_measured": measured,
+        "k_hpr": hpr,
+        "base_cd_difference": (hpr - measured) * -cylinder * boattail.area_ratio,
+    }))
+}
+
+fn theory(row: &Value, boattail: &Boattail) -> Result<Value, String> {
+    let mach = number(row, "mach")?;
+    let hpr = boattail
+        .attached_pressure_drag(mach)
+        .map_err(|e| e.to_string())?;
+    Ok(json!({
+        "x": (mach * mach - 1.0).sqrt() / (2.0 * boattail.length_ratio),
+        "hpr": hpr,
+        "error": hpr / number(row, "cd")? - 1.0,
     }))
 }
 
@@ -278,10 +411,12 @@ mod tests {
         let committed: serde_json::Value =
             serde_json::from_str(&std::fs::read_to_string(root.join(super::FIXTURE)).unwrap())
                 .unwrap();
+        let generated = super::generate(&root).unwrap();
         assert!(
-            crate::designs::same(&committed, &super::generate(&root).unwrap()),
-            "{} differs from `cargo xtask aero`",
-            super::FIXTURE
+            crate::designs::same(&committed, &generated),
+            "{} differs from `cargo xtask aero`: {:?}",
+            super::FIXTURE,
+            crate::designs::difference(&committed, &generated)
         );
     }
 }

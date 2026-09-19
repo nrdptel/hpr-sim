@@ -120,11 +120,17 @@ fn stale(dir: &Path, designs: &[(String, String)]) -> Vec<String> {
     stale
 }
 
-/// Whether two JSON values are equal, with numbers equal to 1e-12 relative.
+/// Whether two JSON values are equal, with numbers equal to 1e-12 relative, or 1e-13 apart near
+/// zero. The floor is for a small number that is a difference of two near ones, such as a relative
+/// error of a fraction of a percent: each platform's maths library rounds its last bits its own
+/// way, and the subtraction magnifies a few rounding steps of the ratio (a 0.46% error differed by
+/// 5e-15 between macOS and Linux, 1.1e-12 of itself). Any edit by hand is far larger.
 pub fn same(a: &Value, b: &Value) -> bool {
     match (a, b) {
         (Value::Number(x), Value::Number(y)) => match (x.as_f64(), y.as_f64()) {
-            (Some(x), Some(y)) => x == y || (x - y).abs() <= 1e-12 * x.abs().max(y.abs()),
+            (Some(x), Some(y)) => {
+                x == y || (x - y).abs() <= (1e-12 * x.abs().max(y.abs())).max(1e-13)
+            }
             _ => x == y,
         },
         (Value::Array(x), Value::Array(y)) => {
@@ -135,6 +141,28 @@ pub fn same(a: &Value, b: &Value) -> bool {
         }
         _ => a == b,
     }
+}
+
+/// Where `a` and `b` first differ, as [`same`] judges them: the JSON path and both values.
+pub fn difference(a: &Value, b: &Value) -> Option<String> {
+    fn walk(a: &Value, b: &Value, path: &str) -> Option<String> {
+        match (a, b) {
+            (Value::Array(x), Value::Array(y)) if x.len() == y.len() => x
+                .iter()
+                .zip(y)
+                .enumerate()
+                .find_map(|(i, (x, y))| walk(x, y, &format!("{path}[{i}]"))),
+            (Value::Object(x), Value::Object(y)) if x.len() == y.len() => {
+                x.iter().find_map(|(k, v)| match y.get(k) {
+                    Some(w) => walk(v, w, &format!("{path}.{k}")),
+                    None => Some(format!("{path}.{k}: missing")),
+                })
+            }
+            _ if same(a, b) => None,
+            _ => Some(format!("{path}: {a} against {b}")),
+        }
+    }
+    walk(a, b, "")
 }
 
 /// Every design as `(file name, pretty JSON)`.

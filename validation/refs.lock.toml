@@ -205,6 +205,97 @@ license = "US government work"
 mode = "fetched"
 
 [[file]]
+name = "naca-tn-2972-jack-1953"
+title = "J. R. Jack, Theoretical pressure distributions and wave drags for conical boattails, NACA TN 2972, 1953"
+url = "https://ntrs.nasa.gov/api/citations/19930083638/downloads/19930083638.pdf"
+sha256 = "338c34f12f6f5c404ce435a3712c1ea20523bf7084b1f10ea741abd056dc1297"
+dest = "refs/papers/naca-tn-2972-jack-1953-conical-boattails.pdf"
+license = "US government work"
+mode = "fetched"
+
+# NTRS serves this one with a 436-byte header before the %PDF marker; the pin is for the bytes as
+# served.
+[[file]]
+name = "naca-rm-e51f26-cortright-schroeder-1951"
+title = "E. M. Cortright Jr. and A. H. Schroeder, Investigation at Mach number 1.91 of side and base pressure distributions over conical boattails without and with jet flow issuing from base, NACA RM E51F26, 1951"
+url = "https://ntrs.nasa.gov/api/citations/19930086724/downloads/19930086724.pdf"
+sha256 = "df0230ef9058010c7d700f2e402cfeb26cc517a3430f693d05e14a129eb559df"
+dest = "refs/papers/naca-rm-e51f26-cortright-schroeder-1951.pdf"
+license = "US government work"
+mode = "fetched"
+
+# NTRS serves this one with a 436-byte header before the %PDF marker; the pin is for the bytes as
+# served.
+[[file]]
+name = "naca-rm-l54c16-demoraes-nowitzky-1954"
+title = "C. A. de Moraes and A. M. Nowitzky, Experimental effects of propulsive jets and afterbody configurations on the zero-lift drag of bodies of revolution at a Mach number of 1.59, NACA RM L54C16, 1954"
+url = "https://ntrs.nasa.gov/api/citations/19930088187/downloads/19930088187.pdf"
+sha256 = "0e5692101af2c78196723f706ce1e4aa7c6ff7e8801d07f1ef0a7b4c659bfe52"
+dest = "refs/papers/naca-rm-l54c16-demoraes-nowitzky-1954.pdf"
+license = "US government work"
+mode = "fetched"
+
+[[file]]
+name = "nasa-tn-d-6789-compton-1972"
+title = "W. B. Compton III, Jet effects on the drag of conical afterbodies at supersonic speeds, NASA TN D-6789, 1972"
+url = "https://ntrs.nasa.gov/api/citations/19720019347/downloads/19720019347.pdf"
+sha256 = "e6ea63b0ab46967eab7a1bca4ac1bd5adc0794c57ac752c128c2e6bdb740f08b"
+dest = "refs/papers/nasa-tn-d-6789-compton-1972.pdf"
+license = "US government work"
+mode = "fetched"
+
+# NTRS serves this one with a 436-byte header before the %PDF marker; the pin is for the bytes as
+# served.
+[[file]]
+name = "naca-rm-e54b11-moskowitz-jack-1954"
+title = "B. Moskowitz and J. R. Jack, Aerodynamics of slender bodies at Mach number of 3.12 and Reynolds numbers from 2 × 10⁶ to 15 × 10⁶, V: Aerodynamic load distributions for a series of four boattailed bodies, NACA RM E54B11, 1954"
+url = "https://ntrs.nasa.gov/api/citations/19930088175/downloads/19930088175.pdf"
+sha256 = "1d5acaa4c15ba82c7ef147ac7a3eda8f7b61e3440b5adb1f55aef5d8d867adcf"
+dest = "refs/papers/naca-rm-e54b11-moskowitz-jack-1954.pdf"
+license = "US government work"
+mode = "fetched"
+
+# NTRS serves this one with a 436-byte header before the %PDF marker; the pin is for the bytes as
+# served.
+[[file]]
+name = "naca-rm-l57b21-cubbage-1957"
+title = "J. M. Cubbage Jr., Jet effects on the drag of conical afterbodies for Mach numbers of 0.6 to 1.28, NACA RM L57B21, 1957"
+url = "https://ntrs.nasa.gov/api/citations/19930089627/downloads/19930089627.pdf"
+sha256 = "4e4b829a1d41976944b1bb67eb2793ed4c65bf6dfc849a744dfa406891dcc977"
+dest = "refs/papers/naca-rm-l57b21-cubbage-1957.pdf"
+license = "US government work"
+mode = "fetched"
+
+# NTRS serves this one with a 436-byte header before the %PDF marker; the pin is for the bytes as
+# served.
+[[file]]
+name = "naca-tn-3819-love-1957"
+title = "E. S. Love, Base pressure at supersonic speeds on two-dimensional airfoils and on bodies of revolution with and without fins having turbulent boundary layers, NACA TN 3819, 1957"
+url = "https://ntrs.nasa.gov/api/citations/19930084517/downloads/19930084517.pdf"
+sha256 = "9acd67dc393b26162f773602f477be6e9bf3b5e2823edb18df105a1159c9ce55"
+dest = "refs/papers/naca-tn-3819-love-1957.pdf"
+license = "US government work"
+mode = "fetched"
+
+[[file]]
+name = "naca-report-1135"
+title = "Ames Research Staff, Equations, tables, and charts for compressible flow, NACA Report 1135, 1953"
+url = "https://ntrs.nasa.gov/api/citations/19930091059/downloads/19930091059.pdf"
+sha256 = "1971643025181d1216b0b0a359d2a5a3adf5d254d3e158e19ba880b368b86e53"
+dest = "refs/papers/naca-report-1135.pdf"
+license = "US government work"
+mode = "fetched"
+
+[[file]]
+name = "rasaero-ii-arcas-comparison-2022"
+title = "C. E. Rogers, RASAero II Comparisons with ARCAS Center of Pressure (CP) and Drag Coefficient (CD) Wind Tunnel Data, Rogers Aeroscience, 2022 (slides)"
+url = "https://www.rasaero.com/dloads/RASAero%20II%20Comparisons%20with%20ARCAS%20CP%20and%20CD%20Data.pdf"
+sha256 = "3d2dd9e9b3ed8c6521eed525baffa6e3c5f4fcd90274cd9a1115ba51ed3fd512"
+dest = "refs/papers/rasaero-ii-arcas-cp-cd-comparison-2022.pdf"
+license = "unknown terms"
+mode = "fetched"
+
+[[file]]
 name = "fpl-gtr-190-wood-handbook"
 title = "Forest Products Laboratory, Wood Handbook: Wood as an Engineering Material, General Technical Report FPL-GTR-190, 2010"
 url = "https://www.fpl.fs.usda.gov/documnts/fplgtr/fpl_gtr190.pdf"

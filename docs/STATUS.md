@@ -4,11 +4,11 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
 
 ## Now
 
-- **Current milestone:** M1.8b3 The boattail and base faster than sound (M1.8b split into b1 to b3)
-- **Order:** M1.8b3, M1.8c, M1.8d, M1.8e, then M3.1
-- **Run:** M0.1-M0.4, M1.1-M1.7, M2.1, M1.8a, M1.8b1 and M1.8b2 have shipped. The site is live at
-  https://nrdptel.github.io/hpr-sim/
-- **Last updated:** 2026-09-18 (M1.8b2 done; M1.8b3 not started)
+- **Current milestone:** M1.8c Roll and damping
+- **Order:** M1.8c, M1.8d, M1.8e, then M3.1
+- **Run:** M0.1-M0.4, M1.1-M1.7, M2.1, M1.8a and M1.8b (b1 to b3) have shipped. The site is live
+  at https://nrdptel.github.io/hpr-sim/
+- **Last updated:** 2026-09-18 (M1.8b3 done; M1.8c not started)
 
 ## Handoff (overwrite each session)
 
@@ -19,44 +19,40 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
   every row of the report, cell for cell.
 - **Checking a milestone off** in `ROADMAP.md` fails `cargo xtask site` until its row in
   `docs/decisions-and-roadmap.md` says `done`; a new milestone needs a row.
-
 - **Validation (M2.1, ADR-021 to ADR-026):** CI checks the report on three OSes; predicted mode's
   3% are *targets*; every whole flight names both RMS metrics, each held to 3% of its reference's
   apogee or max speed (ADR-024); a reference that moves moves those bounds with it.
 - **The path in wind (ADR-026):** the oracle flies RocketPy 1.13.0 with upstream PRs #1188 and
   #1196 applied by `corrections.py`; when RocketPy releases #1196, re-pin, regenerate and delete
   it. `wind_response.py` measures the seven drifts reported as model differences.
-- **M1.8a/b1 (ADR-027, ADR-028):** normal force and drag cover Mach 0 to 5. `cargo xtask aero`
-  writes `normal-force-vs-mach.json` and `drag-vs-mach.json` (the Arcas Robin's forebody axial
-  force, drag by part) from `arcas-robin-wind-tunnel.json`. Stoney's Figure 12 curves live in
-  `hpr_aero::nose_drag` (panel (a), plus (b) for x^¼ and the ellipsoid). Digitization working
-  files: `refs/scratch/arcas/` (axial `axial-digitized.json`, roll data for M1.8c) and
-  `refs/scratch/stoney/` (`stoney-fig12.json`, overlays, `digitize.py`), uncommitted.
-- **M1.8b2 (ADR-029):** `cargo xtask aero` sweeps each RASAero curve every 0.05 from Mach 0.1 to
-  2.0 into `rocketpy-drag-curves.json` (hpr's values and errors only) and compares
-  MIL-HDBK-762's sample calculation (`mil-hdbk-762-sample-drag.json`, Table 5-4 transcribed) in
-  `drag-vs-mach.json`'s `calculations`. L18's test is `supersonic_cd_against_rasaero_tables`
-  (renamed; it pins, it doesn't assert agreement). Scratch tools: `refs/scratch/m18b2/`
-  (`range` sweeps Calisto's fin inputs by band; `mh` the handbook rocket).
-- **M1.8b3** next: the supersonic afterbody. MIL-HDBK-762 Fig. 5-122 (p. 5-187, PDF page 425)
-  plots `4 C_Dw (l/d)²` against `√(M²−1)/(2 l/d)` from 0.05 to 1.4 for `(d_b/d)²` 0.25 to 0.80;
-  read for ADR-029 at Calisto's boattail (0.338, 0.215, ≈0.13 at Mach 1.2, 1.5, 2.0) and the
-  Arcas Robin's (0.198 at 1.5, 0.130 at 2.0, ≈0.072 at 2.96). The Arcas Robin's measured forebody
-  wants about half the chart's extra at Mach 1.5 and none at 2.96 (lip removed), so the chart
-  alone won't do: find the method behind it (no source cited), weigh the 8° separation advice
-  (p. 5-12), the base behind a boattail (Fig. 5-141) and Love's base drag (#68), and the lip.
-  Targets are in ROADMAP. Issues #67 to #70 hold the other drag gaps. Don't read predicted mode's
-  misses as gaps to close (ADR-009, ADR-023). M1.8c's damping must keep hpr's local-flow pitch
-  damping (ADR-026). ROADMAP is at its 1000-line budget: trim a done entry when adding.
-- **Regeneration is not bit-identical across machines** (last digits, so hashes move); the
-  script prints each fixture's move. Regenerate reports with `cargo xtask validate` (the alias's
-  debug build), never `cargo run --release`: release rounds differently in the 7th digit.
+- **M1.8a/b (ADR-027 to ADR-029):** `cargo xtask aero` writes `normal-force-vs-mach.json`,
+  `drag-vs-mach.json` and `rocketpy-drag-curves.json` (hpr's values and errors only). Working
+  files, uncommitted: `refs/scratch/arcas/` (roll data for M1.8c), `refs/scratch/stoney/`,
+  `refs/scratch/m18b2/` (`range` sweeps Calisto's fin inputs by band).
+- **M1.8b3 (ADR-030):** `hpr_aero::afterbody`: Fig. 5-122 (Jack's second-order theory) held to
+  the Prandtl–Meyer limit, 16°–30° separation, Fig. 5-141 base relief, a lip in a boattail's wake.
+  `measured-boattails.json` holds the transcribed NACA/NASA readings (checked twice against the
+  scans); `cargo xtask aero` compares them in `drag-vs-mach.json`. NTRS serves five of the new
+  PDFs with a 436-byte header (pinned as served); readable cut copies and all research notes are
+  in `refs/scratch/m18b3/` (`carved/`, `*.md`, `cubbage-transonic.json`). Open: #72 (steep
+  boattails in a thick boundary layer read high), #73 (the subsonic rule gives long boattails 0).
+- **M1.8c** next: roll forcing from cant and roll damping; its done-when compares hpr's roll
+  forcing with the Arcas Robin's measured roll effectiveness (TN D-4014; roll readings in
+  `refs/scratch/arcas/`). Damping must keep hpr's local-flow pitch damping (ADR-026). Issues #67 to
+  #70, #72 and #73 hold the drag gaps. Don't read predicted mode's misses as gaps to close
+  (ADR-009, ADR-023). ROADMAP is at its 1000-line budget: trim a done entry when adding.
+- **Regeneration is not bit-identical across machines** (last digits). Regenerate reports with
+  `cargo xtask validate` (debug), never `--release`: it rounds differently in the 7th digit.
+  Fixture checks (`designs::same`) allow 1e-12 relative, or 1e-13 near zero (M1.8b3's PR).
 - **Process notes:** `cargo test -p xtask` guards STATUS, ROADMAP, notices, lessons and the lock.
   Oracles run from the repo root with `refs/venv/bin/python`. `cargo xtask designs` and
   `cargo xtask examples` rewrite designs and example outputs; pages quoting them must follow.
 
 ## Done log (newest first, keep about 15)
 
+- 2026-09-18: M1.8b3 The boattail and base faster than sound (ADR-030), and with it M1.8b: not
+  met, recorded. Measured boattails of 3° to 10° −21.9% to +28.3%; Arcas Robin fins off from
+  Mach 1.5 0 of 11 (+13.5% to +24.1%, the steep boattail, #72); Calisto supersonic 8 of 17.
 - 2026-09-18: M1.8b2 Drag against RASAero through Mach 2 (ADR-029): not met, recorded. Calisto's
   export 15/15 subsonic, 2/7 transonic, 0/17 supersonic (−29.8% to −24.4%), no fin input closes
   it; MIL-HDBK-762's worked example (fins left out) 6/12, the body 6–10% low past Mach 1.6; a
@@ -96,6 +92,9 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
 
 ## Decided without Neer (one line each; significant ones get an ADR)
 
+- ADR-030: Fig. 5-122 to the Prandtl–Meyer limit, 16°–30° separation, Fig. 5-141 as a ratio, the
+  flow behind boattails shared among their tails, a step down sheltering a lip (a retainer: up to
+  23% less `C_D0`, unmeasured); targets not met, not tuned.
 - ADR-029: M1.8's drag bullet recorded as not met, not chased; MIL-HDBK-762's worked example
   added (fins left out); L18's test renamed to measure and pin; M1.8b3 added for the afterbody.
 - ADR-028: M1.8b split into b1 and b2; Stoney's Figure 12 read by hand into the code (panel (a),
@@ -129,11 +128,12 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
   Recruiter's six fins miss the printed slope by +3.42% (+2.87% whole; ADR-008). Through Mach 1
   (M1.8a) the normal force misses the wind tunnel between Mach 0.8 and 1.2, and past Mach 3 reads
   17–25% low from the body (M1.8e; ADR-027).
-- Drag: against RASAero II's Calisto hpr reads −29.8% to −24.4% supersonic, cause open (a
-  boattail's wave drag a candidate, M1.8b3; ADR-029); against MIL-HDBK-762 the body reads 6–10%
-  low past Mach 1.6 and high through Mach 1 (nose #67, base #68). Against the Arcas Robin (ADR-028)
-  it reads high: fins take a blunt edge's formula (#70), a base lip counts as a shoulder, the
-  boattail rule over-predicts subsonic. Base drag is unmeasured past Mach 0.3.
+- Drag: against RASAero II's Calisto hpr reads −14.9% to −5.1% supersonic, within what the
+  unrecorded fins span (ADR-030); against MIL-HDBK-762 the body reads 6–10% low past Mach 1.6 and
+  high through Mach 1 (nose #67, base #68). Against the Arcas Robin it reads high at every row:
+  fins take a blunt edge's formula (#70), a steep boattail in a thick boundary layer reads high
+  (#72), the boattail rule over-predicts subsonic (#73). A cylinder's base drag is unmeasured
+  past Mach 0.3; behind a boattail its relief matches 12 measured bases.
 - In wind, a slow rocket's drift in hpr rests on body lift's uncertain `K`: Juno III's apogee
   drift is 240 to 194 m over Galejs's 1.0 to 1.5 (ADR-026, `wind_response.py`). The oracle carries two unreleased
   RocketPy corrections; if #1196 changes before it merges, revisit `corrections.py`.

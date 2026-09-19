@@ -29,7 +29,7 @@ use serde::{Deserialize, Serialize};
 use crate::body::{BODY_LIFT_K, BodyGeometry, sinc};
 use crate::drag::{
     BUILDUP_MACH_LIMIT, ComponentDrag, ComponentDragTerms, Drag, DragConditions,
-    axial_drag_alpha_factor, body_friction_form_factor,
+    axial_drag_alpha_factor, body_friction_form_factor, couple_afterbody,
 };
 use crate::error::{AeroError, check_dimension, check_mach};
 use crate::fins::{FinAero, FinLoading, fin_count_factor, interference_factor, roll_sum, side_sum};
@@ -279,6 +279,7 @@ impl AeroModel {
         let mut fin_sets = Vec::new();
         let mut drag_terms = Vec::new();
         let mut previous_aft_area: Option<f64> = None;
+        let mut body_terms_at = Vec::new();
         let mut last_body_terms: Option<usize> = None;
         for component in &layout.components {
             let in_component = |e: AeroError| AeroError::InComponent {
@@ -402,6 +403,7 @@ impl AeroModel {
                     )
                     .map_err(in_component)?,
                 );
+                body_terms_at.push((drag_terms.len() - 1, geometry));
                 previous_aft_area = Some(geometry.aft_area_m2);
                 bodies.push(body_terms(component, geometry, step, reference_area_m2));
             }
@@ -410,6 +412,8 @@ impl AeroModel {
         if let (Some(index), Some(last)) = (last_body_terms, bodies.last()) {
             drag_terms[index].base_area_m2 = last.geometry.aft_area_m2;
         }
+        // Boattails, a lip in a boattail's wake, and the base behind them.
+        couple_afterbody(&mut drag_terms, &body_terms_at, reference_area_m2)?;
         Ok(Self {
             reference_area_m2,
             length_m,
