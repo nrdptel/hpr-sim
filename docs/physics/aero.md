@@ -393,8 +393,10 @@ For a worked example with numbers, see
 ### The body faster than sound in a flight
 
 What this covers: how a flight uses the method above, from Mach 1.2. How far to trust it: as far
-as the method's own checks above, for a pointed nose and cylinder; a boattail behind them takes
-the report's footnote 8, which no measurement here checks on its own. A rocket with a flare or a
+as the method's own checks above, for a pointed nose and cylinder. A boattail behind them takes
+the report's footnote 8, and a tube behind the boattail the method's decay of it; no measurement
+here checks either on its own, and footnote 8 claims only "moderate amounts of boattail", yet hpr
+takes a boattail of any angle (issue #90). A rocket with a flare or a
 step behind the nose, or whose nose has a blunt or vertical tip (power-series, elliptical, Haack),
 gets nothing from it yet and keeps slender-body theory, which reads 61% to 82% low on the Arcas
 Robin faster than sound. The join between the two models is a
@@ -413,14 +415,16 @@ boattail takes the method's share too. Each covered part gets its own share of t
 so the flight's pitch damping still comes from each part's own local flow. That flow is taken at
 one [station](../glossary.md#station) per part; the part's force and its moment about the nose tip
 are the method's either way. A nose or cylinder takes that station at its share's own centre of
-pressure. A boattail's share is negative, and so is a tube's behind it: the method carries the
+pressure. A boattail's share is usually negative, and so is a tube's behind it: the method carries the
 boattail's expansion down the tube, where it fades out over several calibers, so a long tube can
 lose more than the short boattail. On the finned rocket of the tests (measured by hand, not
 pinned), a 5.7° boattail 0.05 m long takes 0.117 per radian off at Mach 2 and the 0.3 m tube
 behind it 0.210. Such a share could cross zero as the Mach number changes, and its centre of
 pressure would then run off to infinity. So these parts take their local flow where slender-body
 theory does, on the part: a boattail at its slender-body centre of pressure, a tube at its
-body-lift station. Body lift, the `sin² α` term, is unchanged.
+body-lift station. Only the damping feels this: on the test rocket at Mach 2 the tube's share acts
+at 1.040 m but its flow is taken at about 1.15 m, so with the centre of mass near 0.7 m that
+part's (negative) damping reads about 30% large. Body lift, the `sin² α` term, is unchanged.
 
 **A table.** One run of the method takes a few milliseconds, too slow for every step of a
 flight. So the first time a flow faster than Mach 1.2 needs it, hpr runs the method every 0.05 in
@@ -1727,8 +1731,9 @@ The method's slope grows with Mach number, as the measurement does: 2.55 to 3.37
 model, where slender-body theory keeps its nose at 2. By the end of either cylinder the lift has
 died away, so the long model gets almost nothing more (3.313 against 3.300 at Mach 3.96), while
 its measurement is 0.57 higher. That difference goes with the longer body's larger side area,
-the mark of crossflow lift. The boattail is
-[M1.8e4](../decisions-and-roadmap.md#m1-8e4)'s to settle, the boattail's share faster than sound;
+the mark of crossflow lift. The boattail flies by footnote 8 since
+[M1.8e4](../decisions-and-roadmap.md#m1-8e4) (the worked example under
+[The body faster than sound in a flight](#the-body-faster-than-sound-in-a-flight));
 crossflow and the lip are [M1.8e5](../decisions-and-roadmap.md#m1-8e5)'s, crossflow and blunt tips
 faster than sound. Below Mach 3 the tangent cones' slopes are an assumption.
 

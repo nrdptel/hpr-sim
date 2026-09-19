@@ -35,7 +35,7 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
   max(1.2, where the method starts to hold, bisected since M1.8e3) over 0.3; only when nothing
   behind has a slope; since M1.8e4 boattails and tubes behind them too (slender-body stations).
   M1.8e5 next: crossflow (long model to −27.0% with its boattail), blunt tips, Fig. 2 below
-  Mach 3, #81, #87's model switches; it carries M1.8e's 15% bullet.
+  Mach 3, #81, #87's switches, #90 (boattail angle cap); it carries M1.8e's 15% bullet.
 - **Autopilot memory:** per-cycle process groups; `scripts/build-memory.sh` → `docs/perf.md`.
 - **Regeneration is not bit-identical across machines** (last digits). Regenerate reports with
   `cargo xtask validate` (debug), never `--release`: it rounds differently in the 7th digit.

@@ -260,6 +260,9 @@ fn arcas_model(
     let path = root.join("validation/designs").join(name);
     let text = fs::read_to_string(&path).map_err(|e| format!("{name}: {e}"))?;
     let mut design: Value = serde_json::from_str(&text).map_err(|e| format!("{name}: {e}"))?;
+    if boattail && ratio.is_none() {
+        return Err(format!("{name}: a boattail without the fitted nose"));
+    }
     if let Some(ratio) = ratio {
         let shape = design
             .pointer_mut("/stages/0/components/0/part/nose_cone/shape")
