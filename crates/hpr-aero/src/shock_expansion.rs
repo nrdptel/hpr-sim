@@ -174,7 +174,7 @@ pub struct ShockExpansionBody {
 /// One segment's share of the body's normal-force slope at `α → 0`
 /// ([`ShockExpansionBody::segment_slopes`]).
 ///
-/// A share can be negative or zero (a boattail's, footnote 8), so `moment_slope_m /
+/// A share can be negative or zero (a boattail's, TN 3527 footnote 8, p. 12), so `moment_slope_m /
 /// slope_per_rad` need not lie within its segment and is unbounded where a share crosses zero:
 /// carry the moment, not a station.
 #[derive(Debug, Clone, Copy, Default, PartialEq, Serialize, Deserialize)]

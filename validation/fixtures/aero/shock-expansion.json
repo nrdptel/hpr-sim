@@ -13,9 +13,9 @@
               "covered_c_n_alpha": -0.0
             },
             "in_flight": {
-              "bodies_c_n_alpha": 1.4056317972129513,
-              "bodies_c_n_alpha_error": -0.35874454124410027,
-              "bodies_cp_calibers": -8.985664841526903,
+              "bodies_c_n_alpha": 2.5519429083240626,
+              "bodies_c_n_alpha_error": 0.1642076706296165,
+              "bodies_cp_calibers": 2.9940228607991113,
               "covered_c_n_alpha": 2.5519429083240626
             },
             "mach": 1.5,
@@ -39,9 +39,9 @@
               "covered_c_n_alpha": -0.0
             },
             "in_flight": {
-              "bodies_c_n_alpha": 1.5779880089513143,
-              "bodies_c_n_alpha_error": -0.396086420000767,
-              "bodies_cp_calibers": -7.362289676673473,
+              "bodies_c_n_alpha": 2.7242991200624256,
+              "bodies_c_n_alpha_error": 0.042619604998798355,
+              "bodies_cp_calibers": 3.176415811091268,
               "covered_c_n_alpha": 2.7242991200624256
             },
             "mach": 1.8,
@@ -65,9 +65,9 @@
               "covered_c_n_alpha": -0.0
             },
             "in_flight": {
-              "bodies_c_n_alpha": 1.784791091095462,
-              "bodies_c_n_alpha_error": -0.420056618489446,
-              "bodies_cp_calibers": -5.694027908685107,
+              "bodies_c_n_alpha": 2.9311022022065734,
+              "bodies_c_n_alpha_error": -0.047578547886312994,
+              "bodies_cp_calibers": 3.4486894847423653,
               "covered_c_n_alpha": 2.9311022022065734
             },
             "mach": 2.3,
@@ -91,9 +91,9 @@
               "covered_c_n_alpha": -0.0
             },
             "in_flight": {
-              "bodies_c_n_alpha": 1.9777332490292903,
-              "bodies_c_n_alpha_error": -0.39777968728141,
-              "bodies_cp_calibers": -4.296577764919953,
+              "bodies_c_n_alpha": 3.1240443601404015,
+              "bodies_c_n_alpha_error": -0.048727641893106965,
+              "bodies_cp_calibers": 3.7687131062613415,
               "covered_c_n_alpha": 3.1240443601404015
             },
             "mach": 2.96,
@@ -117,9 +117,9 @@
               "covered_c_n_alpha": -0.0
             },
             "in_flight": {
-              "bodies_c_n_alpha": 2.153805898892168,
-              "bodies_c_n_alpha_error": -0.44553520083776543,
-              "bodies_cp_calibers": -3.031739843259496,
+              "bodies_c_n_alpha": 3.3001170100032793,
+              "bodies_c_n_alpha_error": -0.15043471832604893,
+              "bodies_cp_calibers": 4.163892500585223,
               "covered_c_n_alpha": 3.3001170100032793
             },
             "mach": 3.96,
@@ -143,9 +143,9 @@
               "covered_c_n_alpha": -0.0
             },
             "in_flight": {
-              "bodies_c_n_alpha": 2.2247184972690883,
-              "bodies_c_n_alpha_error": -0.46375895368370845,
-              "bodies_cp_calibers": -2.4887674065567085,
+              "bodies_c_n_alpha": 3.3710296083801996,
+              "bodies_c_n_alpha_error": -0.18745475143035573,
+              "bodies_cp_calibers": 4.370861859512975,
               "covered_c_n_alpha": 3.3710296083801996
             },
             "mach": 4.63,
@@ -175,9 +175,9 @@
               "covered_c_n_alpha": -0.0
             },
             "in_flight": {
-              "bodies_c_n_alpha": 1.5780347626648616,
-              "bodies_c_n_alpha_error": -0.5003907998790618,
-              "bodies_cp_calibers": -11.413310070364991,
+              "bodies_c_n_alpha": 2.724345873775973,
+              "bodies_c_n_alpha_error": -0.13746623645257394,
+              "bodies_cp_calibers": 3.1766818980280376,
               "covered_c_n_alpha": 2.724345873775973
             },
             "mach": 1.8,
@@ -201,9 +201,9 @@
               "covered_c_n_alpha": -0.0
             },
             "in_flight": {
-              "bodies_c_n_alpha": 1.7852968554233484,
-              "bodies_c_n_alpha_error": -0.49359777876724764,
-              "bodies_cp_calibers": -9.268456277172168,
+              "bodies_c_n_alpha": 2.9316079665344597,
+              "bodies_c_n_alpha_error": -0.16844485468796433,
+              "bodies_cp_calibers": 3.451359983509994,
               "covered_c_n_alpha": 2.9316079665344597
             },
             "mach": 2.3,
@@ -227,9 +227,9 @@
               "covered_c_n_alpha": -0.0
             },
             "in_flight": {
-              "bodies_c_n_alpha": 1.9807479095288203,
-              "bodies_c_n_alpha_error": -0.48791595041169344,
-              "bodies_cp_calibers": -7.488895834575193,
+              "bodies_c_n_alpha": 3.1270590206399316,
+              "bodies_c_n_alpha_error": -0.19155939083037543,
+              "bodies_cp_calibers": 3.7835440336093478,
               "covered_c_n_alpha": 3.1270590206399316
             },
             "mach": 2.96,
@@ -253,9 +253,9 @@
               "covered_c_n_alpha": -0.0
             },
             "in_flight": {
-              "bodies_c_n_alpha": 2.1671322289104165,
-              "bodies_c_n_alpha_error": -0.5135850916316691,
-              "bodies_cp_calibers": -5.844365023547738,
+              "bodies_c_n_alpha": 3.3134433400215277,
+              "bodies_c_n_alpha_error": -0.25629446273771817,
+              "bodies_cp_calibers": 4.225051414086461,
               "covered_c_n_alpha": 3.3134433400215277
             },
             "mach": 3.96,
@@ -279,9 +279,9 @@
               "covered_c_n_alpha": -0.0
             },
             "in_flight": {
-              "bodies_c_n_alpha": 2.24900922685592,
-              "bodies_c_n_alpha_error": -0.5126787092336449,
-              "bodies_cp_calibers": -5.094591492469667,
+              "bodies_c_n_alpha": 3.395320337967031,
+              "bodies_c_n_alpha_error": -0.2642929740326265,
+              "bodies_cp_calibers": 4.47886958577224,
               "covered_c_n_alpha": 3.395320337967031
             },
             "mach": 4.63,
@@ -306,7 +306,7 @@
       "shape": "the secant ogive through the tip and base nearest TN D-4014 Fig. 1(a)'s coordinates",
       "vertex_half_angle_deg": 10.761022218889433
     },
-    "note": "The measured slope is the least-squares slope, with an intercept, of TN D-4014's fins-off C_N points (arcas-robin-wind-tunnel.json), as M1.8a fits it; it includes the lip and crossflow at the plotted angles. hpr's is the method's at alpha -> 0 on the maximum cross-section. c_n_alpha_error is hpr's over the measured, minus 1. No target. in_flight is the design flown with the fitted nose through the flight's path (AeroModel) at alpha -> 0: covered_c_n_alpha is the nose and cylinder the method covers (M1.8e2, tabulated every 0.05 in Mach and interpolated), bodies_c_n_alpha every body, the boattail and lip by slender-body theory (M1.8e3 takes them). as_designed is the design flown with its power-series nose, which the method can't take (a vertical tip): slender-body theory, M1.8a's model."
+    "note": "The measured slope is the least-squares slope, with an intercept, of TN D-4014's fins-off C_N points (arcas-robin-wind-tunnel.json), as M1.8a fits it; it includes the lip and crossflow at the plotted angles. hpr's is the method's at alpha -> 0 on the maximum cross-section. c_n_alpha_error is hpr's over the measured, minus 1. No target. in_flight is the design's nose and cylinder alone, the nose the fitted secant ogive, through the flight's path (AeroModel) at alpha -> 0: the method's shares tabulated every 0.05 in Mach and interpolated (M1.8e2). as_designed is the whole design as committed, flown the same way: its power-series nose, which the method can't take (a vertical tip), and its boattail keep slender-body theory, M1.8a's model."
   },
   "elements_per_curve": 10,
   "generator": "cargo xtask aero",

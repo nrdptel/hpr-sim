@@ -248,8 +248,8 @@ fn arcas_nose(ratio: f64) -> Result<ShockExpansionBody, String> {
     .map_err(|e| e.to_string())
 }
 
-/// hpr's model of the design `name` under `validation/designs/`, with its nose replaced by the
-/// secant ogive of arc radius ratio `ratio` when given.
+/// hpr's model of the design `name` under `validation/designs/`, or with `ratio` of its nose and
+/// cylinder alone, the nose replaced by the secant ogive of that arc radius ratio.
 fn arcas_model(root: &Path, name: &str, ratio: Option<f64>) -> Result<AeroModel, String> {
     let path = root.join("validation/designs").join(name);
     let text = fs::read_to_string(&path).map_err(|e| format!("{name}: {e}"))?;
@@ -259,6 +259,11 @@ fn arcas_model(root: &Path, name: &str, ratio: Option<f64>) -> Result<AeroModel,
             .pointer_mut("/stages/0/components/0/part/nose_cone/shape")
             .ok_or(format!("{name}: its first component isn't a nose cone"))?;
         *shape = json!({ "kind": "ogive", "radius_ratio": ratio });
+        let components = design
+            .pointer_mut("/stages/0/components")
+            .and_then(Value::as_array_mut)
+            .ok_or(format!("{name}: no components"))?;
+        components.truncate(2);
     }
     let rocket: Rocket = serde_json::from_value(design).map_err(|e| format!("{name}: {e}"))?;
     let layout = rocket.layout().map_err(|e| format!("{name}: {e}"))?;
@@ -381,13 +386,12 @@ fn arcas_robin(root: &Path) -> Result<Value, String> {
                  D-4014's fins-off C_N points (arcas-robin-wind-tunnel.json), as M1.8a fits it; \
                  it includes the lip and crossflow at the plotted angles. hpr's is the method's \
                  at alpha -> 0 on the maximum cross-section. c_n_alpha_error is hpr's over the \
-                 measured, minus 1. No target. in_flight is the design flown with the fitted \
-                 nose through the flight's path (AeroModel) at alpha -> 0: covered_c_n_alpha is \
-                 the nose and cylinder the method covers (M1.8e2, tabulated every 0.05 in Mach \
-                 and interpolated), bodies_c_n_alpha every body, the boattail and lip by \
-                 slender-body theory (M1.8e3 takes them). as_designed is the design flown with \
-                 its power-series nose, which the method can't take (a vertical tip): \
-                 slender-body theory, M1.8a's model.",
+                 measured, minus 1. No target. in_flight is the design's nose and cylinder \
+                 alone, the nose the fitted secant ogive, through the flight's path (AeroModel) \
+                 at alpha -> 0: the method's shares tabulated every 0.05 in Mach and \
+                 interpolated (M1.8e2). as_designed is the whole design as committed, flown the \
+                 same way: its power-series nose, which the method can't take (a vertical tip), \
+                 and its boattail keep slender-body theory, M1.8a's model.",
         "nose": {
             "shape": "the secant ogive through the tip and base nearest TN D-4014 Fig. 1(a)'s \
                       coordinates",
