@@ -32,12 +32,29 @@ use crate::drag::{
     axial_drag_alpha_factor, body_friction_form_factor, couple_afterbody,
 };
 use crate::error::{AeroError, check_dimension, check_mach};
-use crate::fins::{FinAero, FinLoading, fin_count_factor, interference_factor, roll_sum, side_sum};
+use crate::fins::{
+    FinAero, FinLoading, FinRollTerms, fin_count_factor, interference_factor,
+    roll_damping_interference, roll_forcing_interference, roll_sum, side_sum,
+};
 use crate::table::DragTable;
+
+/// The largest fin cant the roll model takes, 15°: past it a fin stalls, where its lift stops
+/// growing with the angle, a judgement ([`AeroModel::roll`]).
+pub const MAX_CANT_RAD: f64 = 15.0 * std::f64::consts::PI / 180.0;
 
 /// The top of the normal force's range: Mach 5, where the hypersonic region begins (Niskanen 2009
 /// Table 3.1, p. 19). [`AeroModel::normal_force`] refuses it and anything faster.
 pub const NORMAL_FORCE_MACH_LIMIT: f64 = 5.0;
+
+/// The whole rocket's rolling moment coefficients at one Mach number ([`AeroModel::roll`]).
+#[derive(Debug, Clone, Copy, Default, PartialEq, Serialize, Deserialize)]
+#[non_exhaustive]
+pub struct Roll {
+    /// `C_l0`: the rolling moment about `+z_B` at no roll rate, from the fins' cant.
+    pub forcing: f64,
+    /// `C_lp = ∂C_l/∂(p d/2V)`, negative: the damping.
+    pub damping: f64,
+}
 
 /// The air-relative flow at one instant.
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
@@ -220,6 +237,16 @@ pub struct FinSetAero {
     pub interference: f64,
     /// Station of the fins' root leading edge, m aft of the nose tip.
     pub fore_station_m: f64,
+    /// Cant, rad: positive turns fin 0's leading edge toward `−y_B` (`hpr_design::FinSet`).
+    pub cant_rad: f64,
+    /// Radius of the body tube at the fins, m.
+    pub body_radius_m: f64,
+    /// The body's interference with the roll forcing, `k_T(B)` ([`roll_forcing_interference`]).
+    pub roll_forcing_interference: f64,
+    /// The body's interference with the roll damping, `k_R(B)` ([`roll_damping_interference`]).
+    pub roll_damping_interference: f64,
+    /// One fin's roll terms on this body ([`FinAero::roll_terms`]).
+    pub roll: FinRollTerms,
 }
 
 impl FinSetAero {
@@ -240,6 +267,7 @@ impl FinSetAero {
 #[derive(Debug, Clone, PartialEq, Serialize)]
 pub struct AeroModel {
     reference_area_m2: f64,
+    reference_diameter_m: f64,
     length_m: f64,
     bodies: Vec<BodyAero>,
     fin_sets: Vec<FinSetAero>,
@@ -315,13 +343,41 @@ impl AeroModel {
                                 "a fin set needs the radius of the body tube it is on".to_owned(),
                             )
                         })?;
+                        // Past 15° a fin stalls, where the linear roll model means nothing, and a
+                        // single canted fin pushes sideways, which the model doesn't carry.
+                        if !set.cant_rad.is_finite() || set.cant_rad.abs() > MAX_CANT_RAD {
+                            return Err(AeroError::Domain {
+                                what: "fin cant",
+                                value: set.cant_rad,
+                            });
+                        }
+                        if set.count < 2 && set.cant_rad != 0.0 {
+                            return Err(AeroError::Unsupported(
+                                "cant on a single fin, whose side force isn't modelled".to_owned(),
+                            ));
+                        }
+                        let span = fin.geometry().span_m;
+                        let taper = fin.outline().tip_chord_m() / set.planform.root_chord_m();
+                        let roll = fin.roll_terms(body_radius, layout.reference_diameter_m)?;
                         Ok(FinSetAero {
                             id: component.id.clone(),
                             count: set.count,
                             base_angle_rad: set.base_angle_rad,
                             count_factor: fin_count_factor(set.count)?,
-                            interference: interference_factor(fin.geometry().span_m, body_radius)?,
+                            interference: interference_factor(span, body_radius)?,
                             fore_station_m: component.fore_station_m,
+                            cant_rad: set.cant_rad,
+                            body_radius_m: body_radius,
+                            roll_forcing_interference: roll_forcing_interference(
+                                span,
+                                body_radius,
+                            )?,
+                            roll_damping_interference: roll_damping_interference(
+                                span,
+                                body_radius,
+                                taper,
+                            )?,
+                            roll,
                             fin,
                         })
                     })()
@@ -416,6 +472,7 @@ impl AeroModel {
         couple_afterbody(&mut drag_terms, &body_terms_at, reference_area_m2)?;
         Ok(Self {
             reference_area_m2,
+            reference_diameter_m: layout.reference_diameter_m,
             length_m,
             bodies,
             fin_sets,
@@ -550,6 +607,50 @@ impl AeroModel {
     /// Reference area, m².
     pub fn reference_area_m2(&self) -> f64 {
         self.reference_area_m2
+    }
+
+    /// Reference diameter, m: the length the rolling moment is taken on.
+    pub fn reference_diameter_m(&self) -> f64 {
+        self.reference_diameter_m
+    }
+
+    /// The whole rocket's rolling moment at `mach` about `+z_B`, on the reference area and
+    /// diameter: `C_l = C_l0 + C_lp (p d/2V)`, with `p` the roll rate about `+z_B` and `V` the
+    /// airspeed. Each fin set adds `C_l0 = −N C_lδ k_T(B) δ` and `N C_lp k_R(B)` ([`FinAero::roll`],
+    /// [`roll_forcing_interference`], [`roll_damping_interference`]); a positive cant `δ` turns
+    /// each fin's leading edge toward `−y_B` at fin 0, so its lift rolls the rocket toward `−z_B`.
+    /// Fin–fin interference is not applied to roll, as in Niskanen 2009 eq. 3.66. The bodies of
+    /// revolution add nothing.
+    ///
+    /// # Errors
+    ///
+    /// [`AeroError::Mach`] outside `[0, 5)`, as [`AeroModel::normal_force`].
+    pub fn roll(&self, mach: f64) -> Result<Roll, AeroError> {
+        check_mach(mach, NORMAL_FORCE_MACH_LIMIT, "the roll moment")?;
+        let mut roll = Roll::default();
+        for set in &self.fin_sets {
+            let fin = set.fin.roll_with(&set.roll, mach);
+            let n = f64::from(set.count);
+            roll.forcing -= n * fin.forcing_per_rad * set.roll_forcing_interference * set.cant_rad;
+            roll.damping += n * fin.damping * set.roll_damping_interference;
+        }
+        Ok(roll)
+    }
+
+    /// The steady roll rate about `+z_B`, rad/s, at `mach` and airspeed `speed_m_s` in axial flow:
+    /// where the fins' forcing and damping balance, `p = −(C_l0/C_lp)(2V/d)`. Zero with no fins.
+    ///
+    /// # Errors
+    ///
+    /// As [`AeroModel::roll`], and [`AeroError::Domain`] for a negative or non-finite airspeed.
+    pub fn steady_roll_rate_rad_s(&self, mach: f64, speed_m_s: f64) -> Result<f64, AeroError> {
+        check_dimension("airspeed", speed_m_s, true)?;
+        let roll = self.roll(mach)?;
+        Ok(if roll.damping < 0.0 {
+            -roll.forcing / roll.damping * 2.0 * speed_m_s / self.reference_diameter_m
+        } else {
+            0.0
+        })
     }
 
     /// The body components' terms.

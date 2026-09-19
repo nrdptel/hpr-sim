@@ -448,6 +448,73 @@ impl FinOutline {
     }
 }
 
+impl FinOutline {
+    /// The first and second moments of the fin's area about the body axis, `∫ξ dA` (m³) and
+    /// `∫ξ² dA` (m⁴), with `ξ = r_t + y` the distance from the axis and `r_t ≥ 0` the body radius
+    /// at the fins.
+    pub fn axis_moments(&self, body_radius_m: f64) -> (f64, f64) {
+        debug_assert!(body_radius_m >= 0.0, "body radius {body_radius_m}");
+        let m = clipped_moments(&self.points_m, 1.0, |_| 0.0);
+        about_axis(m, body_radius_m)
+    }
+
+    /// [`FinOutline::axis_moments`] of the part of the fin inside the tip's Mach cone at
+    /// `β = √(M² − 1)`, with the mirror fin's cone crossing the root, as [`FinOutline::tip_cone`]
+    /// takes it.
+    ///
+    /// `beta` must be positive and finite, as for [`FinOutline::tip_cone`].
+    pub fn tip_cone_axis_moments(&self, beta: f64, body_radius_m: f64) -> (f64, f64) {
+        debug_assert!(beta > 0.0 && beta.is_finite(), "beta {beta}");
+        debug_assert!(body_radius_m >= 0.0, "body radius {body_radius_m}");
+        let [x_t, s] = self.tip_leading_edge_m;
+        let aft = |p: [f64; 2]| p[0] - x_t - beta * (s - p[1]);
+        let here = about_axis(clipped_moments(&self.points_m, 1.0, aft), body_radius_m);
+        // The mirror image's part lies at `−y`; on this fin it is at `+y`.
+        let mut back = clipped_moments(&self.points_m, -1.0, aft);
+        back.y = -back.y;
+        let back = about_axis(back, body_radius_m);
+        (here.0 + back.0, here.1 + back.1)
+    }
+}
+
+/// `∫ξ dA` and `∫ξ² dA` with `ξ = r + y`, from the area's moments in `y`.
+fn about_axis(m: Moments, r: f64) -> (f64, f64) {
+    (r * m.area + m.y, r * r * m.area + 2.0 * r * m.y + m.yy)
+}
+
+/// One fin's rolling moment at one Mach number, about the body axis, on the reference area
+/// `A_ref` and diameter `d` ([`FinAero::roll`]); the body's interference is the fin set's
+/// ([`roll_forcing_interference`], [`roll_damping_interference`]).
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+#[non_exhaustive]
+pub struct FinRoll {
+    /// `∂C_l/∂δ` per radian of the fin's incidence, its cant, in the sense its lift turns the
+    /// rocket: positive.
+    pub forcing_per_rad: f64,
+    /// `C_lp = ∂C_l/∂(p d/2V)`, per unit of the roll rate `p` made dimensionless by the airspeed
+    /// `V`: it opposes the roll, so it is negative.
+    pub damping: f64,
+}
+
+/// One fin's roll terms on one body that don't change with Mach ([`FinAero::roll_terms`]): its
+/// span moments about the axis and the ends of the transonic join, built once per fin set.
+#[derive(Debug, Clone, Copy, PartialEq, Serialize)]
+#[non_exhaustive]
+pub struct FinRollTerms {
+    /// Radius of the body at the fins, m.
+    pub body_radius_m: f64,
+    /// Reference diameter, m.
+    pub reference_diameter_m: f64,
+    /// `∫ξ dA`, m³ ([`FinOutline::axis_moments`]).
+    pub first_moment_m3: f64,
+    /// `∫ξ² dA`, m⁴.
+    pub second_moment_m4: f64,
+    /// The roll at Mach 0.8, where the join starts.
+    pub transonic_start: FinRoll,
+    /// The roll at `M_s`, where linear theory starts.
+    pub supersonic_start: FinRoll,
+}
+
 /// Where the fin slope and CP leave the subsonic method: the top of the subsonic region, Mach 0.8
 /// (Niskanen 2009 Table 3.1, p. 19).
 pub const TRANSONIC_START_MACH: f64 = 0.8;
@@ -599,6 +666,193 @@ impl FinAero {
     }
 }
 
+impl FinAero {
+    /// One fin's roll forcing and damping at `mach` on a body of radius `body_radius_m`, on the
+    /// reference area and the reference diameter `reference_diameter_m`, by strip theory
+    /// (Barrowman 1967 §3.13–3.14 and appendix A; Niskanen 2009 §3.3):
+    ///
+    /// - **Subsonic**, to Mach 0.8: the fin's lift at its mean aerodynamic chord,
+    ///   `C_lδ = (C_Nα)₁ (r_t + y_MAC)/d` (Barrowman eq. 3-35, Niskanen eq. 3.66), and each strip
+    ///   at the local incidence `−pξ/V` with the fin's own slope per unit area,
+    ///   `a = (C_Nα)₁ A_ref/A_fin`: `C_lp = −2a ∫ξ² dA/(A_ref d²)` (Barrowman eq. 3-40–3-48,
+    ///   Niskanen eq. 3.67–3.70). Barrowman's text writes the airfoil's `C_Nα0` for `a`; his
+    ///   computed curve for the Basic Finner, −34.2 at Mach 0 (Fig. 5-7), is this, −33.5, not the
+    ///   airfoil's −69 ([the roll decision, ADR-031][adr-031]).
+    /// - **Supersonic**, from `M_s` ([`FinAero::supersonic_mach`]): the load `4α/β` of
+    ///   [`FinOutline::supersonic`], halved in the tip's Mach cone,
+    ///   `C_lδ = (4/β)(∫ξ dA − ½∫_cone ξ dA)/(A_ref d)` and
+    ///   `C_lp = −(8/β)(∫ξ² dA − ½∫_cone ξ² dA)/(A_ref d²)` (Barrowman appendix A, first order).
+    /// - **Transonic**, between: each linear in `M`, as the fin's slope is.
+    ///
+    /// `ξ = r_t + y` is the distance from the body axis.
+    ///
+    /// # Errors
+    ///
+    /// [`AeroError::Mach`] outside `[0, 5)`, as [`FinAero::loading`], and [`AeroError::Domain`]
+    /// for a negative body radius or a non-positive reference diameter.
+    ///
+    /// [adr-031]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-031-roll-from-canted-fins-and-roll-damping-by-barrowmans-strip-theory-2026-09-19
+    pub fn roll(
+        &self,
+        mach: f64,
+        body_radius_m: f64,
+        reference_diameter_m: f64,
+    ) -> Result<FinRoll, AeroError> {
+        let terms = self.roll_terms(body_radius_m, reference_diameter_m)?;
+        check_mach(
+            mach,
+            crate::model::NORMAL_FORCE_MACH_LIMIT,
+            "the roll moment",
+        )?;
+        Ok(self.roll_with(&terms, mach))
+    }
+
+    /// The terms of [`FinAero::roll`] that don't change with Mach, on a body of radius
+    /// `body_radius_m` and the reference diameter `reference_diameter_m`.
+    ///
+    /// # Errors
+    ///
+    /// [`AeroError::Domain`] for a negative body radius or a non-positive reference diameter.
+    pub fn roll_terms(
+        &self,
+        body_radius_m: f64,
+        reference_diameter_m: f64,
+    ) -> Result<FinRollTerms, AeroError> {
+        check_dimension("body radius at the fins", body_radius_m, true)?;
+        check_dimension("reference diameter", reference_diameter_m, false)?;
+        let (first, second) = self.outline.axis_moments(body_radius_m);
+        let mut terms = FinRollTerms {
+            body_radius_m,
+            reference_diameter_m,
+            first_moment_m3: first,
+            second_moment_m4: second,
+            transonic_start: FinRoll {
+                forcing_per_rad: 0.0,
+                damping: 0.0,
+            },
+            supersonic_start: FinRoll {
+                forcing_per_rad: 0.0,
+                damping: 0.0,
+            },
+        };
+        let beta_sub = (1.0 - TRANSONIC_START_MACH * TRANSONIC_START_MACH).sqrt();
+        let m_s = self.supersonic_mach;
+        terms.transonic_start = self.subsonic_roll(beta_sub, &terms);
+        terms.supersonic_start = self.supersonic_roll((m_s * m_s - 1.0).sqrt(), &terms);
+        Ok(terms)
+    }
+
+    /// [`FinAero::roll`] with its terms built, at a checked Mach number.
+    pub(crate) fn roll_with(&self, terms: &FinRollTerms, mach: f64) -> FinRoll {
+        if mach <= TRANSONIC_START_MACH {
+            self.subsonic_roll((1.0 - mach * mach).sqrt(), terms)
+        } else if mach >= self.supersonic_mach {
+            self.supersonic_roll((mach * mach - 1.0).sqrt(), terms)
+        } else {
+            let (a, b) = (terms.transonic_start, terms.supersonic_start);
+            let t = (mach - TRANSONIC_START_MACH) / (self.supersonic_mach - TRANSONIC_START_MACH);
+            FinRoll {
+                forcing_per_rad: a.forcing_per_rad + t * (b.forcing_per_rad - a.forcing_per_rad),
+                damping: a.damping + t * (b.damping - a.damping),
+            }
+        }
+    }
+
+    fn subsonic_roll(&self, beta: f64, terms: &FinRollTerms) -> FinRoll {
+        let (r, d) = (terms.body_radius_m, terms.reference_diameter_m);
+        let slope = self.geometry.slope_at(beta, self.reference_area_m2);
+        let per_area = slope * self.reference_area_m2 / self.geometry.area_m2;
+        FinRoll {
+            forcing_per_rad: slope * (r + self.geometry.mac_span_m) / d,
+            damping: -2.0 * per_area * terms.second_moment_m4 / (self.reference_area_m2 * d * d),
+        }
+    }
+
+    fn supersonic_roll(&self, beta: f64, terms: &FinRollTerms) -> FinRoll {
+        let (r, d) = (terms.body_radius_m, terms.reference_diameter_m);
+        let (cone_first, cone_second) = self.outline.tip_cone_axis_moments(beta, r);
+        let load = 4.0 / beta / self.reference_area_m2;
+        FinRoll {
+            forcing_per_rad: load * (terms.first_moment_m3 - 0.5 * cone_first) / d,
+            damping: -2.0 * load * (terms.second_moment_m4 - 0.5 * cone_second) / (d * d),
+        }
+    }
+}
+
+/// The body's interference with the roll forcing of canted fins (Barrowman 1967 eq. 3-95 and
+/// 3-105, from slender-body theory, his reference 23), with `τ = (s + r_t)/r_t`:
+///
+/// ```text
+/// k_T(B) = (1/π²)[ (π²/4)(τ + 1)²/τ² + π(τ² + 1)²/(τ²(τ − 1)²) asin((τ² − 1)/(τ² + 1))
+///          − 2π(τ + 1)/(τ(τ − 1)) + (τ² + 1)²/(τ²(τ − 1)²) asin²((τ² − 1)/(τ² + 1))
+///          − 4(τ + 1)/(τ(τ − 1)) asin((τ² − 1)/(τ² + 1)) + 8/(τ − 1)² ln((τ² + 1)/2τ) ]
+/// ```
+///
+/// It is 1 with no body (`r_t = 0`), 0.940 at `τ = 2` and 0.935 for the Arcas Robin's fins
+/// (`τ = 2.87`). Below `τ = 1.001`, a fin shorter than a thousandth of the body's radius, the
+/// terms cancel to rounding, and past `τ = 10⁶` they overflow; it is held at its value at each.
+///
+/// # Errors
+///
+/// [`AeroError::Domain`] for a non-positive span or a negative body radius.
+pub fn roll_forcing_interference(span_m: f64, body_radius_m: f64) -> Result<f64, AeroError> {
+    check_dimension("fin span", span_m, false)?;
+    check_dimension("body radius at the fins", body_radius_m, true)?;
+    if body_radius_m == 0.0 {
+        return Ok(1.0);
+    }
+    let t = ((span_m + body_radius_m) / body_radius_m).clamp(1.001, 1e6);
+    let (t2, u) = (t * t, t - 1.0);
+    let a = ((t2 - 1.0) / (t2 + 1.0)).asin();
+    let q = (t2 + 1.0) * (t2 + 1.0) / (t2 * u * u);
+    let p = (t + 1.0) / (t * u);
+    Ok(
+        (PI * PI / 4.0 * (t + 1.0) * (t + 1.0) / t2 + PI * q * a - 2.0 * PI * p + q * a * a
+            - 4.0 * p * a
+            + 8.0 / (u * u) * ((t2 + 1.0) / (2.0 * t)).ln())
+            / (PI * PI),
+    )
+}
+
+/// The body's interference with the roll damping (Barrowman 1967 eq. 3-122 and 3-123), with
+/// `τ = (s + r_t)/r_t` and `λ = c_t/c_r`, for a chord falling linearly from root to tip:
+///
+/// ```text
+/// k_R(B) = 1 + ((τ − λ)/τ − (1 − λ) ln τ/(τ − 1)) / ((τ + 1)(τ − λ)/2 − (1 − λ)(τ² + τ + 1)/3)
+/// ```
+///
+/// the integral `1 + r_t³∫c/ξ² dξ / ∫ξ c dξ` over the span (eq. 3-121). It is 1 with no body, 2
+/// as the span goes to 0, and 1.20 for the Arcas Robin's fins. A fin of another shape takes it
+/// at its tip-to-root chord ratio: an elliptical fin as a triangle, about 5.5% too much damping.
+/// Below `τ = 1.001` and past `τ = 10⁶` it is held at its value there, as
+/// [`roll_forcing_interference`] is.
+///
+/// # Errors
+///
+/// [`AeroError::Domain`] for a non-positive span, a negative body radius, or a negative or
+/// non-finite taper ratio (an inverse taper, above 1, is allowed).
+pub fn roll_damping_interference(
+    span_m: f64,
+    body_radius_m: f64,
+    taper_ratio: f64,
+) -> Result<f64, AeroError> {
+    check_dimension("fin span", span_m, false)?;
+    check_dimension("body radius at the fins", body_radius_m, true)?;
+    check_dimension("fin taper ratio", taper_ratio, true)?;
+    if body_radius_m == 0.0 {
+        return Ok(1.0);
+    }
+    let (t, l) = (
+        ((span_m + body_radius_m) / body_radius_m).clamp(1.001, 1e6),
+        taper_ratio,
+    );
+    let u = t - 1.0;
+    let log_ratio = u.ln_1p() / u;
+    Ok(1.0
+        + ((t - l) / t - (1.0 - l) * log_ratio)
+            / ((t + 1.0) * (t - l) / 2.0 - (1.0 - l) * (t * t + t + 1.0) / 3.0))
+}
+
 /// The polygon's area and first moment `∫x dA` by the shoelace formula, oriented to a positive
 /// area.
 fn area_and_moment(points: &[[f64; 2]]) -> (f64, f64) {
@@ -615,6 +869,25 @@ fn clipped_area_and_moment(
     flip: f64,
     inside: impl Fn([f64; 2]) -> f64,
 ) -> (f64, f64) {
+    let m = clipped_moments(points, flip, inside);
+    (m.area, m.x)
+}
+
+/// A polygon's area and moments, oriented to a positive area.
+#[derive(Debug, Clone, Copy, Default, PartialEq)]
+struct Moments {
+    /// `∫dA`.
+    area: f64,
+    /// `∫x dA`.
+    x: f64,
+    /// `∫y dA`.
+    y: f64,
+    /// `∫y² dA`.
+    yy: f64,
+}
+
+/// [`clipped_area_and_moment`] with the span moments too.
+fn clipped_moments(points: &[[f64; 2]], flip: f64, inside: impl Fn([f64; 2]) -> f64) -> Moments {
     let mut sums = Shoelace::default();
     let n = points.len();
     for (i, p) in points.iter().enumerate() {
@@ -639,6 +912,8 @@ struct Shoelace {
     last: [f64; 2],
     twice_area: f64,
     six_moment: f64,
+    six_y_moment: f64,
+    twelve_yy_moment: f64,
 }
 
 impl Shoelace {
@@ -655,15 +930,22 @@ impl Shoelace {
         let cross = p[0] * q[1] - q[0] * p[1];
         self.twice_area += cross;
         self.six_moment += (p[0] + q[0]) * cross;
+        self.six_y_moment += (p[1] + q[1]) * cross;
+        self.twelve_yy_moment += (p[1] * p[1] + p[1] * q[1] + q[1] * q[1]) * cross;
     }
 
-    /// Closes the polygon: its area, positive, and first moment.
-    fn finish(mut self) -> (f64, f64) {
+    /// Closes the polygon: its area, positive, and moments.
+    fn finish(mut self) -> Moments {
         if let Some(first) = self.first {
             self.edge(self.last, first);
         }
         let sign = self.twice_area.signum();
-        (0.5 * self.twice_area * sign, self.six_moment * sign / 6.0)
+        Moments {
+            area: 0.5 * self.twice_area * sign,
+            x: self.six_moment * sign / 6.0,
+            y: self.six_y_moment * sign / 6.0,
+            yy: self.twelve_yy_moment * sign / 12.0,
+        }
     }
 }
 
@@ -1353,5 +1635,174 @@ mod tests {
         assert!((1.0 - ellipse.area_m2() / area - 2.5e-5).abs() < 1e-6);
         close(ellipse.centroid_m(), 0.05, 1e-12, "ellipse centroid");
         close(ellipse.tip_leading_edge_m()[0], 0.05, 1e-12, "ellipse tip");
+    }
+
+    /// The span moments about the body axis against the trapezoid's and the ellipse's integrals,
+    /// `Σ = ∫ξ² c dξ` (Niskanen 2009 eq. 3.70–3.71, Barrowman 1967 eq. 3-47) and
+    /// `∫ξ c dξ = r A + s²(c_r + 2c_t)/6`.
+    #[test]
+    fn roll_moments_match_the_planform_integrals() {
+        let (c_r, c_t, s, x_t, r) = (0.15, 0.05, 0.1, 0.09, 0.04);
+        let outline = FinOutline::from_planform(&trapezoid(c_r, c_t, s, x_t)).unwrap();
+        let (first, second) = outline.axis_moments(r);
+        close(
+            first,
+            r * 0.5 * s * (c_r + c_t) + s * s * (c_r + 2.0 * c_t) / 6.0,
+            1e-14,
+            "first",
+        );
+        let sigma = 0.5 * (c_r + c_t) * r * r * s
+            + (c_r + 2.0 * c_t) / 3.0 * r * s * s
+            + (c_r + 3.0 * c_t) / 12.0 * s * s * s;
+        close(second, sigma, 1e-14, "trapezoid Σ");
+        let ellipse = FinOutline::from_planform(&FinPlanform::Elliptical {
+            root_chord_m: c_r,
+            span_m: s,
+        })
+        .unwrap();
+        let sigma = c_r * (PI / 4.0 * r * r * s + 2.0 / 3.0 * r * s * s + PI / 16.0 * s * s * s);
+        // The 256-sided polygon inside the ellipse.
+        close(ellipse.axis_moments(r).1, sigma, 2e-4, "ellipse Σ");
+    }
+
+    /// The supersonic roll by the polygon's moments against a strip-by-strip integral of the
+    /// same load, `4α/β` halved inside the tip's Mach cone and the mirror fin's, on the Arcas
+    /// Robin's swept fin from Mach 1.5 to 4.63.
+    #[test]
+    fn supersonic_roll_matches_its_strips() {
+        let (c_r, c_t, s, x_t) = (0.085852, 0.054991, 0.0534162, 0.030861);
+        let (r, d) = (0.028575, 0.05715);
+        let a_ref = 0.25 * PI * d * d;
+        let fin = FinAero::new(&trapezoid(c_r, c_t, s, x_t), a_ref).unwrap();
+        for mach in [1.5, 1.8, 2.3, 2.96, 3.96, 4.63_f64] {
+            let beta = (mach * mach - 1.0).sqrt();
+            let strips = 20_000;
+            let (mut forcing, mut damping) = (0.0, 0.0);
+            for i in 0..strips {
+                let y = s * (f64::from(i) + 0.5) / f64::from(strips);
+                let (le, te) = (x_t * y / s, c_r + (x_t + c_t - c_r) * y / s);
+                // The chord's length aft of a line at `x`.
+                let aft_of = |x: f64| (te - x.max(le)).max(0.0);
+                let load = (te - le)
+                    - 0.5 * aft_of(x_t + beta * (s - y))
+                    - 0.5 * aft_of(x_t + beta * (s + y));
+                let xi = r + y;
+                let dy = s / f64::from(strips);
+                forcing += 4.0 / beta / a_ref * xi * load * dy / d;
+                damping -= 8.0 / beta / a_ref * xi * xi * load * dy / (d * d);
+            }
+            let roll = fin.roll(mach, r, d).unwrap();
+            let what = format!("Mach {mach}");
+            close(roll.forcing_per_rad, forcing, 1e-7, &what);
+            close(roll.damping, damping, 1e-7, &what);
+        }
+    }
+
+    /// The subsonic roll is Barrowman's (eq. 3-35 and 3-48 with the fin's own slope): the slope
+    /// at the mean aerodynamic chord, and the strips' damping; and both are continuous at Mach
+    /// 0.8 and at `M_s`.
+    #[test]
+    fn subsonic_roll_is_barrowman_s_and_joins_linear_theory() {
+        let (c_r, c_t, s, x_t) = (0.058, 0.018, 0.077, 0.04);
+        let (r, d) = (0.035, 0.07);
+        let a_ref = 0.25 * PI * d * d;
+        let fin = FinAero::new(&trapezoid(c_r, c_t, s, x_t), a_ref).unwrap();
+        let area = 0.5 * s * (c_r + c_t);
+        let y_mac = s * (c_r + 2.0 * c_t) / (3.0 * (c_r + c_t));
+        let sigma = 0.5 * (c_r + c_t) * r * r * s
+            + (c_r + 2.0 * c_t) / 3.0 * r * s * s
+            + (c_r + 3.0 * c_t) / 12.0 * s * s * s;
+        for mach in [0.0, 0.3, 0.6, 0.8] {
+            let slope = fin.geometry().single_fin_slope(a_ref, mach).unwrap();
+            let roll = fin.roll(mach, r, d).unwrap();
+            let what = format!("Mach {mach}");
+            close(roll.forcing_per_rad, slope * (r + y_mac) / d, 1e-14, &what);
+            let per_area = slope * a_ref / area;
+            close(
+                roll.damping,
+                -2.0 * per_area * sigma / (a_ref * d * d),
+                1e-13,
+                &what,
+            );
+        }
+        for edge in [TRANSONIC_START_MACH, fin.supersonic_mach()] {
+            let (a, b) = (
+                fin.roll(edge - 1e-9, r, d).unwrap(),
+                fin.roll(edge + 1e-9, r, d).unwrap(),
+            );
+            close(a.forcing_per_rad, b.forcing_per_rad, 1e-7, "forcing");
+            close(a.damping, b.damping, 1e-7, "damping");
+        }
+        assert!(fin.roll(5.0, r, d).is_err() && fin.roll(0.5, -r, d).is_err());
+    }
+
+    /// Barrowman's roll damping interference, eq. 3-122, against its integral, eq. 3-121,
+    /// `1 + r³∫c/ξ² dξ / ∫ξ c dξ` by Simpson's rule; both factors are 1 without a body, and the
+    /// damping's tends to 2 as the span goes to 0.
+    #[test]
+    fn roll_interference_follows_barrowman() {
+        for (t, l) in [(1.2, 0.3), (2.0, 1.0), (2.87, 0.64), (4.0, 0.0), (7.0, 1.4)] {
+            let (r, s) = (1.0, t - 1.0);
+            let chord = |xi: f64| 1.0 - (1.0 - l) * (xi - r) / s;
+            let simpson = |f: &dyn Fn(f64) -> f64| {
+                let n = 2000;
+                let h = s / f64::from(n);
+                (0..=n)
+                    .map(|i| {
+                        let w = if i == 0 || i == n {
+                            1.0
+                        } else if i % 2 == 1 {
+                            4.0
+                        } else {
+                            2.0
+                        };
+                        w * f(r + h * f64::from(i))
+                    })
+                    .sum::<f64>()
+                    * h
+                    / 3.0
+            };
+            let integral =
+                1.0 + simpson(&|xi| chord(xi) / (xi * xi)) / simpson(&|xi| xi * chord(xi));
+            close(
+                roll_damping_interference(s, r, l).unwrap(),
+                integral,
+                1e-10,
+                &format!("τ {t}, λ {l}"),
+            );
+        }
+        assert_eq!(roll_damping_interference(0.1, 0.0, 0.5).unwrap(), 1.0);
+        assert_eq!(roll_forcing_interference(0.1, 0.0).unwrap(), 1.0);
+        close(
+            roll_damping_interference(1e-6, 1.0, 0.5).unwrap(),
+            2.0,
+            2e-3,
+            "no span",
+        );
+        close(
+            roll_forcing_interference(1e3, 1.0).unwrap(),
+            1.0,
+            2e-3,
+            "no body",
+        );
+        for t in [1.001, 1.5, 2.0, 2.87, 5.0, 20.0] {
+            let k = roll_forcing_interference(t - 1.0, 1.0).unwrap();
+            assert!(k > 0.9 && k <= 1.0, "τ {t}: {k}");
+        }
+        assert!(roll_damping_interference(0.1, 0.05, -0.1).is_err());
+    }
+
+    /// Barrowman's own computed roll damping for the Basic Finner, four square fins one diameter
+    /// in chord and span on a body one diameter across (Figs. 5-6 and 5-7), read at Mach 0.07 as
+    /// −34.21: hpr's strips with the fin's own slope give −33.5, where the airfoil's `2π` would
+    /// give about −81 (ADR-031).
+    #[test]
+    fn the_basic_finner_damps_as_barrowman_computed() {
+        let d = 1.0;
+        let a_ref = 0.25 * PI * d * d;
+        let fin = FinAero::new(&trapezoid(d, d, d, 0.0), a_ref).unwrap();
+        let k_r = roll_damping_interference(d, 0.5 * d, 1.0).unwrap();
+        let clp = 4.0 * fin.roll(0.07, 0.5 * d, d).unwrap().damping * k_r;
+        close(clp, -34.21, 0.03, "C_lp at Mach 0.07");
     }
 }

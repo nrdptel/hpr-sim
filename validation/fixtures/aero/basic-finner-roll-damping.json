@@ -1,0 +1,42 @@
+{
+  "id": "basic-finner",
+  "source": "J. S. Barrowman, The Practical Calculation of the Aerodynamic Characteristics of Slender Finned Vehicles, MS thesis, The Catholic University of America, 1967 (NASA/TM-2001-209983): Fig. 5-6, the Basic Finner (printed p. 69, PDF p. 79), and Fig. 5-7, its roll damping derivative, theory and wind tunnel (printed p. 70, PDF p. 80). The wind-tunnel points are from Barrowman's reference 21, J. D. Nicolaides, Missile Flight and Astrodynamics, BuWeps TN-100A, 1959 (a US Navy report), which he says does not state their accuracy. US Government work.",
+  "reading": "Read from a 300-dpi render of Fig. 5-7 with its grid calibrated between the nearest ticks (the axis's last interval, Mach 2.5 to 3.0, is drawn 285 px long against about 235 px for the others): each wind-tunnel symbol's centre, +-0.3 in C_lp and +-0.01 in Mach (the points at Mach 2.27 and 3.00 touch the theory curve and were read by hand); and the theory curve at Mach 0.07, where it is flat. The figure gives A_r = 78.6 in^2 and L_r = 10 in, the body's cross-section and diameter, so C_lp is per unit of p L_r/(2V) (Barrowman eq. 3-49). Read 2026-09-19 (M1.8c).",
+  "geometry": {
+    "note": "Fig. 5-6, in calibers of the body diameter D: a body 10 D long from the nose tip with a conical nose (marked 20 deg), four square fins D in chord and D in span at the base (3 D tip to tip), wedge sections 8% of D thick plus the leading edge's thickness.",
+    "fin_count": 4,
+    "root_chord_calibers": 1.0,
+    "tip_chord_calibers": 1.0,
+    "span_calibers": 1.0,
+    "leading_edge_sweep_calibers": 0.0,
+    "body_radius_at_fins_calibers": 0.5
+  },
+  "wind_tunnel_c_lp": [
+    {
+      "mach": 1.51,
+      "c_lp": -33.6
+    },
+    {
+      "mach": 1.82,
+      "c_lp": -27.45
+    },
+    {
+      "mach": 2.27,
+      "c_lp": -23.48
+    },
+    {
+      "mach": 2.6,
+      "c_lp": -20.92
+    },
+    {
+      "mach": 3.0,
+      "c_lp": -18.32
+    }
+  ],
+  "barrowman_theory_c_lp": [
+    {
+      "mach": 0.07,
+      "c_lp": -34.21
+    }
+  ]
+}

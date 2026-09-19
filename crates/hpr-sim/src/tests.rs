@@ -755,3 +755,104 @@ fn a_supersonic_flight_flies_on_the_drag_buildup() {
         fastest.0
     );
 }
+
+/// M1.8's roll bullet: canted fins spin the rocket to the roll rate where their forcing and their
+/// damping balance. At constant speed, with no drag and no gravity and the axis along the flight,
+/// the roll obeys `I ṗ = q A d (C_l0 + C_lp p d/2V)`, so `p` rises as `p_eq (1 − e^(−kt))`. For a
+/// trapezoid in subsonic flow the fin's slope cancels between the two (Barrowman 1967 eq. 3-35
+/// and 3-48, Niskanen 2009 eq. 3.73 with the fin's own slope in both):
+/// `p_eq = −δ V A_fin (r_t + y_MAC) k_T(B) / (k_R(B) Σ)`, with `Σ = ∫ξ² c dξ` (Niskanen eq. 3.70),
+/// and `k = q N a Σ k_R(B)/(V I)`, `a` the fin's slope per unit of its area (Barrowman eq. 3-6).
+/// Positive cant turns fin 0's leading edge toward `−y_B`, so the rocket rolls toward `−z_B`.
+#[test]
+fn canted_fins_spin_to_the_analytic_balance() {
+    let (t0, speed, cant) = (10.0, 100.0, 1f64.to_radians());
+    let air = UniformAir::sea_level();
+    let mut rocket = serde_json::to_value(design("rocketpy-valetudo")).unwrap();
+    rocket["stages"][0]["components"][1]["children"][1]["part"]["fin_set"]["cant_rad"] =
+        serde_json::json!(cant);
+    let sim = Simulation::new(
+        &serde_json::from_value(rocket).unwrap(),
+        "example",
+        analytic_environment(air, 0.0),
+        Rail::vertical(3.0),
+        capped(t0 + 12.0),
+    )
+    .unwrap()
+    .with_drag_table(constant_drag(0.0));
+
+    // The closed forms for Valetudo's three trapezoidal fins.
+    let (c_r, c_t, s, x_t, n) = (0.058, 0.018, 0.077, 0.04, 3.0);
+    let aero = sim.aero();
+    let set = &aero.fin_sets()[0];
+    assert_eq!(set.cant_rad, cant);
+    let r = set.body_radius_m;
+    let area = 0.5 * s * (c_r + c_t);
+    let y_mac = s * (c_r + 2.0 * c_t) / (3.0 * (c_r + c_t));
+    let sigma = 0.5 * (c_r + c_t) * r * r * s
+        + (c_r + 2.0 * c_t) / 3.0 * r * s * s
+        + (c_r + 3.0 * c_t) / 12.0 * s * s * s;
+    let k_t = hpr_aero::roll_forcing_interference(s, r).unwrap();
+    let k_r = hpr_aero::roll_damping_interference(s, r, c_t / c_r).unwrap();
+    let p_eq = -cant * speed * area * (r + y_mac) * k_t / (k_r * sigma);
+    let mach = speed / air.0.speed_of_sound_m_s;
+    let beta = (1.0 - mach * mach).sqrt();
+    let midchord = ((x_t + 0.5 * c_t - 0.5 * c_r) / s).atan();
+    let f = beta * s * s / (area * midchord.cos());
+    let per_area = 2.0 * PI * s * s / area / (1.0 + (1.0 + f * f).sqrt());
+    let q = 0.5 * air.0.density_kg_m3 * speed * speed;
+    let inertia = sim.assembly().mass_properties(t0).inertia_kg_m2.z_axis.z;
+    let k = q * n * per_area * sigma * k_r / (speed * inertia);
+    let steady = aero.steady_roll_rate_rad_s(mach, speed).unwrap();
+    assert!(
+        ((steady - p_eq) / p_eq).abs() < 1e-12,
+        "{steady} against {p_eq}"
+    );
+    // The guide's worked example (docs/physics/aero.md, Roll: forcing and damping).
+    assert!(
+        (k_t - 0.935).abs() < 5e-4 && (k_r - 1.228).abs() < 5e-4,
+        "{k_t} {k_r}"
+    );
+    assert!(
+        (p_eq + 16.948).abs() < 5e-4 && (1.0 / k - 0.476).abs() < 5e-4,
+        "{p_eq} {k}"
+    );
+
+    let state = State {
+        position_enu_m: DVec3::new(0.0, 0.0, 1000.0),
+        velocity_enu_m_s: DVec3::new(0.0, 0.0, speed),
+        attitude: DQuat::IDENTITY,
+        body_rate_rad_s: DVec3::ZERO,
+    };
+    let mut recorder = Recorder::new(vec![Channel::Time, Channel::BodyRates], Some(0.001)).unwrap();
+    sim.run_free(t0, state, &mut recorder).unwrap();
+    let times = column(&recorder, "time_s");
+    let rates = column(&recorder, "body_rate_z_rad_s");
+    // Settled: over 20 time constants on, within 1e-6 of the balance. Measured: −16.948242838
+    // rad/s against −16.948242838 (1e-11), and 2e-10 one time constant in.
+    assert!(12.0 * k > 20.0, "k = {k}");
+    let last = *rates.last().unwrap();
+    assert!(
+        p_eq < 0.0 && ((last - p_eq) / p_eq).abs() < 1e-6,
+        "{last} against {p_eq}"
+    );
+    // On the way: one time constant in, `1 − 1/e` of the way, sampled at the nearest millisecond.
+    let at = t0 + 1.0 / k;
+    let i = times
+        .iter()
+        .position(|&t| t >= at)
+        .unwrap_or(times.len() - 1);
+    let want = p_eq * (1.0 - (-k * (times[i] - t0)).exp());
+    assert!(
+        ((rates[i] - want) / p_eq).abs() < 1e-5,
+        "{} against {want}",
+        rates[i]
+    );
+    // No pitch or yaw appears.
+    for axis in ["body_rate_x_rad_s", "body_rate_y_rad_s"] {
+        assert!(
+            column(&recorder, axis).iter().all(|w| w.abs() < 1e-9),
+            "{axis}"
+        );
+    }
+}

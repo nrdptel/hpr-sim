@@ -92,8 +92,6 @@ out.
 ### Effects left out
 
 - **Some effects are left out of a flight, or approximated:**
-  - roll forcing and roll damping (the torques that spin a rocket up and slow its spin), planned
-    for [M1.8](decisions-and-roadmap.md#m1-8), the second aerodynamics milestone;
   - [tip-off](glossary.md#tip-off) (the rocket pitching as it leaves the rail), thrust
     misalignment (a motor pushing slightly off the rocket's axis), and turbulence (the model
     exists, but a flight doesn't use it), none of which a milestone plans yet

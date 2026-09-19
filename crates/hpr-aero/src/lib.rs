@@ -7,9 +7,9 @@
 //! [guide-aero]: https://nrdptel.github.io/hpr-sim/physics/aero.html
 //! [guide-cp]: https://nrdptel.github.io/hpr-sim/physics/aero.html#your-rockets-centre-of-pressure
 //! [guide-flight]: https://nrdptel.github.io/hpr-sim/physics/flight.html#aerodynamics-in-flight
+//! [guide-roll]: https://nrdptel.github.io/hpr-sim/physics/aero.html#roll-forcing-and-damping
 //! [guide-fins-mach]: https://nrdptel.github.io/hpr-sim/physics/aero.html#fins-through-mach-1
 //! [guide-drag-mach]: https://nrdptel.github.io/hpr-sim/physics/aero.html#drag-through-mach-1
-//! [m1-8]: https://nrdptel.github.io/hpr-sim/decisions-and-roadmap.html#m1-8
 //!
 //! - [`body`]: nose cones, body tubes and transitions: Barrowman's slope and centre of pressure,
 //!   and Galejs's body lift.
@@ -31,18 +31,17 @@
 //! Status: the normal force and centre of pressure from Mach 0 to 5 (fins through the transonic
 //! region to supersonic linear theory, [Fins through Mach 1][guide-fins-mach]); the drag buildup
 //! from Mach 0 to 5 (noses, shoulders and steps through Mach 1 by Niskanen's appendix B,
-//! [Drag through Mach 1][guide-drag-mach]); drag override tables at any Mach number. The crate has
-//! no damping coefficients.
+//! [Drag through Mach 1][guide-drag-mach]); drag override tables at any Mach number; the roll
+//! forcing of canted fins and the roll damping from Mach 0 to 5 ([`AeroModel::roll`],
+//! [Roll: forcing and damping][guide-roll]).
 //!
 //! - Pitch and yaw damping in a flight come only from the flight engine (`hpr_sim`) evaluating
 //!   each component in its own local flow, which includes the speed the rocket's rotation adds
-//!   there ([Rigid-body flight][guide-flight] in the guide).
+//!   there ([Rigid-body flight][guide-flight] in the guide). The crate has no pitch or yaw damping
+//!   coefficients; they would have to replace the local-flow damping, not add to it.
 //! - Only components with a normal-force slope give that damping: nose cones, transitions and fin
 //!   sets. Body tubes give none at small angles: their own slope is 0, and their body lift grows
 //!   with `sin² α`.
-//! - Damping coefficients for pitch, yaw and roll, and roll forcing from canted fins are planned
-//!   for [M1.8][m1-8], the second aerodynamics milestone. For pitch and yaw, those coefficients
-//!   will have to replace the local-flow damping, not add to it.
 
 pub mod afterbody;
 pub mod body;
@@ -61,12 +60,12 @@ pub use drag::{
 };
 pub use error::AeroError;
 pub use fins::{
-    FinAero, FinGeometry, FinLoading, FinOutline, fin_count_factor, interference_factor, roll_sum,
-    side_sum,
+    FinAero, FinGeometry, FinLoading, FinOutline, FinRoll, FinRollTerms, fin_count_factor,
+    interference_factor, roll_damping_interference, roll_forcing_interference, roll_sum, side_sum,
 };
 pub use model::{
-    AeroModel, BodyAero, ComponentNormalForce, FinSetAero, Flow, NORMAL_FORCE_MACH_LIMIT,
-    NormalForce,
+    AeroModel, BodyAero, ComponentNormalForce, FinSetAero, Flow, MAX_CANT_RAD,
+    NORMAL_FORCE_MACH_LIMIT, NormalForce, Roll,
 };
 pub use nose_drag::{PressureDragCurve, StoneyNose};
 pub use table::{DragTable, parse_mach_csv};
@@ -1441,5 +1440,223 @@ mod tests {
         }
         assert_eq!(counts.iter().map(|c| c.0).collect::<Vec<_>>(), [0, 0, 0, 2]);
         assert_eq!(counts[3].1, 0);
+    }
+
+    /// M1.8c: hpr's roll forcing against the Arcas Robin's measured roll effectiveness (TN D-4014
+    /// Fig. 14) and its roll damping against the Basic Finner's (Barrowman 1967 Fig. 5-7), as
+    /// `cargo xtask aero` writes them: every row recomputed from the committed designs and
+    /// references, and the ranges the guide quotes.
+    #[test]
+    fn roll_against_mach() {
+        use serde_json::Value;
+        let fixture: Value = serde_json::from_str(include_str!(
+            "../../../validation/fixtures/aero/roll-vs-mach.json"
+        ))
+        .unwrap();
+        let tunnel: Value = serde_json::from_str(include_str!(
+            "../../../validation/fixtures/aero/arcas-robin-wind-tunnel.json"
+        ))
+        .unwrap();
+        let finner: Value = serde_json::from_str(include_str!(
+            "../../../validation/fixtures/aero/basic-finner-roll-damping.json"
+        ))
+        .unwrap();
+        let f = |v: &Value| v.as_f64().unwrap();
+        let mut errors: Vec<(f64, f64)> = Vec::new();
+        for configuration in fixture["arcas_robin"].as_array().unwrap() {
+            let design = configuration["design"].as_str().unwrap();
+            let model = AeroModel::new(&committed_design(design).layout().unwrap()).unwrap();
+            let set = &model.fin_sets()[0];
+            let measured = tunnel["configurations"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .find(|c| c["design"] == design)
+                .unwrap();
+            for row in configuration["rows"].as_array().unwrap() {
+                let mach = f(&row["mach"]);
+                let what = format!("{design} at Mach {mach}");
+                let fin = set
+                    .fin
+                    .roll(mach, set.body_radius_m, model.reference_diameter_m())
+                    .unwrap();
+                let hpr =
+                    f64::from(set.count) * fin.forcing_per_rad * set.roll_forcing_interference * PI
+                        / 180.0;
+                close(f(&row["hpr_c_l_delta_per_deg"]), hpr, 1e-12, &what);
+                let reading = measured["roll_effectiveness"]
+                    .as_array()
+                    .unwrap()
+                    .iter()
+                    .find(|c| f(&c["mach"]) == mach)
+                    .unwrap()["alpha_deg_c_l_delta_per_deg"]
+                    .as_array()
+                    .unwrap()
+                    .iter()
+                    .find(|p| f(&p[0]).abs() < 0.5)
+                    .map(|p| f(&p[1]))
+                    .unwrap();
+                assert_eq!(f(&row["reference_c_l_delta_per_deg"]), reading, "{what}");
+                close(f(&row["error"]), hpr / reading - 1.0, 1e-12, &what);
+                errors.push((mach, hpr / reading - 1.0));
+            }
+        }
+        // The guide's summary: from Mach 2.3, all 8 within 5.3%; below, at Mach 1.5 and 1.8, 3
+        // rows 14.3% to 47.8% high.
+        assert_eq!(errors.len(), 11);
+        let high: Vec<f64> = errors.iter().filter(|e| e.0 >= 2.3).map(|e| e.1).collect();
+        let low: Vec<f64> = errors.iter().filter(|e| e.0 < 2.3).map(|e| e.1).collect();
+        assert_eq!(high.len(), 8);
+        assert!(high.iter().all(|e| e.abs() < 0.0535));
+        let (lo, hi) = low
+            .iter()
+            .fold((f64::INFINITY, f64::NEG_INFINITY), |(a, b), &e| {
+                (a.min(e), b.max(e))
+            });
+        assert!(
+            (lo - 0.143).abs() < 5e-4 && (hi - 0.478).abs() < 5e-4,
+            "{lo} {hi}"
+        );
+
+        // The Basic Finner: four square fins on a body one diameter across.
+        let basic = &fixture["basic_finner"];
+        let d = 1.0;
+        let fin = FinAero::new(
+            &FinPlanform::Trapezoidal {
+                root_chord_m: d,
+                tip_chord_m: d,
+                span_m: d,
+                sweep_m: 0.0,
+            },
+            0.25 * PI * d * d,
+        )
+        .unwrap();
+        let k_r = roll_damping_interference(d, 0.5 * d, 1.0).unwrap();
+        close(f(&basic["roll_damping_interference"]), k_r, 1e-15, "k_R(B)");
+        for (key, source) in [
+            ("wind_tunnel", "wind_tunnel_c_lp"),
+            ("barrowman_theory", "barrowman_theory_c_lp"),
+        ] {
+            let rows = basic[key].as_array().unwrap();
+            let readings = finner[source].as_array().unwrap();
+            assert_eq!(rows.len(), readings.len());
+            for (row, reading) in rows.iter().zip(readings) {
+                let mach = f(&row["mach"]);
+                assert_eq!(mach, f(&reading["mach"]));
+                assert_eq!(f(&row["reference_c_lp"]), f(&reading["c_lp"]));
+                let hpr = 4.0 * fin.roll(mach, 0.5 * d, d).unwrap().damping * k_r;
+                close(f(&row["hpr_c_lp"]), hpr, 1e-12, key);
+                close(
+                    f(&row["error"]),
+                    hpr / f(&reading["c_lp"]) - 1.0,
+                    1e-12,
+                    key,
+                );
+            }
+        }
+        // The guide's summary: 5.9% to 16.2% low against the wind tunnel, 2.0% against
+        // Barrowman's own computed value.
+        let tunnel_errors: Vec<f64> = basic["wind_tunnel"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|r| f(&r["error"]))
+            .collect();
+        let (lo, hi) = tunnel_errors
+            .iter()
+            .fold((f64::INFINITY, f64::NEG_INFINITY), |(a, b), &e| {
+                (a.min(e), b.max(e))
+            });
+        assert!(
+            (lo + 0.162).abs() < 5e-4 && (hi + 0.059).abs() < 5e-4,
+            "{lo} {hi}"
+        );
+        let theory = f(&basic["barrowman_theory"][0]["error"]);
+        assert!((theory + 0.020).abs() < 5e-4, "{theory}");
+    }
+
+    /// The whole rocket's roll sums its fin sets, each with its cant, count and body factors: two
+    /// sets canted each way at Mach 0.5 to 4.5; a positive cant rolls toward `−z_B`; Mach 5 is
+    /// refused; no cant, no steady roll.
+    #[test]
+    fn a_rocket_rolls_by_the_sum_of_its_fin_sets() {
+        let fins = |count: u32, cant: f64, planform: FinPlanform| {
+            let mut part = fin_set(count, planform);
+            if let hpr_design::Part::FinSet(set) = &mut part {
+                set.cant_rad = cant;
+            }
+            part
+        };
+        let rocket = |cants: [f64; 2]| {
+            let mut tube = component("tube", body_part(0.8, 0.03, 0.03), None);
+            tube.children = vec![
+                component(
+                    "fore",
+                    fins(
+                        3,
+                        cants[0],
+                        FinPlanform::Trapezoidal {
+                            root_chord_m: 0.05,
+                            tip_chord_m: 0.02,
+                            span_m: 0.03,
+                            sweep_m: 0.02,
+                        },
+                    ),
+                    Some(Position::Top { aft_offset_m: 0.1 }),
+                ),
+                component(
+                    "aft",
+                    fins(
+                        4,
+                        cants[1],
+                        FinPlanform::Elliptical {
+                            root_chord_m: 0.08,
+                            span_m: 0.05,
+                        },
+                    ),
+                    Some(Position::Bottom { aft_offset_m: 0.0 }),
+                ),
+            ];
+            one_stage(
+                vec![
+                    component(
+                        "nose",
+                        nose(NoseShape::Ogive { radius_ratio: 1.0 }, 0.2, 0.03),
+                        None,
+                    ),
+                    tube,
+                ],
+                ReferenceDiameter::Maximum {},
+            )
+        };
+        let (a, b) = (0.02, -0.01);
+        let model = AeroModel::new(&rocket([a, b]).layout().unwrap()).unwrap();
+        let d = model.reference_diameter_m();
+        for mach in [0.5, 0.9, 1.1, 2.0, 4.5] {
+            let roll = model.roll(mach).unwrap();
+            let (mut forcing, mut damping) = (0.0, 0.0);
+            for set in model.fin_sets() {
+                let fin = set.fin.roll(mach, set.body_radius_m, d).unwrap();
+                let n = f64::from(set.count);
+                forcing -= n * fin.forcing_per_rad * set.roll_forcing_interference * set.cant_rad;
+                damping += n * fin.damping * set.roll_damping_interference;
+            }
+            close(roll.forcing, forcing, 1e-13, "forcing");
+            close(roll.damping, damping, 1e-13, "damping");
+            assert!(roll.damping < 0.0);
+        }
+        let one = AeroModel::new(&rocket([a, 0.0]).layout().unwrap()).unwrap();
+        assert!(one.roll(0.5).unwrap().forcing < 0.0);
+        assert!(model.roll(5.0).is_err());
+        let still = AeroModel::new(&rocket([0.0, 0.0]).layout().unwrap()).unwrap();
+        // Past 15° of cant, or a NaN, the model refuses.
+        for cant in [0.3, -0.3, f64::NAN] {
+            let refused = rocket([cant, 0.0])
+                .layout()
+                .map_or(true, |layout| AeroModel::new(&layout).is_err());
+            assert!(refused, "cant {cant}");
+        }
+        assert_eq!(still.steady_roll_rate_rad_s(0.5, 170.0).unwrap(), 0.0);
+        assert!(model.steady_roll_rate_rad_s(0.5, -1.0).is_err());
     }
 }

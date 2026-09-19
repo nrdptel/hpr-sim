@@ -25,7 +25,7 @@
   ([Accuracy](../accuracy.md#whole-flights-with-each-codes-own-drag)). No flight has been compared
   with a real one.
 - **What it leaves out:** staging and delayed ignition, tip-off (the pivot as the rocket leaves the
-  rail), roll forcing and aerodynamic roll damping, turbulence and thrust misalignment. Its
+  rail), turbulence and thrust misalignment. Its
   small-angle aerodynamics are used at every angle of attack (the angle between the rocket's axis
   and its path through the air), with no stall. A flight that reaches Mach 5, the top of the
   aerodynamic models, stops with an error.
@@ -198,14 +198,20 @@ q̇   = ½ q ⊗ (0, ω)
     nose cones, transitions and fin sets. A boattail's slope is negative, so it takes some away.
   - Body tubes give none at small angles: their own slope is 0, and their body lift grows with
     `sin² α`.
-  - `hpr-aero` has no damping coefficients. Damping coefficients for pitch, yaw and roll, and roll
-    forcing from canted fins, are planned for the second aerodynamics milestone
-    ([M1.8](../decisions-and-roadmap.md#m1-8)); for pitch and yaw they will have to replace the
+  - `hpr-aero` has no pitch or yaw damping coefficients; they would have to replace the
     local-flow damping, not add to it.
-  - Until then nothing aerodynamic damps or drives roll: the air's forces have no moment about
-    the rocket's axis. The roll rate can still change through inertia coupling (turning about one
-    axis driving turning about another), but only for a rocket whose mass isn't symmetric about
-    its axis, and, while a motor burns, through the jet and the falling inertia in `T21`.
+- **Roll.** The fins' cant drives the roll and the roll rate damps it: a moment
+  `q A d (C_l0 cos α + C_lp p d/2V)` about `z_B`, with `q` the dynamic pressure, `A` and `d` the
+  reference area and diameter, `C_l0` the cant's rolling moment, `C_lp` the damping and
+  `p = ω_z`, at the centre of mass's Mach number; the cant's forcing follows the axial flow,
+  `cos α`, so it vanishes broadside and reverses tail first
+  (`AeroModel::roll`, [Roll: forcing and damping](aero.md#roll-forcing-and-damping)). The damping
+  is written `ρ V A d² C_lp p/4`, so it fades smoothly as the airspeed does. The roll rate also
+  changes through inertia coupling (turning about one axis driving turning about another) for a
+  rocket whose mass isn't symmetric about its axis, and, while a motor burns, through the jet and
+  the falling inertia in `T21`. At constant speed a canted rocket spins up to the steady rate
+  where cant and damping balance, as the closed form gives
+  (`tests::canted_fins_spin_to_the_analytic_balance`).
 - **Limits.**
   - The models are small-angle: no stall, and body lift and fins extended by `sin α`. They
     overstate the forces at large `α`. In normal flights large `α` occurs near apogee, where the

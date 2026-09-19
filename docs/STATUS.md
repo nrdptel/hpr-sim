@@ -4,11 +4,11 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
 
 ## Now
 
-- **Current milestone:** M1.8c Roll and damping
-- **Order:** M1.8c, M1.8d, M1.8e, then M3.1
-- **Run:** M0.1-M0.4, M1.1-M1.7, M2.1, M1.8a and M1.8b (b1 to b3) have shipped. The site is live
-  at https://nrdptel.github.io/hpr-sim/
-- **Last updated:** 2026-09-18 (M1.8b3 done; M1.8c not started)
+- **Current milestone:** M1.8d Normal-force overrides
+- **Order:** M1.8d, M1.8e, then M3.1
+- **Run:** M0.1-M0.4, M1.1-M1.7, M2.1, M1.8a, M1.8b (b1 to b3) and M1.8c have shipped. The site
+  is live at https://nrdptel.github.io/hpr-sim/
+- **Last updated:** 2026-09-19 (M1.8c done; M1.8d not started)
 
 ## Handoff (overwrite each session)
 
@@ -25,22 +25,21 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
 - **The path in wind (ADR-026):** the oracle flies RocketPy 1.13.0 with upstream PRs #1188 and
   #1196 applied by `corrections.py`; when RocketPy releases #1196, re-pin, regenerate and delete
   it. `wind_response.py` measures the seven drifts reported as model differences.
-- **M1.8a/b (ADR-027 to ADR-029):** `cargo xtask aero` writes `normal-force-vs-mach.json`,
-  `drag-vs-mach.json` and `rocketpy-drag-curves.json` (hpr's values and errors only). Working
-  files, uncommitted: `refs/scratch/arcas/` (roll data for M1.8c), `refs/scratch/stoney/`,
-  `refs/scratch/m18b2/` (`range` sweeps Calisto's fin inputs by band).
-- **M1.8b3 (ADR-030):** `hpr_aero::afterbody`: Fig. 5-122 (Jack's second-order theory) held to
-  the Prandtl–Meyer limit, 16°–30° separation, Fig. 5-141 base relief, a lip in a boattail's wake.
-  `measured-boattails.json` holds the transcribed NACA/NASA readings (checked twice against the
-  scans); `cargo xtask aero` compares them in `drag-vs-mach.json`. NTRS serves five of the new
-  PDFs with a 436-byte header (pinned as served); readable cut copies and all research notes are
-  in `refs/scratch/m18b3/` (`carved/`, `*.md`, `cubbage-transonic.json`). Open: #72 (steep
-  boattails in a thick boundary layer read high), #73 (the subsonic rule gives long boattails 0).
-- **M1.8c** next: roll forcing from cant and roll damping; its done-when compares hpr's roll
-  forcing with the Arcas Robin's measured roll effectiveness (TN D-4014; roll readings in
-  `refs/scratch/arcas/`). Damping must keep hpr's local-flow pitch damping (ADR-026). Issues #67 to
-  #70, #72 and #73 hold the drag gaps. Don't read predicted mode's misses as gaps to close
-  (ADR-009, ADR-023). ROADMAP is at its 1000-line budget: trim a done entry when adding.
+- **M1.8a/b (ADR-027 to ADR-030):** `cargo xtask aero` writes `normal-force-vs-mach.json`,
+  `drag-vs-mach.json` and `rocketpy-drag-curves.json` (hpr's values and errors only);
+  `measured-boattails.json` holds NACA/NASA boattail readings. NTRS serves five of ADR-030's PDFs
+  with a 436-byte header (pinned as served). Scratch: `refs/scratch/{arcas,stoney,m18b2,m18b3}/`.
+  Open: #72 (steep boattails in a thick boundary layer read high), #73 (long boattails get 0).
+- **M1.8c (ADR-031):** `AeroModel::roll` (Barrowman's strip theory with `k_T(B)`, `k_R(B)`) and
+  the moment in `hpr_sim`'s dynamics; `roll-vs-mach.json` against TN D-4014 Fig. 14 and the
+  Basic Finner (`basic-finner-roll-damping.json`, Barrowman Fig. 5-7). Next reference for roll
+  below Mach 1.5: TN D-4013's rolling-moment plots (fins canted 2°, not yet read). Scratch in
+  `refs/scratch/m18c/`. The worktree `../hpr-sim-m18c` can be removed.
+- **M1.8d** next: `C_Nα` and CP tables from a RASAero II export replacing hpr's in a flight,
+  tested on Calisto's export (`refs/rocketpy-history/calisto-cd-test-2018.csv`, pinned; its
+  `CNalpha (0 to 4 deg)` column is a secant slope to 4°, ADR-027). Issues #67 to #70, #72 and #73
+  hold the drag gaps. Don't read predicted mode's misses as gaps to close (ADR-009, ADR-023).
+  ROADMAP is near its 1000-line budget: trim a done entry when adding.
 - **Regeneration is not bit-identical across machines** (last digits). Regenerate reports with
   `cargo xtask validate` (debug), never `--release`: it rounds differently in the 7th digit.
   Fixture checks (`designs::same`) allow 1e-12 relative, or 1e-13 near zero (M1.8b3's PR).
@@ -50,6 +49,10 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
 
 ## Done log (newest first, keep about 15)
 
+- 2026-09-19: M1.8c Roll and damping (ADR-031): Barrowman's strip theory; Valetudo canted 1°
+  settles on the closed-form roll rate within 1e-11; TN D-4014's roll effectiveness from Mach 2.3
+  8 of 8 within 5.3%, +14.3% to +47.8% at Mach 1.5 and 1.8; the Basic Finner's damping −5.9% to
+  −16.2%.
 - 2026-09-18: M1.8b3 The boattail and base faster than sound (ADR-030), and with it M1.8b: not
   met, recorded. Measured boattails of 3° to 10° −21.9% to +28.3%; Arcas Robin fins off from
   Mach 1.5 0 of 11 (+13.5% to +24.1%, the steep boattail, #72); Calisto supersonic 8 of 17.
@@ -66,12 +69,6 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
 - 2026-09-18: M2.1d3 The path in wind (ADR-026, issue #50), and with it M2.1: RocketPy's equations
   corrected as upstream PRs #1188 and #1196 do; six drifts now gated, five measured as body lift
   and rail release.
-- 2026-09-18: M0.4d Publish, and with it M0.4 (PR #59, ADR-019): Neer turned Pages on; CI run
-  35396233336 on `main` deployed the guide and the rustdoc. ThrustCurve's catalog values confirmed
-  as facts (ADR-005).
-- 2026-09-18: M2.1d2 The calm-air cases (PR #57, ADR-025): Calisto and Bella Lui pass; Juno III's
-  drifts not scored, 1.6 of their 3.7 points measured as the rail release.
-
 ## Needs Neer (blocking or one-way decisions; the session keeps working on other things)
 
 - **Protect `main`** (2 minutes, optional). Settings → Branches → rule for `main`: require the
@@ -92,6 +89,8 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
 
 ## Decided without Neer (one line each; significant ones get an ADR)
 
+- ADR-031: roll damping takes the fin's own slope, not the airfoil's Barrowman's text writes (his
+  computed curve does); Barrowman's body factors kept; no target set after measuring.
 - ADR-030: Fig. 5-122 to the Prandtl–Meyer limit, 16°–30° separation, Fig. 5-141 as a ratio, the
   flow behind boattails shared among their tails, a step down sheltering a lip (a retainer: up to
   23% less `C_D0`, unmeasured); targets not met, not tuned.

@@ -161,6 +161,14 @@ calibres, and a nose cone three calibres long is three times as long as its base
 
 A fin set near the nose, ahead of the main fins. Its normal force acts well forward, so it moves the [centre of pressure](#centre-of-pressure-cp) forward, and as speed rises its slope grows too. See [Aerodynamics](physics/aero.md#your-rockets-centre-of-pressure).
 
+## Cant
+
+The small angle at which fins are set to the rocket's axis, turning each about its own span so that
+the air pushes it sideways and the rocket spins. hpr measures it in radians, positive turning fin
+0's leading edge (fin 0 is the one along `+x_B`) toward `−y_B` ([Body frame](#body-frame)); a
+positive cant spins the rocket clockwise seen from ahead of the nose, looking aft. See
+[Roll: forcing and damping](physics/aero.md#roll-forcing-and-damping).
+
 ## Centre of dry mass
 
 The centre of mass of the rocket with its motor's propellant gone: the empty rocket, motor casing
@@ -692,6 +700,13 @@ treats the flow as fully turbulent. See [Aerodynamics](physics/aero.md#drag).
 An open-source (MIT) rocket flight simulator written in Python, and hpr's main partner for
 [code-to-code comparisons](#code-to-code-comparison). hpr runs RocketPy 1.13.0, pinned to one
 commit, to produce its reference values. See [Checking a claim](checking-a-claim.md).
+
+## Roll damping and roll forcing
+
+Roll forcing is the twist that [canted](#cant) fins put on a rocket about its own axis: each fin
+pushes sideways off the axis. Roll damping is the air's resistance to the spin: a rolling fin moves
+sideways through the air and is pushed back. They balance at a steady roll rate that grows with the
+airspeed. See [Roll: forcing and damping](physics/aero.md#roll-forcing-and-damping).
 
 ## Roughness length
 

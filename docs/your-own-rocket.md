@@ -609,7 +609,9 @@ at the end of the output shows the rules:
 | `None` | `null` | `"tab": null` |
 
 - Some keys can be left out, and take a default: a component's `name`, or a fin set's `tab` and
-  `cant_rad`, for example.
+  `cant_rad`, for example. `cant_rad` is the fins' [cant](glossary.md#cant) in radians, 0 by
+  default; a cant spins the rocket
+  ([Roll: forcing and damping](physics/aero.md#roll-forcing-and-damping)).
 - A key hpr doesn't know is refused, so a misspelt key is an error rather than silently ignored.
 - A mounted motor is stored whole: its thrust curve, masses and size. Its `designation` is only a
   label, so a design file doesn't depend on the catalog.

@@ -5,7 +5,8 @@
 - **What it models:** the air's forces on a rocket: the
   [normal force](../glossary.md#normal-force) (the sideways push when flying at an angle to the
   airflow) and the [centre of pressure](../glossary.md#centre-of-pressure-cp) (where it acts) from
-  [Mach](../glossary.md#mach-number) 0 to 5, and drag over the same range.
+  [Mach](../glossary.md#mach-number) 0 to 5, drag over the same range, and the rolling moment
+  from canted fins and the roll rate.
 - **Sources:** Barrowman's 1966 report, 1967 thesis and Centuri TIR-33 (1970), the basis of
   [Barrowman's method](../glossary.md#barrowmans-method); supersonic linear theory for fins past
   Mach 1; for drag, mainly Niskanen's 2009 OpenRocket thesis, with Stoney's 1961 NASA measurements
@@ -62,6 +63,11 @@
     ([Normal force through Mach 1](#normal-force-through-mach-1)).
   - *In whole flights* in wind, body lift, which RocketPy leaves out, is the largest reason a slow
     rocket's drift differs from RocketPy's ([ADR-026][adr-026]). Nothing against a real flight.
+  - *Roll*: the spin that [canted](../glossary.md#cant) fins give, against NASA's measured roll
+    effectiveness (the rolling moment per degree of cant), is within 5.3% at all 8 readings from
+    Mach 2.3 to 4.63, and 14.3% to 47.8% high at Mach 1.5 and 1.8; the roll damping reads 5.9% to 16.2% low against the one measured
+    set, that of the Basic Finner, a standard finned test body, from Mach 1.5 to 3
+    ([Roll against the Arcas Robin and the Basic Finner](#roll-against-the-arcas-robin-and-the-basic-finner)).
 - **What it leaves out:** large angles and [stall](../glossary.md#stall), though a flight uses
   these models at every angle. Faster than sound
   ([transonic and supersonic](../glossary.md#transonic-and-supersonic)), a steep boattail's drag
@@ -69,9 +75,10 @@
   blunt edge's formula, which reads far high for thin, sharp fins, and nothing models a thin fin's
   own wave drag or the drag where fins meet the body. The body's normal force faster than
   sound is slender-body theory's, which the wind tunnel shows low past Mach 3
-  ([M1.8e](../decisions-and-roadmap.md#m1-8e)). Damping coefficients for pitch, yaw and roll, and
-  roll forcing (the torque from fins set at an angle that spins a rocket up) come with
-  [M1.8c](../decisions-and-roadmap.md#m1-8c).
+  ([M1.8e](../decisions-and-roadmap.md#m1-8e)). There are no damping coefficients for pitch and
+  yaw: a flight takes that damping from each part's own local flow. The roll forcing near Mach
+  1.5 reads high, and nothing measured checks roll below it
+  ([Roll: forcing and damping](#roll-forcing-and-damping)).
 
 ## Code and sources
 
@@ -327,14 +334,13 @@ A fin set is `N` identical fins spaced evenly around a body tube. For one fin of
   `r_t/(s + r_t) < 0.4` ([B66] p. 36).
 - **Not modelled.**
   - The body lift the fins induce, `K_B(T)` ([B66] p. 36 neglects it; [B67] eq. 3-98 has it).
-  - The roll moment of a single fin: its force acts at `r_t + y_MAC` along the fin's normal. Two or
-    more even fins cancel it; one fin doesn't (roll arrives with [M1.8](../decisions-and-roadmap.md#m1-8), a planned
-    aerodynamics milestone).
+  - The roll moment of a single fin's normal force at an angle of attack: its force acts at
+    `r_t + y_MAC` along the fin's normal. Two or more even fins cancel it; one fin doesn't. Roll
+    from cant and against the roll rate is modelled
+    ([Roll: forcing and damping](#roll-forcing-and-damping)).
   - Interference between fin sets at the same station.
-  - Cant (fins set at an angle to spin the rocket), which matters for roll ([M1.8](../decisions-and-roadmap.md#m1-8)).
-  - Damping coefficients, for pitch, yaw and roll, and roll forcing from cant: all planned for
-    [M1.8](../decisions-and-roadmap.md#m1-8). Pitch and yaw coefficients will have to replace the
-    local-flow damping below, not add to it, or it would be counted twice. Until then:
+  - Damping coefficients for pitch and yaw. They would replace the local-flow damping below, not
+    add to it, or it would be counted twice; hpr keeps the local flow:
     - In a flight, pitch and yaw damping come only from evaluating each component in its own
       local flow, which includes the speed the rocket's rotation adds there
       ([Rigid-body flight](flight.md#aerodynamics-in-flight)).
@@ -342,7 +348,6 @@ A fin set is `N` identical fins spaced evenly around a body tube. For one fin of
       slope is negative, so it takes some away.
     - Body tubes give none at small angles. Their own slope is 0, and their body lift grows with
       `sin² α`, so it adds nothing there.
-    - Nothing aerodynamic damps or drives roll.
   - Tube fins, which are refused until a cited method exists
     ([issue #15](https://github.com/nrdptel/hpr-sim/issues/15)). Any part kind the model doesn't
     know is refused too.
@@ -446,6 +451,130 @@ gives, per fin:
   `4/β`. Its fin CP doesn't move with Mach.
 - *Tuning the join to the wind tunnel* below would shrink its misses by fitting the model to its
   own check. The join's ends come from the sources' speed regions, set before measuring.
+
+### Roll: forcing and damping
+
+Fins set at a small angle to the rocket's axis, [cant](../glossary.md#cant), each push sideways as
+a wing at that angle would. Each push acts off the axis, so together they twist the rocket and spin
+it up: the [roll forcing](../glossary.md#roll-damping-and-roll-forcing). Once the rocket rolls,
+each fin also moves sideways through the air, meets it at an angle of its own, and pushes back
+against the spin: the roll damping. The two balance at a steady roll rate that grows with the
+airspeed. hpr takes both from Barrowman's thesis ([B67] §3.13–3.14, appendix A), by strip theory:
+each narrow strip of a fin, running with the flow, lifts in proportion to the angle it meets the
+air at.
+
+How far to trust it
+([Roll against the Arcas Robin and the Basic Finner](#roll-against-the-arcas-robin-and-the-basic-finner)):
+
+- The forcing is within 5.3% of NASA's measured roll effectiveness (the rolling moment per degree
+  of cant) from Mach 2.3 to 4.63, and reads 14% to 48% high at Mach 1.5 and 1.8.
+- The damping reads 6% to 16% low against the one measured set, from Mach 1.5 to 3.
+- Below Mach 1.5, where most hobby flights stay, nothing measured checks either: only the flight's
+  agreement with the closed-form balance, and Barrowman's own computed damping at Mach 0.07.
+  Strips that each lift at the fin's average slope ignore how the flow at one strip changes the
+  next, which for short fins likely overstates the damping, so a subsonic spin may read low.
+- The steady spin rate carries both errors, and both push it high: forcing that reads high and
+  damping that reads low each raise it.
+
+Other symbols are as in [Fins](#fins): `r_t` the body's radius at the fins, `s` the span, `c_r`
+and `c_t` the root and tip chords, `A_fin` one fin's area, `y_MAC` the mean aerodynamic chord's
+distance from the root.
+
+| Symbol | Meaning | Unit |
+|---|---|---|
+| `δ` | cant: the angle each fin is turned about its own span, positive turning fin 0's (the fin along `+x_B`) leading edge toward `−y_B` ([Mass properties](mass.md)) | rad |
+| `p` | roll rate about `+z_B` ([Frames](frames.md)) | rad/s |
+| `ξ` | a strip's distance from the rocket's axis, `r_t + y` | m |
+| `C_l` | rolling moment about `+z_B` over `q A_ref d`, with `d` the reference diameter | — |
+| `C_lδ` | one fin's rolling moment per radian of cant, in the sense its lift turns the rocket | per rad |
+| `C_lp` | one fin's rolling moment per unit of `p d/(2V)`: the damping, negative | — |
+| `C_l0` | the whole rocket's rolling moment from cant at no roll rate | — |
+| `k_T(B)`, `k_R(B)` | the body's effect on the forcing and on the damping | — |
+
+**The moment.** A fin set of `N` fins adds `C_l = −N C_lδ k_T(B) δ + N C_lp k_R(B) (p d/2V)`. The
+minus sign is the cant's direction: a positive cant turns fin 0's leading edge toward `−y_B`, so
+its lift pushes toward `−y_B` and turns the rocket about `−z_B` (a negative `C_l`), clockwise
+seen from ahead of the nose, looking aft. Its first term, summed over the sets, is `C_l0`. In a
+flight the cant's forcing is scaled by `cos α`: the cant meets the air as it runs along the axis,
+so there is none broadside and it reverses tail first, as the fins' normal force follows `sin α`
+([Rigid-body flight](flight.md#aerodynamics-in-flight)).
+Bodies of revolution add nothing, and fin–fin interference is left out, as in [N09] eq. 3.66.
+
+**Below Mach 0.8.** The cant is an angle of attack for each fin, so its lift is the fin's own
+normal force, acting at its mean aerodynamic chord: `C_lδ = (C_Nα)₁ (r_t + y_MAC)/d` ([B67] eq.
+3-35, [N09] eq. 3.66). For the damping, a strip at `ξ` meets the air at `−pξ/V`, and lifts by the
+fin's slope per unit of its area, `a = (C_Nα)₁ A_ref/A_fin`: `C_lp = −2a ∫ξ² dA/(A_ref d²)` ([B67]
+eq. 3-40–3-49, [N09] eq. 3.67–3.70). For a trapezoid `∫ξ² dA = (c_r + c_t) r_t² s/2 +
+(c_r + 2c_t) r_t s²/3 + (c_r + 3c_t) s³/12`; for any outline hpr takes it from the polygon.
+
+**From `M_s`,** where [supersonic linear theory](../glossary.md#supersonic-linear-theory) starts
+([Fins through Mach 1](#fins-through-mach-1)), each strip carries the load `4α/β`, halved inside
+the tip's [Mach cone](../glossary.md#mach-cone):
+`C_lδ = (4/β)(∫ξ dA − ½∫_cone ξ dA)/(A_ref d)` and
+`C_lp = −(8/β)(∫ξ² dA − ½∫_cone ξ² dA)/(A_ref d²)`, with `β = √(M² − 1)` ([B67] appendix A, first
+order). Between Mach 0.8 and `M_s` each is a straight line in `M`, as the fin's slope is.
+
+**The body.** The body reshapes the flow the fins meet. Barrowman's factors from slender-body
+theory ([B67] eq. 3-95 with 3-105, and 3-123 with 3-122), with `τ = (s + r_t)/r_t`, scale the
+forcing by `k_T(B)`, 0.940 at `τ = 2`, and the damping by `k_R(B)`, 1.33 at `τ = 2` for a
+rectangular fin; both are 1 without a body. [N09] leaves both out. `k_R(B)` is for a chord that
+falls linearly from root to tip; another outline takes it at its tip-to-root chord ratio, so an
+elliptical fin is taken as a triangle, about 5.5% too much damping.
+
+**The steady roll rate** is where the two cancel: `p = −(C_l0/C_lp)(2V/d)`. Below Mach 0.8 the
+fin's slope cancels between them, and for one fin set
+`p = −δ V A_fin (r_t + y_MAC) k_T(B) / (k_R(B) ∫ξ² dA)`: it grows with the airspeed and the cant,
+and not with the air's density or the number of fins.
+
+**A worked example: Valetudo with its fins canted 1°.** Valetudo, one of RocketPy's example
+rockets, has three fins 58 mm long at the root, 18 mm at the tip and 77 mm in span on a body of
+radius 40.45 mm. One fin has `A_fin = 2926 mm²`, `y_MAC = 31.75 mm`, `∫ξ² dA = 1.656 × 10⁻⁵ m⁴`,
+and `τ = 2.904`, so `k_T(B) = 0.935` and `k_R(B) = 1.228`. At 100 m/s,
+`p = −0.01745 × 100 × 0.002926 × 0.0722 × 0.935/(1.228 × 1.656 × 10⁻⁵) = −16.95 rad/s`, 2.7
+turns a second. With no drag and no gravity hpr's flight settles on it within 1e-6 (1e-11
+measured), spinning up with a time constant of 0.48 s
+(`canted_fins_spin_to_the_analytic_balance`, which also checks this example's rate and time
+constant).
+
+Why these choices:
+
+- *The fin's own slope in the damping.* Barrowman's text writes the airfoil's slope `C_Nα0` there
+  (eq. 3-40, `2π/β`), as does [N09] eq. 3.69. His own computed curve for the Basic Finner reads
+  −34.21 at Mach 0.07 (Fig. 5-7), which is the fin's slope spread over its strips, −33.53
+  (`the_basic_finner_damps_as_barrowman_computed`); the airfoil's gives about −81, 2.4 times as
+  hard. His curve's rise toward Mach 1, about 20% read from the figure, follows the fin's slope
+  too, where the airfoil's would grow without bound. Stubby fins lift far less than an airfoil.
+- *The body factors.* Barrowman has them and [N09] doesn't. For the Arcas Robin's fins they lower
+  the forcing 6.5% and raise the damping 20%. His `k_R(B)` is a ratio of forces (eq. 3-116,
+  3-120) applied to a moment (eq. 3-123); weighted by the moment it would be 3.4% to 4.2% smaller
+  for the fins here. hpr keeps his, which his computed curve seems to use too. `k_T(B)` is
+  reference 23's factor for fins turned together; for cant, whose load turns the other way on the
+  opposite fin, it isn't derived.
+- *Moments about the body's axis.* Faster than sound Barrowman's appendix A takes each strip's
+  moment about the fin's root; hpr takes it about the axis, `ξ = r_t + y`, as his subsonic eq.
+  3-27 and 3-35 do. About the root the Arcas Robin's forcing would be about half: its load sits
+  25 mm from the root and 53 mm from the axis.
+- *Limits on the input.* hpr refuses a cant beyond 15°, where a fin stalls and the linear model
+  means nothing, and a cant on a single fin, whose sideways push it doesn't carry.
+- *Pitch and yaw keep the local-flow damping.* A flight's pitch and yaw damping come from each
+  part's own local flow ([ADR-011][adr-011]); coefficients would count it twice.
+- *No target was set for the comparisons.* The roadmap asked for the forcing to be compared with
+  the measured roll effectiveness, and set no bar; the numbers are reported as they are
+  ([ADR-031][adr-031]).
+
+What it leaves out:
+
+- The roll forcing near Mach 1.5 reads high: linear theory's load rises as `1/β` toward Mach 1,
+  and the Arcas Robin's measured forcing doesn't. Barrowman found the same for the Tomahawk
+  sounding rocket ("the theoretical value at M = 1.5 is no good", [B67] p. 66).
+- The damping reads low for the Basic Finner's thick wedge fins, 8% of the diameter thick:
+  first-order theory has no term for thickness, the likely cause.
+- Nothing measured checks roll below Mach 1.5.
+- A fast spin at low airspeed meets the fins at angles past stall, where the linear damping no
+  longer holds: Valetudo spinning at 17 rad/s at 5 m/s meets the air 23° off at its fin tips.
+- The angle of attack: the measured roll effectiveness changes by up to 13% between 0° and ±4°
+  (TN D-4014 Fig. 14); hpr's is the same at every angle. A single fin's roll from its normal
+  force, the body's own roll, and fins' airfoil sections are not modelled.
 
 ## Drag
 
@@ -1449,6 +1578,73 @@ So hpr's body reads high through Mach 1, from the nose and the base, and 6% to 1
 sound, from friction and the base. That is the same sign as Calisto's gap to RASAero II, a third
 of its size. This rocket has no boattail, so it says nothing about a boattail's own drag.
 
+### Roll against the Arcas Robin and the Basic Finner
+
+What is checked: hpr's roll forcing against NASA's measured roll effectiveness of the two Arcas
+Robin models from Mach 1.5 to 4.63 (TN D-4014 Fig. 14, [D4014]), and its roll damping against the
+Basic Finner's measured from Mach 1.5 to 3.0 and Barrowman's own computed value at Mach 0.07
+([B67] Figs. 5-6 and 5-7). The readings are in [the wind-tunnel fixture][wind-tunnel] and
+[the Basic Finner's][finner-fixture]; `cargo xtask aero` writes the comparison to
+[the roll fixture][roll-fixture], and `hpr_aero::tests::roll_against_mach` recomputes every row.
+The roadmap set no target.
+
+**The forcing.** `C_lδ` per degree of cant, on the body's cross-section and diameter, at an angle
+of attack of 0 (the reports' symbol is per degree; the models' fins were canted 2°):
+
+| Mach | model | measured `C_lδ` (the report's) | hpr's `N C_lδ k_T(B)` | error |
+|---|---|---|---|---|
+| 1.5 | short | 0.1684 | 0.2489 | +47.8% |
+| 1.8 | short | 0.1722 | 0.1968 | +14.3% |
+| 1.8 | long | 0.1670 | 0.1968 | +17.8% |
+| 2.3 | short | 0.1449 | 0.1495 | +3.2% |
+| 2.3 | long | 0.1460 | 0.1495 | +2.4% |
+| 2.96 | short | 0.1152 | 0.1151 | −0.1% |
+| 2.96 | long | 0.1140 | 0.1151 | +1.0% |
+| 3.96 | short | 0.0874 | 0.0861 | −1.4% |
+| 3.96 | long | 0.0870 | 0.0861 | −1.0% |
+| 4.63 | short | 0.0721 | 0.0739 | +2.5% |
+| 4.63 | long | 0.0780 | 0.0739 | −5.3% |
+
+The two models differ only in the body's length ahead of the fins, which hpr's forcing doesn't
+see; the measured values differ by up to 0.006 per degree (8%, at Mach 4.63), and the report
+calls the effectiveness "about the same for either vehicle" ([D4014] p. 6). The short model's
+readings were corrected when roll was added: the first reading had put each of its panels' zeros 0.005 to
+0.007 above the grid line it lies on ([ADR-031][adr-031]). From Mach 2.3 all 8 are within 5.3%.
+At Mach 1.5 and 1.8 hpr reads high, as
+Barrowman found for another sounding rocket: linear theory's load climbs toward Mach 1 faster than
+the fins' does. Without the body factor `k_T(B)` (0.935 here) every value would be 7% higher.
+
+**The damping.** `C_lp` of the Basic Finner, four square fins one diameter in chord and span on a
+body one diameter across, per unit of `p d/(2V)`:
+
+| Mach | reference | reference's `C_lp` | hpr's `N C_lp k_R(B)` | error |
+|---|---|---|---|---|
+| 0.07 | Barrowman's computed curve (chose the method; not a validation) | −34.21 | −33.53 | −2.0% |
+| 1.51 | wind tunnel | −33.60 | −31.62 | −5.9% |
+| 1.82 | wind tunnel | −27.45 | −25.31 | −7.8% |
+| 2.27 | wind tunnel | −23.48 | −20.12 | −14.3% |
+| 2.60 | wind tunnel | −20.92 | −17.61 | −15.8% |
+| 3.00 | wind tunnel | −18.32 | −15.36 | −16.2% |
+
+hpr reads low faster than sound, more so as the Mach number grows. Barrowman's own curve, from
+Busemann's third-order expansion ([B67] eq. 3-7, a higher-order theory that counts the fins'
+thickness), is 5.68% from the same points on average
+([B67] p. 66); first-order theory, hpr's, reads low partly for want of a term for the fins' 8%
+thickness. At Mach 0.07 hpr gives his computed value within 2.0%, which is how hpr's reading of his
+damping method, the fin's own slope over the strips, was checked (above).
+
+**The flight** (`hpr_sim::tests::canted_fins_spin_to_the_analytic_balance`): Valetudo with 1° of
+cant at 100 m/s, with no drag and no gravity, settles on the closed-form steady roll rate of the
+worked example, −16.948 rad/s, within 1e-6 (the test's bound; 1e-11 measured), and one time
+constant in is within 1e-5 of the exponential approach (2e-10 measured); no pitch or yaw
+appears.
+
+**The pieces** (`hpr_aero::fins::tests`): the polygon's span moments against the trapezoid's and the
+ellipse's integrals ([N09] eq. 3.70–3.71); the supersonic forcing and damping against a
+20,000-strip sum of the same load on the Arcas Robin's swept fin, within 1e-7, from Mach 1.5 to
+4.63; the subsonic ones against Barrowman's closed forms, and both continuous at Mach 0.8 and
+`M_s`; `k_R(B)` against its integral (eq. 3-121) by Simpson's rule within 1e-10.
+
 [adr-008]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-008-subsonic-normal-force-and-centre-of-pressure-2026-09-17
 [adr-026]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-026-the-path-in-wind-rocketpys-corrected-equations-and-hprs-body-lift-2026-09-18
 [adr-027]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-027-the-normal-force-through-mach-1-supersonic-linear-theory-a-transonic-join-and-the-measured-references-2026-09-18
@@ -1461,3 +1657,7 @@ of its size. This rocket has no boattail, so it says nothing about a boattail's 
 [adr-029]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-029-drag-against-rasaero-ii-through-mach-2-the-gap-by-band-mil-hdbk-762s-sample-calculation-and-the-boattails-wave-drag-2026-09-18
 [adr-030]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-030-the-afterbody-faster-than-sound-a-boattails-wave-drag-the-base-behind-it-and-a-lip-in-its-wake-2026-09-18
 [boattail-fixture]: https://github.com/nrdptel/hpr-sim/blob/main/validation/fixtures/aero/measured-boattails.json
+[roll-fixture]: https://github.com/nrdptel/hpr-sim/blob/main/validation/fixtures/aero/roll-vs-mach.json
+[finner-fixture]: https://github.com/nrdptel/hpr-sim/blob/main/validation/fixtures/aero/basic-finner-roll-damping.json
+[adr-011]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-011-rigid-body-flight-equations-of-motion-aerodynamic-coupling-rail-phases-and-termination-2026-09-17
+[adr-031]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-031-roll-from-canted-fins-and-roll-damping-by-barrowmans-strip-theory-2026-09-19
