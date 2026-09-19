@@ -19,11 +19,14 @@
 //! Galejs's cross-flow term. Faster than sound, a pointed nose and the cylinders straight behind it
 //! take their potential-flow slope and moment from the second-order shock-expansion method
 //! ([`crate::shock_expansion`], NACA TN 3527), joined to slender-body theory linearly in Mach
-//! ([`SupersonicBody`], ADR-034). Other bodies, and body lift, keep their Mach-free terms.
+//! ([`SupersonicBody`]; the decision record on flying it, [ADR-034][adr-034]). Other bodies, and
+//! body lift, keep their Mach-free terms.
 //!
 //! Launch lugs and rail buttons add drag only, and internal parts sit inside the body. Tube fins
 //! have no cited normal-force method yet and are refused, as is any part kind this model doesn't
 //! know. Stations are metres aft of the nose tip.
+//!
+//! [adr-034]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-034-the-bodys-supersonic-normal-force-in-flight-tabulated-shock-expansion-shares-joined-linearly-from-mach-12-2026-09-19
 
 use std::f64::consts::PI;
 use std::sync::OnceLock;
@@ -54,9 +57,9 @@ pub const MAX_CANT_RAD: f64 = 15.0 * std::f64::consts::PI / 180.0;
 /// Table 3.1, p. 19). [`AeroModel::normal_force`] refuses it and anything faster.
 pub const NORMAL_FORCE_MACH_LIMIT: f64 = 5.0;
 
-/// The lowest Mach number at which the body's supersonic join can start (ADR-034): below it every
-/// body keeps slender-body theory's terms. A judgement: the first body that TN 3527's method
-/// covers and TN D-4014 measured is at Mach 1.5, the join's end from here.
+/// The lowest Mach number at which the body's supersonic join can start ([`SupersonicBody`]):
+/// below it every body keeps slender-body theory's terms. A judgement: the first body that TN
+/// 3527's method covers and TN D-4014 measured is at Mach 1.5, the join's end from here.
 pub const SUPERSONIC_JOIN_START_MACH: f64 = 1.2;
 
 /// Steps of the shock-expansion table per unit Mach: one row every 0.05.
@@ -72,12 +75,13 @@ const SUPERSONIC_LAST_STEP: usize = 100;
 const SUPERSONIC_JOIN_STEPS: usize = 6;
 
 /// The width of the body's supersonic join in Mach, 0.3: over it the shock-expansion shares
-/// replace slender-body theory's linearly (ADR-034).
+/// replace slender-body theory's linearly ([`SupersonicBody`]).
 pub const SUPERSONIC_JOIN_WIDTH_MACH: f64 =
     SUPERSONIC_JOIN_STEPS as f64 / SUPERSONIC_STEPS_PER_MACH;
 
 /// The second-order shock-expansion method's share of each body component it covers, tabulated in
-/// Mach, and where it joins slender-body theory (ADR-034).
+/// Mach, and where it joins slender-body theory (the decision record on flying it,
+/// [ADR-034][adr-034]).
 ///
 /// The method ([`crate::shock_expansion`]) covers a pointed nose and the cylinders straight behind
 /// it, up to the first other body, step in radius or gap. It is too slow to run at each step of a
@@ -88,6 +92,8 @@ pub const SUPERSONIC_JOIN_WIDTH_MACH: f64 =
 /// slope, moment and station are slender-body theory's plus `w (shock-expansion − slender-body)`,
 /// `w = (M − M_join)/`[`SUPERSONIC_JOIN_WIDTH_MACH`] clamped to `[0, 1]`. Everything is linear
 /// in Mach, so nothing jumps.
+///
+/// [adr-034]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-034-the-bodys-supersonic-normal-force-in-flight-tabulated-shock-expansion-shares-joined-linearly-from-mach-12-2026-09-19
 #[derive(Debug, Clone, PartialEq, Serialize)]
 #[non_exhaustive]
 pub struct SupersonicBody {

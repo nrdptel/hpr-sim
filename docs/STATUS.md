@@ -36,8 +36,7 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
   Robin vs footnote 8's −0.03 to −0.18), so the flown body reads 36% to 51% low; extending the
   run through a transition needs a station rule for shares that cross zero. Also open: blunt
   tips, crossflow (long model +0.57), Fig. 2 below Mach 3, #81. No case passes Mach 1.06.
-- **Autopilot memory:** per-cycle process groups, reaped; `runs.log` memory lines;
-  `scripts/build-memory.sh` reproduces `docs/perf.md`.
+- **Autopilot memory:** per-cycle process groups; `scripts/build-memory.sh` → `docs/perf.md`.
 - **Regeneration is not bit-identical across machines** (last digits). Regenerate reports with
   `cargo xtask validate` (debug), never `--release`: it rounds differently in the 7th digit.
   Fixture checks (`designs::same`) allow 1e-12 relative, or 1e-13 near zero (M1.8b3's PR).
