@@ -23,11 +23,11 @@
           },
           {
             "band": "transonic",
-            "max_error": 0.038288083203959156,
+            "max_error": 0.1644981076874079,
             "min_error": -0.10143779698266964,
-            "rms_error": 0.05847070822660896,
+            "rms_error": 0.10434304455751833,
             "rows": 7,
-            "within_target": 6
+            "within_target": 3
           },
           {
             "band": "supersonic",
@@ -146,24 +146,24 @@
           },
           {
             "band": "transonic",
-            "hpr_cd0": 0.44546080123484033,
+            "hpr_cd0": 0.4846194213500687,
             "mach": 0.85,
-            "relative_error": 0.038288083203959156,
-            "within_target": true
+            "relative_error": 0.12955970240736958,
+            "within_target": false
           },
           {
             "band": "transonic",
-            "hpr_cd0": 0.4549212218808543,
+            "hpr_cd0": 0.5321330332143738,
             "mach": 0.9,
-            "relative_error": -0.004469053862171113,
-            "within_target": true
+            "relative_error": 0.1644981076874079,
+            "within_target": false
           },
           {
             "band": "transonic",
-            "hpr_cd0": 0.5437277068963206,
+            "hpr_cd0": 0.5818860698767815,
             "mach": 0.95,
-            "relative_error": 0.032254315685433355,
-            "within_target": true
+            "relative_error": 0.10469707401185957,
+            "within_target": false
           },
           {
             "band": "transonic",
@@ -341,9 +341,9 @@
           },
           {
             "band": "transonic",
-            "max_error": 0.4845698790229085,
+            "max_error": 0.6535370405724876,
             "min_error": 0.1349873009989444,
-            "rms_error": 0.3147824387245172,
+            "rms_error": 0.3823341351646973,
             "rows": 7,
             "within_target": 0
           },
@@ -464,23 +464,23 @@
           },
           {
             "band": "transonic",
-            "hpr_cd0": 0.5834015813533664,
+            "hpr_cd0": 0.6225602014685947,
             "mach": 0.85,
-            "relative_error": 0.3598029455395535,
+            "relative_error": 0.4510745647429637,
             "within_target": false
           },
           {
             "band": "transonic",
-            "hpr_cd0": 0.678394123209015,
+            "hpr_cd0": 0.7556059345425346,
             "mach": 0.9,
-            "relative_error": 0.4845698790229085,
+            "relative_error": 0.6535370405724876,
             "within_target": false
           },
           {
             "band": "transonic",
-            "hpr_cd0": 0.7378874288161437,
+            "hpr_cd0": 0.7760457917966046,
             "mach": 0.95,
-            "relative_error": 0.4008619999030745,
+            "relative_error": 0.4733047582295007,
             "within_target": false
           },
           {
@@ -659,9 +659,9 @@
           },
           {
             "band": "transonic",
-            "max_error": 0.21853312231188626,
-            "min_error": 0.14104659180013002,
-            "rms_error": 0.18391691956670864,
+            "max_error": 0.3200626161932669,
+            "min_error": 0.1930337985045636,
+            "rms_error": 0.2642935164259416,
             "rows": 2,
             "within_target": 0
           }
@@ -774,16 +774,16 @@
           },
           {
             "band": "transonic",
-            "hpr_cd0": 0.4244693321496483,
+            "hpr_cd0": 0.44380857304369764,
             "mach": 0.85,
-            "relative_error": 0.14104659180013002,
+            "relative_error": 0.1930337985045636,
             "within_target": false
           },
           {
             "band": "transonic",
-            "hpr_cd0": 0.45451285462233354,
+            "hpr_cd0": 0.4923833558400885,
             "mach": 0.9,
-            "relative_error": 0.21853312231188626,
+            "relative_error": 0.3200626161932669,
             "within_target": false
           }
         ],

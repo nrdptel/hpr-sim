@@ -855,7 +855,7 @@ mod tests {
     /// Mach 1.5–4.63). `cargo xtask aero` writes `validation/fixtures/aero/drag-vs-mach.json`;
     /// this test recomputes every hpr value from the committed designs at the tunnels' Reynolds
     /// number, checks every measured point is compared, and pins the rows within the 10% target
-    /// set before measuring, so every other row is a pinned miss (40 of 44). Each miss is
+    /// set before measuring, so every other row is a pinned miss (42 of 44). Each miss is
     /// explained in `docs/physics/aero.md`, ADR-028 and ADR-030.
     #[test]
     fn drag_against_mach() {
@@ -932,12 +932,7 @@ mod tests {
         // wave drag.
         assert_eq!(
             within,
-            [
-                "arcas-robin-short@0.9 fins off",
-                "arcas-robin-short@0.95 fins on",
-                "arcas-robin-short@1 fins on",
-                "arcas-robin-long@1 fins on",
-            ]
+            ["arcas-robin-short@1 fins on", "arcas-robin-long@1 fins on",]
         );
     }
 
@@ -948,9 +943,9 @@ mod tests {
     /// (20 µm), every 0.05 from Mach 0.1 to 2.0 at sea level. Before the boattail's supersonic
     /// wave drag no combination had rows within 10% in both the subsonic and the supersonic bands
     /// (the test was named `calistos_supersonic_gap_survives_every_plausible_fin_and_finish`).
-    /// Now the committed inputs (square, 3 mm, smooth, ADR-009's rule) have 15, 6 and 8, and
-    /// rounded fins 4.76 mm thick, smooth, have 15, 7 and 14: the gap left is within what the
-    /// unrecorded inputs span. The committed design keeps ADR-009's rule.
+    /// Now the committed inputs (square, 3 mm, smooth, ADR-009's rule) have 15, 3 and 8, and
+    /// rounded fins 4.76 mm thick, smooth, have 15, 4 and 14: most of the supersonic gap left is
+    /// within what the unrecorded inputs span. The committed design keeps ADR-009's rule.
     #[test]
     fn calistos_rows_by_fin_and_finish() {
         use hpr_design::{Component, FinCrossSection, Finish, Part};
@@ -1036,36 +1031,36 @@ mod tests {
         assert_eq!(
             counts,
             [
-                [15, 4, 1],
-                [7, 6, 8],
-                [15, 6, 8],
+                [15, 3, 1],
+                [7, 4, 8],
+                [15, 3, 8],
                 [3, 4, 15],
                 [0, 3, 17],
                 [0, 3, 17],
                 [0, 3, 17],
                 [0, 1, 2],
                 [9, 4, 0],
-                [14, 6, 4],
-                [15, 4, 1],
-                [14, 5, 9],
-                [15, 7, 14],
+                [14, 3, 4],
+                [15, 3, 1],
+                [14, 4, 9],
+                [15, 4, 14],
                 [12, 3, 17],
                 [14, 4, 17],
                 [9, 3, 17],
                 [3, 4, 0],
-                [14, 6, 2],
-                [7, 4, 0],
-                [13, 7, 7],
-                [10, 6, 9],
+                [14, 3, 2],
+                [7, 3, 0],
+                [13, 4, 7],
+                [10, 4, 9],
                 [13, 4, 17],
-                [11, 7, 17],
+                [11, 4, 17],
                 [13, 3, 17],
             ]
         );
         // The committed inputs (square, 3 mm, smooth) and the best of the rest (rounded,
         // 4.76 mm, smooth): no combination has every row within 10%.
-        assert_eq!(ranges[2], [(3.9, 8.9), (-10.1, 3.8), (-14.9, -5.1)]);
-        assert_eq!(ranges[12], [(-8.4, 5.8), (-8.9, 6.7), (-11.7, -3.4)]);
+        assert_eq!(ranges[2], [(3.9, 8.9), (-10.1, 16.4), (-14.9, -5.1)]);
+        assert_eq!(ranges[12], [(-8.4, 5.8), (-8.9, 22.5), (-11.7, -3.4)]);
         assert!(counts.iter().all(|c| c != &[15, 7, 17]));
     }
 
@@ -1113,10 +1108,13 @@ mod tests {
             (errors.len(), pct(min), pct(max))
         };
 
-        // Measured boattail pressure drag.
-        let (mut low, mut transonic, mut steep, mut separated) =
-            (Vec::new(), Vec::new(), Vec::new(), Vec::new());
-        let (mut subsonic_gentle, mut subsonic_steep) = (Vec::new(), Vec::new());
+        // Measured boattail pressure drag, grouped by angle and speed: attached boattails of 12°
+        // and gentler under Niskanen's rule (to Mach 0.8), in the straight-line rise (to Mach 1),
+        // where the Mach 1.2 value is held (to 1.2), and faster; Cubbage's 16° ones; and his
+        // separated 30° and 45° ones. Compton's points near Mach 1 that his report calls
+        // questionable are a group of their own.
+        let mut groups: std::collections::BTreeMap<&str, Vec<f64>> = Default::default();
+        let mut absolute: Vec<f64> = Vec::new();
         for row in rows("boattails") {
             let b = boattail(&row);
             let mach = f(&row, "mach");
@@ -1125,36 +1123,46 @@ mod tests {
             let error = hpr / f(&row, "cd") - 1.0;
             assert!((f(&row, "error") - error).abs() < 1e-12);
             let deg = b.half_angle_rad.to_degrees();
-            if row["flow"] == "separated" {
-                separated.push(error);
-            } else if deg > 12.0 && mach >= 1.0 {
-                steep.push(error);
-            } else if mach >= 1.2 {
-                low.push(error);
-            } else if mach >= 1.0 {
-                transonic.push(error);
+            let group = if row["flow"] == "separated" {
+                "separated"
+            } else if row["questionable"] == true {
+                "questionable"
             } else if deg > 12.0 {
-                subsonic_steep.push(error);
+                if mach >= 1.0 {
+                    "steep"
+                } else {
+                    "steep, subsonic"
+                }
+            } else if mach >= 1.2 {
+                absolute.push(hpr - f(&row, "cd"));
+                "supersonic"
+            } else if mach >= 1.0 {
+                "held"
+            } else if mach > 0.8 {
+                "rise"
             } else {
-                subsonic_gentle.push((hpr, f(&row, "cd")));
-            }
+                "rule"
+            };
+            groups.entry(group).or_default().push(error);
         }
-        // Attached, 10° and gentler, from Mach 1.2: the 0% to 20% over-prediction of inviscid
-        // theory the reports find. From Mach 1 to 1.2, the held value under Cubbage's peak.
-        assert_eq!(range(&low), (19, -6.3, 17.4));
-        assert_eq!(range(&transonic), (4, -18.2, -5.4));
-        // Cubbage's 16° boattails in a boundary layer a fifth of the diameter thick read high.
-        assert_eq!(range(&steep), (9, 26.4, 54.2));
-        // His 30° and 45° boattails, separated: the base drag on the annulus.
-        assert_eq!(range(&separated), (3, -2.8, 6.6));
-        // Below Mach 0.9 Niskanen's rule gives his 5.6° and 8° boattails, longer than three times
-        // their drop in diameter, nothing where they measure 0.024 to 0.051 (#73), and his 16°
-        // ones −40.8% to +41.7%.
-        assert_eq!(subsonic_gentle.len(), 6);
-        assert!(subsonic_gentle.iter().all(|&(hpr, _)| hpr == 0.0));
-        let measured: Vec<f64> = subsonic_gentle.iter().map(|&(_, m)| m).collect();
-        assert_eq!(range(&measured), (6, 2.4, 5.1));
-        assert_eq!(range(&subsonic_steep), (6, -40.8, 41.7));
+        let got: Vec<(&str, (usize, f64, f64))> =
+            groups.iter().map(|(k, v)| (*k, range(v))).collect();
+        assert_eq!(
+            got,
+            [
+                ("held", (4, -18.2, -5.4)),
+                ("questionable", (27, -46.2, 60.0)),
+                ("rise", (28, -77.5, 7.6)),
+                ("rule", (58, -100.0, -83.5)),
+                ("separated", (3, -2.8, 6.6)),
+                ("steep", (9, 26.4, 54.2)),
+                ("steep, subsonic", (6, -30.2, 60.4)),
+                ("supersonic", (58, -21.9, 28.3)),
+            ]
+        );
+        // From Mach 1.2 the biggest misses in percent are the smallest drags, 3° and 5°
+        // boattails of 0.01 to 0.02; in drag coefficient every row is within 0.0123.
+        assert!(absolute.iter().all(|e| e.abs() < 0.0123));
 
         // The base pressure behind a boattail: the error in base drag on the cylinder's area.
         let mut differences = Vec::new();
@@ -1370,11 +1378,11 @@ mod tests {
 
     /// The Arcas Robin comparison's two input choices (validation audit): of the 44 rows, none
     /// within 10% with the square section and the default 20 µm finish, none with the airfoil
-    /// section, 1 with a polished finish, and 4 with both (the committed designs); before the
+    /// section, none with a polished finish, and 2 with both (the committed designs); before the
     /// boattail's supersonic wave drag (ADR-030) these were 3, 5, 6 and 8. Taking the chamber's
     /// force over the chamber alone changes none of the four. Allowing each reading its
-    /// uncertainty and the reports' ±0.004, 1 of the committed design's 4 could fall either side
-    /// of 10%.
+    /// uncertainty and the reports' ±0.004, neither of the committed design's 2 could fall the
+    /// other side of 10%.
     #[test]
     fn drag_against_mach_depends_on_the_fins_and_finish() {
         use hpr_design::{FinCrossSection, Finish, Part};
@@ -1431,7 +1439,7 @@ mod tests {
             assert_eq!(within, chamber_only, "{section:?}, {finish:?}");
             counts.push((within, fragile));
         }
-        assert_eq!(counts.iter().map(|c| c.0).collect::<Vec<_>>(), [0, 0, 1, 4]);
-        assert_eq!(counts[3].1, 1);
+        assert_eq!(counts.iter().map(|c| c.0).collect::<Vec<_>>(), [0, 0, 0, 2]);
+        assert_eq!(counts[3].1, 0);
     }
 }

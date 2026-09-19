@@ -1,5 +1,5 @@
 {
-  "note": "Measured conical boattails behind a cylinder, jet off, zero angle of attack, and Jack's second-order theory, for hpr's boattail pressure drag and the base pressure behind a boattail (M1.8b3, ADR-030). Coefficients on the cylinder's cross-section. Values read from the reports' figures, with a reading uncertainty; geometry as the reports give it (length_ratio l/d, diameter_ratio d_b/d), or for Jack as area ratio and half-angle. All are U.S. Government works.",
+  "note": "Measured conical boattails behind a cylinder, jet off, zero angle of attack, and Jack's second-order theory, for hpr's boattail pressure drag and the base pressure behind a boattail (M1.8b3, ADR-030). Coefficients on the cylinder's cross-section. Values read from the reports' figures, with a reading uncertainty (questionable marks points a report itself doubts); geometry as the reports give it (length_ratio l/d, diameter_ratio d_b/d), or for Jack as area ratio and half-angle. All are U.S. Government works.",
   "boattails": {
     "source": "measured boattail pressure drag (the boattail's surface only)",
     "rows": [
@@ -12,7 +12,8 @@
         "cd": 0.041,
         "uncertainty": 0.001,
         "flow": "attached",
-        "notes": "Reynolds number 3.24e6/ft, natural transition, turbulent at the base (boundary layer about 0.06 d thick); geometry Fig. 6, printed p. 27"
+        "notes": "Reynolds number 3.24e6/ft, natural transition, turbulent at the base (boundary layer about 0.06 d thick); geometry Fig. 6, printed p. 27",
+        "questionable": false
       },
       {
         "source": "Cortright and Schroeder, NACA RM E51F26, 1951",
@@ -23,7 +24,8 @@
         "cd": 0.056,
         "uncertainty": 0.001,
         "flow": "attached",
-        "notes": "Reynolds number 3.24e6/ft, natural transition, turbulent at the base (boundary layer about 0.06 d thick); geometry Fig. 6, printed p. 27"
+        "notes": "Reynolds number 3.24e6/ft, natural transition, turbulent at the base (boundary layer about 0.06 d thick); geometry Fig. 6, printed p. 27",
+        "questionable": false
       },
       {
         "source": "Cortright and Schroeder, NACA RM E51F26, 1951",
@@ -34,7 +36,8 @@
         "cd": 0.077,
         "uncertainty": 0.001,
         "flow": "attached",
-        "notes": "Reynolds number 3.24e6/ft, natural transition, turbulent at the base (boundary layer about 0.06 d thick); geometry Fig. 6, printed p. 27"
+        "notes": "Reynolds number 3.24e6/ft, natural transition, turbulent at the base (boundary layer about 0.06 d thick); geometry Fig. 6, printed p. 27",
+        "questionable": false
       },
       {
         "source": "Cortright and Schroeder, NACA RM E51F26, 1951",
@@ -45,7 +48,8 @@
         "cd": 0.033,
         "uncertainty": 0.001,
         "flow": "attached",
-        "notes": "Reynolds number 3.24e6/ft, natural transition, turbulent at the base (boundary layer about 0.06 d thick); geometry Fig. 6, printed p. 27; this run's boundary layer went turbulent early by accident (p. 18)"
+        "notes": "Reynolds number 3.24e6/ft, natural transition, turbulent at the base (boundary layer about 0.06 d thick); geometry Fig. 6, printed p. 27; this run's boundary layer went turbulent early by accident (p. 18)",
+        "questionable": false
       },
       {
         "source": "Cortright and Schroeder, NACA RM E51F26, 1951",
@@ -56,7 +60,8 @@
         "cd": 0.045,
         "uncertainty": 0.001,
         "flow": "attached",
-        "notes": "Reynolds number 3.24e6/ft, natural transition, turbulent at the base (boundary layer about 0.06 d thick); geometry Fig. 6, printed p. 27"
+        "notes": "Reynolds number 3.24e6/ft, natural transition, turbulent at the base (boundary layer about 0.06 d thick); geometry Fig. 6, printed p. 27",
+        "questionable": false
       },
       {
         "source": "Cortright and Schroeder, NACA RM E51F26, 1951",
@@ -67,7 +72,8 @@
         "cd": 0.062,
         "uncertainty": 0.001,
         "flow": "attached",
-        "notes": "Reynolds number 3.24e6/ft, natural transition, turbulent at the base (boundary layer about 0.06 d thick); geometry Fig. 6, printed p. 27"
+        "notes": "Reynolds number 3.24e6/ft, natural transition, turbulent at the base (boundary layer about 0.06 d thick); geometry Fig. 6, printed p. 27",
+        "questionable": false
       },
       {
         "source": "de Moraes and Nowitzky, NACA RM L54C16, 1954",
@@ -78,7 +84,8 @@
         "cd": 0.034,
         "uncertainty": 0.003,
         "flow": "attached",
-        "notes": "Reynolds number 17.8e6 on the length, natural transition, turbulent; 5-degree boattail"
+        "notes": "Reynolds number 17.8e6 on the length, natural transition, turbulent; 5-degree boattail",
+        "questionable": false
       },
       {
         "source": "de Moraes and Nowitzky, NACA RM L54C16, 1954",
@@ -89,73 +96,1832 @@
         "cd": 0.085,
         "uncertainty": 0.005,
         "flow": "attached",
-        "notes": "as above; 10-degree boattail, drawn through three orifices only"
+        "notes": "as above; 10-degree boattail, drawn through three orifices only",
+        "questionable": false
+      },
+      {
+        "source": "Compton, NASA TN D-6789, 1972",
+        "figure": "Fig. 12, printed p. 33",
+        "mach": 0.3,
+        "length_ratio": 0.599,
+        "diameter_ratio": 0.937,
+        "cd": 0.0108,
+        "uncertainty": 0.002,
+        "flow": "attached",
+        "questionable": false,
+        "notes": "from its ref. 1 (Compton and Runckel, NASA TM X-1960), Langley 16-ft transonic tunnel; the 3-degree boattail of Fig. 4 (printed p. 18), 0.6 d along its surface; jet off, the measured (open) symbols"
+      },
+      {
+        "source": "Compton, NASA TN D-6789, 1972",
+        "figure": "Fig. 12, printed p. 33",
+        "mach": 0.4,
+        "length_ratio": 0.599,
+        "diameter_ratio": 0.937,
+        "cd": 0.012,
+        "uncertainty": 0.002,
+        "flow": "attached",
+        "questionable": false,
+        "notes": "from its ref. 1 (Compton and Runckel, NASA TM X-1960), Langley 16-ft transonic tunnel; the 3-degree boattail of Fig. 4 (printed p. 18), 0.6 d along its surface; jet off, the measured (open) symbols"
+      },
+      {
+        "source": "Compton, NASA TN D-6789, 1972",
+        "figure": "Fig. 12, printed p. 33",
+        "mach": 0.5,
+        "length_ratio": 0.599,
+        "diameter_ratio": 0.937,
+        "cd": 0.0118,
+        "uncertainty": 0.002,
+        "flow": "attached",
+        "questionable": false,
+        "notes": "from its ref. 1 (Compton and Runckel, NASA TM X-1960), Langley 16-ft transonic tunnel; the 3-degree boattail of Fig. 4 (printed p. 18), 0.6 d along its surface; jet off, the measured (open) symbols"
+      },
+      {
+        "source": "Compton, NASA TN D-6789, 1972",
+        "figure": "Fig. 12, printed p. 33",
+        "mach": 0.6,
+        "length_ratio": 0.599,
+        "diameter_ratio": 0.937,
+        "cd": 0.0119,
+        "uncertainty": 0.002,
+        "flow": "attached",
+        "questionable": false,
+        "notes": "from its ref. 1 (Compton and Runckel, NASA TM X-1960), Langley 16-ft transonic tunnel; the 3-degree boattail of Fig. 4 (printed p. 18), 0.6 d along its surface; jet off, the measured (open) symbols"
+      },
+      {
+        "source": "Compton, NASA TN D-6789, 1972",
+        "figure": "Fig. 12, printed p. 33",
+        "mach": 0.7,
+        "length_ratio": 0.599,
+        "diameter_ratio": 0.937,
+        "cd": 0.0134,
+        "uncertainty": 0.002,
+        "flow": "attached",
+        "questionable": false,
+        "notes": "from its ref. 1 (Compton and Runckel, NASA TM X-1960), Langley 16-ft transonic tunnel; the 3-degree boattail of Fig. 4 (printed p. 18), 0.6 d along its surface; jet off, the measured (open) symbols"
+      },
+      {
+        "source": "Compton, NASA TN D-6789, 1972",
+        "figure": "Fig. 12, printed p. 33",
+        "mach": 0.8,
+        "length_ratio": 0.599,
+        "diameter_ratio": 0.937,
+        "cd": 0.0137,
+        "uncertainty": 0.002,
+        "flow": "attached",
+        "questionable": false,
+        "notes": "from its ref. 1 (Compton and Runckel, NASA TM X-1960), Langley 16-ft transonic tunnel; the 3-degree boattail of Fig. 4 (printed p. 18), 0.6 d along its surface; jet off, the measured (open) symbols"
+      },
+      {
+        "source": "Compton, NASA TN D-6789, 1972",
+        "figure": "Fig. 12, printed p. 33",
+        "mach": 0.85,
+        "length_ratio": 0.599,
+        "diameter_ratio": 0.937,
+        "cd": 0.0147,
+        "uncertainty": 0.002,
+        "flow": "attached",
+        "questionable": false,
+        "notes": "from its ref. 1 (Compton and Runckel, NASA TM X-1960), Langley 16-ft transonic tunnel; the 3-degree boattail of Fig. 4 (printed p. 18), 0.6 d along its surface; jet off, the measured (open) symbols"
+      },
+      {
+        "source": "Compton, NASA TN D-6789, 1972",
+        "figure": "Fig. 12, printed p. 33",
+        "mach": 0.9,
+        "length_ratio": 0.599,
+        "diameter_ratio": 0.937,
+        "cd": 0.0153,
+        "uncertainty": 0.002,
+        "flow": "attached",
+        "questionable": false,
+        "notes": "from its ref. 1 (Compton and Runckel, NASA TM X-1960), Langley 16-ft transonic tunnel; the 3-degree boattail of Fig. 4 (printed p. 18), 0.6 d along its surface; jet off, the measured (open) symbols"
+      },
+      {
+        "source": "Compton, NASA TN D-6789, 1972",
+        "figure": "Fig. 12, printed p. 33",
+        "mach": 0.95,
+        "length_ratio": 0.599,
+        "diameter_ratio": 0.937,
+        "cd": 0.0243,
+        "uncertainty": 0.002,
+        "flow": "attached",
+        "questionable": false,
+        "notes": "from its ref. 1 (Compton and Runckel, NASA TM X-1960), Langley 16-ft transonic tunnel; the 3-degree boattail of Fig. 4 (printed p. 18), 0.6 d along its surface; jet off, the measured (open) symbols"
+      },
+      {
+        "source": "Compton, NASA TN D-6789, 1972",
+        "figure": "Fig. 12, printed p. 33",
+        "mach": 1.0,
+        "length_ratio": 0.599,
+        "diameter_ratio": 0.937,
+        "cd": 0.0246,
+        "uncertainty": 0.002,
+        "flow": "attached",
+        "questionable": true,
+        "notes": "from its ref. 1 (Compton and Runckel, NASA TM X-1960), Langley 16-ft transonic tunnel; the 3-degree boattail of Fig. 4 (printed p. 18), 0.6 d along its surface; jet off, the measured (open) symbols; an unfaired point, whose level near Mach 1 the report calls questionable (strut interference, reflected bow shock; p. 9)"
+      },
+      {
+        "source": "Compton, NASA TN D-6789, 1972",
+        "figure": "Fig. 12, printed p. 33",
+        "mach": 1.05,
+        "length_ratio": 0.599,
+        "diameter_ratio": 0.937,
+        "cd": 0.0191,
+        "uncertainty": 0.002,
+        "flow": "attached",
+        "questionable": true,
+        "notes": "from its ref. 1 (Compton and Runckel, NASA TM X-1960), Langley 16-ft transonic tunnel; the 3-degree boattail of Fig. 4 (printed p. 18), 0.6 d along its surface; jet off, the measured (open) symbols; an unfaired point, whose level near Mach 1 the report calls questionable (strut interference, reflected bow shock; p. 9)"
+      },
+      {
+        "source": "Compton, NASA TN D-6789, 1972",
+        "figure": "Fig. 12, printed p. 33",
+        "mach": 1.1,
+        "length_ratio": 0.599,
+        "diameter_ratio": 0.937,
+        "cd": 0.0116,
+        "uncertainty": 0.002,
+        "flow": "attached",
+        "questionable": true,
+        "notes": "from its ref. 1 (Compton and Runckel, NASA TM X-1960), Langley 16-ft transonic tunnel; the 3-degree boattail of Fig. 4 (printed p. 18), 0.6 d along its surface; jet off, the measured (open) symbols; an unfaired point, whose level near Mach 1 the report calls questionable (strut interference, reflected bow shock; p. 9)"
+      },
+      {
+        "source": "Compton, NASA TN D-6789, 1972",
+        "figure": "Fig. 12, printed p. 33",
+        "mach": 1.2,
+        "length_ratio": 0.599,
+        "diameter_ratio": 0.937,
+        "cd": 0.0154,
+        "uncertainty": 0.003,
+        "flow": "attached",
+        "questionable": false,
+        "notes": "from its ref. 1 (Compton and Runckel, NASA TM X-1960), Langley 16-ft transonic tunnel; the 3-degree boattail of Fig. 4 (printed p. 18), 0.6 d along its surface; jet off, the measured (open) symbols"
+      },
+      {
+        "source": "Compton, NASA TN D-6789, 1972",
+        "figure": "Fig. 12, printed p. 33",
+        "mach": 1.25,
+        "length_ratio": 0.599,
+        "diameter_ratio": 0.937,
+        "cd": 0.0139,
+        "uncertainty": 0.002,
+        "flow": "attached",
+        "questionable": false,
+        "notes": "from its ref. 1 (Compton and Runckel, NASA TM X-1960), Langley 16-ft transonic tunnel; the 3-degree boattail of Fig. 4 (printed p. 18), 0.6 d along its surface; jet off, the measured (open) symbols"
+      },
+      {
+        "source": "Compton, NASA TN D-6789, 1972",
+        "figure": "Fig. 12, printed p. 33",
+        "mach": 1.3,
+        "length_ratio": 0.599,
+        "diameter_ratio": 0.937,
+        "cd": 0.0138,
+        "uncertainty": 0.003,
+        "flow": "attached",
+        "questionable": false,
+        "notes": "from its ref. 1 (Compton and Runckel, NASA TM X-1960), Langley 16-ft transonic tunnel; the 3-degree boattail of Fig. 4 (printed p. 18), 0.6 d along its surface; jet off, the measured (open) symbols"
       },
       {
         "source": "Compton, NASA TN D-6789, 1972",
         "figure": "Fig. 12, printed p. 33",
         "mach": 1.83,
-        "length_ratio": 1.0,
-        "diameter_ratio": 0.653,
-        "cd": 0.085,
-        "uncertainty": 0.003,
+        "length_ratio": 0.599,
+        "diameter_ratio": 0.937,
+        "cd": 0.0099,
+        "uncertainty": 0.004,
         "flow": "attached",
-        "notes": "transition fixed near the nose, boundary layer about 0.1 d thick; the 10-degree boattails of Fig. 4 (printed p. 18), jet off with the nozzle open; the measured (open) symbols"
+        "questionable": false,
+        "notes": "Langley 4x4-ft supersonic tunnel; Reynolds number 14.70e6/m at Mach 1.83 and 12.20e6/m at 2.20, grit 2.54 cm from the nose, boundary layer about 0.1 d thick (pp. 4-7); the 3-degree boattail of Fig. 4 (printed p. 18), 0.6 d along its surface; jet off, the measured (open) symbols"
       },
       {
         "source": "Compton, NASA TN D-6789, 1972",
         "figure": "Fig. 12, printed p. 33",
         "mach": 2.2,
-        "length_ratio": 1.0,
-        "diameter_ratio": 0.653,
-        "cd": 0.062,
+        "length_ratio": 0.599,
+        "diameter_ratio": 0.937,
+        "cd": 0.0061,
+        "uncertainty": 0.005,
+        "flow": "attached",
+        "questionable": false,
+        "notes": "Langley 4x4-ft supersonic tunnel; Reynolds number 14.70e6/m at Mach 1.83 and 12.20e6/m at 2.20, grit 2.54 cm from the nose, boundary layer about 0.1 d thick (pp. 4-7); the 3-degree boattail of Fig. 4 (printed p. 18), 0.6 d along its surface; jet off, the measured (open) symbols"
+      },
+      {
+        "source": "Compton, NASA TN D-6789, 1972",
+        "figure": "Fig. 12, printed p. 33",
+        "mach": 0.3,
+        "length_ratio": 0.598,
+        "diameter_ratio": 0.895,
+        "cd": 0.0191,
+        "uncertainty": 0.002,
+        "flow": "attached",
+        "questionable": false,
+        "notes": "from its ref. 1 (Compton and Runckel, NASA TM X-1960), Langley 16-ft transonic tunnel; the 5-degree boattail of Fig. 4 (printed p. 18), 0.6 d along its surface; jet off, the measured (open) symbols"
+      },
+      {
+        "source": "Compton, NASA TN D-6789, 1972",
+        "figure": "Fig. 12, printed p. 33",
+        "mach": 0.4,
+        "length_ratio": 0.598,
+        "diameter_ratio": 0.895,
+        "cd": 0.021,
+        "uncertainty": 0.002,
+        "flow": "attached",
+        "questionable": false,
+        "notes": "from its ref. 1 (Compton and Runckel, NASA TM X-1960), Langley 16-ft transonic tunnel; the 5-degree boattail of Fig. 4 (printed p. 18), 0.6 d along its surface; jet off, the measured (open) symbols"
+      },
+      {
+        "source": "Compton, NASA TN D-6789, 1972",
+        "figure": "Fig. 12, printed p. 33",
+        "mach": 0.5,
+        "length_ratio": 0.598,
+        "diameter_ratio": 0.895,
+        "cd": 0.021,
+        "uncertainty": 0.002,
+        "flow": "attached",
+        "questionable": false,
+        "notes": "from its ref. 1 (Compton and Runckel, NASA TM X-1960), Langley 16-ft transonic tunnel; the 5-degree boattail of Fig. 4 (printed p. 18), 0.6 d along its surface; jet off, the measured (open) symbols"
+      },
+      {
+        "source": "Compton, NASA TN D-6789, 1972",
+        "figure": "Fig. 12, printed p. 33",
+        "mach": 0.6,
+        "length_ratio": 0.598,
+        "diameter_ratio": 0.895,
+        "cd": 0.023,
+        "uncertainty": 0.002,
+        "flow": "attached",
+        "questionable": false,
+        "notes": "from its ref. 1 (Compton and Runckel, NASA TM X-1960), Langley 16-ft transonic tunnel; the 5-degree boattail of Fig. 4 (printed p. 18), 0.6 d along its surface; jet off, the measured (open) symbols"
+      },
+      {
+        "source": "Compton, NASA TN D-6789, 1972",
+        "figure": "Fig. 12, printed p. 33",
+        "mach": 0.7,
+        "length_ratio": 0.598,
+        "diameter_ratio": 0.895,
+        "cd": 0.0245,
+        "uncertainty": 0.002,
+        "flow": "attached",
+        "questionable": false,
+        "notes": "from its ref. 1 (Compton and Runckel, NASA TM X-1960), Langley 16-ft transonic tunnel; the 5-degree boattail of Fig. 4 (printed p. 18), 0.6 d along its surface; jet off, the measured (open) symbols"
+      },
+      {
+        "source": "Compton, NASA TN D-6789, 1972",
+        "figure": "Fig. 12, printed p. 33",
+        "mach": 0.8,
+        "length_ratio": 0.598,
+        "diameter_ratio": 0.895,
+        "cd": 0.0256,
+        "uncertainty": 0.002,
+        "flow": "attached",
+        "questionable": false,
+        "notes": "from its ref. 1 (Compton and Runckel, NASA TM X-1960), Langley 16-ft transonic tunnel; the 5-degree boattail of Fig. 4 (printed p. 18), 0.6 d along its surface; jet off, the measured (open) symbols"
+      },
+      {
+        "source": "Compton, NASA TN D-6789, 1972",
+        "figure": "Fig. 12, printed p. 33",
+        "mach": 0.85,
+        "length_ratio": 0.598,
+        "diameter_ratio": 0.895,
+        "cd": 0.0267,
+        "uncertainty": 0.002,
+        "flow": "attached",
+        "questionable": false,
+        "notes": "from its ref. 1 (Compton and Runckel, NASA TM X-1960), Langley 16-ft transonic tunnel; the 5-degree boattail of Fig. 4 (printed p. 18), 0.6 d along its surface; jet off, the measured (open) symbols"
+      },
+      {
+        "source": "Compton, NASA TN D-6789, 1972",
+        "figure": "Fig. 12, printed p. 33",
+        "mach": 0.9,
+        "length_ratio": 0.598,
+        "diameter_ratio": 0.895,
+        "cd": 0.0318,
+        "uncertainty": 0.002,
+        "flow": "attached",
+        "questionable": false,
+        "notes": "from its ref. 1 (Compton and Runckel, NASA TM X-1960), Langley 16-ft transonic tunnel; the 5-degree boattail of Fig. 4 (printed p. 18), 0.6 d along its surface; jet off, the measured (open) symbols"
+      },
+      {
+        "source": "Compton, NASA TN D-6789, 1972",
+        "figure": "Fig. 12, printed p. 33",
+        "mach": 0.95,
+        "length_ratio": 0.598,
+        "diameter_ratio": 0.895,
+        "cd": 0.0572,
+        "uncertainty": 0.002,
+        "flow": "attached",
+        "questionable": false,
+        "notes": "from its ref. 1 (Compton and Runckel, NASA TM X-1960), Langley 16-ft transonic tunnel; the 5-degree boattail of Fig. 4 (printed p. 18), 0.6 d along its surface; jet off, the measured (open) symbols"
+      },
+      {
+        "source": "Compton, NASA TN D-6789, 1972",
+        "figure": "Fig. 12, printed p. 33",
+        "mach": 1.0,
+        "length_ratio": 0.598,
+        "diameter_ratio": 0.895,
+        "cd": 0.0543,
+        "uncertainty": 0.002,
+        "flow": "attached",
+        "questionable": true,
+        "notes": "from its ref. 1 (Compton and Runckel, NASA TM X-1960), Langley 16-ft transonic tunnel; the 5-degree boattail of Fig. 4 (printed p. 18), 0.6 d along its surface; jet off, the measured (open) symbols; an unfaired point, whose level near Mach 1 the report calls questionable (strut interference, reflected bow shock; p. 9)"
+      },
+      {
+        "source": "Compton, NASA TN D-6789, 1972",
+        "figure": "Fig. 12, printed p. 33",
+        "mach": 1.1,
+        "length_ratio": 0.598,
+        "diameter_ratio": 0.895,
+        "cd": 0.0345,
+        "uncertainty": 0.002,
+        "flow": "attached",
+        "questionable": true,
+        "notes": "from its ref. 1 (Compton and Runckel, NASA TM X-1960), Langley 16-ft transonic tunnel; the 5-degree boattail of Fig. 4 (printed p. 18), 0.6 d along its surface; jet off, the measured (open) symbols; an unfaired point, whose level near Mach 1 the report calls questionable (strut interference, reflected bow shock; p. 9)"
+      },
+      {
+        "source": "Compton, NASA TN D-6789, 1972",
+        "figure": "Fig. 12, printed p. 33",
+        "mach": 1.2,
+        "length_ratio": 0.598,
+        "diameter_ratio": 0.895,
+        "cd": 0.0352,
         "uncertainty": 0.003,
         "flow": "attached",
-        "notes": "transition fixed near the nose, boundary layer about 0.1 d thick; the 10-degree boattails of Fig. 4 (printed p. 18), jet off with the nozzle open; the measured (open) symbols"
+        "questionable": false,
+        "notes": "from its ref. 1 (Compton and Runckel, NASA TM X-1960), Langley 16-ft transonic tunnel; the 5-degree boattail of Fig. 4 (printed p. 18), 0.6 d along its surface; jet off, the measured (open) symbols"
+      },
+      {
+        "source": "Compton, NASA TN D-6789, 1972",
+        "figure": "Fig. 12, printed p. 33",
+        "mach": 1.25,
+        "length_ratio": 0.598,
+        "diameter_ratio": 0.895,
+        "cd": 0.0341,
+        "uncertainty": 0.002,
+        "flow": "attached",
+        "questionable": false,
+        "notes": "from its ref. 1 (Compton and Runckel, NASA TM X-1960), Langley 16-ft transonic tunnel; the 5-degree boattail of Fig. 4 (printed p. 18), 0.6 d along its surface; jet off, the measured (open) symbols"
+      },
+      {
+        "source": "Compton, NASA TN D-6789, 1972",
+        "figure": "Fig. 12, printed p. 33",
+        "mach": 1.3,
+        "length_ratio": 0.598,
+        "diameter_ratio": 0.895,
+        "cd": 0.0315,
+        "uncertainty": 0.002,
+        "flow": "attached",
+        "questionable": false,
+        "notes": "from its ref. 1 (Compton and Runckel, NASA TM X-1960), Langley 16-ft transonic tunnel; the 5-degree boattail of Fig. 4 (printed p. 18), 0.6 d along its surface; jet off, the measured (open) symbols"
+      },
+      {
+        "source": "Compton, NASA TN D-6789, 1972",
+        "figure": "Fig. 12, printed p. 33",
+        "mach": 1.83,
+        "length_ratio": 0.598,
+        "diameter_ratio": 0.895,
+        "cd": 0.0192,
+        "uncertainty": 0.003,
+        "flow": "attached",
+        "questionable": false,
+        "notes": "Langley 4x4-ft supersonic tunnel; Reynolds number 14.70e6/m at Mach 1.83 and 12.20e6/m at 2.20, grit 2.54 cm from the nose, boundary layer about 0.1 d thick (pp. 4-7); the 5-degree boattail of Fig. 4 (printed p. 18), 0.6 d along its surface; jet off, the measured (open) symbols"
+      },
+      {
+        "source": "Compton, NASA TN D-6789, 1972",
+        "figure": "Fig. 12, printed p. 33",
+        "mach": 2.2,
+        "length_ratio": 0.598,
+        "diameter_ratio": 0.895,
+        "cd": 0.0123,
+        "uncertainty": 0.004,
+        "flow": "attached",
+        "questionable": false,
+        "notes": "Langley 4x4-ft supersonic tunnel; Reynolds number 14.70e6/m at Mach 1.83 and 12.20e6/m at 2.20, grit 2.54 cm from the nose, boundary layer about 0.1 d thick (pp. 4-7); the 5-degree boattail of Fig. 4 (printed p. 18), 0.6 d along its surface; jet off, the measured (open) symbols"
+      },
+      {
+        "source": "Compton, NASA TN D-6789, 1972",
+        "figure": "Fig. 12, printed p. 33",
+        "mach": 0.3,
+        "length_ratio": 0.59,
+        "diameter_ratio": 0.792,
+        "cd": 0.0467,
+        "uncertainty": 0.002,
+        "flow": "attached",
+        "questionable": false,
+        "notes": "from its ref. 1 (Compton and Runckel, NASA TM X-1960), Langley 16-ft transonic tunnel; the 10-degree boattail of Fig. 4 (printed p. 18), 0.6 d along its surface; jet off, the measured (open) symbols"
+      },
+      {
+        "source": "Compton, NASA TN D-6789, 1972",
+        "figure": "Fig. 12, printed p. 33",
+        "mach": 0.4,
+        "length_ratio": 0.59,
+        "diameter_ratio": 0.792,
+        "cd": 0.047,
+        "uncertainty": 0.002,
+        "flow": "attached",
+        "questionable": false,
+        "notes": "from its ref. 1 (Compton and Runckel, NASA TM X-1960), Langley 16-ft transonic tunnel; the 10-degree boattail of Fig. 4 (printed p. 18), 0.6 d along its surface; jet off, the measured (open) symbols"
+      },
+      {
+        "source": "Compton, NASA TN D-6789, 1972",
+        "figure": "Fig. 12, printed p. 33",
+        "mach": 0.5,
+        "length_ratio": 0.59,
+        "diameter_ratio": 0.792,
+        "cd": 0.0488,
+        "uncertainty": 0.002,
+        "flow": "attached",
+        "questionable": false,
+        "notes": "from its ref. 1 (Compton and Runckel, NASA TM X-1960), Langley 16-ft transonic tunnel; the 10-degree boattail of Fig. 4 (printed p. 18), 0.6 d along its surface; jet off, the measured (open) symbols"
+      },
+      {
+        "source": "Compton, NASA TN D-6789, 1972",
+        "figure": "Fig. 12, printed p. 33",
+        "mach": 0.6,
+        "length_ratio": 0.59,
+        "diameter_ratio": 0.792,
+        "cd": 0.0495,
+        "uncertainty": 0.002,
+        "flow": "attached",
+        "questionable": false,
+        "notes": "from its ref. 1 (Compton and Runckel, NASA TM X-1960), Langley 16-ft transonic tunnel; the 10-degree boattail of Fig. 4 (printed p. 18), 0.6 d along its surface; jet off, the measured (open) symbols"
+      },
+      {
+        "source": "Compton, NASA TN D-6789, 1972",
+        "figure": "Fig. 12, printed p. 33",
+        "mach": 0.7,
+        "length_ratio": 0.59,
+        "diameter_ratio": 0.792,
+        "cd": 0.0505,
+        "uncertainty": 0.002,
+        "flow": "attached",
+        "questionable": false,
+        "notes": "from its ref. 1 (Compton and Runckel, NASA TM X-1960), Langley 16-ft transonic tunnel; the 10-degree boattail of Fig. 4 (printed p. 18), 0.6 d along its surface; jet off, the measured (open) symbols"
+      },
+      {
+        "source": "Compton, NASA TN D-6789, 1972",
+        "figure": "Fig. 12, printed p. 33",
+        "mach": 0.8,
+        "length_ratio": 0.59,
+        "diameter_ratio": 0.792,
+        "cd": 0.0613,
+        "uncertainty": 0.002,
+        "flow": "attached",
+        "questionable": false,
+        "notes": "from its ref. 1 (Compton and Runckel, NASA TM X-1960), Langley 16-ft transonic tunnel; the 10-degree boattail of Fig. 4 (printed p. 18), 0.6 d along its surface; jet off, the measured (open) symbols"
+      },
+      {
+        "source": "Compton, NASA TN D-6789, 1972",
+        "figure": "Fig. 12, printed p. 33",
+        "mach": 0.85,
+        "length_ratio": 0.59,
+        "diameter_ratio": 0.792,
+        "cd": 0.0772,
+        "uncertainty": 0.002,
+        "flow": "attached",
+        "questionable": false,
+        "notes": "from its ref. 1 (Compton and Runckel, NASA TM X-1960), Langley 16-ft transonic tunnel; the 10-degree boattail of Fig. 4 (printed p. 18), 0.6 d along its surface; jet off, the measured (open) symbols"
+      },
+      {
+        "source": "Compton, NASA TN D-6789, 1972",
+        "figure": "Fig. 12, printed p. 33",
+        "mach": 0.9,
+        "length_ratio": 0.59,
+        "diameter_ratio": 0.792,
+        "cd": 0.1218,
+        "uncertainty": 0.002,
+        "flow": "attached",
+        "questionable": false,
+        "notes": "from its ref. 1 (Compton and Runckel, NASA TM X-1960), Langley 16-ft transonic tunnel; the 10-degree boattail of Fig. 4 (printed p. 18), 0.6 d along its surface; jet off, the measured (open) symbols"
+      },
+      {
+        "source": "Compton, NASA TN D-6789, 1972",
+        "figure": "Fig. 12, printed p. 33",
+        "mach": 0.95,
+        "length_ratio": 0.59,
+        "diameter_ratio": 0.792,
+        "cd": 0.1525,
+        "uncertainty": 0.002,
+        "flow": "attached",
+        "questionable": true,
+        "notes": "from its ref. 1 (Compton and Runckel, NASA TM X-1960), Langley 16-ft transonic tunnel; the 10-degree boattail of Fig. 4 (printed p. 18), 0.6 d along its surface; jet off, the measured (open) symbols; an unfaired point, whose level near Mach 1 the report calls questionable (strut interference, reflected bow shock; p. 9)"
+      },
+      {
+        "source": "Compton, NASA TN D-6789, 1972",
+        "figure": "Fig. 12, printed p. 33",
+        "mach": 1.0,
+        "length_ratio": 0.59,
+        "diameter_ratio": 0.792,
+        "cd": 0.1517,
+        "uncertainty": 0.002,
+        "flow": "attached",
+        "questionable": true,
+        "notes": "from its ref. 1 (Compton and Runckel, NASA TM X-1960), Langley 16-ft transonic tunnel; the 10-degree boattail of Fig. 4 (printed p. 18), 0.6 d along its surface; jet off, the measured (open) symbols; an unfaired point, whose level near Mach 1 the report calls questionable (strut interference, reflected bow shock; p. 9)"
+      },
+      {
+        "source": "Compton, NASA TN D-6789, 1972",
+        "figure": "Fig. 12, printed p. 33",
+        "mach": 1.05,
+        "length_ratio": 0.59,
+        "diameter_ratio": 0.792,
+        "cd": 0.1388,
+        "uncertainty": 0.002,
+        "flow": "attached",
+        "questionable": true,
+        "notes": "from its ref. 1 (Compton and Runckel, NASA TM X-1960), Langley 16-ft transonic tunnel; the 10-degree boattail of Fig. 4 (printed p. 18), 0.6 d along its surface; jet off, the measured (open) symbols; an unfaired point, whose level near Mach 1 the report calls questionable (strut interference, reflected bow shock; p. 9)"
+      },
+      {
+        "source": "Compton, NASA TN D-6789, 1972",
+        "figure": "Fig. 12, printed p. 33",
+        "mach": 1.1,
+        "length_ratio": 0.59,
+        "diameter_ratio": 0.792,
+        "cd": 0.1147,
+        "uncertainty": 0.002,
+        "flow": "attached",
+        "questionable": true,
+        "notes": "from its ref. 1 (Compton and Runckel, NASA TM X-1960), Langley 16-ft transonic tunnel; the 10-degree boattail of Fig. 4 (printed p. 18), 0.6 d along its surface; jet off, the measured (open) symbols; an unfaired point, whose level near Mach 1 the report calls questionable (strut interference, reflected bow shock; p. 9)"
+      },
+      {
+        "source": "Compton, NASA TN D-6789, 1972",
+        "figure": "Fig. 12, printed p. 33",
+        "mach": 1.2,
+        "length_ratio": 0.59,
+        "diameter_ratio": 0.792,
+        "cd": 0.1091,
+        "uncertainty": 0.002,
+        "flow": "attached",
+        "questionable": false,
+        "notes": "from its ref. 1 (Compton and Runckel, NASA TM X-1960), Langley 16-ft transonic tunnel; the 10-degree boattail of Fig. 4 (printed p. 18), 0.6 d along its surface; jet off, the measured (open) symbols"
+      },
+      {
+        "source": "Compton, NASA TN D-6789, 1972",
+        "figure": "Fig. 12, printed p. 33",
+        "mach": 1.25,
+        "length_ratio": 0.59,
+        "diameter_ratio": 0.792,
+        "cd": 0.103,
+        "uncertainty": 0.002,
+        "flow": "attached",
+        "questionable": false,
+        "notes": "from its ref. 1 (Compton and Runckel, NASA TM X-1960), Langley 16-ft transonic tunnel; the 10-degree boattail of Fig. 4 (printed p. 18), 0.6 d along its surface; jet off, the measured (open) symbols"
+      },
+      {
+        "source": "Compton, NASA TN D-6789, 1972",
+        "figure": "Fig. 12, printed p. 33",
+        "mach": 1.3,
+        "length_ratio": 0.59,
+        "diameter_ratio": 0.792,
+        "cd": 0.0977,
+        "uncertainty": 0.003,
+        "flow": "attached",
+        "questionable": false,
+        "notes": "from its ref. 1 (Compton and Runckel, NASA TM X-1960), Langley 16-ft transonic tunnel; the 10-degree boattail of Fig. 4 (printed p. 18), 0.6 d along its surface; jet off, the measured (open) symbols"
+      },
+      {
+        "source": "Compton, NASA TN D-6789, 1972",
+        "figure": "Fig. 12, printed p. 33",
+        "mach": 1.83,
+        "length_ratio": 0.59,
+        "diameter_ratio": 0.792,
+        "cd": 0.0592,
+        "uncertainty": 0.003,
+        "flow": "attached",
+        "questionable": false,
+        "notes": "Langley 4x4-ft supersonic tunnel; Reynolds number 14.70e6/m at Mach 1.83 and 12.20e6/m at 2.20, grit 2.54 cm from the nose, boundary layer about 0.1 d thick (pp. 4-7); the 10-degree boattail of Fig. 4 (printed p. 18), 0.6 d along its surface; jet off, the measured (open) symbols"
+      },
+      {
+        "source": "Compton, NASA TN D-6789, 1972",
+        "figure": "Fig. 12, printed p. 33",
+        "mach": 2.2,
+        "length_ratio": 0.59,
+        "diameter_ratio": 0.792,
+        "cd": 0.0439,
+        "uncertainty": 0.003,
+        "flow": "attached",
+        "questionable": false,
+        "notes": "Langley 4x4-ft supersonic tunnel; Reynolds number 14.70e6/m at Mach 1.83 and 12.20e6/m at 2.20, grit 2.54 cm from the nose, boundary layer about 0.1 d thick (pp. 4-7); the 10-degree boattail of Fig. 4 (printed p. 18), 0.6 d along its surface; jet off, the measured (open) symbols"
+      },
+      {
+        "source": "Compton, NASA TN D-6789, 1972",
+        "figure": "Fig. 12, printed p. 33",
+        "mach": 0.3,
+        "length_ratio": 0.8,
+        "diameter_ratio": 0.916,
+        "cd": 0.0145,
+        "uncertainty": 0.002,
+        "flow": "attached",
+        "questionable": false,
+        "notes": "from its ref. 1 (Compton and Runckel, NASA TM X-1960), Langley 16-ft transonic tunnel; the 3.3-degree boattail of Fig. 4 (printed p. 18), 0.8 d along its surface; jet off, the measured (open) symbols"
+      },
+      {
+        "source": "Compton, NASA TN D-6789, 1972",
+        "figure": "Fig. 12, printed p. 33",
+        "mach": 0.4,
+        "length_ratio": 0.8,
+        "diameter_ratio": 0.916,
+        "cd": 0.0153,
+        "uncertainty": 0.002,
+        "flow": "attached",
+        "questionable": false,
+        "notes": "from its ref. 1 (Compton and Runckel, NASA TM X-1960), Langley 16-ft transonic tunnel; the 3.3-degree boattail of Fig. 4 (printed p. 18), 0.8 d along its surface; jet off, the measured (open) symbols"
+      },
+      {
+        "source": "Compton, NASA TN D-6789, 1972",
+        "figure": "Fig. 12, printed p. 33",
+        "mach": 0.5,
+        "length_ratio": 0.8,
+        "diameter_ratio": 0.916,
+        "cd": 0.016,
+        "uncertainty": 0.002,
+        "flow": "attached",
+        "questionable": false,
+        "notes": "from its ref. 1 (Compton and Runckel, NASA TM X-1960), Langley 16-ft transonic tunnel; the 3.3-degree boattail of Fig. 4 (printed p. 18), 0.8 d along its surface; jet off, the measured (open) symbols"
+      },
+      {
+        "source": "Compton, NASA TN D-6789, 1972",
+        "figure": "Fig. 12, printed p. 33",
+        "mach": 0.6,
+        "length_ratio": 0.8,
+        "diameter_ratio": 0.916,
+        "cd": 0.016,
+        "uncertainty": 0.002,
+        "flow": "attached",
+        "questionable": false,
+        "notes": "from its ref. 1 (Compton and Runckel, NASA TM X-1960), Langley 16-ft transonic tunnel; the 3.3-degree boattail of Fig. 4 (printed p. 18), 0.8 d along its surface; jet off, the measured (open) symbols"
+      },
+      {
+        "source": "Compton, NASA TN D-6789, 1972",
+        "figure": "Fig. 12, printed p. 33",
+        "mach": 0.7,
+        "length_ratio": 0.8,
+        "diameter_ratio": 0.916,
+        "cd": 0.0165,
+        "uncertainty": 0.002,
+        "flow": "attached",
+        "questionable": false,
+        "notes": "from its ref. 1 (Compton and Runckel, NASA TM X-1960), Langley 16-ft transonic tunnel; the 3.3-degree boattail of Fig. 4 (printed p. 18), 0.8 d along its surface; jet off, the measured (open) symbols"
+      },
+      {
+        "source": "Compton, NASA TN D-6789, 1972",
+        "figure": "Fig. 12, printed p. 33",
+        "mach": 0.8,
+        "length_ratio": 0.8,
+        "diameter_ratio": 0.916,
+        "cd": 0.0168,
+        "uncertainty": 0.002,
+        "flow": "attached",
+        "questionable": false,
+        "notes": "from its ref. 1 (Compton and Runckel, NASA TM X-1960), Langley 16-ft transonic tunnel; the 3.3-degree boattail of Fig. 4 (printed p. 18), 0.8 d along its surface; jet off, the measured (open) symbols"
+      },
+      {
+        "source": "Compton, NASA TN D-6789, 1972",
+        "figure": "Fig. 12, printed p. 33",
+        "mach": 0.85,
+        "length_ratio": 0.8,
+        "diameter_ratio": 0.916,
+        "cd": 0.0181,
+        "uncertainty": 0.002,
+        "flow": "attached",
+        "questionable": false,
+        "notes": "from its ref. 1 (Compton and Runckel, NASA TM X-1960), Langley 16-ft transonic tunnel; the 3.3-degree boattail of Fig. 4 (printed p. 18), 0.8 d along its surface; jet off, the measured (open) symbols"
+      },
+      {
+        "source": "Compton, NASA TN D-6789, 1972",
+        "figure": "Fig. 12, printed p. 33",
+        "mach": 0.9,
+        "length_ratio": 0.8,
+        "diameter_ratio": 0.916,
+        "cd": 0.0189,
+        "uncertainty": 0.002,
+        "flow": "attached",
+        "questionable": false,
+        "notes": "from its ref. 1 (Compton and Runckel, NASA TM X-1960), Langley 16-ft transonic tunnel; the 3.3-degree boattail of Fig. 4 (printed p. 18), 0.8 d along its surface; jet off, the measured (open) symbols"
+      },
+      {
+        "source": "Compton, NASA TN D-6789, 1972",
+        "figure": "Fig. 12, printed p. 33",
+        "mach": 0.95,
+        "length_ratio": 0.8,
+        "diameter_ratio": 0.916,
+        "cd": 0.0263,
+        "uncertainty": 0.002,
+        "flow": "attached",
+        "questionable": false,
+        "notes": "from its ref. 1 (Compton and Runckel, NASA TM X-1960), Langley 16-ft transonic tunnel; the 3.3-degree boattail of Fig. 4 (printed p. 18), 0.8 d along its surface; jet off, the measured (open) symbols"
+      },
+      {
+        "source": "Compton, NASA TN D-6789, 1972",
+        "figure": "Fig. 12, printed p. 33",
+        "mach": 1.0,
+        "length_ratio": 0.8,
+        "diameter_ratio": 0.916,
+        "cd": 0.03,
+        "uncertainty": 0.002,
+        "flow": "attached",
+        "questionable": true,
+        "notes": "from its ref. 1 (Compton and Runckel, NASA TM X-1960), Langley 16-ft transonic tunnel; the 3.3-degree boattail of Fig. 4 (printed p. 18), 0.8 d along its surface; jet off, the measured (open) symbols; an unfaired point, whose level near Mach 1 the report calls questionable (strut interference, reflected bow shock; p. 9)"
+      },
+      {
+        "source": "Compton, NASA TN D-6789, 1972",
+        "figure": "Fig. 12, printed p. 33",
+        "mach": 1.05,
+        "length_ratio": 0.8,
+        "diameter_ratio": 0.916,
+        "cd": 0.0226,
+        "uncertainty": 0.002,
+        "flow": "attached",
+        "questionable": true,
+        "notes": "from its ref. 1 (Compton and Runckel, NASA TM X-1960), Langley 16-ft transonic tunnel; the 3.3-degree boattail of Fig. 4 (printed p. 18), 0.8 d along its surface; jet off, the measured (open) symbols; an unfaired point, whose level near Mach 1 the report calls questionable (strut interference, reflected bow shock; p. 9)"
+      },
+      {
+        "source": "Compton, NASA TN D-6789, 1972",
+        "figure": "Fig. 12, printed p. 33",
+        "mach": 1.1,
+        "length_ratio": 0.8,
+        "diameter_ratio": 0.916,
+        "cd": 0.0138,
+        "uncertainty": 0.002,
+        "flow": "attached",
+        "questionable": true,
+        "notes": "from its ref. 1 (Compton and Runckel, NASA TM X-1960), Langley 16-ft transonic tunnel; the 3.3-degree boattail of Fig. 4 (printed p. 18), 0.8 d along its surface; jet off, the measured (open) symbols; an unfaired point, whose level near Mach 1 the report calls questionable (strut interference, reflected bow shock; p. 9)"
+      },
+      {
+        "source": "Compton, NASA TN D-6789, 1972",
+        "figure": "Fig. 12, printed p. 33",
+        "mach": 1.2,
+        "length_ratio": 0.8,
+        "diameter_ratio": 0.916,
+        "cd": 0.0198,
+        "uncertainty": 0.004,
+        "flow": "attached",
+        "questionable": false,
+        "notes": "from its ref. 1 (Compton and Runckel, NASA TM X-1960), Langley 16-ft transonic tunnel; the 3.3-degree boattail of Fig. 4 (printed p. 18), 0.8 d along its surface; jet off, the measured (open) symbols"
+      },
+      {
+        "source": "Compton, NASA TN D-6789, 1972",
+        "figure": "Fig. 12, printed p. 33",
+        "mach": 1.25,
+        "length_ratio": 0.8,
+        "diameter_ratio": 0.916,
+        "cd": 0.0177,
+        "uncertainty": 0.002,
+        "flow": "attached",
+        "questionable": false,
+        "notes": "from its ref. 1 (Compton and Runckel, NASA TM X-1960), Langley 16-ft transonic tunnel; the 3.3-degree boattail of Fig. 4 (printed p. 18), 0.8 d along its surface; jet off, the measured (open) symbols"
+      },
+      {
+        "source": "Compton, NASA TN D-6789, 1972",
+        "figure": "Fig. 12, printed p. 33",
+        "mach": 1.3,
+        "length_ratio": 0.8,
+        "diameter_ratio": 0.916,
+        "cd": 0.0163,
+        "uncertainty": 0.003,
+        "flow": "attached",
+        "questionable": false,
+        "notes": "from its ref. 1 (Compton and Runckel, NASA TM X-1960), Langley 16-ft transonic tunnel; the 3.3-degree boattail of Fig. 4 (printed p. 18), 0.8 d along its surface; jet off, the measured (open) symbols"
       },
       {
         "source": "Compton, NASA TN D-6789, 1972",
         "figure": "Fig. 12, printed p. 33",
         "mach": 1.83,
         "length_ratio": 0.8,
+        "diameter_ratio": 0.916,
+        "cd": 0.0079,
+        "uncertainty": 0.003,
+        "flow": "attached",
+        "questionable": false,
+        "notes": "Langley 4x4-ft supersonic tunnel; Reynolds number 14.70e6/m at Mach 1.83 and 12.20e6/m at 2.20, grit 2.54 cm from the nose, boundary layer about 0.1 d thick (pp. 4-7); the 3.3-degree boattail of Fig. 4 (printed p. 18), 0.8 d along its surface; jet off, the measured (open) symbols"
+      },
+      {
+        "source": "Compton, NASA TN D-6789, 1972",
+        "figure": "Fig. 12, printed p. 33",
+        "mach": 2.2,
+        "length_ratio": 0.8,
+        "diameter_ratio": 0.916,
+        "cd": 0.0075,
+        "uncertainty": 0.003,
+        "flow": "attached",
+        "questionable": false,
+        "notes": "Langley 4x4-ft supersonic tunnel; Reynolds number 14.70e6/m at Mach 1.83 and 12.20e6/m at 2.20, grit 2.54 cm from the nose, boundary layer about 0.1 d thick (pp. 4-7); the 3.3-degree boattail of Fig. 4 (printed p. 18), 0.8 d along its surface; jet off, the measured (open) symbols"
+      },
+      {
+        "source": "Compton, NASA TN D-6789, 1972",
+        "figure": "Fig. 12, printed p. 33",
+        "mach": 0.3,
+        "length_ratio": 0.797,
+        "diameter_ratio": 0.861,
+        "cd": 0.0245,
+        "uncertainty": 0.002,
+        "flow": "attached",
+        "questionable": false,
+        "notes": "from its ref. 1 (Compton and Runckel, NASA TM X-1960), Langley 16-ft transonic tunnel; the 5-degree boattail of Fig. 4 (printed p. 18), 0.8 d along its surface; jet off, the measured (open) symbols"
+      },
+      {
+        "source": "Compton, NASA TN D-6789, 1972",
+        "figure": "Fig. 12, printed p. 33",
+        "mach": 0.4,
+        "length_ratio": 0.797,
+        "diameter_ratio": 0.861,
+        "cd": 0.0251,
+        "uncertainty": 0.002,
+        "flow": "attached",
+        "questionable": false,
+        "notes": "from its ref. 1 (Compton and Runckel, NASA TM X-1960), Langley 16-ft transonic tunnel; the 5-degree boattail of Fig. 4 (printed p. 18), 0.8 d along its surface; jet off, the measured (open) symbols"
+      },
+      {
+        "source": "Compton, NASA TN D-6789, 1972",
+        "figure": "Fig. 12, printed p. 33",
+        "mach": 0.5,
+        "length_ratio": 0.797,
+        "diameter_ratio": 0.861,
+        "cd": 0.0257,
+        "uncertainty": 0.002,
+        "flow": "attached",
+        "questionable": false,
+        "notes": "from its ref. 1 (Compton and Runckel, NASA TM X-1960), Langley 16-ft transonic tunnel; the 5-degree boattail of Fig. 4 (printed p. 18), 0.8 d along its surface; jet off, the measured (open) symbols"
+      },
+      {
+        "source": "Compton, NASA TN D-6789, 1972",
+        "figure": "Fig. 12, printed p. 33",
+        "mach": 0.6,
+        "length_ratio": 0.797,
+        "diameter_ratio": 0.861,
+        "cd": 0.0268,
+        "uncertainty": 0.002,
+        "flow": "attached",
+        "questionable": false,
+        "notes": "from its ref. 1 (Compton and Runckel, NASA TM X-1960), Langley 16-ft transonic tunnel; the 5-degree boattail of Fig. 4 (printed p. 18), 0.8 d along its surface; jet off, the measured (open) symbols"
+      },
+      {
+        "source": "Compton, NASA TN D-6789, 1972",
+        "figure": "Fig. 12, printed p. 33",
+        "mach": 0.7,
+        "length_ratio": 0.797,
+        "diameter_ratio": 0.861,
+        "cd": 0.0274,
+        "uncertainty": 0.002,
+        "flow": "attached",
+        "questionable": false,
+        "notes": "from its ref. 1 (Compton and Runckel, NASA TM X-1960), Langley 16-ft transonic tunnel; the 5-degree boattail of Fig. 4 (printed p. 18), 0.8 d along its surface; jet off, the measured (open) symbols"
+      },
+      {
+        "source": "Compton, NASA TN D-6789, 1972",
+        "figure": "Fig. 12, printed p. 33",
+        "mach": 0.8,
+        "length_ratio": 0.797,
+        "diameter_ratio": 0.861,
+        "cd": 0.0289,
+        "uncertainty": 0.002,
+        "flow": "attached",
+        "questionable": false,
+        "notes": "from its ref. 1 (Compton and Runckel, NASA TM X-1960), Langley 16-ft transonic tunnel; the 5-degree boattail of Fig. 4 (printed p. 18), 0.8 d along its surface; jet off, the measured (open) symbols"
+      },
+      {
+        "source": "Compton, NASA TN D-6789, 1972",
+        "figure": "Fig. 12, printed p. 33",
+        "mach": 0.85,
+        "length_ratio": 0.797,
+        "diameter_ratio": 0.861,
+        "cd": 0.0311,
+        "uncertainty": 0.002,
+        "flow": "attached",
+        "questionable": false,
+        "notes": "from its ref. 1 (Compton and Runckel, NASA TM X-1960), Langley 16-ft transonic tunnel; the 5-degree boattail of Fig. 4 (printed p. 18), 0.8 d along its surface; jet off, the measured (open) symbols"
+      },
+      {
+        "source": "Compton, NASA TN D-6789, 1972",
+        "figure": "Fig. 12, printed p. 33",
+        "mach": 0.9,
+        "length_ratio": 0.797,
+        "diameter_ratio": 0.861,
+        "cd": 0.0361,
+        "uncertainty": 0.002,
+        "flow": "attached",
+        "questionable": false,
+        "notes": "from its ref. 1 (Compton and Runckel, NASA TM X-1960), Langley 16-ft transonic tunnel; the 5-degree boattail of Fig. 4 (printed p. 18), 0.8 d along its surface; jet off, the measured (open) symbols"
+      },
+      {
+        "source": "Compton, NASA TN D-6789, 1972",
+        "figure": "Fig. 12, printed p. 33",
+        "mach": 0.95,
+        "length_ratio": 0.797,
+        "diameter_ratio": 0.861,
+        "cd": 0.065,
+        "uncertainty": 0.002,
+        "flow": "attached",
+        "questionable": false,
+        "notes": "from its ref. 1 (Compton and Runckel, NASA TM X-1960), Langley 16-ft transonic tunnel; the 5-degree boattail of Fig. 4 (printed p. 18), 0.8 d along its surface; jet off, the measured (open) symbols"
+      },
+      {
+        "source": "Compton, NASA TN D-6789, 1972",
+        "figure": "Fig. 12, printed p. 33",
+        "mach": 1.0,
+        "length_ratio": 0.797,
+        "diameter_ratio": 0.861,
+        "cd": 0.0622,
+        "uncertainty": 0.002,
+        "flow": "attached",
+        "questionable": true,
+        "notes": "from its ref. 1 (Compton and Runckel, NASA TM X-1960), Langley 16-ft transonic tunnel; the 5-degree boattail of Fig. 4 (printed p. 18), 0.8 d along its surface; jet off, the measured (open) symbols; an unfaired point, whose level near Mach 1 the report calls questionable (strut interference, reflected bow shock; p. 9)"
+      },
+      {
+        "source": "Compton, NASA TN D-6789, 1972",
+        "figure": "Fig. 12, printed p. 33",
+        "mach": 1.05,
+        "length_ratio": 0.797,
+        "diameter_ratio": 0.861,
+        "cd": 0.054,
+        "uncertainty": 0.002,
+        "flow": "attached",
+        "questionable": true,
+        "notes": "from its ref. 1 (Compton and Runckel, NASA TM X-1960), Langley 16-ft transonic tunnel; the 5-degree boattail of Fig. 4 (printed p. 18), 0.8 d along its surface; jet off, the measured (open) symbols; an unfaired point, whose level near Mach 1 the report calls questionable (strut interference, reflected bow shock; p. 9)"
+      },
+      {
+        "source": "Compton, NASA TN D-6789, 1972",
+        "figure": "Fig. 12, printed p. 33",
+        "mach": 1.1,
+        "length_ratio": 0.797,
+        "diameter_ratio": 0.861,
+        "cd": 0.0399,
+        "uncertainty": 0.002,
+        "flow": "attached",
+        "questionable": true,
+        "notes": "from its ref. 1 (Compton and Runckel, NASA TM X-1960), Langley 16-ft transonic tunnel; the 5-degree boattail of Fig. 4 (printed p. 18), 0.8 d along its surface; jet off, the measured (open) symbols; an unfaired point, whose level near Mach 1 the report calls questionable (strut interference, reflected bow shock; p. 9)"
+      },
+      {
+        "source": "Compton, NASA TN D-6789, 1972",
+        "figure": "Fig. 12, printed p. 33",
+        "mach": 1.2,
+        "length_ratio": 0.797,
+        "diameter_ratio": 0.861,
+        "cd": 0.0441,
+        "uncertainty": 0.004,
+        "flow": "attached",
+        "questionable": false,
+        "notes": "from its ref. 1 (Compton and Runckel, NASA TM X-1960), Langley 16-ft transonic tunnel; the 5-degree boattail of Fig. 4 (printed p. 18), 0.8 d along its surface; jet off, the measured (open) symbols"
+      },
+      {
+        "source": "Compton, NASA TN D-6789, 1972",
+        "figure": "Fig. 12, printed p. 33",
+        "mach": 1.25,
+        "length_ratio": 0.797,
+        "diameter_ratio": 0.861,
+        "cd": 0.0394,
+        "uncertainty": 0.002,
+        "flow": "attached",
+        "questionable": false,
+        "notes": "from its ref. 1 (Compton and Runckel, NASA TM X-1960), Langley 16-ft transonic tunnel; the 5-degree boattail of Fig. 4 (printed p. 18), 0.8 d along its surface; jet off, the measured (open) symbols"
+      },
+      {
+        "source": "Compton, NASA TN D-6789, 1972",
+        "figure": "Fig. 12, printed p. 33",
+        "mach": 1.3,
+        "length_ratio": 0.797,
+        "diameter_ratio": 0.861,
+        "cd": 0.0371,
+        "uncertainty": 0.003,
+        "flow": "attached",
+        "questionable": false,
+        "notes": "from its ref. 1 (Compton and Runckel, NASA TM X-1960), Langley 16-ft transonic tunnel; the 5-degree boattail of Fig. 4 (printed p. 18), 0.8 d along its surface; jet off, the measured (open) symbols"
+      },
+      {
+        "source": "Compton, NASA TN D-6789, 1972",
+        "figure": "Fig. 12, printed p. 33",
+        "mach": 1.83,
+        "length_ratio": 0.797,
+        "diameter_ratio": 0.861,
+        "cd": 0.0203,
+        "uncertainty": 0.003,
+        "flow": "attached",
+        "questionable": false,
+        "notes": "Langley 4x4-ft supersonic tunnel; Reynolds number 14.70e6/m at Mach 1.83 and 12.20e6/m at 2.20, grit 2.54 cm from the nose, boundary layer about 0.1 d thick (pp. 4-7); the 5-degree boattail of Fig. 4 (printed p. 18), 0.8 d along its surface; jet off, the measured (open) symbols"
+      },
+      {
+        "source": "Compton, NASA TN D-6789, 1972",
+        "figure": "Fig. 12, printed p. 33",
+        "mach": 2.2,
+        "length_ratio": 0.797,
+        "diameter_ratio": 0.861,
+        "cd": 0.0178,
+        "uncertainty": 0.003,
+        "flow": "attached",
+        "questionable": false,
+        "notes": "Langley 4x4-ft supersonic tunnel; Reynolds number 14.70e6/m at Mach 1.83 and 12.20e6/m at 2.20, grit 2.54 cm from the nose, boundary layer about 0.1 d thick (pp. 4-7); the 5-degree boattail of Fig. 4 (printed p. 18), 0.8 d along its surface; jet off, the measured (open) symbols"
+      },
+      {
+        "source": "Compton, NASA TN D-6789, 1972",
+        "figure": "Fig. 12, printed p. 33",
+        "mach": 0.3,
+        "length_ratio": 0.788,
         "diameter_ratio": 0.722,
-        "cd": 0.07,
-        "uncertainty": 0.003,
+        "cd": 0.0535,
+        "uncertainty": 0.002,
         "flow": "attached",
-        "notes": "transition fixed near the nose, boundary layer about 0.1 d thick; the 10-degree boattails of Fig. 4 (printed p. 18), jet off with the nozzle open; the measured (open) symbols"
+        "questionable": false,
+        "notes": "from its ref. 1 (Compton and Runckel, NASA TM X-1960), Langley 16-ft transonic tunnel; the 10-degree boattail of Fig. 4 (printed p. 18), 0.8 d along its surface; jet off, the measured (open) symbols"
+      },
+      {
+        "source": "Compton, NASA TN D-6789, 1972",
+        "figure": "Fig. 12, printed p. 33",
+        "mach": 0.4,
+        "length_ratio": 0.788,
+        "diameter_ratio": 0.722,
+        "cd": 0.0523,
+        "uncertainty": 0.002,
+        "flow": "attached",
+        "questionable": false,
+        "notes": "from its ref. 1 (Compton and Runckel, NASA TM X-1960), Langley 16-ft transonic tunnel; the 10-degree boattail of Fig. 4 (printed p. 18), 0.8 d along its surface; jet off, the measured (open) symbols"
+      },
+      {
+        "source": "Compton, NASA TN D-6789, 1972",
+        "figure": "Fig. 12, printed p. 33",
+        "mach": 0.5,
+        "length_ratio": 0.788,
+        "diameter_ratio": 0.722,
+        "cd": 0.0505,
+        "uncertainty": 0.002,
+        "flow": "attached",
+        "questionable": false,
+        "notes": "from its ref. 1 (Compton and Runckel, NASA TM X-1960), Langley 16-ft transonic tunnel; the 10-degree boattail of Fig. 4 (printed p. 18), 0.8 d along its surface; jet off, the measured (open) symbols"
+      },
+      {
+        "source": "Compton, NASA TN D-6789, 1972",
+        "figure": "Fig. 12, printed p. 33",
+        "mach": 0.6,
+        "length_ratio": 0.788,
+        "diameter_ratio": 0.722,
+        "cd": 0.0512,
+        "uncertainty": 0.002,
+        "flow": "attached",
+        "questionable": false,
+        "notes": "from its ref. 1 (Compton and Runckel, NASA TM X-1960), Langley 16-ft transonic tunnel; the 10-degree boattail of Fig. 4 (printed p. 18), 0.8 d along its surface; jet off, the measured (open) symbols"
+      },
+      {
+        "source": "Compton, NASA TN D-6789, 1972",
+        "figure": "Fig. 12, printed p. 33",
+        "mach": 0.7,
+        "length_ratio": 0.788,
+        "diameter_ratio": 0.722,
+        "cd": 0.0561,
+        "uncertainty": 0.002,
+        "flow": "attached",
+        "questionable": false,
+        "notes": "from its ref. 1 (Compton and Runckel, NASA TM X-1960), Langley 16-ft transonic tunnel; the 10-degree boattail of Fig. 4 (printed p. 18), 0.8 d along its surface; jet off, the measured (open) symbols"
+      },
+      {
+        "source": "Compton, NASA TN D-6789, 1972",
+        "figure": "Fig. 12, printed p. 33",
+        "mach": 0.8,
+        "length_ratio": 0.788,
+        "diameter_ratio": 0.722,
+        "cd": 0.0751,
+        "uncertainty": 0.002,
+        "flow": "attached",
+        "questionable": false,
+        "notes": "from its ref. 1 (Compton and Runckel, NASA TM X-1960), Langley 16-ft transonic tunnel; the 10-degree boattail of Fig. 4 (printed p. 18), 0.8 d along its surface; jet off, the measured (open) symbols"
+      },
+      {
+        "source": "Compton, NASA TN D-6789, 1972",
+        "figure": "Fig. 12, printed p. 33",
+        "mach": 0.85,
+        "length_ratio": 0.788,
+        "diameter_ratio": 0.722,
+        "cd": 0.0903,
+        "uncertainty": 0.002,
+        "flow": "attached",
+        "questionable": false,
+        "notes": "from its ref. 1 (Compton and Runckel, NASA TM X-1960), Langley 16-ft transonic tunnel; the 10-degree boattail of Fig. 4 (printed p. 18), 0.8 d along its surface; jet off, the measured (open) symbols"
+      },
+      {
+        "source": "Compton, NASA TN D-6789, 1972",
+        "figure": "Fig. 12, printed p. 33",
+        "mach": 0.9,
+        "length_ratio": 0.788,
+        "diameter_ratio": 0.722,
+        "cd": 0.1216,
+        "uncertainty": 0.002,
+        "flow": "attached",
+        "questionable": false,
+        "notes": "from its ref. 1 (Compton and Runckel, NASA TM X-1960), Langley 16-ft transonic tunnel; the 10-degree boattail of Fig. 4 (printed p. 18), 0.8 d along its surface; jet off, the measured (open) symbols"
+      },
+      {
+        "source": "Compton, NASA TN D-6789, 1972",
+        "figure": "Fig. 12, printed p. 33",
+        "mach": 0.95,
+        "length_ratio": 0.788,
+        "diameter_ratio": 0.722,
+        "cd": 0.1758,
+        "uncertainty": 0.002,
+        "flow": "attached",
+        "questionable": false,
+        "notes": "from its ref. 1 (Compton and Runckel, NASA TM X-1960), Langley 16-ft transonic tunnel; the 10-degree boattail of Fig. 4 (printed p. 18), 0.8 d along its surface; jet off, the measured (open) symbols"
+      },
+      {
+        "source": "Compton, NASA TN D-6789, 1972",
+        "figure": "Fig. 12, printed p. 33",
+        "mach": 1.0,
+        "length_ratio": 0.788,
+        "diameter_ratio": 0.722,
+        "cd": 0.1803,
+        "uncertainty": 0.002,
+        "flow": "attached",
+        "questionable": true,
+        "notes": "from its ref. 1 (Compton and Runckel, NASA TM X-1960), Langley 16-ft transonic tunnel; the 10-degree boattail of Fig. 4 (printed p. 18), 0.8 d along its surface; jet off, the measured (open) symbols; an unfaired point, whose level near Mach 1 the report calls questionable (strut interference, reflected bow shock; p. 9)"
+      },
+      {
+        "source": "Compton, NASA TN D-6789, 1972",
+        "figure": "Fig. 12, printed p. 33",
+        "mach": 1.05,
+        "length_ratio": 0.788,
+        "diameter_ratio": 0.722,
+        "cd": 0.1632,
+        "uncertainty": 0.002,
+        "flow": "attached",
+        "questionable": true,
+        "notes": "from its ref. 1 (Compton and Runckel, NASA TM X-1960), Langley 16-ft transonic tunnel; the 10-degree boattail of Fig. 4 (printed p. 18), 0.8 d along its surface; jet off, the measured (open) symbols; an unfaired point, whose level near Mach 1 the report calls questionable (strut interference, reflected bow shock; p. 9)"
+      },
+      {
+        "source": "Compton, NASA TN D-6789, 1972",
+        "figure": "Fig. 12, printed p. 33",
+        "mach": 1.1,
+        "length_ratio": 0.788,
+        "diameter_ratio": 0.722,
+        "cd": 0.1344,
+        "uncertainty": 0.002,
+        "flow": "attached",
+        "questionable": true,
+        "notes": "from its ref. 1 (Compton and Runckel, NASA TM X-1960), Langley 16-ft transonic tunnel; the 10-degree boattail of Fig. 4 (printed p. 18), 0.8 d along its surface; jet off, the measured (open) symbols; an unfaired point, whose level near Mach 1 the report calls questionable (strut interference, reflected bow shock; p. 9)"
+      },
+      {
+        "source": "Compton, NASA TN D-6789, 1972",
+        "figure": "Fig. 12, printed p. 33",
+        "mach": 1.2,
+        "length_ratio": 0.788,
+        "diameter_ratio": 0.722,
+        "cd": 0.13,
+        "uncertainty": 0.002,
+        "flow": "attached",
+        "questionable": false,
+        "notes": "from its ref. 1 (Compton and Runckel, NASA TM X-1960), Langley 16-ft transonic tunnel; the 10-degree boattail of Fig. 4 (printed p. 18), 0.8 d along its surface; jet off, the measured (open) symbols"
+      },
+      {
+        "source": "Compton, NASA TN D-6789, 1972",
+        "figure": "Fig. 12, printed p. 33",
+        "mach": 1.25,
+        "length_ratio": 0.788,
+        "diameter_ratio": 0.722,
+        "cd": 0.1198,
+        "uncertainty": 0.002,
+        "flow": "attached",
+        "questionable": false,
+        "notes": "from its ref. 1 (Compton and Runckel, NASA TM X-1960), Langley 16-ft transonic tunnel; the 10-degree boattail of Fig. 4 (printed p. 18), 0.8 d along its surface; jet off, the measured (open) symbols"
+      },
+      {
+        "source": "Compton, NASA TN D-6789, 1972",
+        "figure": "Fig. 12, printed p. 33",
+        "mach": 1.3,
+        "length_ratio": 0.788,
+        "diameter_ratio": 0.722,
+        "cd": 0.1118,
+        "uncertainty": 0.002,
+        "flow": "attached",
+        "questionable": false,
+        "notes": "from its ref. 1 (Compton and Runckel, NASA TM X-1960), Langley 16-ft transonic tunnel; the 10-degree boattail of Fig. 4 (printed p. 18), 0.8 d along its surface; jet off, the measured (open) symbols"
+      },
+      {
+        "source": "Compton, NASA TN D-6789, 1972",
+        "figure": "Fig. 12, printed p. 33",
+        "mach": 1.83,
+        "length_ratio": 0.788,
+        "diameter_ratio": 0.722,
+        "cd": 0.0705,
+        "uncertainty": 0.004,
+        "flow": "attached",
+        "questionable": false,
+        "notes": "Langley 4x4-ft supersonic tunnel; Reynolds number 14.70e6/m at Mach 1.83 and 12.20e6/m at 2.20, grit 2.54 cm from the nose, boundary layer about 0.1 d thick (pp. 4-7); the 10-degree boattail of Fig. 4 (printed p. 18), 0.8 d along its surface; jet off, the measured (open) symbols"
       },
       {
         "source": "Compton, NASA TN D-6789, 1972",
         "figure": "Fig. 12, printed p. 33",
         "mach": 2.2,
-        "length_ratio": 0.8,
+        "length_ratio": 0.788,
         "diameter_ratio": 0.722,
         "cd": 0.055,
         "uncertainty": 0.003,
         "flow": "attached",
-        "notes": "transition fixed near the nose, boundary layer about 0.1 d thick; the 10-degree boattails of Fig. 4 (printed p. 18), jet off with the nozzle open; the measured (open) symbols"
+        "questionable": false,
+        "notes": "Langley 4x4-ft supersonic tunnel; Reynolds number 14.70e6/m at Mach 1.83 and 12.20e6/m at 2.20, grit 2.54 cm from the nose, boundary layer about 0.1 d thick (pp. 4-7); the 10-degree boattail of Fig. 4 (printed p. 18), 0.8 d along its surface; jet off, the measured (open) symbols"
+      },
+      {
+        "source": "Compton, NASA TN D-6789, 1972",
+        "figure": "Fig. 12, printed p. 33",
+        "mach": 0.3,
+        "length_ratio": 1.0,
+        "diameter_ratio": 0.895,
+        "cd": 0.0144,
+        "uncertainty": 0.002,
+        "flow": "attached",
+        "questionable": false,
+        "notes": "from its ref. 1 (Compton and Runckel, NASA TM X-1960), Langley 16-ft transonic tunnel; the 3-degree boattail of Fig. 4 (printed p. 18), 1 d along its surface; jet off, the measured (open) symbols"
+      },
+      {
+        "source": "Compton, NASA TN D-6789, 1972",
+        "figure": "Fig. 12, printed p. 33",
+        "mach": 0.4,
+        "length_ratio": 1.0,
+        "diameter_ratio": 0.895,
+        "cd": 0.015,
+        "uncertainty": 0.002,
+        "flow": "attached",
+        "questionable": false,
+        "notes": "from its ref. 1 (Compton and Runckel, NASA TM X-1960), Langley 16-ft transonic tunnel; the 3-degree boattail of Fig. 4 (printed p. 18), 1 d along its surface; jet off, the measured (open) symbols"
+      },
+      {
+        "source": "Compton, NASA TN D-6789, 1972",
+        "figure": "Fig. 12, printed p. 33",
+        "mach": 0.5,
+        "length_ratio": 1.0,
+        "diameter_ratio": 0.895,
+        "cd": 0.0151,
+        "uncertainty": 0.002,
+        "flow": "attached",
+        "questionable": false,
+        "notes": "from its ref. 1 (Compton and Runckel, NASA TM X-1960), Langley 16-ft transonic tunnel; the 3-degree boattail of Fig. 4 (printed p. 18), 1 d along its surface; jet off, the measured (open) symbols"
+      },
+      {
+        "source": "Compton, NASA TN D-6789, 1972",
+        "figure": "Fig. 12, printed p. 33",
+        "mach": 0.6,
+        "length_ratio": 1.0,
+        "diameter_ratio": 0.895,
+        "cd": 0.0158,
+        "uncertainty": 0.002,
+        "flow": "attached",
+        "questionable": false,
+        "notes": "from its ref. 1 (Compton and Runckel, NASA TM X-1960), Langley 16-ft transonic tunnel; the 3-degree boattail of Fig. 4 (printed p. 18), 1 d along its surface; jet off, the measured (open) symbols"
+      },
+      {
+        "source": "Compton, NASA TN D-6789, 1972",
+        "figure": "Fig. 12, printed p. 33",
+        "mach": 0.7,
+        "length_ratio": 1.0,
+        "diameter_ratio": 0.895,
+        "cd": 0.016,
+        "uncertainty": 0.002,
+        "flow": "attached",
+        "questionable": false,
+        "notes": "from its ref. 1 (Compton and Runckel, NASA TM X-1960), Langley 16-ft transonic tunnel; the 3-degree boattail of Fig. 4 (printed p. 18), 1 d along its surface; jet off, the measured (open) symbols"
+      },
+      {
+        "source": "Compton, NASA TN D-6789, 1972",
+        "figure": "Fig. 12, printed p. 33",
+        "mach": 0.8,
+        "length_ratio": 1.0,
+        "diameter_ratio": 0.895,
+        "cd": 0.0159,
+        "uncertainty": 0.002,
+        "flow": "attached",
+        "questionable": false,
+        "notes": "from its ref. 1 (Compton and Runckel, NASA TM X-1960), Langley 16-ft transonic tunnel; the 3-degree boattail of Fig. 4 (printed p. 18), 1 d along its surface; jet off, the measured (open) symbols"
+      },
+      {
+        "source": "Compton, NASA TN D-6789, 1972",
+        "figure": "Fig. 12, printed p. 33",
+        "mach": 0.85,
+        "length_ratio": 1.0,
+        "diameter_ratio": 0.895,
+        "cd": 0.0166,
+        "uncertainty": 0.002,
+        "flow": "attached",
+        "questionable": false,
+        "notes": "from its ref. 1 (Compton and Runckel, NASA TM X-1960), Langley 16-ft transonic tunnel; the 3-degree boattail of Fig. 4 (printed p. 18), 1 d along its surface; jet off, the measured (open) symbols"
+      },
+      {
+        "source": "Compton, NASA TN D-6789, 1972",
+        "figure": "Fig. 12, printed p. 33",
+        "mach": 0.9,
+        "length_ratio": 1.0,
+        "diameter_ratio": 0.895,
+        "cd": 0.0181,
+        "uncertainty": 0.002,
+        "flow": "attached",
+        "questionable": false,
+        "notes": "from its ref. 1 (Compton and Runckel, NASA TM X-1960), Langley 16-ft transonic tunnel; the 3-degree boattail of Fig. 4 (printed p. 18), 1 d along its surface; jet off, the measured (open) symbols"
+      },
+      {
+        "source": "Compton, NASA TN D-6789, 1972",
+        "figure": "Fig. 12, printed p. 33",
+        "mach": 0.95,
+        "length_ratio": 1.0,
+        "diameter_ratio": 0.895,
+        "cd": 0.0232,
+        "uncertainty": 0.002,
+        "flow": "attached",
+        "questionable": false,
+        "notes": "from its ref. 1 (Compton and Runckel, NASA TM X-1960), Langley 16-ft transonic tunnel; the 3-degree boattail of Fig. 4 (printed p. 18), 1 d along its surface; jet off, the measured (open) symbols"
+      },
+      {
+        "source": "Compton, NASA TN D-6789, 1972",
+        "figure": "Fig. 12, printed p. 33",
+        "mach": 1.0,
+        "length_ratio": 1.0,
+        "diameter_ratio": 0.895,
+        "cd": 0.0333,
+        "uncertainty": 0.002,
+        "flow": "attached",
+        "questionable": true,
+        "notes": "from its ref. 1 (Compton and Runckel, NASA TM X-1960), Langley 16-ft transonic tunnel; the 3-degree boattail of Fig. 4 (printed p. 18), 1 d along its surface; jet off, the measured (open) symbols; an unfaired point, whose level near Mach 1 the report calls questionable (strut interference, reflected bow shock; p. 9)"
+      },
+      {
+        "source": "Compton, NASA TN D-6789, 1972",
+        "figure": "Fig. 12, printed p. 33",
+        "mach": 1.05,
+        "length_ratio": 1.0,
+        "diameter_ratio": 0.895,
+        "cd": 0.0242,
+        "uncertainty": 0.002,
+        "flow": "attached",
+        "questionable": true,
+        "notes": "from its ref. 1 (Compton and Runckel, NASA TM X-1960), Langley 16-ft transonic tunnel; the 3-degree boattail of Fig. 4 (printed p. 18), 1 d along its surface; jet off, the measured (open) symbols; an unfaired point, whose level near Mach 1 the report calls questionable (strut interference, reflected bow shock; p. 9)"
+      },
+      {
+        "source": "Compton, NASA TN D-6789, 1972",
+        "figure": "Fig. 12, printed p. 33",
+        "mach": 1.1,
+        "length_ratio": 1.0,
+        "diameter_ratio": 0.895,
+        "cd": 0.0131,
+        "uncertainty": 0.002,
+        "flow": "attached",
+        "questionable": true,
+        "notes": "from its ref. 1 (Compton and Runckel, NASA TM X-1960), Langley 16-ft transonic tunnel; the 3-degree boattail of Fig. 4 (printed p. 18), 1 d along its surface; jet off, the measured (open) symbols; an unfaired point, whose level near Mach 1 the report calls questionable (strut interference, reflected bow shock; p. 9)"
+      },
+      {
+        "source": "Compton, NASA TN D-6789, 1972",
+        "figure": "Fig. 12, printed p. 33",
+        "mach": 1.2,
+        "length_ratio": 1.0,
+        "diameter_ratio": 0.895,
+        "cd": 0.0201,
+        "uncertainty": 0.003,
+        "flow": "attached",
+        "questionable": false,
+        "notes": "from its ref. 1 (Compton and Runckel, NASA TM X-1960), Langley 16-ft transonic tunnel; the 3-degree boattail of Fig. 4 (printed p. 18), 1 d along its surface; jet off, the measured (open) symbols"
+      },
+      {
+        "source": "Compton, NASA TN D-6789, 1972",
+        "figure": "Fig. 12, printed p. 33",
+        "mach": 1.25,
+        "length_ratio": 1.0,
+        "diameter_ratio": 0.895,
+        "cd": 0.0194,
+        "uncertainty": 0.002,
+        "flow": "attached",
+        "questionable": false,
+        "notes": "from its ref. 1 (Compton and Runckel, NASA TM X-1960), Langley 16-ft transonic tunnel; the 3-degree boattail of Fig. 4 (printed p. 18), 1 d along its surface; jet off, the measured (open) symbols"
+      },
+      {
+        "source": "Compton, NASA TN D-6789, 1972",
+        "figure": "Fig. 12, printed p. 33",
+        "mach": 1.3,
+        "length_ratio": 1.0,
+        "diameter_ratio": 0.895,
+        "cd": 0.0182,
+        "uncertainty": 0.003,
+        "flow": "attached",
+        "questionable": false,
+        "notes": "from its ref. 1 (Compton and Runckel, NASA TM X-1960), Langley 16-ft transonic tunnel; the 3-degree boattail of Fig. 4 (printed p. 18), 1 d along its surface; jet off, the measured (open) symbols"
       },
       {
         "source": "Compton, NASA TN D-6789, 1972",
         "figure": "Fig. 12, printed p. 33",
         "mach": 1.83,
-        "length_ratio": 0.6,
-        "diameter_ratio": 0.792,
-        "cd": 0.059,
+        "length_ratio": 1.0,
+        "diameter_ratio": 0.895,
+        "cd": 0.0094,
         "uncertainty": 0.003,
         "flow": "attached",
-        "notes": "transition fixed near the nose, boundary layer about 0.1 d thick; the 10-degree boattails of Fig. 4 (printed p. 18), jet off with the nozzle open; the measured (open) symbols"
+        "questionable": false,
+        "notes": "Langley 4x4-ft supersonic tunnel; Reynolds number 14.70e6/m at Mach 1.83 and 12.20e6/m at 2.20, grit 2.54 cm from the nose, boundary layer about 0.1 d thick (pp. 4-7); the 3-degree boattail of Fig. 4 (printed p. 18), 1 d along its surface; jet off, the measured (open) symbols"
       },
       {
         "source": "Compton, NASA TN D-6789, 1972",
         "figure": "Fig. 12, printed p. 33",
         "mach": 2.2,
-        "length_ratio": 0.6,
-        "diameter_ratio": 0.792,
-        "cd": 0.044,
+        "length_ratio": 1.0,
+        "diameter_ratio": 0.895,
+        "cd": 0.0091,
         "uncertainty": 0.003,
         "flow": "attached",
-        "notes": "transition fixed near the nose, boundary layer about 0.1 d thick; the 10-degree boattails of Fig. 4 (printed p. 18), jet off with the nozzle open; the measured (open) symbols"
+        "questionable": false,
+        "notes": "Langley 4x4-ft supersonic tunnel; Reynolds number 14.70e6/m at Mach 1.83 and 12.20e6/m at 2.20, grit 2.54 cm from the nose, boundary layer about 0.1 d thick (pp. 4-7); the 3-degree boattail of Fig. 4 (printed p. 18), 1 d along its surface; jet off, the measured (open) symbols"
+      },
+      {
+        "source": "Compton, NASA TN D-6789, 1972",
+        "figure": "Fig. 12, printed p. 33",
+        "mach": 0.3,
+        "length_ratio": 0.996,
+        "diameter_ratio": 0.825,
+        "cd": 0.0249,
+        "uncertainty": 0.002,
+        "flow": "attached",
+        "questionable": false,
+        "notes": "from its ref. 1 (Compton and Runckel, NASA TM X-1960), Langley 16-ft transonic tunnel; the 5.02-degree boattail of Fig. 4 (printed p. 18), 1 d along its surface; jet off, the measured (open) symbols"
+      },
+      {
+        "source": "Compton, NASA TN D-6789, 1972",
+        "figure": "Fig. 12, printed p. 33",
+        "mach": 0.4,
+        "length_ratio": 0.996,
+        "diameter_ratio": 0.825,
+        "cd": 0.0258,
+        "uncertainty": 0.002,
+        "flow": "attached",
+        "questionable": false,
+        "notes": "from its ref. 1 (Compton and Runckel, NASA TM X-1960), Langley 16-ft transonic tunnel; the 5.02-degree boattail of Fig. 4 (printed p. 18), 1 d along its surface; jet off, the measured (open) symbols"
+      },
+      {
+        "source": "Compton, NASA TN D-6789, 1972",
+        "figure": "Fig. 12, printed p. 33",
+        "mach": 0.5,
+        "length_ratio": 0.996,
+        "diameter_ratio": 0.825,
+        "cd": 0.027,
+        "uncertainty": 0.002,
+        "flow": "attached",
+        "questionable": false,
+        "notes": "from its ref. 1 (Compton and Runckel, NASA TM X-1960), Langley 16-ft transonic tunnel; the 5.02-degree boattail of Fig. 4 (printed p. 18), 1 d along its surface; jet off, the measured (open) symbols"
+      },
+      {
+        "source": "Compton, NASA TN D-6789, 1972",
+        "figure": "Fig. 12, printed p. 33",
+        "mach": 0.6,
+        "length_ratio": 0.996,
+        "diameter_ratio": 0.825,
+        "cd": 0.0289,
+        "uncertainty": 0.002,
+        "flow": "attached",
+        "questionable": false,
+        "notes": "from its ref. 1 (Compton and Runckel, NASA TM X-1960), Langley 16-ft transonic tunnel; the 5.02-degree boattail of Fig. 4 (printed p. 18), 1 d along its surface; jet off, the measured (open) symbols"
+      },
+      {
+        "source": "Compton, NASA TN D-6789, 1972",
+        "figure": "Fig. 12, printed p. 33",
+        "mach": 0.7,
+        "length_ratio": 0.996,
+        "diameter_ratio": 0.825,
+        "cd": 0.0292,
+        "uncertainty": 0.002,
+        "flow": "attached",
+        "questionable": false,
+        "notes": "from its ref. 1 (Compton and Runckel, NASA TM X-1960), Langley 16-ft transonic tunnel; the 5.02-degree boattail of Fig. 4 (printed p. 18), 1 d along its surface; jet off, the measured (open) symbols"
+      },
+      {
+        "source": "Compton, NASA TN D-6789, 1972",
+        "figure": "Fig. 12, printed p. 33",
+        "mach": 0.8,
+        "length_ratio": 0.996,
+        "diameter_ratio": 0.825,
+        "cd": 0.0301,
+        "uncertainty": 0.002,
+        "flow": "attached",
+        "questionable": false,
+        "notes": "from its ref. 1 (Compton and Runckel, NASA TM X-1960), Langley 16-ft transonic tunnel; the 5.02-degree boattail of Fig. 4 (printed p. 18), 1 d along its surface; jet off, the measured (open) symbols"
+      },
+      {
+        "source": "Compton, NASA TN D-6789, 1972",
+        "figure": "Fig. 12, printed p. 33",
+        "mach": 0.85,
+        "length_ratio": 0.996,
+        "diameter_ratio": 0.825,
+        "cd": 0.0318,
+        "uncertainty": 0.002,
+        "flow": "attached",
+        "questionable": false,
+        "notes": "from its ref. 1 (Compton and Runckel, NASA TM X-1960), Langley 16-ft transonic tunnel; the 5.02-degree boattail of Fig. 4 (printed p. 18), 1 d along its surface; jet off, the measured (open) symbols"
+      },
+      {
+        "source": "Compton, NASA TN D-6789, 1972",
+        "figure": "Fig. 12, printed p. 33",
+        "mach": 0.9,
+        "length_ratio": 0.996,
+        "diameter_ratio": 0.825,
+        "cd": 0.0367,
+        "uncertainty": 0.002,
+        "flow": "attached",
+        "questionable": false,
+        "notes": "from its ref. 1 (Compton and Runckel, NASA TM X-1960), Langley 16-ft transonic tunnel; the 5.02-degree boattail of Fig. 4 (printed p. 18), 1 d along its surface; jet off, the measured (open) symbols"
+      },
+      {
+        "source": "Compton, NASA TN D-6789, 1972",
+        "figure": "Fig. 12, printed p. 33",
+        "mach": 0.95,
+        "length_ratio": 0.996,
+        "diameter_ratio": 0.825,
+        "cd": 0.0606,
+        "uncertainty": 0.002,
+        "flow": "attached",
+        "questionable": false,
+        "notes": "from its ref. 1 (Compton and Runckel, NASA TM X-1960), Langley 16-ft transonic tunnel; the 5.02-degree boattail of Fig. 4 (printed p. 18), 1 d along its surface; jet off, the measured (open) symbols"
+      },
+      {
+        "source": "Compton, NASA TN D-6789, 1972",
+        "figure": "Fig. 12, printed p. 33",
+        "mach": 1.0,
+        "length_ratio": 0.996,
+        "diameter_ratio": 0.825,
+        "cd": 0.0744,
+        "uncertainty": 0.002,
+        "flow": "attached",
+        "questionable": true,
+        "notes": "from its ref. 1 (Compton and Runckel, NASA TM X-1960), Langley 16-ft transonic tunnel; the 5.02-degree boattail of Fig. 4 (printed p. 18), 1 d along its surface; jet off, the measured (open) symbols; an unfaired point, whose level near Mach 1 the report calls questionable (strut interference, reflected bow shock; p. 9)"
+      },
+      {
+        "source": "Compton, NASA TN D-6789, 1972",
+        "figure": "Fig. 12, printed p. 33",
+        "mach": 1.05,
+        "length_ratio": 0.996,
+        "diameter_ratio": 0.825,
+        "cd": 0.0589,
+        "uncertainty": 0.002,
+        "flow": "attached",
+        "questionable": true,
+        "notes": "from its ref. 1 (Compton and Runckel, NASA TM X-1960), Langley 16-ft transonic tunnel; the 5.02-degree boattail of Fig. 4 (printed p. 18), 1 d along its surface; jet off, the measured (open) symbols; an unfaired point, whose level near Mach 1 the report calls questionable (strut interference, reflected bow shock; p. 9)"
+      },
+      {
+        "source": "Compton, NASA TN D-6789, 1972",
+        "figure": "Fig. 12, printed p. 33",
+        "mach": 1.1,
+        "length_ratio": 0.996,
+        "diameter_ratio": 0.825,
+        "cd": 0.0437,
+        "uncertainty": 0.002,
+        "flow": "attached",
+        "questionable": true,
+        "notes": "from its ref. 1 (Compton and Runckel, NASA TM X-1960), Langley 16-ft transonic tunnel; the 5.02-degree boattail of Fig. 4 (printed p. 18), 1 d along its surface; jet off, the measured (open) symbols; an unfaired point, whose level near Mach 1 the report calls questionable (strut interference, reflected bow shock; p. 9)"
+      },
+      {
+        "source": "Compton, NASA TN D-6789, 1972",
+        "figure": "Fig. 12, printed p. 33",
+        "mach": 1.2,
+        "length_ratio": 0.996,
+        "diameter_ratio": 0.825,
+        "cd": 0.0488,
+        "uncertainty": 0.004,
+        "flow": "attached",
+        "questionable": false,
+        "notes": "from its ref. 1 (Compton and Runckel, NASA TM X-1960), Langley 16-ft transonic tunnel; the 5.02-degree boattail of Fig. 4 (printed p. 18), 1 d along its surface; jet off, the measured (open) symbols"
+      },
+      {
+        "source": "Compton, NASA TN D-6789, 1972",
+        "figure": "Fig. 12, printed p. 33",
+        "mach": 1.25,
+        "length_ratio": 0.996,
+        "diameter_ratio": 0.825,
+        "cd": 0.0435,
+        "uncertainty": 0.002,
+        "flow": "attached",
+        "questionable": false,
+        "notes": "from its ref. 1 (Compton and Runckel, NASA TM X-1960), Langley 16-ft transonic tunnel; the 5.02-degree boattail of Fig. 4 (printed p. 18), 1 d along its surface; jet off, the measured (open) symbols"
+      },
+      {
+        "source": "Compton, NASA TN D-6789, 1972",
+        "figure": "Fig. 12, printed p. 33",
+        "mach": 1.3,
+        "length_ratio": 0.996,
+        "diameter_ratio": 0.825,
+        "cd": 0.0426,
+        "uncertainty": 0.003,
+        "flow": "attached",
+        "questionable": false,
+        "notes": "from its ref. 1 (Compton and Runckel, NASA TM X-1960), Langley 16-ft transonic tunnel; the 5.02-degree boattail of Fig. 4 (printed p. 18), 1 d along its surface; jet off, the measured (open) symbols"
+      },
+      {
+        "source": "Compton, NASA TN D-6789, 1972",
+        "figure": "Fig. 12, printed p. 33",
+        "mach": 1.83,
+        "length_ratio": 0.996,
+        "diameter_ratio": 0.825,
+        "cd": 0.0253,
+        "uncertainty": 0.003,
+        "flow": "attached",
+        "questionable": false,
+        "notes": "Langley 4x4-ft supersonic tunnel; Reynolds number 14.70e6/m at Mach 1.83 and 12.20e6/m at 2.20, grit 2.54 cm from the nose, boundary layer about 0.1 d thick (pp. 4-7); the 5.02-degree boattail of Fig. 4 (printed p. 18), 1 d along its surface; jet off, the measured (open) symbols"
+      },
+      {
+        "source": "Compton, NASA TN D-6789, 1972",
+        "figure": "Fig. 12, printed p. 33",
+        "mach": 2.2,
+        "length_ratio": 0.996,
+        "diameter_ratio": 0.825,
+        "cd": 0.02,
+        "uncertainty": 0.003,
+        "flow": "attached",
+        "questionable": false,
+        "notes": "Langley 4x4-ft supersonic tunnel; Reynolds number 14.70e6/m at Mach 1.83 and 12.20e6/m at 2.20, grit 2.54 cm from the nose, boundary layer about 0.1 d thick (pp. 4-7); the 5.02-degree boattail of Fig. 4 (printed p. 18), 1 d along its surface; jet off, the measured (open) symbols"
+      },
+      {
+        "source": "Compton, NASA TN D-6789, 1972",
+        "figure": "Fig. 12, printed p. 33",
+        "mach": 0.3,
+        "length_ratio": 0.985,
+        "diameter_ratio": 0.653,
+        "cd": 0.0407,
+        "uncertainty": 0.002,
+        "flow": "attached",
+        "questionable": false,
+        "notes": "from its ref. 1 (Compton and Runckel, NASA TM X-1960), Langley 16-ft transonic tunnel; the 10-degree boattail of Fig. 4 (printed p. 18), 1 d along its surface; jet off, the measured (open) symbols"
+      },
+      {
+        "source": "Compton, NASA TN D-6789, 1972",
+        "figure": "Fig. 12, printed p. 33",
+        "mach": 0.4,
+        "length_ratio": 0.985,
+        "diameter_ratio": 0.653,
+        "cd": 0.0456,
+        "uncertainty": 0.002,
+        "flow": "attached",
+        "questionable": false,
+        "notes": "from its ref. 1 (Compton and Runckel, NASA TM X-1960), Langley 16-ft transonic tunnel; the 10-degree boattail of Fig. 4 (printed p. 18), 1 d along its surface; jet off, the measured (open) symbols"
+      },
+      {
+        "source": "Compton, NASA TN D-6789, 1972",
+        "figure": "Fig. 12, printed p. 33",
+        "mach": 0.5,
+        "length_ratio": 0.985,
+        "diameter_ratio": 0.653,
+        "cd": 0.0452,
+        "uncertainty": 0.002,
+        "flow": "attached",
+        "questionable": false,
+        "notes": "from its ref. 1 (Compton and Runckel, NASA TM X-1960), Langley 16-ft transonic tunnel; the 10-degree boattail of Fig. 4 (printed p. 18), 1 d along its surface; jet off, the measured (open) symbols"
+      },
+      {
+        "source": "Compton, NASA TN D-6789, 1972",
+        "figure": "Fig. 12, printed p. 33",
+        "mach": 0.6,
+        "length_ratio": 0.985,
+        "diameter_ratio": 0.653,
+        "cd": 0.0494,
+        "uncertainty": 0.002,
+        "flow": "attached",
+        "questionable": false,
+        "notes": "from its ref. 1 (Compton and Runckel, NASA TM X-1960), Langley 16-ft transonic tunnel; the 10-degree boattail of Fig. 4 (printed p. 18), 1 d along its surface; jet off, the measured (open) symbols"
+      },
+      {
+        "source": "Compton, NASA TN D-6789, 1972",
+        "figure": "Fig. 12, printed p. 33",
+        "mach": 0.7,
+        "length_ratio": 0.985,
+        "diameter_ratio": 0.653,
+        "cd": 0.0516,
+        "uncertainty": 0.002,
+        "flow": "attached",
+        "questionable": false,
+        "notes": "from its ref. 1 (Compton and Runckel, NASA TM X-1960), Langley 16-ft transonic tunnel; the 10-degree boattail of Fig. 4 (printed p. 18), 1 d along its surface; jet off, the measured (open) symbols"
+      },
+      {
+        "source": "Compton, NASA TN D-6789, 1972",
+        "figure": "Fig. 12, printed p. 33",
+        "mach": 0.8,
+        "length_ratio": 0.985,
+        "diameter_ratio": 0.653,
+        "cd": 0.0586,
+        "uncertainty": 0.002,
+        "flow": "attached",
+        "questionable": false,
+        "notes": "from its ref. 1 (Compton and Runckel, NASA TM X-1960), Langley 16-ft transonic tunnel; the 10-degree boattail of Fig. 4 (printed p. 18), 1 d along its surface; jet off, the measured (open) symbols"
+      },
+      {
+        "source": "Compton, NASA TN D-6789, 1972",
+        "figure": "Fig. 12, printed p. 33",
+        "mach": 0.85,
+        "length_ratio": 0.985,
+        "diameter_ratio": 0.653,
+        "cd": 0.08,
+        "uncertainty": 0.002,
+        "flow": "attached",
+        "questionable": false,
+        "notes": "from its ref. 1 (Compton and Runckel, NASA TM X-1960), Langley 16-ft transonic tunnel; the 10-degree boattail of Fig. 4 (printed p. 18), 1 d along its surface; jet off, the measured (open) symbols"
+      },
+      {
+        "source": "Compton, NASA TN D-6789, 1972",
+        "figure": "Fig. 12, printed p. 33",
+        "mach": 0.9,
+        "length_ratio": 0.985,
+        "diameter_ratio": 0.653,
+        "cd": 0.1063,
+        "uncertainty": 0.002,
+        "flow": "attached",
+        "questionable": false,
+        "notes": "from its ref. 1 (Compton and Runckel, NASA TM X-1960), Langley 16-ft transonic tunnel; the 10-degree boattail of Fig. 4 (printed p. 18), 1 d along its surface; jet off, the measured (open) symbols"
+      },
+      {
+        "source": "Compton, NASA TN D-6789, 1972",
+        "figure": "Fig. 12, printed p. 33",
+        "mach": 0.95,
+        "length_ratio": 0.985,
+        "diameter_ratio": 0.653,
+        "cd": 0.1691,
+        "uncertainty": 0.002,
+        "flow": "attached",
+        "questionable": false,
+        "notes": "from its ref. 1 (Compton and Runckel, NASA TM X-1960), Langley 16-ft transonic tunnel; the 10-degree boattail of Fig. 4 (printed p. 18), 1 d along its surface; jet off, the measured (open) symbols"
+      },
+      {
+        "source": "Compton, NASA TN D-6789, 1972",
+        "figure": "Fig. 12, printed p. 33",
+        "mach": 1.0,
+        "length_ratio": 0.985,
+        "diameter_ratio": 0.653,
+        "cd": 0.1974,
+        "uncertainty": 0.002,
+        "flow": "attached",
+        "questionable": true,
+        "notes": "from its ref. 1 (Compton and Runckel, NASA TM X-1960), Langley 16-ft transonic tunnel; the 10-degree boattail of Fig. 4 (printed p. 18), 1 d along its surface; jet off, the measured (open) symbols; an unfaired point, whose level near Mach 1 the report calls questionable (strut interference, reflected bow shock; p. 9)"
+      },
+      {
+        "source": "Compton, NASA TN D-6789, 1972",
+        "figure": "Fig. 12, printed p. 33",
+        "mach": 1.05,
+        "length_ratio": 0.985,
+        "diameter_ratio": 0.653,
+        "cd": 0.175,
+        "uncertainty": 0.002,
+        "flow": "attached",
+        "questionable": true,
+        "notes": "from its ref. 1 (Compton and Runckel, NASA TM X-1960), Langley 16-ft transonic tunnel; the 10-degree boattail of Fig. 4 (printed p. 18), 1 d along its surface; jet off, the measured (open) symbols; an unfaired point, whose level near Mach 1 the report calls questionable (strut interference, reflected bow shock; p. 9)"
+      },
+      {
+        "source": "Compton, NASA TN D-6789, 1972",
+        "figure": "Fig. 12, printed p. 33",
+        "mach": 1.1,
+        "length_ratio": 0.985,
+        "diameter_ratio": 0.653,
+        "cd": 0.142,
+        "uncertainty": 0.002,
+        "flow": "attached",
+        "questionable": true,
+        "notes": "from its ref. 1 (Compton and Runckel, NASA TM X-1960), Langley 16-ft transonic tunnel; the 10-degree boattail of Fig. 4 (printed p. 18), 1 d along its surface; jet off, the measured (open) symbols; an unfaired point, whose level near Mach 1 the report calls questionable (strut interference, reflected bow shock; p. 9)"
+      },
+      {
+        "source": "Compton, NASA TN D-6789, 1972",
+        "figure": "Fig. 12, printed p. 33",
+        "mach": 1.2,
+        "length_ratio": 0.985,
+        "diameter_ratio": 0.653,
+        "cd": 0.1435,
+        "uncertainty": 0.002,
+        "flow": "attached",
+        "questionable": false,
+        "notes": "from its ref. 1 (Compton and Runckel, NASA TM X-1960), Langley 16-ft transonic tunnel; the 10-degree boattail of Fig. 4 (printed p. 18), 1 d along its surface; jet off, the measured (open) symbols"
+      },
+      {
+        "source": "Compton, NASA TN D-6789, 1972",
+        "figure": "Fig. 12, printed p. 33",
+        "mach": 1.25,
+        "length_ratio": 0.985,
+        "diameter_ratio": 0.653,
+        "cd": 0.1311,
+        "uncertainty": 0.002,
+        "flow": "attached",
+        "questionable": false,
+        "notes": "from its ref. 1 (Compton and Runckel, NASA TM X-1960), Langley 16-ft transonic tunnel; the 10-degree boattail of Fig. 4 (printed p. 18), 1 d along its surface; jet off, the measured (open) symbols"
+      },
+      {
+        "source": "Compton, NASA TN D-6789, 1972",
+        "figure": "Fig. 12, printed p. 33",
+        "mach": 1.3,
+        "length_ratio": 0.985,
+        "diameter_ratio": 0.653,
+        "cd": 0.125,
+        "uncertainty": 0.002,
+        "flow": "attached",
+        "questionable": false,
+        "notes": "from its ref. 1 (Compton and Runckel, NASA TM X-1960), Langley 16-ft transonic tunnel; the 10-degree boattail of Fig. 4 (printed p. 18), 1 d along its surface; jet off, the measured (open) symbols"
+      },
+      {
+        "source": "Compton, NASA TN D-6789, 1972",
+        "figure": "Fig. 12, printed p. 33",
+        "mach": 1.83,
+        "length_ratio": 0.985,
+        "diameter_ratio": 0.653,
+        "cd": 0.0838,
+        "uncertainty": 0.003,
+        "flow": "attached",
+        "questionable": false,
+        "notes": "Langley 4x4-ft supersonic tunnel; Reynolds number 14.70e6/m at Mach 1.83 and 12.20e6/m at 2.20, grit 2.54 cm from the nose, boundary layer about 0.1 d thick (pp. 4-7); the 10-degree boattail of Fig. 4 (printed p. 18), 1 d along its surface; jet off, the measured (open) symbols"
+      },
+      {
+        "source": "Compton, NASA TN D-6789, 1972",
+        "figure": "Fig. 12, printed p. 33",
+        "mach": 2.2,
+        "length_ratio": 0.985,
+        "diameter_ratio": 0.653,
+        "cd": 0.0617,
+        "uncertainty": 0.003,
+        "flow": "attached",
+        "questionable": false,
+        "notes": "Langley 4x4-ft supersonic tunnel; Reynolds number 14.70e6/m at Mach 1.83 and 12.20e6/m at 2.20, grit 2.54 cm from the nose, boundary layer about 0.1 d thick (pp. 4-7); the 10-degree boattail of Fig. 4 (printed p. 18), 1 d along its surface; jet off, the measured (open) symbols"
       },
       {
         "source": "Moskowitz and Jack, NACA RM E54B11, 1954",
@@ -166,7 +1932,8 @@
         "cd": 0.0383,
         "uncertainty": 0.0005,
         "flow": "attached",
-        "notes": "Reynolds number 14e6 on the length; 7.13-degree boattail (model 4)"
+        "notes": "Reynolds number 14e6 on the length; 7.13-degree boattail (model 4)",
+        "questionable": false
       },
       {
         "source": "Cubbage, NACA RM L57B21, 1957",
@@ -177,7 +1944,8 @@
         "cd": 0.12,
         "uncertainty": 0.01,
         "flow": "attached",
-        "notes": "Reynolds number 3.4e6 to 4.8e6/ft; turbulent, the boundary layer about 0.4 in (0.20 d) thick 5.5 in ahead of the base (p. 5, from its ref. 1); no jet flow, the nozzle open; drag on the boattail's surface only (p. 2)"
+        "notes": "Reynolds number 3.4e6 to 4.8e6/ft; turbulent, the boundary layer about 0.4 in (0.20 d) thick 5.5 in ahead of the base (p. 5, from its ref. 1); no jet flow, the nozzle open; drag on the boattail's surface only (p. 2)",
+        "questionable": false
       },
       {
         "source": "Cubbage, NACA RM L57B21, 1957",
@@ -188,7 +1956,8 @@
         "cd": 0.1,
         "uncertainty": 0.01,
         "flow": "separated",
-        "notes": "Reynolds number 3.4e6 to 4.8e6/ft; turbulent, the boundary layer about 0.4 in (0.20 d) thick 5.5 in ahead of the base (p. 5, from its ref. 1); no jet flow, the nozzle open; drag on the boattail's surface only (p. 2)"
+        "notes": "Reynolds number 3.4e6 to 4.8e6/ft; turbulent, the boundary layer about 0.4 in (0.20 d) thick 5.5 in ahead of the base (p. 5, from its ref. 1); no jet flow, the nozzle open; drag on the boattail's surface only (p. 2)",
+        "questionable": false
       },
       {
         "source": "Cubbage, NACA RM L57B21, 1957",
@@ -199,7 +1968,8 @@
         "cd": 0.15,
         "uncertainty": 0.01,
         "flow": "separated",
-        "notes": "Reynolds number 3.4e6 to 4.8e6/ft; turbulent, the boundary layer about 0.4 in (0.20 d) thick 5.5 in ahead of the base (p. 5, from its ref. 1); no jet flow, the nozzle open; drag on the boattail's surface only (p. 2)"
+        "notes": "Reynolds number 3.4e6 to 4.8e6/ft; turbulent, the boundary layer about 0.4 in (0.20 d) thick 5.5 in ahead of the base (p. 5, from its ref. 1); no jet flow, the nozzle open; drag on the boattail's surface only (p. 2)",
+        "questionable": false
       },
       {
         "source": "Cubbage, NACA RM L57B21, 1957",
@@ -210,7 +1980,8 @@
         "cd": 0.145,
         "uncertainty": 0.01,
         "flow": "separated",
-        "notes": "Reynolds number 3.4e6 to 4.8e6/ft; turbulent, the boundary layer about 0.4 in (0.20 d) thick 5.5 in ahead of the base (p. 5, from its ref. 1); no jet flow, the nozzle open; drag on the boattail's surface only (p. 2)"
+        "notes": "Reynolds number 3.4e6 to 4.8e6/ft; turbulent, the boundary layer about 0.4 in (0.20 d) thick 5.5 in ahead of the base (p. 5, from its ref. 1); no jet flow, the nozzle open; drag on the boattail's surface only (p. 2)",
+        "questionable": false
       },
       {
         "source": "Cubbage, NACA RM L57B21, 1957",
@@ -221,7 +1992,8 @@
         "cd": 0.024,
         "uncertainty": 0.005,
         "flow": "attached",
-        "notes": "Reynolds number 3.4e6 to 4.8e6/ft; turbulent, the boundary layer about 0.4 in (0.20 d) thick 5.5 in ahead of the base (p. 5, from its ref. 1); no jet flow, the nozzle open; drag on the boattail's surface only (p. 2); fig7 circle hidden under the 0.8/0.9 symbols (~0.024); fig8/fig9 second candidate 0.020"
+        "notes": "Reynolds number 3.4e6 to 4.8e6/ft; turbulent, the boundary layer about 0.4 in (0.20 d) thick 5.5 in ahead of the base (p. 5, from its ref. 1); no jet flow, the nozzle open; drag on the boattail's surface only (p. 2); fig7 circle hidden under the 0.8/0.9 symbols (~0.024); fig8/fig9 second candidate 0.020",
+        "questionable": false
       },
       {
         "source": "Cubbage, NACA RM L57B21, 1957",
@@ -232,7 +2004,8 @@
         "cd": 0.025,
         "uncertainty": 0.004,
         "flow": "attached",
-        "notes": "Reynolds number 3.4e6 to 4.8e6/ft; turbulent, the boundary layer about 0.4 in (0.20 d) thick 5.5 in ahead of the base (p. 5, from its ref. 1); no jet flow, the nozzle open; drag on the boattail's surface only (p. 2)"
+        "notes": "Reynolds number 3.4e6 to 4.8e6/ft; turbulent, the boundary layer about 0.4 in (0.20 d) thick 5.5 in ahead of the base (p. 5, from its ref. 1); no jet flow, the nozzle open; drag on the boattail's surface only (p. 2)",
+        "questionable": false
       },
       {
         "source": "Cubbage, NACA RM L57B21, 1957",
@@ -243,7 +2016,8 @@
         "cd": 0.027,
         "uncertainty": 0.004,
         "flow": "attached",
-        "notes": "Reynolds number 3.4e6 to 4.8e6/ft; turbulent, the boundary layer about 0.4 in (0.20 d) thick 5.5 in ahead of the base (p. 5, from its ref. 1); no jet flow, the nozzle open; drag on the boattail's surface only (p. 2)"
+        "notes": "Reynolds number 3.4e6 to 4.8e6/ft; turbulent, the boundary layer about 0.4 in (0.20 d) thick 5.5 in ahead of the base (p. 5, from its ref. 1); no jet flow, the nozzle open; drag on the boattail's surface only (p. 2)",
+        "questionable": false
       },
       {
         "source": "Cubbage, NACA RM L57B21, 1957",
@@ -254,7 +2028,8 @@
         "cd": 0.064,
         "uncertainty": 0.005,
         "flow": "attached",
-        "notes": "Reynolds number 3.4e6 to 4.8e6/ft; turbulent, the boundary layer about 0.4 in (0.20 d) thick 5.5 in ahead of the base (p. 5, from its ref. 1); no jet flow, the nozzle open; drag on the boattail's surface only (p. 2)"
+        "notes": "Reynolds number 3.4e6 to 4.8e6/ft; turbulent, the boundary layer about 0.4 in (0.20 d) thick 5.5 in ahead of the base (p. 5, from its ref. 1); no jet flow, the nozzle open; drag on the boattail's surface only (p. 2)",
+        "questionable": false
       },
       {
         "source": "Cubbage, NACA RM L57B21, 1957",
@@ -265,7 +2040,8 @@
         "cd": 0.071,
         "uncertainty": 0.005,
         "flow": "attached",
-        "notes": "Reynolds number 3.4e6 to 4.8e6/ft; turbulent, the boundary layer about 0.4 in (0.20 d) thick 5.5 in ahead of the base (p. 5, from its ref. 1); no jet flow, the nozzle open; drag on the boattail's surface only (p. 2)"
+        "notes": "Reynolds number 3.4e6 to 4.8e6/ft; turbulent, the boundary layer about 0.4 in (0.20 d) thick 5.5 in ahead of the base (p. 5, from its ref. 1); no jet flow, the nozzle open; drag on the boattail's surface only (p. 2)",
+        "questionable": false
       },
       {
         "source": "Cubbage, NACA RM L57B21, 1957",
@@ -276,7 +2052,8 @@
         "cd": 0.062,
         "uncertainty": 0.005,
         "flow": "attached",
-        "notes": "Reynolds number 3.4e6 to 4.8e6/ft; turbulent, the boundary layer about 0.4 in (0.20 d) thick 5.5 in ahead of the base (p. 5, from its ref. 1); no jet flow, the nozzle open; drag on the boattail's surface only (p. 2)"
+        "notes": "Reynolds number 3.4e6 to 4.8e6/ft; turbulent, the boundary layer about 0.4 in (0.20 d) thick 5.5 in ahead of the base (p. 5, from its ref. 1); no jet flow, the nozzle open; drag on the boattail's surface only (p. 2)",
+        "questionable": false
       },
       {
         "source": "Cubbage, NACA RM L57B21, 1957",
@@ -287,7 +2064,8 @@
         "cd": 0.056,
         "uncertainty": 0.005,
         "flow": "attached",
-        "notes": "Reynolds number 3.4e6 to 4.8e6/ft; turbulent, the boundary layer about 0.4 in (0.20 d) thick 5.5 in ahead of the base (p. 5, from its ref. 1); no jet flow, the nozzle open; drag on the boattail's surface only (p. 2)"
+        "notes": "Reynolds number 3.4e6 to 4.8e6/ft; turbulent, the boundary layer about 0.4 in (0.20 d) thick 5.5 in ahead of the base (p. 5, from its ref. 1); no jet flow, the nozzle open; drag on the boattail's surface only (p. 2)",
+        "questionable": false
       },
       {
         "source": "Cubbage, NACA RM L57B21, 1957",
@@ -298,7 +2076,8 @@
         "cd": 0.031,
         "uncertainty": 0.004,
         "flow": "attached",
-        "notes": "Reynolds number 3.4e6 to 4.8e6/ft; turbulent, the boundary layer about 0.4 in (0.20 d) thick 5.5 in ahead of the base (p. 5, from its ref. 1); no jet flow, the nozzle open; drag on the boattail's surface only (p. 2); fig8 circle hidden"
+        "notes": "Reynolds number 3.4e6 to 4.8e6/ft; turbulent, the boundary layer about 0.4 in (0.20 d) thick 5.5 in ahead of the base (p. 5, from its ref. 1); no jet flow, the nozzle open; drag on the boattail's surface only (p. 2); fig8 circle hidden",
+        "questionable": false
       },
       {
         "source": "Cubbage, NACA RM L57B21, 1957",
@@ -309,7 +2088,8 @@
         "cd": 0.038,
         "uncertainty": 0.004,
         "flow": "attached",
-        "notes": "Reynolds number 3.4e6 to 4.8e6/ft; turbulent, the boundary layer about 0.4 in (0.20 d) thick 5.5 in ahead of the base (p. 5, from its ref. 1); no jet flow, the nozzle open; drag on the boattail's surface only (p. 2)"
+        "notes": "Reynolds number 3.4e6 to 4.8e6/ft; turbulent, the boundary layer about 0.4 in (0.20 d) thick 5.5 in ahead of the base (p. 5, from its ref. 1); no jet flow, the nozzle open; drag on the boattail's surface only (p. 2)",
+        "questionable": false
       },
       {
         "source": "Cubbage, NACA RM L57B21, 1957",
@@ -320,7 +2100,8 @@
         "cd": 0.051,
         "uncertainty": 0.006,
         "flow": "attached",
-        "notes": "Reynolds number 3.4e6 to 4.8e6/ft; turbulent, the boundary layer about 0.4 in (0.20 d) thick 5.5 in ahead of the base (p. 5, from its ref. 1); no jet flow, the nozzle open; drag on the boattail's surface only (p. 2); the two models differ by 0.009"
+        "notes": "Reynolds number 3.4e6 to 4.8e6/ft; turbulent, the boundary layer about 0.4 in (0.20 d) thick 5.5 in ahead of the base (p. 5, from its ref. 1); no jet flow, the nozzle open; drag on the boattail's surface only (p. 2); the two models differ by 0.009",
+        "questionable": false
       },
       {
         "source": "Cubbage, NACA RM L57B21, 1957",
@@ -331,7 +2112,8 @@
         "cd": 0.112,
         "uncertainty": 0.005,
         "flow": "attached",
-        "notes": "Reynolds number 3.4e6 to 4.8e6/ft; turbulent, the boundary layer about 0.4 in (0.20 d) thick 5.5 in ahead of the base (p. 5, from its ref. 1); no jet flow, the nozzle open; drag on the boattail's surface only (p. 2)"
+        "notes": "Reynolds number 3.4e6 to 4.8e6/ft; turbulent, the boundary layer about 0.4 in (0.20 d) thick 5.5 in ahead of the base (p. 5, from its ref. 1); no jet flow, the nozzle open; drag on the boattail's surface only (p. 2)",
+        "questionable": false
       },
       {
         "source": "Cubbage, NACA RM L57B21, 1957",
@@ -342,7 +2124,8 @@
         "cd": 0.105,
         "uncertainty": 0.005,
         "flow": "attached",
-        "notes": "Reynolds number 3.4e6 to 4.8e6/ft; turbulent, the boundary layer about 0.4 in (0.20 d) thick 5.5 in ahead of the base (p. 5, from its ref. 1); no jet flow, the nozzle open; drag on the boattail's surface only (p. 2)"
+        "notes": "Reynolds number 3.4e6 to 4.8e6/ft; turbulent, the boundary layer about 0.4 in (0.20 d) thick 5.5 in ahead of the base (p. 5, from its ref. 1); no jet flow, the nozzle open; drag on the boattail's surface only (p. 2)",
+        "questionable": false
       },
       {
         "source": "Cubbage, NACA RM L57B21, 1957",
@@ -353,7 +2136,8 @@
         "cd": 0.093,
         "uncertainty": 0.007,
         "flow": "attached",
-        "notes": "Reynolds number 3.4e6 to 4.8e6/ft; turbulent, the boundary layer about 0.4 in (0.20 d) thick 5.5 in ahead of the base (p. 5, from its ref. 1); no jet flow, the nozzle open; drag on the boattail's surface only (p. 2)"
+        "notes": "Reynolds number 3.4e6 to 4.8e6/ft; turbulent, the boundary layer about 0.4 in (0.20 d) thick 5.5 in ahead of the base (p. 5, from its ref. 1); no jet flow, the nozzle open; drag on the boattail's surface only (p. 2)",
+        "questionable": false
       },
       {
         "source": "Cubbage, NACA RM L57B21, 1957",
@@ -364,7 +2148,8 @@
         "cd": 0.087,
         "uncertainty": 0.006,
         "flow": "attached",
-        "notes": "Reynolds number 3.4e6 to 4.8e6/ft; turbulent, the boundary layer about 0.4 in (0.20 d) thick 5.5 in ahead of the base (p. 5, from its ref. 1); no jet flow, the nozzle open; drag on the boattail's surface only (p. 2)"
+        "notes": "Reynolds number 3.4e6 to 4.8e6/ft; turbulent, the boundary layer about 0.4 in (0.20 d) thick 5.5 in ahead of the base (p. 5, from its ref. 1); no jet flow, the nozzle open; drag on the boattail's surface only (p. 2)",
+        "questionable": false
       },
       {
         "source": "Cubbage, NACA RM L57B21, 1957",
@@ -375,7 +2160,8 @@
         "cd": 0.065,
         "uncertainty": 0.005,
         "flow": "attached",
-        "notes": "Reynolds number 3.4e6 to 4.8e6/ft; turbulent, the boundary layer about 0.4 in (0.20 d) thick 5.5 in ahead of the base (p. 5, from its ref. 1); no jet flow, the nozzle open; drag on the boattail's surface only (p. 2); fig7 jet-off circle not resolvable"
+        "notes": "Reynolds number 3.4e6 to 4.8e6/ft; turbulent, the boundary layer about 0.4 in (0.20 d) thick 5.5 in ahead of the base (p. 5, from its ref. 1); no jet flow, the nozzle open; drag on the boattail's surface only (p. 2); fig7 jet-off circle not resolvable",
+        "questionable": false
       },
       {
         "source": "Cubbage, NACA RM L57B21, 1957",
@@ -386,7 +2172,8 @@
         "cd": 0.094,
         "uncertainty": 0.004,
         "flow": "attached",
-        "notes": "Reynolds number 3.4e6 to 4.8e6/ft; turbulent, the boundary layer about 0.4 in (0.20 d) thick 5.5 in ahead of the base (p. 5, from its ref. 1); no jet flow, the nozzle open; drag on the boattail's surface only (p. 2)"
+        "notes": "Reynolds number 3.4e6 to 4.8e6/ft; turbulent, the boundary layer about 0.4 in (0.20 d) thick 5.5 in ahead of the base (p. 5, from its ref. 1); no jet flow, the nozzle open; drag on the boattail's surface only (p. 2)",
+        "questionable": false
       },
       {
         "source": "Cubbage, NACA RM L57B21, 1957",
@@ -397,7 +2184,8 @@
         "cd": 0.123,
         "uncertainty": 0.004,
         "flow": "attached",
-        "notes": "Reynolds number 3.4e6 to 4.8e6/ft; turbulent, the boundary layer about 0.4 in (0.20 d) thick 5.5 in ahead of the base (p. 5, from its ref. 1); no jet flow, the nozzle open; drag on the boattail's surface only (p. 2)"
+        "notes": "Reynolds number 3.4e6 to 4.8e6/ft; turbulent, the boundary layer about 0.4 in (0.20 d) thick 5.5 in ahead of the base (p. 5, from its ref. 1); no jet flow, the nozzle open; drag on the boattail's surface only (p. 2)",
+        "questionable": false
       },
       {
         "source": "Cubbage, NACA RM L57B21, 1957",
@@ -408,7 +2196,8 @@
         "cd": 0.178,
         "uncertainty": 0.006,
         "flow": "attached",
-        "notes": "Reynolds number 3.4e6 to 4.8e6/ft; turbulent, the boundary layer about 0.4 in (0.20 d) thick 5.5 in ahead of the base (p. 5, from its ref. 1); no jet flow, the nozzle open; drag on the boattail's surface only (p. 2)"
+        "notes": "Reynolds number 3.4e6 to 4.8e6/ft; turbulent, the boundary layer about 0.4 in (0.20 d) thick 5.5 in ahead of the base (p. 5, from its ref. 1); no jet flow, the nozzle open; drag on the boattail's surface only (p. 2)",
+        "questionable": false
       },
       {
         "source": "Cubbage, NACA RM L57B21, 1957",
@@ -419,7 +2208,8 @@
         "cd": 0.217,
         "uncertainty": 0.005,
         "flow": "attached",
-        "notes": "Reynolds number 3.4e6 to 4.8e6/ft; turbulent, the boundary layer about 0.4 in (0.20 d) thick 5.5 in ahead of the base (p. 5, from its ref. 1); no jet flow, the nozzle open; drag on the boattail's surface only (p. 2)"
+        "notes": "Reynolds number 3.4e6 to 4.8e6/ft; turbulent, the boundary layer about 0.4 in (0.20 d) thick 5.5 in ahead of the base (p. 5, from its ref. 1); no jet flow, the nozzle open; drag on the boattail's surface only (p. 2)",
+        "questionable": false
       },
       {
         "source": "Cubbage, NACA RM L57B21, 1957",
@@ -430,7 +2220,8 @@
         "cd": 0.195,
         "uncertainty": 0.005,
         "flow": "attached",
-        "notes": "Reynolds number 3.4e6 to 4.8e6/ft; turbulent, the boundary layer about 0.4 in (0.20 d) thick 5.5 in ahead of the base (p. 5, from its ref. 1); no jet flow, the nozzle open; drag on the boattail's surface only (p. 2)"
+        "notes": "Reynolds number 3.4e6 to 4.8e6/ft; turbulent, the boundary layer about 0.4 in (0.20 d) thick 5.5 in ahead of the base (p. 5, from its ref. 1); no jet flow, the nozzle open; drag on the boattail's surface only (p. 2)",
+        "questionable": false
       },
       {
         "source": "Cubbage, NACA RM L57B21, 1957",
@@ -441,7 +2232,8 @@
         "cd": 0.176,
         "uncertainty": 0.006,
         "flow": "attached",
-        "notes": "Reynolds number 3.4e6 to 4.8e6/ft; turbulent, the boundary layer about 0.4 in (0.20 d) thick 5.5 in ahead of the base (p. 5, from its ref. 1); no jet flow, the nozzle open; drag on the boattail's surface only (p. 2)"
+        "notes": "Reynolds number 3.4e6 to 4.8e6/ft; turbulent, the boundary layer about 0.4 in (0.20 d) thick 5.5 in ahead of the base (p. 5, from its ref. 1); no jet flow, the nozzle open; drag on the boattail's surface only (p. 2)",
+        "questionable": false
       },
       {
         "source": "Cubbage, NACA RM L57B21, 1957",
@@ -452,7 +2244,8 @@
         "cd": 0.052,
         "uncertainty": 0.004,
         "flow": "attached",
-        "notes": "Reynolds number 3.4e6 to 4.8e6/ft; turbulent, the boundary layer about 0.4 in (0.20 d) thick 5.5 in ahead of the base (p. 5, from its ref. 1); no jet flow, the nozzle open; drag on the boattail's surface only (p. 2)"
+        "notes": "Reynolds number 3.4e6 to 4.8e6/ft; turbulent, the boundary layer about 0.4 in (0.20 d) thick 5.5 in ahead of the base (p. 5, from its ref. 1); no jet flow, the nozzle open; drag on the boattail's surface only (p. 2)",
+        "questionable": false
       },
       {
         "source": "Cubbage, NACA RM L57B21, 1957",
@@ -463,7 +2256,8 @@
         "cd": 0.079,
         "uncertainty": 0.004,
         "flow": "attached",
-        "notes": "Reynolds number 3.4e6 to 4.8e6/ft; turbulent, the boundary layer about 0.4 in (0.20 d) thick 5.5 in ahead of the base (p. 5, from its ref. 1); no jet flow, the nozzle open; drag on the boattail's surface only (p. 2)"
+        "notes": "Reynolds number 3.4e6 to 4.8e6/ft; turbulent, the boundary layer about 0.4 in (0.20 d) thick 5.5 in ahead of the base (p. 5, from its ref. 1); no jet flow, the nozzle open; drag on the boattail's surface only (p. 2)",
+        "questionable": false
       },
       {
         "source": "Cubbage, NACA RM L57B21, 1957",
@@ -474,7 +2268,8 @@
         "cd": 0.128,
         "uncertainty": 0.004,
         "flow": "attached",
-        "notes": "Reynolds number 3.4e6 to 4.8e6/ft; turbulent, the boundary layer about 0.4 in (0.20 d) thick 5.5 in ahead of the base (p. 5, from its ref. 1); no jet flow, the nozzle open; drag on the boattail's surface only (p. 2)"
+        "notes": "Reynolds number 3.4e6 to 4.8e6/ft; turbulent, the boundary layer about 0.4 in (0.20 d) thick 5.5 in ahead of the base (p. 5, from its ref. 1); no jet flow, the nozzle open; drag on the boattail's surface only (p. 2)",
+        "questionable": false
       },
       {
         "source": "Cubbage, NACA RM L57B21, 1957",
@@ -485,7 +2280,8 @@
         "cd": 0.22,
         "uncertainty": 0.015,
         "flow": "attached",
-        "notes": "Reynolds number 3.4e6 to 4.8e6/ft; turbulent, the boundary layer about 0.4 in (0.20 d) thick 5.5 in ahead of the base (p. 5, from its ref. 1); no jet flow, the nozzle open; drag on the boattail's surface only (p. 2); the two models disagree"
+        "notes": "Reynolds number 3.4e6 to 4.8e6/ft; turbulent, the boundary layer about 0.4 in (0.20 d) thick 5.5 in ahead of the base (p. 5, from its ref. 1); no jet flow, the nozzle open; drag on the boattail's surface only (p. 2); the two models disagree",
+        "questionable": false
       },
       {
         "source": "Cubbage, NACA RM L57B21, 1957",
@@ -496,7 +2292,8 @@
         "cd": 0.24,
         "uncertainty": 0.01,
         "flow": "attached",
-        "notes": "Reynolds number 3.4e6 to 4.8e6/ft; turbulent, the boundary layer about 0.4 in (0.20 d) thick 5.5 in ahead of the base (p. 5, from its ref. 1); no jet flow, the nozzle open; drag on the boattail's surface only (p. 2)"
+        "notes": "Reynolds number 3.4e6 to 4.8e6/ft; turbulent, the boundary layer about 0.4 in (0.20 d) thick 5.5 in ahead of the base (p. 5, from its ref. 1); no jet flow, the nozzle open; drag on the boattail's surface only (p. 2)",
+        "questionable": false
       },
       {
         "source": "Cubbage, NACA RM L57B21, 1957",
@@ -507,7 +2304,8 @@
         "cd": 0.212,
         "uncertainty": 0.018,
         "flow": "attached",
-        "notes": "Reynolds number 3.4e6 to 4.8e6/ft; turbulent, the boundary layer about 0.4 in (0.20 d) thick 5.5 in ahead of the base (p. 5, from its ref. 1); no jet flow, the nozzle open; drag on the boattail's surface only (p. 2); fig 9(c) confirms 0.195 for the dj/db=0.65 model; fig 8(h) is clearly above the 0.2 gridline"
+        "notes": "Reynolds number 3.4e6 to 4.8e6/ft; turbulent, the boundary layer about 0.4 in (0.20 d) thick 5.5 in ahead of the base (p. 5, from its ref. 1); no jet flow, the nozzle open; drag on the boattail's surface only (p. 2); fig 9(c) confirms 0.195 for the dj/db=0.65 model; fig 8(h) is clearly above the 0.2 gridline",
+        "questionable": false
       },
       {
         "source": "Cubbage, NACA RM L57B21, 1957",
@@ -518,7 +2316,8 @@
         "cd": 0.203,
         "uncertainty": 0.006,
         "flow": "attached",
-        "notes": "Reynolds number 3.4e6 to 4.8e6/ft; turbulent, the boundary layer about 0.4 in (0.20 d) thick 5.5 in ahead of the base (p. 5, from its ref. 1); no jet flow, the nozzle open; drag on the boattail's surface only (p. 2)"
+        "notes": "Reynolds number 3.4e6 to 4.8e6/ft; turbulent, the boundary layer about 0.4 in (0.20 d) thick 5.5 in ahead of the base (p. 5, from its ref. 1); no jet flow, the nozzle open; drag on the boattail's surface only (p. 2)",
+        "questionable": false
       }
     ]
   },

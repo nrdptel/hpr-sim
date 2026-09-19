@@ -2728,7 +2728,7 @@ mod tests {
         // Calisto's two designs share one export.
         assert_eq!(curves.values().filter(|c| c.len() == 2).count(), 1);
         // Rows within 10%, by case and band (ADR-029, ADR-030). Calisto's export on the 2018 fins:
-        // every subsonic row, 6 of 7 transonic, and 8 of 17 supersonic, where hpr reads −14.9% to
+        // every subsonic row, 3 of 7 transonic, and 8 of 17 supersonic, where hpr reads −14.9% to
         // −5.1% (−29.8% to −24.4% before the boattail's wave drag). The getting-started fins (a
         // variant on the same export, thick NACA 0012) now read 23% to 32% high. Juno III's
         // table is hand-edited from Mach 0.93 and Cavour's stop below Mach 0.93; Valetudo's is
@@ -2737,7 +2737,7 @@ mod tests {
             within,
             [
                 ("calisto-power-off", "subsonic", 15, 15),
-                ("calisto-power-off", "transonic", 6, 7),
+                ("calisto-power-off", "transonic", 3, 7),
                 ("calisto-power-off", "supersonic", 8, 17),
                 ("calisto-getting-started-power-off", "subsonic", 12, 15),
                 ("calisto-getting-started-power-off", "transonic", 0, 7),

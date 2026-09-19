@@ -107,7 +107,7 @@ the wind blows from.
 
 ## Boattail
 
-A transition at the tail that narrows toward the aft end. Its normal-force slope is negative, so it moves the [centre of pressure](#centre-of-pressure-cp) forward. Below Mach 0.9 hpr counts its pressure drag as a share of the base drag on the area it removes: all of it for a short, steep boattail and none for a long, gentle one. Faster than sound a boattail has its own [wave drag](#wave-drag), which hpr takes from a handbook chart that matches measured boattails of 10° and gentler within about 20%. See [Boattails faster than sound](physics/aero.md#boattails-faster-than-sound).
+A transition at the tail that narrows toward the aft end. Its normal-force slope is negative, so it moves the [centre of pressure](#centre-of-pressure-cp) forward. Below Mach 0.8 hpr counts its pressure drag as a share of the base drag on the area it removes: all of it for a short, steep boattail and none for a long, gentle one. Faster than sound a boattail has its own [wave drag](#wave-drag), which hpr takes from a handbook chart that matches measured boattails of 3° to 10° within about a quarter, and reads high for steeper ones. See [Boattails faster than sound](physics/aero.md#boattails-faster-than-sound).
 
 ## Body frame
 

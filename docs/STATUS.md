@@ -50,7 +50,7 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
 ## Done log (newest first, keep about 15)
 
 - 2026-09-18: M1.8b3 The boattail and base faster than sound (ADR-030), and with it M1.8b: not
-  met, recorded. Measured boattails of 10° and under −6.3% to +17.4%; Arcas Robin fins off from
+  met, recorded. Measured boattails of 3° to 10° −21.9% to +28.3%; Arcas Robin fins off from
   Mach 1.5 0 of 11 (+13.5% to +24.1%, the steep boattail, #72); Calisto supersonic 8 of 17.
 - 2026-09-18: M1.8b2 Drag against RASAero through Mach 2 (ADR-029): not met, recorded. Calisto's
   export 15/15 subsonic, 2/7 transonic, 0/17 supersonic (−29.8% to −24.4%), no fin input closes
@@ -91,9 +91,9 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
 
 ## Decided without Neer (one line each; significant ones get an ADR)
 
-- ADR-030: Fig. 5-122 held to the Prandtl–Meyer limit, a 16°–30° separation blend, the Mach 1.2
-  value held from Mach 1, Fig. 5-141 as a ratio of coefficients held below Mach 2.5, a lip behind
-  a boattail given no pressure drag; targets not met and not tuned; one pinned test renamed.
+- ADR-030: Fig. 5-122 held to the Prandtl–Meyer limit, a 16°–30° separation blend, a rise from
+  Mach 0.8 to the Mach 1.2 value, Fig. 5-141 as a ratio held below Mach 2.5, boattails in parts
+  merged, a lip's wake fading with its rise; targets not met, not tuned; one test renamed.
 - ADR-029: M1.8's drag bullet recorded as not met, not chased; MIL-HDBK-762's worked example
   added (fins left out); L18's test renamed to measure and pin; M1.8b3 added for the afterbody.
 - ADR-028: M1.8b split into b1 and b2; Stoney's Figure 12 read by hand into the code (panel (a),

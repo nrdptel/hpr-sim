@@ -592,7 +592,7 @@
 
       *Result (ADR-030):* not met, recorded. The chart (Jack's second-order theory) held to the
       Prandtl–Meyer limit, separation from 16° to 30°, Fig. 5-141's base relief, the lip in the
-      wake. Measured boattails of 10° and under from Mach 1.2: −6.3% to +17.4%; 16°: +26% to +54%.
+      wake. Measured boattails of 3° to 10° from Mach 1.2: −21.9% to +28.3%; 16°: +26% to +54%.
       Arcas Robin fins off from Mach 1.5: 0 of 11, +13.5% to +24.1% (steep boattail, #72); Calisto:
       8 of 17, −14.9% to −5.1%; plausible fins bring 14 to 17 within 10%.
 
