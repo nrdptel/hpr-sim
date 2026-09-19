@@ -89,9 +89,11 @@
   blunt edge's formula, which reads far high for thin, sharp fins, and nothing models a thin fin's
   own wave drag or the drag where fins meet the body. Faster than sound a flight takes a pointed
   nose, its cylinder and a boattail behind them from the method that adds the cylinder's lift
-  ([The body faster than sound in a flight](#the-body-faster-than-sound-in-a-flight)). A rocket
-  with a flare or step behind the nose, or whose nose has a blunt or vertical tip, keeps
-  slender-body theory for its whole body at every speed, which reads low past Mach 3, until
+  ([The body faster than sound in a flight](#the-body-faster-than-sound-in-a-flight)); the
+  boattail's share is the method's footnote 8, which no measurement checks on its own. A rocket
+  with a flare or step anywhere behind the nose (a lip or a motor retainer wider than the tube in
+  front counts), or whose nose has a blunt or vertical tip, keeps slender-body theory for its
+  whole body at every speed, which reads low past Mach 3, until
   [M1.8e5](../decisions-and-roadmap.md#m1-8e5), crossflow and blunt tips. There are no damping coefficients for pitch and
   yaw: a flight takes that damping from each part's own local flow. The roll forcing near Mach
   1.5 reads high, and nothing measured checks roll below it
@@ -114,7 +116,9 @@ tables; [M1.8a](../decisions-and-roadmap.md#m1-8a) the normal force through Mach
 ([ADR-030][adr-030]); [M1.8c](../decisions-and-roadmap.md#m1-8c) roll ([ADR-031][adr-031]);
 [M1.8d](../decisions-and-roadmap.md#m1-8d) the normal force from RASAero II
 ([ADR-032][adr-032]); [M1.8e1](../decisions-and-roadmap.md#m1-8e1) the body faster than sound
-([`hpr_aero::shock_expansion`](../api/hpr_aero/shock_expansion/index.html), [ADR-033][adr-033]). The rest of transonic and supersonic flow arrives with the rest of
+([`hpr_aero::shock_expansion`](../api/hpr_aero/shock_expansion/index.html), [ADR-033][adr-033]),
+flown from [M1.8e2](../decisions-and-roadmap.md#m1-8e2), and
+[M1.8e4](../decisions-and-roadmap.md#m1-8e4) the boattail's share of it. The rest of transonic and supersonic flow arrives with the rest of
 [M1.8](../decisions-and-roadmap.md#m1-8), the supersonic aerodynamics milestone.
 
 A [Loft lesson](../glossary.md#loft-lesson) is something learned from Loft, the project that came
@@ -400,19 +404,23 @@ fastest; see its `max_mach` rows in the
 so no flight checks it yet.
 
 **What a flight takes.** The method covers the nose, when it is the first body and has a pointed
-tip, the body tubes straight behind it at the same radius, and boattails (transitions that
-narrow toward the tail) and tubes behind those, with no step between them
+tip, the body tubes straight behind it at the same radius, and [boattails](../glossary.md#boattail)
+(transitions that narrow toward the tail) and tubes behind those, with no step between them
 ([M1.8e4](../decisions-and-roadmap.md#m1-8e4)). It flies only if nothing behind them changes the
 radius: no flare or step. Mixing the method's nose and cylinder with slender-body theory's
 boattail would put the centre of pressure further off than slender-body theory alone, so the
 boattail takes the method's share too. Each covered part gets its own share of the method's lift,
-so the flight's pitch damping still comes from each part's own local flow. A nose's or cylinder's
-share acts at its own centre of pressure. A boattail's share is negative, and so is a tube's
-behind it, where the boattail's expansion decays: on the finned rocket of the tests, a 5.7°
-boattail takes 0.117 per radian off at Mach 2 and the tube behind it 0.210. Such a share could
-cross zero as the Mach number changes, and its centre of pressure would then run off to infinity,
-so these parts keep slender-body theory's station, which lies on the part, while their force and
-moment take the method's. Body lift, the `sin² α` term, is unchanged.
+so the flight's pitch damping still comes from each part's own local flow. That flow is taken at
+one [station](../glossary.md#station) per part; the part's force and its moment about the nose tip
+are the method's either way. A nose or cylinder takes that station at its share's own centre of
+pressure. A boattail's share is negative, and so is a tube's behind it: the method carries the
+boattail's expansion down the tube, where it fades out over several calibers, so a long tube can
+lose more than the short boattail. On the finned rocket of the tests (measured by hand, not
+pinned), a 5.7° boattail 0.05 m long takes 0.117 per radian off at Mach 2 and the 0.3 m tube
+behind it 0.210. Such a share could cross zero as the Mach number changes, and its centre of
+pressure would then run off to infinity. So these parts take their local flow where slender-body
+theory does, on the part: a boattail at its slender-body centre of pressure, a tube at its
+body-lift station. Body lift, the `sin² α` term, is unchanged.
 
 **A table.** One run of the method takes a few milliseconds, too slow for every step of a
 flight. So the first time a flow faster than Mach 1.2 needs it, hpr runs the method every 0.05 in
@@ -458,12 +466,17 @@ keeps slender-body theory throughout
 without fins in a wind tunnel ([TN D-4014](#code-and-sources)). Flown through a flight's own code,
 with the secant-ogive nose (a [tangent ogive](../glossary.md#tangent-ogive)'s cousin, its arc larger) fitted to the report's coordinates and the
 boattail left off, the nose and cylinder give the method's own values: equal on the table's rows
-(Mach 1.5, 1.8, 2.3), within 1e-4 between them. With the boattail on (the lip behind it off, a
-flare the method doesn't take), the flight gives the method's with-boattail values to the same
-interpolation, within 0.001 calibers of CP: the boattail takes 0.03 to 0.14 per radian off, and
-the long model reads 18.3% to 27.0% low. hpr's committed Arcas Robin design has a
-power-series nose, which the method refuses, so it keeps slender-body theory, the
-last two columns. Slopes are per radian on the body's cross-section, at `α → 0`; the measured
+(Mach 1.5, 1.8, 2.3), within 1e-4 between them.
+
+With the boattail on (the lip behind it off, a flare the method doesn't take), the flight gives
+the method's with-boattail values (in
+[Checking the shock-expansion method](#checking-the-shock-expansion-method)) to the same
+interpolation, within 0.001 [calibers](../glossary.md#calibre-caliber) of CP. The boattail takes
+0.03 to 0.18 per radian off, most at Mach 1.5. With it, the short model reads +8.3% to −19.4%
+against the measurement and the long model 18.3% to 27.0% low.
+
+hpr's committed Arcas Robin design has a power-series nose, which the method refuses, and the
+lip, a flare, so it keeps slender-body theory, the last two columns. Slopes are per radian on the body's cross-section, at `α → 0`; the measured
 slope is fitted over the plotted angles with the boattail and lip on, so it also carries some
 crossflow lift and their share.
 
@@ -1692,9 +1705,9 @@ Mach-over-fineness range of 0.4 to 2 covers Mach 1.67 to 8.3: its arc radius is 
 tangent ogive's, it misses the table by 0.003 in
 rms, and its tip half-angle is 10.76°. hpr's committed design keeps its power-series nose, whose
 tip is blunt. The measured slope is the fins-off reading fitted over the plotted angles, as
-above. It includes the boattail, the lip behind it, and crossflow lift at those angles, none of
-which the method has at `α → 0`, so there is no target. With the boattail the method uses the
-report's footnote 8.
+above. It includes the boattail, the lip behind it, and crossflow lift at those angles. The
+method has neither the lip nor crossflow at `α → 0`, and takes the boattail only by the report's
+footnote 8, so there is no target.
 
 | model | Mach | measured | nose and cylinder | error | with boattail | error |
 |---|---|---|---|---|---|---|
