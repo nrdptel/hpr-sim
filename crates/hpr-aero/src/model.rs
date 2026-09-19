@@ -237,6 +237,8 @@ struct SupersonicRun {
     fore_m: Vec<f64>,
     /// Each segment that is a boattail, when its share is Washington and Pettis's.
     boattails: Vec<Option<RunBoattail>>,
+    // `segments`, `bounds_m`, `fore_m` and `boattails` hold one entry per segment: `from_design`
+    // pushes all four in the same branch, and `shares` indexes them together.
 }
 
 impl SupersonicRun {

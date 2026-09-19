@@ -3,8 +3,9 @@
 //! Missile Command report RD-TM-68-5 (1968; DTIC AD-695658, approved for public release).
 //!
 //! Washington and Pettis mounted a model's aft section on its own balance and measured it with a
-//! boattail and as a plain cylinder of the same length, at Mach 1.75 to 4.5 (models T0 to T4); a
-//! whole model with and without a boattail (No. 1) adds Mach 0.8 to 1.5 (pp. 1 to 2). The
+//! boattail and as a plain cylinder of the same length, at Mach 1.75 to 4.5 (models T0 to T4), and
+//! a whole model with and without a boattail (No. 1) from Mach 0.8 to 4.5, Mach 0.8 to 1.5 of it
+//! in a second tunnel (pp. 1 to 2). The
 //! boattail's increment, `ΔC_Nα = C_Nα(with) − C_Nα(without)` (eq. 1), correlates with
 //!
 //! `ΔC_Nα / [1 − (D_B/D)²] = F(√|M² − 1| / (L_B/D))` (Fig. 5, printed p. 8),
@@ -74,7 +75,8 @@ pub fn wp_parameter(mach: f64, length_over_diameter: f64) -> f64 {
 /// # Errors
 ///
 /// [`AeroError::Domain`] for a Mach number below 1 or not finite, a length that isn't finite and
-/// positive, or an aft radius that isn't below the fore radius (not a boattail) or is negative.
+/// positive, an aft radius that isn't below the fore radius (not a boattail) or is negative, or
+/// dimensions whose ratios overflow.
 pub fn wp_slope(
     mach: f64,
     fore_radius_m: f64,
@@ -101,7 +103,17 @@ pub fn wp_slope(
         &WP_SLOPE_PER_DEG,
         wp_parameter(mach, length_m / (2.0 * fore_radius_m)),
     );
-    Ok(per_deg * (180.0 / PI) * (1.0 - ratio * ratio))
+    let slope = per_deg * (180.0 / PI) * (1.0 - ratio * ratio);
+    // Finite inputs whose ratios overflow (an enormous Mach number over an enormous length) leave
+    // no parameter to read the curve at.
+    if slope.is_finite() {
+        Ok(slope)
+    } else {
+        Err(AeroError::Domain {
+            what: "boattail correlation parameter",
+            value: wp_parameter(mach, length_m / (2.0 * fore_radius_m)),
+        })
+    }
 }
 
 /// The boattail's centre of pressure at Mach `mach`, as a share of its length from its fore end
@@ -120,6 +132,15 @@ mod tests {
     use super::*;
 
     const INCH: f64 = 0.0254;
+
+    #[test]
+    fn overflowing_ratios_are_refused() {
+        // Finite inputs, but `√(M² − 1)` and `L/D` both overflow and their ratio is NaN.
+        assert!(matches!(
+            wp_slope(1e200, 1e-300, 0.0, 1e300),
+            Err(AeroError::Domain { .. })
+        ));
+    }
 
     #[test]
     fn the_tables_are_well_formed() {

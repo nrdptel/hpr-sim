@@ -415,7 +415,8 @@ fn arcas_robin(root: &Path) -> Result<Value, String> {
                  alone, the nose the fitted secant ogive, through the flight's path (AeroModel) \
                  at alpha -> 0: the method's shares tabulated every 0.05 in Mach and \
                  interpolated (M1.8e2). in_flight_with_boattail adds the design's boattail, \
-                 footnote 8's share (M1.8e4), not the lip behind it. as_designed is the whole \
+                 Washington and Pettis's measured increment on the method's cylinder in its \
+                 place (M1.8e6; footnote 8's share before), not the lip behind it. as_designed is the whole \
                  design as committed, flown the same way: its power-series nose, which the \
                  method can't take (a vertical tip), keeps slender-body theory, M1.8a's model, \
                  and so does the rest of the body.",
