@@ -1,9 +1,9 @@
 //! The normal force of a pointed body of revolution faster than sound, by Syvertson and Dennis's
 //! second-order shock-expansion method (NACA TN 3527, 1956, also NACA Report 1328).
 //!
-//! **Not yet used in a flight**: the milestone
+//! **Flown faster than sound** for a pointed nose and the cylinders behind it since the milestone
 //! [M1.8e2](https://nrdptel.github.io/hpr-sim/decisions-and-roadmap.html#m1-8e2), the body's
-//! supersonic normal force in flight, will fly it. The guide's
+//! supersonic normal force in flight, through [`crate::model::SupersonicBody`]. The guide's
 //! [Bodies faster than sound](https://nrdptel.github.io/hpr-sim/physics/aero.html#bodies-faster-than-sound)
 //! explains the method and how it was checked.
 //!
@@ -169,6 +169,21 @@ pub struct ShockExpansionBody {
     segments: Vec<(f64, BodySegment)>,
     length_m: f64,
     elements: Vec<Element>,
+}
+
+/// One segment's share of the body's normal-force slope at `α → 0`
+/// ([`ShockExpansionBody::segment_slopes`]).
+///
+/// A share can be negative or zero (a boattail's, TN 3527 footnote 8, p. 12), so `moment_slope_m /
+/// slope_per_rad` need not lie within its segment and is unbounded where a share crosses zero:
+/// carry the moment, not a station.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Serialize, Deserialize)]
+#[non_exhaustive]
+pub struct SegmentSlope {
+    /// The segment's `C_Nα`, per radian, on the reference area given.
+    pub slope_per_rad: f64,
+    /// That slope's moment about the vertex, `C_Nα · x̄`, m per radian (x̄ aft of the vertex).
+    pub moment_slope_m: f64,
 }
 
 /// The body's normal-force slope at `α → 0` and where it acts.
@@ -351,6 +366,50 @@ impl ShockExpansionBody {
         mach: f64,
         reference_area_m2: f64,
     ) -> Result<ShockExpansionSlope, AeroError> {
+        let windows = self.windows(mach, reference_area_m2)?;
+        let (force, moment) = total_lift(&windows)?;
+        Ok(ShockExpansionSlope {
+            slope_per_rad: 2.0 * PI * force / reference_area_m2,
+            centre_of_pressure_m: moment / force,
+        })
+    }
+
+    /// Each segment's share of [`Self::slope`], in the order of the segments: its `C_Nα` (per
+    /// radian, on `reference_area_m2`) and that slope's moment about the vertex. The shares sum
+    /// to the whole body's slope and moment up to rounding: every segment's start is a break of
+    /// the integral, so each piece of it lies inside one segment.
+    ///
+    /// # Errors
+    ///
+    /// As [`Self::slope`].
+    pub fn segment_slopes(
+        &self,
+        mach: f64,
+        reference_area_m2: f64,
+    ) -> Result<Vec<SegmentSlope>, AeroError> {
+        let windows = self.windows(mach, reference_area_m2)?;
+        total_lift(&windows)?;
+        let per_unit = 2.0 * PI / reference_area_m2;
+        let mut shares = vec![SegmentSlope::default(); self.segments.len()];
+        for (start_m, [force, moment]) in windows {
+            let index = self
+                .segments
+                .partition_point(|(start, _)| *start <= start_m)
+                .saturating_sub(1);
+            shares[index].slope_per_rad += per_unit * force;
+            shares[index].moment_slope_m += per_unit * moment;
+        }
+        Ok(shares)
+    }
+
+    /// The integrals of the lift per unit length and of its moment about the vertex (both over
+    /// `2π`), one per piece between consecutive corners, segment starts and the body's end, keyed
+    /// by the piece's forward end.
+    fn windows(
+        &self,
+        mach: f64,
+        reference_area_m2: f64,
+    ) -> Result<Vec<(f64, [f64; 2])>, AeroError> {
         if !(mach.is_finite() && mach > 1.0) {
             return Err(AeroError::Domain {
                 what: "Mach number of the second-order shock-expansion method",
@@ -381,29 +440,21 @@ impl ShockExpansionBody {
             absolute: 1e-13 * scale,
             max_intervals: 4000,
         };
-        let (mut force, mut moment) = (0.0, 0.0);
-        for pair in breaks.windows(2) {
-            let integral = integrate(
-                |x| {
-                    let lr = loading(x) * self.radius_m(x);
-                    [lr, lr * x]
-                },
-                pair[0],
-                pair[1],
-                tolerance,
-            )?;
-            force += integral.value[0];
-            moment += integral.value[1];
-        }
-        if !(force.is_finite() && moment.is_finite() && force > 0.0) {
-            return Err(AeroError::Unsupported(format!(
-                "the body's lift sums to {force}, which places no centre of pressure"
-            )));
-        }
-        Ok(ShockExpansionSlope {
-            slope_per_rad: 2.0 * PI * force / reference_area_m2,
-            centre_of_pressure_m: moment / force,
-        })
+        breaks
+            .windows(2)
+            .map(|pair| {
+                let integral = integrate(
+                    |x| {
+                        let lr = loading(x) * self.radius_m(x);
+                        [lr, lr * x]
+                    },
+                    pair[0],
+                    pair[1],
+                    tolerance,
+                )?;
+                Ok((pair[0], integral.value))
+            })
+            .collect()
     }
 
     /// Marches the flow over the tangent body's elements at Mach `mach`.
@@ -1037,6 +1088,22 @@ fn linear(xs: &[f64], ys: &[f64], x: f64) -> f64 {
     (1.0 - w) * ys[i - 1] + w * ys[i]
 }
 
+/// The body's lift and its moment, summed in order over `windows`, where they place a centre of
+/// pressure.
+fn total_lift(windows: &[(f64, [f64; 2])]) -> Result<(f64, f64), AeroError> {
+    let (mut force, mut moment) = (0.0, 0.0);
+    for (_, [f, m]) in windows {
+        force += f;
+        moment += m;
+    }
+    if !(force.is_finite() && moment.is_finite() && force > 0.0) {
+        return Err(AeroError::Unsupported(format!(
+            "the body's lift sums to {force}, which places no centre of pressure"
+        )));
+    }
+    Ok((force, moment))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -1126,6 +1193,73 @@ mod tests {
                 tailed.centre_of_pressure_m < bare.centre_of_pressure_m,
                 "Mach {mach}"
             );
+        }
+    }
+
+    #[test]
+    #[allow(
+        clippy::approx_constant,
+        reason = "6.28 is one of TN 3527's test Mach numbers, not 2π"
+    )]
+    fn segment_shares_sum_to_the_body_and_follow_its_segments() {
+        // A tangent ogive of 4 calibers, a cylinder of 8 and a conical boattail of 1: the nose
+        // and the cylinder carry lift, and footnote 8's boattail takes some off. The nose's share
+        // is the nose alone's slope, and the cylinder's the difference the cylinder makes, which a
+        // piece given to the wrong segment would break.
+        let segments = [
+            BodySegment::Profile {
+                profile: Profile::nose(NoseShape::TANGENT_OGIVE, 4.0, 0.5).unwrap(),
+            },
+            BodySegment::Cylinder {
+                length_m: 8.0,
+                radius_m: 0.5,
+            },
+            BodySegment::Profile {
+                profile: Profile::transition(NoseShape::Conical {}, 1.0, 0.5, 0.35, false).unwrap(),
+            },
+        ];
+        let body_of = |count: usize| {
+            ShockExpansionBody::new(&segments[..count], DEFAULT_ELEMENTS_PER_CURVE).unwrap()
+        };
+        let (nose, forebody, body) = (body_of(1), body_of(2), body_of(3));
+        let area = 0.25 * PI;
+        for mach in [2.0, 3.0, 4.63, 6.28] {
+            let whole = body.slope(mach, area).unwrap();
+            let nose_alone = nose.slope(mach, area).unwrap().slope_per_rad;
+            let with_cylinder = forebody.slope(mach, area).unwrap().slope_per_rad;
+            let shares = body.segment_slopes(mach, area).unwrap();
+            assert_eq!(shares.len(), 3);
+            let slope: f64 = shares.iter().map(|s| s.slope_per_rad).sum();
+            let moment: f64 = shares.iter().map(|s| s.moment_slope_m).sum();
+            let cp = moment / slope;
+            assert!(
+                (slope - whole.slope_per_rad).abs() <= 1e-12 * whole.slope_per_rad,
+                "Mach {mach}: {slope} against {}",
+                whole.slope_per_rad
+            );
+            assert!(
+                (cp - whole.centre_of_pressure_m).abs() <= 1e-12 * whole.centre_of_pressure_m,
+                "Mach {mach}: {cp} against {}",
+                whole.centre_of_pressure_m
+            );
+            assert!(
+                (shares[0].slope_per_rad - nose_alone).abs() <= 1e-13 * nose_alone,
+                "Mach {mach}: nose {} against {nose_alone}",
+                shares[0].slope_per_rad
+            );
+            let cylinder = with_cylinder - nose_alone;
+            assert!(
+                (shares[1].slope_per_rad - cylinder).abs() <= 1e-12 * with_cylinder,
+                "Mach {mach}: cylinder {} against {cylinder}",
+                shares[1].slope_per_rad
+            );
+            // The nose's and the cylinder's loadings are positive, so their stations lie within
+            // them; the boattail's share is negative here, but its station isn't bounded.
+            let station = |s: &SegmentSlope| s.moment_slope_m / s.slope_per_rad;
+            assert!(shares[0].slope_per_rad > 0.0 && shares[1].slope_per_rad > 0.0);
+            assert!(shares[2].slope_per_rad < 0.0, "Mach {mach}");
+            assert!((0.0..=4.0).contains(&station(&shares[0])), "Mach {mach}");
+            assert!((4.0..=12.0).contains(&station(&shares[1])), "Mach {mach}");
         }
     }
 

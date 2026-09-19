@@ -50,6 +50,7 @@ new record replaces it and points back. All of them are in the [decision log][de
 | [ADR-031: Roll from canted fins][adr-031] | Roll forcing from canted fins and roll damping by Barrowman's strip theory with his body factors, the fin's own slope in the damping, and the comparison with NASA's measured roll effectiveness and the Basic Finner's roll damping | [Aerodynamics](physics/aero.md#roll-forcing-and-damping) |
 | [ADR-032: Normal-force overrides][adr-032] | Flying RASAero II's normal force and centre of pressure: how its export is read, the slope at 0°, the angles past its last, and why the damping stays hpr's | [Aerodynamics](physics/aero.md#the-normal-force-from-rasaero-ii) |
 | [ADR-033: The body faster than sound][adr-033] | The lift a body's cylinder carries behind its nose faster than sound, by the second-order shock-expansion method: the report's tangent body, its limit, and the cone slopes read by hand | [Aerodynamics](physics/aero.md#bodies-faster-than-sound) |
+| [ADR-034: The body's supersonic normal force in flight][adr-034] | How a flight uses that method: a table of each part's share every 0.05 in Mach, joined in a straight line from slender-body theory over Mach 1.2 to 1.5 | [Aerodynamics](physics/aero.md#the-body-faster-than-sound-in-a-flight) |
 
 ## The roadmap
 
@@ -140,7 +141,8 @@ missing or its status disagrees.
 | <a id="m1-8d"></a>[M1.8d][phase-1] | Tables that override the normal force and centre of pressure, read from RASAero II | done |
 | <a id="m1-8e"></a>[M1.8e][phase-1] | The body's normal force faster than sound, which slender-body theory underestimates past Mach 3 | not yet done |
 | <a id="m1-8e1"></a>[M1.8e1][phase-1] | The second-order shock-expansion method: the lift a body's cylinder carries behind its nose faster than sound, checked against its report's tables | done |
-| <a id="m1-8e2"></a>[M1.8e2][phase-1] | The body's supersonic normal force in a flight, against the Arcas Robin wind tunnel | not yet done |
+| <a id="m1-8e2"></a>[M1.8e2][phase-1] | The body's supersonic normal force in a flight: the nose and its cylinder, joined to the subsonic model | done |
+| <a id="m1-8e3"></a>[M1.8e3][phase-1] | The boattail and crossflow faster than sound, against the Arcas Robin wind tunnel | not yet done |
 | <a id="m3-1"></a>[M3.1][phase-1] | Reading OpenRocket `.ork` design files | not yet done |
 | <a id="m2-2"></a>[M2.2][phase-1] | OpenRocket as a reference program, and a corpus of designs to compare | not yet done |
 | <a id="m1-9"></a>[M1.9][phase-1] | Staging, clusters and air starts, for COTS motors | not yet done |
@@ -284,6 +286,7 @@ is the milestone that added or will add that test.
 [adr-031]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-031-roll-from-canted-fins-and-roll-damping-by-barrowmans-strip-theory-2026-09-19
 [adr-032]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-032-normal-force-overrides-from-rasaero-ii-the-static-force-replaced-hprs-damping-kept-2026-09-19
 [adr-033]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-033-the-body-faster-than-sound-syvertson-and-denniss-second-order-shock-expansion-method-2026-09-19
+[adr-034]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-034-the-bodys-supersonic-normal-force-in-flight-tabulated-shock-expansion-shares-joined-linearly-from-mach-12-2026-09-19
 [decisions]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md
 [lessons]: https://github.com/nrdptel/hpr-sim/blob/main/docs/research/loft-lessons.md
 [lessons-motors]: https://github.com/nrdptel/hpr-sim/blob/main/docs/research/loft-lessons.md#motors-mass-and-design-checks

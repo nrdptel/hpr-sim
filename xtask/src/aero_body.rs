@@ -19,7 +19,8 @@ use std::fs;
 use std::path::Path;
 
 use hpr_aero::shock_expansion::{BodySegment, DEFAULT_ELEMENTS_PER_CURVE, ShockExpansionBody};
-use hpr_design::{NoseShape, Profile};
+use hpr_aero::{AeroModel, Flow};
+use hpr_design::{NoseShape, Profile, Rocket};
 use serde_json::{Value, json};
 
 use crate::aero_mach::{WIND_TUNNEL, slope};
@@ -247,6 +248,64 @@ fn arcas_nose(ratio: f64) -> Result<ShockExpansionBody, String> {
     .map_err(|e| e.to_string())
 }
 
+/// hpr's model of the design `name` under `validation/designs/`, or with `ratio` of its nose and
+/// cylinder alone, the nose replaced by the secant ogive of that arc radius ratio.
+fn arcas_model(root: &Path, name: &str, ratio: Option<f64>) -> Result<AeroModel, String> {
+    let path = root.join("validation/designs").join(name);
+    let text = fs::read_to_string(&path).map_err(|e| format!("{name}: {e}"))?;
+    let mut design: Value = serde_json::from_str(&text).map_err(|e| format!("{name}: {e}"))?;
+    if let Some(ratio) = ratio {
+        let shape = design
+            .pointer_mut("/stages/0/components/0/part/nose_cone/shape")
+            .ok_or(format!("{name}: its first component isn't a nose cone"))?;
+        *shape = json!({ "kind": "ogive", "radius_ratio": ratio });
+        let components = design
+            .pointer_mut("/stages/0/components")
+            .and_then(Value::as_array_mut)
+            .ok_or(format!("{name}: no components"))?;
+        // The nose and the body tube behind it, and nothing aft.
+        if components.len() < 2 || components[1].pointer("/part/body_tube").is_none() {
+            return Err(format!("{name}: its second component isn't a body tube"));
+        }
+        components.truncate(2);
+    }
+    let rocket: Rocket = serde_json::from_value(design).map_err(|e| format!("{name}: {e}"))?;
+    let layout = rocket.layout().map_err(|e| format!("{name}: {e}"))?;
+    AeroModel::new(&layout).map_err(|e| format!("{name}: {e}"))
+}
+
+/// The bodies' `C_Nα` at `α → 0` through the flight's path (`AeroModel::components`), on
+/// `area_m2`: the first `covered` bodies' and all of them, and all of their CP, m from the tip.
+fn flight_bodies(
+    model: &AeroModel,
+    mach: f64,
+    area_m2: f64,
+) -> Result<(f64, f64, Option<f64>), String> {
+    let parts = model
+        .components(&Flow::axial(mach))
+        .map_err(|e| format!("Mach {mach}: {e}"))?;
+    let bodies = &parts[..model.bodies().len()];
+    let covered = model.supersonic_body().map_or(0, |s| s.covered);
+    let scale = model.reference_area_m2() / area_m2;
+    let slope = |parts: &[hpr_aero::ComponentNormalForce]| -> f64 {
+        parts.iter().map(|p| p.normal_force.slope_per_rad).sum()
+    };
+    let moment: f64 = bodies
+        .iter()
+        .map(|p| {
+            p.normal_force
+                .cp_station_m
+                .map_or(0.0, |cp| cp * p.normal_force.slope_per_rad)
+        })
+        .sum();
+    let all = slope(bodies);
+    Ok((
+        scale * slope(&bodies[..covered]),
+        scale * all,
+        (all != 0.0).then(|| moment / all),
+    ))
+}
+
 fn arcas_robin(root: &Path) -> Result<Value, String> {
     let text =
         fs::read_to_string(root.join(WIND_TUNNEL)).map_err(|e| format!("{WIND_TUNNEL}: {e}"))?;
@@ -268,6 +327,11 @@ fn arcas_robin(root: &Path) -> Result<Value, String> {
             .ok_or(format!("{WIND_TUNNEL}: no cylinder end for {id}"))?;
         let bare = arcas_body(ratio, cylinder_end_in, false)?;
         let tailed = arcas_body(ratio, cylinder_end_in, true)?;
+        let design = configuration["design"]
+            .as_str()
+            .ok_or(format!("{WIND_TUNNEL}: {id} has no design"))?;
+        let as_designed = arcas_model(root, design, None)?;
+        let fitted = arcas_model(root, design, Some(ratio))?;
         let mut rows = Vec::new();
         for curve in configuration["cn_alpha_fins_off"]
             .as_array()
@@ -297,11 +361,22 @@ fn arcas_robin(root: &Path) -> Result<Value, String> {
                     "c_n_alpha_error": s.slope_per_rad / measured - 1.0,
                 }))
             };
+            let flight = |model: &AeroModel| -> Result<Value, String> {
+                let (covered, bodies, cp) = flight_bodies(model, mach, area)?;
+                Ok(json!({
+                    "covered_c_n_alpha": covered,
+                    "bodies_c_n_alpha": bodies,
+                    "bodies_cp_calibers": cp.map(|cp| cp / diameter),
+                    "bodies_c_n_alpha_error": bodies / measured - 1.0,
+                }))
+            };
             rows.push(json!({
                 "mach": mach,
                 "measured_c_n_alpha": measured,
                 "nose_and_cylinder": entry(&bare)?,
                 "with_boattail": entry(&tailed)?,
+                "in_flight": flight(&fitted)?,
+                "as_designed": flight(&as_designed)?,
             }));
         }
         configurations.push(json!({
@@ -315,7 +390,12 @@ fn arcas_robin(root: &Path) -> Result<Value, String> {
                  D-4014's fins-off C_N points (arcas-robin-wind-tunnel.json), as M1.8a fits it; \
                  it includes the lip and crossflow at the plotted angles. hpr's is the method's \
                  at alpha -> 0 on the maximum cross-section. c_n_alpha_error is hpr's over the \
-                 measured, minus 1. No target (M1.8e2 flies it).",
+                 measured, minus 1. No target. in_flight is the design's nose and cylinder \
+                 alone, the nose the fitted secant ogive, through the flight's path (AeroModel) \
+                 at alpha -> 0: the method's shares tabulated every 0.05 in Mach and \
+                 interpolated (M1.8e2). as_designed is the whole design as committed, flown the \
+                 same way: its power-series nose, which the method can't take (a vertical tip), \
+                 and its boattail keep slender-body theory, M1.8a's model.",
         "nose": {
             "shape": "the secant ogive through the tip and base nearest TN D-4014 Fig. 1(a)'s \
                       coordinates",
