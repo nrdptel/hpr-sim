@@ -36,7 +36,8 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
   behind has a slope; since M1.8e4 boattails and tubes behind them too (slender-body stations).
   M1.8e5 next: crossflow (long model to −27.0% with its boattail), blunt tips, Fig. 2 below
   Mach 3, #81, #87's switches, #90 (boattail angle cap); it carries M1.8e's 15% bullet.
-- **Autopilot memory:** per-cycle process groups; `scripts/build-memory.sh` → `docs/perf.md`.
+- **Autopilot memory:** each command a cycle runs gets its own process group, so the run notes
+  them while sampling and reaps them too; the cycle's group alone misses every build.
 - **Regeneration is not bit-identical across machines** (last digits). Regenerate reports with
   `cargo xtask validate` (debug), never `--release`: it rounds differently in the 7th digit.
   Fixture checks (`designs::same`) allow 1e-12 relative, or 1e-13 near zero (M1.8b3's PR).
@@ -55,12 +56,11 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
 - 2026-09-19: M1.8e2 The body's supersonic normal force in flight (ADR-034): nose and cylinder
   take the method's shares, joined over Mach 1.2 to 1.5, no jump at ±1e-9; Arcas Robin nose and
   cylinder through the flight equal the method (+16.4% to −26.4%); boattailed bodies unchanged.
-- 2026-09-19: Autopilot memory. Cycles run in their own process group and are reaped either way;
-  peak RSS, spare %, pressure and swap per cycle in `runs.log`; jobs and test threads capped at 6
-  (2.58 → 1.72 GB). Transcripts past 20 cycles gzipped, past 60 deleted. Not yet run a window.
-- 2026-09-19: M1.8e1 The second-order shock-expansion method (ADR-033): not met, recorded.
-  Against TN 3527's measurements 117 of 120 slopes and 109 of 120 CPs within ±0.2; its printed
-  values 102 and 125 of 144 (#81 at the limit); Arcas Robin short −18.7% to +16.4%, long to −26.4%.
+- 2026-09-19: Autopilot memory, then its fix. Scoping by the cycle's process group missed
+  everything: each command gets its own, so a full-gate cycle reported 0.66 GB and left an
+  escaped build alive. The run now notes its commands' groups while sampling and reaps those,
+  guarded against a reused id; failing test first (0.00 GB and a live 400 MB build → 0.41 GB and
+  reaped). Jobs and test threads capped at 6; transcripts past 20 gzipped, past 60 deleted.
 
 ## Needs Neer (blocking or one-way decisions; the session keeps working on other things)
 

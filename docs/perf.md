@@ -40,9 +40,10 @@ otherwise runs one thread per core — so the second row caps `RUST_TEST_THREADS
   2.53 and 2.37 GB — overlapping ranges, so the 0.18 GB gap in the table above cannot be told
   apart from run-to-run spread. It does cut what is written to `target/` by 14%, consistently.
   That is a disk saving rather than a memory one, so no profile was changed.
-- **Not measured:** `cargo doc`, `cargo xtask site` (which builds rustdoc into a second target
-  directory) and `cargo xtask validate`. Nor the session process itself, which is the largest
-  remaining unknown; the autopilot's per-cycle memory line exists to close it.
+- **Not measured here:** `cargo doc`, `cargo xtask site` (which builds rustdoc into a second
+  target directory) and `cargo xtask validate`. The session process and its builds together are
+  covered instead by [the autopilot](AUTOPILOT.md)'s per-cycle memory line, which sums the
+  session and everything descended from it.
 - Numbers taken during an autopilot cycle inherit that six-job cap. Measure from a plain shell,
   or set `CARGO_BUILD_JOBS` explicitly, when comparing against the rows above.
 
