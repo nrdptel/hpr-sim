@@ -702,8 +702,10 @@ checked only on spherical caps. On that report's own sphere-cone, compared as it
 it (at the plotted angles, body lift included), hpr reads −1.2% to +32.1%: close through Mach 2.3,
 high from Mach 2.96, where the report's own method reads +5.2% to +13.6%. On the Arcas Robin's
 power-series nose the cap is an extrapolation. There, like for like, the body reads +37.2% at Mach
-1.5 and +13.7% to +25.9% from Mach 1.8 to 2.96 — never worse than the smooth secant ogive fitted to
-the same nose, and up to 8.2 percentage points better — and within 5% past Mach 3. A nose that is
+1.5 and +13.7% to +25.9% from Mach 1.8 to 2.96, and within 5% past Mach 3. Against the smooth
+secant ogive fitted to the same nose it reads lower at every Mach number: closer to the tunnel at
+nine of the eleven rows, by 0.7 to 5.8 points, and past Mach 4 it crosses into under-prediction and
+lands 0.6 to 1.5 points further out. A nose that is
 nearly a cone but for a vanishing tip carries a bias nothing here measures
 ([issue #101](https://github.com/nrdptel/hpr-sim/issues/101), below). No validation flight reaches
 the speeds where any of this applies.
@@ -829,8 +831,9 @@ The rows are in
 written by `cargo xtask aero`; the readings in
 [`tn-d-4865-sphere-cone.json`](https://github.com/nrdptel/hpr-sim/blob/main/validation/fixtures/aero/tn-d-4865-sphere-cone.json).
 A test holds these tables to the fixture, cell by cell. The committed nose reads within 3.8
-points of the fitted ogive up to Mach 2.96, and 5.1 to 8.2 points below it past Mach 3, where it
-is within 5% of the tunnel (−4.8% to +1.5%). Below Mach 3 both read high, most at Mach 1.5, for
+points of the fitted ogive up to Mach 2.96 and 5.1 to 8.2 points below it past Mach 3. Below it is
+not always closer: past Mach 4 its error changes sign, so at Mach 4.63 it reads −4.8% where the
+ogive reads +3.4%, 1.5 points further from the tunnel. Over the eleven rows it is nearer at nine. Below Mach 3 both read high, most at Mach 1.5, for
 the reasons in [Checking the shock-expansion method](#checking-the-shock-expansion-method).
 
 #### The two starts
@@ -897,6 +900,11 @@ a sixth of a calibre, and the force that holds the rocket into the wind grows by
 - **Two switches in shape**, of the family [issue #87](https://github.com/nrdptel/hpr-sim/issues/87)
   tracks: a vertical-tip nose steeper than 24° all the way to its base gets no method at all, and
   a pointed tip steeper than Fig. 2's 24° is refused where a vertical one flies.
+- **Elements that merge, merge with Mach.** Behind the cap, a tangency point whose tangent turns by
+  under a microradian is folded into the element before it, because its corner can't be placed in
+  floating point. Which points merge changes with the handover, so the method's answer takes a step
+  of about a millionth of a per-radian slope as it does: far below anything measured here, but
+  there.
 - **Drag is unchanged:** the nose's wave drag already covers blunt shapes
   ([Drag through Mach 1](#drag-through-mach-1)). 
 ## Fins

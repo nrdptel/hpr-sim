@@ -3564,7 +3564,9 @@ TN 3527's method and compares it with its own tunnel data from Mach 1.50 to 4.63
 - The Arcas Robin's committed nose with the lip left off, like for like: short +37.2% to −4.8%,
   long +19.3% to −4.1%, at or below the fitted secant ogive (+3.4% to +41.0%) at every Mach
   number, by up to 3.8 points to Mach 2.96 and 5.1 to 8.2 past Mach 3, where it reads within 5% of
-  the tunnel. The committed designs themselves keep slender-body theory for their lip until
+  the tunnel. Lower is not always closer: past Mach 4 its error changes sign, so at Mach 4.63 it
+  reads −4.8% where the ogive reads +3.4%, 1.5 points further out. It is nearer at nine of the
+  eleven rows. The committed designs themselves keep slender-body theory for their lip until
   M1.8e8, so M1.8a's short model at Mach 2.96 still reads −16.3%.
 - M1.8a (`normal-force-vs-mach.json`): Calisto's von Kármán nose flies the method past Mach 1.2.
   Against RASAero II's potential-flow slope, Mach 1.5 −3.1% to +13.2%, 1.75 −11.7% to +9.7%, 2.0
@@ -3594,6 +3596,7 @@ TN 3527's method and compares it with its own tunnel data from Mach 1.50 to 4.63
   guide says to read those rows as the blend they are.
 - Two switches in shape stay open, of issue #87's family: a vertical tip steeper than 24° to its
   base gets no method, and a pointed tip steeper than Fig. 2's 24° is refused where a vertical one
-  flies.
+  flies. Which tangency points merge behind the cap also changes with the handover, so the answer
+  steps by about a millionth of a per-radian slope as they do.
 - Cost: a vertical-tip rocket builds the supersonic table (Calisto's 363 ms, once per model, only
   once a flow passes Mach 1.2); a subsonic flight never builds it (`docs/perf.md`).

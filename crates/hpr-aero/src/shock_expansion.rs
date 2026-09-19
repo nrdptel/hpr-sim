@@ -854,7 +854,8 @@ const CONE_ANGLE_FLOOR_RAD: f64 = 1e-9;
 /// a distance `h` apart on a curve of curvature `κ` meet at `h/2` from a numerator of order `κh²`,
 /// while the profile's radius carries rounding of order `ε r`; at this turn the corner's error is
 /// under 1e-4 of `h` for `rκ` up to 1 (a sphere's is at most 1). Pointed noses' ten elements turn by
-/// degrees and never merge.
+/// degrees and never merge. Which points merge behind a blunt tip's cap changes with the handover,
+/// so a body's slope steps by about 1e-6 per radian as they do.
 const NEARLY_PARALLEL_RAD: f64 = 1e-6;
 
 /// Enough halvings to find a blunt tip's handover to the last bit of an `f64`; the loop stops
