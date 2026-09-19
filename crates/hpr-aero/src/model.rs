@@ -131,8 +131,10 @@ pub const SUPERSONIC_JOIN_WIDTH_MACH: f64 =
 pub struct SupersonicBody {
     /// How many body components the method covers: the first entries of [`AeroModel::bodies`].
     /// The last of them may be lips in a covered boattail's wake, which the method doesn't march:
-    /// their share is zero at every Mach number ([`crate::drag::WakeTerm`], the decision record
-    /// ADR-039 on the lip).
+    /// their share is zero at every Mach number ([`crate::drag::WakeTerm`]; the decision record on
+    /// the lip, [ADR-039][adr-039]).
+    ///
+    /// [adr-039]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-039-a-lip-in-a-boattails-wake-carries-nothing-faster-than-sound-2026-09-19
     pub covered: usize,
     /// The Mach number where the join starts; the shares count in full from
     /// [`SUPERSONIC_JOIN_WIDTH_MACH`] above it.
