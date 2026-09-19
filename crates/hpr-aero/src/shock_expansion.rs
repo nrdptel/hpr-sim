@@ -173,12 +173,16 @@ pub struct ShockExpansionBody {
 
 /// One segment's share of the body's normal-force slope at `α → 0`
 /// ([`ShockExpansionBody::segment_slopes`]).
+///
+/// A share can be negative or zero (a boattail's, footnote 8), so `moment_slope_m /
+/// slope_per_rad` need not lie within its segment and is unbounded where a share crosses zero:
+/// carry the moment, not a station.
 #[derive(Debug, Clone, Copy, Default, PartialEq, Serialize, Deserialize)]
 #[non_exhaustive]
 pub struct SegmentSlope {
     /// The segment's `C_Nα`, per radian, on the reference area given.
     pub slope_per_rad: f64,
-    /// That slope's moment about the vertex, `C_Nα · x̄`, in m (x̄ aft of the vertex).
+    /// That slope's moment about the vertex, `C_Nα · x̄`, m per radian (x̄ aft of the vertex).
     pub moment_slope_m: f64,
 }
 
@@ -372,8 +376,8 @@ impl ShockExpansionBody {
 
     /// Each segment's share of [`Self::slope`], in the order of the segments: its `C_Nα` (per
     /// radian, on `reference_area_m2`) and that slope's moment about the vertex. The shares sum
-    /// to the whole body's slope and moment, up to the order of summation: every segment's start
-    /// is a break of the integral, so each piece of it lies inside one segment.
+    /// to the whole body's slope and moment up to rounding: every segment's start is a break of
+    /// the integral, so each piece of it lies inside one segment.
     ///
     /// # Errors
     ///
@@ -399,8 +403,8 @@ impl ShockExpansionBody {
     }
 
     /// The integrals of the lift per unit length and of its moment about the vertex (both over
-    /// `2π`), one per piece between consecutive corners and segment starts, keyed by the piece's
-    /// forward end.
+    /// `2π`), one per piece between consecutive corners, segment starts and the body's end, keyed
+    /// by the piece's forward end.
     fn windows(
         &self,
         mach: f64,
@@ -1197,9 +1201,11 @@ mod tests {
         clippy::approx_constant,
         reason = "6.28 is one of TN 3527's test Mach numbers, not 2π"
     )]
-    fn segment_shares_sum_to_the_body_and_act_within_their_segments() {
+    fn segment_shares_sum_to_the_body_and_follow_its_segments() {
         // A tangent ogive of 4 calibers, a cylinder of 8 and a conical boattail of 1: the nose
-        // and the cylinder carry lift, and footnote 8's boattail takes some off.
+        // and the cylinder carry lift, and footnote 8's boattail takes some off. The nose's share
+        // is the nose alone's slope, and the cylinder's the difference the cylinder makes, which a
+        // piece given to the wrong segment would break.
         let segments = [
             BodySegment::Profile {
                 profile: Profile::nose(NoseShape::TANGENT_OGIVE, 4.0, 0.5).unwrap(),
@@ -1212,10 +1218,15 @@ mod tests {
                 profile: Profile::transition(NoseShape::Conical {}, 1.0, 0.5, 0.35, false).unwrap(),
             },
         ];
-        let body = ShockExpansionBody::new(&segments, DEFAULT_ELEMENTS_PER_CURVE).unwrap();
+        let body_of = |count: usize| {
+            ShockExpansionBody::new(&segments[..count], DEFAULT_ELEMENTS_PER_CURVE).unwrap()
+        };
+        let (nose, forebody, body) = (body_of(1), body_of(2), body_of(3));
         let area = 0.25 * PI;
         for mach in [2.0, 3.0, 4.63, 6.28] {
             let whole = body.slope(mach, area).unwrap();
+            let nose_alone = nose.slope(mach, area).unwrap().slope_per_rad;
+            let with_cylinder = forebody.slope(mach, area).unwrap().slope_per_rad;
             let shares = body.segment_slopes(mach, area).unwrap();
             assert_eq!(shares.len(), 3);
             let slope: f64 = shares.iter().map(|s| s.slope_per_rad).sum();
@@ -1231,12 +1242,24 @@ mod tests {
                 "Mach {mach}: {cp} against {}",
                 whole.centre_of_pressure_m
             );
+            assert!(
+                (shares[0].slope_per_rad - nose_alone).abs() <= 1e-13 * nose_alone,
+                "Mach {mach}: nose {} against {nose_alone}",
+                shares[0].slope_per_rad
+            );
+            let cylinder = with_cylinder - nose_alone;
+            assert!(
+                (shares[1].slope_per_rad - cylinder).abs() <= 1e-12 * with_cylinder,
+                "Mach {mach}: cylinder {} against {cylinder}",
+                shares[1].slope_per_rad
+            );
+            // The nose's and the cylinder's loadings are positive, so their stations lie within
+            // them; the boattail's share is negative here, but its station isn't bounded.
             let station = |s: &SegmentSlope| s.moment_slope_m / s.slope_per_rad;
             assert!(shares[0].slope_per_rad > 0.0 && shares[1].slope_per_rad > 0.0);
             assert!(shares[2].slope_per_rad < 0.0, "Mach {mach}");
             assert!((0.0..=4.0).contains(&station(&shares[0])), "Mach {mach}");
             assert!((4.0..=12.0).contains(&station(&shares[1])), "Mach {mach}");
-            assert!((12.0..=13.0).contains(&station(&shares[2])), "Mach {mach}");
         }
     }
 

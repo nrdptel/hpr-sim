@@ -34,8 +34,12 @@ number over nose fineness from 0.4 to 2; `slope` doesn't enforce that range.
    the whole-body totals only by summation order, well inside the 1e-12 relative that
    M1.8e1's fixture check allows. Stations are metres aft of the vertex, which for a pointed
    nose is hpr's nose tip. Done on this branch: `ShockExpansionBody::segment_slopes`, with
-   `slope` left bit-identical (same pieces, same order) and a test that the shares sum to it
-   within 1e-12 and each acts within its segment.
+   `slope` left bit-identical (same pieces, same order). A test checks that the shares sum to it
+   within 1e-12, that the nose's share is the nose alone's, and that the cylinder's is the
+   difference it makes. A share can cross zero (a boattail's, near Mach 2.5 to 3 on a short
+   body), so its station `moment / slope` is unbounded: carry each share's moment into
+   `BodyAero`, and pick the damping station another way, for example the segment's own
+   station when its share is small or its station leaves the segment.
 2. **A correction on the nose (fallback).** Keep the slender-body terms, and add one term for
    (shock-expansion minus slender-body over the same segments), placed so the whole-body
    moment matches the shock-expansion CP. This is simpler, but it puts the cylinder's carried
