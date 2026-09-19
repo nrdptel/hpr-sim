@@ -26,7 +26,8 @@ What has been checked so far:
   ([Aerodynamics](physics/aero.md#drag-against-the-arcas-robin-wind-tunnel));
 - drag from Mach 0.1 to 2.0 against the curves labelled RASAero II in RocketPy's example rockets
   ([Aerodynamics](physics/aero.md#drag-against-rasaero-ii-through-mach-2)), and from Mach 0.5 to
-  3.2 against a worked example in MIL-HDBK-762, the U.S. Army's free-rocket design handbook
+  3.2 against a worked example in MIL-HDBK-762, the U.S. Army's handbook for designing unguided
+  rockets
   ([Aerodynamics](physics/aero.md#drag-against-mil-hdbk-762s-sample-calculation)).
 
 Every number here links to the page or file it comes from. [Checking a claim](checking-a-claim.md)
@@ -86,7 +87,7 @@ parachute descents sample, as part of that comparison, and nowhere else
 | [Shapes](physics/shapes.md) | ✓ | — | — | — |
 | [Mass properties](physics/mass.md) | ✓ | — | — | — |
 | [Solid motors](physics/motor.md) | ✓ | — | ✓ RocketPy, ThrustCurve.org | — |
-| [Aerodynamics](physics/aero.md) | ✓ | ✓ Barrowman's examples; MIL-HDBK-762's drag example | partial: drag and the normal force against RASAero II to Mach 2, the drag with the fins and finish guessed and missing faster than sound; and in whole flights, against a target | — (wind tunnel ✓, normal force and drag; drag reads high at most speeds) |
+| [Aerodynamics](physics/aero.md) | ✓ | ✓ Barrowman's examples; MIL-HDBK-762's drag example, 2 of 12 within 10% | partial: drag and the normal force against RASAero II to Mach 2, the drag with the fins and finish guessed and missing faster than sound; and in whole flights, against a target | — (wind tunnel ✓, normal force and drag; drag reads high at most speeds) |
 | [Rigid-body flight](physics/flight.md) | ✓ | — | ✓ RocketPy, with the drag given; and on each code's own drag, against a target | — |
 | [Time integration](physics/integration.md) | ✓ | — | — | — |
 | [Recovery](physics/recovery.md) | ✓ | ✓ | ✓ RocketPy | — (drop tests ✓) |

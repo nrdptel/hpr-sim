@@ -658,11 +658,13 @@ The example leaves out several kinds of part and setting that a design can have:
   Mach 1 ([Aerodynamics](physics/aero.md#drag-against-the-arcas-robin-wind-tunnel)). It also reads
   high against a worked example in a U.S. Army design handbook. Against
   [RASAero II](glossary.md#rasaero-ii)'s drag for a rocket with a short, steep
-  [boattail](glossary.md#boattail), it reads a quarter low faster than sound, and a boattail's own
-  supersonic drag, which hpr doesn't model yet, is the likely reason
+  [boattail](glossary.md#boattail), it reads about a quarter low faster than sound; a boattail's
+  own supersonic drag, which hpr doesn't model yet, is the likely reason
   ([Aerodynamics](physics/aero.md#drag-against-rasaero-ii-through-mach-2)). So if your rocket
-  goes supersonic with a boattail, expect hpr to underestimate its drag there until
-  [M1.8b3](decisions-and-roadmap.md#m1-8b3) (a boattail's drag faster than sound).
+  goes supersonic, its drag there may be off by a quarter or more either way: low for a steep
+  boattail, high for thick, blunt-edged fins, and your rocket may have both. Treat a supersonic
+  flight's apogee as rough until [M1.8b3](decisions-and-roadmap.md#m1-8b3) (a boattail's drag
+  faster than sound) and the issues it leaves are done.
 - **No staging.** Every motor in a configuration lights at the same moment, on the pad, so a
   two-stage rocket flies with both stages burning at once. Staging comes with [M1.9](decisions-and-roadmap.md#m1-9)
   (staging, clusters and air starts).

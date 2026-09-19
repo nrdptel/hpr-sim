@@ -107,7 +107,7 @@ the wind blows from.
 
 ## Boattail
 
-A transition at the tail that narrows toward the aft end. Its normal-force slope is negative, so it moves the [centre of pressure](#centre-of-pressure-cp) forward. hpr counts its pressure drag as a share of the base drag on the area it removes: all of it for a short, steep boattail and none for a long, gentle one. See [Aerodynamics](physics/aero.md#drag).
+A transition at the tail that narrows toward the aft end. Its normal-force slope is negative, so it moves the [centre of pressure](#centre-of-pressure-cp) forward. hpr counts its pressure drag as a share of the base drag on the area it removes: all of it for a short, steep boattail and none for a long, gentle one. Faster than sound a boattail also has its own [wave drag](#wave-drag), which hpr doesn't model yet ([M1.8b3](decisions-and-roadmap.md#m1-8b3), a boattail's drag faster than sound). See [Aerodynamics](physics/aero.md#drag).
 
 ## Body frame
 
@@ -493,6 +493,14 @@ One number a [validation case](#validation-case) compares between hpr and its re
 the descent time or the drift to the north. Each metric has its own [tolerance](#tolerance), also
 called its gate. See [Accuracy](accuracy.md#the-descent-under-a-parachute-against-rocketpy).
 
+## MIL-HDBK-762
+
+*Design of Aerodynamically Stabilized Free Rockets*, a 1990 U.S. Army handbook for designing
+unguided rockets, and a U.S. Government work. hpr takes its fin-count factor from it, and compares
+its drag with the handbook's worked example, a rocket whose drag it calculates term by term from
+Mach 0.5 to 3.2. That is a calculation by the handbook's methods, not a measurement. See
+[Aerodynamics](physics/aero.md#drag-against-mil-hdbk-762s-sample-calculation).
+
 ## Milestone
 
 A step of the [roadmap][roadmap], the ordered plan of work, labelled like [M1.8](decisions-and-roadmap.md#m1-8)
@@ -615,10 +623,10 @@ least trustworthy. See [Rigid-body flight](physics/flight.md#phases).
 ## RASAero II
 
 A rocket aerodynamics and flight program. Several of RocketPy's [example rockets](#example-rockets)
-carry drag curves labelled as RASAero's, though only Calisto's traces to an export. hpr's drag at
-Mach 0.3 is compared with those curves, with the fin shapes and surface finish guessed, because
-the curves don't record them. See
-[Aerodynamics](physics/aero.md#verification).
+carry drag curves labelled as RASAero's, though only Calisto's traces to an export. hpr's drag is
+compared with those curves from Mach 0.1 to 2.0, with the fin shapes and surface finish guessed,
+because the curves don't record them. See
+[Aerodynamics](physics/aero.md#drag-against-rasaero-ii-through-mach-2).
 
 ## RASP and RockSim files
 
@@ -909,10 +917,13 @@ source* (printed tables and worked examples), *another code*
 
 The drag from the shock waves that form on a rocket at and above the speed of sound. Air meeting a
 nose, a shoulder that widens or a fin's leading edge passes through a shock, which raises the
-pressure pushing back on the surface. It is much of the steep rise in drag near Mach 1. hpr has no
-separate term for it: it is part of the pressure drag of each nose, shoulder and step, which
-Niskanen's 2009 method carries through Mach 1. For fins, hpr uses a blunt leading edge's formula,
-which reads far high for thin, sharp fins ([Drag limits](physics/aero.md#drag-limits)). See
+pressure pushing back on the surface. Behind a [boattail](#boattail) the opposite happens: the air
+expands around it, its pressure falls, and that pulls back on the boattail. It is much of the
+steep rise in drag near Mach 1. hpr has no separate term for it: it is part of the pressure drag
+of each nose, shoulder and step, which Niskanen's 2009 method carries through Mach 1. A boattail's
+is missing ([M1.8b3](decisions-and-roadmap.md#m1-8b3), a boattail's drag faster than sound). For
+fins, hpr uses a blunt leading edge's formula, which reads far high for thin, sharp fins
+([Drag limits](physics/aero.md#drag-limits)). See
 [Aerodynamics](physics/aero.md#drag-through-mach-1).
 
 

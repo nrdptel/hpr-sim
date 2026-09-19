@@ -2642,11 +2642,13 @@ comparison is between two codes, one of whose inputs are guessed.
   | Valetudo, power-off (to 1.5) | 0 of 15, −51.4% to −43.5% | 0 of 7, −53.3% to −50.9% | 0 of 7, −54.6% to −52.9% |
   | Valetudo, power-on (to 1.5) | 0 of 15, −55.6% to −46.6% | 0 of 7, −57.6% to −54.7% | 0 of 7, −57.8% to −56.2% |
 
-- **No plausible input closes Calisto's gap.** Over square, rounded and airfoil fins, 2 to
-  6.35 mm thick, smooth or painted (20 µm), no combination puts all three bands within 10%.
-  Transonic never passes 3 of 7. Supersonic comes within 10% only with 6.35 mm square fins
-  painted, and those put every subsonic row 23% to 45% high. The supersonic error stays between
-  −38% and −1% for every other combination. So the supersonic gap is a difference between the two
+- **No plausible input closes Calisto's gap**
+  (`hpr_aero::tests::calistos_supersonic_gap_survives_every_plausible_fin_and_finish`). Over
+  square, rounded and airfoil fins, 2 to 6.35 mm thick, smooth or painted (20 µm), no combination
+  has rows within 10% in both the subsonic and the supersonic band, and none passes 3 of 7
+  transonic. Supersonic rows come within 10% only with square fins 4.76 mm or thicker (all 17 at
+  6.35 mm painted), and those put every subsonic row 14.6% to 44.9% high. Every other combination
+  stays 10.1% to 37.6% low supersonic. So the supersonic gap is a difference between the two
   codes' models, not the inputs.
 - **Against MIL-HDBK-762's sample calculation, hpr reads high, not low.** It is 2 of 12 within
   10%: +0.5% at Mach 0.5 and +9.5% at 1.6; +11.0% at 0.7; +21% to +44% from 0.9 to 1.2; +10.6% to

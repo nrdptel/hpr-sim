@@ -936,6 +936,117 @@ mod tests {
         );
     }
 
+    /// M1.8b2 (ADR-029): no plausible choice of the inputs Calisto's RASAero II export doesn't
+    /// record closes hpr's gap to it. The export's values at the sweep's Mach numbers come back
+    /// from the committed fixture (hpr's value over one plus its error), and hpr flies the 2018
+    /// design with square, rounded and airfoil fins 2 to 6.35 mm thick, smooth or painted (20 µm),
+    /// every 0.05 from Mach 0.1 to 2.0 at sea level. No combination has rows within 10% in both
+    /// the subsonic and the supersonic bands, none has more than 3 of the 7 transonic rows within
+    /// 10%, and supersonic rows come within 10% only with square fins 4.76 mm or thicker, which
+    /// put every subsonic row 14% to 45% high.
+    #[test]
+    fn calistos_supersonic_gap_survives_every_plausible_fin_and_finish() {
+        use hpr_design::{Component, FinCrossSection, Finish, Part};
+
+        let fixture: serde_json::Value = serde_json::from_str(include_str!(
+            "../../../validation/fixtures/aero/rocketpy-drag-curves.json"
+        ))
+        .unwrap();
+        let case = fixture["cases"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .find(|c| c["id"] == "calisto-power-off")
+            .unwrap();
+        let rows: Vec<(f64, f64)> = case["sweep"]["rows"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|r| {
+                let hpr = r["hpr_cd0"].as_f64().unwrap();
+                let error = r["relative_error"].as_f64().unwrap();
+                (r["mach"].as_f64().unwrap(), hpr / (1.0 + error))
+            })
+            .collect();
+        assert_eq!(rows.len(), 39);
+        let air = hpr_atmos::Ussa76::standard().sample(0.0).unwrap().air;
+        fn set(components: &mut [Component], section: FinCrossSection, t: f64, finish: Finish) {
+            for c in components {
+                c.finish = Some(finish);
+                if let Part::FinSet(fins) = &mut c.part {
+                    fins.cross_section = section;
+                    fins.thickness_m = t;
+                }
+                set(&mut c.children, section, t, finish);
+            }
+        }
+        let (mut supersonic_with, mut subsonic_errors, mut others) =
+            (Vec::new(), Vec::new(), Vec::new());
+        for section in [
+            FinCrossSection::Square,
+            FinCrossSection::Rounded,
+            FinCrossSection::Airfoil,
+        ] {
+            for t in [0.002, 0.003, 0.00476, 0.00635] {
+                for finish in [Finish::Mirror {}, Finish::MassProductionPaint {}] {
+                    let mut rocket =
+                        committed_design("rocketpy-calisto-tests-motor-at-minus-1.373.json");
+                    set(&mut rocket.stages[0].components, section, t, finish);
+                    let model = AeroModel::new(&rocket.layout().unwrap()).unwrap();
+                    // Rows within 10% by band, and the subsonic and supersonic errors.
+                    let (mut within, mut sub, mut sup) = ([0usize; 3], Vec::new(), Vec::new());
+                    for &(mach, curve) in &rows {
+                        let conditions = DragConditions::coasting(
+                            mach * air.speed_of_sound_m_s / air.kinematic_viscosity_m2_s(),
+                        );
+                        let drag = model.drag(&Flow::axial(mach), &conditions).unwrap();
+                        let error = drag.zero_lift_coefficient / curve - 1.0;
+                        let band = if mach <= 0.8 {
+                            sub.push(error);
+                            0
+                        } else if mach < 1.2 {
+                            1
+                        } else {
+                            sup.push(error);
+                            2
+                        };
+                        if error.abs() <= 0.10 {
+                            within[band] += 1;
+                        }
+                    }
+                    let what = format!("{section:?} {t} m {finish:?}");
+                    assert!(within[0] == 0 || within[2] == 0, "{what}: {within:?}");
+                    assert!(within[1] <= 3, "{what}: {within:?}");
+                    if within[2] > 0 {
+                        assert!(section == FinCrossSection::Square && t >= 0.00476, "{what}");
+                        supersonic_with.push((t, within[2]));
+                        subsonic_errors.extend(sub);
+                    } else {
+                        others.extend(sup);
+                    }
+                }
+            }
+        }
+        // Square fins 4.76 mm painted, and 6.35 mm smooth and painted (all 17 supersonic rows).
+        assert_eq!(
+            supersonic_with,
+            [(0.00476, 4), (0.00635, 12), (0.00635, 17)]
+        );
+        let lowest = subsonic_errors
+            .iter()
+            .copied()
+            .fold(f64::INFINITY, f64::min);
+        let highest = subsonic_errors
+            .iter()
+            .copied()
+            .fold(f64::NEG_INFINITY, f64::max);
+        assert!((0.14..0.15).contains(&lowest) && (0.44..0.45).contains(&highest));
+        // Every other combination stays 10% to 38% low supersonic.
+        let lowest = others.iter().copied().fold(f64::INFINITY, f64::min);
+        let highest = others.iter().copied().fold(f64::NEG_INFINITY, f64::max);
+        assert!((-0.38..-0.37).contains(&lowest) && (-0.11..-0.10).contains(&highest));
+    }
+
     #[derive(Deserialize)]
     struct HandbookDrag {
         calculations: Vec<HandbookCalculation>,

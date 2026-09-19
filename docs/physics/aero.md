@@ -11,7 +11,11 @@
   Mach 1; for drag, mainly Niskanen's 2009 OpenRocket thesis, with Stoney's 1961 NASA measurements
   of noses through Mach 1; MIL-HDBK-762 (1990) for comparison.
 - **How well it is validated:**
-  - *Drag faster than sound reads high.* Against NASA's wind-tunnel tests of the Arcas Robin
+  - *Faster than sound, drag is not validated, and it misses both ways.* It reads high against a
+    wind tunnel and against a handbook's worked example, most of all for fins with blunt or square
+    edges, and low against RASAero II for a rocket with a short, steep boattail. Treat a
+    supersonic flight's drag, and its apogee, as rough. The three bullets below give the numbers.
+  - *Drag reads high against a wind tunnel.* Against NASA's wind-tunnel tests of the Arcas Robin
     sounding rocket, Mach 0.6 to 4.63, on the [forebody](../glossary.md#forebody) only (the models'
     bases sat on a [sting](../glossary.md#sting)), 8 of 44 readings are within 10%, all between
     Mach 0.95 and 1.8. With the fins on, from Mach 1.5 up, hpr reads +29.8% to +190.5% high: the
@@ -21,19 +25,22 @@
     over-predicts the models' 15° boattail, and the lip. hpr's base drag, on the flat aft end, has
     been checked against no measurement faster than Mach 0.3
     ([Drag against the Arcas Robin wind tunnel](#drag-against-the-arcas-robin-wind-tunnel)).
-  - *Drag against [RASAero II](../glossary.md#rasaero-ii) from Mach 0.1 to 2.0 misses
-    [M1.8](../decisions-and-roadmap.md#m1-8)'s 10% faster than sound.* The curves labelled RASAero in [RocketPy](../glossary.md#rocketpy)'s
-    [example rockets](../glossary.md#example-rockets) don't record their fins or surface finish,
-    so hpr's follow a declared rule. Calisto's, the one real RASAero II export, is within 10% at
-    every subsonic Mach number and none supersonic, where hpr reads −29.8% to −24.4%; no plausible
-    choice of fins or finish closes that. The likely cause is the boattail's supersonic wave drag,
-    which hpr doesn't model yet ([Drag against RASAero II through Mach 2](#drag-against-rasaero-ii-through-mach-2)).
-    At Mach 0.3, four of seven cases are within 10%; Cavour
+  - *Drag reads low against [RASAero II](../glossary.md#rasaero-ii) faster than sound*, missing
+    [M1.8](../decisions-and-roadmap.md#m1-8)'s 10%. The curves labelled RASAero in
+    [RocketPy](../glossary.md#rocketpy)'s [example rockets](../glossary.md#example-rockets) don't
+    record their fins or surface finish, so hpr uses stated guesses for them. Against Calisto's,
+    the one real RASAero II export, hpr is within 10% at every Mach number up to 0.8, at 2 of the 7
+    between, and at none from 1.2 to 2.0, where it reads −29.8% to −24.4%. No plausible choice
+    of fins or finish closes that. The likely cause is the wave drag of Calisto's boattail, which
+    hpr doesn't model yet
+    ([Drag against RASAero II through Mach 2](#drag-against-rasaero-ii-through-mach-2)).
+  - *Drag at Mach 0.3* against the same curves: four of seven cases within 10%. Cavour
     [under power](../glossary.md#power-on-and-power-off-drag) (motor burning) is −18.3%, cause
     open, and Valetudo's table is 1.44 times its own [OpenRocket](../glossary.md#openrocket)
     export.
-  - *Drag against MIL-HDBK-762's worked example*, a rocket whose drag the U.S. Army's handbook
-    calculates term by term with every input known: 2 of 12 Mach numbers within 10%, hpr reading
+  - *Drag reads high against [MIL-HDBK-762](../glossary.md#mil-hdbk-762)'s worked example*, a
+    rocket whose drag the U.S. Army's handbook calculates term by term with every input known:
+    2 of 12 Mach numbers within 10%, hpr reading
     +21.3% to +43.6% from Mach 0.9 to 1.2 (the nose and the base) and +10.6% to +21.3% from Mach 2
     (square fin edges)
     ([Drag against MIL-HDBK-762's sample calculation](#drag-against-mil-hdbk-762s-sample-calculation)).
@@ -1095,7 +1102,8 @@ errors, why no choice of the curves' unrecorded inputs closes them, and the like
 boattail's supersonic [wave drag](../glossary.md#wave-drag), which hpr doesn't model yet
 ([ADR-029][adr-029], the decision on this comparison).
 
-**How it is compared.** `cargo xtask aero` compares hpr's `C_D0` with each curve every 0.05 from
+**How it is compared.** `cargo xtask aero` compares hpr's zero-lift
+[drag coefficient](../glossary.md#drag-coefficient), `C_D0`, with each curve every 0.05 from
 Mach 0.1 to 2.0, wherever the curve reaches. Each point is at sea level in the 1976 standard
 atmosphere, at the [Reynolds number](../glossary.md#reynolds-number) for its Mach number, as
 RASAero II computes its exports. The designs and their inputs are those of the Mach 0.3 check
@@ -1103,7 +1111,8 @@ above. Bands are Niskanen's (Table 3.1): subsonic to Mach 0.8, transonic below 1
 1.2. The fixture, [`rocketpy-drag-curves.json`][curves-fixture], holds hpr's value and the error
 at every Mach number and each band's summary, not the curves' values.
 `drag::tests::supersonic_cd_against_rasaero_tables` recomputes every row and pins the counts
-([Loft lesson L18](../decisions-and-roadmap.md#l18), Loft's invented wave drag).
+([Loft lesson L18](../decisions-and-roadmap.md#l18): Loft, the earlier simulator this project
+learns from, used an invented transonic drag curve).
 
 The curves don't all reach Mach 2. Calisto's, the one real RASAero II export, does. Juno III's is
 hand-edited past Mach 0.92: it climbs a constant step per row to Mach 1.0 and then drops to 0.001,
@@ -1121,16 +1130,22 @@ Rows within 10%, and the range of the errors, by band:
 | Valetudo, power-off | 1.5 | 0 of 15: −51.4% to −43.5% | 0 of 7: −53.3% to −50.9% | 0 of 7: −54.6% to −52.9% |
 | Valetudo, power-on | 1.5 | 0 of 15: −55.6% to −46.6% | 0 of 7: −57.6% to −54.7% | 0 of 7: −57.8% to −56.2% |
 
-Calisto on its 2018 fins is within 10% up to Mach 0.9. From Mach 0.95 hpr falls below the curve:
+The getting-started fins are a variant: RocketPy's getting-started example gives Calisto larger
+fins with a thick NACA 0012 airfoil, but the export was made for the 2018 fins, whose normal
+force it matches. So the variant's rows show how much the fins move drag, not a second
+agreement: its 6 supersonic rows within 10% come from thick fins' drag making up for the missing
+term. Calisto on its 2018 fins is within 10% up to Mach 0.9. From Mach 0.95 hpr falls below the curve:
 −21.6% at Mach 1.0, −30.4% at 1.1, −26.0% at 1.5 and −25.0% at 2.0. Valetudo's curve is
 1.44 times its own OpenRocket export, as the Mach 0.3 check found, and Cavour's power-on miss is
 the same open question.
 
 **The unrecorded inputs don't explain it.** Calisto's fins could be square, rounded or an
-airfoil, 2 to 6.35 mm thick, smooth or painted. No combination puts all three bands within 10%.
-The transonic band never passes 3 of 7. The supersonic band comes within 10% only with 6.35 mm
-square fins, painted, and those put every subsonic row 23% to 45% high. So the supersonic gap is
-a difference in the two codes' models.
+airfoil, 2 to 6.35 mm thick, smooth or painted. No combination has rows within 10% both below
+Mach 0.8 and from Mach 1.2, and none has more than 3 of the 7 transonic rows within 10%.
+Supersonic rows come within 10% only with square fins 4.76 mm or thicker, and those put every
+subsonic row 14.6% to 44.9% high; every other combination stays 10.1% to 37.6% low supersonic
+(`tests::calistos_supersonic_gap_survives_every_plausible_fin_and_finish`). So the supersonic gap
+is a difference in the two codes' models.
 
 **The boattail's wave drag is the likely difference.** Calisto ends in a short, steep conical
 [boattail](../glossary.md#boattail): 0.47 calibres long, narrowing to 69% of the diameter, a slope
@@ -1138,9 +1153,13 @@ of 18.4°. Faster than sound, the air expanding around such a boattail pulls bac
 boattail rule ([N09] eq. 3.88) only takes a share of the [base drag](../glossary.md#base-drag),
 and gives Calisto's boattail 0.083 at Mach 1.2, 0.066 at 1.5 and 0.050 at 2.0.
 MIL-HDBK-762's chart for conical boattails at supersonic speeds ([762] Fig. 5-122, p. 5-187)
-gives 0.338, 0.215 and about 0.13 (the last read past the chart's end). That is 0.255, 0.149 and
-0.08 more, where hpr's whole gap to Calisto's curve is 0.20, 0.156 and 0.128. RASAero II lists
-this drag as its own term, "other body wave" drag. The fix is the next increment,
+gives 0.338, 0.215 and about 0.13 (the last read past the chart's end). All of these are drag
+coefficients on the reference area. The chart's values are 0.255, 0.149 and 0.08 more than hpr's,
+where hpr's whole gap to Calisto's curve is 0.20, 0.156 and 0.128. So the missing term is larger
+than the whole gap at Mach 1.2, about equal to it at 1.5, and about two-thirds of it at 2.0.
+Behind a boattail the base's pressure also rises, which lowers the base drag and offsets part of
+it; the handbook's correlation for that covers only Mach 2.5 to 3.5. RASAero II lists this drag
+as its own term, "other body wave" drag. The fix is the next increment,
 [M1.8b3](../decisions-and-roadmap.md#m1-8b3), checked first against the Arcas Robin's 15°
 boattail, which the wind tunnel measured.
 
@@ -1159,9 +1178,9 @@ methods, whose base drag comes from measured bases. The table is transcribed wit
 The rocket is `validation/designs/mil-hdbk-762-sample-rocket.json`, with square fins (the flat
 plate drawn) and a smooth finish, as the handbook's friction is. hpr flies it at the table's
 Reynolds numbers. `tests::drag_against_mil_hdbk_762_sample` recomputes the comparison in
-[`drag-vs-mach.json`][drag-fixture] and pins the rows within 10%. That target is
-[M1.8](../decisions-and-roadmap.md#m1-8)'s, but it was not set blind: hpr's numbers were first
-worked out while choosing this reference.
+[`drag-vs-mach.json`][drag-fixture] and pins the rows within 10%. The 10% target comes from
+[M1.8](../decisions-and-roadmap.md#m1-8). hpr's numbers for this rocket were seen before it was
+chosen as a reference, so this is not a blind test.
 
 Each term, the handbook's first and then hpr's, on the reference area:
 
@@ -1187,14 +1206,15 @@ Two of twelve rows are within 10%, and hpr reads high, not low: +21.3% to +43.6%
   against 0.052 at Mach 1.0, and 0.234 against 0.109 at 1.1. Stoney's measured 3:1 cone also sits
   under Niskanen's closed form through the rise ([Drag through Mach 1](#drag-through-mach-1)).
   From Mach 2 the two agree within 10%.
-- **The base through Mach 1.** Fleeman's formula, which Niskanen uses (eq. 3.94), gives 0.250 at
+- **The base through Mach 1.** Niskanen's base drag (eq. 3.94, after Fleeman's missile design
+  textbook) gives 0.250 at
   Mach 1.0 where the handbook reads 0.183 from measured bases. Past Mach 1.2 hpr's is the lower:
   0.125 against 0.147 at Mach 2.
-- **The fins' square edges.** hpr gives a blunt leading edge the air's full stagnation pressure,
-  0.100 at Mach 2. The handbook gives the fins wave drag only, as if their edges were sharp, and
+- **The fins' square edges.** hpr gives a blunt leading edge the pressure of air brought to a
+  stop against it (its stagnation pressure), 0.100 at Mach 2. The handbook gives the fins wave drag only, as if their edges were sharp, and
   base drag on their blunt trailing edges: 0.016.
-- **Friction** reads 10% to 15% lower in hpr. The handbook adds 15% to a flat plate's friction on
-  the body; hpr's body factor ([N09] eq. 3.85) adds 2% for this slender body.
+- **Friction** reads 10% to 15% lower in hpr. The handbook takes a smooth flat plate's friction
+  and adds 15% on the body; hpr's body factor ([N09] eq. 3.85) adds 2% for this slender body.
 
 This rocket has no boattail, so it can't show the term Calisto's curve points to. What it shows
 is that hpr's buildup doesn't read low through Mach 1 on its own. Its nose and base read high,
