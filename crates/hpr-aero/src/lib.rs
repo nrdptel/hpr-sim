@@ -57,7 +57,7 @@ pub use afterbody::Boattail;
 pub use body::{BODY_LIFT_K, BodyGeometry};
 pub use drag::{
     BaseBehindBoattail, BoattailTerm, ComponentDrag, ComponentDragTerms, Drag, DragConditions,
-    PressureDragTerm, WakeTerm,
+    MergedBoattail, PressureDragTerm, WakeTerm,
 };
 pub use error::AeroError;
 pub use fins::{
