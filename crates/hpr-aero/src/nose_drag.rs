@@ -827,11 +827,6 @@ mod tests {
         );
     }
 
-    /// The slope of a curve by a central difference.
-    fn slope_of(curve: &PressureDragCurve, mach: f64, h: f64) -> f64 {
-        (curve.coefficient(mach + h).unwrap() - curve.coefficient(mach - h).unwrap()) / (2.0 * h)
-    }
-
     /// A 3:1 cone by hand from eq. 3.86–3.87 and B.3–B.6, and the cubic joining Mach 1 to 1.3
     /// smoothly (values and slopes agree on both sides of each join).
     #[test]
