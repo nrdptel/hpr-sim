@@ -4,10 +4,10 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
 
 ## Now
 
-- **Current milestone:** M1.8e5 Crossflow and blunt tips faster than sound
-- **Order:** M1.8e5, then M3.1
+- **Current milestone:** M1.8e5 The remaining gap, source by source (split from the old e5)
+- **Order:** M1.8e5, e6, e7, then M3.1
 - **Run:** M0.1-M0.4, M1.1-M1.7, M2.1, M1.8a to M1.8e4 shipped; https://nrdptel.github.io/hpr-sim/
-- **Last updated:** 2026-09-19 (M1.8e4 done; M1.8e5 not started)
+- **Last updated:** 2026-09-19 (M1.8e5 split into e5 to e7; clean stop, draft PR open)
 
 ## Handoff (overwrite each session)
 
@@ -30,12 +30,15 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
   rolling-moment plots are unread; #76: M1.8a's other TN D-4014 zeros. M1.8e1's Python check,
   `m18e/sose.py` (patch in hpr's Fig. 2), carries the gradient through reduced elements; hpr
   doesn't (#81).
-- **M1.8e4** next (ADR-034 flies M1.8e2): `SupersonicBody` in `hpr-aero/src/model.rs` tabulates
+- **Resume here (clean stop at 45 minutes left):** branch `m1.8e5-gap-by-source`, draft PR; only
+  the split so far. Next cycle: write e5's `docs/research/` page on this branch (site link, gate,
+  review), mark the PR ready, merge. e7 carries M1.8e's 15% bullet.
+- **M1.8e4** (ADR-034 flies M1.8e2): `SupersonicBody` in `hpr-aero/src/model.rs` tabulates
   the method's shares (nose and same-radius tubes) every 0.05 Mach, lazily, joined linearly from
   max(1.2, where the method starts to hold, bisected since M1.8e3) over 0.3; only when nothing
   behind has a slope; since M1.8e4 boattails and tubes behind them too (slender-body stations).
-  M1.8e5 next: crossflow (long model to −27.0% with its boattail), blunt tips, Fig. 2 below
-  Mach 3, #81, #87's switches, #90 (boattail angle cap); it carries M1.8e's 15% bullet.
+  Gap left: long model to −27.0% with its boattail; e5 sizes crossflow at the tunnel's angles
+  (a finite-α slope), blunt tips, Fig. 2 below Mach 3 and #81 before any model is built.
 - **Autopilot memory:** per-cycle process groups; `scripts/build-memory.sh` → `docs/perf.md`.
 - **Regeneration is not bit-identical across machines** (last digits). Regenerate reports with
   `cargo xtask validate` (debug), never `--release`: it rounds differently in the 7th digit.
@@ -82,9 +85,8 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
 
 ## Decided without Neer (one line each; significant ones get an ADR)
 
+- M1.8e splits (one id level): e3 join start, e4 boattail; old e5 → e5 measure, e6 fly, e7 rest.
 - M1.8e4: boattail shares can cross zero, so it and tubes behind keep slender-body's station.
-- M1.8e3 split (ids allow one increment level): e3 the join's start bisected to the last bit
-  (noted under ADR-034), e4 the boattail, e5 crossflow and blunt tips with M1.8e's bullet.
 - ADR-034: M1.8e2's shares tabulated every 0.05 Mach (lazily; eager took unit tests to 238 s),
   joined over Mach 1.2 to 1.5; boattails fly it since M1.8e4.
 - ADR-033: M1.8e split into e1 (the method) and e2 (flying it); TN 3527's ten-element tangent
@@ -105,10 +107,8 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
 - ADR-027: M1.8 split into a to e; fins' supersonic slope counts both faces (Niskanen's eq. 3.49
   counts one); the transonic join is not fitted to the wind tunnel; NASA's plots were read by hand
   into a committed fixture; the body's supersonic gap became M1.8e.
-- ADR-026: the oracle flies RocketPy 1.13.0 with two upstream corrections; hpr keeps body lift and
-  its rail release; a drift is gated unless a measurement excuses it.
 - M0.4, M1.4, M1.5, M1.6, M1.7 and M2.1b were split into increments, done-when bullets unchanged.
-- ADR-001 to ADR-025 (details in `DECISIONS.md`), among them: refs pinned by hash; body `+z` to the
+- ADR-001 to ADR-026 (details in `DECISIONS.md`), among them: refs pinned by hash; body `+z` to the
   nose; Niskanen's drag as printed at 20 µm; own DOPRI5; recovery in `hpr-sim`; the site's own link,
   label and number checks; references read, never written; 3% gates or a written reason;
   predicted mode's 3% a target. #11: `SolidMotor` refuses `c = I/m_p` outside 200–5,000 m/s (a
