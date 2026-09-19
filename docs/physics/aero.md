@@ -360,10 +360,17 @@ For a worked example with numbers, see
   and a slope of 2, "reasonable results for bodies having moderate amounts of boattail". hpr does
   the same, but nothing here checks it.
 - **Where the method stops.** The relaxation holds only where the gradient behind a corner points
-  toward the tangent cone's pressure (`η ≥ 0`). Where it doesn't, near a sharp tip at high Mach
-  number, the report reduces the element to the older *generalized* method: the pressure stays
-  as it is along the element ([SD56] p. 13). hpr does the same, and refuses a body whose last
-  element would need it.
+  toward the tangent cone's pressure (`η ≥ 0`, [SD56] p. 13). The report states that as a
+  condition and doesn't say how it went on where it fails, near a sharp tip at high Mach number.
+  hpr's own reading is to reduce such an element to the older *generalized* method, which the
+  report says the equations become at `η = 0`: the pressure stays as it is along the element and
+  no gradient passes to the next corner. On the report's fineness-3 ogive at Mach 5.05 that
+  departs from its values ([issue #81](https://github.com/nrdptel/hpr-sim/issues/81)). hpr
+  refuses a cylinder or boattail element that would need it, since it would carry its loading
+  over any length.
+- **Mach number over nose fineness.** The report states the method for 0.4 to 2; hpr doesn't
+  enforce it (the report's own Mach 6.28 rows are at 2.09, and the Arcas Robin at Mach 1.5 is at
+  0.36).
 - **Its range.** The report states the method for Mach number over nose fineness from 0.4 to 2,
   within ±0.2 per radian and ±0.2 calibres of its measurements. Fig. 2 covers Mach 3 to 10; below
   Mach 3 hpr holds the Mach 3 curve, an assumption. The tip's shock must be attached, and the
@@ -1521,37 +1528,51 @@ less the reference's:
 | cone, fineness 5 | 23 of 24 (−0.003 to +0.066) | 24 of 24 (−0.003 to +0.072) | 20 of 20 (−0.075 to +0.176) | 19 of 20 (−0.165 to +0.272) |
 | cone, fineness 7 | 11 of 24 (−0.001 to +0.146) | 16 of 24 (−0.003 to +0.257) | 18 of 20 (−0.061 to +0.251) | 16 of 20 (−0.153 to +0.328) |
 | tangent ogive, fineness 3 | 12 of 24 (−0.115 to +0.014) | 19 of 24 (−0.670 to +0.062) | 19 of 20 (−0.278 to +0.008) | 17 of 20 (−0.540 to +0.104) |
-| tangent ogive, fineness 5 | 15 of 24 (−0.133 to +0.012) | 20 of 24 (−0.193 to +0.090) | 20 of 20 (−0.108 to +0.138) | 19 of 20 (−0.143 to +0.217) |
-| tangent ogive, fineness 7 | 19 of 24 (−0.068 to +0.018) | 19 of 24 (−0.110 to +0.127) | 20 of 20 (−0.106 to +0.143) | 19 of 20 (−0.203 to +0.150) |
+| tangent ogive, fineness 5 | 15 of 24 (−0.134 to +0.009) | 20 of 24 (−0.181 to +0.090) | 20 of 20 (−0.111 to +0.138) | 19 of 20 (−0.143 to +0.217) |
+| tangent ogive, fineness 7 | 17 of 24 (−0.072 to +0.013) | 22 of 24 (−0.107 to +0.128) | 20 of 20 (−0.107 to +0.142) | 19 of 20 (−0.206 to +0.147) |
+
+The 12 cones with no cylinder only read Fig. 2 back, so against the report's values they check
+the hand reading, not the method.
 
 A worked example: a cone of fineness 5 on a cylinder 4 calibres long, at Mach 4.24. Slender-body
 theory gives 2 per radian at any length. The tip cone alone gives 1.868 (Fig. 2). With the
 cylinder hpr gives 2.922, the report 2.91, and the wind tunnel 2.84.
 
 In all, against the measurements, 117 of 120 slopes and 109 of 120 centres of pressure are within
-the report's ±0.2; against the report's own values, 104 of 144 slopes and 122 of 144 centres of
-pressure are within 0.05 and 0.1. That is 76 of the 528 comparisons outside:
+the report's ±0.2; against the report's own values, 102 of 144 slopes and 125 of 144 centres of
+pressure are within 0.05 and 0.1. That is 75 of the 528 comparisons outside, so the targets are
+not met ([ADR-033][adr-033] records it):
 
-- **Against the report's own values** (62 misses). A second implementation of the same
-  equations was written separately from the paper during this work, with its own cone solver. It
-  is a scratch script that is not committed, so this check can't be rerun from the repository;
-  the numbers here are what it gave.
-  For the cone-cylinders it used the report's closed form (its Appendix C), for the ogives its
-  ten-element march. It agrees with hpr within 0.0007 per radian on all 72 cone-cylinders, and
-  within 0.009 per radian and 0.016 calibres on the 60 ogive-cylinders whose march never reaches
-  the method's limit. On the other 12, the fineness-3 ogive at Mach 5.05 and 6.28, it carried
-  the pressure gradient on through the reduced elements, which [ADR-033][adr-033] rejects; there
-  it is further from the report than hpr is. So hpr follows the printed equations, and the
-  printed values depart from both. The largest departures are on the
-  fineness-7 cone on long cylinders (hpr high, up to +0.146 at Mach 6.28 over 10 calibres), the
-  ogives (hpr low, most at fineness 5 and Mach 3, down to −0.133), and the fineness-3 ogive's CP
-  at Mach 5.05 (−0.19 to −0.67 calibres). That last block is out of line with the report's own
-  values at Mach 4.24 and 6.28 and with its simpler two-step method. Why the report's values
-  differ is not known. It took its cone pressures from charts (its Fig. 1), and a thin cone's
-  small pressure differences are sensitive to them; that is a guess, not a finding.
-- **Against the measurements** (14 misses). These are mostly the same rows: long cylinders at
-  high Mach number, and the fineness-3 ogive at Mach 5.05, where the measured CP also sits aft of
-  its neighbours. The worst are −0.278 per radian and −0.540 calibres.
+- **Against the report's own values** (61 misses), in two kinds.
+  - *Where the march stays inside the method's limit* (49 misses), hpr follows the printed
+    equations and the printed values depart from them. The largest are the fineness-7 cone on
+    long cylinders (hpr high, up to +0.146 at Mach 6.28 over 10 calibres) and the ogives (hpr
+    low, most at fineness 5 and Mach 3, down to −0.134). The evidence is a second implementation
+    of the same equations, written from the paper during this work with its own cone solver.
+    For the cone-cylinders it used the report's closed form (its Appendix C), for the ogives its
+    ten-element march. With hpr's hand-read Fig. 2, it agrees with hpr within 0.0001 per radian
+    on all 72 cone-cylinders and within 0.0006 per radian and 0.0003 calibres on the 60
+    ogive-cylinders that stay inside the limit. It is an uncommitted scratch script by the same
+    author, so it can't be rerun from the repository, and it can't catch a misreading both
+    share. Why the printed values differ is not known. The report took its cone pressures from
+    charts (its Fig. 1), and a thin cone's small pressure differences are sensitive to them; that
+    is a guess, not a finding.
+  - *Where the march reaches the method's limit* (12 misses), on the fineness-3 ogive at Mach
+    5.05 and 6.28, near the tip. There hpr's CP at Mach 5.05 sits 0.19 to 0.67 calibres ahead of
+    the report's, and the report's measurements agree with the report, so this is hpr's gap, not
+    the report's. The report doesn't say how it continued past its limit. Carrying the pressure
+    gradient on through the reduced elements comes closer at Mach 5.05 but further at Mach 6.28,
+    and it doesn't settle as elements are added. This is open
+    ([issue #81](https://github.com/nrdptel/hpr-sim/issues/81)).
+- **Against the measurements** (14 misses), in four groups:
+  - *The fineness-7 cone on long cylinders* (6). The report is already 0.07 to 0.15 high there,
+    and hpr, following the closed form, adds 0.06 to 0.19 more.
+  - *Rows where the report is itself 0.20 to 0.22 off* (3): the fineness-5 and fineness-3 cones'
+    CP at Mach 6.28 over 10 calibres, and the fineness-5 ogive's at Mach 5.05 over 10.
+  - *The fineness-3 ogive at Mach 5.05* (4): the limit above; the worst misses, −0.278 per
+    radian and −0.540 calibres.
+  - *The fineness-7 ogive's CP at Mach 5.05 over 4 calibres* (1): −0.206, just outside, where
+    the report reads −0.13.
 
 **The Arcas Robin** ([D4014], the wind tunnel of
 [Normal force through Mach 1](#normal-force-through-mach-1)). The method needs a pointed tip, so

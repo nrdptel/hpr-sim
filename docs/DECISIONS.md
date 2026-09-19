@@ -3186,21 +3186,31 @@ source covers a 15° boattail. Doing all of it, and flying it, is more than one 
   theory, which Jorgensen (NASA TR R-474, p. 26) recommends faster than sound, is a
   characteristics solution, far more code.
 - **Its inputs.** The tip cone by the Taylor–Maccoll equation (NACA Report 1135 eq. 177),
-  integrated by classical Runge–Kutta at 0.001 rad and a shock angle found by regula falsi to
-  rounding; Prandtl–Meyer from `afterbody` (ADR-030). The tangent cones' slopes are TN 3527's
+  integrated by classical Runge–Kutta at up to 0.001 rad, the step shrinking so the equation's
+  denominator (zero where the flow normal to the rays is sonic) changes by at most 2% per step,
+  and a shock angle found by regula falsi to rounding. A fixed step, in the first draft, gave
+  slender cones (under about 2°, a tangent ogive's last elements) pressures that jumped and NaN
+  (code and physics review); the step is a continuous function of the state rather than an
+  error estimate's accept-or-reject, so platforms differ in last bits only. Checked against NACA
+  Report 1135's cone charts, slender-cone linear theory and smoothness in Mach; Prandtl–Meyer from `afterbody` (ADR-030). The tangent cones' slopes are TN 3527's
   Fig. 2, read by hand at 0° to 24° for Mach 3 to 10, linear between readings, the Mach 3 curve
   held below Mach 3 and the Mach 10 curve above (an assumption M1.8e2 must measure).
 - **The report's tangent body**: ten elements per curved piece, tangent at `x/l = 0, 0.1, …, 1.0`
   (footnote 9, p. 15), one per cone or cylinder. With 40 elements per curve in place of 10, no
   ogive-cylinder tried moves by 0.01.
 - **Its limit** (p. 13): the exponential relaxation holds only where the gradient behind a corner
-  has the sign of `p_c − p₂` (`η ≥ 0`); where it doesn't, the element is the generalized method's,
-  its pressure constant and no gradient carried on. A first version carried the gradient on;
+  has the sign of `p_c − p₂` (`η ≥ 0`). The report states that as a condition and doesn't say
+  how it continued where it fails. hpr's reading: the element becomes the generalized method's
+  (which the report says the equations reduce to at `η = 0`), its pressure constant and no
+  gradient carried on. A first version carried the gradient on;
   on the fineness-3 ogive from Mach 5.05 it then ran away and the surface flow went subsonic at
   every element count. A second held the pressure but kept the gradient, and grew toward the
   generalized method's value (5.4 per radian, against the report's 2.8) as elements were added.
-  The report's reduction converges: 10 and 320 elements agree within 0.008 per radian. A body
-  whose last element would need it is refused, since that element runs to the base.
+  This reading converges: 10 and 320 elements agree within 0.008 per radian. A cylinder or
+  boattail element that would need it is refused, since it would carry its loading over any
+  length (physics review found the first guard, on the last element only, bypassed by a small
+  boattail). The report's range of Mach number over nose fineness, 0.4 to 2, isn't enforced: its
+  own Mach 6.28 rows are at 2.09; M1.8e2 decides for flights.
 - **Boattails** by footnote 8 (`p_c = p₀`, slope 2), unvalidated here; the Arcas Robin's 57° lip
   is past Fig. 2 and left out.
 - **The Arcas Robin's nose** is the secant ogive through its tip and base nearest the report's
@@ -3208,23 +3218,29 @@ source covers a 15° boattail. Doing all of it, and flying it, is more than one 
   0.003 in, tip half-angle 10.76°. hpr's committed design keeps its power-series nose (ADR-027),
   whose tangent is vertical at the tip, which the method refuses.
 
-**Result.** Targets missed in 76 of 528 comparisons, each explained, as M1.8a's were.
-Against the report's own values: slopes 104 of 144 within 0.05 (−0.133 to +0.146), CPs 122 of 144
-within 0.1 calibers (−0.670 to +0.257). A separate implementation of the same equations, written
-from the paper during this work (a Python script with SciPy's cone solver, kept in `refs/scratch/`,
-not committed), agrees with hpr within 0.0007 per radian on all 72 cone-cylinders (by the report's
-Appendix C closed form) and within 0.009 per radian and 0.016 calibers on 60 of the 72
-ogive-cylinders; on the other 12 (the fineness-3 ogive at Mach 5.05 and 6.28) it carried the
-gradient through the reduced elements and sits further from the report than hpr. So the printed
-values depart from the printed equations: most on the fineness-7 cone on long cylinders (hpr
-high), the ogives (hpr low) and the fineness-3 ogive's CP at Mach 5.05, a block out of line with
-the report's own neighbours. The cause is unknown; the report read its cone pressures from charts.
-Against its measurements: slopes 117 of 120 within ±0.2 (−0.278 to +0.251), CPs 109 of 120 (−0.540
-to +0.328), mostly the same rows. The Arcas Robin's nose and cylinder, no target: short model
-−18.7% to +16.4% (within 5% from Mach 1.8 to 2.96, −15.0% and −18.7% at 3.96 and 4.63), long model
-−13.7% to −26.4%; the boattail by footnote 8 takes 0.03 to 0.18 off. The method's slope grows with
-Mach (2.55 to 3.37) but not with the longer cylinder, whose measured extra 0.57 at Mach 3.96 goes
-with its side area: crossflow, M1.8e2's.
+**Result.** Not met, recorded: 75 of 528 comparisons outside the targets. Against the report's own
+values: slopes 102 of 144 within 0.05 (−0.134 to +0.146), CPs 125 of 144 within 0.1 calibers
+(−0.670 to +0.257). 49 of those misses are where the march stays inside the method's limit.
+There a second implementation of the same equations agrees with hpr within 0.0001 per radian on
+all 72 cone-cylinders (by the report's Appendix C closed form) and within 0.0006 per radian and
+0.0003 calibers on the 60 ogive-cylinders inside the limit. It was written from the paper during
+this work: a Python script with SciPy's cone solver, patched to hpr's hand-read Fig. 2, kept in
+`refs/scratch/m18e/` and not committed. The same author wrote it, so it can't catch a misreading
+both share. So the printed values depart from the equations as read here: the fineness-7 cone
+on long cylinders reads high, and the ogives read low, growing with the cylinder. Why is unknown.
+The report read its cone pressures from charts; sampling the loading only at tangent points moves
+it by 0.004 (physics review). The other 12 are the fineness-3 ogive at Mach 5.05 and 6.28,
+where the march reaches the limit near the tip. At Mach 5.05 hpr's CP is 0.19 to 0.67 calibers
+ahead of the report, whose measurements agree with it, so the gap is hpr's (validation audit).
+No reading tried reproduces both Mach numbers (issue #81). Against its measurements: slopes 117
+of 120 within ±0.2 (−0.278 to +0.251), CPs 109 of 120 (−0.540 to +0.328). Six are on the
+fineness-7 cone on long cylinders (the report already 0.07 to 0.15 high), three where the report
+is itself 0.20 to 0.22 off, four on the fineness-3 ogive at Mach 5.05 (#81), and one at −0.206.
+The Arcas Robin's nose and cylinder has no target. Short model: −18.7% to +16.4% (within 5% from
+Mach 1.8 to 2.96; −15.0% and −18.7% at 3.96 and 4.63). Long model: −13.7% to −26.4%. The boattail
+by footnote 8 takes 0.03 to 0.18 off. The method's slope grows with Mach (2.55 to 3.37) but not
+with the longer cylinder, whose measured extra 0.57 at Mach 3.96 goes with its side area. That is
+crossflow, M1.8e2's to settle.
 
 **Consequences.** `hpr_aero::shock_expansion` (`ShockExpansionBody`, `cone_flow`,
 `cone_normal_force_slope`) is public and flies nothing yet. `cargo xtask aero` writes

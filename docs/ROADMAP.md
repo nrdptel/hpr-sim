@@ -608,9 +608,9 @@
       - The Arcas Robin's nose and cylinder, with and without its boattail (footnote 8), are
         computed at each Mach number of TN D-4014 and reported beside the measured body alone.
 
-      *Result (ADR-033):* met, 76 of 528 comparisons outside, explained: slopes 104 of 144 and
-      CPs 122 of 144 against its values, 117 and 109 of 120 against its measurements. The Arcas
-      Robin's nose and cylinder: within 5% from Mach 1.8 to 2.96; −15.0% to −26.4% past Mach 3.
+      *Result (ADR-033):* not met, recorded. Against its values, slopes 102 and CPs 125 of 144
+      within (a second implementation agrees with hpr; #81 at its limit); against its
+      measurements 117 and 109 of 120. Arcas Robin: short −18.7% to +16.4%, long to −26.4%.
 
     - [ ] **M1.8e2 The body's supersonic normal force in flight.**
       - The body's terms take Mach: M1.8e1's method where it holds, a join from subsonic, the

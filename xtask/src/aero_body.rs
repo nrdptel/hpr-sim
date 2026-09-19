@@ -230,6 +230,23 @@ pub fn arcas_body(
     ShockExpansionBody::new(&segments, DEFAULT_ELEMENTS_PER_CURVE).map_err(|e| e.to_string())
 }
 
+/// The Arcas Robin's fitted nose alone.
+fn arcas_nose(ratio: f64) -> Result<ShockExpansionBody, String> {
+    let nose = Profile::nose(
+        NoseShape::Ogive {
+            radius_ratio: ratio,
+        },
+        ARCAS_NOSE_X_IN[8] * INCH,
+        ARCAS_NOSE_R_IN[8] * INCH,
+    )
+    .map_err(|e| e.to_string())?;
+    ShockExpansionBody::new(
+        &[BodySegment::Profile { profile: nose }],
+        DEFAULT_ELEMENTS_PER_CURVE,
+    )
+    .map_err(|e| e.to_string())
+}
+
 fn arcas_robin(root: &Path) -> Result<Value, String> {
     let text =
         fs::read_to_string(root.join(WIND_TUNNEL)).map_err(|e| format!("{WIND_TUNNEL}: {e}"))?;
@@ -304,7 +321,7 @@ fn arcas_robin(root: &Path) -> Result<Value, String> {
                       coordinates",
             "radius_ratio": ratio,
             "rms_miss_in": rms_in,
-            "vertex_half_angle_deg": arcas_body(ratio, 39.14, false)?.vertex_angle_rad().to_degrees(),
+            "vertex_half_angle_deg": arcas_nose(ratio)?.vertex_angle_rad().to_degrees(),
         },
         "configurations": configurations,
     }))

@@ -95,6 +95,9 @@ const G1: f64 = 0.5 * (GAMMA - 1.0);
 /// 0.01 per radian and 0.01 calibers (test `curved_elements_converge`).
 pub const DEFAULT_ELEMENTS_PER_CURVE: usize = 10;
 
+/// The most elements a curved segment may take, far past where the result stops changing.
+pub const MAX_ELEMENTS_PER_CURVE: usize = 1000;
+
 /// One piece of a body of revolution, listed from the nose aft.
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
 #[serde(tag = "kind", rename_all = "snake_case", deny_unknown_fields)]
@@ -184,10 +187,11 @@ impl ShockExpansionBody {
     /// # Errors
     ///
     /// - [`AeroError::Unsupported`] if the first segment isn't a pointed nose with a finite tip
-    ///   angle, the radius steps between segments, or the tangent lines of consecutive elements
-    ///   don't meet in order along the body (a profile the tangent body can't follow).
-    /// - [`AeroError::Domain`] for no segments, no elements per curve, or a negative or
-    ///   non-finite cylinder dimension.
+    ///   angle, the radius steps between segments (by more than a millionth of it), the radius
+    ///   falls to zero anywhere but the tip, or the tangent lines of consecutive elements don't
+    ///   meet in order along the body (a profile the tangent body can't follow).
+    /// - [`AeroError::Domain`] for no segments, elements per curve outside
+    ///   `1..=`[`MAX_ELEMENTS_PER_CURVE`], or a negative or non-finite cylinder dimension.
     pub fn new(segments: &[BodySegment], elements_per_curve: usize) -> Result<Self, AeroError> {
         let Some(first) = segments.first() else {
             return Err(AeroError::Domain {
@@ -195,10 +199,10 @@ impl ShockExpansionBody {
                 value: 0.0,
             });
         };
-        if elements_per_curve == 0 {
+        if !(1..=MAX_ELEMENTS_PER_CURVE).contains(&elements_per_curve) {
             return Err(AeroError::Domain {
                 what: "elements per curved segment",
-                value: 0.0,
+                value: elements_per_curve as f64,
             });
         }
         for segment in segments {
@@ -225,7 +229,7 @@ impl ShockExpansionBody {
         for segment in segments {
             if let Some(aft) = previous_aft {
                 let fore = segment.fore_radius_m();
-                if (fore - aft).abs() > 1e-9 * aft.max(fore) {
+                if (fore - aft).abs() > 1e-6 * aft.max(fore) {
                     return Err(AeroError::Unsupported(format!(
                         "the second-order shock-expansion method needs a continuous profile; the \
                          radius steps from {aft} m to {fore} m at {station} m"
@@ -254,6 +258,7 @@ impl ShockExpansionBody {
             }
         }
 
+        // `points` holds at least the tip: the first segment adds one point or more.
         let (x0, r0, t0) = points[0];
         let mut elements = vec![Element {
             corner_x_m: 0.0,
@@ -274,6 +279,13 @@ impl ShockExpansionBody {
             }
             let corner_x = (r - rp + tp * xp - t * x) / (tp - t);
             let corner_r = rp + tp * (corner_x - xp);
+            if corner_r.partial_cmp(&0.0) != Some(std::cmp::Ordering::Greater) {
+                return Err(AeroError::Unsupported(format!(
+                    "the tangent body's corner at {corner_x} m has no radius: the method needs \
+                     the body open everywhere but its tip"
+                )));
+            }
+            // `elements` starts with the tip's.
             let last = elements[elements.len() - 1].corner_x_m;
             if !(corner_x.is_finite() && corner_x >= last && corner_x <= x + 1e-12 * length_m) {
                 return Err(AeroError::Unsupported(format!(
@@ -302,6 +314,7 @@ impl ShockExpansionBody {
 
     /// The tip's half-angle, rad.
     pub fn vertex_angle_rad(&self) -> f64 {
+        // `new` always lays out the tip's element.
         self.elements[0].angle_rad
     }
 
@@ -323,7 +336,12 @@ impl ShockExpansionBody {
     ///   isn't positive.
     /// - [`AeroError::Unsupported`] where the method doesn't hold: a tip cone whose shock
     ///   detaches, a tangent cone steeper than Fig. 2's 24°, a corner the flow can't turn
-    ///   supersonically, or a pressure that moves away from its tangent cone's.
+    ///   supersonically, a tip cone whose surface flow is subsonic, a cylinder or boattail
+    ///   element whose pressure moves away from its tangent cone's, or a lift that doesn't sum
+    ///   to a positive force.
+    ///
+    /// The report states the method for Mach number over nose fineness from 0.4 to 2 (Summary,
+    /// p. 1); `slope` doesn't enforce that range, and its own Mach 6.28 rows are at 2.09.
     pub fn slope(
         &self,
         mach: f64,
@@ -373,6 +391,11 @@ impl ShockExpansionBody {
             force += integral.value[0];
             moment += integral.value[1];
         }
+        if !(force.is_finite() && moment.is_finite() && force > 0.0) {
+            return Err(AeroError::Unsupported(format!(
+                "the body's lift sums to {force}, which places no centre of pressure"
+            )));
+        }
         Ok(ShockExpansionSlope {
             slope_per_rad: 2.0 * PI * force / reference_area_m2,
             centre_of_pressure_m: moment / force,
@@ -381,8 +404,15 @@ impl ShockExpansionBody {
 
     /// Marches the flow over the tangent body's elements at Mach `mach`.
     fn flows(&self, mach: f64) -> Result<Vec<ElementFlow>, AeroError> {
+        // `new` always lays out the tip's element, and `flows` starts with its flow.
         let vertex = self.elements[0];
         let cone = cone_flow(mach, vertex.angle_rad)?;
+        if cone.surface_mach <= 1.0 {
+            return Err(AeroError::Unsupported(format!(
+                "the flow on the tip's cone is subsonic (Mach {}) at Mach {mach}",
+                cone.surface_mach
+            )));
+        }
         let total = cone.surface_pressure_ratio * total_over_static(cone.surface_mach);
         let vertex_slope = cone_normal_force_slope(mach, vertex.angle_rad)?;
         let vertex_load = vertex.angle_rad.tan() * vertex_slope;
@@ -434,17 +464,17 @@ impl ShockExpansionBody {
                 cone_pressure,
                 cone_slope,
             };
+            // A reduced element keeps the loading behind its corner all along it. On a nose that
+            // is one short element; on a cylinder or boattail it would carry that loading over any
+            // length, so hpr refuses it there.
+            if flow.eta_rate() < 0.0 && element.angle_rad <= CONE_ANGLE_FLOOR_RAD {
+                return Err(AeroError::Unsupported(format!(
+                    "behind the corner at {} m, on a cylinder or boattail, the pressure moves \
+                     away from its tangent cone's",
+                    element.corner_x_m
+                )));
+            }
             flows.push(flow);
-        }
-        // Eq. 8 holds with either sign of η over an element that a later corner ends; on the
-        // last one, which runs to the base, a pressure moving away from its tangent cone's would
-        // grow without bound.
-        let last = flows[flows.len() - 1];
-        if last.eta_rate() < 0.0 {
-            return Err(AeroError::Unsupported(format!(
-                "behind the last corner, at {} m, the pressure moves away from its tangent cone's",
-                last.corner_x_m
-            )));
         }
         Ok(flows)
     }
@@ -482,12 +512,15 @@ impl ElementFlow {
     }
 
     /// The rate `η` grows at along the element. The exponential form holds only where the
-    /// gradient behind the corner has the sign of `p_c − p₂`, `η ≥ 0` (TN 3527 p. 13); where it
-    /// doesn't, `η = 0`, and "all equations reduce to those given by the generalized
-    /// shock-expansion method" (p. 13): the pressure and loading stay at their values behind the
-    /// corner, and no gradient runs along the element (its first-order approximation, p. 5). This
-    /// happens on sharp noses at high Mach number, where the method approaches the generalized one
-    /// (p. 16).
+    /// gradient behind the corner has the sign of `p_c − p₂`, `η ≥ 0` (TN 3527 p. 13), which the
+    /// report states as a condition of the method without saying how it continued where the
+    /// condition fails. hpr's reading, not the report's rule: there it takes `η = 0`, where "all
+    /// equations reduce to those given by the generalized shock-expansion method" (p. 13), so the
+    /// pressure and loading stay at their values behind the corner and no gradient is passed to
+    /// the next corner (the generalized method's constant pressure along an element, p. 5).
+    /// Eq. 10 read literally would pass the gradient on; that diverges as elements are added.
+    /// This happens on sharp noses at high Mach number, and it departs from the report's values
+    /// on its fineness-3 ogive at Mach 5.05 (issue #81).
     fn decay_rate(&self) -> f64 {
         self.eta_rate().max(0.0)
     }
@@ -540,8 +573,7 @@ fn mach_from_pressure(total: f64, pressure: f64) -> Result<f64, AeroError> {
     let m2 = ((total / pressure).powf((GAMMA - 1.0) / GAMMA) - 1.0) / G1;
     if !(m2.is_finite() && m2 > 1.0) {
         return Err(AeroError::Unsupported(format!(
-            "the surface flow slows to Mach {} where the method needs it supersonic",
-            m2.max(0.0).sqrt()
+            "the surface flow isn't supersonic (Mach² {m2}) where the method needs it"
         )));
     }
     Ok(m2.sqrt())
@@ -662,12 +694,19 @@ pub fn cone_flow(mach: f64, half_angle_rad: f64) -> Result<ConeFlow, AeroError> 
         (surface_speed * surface_speed / (G1 * (1.0 - surface_speed * surface_speed))).sqrt();
     let normal = mach * shock.sin();
     let total_ratio = normal_shock_total_pressure_ratio(normal);
-    Ok(ConeFlow {
+    let flow = ConeFlow {
         shock_angle_rad: shock,
         surface_mach,
         surface_pressure_ratio: total_over_static(mach) * total_ratio
             / total_over_static(surface_mach),
-    })
+    };
+    if !(flow.surface_mach.is_finite() && flow.surface_pressure_ratio.is_finite()) {
+        return Err(AeroError::Unsupported(format!(
+            "the flow over a cone of half-angle {}° at Mach {mach} didn't converge",
+            half_angle_rad.to_degrees()
+        )));
+    }
+    Ok(flow)
 }
 
 fn detached(mach: f64, half_angle_rad: f64) -> AeroError {
@@ -684,11 +723,33 @@ fn normal_shock_total_pressure_ratio(normal: f64) -> f64 {
         * ((GAMMA + 1.0) / (2.0 * GAMMA * m2 - (GAMMA - 1.0))).powf(1.0 / (GAMMA - 1.0))
 }
 
-/// The Taylor–Maccoll integration step in `θ`, rad.
+/// The largest Taylor–Maccoll integration step in `θ`, rad.
 const TM_STEP_RAD: f64 = 1e-3;
 
+/// The most Taylor–Maccoll steps one shock angle may take before the integration gives up.
+const TM_MAX_STEPS: usize = 1_000_000;
+
+/// The Taylor–Maccoll step at `state`: at most [`TM_STEP_RAD`] and half the angle left, and small
+/// enough that the equation's denominator `D = a′² − V_θ²` (where the flow normal to the rays is
+/// sonic) changes by at most 2% of itself. Behind a weak shock (a slender cone) the flow starts
+/// nearly sonic normal to the shock, `D` starts near zero and the solution turns sharply; a fixed
+/// step there gives nonsense. The step is a continuous function of the state, not an error
+/// estimate's accept-or-reject, so a last-bit difference between platforms moves the answer by
+/// last bits too.
+fn tm_step(theta: f64, [vr, vt]: [f64; 2]) -> f64 {
+    let denominator = G1 * (1.0 - vr * vr - vt * vt) - vt * vt;
+    let acceleration = taylor_maccoll(theta, [vr, vt])[1];
+    let rate = 2.0 * (vt * acceleration).abs();
+    let limit = if rate > 0.0 {
+        0.02 * denominator.abs() / rate
+    } else {
+        TM_STEP_RAD
+    };
+    TM_STEP_RAD.min(0.5 * theta).min(limit)
+}
+
 /// For a conical shock at `shock_rad`, the cone angle where the flow behind it meets the surface
-/// and the speed `V/V_max` there.
+/// and the speed `V/V_max` there; NaN if the integration doesn't reach the surface.
 fn cone_behind_shock(mach: f64, shock_rad: f64) -> (f64, f64) {
     let normal = mach * shock_rad.sin();
     if normal <= 1.0 {
@@ -707,8 +768,8 @@ fn cone_behind_shock(mach: f64, shock_rad: f64) -> (f64, f64) {
         -speed * (shock_rad - deflection).sin(),
     ];
     let mut theta = shock_rad;
-    loop {
-        let h = TM_STEP_RAD.min(0.5 * theta);
+    for _ in 0..TM_MAX_STEPS {
+        let h = tm_step(theta, state);
         let next = rk4(theta, state, -h);
         if next[1] >= 0.0 {
             // The surface lies within this step: refine the step length by regula falsi.
@@ -750,6 +811,7 @@ fn cone_behind_shock(mach: f64, shock_rad: f64) -> (f64, f64) {
             return (0.0, state[0]);
         }
     }
+    (f64::NAN, f64::NAN)
 }
 
 /// `V/V_max = (2/((γ − 1)M²) + 1)^(−1/2)`.
@@ -833,17 +895,26 @@ const CONE_SLOPES: [[f64; 19]; 6] = [
 ///
 /// # Errors
 ///
-/// [`AeroError::Domain`] for a half-angle outside Fig. 2's 0° to 24°, or a Mach number that
-/// isn't finite and positive.
+/// - [`AeroError::Domain`] for a negative or non-finite half-angle, or a Mach number that isn't
+///   finite and above 1.
+/// - [`AeroError::Unsupported`] for a half-angle past Fig. 2's 24°.
 pub fn cone_normal_force_slope(mach: f64, half_angle_rad: f64) -> Result<f64, AeroError> {
     let degrees = half_angle_rad.to_degrees();
+    if !(degrees.is_finite() && degrees >= 0.0) {
+        return Err(AeroError::Domain {
+            what: "tangent-cone half-angle",
+            value: half_angle_rad,
+        });
+    }
     let last = CONE_ANGLES_DEG[CONE_ANGLES_DEG.len() - 1];
-    if !(degrees.is_finite() && (0.0..=last).contains(&degrees)) {
+    // A millionth of a degree over admits 24° itself through the degree conversion's rounding.
+    if degrees > last + 1e-6 {
         return Err(AeroError::Unsupported(format!(
             "a tangent cone of {degrees}° is past TN 3527 Fig. 2's {last}°"
         )));
     }
-    if !(mach.is_finite() && mach > 0.0) {
+    let degrees = degrees.min(last);
+    if !(mach.is_finite() && mach > 1.0) {
         return Err(AeroError::Domain {
             what: "Mach number of a cone's normal-force slope",
             value: mach,
@@ -924,6 +995,61 @@ mod tests {
     }
 
     #[test]
+    fn a_boattail_takes_lift_off_by_footnote_8() {
+        // Footnote 8's tangent cone for a boattail element: the free stream's pressure and a
+        // slope of 2, so the loading relaxes toward a negative one.
+        let body_with = |tail: bool| {
+            let mut segments = vec![
+                BodySegment::Profile {
+                    profile: Profile::nose(NoseShape::TANGENT_OGIVE, 4.0, 0.5).unwrap(),
+                },
+                BodySegment::Cylinder {
+                    length_m: 8.0,
+                    radius_m: 0.5,
+                },
+            ];
+            if tail {
+                segments.push(BodySegment::Profile {
+                    profile: Profile::transition(NoseShape::Conical {}, 1.0, 0.5, 0.35, false)
+                        .unwrap(),
+                });
+            }
+            ShockExpansionBody::new(&segments, DEFAULT_ELEMENTS_PER_CURVE).unwrap()
+        };
+        for mach in [2.0, 3.0, 4.63] {
+            let (bare, tailed) = (
+                body_with(false).slope(mach, 0.25 * PI).unwrap(),
+                body_with(true).slope(mach, 0.25 * PI).unwrap(),
+            );
+            assert!(tailed.slope_per_rad < bare.slope_per_rad, "Mach {mach}");
+            assert!(
+                tailed.centre_of_pressure_m < bare.centre_of_pressure_m,
+                "Mach {mach}"
+            );
+        }
+    }
+
+    #[test]
+    fn slender_cones_approach_linear_theory() {
+        // As the cone thins, Taylor–Maccoll tends to linearized slender-cone theory,
+        // `C_p = δ²(2 ln(2/(βδ)) − 1)`, `β = √(M² − 1)`, whose error is of higher order in δ:
+        // within 3% of `C_p` at 0.5° and 1°.
+        for mach in [1.5, 2.0, 3.0, 5.0] {
+            for degrees in [0.5, 1.0] {
+                let delta = f64::to_radians(degrees);
+                let beta = f64::sqrt(mach * mach - 1.0);
+                let linear = delta * delta * (2.0 * (2.0 / (beta * delta)).ln() - 1.0);
+                let flow = cone_flow(mach, delta).unwrap();
+                let cp = (flow.surface_pressure_ratio - 1.0) / (0.5 * GAMMA * mach * mach);
+                assert!(
+                    (cp / linear - 1.0).abs() < 0.03,
+                    "Mach {mach}, {degrees}°: {cp} {linear}"
+                );
+            }
+        }
+    }
+
+    #[test]
     #[allow(
         clippy::approx_constant,
         reason = "6.28 is one of TN 3527's test Mach numbers, not 2π"
@@ -973,6 +1099,44 @@ mod tests {
             let cp = (flow.surface_pressure_ratio - 1.0) / (0.5 * GAMMA * mach * mach);
             assert!((cp - pressure_coefficient).abs() < 0.004, "{what}: {cp}");
             assert!((flow.surface_mach - surface_mach).abs() < 0.015, "{what}");
+        }
+    }
+
+    #[test]
+    fn cone_flow_rises_smoothly_with_the_cone_angle() {
+        // Slender cones start almost sonic normal to the shock, where the Taylor–Maccoll equation
+        // is nearly singular; a fixed step once gave pressures that jumped and NaN there.
+        for mach in [1.5, 1.97, 2.0, 3.0, 5.0, 7.0] {
+            let mut last = 1.0;
+            for i in 1..=100 {
+                let angle = f64::to_radians(0.05 * f64::from(i));
+                let p = cone_flow(mach, angle).unwrap().surface_pressure_ratio;
+                assert!(p.is_finite() && p > last, "Mach {mach}, {angle} rad: {p}");
+                last = p;
+            }
+        }
+    }
+
+    #[test]
+    fn the_slope_is_smooth_in_mach() {
+        // Every tangent ogive's elements near the shoulder are cones of a degree or two.
+        for fineness in [3.0, 5.0, 7.0] {
+            let ogive = body(true, fineness, 4.0, DEFAULT_ELEMENTS_PER_CURVE);
+            let mut last: Option<f64> = None;
+            for i in 0..=300 {
+                let mach = 3.0 + 0.01 * f64::from(i);
+                let s = ogive.slope(mach, 0.25 * PI).unwrap().slope_per_rad;
+                if let Some(last) = last {
+                    assert!((s - last).abs() < 0.01, "fineness {fineness}, Mach {mach}");
+                }
+                last = Some(s);
+                // A last-bit change in the Mach number moves the slope by last bits only.
+                let nudged = ogive.slope(mach * (1.0 + f64::EPSILON), 0.25 * PI).unwrap();
+                assert!(
+                    (nudged.slope_per_rad - s).abs() < 1e-12,
+                    "fineness {fineness}, Mach {mach}"
+                );
+            }
         }
     }
 
@@ -1027,9 +1191,34 @@ mod tests {
             cone_flow(1.5, 40f64.to_radians()),
             Err(AeroError::Unsupported(_))
         ));
-        // A cone steeper than Fig. 2's 24°.
+        // A cone steeper than Fig. 2's 24°, and angles Fig. 2 can't have.
         assert!(matches!(
             body(false, 1.0, 2.0, 1).slope(3.0, area),
+            Err(AeroError::Unsupported(_))
+        ));
+        assert!(cone_normal_force_slope(3.0, 24f64.to_radians()).is_ok());
+        for (mach, angle) in [(3.0, -0.1), (3.0, f64::NAN), (0.5, 0.1)] {
+            assert!(matches!(
+                cone_normal_force_slope(mach, angle),
+                Err(AeroError::Domain { .. })
+            ));
+        }
+        // Elements per curve outside 1 to 1000.
+        let ogive = BodySegment::Profile {
+            profile: Profile::nose(NoseShape::TANGENT_OGIVE, 3.0, 0.5).unwrap(),
+        };
+        for count in [0, MAX_ELEMENTS_PER_CURVE + 1, usize::MAX] {
+            assert!(matches!(
+                ShockExpansionBody::new(&[ogive], count),
+                Err(AeroError::Domain { .. })
+            ));
+        }
+        // A body that closes to a point and opens again.
+        let closing = BodySegment::Profile {
+            profile: Profile::transition(NoseShape::Conical {}, 3.0, 0.5, 0.0, false).unwrap(),
+        };
+        assert!(matches!(
+            ShockExpansionBody::new(&[nose, closing, nose], 10),
             Err(AeroError::Unsupported(_))
         ));
     }
@@ -1039,7 +1228,8 @@ mod tests {
     /// II, `tn3527-bodies.json`) and the Arcas Robin's geometry, so the recorded errors can't go
     /// stale, and pins the set of rows outside the targets set before measuring: 0.05 per radian
     /// and 0.1 calibers of the report's second-order values, and its stated ±0.2 per radian and
-    /// ±0.2 calibers of its measurements. Each miss is explained in `docs/physics/aero.md`.
+    /// ±0.2 calibers of its measurements. The targets are not met; ADR-033 and
+    /// `docs/physics/aero.md` record every miss.
     #[test]
     fn against_tn3527_and_the_arcas_robin() {
         let fixture: Value = serde_json::from_str(include_str!(
@@ -1124,14 +1314,13 @@ mod tests {
                 }
             }
         }
-        // Every miss, in the tables' order. Against the report's own second-order values, hpr
-        // and a separate implementation of the same equations (the cone-cylinders by its
-        // Appendix C closed form) agree within 0.01 per radian, but for the fineness-3 ogive at
-        // Mach 5.05 and 6.28 (ADR-033), where the printed values depart from both:
-        // the fineness-7 cone on long cylinders (hpr high), the ogives from Mach 3 (hpr low, most
-        // at fineness 5 and Mach 3), and the fineness-3 ogive's CP at Mach 5.05, out of line with
-        // the report's own neighbouring Mach numbers. Against its measurements, the same rows
-        // carry hpr past ±0.2 (docs/physics/aero.md, ADR-033).
+        // Every miss, in the tables' order (docs/physics/aero.md, ADR-033). Against the report's
+        // own values: inside the method's limit, hpr and a separate implementation of the same
+        // equations agree within 0.001 per radian where the printed values depart (the
+        // fineness-7 cone on long cylinders high, the ogives low); at the limit, the fineness-3
+        // ogive at Mach 5.05 and 6.28, hpr's reduction departs from the report (issue #81).
+        // Against its measurements: the same fineness-7 cones, three rows where the report is
+        // itself 0.20 to 0.22 off, the fineness-3 ogive at Mach 5.05 (#81), and one at -0.206.
         let pinned = [
             "cone-7-6@3 experiment cp_calibers",
             "cone-7-8@3 second_order c_n_alpha",
@@ -1164,9 +1353,8 @@ mod tests {
             "cone-5-10@6.28 experiment cp_calibers",
             "cone-3-10@6.28 experiment cp_calibers",
             "ogive-7-4@3 second_order cp_calibers",
-            "ogive-7-6@3 second_order cp_calibers",
-            "ogive-7-8@3 second_order cp_calibers",
-            "ogive-7-10@3 second_order cp_calibers",
+            "ogive-7-8@3 second_order c_n_alpha",
+            "ogive-7-2@4.24 second_order c_n_alpha",
             "ogive-7-2@5.05 second_order c_n_alpha",
             "ogive-7-4@5.05 second_order c_n_alpha",
             "ogive-7-4@5.05 experiment cp_calibers",

@@ -9,84 +9,84 @@
             "mach": 1.5,
             "measured_c_n_alpha": 2.1919997374213684,
             "nose_and_cylinder": {
-              "c_n_alpha": 2.5519429132839653,
-              "c_n_alpha_error": 0.16420767289234628,
-              "cp_calibers": 2.994022870465663
+              "c_n_alpha": 2.551942908324135,
+              "c_n_alpha_error": 0.16420767062964958,
+              "cp_calibers": 2.994022860799215
             },
             "with_boattail": {
-              "c_n_alpha": 2.3747381557138802,
-              "c_n_alpha_error": 0.08336607672566698,
-              "cp_calibers": 1.8829454942385158
+              "c_n_alpha": 2.3747381507537346,
+              "c_n_alpha_error": 0.08336607446282662,
+              "cp_calibers": 1.882945481528065
             }
           },
           {
             "mach": 1.8,
             "measured_c_n_alpha": 2.612936786341712,
             "nose_and_cylinder": {
-              "c_n_alpha": 2.724299126605939,
-              "c_n_alpha_error": 0.04261960750307381,
-              "cp_calibers": 3.1764158270149068
+              "c_n_alpha": 2.7242991200624496,
+              "c_n_alpha_error": 0.04261960499880768,
+              "cp_calibers": 3.1764158110913825
             },
             "with_boattail": {
-              "c_n_alpha": 2.580497889615594,
-              "c_n_alpha_error": -0.01241472694467094,
-              "cp_calibers": 2.35675474009606
+              "c_n_alpha": 2.580497883069658,
+              "c_n_alpha_error": -0.01241472944987343,
+              "cp_calibers": 2.3567547211921163
             }
           },
           {
             "mach": 2.3,
             "measured_c_n_alpha": 3.077526441368625,
             "nose_and_cylinder": {
-              "c_n_alpha": 2.931102209882626,
-              "c_n_alpha_error": -0.04757854539208495,
-              "cp_calibers": 3.4486895090968672
+              "c_n_alpha": 2.931102202206614,
+              "c_n_alpha_error": -0.04757854788629978,
+              "cp_calibers": 3.44868948474212
             },
             "with_boattail": {
-              "c_n_alpha": 2.8283368715125614,
-              "c_n_alpha_error": -0.08097073237338137,
-              "cp_calibers": 2.9240861303352013
+              "c_n_alpha": 2.828336863819259,
+              "c_n_alpha_error": -0.08097073487321438,
+              "cp_calibers": 2.924086103581046
             }
           },
           {
             "mach": 2.96,
             "measured_c_n_alpha": 3.284069313605933,
             "nose_and_cylinder": {
-              "c_n_alpha": 3.124071243105607,
-              "c_n_alpha_error": -0.048719456022883634,
-              "cp_calibers": 3.7687180187945146
+              "c_n_alpha": 3.1240712363030596,
+              "c_n_alpha_error": -0.04871945809426115,
+              "cp_calibers": 3.768717992144635
             },
             "with_boattail": {
-              "c_n_alpha": 3.055959101369108,
-              "c_n_alpha_error": -0.06945962172350084,
-              "cp_calibers": 3.4540032496051296
+              "c_n_alpha": 3.055959094519038,
+              "c_n_alpha_error": -0.06945962380934889,
+              "cp_calibers": 3.454003221438089
             }
           },
           {
             "mach": 3.96,
             "measured_c_n_alpha": 3.8844772511193657,
             "nose_and_cylinder": {
-              "c_n_alpha": 3.300136374905797,
-              "c_n_alpha_error": -0.15042973312436902,
-              "cp_calibers": 4.1639088491046525
+              "c_n_alpha": 3.300136371172368,
+              "c_n_alpha_error": -0.15042973408548388,
+              "cp_calibers": 4.16390883068384
             },
             "with_boattail": {
-              "c_n_alpha": 3.262275005718026,
-              "c_n_alpha_error": -0.16017657079135772,
-              "cp_calibers": 4.004580146035079
+              "c_n_alpha": 3.262275001930742,
+              "c_n_alpha_error": -0.16017657176633682,
+              "cp_calibers": 4.004580126990811
             }
           },
           {
             "mach": 4.63,
             "measured_c_n_alpha": 4.148728473047325,
             "nose_and_cylinder": {
-              "c_n_alpha": 3.371053812969859,
-              "c_n_alpha_error": -0.18744891721155432,
-              "cp_calibers": 4.3708902626098185
+              "c_n_alpha": 3.3710538107175814,
+              "c_n_alpha_error": -0.18744891775443817,
+              "cp_calibers": 4.370890250094552
             },
             "with_boattail": {
-              "c_n_alpha": 3.3452994233535622,
-              "c_n_alpha_error": -0.19365669624159032,
-              "cp_calibers": 4.266771001538507
+              "c_n_alpha": 3.345299421062219,
+              "c_n_alpha_error": -0.19365669679389041,
+              "cp_calibers": 4.26677098869901
             }
           }
         ]
@@ -99,70 +99,70 @@
             "mach": 1.8,
             "measured_c_n_alpha": 3.1585382380526092,
             "nose_and_cylinder": {
-              "c_n_alpha": 2.7243458803295026,
-              "c_n_alpha_error": -0.13746623437771233,
-              "cp_calibers": 3.176681914008114
+              "c_n_alpha": 2.7243458737759965,
+              "c_n_alpha_error": -0.1374662364525665,
+              "cp_calibers": 3.1766818980281526
             },
             "with_boattail": {
-              "c_n_alpha": 2.5805333158991117,
-              "c_n_alpha_error": -0.18299760160885858,
-              "cp_calibers": 2.0461345405428286
+              "c_n_alpha": 2.5805333093454084,
+              "c_n_alpha_error": -0.18299760368377516,
+              "cp_calibers": 2.046134520799538
             }
           },
           {
             "mach": 2.3,
             "measured_c_n_alpha": 3.5254522602158787,
             "nose_and_cylinder": {
-              "c_n_alpha": 2.9316079743190926,
-              "c_n_alpha_error": -0.1684448524798411,
-              "cp_calibers": 3.451360008431027
+              "c_n_alpha": 2.9316079665344983,
+              "c_n_alpha_error": -0.16844485468795334,
+              "cp_calibers": 3.451359983509737
             },
             "with_boattail": {
-              "c_n_alpha": 2.8287594324308696,
-              "c_n_alpha_error": -0.19761800085823533,
-              "cp_calibers": 2.723713229985472
+              "c_n_alpha": 2.828759424645021,
+              "c_n_alpha_error": -0.1976180030667033,
+              "cp_calibers": 2.7237132021464974
             }
           },
           {
             "mach": 2.96,
             "measured_c_n_alpha": 3.8680132902426,
             "nose_and_cylinder": {
-              "c_n_alpha": 3.1270842742834986,
-              "c_n_alpha_error": -0.19155286198942478,
-              "cp_calibers": 3.7835406126886046
+              "c_n_alpha": 3.1270842670217465,
+              "c_n_alpha_error": -0.19155286386681025,
+              "cp_calibers": 3.7835405838184903
             },
             "with_boattail": {
-              "c_n_alpha": 3.0586573250437703,
-              "c_n_alpha_error": -0.2092433258284041,
-              "cp_calibers": 3.343210840652839
+              "c_n_alpha": 3.0586573177758054,
+              "c_n_alpha_error": -0.20924332770739584,
+              "cp_calibers": 3.3432108100508087
             }
           },
           {
             "mach": 3.96,
             "measured_c_n_alpha": 4.455316215903041,
             "nose_and_cylinder": {
-              "c_n_alpha": 3.3134613168929605,
-              "c_n_alpha_error": -0.2562904278116743,
-              "cp_calibers": 4.225060766209867
+              "c_n_alpha": 3.313461312248226,
+              "c_n_alpha_error": -0.2562904288541894,
+              "cp_calibers": 4.225060743720708
             },
             "with_boattail": {
-              "c_n_alpha": 3.274852460677424,
-              "c_n_alpha_error": -0.26495622263847574,
-              "cp_calibers": 3.9982001749789067
+              "c_n_alpha": 3.2748524560200725,
+              "c_n_alpha_error": -0.26495622368382266,
+              "cp_calibers": 3.9982001518282897
             }
           },
           {
             "mach": 4.63,
             "measured_c_n_alpha": 4.615044057113034,
             "nose_and_cylinder": {
-              "c_n_alpha": 3.395343488783865,
-              "c_n_alpha_error": -0.26428795765216573,
-              "cp_calibers": 4.478892084336449
+              "c_n_alpha": 3.3953434855973366,
+              "c_n_alpha_error": -0.2642879583426312,
+              "cp_calibers": 4.478892067809388
             },
             "with_boattail": {
-              "c_n_alpha": 3.3686679777130184,
-              "c_n_alpha_error": -0.27006807821888756,
-              "cp_calibers": 4.328517122185648
+              "c_n_alpha": 3.3686679745147354,
+              "c_n_alpha_error": -0.2700680789119001,
+              "cp_calibers": 4.328517105319082
             }
           }
         ]
@@ -224,31 +224,31 @@
       "afterbody_calibers": 2.0,
       "experiment": {
         "c_n_alpha": {
-          "error": -0.03579874650512904,
+          "error": -0.035798750976393734,
           "reference": 2.52,
           "within": true
         },
         "cp_calibers": {
-          "error": -0.15335782374658535,
+          "error": -0.1533578288608144,
           "reference": 5.56,
           "within": true
         }
       },
       "fineness": 7.0,
       "hpr": {
-        "c_n_alpha": 2.484201253494871,
-        "cp_calibers": 5.406642176253414
+        "c_n_alpha": 2.4842012490236063,
+        "cp_calibers": 5.406642171139185
       },
       "mach": 3.0,
       "nose": "cone",
       "second_order": {
         "c_n_alpha": {
-          "error": 0.01420125349487078,
+          "error": 0.014201249023606088,
           "reference": 2.47,
           "within": true
         },
         "cp_calibers": {
-          "error": 0.016642176253414576,
+          "error": 0.016642171139185535,
           "reference": 5.39,
           "within": true
         }
@@ -258,31 +258,31 @@
       "afterbody_calibers": 4.0,
       "experiment": {
         "c_n_alpha": {
-          "error": 0.04695910747255416,
+          "error": 0.046959096357644725,
           "reference": 2.69,
           "within": true
         },
         "cp_calibers": {
-          "error": 0.188331900668679,
+          "error": 0.18833188660205202,
           "reference": 5.63,
           "within": true
         }
       },
       "fineness": 7.0,
       "hpr": {
-        "c_n_alpha": 2.736959107472554,
-        "cp_calibers": 5.818331900668679
+        "c_n_alpha": 2.7369590963576447,
+        "cp_calibers": 5.818331886602052
       },
       "mach": 3.0,
       "nose": "cone",
       "second_order": {
         "c_n_alpha": {
-          "error": 0.03695910747255393,
+          "error": 0.036959096357644494,
           "reference": 2.7,
           "within": true
         },
         "cp_calibers": {
-          "error": 0.03833190066867864,
+          "error": 0.03833188660205167,
           "reference": 5.78,
           "within": true
         }
@@ -292,31 +292,31 @@
       "afterbody_calibers": 6.0,
       "experiment": {
         "c_n_alpha": {
-          "error": 0.06809937173315017,
+          "error": 0.06809935564017877,
           "reference": 2.78,
           "within": true
         },
         "cp_calibers": {
-          "error": 0.20427213557341606,
+          "error": 0.2042721127045093,
           "reference": 5.85,
           "within": false
         }
       },
       "fineness": 7.0,
       "hpr": {
-        "c_n_alpha": 2.84809937173315,
-        "cp_calibers": 6.054272135573416
+        "c_n_alpha": 2.8480993556401786,
+        "cp_calibers": 6.054272112704509
       },
       "mach": 3.0,
       "nose": "cone",
       "second_order": {
         "c_n_alpha": {
-          "error": 0.048099371733150154,
+          "error": 0.048099355640178754,
           "reference": 2.8,
           "within": true
         },
         "cp_calibers": {
-          "error": 0.06427213557341549,
+          "error": 0.06427211270450872,
           "reference": 5.99,
           "within": true
         }
@@ -330,19 +330,19 @@
       },
       "fineness": 7.0,
       "hpr": {
-        "c_n_alpha": 2.896968904946569,
-        "cp_calibers": 6.186025684352186
+        "c_n_alpha": 2.896968885760303,
+        "cp_calibers": 6.186025654351722
       },
       "mach": 3.0,
       "nose": "cone",
       "second_order": {
         "c_n_alpha": {
-          "error": 0.05696890494656914,
+          "error": 0.056968885760303234,
           "reference": 2.84,
           "within": false
         },
         "cp_calibers": {
-          "error": 0.07602568435218604,
+          "error": 0.0760256543517217,
           "reference": 6.11,
           "within": true
         }
@@ -352,31 +352,31 @@
       "afterbody_calibers": 10.0,
       "experiment": {
         "c_n_alpha": {
-          "error": 0.0784573483328268,
+          "error": 0.07845732738873767,
           "reference": 2.84,
           "within": true
         },
         "cp_calibers": {
-          "error": -0.06271166939075723,
+          "error": -0.06271170451039243,
           "reference": 6.32,
           "within": true
         }
       },
       "fineness": 7.0,
       "hpr": {
-        "c_n_alpha": 2.9184573483328267,
-        "cp_calibers": 6.257288330609243
+        "c_n_alpha": 2.9184573273887375,
+        "cp_calibers": 6.257288295489608
       },
       "mach": 3.0,
       "nose": "cone",
       "second_order": {
         "c_n_alpha": {
-          "error": 0.058457348332826786,
+          "error": 0.05845732738873766,
           "reference": 2.86,
           "within": false
         },
         "cp_calibers": {
-          "error": 0.08728833060924313,
+          "error": 0.08728829548960793,
           "reference": 6.17,
           "within": true
         }
@@ -420,31 +420,31 @@
       "afterbody_calibers": 2.0,
       "experiment": {
         "c_n_alpha": {
-          "error": 0.0783868009909563,
+          "error": 0.07838679993551168,
           "reference": 2.38,
           "within": true
         },
         "cp_calibers": {
-          "error": -0.1349141557510789,
+          "error": -0.13491415698427556,
           "reference": 5.55,
           "within": true
         }
       },
       "fineness": 7.0,
       "hpr": {
-        "c_n_alpha": 2.458386800990956,
-        "cp_calibers": 5.415085844248921
+        "c_n_alpha": 2.4583867999355116,
+        "cp_calibers": 5.415085843015724
       },
       "mach": 4.24,
       "nose": "cone",
       "second_order": {
         "c_n_alpha": {
-          "error": 0.018386800990956242,
+          "error": 0.018386799935511622,
           "reference": 2.44,
           "within": true
         },
         "cp_calibers": {
-          "error": 0.015085844248920566,
+          "error": 0.01508584301572391,
           "reference": 5.4,
           "within": true
         }
@@ -454,31 +454,31 @@
       "afterbody_calibers": 4.0,
       "experiment": {
         "c_n_alpha": {
-          "error": 0.09418045170369682,
+          "error": 0.09418044868464426,
           "reference": 2.68,
           "within": true
         },
         "cp_calibers": {
-          "error": -0.07409236758749405,
+          "error": -0.0740923713820365,
           "reference": 6.0,
           "within": true
         }
       },
       "fineness": 7.0,
       "hpr": {
-        "c_n_alpha": 2.774180451703697,
-        "cp_calibers": 5.925907632412506
+        "c_n_alpha": 2.7741804486846444,
+        "cp_calibers": 5.9259076286179635
       },
       "mach": 4.24,
       "nose": "cone",
       "second_order": {
         "c_n_alpha": {
-          "error": 0.044180451703697,
+          "error": 0.044180448684644436,
           "reference": 2.73,
           "within": true
         },
         "cp_calibers": {
-          "error": 0.04590763241250606,
+          "error": 0.0459076286179636,
           "reference": 5.88,
           "within": true
         }
@@ -488,31 +488,31 @@
       "afterbody_calibers": 6.0,
       "experiment": {
         "c_n_alpha": {
-          "error": 0.08957017812734724,
+          "error": 0.08957017325270833,
           "reference": 2.86,
           "within": true
         },
         "cp_calibers": {
-          "error": -0.11870459114773713,
+          "error": -0.11870459793172738,
           "reference": 6.4,
           "within": true
         }
       },
       "fineness": 7.0,
       "hpr": {
-        "c_n_alpha": 2.949570178127347,
-        "cp_calibers": 6.281295408852263
+        "c_n_alpha": 2.949570173252708,
+        "cp_calibers": 6.281295402068273
       },
       "mach": 4.24,
       "nose": "cone",
       "second_order": {
         "c_n_alpha": {
-          "error": 0.06957017812734723,
+          "error": 0.06957017325270831,
           "reference": 2.88,
           "within": false
         },
         "cp_calibers": {
-          "error": 0.08129540885226305,
+          "error": 0.08129540206827279,
           "reference": 6.2,
           "within": true
         }
@@ -526,19 +526,19 @@
       },
       "fineness": 7.0,
       "hpr": {
-        "c_n_alpha": 3.0469804840835764,
-        "cp_calibers": 6.52494267776962
+        "c_n_alpha": 3.0469804777534755,
+        "cp_calibers": 6.524942668045374
       },
       "mach": 4.24,
       "nose": "cone",
       "second_order": {
         "c_n_alpha": {
-          "error": 0.08698048408357639,
+          "error": 0.0869804777534755,
           "reference": 2.96,
           "within": false
         },
         "cp_calibers": {
-          "error": 0.12494267776961987,
+          "error": 0.12494266804537357,
           "reference": 6.4,
           "within": false
         }
@@ -548,31 +548,31 @@
       "afterbody_calibers": 10.0,
       "experiment": {
         "c_n_alpha": {
-          "error": 0.25108153036473757,
+          "error": 0.2510815229903063,
           "reference": 2.85,
           "within": false
         },
         "cp_calibers": {
-          "error": 0.29854309068248774,
+          "error": 0.2985430783464338,
           "reference": 6.39,
           "within": false
         }
       },
       "fineness": 7.0,
       "hpr": {
-        "c_n_alpha": 3.1010815303647377,
-        "cp_calibers": 6.688543090682487
+        "c_n_alpha": 3.1010815229903064,
+        "cp_calibers": 6.6885430783464335
       },
       "mach": 4.24,
       "nose": "cone",
       "second_order": {
         "c_n_alpha": {
-          "error": 0.10108153036473766,
+          "error": 0.10108152299030637,
           "reference": 3.0,
           "within": false
         },
         "cp_calibers": {
-          "error": 0.15854309068248718,
+          "error": 0.15854307834643322,
           "reference": 6.53,
           "within": false
         }
@@ -616,31 +616,31 @@
       "afterbody_calibers": 2.0,
       "experiment": {
         "c_n_alpha": {
-          "error": 0.08515360047621678,
+          "error": 0.08515360001625938,
           "reference": 2.35,
           "within": true
         },
         "cp_calibers": {
-          "error": -0.04716354251906907,
+          "error": -0.047163543068449165,
           "reference": 5.45,
           "within": true
         }
       },
       "fineness": 7.0,
       "hpr": {
-        "c_n_alpha": 2.435153600476217,
-        "cp_calibers": 5.402836457480931
+        "c_n_alpha": 2.4351536000162595,
+        "cp_calibers": 5.402836456931551
       },
       "mach": 5.05,
       "nose": "cone",
       "second_order": {
         "c_n_alpha": {
-          "error": 0.02515360047621673,
+          "error": 0.025153600016259325,
           "reference": 2.41,
           "within": true
         },
         "cp_calibers": {
-          "error": 0.012836457480931429,
+          "error": 0.012836456931551332,
           "reference": 5.39,
           "within": true
         }
@@ -650,31 +650,31 @@
       "afterbody_calibers": 4.0,
       "experiment": {
         "c_n_alpha": {
-          "error": 0.12013892516766411,
+          "error": 0.12013892375934576,
           "reference": 2.65,
           "within": true
         },
         "cp_calibers": {
-          "error": 0.08875221963772173,
+          "error": 0.08875221784704568,
           "reference": 5.86,
           "within": true
         }
       },
       "fineness": 7.0,
       "hpr": {
-        "c_n_alpha": 2.770138925167664,
-        "cp_calibers": 5.948752219637722
+        "c_n_alpha": 2.7701389237593457,
+        "cp_calibers": 5.948752217847046
       },
       "mach": 5.05,
       "nose": "cone",
       "second_order": {
         "c_n_alpha": {
-          "error": 0.05013892516766383,
+          "error": 0.05013892375934548,
           "reference": 2.72,
           "within": false
         },
         "cp_calibers": {
-          "error": 0.05875221963772237,
+          "error": 0.05875221784704632,
           "reference": 5.89,
           "within": true
         }
@@ -684,31 +684,31 @@
       "afterbody_calibers": 6.0,
       "experiment": {
         "c_n_alpha": {
-          "error": 0.1136127746800133,
+          "error": 0.11361277228930611,
           "reference": 2.86,
           "within": true
         },
         "cp_calibers": {
-          "error": 0.07715554669106961,
+          "error": 0.07715554335696861,
           "reference": 6.28,
           "within": true
         }
       },
       "fineness": 7.0,
       "hpr": {
-        "c_n_alpha": 2.973612774680013,
-        "cp_calibers": 6.35715554669107
+        "c_n_alpha": 2.973612772289306,
+        "cp_calibers": 6.357155543356969
       },
       "mach": 5.05,
       "nose": "cone",
       "second_order": {
         "c_n_alpha": {
-          "error": 0.08361277468001305,
+          "error": 0.08361277228930586,
           "reference": 2.89,
           "within": false
         },
         "cp_calibers": {
-          "error": 0.10715554669106986,
+          "error": 0.10715554335696886,
           "reference": 6.25,
           "within": false
         }
@@ -722,19 +722,19 @@
       },
       "fineness": 7.0,
       "hpr": {
-        "c_n_alpha": 3.0972050767413313,
-        "cp_calibers": 6.65883707372286
+        "c_n_alpha": 3.0972050735070904,
+        "cp_calibers": 6.658837068764701
       },
       "mach": 5.05,
       "nose": "cone",
       "second_order": {
         "c_n_alpha": {
-          "error": 0.10720507674133106,
+          "error": 0.10720507350709019,
           "reference": 2.99,
           "within": false
         },
         "cp_calibers": {
-          "error": 0.14883707372286015,
+          "error": 0.14883706876470093,
           "reference": 6.51,
           "within": false
         }
@@ -744,31 +744,31 @@
       "afterbody_calibers": 10.0,
       "experiment": {
         "c_n_alpha": {
-          "error": 0.1122764294749854,
+          "error": 0.11227642557845341,
           "reference": 3.06,
           "within": true
         },
         "cp_calibers": {
-          "error": 0.32793577034139165,
+          "error": 0.32793576382898504,
           "reference": 6.55,
           "within": false
         }
       },
       "fineness": 7.0,
       "hpr": {
-        "c_n_alpha": 3.1722764294749854,
-        "cp_calibers": 6.8779357703413915
+        "c_n_alpha": 3.1722764255784535,
+        "cp_calibers": 6.877935763828985
       },
       "mach": 5.05,
       "nose": "cone",
       "second_order": {
         "c_n_alpha": {
-          "error": 0.12227642947498563,
+          "error": 0.12227642557845364,
           "reference": 3.05,
           "within": false
         },
         "cp_calibers": {
-          "error": 0.18793577034139108,
+          "error": 0.18793576382898447,
           "reference": 6.69,
           "within": false
         }
@@ -812,31 +812,31 @@
       "afterbody_calibers": 2.0,
       "experiment": {
         "c_n_alpha": {
-          "error": 0.08669962843591206,
+          "error": 0.0866996282787551,
           "reference": 2.31,
           "within": true
         },
         "cp_calibers": {
-          "error": -0.027391446914713846,
+          "error": -0.02739144711087782,
           "reference": 5.4,
           "within": true
         }
       },
       "fineness": 7.0,
       "hpr": {
-        "c_n_alpha": 2.396699628435912,
-        "cp_calibers": 5.3726085530852865
+        "c_n_alpha": 2.396699628278755,
+        "cp_calibers": 5.3726085528891225
       },
       "mach": 6.28,
       "nose": "cone",
       "second_order": {
         "c_n_alpha": {
-          "error": 0.016699628435912217,
+          "error": 0.016699628278755263,
           "reference": 2.38,
           "within": true
         },
         "cp_calibers": {
-          "error": 0.022608553085286864,
+          "error": 0.02260855288912289,
           "reference": 5.35,
           "within": true
         }
@@ -846,31 +846,31 @@
       "afterbody_calibers": 4.0,
       "experiment": {
         "c_n_alpha": {
-          "error": 0.1617050118768586,
+          "error": 0.1617050113416858,
           "reference": 2.58,
           "within": true
         },
         "cp_calibers": {
-          "error": 0.1463977616882266,
+          "error": 0.1463977609835787,
           "reference": 5.8,
           "within": true
         }
       },
       "fineness": 7.0,
       "hpr": {
-        "c_n_alpha": 2.7417050118768587,
-        "cp_calibers": 5.946397761688226
+        "c_n_alpha": 2.741705011341686,
+        "cp_calibers": 5.9463977609835785
       },
       "mach": 6.28,
       "nose": "cone",
       "second_order": {
         "c_n_alpha": {
-          "error": 0.05170501187685872,
+          "error": 0.051705011341685925,
           "reference": 2.69,
           "within": false
         },
         "cp_calibers": {
-          "error": 0.06639776168822653,
+          "error": 0.06639776098357864,
           "reference": 5.88,
           "within": true
         }
@@ -880,31 +880,31 @@
       "afterbody_calibers": 6.0,
       "experiment": {
         "c_n_alpha": {
-          "error": 0.16145370279233173,
+          "error": 0.16145370182338947,
           "reference": 2.81,
           "within": true
         },
         "cp_calibers": {
-          "error": 0.09922900341668228,
+          "error": 0.09922900203348028,
           "reference": 6.31,
           "within": true
         }
       },
       "fineness": 7.0,
       "hpr": {
-        "c_n_alpha": 2.971453702792332,
-        "cp_calibers": 6.409229003416682
+        "c_n_alpha": 2.9714537018233895,
+        "cp_calibers": 6.40922900203348
       },
       "mach": 6.28,
       "nose": "cone",
       "second_order": {
         "c_n_alpha": {
-          "error": 0.08145370279233166,
+          "error": 0.0814537018233894,
           "reference": 2.89,
           "within": false
         },
         "cp_calibers": {
-          "error": 0.11922900341668186,
+          "error": 0.11922900203347986,
           "reference": 6.29,
           "within": false
         }
@@ -918,19 +918,19 @@
       },
       "fineness": 7.0,
       "hpr": {
-        "c_n_alpha": 3.1244497530305098,
-        "cp_calibers": 6.777619969507513
+        "c_n_alpha": 3.1244497516514844,
+        "cp_calibers": 6.777619967360804
       },
       "mach": 6.28,
       "nose": "cone",
       "second_order": {
         "c_n_alpha": {
-          "error": 0.12444975303050976,
+          "error": 0.12444975165148442,
           "reference": 3.0,
           "within": false
         },
         "cp_calibers": {
-          "error": 0.18761996950751314,
+          "error": 0.18761996736080455,
           "reference": 6.59,
           "within": false
         }
@@ -940,31 +940,31 @@
       "afterbody_calibers": 10.0,
       "experiment": {
         "c_n_alpha": {
-          "error": 0.23633408279626789,
+          "error": 0.23633408106343046,
           "reference": 2.99,
           "within": false
         },
         "cp_calibers": {
-          "error": 0.32671930365496227,
+          "error": 0.3267193007232292,
           "reference": 6.74,
           "within": false
         }
       },
       "fineness": 7.0,
       "hpr": {
-        "c_n_alpha": 3.226334082796268,
-        "cp_calibers": 7.0667193036549625
+        "c_n_alpha": 3.2263340810634307,
+        "cp_calibers": 7.066719300723229
       },
       "mach": 6.28,
       "nose": "cone",
       "second_order": {
         "c_n_alpha": {
-          "error": 0.14633408279626803,
+          "error": 0.1463340810634306,
           "reference": 3.08,
           "within": false
         },
         "cp_calibers": {
-          "error": 0.25671930365496287,
+          "error": 0.2567193007232298,
           "reference": 6.81,
           "within": false
         }
@@ -1008,31 +1008,31 @@
       "afterbody_calibers": 2.0,
       "experiment": {
         "c_n_alpha": {
-          "error": -0.008910833600397794,
+          "error": -0.008910834007474389,
           "reference": 2.6,
           "within": true
         },
         "cp_calibers": {
-          "error": -0.011782668820823794,
+          "error": -0.01178266917075721,
           "reference": 4.04,
           "within": true
         }
       },
       "fineness": 5.0,
       "hpr": {
-        "c_n_alpha": 2.5910891663996023,
-        "cp_calibers": 4.028217331179176
+        "c_n_alpha": 2.5910891659925257,
+        "cp_calibers": 4.028217330829243
       },
       "mach": 3.0,
       "nose": "cone",
       "second_order": {
         "c_n_alpha": {
-          "error": 0.001089166399602437,
+          "error": 0.0010891659925258423,
           "reference": 2.59,
           "within": true
         },
         "cp_calibers": {
-          "error": 0.008217331179176668,
+          "error": 0.008217330829243252,
           "reference": 4.02,
           "within": true
         }
@@ -1042,31 +1042,31 @@
       "afterbody_calibers": 4.0,
       "experiment": {
         "c_n_alpha": {
-          "error": 0.010218887677994726,
+          "error": 0.010218886662686888,
           "reference": 2.89,
           "within": true
         },
         "cp_calibers": {
-          "error": -0.023086041269867685,
+          "error": -0.02308604226751587,
           "reference": 4.46,
           "within": true
         }
       },
       "fineness": 5.0,
       "hpr": {
-        "c_n_alpha": 2.900218887677995,
-        "cp_calibers": 4.436913958730132
+        "c_n_alpha": 2.900218886662687,
+        "cp_calibers": 4.436913957732484
       },
       "mach": 3.0,
       "nose": "cone",
       "second_order": {
         "c_n_alpha": {
-          "error": 0.010218887677994726,
+          "error": 0.010218886662686888,
           "reference": 2.89,
           "within": true
         },
         "cp_calibers": {
-          "error": 0.006913958730132563,
+          "error": 0.006913957732484377,
           "reference": 4.43,
           "within": true
         }
@@ -1076,31 +1076,31 @@
       "afterbody_calibers": 6.0,
       "experiment": {
         "c_n_alpha": {
-          "error": 0.13445668852901616,
+          "error": 0.13445668706222813,
           "reference": 2.9,
           "within": true
         },
         "cp_calibers": {
-          "error": 0.14693286174579523,
+          "error": 0.14693286009110462,
           "reference": 4.53,
           "within": true
         }
       },
       "fineness": 5.0,
       "hpr": {
-        "c_n_alpha": 3.034456688529016,
-        "cp_calibers": 4.6769328617457955
+        "c_n_alpha": 3.034456687062228,
+        "cp_calibers": 4.676932860091105
       },
       "mach": 3.0,
       "nose": "cone",
       "second_order": {
         "c_n_alpha": {
-          "error": 0.014456688529016049,
+          "error": 0.014456687062228024,
           "reference": 3.02,
           "within": true
         },
         "cp_calibers": {
-          "error": 0.016932861745795336,
+          "error": 0.01693286009110473,
           "reference": 4.66,
           "within": true
         }
@@ -1114,19 +1114,19 @@
       },
       "fineness": 5.0,
       "hpr": {
-        "c_n_alpha": 3.092748680327147,
-        "cp_calibers": 4.812367271897649
+        "c_n_alpha": 3.092748678582947,
+        "cp_calibers": 4.812367269701755
       },
       "mach": 3.0,
       "nose": "cone",
       "second_order": {
         "c_n_alpha": {
-          "error": 0.012748680327146822,
+          "error": 0.012748678582946926,
           "reference": 3.08,
           "within": true
         },
         "cp_calibers": {
-          "error": 0.02236727189764931,
+          "error": 0.022367269701755177,
           "reference": 4.79,
           "within": true
         }
@@ -1136,31 +1136,31 @@
       "afterbody_calibers": 10.0,
       "experiment": {
         "c_n_alpha": {
-          "error": 0.10806164199853541,
+          "error": 0.10806164009854058,
           "reference": 3.01,
           "within": true
         },
         "cp_calibers": {
-          "error": 0.005838306323024511,
+          "error": 0.005838303735706596,
           "reference": 4.88,
           "within": true
         }
       },
       "fineness": 5.0,
       "hpr": {
-        "c_n_alpha": 3.118061641998535,
-        "cp_calibers": 4.885838306323024
+        "c_n_alpha": 3.1180616400985404,
+        "cp_calibers": 4.8858383037357065
       },
       "mach": 3.0,
       "nose": "cone",
       "second_order": {
         "c_n_alpha": {
-          "error": 0.018061641998535105,
+          "error": 0.018061640098540277,
           "reference": 3.1,
           "within": true
         },
         "cp_calibers": {
-          "error": 0.025838306323024085,
+          "error": 0.02583830373570617,
           "reference": 4.86,
           "within": true
         }
@@ -1204,31 +1204,31 @@
       "afterbody_calibers": 2.0,
       "experiment": {
         "c_n_alpha": {
-          "error": 0.08868488305310995,
+          "error": 0.08868488296517629,
           "reference": 2.46,
           "within": true
         },
         "cp_calibers": {
-          "error": -0.0012057086772001568,
+          "error": -0.0012057087564238955,
           "reference": 4.02,
           "within": true
         }
       },
       "fineness": 5.0,
       "hpr": {
-        "c_n_alpha": 2.54868488305311,
-        "cp_calibers": 4.018794291322799
+        "c_n_alpha": 2.5486848829651763,
+        "cp_calibers": 4.018794291243576
       },
       "mach": 4.24,
       "nose": "cone",
       "second_order": {
         "c_n_alpha": {
-          "error": 0.008684883053109882,
+          "error": 0.008684882965176222,
           "reference": 2.54,
           "within": true
         },
         "cp_calibers": {
-          "error": 0.00879429132279963,
+          "error": 0.008794291243575891,
           "reference": 4.01,
           "within": true
         }
@@ -1238,31 +1238,31 @@
       "afterbody_calibers": 4.0,
       "experiment": {
         "c_n_alpha": {
-          "error": 0.08224147333053411,
+          "error": 0.08224147307213503,
           "reference": 2.84,
           "within": true
         },
         "cp_calibers": {
-          "error": 0.04501881894731685,
+          "error": 0.04501881868881075,
           "reference": 4.47,
           "within": true
         }
       },
       "fineness": 5.0,
       "hpr": {
-        "c_n_alpha": 2.922241473330534,
-        "cp_calibers": 4.515018818947317
+        "c_n_alpha": 2.922241473072135,
+        "cp_calibers": 4.5150188186888105
       },
       "mach": 4.24,
       "nose": "cone",
       "second_order": {
         "c_n_alpha": {
-          "error": 0.012241473330533825,
+          "error": 0.012241473072134745,
           "reference": 2.91,
           "within": true
         },
         "cp_calibers": {
-          "error": 0.015018818947316603,
+          "error": 0.015018818688810498,
           "reference": 4.5,
           "within": true
         }
@@ -1272,31 +1272,31 @@
       "afterbody_calibers": 6.0,
       "experiment": {
         "c_n_alpha": {
-          "error": 0.11730629534989445,
+          "error": 0.11730629493083988,
           "reference": 3.01,
           "within": true
         },
         "cp_calibers": {
-          "error": -0.11183354786727229,
+          "error": -0.11183354834168924,
           "reference": 4.98,
           "within": true
         }
       },
       "fineness": 5.0,
       "hpr": {
-        "c_n_alpha": 3.1273062953498942,
-        "cp_calibers": 4.868166452132728
+        "c_n_alpha": 3.1273062949308397,
+        "cp_calibers": 4.868166451658311
       },
       "mach": 4.24,
       "nose": "cone",
       "second_order": {
         "c_n_alpha": {
-          "error": 0.017306295349894363,
+          "error": 0.017306294930839794,
           "reference": 3.11,
           "within": true
         },
         "cp_calibers": {
-          "error": 0.018166452132728494,
+          "error": 0.018166451658311544,
           "reference": 4.85,
           "within": true
         }
@@ -1310,19 +1310,19 @@
       },
       "fineness": 5.0,
       "hpr": {
-        "c_n_alpha": 3.2398771409039835,
-        "cp_calibers": 5.112512491187363
+        "c_n_alpha": 3.239877140359913,
+        "cp_calibers": 5.112512490497246
       },
       "mach": 4.24,
       "nose": "cone",
       "second_order": {
         "c_n_alpha": {
-          "error": 0.019877140903983292,
+          "error": 0.019877140359912726,
           "reference": 3.22,
           "within": true
         },
         "cp_calibers": {
-          "error": 0.032512491187363324,
+          "error": 0.03251249049724603,
           "reference": 5.08,
           "within": true
         }
@@ -1332,31 +1332,31 @@
       "afterbody_calibers": 10.0,
       "experiment": {
         "c_n_alpha": {
-          "error": 0.09167318736370333,
+          "error": 0.09167318673079139,
           "reference": 3.21,
           "within": true
         },
         "cp_calibers": {
-          "error": -0.113003832081227,
+          "error": -0.113003832964373,
           "reference": 5.39,
           "within": true
         }
       },
       "fineness": 5.0,
       "hpr": {
-        "c_n_alpha": 3.3016731873637033,
-        "cp_calibers": 5.276996167918773
+        "c_n_alpha": 3.3016731867307914,
+        "cp_calibers": 5.276996167035627
       },
       "mach": 4.24,
       "nose": "cone",
       "second_order": {
         "c_n_alpha": {
-          "error": 0.03167318736370328,
+          "error": 0.031673186730791336,
           "reference": 3.27,
           "within": true
         },
         "cp_calibers": {
-          "error": 0.03699616791877247,
+          "error": 0.03699616703562647,
           "reference": 5.24,
           "within": true
         }
@@ -1400,31 +1400,31 @@
       "afterbody_calibers": 2.0,
       "experiment": {
         "c_n_alpha": {
-          "error": 0.033690366120675996,
+          "error": 0.03369036608274145,
           "reference": 2.48,
           "within": true
         },
         "cp_calibers": {
-          "error": 0.006976047337049707,
+          "error": 0.006976047301088695,
           "reference": 3.99,
           "within": true
         }
       },
       "fineness": 5.0,
       "hpr": {
-        "c_n_alpha": 2.513690366120676,
-        "cp_calibers": 3.99697604733705
+        "c_n_alpha": 2.5136903660827414,
+        "cp_calibers": 3.996976047301089
       },
       "mach": 5.05,
       "nose": "cone",
       "second_order": {
         "c_n_alpha": {
-          "error": 0.0036903661206761917,
+          "error": 0.0036903660827416473,
           "reference": 2.51,
           "within": true
         },
         "cp_calibers": {
-          "error": -0.00302395266295008,
+          "error": -0.003023952698911092,
           "reference": 4.0,
           "within": true
         }
@@ -1434,31 +1434,31 @@
       "afterbody_calibers": 4.0,
       "experiment": {
         "c_n_alpha": {
-          "error": 0.10197654803777612,
+          "error": 0.10197654791269395,
           "reference": 2.8,
           "within": true
         },
         "cp_calibers": {
-          "error": -0.018721657861719976,
+          "error": -0.018721657991592977,
           "reference": 4.54,
           "within": true
         }
       },
       "fineness": 5.0,
       "hpr": {
-        "c_n_alpha": 2.901976548037776,
-        "cp_calibers": 4.52127834213828
+        "c_n_alpha": 2.9019765479126938,
+        "cp_calibers": 4.521278342008407
       },
       "mach": 5.05,
       "nose": "cone",
       "second_order": {
         "c_n_alpha": {
-          "error": 0.001976548037776027,
+          "error": 0.00197654791269386,
           "reference": 2.9,
           "within": true
         },
         "cp_calibers": {
-          "error": 0.001278342138280486,
+          "error": 0.0012783420084074848,
           "reference": 4.52,
           "within": true
         }
@@ -1468,31 +1468,31 @@
       "afterbody_calibers": 6.0,
       "experiment": {
         "c_n_alpha": {
-          "error": -0.07465407063764529,
+          "error": -0.07465407085377951,
           "reference": 3.21,
           "within": true
         },
         "cp_calibers": {
-          "error": -0.15721931671485745,
+          "error": -0.15721931696606806,
           "reference": 5.08,
           "within": true
         }
       },
       "fineness": 5.0,
       "hpr": {
-        "c_n_alpha": 3.1353459293623547,
-        "cp_calibers": 4.922780683285143
+        "c_n_alpha": 3.1353459291462205,
+        "cp_calibers": 4.922780683033932
       },
       "mach": 5.05,
       "nose": "cone",
       "second_order": {
         "c_n_alpha": {
-          "error": 0.005345929362354784,
+          "error": 0.005345929146220563,
           "reference": 3.13,
           "within": true
         },
         "cp_calibers": {
-          "error": 0.0027806832851426933,
+          "error": 0.0027806830339320854,
           "reference": 4.92,
           "within": true
         }
@@ -1506,19 +1506,19 @@
       },
       "fineness": 5.0,
       "hpr": {
-        "c_n_alpha": 3.2756065687467464,
-        "cp_calibers": 5.222207613958302
+        "c_n_alpha": 3.275606568452643,
+        "cp_calibers": 5.222207613577119
       },
       "mach": 5.05,
       "nose": "cone",
       "second_order": {
         "c_n_alpha": {
-          "error": 0.005606568746746365,
+          "error": 0.005606568452642957,
           "reference": 3.27,
           "within": true
         },
         "cp_calibers": {
-          "error": 0.012207613958302055,
+          "error": 0.01220761357711897,
           "reference": 5.21,
           "within": true
         }
@@ -1528,31 +1528,31 @@
       "afterbody_calibers": 10.0,
       "experiment": {
         "c_n_alpha": {
-          "error": 0.09990660351933034,
+          "error": 0.09990660316439559,
           "reference": 3.26,
           "within": true
         },
         "cp_calibers": {
-          "error": 0.1903225384578402,
+          "error": 0.19032253795118237,
           "reference": 5.25,
           "within": true
         }
       },
       "fineness": 5.0,
       "hpr": {
-        "c_n_alpha": 3.35990660351933,
-        "cp_calibers": 5.44032253845784
+        "c_n_alpha": 3.3599066031643954,
+        "cp_calibers": 5.440322537951182
       },
       "mach": 5.05,
       "nose": "cone",
       "second_order": {
         "c_n_alpha": {
-          "error": 0.009906603519330037,
+          "error": 0.009906603164395289,
           "reference": 3.35,
           "within": true
         },
         "cp_calibers": {
-          "error": 0.01032253845784048,
+          "error": 0.010322537951182653,
           "reference": 5.43,
           "within": true
         }
@@ -1596,31 +1596,31 @@
       "afterbody_calibers": 2.0,
       "experiment": {
         "c_n_alpha": {
-          "error": -0.022536419363116345,
+          "error": -0.02253641937017159,
           "reference": 2.49,
           "within": true
         },
         "cp_calibers": {
-          "error": -0.16519667096727986,
+          "error": -0.16519667097558122,
           "reference": 4.12,
           "within": true
         }
       },
       "fineness": 5.0,
       "hpr": {
-        "c_n_alpha": 2.467463580636884,
-        "cp_calibers": 3.9548033290327202
+        "c_n_alpha": 2.4674635806298286,
+        "cp_calibers": 3.954803329024419
       },
       "mach": 6.28,
       "nose": "cone",
       "second_order": {
         "c_n_alpha": {
-          "error": 0.007463580636883904,
+          "error": 0.007463580629828659,
           "reference": 2.46,
           "within": true
         },
         "cp_calibers": {
-          "error": 0.004803329032720072,
+          "error": 0.004803329024418712,
           "reference": 3.95,
           "within": true
         }
@@ -1630,31 +1630,31 @@
       "afterbody_calibers": 4.0,
       "experiment": {
         "c_n_alpha": {
-          "error": 0.13712235843861276,
+          "error": 0.1371223584007648,
           "reference": 2.72,
           "within": true
         },
         "cp_calibers": {
-          "error": 0.017078254545983107,
+          "error": 0.017078254501632806,
           "reference": 4.48,
           "within": true
         }
       },
       "fineness": 5.0,
       "hpr": {
-        "c_n_alpha": 2.857122358438613,
-        "cp_calibers": 4.4970782545459835
+        "c_n_alpha": 2.857122358400765,
+        "cp_calibers": 4.497078254501633
       },
       "mach": 6.28,
       "nose": "cone",
       "second_order": {
         "c_n_alpha": {
-          "error": 0.017122358438613094,
+          "error": 0.017122358400765147,
           "reference": 2.84,
           "within": true
         },
         "cp_calibers": {
-          "error": 0.017078254545983107,
+          "error": 0.017078254501632806,
           "reference": 4.48,
           "within": true
         }
@@ -1664,31 +1664,31 @@
       "afterbody_calibers": 6.0,
       "experiment": {
         "c_n_alpha": {
-          "error": 0.13432496972721486,
+          "error": 0.13432496965179075,
           "reference": 2.98,
           "within": true
         },
         "cp_calibers": {
-          "error": -0.004153696138831542,
+          "error": -0.004153696235130511,
           "reference": 4.95,
           "within": true
         }
       },
       "fineness": 5.0,
       "hpr": {
-        "c_n_alpha": 3.114324969727215,
-        "cp_calibers": 4.945846303861169
+        "c_n_alpha": 3.1143249696517907,
+        "cp_calibers": 4.94584630376487
       },
       "mach": 6.28,
       "nose": "cone",
       "second_order": {
         "c_n_alpha": {
-          "error": 0.03432496972721477,
+          "error": 0.03432496965179066,
           "reference": 3.08,
           "within": true
         },
         "cp_calibers": {
-          "error": 0.035846303861168494,
+          "error": 0.035846303764869525,
           "reference": 4.91,
           "within": true
         }
@@ -1702,19 +1702,19 @@
       },
       "fineness": 5.0,
       "hpr": {
-        "c_n_alpha": 3.2840970550036737,
-        "cp_calibers": 5.3069434141683045
+        "c_n_alpha": 3.284097054892059,
+        "cp_calibers": 5.306943414011709
       },
       "mach": 6.28,
       "nose": "cone",
       "second_order": {
         "c_n_alpha": {
-          "error": 0.04409705500367345,
+          "error": 0.04409705489205873,
           "reference": 3.24,
           "within": true
         },
         "cp_calibers": {
-          "error": 0.05694341416830451,
+          "error": 0.05694341401170888,
           "reference": 5.25,
           "within": true
         }
@@ -1724,31 +1724,31 @@
       "afterbody_calibers": 10.0,
       "experiment": {
         "c_n_alpha": {
-          "error": 0.17615875140214277,
+          "error": 0.17615875125912384,
           "reference": 3.22,
           "within": true
         },
         "cp_calibers": {
-          "error": 0.2715067754646654,
+          "error": 0.2715067752451068,
           "reference": 5.32,
           "within": false
         }
       },
       "fineness": 5.0,
       "hpr": {
-        "c_n_alpha": 3.396158751402143,
-        "cp_calibers": 5.591506775464666
+        "c_n_alpha": 3.396158751259124,
+        "cp_calibers": 5.591506775245107
       },
       "mach": 6.28,
       "nose": "cone",
       "second_order": {
         "c_n_alpha": {
-          "error": 0.06615875140214289,
+          "error": 0.06615875125912396,
           "reference": 3.33,
           "within": false
         },
         "cp_calibers": {
-          "error": 0.0715067754646661,
+          "error": 0.07150677524510751,
           "reference": 5.52,
           "within": true
         }
@@ -1792,31 +1792,31 @@
       "afterbody_calibers": 2.0,
       "experiment": {
         "c_n_alpha": {
-          "error": 0.01889234347605706,
+          "error": 0.018892343466343497,
           "reference": 2.72,
           "within": true
         },
         "cp_calibers": {
-          "error": -0.07992319692113714,
+          "error": -0.07992319692712924,
           "reference": 2.7,
           "within": true
         }
       },
       "fineness": 3.0,
       "hpr": {
-        "c_n_alpha": 2.7388923434760573,
-        "cp_calibers": 2.620076803078863
+        "c_n_alpha": 2.7388923434663437,
+        "cp_calibers": 2.620076803072871
       },
       "mach": 3.0,
       "nose": "cone",
       "second_order": {
         "c_n_alpha": {
-          "error": -0.001107656523942957,
+          "error": -0.0011076565336565203,
           "reference": 2.74,
           "within": true
         },
         "cp_calibers": {
-          "error": 0.00007680307886293036,
+          "error": 0.00007680307287083465,
           "reference": 2.62,
           "within": true
         }
@@ -1826,31 +1826,31 @@
       "afterbody_calibers": 4.0,
       "experiment": {
         "c_n_alpha": {
-          "error": -0.020421285022453883,
+          "error": -0.02042128504793972,
           "reference": 3.15,
           "within": true
         },
         "cp_calibers": {
-          "error": -0.07543652100943543,
+          "error": -0.07543652102831144,
           "reference": 3.1,
           "within": true
         }
       },
       "fineness": 3.0,
       "hpr": {
-        "c_n_alpha": 3.129578714977546,
-        "cp_calibers": 3.0245634789905647
+        "c_n_alpha": 3.12957871495206,
+        "cp_calibers": 3.0245634789716886
       },
       "mach": 3.0,
       "nose": "cone",
       "second_order": {
         "c_n_alpha": {
-          "error": -0.00042128502245386557,
+          "error": -0.00042128504793970123,
           "reference": 3.13,
           "within": true
         },
         "cp_calibers": {
-          "error": 0.00456347899056464,
+          "error": 0.004563478971688628,
           "reference": 3.02,
           "within": true
         }
@@ -1860,31 +1860,31 @@
       "afterbody_calibers": 6.0,
       "experiment": {
         "c_n_alpha": {
-          "error": 0.046763312679869884,
+          "error": 0.04676331264266498,
           "reference": 3.25,
           "within": true
         },
         "cp_calibers": {
-          "error": 0.1697871307589578,
+          "error": 0.16978713072637408,
           "reference": 3.1,
           "within": true
         }
       },
       "fineness": 3.0,
       "hpr": {
-        "c_n_alpha": 3.29676331267987,
-        "cp_calibers": 3.269787130758958
+        "c_n_alpha": 3.296763312642665,
+        "cp_calibers": 3.269787130726374
       },
       "mach": 3.0,
       "nose": "cone",
       "second_order": {
         "c_n_alpha": {
-          "error": 0.006763312679869848,
+          "error": 0.006763312642664943,
           "reference": 3.29,
           "within": true
         },
         "cp_calibers": {
-          "error": -0.00021286924104213512,
+          "error": -0.00021286927362584862,
           "reference": 3.27,
           "within": true
         }
@@ -1898,19 +1898,19 @@
       },
       "fineness": 3.0,
       "hpr": {
-        "c_n_alpha": 3.3683058382137596,
-        "cp_calibers": 3.409766981590521
+        "c_n_alpha": 3.3683058381694133,
+        "cp_calibers": 3.4097669815463956
       },
       "mach": 3.0,
       "nose": "cone",
       "second_order": {
         "c_n_alpha": {
-          "error": 0.008305838213759742,
+          "error": 0.008305838169413438,
           "reference": 3.36,
           "within": true
         },
         "cp_calibers": {
-          "error": 0.009766981590521251,
+          "error": 0.009766981546395659,
           "reference": 3.4,
           "within": true
         }
@@ -1920,31 +1920,31 @@
       "afterbody_calibers": 10.0,
       "experiment": {
         "c_n_alpha": {
-          "error": 0.02892069765721539,
+          "error": 0.02892069760890248,
           "reference": 3.37,
           "within": true
         },
         "cp_calibers": {
-          "error": -0.024118006051546015,
+          "error": -0.024118006104095535,
           "reference": 3.51,
           "within": true
         }
       },
       "fineness": 3.0,
       "hpr": {
-        "c_n_alpha": 3.3989206976572155,
-        "cp_calibers": 3.4858819939484538
+        "c_n_alpha": 3.3989206976089026,
+        "cp_calibers": 3.4858819938959043
       },
       "mach": 3.0,
       "nose": "cone",
       "second_order": {
         "c_n_alpha": {
-          "error": -0.0010793023427844162,
+          "error": -0.0010793023910973254,
           "reference": 3.4,
           "within": true
         },
         "cp_calibers": {
-          "error": 0.00588199394845379,
+          "error": 0.0058819938959042695,
           "reference": 3.48,
           "within": true
         }
@@ -1988,31 +1988,31 @@
       "afterbody_calibers": 2.0,
       "experiment": {
         "c_n_alpha": {
-          "error": 0.11353529114173577,
+          "error": 0.11353529114064731,
           "reference": 2.55,
           "within": true
         },
         "cp_calibers": {
-          "error": -0.09731448789352815,
+          "error": -0.09731448789448205,
           "reference": 2.68,
           "within": true
         }
       },
       "fineness": 3.0,
       "hpr": {
-        "c_n_alpha": 2.6635352911417356,
-        "cp_calibers": 2.582685512106472
+        "c_n_alpha": 2.663535291140647,
+        "cp_calibers": 2.582685512105518
       },
       "mach": 4.24,
       "nose": "cone",
       "second_order": {
         "c_n_alpha": {
-          "error": 0.0035352911417354527,
+          "error": 0.00353529114064699,
           "reference": 2.66,
           "within": true
         },
         "cp_calibers": {
-          "error": 0.0026855121064719434,
+          "error": 0.0026855121055180398,
           "reference": 2.58,
           "within": true
         }
@@ -2022,31 +2022,31 @@
       "afterbody_calibers": 4.0,
       "experiment": {
         "c_n_alpha": {
-          "error": -0.014482616520518743,
+          "error": -0.01448261652585714,
           "reference": 3.12,
           "within": true
         },
         "cp_calibers": {
-          "error": -0.12545778763171134,
+          "error": -0.125457787636448,
           "reference": 3.18,
           "within": true
         }
       },
       "fineness": 3.0,
       "hpr": {
-        "c_n_alpha": 3.1055173834794814,
-        "cp_calibers": 3.054542212368289
+        "c_n_alpha": 3.105517383474143,
+        "cp_calibers": 3.054542212363552
       },
       "mach": 4.24,
       "nose": "cone",
       "second_order": {
         "c_n_alpha": {
-          "error": 0.005517383479481275,
+          "error": 0.0055173834741428784,
           "reference": 3.1,
           "within": true
         },
         "cp_calibers": {
-          "error": 0.004542212368289,
+          "error": 0.004542212363552345,
           "reference": 3.05,
           "within": true
         }
@@ -2056,31 +2056,31 @@
       "afterbody_calibers": 6.0,
       "experiment": {
         "c_n_alpha": {
-          "error": 0.06442969593670833,
+          "error": 0.06442969592709336,
           "reference": 3.28,
           "within": true
         },
         "cp_calibers": {
-          "error": 0.050546939702800664,
+          "error": 0.050546939693107085,
           "reference": 3.35,
           "within": true
         }
       },
       "fineness": 3.0,
       "hpr": {
-        "c_n_alpha": 3.344429695936708,
-        "cp_calibers": 3.4005469397028008
+        "c_n_alpha": 3.344429695927093,
+        "cp_calibers": 3.400546939693107
       },
       "mach": 4.24,
       "nose": "cone",
       "second_order": {
         "c_n_alpha": {
-          "error": 0.014429695936708065,
+          "error": 0.014429695927093089,
           "reference": 3.33,
           "within": true
         },
         "cp_calibers": {
-          "error": 0.02054693970280086,
+          "error": 0.02054693969310728,
           "reference": 3.38,
           "within": true
         }
@@ -2094,19 +2094,19 @@
       },
       "fineness": 3.0,
       "hpr": {
-        "c_n_alpha": 3.4735731477488723,
-        "cp_calibers": 3.6421189345636416
+        "c_n_alpha": 3.4735731477358778,
+        "cp_calibers": 3.6421189345488356
       },
       "mach": 4.24,
       "nose": "cone",
       "second_order": {
         "c_n_alpha": {
-          "error": 0.023573147748872092,
+          "error": 0.023573147735877598,
           "reference": 3.45,
           "within": true
         },
         "cp_calibers": {
-          "error": 0.03211893456364168,
+          "error": 0.03211893454883574,
           "reference": 3.61,
           "within": true
         }
@@ -2116,31 +2116,31 @@
       "afterbody_calibers": 10.0,
       "experiment": {
         "c_n_alpha": {
-          "error": 0.09338131700740337,
+          "error": 0.09338131699200147,
           "reference": 3.45,
           "within": true
         },
         "cp_calibers": {
-          "error": -0.015229711405629232,
+          "error": -0.015229711425068793,
           "reference": 3.82,
           "within": true
         }
       },
       "fineness": 3.0,
       "hpr": {
-        "c_n_alpha": 3.5433813170074036,
-        "cp_calibers": 3.8047702885943706
+        "c_n_alpha": 3.5433813169920017,
+        "cp_calibers": 3.804770288574931
       },
       "mach": 4.24,
       "nose": "cone",
       "second_order": {
         "c_n_alpha": {
-          "error": 0.023381317007403535,
+          "error": 0.023381316992001633,
           "reference": 3.52,
           "within": true
         },
         "cp_calibers": {
-          "error": 0.03477028859437059,
+          "error": 0.03477028857493103,
           "reference": 3.77,
           "within": true
         }
@@ -2184,31 +2184,31 @@
       "afterbody_calibers": 2.0,
       "experiment": {
         "c_n_alpha": {
-          "error": 0.057259551722781854,
+          "error": 0.05725955172344532,
           "reference": 2.55,
           "within": true
         },
         "cp_calibers": {
-          "error": 0.027268096007473375,
+          "error": 0.0272680960076368,
           "reference": 2.52,
           "within": true
         }
       },
       "fineness": 3.0,
       "hpr": {
-        "c_n_alpha": 2.6072595517227817,
-        "cp_calibers": 2.5472680960074734
+        "c_n_alpha": 2.607259551723445,
+        "cp_calibers": 2.547268096007637
       },
       "mach": 5.05,
       "nose": "cone",
       "second_order": {
         "c_n_alpha": {
-          "error": -0.0027404482772181993,
+          "error": -0.00274044827655473,
           "reference": 2.61,
           "within": true
         },
         "cp_calibers": {
-          "error": -0.00273190399252643,
+          "error": -0.002731903992363005,
           "reference": 2.55,
           "within": true
         }
@@ -2218,31 +2218,31 @@
       "afterbody_calibers": 4.0,
       "experiment": {
         "c_n_alpha": {
-          "error": -0.07039406627342482,
+          "error": -0.07039406627410383,
           "reference": 3.12,
           "within": true
         },
         "cp_calibers": {
-          "error": -0.19448137777849794,
+          "error": -0.19448137777982621,
           "reference": 3.23,
           "within": true
         }
       },
       "fineness": 3.0,
       "hpr": {
-        "c_n_alpha": 3.0496059337265753,
-        "cp_calibers": 3.035518622221502
+        "c_n_alpha": 3.0496059337258963,
+        "cp_calibers": 3.0355186222201738
       },
       "mach": 5.05,
       "nose": "cone",
       "second_order": {
         "c_n_alpha": {
-          "error": -0.0003940662734245315,
+          "error": -0.0003940662741035439,
           "reference": 3.05,
           "within": true
         },
         "cp_calibers": {
-          "error": 0.01551862222150202,
+          "error": 0.01551862222017375,
           "reference": 3.02,
           "within": true
         }
@@ -2252,31 +2252,31 @@
       "afterbody_calibers": 6.0,
       "experiment": {
         "c_n_alpha": {
-          "error": -0.1280122557547494,
+          "error": -0.12801225575725628,
           "reference": 3.44,
           "within": true
         },
         "cp_calibers": {
-          "error": 0.05194903017395802,
+          "error": 0.05194903017028496,
           "reference": 3.37,
           "within": true
         }
       },
       "fineness": 3.0,
       "hpr": {
-        "c_n_alpha": 3.3119877442452506,
-        "cp_calibers": 3.421949030173958
+        "c_n_alpha": 3.3119877442427437,
+        "cp_calibers": 3.421949030170285
       },
       "mach": 5.05,
       "nose": "cone",
       "second_order": {
         "c_n_alpha": {
-          "error": 0.0019877442452505,
+          "error": 0.0019877442427436165,
           "reference": 3.31,
           "within": true
         },
         "cp_calibers": {
-          "error": 0.0019490301739581994,
+          "error": 0.0019490301702851376,
           "reference": 3.42,
           "within": true
         }
@@ -2290,19 +2290,19 @@
       },
       "fineness": 3.0,
       "hpr": {
-        "c_n_alpha": 3.4676219198413047,
-        "cp_calibers": 3.713296529929911
+        "c_n_alpha": 3.4676219198371028,
+        "cp_calibers": 3.7132965299235536
       },
       "mach": 5.05,
       "nose": "cone",
       "second_order": {
         "c_n_alpha": {
-          "error": 0.007621919841304781,
+          "error": 0.0076219198371028085,
           "reference": 3.46,
           "within": true
         },
         "cp_calibers": {
-          "error": 0.0032965299299112516,
+          "error": 0.0032965299235536705,
           "reference": 3.71,
           "within": true
         }
@@ -2312,31 +2312,31 @@
       "afterbody_calibers": 10.0,
       "experiment": {
         "c_n_alpha": {
-          "error": -0.07006224254182136,
+          "error": -0.07006224254739024,
           "reference": 3.63,
           "within": true
         },
         "cp_calibers": {
-          "error": 0.10593909417944047,
+          "error": 0.10593909417041258,
           "reference": 3.82,
           "within": true
         }
       },
       "fineness": 3.0,
       "hpr": {
-        "c_n_alpha": 3.5599377574581785,
-        "cp_calibers": 3.9259390941794403
+        "c_n_alpha": 3.5599377574526097,
+        "cp_calibers": 3.9259390941704124
       },
       "mach": 5.05,
       "nose": "cone",
       "second_order": {
         "c_n_alpha": {
-          "error": 0.009937757458178709,
+          "error": 0.00993775745260983,
           "reference": 3.55,
           "within": true
         },
         "cp_calibers": {
-          "error": 0.005939094179440385,
+          "error": 0.0059390941704124955,
           "reference": 3.92,
           "within": true
         }
@@ -2380,31 +2380,31 @@
       "afterbody_calibers": 2.0,
       "experiment": {
         "c_n_alpha": {
-          "error": -0.055746030845195804,
+          "error": -0.055746030843411454,
           "reference": 2.58,
           "within": true
         },
         "cp_calibers": {
-          "error": -0.029500697889605743,
+          "error": -0.029500697888618088,
           "reference": 2.52,
           "within": true
         }
       },
       "fineness": 3.0,
       "hpr": {
-        "c_n_alpha": 2.5242539691548043,
-        "cp_calibers": 2.4904993021103943
+        "c_n_alpha": 2.5242539691565886,
+        "cp_calibers": 2.490499302111382
       },
       "mach": 6.28,
       "nose": "cone",
       "second_order": {
         "c_n_alpha": {
-          "error": -0.005746030845195538,
+          "error": -0.005746030843411187,
           "reference": 2.53,
           "within": true
         },
         "cp_calibers": {
-          "error": 0.000499302110394062,
+          "error": 0.0004993021113817164,
           "reference": 2.49,
           "within": true
         }
@@ -2414,31 +2414,31 @@
       "afterbody_calibers": 4.0,
       "experiment": {
         "c_n_alpha": {
-          "error": 0.07387849097203647,
+          "error": 0.07387849097469079,
           "reference": 2.87,
           "within": true
         },
         "cp_calibers": {
-          "error": -0.1793131503488925,
+          "error": -0.17931315034748874,
           "reference": 3.16,
           "within": true
         }
       },
       "fineness": 3.0,
       "hpr": {
-        "c_n_alpha": 2.9438784909720366,
-        "cp_calibers": 2.9806868496511076
+        "c_n_alpha": 2.943878490974691,
+        "cp_calibers": 2.9806868496525114
       },
       "mach": 6.28,
       "nose": "cone",
       "second_order": {
         "c_n_alpha": {
-          "error": -0.006121509027963601,
+          "error": -0.00612150902530928,
           "reference": 2.95,
           "within": true
         },
         "cp_calibers": {
-          "error": 0.0006868496511076572,
+          "error": 0.0006868496525114232,
           "reference": 2.98,
           "within": true
         }
@@ -2448,31 +2448,31 @@
       "afterbody_calibers": 6.0,
       "experiment": {
         "c_n_alpha": {
-          "error": 0.028273059534179357,
+          "error": 0.028273059537208045,
           "reference": 3.19,
           "within": true
         },
         "cp_calibers": {
-          "error": -0.09737766128895542,
+          "error": -0.0973776612875028,
           "reference": 3.5,
           "within": true
         }
       },
       "fineness": 3.0,
       "hpr": {
-        "c_n_alpha": 3.2182730595341793,
-        "cp_calibers": 3.4026223387110446
+        "c_n_alpha": 3.218273059537208,
+        "cp_calibers": 3.402622338712497
       },
       "mach": 6.28,
       "nose": "cone",
       "second_order": {
         "c_n_alpha": {
-          "error": -0.001726940465820892,
+          "error": -0.0017269404627922036,
           "reference": 3.22,
           "within": true
         },
         "cp_calibers": {
-          "error": 0.0026223387110446694,
+          "error": 0.0026223387124972852,
           "reference": 3.4,
           "within": true
         }
@@ -2486,19 +2486,19 @@
       },
       "fineness": 3.0,
       "hpr": {
-        "c_n_alpha": 3.3977010370278253,
-        "cp_calibers": 3.7472932975445024
+        "c_n_alpha": 3.3977010370309717,
+        "cp_calibers": 3.7472932975457796
       },
       "mach": 6.28,
       "nose": "cone",
       "second_order": {
         "c_n_alpha": {
-          "error": -0.0022989629721745786,
+          "error": -0.0022989629690282065,
           "reference": 3.4,
           "within": true
         },
         "cp_calibers": {
-          "error": -0.002706702455497645,
+          "error": -0.0027067024542204443,
           "reference": 3.75,
           "within": true
         }
@@ -2508,31 +2508,31 @@
       "afterbody_calibers": 10.0,
       "experiment": {
         "c_n_alpha": {
-          "error": 0.14502988677934514,
+          "error": 0.1450298867824844,
           "reference": 3.37,
           "within": true
         },
         "cp_calibers": {
-          "error": 0.2504058289857283,
+          "error": 0.25040582898669994,
           "reference": 3.77,
           "within": false
         }
       },
       "fineness": 3.0,
       "hpr": {
-        "c_n_alpha": 3.5150298867793452,
-        "cp_calibers": 4.020405828985728
+        "c_n_alpha": 3.5150298867824845,
+        "cp_calibers": 4.0204058289867
       },
       "mach": 6.28,
       "nose": "cone",
       "second_order": {
         "c_n_alpha": {
-          "error": -0.0049701132206547705,
+          "error": -0.004970113217515504,
           "reference": 3.52,
           "within": true
         },
         "cp_calibers": {
-          "error": 0.04040582898572831,
+          "error": 0.040405828986699976,
           "reference": 3.98,
           "within": true
         }
@@ -2542,31 +2542,31 @@
       "afterbody_calibers": 0.0,
       "experiment": {
         "c_n_alpha": {
-          "error": -0.10203572289059437,
+          "error": -0.10714300927836984,
           "reference": 2.51,
           "within": true
         },
         "cp_calibers": {
-          "error": -0.08594129737685963,
+          "error": -0.09204609054065083,
           "reference": 3.79,
           "within": true
         }
       },
       "fineness": 7.0,
       "hpr": {
-        "c_n_alpha": 2.4079642771094054,
-        "cp_calibers": 3.7040587026231404
+        "c_n_alpha": 2.40285699072163,
+        "cp_calibers": 3.697953909459349
       },
       "mach": 3.0,
       "nose": "ogive",
       "second_order": {
         "c_n_alpha": {
-          "error": 0.01796427710940529,
+          "error": 0.012856990721629824,
           "reference": 2.39,
           "within": true
         },
         "cp_calibers": {
-          "error": -0.025941297376859573,
+          "error": -0.03204609054065077,
           "reference": 3.73,
           "within": true
         }
@@ -2576,31 +2576,31 @@
       "afterbody_calibers": 2.0,
       "experiment": {
         "c_n_alpha": {
-          "error": -0.02234608302079133,
+          "error": -0.030440613938761185,
           "reference": 2.72,
           "within": true
         },
         "cp_calibers": {
-          "error": 0.029984318236309093,
+          "error": 0.021790956214764456,
           "reference": 4.12,
           "within": true
         }
       },
       "fineness": 7.0,
       "hpr": {
-        "c_n_alpha": 2.697653916979209,
-        "cp_calibers": 4.149984318236309
+        "c_n_alpha": 2.689559386061239,
+        "cp_calibers": 4.141790956214765
       },
       "mach": 3.0,
       "nose": "ogive",
       "second_order": {
         "c_n_alpha": {
-          "error": -0.02234608302079133,
+          "error": -0.030440613938761185,
           "reference": 2.72,
           "within": true
         },
         "cp_calibers": {
-          "error": -0.08001568176369123,
+          "error": -0.08820904378523586,
           "reference": 4.23,
           "within": true
         }
@@ -2610,31 +2610,31 @@
       "afterbody_calibers": 4.0,
       "experiment": {
         "c_n_alpha": {
-          "error": -0.021116379697115217,
+          "error": -0.026686204468604036,
           "reference": 2.84,
           "within": true
         },
         "cp_calibers": {
-          "error": 0.0754053515492279,
+          "error": 0.07339853310075739,
           "reference": 4.32,
           "within": true
         }
       },
       "fineness": 7.0,
       "hpr": {
-        "c_n_alpha": 2.8188836203028846,
-        "cp_calibers": 4.395405351549228
+        "c_n_alpha": 2.813313795531396,
+        "cp_calibers": 4.393398533100758
       },
       "mach": 3.0,
       "nose": "ogive",
       "second_order": {
         "c_n_alpha": {
-          "error": -0.041116379697115235,
+          "error": -0.04668620446860405,
           "reference": 2.86,
           "within": true
         },
         "cp_calibers": {
-          "error": -0.10459464845077182,
+          "error": -0.10660146689924233,
           "reference": 4.5,
           "within": false
         }
@@ -2644,33 +2644,33 @@
       "afterbody_calibers": 6.0,
       "experiment": {
         "c_n_alpha": {
-          "error": 0.029615986757380863,
+          "error": 0.02673209308404001,
           "reference": 2.84,
           "within": true
         },
         "cp_calibers": {
-          "error": 0.12731321023560938,
+          "error": 0.13255990893622727,
           "reference": 4.4,
           "within": true
         }
       },
       "fineness": 7.0,
       "hpr": {
-        "c_n_alpha": 2.8696159867573807,
-        "cp_calibers": 4.52731321023561
+        "c_n_alpha": 2.86673209308404,
+        "cp_calibers": 4.532559908936228
       },
       "mach": 3.0,
       "nose": "ogive",
       "second_order": {
         "c_n_alpha": {
-          "error": -0.04038401324261942,
+          "error": -0.043267906915960275,
           "reference": 2.91,
           "within": true
         },
         "cp_calibers": {
-          "error": -0.10268678976439016,
+          "error": -0.09744009106377227,
           "reference": 4.63,
-          "within": false
+          "within": true
         }
       }
     },
@@ -2682,21 +2682,21 @@
       },
       "fineness": 7.0,
       "hpr": {
-        "c_n_alpha": 2.8908465345151493,
-        "cp_calibers": 4.595828165099262
+        "c_n_alpha": 2.889789974622483,
+        "cp_calibers": 4.606997084530227
       },
       "mach": 3.0,
       "nose": "ogive",
       "second_order": {
         "c_n_alpha": {
-          "error": -0.04915346548485067,
+          "error": -0.05021002537751684,
           "reference": 2.94,
-          "within": true
+          "within": false
         },
         "cp_calibers": {
-          "error": -0.10417183490073789,
+          "error": -0.09300291546977313,
           "reference": 4.7,
-          "within": false
+          "within": true
         }
       }
     },
@@ -2704,33 +2704,33 @@
       "afterbody_calibers": 10.0,
       "experiment": {
         "c_n_alpha": {
-          "error": 0.04973112219743614,
+          "error": 0.04974285454189431,
           "reference": 2.85,
           "within": true
         },
         "cp_calibers": {
-          "error": 0.08033048874500892,
+          "error": 0.09562660269255652,
           "reference": 4.55,
           "within": true
         }
       },
       "fineness": 7.0,
       "hpr": {
-        "c_n_alpha": 2.8997311221974362,
-        "cp_calibers": 4.630330488745009
+        "c_n_alpha": 2.8997428545418944,
+        "cp_calibers": 4.645626602692556
       },
       "mach": 3.0,
       "nose": "ogive",
       "second_order": {
         "c_n_alpha": {
-          "error": -0.04026887780256372,
+          "error": -0.04025714545810555,
           "reference": 2.94,
           "within": true
         },
         "cp_calibers": {
-          "error": -0.10966951125499147,
+          "error": -0.09437339730744387,
           "reference": 4.74,
-          "within": false
+          "within": true
         }
       }
     },
@@ -2738,31 +2738,31 @@
       "afterbody_calibers": 0.0,
       "experiment": {
         "c_n_alpha": {
-          "error": -0.017084383657357982,
+          "error": -0.018185205843079366,
           "reference": 2.4,
           "within": true
         },
         "cp_calibers": {
-          "error": 0.008903428093769428,
+          "error": 0.007574406401213096,
           "reference": 3.7,
           "within": true
         }
       },
       "fineness": 7.0,
       "hpr": {
-        "c_n_alpha": 2.382915616342642,
-        "cp_calibers": 3.7089034280937696
+        "c_n_alpha": 2.3818147941569205,
+        "cp_calibers": 3.7075744064012133
       },
       "mach": 4.24,
       "nose": "ogive",
       "second_order": {
         "c_n_alpha": {
-          "error": -0.017084383657357982,
+          "error": -0.018185205843079366,
           "reference": 2.4,
           "within": true
         },
         "cp_calibers": {
-          "error": -0.041096571906230395,
+          "error": -0.042425593598786726,
           "reference": 3.75,
           "within": true
         }
@@ -2772,31 +2772,31 @@
       "afterbody_calibers": 2.0,
       "experiment": {
         "c_n_alpha": {
-          "error": 0.08113153446595911,
+          "error": 0.07891367322271714,
           "reference": 2.64,
           "within": true
         },
         "cp_calibers": {
-          "error": 0.14967099190090405,
+          "error": 0.14730084843568125,
           "reference": 4.08,
           "within": true
         }
       },
       "fineness": 7.0,
       "hpr": {
-        "c_n_alpha": 2.7211315344659592,
-        "cp_calibers": 4.229670991900904
+        "c_n_alpha": 2.7189136732227173,
+        "cp_calibers": 4.227300848435681
       },
       "mach": 4.24,
       "nose": "ogive",
       "second_order": {
         "c_n_alpha": {
-          "error": -0.048868465534040784,
+          "error": -0.05108632677728275,
           "reference": 2.77,
-          "within": true
+          "within": false
         },
         "cp_calibers": {
-          "error": -0.0703290080990957,
+          "error": -0.0726991515643185,
           "reference": 4.3,
           "within": true
         }
@@ -2806,31 +2806,31 @@
       "afterbody_calibers": 4.0,
       "experiment": {
         "c_n_alpha": {
-          "error": -0.015318331819844211,
+          "error": -0.017322940333929004,
           "reference": 2.92,
           "within": true
         },
         "cp_calibers": {
-          "error": -0.17209267547410168,
+          "error": -0.17360257816462354,
           "reference": 4.76,
           "within": true
         }
       },
       "fineness": 7.0,
       "hpr": {
-        "c_n_alpha": 2.9046816681801557,
-        "cp_calibers": 4.587907324525898
+        "c_n_alpha": 2.902677059666071,
+        "cp_calibers": 4.586397421835376
       },
       "mach": 4.24,
       "nose": "ogive",
       "second_order": {
         "c_n_alpha": {
-          "error": -0.04531833181984446,
+          "error": -0.04732294033392925,
           "reference": 2.95,
           "within": true
         },
         "cp_calibers": {
-          "error": -0.062092675474102244,
+          "error": -0.06360257816462411,
           "reference": 4.65,
           "within": true
         }
@@ -2840,31 +2840,31 @@
       "afterbody_calibers": 6.0,
       "experiment": {
         "c_n_alpha": {
-          "error": -0.10570548162213322,
+          "error": -0.10714763779150127,
           "reference": 3.11,
           "within": true
         },
         "cp_calibers": {
-          "error": -0.14968797144972523,
+          "error": -0.14963732310183353,
           "reference": 4.98,
           "within": true
         }
       },
       "fineness": 7.0,
       "hpr": {
-        "c_n_alpha": 3.0042945183778667,
-        "cp_calibers": 4.830312028550275
+        "c_n_alpha": 3.0028523622084986,
+        "cp_calibers": 4.830362676898167
       },
       "mach": 4.24,
       "nose": "ogive",
       "second_order": {
         "c_n_alpha": {
-          "error": -0.035705481622133384,
+          "error": -0.03714763779150143,
           "reference": 3.04,
           "within": true
         },
         "cp_calibers": {
-          "error": -0.03968797144972491,
+          "error": -0.03963732310183321,
           "reference": 4.87,
           "within": true
         }
@@ -2878,19 +2878,19 @@
       },
       "fineness": 7.0,
       "hpr": {
-        "c_n_alpha": 3.0583545167212187,
-        "cp_calibers": 4.990607512913628
+        "c_n_alpha": 3.057461125323344,
+        "cp_calibers": 4.992344796375466
       },
       "mach": 4.24,
       "nose": "ogive",
       "second_order": {
         "c_n_alpha": {
-          "error": -0.03164548327878114,
+          "error": -0.03253887467665573,
           "reference": 3.09,
           "within": true
         },
         "cp_calibers": {
-          "error": -0.009392487086372192,
+          "error": -0.007655203624533868,
           "reference": 5.0,
           "within": true
         }
@@ -2900,31 +2900,31 @@
       "afterbody_calibers": 10.0,
       "experiment": {
         "c_n_alpha": {
-          "error": -0.022307065443302854,
+          "error": -0.02276989037365995,
           "reference": 3.11,
           "within": true
         },
         "cp_calibers": {
-          "error": -0.06574616725082283,
+          "error": -0.062481719295193194,
           "reference": 5.16,
           "within": true
         }
       },
       "fineness": 7.0,
       "hpr": {
-        "c_n_alpha": 3.087692934556697,
-        "cp_calibers": 5.094253832749177
+        "c_n_alpha": 3.08723010962634,
+        "cp_calibers": 5.097518280704807
       },
       "mach": 4.24,
       "nose": "ogive",
       "second_order": {
         "c_n_alpha": {
-          "error": -0.022307065443302854,
+          "error": -0.02276989037365995,
           "reference": 3.11,
           "within": true
         },
         "cp_calibers": {
-          "error": 0.014253832749177242,
+          "error": 0.017518280704806877,
           "reference": 5.08,
           "within": true
         }
@@ -2934,31 +2934,31 @@
       "afterbody_calibers": 0.0,
       "experiment": {
         "c_n_alpha": {
-          "error": 0.06882487616965527,
+          "error": 0.06703352642010962,
           "reference": 2.29,
           "within": true
         },
         "cp_calibers": {
-          "error": -0.04759117585958972,
+          "error": -0.049783779693299834,
           "reference": 3.75,
           "within": true
         }
       },
       "fineness": 7.0,
       "hpr": {
-        "c_n_alpha": 2.3588248761696553,
-        "cp_calibers": 3.7024088241404103
+        "c_n_alpha": 2.3570335264201097,
+        "cp_calibers": 3.7002162203067
       },
       "mach": 5.05,
       "nose": "ogive",
       "second_order": {
         "c_n_alpha": {
-          "error": -0.02117512383034459,
+          "error": -0.022966473579890234,
           "reference": 2.38,
           "within": true
         },
         "cp_calibers": {
-          "error": -0.04759117585958972,
+          "error": -0.049783779693299834,
           "reference": 3.75,
           "within": true
         }
@@ -2968,31 +2968,31 @@
       "afterbody_calibers": 2.0,
       "experiment": {
         "c_n_alpha": {
-          "error": 0.03218477408310649,
+          "error": 0.028255180104624245,
           "reference": 2.68,
           "within": true
         },
         "cp_calibers": {
-          "error": -0.06898214718795259,
+          "error": -0.07328715496649085,
           "reference": 4.32,
           "within": true
         }
       },
       "fineness": 7.0,
       "hpr": {
-        "c_n_alpha": 2.7121847740831067,
-        "cp_calibers": 4.251017852812048
+        "c_n_alpha": 2.7082551801046244,
+        "cp_calibers": 4.246712845033509
       },
       "mach": 5.05,
       "nose": "ogive",
       "second_order": {
         "c_n_alpha": {
-          "error": -0.057815225916893365,
+          "error": -0.06174481989537561,
           "reference": 2.77,
           "within": false
         },
         "cp_calibers": {
-          "error": -0.08898214718795217,
+          "error": -0.09328715496649043,
           "reference": 4.34,
           "within": true
         }
@@ -3002,31 +3002,31 @@
       "afterbody_calibers": 4.0,
       "experiment": {
         "c_n_alpha": {
-          "error": 0.06161490655353585,
+          "error": 0.05770836051082817,
           "reference": 2.86,
           "within": true
         },
         "cp_calibers": {
-          "error": -0.20309904753788555,
+          "error": -0.20643389740506635,
           "reference": 4.86,
           "within": false
         }
       },
       "fineness": 7.0,
       "hpr": {
-        "c_n_alpha": 2.9216149065535357,
-        "cp_calibers": 4.656900952462115
+        "c_n_alpha": 2.917708360510828,
+        "cp_calibers": 4.653566102594934
       },
       "mach": 5.05,
       "nose": "ogive",
       "second_order": {
         "c_n_alpha": {
-          "error": -0.06838509344646448,
+          "error": -0.07229163948917217,
           "reference": 2.99,
           "within": false
         },
         "cp_calibers": {
-          "error": -0.07309904753788565,
+          "error": -0.07643389740506645,
           "reference": 4.73,
           "within": true
         }
@@ -3036,31 +3036,31 @@
       "afterbody_calibers": 6.0,
       "experiment": {
         "c_n_alpha": {
-          "error": 0.10574042460347588,
+          "error": 0.10261704516066539,
           "reference": 2.94,
           "within": true
         },
         "cp_calibers": {
-          "error": -0.147376737562948,
+          "error": -0.14836162617318127,
           "reference": 5.1,
           "within": true
         }
       },
       "fineness": 7.0,
       "hpr": {
-        "c_n_alpha": 3.045740424603476,
-        "cp_calibers": 4.952623262437052
+        "c_n_alpha": 3.0426170451606653,
+        "cp_calibers": 4.951638373826818
       },
       "mach": 5.05,
       "nose": "ogive",
       "second_order": {
         "c_n_alpha": {
-          "error": -0.06425957539652405,
+          "error": -0.06738295483933454,
           "reference": 3.11,
           "within": false
         },
         "cp_calibers": {
-          "error": -0.057376737562948144,
+          "error": -0.05836162617318141,
           "reference": 5.01,
           "within": true
         }
@@ -3074,19 +3074,19 @@
       },
       "fineness": 7.0,
       "hpr": {
-        "c_n_alpha": 3.119307413505331,
-        "cp_calibers": 5.163953362442624
+        "c_n_alpha": 3.117107102894306,
+        "cp_calibers": 5.165818966280088
       },
       "mach": 5.05,
       "nose": "ogive",
       "second_order": {
         "c_n_alpha": {
-          "error": -0.05069258649466901,
+          "error": -0.052892897105694114,
           "reference": 3.17,
           "within": false
         },
         "cp_calibers": {
-          "error": -0.026046637557376684,
+          "error": -0.024181033719912648,
           "reference": 5.19,
           "within": true
         }
@@ -3096,31 +3096,31 @@
       "afterbody_calibers": 10.0,
       "experiment": {
         "c_n_alpha": {
-          "error": 0.14290926058006503,
+          "error": 0.1415297042267598,
           "reference": 3.02,
           "within": true
         },
         "cp_calibers": {
-          "error": 0.08213577989930965,
+          "error": 0.08684468814191071,
           "reference": 5.23,
           "within": true
         }
       },
       "fineness": 7.0,
       "hpr": {
-        "c_n_alpha": 3.162909260580065,
-        "cp_calibers": 5.31213577989931
+        "c_n_alpha": 3.16152970422676,
+        "cp_calibers": 5.316844688141911
       },
       "mach": 5.05,
       "nose": "ogive",
       "second_order": {
         "c_n_alpha": {
-          "error": -0.04709073941993491,
+          "error": -0.048470295773240135,
           "reference": 3.21,
           "within": true
         },
         "cp_calibers": {
-          "error": 0.0021357798993104637,
+          "error": 0.006844688141911526,
           "reference": 5.31,
           "within": true
         }
@@ -3130,31 +3130,31 @@
       "afterbody_calibers": 0.0,
       "experiment": {
         "c_n_alpha": {
-          "error": 0.0841830886068764,
+          "error": 0.0839575485162678,
           "reference": 2.23,
           "within": true
         },
         "cp_calibers": {
-          "error": 0.02583704951022847,
+          "error": 0.025553089729865253,
           "reference": 3.65,
           "within": true
         }
       },
       "fineness": 7.0,
       "hpr": {
-        "c_n_alpha": 2.3141830886068764,
-        "cp_calibers": 3.6758370495102284
+        "c_n_alpha": 2.313957548516268,
+        "cp_calibers": 3.675553089729865
       },
       "mach": 6.28,
       "nose": "ogive",
       "second_order": {
         "c_n_alpha": {
-          "error": -0.03581691139312371,
+          "error": -0.03604245148373231,
           "reference": 2.35,
           "within": true
         },
         "cp_calibers": {
-          "error": -0.04416295048977181,
+          "error": -0.04444691027013503,
           "reference": 3.72,
           "within": true
         }
@@ -3164,31 +3164,31 @@
       "afterbody_calibers": 2.0,
       "experiment": {
         "c_n_alpha": {
-          "error": 0.08966266232851838,
+          "error": 0.08912358788918961,
           "reference": 2.58,
           "within": true
         },
         "cp_calibers": {
-          "error": 0.04219045871698324,
+          "error": 0.0415734667253016,
           "reference": 4.2,
           "within": true
         }
       },
       "fineness": 7.0,
       "hpr": {
-        "c_n_alpha": 2.6696626623285185,
-        "cp_calibers": 4.242190458716983
+        "c_n_alpha": 2.6691235878891897,
+        "cp_calibers": 4.241573466725302
       },
       "mach": 6.28,
       "nose": "ogive",
       "second_order": {
         "c_n_alpha": {
-          "error": -0.06033733767148153,
+          "error": -0.060876412110810296,
           "reference": 2.73,
           "within": false
         },
         "cp_calibers": {
-          "error": -0.0678095412830162,
+          "error": -0.06842653327469783,
           "reference": 4.31,
           "within": true
         }
@@ -3198,31 +3198,31 @@
       "afterbody_calibers": 4.0,
       "experiment": {
         "c_n_alpha": {
-          "error": 0.071768872717894,
+          "error": 0.07117733689091388,
           "reference": 2.83,
           "within": true
         },
         "cp_calibers": {
-          "error": -0.0029204565619442846,
+          "error": -0.0034895136623696033,
           "reference": 4.7,
           "within": true
         }
       },
       "fineness": 7.0,
       "hpr": {
-        "c_n_alpha": 2.901768872717894,
-        "cp_calibers": 4.697079543438056
+        "c_n_alpha": 2.901177336890914,
+        "cp_calibers": 4.696510486337631
       },
       "mach": 6.28,
       "nose": "ogive",
       "second_order": {
         "c_n_alpha": {
-          "error": -0.0482311272821061,
+          "error": -0.04882266310908623,
           "reference": 2.95,
           "within": true
         },
         "cp_calibers": {
-          "error": -0.04292045656194432,
+          "error": -0.04348951366236964,
           "reference": 4.74,
           "within": true
         }
@@ -3232,31 +3232,31 @@
       "afterbody_calibers": 6.0,
       "experiment": {
         "c_n_alpha": {
-          "error": 0.09331989529086027,
+          "error": 0.09279358522600356,
           "reference": 2.96,
           "within": true
         },
         "cp_calibers": {
-          "error": -0.04395691633774401,
+          "error": -0.04427592083216858,
           "reference": 5.1,
           "within": true
         }
       },
       "fineness": 7.0,
       "hpr": {
-        "c_n_alpha": 3.0533198952908602,
-        "cp_calibers": 5.056043083662256
+        "c_n_alpha": 3.0527935852260035,
+        "cp_calibers": 5.055724079167831
       },
       "mach": 6.28,
       "nose": "ogive",
       "second_order": {
         "c_n_alpha": {
-          "error": -0.03668010470913963,
+          "error": -0.03720641477399633,
           "reference": 3.09,
           "within": true
         },
         "cp_calibers": {
-          "error": 0.00604308366225581,
+          "error": 0.005724079167831242,
           "reference": 5.05,
           "within": true
         }
@@ -3270,19 +3270,19 @@
       },
       "fineness": 7.0,
       "hpr": {
-        "c_n_alpha": 3.1522733545902977,
-        "cp_calibers": 5.334580628991077
+        "c_n_alpha": 3.1518546297387418,
+        "cp_calibers": 5.334614936283695
       },
       "mach": 6.28,
       "nose": "ogive",
       "second_order": {
         "c_n_alpha": {
-          "error": -0.017726645409702257,
+          "error": -0.018145370261258176,
           "reference": 3.17,
           "within": true
         },
         "cp_calibers": {
-          "error": 0.0645806289910773,
+          "error": 0.06461493628369563,
           "reference": 5.27,
           "within": true
         }
@@ -3292,31 +3292,31 @@
       "afterbody_calibers": 10.0,
       "experiment": {
         "c_n_alpha": {
-          "error": -0.02311614697105968,
+          "error": -0.023422158549366134,
           "reference": 3.24,
           "within": true
         },
         "cp_calibers": {
-          "error": -0.03262908934978803,
+          "error": -0.03220179829173553,
           "reference": 5.58,
           "within": true
         }
       },
       "fineness": 7.0,
       "hpr": {
-        "c_n_alpha": 3.2168838530289405,
-        "cp_calibers": 5.547370910650212
+        "c_n_alpha": 3.216577841450634,
+        "cp_calibers": 5.5477982017082645
       },
       "mach": 6.28,
       "nose": "ogive",
       "second_order": {
         "c_n_alpha": {
-          "error": 0.0068838530289405675,
+          "error": 0.006577841450634114,
           "reference": 3.21,
           "within": true
         },
         "cp_calibers": {
-          "error": 0.1273709106502121,
+          "error": 0.1277982017082646,
           "reference": 5.42,
           "within": false
         }
@@ -3326,31 +3326,31 @@
       "afterbody_calibers": 0.0,
       "experiment": {
         "c_n_alpha": {
-          "error": -0.10796783374100327,
+          "error": -0.1112603448625964,
           "reference": 2.47,
           "within": true
         },
         "cp_calibers": {
-          "error": -0.046584143462793826,
+          "error": -0.04944530222614629,
           "reference": 2.7,
           "within": true
         }
       },
       "fineness": 5.0,
       "hpr": {
-        "c_n_alpha": 2.362032166258997,
-        "cp_calibers": 2.6534158565372064
+        "c_n_alpha": 2.358739655137404,
+        "cp_calibers": 2.650554697773854
       },
       "mach": 3.0,
       "nose": "ogive",
       "second_order": {
         "c_n_alpha": {
-          "error": 0.012032166258996835,
+          "error": 0.008739655137403712,
           "reference": 2.35,
           "within": true
         },
         "cp_calibers": {
-          "error": -0.026584143462793808,
+          "error": -0.029445302226146275,
           "reference": 2.68,
           "within": true
         }
@@ -3360,31 +3360,31 @@
       "afterbody_calibers": 2.0,
       "experiment": {
         "c_n_alpha": {
-          "error": 0.03202988447305444,
+          "error": 0.025558919368081856,
           "reference": 2.75,
           "within": true
         },
         "cp_calibers": {
-          "error": 0.11667399938666811,
+          "error": 0.11217198342902712,
           "reference": 3.02,
           "within": true
         }
       },
       "fineness": 5.0,
       "hpr": {
-        "c_n_alpha": 2.7820298844730544,
-        "cp_calibers": 3.136673999386668
+        "c_n_alpha": 2.775558919368082,
+        "cp_calibers": 3.132171983429027
       },
       "mach": 3.0,
       "nose": "ogive",
       "second_order": {
         "c_n_alpha": {
-          "error": -0.05797011552694542,
+          "error": -0.064441080631918,
           "reference": 2.84,
           "within": false
         },
         "cp_calibers": {
-          "error": -0.08332600061333206,
+          "error": -0.08782801657097306,
           "reference": 3.22,
           "within": true
         }
@@ -3394,31 +3394,31 @@
       "afterbody_calibers": 4.0,
       "experiment": {
         "c_n_alpha": {
-          "error": 0.005463309173665554,
+          "error": 0.0010587219451654306,
           "reference": 2.95,
           "within": true
         },
         "cp_calibers": {
-          "error": 0.0635256251325731,
+          "error": 0.06319357420391913,
           "reference": 3.35,
           "within": true
         }
       },
       "fineness": 5.0,
       "hpr": {
-        "c_n_alpha": 2.9554633091736657,
-        "cp_calibers": 3.413525625132573
+        "c_n_alpha": 2.9510587219451656,
+        "cp_calibers": 3.4131935742039192
       },
       "mach": 3.0,
       "nose": "ogive",
       "second_order": {
         "c_n_alpha": {
-          "error": -0.10453669082633432,
+          "error": -0.10894127805483445,
           "reference": 3.06,
           "within": false
         },
         "cp_calibers": {
-          "error": -0.13647437486742664,
+          "error": -0.1368064257960806,
           "reference": 3.55,
           "within": false
         }
@@ -3428,31 +3428,31 @@
       "afterbody_calibers": 6.0,
       "experiment": {
         "c_n_alpha": {
-          "error": 0.017080728742722595,
+          "error": 0.014952093359855922,
           "reference": 3.01,
           "within": true
         },
         "cp_calibers": {
-          "error": 0.06591150306313498,
+          "error": 0.07061713201156339,
           "reference": 3.5,
           "within": true
         }
       },
       "fineness": 5.0,
       "hpr": {
-        "c_n_alpha": 3.0270807287427224,
-        "cp_calibers": 3.565911503063135
+        "c_n_alpha": 3.0249520933598557,
+        "cp_calibers": 3.5706171320115634
       },
       "mach": 3.0,
       "nose": "ogive",
       "second_order": {
         "c_n_alpha": {
-          "error": -0.12291927125727753,
+          "error": -0.1250479066401442,
           "reference": 3.15,
           "within": false
         },
         "cp_calibers": {
-          "error": -0.164088496936865,
+          "error": -0.1593828679884366,
           "reference": 3.73,
           "within": false
         }
@@ -3466,19 +3466,19 @@
       },
       "fineness": 5.0,
       "hpr": {
-        "c_n_alpha": 3.0566543521350082,
-        "cp_calibers": 3.6461047148773793
+        "c_n_alpha": 3.0560645519429985,
+        "cp_calibers": 3.654983258446778
       },
       "mach": 3.0,
       "nose": "ogive",
       "second_order": {
         "c_n_alpha": {
-          "error": -0.1333456478649917,
+          "error": -0.13393544805700142,
           "reference": 3.19,
           "within": false
         },
         "cp_calibers": {
-          "error": -0.18389528512262077,
+          "error": -0.17501674155322222,
           "reference": 3.83,
           "within": false
         }
@@ -3488,31 +3488,31 @@
       "afterbody_calibers": 10.0,
       "experiment": {
         "c_n_alpha": {
-          "error": 0.008866453685322462,
+          "error": 0.009164307178897602,
           "reference": 3.06,
           "within": true
         },
         "cp_calibers": {
-          "error": -0.06327257075415149,
+          "error": -0.051470116541059596,
           "reference": 3.75,
           "within": true
         }
       },
       "fineness": 5.0,
       "hpr": {
-        "c_n_alpha": 3.0688664536853225,
-        "cp_calibers": 3.6867274292458485
+        "c_n_alpha": 3.0691643071788977,
+        "cp_calibers": 3.6985298834589404
       },
       "mach": 3.0,
       "nose": "ogive",
       "second_order": {
         "c_n_alpha": {
-          "error": -0.13113354631467766,
+          "error": -0.13083569282110252,
           "reference": 3.2,
           "within": false
         },
         "cp_calibers": {
-          "error": -0.19327257075415138,
+          "error": -0.1814701165410595,
           "reference": 3.88,
           "within": false
         }
@@ -3522,31 +3522,31 @@
       "afterbody_calibers": 0.0,
       "experiment": {
         "c_n_alpha": {
-          "error": -0.04301805527623648,
+          "error": -0.04175718941192219,
           "reference": 2.35,
           "within": true
         },
         "cp_calibers": {
-          "error": -0.06777558282593432,
+          "error": -0.06664285372189216,
           "reference": 2.7,
           "within": true
         }
       },
       "fineness": 5.0,
       "hpr": {
-        "c_n_alpha": 2.3069819447237636,
-        "cp_calibers": 2.632224417174066
+        "c_n_alpha": 2.308242810588078,
+        "cp_calibers": 2.633357146278108
       },
       "mach": 4.24,
       "nose": "ogive",
       "second_order": {
         "c_n_alpha": {
-          "error": 0.006981944723763789,
+          "error": 0.008242810588078076,
           "reference": 2.3,
           "within": true
         },
         "cp_calibers": {
-          "error": -0.027775582825934286,
+          "error": -0.026642853721892124,
           "reference": 2.66,
           "within": true
         }
@@ -3556,31 +3556,31 @@
       "afterbody_calibers": 2.0,
       "experiment": {
         "c_n_alpha": {
-          "error": 0.0009532858378951126,
+          "error": 0.004107790057502836,
           "reference": 2.76,
           "within": true
         },
         "cp_calibers": {
-          "error": 0.019010437834377836,
+          "error": 0.02143477489991863,
           "reference": 3.15,
           "within": true
         }
       },
       "fineness": 5.0,
       "hpr": {
-        "c_n_alpha": 2.760953285837895,
-        "cp_calibers": 3.1690104378343777
+        "c_n_alpha": 2.7641077900575026,
+        "cp_calibers": 3.1714347748999185
       },
       "mach": 4.24,
       "nose": "ogive",
       "second_order": {
         "c_n_alpha": {
-          "error": -0.03904671416210492,
+          "error": -0.0358922099424972,
           "reference": 2.8,
           "within": true
         },
         "cp_calibers": {
-          "error": -0.07098956216562247,
+          "error": -0.06856522510008167,
           "reference": 3.24,
           "within": true
         }
@@ -3590,31 +3590,31 @@
       "afterbody_calibers": 4.0,
       "experiment": {
         "c_n_alpha": {
-          "error": 0.04444214605680852,
+          "error": 0.0472961374273857,
           "reference": 2.96,
           "within": true
         },
         "cp_calibers": {
-          "error": 0.05216756099505604,
+          "error": 0.05348844013748533,
           "reference": 3.5,
           "within": true
         }
       },
       "fineness": 5.0,
       "hpr": {
-        "c_n_alpha": 3.0044421460568085,
-        "cp_calibers": 3.552167560995056
+        "c_n_alpha": 3.0072961374273857,
+        "cp_calibers": 3.5534884401374853
       },
       "mach": 4.24,
       "nose": "ogive",
       "second_order": {
         "c_n_alpha": {
-          "error": -0.05555785394319157,
+          "error": -0.05270386257261439,
           "reference": 3.06,
           "within": false
         },
         "cp_calibers": {
-          "error": -0.06783243900494407,
+          "error": -0.06651155986251478,
           "reference": 3.62,
           "within": true
         }
@@ -3624,31 +3624,31 @@
       "afterbody_calibers": 6.0,
       "experiment": {
         "c_n_alpha": {
-          "error": 0.12503811034214118,
+          "error": 0.1270287884534147,
           "reference": 3.01,
           "within": true
         },
         "cp_calibers": {
-          "error": 0.06646686445931982,
+          "error": 0.06578285553146657,
           "reference": 3.75,
           "within": true
         }
       },
       "fineness": 5.0,
       "hpr": {
-        "c_n_alpha": 3.135038110342141,
-        "cp_calibers": 3.81646686445932
+        "c_n_alpha": 3.1370287884534145,
+        "cp_calibers": 3.8157828555314666
       },
       "mach": 4.24,
       "nose": "ogive",
       "second_order": {
         "c_n_alpha": {
-          "error": -0.054961889657858976,
+          "error": -0.05297121154658546,
           "reference": 3.19,
           "within": false
         },
         "cp_calibers": {
-          "error": -0.05353313554068029,
+          "error": -0.05421714446853354,
           "reference": 3.87,
           "within": true
         }
@@ -3662,19 +3662,19 @@
       },
       "fineness": 5.0,
       "hpr": {
-        "c_n_alpha": 3.205083638799919,
-        "cp_calibers": 3.9930594120484737
+        "c_n_alpha": 3.206236712781476,
+        "cp_calibers": 3.990196681603546
       },
       "mach": 4.24,
       "nose": "ogive",
       "second_order": {
         "c_n_alpha": {
-          "error": -0.044916361200081134,
+          "error": -0.04376328721852385,
           "reference": 3.25,
           "within": true
         },
         "cp_calibers": {
-          "error": -0.03694058795152655,
+          "error": -0.039803318396454124,
           "reference": 4.03,
           "within": true
         }
@@ -3684,31 +3684,31 @@
       "afterbody_calibers": 10.0,
       "experiment": {
         "c_n_alpha": {
-          "error": 0.06265276341857717,
+          "error": 0.06315676915832302,
           "reference": 3.18,
           "within": true
         },
         "cp_calibers": {
-          "error": 0.017803829393202797,
+          "error": 0.012963722781087483,
           "reference": 4.09,
           "within": true
         }
       },
       "fineness": 5.0,
       "hpr": {
-        "c_n_alpha": 3.2426527634185773,
-        "cp_calibers": 4.107803829393203
+        "c_n_alpha": 3.243156769158323,
+        "cp_calibers": 4.102963722781087
       },
       "mach": 4.24,
       "nose": "ogive",
       "second_order": {
         "c_n_alpha": {
-          "error": -0.03734723658142247,
+          "error": -0.03684323084167662,
           "reference": 3.28,
           "within": true
         },
         "cp_calibers": {
-          "error": -0.02219617060679724,
+          "error": -0.027036277218912552,
           "reference": 4.13,
           "within": true
         }
@@ -3718,31 +3718,31 @@
       "afterbody_calibers": 0.0,
       "experiment": {
         "c_n_alpha": {
-          "error": 0.0890932408101679,
+          "error": 0.0890932419241035,
           "reference": 2.18,
           "within": true
         },
         "cp_calibers": {
-          "error": -0.08543985441840807,
+          "error": -0.08543985522335973,
           "reference": 2.7,
           "within": true
         }
       },
       "fineness": 5.0,
       "hpr": {
-        "c_n_alpha": 2.269093240810168,
-        "cp_calibers": 2.614560145581592
+        "c_n_alpha": 2.2690932419241037,
+        "cp_calibers": 2.6145601447766404
       },
       "mach": 5.05,
       "nose": "ogive",
       "second_order": {
         "c_n_alpha": {
-          "error": -0.0009067591898319627,
+          "error": -0.0009067580758963523,
           "reference": 2.27,
           "within": true
         },
         "cp_calibers": {
-          "error": -0.025439854418408014,
+          "error": -0.025439855223359675,
           "reference": 2.64,
           "within": true
         }
@@ -3752,31 +3752,31 @@
       "afterbody_calibers": 2.0,
       "experiment": {
         "c_n_alpha": {
-          "error": 0.06484370334279221,
+          "error": 0.06484369196240447,
           "reference": 2.66,
           "within": true
         },
         "cp_calibers": {
-          "error": -0.03418946193296035,
+          "error": -0.03418947496520408,
           "reference": 3.2,
           "within": true
         }
       },
       "fineness": 5.0,
       "hpr": {
-        "c_n_alpha": 2.7248437033427924,
-        "cp_calibers": 3.16581053806704
+        "c_n_alpha": 2.7248436919624046,
+        "cp_calibers": 3.165810525034796
       },
       "mach": 5.05,
       "nose": "ogive",
       "second_order": {
         "c_n_alpha": {
-          "error": -0.04515629665720766,
+          "error": -0.045156308037595405,
           "reference": 2.77,
           "within": true
         },
         "cp_calibers": {
-          "error": -0.06418946193296016,
+          "error": -0.06418947496520389,
           "reference": 3.23,
           "within": true
         }
@@ -3786,31 +3786,31 @@
       "afterbody_calibers": 4.0,
       "experiment": {
         "c_n_alpha": {
-          "error": 0.010342641395489238,
+          "error": 0.010342627067727594,
           "reference": 2.98,
           "within": true
         },
         "cp_calibers": {
-          "error": -0.1429407449770732,
+          "error": -0.14294075927237015,
           "reference": 3.73,
           "within": true
         }
       },
       "fineness": 5.0,
       "hpr": {
-        "c_n_alpha": 2.990342641395489,
-        "cp_calibers": 3.5870592550229268
+        "c_n_alpha": 2.9903426270677276,
+        "cp_calibers": 3.58705924072763
       },
       "mach": 5.05,
       "nose": "ogive",
       "second_order": {
         "c_n_alpha": {
-          "error": -0.049657358604510815,
+          "error": -0.04965737293227246,
           "reference": 3.04,
           "within": true
         },
         "cp_calibers": {
-          "error": -0.06294074497707314,
+          "error": -0.06294075927237008,
           "reference": 3.65,
           "within": true
         }
@@ -3820,31 +3820,31 @@
       "afterbody_calibers": 6.0,
       "experiment": {
         "c_n_alpha": {
-          "error": -0.09499007485586652,
+          "error": -0.09499008837745393,
           "reference": 3.24,
           "within": true
         },
         "cp_calibers": {
-          "error": 0.04803148665686052,
+          "error": 0.04803147615424175,
           "reference": 3.85,
           "within": true
         }
       },
       "fineness": 5.0,
       "hpr": {
-        "c_n_alpha": 3.1450099251441337,
-        "cp_calibers": 3.8980314866568606
+        "c_n_alpha": 3.1450099116225463,
+        "cp_calibers": 3.898031476154242
       },
       "mach": 5.05,
       "nose": "ogive",
       "second_order": {
         "c_n_alpha": {
-          "error": -0.04499007485586626,
+          "error": -0.04499008837745366,
           "reference": 3.19,
           "within": true
         },
         "cp_calibers": {
-          "error": -0.041968513343139335,
+          "error": -0.04196852384575811,
           "reference": 3.94,
           "within": true
         }
@@ -3858,19 +3858,19 @@
       },
       "fineness": 5.0,
       "hpr": {
-        "c_n_alpha": 3.2351118624160478,
-        "cp_calibers": 4.121185461550472
+        "c_n_alpha": 3.235111850833983,
+        "cp_calibers": 4.121185457017499
       },
       "mach": 5.05,
       "nose": "ogive",
       "second_order": {
         "c_n_alpha": {
-          "error": -0.04488813758395205,
+          "error": -0.04488814916601669,
           "reference": 3.28,
           "within": true
         },
         "cp_calibers": {
-          "error": -0.028814538449528193,
+          "error": -0.0288145429825013,
           "reference": 4.15,
           "within": true
         }
@@ -3880,31 +3880,31 @@
       "afterbody_calibers": 10.0,
       "experiment": {
         "c_n_alpha": {
-          "error": -0.002398956269142438,
+          "error": -0.002398965865043845,
           "reference": 3.29,
           "within": true
         },
         "cp_calibers": {
-          "error": 0.21747777622863218,
+          "error": 0.217477778181018,
           "reference": 4.06,
           "within": false
         }
       },
       "fineness": 5.0,
       "hpr": {
-        "c_n_alpha": 3.2876010437308576,
-        "cp_calibers": 4.277477776228632
+        "c_n_alpha": 3.287601034134956,
+        "cp_calibers": 4.277477778181018
       },
       "mach": 5.05,
       "nose": "ogive",
       "second_order": {
         "c_n_alpha": {
-          "error": -0.03239895626914224,
+          "error": -0.03239896586504365,
           "reference": 3.32,
           "within": true
         },
         "cp_calibers": {
-          "error": -0.002522223771368459,
+          "error": -0.0025222218189826506,
           "reference": 4.28,
           "within": true
         }
@@ -3914,31 +3914,31 @@
       "afterbody_calibers": 0.0,
       "experiment": {
         "c_n_alpha": {
-          "error": 0.08563690475576191,
+          "error": 0.08563690818754521,
           "reference": 2.12,
           "within": true
         },
         "cp_calibers": {
-          "error": -0.03387720826737617,
+          "error": -0.03387720618592516,
           "reference": 2.62,
           "within": true
         }
       },
       "fineness": 5.0,
       "hpr": {
-        "c_n_alpha": 2.205636904755762,
-        "cp_calibers": 2.586122791732624
+        "c_n_alpha": 2.2056369081875453,
+        "cp_calibers": 2.586122793814075
       },
       "mach": 6.28,
       "nose": "ogive",
       "second_order": {
         "c_n_alpha": {
-          "error": -0.024363095244237964,
+          "error": -0.024363091812454662,
           "reference": 2.23,
           "within": true
         },
         "cp_calibers": {
-          "error": -0.03387720826737617,
+          "error": -0.03387720618592516,
           "reference": 2.62,
           "within": true
         }
@@ -3948,31 +3948,31 @@
       "afterbody_calibers": 2.0,
       "experiment": {
         "c_n_alpha": {
-          "error": 0.07164082755153522,
+          "error": 0.07164082699192376,
           "reference": 2.57,
           "within": true
         },
         "cp_calibers": {
-          "error": 0.007040373643082631,
+          "error": 0.007040370480279279,
           "reference": 3.13,
           "within": true
         }
       },
       "fineness": 5.0,
       "hpr": {
-        "c_n_alpha": 2.641640827551535,
-        "cp_calibers": 3.1370403736430825
+        "c_n_alpha": 2.6416408269919236,
+        "cp_calibers": 3.137040370480279
       },
       "mach": 6.28,
       "nose": "ogive",
       "second_order": {
         "c_n_alpha": {
-          "error": -0.05835917244846511,
+          "error": -0.05835917300807658,
           "reference": 2.7,
           "within": false
         },
         "cp_calibers": {
-          "error": -0.05295962635691742,
+          "error": -0.052959629519720774,
           "reference": 3.19,
           "within": true
         }
@@ -3982,31 +3982,31 @@
       "afterbody_calibers": 4.0,
       "experiment": {
         "c_n_alpha": {
-          "error": 0.13754286481728917,
+          "error": 0.13754286199496946,
           "reference": 2.78,
           "within": true
         },
         "cp_calibers": {
-          "error": -0.010273503837701536,
+          "error": -0.01027350996116505,
           "reference": 3.6,
           "within": true
         }
       },
       "fineness": 5.0,
       "hpr": {
-        "c_n_alpha": 2.917542864817289,
-        "cp_calibers": 3.5897264961622986
+        "c_n_alpha": 2.9175428619949693,
+        "cp_calibers": 3.589726490038835
       },
       "mach": 6.28,
       "nose": "ogive",
       "second_order": {
         "c_n_alpha": {
-          "error": -0.05245713518271122,
+          "error": -0.052457138005030934,
           "reference": 2.97,
           "within": false
         },
         "cp_calibers": {
-          "error": -0.030273503837701554,
+          "error": -0.030273509961165068,
           "reference": 3.62,
           "within": true
         }
@@ -4016,31 +4016,31 @@
       "afterbody_calibers": 6.0,
       "experiment": {
         "c_n_alpha": {
-          "error": 0.0821328861163626,
+          "error": 0.08213288202865598,
           "reference": 3.01,
           "within": true
         },
         "cp_calibers": {
-          "error": -0.05262377974111576,
+          "error": -0.05262378762931297,
           "reference": 4.0,
           "within": true
         }
       },
       "fineness": 5.0,
       "hpr": {
-        "c_n_alpha": 3.0921328861163624,
-        "cp_calibers": 3.9473762202588842
+        "c_n_alpha": 3.0921328820286558,
+        "cp_calibers": 3.947376212370687
       },
       "mach": 6.28,
       "nose": "ogive",
       "second_order": {
         "c_n_alpha": {
-          "error": -0.037867113883637504,
+          "error": -0.03786711797134412,
           "reference": 3.13,
           "within": true
         },
         "cp_calibers": {
-          "error": 0.007376220258884292,
+          "error": 0.007376212370687085,
           "reference": 3.94,
           "within": true
         }
@@ -4054,19 +4054,19 @@
       },
       "fineness": 5.0,
       "hpr": {
-        "c_n_alpha": 3.202612953024496,
-        "cp_calibers": 4.222544541534392
+        "c_n_alpha": 3.2026129482413834,
+        "cp_calibers": 4.222544532602684
       },
       "mach": 6.28,
       "nose": "ogive",
       "second_order": {
         "c_n_alpha": {
-          "error": -0.02738704697550398,
+          "error": -0.027387051758616554,
           "reference": 3.23,
           "within": true
         },
         "cp_calibers": {
-          "error": 0.02254454153439145,
+          "error": 0.02254453260268363,
           "reference": 4.2,
           "within": true
         }
@@ -4076,31 +4076,31 @@
       "afterbody_calibers": 10.0,
       "experiment": {
         "c_n_alpha": {
-          "error": -0.03747557612965924,
+          "error": -0.0374755812861709,
           "reference": 3.31,
           "within": true
         },
         "cp_calibers": {
-          "error": 0.10979825256906839,
+          "error": 0.10979824305115038,
           "reference": 4.32,
           "within": true
         }
       },
       "fineness": 5.0,
       "hpr": {
-        "c_n_alpha": 3.272524423870341,
-        "cp_calibers": 4.429798252569069
+        "c_n_alpha": 3.272524418713829,
+        "cp_calibers": 4.429798243051151
       },
       "mach": 6.28,
       "nose": "ogive",
       "second_order": {
         "c_n_alpha": {
-          "error": -0.0074755761296589895,
+          "error": -0.007475581286170652,
           "reference": 3.28,
           "within": true
         },
         "cp_calibers": {
-          "error": 0.08979825256906881,
+          "error": 0.0897982430511508,
           "reference": 4.34,
           "within": true
         }
@@ -4110,31 +4110,31 @@
       "afterbody_calibers": 0.0,
       "experiment": {
         "c_n_alpha": {
-          "error": -0.07610540977198932,
+          "error": -0.07610540932597676,
           "reference": 2.28,
           "within": true
         },
         "cp_calibers": {
-          "error": -0.07522321414863886,
+          "error": -0.07522321407916732,
           "reference": 1.65,
           "within": true
         }
       },
       "fineness": 3.0,
       "hpr": {
-        "c_n_alpha": 2.2038945902280105,
-        "cp_calibers": 1.574776785851361
+        "c_n_alpha": 2.203894590674023,
+        "cp_calibers": 1.5747767859208326
       },
       "mach": 3.0,
       "nose": "ogive",
       "second_order": {
         "c_n_alpha": {
-          "error": 0.01389459022801054,
+          "error": 0.0138945906740231,
           "reference": 2.19,
           "within": true
         },
         "cp_calibers": {
-          "error": -0.01522321414863903,
+          "error": -0.01522321407916749,
           "reference": 1.59,
           "within": true
         }
@@ -4144,31 +4144,31 @@
       "afterbody_calibers": 2.0,
       "experiment": {
         "c_n_alpha": {
-          "error": -0.14288082076148,
+          "error": -0.1428808224805671,
           "reference": 2.98,
           "within": true
         },
         "cp_calibers": {
-          "error": -0.03747632890031927,
+          "error": -0.03747633016652108,
           "reference": 2.12,
           "within": true
         }
       },
       "fineness": 3.0,
       "hpr": {
-        "c_n_alpha": 2.83711917923852,
-        "cp_calibers": 2.082523671099681
+        "c_n_alpha": 2.837119177519433,
+        "cp_calibers": 2.082523669833479
       },
       "mach": 3.0,
       "nose": "ogive",
       "second_order": {
         "c_n_alpha": {
-          "error": -0.032880820761480134,
+          "error": -0.03288082248056723,
           "reference": 2.87,
           "within": true
         },
         "cp_calibers": {
-          "error": -0.03747632890031927,
+          "error": -0.03747633016652108,
           "reference": 2.12,
           "within": true
         }
@@ -4178,31 +4178,31 @@
       "afterbody_calibers": 4.0,
       "experiment": {
         "c_n_alpha": {
-          "error": -0.15908084011046286,
+          "error": -0.15908084192766392,
           "reference": 3.25,
           "within": true
         },
         "cp_calibers": {
-          "error": -0.058147720020668814,
+          "error": -0.05814772108079813,
           "reference": 2.45,
           "within": true
         }
       },
       "fineness": 3.0,
       "hpr": {
-        "c_n_alpha": 3.090919159889537,
-        "cp_calibers": 2.3918522799793314
+        "c_n_alpha": 3.090919158072336,
+        "cp_calibers": 2.391852278919202
       },
       "mach": 3.0,
       "nose": "ogive",
       "second_order": {
         "c_n_alpha": {
-          "error": -0.039080840110462756,
+          "error": -0.03908084192766381,
           "reference": 3.13,
           "within": true
         },
         "cp_calibers": {
-          "error": -0.038147720020668796,
+          "error": -0.038147721080798114,
           "reference": 2.43,
           "within": true
         }
@@ -4212,31 +4212,31 @@
       "afterbody_calibers": 6.0,
       "experiment": {
         "c_n_alpha": {
-          "error": -0.007356378842919398,
+          "error": -0.0073563803909562075,
           "reference": 3.2,
           "within": true
         },
         "cp_calibers": {
-          "error": 0.07575104947555777,
+          "error": 0.07575104900911667,
           "reference": 2.49,
           "within": true
         }
       },
       "fineness": 3.0,
       "hpr": {
-        "c_n_alpha": 3.192643621157081,
-        "cp_calibers": 2.565751049475558
+        "c_n_alpha": 3.192643619609044,
+        "cp_calibers": 2.565751049009117
       },
       "mach": 3.0,
       "nose": "ogive",
       "second_order": {
         "c_n_alpha": {
-          "error": -0.0373563788429192,
+          "error": -0.03735638039095601,
           "reference": 3.23,
           "within": true
         },
         "cp_calibers": {
-          "error": -0.0342489505244421,
+          "error": -0.03424895099088321,
           "reference": 2.6,
           "within": true
         }
@@ -4250,19 +4250,19 @@
       },
       "fineness": 3.0,
       "hpr": {
-        "c_n_alpha": 3.2334153579934237,
-        "cp_calibers": 2.65759799404252
+        "c_n_alpha": 3.2334153566769137,
+        "cp_calibers": 2.657597994147034
       },
       "mach": 3.0,
       "nose": "ogive",
       "second_order": {
         "c_n_alpha": {
-          "error": -0.036584642006576296,
+          "error": -0.03658464332308631,
           "reference": 3.27,
           "within": true
         },
         "cp_calibers": {
-          "error": -0.02240200595748032,
+          "error": -0.022402005852966145,
           "reference": 2.68,
           "within": true
         }
@@ -4272,31 +4272,31 @@
       "afterbody_calibers": 10.0,
       "experiment": {
         "c_n_alpha": {
-          "error": -0.07024310031701253,
+          "error": -0.07024310149116841,
           "reference": 3.32,
           "within": true
         },
         "cp_calibers": {
-          "error": 0.10382088129302058,
+          "error": 0.10382088181880533,
           "reference": 2.6,
           "within": true
         }
       },
       "fineness": 3.0,
       "hpr": {
-        "c_n_alpha": 3.2497568996829873,
-        "cp_calibers": 2.7038208812930207
+        "c_n_alpha": 3.2497568985088314,
+        "cp_calibers": 2.7038208818188054
       },
       "mach": 3.0,
       "nose": "ogive",
       "second_order": {
         "c_n_alpha": {
-          "error": -0.030243100317012495,
+          "error": -0.030243101491168378,
           "reference": 3.28,
           "within": true
         },
         "cp_calibers": {
-          "error": -0.02617911870697931,
+          "error": -0.02617911818119456,
           "reference": 2.73,
           "within": true
         }
@@ -4306,31 +4306,31 @@
       "afterbody_calibers": 0.0,
       "experiment": {
         "c_n_alpha": {
-          "error": 0.008212689554683461,
+          "error": 0.008212692057341098,
           "reference": 2.09,
           "within": true
         },
         "cp_calibers": {
-          "error": -0.030378045229350725,
+          "error": -0.03037804378694453,
           "reference": 1.58,
           "within": true
         }
       },
       "fineness": 3.0,
       "hpr": {
-        "c_n_alpha": 2.0982126895546833,
-        "cp_calibers": 1.5496219547706493
+        "c_n_alpha": 2.098212692057341,
+        "cp_calibers": 1.5496219562130555
       },
       "mach": 4.24,
       "nose": "ogive",
       "second_order": {
         "c_n_alpha": {
-          "error": -0.0017873104453167699,
+          "error": -0.0017873079426591332,
           "reference": 2.1,
           "within": true
         },
         "cp_calibers": {
-          "error": -0.010378045229350708,
+          "error": -0.010378043786944513,
           "reference": 1.56,
           "within": true
         }
@@ -4340,31 +4340,31 @@
       "afterbody_calibers": 2.0,
       "experiment": {
         "c_n_alpha": {
-          "error": -0.10897976307985413,
+          "error": -0.10897975629375312,
           "reference": 2.81,
           "within": true
         },
         "cp_calibers": {
-          "error": -0.09989167344355243,
+          "error": -0.09989167039403357,
           "reference": 2.17,
           "within": true
         }
       },
       "fineness": 3.0,
       "hpr": {
-        "c_n_alpha": 2.701020236920146,
-        "cp_calibers": 2.0701083265564475
+        "c_n_alpha": 2.701020243706247,
+        "cp_calibers": 2.0701083296059664
       },
       "mach": 4.24,
       "nose": "ogive",
       "second_order": {
         "c_n_alpha": {
-          "error": -0.058979763079853864,
+          "error": -0.05897975629375285,
           "reference": 2.76,
           "within": false
         },
         "cp_calibers": {
-          "error": -0.03989167344355238,
+          "error": -0.03989167039403352,
           "reference": 2.11,
           "within": true
         }
@@ -4374,31 +4374,31 @@
       "afterbody_calibers": 4.0,
       "experiment": {
         "c_n_alpha": {
-          "error": -0.11418827660032349,
+          "error": -0.11418827147332955,
           "reference": 3.11,
           "within": true
         },
         "cp_calibers": {
-          "error": 0.0051817020136857295,
+          "error": 0.00518170180669042,
           "reference": 2.44,
           "within": true
         }
       },
       "fineness": 3.0,
       "hpr": {
-        "c_n_alpha": 2.9958117233996764,
-        "cp_calibers": 2.4451817020136857
+        "c_n_alpha": 2.9958117285266703,
+        "cp_calibers": 2.4451817018066904
       },
       "mach": 4.24,
       "nose": "ogive",
       "second_order": {
         "c_n_alpha": {
-          "error": -0.08418827660032369,
+          "error": -0.08418827147332975,
           "reference": 3.08,
           "within": false
         },
         "cp_calibers": {
-          "error": -0.06481829798631411,
+          "error": -0.06481829819330942,
           "reference": 2.51,
           "within": true
         }
@@ -4408,31 +4408,31 @@
       "afterbody_calibers": 6.0,
       "experiment": {
         "c_n_alpha": {
-          "error": -0.15002614578326146,
+          "error": -0.15002614330336872,
           "reference": 3.29,
           "within": true
         },
         "cp_calibers": {
-          "error": -0.05521366737589828,
+          "error": -0.05521367244875153,
           "reference": 2.75,
           "within": true
         }
       },
       "fineness": 3.0,
       "hpr": {
-        "c_n_alpha": 3.1399738542167386,
-        "cp_calibers": 2.6947863326241017
+        "c_n_alpha": 3.1399738566966313,
+        "cp_calibers": 2.6947863275512485
       },
       "mach": 4.24,
       "nose": "ogive",
       "second_order": {
         "c_n_alpha": {
-          "error": -0.10002614578326163,
+          "error": -0.1000261433033689,
           "reference": 3.24,
           "within": false
         },
         "cp_calibers": {
-          "error": -0.06521366737589807,
+          "error": -0.06521367244875131,
           "reference": 2.76,
           "within": true
         }
@@ -4446,19 +4446,19 @@
       },
       "fineness": 3.0,
       "hpr": {
-        "c_n_alpha": 3.2104735833978877,
-        "cp_calibers": 2.8526076941478435
+        "c_n_alpha": 3.2104735836855305,
+        "cp_calibers": 2.8526076842192194
       },
       "mach": 4.24,
       "nose": "ogive",
       "second_order": {
         "c_n_alpha": {
-          "error": -0.10952641660211215,
+          "error": -0.10952641631446935,
           "reference": 3.32,
           "within": false
         },
         "cp_calibers": {
-          "error": -0.07739230585215662,
+          "error": -0.07739231578078076,
           "reference": 2.93,
           "within": true
         }
@@ -4468,31 +4468,31 @@
       "afterbody_calibers": 10.0,
       "experiment": {
         "c_n_alpha": {
-          "error": -0.09504987420886346,
+          "error": -0.09504987543231858,
           "reference": 3.34,
           "within": true
         },
         "cp_calibers": {
-          "error": -0.17146024837534446,
+          "error": -0.17146026238897338,
           "reference": 3.12,
           "within": true
         }
       },
       "fineness": 3.0,
       "hpr": {
-        "c_n_alpha": 3.2449501257911364,
-        "cp_calibers": 2.9485397516246556
+        "c_n_alpha": 3.2449501245676813,
+        "cp_calibers": 2.9485397376110267
       },
       "mach": 4.24,
       "nose": "ogive",
       "second_order": {
         "c_n_alpha": {
-          "error": -0.11504987420886348,
+          "error": -0.1150498754323186,
           "reference": 3.36,
           "within": false
         },
         "cp_calibers": {
-          "error": -0.08146024837534416,
+          "error": -0.08146026238897308,
           "reference": 3.03,
           "within": true
         }
@@ -4502,31 +4502,31 @@
       "afterbody_calibers": 0.0,
       "experiment": {
         "c_n_alpha": {
-          "error": -0.0461798365169217,
+          "error": -0.04617983311906482,
           "reference": 2.01,
           "within": true
         },
         "cp_calibers": {
-          "error": 0.07099481434508736,
+          "error": 0.07099481653109274,
           "reference": 1.47,
           "within": true
         }
       },
       "fineness": 3.0,
       "hpr": {
-        "c_n_alpha": 1.963820163483078,
-        "cp_calibers": 1.5409948143450873
+        "c_n_alpha": 1.963820166880935,
+        "cp_calibers": 1.5409948165310927
       },
       "mach": 5.05,
       "nose": "ogive",
       "second_order": {
         "c_n_alpha": {
-          "error": -0.016179836516921897,
+          "error": -0.016179833119065012,
           "reference": 1.98,
           "within": true
         },
         "cp_calibers": {
-          "error": -0.009005185654912706,
+          "error": -0.00900518346890733,
           "reference": 1.55,
           "within": true
         }
@@ -4536,31 +4536,31 @@
       "afterbody_calibers": 2.0,
       "experiment": {
         "c_n_alpha": {
-          "error": -0.13142683989014836,
+          "error": -0.13142682896838487,
           "reference": 2.66,
           "within": true
         },
         "cp_calibers": {
-          "error": -0.18371851158363794,
+          "error": -0.18371850589625538,
           "reference": 2.25,
           "within": true
         }
       },
       "fineness": 3.0,
       "hpr": {
-        "c_n_alpha": 2.528573160109852,
-        "cp_calibers": 2.066281488416362
+        "c_n_alpha": 2.5285731710316153,
+        "cp_calibers": 2.0662814941037446
       },
       "mach": 5.05,
       "nose": "ogive",
       "second_order": {
         "c_n_alpha": {
-          "error": -0.06142683989014808,
+          "error": -0.061426828968384584,
           "reference": 2.59,
           "within": false
         },
         "cp_calibers": {
-          "error": -0.19371851158363773,
+          "error": -0.19371850589625517,
           "reference": 2.26,
           "within": false
         }
@@ -4570,31 +4570,31 @@
       "afterbody_calibers": 4.0,
       "experiment": {
         "c_n_alpha": {
-          "error": -0.15579832319430365,
+          "error": -0.1557983143313777,
           "reference": 2.98,
           "within": true
         },
         "cp_calibers": {
-          "error": -0.28316381918597733,
+          "error": -0.28316381848715944,
           "reference": 2.75,
           "within": false
         }
       },
       "fineness": 3.0,
       "hpr": {
-        "c_n_alpha": 2.8242016768056963,
-        "cp_calibers": 2.4668361808140227
+        "c_n_alpha": 2.8242016856686223,
+        "cp_calibers": 2.4668361815128406
       },
       "mach": 5.05,
       "nose": "ogive",
       "second_order": {
         "c_n_alpha": {
-          "error": -0.07579832319430357,
+          "error": -0.07579831433137763,
           "reference": 2.9,
           "within": false
         },
         "cp_calibers": {
-          "error": -0.32316381918597736,
+          "error": -0.32316381848715947,
           "reference": 2.79,
           "within": false
         }
@@ -4604,31 +4604,31 @@
       "afterbody_calibers": 6.0,
       "experiment": {
         "c_n_alpha": {
-          "error": -0.1810470949479801,
+          "error": -0.18104709030218258,
           "reference": 3.16,
           "within": true
         },
         "cp_calibers": {
-          "error": -0.4012914080264163,
+          "error": -0.40129141565682636,
           "reference": 3.15,
           "within": false
         }
       },
       "fineness": 3.0,
       "hpr": {
-        "c_n_alpha": 2.97895290505202,
-        "cp_calibers": 2.7487085919735836
+        "c_n_alpha": 2.9789529096978176,
+        "cp_calibers": 2.7487085843431736
       },
       "mach": 5.05,
       "nose": "ogive",
       "second_order": {
         "c_n_alpha": {
-          "error": -0.07104709494797978,
+          "error": -0.07104709030218226,
           "reference": 3.05,
           "within": false
         },
         "cp_calibers": {
-          "error": -0.4412914080264163,
+          "error": -0.4412914156568264,
           "reference": 3.19,
           "within": false
         }
@@ -4642,19 +4642,19 @@
       },
       "fineness": 3.0,
       "hpr": {
-        "c_n_alpha": 3.059959781220142,
-        "cp_calibers": 2.9378371564243086
+        "c_n_alpha": 3.0599597820150537,
+        "cp_calibers": 2.9378371398683543
       },
       "mach": 5.05,
       "nose": "ogive",
       "second_order": {
         "c_n_alpha": {
-          "error": -0.07004021877985789,
+          "error": -0.0700402179849462,
           "reference": 3.13,
           "within": false
         },
         "cp_calibers": {
-          "error": -0.5521628435756916,
+          "error": -0.552162860131646,
           "reference": 3.49,
           "within": false
         }
@@ -4664,31 +4664,31 @@
       "afterbody_calibers": 10.0,
       "experiment": {
         "c_n_alpha": {
-          "error": -0.27763594153514193,
+          "error": -0.2776359436162794,
           "reference": 3.38,
           "within": false
         },
         "cp_calibers": {
-          "error": -0.5397621581497298,
+          "error": -0.5397621827443113,
           "reference": 3.6,
           "within": false
         }
       },
       "fineness": 3.0,
       "hpr": {
-        "c_n_alpha": 3.102364058464858,
-        "cp_calibers": 3.0602378418502703
+        "c_n_alpha": 3.1023640563837205,
+        "cp_calibers": 3.0602378172556888
       },
       "mach": 5.05,
       "nose": "ogive",
       "second_order": {
         "c_n_alpha": {
-          "error": -0.06763594153514196,
+          "error": -0.06763594361627945,
           "reference": 3.17,
           "within": false
         },
         "cp_calibers": {
-          "error": -0.6697621581497297,
+          "error": -0.6697621827443112,
           "reference": 3.73,
           "within": false
         }
@@ -4698,31 +4698,31 @@
       "afterbody_calibers": 0.0,
       "experiment": {
         "c_n_alpha": {
-          "error": -0.05315334702554275,
+          "error": -0.05315334277227102,
           "reference": 1.83,
           "within": true
         },
         "cp_calibers": {
-          "error": -0.021565980846822264,
+          "error": -0.021565977715962692,
           "reference": 1.53,
           "within": true
         }
       },
       "fineness": 3.0,
       "hpr": {
-        "c_n_alpha": 1.7768466529744573,
-        "cp_calibers": 1.5084340191531778
+        "c_n_alpha": 1.776846657227729,
+        "cp_calibers": 1.5084340222840373
       },
       "mach": 6.28,
       "nose": "ogive",
       "second_order": {
         "c_n_alpha": {
-          "error": -0.013153347025542717,
+          "error": -0.013153342772270982,
           "reference": 1.79,
           "within": true
         },
         "cp_calibers": {
-          "error": -0.011565980846822255,
+          "error": -0.011565977715962683,
           "reference": 1.52,
           "within": true
         }
@@ -4732,31 +4732,31 @@
       "afterbody_calibers": 2.0,
       "experiment": {
         "c_n_alpha": {
-          "error": -0.18484448063068992,
+          "error": -0.18484446687316192,
           "reference": 2.44,
           "within": true
         },
         "cp_calibers": {
-          "error": -0.08460782289728952,
+          "error": -0.08460781457499511,
           "reference": 2.1,
           "within": true
         }
       },
       "fineness": 3.0,
       "hpr": {
-        "c_n_alpha": 2.25515551936931,
-        "cp_calibers": 2.0153921771027106
+        "c_n_alpha": 2.255155533126838,
+        "cp_calibers": 2.015392185425005
       },
       "mach": 6.28,
       "nose": "ogive",
       "second_order": {
         "c_n_alpha": {
-          "error": -0.06484448063068982,
+          "error": -0.06484446687316181,
           "reference": 2.32,
           "within": false
         },
         "cp_calibers": {
-          "error": -0.044607822897289484,
+          "error": -0.044607814574995075,
           "reference": 2.06,
           "within": true
         }
@@ -4766,31 +4766,31 @@
       "afterbody_calibers": 4.0,
       "experiment": {
         "c_n_alpha": {
-          "error": -0.09541773897165973,
+          "error": -0.0954177284733615,
           "reference": 2.61,
           "within": true
         },
         "cp_calibers": {
-          "error": -0.03397457489340683,
+          "error": -0.03397457468298981,
           "reference": 2.45,
           "within": true
         }
       },
       "fineness": 3.0,
       "hpr": {
-        "c_n_alpha": 2.51458226102834,
-        "cp_calibers": 2.4160254251065933
+        "c_n_alpha": 2.5145822715266384,
+        "cp_calibers": 2.4160254253170104
       },
       "mach": 6.28,
       "nose": "ogive",
       "second_order": {
         "c_n_alpha": {
-          "error": -0.06541773897165992,
+          "error": -0.06541772847336169,
           "reference": 2.58,
           "within": false
         },
         "cp_calibers": {
-          "error": -0.03397457489340683,
+          "error": -0.03397457468298981,
           "reference": 2.45,
           "within": true
         }
@@ -4800,31 +4800,31 @@
       "afterbody_calibers": 6.0,
       "experiment": {
         "c_n_alpha": {
-          "error": -0.0147090065680624,
+          "error": -0.014709002401226634,
           "reference": 2.67,
           "within": true
         },
         "cp_calibers": {
-          "error": 0.046560627122842035,
+          "error": 0.04656061351181817,
           "reference": 2.66,
           "within": true
         }
       },
       "fineness": 3.0,
       "hpr": {
-        "c_n_alpha": 2.6552909934319375,
-        "cp_calibers": 2.706560627122842
+        "c_n_alpha": 2.6552909975987733,
+        "cp_calibers": 2.7065606135118183
       },
       "mach": 6.28,
       "nose": "ogive",
       "second_order": {
         "c_n_alpha": {
-          "error": -0.04470900656806265,
+          "error": -0.04470900240122688,
           "reference": 2.7,
           "within": true
         },
         "cp_calibers": {
-          "error": -0.003439372877157787,
+          "error": -0.0034393864881816505,
           "reference": 2.71,
           "within": true
         }
@@ -4838,19 +4838,19 @@
       },
       "fineness": 3.0,
       "hpr": {
-        "c_n_alpha": 2.731609060135521,
-        "cp_calibers": 2.907499934162275
+        "c_n_alpha": 2.7316090583929977,
+        "cp_calibers": 2.907499905352599
       },
       "mach": 6.28,
       "nose": "ogive",
       "second_order": {
         "c_n_alpha": {
-          "error": -0.038390939864478835,
+          "error": -0.038390941607002294,
           "reference": 2.77,
           "within": true
         },
         "cp_calibers": {
-          "error": 0.03749993416227504,
+          "error": 0.03749990535259906,
           "reference": 2.87,
           "within": true
         }
@@ -4860,31 +4860,31 @@
       "afterbody_calibers": 10.0,
       "experiment": {
         "c_n_alpha": {
-          "error": -0.12699729495076983,
+          "error": -0.12699730124098219,
           "reference": 2.9,
           "within": true
         },
         "cp_calibers": {
-          "error": -0.00828556827054161,
+          "error": -0.00828561117031601,
           "reference": 3.05,
           "within": true
         }
       },
       "fineness": 3.0,
       "hpr": {
-        "c_n_alpha": 2.77300270504923,
-        "cp_calibers": 3.041714431729458
+        "c_n_alpha": 2.7730026987590177,
+        "cp_calibers": 3.041714388829684
       },
       "mach": 6.28,
       "nose": "ogive",
       "second_order": {
         "c_n_alpha": {
-          "error": -0.026997294950769746,
+          "error": -0.026997301240982097,
           "reference": 2.8,
           "within": true
         },
         "cp_calibers": {
-          "error": 0.06171443172945823,
+          "error": 0.06171438882968383,
           "reference": 2.98,
           "within": true
         }

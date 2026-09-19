@@ -29,12 +29,13 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
   values and errors only). NTRS serves five of ADR-030's PDFs with a 436-byte header (pinned as
   served). Scratch: `refs/scratch/{arcas,stoney,m18b2,m18b3,m18c,m18d,m18e}/`. TN D-4013's
   rolling-moment plots are unread; #76: M1.8a's other TN D-4014 zeros. M1.8e1's Python check,
-  `m18e/sose.py`, carries the gradient through reduced elements; hpr doesn't (TN 3527 p. 13).
+  `m18e/sose.py` (patch in hpr's Fig. 2), carries the gradient through reduced elements; hpr
+  doesn't (#81).
 - **M1.8e2** next: fly `hpr_aero::shock_expansion`. Open: blunt or vertical tips (hpr's Arcas
   Robin design is a power series; the fixture's fitted secant ogive has ratio 1.744), Mach below
   3 (Fig. 2 held), the join from subsonic (Prometheus peaks at Mach 1.01 to 1.06), the boattail
-  (footnote 8 takes only 0.03 to 0.18 off), crossflow (the long model's extra 0.57), and
-  `dynamics.rs` caching body stations at Mach 0. Don't read predicted mode's misses as gaps to
+  (footnote 8 takes only 0.03 to 0.18 off), crossflow (the long model's extra 0.57), Mach over
+  nose fineness outside 0.4 to 2, #81, and `dynamics.rs` caching body stations at Mach 0. Don't read predicted mode's misses as gaps to
   close (ADR-009, ADR-023). ROADMAP is at 999 of 1000 lines: trim a done entry.
 - **Regeneration is not bit-identical across machines** (last digits). Regenerate reports with
   `cargo xtask validate` (debug), never `--release`: it rounds differently in the 7th digit.
@@ -45,10 +46,9 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
 
 ## Done log (newest first, keep about 15)
 
-- 2026-09-19: M1.8e1 The second-order shock-expansion method (ADR-033): against TN 3527's
-  measurements 117 of 120 slopes and 109 of 120 CPs within ±0.2; its printed values 104 and 122
-  of 144 (a second implementation agrees with hpr); the Arcas Robin's nose and cylinder within 5%
-  from Mach 1.8 to 2.96, −15.0% to −26.4% past Mach 3 (crossflow, M1.8e2).
+- 2026-09-19: M1.8e1 The second-order shock-expansion method (ADR-033): not met, recorded.
+  Against TN 3527's measurements 117 of 120 slopes and 109 of 120 CPs within ±0.2; its printed
+  values 102 and 125 of 144 (#81 at the limit); Arcas Robin short −18.7% to +16.4%, long to −26.4%.
 - 2026-09-19: M1.8d Normal-force overrides (ADR-032): RASAero II's export read per angle of
   attack, flown with hpr's damping kept; every row of Calisto's export re-read, and it flies
   (apogee −1.28 m, 14.2 m upwind); a table's pitch period within 4e-6 of theory.
