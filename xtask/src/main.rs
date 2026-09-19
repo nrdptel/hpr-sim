@@ -14,6 +14,7 @@
 )]
 
 mod aero;
+mod aero_drag;
 mod aero_mach;
 mod designs;
 #[cfg(test)]

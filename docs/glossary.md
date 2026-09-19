@@ -87,7 +87,7 @@ Recruiter's slope is 2.87% high. See [Aerodynamics](physics/aero.md#verification
 
 ## Base drag
 
-The drag on a rocket's flat aft end, its base. hpr works it out on the base's area, with a coefficient of `0.12 + 0.13 M²` below Mach 1 (`M` the [Mach number](#mach-number)). While a motor burns, the part of the base the motor covers has no base drag, so hpr subtracts the burning motors' cross-section from that area ([power-on drag](#power-on-and-power-off-drag)). See [Aerodynamics](physics/aero.md#drag).
+The drag on a rocket's flat aft end, its base. hpr works it out on the base's area, with a coefficient of `0.12 + 0.13 M²` below Mach 1 and `0.25/M` above it (`M` the [Mach number](#mach-number)). While a motor burns, the part of the base the motor covers has no base drag, so hpr subtracts the burning motors' cross-section from that area ([power-on drag](#power-on-and-power-off-drag)). See [Aerodynamics](physics/aero.md#drag).
 
 ## BATES grain
 
@@ -372,8 +372,18 @@ examples from his papers, with their printed values in
 ## Fineness ratio
 
 A nose cone's length divided by its base diameter. A 3:1 tangent ogive has a fineness ratio of 3,
-which the pages also write as "fineness 3". See
+which the pages also write as "fineness 3". For a shoulder, a transition that widens toward the
+tail, the drag pages use its length over its rise in diameter, so a conical shoulder has the
+fineness of the cone with the same surface angle. See
 [Aerodynamics](physics/aero.md#bodies-of-revolution).
+
+## Forebody
+
+Everything of a rocket but its flat aft end, the base: the nose, the body tube, the fins and any
+boattail. A wind-tunnel model sits on a [sting](#sting) that disturbs the air behind its base, so
+tunnel reports often give the forebody's drag alone, as NASA's Arcas Robin reports do, and hpr is
+compared with them on its drag without the base drag. See
+[Aerodynamics](physics/aero.md#drag-against-the-arcas-robin-wind-tunnel).
 
 
 ## Gate and target
@@ -466,11 +476,11 @@ halves the fin's lift inside the cone from each tip. See
 ## Mach number
 
 Airspeed divided by the local speed of sound, which the atmosphere gives from the air's
-temperature. hpr's normal force covers Mach 0 to 5 and was checked against a wind tunnel from
-Mach 0.6 to 4.63. Its drag was checked only at Mach 0.3 and is documented up to Mach 0.8; on hpr's
-own drag a flight that reaches Mach 1 stops with an error until the transonic drag of
-[M1.8b](decisions-and-roadmap.md#m1-8b). See
-[Aerodynamics](physics/aero.md#fins-through-mach-1).
+temperature. hpr's normal force and drag both cover Mach 0 to 5, and a flight that reaches Mach 5
+stops with an error. Both were checked against a wind tunnel from Mach 0.6 to 4.63, where the drag
+reads high at most speeds; the drag was also checked at Mach 0.3 against other programs' curves. See
+[Aerodynamics](physics/aero.md#fins-through-mach-1) and
+[Aerodynamics](physics/aero.md#drag-through-mach-1).
 
 
 ## Mean aerodynamic chord (MAC)
@@ -762,6 +772,13 @@ Station `s` is `z_B = −s` in the [body frame](#body-frame). See
 [The design tree](physics/design.md#stations-and-the-body-origin).
 
 
+## Sting
+
+The rod that holds a wind-tunnel model from behind, entering its base. It changes the air
+pressure on the base, so a tunnel can't measure a free-flying rocket's base drag, only the
+[forebody](#forebody)'s. See
+[Aerodynamics](physics/aero.md#drag-against-the-arcas-robin-wind-tunnel).
+
 ## Stiff problem
 
 A problem in which some motion is so fast, and so strongly damped, that a method such as
@@ -845,9 +862,12 @@ curve exactly. See [Solid motors](physics/motor.md#thrust-curve).
 Flight near the speed of sound (transonic) and above it (supersonic), where shock waves change
 the drag and the lift. Since [M1.8a](decisions-and-roadmap.md#m1-8a) hpr carries the normal force
 and centre of pressure through both, to Mach 5: supersonic linear theory for the fins, joined to
-the subsonic method between Mach 0.8 and the speed where that theory holds. Its drag still stops
-at Mach 1 until [M1.8b](decisions-and-roadmap.md#m1-8b). See
-[Aerodynamics](physics/aero.md#fins-through-mach-1).
+the subsonic method between Mach 0.8 and the speed where that theory holds. Since
+[M1.8b1](decisions-and-roadmap.md#m1-8b1) (drag through Mach 1) its drag goes to Mach 5 too:
+Niskanen's semi-empirical method, with the [wave drag](#wave-drag) of noses and shoulders from
+closed forms and from Stoney's 1961 NASA measurements. See
+[Aerodynamics](physics/aero.md#fins-through-mach-1) and
+[Aerodynamics](physics/aero.md#drag-through-mach-1).
 
 ## Tumble recovery
 
@@ -883,6 +903,17 @@ evidence in [four kinds][levels], named as on Accuracy: *analytic* (exact answer
 source* (printed tables and worked examples), *another code*
 ([code-to-code comparison](#code-to-code-comparison)), and *real flights*. See
 [Accuracy](accuracy.md).
+
+
+## Wave drag
+
+The drag from the shock waves that form on a rocket at and above the speed of sound. Air meeting a
+nose, a shoulder that widens or a fin's leading edge passes through a shock, which raises the
+pressure pushing back on the surface. It is much of the steep rise in drag near Mach 1. hpr has no
+separate term for it: it is part of the pressure drag of each nose, shoulder and step, which
+Niskanen's 2009 method carries through Mach 1. For fins, hpr uses a blunt leading edge's formula,
+which reads far high for thin, sharp fins ([Drag limits](physics/aero.md#drag-limits)). See
+[Aerodynamics](physics/aero.md#drag-through-mach-1).
 
 
 ## Weathercocking

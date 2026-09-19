@@ -46,7 +46,7 @@ rocket      6.82 at 0.779 m
 
 From a 1.8 m vertical rail, with no wind:
 Rail exit:  21.7 m/s
-Apogee:     1144.6 m above the pad, at 13.92 s
+Apogee:     1144.5 m above the pad, at 13.92 s
 Top speed:  187 m/s (Mach 0.56)
 Ejection:   at 13.50 s, at 5.5 m/s
 
@@ -186,11 +186,10 @@ motor's ejection charge fires.
 
 - **Rail exit:** 21.7 m/s. The design has no rail buttons, so hpr takes the rocket as off the rail
   when its aft end passes the top ([rail exit](glossary.md#rail-exit-and-rail-exit-velocity)).
-- **Apogee:** 1144.6 m above the pad, 13.92 s after ignition ([apogee](glossary.md#apogee)).
+- **Apogee:** 1144.5 m above the pad, 13.92 s after ignition ([apogee](glossary.md#apogee)).
 - **Top speed:** 187 m/s, Mach 0.56: the fastest airspeed at the end of any of the
   [time steps](glossary.md#adaptive-time-step) the flight was computed in. With no wind, the
-  airspeed is also the speed over the ground. Mach 0.56 is just under about Mach 0.6, where hpr's
-  nose drag starts to read low ([Aerodynamics](physics/aero.md#drag-limits)).
+  airspeed is also the speed over the ground.
 - **Ejection:** at 13.50 s, at 5.5 m/s. The charge fires the 10 s delay after
   [burnout](glossary.md#burnout), which in hpr is the time of the thrust curve's last point, 3.50 s
   for this motor. That is 0.42 s before apogee, while the rocket is still climbing slowly.
@@ -651,11 +650,13 @@ The example leaves out several kinds of part and setting that a design can have:
   a command-line tool ([M4.2](decisions-and-roadmap.md#m4-2)) and Python ([M4.3](decisions-and-roadmap.md#m4-3)) are planned.
 - **No import from other programs.** [OpenRocket](glossary.md#openrocket) `.ork` files ([M3.1](decisions-and-roadmap.md#m3-1), OpenRocket import)
   and RockSim `.rkt` files ([M3.4](decisions-and-roadmap.md#m3-4), RockSim import) can't be read yet.
-- **Not past Mach 1 on hpr's own drag.** The drag buildup refuses Mach 1, and a flight that
-  reaches it stops with an error, until [M1.8b](decisions-and-roadmap.md#m1-8b) (transonic and
-  supersonic drag); from Mach 0.8 to 1 the drag is an unvalidated extrapolation. With a drag table
-  the flight flies on: the normal force carries through Mach 1
-  ([Aerodynamics](physics/aero.md#fins-through-mach-1)).
+- **Drag near and past Mach 1 is lightly checked.** Since
+  [M1.8b1](decisions-and-roadmap.md#m1-8b1) (drag through Mach 1), hpr's own drag, like its normal
+  force, carries a flight from Mach 0 to 5, and a flight that reaches Mach 5 stops with an error.
+  Near and above the speed of sound the drag has been checked only against one wind tunnel, which
+  measured from Mach 0.6 to 4.63. hpr reads high there at most speeds, most of all with fins past
+  Mach 1 ([Aerodynamics](physics/aero.md#drag-against-the-arcas-robin-wind-tunnel)). A comparison
+  with [RASAero II](glossary.md#rasaero-ii)'s comes with [M1.8b2](decisions-and-roadmap.md#m1-8b2).
 - **No staging.** Every motor in a configuration lights at the same moment, on the pad, so a
   two-stage rocket flies with both stages burning at once. Staging comes with [M1.9](decisions-and-roadmap.md#m1-9)
   (staging, clusters and air starts).
@@ -664,6 +665,19 @@ The example leaves out several kinds of part and setting that a design can have:
 - **Tube fins are refused** by the aerodynamics until a cited method for them exists. Tube fins
   are open tubes that run along the body, touching it, in place of flat fins. A design can hold
   them, but a flight or a CP can't be worked out with them.
+- **Two nose shapes have no drag of hpr's own**, on a nose cone or on a transition that widens,
+  because no drag data covers them: a bulged secant ogive (`NoseShape::Ogive` with a
+  `radius_ratio` below 1, which bulges wider than the body just ahead of its base) and a Haack
+  shape whose parameter `C` is above 1/3, past the LV-Haack ([Shapes](physics/shapes.md#profiles)).
+  Since [M1.8b1](decisions-and-roadmap.md#m1-8b1), the drag through Mach 1, the drag buildup
+  refuses them, naming the part. The CP still works, and so does a flight on a drag table from
+  another tool; a flight on hpr's own drag stops with that error.
+- **Fin sections and supersonic drag.** Faster than sound, every fin section takes a blunt
+  leading edge's drag: the square section a flat face's, the rounded and airfoil sections a
+  rounded edge's. The airfoil section differs from the rounded only in having no trailing-edge
+  base drag. That reads far high for thin, sharp fins, and the one wind tunnel hpr has been
+  measured against tested only double-wedge fins, so how well square or rounded edges fare is
+  unmeasured ([Drag limits](physics/aero.md#drag-limits)).
 
 ## Where next
 

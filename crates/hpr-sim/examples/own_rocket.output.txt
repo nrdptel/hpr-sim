@@ -14,7 +14,7 @@ rocket      6.82 at 0.779 m
 
 From a 1.8 m vertical rail, with no wind:
 Rail exit:  21.7 m/s
-Apogee:     1144.6 m above the pad, at 13.92 s
+Apogee:     1144.5 m above the pad, at 13.92 s
 Top speed:  187 m/s (Mach 0.56)
 Ejection:   at 13.50 s, at 5.5 m/s
 

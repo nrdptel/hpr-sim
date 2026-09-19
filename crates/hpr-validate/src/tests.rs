@@ -5,7 +5,7 @@ use std::path::{Path, PathBuf};
 use crate::case::{Case, CaseLock, Metric, Tolerance, cases_dir, committed_cases};
 use crate::metrics::{Reference, ReferenceValue};
 use crate::report::{Comparison, Report, Verdict};
-use crate::run::{ValidateError, peak_between, run_case, run_lock};
+use crate::run::{Flown, Settled, ValidateError, peak_between, run_case, run_lock, settle};
 
 /// The repository root, from this crate's manifest.
 pub(crate) fn root() -> PathBuf {
@@ -224,8 +224,11 @@ fn no_committed_gate_is_looser_than_the_milestone_says() {
     // not scored); M2.1d3 scores six drifts that were not (ADR-026): Calisto's two in wind,
     // Valetudo's and NDRT 2020's landing drift, and Juno III's two in calm air. M1.8a flies
     // Prometheus 2022 on the declared drag: 12 point metrics and 2 RMS rows (its drifts and its
-    // main opening are not scored).
-    assert_eq!(bounded.clone().count(), 94 + 10 + 75 + 10 + 42 + 6 + 6 + 14);
+    // main opening are not scored). M1.8b1 flies it on its own drag: 15 point targets and 2 RMS.
+    assert_eq!(
+        bounded.clone().count(),
+        94 + 10 + 75 + 10 + 42 + 6 + 6 + 14 + 17
+    );
     for comparison in bounded {
         let allowed = comparison.tolerance.allowed(comparison.reference);
         let scale = match comparison.metric.as_str() {
@@ -293,10 +296,10 @@ fn the_metrics_that_are_not_scored_are_these_and_no_others() {
     ));
     assert_eq!(excused, expected);
     // A known gap is the other way a case goes unscored, and the set of them is pinned the same
-    // way: Prometheus 2022 reaches Mach 1.048 on its own drag, which hpr's drag buildup refuses
-    // until M1.8b. On the declared drag it flies since M1.8a.
+    // way: none since M1.8b1, when the drag buildup took Prometheus 2022 through Mach 1.048 on its
+    // own drag (it flew on the declared drag since M1.8a).
     let gaps: Vec<&str> = report.gaps.iter().map(|gap| gap.case.as_str()).collect();
-    assert_eq!(gaps, vec!["predicted-prometheus-2022-generic-motor"]);
+    assert!(gaps.is_empty(), "{gaps:?}");
     // Predicted mode's misses are pinned too, so a case file's account of them ("nothing else
     // misses") cannot go stale unnoticed (ADR-023). Adding a miss means editing this list and
     // explaining it in the case file.
@@ -329,6 +332,18 @@ fn the_metrics_that_are_not_scored_are_these_and_no_others() {
         "series_speed_rms_m_s",
     ] {
         expected_outside.push(("predicted-ndrt-2020-nose-to-tail", metric));
+    }
+    for metric in [
+        "apogee_agl_m",
+        "apogee_drift_m",
+        "apogee_time_s",
+        "flight_time_s",
+        "landing_drift_m",
+        "max_acceleration_m_s2",
+        "max_acceleration_time_s",
+        "series_height_rms_m",
+    ] {
+        expected_outside.push(("predicted-prometheus-2022-generic-motor", metric));
     }
     expected_outside.extend(drifts("predicted-juno-iii"));
     expected_outside.extend(drifts("predicted-bella-lui"));
@@ -636,21 +651,21 @@ fn the_committed_cases_all_pass_and_the_report_says_so() {
     // report that `cargo xtask validate` writes is the one this produces.
     let report = run_lock(&root(), false).expect("the committed cases run");
     assert_eq!(report.cases.len(), 20, "{:?}", report.cases);
-    // Five descents of six metrics; six whole flights of seventeen on the declared drag and five
-    // on their own (Prometheus 2022 on its own drag is a known gap and compares nothing until
-    // M1.8b). Three calm-air whole flights of seventeen fly in same-drag mode only (ADR-025).
-    assert_eq!(report.comparisons.len(), 268);
+    // Five descents of six metrics; six whole flights of seventeen on the declared drag and six
+    // on their own (Prometheus 2022 on its own drag since M1.8b1). Three calm-air whole flights of
+    // seventeen fly in same-drag mode only (ADR-025).
+    assert_eq!(report.comparisons.len(), 285);
     // Six drifts that M2.1b2 and M2.1d2 left unscored are gated since M2.1d3 (ADR-026);
     // Prometheus 2022 adds its two drifts and its main opening (M1.8a).
     assert_eq!(report.not_scored().len(), 11, "argued in the case files");
-    assert_eq!(report.gaps.len(), 1);
-    // Predicted mode's 85 rows are reported against a target and never count towards the verdict.
+    assert!(report.gaps.is_empty());
+    // Predicted mode's 102 rows are reported against a target and never count towards the verdict.
     let targeted = report
         .comparisons
         .iter()
         .filter(|comparison| comparison.targeted_row())
         .count();
-    assert_eq!(targeted, 85);
+    assert_eq!(targeted, 102);
     assert!(report.passed(), "{:?}", report.failures());
     // M2.1b2's own bar: at least five whole flights, every metric scored or argued, all passing.
     let whole_flights: Vec<&String> = report
@@ -672,12 +687,7 @@ fn the_committed_cases_all_pass_and_the_report_says_so() {
         markdown.contains("172 scored, all within tolerance"),
         "{markdown}"
     );
-    assert!(
-        markdown.contains(
-            "## Known gaps\n\n- **predicted-prometheus-2022-generic-motor**: 17 metric(s)"
-        ),
-        "{markdown}"
-    );
+    assert!(!markdown.contains("## Known gaps"), "{markdown}");
     assert!(
         markdown.contains("| descent-valetudo | descent_time_s |"),
         "{markdown}"
@@ -994,42 +1004,59 @@ fn with_gap(case_id: &str, reason: Option<&str>) -> String {
 #[test]
 fn a_known_gap_is_checked_not_trusted() {
     // A known gap excuses a whole case, so it gets the scrutiny a not-scored metric does and more
-    // (L82): the harness accepts one kind, hpr's refusal of M >= 1, and checks both sides of it.
+    // (L82): the harness accepts one kind, hpr's refusal of a Mach number past its models' range
+    // (5, since M1.8b1), and checks both sides of it.
     let file = |id: &str| format!("validation/cases/{id}.toml");
 
-    // The committed one: the reference reaches Mach 1, hpr's drag buildup refuses the flight for
-    // exactly that, and the report carries it with the case's reason and hpr's words, scoring
-    // nothing.
+    // No committed case declares one: every case flies (Prometheus on its own drag was the last,
+    // until M1.8b1).
     let report = run_lock(&root(), false).expect("the committed cases run");
-    let gap = report
-        .gaps
-        .iter()
-        .find(|gap| gap.case == "predicted-prometheus-2022-generic-motor")
-        .expect("Prometheus on its own drag is a gap");
-    assert!(gap.reason.contains("Mach 1.048"), "{gap:?}");
-    assert!(
-        gap.refusal.contains("Mach 1.000") && gap.refusal.contains("[0, 1)"),
-        "{gap:?}"
+    assert!(report.gaps.is_empty(), "{:?}", report.gaps);
+
+    // A declared refusal becomes the gap, with the case's reason and hpr's words, rounded; no
+    // reference reaches Mach 5, so the refusal here is built, not flown.
+    let refusal = Flown::RefusedAtMach {
+        mach: 5.000_000_000_000_1,
+        limit: 5.0,
+        model: "the drag buildup",
+    };
+    let settled = settle(
+        "case",
+        17,
+        refusal.clone(),
+        Some("hypersonic".to_owned()),
+        Some(5.2),
+    )
+    .expect("a declared refusal");
+    let Settled::Gap(gap) = settled else {
+        panic!("{settled:?}")
+    };
+    assert_eq!(gap.reason, "hypersonic");
+    assert_eq!(
+        gap.refusal,
+        "refused the flight at Mach 5.000, outside the drag buildup's range [0, 5)"
     );
-    assert_eq!(gap.metric_count, 17);
-    assert!(
-        !report
-            .comparisons
-            .iter()
-            .any(|comparison| comparison.case == gap.case),
-        "a gap scores nothing, not even a pass"
-    );
+    assert_eq!((gap.case.as_str(), gap.metric_count), ("case", 17));
 
     // Without the declaration, the same refusal fails the run: a case that stops short is not a
     // case that passes.
-    let scratch = scratch_case("predicted-prometheus-2022-generic-motor", |_| {});
-    scratch.write(
-        &file("predicted-prometheus-2022-generic-motor"),
-        &with_gap("predicted-prometheus-2022-generic-motor", None),
-    );
-    let error = run_lock(scratch.path(), false).expect_err("an undeclared refusal fails");
+    let error =
+        settle("case", 17, refusal.clone(), None, Some(5.2)).expect_err("an undeclared refusal");
     assert!(
-        matches!(&error, ValidateError::Flight { what, .. } if what.contains("Mach 1.000")),
+        matches!(&error, ValidateError::Flight { what, .. } if what.contains("Mach 5.000")),
+        "{error}"
+    );
+    // A refusal the reference doesn't reach isn't the gap declared, whatever the case says.
+    let error = settle(
+        "case",
+        17,
+        refusal,
+        Some("hypersonic".to_owned()),
+        Some(4.9),
+    )
+    .expect_err("a refusal past the reference's peak");
+    assert!(
+        error.to_string().contains("reference peaks at Mach"),
         "{error}"
     );
 
@@ -1047,10 +1074,10 @@ fn a_known_gap_is_checked_not_trusted() {
     );
 
     // Loft lesson L85: a gap that has closed must not stay excused. With a reference that claims
-    // Mach 1.2 but a flight hpr completes, the declared gap fails the run.
+    // Mach 5.2 but a flight hpr completes, the declared gap fails the run.
     let scratch = scratch_case("flight-valetudo", |document| {
         for case in document["cases"].as_array_mut().expect("cases") {
-            case["metrics"]["max_mach"] = serde_json::json!(1.2);
+            case["metrics"]["max_mach"] = serde_json::json!(5.2);
         }
     });
     scratch.write(

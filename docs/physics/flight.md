@@ -18,16 +18,17 @@
   release from the rail and, for Juno III, its simpler fin model put the drift 4.7 to 43% from
   RocketPy's ([ADR-026][adr-026]). A sixth, Prometheus 2022, passes Mach 1 on its drag table
   and agrees as well, its drifts again apart from RocketPy's by body lift. With hpr's own drag, against RocketPy flying the drag its
-  examples ship, hpr's heights differ from RocketPy's by −0.604% to +10.322%, the larger gaps where
-  its drag is well below the example's
+  examples ship, hpr's heights differ from RocketPy's by −6.985% to +10.306%, the larger gaps where
+  the two drags differ most: hpr's is well below the example's for two rockets, and above it at
+  high speed for Prometheus 2022, which flies through Mach 1 on hpr's drag since
+  [M1.8b1](../decisions-and-roadmap.md#m1-8b1) (drag through Mach 1)
   ([Accuracy](../accuracy.md#whole-flights-with-each-codes-own-drag)). No flight has been compared
   with a real one.
 - **What it leaves out:** staging and delayed ignition, tip-off (the pivot as the rocket leaves the
   rail), roll forcing and aerodynamic roll damping, turbulence and thrust misalignment. Its
   small-angle aerodynamics are used at every angle of attack (the angle between the rocket's axis
-  and its path through the air), with no stall. On hpr's own drag a flight that reaches Mach 1
-  stops with an error until the transonic drag arrives
-  ([M1.8b](../decisions-and-roadmap.md#m1-8b)); on a drag table it flies on to Mach 5.
+  and its path through the air), with no stall. A flight that reaches Mach 5, the top of the
+  aerodynamic models, stops with an error.
 
 ## What the equations do
 
@@ -210,12 +211,13 @@ q̇   = ½ q ⊗ (0, ω)
     overstate the forces at large `α`. In normal flights large `α` occurs near apogee, where the
     dynamic pressure is small, and off the rail in strong crosswinds. `Sample::angle_of_attack_rad`
     shows where it happens.
-  - The normal force covers Mach 0 to 5 ([Fins through Mach 1](aero.md#fins-through-mach-1)); a
-    fin set's CP moves with the Mach number, and each component takes its local airflow at its
-    CP for the centre of mass's Mach number. The drag buildup stops at Mach 1 with
-    `SimError::Aero` until its transonic and supersonic terms arrive
-    ([M1.8b](../decisions-and-roadmap.md#m1-8b)). A drag override table covers drag at any Mach, so
-    a flight on one flies through Mach 1.
+  - The normal force and the drag buildup cover Mach 0 to 5
+    ([Fins through Mach 1](aero.md#fins-through-mach-1),
+    [Drag through Mach 1](aero.md#drag-through-mach-1), and [ADR-028][adr-028], the drag's
+    decision); a fin set's CP moves with the Mach number, and each component takes its local
+    airflow at its CP for the centre of mass's Mach number. At Mach 5 or faster they refuse the
+    flow, and the flight stops with `SimError::Aero`. A drag override table covers drag at any
+    Mach, but the normal force still stops at Mach 5.
 
 ## Phases
 
@@ -339,8 +341,8 @@ default settings. The numbers were measured on 2026-09-17.
 - **Events and recorder.** Events come in order: liftoff, rail exit, burnout, apogee, ground hit.
   Apogee's vertical speed is below 1e-6 m/s and ground contact's height below 1e-6 m. Recorder rows
   fall on the interval or at events.
-- **Refusals.** The synthetic 54 mm rocket on an I175 passes Mach 1 and, on hpr's own drag, stops
-  with `SimError::Aero(Mach)`; on a constant drag table it flies through Mach 1 and lands.
+- **Through Mach 1.** The synthetic 54 mm rocket on an I175 passes Mach 1 and lands, both on hpr's
+  own drag and on a constant drag table.
 - **Cost.** About 1.1 ms per Valetudo flight to the ground (`docs/perf.md`).
 
 ### Whole flights against RocketPy
@@ -406,4 +408,5 @@ tolerances; [Accuracy][accuracy] gives every result.
 [report]: https://github.com/nrdptel/hpr-sim/blob/main/validation/reports/latest.md
 [adr-021]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-021-whole-flights-against-rocketpy-what-is-compared-and-the-gaps-it-may-declare-2026-09-18
 [adr-026]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-026-the-path-in-wind-rocketpys-corrected-equations-and-hprs-body-lift-2026-09-18
+[adr-028]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-028-drag-through-mach-1-niskanens-appendix-b-stoneys-curves-and-the-arcas-robins-axial-force-2026-09-18
 [accuracy]: ../accuracy.md#whole-flights-against-rocketpy

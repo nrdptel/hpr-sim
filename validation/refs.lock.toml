@@ -146,6 +146,15 @@ license = "US government work"
 mode = "fetched"
 
 [[file]]
+name = "nasa-tr-r-100-stoney-1961"
+title = "W. E. Stoney, Collection of zero-lift drag data on bodies of revolution from free-flight investigations, NASA TR R-100, 1961"
+url = "https://ntrs.nasa.gov/api/citations/19630004995/downloads/19630004995.pdf"
+sha256 = "44c9ac6046b83db16d156cbc26a608d632fbb844854eff568d50ad6ec99be51e"
+dest = "refs/papers/nasa-tr-r-100-stoney-1961.pdf"
+license = "US government work"
+mode = "fetched"
+
+[[file]]
 name = "naca-tn-2114"
 title = "S. M. Harmon and I. Jeffreys, Theoretical lift and damping in roll of thin wings with arbitrary sweep and taper at supersonic speeds: supersonic leading and trailing edges, NACA TN 2114, 1950"
 url = "https://ntrs.nasa.gov/api/citations/19930082815/downloads/19930082815.pdf"

@@ -135,6 +135,10 @@ pub fn run(args: &[String]) -> Result<(), String> {
             crate::aero_mach::FIXTURE,
             crate::aero_mach::generate(&root)?,
         ),
+        (
+            crate::aero_drag::FIXTURE,
+            crate::aero_drag::generate(&root)?,
+        ),
     ] {
         let path = root.join(name);
         if check {
@@ -313,7 +317,7 @@ mod tests {
         let nu = air.kinematic_viscosity_m2_s();
         for (design, quoted) in [
             ("rocketpy-ndrt-2020-nose-to-tail", 0.318),
-            ("rocketpy-bella-lui", 0.423),
+            ("rocketpy-bella-lui", 0.424),
         ] {
             let text =
                 std::fs::read_to_string(root.join(format!("validation/designs/{design}.json")))

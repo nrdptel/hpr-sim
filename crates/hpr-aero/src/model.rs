@@ -29,7 +29,7 @@ use serde::{Deserialize, Serialize};
 use crate::body::{BODY_LIFT_K, BodyGeometry, sinc};
 use crate::drag::{
     BUILDUP_MACH_LIMIT, ComponentDrag, ComponentDragTerms, Drag, DragConditions,
-    SUBSONIC_MACH_LIMIT, axial_drag_alpha_factor, body_friction_form_factor,
+    axial_drag_alpha_factor, body_friction_form_factor,
 };
 use crate::error::{AeroError, check_dimension, check_mach};
 use crate::fins::{FinAero, FinLoading, fin_count_factor, interference_factor, roll_sum, side_sum};
@@ -44,8 +44,7 @@ pub const NORMAL_FORCE_MACH_LIMIT: f64 = 5.0;
 #[serde(deny_unknown_fields)]
 #[non_exhaustive]
 pub struct Flow {
-    /// Mach number: in `[0, 5)` for the normal force, and in `[0, 1)` for the drag buildup until
-    /// its transonic terms arrive.
+    /// Mach number: in `[0, 5)` for the normal force and the drag buildup.
     pub mach: f64,
     /// Total angle of attack between the body axis `+z_B` and the air-relative velocity, rad, in
     /// `[0, π]`. The models are small-angle models (see `docs/physics/aero.md`).
@@ -82,7 +81,8 @@ impl Flow {
         self.validate_angles()
     }
 
-    /// As [`Flow::validate`], for the drag buildup's range `[0, 1)`.
+    /// As [`Flow::validate`], for the drag buildup's range `[0, 5)`, which names the buildup when
+    /// it refuses.
     fn validate_for_buildup(&self) -> Result<(), AeroError> {
         check_mach(self.mach, BUILDUP_MACH_LIMIT, "the drag buildup")?;
         self.validate_angles()
@@ -255,7 +255,8 @@ impl AeroModel {
     /// - [`AeroError::Domain`] for a non-positive reference diameter, rocket length or body radius.
     /// - [`AeroError::InComponent`] naming the component, around:
     ///   - [`AeroError::Unsupported`] for tube fins, or a part kind or fin cross-section this model
-    ///     doesn't know;
+    ///     doesn't know (a nose shape the drag buildup has no data for builds, and the buildup
+    ///     refuses it when asked: [`AeroModel::drag`]);
     ///   - [`AeroError::Domain`] for a fin set of more than eight fins, a non-finite station, or a
     ///     drag input out of range (a negative fin thickness, a launch lug's wall thicker than its
     ///     radius, a rail button's base and flange taller than the button, a negative roughness);
@@ -389,6 +390,11 @@ impl AeroModel {
                     ComponentDragTerms::body(
                         component,
                         &geometry,
+                        match &component.part {
+                            Part::NoseCone(nose) => Some(nose.shape),
+                            Part::Transition(transition) => Some(transition.shape),
+                            _ => None,
+                        },
                         previous_aft_area,
                         form_factor,
                         length_m,
@@ -444,15 +450,16 @@ impl AeroModel {
     ///
     /// # Errors
     ///
-    /// - [`AeroError::Mach`] outside `[0, 1)` for the buildup, whose transonic terms arrive in
-    ///   [M1.8][m1-8]; with an override table any finite Mach number from 0 is accepted
-    ///   ([`AeroError::Domain`] otherwise).
+    /// - [`AeroError::Mach`] outside `[0, 5)` for the buildup
+    ///   ([`crate::drag::BUILDUP_MACH_LIMIT`]); with an override table any finite Mach number from
+    ///   0 is accepted ([`AeroError::Domain`] otherwise).
+    /// - Without a table, [`AeroError::InComponent`] around [`AeroError::Unsupported`] for a nose or
+    ///   shoulder shape the buildup has no drag data for
+    ///   ([`crate::drag::ComponentDragTerms::unsupported`]).
     /// - [`AeroError::Domain`] for an angle of attack outside `[0, π]` or a non-finite roll.
     /// - As [`DragConditions::validate`].
     /// - [`AeroError::Table`] from the table lookup, and [`AeroError::Domain`] if the drag isn't
     ///   finite.
-    ///
-    /// [m1-8]: https://nrdptel.github.io/hpr-sim/decisions-and-roadmap.html#m1-8
     pub fn drag(&self, flow: &Flow, conditions: &DragConditions) -> Result<Drag, AeroError> {
         conditions.validate()?;
         let factor = axial_drag_alpha_factor(flow.alpha_rad)?;
@@ -488,7 +495,6 @@ impl AeroModel {
                 sum.parasitic += d.parasitic;
             }
             sum.zero_lift_coefficient = sum.friction + sum.pressure + sum.base + sum.parasitic;
-            sum.beyond_subsonic_methods = flow.mach > SUBSONIC_MACH_LIMIT;
             sum
         };
         drag.axial_coefficient = drag.zero_lift_coefficient * factor;
@@ -888,7 +894,7 @@ mod tests {
         );
     }
 
-    /// Refusals: tube fins, nine fins, Mach 1, angles outside `[0, π]`. Lugs add no normal force.
+    /// Refusals: tube fins, nine fins, Mach 5, angles outside `[0, π]`. Lugs add no normal force.
     #[test]
     fn unsupported_inputs_are_refused() {
         let mut rocket = finned_rocket(4);
@@ -928,15 +934,17 @@ mod tests {
                 Err(AeroError::Mach { limit, .. }) if limit == NORMAL_FORCE_MACH_LIMIT
             ));
         }
-        // The normal force flies on past Mach 1; the drag buildup doesn't, until M1.8b.
+        // Both fly on past Mach 1 and stop at 5, each naming itself (since M1.8b1).
         assert!(m.normal_force(&flow(1.0, 0.1, 0.0)).is_ok());
         let coasting = DragConditions::coasting(1e7);
+        assert!(m.drag(&flow(1.0, 0.0, 0.0), &coasting).is_ok());
         assert!(matches!(
-            m.drag(&flow(1.0, 0.0, 0.0), &coasting),
-            Err(AeroError::Mach { limit, model, .. }) if limit == 1.0 && model == "the drag buildup"
+            m.drag(&flow(5.0, 0.0, 0.0), &coasting),
+            Err(AeroError::Mach { limit, model, .. })
+                if limit == BUILDUP_MACH_LIMIT && model == "the drag buildup"
         ));
         assert!(
-            m.buildup_components(&flow(1.0, 0.0, 0.0), &coasting)
+            m.buildup_components(&flow(5.0, 0.0, 0.0), &coasting)
                 .is_err()
         );
         for bad in [

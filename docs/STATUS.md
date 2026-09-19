@@ -4,11 +4,11 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
 
 ## Now
 
-- **Current milestone:** M1.8b Transonic and supersonic drag (M1.8 split into a to e)
-- **Order:** M1.8b, M1.8c, M1.8d, M1.8e, then M3.1
-- **Run:** M0.1-M0.4, M1.1-M1.7, M2.1 and M1.8a have shipped. The site is live at
+- **Current milestone:** M1.8b2 Drag against RASAero through Mach 2 (M1.8b split into b1 and b2)
+- **Order:** M1.8b2, M1.8c, M1.8d, M1.8e, then M3.1
+- **Run:** M0.1-M0.4, M1.1-M1.7, M2.1, M1.8a and M1.8b1 have shipped. The site is live at
   https://nrdptel.github.io/hpr-sim/
-- **Last updated:** 2026-09-18 (M1.8a done; M1.8b not started)
+- **Last updated:** 2026-09-18 (M1.8b1 done; M1.8b2 not started)
 
 ## Handoff (overwrite each session)
 
@@ -26,24 +26,33 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
 - **The path in wind (ADR-026):** the oracle flies RocketPy 1.13.0 with upstream PRs #1188 and
   #1196 applied by `corrections.py`; when RocketPy releases #1196, re-pin, regenerate and delete
   it. `wind_response.py` measures the seven drifts reported as model differences.
-- **M1.8a (ADR-027):** the normal force covers Mach 0 to 5; `cargo xtask aero` writes
-  `normal-force-vs-mach.json` against RASAero II and the Arcas Robin wind tunnel
-  (`arcas-robin-wind-tunnel.json`). The digitization's working files, with TN D-4013's axial force
-  and TN D-4014's roll data, are in `refs/scratch/arcas/`, uncommitted.
-- **M1.8b** next: the drag buildup's transonic and supersonic branches (Niskanen eq. 3.87 and
-  appendix B; Stoney NASA TR R-100 and NACA RM L53K17 for nose shapes, plots only; Von Kármán's
-  slender-body wave drag `1/f_N²`). The Arcas Robin's `C_A,corr` and `C_A,b` (TN D-4013 Figs.
-  11–12) are in the digitization, not yet committed. Don't read predicted mode's +10% (Valetudo,
-  NDRT) as gaps to close (ADR-009). Predicted Prometheus is the last `M ≥ 1` gap; it fails the run
-  once hpr's drag flies it. M1.8c's damping must keep hpr's local-flow pitch damping (ADR-026).
+- **M1.8a/b1 (ADR-027, ADR-028):** normal force and drag cover Mach 0 to 5. `cargo xtask aero`
+  writes `normal-force-vs-mach.json` and `drag-vs-mach.json` (the Arcas Robin's forebody axial
+  force, drag by part) from `arcas-robin-wind-tunnel.json`. Stoney's Figure 12 curves live in
+  `hpr_aero::nose_drag` (panel (a), plus (b) for x^¼ and the ellipsoid). Digitization working
+  files: `refs/scratch/arcas/` (axial `axial-digitized.json`, roll data for M1.8c) and
+  `refs/scratch/stoney/` (`stoney-fig12.json`, overlays, `digitize.py`), uncommitted.
+- **M1.8b2** next: hpr's `C_D0` against RocketPy's RASAero curves from Mach 0.1 to 2.0, per band
+  (Calisto's 2018 export to 2.0; Valetudo's to 1.53; Juno III's usable to 1.0 only, broken past;
+  Cavour's stops at 0.9), extending `drag-vs-mach.json`; L18's test. Expect supersonic drag high
+  with fins: the blunt leading-edge formula (eq. 3.89) gives fins 0.30 on the Arcas Robin where the
+  tunnel measured 0.046 at Mach 4.63. A thin-fin wave-drag model (Ackeret, `4(t/c)²/β` for a
+  double wedge) is the likely fix; measure it against the Arcas Robin's fins-on less fins-off
+  first (ADR-028). Weigh Stoney's measured 3:1 cone (`refs/scratch/stoney/`, config 56) against
+  Niskanen's cone for cones and ogives: 45–105% high from Mach 0.8 to 1.2. Don't read predicted mode's misses (Valetudo, NDRT, Prometheus) as gaps to
+  close (ADR-009, ADR-023). M1.8c's damping must keep hpr's local-flow pitch damping (ADR-026).
 - **Regeneration is not bit-identical across machines** (last digits, so hashes move); the
-  script prints each fixture's move.
+  script prints each fixture's move. Regenerate reports with `cargo xtask validate` (the alias's
+  debug build), never `cargo run --release`: release rounds differently in the 7th digit.
 - **Process notes:** `cargo test -p xtask` guards STATUS, ROADMAP, notices, lessons and the lock.
   Oracles run from the repo root with `refs/venv/bin/python`. `cargo xtask designs` and
   `cargo xtask examples` rewrite designs and example outputs; pages quoting them must follow.
 
 ## Done log (newest first, keep about 15)
 
+- 2026-09-18: M1.8b1 The drag buildup through Mach 1 (ADR-028): Niskanen's appendix B with
+  Stoney's digitized curves, Mach 0 to 5; against the Arcas Robin's forebody axial force 8 of 44
+  within 10% (high past Mach 1.2 with fins); predicted Prometheus flies; no known gap left.
 - 2026-09-18: M1.8a The normal force through Mach 1 (ADR-027): supersonic linear theory and a
   transonic join; against NASA's Arcas Robin wind tunnel, Mach 1.5–2.96 within 13.4% and 0.42
   calibers; Prometheus flies and is scored; M1.8 split into a to e.
@@ -55,10 +64,6 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
   as facts (ADR-005).
 - 2026-09-18: M2.1d2 The calm-air cases (PR #57, ADR-025): Calisto and Bella Lui pass; Juno III's
   drifts not scored, 1.6 of their 3.7 points measured as the rail release.
-- 2026-09-18: M2.1d1 The time-series RMS (PR #54, ADR-024): height and speed RMS on the ten flown
-  whole flights, aligned at ignition; ten same-drag RMS rows pass, three predicted outside target.
-- 2026-09-18: M2.1c2 Predicted mode (PR #52, ADR-023): hpr's own drag against RocketPy on each
-  example's own drag; 3% targets, not gates; 56 of 75 within; M2.1d split off for the RMS and #50.
 
 ## Needs Neer (blocking or one-way decisions; the session keeps working on other things)
 
@@ -78,6 +83,9 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
 
 ## Decided without Neer (one line each; significant ones get an ADR)
 
+- ADR-028: M1.8b split into b1 and b2; Stoney's Figure 12 read by hand into the code (panel (a),
+  (b) for two shapes); cones and ogives below fineness 1 scale toward a flat face (L15 holds);
+  the buildup refuses bulged ogives and Haack past `C = ⅓`; the known gap means a refusal at Mach 5.
 - ADR-027: M1.8 split into a to e; fins' supersonic slope counts both faces (Niskanen's eq. 3.49
   counts one); the transonic join is not fitted to the wind tunnel; NASA's plots were read by hand
   into a committed fixture; the body's supersonic gap became M1.8e.
@@ -94,26 +102,15 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
 - ADR-008 to ADR-011: body CP from the real volume with Galejs lift (`K` 1.1) and Diederich fins;
   Niskanen's drag as printed, 20 µm finish; own DOPRI5, discontinuities as stop times; nose-tip
   reference, `M ≥ 1` refused and stops a flight, rail `μ` 0.
-- ADR-012: recovery devices live in `hpr-sim`; `C_D0` on Knacke's nominal area, mid-range; a
-  point-mass descent, no added mass; devices add and can release one another.
-- ADR-013: streamers take Filippone's three curves by default, appendix C's on request; tumble takes
-  OpenRocket's §3.5 (−10 to +19% on its own drops, not the 3 to 14% claimed).
-- ADR-014: a separation splits the stack at a stage boundary into point-mass bodies with their own
-  stages' mass and devices; no ejection impulse; it must follow the last burnout (M1.9 stages).
+- ADR-012 to ADR-014: recovery in `hpr-sim`, Knacke's nominal area, a point-mass descent with no
+  added mass; Filippone's streamers, OpenRocket's §3.5 tumble; separation at a stage boundary.
 - #11: `SolidMotor` refuses `c = I/m_p` outside 200–5,000 m/s: a units guard, not a propellant
   filter (it rejects none of the 1,708 surveyed motors, 236 to 3,031 m/s), and a behaviour change.
 - M2.1b1: a same-drag case declares its own `C_D0(M)`, which both codes then fly, rather than
   committing or reading RocketPy's exports (their own terms, ADR-009; absent from CI).
-- ADR-023: predicted mode scores against RocketPy on the examples' own drag as RocketPy really
-  flies it (post-construction rescalings ignored); its 3% is a target, reported, never gated.
-- ADR-022: CI checks the committed report to the digits the platforms share; references are
-  regenerated only by hand and reviewed as a diff; M2.1c split into c1 (CI) and c2 (predicted).
-- ADR-021: whole flights measured as RocketPy defines them (dry-mass centre, forward-button rail
-  exit); Bella Lui added so five can pass; a `known_gap` only for `M ≥ 1`, checked and pinned;
-  RocketPy's `reference_pressure=None` transcribed as `None`, not the sea-level stand-in.
-- ADR-015: a run reads references, never writes them; every value carries its source and the file
-  its hash; every metric is gated at 3% with no floor, or declared not scored; locked cases must
-  run; inputs come from the oracle's own record; RocketPy comparisons fly RocketPy's gravity.
+- ADR-015, ADR-021 to ADR-023: references read, never written, each value sourced; 3% gates or a
+  written reason; whole flights as RocketPy defines them; CI checks the report to shared digits,
+  references regenerated only by hand; predicted mode's 3% a target, never gated.
 
 ## Known issues and risks
 
@@ -131,9 +128,11 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
   Recruiter's six fins miss the printed slope by +3.42% (+2.87% whole; ADR-008). Through Mach 1
   (M1.8a) the normal force misses the wind tunnel between Mach 0.8 and 1.2, and past Mach 3 reads
   17–25% low from the body (M1.8e; ADR-027).
-- Drag (M1.5b): the RASAero comparison can't show 10% agreement without the exports' inputs (fins
-  and finish move each case by 20%+). hpr misses Valetudo's suspect table by 47% and Cavour's
-  power-on by 18% (open; ADR-009); drag reads low from about Mach 0.6 until M1.8.
+- Drag: at Mach 0.3 the RASAero comparison can't show 10% without the exports' inputs (ADR-009).
+  Against the Arcas Robin (ADR-028) it reads high except near Mach 1: fins take a blunt edge's
+  formula (+191% fins on at Mach 4.63), a base lip counts as a shoulder, the boattail rule
+  over-predicts. Niskanen's cone runs 45–105% over Stoney's through Mach 0.8–1.2, lifting a stubby
+  ogive's `C_D0` (Bella Lui +38% at Mach 0.9). Base drag and supersonic shoulders are unmeasured.
 - In wind, a slow rocket's drift in hpr rests on body lift's uncertain `K`: Juno III's apogee
   drift is 240 to 194 m over Galejs's 1.0 to 1.5 (ADR-026, `wind_response.py`). The oracle carries two unreleased
   RocketPy corrections; if #1196 changes before it merges, revisit `corrections.py`.

@@ -8,8 +8,10 @@
 //!   rail buttons) follows the example, for the aerodynamics milestones.
 //! - `synthetic-*.json`: rockets whose mass comes from their geometry.
 //! - `wind-tunnel-arcas-robin-{short,long}.json`: the two half-scale Arcas models of NASA TN D-4013
-//!   and TN D-4014, for the aerodynamics only (M1.8a), built from the geometry recorded in
-//!   `validation/fixtures/aero/arcas-robin-wind-tunnel.json`. They carry no motor.
+//!   and TN D-4014, for the aerodynamics only (M1.8a, M1.8b1), built from the geometry recorded in
+//!   `validation/fixtures/aero/arcas-robin-wind-tunnel.json`. They carry no motor. For drag, their
+//!   double-wedge fins take hpr's airfoil section, as Niskanen modelled them (2009 p. 90), and
+//!   the machined steel models a polished finish (0.5 µm; the reports state none, ADR-028).
 //!
 //! `--check` compares instead of writing, and a test runs it, so the committed files always match
 //! this generator. It fails on a missing or extra `.json` file and on any difference in content.
@@ -232,7 +234,8 @@ fn arcas_robin(geometry: &Value, configuration: &Value) -> Result<Rocket, String
                 sweep_m: num(fins, "sweep_in")? * IN,
             },
             thickness_m: num(fins, "thickness_root_in")? * IN,
-            cross_section: FinCrossSection::Square,
+            // Sharp edges and no blunt trailing edge: of hpr's three sections, the airfoil's.
+            cross_section: FinCrossSection::Airfoil,
             tab: None,
             cant_rad: 0.0,
             base_angle_rad: 0.0,
@@ -259,30 +262,37 @@ fn arcas_robin(geometry: &Value, configuration: &Value) -> Result<Rocket, String
             None,
         )
     };
+    let mut body = vec![
+        component(
+            "nose",
+            Part::NoseCone(NoseCone {
+                shape: NoseShape::PowerSeries {
+                    exponent: num(nose, "power_exponent")?,
+                },
+                length_m: nose_length,
+                base_radius_m: radius,
+                wall: Wall::Filled {},
+                shoulder: None,
+                material: steel.clone(),
+            }),
+            None,
+        ),
+        tube,
+        transition("boattail", boattail_length, radius, boattail_radius),
+        transition("lip", lip_length, boattail_radius, base_radius),
+    ];
+    for part in &mut body {
+        part.finish = Some(Finish::Polished {});
+        for child in &mut part.children {
+            child.finish = Some(Finish::Polished {});
+        }
+    }
     Ok(Rocket {
         name: format!("NASA half-scale Arcas wind-tunnel model, {id}"),
         stages: vec![Stage {
             id: "model".to_owned(),
             name: String::new(),
-            components: vec![
-                component(
-                    "nose",
-                    Part::NoseCone(NoseCone {
-                        shape: NoseShape::PowerSeries {
-                            exponent: num(nose, "power_exponent")?,
-                        },
-                        length_m: nose_length,
-                        base_radius_m: radius,
-                        wall: Wall::Filled {},
-                        shoulder: None,
-                        material: steel.clone(),
-                    }),
-                    None,
-                ),
-                tube,
-                transition("boattail", boattail_length, radius, boattail_radius),
-                transition("lip", lip_length, boattail_radius, base_radius),
-            ],
+            components: body,
             overrides: Overrides::default(),
         }],
         reference_diameter: ReferenceDiameter::Maximum {},

@@ -72,10 +72,10 @@
       "curve_rows_dropped": 0,
       "curve_sha256": "e21edefacdb497112eebbca562220b049f07c297c6bba87635f2dca04a1b84a0",
       "design": "rocketpy-valetudo.json",
-      "hpr_cd0": 0.5565669992755498,
+      "hpr_cd0": 0.5565674289276226,
       "id": "valetudo-power-off",
       "origin": "labelled RASAero by its file name; a 3-decimal, hand-edited table with no input file, 1.44 times the OpenRocket export for the same rocket in RocketPy's RocketPaper repository at Mach 0.3",
-      "relative_error": -0.46993619116614316,
+      "relative_error": -0.4699357819736928,
       "thrusting": false,
       "variant_of": null
     },
@@ -85,10 +85,10 @@
       "curve_rows_dropped": 0,
       "curve_sha256": "8e24d7d382f6de81360a6ac7bf58acaca0a4fafefb210de5813923aa9a53aed5",
       "design": "rocketpy-valetudo.json",
-      "hpr_cd0": 0.5188668119217228,
+      "hpr_cd0": 0.5188672415737956,
       "id": "valetudo-power-on",
       "origin": "the power-on companion of the Valetudo table: 0.003 to 0.010 below it from Mach 0.02 (0.098 above at Mach 0.01)",
-      "relative_error": -0.5039514226369763,
+      "relative_error": -0.5039510118797366,
       "thrusting": true,
       "variant_of": null
     }
