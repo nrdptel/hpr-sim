@@ -75,7 +75,9 @@ the command, so a later run can be compared like for like.
   fin set a power for its leading edge; the table is a binary search.
 - **After M1.8b1** (2026-09-18, same machine and inputs): 119 ns, 50 ns and 11.3 ns. Each nose,
   shoulder and step now evaluates its pressure-drag curve, a power at Mach 0.6 (eq. 3.87), and a
-  power and a logarithm on Stoney's measured shapes from Mach 0.8.
+  power and a logarithm on Stoney's measured shapes from Mach 0.8. A new point, Calisto coasting
+  at Mach 1.5 (`AeroModel::drag, Calisto at Mach 1.5`), takes 110 ns: its von Kármán nose is on
+  Stoney's curve there, and the supersonic friction and stagnation terms take more powers.
 - **Normal force after M1.5b.** Re-measured in the same session: `AeroModel::new` 3.86 µs and
   11.2 µs, `normal_force` 28.0 ns (two-stage) and 22.2 ns (Calisto), where `main` before M1.5b
   measured 14.8 ns and 11.1 ns in that session (the M1.5a numbers below came from an earlier

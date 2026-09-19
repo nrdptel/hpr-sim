@@ -41,6 +41,16 @@ fn benches(c: &mut Criterion) {
                 .unwrap()
         })
     });
+    // Mach 1.5 at sea level, coasting: Calisto's von Kármán nose on Stoney's curve (M1.8b1).
+    let fast = Flow::new(1.5, 0.05, 0.3);
+    let coasting = DragConditions::coasting(1.5 * 340.294 / 1.4607e-5);
+    c.bench_function("AeroModel::drag, Calisto at Mach 1.5", |b| {
+        b.iter(|| {
+            black_box(&calisto)
+                .drag(black_box(&fast), black_box(&coasting))
+                .unwrap()
+        })
+    });
     let mach: Vec<f64> = (0..200).map(|k| 0.01 * f64::from(k + 1)).collect();
     let cd: Vec<f64> = mach.iter().map(|m| 0.4 + 0.1 * m * m).collect();
     let text: String = mach

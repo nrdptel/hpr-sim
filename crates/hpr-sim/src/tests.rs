@@ -712,7 +712,8 @@ fn a_flight_on_a_drag_table_flies_through_mach_1() {
 #[test]
 fn a_supersonic_flight_flies_on_the_drag_buildup() {
     // The drag buildup covers Mach 0 to 5 since M1.8b1 (ADR-028), so the same rocket on its own
-    // drag passes Mach 1 and lands, slower than on the table's 0.5 through the rise.
+    // drag passes Mach 1 and lands, slower than on a constant 0.5, since its own drag rises
+    // through Mach 1.
     struct Fastest(f64);
     impl crate::recorder::Observer for Fastest {
         fn step(&mut self, step: &dyn crate::recorder::FlightStep) -> Result<(), SimError> {
@@ -731,5 +732,26 @@ fn a_supersonic_flight_flies_on_the_drag_buildup() {
     let mut fastest = Fastest(0.0);
     let result = sim.run(&mut fastest).unwrap();
     assert_eq!(result.termination, Termination::GroundHit);
-    assert!((1.0..1.6).contains(&fastest.0), "{}", fastest.0);
+    let on_table = {
+        let mut table = Fastest(0.0);
+        Simulation::new(
+            &design("synthetic-54mm-three-fin"),
+            "i175",
+            Environment::standard(site()).unwrap(),
+            Rail::vertical(2.0),
+            FlightSettings::default(),
+        )
+        .unwrap()
+        .with_drag_table(constant_drag(0.5))
+        .run(&mut table)
+        .unwrap();
+        table.0
+    };
+    // Measured: Mach 1.093 on the buildup against 1.192 on the table.
+    assert!((fastest.0 - 1.093).abs() < 0.005, "{}", fastest.0);
+    assert!(
+        fastest.0 < on_table - 0.05,
+        "{} against {on_table}",
+        fastest.0
+    );
 }

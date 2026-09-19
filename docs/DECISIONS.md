@@ -2431,11 +2431,14 @@ chamber's force in it and `C_A,c` apart, uncorrected (printed p. 4), and states 
 
 - **Every nose, shoulder and step: eq. 3.86 at rest, eq. 3.87 to `M_L`, appendix B from `M_L`**
   (`hpr_aero::nose_drag::PressureDragCurve`, precomputed per component when the model is built).
-  `b = C_T′(M_L) M_L/Δ` and `a = Δ/M_Lᵇ` with `Δ = C_T(M_L) − C₀`.
+  `b = C_T′(M_L) M_L/Δ` and `a = Δ/M_Lᵇ` with `Δ = C_T(M_L) − C₀`, evaluated as `Δ (M/M_L)ᵇ`,
+  which stays within `[0, Δ]`: in review, `a` overflowed where `Δ` is tiny and `b` huge (an x^0.868
+  nose at 3:1 gave NaN below Mach 0.8), and a regression test holds it.
 - **Cones and ogives** as printed from fineness 1, with a cubic Hermite between Mach 1 and 1.3 and
   `M_L` = 1 (the thesis's "interpolated using equation (3.86)" between 0 and 1 in B.2 can only mean
   eq. 3.87). The ogive's `κ` is the reciprocal of hpr's radius ratio. **A bulged secant ogive**
-  (radius ratio below 1, `κ > 1`) is outside eq. B.8 and **refused** where the model is built.
+  (radius ratio below 1, `κ > 1`) is outside eq. B.8 and **refused by the buildup** when it is
+  evaluated: the model still builds (after review), so the normal force and a drag table work.
 - **Below fineness 1, cones and ogives scale by eq. B.9's form** between a flat face at fineness
   0 and their own closed form at fineness 1, `C₀ (C₁/C₀)^(ln(f + 1)/ln 2)`, with `M_L` 0.8. Eq.
   B.4 runs past a flat face's drag as a cone flattens (2.39 at Mach 2 as `f → 0`, against 1.41),
@@ -2455,7 +2458,8 @@ chamber's force in it and `C_A,c` apart, uncorrected (printed p. 4), and states 
 - **Between measured shapes, linear in the parameter at fineness 3, then eq. B.9**: a power series
   through the flat face (`n = 0`), x^¼, x^½, x^¾ and the 3:1 cone (`n = 1`); a parabolic series
   through the 3:1 cone (`K′ = 0`) and the three parabolas; a Haack series between von Kármán and
-  L-V Haack. **A Haack series past `C = ⅓` is refused**, as [N09] limits it (p. 103). `M_L` is
+  L-V Haack. **A Haack series past `C = ⅓` is refused** by the buildup in the same way, as [N09]
+  limits it (p. 103). `M_L` is
   0.8, or the later start of either curve (1.2 for x^¼ and the ellipsoid).
 - **Where eq. 3.87 can't fit** (`Δ ≤ 0` or a slope that isn't positive at `M_L`, which happens
   only where a joint that isn't smooth meets a measured curve still at 0), `C₀ + Δ (M/M_L)²`:

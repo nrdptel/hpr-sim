@@ -273,11 +273,13 @@ pub fn run_case(root: &Path, case: &Case) -> Result<CaseRun, ValidateError> {
             Some(reason.trim().to_owned())
         }
     };
+    let peak = reference.values.get("max_mach").map(|value| value.value);
     let measured = match settle(
         &case.id,
         case.metrics.len(),
         measure(root, case, &setup)?,
         gap,
+        peak,
     )? {
         Settled::Measured(measured) => measured,
         Settled::Gap(gap) => {
@@ -372,14 +374,16 @@ pub(crate) enum Settled {
     Gap(Gap),
 }
 
-/// Weighs how case `case`'s flight came out against its declared gap (`gap`, its reason, already
-/// checked against the reference): a flight that lands is scored and must declare no gap (Loft
-/// lesson L85); a refusal past a model's range is the gap if declared and a failure if not.
+/// Weighs how case `case`'s flight came out against its declared gap (`gap`, its reason) and the
+/// reference's peak Mach number (`peak`): a flight that lands is scored and must declare no gap
+/// (Loft lesson L85); a refusal past a model's range is the gap if declared and the reference
+/// reaches that model's limit too, and a failure otherwise.
 pub(crate) fn settle(
     case: &str,
     metric_count: usize,
     flown: Flown,
     gap: Option<String>,
+    peak: Option<f64>,
 ) -> Result<Settled, ValidateError> {
     match (flown, gap) {
         (Flown::Measured(measured), None) => Ok(Settled::Measured(measured)),
@@ -389,6 +393,14 @@ pub(crate) fn settle(
             Err(ValidateError::Case(format!(
                 "case {case}: it declares a known gap, but hpr flew it to the ground; remove the \
                  gap and score it"
+            )))
+        }
+        (Flown::RefusedAtMach { limit, model, .. }, Some(_))
+            if !peak.is_some_and(|peak| peak >= limit) =>
+        {
+            Err(ValidateError::Case(format!(
+                "case {case}: hpr refused it at {model}'s limit, Mach {limit}, but the reference \
+                 peaks at Mach {peak:?}, so the gap isn't the one declared"
             )))
         }
         (Flown::RefusedAtMach { mach, limit, model }, Some(reason)) => Ok(Settled::Gap(Gap {

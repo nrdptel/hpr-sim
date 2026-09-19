@@ -665,14 +665,13 @@ The example leaves out several kinds of part and setting that a design can have:
 - **Tube fins are refused** by the aerodynamics until a cited method for them exists. Tube fins
   are open tubes that run along the body, touching it, in place of flat fins. A design can hold
   them, but a flight or a CP can't be worked out with them.
-- **Two nose shapes are refused** by the aerodynamics, on a nose cone or on a transition that
-  widens, because no drag data covers them: a bulged secant ogive (`NoseShape::Ogive` with a
+- **Two nose shapes have no drag of hpr's own**, on a nose cone or on a transition that widens,
+  because no drag data covers them: a bulged secant ogive (`NoseShape::Ogive` with a
   `radius_ratio` below 1, which bulges wider than the body just ahead of its base) and a Haack
   shape whose parameter `C` is above 1/3, past the LV-Haack ([Shapes](physics/shapes.md#profiles)).
-  As with tube fins, a design can hold them, but a flight or a CP can't be worked out with them:
-  the whole aerodynamic model is built at once, so a gap in the drag blocks the CP too. Designs
-  with these shapes gave a CP before [M1.8b1](decisions-and-roadmap.md#m1-8b1), the drag through
-  Mach 1.
+  Since [M1.8b1](decisions-and-roadmap.md#m1-8b1), the drag through Mach 1, the drag buildup
+  refuses them, naming the part. The CP still works, and so does a flight on a drag table from
+  another tool; a flight on hpr's own drag stops with that error.
 - **Fin sections and supersonic drag.** Faster than sound, every fin section takes a blunt
   leading edge's drag: the square section a flat face's, the rounded and airfoil sections a
   rounded edge's. The airfoil section differs from the rounded only in having no trailing-edge

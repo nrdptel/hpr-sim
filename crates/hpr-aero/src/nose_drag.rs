@@ -120,12 +120,13 @@ fn cone_transonic(s: f64, mach: f64) -> (f64, f64) {
 
 /// Eq. 3.87's fit below `M_L`: how the pressure drag rises from its value at rest to the
 /// transonic method's value at `M_L`.
-#[derive(Debug, Clone, Copy, PartialEq, Serialize)]
+#[derive(Debug, Clone, Copy, PartialEq)]
 enum Fit {
-    /// `a M^b` added to the value at rest (eq. 3.87).
+    /// `a Mᵇ` added to the value at rest (eq. 3.87), held as `Δ (M/M_L)ᵇ`, which is the same with
+    /// `a = Δ/M_Lᵇ` and stays within `[0, Δ]` where `M_Lᵇ` would underflow.
     Power {
-        /// `a`.
-        a: f64,
+        /// `Δ = C_T(M_L) − (C_D•)_p,0`, the rise.
+        delta: f64,
         /// `b`.
         b: f64,
     },
@@ -142,10 +143,9 @@ impl Fit {
     /// `M_L`. The power fits only a rise with a positive slope; otherwise the quadratic.
     fn new(delta: f64, slope: f64, mach_low: f64) -> Self {
         if delta > 0.0 && slope > 0.0 {
-            let b = slope * mach_low / delta;
             Self::Power {
-                a: delta / mach_low.powf(b),
-                b,
+                delta,
+                b: slope * mach_low / delta,
             }
         } else {
             Self::Quadratic { delta }
@@ -155,12 +155,12 @@ impl Fit {
     /// The fit's value and slope at `mach`, below `mach_low`, above the value at rest.
     fn eval(self, mach: f64, mach_low: f64) -> (f64, f64) {
         match self {
-            Self::Power { a, b } => {
+            Self::Power { delta, b } => {
                 if mach == 0.0 {
                     // The slope at rest is never asked for (only at and above `M_L`).
                     (0.0, 0.0)
                 } else {
-                    let power = a * mach.powf(b);
+                    let power = delta * (mach / mach_low).powf(b);
                     (power, b * power / mach)
                 }
             }
@@ -232,6 +232,11 @@ pub fn subsonic_pressure_drag_coefficient(
 /// with the half-angle `ε` from `tan ε = 1/(2f)` (eq. B.3). The joint angle of a cone meeting its
 /// tube is `ε`, so its value at rest is eq. 3.86's `0.8 sin² ε`. A 3:1 cone: 0.0216 at rest,
 /// 0.1644 at Mach 1, 0.1557 at Mach 1.3, 0.1042 at Mach 2.
+///
+/// Below fineness 1 the closed form passes a flat face's drag as the cone flattens, so there hpr
+/// scales between a flat face at fineness 0 and this curve at fineness 1, as eq. B.9 does, from
+/// Mach 0.8 ([`PressureDragCurve::new`]): a cone of fineness 0.5 gets 0.647 at Mach 1, not
+/// `sin ε` = 0.707.
 ///
 /// # Errors
 ///
@@ -323,7 +328,7 @@ pub enum StoneyNose {
 
 impl StoneyNose {
     /// Every curve.
-    pub const ALL: [Self; 9] = [
+    pub const ALL: &'static [Self] = &[
         Self::PowerQuarter,
         Self::PowerHalf,
         Self::PowerThreeQuarters,
@@ -384,7 +389,9 @@ impl StoneyNose {
         if mach >= last.0 {
             return (last.1, 0.0);
         }
-        // The segment [i, i + 1] that holds `mach`, with `mach` at or past point `i`.
+        // The segment [i, i + 1] that holds `mach`, with `mach` at or past point `i`: the first
+        // point is at or below `mach` (checked above, and every caller checks the Mach number is
+        // finite), so the partition point is at least 1.
         let i = points.partition_point(|p| p.0 <= mach) - 1;
         let ((m0, c0), (m1, c1)) = (points[i], points[i + 1]);
         let slope = (c1 - c0) / (m1 - m0);
@@ -393,7 +400,7 @@ impl StoneyNose {
 }
 
 /// A reference curve that eq. B.9's scaling and the interpolation between shapes run between.
-#[derive(Debug, Clone, Copy, PartialEq, Serialize)]
+#[derive(Debug, Clone, Copy, PartialEq)]
 enum Reference {
     /// The blunt cylinder (fineness 0, and a power series of exponent 0): eq. B.2.
     Blunt,
@@ -447,7 +454,7 @@ impl Reference {
 }
 
 /// A transonic and supersonic method, from its lower bound `M_L` up.
-#[derive(Debug, Clone, Copy, PartialEq, Serialize)]
+#[derive(Debug, Clone, Copy, PartialEq)]
 enum Transonic {
     /// The blunt cylinder, `0.85 q_stag/q` (eq. B.2).
     Blunt,
@@ -518,16 +525,22 @@ impl Transonic {
 
 /// A nose's, shoulder's or step's pressure-drag coefficient against Mach number, on its increase
 /// in area: the value at rest, eq. 3.87's fit, and appendix B's transonic method from `M_L`
-/// (the module docs).
+/// (the module docs). It serializes what it was built from, not its internals.
 #[derive(Debug, Clone, Copy, PartialEq, Serialize)]
 pub struct PressureDragCurve {
+    /// The nose or shoulder shape; `None` for a step or a bare front face.
+    shape: Option<NoseShape>,
+    /// The fineness ratio `l/(d_aft − d_fore)`; 0 for a step.
+    fineness_ratio: f64,
     /// `(C_D•)_p,0`, eq. 3.86's value at rest.
     rest: f64,
     /// `M_L`, where the transonic method starts.
     mach_low: f64,
     /// Eq. 3.87's fit below `M_L`.
+    #[serde(skip)]
     fit: Fit,
     /// The transonic method.
+    #[serde(skip)]
     transonic: Transonic,
 }
 
@@ -535,6 +548,8 @@ impl PressureDragCurve {
     fn from_transonic(rest: f64, transonic: Transonic, mach_low: f64) -> Self {
         let (c_low, slope_low) = transonic.value_and_slope(mach_low);
         Self {
+            shape: None,
+            fineness_ratio: 0.0,
             rest,
             mach_low,
             fit: Fit::new(c_low - rest, slope_low, mach_low),
@@ -562,15 +577,33 @@ impl PressureDragCurve {
     ///   `½`, `¾` and full parabolas; a Haack series between von Kármán (`C = 0`) and L-V Haack
     ///   (`C = ⅓`). `M_L` is the first Mach number both ends' curves have.
     ///
-    /// A zero fineness ratio is a step: [`PressureDragCurve::step`] whatever the shape.
+    /// Cones and ogives below fineness 1 scale by eq. B.9's form between a flat face at fineness 0
+    /// and their closed form at fineness 1, from Mach 0.8, because the closed form passes a flat
+    /// face's drag as the cone flattens. A zero fineness ratio is a step:
+    /// [`PressureDragCurve::step`] whatever the shape.
     ///
     /// # Errors
     ///
-    /// [`AeroError::Domain`] for a negative or non-finite fineness ratio or a joint angle outside
-    /// `[0, π/2]`; [`AeroError::Unsupported`] for a bulged secant ogive (radius ratio below 1) or
-    /// a Haack series above `C = ⅓`, where no data reaches, and for a shape this model doesn't
-    /// know.
+    /// [`AeroError::Domain`] for a negative or non-finite fineness ratio, a joint angle outside
+    /// `[0, π/2]`, or a power-series exponent, parabolic parameter or Haack parameter outside
+    /// `[0, 1]`, `[0, 1]` or `[0, ⅓]`; [`AeroError::Unsupported`] for an ogive whose radius ratio
+    /// isn't a finite number of at least 1 (a bulged secant ogive has one below 1) or a Haack series
+    /// above `C = ⅓`, where no data reaches, and for a shape this model doesn't know.
     pub fn new(
+        shape: NoseShape,
+        fineness_ratio: f64,
+        joint_angle_rad: f64,
+    ) -> Result<Self, AeroError> {
+        let mut curve = Self::build(shape, fineness_ratio, joint_angle_rad)?;
+        if fineness_ratio > 0.0 {
+            curve.shape = Some(shape);
+            curve.fineness_ratio = fineness_ratio;
+        }
+        Ok(curve)
+    }
+
+    /// [`PressureDragCurve::new`]'s curve, before it records its inputs.
+    fn build(
         shape: NoseShape,
         fineness_ratio: f64,
         joint_angle_rad: f64,
@@ -619,7 +652,8 @@ impl PressureDragCurve {
             NoseShape::Ogive { radius_ratio } => {
                 if !(radius_ratio.is_finite() && radius_ratio >= 1.0) {
                     return Err(AeroError::Unsupported(format!(
-                        "a bulged secant ogive (radius ratio {radius_ratio}, below 1): Niskanen's \
+                        "an ogive of radius ratio {radius_ratio}, not at least 1 (below 1 is a \
+                         bulged secant ogive): Niskanen's \
                          eq. B.8 runs only from the cone to the tangent ogive"
                     )));
                 }
@@ -1179,6 +1213,38 @@ mod tests {
                 "Mach {m}: {got:+.4}, recorded {error:+.3}"
             );
         }
+    }
+
+    /// Code review: eq. 3.87's `a = Δ/M_Lᵇ` overflowed where `Δ` is small and `b` huge, and gave
+    /// NaN below `M_L`. An x^0.868229375 nose at 3:1 with its own joint angle has `Δ` near 0; the
+    /// curve now stays finite and between the value at rest and `C_T(M_L)` below `M_L`.
+    #[test]
+    fn eq_3_87_stays_finite_when_the_rise_is_tiny() {
+        for n in [0.868229375, 0.8675, 0.869, 0.8695] {
+            let joint = (n / 6.0f64).atan();
+            let curve =
+                PressureDragCurve::new(NoseShape::PowerSeries { exponent: n }, 3.0, joint).unwrap();
+            let rest = curve.rest_coefficient();
+            let at_l = curve.coefficient(curve.transonic_lower_bound()).unwrap();
+            for m in [0.0, 0.1, 0.3, 0.5, 0.79, 0.8, 1.0, 1.1, 1.19, 1.5] {
+                let c = curve.coefficient(m).unwrap();
+                assert!(c.is_finite(), "n = {n}, Mach {m}: {c}");
+                if m < curve.transonic_lower_bound() {
+                    assert!(c >= rest.min(at_l) - 1e-15 && c <= rest.max(at_l) + 1e-15);
+                }
+            }
+        }
+        let tiny = subsonic_pressure_drag_coefficient(0.01, 0.01 + 1e-12, 1.0, 0.8, 0.5).unwrap();
+        close(tiny, 0.01, 1e-9, "a rise of 1e-12");
+    }
+
+    /// Below fineness 1 a cone scales between a flat face and its fineness-1 closed form: at
+    /// fineness 0.5 and Mach 1, 0.647 where `sin ε` would give 0.707.
+    #[test]
+    fn a_stubby_cone_takes_the_blend() {
+        let c = cone_pressure_drag_coefficient(0.5, 1.0).unwrap();
+        close(c, 0.647, 1e-3, "fineness 0.5 at Mach 1");
+        assert!(c < std::f64::consts::FRAC_1_SQRT_2 - 0.05, "below sin ε = sin 45°");
     }
 
     proptest::proptest! {

@@ -255,7 +255,8 @@ impl AeroModel {
     /// - [`AeroError::Domain`] for a non-positive reference diameter, rocket length or body radius.
     /// - [`AeroError::InComponent`] naming the component, around:
     ///   - [`AeroError::Unsupported`] for tube fins, or a part kind or fin cross-section this model
-    ///     doesn't know;
+    ///     doesn't know (a nose shape the drag buildup has no data for builds, and the buildup
+    ///     refuses it when asked: [`AeroModel::drag`]);
     ///   - [`AeroError::Domain`] for a fin set of more than eight fins, a non-finite station, or a
     ///     drag input out of range (a negative fin thickness, a launch lug's wall thicker than its
     ///     radius, a rail button's base and flange taller than the button, a negative roughness);
@@ -452,6 +453,9 @@ impl AeroModel {
     /// - [`AeroError::Mach`] outside `[0, 5)` for the buildup
     ///   ([`crate::drag::BUILDUP_MACH_LIMIT`]); with an override table any finite Mach number from
     ///   0 is accepted ([`AeroError::Domain`] otherwise).
+    /// - Without a table, [`AeroError::InComponent`] around [`AeroError::Unsupported`] for a nose or
+    ///   shoulder shape the buildup has no drag data for
+    ///   ([`crate::drag::ComponentDragTerms::unsupported`]).
     /// - [`AeroError::Domain`] for an angle of attack outside `[0, π]` or a non-finite roll.
     /// - As [`DragConditions::validate`].
     /// - [`AeroError::Table`] from the table lookup, and [`AeroError::Domain`] if the drag isn't

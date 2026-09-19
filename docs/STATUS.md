@@ -83,7 +83,7 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
 
 - ADR-028: M1.8b split into b1 and b2; Stoney's Figure 12 read by hand into the code (panel (a),
   (b) for two shapes); cones and ogives below fineness 1 scale toward a flat face (L15 holds);
-  bulged ogives and Haack past `C = ⅓` refused; the known gap now means a refusal at Mach 5.
+  the buildup refuses bulged ogives and Haack past `C = ⅓`; the known gap means a refusal at Mach 5.
 - ADR-027: M1.8 split into a to e; fins' supersonic slope counts both faces (Niskanen's eq. 3.49
   counts one); the transonic join is not fitted to the wind tunnel; NASA's plots were read by hand
   into a committed fixture; the body's supersonic gap became M1.8e.

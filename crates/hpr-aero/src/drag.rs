@@ -575,6 +575,11 @@ pub struct ComponentDragTerms {
     pub step: Option<PressureDragTerm>,
     /// Pressure drag of a nose or shoulder: its own increase in area.
     pub shoulder: Option<PressureDragTerm>,
+    /// Why the buildup refuses this component, if it does: a nose or shoulder shape with no
+    /// transonic drag data (a bulged secant ogive, a Haack series past `C = ⅓`). The model still
+    /// builds, so the normal force and a drag table work; [`crate::AeroModel::drag`] without a
+    /// table returns [`AeroError::Unsupported`] for it.
+    pub unsupported: Option<String>,
     /// Boattails and steps down in radius: `Σ` factor × decrease in area (eq. 3.88), times the
     /// base drag coefficient.
     pub boattail_area_ratio: f64,
@@ -595,6 +600,7 @@ impl ComponentDragTerms {
             relative_roughness: component.finish.roughness_m()? / length_m,
             step: None,
             shoulder: None,
+            unsupported: None,
             boattail_area_ratio: 0.0,
             fins: None,
             parasitic_area_ratio: 0.0,
@@ -640,16 +646,23 @@ impl ComponentDragTerms {
         }
         let diameter = |area: f64| 2.0 * (area / PI).sqrt();
         let change = geometry.aft_area_m2 - geometry.fore_area_m2;
-        if change > 0.0 {
+        let rise = diameter(geometry.aft_area_m2) - diameter(geometry.fore_area_m2);
+        // A widening too small to change the diameter as computed is none.
+        if change > 0.0 && rise > 0.0 {
             let shape = shape.ok_or_else(|| {
                 AeroError::Layout("a body that widens needs a profile shape".to_owned())
             })?;
-            let rise = diameter(geometry.aft_area_m2) - diameter(geometry.fore_area_m2);
             let joint = geometry.aft_angle_rad.max(0.0);
-            terms.shoulder = Some(PressureDragTerm {
-                curve: PressureDragCurve::new(shape, geometry.length_m / rise, joint)?,
-                area_ratio: change / reference_area_m2,
-            });
+            match PressureDragCurve::new(shape, geometry.length_m / rise, joint) {
+                Ok(curve) => {
+                    terms.shoulder = Some(PressureDragTerm {
+                        curve,
+                        area_ratio: change / reference_area_m2,
+                    });
+                }
+                Err(AeroError::Unsupported(why)) => terms.unsupported = Some(why),
+                Err(error) => return Err(error),
+            }
         } else if change < 0.0 {
             let factor = boattail_factor(
                 geometry.length_m,
@@ -731,6 +744,12 @@ impl ComponentDragTerms {
         thrusting_motor_area_m2: f64,
         reference_area_m2: f64,
     ) -> Result<Drag, AeroError> {
+        if let Some(why) = &self.unsupported {
+            return Err(AeroError::InComponent {
+                id: self.id.clone(),
+                source: Box::new(AeroError::Unsupported(why.clone())),
+            });
+        }
         let friction = if self.friction_area_ratio > 0.0 {
             skin_friction_coefficient(reynolds, self.relative_roughness, mach)?
                 * self.friction_area_ratio
@@ -1393,6 +1412,16 @@ mod tests {
             1e-13,
             "bare step up",
         );
+        // By hand at l = 0.1: fineness 5, a cone of `tan ε = 0.1`, eq. 3.87 to eq. B.5–B.6.
+        let s5 = 0.1f64.atan().sin();
+        let rest = 0.8 * s5 * s5;
+        let b = 4.0 / 2.4 * (1.0 - 0.5 * s5) / (s5 - rest);
+        close(
+            pressure_of(&rocket(small, big, Some(0.1))),
+            (rest + (s5 - rest) * 0.3f64.powf(b)) * delta / a_ref,
+            1e-12,
+            "shoulder by hand",
+        );
         let mut previous = f64::INFINITY;
         for l in [0.1, 0.01, 1e-3, 1e-5, 1e-8] {
             let s = rocket(small, big, Some(l));
@@ -1613,6 +1642,64 @@ mod tests {
             previous = got;
         }
         assert!(nose_pressure(4.9) > 2.1 * s * s);
+    }
+
+    /// Code review: a nose the drag buildup has no data for (a bulged secant ogive, a Haack series
+    /// past `C = ⅓`) doesn't stop the model building: the normal force and a drag table work, and
+    /// only the buildup refuses it, naming the component. A widening too small to move the diameter
+    /// is no shoulder.
+    #[test]
+    fn a_shape_without_drag_data_refuses_only_the_buildup() {
+        let (r, l) = (0.03, 0.2);
+        for shape in [
+            NoseShape::Ogive { radius_ratio: 0.5 },
+            NoseShape::Haack { parameter: 0.5 },
+        ] {
+            let rocket = one_stage(
+                vec![
+                    component("nose", nose(shape, l, r), None),
+                    component("tube", body_part(0.8, r, r), None),
+                ],
+                ReferenceDiameter::Maximum {},
+            );
+            let m = model(&rocket);
+            assert!(m.normal_force(&Flow::axial(0.3)).is_ok(), "{shape:?}");
+            let conditions = DragConditions::coasting(RE_PER_M);
+            let error = m.drag(&Flow::axial(0.3), &conditions).unwrap_err();
+            assert!(
+                matches!(&error, AeroError::InComponent { id, source }
+                    if id == "nose" && matches!(**source, AeroError::Unsupported(_))),
+                "{shape:?}: {error}"
+            );
+            assert!(
+                m.buildup_components(&Flow::axial(0.3), &conditions)
+                    .is_err()
+            );
+            let table = DragTable::from_csv("0,0.5\n2,0.5\n", None).unwrap();
+            let with_table = m.with_drag_table(table);
+            assert_eq!(
+                with_table
+                    .drag(&Flow::axial(0.3), &conditions)
+                    .unwrap()
+                    .zero_lift_coefficient,
+                0.5
+            );
+        }
+        // One ulp of widening: the areas differ, the diameters as computed may not.
+        let wider = r * (1.0 + f64::EPSILON);
+        let rocket = one_stage(
+            vec![
+                component("nose", nose(NoseShape::Conical {}, l, r), None),
+                component("tube", body_part(0.4, r, r), None),
+                component("flare", body_part(0.05, r, wider), None),
+                component("aft", body_part(0.4, wider, wider), None),
+            ],
+            ReferenceDiameter::Maximum {},
+        );
+        let d = model(&rocket)
+            .drag(&Flow::axial(0.3), &DragConditions::coasting(RE_PER_M))
+            .unwrap();
+        assert!(d.zero_lift_coefficient.is_finite());
     }
 
     /// The stagnation-pressure ratio: 1 at rest, the isentropic `(p₀ − p)/q` with

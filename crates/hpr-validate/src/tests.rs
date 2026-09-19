@@ -1020,8 +1020,14 @@ fn a_known_gap_is_checked_not_trusted() {
         limit: 5.0,
         model: "the drag buildup",
     };
-    let settled = settle("case", 17, refusal.clone(), Some("hypersonic".to_owned()))
-        .expect("a declared refusal");
+    let settled = settle(
+        "case",
+        17,
+        refusal.clone(),
+        Some("hypersonic".to_owned()),
+        Some(5.2),
+    )
+    .expect("a declared refusal");
     let Settled::Gap(gap) = settled else {
         panic!("{settled:?}")
     };
@@ -1034,9 +1040,23 @@ fn a_known_gap_is_checked_not_trusted() {
 
     // Without the declaration, the same refusal fails the run: a case that stops short is not a
     // case that passes.
-    let error = settle("case", 17, refusal, None).expect_err("an undeclared refusal fails");
+    let error =
+        settle("case", 17, refusal.clone(), None, Some(5.2)).expect_err("an undeclared refusal");
     assert!(
         matches!(&error, ValidateError::Flight { what, .. } if what.contains("Mach 5.000")),
+        "{error}"
+    );
+    // A refusal the reference doesn't reach isn't the gap declared, whatever the case says.
+    let error = settle(
+        "case",
+        17,
+        refusal,
+        Some("hypersonic".to_owned()),
+        Some(4.9),
+    )
+    .expect_err("a refusal past the reference's peak");
+    assert!(
+        error.to_string().contains("reference peaks at Mach"),
         "{error}"
     );
 

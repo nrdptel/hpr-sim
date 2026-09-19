@@ -636,7 +636,8 @@ eq. B.4, so the von Kármán's wave drag is 38% lower. The test
   coefficients involved are below 0.01.
 - **Refused shapes.** A bulged secant ogive (its arc radius below the tangent ogive's) is outside
   eq. B.8, and a Haack series past `C = ⅓` outside Stoney's data (Niskanen limits it the same way,
-  p. 103). Both are refused, naming the component, where the model is built.
+  p. 103). The drag buildup refuses both, naming the component, when asked for drag; the model
+  still builds, so the normal force, the centre of pressure and a drag table still work.
 
 **Cross-check against a measured cone.** Stoney's Figure 12(a) also has a 3:1 cone. Niskanen's
 closed form reads +49% high at Mach 1 and +45% at Mach 1.2, where the cubic join peaks at 0.200
