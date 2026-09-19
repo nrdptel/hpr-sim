@@ -2796,7 +2796,7 @@ What the sources give (all NACA and NASA reports are U.S. Government works; pinn
   boattail, and a pair drags between the two. It applies at every speed, so below Mach 0.8 a
   curved boattail in parts drags as the cones through its ends rather than part by part as eq.
   3.88 would (physics review: a 6°, 9°, 12° boattail in three 20 mm parts, 0.00716 part by part,
-  0 merged, 2.8% of `C_D0` at Mach 0.5). A part shallower than 1° merges only in proportion to
+  0 merged, 2.8% of `C_D0` at Mach 0.5). (Superseded in the third round, below:) A part shallower than 1° merges only in proportion to
   its angle. The first draft left each part its own boattail (the same cone drawn as two transitions
   read +10% at Mach 1.5 on the Arcas Robin); the second merged any adjacent parts into one cone
   (a 15° boattail closed by a near-vertical transition read +13% at Mach 0.6 against a step

@@ -137,6 +137,28 @@ pub fn same(a: &Value, b: &Value) -> bool {
     }
 }
 
+/// Where `a` and `b` first differ, as [`same`] judges them: the JSON path and both values.
+pub fn difference(a: &Value, b: &Value) -> Option<String> {
+    fn walk(a: &Value, b: &Value, path: &str) -> Option<String> {
+        match (a, b) {
+            (Value::Array(x), Value::Array(y)) if x.len() == y.len() => x
+                .iter()
+                .zip(y)
+                .enumerate()
+                .find_map(|(i, (x, y))| walk(x, y, &format!("{path}[{i}]"))),
+            (Value::Object(x), Value::Object(y)) if x.len() == y.len() => {
+                x.iter().find_map(|(k, v)| match y.get(k) {
+                    Some(w) => walk(v, w, &format!("{path}.{k}")),
+                    None => Some(format!("{path}.{k}: missing")),
+                })
+            }
+            _ if same(a, b) => None,
+            _ => Some(format!("{path}: {a} against {b}")),
+        }
+    }
+    walk(a, b, "")
+}
+
 /// Every design as `(file name, pretty JSON)`.
 pub fn generate(root: &Path) -> Result<Vec<(String, String)>, String> {
     let path = root.join(FIXTURE);

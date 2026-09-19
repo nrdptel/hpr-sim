@@ -567,8 +567,10 @@ pub struct PressureDragTerm {
 /// end, less that of the cone from the same start through its fore end, and not below 0. Each
 /// surface ahead that the flow may still follow has a weight: its hold of the flow behind the
 /// boattails, times 1 for a turn of up to [`MERGE_FULL_TURN_RAD`] between this part and it, 0 from
-/// [`MERGE_NONE_TURN_RAD`] (a corner), linear between, and times each part's half-angle over
-/// [`MERGE_MIN_ANGLE_RAD`], at most 1. The part drags the weights times the shares, plus its own
+/// [`MERGE_NONE_TURN_RAD`] (a corner), linear between, and, when either part is shallower than
+/// [`MERGE_MIN_ANGLE_RAD`], times the smaller half-angle over the larger (the larger taken as at
+/// most that), so a part narrowing by almost nothing is a tube and a straight cone of any angle
+/// merges wholly. The part drags the weights times the shares, plus its own
 /// drag times what they leave. So parts of one straight cone add up to one cone, a sharp corner
 /// keeps each part its own boattail, and the drag stays between the two.
 #[derive(Debug, Clone, PartialEq, Serialize)]
@@ -612,9 +614,8 @@ pub struct MergedBoattail {
 /// [`WAKE_NONE_RISE`], linear between; and it fades with any tube, step down or part between them
 /// over one drop in diameter. A lip may be drawn as a shoulder, as a step up, or as both, and in
 /// several parts: each takes the smallest share any top so far leaves, its step by its fore
-/// radius and its shoulder by its aft radius too. With several boattails ahead
-/// (the tails the afterbody's coupling keeps) the fractions add up each one's share of the flow,
-/// at most 1.
+/// radius and its shoulder by its aft radius too. With several boattails ahead, each contributes
+/// its share of the flow; the fractions are summed and capped at 1.
 /// A step down counts as a boattail of no length, so a lip behind a plain step, such as a motor
 /// retainer behind the step down to the motor tube, is in its wake too.
 #[derive(Debug, Clone, Copy, PartialEq, Serialize)]

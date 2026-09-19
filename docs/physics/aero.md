@@ -539,13 +539,18 @@ parasitic term on its own area. The axial coefficient is `C_A = C_D0 f(α)`.
   through Mach 1*), and a step down a zero-length boattail, the base drag of the uncovered area. A
   body with no nose cone gets the same flat face on its front. Each is the limit of the
   transition it replaces ([Loft lesson L15](../decisions-and-roadmap.md#l15)), and it is reported with the aft component.
+  A step up just behind a step down, such as a motor retainer behind the step to the motor tube,
+  is sheltered by the step's corner at every speed; this is unmeasured, and for such an aft end
+  it lowers the rocket's `C_D0` by 5% to 23%
+  ([Boattails faster than sound](#boattails-faster-than-sound)).
 - **Boattails.** [N09] eq. 3.88 writes `A_base/A_boattail` without defining the areas, and p. 48
   says a zero-length boattail drags like "the total base drag". Taking `A_base` as the aft base
   would count that base twice and leave out the uncovered ring (annulus), so hpr reads both as the
   boattail's decrease in area (Calisto's boattail: 0.052, against 0.046 the other way). The joint
   angle is `atan(dr/dx)` at the aft end, `±π/2` where a curved transition ends in a blunt tip.
-  From Mach 0.8 a boattail's drag rises to its supersonic wave drag, and a lip just behind it
-  is in its wake ([Boattails faster than sound](#boattails-faster-than-sound)).
+  A lip (a short step up or flare) just behind a boattail or a step down is in its wake at every
+  speed, and from Mach 0.8 a boattail's drag rises to its supersonic wave drag
+  ([Boattails faster than sound](#boattails-faster-than-sound)).
 - **Base drag under power** subtracts the thrusting motors' cross-section from the aft base, down
   to zero ([N09] p. 50: "if the base is the same size as the motor itself, no base drag";
   [Loft lesson L13](../decisions-and-roadmap.md#l13)).
@@ -730,7 +735,9 @@ the rule gives long, gentle boattails almost nothing. Steeper boattails in a thi
 measured with one, the Arcas Robin, reads high too. So [M1.8b3](../decisions-and-roadmap.md#m1-8b3)'s
 targets were not met: none of the Arcas Robin's 11 fins-off readings from Mach 1.5 is within 10%,
 and 8 of Calisto's 17 supersonic rows against RASAero II are. No whole flight in the validation
-suite uses this model yet: none of its boattailed rockets passes Mach 0.8.
+suite uses this model yet: none of its boattailed rockets passes Mach 0.8. The rules for a
+boattail drawn in parts, a lip in its wake and the gaps between (the last three rows of the table)
+apply at every speed, and are judgements that no measurement checks but the Arcas Robin's lip.
 
 In the table, a boattail runs from diameter `d₁` to `d₂` over its length `l`; `a = (d₂/d₁)²` is its
 area ratio, `θ = atan((d₁ − d₂)/(2l))` its half-angle (the cone through the same ends; curved
@@ -747,9 +754,9 @@ were made with no motor exhaust.
 | separation | between 16° and 30°, a straight-line blend in `θ` from the attached value to the base drag on the annulus, `(C_D•)_base(1 − a)`, where [flow separates](../glossary.md#flow-separation) | [C57] pp. 6, 8 |
 | through Mach 1 | the rule to Mach 0.8, where the buildup's other transonic terms start; a straight line to Mach 1; from there the attached drag held at its Mach 1.2 value to Mach 1.2 | [N09] p. 47, [762] p. 5-47 |
 | base behind a boattail | from Mach 2.5, `p_cyl/p_bt = 0.442 + 0.558 a_b`, with the cylinder's pressure from Love's correlation of measured bases, turned into the ratio of the two base-pressure coefficients, `k = (1 − p_bt/p)/(1 − p_cyl/p)`, which multiplies hpr's own base drag; below Mach 2.5, `k` at Mach 2.5; back to 1 between Mach 1 and 0.8; none for a separated boattail | [762] Figs. 5-139, 5-141, pp. 5-208, 5-210 |
-| a lip in its wake | a lip behind a boattail or a step down (a boattail of no length), drawn as a shoulder, a step up or both, in one part or several, loses its pressure drag while its top rises up to a quarter of the boattail's drop in diameter above the boattail's end, keeps all of it from half, and a straight-line share between; a lip in parts takes at each part the smallest share any top so far leaves; the base behind it takes the same share of the relief, less the lip's length's fade. So a motor retainer behind the step down to its motor tube loses much of its step's drag: a 98 mm airframe stepping down to a 54 mm motor tube showing for 12 mm, then a 62 mm retainer, reads 15% to 23% lower from Mach 0.3 to 2.5 than with the retainer in the free stream | [D4014] p. 6, [R22] slide 2; the quarter and half are a judgement |
-| a boattail in parts | a narrowing part after another drags, as its share of the boattail it continues, as the cone from that boattail's start through its aft end less the cone through its fore end (never below 0); so parts of one straight cone add up to one cone. Its drag is that share for a turn of up to 3° between the parts, its own drag as a boattail from 10° (a corner), and a straight-line blend of the two between; a part shallower than 1° merges only in proportion to its angle. This holds at every speed, so below Mach 0.8 a curved boattail in parts drags as the cones through its ends, not part by part as eq. 3.88 would | a judgement |
-| gaps and steps | the flow behind the boattails is shared among them, and each keeps its share faded over one drop in diameter by what follows it: a tube's, a lip's or a part's length, a step's or a narrowing part's drop in diameter. A narrowing part takes over the share it merges with, fades the rest as a step and a tube, and takes what no boattail then holds as its own; a step down does the same as a boattail of no length. The base and each lip add the boattails' shares. So a part narrowing by nothing drags as a tube, a part of no length as a step, and a small change in any radius or length changes the drag a little | a judgement |
+| a lip in its wake | a lip behind a boattail or a step down (a boattail of no length), drawn as a shoulder, a step up or both, in one part or several, loses its pressure drag while its top rises up to a quarter of the boattail's drop in diameter above the boattail's end, keeps all of it from half, and a straight-line share between; a lip in parts takes at each part the smallest share any top so far leaves; the base behind it takes the same share of the relief, less the lip's length's fade. A lip's rise is its top diameter less the boattail's aft diameter. So a motor retainer behind the step down to its motor tube loses much of its step's drag: behind a 98 mm airframe stepping down to a 54 mm motor tube, a 62 mm retainer rises 8 mm, 0.18 of the 44 mm drop, so its rise alone would shelter it wholly, and the 12 mm of motor tube ahead of it fades that by 12/44: its step keeps 27% of its drag (`a_retainer_behind_a_step_down_is_in_its_wake`), and the rocket's `C_D0` reads 15% to 23% lower from Mach 0.3 to 2.5 than with the retainer's step in full (the physics review's measurement; unmeasured in any tunnel) | [D4014] p. 6, [R22] slide 2; the quarter and half are a judgement |
+| a boattail in parts | a narrowing part after another drags, as its share of the boattail it continues, as the cone from that boattail's start through its aft end less the cone through its fore end (never below 0); so parts of one straight cone add up to one cone. Its drag is that share for a turn of up to 3° between the parts, its own drag as a boattail from 10° (a corner), and a straight-line blend of the two between (the *turn* is the difference of the two parts' half-angles); when either part is shallower than 1°, the merge is scaled by the smaller angle over the larger (the larger taken as at most 1°), so a part narrowing by almost nothing acts as a tube and a straight cone of any angle drawn in parts merges wholly. This holds at every speed, so below Mach 0.8 a curved boattail in parts drags as the cones through its ends, not part by part as eq. 3.88 would | a judgement |
+| gaps and steps | whatever lies between a boattail and what follows weakens its effect in a straight line, gone once the gaps add up to one of the boattail's drops in diameter; gaps add: the lengths of tubes, lips and parts, and the drops in diameter of steps down and narrowing parts. With several boattails ahead, the flow is shared among them: a narrowing part takes over the share it merges with, and takes what no boattail holds as its own; a step down counts as a boattail of no length. The base and each lip add the boattails' shares. So a part narrowing by nothing drags as a tube, a part of no length as a step, and a small change in any radius or length changes the drag a little | a judgement |
 
 Why each piece is there:
 
@@ -1185,6 +1192,18 @@ is in the join. Nothing past Mach 4.63 has been checked, though the model runs t
   the 2D limit; separation from 16° to 30°; the base-pressure ratio on Fig. 5-141's line; and
   every boattail from 1° to 89° finite and non-negative to Mach 5. The comparison with measured
   boattails and Jack's theory is `tests::boattails_against_measurements`.
+- **Boattails in parts, wakes and gaps** (`drag::tests`): a boattail split in two drags as one
+  (`a_boattail_split_in_two_drags_as_one`), and so does a cone under 1° in 2 or 8 parts but for a
+  share held at 0 (`a_shallow_cone_in_parts_is_one_cone`); a corner keeps two parts apart and the
+  merge is continuous in the turn (`a_sharp_corner_keeps_its_boattails_apart`); a pair drags
+  between its two limits (`soft_merges_stay_between_their_limits`); a partial merge shares the
+  flow (`a_partial_merge_shares_the_flow`); a change of `ε` in any radius or length behind 2° to
+  14° boattails moves the drag in proportion to `ε`
+  (`a_part_narrowing_by_nothing_is_a_tube_and_one_of_no_length_a_step`); a lip's wake by its rise
+  and its gaps (`a_lip_in_a_boattails_wake_fades_with_its_rise`, `a_lip_drawn_as_a_step_up_is_a_lip`,
+  `a_hairline_step_before_a_lip_changes_nothing`); a retainer behind a step down
+  (`a_retainer_behind_a_step_down_is_in_its_wake`); and a 40-part zigzag keeps its tails few
+  (`a_zigzag_boattail_keeps_its_tails_few`).
 - **Tables** (`table::tests`): RocketPy's quirks (`\r\n`, `01.05`, a repeated row), a byte-order
   mark, quoted fields and trailing commas, RASAero II's header with rows at 2° and 4° skipped, and
   malformed text (a bad first row, repeated or unsorted Mach numbers, `nan`) by line.

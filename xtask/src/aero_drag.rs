@@ -411,10 +411,12 @@ mod tests {
         let committed: serde_json::Value =
             serde_json::from_str(&std::fs::read_to_string(root.join(super::FIXTURE)).unwrap())
                 .unwrap();
+        let generated = super::generate(&root).unwrap();
         assert!(
-            crate::designs::same(&committed, &super::generate(&root).unwrap()),
-            "{} differs from `cargo xtask aero`",
-            super::FIXTURE
+            crate::designs::same(&committed, &generated),
+            "{} differs from `cargo xtask aero`: {:?}",
+            super::FIXTURE,
+            crate::designs::difference(&committed, &generated)
         );
     }
 }

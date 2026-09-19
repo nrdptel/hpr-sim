@@ -514,7 +514,7 @@
         "flow": "attached",
         "half_angle_deg": 3.0102772838338776,
         "hpr": 0.013224853887600066,
-        "hpr_attached": 0.03418116106724567,
+        "hpr_attached": 0.03418116106724369,
         "length_ratio": 0.599,
         "mach": 1.0,
         "notes": "from its ref. 1 (Compton and Runckel, NASA TM X-1960), Langley 16-ft transonic tunnel; the 3-degree boattail of Fig. 4 (printed p. 18), 0.6 d along its surface; jet off, the measured (open) symbols; an unfaired point, whose level near Mach 1 the report calls questionable (strut interference, reflected bow shock; p. 9)",
@@ -617,12 +617,12 @@
         "area_ratio": 0.8779690000000001,
         "cd": 0.0099,
         "diameter_ratio": 0.937,
-        "error": -0.20704174395694186,
+        "error": -0.20704174395693997,
         "figure": "Fig. 12, printed p. 33",
         "flow": "attached",
         "half_angle_deg": 3.0102772838338776,
-        "hpr": 0.007850286734826276,
-        "hpr_attached": 0.007850286734826276,
+        "hpr": 0.007850286734826295,
+        "hpr_attached": 0.007850286734826295,
         "length_ratio": 0.599,
         "mach": 1.83,
         "notes": "Langley 4x4-ft supersonic tunnel; Reynolds number 14.70e6/m at Mach 1.83 and 12.20e6/m at 2.20, grit 2.54 cm from the nose, boundary layer about 0.1 d thick (pp. 4-7); the 3-degree boattail of Fig. 4 (printed p. 18), 0.6 d along its surface; jet off, the measured (open) symbols",
@@ -635,12 +635,12 @@
         "area_ratio": 0.8779690000000001,
         "cd": 0.0061,
         "diameter_ratio": 0.937,
-        "error": -0.0012373936931374674,
+        "error": -0.0012373936928943285,
         "figure": "Fig. 12, printed p. 33",
         "flow": "attached",
         "half_angle_deg": 3.0102772838338776,
-        "hpr": 0.006092451898471862,
-        "hpr_attached": 0.006092451898471862,
+        "hpr": 0.006092451898473345,
+        "hpr_attached": 0.006092451898473345,
         "length_ratio": 0.599,
         "mach": 2.2,
         "notes": "Langley 4x4-ft supersonic tunnel; Reynolds number 14.70e6/m at Mach 1.83 and 12.20e6/m at 2.20, grit 2.54 cm from the nose, boundary layer about 0.1 d thick (pp. 4-7); the 3-degree boattail of Fig. 4 (printed p. 18), 0.6 d along its surface; jet off, the measured (open) symbols",
@@ -820,7 +820,7 @@
         "flow": "attached",
         "half_angle_deg": 5.017283935641358,
         "hpr": 0.03680045196016321,
-        "hpr_attached": 0.07849364783094362,
+        "hpr_attached": 0.0784936478309437,
         "length_ratio": 0.598,
         "mach": 1.0,
         "notes": "from its ref. 1 (Compton and Runckel, NASA TM X-1960), Langley 16-ft transonic tunnel; the 5-degree boattail of Fig. 4 (printed p. 18), 0.6 d along its surface; jet off, the measured (open) symbols; an unfaired point, whose level near Mach 1 the report calls questionable (strut interference, reflected bow shock; p. 9)",
@@ -905,12 +905,12 @@
         "area_ratio": 0.801025,
         "cd": 0.0192,
         "diameter_ratio": 0.895,
-        "error": 0.0651423851502313,
+        "error": 0.06514238515050064,
         "figure": "Fig. 12, printed p. 33",
         "flow": "attached",
         "half_angle_deg": 5.017283935641358,
-        "hpr": 0.020450733794884438,
-        "hpr_attached": 0.020450733794884438,
+        "hpr": 0.02045073379488961,
+        "hpr_attached": 0.02045073379488961,
         "length_ratio": 0.598,
         "mach": 1.83,
         "notes": "Langley 4x4-ft supersonic tunnel; Reynolds number 14.70e6/m at Mach 1.83 and 12.20e6/m at 2.20, grit 2.54 cm from the nose, boundary layer about 0.1 d thick (pp. 4-7); the 5-degree boattail of Fig. 4 (printed p. 18), 0.6 d along its surface; jet off, the measured (open) symbols",
@@ -923,12 +923,12 @@
         "area_ratio": 0.801025,
         "cd": 0.0123,
         "diameter_ratio": 0.895,
-        "error": 0.2833487909037138,
+        "error": 0.28334879090373843,
         "figure": "Fig. 12, printed p. 33",
         "flow": "attached",
         "half_angle_deg": 5.017283935641358,
-        "hpr": 0.01578519012811568,
-        "hpr_attached": 0.01578519012811568,
+        "hpr": 0.015785190128115984,
+        "hpr_attached": 0.015785190128115984,
         "length_ratio": 0.598,
         "mach": 2.2,
         "notes": "Langley 4x4-ft supersonic tunnel; Reynolds number 14.70e6/m at Mach 1.83 and 12.20e6/m at 2.20, grit 2.54 cm from the nose, boundary layer about 0.1 d thick (pp. 4-7); the 5-degree boattail of Fig. 4 (printed p. 18), 0.6 d along its surface; jet off, the measured (open) symbols",
@@ -1229,12 +1229,12 @@
         "area_ratio": 0.627264,
         "cd": 0.0439,
         "diameter_ratio": 0.792,
-        "error": 0.19198560336443848,
+        "error": 0.19198560336443804,
         "figure": "Fig. 12, printed p. 33",
         "flow": "attached",
         "half_angle_deg": 9.996899588948816,
-        "hpr": 0.05232816798769885,
-        "hpr_attached": 0.05232816798769885,
+        "hpr": 0.05232816798769883,
+        "hpr_attached": 0.05232816798769883,
         "length_ratio": 0.59,
         "mach": 2.2,
         "notes": "Langley 4x4-ft supersonic tunnel; Reynolds number 14.70e6/m at Mach 1.83 and 12.20e6/m at 2.20, grit 2.54 cm from the nose, boundary layer about 0.1 d thick (pp. 4-7); the 10-degree boattail of Fig. 4 (printed p. 18), 0.6 d along its surface; jet off, the measured (open) symbols",
@@ -1535,12 +1535,12 @@
         "area_ratio": 0.839056,
         "cd": 0.0075,
         "diameter_ratio": 0.916,
-        "error": 0.06970508548075349,
+        "error": 0.06970508548100995,
         "figure": "Fig. 12, printed p. 33",
         "flow": "attached",
         "half_angle_deg": 3.0052693596899327,
-        "hpr": 0.008022788141105651,
-        "hpr_attached": 0.008022788141105651,
+        "hpr": 0.008022788141107575,
+        "hpr_attached": 0.008022788141107575,
         "length_ratio": 0.8,
         "mach": 2.2,
         "notes": "Langley 4x4-ft supersonic tunnel; Reynolds number 14.70e6/m at Mach 1.83 and 12.20e6/m at 2.20, grit 2.54 cm from the nose, boundary layer about 0.1 d thick (pp. 4-7); the 3.3-degree boattail of Fig. 4 (printed p. 18), 0.8 d along its surface; jet off, the measured (open) symbols",
@@ -3101,12 +3101,12 @@
         "area_ratio": 0.7224999999999999,
         "cd": 0.12,
         "diameter_ratio": 0.85,
-        "error": 0.26443248068006486,
+        "error": 0.264432480680066,
         "figure": "Fig. 9, printed pp. 51-53",
         "flow": "attached",
         "half_angle_deg": 16.090816348852172,
-        "hpr": 0.15173189768160777,
-        "hpr_attached": 0.15234511963609212,
+        "hpr": 0.1517318976816079,
+        "hpr_attached": 0.15234511963609226,
         "length_ratio": 0.26,
         "mach": 1.2,
         "notes": "Reynolds number 3.4e6 to 4.8e6/ft; turbulent, the boundary layer about 0.4 in (0.20 d) thick 5.5 in ahead of the base (p. 5, from its ref. 1); no jet flow, the nozzle open; drag on the boattail's surface only (p. 2)",
@@ -3119,12 +3119,12 @@
         "area_ratio": 0.48999999999999994,
         "cd": 0.1,
         "diameter_ratio": 0.7,
-        "error": 0.06639441813304003,
+        "error": 0.06639441813304026,
         "figure": "Fig. 9, printed pp. 51-53",
         "flow": "separated",
         "half_angle_deg": 29.981639368849336,
-        "hpr": 0.10663944181330401,
-        "hpr_attached": 0.4031997802944394,
+        "hpr": 0.10663944181330402,
+        "hpr_attached": 0.4031997802944522,
         "length_ratio": 0.26,
         "mach": 1.2,
         "notes": "Reynolds number 3.4e6 to 4.8e6/ft; turbulent, the boundary layer about 0.4 in (0.20 d) thick 5.5 in ahead of the base (p. 5, from its ref. 1); no jet flow, the nozzle open; drag on the boattail's surface only (p. 2)",
@@ -3137,12 +3137,12 @@
         "area_ratio": 0.30250000000000005,
         "cd": 0.15,
         "diameter_ratio": 0.55,
-        "error": -0.02769920699634476,
+        "error": -0.02769920699634465,
         "figure": "Fig. 9, printed pp. 51-53",
         "flow": "separated",
         "half_angle_deg": 29.981639368849333,
-        "hpr": 0.14584511895054827,
-        "hpr_attached": 0.5514349936379833,
+        "hpr": 0.1458451189505483,
+        "hpr_attached": 0.5514349936380005,
         "length_ratio": 0.39,
         "mach": 1.2,
         "notes": "Reynolds number 3.4e6 to 4.8e6/ft; turbulent, the boundary layer about 0.4 in (0.20 d) thick 5.5 in ahead of the base (p. 5, from its ref. 1); no jet flow, the nozzle open; drag on the boattail's surface only (p. 2)",
@@ -3160,7 +3160,7 @@
         "flow": "separated",
         "half_angle_deg": 44.37040139158973,
         "hpr": 0.1453125,
-        "hpr_attached": 0.6394056726792312,
+        "hpr_attached": 0.6394056726792359,
         "length_ratio": 0.23,
         "mach": 1.2,
         "notes": "Reynolds number 3.4e6 to 4.8e6/ft; turbulent, the boundary layer about 0.4 in (0.20 d) thick 5.5 in ahead of the base (p. 5, from its ref. 1); no jet flow, the nozzle open; drag on the boattail's surface only (p. 2)",
@@ -3484,7 +3484,7 @@
         "flow": "attached",
         "half_angle_deg": 16.090816348852172,
         "hpr": 0.2744227822470461,
-        "hpr_attached": 0.42358408713948126,
+        "hpr_attached": 0.4235840871394816,
         "length_ratio": 0.52,
         "mach": 1.0,
         "notes": "Reynolds number 3.4e6 to 4.8e6/ft; turbulent, the boundary layer about 0.4 in (0.20 d) thick 5.5 in ahead of the base (p. 5, from its ref. 1); no jet flow, the nozzle open; drag on the boattail's surface only (p. 2)",
@@ -3610,7 +3610,7 @@
         "flow": "attached",
         "half_angle_deg": 16.09081634885217,
         "hpr": 0.3209644575595395,
-        "hpr_attached": 0.5793135309407613,
+        "hpr_attached": 0.5793135309407611,
         "length_ratio": 0.78,
         "mach": 1.0,
         "notes": "Reynolds number 3.4e6 to 4.8e6/ft; turbulent, the boundary layer about 0.4 in (0.20 d) thick 5.5 in ahead of the base (p. 5, from its ref. 1); no jet flow, the nozzle open; drag on the boattail's surface only (p. 2); the two models disagree",
@@ -4377,19 +4377,19 @@
         },
         {
           "band": "supersonic",
-          "error": 1.0495202158721675,
+          "error": 1.049520215872131,
           "fins": "on",
           "hpr_base": 0.02564795553308345,
           "hpr_forebody_by_part": {
-            "boattail": 0.07787635959216255,
+            "boattail": 0.0778763595921529,
             "body": 0.09647042544578101,
             "fins": 0.29858567391562185,
             "lip": 0.00010604346357641615,
             "nose": 0.06782988255152322
           },
-          "hpr_forebody_c_d": 0.5408683849686651,
+          "hpr_forebody_c_d": 0.5408683849686554,
           "hpr_friction": 0.14267386482613673,
-          "hpr_pressure": 0.3981945201425283,
+          "hpr_pressure": 0.39819452014251866,
           "mach": 2.96,
           "reference_forebody_c_a": 0.2639,
           "reference_uncertainty": 0.0026,
@@ -4398,18 +4398,18 @@
         },
         {
           "band": "supersonic",
-          "error": 0.19351089188691217,
+          "error": 0.19351089188686466,
           "fins": "off",
           "hpr_base": 0.02564795553308345,
           "hpr_forebody_by_part": {
-            "boattail": 0.07787635959216255,
+            "boattail": 0.0778763595921529,
             "body": 0.09647042544578101,
             "lip": 0.00010604346357641615,
             "nose": 0.06782988255152322
           },
-          "hpr_forebody_c_d": 0.2422827110530432,
+          "hpr_forebody_c_d": 0.24228271105303356,
           "hpr_friction": 0.11964150796912944,
-          "hpr_pressure": 0.12264120308391376,
+          "hpr_pressure": 0.12264120308390411,
           "mach": 2.96,
           "reference_forebody_c_a": 0.203,
           "reference_uncertainty": 0.0029,
@@ -4418,19 +4418,19 @@
         },
         {
           "band": "supersonic",
-          "error": 1.396752876495532,
+          "error": 1.3967528764955106,
           "fins": "on",
           "hpr_base": 0.02290421456595041,
           "hpr_forebody_by_part": {
-            "boattail": 0.050907451897434106,
+            "boattail": 0.05090745189742971,
             "body": 0.07781381410182413,
             "fins": 0.29991362771584373,
             "lip": 0.00008553550296185283,
             "nose": 0.06405196218941756
           },
-          "hpr_forebody_c_d": 0.4927723914074814,
+          "hpr_forebody_c_d": 0.492772391407477,
           "hpr_friction": 0.11508187657998262,
-          "hpr_pressure": 0.37769051482749877,
+          "hpr_pressure": 0.3776905148274944,
           "mach": 3.96,
           "reference_forebody_c_a": 0.2056,
           "reference_uncertainty": 0.0026,
@@ -4439,18 +4439,18 @@
         },
         {
           "band": "supersonic",
-          "error": 0.24104738540307347,
+          "error": 0.24104738540304527,
           "fins": "off",
           "hpr_base": 0.02290421456595041,
           "hpr_forebody_by_part": {
-            "boattail": 0.050907451897434106,
+            "boattail": 0.05090745189742971,
             "body": 0.07781381410182413,
             "lip": 0.00008553550296185283,
             "nose": 0.06405196218941756
           },
-          "hpr_forebody_c_d": 0.19285876369163762,
+          "hpr_forebody_c_d": 0.19285876369163324,
           "hpr_friction": 0.09650379395500941,
-          "hpr_pressure": 0.09635496973662822,
+          "hpr_pressure": 0.09635496973662383,
           "mach": 3.96,
           "reference_forebody_c_a": 0.1554,
           "reference_uncertainty": 0.0029,
@@ -4459,19 +4459,19 @@
         },
         {
           "band": "supersonic",
-          "error": 1.5403150093559979,
+          "error": 1.5403150093559823,
           "fins": "on",
           "hpr_base": 0.020690941473966613,
           "hpr_forebody_by_part": {
-            "boattail": 0.04003183894342701,
+            "boattail": 0.040031838943424124,
             "body": 0.0681297033124321,
             "fins": 0.2995971684334006,
             "lip": 0.00007489040997071598,
             "nose": 0.0621246756316292
           },
-          "hpr_forebody_c_d": 0.4699582767308596,
+          "hpr_forebody_c_d": 0.4699582767308567,
           "hpr_friction": 0.10075966842818396,
-          "hpr_pressure": 0.36919860830267565,
+          "hpr_pressure": 0.36919860830267276,
           "mach": 4.63,
           "reference_forebody_c_a": 0.185,
           "reference_uncertainty": 0.0026,
@@ -4480,18 +4480,18 @@
         },
         {
           "band": "supersonic",
-          "error": 0.22561948415438127,
+          "error": 0.22561948415436062,
           "fins": "off",
           "hpr_base": 0.020690941473966613,
           "hpr_forebody_by_part": {
-            "boattail": 0.04003183894342701,
+            "boattail": 0.040031838943424124,
             "body": 0.0681297033124321,
             "lip": 0.00007489040997071598,
             "nose": 0.0621246756316292
           },
-          "hpr_forebody_c_d": 0.170361108297459,
+          "hpr_forebody_c_d": 0.17036110829745613,
           "hpr_friction": 0.08449367154879948,
-          "hpr_pressure": 0.08586743674865953,
+          "hpr_pressure": 0.08586743674865664,
           "mach": 4.63,
           "reference_forebody_c_a": 0.139,
           "reference_uncertainty": 0.0029,
@@ -4794,19 +4794,19 @@
         },
         {
           "band": "supersonic",
-          "error": 0.9034154516521069,
+          "error": 0.9034154516520749,
           "fins": "on",
           "hpr_base": 0.02564795553308345,
           "hpr_forebody_by_part": {
-            "boattail": 0.07766138354208817,
+            "boattail": 0.07766138354207852,
             "body": 0.13059768495570553,
             "fins": 0.29762440583809496,
             "lip": 0.00010098031718076514,
             "nose": 0.06694359629421474
           },
-          "hpr_forebody_c_d": 0.5729280509472842,
+          "hpr_forebody_c_d": 0.5729280509472745,
           "hpr_friction": 0.17473353080475584,
-          "hpr_pressure": 0.3981945201425283,
+          "hpr_pressure": 0.39819452014251866,
           "mach": 2.96,
           "reference_forebody_c_a": 0.301,
           "reference_uncertainty": 0.0026,
@@ -4815,18 +4815,18 @@
         },
         {
           "band": "supersonic",
-          "error": 0.16555311223196112,
+          "error": 0.16555311223192049,
           "fins": "off",
           "hpr_base": 0.02564795553308345,
           "hpr_forebody_by_part": {
-            "boattail": 0.07766138354208817,
+            "boattail": 0.07766138354207852,
             "body": 0.13059768495570553,
             "lip": 0.00010098031718076514,
             "nose": 0.06694359629421474
           },
-          "hpr_forebody_c_d": 0.2753036451091892,
+          "hpr_forebody_c_d": 0.2753036451091796,
           "hpr_friction": 0.15266244202527546,
-          "hpr_pressure": 0.12264120308391376,
+          "hpr_pressure": 0.12264120308390411,
           "mach": 2.96,
           "reference_forebody_c_a": 0.2362,
           "reference_uncertainty": 0.0031,
@@ -4835,19 +4835,19 @@
         },
         {
           "band": "supersonic",
-          "error": 1.2144832345173375,
+          "error": 1.2144832345173189,
           "fins": "on",
           "hpr_base": 0.02290421456595041,
           "hpr_forebody_by_part": {
-            "boattail": 0.05073405050193353,
+            "boattail": 0.05073405050192914,
             "body": 0.10534113364083124,
             "fins": 0.2991382612225268,
             "lip": 0.00008145152872227682,
             "nose": 0.06333707662994664
           },
-          "hpr_forebody_c_d": 0.5186319735239604,
+          "hpr_forebody_c_d": 0.5186319735239561,
           "hpr_friction": 0.14094145869646169,
-          "hpr_pressure": 0.37769051482749877,
+          "hpr_pressure": 0.3776905148274944,
           "mach": 3.96,
           "reference_forebody_c_a": 0.2342,
           "reference_uncertainty": 0.0026,
@@ -4856,18 +4856,18 @@
         },
         {
           "band": "supersonic",
-          "error": 0.15888971648064243,
+          "error": 0.15888971648061934,
           "fins": "off",
           "hpr_base": 0.02290421456595041,
           "hpr_forebody_by_part": {
-            "boattail": 0.05073405050193353,
+            "boattail": 0.05073405050192914,
             "body": 0.10534113364083124,
             "lip": 0.00008145152872227682,
             "nose": 0.06333707662994664
           },
-          "hpr_forebody_c_d": 0.2194937123014337,
+          "hpr_forebody_c_d": 0.2194937123014293,
           "hpr_friction": 0.12313874256480548,
-          "hpr_pressure": 0.09635496973662822,
+          "hpr_pressure": 0.09635496973662383,
           "mach": 3.96,
           "reference_forebody_c_a": 0.1894,
           "reference_uncertainty": 0.0026,
@@ -4876,19 +4876,19 @@
         },
         {
           "band": "supersonic",
-          "error": 1.3312805181938443,
+          "error": 1.3312805181938305,
           "fins": "on",
           "hpr_base": 0.020690941473966613,
           "hpr_forebody_by_part": {
-            "boattail": 0.03988001775633089,
+            "boattail": 0.039880017756328004,
             "body": 0.09223118368357747,
             "fins": 0.29891829810995185,
             "lip": 0.00007131469585761731,
             "nose": 0.06149875924864145
           },
-          "hpr_forebody_c_d": 0.49259957349435923,
+          "hpr_forebody_c_d": 0.49259957349435635,
           "hpr_friction": 0.12340096519168357,
-          "hpr_pressure": 0.36919860830267565,
+          "hpr_pressure": 0.36919860830267276,
           "mach": 4.63,
           "reference_forebody_c_a": 0.2113,
           "reference_uncertainty": 0.0031,
@@ -4897,18 +4897,18 @@
         },
         {
           "band": "supersonic",
-          "error": 0.1752504574296565,
+          "error": 0.17525045742963918,
           "fins": "off",
           "hpr_base": 0.020690941473966613,
           "hpr_forebody_by_part": {
-            "boattail": 0.03988001775633089,
+            "boattail": 0.039880017756328004,
             "body": 0.09223118368357747,
             "lip": 0.00007131469585761731,
             "nose": 0.06149875924864145
           },
-          "hpr_forebody_c_d": 0.1936812753844074,
+          "hpr_forebody_c_d": 0.19368127538440452,
           "hpr_friction": 0.10781383863574788,
-          "hpr_pressure": 0.08586743674865953,
+          "hpr_pressure": 0.08586743674865664,
           "mach": 4.63,
           "reference_forebody_c_a": 0.1648,
           "reference_uncertainty": 0.0026,
@@ -5165,9 +5165,9 @@
       {
         "area_ratio": 0.7000000000000001,
         "cd": 0.0738,
-        "error": 0.11360644626367788,
+        "error": 0.11360644626381,
         "half_angle_deg": 11.0,
-        "hpr": 0.08218415573425944,
+        "hpr": 0.08218415573426918,
         "length_ratio": 0.42015565823130274,
         "mach": 1.5,
         "x": 1.330499740806059
@@ -5215,9 +5215,9 @@
       {
         "area_ratio": 0.7999999999999999,
         "cd": 0.0506,
-        "error": 0.08279520071488267,
+        "error": 0.08279520071501212,
         "half_angle_deg": 11.000000000000002,
-        "hpr": 0.05478943715617306,
+        "hpr": 0.054789437156179614,
         "length_ratio": 0.2715625092593247,
         "mach": 1.5,
         "x": 2.0585205074869974
@@ -5225,9 +5225,9 @@
       {
         "area_ratio": 0.7999999999999999,
         "cd": 0.0419,
-        "error": 0.11272592867324027,
+        "error": 0.11272592867324094,
         "half_angle_deg": 9.0,
-        "hpr": 0.04662321641140877,
+        "hpr": 0.0466232164114088,
         "length_ratio": 0.3332802413663902,
         "mach": 1.5,
         "x": 1.677318139482486
@@ -5235,9 +5235,9 @@
       {
         "area_ratio": 0.7999999999999999,
         "cd": 0.0324,
-        "error": 0.16468439499484488,
+        "error": 0.16468439499484688,
         "half_angle_deg": 7.0,
-        "hpr": 0.037735774397832975,
+        "hpr": 0.03773577439783304,
         "length_ratio": 0.42991076493553965,
         "mach": 1.5,
         "x": 1.3003093664304168
@@ -5495,9 +5495,9 @@
       {
         "area_ratio": 0.6000000000000001,
         "cd": 0.047,
-        "error": 0.05995033360573654,
+        "error": 0.05995033360569613,
         "half_angle_deg": 11.0,
-        "hpr": 0.04981766567946962,
+        "hpr": 0.049817665679467715,
         "length_ratio": 0.5797998052334054,
         "mach": 2.5,
         "x": 1.9759301631323716
@@ -5505,9 +5505,9 @@
       {
         "area_ratio": 0.6000000000000001,
         "cd": 0.0389,
-        "error": 0.08002216107718785,
+        "error": 0.0800221610772327,
         "half_angle_deg": 9.0,
-        "hpr": 0.0420128620659026,
+        "hpr": 0.04201286206590435,
         "length_ratio": 0.711570310494692,
         "mach": 2.5,
         "x": 1.6100220973841572
@@ -5555,9 +5555,9 @@
       {
         "area_ratio": 0.7000000000000001,
         "cd": 0.0301,
-        "error": 0.07680538246692414,
+        "error": 0.076805382466967,
         "half_angle_deg": 9.0,
-        "hpr": 0.032411842012254416,
+        "hpr": 0.03241184201225571,
         "length_ratio": 0.515644002438731,
         "mach": 2.5,
         "x": 2.221773002925765
@@ -5565,9 +5565,9 @@
       {
         "area_ratio": 0.7000000000000001,
         "cd": 0.0235,
-        "error": 0.1268659369034697,
+        "error": 0.12686593690344816,
         "half_angle_deg": 7.0,
-        "hpr": 0.02648134951723154,
+        "hpr": 0.02648134951723103,
         "length_ratio": 0.6651486647213333,
         "mach": 2.5,
         "x": 1.7223877675811499
@@ -5605,9 +5605,9 @@
       {
         "area_ratio": 0.7999999999999999,
         "cd": 0.0205,
-        "error": 0.05404364267494066,
+        "error": 0.05404364267498285,
         "half_angle_deg": 9.0,
-        "hpr": 0.021607894674836287,
+        "hpr": 0.02160789467483715,
         "length_ratio": 0.3332802413663902,
         "mach": 2.5,
         "x": 3.4374792788255975
@@ -5615,9 +5615,9 @@
       {
         "area_ratio": 0.7999999999999999,
         "cd": 0.0162,
-        "error": 0.09386174588729501,
+        "error": 0.09386174588729346,
         "half_angle_deg": 7.0,
-        "hpr": 0.017720560283374178,
+        "hpr": 0.017720560283374154,
         "length_ratio": 0.42991076493553965,
         "mach": 2.5,
         "x": 2.66484121166572
@@ -5625,9 +5625,9 @@
       {
         "area_ratio": 0.7999999999999999,
         "cd": 0.0113,
-        "error": 0.18111976004402663,
+        "error": 0.18111976004402286,
         "half_angle_deg": 4.999999999999999,
-        "hpr": 0.0133466532884975,
+        "hpr": 0.013346653288497459,
         "length_ratio": 0.6033513643101976,
         "mach": 2.5,
         "x": 1.8988005853749201
@@ -5695,9 +5695,9 @@
       {
         "area_ratio": 0.29999999999999993,
         "cd": 0.0484,
-        "error": -0.002703681580493278,
+        "error": -0.002703681580717099,
         "half_angle_deg": 11.000000000000002,
-        "hpr": 0.04826914181150412,
+        "hpr": 0.04826914181149329,
         "length_ratio": 1.1633828665597894,
         "mach": 3.5,
         "x": 1.4415297245042022
@@ -5745,9 +5745,9 @@
       {
         "area_ratio": 0.35,
         "cd": 0.0457,
-        "error": -0.01636446577053685,
+        "error": -0.01636446577061057,
         "half_angle_deg": 11.0,
-        "hpr": 0.044952143914286466,
+        "hpr": 0.044952143914283094,
         "length_ratio": 1.0504974076378606,
         "mach": 3.5,
         "x": 1.5964351467519038
@@ -5795,9 +5795,9 @@
       {
         "area_ratio": 0.4,
         "cd": 0.0429,
-        "error": -0.02687621615688285,
+        "error": -0.026876216156867305,
         "half_angle_deg": 11.0,
-        "hpr": 0.04174701032686973,
+        "hpr": 0.04174701032687039,
         "length_ratio": 0.945426184361912,
         "mach": 3.5,
         "x": 1.773857135400496
@@ -5805,9 +5805,9 @@
       {
         "area_ratio": 0.4,
         "cd": 0.0362,
-        "error": -0.02369263302129687,
+        "error": -0.023692633021517695,
         "half_angle_deg": 9.000000000000002,
-        "hpr": 0.035342326684629055,
+        "hpr": 0.03534232668462106,
         "length_ratio": 1.160292220666406,
         "mach": 3.5,
         "x": 1.4453694967993835
@@ -5845,9 +5845,9 @@
       {
         "area_ratio": 0.5000000000000001,
         "cd": 0.0368,
-        "error": 0.02092861866070428,
+        "error": 0.020928618660719156,
         "half_angle_deg": 11.0,
-        "hpr": 0.03757017316671392,
+        "hpr": 0.03757017316671447,
         "length_ratio": 0.7534024925486088,
         "mach": 3.5,
         "x": 2.2259695179023327
@@ -5855,9 +5855,9 @@
       {
         "area_ratio": 0.5000000000000001,
         "cd": 0.0313,
-        "error": 0.03501520882479836,
+        "error": 0.03501520882480147,
         "half_angle_deg": 9.0,
-        "hpr": 0.03239597603621619,
+        "hpr": 0.03239597603621629,
         "length_ratio": 0.9246275019607422,
         "mach": 3.5,
         "x": 1.8137584914665956
@@ -5865,9 +5865,9 @@
       {
         "area_ratio": 0.5000000000000001,
         "cd": 0.0248,
-        "error": 0.06468685405452002,
+        "error": 0.0646868540545158,
         "half_angle_deg": 7.0,
-        "hpr": 0.026404233980552094,
+        "hpr": 0.02640423398055199,
         "length_ratio": 1.192711920210661,
         "mach": 3.5,
         "x": 1.406082185234332
@@ -5895,9 +5895,9 @@
       {
         "area_ratio": 0.6000000000000001,
         "cd": 0.0302,
-        "error": 0.015899024638146964,
+        "error": 0.015899024638135195,
         "half_angle_deg": 11.0,
-        "hpr": 0.030680150544072037,
+        "hpr": 0.030680150544071683,
         "length_ratio": 0.5797998052334054,
         "mach": 3.5,
         "x": 2.892465585513133
@@ -5905,9 +5905,9 @@
       {
         "area_ratio": 0.6000000000000001,
         "cd": 0.0258,
-        "error": 0.028634864780248792,
+        "error": 0.028634864780251235,
         "half_angle_deg": 9.0,
-        "hpr": 0.02653877951133042,
+        "hpr": 0.02653877951133048,
         "length_ratio": 0.711570310494692,
         "mach": 3.5,
         "x": 2.3568310234289243
@@ -5915,9 +5915,9 @@
       {
         "area_ratio": 0.6000000000000001,
         "cd": 0.0206,
-        "error": 0.056662971247112504,
+        "error": 0.0566629712467297,
         "half_angle_deg": 7.0,
-        "hpr": 0.021767257207690516,
+        "hpr": 0.021767257207682633,
         "length_ratio": 0.9178814058583502,
         "mach": 3.5,
         "x": 1.8270889598820887
@@ -5945,9 +5945,9 @@
       {
         "area_ratio": 0.7000000000000001,
         "cd": 0.0231,
-        "error": -0.00006368770575304605,
+        "error": -0.00006368770573850213,
         "half_angle_deg": 11.0,
-        "hpr": 0.023098528813997102,
+        "hpr": 0.02309852881399744,
         "length_ratio": 0.42015565823130274,
         "mach": 3.5,
         "x": 3.9914992224181773
@@ -5955,9 +5955,9 @@
       {
         "area_ratio": 0.7000000000000001,
         "cd": 0.0199,
-        "error": 0.01959299674387971,
+        "error": 0.019592996743880597,
         "half_angle_deg": 9.0,
-        "hpr": 0.020289900635203206,
+        "hpr": 0.020289900635203226,
         "length_ratio": 0.515644002438731,
         "mach": 3.5,
         "x": 3.252342653445504
@@ -5965,9 +5965,9 @@
       {
         "area_ratio": 0.7000000000000001,
         "cd": 0.0159,
-        "error": 0.06354199979927522,
+        "error": 0.0635419997992599,
         "half_angle_deg": 7.0,
-        "hpr": 0.016910317796808478,
+        "hpr": 0.01691031779680823,
         "length_ratio": 0.6651486647213333,
         "mach": 3.5,
         "x": 2.521317522042158
@@ -5975,9 +5975,9 @@
       {
         "area_ratio": 0.7000000000000001,
         "cd": 0.0117,
-        "error": 0.09382421893461723,
+        "error": 0.09382421893542703,
         "half_angle_deg": 4.999999999999999,
-        "hpr": 0.012797743361535023,
+        "hpr": 0.012797743361544498,
         "length_ratio": 0.9334922199235832,
         "mach": 3.5,
         "x": 1.7965345048747463
@@ -5995,9 +5995,9 @@
       {
         "area_ratio": 0.7999999999999999,
         "cd": 0.0155,
-        "error": -0.006514889720554251,
+        "error": -0.006514889720539707,
         "half_angle_deg": 11.000000000000002,
-        "hpr": 0.01539901920933141,
+        "hpr": 0.015399019209331635,
         "length_ratio": 0.2715625092593247,
         "mach": 3.5,
         "x": 6.175561522460992
@@ -6005,9 +6005,9 @@
       {
         "area_ratio": 0.7999999999999999,
         "cd": 0.0135,
-        "error": 0.0019704017384305494,
+        "error": 0.0019704017384314376,
         "half_angle_deg": 9.0,
-        "hpr": 0.013526600423468812,
+        "hpr": 0.013526600423468826,
         "length_ratio": 0.3332802413663902,
         "mach": 3.5,
         "x": 5.031954418447458
@@ -6015,9 +6015,9 @@
       {
         "area_ratio": 0.7999999999999999,
         "cd": 0.0108,
-        "error": 0.046522658061411315,
+        "error": 0.04652265806140865,
         "half_angle_deg": 7.0,
-        "hpr": 0.011302444707063243,
+        "hpr": 0.011302444707063214,
         "length_ratio": 0.42991076493553965,
         "mach": 3.5,
         "x": 3.9009280992912507
@@ -6025,9 +6025,9 @@
       {
         "area_ratio": 0.7999999999999999,
         "cd": 0.008,
-        "error": 0.08468257792530576,
+        "error": 0.08468257792610934,
         "half_angle_deg": 4.999999999999999,
-        "hpr": 0.008677460623402446,
+        "hpr": 0.008677460623408875,
         "length_ratio": 0.6033513643101976,
         "mach": 3.5,
         "x": 2.7795594446731533
@@ -6035,9 +6035,9 @@
       {
         "area_ratio": 0.7999999999999999,
         "cd": 0.0046,
-        "error": 0.21700810902865575,
+        "error": 0.21700810902876588,
         "half_angle_deg": 3.000000000000001,
-        "hpr": 0.005598237301531816,
+        "hpr": 0.005598237301532323,
         "length_ratio": 1.007224599519014,
         "mach": 3.5,
         "x": 1.6650218669457582
@@ -6045,9 +6045,9 @@
       {
         "area_ratio": 0.25,
         "cd": 0.0364,
-        "error": 0.005858230138167775,
+        "error": 0.0058582301381659985,
         "half_angle_deg": 11.0,
-        "hpr": 0.03661323957702931,
+        "hpr": 0.03661323957702924,
         "length_ratio": 1.2861385039925777,
         "mach": 4.5,
         "x": 1.7056802902937511
@@ -6085,9 +6085,9 @@
       {
         "area_ratio": 0.29999999999999993,
         "cd": 0.0344,
-        "error": -0.008557662334671257,
+        "error": -0.008557662334848337,
         "half_angle_deg": 11.000000000000002,
-        "hpr": 0.03410561641568731,
+        "hpr": 0.03410561641568122,
         "length_ratio": 1.1633828665597894,
         "mach": 4.5,
         "x": 1.8856570436997133
@@ -6095,9 +6095,9 @@
       {
         "area_ratio": 0.29999999999999993,
         "cd": 0.0294,
-        "error": 0.007165680815174769,
+        "error": 0.007165680815172104,
         "half_angle_deg": 9.0,
-        "hpr": 0.029610671015966136,
+        "hpr": 0.029610671015966056,
         "length_ratio": 1.4277836938025563,
         "mach": 4.5,
         "x": 1.5364659971746366
@@ -6135,9 +6135,9 @@
       {
         "area_ratio": 0.35,
         "cd": 0.0324,
-        "error": -0.02042395768384908,
+        "error": -0.02042395768391525,
         "half_angle_deg": 11.0,
-        "hpr": 0.03173826377104329,
+        "hpr": 0.03173826377104114,
         "length_ratio": 1.0504974076378606,
         "mach": 4.5,
         "x": 2.0882879680596815
@@ -6145,9 +6145,9 @@
       {
         "area_ratio": 0.35,
         "cd": 0.0277,
-        "error": -0.004574250442168415,
+        "error": -0.00457425044216897,
         "half_angle_deg": 9.0,
-        "hpr": 0.027573293262751934,
+        "hpr": 0.02757329326275192,
         "length_ratio": 1.2892428727633416,
         "mach": 4.5,
         "x": 1.7015731815883555
@@ -6195,9 +6195,9 @@
       {
         "area_ratio": 0.4,
         "cd": 0.0259,
-        "error": -0.011667912150112092,
+        "error": -0.011667912150280624,
         "half_angle_deg": 9.000000000000002,
-        "hpr": 0.025597801075312097,
+        "hpr": 0.025597801075307732,
         "length_ratio": 1.160292220666406,
         "mach": 4.5,
         "x": 1.890679828559111
@@ -6205,9 +6205,9 @@
       {
         "area_ratio": 0.4,
         "cd": 0.0211,
-        "error": -0.00919770864380487,
+        "error": -0.009197708643781666,
         "half_angle_deg": 7.0,
-        "hpr": 0.020905928347615718,
+        "hpr": 0.020905928347616207,
         "length_ratio": 1.496704737401677,
         "mach": 4.5,
         "x": 1.4657140062618021
@@ -6235,9 +6235,9 @@
       {
         "area_ratio": 0.5000000000000001,
         "cd": 0.0257,
-        "error": 0.011159028204953625,
+        "error": 0.011159028204952737,
         "half_angle_deg": 11.0,
-        "hpr": 0.025986787024867307,
+        "hpr": 0.025986787024867286,
         "length_ratio": 0.7534024925486088,
         "mach": 4.5,
         "x": 2.911778390096702
@@ -6245,9 +6245,9 @@
       {
         "area_ratio": 0.5000000000000001,
         "cd": 0.022,
-        "error": 0.041209729370174086,
+        "error": 0.041209729370172976,
         "half_angle_deg": 9.0,
-        "hpr": 0.02290661404614383,
+        "hpr": 0.022906614046143806,
         "length_ratio": 0.9246275019607422,
         "mach": 4.5,
         "x": 2.3725674308800437
@@ -6255,9 +6255,9 @@
       {
         "area_ratio": 0.5000000000000001,
         "cd": 0.0181,
-        "error": 0.05711763213867904,
+        "error": 0.05711763213870524,
         "half_angle_deg": 7.0,
-        "hpr": 0.019133829141710093,
+        "hpr": 0.019133829141710565,
         "length_ratio": 1.192711920210661,
         "mach": 4.5,
         "x": 1.8392883140302347
@@ -6285,9 +6285,9 @@
       {
         "area_ratio": 0.6000000000000001,
         "cd": 0.0209,
-        "error": 0.010405926555132394,
+        "error": 0.0104059265551113,
         "half_angle_deg": 11.0,
-        "hpr": 0.021117483865002267,
+        "hpr": 0.021117483865001827,
         "length_ratio": 0.5797998052334054,
         "mach": 4.5,
         "x": 3.783618202432672
@@ -6295,9 +6295,9 @@
       {
         "area_ratio": 0.6000000000000001,
         "cd": 0.0179,
-        "error": 0.04235037930468222,
+        "error": 0.04235037930468022,
         "half_angle_deg": 9.0,
-        "hpr": 0.01865807178955381,
+        "hpr": 0.018658071789553775,
         "length_ratio": 0.711570310494692,
         "mach": 4.5,
         "x": 3.0829576002446144
@@ -6305,9 +6305,9 @@
       {
         "area_ratio": 0.6000000000000001,
         "cd": 0.0148,
-        "error": 0.05796986929167236,
+        "error": 0.057969869291411014,
         "half_angle_deg": 7.0,
-        "hpr": 0.01565795406551675,
+        "hpr": 0.015657954065512885,
         "length_ratio": 0.9178814058583502,
         "mach": 4.5,
         "x": 2.390004942737204
@@ -6315,9 +6315,9 @@
       {
         "area_ratio": 0.6000000000000001,
         "cd": 0.0112,
-        "error": 0.0717045871004014,
+        "error": 0.07170458710040517,
         "half_angle_deg": 4.999999999999999,
-        "hpr": 0.012003091375524496,
+        "hpr": 0.012003091375524537,
         "length_ratio": 1.2881859298932299,
         "mach": 4.5,
         "x": 1.7029693043067602
@@ -6335,9 +6335,9 @@
       {
         "area_ratio": 0.7000000000000001,
         "cd": 0.0158,
-        "error": 0.005354096054605462,
+        "error": 0.0053540960546045735,
         "half_angle_deg": 11.0,
-        "hpr": 0.015884594717662768,
+        "hpr": 0.015884594717662754,
         "length_ratio": 0.42015565823130274,
         "mach": 4.5,
         "x": 5.221258012049285
@@ -6345,9 +6345,9 @@
       {
         "area_ratio": 0.7000000000000001,
         "cd": 0.0135,
-        "error": 0.051849806368595264,
+        "error": 0.05184980636859238,
         "half_angle_deg": 9.0,
-        "hpr": 0.014199972385976036,
+        "hpr": 0.014199972385975998,
         "length_ratio": 0.515644002438731,
         "mach": 4.5,
         "x": 4.25437140056466
@@ -6355,9 +6355,9 @@
       {
         "area_ratio": 0.7000000000000001,
         "cd": 0.0112,
-        "error": 0.07698264652788356,
+        "error": 0.07698264652790132,
         "half_angle_deg": 7.0,
-        "hpr": 0.012062205641112295,
+        "hpr": 0.012062205641112494,
         "length_ratio": 0.6651486647213333,
         "mach": 4.5,
         "x": 3.2981214775002328
@@ -6365,9 +6365,9 @@
       {
         "area_ratio": 0.7000000000000001,
         "cd": 0.0086,
-        "error": 0.0857618293464053,
+        "error": 0.08576182934640464,
         "half_angle_deg": 4.999999999999999,
-        "hpr": 0.009337551732379086,
+        "hpr": 0.00933755173237908,
         "length_ratio": 0.9334922199235832,
         "mach": 4.5,
         "x": 2.350036829474179
@@ -6375,9 +6375,9 @@
       {
         "area_ratio": 0.7000000000000001,
         "cd": 0.0049,
-        "error": 0.23206018716113364,
+        "error": 0.23206018716113208,
         "half_angle_deg": 3.0000000000000004,
-        "hpr": 0.006037094917089554,
+        "hpr": 0.006037094917089547,
         "length_ratio": 1.5583561801366015,
         "mach": 4.5,
         "x": 1.4077276586766787
@@ -6385,9 +6385,9 @@
       {
         "area_ratio": 0.7999999999999999,
         "cd": 0.0105,
-        "error": 0.008545696359541388,
+        "error": 0.0085456963595405,
         "half_angle_deg": 11.000000000000002,
-        "hpr": 0.010589729811775184,
+        "hpr": 0.010589729811775176,
         "length_ratio": 0.2715625092593247,
         "mach": 4.5,
         "x": 8.07821780271278
@@ -6395,9 +6395,9 @@
       {
         "area_ratio": 0.7999999999999999,
         "cd": 0.009,
-        "error": 0.05184980636859571,
+        "error": 0.05184980636859304,
         "half_angle_deg": 9.0,
-        "hpr": 0.009466648257317361,
+        "hpr": 0.009466648257317337,
         "length_ratio": 0.3332802413663902,
         "mach": 4.5,
         "x": 6.58227168779667
@@ -6405,9 +6405,9 @@
       {
         "area_ratio": 0.7999999999999999,
         "cd": 0.0075,
-        "error": 0.07429597781040531,
+        "error": 0.07429597781043284,
         "half_angle_deg": 7.0,
-        "hpr": 0.008057219833578039,
+        "hpr": 0.008057219833578246,
         "length_ratio": 0.42991076493553965,
         "mach": 4.5,
         "x": 5.102782427830012
@@ -6425,9 +6425,9 @@
       {
         "area_ratio": 0.7999999999999999,
         "cd": 0.0033,
-        "error": 0.25755201232411884,
+        "error": 0.2575520123241224,
         "half_angle_deg": 3.000000000000001,
-        "hpr": 0.004149921640669592,
+        "hpr": 0.004149921640669604,
         "length_ratio": 1.007224599519014,
         "mach": 4.5,
         "x": 2.178005876639253

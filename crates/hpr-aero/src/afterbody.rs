@@ -204,7 +204,9 @@ fn prandtl_meyer(mach: f64) -> f64 {
 }
 
 /// The Mach number whose Prandtl–Meyer angle is `nu_rad`, for `0 ≤ ν < ν_max`
-/// ([`MAX_TURNING_RAD`]): Newton's method on `ν(M)`, kept inside a bracket, to 1e-13 in `ν`.
+/// ([`MAX_TURNING_RAD`]): Newton's method on `ν(M)`, kept inside a bracket, until a step moves
+/// `M` by a few rounding steps, so that every platform lands on the same root to rounding, not
+/// wherever a tolerance first stops it.
 fn inverse_prandtl_meyer(nu_rad: f64) -> f64 {
     if nu_rad <= 0.0 {
         return 1.0;
@@ -216,9 +218,9 @@ fn inverse_prandtl_meyer(nu_rad: f64) -> f64 {
         hi *= 2.0;
     }
     let mut mach = 0.5 * (lo + hi);
-    for _ in 0..100 {
+    for _ in 0..200 {
         let f = prandtl_meyer(mach) - nu_rad;
-        if f.abs() < 1e-13 {
+        if f == 0.0 {
             break;
         }
         if f > 0.0 {
@@ -229,11 +231,16 @@ fn inverse_prandtl_meyer(nu_rad: f64) -> f64 {
         let m2 = mach * mach;
         let slope = (m2 - 1.0).sqrt() / (mach * (1.0 + 0.5 * (GAMMA - 1.0) * m2));
         let newton = mach - f / slope;
-        mach = if newton > lo && newton < hi && slope > 0.0 {
+        let next = if newton > lo && newton < hi && slope > 0.0 {
             newton
         } else {
             0.5 * (lo + hi)
         };
+        let settled = (next - mach).abs() <= 4.0 * f64::EPSILON * mach;
+        mach = next;
+        if settled {
+            break;
+        }
     }
     mach
 }
