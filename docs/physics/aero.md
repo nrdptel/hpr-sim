@@ -16,17 +16,19 @@
     against a handbook's worked example; and a rocket with a short, steep boattail reads 5% to
     15% low against RASAero II. Treat a supersonic flight's drag, and its apogee, as rough. The
     bullets below give the numbers.
-  - *A boattail's own drag faster than sound* against 19 measured boattails of 10° or gentler,
-    Mach 1.2 to 3.12: −6.3% to +17.4%. Steeper ones in a thick boundary layer read high: +26.4% to
-    +54.1% for 16°. The base behind a boattail matches 12 measured bases within 0.0102
-    ([Boattails faster than sound](#boattails-faster-than-sound)).
+  - *A boattail's own drag faster than sound* against 19 readings of 14 measured boattails of 10°
+    or gentler, Mach 1.2 to 3.12: −6.3% to +17.4%. Steeper ones in a thick
+    [boundary layer](../glossary.md#boundary-layer) read high: +26.4% to +54.2% for 16°. The drag
+    of the base behind a boattail is within 0.0102 of 12 measured bases, which behind a small base
+    can be 40% of its own drag ([Boattails faster than sound](#boattails-faster-than-sound)).
   - *Drag reads high against a wind tunnel.* Against NASA's wind-tunnel tests of the Arcas Robin
     sounding rocket, Mach 0.6 to 4.63, on the [forebody](../glossary.md#forebody) only (the models'
     bases sat on a [sting](../glossary.md#sting)), every reading is high and 4 of 44 are within
     10%, all between Mach 0.9 and 1.0. With the fins on, from Mach 1.5 up, hpr reads +39.4% to
     +154.0% high: the fins take a blunt edge's formula. With the fins off it reads +13.5% to
     +24.1% from Mach 1.5 and +2.1% to +50.8% below, most of it the models' 15° boattail, which
-    hpr over-predicts in a boundary layer thicker than the boattail is deep. hpr's base drag
+    hpr over-predicts in a [boundary layer](../glossary.md#boundary-layer) thicker than the
+    boattail is deep. hpr's base drag
     behind a plain cylinder has been checked against no measurement faster than Mach 0.3
     ([Drag against the Arcas Robin wind tunnel](#drag-against-the-arcas-robin-wind-tunnel)).
   - *Drag reads low against [RASAero II](../glossary.md#rasaero-ii) past Mach 1.6*, missing
@@ -35,7 +37,8 @@
     record their fins or surface finish, so hpr uses stated guesses for them. Against Calisto's,
     the one real RASAero II export, hpr is within 10% at every Mach number up to 0.8, at 6 of the 7
     between, and at 8 of 17 from 1.2 to 2.0, where it reads −14.9% to −5.1%, lowest at Mach 2.
-    Other plausible fins close the rest; before hpr modelled the boattail's wave drag it read
+    Other plausible fins bring 14 to 17 of the 17 within 10%, though none puts every row of every
+    band within it; before hpr modelled the boattail's wave drag it read
     −29.8% to −24.4% there
     ([Drag against RASAero II through Mach 2](#drag-against-rasaero-ii-through-mach-2)).
   - *Drag at Mach 0.3* against the same curves: four of seven cases within 10%. Cavour
@@ -715,44 +718,60 @@ it speeds up, its pressure falls below the free stream's, and it pulls back on t
 is a [wave drag](../glossary.md#wave-drag), and on a short, steep boattail it can be the largest
 drag term on the rocket. Behind the boattail, the base's pressure is higher than behind a plain
 cylinder, which lowers the base drag. Code: [`hpr_aero::afterbody`](../api/hpr_aero/afterbody/index.html).
-Decision: [ADR-030][adr-030]. **How far to trust it:** against 19 measured boattails of 10° or
-gentler from Mach 1.2 to 3.12 it reads −6.3% to +17.4%, the few percent to 20% high that
-inviscid theory is known to read. Steeper boattails in a thick
-[boundary layer](../glossary.md#boundary-layer) read 26% to 54% high, and so does the one full
-rocket measured with one (below).
+Decision: [ADR-030][adr-030]. **How far to trust it:** against 19 readings of 14 measured
+boattails of 10° or gentler from Mach 1.2 to 3.12 it reads −6.3% to +17.4%; theory that leaves
+out the air's viscosity (inviscid theory) reads such boattails up to about 20% high ([CS51]
+p. 17). Steeper boattails in a thick [boundary layer](../glossary.md#boundary-layer) read 26% to
+54% high, and the one full rocket measured with one, the Arcas Robin, reads high too. So
+[M1.8b3](../decisions-and-roadmap.md#m1-8b3)'s targets were not met: none of the Arcas Robin's
+11 fins-off readings from Mach 1.5 is within 10%, and 8 of Calisto's 17 supersonic rows against
+RASAero II are. No whole flight in the validation suite uses this model yet: none of its
+boattailed rockets passes Mach 0.8.
 
 In the table, a boattail runs from diameter `d₁` to `d₂` over its length `l`; `a = (d₂/d₁)²` is its
 area ratio, `θ = atan((d₁ − d₂)/(2l))` its half-angle (the cone through the same ends; curved
-boattails are taken as that cone), and coefficients are on its fore area `π d₁²/4`.
+boattails are taken as that cone), and coefficients are on its fore area `π d₁²/4`, the
+cross-section where it starts. `C_p,PM` is the pressure coefficient after the Prandtl–Meyer turn,
+`(C_D•)_base` the base drag coefficient of the table above, `a_b` the base's area over `π d₁²/4`,
+and `p_cyl/p_bt` a cylinder's base pressure over a boattail's. "Jet off" means the measurements
+were made with no motor exhaust.
 
 | piece | what hpr does | source |
 |---|---|---|
 | wave drag, attached flow | MIL-HDBK-762's chart for conical boattails, `4 C_D (l/d₁)²` against `x = √(M² − 1)/(2 l/d₁)` for `a` from 0.25 to 0.80, read into the code (±(0.005 + 2%)) | [762] Fig. 5-122, p. 5-187 |
-| its upper limit | never more than the pressure after a two-dimensional Prandtl–Meyer turn through `θ` over the whole annulus, `−C_p,PM(M, θ)(1 − a)`; past the chart's end at `x = 1.4`, the chart's share of that limit closes on 1 as `1/x` | [R1135] eq. 44, 171c |
+| its upper limit | never more than the pressure after a two-dimensional Prandtl–Meyer turn through `θ` over the whole annulus, `−C_p,PM(M, θ)(1 − a)`; past the chart's end at `x = 1.4` the drag approaches that limit, the gap shrinking as `1/x` | [R1135] eq. 44, 171c |
 | separation | between 16° and 30°, a straight-line blend in `θ` from the attached value to the base drag on the annulus, `(C_D•)_base(1 − a)`, where [flow separates](../glossary.md#flow-separation) | [C57] pp. 6, 8 |
 | through Mach 1 | the rule to Mach 0.9, a straight line to Mach 1, then the Mach 1.2 value held to Mach 1.2 | [762] p. 5-47, [C57] Figs. 7–8 |
-| base behind a boattail | from Mach 2.5, `p_cyl/p_bt = 0.442 + 0.558 a_b` with the cylinder's pressure from Love's correlation, used as a ratio of base-pressure coefficients on hpr's own base drag; below Mach 2.5 that ratio at Mach 2.5; back to 1 between Mach 1 and 0.9; none for a separated boattail | [762] Figs. 5-139, 5-141, pp. 5-208, 5-210 |
-| a lip in its wake | a shoulder right behind a boattail, rising no higher than the boattail's fore diameter, has no pressure drag | [D4014] p. 6, [R22] slide 2 |
+| base behind a boattail | from Mach 2.5, `p_cyl/p_bt = 0.442 + 0.558 a_b`, with the cylinder's pressure from Love's correlation of measured bases, turned into the ratio of the two base-pressure coefficients, `k = (1 − p_bt/p)/(1 − p_cyl/p)`, which multiplies hpr's own base drag; below Mach 2.5, `k` at Mach 2.5; back to 1 between Mach 1 and 0.9; none for a separated boattail | [762] Figs. 5-139, 5-141, pp. 5-208, 5-210 |
+| a lip in its wake | a shoulder right behind a boattail, with no step or other part between, loses its pressure drag while it rises up to a quarter of the boattail's drop in diameter, keeps all of it from half, and a straight-line share between; the base behind it takes the same share of the relief | [D4014] p. 6, [R22] slide 2; the quarter and half are a judgement |
+| a boattail in parts | adjacent narrowing transitions are one boattail, the cone through the run's ends, each part taking its share of the decrease in area | |
 
 Why each piece is there:
 
 - **The chart is second-order theory.** MIL-HDBK-762 cites no source for it. Jack computed conical
-  boattails by Van Dyke's second-order theory from Mach 1.5 to 4.5 ([J53]), and the chart agrees
-  with his 83 points inside it within −10.4% to +8.0% for `a` up to 0.6. First-order (linear)
-  theory reads far higher at these angles, so the chart is not linear theory.
-- **The 2D limit** matters for short, steep boattails. The chart's similarity law is a
-  small-angle one, and near Mach 1 it can ask for more suction than a flat (two-dimensional) turn
-  gives, which a round boattail, whose pressure recovers aft of the shoulder, can't exceed.
+  boattails by Van Dyke's second-order theory ([J53]), an inviscid method that keeps the next
+  term past linear theory's small-disturbance approximation, from Mach 1.5 to 4.5, and the chart
+  agrees with his 83 points inside it within −10.4% to +8.0% for `a` up to 0.6. First-order
+  (linear) theory reads far higher at these angles, so the chart is not linear theory.
+- **The 2D limit** matters for short, steep boattails. The chart plots its drag against one
+  combined variable, `x`, which holds only for small angles, and near Mach 1 it can ask for more
+  suction than a flat (two-dimensional) turn gives, which a round boattail, whose pressure
+  recovers aft of the shoulder, can't exceed.
   Past the chart the same limit gives the curve its shape: against Jack's 28 points beyond it,
   −2.7% to +8.0%.
 - **Near Mach 1** no method exists for boattails ([762] p. 5-47 says so and advises holding the
   supersonic value to a peak between Mach 1.0 and 1.2). Cubbage's measured boattails keep their
-  subsonic drag to Mach 0.9, are half-way up by 0.92 to 0.96, peak at 1.0 to 1.1, and at 1.2 are
-  0.83 to 0.90 of that peak ([C57]); holding the Mach 1.2 value reads 5% to 18% under his gentle
+  subsonic drag to Mach 0.9 (his 16° ones double from Mach 0.6 to 0.9), are half-way up by 0.92
+  to 0.96, peak at 1.0 to 1.1, and at 1.2 are
+  0.83 to 0.90 of that peak ([C57]); holding the Mach 1.2 value reads 11% to 18% under his gentle
   boattails' peak.
 - **The base's relief** is the handbook's correlation, measured at Mach 2.5 to 3.5. Used as a
   ratio of pressures below Mach 2.5 it over-predicts the relief of the bases measured at Mach
-  1.59 and 1.91 ([DN54], [CS51]); held as a ratio of coefficients, it matches them.
+  1.59 and 1.91 ([DN54], [CS51]); held as a ratio of coefficients, it matches them on average.
+  It depends on the base's area only, where the measured relief also grows with the boattail's
+  angle: behind Cortright and Schroeder's small bases (`a_b = 0.256`) hpr keeps 0.352 of the
+  cylinder's base pressure coefficient at every angle, where they measured 0.60 at 5.6° and 0.26
+  at 9.3°.
 - **The lip.** NASA's Arcas Robin models end in a lip 1.3 mm long that flares from the boattail's
   end to the base. NASA found its effect "masked" when the flow over the boattail separates or the
   boundary layer thickens ([D4014] p. 6), and RASAero II's own comparison with the tunnel left it
@@ -764,9 +783,12 @@ Why each piece is there:
 gives `C_D = 0.219`. A Prandtl–Meyer turn of 18.4° from Mach 1.5 gives `C_p = −0.398`, so the
 limit is `0.398 × 0.531 = 0.211`, and the attached boattail drags 0.211. At 18.4° it is 17% of
 the way from 16° to 30°, so the blend takes it 17% toward the base drag on the annulus,
-`0.167 × 0.531 = 0.088`: 0.190, where the rule gave 0.066. The base, `a_b = 0.469`, keeps 0.616 of
-its pressure coefficient attached, 0.683 after the blend, so its drag falls from 0.078 to 0.053.
-Calisto's `C_D0` at Mach 1.5 rises from 0.443 to 0.542.
+`0.167 × 0.531 = 0.088`: 0.190, where the rule gave 0.066. For the base, `a_b = 0.469`: at Mach
+2.5 Love's cylinder gives `−C_p = 0.1195`, so `p_cyl/p = 1 − 0.1195 × 0.7 × 2.5² = 0.477`, and
+`p_bt/p = 0.477/(0.442 + 0.558 × 0.469) = 0.678`, so `k = 0.322/0.523 = 0.616`; after the blend
+0.683, so the base's drag falls from 0.078 to 0.053. Calisto's `C_D0` at Mach 1.5 rises from
+0.443 to 0.542. The module's documentation test runs this example
+([`hpr_aero::afterbody`](../api/hpr_aero/afterbody/index.html)).
 
 **Against measurements** ([`drag-vs-mach.json`][drag-fixture], sections `boattails`,
 `base_pressures` and `second_order_theory`, from the readings in
@@ -778,9 +800,9 @@ the report's figure, with its reading uncertainty in the file.
 |---|---|---|---|
 | attached, 5° to 10°: [CS51], [DN54], [C72], [MJ54], [C57] | 1.2 to 3.12 | 19 | −6.3% to +17.4% |
 | attached, 5.6° and 8° ([C57]) | 1.0 and 1.1 | 4 | −18.2% to −5.4% |
-| 16°, attached, boundary layer 0.20 `d₁` thick ([C57]) | 1.0 to 1.28 | 9 | +26.4% to +54.1% |
+| 16°, attached, boundary layer 0.20 `d₁` thick ([C57]) | 1.0 to 1.28 | 9 | +26.4% to +54.2% |
 | 30° and 45°, separated ([C57]) | 1.2 | 3 | −2.8% to +6.6% |
-| the base behind 5° to 15° boattails ([CS51], [DN54], [Love57]) | 1.59, 1.91, 3.24 | 12 | base drag within 0.0102 of the measured, 10 of 12 within 0.004 |
+| the base behind 5° to 15° boattails ([CS51], [DN54], [Love57]) | 1.59, 1.91, 3.24 | 12 | base drag within 0.0102 of the measured on the cylinder's area, 10 of 12 within 0.004; behind small bases up to about 40% of the base's own drag |
 
 Below Mach 1, where the rule still applies, Cubbage's boattails show it isn't made for them: his
 5.6° and 8° boattails measure 0.024 to 0.051 from Mach 0.6 to 0.9, where the rule, which gives
@@ -795,11 +817,17 @@ nothing to a boattail longer than three times its drop in diameter, gives 0; his
   reads +13.5% to +24.1% from Mach 1.5 (below). No source here gives a correction, so none is
   applied (issue [#72](https://github.com/nrdptel/hpr-sim/issues/72)); MIL-HDBK-762 advises boattails under 8° to avoid separation
   ([762] p. 5-12).
-- Separation's 16° and 30° come from one report at Mach 0.6 to 1.28.
+- Separation's 16° and 30° come from one report at Mach 0.6 to 1.28. Between 10° and 30° no
+  attached boattail was measured faster than Mach 1.28, so a boattail of 12° to 20°, like
+  Calisto's 18.4°, rests on the least-validated part of the model, and likely reads high.
 - A curved boattail drags at least as much as the cone through its ends ([J53] p. 1), so hpr reads
-  it low. The chart's 0.70 and 0.80 curves read up to 32% above Jack past `x ≈ 1`, 0.012 at most.
-- A boattail with a tube behind it keeps its wave drag, but the base gets no relief.
-- Nothing models the jet: under power the base drag's relief applies to what the motors leave.
+  it low. The chart's 0.70 and 0.80 curves read up to 32% above Jack past `x ≈ 1`, 0.0084 at most.
+- A boattail with a tube behind it keeps its wave drag, but the base gets no relief, however
+  short the tube.
+- Nothing models the jet. Fig. 5-141 is measured with the motor off, as is the base drag it
+  scales, and under power hpr applies both to what the motors leave of the base.
+- The lip's quarter and half are a judgement: one measured lip, rising 0.17 of its boattail's
+  drop, supports the first.
 
 ### Drag limits
 
@@ -817,7 +845,7 @@ nothing to a boattail longer than three times its drop in diameter, gives 0; his
   ([Drag against MIL-HDBK-762's sample calculation](#drag-against-mil-hdbk-762s-sample-calculation)).
 - **It reads low against RASAero II's Calisto past Mach 1.6**, −14.9% at Mach 2
   ([Drag against RASAero II through Mach 2](#drag-against-rasaero-ii-through-mach-2)). Part of
-  that is the body's lean above; plausible fin inputs cover the rest.
+  that is the body's lean above; plausible fin inputs bring most rows within 10%.
 - **Through the transonic rise,** from Mach 0.8 to 1.2, the measured shapes follow Stoney's
   curves, and cones and ogives Niskanen's closed form, which reads 45% to 105% above Stoney's
   measured 3:1 cone there (the cross-check above).
@@ -1267,8 +1295,8 @@ Rows within 10%, and the range of the errors, by band:
 
 | case | to Mach | subsonic, to 0.8 | transonic | supersonic, from 1.2 |
 |---|---|---|---|---|
-| Calisto, 2018 fins | 2 | 15 of 15: +3.9% to +8.9% | 6 of 7: −10.5% to +3.8% | 8 of 17: −14.9% to −5.1% |
-| Calisto, getting-started fins (variant) | 2 | 12 of 15: −8.2% to +30.7% | 0 of 7: +23.4% to +79.6% | 0 of 17: +22.6% to +31.7% |
+| Calisto, 2018 fins | 2 | 15 of 15: +3.9% to +8.9% | 6 of 7: −10.1% to +3.8% | 8 of 17: −14.9% to −5.1% |
+| Calisto, getting-started fins (variant) | 2 | 12 of 15: −8.2% to +30.7% | 0 of 7: +13.5% to +48.5% | 0 of 17: +22.6% to +31.7% |
 | Juno III | 0.9 | 15 of 15: −6.2% to +9.1% | 0 of 2: +14.1% to +21.9% | — |
 | Cavour, power-off | 0.85 | 6 of 15: −12.6% to −2.2% | 0 of 1: −12.6% | — |
 | Cavour, power-on | 0.9 | 1 of 15: −26.2% to −9.2% | 0 of 2: −27.0% to −26.7% | — |
@@ -1279,7 +1307,7 @@ The getting-started fins are a variant: RocketPy's getting-started example gives
 fins with a thick NACA 0012 airfoil, but the export was made for the 2018 fins, whose normal
 force it matches. So the variant's rows show how much the fins move drag, not a second
 agreement: its thick fins now read 23% to 32% high faster than sound. Calisto on its 2018 fins is
-within 10% up to Mach 1.0 and from 1.2 to 1.55; hpr falls below the curve at Mach 1.05, −10.5%,
+within 10% up to Mach 1.0 and from 1.2 to 1.55; hpr falls below the curve at Mach 1.05, −10.1%,
 and from Mach 1.6, to −14.9% at 2.0. Valetudo's curve is
 1.44 times its own OpenRocket export, as the Mach 0.3 check found, and Cavour's power-on miss is
 the same open question. Two misses are unexplained: Cavour's power-off curve rises faster than
@@ -1293,17 +1321,20 @@ the base drag, 0.083 at Mach 1.2 and 0.050 at 2.0, and read −29.8% to −24.4%
 supersonic wave drag ([Boattails faster than sound](#boattails-faster-than-sound)) is 0.283 at
 Mach 1.2, 0.190 at 1.5 and 0.120 at 2.0, and its base drag falls by a third; together they close
 the gap from 0.204 to 0.035 at Mach 1.2 and from 0.128 to 0.077 at 2.0. RASAero II lists such drag as its own
-term, "other body wave" drag. What is left grows with Mach number, and part of it is hpr's body,
+term, "other body wave" drag. Calisto's 18.4° boattail is steeper than any attached boattail
+measured here, and 16° boattails read 26% to 54% high, so this agreement is not support for the
+model at that angle. What is left grows with Mach number, and part of it is hpr's body,
 which reads 6% to 10% low faster than sound against a worked example with every input known
 ([below](#drag-against-mil-hdbk-762s-sample-calculation)).
 
-**The unrecorded inputs now cover the rest.** Calisto's fins could be square, rounded or an
+**The unrecorded inputs now span most of the rest.** Calisto's fins could be square, rounded or an
 airfoil, 2 to 6.35 mm thick, smooth or painted (`tests::calistos_rows_by_fin_and_finish`). The
 committed inputs, square, 3 mm and smooth by the rule of the Mach 0.3 check, have 15, 6 and 8
 rows within 10% by band. Rounded fins 4.76 mm thick, smooth, have 15, 7 and 14; airfoil fins
-6.35 mm thick, smooth, have 11, 7 and 17. Before the wave drag no combination had rows within 10% both
-below Mach 0.8 and from Mach 1.2. So what is left is within what the unrecorded inputs span;
-hpr keeps the stated rule rather than picking the inputs that fit.
+6.35 mm thick, smooth, have 11, 7 and 17. No combination has every row within 10%. Before the
+wave drag no combination had rows within 10% both below Mach 0.8 and from Mach 1.2. So most of
+what is left is within what the unrecorded inputs span; hpr keeps the stated rule rather than
+picking the inputs that fit.
 
 ### Drag against MIL-HDBK-762's sample calculation
 

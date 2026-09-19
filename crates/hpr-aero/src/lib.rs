@@ -57,7 +57,7 @@ pub use afterbody::Boattail;
 pub use body::{BODY_LIFT_K, BodyGeometry};
 pub use drag::{
     BaseBehindBoattail, BoattailTerm, ComponentDrag, ComponentDragTerms, Drag, DragConditions,
-    PressureDragTerm,
+    PressureDragTerm, WakeTerm,
 };
 pub use error::AeroError;
 pub use fins::{
@@ -987,7 +987,7 @@ mod tests {
                 set(&mut c.children, section, t, finish);
             }
         }
-        let mut counts = Vec::new();
+        let (mut counts, mut ranges) = (Vec::new(), Vec::new());
         for section in [
             FinCrossSection::Square,
             FinCrossSection::Rounded,
@@ -1001,6 +1001,7 @@ mod tests {
                     let model = AeroModel::new(&rocket.layout().unwrap()).unwrap();
                     // Rows within 10% by band: subsonic to 0.8, transonic below 1.2, supersonic.
                     let mut within = [0usize; 3];
+                    let mut errors: [Vec<f64>; 3] = Default::default();
                     for &(mach, curve) in &rows {
                         let conditions = DragConditions::coasting(
                             mach * air.speed_of_sound_m_s / air.kinematic_viscosity_m2_s(),
@@ -1017,8 +1018,16 @@ mod tests {
                         if error.abs() <= 0.10 {
                             within[band] += 1;
                         }
+                        errors[band].push(error);
                     }
                     counts.push(within);
+                    // Each band's least and greatest error, in percent to 0.1.
+                    let pct = |e: f64| (e * 1000.0).round() / 10.0;
+                    ranges.push(errors.map(|band| {
+                        let min = band.iter().copied().fold(f64::INFINITY, f64::min);
+                        let max = band.iter().copied().fold(f64::NEG_INFINITY, f64::max);
+                        (pct(min), pct(max))
+                    }));
                 }
             }
         }
@@ -1031,7 +1040,7 @@ mod tests {
                 [7, 6, 8],
                 [15, 6, 8],
                 [3, 4, 15],
-                [0, 4, 17],
+                [0, 3, 17],
                 [0, 3, 17],
                 [0, 3, 17],
                 [0, 1, 2],
@@ -1040,7 +1049,7 @@ mod tests {
                 [15, 4, 1],
                 [14, 5, 9],
                 [15, 7, 14],
-                [12, 4, 17],
+                [12, 3, 17],
                 [14, 4, 17],
                 [9, 3, 17],
                 [3, 4, 0],
@@ -1053,6 +1062,11 @@ mod tests {
                 [13, 3, 17],
             ]
         );
+        // The committed inputs (square, 3 mm, smooth) and the best of the rest (rounded,
+        // 4.76 mm, smooth): no combination has every row within 10%.
+        assert_eq!(ranges[2], [(3.9, 8.9), (-10.1, 3.8), (-14.9, -5.1)]);
+        assert_eq!(ranges[12], [(-8.4, 5.8), (-8.9, 6.7), (-11.7, -3.4)]);
+        assert!(counts.iter().all(|c| c != &[15, 7, 17]));
     }
 
     /// M1.8b3 (ADR-030): hpr's boattail pressure drag and the base pressure behind a boattail
@@ -1102,6 +1116,7 @@ mod tests {
         // Measured boattail pressure drag.
         let (mut low, mut transonic, mut steep, mut separated) =
             (Vec::new(), Vec::new(), Vec::new(), Vec::new());
+        let (mut subsonic_gentle, mut subsonic_steep) = (Vec::new(), Vec::new());
         for row in rows("boattails") {
             let b = boattail(&row);
             let mach = f(&row, "mach");
@@ -1118,6 +1133,10 @@ mod tests {
                 low.push(error);
             } else if mach >= 1.0 {
                 transonic.push(error);
+            } else if deg > 12.0 {
+                subsonic_steep.push(error);
+            } else {
+                subsonic_gentle.push((hpr, f(&row, "cd")));
             }
         }
         // Attached, 10° and gentler, from Mach 1.2: the 0% to 20% over-prediction of inviscid
@@ -1125,9 +1144,17 @@ mod tests {
         assert_eq!(range(&low), (19, -6.3, 17.4));
         assert_eq!(range(&transonic), (4, -18.2, -5.4));
         // Cubbage's 16° boattails in a boundary layer a fifth of the diameter thick read high.
-        assert_eq!(range(&steep), (9, 26.4, 54.1));
+        assert_eq!(range(&steep), (9, 26.4, 54.2));
         // His 30° and 45° boattails, separated: the base drag on the annulus.
         assert_eq!(range(&separated), (3, -2.8, 6.6));
+        // Below Mach 0.9 Niskanen's rule gives his 5.6° and 8° boattails, longer than three times
+        // their drop in diameter, nothing where they measure 0.024 to 0.051 (#73), and his 16°
+        // ones −40.8% to +41.7%.
+        assert_eq!(subsonic_gentle.len(), 6);
+        assert!(subsonic_gentle.iter().all(|&(hpr, _)| hpr == 0.0));
+        let measured: Vec<f64> = subsonic_gentle.iter().map(|&(_, m)| m).collect();
+        assert_eq!(range(&measured), (6, 2.4, 5.1));
+        assert_eq!(range(&subsonic_steep), (6, -40.8, 41.7));
 
         // The base pressure behind a boattail: the error in base drag on the cylinder's area.
         let mut differences = Vec::new();

@@ -28,8 +28,8 @@ use serde::{Deserialize, Serialize};
 
 use crate::body::{BODY_LIFT_K, BodyGeometry, sinc};
 use crate::drag::{
-    BUILDUP_MACH_LIMIT, BaseBehindBoattail, ComponentDrag, ComponentDragTerms, Drag,
-    DragConditions, PreviousBody, axial_drag_alpha_factor, body_friction_form_factor,
+    BUILDUP_MACH_LIMIT, ComponentDrag, ComponentDragTerms, Drag, DragConditions,
+    axial_drag_alpha_factor, body_friction_form_factor, couple_afterbody,
 };
 use crate::error::{AeroError, check_dimension, check_mach};
 use crate::fins::{FinAero, FinLoading, fin_count_factor, interference_factor, roll_sum, side_sum};
@@ -278,7 +278,8 @@ impl AeroModel {
         let mut bodies = Vec::new();
         let mut fin_sets = Vec::new();
         let mut drag_terms = Vec::new();
-        let mut previous: Option<PreviousBody> = None;
+        let mut previous_aft_area: Option<f64> = None;
+        let mut body_terms_at = Vec::new();
         let mut last_body_terms: Option<usize> = None;
         for component in &layout.components {
             let in_component = |e: AeroError| AeroError::InComponent {
@@ -384,7 +385,7 @@ impl AeroModel {
             };
             if let Some(geometry) = body {
                 let geometry = geometry.map_err(in_component)?;
-                let step = previous.map_or(0.0, |p| geometry.fore_area_m2 - p.aft_area_m2);
+                let step = previous_aft_area.map_or(0.0, |aft| geometry.fore_area_m2 - aft);
                 last_body_terms = Some(drag_terms.len());
                 drag_terms.push(
                     ComponentDragTerms::body(
@@ -395,40 +396,24 @@ impl AeroModel {
                             Part::Transition(transition) => Some(transition.shape),
                             _ => None,
                         },
-                        previous,
+                        previous_aft_area,
                         form_factor,
                         length_m,
                         reference_area_m2,
                     )
                     .map_err(in_component)?,
                 );
-                previous = Some(PreviousBody {
-                    aft_area_m2: geometry.aft_area_m2,
-                    boattail: drag_terms
-                        .last()
-                        .and_then(|terms| terms.boattail.map(|term| term.boattail)),
-                });
+                body_terms_at.push((drag_terms.len() - 1, geometry.clone()));
+                previous_aft_area = Some(geometry.aft_area_m2);
                 bodies.push(body_terms(component, geometry, step, reference_area_m2));
             }
         }
-        // The aft base belongs to the last body component, and is relieved when that component is
-        // a boattail or a shoulder in a boattail's wake.
+        // The aft base belongs to the last body component.
         if let (Some(index), Some(last)) = (last_body_terms, bodies.last()) {
-            let terms = &mut drag_terms[index];
-            let base_area_m2 = last.geometry.aft_area_m2;
-            terms.base_area_m2 = base_area_m2;
-            let boattail = terms
-                .boattail
-                .map(|term| term.boattail)
-                .or(terms.in_wake_of);
-            if let Some(boattail) = boattail.filter(|_| base_area_m2 > 0.0) {
-                let fore_area_m2 = 0.25 * PI * boattail.fore_diameter_m * boattail.fore_diameter_m;
-                terms.base_behind = Some(BaseBehindBoattail {
-                    boattail,
-                    base_area_ratio: (base_area_m2 / fore_area_m2).min(1.0),
-                });
-            }
+            drag_terms[index].base_area_m2 = last.geometry.aft_area_m2;
         }
+        // Boattails, a lip in a boattail's wake, and the base behind them.
+        couple_afterbody(&mut drag_terms, &body_terms_at, reference_area_m2)?;
         Ok(Self {
             reference_area_m2,
             length_m,

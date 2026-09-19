@@ -594,7 +594,7 @@
       Prandtl–Meyer limit, separation from 16° to 30°, Fig. 5-141's base relief, the lip in the
       wake. Measured boattails of 10° and under from Mach 1.2: −6.3% to +17.4%; 16°: +26% to +54%.
       Arcas Robin fins off from Mach 1.5: 0 of 11, +13.5% to +24.1% (steep boattail, #72); Calisto:
-      8 of 17, −14.9% to −5.1%, plausible fins close the rest.
+      8 of 17, −14.9% to −5.1%; plausible fins bring 14 to 17 within 10%.
 
   - [ ] **M1.8c Roll and damping.**
     - Roll forcing from fin cant and roll damping. Pitch and yaw damping keep hpr's local-flow

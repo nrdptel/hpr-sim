@@ -2746,9 +2746,10 @@ What the sources give (all NACA and NASA reports are U.S. Government works; pinn
   Cubbage (RM L57B21, Mach 0.6 to 1.28, 5.6° to 45°, a boundary layer 0.20 d thick). Cubbage's
   boattails stay attached at 16° and "between boattail angles of 16° and 30°, the external flow
   separates completely" (p. 8); a separated boattail's pressure is "approximately equal to the
-  pressure measured at the base of a cylindrical model" (p. 6). His transonic drag stays near its
-  subsonic level through Mach 0.9, is half-way up by 0.92 to 0.96, peaks at 1.0 to 1.1, and is
-  0.83 to 0.90 of the peak at 1.2 (Figs. 7–8).
+  pressure measured at the base of a cylindrical model" (p. 6). His gentler boattails' transonic
+  drag stays near its subsonic level through Mach 0.9 (his 16° ones double from 0.6 to 0.9), is
+  half-way up by 0.92 to 0.96, peaks at 1.0 to 1.1, and is 0.83 to 0.90 of the peak at 1.2
+  (Figs. 7–8).
 - **The base behind a boattail**: MIL-HDBK-762 Fig. 5-141 (p. 5-210, after Rubin, Brazzel and
   Henderson 1970, Mach 2.5 to 3.5), `p_cyl/p_bt = 0.442 + 0.558 a_b`, with Love's cylinder
   correlation (Fig. 5-139, p. 5-208). Used as a pressure ratio at Mach 1.59 and 1.91 it
@@ -2773,18 +2774,31 @@ What the sources give (all NACA and NASA reports are U.S. Government works; pinn
   boattails are taken as the cone through their ends (Jack: the cone drags least).
 - **Separation**: from 16° to 30° a straight-line blend in the half-angle from the attached value
   to the base drag coefficient on the annulus (Cubbage).
-- **Through Mach 1**: the rule to Mach 0.9, a straight line to Mach 1, the Mach 1.2 value held to
-  Mach 1.2, and the supersonic drag from there (the handbook's advice, Cubbage's shape). A first
-  draft joined the rule at Mach 0.8 to the chart's value at Mach 1, near its sonic end; the
-  Arcas Robin's forebody read +85% to +117% there, and Cubbage's data showed the rise starting
-  at 0.9.
+- **Through Mach 1**: the rule to Mach 0.9, a straight line to Mach 1; from Mach 1 the attached
+  drag, held at its Mach 1.2 value to Mach 1.2, blended with the separated value at the Mach
+  number itself, so a boattail steep enough to separate completely drags like the step it tends
+  to (the handbook's advice, Cubbage's shape; the separated share at the Mach number after the
+  physics review). A first draft joined the rule at Mach 0.8 to the chart's value at Mach 1, near
+  its sonic end; the Arcas Robin's forebody read +85% to +117% there, and Cubbage's data showed
+  the rise starting at 0.9.
+- **A boattail in parts is one boattail** (physics review): adjacent narrowing transitions, with
+  no step or other part between, are the cone through the run's ends, each taking its share of
+  the decrease in area, and the base relief takes its area ratio from the run's fore area. Before,
+  the same cone drawn as two transitions read +10% at Mach 1.5 on the Arcas Robin.
 - **The base behind a boattail** (the last body component a boattail, or a shoulder in its wake):
   from Mach 2.5, Fig. 5-141 with Love's cylinder, taken as the ratio of the two pressure
   coefficients and applied to hpr's own base drag (Fleeman's, unchanged, #68); below Mach 2.5
   that ratio at Mach 2.5, which matches the measured bases at Mach 1.59 and 1.91; back to 1 from
   Mach 1 to 0.9; toward 1 with the separation weight.
-- **A shoulder right behind a boattail**, with no step between and rising no higher than the
-  boattail's fore diameter, is in its wake and has no pressure drag.
+- **A lip in a boattail's wake**: a shoulder right behind a boattail, with no step or other part
+  between, loses its pressure drag while it rises up to a quarter of the boattail's drop in
+  diameter, keeps all of it from half, and a straight-line share between; the base behind it takes
+  the same share of the relief. The quarter and half are a judgement: the one measured lip rises
+  0.17. The first draft gave any shoulder up to the boattail's fore diameter no drag, which the
+  physics review showed switching abruptly (a flare back to full diameter got none).
+- **Fig. 5-141 is power-off**, as is Fleeman's base drag it scales; under power hpr applies both to
+  what the motors leave of the base. Love's value held past Mach 5.5 would ask for less than a
+  vacuum, and is clamped there.
 - **Checks**: `validation/fixtures/aero/measured-boattails.json` transcribes 47 boattail drags, 12
   base pressures and Jack's 151 points, with figure, page and reading uncertainty; the figure
   readings were checked a second time against the scans, which corrected seven base pressures and
@@ -2794,15 +2808,18 @@ What the sources give (all NACA and NASA reports are U.S. Government works; pinn
   `drag_against_mach` (4 rows of 44 within 10%, was 8), `supersonic_cd_against_rasaero_tables`,
   `drag_against_mach_depends_on_the_fins_and_finish` (0, 0, 1, 4, was 3, 5, 6, 8), and
   `calistos_supersonic_gap_survives_every_plausible_fin_and_finish`, whose assertion no longer
-  holds, renamed `calistos_rows_by_fin_and_finish` to pin every combination's rows by band.
+  holds, renamed `calistos_rows_by_fin_and_finish` to pin every combination's rows by band and
+  the error ranges of the committed and the best inputs (physics review).
 
 **Result: M1.8b3's targets are not met.**
 
 - **Measured boattails** (fixture): attached, 10° and gentler, from Mach 1.2 to 3.12: −6.3% to
-  +17.4% (19 rows), the few percent to 20% that inviscid theory reads high; from Mach 1.0 to 1.1,
-  −18.2% to −5.4% (4, under the peak). Cubbage's 16° in his thick boundary layer: +26.4% to
-  +54.1% (9). His separated 30° and 45°: −2.8% to +6.6% (3). The base drag behind 5° to 15°
-  boattails: within 0.0102 of the measured on the cylinder's area, 10 of 12 within 0.004. Below
+  +17.4% (19 rows of 14 boattails), inviscid theory reading up to about 20% high; from Mach 1.0
+  to 1.1, −18.2% to −5.4% (4, under the peak). Cubbage's 16° in his thick boundary layer: +26.4%
+  to +54.2% (9). His separated 30° and 45°: −2.8% to +6.6% (3). The base drag behind 5° to 15°
+  boattails: within 0.0102 of the measured on the cylinder's area, 10 of 12 within 0.004, though
+  behind small bases that is up to about 40% of the base's own drag, and the correlation ignores
+  the angle (Cortright and Schroeder's relief grows from 5.6° to 9.3° at one area ratio). Below
   Mach 0.9 the rule gives Cubbage's 5.6° and 8° boattails 0 where they measure 0.024 to 0.051
   (#73).
 - **The Arcas Robin, fins off, from Mach 1.5: 0 of 11 within 10%**, +13.5% to +24.1% (was +8.1%
@@ -2813,10 +2830,12 @@ What the sources give (all NACA and NASA reports are U.S. Government works; pinn
   numbers. All 44 rows now read high: 4 within 10% (was 8); fins off below Mach 1, +2.1% to +22.8%
   (was +18.3% to +49.1%); fins off from Mach 1.0 to 1.2, +20.3% to +50.8% (was −9.2% to +17.2%).
 - **Calisto against RASAero II: 8 of 17 supersonic rows within 10%**, −14.9% to −5.1% (was 0,
-  −29.8% to −24.4%); transonic 6 of 7 (was 2); subsonic unchanged, 15 of 15. The inputs the
-  export doesn't record now span the rest: rounded fins 4.76 mm thick, smooth, have 15, 7 and 14
-  rows within 10% by band, airfoil fins 6.35 mm thick 11, 7 and 17. The committed design keeps
-  ADR-009's rule; picking the inputs that fit would be tuning. The getting-started variant moves
+  −29.8% to −24.4%); transonic 6 of 7, −10.1% to +3.8% (was 2); subsonic unchanged, 15 of 15.
+  The inputs the export doesn't record now span most of the rest: rounded fins 4.76 mm thick,
+  smooth, have 15, 7 and 14 rows within 10% by band, airfoil fins 6.35 mm thick 11, 7 and 17, and
+  no combination every row. The committed design keeps ADR-009's rule; picking the inputs that fit
+  would be tuning. Calisto's 18.4° boattail is steeper than any attached boattail measured, so
+  this agreement is no support for the model at that angle. The getting-started variant moves
   from 6 of 17 supersonic to 0, 23% to 32% high.
 - **Why not tuned.** The one correction the evidence asks for, less wave drag for steep boattails
   in a thick boundary layer, has no cited method among these sources, and fitting it to the

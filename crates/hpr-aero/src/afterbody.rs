@@ -1,7 +1,7 @@
 //! The afterbody faster than sound: a boattail's own pressure drag, and the base pressure behind
 //! it.
 //!
-//! A boattail is a transition that narrows toward the tail. Below Mach 0.8 it keeps Niskanen's
+//! A boattail is a transition that narrows toward the tail. Below Mach 0.9 it keeps Niskanen's
 //! rule, a share of the base drag on its decrease in area (Niskanen 2009 eq. 3.88,
 //! [`crate::drag::boattail_factor`]). Faster than sound the air expands around the boattail's
 //! shoulder, its pressure falls below the free stream's, and it pulls back on the boattail: a
@@ -33,9 +33,10 @@
 //!   ≤ 1.2, with a sharp reduction to a lower value at subsonic speeds" (p. 5-47). The chart's
 //!   near-sonic end is not used: from Mach 1 to 1.2 the drag is held at its Mach 1.2 value,
 //!   below Mach 1 it falls on a straight line to the rule's value at Mach 0.9, and the rule
-//!   holds below. Cubbage's measured boattails stay near their subsonic drag through Mach 0.9,
+//!   holds below. Cubbage's gentler measured boattails stay near their subsonic drag through
+//!   Mach 0.9 (his 16° ones double from Mach 0.6 to 0.9),
 //!   are half-way up by 0.92 to 0.96, peak at Mach 1.0 to 1.1, and at 1.2 are 0.83 to 0.90 of
-//!   that peak, so holding the Mach 1.2 value reads 10% to 20% under the peak.
+//!   that peak, so holding the Mach 1.2 value reads 11% to 18% under his gentle boattails' peak.
 //! - **The base behind a boattail** ([`boattail_base_pressure_ratio`]): MIL-HDBK-762 Fig. 5-141
 //!   (printed p. 5-210, after Rubin, Brazzel and Henderson, 1970) correlates a boattail's base
 //!   pressure with a cylinder's at Mach 2.5 to 3.5 as `p_cyl/p_bt = 0.442 + 0.558 a_b`, with
@@ -47,9 +48,13 @@
 //!   Mach 1 it returns to 1 by Mach 0.9, where the base drag is Niskanen's again. A separated
 //!   boattail gives no relief (weight as above).
 //!
-//! A shoulder right behind a boattail, rising no higher than the boattail fell (a lip at its end),
-//! sits in its wake and has no pressure drag ([`crate::drag::ComponentDragTerms::in_wake_of`]). How well
-//! each piece agrees with the measurements is in the guide.
+//! Adjacent narrowing transitions are one boattail, the cone through the run's ends, and a lip
+//! right behind a boattail sits in its wake ([`crate::drag::WakeTerm`]).
+//!
+//! Outside the data: the chart below `a = 0.25` (Jack's theory reaches 0.2), attached flow up to
+//! 16° where Jack's theory stops at 11°, Cubbage's separation angles (measured to Mach 1.28) at
+//! every Mach number, and Fig. 5-141 outside its bases' area ratios of 0.25 to 0.67 and angles to
+//! 14°. How well each piece agrees with the measurements is in the guide.
 //!
 //! Calisto's boattail, 0.472 calibres long from `a = 1` to 0.469 (18.4°), at Mach 1.5: the chart
 //! gives 0.219 and the 2D limit 0.211, so the attached drag is 0.211; separation takes it 17% of
@@ -352,7 +357,8 @@ pub fn boattail_base_pressure_ratio(mach: f64, base_area_ratio: f64) -> Result<f
     }
     let supersonic = |m: f64| {
         let cylinder = love_base_pressure(m);
-        let p_cyl = 1.0 - cylinder * 0.5 * GAMMA * m * m;
+        // Past Mach 5.5 Love's held value would ask for less than a vacuum.
+        let p_cyl = (1.0 - cylinder * 0.5 * GAMMA * m * m).max(0.0);
         let p_bt = p_cyl / (0.442 + 0.558 * base_area_ratio);
         ((1.0 - p_bt) / (1.0 - p_cyl)).max(0.0)
     };
@@ -383,7 +389,7 @@ pub struct Boattail {
     pub length_ratio: f64,
     /// Half-angle of the cone through the same ends, `θ = atan((d₁ − d₂)/(2l))`, rad.
     pub half_angle_rad: f64,
-    /// Niskanen's boattail factor (eq. 3.88), used below Mach 0.8.
+    /// Niskanen's boattail factor (eq. 3.88), used below Mach 0.9.
     pub rule_factor: f64,
     /// The share of the separated value in the supersonic drag and base pressure:
     /// ([`SEPARATION_ONSET_RAD`], [`SEPARATION_COMPLETE_RAD`]) mapped linearly to (0, 1).
@@ -395,10 +401,10 @@ pub struct Boattail {
 
 impl Boattail {
     /// A boattail of `length_m` narrowing from `fore_diameter_m` to `aft_diameter_m`, compared as
-    /// the cone through the same ends. A curved boattail drags at least as much as that cone
-    /// (Jack found the cone's wave drag the smallest of conical, tangent-parabolic and
-    /// secant-parabolic boattails of the same length and area ratio, NACA TN 2972 p. 1), so hpr
-    /// under-predicts it.
+    /// the cone through the same ends. For one length, area ratio and Mach number Jack found the
+    /// cone's wave drag the smallest of conical, tangent-parabolic and secant-parabolic boattails
+    /// (NACA TN 2972 p. 1), so a curved boattail likely drags more than hpr gives; its steeper
+    /// aft end may also separate where the cone's chord angle doesn't.
     ///
     /// # Errors
     ///
@@ -472,8 +478,9 @@ impl Boattail {
     }
 
     /// The boattail's pressure drag on its fore area at any Mach number (module docs): Niskanen's
-    /// rule to Mach 0.9, a straight line to Mach 1, the Mach 1.2 value held to Mach 1.2, and from
-    /// there the attached drag blended toward the separated value.
+    /// rule to Mach 0.9; from Mach 1, the attached drag (held at its Mach 1.2 value to Mach 1.2)
+    /// blended toward the separated value at the Mach number itself; a straight line between.
+    /// So a boattail steep enough to separate completely drags like the step it tends to.
     ///
     /// # Errors
     ///
@@ -484,17 +491,18 @@ impl Boattail {
         let supersonic = |m: f64| -> Result<f64, AeroError> {
             let separated = base_drag_coefficient(m)? * annulus;
             let w = self.separation_weight;
-            Ok((1.0 - w) * self.attached_pressure_drag(m)? + w * separated)
+            let attached = self.attached_pressure_drag(m.max(SUPERSONIC_MODEL_MACH))?;
+            Ok((1.0 - w) * attached + w * separated)
         };
         if mach <= TRANSONIC_ONSET_MACH {
             Ok(self.rule_factor * base_drag_coefficient(mach)? * annulus)
         } else if mach < SUPERSONIC_MACH {
             let low = self.rule_factor * base_drag_coefficient(TRANSONIC_ONSET_MACH)? * annulus;
-            let high = supersonic(SUPERSONIC_MODEL_MACH)?;
+            let high = supersonic(SUPERSONIC_MACH)?;
             let t = (mach - TRANSONIC_ONSET_MACH) / (SUPERSONIC_MACH - TRANSONIC_ONSET_MACH);
             Ok(low + (high - low) * t)
         } else {
-            supersonic(mach.max(SUPERSONIC_MODEL_MACH))
+            supersonic(mach)
         }
     }
 
@@ -601,7 +609,7 @@ mod tests {
     }
 
     /// The module's worked example, Calisto's boattail at Mach 1.5, and the pieces of the drag:
-    /// continuous at Mach 0.8 and 1, the rule below, never above the 2D limit, and the chart's
+    /// continuous at Mach 0.9, 1 and 1.2, the rule below, never above the 2D limit, and the chart's
     /// own value inside it.
     #[test]
     fn calistos_boattail_by_hand() {
@@ -644,22 +652,25 @@ mod tests {
             1e-12,
             "rule to 0.9",
         );
-        let peak = b.pressure_drag_coefficient(1.2).unwrap();
+        // From Mach 1 to 1.2 the attached part is held at its Mach 1.2 value, and the separated
+        // part follows the base drag at the Mach number itself.
+        let attached = b.attached_pressure_drag(1.2).unwrap();
+        let held = |m: f64| (1.0 - w) * attached + w * 0.25 / m * (1.0 - b.area_ratio);
         close(
             b.pressure_drag_coefficient(1.0).unwrap(),
-            peak,
+            held(1.0),
             1e-12,
             "held from 1",
         );
         close(
             b.pressure_drag_coefficient(1.1).unwrap(),
-            peak,
+            held(1.1),
             1e-12,
             "held to 1.2",
         );
         close(
             b.pressure_drag_coefficient(0.95).unwrap(),
-            0.5 * (rule(0.9) + peak),
+            0.5 * (rule(0.9) + held(1.0)),
             1e-12,
             "half-way at 0.95",
         );
@@ -712,6 +723,27 @@ mod tests {
         }
     }
 
+    /// A boattail that tends to a step down drags like the step, the base drag on the area it
+    /// uncovers, at every Mach number: within 0.2% where the straight line from Mach 0.9 to 1
+    /// stands in for the base drag's curve, and to rounding elsewhere.
+    #[test]
+    fn a_vanishing_boattail_drags_like_a_step() {
+        let b = Boattail::new(1e-9, 0.1, 0.06).unwrap();
+        assert_eq!(b.separation_weight, 1.0);
+        let annulus = 1.0 - b.area_ratio;
+        for step in 0..500 {
+            let mach = f64::from(step) / 100.0;
+            let step_drag = base_drag_coefficient(mach).unwrap() * annulus;
+            let got = b.pressure_drag_coefficient(mach).unwrap();
+            let tol = if mach > TRANSONIC_ONSET_MACH && mach < SUPERSONIC_MACH {
+                2e-3
+            } else {
+                1e-12
+            };
+            close(got, step_drag, tol * step_drag, "step");
+        }
+    }
+
     /// Separation: none to 16°, all from 30°, where a boattail drags like the base it uncovers
     /// and gives its base no relief.
     #[test]
@@ -740,7 +772,7 @@ mod tests {
         );
     }
 
-    /// The base pressure ratio: 1 below Mach 0.8, held below 2.5, Fig. 5-141's line in pressure
+    /// The base pressure ratio: 1 below Mach 0.9, held below 2.5, Fig. 5-141's line in pressure
     /// from 2.5 (at Mach 3, `p_cyl/p_bt = 0.442 + 0.558 a_b` exactly), 1 for a base as large as the
     /// cylinder, and none below 0.
     #[test]
