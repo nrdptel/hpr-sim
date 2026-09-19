@@ -263,6 +263,10 @@ fn arcas_model(root: &Path, name: &str, ratio: Option<f64>) -> Result<AeroModel,
             .pointer_mut("/stages/0/components")
             .and_then(Value::as_array_mut)
             .ok_or(format!("{name}: no components"))?;
+        // The nose and the body tube behind it, and nothing aft.
+        if components.len() < 2 || components[1].pointer("/part/body_tube").is_none() {
+            return Err(format!("{name}: its second component isn't a body tube"));
+        }
         components.truncate(2);
     }
     let rocket: Rocket = serde_json::from_value(design).map_err(|e| format!("{name}: {e}"))?;

@@ -84,12 +84,14 @@ pub const SUPERSONIC_JOIN_WIDTH_MACH: f64 =
 /// [ADR-034][adr-034]).
 ///
 /// The method ([`crate::shock_expansion`]) covers a pointed nose and the cylinders straight behind
-/// it, up to the first other body, step in radius or gap, and flies only if no body after them
-/// has a potential-flow slope of its own (a boattail, a flare, a step): until the milestone
+/// it, up to the first other body, step in radius or gap. It flies only if no body after them has
+/// a potential-flow slope of its own (a boattail, a flare, a step). The method's nose and
+/// cylinder beside slender-body theory's boattail would put the body's centre of pressure further
+/// off than slender-body theory alone, so such a body waits for the milestone
 /// [M1.8e3](https://nrdptel.github.io/hpr-sim/decisions-and-roadmap.html#m1-8e3), the boattail
-/// and crossflow faster than sound, takes the boattail, the method's nose and cylinder beside slender-body theory's boattail would
-/// put the body's centre of pressure further off than slender-body theory alone. It is too slow to run at each step of a
-/// flight, so [`AeroModel::supersonic_body`] tabulates each covered segment's slope and moment
+/// and crossflow faster than sound.
+///
+/// The method is too slow to run at each step of a flight, so [`AeroModel::supersonic_body`] tabulates each covered segment's slope and moment
 /// every 0.05 in Mach, from Mach 5 down to the lowest Mach from which the method holds, and a
 /// flight interpolates linearly between rows. The join starts at that Mach, or at
 /// [`SUPERSONIC_JOIN_START_MACH`] if higher: at Mach `M`, a covered component's potential-flow
