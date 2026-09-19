@@ -310,39 +310,39 @@ case file (below). Every result of the report, as hpr's difference from RocketPy
 
 | case | `apogee_agl_m` | `apogee_time_s` | `flight_time_s` | `max_speed_m_s` | `max_mach` |
 |---|---|---|---|---|---|
-| [`flight-calisto-tests-motor-at-minus-1.373`][report] | +0.057% | +0.123% | +0.130% | +0.015% | −0.120% |
-| [`flight-valetudo`][report] | +0.116% | +0.275% | +0.262% | +0.035% | −0.026% |
-| [`flight-ndrt-2020-nose-to-tail`][report] | +0.068% | +0.194% | +0.667% | +0.031% | +0.003% |
-| [`flight-prometheus-2022-generic-motor`][report] | +1.525% | +0.823% | +1.031% | −0.004% | −0.256% |
-| [`flight-juno-iii`][report] | +0.700% | +0.417% | +0.520% | +0.058% | −0.229% |
-| [`flight-bella-lui`][report] | +0.375% | +0.229% | +0.261% | +0.017% | −0.075% |
-| [`flight-juno-iii-calm`][report] | +0.086% | +0.080% | +0.068% | +0.015% | −0.123% |
-| [`flight-calisto-tests-motor-at-minus-1.373-calm`][report] | +0.046% | +0.118% | +0.123% | +0.022% | −0.105% |
-| [`flight-bella-lui-calm`][report] | +0.038% | +0.020% | −0.011% | +0.020% | −0.018% |
+| [`flight-calisto-tests-motor-at-minus-1.373`][report] | +0.052% | +0.103% | +0.123% | +0.015% | −0.120% |
+| [`flight-valetudo`][report] | +0.112% | +0.238% | +0.233% | +0.035% | −0.026% |
+| [`flight-ndrt-2020-nose-to-tail`][report] | +0.064% | +0.157% | +0.643% | +0.031% | +0.003% |
+| [`flight-prometheus-2022-generic-motor`][report] | +1.208% | +0.652% | +0.830% | −0.006% | −0.235% |
+| [`flight-juno-iii`][report] | +0.641% | +0.376% | +0.475% | +0.051% | −0.221% |
+| [`flight-bella-lui`][report] | +0.342% | +0.201% | +0.229% | +0.016% | −0.071% |
+| [`flight-juno-iii-calm`][report] | +0.085% | +0.073% | +0.066% | +0.015% | −0.123% |
+| [`flight-calisto-tests-motor-at-minus-1.373-calm`][report] | +0.045% | +0.099% | +0.118% | +0.022% | −0.105% |
+| [`flight-bella-lui-calm`][report] | +0.038% | +0.020% | −0.012% | +0.020% | −0.018% |
 
 | case | `rail_exit_speed_m_s` | `rail_exit_time_s` | `burnout_altitude_agl_m` | `burnout_speed_m_s` | `impact_speed_m_s` |
 |---|---|---|---|---|---|
-| [`flight-calisto-tests-motor-at-minus-1.373`][report] | −0.010% | −0.072% | +0.021% | +0.019% | −0.020% |
+| [`flight-calisto-tests-motor-at-minus-1.373`][report] | −0.010% | −0.072% | +0.019% | +0.019% | −0.020% |
 | [`flight-valetudo`][report] | −0.002% | −0.100% | +0.048% | +0.042% | +0.009% |
 | [`flight-ndrt-2020-nose-to-tail`][report] | −0.009% | −0.085% | −0.004% | +0.043% | +0.022% |
-| [`flight-prometheus-2022-generic-motor`][report] | −0.014% | −0.033% | +0.757% | −0.006% | −0.014% |
-| [`flight-juno-iii`][report] | −0.005% | −0.142% | +0.294% | +0.063% | −0.003% |
-| [`flight-bella-lui`][report] | −0.013% | −0.029% | +0.155% | +0.018% | +0.021% |
+| [`flight-prometheus-2022-generic-motor`][report] | −0.014% | −0.033% | +0.600% | −0.007% | −0.013% |
+| [`flight-juno-iii`][report] | −0.005% | −0.142% | +0.269% | +0.056% | −0.003% |
+| [`flight-bella-lui`][report] | −0.013% | −0.029% | +0.141% | +0.018% | +0.021% |
 | [`flight-juno-iii-calm`][report] | −0.002% | −0.137% | +0.042% | +0.020% | +0.001% |
 | [`flight-calisto-tests-motor-at-minus-1.373-calm`][report] | −0.001% | −0.074% | +0.023% | +0.025% | −0.003% |
 | [`flight-bella-lui-calm`][report] | −0.000% | −0.032% | +0.012% | +0.024% | +0.021% |
 
 | case | `max_acceleration_power_on_m_s2` | `max_acceleration_m_s2` | `max_acceleration_time_s` | `apogee_drift_m` | `landing_drift_m` |
 |---|---|---|---|---|---|
-| [`flight-calisto-tests-motor-at-minus-1.373`][report] | +0.099% | +0.099% | −96.811% | −0.986% | +1.433% |
-| [`flight-valetudo`][report] | +0.248% | +0.248% | +0.006% | −0.932% | −1.949% |
-| [`flight-ndrt-2020-nose-to-tail`][report] | −0.020% | +83.059% | +0.234% | −4.654% | +1.950% |
-| [`flight-prometheus-2022-generic-motor`][report] | +0.002% | +19.062% | +1.382% | −9.273% | +6.283% |
-| [`flight-juno-iii`][report] | −0.211% | −0.211% | +0.001% | −42.510% | +40.926% |
-| [`flight-bella-lui`][report] | +1.783% | +1.783% | +0.001% | −11.264% | −23.833% |
-| [`flight-juno-iii-calm`][report] | −0.012% | −0.012% | +0.046% | −1.752% | −1.812% |
-| [`flight-calisto-tests-motor-at-minus-1.373-calm`][report] | +0.108% | +0.108% | −96.811% | −0.239% | −0.421% |
-| [`flight-bella-lui-calm`][report] | +1.778% | +1.778% | +0.001% | −1.160% | −2.141% |
+| [`flight-calisto-tests-motor-at-minus-1.373`][report] | +0.099% | +0.099% | −96.811% | −0.902% | +1.257% |
+| [`flight-valetudo`][report] | +0.248% | +0.248% | +0.006% | −0.931% | −1.811% |
+| [`flight-ndrt-2020-nose-to-tail`][report] | −0.020% | +83.059% | +0.197% | −4.333% | +1.627% |
+| [`flight-prometheus-2022-generic-motor`][report] | +0.003% | +19.062% | +1.094% | −7.292% | +4.505% |
+| [`flight-juno-iii`][report] | −0.197% | −0.197% | +0.001% | −38.158% | +36.678% |
+| [`flight-bella-lui`][report] | +1.783% | +1.783% | +0.001% | −10.195% | −21.686% |
+| [`flight-juno-iii-calm`][report] | −0.012% | −0.012% | +0.046% | −1.750% | −1.807% |
+| [`flight-calisto-tests-motor-at-minus-1.373-calm`][report] | +0.108% | +0.108% | −96.811% | −0.246% | −0.415% |
+| [`flight-bella-lui-calm`][report] | +1.778% | +1.778% | +0.001% | −1.155% | −1.791% |
 
 The last two numbers compare the whole trace, not one point of it. The series height RMS
 (`series_height_rms_m`) is the root mean square of hpr's height less RocketPy's: square each
@@ -368,15 +368,15 @@ RMS runs from 0.021952 to 1.593724 m/s ([report][report]).
 
 | case | `series_height_rms_m` | height bound, m | `series_speed_rms_m_s` | speed bound, m/s |
 |---|---|---|---|---|
-| [`flight-calisto-tests-motor-at-minus-1.373`][report] | +2.027529 | 78.3 | +0.064755 | 7.3 |
-| [`flight-valetudo`][report] | +2.373260 | 23.3 | +0.196853 | 3.3 |
-| [`flight-ndrt-2020-nose-to-tail`][report] | +2.768886 | 36.4 | +0.231944 | 5.4 |
-| [`flight-prometheus-2022-generic-motor`][report] | +44.681081 | 110.3 | +1.593724 | 10 |
-| [`flight-juno-iii`][report] | +15.931091 | 78.4 | +0.899478 | 6.7 |
-| [`flight-bella-lui`][report] | +1.871751 | 15.9 | +0.304555 | 2.9 |
-| [`flight-juno-iii-calm`][report] | +2.068744 | 78.6 | +0.066644 | 6.8 |
-| [`flight-calisto-tests-motor-at-minus-1.373-calm`][report] | +1.965173 | 78.4 | +0.058215 | 7.3 |
-| [`flight-bella-lui-calm`][report] | +0.087252 | 16.2 | +0.021952 | 2.9 |
+| [`flight-calisto-tests-motor-at-minus-1.373`][report] | +1.837754 | 78.3 | +0.058007 | 7.3 |
+| [`flight-valetudo`][report] | +2.115504 | 23.3 | +0.171627 | 3.3 |
+| [`flight-ndrt-2020-nose-to-tail`][report] | +2.425247 | 36.4 | +0.124657 | 5.4 |
+| [`flight-prometheus-2022-generic-motor`][report] | +35.350931 | 110.3 | +1.553509 | 10 |
+| [`flight-juno-iii`][report] | +14.550623 | 78.4 | +0.810392 | 6.7 |
+| [`flight-bella-lui`][report] | +1.657682 | 15.9 | +0.273966 | 2.9 |
+| [`flight-juno-iii-calm`][report] | +2.003892 | 78.6 | +0.065810 | 6.8 |
+| [`flight-calisto-tests-motor-at-minus-1.373-calm`][report] | +1.821296 | 78.4 | +0.051504 | 7.3 |
+| [`flight-bella-lui-calm`][report] | +0.089668 | 16.2 | +0.022685 | 2.9 |
 
 What the two codes still do differently, and what it moves:
 
@@ -476,30 +476,30 @@ Every predicted result of the report, as hpr's difference from RocketPy:
 
 | case | `apogee_agl_m` | `apogee_time_s` | `flight_time_s` | `max_speed_m_s` | `max_mach` |
 |---|---|---|---|---|---|
-| [`predicted-calisto-tests-motor-at-minus-1.373`][report] | −0.604% | −0.548% | −0.282% | +0.364% | +0.232% |
-| [`predicted-valetudo`][report] | +10.118% | +6.217% | +8.947% | +2.292% | +2.237% |
-| [`predicted-ndrt-2020-nose-to-tail`][report] | +10.306% | +6.575% | +6.896% | +1.378% | +1.351% |
-| [`predicted-prometheus-2022-generic-motor`][report] | −6.985% | −4.756% | −4.784% | +1.280% | +1.046% |
-| [`predicted-juno-iii`][report] | +2.157% | +1.086% | +1.731% | +1.012% | +0.728% |
-| [`predicted-bella-lui`][report] | +1.004% | +0.563% | +0.779% | +0.242% | +0.149% |
+| [`predicted-calisto-tests-motor-at-minus-1.373`][report] | −0.609% | −0.567% | −0.288% | +0.363% | +0.232% |
+| [`predicted-valetudo`][report] | +10.113% | +6.179% | +8.916% | +2.292% | +2.237% |
+| [`predicted-ndrt-2020-nose-to-tail`][report] | +10.302% | +6.534% | +6.870% | +1.378% | +1.351% |
+| [`predicted-prometheus-2022-generic-motor`][report] | −7.280% | −4.920% | −4.978% | +1.280% | +1.069% |
+| [`predicted-juno-iii`][report] | +2.097% | +1.046% | +1.686% | +1.006% | +0.737% |
+| [`predicted-bella-lui`][report] | +0.971% | +0.536% | +0.748% | +0.241% | +0.154% |
 
 | case | `rail_exit_speed_m_s` | `rail_exit_time_s` | `burnout_altitude_agl_m` | `burnout_speed_m_s` | `impact_speed_m_s` |
 |---|---|---|---|---|---|
-| [`predicted-calisto-tests-motor-at-minus-1.373`][report] | −0.009% | −0.071% | +0.241% | +0.526% | −0.020% |
+| [`predicted-calisto-tests-motor-at-minus-1.373`][report] | −0.009% | −0.071% | +0.240% | +0.526% | −0.020% |
 | [`predicted-valetudo`][report] | +0.029% | −0.109% | +1.326% | +2.883% | +0.009% |
 | [`predicted-ndrt-2020-nose-to-tail`][report] | +0.000% | −0.087% | +0.723% | +1.532% | +0.022% |
-| [`predicted-prometheus-2022-generic-motor`][report] | +0.001% | −0.036% | +1.384% | +1.778% | −0.014% |
-| [`predicted-juno-iii`][report] | −0.001% | −0.143% | +0.796% | +1.135% | −0.003% |
-| [`predicted-bella-lui`][report] | −0.011% | −0.029% | +0.284% | +0.296% | +0.021% |
+| [`predicted-prometheus-2022-generic-motor`][report] | +0.001% | −0.036% | +1.227% | +1.778% | −0.013% |
+| [`predicted-juno-iii`][report] | −0.001% | −0.143% | +0.772% | +1.129% | −0.003% |
+| [`predicted-bella-lui`][report] | −0.011% | −0.029% | +0.270% | +0.296% | +0.021% |
 
 | case | `max_acceleration_power_on_m_s2` | `max_acceleration_m_s2` | `max_acceleration_time_s` | `apogee_drift_m` | `landing_drift_m` |
 |---|---|---|---|---|---|
-| [`predicted-calisto-tests-motor-at-minus-1.373`][report] | +0.123% | +0.123% | +0.002% | −2.321% | +1.082% |
-| [`predicted-valetudo`][report] | +0.250% | +0.250% | −0.030% | +12.213% | +10.276% |
-| [`predicted-ndrt-2020-nose-to-tail`][report] | +0.656% | +83.059% | +9.684% | +11.881% | +12.945% |
-| [`predicted-prometheus-2022-generic-motor`][report] | +0.847% | +19.062% | −6.637% | −19.402% | −4.673% |
-| [`predicted-juno-iii`][report] | +0.090% | +0.090% | +0.002% | −40.404% | +45.056% |
-| [`predicted-bella-lui`][report] | +1.797% | +1.797% | −0.029% | −10.463% | −22.950% |
+| [`predicted-calisto-tests-motor-at-minus-1.373`][report] | +0.123% | +0.123% | +0.002% | −2.233% | +0.901% |
+| [`predicted-valetudo`][report] | +0.250% | +0.250% | −0.030% | +12.215% | +10.437% |
+| [`predicted-ndrt-2020-nose-to-tail`][report] | +0.656% | +83.059% | +9.646% | +12.259% | +12.648% |
+| [`predicted-prometheus-2022-generic-motor`][report] | +0.848% | +19.062% | −6.903% | −17.642% | −6.167% |
+| [`predicted-juno-iii`][report] | +0.105% | +0.105% | +0.002% | −36.078% | +40.482% |
+| [`predicted-bella-lui`][report] | +1.797% | +1.797% | −0.029% | −9.390% | −20.805% |
 
 The whole-trace numbers, in metres and metres per second, defined as for the same-drag flights
 above. [Valetudo's][valetudo-predicted-case], [NDRT 2020's][ndrt-predicted-case] and
@@ -511,12 +511,12 @@ apogee or top speed, so it differs from the same-drag bound: Juno III's 56.17532
 
 | case | `series_height_rms_m` | height bound, m | `series_speed_rms_m_s` | speed bound, m/s |
 |---|---|---|---|---|
-| [`predicted-calisto-tests-motor-at-minus-1.373`][report] | +12.228083 | 84.6 | +0.332187 | 7.4 |
-| [`predicted-valetudo`][report] | +75.617613 | 20.9 | +2.793868 | 3.2 |
-| [`predicted-ndrt-2020-nose-to-tail`][report] | +116.557300 | 38.1 | +6.780039 | 5.5 |
-| [`predicted-prometheus-2022-generic-motor`][report] | +253.897340 | 128.8 | +7.128214 | 10.3 |
-| [`predicted-juno-iii`][report] | +56.175322 | 83.9 | +0.997574 | 6.8 |
-| [`predicted-bella-lui`][report] | +5.477806 | 16.2 | +0.305877 | 2.9 |
+| [`predicted-calisto-tests-motor-at-minus-1.373`][report] | +12.420364 | 84.6 | +0.331462 | 7.4 |
+| [`predicted-valetudo`][report] | +75.375007 | 20.9 | +2.790876 | 3.2 |
+| [`predicted-ndrt-2020-nose-to-tail`][report] | +116.136025 | 38.1 | +6.775468 | 5.5 |
+| [`predicted-prometheus-2022-generic-motor`][report] | +263.920106 | 128.8 | +7.202224 | 10.3 |
+| [`predicted-juno-iii`][report] | +54.699661 | 83.9 | +0.927234 | 6.8 |
+| [`predicted-bella-lui`][report] | +5.264438 | 16.2 | +0.279185 | 2.9 |
 
 Why the misses, largest first:
 

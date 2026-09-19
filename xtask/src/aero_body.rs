@@ -19,7 +19,7 @@ use std::fs;
 use std::path::Path;
 
 use hpr_aero::shock_expansion::{BodySegment, DEFAULT_ELEMENTS_PER_CURVE, ShockExpansionBody};
-use hpr_aero::{AeroModel, Flow};
+use hpr_aero::{AeroModel, BodyModel, Flow};
 use hpr_design::{NoseShape, Profile, Rocket};
 use serde_json::{Value, json};
 
@@ -250,12 +250,13 @@ fn arcas_nose(ratio: f64) -> Result<ShockExpansionBody, String> {
 
 /// hpr's model of the design `name` under `validation/designs/`, or with `ratio` of its nose and
 /// cylinder alone, the nose replaced by the secant ogive of that arc radius ratio, and with
-/// `boattail` the boattail behind them too (not the lip behind that).
+/// `boattail` the boattail behind them too (not the lip behind that), its bodies by `body_model`.
 pub fn arcas_model(
     root: &Path,
     name: &str,
     ratio: Option<f64>,
     boattail: bool,
+    body_model: BodyModel,
 ) -> Result<AeroModel, String> {
     let path = root.join("validation/designs").join(name);
     let text = fs::read_to_string(&path).map_err(|e| format!("{name}: {e}"))?;
@@ -288,7 +289,7 @@ pub fn arcas_model(
     }
     let rocket: Rocket = serde_json::from_value(design).map_err(|e| format!("{name}: {e}"))?;
     let layout = rocket.layout().map_err(|e| format!("{name}: {e}"))?;
-    AeroModel::new(&layout).map_err(|e| format!("{name}: {e}"))
+    AeroModel::with_body_model(&layout, body_model).map_err(|e| format!("{name}: {e}"))
 }
 
 /// The bodies' `C_Nα` at `α → 0` through the flight's path (`AeroModel::components`), on
@@ -347,9 +348,10 @@ fn arcas_robin(root: &Path) -> Result<Value, String> {
         let design = configuration["design"]
             .as_str()
             .ok_or(format!("{WIND_TUNNEL}: {id} has no design"))?;
-        let as_designed = arcas_model(root, design, None, false)?;
-        let fitted = arcas_model(root, design, Some(ratio), false)?;
-        let fitted_tailed = arcas_model(root, design, Some(ratio), true)?;
+        let current = BodyModel::default();
+        let as_designed = arcas_model(root, design, None, false, current)?;
+        let fitted = arcas_model(root, design, Some(ratio), false, current)?;
+        let fitted_tailed = arcas_model(root, design, Some(ratio), true, current)?;
         let mut rows = Vec::new();
         for curve in configuration["cn_alpha_fins_off"]
             .as_array()

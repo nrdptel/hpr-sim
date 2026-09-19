@@ -23,8 +23,8 @@ use std::f64::consts::PI;
 use std::fs;
 use std::path::Path;
 
-use hpr_aero::BODY_LIFT_K;
 use hpr_aero::shock_expansion::cone_normal_force_slope;
+use hpr_aero::{BODY_LIFT_K, BodyModel};
 use serde_json::{Value, json};
 
 use crate::aero_body::{
@@ -258,9 +258,10 @@ pub fn generate(root: &Path) -> Result<Value, String> {
         let design = configuration["design"]
             .as_str()
             .ok_or(format!("{WIND_TUNNEL}: {id} has no design"))?;
-        let model = arcas_model(root, design, Some(ratio), true)?;
+        let model = arcas_model(root, design, Some(ratio), true, BodyModel::BEFORE_M1_8E6)?;
         let scale = model.reference_area_m2() / area;
-        let body_lift: f64 = scale * model.bodies().iter().map(|b| b.lift_factor).sum::<f64>();
+        let body_lift: f64 =
+            scale * BODY_LIFT_K * model.bodies().iter().map(|b| b.planform_ratio).sum::<f64>();
         let method = arcas_body(ratio, cylinder_end_in, true)?;
         let bare = arcas_body(ratio, cylinder_end_in, false)?;
         let length_m = configuration["length_m"]

@@ -15,6 +15,7 @@
 
 mod aero;
 mod aero_body;
+mod aero_crossflow;
 mod aero_drag;
 mod aero_gap;
 mod aero_mach;

@@ -1,0 +1,331 @@
+{
+  "id": "arcas-robin-high-alpha",
+  "source": "C. D. Babb and D. E. Fuller, NASA TN D-4014 (1967), Mach 1.50 to 4.63, Langley Unitary Plan wind tunnel: the fins-off normal force of the half-scale Arcas Robin (configuration 1, short) and bioscience Arcas (configuration 2, long) at the angles of attack plotted above those in arcas-robin-wind-tunnel.json, to about 21 deg. Reynolds number 9.8e6 per metre, transition fixed by grit. US Government work.",
+  "reading": "Read from the report's plots, which print no tables, on 600-dpi renders (2026-09-19, M1.8e6). Each plot's grid fitted line by line; on Fig. 6(a), whose horizontal lines are lost right of about +3 deg, the rows are rebuilt from where the vertical lines meet the frame and checked against the surviving fragments to 1 px. Each symbol located by fitting its outline (circle, square, diamond, triangle, right triangle, quarter disc) to the de-gridded image and checked by eye; each Mach number's curve is plotted on its own zero, one C_N unit apart, and every symbol was checked against the right one. C_N +-0.02 on Fig. 5(a) and +-0.03 on Fig. 6(a), alpha +-0.05 deg; the report states +-0.03 for C_N itself. The same method reads arcas-robin-wind-tunnel.json's own symbols near +4 deg 0.013 lower on average, within the two readings. The points near and below +4 deg are that fixture's.",
+  "configurations": [
+    {
+      "id": "arcas-robin-short",
+      "cn_fins_off": [
+        {
+          "mach": 1.5,
+          "alpha_deg_c_n": [
+            [
+              6.12,
+              0.318
+            ],
+            [
+              8.34,
+              0.548
+            ],
+            [
+              12.51,
+              1.124
+            ],
+            [
+              14.73,
+              1.523
+            ],
+            [
+              16.9,
+              2.048
+            ],
+            [
+              21.53,
+              4.034
+            ]
+          ],
+          "source": "TN D-4014 Fig. 5(a), printed p. 25: configuration 1 (short model), fins off"
+        },
+        {
+          "mach": 1.8,
+          "alpha_deg_c_n": [
+            [
+              6.23,
+              0.377
+            ],
+            [
+              8.43,
+              0.621
+            ],
+            [
+              12.63,
+              1.329
+            ],
+            [
+              14.93,
+              1.916
+            ],
+            [
+              17.13,
+              2.668
+            ],
+            [
+              21.71,
+              5.094
+            ]
+          ],
+          "source": "TN D-4014 Fig. 5(a), printed p. 25: configuration 1 (short model), fins off"
+        },
+        {
+          "mach": 2.3,
+          "alpha_deg_c_n": [
+            [
+              6.14,
+              0.426
+            ],
+            [
+              8.16,
+              0.677
+            ],
+            [
+              12.56,
+              1.63
+            ],
+            [
+              14.71,
+              2.259
+            ],
+            [
+              16.96,
+              3.099
+            ],
+            [
+              21.22,
+              5.098
+            ]
+          ],
+          "source": "TN D-4014 Fig. 5(a), printed p. 25: configuration 1 (short model), fins off"
+        },
+        {
+          "mach": 2.96,
+          "alpha_deg_c_n": [
+            [
+              5.81,
+              0.479
+            ],
+            [
+              7.84,
+              0.801
+            ],
+            [
+              12.2,
+              1.87
+            ],
+            [
+              14.3,
+              2.515
+            ],
+            [
+              16.48,
+              3.182
+            ],
+            [
+              20.53,
+              4.627
+            ]
+          ],
+          "source": "TN D-4014 Fig. 5(a), printed p. 25: configuration 1 (short model), fins off"
+        },
+        {
+          "mach": 3.96,
+          "alpha_deg_c_n": [
+            [
+              6.25,
+              0.596
+            ],
+            [
+              8.26,
+              0.997
+            ],
+            [
+              12.61,
+              2.017
+            ],
+            [
+              14.61,
+              2.523
+            ],
+            [
+              16.73,
+              3.117
+            ],
+            [
+              20.69,
+              4.316
+            ]
+          ],
+          "source": "TN D-4014 Fig. 5(a), printed p. 25: configuration 1 (short model), fins off"
+        },
+        {
+          "mach": 4.63,
+          "alpha_deg_c_n": [
+            [
+              5.98,
+              0.728
+            ],
+            [
+              7.96,
+              1.107
+            ],
+            [
+              12.22,
+              2.024
+            ],
+            [
+              14.21,
+              2.489
+            ],
+            [
+              16.32,
+              3.058
+            ],
+            [
+              20.21,
+              4.24
+            ]
+          ],
+          "source": "TN D-4014 Fig. 5(a), printed p. 25: configuration 1 (short model), fins off"
+        }
+      ]
+    },
+    {
+      "id": "arcas-robin-long",
+      "cn_fins_off": [
+        {
+          "mach": 1.8,
+          "alpha_deg_c_n": [
+            [
+              6.23,
+              0.462
+            ],
+            [
+              8.49,
+              0.753
+            ],
+            [
+              12.82,
+              1.656
+            ],
+            [
+              15.31,
+              2.411
+            ]
+          ],
+          "source": "TN D-4014 Fig. 6(a), printed p. 34: configuration 2 (long model), fins off"
+        },
+        {
+          "mach": 2.3,
+          "alpha_deg_c_n": [
+            [
+              6.27,
+              0.493
+            ],
+            [
+              8.35,
+              0.804
+            ],
+            [
+              12.93,
+              2.002
+            ],
+            [
+              15.26,
+              2.875
+            ]
+          ],
+          "source": "TN D-4014 Fig. 6(a), printed p. 34: configuration 2 (long model), fins off"
+        },
+        {
+          "mach": 2.96,
+          "alpha_deg_c_n": [
+            [
+              5.48,
+              0.509
+            ],
+            [
+              7.62,
+              0.891
+            ],
+            [
+              12.15,
+              2.276
+            ],
+            [
+              14.36,
+              3.203
+            ],
+            [
+              16.64,
+              4.215
+            ],
+            [
+              18.86,
+              5.358
+            ]
+          ],
+          "source": "TN D-4014 Fig. 6(a), printed p. 34: configuration 2 (long model), fins off"
+        },
+        {
+          "mach": 3.96,
+          "alpha_deg_c_n": [
+            [
+              5.89,
+              0.647
+            ],
+            [
+              8.0,
+              1.128
+            ],
+            [
+              12.34,
+              2.538
+            ],
+            [
+              14.44,
+              3.283
+            ],
+            [
+              16.62,
+              4.153
+            ],
+            [
+              20.83,
+              6.036
+            ]
+          ],
+          "source": "TN D-4014 Fig. 6(a), printed p. 34: configuration 2 (long model), fins off"
+        },
+        {
+          "mach": 4.63,
+          "alpha_deg_c_n": [
+            [
+              6.34,
+              0.789
+            ],
+            [
+              8.35,
+              1.252
+            ],
+            [
+              12.64,
+              2.526
+            ],
+            [
+              14.71,
+              3.224
+            ],
+            [
+              16.81,
+              3.985
+            ],
+            [
+              20.91,
+              5.662
+            ]
+          ],
+          "source": "TN D-4014 Fig. 6(a), printed p. 34: configuration 2 (long model), fins off"
+        }
+      ]
+    }
+  ]
+}

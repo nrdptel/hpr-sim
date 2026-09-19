@@ -12,8 +12,9 @@
 //! [guide-drag-mach]: https://nrdptel.github.io/hpr-sim/physics/aero.html#drag-through-mach-1
 //! [guide-override]: https://nrdptel.github.io/hpr-sim/physics/aero.html#the-normal-force-from-rasaero-ii
 //!
-//! - [`body`]: nose cones, body tubes and transitions: Barrowman's slope and centre of pressure,
-//!   and Galejs's body lift.
+//! - [`body`]: nose cones, body tubes and transitions: Barrowman's slope and centre of pressure.
+//! - [`crossflow`]: body lift, the crossflow's push on a body at an angle of attack: Jorgensen's
+//!   `η C_dn` against the body's fineness and the crossflow Mach number, or Galejs's constant.
 //! - [`fins`]: fin sets: Barrowman's slope with Prandtl–Glauert, the mean aerodynamic chord,
 //!   supersonic linear theory and the transonic join between them, fin-count and roll terms, and
 //!   fin–body interference.
@@ -22,6 +23,10 @@
 //! - [`nose_drag`]: the pressure drag of noses, shoulders and steps from rest through Mach 1 to
 //!   supersonic speeds, with Stoney's measured curves.
 //! - [`afterbody`]: a boattail's wave drag faster than sound, and the base pressure behind it.
+//! - [`shock_expansion`]: the second-order shock-expansion method for a pointed body faster than
+//!   sound (NACA TN 3527).
+//! - [`supersonic_boattail`]: a boattail's measured share of the normal force faster than sound
+//!   (Washington and Pettis, RD-TM-68-5).
 //! - [`table`]: override tables from another tool: the drag coefficient against Mach number, and
 //!   the normal force and centre of pressure against Mach number and angle of attack, read from
 //!   RASAero II's export.
@@ -49,16 +54,19 @@
 
 pub mod afterbody;
 pub mod body;
+pub mod crossflow;
 pub mod drag;
 pub mod error;
 pub mod fins;
 pub mod model;
 pub mod nose_drag;
 pub mod shock_expansion;
+pub mod supersonic_boattail;
 pub mod table;
 
 pub use afterbody::Boattail;
 pub use body::{BODY_LIFT_K, BodyGeometry};
+pub use crossflow::BodyLift;
 pub use drag::{
     BaseBehindBoattail, BoattailTerm, ComponentDrag, ComponentDragTerms, Drag, DragConditions,
     MergedBoattail, PressureDragTerm, ReliefSource, WakeTerm,
@@ -69,9 +77,9 @@ pub use fins::{
     interference_factor, roll_damping_interference, roll_forcing_interference, roll_sum, side_sum,
 };
 pub use model::{
-    AeroModel, BodyAero, ComponentNormalForce, FinSetAero, Flow, MAX_CANT_RAD,
+    AeroModel, BodyAero, BodyModel, ComponentNormalForce, FinSetAero, Flow, MAX_CANT_RAD,
     NORMAL_FORCE_MACH_LIMIT, NormalForce, Roll, SUPERSONIC_JOIN_START_MACH,
-    SUPERSONIC_JOIN_WIDTH_MACH, SupersonicBody,
+    SUPERSONIC_JOIN_WIDTH_MACH, SupersonicBoattail, SupersonicBody,
 };
 pub use nose_drag::{PressureDragCurve, StoneyNose};
 pub use table::{
@@ -794,11 +802,17 @@ mod tests {
                 "calisto-rasaero-ii@2",
                 // The Arcas Robin: the measured transonic dip in the fins' lift and the join's
                 // peak (Mach 0.8 to 1.2); the body, which grows with Mach where slender-body
-                // theory's doesn't (Mach 3.96 and 4.63).
+                // theory's doesn't (Mach 3.96 and 4.63). The committed designs' blunt tip and lip
+                // keep the shock-expansion method off, so their bodies fly slender-body theory
+                // past Mach 1, 37% low fins off at Mach 2.96 on the short model. Galejs's body
+                // lift (K = 1.1) covered part of that until M1.8e6; Jorgensen's, which the
+                // tunnel's own fins-off curvature supports, doesn't, and the short model at 2.96
+                // reads -16.3% (-13.4% before; ADR-037).
                 "arcas-robin-short@0.8",
                 "arcas-robin-short@0.9",
                 "arcas-robin-short@0.95",
                 "arcas-robin-short@1.2",
+                "arcas-robin-short@2.96",
                 "arcas-robin-short@3.96",
                 "arcas-robin-short@4.63",
                 "arcas-robin-long@0.9",
