@@ -103,7 +103,9 @@ pub const BASE_RELIEF_MACH: f64 = 2.5;
 /// Where a boattail's drag starts its transonic rise and its base its relief: Mach 0.8, where
 /// the rest of the buildup starts its transonic methods ([`crate::drag::SUBSONIC_MACH_LIMIT`],
 /// Niskanen 2009 p. 47). An earlier draft used 0.9, chosen after seeing the Arcas Robin wind
-/// tunnel, a target (ADR-030).
+/// tunnel, a target (the decision record on the afterbody, [ADR-030][adr-030]).
+///
+/// [adr-030]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-030-the-afterbody-faster-than-sound-a-boattails-wave-drag-the-base-behind-it-and-a-lip-in-its-wake-2026-09-18
 pub const TRANSONIC_ONSET_MACH: f64 = crate::drag::SUBSONIC_MACH_LIMIT;
 
 /// Where the transonic rise ends: from Mach 1 a boattail takes its supersonic drag (held to
