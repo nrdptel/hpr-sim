@@ -866,6 +866,9 @@ mod tests {
         mach: f64,
         fins: String,
         forebody_c_a: f64,
+        c_a: Option<f64>,
+        chamber_c_a: Option<f64>,
+        forebody_c_a_chamber_only: Option<f64>,
     }
 
     /// M1.8b1 done-when: hpr's forebody drag (`C_D0` less the base drag) against the Arcas Robin
@@ -907,6 +910,18 @@ mod tests {
                 let what = format!("{}@{} fins {}", reference.id, row.mach, row.fins);
                 assert_eq!((row.mach, &row.fins), (point.mach, &point.fins), "{what}");
                 assert_eq!(row.reference_forebody_c_a, point.forebody_c_a, "{what}");
+                // TN D-4014's forebody is its `C_A` less the chamber's force over the whole base,
+                // `1.383 C_A,c` with 1.383 = (1.470/1.250)², to the readings' 4 decimals; the
+                // chamber-only bound is `C_A − C_A,c`.
+                if let (Some(c_a), Some(chamber)) = (point.c_a, point.chamber_c_a) {
+                    let factor = (1.470f64 / 1.250).powi(2);
+                    assert!(
+                        (point.forebody_c_a - (c_a - factor * chamber)).abs() < 1.5e-4,
+                        "{what}"
+                    );
+                    let bound = point.forebody_c_a_chamber_only.unwrap_or(f64::NAN);
+                    assert!((bound - (c_a - chamber)).abs() < 1.5e-4, "{what}");
+                }
                 let parts = model
                     .buildup_components(&Flow::axial(row.mach), &conditions)
                     .unwrap();
@@ -947,5 +962,70 @@ mod tests {
                 "arcas-robin-long@1.2 fins off",
             ]
         );
+    }
+
+    /// The Arcas Robin comparison's two input choices (validation audit): of the 44 rows, 3 within
+    /// 10% with the square section and the default 20 µm finish, 5 with the airfoil section, 6
+    /// with a polished finish, and 8 with both (the committed designs). Taking the chamber's force
+    /// over the chamber alone changes none of the four. Allowing each reading its uncertainty and
+    /// the reports' ±0.004, 3 of the committed design's 8 could fall either side of 10%.
+    #[test]
+    fn drag_against_mach_depends_on_the_fins_and_finish() {
+        use hpr_design::{FinCrossSection, Finish, Part};
+        let tunnel: serde_json::Value = serde_json::from_str(include_str!(
+            "../../../validation/fixtures/aero/arcas-robin-wind-tunnel.json"
+        ))
+        .unwrap();
+        let conditions = DragConditions::coasting(3.0e6 / 0.3048);
+        let mut counts = Vec::new();
+        for (section, finish) in [
+            (FinCrossSection::Square, None),
+            (FinCrossSection::Airfoil, None),
+            (FinCrossSection::Square, Some(Finish::Polished {})),
+            (FinCrossSection::Airfoil, Some(Finish::Polished {})),
+        ] {
+            let (mut within, mut chamber_only, mut fragile) = (0, 0, 0);
+            for configuration in tunnel["configurations"].as_array().unwrap() {
+                let mut rocket = committed_design(configuration["design"].as_str().unwrap());
+                for component in &mut rocket.stages[0].components {
+                    component.finish = finish;
+                    for child in &mut component.children {
+                        child.finish = finish;
+                        if let Part::FinSet(set) = &mut child.part {
+                            set.cross_section = section;
+                        }
+                    }
+                }
+                let model = AeroModel::new(&rocket.layout().unwrap()).unwrap();
+                let fin_ids: Vec<&str> = model.fin_sets().iter().map(|f| f.id.as_str()).collect();
+                for point in configuration["axial_force"].as_array().unwrap() {
+                    let mach = point["mach"].as_f64().unwrap();
+                    let fins = point["fins"] == "on";
+                    let hpr: f64 = model
+                        .buildup_components(&Flow::axial(mach), &conditions)
+                        .unwrap()
+                        .iter()
+                        .filter(|part| fins || !fin_ids.contains(&part.id.as_str()))
+                        .map(|part| part.drag.friction + part.drag.pressure + part.drag.parasitic)
+                        .sum();
+                    let measured = point["forebody_c_a"].as_f64().unwrap();
+                    let inside = |reference: f64| (hpr / reference - 1.0).abs() <= 0.10;
+                    within += usize::from(inside(measured));
+                    let bound = point["forebody_c_a_chamber_only"]
+                        .as_f64()
+                        .unwrap_or(measured);
+                    chamber_only += usize::from(inside(bound));
+                    let spread = point["uncertainty"].as_f64().unwrap() + 0.004;
+                    fragile += usize::from(
+                        inside(measured)
+                            && !(inside(measured - spread) && inside(measured + spread)),
+                    );
+                }
+            }
+            assert_eq!(within, chamber_only, "{section:?}, {finish:?}");
+            counts.push((within, fragile));
+        }
+        assert_eq!(counts.iter().map(|c| c.0).collect::<Vec<_>>(), [3, 5, 6, 8]);
+        assert_eq!(counts[3].1, 3);
     }
 }

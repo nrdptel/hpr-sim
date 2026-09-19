@@ -140,13 +140,12 @@ enum Fit {
 impl Fit {
     /// Eq. 3.87's `a` and `b` from the rise `delta = C_T(M_L) − (C_D•)_p,0` and the slope
     /// `slope = C_T′(M_L)`: `b = C_T′(M_L) M_L/Δ`, `a = Δ/M_L^b`, so that `a M^b` meets both at
-    /// `M_L`. The power fits only a rise with a positive slope; otherwise the quadratic.
+    /// `M_L`. The power meets Niskanen's conditions (non-decreasing, zero slope at rest) only for a
+    /// rise with `b > 1`; otherwise the quadratic.
     fn new(delta: f64, slope: f64, mach_low: f64) -> Self {
-        if delta > 0.0 && slope > 0.0 {
-            Self::Power {
-                delta,
-                b: slope * mach_low / delta,
-            }
+        let b = slope * mach_low / delta;
+        if delta > 0.0 && b > 1.0 {
+            Self::Power { delta, b }
         } else {
             Self::Quadratic { delta }
         }
@@ -377,14 +376,26 @@ impl StoneyNose {
     }
 
     /// The pressure drag at fineness 3 and `mach`, on the base area, and its slope in Mach:
-    /// linear between the points, the right-hand slope at a point, and the end values held
-    /// outside them (slope 0). Below the first point the value is only a bound for the
-    /// interpolation between shapes; [`PressureDragCurve`] starts its transonic method there.
+    /// linear between the points, the right-hand slope at a point, and the last value held past
+    /// the last point (slope 0). A curve that starts after Mach 0.8 (the x^¼ and the ellipsoid,
+    /// from 1.2) is joined by a straight line to 0 at Mach 0.8, where every smooth 3:1 nose of
+    /// panel (a) reads 0 (ADR-028); nothing is asked below Mach 0.8.
     fn value_and_slope(self, mach: f64) -> (f64, f64) {
         let points = self.points();
         let (first, last) = (points[0], points[points.len() - 1]);
         if mach < first.0 {
-            return (first.1, 0.0);
+            if first.0 > SUBSONIC_MACH_LIMIT && mach > SUBSONIC_MACH_LIMIT {
+                let slope = first.1 / (first.0 - SUBSONIC_MACH_LIMIT);
+                return (slope * (mach - SUBSONIC_MACH_LIMIT), slope);
+            }
+            return (
+                if first.0 > SUBSONIC_MACH_LIMIT {
+                    0.0
+                } else {
+                    first.1
+                },
+                0.0,
+            );
         }
         if mach >= last.0 {
             return (last.1, 0.0);
@@ -426,14 +437,6 @@ impl Reference {
         factor: 1.0,
         rest: 0.8 / 37.0,
     };
-
-    /// The first Mach number at which the curve can serve.
-    fn first_mach(self) -> f64 {
-        match self {
-            Self::Blunt | Self::Cone { .. } => 0.0,
-            Self::Stoney(nose) => nose.first_mach(),
-        }
-    }
 
     fn value_and_slope(self, mach: f64) -> (f64, f64) {
         match self {
@@ -545,8 +548,11 @@ pub struct PressureDragCurve {
 }
 
 impl PressureDragCurve {
+    /// The curve from its value at rest, its transonic method and `M_L`. With `M_L` 0 the method
+    /// covers every Mach number, and the value at rest is its own.
     fn from_transonic(rest: f64, transonic: Transonic, mach_low: f64) -> Self {
         let (c_low, slope_low) = transonic.value_and_slope(mach_low);
+        let rest = if mach_low == 0.0 { c_low } else { rest };
         Self {
             shape: None,
             fineness_ratio: 0.0,
@@ -557,11 +563,12 @@ impl PressureDragCurve {
         }
     }
 
-    /// A step up in radius, or a body's bare front face: a flat face, `0.8` at rest (eq. 3.86
-    /// with `φ = π/2`) rising by eq. 3.87 to the blunt cylinder `0.85 q_stag/q` (eq. B.2) at Mach
-    /// 0.8, the top of the subsonic region, and following it above.
+    /// A step up in radius, or a body's bare front face: a flat face, the blunt cylinder's
+    /// `0.85 q_stag/q` at every Mach number (eq. B.1–B.2), 0.85 at rest. Eq. 3.86 "does not take
+    /// into account the effect of extremely blunt nose cones (length less than half of the
+    /// diameter)" (Niskanen 2009 p. 47), and a step has no length.
     pub fn step() -> Self {
-        Self::from_transonic(0.8, Transonic::Blunt, SUBSONIC_MACH_LIMIT)
+        Self::from_transonic(0.0, Transonic::Blunt, 0.0)
     }
 
     /// The curve of a nose or shoulder of `shape`, fineness ratio `f = l/(d_aft − d_fore)` and
@@ -613,22 +620,18 @@ impl PressureDragCurve {
         if fineness_ratio == 0.0 {
             return Ok(Self::step());
         }
-        let scaled = |lower: Reference, upper: Reference, weight: f64, reference_fineness: f64| {
-            let mach_low = SUBSONIC_MACH_LIMIT
-                .max(lower.first_mach())
-                .max(upper.first_mach());
+        let interpolated = |lower: Reference, upper: Reference, weight: f64| {
             let transonic = Transonic::Scaled {
                 lower,
                 upper,
                 weight,
-                exponent: (fineness_ratio + 1.0).ln() / (reference_fineness + 1.0).ln(),
+                exponent: (fineness_ratio + 1.0).ln() / LN_4,
             };
-            Ok(Self::from_transonic(rest, transonic, mach_low))
+            Ok(Self::from_transonic(rest, transonic, SUBSONIC_MACH_LIMIT))
         };
-        let interpolated = |lower, upper, weight| scaled(lower, upper, weight, 3.0);
-        // Cones and ogives: the closed form from fineness 1; below it, eq. B.9 between the blunt
-        // cylinder and the closed form at fineness 1, since eq. B.4 passes the blunt cylinder as
-        // the cone flattens (ADR-028).
+        // Cones and ogives: the closed form from fineness 1; below it, at every Mach number,
+        // eq. B.9's form between the flat face and the whole curve at fineness 1, since eq. B.4
+        // passes the flat face as the cone flattens (ADR-028).
         let cone = |factor: f64| {
             if fineness_ratio >= 1.0 {
                 Ok(Self::from_transonic(
@@ -637,12 +640,17 @@ impl PressureDragCurve {
                     1.0,
                 ))
             } else {
-                let at_1 = Reference::Cone {
-                    fineness_ratio: 1.0,
-                    factor,
-                    rest,
+                let transonic = Transonic::Scaled {
+                    lower: Reference::Blunt,
+                    upper: Reference::Cone {
+                        fineness_ratio: 1.0,
+                        factor,
+                        rest,
+                    },
+                    weight: 1.0,
+                    exponent: (fineness_ratio + 1.0).ln() / std::f64::consts::LN_2,
                 };
-                scaled(Reference::Blunt, at_1, 1.0, 1.0)
+                Ok(Self::from_transonic(rest, transonic, 0.0))
             }
         };
         use Reference::{Blunt, Stoney};
@@ -978,20 +986,27 @@ mod tests {
         assert!(subsonic_pressure_drag_coefficient(rest, low, slope, 0.0, 0.0).is_err());
     }
 
-    /// A step: 0.8 at rest (eq. 3.86 at 90°), eq. 3.87 to the blunt cylinder at Mach 0.8, and the
-    /// blunt cylinder `0.85 q_stag/q` above, with its published jump at Mach 1.
+    /// A step: the flat face, the blunt cylinder's `0.85 q_stag/q` at every Mach number (eq.
+    /// B.1–B.2), 0.85 at rest, with its published jump at Mach 1.
     #[test]
     fn a_step_rises_to_the_blunt_cylinder() {
         let step = PressureDragCurve::step();
         let blunt = |m: f64| stagnation_drag_coefficient_for_test(m);
-        assert_eq!(step.coefficient(0.0).unwrap(), 0.8);
+        assert_eq!(step.coefficient(0.0).unwrap(), 0.85);
+        assert_eq!(step.rest_coefficient(), 0.85);
         close(
             step.coefficient(0.8).unwrap(),
             0.994_704,
             1e-12,
             "0.85 × 1.17024",
         );
-        for m in [0.9, 0.999, 1.0, 2.0, 4.9] {
+        close(
+            step.coefficient(0.3).unwrap(),
+            0.85 * (1.0 + 0.0225 + 0.0081 / 40.0),
+            1e-15,
+            "0.3",
+        );
+        for m in [0.1, 0.5, 0.9, 0.999, 1.0, 2.0, 4.9] {
             close(
                 step.coefficient(m).unwrap(),
                 blunt(m),
@@ -999,13 +1014,7 @@ mod tests {
                 "blunt cylinder",
             );
         }
-        close(
-            slope_of(&step, 0.8 - 1e-6, 1e-7),
-            0.85 * (0.4 + 0.0512),
-            1e-5,
-            "slope at 0.8",
-        );
-        let mut previous = 0.8;
+        let mut previous = 0.85;
         for m in [0.1, 0.3, 0.5, 0.7, 0.8] {
             let c = step.coefficient(m).unwrap();
             assert!(c > previous, "rises: {c} at Mach {m}");
@@ -1164,9 +1173,25 @@ mod tests {
             1e-12,
             "a fifth of the way from the blunt cylinder",
         );
-        // The x^¼ and the ellipsoid start at Mach 1.2, so eq. 3.87 runs to there.
-        assert_eq!(at_3(NoseShape::Elliptical {}).transonic_lower_bound(), 1.2);
+        // The x^¼ and the ellipsoid start at Mach 1.2: a straight line joins them to 0 at Mach
+        // 0.8, where the other smooth 3:1 noses read 0, so every Stoney shape starts at 0.8.
+        let ellipse = at_3(NoseShape::Elliptical {});
+        assert_eq!(ellipse.transonic_lower_bound(), 0.8);
         assert_eq!(vk.transonic_lower_bound(), 0.8);
+        assert_eq!(ellipse.coefficient(0.6).unwrap(), 0.0);
+        assert_eq!(ellipse.coefficient(0.8).unwrap(), 0.0);
+        close(
+            ellipse.coefficient(1.0).unwrap(),
+            0.5 * 0.111,
+            1e-12,
+            "halfway up the line",
+        );
+        close(
+            ellipse.coefficient(1.2).unwrap(),
+            0.111,
+            1e-12,
+            "its first point",
+        );
     }
 
     /// The guide's worked example (`docs/physics/aero.md`, *Drag through Mach 1*): at Mach 1.5 a
@@ -1191,15 +1216,20 @@ mod tests {
         close(cone, 0.0653, 1e-3, "5:1 cone");
     }
 
-    /// Niskanen's closed-form 3:1 cone (eq. B.4–B.6 and the cubic between) against Stoney's
-    /// measured 3:1 cone, configuration 56 of Figure 12(a) (read with the other curves, to
-    /// ±0.0014): high through the transonic peak, +49% at Mach 1 and +45% at 1.2, where the cubic
-    /// rises to 0.200 against 0.138; +15% at 1.5 and +4% at the curve's end, 1.94. Documented in
-    /// `docs/physics/aero.md`; the ogives inherit it.
+    /// Niskanen's closed-form 3:1 cone (eq. 3.87 below Mach 1, eq. B.4–B.6 and the cubic above)
+    /// against Stoney's measured 3:1 cone, configuration 56 of Figure 12(a) (read with the other
+    /// curves, to ±0.0014): high through the whole rise, +87% at Mach 0.8 and +105% at 0.85, +49%
+    /// at Mach 1 and +48% at 1.1, near the cubic's peak; +15% at 1.5 and +4% at the curve's end,
+    /// 1.94. Documented in `docs/physics/aero.md`; the ogives inherit it.
     #[test]
     fn niskanens_cone_against_stoneys_measured_cone() {
         let stoney = [
+            (0.8, 0.0186, 0.865),
+            (0.85, 0.0228, 1.046),
+            (0.9, 0.0366, 0.852),
+            (0.95, 0.0673, 0.546),
             (1.0, 0.1102, 0.492),
+            (1.1, 0.1580, 0.483),
             (1.2, 0.1378, 0.453),
             (1.5, 0.1136, 0.147),
             (1.8, 0.1044, 0.070),
@@ -1244,7 +1274,37 @@ mod tests {
     fn a_stubby_cone_takes_the_blend() {
         let c = cone_pressure_drag_coefficient(0.5, 1.0).unwrap();
         close(c, 0.647, 1e-3, "fineness 0.5 at Mach 1");
-        assert!(c < std::f64::consts::FRAC_1_SQRT_2 - 0.05, "below sin ε = sin 45°");
+        assert!(
+            c < std::f64::consts::FRAC_1_SQRT_2 - 0.05,
+            "below sin ε = sin 45°"
+        );
+    }
+
+    /// Physics review: a near-flat power series (x^0.05) has almost nothing at rest by eq. 3.86,
+    /// which leaves bluntness out (Niskanen p. 47), and nearly the flat face's drag at Mach 0.8.
+    /// No `a Mᵇ` with `b > 1` joins them, so the curve rises as `Δ (M/M_L)²`, flat at rest.
+    #[test]
+    fn a_near_flat_nose_rises_from_rest_without_a_jump() {
+        let n = 0.05;
+        let curve = PressureDragCurve::new(
+            NoseShape::PowerSeries { exponent: n },
+            3.0,
+            (n / 6.0).atan(),
+        )
+        .unwrap();
+        let rest = curve.rest_coefficient();
+        let at_08 = curve.coefficient(0.8).unwrap();
+        for m in [0.01, 0.1, 0.3, 0.6] {
+            let want = rest + (at_08 - rest) * (m / 0.8) * (m / 0.8);
+            close(curve.coefficient(m).unwrap(), want, 1e-12, "quadratic");
+        }
+        assert!(curve.coefficient(0.01).unwrap() < 1e-3);
+        close(
+            at_08,
+            0.7958,
+            1e-3,
+            "0.80 at Mach 0.8, near the flat face's 0.9947",
+        );
     }
 
     proptest::proptest! {
@@ -1273,6 +1333,41 @@ mod tests {
             let below = curve.coefficient(m_l * (1.0 - 1e-12)).unwrap();
             let at = curve.coefficient(m_l).unwrap();
             proptest::prop_assert!((below - at).abs() <= 1e-9 * (1.0 + at), "{below} {at}");
+        }
+
+        /// Physics review: the drag is continuous in the shape's parameter, across the measured
+        /// shapes where the interpolation changes its ends (x^¼, x^½, x^¾; the ½ and ¾
+        /// parabolas), at every Mach number.
+        #[test]
+        fn continuous_in_the_shape_parameter(
+            which in 0usize..3,
+            knot in 0usize..3,
+            fineness in 0.5f64..8.0,
+            mach in 0.0f64..5.0,
+        ) {
+            let shape = |p: f64| match which {
+                0 => NoseShape::PowerSeries { exponent: p },
+                1 => NoseShape::ParabolicSeries { parameter: p },
+                _ => NoseShape::Haack { parameter: p / 3.0 },
+            };
+            let p = [0.25, 0.5, 0.75][knot];
+            let at = |p: f64| {
+                PressureDragCurve::new(shape(p), fineness, 0.0)
+                    .unwrap()
+                    .coefficient(mach)
+                    .unwrap()
+            };
+            // Eq. B.9 raises the fineness-3 value to `log₄(f + 1)`, below 1 under fineness 3, so
+            // the drag is continuous but steep where that value is near 0: the gap across the knot
+            // shrinks with the step, and is small at a step of 1e-12 (a jump, like the 0.05 the
+            // review found at n = ½, would not shrink).
+            let gap = |step: f64| (at(p - step) - at(p + step)).abs();
+            let (wide, narrow) = (gap(1e-6), gap(1e-12));
+            proptest::prop_assert!(
+                narrow <= wide + 1e-12 && narrow <= 0.01,
+                "{shape:?} at Mach {mach}: gaps {wide} and {narrow}",
+                shape = shape(p)
+            );
         }
     }
 }

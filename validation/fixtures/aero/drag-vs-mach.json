@@ -8,19 +8,19 @@
       "rows": [
         {
           "band": "subsonic",
-          "error": 0.3461488781588491,
+          "error": 0.3467140429938653,
           "fins": "on",
           "hpr_base": 0.07119765333333332,
           "hpr_forebody_by_part": {
             "boattail": 0.0697205182219302,
             "body": 0.15129622681951652,
             "fins": 0.08478924370329913,
-            "lip": 0.0651441673460021,
+            "lip": 0.06531298208222144,
             "nose": 0.031144513815300263
           },
-          "hpr_forebody_c_d": 0.40209466990604825,
+          "hpr_forebody_c_d": 0.4022634846422676,
           "hpr_friction": 0.22375787516438544,
-          "hpr_pressure": 0.17833679474166278,
+          "hpr_pressure": 0.17850560947788213,
           "mach": 0.6,
           "reference_forebody_c_a": 0.2987,
           "reference_uncertainty": 0.002,
@@ -29,18 +29,18 @@
         },
         {
           "band": "subsonic",
-          "error": 0.4312378268053634,
+          "error": 0.4319992825393255,
           "fins": "off",
           "hpr_base": 0.07119765333333332,
           "hpr_forebody_by_part": {
             "boattail": 0.0697205182219302,
             "body": 0.15129622681951652,
-            "lip": 0.0651441673460021,
+            "lip": 0.06531298208222144,
             "nose": 0.031144513815300263
           },
-          "hpr_forebody_c_d": 0.3173054262027491,
+          "hpr_forebody_c_d": 0.3174742409389685,
           "hpr_friction": 0.18763583391575098,
-          "hpr_pressure": 0.12966959228699812,
+          "hpr_pressure": 0.12983840702321747,
           "mach": 0.6,
           "reference_forebody_c_a": 0.2217,
           "reference_uncertainty": 0.002,
@@ -507,19 +507,19 @@
       "rows": [
         {
           "band": "subsonic",
-          "error": 0.3093325477698068,
+          "error": 0.30982115771544905,
           "fins": "on",
           "hpr_base": 0.07119765333333332,
           "hpr_forebody_by_part": {
             "boattail": 0.06938336758656687,
             "body": 0.20481859465072272,
             "fins": 0.08328167045046211,
-            "lip": 0.06513622672646034,
+            "lip": 0.06530504146267968,
             "nose": 0.029754535840256217
           },
-          "hpr_forebody_c_d": 0.4523743952544682,
+          "hpr_forebody_c_d": 0.4525432099906876,
           "hpr_friction": 0.27403760051280546,
-          "hpr_pressure": 0.17833679474166278,
+          "hpr_pressure": 0.17850560947788213,
           "mach": 0.6,
           "reference_forebody_c_a": 0.3455,
           "reference_uncertainty": 0.002,
@@ -528,18 +528,18 @@
         },
         {
           "band": "subsonic",
-          "error": 0.49007963182884984,
+          "error": 0.4907611608406359,
           "fins": "off",
           "hpr_base": 0.07119765333333332,
           "hpr_forebody_by_part": {
             "boattail": 0.06938336758656687,
             "body": 0.20481859465072272,
-            "lip": 0.06513622672646034,
+            "lip": 0.06530504146267968,
             "nose": 0.029754535840256217
           },
-          "hpr_forebody_c_d": 0.3690927248040061,
+          "hpr_forebody_c_d": 0.3692615395402255,
           "hpr_friction": 0.23942313251700803,
-          "hpr_pressure": 0.12966959228699812,
+          "hpr_pressure": 0.12983840702321747,
           "mach": 0.6,
           "reference_forebody_c_a": 0.2477,
           "reference_uncertainty": 0.002,

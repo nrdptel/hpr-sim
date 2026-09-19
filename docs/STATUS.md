@@ -38,10 +38,12 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
   with fins: the blunt leading-edge formula (eq. 3.89) gives fins 0.30 on the Arcas Robin where the
   tunnel measured 0.046 at Mach 4.63. A thin-fin wave-drag model (Ackeret, `4(t/c)²/β` for a
   double wedge) is the likely fix; measure it against the Arcas Robin's fins-on less fins-off
-  first (ADR-028). Don't read predicted mode's misses (Valetudo, NDRT, Prometheus) as gaps to
+  first (ADR-028). Weigh Stoney's measured 3:1 cone (`refs/scratch/stoney/`, config 56) against
+  Niskanen's cone for cones and ogives: 45–105% high from Mach 0.8 to 1.2. Don't read predicted mode's misses (Valetudo, NDRT, Prometheus) as gaps to
   close (ADR-009, ADR-023). M1.8c's damping must keep hpr's local-flow pitch damping (ADR-026).
 - **Regeneration is not bit-identical across machines** (last digits, so hashes move); the
-  script prints each fixture's move.
+  script prints each fixture's move. Regenerate reports with `cargo xtask validate` (the alias's
+  debug build), never `cargo run --release`: release rounds differently in the 7th digit.
 - **Process notes:** `cargo test -p xtask` guards STATUS, ROADMAP, notices, lessons and the lock.
   Oracles run from the repo root with `refs/venv/bin/python`. `cargo xtask designs` and
   `cargo xtask examples` rewrite designs and example outputs; pages quoting them must follow.
@@ -128,8 +130,9 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
   17–25% low from the body (M1.8e; ADR-027).
 - Drag: at Mach 0.3 the RASAero comparison can't show 10% without the exports' inputs (ADR-009).
   Against the Arcas Robin (ADR-028) it reads high except near Mach 1: fins take a blunt edge's
-  formula (+191% fins on at Mach 4.63), a base lip counts as a shoulder, the boattail rule books
-  base drag forward. Base drag and supersonic shoulders are unmeasured (M1.8b2 next).
+  formula (+191% fins on at Mach 4.63), a base lip counts as a shoulder, the boattail rule
+  over-predicts. Niskanen's cone runs 45–105% over Stoney's through Mach 0.8–1.2, lifting a stubby
+  ogive's `C_D0` (Bella Lui +38% at Mach 0.9). Base drag and supersonic shoulders are unmeasured.
 - In wind, a slow rocket's drift in hpr rests on body lift's uncertain `K`: Juno III's apogee
   drift is 240 to 194 m over Galejs's 1.0 to 1.5 (ADR-026, `wind_response.py`). The oracle carries two unreleased
   RocketPy corrections; if #1196 changes before it merges, revisit `corrections.py`.

@@ -803,13 +803,11 @@ mod tests {
     use crate::testing::{body_part, component, fin_set, material, nose, one_stage};
     use crate::{AeroModel, Flow};
 
-    /// A flat face's pressure drag below Mach 0.8, by hand: eq. 3.87 from 0.8 at rest to the
-    /// blunt cylinder `0.85 (1 + M²/4 + M⁴/40)` and its slope at Mach 0.8.
+    /// A flat face's pressure drag below Mach 1, by hand: the blunt cylinder
+    /// `0.85 (1 + M²/4 + M⁴/40)` (Niskanen 2009 eq. B.1–B.2).
     fn step_by_hand(mach: f64) -> f64 {
-        let at_08 = 0.85 * (1.0 + 0.16 + 0.4096 / 40.0);
-        let slope = 0.85 * (0.4 + 0.0512);
-        let b = slope * 0.8 / (at_08 - 0.8);
-        0.8 + (at_08 - 0.8) * (mach / 0.8).powf(b)
+        let m2 = mach * mach;
+        0.85 * (1.0 + m2 / 4.0 + m2 * m2 / 40.0)
     }
 
     fn close(got: f64, want: f64, rel: f64, what: &str) {

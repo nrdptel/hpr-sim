@@ -994,11 +994,14 @@ fn fly_whole_flight(
         };
         let result = match simulation.run(&mut peaks) {
             Ok(result) => result,
-            // Only a refusal of a real Mach number at or past a model's top: the aerodynamics
-            // raise the same error for a NaN or a negative Mach number, and those are failures,
-            // not a known gap.
+            // Only a refusal of a real Mach number at or past the top of the normal force's or
+            // the drag buildup's range: the aerodynamics raise the same error for a NaN or a
+            // negative Mach number, and other models (the subsonic fin slope) for lower limits,
+            // and those are failures, not a known gap.
             Err(SimError::Aero(AeroError::Mach { mach, limit, model }))
-                if mach.is_finite() && mach >= limit =>
+                if mach.is_finite()
+                    && mach >= limit
+                    && (limit == NORMAL_FORCE_MACH_LIMIT || limit == BUILDUP_MACH_LIMIT) =>
             {
                 return Ok(Ok(Flown::RefusedAtMach { mach, limit, model }));
             }

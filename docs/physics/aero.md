@@ -16,9 +16,9 @@
     bases sat on a [sting](../glossary.md#sting)), 8 of 44 readings are within 10%, all between
     Mach 0.95 and 1.8. With the fins on, from Mach 1.5 up, hpr reads +29.8% to +190.5% high: the
     fins take a blunt edge's formula. With the fins off, from Mach 2.3, +20.5% to +71.1%, 0.084
-    to 0.086 of it a lip 1.3 mm long at the models' base that hpr treats as if it met undisturbed
-    air. From Mach 0.6 to 0.9 it is +27.6% to +49.0% high, much of it how the comparison is
-    booked: hpr's boattail rule counts part of the base's drag on the boattail. hpr's base drag,
+    to 0.085 of it a lip 1.3 mm long at the models' base that hpr treats as if it met undisturbed
+    air. From Mach 0.6 to 0.9 it is +27.6% to +49.1% high, mostly the boattail rule, which
+    over-predicts the models' 15° boattail, and the lip. hpr's base drag,
     on the flat aft end, has been checked against nothing faster than Mach 0.3
     ([Drag against the Arcas Robin wind tunnel](#drag-against-the-arcas-robin-wind-tunnel)).
   - *Drag at Mach 0.3*, against curves labelled [RASAero](../glossary.md#rasaero-ii) in
@@ -550,29 +550,32 @@ terms already had their faster-than-sound forms in the table above: friction's M
 base drag's `0.25/M`, the fins' leading and trailing edges, and the stagnation pressure on blunt
 faces. The code is [`hpr_aero::nose_drag`](../api/hpr_aero/nose_drag/index.html); the decision
 record is [ADR-028][adr-028]. How far it holds against a wind tunnel is under
-[Verification](#drag-against-the-arcas-robin-wind-tunnel): above Mach 1.2 it reads high, most of
-all with fins on.
+[Verification](#drag-against-the-arcas-robin-wind-tunnel): it reads high except near Mach 1, most
+of all with fins on past Mach 1.2.
 
 A nose's or shoulder's pressure-drag coefficient, on the area it adds, has three parts:
 
 - **At rest**, eq. 3.86's `0.8 sin² φ`, with `φ` the joint angle at the aft end (the table above).
-- **From `M_L`**, the Mach number where the transonic formula takes over (0.8, 1 or 1.2 by shape,
-  in the table below), a transonic and supersonic value `C_T(M)` that depends on the shape
+  A step, or a bare front face, has no length, and takes the flat face's `0.85 q_stag/q` at every
+  Mach number instead (below).
+- **From `M_L`**, the Mach number where the transonic formula takes over (0.8 or 1 by shape, in
+  the table below), a transonic and supersonic value `C_T(M)` that depends on the shape
   and the [fineness ratio](../glossary.md#fineness-ratio) `f = l/(d_aft − d_fore)`: a nose's
   length over its base diameter, and for
   a shoulder its length over its rise in diameter, so that a conical shoulder drags like the cone
   with the same surface angle.
 - **Between rest and `M_L`**, eq. 3.87: `a Mᵇ + 0.8 sin² φ`, with `a` and `b` chosen so the curve
   meets `C_T` and its slope at `M_L`: `b = C_T′(M_L) M_L/Δ` and `a = Δ/M_Lᵇ`, where
-  `Δ = C_T(M_L) − 0.8 sin² φ`. With `b` near 10, as for slender cones, it stays close to its value
-  at rest until about Mach 0.8.
+  `Δ = C_T(M_L) − 0.8 sin² φ`. Niskanen asks for a curve that doesn't fall and is flat at rest,
+  which needs `Δ > 0` and `b > 1`; otherwise hpr uses a quadratic (below). With `b` near 10, as
+  for slender cones, the curve stays close to its value at rest until about Mach 0.8.
 
 | shape | `C_T(M)` | `M_L` | source |
 |---|---|---|---|
-| step up in radius, or a bare front face | a flat face: `0.85 q_stag/q` | 0.8 | [N09] eq. B.1–B.2 |
+| step up in radius, or a bare front face | a flat face: `0.85 q_stag/q`, at every Mach number | — | [N09] eq. B.1–B.2 |
 | cone | `sin ε` at Mach 1 with slope `4/(γ + 1)(1 − sin ε/2)`; `2.1 sin² ε + 0.5 sin ε/√(M² − 1)` from Mach 1.3; a cubic between, meeting both ends' values and slopes; `tan ε = 1/(2f)` | 1 | [N09] eq. B.3–B.6 |
 | ogive | the cone of the same length and diameter, times `0.72 (κ − ½)² + 0.82`, `κ` the tangent ogive's arc radius over this one's (0 for a cone, 1 for a tangent ogive) | 1 | [N09] eq. B.8 |
-| elliptical, power series, parabolic series, Haack series | Stoney's measured curve at fineness 3, `C₃(M)`, scaled to the nose's fineness by `C₀ (C₃/C₀)^log₄(f + 1)`, with `C₀` the flat face's `0.85 q_stag/q` | 0.8, or 1.2 where the curve starts there | [N09] eq. B.7, B.9; [S61] Fig. 12 |
+| elliptical, power series, parabolic series, Haack series | Stoney's measured curve at fineness 3, `C₃(M)`, scaled to the nose's fineness by `C₀ (C₃/C₀)^log₄(f + 1)`, with `C₀` the flat face's `0.85 q_stag/q` | 0.8 | [N09] eq. B.7, B.9; [S61] Fig. 12 |
 
 Here `γ = 1.4` is the ratio of specific heats of air, `q_stag/q` the stagnation-pressure ratio of
 the table above, and the fineness scaling is the curve `a/(f + 1)ᵇ` through a flat face at
@@ -586,10 +589,14 @@ tunnel (his ref. 30), to Mach 3.6. No table prints them, so hpr carries them as 
 600-dpi scan of the figure, each panel's grid calibrated where the curve runs, to about ±0.0015.
 hpr takes panel (a) for the seven shapes it has, and panel (b) for the x^¼ and the ellipsoid,
 which only it has. Where (a) and (b) overlap, (b)'s von Kármán reads 0.004 to 0.011 higher from
-Mach 1.2. Past a curve's last point hpr holds its last value, as the curves flatten there. The
-points and where each was read are in the code
+Mach 1.2. Past a curve's last point hpr holds its last value. Panel (b) checks two of those holds:
+its von Kármán reads 0.079 to 0.086 from Mach 2.4 to 3.59, against panel (a)'s held 0.079, and its
+x^¾ falls to 0.073 by Mach 3.2, 8% under the held 0.079; panel (a)'s x^½ is still rising at its
+end. The x^¼ and the ellipsoid, which panel (b) starts at Mach 1.2, are joined by a straight line
+to 0 at Mach 0.8, where every smooth 3:1 nose of panel (a) reads 0; so every measured shape starts
+at Mach 0.8. The points and where each was read are in the code
 ([`StoneyNose`](../api/hpr_aero/nose_drag/enum.StoneyNose.html)). A sample, on the nose's base
-area:
+area (panel (a)'s values at Mach 3.0 are its held end values):
 
 | shape | Fig. 12 panel, Stoney's model number | Mach 0.9 | Mach 1.0 | Mach 1.2 | Mach 1.5 | Mach 2.0 | Mach 3.0 |
 |---|---|---|---|---|---|---|---|
@@ -621,28 +628,38 @@ eq. B.4, so the von Kármán's wave drag is 38% lower. The test
 
 - **Short cones and ogives.** Below fineness 1 the cone formula runs past a flat face's drag: as
   the cone flattens, eq. B.4 tends to 2.39 at Mach 2 against the flat face's 1.41. So below
-  fineness 1 hpr scales between a flat face at fineness 0 and the cone's own formula at fineness
-  1, as eq. B.9 scales the measured shapes, with `M_L` 0.8. A shoulder then tends to a bare step
-  as it shortens ([Loft lesson L15](../decisions-and-roadmap.md#l15)), and above fineness 1
-  Niskanen's cone is unchanged.
-- **Steps.** A step up in radius, or a body with no nose cone, is a flat face: 0.8 at rest, rising
-  by eq. 3.87 to the flat face's 0.9947 at Mach 0.8 and following it above (1.0888 at Mach 1,
-  1.4118 at Mach 2). Before [M1.8b1](../decisions-and-roadmap.md#m1-8b1) it stayed at 0.8.
+  fineness 1 hpr scales, at every Mach number, between a flat face at fineness 0 and the whole
+  curve of the cone at fineness 1, as eq. B.9 scales the measured shapes. A shoulder then tends to
+  a bare step as it shortens ([Loft lesson L15](../decisions-and-roadmap.md#l15)), and above
+  fineness 1 Niskanen's cone is unchanged.
+- **Steps.** A step up in radius, or a body with no nose cone, is a flat face: the blunt
+  cylinder's `0.85 q_stag/q` at every Mach number, 0.85 at rest, 0.9947 at Mach 0.8, 1.0888 at
+  Mach 1 and 1.4118 at Mach 2. Eq. 3.86 "does not take into account the effect of extremely blunt
+  nose cones (length less than half of the diameter)" ([N09] p. 47), and a step has no length.
+  Before [M1.8b1](../decisions-and-roadmap.md#m1-8b1) it was eq. 3.86's 0.8 at every speed.
 - **Where eq. 3.87 has no solution.** An x^½ nose meets its tube at a small angle, so it has some
   drag at rest, but Stoney's measured x^½ curve is still at 0 at Mach 0.8: no `a Mᵇ` can rise
-  from the first to the second. Eq. 3.87 needs the transonic value above the value at rest and a
-  rising slope at `M_L`; where it has neither, hpr goes from the value at rest to `C_T(M_L)` along
-  `0.8 sin² φ + Δ (M/M_L)²` instead: continuous, flat at rest, with a kink at `M_L`. The
-  coefficients involved are below 0.01.
+  from the first to the second. Eq. 3.87 needs the transonic value above the value at rest and
+  `b > 1`; where either fails, hpr goes from the value at rest to `C_T(M_L)` along
+  `0.8 sin² φ + Δ (M/M_L)²` instead: continuous, flat at rest, with a kink at `M_L`. Falling, as
+  here, it follows Stoney's measurement rather than Niskanen's assumption that the curve doesn't
+  fall; the coefficients are below 0.01. Rising, it serves near-flat noses: a power series x^0.05
+  has almost nothing at rest by eq. 3.86, which leaves bluntness out, and rises along it to 0.80
+  at Mach 0.8.
 - **Refused shapes.** A bulged secant ogive (its arc radius below the tangent ogive's) is outside
   eq. B.8, and a Haack series past `C = ⅓` outside Stoney's data (Niskanen limits it the same way,
   p. 103). The drag buildup refuses both, naming the component, when asked for drag; the model
   still builds, so the normal force, the centre of pressure and a drag table still work.
 
 **Cross-check against a measured cone.** Stoney's Figure 12(a) also has a 3:1 cone. Niskanen's
-closed form reads +49% high at Mach 1 and +45% at Mach 1.2, where the cubic join peaks at 0.200
-against the measured 0.138, then +15% at Mach 1.5 and +4% at Mach 1.94, the curve's end
-(`nose_drag::tests::niskanens_cone_against_stoneys_measured_cone`). Ogives inherit this.
+closed form reads high through the whole rise: +87% at Mach 0.8 and +105% at 0.85, where eq. 3.87
+carries its Mach 1 value down; +49% at Mach 1 and +48% at 1.1, where the cubic join is near its
+peak, 0.234 against the measured 0.158; then +15% at Mach 1.5 and +4% at Mach 1.94, the curve's end
+(`nose_drag::tests::niskanens_cone_against_stoneys_measured_cone`). Ogives inherit this. So a
+stubby cone or ogive gains the most drag at high subsonic speeds: Bella Lui's 1.55:1 tangent ogive
+takes its whole rocket's `C_D0` at Mach 0.9 38% above the model before
+[M1.8b1](../decisions-and-roadmap.md#m1-8b1), which held the nose at its value at rest, where the
+von Kármán noses of Calisto and Prometheus move it under 1% ([ADR-028][adr-028]).
 
 ### Drag limits
 
@@ -657,18 +674,18 @@ against the measured 0.138, then +15% at Mach 1.5 and +4% at Mach 1.94, the curv
   the Arcas Robin's four double-wedge fins measure 0.046 at Mach 4.63, against hpr's 0.30.
   [M1.8b2](../decisions-and-roadmap.md#m1-8b2) compares hpr's drag with RASAero II's through
   Mach 2.
-- **Through the transonic rise,** from Mach 0.8 to 1.2, a nose follows Stoney's measured curve or
-  Niskanen's cone, whose cubic join peaks 45% above Stoney's measured 3:1 cone at Mach 1.2.
+- **Through the transonic rise,** from Mach 0.8 to 1.2, the measured shapes follow Stoney's
+  curves, and cones and ogives Niskanen's closed form, which reads 45% to 105% above Stoney's
+  measured 3:1 cone there (the cross-check above).
 - **Shoulders and boattails past Mach 1.** A shoulder takes the nose method, which [N09] calls
   "somewhat dubious at supersonic velocities" (p. 48), even where it sits in another part's wake,
   as the Arcas Robin's 1.3-mm lip does. A boattail keeps eq. 3.88 at every speed, a rule "based
-  primarily on subsonic data" (p. 49), and that rule books part of the base's drag as the
-  boattail's.
+  primarily on subsonic data" (p. 49), which over-predicts the Arcas Robin's 15° boattail below
+  Mach 1.
 - **Stoney's curves end** at Mach 1.94 to 1.99 (panel (a)) and 3.59 (panel (b)); past that hpr
-  holds their last value.
+  holds their last value, which panel (b) puts within 8% for two shapes (above).
 - Before [M1.8b1](../decisions-and-roadmap.md#m1-8b1) the buildup held nose and shoulder pressure
-  drag at its value at rest, which read low from about Mach 0.6 (by 0.021 for a 3:1 tangent ogive
-  at Mach 0.8, the value eq. 3.87 now gives), and refused Mach 1.
+  drag at its value at rest and refused Mach 1.
 - Nothing models laminar flow, fin-tip vortices, interference drag, fin tabs, fillets, canted fins
   or the flow a boattail guides into the base ([N09] p. 51).
 
@@ -969,8 +986,9 @@ and [D4014] the axial force and, separately, the force on the balance chamber in
 (friction, pressure and parasitic drag) against the measured axial force with the base at the free
 stream's pressure. For [D4014] that is `C_A − 1.383 C_A,c`, which takes the chamber's pressure over
 the whole base as [D4013]'s correction does: 1.383 is (1.470/1.250)², the base's diameter in inches
-over the 1.250-inch cavity drawn in [D4014] Fig. 1(a), squared. The report states no chamber area, and taking it over
-the chamber alone moves the measured values by 0.002 to 0.014. The readings are in
+over the 1.250-inch cavity drawn in [D4014] Fig. 1(a), squared. The report states no chamber
+area, and taking it over the chamber alone moves the measured values by 0.002 to 0.015, which
+changes no row's verdict. The readings are in
 [`arcas-robin-wind-tunnel.json`][wind-tunnel], read off the reports' plots with their figure,
 page and reading uncertainty (±0.002 in `C_A` for most, against the reports' own ±0.004).
 
@@ -981,12 +999,17 @@ machined steel models a polished finish, 0.5 µm, since the reports state none. 
 before measuring, was [M1.8](../decisions-and-roadmap.md#m1-8)'s 10% for drag. `cargo xtask aero` writes
 [`drag-vs-mach.json`][drag-fixture], each row with hpr's drag by part, and
 `tests::drag_against_mach` recomputes it from the designs and pins the 8 rows of 44 within target.
-Forebody drag on the reference area, measured and hpr's, and hpr's error:
+The two input choices matter, and moved hpr toward the tunnel: with square edges and the default
+20 µm finish 3 rows are within target, with the airfoil section alone 5, with the polished finish
+alone 6, and with both 8 (`tests::drag_against_mach_depends_on_the_fins_and_finish`). The
+airfoil section follows the drawings and Niskanen; the finish is a guess. Allowing each reading
+its uncertainty and the reports' ±0.004, 3 of the 8 could fall either side of 10%. Forebody drag
+on the reference area, measured and hpr's, and hpr's error:
 
 | Mach | fins | short: measured | hpr | error | long: measured | hpr | error |
 |---|---|---|---|---|---|---|---|
-| 0.6 | on | 0.2987 | 0.4021 | +34.6% | 0.3455 | 0.4524 | +30.9% |
-| 0.6 | off | 0.2217 | 0.3173 | +43.1% | 0.2477 | 0.3691 | +49.0% |
+| 0.6 | on | 0.2987 | 0.4023 | +34.7% | 0.3455 | 0.4525 | +31.0% |
+| 0.6 | off | 0.2217 | 0.3175 | +43.2% | 0.2477 | 0.3693 | +49.1% |
 | 0.8 | on | 0.3299 | 0.4861 | +47.3% | 0.3706 | 0.5349 | +44.3% |
 | 0.8 | off | 0.2308 | 0.3246 | +40.7% | 0.2517 | 0.3749 | +49.0% |
 | 0.9 | on | 0.4202 | 0.6054 | +44.1% | 0.4510 | 0.6533 | +44.9% |
@@ -1022,20 +1045,25 @@ Why it misses, from the drag by part in the fixture:
 - **The lip.** The models end in a lip 1.3 mm long that flares from the boattail's 33.2 mm to the
   base's 37.3 mm. hpr takes it as a shoulder in the free stream, a stubby cone of fineness 0.33,
   worth 0.065 at Mach 0.6 and 0.084 to 0.086 from Mach 1.2. It sits in the boattail's wake, where
-  its drag must be far less. Without it, the short model with its fins off is within −28% to +14%
-  of the measurements at every Mach number, −1.2% at Mach 2.96.
-- **The boattail below Mach 1.** [N09]'s boattail rule books part of the base's drag, 0.063 at
-  Mach 0.6 (the boattail's 0.070 less its friction), on the boattail, where the tunnel's forebody
-  holds only the pressure on the boattail's surface. From Mach 0.6 to 0.9 hpr's forebody with its
-  fins off is +28% to +49% high, most of it the boattail and the lip.
+  its drag must be far less. Without it, with the fins off, the short model is within −28% to +14%
+  of the measurements at every Mach number (−1.2% at Mach 2.96) and the long one within −15% to
+  +23%. The short model also keeps the fins' raised root fairings with its fins off, which hpr
+  leaves out and TN D-4013 blames for its higher drag from Mach 0.975 to 1.2 (pp. 4–5).
+- **The boattail below Mach 1.** [N09]'s boattail rule (eq. 3.88) gives the 15° boattail a
+  pressure drag of 0.063 at Mach 0.6 (its 0.070 less its friction). The tunnel's forebody holds
+  that same pressure on the boattail's surface, and on the short model the whole forebody with its
+  fins off measures 0.22 there, against hpr's friction alone of 0.19: little is left for the
+  boattail's pressure. The rule over-predicts this boattail, as Niskanen found against the same
+  tunnel ([N09] p. 90). From Mach 0.6 to 0.9 hpr's forebody with its fins
+  off is +28% to +49% high, most of it the boattail and the lip.
 - **Through Mach 1**, where drag rises steeply, the measured forebody with fins off jumps from
   0.29 to 0.42 between Mach 0.95 and 1.0 on the short model. hpr rises more gently and meets it
   within 10% at Mach 1 and 1.2 on the short model.
 
 What this shows: from about Mach 1.2, hpr's drag, Niskanen's method as printed, reads high for a
 rocket with thin, sharp fins; how much depends on the fins, and [M1.8b2](../decisions-and-roadmap.md#m1-8b2)
-measures it against RASAero II. The body alone, with the lip set aside, is within −28% to +14%,
-low through Mach 1 to 1.8 and high from 3.96. hpr's base drag, which the tunnel can't measure, is
+measures it against RASAero II. The body alone, with the lip set aside, is within −28% to +23%;
+below Mach 1 the boattail rule reads high. hpr's base drag, which the tunnel can't measure, is
 untested.
 
 [adr-008]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-008-subsonic-normal-force-and-centre-of-pressure-2026-09-17
