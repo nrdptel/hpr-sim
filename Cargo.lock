@@ -1058,8 +1058,10 @@ version = "0.1.0"
 dependencies = [
  "hpr-aero",
  "hpr-atmos",
+ "hpr-core",
  "hpr-design",
  "hpr-motor",
+ "hpr-sim",
  "hpr-validate",
  "pulldown-cmark",
  "serde",

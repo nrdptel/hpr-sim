@@ -10,6 +10,7 @@
 //! [guide-roll]: https://nrdptel.github.io/hpr-sim/physics/aero.html#roll-forcing-and-damping
 //! [guide-fins-mach]: https://nrdptel.github.io/hpr-sim/physics/aero.html#fins-through-mach-1
 //! [guide-drag-mach]: https://nrdptel.github.io/hpr-sim/physics/aero.html#drag-through-mach-1
+//! [guide-override]: https://nrdptel.github.io/hpr-sim/physics/aero.html#the-normal-force-from-rasaero-ii
 //!
 //! - [`body`]: nose cones, body tubes and transitions: Barrowman's slope and centre of pressure,
 //!   and Galejs's body lift.
@@ -21,7 +22,9 @@
 //! - [`nose_drag`]: the pressure drag of noses, shoulders and steps from rest through Mach 1 to
 //!   supersonic speeds, with Stoney's measured curves.
 //! - [`afterbody`]: a boattail's wave drag faster than sound, and the base pressure behind it.
-//! - [`table`]: drag override tables, the drag coefficient against Mach number from another tool.
+//! - [`table`]: override tables from another tool: the drag coefficient against Mach number, and
+//!   the normal force and centre of pressure against Mach number and angle of attack, read from
+//!   RASAero II's export.
 //! - [`model`]: a rocket's terms built from a [`hpr_design::Layout`] and summed at a [`Flow`].
 //!
 //! A rocket's centre of pressure is [`NormalForce::cp_station_m`], in metres aft of the nose tip,
@@ -31,8 +34,9 @@
 //! Status: the normal force and centre of pressure from Mach 0 to 5 (fins through the transonic
 //! region to supersonic linear theory, [Fins through Mach 1][guide-fins-mach]); the drag buildup
 //! from Mach 0 to 5 (noses, shoulders and steps through Mach 1 by Niskanen's appendix B,
-//! [Drag through Mach 1][guide-drag-mach]); drag override tables at any Mach number; the roll
-//! forcing of canted fins and the roll damping from Mach 0 to 5 ([`AeroModel::roll`],
+//! [Drag through Mach 1][guide-drag-mach]); drag override tables at any Mach number; normal-force
+//! override tables from RASAero II's export ([The normal force from RASAero II][guide-override]);
+//! the roll forcing of canted fins and the roll damping from Mach 0 to 5 ([`AeroModel::roll`],
 //! [Roll: forcing and damping][guide-roll]).
 //!
 //! - Pitch and yaw damping in a flight come only from the flight engine (`hpr_sim`) evaluating
@@ -68,7 +72,10 @@ pub use model::{
     NORMAL_FORCE_MACH_LIMIT, NormalForce, Roll,
 };
 pub use nose_drag::{PressureDragCurve, StoneyNose};
-pub use table::{DragTable, parse_mach_csv};
+pub use table::{
+    DragTable, NormalForceColumn, NormalForceLookup, NormalForceTable, TableReference,
+    parse_mach_csv,
+};
 
 #[cfg(test)]
 mod testing;

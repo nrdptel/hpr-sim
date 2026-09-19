@@ -4,11 +4,11 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
 
 ## Now
 
-- **Current milestone:** M1.8d Normal-force overrides
-- **Order:** M1.8d, M1.8e, then M3.1
-- **Run:** M0.1-M0.4, M1.1-M1.7, M2.1, M1.8a, M1.8b (b1 to b3) and M1.8c have shipped. The site
-  is live at https://nrdptel.github.io/hpr-sim/
-- **Last updated:** 2026-09-19 (M1.8c done; M1.8d not started)
+- **Current milestone:** M1.8e The body's supersonic normal force
+- **Order:** M1.8e, then M3.1
+- **Run:** M0.1-M0.4, M1.1-M1.7, M2.1, M1.8a, M1.8b (b1 to b3), M1.8c and M1.8d have shipped.
+  The site is live at https://nrdptel.github.io/hpr-sim/
+- **Last updated:** 2026-09-19 (M1.8d done; M1.8e not started)
 
 ## Handoff (overwrite each session)
 
@@ -25,21 +25,19 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
 - **The path in wind (ADR-026):** the oracle flies RocketPy 1.13.0 with upstream PRs #1188 and
   #1196 applied by `corrections.py`; when RocketPy releases #1196, re-pin, regenerate and delete
   it. `wind_response.py` measures the seven drifts reported as model differences.
-- **M1.8a/b (ADR-027 to ADR-030):** `cargo xtask aero` writes `normal-force-vs-mach.json`,
-  `drag-vs-mach.json` and `rocketpy-drag-curves.json` (hpr's values and errors only);
-  `measured-boattails.json` holds NACA/NASA boattail readings. NTRS serves five of ADR-030's PDFs
-  with a 436-byte header (pinned as served). Scratch: `refs/scratch/{arcas,stoney,m18b2,m18b3}/`.
-  Open: #72 (steep boattails in a thick boundary layer read high), #73 (long boattails get 0).
-- **M1.8c (ADR-031):** `AeroModel::roll` (Barrowman's strip theory with `k_T(B)`, `k_R(B)`) and
-  the moment in `hpr_sim`'s dynamics; `roll-vs-mach.json` against TN D-4014 Fig. 14 and the
-  Basic Finner (`basic-finner-roll-damping.json`, Barrowman Fig. 5-7). Next reference for roll
-  below Mach 1.5: TN D-4013's rolling-moment plots (fins canted 2°, not yet read). Scratch in
-  `refs/scratch/m18c/`. #76: check M1.8a's other TN D-4014 readings for Fig. 14's zero offset.
-- **M1.8d** next: `C_Nα` and CP tables from a RASAero II export replacing hpr's in a flight,
-  tested on Calisto's export (`refs/rocketpy-history/calisto-cd-test-2018.csv`, pinned; its
-  `CNalpha (0 to 4 deg)` column is a secant slope to 4°, ADR-027). Issues #67 to #70, #72 and #73
-  hold the drag gaps. Don't read predicted mode's misses as gaps to close (ADR-009, ADR-023).
-  ROADMAP is near its 1000-line budget: trim a done entry when adding.
+- **M1.8a to c (ADR-027 to ADR-031):** `cargo xtask aero` writes `normal-force-vs-mach.json`,
+  `drag-vs-mach.json`, `rocketpy-drag-curves.json` and `roll-vs-mach.json` (hpr's values and
+  errors only). NTRS serves five of ADR-030's PDFs with a 436-byte header (pinned as served).
+  Scratch: `refs/scratch/{arcas,stoney,m18b2,m18b3,m18c}/`. Roll below Mach 1.5: TN D-4013's
+  rolling-moment plots (fins canted 2°) are unread. #76: M1.8a's other TN D-4014 zeros.
+- **M1.8d (ADR-032):** `hpr_aero::NormalForceTable::from_rasaero_csv` (reference: the largest
+  body) and `Simulation::with_normal_force_table` (fallible; the table's force at the centre of
+  mass's flow, hpr's damping kept). `normal-force-override.json`: the re-read, a table hash,
+  M1.8a's 30 values, four Calisto flights. The RASAero II manual as text: `refs/scratch/m18d/`.
+- **M1.8e** next: a cited supersonic method for the body's normal force (noses, boattails,
+  crossflow); the target is in ROADMAP. M1.8a's rows are in `normal-force-vs-mach.json` (#76 may
+  move some). Issues #67 to #70, #72, #73 hold the drag gaps. Don't read predicted mode's misses
+  as gaps to close (ADR-009, ADR-023). ROADMAP is at 999 of 1000 lines: trim a done entry.
 - **Regeneration is not bit-identical across machines** (last digits). Regenerate reports with
   `cargo xtask validate` (debug), never `--release`: it rounds differently in the 7th digit.
   Fixture checks (`designs::same`) allow 1e-12 relative, or 1e-13 near zero (M1.8b3's PR).
@@ -49,6 +47,9 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
 
 ## Done log (newest first, keep about 15)
 
+- 2026-09-19: M1.8d Normal-force overrides (ADR-032): RASAero II's export read per angle of
+  attack, flown with hpr's damping kept; every row of Calisto's export re-read, and it flies
+  (apogee −1.28 m, 14.2 m upwind); a table's pitch period within 4e-6 of theory.
 - 2026-09-19: M1.8c Roll and damping (ADR-031): Barrowman's strip theory; Valetudo canted 1°
   settles on the closed-form roll rate within 1e-11; TN D-4014's roll effectiveness from Mach 2.3
   8 of 8 within 5.3%, +14.3% to +47.8% at Mach 1.5 and 1.8; the Basic Finner's damping −5.9% to
@@ -89,6 +90,8 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
 
 ## Decided without Neer (one line each; significant ones get an ADR)
 
+- ADR-032: a normal-force table replaces only the static force, hpr's damping kept; the 0° slope
+  from `CN Potential`; past the last angle `sin α` and `sin² α` shares; no new RASAero values.
 - ADR-031: roll damping takes the fin's own slope, not the airfoil's Barrowman's text writes (his
   computed curve does); Barrowman's body factors kept; no target set after measuring.
 - ADR-030: Fig. 5-122 to the Prandtl–Meyer limit, 16°–30° separation, Fig. 5-141 as a ratio, the
@@ -136,9 +139,7 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
 - In wind, a slow rocket's drift in hpr rests on body lift's uncertain `K`: Juno III's apogee
   drift is 240 to 194 m over Galejs's 1.0 to 1.5 (ADR-026, `wind_response.py`). The oracle carries two unreleased
   RocketPy corrections; if #1196 changes before it merges, revisit `corrections.py`.
-- Flight (M1.6b): no tip-off, roll forcing or damping (M1.8), turbulence or thrust misalignment;
-  the small-angle aero is used at every `α`. Four `mass_properties` calls are most of an
-  evaluation's 0.4 µs (`perf.md`).
+- Flight: no tip-off, turbulence or thrust misalignment; small-angle aero at every `α`.
 - Recovery: no canopy overshoot or opening-load factor (a 1.5 m canopy peaks at 1.6 kN where
   Knacke's infinite-mass `C_x` gives 5.1 kN), no added mass or airframe drag under a canopy, the
   attitude freezes at deployment, and his filling time is stated only for 150 to 500 ft/s (M1.7a).

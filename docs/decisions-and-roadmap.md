@@ -48,6 +48,7 @@ new record replaces it and points back. All of them are in the [decision log][de
 | [ADR-029: Drag against RASAero II through Mach 2][adr-029] | How hpr's drag compares with RASAero II's curves by speed band, why it misses faster than sound, and a second reference with every input known: MIL-HDBK-762's worked example | [Aerodynamics](physics/aero.md#drag-against-rasaero-ii-through-mach-2) |
 | [ADR-030: The afterbody faster than sound][adr-030] | A boattail's supersonic wave drag from MIL-HDBK-762's chart held to the Prandtl–Meyer limit, separation on steep boattails, the base pressure behind them, and a lip in a boattail's wake; checked against measured boattails, and why its targets aren't met | [Aerodynamics](physics/aero.md#boattails-faster-than-sound) |
 | [ADR-031: Roll from canted fins][adr-031] | Roll forcing from canted fins and roll damping by Barrowman's strip theory with his body factors, the fin's own slope in the damping, and the comparison with NASA's measured roll effectiveness and the Basic Finner's roll damping | [Aerodynamics](physics/aero.md#roll-forcing-and-damping) |
+| [ADR-032: Normal-force overrides][adr-032] | Flying RASAero II's normal force and centre of pressure: how its export is read, the slope at 0°, the angles past its last, and why the damping stays hpr's | [Aerodynamics](physics/aero.md#the-normal-force-from-rasaero-ii) |
 
 ## The roadmap
 
@@ -135,7 +136,7 @@ missing or its status disagrees.
 | <a id="m1-8b2"></a>[M1.8b2][phase-1] | Drag against RASAero II's from Mach 0.1 to 2 | done |
 | <a id="m1-8b3"></a>[M1.8b3][phase-1] | The drag of a boattail faster than sound, and the base behind it | done |
 | <a id="m1-8c"></a>[M1.8c][phase-1] | Roll from canted fins, roll damping, and pitch and yaw damping (kept as each part's local-flow damping) | done |
-| <a id="m1-8d"></a>[M1.8d][phase-1] | Tables that override the normal force and centre of pressure, read from RASAero II | not yet done |
+| <a id="m1-8d"></a>[M1.8d][phase-1] | Tables that override the normal force and centre of pressure, read from RASAero II | done |
 | <a id="m1-8e"></a>[M1.8e][phase-1] | The body's normal force faster than sound, which slender-body theory underestimates past Mach 3 | not yet done |
 | <a id="m3-1"></a>[M3.1][phase-1] | Reading OpenRocket `.ork` design files | not yet done |
 | <a id="m2-2"></a>[M2.2][phase-1] | OpenRocket as a reference program, and a corpus of designs to compare | not yet done |
@@ -278,6 +279,7 @@ is the milestone that added or will add that test.
 [adr-029]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-029-drag-against-rasaero-ii-through-mach-2-the-gap-by-band-mil-hdbk-762s-sample-calculation-and-the-boattails-wave-drag-2026-09-18
 [adr-030]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-030-the-afterbody-faster-than-sound-a-boattails-wave-drag-the-base-behind-it-and-a-lip-in-its-wake-2026-09-18
 [adr-031]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-031-roll-from-canted-fins-and-roll-damping-by-barrowmans-strip-theory-2026-09-19
+[adr-032]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-032-normal-force-overrides-from-rasaero-ii-the-static-force-replaced-hprs-damping-kept-2026-09-19
 [decisions]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md
 [lessons]: https://github.com/nrdptel/hpr-sim/blob/main/docs/research/loft-lessons.md
 [lessons-motors]: https://github.com/nrdptel/hpr-sim/blob/main/docs/research/loft-lessons.md#motors-mass-and-design-checks

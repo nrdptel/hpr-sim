@@ -10,8 +10,10 @@
 use std::hint::black_box;
 
 use criterion::{Criterion, criterion_group, criterion_main};
+use hpr_aero::{Flow, NormalForceColumn, NormalForceTable};
 use hpr_atmos::ConstantWind;
 use hpr_core::geodesy::Geodetic;
+use hpr_core::interp::{Extrapolation, Interpolation, Table1D};
 use hpr_design::Rocket;
 use hpr_sim::recovery::{Device, DeviceDrag, Inflation};
 use hpr_sim::{CanopyType, Environment, FlightSettings, Rail, Recorder, Simulation, Trigger};
@@ -30,7 +32,7 @@ fn benches(c: &mut Criterion) {
     let simulation = Simulation::new(
         &rocket,
         "example",
-        environment,
+        environment.clone(),
         Rail::vertical(3.0),
         FlightSettings::default(),
     )
@@ -48,6 +50,49 @@ fn benches(c: &mut Criterion) {
                 recorder
             })
         },
+    );
+
+    // The same flight on a normal-force table of hpr's own at 0°, 2° and 4° and every Mach 0.01,
+    // the shape of a RASAero II export (M1.8d): each component is evaluated twice.
+    let aero = simulation.aero().clone();
+    let machs: Vec<f64> = (0..=100).map(|i| 0.01 * f64::from(i)).collect();
+    let columns = [0.0_f64, 2.0, 4.0]
+        .iter()
+        .map(|alpha_deg| {
+            let alpha = alpha_deg.to_radians();
+            let forces: Vec<_> = machs
+                .iter()
+                .map(|&mach| aero.normal_force(&Flow::new(mach, alpha, 0.0)).unwrap())
+                .collect();
+            let table = |ys| {
+                Table1D::new(
+                    machs.clone(),
+                    ys,
+                    Interpolation::Linear,
+                    Extrapolation::Clamp,
+                )
+                .unwrap()
+            };
+            NormalForceColumn::new(
+                alpha,
+                table(forces.iter().map(|f| f.slope_per_rad).collect()),
+                table(forces.iter().map(|f| f.cp_station_m.unwrap()).collect()),
+            )
+        })
+        .collect();
+    let tabled = Simulation::new(
+        &rocket,
+        "example",
+        environment,
+        Rail::vertical(3.0),
+        FlightSettings::default(),
+    )
+    .unwrap()
+    .with_normal_force_table(NormalForceTable::new(columns).unwrap())
+    .unwrap();
+    c.bench_function(
+        "Simulation::run, Valetudo K400C on a normal-force table to the ground",
+        |b| b.iter(|| black_box(&tabled).run(&mut ()).unwrap()),
     );
 
     // The same flight recovered: a 0.6 m drogue at apogee and a 2.4 m main at 150 m, which is

@@ -455,6 +455,10 @@ impl Vehicle {
     ///   moments give (`docs/physics/frames.md`).
     /// - Fin sets use `sin α` in place of their model's `α`, so their force vanishes when the air
     ///   comes from the tail as well as from the nose.
+    /// - With a normal-force table ([`hpr_aero::NormalForceTable`]), the table's normal force at
+    ///   the centre of mass's airflow acts at its centre of pressure, and each component adds only
+    ///   its force in its local flow less its force in the centre of mass's: the damping, which
+    ///   stays hpr's (ADR-032).
     /// - The rolling moment about `z_B` is `q A d (C_l0 cos α + C_lp p d/2V)` from the fins' cant
     ///   and the roll rate `p = ω_z` at the centre of mass's Mach number
     ///   ([`hpr_aero::AeroModel::roll`]); the cant's forcing follows the axial flow.
@@ -496,6 +500,18 @@ impl Vehicle {
 
         // The normal force's range, checked once here, before the bodies' cached stations.
         flow.validate()?;
+        // With a normal-force table, the table gives the static normal force at the centre of
+        // mass's flow, and each component only the difference its rotation makes: its force in
+        // its own local flow less its force in the centre of mass's. That difference is hpr's
+        // pitch and yaw damping, which a table doesn't carry (ADR-032).
+        let table = self.aero.normal_force_table().is_some();
+        if table {
+            let normal = self.aero.normal_force(&flow)?;
+            let across = DVec3::new(roll.cos(), roll.sin(), 0.0);
+            let side = DVec3::Z.cross(across);
+            out.force += across * (normal.coefficient * q * area);
+            out.moment += side * (-normal.moment_m * q * area);
+        }
         for index in 0..self.aero.component_count() {
             // A fin set's station moves with Mach.
             let station = match self.body_stations_m.get(index) {
@@ -503,28 +519,15 @@ impl Vehicle {
                 None => self.aero.component_station_m(index, out.mach)?,
             };
             let p = DVec3::new(0.0, 0.0, -station);
-            let local = air_velocity_o_body + omega.cross(p);
-            let local_speed = local.length();
-            if local_speed < MIN_AIRSPEED_M_S {
-                continue;
+            let (force, moment) =
+                self.component_force(index, air_velocity_o_body + omega.cross(p), rho, sound)?;
+            out.force += force;
+            out.moment += moment;
+            if table {
+                let (force, moment) = self.component_force(index, v_cg, rho, sound)?;
+                out.force -= force;
+                out.moment -= moment;
             }
-            let (alpha_i, roll_i) = flow_angles(local, local_speed);
-            let normal = self
-                .aero
-                .component_normal_force(index, &Flow::new(local_speed / sound, alpha_i, roll_i))?;
-            // Fin normal force follows the crossflow `V sin α`, as the body terms do: the
-            // small-angle slope times `sin α` rather than `α`, so it vanishes for axial flow either
-            // way (ADR-011).
-            let fin_scale = if index >= self.first_fin_index && alpha_i > 0.0 {
-                alpha_i.sin() / alpha_i
-            } else {
-                1.0
-            };
-            let q_i = 0.5 * rho * local_speed * local_speed * area * fin_scale;
-            let across = DVec3::new(roll_i.cos(), roll_i.sin(), 0.0);
-            let side = DVec3::Z.cross(across);
-            out.force += (across * normal.coefficient + side * normal.side_coefficient) * q_i;
-            out.moment += (side * -normal.moment_m + across * normal.side_moment_m) * q_i;
         }
         // Roll about the axis, from the fins' cant and against the roll rate:
         // `q A d (C_l0 cos α + C_lp p d/2V)`, the damping written as `ρ V A d² C_lp p/4`. The
@@ -536,6 +539,41 @@ impl Vehicle {
         out.moment.z += q * area * d * roll.forcing * alpha.cos()
             + 0.25 * rho * speed * area * d * d * roll.damping * omega.z;
         Ok(out)
+    }
+}
+
+impl Vehicle {
+    /// Component `index`'s normal and side force (body axes) and their moment about the nose tip,
+    /// in the local air velocity `local` (body axes); zero below [`MIN_AIRSPEED_M_S`].
+    fn component_force(
+        &self,
+        index: usize,
+        local: DVec3,
+        rho: f64,
+        sound: f64,
+    ) -> Result<(DVec3, DVec3), SimError> {
+        let local_speed = local.length();
+        if local_speed < MIN_AIRSPEED_M_S {
+            return Ok((DVec3::ZERO, DVec3::ZERO));
+        }
+        let (alpha_i, roll_i) = flow_angles(local, local_speed);
+        let normal = self
+            .aero
+            .component_normal_force(index, &Flow::new(local_speed / sound, alpha_i, roll_i))?;
+        // Fin normal force follows the crossflow `V sin α`, as the body terms do: the small-angle
+        // slope times `sin α` rather than `α`, so it vanishes for axial flow either way (ADR-011).
+        let fin_scale = if index >= self.first_fin_index && alpha_i > 0.0 {
+            alpha_i.sin() / alpha_i
+        } else {
+            1.0
+        };
+        let q_i = 0.5 * rho * local_speed * local_speed * self.reference_area_m2 * fin_scale;
+        let across = DVec3::new(roll_i.cos(), roll_i.sin(), 0.0);
+        let side = DVec3::Z.cross(across);
+        Ok((
+            (across * normal.coefficient + side * normal.side_coefficient) * q_i,
+            (side * -normal.moment_m + across * normal.side_moment_m) * q_i,
+        ))
     }
 }
 
