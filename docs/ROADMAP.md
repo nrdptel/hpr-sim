@@ -561,7 +561,7 @@
 
     *Done when:* M1.8's Cd bullet is met or an ADR records why not, with the gap in the report;
     the Arcas Robin's measured axial force is compared; the predicted Prometheus case flies.
-    Split below into M1.8b1 and M1.8b2, which carry these bullets between them.
+    Split below into M1.8b1 to M1.8b3, which carry these bullets between them.
 
     - [x] **M1.8b1 The drag buildup through Mach 1.**
       - Nose, shoulder and step pressure drag through Mach 1 (Niskanen eq. 3.87 and appendix B,
@@ -580,10 +580,22 @@
       rule. Predicted Prometheus flies to Mach 1.059: 9 of 17 metrics within target, apogee
       −6.985%, the misses explained in its case file. No known gap is left.
 
-    - [ ] **M1.8b2 Drag against RASAero through Mach 2.**
+    - [x] **M1.8b2 Drag against RASAero through Mach 2.**
       - Cd against Mach from RocketPy's RASAero CSVs, per band. Loft lesson L18.
 
       *Done when:* M1.8's Cd bullet is met or an ADR records why not, with the gap in the report.
+
+      *Result (ADR-029):* not met, recorded. Calisto's export: 15/15 subsonic within 10%, 2/7
+      transonic, 0/17 supersonic (−29.8% to −24.4%), for any plausible fins; MIL-HDBK-762's worked
+      example (2/12) and the wind tunnel read below hpr. Likely cause: a boattail's wave drag.
+
+    - [ ] **M1.8b3 The boattail and base faster than sound.**
+      - A conical boattail's supersonic wave drag (MIL-HDBK-762 Fig. 5-122), the base behind it,
+        and a lip in its wake.
+
+      *Done when:* the Arcas Robin's fins-off forebody from Mach 1.5 is compared again, each row's
+      change reported (target, set before measuring: within 10%, or an ADR records why not), and
+      Calisto's bands against RASAero II are reported again (ADR-029).
 
   - [ ] **M1.8c Roll and damping.**
     - Roll forcing from fin cant and roll damping. Pitch and yaw damping keep hpr's local-flow

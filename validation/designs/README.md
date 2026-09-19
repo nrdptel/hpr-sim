@@ -56,3 +56,17 @@ Their mass comes from geometry, with built-in materials and bundled motors:
 - `synthetic-two-stage-75mm-54mm.json`: a 54 mm sustainer on a 411I175-14A over a 75 mm booster on
   a 1266J760-19A, joined by a transition with automatic radii. Both motors ignite at liftoff until
   staging arrives in M1.9.
+
+## Aerodynamic references (`wind-tunnel-*.json`, `mil-hdbk-762-*.json`)
+
+These carry no motor and are used for their aerodynamics only; their mass plays no part.
+
+- `wind-tunnel-arcas-robin-short.json` and `wind-tunnel-arcas-robin-long.json`: NASA's half-scale
+  Arcas Robin wind-tunnel models (TN D-4013 and TN D-4014), from the geometry recorded in
+  `validation/fixtures/aero/arcas-robin-wind-tunnel.json` (M1.8a, M1.8b1). Their double-wedge fins
+  take hpr's airfoil section and the machined steel a polished finish (ADR-028).
+- `mil-hdbk-762-sample-rocket.json`: the sample drag rocket of MIL-HDBK-762 (Fig. 5-155), from the
+  geometry recorded in `validation/fixtures/aero/mil-hdbk-762-sample-drag.json` (M1.8b2): a
+  3-calibre tangent ogive on a 21-calibre cylinder 0.16 m across, with four flat-plate fins flush
+  with the base. The fins take hpr's square section and the surface is smooth (`mirror`), as the
+  handbook's flat-plate friction is.

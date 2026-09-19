@@ -2263,4 +2263,163 @@ mod tests {
         );
         assert_eq!(parts[2].drag.base, 0.0);
     }
+
+    /// Loft lesson L18 (M1.8b2): Loft's wave drag was an invented curve, never measured against
+    /// RASAero II. `cargo xtask aero` compares hpr's `C_D0` with RocketPy's RASAero curves every
+    /// 0.05 from Mach 0.1 to 2.0, at sea level's Reynolds number for each Mach number, and records
+    /// the errors by band in `validation/fixtures/aero/rocketpy-drag-curves.json` (the curves
+    /// stay in `refs/`). This recomputes hpr's value at every row from the committed designs,
+    /// checks every recorded error, verdict and band summary against the rows, and pins how many
+    /// rows of each band are within M1.8's 10%.
+    ///
+    /// The lesson named this test for supersonic drag within that tolerance. It isn't, and the
+    /// decision record on the comparison, ADR-029, measures why: Calisto's curve, the one real
+    /// RASAero II export, reads above hpr from Mach 1 for every plausible fin section, thickness
+    /// and finish, while MIL-HDBK-762's worked example (every input known) and NASA's Arcas Robin
+    /// wind tunnel read below it; the other curves are hand-edited or disagree with their own
+    /// rockets' OpenRocket files.
+    #[test]
+    fn supersonic_cd_against_rasaero_tables() {
+        use serde::Deserialize;
+
+        #[derive(Deserialize)]
+        struct Fixture {
+            tolerance_rel: f64,
+            cases: Vec<Case>,
+        }
+        #[derive(Deserialize)]
+        struct Case {
+            id: String,
+            design: String,
+            thrusting: bool,
+            sweep: Sweep,
+        }
+        #[derive(Deserialize)]
+        struct Sweep {
+            usable_to_mach: Option<f64>,
+            bands: Vec<Band>,
+            rows: Vec<Row>,
+        }
+        #[derive(Deserialize)]
+        struct Band {
+            band: String,
+            rows: usize,
+            within_target: usize,
+            min_error: f64,
+            max_error: f64,
+            rms_error: f64,
+        }
+        #[derive(Deserialize)]
+        struct Row {
+            mach: f64,
+            band: String,
+            hpr_cd0: f64,
+            relative_error: f64,
+            within_target: bool,
+        }
+
+        let fixture: Fixture = serde_json::from_str(include_str!(
+            "../../../validation/fixtures/aero/rocketpy-drag-curves.json"
+        ))
+        .unwrap();
+        assert_eq!(fixture.tolerance_rel, 0.10);
+        let air = hpr_atmos::Ussa76::standard().sample(0.0).unwrap().air;
+        let band_of = |mach: f64| {
+            if mach <= SUBSONIC_MACH_LIMIT {
+                "subsonic"
+            } else if mach < 1.2 {
+                "transonic"
+            } else {
+                "supersonic"
+            }
+        };
+        let mut within = Vec::new();
+        for case in &fixture.cases {
+            let rocket = crate::testing::committed_design(&case.design);
+            let model = AeroModel::new(&rocket.layout().unwrap()).unwrap();
+            let motor_area: f64 = if case.thrusting {
+                rocket.configurations[0]
+                    .motors
+                    .iter()
+                    .map(|m| 0.25 * PI * m.diameter_m * m.diameter_m)
+                    .sum()
+            } else {
+                0.0
+            };
+            let rows = &case.sweep.rows;
+            // Every 0.05 from Mach 0.1, without a gap, to the curve's end or its usable limit.
+            for (i, row) in rows.iter().enumerate() {
+                assert_eq!(row.mach, f64::from(i as u32 + 2) / 20.0, "{}", case.id);
+                assert!(row.mach <= case.sweep.usable_to_mach.unwrap_or(2.0));
+                assert_eq!(row.band, band_of(row.mach), "{}@{}", case.id, row.mach);
+                let reynolds_per_m =
+                    row.mach * air.speed_of_sound_m_s / air.kinematic_viscosity_m2_s();
+                let conditions = if case.thrusting {
+                    DragConditions::thrusting(reynolds_per_m, motor_area)
+                } else {
+                    DragConditions::coasting(reynolds_per_m)
+                };
+                let drag = model.drag(&Flow::axial(row.mach), &conditions).unwrap();
+                // A stale fixture: rerun `cargo xtask aero`.
+                close(
+                    drag.zero_lift_coefficient,
+                    row.hpr_cd0,
+                    1e-12,
+                    &format!("{}@{}", case.id, row.mach),
+                );
+                assert_eq!(
+                    row.within_target,
+                    row.relative_error.abs() <= fixture.tolerance_rel
+                );
+            }
+            let mut from = 0;
+            for band in &case.sweep.bands {
+                let errors: Vec<f64> = rows[from..from + band.rows]
+                    .iter()
+                    .map(|r| {
+                        assert_eq!(r.band, band.band);
+                        r.relative_error
+                    })
+                    .collect();
+                from += band.rows;
+                let count = errors.iter().filter(|e| e.abs() <= 0.10).count();
+                assert_eq!(band.within_target, count, "{} {}", case.id, band.band);
+                let min = errors.iter().copied().fold(f64::INFINITY, f64::min);
+                let max = errors.iter().copied().fold(f64::NEG_INFINITY, f64::max);
+                let rms = (errors.iter().map(|e| e * e).sum::<f64>() / errors.len() as f64).sqrt();
+                assert_eq!((band.min_error, band.max_error), (min, max));
+                assert!((band.rms_error - rms).abs() < 1e-15);
+                within.push((case.id.as_str(), band.band.as_str(), count, band.rows));
+            }
+            assert_eq!(from, rows.len(), "{}: every row is in a band", case.id);
+        }
+        // Rows within 10%, by case and band (ADR-029). Calisto's export on the 2018 fins: every
+        // subsonic row, none supersonic, where hpr reads 24% to 30% low. The getting-started fins
+        // (a variant on the same export, thick NACA 0012) cross it from low to high. Juno III's
+        // table is hand-edited from Mach 0.93 and Cavour's stop below Mach 0.93; Valetudo's is
+        // 1.44 times its own OpenRocket export at Mach 0.3 (ADR-009).
+        assert_eq!(
+            within,
+            [
+                ("calisto-power-off", "subsonic", 15, 15),
+                ("calisto-power-off", "transonic", 2, 7),
+                ("calisto-power-off", "supersonic", 0, 17),
+                ("calisto-getting-started-power-off", "subsonic", 12, 15),
+                ("calisto-getting-started-power-off", "transonic", 4, 7),
+                ("calisto-getting-started-power-off", "supersonic", 6, 17),
+                ("juno-iii-power-off", "subsonic", 15, 15),
+                ("juno-iii-power-off", "transonic", 0, 2),
+                ("cavour-power-off", "subsonic", 6, 15),
+                ("cavour-power-off", "transonic", 0, 1),
+                ("cavour-power-on", "subsonic", 1, 15),
+                ("cavour-power-on", "transonic", 0, 2),
+                ("valetudo-power-off", "subsonic", 0, 15),
+                ("valetudo-power-off", "transonic", 0, 7),
+                ("valetudo-power-off", "supersonic", 0, 7),
+                ("valetudo-power-on", "subsonic", 0, 15),
+                ("valetudo-power-on", "transonic", 0, 7),
+                ("valetudo-power-on", "supersonic", 0, 7),
+            ]
+        );
+    }
 }

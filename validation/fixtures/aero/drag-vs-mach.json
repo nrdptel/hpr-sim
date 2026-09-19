@@ -1,4 +1,278 @@
 {
+  "calculations": [
+    {
+      "design": "mil-hdbk-762-sample-rocket.json",
+      "id": "mil-hdbk-762-sample",
+      "rows": [
+        {
+          "band": "subsonic",
+          "error": 0.005225560591131995,
+          "hpr": {
+            "base": 0.1525,
+            "fins": 0.06890263120288805,
+            "friction": 0.2266679922739679,
+            "nose": 0.0002599765467889521,
+            "other": 0.0,
+            "total": 0.4483306000236449
+          },
+          "mach": 0.5,
+          "reference": {
+            "base": 0.17,
+            "fins": 0.023,
+            "friction": 0.253,
+            "nose": 0.0,
+            "total": 0.446
+          },
+          "reynolds_per_m": 11590000.0,
+          "within_target": true
+        },
+        {
+          "band": "subsonic",
+          "error": 0.10995660765073567,
+          "hpr": {
+            "base": 0.18369999999999997,
+            "fins": 0.07450726462978396,
+            "friction": 0.21090305714423235,
+            "nose": 0.005951106300498565,
+            "other": 0.0,
+            "total": 0.47506142807451485
+          },
+          "mach": 0.7,
+          "reference": {
+            "base": 0.163,
+            "fins": 0.023,
+            "friction": 0.242,
+            "nose": 0.0,
+            "total": 0.428
+          },
+          "reynolds_per_m": 16140000.0,
+          "within_target": false
+        },
+        {
+          "band": "transonic",
+          "error": 0.3608469257012501,
+          "hpr": {
+            "base": 0.2253,
+            "fins": 0.08222835220371974,
+            "friction": 0.1969040493746364,
+            "nose": 0.06167991951336398,
+            "other": 0.0,
+            "total": 0.56611232109172
+          },
+          "mach": 0.9,
+          "reference": {
+            "base": 0.156,
+            "fins": 0.023,
+            "friction": 0.23,
+            "nose": 0.007,
+            "total": 0.416
+          },
+          "reynolds_per_m": 20660000.0,
+          "within_target": false
+        },
+        {
+          "band": "transonic",
+          "error": 0.4357555599956857,
+          "hpr": {
+            "base": 0.237325,
+            "fins": 0.08451308634702065,
+            "friction": 0.1935307142465914,
+            "nose": 0.1020060902045328,
+            "other": 0.0,
+            "total": 0.6173748907981449
+          },
+          "mach": 0.95,
+          "reference": {
+            "base": 0.163,
+            "fins": 0.026,
+            "friction": 0.23,
+            "nose": 0.011,
+            "total": 0.43
+          },
+          "reynolds_per_m": 21760000.0,
+          "within_target": false
+        },
+        {
+          "band": "transonic",
+          "error": 0.37107397297027633,
+          "hpr": {
+            "base": 0.25,
+            "fins": 0.08727945034079601,
+            "friction": 0.19482714062274709,
+            "nose": 0.1643989873053573,
+            "other": 0.0,
+            "total": 0.6965055782689004
+          },
+          "mach": 1.0,
+          "reference": {
+            "base": 0.183,
+            "fins": 0.043,
+            "friction": 0.23,
+            "nose": 0.052,
+            "total": 0.508
+          },
+          "reynolds_per_m": 22870000.0,
+          "within_target": false
+        },
+        {
+          "band": "transonic",
+          "error": 0.2654428710757042,
+          "hpr": {
+            "base": 0.22727272727272724,
+            "fins": 0.08934627725111721,
+            "friction": 0.18938959627635465,
+            "nose": 0.23427547877908775,
+            "other": 0.0,
+            "total": 0.7402840795792869
+          },
+          "mach": 1.1,
+          "reference": {
+            "base": 0.215,
+            "fins": 0.043,
+            "friction": 0.218,
+            "nose": 0.109,
+            "total": 0.585
+          },
+          "reynolds_per_m": 25080000.0,
+          "within_target": false
+        },
+        {
+          "band": "supersonic",
+          "error": 0.2129588914511349,
+          "hpr": {
+            "base": 0.20833333333333331,
+            "fins": 0.0913786768773267,
+            "friction": 0.18415281699413985,
+            "nose": 0.20024398757364012,
+            "other": 0.0,
+            "total": 0.68410881477844
+          },
+          "mach": 1.2,
+          "reference": {
+            "base": 0.194,
+            "fins": 0.036,
+            "friction": 0.217,
+            "nose": 0.117,
+            "total": 0.564
+          },
+          "reynolds_per_m": 27260000.0,
+          "within_target": false
+        },
+        {
+          "band": "supersonic",
+          "error": 0.09469588258615458,
+          "hpr": {
+            "base": 0.15625,
+            "fins": 0.09721175462729623,
+            "friction": 0.1647489888019254,
+            "nose": 0.12256902256833879,
+            "other": 0.0,
+            "total": 0.5407797659975604
+          },
+          "mach": 1.6,
+          "reference": {
+            "base": 0.168,
+            "fins": 0.022,
+            "friction": 0.195,
+            "nose": 0.109,
+            "total": 0.494
+          },
+          "reynolds_per_m": 35700000.0,
+          "within_target": true
+        },
+        {
+          "band": "supersonic",
+          "error": 0.10643079863539628,
+          "hpr": {
+            "base": 0.125,
+            "fins": 0.1001827145350511,
+            "friction": 0.14747430313242296,
+            "nose": 0.10421465654438172,
+            "other": 0.0,
+            "total": 0.47687167421185583
+          },
+          "mach": 2.0,
+          "reference": {
+            "base": 0.147,
+            "fins": 0.016,
+            "friction": 0.173,
+            "nose": 0.095,
+            "total": 0.431
+          },
+          "reynolds_per_m": 43660000.0,
+          "within_target": false
+        },
+        {
+          "band": "supersonic",
+          "error": 0.15045836985037186,
+          "hpr": {
+            "base": 0.10416666666666666,
+            "fins": 0.10172372730149411,
+            "friction": 0.132249120194877,
+            "nose": 0.09443283290070201,
+            "other": 0.0,
+            "total": 0.4325723470637398
+          },
+          "mach": 2.4,
+          "reference": {
+            "base": 0.124,
+            "fins": 0.013,
+            "friction": 0.15,
+            "nose": 0.089,
+            "total": 0.376
+          },
+          "reynolds_per_m": 51020000.0,
+          "within_target": false
+        },
+        {
+          "band": "supersonic",
+          "error": 0.17687355659735804,
+          "hpr": {
+            "base": 0.08928571428571429,
+            "fins": 0.10255963415907653,
+            "friction": 0.11892826855142706,
+            "nose": 0.08818651869028651,
+            "other": 0.0,
+            "total": 0.3989601356865044
+          },
+          "mach": 2.8,
+          "reference": {
+            "base": 0.106,
+            "fins": 0.011,
+            "friction": 0.137,
+            "nose": 0.085,
+            "total": 0.339
+          },
+          "reynolds_per_m": 57900000.0,
+          "within_target": false
+        },
+        {
+          "band": "supersonic",
+          "error": 0.21307360275124743,
+          "hpr": {
+            "base": 0.078125,
+            "fins": 0.10302687075927472,
+            "friction": 0.10746332044179414,
+            "nose": 0.0837984048435641,
+            "other": 0.0,
+            "total": 0.372413596044633
+          },
+          "mach": 3.2,
+          "reference": {
+            "base": 0.089,
+            "fins": 0.009,
+            "friction": 0.126,
+            "nose": 0.083,
+            "total": 0.307
+          },
+          "reynolds_per_m": 63840000.0,
+          "within_target": false
+        }
+      ],
+      "source": "MIL-HDBK-762(MI), Design of Aerodynamically Stabilized Free Rockets (U.S. Army Missile Command, 1990; Distribution A, a U.S. Government work), par. 5-5.4.2 'Sample Drag Calculation' (printed p. 5-56): Table 5-4 'Drag Calculation Sheets' (printed pp. 5-58 to 5-66) for the configuration of Fig. 5-155 (printed pp. 5-223 to 5-224). A calculation by the handbook's methods, not a measurement."
+    }
+  ],
+  "calculations_note": "hpr's whole C_D0, base included, against MIL-HDBK-762's sample drag calculation (Table 5-4) for the rocket of its Fig. 5-155, at the Reynolds number per metre the table gives for each Mach number, term by term: friction (body and fins), the nose's wave drag against hpr's nose pressure drag, the fins' wave and trailing-edge base drag against hpr's fin pressure drag, and the body's jet-off base drag. A calculation with every input known, not a measurement. error is hpr's total over the handbook's, minus 1.",
   "generator": "cargo xtask aero",
   "note": "hpr's forebody drag, C_D0 less the base drag (friction + pressure + parasitic, on the maximum cross-section), against each reference's forebody axial force, at zero angle of attack and the reference's Reynolds number. error is hpr's over the reference's, minus 1. Bands are Niskanen 2009 Table 3.1's. hpr's base drag is given for information: the tunnels' base pressure is the sting's, not a free flight's.",
   "references": [

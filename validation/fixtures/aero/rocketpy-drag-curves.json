@@ -11,6 +11,311 @@
       "id": "calisto-power-off",
       "origin": "RASAero II export: the alpha-0 `CD Power-Off` column of RocketPy's first commit's `data/calisto/CD Test.CSV` (da91db9e, 2018), rounded to 9 decimals and cut to Mach 2; the export's power-on column equals its power-off column. The design has the 2018 notebook's fins; its rail buttons come from RocketPy's calisto_robust test fixture, not the notebook",
       "relative_error": 0.04371262676929333,
+      "sweep": {
+        "bands": [
+          {
+            "band": "subsonic",
+            "max_error": 0.08890690127996215,
+            "min_error": 0.03862682367196957,
+            "rms_error": 0.054667923285509526,
+            "rows": 15,
+            "within_target": 15
+          },
+          {
+            "band": "transonic",
+            "max_error": 0.038288083203959156,
+            "min_error": -0.3144748135166531,
+            "rms_error": 0.22136906304190368,
+            "rows": 7,
+            "within_target": 2
+          },
+          {
+            "band": "supersonic",
+            "max_error": -0.24396039475102216,
+            "min_error": -0.29781930113640875,
+            "rms_error": 0.26165243142880323,
+            "rows": 17,
+            "within_target": 0
+          }
+        ],
+        "rows": [
+          {
+            "band": "subsonic",
+            "hpr_cd0": 0.4300304370069453,
+            "mach": 0.1,
+            "relative_error": 0.0700426227205122,
+            "within_target": true
+          },
+          {
+            "band": "subsonic",
+            "hpr_cd0": 0.4149281407608351,
+            "mach": 0.15,
+            "relative_error": 0.05314603529753592,
+            "within_target": true
+          },
+          {
+            "band": "subsonic",
+            "hpr_cd0": 0.40620709381879205,
+            "mach": 0.2,
+            "relative_error": 0.04635191260681437,
+            "within_target": true
+          },
+          {
+            "band": "subsonic",
+            "hpr_cd0": 0.40101678418480513,
+            "mach": 0.25,
+            "relative_error": 0.04413045977260022,
+            "within_target": true
+          },
+          {
+            "band": "subsonic",
+            "hpr_cd0": 0.3981823830720661,
+            "mach": 0.3,
+            "relative_error": 0.04371262676929333,
+            "within_target": true
+          },
+          {
+            "band": "subsonic",
+            "hpr_cd0": 0.39711307325190476,
+            "mach": 0.35,
+            "relative_error": 0.04501118754594602,
+            "within_target": true
+          },
+          {
+            "band": "subsonic",
+            "hpr_cd0": 0.39747298759836786,
+            "mach": 0.4,
+            "relative_error": 0.047448401322035094,
+            "within_target": true
+          },
+          {
+            "band": "subsonic",
+            "hpr_cd0": 0.39905460383898134,
+            "mach": 0.45,
+            "relative_error": 0.05055805929333235,
+            "within_target": true
+          },
+          {
+            "band": "subsonic",
+            "hpr_cd0": 0.4017217768002689,
+            "mach": 0.5,
+            "relative_error": 0.05387617968843306,
+            "within_target": true
+          },
+          {
+            "band": "subsonic",
+            "hpr_cd0": 0.40538111045750336,
+            "mach": 0.55,
+            "relative_error": 0.055621000573380375,
+            "within_target": true
+          },
+          {
+            "band": "subsonic",
+            "hpr_cd0": 0.40996633154004797,
+            "mach": 0.6,
+            "relative_error": 0.052619159894319534,
+            "within_target": true
+          },
+          {
+            "band": "subsonic",
+            "hpr_cd0": 0.41542919229069525,
+            "mach": 0.65,
+            "relative_error": 0.046893325079035986,
+            "within_target": true
+          },
+          {
+            "band": "subsonic",
+            "hpr_cd0": 0.42173389309095,
+            "mach": 0.7,
+            "relative_error": 0.03862682367196957,
+            "within_target": true
+          },
+          {
+            "band": "subsonic",
+            "hpr_cd0": 0.428853514543708,
+            "mach": 0.75,
+            "relative_error": 0.06242935477121225,
+            "within_target": true
+          },
+          {
+            "band": "subsonic",
+            "hpr_cd0": 0.43676765233185466,
+            "mach": 0.8,
+            "relative_error": 0.08890690127996215,
+            "within_target": true
+          },
+          {
+            "band": "transonic",
+            "hpr_cd0": 0.44546080123484033,
+            "mach": 0.85,
+            "relative_error": 0.038288083203959156,
+            "within_target": true
+          },
+          {
+            "band": "transonic",
+            "hpr_cd0": 0.4549212218808543,
+            "mach": 0.9,
+            "relative_error": -0.004469053862171113,
+            "within_target": true
+          },
+          {
+            "band": "transonic",
+            "hpr_cd0": 0.46779907071157834,
+            "mach": 0.95,
+            "relative_error": -0.11189442161765684,
+            "within_target": false
+          },
+          {
+            "band": "transonic",
+            "hpr_cd0": 0.49164567707890644,
+            "mach": 1.0,
+            "relative_error": -0.21643306049519473,
+            "within_target": false
+          },
+          {
+            "band": "transonic",
+            "hpr_cd0": 0.49916735547634505,
+            "mach": 1.05,
+            "relative_error": -0.3144748135166531,
+            "within_target": false
+          },
+          {
+            "band": "transonic",
+            "hpr_cd0": 0.49548463979906504,
+            "mach": 1.1,
+            "relative_error": -0.3043579358787907,
+            "within_target": false
+          },
+          {
+            "band": "transonic",
+            "hpr_cd0": 0.48793992007382503,
+            "mach": 1.15,
+            "relative_error": -0.3010848584922492,
+            "within_target": false
+          },
+          {
+            "band": "supersonic",
+            "hpr_cd0": 0.4800733841356334,
+            "mach": 1.2,
+            "relative_error": -0.29781930113640875,
+            "within_target": false
+          },
+          {
+            "band": "supersonic",
+            "hpr_cd0": 0.4726437644429388,
+            "mach": 1.25,
+            "relative_error": -0.29436479239474933,
+            "within_target": false
+          },
+          {
+            "band": "supersonic",
+            "hpr_cd0": 0.46745708561978283,
+            "mach": 1.3,
+            "relative_error": -0.2870834596496714,
+            "within_target": false
+          },
+          {
+            "band": "supersonic",
+            "hpr_cd0": 0.4614809153983574,
+            "mach": 1.35,
+            "relative_error": -0.2790146435754415,
+            "within_target": false
+          },
+          {
+            "band": "supersonic",
+            "hpr_cd0": 0.45594020808560753,
+            "mach": 1.4,
+            "relative_error": -0.2710675093536261,
+            "within_target": false
+          },
+          {
+            "band": "supersonic",
+            "hpr_cd0": 0.44942288742537234,
+            "mach": 1.45,
+            "relative_error": -0.2654895852105319,
+            "within_target": false
+          },
+          {
+            "band": "supersonic",
+            "hpr_cd0": 0.44325360346973225,
+            "mach": 1.5,
+            "relative_error": -0.26017485069910373,
+            "within_target": false
+          },
+          {
+            "band": "supersonic",
+            "hpr_cd0": 0.43724413981706267,
+            "mach": 1.55,
+            "relative_error": -0.255418652366324,
+            "within_target": false
+          },
+          {
+            "band": "supersonic",
+            "hpr_cd0": 0.4312207974980419,
+            "mach": 1.6,
+            "relative_error": -0.2515227553262981,
+            "within_target": false
+          },
+          {
+            "band": "supersonic",
+            "hpr_cd0": 0.4249512836511479,
+            "mach": 1.65,
+            "relative_error": -0.24891927480659715,
+            "within_target": false
+          },
+          {
+            "band": "supersonic",
+            "hpr_cd0": 0.41892697086990593,
+            "mach": 1.7,
+            "relative_error": -0.2467686818492263,
+            "within_target": false
+          },
+          {
+            "band": "supersonic",
+            "hpr_cd0": 0.4131290089251883,
+            "mach": 1.75,
+            "relative_error": -0.24510491136367218,
+            "within_target": false
+          },
+          {
+            "band": "supersonic",
+            "hpr_cd0": 0.4075408107789625,
+            "mach": 1.8,
+            "relative_error": -0.24396039475102216,
+            "within_target": false
+          },
+          {
+            "band": "supersonic",
+            "hpr_cd0": 0.40134293427035395,
+            "mach": 1.85,
+            "relative_error": -0.24557948739203272,
+            "within_target": false
+          },
+          {
+            "band": "supersonic",
+            "hpr_cd0": 0.39533463246270656,
+            "mach": 1.9,
+            "relative_error": -0.24712775412300125,
+            "within_target": false
+          },
+          {
+            "band": "supersonic",
+            "hpr_cd0": 0.38950408692443683,
+            "mach": 1.95,
+            "relative_error": -0.24865144587856491,
+            "within_target": false
+          },
+          {
+            "band": "supersonic",
+            "hpr_cd0": 0.3839921570898876,
+            "mach": 2.0,
+            "relative_error": -0.24985511243600944,
+            "within_target": false
+          }
+        ],
+        "usable_note": null,
+        "usable_to_mach": null
+      },
       "thrusting": false,
       "variant_of": null
     },
@@ -24,6 +329,311 @@
       "id": "calisto-getting-started-power-off",
       "origin": "the same RASAero II export, for the larger NACA 0012 fins RocketPy's getting-started example gives Calisto (tip chord 0.06 m, span 0.11 m, against the 2018 notebook's 0.04 m and 0.10 m)",
       "relative_error": -0.07297710326286078,
+      "sweep": {
+        "bands": [
+          {
+            "band": "subsonic",
+            "max_error": 0.30721086556367583,
+            "min_error": -0.0817284183049164,
+            "rms_error": 0.11196329085712539,
+            "rows": 15,
+            "within_target": 12
+          },
+          {
+            "band": "transonic",
+            "max_error": 0.4845698790229085,
+            "min_error": -0.07804971553503903,
+            "rms_error": 0.2514001670841074,
+            "rows": 7,
+            "within_target": 4
+          },
+          {
+            "band": "supersonic",
+            "max_error": 0.21627562503734743,
+            "min_error": -0.01824654441987683,
+            "rms_error": 0.14081430810778436,
+            "rows": 17,
+            "within_target": 6
+          }
+        ],
+        "rows": [
+          {
+            "band": "subsonic",
+            "hpr_cd0": 0.3779736818321173,
+            "mach": 0.1,
+            "relative_error": -0.05948994531185914,
+            "within_target": true
+          },
+          {
+            "band": "subsonic",
+            "hpr_cd0": 0.36367328864032733,
+            "mach": 0.15,
+            "relative_error": -0.07694599509957267,
+            "within_target": true
+          },
+          {
+            "band": "subsonic",
+            "hpr_cd0": 0.3564846836352179,
+            "mach": 0.2,
+            "relative_error": -0.0817284183049164,
+            "within_target": true
+          },
+          {
+            "band": "subsonic",
+            "hpr_cd0": 0.3535269603684372,
+            "mach": 0.25,
+            "relative_error": -0.07951915673086485,
+            "within_target": true
+          },
+          {
+            "band": "subsonic",
+            "hpr_cd0": 0.35366457846519544,
+            "mach": 0.3,
+            "relative_error": -0.07297710326286078,
+            "within_target": true
+          },
+          {
+            "band": "subsonic",
+            "hpr_cd0": 0.3563895446300639,
+            "mach": 0.35,
+            "relative_error": -0.06215361228721361,
+            "within_target": true
+          },
+          {
+            "band": "subsonic",
+            "hpr_cd0": 0.3614911686800742,
+            "mach": 0.4,
+            "relative_error": -0.047373385009541025,
+            "within_target": true
+          },
+          {
+            "band": "subsonic",
+            "hpr_cd0": 0.3689384737279405,
+            "mach": 0.45,
+            "relative_error": -0.028726186267324816,
+            "within_target": true
+          },
+          {
+            "band": "subsonic",
+            "hpr_cd0": 0.37884121979661933,
+            "mach": 0.5,
+            "relative_error": -0.006148632001420573,
+            "within_target": true
+          },
+          {
+            "band": "subsonic",
+            "hpr_cd0": 0.3914518173412495,
+            "mach": 0.55,
+            "relative_error": 0.019348826174170775,
+            "within_target": true
+          },
+          {
+            "band": "subsonic",
+            "hpr_cd0": 0.40720143279037496,
+            "mach": 0.6,
+            "relative_error": 0.04552007595701002,
+            "within_target": true
+          },
+          {
+            "band": "subsonic",
+            "hpr_cd0": 0.426782032239937,
+            "mach": 0.65,
+            "relative_error": 0.07550280314199087,
+            "within_target": true
+          },
+          {
+            "band": "subsonic",
+            "hpr_cd0": 0.4513115692377356,
+            "mach": 0.7,
+            "relative_error": 0.11146936331890545,
+            "within_target": false
+          },
+          {
+            "band": "subsonic",
+            "hpr_cd0": 0.4826781782779034,
+            "mach": 0.75,
+            "relative_error": 0.19577302766320748,
+            "within_target": false
+          },
+          {
+            "band": "subsonic",
+            "hpr_cd0": 0.5243307946563796,
+            "mach": 0.8,
+            "relative_error": 0.30721086556367583,
+            "within_target": false
+          },
+          {
+            "band": "transonic",
+            "hpr_cd0": 0.5834015813533664,
+            "mach": 0.85,
+            "relative_error": 0.3598029455395535,
+            "within_target": false
+          },
+          {
+            "band": "transonic",
+            "hpr_cd0": 0.678394123209015,
+            "mach": 0.9,
+            "relative_error": 0.4845698790229085,
+            "within_target": false
+          },
+          {
+            "band": "transonic",
+            "hpr_cd0": 0.6619587926314014,
+            "mach": 0.95,
+            "relative_error": 0.25671326259998417,
+            "within_target": false
+          },
+          {
+            "band": "transonic",
+            "hpr_cd0": 0.6561567276006723,
+            "mach": 1.0,
+            "relative_error": 0.04575864865995749,
+            "within_target": true
+          },
+          {
+            "band": "transonic",
+            "hpr_cd0": 0.6713210461862704,
+            "mach": 1.05,
+            "relative_error": -0.07804971553503903,
+            "within_target": true
+          },
+          {
+            "band": "transonic",
+            "hpr_cd0": 0.6745819955399233,
+            "mach": 1.1,
+            "relative_error": -0.0529118884760994,
+            "within_target": true
+          },
+          {
+            "band": "transonic",
+            "hpr_cd0": 0.673345712785109,
+            "mach": 1.15,
+            "relative_error": -0.03551340078172216,
+            "within_target": true
+          },
+          {
+            "band": "supersonic",
+            "hpr_cd0": 0.6712142680224275,
+            "mach": 1.2,
+            "relative_error": -0.01824654441987683,
+            "within_target": true
+          },
+          {
+            "band": "supersonic",
+            "hpr_cd0": 0.6690043389005783,
+            "mach": 1.25,
+            "relative_error": -0.0012075667065838402,
+            "within_target": true
+          },
+          {
+            "band": "supersonic",
+            "hpr_cd0": 0.6685750453330987,
+            "mach": 1.3,
+            "relative_error": 0.01964056797102809,
+            "within_target": true
+          },
+          {
+            "band": "supersonic",
+            "hpr_cd0": 0.66694195264881,
+            "mach": 1.35,
+            "relative_error": 0.041983244377314266,
+            "within_target": true
+          },
+          {
+            "band": "supersonic",
+            "hpr_cd0": 0.665373035305351,
+            "mach": 1.4,
+            "relative_error": 0.06376234258988855,
+            "within_target": true
+          },
+          {
+            "band": "supersonic",
+            "hpr_cd0": 0.6624945708751763,
+            "mach": 1.45,
+            "relative_error": 0.08274228052103583,
+            "within_target": true
+          },
+          {
+            "band": "supersonic",
+            "hpr_cd0": 0.659665294473961,
+            "mach": 1.5,
+            "relative_error": 0.10103329370032688,
+            "within_target": false
+          },
+          {
+            "band": "supersonic",
+            "hpr_cd0": 0.6567272296279261,
+            "mach": 1.55,
+            "relative_error": 0.11833824889837885,
+            "within_target": false
+          },
+          {
+            "band": "supersonic",
+            "hpr_cd0": 0.6535334881457209,
+            "mach": 1.6,
+            "relative_error": 0.13434914862037428,
+            "within_target": false
+          },
+          {
+            "band": "supersonic",
+            "hpr_cd0": 0.6498755494267827,
+            "mach": 1.65,
+            "relative_error": 0.14862342514919602,
+            "within_target": false
+          },
+          {
+            "band": "supersonic",
+            "hpr_cd0": 0.6462658768854649,
+            "mach": 1.7,
+            "relative_error": 0.1619870100783556,
+            "within_target": false
+          },
+          {
+            "band": "supersonic",
+            "hpr_cd0": 0.6427043505289769,
+            "mach": 1.75,
+            "relative_error": 0.17438946957942547,
+            "within_target": false
+          },
+          {
+            "band": "supersonic",
+            "hpr_cd0": 0.6391910380610004,
+            "mach": 1.8,
+            "relative_error": 0.1857799938382736,
+            "within_target": false
+          },
+          {
+            "band": "supersonic",
+            "hpr_cd0": 0.6349213280053165,
+            "mach": 1.85,
+            "relative_error": 0.19348724703556952,
+            "within_target": false
+          },
+          {
+            "band": "supersonic",
+            "hpr_cd0": 0.630707700734427,
+            "mach": 1.9,
+            "relative_error": 0.2011149141825812,
+            "within_target": false
+          },
+          {
+            "band": "supersonic",
+            "hpr_cd0": 0.626550154841481,
+            "mach": 1.95,
+            "relative_error": 0.2086074799416271,
+            "within_target": false
+          },
+          {
+            "band": "supersonic",
+            "hpr_cd0": 0.6226001251446266,
+            "mach": 2.0,
+            "relative_error": 0.21627562503734743,
+            "within_target": false
+          }
+        ],
+        "usable_note": null,
+        "usable_to_mach": null
+      },
       "thrusting": false,
       "variant_of": "calisto-power-off"
     },
@@ -37,6 +647,149 @@
       "id": "juno-iii-power-off",
       "origin": "labelled RASAero II by RocketPy's Juno III notebook; a 3-decimal, hand-edited table (broken above Mach 1), used for power-off and power-on",
       "relative_error": -0.059878998958594054,
+      "sweep": {
+        "bands": [
+          {
+            "band": "subsonic",
+            "max_error": 0.0912589507605237,
+            "min_error": -0.06210840477059665,
+            "rms_error": 0.04637033089652368,
+            "rows": 15,
+            "within_target": 15
+          },
+          {
+            "band": "transonic",
+            "max_error": 0.21853312231188626,
+            "min_error": 0.14104659180013002,
+            "rms_error": 0.18391691956670864,
+            "rows": 2,
+            "within_target": 0
+          }
+        ],
+        "rows": [
+          {
+            "band": "subsonic",
+            "hpr_cd0": 0.39016501814215215,
+            "mach": 0.1,
+            "relative_error": 0.008178341452589555,
+            "within_target": true
+          },
+          {
+            "band": "subsonic",
+            "hpr_cd0": 0.372834158653595,
+            "mach": 0.15,
+            "relative_error": 0.010390673857981092,
+            "within_target": true
+          },
+          {
+            "band": "subsonic",
+            "hpr_cd0": 0.3626043322167766,
+            "mach": 0.2,
+            "relative_error": -0.030469699955142704,
+            "within_target": true
+          },
+          {
+            "band": "subsonic",
+            "hpr_cd0": 0.35627648498041564,
+            "mach": 0.25,
+            "relative_error": -0.04992937338555825,
+            "within_target": true
+          },
+          {
+            "band": "subsonic",
+            "hpr_cd0": 0.3525453753905272,
+            "mach": 0.3,
+            "relative_error": -0.059878998958594054,
+            "within_target": true
+          },
+          {
+            "band": "subsonic",
+            "hpr_cd0": 0.35077145661579684,
+            "mach": 0.35,
+            "relative_error": -0.06210840477059665,
+            "within_target": true
+          },
+          {
+            "band": "subsonic",
+            "hpr_cd0": 0.35061235696967713,
+            "mach": 0.4,
+            "relative_error": -0.060020490697916484,
+            "within_target": true
+          },
+          {
+            "band": "subsonic",
+            "hpr_cd0": 0.35188368701192274,
+            "mach": 0.45,
+            "relative_error": -0.051526450102634125,
+            "within_target": true
+          },
+          {
+            "band": "subsonic",
+            "hpr_cd0": 0.3545002888782116,
+            "mach": 0.5,
+            "relative_error": -0.04189111113996857,
+            "within_target": true
+          },
+          {
+            "band": "subsonic",
+            "hpr_cd0": 0.35845272389426125,
+            "mach": 0.55,
+            "relative_error": -0.02858340408059279,
+            "within_target": true
+          },
+          {
+            "band": "subsonic",
+            "hpr_cd0": 0.3638042516893274,
+            "mach": 0.6,
+            "relative_error": -0.011401489974653845,
+            "within_target": true
+          },
+          {
+            "band": "subsonic",
+            "hpr_cd0": 0.37070615645476196,
+            "mach": 0.65,
+            "relative_error": 0.007353686018374939,
+            "within_target": true
+          },
+          {
+            "band": "subsonic",
+            "hpr_cd0": 0.3794393112203711,
+            "mach": 0.7,
+            "relative_error": 0.028290816315368783,
+            "within_target": true
+          },
+          {
+            "band": "subsonic",
+            "hpr_cd0": 0.3905075531227939,
+            "mach": 0.75,
+            "relative_error": 0.05542581925079437,
+            "within_target": true
+          },
+          {
+            "band": "subsonic",
+            "hpr_cd0": 0.40485707073215427,
+            "mach": 0.8,
+            "relative_error": 0.0912589507605237,
+            "within_target": true
+          },
+          {
+            "band": "transonic",
+            "hpr_cd0": 0.4244693321496483,
+            "mach": 0.85,
+            "relative_error": 0.14104659180013002,
+            "within_target": false
+          },
+          {
+            "band": "transonic",
+            "hpr_cd0": 0.45451285462233354,
+            "mach": 0.9,
+            "relative_error": 0.21853312231188626,
+            "within_target": false
+          }
+        ],
+        "usable_note": "from Mach 0.93 to 1.0 the table climbs a constant 0.072 per 0.01 and then drops to 0.001: hand-edited, not a drag curve",
+        "usable_to_mach": 0.92
+      },
       "thrusting": false,
       "variant_of": null
     },
@@ -50,6 +803,142 @@
       "id": "cavour-power-off",
       "origin": "labelled RASAero II by RocketPy's Cavour notebook; a 3-decimal table from Mach 0.082 to 0.895 with 22 extra rows repeating 13 Mach numbers up to 0.107, 7 of them with values 0.001 apart",
       "relative_error": -0.08308682560196479,
+      "sweep": {
+        "bands": [
+          {
+            "band": "subsonic",
+            "max_error": -0.022135822649513637,
+            "min_error": -0.1263980436837433,
+            "rms_error": 0.10092218795300235,
+            "rows": 15,
+            "within_target": 6
+          },
+          {
+            "band": "transonic",
+            "max_error": -0.12587550655705637,
+            "min_error": -0.12587550655705637,
+            "rms_error": 0.12587550655705637,
+            "rows": 1,
+            "within_target": 0
+          }
+        ],
+        "rows": [
+          {
+            "band": "subsonic",
+            "hpr_cd0": 0.5495596676709734,
+            "mach": 0.1,
+            "relative_error": -0.022135822649513637,
+            "within_target": true
+          },
+          {
+            "band": "subsonic",
+            "hpr_cd0": 0.5284229727925926,
+            "mach": 0.15,
+            "relative_error": -0.029526220766588285,
+            "within_target": true
+          },
+          {
+            "band": "subsonic",
+            "hpr_cd0": 0.5159082537013447,
+            "mach": 0.2,
+            "relative_error": -0.049892718782053924,
+            "within_target": true
+          },
+          {
+            "band": "subsonic",
+            "hpr_cd0": 0.5081005557818454,
+            "mach": 0.25,
+            "relative_error": -0.0694129014984517,
+            "within_target": true
+          },
+          {
+            "band": "subsonic",
+            "hpr_cd0": 0.5033853327445214,
+            "mach": 0.3,
+            "relative_error": -0.08308682560196479,
+            "within_target": true
+          },
+          {
+            "band": "subsonic",
+            "hpr_cd0": 0.5009500947176742,
+            "mach": 0.35,
+            "relative_error": -0.09412279436225301,
+            "within_target": true
+          },
+          {
+            "band": "subsonic",
+            "hpr_cd0": 0.5003325606622977,
+            "mach": 0.4,
+            "relative_error": -0.10334666547975335,
+            "within_target": false
+          },
+          {
+            "band": "subsonic",
+            "hpr_cd0": 0.5012467547633129,
+            "mach": 0.45,
+            "relative_error": -0.10968604837777451,
+            "within_target": false
+          },
+          {
+            "band": "subsonic",
+            "hpr_cd0": 0.5035047358496186,
+            "mach": 0.5,
+            "relative_error": -0.11510591239082835,
+            "within_target": false
+          },
+          {
+            "band": "subsonic",
+            "hpr_cd0": 0.5069772557060546,
+            "mach": 0.55,
+            "relative_error": -0.11983115328809968,
+            "within_target": false
+          },
+          {
+            "band": "subsonic",
+            "hpr_cd0": 0.511572280714636,
+            "mach": 0.6,
+            "relative_error": -0.12251752879136191,
+            "within_target": false
+          },
+          {
+            "band": "subsonic",
+            "hpr_cd0": 0.5172224857728334,
+            "mach": 0.65,
+            "relative_error": -0.12483504945375057,
+            "within_target": false
+          },
+          {
+            "band": "subsonic",
+            "hpr_cd0": 0.5238775859307195,
+            "mach": 0.7,
+            "relative_error": -0.12541304519078533,
+            "within_target": false
+          },
+          {
+            "band": "subsonic",
+            "hpr_cd0": 0.5314994302228105,
+            "mach": 0.75,
+            "relative_error": -0.1263980436837433,
+            "within_target": false
+          },
+          {
+            "band": "subsonic",
+            "hpr_cd0": 0.5400587490408286,
+            "mach": 0.8,
+            "relative_error": -0.125410932727403,
+            "within_target": false
+          },
+          {
+            "band": "transonic",
+            "hpr_cd0": 0.5495329315444639,
+            "mach": 0.85,
+            "relative_error": -0.12587550655705637,
+            "within_target": false
+          }
+        ],
+        "usable_note": null,
+        "usable_to_mach": null
+      },
       "thrusting": false,
       "variant_of": null
     },
@@ -63,6 +952,149 @@
       "id": "cavour-power-on",
       "origin": "the power-on companion of the Cavour table, from Mach 0.011 to 0.923: within the tables' 0.001 rounding of the power-off table from Mach 0.16 up (0.0001 lower at Mach 0.3), and 0.001 to 0.013 lower below Mach 0.16. Their uneven Mach spacing suggests samples along a flight rather than a Mach sweep (unconfirmed)",
       "relative_error": -0.18256186915384998,
+      "sweep": {
+        "bands": [
+          {
+            "band": "subsonic",
+            "max_error": -0.0917838744956293,
+            "min_error": -0.2621049453898652,
+            "rms_error": 0.2095836534528256,
+            "rows": 15,
+            "within_target": 1
+          },
+          {
+            "band": "transonic",
+            "max_error": -0.2669102048373897,
+            "min_error": -0.2701135086426021,
+            "rms_error": 0.2685166335607111,
+            "rows": 2,
+            "within_target": 0
+          }
+        ],
+        "rows": [
+          {
+            "band": "subsonic",
+            "hpr_cd0": 0.4992161303189025,
+            "mach": 0.1,
+            "relative_error": -0.0917838744956293,
+            "within_target": true
+          },
+          {
+            "band": "subsonic",
+            "hpr_cd0": 0.47740500635398325,
+            "mach": 0.15,
+            "relative_error": -0.11755082004809014,
+            "within_target": false
+          },
+          {
+            "band": "subsonic",
+            "hpr_cd0": 0.4639460865415814,
+            "mach": 0.2,
+            "relative_error": -0.14567986663703603,
+            "within_target": false
+          },
+          {
+            "band": "subsonic",
+            "hpr_cd0": 0.45492441626631286,
+            "mach": 0.25,
+            "relative_error": -0.16680509841334645,
+            "within_target": false
+          },
+          {
+            "band": "subsonic",
+            "hpr_cd0": 0.44872544923860425,
+            "mach": 0.3,
+            "relative_error": -0.18256186915384998,
+            "within_target": false
+          },
+          {
+            "band": "subsonic",
+            "hpr_cd0": 0.44453669558675696,
+            "mach": 0.35,
+            "relative_error": -0.19694294253697064,
+            "within_target": false
+          },
+          {
+            "band": "subsonic",
+            "hpr_cd0": 0.44189587427176524,
+            "mach": 0.4,
+            "relative_error": -0.2083871679048792,
+            "within_target": false
+          },
+          {
+            "band": "subsonic",
+            "hpr_cd0": 0.4405170094785496,
+            "mach": 0.45,
+            "relative_error": -0.21739970680873555,
+            "within_target": false
+          },
+          {
+            "band": "subsonic",
+            "hpr_cd0": 0.44021216003600916,
+            "mach": 0.5,
+            "relative_error": -0.22672895351265643,
+            "within_target": false
+          },
+          {
+            "band": "subsonic",
+            "hpr_cd0": 0.4408520777289836,
+            "mach": 0.55,
+            "relative_error": -0.23396685016683982,
+            "within_target": false
+          },
+          {
+            "band": "subsonic",
+            "hpr_cd0": 0.442344728939488,
+            "mach": 0.6,
+            "relative_error": -0.24117441284397068,
+            "within_target": false
+          },
+          {
+            "band": "subsonic",
+            "hpr_cd0": 0.44462278856499304,
+            "mach": 0.65,
+            "relative_error": -0.24731329626240584,
+            "within_target": false
+          },
+          {
+            "band": "subsonic",
+            "hpr_cd0": 0.4476359716555717,
+            "mach": 0.7,
+            "relative_error": -0.2533178120841172,
+            "within_target": false
+          },
+          {
+            "band": "subsonic",
+            "hpr_cd0": 0.4513461272457395,
+            "mach": 0.75,
+            "relative_error": -0.2577653760348131,
+            "within_target": false
+          },
+          {
+            "band": "subsonic",
+            "hpr_cd0": 0.4557239857272192,
+            "mach": 0.8,
+            "relative_error": -0.2621049453898652,
+            "within_target": false
+          },
+          {
+            "band": "transonic",
+            "hpr_cd0": 0.4607469362597006,
+            "mach": 0.85,
+            "relative_error": -0.2669102048373897,
+            "within_target": false
+          },
+          {
+            "band": "transonic",
+            "hpr_cd0": 0.46639746797737724,
+            "mach": 0.9,
+            "relative_error": -0.2701135086426021,
+            "within_target": false
+          }
+        ],
+        "usable_note": null,
+        "usable_to_mach": null
+      },
       "thrusting": true,
       "variant_of": null
     },
@@ -76,6 +1108,241 @@
       "id": "valetudo-power-off",
       "origin": "labelled RASAero by its file name; a 3-decimal, hand-edited table with no input file, 1.44 times the OpenRocket export for the same rocket in RocketPy's RocketPaper repository at Mach 0.3",
       "relative_error": -0.4699357819736928,
+      "sweep": {
+        "bands": [
+          {
+            "band": "subsonic",
+            "max_error": -0.4353937685012027,
+            "min_error": -0.5139589776105693,
+            "rms_error": 0.47925313981733925,
+            "rows": 15,
+            "within_target": 0
+          },
+          {
+            "band": "transonic",
+            "max_error": -0.5091509689971108,
+            "min_error": -0.5327432449074954,
+            "rms_error": 0.5190497170042006,
+            "rows": 7,
+            "within_target": 0
+          },
+          {
+            "band": "supersonic",
+            "max_error": -0.5291254145415567,
+            "min_error": -0.5461722772776842,
+            "rms_error": 0.5427014928325425,
+            "rows": 7,
+            "within_target": 0
+          }
+        ],
+        "rows": [
+          {
+            "band": "subsonic",
+            "hpr_cd0": 0.6024348490092167,
+            "mach": 0.1,
+            "relative_error": -0.4353937685012027,
+            "within_target": false
+          },
+          {
+            "band": "subsonic",
+            "hpr_cd0": 0.5811258532750706,
+            "mach": 0.15,
+            "relative_error": -0.45021205934241193,
+            "within_target": false
+          },
+          {
+            "band": "subsonic",
+            "hpr_cd0": 0.5686474440506191,
+            "mach": 0.2,
+            "relative_error": -0.45894629490902084,
+            "within_target": false
+          },
+          {
+            "band": "subsonic",
+            "hpr_cd0": 0.5610087838952954,
+            "mach": 0.25,
+            "relative_error": -0.46468627490906933,
+            "within_target": false
+          },
+          {
+            "band": "subsonic",
+            "hpr_cd0": 0.5565674289276226,
+            "mach": 0.3,
+            "relative_error": -0.4699357819736928,
+            "within_target": false
+          },
+          {
+            "band": "subsonic",
+            "hpr_cd0": 0.5544993805179652,
+            "mach": 0.35,
+            "relative_error": -0.4739095061499381,
+            "within_target": false
+          },
+          {
+            "band": "subsonic",
+            "hpr_cd0": 0.5543399355772516,
+            "mach": 0.4,
+            "relative_error": -0.47753069219863187,
+            "within_target": false
+          },
+          {
+            "band": "subsonic",
+            "hpr_cd0": 0.5558107158348958,
+            "mach": 0.45,
+            "relative_error": -0.48151985463162705,
+            "within_target": false
+          },
+          {
+            "band": "subsonic",
+            "hpr_cd0": 0.5587490979518686,
+            "mach": 0.5,
+            "relative_error": -0.4850238728554207,
+            "within_target": false
+          },
+          {
+            "band": "subsonic",
+            "hpr_cd0": 0.5630861513534944,
+            "mach": 0.55,
+            "relative_error": -0.48949578299773855,
+            "within_target": false
+          },
+          {
+            "band": "subsonic",
+            "hpr_cd0": 0.5688577401411486,
+            "mach": 0.6,
+            "relative_error": -0.4956934927826696,
+            "within_target": false
+          },
+          {
+            "band": "subsonic",
+            "hpr_cd0": 0.5762487935612646,
+            "mach": 0.65,
+            "relative_error": -0.5040888179335072,
+            "within_target": false
+          },
+          {
+            "band": "subsonic",
+            "hpr_cd0": 0.5856794319792641,
+            "mach": 0.7,
+            "relative_error": -0.5139589776105693,
+            "within_target": false
+          },
+          {
+            "band": "subsonic",
+            "hpr_cd0": 0.5979486242926002,
+            "mach": 0.75,
+            "relative_error": -0.5000429562770901,
+            "within_target": false
+          },
+          {
+            "band": "subsonic",
+            "hpr_cd0": 0.6144581483092035,
+            "mach": 0.8,
+            "relative_error": -0.4819071262148368,
+            "within_target": false
+          },
+          {
+            "band": "transonic",
+            "hpr_cd0": 0.6375476211801073,
+            "mach": 0.85,
+            "relative_error": -0.5136936527993079,
+            "within_target": false
+          },
+          {
+            "band": "transonic",
+            "hpr_cd0": 0.6709807003128366,
+            "mach": 0.9,
+            "relative_error": -0.5327432449074954,
+            "within_target": false
+          },
+          {
+            "band": "transonic",
+            "hpr_cd0": 0.7206335290160865,
+            "mach": 0.95,
+            "relative_error": -0.5326630810531217,
+            "within_target": false
+          },
+          {
+            "band": "transonic",
+            "hpr_cd0": 0.8015564676277183,
+            "mach": 1.0,
+            "relative_error": -0.5091509689971108,
+            "within_target": false
+          },
+          {
+            "band": "transonic",
+            "hpr_cd0": 0.8422474959118322,
+            "mach": 1.05,
+            "relative_error": -0.5111738270970214,
+            "within_target": false
+          },
+          {
+            "band": "transonic",
+            "hpr_cd0": 0.8454312118807197,
+            "mach": 1.1,
+            "relative_error": -0.5124387474736334,
+            "within_target": false
+          },
+          {
+            "band": "transonic",
+            "hpr_cd0": 0.823096935602758,
+            "mach": 1.15,
+            "relative_error": -0.5208981748528766,
+            "within_target": false
+          },
+          {
+            "band": "supersonic",
+            "hpr_cd0": 0.7873023068865173,
+            "mach": 1.2,
+            "relative_error": -0.5291254145415567,
+            "within_target": false
+          },
+          {
+            "band": "supersonic",
+            "hpr_cd0": 0.7501512897002731,
+            "mach": 1.25,
+            "relative_error": -0.5400666525442839,
+            "within_target": false
+          },
+          {
+            "band": "supersonic",
+            "hpr_cd0": 0.7237799739587909,
+            "mach": 1.3,
+            "relative_error": -0.5459347716695164,
+            "within_target": false
+          },
+          {
+            "band": "supersonic",
+            "hpr_cd0": 0.7079712474468125,
+            "mach": 1.35,
+            "relative_error": -0.5461722772776842,
+            "within_target": false
+          },
+          {
+            "band": "supersonic",
+            "hpr_cd0": 0.6939903681722458,
+            "mach": 1.4,
+            "relative_error": -0.5461148671208333,
+            "within_target": false
+          },
+          {
+            "band": "supersonic",
+            "hpr_cd0": 0.681392147780666,
+            "mach": 1.45,
+            "relative_error": -0.5457385681462226,
+            "within_target": false
+          },
+          {
+            "band": "supersonic",
+            "hpr_cd0": 0.6698823850041703,
+            "mach": 1.5,
+            "relative_error": -0.5455343385317705,
+            "within_target": false
+          }
+        ],
+        "usable_note": null,
+        "usable_to_mach": null
+      },
       "thrusting": false,
       "variant_of": null
     },
@@ -89,6 +1356,241 @@
       "id": "valetudo-power-on",
       "origin": "the power-on companion of the Valetudo table: 0.003 to 0.010 below it from Mach 0.02 (0.098 above at Mach 0.01)",
       "relative_error": -0.5039510118797366,
+      "sweep": {
+        "bands": [
+          {
+            "band": "subsonic",
+            "max_error": -0.46643632937344326,
+            "min_error": -0.5561250414911703,
+            "rms_error": 0.5172037454921998,
+            "rows": 15,
+            "within_target": 0
+          },
+          {
+            "band": "transonic",
+            "max_error": -0.547347702777996,
+            "min_error": -0.5758833860576147,
+            "rms_error": 0.5587790374867516,
+            "rows": 7,
+            "within_target": 0
+          },
+          {
+            "band": "supersonic",
+            "max_error": -0.5624382383008433,
+            "min_error": -0.5780881099104855,
+            "rms_error": 0.5741996093111952,
+            "rows": 7,
+            "within_target": 0
+          }
+        ],
+        "rows": [
+          {
+            "band": "subsonic",
+            "hpr_cd0": 0.5677117455466564,
+            "mach": 0.1,
+            "relative_error": -0.46643632937344326,
+            "within_target": false
+          },
+          {
+            "band": "subsonic",
+            "hpr_cd0": 0.5459375804544998,
+            "mach": 0.15,
+            "relative_error": -0.48203265611527535,
+            "within_target": false
+          },
+          {
+            "band": "subsonic",
+            "hpr_cd0": 0.5328079341288338,
+            "mach": 0.2,
+            "relative_error": -0.4911099005455265,
+            "within_target": false
+          },
+          {
+            "band": "subsonic",
+            "hpr_cd0": 0.5243319691290913,
+            "mach": 0.25,
+            "relative_error": -0.4977663130947402,
+            "within_target": false
+          },
+          {
+            "band": "subsonic",
+            "hpr_cd0": 0.5188672415737956,
+            "mach": 0.3,
+            "relative_error": -0.5039510118797366,
+            "within_target": false
+          },
+          {
+            "band": "subsonic",
+            "hpr_cd0": 0.5155897528333113,
+            "mach": 0.35,
+            "relative_error": -0.5094293503013212,
+            "within_target": false
+          },
+          {
+            "band": "subsonic",
+            "hpr_cd0": 0.5140347998185664,
+            "mach": 0.4,
+            "relative_error": -0.5141448016837747,
+            "within_target": false
+          },
+          {
+            "band": "subsonic",
+            "hpr_cd0": 0.5139240042589754,
+            "mach": 0.45,
+            "relative_error": -0.5187977488211841,
+            "within_target": false
+          },
+          {
+            "band": "subsonic",
+            "hpr_cd0": 0.5150947428155087,
+            "mach": 0.5,
+            "relative_error": -0.5239420121852969,
+            "within_target": false
+          },
+          {
+            "band": "subsonic",
+            "hpr_cd0": 0.5174780849134908,
+            "mach": 0.55,
+            "relative_error": -0.529565377351372,
+            "within_target": false
+          },
+          {
+            "band": "subsonic",
+            "hpr_cd0": 0.5211098946542972,
+            "mach": 0.6,
+            "relative_error": -0.5367912047517358,
+            "within_target": false
+          },
+          {
+            "band": "subsonic",
+            "hpr_cd0": 0.5261751012843612,
+            "mach": 0.65,
+            "relative_error": -0.5460094035510257,
+            "within_target": false
+          },
+          {
+            "band": "subsonic",
+            "hpr_cd0": 0.5330938251691046,
+            "mach": 0.7,
+            "relative_error": -0.5561250414911703,
+            "within_target": false
+          },
+          {
+            "band": "subsonic",
+            "hpr_cd0": 0.5426650352059804,
+            "mach": 0.75,
+            "relative_error": -0.5443618512124431,
+            "within_target": false
+          },
+          {
+            "band": "subsonic",
+            "hpr_cd0": 0.5562905092029193,
+            "mach": 0.8,
+            "relative_error": -0.5289665459755128,
+            "within_target": false
+          },
+          {
+            "band": "transonic",
+            "hpr_cd0": 0.5763098643109544,
+            "mach": 0.85,
+            "relative_error": -0.5587213902672631,
+            "within_target": false
+          },
+          {
+            "band": "transonic",
+            "hpr_cd0": 0.6064867579376111,
+            "mach": 0.9,
+            "relative_error": -0.5758833860576147,
+            "within_target": false
+          },
+          {
+            "band": "transonic",
+            "hpr_cd0": 0.652697333391584,
+            "mach": 0.95,
+            "relative_error": -0.574790010819815,
+            "within_target": false
+          },
+          {
+            "band": "transonic",
+            "hpr_cd0": 0.7299919510107347,
+            "mach": 1.0,
+            "relative_error": -0.5507741839933941,
+            "within_target": false
+          },
+          {
+            "band": "transonic",
+            "hpr_cd0": 0.774090813419467,
+            "mach": 1.05,
+            "relative_error": -0.5483717541309994,
+            "within_target": false
+          },
+          {
+            "band": "transonic",
+            "hpr_cd0": 0.7803725604107347,
+            "mach": 1.1,
+            "relative_error": -0.547347702777996,
+            "within_target": false
+          },
+          {
+            "band": "transonic",
+            "hpr_cd0": 0.7608669211532071,
+            "mach": 1.15,
+            "relative_error": -0.5547882263585682,
+            "within_target": false
+          },
+          {
+            "band": "supersonic",
+            "hpr_cd0": 0.7276652097056976,
+            "mach": 1.2,
+            "relative_error": -0.5624382383008433,
+            "within_target": false
+          },
+          {
+            "band": "supersonic",
+            "hpr_cd0": 0.6928996764066864,
+            "mach": 1.25,
+            "relative_error": -0.5728115435223882,
+            "within_target": false
+          },
+          {
+            "band": "supersonic",
+            "hpr_cd0": 0.6687303457918805,
+            "mach": 1.3,
+            "relative_error": -0.5780881099104855,
+            "within_target": false
+          },
+          {
+            "band": "supersonic",
+            "hpr_cd0": 0.6549604943971952,
+            "mach": 1.35,
+            "relative_error": -0.5777172827871082,
+            "within_target": false
+          },
+          {
+            "band": "supersonic",
+            "hpr_cd0": 0.6428728563029718,
+            "mach": 1.4,
+            "relative_error": -0.5767788964430732,
+            "within_target": false
+          },
+          {
+            "band": "supersonic",
+            "hpr_cd0": 0.6320373087344704,
+            "mach": 1.45,
+            "relative_error": -0.5760983844839234,
+            "within_target": false
+          },
+          {
+            "band": "supersonic",
+            "hpr_cd0": 0.6221727072595147,
+            "mach": 1.5,
+            "relative_error": -0.575308732246065,
+            "within_target": false
+          }
+        ],
+        "usable_note": null,
+        "usable_to_mach": null
+      },
       "thrusting": true,
       "variant_of": null
     }
@@ -98,5 +1600,6 @@
   "note": "Derived numbers only: RocketPy's curves are read from refs/rocketpy and never committed. curve_cd0 is a curve's linear interpolation at the Mach number, after dropping rows that repeat the previous row's Mach number (curve_rows_dropped), and relative_error is hpr_cd0 over it, minus 1.",
   "reynolds_per_m": 6988900.010238359,
   "rocketpy_commit": "9bd6ad3af8f97bafa3201d4e70eba2877e66e040",
+  "sweep_note": "Each case's sweep compares hpr's C_D0 with the curve every 0.05 from Mach 0.1 to 2.0, where the curve reaches without extrapolation (to usable_to_mach), each at USSA76 sea level's Reynolds number for its Mach number. relative_error is hpr's over the curve's, minus 1; bands are Niskanen 2009 Table 3.1's (subsonic to 0.8, transonic below 1.2, supersonic from 1.2).",
   "tolerance_rel": 0.1
 }

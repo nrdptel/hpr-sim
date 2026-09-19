@@ -198,7 +198,7 @@ platforms (ADR-023).
 | RocketPy 1.13.0 (PyPI, 2026-07-22) | primary code-to-code oracle; headless Python | MIT | https://github.com/RocketPy-Team/RocketPy | Install in a `uv` venv under `refs/`. Whole flights fly it with upstream PRs #1188 and #1196 applied (`validation/oracles/rocketpy/corrections.py`, ADR-026). Acceptance tests to mirror: `tests/acceptance/test_{bella_lui,ndrt_2020,prometheus}_rocket.py`. Example apogees are in `docs/examples/index.rst` |
 | OpenRocket 24.12 jar | second oracle (run only, never read its source) | GPL-3.0 | `https://github.com/openrocket/openrocket/releases/download/release-24.12/OpenRocket-24.12.jar` | Needs Java 17+. Drive it with **orhelper** from git (`https://github.com/openrocket/orhelper`, GPL-2.0, run-only, pinned commit; the PyPI release 0.1.3 predates 24.12's `info.openrocket` packages) through JPype. 16 example `.ork` files are in the jar under `datafiles/examples/` (use them locally, don't commit them) |
 | RocketSerializer | `.ork` to RocketPy converter; cross-checks our `.ork` importer | MIT | https://github.com/RocketPy-Team/RocketSerializer | active |
-| RASAero II 1.0.2.0 | Windows-only freeware; no automation | closed | https://www.rasaero.com/dl_software_ii.htm | Use only the exports that ship with RocketPy data. M1.8a also reads the full Calisto export of RocketPy's first commit (`C_D`, `C_Nα` and CP to Mach 25; `rocketpy-calisto-rasaero-2018` in the lock) for the normal force against Mach (ADR-027). Only Calisto's (`data/rockets/calisto/powerOffDragCurve.csv`) is traceable to a RASAero II export; Juno III's, Cavour's and Valetudo's are labelled RASAero but are 3-decimal tables with no input file, and Valetudo's disagrees with its own OpenRocket export by 44%. M1.5b compares hpr's subsonic Cd with all four at Mach 0.3 (ADR-009; results in `docs/physics/aero.md`) |
+| RASAero II 1.0.2.0 | Windows-only freeware; no automation | closed | https://www.rasaero.com/dl_software_ii.htm | Use only the exports that ship with RocketPy data. M1.8a also reads the full Calisto export of RocketPy's first commit (`C_D`, `C_Nα` and CP to Mach 25; `rocketpy-calisto-rasaero-2018` in the lock) for the normal force against Mach (ADR-027). Only Calisto's (`data/rockets/calisto/powerOffDragCurve.csv`) is traceable to a RASAero II export; Juno III's, Cavour's and Valetudo's are labelled RASAero but are 3-decimal tables with no input file, and Valetudo's disagrees with its own OpenRocket export by 44%. M1.5b compares hpr's subsonic Cd with all four at Mach 0.3 (ADR-009), and M1.8b2 every 0.05 from Mach 0.1 to 2.0, by band (ADR-029; results in `docs/physics/aero.md`) |
 | JSBSim | optional generic 6-DOF cross-check | LGPL-2.1 | https://github.com/JSBSim-Team/jsbsim | low priority |
 | CamPyRoS | dormant; includes Martlet 4 RASAero data | GPL-3.0 | https://github.com/cuspaceflight/CamPyRoS | Run-only if used at all |
 | Missile DATCOM | **do not use** (ITAR) | — | — | — |
@@ -239,7 +239,14 @@ platforms (ADR-023).
   cone checks Niskanen's closed-form cone (M1.8b1, ADR-028).
 - **Galejs, "Wind instability":** https://www.argoshpr.ch/j3/articles/pdf/sentinel39-galejs.pdf
 - **MIL-HDBK-762** (design of aerodynamically stabilized free rockets):
-  https://archive.org/details/MILHDBK762DesignOfAerodynamicallyStabilizedFreeRockets
+  https://archive.org/details/MILHDBK762DesignOfAerodynamicallyStabilizedFreeRockets. Its sample
+  drag calculation (Table 5-4, pp. 5-58 to 5-66, for the rocket of Fig. 5-155) is transcribed into
+  `validation/fixtures/aero/mil-hdbk-762-sample-drag.json`: a whole rocket's drag, term by term,
+  from Mach 0.5 to 3.2 with every input known. It is a calculation by the handbook's methods, not a
+  measurement, so it is a code-to-code reference, compared in
+  `validation/fixtures/aero/drag-vs-mach.json` and checked by
+  `hpr_aero::tests::drag_against_mil_hdbk_762_sample` (M1.8b2, ADR-029): 2 of 12 rows within 10%,
+  hpr reading high (`docs/physics/aero.md`).
 - **Fin flutter:** D. J. Martin, NACA TN 4197 (1958), NTRS 19930085030. NTRS serves it with a
   436-byte header before `%PDF`; the lock pins the bytes as served.
 - **Parachute inflation:** T. W. Knacke, *Parachute Recovery Systems Design Manual*, NWC TP 6575

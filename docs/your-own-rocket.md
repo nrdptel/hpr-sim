@@ -653,10 +653,16 @@ The example leaves out several kinds of part and setting that a design can have:
 - **Drag near and past Mach 1 is lightly checked.** Since
   [M1.8b1](decisions-and-roadmap.md#m1-8b1) (drag through Mach 1), hpr's own drag, like its normal
   force, carries a flight from Mach 0 to 5, and a flight that reaches Mach 5 stops with an error.
-  Near and above the speed of sound the drag has been checked only against one wind tunnel, which
+  Near and above the speed of sound the drag has been checked against one wind tunnel, which
   measured from Mach 0.6 to 4.63. hpr reads high there at most speeds, most of all with fins past
-  Mach 1 ([Aerodynamics](physics/aero.md#drag-against-the-arcas-robin-wind-tunnel)). A comparison
-  with [RASAero II](glossary.md#rasaero-ii)'s comes with [M1.8b2](decisions-and-roadmap.md#m1-8b2).
+  Mach 1 ([Aerodynamics](physics/aero.md#drag-against-the-arcas-robin-wind-tunnel)). It also reads
+  high against a worked example in a U.S. Army design handbook. Against
+  [RASAero II](glossary.md#rasaero-ii)'s drag for a rocket with a short, steep
+  [boattail](glossary.md#boattail), it reads a quarter low faster than sound, and a boattail's own
+  supersonic drag, which hpr doesn't model yet, is the likely reason
+  ([Aerodynamics](physics/aero.md#drag-against-rasaero-ii-through-mach-2)). So if your rocket
+  goes supersonic with a boattail, expect hpr to underestimate its drag there until
+  [M1.8b3](decisions-and-roadmap.md#m1-8b3) (a boattail's drag faster than sound).
 - **No staging.** Every motor in a configuration lights at the same moment, on the pad, so a
   two-stage rocket flies with both stages burning at once. Staging comes with [M1.9](decisions-and-roadmap.md#m1-9)
   (staging, clusters and air starts).

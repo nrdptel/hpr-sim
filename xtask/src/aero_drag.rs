@@ -12,6 +12,11 @@
 //!
 //! Target, set before measuring: within 10%, M1.8's tolerance for drag. A miss is reported and
 //! explained, not hidden; `hpr_aero`'s test pins the set of misses.
+//!
+//! The same fixture compares hpr's whole `C_D0`, base included, with MIL-HDBK-762's sample drag
+//! calculation (Table 5-4) for the rocket of its Fig. 5-155, term by term (M1.8b2, ADR-029): a
+//! calculation with every input known, transcribed into
+//! `validation/fixtures/aero/mil-hdbk-762-sample-drag.json`, not a measurement.
 
 use std::fs;
 use std::path::Path;
@@ -40,6 +45,87 @@ pub fn generate(root: &Path) -> Result<Value, String> {
         "target_rel": TARGET,
         "reynolds_per_m": REYNOLDS_PER_M,
         "references": wind_tunnel(root)?,
+        "calculations_note": "hpr's whole C_D0, base included, against MIL-HDBK-762's sample drag \
+                              calculation (Table 5-4) for the rocket of its Fig. 5-155, at the \
+                              Reynolds number per metre the table gives for each Mach number, term \
+                              by term: friction (body and fins), the nose's wave drag against \
+                              hpr's nose pressure drag, the fins' wave and trailing-edge base drag \
+                              against hpr's fin pressure drag, and the body's jet-off base drag. \
+                              A calculation with every input known, not a measurement. error is \
+                              hpr's total over the handbook's, minus 1.",
+        "calculations": [handbook(root)?],
+    }))
+}
+
+const HANDBOOK: &str = "validation/fixtures/aero/mil-hdbk-762-sample-drag.json";
+
+/// hpr's drag, term by term, against MIL-HDBK-762's sample calculation (Table 5-4).
+fn handbook(root: &Path) -> Result<Value, String> {
+    let text = fs::read_to_string(root.join(HANDBOOK)).map_err(|e| format!("{HANDBOOK}: {e}"))?;
+    let reference: Value = serde_json::from_str(&text).map_err(|e| format!("{HANDBOOK}: {e}"))?;
+    let design = "mil-hdbk-762-sample-rocket.json";
+    let model = load_model(root, design)?;
+    let fin_ids: Vec<&str> = model.fin_sets().iter().map(|f| f.id.as_str()).collect();
+    let mut rows = Vec::new();
+    for row in reference["rows"]
+        .as_array()
+        .ok_or(format!("{HANDBOOK} has no rows"))?
+    {
+        let get = |key: &str| {
+            row[key]
+                .as_f64()
+                .ok_or(format!("{HANDBOOK}: a row without `{key}`"))
+        };
+        let mach = get("mach")?;
+        let conditions = DragConditions::coasting(get("reynolds_per_m")?);
+        let flow = Flow::axial(mach);
+        let total = model
+            .drag(&flow, &conditions)
+            .map_err(|e| format!("Mach {mach}: {e}"))?;
+        let parts = model
+            .buildup_components(&flow, &conditions)
+            .map_err(|e| format!("Mach {mach}: {e}"))?;
+        let (mut nose, mut fins, mut other) = (0.0, 0.0, 0.0);
+        for part in &parts {
+            if part.id == "nose" {
+                nose += part.drag.pressure;
+            } else if fin_ids.contains(&part.id.as_str()) {
+                fins += part.drag.pressure;
+            } else {
+                other += part.drag.pressure + part.drag.parasitic;
+            }
+        }
+        let measured = get("total_jet_off")?;
+        let hpr = total.zero_lift_coefficient;
+        let error = hpr / measured - 1.0;
+        rows.push(json!({
+            "mach": mach,
+            "band": crate::aero_mach::band(mach),
+            "reynolds_per_m": get("reynolds_per_m")?,
+            "reference": {
+                "friction": get("friction")?,
+                "nose": row["nose_wave"].as_f64().unwrap_or(0.0),
+                "fins": get("fins")?,
+                "base": get("base")?,
+                "total": measured,
+            },
+            "hpr": {
+                "friction": total.friction,
+                "nose": nose,
+                "fins": fins,
+                "base": total.base,
+                "other": other,
+                "total": hpr,
+            },
+            "error": error,
+            "within_target": error.abs() <= TARGET,
+        }));
+    }
+    Ok(json!({
+        "id": "mil-hdbk-762-sample",
+        "design": design,
+        "source": reference["source"],
+        "rows": rows,
     }))
 }
 
