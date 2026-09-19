@@ -14,7 +14,7 @@ pub const OPENROCKET_JAR: &str = "openrocket-jar";
 
 /// Python modules each oracle imports.
 const ROCKETPY_MODULES: &[&str] = &["rocketpy"];
-const OPENROCKET_MODULES: &[&str] = &["orhelper", "jpype"];
+const OPENROCKET_MODULES: &[&str] = &["jpype"];
 
 /// A readiness verdict with its reason.
 struct Check {

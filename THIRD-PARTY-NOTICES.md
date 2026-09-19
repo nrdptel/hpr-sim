@@ -216,7 +216,6 @@ Nothing here is bundled.
 | package | license | mode | notes |
 |---|---|---|---|
 | `rocketpy` 1.13.0 | MIT | run-only | the primary code-to-code oracle |
-| `orhelper` 0.1.5 (`openrocket/orhelper` at commit `fb132c49e661`) | GPL-2.0 | run-only | drives the OpenRocket jar; its source is never read |
 | `JPype1` 1.7.1 | Apache-2.0 | run-only | starts the JVM for the OpenRocket oracle |
 | `mpmath` 1.3.0 | BSD-3-Clause | run-only | arbitrary-precision reference values from published formulas (`validation/oracles/wgs84/`, `validation/oracles/ussa76/`, `validation/oracles/atmosphere/`) |
 | `ambiance` 1.3.1 | Apache-2.0 | run-only | an independent 1976 standard atmosphere, cross-checking the transcribed tables (`validation/oracles/ussa76/`) |

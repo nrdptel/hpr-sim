@@ -38,6 +38,9 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
   Mach 3, #81, #87's switches, #90 (boattail angle cap); it carries M1.8e's 15% bullet.
 - **Autopilot memory:** each command a cycle runs gets its own process group, so the run notes
   them while sampling and reaps them too; the cycle's group alone misses every build.
+- **M2.2's OpenRocket oracle** (ADR-035): orhelper is dropped, so decide how to drive the jar
+  when M2.2 starts. JPype still loads the JVM in-process; only a subprocess isolates. The jar
+  needs Java 17 and refuses 21, while our check accepts it (#94).
 - **Regeneration is not bit-identical across machines** (last digits). Regenerate reports with
   `cargo xtask validate` (debug), never `--release`: it rounds differently in the 7th digit.
   Fixture checks (`designs::same`) allow 1e-12 relative, or 1e-13 near zero (M1.8b3's PR).
@@ -70,10 +73,6 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
   pushes. Don't require approvals: the autopilot merges its own PRs as you, and authors can't
   self-approve.
 - **crates.io names** (whenever): `hpr`, `hpr-sim`, `hpr-core`... are unreserved. Reserve them?
-- **orhelper** (no action if fine): GPL-2.0 and already a dependency in
-  `validation/oracles/pyproject.toml:15`, though nothing imports it yet. The plan for M2.2 is to
-  drive the jar through JPype and never import orhelper, which keeps the GPL at arm's length.
-  Say so before M2.2 if you would rather drop the dependency outright.
 - **RASAero values in fixtures** (no action if fine): `normal-force-vs-mach.json` commits 30 values
   of RocketPy's 2018 Calisto RASAero II export (ADR-027), and `rocketpy-drag-curves.json` hpr's
   values and errors from which 147 values of five RocketPy drag curves can be rebuilt (ADR-029),
