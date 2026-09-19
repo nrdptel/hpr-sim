@@ -403,7 +403,7 @@ impl AeroModel {
                     )
                     .map_err(in_component)?,
                 );
-                body_terms_at.push((drag_terms.len() - 1, geometry.clone()));
+                body_terms_at.push((drag_terms.len() - 1, geometry));
                 previous_aft_area = Some(geometry.aft_area_m2);
                 bodies.push(body_terms(component, geometry, step, reference_area_m2));
             }
