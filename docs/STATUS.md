@@ -26,13 +26,10 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
 - **The path in wind (ADR-026):** the oracle flies RocketPy 1.13.0 with upstream PRs #1188 and
   #1196 applied by `corrections.py`; when RocketPy releases #1196, re-pin, regenerate and delete
   it. `wind_response.py` measures the seven drifts reported as model differences.
-- **M1.8a (ADR-027):** fins carry through Mach 1 (Diederich to 0.8, linear theory from `M_s`, a
-  linear join); the normal force covers Mach 0 to 5, the drag buildup still stops at 1.
-  `cargo xtask aero` also writes `normal-force-vs-mach.json` against RASAero II's Calisto export
-  (`refs/rocketpy-history/`, pinned) and the Arcas Robin wind tunnel, read from TN D-4013/4014's
-  plots into `arcas-robin-wind-tunnel.json`; `cargo xtask designs` builds the two tunnel models
-  from it. The digitization's working files (Fig. 14's roll data too) are in
-  `refs/scratch/arcas/`, uncommitted.
+- **M1.8a (ADR-027):** the normal force covers Mach 0 to 5; `cargo xtask aero` writes
+  `normal-force-vs-mach.json` against RASAero II and the Arcas Robin wind tunnel
+  (`arcas-robin-wind-tunnel.json`). The digitization's working files, with TN D-4013's axial force
+  and TN D-4014's roll data, are in `refs/scratch/arcas/`, uncommitted.
 - **M1.8b** next: the drag buildup's transonic and supersonic branches (Niskanen eq. 3.87 and
   appendix B; Stoney NASA TR R-100 and NACA RM L53K17 for nose shapes, plots only; Von Kármán's
   slender-body wave drag `1/f_N²`). The Arcas Robin's `C_A,corr` and `C_A,b` (TN D-4013 Figs.
@@ -75,6 +72,9 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
   14.7 psi), so its "1.5 margin" is about 1.06. Fix it or post a notice before Loft shuts down.
 - **crates.io names** (whenever): `hpr`, `hpr-sim`, `hpr-core`... are unreserved. Reserve them?
 - **orhelper** (no action if fine): GPL-2.0, so M2.2 drives OpenRocket via JPype, never imports it.
+- **RASAero values in a fixture** (no action if fine): `normal-force-vs-mach.json` commits 30 values
+  of RocketPy's 2018 Calisto RASAero II export (ADR-027), more than ADR-009's one per curve. If not
+  fine, say so in an issue; the next session keeps only hpr's values and the errors.
 
 ## Decided without Neer (one line each; significant ones get an ADR)
 

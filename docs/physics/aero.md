@@ -9,13 +9,13 @@
 - **Sources:** Barrowman's 1966 report, 1967 thesis and Centuri TIR-33 (1970), the basis of
   [Barrowman's method](../glossary.md#barrowmans-method); supersonic linear theory for fins past
   Mach 1; for drag, mainly Niskanen's 2009 OpenRocket thesis.
-- **How well it is validated:** the normal force and centre of pressure only at Mach 0, against
-  Barrowman's worked examples (rockets he calculated by hand): every centre of pressure agrees
+- **How well it is validated:** the normal force and centre of pressure at Mach 0 against
+  Barrowman's worked examples (rockets he calculated by hand), where every centre of pressure agrees
   within 1%, and so does every [normal-force slope](../glossary.md#normal-force-slope) but his
   six-fin Recruiter's: +2.87% high for the rocket and +3.42% for its fins, mostly from a different
-  six-fin rule. Through Mach 1, against NASA's wind-tunnel tests of the Arcas Robin sounding
-  rocket: from Mach 1.5 to 2.96 the slope within −13.4% to +3.3% and the centre of pressure
-  within 0.42 [calibers](../glossary.md#calibre-caliber); past Mach 3 the slope reads 17 to 25%
+  six-fin rule; and from Mach 0.6 to 4.63 against NASA's wind-tunnel tests of the Arcas Robin
+  sounding rocket: from Mach 1.5 to 2.96 the slope within −13.4% to +3.3% and the centre of pressure
+  within 0.42 [calibres](../glossary.md#calibre-caliber); past Mach 3 the slope reads 17 to 25%
   low (the body), and between Mach 0.8 and 1.2 both miss
   ([Normal force through Mach 1](#normal-force-through-mach-1)).
   Drag only at Mach 0.3, against curves labelled [RASAero](../glossary.md#rasaero-ii) in
@@ -126,7 +126,7 @@ To get it in code:
    from a design with `Rocket::layout` and [`AeroModel::new`](../api/hpr_aero/model/struct.AeroModel.html#method.new).
 2. Call [`AeroModel::normal_force`](../api/hpr_aero/model/struct.AeroModel.html#method.normal_force)
    with [`Flow::axial`](../api/hpr_aero/model/struct.Flow.html#method.axial)`(mach)`: the air
-   straight along the axis, at a Mach number below 1. The result's
+   straight along the axis, at a Mach number below 5. The result's
    [`cp_station_m`](../api/hpr_aero/model/struct.NormalForce.html#structfield.cp_station_m) is the
    CP, in metres aft of the nose tip, and its `slope_per_rad` is the rocket's `C_Nα`.
 3. [`AeroModel::components`](../api/hpr_aero/model/struct.AeroModel.html#method.components), at
@@ -134,18 +134,18 @@ To get it in code:
 
 What changes it:
 
-- **Speed.** Only the fins' slope changes with Mach number. It grows toward Mach 1 through the
-  Prandtl–Glauert factor, the classic correction for the air's compressibility, whose effect grows
-  as the speed nears that of sound (*Prandtl–Glauert*, under Fins). How much a fin set gains
-  depends on its span, area and sweep. So as the rocket speeds up, the CP moves toward its fins:
+- **Speed.** Only the fins' terms change with Mach number; the bodies' don't. Up to Mach 0.8 the
+  fins' slope grows through the Prandtl–Glauert factor, the classic correction for the air's
+  compressibility, whose effect grows as the speed nears that of sound (*Prandtl–Glauert*, under
+  Fins). How much a fin set gains depends on its span, area and sweep. So as the rocket speeds
+  up, the CP moves toward its fins:
   - With fins only at the tail, it moves aft.
   - With canards (a second fin set near the nose) as well, both sets gain, and the CP can move
     either way, depending on each set's shape and place.
-  - hpr keeps each fin set's own CP a quarter of the way along its
-    [mean aerodynamic chord](#fins) (MAC, a weighted average of its chords) at every speed below
-    Mach 1. Niskanen's thesis moves it further aft above about Mach 0.5, which hpr leaves out
-    until [M1.8](../decisions-and-roadmap.md#m1-8), the transonic and supersonic aerodynamics
-    milestone (*Validity and open questions*, below, gives its size).
+  - Up to Mach 0.8 hpr keeps each fin set's own CP a quarter of the way along its
+    [mean aerodynamic chord](#fins) (MAC, a weighted average of its chords). From there it moves
+    aft, and past Mach 1 the fins' slope falls again
+    ([Fins through Mach 1](#fins-through-mach-1)), so a fast rocket's CP moves forward.
 
   `Flow::axial(0.0)` gives the low-speed CP that Barrowman's method gives by hand.
 - **Angle.** `Flow::axial` gives the small-angle CP. At an angle of attack, body lift adds a force
@@ -291,20 +291,23 @@ A fin set is `N` identical fins spaced evenly around a body tube. For one fin of
 
 Faster than sound, air can't flow around a fin's edges ahead of it. The fin's lift comes from the
 pressure behind the shock and expansion waves at its surfaces, and a different theory applies.
-hpr uses Barrowman's subsonic method to Mach 0.8, supersonic linear theory from where that
-theory holds, and a straight-line join between them. The body terms don't change with Mach:
-slender-body theory's slope and CP hold at any speed ([B67] p. 18). How well this agrees with a
-wind tunnel and with RASAero II is under [Verification](#normal-force-through-mach-1).
+hpr uses Barrowman's subsonic method to Mach 0.8, supersonic
+[linear theory](../glossary.md#supersonic-linear-theory) from where that theory holds, and a
+straight-line join between them. The body terms don't change with Mach:
+[slender-body theory](../glossary.md#slender-body-theory)'s slope and CP hold at any speed
+([B67] p. 18). How well this agrees with a wind tunnel and with RASAero II is under
+[Verification](#normal-force-through-mach-1).
 
-**Supersonic linear theory.** A thin flat plate at a small angle `α` to a supersonic flow has the
-pressure coefficient `+2α/β` on the side facing the flow and `−2α/β` on the other, with
-`β = √(M² − 1)` (Ackeret's theory). So every part of the fin carries the same load, `4α/β` per unit
-area, and each strip along the flow carries it at its middle. MIL-HDBK-762 finds linearized
-theory accurate for the supersonic stability of thin fins ([762] p. 5-15). Two things change the
-load near the tip:
+**Supersonic linear theory.** Past Mach 1, `β` is redefined as `√(M² − 1)`, which grows from 0 as
+the speed passes that of sound. A thin flat plate at a small angle `α` to a supersonic flow has
+the pressure coefficient `+2α/β` on the side facing the flow and `−2α/β` on the other: the first
+term of the pressure series Barrowman uses ([B67] appendix A, p. 82). So every part of the fin
+carries the same load, `4α/β` per unit area, and each strip (a narrow slice of the fin along the
+airflow) carries it at its middle. MIL-HDBK-762 finds linearized theory accurate for the
+supersonic stability of thin fins ([762] p. 5-15). Two things change the load near the tip:
 
-- **The tip's Mach cone.** The tip disturbs the flow only inside the cone that spreads inboard from
-  its leading edge at the Mach angle, `atan(1/β)`. Barrowman halves the load inside it
+- **The tip's [Mach cone](../glossary.md#mach-cone).** The tip disturbs the flow only inside the
+  cone that spreads inboard from its leading edge at the Mach angle, `atan(1/β)`. Barrowman halves the load inside it
   ([B67] appendix A, p. 84). For a rectangular tip that is exactly linear theory's loss.
 - **The body as a mirror.** At the root the body stands in for the fin's mirror image. A cone
   that reaches the root continues into the mirror image, and the part of it there counts too, as
@@ -314,18 +317,18 @@ load near the tip:
 |---|---|---|
 | one fin | `(C_Nα)₁ = (4/β)(A_fin − A_cone/2)/A_ref`, `β = √(M² − 1)` | [B67] appendix A |
 | CP, aft of the root leading edge | the centroid of that load: the fin's area centroid, less half the cone's | [B67] appendix A |
-| rectangle, `A = 2s/c` | `(4/β)(1 − 1/(2βA))` and `X_f/c = (βA − 2/3)/(2βA − 1)`, exact linear theory | [TN2114], [N09] eq. 3.35 |
+| rectangle, `AR = 2s/c` | `(4/β)(1 − 1/(2β·AR))` and `X_f/c = (β·AR − 2/3)/(2β·AR − 1)`, exact linear theory | [TN2114], [N09] eq. 3.35 |
 
 `A_cone` is the part of the fin (and of its mirror image) inside the tip's Mach cone. The
 fin-count factor, the sum over fins and `K_T(B)` apply as above.
 
 **Where it starts.** Linear theory's strips need three things, so it starts at
-`M_s = max(1.2, 1/cos Γ_L, √(1 + 1/A²))`, where `Γ_L` is the leading-edge sweep and
-`A = 2s²/A_fin` is the aspect ratio of the fin and its mirror image:
+`M_s = max(1.2, 1/cos Γ_L, √(1 + 1/AR²))`, where `Γ_L` is the leading-edge sweep and
+`AR = 2s²/A_fin` is the aspect ratio of the fin and its mirror image:
 
 - Mach 1.2, the bottom of the supersonic region ([N09] Table 3.1, p. 19);
 - a supersonic leading edge, one whose Mach number square to the edge, `M cos Γ_L`, is past 1;
-- `βA ≥ 1`, where linear theory's tip loss holds; a rectangle's slope peaks there, at `2A`.
+- `β·AR ≥ 1`, where linear theory's tip loss holds; a rectangle's slope peaks there, at `2·AR`.
 
 **The transonic join.** From Mach 0.8 to `M_s`, the slope and the CP are each a straight line in
 `M` between their values at the two ends. No source gives this region in closed form. MIL-HDBK-762
@@ -354,6 +357,18 @@ gives, per fin:
   unswept trailing edge and `βA = 3` gets 4.5% more slope.
 - Subsonic leading edges, which the join covers without a method of its own.
 - The fins' lift carried onto the body behind them, `K_B(T)`, as below Mach 1.
+
+**Other choices, and why not.**
+
+- *Niskanen's supersonic slope* ([N09] eq. 3.48–3.49) multiplies the fin's area by one strip's
+  pressure coefficient, `K₁α + …` with `K₁ = 2/β`: the pressure on one face. A plate is pushed by
+  the difference between its faces, twice that. His thesis finds its own supersonic slope
+  "notably lower than the experimental values" for the Arcas Robin (p. 91). hpr counts both faces.
+- *RocketPy 1.13.0* flies Diederich's subsonic slope at every Mach number, with `β` held at 0.6
+  from Mach 0.8 to 1.1; past Mach 1 that tends to `2π cos Γ_c/β`, about π/2 times linear theory's
+  `4/β`. Its fin CP doesn't move with Mach.
+- *Tuning the join to the wind tunnel* below would shrink its misses by fitting the model to its
+  own check. The join's ends come from the sources' speed regions, set before measuring.
 
 ## Drag
 
@@ -555,7 +570,7 @@ parasitic term on its own area. The axial coefficient is `C_A = C_D0 f(α)`.
     is an unvalidated extrapolation.
   - The normal force between Mach 0.8 and linear theory's start `M_s` is the straight-line join
     of [Fins through Mach 1](#fins-through-mach-1), which the wind tunnel shows missing by up to
-    +29.3% in slope and 2.29 calibers in CP. Past Mach 3 its body terms read low
+    +29.3% in slope and 2.29 calibres in CP. Past Mach 3 its body terms read low
     ([Normal force through Mach 1](#normal-force-through-mach-1)).
   - [N09] eq. 3.35–3.36 would start moving a fin set's CP aft at Mach 0.5, to about 0.30 of the
     way along its mean aerodynamic chord (MAC, defined under *Fins*) at Mach 0.8 for fins of
@@ -628,23 +643,31 @@ Two references, in the fixture
 [`validation/fixtures/aero/normal-force-vs-mach.json`](https://github.com/nrdptel/hpr-sim/blob/main/validation/fixtures/aero/normal-force-vs-mach.json),
 which `cargo xtask aero` writes and `tests::normal_force_against_mach` recomputes and pins
 ([ADR-027][adr-027]). The targets, set before measuring: `C_Nα` within 15% and the CP within 0.5
-calibers (a caliber is one reference diameter). 16 of the 37 rows miss, each for a measured
+calibres (a calibre is one reference diameter). 16 of the 37 rows miss, each for a measured
 reason below.
 
 - **A wind tunnel.** NASA tested half-scale models of the Arcas Robin sounding rocket from Mach 0.6
-  to 4.63 ([D4013], [D4014]): a 4.7-caliber nose, a cylinder, a 15° boattail and four trapezoidal
-  fins swept 30°, 18.2 calibers long in all, and a longer version of 23.8. The reports print only
+  to 4.63 ([D4013], [D4014]): a 4.7-calibre nose, a cylinder, a 15° boattail and four trapezoidal
+  fins swept 30°, 18.2 calibres long in all, and a longer version of 23.8. The reports print only
   plots, so their points were read off the pages into
   [`validation/fixtures/aero/arcas-robin-wind-tunnel.json`](https://github.com/nrdptel/hpr-sim/blob/main/validation/fixtures/aero/arcas-robin-wind-tunnel.json),
-  with every figure and page, each `C_N` to about ±0.01 to ±0.02. The slope is the straight line
+  with every figure and page, each `C_N` to about ±0.01 to ±0.02. The designs model the reports'
+  nose, a table of coordinates rather than a named shape, as a power-series nose with the same
+  volume, which sets its slender-body CP, and a planform within 2.4%. The slope is the straight line
   fitted through the plotted `C_N` from about −4° to +4°, so hpr's `C_N` is fitted the same way at
   the same angles. Its CP is taken over −2° to 2°, the reports' low angles.
-- **RASAero II,** another code, for Calisto from Mach 0.1 to 2.0: its potential-flow slope and CP
-  from the export RocketPy's first commit shipped, against hpr's small-angle values.
+- **RASAero II,** another code, for Calisto from Mach 0.1 to 2.0: its potential-flow slope (the
+  attached-flow part, without the crossflow lift its export adds from Mach 0.95) and CP from the
+  export RocketPy's first commit shipped, against hpr's small-angle values.
 
-The Arcas Robin, rows outside the targets in bold:
+The short model (the Arcas Robin itself, 18.2 calibres long), rows outside the targets in bold.
+The last column is the body alone: the fins-off wind-tunnel reading, and hpr's body terms fitted
+the same way. hpr's body terms don't change with Mach, but its body lift grows as `sin² α`, so
+their fitted slope moves a little with the angles each plot happens to cover (2.15 to 2.34).
+From Mach 0.6 to 1.2 the fins-off readings, on a coarse grid (±0.02 per point), scatter from 1.41
+to 2.88 with no trend, so they don't settle whether hpr's 2.15 is high there.
 
-| Mach | `C_Nα` measured, per rad | hpr | difference | CP measured, m | hpr | difference, calibers | body alone, measured / hpr |
+| Mach | `C_Nα` measured, per rad | hpr | difference | CP measured, m | hpr | difference, calibres | body alone, measured / hpr |
 |---|---|---|---|---|---|---|---|
 | 0.6 | 11.05 | 10.78 | −2.4% | 0.7770 | 0.7807 | +0.06 | 1.53 / 2.15 |
 | **0.8** | 9.92 | 11.10 | +11.9% | 0.7375 | 0.7866 | +0.86 | 1.41 / 2.15 |
@@ -659,7 +682,7 @@ The Arcas Robin, rows outside the targets in bold:
 | **3.96** | 7.73 | 6.22 | −19.6% | 0.6312 | 0.6215 | −0.17 | 3.88 / 2.31 |
 | **4.63** | 7.55 | 5.66 | −25.0% | 0.5876 | 0.5783 | −0.16 | 4.15 / 2.31 |
 
-| reference, Mach | `C_Nα` difference | CP difference, calibers | rows within both targets |
+| reference, Mach | `C_Nα` difference | CP difference, calibres | rows within both targets |
 |---|---|---|---|
 | Arcas, long, 0.6 and 0.8 | +3.6%, +12.0% | −0.44, −0.01 | 2 of 2 |
 | Arcas, long, 0.9 to 1.2 | −6.9% to +29.3% | +0.60 to +2.29 | 0 of 3 |
@@ -670,22 +693,33 @@ The Arcas Robin, rows outside the targets in bold:
 
 What the misses come from:
 
-- **Past Mach 3, the body.** The fins' share, fins on less fins off, agrees with hpr's fins within
+- **Past Mach 3, the body.** The fins' share (the fins-on reading less the fins-off one) agrees with hpr's fins within
   −1.4% to +7.0% at Mach 3.96 and 4.63. The body alone lifts 3.9 to 4.6 per rad there, where hpr
   gives 2.3 to 2.8: slender-body theory's nose and boattail don't change with Mach, and the real
-  body lifts more as it flies faster. The CP stays within 0.19 calibers, so the stability margin
+  body lifts more as it flies faster. The CP stays within 0.19 calibres, so the stability margin
   holds, but the slope is low. The planned increment
   [M1.8e](../decisions-and-roadmap.md#m1-8e) takes this on.
-- **Transonic, Mach 0.8 to 1.2.** The measured fins lift less at Mach 0.8 and 0.9 than at 0.6, fins
-  on less fins off, then jump at Mach 1. hpr's fins lift more, by Prandtl–Glauert and then along
+- **Transonic, Mach 0.8 to 1.2.** The fins' measured share lifts less at Mach 0.8 and 0.9 than at
+  0.6, then jumps at Mach 1. hpr's fins lift more, by Prandtl–Glauert and then along
   the join to linear theory's peak at `M_s` (1.2 for these fins). The long model's CP jumps
-  forward at Mach 1, 2.29 calibers from hpr's. No closed-form method covers this region, and the
+  forward at Mach 1, 2.29 calibres from hpr's. No closed-form method covers this region, and the
   join is not fitted to it.
 - **RASAero II** keeps its slope and CP constant through subsonic flow, where hpr's rise with
-  Prandtl–Glauert, so they part from Mach 0.8. The wind tunnel sides with neither there.
+  Prandtl–Glauert, so they part from Mach 0.8. The wind tunnel sides with neither there. Below
+  that the agreement is partly by construction: the Calisto design has the 2018 fins because
+  they reproduce this export at low speed ([ADR-009][adr-009]). Past Mach 1 the result rests on
+  the choice of RASAero's columns: against its secant slope and CP to 4°, which include its
+  crossflow lift, 1 of the 11 rows from Mach 0.8 is within the targets, not 6, and Mach 2 is
+  −30.6%. Calisto has no fins-off data, so its Mach 2 miss can't be split as the wind tunnel's
+  can.
 
-So: from Mach 1.5 to about 3, trust hpr's slope to about 15% and its CP to about half a caliber;
-past Mach 3 the CP still, but the slope reads low; between Mach 0.8 and 1.2, neither.
+So, for fins like these, whose linear theory starts at `M_s` = 1.2: from Mach 1.5 to about 3,
+trust hpr's slope to about 15% and its CP to about half a calibre; past Mach 3 the CP still, but
+the slope reads low; between Mach 0.8 and `M_s`, in the join, neither. A fin set's own `M_s` is
+[`FinSetAero::fin`](../api/hpr_aero/model/struct.FinSetAero.html#structfield.fin)`.supersonic_mach`,
+from [`AeroModel::fin_sets`](../api/hpr_aero/model/struct.AeroModel.html#method.fin_sets). Fins
+swept further back start later: a leading edge swept 48° starts at Mach 1.5, and until then it
+is in the join. Nothing past Mach 4.63 has been checked, though the model runs to 5.
 
 ### Drag verification
 

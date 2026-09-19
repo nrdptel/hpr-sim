@@ -358,7 +358,7 @@ and a declared wind.
 | cases scored | 6, one of them (Prometheus 2022) past Mach 1, since [M1.8a](../decisions-and-roadmap.md#m1-8a) |
 | height, speed, time, acceleration | all scored, all within 3% of RocketPy's |
 | largest of those | +1.783%, Bella Lui's peak acceleration, on the rail |
-| largest in apogee | +1.525%, Prometheus 2022, whose body lift turns it into the wind less |
+| largest in apogee | +1.525%, Prometheus 2022; RocketPy flown with hpr's body lift and rail release comes within 0.01% ([case file](https://github.com/nrdptel/hpr-sim/blob/main/validation/cases/flight-prometheus-2022-generic-motor.toml)) |
 | path without wind (drift of apogee and landing) | all scored, within 2.2% (largest −2.141%, Bella Lui's calm landing) |
 | path in wind | Calisto's scored (largest +1.433%), and NDRT 2020's landing; Juno III's, Bella Lui's and Prometheus 2022's, and NDRT 2020's apogee drift, differ by 4.7 to 43% and are reported, not scored: hpr's body lift and rail release, and Juno III's fin slope ([ADR-026][adr-026]) |
 

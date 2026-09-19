@@ -292,7 +292,7 @@ hpr flies its own aerodynamics; the reference is RocketPy flying each example's 
 
 ## Known gaps
 
-- **predicted-prometheus-2022-generic-motor**: 17 metric(s), none scored. RocketPy flying the example's own drag peaks at Mach 1.048 near burnout, and hpr's drag buildup refuses M >= 1 until M1.8b (ADR-009, ADR-027), so the flight stops at Mach 1 and no metric can be compared. hpr: refused the flight at Mach 1.000, outside its models' range of [0, 1)
+- **predicted-prometheus-2022-generic-motor**: 17 metric(s), none scored. RocketPy flying the example's own drag peaks at Mach 1.048 near burnout, and hpr's drag buildup refuses M >= 1 until M1.8b (ADR-009, ADR-027), so the flight stops at Mach 1 and no metric can be compared. hpr: refused the flight at Mach 1.000, outside the drag buildup's range [0, 1)
 
 ## References
 

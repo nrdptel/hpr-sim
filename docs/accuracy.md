@@ -123,7 +123,7 @@ may be from its reference and still pass.
 | [Aerodynamics](physics/aero.md) | drag curves labelled [RASAero](glossary.md#rasaero-ii) in RocketPy's examples, at [Mach](glossary.md#mach-number) 0.3, with the fins and surface finish guessed because the curves don't record them | within 10% in four of seven cases; −18.3% for Cavour [power-on](glossary.md#power-on-and-power-off-drag) (motor burning), cause open |
 | [Aerodynamics](physics/aero.md) | Valetudo's drag table, which is 1.44 times the drag in the [OpenRocket](glossary.md#openrocket) export for the same rocket | −47.0% power-off and −50.4% power-on. Against the OpenRocket export, hpr is 23.5% under as designed here, and 1.9% under with the export's own surface finish and launch lugs |
 | [Rigid-body flight](physics/flight.md) | the exact motion of a tumbling, spinning rocket in a vacuum, over 22 s | the centre of mass within 1.7e-6 m of the exact parabola |
-| [Aerodynamics](physics/aero.md) | NASA's wind-tunnel tests of the half-scale Arcas Robin and a longer version, Mach 0.6 to 4.63: [normal-force slope](glossary.md#normal-force-slope) and centre of pressure, at 22 Mach numbers ([fixture][nf-fixture]) | from Mach 1.5 to 2.96, the slope −13.4% to +3.3% and the centre of pressure within 0.42 [calibres](glossary.md#calibre-caliber); past Mach 3 the slope −17.2% to −25.0% (the body's lift, measured with the fins off, is 3.9 to 4.6 against hpr's 2.3 to 2.8), the centre of pressure within 0.19; from Mach 0.8 to 1.2, 2 of 9 within 15% and half a calibre |
+| [Aerodynamics](physics/aero.md) | NASA's wind-tunnel tests of the half-scale Arcas Robin and a longer version, Mach 0.6 to 4.63: [normal-force slope](glossary.md#normal-force-slope) and centre of pressure, 22 readings at 12 Mach numbers ([fixture][nf-fixture]) | from Mach 1.5 to 2.96, the slope −13.4% to +3.3% and the centre of pressure within 0.42 [calibres](glossary.md#calibre-caliber); past Mach 3 the slope −17.2% to −25.0% (the body's lift, measured with the fins off, is 3.9 to 4.6 against hpr's 2.3 to 2.8), the centre of pressure within 0.19; from Mach 0.8 to 1.2, 2 of 9 within 15% and half a calibre |
 | [Aerodynamics](physics/aero.md) | RASAero II's normal-force slope and centre of pressure for Calisto, Mach 0.1 to 2.0 ([fixture][nf-fixture]) | within 15% and half a calibre at 10 of 15 Mach numbers; hpr's slope rises with Mach through subsonic flow where RASAero II's stays flat (+21.9% at Mach 0.9), and is −16.8% at Mach 2 |
 | [Rigid-body flight](physics/flight.md) | RocketPy's whole flights from the pad to the ground, for six rockets, one past Mach 1, both codes flying one declared drag coefficient | heights, speeds, times and accelerations within 3% ([below](#whole-flights-against-rocketpy)), the largest +1.783% in the [report][report]; the path too, except the drifts of Juno III, Bella Lui and Prometheus 2022 in wind and NDRT 2020's apogee drift, reported, not scored, as measured differences between the models ([ADR-026][adr-026]) |
 | [Time integration](physics/integration.md) | a separate line-by-line transcription of `DOPRI5`, the published Fortran integrator by Hairer and Wanner that hpr's [Dormand–Prince](glossary.md#dormandprince-and-rk4) stepper follows, on the problem Hairer's own example program for `DOPRI5` solves: the Arenstorf orbit, the closed, looping path of a small body pulled by two large ones that circle each other | the same step counts |
@@ -241,7 +241,7 @@ wind and for Calisto in wind ([ADR-026][adr-026]). Juno III and Bella Lui leave 
 in the wind, at a steep angle to the airflow. There hpr's [body lift](glossary.md#body-lift),
 which RocketPy leaves out, its later release from the rail and, for Juno III, its simpler fin
 model put their drifts 11 to 43% from RocketPy's. Prometheus 2022's differ by −9.273% and
-+6.283% for the same reason. NDRT 2020's apogee drift differs by −4.654%, mostly from the rail
++6.283%, from body lift and the rail release. NDRT 2020's apogee drift differs by −4.654%, mostly from the rail
 release. These seven drifts are reported, not scored. So the landing offset
 that [M2.1](decisions-and-roadmap.md#m2-1) asks for is met except where the two codes' models
 differ.
@@ -341,9 +341,10 @@ percentage. Each is held to 3% of RocketPy's apogee (for height) or top speed (f
 
 All nine flights pass, each well inside its bound. The largest height RMS is Prometheus 2022's,
 44.681081 m against its 110.3 m bound, two-fifths of it; its apogee is also the furthest off,
-+1.525%, from the body lift that moves its drifts. Juno III's is 15.931091 m against 78.4 m,
-about a fifth, and the other seven are at an eighth of theirs or less. The speed RMS runs from
-0.021952 to 1.593724 m/s ([report][report]).
++1.525%. Body lift accounts for that too: RocketPy flown with hpr's body lift and rail release
+reaches 3735.4 m, against hpr's 3735.3 ([case file][prometheus-case]). Juno III's is 15.931091 m
+against 78.4 m, about a fifth, and the other seven are at an eighth of theirs or less. The speed
+RMS runs from 0.021952 to 1.593724 m/s ([report][report]).
 
 | case | `series_height_rms_m` | height bound, m | `series_speed_rms_m_s` | speed bound, m/s |
 |---|---|---|---|---|
@@ -412,9 +413,10 @@ What the two codes still do differently, and what it moves:
 1.010153 (−0.256%). Until [M1.8a](decisions-and-roadmap.md#m1-8a) hpr stopped any flight at Mach 1,
 and the case was a known gap; with the normal force carried past Mach 1
 ([Aerodynamics](physics/aero.md#fins-through-mach-1)) it flies on its drag table to the ground.
-Near Mach 1 it flies almost straight into the airflow, so the transonic normal force has little
-to act on, and its scored numbers agree within 1.525% ([report][report],
-[case file][prometheus-case]).
+Its scored numbers agree within 1.525% ([report][report], [case file][prometheus-case]). This flight
+is a light test of the transonic normal force: no committed check measures its angle of attack
+there, but a local probe found it below 0.11 degrees from Mach 0.8 to 1.2
+([case file][prometheus-case]).
 
 What this shows: with the drag given, the two codes agree on how high, how fast and how long a
 rocket flies, and on where it goes, except for rockets that leave the rail slowly in a wind,

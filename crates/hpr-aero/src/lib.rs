@@ -387,7 +387,7 @@ mod tests {
                     let set = six_fin.expect("a six-fin set");
                     let set_slope = set
                         .fin
-                        .geometry
+                        .geometry()
                         .single_fin_slope(model.reference_area_m2(), 0.0)
                         .unwrap()
                         * roll_sum(set.count, set.base_angle_rad, 0.0)
@@ -794,7 +794,8 @@ mod tests {
             [
                 // Calisto against RASAero II: hpr's Prandtl-Glauert rise and aft CP near Mach 1,
                 // which RASAero II's constant subsonic slope doesn't have, the linear join's peak
-                // at M_s = 1.28, and its supersonic body (Mach 2).
+                // at M_s = 1.28, and at Mach 2 a gap that no fins-off data can split (the wind
+                // tunnel's points to the body).
                 "calisto-rasaero-ii@0.8",
                 "calisto-rasaero-ii@0.9",
                 "calisto-rasaero-ii@0.95",

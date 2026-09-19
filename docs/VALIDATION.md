@@ -194,7 +194,7 @@ Prometheus 2022 is a known gap the harness checks: on its own drag RocketPy's fl
 | RocketPy 1.13.0 (PyPI, 2026-07-22) | primary code-to-code oracle; headless Python | MIT | https://github.com/RocketPy-Team/RocketPy | Install in a `uv` venv under `refs/`. Whole flights fly it with upstream PRs #1188 and #1196 applied (`validation/oracles/rocketpy/corrections.py`, ADR-026). Acceptance tests to mirror: `tests/acceptance/test_{bella_lui,ndrt_2020,prometheus}_rocket.py`. Example apogees are in `docs/examples/index.rst` |
 | OpenRocket 24.12 jar | second oracle (run only, never read its source) | GPL-3.0 | `https://github.com/openrocket/openrocket/releases/download/release-24.12/OpenRocket-24.12.jar` | Needs Java 17+. Drive it with **orhelper** from git (`https://github.com/openrocket/orhelper`, GPL-2.0, run-only, pinned commit; the PyPI release 0.1.3 predates 24.12's `info.openrocket` packages) through JPype. 16 example `.ork` files are in the jar under `datafiles/examples/` (use them locally, don't commit them) |
 | RocketSerializer | `.ork` to RocketPy converter; cross-checks our `.ork` importer | MIT | https://github.com/RocketPy-Team/RocketSerializer | active |
-| RASAero II 1.0.2.0 | Windows-only freeware; no automation | closed | https://www.rasaero.com/dl_software_ii.htm | Use only the Cd curves that ship with RocketPy data. Only Calisto's (`data/rockets/calisto/powerOffDragCurve.csv`) is traceable to a RASAero II export; Juno III's, Cavour's and Valetudo's are labelled RASAero but are 3-decimal tables with no input file, and Valetudo's disagrees with its own OpenRocket export by 44%. M1.5b compares hpr's subsonic Cd with all four at Mach 0.3 (ADR-009; results in `docs/physics/aero.md`) |
+| RASAero II 1.0.2.0 | Windows-only freeware; no automation | closed | https://www.rasaero.com/dl_software_ii.htm | Use only the exports that ship with RocketPy data. M1.8a also reads the full Calisto export of RocketPy's first commit (`C_D`, `C_Nα` and CP to Mach 25; `rocketpy-calisto-rasaero-2018` in the lock) for the normal force against Mach (ADR-027). Only Calisto's (`data/rockets/calisto/powerOffDragCurve.csv`) is traceable to a RASAero II export; Juno III's, Cavour's and Valetudo's are labelled RASAero but are 3-decimal tables with no input file, and Valetudo's disagrees with its own OpenRocket export by 44%. M1.5b compares hpr's subsonic Cd with all four at Mach 0.3 (ADR-009; results in `docs/physics/aero.md`) |
 | JSBSim | optional generic 6-DOF cross-check | LGPL-2.1 | https://github.com/JSBSim-Team/jsbsim | low priority |
 | CamPyRoS | dormant; includes Martlet 4 RASAero data | GPL-3.0 | https://github.com/cuspaceflight/CamPyRoS | Run-only if used at all |
 | Missile DATCOM | **do not use** (ITAR) | — | — | — |
@@ -219,7 +219,12 @@ Prometheus 2022 is a known gap the harness checks: on its own drag RocketPy's fl
   https://ntrs.nasa.gov/api/citations/19770009539/downloads/19770009539.pdf. Python cross-checks:
   `ambiance` (Apache-2.0), `pyatmos` (MIT).
 - **NASA sounding-rocket stability tests:** NASA TN D-4013 (NTRS 19670020050, Mach 0.6–1.2) and
-  TN D-4014 (NTRS 19670020031, Mach 1.5–4.63).
+  TN D-4014 (NTRS 19670020031, Mach 1.5–4.63), on half-scale Arcas Robin models. Their plotted
+  normal force, centre of pressure and model dimensions are read into
+  `validation/fixtures/aero/arcas-robin-wind-tunnel.json` with figure and page, the level-3
+  reference for the normal force through Mach 1, checked by
+  `hpr_aero::tests::normal_force_against_mach` (M1.8a, ADR-027). Their axial force (TN D-4013
+  Figs. 11–12) and roll effectiveness (TN D-4014 Fig. 14) are for M1.8b and M1.8c.
 - **Galejs, "Wind instability":** https://www.argoshpr.ch/j3/articles/pdf/sentinel39-galejs.pdf
 - **MIL-HDBK-762** (design of aerodynamically stabilized free rockets):
   https://archive.org/details/MILHDBK762DesignOfAerodynamicallyStabilizedFreeRockets

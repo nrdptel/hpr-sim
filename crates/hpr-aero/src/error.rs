@@ -23,12 +23,14 @@ pub enum AeroError {
     /// number).
     ///
     /// [m1-8]: https://nrdptel.github.io/hpr-sim/decisions-and-roadmap.html#m1-8
-    #[error("Mach {mach} is outside the model's range [0, {limit})")]
+    #[error("Mach {mach} is outside {model}'s range [0, {limit})")]
     Mach {
         /// The Mach number.
         mach: f64,
         /// The top of the model's range, which it doesn't reach.
         limit: f64,
+        /// The model that refused it, such as "the drag buildup".
+        model: &'static str,
     },
     /// A part the models have no cited method for, such as tube fins.
     #[error("no aerodynamic model: {0}")]
@@ -76,11 +78,11 @@ pub(crate) fn check_dimension(
     }
 }
 
-/// Checks a Mach number in `[0, limit)`.
-pub(crate) fn check_mach(mach: f64, limit: f64) -> Result<(), AeroError> {
+/// Checks a Mach number in `[0, limit)` for `model`.
+pub(crate) fn check_mach(mach: f64, limit: f64, model: &'static str) -> Result<(), AeroError> {
     if mach.is_finite() && (0.0..limit).contains(&mach) {
         Ok(())
     } else {
-        Err(AeroError::Mach { mach, limit })
+        Err(AeroError::Mach { mach, limit, model })
     }
 }

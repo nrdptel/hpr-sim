@@ -3503,7 +3503,7 @@
     {
       "case": "predicted-prometheus-2022-generic-motor",
       "reason": "RocketPy flying the example's own drag peaks at Mach 1.048 near burnout, and hpr's drag buildup refuses M >= 1 until M1.8b (ADR-009, ADR-027), so the flight stops at Mach 1 and no metric can be compared.",
-      "refusal": "refused the flight at Mach 1.000, outside its models' range of [0, 1)",
+      "refusal": "refused the flight at Mach 1.000, outside the drag buildup's range [0, 1)",
       "mach": 1.0000000000000004,
       "metric_count": 17
     }

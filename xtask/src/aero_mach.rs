@@ -4,9 +4,9 @@
 //!
 //! - **RASAero II's Calisto export** (`refs/rocketpy-history/calisto-cd-test-2018.csv`, pinned in
 //!   `validation/refs.lock.toml`): its potential-flow normal force at 2° over the angle, and its
-//!   CP at 0°. Its `CNalpha (0 to 4 deg)` column is the secant slope to 4° and includes, past
-//!   Mach 1, a viscous cross-flow term that hpr's small-angle slope leaves out (hpr's body lift
-//!   grows as `sin² α`). The export stays in `refs/`; the fixture holds its values at the compared
+//!   CP at 0°. Its `CNalpha (0 to 4 deg)` column is the secant slope to 4° and includes, from
+//!   Mach 0.95, a viscous cross-flow term that hpr's small-angle slope leaves out (hpr's body
+//!   lift grows as `sin² α`). The export stays in `refs/`; the fixture holds its values at the compared
 //!   Mach numbers only, as `cargo xtask aero` does for the drag curves (ADR-009).
 //! - **The Arcas Robin wind-tunnel model** (NASA TN D-4013 and TN D-4014): the measurements read
 //!   from the reports' plots into `validation/fixtures/aero/arcas-robin-wind-tunnel.json`, a

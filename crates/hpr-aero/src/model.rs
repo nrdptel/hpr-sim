@@ -33,11 +33,11 @@ use crate::drag::{
 };
 use crate::error::{AeroError, check_dimension, check_mach};
 use crate::fins::{FinAero, FinLoading, fin_count_factor, interference_factor, roll_sum, side_sum};
+use crate::table::DragTable;
 
 /// The top of the normal force's range: Mach 5, where the hypersonic region begins (Niskanen 2009
 /// Table 3.1, p. 19). [`AeroModel::normal_force`] refuses it and anything faster.
 pub const NORMAL_FORCE_MACH_LIMIT: f64 = 5.0;
-use crate::table::DragTable;
 
 /// The air-relative flow at one instant.
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
@@ -78,13 +78,13 @@ impl Flow {
     /// [`AeroError::Mach`] outside `[0, 5)` ([`NORMAL_FORCE_MACH_LIMIT`]), and
     /// [`AeroError::Domain`] for an angle of attack outside `[0, π]` or a non-finite roll.
     pub fn validate(&self) -> Result<(), AeroError> {
-        check_mach(self.mach, NORMAL_FORCE_MACH_LIMIT)?;
+        check_mach(self.mach, NORMAL_FORCE_MACH_LIMIT, "the normal force")?;
         self.validate_angles()
     }
 
     /// As [`Flow::validate`], for the drag buildup's range `[0, 1)`.
     fn validate_for_buildup(&self) -> Result<(), AeroError> {
-        check_mach(self.mach, BUILDUP_MACH_LIMIT)?;
+        check_mach(self.mach, BUILDUP_MACH_LIMIT, "the drag buildup")?;
         self.validate_angles()
     }
 
@@ -318,7 +318,7 @@ impl AeroModel {
                             count: set.count,
                             base_angle_rad: set.base_angle_rad,
                             count_factor: fin_count_factor(set.count)?,
-                            interference: interference_factor(fin.geometry.span_m, body_radius)?,
+                            interference: interference_factor(fin.geometry().span_m, body_radius)?,
                             fore_station_m: component.fore_station_m,
                             fin,
                         })
@@ -328,7 +328,7 @@ impl AeroModel {
                         ComponentDragTerms::fins(
                             component,
                             set,
-                            &terms.fin.geometry,
+                            &terms.fin.geometry(),
                             length_m,
                             reference_area_m2,
                         )
@@ -605,23 +605,33 @@ impl AeroModel {
     /// The station, m aft of the nose tip, of component `index`'s small-angle centre of
     /// pressure at `mach`: where a flight engine takes the component's local airspeed. A body with
     /// no potential-flow slope (a cylinder) uses its body-lift station; a fin set's moves with
-    /// Mach. `None` for an index past [`Self::component_count`], or a Mach number outside
-    /// `[0, 5)` for a fin set.
-    pub fn component_station_m(&self, index: usize, mach: f64) -> Option<f64> {
+    /// Mach, and a body's doesn't.
+    ///
+    /// # Errors
+    ///
+    /// [`AeroError::Mach`] outside `[0, 5)`, and [`AeroError::Domain`] for an index past
+    /// [`Self::component_count`].
+    pub fn component_station_m(&self, index: usize, mach: f64) -> Result<f64, AeroError> {
+        check_mach(mach, NORMAL_FORCE_MACH_LIMIT, "the normal force")?;
         if let Some(body) = self.bodies.get(index) {
             // As `NormalForce`'s CP: a slope that cancels to rounding (a step in radius offsetting
             // a taper) has no potential-flow station.
             let step_slope = 2.0 * body.step_area_m2 / self.reference_area_m2;
             let scale = (body.slope_per_rad - step_slope).abs() + step_slope.abs();
-            Some(if body.slope_per_rad.abs() <= 1e-12 * scale {
+            Ok(if body.slope_per_rad.abs() <= 1e-12 * scale {
                 body.lift_station_m
             } else {
                 body.moment_slope_m / body.slope_per_rad
             })
         } else {
-            self.fin_sets
+            let set = self
+                .fin_sets
                 .get(index - self.bodies.len())
-                .and_then(|set| set.cp_station_m(mach).ok())
+                .ok_or(AeroError::Domain {
+                    what: "component index",
+                    value: index as f64,
+                })?;
+            Ok(set.fore_station_m + set.fin.loading_at(mach).cp_m)
         }
     }
 
@@ -819,12 +829,12 @@ mod tests {
                 let set = &m.fin_sets()[0];
                 let ratio = set
                     .fin
-                    .geometry
+                    .geometry()
                     .single_fin_slope(m.reference_area_m2(), 0.8)
                     .unwrap()
                     / set
                         .fin
-                        .geometry
+                        .geometry()
                         .single_fin_slope(m.reference_area_m2(), 0.0)
                         .unwrap();
                 assert!(ratio > 1.05, "{ratio}");
@@ -857,7 +867,7 @@ mod tests {
         let set = &two.fin_sets()[0];
         let one_fin = set
             .fin
-            .geometry
+            .geometry()
             .single_fin_slope(two.reference_area_m2(), 0.2)
             .unwrap()
             * set.interference;
@@ -923,7 +933,7 @@ mod tests {
         let coasting = DragConditions::coasting(1e7);
         assert!(matches!(
             m.drag(&flow(1.0, 0.0, 0.0), &coasting),
-            Err(AeroError::Mach { limit, .. }) if limit == 1.0
+            Err(AeroError::Mach { limit, model, .. }) if limit == 1.0 && model == "the drag buildup"
         ));
         assert!(
             m.buildup_components(&flow(1.0, 0.0, 0.0), &coasting)
@@ -1014,7 +1024,7 @@ mod tests {
                 }
             }
             prop_assert!(m.component_normal_force(parts.len(), &f).is_err());
-            prop_assert!(m.component_station_m(parts.len(), mach).is_none());
+            prop_assert!(m.component_station_m(parts.len(), mach).is_err());
         }
 
         #[test]
@@ -1184,7 +1194,7 @@ mod tests {
         let f = two.normal_force(&flow(0.4, alpha, FRAC_PI_4)).unwrap();
         let one_fin = set
             .fin
-            .geometry
+            .geometry()
             .single_fin_slope(two.reference_area_m2(), 0.4)
             .unwrap()
             * set.interference;

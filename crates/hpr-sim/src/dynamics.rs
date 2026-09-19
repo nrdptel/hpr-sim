@@ -129,6 +129,9 @@ pub(crate) struct Evaluation {
 pub(crate) struct Vehicle {
     pub(crate) assembly: Assembly,
     pub(crate) aero: AeroModel,
+    /// The body components' stations, which don't change with Mach; fin sets' are taken at each
+    /// evaluation's Mach number.
+    body_stations_m: Vec<f64>,
     /// The first fin set's index among the aerodynamic components.
     first_fin_index: usize,
     motors: Vec<MotorTerms>,
@@ -137,6 +140,9 @@ pub(crate) struct Vehicle {
 
 impl Vehicle {
     pub(crate) fn new(assembly: Assembly, aero: AeroModel) -> Result<Self, SimError> {
+        let body_stations_m = (0..aero.bodies().len())
+            .map(|index| aero.component_station_m(index, 0.0))
+            .collect::<Result<Vec<f64>, _>>()?;
         let motors = assembly
             .motors
             .iter()
@@ -156,6 +162,7 @@ impl Vehicle {
         Ok(Self {
             assembly,
             aero,
+            body_stations_m,
             first_fin_index,
             motors,
             reference_area_m2,
@@ -484,16 +491,14 @@ impl Vehicle {
         out.axial_coefficient = drag.axial_coefficient;
         out.force = DVec3::new(0.0, 0.0, -q * area * drag.axial_coefficient);
 
-        // The normal force's Mach range, checked once: a fin set's station moves with Mach.
+        // The normal force's range, checked once here, before the bodies' cached stations.
         flow.validate()?;
         for index in 0..self.aero.component_count() {
-            let station =
-                self.aero
-                    .component_station_m(index, out.mach)
-                    .ok_or(SimError::Domain {
-                        what: "aerodynamic component index",
-                        value: index as f64,
-                    })?;
+            // A fin set's station moves with Mach.
+            let station = match self.body_stations_m.get(index) {
+                Some(&station) => station,
+                None => self.aero.component_station_m(index, out.mach)?,
+            };
             let p = DVec3::new(0.0, 0.0, -station);
             let local = air_velocity_o_body + omega.cross(p);
             let local_speed = local.length();

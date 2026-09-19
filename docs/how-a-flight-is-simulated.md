@@ -145,7 +145,7 @@ flight:
   [M1.8b](decisions-and-roadmap.md#m1-8b). A flight on a drag table flies on to Mach 5. The drag
   was checked only at Mach 0.3. It reads low from about Mach 0.6,
   because the pressure drag on the nose, and on any transition where the body widens, is held at
-  its low-speed value. The models are documented only to Mach 0.8
+  its low-speed value. The drag buildup is documented only to Mach 0.8
   ([Aerodynamics](physics/aero.md#drag-limits)).
 - **Large angles of attack.** The aerodynamics are for small angles, with no
   [stall](glossary.md#stall), but a flight uses them at every angle: just off the rail in a strong

@@ -455,6 +455,14 @@ against each one, or will once its milestone ships. See
 [Start here](start-here.md#reading-these-pages) and [Lessons from Loft][lessons].
 
 
+## Mach cone
+
+Faster than sound, a disturbance, such as a fin's tip, can only affect the air downstream of it
+inside a cone that opens backward at the Mach angle, `atan(1/√(M² − 1))`: 30° at Mach 2. hpr
+halves the fin's lift inside the cone from each tip. See
+[Aerodynamics](physics/aero.md#fins-through-mach-1).
+
+
 ## Mach number
 
 Airspeed divided by the local speed of sound, which the atmosphere gives from the air's
@@ -682,6 +690,15 @@ The sleeve at the end of a nose cone or transition that slides into the next bod
 
 The International System of Units: metres, kilograms and seconds, and units built from them, such as newtons for force and pascals for pressure. hpr works in SI throughout, with angles in radians. Degrees appear only where values come in or go out, as in `Geodetic::from_degrees`. In the code, a quantity's name ends in its unit, such as `mass_kg` or `vertical_speed_m_s`. See [Frames](physics/frames.md#units-and-angles).
 
+## Slender-body theory
+
+A way to work out the air's forces on a long, thin body from how fast its cross-section grows
+along its length. It gives a nose as wide as the reference a normal-force slope of 2 per radian whatever its shape, a
+transition `2ΔA/A_ref`, and a plain tube nothing, at any Mach number. Barrowman's method uses it
+for every body part, and hpr does at every speed; NASA's wind tunnel shows a real body lifting
+more past Mach 3. See [Aerodynamics](physics/aero.md#bodies-of-revolution).
+
+
 ## Sounding
 
 A measured or forecast profile of the air against height: pressure, temperature and wind, and
@@ -766,6 +783,14 @@ A long strip of fabric used instead of a parachute to slow a rocket's fall. Its 
 its one-side area, length times width. hpr's default model reads 9% fast on the one flat streamer
 in Kidwell's drop tests, and models no pleats, so it predicts a faster descent for a pleated one.
 See [Recovery](physics/recovery.md#streamers).
+
+
+## Supersonic linear theory
+
+The small-angle theory of thin surfaces faster than sound: a flat plate at an angle `α` feels a
+pressure proportional to `α/√(M² − 1)`, the same all along its chord. hpr uses it for fins from
+the speed where it holds (about Mach 1.2 or later, set by each fin's sweep and shape). See
+[Aerodynamics](physics/aero.md#fins-through-mach-1).
 
 
 ## Surface layer

@@ -60,8 +60,12 @@
 # Its tolerances were set before it flew, argued as for the other five cases: the whole-flight
 # maximum acceleration is the main opening, as for NDRT 2020. The two drifts were held to 3% like
 # every other metric until a measurement showed why they miss: hpr's body lift, as for Bella Lui
-# and Juno III (ADR-026). Near Mach 1 the rocket flies almost straight into the airflow, so the
-# transonic normal force has little to act on.
+# and Juno III (ADR-026). Body lift also accounts for the apogee: flown in RocketPy with hpr's rail
+# release and body lift (`wind_response.py`), the apogee is 3735.4 m, against hpr's 3735.3 and
+# RocketPy's own 3679.2. How hard this flight tests the transonic normal force is not measured by
+# any committed check. A local probe of the harness (not committed; ADR-027) sampled hpr's angle of
+# attack at each step's end and found it below 0.11 degrees from Mach 0.8 to 1.2, so the rocket
+# flies almost straight into the airflow there and the transonic normal force has little to act on.
 id = "flight-prometheus-2022-generic-motor"
 title = "Prometheus 2022 from the pad to the ground, same-drag"
 reference = "validation/fixtures/flight/rocketpy-whole-flight.json"

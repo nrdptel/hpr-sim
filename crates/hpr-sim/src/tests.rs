@@ -686,8 +686,7 @@ fn flight_events_come_in_order_and_the_recorder_keeps_its_interval() {
 #[test]
 fn a_flight_on_a_drag_table_flies_through_mach_1() {
     // The normal force covers Mach 0 to 5 since M1.8a, so with a drag table in place of the
-    // buildup the same rocket passes Mach 1 and lands; its fins' centre of pressure moves aft
-    // through the transonic join and back as it slows.
+    // buildup the same rocket passes Mach 1 and lands.
     struct Fastest(f64);
     impl crate::recorder::Observer for Fastest {
         fn step(&mut self, step: &dyn crate::recorder::FlightStep) -> Result<(), SimError> {
@@ -724,7 +723,11 @@ fn a_supersonic_flight_is_refused_until_m1_8() {
     .unwrap();
     let error = sim.run(&mut ()).unwrap_err();
     assert!(
-        matches!(error, SimError::Aero(AeroError::Mach { mach, limit }) if mach >= 1.0 && limit == 1.0),
+        matches!(
+            error,
+            SimError::Aero(AeroError::Mach { mach, limit, model })
+                if mach >= 1.0 && limit == 1.0 && model == "the drag buildup"
+        ),
         "{error:?}"
     );
 }

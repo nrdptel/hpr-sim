@@ -582,13 +582,13 @@
       Every miss is explained.
     - The same-drag Prometheus 2022 case flies through Mach 1 and passes its tolerances.
 
-    *Result (ADR-027):* met. Linear theory on the fin's outline from `M_s`, Diederich to Mach 0.8, a
-    straight-line join between; the normal force covers Mach 0 to 5. The L7 test passes;
-    `normal_force_against_mach` pins 37 rows, 16 outside the targets, each explained. Against the
+    *Result (ADR-027):* met. Linear theory from `M_s`, Diederich to Mach 0.8, a join between. The
+    L7 test passes; `normal_force_against_mach` pins 37 rows, 16 outside the targets, explained. Against the
     wind tunnel from Mach 1.5 to 2.96: `C_Nα` −13.4% to +3.3%, CP within 0.42 calibers. Past
     Mach 3 the slope is 17–25% low from the body (M1.8e); from Mach 0.8 to 1.2 the measured fin
     lift dips where hpr's rises. Prometheus flies through Mach 1.010: 14 metrics scored and
-    passing (largest +1.525%); its drifts are body lift, measured, and reported (ADR-026).
+    passing (largest +1.525%). Its two drifts failed their 3% gates when it first flew; then
+    `wind_response.py` measured them as body lift, reported as ADR-026's are.
 
   - [ ] **M1.8b Transonic and supersonic drag.**
     - Every drag term's transonic and supersonic branch, and nose wave drag. Loft lessons L17 and

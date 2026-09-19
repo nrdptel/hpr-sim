@@ -198,7 +198,7 @@ impl FinGeometry {
     /// [`AeroError::Mach`] outside `[0, 1)`, and [`AeroError::Domain`] for a non-positive
     /// reference area.
     pub fn single_fin_slope(&self, reference_area_m2: f64, mach: f64) -> Result<f64, AeroError> {
-        check_mach(mach, 1.0)?;
+        check_mach(mach, 1.0, "the subsonic fin slope")?;
         check_dimension("reference area", reference_area_m2, false)?;
         Ok(self.slope_at((1.0 - mach * mach).sqrt(), reference_area_m2))
     }
@@ -304,21 +304,39 @@ const ELLIPSE_SIDES: u32 = 256;
 /// A fin's outline in its own plane, for supersonic linear theory: a simple polygon of `[x, y]`
 /// vertices, m, with `x` aft of the root leading edge and `y` out from the root, closed along the
 /// root.
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-#[non_exhaustive]
+///
+/// Serialize-only: an outline is built from a planform by [`FinOutline::from_planform`], which
+/// checks it.
+#[derive(Debug, Clone, PartialEq, Serialize)]
 pub struct FinOutline {
-    /// The vertices, from the root leading edge `[0, 0]` around to the root trailing edge.
-    pub points_m: Vec<[f64; 2]>,
-    /// The tip's leading edge: the foremost point at the full span, where the tip's Mach cone
-    /// starts.
-    pub tip_leading_edge_m: [f64; 2],
-    /// The polygon's area, m².
-    pub area_m2: f64,
-    /// Its area centroid, m aft of the root leading edge.
-    pub centroid_m: f64,
+    points_m: Vec<[f64; 2]>,
+    tip_leading_edge_m: [f64; 2],
+    area_m2: f64,
+    centroid_m: f64,
 }
 
 impl FinOutline {
+    /// The vertices, m, from the root leading edge `[0, 0]` around to the root trailing edge.
+    pub fn points_m(&self) -> &[[f64; 2]] {
+        &self.points_m
+    }
+
+    /// The tip's leading edge, m: the foremost point at the full span, where the tip's Mach cone
+    /// starts.
+    pub fn tip_leading_edge_m(&self) -> [f64; 2] {
+        self.tip_leading_edge_m
+    }
+
+    /// The polygon's area, m².
+    pub fn area_m2(&self) -> f64 {
+        self.area_m2
+    }
+
+    /// Its area centroid, m aft of the root leading edge.
+    pub fn centroid_m(&self) -> f64 {
+        self.centroid_m
+    }
+
     /// The outline of a planform: a trapezoid's four corners, a freeform fin's own points, and an
     /// ellipse as a polygon of 256 sides.
     ///
@@ -375,7 +393,11 @@ impl FinOutline {
     ///
     /// The root is a reflection plane, so a cone that crosses it comes back: the part of the cone
     /// over the fin's mirror image counts too, as the mirror fin's cone crossing onto this one.
+    ///
+    /// `beta` must be positive and finite; [`FinAero::loading`] checks the Mach number it comes
+    /// from.
     pub fn tip_cone(&self, beta: f64) -> (f64, f64) {
+        debug_assert!(beta > 0.0 && beta.is_finite(), "beta {beta}");
         let [x_t, s] = self.tip_leading_edge_m;
         // Signed distance aft of the Mach line, in x: non-negative inside the cone.
         let aft = |p: [f64; 2]| p[0] - x_t - beta * (s - p[1]);
@@ -398,6 +420,8 @@ impl FinOutline {
     /// for each strip; for a rectangular tip that is linear theory's exact loss,
     /// `C_Lα = (4/β)(1 − 1/(2βA))`. The root is a reflection plane (the body). So
     /// `(C_Nα)₁ = (4/β)(A_fin − A_cone/2)/A_ref`, and the CP is the loading's centroid.
+    ///
+    /// `beta` must be positive and finite, as for [`FinOutline::tip_cone`].
     pub fn supersonic(&self, beta: f64, reference_area_m2: f64) -> (f64, f64) {
         let (cone, cone_x) = self.tip_cone(beta);
         let loaded = self.area_m2 - 0.5 * cone;
@@ -440,21 +464,39 @@ pub struct FinLoading {
 ///   transonic-similarity charts, pp. 5-104–5-105); the join keeps both continuous, with the
 ///   slope's peak at `M_s`, where linear theory takes over.
 #[derive(Debug, Clone, PartialEq, Serialize)]
-#[non_exhaustive]
 pub struct FinAero {
-    /// The fin's subsonic geometry.
-    pub geometry: FinGeometry,
-    /// Its outline.
-    pub outline: FinOutline,
-    /// The reference area of the slopes, m².
-    pub reference_area_m2: f64,
-    /// Where supersonic linear theory starts, `M_s`.
-    pub supersonic_mach: f64,
+    geometry: FinGeometry,
+    outline: FinOutline,
+    reference_area_m2: f64,
+    supersonic_mach: f64,
     transonic_start: FinLoading,
     supersonic_start: FinLoading,
 }
 
 impl FinAero {
+    /// The fin's subsonic geometry.
+    pub fn geometry(&self) -> &FinGeometry {
+        &self.geometry
+    }
+
+    /// Its outline.
+    pub fn outline(&self) -> &FinOutline {
+        &self.outline
+    }
+
+    /// The reference area of the slopes, m².
+    pub fn reference_area_m2(&self) -> f64 {
+        self.reference_area_m2
+    }
+
+    /// Where supersonic linear theory starts, `M_s`. It can pass Mach 5 for a stubby or a very
+    /// swept fin (a strake 0.5 m long and 0.02 m tall starts at Mach 12.5); the fin's slope and CP
+    /// then stay on the join toward that value up to the normal force's limit, and linear theory
+    /// is never used.
+    pub fn supersonic_mach(&self) -> f64 {
+        self.supersonic_mach
+    }
+
     /// A planform's normal force on `reference_area_m2`.
     ///
     /// # Errors
@@ -497,7 +539,11 @@ impl FinAero {
     ///
     /// [`AeroError::Mach`] outside `[0, 5)` ([`crate::model::NORMAL_FORCE_MACH_LIMIT`]).
     pub fn loading(&self, mach: f64) -> Result<FinLoading, AeroError> {
-        check_mach(mach, crate::model::NORMAL_FORCE_MACH_LIMIT)?;
+        check_mach(
+            mach,
+            crate::model::NORMAL_FORCE_MACH_LIMIT,
+            "the normal force",
+        )?;
         Ok(self.loading_at(mach))
     }
 
@@ -989,14 +1035,14 @@ mod tests {
         // Subsonic: Prandtl–Glauert on the slope, the CP fixed.
         close(
             at(0.6).slope_per_rad,
-            fin.geometry.single_fin_slope(a_ref, 0.6).unwrap(),
+            fin.geometry().single_fin_slope(a_ref, 0.6).unwrap(),
             1e-15,
             "M0.6 slope",
         );
         assert!(at(0.6).slope_per_rad > 1.05 * at(0.0).slope_per_rad);
         assert_eq!(at(0.6).cp_m, at(0.0).cp_m);
         // The leading edge, swept 38.7°, becomes supersonic at 1/cos Γ_L = 1.281.
-        let m_s = fin.supersonic_mach;
+        let m_s = fin.supersonic_mach();
         close(m_s, (1.0 + (x_t / s).powi(2)).sqrt(), 1e-15, "M_s");
         // Continuous at both ends of the join; the CP moves aft through it.
         for m in [TRANSONIC_START_MACH, m_s] {
@@ -1006,11 +1052,155 @@ mod tests {
         }
         assert!(at(1.0).cp_m > at(0.8).cp_m && at(m_s).cp_m > at(1.0).cp_m);
         // Supersonic: linear theory, the slope falling roughly as 1/β.
-        let beta = (4.0_f64 - 1.0).sqrt();
-        let (slope, cp) = fin.outline.supersonic(beta, a_ref);
-        assert_eq!((at(2.0).slope_per_rad, at(2.0).cp_m), (slope, cp));
+        // At Mach 2, by hand: the trailing edge is unswept, so the tip cone is the triangle
+        // `c_t²/(2β)` with its centroid `2c_t/3` aft of the tip's leading edge.
+        let beta = 3.0_f64.sqrt();
+        let (area, centroid) = (0.5 * s * (c_r + c_t), fins_centroid(c_r, c_t, s, x_t));
+        let cone = c_t * c_t / (2.0 * beta);
+        let loaded = area - 0.5 * cone;
+        close(
+            at(2.0).slope_per_rad,
+            4.0 / beta * loaded / a_ref,
+            1e-13,
+            "Mach 2 slope",
+        );
+        close(
+            at(2.0).cp_m,
+            (area * centroid - 0.5 * cone * (x_t + 2.0 * c_t / 3.0)) / loaded,
+            1e-13,
+            "Mach 2 CP",
+        );
         assert!(at(2.0).slope_per_rad < at(m_s).slope_per_rad);
         assert!(fin.loading(5.0).is_err() && fin.loading(-0.1).is_err());
+    }
+
+    /// The worked example of `docs/physics/aero.md` ("Fins through Mach 1"), Calisto's 2018 fins on
+    /// a 0.127 m reference: `M_s`, the tip cone at Mach 2, and the table of slopes and CPs, each to
+    /// the digits the page prints.
+    #[test]
+    fn the_guide_s_worked_example() {
+        let a_ref = 0.25 * PI * 0.127 * 0.127;
+        let fin = FinAero::new(&trapezoid(0.12, 0.04, 0.1, 0.08), a_ref).unwrap();
+        let round = |x: f64, digits: i32| (x * 10f64.powi(digits)).round() / 10f64.powi(digits);
+        assert_eq!(round(a_ref, 6), 0.012668);
+        assert_eq!(
+            round(fin.geometry().leading_edge_sweep_rad.to_degrees(), 2),
+            38.66
+        );
+        assert_eq!(round(fin.supersonic_mach(), 4), 1.2806);
+        let beta = 3.0_f64.sqrt();
+        let (cone, _) = fin.outline().tip_cone(beta);
+        assert_eq!(round(cone, 6), 0.000462);
+        assert_eq!(round(0.04 / beta, 4), 0.0231);
+        let table = [
+            (0.0, 1.853, 0.0550),
+            (0.8, 2.170, 0.0550),
+            (1.0, 2.499, 0.0632),
+            (fin.supersonic_mach(), 2.960, 0.0747),
+            (1.5, 2.158, 0.0753),
+            (2.0, 1.416, 0.0758),
+            (3.0, 0.877, 0.0761),
+        ];
+        for (mach, slope, cp) in table {
+            let loading = fin.loading(mach).unwrap();
+            assert_eq!(round(loading.slope_per_rad, 3), slope, "Mach {mach}");
+            assert_eq!(round(loading.cp_m, 4), cp, "Mach {mach}");
+        }
+    }
+
+    /// A trapezoid's area centroid, aft of its root leading edge.
+    fn fins_centroid(c_r: f64, c_t: f64, s: f64, x_t: f64) -> f64 {
+        // Chords `c(y)` from `x_LE = x_t y/s`: ∫(x_LE + c/2) c dy / ∫c dy, by three-point Gauss.
+        let nodes = [
+            (-(0.6f64).sqrt(), 5.0 / 9.0),
+            (0.0, 8.0 / 9.0),
+            ((0.6f64).sqrt(), 5.0 / 9.0),
+        ];
+        let (mut first, mut area) = (0.0, 0.0);
+        for (t, w) in nodes {
+            let y = 0.5 * s * (1.0 + t);
+            let c = c_r + (c_t - c_r) * y / s;
+            first += w * (x_t * y / s + 0.5 * c) * c;
+            area += w * c;
+        }
+        first / area
+    }
+
+    /// A stubby strake: `βA ≥ 1` puts linear theory's start past Mach 5, so the slope and CP
+    /// stay on the join, finite and continuous, up to the normal force's limit.
+    #[test]
+    fn a_strake_never_reaches_linear_theory() {
+        let fin = FinAero::new(&trapezoid(0.5, 0.5, 0.02, 0.0), 0.01).unwrap();
+        close(
+            fin.supersonic_mach(),
+            (1.0 + (0.5_f64 / 0.04).powi(2)).sqrt(),
+            1e-15,
+            "M_s",
+        );
+        assert!(fin.supersonic_mach() > 12.0);
+        let mut last = fin.loading(0.8).unwrap();
+        for i in 1..=419 {
+            let loading = fin.loading(0.8 + 0.01 * f64::from(i)).unwrap();
+            assert!(loading.slope_per_rad.is_finite() && loading.cp_m.is_finite());
+            assert!((loading.slope_per_rad - last.slope_per_rad).abs() < 1e-3 * last.slope_per_rad);
+            last = loading;
+        }
+        assert!(fin.loading(5.0).is_err());
+    }
+
+    /// A concave outline: a 0.1 m square with a slot 0.04 m wide and 0.05 m deep cut into its tip,
+    /// at Mach √5 (`β = 2`). The Mach line from the tip's leading edge, `y = 0.1 − x/2`, cuts the
+    /// triangle 0.0025 m² from the square, of which the slot takes `∫x/2 dx` over its width,
+    /// 0.001 m².
+    #[test]
+    fn a_concave_fin_clips_exactly() {
+        let outline = FinOutline::from_planform(&FinPlanform::Freeform {
+            points_m: vec![
+                [0.0, 0.0],
+                [0.0, 0.1],
+                [0.03, 0.1],
+                [0.03, 0.05],
+                [0.07, 0.05],
+                [0.07, 0.1],
+                [0.1, 0.1],
+                [0.1, 0.0],
+            ],
+        })
+        .unwrap();
+        assert_eq!(outline.tip_leading_edge_m(), [0.0, 0.1]);
+        let (area, centroid) = outline.tip_cone(2.0);
+        close(area, 0.0015, 1e-13, "cone area");
+        // First moments: the triangle's, `0.0025 · 2(0.1)/3`, less the slot's `∫x²/2 dx`.
+        let moment = 0.0025 * 0.2 / 3.0 - (0.07_f64.powi(3) - 0.03_f64.powi(3)) / 6.0;
+        close(centroid, moment / 0.0015, 1e-12, "cone centroid");
+    }
+
+    proptest::proptest! {
+        /// Any trapezoid, swept either way, with a trailing edge swept either way, at any Mach
+        /// number from linear theory's start: the cone takes no more than the fin and its mirror,
+        /// the loaded area is positive, the slope positive, and the CP inside the outline's chord.
+        #[test]
+        fn supersonic_loading_stays_inside_the_fin(
+            c_r in 0.02..0.4_f64,
+            taper in 0.0..1.0_f64,
+            s in 0.02..0.3_f64,
+            sweep in -0.2..0.4_f64,
+            extra in 0.0..3.0_f64,
+        ) {
+            let c_t = taper * c_r;
+            let fin = FinAero::new(&trapezoid(c_r, c_t, s, sweep), 0.01).unwrap();
+            let mach = fin.supersonic_mach() + extra;
+            proptest::prop_assume!(mach < 5.0);
+            let beta = (mach * mach - 1.0).sqrt();
+            let (cone, _) = fin.outline().tip_cone(beta);
+            let area = fin.outline().area_m2();
+            proptest::prop_assert!((0.0..=2.0 * area * (1.0 + 1e-12)).contains(&cone));
+            let loading = fin.loading(mach).unwrap();
+            proptest::prop_assert!(loading.slope_per_rad > 0.0);
+            let xs: Vec<f64> = fin.outline().points_m().iter().map(|p| p[0]).collect();
+            let (lo, hi) = xs.iter().fold((f64::INFINITY, f64::NEG_INFINITY), |(a, b), &x| (a.min(x), b.max(x)));
+            proptest::prop_assert!(loading.cp_m >= lo - 1e-12 && loading.cp_m <= hi + 1e-12);
+        }
     }
 
     /// Where linear theory starts: Mach 1.2 for an unswept, slender fin; later for a swept leading
@@ -1018,7 +1208,7 @@ mod tests {
     #[test]
     fn supersonic_start_follows_the_leading_edge_and_the_aspect_ratio() {
         let a_ref = 0.01;
-        let start = |p: FinPlanform| FinAero::new(&p, a_ref).unwrap().supersonic_mach;
+        let start = |p: FinPlanform| FinAero::new(&p, a_ref).unwrap().supersonic_mach();
         assert_eq!(
             start(trapezoid(0.05, 0.05, 0.1, 0.0)),
             SUPERSONIC_START_MACH
@@ -1047,9 +1237,10 @@ mod tests {
     fn supersonic_rectangle_matches_linear_theory() {
         let (c, s) = (0.1, 0.08);
         let outline = FinOutline::from_planform(&trapezoid(c, c, s, 0.0)).unwrap();
-        assert_eq!(outline.tip_leading_edge_m, [0.0, s]);
+        assert_eq!(outline.tip_leading_edge_m(), [0.0, s]);
         let a_ref = 0.25 * PI * 0.05 * 0.05;
-        for mach in [1.6_f64, 2.0, 3.0, 4.5] {
+        // At Mach 1.217 the cone crosses well past the root (`c/β = 1.8 s`, still `βA ≥ 1`).
+        for mach in [1.217_f64, 1.6, 2.0, 3.0, 4.5] {
             let beta = (mach * mach - 1.0).sqrt();
             let aspect = 2.0 * s / c;
             let (slope, cp) = outline.supersonic(beta, a_ref);
@@ -1077,7 +1268,7 @@ mod tests {
         })
         .unwrap();
         assert_eq!(trapezoid_outline, polygon);
-        close(polygon.area_m2, 0.5 * s * (c_r + c_t), 1e-15, "area");
+        close(polygon.area_m2(), 0.5 * s * (c_r + c_t), 1e-15, "area");
         for beta in [0.8, 1.2, 2.5] {
             let (a, x) = polygon.tip_cone(beta);
             // The cone reaches the unswept trailing edge `c_r` at `y = s − c_t/β`.
@@ -1090,8 +1281,8 @@ mod tests {
         })
         .unwrap();
         let area = 0.25 * PI * 0.1 * 0.06;
-        assert!((1.0 - ellipse.area_m2 / area - 2.5e-5).abs() < 1e-6);
-        close(ellipse.centroid_m, 0.05, 1e-12, "ellipse centroid");
-        close(ellipse.tip_leading_edge_m[0], 0.05, 1e-12, "ellipse tip");
+        assert!((1.0 - ellipse.area_m2() / area - 2.5e-5).abs() < 1e-6);
+        close(ellipse.centroid_m(), 0.05, 1e-12, "ellipse centroid");
+        close(ellipse.tip_leading_edge_m()[0], 0.05, 1e-12, "ellipse tip");
     }
 }

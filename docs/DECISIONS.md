@@ -31,7 +31,7 @@ renumber. Supersede an entry by adding a new one that points back to it.
 | ADR-023 | Predicted mode: each code's own drag, reported against a target | accepted |
 | ADR-024 | The time-series RMS: aligned at ignition, held to 3% of its trace's scale | accepted |
 | ADR-025 | The calm-air cases, and Juno III's drifts left to the rail release | accepted; Juno III's drifts superseded by ADR-026 |
-| ADR-026 | The path in wind: RocketPy's corrected equations, and hpr's body lift | accepted |
+| ADR-026 | The path in wind: RocketPy's corrected equations, and hpr's body lift | accepted; Prometheus's drifts superseded by ADR-027 |
 | ADR-027 | The normal force through Mach 1: supersonic linear theory, a transonic join, and the measured references | accepted |
 
 ---
@@ -2288,10 +2288,15 @@ Three findings shaped the method:
 **The references.**
 
 - *RASAero II's Calisto export* (`refs/rocketpy-history/calisto-cd-test-2018.csv`, RocketPy's first
-  commit, now pinned in the lock). Its `CNalpha (0 to 4 deg)` is the secant slope to 4° and, past
-  Mach 1, includes a viscous cross-flow term that is zero in its subsonic rows. So the comparison
-  takes its `CN Potential` at 2° over the angle and its CP at 0°, against hpr's small-angle slope
-  and CP. A code, not a measurement.
+  commit, now pinned in the lock). Its `CNalpha (0 to 4 deg)` is the secant slope to 4° and, from
+  Mach 0.95, includes a viscous cross-flow term that is zero below. So the comparison takes its
+  `CN Potential` at 2° over the angle and its CP at 0°, against hpr's small-angle slope and CP. A
+  code, not a measurement. The choice decides much of the result: against its 4° columns, 1 of
+  the 11 rows from Mach 0.8 is within the targets, not 6, and Mach 2 is −30.6%. Below Mach 0.8
+  the agreement is partly by construction, since ADR-009 gave the Calisto design the 2018 fins
+  because they reproduce this export at low speed. The fixture commits the export's values at
+  the 15 Mach numbers compared (30 values), more than ADR-009's one per curve; STATUS asks Neer
+  whether that is fine.
 - *NASA's half-scale Arcas wind-tunnel models* (TN D-4013, Mach 0.6–1.2; TN D-4014, Mach
   1.5–4.63): the Arcas Robin (short, 18.2 calibers) and the long bioscience version (23.8). The
   reports print no tables, so their plots were read on 600-dpi renders, each plot's grid
@@ -2304,7 +2309,9 @@ Three findings shaped the method:
   (`n = 0.6369`) has its volume, which sets the slender-body CP, and its planform within 2.4%.
 
 **Result** (`validation/fixtures/aero/normal-force-vs-mach.json`, pinned by
-`hpr_aero::tests::normal_force_against_mach`; 37 rows, 16 outside the targets).
+`hpr_aero::tests::normal_force_against_mach`; 37 rows, 16 outside the targets). The targets were
+written into `ROADMAP.md` before the comparison first ran, and landed in the same commit as it;
+they have not moved since.
 
 | reference, band | `C_Nα`, hpr against the reference | CP, calibers | within both targets |
 |---|---|---|---|
@@ -2335,17 +2342,20 @@ Every miss, measured:
   14.4% by Mach 0.8, and its fins' CP starts moving aft at 0.8, so the CP misses from Mach 0.8 to
   0.95 by 0.52 to 0.95 calibers. The wind tunnel sides with neither: at Mach 0.8 the short model's
   `C_Nα` is +11.9% in hpr against the measurement, and the long model's +12.0%. At Mach 1.3 hpr is
-  just past its join's peak (+12.7%, CP +0.65); at Mach 2, −16.8% with the CP 0.56 calibers forward,
-  the direction of the wind tunnel's body gap.
+  just past its join's peak (+12.7%, CP +0.65); at Mach 2, −16.8% with the CP 0.56 calibers forward.
+  Calisto has no fins-off data, so that miss can't be split into fins and body; the wind
+  tunnel's gap at the same speeds is the body's.
 
 Prometheus 2022, the suite's supersonic rocket, flies through Mach 1.010 on its declared drag:
 14 metrics scored and passing, the largest its apogee at +1.525%. Its drifts are −9.273% (apogee)
 and +6.283% (landing). `wind_response.py`, which now flies it, puts RocketPy with hpr's rail
 release and body lift at 1484.3 m and 1468.5 m, within 0.1% of hpr's 1483.1 m and 1469.4 m. So
 they are ADR-026's body-lift difference and are reported, not scored, as ADR-026's are. Near
-Mach 1 it flies almost straight into the airflow, so the transonic normal force has little to act
-on. On its own drag it stays a known gap until M1.8b. No other case passes Mach 0.8, so no other
-number in the report moved.
+Mach 1 it flies almost straight into the airflow (its angle of attack, sampled at hpr's steps by a
+local probe of the harness, stays below 0.11° from Mach 0.8 to 1.2), so the transonic normal force
+has little to act on. Its apogee, +1.525%, is body lift too: RocketPy with hpr's body lift and rail
+release reaches 3735.4 m, against hpr's 3735.3. On its own drag it stays a known gap until M1.8b.
+No other case passes Mach 0.8, so no other number in the report moved.
 
 **Rejected.**
 
