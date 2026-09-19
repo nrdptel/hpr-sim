@@ -759,8 +759,9 @@ The International System of Units: metres, kilograms and seconds, and units buil
 A way to work out the air's forces on a long, thin body from how fast its cross-section grows
 along its length. It gives a nose as wide as the reference a normal-force slope of 2 per radian whatever its shape, a
 transition `2ΔA/A_ref`, and a plain tube nothing, at any Mach number. Barrowman's method uses it
-for every body part, and hpr does below Mach 1.2, and faster for bodies the shock-expansion method
-doesn't cover; NASA's wind tunnel shows a real body lifting more past Mach 3. See
+for every body part. hpr uses it below Mach 1.2, and at every speed for bodies the shock-expansion
+method can't take (blunt tips, flares, steps); NASA's wind tunnel shows a real body lifting more
+past Mach 3. See
 [Aerodynamics](physics/aero.md#bodies-of-revolution).
 
 
