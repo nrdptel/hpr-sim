@@ -25,12 +25,15 @@ detached tip shock, a tangent cone steeper than Fig. 2's 24°, a subsonic tip fl
 `ShockExpansionBody::new` refuses a nose that isn't pointed. TN 3527 states the method for Mach
 number over nose fineness from 0.4 to 2; `slope` doesn't enforce that range.
 
-## The decision to make first: sharing the force among components
+## Sharing the force among components
 
-1. **Per segment (preferred if it can be done).** Have the method report each segment's slope
-   and moment. Its elements already follow the segments, so each hpr component (nose, then
-   tube) would get its own share at its own station. Check first whether the element sums can
-   be split by segment without changing the whole-body totals pinned by M1.8e1's fixture.
+1. **Per segment (chosen).** Have the method report each segment's slope and moment, so each
+   hpr component (nose, then tube) gets its own share at its own station. This is cheap:
+   `slope` already puts every segment's start among its integration breaks, so each window of
+   its `force`/`moment` loop lies inside one segment. Grouping the windows by segment changes
+   the whole-body totals only by summation order, well inside the 1e-12 relative that
+   M1.8e1's fixture check allows. Stations are metres aft of the vertex, which for a pointed
+   nose is hpr's nose tip.
 2. **A correction on the nose (fallback).** Keep the slender-body terms, and add one term for
    (shock-expansion minus slender-body over the same segments), placed so the whole-body
    moment matches the shock-expansion CP. This is simpler, but it puts the cylinder's carried
