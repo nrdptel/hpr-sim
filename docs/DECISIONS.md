@@ -7,7 +7,7 @@ renumber. Supersede an entry by adding a new one that points back to it.
 |---|---|---|
 | ADR-000 | Kickoff decisions | accepted |
 | ADR-001 | License and workspace layout | accepted |
-| ADR-002 | The reference library: lock file, fetch, verify and doctor | accepted; the orhelper dependency and its doctor check superseded by ADR-035 |
+| ADR-002 | The reference library: lock file, fetch, verify and doctor | accepted; the orhelper dependency and its doctor check superseded by ADR-035, and the Java floor replaced by a range (`max_major`) because OpenRocket 24.12 refuses 21 |
 | ADR-003 | Frames, attitude, geodesy and the gravity model | accepted |
 | ADR-004 | Atmosphere, wind, turbulence and the seeded generator | accepted |
 | ADR-005 | Solid motors: statistics, consumption, grains, file models and the bundled catalog | accepted |

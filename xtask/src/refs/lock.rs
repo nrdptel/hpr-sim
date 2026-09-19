@@ -136,6 +136,11 @@ pub struct ModuleCheck {
 #[serde(deny_unknown_fields)]
 pub struct JavaReq {
     pub min_major: u32,
+    /// The newest feature release the oracle accepts, when it will not take anything newer.
+    /// OpenRocket 24.12 refuses Java 21 with "Supported version(s): 17", so a floor alone picks a
+    /// runtime the jar then rejects.
+    #[serde(default)]
+    pub max_major: Option<u32>,
 }
 
 /// One named, pinned item, whatever its kind.
