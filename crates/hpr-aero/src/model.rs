@@ -2382,7 +2382,8 @@ mod tests {
 
     /// Vertical tips (power-series noses below `n` = 1, the von Kármán and L-V Haack, an
     /// elliptical nose) fly the method behind TN D-4865's Newtonian cap (M1.8e7), with a boattail
-    /// and without, and nothing jumps at ±1e-9 in Mach: across the join, every row of the table
+    /// and without, and nothing jumps at ±1e-9 in Mach: across the join, every row of the table, three
+    /// points between each pair of rows,
     /// and Mach 2.1, near where the cap's handover reaches Fig. 2's 24°.
     #[test]
     fn vertical_tips_fly_the_method_without_a_jump() {
@@ -2436,9 +2437,14 @@ mod tests {
                 }
                 let start = table.join_start_mach;
                 let mut machs = vec![start, start + SUPERSONIC_JOIN_WIDTH_MACH, 2.1, 4.999];
+                // Every row of the table, and three points between each pair: a jump could hide
+                // at a row, and between them the model is more than the interpolation (body lift
+                // takes the flow's own Mach number).
                 machs.extend(
-                    (SUPERSONIC_FIRST_STEP..SUPERSONIC_LAST_STEP)
-                        .map(|step| step as f64 / SUPERSONIC_STEPS_PER_MACH),
+                    (SUPERSONIC_FIRST_STEP..SUPERSONIC_LAST_STEP).flat_map(|step| {
+                        let row = step as f64 / SUPERSONIC_STEPS_PER_MACH;
+                        [row, row + 0.013, row + 0.027, row + 0.041]
+                    }),
                 );
                 for alpha_deg in [1.0_f64, 10.0] {
                     for &mach in &machs {

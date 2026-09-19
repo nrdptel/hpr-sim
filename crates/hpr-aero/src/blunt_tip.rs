@@ -71,7 +71,10 @@
 //! whose `C_Nα = (2π/A_ref) ∫ Λ r dx` makes `Λ` half the windward meridian's `∂C_p/∂α`, takes
 //! the wind's slope `δ + α cos φ` in `C_p = C_p,max sin²δ`: `Λ = C_p,max sin δ cos δ`
 //! ([`newtonian_loading`]). A hemisphere then carries `C_Nα = C_p,max/2`, its Newtonian drag turned
-//! into the body's axes, as it must. Behind the handover the loading is the method's.
+//! into the body's axes, as it must. Behind the handover the loading is the method's. The handover
+//! itself is held where it sits on the body, as TN 3527 holds every other point; the report's
+//! equivalent bodies turn the body about the sphere's centre, sliding the handover along the
+//! surface, and that term is left out. Nothing here measures what it is worth.
 //!
 //! **What it covers.** The report checked spherical caps only: a sphere-cone (a 0.175-diameter
 //! nose radius on an 11.5° cone) and a sphere on a flared body, from Mach 1.50 to 4.63 and up to
@@ -79,7 +82,10 @@
 //! detached secondary shock waves are present" (p. 13). A power-series, Haack or elliptical nose
 //! has no sphere at its tip; applying the slope rule to it is an extrapolation, stated. The
 //! wedge's deflection, the pitot pressure and the Newtonian pressure are exact for a perfect gas
-//! with `γ = 1.4`; the loading is only as good as Newtonian theory on the cap.
+//! with `γ = 1.4`; the loading is only as good as Newtonian theory on the cap. A cap that shrinks
+//! to nothing doesn't reach the cone it sits on, because the march keeps its start cone's total
+//! pressure ([issue #101](https://github.com/nrdptel/hpr-sim/issues/101)), and near the join's
+//! start the cap can cover half a slender nose, far more than the report's own.
 //!
 //! [J68]: https://ntrs.nasa.gov/citations/19690000884
 //! [adr-038]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-038-blunt-and-vertical-nose-tips-faster-than-sound-by-a-newtonian-cap-the-method-started-from-the-tangent-cone-2026-09-19

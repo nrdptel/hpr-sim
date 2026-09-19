@@ -3521,9 +3521,10 @@ TN 3527's method and compares it with its own tunnel data from Mach 1.50 to 4.63
   bodies imply (eqs. 4a and 4b: the handover holds still in the wind, so the flow behind it turns
   by `α cos φ` less and its loading is the Prandtl–Meyer flow's `λ/(γM²)`, hpr's reading), the
   report's start, measured in `blunt-tips.json` (`starts`, `sphere_cone`):
-  - fails on the Arcas Robin's committed nose from Mach 3.96, where the Newtonian pressure at the
-    handover lies below the tangent cone's and the march reduces the cylinder's element; since a
-    flight's table is built from Mach 5 down (ADR-034), that would leave such a rocket no method;
+  - fails on the Arcas Robin's committed nose from Mach 3.96, where the march reduces the element
+    at the nose's end, which hpr refuses aft of a nose (its pressure at the handover lies below the
+    tangent cone's at every speed here); since a flight's table is built from Mach 5 down
+    (ADR-034), that would leave such a rocket no method;
   - reduces elements from Mach 2.96 (issue #81), so its answer moves with their number (2.544 to
     2.583 per radian at Mach 2.96, 3.361 to 3.418 at 3.5, from 10 to 40 elements);
   - on the report's own sphere-cone, against the measured slope at `α → 0` (fitted both ways,
@@ -3572,5 +3573,27 @@ TN 3527's method and compares it with its own tunnel data from Mach 1.50 to 4.63
   lift, 3 of the 11 rows from Mach 0.8 (1 before), Mach 2 −9.2% (−30.6%).
 - Unvalidated, and said so: no measurement checks a tip that isn't spherical; Newtonian theory on
   the cap and the tangent cone's start are approximations; #81 still applies behind the handover.
+- **A cap that shrinks to nothing doesn't reach the cone it sits on** (issue #101, raised by the
+  physics review and pinned by `a_vanishing_cap_does_not_reach_the_cone_it_sits_on`). The march
+  keeps its start cone's total pressure the whole way, as TN 3527 does from any vertex, and nothing
+  makes that fade with the cap. A power-series nose of `n` = 0.99, a 7.1° cone but for a tip 1e-55
+  calibres across, carries 1.21 per radian on its cylinder at Mach 4 where the cone carries 1.37
+  (12% less, the body 7%), because the march runs on the 24° cone's total pressure, 107 free
+  streams, rather than the 7.1° cone's 151. Fixing it needs a model of the tip's entropy layer
+  fading downstream, with a source; the shapes a rocket uses have caps that are small but not
+  vanishing, and their share of this bias is unknown.
+- **At `α → 0` the handover is held where it sits on the body**, as TN 3527 holds every other
+  point; the report's equivalent bodies slide it along the surface instead, and that term is left
+  out, its size unmeasured here. The two starts in `blunt-tips.json` differ by more than it alone,
+  their pressure and total pressure differing too: 2.53 against 2.87 per radian on the Arcas nose
+  at Mach 1.5, 1.702 against 1.700 on the sphere-cone at Mach 2.96.
+- **The cap covers much of a slender nose near the join's start:** 59% of the Arcas Robin's nose
+  and 48% of a five-calibre von Kármán's length at Mach 1.25, about 5% by Mach 1.5 and under 1.5%
+  past Mach 2 (a two-calibre ellipse keeps 13%), against 8% for the report's own sphere-cone at
+  Mach 1.5. The join's weight, 0 at its start and 1 a third of a Mach number later, damps it; the
+  guide says to read those rows as the blend they are.
+- Two switches in shape stay open, of issue #87's family: a vertical tip steeper than 24° to its
+  base gets no method, and a pointed tip steeper than Fig. 2's 24° is refused where a vertical one
+  flies.
 - Cost: a vertical-tip rocket builds the supersonic table (Calisto's 363 ms, once per model, only
   once a flow passes Mach 1.2); a subsonic flight never builds it (`docs/perf.md`).

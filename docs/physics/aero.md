@@ -728,8 +728,16 @@ wedge can turn the flow through with its shock attached: 12.1° at Mach 1.5, 22.
 ([R1135] eqs. 138 and 168). The report chose this point "simply because it gave the best
 agreement with the available data in the low supersonic-speed range" ([J68] p. 5). hpr stops at
 24° from about Mach 2.1: the method needs the normal-force slope of a cone tangent to the body,
-and its chart stops at 24° ([SD56] Fig. 2). On the Arcas Robin's nose the cap reaches out to 16%
-of the base radius at Mach 1.5 and 4.5% from Mach 2.3.
+and its chart stops at 24° ([SD56] Fig. 2).
+
+**How much of the nose the cap covers** depends strongly on speed. On the Arcas Robin's nose it
+reaches 16% of the base radius at Mach 1.5 and 4.5% from Mach 2.3. By length, at Mach 1.25 it
+swallows 59% of that nose and 48% of a five-calibre von Kármán, at Mach 1.5 about 5% of each, and
+past Mach 2 under 1.5%; a stubby two-calibre ellipse keeps 13% of its length capped even at Mach 3.
+The report's own cap was 8% of its sphere-cone's length at Mach 1.5, so near the join's start a
+slender nose leans on Newtonian pressures over far more of itself than anything the report checked.
+The join's weight rises from 0 at its start to 1 a third of a Mach number later, which damps that,
+but read a vertical tip's numbers between the join's ends as the blend they are.
 
 A power-series nose meets its base at a slope of `n/(2f)`, with `f` its length over its diameter,
 and the cap can't end on the nose while that is steeper than the handover's angle. So such a nose
@@ -744,12 +752,14 @@ returns `None`. Haack and elliptical noses end level, so the cap always ends on 
 **Behind the handover: hpr's choice.** hpr starts the method at the handover as it starts at a
 pointed tip, with the flow on the *tangent cone*, the cone that touches the body there. The report
 starts it from the Newtonian pressure instead. Read at a small angle, the report's start fails on
-the Arcas Robin's nose from Mach 3.96, and from Mach 2.96 its answer drifts as the nose is cut
-into more elements: the march *reduces* some, holding their pressure where the method's
-exponential law would run the wrong way
+the Arcas Robin's nose from Mach 3.96, where the march *reduces* the element at the nose's end,
+holding its pressure where the method's exponential law would run the wrong way, which hpr refuses
+aft of a nose; from Mach 2.96 its answer drifts as the nose is cut into more elements, for the
+same reason
 ([issue #81](https://github.com/nrdptel/hpr-sim/issues/81), the method's open question there). A flight's table is built from Mach 5
 down, so that failure would leave such a rocket no method at all. The tangent cone's start holds
-to Mach 5 and settles to within 0.01 per radian. On the report's sphere-cone, against the
+to Mach 5 and settles: the Arcas nose moves under 0.01 per radian from 10 elements to 40, a
+five-calibre elliptical or von Kármán nose under 0.02 from 10 to 160. On the report's sphere-cone, against the
 measured slope at `α → 0`, the report's start reads closer than hpr's at Mach 1.9, 3.95 and
 4.63, about the same at 2.96 and further at 2.3, and 95% high at Mach 1.5. That last is hpr's
 reading of the report's start at `α → 0`, not the report's method, which reads 1.844 there at
@@ -847,13 +857,31 @@ Mach 1.2, the body's slope rises: the whole rocket's by 17% to 31% from Mach 1.5
 by under 0.15 calibres (forward at Mach 1.5, aft at Mach 2). The stability margin barely changes;
 the restoring force grows.
 
-**What it leaves out.** No measurement checks a power-series, Haack or elliptical tip; the report
-tested spherical caps only. Newtonian theory on the cap and the tangent cone's start are both
-approximations, and the method's reduced elements
-([issue #81](https://github.com/nrdptel/hpr-sim/issues/81)) still apply behind them. A nose steeper than
-the handover's slope all the way to its base (a very short, blunt nose) keeps slender-body theory.
-Drag is unchanged: the nose's wave drag already covers blunt shapes ([Drag through Mach 1](#drag-through-mach-1)).
+**What it leaves out.**
 
+- **No measurement checks a tip that isn't spherical.** The report tested spherical caps only.
+  Newtonian theory on the cap and the tangent cone's start are both approximations, and the
+  method's reduced elements ([issue #81](https://github.com/nrdptel/hpr-sim/issues/81)) still
+  apply behind them.
+- **A cap that shrinks to nothing doesn't reach the cone it sits on**
+  ([issue #101](https://github.com/nrdptel/hpr-sim/issues/101)). The march carries its start
+  cone's total pressure the whole way, as the method does from any vertex, and nothing makes that
+  fade as the cap shrinks. A power-series nose of `n` = 0.99 is a 7.1° cone but for a tip 1e-55
+  calibres across, yet at Mach 4 its cylinder carries 1.21 per radian where the cone's carries
+  1.37, 12% less, because the march runs on the 24° cone's total pressure rather than the 7.1°
+  cone's. The shapes a rocket really uses have caps that are small but not vanishing, and how
+  much of this bias they carry is unknown.
+- **At `α → 0` the handover is held where it sits on the body**, as TN 3527 holds every other
+  point. The report's equivalent bodies turn the body about the sphere's centre, which slides the
+  handover along the surface instead; hpr leaves that term out. How much it is worth is not
+  measured here. The two starts in the tables above differ by more than it alone, since their
+  pressure and total pressure differ too: 2.53 against 2.87 per radian on the Arcas nose at
+  Mach 1.5, and 1.70 against 1.70 on the sphere-cone at Mach 2.96.
+- **Two switches in shape**, of the family [issue #87](https://github.com/nrdptel/hpr-sim/issues/87)
+  tracks: a vertical-tip nose steeper than 24° all the way to its base gets no method at all, and
+  a pointed tip steeper than Fig. 2's 24° is refused where a vertical one flies.
+- **Drag is unchanged:** the nose's wave drag already covers blunt shapes
+  ([Drag through Mach 1](#drag-through-mach-1)). 
 ## Fins
 
 A fin set is `N` identical fins spaced evenly around a body tube. For one fin of the set:

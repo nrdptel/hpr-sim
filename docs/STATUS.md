@@ -13,17 +13,16 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
 
 - **Page rules** (ADR-016 to ADR-020): relative links between pages, GitHub URLs for the rest,
   labels as links to their rows, none in headings, Unicode equations; new pages in `SUMMARY.md`; a
-  new library needs a row in `docs/api.md` and a guide link in its `//!`. *Accuracy*'s numbers
-  must be in a file the same item links (the report, a case file); its results tables must hold
-  every row of the report, cell for cell.
-- **Checking a milestone off** in `ROADMAP.md` fails `cargo xtask site` until its row in
+  new library needs a row in `docs/api.md` and a guide link in its `//!`. *Accuracy*'s numbers must
+  be in a file the same item links; its results tables must hold every report row, cell for cell.
+- **Checking a milestone off** fails `cargo xtask site` until its row in
   `docs/decisions-and-roadmap.md` says `done`; a new milestone needs a row.
 - **Validation (M2.1, ADR-021 to ADR-026):** CI checks the report on three OSes; predicted mode's
   3% are *targets*; every whole flight names both RMS metrics, each held to 3% of its reference's
-  apogee or max speed (ADR-024); a reference that moves moves those bounds with it.
-- **The path in wind (ADR-026):** the oracle flies RocketPy 1.13.0 with upstream PRs #1188 and
-  #1196 applied by `corrections.py`; when RocketPy releases #1196, re-pin, regenerate and delete
-  it. `wind_response.py` measures the seven drifts reported as model differences.
+  apogee or max speed (ADR-024); a moving reference moves those bounds.
+- **The path in wind (ADR-026):** the oracle flies RocketPy 1.13.0 with PRs #1188 and #1196 applied
+  by `corrections.py` (re-pin and delete it when #1196 releases); `wind_response.py` measures the
+  seven drifts reported as model differences.
 - **M1.8a to e1 (ADR-027 to ADR-033):** `cargo xtask aero` writes the aero fixtures. NTRS serves
   five of ADR-030's PDFs with a 436-byte header (pinned as served). Scratch: `refs/scratch/m18*/`.
   TN D-4013's rolling-moment plots are unread; #76: M1.8a's other TN D-4014 zeros. #81:
@@ -42,15 +41,14 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
   flare whose shock detaches; its listing may invert `q₁/q∞`. Check any rule by the moment about
   the CG (`arcas-robin-fins-off-moment.json`). #97: the long model's M1.8a readings may be biased
   (page skew); settle it before judging e9's 15%.
-- **Autopilot memory:** each command gets its own process group; the run notes and reaps them.
-- **M2.2's OpenRocket oracle** (ADR-035): orhelper is dropped, so decide how to drive the jar
-  when M2.2 starts. JPype still loads the JVM in-process; only a subprocess isolates. The jar
-  needs Java 17 exactly; `[java] max_major` in the refs lock now keeps doctor off a newer one.
+- **M2.2's OpenRocket oracle** (ADR-035): orhelper is dropped, so decide how to drive the jar when
+  M2.2 starts; JPype loads the JVM in-process, only a subprocess isolates, and the jar needs Java
+  17 exactly (`[java] max_major` in the refs lock keeps doctor off a newer one).
 - **Regeneration is not bit-identical across machines** (last digits): regenerate with `cargo
   xtask validate` (debug), never `--release`; fixture checks allow 1e-12 relative (1e-13 near 0).
-- **Process notes:** `cargo test -p xtask` guards STATUS, ROADMAP, notices, lessons and the lock.
-  Oracles run from the repo root with `refs/venv/bin/python`. `cargo xtask designs` and
-  `cargo xtask examples` rewrite designs and example outputs; pages quoting them must follow.
+- **Process notes:** `cargo test -p xtask` guards STATUS, ROADMAP, notices, lessons and the lock;
+  oracles run from the repo root with `refs/venv/bin/python`; `cargo xtask designs` and `examples`
+  rewrite designs and example outputs, and pages quoting them must follow.
 
 ## Done log (newest first, keep about 15)
 
@@ -128,8 +126,10 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
   (ADR-008). Body lift (Jorgensen, M1.8e6) reads 1–16% high where the crossflow is supersonic and
   leaves out the drop past the critical Reynolds number. The normal force misses the wind tunnel
   between Mach 0.8 and 1.2, and past Mach 3 reads 20–28% low on bodies the method can't take.
-  A blunt tip's cap (M1.8e7) is checked only on a sphere-cone; power-series, Haack and elliptical
-  tips are an extrapolation.
+  A blunt tip's cap (M1.8e7) is checked only on a sphere-cone; other tips are an extrapolation.
+  #101: the march keeps its start cone's entropy, so a vanishing cap doesn't reach the cone it
+  sits on (a 0.99-power nose's cylinder reads 12% low at Mach 4). Near the join's start the cap
+  covers half a slender nose.
 - Drag: against RASAero II's Calisto hpr reads −14.9% to −5.1% supersonic, within what the
   unrecorded fins span (ADR-030); against MIL-HDBK-762 the body reads 6–10% low past Mach 1.6 and
   high through Mach 1 (nose #67, base #68). Against the Arcas Robin it reads high at every row:

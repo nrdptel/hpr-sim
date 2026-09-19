@@ -2214,7 +2214,9 @@ mod tests {
     /// The Arcas Robin's committed nose (a power series, `n` = 0.6369, 9.375 in long on a
     /// 2.25-in body) and the short model's cylinder: four times the default elements move its
     /// slope by under 0.01 per radian and its centre of pressure by under 0.01 calibers, through
-    /// Mach 5.
+    /// Mach 5. Sixteen times the default move a five-calibre elliptical or von Kármán nose's by
+    /// under 0.02: the tangent body settles more slowly on a nose whose slope changes fastest
+    /// just behind the cap.
     #[test]
     fn a_vertical_tip_converges_as_elements_are_added() {
         let radius = 1.125 * 0.0254;
@@ -2251,6 +2253,35 @@ mod tests {
                 (a.centre_of_pressure_m - b.centre_of_pressure_m).abs() < 0.01 * 2.0 * radius,
                 "Mach {mach}: {a:?} against {b:?}"
             );
+        }
+        // Five-calibre elliptical and von Kármán noses on a cylinder, the default elements
+        // against sixteen times as many.
+        for shape in [NoseShape::Elliptical {}, NoseShape::VON_KARMAN] {
+            let body = |steps| {
+                ShockExpansionBody::new(
+                    &[
+                        BodySegment::Profile {
+                            profile: Profile::nose(shape, 5.0, 0.5).unwrap(),
+                        },
+                        BodySegment::Cylinder {
+                            length_m: 5.0,
+                            radius_m: 0.5,
+                        },
+                    ],
+                    steps,
+                )
+                .unwrap()
+            };
+            let (coarse, fine) = (body(DEFAULT_ELEMENTS_PER_CURVE), body(160));
+            for mach in [1.5, 3.0, 5.0] {
+                let a = coarse.slope(mach, 0.25 * PI).unwrap();
+                let b = fine.slope(mach, 0.25 * PI).unwrap();
+                assert!(
+                    (a.slope_per_rad - b.slope_per_rad).abs() < 0.02
+                        && (a.centre_of_pressure_m - b.centre_of_pressure_m).abs() < 0.02,
+                    "{shape:?} at Mach {mach}: {a:?} against {b:?}"
+                );
+            }
         }
     }
 
@@ -2304,6 +2335,60 @@ mod tests {
 
     fn body_of_cone() -> ShockExpansionBody {
         body(false, 3.0, 2.0, DEFAULT_ELEMENTS_PER_CURVE)
+    }
+
+    /// A cap that shrinks to nothing doesn't reach the cone it sits on: the march starts from the
+    /// tangent cone at the handover, and carries that cone's total pressure the whole way, however
+    /// small the cap. A power-series nose of `n` = 0.99, four calibres long, is a 7.1° cone but for
+    /// a tip 1e-55 calibres across, yet at Mach 4 its cylinder carries 1.21 per radian where the
+    /// cone's carries 1.37, because the march runs on the 24° cone's total pressure (107 free
+    /// streams against the 7.1° cone's 151). The noses themselves agree to 0.01. Pinned so the
+    /// limit is visible and any fix shows here ([issue #101](https://github.com/nrdptel/hpr-sim/issues/101)).
+    #[test]
+    fn a_vanishing_cap_does_not_reach_the_cone_it_sits_on() {
+        let area = 0.25 * PI;
+        let body = |exponent| {
+            ShockExpansionBody::new(
+                &[
+                    BodySegment::Profile {
+                        profile: Profile::nose(NoseShape::PowerSeries { exponent }, 4.0, 0.5)
+                            .unwrap(),
+                    },
+                    BodySegment::Cylinder {
+                        length_m: 6.0,
+                        radius_m: 0.5,
+                    },
+                ],
+                DEFAULT_ELEMENTS_PER_CURVE,
+            )
+            .unwrap()
+        };
+        let blunt = body(0.99);
+        let cone = body(1.0);
+        assert!(blunt.has_blunt_tip() && !cone.has_blunt_tip());
+        let (blunt, cone) = (
+            blunt.segment_slopes(4.0, area).unwrap(),
+            cone.segment_slopes(4.0, area).unwrap(),
+        );
+        let near = |got: f64, want: f64, tol: f64, what: &str| {
+            assert!(
+                (got - want).abs() <= tol,
+                "{what}: {got} against {want} ± {tol}"
+            );
+        };
+        near(
+            blunt[0].slope_per_rad,
+            cone[0].slope_per_rad,
+            0.01,
+            "the noses",
+        );
+        near(
+            blunt[1].slope_per_rad,
+            1.211,
+            5e-3,
+            "the cylinder behind the vanishing cap",
+        );
+        near(cone[1].slope_per_rad, 1.374, 5e-3, "the cone's cylinder");
     }
 
     /// Just above the Mach number where a blunt tip's handover first falls on its nose (its
