@@ -14,6 +14,7 @@
 )]
 
 mod aero;
+mod aero_body;
 mod aero_drag;
 mod aero_mach;
 mod aero_override;

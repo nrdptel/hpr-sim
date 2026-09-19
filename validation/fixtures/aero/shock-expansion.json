@@ -1,0 +1,4894 @@
+{
+  "arcas_robin": {
+    "configurations": [
+      {
+        "cylinder_ends_in": 39.14,
+        "id": "arcas-robin-short",
+        "rows": [
+          {
+            "mach": 1.5,
+            "measured_c_n_alpha": 2.1919997374213684,
+            "nose_and_cylinder": {
+              "c_n_alpha": 2.5519429132839653,
+              "c_n_alpha_error": 0.16420767289234628,
+              "cp_calibers": 2.994022870465663
+            },
+            "with_boattail": {
+              "c_n_alpha": 2.3747381557138802,
+              "c_n_alpha_error": 0.08336607672566698,
+              "cp_calibers": 1.8829454942385158
+            }
+          },
+          {
+            "mach": 1.8,
+            "measured_c_n_alpha": 2.612936786341712,
+            "nose_and_cylinder": {
+              "c_n_alpha": 2.724299126605939,
+              "c_n_alpha_error": 0.04261960750307381,
+              "cp_calibers": 3.1764158270149068
+            },
+            "with_boattail": {
+              "c_n_alpha": 2.580497889615594,
+              "c_n_alpha_error": -0.01241472694467094,
+              "cp_calibers": 2.35675474009606
+            }
+          },
+          {
+            "mach": 2.3,
+            "measured_c_n_alpha": 3.077526441368625,
+            "nose_and_cylinder": {
+              "c_n_alpha": 2.931102209882626,
+              "c_n_alpha_error": -0.04757854539208495,
+              "cp_calibers": 3.4486895090968672
+            },
+            "with_boattail": {
+              "c_n_alpha": 2.8283368715125614,
+              "c_n_alpha_error": -0.08097073237338137,
+              "cp_calibers": 2.9240861303352013
+            }
+          },
+          {
+            "mach": 2.96,
+            "measured_c_n_alpha": 3.284069313605933,
+            "nose_and_cylinder": {
+              "c_n_alpha": 3.124071243105607,
+              "c_n_alpha_error": -0.048719456022883634,
+              "cp_calibers": 3.7687180187945146
+            },
+            "with_boattail": {
+              "c_n_alpha": 3.055959101369108,
+              "c_n_alpha_error": -0.06945962172350084,
+              "cp_calibers": 3.4540032496051296
+            }
+          },
+          {
+            "mach": 3.96,
+            "measured_c_n_alpha": 3.8844772511193657,
+            "nose_and_cylinder": {
+              "c_n_alpha": 3.300136374905797,
+              "c_n_alpha_error": -0.15042973312436902,
+              "cp_calibers": 4.1639088491046525
+            },
+            "with_boattail": {
+              "c_n_alpha": 3.262275005718026,
+              "c_n_alpha_error": -0.16017657079135772,
+              "cp_calibers": 4.004580146035079
+            }
+          },
+          {
+            "mach": 4.63,
+            "measured_c_n_alpha": 4.148728473047325,
+            "nose_and_cylinder": {
+              "c_n_alpha": 3.371053812969859,
+              "c_n_alpha_error": -0.18744891721155432,
+              "cp_calibers": 4.3708902626098185
+            },
+            "with_boattail": {
+              "c_n_alpha": 3.3452994233535622,
+              "c_n_alpha_error": -0.19365669624159032,
+              "cp_calibers": 4.266771001538507
+            }
+          }
+        ]
+      },
+      {
+        "cylinder_ends_in": 51.69,
+        "id": "arcas-robin-long",
+        "rows": [
+          {
+            "mach": 1.8,
+            "measured_c_n_alpha": 3.1585382380526092,
+            "nose_and_cylinder": {
+              "c_n_alpha": 2.7243458803295026,
+              "c_n_alpha_error": -0.13746623437771233,
+              "cp_calibers": 3.176681914008114
+            },
+            "with_boattail": {
+              "c_n_alpha": 2.5805333158991117,
+              "c_n_alpha_error": -0.18299760160885858,
+              "cp_calibers": 2.0461345405428286
+            }
+          },
+          {
+            "mach": 2.3,
+            "measured_c_n_alpha": 3.5254522602158787,
+            "nose_and_cylinder": {
+              "c_n_alpha": 2.9316079743190926,
+              "c_n_alpha_error": -0.1684448524798411,
+              "cp_calibers": 3.451360008431027
+            },
+            "with_boattail": {
+              "c_n_alpha": 2.8287594324308696,
+              "c_n_alpha_error": -0.19761800085823533,
+              "cp_calibers": 2.723713229985472
+            }
+          },
+          {
+            "mach": 2.96,
+            "measured_c_n_alpha": 3.8680132902426,
+            "nose_and_cylinder": {
+              "c_n_alpha": 3.1270842742834986,
+              "c_n_alpha_error": -0.19155286198942478,
+              "cp_calibers": 3.7835406126886046
+            },
+            "with_boattail": {
+              "c_n_alpha": 3.0586573250437703,
+              "c_n_alpha_error": -0.2092433258284041,
+              "cp_calibers": 3.343210840652839
+            }
+          },
+          {
+            "mach": 3.96,
+            "measured_c_n_alpha": 4.455316215903041,
+            "nose_and_cylinder": {
+              "c_n_alpha": 3.3134613168929605,
+              "c_n_alpha_error": -0.2562904278116743,
+              "cp_calibers": 4.225060766209867
+            },
+            "with_boattail": {
+              "c_n_alpha": 3.274852460677424,
+              "c_n_alpha_error": -0.26495622263847574,
+              "cp_calibers": 3.9982001749789067
+            }
+          },
+          {
+            "mach": 4.63,
+            "measured_c_n_alpha": 4.615044057113034,
+            "nose_and_cylinder": {
+              "c_n_alpha": 3.395343488783865,
+              "c_n_alpha_error": -0.26428795765216573,
+              "cp_calibers": 4.478892084336449
+            },
+            "with_boattail": {
+              "c_n_alpha": 3.3686679777130184,
+              "c_n_alpha_error": -0.27006807821888756,
+              "cp_calibers": 4.328517122185648
+            }
+          }
+        ]
+      }
+    ],
+    "nose": {
+      "radius_ratio": 1.7435957881722386,
+      "rms_miss_in": 0.003149246497319905,
+      "shape": "the secant ogive through the tip and base nearest TN D-4014 Fig. 1(a)'s coordinates",
+      "vertex_half_angle_deg": 10.761022218889433
+    },
+    "note": "The measured slope is the least-squares slope, with an intercept, of TN D-4014's fins-off C_N points (arcas-robin-wind-tunnel.json), as M1.8a fits it; it includes the lip and crossflow at the plotted angles. hpr's is the method's at alpha -> 0 on the maximum cross-section. c_n_alpha_error is hpr's over the measured, minus 1. No target (M1.8e2 flies it)."
+  },
+  "elements_per_curve": 10,
+  "generator": "cargo xtask aero",
+  "note": "hpr's second-order shock-expansion slope (per radian, on the base area) and centre of pressure (calibers from the vertex) at alpha -> 0, with the tangent body hpr uses by default, against NACA TN 3527's Tables I and II (tn3527-bodies.json), and the Arcas Robin's nose and cylinder against TN D-4014's measured body alone. error is hpr's value less the reference's.",
+  "targets": {
+    "experiment_c_n_alpha": 0.2,
+    "experiment_cp_calibers": 0.2,
+    "second_order_c_n_alpha": 0.05,
+    "second_order_cp_calibers": 0.1
+  },
+  "tn3527": [
+    {
+      "afterbody_calibers": 0.0,
+      "experiment": {
+        "c_n_alpha": {
+          "error": -0.060626718819523084,
+          "reference": 1.97,
+          "within": true
+        },
+        "cp_calibers": {
+          "error": -0.08333333333333393,
+          "reference": 4.75,
+          "within": true
+        }
+      },
+      "fineness": 7.0,
+      "hpr": {
+        "c_n_alpha": 1.9093732811804769,
+        "cp_calibers": 4.666666666666666
+      },
+      "mach": 3.0,
+      "nose": "cone",
+      "second_order": {
+        "c_n_alpha": {
+          "error": -0.0006267188195230311,
+          "reference": 1.91,
+          "within": true
+        },
+        "cp_calibers": {
+          "error": -0.0033333333333338544,
+          "reference": 4.67,
+          "within": true
+        }
+      }
+    },
+    {
+      "afterbody_calibers": 2.0,
+      "experiment": {
+        "c_n_alpha": {
+          "error": -0.03579874650512904,
+          "reference": 2.52,
+          "within": true
+        },
+        "cp_calibers": {
+          "error": -0.15335782374658535,
+          "reference": 5.56,
+          "within": true
+        }
+      },
+      "fineness": 7.0,
+      "hpr": {
+        "c_n_alpha": 2.484201253494871,
+        "cp_calibers": 5.406642176253414
+      },
+      "mach": 3.0,
+      "nose": "cone",
+      "second_order": {
+        "c_n_alpha": {
+          "error": 0.01420125349487078,
+          "reference": 2.47,
+          "within": true
+        },
+        "cp_calibers": {
+          "error": 0.016642176253414576,
+          "reference": 5.39,
+          "within": true
+        }
+      }
+    },
+    {
+      "afterbody_calibers": 4.0,
+      "experiment": {
+        "c_n_alpha": {
+          "error": 0.04695910747255416,
+          "reference": 2.69,
+          "within": true
+        },
+        "cp_calibers": {
+          "error": 0.188331900668679,
+          "reference": 5.63,
+          "within": true
+        }
+      },
+      "fineness": 7.0,
+      "hpr": {
+        "c_n_alpha": 2.736959107472554,
+        "cp_calibers": 5.818331900668679
+      },
+      "mach": 3.0,
+      "nose": "cone",
+      "second_order": {
+        "c_n_alpha": {
+          "error": 0.03695910747255393,
+          "reference": 2.7,
+          "within": true
+        },
+        "cp_calibers": {
+          "error": 0.03833190066867864,
+          "reference": 5.78,
+          "within": true
+        }
+      }
+    },
+    {
+      "afterbody_calibers": 6.0,
+      "experiment": {
+        "c_n_alpha": {
+          "error": 0.06809937173315017,
+          "reference": 2.78,
+          "within": true
+        },
+        "cp_calibers": {
+          "error": 0.20427213557341606,
+          "reference": 5.85,
+          "within": false
+        }
+      },
+      "fineness": 7.0,
+      "hpr": {
+        "c_n_alpha": 2.84809937173315,
+        "cp_calibers": 6.054272135573416
+      },
+      "mach": 3.0,
+      "nose": "cone",
+      "second_order": {
+        "c_n_alpha": {
+          "error": 0.048099371733150154,
+          "reference": 2.8,
+          "within": true
+        },
+        "cp_calibers": {
+          "error": 0.06427213557341549,
+          "reference": 5.99,
+          "within": true
+        }
+      }
+    },
+    {
+      "afterbody_calibers": 8.0,
+      "experiment": {
+        "c_n_alpha": null,
+        "cp_calibers": null
+      },
+      "fineness": 7.0,
+      "hpr": {
+        "c_n_alpha": 2.896968904946569,
+        "cp_calibers": 6.186025684352186
+      },
+      "mach": 3.0,
+      "nose": "cone",
+      "second_order": {
+        "c_n_alpha": {
+          "error": 0.05696890494656914,
+          "reference": 2.84,
+          "within": false
+        },
+        "cp_calibers": {
+          "error": 0.07602568435218604,
+          "reference": 6.11,
+          "within": true
+        }
+      }
+    },
+    {
+      "afterbody_calibers": 10.0,
+      "experiment": {
+        "c_n_alpha": {
+          "error": 0.0784573483328268,
+          "reference": 2.84,
+          "within": true
+        },
+        "cp_calibers": {
+          "error": -0.06271166939075723,
+          "reference": 6.32,
+          "within": true
+        }
+      },
+      "fineness": 7.0,
+      "hpr": {
+        "c_n_alpha": 2.9184573483328267,
+        "cp_calibers": 6.257288330609243
+      },
+      "mach": 3.0,
+      "nose": "cone",
+      "second_order": {
+        "c_n_alpha": {
+          "error": 0.058457348332826786,
+          "reference": 2.86,
+          "within": false
+        },
+        "cp_calibers": {
+          "error": 0.08728833060924313,
+          "reference": 6.17,
+          "within": true
+        }
+      }
+    },
+    {
+      "afterbody_calibers": 0.0,
+      "experiment": {
+        "c_n_alpha": {
+          "error": 0.059792323629177524,
+          "reference": 1.83,
+          "within": true
+        },
+        "cp_calibers": {
+          "error": 0.05666666666666664,
+          "reference": 4.61,
+          "within": true
+        }
+      },
+      "fineness": 7.0,
+      "hpr": {
+        "c_n_alpha": 1.8897923236291776,
+        "cp_calibers": 4.666666666666667
+      },
+      "mach": 4.24,
+      "nose": "cone",
+      "second_order": {
+        "c_n_alpha": {
+          "error": -0.00020767637082230728,
+          "reference": 1.89,
+          "within": true
+        },
+        "cp_calibers": {
+          "error": -0.0033333333333329662,
+          "reference": 4.67,
+          "within": true
+        }
+      }
+    },
+    {
+      "afterbody_calibers": 2.0,
+      "experiment": {
+        "c_n_alpha": {
+          "error": 0.0783868009909563,
+          "reference": 2.38,
+          "within": true
+        },
+        "cp_calibers": {
+          "error": -0.1349141557510789,
+          "reference": 5.55,
+          "within": true
+        }
+      },
+      "fineness": 7.0,
+      "hpr": {
+        "c_n_alpha": 2.458386800990956,
+        "cp_calibers": 5.415085844248921
+      },
+      "mach": 4.24,
+      "nose": "cone",
+      "second_order": {
+        "c_n_alpha": {
+          "error": 0.018386800990956242,
+          "reference": 2.44,
+          "within": true
+        },
+        "cp_calibers": {
+          "error": 0.015085844248920566,
+          "reference": 5.4,
+          "within": true
+        }
+      }
+    },
+    {
+      "afterbody_calibers": 4.0,
+      "experiment": {
+        "c_n_alpha": {
+          "error": 0.09418045170369682,
+          "reference": 2.68,
+          "within": true
+        },
+        "cp_calibers": {
+          "error": -0.07409236758749405,
+          "reference": 6.0,
+          "within": true
+        }
+      },
+      "fineness": 7.0,
+      "hpr": {
+        "c_n_alpha": 2.774180451703697,
+        "cp_calibers": 5.925907632412506
+      },
+      "mach": 4.24,
+      "nose": "cone",
+      "second_order": {
+        "c_n_alpha": {
+          "error": 0.044180451703697,
+          "reference": 2.73,
+          "within": true
+        },
+        "cp_calibers": {
+          "error": 0.04590763241250606,
+          "reference": 5.88,
+          "within": true
+        }
+      }
+    },
+    {
+      "afterbody_calibers": 6.0,
+      "experiment": {
+        "c_n_alpha": {
+          "error": 0.08957017812734724,
+          "reference": 2.86,
+          "within": true
+        },
+        "cp_calibers": {
+          "error": -0.11870459114773713,
+          "reference": 6.4,
+          "within": true
+        }
+      },
+      "fineness": 7.0,
+      "hpr": {
+        "c_n_alpha": 2.949570178127347,
+        "cp_calibers": 6.281295408852263
+      },
+      "mach": 4.24,
+      "nose": "cone",
+      "second_order": {
+        "c_n_alpha": {
+          "error": 0.06957017812734723,
+          "reference": 2.88,
+          "within": false
+        },
+        "cp_calibers": {
+          "error": 0.08129540885226305,
+          "reference": 6.2,
+          "within": true
+        }
+      }
+    },
+    {
+      "afterbody_calibers": 8.0,
+      "experiment": {
+        "c_n_alpha": null,
+        "cp_calibers": null
+      },
+      "fineness": 7.0,
+      "hpr": {
+        "c_n_alpha": 3.0469804840835764,
+        "cp_calibers": 6.52494267776962
+      },
+      "mach": 4.24,
+      "nose": "cone",
+      "second_order": {
+        "c_n_alpha": {
+          "error": 0.08698048408357639,
+          "reference": 2.96,
+          "within": false
+        },
+        "cp_calibers": {
+          "error": 0.12494267776961987,
+          "reference": 6.4,
+          "within": false
+        }
+      }
+    },
+    {
+      "afterbody_calibers": 10.0,
+      "experiment": {
+        "c_n_alpha": {
+          "error": 0.25108153036473757,
+          "reference": 2.85,
+          "within": false
+        },
+        "cp_calibers": {
+          "error": 0.29854309068248774,
+          "reference": 6.39,
+          "within": false
+        }
+      },
+      "fineness": 7.0,
+      "hpr": {
+        "c_n_alpha": 3.1010815303647377,
+        "cp_calibers": 6.688543090682487
+      },
+      "mach": 4.24,
+      "nose": "cone",
+      "second_order": {
+        "c_n_alpha": {
+          "error": 0.10108153036473766,
+          "reference": 3.0,
+          "within": false
+        },
+        "cp_calibers": {
+          "error": 0.15854309068248718,
+          "reference": 6.53,
+          "within": false
+        }
+      }
+    },
+    {
+      "afterbody_calibers": 0.0,
+      "experiment": {
+        "c_n_alpha": {
+          "error": -0.026343154647708866,
+          "reference": 1.91,
+          "within": true
+        },
+        "cp_calibers": {
+          "error": -0.043333333333333,
+          "reference": 4.71,
+          "within": true
+        }
+      },
+      "fineness": 7.0,
+      "hpr": {
+        "c_n_alpha": 1.883656845352291,
+        "cp_calibers": 4.666666666666667
+      },
+      "mach": 5.05,
+      "nose": "cone",
+      "second_order": {
+        "c_n_alpha": {
+          "error": 0.0036568453522911604,
+          "reference": 1.88,
+          "within": true
+        },
+        "cp_calibers": {
+          "error": -0.0033333333333329662,
+          "reference": 4.67,
+          "within": true
+        }
+      }
+    },
+    {
+      "afterbody_calibers": 2.0,
+      "experiment": {
+        "c_n_alpha": {
+          "error": 0.08515360047621678,
+          "reference": 2.35,
+          "within": true
+        },
+        "cp_calibers": {
+          "error": -0.04716354251906907,
+          "reference": 5.45,
+          "within": true
+        }
+      },
+      "fineness": 7.0,
+      "hpr": {
+        "c_n_alpha": 2.435153600476217,
+        "cp_calibers": 5.402836457480931
+      },
+      "mach": 5.05,
+      "nose": "cone",
+      "second_order": {
+        "c_n_alpha": {
+          "error": 0.02515360047621673,
+          "reference": 2.41,
+          "within": true
+        },
+        "cp_calibers": {
+          "error": 0.012836457480931429,
+          "reference": 5.39,
+          "within": true
+        }
+      }
+    },
+    {
+      "afterbody_calibers": 4.0,
+      "experiment": {
+        "c_n_alpha": {
+          "error": 0.12013892516766411,
+          "reference": 2.65,
+          "within": true
+        },
+        "cp_calibers": {
+          "error": 0.08875221963772173,
+          "reference": 5.86,
+          "within": true
+        }
+      },
+      "fineness": 7.0,
+      "hpr": {
+        "c_n_alpha": 2.770138925167664,
+        "cp_calibers": 5.948752219637722
+      },
+      "mach": 5.05,
+      "nose": "cone",
+      "second_order": {
+        "c_n_alpha": {
+          "error": 0.05013892516766383,
+          "reference": 2.72,
+          "within": false
+        },
+        "cp_calibers": {
+          "error": 0.05875221963772237,
+          "reference": 5.89,
+          "within": true
+        }
+      }
+    },
+    {
+      "afterbody_calibers": 6.0,
+      "experiment": {
+        "c_n_alpha": {
+          "error": 0.1136127746800133,
+          "reference": 2.86,
+          "within": true
+        },
+        "cp_calibers": {
+          "error": 0.07715554669106961,
+          "reference": 6.28,
+          "within": true
+        }
+      },
+      "fineness": 7.0,
+      "hpr": {
+        "c_n_alpha": 2.973612774680013,
+        "cp_calibers": 6.35715554669107
+      },
+      "mach": 5.05,
+      "nose": "cone",
+      "second_order": {
+        "c_n_alpha": {
+          "error": 0.08361277468001305,
+          "reference": 2.89,
+          "within": false
+        },
+        "cp_calibers": {
+          "error": 0.10715554669106986,
+          "reference": 6.25,
+          "within": false
+        }
+      }
+    },
+    {
+      "afterbody_calibers": 8.0,
+      "experiment": {
+        "c_n_alpha": null,
+        "cp_calibers": null
+      },
+      "fineness": 7.0,
+      "hpr": {
+        "c_n_alpha": 3.0972050767413313,
+        "cp_calibers": 6.65883707372286
+      },
+      "mach": 5.05,
+      "nose": "cone",
+      "second_order": {
+        "c_n_alpha": {
+          "error": 0.10720507674133106,
+          "reference": 2.99,
+          "within": false
+        },
+        "cp_calibers": {
+          "error": 0.14883707372286015,
+          "reference": 6.51,
+          "within": false
+        }
+      }
+    },
+    {
+      "afterbody_calibers": 10.0,
+      "experiment": {
+        "c_n_alpha": {
+          "error": 0.1122764294749854,
+          "reference": 3.06,
+          "within": true
+        },
+        "cp_calibers": {
+          "error": 0.32793577034139165,
+          "reference": 6.55,
+          "within": false
+        }
+      },
+      "fineness": 7.0,
+      "hpr": {
+        "c_n_alpha": 3.1722764294749854,
+        "cp_calibers": 6.8779357703413915
+      },
+      "mach": 5.05,
+      "nose": "cone",
+      "second_order": {
+        "c_n_alpha": {
+          "error": 0.12227642947498563,
+          "reference": 3.05,
+          "within": false
+        },
+        "cp_calibers": {
+          "error": 0.18793577034139108,
+          "reference": 6.69,
+          "within": false
+        }
+      }
+    },
+    {
+      "afterbody_calibers": 0.0,
+      "experiment": {
+        "c_n_alpha": {
+          "error": -0.041382603627934555,
+          "reference": 1.92,
+          "within": true
+        },
+        "cp_calibers": {
+          "error": -0.07333333333333414,
+          "reference": 4.74,
+          "within": true
+        }
+      },
+      "fineness": 7.0,
+      "hpr": {
+        "c_n_alpha": 1.8786173963720654,
+        "cp_calibers": 4.666666666666666
+      },
+      "mach": 6.28,
+      "nose": "cone",
+      "second_order": {
+        "c_n_alpha": {
+          "error": -0.00138260362793452,
+          "reference": 1.88,
+          "within": true
+        },
+        "cp_calibers": {
+          "error": -0.0033333333333338544,
+          "reference": 4.67,
+          "within": true
+        }
+      }
+    },
+    {
+      "afterbody_calibers": 2.0,
+      "experiment": {
+        "c_n_alpha": {
+          "error": 0.08669962843591206,
+          "reference": 2.31,
+          "within": true
+        },
+        "cp_calibers": {
+          "error": -0.027391446914713846,
+          "reference": 5.4,
+          "within": true
+        }
+      },
+      "fineness": 7.0,
+      "hpr": {
+        "c_n_alpha": 2.396699628435912,
+        "cp_calibers": 5.3726085530852865
+      },
+      "mach": 6.28,
+      "nose": "cone",
+      "second_order": {
+        "c_n_alpha": {
+          "error": 0.016699628435912217,
+          "reference": 2.38,
+          "within": true
+        },
+        "cp_calibers": {
+          "error": 0.022608553085286864,
+          "reference": 5.35,
+          "within": true
+        }
+      }
+    },
+    {
+      "afterbody_calibers": 4.0,
+      "experiment": {
+        "c_n_alpha": {
+          "error": 0.1617050118768586,
+          "reference": 2.58,
+          "within": true
+        },
+        "cp_calibers": {
+          "error": 0.1463977616882266,
+          "reference": 5.8,
+          "within": true
+        }
+      },
+      "fineness": 7.0,
+      "hpr": {
+        "c_n_alpha": 2.7417050118768587,
+        "cp_calibers": 5.946397761688226
+      },
+      "mach": 6.28,
+      "nose": "cone",
+      "second_order": {
+        "c_n_alpha": {
+          "error": 0.05170501187685872,
+          "reference": 2.69,
+          "within": false
+        },
+        "cp_calibers": {
+          "error": 0.06639776168822653,
+          "reference": 5.88,
+          "within": true
+        }
+      }
+    },
+    {
+      "afterbody_calibers": 6.0,
+      "experiment": {
+        "c_n_alpha": {
+          "error": 0.16145370279233173,
+          "reference": 2.81,
+          "within": true
+        },
+        "cp_calibers": {
+          "error": 0.09922900341668228,
+          "reference": 6.31,
+          "within": true
+        }
+      },
+      "fineness": 7.0,
+      "hpr": {
+        "c_n_alpha": 2.971453702792332,
+        "cp_calibers": 6.409229003416682
+      },
+      "mach": 6.28,
+      "nose": "cone",
+      "second_order": {
+        "c_n_alpha": {
+          "error": 0.08145370279233166,
+          "reference": 2.89,
+          "within": false
+        },
+        "cp_calibers": {
+          "error": 0.11922900341668186,
+          "reference": 6.29,
+          "within": false
+        }
+      }
+    },
+    {
+      "afterbody_calibers": 8.0,
+      "experiment": {
+        "c_n_alpha": null,
+        "cp_calibers": null
+      },
+      "fineness": 7.0,
+      "hpr": {
+        "c_n_alpha": 3.1244497530305098,
+        "cp_calibers": 6.777619969507513
+      },
+      "mach": 6.28,
+      "nose": "cone",
+      "second_order": {
+        "c_n_alpha": {
+          "error": 0.12444975303050976,
+          "reference": 3.0,
+          "within": false
+        },
+        "cp_calibers": {
+          "error": 0.18761996950751314,
+          "reference": 6.59,
+          "within": false
+        }
+      }
+    },
+    {
+      "afterbody_calibers": 10.0,
+      "experiment": {
+        "c_n_alpha": {
+          "error": 0.23633408279626789,
+          "reference": 2.99,
+          "within": false
+        },
+        "cp_calibers": {
+          "error": 0.32671930365496227,
+          "reference": 6.74,
+          "within": false
+        }
+      },
+      "fineness": 7.0,
+      "hpr": {
+        "c_n_alpha": 3.226334082796268,
+        "cp_calibers": 7.0667193036549625
+      },
+      "mach": 6.28,
+      "nose": "cone",
+      "second_order": {
+        "c_n_alpha": {
+          "error": 0.14633408279626803,
+          "reference": 3.08,
+          "within": false
+        },
+        "cp_calibers": {
+          "error": 0.25671930365496287,
+          "reference": 6.81,
+          "within": false
+        }
+      }
+    },
+    {
+      "afterbody_calibers": 0.0,
+      "experiment": {
+        "c_n_alpha": {
+          "error": 0.04920932352500662,
+          "reference": 1.83,
+          "within": true
+        },
+        "cp_calibers": {
+          "error": -0.016666666666666163,
+          "reference": 3.35,
+          "within": true
+        }
+      },
+      "fineness": 5.0,
+      "hpr": {
+        "c_n_alpha": 1.8792093235250067,
+        "cp_calibers": 3.333333333333334
+      },
+      "mach": 3.0,
+      "nose": "cone",
+      "second_order": {
+        "c_n_alpha": {
+          "error": -0.0007906764749932016,
+          "reference": 1.88,
+          "within": true
+        },
+        "cp_calibers": {
+          "error": 0.0033333333333338544,
+          "reference": 3.33,
+          "within": true
+        }
+      }
+    },
+    {
+      "afterbody_calibers": 2.0,
+      "experiment": {
+        "c_n_alpha": {
+          "error": -0.008910833600397794,
+          "reference": 2.6,
+          "within": true
+        },
+        "cp_calibers": {
+          "error": -0.011782668820823794,
+          "reference": 4.04,
+          "within": true
+        }
+      },
+      "fineness": 5.0,
+      "hpr": {
+        "c_n_alpha": 2.5910891663996023,
+        "cp_calibers": 4.028217331179176
+      },
+      "mach": 3.0,
+      "nose": "cone",
+      "second_order": {
+        "c_n_alpha": {
+          "error": 0.001089166399602437,
+          "reference": 2.59,
+          "within": true
+        },
+        "cp_calibers": {
+          "error": 0.008217331179176668,
+          "reference": 4.02,
+          "within": true
+        }
+      }
+    },
+    {
+      "afterbody_calibers": 4.0,
+      "experiment": {
+        "c_n_alpha": {
+          "error": 0.010218887677994726,
+          "reference": 2.89,
+          "within": true
+        },
+        "cp_calibers": {
+          "error": -0.023086041269867685,
+          "reference": 4.46,
+          "within": true
+        }
+      },
+      "fineness": 5.0,
+      "hpr": {
+        "c_n_alpha": 2.900218887677995,
+        "cp_calibers": 4.436913958730132
+      },
+      "mach": 3.0,
+      "nose": "cone",
+      "second_order": {
+        "c_n_alpha": {
+          "error": 0.010218887677994726,
+          "reference": 2.89,
+          "within": true
+        },
+        "cp_calibers": {
+          "error": 0.006913958730132563,
+          "reference": 4.43,
+          "within": true
+        }
+      }
+    },
+    {
+      "afterbody_calibers": 6.0,
+      "experiment": {
+        "c_n_alpha": {
+          "error": 0.13445668852901616,
+          "reference": 2.9,
+          "within": true
+        },
+        "cp_calibers": {
+          "error": 0.14693286174579523,
+          "reference": 4.53,
+          "within": true
+        }
+      },
+      "fineness": 5.0,
+      "hpr": {
+        "c_n_alpha": 3.034456688529016,
+        "cp_calibers": 4.6769328617457955
+      },
+      "mach": 3.0,
+      "nose": "cone",
+      "second_order": {
+        "c_n_alpha": {
+          "error": 0.014456688529016049,
+          "reference": 3.02,
+          "within": true
+        },
+        "cp_calibers": {
+          "error": 0.016932861745795336,
+          "reference": 4.66,
+          "within": true
+        }
+      }
+    },
+    {
+      "afterbody_calibers": 8.0,
+      "experiment": {
+        "c_n_alpha": null,
+        "cp_calibers": null
+      },
+      "fineness": 5.0,
+      "hpr": {
+        "c_n_alpha": 3.092748680327147,
+        "cp_calibers": 4.812367271897649
+      },
+      "mach": 3.0,
+      "nose": "cone",
+      "second_order": {
+        "c_n_alpha": {
+          "error": 0.012748680327146822,
+          "reference": 3.08,
+          "within": true
+        },
+        "cp_calibers": {
+          "error": 0.02236727189764931,
+          "reference": 4.79,
+          "within": true
+        }
+      }
+    },
+    {
+      "afterbody_calibers": 10.0,
+      "experiment": {
+        "c_n_alpha": {
+          "error": 0.10806164199853541,
+          "reference": 3.01,
+          "within": true
+        },
+        "cp_calibers": {
+          "error": 0.005838306323024511,
+          "reference": 4.88,
+          "within": true
+        }
+      },
+      "fineness": 5.0,
+      "hpr": {
+        "c_n_alpha": 3.118061641998535,
+        "cp_calibers": 4.885838306323024
+      },
+      "mach": 3.0,
+      "nose": "cone",
+      "second_order": {
+        "c_n_alpha": {
+          "error": 0.018061641998535105,
+          "reference": 3.1,
+          "within": true
+        },
+        "cp_calibers": {
+          "error": 0.025838306323024085,
+          "reference": 4.86,
+          "within": true
+        }
+      }
+    },
+    {
+      "afterbody_calibers": 0.0,
+      "experiment": {
+        "c_n_alpha": {
+          "error": 0.048195051762004004,
+          "reference": 1.82,
+          "within": true
+        },
+        "cp_calibers": {
+          "error": 0.07333333333333414,
+          "reference": 3.26,
+          "within": true
+        }
+      },
+      "fineness": 5.0,
+      "hpr": {
+        "c_n_alpha": 1.868195051762004,
+        "cp_calibers": 3.333333333333334
+      },
+      "mach": 4.24,
+      "nose": "cone",
+      "second_order": {
+        "c_n_alpha": {
+          "error": -0.0018049482379960402,
+          "reference": 1.87,
+          "within": true
+        },
+        "cp_calibers": {
+          "error": 0.0033333333333338544,
+          "reference": 3.33,
+          "within": true
+        }
+      }
+    },
+    {
+      "afterbody_calibers": 2.0,
+      "experiment": {
+        "c_n_alpha": {
+          "error": 0.08868488305310995,
+          "reference": 2.46,
+          "within": true
+        },
+        "cp_calibers": {
+          "error": -0.0012057086772001568,
+          "reference": 4.02,
+          "within": true
+        }
+      },
+      "fineness": 5.0,
+      "hpr": {
+        "c_n_alpha": 2.54868488305311,
+        "cp_calibers": 4.018794291322799
+      },
+      "mach": 4.24,
+      "nose": "cone",
+      "second_order": {
+        "c_n_alpha": {
+          "error": 0.008684883053109882,
+          "reference": 2.54,
+          "within": true
+        },
+        "cp_calibers": {
+          "error": 0.00879429132279963,
+          "reference": 4.01,
+          "within": true
+        }
+      }
+    },
+    {
+      "afterbody_calibers": 4.0,
+      "experiment": {
+        "c_n_alpha": {
+          "error": 0.08224147333053411,
+          "reference": 2.84,
+          "within": true
+        },
+        "cp_calibers": {
+          "error": 0.04501881894731685,
+          "reference": 4.47,
+          "within": true
+        }
+      },
+      "fineness": 5.0,
+      "hpr": {
+        "c_n_alpha": 2.922241473330534,
+        "cp_calibers": 4.515018818947317
+      },
+      "mach": 4.24,
+      "nose": "cone",
+      "second_order": {
+        "c_n_alpha": {
+          "error": 0.012241473330533825,
+          "reference": 2.91,
+          "within": true
+        },
+        "cp_calibers": {
+          "error": 0.015018818947316603,
+          "reference": 4.5,
+          "within": true
+        }
+      }
+    },
+    {
+      "afterbody_calibers": 6.0,
+      "experiment": {
+        "c_n_alpha": {
+          "error": 0.11730629534989445,
+          "reference": 3.01,
+          "within": true
+        },
+        "cp_calibers": {
+          "error": -0.11183354786727229,
+          "reference": 4.98,
+          "within": true
+        }
+      },
+      "fineness": 5.0,
+      "hpr": {
+        "c_n_alpha": 3.1273062953498942,
+        "cp_calibers": 4.868166452132728
+      },
+      "mach": 4.24,
+      "nose": "cone",
+      "second_order": {
+        "c_n_alpha": {
+          "error": 0.017306295349894363,
+          "reference": 3.11,
+          "within": true
+        },
+        "cp_calibers": {
+          "error": 0.018166452132728494,
+          "reference": 4.85,
+          "within": true
+        }
+      }
+    },
+    {
+      "afterbody_calibers": 8.0,
+      "experiment": {
+        "c_n_alpha": null,
+        "cp_calibers": null
+      },
+      "fineness": 5.0,
+      "hpr": {
+        "c_n_alpha": 3.2398771409039835,
+        "cp_calibers": 5.112512491187363
+      },
+      "mach": 4.24,
+      "nose": "cone",
+      "second_order": {
+        "c_n_alpha": {
+          "error": 0.019877140903983292,
+          "reference": 3.22,
+          "within": true
+        },
+        "cp_calibers": {
+          "error": 0.032512491187363324,
+          "reference": 5.08,
+          "within": true
+        }
+      }
+    },
+    {
+      "afterbody_calibers": 10.0,
+      "experiment": {
+        "c_n_alpha": {
+          "error": 0.09167318736370333,
+          "reference": 3.21,
+          "within": true
+        },
+        "cp_calibers": {
+          "error": -0.113003832081227,
+          "reference": 5.39,
+          "within": true
+        }
+      },
+      "fineness": 5.0,
+      "hpr": {
+        "c_n_alpha": 3.3016731873637033,
+        "cp_calibers": 5.276996167918773
+      },
+      "mach": 4.24,
+      "nose": "cone",
+      "second_order": {
+        "c_n_alpha": {
+          "error": 0.03167318736370328,
+          "reference": 3.27,
+          "within": true
+        },
+        "cp_calibers": {
+          "error": 0.03699616791877247,
+          "reference": 5.24,
+          "within": true
+        }
+      }
+    },
+    {
+      "afterbody_calibers": 0.0,
+      "experiment": {
+        "c_n_alpha": {
+          "error": -0.04235050784499683,
+          "reference": 1.91,
+          "within": true
+        },
+        "cp_calibers": {
+          "error": -0.04666666666666597,
+          "reference": 3.38,
+          "within": true
+        }
+      },
+      "fineness": 5.0,
+      "hpr": {
+        "c_n_alpha": 1.867649492155003,
+        "cp_calibers": 3.333333333333334
+      },
+      "mach": 5.05,
+      "nose": "cone",
+      "second_order": {
+        "c_n_alpha": {
+          "error": -0.0023505078449970185,
+          "reference": 1.87,
+          "within": true
+        },
+        "cp_calibers": {
+          "error": 0.0033333333333338544,
+          "reference": 3.33,
+          "within": true
+        }
+      }
+    },
+    {
+      "afterbody_calibers": 2.0,
+      "experiment": {
+        "c_n_alpha": {
+          "error": 0.033690366120675996,
+          "reference": 2.48,
+          "within": true
+        },
+        "cp_calibers": {
+          "error": 0.006976047337049707,
+          "reference": 3.99,
+          "within": true
+        }
+      },
+      "fineness": 5.0,
+      "hpr": {
+        "c_n_alpha": 2.513690366120676,
+        "cp_calibers": 3.99697604733705
+      },
+      "mach": 5.05,
+      "nose": "cone",
+      "second_order": {
+        "c_n_alpha": {
+          "error": 0.0036903661206761917,
+          "reference": 2.51,
+          "within": true
+        },
+        "cp_calibers": {
+          "error": -0.00302395266295008,
+          "reference": 4.0,
+          "within": true
+        }
+      }
+    },
+    {
+      "afterbody_calibers": 4.0,
+      "experiment": {
+        "c_n_alpha": {
+          "error": 0.10197654803777612,
+          "reference": 2.8,
+          "within": true
+        },
+        "cp_calibers": {
+          "error": -0.018721657861719976,
+          "reference": 4.54,
+          "within": true
+        }
+      },
+      "fineness": 5.0,
+      "hpr": {
+        "c_n_alpha": 2.901976548037776,
+        "cp_calibers": 4.52127834213828
+      },
+      "mach": 5.05,
+      "nose": "cone",
+      "second_order": {
+        "c_n_alpha": {
+          "error": 0.001976548037776027,
+          "reference": 2.9,
+          "within": true
+        },
+        "cp_calibers": {
+          "error": 0.001278342138280486,
+          "reference": 4.52,
+          "within": true
+        }
+      }
+    },
+    {
+      "afterbody_calibers": 6.0,
+      "experiment": {
+        "c_n_alpha": {
+          "error": -0.07465407063764529,
+          "reference": 3.21,
+          "within": true
+        },
+        "cp_calibers": {
+          "error": -0.15721931671485745,
+          "reference": 5.08,
+          "within": true
+        }
+      },
+      "fineness": 5.0,
+      "hpr": {
+        "c_n_alpha": 3.1353459293623547,
+        "cp_calibers": 4.922780683285143
+      },
+      "mach": 5.05,
+      "nose": "cone",
+      "second_order": {
+        "c_n_alpha": {
+          "error": 0.005345929362354784,
+          "reference": 3.13,
+          "within": true
+        },
+        "cp_calibers": {
+          "error": 0.0027806832851426933,
+          "reference": 4.92,
+          "within": true
+        }
+      }
+    },
+    {
+      "afterbody_calibers": 8.0,
+      "experiment": {
+        "c_n_alpha": null,
+        "cp_calibers": null
+      },
+      "fineness": 5.0,
+      "hpr": {
+        "c_n_alpha": 3.2756065687467464,
+        "cp_calibers": 5.222207613958302
+      },
+      "mach": 5.05,
+      "nose": "cone",
+      "second_order": {
+        "c_n_alpha": {
+          "error": 0.005606568746746365,
+          "reference": 3.27,
+          "within": true
+        },
+        "cp_calibers": {
+          "error": 0.012207613958302055,
+          "reference": 5.21,
+          "within": true
+        }
+      }
+    },
+    {
+      "afterbody_calibers": 10.0,
+      "experiment": {
+        "c_n_alpha": {
+          "error": 0.09990660351933034,
+          "reference": 3.26,
+          "within": true
+        },
+        "cp_calibers": {
+          "error": 0.1903225384578402,
+          "reference": 5.25,
+          "within": true
+        }
+      },
+      "fineness": 5.0,
+      "hpr": {
+        "c_n_alpha": 3.35990660351933,
+        "cp_calibers": 5.44032253845784
+      },
+      "mach": 5.05,
+      "nose": "cone",
+      "second_order": {
+        "c_n_alpha": {
+          "error": 0.009906603519330037,
+          "reference": 3.35,
+          "within": true
+        },
+        "cp_calibers": {
+          "error": 0.01032253845784048,
+          "reference": 5.43,
+          "within": true
+        }
+      }
+    },
+    {
+      "afterbody_calibers": 0.0,
+      "experiment": {
+        "c_n_alpha": {
+          "error": 0.04713534735325009,
+          "reference": 1.83,
+          "within": true
+        },
+        "cp_calibers": {
+          "error": 0.08333333333333348,
+          "reference": 3.25,
+          "within": true
+        }
+      },
+      "fineness": 5.0,
+      "hpr": {
+        "c_n_alpha": 1.8771353473532502,
+        "cp_calibers": 3.3333333333333335
+      },
+      "mach": 6.28,
+      "nose": "cone",
+      "second_order": {
+        "c_n_alpha": {
+          "error": -0.0028646526467497324,
+          "reference": 1.88,
+          "within": true
+        },
+        "cp_calibers": {
+          "error": 0.0033333333333334103,
+          "reference": 3.33,
+          "within": true
+        }
+      }
+    },
+    {
+      "afterbody_calibers": 2.0,
+      "experiment": {
+        "c_n_alpha": {
+          "error": -0.022536419363116345,
+          "reference": 2.49,
+          "within": true
+        },
+        "cp_calibers": {
+          "error": -0.16519667096727986,
+          "reference": 4.12,
+          "within": true
+        }
+      },
+      "fineness": 5.0,
+      "hpr": {
+        "c_n_alpha": 2.467463580636884,
+        "cp_calibers": 3.9548033290327202
+      },
+      "mach": 6.28,
+      "nose": "cone",
+      "second_order": {
+        "c_n_alpha": {
+          "error": 0.007463580636883904,
+          "reference": 2.46,
+          "within": true
+        },
+        "cp_calibers": {
+          "error": 0.004803329032720072,
+          "reference": 3.95,
+          "within": true
+        }
+      }
+    },
+    {
+      "afterbody_calibers": 4.0,
+      "experiment": {
+        "c_n_alpha": {
+          "error": 0.13712235843861276,
+          "reference": 2.72,
+          "within": true
+        },
+        "cp_calibers": {
+          "error": 0.017078254545983107,
+          "reference": 4.48,
+          "within": true
+        }
+      },
+      "fineness": 5.0,
+      "hpr": {
+        "c_n_alpha": 2.857122358438613,
+        "cp_calibers": 4.4970782545459835
+      },
+      "mach": 6.28,
+      "nose": "cone",
+      "second_order": {
+        "c_n_alpha": {
+          "error": 0.017122358438613094,
+          "reference": 2.84,
+          "within": true
+        },
+        "cp_calibers": {
+          "error": 0.017078254545983107,
+          "reference": 4.48,
+          "within": true
+        }
+      }
+    },
+    {
+      "afterbody_calibers": 6.0,
+      "experiment": {
+        "c_n_alpha": {
+          "error": 0.13432496972721486,
+          "reference": 2.98,
+          "within": true
+        },
+        "cp_calibers": {
+          "error": -0.004153696138831542,
+          "reference": 4.95,
+          "within": true
+        }
+      },
+      "fineness": 5.0,
+      "hpr": {
+        "c_n_alpha": 3.114324969727215,
+        "cp_calibers": 4.945846303861169
+      },
+      "mach": 6.28,
+      "nose": "cone",
+      "second_order": {
+        "c_n_alpha": {
+          "error": 0.03432496972721477,
+          "reference": 3.08,
+          "within": true
+        },
+        "cp_calibers": {
+          "error": 0.035846303861168494,
+          "reference": 4.91,
+          "within": true
+        }
+      }
+    },
+    {
+      "afterbody_calibers": 8.0,
+      "experiment": {
+        "c_n_alpha": null,
+        "cp_calibers": null
+      },
+      "fineness": 5.0,
+      "hpr": {
+        "c_n_alpha": 3.2840970550036737,
+        "cp_calibers": 5.3069434141683045
+      },
+      "mach": 6.28,
+      "nose": "cone",
+      "second_order": {
+        "c_n_alpha": {
+          "error": 0.04409705500367345,
+          "reference": 3.24,
+          "within": true
+        },
+        "cp_calibers": {
+          "error": 0.05694341416830451,
+          "reference": 5.25,
+          "within": true
+        }
+      }
+    },
+    {
+      "afterbody_calibers": 10.0,
+      "experiment": {
+        "c_n_alpha": {
+          "error": 0.17615875140214277,
+          "reference": 3.22,
+          "within": true
+        },
+        "cp_calibers": {
+          "error": 0.2715067754646654,
+          "reference": 5.32,
+          "within": false
+        }
+      },
+      "fineness": 5.0,
+      "hpr": {
+        "c_n_alpha": 3.396158751402143,
+        "cp_calibers": 5.591506775464666
+      },
+      "mach": 6.28,
+      "nose": "cone",
+      "second_order": {
+        "c_n_alpha": {
+          "error": 0.06615875140214289,
+          "reference": 3.33,
+          "within": false
+        },
+        "cp_calibers": {
+          "error": 0.0715067754646661,
+          "reference": 5.52,
+          "within": true
+        }
+      }
+    },
+    {
+      "afterbody_calibers": 0.0,
+      "experiment": {
+        "c_n_alpha": {
+          "error": -0.03408554428828192,
+          "reference": 1.86,
+          "within": true
+        },
+        "cp_calibers": {
+          "error": -0.08000000000000007,
+          "reference": 2.08,
+          "within": true
+        }
+      },
+      "fineness": 3.0,
+      "hpr": {
+        "c_n_alpha": 1.8259144557117182,
+        "cp_calibers": 2.0
+      },
+      "mach": 3.0,
+      "nose": "cone",
+      "second_order": {
+        "c_n_alpha": {
+          "error": -0.004085544288281895,
+          "reference": 1.83,
+          "within": true
+        },
+        "cp_calibers": {
+          "error": 0.0,
+          "reference": 2.0,
+          "within": true
+        }
+      }
+    },
+    {
+      "afterbody_calibers": 2.0,
+      "experiment": {
+        "c_n_alpha": {
+          "error": 0.01889234347605706,
+          "reference": 2.72,
+          "within": true
+        },
+        "cp_calibers": {
+          "error": -0.07992319692113714,
+          "reference": 2.7,
+          "within": true
+        }
+      },
+      "fineness": 3.0,
+      "hpr": {
+        "c_n_alpha": 2.7388923434760573,
+        "cp_calibers": 2.620076803078863
+      },
+      "mach": 3.0,
+      "nose": "cone",
+      "second_order": {
+        "c_n_alpha": {
+          "error": -0.001107656523942957,
+          "reference": 2.74,
+          "within": true
+        },
+        "cp_calibers": {
+          "error": 0.00007680307886293036,
+          "reference": 2.62,
+          "within": true
+        }
+      }
+    },
+    {
+      "afterbody_calibers": 4.0,
+      "experiment": {
+        "c_n_alpha": {
+          "error": -0.020421285022453883,
+          "reference": 3.15,
+          "within": true
+        },
+        "cp_calibers": {
+          "error": -0.07543652100943543,
+          "reference": 3.1,
+          "within": true
+        }
+      },
+      "fineness": 3.0,
+      "hpr": {
+        "c_n_alpha": 3.129578714977546,
+        "cp_calibers": 3.0245634789905647
+      },
+      "mach": 3.0,
+      "nose": "cone",
+      "second_order": {
+        "c_n_alpha": {
+          "error": -0.00042128502245386557,
+          "reference": 3.13,
+          "within": true
+        },
+        "cp_calibers": {
+          "error": 0.00456347899056464,
+          "reference": 3.02,
+          "within": true
+        }
+      }
+    },
+    {
+      "afterbody_calibers": 6.0,
+      "experiment": {
+        "c_n_alpha": {
+          "error": 0.046763312679869884,
+          "reference": 3.25,
+          "within": true
+        },
+        "cp_calibers": {
+          "error": 0.1697871307589578,
+          "reference": 3.1,
+          "within": true
+        }
+      },
+      "fineness": 3.0,
+      "hpr": {
+        "c_n_alpha": 3.29676331267987,
+        "cp_calibers": 3.269787130758958
+      },
+      "mach": 3.0,
+      "nose": "cone",
+      "second_order": {
+        "c_n_alpha": {
+          "error": 0.006763312679869848,
+          "reference": 3.29,
+          "within": true
+        },
+        "cp_calibers": {
+          "error": -0.00021286924104213512,
+          "reference": 3.27,
+          "within": true
+        }
+      }
+    },
+    {
+      "afterbody_calibers": 8.0,
+      "experiment": {
+        "c_n_alpha": null,
+        "cp_calibers": null
+      },
+      "fineness": 3.0,
+      "hpr": {
+        "c_n_alpha": 3.3683058382137596,
+        "cp_calibers": 3.409766981590521
+      },
+      "mach": 3.0,
+      "nose": "cone",
+      "second_order": {
+        "c_n_alpha": {
+          "error": 0.008305838213759742,
+          "reference": 3.36,
+          "within": true
+        },
+        "cp_calibers": {
+          "error": 0.009766981590521251,
+          "reference": 3.4,
+          "within": true
+        }
+      }
+    },
+    {
+      "afterbody_calibers": 10.0,
+      "experiment": {
+        "c_n_alpha": {
+          "error": 0.02892069765721539,
+          "reference": 3.37,
+          "within": true
+        },
+        "cp_calibers": {
+          "error": -0.024118006051546015,
+          "reference": 3.51,
+          "within": true
+        }
+      },
+      "fineness": 3.0,
+      "hpr": {
+        "c_n_alpha": 3.3989206976572155,
+        "cp_calibers": 3.4858819939484538
+      },
+      "mach": 3.0,
+      "nose": "cone",
+      "second_order": {
+        "c_n_alpha": {
+          "error": -0.0010793023427844162,
+          "reference": 3.4,
+          "within": true
+        },
+        "cp_calibers": {
+          "error": 0.00588199394845379,
+          "reference": 3.48,
+          "within": true
+        }
+      }
+    },
+    {
+      "afterbody_calibers": 0.0,
+      "experiment": {
+        "c_n_alpha": {
+          "error": 0.015878938741624715,
+          "reference": 1.83,
+          "within": true
+        },
+        "cp_calibers": {
+          "error": -0.1899999999999995,
+          "reference": 2.19,
+          "within": true
+        }
+      },
+      "fineness": 3.0,
+      "hpr": {
+        "c_n_alpha": 1.8458789387416248,
+        "cp_calibers": 2.0000000000000004
+      },
+      "mach": 4.24,
+      "nose": "cone",
+      "second_order": {
+        "c_n_alpha": {
+          "error": -0.004121061258375303,
+          "reference": 1.85,
+          "within": true
+        },
+        "cp_calibers": {
+          "error": 4.440892098500626e-16,
+          "reference": 2.0,
+          "within": true
+        }
+      }
+    },
+    {
+      "afterbody_calibers": 2.0,
+      "experiment": {
+        "c_n_alpha": {
+          "error": 0.11353529114173577,
+          "reference": 2.55,
+          "within": true
+        },
+        "cp_calibers": {
+          "error": -0.09731448789352815,
+          "reference": 2.68,
+          "within": true
+        }
+      },
+      "fineness": 3.0,
+      "hpr": {
+        "c_n_alpha": 2.6635352911417356,
+        "cp_calibers": 2.582685512106472
+      },
+      "mach": 4.24,
+      "nose": "cone",
+      "second_order": {
+        "c_n_alpha": {
+          "error": 0.0035352911417354527,
+          "reference": 2.66,
+          "within": true
+        },
+        "cp_calibers": {
+          "error": 0.0026855121064719434,
+          "reference": 2.58,
+          "within": true
+        }
+      }
+    },
+    {
+      "afterbody_calibers": 4.0,
+      "experiment": {
+        "c_n_alpha": {
+          "error": -0.014482616520518743,
+          "reference": 3.12,
+          "within": true
+        },
+        "cp_calibers": {
+          "error": -0.12545778763171134,
+          "reference": 3.18,
+          "within": true
+        }
+      },
+      "fineness": 3.0,
+      "hpr": {
+        "c_n_alpha": 3.1055173834794814,
+        "cp_calibers": 3.054542212368289
+      },
+      "mach": 4.24,
+      "nose": "cone",
+      "second_order": {
+        "c_n_alpha": {
+          "error": 0.005517383479481275,
+          "reference": 3.1,
+          "within": true
+        },
+        "cp_calibers": {
+          "error": 0.004542212368289,
+          "reference": 3.05,
+          "within": true
+        }
+      }
+    },
+    {
+      "afterbody_calibers": 6.0,
+      "experiment": {
+        "c_n_alpha": {
+          "error": 0.06442969593670833,
+          "reference": 3.28,
+          "within": true
+        },
+        "cp_calibers": {
+          "error": 0.050546939702800664,
+          "reference": 3.35,
+          "within": true
+        }
+      },
+      "fineness": 3.0,
+      "hpr": {
+        "c_n_alpha": 3.344429695936708,
+        "cp_calibers": 3.4005469397028008
+      },
+      "mach": 4.24,
+      "nose": "cone",
+      "second_order": {
+        "c_n_alpha": {
+          "error": 0.014429695936708065,
+          "reference": 3.33,
+          "within": true
+        },
+        "cp_calibers": {
+          "error": 0.02054693970280086,
+          "reference": 3.38,
+          "within": true
+        }
+      }
+    },
+    {
+      "afterbody_calibers": 8.0,
+      "experiment": {
+        "c_n_alpha": null,
+        "cp_calibers": null
+      },
+      "fineness": 3.0,
+      "hpr": {
+        "c_n_alpha": 3.4735731477488723,
+        "cp_calibers": 3.6421189345636416
+      },
+      "mach": 4.24,
+      "nose": "cone",
+      "second_order": {
+        "c_n_alpha": {
+          "error": 0.023573147748872092,
+          "reference": 3.45,
+          "within": true
+        },
+        "cp_calibers": {
+          "error": 0.03211893456364168,
+          "reference": 3.61,
+          "within": true
+        }
+      }
+    },
+    {
+      "afterbody_calibers": 10.0,
+      "experiment": {
+        "c_n_alpha": {
+          "error": 0.09338131700740337,
+          "reference": 3.45,
+          "within": true
+        },
+        "cp_calibers": {
+          "error": -0.015229711405629232,
+          "reference": 3.82,
+          "within": true
+        }
+      },
+      "fineness": 3.0,
+      "hpr": {
+        "c_n_alpha": 3.5433813170074036,
+        "cp_calibers": 3.8047702885943706
+      },
+      "mach": 4.24,
+      "nose": "cone",
+      "second_order": {
+        "c_n_alpha": {
+          "error": 0.023381317007403535,
+          "reference": 3.52,
+          "within": true
+        },
+        "cp_calibers": {
+          "error": 0.03477028859437059,
+          "reference": 3.77,
+          "within": true
+        }
+      }
+    },
+    {
+      "afterbody_calibers": 0.0,
+      "experiment": {
+        "c_n_alpha": {
+          "error": -0.018486966624076562,
+          "reference": 1.88,
+          "within": true
+        },
+        "cp_calibers": {
+          "error": -0.10000000000000009,
+          "reference": 2.1,
+          "within": true
+        }
+      },
+      "fineness": 3.0,
+      "hpr": {
+        "c_n_alpha": 1.8615130333759233,
+        "cp_calibers": 2.0
+      },
+      "mach": 5.05,
+      "nose": "cone",
+      "second_order": {
+        "c_n_alpha": {
+          "error": 0.001513033375923234,
+          "reference": 1.86,
+          "within": true
+        },
+        "cp_calibers": {
+          "error": 0.0,
+          "reference": 2.0,
+          "within": true
+        }
+      }
+    },
+    {
+      "afterbody_calibers": 2.0,
+      "experiment": {
+        "c_n_alpha": {
+          "error": 0.057259551722781854,
+          "reference": 2.55,
+          "within": true
+        },
+        "cp_calibers": {
+          "error": 0.027268096007473375,
+          "reference": 2.52,
+          "within": true
+        }
+      },
+      "fineness": 3.0,
+      "hpr": {
+        "c_n_alpha": 2.6072595517227817,
+        "cp_calibers": 2.5472680960074734
+      },
+      "mach": 5.05,
+      "nose": "cone",
+      "second_order": {
+        "c_n_alpha": {
+          "error": -0.0027404482772181993,
+          "reference": 2.61,
+          "within": true
+        },
+        "cp_calibers": {
+          "error": -0.00273190399252643,
+          "reference": 2.55,
+          "within": true
+        }
+      }
+    },
+    {
+      "afterbody_calibers": 4.0,
+      "experiment": {
+        "c_n_alpha": {
+          "error": -0.07039406627342482,
+          "reference": 3.12,
+          "within": true
+        },
+        "cp_calibers": {
+          "error": -0.19448137777849794,
+          "reference": 3.23,
+          "within": true
+        }
+      },
+      "fineness": 3.0,
+      "hpr": {
+        "c_n_alpha": 3.0496059337265753,
+        "cp_calibers": 3.035518622221502
+      },
+      "mach": 5.05,
+      "nose": "cone",
+      "second_order": {
+        "c_n_alpha": {
+          "error": -0.0003940662734245315,
+          "reference": 3.05,
+          "within": true
+        },
+        "cp_calibers": {
+          "error": 0.01551862222150202,
+          "reference": 3.02,
+          "within": true
+        }
+      }
+    },
+    {
+      "afterbody_calibers": 6.0,
+      "experiment": {
+        "c_n_alpha": {
+          "error": -0.1280122557547494,
+          "reference": 3.44,
+          "within": true
+        },
+        "cp_calibers": {
+          "error": 0.05194903017395802,
+          "reference": 3.37,
+          "within": true
+        }
+      },
+      "fineness": 3.0,
+      "hpr": {
+        "c_n_alpha": 3.3119877442452506,
+        "cp_calibers": 3.421949030173958
+      },
+      "mach": 5.05,
+      "nose": "cone",
+      "second_order": {
+        "c_n_alpha": {
+          "error": 0.0019877442452505,
+          "reference": 3.31,
+          "within": true
+        },
+        "cp_calibers": {
+          "error": 0.0019490301739581994,
+          "reference": 3.42,
+          "within": true
+        }
+      }
+    },
+    {
+      "afterbody_calibers": 8.0,
+      "experiment": {
+        "c_n_alpha": null,
+        "cp_calibers": null
+      },
+      "fineness": 3.0,
+      "hpr": {
+        "c_n_alpha": 3.4676219198413047,
+        "cp_calibers": 3.713296529929911
+      },
+      "mach": 5.05,
+      "nose": "cone",
+      "second_order": {
+        "c_n_alpha": {
+          "error": 0.007621919841304781,
+          "reference": 3.46,
+          "within": true
+        },
+        "cp_calibers": {
+          "error": 0.0032965299299112516,
+          "reference": 3.71,
+          "within": true
+        }
+      }
+    },
+    {
+      "afterbody_calibers": 10.0,
+      "experiment": {
+        "c_n_alpha": {
+          "error": -0.07006224254182136,
+          "reference": 3.63,
+          "within": true
+        },
+        "cp_calibers": {
+          "error": 0.10593909417944047,
+          "reference": 3.82,
+          "within": true
+        }
+      },
+      "fineness": 3.0,
+      "hpr": {
+        "c_n_alpha": 3.5599377574581785,
+        "cp_calibers": 3.9259390941794403
+      },
+      "mach": 5.05,
+      "nose": "cone",
+      "second_order": {
+        "c_n_alpha": {
+          "error": 0.009937757458178709,
+          "reference": 3.55,
+          "within": true
+        },
+        "cp_calibers": {
+          "error": 0.005939094179440385,
+          "reference": 3.92,
+          "within": true
+        }
+      }
+    },
+    {
+      "afterbody_calibers": 0.0,
+      "experiment": {
+        "c_n_alpha": {
+          "error": 0.002533033375923255,
+          "reference": 1.88,
+          "within": true
+        },
+        "cp_calibers": {
+          "error": -0.02999999999999936,
+          "reference": 2.03,
+          "within": true
+        }
+      },
+      "fineness": 3.0,
+      "hpr": {
+        "c_n_alpha": 1.8825330333759231,
+        "cp_calibers": 2.0000000000000004
+      },
+      "mach": 6.28,
+      "nose": "cone",
+      "second_order": {
+        "c_n_alpha": {
+          "error": 0.002533033375923255,
+          "reference": 1.88,
+          "within": true
+        },
+        "cp_calibers": {
+          "error": 4.440892098500626e-16,
+          "reference": 2.0,
+          "within": true
+        }
+      }
+    },
+    {
+      "afterbody_calibers": 2.0,
+      "experiment": {
+        "c_n_alpha": {
+          "error": -0.055746030845195804,
+          "reference": 2.58,
+          "within": true
+        },
+        "cp_calibers": {
+          "error": -0.029500697889605743,
+          "reference": 2.52,
+          "within": true
+        }
+      },
+      "fineness": 3.0,
+      "hpr": {
+        "c_n_alpha": 2.5242539691548043,
+        "cp_calibers": 2.4904993021103943
+      },
+      "mach": 6.28,
+      "nose": "cone",
+      "second_order": {
+        "c_n_alpha": {
+          "error": -0.005746030845195538,
+          "reference": 2.53,
+          "within": true
+        },
+        "cp_calibers": {
+          "error": 0.000499302110394062,
+          "reference": 2.49,
+          "within": true
+        }
+      }
+    },
+    {
+      "afterbody_calibers": 4.0,
+      "experiment": {
+        "c_n_alpha": {
+          "error": 0.07387849097203647,
+          "reference": 2.87,
+          "within": true
+        },
+        "cp_calibers": {
+          "error": -0.1793131503488925,
+          "reference": 3.16,
+          "within": true
+        }
+      },
+      "fineness": 3.0,
+      "hpr": {
+        "c_n_alpha": 2.9438784909720366,
+        "cp_calibers": 2.9806868496511076
+      },
+      "mach": 6.28,
+      "nose": "cone",
+      "second_order": {
+        "c_n_alpha": {
+          "error": -0.006121509027963601,
+          "reference": 2.95,
+          "within": true
+        },
+        "cp_calibers": {
+          "error": 0.0006868496511076572,
+          "reference": 2.98,
+          "within": true
+        }
+      }
+    },
+    {
+      "afterbody_calibers": 6.0,
+      "experiment": {
+        "c_n_alpha": {
+          "error": 0.028273059534179357,
+          "reference": 3.19,
+          "within": true
+        },
+        "cp_calibers": {
+          "error": -0.09737766128895542,
+          "reference": 3.5,
+          "within": true
+        }
+      },
+      "fineness": 3.0,
+      "hpr": {
+        "c_n_alpha": 3.2182730595341793,
+        "cp_calibers": 3.4026223387110446
+      },
+      "mach": 6.28,
+      "nose": "cone",
+      "second_order": {
+        "c_n_alpha": {
+          "error": -0.001726940465820892,
+          "reference": 3.22,
+          "within": true
+        },
+        "cp_calibers": {
+          "error": 0.0026223387110446694,
+          "reference": 3.4,
+          "within": true
+        }
+      }
+    },
+    {
+      "afterbody_calibers": 8.0,
+      "experiment": {
+        "c_n_alpha": null,
+        "cp_calibers": null
+      },
+      "fineness": 3.0,
+      "hpr": {
+        "c_n_alpha": 3.3977010370278253,
+        "cp_calibers": 3.7472932975445024
+      },
+      "mach": 6.28,
+      "nose": "cone",
+      "second_order": {
+        "c_n_alpha": {
+          "error": -0.0022989629721745786,
+          "reference": 3.4,
+          "within": true
+        },
+        "cp_calibers": {
+          "error": -0.002706702455497645,
+          "reference": 3.75,
+          "within": true
+        }
+      }
+    },
+    {
+      "afterbody_calibers": 10.0,
+      "experiment": {
+        "c_n_alpha": {
+          "error": 0.14502988677934514,
+          "reference": 3.37,
+          "within": true
+        },
+        "cp_calibers": {
+          "error": 0.2504058289857283,
+          "reference": 3.77,
+          "within": false
+        }
+      },
+      "fineness": 3.0,
+      "hpr": {
+        "c_n_alpha": 3.5150298867793452,
+        "cp_calibers": 4.020405828985728
+      },
+      "mach": 6.28,
+      "nose": "cone",
+      "second_order": {
+        "c_n_alpha": {
+          "error": -0.0049701132206547705,
+          "reference": 3.52,
+          "within": true
+        },
+        "cp_calibers": {
+          "error": 0.04040582898572831,
+          "reference": 3.98,
+          "within": true
+        }
+      }
+    },
+    {
+      "afterbody_calibers": 0.0,
+      "experiment": {
+        "c_n_alpha": {
+          "error": -0.10203572289059437,
+          "reference": 2.51,
+          "within": true
+        },
+        "cp_calibers": {
+          "error": -0.08594129737685963,
+          "reference": 3.79,
+          "within": true
+        }
+      },
+      "fineness": 7.0,
+      "hpr": {
+        "c_n_alpha": 2.4079642771094054,
+        "cp_calibers": 3.7040587026231404
+      },
+      "mach": 3.0,
+      "nose": "ogive",
+      "second_order": {
+        "c_n_alpha": {
+          "error": 0.01796427710940529,
+          "reference": 2.39,
+          "within": true
+        },
+        "cp_calibers": {
+          "error": -0.025941297376859573,
+          "reference": 3.73,
+          "within": true
+        }
+      }
+    },
+    {
+      "afterbody_calibers": 2.0,
+      "experiment": {
+        "c_n_alpha": {
+          "error": -0.02234608302079133,
+          "reference": 2.72,
+          "within": true
+        },
+        "cp_calibers": {
+          "error": 0.029984318236309093,
+          "reference": 4.12,
+          "within": true
+        }
+      },
+      "fineness": 7.0,
+      "hpr": {
+        "c_n_alpha": 2.697653916979209,
+        "cp_calibers": 4.149984318236309
+      },
+      "mach": 3.0,
+      "nose": "ogive",
+      "second_order": {
+        "c_n_alpha": {
+          "error": -0.02234608302079133,
+          "reference": 2.72,
+          "within": true
+        },
+        "cp_calibers": {
+          "error": -0.08001568176369123,
+          "reference": 4.23,
+          "within": true
+        }
+      }
+    },
+    {
+      "afterbody_calibers": 4.0,
+      "experiment": {
+        "c_n_alpha": {
+          "error": -0.021116379697115217,
+          "reference": 2.84,
+          "within": true
+        },
+        "cp_calibers": {
+          "error": 0.0754053515492279,
+          "reference": 4.32,
+          "within": true
+        }
+      },
+      "fineness": 7.0,
+      "hpr": {
+        "c_n_alpha": 2.8188836203028846,
+        "cp_calibers": 4.395405351549228
+      },
+      "mach": 3.0,
+      "nose": "ogive",
+      "second_order": {
+        "c_n_alpha": {
+          "error": -0.041116379697115235,
+          "reference": 2.86,
+          "within": true
+        },
+        "cp_calibers": {
+          "error": -0.10459464845077182,
+          "reference": 4.5,
+          "within": false
+        }
+      }
+    },
+    {
+      "afterbody_calibers": 6.0,
+      "experiment": {
+        "c_n_alpha": {
+          "error": 0.029615986757380863,
+          "reference": 2.84,
+          "within": true
+        },
+        "cp_calibers": {
+          "error": 0.12731321023560938,
+          "reference": 4.4,
+          "within": true
+        }
+      },
+      "fineness": 7.0,
+      "hpr": {
+        "c_n_alpha": 2.8696159867573807,
+        "cp_calibers": 4.52731321023561
+      },
+      "mach": 3.0,
+      "nose": "ogive",
+      "second_order": {
+        "c_n_alpha": {
+          "error": -0.04038401324261942,
+          "reference": 2.91,
+          "within": true
+        },
+        "cp_calibers": {
+          "error": -0.10268678976439016,
+          "reference": 4.63,
+          "within": false
+        }
+      }
+    },
+    {
+      "afterbody_calibers": 8.0,
+      "experiment": {
+        "c_n_alpha": null,
+        "cp_calibers": null
+      },
+      "fineness": 7.0,
+      "hpr": {
+        "c_n_alpha": 2.8908465345151493,
+        "cp_calibers": 4.595828165099262
+      },
+      "mach": 3.0,
+      "nose": "ogive",
+      "second_order": {
+        "c_n_alpha": {
+          "error": -0.04915346548485067,
+          "reference": 2.94,
+          "within": true
+        },
+        "cp_calibers": {
+          "error": -0.10417183490073789,
+          "reference": 4.7,
+          "within": false
+        }
+      }
+    },
+    {
+      "afterbody_calibers": 10.0,
+      "experiment": {
+        "c_n_alpha": {
+          "error": 0.04973112219743614,
+          "reference": 2.85,
+          "within": true
+        },
+        "cp_calibers": {
+          "error": 0.08033048874500892,
+          "reference": 4.55,
+          "within": true
+        }
+      },
+      "fineness": 7.0,
+      "hpr": {
+        "c_n_alpha": 2.8997311221974362,
+        "cp_calibers": 4.630330488745009
+      },
+      "mach": 3.0,
+      "nose": "ogive",
+      "second_order": {
+        "c_n_alpha": {
+          "error": -0.04026887780256372,
+          "reference": 2.94,
+          "within": true
+        },
+        "cp_calibers": {
+          "error": -0.10966951125499147,
+          "reference": 4.74,
+          "within": false
+        }
+      }
+    },
+    {
+      "afterbody_calibers": 0.0,
+      "experiment": {
+        "c_n_alpha": {
+          "error": -0.017084383657357982,
+          "reference": 2.4,
+          "within": true
+        },
+        "cp_calibers": {
+          "error": 0.008903428093769428,
+          "reference": 3.7,
+          "within": true
+        }
+      },
+      "fineness": 7.0,
+      "hpr": {
+        "c_n_alpha": 2.382915616342642,
+        "cp_calibers": 3.7089034280937696
+      },
+      "mach": 4.24,
+      "nose": "ogive",
+      "second_order": {
+        "c_n_alpha": {
+          "error": -0.017084383657357982,
+          "reference": 2.4,
+          "within": true
+        },
+        "cp_calibers": {
+          "error": -0.041096571906230395,
+          "reference": 3.75,
+          "within": true
+        }
+      }
+    },
+    {
+      "afterbody_calibers": 2.0,
+      "experiment": {
+        "c_n_alpha": {
+          "error": 0.08113153446595911,
+          "reference": 2.64,
+          "within": true
+        },
+        "cp_calibers": {
+          "error": 0.14967099190090405,
+          "reference": 4.08,
+          "within": true
+        }
+      },
+      "fineness": 7.0,
+      "hpr": {
+        "c_n_alpha": 2.7211315344659592,
+        "cp_calibers": 4.229670991900904
+      },
+      "mach": 4.24,
+      "nose": "ogive",
+      "second_order": {
+        "c_n_alpha": {
+          "error": -0.048868465534040784,
+          "reference": 2.77,
+          "within": true
+        },
+        "cp_calibers": {
+          "error": -0.0703290080990957,
+          "reference": 4.3,
+          "within": true
+        }
+      }
+    },
+    {
+      "afterbody_calibers": 4.0,
+      "experiment": {
+        "c_n_alpha": {
+          "error": -0.015318331819844211,
+          "reference": 2.92,
+          "within": true
+        },
+        "cp_calibers": {
+          "error": -0.17209267547410168,
+          "reference": 4.76,
+          "within": true
+        }
+      },
+      "fineness": 7.0,
+      "hpr": {
+        "c_n_alpha": 2.9046816681801557,
+        "cp_calibers": 4.587907324525898
+      },
+      "mach": 4.24,
+      "nose": "ogive",
+      "second_order": {
+        "c_n_alpha": {
+          "error": -0.04531833181984446,
+          "reference": 2.95,
+          "within": true
+        },
+        "cp_calibers": {
+          "error": -0.062092675474102244,
+          "reference": 4.65,
+          "within": true
+        }
+      }
+    },
+    {
+      "afterbody_calibers": 6.0,
+      "experiment": {
+        "c_n_alpha": {
+          "error": -0.10570548162213322,
+          "reference": 3.11,
+          "within": true
+        },
+        "cp_calibers": {
+          "error": -0.14968797144972523,
+          "reference": 4.98,
+          "within": true
+        }
+      },
+      "fineness": 7.0,
+      "hpr": {
+        "c_n_alpha": 3.0042945183778667,
+        "cp_calibers": 4.830312028550275
+      },
+      "mach": 4.24,
+      "nose": "ogive",
+      "second_order": {
+        "c_n_alpha": {
+          "error": -0.035705481622133384,
+          "reference": 3.04,
+          "within": true
+        },
+        "cp_calibers": {
+          "error": -0.03968797144972491,
+          "reference": 4.87,
+          "within": true
+        }
+      }
+    },
+    {
+      "afterbody_calibers": 8.0,
+      "experiment": {
+        "c_n_alpha": null,
+        "cp_calibers": null
+      },
+      "fineness": 7.0,
+      "hpr": {
+        "c_n_alpha": 3.0583545167212187,
+        "cp_calibers": 4.990607512913628
+      },
+      "mach": 4.24,
+      "nose": "ogive",
+      "second_order": {
+        "c_n_alpha": {
+          "error": -0.03164548327878114,
+          "reference": 3.09,
+          "within": true
+        },
+        "cp_calibers": {
+          "error": -0.009392487086372192,
+          "reference": 5.0,
+          "within": true
+        }
+      }
+    },
+    {
+      "afterbody_calibers": 10.0,
+      "experiment": {
+        "c_n_alpha": {
+          "error": -0.022307065443302854,
+          "reference": 3.11,
+          "within": true
+        },
+        "cp_calibers": {
+          "error": -0.06574616725082283,
+          "reference": 5.16,
+          "within": true
+        }
+      },
+      "fineness": 7.0,
+      "hpr": {
+        "c_n_alpha": 3.087692934556697,
+        "cp_calibers": 5.094253832749177
+      },
+      "mach": 4.24,
+      "nose": "ogive",
+      "second_order": {
+        "c_n_alpha": {
+          "error": -0.022307065443302854,
+          "reference": 3.11,
+          "within": true
+        },
+        "cp_calibers": {
+          "error": 0.014253832749177242,
+          "reference": 5.08,
+          "within": true
+        }
+      }
+    },
+    {
+      "afterbody_calibers": 0.0,
+      "experiment": {
+        "c_n_alpha": {
+          "error": 0.06882487616965527,
+          "reference": 2.29,
+          "within": true
+        },
+        "cp_calibers": {
+          "error": -0.04759117585958972,
+          "reference": 3.75,
+          "within": true
+        }
+      },
+      "fineness": 7.0,
+      "hpr": {
+        "c_n_alpha": 2.3588248761696553,
+        "cp_calibers": 3.7024088241404103
+      },
+      "mach": 5.05,
+      "nose": "ogive",
+      "second_order": {
+        "c_n_alpha": {
+          "error": -0.02117512383034459,
+          "reference": 2.38,
+          "within": true
+        },
+        "cp_calibers": {
+          "error": -0.04759117585958972,
+          "reference": 3.75,
+          "within": true
+        }
+      }
+    },
+    {
+      "afterbody_calibers": 2.0,
+      "experiment": {
+        "c_n_alpha": {
+          "error": 0.03218477408310649,
+          "reference": 2.68,
+          "within": true
+        },
+        "cp_calibers": {
+          "error": -0.06898214718795259,
+          "reference": 4.32,
+          "within": true
+        }
+      },
+      "fineness": 7.0,
+      "hpr": {
+        "c_n_alpha": 2.7121847740831067,
+        "cp_calibers": 4.251017852812048
+      },
+      "mach": 5.05,
+      "nose": "ogive",
+      "second_order": {
+        "c_n_alpha": {
+          "error": -0.057815225916893365,
+          "reference": 2.77,
+          "within": false
+        },
+        "cp_calibers": {
+          "error": -0.08898214718795217,
+          "reference": 4.34,
+          "within": true
+        }
+      }
+    },
+    {
+      "afterbody_calibers": 4.0,
+      "experiment": {
+        "c_n_alpha": {
+          "error": 0.06161490655353585,
+          "reference": 2.86,
+          "within": true
+        },
+        "cp_calibers": {
+          "error": -0.20309904753788555,
+          "reference": 4.86,
+          "within": false
+        }
+      },
+      "fineness": 7.0,
+      "hpr": {
+        "c_n_alpha": 2.9216149065535357,
+        "cp_calibers": 4.656900952462115
+      },
+      "mach": 5.05,
+      "nose": "ogive",
+      "second_order": {
+        "c_n_alpha": {
+          "error": -0.06838509344646448,
+          "reference": 2.99,
+          "within": false
+        },
+        "cp_calibers": {
+          "error": -0.07309904753788565,
+          "reference": 4.73,
+          "within": true
+        }
+      }
+    },
+    {
+      "afterbody_calibers": 6.0,
+      "experiment": {
+        "c_n_alpha": {
+          "error": 0.10574042460347588,
+          "reference": 2.94,
+          "within": true
+        },
+        "cp_calibers": {
+          "error": -0.147376737562948,
+          "reference": 5.1,
+          "within": true
+        }
+      },
+      "fineness": 7.0,
+      "hpr": {
+        "c_n_alpha": 3.045740424603476,
+        "cp_calibers": 4.952623262437052
+      },
+      "mach": 5.05,
+      "nose": "ogive",
+      "second_order": {
+        "c_n_alpha": {
+          "error": -0.06425957539652405,
+          "reference": 3.11,
+          "within": false
+        },
+        "cp_calibers": {
+          "error": -0.057376737562948144,
+          "reference": 5.01,
+          "within": true
+        }
+      }
+    },
+    {
+      "afterbody_calibers": 8.0,
+      "experiment": {
+        "c_n_alpha": null,
+        "cp_calibers": null
+      },
+      "fineness": 7.0,
+      "hpr": {
+        "c_n_alpha": 3.119307413505331,
+        "cp_calibers": 5.163953362442624
+      },
+      "mach": 5.05,
+      "nose": "ogive",
+      "second_order": {
+        "c_n_alpha": {
+          "error": -0.05069258649466901,
+          "reference": 3.17,
+          "within": false
+        },
+        "cp_calibers": {
+          "error": -0.026046637557376684,
+          "reference": 5.19,
+          "within": true
+        }
+      }
+    },
+    {
+      "afterbody_calibers": 10.0,
+      "experiment": {
+        "c_n_alpha": {
+          "error": 0.14290926058006503,
+          "reference": 3.02,
+          "within": true
+        },
+        "cp_calibers": {
+          "error": 0.08213577989930965,
+          "reference": 5.23,
+          "within": true
+        }
+      },
+      "fineness": 7.0,
+      "hpr": {
+        "c_n_alpha": 3.162909260580065,
+        "cp_calibers": 5.31213577989931
+      },
+      "mach": 5.05,
+      "nose": "ogive",
+      "second_order": {
+        "c_n_alpha": {
+          "error": -0.04709073941993491,
+          "reference": 3.21,
+          "within": true
+        },
+        "cp_calibers": {
+          "error": 0.0021357798993104637,
+          "reference": 5.31,
+          "within": true
+        }
+      }
+    },
+    {
+      "afterbody_calibers": 0.0,
+      "experiment": {
+        "c_n_alpha": {
+          "error": 0.0841830886068764,
+          "reference": 2.23,
+          "within": true
+        },
+        "cp_calibers": {
+          "error": 0.02583704951022847,
+          "reference": 3.65,
+          "within": true
+        }
+      },
+      "fineness": 7.0,
+      "hpr": {
+        "c_n_alpha": 2.3141830886068764,
+        "cp_calibers": 3.6758370495102284
+      },
+      "mach": 6.28,
+      "nose": "ogive",
+      "second_order": {
+        "c_n_alpha": {
+          "error": -0.03581691139312371,
+          "reference": 2.35,
+          "within": true
+        },
+        "cp_calibers": {
+          "error": -0.04416295048977181,
+          "reference": 3.72,
+          "within": true
+        }
+      }
+    },
+    {
+      "afterbody_calibers": 2.0,
+      "experiment": {
+        "c_n_alpha": {
+          "error": 0.08966266232851838,
+          "reference": 2.58,
+          "within": true
+        },
+        "cp_calibers": {
+          "error": 0.04219045871698324,
+          "reference": 4.2,
+          "within": true
+        }
+      },
+      "fineness": 7.0,
+      "hpr": {
+        "c_n_alpha": 2.6696626623285185,
+        "cp_calibers": 4.242190458716983
+      },
+      "mach": 6.28,
+      "nose": "ogive",
+      "second_order": {
+        "c_n_alpha": {
+          "error": -0.06033733767148153,
+          "reference": 2.73,
+          "within": false
+        },
+        "cp_calibers": {
+          "error": -0.0678095412830162,
+          "reference": 4.31,
+          "within": true
+        }
+      }
+    },
+    {
+      "afterbody_calibers": 4.0,
+      "experiment": {
+        "c_n_alpha": {
+          "error": 0.071768872717894,
+          "reference": 2.83,
+          "within": true
+        },
+        "cp_calibers": {
+          "error": -0.0029204565619442846,
+          "reference": 4.7,
+          "within": true
+        }
+      },
+      "fineness": 7.0,
+      "hpr": {
+        "c_n_alpha": 2.901768872717894,
+        "cp_calibers": 4.697079543438056
+      },
+      "mach": 6.28,
+      "nose": "ogive",
+      "second_order": {
+        "c_n_alpha": {
+          "error": -0.0482311272821061,
+          "reference": 2.95,
+          "within": true
+        },
+        "cp_calibers": {
+          "error": -0.04292045656194432,
+          "reference": 4.74,
+          "within": true
+        }
+      }
+    },
+    {
+      "afterbody_calibers": 6.0,
+      "experiment": {
+        "c_n_alpha": {
+          "error": 0.09331989529086027,
+          "reference": 2.96,
+          "within": true
+        },
+        "cp_calibers": {
+          "error": -0.04395691633774401,
+          "reference": 5.1,
+          "within": true
+        }
+      },
+      "fineness": 7.0,
+      "hpr": {
+        "c_n_alpha": 3.0533198952908602,
+        "cp_calibers": 5.056043083662256
+      },
+      "mach": 6.28,
+      "nose": "ogive",
+      "second_order": {
+        "c_n_alpha": {
+          "error": -0.03668010470913963,
+          "reference": 3.09,
+          "within": true
+        },
+        "cp_calibers": {
+          "error": 0.00604308366225581,
+          "reference": 5.05,
+          "within": true
+        }
+      }
+    },
+    {
+      "afterbody_calibers": 8.0,
+      "experiment": {
+        "c_n_alpha": null,
+        "cp_calibers": null
+      },
+      "fineness": 7.0,
+      "hpr": {
+        "c_n_alpha": 3.1522733545902977,
+        "cp_calibers": 5.334580628991077
+      },
+      "mach": 6.28,
+      "nose": "ogive",
+      "second_order": {
+        "c_n_alpha": {
+          "error": -0.017726645409702257,
+          "reference": 3.17,
+          "within": true
+        },
+        "cp_calibers": {
+          "error": 0.0645806289910773,
+          "reference": 5.27,
+          "within": true
+        }
+      }
+    },
+    {
+      "afterbody_calibers": 10.0,
+      "experiment": {
+        "c_n_alpha": {
+          "error": -0.02311614697105968,
+          "reference": 3.24,
+          "within": true
+        },
+        "cp_calibers": {
+          "error": -0.03262908934978803,
+          "reference": 5.58,
+          "within": true
+        }
+      },
+      "fineness": 7.0,
+      "hpr": {
+        "c_n_alpha": 3.2168838530289405,
+        "cp_calibers": 5.547370910650212
+      },
+      "mach": 6.28,
+      "nose": "ogive",
+      "second_order": {
+        "c_n_alpha": {
+          "error": 0.0068838530289405675,
+          "reference": 3.21,
+          "within": true
+        },
+        "cp_calibers": {
+          "error": 0.1273709106502121,
+          "reference": 5.42,
+          "within": false
+        }
+      }
+    },
+    {
+      "afterbody_calibers": 0.0,
+      "experiment": {
+        "c_n_alpha": {
+          "error": -0.10796783374100327,
+          "reference": 2.47,
+          "within": true
+        },
+        "cp_calibers": {
+          "error": -0.046584143462793826,
+          "reference": 2.7,
+          "within": true
+        }
+      },
+      "fineness": 5.0,
+      "hpr": {
+        "c_n_alpha": 2.362032166258997,
+        "cp_calibers": 2.6534158565372064
+      },
+      "mach": 3.0,
+      "nose": "ogive",
+      "second_order": {
+        "c_n_alpha": {
+          "error": 0.012032166258996835,
+          "reference": 2.35,
+          "within": true
+        },
+        "cp_calibers": {
+          "error": -0.026584143462793808,
+          "reference": 2.68,
+          "within": true
+        }
+      }
+    },
+    {
+      "afterbody_calibers": 2.0,
+      "experiment": {
+        "c_n_alpha": {
+          "error": 0.03202988447305444,
+          "reference": 2.75,
+          "within": true
+        },
+        "cp_calibers": {
+          "error": 0.11667399938666811,
+          "reference": 3.02,
+          "within": true
+        }
+      },
+      "fineness": 5.0,
+      "hpr": {
+        "c_n_alpha": 2.7820298844730544,
+        "cp_calibers": 3.136673999386668
+      },
+      "mach": 3.0,
+      "nose": "ogive",
+      "second_order": {
+        "c_n_alpha": {
+          "error": -0.05797011552694542,
+          "reference": 2.84,
+          "within": false
+        },
+        "cp_calibers": {
+          "error": -0.08332600061333206,
+          "reference": 3.22,
+          "within": true
+        }
+      }
+    },
+    {
+      "afterbody_calibers": 4.0,
+      "experiment": {
+        "c_n_alpha": {
+          "error": 0.005463309173665554,
+          "reference": 2.95,
+          "within": true
+        },
+        "cp_calibers": {
+          "error": 0.0635256251325731,
+          "reference": 3.35,
+          "within": true
+        }
+      },
+      "fineness": 5.0,
+      "hpr": {
+        "c_n_alpha": 2.9554633091736657,
+        "cp_calibers": 3.413525625132573
+      },
+      "mach": 3.0,
+      "nose": "ogive",
+      "second_order": {
+        "c_n_alpha": {
+          "error": -0.10453669082633432,
+          "reference": 3.06,
+          "within": false
+        },
+        "cp_calibers": {
+          "error": -0.13647437486742664,
+          "reference": 3.55,
+          "within": false
+        }
+      }
+    },
+    {
+      "afterbody_calibers": 6.0,
+      "experiment": {
+        "c_n_alpha": {
+          "error": 0.017080728742722595,
+          "reference": 3.01,
+          "within": true
+        },
+        "cp_calibers": {
+          "error": 0.06591150306313498,
+          "reference": 3.5,
+          "within": true
+        }
+      },
+      "fineness": 5.0,
+      "hpr": {
+        "c_n_alpha": 3.0270807287427224,
+        "cp_calibers": 3.565911503063135
+      },
+      "mach": 3.0,
+      "nose": "ogive",
+      "second_order": {
+        "c_n_alpha": {
+          "error": -0.12291927125727753,
+          "reference": 3.15,
+          "within": false
+        },
+        "cp_calibers": {
+          "error": -0.164088496936865,
+          "reference": 3.73,
+          "within": false
+        }
+      }
+    },
+    {
+      "afterbody_calibers": 8.0,
+      "experiment": {
+        "c_n_alpha": null,
+        "cp_calibers": null
+      },
+      "fineness": 5.0,
+      "hpr": {
+        "c_n_alpha": 3.0566543521350082,
+        "cp_calibers": 3.6461047148773793
+      },
+      "mach": 3.0,
+      "nose": "ogive",
+      "second_order": {
+        "c_n_alpha": {
+          "error": -0.1333456478649917,
+          "reference": 3.19,
+          "within": false
+        },
+        "cp_calibers": {
+          "error": -0.18389528512262077,
+          "reference": 3.83,
+          "within": false
+        }
+      }
+    },
+    {
+      "afterbody_calibers": 10.0,
+      "experiment": {
+        "c_n_alpha": {
+          "error": 0.008866453685322462,
+          "reference": 3.06,
+          "within": true
+        },
+        "cp_calibers": {
+          "error": -0.06327257075415149,
+          "reference": 3.75,
+          "within": true
+        }
+      },
+      "fineness": 5.0,
+      "hpr": {
+        "c_n_alpha": 3.0688664536853225,
+        "cp_calibers": 3.6867274292458485
+      },
+      "mach": 3.0,
+      "nose": "ogive",
+      "second_order": {
+        "c_n_alpha": {
+          "error": -0.13113354631467766,
+          "reference": 3.2,
+          "within": false
+        },
+        "cp_calibers": {
+          "error": -0.19327257075415138,
+          "reference": 3.88,
+          "within": false
+        }
+      }
+    },
+    {
+      "afterbody_calibers": 0.0,
+      "experiment": {
+        "c_n_alpha": {
+          "error": -0.04301805527623648,
+          "reference": 2.35,
+          "within": true
+        },
+        "cp_calibers": {
+          "error": -0.06777558282593432,
+          "reference": 2.7,
+          "within": true
+        }
+      },
+      "fineness": 5.0,
+      "hpr": {
+        "c_n_alpha": 2.3069819447237636,
+        "cp_calibers": 2.632224417174066
+      },
+      "mach": 4.24,
+      "nose": "ogive",
+      "second_order": {
+        "c_n_alpha": {
+          "error": 0.006981944723763789,
+          "reference": 2.3,
+          "within": true
+        },
+        "cp_calibers": {
+          "error": -0.027775582825934286,
+          "reference": 2.66,
+          "within": true
+        }
+      }
+    },
+    {
+      "afterbody_calibers": 2.0,
+      "experiment": {
+        "c_n_alpha": {
+          "error": 0.0009532858378951126,
+          "reference": 2.76,
+          "within": true
+        },
+        "cp_calibers": {
+          "error": 0.019010437834377836,
+          "reference": 3.15,
+          "within": true
+        }
+      },
+      "fineness": 5.0,
+      "hpr": {
+        "c_n_alpha": 2.760953285837895,
+        "cp_calibers": 3.1690104378343777
+      },
+      "mach": 4.24,
+      "nose": "ogive",
+      "second_order": {
+        "c_n_alpha": {
+          "error": -0.03904671416210492,
+          "reference": 2.8,
+          "within": true
+        },
+        "cp_calibers": {
+          "error": -0.07098956216562247,
+          "reference": 3.24,
+          "within": true
+        }
+      }
+    },
+    {
+      "afterbody_calibers": 4.0,
+      "experiment": {
+        "c_n_alpha": {
+          "error": 0.04444214605680852,
+          "reference": 2.96,
+          "within": true
+        },
+        "cp_calibers": {
+          "error": 0.05216756099505604,
+          "reference": 3.5,
+          "within": true
+        }
+      },
+      "fineness": 5.0,
+      "hpr": {
+        "c_n_alpha": 3.0044421460568085,
+        "cp_calibers": 3.552167560995056
+      },
+      "mach": 4.24,
+      "nose": "ogive",
+      "second_order": {
+        "c_n_alpha": {
+          "error": -0.05555785394319157,
+          "reference": 3.06,
+          "within": false
+        },
+        "cp_calibers": {
+          "error": -0.06783243900494407,
+          "reference": 3.62,
+          "within": true
+        }
+      }
+    },
+    {
+      "afterbody_calibers": 6.0,
+      "experiment": {
+        "c_n_alpha": {
+          "error": 0.12503811034214118,
+          "reference": 3.01,
+          "within": true
+        },
+        "cp_calibers": {
+          "error": 0.06646686445931982,
+          "reference": 3.75,
+          "within": true
+        }
+      },
+      "fineness": 5.0,
+      "hpr": {
+        "c_n_alpha": 3.135038110342141,
+        "cp_calibers": 3.81646686445932
+      },
+      "mach": 4.24,
+      "nose": "ogive",
+      "second_order": {
+        "c_n_alpha": {
+          "error": -0.054961889657858976,
+          "reference": 3.19,
+          "within": false
+        },
+        "cp_calibers": {
+          "error": -0.05353313554068029,
+          "reference": 3.87,
+          "within": true
+        }
+      }
+    },
+    {
+      "afterbody_calibers": 8.0,
+      "experiment": {
+        "c_n_alpha": null,
+        "cp_calibers": null
+      },
+      "fineness": 5.0,
+      "hpr": {
+        "c_n_alpha": 3.205083638799919,
+        "cp_calibers": 3.9930594120484737
+      },
+      "mach": 4.24,
+      "nose": "ogive",
+      "second_order": {
+        "c_n_alpha": {
+          "error": -0.044916361200081134,
+          "reference": 3.25,
+          "within": true
+        },
+        "cp_calibers": {
+          "error": -0.03694058795152655,
+          "reference": 4.03,
+          "within": true
+        }
+      }
+    },
+    {
+      "afterbody_calibers": 10.0,
+      "experiment": {
+        "c_n_alpha": {
+          "error": 0.06265276341857717,
+          "reference": 3.18,
+          "within": true
+        },
+        "cp_calibers": {
+          "error": 0.017803829393202797,
+          "reference": 4.09,
+          "within": true
+        }
+      },
+      "fineness": 5.0,
+      "hpr": {
+        "c_n_alpha": 3.2426527634185773,
+        "cp_calibers": 4.107803829393203
+      },
+      "mach": 4.24,
+      "nose": "ogive",
+      "second_order": {
+        "c_n_alpha": {
+          "error": -0.03734723658142247,
+          "reference": 3.28,
+          "within": true
+        },
+        "cp_calibers": {
+          "error": -0.02219617060679724,
+          "reference": 4.13,
+          "within": true
+        }
+      }
+    },
+    {
+      "afterbody_calibers": 0.0,
+      "experiment": {
+        "c_n_alpha": {
+          "error": 0.0890932408101679,
+          "reference": 2.18,
+          "within": true
+        },
+        "cp_calibers": {
+          "error": -0.08543985441840807,
+          "reference": 2.7,
+          "within": true
+        }
+      },
+      "fineness": 5.0,
+      "hpr": {
+        "c_n_alpha": 2.269093240810168,
+        "cp_calibers": 2.614560145581592
+      },
+      "mach": 5.05,
+      "nose": "ogive",
+      "second_order": {
+        "c_n_alpha": {
+          "error": -0.0009067591898319627,
+          "reference": 2.27,
+          "within": true
+        },
+        "cp_calibers": {
+          "error": -0.025439854418408014,
+          "reference": 2.64,
+          "within": true
+        }
+      }
+    },
+    {
+      "afterbody_calibers": 2.0,
+      "experiment": {
+        "c_n_alpha": {
+          "error": 0.06484370334279221,
+          "reference": 2.66,
+          "within": true
+        },
+        "cp_calibers": {
+          "error": -0.03418946193296035,
+          "reference": 3.2,
+          "within": true
+        }
+      },
+      "fineness": 5.0,
+      "hpr": {
+        "c_n_alpha": 2.7248437033427924,
+        "cp_calibers": 3.16581053806704
+      },
+      "mach": 5.05,
+      "nose": "ogive",
+      "second_order": {
+        "c_n_alpha": {
+          "error": -0.04515629665720766,
+          "reference": 2.77,
+          "within": true
+        },
+        "cp_calibers": {
+          "error": -0.06418946193296016,
+          "reference": 3.23,
+          "within": true
+        }
+      }
+    },
+    {
+      "afterbody_calibers": 4.0,
+      "experiment": {
+        "c_n_alpha": {
+          "error": 0.010342641395489238,
+          "reference": 2.98,
+          "within": true
+        },
+        "cp_calibers": {
+          "error": -0.1429407449770732,
+          "reference": 3.73,
+          "within": true
+        }
+      },
+      "fineness": 5.0,
+      "hpr": {
+        "c_n_alpha": 2.990342641395489,
+        "cp_calibers": 3.5870592550229268
+      },
+      "mach": 5.05,
+      "nose": "ogive",
+      "second_order": {
+        "c_n_alpha": {
+          "error": -0.049657358604510815,
+          "reference": 3.04,
+          "within": true
+        },
+        "cp_calibers": {
+          "error": -0.06294074497707314,
+          "reference": 3.65,
+          "within": true
+        }
+      }
+    },
+    {
+      "afterbody_calibers": 6.0,
+      "experiment": {
+        "c_n_alpha": {
+          "error": -0.09499007485586652,
+          "reference": 3.24,
+          "within": true
+        },
+        "cp_calibers": {
+          "error": 0.04803148665686052,
+          "reference": 3.85,
+          "within": true
+        }
+      },
+      "fineness": 5.0,
+      "hpr": {
+        "c_n_alpha": 3.1450099251441337,
+        "cp_calibers": 3.8980314866568606
+      },
+      "mach": 5.05,
+      "nose": "ogive",
+      "second_order": {
+        "c_n_alpha": {
+          "error": -0.04499007485586626,
+          "reference": 3.19,
+          "within": true
+        },
+        "cp_calibers": {
+          "error": -0.041968513343139335,
+          "reference": 3.94,
+          "within": true
+        }
+      }
+    },
+    {
+      "afterbody_calibers": 8.0,
+      "experiment": {
+        "c_n_alpha": null,
+        "cp_calibers": null
+      },
+      "fineness": 5.0,
+      "hpr": {
+        "c_n_alpha": 3.2351118624160478,
+        "cp_calibers": 4.121185461550472
+      },
+      "mach": 5.05,
+      "nose": "ogive",
+      "second_order": {
+        "c_n_alpha": {
+          "error": -0.04488813758395205,
+          "reference": 3.28,
+          "within": true
+        },
+        "cp_calibers": {
+          "error": -0.028814538449528193,
+          "reference": 4.15,
+          "within": true
+        }
+      }
+    },
+    {
+      "afterbody_calibers": 10.0,
+      "experiment": {
+        "c_n_alpha": {
+          "error": -0.002398956269142438,
+          "reference": 3.29,
+          "within": true
+        },
+        "cp_calibers": {
+          "error": 0.21747777622863218,
+          "reference": 4.06,
+          "within": false
+        }
+      },
+      "fineness": 5.0,
+      "hpr": {
+        "c_n_alpha": 3.2876010437308576,
+        "cp_calibers": 4.277477776228632
+      },
+      "mach": 5.05,
+      "nose": "ogive",
+      "second_order": {
+        "c_n_alpha": {
+          "error": -0.03239895626914224,
+          "reference": 3.32,
+          "within": true
+        },
+        "cp_calibers": {
+          "error": -0.002522223771368459,
+          "reference": 4.28,
+          "within": true
+        }
+      }
+    },
+    {
+      "afterbody_calibers": 0.0,
+      "experiment": {
+        "c_n_alpha": {
+          "error": 0.08563690475576191,
+          "reference": 2.12,
+          "within": true
+        },
+        "cp_calibers": {
+          "error": -0.03387720826737617,
+          "reference": 2.62,
+          "within": true
+        }
+      },
+      "fineness": 5.0,
+      "hpr": {
+        "c_n_alpha": 2.205636904755762,
+        "cp_calibers": 2.586122791732624
+      },
+      "mach": 6.28,
+      "nose": "ogive",
+      "second_order": {
+        "c_n_alpha": {
+          "error": -0.024363095244237964,
+          "reference": 2.23,
+          "within": true
+        },
+        "cp_calibers": {
+          "error": -0.03387720826737617,
+          "reference": 2.62,
+          "within": true
+        }
+      }
+    },
+    {
+      "afterbody_calibers": 2.0,
+      "experiment": {
+        "c_n_alpha": {
+          "error": 0.07164082755153522,
+          "reference": 2.57,
+          "within": true
+        },
+        "cp_calibers": {
+          "error": 0.007040373643082631,
+          "reference": 3.13,
+          "within": true
+        }
+      },
+      "fineness": 5.0,
+      "hpr": {
+        "c_n_alpha": 2.641640827551535,
+        "cp_calibers": 3.1370403736430825
+      },
+      "mach": 6.28,
+      "nose": "ogive",
+      "second_order": {
+        "c_n_alpha": {
+          "error": -0.05835917244846511,
+          "reference": 2.7,
+          "within": false
+        },
+        "cp_calibers": {
+          "error": -0.05295962635691742,
+          "reference": 3.19,
+          "within": true
+        }
+      }
+    },
+    {
+      "afterbody_calibers": 4.0,
+      "experiment": {
+        "c_n_alpha": {
+          "error": 0.13754286481728917,
+          "reference": 2.78,
+          "within": true
+        },
+        "cp_calibers": {
+          "error": -0.010273503837701536,
+          "reference": 3.6,
+          "within": true
+        }
+      },
+      "fineness": 5.0,
+      "hpr": {
+        "c_n_alpha": 2.917542864817289,
+        "cp_calibers": 3.5897264961622986
+      },
+      "mach": 6.28,
+      "nose": "ogive",
+      "second_order": {
+        "c_n_alpha": {
+          "error": -0.05245713518271122,
+          "reference": 2.97,
+          "within": false
+        },
+        "cp_calibers": {
+          "error": -0.030273503837701554,
+          "reference": 3.62,
+          "within": true
+        }
+      }
+    },
+    {
+      "afterbody_calibers": 6.0,
+      "experiment": {
+        "c_n_alpha": {
+          "error": 0.0821328861163626,
+          "reference": 3.01,
+          "within": true
+        },
+        "cp_calibers": {
+          "error": -0.05262377974111576,
+          "reference": 4.0,
+          "within": true
+        }
+      },
+      "fineness": 5.0,
+      "hpr": {
+        "c_n_alpha": 3.0921328861163624,
+        "cp_calibers": 3.9473762202588842
+      },
+      "mach": 6.28,
+      "nose": "ogive",
+      "second_order": {
+        "c_n_alpha": {
+          "error": -0.037867113883637504,
+          "reference": 3.13,
+          "within": true
+        },
+        "cp_calibers": {
+          "error": 0.007376220258884292,
+          "reference": 3.94,
+          "within": true
+        }
+      }
+    },
+    {
+      "afterbody_calibers": 8.0,
+      "experiment": {
+        "c_n_alpha": null,
+        "cp_calibers": null
+      },
+      "fineness": 5.0,
+      "hpr": {
+        "c_n_alpha": 3.202612953024496,
+        "cp_calibers": 4.222544541534392
+      },
+      "mach": 6.28,
+      "nose": "ogive",
+      "second_order": {
+        "c_n_alpha": {
+          "error": -0.02738704697550398,
+          "reference": 3.23,
+          "within": true
+        },
+        "cp_calibers": {
+          "error": 0.02254454153439145,
+          "reference": 4.2,
+          "within": true
+        }
+      }
+    },
+    {
+      "afterbody_calibers": 10.0,
+      "experiment": {
+        "c_n_alpha": {
+          "error": -0.03747557612965924,
+          "reference": 3.31,
+          "within": true
+        },
+        "cp_calibers": {
+          "error": 0.10979825256906839,
+          "reference": 4.32,
+          "within": true
+        }
+      },
+      "fineness": 5.0,
+      "hpr": {
+        "c_n_alpha": 3.272524423870341,
+        "cp_calibers": 4.429798252569069
+      },
+      "mach": 6.28,
+      "nose": "ogive",
+      "second_order": {
+        "c_n_alpha": {
+          "error": -0.0074755761296589895,
+          "reference": 3.28,
+          "within": true
+        },
+        "cp_calibers": {
+          "error": 0.08979825256906881,
+          "reference": 4.34,
+          "within": true
+        }
+      }
+    },
+    {
+      "afterbody_calibers": 0.0,
+      "experiment": {
+        "c_n_alpha": {
+          "error": -0.07610540977198932,
+          "reference": 2.28,
+          "within": true
+        },
+        "cp_calibers": {
+          "error": -0.07522321414863886,
+          "reference": 1.65,
+          "within": true
+        }
+      },
+      "fineness": 3.0,
+      "hpr": {
+        "c_n_alpha": 2.2038945902280105,
+        "cp_calibers": 1.574776785851361
+      },
+      "mach": 3.0,
+      "nose": "ogive",
+      "second_order": {
+        "c_n_alpha": {
+          "error": 0.01389459022801054,
+          "reference": 2.19,
+          "within": true
+        },
+        "cp_calibers": {
+          "error": -0.01522321414863903,
+          "reference": 1.59,
+          "within": true
+        }
+      }
+    },
+    {
+      "afterbody_calibers": 2.0,
+      "experiment": {
+        "c_n_alpha": {
+          "error": -0.14288082076148,
+          "reference": 2.98,
+          "within": true
+        },
+        "cp_calibers": {
+          "error": -0.03747632890031927,
+          "reference": 2.12,
+          "within": true
+        }
+      },
+      "fineness": 3.0,
+      "hpr": {
+        "c_n_alpha": 2.83711917923852,
+        "cp_calibers": 2.082523671099681
+      },
+      "mach": 3.0,
+      "nose": "ogive",
+      "second_order": {
+        "c_n_alpha": {
+          "error": -0.032880820761480134,
+          "reference": 2.87,
+          "within": true
+        },
+        "cp_calibers": {
+          "error": -0.03747632890031927,
+          "reference": 2.12,
+          "within": true
+        }
+      }
+    },
+    {
+      "afterbody_calibers": 4.0,
+      "experiment": {
+        "c_n_alpha": {
+          "error": -0.15908084011046286,
+          "reference": 3.25,
+          "within": true
+        },
+        "cp_calibers": {
+          "error": -0.058147720020668814,
+          "reference": 2.45,
+          "within": true
+        }
+      },
+      "fineness": 3.0,
+      "hpr": {
+        "c_n_alpha": 3.090919159889537,
+        "cp_calibers": 2.3918522799793314
+      },
+      "mach": 3.0,
+      "nose": "ogive",
+      "second_order": {
+        "c_n_alpha": {
+          "error": -0.039080840110462756,
+          "reference": 3.13,
+          "within": true
+        },
+        "cp_calibers": {
+          "error": -0.038147720020668796,
+          "reference": 2.43,
+          "within": true
+        }
+      }
+    },
+    {
+      "afterbody_calibers": 6.0,
+      "experiment": {
+        "c_n_alpha": {
+          "error": -0.007356378842919398,
+          "reference": 3.2,
+          "within": true
+        },
+        "cp_calibers": {
+          "error": 0.07575104947555777,
+          "reference": 2.49,
+          "within": true
+        }
+      },
+      "fineness": 3.0,
+      "hpr": {
+        "c_n_alpha": 3.192643621157081,
+        "cp_calibers": 2.565751049475558
+      },
+      "mach": 3.0,
+      "nose": "ogive",
+      "second_order": {
+        "c_n_alpha": {
+          "error": -0.0373563788429192,
+          "reference": 3.23,
+          "within": true
+        },
+        "cp_calibers": {
+          "error": -0.0342489505244421,
+          "reference": 2.6,
+          "within": true
+        }
+      }
+    },
+    {
+      "afterbody_calibers": 8.0,
+      "experiment": {
+        "c_n_alpha": null,
+        "cp_calibers": null
+      },
+      "fineness": 3.0,
+      "hpr": {
+        "c_n_alpha": 3.2334153579934237,
+        "cp_calibers": 2.65759799404252
+      },
+      "mach": 3.0,
+      "nose": "ogive",
+      "second_order": {
+        "c_n_alpha": {
+          "error": -0.036584642006576296,
+          "reference": 3.27,
+          "within": true
+        },
+        "cp_calibers": {
+          "error": -0.02240200595748032,
+          "reference": 2.68,
+          "within": true
+        }
+      }
+    },
+    {
+      "afterbody_calibers": 10.0,
+      "experiment": {
+        "c_n_alpha": {
+          "error": -0.07024310031701253,
+          "reference": 3.32,
+          "within": true
+        },
+        "cp_calibers": {
+          "error": 0.10382088129302058,
+          "reference": 2.6,
+          "within": true
+        }
+      },
+      "fineness": 3.0,
+      "hpr": {
+        "c_n_alpha": 3.2497568996829873,
+        "cp_calibers": 2.7038208812930207
+      },
+      "mach": 3.0,
+      "nose": "ogive",
+      "second_order": {
+        "c_n_alpha": {
+          "error": -0.030243100317012495,
+          "reference": 3.28,
+          "within": true
+        },
+        "cp_calibers": {
+          "error": -0.02617911870697931,
+          "reference": 2.73,
+          "within": true
+        }
+      }
+    },
+    {
+      "afterbody_calibers": 0.0,
+      "experiment": {
+        "c_n_alpha": {
+          "error": 0.008212689554683461,
+          "reference": 2.09,
+          "within": true
+        },
+        "cp_calibers": {
+          "error": -0.030378045229350725,
+          "reference": 1.58,
+          "within": true
+        }
+      },
+      "fineness": 3.0,
+      "hpr": {
+        "c_n_alpha": 2.0982126895546833,
+        "cp_calibers": 1.5496219547706493
+      },
+      "mach": 4.24,
+      "nose": "ogive",
+      "second_order": {
+        "c_n_alpha": {
+          "error": -0.0017873104453167699,
+          "reference": 2.1,
+          "within": true
+        },
+        "cp_calibers": {
+          "error": -0.010378045229350708,
+          "reference": 1.56,
+          "within": true
+        }
+      }
+    },
+    {
+      "afterbody_calibers": 2.0,
+      "experiment": {
+        "c_n_alpha": {
+          "error": -0.10897976307985413,
+          "reference": 2.81,
+          "within": true
+        },
+        "cp_calibers": {
+          "error": -0.09989167344355243,
+          "reference": 2.17,
+          "within": true
+        }
+      },
+      "fineness": 3.0,
+      "hpr": {
+        "c_n_alpha": 2.701020236920146,
+        "cp_calibers": 2.0701083265564475
+      },
+      "mach": 4.24,
+      "nose": "ogive",
+      "second_order": {
+        "c_n_alpha": {
+          "error": -0.058979763079853864,
+          "reference": 2.76,
+          "within": false
+        },
+        "cp_calibers": {
+          "error": -0.03989167344355238,
+          "reference": 2.11,
+          "within": true
+        }
+      }
+    },
+    {
+      "afterbody_calibers": 4.0,
+      "experiment": {
+        "c_n_alpha": {
+          "error": -0.11418827660032349,
+          "reference": 3.11,
+          "within": true
+        },
+        "cp_calibers": {
+          "error": 0.0051817020136857295,
+          "reference": 2.44,
+          "within": true
+        }
+      },
+      "fineness": 3.0,
+      "hpr": {
+        "c_n_alpha": 2.9958117233996764,
+        "cp_calibers": 2.4451817020136857
+      },
+      "mach": 4.24,
+      "nose": "ogive",
+      "second_order": {
+        "c_n_alpha": {
+          "error": -0.08418827660032369,
+          "reference": 3.08,
+          "within": false
+        },
+        "cp_calibers": {
+          "error": -0.06481829798631411,
+          "reference": 2.51,
+          "within": true
+        }
+      }
+    },
+    {
+      "afterbody_calibers": 6.0,
+      "experiment": {
+        "c_n_alpha": {
+          "error": -0.15002614578326146,
+          "reference": 3.29,
+          "within": true
+        },
+        "cp_calibers": {
+          "error": -0.05521366737589828,
+          "reference": 2.75,
+          "within": true
+        }
+      },
+      "fineness": 3.0,
+      "hpr": {
+        "c_n_alpha": 3.1399738542167386,
+        "cp_calibers": 2.6947863326241017
+      },
+      "mach": 4.24,
+      "nose": "ogive",
+      "second_order": {
+        "c_n_alpha": {
+          "error": -0.10002614578326163,
+          "reference": 3.24,
+          "within": false
+        },
+        "cp_calibers": {
+          "error": -0.06521366737589807,
+          "reference": 2.76,
+          "within": true
+        }
+      }
+    },
+    {
+      "afterbody_calibers": 8.0,
+      "experiment": {
+        "c_n_alpha": null,
+        "cp_calibers": null
+      },
+      "fineness": 3.0,
+      "hpr": {
+        "c_n_alpha": 3.2104735833978877,
+        "cp_calibers": 2.8526076941478435
+      },
+      "mach": 4.24,
+      "nose": "ogive",
+      "second_order": {
+        "c_n_alpha": {
+          "error": -0.10952641660211215,
+          "reference": 3.32,
+          "within": false
+        },
+        "cp_calibers": {
+          "error": -0.07739230585215662,
+          "reference": 2.93,
+          "within": true
+        }
+      }
+    },
+    {
+      "afterbody_calibers": 10.0,
+      "experiment": {
+        "c_n_alpha": {
+          "error": -0.09504987420886346,
+          "reference": 3.34,
+          "within": true
+        },
+        "cp_calibers": {
+          "error": -0.17146024837534446,
+          "reference": 3.12,
+          "within": true
+        }
+      },
+      "fineness": 3.0,
+      "hpr": {
+        "c_n_alpha": 3.2449501257911364,
+        "cp_calibers": 2.9485397516246556
+      },
+      "mach": 4.24,
+      "nose": "ogive",
+      "second_order": {
+        "c_n_alpha": {
+          "error": -0.11504987420886348,
+          "reference": 3.36,
+          "within": false
+        },
+        "cp_calibers": {
+          "error": -0.08146024837534416,
+          "reference": 3.03,
+          "within": true
+        }
+      }
+    },
+    {
+      "afterbody_calibers": 0.0,
+      "experiment": {
+        "c_n_alpha": {
+          "error": -0.0461798365169217,
+          "reference": 2.01,
+          "within": true
+        },
+        "cp_calibers": {
+          "error": 0.07099481434508736,
+          "reference": 1.47,
+          "within": true
+        }
+      },
+      "fineness": 3.0,
+      "hpr": {
+        "c_n_alpha": 1.963820163483078,
+        "cp_calibers": 1.5409948143450873
+      },
+      "mach": 5.05,
+      "nose": "ogive",
+      "second_order": {
+        "c_n_alpha": {
+          "error": -0.016179836516921897,
+          "reference": 1.98,
+          "within": true
+        },
+        "cp_calibers": {
+          "error": -0.009005185654912706,
+          "reference": 1.55,
+          "within": true
+        }
+      }
+    },
+    {
+      "afterbody_calibers": 2.0,
+      "experiment": {
+        "c_n_alpha": {
+          "error": -0.13142683989014836,
+          "reference": 2.66,
+          "within": true
+        },
+        "cp_calibers": {
+          "error": -0.18371851158363794,
+          "reference": 2.25,
+          "within": true
+        }
+      },
+      "fineness": 3.0,
+      "hpr": {
+        "c_n_alpha": 2.528573160109852,
+        "cp_calibers": 2.066281488416362
+      },
+      "mach": 5.05,
+      "nose": "ogive",
+      "second_order": {
+        "c_n_alpha": {
+          "error": -0.06142683989014808,
+          "reference": 2.59,
+          "within": false
+        },
+        "cp_calibers": {
+          "error": -0.19371851158363773,
+          "reference": 2.26,
+          "within": false
+        }
+      }
+    },
+    {
+      "afterbody_calibers": 4.0,
+      "experiment": {
+        "c_n_alpha": {
+          "error": -0.15579832319430365,
+          "reference": 2.98,
+          "within": true
+        },
+        "cp_calibers": {
+          "error": -0.28316381918597733,
+          "reference": 2.75,
+          "within": false
+        }
+      },
+      "fineness": 3.0,
+      "hpr": {
+        "c_n_alpha": 2.8242016768056963,
+        "cp_calibers": 2.4668361808140227
+      },
+      "mach": 5.05,
+      "nose": "ogive",
+      "second_order": {
+        "c_n_alpha": {
+          "error": -0.07579832319430357,
+          "reference": 2.9,
+          "within": false
+        },
+        "cp_calibers": {
+          "error": -0.32316381918597736,
+          "reference": 2.79,
+          "within": false
+        }
+      }
+    },
+    {
+      "afterbody_calibers": 6.0,
+      "experiment": {
+        "c_n_alpha": {
+          "error": -0.1810470949479801,
+          "reference": 3.16,
+          "within": true
+        },
+        "cp_calibers": {
+          "error": -0.4012914080264163,
+          "reference": 3.15,
+          "within": false
+        }
+      },
+      "fineness": 3.0,
+      "hpr": {
+        "c_n_alpha": 2.97895290505202,
+        "cp_calibers": 2.7487085919735836
+      },
+      "mach": 5.05,
+      "nose": "ogive",
+      "second_order": {
+        "c_n_alpha": {
+          "error": -0.07104709494797978,
+          "reference": 3.05,
+          "within": false
+        },
+        "cp_calibers": {
+          "error": -0.4412914080264163,
+          "reference": 3.19,
+          "within": false
+        }
+      }
+    },
+    {
+      "afterbody_calibers": 8.0,
+      "experiment": {
+        "c_n_alpha": null,
+        "cp_calibers": null
+      },
+      "fineness": 3.0,
+      "hpr": {
+        "c_n_alpha": 3.059959781220142,
+        "cp_calibers": 2.9378371564243086
+      },
+      "mach": 5.05,
+      "nose": "ogive",
+      "second_order": {
+        "c_n_alpha": {
+          "error": -0.07004021877985789,
+          "reference": 3.13,
+          "within": false
+        },
+        "cp_calibers": {
+          "error": -0.5521628435756916,
+          "reference": 3.49,
+          "within": false
+        }
+      }
+    },
+    {
+      "afterbody_calibers": 10.0,
+      "experiment": {
+        "c_n_alpha": {
+          "error": -0.27763594153514193,
+          "reference": 3.38,
+          "within": false
+        },
+        "cp_calibers": {
+          "error": -0.5397621581497298,
+          "reference": 3.6,
+          "within": false
+        }
+      },
+      "fineness": 3.0,
+      "hpr": {
+        "c_n_alpha": 3.102364058464858,
+        "cp_calibers": 3.0602378418502703
+      },
+      "mach": 5.05,
+      "nose": "ogive",
+      "second_order": {
+        "c_n_alpha": {
+          "error": -0.06763594153514196,
+          "reference": 3.17,
+          "within": false
+        },
+        "cp_calibers": {
+          "error": -0.6697621581497297,
+          "reference": 3.73,
+          "within": false
+        }
+      }
+    },
+    {
+      "afterbody_calibers": 0.0,
+      "experiment": {
+        "c_n_alpha": {
+          "error": -0.05315334702554275,
+          "reference": 1.83,
+          "within": true
+        },
+        "cp_calibers": {
+          "error": -0.021565980846822264,
+          "reference": 1.53,
+          "within": true
+        }
+      },
+      "fineness": 3.0,
+      "hpr": {
+        "c_n_alpha": 1.7768466529744573,
+        "cp_calibers": 1.5084340191531778
+      },
+      "mach": 6.28,
+      "nose": "ogive",
+      "second_order": {
+        "c_n_alpha": {
+          "error": -0.013153347025542717,
+          "reference": 1.79,
+          "within": true
+        },
+        "cp_calibers": {
+          "error": -0.011565980846822255,
+          "reference": 1.52,
+          "within": true
+        }
+      }
+    },
+    {
+      "afterbody_calibers": 2.0,
+      "experiment": {
+        "c_n_alpha": {
+          "error": -0.18484448063068992,
+          "reference": 2.44,
+          "within": true
+        },
+        "cp_calibers": {
+          "error": -0.08460782289728952,
+          "reference": 2.1,
+          "within": true
+        }
+      },
+      "fineness": 3.0,
+      "hpr": {
+        "c_n_alpha": 2.25515551936931,
+        "cp_calibers": 2.0153921771027106
+      },
+      "mach": 6.28,
+      "nose": "ogive",
+      "second_order": {
+        "c_n_alpha": {
+          "error": -0.06484448063068982,
+          "reference": 2.32,
+          "within": false
+        },
+        "cp_calibers": {
+          "error": -0.044607822897289484,
+          "reference": 2.06,
+          "within": true
+        }
+      }
+    },
+    {
+      "afterbody_calibers": 4.0,
+      "experiment": {
+        "c_n_alpha": {
+          "error": -0.09541773897165973,
+          "reference": 2.61,
+          "within": true
+        },
+        "cp_calibers": {
+          "error": -0.03397457489340683,
+          "reference": 2.45,
+          "within": true
+        }
+      },
+      "fineness": 3.0,
+      "hpr": {
+        "c_n_alpha": 2.51458226102834,
+        "cp_calibers": 2.4160254251065933
+      },
+      "mach": 6.28,
+      "nose": "ogive",
+      "second_order": {
+        "c_n_alpha": {
+          "error": -0.06541773897165992,
+          "reference": 2.58,
+          "within": false
+        },
+        "cp_calibers": {
+          "error": -0.03397457489340683,
+          "reference": 2.45,
+          "within": true
+        }
+      }
+    },
+    {
+      "afterbody_calibers": 6.0,
+      "experiment": {
+        "c_n_alpha": {
+          "error": -0.0147090065680624,
+          "reference": 2.67,
+          "within": true
+        },
+        "cp_calibers": {
+          "error": 0.046560627122842035,
+          "reference": 2.66,
+          "within": true
+        }
+      },
+      "fineness": 3.0,
+      "hpr": {
+        "c_n_alpha": 2.6552909934319375,
+        "cp_calibers": 2.706560627122842
+      },
+      "mach": 6.28,
+      "nose": "ogive",
+      "second_order": {
+        "c_n_alpha": {
+          "error": -0.04470900656806265,
+          "reference": 2.7,
+          "within": true
+        },
+        "cp_calibers": {
+          "error": -0.003439372877157787,
+          "reference": 2.71,
+          "within": true
+        }
+      }
+    },
+    {
+      "afterbody_calibers": 8.0,
+      "experiment": {
+        "c_n_alpha": null,
+        "cp_calibers": null
+      },
+      "fineness": 3.0,
+      "hpr": {
+        "c_n_alpha": 2.731609060135521,
+        "cp_calibers": 2.907499934162275
+      },
+      "mach": 6.28,
+      "nose": "ogive",
+      "second_order": {
+        "c_n_alpha": {
+          "error": -0.038390939864478835,
+          "reference": 2.77,
+          "within": true
+        },
+        "cp_calibers": {
+          "error": 0.03749993416227504,
+          "reference": 2.87,
+          "within": true
+        }
+      }
+    },
+    {
+      "afterbody_calibers": 10.0,
+      "experiment": {
+        "c_n_alpha": {
+          "error": -0.12699729495076983,
+          "reference": 2.9,
+          "within": true
+        },
+        "cp_calibers": {
+          "error": -0.00828556827054161,
+          "reference": 3.05,
+          "within": true
+        }
+      },
+      "fineness": 3.0,
+      "hpr": {
+        "c_n_alpha": 2.77300270504923,
+        "cp_calibers": 3.041714431729458
+      },
+      "mach": 6.28,
+      "nose": "ogive",
+      "second_order": {
+        "c_n_alpha": {
+          "error": -0.026997294950769746,
+          "reference": 2.8,
+          "within": true
+        },
+        "cp_calibers": {
+          "error": 0.06171443172945823,
+          "reference": 2.98,
+          "within": true
+        }
+      }
+    }
+  ]
+}

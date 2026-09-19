@@ -38,6 +38,7 @@ renumber. Supersede an entry by adding a new one that points back to it.
 | ADR-030 | The afterbody faster than sound: a boattail's wave drag, the base behind it, and a lip in its wake | accepted |
 | ADR-031 | Roll from canted fins and roll damping by Barrowman's strip theory | accepted |
 | ADR-032 | Normal-force overrides from RASAero II: the static force replaced, hpr's damping kept | accepted |
+| ADR-033 | The body faster than sound: Syvertson and Dennis's second-order shock-expansion method | accepted |
 
 ---
 
@@ -3158,3 +3159,77 @@ viscous part from Jorgensen's crossflow method (p. 55).
   RASAero II's reads a shifted CP with no warning unless it leaves the rocket. `STATUS.md`'s
   question to Neer about RASAero values in fixtures is unchanged: no new values are committed
   (the fixture adds counts, differences, ratios, a hash and flights).
+
+## ADR-033: The body faster than sound: Syvertson and Dennis's second-order shock-expansion method (2026-09-19)
+
+**Context.** M1.8a measured the gap (ADR-027): past Mach 3 the Arcas Robin's body alone lifts 3.9
+to 4.6 per radian in NASA's wind tunnel (TN D-4014), where hpr's slender-body terms, with body
+lift at the plotted angles, give 2.3 to 2.8. M1.8e asks for a cited supersonic method for noses,
+boattails and crossflow, and holds the Arcas Robin to 15%. The research for it found that the
+measured slopes, fitted over about ±4°, carry crossflow lift the linear term doesn't, and that no
+source covers a 15° boattail. Doing all of it, and flying it, is more than one session.
+
+**Decision.**
+
+- **Split M1.8e** into M1.8e1, the method as a tested library model, and M1.8e2, flying it (the
+  body's terms taking Mach, a join from subsonic, the boattail, crossflow), which carries M1.8e's
+  bullet unchanged. M1.8e1's targets were set before measuring: within 0.05 per radian and 0.1
+  calibers of TN 3527's own second-order values, and within its stated ±0.2 per radian and ±0.2
+  calibers of its measurements (Summary, p. 1).
+- **The method: Syvertson and Dennis's second-order shock-expansion method** (NACA TN 3527, 1956),
+  the multi-step form, over MIL-HDBK-762's charts (Figs. 5-4 to 5-7, from the RAeS data sheets):
+  the charts are carpet plots read by hand with an ambiguous corner, and they stop at an
+  afterbody of 7 in their scaled length `l_a/(d√(M² − 1))`, which the Arcas Robin's cylinder
+  passes below Mach 2.2 (11.8 at Mach 1.5); the method
+  takes any pointed profile, and its report tabulates its own values and its measurements, at
+  `α → 0`, for 144 bodies (Tables I and II), public data a test can hold it to. Van Dyke's hybrid
+  theory, which Jorgensen (NASA TR R-474, p. 26) recommends faster than sound, is a
+  characteristics solution, far more code.
+- **Its inputs.** The tip cone by the Taylor–Maccoll equation (NACA Report 1135 eq. 177),
+  integrated by classical Runge–Kutta at 0.001 rad and a shock angle found by regula falsi to
+  rounding; Prandtl–Meyer from `afterbody` (ADR-030). The tangent cones' slopes are TN 3527's
+  Fig. 2, read by hand at 0° to 24° for Mach 3 to 10, linear between readings, the Mach 3 curve
+  held below Mach 3 and the Mach 10 curve above (an assumption M1.8e2 must measure).
+- **The report's tangent body**: ten elements per curved piece, tangent at `x/l = 0, 0.1, …, 1.0`
+  (footnote 9, p. 15), one per cone or cylinder. Forty move none of its ogive-cylinders by 0.01.
+- **Its limit** (p. 13): the exponential relaxation holds only where the gradient behind a corner
+  has the sign of `p_c − p₂` (`η ≥ 0`); where it doesn't, the element is the generalized method's,
+  its pressure constant and no gradient carried on. A first version carried the gradient on;
+  on the fineness-3 ogive from Mach 5.05 it then ran away and the surface flow went subsonic at
+  every element count. A second held the pressure but kept the gradient, and grew toward the
+  generalized method's value (5.4 per radian, against the report's 2.8) as elements were added.
+  The report's reduction converges: 10 and 320 elements agree within 0.008 per radian. A body
+  whose last element would need it is refused, since that element runs to the base.
+- **Boattails** by footnote 8 (`p_c = p₀`, slope 2), unvalidated here; the Arcas Robin's 57° lip
+  is past Fig. 2 and left out.
+- **The Arcas Robin's nose** is the secant ogive through its tip and base nearest the report's
+  coordinate table (golden-section search on the arc radius): radius ratio 1.744, rms miss
+  0.003 in, tip half-angle 10.76°. hpr's committed design keeps its power-series nose (ADR-027),
+  whose tangent is vertical at the tip, which the method refuses.
+
+**Result.** Targets missed in 76 of 528 comparisons, each explained, as M1.8a's were.
+Against the report's own values: slopes 104 of 144 within 0.05 (−0.133 to +0.146), CPs 122 of 144
+within 0.1 calibers (−0.670 to +0.257). A separate implementation of the same equations, written
+from the paper during this work (a Python script with SciPy's cone solver, kept in `refs/scratch/`,
+not committed), agrees with hpr within 0.0007 per radian on all 72 cone-cylinders (by the report's
+Appendix C closed form) and within 0.009 per radian and 0.016 calibers on 60 of the 72
+ogive-cylinders; on the other 12 (the fineness-3 ogive at Mach 5.05 and 6.28) it carried the
+gradient through the reduced elements and sits further from the report than hpr. So the printed
+values depart from the printed equations: most on the fineness-7 cone on long cylinders (hpr
+high), the ogives (hpr low) and the fineness-3 ogive's CP at Mach 5.05, a block out of line with
+the report's own neighbours. The cause is unknown; the report read its cone pressures from charts.
+Against its measurements: slopes 117 of 120 within ±0.2 (−0.278 to +0.251), CPs 109 of 120 (−0.540
+to +0.328), mostly the same rows. The Arcas Robin's nose and cylinder, no target: short model
+−18.7% to +16.4% (within 5% from Mach 1.8 to 2.96, −15.0% and −18.7% at 3.96 and 4.63), long model
+−13.7% to −26.4%; the boattail by footnote 8 takes 0.03 to 0.18 off. The method's slope grows with
+Mach (2.55 to 3.37) but not with the longer cylinder, whose measured extra 0.57 at Mach 3.96 goes
+with its side area: crossflow, M1.8e2's.
+
+**Consequences.** `hpr_aero::shock_expansion` (`ShockExpansionBody`, `cone_flow`,
+`cone_normal_force_slope`) is public and flies nothing yet. `cargo xtask aero` writes
+`validation/fixtures/aero/shock-expansion.json`, and `shock_expansion::tests` recomputes it and
+pins its misses. TN 3527 is pinned in `refs.lock.toml`; its tables are in
+`validation/fixtures/aero/tn3527-bodies.json` (a U.S. government work). M1.8e2 has to decide
+what M1.8e1 leaves: noses with a blunt or vertical tip (power series, elliptical, Haack), the
+boattail, Mach numbers below 3, crossflow at the angles flown, and the join to the subsonic terms.
+
