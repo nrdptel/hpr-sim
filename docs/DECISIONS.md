@@ -3046,20 +3046,26 @@ viscous part from Jorgensen's crossflow method (p. 55).
   `C_N/α` and CP against Mach number. A lookup reads each column at the Mach number (linear,
   holding its ends and saying so) and interpolates linearly in `α` between columns, so `C_N` comes
   back exactly at the columns' angles and is a part linear in `α` plus one in `α²` between them.
-  In the Calisto export `CN Viscous(4°)/CN Viscous(2°)` is (sin 4°/sin 2°)² = 3.995 through
-  Mach 1.1 (its viscous part is exactly `sin² α` there), then 3.90 at 1.5, 3.16 at 2, 1.73 at 3
-  and 1.05 at 4: the quadratic is RASAero II's shape through Mach 1.1 and an assumption faster. Below the first column the table holds that column.
+  In the Calisto export the viscous part starts at Mach 0.91, and `CN Viscous(4°)/CN Viscous(2°)`
+  is (sin 4°/sin 2°)² = 3.995 from there through Mach 1.3 (exactly `sin² α`), then 3.90 at 1.5,
+  3.16 at 2, 1.73 at 3 and 1.05 at 4: the quadratic is RASAero II's shape through Mach 1.3 and an
+  assumption faster. Below the first column the table holds that column.
 - **Past the last column** `α_n`, the force at `α_n` splits: the 0° column's slope times `α_n`
   is the linear share, at the 0° CP, growing as `sin α / sin α_n` (hpr's fins, ADR-011); the rest
   of the force and of the moment grows as `(sin α / sin α_n)²`, the crossflow form hpr's body
   lift takes (Galejs; Niskanen eq. 3.26) and RASAero II's viscous part takes from Jorgensen.
-  Force and CP are continuous at `α_n`; tail first the force is zero; the CP stays between the
-  two shares'. The split needs a 0° column, a positive rest, and a rest acting aft of the nose
-  tip; otherwise (a table whose `C_N/α` falls with the angle) the whole force grows as `sin α`
-  at the last CP. A first draft scaled the whole force by `sin α` with the CP held; physics review
-  showed that loses the viscous part's faster growth and its forward CP (on the guide's invented
-  example, 18% less force at 10° with the CP 5.3 cm aft). The second review found the unguarded
-  split turned the force round for a falling `C_N/α`; a proptest now holds the sign and the CP.
+  Written as `C_N(α_n) s + R (s² − s)` with `s = sin α / sin α_n` and `R` the rest, the extra
+  term vanishes at `α_n` whatever the rest's station, so the station is held within the rocket
+  (`lookup_within`, which `AeroModel` calls with nose tip to aft end) and the linear share within
+  the force (a falling `C_N/α` leaves no rest), with no jump anywhere: force and CP are continuous
+  at `α_n` and in the table's values, the force is never negative, and tail first it is zero. A
+  first draft scaled the whole force by `sin α` with the CP held; physics review showed that
+  loses the viscous part's faster growth and its forward CP (on the guide's invented example, 18%
+  less force at 10° with the CP 5.3 cm aft). The second review found the unguarded split turned
+  the force round for a falling `C_N/α`; the third, that a guard switching the split on and off
+  jumped (36% in `C_N`) as the Mach number moved the rest through zero, and left the rest's CP
+  unbounded aft. Proptests now hold the sign, the CP within the stations while `s ≥ 1`, and the
+  continuity in Mach.
   From Mach 3 RASAero II's viscous part hardly grows between 2° and 4°, so there the `sin² α`
   share probably overstates the force. All of this is an assumption past the data; the lookup
   reports it (`beyond_alpha`), and `NormalForce::table` carries the lookup out of the model.
@@ -3067,7 +3073,7 @@ viscous part from Jorgensen's crossflow method (p. 55).
   `CP`, the only ones that must be numbers. At `α > 0` the slope is `CN/α`. At 0° `CN` is zero,
   so the slope is `CN Potential(α₁)/α₁` at the smallest positive angle and the same Mach number:
   the potential part is linear in `α` (the Calisto export's spread between 2° and 4° is 2.3e-15),
-  and through Mach 1.1 the viscous part is `sin² α`, which has no slope at zero; faster, how it
+  and through Mach 1.3 the viscous part is `sin² α`, which has no slope at zero; faster, how it
   starts from 0° isn't in the export, and leaving it out is an assumption. Not
   `CNalpha (0 to 4 deg)`, the 4° secant with the viscous part in it (ADR-027). `CP` is converted at 0.0254 m to
   the inch from the nose tip, the datum of hpr's stations. The table's reference is
@@ -3076,9 +3082,10 @@ viscous part from Jorgensen's crossflow method (p. 55).
   their Mach numbers (the Calisto export's 4° rows end at Mach 24.99, the others at 25); rows out
   of order within an angle, or an angle with one row, are refused with their line.
 - **A units guard**: `AeroModel::with_normal_force_table` and `Simulation::with_normal_force_table`
-  refuse a table with a CP outside the rocket, nose tip to aft end, at the Mach numbers a flight
-  can reach (to Mach 5 and the first knot past it), as `SolidMotor` refuses an impossible exhaust
-  speed (#11). Both return `Result` where `with_drag_table` doesn't: a check at
+  refuse a table with a CP value outside the rocket, nose tip to aft end, at its Mach numbers a
+  flight can reach (to Mach 5 and the first knot past it), as `SolidMotor` refuses an impossible
+  exhaust speed (#11). It checks the table's values, not what a user-built table's own
+  interpolation might give between or past them. Both return `Result` where `with_drag_table` doesn't: a check at
   attachment names the problem before a flight starts. `with_reference_diameter_m` checks its
   diameter when given, for the same reason.
 - **In flight** (`Simulation::with_normal_force_table`): the table's normal force at the centre
@@ -3115,6 +3122,8 @@ viscous part from Jorgensen's crossflow method (p. 55).
   apogee (every 0.5° and Mach 0.01; bound 5 cm) and 5.5 cm (0°, 2° and 4°, past which the
   continuation flies; bound 10 cm); at 0°, 1°, 2°, 4°, 8°, 16°, 30°, 60° and 89°, every Mach
   0.05, 1.18 m, the interpolation's. A RASAero-shaped table continues its `sin² α` part to 1e-12.
+  Calisto's export has no viscous part below Mach 0.91, so its flights (to Mach 0.75) grow no rest;
+  the tables of hpr's own normal force, whose body lift is a rest, are the flights that do.
   A table on RASAero II's reference is rescaled by 4 on a rocket whose reference is half its
   largest body.
 - *Calisto* from a 5.2 m rail at 85° in 5 m/s of crosswind, peaking at Mach 0.746: apogee

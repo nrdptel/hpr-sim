@@ -606,8 +606,8 @@ How far to trust it:
   centre of pressure.
 - **Only up to Mach 0.75 on real data.** Only one real export has been flown, Calisto's.
   Faster than that, the table is checked by unit tests alone.
-- **Past the export's last angle, and at 0° faster than Mach 1.1, hpr assumes.** The assumptions
-  fit RASAero II's viscous part through Mach 1.1. Faster, that part grows much more slowly with
+- **Past the export's last angle, and at 0° faster than Mach 1.3, hpr assumes.** The assumptions
+  fit RASAero II's viscous part through Mach 1.3. Faster, that part grows much more slowly with
   the angle, so past 4° the table probably gives too much force at Mach 3 and above.
 
 Three parts are hpr's choices, not RASAero II's:
@@ -643,9 +643,9 @@ columns:
 `CN` also holds a viscous part, `CN Viscous`. It is the extra push, from the air's friction, of
 the air flowing sideways across the body. RASAero II takes it from Jorgensen's method ([RAS]
 p. 55), adds it from Mach 0.91 in Calisto's export, and moves the centre of pressure forward with
-the angle. hpr's own model has neither. Through Mach 1.1 the viscous part grows exactly as
-`sin² α`: at 4° it is (sin 4°/sin 2°)² = 3.995 times its value at 2°. Faster, it grows more
-slowly: 3.90 times at Mach 1.5, 3.16 at Mach 2, 1.73 at Mach 3 and 1.05 at Mach 4. The export's `CNalpha (0 to 4 deg)` and `CP (0 to 4 deg)` columns
+the angle. hpr's own model has neither. From Mach 0.91 through Mach 1.3 the viscous part grows
+exactly as `sin² α`: at 4° it is (sin 4°/sin 2°)² = 3.995 times its value at 2°. Faster, it grows
+more slowly: 3.90 times at Mach 1.5, 3.16 at Mach 2, 1.73 at Mach 3 and 1.05 at Mach 4. The export's `CNalpha (0 to 4 deg)` and `CP (0 to 4 deg)` columns
 repeat its 4° values on every row; hpr doesn't read them.
 
 ### How hpr reads it
@@ -656,15 +656,15 @@ over the angle, per radian) and the centre of pressure, both against Mach number
 - **At a positive angle**, `C_N/α` is `CN` over the angle in radians.
 - **At 0°**, `CN` is zero, so it can't be divided. hpr takes `CN Potential` at the smallest
   positive angle, over that angle. The potential part grows in step with the angle: in Calisto's
-  export its `C_N/α` is the same at 2° and 4° to 2e-15. Through Mach 1.1 the viscous part grows as
+  export its `C_N/α` is the same at 2° and 4° to 2e-15. Through Mach 1.3 the viscous part grows as
   `sin² α`, so it adds no slope at 0°. Faster, the export doesn't show how it starts from 0°, and
   leaving it out of the slope is an assumption.
 - **The centre of pressure** is converted from inches to metres at 0.0254 m to the inch. It
   stays measured from the nose tip, as hpr's stations are
   ([station](../glossary.md#station)). So the design must start at the same nose tip as the
-  RASAero II file. A centre of pressure outside the rocket, ahead of its nose or behind its tail,
-  at any Mach number a flight can reach (up to 5) is refused: it is the sign of a length in the
-  wrong unit.
+  RASAero II file. A table whose centre of pressure, at one of its Mach numbers up to 5 (where a
+  flight stops), lies outside the rocket, ahead of its nose or behind its tail, is refused: it is
+  the sign of a length in the wrong unit.
 - **Reference area.** RASAero II's coefficients are on the body's largest cross-section ([RAS]
   p. 72). hpr records that and rescales them to the rocket's own
   [reference area](../glossary.md#reference-area), when that is something else. For a rocket of
@@ -677,18 +677,18 @@ A flight looks up the table at its Mach number and angle of attack:
   values hold, and the lookup says so.
 - Between two columns, `C_N/α` and the centre of pressure are linear in the angle. Then
   `C_N = (C_N/α)·α` comes back exactly at each column's angle. Between them it is a part in step
-  with the angle plus one in its square: RASAero II's own shape through Mach 1.1, and an
-  assumption faster than that.
+  with the angle plus one in its square: RASAero II's own shape through Mach 1.3 (`α²` is within
+  0.2% of `sin² α` to 4°), and an assumption faster than that.
 - **Past the largest angle** `α_n`, the normal force splits in two. The linear share is the
   slope at 0° times `α_n`, at the 0° centre of pressure; it grows as `sin α`, as hpr's own fins do
   ([Aerodynamics in flight](flight.md#aerodynamics-in-flight)). The rest of the force, with the
   rest of the moment, grows as `sin² α`, the form of the air crossing the body that hpr's
   [body lift](#bodies-of-revolution) also takes ([G] p. 1; [N09] eq. 3.26). The force and centre
   of pressure are continuous at `α_n`, and the force is zero when the air comes from the tail.
-  The split needs the rest to be a positive force acting aft of the nose tip. Otherwise, as for a
-  table whose `C_N/α` falls with the angle, the whole force grows as `sin α` at the last centre
-  of pressure, so the force never turns round. Either way this is an assumption, and the lookup
-  reports it.
+  Two limits keep this sensible for any table. The rest's centre of pressure is held within the
+  rocket. And a table whose `C_N/α` falls with the angle has no rest: its whole force grows as
+  `sin α`, so the force never turns round. Neither limit makes a jump as the Mach number changes.
+  Either way this is an assumption, and the lookup reports it.
 
 **A worked example.** Take an export with invented numbers. At Mach 1, `CN Potential` is 10 per
 radian times the angle, `CN Viscous` is 0.03 at 2° and 0.12 at 4°, and the centre of pressure is
@@ -731,7 +731,7 @@ gives no side force: RASAero II's rockets are symmetric.
 | The 0° column at 15 Mach numbers against the reading of the export made for [M1.8a](../decisions-and-roadmap.md#m1-8a), the normal force through Mach 1, which [`normal-force-vs-mach.json`][mach-fixture] holds | the same to 1e-12 relative. That reading applies the same 0° rule, so this checks the reading, not the rule | both files |
 | [Valetudo](../glossary.md#example-rockets) at 100 m/s on a table of 1.5 times hpr's slope with the centre of pressure 5 cm further aft, against the small-angle equations of motion, in pitch and in yaw | period 1.104077 s against 1.104073 s, within the test's 3e-5 (1.44965 s on hpr's own); the decay within 0.03%, the test's bound 1% | `hpr_sim::tests::pitch_oscillation_follows_a_normal_force_table` |
 | Tables of hpr's own normal force flown in a crosswind: every 0.5° and every Mach 0.01, and at 0°, 2° and 4° only, where the flight uses the continuation past 4° | apogee within 7.8 mm and 5.5 cm of hpr's own flight, the test's bounds 5 cm and 10 cm | `hpr_sim::tests::a_table_of_hpr_s_own_normal_force_flies_as_hpr_does` |
-| The continuation past the last angle: a table shaped as RASAero II's (a part linear in the angle, one as `sin² α`), and random tables | the `sin² α` part continues to 1e-12; the force never turns round, and the centre of pressure stays between the two shares' | `hpr_aero::table::tests` |
+| The continuation past the last angle: a table shaped as RASAero II's (a part linear in the angle, one as `sin² α`), and random tables | the `sin² α` part continues to 1e-12; the force never turns round, the centre of pressure stays within the rocket, and nothing jumps as the table's values change with Mach number | `hpr_aero::table::tests` |
 | Calisto from a 5.2 m rail at 85° in a 5 m/s crosswind, up to Mach 0.746: on the export, on hpr's own normal force, and on hpr's own as a table at the export's angles | the export: apogee 2,793.11 m against 2,794.39 m, 14.2 m further into the wind. hpr's own as a table moves it 0.03 m: the table's method, apart from its numbers. Each flight spends about 2.2 s past 4° before apogee | [`normal-force-override.json`][override-fixture] |
 
 The Calisto flights show how much the change matters. They are not a check of accuracy: nothing
@@ -749,8 +749,10 @@ What it leaves out:
   tests cover the transonic columns.
 - **Past the export's largest angle**, the split continuation is hpr's assumption. In a 5 m/s
   crosswind Calisto flies past 4° for about 0.3 s just after leaving the rail (up to 7.9°) and for
-  the last 1.9 s before apogee, as it slows below 30 m/s. From Mach 3, where RASAero II's viscous
-  part hardly grows between 2° and 4°, the `sin² α` share probably gives too much force.
+  the last 1.9 s before apogee, as it slows below 30 m/s. Its export has no viscous part below
+  Mach 0.91, so Calisto's flights use only the linear share; the tables of hpr's own normal force
+  are the flights that grow a rest as `sin² α`. From Mach 3, where RASAero II's viscous part
+  hardly grows between 2° and 4°, the `sin² α` share probably gives too much force.
 - **The nose tip** can't be checked from the export beyond the refusal above. A design that
   starts somewhere else gets a shifted centre of pressure, with no warning.
 - **Only RASAero II's layout is read.** A table from anywhere else can be built in code with

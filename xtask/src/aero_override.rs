@@ -114,7 +114,7 @@ pub fn generate(root: &Path) -> Result<Value, String> {
         "reread": reread,
         "table_sha256": sha256(table_json.as_bytes()),
         "potential_slope_spread": potential_slope_spread(&export)?,
-        "viscous_growth": viscous_growth(&export, &[1.0, 1.1, 1.5, 2.0, 3.0, 4.0])?,
+        "viscous_growth": viscous_growth(&export, &[0.91, 1.0, 1.1, 1.3, 1.5, 2.0, 3.0, 4.0])?,
         "compared_rows": rows,
         "setup": SETUP,
         "flights": [

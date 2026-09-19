@@ -804,7 +804,7 @@ impl AeroModel {
     pub fn normal_force(&self, flow: &Flow) -> Result<NormalForce, AeroError> {
         if let Some(table) = &self.normal_force_table {
             flow.validate_angles()?;
-            let lookup = table.lookup(flow.mach, flow.alpha_rad)?;
+            let lookup = table.lookup_within(flow.mach, flow.alpha_rad, (0.0, self.length_m))?;
             let area_m2 = match table.reference() {
                 TableReference::Diameter { diameter_m } => 0.25 * PI * diameter_m * diameter_m,
                 TableReference::LargestBody => PI * self.max_body_radius_m * self.max_body_radius_m,
