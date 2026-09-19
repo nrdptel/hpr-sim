@@ -34,7 +34,7 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
   the moment in `hpr_sim`'s dynamics; `roll-vs-mach.json` against TN D-4014 Fig. 14 and the
   Basic Finner (`basic-finner-roll-damping.json`, Barrowman Fig. 5-7). Next reference for roll
   below Mach 1.5: TN D-4013's rolling-moment plots (fins canted 2°, not yet read). Scratch in
-  `refs/scratch/m18c/`. The worktree `../hpr-sim-m18c` can be removed.
+  `refs/scratch/m18c/`. #76: check M1.8a's other TN D-4014 readings for Fig. 14's zero offset.
 - **M1.8d** next: `C_Nα` and CP tables from a RASAero II export replacing hpr's in a flight,
   tested on Calisto's export (`refs/rocketpy-history/calisto-cd-test-2018.csv`, pinned; its
   `CNalpha (0 to 4 deg)` column is a secant slope to 4°, ADR-027). Issues #67 to #70, #72 and #73
