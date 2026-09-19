@@ -18,15 +18,16 @@
 # misses, and why:
 #
 # - Every metric: a known gap. RocketPy flying the example's own drag peaks at Mach 1.048 near
-#   burnout, and hpr's aerodynamics refuse M >= 1 until M1.8 (ADR-008, ADR-011), so hpr's flight
+#   burnout, and hpr's drag buildup refuses M >= 1 until M1.8b (ADR-009, ADR-027), so hpr's flight
 #   stops at Mach 1 and nothing can be compared. The harness checks this rather than trusting it:
 #   the reference must reach Mach 1, hpr must refuse with that error, and the run fails once hpr
-#   flies it (L85). The same-drag case is the same gap, at Mach 1.013.
+#   flies it (L85). The same-drag case flies the example's drag table, not the buildup, and since
+#   hpr's normal force passed Mach 1 (M1.8a) it flies to the ground and is scored.
 id = "predicted-prometheus-2022-generic-motor"
 title = "Prometheus 2022 from the pad to the ground, predicted: hpr's own aerodynamics"
 reference = "validation/fixtures/flight/rocketpy-whole-flight-own-drag.json"
 reference_case = "prometheus-2022-generic-motor"
-known_gap = "RocketPy flying the example's own drag peaks at Mach 1.048 near burnout, and hpr's aerodynamics refuse M >= 1 until M1.8 (ADR-008, ADR-011), so the flight stops at Mach 1 and no metric can be compared."
+known_gap = "RocketPy flying the example's own drag peaks at Mach 1.048 near burnout, and hpr's drag buildup refuses M >= 1 until M1.8b (ADR-009, ADR-027), so the flight stops at Mach 1 and no metric can be compared."
 
 [flight.whole_flight]
 design = "rocketpy-prometheus-2022-generic-motor"

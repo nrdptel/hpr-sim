@@ -14,10 +14,14 @@ What has been checked so far:
 - each model on its own, against exact answers, its published source and, in places,
   [RocketPy](glossary.md#rocketpy), an open-source flight simulator;
 - the descent under a parachute, against RocketPy, for five rockets;
-- whole flights from the pad to the ground, against RocketPy, for five rockets flown with one
-  declared drag coefficient, with a sixth reported as a gap: heights, speeds and times agree, and
-  so does the path, except for rockets that leave the rail slowly in a wind;
-- the same flights with each code's own drag, reported against a target rather than gated.
+- whole flights from the pad to the ground, against RocketPy, for six rockets flown with one
+  declared drag coefficient, one of them past Mach 1: heights, speeds and times agree, and so does
+  the path, except for rockets that leave the rail slowly in a wind;
+- the same flights with each code's own drag, reported against a target rather than gated, with
+  the one past Mach 1 reported as a gap;
+- the normal force and centre of pressure from Mach 0.6 to 4.63, against NASA's wind-tunnel tests
+  of a sounding rocket, and against [RASAero II](glossary.md#rasaero-ii), another code
+  ([fixture][nf-fixture]).
 
 Every number here links to the page or file it comes from. [Checking a claim](checking-a-claim.md)
 shows how to follow one back to its source and its test, and
@@ -52,8 +56,10 @@ reality. They are set out in the project's [validation plan][plan].
 
 The first three check the code. Only the fourth checks the physics against the world, and no
 flight has been compared yet: that is [M2.3](decisions-and-roadmap.md#m2-3), the real-flights milestone. The nearest
-thing so far is two recovery models checked against published drop tests, which are measurements
-but not flights ([Recovery](physics/recovery.md)).
+things so far are two recovery models checked against published drop tests
+([Recovery](physics/recovery.md)), and the normal force checked against NASA's wind-tunnel tests
+of the Arcas Robin sounding rocket
+([Aerodynamics](physics/aero.md#normal-force-through-mach-1)): measurements, but not flights.
 
 ## Where each model stands
 
@@ -74,7 +80,7 @@ parachute descents sample, as part of that comparison, and nowhere else
 | [Shapes](physics/shapes.md) | ✓ | — | — | — |
 | [Mass properties](physics/mass.md) | ✓ | — | — | — |
 | [Solid motors](physics/motor.md) | ✓ | — | ✓ RocketPy, ThrustCurve.org | — |
-| [Aerodynamics](physics/aero.md) | ✓ | ✓ Barrowman's examples | partial: drag only, with the fins and finish guessed; and in whole flights, against a target | — |
+| [Aerodynamics](physics/aero.md) | ✓ | ✓ Barrowman's examples | partial: drag with the fins and finish guessed; the normal force against RASAero II to Mach 2; and in whole flights, against a target | — (wind tunnel ✓, normal force) |
 | [Rigid-body flight](physics/flight.md) | ✓ | — | ✓ RocketPy, with the drag given; and on each code's own drag, against a target | — |
 | [Time integration](physics/integration.md) | ✓ | — | — | — |
 | [Recovery](physics/recovery.md) | ✓ | ✓ | ✓ RocketPy | — (drop tests ✓) |
@@ -117,7 +123,9 @@ may be from its reference and still pass.
 | [Aerodynamics](physics/aero.md) | drag curves labelled [RASAero](glossary.md#rasaero-ii) in RocketPy's examples, at [Mach](glossary.md#mach-number) 0.3, with the fins and surface finish guessed because the curves don't record them | within 10% in four of seven cases; −18.3% for Cavour [power-on](glossary.md#power-on-and-power-off-drag) (motor burning), cause open |
 | [Aerodynamics](physics/aero.md) | Valetudo's drag table, which is 1.44 times the drag in the [OpenRocket](glossary.md#openrocket) export for the same rocket | −47.0% power-off and −50.4% power-on. Against the OpenRocket export, hpr is 23.5% under as designed here, and 1.9% under with the export's own surface finish and launch lugs |
 | [Rigid-body flight](physics/flight.md) | the exact motion of a tumbling, spinning rocket in a vacuum, over 22 s | the centre of mass within 1.7e-6 m of the exact parabola |
-| [Rigid-body flight](physics/flight.md) | RocketPy's whole flights from the pad to the ground, for five rockets, both codes flying one declared drag coefficient | heights, speeds, times and accelerations within 3% ([below](#whole-flights-against-rocketpy)), the largest +1.783% in the [report][report]; the path too, except the drifts of Juno III and Bella Lui in wind and NDRT 2020's apogee drift, reported, not scored, as measured differences between the models ([ADR-026][adr-026]) |
+| [Aerodynamics](physics/aero.md) | NASA's wind-tunnel tests of the half-scale Arcas Robin and a longer version, Mach 0.6 to 4.63: [normal-force slope](glossary.md#normal-force-slope) and centre of pressure, 22 readings at 12 Mach numbers ([fixture][nf-fixture]) | from Mach 1.5 to 2.96, the slope −13.4% to +3.3% and the centre of pressure within 0.42 [calibres](glossary.md#calibre-caliber); past Mach 3 the slope −17.2% to −25.0% (the body's lift, measured with the fins off, is 3.9 to 4.6 against hpr's 2.3 to 2.8), the centre of pressure within 0.19; from Mach 0.8 to 1.2, 2 of 9 within 15% and half a calibre |
+| [Aerodynamics](physics/aero.md) | RASAero II's normal-force slope and centre of pressure for Calisto, Mach 0.1 to 2.0 ([fixture][nf-fixture]) | within 15% and half a calibre at 10 of 15 Mach numbers; hpr's slope rises with Mach through subsonic flow where RASAero II's stays flat (+21.9% at Mach 0.9), and is −16.8% at Mach 2 |
+| [Rigid-body flight](physics/flight.md) | RocketPy's whole flights from the pad to the ground, for six rockets, one past Mach 1, both codes flying one declared drag coefficient | heights, speeds, times and accelerations within 3% ([below](#whole-flights-against-rocketpy)), the largest +1.783% in the [report][report]; the path too, except the drifts of Juno III, Bella Lui and Prometheus 2022 in wind and NDRT 2020's apogee drift, reported, not scored, as measured differences between the models ([ADR-026][adr-026]) |
 | [Time integration](physics/integration.md) | a separate line-by-line transcription of `DOPRI5`, the published Fortran integrator by Hairer and Wanner that hpr's [Dormand–Prince](glossary.md#dormandprince-and-rk4) stepper follows, on the problem Hairer's own example program for `DOPRI5` solves: the Arenstorf orbit, the closed, looping path of a small body pulled by two large ones that circle each other | the same step counts |
 | [Time integration](physics/integration.md) | a vertical flight with drag that has an exact solution | apogee, deployment and landing times within 1.5e-8 s |
 | [Recovery](physics/recovery.md) | RocketPy's descents under a parachute, for five rockets | every descent metric within 3% ([below](#the-descent-under-a-parachute-against-rocketpy)) |
@@ -224,15 +232,17 @@ motion, the motor and the air, not the drag. hpr's own drag is compared
 
 **In short: how high, how fast and how long agree, and so does where the rocket goes, except for
 rockets that leave the rail slowly in a wind.** The heights, speeds, times and accelerations of
-five flights, and of three of them again in calm air, agree within the 3% of each case's gate
-([case file][juno-case]); the largest difference is +1.783% ([report][report]). Here *still air*
+six flights, one of them past Mach 1, and of three of them again in calm air, agree within the 3%
+of each case's gate ([case file][juno-case]); the largest difference is +1.783%
+([report][report]). Here *still air*
 is an example flown with no wind (Valetudo's), and *calm air* a windy case flown again with its
 wind switched off. The apogee and landing points agree too, within 2.2%, in every flight without
 wind and for Calisto in wind ([ADR-026][adr-026]). Juno III and Bella Lui leave the rail slowly
 in the wind, at a steep angle to the airflow. There hpr's [body lift](glossary.md#body-lift),
 which RocketPy leaves out, its later release from the rail and, for Juno III, its simpler fin
-model put their drifts 11 to 43% from RocketPy's. NDRT 2020's apogee drift differs by −4.654%,
-mostly from the rail release. These five drifts are reported, not scored. So the landing offset
+model put their drifts 11 to 43% from RocketPy's. Prometheus 2022's differ by −9.273% and
++6.283%, from body lift and the rail release. NDRT 2020's apogee drift differs by −4.654%, mostly from the rail
+release. These seven drifts are reported, not scored. So the landing offset
 that [M2.1](decisions-and-roadmap.md#m2-1) asks for is met except where the two codes' models
 differ.
 
@@ -273,17 +283,17 @@ the point RocketPy's flight follows; hpr's own output follows the centre of mass
 Heights are measured from where that point starts, as RocketPy's are. A difference is hpr's value
 less RocketPy's, over RocketPy's.
 
-The [validation report][report] scores all but eight of the numbers of the eight flights (the
-five, and Juno III, Calisto and Bella Lui again in calm air), and all of the scored ones are within
-tolerance. The eight are measured and reported but not scored, each for a reason written in its
-case file (below). Prometheus 2022, the sixth rocket, is a known gap
-(below). Every result of the report, as hpr's difference from RocketPy:
+The [validation report][report] scores all but eleven of the numbers of the nine flights (the
+six, and Juno III, Calisto and Bella Lui again in calm air), and all of the scored ones are within
+tolerance. The eleven are measured and reported but not scored, each for a reason written in its
+case file (below). Every result of the report, as hpr's difference from RocketPy:
 
 | case | `apogee_agl_m` | `apogee_time_s` | `flight_time_s` | `max_speed_m_s` | `max_mach` |
 |---|---|---|---|---|---|
 | [`flight-calisto-tests-motor-at-minus-1.373`][report] | +0.057% | +0.123% | +0.130% | +0.015% | −0.120% |
 | [`flight-valetudo`][report] | +0.116% | +0.275% | +0.262% | +0.035% | −0.026% |
 | [`flight-ndrt-2020-nose-to-tail`][report] | +0.068% | +0.194% | +0.667% | +0.031% | +0.003% |
+| [`flight-prometheus-2022-generic-motor`][report] | +1.525% | +0.823% | +1.031% | −0.004% | −0.256% |
 | [`flight-juno-iii`][report] | +0.700% | +0.417% | +0.520% | +0.058% | −0.229% |
 | [`flight-bella-lui`][report] | +0.375% | +0.229% | +0.261% | +0.017% | −0.075% |
 | [`flight-juno-iii-calm`][report] | +0.086% | +0.080% | +0.068% | +0.015% | −0.123% |
@@ -295,6 +305,7 @@ case file (below). Prometheus 2022, the sixth rocket, is a known gap
 | [`flight-calisto-tests-motor-at-minus-1.373`][report] | −0.010% | −0.072% | +0.021% | +0.019% | −0.020% |
 | [`flight-valetudo`][report] | −0.002% | −0.100% | +0.048% | +0.042% | +0.009% |
 | [`flight-ndrt-2020-nose-to-tail`][report] | −0.009% | −0.085% | −0.004% | +0.043% | +0.022% |
+| [`flight-prometheus-2022-generic-motor`][report] | −0.014% | −0.033% | +0.757% | −0.006% | −0.014% |
 | [`flight-juno-iii`][report] | −0.005% | −0.142% | +0.294% | +0.063% | −0.003% |
 | [`flight-bella-lui`][report] | −0.013% | −0.029% | +0.155% | +0.018% | +0.021% |
 | [`flight-juno-iii-calm`][report] | −0.002% | −0.137% | +0.042% | +0.020% | +0.001% |
@@ -306,6 +317,7 @@ case file (below). Prometheus 2022, the sixth rocket, is a known gap
 | [`flight-calisto-tests-motor-at-minus-1.373`][report] | +0.099% | +0.099% | −96.811% | −0.986% | +1.433% |
 | [`flight-valetudo`][report] | +0.248% | +0.248% | +0.006% | −0.932% | −1.949% |
 | [`flight-ndrt-2020-nose-to-tail`][report] | −0.020% | +83.059% | +0.234% | −4.654% | +1.950% |
+| [`flight-prometheus-2022-generic-motor`][report] | +0.002% | +19.062% | +1.382% | −9.273% | +6.283% |
 | [`flight-juno-iii`][report] | −0.211% | −0.211% | +0.001% | −42.510% | +40.926% |
 | [`flight-bella-lui`][report] | +1.783% | +1.783% | +0.001% | −11.264% | −23.833% |
 | [`flight-juno-iii-calm`][report] | −0.012% | −0.012% | +0.046% | −1.752% | −1.812% |
@@ -327,16 +339,19 @@ percentage. Each is held to 3% of RocketPy's apogee (for height) or top speed (f
 [M2.1](decisions-and-roadmap.md#m2-1)'s 3% for one number, applied to the whole trace
 ([case file][juno-case]).
 
-All eight flights pass, each well inside its bound. The largest height RMS is Juno III's,
-15.931091 m against its 78.4 m bound, about a fifth of it; its apogee is also among the furthest
-off. The other seven are at an eighth of theirs or less. The speed RMS runs from 0.021952 to
-0.899478 m/s ([report][report]).
+All nine flights pass, each well inside its bound. The largest height RMS is Prometheus 2022's,
+44.681081 m against its 110.3 m bound, two-fifths of it; its apogee is also the furthest off,
++1.525%. Body lift accounts for that too: RocketPy flown with hpr's body lift and rail release
+reaches 3735.4 m, against hpr's 3735.3 ([case file][prometheus-case]). Juno III's is 15.931091 m
+against 78.4 m, about a fifth, and the other seven are at an eighth of theirs or less. The speed
+RMS runs from 0.021952 to 1.593724 m/s ([report][report]).
 
 | case | `series_height_rms_m` | height bound, m | `series_speed_rms_m_s` | speed bound, m/s |
 |---|---|---|---|---|
 | [`flight-calisto-tests-motor-at-minus-1.373`][report] | +2.027529 | 78.3 | +0.064755 | 7.3 |
 | [`flight-valetudo`][report] | +2.373260 | 23.3 | +0.196853 | 3.3 |
 | [`flight-ndrt-2020-nose-to-tail`][report] | +2.768886 | 36.4 | +0.231944 | 5.4 |
+| [`flight-prometheus-2022-generic-motor`][report] | +44.681081 | 110.3 | +1.593724 | 10 |
 | [`flight-juno-iii`][report] | +15.931091 | 78.4 | +0.899478 | 6.7 |
 | [`flight-bella-lui`][report] | +1.871751 | 15.9 | +0.304555 | 2.9 |
 | [`flight-juno-iii-calm`][report] | +2.068744 | 78.6 | +0.066644 | 6.8 |
@@ -362,9 +377,10 @@ What the two codes still do differently, and what it moves:
   hpr's choices to RocketPy one at a time moves RocketPy's to 360.7 m with hpr's rail release,
   270.6 m with its body lift too, and 231.1 m with its fin slope as well ([ADR-026][adr-026],
   measured by [`wind_response.py`](https://github.com/nrdptel/hpr-sim/blob/main/validation/oracles/rocketpy/wind_response.py)). Every windy drift lands within 1.4% of hpr's the
-  same way. Bella Lui's drifts are −11.264% and −23.833%, and NDRT 2020's apogee drift −4.654%,
-  mostly its rail release. These five are reported but not scored, as measured differences
-  between the models. Every other drift is scored and passes: Calisto's in wind, Valetudo's in
+  same way. Bella Lui's drifts are −11.264% and −23.833%, Prometheus 2022's −9.273% and +6.283%
+  (within 0.1% of hpr's once RocketPy has its body lift and rail release; [case
+  file][prometheus-case]), and NDRT 2020's apogee drift −4.654%, mostly its rail release. These
+  seven are reported but not scored, as measured differences between the models. Every other drift is scored and passes: Calisto's in wind, Valetudo's in
   still air, NDRT 2020's landing, and all six in calm air ([report][report],
   [case file][juno-case]).
 - **RocketPy's own equations, corrected.** RocketPy 1.13.0 takes the turning moments during the
@@ -389,15 +405,18 @@ What the two codes still do differently, and what it moves:
   ([report][report], [case file][calisto-case]).
 - **The main opening.** RocketPy adds the air a canopy drags along
   ([added mass](glossary.md#added-mass)), and hpr has none. So NDRT's peak deceleration as its
-  main opens is +83.059% in hpr, reported but not scored. Its time is scored, since both codes put
-  it where the main opens ([report][report], [case file][ndrt-flight-case]).
+  main opens is +83.059% in hpr, and Prometheus 2022's +19.062%, reported but not scored. Their
+  times are scored, since both codes put them where the main opens ([report][report],
+  [case file][ndrt-flight-case]).
 
-**Prometheus 2022 is a known gap.** RocketPy's flight peaks at Mach 1.013, and hpr stops any
-flight at Mach 1 until [M1.8](decisions-and-roadmap.md#m1-8) adds transonic and supersonic
-aerodynamics. The case still runs: the harness checks that hpr stops it for that reason and no
-other, lists it under the report's *Known gaps*, and fails once hpr flies it, so the gap can't
-outlive its cause ([case file][prometheus-case]). Bella Lui was added so that five rockets can
-still be scored while Prometheus can't.
+**Prometheus 2022 flies through Mach 1.** RocketPy's flight peaks at Mach 1.013 and hpr's at
+1.010153 (−0.256%). Until [M1.8a](decisions-and-roadmap.md#m1-8a) hpr stopped any flight at Mach 1,
+and the case was a known gap; with the normal force carried past Mach 1
+([Aerodynamics](physics/aero.md#fins-through-mach-1)) it flies on its drag table to the ground.
+Its scored numbers agree within 1.525% ([report][report], [case file][prometheus-case]). This flight
+is a light test of the transonic normal force: no committed check measures its angle of attack
+there, but a local probe found it below 0.11 degrees from Mach 0.8 to 1.2
+([case file][prometheus-case]).
 
 What this shows: with the drag given, the two codes agree on how high, how fast and how long a
 rocket flies, and on where it goes, except for rockets that leave the rail slowly in a wind,
@@ -493,9 +512,9 @@ Why the misses, largest first:
   explained above. Its time moves +9.697% with the later apogee ([report][report],
   [case file][ndrt-predicted-case]).
 
-**Prometheus 2022 is a known gap here too.** On its own drag RocketPy's flight peaks at Mach 1.048,
-and hpr stops at Mach 1 until [M1.8](decisions-and-roadmap.md#m1-8)
-([case file][prometheus-predicted-case]).
+**Prometheus 2022 is a known gap here.** On its own drag RocketPy's flight peaks at Mach 1.048,
+and hpr's drag buildup stops at Mach 1 until [M1.8b](decisions-and-roadmap.md#m1-8b), the
+transonic drag ([case file][prometheus-predicted-case]). On the declared drag it flies (above).
 
 What this shows: with its own drag, hpr's heights differ from RocketPy's by −0.604% to +10.322%
 ([report][report]), and the larger gaps are the two drags differing, not the flight. It does not
@@ -511,11 +530,17 @@ rest.
   Valetudo and NDRT 2020, where its drag is well below the examples' ([report][report]). Which
   drag is right is open until real flights ([M2.3](decisions-and-roadmap.md#m2-3), the
   real-flights milestone).
-- **Aerodynamics were checked at two speeds only:** Mach 0 for the normal force and centre of
-  pressure, and Mach 0.3 for drag. The drag from air pressure on the nose, and on any shoulder (a
-  transition that widens toward the tail), is held at its low-speed value. So from about Mach 0.6
-  it reads low: the source's own correction for high subsonic speeds gives more. The models are
-  documented only to Mach 0.8 ([Aerodynamics](physics/aero.md)).
+- **Drag was checked at one speed only,** Mach 0.3. The drag from air pressure on the nose, and on
+  any shoulder (a transition that widens toward the tail), is held at its low-speed value. So from
+  about Mach 0.6 it reads low: the source's own correction for high subsonic speeds gives more.
+  The drag buildup is documented only to Mach 0.8 and stops at Mach 1
+  ([Aerodynamics](physics/aero.md)).
+- **The normal force near and far past Mach 1.** Against NASA's wind tunnel, between Mach 0.8
+  and 1.2 hpr's slope runs up to +29.3% high and its centre of pressure up to 2.29
+  [calibres](glossary.md#calibre-caliber) off. Past Mach 3 its slope is −17.2% to −25.0%, because
+  the body lifts more than slender-body theory gives ([fixture][nf-fixture],
+  [Aerodynamics](physics/aero.md#normal-force-through-mach-1)). Between Mach 1.5 and 3 it holds
+  to within 13.4% and 0.42 calibres.
 - **Drag against the RASAero curves** is within 10% in four of seven cases, with the fins and
   surface finish guessed, because the curves don't record them. Cavour power-on is −18.3%, cause
   open. Valetudo's −47.0% and −50.4% are against a table 1.44 times the drag in the OpenRocket
@@ -534,8 +559,9 @@ rest.
   [separated](glossary.md#separation) body falls with no drag until its device opens
   ([Recovery](physics/recovery.md#inflation)).
 - **No added mass under a canopy,** the likely cause of the 2.86% drift difference above
-  ([Recovery](physics/recovery.md#against-rocketpy)), and the cause of NDRT's +83.059% peak as
-  its main opens in the whole flight ([report][report], [case file][ndrt-flight-case]).
+  ([Recovery](physics/recovery.md#against-rocketpy)), and the cause of NDRT's +83.059% and
+  Prometheus 2022's +19.062% peaks as their mains open in the whole flight ([report][report],
+  [case file][ndrt-flight-case]).
 - **Body lift in wind.** A slow rocket leaves the rail at a steep angle to a crosswind, and there
   hpr's body lift, which RocketPy leaves out, is the largest reason its drift differs: Juno III's
   apogee drift is −42.510% against RocketPy's ([report][report]). How much body lift a rocket body
@@ -546,8 +572,9 @@ rest.
 - **Airfoil fins.** hpr's fins use the flat-plate lift slope. It cannot model an airfoil lift
   curve such as the one Juno III's example gives its fins, which makes RocketPy's fin slope 7.6%
   steeper ([ADR-026][adr-026]).
-- **Mach 1.** hpr stops any flight that reaches Mach 1, so Prometheus 2022 can't be compared
-  until [M1.8](decisions-and-roadmap.md#m1-8) ([case file][prometheus-case]).
+- **Mach 1 on hpr's own drag.** The drag buildup stops a flight at Mach 1 until
+  [M1.8b](decisions-and-roadmap.md#m1-8b), so Prometheus 2022 on its own drag can't be compared
+  yet ([case file][prometheus-predicted-case]). On a drag table a flight flies on to Mach 5.
 - **Turbulence** is an aircraft model, unvalidated for rockets, and no flight uses it yet
   ([Turbulence](physics/turbulence.md)).
 - **Wall and fin mass** may follow different conventions from OpenRocket's, which its documentation
@@ -573,3 +600,4 @@ rest.
 [adr-026]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-026-the-path-in-wind-rocketpys-corrected-equations-and-hprs-body-lift-2026-09-18
 [ndrt-flight-case]: https://github.com/nrdptel/hpr-sim/blob/main/validation/cases/flight-ndrt-2020-nose-to-tail.toml
 [prometheus-case]: https://github.com/nrdptel/hpr-sim/blob/main/validation/cases/flight-prometheus-2022-generic-motor.toml
+[nf-fixture]: https://github.com/nrdptel/hpr-sim/blob/main/validation/fixtures/aero/normal-force-vs-mach.json

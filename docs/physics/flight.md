@@ -16,8 +16,8 @@
   for rockets that leave the rail slowly in a wind. There hpr's
   [body lift](../glossary.md#body-lift), which RocketPy's normal force leaves out, its later
   release from the rail and, for Juno III, its simpler fin model put the drift 4.7 to 43% from
-  RocketPy's ([ADR-026][adr-026]). A sixth rocket
-  reaches Mach 1, which hpr refuses. With hpr's own drag, against RocketPy flying the drag its
+  RocketPy's ([ADR-026][adr-026]). A sixth, Prometheus 2022, passes Mach 1 on its drag table
+  and agrees as well, its drifts again apart from RocketPy's by body lift. With hpr's own drag, against RocketPy flying the drag its
   examples ship, hpr's heights differ from RocketPy's by −0.604% to +10.322%, the larger gaps where
   its drag is well below the example's
   ([Accuracy](../accuracy.md#whole-flights-with-each-codes-own-drag)). No flight has been compared
@@ -25,8 +25,9 @@
 - **What it leaves out:** staging and delayed ignition, tip-off (the pivot as the rocket leaves the
   rail), roll forcing and aerodynamic roll damping, turbulence and thrust misalignment. Its
   small-angle aerodynamics are used at every angle of attack (the angle between the rocket's axis
-  and its path through the air), with no stall, and a flight that reaches Mach 1 stops with an
-  error.
+  and its path through the air), with no stall. On hpr's own drag a flight that reaches Mach 1
+  stops with an error until the transonic drag arrives
+  ([M1.8b](../decisions-and-roadmap.md#m1-8b)); on a drag table it flies on to Mach 5.
 
 ## What the equations do
 
@@ -209,9 +210,12 @@ q̇   = ½ q ⊗ (0, ω)
     overstate the forces at large `α`. In normal flights large `α` occurs near apogee, where the
     dynamic pressure is small, and off the rail in strong crosswinds. `Sample::angle_of_attack_rad`
     shows where it happens.
-  - A Mach number of 1 or more anywhere stops the flight with `SimError::Aero` until transonic
-    and supersonic aerodynamics arrive ([M1.8](../decisions-and-roadmap.md#m1-8)). A drag override table covers drag at any
-    Mach, but not normal force.
+  - The normal force covers Mach 0 to 5 ([Fins through Mach 1](aero.md#fins-through-mach-1)); a
+    fin set's CP moves with the Mach number, and each component takes its local airflow at its
+    CP for the centre of mass's Mach number. The drag buildup stops at Mach 1 with
+    `SimError::Aero` until its transonic and supersonic terms arrive
+    ([M1.8b](../decisions-and-roadmap.md#m1-8b)). A drag override table covers drag at any Mach, so
+    a flight on one flies through Mach 1.
 
 ## Phases
 
@@ -335,8 +339,8 @@ default settings. The numbers were measured on 2026-09-17.
 - **Events and recorder.** Events come in order: liftoff, rail exit, burnout, apogee, ground hit.
   Apogee's vertical speed is below 1e-6 m/s and ground contact's height below 1e-6 m. Recorder rows
   fall on the interval or at events.
-- **Refusals.** The synthetic 54 mm rocket on an I175 passes Mach 1 and stops with
-  `SimError::Aero(Mach)`.
+- **Refusals.** The synthetic 54 mm rocket on an I175 passes Mach 1 and, on hpr's own drag, stops
+  with `SimError::Aero(Mach)`; on a constant drag table it flies through Mach 1 and lands.
 - **Cost.** About 1.1 ms per Valetudo flight to the ground (`docs/perf.md`).
 
 ### Whole flights against RocketPy
@@ -351,12 +355,12 @@ and a declared wind.
 
 | result | value |
 |---|---|
-| cases scored | 5, and a sixth, which reaches Mach 1, reported as a known gap |
+| cases scored | 6, one of them (Prometheus 2022) past Mach 1, since [M1.8a](../decisions-and-roadmap.md#m1-8a) |
 | height, speed, time, acceleration | all scored, all within 3% of RocketPy's |
 | largest of those | +1.783%, Bella Lui's peak acceleration, on the rail |
-| largest in apogee | +0.700%, Juno III, in the suite's strongest wind |
+| largest in apogee | +1.525%, Prometheus 2022; RocketPy flown with hpr's body lift and rail release comes within 0.01% ([case file](https://github.com/nrdptel/hpr-sim/blob/main/validation/cases/flight-prometheus-2022-generic-motor.toml)) |
 | path without wind (drift of apogee and landing) | all scored, within 2.2% (largest −2.141%, Bella Lui's calm landing) |
-| path in wind | Calisto's scored (largest +1.433%), and NDRT 2020's landing; Juno III's and Bella Lui's, and NDRT 2020's apogee drift, differ by 4.7 to 43% and are reported, not scored: hpr's body lift and rail release, and Juno III's fin slope ([ADR-026][adr-026]) |
+| path in wind | Calisto's scored (largest +1.433%), and NDRT 2020's landing; Juno III's, Bella Lui's and Prometheus 2022's, and NDRT 2020's apogee drift, differ by 4.7 to 43% and are reported, not scored: hpr's body lift and rail release, and Juno III's fin slope ([ADR-026][adr-026]) |
 
 What the two codes still do differently, and how much it moves:
 

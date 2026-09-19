@@ -10,9 +10,12 @@
 //! - a step in radius where one body component meets the next, `(2/A_ref)ΔA · sin α/α` at the
 //!   joint, reported with the aft component. This extrapolates Barrowman 1966 eq. 10 over the whole
 //!   body to a transition of zero length; Barrowman 1967 p. 18 assumes no discontinuities;
-//! - fin sets, `(C_Nα)₁ Σ sin² Λ_k · f_N · K_T(B)` at the quarter mean aerodynamic chord
-//!   ([`crate::fins`]), and for one or two fins the side force `(C_Nα)₁ Σ sin Λ cos Λ · K_T(B)`
-//!   across the flow's plane ([`crate::fins::side_sum`]).
+//! - fin sets, `(C_Nα)₁ Σ sin² Λ_k · f_N · K_T(B)` at the fin's centre of pressure, both at the
+//!   flow's Mach number ([`crate::fins::FinAero`]), and for one or two fins the side force
+//!   `(C_Nα)₁ Σ sin Λ cos Λ · K_T(B)` across the flow's plane ([`crate::fins::side_sum`]).
+//!
+//! The bodies' terms don't change with Mach: slender-body theory's slope and centre of pressure
+//! hold at any Mach number (Barrowman 1967 p. 18), and body lift is Galejs's cross-flow term.
 //!
 //! Launch lugs and rail buttons add drag only, and internal parts sit inside the body. Tube fins
 //! have no cited normal-force method yet and are refused, as is any part kind this model doesn't
@@ -25,19 +28,24 @@ use serde::{Deserialize, Serialize};
 
 use crate::body::{BODY_LIFT_K, BodyGeometry, sinc};
 use crate::drag::{
-    ComponentDrag, ComponentDragTerms, Drag, DragConditions, SUBSONIC_MACH_LIMIT,
-    axial_drag_alpha_factor, body_friction_form_factor,
+    BUILDUP_MACH_LIMIT, ComponentDrag, ComponentDragTerms, Drag, DragConditions,
+    SUBSONIC_MACH_LIMIT, axial_drag_alpha_factor, body_friction_form_factor,
 };
 use crate::error::{AeroError, check_dimension, check_mach};
-use crate::fins::{FinGeometry, fin_count_factor, interference_factor, roll_sum, side_sum};
+use crate::fins::{FinAero, FinLoading, fin_count_factor, interference_factor, roll_sum, side_sum};
 use crate::table::DragTable;
+
+/// The top of the normal force's range: Mach 5, where the hypersonic region begins (Niskanen 2009
+/// Table 3.1, p. 19). [`AeroModel::normal_force`] refuses it and anything faster.
+pub const NORMAL_FORCE_MACH_LIMIT: f64 = 5.0;
 
 /// The air-relative flow at one instant.
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 #[non_exhaustive]
 pub struct Flow {
-    /// Mach number, in `[0, 1)` for the subsonic models.
+    /// Mach number: in `[0, 5)` for the normal force, and in `[0, 1)` for the drag buildup until
+    /// its transonic terms arrive.
     pub mach: f64,
     /// Total angle of attack between the body axis `+z_B` and the air-relative velocity, rad, in
     /// `[0, π]`. The models are small-angle models (see `docs/physics/aero.md`).
@@ -63,14 +71,20 @@ impl Flow {
         Self::new(mach, 0.0, 0.0)
     }
 
-    /// Checks the Mach number and the angles.
+    /// Checks the Mach number against the normal force's range, and the angles.
     ///
     /// # Errors
     ///
-    /// [`AeroError::Mach`] outside `[0, 1)`, and [`AeroError::Domain`] for an angle of attack
-    /// outside `[0, π]` or a non-finite roll.
+    /// [`AeroError::Mach`] outside `[0, 5)` ([`NORMAL_FORCE_MACH_LIMIT`]), and
+    /// [`AeroError::Domain`] for an angle of attack outside `[0, π]` or a non-finite roll.
     pub fn validate(&self) -> Result<(), AeroError> {
-        check_mach(self.mach)?;
+        check_mach(self.mach, NORMAL_FORCE_MACH_LIMIT, "the normal force")?;
+        self.validate_angles()
+    }
+
+    /// As [`Flow::validate`], for the drag buildup's range `[0, 1)`.
+    fn validate_for_buildup(&self) -> Result<(), AeroError> {
+        check_mach(self.mach, BUILDUP_MACH_LIMIT, "the drag buildup")?;
         self.validate_angles()
     }
 
@@ -198,14 +212,25 @@ pub struct FinSetAero {
     pub count: u32,
     /// Roll angle of the first fin, rad.
     pub base_angle_rad: f64,
-    /// One fin's geometry.
-    pub geometry: FinGeometry,
+    /// One fin's normal force through the speed regimes, and its geometry.
+    pub fin: FinAero,
     /// Fin–fin factor `f_N`.
     pub count_factor: f64,
     /// Fin–body interference `K_T(B)`.
     pub interference: f64,
-    /// Centre of pressure, m aft of the nose tip.
-    pub cp_station_m: f64,
+    /// Station of the fins' root leading edge, m aft of the nose tip.
+    pub fore_station_m: f64,
+}
+
+impl FinSetAero {
+    /// The set's centre of pressure at `mach`, m aft of the nose tip.
+    ///
+    /// # Errors
+    ///
+    /// As [`FinAero::loading`].
+    pub fn cp_station_m(&self, mach: f64) -> Result<f64, AeroError> {
+        Ok(self.fore_station_m + self.fin.loading(mach)?.cp_m)
+    }
 }
 
 /// A rocket's aerodynamic model: normal force, centre of pressure and drag.
@@ -282,7 +307,7 @@ impl AeroModel {
                 }
                 Part::FinSet(set) => {
                     let terms = (|| {
-                        let geometry = FinGeometry::from_planform(&set.planform)?;
+                        let fin = FinAero::new(&set.planform, reference_area_m2)?;
                         let body_radius = component.body_radius_m.ok_or_else(|| {
                             AeroError::Layout(
                                 "a fin set needs the radius of the body tube it is on".to_owned(),
@@ -292,11 +317,10 @@ impl AeroModel {
                             id: component.id.clone(),
                             count: set.count,
                             base_angle_rad: set.base_angle_rad,
-                            geometry,
                             count_factor: fin_count_factor(set.count)?,
-                            interference: interference_factor(geometry.span_m, body_radius)?,
-                            cp_station_m: component.fore_station_m
-                                + geometry.centre_of_pressure_m(),
+                            interference: interference_factor(fin.geometry().span_m, body_radius)?,
+                            fore_station_m: component.fore_station_m,
+                            fin,
                         })
                     })()
                     .map_err(in_component)?;
@@ -304,7 +328,7 @@ impl AeroModel {
                         ComponentDragTerms::fins(
                             component,
                             set,
-                            &terms.geometry,
+                            terms.fin.geometry(),
                             length_m,
                             reference_area_m2,
                         )
@@ -420,11 +444,15 @@ impl AeroModel {
     ///
     /// # Errors
     ///
-    /// - As [`Flow::validate`], except that with an override table any finite Mach number from 0 is
-    ///   accepted ([`AeroError::Domain`] otherwise).
+    /// - [`AeroError::Mach`] outside `[0, 1)` for the buildup, whose transonic terms arrive in
+    ///   [M1.8][m1-8]; with an override table any finite Mach number from 0 is accepted
+    ///   ([`AeroError::Domain`] otherwise).
+    /// - [`AeroError::Domain`] for an angle of attack outside `[0, π]` or a non-finite roll.
     /// - As [`DragConditions::validate`].
     /// - [`AeroError::Table`] from the table lookup, and [`AeroError::Domain`] if the drag isn't
     ///   finite.
+    ///
+    /// [m1-8]: https://nrdptel.github.io/hpr-sim/decisions-and-roadmap.html#m1-8
     pub fn drag(&self, flow: &Flow, conditions: &DragConditions) -> Result<Drag, AeroError> {
         conditions.validate()?;
         let factor = axial_drag_alpha_factor(flow.alpha_rad)?;
@@ -444,7 +472,7 @@ impl AeroModel {
                 ..Drag::default()
             }
         } else {
-            flow.validate()?;
+            flow.validate_for_buildup()?;
             let reynolds = conditions.reynolds_per_m * self.length_m;
             let mut sum = Drag::default();
             for terms in &self.drag_terms {
@@ -481,13 +509,13 @@ impl AeroModel {
     ///
     /// # Errors
     ///
-    /// As [`Flow::validate`] and [`DragConditions::validate`].
+    /// As [`AeroModel::drag`] without a table, and [`DragConditions::validate`].
     pub fn buildup_components(
         &self,
         flow: &Flow,
         conditions: &DragConditions,
     ) -> Result<Vec<ComponentDrag>, AeroError> {
-        flow.validate()?;
+        flow.validate_for_buildup()?;
         conditions.validate()?;
         let factor = axial_drag_alpha_factor(flow.alpha_rad)?;
         let reynolds = conditions.reynolds_per_m * self.length_m;
@@ -528,8 +556,7 @@ impl AeroModel {
     /// in layout order.
     fn terms<'a>(&'a self, flow: &Flow) -> impl Iterator<Item = (&'a str, Term)> + 'a {
         let (potential, lift) = alpha_factors(flow.alpha_rad);
-        let beta = (1.0 - flow.mach * flow.mach).sqrt();
-        let roll = flow.roll_rad;
+        let (mach, roll) = (flow.mach, flow.roll_rad);
         let bodies = self
             .bodies
             .iter()
@@ -537,24 +564,8 @@ impl AeroModel {
         let fins = self
             .fin_sets
             .iter()
-            .map(move |set| (set.id.as_str(), self.fin_term(set, beta, roll)));
+            .map(move |set| (set.id.as_str(), fin_term(set, mach, roll)));
         bodies.chain(fins)
-    }
-
-    /// A fin set's contribution at `β = √(1 − M²)` and flow roll `roll`, per radian of `α`.
-    fn fin_term(&self, set: &FinSetAero, beta: f64, roll: f64) -> Term {
-        let per_set = set.geometry.slope_at(beta, self.reference_area_m2)
-            * set.count_factor
-            * set.interference;
-        let slope = per_set * roll_sum(set.count, set.base_angle_rad, roll);
-        let side = per_set * side_sum(set.count, set.base_angle_rad, roll);
-        Term {
-            slope,
-            moment: slope * set.cp_station_m,
-            side,
-            side_moment: side * set.cp_station_m,
-            scale: slope.abs(),
-        }
     }
 
     /// The number of components with a normal-force term: the bodies, then the fin sets, in the
@@ -581,8 +592,7 @@ impl AeroModel {
             let (potential, lift) = alpha_factors(flow.alpha_rad);
             body_term(body, potential, lift)
         } else if let Some(set) = self.fin_sets.get(index - self.bodies.len()) {
-            let beta = (1.0 - flow.mach * flow.mach).sqrt();
-            self.fin_term(set, beta, flow.roll_rad)
+            fin_term(set, flow.mach, flow.roll_rad)
         } else {
             return Err(AeroError::Domain {
                 what: "component index",
@@ -593,24 +603,35 @@ impl AeroModel {
     }
 
     /// The station, m aft of the nose tip, of component `index`'s small-angle centre of
-    /// pressure: where a flight engine takes the component's local airspeed. A body with no
-    /// potential-flow slope (a cylinder) uses its body-lift station. `None` for an index past
+    /// pressure at `mach`: where a flight engine takes the component's local airspeed. A body with
+    /// no potential-flow slope (a cylinder) uses its body-lift station; a fin set's moves with
+    /// Mach, and a body's doesn't.
+    ///
+    /// # Errors
+    ///
+    /// [`AeroError::Mach`] outside `[0, 5)`, and [`AeroError::Domain`] for an index past
     /// [`Self::component_count`].
-    pub fn component_station_m(&self, index: usize) -> Option<f64> {
+    pub fn component_station_m(&self, index: usize, mach: f64) -> Result<f64, AeroError> {
+        check_mach(mach, NORMAL_FORCE_MACH_LIMIT, "the normal force")?;
         if let Some(body) = self.bodies.get(index) {
             // As `NormalForce`'s CP: a slope that cancels to rounding (a step in radius offsetting
             // a taper) has no potential-flow station.
             let step_slope = 2.0 * body.step_area_m2 / self.reference_area_m2;
             let scale = (body.slope_per_rad - step_slope).abs() + step_slope.abs();
-            Some(if body.slope_per_rad.abs() <= 1e-12 * scale {
+            Ok(if body.slope_per_rad.abs() <= 1e-12 * scale {
                 body.lift_station_m
             } else {
                 body.moment_slope_m / body.slope_per_rad
             })
         } else {
-            self.fin_sets
+            let set = self
+                .fin_sets
                 .get(index - self.bodies.len())
-                .map(|set| set.cp_station_m)
+                .ok_or(AeroError::Domain {
+                    what: "component index",
+                    value: index as f64,
+                })?;
+            Ok(set.fore_station_m + set.fin.loading_at(mach).cp_m)
         }
     }
 
@@ -642,6 +663,25 @@ impl AeroModel {
                 normal_force: NormalForce::new(term, flow.alpha_rad),
             })
             .collect())
+    }
+}
+
+/// A fin set's contribution at a checked `mach` and flow roll `roll`, per radian of `α`.
+fn fin_term(set: &FinSetAero, mach: f64, roll: f64) -> Term {
+    let FinLoading {
+        slope_per_rad,
+        cp_m,
+    } = set.fin.loading_at(mach);
+    let per_set = slope_per_rad * set.count_factor * set.interference;
+    let station = set.fore_station_m + cp_m;
+    let slope = per_set * roll_sum(set.count, set.base_angle_rad, roll);
+    let side = per_set * side_sum(set.count, set.base_angle_rad, roll);
+    Term {
+        slope,
+        moment: slope * station,
+        side,
+        side_moment: side * station,
+        scale: slope.abs(),
     }
 }
 
@@ -772,13 +812,13 @@ mod tests {
         close(sum, total.coefficient, 1e-14, "component sum");
     }
 
-    /// Mach changes the fins' slope by Prandtl–Glauert and nothing else; the bodies and every CP
-    /// stay put.
+    /// Through subsonic flow, Mach changes the fins' slope by Prandtl–Glauert and nothing else;
+    /// the bodies and every CP stay put.
     #[test]
     fn mach_changes_only_the_fins() {
         let m = model(&finned_rocket(4));
         let at = |mach| m.components(&Flow::axial(mach)).unwrap();
-        let (slow, fast) = (at(0.0), at(0.9));
+        let (slow, fast) = (at(0.0), at(0.8));
         for (a, b) in slow.iter().zip(&fast) {
             assert_eq!(
                 a.normal_force.cp_station_m, b.normal_force.cp_station_m,
@@ -788,14 +828,16 @@ mod tests {
             if a.id == "fins" {
                 let set = &m.fin_sets()[0];
                 let ratio = set
-                    .geometry
-                    .single_fin_slope(m.reference_area_m2(), 0.9)
+                    .fin
+                    .geometry()
+                    .single_fin_slope(m.reference_area_m2(), 0.8)
                     .unwrap()
                     / set
-                        .geometry
+                        .fin
+                        .geometry()
                         .single_fin_slope(m.reference_area_m2(), 0.0)
                         .unwrap();
-                assert!(ratio > 1.1, "{ratio}");
+                assert!(ratio > 1.05, "{ratio}");
                 close(
                     b.normal_force.slope_per_rad / a.normal_force.slope_per_rad,
                     ratio,
@@ -824,7 +866,8 @@ mod tests {
         let bodies: f64 = two.bodies().iter().map(|b| b.slope_per_rad).sum();
         let set = &two.fin_sets()[0];
         let one_fin = set
-            .geometry
+            .fin
+            .geometry()
             .single_fin_slope(two.reference_area_m2(), 0.2)
             .unwrap()
             * set.interference;
@@ -876,12 +919,26 @@ mod tests {
 
         let m = model(&finned_rocket(4));
         for bad in [
-            flow(1.0, 0.0, 0.0),
+            flow(NORMAL_FORCE_MACH_LIMIT, 0.0, 0.0),
             flow(-0.01, 0.0, 0.0),
             flow(f64::NAN, 0.0, 0.0),
         ] {
-            assert!(matches!(m.normal_force(&bad), Err(AeroError::Mach { .. })));
+            assert!(matches!(
+                m.normal_force(&bad),
+                Err(AeroError::Mach { limit, .. }) if limit == NORMAL_FORCE_MACH_LIMIT
+            ));
         }
+        // The normal force flies on past Mach 1; the drag buildup doesn't, until M1.8b.
+        assert!(m.normal_force(&flow(1.0, 0.1, 0.0)).is_ok());
+        let coasting = DragConditions::coasting(1e7);
+        assert!(matches!(
+            m.drag(&flow(1.0, 0.0, 0.0), &coasting),
+            Err(AeroError::Mach { limit, model, .. }) if limit == 1.0 && model == "the drag buildup"
+        ));
+        assert!(
+            m.buildup_components(&flow(1.0, 0.0, 0.0), &coasting)
+                .is_err()
+        );
         for bad in [
             flow(0.3, -1e-9, 0.0),
             flow(0.3, PI + 1e-9, 0.0),
@@ -961,13 +1018,13 @@ mod tests {
             let small = flow(mach, 1e-6, roll);
             for (index, part) in parts.iter().enumerate() {
                 prop_assert_eq!(&m.component_normal_force(index, &f).unwrap(), &part.normal_force);
-                let station = m.component_station_m(index).unwrap();
+                let station = m.component_station_m(index, mach).unwrap();
                 if let Some(cp) = m.component_normal_force(index, &small).unwrap().cp_station_m {
                     prop_assert!((station - cp).abs() <= 1e-6 * (1.0 + cp.abs()));
                 }
             }
             prop_assert!(m.component_normal_force(parts.len(), &f).is_err());
-            prop_assert!(m.component_station_m(parts.len()).is_none());
+            prop_assert!(m.component_station_m(parts.len(), mach).is_err());
         }
 
         #[test]
@@ -1136,14 +1193,15 @@ mod tests {
         let alpha = 0.05;
         let f = two.normal_force(&flow(0.4, alpha, FRAC_PI_4)).unwrap();
         let one_fin = set
-            .geometry
+            .fin
+            .geometry()
             .single_fin_slope(two.reference_area_m2(), 0.4)
             .unwrap()
             * set.interference;
         close(f.side_coefficient, one_fin * alpha, 1e-13, "side");
         close(
             f.side_moment_m,
-            one_fin * alpha * set.cp_station_m,
+            one_fin * alpha * set.cp_station_m(0.4).unwrap(),
             1e-13,
             "side moment",
         );

@@ -66,8 +66,9 @@ warnings.filterwarnings("ignore")
 # Galejs's body-lift constant as hpr uses it (crates/hpr-aero/src/body.rs, `BODY_LIFT_K`).
 BODY_LIFT_K = 1.1
 
-# The whole-flight cases hpr flies; Prometheus 2022 is the checked M >= 1 gap and flies nothing.
-SKIP = {"prometheus-2022-generic-motor"}
+# Whole-flight cases hpr doesn't fly. Prometheus 2022 joined when hpr's normal force passed Mach 1
+# (M1.8a).
+SKIP = set()
 
 
 class BodyLift(AeroSurface):

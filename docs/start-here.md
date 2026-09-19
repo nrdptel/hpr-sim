@@ -41,7 +41,7 @@ These parts are built and tested. Each page gives its sources, and most say what
 | Wind | Constant, layered, power-law and logarithmic wind profiles; [turbulence](glossary.md#turbulence-dryden) (random gusts) from a random-number generator started from a [seed](glossary.md#seed), a number you choose: the same seed gives exactly the same gusts every time on the same platform (operating system and processor) | [Wind](physics/wind.md), [Turbulence](physics/turbulence.md) |
 | Motors | Reads `.eng` and `.rse` [thrust curves](glossary.md#thrust-curve); thrust, mass, centre of gravity and inertia through the burn; [32 bundled motors](physics/motor.md#the-bundled-motors) | [Solid motors](physics/motor.md), [`.eng` files](format/eng.md), [`.rse` files](format/rse.md) |
 | Rocket | Nose cones, body tubes, transitions (tapered sections between tubes of different diameters), fins and other parts, their materials, the whole rocket's mass properties, and design checks | [Design tree](physics/design.md), [Shapes](physics/shapes.md), [Mass properties](physics/mass.md) |
-| Aerodynamics | The [centre of pressure](glossary.md#centre-of-pressure-cp) (where the aerodynamic force acts; its distance behind the centre of gravity is the [stability margin](glossary.md#stability-margin)), the [normal force](glossary.md#normal-force) (the sideways force when the rocket flies at an angle to the airflow, its [angle of attack](glossary.md#angle-of-attack)) and drag. Documented up to [Mach](glossary.md#mach-number) 0.8, for small angles of attack | [Aerodynamics](physics/aero.md) |
+| Aerodynamics | The [centre of pressure](glossary.md#centre-of-pressure-cp) (where the aerodynamic force acts; its distance behind the centre of gravity is the [stability margin](glossary.md#stability-margin)), the [normal force](glossary.md#normal-force) (the sideways force when the rocket flies at an angle to the airflow, its [angle of attack](glossary.md#angle-of-attack)) and drag. For small angles of attack: the normal force from [Mach](glossary.md#mach-number) 0 to 5, checked against a wind tunnel from 0.6 to 4.63; the drag documented to Mach 0.8 | [Aerodynamics](physics/aero.md) |
 | Flight | The launch rail, powered flight and coast to apogee, with an [adaptive time step](glossary.md#adaptive-time-step) and [events](glossary.md#event) such as burnout and apogee | [Rigid-body flight](physics/flight.md), [Time integration](physics/integration.md) |
 | Recovery | Parachutes, [streamers](glossary.md#streamer) and [tumbling](glossary.md#tumble-recovery), the [drift](glossary.md#drift) they carry the rocket downwind, and a rocket that [separates](glossary.md#separation) into bodies that each descend on their own | [Recovery](physics/recovery.md) |
 
@@ -52,12 +52,15 @@ out.
 
 ### Speed and angle of attack
 
-- **Nothing at or above Mach 1.** A flight that reaches Mach 1 stops with an error.
-  [Transonic and supersonic](glossary.md#transonic-and-supersonic) aerodynamics are planned for
-  [M1.8](decisions-and-roadmap.md#m1-8), the second aerodynamics milestone.
-- **High subsonic speeds are shaky.** From Mach 0.8 to 1 the aerodynamics are extrapolations: the
-  models are used beyond the speeds they are documented for, and nothing has checked them there.
-  Below that, one part of the drag reads low from about Mach 0.6:
+- **Not past Mach 1 on hpr's own drag.** A flight that reaches Mach 1 on hpr's drag stops with an
+  error until the [transonic and supersonic](glossary.md#transonic-and-supersonic) drag of
+  [M1.8b](decisions-and-roadmap.md#m1-8b). With a drag table from another tool it flies on to
+  Mach 5: the normal force and centre of pressure carry through, checked against a wind tunnel to
+  Mach 4.63, though between Mach 0.8 and 1.2 they miss it and past Mach 3 the normal force reads
+  17 to 25% low ([Aerodynamics](physics/aero.md#normal-force-through-mach-1)).
+- **High subsonic drag is shaky.** From Mach 0.8 to 1 the drag is an extrapolation: the model is
+  used beyond the speeds it is documented for, and nothing has checked it there. Below that, one
+  part of the drag reads low from about Mach 0.6:
   - The air's pressure on the nose, and on any transition where the body widens, adds drag. hpr
     holds that drag at its low-speed value.
   - Its source, Niskanen's 2009 thesis, has it rise toward Mach 1. hpr doesn't add that rise yet.
@@ -148,8 +151,10 @@ out.
 - **Each model is tested on its own**: against exact answers, and where its source prints tables
   or worked examples, against those; several parts also against RocketPy. Each test states its
   [tolerance](glossary.md#tolerance). The largest known gaps:
-  - The aerodynamics were checked at Mach 0 (the normal force and centre of pressure) and at
-    Mach 0.3 (drag) only.
+  - The drag was checked at Mach 0.3 only. The normal force and centre of pressure were checked
+    at Mach 0 against Barrowman's worked examples and from Mach 0.6 to 4.63 against a wind
+    tunnel, where they miss between Mach 0.8 and 1.2, and past Mach 3 the normal force reads 17
+    to 25% low ([Aerodynamics](physics/aero.md#normal-force-through-mach-1)).
   - The drag was compared with drag curves that come with RocketPy's example rockets, labelled as
     [RASAero II](glossary.md#rasaero-ii)'s (another rocket aerodynamics program). The curves don't
     record the fins' edges or the surface finish, so hpr's copies of the designs follow a declared

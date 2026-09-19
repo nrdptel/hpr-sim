@@ -7,6 +7,9 @@
 //!   public-domain curve the fixture substitutes. The geometry (nose, body tubes, tails, fins,
 //!   rail buttons) follows the example, for the aerodynamics milestones.
 //! - `synthetic-*.json`: rockets whose mass comes from their geometry.
+//! - `wind-tunnel-arcas-robin-{short,long}.json`: the two half-scale Arcas models of NASA TN D-4013
+//!   and TN D-4014, for the aerodynamics only (M1.8a), built from the geometry recorded in
+//!   `validation/fixtures/aero/arcas-robin-wind-tunnel.json`. They carry no motor.
 //!
 //! `--check` compares instead of writing, and a test runs it, so the committed files always match
 //! this generator. It fails on a missing or extra `.json` file and on any difference in content.
@@ -154,7 +157,137 @@ pub fn generate(root: &Path) -> Result<Vec<(String, String)>, String> {
         "synthetic-two-stage-75mm-54mm.json".to_owned(),
         to_json(&two_stage(&catalog)?)?,
     ));
+    let path = root.join(WIND_TUNNEL);
+    let tunnel: Value = serde_json::from_str(
+        &fs::read_to_string(&path).map_err(|e| format!("{}: {e}", path.display()))?,
+    )
+    .map_err(|e| format!("{WIND_TUNNEL}: {e}"))?;
+    for configuration in tunnel["configurations"]
+        .as_array()
+        .ok_or_else(|| format!("{WIND_TUNNEL} has no configurations"))?
+    {
+        let name = text(configuration, "design")?;
+        let rocket =
+            arcas_robin(&tunnel["geometry"], configuration).map_err(|e| format!("{name}: {e}"))?;
+        designs.push((name.to_owned(), to_json(&rocket)?));
+    }
     Ok(designs)
+}
+
+const WIND_TUNNEL: &str = "validation/fixtures/aero/arcas-robin-wind-tunnel.json";
+
+/// A half-scale Arcas wind-tunnel model (NASA TN D-4013/4014) from the reference's geometry, in
+/// inches: a power-series nose with the tabulated nose's volume, the cylinder, a 15° conical
+/// boattail with its flared lip, and four trapezoidal fins whose root leading edge is at the
+/// recorded distance ahead of the base. Steel throughout; the models' mass plays no part.
+fn arcas_robin(geometry: &Value, configuration: &Value) -> Result<Rocket, String> {
+    const IN: f64 = 0.0254;
+    let id = text(configuration, "id")?;
+    let nose = &geometry["nose"];
+    let boattail = &geometry["boattail"];
+    let lip = &boattail["lip"];
+    let fins = &geometry["fins"];
+    let radius = 0.5 * num(geometry, "diameter_in")? * IN;
+    let nose_length = num(nose, "length_in")? * IN;
+    let cylinder_end = geometry["cylinder_ends_in"][id]
+        .as_f64()
+        .ok_or_else(|| format!("no cylinder end for `{id}`"))?
+        * IN;
+    let boattail_length = num(boattail, "length_in")? * IN;
+    let boattail_radius = 0.5 * num(boattail, "aft_diameter_in")? * IN;
+    let lip_length = num(lip, "length_in")? * IN;
+    let base_radius = 0.5 * num(lip, "aft_diameter_in")? * IN;
+    let base = cylinder_end + boattail_length + lip_length;
+    let length = num(configuration, "length_m")?;
+    if (base - length).abs() > 1e-9 {
+        return Err(format!(
+            "the parts end at {base} m, not at the model's {length} m"
+        ));
+    }
+    let steel = material("steel")?;
+    let mut tube = component(
+        "body",
+        Part::BodyTube(BodyTube {
+            length_m: cylinder_end - nose_length,
+            outer_radius_m: radius,
+            thickness_m: radius,
+            material: steel.clone(),
+        }),
+        None,
+    );
+    let root = num(fins, "root_chord_in")? * IN;
+    tube.children.push(component(
+        "fins",
+        Part::FinSet(FinSet {
+            count: u32::try_from(
+                fins["count"]
+                    .as_u64()
+                    .ok_or("`count` is missing or not a whole number")?,
+            )
+            .map_err(|e| e.to_string())?,
+            planform: FinPlanform::Trapezoidal {
+                root_chord_m: root,
+                tip_chord_m: num(fins, "tip_chord_in")? * IN,
+                span_m: num(fins, "span_in")? * IN,
+                sweep_m: num(fins, "sweep_in")? * IN,
+            },
+            thickness_m: num(fins, "thickness_root_in")? * IN,
+            cross_section: FinCrossSection::Square,
+            tab: None,
+            cant_rad: 0.0,
+            base_angle_rad: 0.0,
+            material: steel.clone(),
+        }),
+        Some(Position::Absolute {
+            station_m: base - num(fins, "root_leading_edge_ahead_of_base_in")? * IN,
+        }),
+    ));
+    let transition = |id: &str, length_m: f64, fore: f64, aft: f64| {
+        component(
+            id,
+            Part::Transition(Transition {
+                shape: NoseShape::Conical {},
+                clipped: false,
+                length_m,
+                fore_radius_m: fore,
+                aft_radius_m: aft,
+                wall: Wall::Filled {},
+                fore_shoulder: None,
+                aft_shoulder: None,
+                material: steel.clone(),
+            }),
+            None,
+        )
+    };
+    Ok(Rocket {
+        name: format!("NASA half-scale Arcas wind-tunnel model, {id}"),
+        stages: vec![Stage {
+            id: "model".to_owned(),
+            name: String::new(),
+            components: vec![
+                component(
+                    "nose",
+                    Part::NoseCone(NoseCone {
+                        shape: NoseShape::PowerSeries {
+                            exponent: num(nose, "power_exponent")?,
+                        },
+                        length_m: nose_length,
+                        base_radius_m: radius,
+                        wall: Wall::Filled {},
+                        shoulder: None,
+                        material: steel.clone(),
+                    }),
+                    None,
+                ),
+                tube,
+                transition("boattail", boattail_length, radius, boattail_radius),
+                transition("lip", lip_length, boattail_radius, base_radius),
+            ],
+            overrides: Overrides::default(),
+        }],
+        reference_diameter: ReferenceDiameter::Maximum {},
+        configurations: Vec::new(),
+    })
 }
 
 fn to_json(rocket: &Rocket) -> Result<String, String> {
@@ -1062,7 +1195,8 @@ mod tests {
     fn committed_designs_match_the_generator() {
         let root = root().unwrap();
         let designs = generate(&root).unwrap();
-        assert_eq!(designs.len(), 10);
+        // Eight from RocketPy's examples, two synthetic, and the two wind-tunnel models (M1.8a).
+        assert_eq!(designs.len(), 12);
         let stale = stale(&root.join(DIR), &designs);
         assert!(
             stale.is_empty(),

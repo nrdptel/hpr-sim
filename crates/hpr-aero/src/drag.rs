@@ -51,6 +51,12 @@ pub const LOW_REYNOLDS_FRICTION: f64 = 1.48e-2;
 /// [m1-8]: https://nrdptel.github.io/hpr-sim/decisions-and-roadmap.html#m1-8
 pub const SUBSONIC_MACH_LIMIT: f64 = 0.8;
 
+/// The top of the buildup's range, which it doesn't reach: Mach 1, until the transonic and
+/// supersonic terms of [M1.8][m1-8]. The term functions themselves are defined past it.
+///
+/// [m1-8]: https://nrdptel.github.io/hpr-sim/decisions-and-roadmap.html#m1-8
+pub const BUILDUP_MACH_LIMIT: f64 = 1.0;
+
 /// Checks a Mach number of any speed regime: finite and non-negative.
 pub(crate) fn check_mach_any(mach: f64) -> Result<(), AeroError> {
     if mach.is_finite() && mach >= 0.0 {

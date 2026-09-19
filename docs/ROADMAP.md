@@ -400,24 +400,10 @@
     - A case whose metric has no tolerance, a reference value with no provenance, and a run with
       fewer cases than the lock expects each fail.
 
-    *Result (ADR-015):* met. `cargo xtask validate` runs the five locked descent cases, compares
-    30 metrics against `validation/fixtures/recovery/rocketpy-descent.json` and writes
-    `validation/reports/latest.{md,json}`. All 30 are scored and all pass, every one against the
-    milestone's 3% with no absolute floor anywhere; the largest is NDRT's northward drift at
-    +2.86%. Refused by the command, not only by a test: a metric with no tolerance, a bound that is
-    infinite or negative, a metric both gated and excused, a reference metric the case ignores, a
-    reference that does not name the run that produced it, a case that flies a different design or
-    mass than the reference recorded, a lock naming a case that is not there, a committed case the
-    lock does not name, and a run that ends up comparing nothing. Twelve tests cover it, four of
-    them L76–L79 by name, including a run that flies a case with half its drag area and leaves
-    every committed fixture byte-for-byte unchanged.
-
-    The suite earned its keep before it shipped. Valetudo's 20 µm northward drift — the most
-    delicate number in it — read 28x RocketPy's, and the cause was hpr's default gravity being the
-    full normal-gravity vector where RocketPy's is vertical-only: 5.2e-4 m of drift over an 800 m
-    descent. The comparison now flies `GravityModel::VerticalTaylor`, which hpr ships as RocketPy's
-    own formula, and the metric comes to −1.8% (issue #27, ADR-015). A merged line in
-    `docs/physics/recovery.md` claiming the two codes used the same gravity model is corrected.
+    *Result (ADR-015):* met. Five descent cases, 30 metrics, all within 3% with no floor (largest
+    NDRT's northward drift, +2.86%); the command refuses every malformed case the done-when names
+    and more, with twelve tests, four of them L76–L79. Valetudo's northward drift first read 28x
+    RocketPy's: hpr's gravity had a horizontal part RocketPy's lacks (issue #27).
 
   - [x] **M2.1b Whole flights against RocketPy, same-drag.**
     - A `validation/oracles/rocketpy/flight.py` generator (M2.1b1) and a `Flight::WholeFlight`
@@ -449,22 +435,9 @@
       - Every case's declared drag table is argued in the generator, with its source.
 
       *Result:* met. `flight.py` flies all five examples pad to landing under a declared constant
-      `C_D0` of 0.5 and writes `validation/fixtures/flight/rocketpy-whole-flight.json`, identical
-      byte for byte on a second run. Apogees 779 to 3,623 m AGL; Prometheus peaks at Mach 1.014,
-      so it is an `M >= 1` gap for M2.1b2 to report, not to hide. The loose run is at rtol = atol =
-      1e-6 (RocketPy's default rtol) against the 1e-8 reference: worst metric change 3.9e-3.
-
-      On the way in, no case flew at rtol 1e-6 and NDRT did not at 1e-7. The cause was a
-      step-size cliff of the oracle's own making, not the marginal liftoff first guessed.
-      RocketPy's `.eng` reader starts every curve at (0, 0), so thrust(0) is 0 and `udot_rail1`
-      clamps the acceleration to zero; with no step bound, the oracle's 6000 s `max_time` (ten
-      times RocketPy's default) lets LSODA step over the whole burn. RocketPy's own defaults fly
-      all five. Bounding `max_time_step` to 0.05 s fixes it: the loose run above flies all five
-      (issue #33). For M2.1b2, thrust ramps linearly from 0 at t = 0 to the file's first point.
-      `max_acceleration` is recorded with the instant it occurs and beside a power-on maximum,
-      because for NDRT and Prometheus the whole-flight maximum is the parachute inflating (191.8
-      at 54.9 s against 114.2 power-on), which is not a flight load and is a transient the two
-      models deliberately model differently.
+      `C_D0` of 0.5 and reproduces its fixture byte for byte; apogees 779 to 3,623 m AGL,
+      Prometheus to Mach 1.014. A step-size cliff of the oracle's own (thrust(0) = 0 and an
+      unbounded step) was fixed by bounding `max_time_step` (issue #33).
 
     - [x] **M2.1b2 The whole-flight cases.**
       - A `Flight::WholeFlight` case variant beside `RecoveryDescent`, taking the case's `C_D0(M)`
@@ -479,22 +452,10 @@
       - `validation/reports/latest.md` carries them, and the gravity rule of ADR-015 is applied:
         the comparison flies the oracle's models where hpr has them.
 
-      *Result (ADR-021):* met. Six whole-flight cases are locked, fifteen metrics each. Five
-      pass: every scored metric within 3% with no floor, 64 of them; the largest in height, speed
-      and acceleration are Bella Lui's power-on peak at +1.783% and Juno III's apogee at +1.710%,
-      and Valetudo's apogee drift is −2.426%. Eleven are argued as not scored. Nine are the drifts
-      in wind and Valetudo's still-air landing drift, open misses: in wind hpr turns into the wind
-      less than RocketPy (Juno III's apogee 228 m from the pad against 582 m), while flown calm
-      the two agree within 0.18% on apogee and 1.3 to 3.7% on the drifts. **M2.1's landing offset
-      is not met** until issue #50 closes. The others are
-      Calisto's time of peak acceleration and NDRT's main-opening peak. Prometheus (Mach 1.014) is
-      a known gap that the harness checks and that fails the run once hpr flies it (L85). Bella
-      Lui is the sixth rocket. The L75 test passes, and the reference now records the motor and
-      `effective_1rl`, which the harness checks. The comparison flies RocketPy's gravity,
-      atmosphere, rail and thrust: the first run was 2.7 to 3.9% high on peak acceleration because
-      the transcribed designs corrected thrust for ambient pressure, which RocketPy's examples
-      never do; the designs now say `null`, and the site's example flights moved with them (first
-      flight 874.0 to 779.0 m).
+      *Result (ADR-021):* met. Six whole-flight cases, fifteen metrics each; five pass every scored
+      metric within 3% (largest +1.783%, Bella Lui's power-on peak). The drifts in wind stayed
+      unscored until issue #50 (M2.1d3); Prometheus was a checked `M ≥ 1` gap until M1.8a. The
+      comparison flies RocketPy's gravity, atmosphere, rail and thrust.
 
   - [x] **M2.1c Predicted mode, CI and regeneration.**
     - The same cases flown with hpr's own aero, reported beside the same-drag ones.
@@ -532,18 +493,11 @@
         file or `docs/VALIDATION.md`; `M ≥ 1` cases are reported as gaps, not hidden, until M1.8.
 
       *Result (ADR-023):* met. `flight.py --own-drag` flies the six examples on the drag RocketPy
-      1.13.0 really flies (Juno III's and Bella Lui's later rescalings never reach RocketPy's
-      flight, checked in its source) and records each curve's path and SHA-256, never its values;
-      it reproduces byte for byte. Six `predicted-*` cases fly hpr's own aerodynamics against it,
-      each metric held to M2.1's 3% as a target, reported in the report's *Predicted mode* section
-      and never gated: 56 of 75 within it. Apogees: Calisto −0.527%, Bella Lui +1.118%, Juno III
-      +3.181%, Valetudo +10.007% and NDRT 2020 +10.232%, where hpr's drag is 47% below Valetudo's
-      table and 0.318 against NDRT's 0.44; flown on the same drag all five agree within 1.710%.
-      Every miss is explained in its case file, and the set of misses is pinned by a test.
-      Prometheus 2022 is a checked `M ≥ 1` gap (Mach 1.049). Each mode refuses the other's
-      reference, tested. hpr flies predicted mode at rtol = atol = 1e-11: at the default 1e-8 its
-      NDRT apogee differed by 1.7e-7 between macOS and Linux, past the report's reproduction bound,
-      because the drag's `ln` and `powf` differ in their last bits and so move the step sequence.
+      1.13.0 really flies and records each curve's hash, never its values. Six `predicted-*`
+      cases fly hpr's own aerodynamics against it, held to 3% as a target, never gated: 56 of 75
+      within. Valetudo and NDRT 2020 are +10% in apogee, where hpr's drag is well below theirs;
+      every miss is explained and pinned. Predicted mode flies at rtol = atol = 1e-11 so the report
+      reproduces across platforms.
 
   - [x] **M2.1d The time-series RMS and the path in wind.**
     - The two items of M2.1's list that M2.1a to M2.1c leave open: the time-series RMS after
@@ -611,6 +565,59 @@
     rockets. Per-band errors are in the report.
   - The supersonic cases in the M2.1 suite are within their tolerances.
   - Roll-rate steady state matches the analytic cant/damping balance.
+
+  Split into M1.8a to M1.8e. The measured reference throughout is NASA's Arcas Robin wind-tunnel
+  model: TN D-4013 (Mach 0.6–1.2) and TN D-4014 (Mach 1.5–4.63).
+
+  - [x] **M1.8a Normal force and centre of pressure through Mach 1.**
+    - Fin slope through the transonic region to supersonic linear theory, and the fin CP shift
+      with Mach. The normal force accepts Mach numbers past 1, so a flight on a drag table flies
+      through Mach 1. Loft lesson L7.
+
+    *Done when:*
+    - L7's test passes: the fin slope and CP are Barrowman's at Mach 0 and change with Mach.
+    - A committed fixture, pinned by a test, holds hpr's `C_Nα` and CP against two references:
+      the Arcas Robin measurements at every Mach they give, and RASAero II's Calisto export from
+      Mach 0.1 to 2.0. Targets, set before measuring: CP within 0.5 calibers, `C_Nα` within 15%.
+      Every miss is explained.
+    - The same-drag Prometheus 2022 case flies through Mach 1 and passes its tolerances.
+
+    *Result (ADR-027):* met. Linear theory from `M_s`, Diederich to Mach 0.8, a join between. The
+    L7 test passes; `normal_force_against_mach` pins 37 rows, 16 outside the targets, explained. Against the
+    wind tunnel from Mach 1.5 to 2.96: `C_Nα` −13.4% to +3.3%, CP within 0.42 calibers. Past
+    Mach 3 the slope is 17–25% low from the body (M1.8e); from Mach 0.8 to 1.2 the measured fin
+    lift dips where hpr's rises. Prometheus flies through Mach 1.010: 14 metrics scored and
+    passing (largest +1.525%). Its two drifts failed their 3% gates when it first flew; then
+    `wind_response.py` measured them as body lift, reported as ADR-026's are.
+
+  - [ ] **M1.8b Transonic and supersonic drag.**
+    - Every drag term's transonic and supersonic branch, and nose wave drag. Loft lessons L17 and
+      L18.
+
+    *Done when:* M1.8's Cd bullet is met or an ADR records why not, with the gap in the report;
+    the Arcas Robin's measured axial force is compared; the predicted Prometheus case flies.
+
+  - [ ] **M1.8c Roll and damping.**
+    - Roll forcing from fin cant and roll damping. Pitch and yaw damping keep hpr's local-flow
+      damping (ADR-026).
+
+    *Done when:* M1.8's roll bullet is met, and hpr's roll forcing is compared with the Arcas
+    Robin's measured roll effectiveness (TN D-4014).
+
+  - [ ] **M1.8d Normal-force overrides.**
+    - `C_Nα` and CP tables against Mach and angle of attack, read from a RASAero II export.
+
+    *Done when:* a RASAero II export's `C_Nα` and CP columns replace hpr's in a flight, and the
+    reading is tested on the Calisto export.
+
+  - [ ] **M1.8e The body's supersonic normal force.**
+    - M1.8a measured the gap: past Mach 3 the Arcas Robin's body alone lifts 3.9 to 4.6 per rad,
+      where slender-body theory gives 2.3 to 2.8 with body lift. A cited supersonic method for
+      noses, boattails and crossflow.
+
+    *Done when:* the Arcas Robin's body-alone `C_Nα` (fins off, TN D-4014) is within 15% at every
+    Mach number from 1.5, and both configurations' `C_Nα` within 15% at Mach 3.96 and 4.63, or an
+    ADR records why not with the gap in the report.
 
 - [ ] **M3.1 OpenRocket `.ork` import.**
   - Handles zip, gz and raw XML, schema 1.0 to 1.10, plus the documented 1.11 additions.

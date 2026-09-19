@@ -54,19 +54,22 @@
 # RocketPy's own solver moves the metrics by at most 0.39% between rtol 1e-6 and 1e-8 (the time of
 # the peak acceleration), so the reference is the model's answer to well inside the gate.
 #
-# Prometheus 2022: 3,679 m AGL, and the reference peaks at Mach 1.013 near burnout. hpr's
-# aerodynamics refuse Mach 1 until M1.8 (ADR-008, ADR-011), so the flight stops there and nothing
-# can be scored: the case is a known gap. It still runs, so the harness checks that hpr refuses it
-# for this reason and no other, and it fails the run once hpr flies it, so the gap cannot outlive
-# its cause. The tolerances below are the ones it will be held to then, argued as for the other
-# five cases: the whole-flight maximum acceleration is the main opening, as for NDRT 2020. The drifts
-# are held to 3% like every other metric: a drift may be excused only by a measurement of why it
-# misses (ADR-026), and there is none until hpr flies the case.
+# Prometheus 2022: 3,679 m AGL, and the reference peaks at Mach 1.013 near burnout. Until M1.8a
+# hpr's aerodynamics refused Mach 1, so the case was a known gap that flew nothing; since M1.8a its
+# normal force covers the transonic region (ADR-027) and it flies to the ground on the same drag.
+# Its tolerances were set before it flew, argued as for the other five cases: the whole-flight
+# maximum acceleration is the main opening, as for NDRT 2020. The two drifts were held to 3% like
+# every other metric until a measurement showed why they miss: hpr's body lift, as for Bella Lui
+# and Juno III (ADR-026). Body lift also accounts for the apogee: flown in RocketPy with hpr's rail
+# release and body lift (`wind_response.py`), the apogee is 3735.4 m, against hpr's 3735.3 and
+# RocketPy's own 3679.2. How hard this flight tests the transonic normal force is not measured by
+# any committed check. A local probe of the harness (not committed; ADR-027) sampled hpr's angle of
+# attack at each step's end and found it below 0.11 degrees from Mach 0.8 to 1.2, so the rocket
+# flies almost straight into the airflow there and the transonic normal force has little to act on.
 id = "flight-prometheus-2022-generic-motor"
 title = "Prometheus 2022 from the pad to the ground, same-drag"
 reference = "validation/fixtures/flight/rocketpy-whole-flight.json"
 reference_case = "prometheus-2022-generic-motor"
-known_gap = "The reference peaks at Mach 1.013 near burnout, and hpr's aerodynamics refuse M >= 1 until M1.8 (ADR-008, ADR-011), so the flight stops at Mach 1 and no metric can be compared."
 
 [flight.whole_flight]
 design = "rocketpy-prometheus-2022-generic-motor"
@@ -109,10 +112,10 @@ relative = 0.03
 relative = 0.03
 
 [metrics.apogee_drift_m]
-relative = 0.03
+not_scored = "a measured model difference, not an open miss (ADR-026): hpr's apogee drift is 9.3% short of RocketPy's (1483.1 m against 1634.7). Prometheus leaves its rail at 26 m/s in an 8.1 m/s wind, where hpr's body lift (Galejs, K = 1.1), which RocketPy's linear normal force leaves out, acts ahead of the centre of mass and weakens the turn into the wind. Measured in RocketPy (validation/oracles/rocketpy/wind_response.py): freeing the rocket at its last rail button, as hpr does, moves the drift to 1626.1 m, and hpr's body lift to 1484.3 m, within 0.1% of hpr. Reported, not scored: at 3% it would score one code's normal-force model against the other's."
 
 [metrics.landing_drift_m]
-relative = 0.03
+not_scored = "a measured model difference, as the apogee drift is (ADR-026): hpr lands 6.3% further out (1469.4 m against 1382.6). With hpr's rail release RocketPy lands 1382.7 m out, and with its body lift too 1468.5 m (validation/oracles/rocketpy/wind_response.py), within 0.1% of hpr. Reported, not scored, for the apogee drift's reason."
 
 [metrics.impact_speed_m_s]
 relative = 0.03

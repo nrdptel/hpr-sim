@@ -17,14 +17,20 @@ pub enum AeroError {
         /// The offending value.
         value: f64,
     },
-    /// A Mach number the models don't cover yet. The subsonic models need `0 ≤ M < 1`; transonic
-    /// and supersonic flow arrive in [M1.8][m1-8].
+    /// A Mach number past the range of the model asked: `0 ≤ M < 5` for the normal force
+    /// ([`crate::model::NORMAL_FORCE_MACH_LIMIT`]), and `0 ≤ M < 1` for the drag buildup until its
+    /// transonic and supersonic terms arrive in [M1.8][m1-8] (an override table takes any Mach
+    /// number).
     ///
     /// [m1-8]: https://nrdptel.github.io/hpr-sim/decisions-and-roadmap.html#m1-8
-    #[error("Mach {mach} is outside the subsonic models' range [0, 1)")]
+    #[error("Mach {mach} is outside {model}'s range [0, {limit})")]
     Mach {
         /// The Mach number.
         mach: f64,
+        /// The top of the model's range, which it doesn't reach.
+        limit: f64,
+        /// The model that refused it, such as "the drag buildup".
+        model: &'static str,
     },
     /// A part the models have no cited method for, such as tube fins.
     #[error("no aerodynamic model: {0}")]
@@ -72,11 +78,11 @@ pub(crate) fn check_dimension(
     }
 }
 
-/// Checks a subsonic Mach number.
-pub(crate) fn check_mach(mach: f64) -> Result<(), AeroError> {
-    if mach.is_finite() && (0.0..1.0).contains(&mach) {
+/// Checks a Mach number in `[0, limit)` for `model`.
+pub(crate) fn check_mach(mach: f64, limit: f64, model: &'static str) -> Result<(), AeroError> {
+    if mach.is_finite() && (0.0..limit).contains(&mach) {
         Ok(())
     } else {
-        Err(AeroError::Mach { mach })
+        Err(AeroError::Mach { mach, limit, model })
     }
 }

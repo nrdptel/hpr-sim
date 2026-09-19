@@ -1,0 +1,1436 @@
+{
+  "id": "arcas-robin",
+  "source": "NASA's half-scale Arcas Robin (short, configuration 1) and bioscience Arcas (long, configuration 2) wind-tunnel models: J. C. Ferris, NASA TN D-4013 (1967), Mach 0.60 to 1.20, Langley 8-foot transonic pressure tunnel; C. D. Babb and D. E. Fuller, NASA TN D-4014 (1967), Mach 1.50 to 4.63, Langley Unitary Plan wind tunnel. Reynolds number 9.8e6 per metre, transition fixed by grit. US Government works.",
+  "reading": "Read from the reports' plots, which print no tables, on 600-dpi renders with each plot's grid calibrated locally (2026-09-18, M1.8a). C_N at each plotted symbol (fins at 0 deg, roll 0): +-0.01 (TN D-4014 Fig. 5), +-0.013 (Fig. 6), +-0.02 (TN D-4013 Figs. 7(b) and 9(b), a coarse grid); the report states +-0.03 for C_N itself. Where roll angles 0, 22.5 and 45 deg overlap in TN D-4013, the roll-0 square where it can be told apart, else the cluster's centre. CP in percent of body length from the nose tip, read at the test Mach numbers from faired curves: +-0.3% (+-0.6% at Mach 0.95 and 1.00 on the short model, +-0.5% for configuration 2 below Mach 2.3). TN D-4014's Fig. 7 states no fin cant; C_m over C_N from Fig. 5(b) (fins at 0 deg) reproduces it within 1.2% of body length. Checked: the short model's CP at Mach 2.96 from those slopes, 67.0%, against Fig. 7's 66.98%.",
+  "geometry": {
+    "note": "Model dimensions from TN D-4014 Fig. 1(a) (inches; page 10 of the PDF), which TN D-4013 Fig. 1 (calibers) matches within about 3%. Stations in inches from the nose tip.",
+    "diameter_in": 2.25,
+    "nose": {
+      "length_in": 9.375,
+      "shape": "an 'ogive' given as a coordinate table, not a tangent ogive; radius 0, 0.414, 0.554, 0.688, 0.804, 0.908, 0.988, 1.062, 1.125 in at 0, 2.375, 3.375, 4.375, 5.375, 6.375, 7.375, 8.375, 9.375 in; 0.062-in tip radius",
+      "volume_fraction": 0.4398,
+      "planform_fraction": 0.5968,
+      "design": "hpr has no tabulated nose: the power-series nose g = xi^n with n = 0.6369 has the table's volume (a monotone cubic through the points gives 0.4398 of pi R^2 L), which sets its slender-body CP, and its planform area within 2.4% (0.611 against 0.597 of 2RL)",
+      "power_exponent": 0.6369
+    },
+    "cylinder_ends_in": {
+      "arcas-robin-short": 39.14,
+      "arcas-robin-long": 51.69
+    },
+    "boattail": {
+      "length_in": 1.757,
+      "aft_diameter_in": 1.308,
+      "half_angle_deg": 15.0,
+      "lip": {
+        "length_in": 0.053,
+        "aft_diameter_in": 1.47,
+        "note": "a reflexed lip flaring out to the base"
+      }
+    },
+    "fins": {
+      "count": 4,
+      "root_chord_in": 3.38,
+      "tip_chord_in": 2.165,
+      "span_in": 2.103,
+      "sweep_in": 1.215,
+      "leading_edge_sweep_deg": 30.0,
+      "root_leading_edge_ahead_of_base_in": 3.65,
+      "thickness_root_in": 0.15,
+      "section": "double wedge, 4.4% thick; the aft 1.54 in of the root follows the boattail, and the span is taken from the cylinder surface",
+      "anchor_fairings": "raised fairings at each root, 0.1 in high, left out"
+    },
+    "sting": "TN D-4013: a 1-in sting 11.5 in long behind the base, ending in a 19.2-deg flare"
+  },
+  "configurations": [
+    {
+      "id": "arcas-robin-short",
+      "design": "wind-tunnel-arcas-robin-short.json",
+      "length_m": 1.04013,
+      "cn_alpha": [
+        {
+          "mach": 0.6,
+          "alpha_deg_c_n": [
+            [
+              -2.98,
+              -0.467
+            ],
+            [
+              -2.06,
+              -0.267
+            ],
+            [
+              -0.03,
+              0.032
+            ],
+            [
+              2.0,
+              0.448
+            ],
+            [
+              4.03,
+              0.915
+            ]
+          ],
+          "source": "TN D-4013 Fig. 7(b), printed p. 22: short model, fins at 0 deg, roll 0"
+        },
+        {
+          "mach": 0.8,
+          "alpha_deg_c_n": [
+            [
+              -3.05,
+              -0.41
+            ],
+            [
+              -2.09,
+              -0.238
+            ],
+            [
+              -0.06,
+              0.044
+            ],
+            [
+              1.97,
+              0.393
+            ],
+            [
+              4.0,
+              0.841
+            ]
+          ],
+          "source": "TN D-4013 Fig. 7(b), printed p. 22: short model, fins at 0 deg, roll 0"
+        },
+        {
+          "mach": 0.9,
+          "alpha_deg_c_n": [
+            [
+              -3.02,
+              -0.41
+            ],
+            [
+              -2.07,
+              -0.231
+            ],
+            [
+              -0.03,
+              0.106
+            ],
+            [
+              2.01,
+              0.407
+            ],
+            [
+              4.02,
+              0.888
+            ]
+          ],
+          "source": "TN D-4013 Fig. 7(b), printed p. 22: short model, fins at 0 deg, roll 0"
+        },
+        {
+          "mach": 0.95,
+          "alpha_deg_c_n": [
+            [
+              -3.01,
+              -0.51
+            ],
+            [
+              -2.08,
+              -0.345
+            ],
+            [
+              -0.02,
+              0.11
+            ],
+            [
+              2.01,
+              0.491
+            ],
+            [
+              4.04,
+              0.955
+            ]
+          ],
+          "source": "TN D-4013 Fig. 7(b), printed p. 22: short model, fins at 0 deg, roll 0"
+        },
+        {
+          "mach": 1.0,
+          "alpha_deg_c_n": [
+            [
+              -3.07,
+              -0.734
+            ],
+            [
+              -2.09,
+              -0.451
+            ],
+            [
+              -0.02,
+              0.082
+            ],
+            [
+              2.01,
+              0.631
+            ],
+            [
+              4.0,
+              1.237
+            ]
+          ],
+          "source": "TN D-4013 Fig. 7(b), printed p. 22: short model, fins at 0 deg, roll 0"
+        },
+        {
+          "mach": 1.2,
+          "alpha_deg_c_n": [
+            [
+              -3.1,
+              -0.74
+            ],
+            [
+              -2.08,
+              -0.475
+            ],
+            [
+              -0.08,
+              0.062
+            ],
+            [
+              1.95,
+              0.593
+            ],
+            [
+              3.99,
+              1.174
+            ]
+          ],
+          "source": "TN D-4013 Fig. 7(b), printed p. 22: short model, fins at 0 deg, roll 0"
+        },
+        {
+          "mach": 1.5,
+          "alpha_deg_c_n": [
+            [
+              -4.31,
+              -1.02
+            ],
+            [
+              -2.29,
+              -0.509
+            ],
+            [
+              -1.25,
+              -0.262
+            ],
+            [
+              -0.24,
+              -0.04
+            ],
+            [
+              0.86,
+              0.178
+            ],
+            [
+              1.89,
+              0.424
+            ],
+            [
+              3.79,
+              0.917
+            ]
+          ],
+          "source": "TN D-4014 Fig. 5(b), printed p. 28: configuration 1, fins at 0 deg"
+        },
+        {
+          "mach": 1.8,
+          "alpha_deg_c_n": [
+            [
+              -4.12,
+              -0.821
+            ],
+            [
+              -2.09,
+              -0.398
+            ],
+            [
+              -1.09,
+              -0.191
+            ],
+            [
+              -0.06,
+              0.006
+            ],
+            [
+              1.96,
+              0.418
+            ],
+            [
+              3.91,
+              0.876
+            ]
+          ],
+          "source": "TN D-4014 Fig. 5(b), printed p. 28: configuration 1, fins at 0 deg"
+        },
+        {
+          "mach": 2.3,
+          "alpha_deg_c_n": [
+            [
+              -4.51,
+              -0.784
+            ],
+            [
+              -2.35,
+              -0.362
+            ],
+            [
+              -1.31,
+              -0.186
+            ],
+            [
+              -0.31,
+              -0.01
+            ],
+            [
+              0.75,
+              0.148
+            ],
+            [
+              1.71,
+              0.324
+            ],
+            [
+              3.91,
+              0.682
+            ]
+          ],
+          "source": "TN D-4014 Fig. 5(b), printed p. 28: configuration 1, fins at 0 deg"
+        },
+        {
+          "mach": 2.96,
+          "alpha_deg_c_n": [
+            [
+              -4.65,
+              -0.691
+            ],
+            [
+              -2.47,
+              -0.318
+            ],
+            [
+              -1.38,
+              -0.16
+            ],
+            [
+              -0.41,
+              -0.013
+            ],
+            [
+              0.7,
+              0.135
+            ],
+            [
+              1.68,
+              0.268
+            ],
+            [
+              3.67,
+              0.613
+            ]
+          ],
+          "source": "TN D-4014 Fig. 5(b), printed p. 28: configuration 1, fins at 0 deg"
+        },
+        {
+          "mach": 3.96,
+          "alpha_deg_c_n": [
+            [
+              -4.34,
+              -0.572
+            ],
+            [
+              -2.19,
+              -0.256
+            ],
+            [
+              -1.15,
+              -0.133
+            ],
+            [
+              -0.13,
+              0.025
+            ],
+            [
+              0.87,
+              0.148
+            ],
+            [
+              1.85,
+              0.256
+            ],
+            [
+              3.96,
+              0.562
+            ]
+          ],
+          "source": "TN D-4014 Fig. 5(b), printed p. 28: configuration 1, fins at 0 deg"
+        },
+        {
+          "mach": 4.63,
+          "alpha_deg_c_n": [
+            [
+              -4.38,
+              -0.518
+            ],
+            [
+              -2.15,
+              -0.177
+            ],
+            [
+              -1.17,
+              -0.072
+            ],
+            [
+              -0.15,
+              0.068
+            ],
+            [
+              0.8,
+              0.188
+            ],
+            [
+              1.77,
+              0.293
+            ],
+            [
+              3.93,
+              0.598
+            ]
+          ],
+          "source": "TN D-4014 Fig. 5(b), printed p. 28: configuration 1, fins at 0 deg"
+        }
+      ],
+      "cn_alpha_fins_off": [
+        {
+          "mach": 0.6,
+          "alpha_deg_c_n": [
+            [
+              -3.04,
+              -0.013
+            ],
+            [
+              -2.06,
+              -0.02
+            ],
+            [
+              -0.03,
+              -0.008
+            ],
+            [
+              2.0,
+              0.098
+            ],
+            [
+              4.03,
+              0.164
+            ]
+          ],
+          "source": "TN D-4013 Fig. 7(b), printed p. 22: short model, fins off"
+        },
+        {
+          "mach": 0.8,
+          "alpha_deg_c_n": [
+            [
+              -3.04,
+              -0.017
+            ],
+            [
+              -2.08,
+              -0.004
+            ],
+            [
+              -0.05,
+              0.027
+            ],
+            [
+              1.96,
+              0.059
+            ],
+            [
+              3.99,
+              0.17
+            ]
+          ],
+          "source": "TN D-4013 Fig. 7(b), printed p. 22: short model, fins off"
+        },
+        {
+          "mach": 0.9,
+          "alpha_deg_c_n": [
+            [
+              -3.04,
+              -0.083
+            ],
+            [
+              -2.07,
+              -0.004
+            ],
+            [
+              -0.03,
+              0.026
+            ],
+            [
+              2.01,
+              0.143
+            ],
+            [
+              4.02,
+              0.234
+            ]
+          ],
+          "source": "TN D-4013 Fig. 7(b), printed p. 22: short model, fins off"
+        },
+        {
+          "mach": 0.95,
+          "alpha_deg_c_n": [
+            [
+              -3.06,
+              -0.09
+            ],
+            [
+              -2.12,
+              -0.051
+            ],
+            [
+              -0.02,
+              0.039
+            ],
+            [
+              2.01,
+              0.137
+            ],
+            [
+              4.04,
+              0.274
+            ]
+          ],
+          "source": "TN D-4013 Fig. 7(b), printed p. 22: short model, fins off"
+        },
+        {
+          "mach": 1.0,
+          "alpha_deg_c_n": [
+            [
+              -3.07,
+              -0.033
+            ],
+            [
+              -2.12,
+              0.0
+            ],
+            [
+              -0.02,
+              0.005
+            ],
+            [
+              2.01,
+              0.043
+            ],
+            [
+              4.04,
+              0.195
+            ]
+          ],
+          "source": "TN D-4013 Fig. 7(b), printed p. 22: short model, fins off"
+        },
+        {
+          "mach": 1.2,
+          "alpha_deg_c_n": [
+            [
+              -3.1,
+              -0.079
+            ],
+            [
+              -2.14,
+              -0.054
+            ],
+            [
+              -0.08,
+              0.016
+            ],
+            [
+              1.95,
+              0.112
+            ],
+            [
+              4.01,
+              0.222
+            ]
+          ],
+          "source": "TN D-4013 Fig. 7(b), printed p. 22: short model, fins off"
+        },
+        {
+          "mach": 1.5,
+          "alpha_deg_c_n": [
+            [
+              -4.08,
+              -0.128
+            ],
+            [
+              -1.92,
+              -0.051
+            ],
+            [
+              -0.91,
+              -0.006
+            ],
+            [
+              0.09,
+              0.022
+            ],
+            [
+              1.17,
+              0.049
+            ],
+            [
+              2.12,
+              0.103
+            ],
+            [
+              4.13,
+              0.193
+            ]
+          ],
+          "source": "TN D-4014 Fig. 5(a), printed p. 25: configuration 1, fins off"
+        },
+        {
+          "mach": 1.8,
+          "alpha_deg_c_n": [
+            [
+              -3.94,
+              -0.151
+            ],
+            [
+              -1.92,
+              -0.057
+            ],
+            [
+              -0.93,
+              -0.021
+            ],
+            [
+              0.11,
+              0.024
+            ],
+            [
+              1.16,
+              0.085
+            ],
+            [
+              2.21,
+              0.12
+            ],
+            [
+              4.15,
+              0.221
+            ]
+          ],
+          "source": "TN D-4014 Fig. 5(a), printed p. 25: configuration 1, fins off"
+        },
+        {
+          "mach": 2.3,
+          "alpha_deg_c_n": [
+            [
+              -4.32,
+              -0.22
+            ],
+            [
+              -2.11,
+              -0.089
+            ],
+            [
+              -1.12,
+              -0.029
+            ],
+            [
+              -0.08,
+              0.023
+            ],
+            [
+              0.95,
+              0.065
+            ],
+            [
+              1.92,
+              0.095
+            ],
+            [
+              4.1,
+              0.252
+            ]
+          ],
+          "source": "TN D-4014 Fig. 5(a), printed p. 25: configuration 1, fins off"
+        },
+        {
+          "mach": 2.96,
+          "alpha_deg_c_n": [
+            [
+              -4.67,
+              -0.227
+            ],
+            [
+              -2.48,
+              -0.07
+            ],
+            [
+              -1.44,
+              -0.003
+            ],
+            [
+              -0.4,
+              0.037
+            ],
+            [
+              0.66,
+              0.082
+            ],
+            [
+              1.63,
+              0.13
+            ],
+            [
+              3.72,
+              0.28
+            ]
+          ],
+          "source": "TN D-4014 Fig. 5(a), printed p. 25: configuration 1, fins off"
+        },
+        {
+          "mach": 3.96,
+          "alpha_deg_c_n": [
+            [
+              -4.12,
+              -0.247
+            ],
+            [
+              -1.94,
+              -0.071
+            ],
+            [
+              -0.91,
+              -0.002
+            ],
+            [
+              0.1,
+              0.057
+            ],
+            [
+              1.15,
+              0.099
+            ],
+            [
+              2.07,
+              0.169
+            ],
+            [
+              4.23,
+              0.344
+            ]
+          ],
+          "source": "TN D-4014 Fig. 5(a), printed p. 25: configuration 1, fins off"
+        },
+        {
+          "mach": 4.63,
+          "alpha_deg_c_n": [
+            [
+              -4.35,
+              -0.234
+            ],
+            [
+              -2.22,
+              -0.036
+            ],
+            [
+              -1.19,
+              0.006
+            ],
+            [
+              -0.23,
+              0.098
+            ],
+            [
+              0.82,
+              0.138
+            ],
+            [
+              1.84,
+              0.197
+            ],
+            [
+              3.96,
+              0.401
+            ]
+          ],
+          "source": "TN D-4014 Fig. 5(a), printed p. 25: configuration 1, fins off"
+        }
+      ],
+      "cp": [
+        {
+          "mach": 0.6,
+          "percent_length": 74.7,
+          "uncertainty_percent": 0.3,
+          "source": "TN D-4013 Fig. 11, printed p. 60: short model, fins at 0 deg, alpha -2 to 2 deg"
+        },
+        {
+          "mach": 0.8,
+          "percent_length": 70.9,
+          "uncertainty_percent": 0.3,
+          "source": "TN D-4013 Fig. 11, printed p. 60: short model, fins at 0 deg, alpha -2 to 2 deg"
+        },
+        {
+          "mach": 0.9,
+          "percent_length": 71.6,
+          "uncertainty_percent": 0.3,
+          "source": "TN D-4013 Fig. 11, printed p. 60: short model, fins at 0 deg, alpha -2 to 2 deg"
+        },
+        {
+          "mach": 0.95,
+          "percent_length": 76.45,
+          "uncertainty_percent": 0.6,
+          "source": "TN D-4013 Fig. 11, printed p. 60: short model, fins at 0 deg, alpha -2 to 2 deg"
+        },
+        {
+          "mach": 1.0,
+          "percent_length": 83.55,
+          "uncertainty_percent": 0.6,
+          "source": "TN D-4013 Fig. 11, printed p. 60: short model, fins at 0 deg, alpha -2 to 2 deg"
+        },
+        {
+          "mach": 1.2,
+          "percent_length": 85.2,
+          "uncertainty_percent": 0.3,
+          "source": "TN D-4013 Fig. 11, printed p. 60: short model, fins at 0 deg, alpha -2 to 2 deg"
+        },
+        {
+          "mach": 1.5,
+          "percent_length": 78.23,
+          "uncertainty_percent": 0.3,
+          "source": "TN D-4014 Fig. 7, printed p. 41: configuration 1, low angles of attack"
+        },
+        {
+          "mach": 1.8,
+          "percent_length": 76.03,
+          "uncertainty_percent": 0.3,
+          "source": "TN D-4014 Fig. 7, printed p. 41: configuration 1, low angles of attack"
+        },
+        {
+          "mach": 2.3,
+          "percent_length": 72.15,
+          "uncertainty_percent": 0.3,
+          "source": "TN D-4014 Fig. 7, printed p. 41: configuration 1, low angles of attack"
+        },
+        {
+          "mach": 2.96,
+          "percent_length": 66.98,
+          "uncertainty_percent": 0.3,
+          "source": "TN D-4014 Fig. 7, printed p. 41: configuration 1, low angles of attack"
+        },
+        {
+          "mach": 3.96,
+          "percent_length": 60.68,
+          "uncertainty_percent": 0.3,
+          "source": "TN D-4014 Fig. 7, printed p. 41: configuration 1, low angles of attack"
+        },
+        {
+          "mach": 4.63,
+          "percent_length": 56.49,
+          "uncertainty_percent": 0.3,
+          "source": "TN D-4014 Fig. 7, printed p. 41: configuration 1, low angles of attack"
+        }
+      ]
+    },
+    {
+      "id": "arcas-robin-long",
+      "design": "wind-tunnel-arcas-robin-long.json",
+      "length_m": 1.3589,
+      "cn_alpha": [
+        {
+          "mach": 0.6,
+          "alpha_deg_c_n": [
+            [
+              -3.73,
+              -0.615
+            ],
+            [
+              -0.08,
+              0.004
+            ],
+            [
+              4.02,
+              0.892
+            ]
+          ],
+          "source": "TN D-4013 Fig. 9(b), printed p. 41: long model, fins at 0 deg, roll 0"
+        },
+        {
+          "mach": 0.8,
+          "alpha_deg_c_n": [
+            [
+              -3.81,
+              -0.567
+            ],
+            [
+              -0.07,
+              0.052
+            ],
+            [
+              4.06,
+              0.892
+            ]
+          ],
+          "source": "TN D-4013 Fig. 9(b), printed p. 41: long model, fins at 0 deg, roll 0"
+        },
+        {
+          "mach": 0.9,
+          "alpha_deg_c_n": [
+            [
+              -3.81,
+              -0.649
+            ],
+            [
+              -0.09,
+              0.083
+            ],
+            [
+              4.07,
+              0.972
+            ]
+          ],
+          "source": "TN D-4013 Fig. 9(b), printed p. 41: long model, fins at 0 deg, roll 0"
+        },
+        {
+          "mach": 1.0,
+          "alpha_deg_c_n": [
+            [
+              -3.83,
+              -0.976
+            ],
+            [
+              -0.08,
+              0.1
+            ],
+            [
+              4.02,
+              1.34
+            ]
+          ],
+          "source": "TN D-4013 Fig. 9(b), printed p. 41: long model, fins at 0 deg, roll 0"
+        },
+        {
+          "mach": 1.2,
+          "alpha_deg_c_n": [
+            [
+              -3.82,
+              -0.922
+            ],
+            [
+              -0.08,
+              0.103
+            ],
+            [
+              4.05,
+              1.16
+            ]
+          ],
+          "source": "TN D-4013 Fig. 9(b), printed p. 41: long model, fins at 0 deg, roll 0"
+        },
+        {
+          "mach": 1.8,
+          "alpha_deg_c_n": [
+            [
+              -4.14,
+              -0.824
+            ],
+            [
+              -2.1,
+              -0.379
+            ],
+            [
+              -1.1,
+              -0.179
+            ],
+            [
+              -0.08,
+              -0.01
+            ],
+            [
+              0.92,
+              0.177
+            ],
+            [
+              1.94,
+              0.421
+            ],
+            [
+              3.95,
+              0.879
+            ]
+          ],
+          "source": "TN D-4014 Fig. 6(b), printed p. 37: configuration 2, fins at 0 deg"
+        },
+        {
+          "mach": 2.3,
+          "alpha_deg_c_n": [
+            [
+              -4.53,
+              -0.788
+            ],
+            [
+              -2.31,
+              -0.366
+            ],
+            [
+              -1.28,
+              -0.175
+            ],
+            [
+              -0.29,
+              -0.032
+            ],
+            [
+              0.77,
+              0.146
+            ],
+            [
+              1.79,
+              0.31
+            ],
+            [
+              3.93,
+              0.724
+            ]
+          ],
+          "source": "TN D-4014 Fig. 6(b), printed p. 37: configuration 2, fins at 0 deg"
+        },
+        {
+          "mach": 2.96,
+          "alpha_deg_c_n": [
+            [
+              -4.72,
+              -0.708
+            ],
+            [
+              -2.6,
+              -0.353
+            ],
+            [
+              -1.55,
+              -0.197
+            ],
+            [
+              -0.54,
+              -0.054
+            ],
+            [
+              0.5,
+              0.092
+            ],
+            [
+              1.51,
+              0.226
+            ],
+            [
+              3.62,
+              0.613
+            ]
+          ],
+          "source": "TN D-4014 Fig. 6(b), printed p. 37: configuration 2, fins at 0 deg"
+        },
+        {
+          "mach": 3.96,
+          "alpha_deg_c_n": [
+            [
+              -4.31,
+              -0.575
+            ],
+            [
+              -2.14,
+              -0.246
+            ],
+            [
+              -1.08,
+              -0.099
+            ],
+            [
+              -0.08,
+              0.034
+            ],
+            [
+              0.94,
+              0.15
+            ],
+            [
+              1.97,
+              0.279
+            ],
+            [
+              3.94,
+              0.626
+            ]
+          ],
+          "source": "TN D-4014 Fig. 6(b), printed p. 37: configuration 2, fins at 0 deg"
+        },
+        {
+          "mach": 4.63,
+          "alpha_deg_c_n": [
+            [
+              -3.72,
+              -0.497
+            ],
+            [
+              -1.54,
+              -0.157
+            ],
+            [
+              -0.5,
+              -0.052
+            ],
+            [
+              0.51,
+              0.097
+            ],
+            [
+              1.55,
+              0.217
+            ],
+            [
+              2.52,
+              0.341
+            ],
+            [
+              4.53,
+              0.688
+            ]
+          ],
+          "source": "TN D-4014 Fig. 6(b), printed p. 37: configuration 2, fins at 0 deg"
+        }
+      ],
+      "cn_alpha_fins_off": [
+        {
+          "mach": 0.6,
+          "alpha_deg_c_n": [
+            [
+              -3.73,
+              -0.092
+            ],
+            [
+              -0.08,
+              0.004
+            ],
+            [
+              4.02,
+              0.202
+            ]
+          ],
+          "source": "TN D-4013 Fig. 9(b), printed p. 41: long model, fins off"
+        },
+        {
+          "mach": 0.8,
+          "alpha_deg_c_n": [
+            [
+              -3.75,
+              -0.045
+            ],
+            [
+              -0.07,
+              0.017
+            ],
+            [
+              4.06,
+              0.212
+            ]
+          ],
+          "source": "TN D-4013 Fig. 9(b), printed p. 41: long model, fins off"
+        },
+        {
+          "mach": 0.9,
+          "alpha_deg_c_n": [
+            [
+              -3.76,
+              -0.067
+            ],
+            [
+              -0.09,
+              0.017
+            ],
+            [
+              4.04,
+              0.244
+            ]
+          ],
+          "source": "TN D-4013 Fig. 9(b), printed p. 41: long model, fins off"
+        },
+        {
+          "mach": 1.0,
+          "alpha_deg_c_n": [
+            [
+              -3.78,
+              -0.093
+            ],
+            [
+              -0.08,
+              0.008
+            ],
+            [
+              4.06,
+              0.22
+            ]
+          ],
+          "source": "TN D-4013 Fig. 9(b), printed p. 41: long model, fins off"
+        },
+        {
+          "mach": 1.2,
+          "alpha_deg_c_n": [
+            [
+              -3.77,
+              -0.121
+            ],
+            [
+              -0.08,
+              0.005
+            ],
+            [
+              4.09,
+              0.217
+            ]
+          ],
+          "source": "TN D-4013 Fig. 9(b), printed p. 41: long model, fins off"
+        },
+        {
+          "mach": 1.8,
+          "alpha_deg_c_n": [
+            [
+              -4.09,
+              -0.21
+            ],
+            [
+              -2.04,
+              -0.083
+            ],
+            [
+              -0.96,
+              -0.007
+            ],
+            [
+              0.08,
+              0.031
+            ],
+            [
+              1.12,
+              0.072
+            ],
+            [
+              2.12,
+              0.111
+            ],
+            [
+              4.17,
+              0.272
+            ]
+          ],
+          "source": "TN D-4014 Fig. 6(a), printed p. 34: configuration 2, fins off"
+        },
+        {
+          "mach": 2.3,
+          "alpha_deg_c_n": [
+            [
+              -4.3,
+              -0.263
+            ],
+            [
+              -2.14,
+              -0.09
+            ],
+            [
+              -1.06,
+              -0.03
+            ],
+            [
+              -0.04,
+              0.013
+            ],
+            [
+              1.01,
+              0.071
+            ],
+            [
+              2.03,
+              0.121
+            ],
+            [
+              4.17,
+              0.287
+            ]
+          ],
+          "source": "TN D-4014 Fig. 6(a), printed p. 34: configuration 2, fins off"
+        },
+        {
+          "mach": 2.96,
+          "alpha_deg_c_n": [
+            [
+              -5.02,
+              -0.315
+            ],
+            [
+              -2.8,
+              -0.108
+            ],
+            [
+              -1.72,
+              -0.046
+            ],
+            [
+              -0.65,
+              0.023
+            ],
+            [
+              0.34,
+              0.047
+            ],
+            [
+              1.28,
+              0.116
+            ],
+            [
+              3.49,
+              0.295
+            ]
+          ],
+          "source": "TN D-4014 Fig. 6(a), printed p. 34: configuration 2, fins off"
+        },
+        {
+          "mach": 3.96,
+          "alpha_deg_c_n": [
+            [
+              -4.52,
+              -0.308
+            ],
+            [
+              -2.44,
+              -0.094
+            ],
+            [
+              -1.36,
+              -0.038
+            ],
+            [
+              -0.33,
+              0.018
+            ],
+            [
+              0.59,
+              0.091
+            ],
+            [
+              1.61,
+              0.154
+            ],
+            [
+              3.73,
+              0.372
+            ]
+          ],
+          "source": "TN D-4014 Fig. 6(a), printed p. 34: configuration 2, fins off"
+        },
+        {
+          "mach": 4.63,
+          "alpha_deg_c_n": [
+            [
+              -4.05,
+              -0.324
+            ],
+            [
+              -1.98,
+              -0.091
+            ],
+            [
+              -0.88,
+              -0.02
+            ],
+            [
+              0.15,
+              0.03
+            ],
+            [
+              1.2,
+              0.103
+            ],
+            [
+              2.14,
+              0.185
+            ],
+            [
+              4.28,
+              0.386
+            ]
+          ],
+          "source": "TN D-4014 Fig. 6(a), printed p. 34: configuration 2, fins off"
+        }
+      ],
+      "cp": [
+        {
+          "mach": 0.6,
+          "percent_length": 76.8,
+          "uncertainty_percent": 0.3,
+          "source": "TN D-4013 Fig. 12, printed p. 61: long model, fins at 0 deg, alpha -2 to 2 deg"
+        },
+        {
+          "mach": 0.8,
+          "percent_length": 75.6,
+          "uncertainty_percent": 0.3,
+          "source": "TN D-4013 Fig. 12, printed p. 61: long model, fins at 0 deg, alpha -2 to 2 deg"
+        },
+        {
+          "mach": 0.9,
+          "percent_length": 76.2,
+          "uncertainty_percent": 0.3,
+          "source": "TN D-4013 Fig. 12, printed p. 61: long model, fins at 0 deg, alpha -2 to 2 deg"
+        },
+        {
+          "mach": 1.0,
+          "percent_length": 71.5,
+          "uncertainty_percent": 0.3,
+          "source": "TN D-4013 Fig. 12, printed p. 61: long model, fins at 0 deg, alpha -2 to 2 deg"
+        },
+        {
+          "mach": 1.2,
+          "percent_length": 82.0,
+          "uncertainty_percent": 0.3,
+          "source": "TN D-4013 Fig. 12, printed p. 61: long model, fins at 0 deg, alpha -2 to 2 deg"
+        },
+        {
+          "mach": 1.8,
+          "percent_length": 77.35,
+          "uncertainty_percent": 0.5,
+          "source": "TN D-4014 Fig. 7, printed p. 41: configuration 2, low angles of attack"
+        },
+        {
+          "mach": 2.3,
+          "percent_length": 71.95,
+          "uncertainty_percent": 0.5,
+          "source": "TN D-4014 Fig. 7, printed p. 41: configuration 2, low angles of attack"
+        },
+        {
+          "mach": 2.96,
+          "percent_length": 66.24,
+          "uncertainty_percent": 0.3,
+          "source": "TN D-4014 Fig. 7, printed p. 41: configuration 2, low angles of attack"
+        },
+        {
+          "mach": 3.96,
+          "percent_length": 59.51,
+          "uncertainty_percent": 0.3,
+          "source": "TN D-4014 Fig. 7, printed p. 41: configuration 2, low angles of attack"
+        },
+        {
+          "mach": 4.63,
+          "percent_length": 55.46,
+          "uncertainty_percent": 0.3,
+          "source": "TN D-4014 Fig. 7, printed p. 41: configuration 2, low angles of attack"
+        }
+      ]
+    }
+  ]
+}

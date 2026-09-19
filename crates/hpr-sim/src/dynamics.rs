@@ -129,7 +129,9 @@ pub(crate) struct Evaluation {
 pub(crate) struct Vehicle {
     pub(crate) assembly: Assembly,
     pub(crate) aero: AeroModel,
-    stations_m: Vec<f64>,
+    /// The body components' stations, which don't change with Mach; fin sets' are taken at each
+    /// evaluation's Mach number.
+    body_stations_m: Vec<f64>,
     /// The first fin set's index among the aerodynamic components.
     first_fin_index: usize,
     motors: Vec<MotorTerms>,
@@ -138,14 +140,9 @@ pub(crate) struct Vehicle {
 
 impl Vehicle {
     pub(crate) fn new(assembly: Assembly, aero: AeroModel) -> Result<Self, SimError> {
-        let stations_m = (0..aero.component_count())
-            .map(|index| {
-                aero.component_station_m(index).ok_or(SimError::Domain {
-                    what: "aerodynamic component index",
-                    value: index as f64,
-                })
-            })
-            .collect::<Result<Vec<f64>, SimError>>()?;
+        let body_stations_m = (0..aero.bodies().len())
+            .map(|index| aero.component_station_m(index, 0.0))
+            .collect::<Result<Vec<f64>, _>>()?;
         let motors = assembly
             .motors
             .iter()
@@ -165,7 +162,7 @@ impl Vehicle {
         Ok(Self {
             assembly,
             aero,
-            stations_m,
+            body_stations_m,
             first_fin_index,
             motors,
             reference_area_m2,
@@ -452,9 +449,10 @@ impl Vehicle {
     /// - The axial force is `−q A C_A z_B` from the whole rocket's drag at the centre of mass's
     ///   airspeed; it acts along the axis, so it has no moment about the nose tip.
     /// - Each component's normal and side force comes from its own local flow: the nose tip's air
-    ///   velocity plus `ω × p` at the component's small-angle centre of pressure `p`, which gives
-    ///   the aerodynamic damping in pitch and yaw. `C_N` acts along the crossing air `ŵ`, `C_Y`
-    ///   along `z_B × ŵ`, at the stations their moments give (`docs/physics/frames.md`).
+    ///   velocity plus `ω × p` at the component's small-angle centre of pressure `p` (at the
+    ///   centre of mass's Mach number), which gives the aerodynamic damping in pitch and yaw.
+    ///   `C_N` acts along the crossing air `ŵ`, `C_Y` along `z_B × ŵ`, at the stations their
+    ///   moments give (`docs/physics/frames.md`).
     /// - Fin sets use `sin α` in place of their model's `α`, so their force vanishes when the air
     ///   comes from the tail as well as from the nose.
     fn aerodynamics(
@@ -488,13 +486,19 @@ impl Vehicle {
         } else {
             DragConditions::coasting(reynolds_per_m)
         };
-        let drag = self
-            .aero
-            .drag(&Flow::new(out.mach, alpha, roll), &conditions)?;
+        let flow = Flow::new(out.mach, alpha, roll);
+        let drag = self.aero.drag(&flow, &conditions)?;
         out.axial_coefficient = drag.axial_coefficient;
         out.force = DVec3::new(0.0, 0.0, -q * area * drag.axial_coefficient);
 
-        for (index, station) in self.stations_m.iter().enumerate() {
+        // The normal force's range, checked once here, before the bodies' cached stations.
+        flow.validate()?;
+        for index in 0..self.aero.component_count() {
+            // A fin set's station moves with Mach.
+            let station = match self.body_stations_m.get(index) {
+                Some(&station) => station,
+                None => self.aero.component_station_m(index, out.mach)?,
+            };
             let p = DVec3::new(0.0, 0.0, -station);
             let local = air_velocity_o_body + omega.cross(p);
             let local_speed = local.length();

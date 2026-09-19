@@ -1,0 +1,146 @@
+{
+  "name": "NASA half-scale Arcas wind-tunnel model, arcas-robin-short",
+  "stages": [
+    {
+      "id": "model",
+      "name": "",
+      "components": [
+        {
+          "id": "nose",
+          "name": "",
+          "part": {
+            "nose_cone": {
+              "shape": {
+                "kind": "power_series",
+                "exponent": 0.6369
+              },
+              "length_m": 0.238125,
+              "base_radius_m": 0.028575,
+              "wall": {
+                "kind": "filled"
+              },
+              "shoulder": null,
+              "material": {
+                "name": "Steel (plain carbon)",
+                "density": {
+                  "kind": "bulk",
+                  "kg_m3": 7850.0
+                }
+              }
+            }
+          }
+        },
+        {
+          "id": "body",
+          "name": "",
+          "part": {
+            "body_tube": {
+              "length_m": 0.7560309999999999,
+              "outer_radius_m": 0.028575,
+              "thickness_m": 0.028575,
+              "material": {
+                "name": "Steel (plain carbon)",
+                "density": {
+                  "kind": "bulk",
+                  "kg_m3": 7850.0
+                }
+              }
+            }
+          },
+          "children": [
+            {
+              "id": "fins",
+              "name": "",
+              "part": {
+                "fin_set": {
+                  "count": 4,
+                  "planform": {
+                    "kind": "trapezoidal",
+                    "root_chord_m": 0.085852,
+                    "tip_chord_m": 0.054991,
+                    "span_m": 0.053416200000000004,
+                    "sweep_m": 0.030861
+                  },
+                  "thickness_m": 0.0038099999999999996,
+                  "cross_section": "square",
+                  "tab": null,
+                  "cant_rad": 0.0,
+                  "base_angle_rad": 0.0,
+                  "material": {
+                    "name": "Steel (plain carbon)",
+                    "density": {
+                      "kind": "bulk",
+                      "kg_m3": 7850.0
+                    }
+                  }
+                }
+              },
+              "position": {
+                "from": "absolute",
+                "station_m": 0.94742
+              }
+            }
+          ]
+        },
+        {
+          "id": "boattail",
+          "name": "",
+          "part": {
+            "transition": {
+              "shape": {
+                "kind": "conical"
+              },
+              "clipped": false,
+              "length_m": 0.044627799999999995,
+              "fore_radius_m": 0.028575,
+              "aft_radius_m": 0.0166116,
+              "wall": {
+                "kind": "filled"
+              },
+              "fore_shoulder": null,
+              "aft_shoulder": null,
+              "material": {
+                "name": "Steel (plain carbon)",
+                "density": {
+                  "kind": "bulk",
+                  "kg_m3": 7850.0
+                }
+              }
+            }
+          }
+        },
+        {
+          "id": "lip",
+          "name": "",
+          "part": {
+            "transition": {
+              "shape": {
+                "kind": "conical"
+              },
+              "clipped": false,
+              "length_m": 0.0013461999999999999,
+              "fore_radius_m": 0.0166116,
+              "aft_radius_m": 0.018668999999999998,
+              "wall": {
+                "kind": "filled"
+              },
+              "fore_shoulder": null,
+              "aft_shoulder": null,
+              "material": {
+                "name": "Steel (plain carbon)",
+                "density": {
+                  "kind": "bulk",
+                  "kg_m3": 7850.0
+                }
+              }
+            }
+          }
+        }
+      ]
+    }
+  ],
+  "reference_diameter": {
+    "kind": "maximum"
+  },
+  "configurations": []
+}

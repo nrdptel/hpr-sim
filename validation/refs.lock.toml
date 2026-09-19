@@ -146,6 +146,27 @@ license = "US government work"
 mode = "fetched"
 
 [[file]]
+name = "naca-tn-2114"
+title = "S. M. Harmon and I. Jeffreys, Theoretical lift and damping in roll of thin wings with arbitrary sweep and taper at supersonic speeds: supersonic leading and trailing edges, NACA TN 2114, 1950"
+url = "https://ntrs.nasa.gov/api/citations/19930082815/downloads/19930082815.pdf"
+sha256 = "f62332c5c2119ccacb698f7bcc09c135f53498dd0f29ba0c2e287934cf88bcb7"
+dest = "refs/papers/naca-tn-2114.pdf"
+license = "US government work"
+mode = "fetched"
+
+# RASAero II's aerodynamics for Calisto, as RocketPy's first commit shipped them: C_D, C_Nα and CP
+# against Mach 0.01 to 25 at angles of attack 0, 2 and 4 degrees. RocketPy's current checkout keeps
+# only the C_D column to Mach 2 (data/rockets/calisto/powerOffDragCurve.csv).
+[[file]]
+name = "rocketpy-calisto-rasaero-2018"
+title = "RocketPy data/calisto/CD Test.CSV at its first commit da91db9e (2018): a RASAero II export for Calisto"
+url = "https://raw.githubusercontent.com/RocketPy-Team/RocketPy/da91db9e6a94d6b7948712db0de3602042843004/data/calisto/CD%20Test.CSV"
+sha256 = "a739d313f54f298ce02011fb35e73c2a71bb876468233870a3777127b85e8114"
+dest = "refs/rocketpy-history/calisto-cd-test-2018.csv"
+license = "MIT; data files carry their own terms"
+mode = "fetched"
+
+[[file]]
 name = "galejs-wind-instability"
 title = "R. Galejs, Wind Instability: What Barrowman Left Out, Sentinel 39 (about 1999)"
 url = "https://www.argoshpr.ch/j3/articles/pdf/sentinel39-galejs.pdf"
