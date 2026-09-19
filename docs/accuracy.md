@@ -23,7 +23,12 @@ What has been checked so far:
   of a sounding rocket, and against [RASAero II](glossary.md#rasaero-ii), another code
   ([fixture][nf-fixture]);
 - drag from Mach 0.6 to 4.63 against the same wind-tunnel tests, the forebody only
-  ([Aerodynamics](physics/aero.md#drag-against-the-arcas-robin-wind-tunnel)).
+  ([Aerodynamics](physics/aero.md#drag-against-the-arcas-robin-wind-tunnel));
+- drag from Mach 0.1 to 2.0 against the curves labelled RASAero II in RocketPy's example rockets
+  ([Aerodynamics](physics/aero.md#drag-against-rasaero-ii-through-mach-2)), and from Mach 0.5 to
+  3.2 against a worked example in MIL-HDBK-762, the U.S. Army's handbook for designing unguided
+  rockets
+  ([Aerodynamics](physics/aero.md#drag-against-mil-hdbk-762s-sample-calculation)).
 
 Every number here links to the page or file it comes from. [Checking a claim](checking-a-claim.md)
 shows how to follow one back to its source and its test, and
@@ -82,7 +87,7 @@ parachute descents sample, as part of that comparison, and nowhere else
 | [Shapes](physics/shapes.md) | ✓ | — | — | — |
 | [Mass properties](physics/mass.md) | ✓ | — | — | — |
 | [Solid motors](physics/motor.md) | ✓ | — | ✓ RocketPy, ThrustCurve.org | — |
-| [Aerodynamics](physics/aero.md) | ✓ | ✓ Barrowman's examples | partial: drag with the fins and finish guessed; the normal force against RASAero II to Mach 2; and in whole flights, against a target | — (wind tunnel ✓, normal force and drag; drag reads high at most speeds) |
+| [Aerodynamics](physics/aero.md) | ✓ | ✓ Barrowman's examples; MIL-HDBK-762's drag example, fins left out: 6 of 12 within 10%, the body reading 6% to 10% low faster than sound | partial: drag and the normal force against RASAero II to Mach 2, the drag with the fins and finish guessed and missing faster than sound; and in whole flights, against a target | — (wind tunnel ✓, normal force and drag; drag reads high at most speeds) |
 | [Rigid-body flight](physics/flight.md) | ✓ | — | ✓ RocketPy, with the drag given; and on each code's own drag, against a target | — |
 | [Time integration](physics/integration.md) | ✓ | — | — | — |
 | [Recovery](physics/recovery.md) | ✓ | ✓ | ✓ RocketPy | — (drop tests ✓) |
@@ -124,6 +129,8 @@ may be from its reference and still pass.
 | [Aerodynamics](physics/aero.md) | [Barrowman's](glossary.md#barrowmans-method) five worked examples, at Mach 0 (low speed): each rocket's [normal-force slope](glossary.md#normal-force-slope) and [centre of pressure](glossary.md#centre-of-pressure-cp) | every centre of pressure within 1%. Every slope within 1% too, except the six-fin Recruiter's: +2.87% (+3.42% on its fins alone) |
 | [Aerodynamics](physics/aero.md) | drag curves labelled [RASAero](glossary.md#rasaero-ii) in RocketPy's examples, at [Mach](glossary.md#mach-number) 0.3, with the fins and surface finish guessed because the curves don't record them | within 10% in four of seven cases; −18.3% for Cavour [power-on](glossary.md#power-on-and-power-off-drag) (motor burning), cause open |
 | [Aerodynamics](physics/aero.md) | Valetudo's drag table, which is 1.44 times the drag in the [OpenRocket](glossary.md#openrocket) export for the same rocket | −47.0% power-off and −50.4% power-on. Against the OpenRocket export, hpr is 23.5% under as designed here, and 1.9% under with the export's own surface finish and launch lugs |
+| [Aerodynamics](physics/aero.md#drag-against-rasaero-ii-through-mach-2) | the same curves every 0.05 from Mach 0.1 to 2.0, as far as each reaches; Calisto's, the one real RASAero II export, to Mach 2 | Calisto within 10% at 15 of 15 subsonic Mach numbers, 2 of 7 transonic and 0 of 17 supersonic, where hpr reads −29.8% to −24.4%; no plausible choice of fins or finish puts every band within 10%. Part of it is hpr's body, which reads low faster than sound against MIL-HDBK-762 too; a boattail's supersonic wave drag, which hpr doesn't model, is a candidate for the rest |
+| [Aerodynamics](physics/aero.md#drag-against-mil-hdbk-762s-sample-calculation) | MIL-HDBK-762's worked drag example, a rocket whose every term the handbook calculates, from Mach 0.5 to 3.2: a calculation with every input known, not a measurement. Its fins are sharp-edged wedges, which hpr can't represent, so their pressure drag is left out on both sides | 6 of 12 within 10%. From Mach 0.9 to 1.2, +12.3% to +31.9%, mostly the nose and the base; from Mach 1.6, −6.0% to −9.6%, friction and the base |
 | [Rigid-body flight](physics/flight.md) | the exact motion of a tumbling, spinning rocket in a vacuum, over 22 s | the centre of mass within 1.7e-6 m of the exact parabola |
 | [Aerodynamics](physics/aero.md) | NASA's wind-tunnel tests of the half-scale Arcas Robin and a longer version, Mach 0.6 to 4.63: [normal-force slope](glossary.md#normal-force-slope) and centre of pressure, 22 readings at 12 Mach numbers ([fixture][nf-fixture]) | from Mach 1.5 to 2.96, the slope −13.4% to +3.3% and the centre of pressure within 0.42 [calibres](glossary.md#calibre-caliber); past Mach 3 the slope −17.2% to −25.0% (the body's lift, measured with the fins off, is 3.9 to 4.6 against hpr's 2.3 to 2.8), the centre of pressure within 0.19; from Mach 0.8 to 1.2, 2 of 9 within 15% and half a calibre |
 | [Aerodynamics](physics/aero.md) | RASAero II's normal-force slope and centre of pressure for Calisto, Mach 0.1 to 2.0 ([fixture][nf-fixture]) | within 15% and half a calibre at 10 of 15 Mach numbers; hpr's slope rises with Mach through subsonic flow where RASAero II's stays flat (+21.9% at Mach 0.9), and is −16.8% at Mach 2 |
@@ -546,20 +553,25 @@ rest.
   fins on, +29.8% at Mach 1.5 to +190.5% at 4.63. The fins take a blunt leading edge's formula,
   and nothing models a thin, sharp fin's own wave drag. From Mach 0.6 to 0.9 the forebody reads
   +27.6% to +49.1% high, mostly the boattail rule and a lip at the models' base. Niskanen's cone,
-  which ogives share, reads 45% to 105% above a measured cone through the rise near Mach 1. Against RocketPy's RASAero
-  curves drag has been checked at Mach 0.3 only; [M1.8b2](decisions-and-roadmap.md#m1-8b2)
-  checks it through Mach 2
+  which ogives share, reads 45% to 105% above a measured cone through the rise near Mach 1
   ([Aerodynamics](physics/aero.md#drag-against-the-arcas-robin-wind-tunnel)).
+- **Drag faster than sound reads low against RASAero II's Calisto**, −29.8% to −24.4% from Mach
+  1.2 to 2.0, where the wind tunnel reads hpr high. Part of it is hpr's body, which reads 6% to
+  10% low faster than sound against MIL-HDBK-762's worked example as well. Calisto ends in a
+  short, steep boattail, and a boattail's own supersonic wave drag, which hpr's boattail rule
+  leaves out, is a candidate for the rest; the Arcas Robin's measured boattail supports only part
+  of it. [M1.8b3](decisions-and-roadmap.md#m1-8b3) measures it before hpr changes
+  ([Aerodynamics](physics/aero.md#drag-against-rasaero-ii-through-mach-2)).
 - **The normal force near and far past Mach 1.** Against NASA's wind tunnel, between Mach 0.8
   and 1.2 hpr's slope runs up to +29.3% high and its centre of pressure up to 2.29
   [calibres](glossary.md#calibre-caliber) off. Past Mach 3 its slope is −17.2% to −25.0%, because
   the body lifts more than slender-body theory gives ([fixture][nf-fixture],
   [Aerodynamics](physics/aero.md#normal-force-through-mach-1)). Between Mach 1.5 and 3 it holds
   to within 13.4% and 0.42 calibres.
-- **Drag against the RASAero curves** is within 10% in four of seven cases, with the fins and
-  surface finish guessed, because the curves don't record them. Cavour power-on is −18.3%, cause
-  open. Valetudo's −47.0% and −50.4% are against a table 1.44 times the drag in the OpenRocket
-  export for the same rocket ([Aerodynamics](physics/aero.md#verification)).
+- **Drag against the RASAero curves** at Mach 0.3 is within 10% in four of seven cases, with the
+  fins and surface finish guessed, because the curves don't record them. Cavour power-on is
+  −18.3%, cause open. Valetudo's −47.0% and −50.4% are against a table 1.44 times the drag in the
+  OpenRocket export for the same rocket ([Aerodynamics](physics/aero.md#verification)).
 - **Six fins.** The [normal-force slope](glossary.md#normal-force-slope) of Barrowman's six-fin
   Recruiter is +2.87% above his printed value, and +3.42% on the fins alone, mostly because hpr
   uses a different six-fin rule ([Aerodynamics](physics/aero.md#verification)).

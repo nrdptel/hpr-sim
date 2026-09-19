@@ -78,7 +78,7 @@ mod tests {
     use serde::Deserialize;
 
     use super::*;
-    use crate::testing::{body_part, component, fin_set, nose, one_stage};
+    use crate::testing::{body_part, committed_design, component, fin_set, nose, one_stage};
 
     const INCH: f64 = 0.0254;
 
@@ -476,34 +476,6 @@ mod tests {
         curve_cd0: f64,
         hpr_cd0: f64,
         relative_error: f64,
-    }
-
-    fn committed_design(name: &str) -> Rocket {
-        let text = match name {
-            "rocketpy-calisto-tests-motor-at-minus-1.373.json" => include_str!(
-                "../../../validation/designs/rocketpy-calisto-tests-motor-at-minus-1.373.json"
-            ),
-            "rocketpy-calisto-getting-started-motor-at-minus-1.255.json" => include_str!(
-                "../../../validation/designs/rocketpy-calisto-getting-started-motor-at-minus-1.255.json"
-            ),
-            "rocketpy-juno-iii.json" => {
-                include_str!("../../../validation/designs/rocketpy-juno-iii.json")
-            }
-            "rocketpy-valetudo.json" => {
-                include_str!("../../../validation/designs/rocketpy-valetudo.json")
-            }
-            "rocketpy-cavour.json" => {
-                include_str!("../../../validation/designs/rocketpy-cavour.json")
-            }
-            "wind-tunnel-arcas-robin-short.json" => {
-                include_str!("../../../validation/designs/wind-tunnel-arcas-robin-short.json")
-            }
-            "wind-tunnel-arcas-robin-long.json" => {
-                include_str!("../../../validation/designs/wind-tunnel-arcas-robin-long.json")
-            }
-            other => panic!("no committed design {other}"),
-        };
-        serde_json::from_str(text).unwrap()
     }
 
     /// M1.5b done-when: subsonic `C_D0` of RocketPy's example rockets against the drag curves
@@ -962,6 +934,300 @@ mod tests {
                 "arcas-robin-long@1.2 fins off",
             ]
         );
+    }
+
+    /// M1.8b2 (ADR-029): no plausible choice of the inputs Calisto's RASAero II export doesn't
+    /// record closes hpr's gap to it. The export's values at the sweep's Mach numbers come back
+    /// from the committed fixture (hpr's value over one plus its error), and hpr flies the 2018
+    /// design with square, rounded and airfoil fins 2 to 6.35 mm thick, smooth or painted (20 µm),
+    /// every 0.05 from Mach 0.1 to 2.0 at sea level. No combination has rows within 10% in both
+    /// the subsonic and the supersonic bands, none has more than 3 of the 7 transonic rows within
+    /// 10%, and supersonic rows come within 10% only with square fins 4.76 mm or thicker, which
+    /// put every subsonic row 14% to 45% high.
+    #[test]
+    fn calistos_supersonic_gap_survives_every_plausible_fin_and_finish() {
+        use hpr_design::{Component, FinCrossSection, Finish, Part};
+
+        let fixture: serde_json::Value = serde_json::from_str(include_str!(
+            "../../../validation/fixtures/aero/rocketpy-drag-curves.json"
+        ))
+        .unwrap();
+        let case = fixture["cases"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .find(|c| c["id"] == "calisto-power-off")
+            .unwrap();
+        let rows: Vec<(f64, f64)> = case["sweep"]["rows"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|r| {
+                let hpr = r["hpr_cd0"].as_f64().unwrap();
+                let error = r["relative_error"].as_f64().unwrap();
+                (r["mach"].as_f64().unwrap(), hpr / (1.0 + error))
+            })
+            .collect();
+        assert_eq!(rows.len(), 39);
+        let air = hpr_atmos::Ussa76::standard().sample(0.0).unwrap().air;
+        fn set(components: &mut [Component], section: FinCrossSection, t: f64, finish: Finish) {
+            for c in components {
+                c.finish = Some(finish);
+                if let Part::FinSet(fins) = &mut c.part {
+                    fins.cross_section = section;
+                    fins.thickness_m = t;
+                }
+                set(&mut c.children, section, t, finish);
+            }
+        }
+        let (mut supersonic_with, mut subsonic_errors, mut others) =
+            (Vec::new(), Vec::new(), Vec::new());
+        for section in [
+            FinCrossSection::Square,
+            FinCrossSection::Rounded,
+            FinCrossSection::Airfoil,
+        ] {
+            for t in [0.002, 0.003, 0.00476, 0.00635] {
+                for finish in [Finish::Mirror {}, Finish::MassProductionPaint {}] {
+                    let mut rocket =
+                        committed_design("rocketpy-calisto-tests-motor-at-minus-1.373.json");
+                    set(&mut rocket.stages[0].components, section, t, finish);
+                    let model = AeroModel::new(&rocket.layout().unwrap()).unwrap();
+                    // Rows within 10% by band, and the subsonic and supersonic errors.
+                    let (mut within, mut sub, mut sup) = ([0usize; 3], Vec::new(), Vec::new());
+                    for &(mach, curve) in &rows {
+                        let conditions = DragConditions::coasting(
+                            mach * air.speed_of_sound_m_s / air.kinematic_viscosity_m2_s(),
+                        );
+                        let drag = model.drag(&Flow::axial(mach), &conditions).unwrap();
+                        let error = drag.zero_lift_coefficient / curve - 1.0;
+                        let band = if mach <= 0.8 {
+                            sub.push(error);
+                            0
+                        } else if mach < 1.2 {
+                            1
+                        } else {
+                            sup.push(error);
+                            2
+                        };
+                        if error.abs() <= 0.10 {
+                            within[band] += 1;
+                        }
+                    }
+                    let what = format!("{section:?} {t} m {finish:?}");
+                    assert!(within[0] == 0 || within[2] == 0, "{what}: {within:?}");
+                    assert!(within[1] <= 3, "{what}: {within:?}");
+                    if within[2] > 0 {
+                        assert!(section == FinCrossSection::Square && t >= 0.00476, "{what}");
+                        supersonic_with.push((format!("{section:?} {t} {finish:?}"), within[2]));
+                        subsonic_errors.extend(sub);
+                    } else {
+                        others.extend(sup);
+                    }
+                }
+            }
+        }
+        // Square fins 4.76 mm painted, and 6.35 mm smooth and painted (all 17 supersonic rows).
+        let supersonic_with: Vec<(&str, usize)> = supersonic_with
+            .iter()
+            .map(|(w, n)| (w.as_str(), *n))
+            .collect();
+        assert_eq!(
+            supersonic_with,
+            [
+                ("Square 0.00476 MassProductionPaint", 4),
+                ("Square 0.00635 Mirror", 12),
+                ("Square 0.00635 MassProductionPaint", 17),
+            ]
+        );
+        let lowest = subsonic_errors
+            .iter()
+            .copied()
+            .fold(f64::INFINITY, f64::min);
+        let highest = subsonic_errors
+            .iter()
+            .copied()
+            .fold(f64::NEG_INFINITY, f64::max);
+        assert!(
+            (0.14..0.15).contains(&lowest) && (0.44..0.45).contains(&highest),
+            "subsonic {lowest} to {highest}"
+        );
+        // Every other combination stays 10% to 38% low supersonic.
+        let lowest = others.iter().copied().fold(f64::INFINITY, f64::min);
+        let highest = others.iter().copied().fold(f64::NEG_INFINITY, f64::max);
+        assert!(
+            (-0.38..-0.37).contains(&lowest) && (-0.11..-0.10).contains(&highest),
+            "supersonic {lowest} to {highest}"
+        );
+    }
+
+    #[derive(Deserialize)]
+    struct HandbookDrag {
+        calculations: Vec<HandbookCalculation>,
+    }
+
+    #[derive(Deserialize)]
+    struct HandbookCalculation {
+        design: String,
+        rows: Vec<HandbookComparison>,
+    }
+
+    #[derive(Deserialize)]
+    struct HandbookComparison {
+        mach: f64,
+        reynolds_per_m: f64,
+        reference: HandbookParts,
+        hpr: HandbookParts,
+        compared: HandbookCompared,
+        error: f64,
+        within_target: bool,
+    }
+
+    #[derive(Deserialize)]
+    struct HandbookCompared {
+        reference: f64,
+        hpr: f64,
+    }
+
+    #[derive(Deserialize)]
+    struct HandbookParts {
+        friction: f64,
+        nose: f64,
+        fins: f64,
+        base: f64,
+        #[serde(default)]
+        other: f64,
+        total: f64,
+    }
+
+    #[derive(Deserialize)]
+    struct HandbookReference {
+        rows: Vec<HandbookRow>,
+    }
+
+    #[derive(Deserialize)]
+    struct HandbookRow {
+        mach: f64,
+        reynolds_per_m: f64,
+        body_friction: f64,
+        fin_friction: f64,
+        friction: f64,
+        nose_wave: Option<f64>,
+        fin_wave: Option<f64>,
+        fin_base: f64,
+        fins: f64,
+        base: f64,
+        total_jet_off: f64,
+    }
+
+    /// M1.8b2: hpr's `C_D0`, base drag included, against MIL-HDBK-762's sample drag calculation
+    /// (Table 5-4, pp. 5-58 to 5-66) for the rocket of its Fig. 5-155, term by term, at the
+    /// table's Reynolds numbers. A calculation with every input known, not a measurement: it
+    /// shows which way hpr's methods lean where RASAero II's curves can't, because their inputs
+    /// are unrecorded (ADR-029). The handbook's fins are single wedges, sharp at the leading edge,
+    /// which hpr can't represent, so the fins' pressure drag is recorded but compared on neither
+    /// side. `cargo xtask aero` writes the comparison to
+    /// `validation/fixtures/aero/drag-vs-mach.json`; this checks the transcription's sums,
+    /// recomputes hpr's terms, and pins the rows within M1.8's 10%.
+    #[test]
+    fn drag_against_mil_hdbk_762_sample() {
+        let reference: HandbookReference = serde_json::from_str(include_str!(
+            "../../../validation/fixtures/aero/mil-hdbk-762-sample-drag.json"
+        ))
+        .unwrap();
+        // Each printed row's parts add up to its totals, to the table's 3 decimals.
+        for row in &reference.rows {
+            let what = format!("Table 5-4 at Mach {}", row.mach);
+            assert!(
+                (row.body_friction + row.fin_friction - row.friction).abs() < 1.5e-3,
+                "{what}"
+            );
+            assert!(
+                (row.fin_wave.unwrap_or(0.0) + row.fin_base - row.fins).abs() < 1.5e-3,
+                "{what}"
+            );
+            let sum = row.friction + row.nose_wave.unwrap_or(0.0) + row.fins + row.base;
+            assert!((sum - row.total_jet_off).abs() < 1.5e-3, "{what}");
+            assert_eq!(row.nose_wave.is_none(), row.mach < 0.9, "{what}");
+            assert_eq!(row.fin_wave.is_none(), row.mach < 0.95, "{what}");
+        }
+        let fixture: HandbookDrag = serde_json::from_str(include_str!(
+            "../../../validation/fixtures/aero/drag-vs-mach.json"
+        ))
+        .unwrap();
+        let [calculation] = fixture.calculations.as_slice() else {
+            panic!("one calculation")
+        };
+        let model =
+            AeroModel::new(&committed_design(&calculation.design).layout().unwrap()).unwrap();
+        assert_eq!(calculation.rows.len(), reference.rows.len());
+        let mut within = Vec::new();
+        for (row, printed) in calculation.rows.iter().zip(&reference.rows) {
+            let what = format!("Mach {}", row.mach);
+            assert_eq!(
+                (row.mach, row.reynolds_per_m),
+                (printed.mach, printed.reynolds_per_m)
+            );
+            let r = &row.reference;
+            assert_eq!(
+                (r.friction, r.nose, r.fins, r.base, r.total),
+                (
+                    printed.friction,
+                    printed.nose_wave.unwrap_or(0.0),
+                    printed.fins,
+                    printed.base,
+                    printed.total_jet_off
+                ),
+                "{what}"
+            );
+            let conditions = DragConditions::coasting(printed.reynolds_per_m);
+            let flow = Flow::axial(row.mach);
+            let drag = model.drag(&flow, &conditions).unwrap();
+            let parts = model.buildup_components(&flow, &conditions).unwrap();
+            let pressure = |id: &str| {
+                parts
+                    .iter()
+                    .filter(|p| p.id == id)
+                    .map(|p| p.drag.pressure)
+                    .sum::<f64>()
+            };
+            let h = &row.hpr;
+            // To 1e-12, not bit for bit: the nose's drag goes through `powf`, `ln` and `atan`,
+            // whose last bit differs between platforms' maths libraries.
+            close(h.total, drag.zero_lift_coefficient, 1e-12, &what);
+            close(h.friction, drag.friction, 1e-12, &what);
+            close(h.base, drag.base, 1e-12, &what);
+            close(h.nose, pressure("nose"), 1e-12, &what);
+            close(h.fins, pressure("fins"), 1e-12, &what);
+            assert_eq!(
+                h.other, 0.0,
+                "{what}: only the nose and fins have pressure drag"
+            );
+            assert!(
+                (h.friction + h.nose + h.fins + h.base - h.total).abs() < 1e-12,
+                "{what}"
+            );
+            let c = &row.compared;
+            close(c.hpr, h.total - h.fins, 1e-12, &what);
+            close(
+                c.reference,
+                printed.total_jet_off - printed.fins,
+                1e-12,
+                &what,
+            );
+            let error = c.hpr / c.reference - 1.0;
+            assert!((row.error - error).abs() < 1e-12, "{what}");
+            assert_eq!(row.within_target, error.abs() <= 0.10, "{what}");
+            if row.within_target {
+                within.push(row.mach);
+            }
+        }
+        // Within 10% at Mach 0.7 and from 1.6 (ADR-029). From Mach 0.9 to 1.2 hpr reads 12% to
+        // 32% high, the nose (Niskanen's ogive, 0.234 against the handbook's 0.109 at Mach 1.1)
+        // and the base (Fleeman's 0.25 against 0.183 at Mach 1.0). From Mach 1.6 it reads 6% to
+        // 10% low: friction (hpr's body form factor 1.02 against the handbook's 1.15) and base
+        // drag (0.125 against 0.147 at Mach 2). At Mach 0.5 it is 10.3% low, the friction.
+        assert_eq!(within, [0.7, 1.6, 2.0, 2.4, 2.8, 3.2]);
     }
 
     /// The Arcas Robin comparison's two input choices (validation audit): of the 44 rows, 3 within

@@ -1,8 +1,11 @@
-//! `cargo xtask aero [--check]`: compares hpr's subsonic drag with the drag curves that ship with
-//! RocketPy's example rockets, and writes the derived numbers to
-//! `validation/fixtures/aero/rocketpy-drag-curves.json`; and compares hpr's normal force against
+//! `cargo xtask aero [--check]`: compares hpr's drag with the drag curves that ship with
+//! RocketPy's example rockets, at Mach 0.3 (M1.5b) and every 0.05 from Mach 0.1 to 2.0 by band
+//! (M1.8b2), and writes the derived numbers to
+//! `validation/fixtures/aero/rocketpy-drag-curves.json`; compares hpr's normal force against
 //! Mach with two references ([`crate::aero_mach`]), written to
-//! `validation/fixtures/aero/normal-force-vs-mach.json`.
+//! `validation/fixtures/aero/normal-force-vs-mach.json`; and compares its drag against Mach with
+//! NASA's Arcas Robin wind tunnel and MIL-HDBK-762's sample calculation ([`crate::aero_drag`]),
+//! written to `validation/fixtures/aero/drag-vs-mach.json`.
 //!
 //! RocketPy's data files carry their own terms (`THIRD-PARTY-NOTICES.md`), so the curves are read
 //! from the `refs/rocketpy` checkout (`cargo xtask refs fetch`) and never committed. The fixture
@@ -21,13 +24,16 @@ use serde_json::{Value, json};
 use sha2::{Digest, Sha256};
 
 pub const USAGE: &str = "\
-  aero [--check]           Compare hpr's drag at Mach 0.3 with the drag curves of RocketPy's
-                           example rockets (from refs/rocketpy) and write
-                           validation/fixtures/aero/rocketpy-drag-curves.json; compare its
-                           normal force against Mach with RASAero II's Calisto export and the
-                           Arcas Robin wind tunnel and write
-                           validation/fixtures/aero/normal-force-vs-mach.json. --check fails
-                           if a committed fixture differs instead of writing.";
+  aero [--check]           Compare hpr's drag with the drag curves of RocketPy's example
+                           rockets (from refs/rocketpy) at Mach 0.3 and from Mach 0.1 to 2.0,
+                           and write validation/fixtures/aero/rocketpy-drag-curves.json;
+                           compare its normal force against Mach with RASAero II's Calisto
+                           export and the Arcas Robin wind tunnel and write
+                           validation/fixtures/aero/normal-force-vs-mach.json; compare its
+                           drag against Mach with the Arcas Robin wind tunnel and
+                           MIL-HDBK-762's sample calculation and write
+                           validation/fixtures/aero/drag-vs-mach.json. --check fails if a
+                           committed fixture differs instead of writing.";
 
 const FIXTURE: &str = "validation/fixtures/aero/rocketpy-drag-curves.json";
 const CHECKOUT: &str = "refs/rocketpy";
@@ -43,6 +49,11 @@ struct Case {
     thrusting: bool,
     variant_of: Option<&'static str>,
     origin: &'static str,
+    /// The last Mach number of the curve the sweep uses: the curve's end, or where a hand-edited
+    /// table stops being a drag curve.
+    usable_to_mach: Option<f64>,
+    /// Why the sweep stops before the curve's end, when it does.
+    usable_note: Option<&'static str>,
 }
 
 /// Every RocketPy example whose drag curve is labelled RASAero: power-off, and power-on wherever
@@ -60,6 +71,8 @@ const CASES: &[Case] = &[
                  Mach 2; the export's power-on column equals its power-off column. The design has \
                  the 2018 notebook's fins; its rail buttons come from RocketPy's calisto_robust \
                  test fixture, not the notebook",
+        usable_to_mach: None,
+        usable_note: None,
     },
     Case {
         id: "calisto-getting-started-power-off",
@@ -70,6 +83,8 @@ const CASES: &[Case] = &[
         origin: "the same RASAero II export, for the larger NACA 0012 fins RocketPy's \
                  getting-started example gives Calisto (tip chord 0.06 m, span 0.11 m, against \
                  the 2018 notebook's 0.04 m and 0.10 m)",
+        usable_to_mach: None,
+        usable_note: None,
     },
     Case {
         id: "juno-iii-power-off",
@@ -79,6 +94,11 @@ const CASES: &[Case] = &[
         variant_of: None,
         origin: "labelled RASAero II by RocketPy's Juno III notebook; a 3-decimal, hand-edited \
                  table (broken above Mach 1), used for power-off and power-on",
+        usable_to_mach: Some(0.92),
+        usable_note: Some(
+            "from Mach 0.93 to 1.0 the table climbs a constant 0.072 per 0.01 and then drops to \
+             0.001: hand-edited, not a drag curve",
+        ),
     },
     Case {
         id: "cavour-power-off",
@@ -89,6 +109,8 @@ const CASES: &[Case] = &[
         origin: "labelled RASAero II by RocketPy's Cavour notebook; a 3-decimal table from Mach \
                  0.082 to 0.895 with 22 extra rows repeating 13 Mach numbers up to 0.107, 7 of \
                  them with values 0.001 apart",
+        usable_to_mach: None,
+        usable_note: None,
     },
     Case {
         id: "cavour-power-on",
@@ -100,6 +122,8 @@ const CASES: &[Case] = &[
                  tables' 0.001 rounding of the power-off table from Mach 0.16 up (0.0001 lower at \
                  Mach 0.3), and 0.001 to 0.013 lower below Mach 0.16. Their uneven Mach spacing \
                  suggests samples along a flight rather than a Mach sweep (unconfirmed)",
+        usable_to_mach: None,
+        usable_note: None,
     },
     Case {
         id: "valetudo-power-off",
@@ -110,6 +134,8 @@ const CASES: &[Case] = &[
         origin: "labelled RASAero by its file name; a 3-decimal, hand-edited table with no input \
                  file, 1.44 times the OpenRocket export for the same rocket in RocketPy's \
                  RocketPaper repository at Mach 0.3",
+        usable_to_mach: None,
+        usable_note: None,
     },
     Case {
         id: "valetudo-power-on",
@@ -119,6 +145,8 @@ const CASES: &[Case] = &[
         variant_of: None,
         origin: "the power-on companion of the Valetudo table: 0.003 to 0.010 below it from Mach \
                  0.02 (0.098 above at Mach 0.01)",
+        usable_to_mach: None,
+        usable_note: None,
     },
 ];
 
@@ -177,7 +205,7 @@ fn generate(root: &Path) -> Result<Value, String> {
         let text = fs::read_to_string(&design_path).map_err(|e| format!("{}: {e}", case.design))?;
         let rocket: Rocket =
             serde_json::from_str(&text).map_err(|e| format!("{}: {e}", case.design))?;
-        let drag = hpr_drag(&rocket, speed, nu, case.thrusting)
+        let drag = hpr_drag(&rocket, MACH, speed / nu, case.thrusting)
             .map_err(|e| format!("{}: {e}", case.id))?;
         let curve_path = checkout.join(case.curve);
         let bytes = fs::read(&curve_path).map_err(|e| {
@@ -200,6 +228,10 @@ fn generate(root: &Path) -> Result<Value, String> {
             case.id,
             100.0 * error
         );
+        let sweep = sweep(case, &rocket, |mach| {
+            let at = table.lookup(mach).map_err(|e| e.to_string())?;
+            Ok(at.extrapolated.is_none().then_some(at.value))
+        })?;
         cases.push(json!({
             "id": case.id,
             "design": case.design,
@@ -215,6 +247,7 @@ fn generate(root: &Path) -> Result<Value, String> {
             "curve_cd0": reference.value,
             "hpr_cd0": drag,
             "relative_error": error,
+            "sweep": sweep,
         }));
     }
     Ok(json!({
@@ -228,7 +261,101 @@ fn generate(root: &Path) -> Result<Value, String> {
         "atmosphere": "USSA76 at sea level",
         "reynolds_per_m": speed / nu,
         "tolerance_rel": TOLERANCE,
+        "sweep_note": "Each case's sweep compares hpr's C_D0 with the curve every 0.05 from Mach \
+                       0.1 to 2.0, where the curve reaches without extrapolation (to \
+                       usable_to_mach), each at USSA76 sea level's Reynolds number for its Mach \
+                       number. relative_error is hpr's over the curve's, minus 1; bands are \
+                       Niskanen 2009 Table 3.1's (subsonic to 0.8, transonic below 1.2, \
+                       supersonic from 1.2).",
         "cases": cases,
+    }))
+}
+
+/// Mach numbers of the sweep: every 0.05 from 0.1 to 2.0, M1.8's range for drag.
+fn sweep_machs() -> impl Iterator<Item = f64> {
+    (2..=40).map(|i| f64::from(i) / 20.0)
+}
+
+/// hpr's `C_D0` against the curve at every Mach number of [`sweep_machs`] the curve reaches, at
+/// sea level, and the errors by band. `curve` gives the curve's value at a Mach number, `None`
+/// outside it.
+fn sweep(
+    case: &Case,
+    rocket: &Rocket,
+    curve: impl Fn(f64) -> Result<Option<f64>, String>,
+) -> Result<Value, String> {
+    let air = Ussa76::standard()
+        .sample(0.0)
+        .map_err(|e| e.to_string())?
+        .air;
+    let nu = air.kinematic_viscosity_m2_s();
+    let usable = case.usable_to_mach.unwrap_or(f64::INFINITY);
+    let mut rows = Vec::new();
+    let mut bands: Vec<(&str, Vec<f64>)> = Vec::new();
+    for mach in sweep_machs().filter(|&m| m <= usable) {
+        let Some(reference) = curve(mach)? else {
+            // The rows run without a gap from Mach 0.1 (the tests check it): a curve that starts
+            // late or has a hole is refused here, where the cause is clear.
+            if rows.is_empty() {
+                return Err(format!("{}: the curve doesn't reach Mach {mach}", case.id));
+            }
+            break;
+        };
+        if !(reference.is_finite() && reference > 0.0) {
+            return Err(format!(
+                "{}: the curve gives {reference} at Mach {mach}",
+                case.id
+            ));
+        }
+        let reynolds_per_m = mach * air.speed_of_sound_m_s / nu;
+        let drag = hpr_drag(rocket, mach, reynolds_per_m, case.thrusting)
+            .map_err(|e| format!("{} at Mach {mach}: {e}", case.id))?;
+        let error = drag / reference - 1.0;
+        let band = crate::aero_mach::band(mach);
+        match bands.last_mut() {
+            Some((name, errors)) if *name == band => errors.push(error),
+            _ => bands.push((band, vec![error])),
+        }
+        rows.push(json!({
+            "mach": mach,
+            "band": band,
+            "hpr_cd0": drag,
+            "relative_error": error,
+            "within_target": error.abs() <= TOLERANCE,
+        }));
+    }
+    let bands: Vec<Value> = bands
+        .iter()
+        .map(|(band, errors)| {
+            let min = errors.iter().copied().fold(f64::INFINITY, f64::min);
+            let max = errors.iter().copied().fold(f64::NEG_INFINITY, f64::max);
+            let rms = (errors.iter().map(|e| e * e).sum::<f64>() / errors.len() as f64).sqrt();
+            json!({
+                "band": band,
+                "rows": errors.len(),
+                "within_target": errors.iter().filter(|e| e.abs() <= TOLERANCE).count(),
+                "min_error": min,
+                "max_error": max,
+                "rms_error": rms,
+            })
+        })
+        .collect();
+    for band in &bands {
+        println!(
+            "  {:<10} {:>2} Mach numbers, {:>2} within {:.0}%, {:+.1}% to {:+.1}%",
+            band["band"].as_str().unwrap_or_default(),
+            band["rows"],
+            band["within_target"],
+            100.0 * TOLERANCE,
+            100.0 * band["min_error"].as_f64().unwrap_or(f64::NAN),
+            100.0 * band["max_error"].as_f64().unwrap_or(f64::NAN),
+        );
+    }
+    Ok(json!({
+        "usable_to_mach": case.usable_to_mach,
+        "usable_note": case.usable_note,
+        "bands": bands,
+        "rows": rows,
     }))
 }
 
@@ -255,9 +382,14 @@ fn first_row_per_mach(text: &str) -> (String, usize) {
     (kept, dropped)
 }
 
-/// hpr's zero-lift drag coefficient for `rocket`'s first configuration, with its motors thrusting
-/// when `thrusting`.
-fn hpr_drag(rocket: &Rocket, speed: f64, nu: f64, thrusting: bool) -> Result<f64, String> {
+/// hpr's zero-lift drag coefficient for `rocket`'s first configuration at `mach` and
+/// `reynolds_per_m`, with its motors thrusting when `thrusting`.
+fn hpr_drag(
+    rocket: &Rocket,
+    mach: f64,
+    reynolds_per_m: f64,
+    thrusting: bool,
+) -> Result<f64, String> {
     let layout = rocket.layout().map_err(|e| e.to_string())?;
     let model = AeroModel::new(&layout).map_err(|e| e.to_string())?;
     let motor_area: f64 = if thrusting {
@@ -273,12 +405,12 @@ fn hpr_drag(rocket: &Rocket, speed: f64, nu: f64, thrusting: bool) -> Result<f64
         0.0
     };
     let conditions = if thrusting {
-        DragConditions::thrusting(speed / nu, motor_area)
+        DragConditions::thrusting(reynolds_per_m, motor_area)
     } else {
-        DragConditions::coasting(speed / nu)
+        DragConditions::coasting(reynolds_per_m)
     };
     let drag = model
-        .drag(&Flow::axial(MACH), &conditions)
+        .drag(&Flow::axial(mach), &conditions)
         .map_err(|e| e.to_string())?;
     Ok(drag.zero_lift_coefficient)
 }
@@ -323,7 +455,7 @@ mod tests {
                 std::fs::read_to_string(root.join(format!("validation/designs/{design}.json")))
                     .unwrap();
             let rocket: super::Rocket = serde_json::from_str(&text).unwrap();
-            let drag = super::hpr_drag(&rocket, speed, nu, false).unwrap();
+            let drag = super::hpr_drag(&rocket, super::MACH, speed / nu, false).unwrap();
             assert!(
                 (drag - quoted).abs() < 5e-4,
                 "{design}: hpr's C_D0 is {drag:.4}, where its predicted case quotes {quoted}"

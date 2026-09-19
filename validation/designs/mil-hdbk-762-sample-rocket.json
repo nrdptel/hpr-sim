@@ -1,0 +1,101 @@
+{
+  "name": "MIL-HDBK-762 sample drag rocket (Fig. 5-155)",
+  "stages": [
+    {
+      "id": "rocket",
+      "name": "",
+      "components": [
+        {
+          "id": "nose",
+          "name": "",
+          "part": {
+            "nose_cone": {
+              "shape": {
+                "kind": "ogive",
+                "radius_ratio": 1.0
+              },
+              "length_m": 0.48,
+              "base_radius_m": 0.08,
+              "wall": {
+                "kind": "filled"
+              },
+              "shoulder": null,
+              "material": {
+                "name": "Steel (plain carbon)",
+                "density": {
+                  "kind": "bulk",
+                  "kg_m3": 7850.0
+                }
+              }
+            }
+          },
+          "finish": {
+            "kind": "mirror"
+          }
+        },
+        {
+          "id": "body",
+          "name": "",
+          "part": {
+            "body_tube": {
+              "length_m": 3.36,
+              "outer_radius_m": 0.08,
+              "thickness_m": 0.08,
+              "material": {
+                "name": "Steel (plain carbon)",
+                "density": {
+                  "kind": "bulk",
+                  "kg_m3": 7850.0
+                }
+              }
+            }
+          },
+          "finish": {
+            "kind": "mirror"
+          },
+          "children": [
+            {
+              "id": "fins",
+              "name": "",
+              "part": {
+                "fin_set": {
+                  "count": 4,
+                  "planform": {
+                    "kind": "trapezoidal",
+                    "root_chord_m": 0.32,
+                    "tip_chord_m": 0.32,
+                    "span_m": 0.0512,
+                    "sweep_m": 0.0
+                  },
+                  "thickness_m": 0.0064,
+                  "cross_section": "square",
+                  "tab": null,
+                  "cant_rad": 0.0,
+                  "base_angle_rad": 0.0,
+                  "material": {
+                    "name": "Steel (plain carbon)",
+                    "density": {
+                      "kind": "bulk",
+                      "kg_m3": 7850.0
+                    }
+                  }
+                }
+              },
+              "position": {
+                "from": "absolute",
+                "station_m": 3.52
+              },
+              "finish": {
+                "kind": "mirror"
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "reference_diameter": {
+    "kind": "maximum"
+  },
+  "configurations": []
+}

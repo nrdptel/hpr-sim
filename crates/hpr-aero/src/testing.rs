@@ -117,3 +117,35 @@ pub(crate) fn finned_rocket(count: u32) -> Rocket {
         ReferenceDiameter::Maximum {},
     )
 }
+
+/// A design committed under `validation/designs/`, by file name.
+pub(crate) fn committed_design(name: &str) -> Rocket {
+    let text = match name {
+        "rocketpy-calisto-tests-motor-at-minus-1.373.json" => include_str!(
+            "../../../validation/designs/rocketpy-calisto-tests-motor-at-minus-1.373.json"
+        ),
+        "rocketpy-calisto-getting-started-motor-at-minus-1.255.json" => include_str!(
+            "../../../validation/designs/rocketpy-calisto-getting-started-motor-at-minus-1.255.json"
+        ),
+        "rocketpy-juno-iii.json" => {
+            include_str!("../../../validation/designs/rocketpy-juno-iii.json")
+        }
+        "rocketpy-valetudo.json" => {
+            include_str!("../../../validation/designs/rocketpy-valetudo.json")
+        }
+        "rocketpy-cavour.json" => {
+            include_str!("../../../validation/designs/rocketpy-cavour.json")
+        }
+        "wind-tunnel-arcas-robin-short.json" => {
+            include_str!("../../../validation/designs/wind-tunnel-arcas-robin-short.json")
+        }
+        "wind-tunnel-arcas-robin-long.json" => {
+            include_str!("../../../validation/designs/wind-tunnel-arcas-robin-long.json")
+        }
+        "mil-hdbk-762-sample-rocket.json" => {
+            include_str!("../../../validation/designs/mil-hdbk-762-sample-rocket.json")
+        }
+        other => panic!("no committed design {other}"),
+    };
+    serde_json::from_str(text).unwrap()
+}

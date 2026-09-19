@@ -12,6 +12,9 @@
 //!   `validation/fixtures/aero/arcas-robin-wind-tunnel.json`. They carry no motor. For drag, their
 //!   double-wedge fins take hpr's airfoil section, as Niskanen modelled them (2009 p. 90), and
 //!   the machined steel models a polished finish (0.5 µm; the reports state none, ADR-028).
+//! - `mil-hdbk-762-sample-rocket.json`: the sample drag rocket of MIL-HDBK-762 (Fig. 5-155), for
+//!   the drag only (M1.8b2), built from the geometry recorded in
+//!   `validation/fixtures/aero/mil-hdbk-762-sample-drag.json`. It carries no motor.
 //!
 //! `--check` compares instead of writing, and a test runs it, so the committed files always match
 //! this generator. It fails on a missing or extra `.json` file and on any difference in content.
@@ -173,10 +176,116 @@ pub fn generate(root: &Path) -> Result<Vec<(String, String)>, String> {
             arcas_robin(&tunnel["geometry"], configuration).map_err(|e| format!("{name}: {e}"))?;
         designs.push((name.to_owned(), to_json(&rocket)?));
     }
+    let path = root.join(HANDBOOK_SAMPLE);
+    let sample: Value = serde_json::from_str(
+        &fs::read_to_string(&path).map_err(|e| format!("{}: {e}", path.display()))?,
+    )
+    .map_err(|e| format!("{HANDBOOK_SAMPLE}: {e}"))?;
+    designs.push((
+        "mil-hdbk-762-sample-rocket.json".to_owned(),
+        to_json(&handbook_sample(&sample["geometry"])?)?,
+    ));
     Ok(designs)
 }
 
 const WIND_TUNNEL: &str = "validation/fixtures/aero/arcas-robin-wind-tunnel.json";
+const HANDBOOK_SAMPLE: &str = "validation/fixtures/aero/mil-hdbk-762-sample-drag.json";
+
+/// MIL-HDBK-762's sample drag rocket (Fig. 5-155) from the reference's geometry, in calibres of
+/// its 0.16-m diameter: a 3-calibre tangent ogive, a 21-calibre cylinder, and four rectangular fins
+/// two calibres (0.32 m) long, 0.32 calibres (51.2 mm) tall and 0.04 calibres (6.4 mm) thick, with
+/// their trailing edges flush with the base. The handbook's fins are single wedges, sharp at the
+/// leading edge, a section hpr doesn't have: they take the square section, and `cargo xtask aero`
+/// leaves the fins' pressure drag out of the comparison. The surface is smooth, as the handbook's
+/// flat-plate friction is (Fig. 5-134). Steel; its mass plays no part.
+fn handbook_sample(geometry: &Value) -> Result<Rocket, String> {
+    let d = num(geometry, "diameter_m")?;
+    let radius = 0.5 * d;
+    if !geometry["boattail"].is_null() {
+        return Err("the sample rocket has no boattail; this generator builds none".to_owned());
+    }
+    let nose = &geometry["nose"];
+    let fins = &geometry["fins"];
+    let nose_length = num(nose, "length_calibers")? * d;
+    let length = num(geometry, "length_m")?;
+    let cylinder = num(geometry, "cylinder_length_calibers")? * d;
+    if (nose_length + cylinder - length).abs() > 1e-12 {
+        return Err(format!(
+            "the nose and cylinder end at {} m, not at {length} m",
+            nose_length + cylinder
+        ));
+    }
+    let chord = num(fins, "chord_m")?;
+    let steel = material("steel")?;
+    let mut tube = component(
+        "body",
+        Part::BodyTube(BodyTube {
+            length_m: cylinder,
+            outer_radius_m: radius,
+            thickness_m: radius,
+            material: steel.clone(),
+        }),
+        None,
+    );
+    tube.children.push(component(
+        "fins",
+        Part::FinSet(FinSet {
+            count: u32::try_from(
+                fins["count"]
+                    .as_u64()
+                    .ok_or("`count` is missing or not a whole number")?,
+            )
+            .map_err(|e| e.to_string())?,
+            planform: FinPlanform::Trapezoidal {
+                root_chord_m: chord,
+                tip_chord_m: chord,
+                span_m: num(fins, "exposed_semispan_calibers")? * d,
+                sweep_m: 0.0,
+            },
+            thickness_m: num(fins, "thickness_calibers")? * d,
+            cross_section: FinCrossSection::Square,
+            tab: None,
+            cant_rad: 0.0,
+            base_angle_rad: 0.0,
+            material: steel.clone(),
+        }),
+        Some(Position::Absolute {
+            station_m: length - chord,
+        }),
+    ));
+    let mut body = vec![
+        component(
+            "nose",
+            Part::NoseCone(NoseCone {
+                shape: NoseShape::Ogive { radius_ratio: 1.0 },
+                length_m: nose_length,
+                base_radius_m: radius,
+                wall: Wall::Filled {},
+                shoulder: None,
+                material: steel.clone(),
+            }),
+            None,
+        ),
+        tube,
+    ];
+    for part in &mut body {
+        part.finish = Some(Finish::Mirror {});
+        for child in &mut part.children {
+            child.finish = Some(Finish::Mirror {});
+        }
+    }
+    Ok(Rocket {
+        name: "MIL-HDBK-762 sample drag rocket (Fig. 5-155)".to_owned(),
+        stages: vec![Stage {
+            id: "rocket".to_owned(),
+            name: String::new(),
+            components: body,
+            overrides: Overrides::default(),
+        }],
+        reference_diameter: ReferenceDiameter::Maximum {},
+        configurations: Vec::new(),
+    })
+}
 
 /// A half-scale Arcas wind-tunnel model (NASA TN D-4013/4014) from the reference's geometry, in
 /// inches: a power-series nose with the tabulated nose's volume, the cylinder, a 15° conical
@@ -1205,8 +1314,9 @@ mod tests {
     fn committed_designs_match_the_generator() {
         let root = root().unwrap();
         let designs = generate(&root).unwrap();
-        // Eight from RocketPy's examples, two synthetic, and the two wind-tunnel models (M1.8a).
-        assert_eq!(designs.len(), 12);
+        // Eight from RocketPy's examples, two synthetic, the two wind-tunnel models (M1.8a) and
+        // MIL-HDBK-762's sample drag rocket (M1.8b2).
+        assert_eq!(designs.len(), 13);
         let stale = stale(&root.join(DIR), &designs);
         assert!(
             stale.is_empty(),

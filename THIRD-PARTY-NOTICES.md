@@ -42,7 +42,9 @@ adds a source.
 - **Comparisons with RocketPy's drag curves** (ADR-009): `cargo xtask aero` reads the Calisto,
   Juno III, Cavour and Valetudo curves from the `refs/rocketpy` checkout and commits only derived
   numbers to `validation/fixtures/aero/rocketpy-drag-curves.json` (each curve's value at Mach 0.3,
-  hpr's drag coefficients, the relative errors and each file's sha256). The curves themselves carry
+  hpr's drag coefficients, the relative errors and each file's sha256; from Mach 0.1 to 2.0, hpr's
+  values and the errors, which together give each curve's value back at the sampled Mach numbers,
+  147 in all, ADR-029). The curve files themselves carry
   their own terms and are **not** committed. The designs' drag inputs cite RASAero II's Users
   Manual (2019, p. 53) for its default surface finish, and Projeto Jupiter's rocket page
   (projetojupiter.com/foguetes) for Juno III's fin profile; neither is redistributed.
@@ -162,7 +164,7 @@ same license and mode.
 | `naca-tn-2114` | S. M. Harmon and I. Jeffreys, Theoretical lift and damping in roll of thin wings with arbitrary sweep and taper at supersonic speeds: supersonic leading and trailing edges, NACA TN 2114, 1950 | US government work | fetched | cited for linear theory's lift of tapered fins (M1.8a); no text copied |
 | `rocketpy-calisto-rasaero-2018` | RocketPy data/calisto/CD Test.CSV at its first commit da91db9e (2018): a RASAero II export for Calisto | MIT; data files carry their own terms | fetched | never committed; `cargo xtask aero` commits hpr's values, its errors and the export's values at the compared Mach numbers only, as for the drag curves (ADR-009) |
 | `galejs-wind-instability` | R. Galejs, Wind Instability: What Barrowman Left Out, Sentinel 39 (about 1999) | unknown terms | fetched | cited, not copied or redistributed |
-| `mil-hdbk-762` | MIL-HDBK-762(MI), Design of Aerodynamically Stabilized Free Rockets, 1990 (Distribution A) | US government work | fetched | cited, not copied |
+| `mil-hdbk-762` | MIL-HDBK-762(MI), Design of Aerodynamically Stabilized Free Rockets, 1990 (Distribution A) | US government work | fetched | cited; M1.8b2 transcribes its sample drag calculation (Table 5-4, pp. 5-58 to 5-66) and the rocket's geometry (Fig. 5-155) into `validation/fixtures/aero/mil-hdbk-762-sample-drag.json`, with page; no text copied |
 | `naca-tn-4197` | D. J. Martin, Summary of Flutter Experiences as a Guide to the Preliminary Design of Lifting Surfaces on Missiles, NACA TN 4197, 1958 | US government work | fetched | cited, not copied |
 | `fpl-gtr-190-wood-handbook` | Forest Products Laboratory, Wood Handbook: Wood as an Engineering Material, General Technical Report FPL-GTR-190, 2010 | US government work | fetched | cited for wood densities in `hpr_design::materials` (M1.4a) |
 | `knacke-1991-parachute-manual` | T. W. Knacke, Parachute Recovery Systems Design Manual, NWC TP 6575, 1991 (DTIC ADA247666) | unclear terms | fetched | contractor report with a DTIC public-release stamp but a restrictive title-page notice; cited, never redistributed |
