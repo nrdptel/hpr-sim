@@ -579,8 +579,7 @@
     with body lift. A cited supersonic method for noses, boattails and crossflow. *Done when:*
     the Arcas Robin's body-alone `C_Nα` (fins off, TN D-4014) is within 15% at every Mach number
     from 1.5, and both configurations' `C_Nα` within 15% at Mach 3.96 and 4.63, or an ADR records
-    why not with the gap in the report. Split below into M1.8e1 to M1.8e5; M1.8e5 carries this
-    bullet.
+    why not with the gap in the report. Split below into M1.8e1 to e5; e5 carries this bullet.
 
     - [x] **M1.8e1 The second-order shock-expansion method.** NACA TN 3527's method for a
       pointed body's `C_Nα` and CP at `α → 0`, the cylinder's lift behind the nose included; its
@@ -615,8 +614,7 @@
     - [x] **M1.8e4 The boattail's share faster than sound** (footnote 8; a station rule for
       shares that cross zero). *Done when:* a boattailed body flies the method with no jump at
       ±1e-9 in Mach; the Arcas Robin's long model through a flight's path is in the report.
-      *Result:* met: boattails and tubes behind them keep slender-body theory's station; the
-      Arcas Robin with its boattail equals the method's, long −18.3% to −27.0%.
+      *Result:* met; the Arcas Robin with its boattail equals the method's, long to −27.0%.
 
     - [ ] **M1.8e5 Crossflow and blunt tips faster than sound** (Fig. 2 below Mach 3, #81, #87's
       model switches). *Done when:* M1.8e's bullet above.

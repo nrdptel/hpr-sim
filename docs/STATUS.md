@@ -33,9 +33,8 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
 - **M1.8e4** next (ADR-034 flies M1.8e2): `SupersonicBody` in `hpr-aero/src/model.rs` tabulates
   the method's shares (nose and same-radius tubes) every 0.05 Mach, lazily, joined linearly from
   max(1.2, where the method starts to hold, bisected since M1.8e3) over 0.3; only when nothing
-  behind has a slope. M1.8e4 added boattails and tubes behind them (footnote 8's shares, which
-  go negative; they keep slender-body theory's station); flares and steps still wait. M1.8e5
-  next: crossflow (long model −18.3% to −27.0% with its boattail), blunt tips, Fig. 2 below
+  behind has a slope; since M1.8e4 boattails and tubes behind them too (slender-body stations).
+  M1.8e5 next: crossflow (long model to −27.0% with its boattail), blunt tips, Fig. 2 below
   Mach 3, #81, #87's model switches; it carries M1.8e's 15% bullet.
 - **Autopilot memory:** per-cycle process groups; `scripts/build-memory.sh` → `docs/perf.md`.
 - **Regeneration is not bit-identical across machines** (last digits). Regenerate reports with
