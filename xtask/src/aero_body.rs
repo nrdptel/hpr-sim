@@ -251,7 +251,7 @@ fn arcas_nose(ratio: f64) -> Result<ShockExpansionBody, String> {
 /// hpr's model of the design `name` under `validation/designs/`, or with `ratio` of its nose and
 /// cylinder alone, the nose replaced by the secant ogive of that arc radius ratio, and with
 /// `boattail` the boattail behind them too (not the lip behind that).
-fn arcas_model(
+pub(crate) fn arcas_model(
     root: &Path,
     name: &str,
     ratio: Option<f64>,
@@ -293,7 +293,7 @@ fn arcas_model(
 
 /// The bodies' `C_Nα` at `α → 0` through the flight's path (`AeroModel::components`), on
 /// `area_m2`: the first `covered` bodies' and all of them, and all of their CP, m from the tip.
-fn flight_bodies(
+pub(crate) fn flight_bodies(
     model: &AeroModel,
     mach: f64,
     area_m2: f64,

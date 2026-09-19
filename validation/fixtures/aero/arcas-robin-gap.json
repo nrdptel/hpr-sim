@@ -1,0 +1,503 @@
+{
+  "configurations": [
+    {
+      "body_lift_per_rad2": 22.873090872700594,
+      "id": "arcas-robin-short",
+      "reading_c_n": 0.01,
+      "rows": [
+        {
+          "gap": -0.1827384133322938,
+          "hpr": {
+            "fitted_c_n_alpha": 3.7956764764194983,
+            "fitted_c_n_alpha_error": 0.7316044393712693,
+            "zero_alpha_c_n_alpha": 2.3747381507536622
+          },
+          "mach": 1.5,
+          "mach_over_nose_fineness": 0.36,
+          "measured": {
+            "crossflow_per_rad2": 6.633859030678309,
+            "crossflow_share": 0.41323349425303046,
+            "crossflow_standard_error": 5.007010155871488,
+            "fitted_c_n_alpha": 2.1919997374213684,
+            "fitted_standard_error": 0.08633958680315722,
+            "implied_k": 0.3190318691233602,
+            "implied_k_standard_error": 0.24079435534583482,
+            "inner_c_n_alpha": 2.043035630690012,
+            "inner_points": 5,
+            "inner_standard_error": 0.17830732714965766,
+            "zero_alpha_c_n_alpha": 1.778766243168338,
+            "zero_alpha_standard_error": 0.3236243472686099
+          },
+          "remaining": -1.7831216340684737,
+          "sources": {
+            "crossflow": 1.42259122073618,
+            "crossflow_galejs_range": [
+              1.2932647461237998,
+              1.9398971191856997
+            ],
+            "fig2_below_mach_3": [
+              -0.029290759850845526,
+              0.056523597826868076
+            ],
+            "lip": 0.17779199999999987,
+            "nose_and_cylinder_c_n_alpha": 2.5519429083240626,
+            "reduced_elements": 0
+          }
+        },
+        {
+          "gap": 0.032438903272078434,
+          "hpr": {
+            "fitted_c_n_alpha": 3.977881787335554,
+            "fitted_c_n_alpha_error": 0.522379648879626,
+            "zero_alpha_c_n_alpha": 2.5804978830696337
+          },
+          "mach": 1.8,
+          "mach_over_nose_fineness": 0.432,
+          "measured": {
+            "crossflow_per_rad2": 1.5345690628063267,
+            "crossflow_share": 0.09400881683945439,
+            "crossflow_standard_error": 5.139517360888771,
+            "fitted_c_n_alpha": 2.612936786341712,
+            "fitted_standard_error": 0.08693321122538593,
+            "implied_k": 0.07379964424054494,
+            "implied_k_standard_error": 0.2471668183562002,
+            "inner_c_n_alpha": 2.5476484944127913,
+            "inner_points": 5,
+            "inner_standard_error": 0.1750461190253438,
+            "zero_alpha_c_n_alpha": 2.5189279695022577,
+            "zero_alpha_standard_error": 0.3266316970267451
+          },
+          "remaining": -1.5444732850995844,
+          "sources": {
+            "crossflow": 1.3991201883716629,
+            "crossflow_galejs_range": [
+              1.271927443974239,
+              1.9078911659613582
+            ],
+            "fig2_below_mach_3": [
+              -0.03202415005073008,
+              0.04915428096770216
+            ],
+            "lip": 0.17779199999999987,
+            "nose_and_cylinder_c_n_alpha": 2.7242991200624256,
+            "reduced_elements": 0
+          }
+        },
+        {
+          "gap": 0.24918957754940996,
+          "hpr": {
+            "fitted_c_n_alpha": 4.290975121423319,
+            "fitted_c_n_alpha_error": 0.39429350264657814,
+            "zero_alpha_c_n_alpha": 2.828336863819215
+          },
+          "mach": 2.3,
+          "mach_over_nose_fineness": 0.5519999999999999,
+          "measured": {
+            "crossflow_per_rad2": 13.738809046902475,
+            "crossflow_share": 0.8812455119059726,
+            "crossflow_standard_error": 4.738892094525158,
+            "fitted_c_n_alpha": 3.077526441368625,
+            "fitted_standard_error": 0.08474374581178505,
+            "implied_k": 0.66071918463936,
+            "implied_k_standard_error": 0.22790017024761677,
+            "inner_c_n_alpha": 2.6143821879958504,
+            "inner_points": 5,
+            "inner_standard_error": 0.1788478712536507,
+            "zero_alpha_c_n_alpha": 2.1962809294626524,
+            "zero_alpha_standard_error": 0.3155577274393202
+          },
+          "remaining": -1.3933299794713194,
+          "sources": {
+            "crossflow": 1.4647275570207294,
+            "crossflow_galejs_range": [
+              1.3315705063824812,
+              1.9973557595737217
+            ],
+            "fig2_below_mach_3": [
+              -0.03251200429566769,
+              0.04083481227781216
+            ],
+            "lip": 0.17779199999999987,
+            "nose_and_cylinder_c_n_alpha": 2.931102202206574,
+            "reduced_elements": 0
+          }
+        },
+        {
+          "gap": 0.22814264054271405,
+          "hpr": {
+            "fitted_c_n_alpha": 4.536268410040175,
+            "fitted_c_n_alpha_error": 0.38129496574459254,
+            "zero_alpha_c_n_alpha": 3.055926673063219
+          },
+          "mach": 2.96,
+          "mach_over_nose_fineness": 0.7103999999999999,
+          "measured": {
+            "crossflow_per_rad2": 16.946766315331388,
+            "crossflow_share": 1.1004226332940945,
+            "crossflow_standard_error": 4.3600526314839865,
+            "fitted_c_n_alpha": 3.284069313605933,
+            "fitted_standard_error": 0.084611320252071,
+            "implied_k": 0.814994486342613,
+            "implied_k_standard_error": 0.20968123290921553,
+            "inner_c_n_alpha": 2.6925625630032672,
+            "inner_points": 5,
+            "inner_standard_error": 0.17554987729354019,
+            "zero_alpha_c_n_alpha": 2.1836466803118384,
+            "zero_alpha_standard_error": 0.2954889876576275
+          },
+          "remaining": -1.432322523840554,
+          "sources": {
+            "crossflow": 1.482673164383268,
+            "crossflow_galejs_range": [
+              1.3478846948938799,
+              2.02182704234082
+            ],
+            "fig2_below_mach_3": [
+              -0.02099528939159545,
+              0.019753503414547288
+            ],
+            "lip": 0.17779199999999987,
+            "nose_and_cylinder_c_n_alpha": 3.1240712363031085,
+            "reduced_elements": 0
+          }
+        },
+        {
+          "gap": 0.622224198286224,
+          "hpr": {
+            "fitted_c_n_alpha": 4.710706320194573,
+            "fitted_c_n_alpha_error": 0.21270019507441273,
+            "zero_alpha_c_n_alpha": 3.2622530528331417
+          },
+          "mach": 3.96,
+          "mach_over_nose_fineness": 0.9503999999999999,
+          "measured": {
+            "crossflow_per_rad2": 18.742509518176234,
+            "crossflow_share": 1.190739016663004,
+            "crossflow_standard_error": 4.836514129639025,
+            "fitted_c_n_alpha": 3.8844772511193657,
+            "fitted_standard_error": 0.0853846200639755,
+            "implied_k": 0.9013543724691926,
+            "implied_k_standard_error": 0.23259495501557387,
+            "inner_c_n_alpha": 3.2988424455470833,
+            "inner_points": 5,
+            "inner_standard_error": 0.17970934029255406,
+            "zero_alpha_c_n_alpha": 2.6937382344563616,
+            "zero_alpha_standard_error": 0.31891359950114767
+          },
+          "remaining": -1.0063839888522783,
+          "sources": {
+            "crossflow": 1.4508161871385024,
+            "crossflow_galejs_range": [
+              1.3189238064895474,
+              1.9783857097343212
+            ],
+            "fig2_below_mach_3": [
+              0.0,
+              0.0
+            ],
+            "lip": 0.17779199999999987,
+            "nose_and_cylinder_c_n_alpha": 3.3001363711720906,
+            "reduced_elements": 0
+          }
+        },
+        {
+          "gap": 0.8034558215590395,
+          "hpr": {
+            "fitted_c_n_alpha": 4.790960537039821,
+            "fitted_c_n_alpha_error": 0.1548021443593688,
+            "zero_alpha_c_n_alpha": 3.3452726514882856
+          },
+          "mach": 4.63,
+          "mach_over_nose_fineness": 1.1112,
+          "measured": {
+            "crossflow_per_rad2": 21.925080681036775,
+            "crossflow_share": 1.3903244211963797,
+            "crossflow_standard_error": 4.816124168869734,
+            "fitted_c_n_alpha": 4.148728473047325,
+            "fitted_standard_error": 0.08561018833069069,
+            "implied_k": 1.0544088196635109,
+            "implied_k_standard_error": 0.23161437233127258,
+            "inner_c_n_alpha": 3.376722499397766,
+            "inner_points": 5,
+            "inner_standard_error": 0.1788457801301138,
+            "zero_alpha_c_n_alpha": 2.7584040518509454,
+            "zero_alpha_standard_error": 0.3171747277491304
+          },
+          "remaining": -0.8224391115014246,
+          "sources": {
+            "crossflow": 1.4481029330604642,
+            "crossflow_galejs_range": [
+              1.3164572118731492,
+              1.974685817809724
+            ],
+            "fig2_below_mach_3": [
+              0.0,
+              0.0
+            ],
+            "lip": 0.17779199999999987,
+            "nose_and_cylinder_c_n_alpha": 3.371053810716126,
+            "reduced_elements": 0
+          }
+        }
+      ]
+    },
+    {
+      "body_lift_per_rad2": 30.685122834953447,
+      "id": "arcas-robin-long",
+      "reading_c_n": 0.013,
+      "rows": [
+        {
+          "gap": 0.5780049287072253,
+          "hpr": {
+            "fitted_c_n_alpha": 4.496618514030548,
+            "fitted_c_n_alpha_error": 0.4236390935076757,
+            "zero_alpha_c_n_alpha": 2.580533309345384
+          },
+          "mach": 1.8,
+          "mach_over_nose_fineness": 0.432,
+          "measured": {
+            "crossflow_per_rad2": 19.780507237397728,
+            "crossflow_share": 1.2382688864151015,
+            "crossflow_standard_error": 6.444990023501394,
+            "fitted_c_n_alpha": 3.1585382380526092,
+            "fitted_standard_error": 0.11111827380072478,
+            "implied_k": 0.7090914407666087,
+            "implied_k_standard_error": 0.2310399428408314,
+            "inner_c_n_alpha": 2.5769203088406205,
+            "inner_points": 5,
+            "inner_standard_error": 0.2264613552418419,
+            "zero_alpha_c_n_alpha": 1.9202693516375078,
+            "zero_alpha_standard_error": 0.41848144398948445
+          },
+          "remaining": -1.517684910921676,
+          "sources": {
+            "crossflow": 1.9178978396289013,
+            "crossflow_galejs_range": [
+              1.7435434905717282,
+              2.6153152358575924
+            ],
+            "fig2_below_mach_3": [
+              -0.03202469964087128,
+              0.04915512454069863
+            ],
+            "lip": 0.17779199999999987,
+            "nose_and_cylinder_c_n_alpha": 2.724345873775973,
+            "reduced_elements": 0
+          }
+        },
+        {
+          "gap": 0.6966928355708992,
+          "hpr": {
+            "fitted_c_n_alpha": 4.799253234123522,
+            "fitted_c_n_alpha_error": 0.36131562134091766,
+            "zero_alpha_c_n_alpha": 2.8287594246449794
+          },
+          "mach": 2.3,
+          "mach_over_nose_fineness": 0.5519999999999999,
+          "measured": {
+            "crossflow_per_rad2": 19.89164512659454,
+            "crossflow_share": 1.2808564210704887,
+            "crossflow_standard_error": 6.138379467014565,
+            "fitted_c_n_alpha": 3.5254522602158787,
+            "fitted_standard_error": 0.10898457522118946,
+            "implied_k": 0.7130755107921403,
+            "implied_k_standard_error": 0.22004857044354295,
+            "inner_c_n_alpha": 2.8792215614252794,
+            "inner_points": 5,
+            "inner_standard_error": 0.22625355854004403,
+            "zero_alpha_c_n_alpha": 2.24459583914539,
+            "zero_alpha_standard_error": 0.4100104223876758
+          },
+          "remaining": -1.4536958218778973,
+          "sources": {
+            "crossflow": 1.9725966574487965,
+            "crossflow_galejs_range": [
+              1.793269688589815,
+              2.689904532884722
+            ],
+            "fig2_below_mach_3": [
+              -0.032517614271324095,
+              0.04084185836149033
+            ],
+            "lip": 0.17779199999999987,
+            "nose_and_cylinder_c_n_alpha": 2.931607966534459,
+            "reduced_elements": 0
+          }
+        },
+        {
+          "gap": 0.8093867959044996,
+          "hpr": {
+            "fitted_c_n_alpha": 5.142233724757487,
+            "fitted_c_n_alpha_error": 0.3294250404281751,
+            "zero_alpha_c_n_alpha": 3.0586264943381005
+          },
+          "mach": 2.96,
+          "mach_over_nose_fineness": 0.7103999999999999,
+          "measured": {
+            "crossflow_per_rad2": 19.768067028217388,
+            "crossflow_share": 1.346594260860562,
+            "crossflow_standard_error": 4.982758702808596,
+            "fitted_c_n_alpha": 3.8680132902426,
+            "fitted_standard_error": 0.10903170429413186,
+            "implied_k": 0.7086454842628013,
+            "implied_k_standard_error": 0.17862188796083311,
+            "inner_c_n_alpha": 3.0348501975598157,
+            "inner_points": 5,
+            "inner_standard_error": 0.23036496400085885,
+            "zero_alpha_c_n_alpha": 2.521419029382038,
+            "zero_alpha_standard_error": 0.35650594923553375
+          },
+          "remaining": -1.4545979182557438,
+          "sources": {
+            "crossflow": 2.0861927141602434,
+            "crossflow_galejs_range": [
+              1.8965388310547666,
+              2.84480824658215
+            ],
+            "fig2_below_mach_3": [
+              -0.021015538434302847,
+              0.019772554808733928
+            ],
+            "lip": 0.17779199999999987,
+            "nose_and_cylinder_c_n_alpha": 3.1270842670218073,
+            "reduced_elements": 0
+          }
+        },
+        {
+          "gap": 1.1804842663505806,
+          "hpr": {
+            "fitted_c_n_alpha": 5.225540287902316,
+            "fitted_c_n_alpha_error": 0.17287753207056245,
+            "zero_alpha_c_n_alpha": 3.2748319495524605
+          },
+          "mach": 3.96,
+          "mach_over_nose_fineness": 0.9503999999999999,
+          "measured": {
+            "crossflow_per_rad2": 20.797343499735348,
+            "crossflow_share": 1.3259267304614486,
+            "crossflow_standard_error": 6.104905512170833,
+            "fitted_c_n_alpha": 4.455316215903041,
+            "fitted_standard_error": 0.11211308058287571,
+            "implied_k": 0.7455429777080634,
+            "implied_k_standard_error": 0.21884859641944807,
+            "inner_c_n_alpha": 3.555978568546211,
+            "inner_points": 5,
+            "inner_standard_error": 0.23428688427197103,
+            "zero_alpha_c_n_alpha": 3.1293894854415925,
+            "zero_alpha_standard_error": 0.405041212123153
+          },
+          "remaining": -0.9504112657236047,
+          "sources": {
+            "crossflow": 1.9531035320741854,
+            "crossflow_galejs_range": [
+              1.7755486655219865,
+              2.66332299828298
+            ],
+            "fig2_below_mach_3": [
+              0.0,
+              0.0
+            ],
+            "lip": 0.17779199999999987,
+            "nose_and_cylinder_c_n_alpha": 3.31346131224787,
+            "reduced_elements": 0
+          }
+        },
+        {
+          "gap": 1.2464017023762493,
+          "hpr": {
+            "fitted_c_n_alpha": 5.304576579092301,
+            "fitted_c_n_alpha_error": 0.14940973768527965,
+            "zero_alpha_c_n_alpha": 3.3686423547367843
+          },
+          "mach": 4.63,
+          "mach_over_nose_fineness": 1.1112,
+          "measured": {
+            "crossflow_per_rad2": 27.466871582872727,
+            "crossflow_share": 1.73784291219736,
+            "crossflow_standard_error": 6.285380748816178,
+            "fitted_c_n_alpha": 4.615044057113034,
+            "fitted_standard_error": 0.11060304374546072,
+            "implied_k": 0.9846321588370412,
+            "implied_k_standard_error": 0.22531827103596097,
+            "inner_c_n_alpha": 3.740134591883698,
+            "inner_points": 5,
+            "inner_standard_error": 0.2281591585799444,
+            "zero_alpha_c_n_alpha": 2.8772011449156736,
+            "zero_alpha_standard_error": 0.41277330886368335
+          },
+          "remaining": -0.869744052055473,
+          "sources": {
+            "crossflow": 1.9383537544317224,
+            "crossflow_galejs_range": [
+              1.762139776756111,
+              2.6432096651341666
+            ],
+            "fig2_below_mach_3": [
+              0.0,
+              0.0
+            ],
+            "lip": 0.17779199999999987,
+            "nose_and_cylinder_c_n_alpha": 3.3953434855955646,
+            "reduced_elements": 0
+          }
+        }
+      ]
+    }
+  ],
+  "fig2_sims": {
+    "angles_deg": [
+      2.5,
+      5.0,
+      7.5,
+      10.0,
+      12.5
+    ],
+    "machs": [
+      1.5,
+      1.75,
+      2.0,
+      2.5,
+      3.0
+    ],
+    "slopes_per_rad": [
+      [
+        1.9770483,
+        1.9336127,
+        1.8821566,
+        1.8280992,
+        1.7735619
+      ],
+      [
+        1.9731742,
+        1.9258447,
+        1.8737533,
+        1.8224578,
+        1.7730646
+      ],
+      [
+        1.9690287,
+        1.9180672,
+        1.8661051,
+        1.8183423,
+        1.774254
+      ],
+      [
+        1.9602967,
+        1.903674,
+        1.8548454,
+        1.8161039,
+        1.7820973
+      ],
+      [
+        1.9514206,
+        1.8917127,
+        1.849355,
+        1.820295,
+        1.7941549
+      ]
+    ]
+  },
+  "generator": "cargo xtask aero",
+  "nose_fineness": 4.166666666666667,
+  "note": "The Arcas Robin's body alone faster than sound (TN D-4014, fins off) against hpr's bodies in a flight: the nose as the fitted secant ogive of shock-expansion.json, the cylinder and the boattail, not the lip (M1.8e4's in_flight_with_boattail). All slopes per radian on the body's cross-section. measured.fitted_c_n_alpha is M1.8a's straight line through the plotted points; zero_alpha_c_n_alpha and crossflow_per_rad2 are b and c of C_N = a + b alpha + c alpha |alpha| through the same points (Jorgensen, NASA TR R-474, eq. 1), crossflow_share = fitted - zero_alpha the curvature's part of the straight line, and implied_k = 1.1 c / body_lift_per_rad2 the K that makes hpr's body lift that curvature; standard errors take each point's reading_c_n as an independent standard deviation. hpr.zero_alpha_c_n_alpha is its slope at alpha -> 0; hpr.fitted_c_n_alpha its bodies' C_N through the flight's path at the plotted angles, fitted the same way. gap = measured.fitted_c_n_alpha - hpr.zero_alpha_c_n_alpha. sources.crossflow is hpr's body lift, K (A_plan/A_ref) sin^2 alpha with K = 1.1, fitted at the plotted angles (body_lift_per_rad2 is K A_plan/A_ref); crossflow_galejs_range the same at K = 1.0 and 1.5. sources.lip is slender-body theory's share of the lip behind the boattail, 2 dA/A_ref. sources.reduced_elements counts the nose's elements the method reduces to the generalized method (issue #81). measured.inner_c_n_alpha is the straight line through the points within 3 deg only. sources.fig2_below_mach_3 bounds the change in the nose and cylinder's share (nose_and_cylinder_c_n_alpha, the method's, no boattail) if each tangent cone's slope, held at TN 3527 Fig. 2's Mach 3 curve below Mach 3, took Sims's value instead (NASA SP-3007 Table 2, p. 20): the least and greatest ratio of his slopes to his Mach 3 slopes at his angles to 12.5 deg and his Mach numbers at or around the row's, less 1, times the share; zero from Mach 3. remaining = gap - crossflow - lip. No target."
+}

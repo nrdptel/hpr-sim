@@ -403,6 +403,29 @@ impl ShockExpansionBody {
         Ok(shares)
     }
 
+    /// How many of the nose's elements the march reduces to the generalized method at Mach
+    /// `mach`: those where the gradient behind the corner points away from the tangent cone's
+    /// pressure (`η < 0`, TN 3527 p. 13), which carry no gradient on (see
+    /// [issue #81](https://github.com/nrdptel/hpr-sim/issues/81)). Zero means the result doesn't
+    /// depend on that reading.
+    ///
+    /// # Errors
+    ///
+    /// As [`Self::slope`], for a Mach number the march can't take.
+    pub fn reduced_elements(&self, mach: f64) -> Result<usize, AeroError> {
+        if !(mach.is_finite() && mach > 1.0) {
+            return Err(AeroError::Domain {
+                what: "Mach number of the second-order shock-expansion method",
+                value: mach,
+            });
+        }
+        Ok(self
+            .flows(mach)?
+            .iter()
+            .filter(|flow| flow.eta_rate() < 0.0)
+            .count())
+    }
+
     /// The integrals of the lift per unit length and of its moment about the vertex (both over
     /// `2π`), one per piece between consecutive corners, segment starts and the body's end, keyed
     /// by the piece's forward end.
@@ -1312,6 +1335,26 @@ mod tests {
             );
             assert!((a.centre_of_pressure_m - b.centre_of_pressure_m).abs() < 0.01);
         }
+    }
+
+    #[test]
+    fn reduced_elements_are_counted_where_issue_81_bites() {
+        // The fineness-3 ogive at Mach 5.05, where hpr departs from TN 3527 (#81), reduces some
+        // of its nose's elements; a cone has one element, the tip's, and never does; the same
+        // ogive at Mach 3 doesn't either.
+        let ogive = body(true, 3.0, 10.0, DEFAULT_ELEMENTS_PER_CURVE);
+        assert!(ogive.reduced_elements(5.05).unwrap() > 0);
+        assert_eq!(ogive.reduced_elements(3.0).unwrap(), 0);
+        assert_eq!(
+            body(false, 3.0, 10.0, DEFAULT_ELEMENTS_PER_CURVE)
+                .reduced_elements(5.05)
+                .unwrap(),
+            0
+        );
+        assert!(matches!(
+            ogive.reduced_elements(1.0),
+            Err(AeroError::Domain { .. })
+        ));
     }
 
     #[test]
