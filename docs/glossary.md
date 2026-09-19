@@ -458,15 +458,16 @@ against each one, or will once its milestone ships. See
 ## Mach number
 
 Airspeed divided by the local speed of sound, which the atmosphere gives from the air's
-temperature. hpr's aerodynamics were checked only at Mach 0 (the normal force) and Mach 0.3 (the
-drag), and are documented up to Mach 0.8; from 0.8 to 1 they are extrapolations. A flight that reaches Mach 1 stops with an error until transonic (near
-Mach 1) and supersonic (above it) aerodynamics arrive with [M1.8](decisions-and-roadmap.md#m1-8). See
-[Aerodynamics](physics/aero.md#validity-and-open-questions).
+temperature. hpr's normal force covers Mach 0 to 5 and was checked against a wind tunnel from
+Mach 0.6 to 4.63. Its drag was checked only at Mach 0.3 and is documented up to Mach 0.8; on hpr's
+own drag a flight that reaches Mach 1 stops with an error until the transonic drag of
+[M1.8b](decisions-and-roadmap.md#m1-8b). See
+[Aerodynamics](physics/aero.md#fins-through-mach-1).
 
 
 ## Mean aerodynamic chord (MAC)
 
-An average of a fin's chords (its lengths along the airflow, root to tip), weighted so that the long chords count more: `c̄ = (1/A)∫c² dy` over the span, `A` being one fin's area. hpr puts each fin set's [centre of pressure](#centre-of-pressure-cp) a quarter of the way back along it, at every speed below Mach 1; real fins' centre of pressure moves further aft at high subsonic speeds, which hpr leaves out. See [Aerodynamics](physics/aero.md#fins).
+An average of a fin's chords (its lengths along the airflow, root to tip), weighted so that the long chords count more: `c̄ = (1/A)∫c² dy` over the span, `A` being one fin's area. hpr puts each fin set's [centre of pressure](#centre-of-pressure-cp) a quarter of the way back along it up to Mach 0.8, and moves it aft from there to the centre of the load supersonic linear theory gives. See [Aerodynamics](physics/aero.md#fins-through-mach-1).
 
 ## Metric
 
@@ -817,10 +818,11 @@ curve exactly. See [Solid motors](physics/motor.md#thrust-curve).
 ## Transonic and supersonic
 
 Flight near the speed of sound (transonic) and above it (supersonic), where shock waves change
-the drag and the lift. hpr refuses Mach 1 and above until [M1.8](decisions-and-roadmap.md#m1-8), the transonic and
-supersonic aerodynamics milestone. Its aerodynamics were compared only at Mach 0 and 0.3, and are
-documented to Mach 0.8. See
-[Aerodynamics](physics/aero.md#validity-and-open-questions).
+the drag and the lift. Since [M1.8a](decisions-and-roadmap.md#m1-8a) hpr carries the normal force
+and centre of pressure through both, to Mach 5: supersonic linear theory for the fins, joined to
+the subsonic method between Mach 0.8 and the speed where that theory holds. Its drag still stops
+at Mach 1 until [M1.8b](decisions-and-roadmap.md#m1-8b). See
+[Aerodynamics](physics/aero.md#fins-through-mach-1).
 
 ## Tumble recovery
 

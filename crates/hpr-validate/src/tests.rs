@@ -222,8 +222,10 @@ fn no_committed_gate_is_looser_than_the_milestone_says() {
         .filter(|c| c.scored() || c.targeted_row());
     // M2.1d2's calm-air cases add 42 point metrics and 6 RMS rows (Calisto's acceleration time is
     // not scored); M2.1d3 scores six drifts that were not (ADR-026): Calisto's two in wind,
-    // Valetudo's and NDRT 2020's landing drift, and Juno III's two in calm air.
-    assert_eq!(bounded.clone().count(), 94 + 10 + 75 + 10 + 42 + 6 + 6);
+    // Valetudo's and NDRT 2020's landing drift, and Juno III's two in calm air. M1.8a flies
+    // Prometheus 2022 on the declared drag: 12 point metrics and 2 RMS rows (its drifts and its
+    // main opening are not scored).
+    assert_eq!(bounded.clone().count(), 94 + 10 + 75 + 10 + 42 + 6 + 6 + 14);
     for comparison in bounded {
         let allowed = comparison.tolerance.allowed(comparison.reference);
         let scale = match comparison.metric.as_str() {
@@ -262,11 +264,12 @@ fn the_metrics_that_are_not_scored_are_these_and_no_others() {
     // - NDRT 2020's whole-flight maximum is the main opening, where RocketPy has added mass and hpr
     //   has none (ADR-012); the power-on maximum and the opening's time are gated.
     // - The drifts in wind where the two codes' models, not an error in either, carry them past 3%
-    //   (ADR-026): Juno III's and Bella Lui's, and NDRT 2020's apogee drift. hpr's body lift at
-    //   the rail exit's angle of attack, which RocketPy's linear normal force leaves out, its
-    //   release at the last rail button, and Juno III's flat-plate fin slope; with all three added
-    //   to RocketPy (`wind_response.py`) the drifts land within 1.4% of hpr's. Every other drift is
-    //   gated.
+    //   (ADR-026): Juno III's and Bella Lui's, NDRT 2020's apogee drift and, since hpr flies it
+    //   (M1.8a, ADR-027), Prometheus 2022's two. hpr's body lift at the rail exit's angle of
+    //   attack, which RocketPy's linear normal force leaves out, its release at the last rail
+    //   button, and Juno III's flat-plate fin slope; with all three added to RocketPy
+    //   (`wind_response.py`) the drifts land within 1.4% of hpr's. Every other drift is gated.
+    // - Prometheus 2022's whole-flight maximum is its main opening, as NDRT 2020's is.
     // - In calm air (M2.1d2), Calisto's acceleration time for the same reason as in wind.
     //
     // Adding an excuse means editing this list.
@@ -277,6 +280,11 @@ fn the_metrics_that_are_not_scored_are_these_and_no_others() {
     )];
     expected.push(("flight-ndrt-2020-nose-to-tail", "apogee_drift_m"));
     expected.push(("flight-ndrt-2020-nose-to-tail", "max_acceleration_m_s2"));
+    expected.extend(drifts("flight-prometheus-2022-generic-motor"));
+    expected.push((
+        "flight-prometheus-2022-generic-motor",
+        "max_acceleration_m_s2",
+    ));
     expected.extend(drifts("flight-juno-iii"));
     expected.extend(drifts("flight-bella-lui"));
     expected.push((
@@ -285,16 +293,10 @@ fn the_metrics_that_are_not_scored_are_these_and_no_others() {
     ));
     assert_eq!(excused, expected);
     // A known gap is the other way a case goes unscored, and the set of them is pinned the same
-    // way: Prometheus 2022 reaches Mach 1.013 on the declared drag and Mach 1.048 on its own, both
-    // of which hpr refuses until M1.8.
+    // way: Prometheus 2022 reaches Mach 1.048 on its own drag, which hpr's drag buildup refuses
+    // until M1.8b. On the declared drag it flies since M1.8a.
     let gaps: Vec<&str> = report.gaps.iter().map(|gap| gap.case.as_str()).collect();
-    assert_eq!(
-        gaps,
-        vec![
-            "flight-prometheus-2022-generic-motor",
-            "predicted-prometheus-2022-generic-motor"
-        ]
-    );
+    assert_eq!(gaps, vec!["predicted-prometheus-2022-generic-motor"]);
     // Predicted mode's misses are pinned too, so a case file's account of them ("nothing else
     // misses") cannot go stale unnoticed (ADR-023). Adding a miss means editing this list and
     // explaining it in the case file.
@@ -634,13 +636,14 @@ fn the_committed_cases_all_pass_and_the_report_says_so() {
     // report that `cargo xtask validate` writes is the one this produces.
     let report = run_lock(&root(), false).expect("the committed cases run");
     assert_eq!(report.cases.len(), 20, "{:?}", report.cases);
-    // Five descents of six metrics, and five whole flights of seventeen in each mode; the sixth
-    // whole flight is a known gap in both and compares nothing. Three calm-air whole flights of
-    // seventeen fly in same-drag mode only (ADR-025).
-    assert_eq!(report.comparisons.len(), 251);
-    // Six drifts that M2.1b2 and M2.1d2 left unscored are gated since M2.1d3 (ADR-026).
-    assert_eq!(report.not_scored().len(), 8, "argued in the case files");
-    assert_eq!(report.gaps.len(), 2);
+    // Five descents of six metrics; six whole flights of seventeen on the declared drag and five
+    // on their own (Prometheus 2022 on its own drag is a known gap and compares nothing until
+    // M1.8b). Three calm-air whole flights of seventeen fly in same-drag mode only (ADR-025).
+    assert_eq!(report.comparisons.len(), 268);
+    // Six drifts that M2.1b2 and M2.1d2 left unscored are gated since M2.1d3 (ADR-026);
+    // Prometheus 2022 adds its two drifts and its main opening (M1.8a).
+    assert_eq!(report.not_scored().len(), 11, "argued in the case files");
+    assert_eq!(report.gaps.len(), 1);
     // Predicted mode's 85 rows are reported against a target and never count towards the verdict.
     let targeted = report
         .comparisons
@@ -666,12 +669,13 @@ fn the_committed_cases_all_pass_and_the_report_says_so() {
     );
     let markdown = report.to_markdown();
     assert!(
-        markdown.contains("158 scored, all within tolerance"),
+        markdown.contains("172 scored, all within tolerance"),
         "{markdown}"
     );
     assert!(
-        markdown
-            .contains("## Known gaps\n\n- **flight-prometheus-2022-generic-motor**: 17 metric(s)"),
+        markdown.contains(
+            "## Known gaps\n\n- **predicted-prometheus-2022-generic-motor**: 17 metric(s)"
+        ),
         "{markdown}"
     );
     assert!(
@@ -993,16 +997,20 @@ fn a_known_gap_is_checked_not_trusted() {
     // (L82): the harness accepts one kind, hpr's refusal of M >= 1, and checks both sides of it.
     let file = |id: &str| format!("validation/cases/{id}.toml");
 
-    // The committed one: the reference reaches Mach 1, hpr refuses the flight for exactly that,
-    // and the report carries it with the case's reason and hpr's words, scoring nothing.
+    // The committed one: the reference reaches Mach 1, hpr's drag buildup refuses the flight for
+    // exactly that, and the report carries it with the case's reason and hpr's words, scoring
+    // nothing.
     let report = run_lock(&root(), false).expect("the committed cases run");
     let gap = report
         .gaps
         .iter()
-        .find(|gap| gap.case == "flight-prometheus-2022-generic-motor")
-        .expect("Prometheus is a gap");
-    assert!(gap.reason.contains("Mach 1.013"), "{gap:?}");
-    assert!(gap.refusal.contains("Mach 1.000"), "{gap:?}");
+        .find(|gap| gap.case == "predicted-prometheus-2022-generic-motor")
+        .expect("Prometheus on its own drag is a gap");
+    assert!(gap.reason.contains("Mach 1.048"), "{gap:?}");
+    assert!(
+        gap.refusal.contains("Mach 1.000") && gap.refusal.contains("[0, 1)"),
+        "{gap:?}"
+    );
     assert_eq!(gap.metric_count, 17);
     assert!(
         !report
@@ -1014,10 +1022,10 @@ fn a_known_gap_is_checked_not_trusted() {
 
     // Without the declaration, the same refusal fails the run: a case that stops short is not a
     // case that passes.
-    let scratch = scratch_case("flight-prometheus-2022-generic-motor", |_| {});
+    let scratch = scratch_case("predicted-prometheus-2022-generic-motor", |_| {});
     scratch.write(
-        &file("flight-prometheus-2022-generic-motor"),
-        &with_gap("flight-prometheus-2022-generic-motor", None),
+        &file("predicted-prometheus-2022-generic-motor"),
+        &with_gap("predicted-prometheus-2022-generic-motor", None),
     );
     let error = run_lock(scratch.path(), false).expect_err("an undeclared refusal fails");
     assert!(

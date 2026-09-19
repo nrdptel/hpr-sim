@@ -43,6 +43,7 @@ new record replaces it and points back. All of them are in the [decision log][de
 | [ADR-024: The time-series RMS][adr-024] | How each whole flight's height and speed over time are compared with RocketPy's, on what clock, and why each is held to 3% of its apogee or max speed | [Accuracy](accuracy.md#whole-flights-against-rocketpy) |
 | [ADR-025: The calm-air cases][adr-025] | Juno III, Calisto and Bella Lui flown with no wind, and why Juno III's drifts were at first reported but not scored: the two codes free the rocket from the rail at different points | [Accuracy](accuracy.md#whole-flights-against-rocketpy) |
 | [ADR-026: The path in wind][adr-026] | Why hpr turned into the wind less than RocketPy: RocketPy's equations took the turning moments about the wrong point during the burn (corrected upstream, and in the comparison), and hpr's body lift, which RocketPy leaves out, pushes a slow rocket downwind | [Accuracy](accuracy.md#whole-flights-against-rocketpy) |
+| [ADR-027: The normal force through Mach 1][adr-027] | How the fins' normal force and centre of pressure carry through Mach 1: Barrowman's subsonic method to Mach 0.8, supersonic linear theory once it holds, a straight-line join between, and how they compare with a wind tunnel and with RASAero II | [Aerodynamics](physics/aero.md#fins-through-mach-1) |
 
 ## The roadmap
 
@@ -124,6 +125,11 @@ missing or its status disagrees.
 | <a id="m2-1d2"></a>[M2.1d2][phase-1] | Juno III, Calisto and Bella Lui in still air, as committed cases to measure the wind against ([issue #50](https://github.com/nrdptel/hpr-sim/issues/50), why hpr turned into the wind less) | done |
 | <a id="m2-1d3"></a>[M2.1d3][phase-1] | Why hpr turned into the wind less than RocketPy ([issue #50](https://github.com/nrdptel/hpr-sim/issues/50)): RocketPy's equations, corrected, and hpr's body lift | done |
 | <a id="m1-8"></a>[M1.8][phase-1] | Transonic and supersonic aerodynamics, damping, and overriding the aerodynamics | not yet done |
+| <a id="m1-8a"></a>[M1.8a][phase-1] | The normal force and centre of pressure through Mach 1 | done |
+| <a id="m1-8b"></a>[M1.8b][phase-1] | Drag through Mach 1: the transonic rise and supersonic wave drag | not yet done |
+| <a id="m1-8c"></a>[M1.8c][phase-1] | Roll from canted fins, roll damping, and pitch and yaw damping | not yet done |
+| <a id="m1-8d"></a>[M1.8d][phase-1] | Tables that override the normal force and centre of pressure, read from RASAero II | not yet done |
+| <a id="m1-8e"></a>[M1.8e][phase-1] | The body's normal force faster than sound, which slender-body theory underestimates past Mach 3 | not yet done |
 | <a id="m3-1"></a>[M3.1][phase-1] | Reading OpenRocket `.ork` design files | not yet done |
 | <a id="m2-2"></a>[M2.2][phase-1] | OpenRocket as a reference program, and a corpus of designs to compare | not yet done |
 | <a id="m1-9"></a>[M1.9][phase-1] | Staging, clusters and air starts, for COTS motors | not yet done |
@@ -186,6 +192,7 @@ is the milestone that added or will add that test.
 | <a id="l4"></a>[L4][lessons-physics] | Loft's air viscosity constants weren't the 1976 standard's, 1.3% high at sea level | [M1.2](#m1-2) |
 | <a id="l5"></a>[L5][lessons-physics] | Loft's "today's conditions" kept the standard temperature gradient above the field, with dry air and no sounding temperatures | [M1.2](#m1-2) |
 | <a id="l6"></a>[L6][lessons-physics] | Loft flew one wind vector; forecast profiles stepped at the lowest level; no gusts | [M1.2](#m1-2) |
+| <a id="l7"></a>[L7][lessons-physics] | Loft's fin lift had no compressibility factor, so its slope and centre of pressure never changed with Mach | [M1.8a](#m1-8a) |
 | <a id="l8"></a>[L8][lessons-physics] | Loft's fin lift grew in proportion to the fin count, with no correction for 5 to 8 fins | [M1.5a](#m1-5a) |
 | <a id="l9"></a>[L9][lessons-physics] | Loft used the conical transition's centre-of-pressure formula for every transition shape | [M1.5a](#m1-5a) |
 | <a id="l10"></a>[L10][lessons-physics] | Loft took elliptical fins' lift from an equal-area trapezoid with the wrong sweep | [M1.5a](#m1-5a) |
@@ -258,6 +265,7 @@ is the milestone that added or will add that test.
 [adr-024]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-024-the-time-series-rms-aligned-at-ignition-held-to-3-of-its-traces-scale-2026-09-18
 [adr-025]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-025-the-calm-air-cases-and-juno-iiis-drifts-left-to-the-rail-release-2026-09-18
 [adr-026]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-026-the-path-in-wind-rocketpys-corrected-equations-and-hprs-body-lift-2026-09-18
+[adr-027]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-027-the-normal-force-through-mach-1-supersonic-linear-theory-a-transonic-join-and-the-measured-references-2026-09-18
 [decisions]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md
 [lessons]: https://github.com/nrdptel/hpr-sim/blob/main/docs/research/loft-lessons.md
 [lessons-motors]: https://github.com/nrdptel/hpr-sim/blob/main/docs/research/loft-lessons.md#motors-mass-and-design-checks

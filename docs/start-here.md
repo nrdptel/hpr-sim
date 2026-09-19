@@ -52,12 +52,15 @@ out.
 
 ### Speed and angle of attack
 
-- **Nothing at or above Mach 1.** A flight that reaches Mach 1 stops with an error.
-  [Transonic and supersonic](glossary.md#transonic-and-supersonic) aerodynamics are planned for
-  [M1.8](decisions-and-roadmap.md#m1-8), the second aerodynamics milestone.
-- **High subsonic speeds are shaky.** From Mach 0.8 to 1 the aerodynamics are extrapolations: the
-  models are used beyond the speeds they are documented for, and nothing has checked them there.
-  Below that, one part of the drag reads low from about Mach 0.6:
+- **Not past Mach 1 on hpr's own drag.** A flight that reaches Mach 1 on hpr's drag stops with an
+  error until the [transonic and supersonic](glossary.md#transonic-and-supersonic) drag of
+  [M1.8b](decisions-and-roadmap.md#m1-8b). With a drag table from another tool it flies on to
+  Mach 5: the normal force and centre of pressure carry through, checked against a wind tunnel to
+  Mach 4.63, though between Mach 0.8 and 1.2 they miss it and past Mach 3 the normal force reads
+  17 to 25% low ([Aerodynamics](physics/aero.md#normal-force-through-mach-1)).
+- **High subsonic drag is shaky.** From Mach 0.8 to 1 the drag is an extrapolation: the model is
+  used beyond the speeds it is documented for, and nothing has checked it there. Below that, one
+  part of the drag reads low from about Mach 0.6:
   - The air's pressure on the nose, and on any transition where the body widens, adds drag. hpr
     holds that drag at its low-speed value.
   - Its source, Niskanen's 2009 thesis, has it rise toward Mach 1. hpr doesn't add that rise yet.

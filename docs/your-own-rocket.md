@@ -158,9 +158,9 @@ So the CP is 5.313 ÷ 6.82 ≈ 0.779 m. The fins sit far aft and have more than 
 slope, so they pull the CP toward the tail. Moving the CP aft (bigger fins, or fins farther aft)
 or the CG forward (a heavier nose) raises the margin; run the program to see by how much.
 
-**How speed moves the CP.** In hpr, only a fin set's slope changes with the Mach number: it grows
-as the rocket speeds up toward Mach 1. Every part's own CP stays where it is, and so do the slopes
-of nose cones, transitions and body tubes
+**How speed moves the CP.** In hpr, only a fin set's terms change with the Mach number: its slope
+grows as the rocket speeds up toward Mach 1, and from Mach 0.8 its own CP moves aft too. The
+slopes and CPs of nose cones, transitions and body tubes stay where they are
 ([Aerodynamics](physics/aero.md#your-rockets-centre-of-pressure)).
 
 - With the fins at the tail, as here, the growing fin slope pulls the rocket's CP aft as it speeds
@@ -168,12 +168,12 @@ of nose cones, transitions and body tubes
 - A rocket with canards (a second fin set near the nose) is different. The canards' slope grows
   too and pulls the CP forward, so which way the CP moves depends on both fin sets.
 - hpr keeps each fin set's CP a quarter of the way back along its
-  [mean aerodynamic chord](glossary.md#mean-aerodynamic-chord-mac), a kind of average chord, at
-  every speed below Mach 1. Niskanen's 2009 thesis, which hpr's aerodynamics also draw on, has a
-  correction that moves it aft above Mach 0.5. hpr leaves that correction out until
-  [M1.8](decisions-and-roadmap.md#m1-8) (transonic and supersonic aerodynamics), so above
-  Mach 0.5 hpr's CP sits forward of where the correction would put it
-  ([Aerodynamics](physics/aero.md#fins)). This rocket's top speed, Mach 0.56, is just past 0.5.
+  [mean aerodynamic chord](glossary.md#mean-aerodynamic-chord-mac), a kind of average chord, up to
+  Mach 0.8, and moves it aft from there toward where supersonic linear theory puts it
+  ([Aerodynamics](physics/aero.md#fins-through-mach-1)). Niskanen's 2009 thesis, which hpr's
+  aerodynamics also draw on, starts moving it at Mach 0.5; NASA's wind tunnel found an Arcas Robin
+  rocket's CP moving forward, not aft, between Mach 0.6 and 0.8, so hpr doesn't. This rocket's top
+  speed, Mach 0.56, is well below either.
 
 `Flow::axial(0.0)` in place of `Flow::axial(0.3)` gives the low-speed value that Barrowman's method
 gives by hand.
@@ -651,9 +651,11 @@ The example leaves out several kinds of part and setting that a design can have:
   a command-line tool ([M4.2](decisions-and-roadmap.md#m4-2)) and Python ([M4.3](decisions-and-roadmap.md#m4-3)) are planned.
 - **No import from other programs.** [OpenRocket](glossary.md#openrocket) `.ork` files ([M3.1](decisions-and-roadmap.md#m3-1), OpenRocket import)
   and RockSim `.rkt` files ([M3.4](decisions-and-roadmap.md#m3-4), RockSim import) can't be read yet.
-- **Nothing at or above Mach 1.** The aerodynamics refuse Mach 1, and a flight that reaches it
-  stops with an error, until [M1.8](decisions-and-roadmap.md#m1-8) (transonic and supersonic aerodynamics). From Mach 0.8
-  to 1 the models are unvalidated extrapolations ([Aerodynamics](physics/aero.md)).
+- **Not past Mach 1 on hpr's own drag.** The drag buildup refuses Mach 1, and a flight that
+  reaches it stops with an error, until [M1.8b](decisions-and-roadmap.md#m1-8b) (transonic and
+  supersonic drag); from Mach 0.8 to 1 the drag is an unvalidated extrapolation. With a drag table
+  the flight flies on: the normal force carries through Mach 1
+  ([Aerodynamics](physics/aero.md#fins-through-mach-1)).
 - **No staging.** Every motor in a configuration lights at the same moment, on the pad, so a
   two-stage rocket flies with both stages burning at once. Staging comes with [M1.9](decisions-and-roadmap.md#m1-9)
   (staging, clusters and air starts).

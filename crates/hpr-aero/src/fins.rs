@@ -1,5 +1,6 @@
 //! Fin sets: Barrowman's subsonic normal-force slope and centre of pressure, with the
-//! Prandtl–Glauert factor, the fin-count and roll terms, and fin–body interference.
+//! Prandtl–Glauert factor; supersonic linear theory and the transonic join between them
+//! ([`FinAero`]); the fin-count and roll terms, and fin–body interference.
 //!
 //! - **One fin** (Diederich's planform correlation as Barrowman applies it; Barrowman 1967
 //!   eq. 3-6, Niskanen 2009 eq. 3.40):
@@ -23,8 +24,16 @@
 //!   source and are refused.
 //! - **Fin–body interference** (Barrowman 1966 eq. 77, Niskanen eq. 3.56):
 //!   `K_T(B) = 1 + r_t/(s + r_t)`, with `r_t` the body radius at the fins.
+//! - **Supersonic** ([`FinOutline::supersonic`]; Barrowman 1967 appendix A, first order): the
+//!   flat plate's load `4α/β`, `β = √(M² − 1)`, halved inside the tip's Mach cone, with the root a
+//!   reflection plane: `(C_Nα)₁ = (4/β)(A_fin − A_cone/2)/A_ref` at the load's centroid.
+//! - **Through Mach 1** ([`FinAero`]): the subsonic method to Mach 0.8, linear theory from
+//!   `M_s = max(1.2, 1/cos Γ_L, √(1 + 1/A²))`, and slope and CP linear in `M` between
+//!   ([ADR-027, the normal force through Mach 1][adr-027]).
 //!
 //! See `docs/physics/aero.md`.
+//!
+//! [adr-027]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-027-the-normal-force-through-mach-1-supersonic-linear-theory-a-transonic-join-and-the-measured-references-2026-09-18
 
 use std::f64::consts::{PI, TAU};
 

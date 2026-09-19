@@ -50,35 +50,33 @@ fn band(mach: f64) -> &'static str {
 
 /// The fixture, from the committed designs, the wind-tunnel reference and the export in `refs/`.
 pub fn generate(root: &Path) -> Result<Value, String> {
-    let calisto = calisto(root)?;
-    let tunnel = wind_tunnel(root)?;
+    let mut references = vec![calisto(root)?];
+    references.extend(wind_tunnel(root)?);
     Ok(json!({
         "generator": "cargo xtask aero",
-        "note": "hpr's small-angle normal-force slope (per radian, on its reference area) and \
-                 centre of pressure (m aft of the nose tip) at alpha -> 0, against each \
-                 reference's. cn_alpha_error is hpr's over the reference's, minus 1; \
-                 cp_error_calibers is hpr's CP less the reference's, over the reference \
+        "note": "hpr's normal-force slope (per radian, on its reference area) and centre of \
+                 pressure (m aft of the nose tip) against each reference's, measured the same \
+                 way (each reference says how). cn_alpha_error is hpr's over the reference's, \
+                 minus 1; cp_error_calibers is hpr's CP less the reference's, over the reference \
                  diameter, positive aft. Bands are Niskanen 2009 Table 3.1's.",
         "targets": {
             "cp_calibers": CP_TARGET_CALIBERS,
             "cn_alpha_rel": CN_ALPHA_TARGET,
         },
-        "references": [calisto, tunnel],
+        "references": references,
     }))
 }
 
-/// One compared row.
-fn row(
+/// One compared row: the reference's slope and CP against hpr's.
+fn compare(
     mach: f64,
-    cn_alpha: f64,
-    cp_m: f64,
-    model: &AeroModel,
+    (cn_alpha, cp_m): (f64, f64),
+    (hpr_cn_alpha, hpr_cp_m): (f64, f64),
     diameter_m: f64,
-) -> Result<Value, String> {
-    let (hpr_cn_alpha, hpr_cp_m) = hpr_at(model, mach)?;
+) -> Value {
     let cn_alpha_error = hpr_cn_alpha / cn_alpha - 1.0;
     let cp_error_calibers = (hpr_cp_m - cp_m) / diameter_m;
-    Ok(json!({
+    json!({
         "mach": mach,
         "band": band(mach),
         "reference_cn_alpha_per_rad": cn_alpha,
@@ -89,7 +87,7 @@ fn row(
         "cp_error_calibers": cp_error_calibers,
         "within_targets": cn_alpha_error.abs() <= CN_ALPHA_TARGET
             && cp_error_calibers.abs() <= CP_TARGET_CALIBERS,
-    }))
+    })
 }
 
 /// hpr's small-angle slope and CP at `mach`, straight into the wind.
@@ -102,6 +100,43 @@ pub fn hpr_at(model: &AeroModel, mach: f64) -> Result<(f64, f64), String> {
         .ok_or(format!("Mach {mach}: no normal-force slope, so no CP"))?;
     Ok((force.slope_per_rad, cp))
 }
+
+/// The least-squares slope of `ys` against `xs`, with an intercept.
+pub fn slope(xs: &[f64], ys: &[f64]) -> f64 {
+    let n = xs.len() as f64;
+    let (mx, my) = (xs.iter().sum::<f64>() / n, ys.iter().sum::<f64>() / n);
+    let sxy: f64 = xs.iter().zip(ys).map(|(x, y)| (x - mx) * (y - my)).sum();
+    let sxx: f64 = xs.iter().map(|x| (x - mx) * (x - mx)).sum();
+    sxy / sxx
+}
+
+/// hpr's normal-force coefficient and its moment about the nose tip (per unit dynamic pressure
+/// and reference area, m) at `alpha_deg`, of the whole rocket or of its bodies alone, extended
+/// oddly to negative angles. Four fins make both independent of roll.
+pub fn hpr_force(
+    model: &AeroModel,
+    mach: f64,
+    alpha_deg: f64,
+    bodies_only: bool,
+) -> Result<(f64, f64), String> {
+    let flow = Flow::new(mach, alpha_deg.abs().to_radians(), 0.0);
+    let parts = model
+        .components(&flow)
+        .map_err(|e| format!("Mach {mach}: {e}"))?;
+    let kept = if bodies_only {
+        &parts[..model.bodies().len()]
+    } else {
+        &parts[..]
+    };
+    let sign = alpha_deg.signum();
+    Ok((
+        sign * kept.iter().map(|p| p.normal_force.coefficient).sum::<f64>(),
+        sign * kept.iter().map(|p| p.normal_force.moment_m).sum::<f64>(),
+    ))
+}
+
+/// The angles of attack at which the reports give the CP, "low angles": −2° to 2°.
+pub const CP_ANGLES_DEG: [f64; 5] = [-2.0, -1.0, 0.0, 1.0, 2.0];
 
 fn load_design(root: &Path, name: &str) -> Result<(Rocket, AeroModel), String> {
     let path = root.join("validation/designs").join(name);
@@ -164,7 +199,12 @@ fn calisto(root: &Path) -> Result<Value, String> {
         let two = find(mach, 2.0)?;
         let zero = find(mach, 0.0)?;
         let cn_alpha = two.2 / 2.0_f64.to_radians();
-        rows.push(row(mach, cn_alpha, zero.3 * INCH, &model, diameter_m)?);
+        rows.push(compare(
+            mach,
+            (cn_alpha, zero.3 * INCH),
+            hpr_at(&model, mach)?,
+            diameter_m,
+        ));
     }
     Ok(json!({
         "id": "calisto-rasaero-ii",
@@ -182,41 +222,119 @@ fn calisto(root: &Path) -> Result<Value, String> {
     }))
 }
 
-fn wind_tunnel(root: &Path) -> Result<Value, String> {
+/// Each wind-tunnel configuration's rows: at every Mach number both reports give, the least-squares
+/// slope of the plotted `C_N` against the angle of attack, fins on at 0° and fins off, and the
+/// plotted CP, against hpr's `C_N` fitted at the same angles and hpr's CP from its moment and
+/// normal force fitted over −2° to 2°.
+fn wind_tunnel(root: &Path) -> Result<Vec<Value>, String> {
     let path = root.join(WIND_TUNNEL);
     let text = fs::read_to_string(&path).map_err(|e| format!("{WIND_TUNNEL}: {e}"))?;
     let reference: Value =
         serde_json::from_str(&text).map_err(|e| format!("{WIND_TUNNEL}: {e}"))?;
-    let design = reference["design"]
-        .as_str()
-        .ok_or(format!("{WIND_TUNNEL} names no design"))?;
-    let (_, model) = load_design(root, design)?;
-    let diameter_m = (4.0 * model.reference_area_m2() / std::f64::consts::PI).sqrt();
-    let points = reference["measurements"]
+    let configurations = reference["configurations"]
         .as_array()
-        .ok_or(format!("{WIND_TUNNEL} has no measurements"))?;
-    let mut rows = Vec::new();
-    for point in points {
-        let get = |key: &str| {
-            point[key]
-                .as_f64()
-                .ok_or(format!("{WIND_TUNNEL}: a measurement without `{key}`"))
+        .ok_or(format!("{WIND_TUNNEL} has no configurations"))?;
+    let mut out = Vec::new();
+    for configuration in configurations {
+        let text_of = |key: &str| {
+            configuration[key]
+                .as_str()
+                .ok_or(format!("{WIND_TUNNEL}: a configuration without `{key}`"))
         };
-        let mut compared = row(
-            get("mach")?,
-            get("cn_alpha_per_rad")?,
-            get("cp_m")?,
-            &model,
-            diameter_m,
-        )?;
-        compared["source"] = point["source"].clone();
-        rows.push(compared);
+        let design = text_of("design")?;
+        let (_, model) = load_design(root, design)?;
+        let diameter_m = (4.0 * model.reference_area_m2() / std::f64::consts::PI).sqrt();
+        let length_m = configuration["length_m"]
+            .as_f64()
+            .ok_or(format!("{WIND_TUNNEL}: a configuration without `length_m`"))?;
+        let series = |key: &str| {
+            configuration[key]
+                .as_array()
+                .ok_or(format!("{WIND_TUNNEL}: a configuration without `{key}`"))
+        };
+        let slopes =
+            |key: &str, bodies_only: bool| -> Result<Vec<(f64, f64, f64, Value)>, String> {
+                series(key)?
+                    .iter()
+                    .map(|curve| {
+                        let mach = curve["mach"].as_f64().ok_or("a curve without `mach`")?;
+                        let points: Vec<(f64, f64)> = curve["alpha_deg_c_n"]
+                            .as_array()
+                            .ok_or("a curve without points")?
+                            .iter()
+                            .map(|p| Some((p[0].as_f64()?, p[1].as_f64()?)))
+                            .collect::<Option<_>>()
+                            .ok_or("an unreadable point")?;
+                        let alphas: Vec<f64> = points.iter().map(|p| p.0.to_radians()).collect();
+                        let measured: Vec<f64> = points.iter().map(|p| p.1).collect();
+                        let hpr: Vec<f64> = points
+                            .iter()
+                            .map(|p| hpr_force(&model, mach, p.0, bodies_only).map(|f| f.0))
+                            .collect::<Result<_, _>>()?;
+                        Ok((
+                            mach,
+                            slope(&alphas, &measured),
+                            slope(&alphas, &hpr),
+                            curve["source"].clone(),
+                        ))
+                    })
+                    .collect()
+            };
+        let fins_on = slopes("cn_alpha", false)?;
+        let fins_off = slopes("cn_alpha_fins_off", true)?;
+        let mut rows = Vec::new();
+        for cp in series("cp")? {
+            let get = |key: &str| {
+                cp[key]
+                    .as_f64()
+                    .ok_or(format!("{WIND_TUNNEL}: a CP without `{key}`"))
+            };
+            let mach = get("mach")?;
+            let &(_, measured, hpr, ref source) = fins_on
+                .iter()
+                .find(|s| s.0 == mach)
+                .ok_or(format!("{WIND_TUNNEL}: no C_N curve at Mach {mach}"))?;
+            let forces: Vec<(f64, f64)> = CP_ANGLES_DEG
+                .iter()
+                .map(|&a| hpr_force(&model, mach, a, false))
+                .collect::<Result<_, _>>()?;
+            let alphas: Vec<f64> = CP_ANGLES_DEG.iter().map(|a| a.to_radians()).collect();
+            let normal: Vec<f64> = forces.iter().map(|f| f.0).collect();
+            let moment: Vec<f64> = forces.iter().map(|f| f.1).collect();
+            let hpr_cp = slope(&alphas, &moment) / slope(&alphas, &normal);
+            let mut row = compare(
+                mach,
+                (measured, 0.01 * get("percent_length")? * length_m),
+                (hpr, hpr_cp),
+                diameter_m,
+            );
+            row["cp_uncertainty_calibers"] =
+                json!(0.01 * get("uncertainty_percent")? * length_m / diameter_m);
+            row["cn_alpha_source"] = source.clone();
+            row["cp_source"] = cp["source"].clone();
+            if let Some(&(_, body, hpr_body, ref body_source)) =
+                fins_off.iter().find(|s| s.0 == mach)
+            {
+                row["reference_body_cn_alpha_per_rad"] = json!(body);
+                row["hpr_body_cn_alpha_per_rad"] = json!(hpr_body);
+                row["body_source"] = body_source.clone();
+            }
+            rows.push(row);
+        }
+        out.push(json!({
+            "id": configuration["id"],
+            "design": design,
+            "reference_diameter_m": diameter_m,
+            "source": format!(
+                "{} C_N_alpha: the least-squares slope, with an intercept, of the plotted C_N \
+                 against the angle of attack, fins at 0 degrees, and hpr's C_N fitted at the same \
+                 angles; the body's the same with the fins off. CP: the plotted CP at low angles \
+                 of attack, and hpr's from its moment and normal force fitted over -2 to 2 \
+                 degrees. A measurement.",
+                reference["source"].as_str().unwrap_or_default()
+            ),
+            "rows": rows,
+        }));
     }
-    Ok(json!({
-        "id": reference["id"],
-        "design": design,
-        "reference_diameter_m": diameter_m,
-        "source": reference["source"],
-        "rows": rows,
-    }))
+    Ok(out)
 }

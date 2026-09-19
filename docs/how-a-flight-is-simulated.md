@@ -98,8 +98,8 @@ A [stiff](glossary.md#stiff-problem) stretch of flight, one that forces very sho
 up as the step limit ([Time integration](physics/integration.md#defaults-and-limits)). Both limits
 are fields of `FlightSettings` (`max_time_s` and `step_limit`), and a program can change them.
 
-Anything else that stops a flight is an error: reaching Mach 1, for example, because there are no
-supersonic aerodynamics yet.
+Anything else that stops a flight is an error: reaching Mach 1 on hpr's own drag, for example,
+because its drag has no transonic terms yet.
 
 ## How hpr steps through time
 
@@ -139,9 +139,11 @@ integrator builds the flight from them by stepping forward in time, one short st
 Each model page lists what its model leaves out. These are the gaps that matter most for a whole
 flight:
 
-- **Mach 1 and above.** A flight that reaches Mach 1 stops with an error until the transonic and
-  supersonic aerodynamics of [M1.8](decisions-and-roadmap.md#m1-8) arrive. Below that, the aerodynamics were checked only
-  at Mach 0 (the normal force) and Mach 0.3 (the drag). The drag reads low from about Mach 0.6,
+- **Mach 1 and above.** The normal force and centre of pressure carry on past Mach 1, checked
+  against a wind tunnel to Mach 4.63 ([Aerodynamics](physics/aero.md#normal-force-through-mach-1)),
+  but hpr's own drag stops a flight at Mach 1 with an error until its transonic terms arrive with
+  [M1.8b](decisions-and-roadmap.md#m1-8b). A flight on a drag table flies on to Mach 5. The drag
+  was checked only at Mach 0.3. It reads low from about Mach 0.6,
   because the pressure drag on the nose, and on any transition where the body widens, is held at
   its low-speed value. The models are documented only to Mach 0.8
   ([Aerodynamics](physics/aero.md#drag-limits)).

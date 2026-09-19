@@ -7,12 +7,14 @@
 //! [guide-aero]: https://nrdptel.github.io/hpr-sim/physics/aero.html
 //! [guide-cp]: https://nrdptel.github.io/hpr-sim/physics/aero.html#your-rockets-centre-of-pressure
 //! [guide-flight]: https://nrdptel.github.io/hpr-sim/physics/flight.html#aerodynamics-in-flight
+//! [guide-fins-mach]: https://nrdptel.github.io/hpr-sim/physics/aero.html#fins-through-mach-1
 //! [m1-8]: https://nrdptel.github.io/hpr-sim/decisions-and-roadmap.html#m1-8
 //!
 //! - [`body`]: nose cones, body tubes and transitions: Barrowman's slope and centre of pressure,
 //!   and Galejs's body lift.
 //! - [`fins`]: fin sets: Barrowman's slope with Prandtl–Glauert, the mean aerodynamic chord,
-//!   fin-count and roll terms, and fin–body interference.
+//!   supersonic linear theory and the transonic join between them, fin-count and roll terms, and
+//!   fin–body interference.
 //! - [`drag`]: the terms of Niskanen's zero-lift drag buildup, and axial drag at an angle of
 //!   attack.
 //! - [`table`]: drag override tables, the drag coefficient against Mach number from another tool.
@@ -22,8 +24,10 @@
 //! from [`AeroModel::normal_force`] at [`Flow::axial`] ([Your rocket's centre of
 //! pressure][guide-cp] in the guide).
 //!
-//! Status: subsonic flow only (`M < 1`): normal force, centre of pressure, drag and override
-//! tables. The crate has no damping coefficients.
+//! Status: the normal force and centre of pressure from Mach 0 to 5 (fins through the transonic
+//! region to supersonic linear theory, [Fins through Mach 1][guide-fins-mach]); the drag buildup
+//! below Mach 1 only, until [M1.8][m1-8] adds its transonic and supersonic terms; drag override
+//! tables at any Mach number. The crate has no damping coefficients.
 //!
 //! - Pitch and yaw damping in a flight come only from the flight engine (`hpr_sim`) evaluating
 //!   each component in its own local flow, which includes the speed the rocket's rotation adds
@@ -31,9 +35,10 @@
 //! - Only components with a normal-force slope give that damping: nose cones, transitions and fin
 //!   sets. Body tubes give none at small angles: their own slope is 0, and their body lift grows
 //!   with `sin² α`.
-//! - Transonic and supersonic flow, damping coefficients for pitch, yaw and roll, and roll forcing
-//!   from canted fins are planned for [M1.8][m1-8], the second aerodynamics milestone. For pitch
-//!   and yaw, those coefficients will have to replace the local-flow damping, not add to it.
+//! - The drag buildup's transonic and supersonic terms, damping coefficients for pitch, yaw and
+//!   roll, and roll forcing from canted fins are planned for [M1.8][m1-8], the second aerodynamics
+//!   milestone. For pitch and yaw, those coefficients will have to replace the local-flow damping,
+//!   not add to it.
 
 pub mod body;
 pub mod drag;
@@ -45,8 +50,14 @@ pub mod table;
 pub use body::{BODY_LIFT_K, BodyGeometry};
 pub use drag::{ComponentDrag, ComponentDragTerms, Drag, DragConditions};
 pub use error::AeroError;
-pub use fins::{FinGeometry, fin_count_factor, interference_factor, roll_sum, side_sum};
-pub use model::{AeroModel, BodyAero, ComponentNormalForce, FinSetAero, Flow, NormalForce};
+pub use fins::{
+    FinAero, FinGeometry, FinLoading, FinOutline, fin_count_factor, interference_factor, roll_sum,
+    side_sum,
+};
+pub use model::{
+    AeroModel, BodyAero, ComponentNormalForce, FinSetAero, Flow, NORMAL_FORCE_MACH_LIMIT,
+    NormalForce,
+};
 pub use table::{DragTable, parse_mach_csv};
 
 #[cfg(test)]
@@ -479,6 +490,12 @@ mod tests {
             "rocketpy-cavour.json" => {
                 include_str!("../../../validation/designs/rocketpy-cavour.json")
             }
+            "wind-tunnel-arcas-robin-short.json" => {
+                include_str!("../../../validation/designs/wind-tunnel-arcas-robin-short.json")
+            }
+            "wind-tunnel-arcas-robin-long.json" => {
+                include_str!("../../../validation/designs/wind-tunnel-arcas-robin-long.json")
+            }
             other => panic!("no committed design {other}"),
         };
         serde_json::from_str(text).unwrap()
@@ -566,6 +583,238 @@ mod tests {
         assert_eq!(
             outside,
             ["cavour-power-on", "valetudo-power-off", "valetudo-power-on"]
+        );
+    }
+
+    #[derive(Deserialize)]
+    struct NormalForceVsMach {
+        targets: Targets,
+        references: Vec<NormalForceReference>,
+    }
+
+    #[derive(Deserialize)]
+    struct Targets {
+        cp_calibers: f64,
+        cn_alpha_rel: f64,
+    }
+
+    #[derive(Deserialize)]
+    struct NormalForceReference {
+        id: String,
+        design: String,
+        reference_diameter_m: f64,
+        rows: Vec<NormalForceRow>,
+    }
+
+    #[derive(Deserialize)]
+    struct NormalForceRow {
+        mach: f64,
+        reference_cn_alpha_per_rad: f64,
+        reference_cp_m: f64,
+        hpr_cn_alpha_per_rad: f64,
+        hpr_cp_m: f64,
+        cn_alpha_error: f64,
+        cp_error_calibers: f64,
+        within_targets: bool,
+        reference_body_cn_alpha_per_rad: Option<f64>,
+        hpr_body_cn_alpha_per_rad: Option<f64>,
+    }
+
+    #[derive(Deserialize)]
+    struct WindTunnel {
+        configurations: Vec<WindTunnelConfiguration>,
+    }
+
+    #[derive(Deserialize)]
+    struct WindTunnelConfiguration {
+        id: String,
+        length_m: f64,
+        cn_alpha: Vec<WindTunnelCurve>,
+        cn_alpha_fins_off: Vec<WindTunnelCurve>,
+        cp: Vec<WindTunnelCp>,
+    }
+
+    #[derive(Deserialize)]
+    struct WindTunnelCurve {
+        mach: f64,
+        alpha_deg_c_n: Vec<[f64; 2]>,
+    }
+
+    #[derive(Deserialize)]
+    struct WindTunnelCp {
+        mach: f64,
+        percent_length: f64,
+    }
+
+    /// The least-squares slope of `ys` against `xs`, with an intercept.
+    fn lsq_slope(xs: &[f64], ys: &[f64]) -> f64 {
+        let n = xs.len() as f64;
+        let (mx, my) = (xs.iter().sum::<f64>() / n, ys.iter().sum::<f64>() / n);
+        let sxy: f64 = xs.iter().zip(ys).map(|(x, y)| (x - mx) * (y - my)).sum();
+        let sxx: f64 = xs.iter().map(|x| (x - mx) * (x - mx)).sum();
+        sxy / sxx
+    }
+
+    /// hpr's `C_N` and its moment about the nose tip at `alpha_deg`, odd in the angle, of the
+    /// whole rocket or of its bodies alone.
+    fn force_at(model: &AeroModel, mach: f64, alpha_deg: f64, bodies_only: bool) -> (f64, f64) {
+        let parts = model
+            .components(&Flow::new(mach, alpha_deg.abs().to_radians(), 0.0))
+            .unwrap();
+        let kept = if bodies_only {
+            &parts[..model.bodies().len()]
+        } else {
+            &parts[..]
+        };
+        let sign = alpha_deg.signum();
+        (
+            sign * kept.iter().map(|p| p.normal_force.coefficient).sum::<f64>(),
+            sign * kept.iter().map(|p| p.normal_force.moment_m).sum::<f64>(),
+        )
+    }
+
+    /// M1.8a done-when: hpr's `C_Nα` and CP against Mach, against RASAero II's Calisto export
+    /// (Mach 0.1–2.0; hpr's small-angle values) and NASA's Arcas Robin wind-tunnel models
+    /// (TN D-4013 and TN D-4014, Mach 0.6–4.63; hpr fitted as the plots are). `cargo xtask aero`
+    /// writes `validation/fixtures/aero/normal-force-vs-mach.json`; this test recomputes every
+    /// hpr value from the committed designs, and every wind-tunnel slope from the committed
+    /// points, so the recorded errors can't go stale, and pins the set of rows outside the
+    /// targets set before measuring (CP within 0.5 calibers, `C_Nα` within 15%). Each miss is
+    /// explained in `docs/physics/aero.md` and ADR-027.
+    #[test]
+    fn normal_force_against_mach() {
+        let fixture: NormalForceVsMach = serde_json::from_str(include_str!(
+            "../../../validation/fixtures/aero/normal-force-vs-mach.json"
+        ))
+        .unwrap();
+        let tunnel: WindTunnel = serde_json::from_str(include_str!(
+            "../../../validation/fixtures/aero/arcas-robin-wind-tunnel.json"
+        ))
+        .unwrap();
+        assert_eq!(fixture.targets.cp_calibers, 0.5);
+        assert_eq!(fixture.targets.cn_alpha_rel, 0.15);
+        let cp_angles: Vec<f64> = [-2.0_f64, -1.0, 0.0, 1.0, 2.0]
+            .iter()
+            .map(|a| a.to_radians())
+            .collect();
+        let mut misses = Vec::new();
+        for reference in &fixture.references {
+            let model =
+                AeroModel::new(&committed_design(&reference.design).layout().unwrap()).unwrap();
+            let d = (4.0 * model.reference_area_m2() / PI).sqrt();
+            close(reference.reference_diameter_m, d, 1e-15, &reference.id);
+            let configuration = tunnel.configurations.iter().find(|c| c.id == reference.id);
+            for row in &reference.rows {
+                let what = format!("{} at Mach {}", reference.id, row.mach);
+                let (cn_alpha, cp_m, hpr_cn_alpha, hpr_cp_m) = match configuration {
+                    // RASAero II's export: hpr's small-angle slope and CP.
+                    None => {
+                        let force = model.normal_force(&Flow::axial(row.mach)).unwrap();
+                        (
+                            row.reference_cn_alpha_per_rad,
+                            row.reference_cp_m,
+                            force.slope_per_rad,
+                            force.cp_station_m.unwrap(),
+                        )
+                    }
+                    // The wind tunnel: both slopes fitted at the plotted angles, the CP over
+                    // -2 to 2 degrees.
+                    Some(configuration) => {
+                        let fit = |curves: &[WindTunnelCurve], bodies_only: bool| {
+                            let curve = curves.iter().find(|c| c.mach == row.mach).unwrap();
+                            let alphas: Vec<f64> = curve
+                                .alpha_deg_c_n
+                                .iter()
+                                .map(|p| p[0].to_radians())
+                                .collect();
+                            let measured: Vec<f64> =
+                                curve.alpha_deg_c_n.iter().map(|p| p[1]).collect();
+                            let hpr: Vec<f64> = curve
+                                .alpha_deg_c_n
+                                .iter()
+                                .map(|p| force_at(&model, row.mach, p[0], bodies_only).0)
+                                .collect();
+                            (lsq_slope(&alphas, &measured), lsq_slope(&alphas, &hpr))
+                        };
+                        let (measured, hpr) = fit(&configuration.cn_alpha, false);
+                        if let Some(curve_body) = row.reference_body_cn_alpha_per_rad {
+                            let (body, hpr_body) = fit(&configuration.cn_alpha_fins_off, true);
+                            close(curve_body, body, 1e-12, &format!("{what}: body"));
+                            close(
+                                row.hpr_body_cn_alpha_per_rad.unwrap(),
+                                hpr_body,
+                                1e-12,
+                                &format!("{what}: hpr's body"),
+                            );
+                        }
+                        let cp = configuration
+                            .cp
+                            .iter()
+                            .find(|c| c.mach == row.mach)
+                            .unwrap();
+                        let forces: Vec<(f64, f64)> = [-2.0, -1.0, 0.0, 1.0, 2.0]
+                            .iter()
+                            .map(|&a| force_at(&model, row.mach, a, false))
+                            .collect();
+                        let normal: Vec<f64> = forces.iter().map(|f| f.0).collect();
+                        let moment: Vec<f64> = forces.iter().map(|f| f.1).collect();
+                        (
+                            measured,
+                            0.01 * cp.percent_length * configuration.length_m,
+                            hpr,
+                            lsq_slope(&cp_angles, &moment) / lsq_slope(&cp_angles, &normal),
+                        )
+                    }
+                };
+                // A stale fixture: rerun `cargo xtask aero`.
+                close(row.reference_cn_alpha_per_rad, cn_alpha, 1e-12, &what);
+                close(row.reference_cp_m, cp_m, 1e-12, &what);
+                close(row.hpr_cn_alpha_per_rad, hpr_cn_alpha, 1e-12, &what);
+                close(row.hpr_cp_m, hpr_cp_m, 1e-12, &what);
+                let cn_error = hpr_cn_alpha / cn_alpha - 1.0;
+                let cp_error = (hpr_cp_m - cp_m) / d;
+                assert!((row.cn_alpha_error - cn_error).abs() < 1e-12, "{what}");
+                assert!((row.cp_error_calibers - cp_error).abs() < 1e-12, "{what}");
+                let within = cn_error.abs() <= 0.15 && cp_error.abs() <= 0.5;
+                assert_eq!(row.within_targets, within, "{what}");
+                eprintln!(
+                    "{what}: C_Na {hpr_cn_alpha:.3} against {cn_alpha:.3} ({:+.1}%), CP {:+.2} \
+                     calibers",
+                    100.0 * cn_error,
+                    cp_error
+                );
+                if !within {
+                    misses.push(format!("{}@{}", reference.id, row.mach));
+                }
+            }
+        }
+        assert_eq!(fixture.references.len(), 3);
+        assert_eq!(
+            misses,
+            [
+                // Calisto against RASAero II: hpr's Prandtl-Glauert rise and aft CP near Mach 1,
+                // which RASAero II's constant subsonic slope doesn't have, the linear join's peak
+                // at M_s = 1.28, and its supersonic body (Mach 2).
+                "calisto-rasaero-ii@0.8",
+                "calisto-rasaero-ii@0.9",
+                "calisto-rasaero-ii@0.95",
+                "calisto-rasaero-ii@1.3",
+                "calisto-rasaero-ii@2",
+                // The Arcas Robin: the measured transonic dip in the fins' lift and the join's
+                // peak (Mach 0.8 to 1.2); the body, which grows with Mach where slender-body
+                // theory's doesn't (Mach 3.96 and 4.63).
+                "arcas-robin-short@0.8",
+                "arcas-robin-short@0.9",
+                "arcas-robin-short@0.95",
+                "arcas-robin-short@1.2",
+                "arcas-robin-short@3.96",
+                "arcas-robin-short@4.63",
+                "arcas-robin-long@0.9",
+                "arcas-robin-long@1",
+                "arcas-robin-long@1.2",
+                "arcas-robin-long@3.96",
+                "arcas-robin-long@4.63",
+            ]
         );
     }
 }

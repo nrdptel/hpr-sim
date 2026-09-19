@@ -4,11 +4,11 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
 
 ## Now
 
-- **Current milestone:** M1.8 Aerodynamics II (transonic and supersonic, damping, overrides)
-- **Order:** M1.8, then M3.1
-- **Run:** M0.1-M0.4, M1.1-M1.7 and M2.1 have shipped. The site is live at
+- **Current milestone:** M1.8b Transonic and supersonic drag (M1.8 split into a to e)
+- **Order:** M1.8b, M1.8c, M1.8d, M1.8e, then M3.1
+- **Run:** M0.1-M0.4, M1.1-M1.7, M2.1 and M1.8a have shipped. The site is live at
   https://nrdptel.github.io/hpr-sim/
-- **Last updated:** 2026-09-18 (M2.1d3 done, and with it M2.1; M1.8 not started)
+- **Last updated:** 2026-09-18 (M1.8a done; M1.8b not started)
 
 ## Handoff (overwrite each session)
 
@@ -23,27 +23,33 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
 - **Validation (M2.1, ADR-021 to ADR-026):** CI checks the report on three OSes; predicted mode's
   3% are *targets*; every whole flight names both RMS metrics, each held to 3% of its reference's
   apogee or max speed (ADR-024); a reference that moves moves those bounds with it.
-- **M2.1d3, the path in wind (ADR-026):** the whole-flight oracle flies RocketPy 1.13.0 with
-  upstream PRs #1188 (merged) and #1196 (open) applied by `corrections.py`: as released,
-  `u_dot_generalized` took its moments during the burn about the wrong point. When RocketPy
-  releases #1196, re-pin, regenerate and delete `corrections.py`. `wind_response.py` flies every
-  case as released, corrected, and with hpr's rail release, body lift and thin fins added. Five
-  drifts stay reported as measured model differences (Juno III and Bella Lui in wind, NDRT's
-  apogee drift); Prometheus's drifts are gated for when hpr flies it.
-- **M1.8** next: don't read predicted mode's +10% (Valetudo, NDRT) as gaps to close. hpr's drag
-  there runs on placeholder fin edges and finishes, and Valetudo's table is suspect (ADR-009).
-  Both Prometheus cases are checked `M ≥ 1` gaps that fail the run once hpr flies them; its
-  drifts are then held to 3% like every other metric. M1.8's damping must keep hpr's local-flow
-  pitch damping, which ADR-026 found agrees with corrected RocketPy's.
-- **Regeneration is not bit-identical across machines:** the first *Regenerate references* run
-  (GitHub's macOS runner) moved RocketPy's fixtures in their last digits (descents at most 3.6e-11
-  relative), changing their hashes and so the report's; the script prints each fixture's move.
+- **The path in wind (ADR-026):** the oracle flies RocketPy 1.13.0 with upstream PRs #1188 and
+  #1196 applied by `corrections.py`; when RocketPy releases #1196, re-pin, regenerate and delete
+  it. `wind_response.py` measures the seven drifts reported as model differences.
+- **M1.8a (ADR-027):** fins carry through Mach 1 (Diederich to 0.8, linear theory from `M_s`, a
+  linear join); the normal force covers Mach 0 to 5, the drag buildup still stops at 1.
+  `cargo xtask aero` also writes `normal-force-vs-mach.json` against RASAero II's Calisto export
+  (`refs/rocketpy-history/`, pinned) and the Arcas Robin wind tunnel, read from TN D-4013/4014's
+  plots into `arcas-robin-wind-tunnel.json`; `cargo xtask designs` builds the two tunnel models
+  from it. The digitization's working files (Fig. 14's roll data too) are in
+  `refs/scratch/arcas/`, uncommitted.
+- **M1.8b** next: the drag buildup's transonic and supersonic branches (Niskanen eq. 3.87 and
+  appendix B; Stoney NASA TR R-100 and NACA RM L53K17 for nose shapes, plots only; Von Kármán's
+  slender-body wave drag `1/f_N²`). The Arcas Robin's `C_A,corr` and `C_A,b` (TN D-4013 Figs.
+  11–12) are in the digitization, not yet committed. Don't read predicted mode's +10% (Valetudo,
+  NDRT) as gaps to close (ADR-009). Predicted Prometheus is the last `M ≥ 1` gap; it fails the run
+  once hpr's drag flies it. M1.8c's damping must keep hpr's local-flow pitch damping (ADR-026).
+- **Regeneration is not bit-identical across machines** (last digits, so hashes move); the
+  script prints each fixture's move.
 - **Process notes:** `cargo test -p xtask` guards STATUS, ROADMAP, notices, lessons and the lock.
   Oracles run from the repo root with `refs/venv/bin/python`. `cargo xtask designs` and
   `cargo xtask examples` rewrite designs and example outputs; pages quoting them must follow.
 
 ## Done log (newest first, keep about 15)
 
+- 2026-09-18: M1.8a The normal force through Mach 1 (ADR-027): supersonic linear theory and a
+  transonic join; against NASA's Arcas Robin wind tunnel, Mach 1.5–2.96 within 13.4% and 0.42
+  calibers; Prometheus flies and is scored; M1.8 split into a to e.
 - 2026-09-18: M2.1d3 The path in wind (ADR-026, issue #50), and with it M2.1: RocketPy's equations
   corrected as upstream PRs #1188 and #1196 do; six drifts now gated, five measured as body lift
   and rail release.
@@ -56,10 +62,6 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
   whole flights, aligned at ignition; ten same-drag RMS rows pass, three predicted outside target.
 - 2026-09-18: M2.1c2 Predicted mode (PR #52, ADR-023): hpr's own drag against RocketPy on each
   example's own drag; 3% targets, not gates; 56 of 75 within; M2.1d split off for the RMS and #50.
-- 2026-09-18: M2.1c1 Validation in CI and regeneration by hand (PR #51, ADR-022): `validate
-  --check` on three OSes; a `workflow_dispatch`-only workflow that uploads the references' diff.
-- 2026-09-18: M2.1b2 The whole-flight cases (PR #49, ADR-021): five pass, Prometheus a checked gap.
-- 2026-09-18: M0.4e The reader test (PR #47, ADR-020): cold readers answered 9 of 10, then all.
 
 ## Needs Neer (blocking or one-way decisions; the session keeps working on other things)
 
@@ -76,18 +78,15 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
 
 ## Decided without Neer (one line each; significant ones get an ADR)
 
-- ADR-026: the oracle flies RocketPy 1.13.0 with two upstream corrections (PR #1188 merged, #1196
-  open, both on RocketPy's record); hpr keeps body lift and its rail release; a drift is gated
-  unless a measurement excuses it, so Prometheus's drifts are gated for when it flies.
+- ADR-027: M1.8 split into a to e; fins' supersonic slope counts both faces (Niskanen's eq. 3.49
+  counts one); the transonic join is not fitted to the wind tunnel; NASA's plots were read by hand
+  into a committed fixture; the body's supersonic gap became M1.8e.
+- ADR-026: the oracle flies RocketPy 1.13.0 with two upstream corrections; hpr keeps body lift and
+  its rail release; a drift is gated unless a measurement excuses it.
 - M0.4, M1.4, M1.5, M1.6, M1.7 and M2.1b were split into increments, done-when bullets unchanged.
-- ADR-016 to ADR-018, the site: mdBook 0.5.4 over `docs/` (its MPL-2.0 theme files ship in the
-  site); Unicode equations; our own link and label checks; web links counted, not fetched (#38);
-  *In short* in a fixed form; *Accuracy*'s numbers checked against the files they link; the
-  records stay files; examples run in CI against committed output, and quotes match line for line.
-- ADR-020: the reader test reads the built site cold, twice; every milestone and lesson label links
-  a row of plain words, which the site check holds to the roadmap; the rustdoc is checked too.
-- ADR-019: the rustdoc is part of the site (`api/`), crates link the guide by its address; CI
-  deploys from `main` after every check, and skips with a warning while Pages is off.
+- ADR-016 to ADR-020, the site: mdBook 0.5.4 over `docs/`; Unicode equations; our own link, label
+  and number checks; examples run in CI; the rustdoc is part of the site; the reader test reads it
+  cold; CI deploys from `main`.
 - ADR-001 to ADR-007 and M0.3 (details in `DECISIONS.md`): licence and layout; refs pinned by hash;
   body `+z` to the nose, WGS 84 gravity and Coriolis; atmosphere and wind by height above sea
   level; NFPA 1125 motor statistics, 32 curves; full inertia tensors, Crowell's secant ogive;
@@ -128,8 +127,10 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
 - A new RustSec notice can turn CI red with no code change: upgrade, replace, or `ignore` with a
   reason. API snapshots can't be reproduced once an API moves: CI checks committed fixtures only.
 - Barrowman 1966, TIR-33, Galejs, the `.rse` spec and Knacke have no clear terms: never redistribute.
-- Aero (M1.5a) is small-angle only and documented to Mach 0.8; body-lift `K` is uncertain (Galejs:
-  1.0 to 1.5) and the Recruiter's six fins miss the printed slope by +3.42% (+2.87% whole; ADR-008).
+- Aero (M1.5a) is small-angle only; body-lift `K` is uncertain (Galejs: 1.0 to 1.5) and the
+  Recruiter's six fins miss the printed slope by +3.42% (+2.87% whole; ADR-008). Through Mach 1
+  (M1.8a) the normal force misses the wind tunnel between Mach 0.8 and 1.2, and past Mach 3 reads
+  17–25% low from the body (M1.8e; ADR-027).
 - Drag (M1.5b): the RASAero comparison can't show 10% agreement without the exports' inputs (fins
   and finish move each case by 20%+). hpr misses Valetudo's suspect table by 47% and Cavour's
   power-on by 18% (open; ADR-009); drag reads low from about Mach 0.6 until M1.8.
