@@ -271,7 +271,7 @@ fn the_metrics_that_are_not_scored_are_these_and_no_others() {
     //   (M1.8a, ADR-027), Prometheus 2022's two. hpr's body lift at the rail exit's angle of
     //   attack, which RocketPy's linear normal force leaves out, its release at the last rail
     //   button, and Juno III's flat-plate fin slope; with all three added to RocketPy
-    //   (`wind_response.py`) the drifts land within 1.4% of hpr's. Every other drift is gated.
+    //   (`wind_response.py`) the drifts land within 1.3% of hpr's. Every other drift is gated.
     // - Prometheus 2022's whole-flight maximum is its main opening, as NDRT 2020's is.
     // - In calm air (M2.1d2), Calisto's acceleration time for the same reason as in wind.
     //

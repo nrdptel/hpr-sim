@@ -17,13 +17,13 @@
 # miss does not fail the run and a number that moves still shows in the committed report. The
 # misses, and why:
 #
-# - apogee_drift_m (-10.46%) and landing_drift_m (-22.95%): the path in wind, a measured model
+# - apogee_drift_m (-9.39%) and landing_drift_m (-20.81%): the path in wind, a measured model
 #   difference (ADR-026): hpr's body lift and its release at the last rail button, which RocketPy
-#   has neither of. The same-drag case reports them at -11.26% and -23.83% and does not score them.
+#   has neither of. The same-drag case reports them at -10.20% and -21.69% and does not score them.
 #   Nothing else misses: hpr's coasting C_D0 at Mach 0.3 is 0.424 against the example's 0.43
 #   (computed as `cargo xtask aero` computes it, pinned by
-#   `aero::tests::the_drags_the_predicted_cases_quote_are_hpr_s`), and the apogee is +1.00%,
-#   against +0.38% flown on the same drag. RocketPy's own Bella Lui acceptance
+#   `aero::tests::the_drags_the_predicted_cases_quote_are_hpr_s`), and the apogee is +0.97%,
+#   against +0.34% flown on the same drag. RocketPy's own Bella Lui acceptance
 #   test (tests/acceptance/test_bella_lui_rocket.py) flies the notebook's replacement curve by
 #   setting power_off_drag_7d directly; this reference flies the notebook as it runs, and the curve
 #   would move RocketPy's apogee by -0.037% (measured in review), changing no verdict.

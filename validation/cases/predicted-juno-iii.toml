@@ -17,13 +17,13 @@
 # miss does not fail the run and a number that moves still shows in the committed report. The
 # misses, and why:
 #
-# - apogee_drift_m (-40.40%) and landing_drift_m (+45.06%): the path in wind, a measured model
+# - apogee_drift_m (-36.08%) and landing_drift_m (+40.48%): the path in wind, a measured model
 #   difference (ADR-026): hpr's body lift at the rail exit's 26-degree angle of attack, its release
 #   at the last rail button, and its thin-plate fins where the example gives an airfoil lift curve.
-#   The same-drag case reports them at -42.51% and +40.93% and does not score them.
+#   The same-drag case reports them at -38.16% and +36.68% and does not score them.
 #
-# Nothing else misses. The apogee is +2.16%: hpr's C_D0 at Mach 0.3 is 6.0% below the example's
-# curve (`validation/fixtures/aero/rocketpy-drag-curves.json`), and the same-drag case is +0.70%.
+# Nothing else misses. The apogee is +2.10%: hpr's C_D0 at Mach 0.3 is 6.0% below the example's
+# curve (`validation/fixtures/aero/rocketpy-drag-curves.json`), and the same-drag case is +0.64%.
 # Read literally, the notebook's rescaling to C_D(0.6) = 0.38 never reaches RocketPy's flight;
 # applied, it lowered RocketPy's apogee by 0.66% in M2.1c2's review (before ADR-026's
 # corrections), which would put this row near +2.8%.

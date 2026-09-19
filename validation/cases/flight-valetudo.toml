@@ -25,18 +25,19 @@
 # - The rail. hpr's rail equation keeps the variable-mass terms (the centre of mass moving inside
 #   the body as propellant burns), which RocketPy's `udot_rail1` leaves out. At a sharp ignition
 #   spike, with thrust and mass the same to five digits, hpr's acceleration is 1.2 to 1.3 m/s^2
-#   higher (Calisto at 0.05 s: 112.34 against 111.18; Bella Lui at 0.007 s: 74.14 against 72.84).
+#   higher (Calisto at 0.05 s: 112.35 against 111.18; Bella Lui at 0.007 s: 74.14 against 72.84).
 #   hpr also keeps the rocket guided until its last button leaves, where RocketPy frees it at the
 #   first. Freed where hpr frees it, RocketPy's apogee moves by at most 0.19% (Bella Lui) and its
 #   drifts by up to 12% (Bella Lui's landing in wind; `wind_response.py`, ADR-026).
 # - The wind. Same-drag mode shares C_D0, not the normal force. In wind a rocket leaves the rail
 #   at an angle of attack of up to 26 degrees here (Juno III: 18 m/s in an 8.5 m/s wind), where
-#   hpr's normal force includes body lift (Galejs, C_N = K (A_plan/A_ref) sin^2 alpha, K = 1.1;
-#   ADR-008) and RocketPy's is linear in alpha with no body term. Much of body lift acts ahead of
+#   hpr's normal force includes body lift (Jorgensen's crossflow term, C_N = eta C_dn (A_plan/A_ref)
+#   sin^2 alpha, eta C_dn about 0.9 here; ADR-037) and RocketPy's is linear in alpha with no body
+#   term. Much of body lift acts ahead of
 #   the rocket's centre of mass, the nose's above all, so at a steep angle it moves the centre of
 #   pressure forward and weakens the moment that turns the rocket into the wind: hpr turns into it
 #   less. Its sideways push alone is about a sixth of the effect (ADR-026). Added to RocketPy with hpr's rail release (and, for Juno III, its thin-plate fins),
-#   it brings RocketPy's drifts to within 1.4% of hpr's in every windy case
+#   it brings RocketPy's drifts to within 1.3% of hpr's in every windy case
 #   (`validation/oracles/rocketpy/wind_response.py`). Where the two models' difference carries a
 #   drift past 3%, the drift is reported as a measured model difference and not scored (ADR-026).
 #   hpr's growth of C_D0 with the angle of attack (up to 1.3 times at 17 degrees; RocketPy's table
@@ -55,7 +56,7 @@
 # the peak acceleration), so the reference is the model's answer to well inside the gate.
 #
 # Valetudo: 778 m AGL in still air, drogue only. The worst scored difference is the landing drift
-# at -1.95%. Against RocketPy as released it was -3.41% and not scored (issue #50); the corrected
+# at -1.81%. Against RocketPy as released it was -3.41% and not scored (issue #50); the corrected
 # reference (ADR-026) brings it inside the gate.
 id = "flight-valetudo"
 title = "Valetudo from the pad to the ground, same-drag"

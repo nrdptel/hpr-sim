@@ -311,11 +311,9 @@
     *Done when:*
     - A separation gives every body a landing, and the bodies' masses sum to the rocket's.
 
-    *Result (ADR-014):* met. A `Separation` splits the stack at a stage boundary; each body flies
-    as a point mass with its own stages' and motors' mass under the devices that name it. On the
-    two-stage test design both bodies land (the sustainer at 2.11 m/s under a canopy, the booster
-    at 16.74 m/s tumbling), the masses add to the stack's to 1e-12 and the momenta to 1e-9. Every
-    body must carry a device, and a separation must follow the last burnout.
+    *Result (ADR-014):* met. A `Separation` splits the stack at a stage boundary, each body a point
+    mass under its devices; on the two-stage test design both land (2.11 m/s under a canopy, 16.74
+    m/s tumbling), masses to 1e-12, momenta to 1e-9. Every body carries a device.
 
 - [x] **M2.1 Validation harness plus the RocketPy code-to-code suite.** This is the first
   end-to-end milestone.
@@ -479,12 +477,10 @@
         records the measured cause and why they cannot be, and the gap stays visible in the
         report.
 
-      *Result (ADR-026):* met. Mostly RocketPy's: during the burn `u_dot_generalized` took its
-      moments about a point mirrored across the dry centre of mass (upstream #1186, PR #1196; and
-      PR #1188's jet-damping lever). The oracle flies both corrections (`corrections.py`). The
-      rest is measured (`wind_response.py`): hpr's body lift at a slow rocket's rail exit, its
-      last-button release and Juno III's thin fins put RocketPy within 1.4% of hpr in every windy
-      case. Six drifts are now gated and pass; five stay reported as model differences.
+      *Result (ADR-026):* met. Mostly RocketPy's: in the burn it took moments about a point
+      mirrored across the dry centre of mass (#1186, PR #1196; PR #1188), both corrected in
+      `corrections.py`. `wind_response.py` measures the rest: body lift, the last-button release
+      and Juno III's thin fins put RocketPy within 1.4% of hpr in wind. Six drifts gated; five not.
 
 - [ ] **M1.8 Aerodynamics II (transonic and supersonic, damping, overrides).**
   - Transonic drag rise and supersonic wave drag.
@@ -518,7 +514,8 @@
 
     *Result (ADR-027):* met. Linear theory from `M_s`, a join from Mach 0.8. L7 passes; 37 rows
     pinned, 16 outside the targets, explained. Mach 1.5–2.96: `C_Nα` −13.4% to +3.3%, CP within
-    0.42 calibers; past Mach 3, 17–25% low (M1.8e). Prometheus flies through Mach 1.010.
+    0.42 calibers; past Mach 3, 17–25% low (M1.8e). Prometheus flies through Mach 1.010. Since
+    M1.8e6's body lift (ADR-037): 17 outside; Mach 1.5–2.96 −16.3% to +1.4%, CP within 0.47.
 
   - [x] **M1.8b Transonic and supersonic drag.** Every drag term's transonic and supersonic
     branch, and nose wave drag. Loft lessons L17 and L18.
@@ -579,7 +576,7 @@
     with body lift. A cited supersonic method for noses, boattails and crossflow. *Done when:*
     the Arcas Robin's body-alone `C_Nα` (fins off, TN D-4014) is within 15% at every Mach number
     from 1.5, and both configurations' `C_Nα` within 15% at Mach 3.96 and 4.63, or an ADR records
-    why not with the gap in the report. Split below into M1.8e1 to e7; e7 carries this bullet.
+    why not with the gap in the report. Split below into M1.8e1 to e8; e8 carries this bullet.
 
     - [x] **M1.8e1 The second-order shock-expansion method.** NACA TN 3527's method for a
       pointed body's `C_Nα` and CP at `α → 0`, the cylinder's lift behind the nose included; its
@@ -591,9 +588,9 @@
         measurements. Every miss is explained.
       - The Arcas Robin's nose and cylinder, with and without its boattail (footnote 8), are
         computed at each Mach number of TN D-4014 and reported beside the measured body alone.
-      *Result (ADR-033):* not met, recorded. Against its values, slopes 102 and CPs 125 of 144
-      within (a second implementation agrees with hpr; #81 at its limit); against its
-      measurements 117 and 109 of 120. Arcas Robin: short −18.7% to +16.4%, long to −26.4%.
+      *Result (ADR-033):* not met, recorded: slopes and CPs 102 and 125 of 144 within its values
+      (a second implementation agrees; #81 at its limit), 117 and 109 of 120 of its measurements;
+      Arcas Robin −18.7% to +16.4%, long to −26.4%.
     - [x] **M1.8e2 The body's supersonic normal force in flight.** The body's terms take Mach:
       M1.8e1's method for a pointed nose and its cylinder where it holds, joined to slender-body
       theory below it. *Done when* (targets set before measuring):
@@ -615,9 +612,12 @@
       sizes each candidate (crossflow at the tunnel's angles, blunt tip, Fig. 2 below Mach 3, #81)
       from cited sources against the Arcas Robin's gaps at each TN D-4014 Mach from 1.5, ranked.
       *Result:* met; like for like hpr reads 15–73% high: crossflow's size, then the boattail.
-    - [ ] **M1.8e6 Crossflow and the boattail faster than sound** (ADR-036; blunt tips). *Done when:*
+    - [x] **M1.8e6 Crossflow and the boattail faster than sound** (ADR-036, ADR-037). *Done when:*
       flown with no jump at ±1e-9 in Mach; the Arcas Robin through a flight's path in the report.
-    - [ ] **M1.8e7 #87's model switches and #90's cap.** *Done when:* both closed; M1.8e's bullet.
+      *Result:* met; like for like +3.4% to +41.0% (was +14.9% to +73.2%); M1.8a gains a miss.
+    - [ ] **M1.8e7 Blunt tips and the lip faster than sound** (from e6). *Done when:* flown with no
+      jump at ±1e-9 in Mach; the Arcas Robin through a flight's path in the report.
+    - [ ] **M1.8e8 #87's model switches and #90's cap.** *Done when:* both closed; M1.8e's bullet.
 
 - [ ] **M3.1 OpenRocket `.ork` import.**
   - Handles zip, gz and raw XML, schema 1.0 to 1.10, plus the documented 1.11 additions.

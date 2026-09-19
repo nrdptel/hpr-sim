@@ -259,6 +259,15 @@ dest = "refs/papers/nswc-tr-81-156-mason-1981-aero-design-manual.pdf"
 license = "US government work"
 mode = "fetched"
 
+[[file]]
+name = "washington-pettis-1968-rd-tm-68-5"
+title = "W. D. Washington and W. Pettis Jr., Boattail effects on static stability at small angles of attack, U.S. Army Missile Command report RD-TM-68-5 (DTIC AD-695658), 1968"
+url = "https://archive.org/download/DTIC_AD0695658/DTIC_AD0695658.pdf"
+sha256 = "2e0cfcd70890914dbb51d8e93ec6f1657d7031d97631dffb6fe7cfb10734bc58"
+dest = "refs/papers/washington-pettis-1968-rd-tm-68-5.pdf"
+license = "US government work"
+mode = "fetched"
+
 # NTRS serves this one with a 436-byte header before the %PDF marker; the pin is for the bytes as
 # served.
 [[file]]

@@ -491,4 +491,46 @@ mod tests {
             flown["apogee_east_m"].as_f64().unwrap() - own["apogee_east_m"].as_f64().unwrap();
         assert!(moved.abs() > 1.0, "{moved}");
     }
+
+    /// `docs/physics/aero.md`'s row on the Calisto flights quotes the fixture: the apogees on
+    /// the export and on hpr's own normal force, how much further into the wind the export puts
+    /// it, how little hpr's own as a table moves it, and the time past 4°.
+    #[test]
+    fn the_guide_quotes_the_flights() {
+        let fixture = fixture(super::FIXTURE);
+        let flights = fixture["flights"].as_array().unwrap();
+        let find = |label: &str| {
+            flights
+                .iter()
+                .find(|f| f["normal_force"].as_str() == Some(label))
+                .unwrap()
+        };
+        let own = find("hpr's own");
+        let table = find("hpr's own as a table at the export's angles and Mach numbers");
+        let export = find("the RASAero II export");
+        let f = |flight: &Value, key: &str| flight[key].as_f64().unwrap();
+        // Metres to two decimals with a thousands comma, rounded once so that .995 carries.
+        let comma = |x: f64| {
+            let cents = (x * 100.0).round() as i64;
+            let whole = cents / 100;
+            format!("{},{:03}.{:02}", whole / 1000, whole % 1000, cents % 100)
+        };
+        let upwind = f(own, "apogee_east_m") - f(export, "apogee_east_m");
+        let moved = (f(table, "apogee_east_m") - f(own, "apogee_east_m"))
+            .hypot(f(table, "apogee_north_m") - f(own, "apogee_north_m"));
+        let past: Vec<f64> = flights.iter().map(|x| f(x, "past_4_degrees_s")).collect();
+        let (lo, hi) = past
+            .iter()
+            .fold((f64::MAX, f64::MIN), |(a, b), &p| (a.min(p), b.max(p)));
+        let row = format!(
+            "the export: apogee {} m against {} m, {upwind:.1} m further into the wind. hpr's own \
+             as a table moves it {moved:.2} m: the table's method, apart from its numbers. Each \
+             flight spends {lo:.1} to {hi:.1} s past 4° before apogee",
+            comma(f(export, "apogee_m")),
+            comma(f(own, "apogee_m")),
+        );
+        let root = crate::designs::root().unwrap();
+        let guide = std::fs::read_to_string(root.join("docs/physics/aero.md")).unwrap();
+        assert!(guide.contains(&row), "aero.md doesn't say `{row}`");
+    }
 }

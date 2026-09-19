@@ -55,17 +55,17 @@ event                time (s)   CG height (m)   speed (m/s)
 liftoff                  0.00             0.9           0.0
 rail exit                0.37             3.9          16.2
 burnout                  3.26           216.0         111.0
-apogee                  13.84           779.0           6.2
-drogue charge fires     13.84           779.0           6.2
-drogue opens            14.34           777.9           7.4
-main charge fires       39.25           150.0          27.0
-main opens              40.25           123.5          27.0
-landing                 58.95             0.0           8.1
+apogee                  13.83           778.7           6.4
+drogue charge fires     13.83           778.7           6.4
+drogue opens            14.33           777.6           7.7
+main charge fires       39.23           150.0          27.0
+main opens              40.23           123.5          27.0
+landing                 58.93             0.0           8.1
 
-Apogee:     779.0 m (2556 ft) above the pad, 85.8 m from it at a bearing of 270°, at 13.84 s
+Apogee:     778.7 m (2555 ft) above the pad, 88.7 m from it at a bearing of 270°, at 13.83 s
 Top speed:  112.3 m/s (Mach 0.34), at 3.0 s
 Rail exit:  16.2 m/s
-Landing:    94.3 m from the pad at a bearing of 90°, falling at 6.4 m/s, at 58.95 s
+Landing:    90.2 m from the pad at a bearing of 90°, falling at 6.4 m/s, at 58.93 s
 ```
 
 You should see exactly these numbers. The project's automated checks (CI, for continuous
@@ -124,12 +124,12 @@ as it burns.
   ([Rigid-body flight](physics/flight.md#equations-of-motion)).
 
 The speed is over the ground, so it includes the drift. At apogee the rocket is still moving
-sideways at 6.2 m/s. At landing it falls at 6.4 m/s while the 5 m/s wind carries it east, 8.1 m/s
+sideways at 6.4 m/s. At landing it falls at 6.4 m/s while the 5 m/s wind carries it east, 8.1 m/s
 in all (√(6.4² + 5²) ≈ 8.1).
 
 Below the table:
 
-- **Apogee** is the highest point, in metres and feet, and where it was: 85.8 m from the pad at a
+- **Apogee** is the highest point, in metres and feet, and where it was: 88.7 m from the pad at a
   [bearing](glossary.md#bearing) of 270°. A bearing is a direction clockwise from north, so 270°
   is due west.
 - **Top speed** is the fastest the rocket went, over the ground, with its
@@ -142,7 +142,7 @@ Below the table:
   [what is left out](how-a-flight-is-simulated.md#what-is-left-out)). hpr sets no minimum
   rail-exit speed and doesn't judge whether this one is enough; that call is your range safety
   officer's.
-- **Landing** is where the rocket came down, 94.3 m due east of the pad, and how fast it was
+- **Landing** is where the rocket came down, 90.2 m due east of the pad, and how fast it was
   falling. The rocket [weathercocks](glossary.md#weathercocking): it turns into the wind as it
   climbs, so its apogee is west of the pad. It then drifts east under its parachutes, past the
   pad.
@@ -198,12 +198,12 @@ Below the table:
   Valetudo's apogee under three drag models, from a 3 m rail in 5 m/s of wind
 
   drag coefficient                             apogee (m)
-  hpr's own, from the design                       779.0
-  0.728, from the rocket's OpenRocket file         753.6
-  1.05, from RocketPy's example curve              711.8
+  hpr's own, from the design                       778.7
+  0.728, from the rocket's OpenRocket file         753.3
+  1.05, from RocketPy's example curve              711.5
   ```
 
-  For this rocket, the three drag values on record move the apogee from 779.0 m to 711.8 m, 8.6%
+  For this rocket, the three drag values on record move the apogee from 778.7 m to 711.5 m, 8.6%
   lower. That is a spread, not a bound:
 
   - It shows how much this rocket's apogee depends on its drag. It doesn't say how far hpr's
