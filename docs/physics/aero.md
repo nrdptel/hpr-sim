@@ -92,7 +92,8 @@
   ([The body faster than sound in a flight](#the-body-faster-than-sound-in-a-flight)). A rocket
   with a boattail, or whose nose has a blunt or vertical tip, keeps slender-body theory for its
   whole body at every speed, which reads low past Mach 3, until
-  [M1.8e3](../decisions-and-roadmap.md#m1-8e3), the boattail and crossflow. There are no damping coefficients for pitch and
+  [M1.8e4](../decisions-and-roadmap.md#m1-8e4), the boattail, and
+  [M1.8e5](../decisions-and-roadmap.md#m1-8e5), crossflow and blunt tips. There are no damping coefficients for pitch and
   yaw: a flight takes that damping from each part's own local flow. The roll forcing near Mach
   1.5 reads high, and nothing measured checks roll below it
   ([Roll: forcing and damping](#roll-forcing-and-damping)).
@@ -402,7 +403,7 @@ so no flight checks it yet.
 tip, and the body tubes straight behind it at the same radius. It flies only if nothing behind
 those tubes changes the radius: no boattail, flare or step. Mixing the method's nose and cylinder
 with slender-body theory's boattail would put the centre of pressure further off than slender-body
-theory alone, so such a body waits for [M1.8e3](../decisions-and-roadmap.md#m1-8e3), which takes
+theory alone, so such a body waits for [M1.8e4](../decisions-and-roadmap.md#m1-8e4), which takes
 the boattail. Each covered part gets its own share of the method's lift, at its own centre of
 pressure, so the flight's pitch damping still comes from each part's own local flow. Body lift,
 the `sin² α` term, is unchanged.
@@ -411,11 +412,20 @@ the `sin² α` term, is unchanged.
 flight. So the first time a flow faster than Mach 1.2 needs it, hpr runs the method every 0.05 in
 Mach from Mach 5 down, to the lowest Mach at which it holds, and keeps the results. Between those
 Mach numbers it interpolates in a straight line. That took about 0.3 s once per rocket in a debug
-build on the development Mac (measured by hand); a rocket that never passes Mach 1.2 never pays
-it.
+build on the development Mac (measured by hand, for a body the method takes from Mach 1.2); a
+body whose join starts higher adds about 48 runs for the bisection below. A rocket that never
+passes Mach 1.2 never pays it.
 
 **The join.** Write SB for slender-body theory, SE for the shock-expansion method, and `M_j` for
-where the join starts: Mach 1.2, or the table's lowest Mach if that is higher. From `M_j` to
+where the join starts: Mach 1.2, or the lowest Mach at which the method holds if that is higher.
+hpr narrows that Mach down between two rows of the table by halving the gap (bisection) until no
+smaller step exists in the computer's numbers. It then runs the method at that Mach and adds the
+result as an extra row. The start must be that exact: there the method's shares climb from zero
+like the square root of the distance in Mach, so a start off by `δ` puts `√δ`-sized shares in
+that row.
+So the start moves smoothly with the nose's shape instead of in 0.05 steps. A cone with a 20°
+half-angle (the angle between its side and its axis) joins from Mach 1.341910; each 0.1° steeper,
+up to 20.5°, moves the start about 0.0027 later, to 1.355500. From `M_j` to
 `M_j + 0.3`, each covered part's slope, moment and station move in a straight line from SB's to
 SE's:
 
@@ -424,11 +434,17 @@ SE's:
 Every piece is a straight line in Mach, so nothing jumps. The test
 `the_supersonic_join_has_no_jump` looks at ±1e-9 in Mach on each side of the join's ends, of
 table rows, between rows and at Mach 4.999, and `a_blunter_cone_joins_where_the_method_starts_to_hold`
-does the same for a 20° cone whose join starts higher. Mach 1.2 to 1.5 is a judgement: below Mach
-1.2 the flow over the nose is transonic, which the method doesn't cover, and Mach 1.5 is the
+does the same for the 20° cone, whose join starts higher.
+`the_joins_start_moves_with_the_nose_not_in_steps` pins that cone's start and the 20.5° cone's to
+1e-6, checks the start is off the grid, that the cylinder's share at the start is under 1e-5 per
+radian (about 1e-7), and that the start moves by less than 1e-7 when the cone steepens by a
+millionth of a degree (2.7e-8). Mach 1.2 to 1.5 is a judgement: below Mach 1.2 the flow over the nose is
+transonic, which the method doesn't cover, and Mach 1.5 is the
 lowest Mach at which NASA measured the Arcas Robin
 ([ADR-034](https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-034-the-bodys-supersonic-normal-force-in-flight-tabulated-shock-expansion-shares-joined-linearly-from-mach-12-2026-09-19),
-the decision behind it). Small changes in shape can still switch a body between the two models
+the decision behind it). Small changes in shape can still switch a body between the two models,
+for example a nose so steep that the method never holds at any Mach up to 5, so the rocket
+keeps slender-body theory throughout
 ([issue #87](https://github.com/nrdptel/hpr-sim/issues/87)).
 
 **A worked example: the Arcas Robin's nose and cylinder.** NASA measured the Arcas Robin's body
@@ -1688,9 +1704,10 @@ The method's slope grows with Mach number, as the measurement does: 2.55 to 3.37
 model, where slender-body theory keeps its nose at 2. By the end of either cylinder the lift has
 died away, so the long model gets almost nothing more (3.313 against 3.300 at Mach 3.96), while
 its measurement is 0.57 higher. That difference goes with the longer body's larger side area,
-the mark of crossflow lift. Crossflow, the boattail and the lip are
-[M1.8e3](../decisions-and-roadmap.md#m1-8e3)'s to settle, the boattail and crossflow faster than
-sound; below Mach 3 the tangent cones' slopes are an assumption.
+the mark of crossflow lift. The boattail is
+[M1.8e4](../decisions-and-roadmap.md#m1-8e4)'s to settle, the boattail's share faster than sound;
+crossflow and the lip are [M1.8e5](../decisions-and-roadmap.md#m1-8e5)'s, crossflow and blunt tips
+faster than sound. Below Mach 3 the tangent cones' slopes are an assumption.
 
 ### Drag verification
 

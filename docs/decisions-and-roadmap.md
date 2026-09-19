@@ -142,7 +142,9 @@ missing or its status disagrees.
 | <a id="m1-8e"></a>[M1.8e][phase-1] | The body's normal force faster than sound, which slender-body theory underestimates past Mach 3 | not yet done |
 | <a id="m1-8e1"></a>[M1.8e1][phase-1] | The second-order shock-expansion method: the lift a body's cylinder carries behind its nose faster than sound, checked against its report's tables | done |
 | <a id="m1-8e2"></a>[M1.8e2][phase-1] | The body's supersonic normal force in a flight: the nose and its cylinder, joined to the subsonic model | done |
-| <a id="m1-8e3"></a>[M1.8e3][phase-1] | The boattail and crossflow faster than sound, against the Arcas Robin wind tunnel | not yet done |
+| <a id="m1-8e3"></a>[M1.8e3][phase-1] | Faster than sound: the blend into the shock-expansion method now starts at the exact Mach where the method starts to hold, not rounded to a 0.05 step | done |
+| <a id="m1-8e4"></a>[M1.8e4][phase-1] | The boattail's share of the body's normal force faster than sound | not yet done |
+| <a id="m1-8e5"></a>[M1.8e5][phase-1] | Crossflow and blunt tips faster than sound, against the Arcas Robin wind tunnel | not yet done |
 | <a id="m3-1"></a>[M3.1][phase-1] | Reading OpenRocket `.ork` design files | not yet done |
 | <a id="m2-2"></a>[M2.2][phase-1] | OpenRocket as a reference program, and a corpus of designs to compare | not yet done |
 | <a id="m1-9"></a>[M1.9][phase-1] | Staging, clusters and air starts, for COTS motors | not yet done |

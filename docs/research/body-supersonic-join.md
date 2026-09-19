@@ -53,12 +53,12 @@ number over nose fineness from 0.4 to 2; `slope` doesn't enforce that range.
   shoulder-drag jump in `docs/research/loft-lessons.md`).
 - A refusal inside a flight's Mach range would be a jump. So find, when the model is built, the
   lowest Mach at which the body's method holds, and join above that. A body the method can't
-  take at all (blunt tips, M1.8e3) keeps slender-body theory at every Mach, and the report
+  take at all (blunt tips, M1.8e5) keeps slender-body theory at every Mach, and the report
   says so.
 - Known inputs for the join: Fig. 2 is held below Mach 3 (ADR-033); the Prometheus case peaks at
   Mach 1.01 to 1.06, so it should not change; hpr's Arcas Robin nose is a power series, which the
   method takes as a pointed body (M1.8e1's fixture used a fitted secant ogive, ratio 1.744).
-- Body lift (Galejs's crossflow term) stays as it is until M1.8e3.
+- Body lift (Galejs's crossflow term) stays as it is until M1.8e5.
 
 ## Checks to write first
 
