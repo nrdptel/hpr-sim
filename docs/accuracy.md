@@ -24,6 +24,8 @@ What has been checked so far:
   ([fixture][nf-fixture]);
 - drag from Mach 0.6 to 4.63 against the same wind-tunnel tests, the forebody only
   ([Aerodynamics](physics/aero.md#drag-against-the-arcas-robin-wind-tunnel));
+- a boattail's own drag and the base pressure behind it, from Mach 0.6 to 3.24, against measured
+  boattails in five NACA and NASA wind tunnels ([drag fixture][drag-fixture]);
 - drag from Mach 0.1 to 2.0 against the curves labelled RASAero II in RocketPy's example rockets
   ([Aerodynamics](physics/aero.md#drag-against-rasaero-ii-through-mach-2)), and from Mach 0.5 to
   3.2 against a worked example in MIL-HDBK-762, the U.S. Army's handbook for designing unguided
@@ -87,7 +89,7 @@ parachute descents sample, as part of that comparison, and nowhere else
 | [Shapes](physics/shapes.md) | ✓ | — | — | — |
 | [Mass properties](physics/mass.md) | ✓ | — | — | — |
 | [Solid motors](physics/motor.md) | ✓ | — | ✓ RocketPy, ThrustCurve.org | — |
-| [Aerodynamics](physics/aero.md) | ✓ | ✓ Barrowman's examples; MIL-HDBK-762's drag example, fins left out: 6 of 12 within 10%, the body reading 6% to 10% low faster than sound | partial: drag and the normal force against RASAero II to Mach 2, the drag with the fins and finish guessed and missing faster than sound; and in whole flights, against a target | — (wind tunnel ✓, normal force and drag; drag reads high at most speeds) |
+| [Aerodynamics](physics/aero.md) | ✓ | ✓ Barrowman's examples; MIL-HDBK-762's drag example, fins left out: 6 of 12 within 10%, the body reading 6% to 10% low faster than sound | partial: drag and the normal force against RASAero II to Mach 2, the drag with the fins and finish guessed and 5% to 15% low faster than sound; and in whole flights, against a target | — (wind tunnel ✓: normal force, drag and boattails; the Arcas Robin's drag reads high at every speed) |
 | [Rigid-body flight](physics/flight.md) | ✓ | — | ✓ RocketPy, with the drag given; and on each code's own drag, against a target | — |
 | [Time integration](physics/integration.md) | ✓ | — | — | — |
 | [Recovery](physics/recovery.md) | ✓ | ✓ | ✓ RocketPy | — (drop tests ✓) |
@@ -129,12 +131,13 @@ may be from its reference and still pass.
 | [Aerodynamics](physics/aero.md) | [Barrowman's](glossary.md#barrowmans-method) five worked examples, at Mach 0 (low speed): each rocket's [normal-force slope](glossary.md#normal-force-slope) and [centre of pressure](glossary.md#centre-of-pressure-cp) | every centre of pressure within 1%. Every slope within 1% too, except the six-fin Recruiter's: +2.87% (+3.42% on its fins alone) |
 | [Aerodynamics](physics/aero.md) | drag curves labelled [RASAero](glossary.md#rasaero-ii) in RocketPy's examples, at [Mach](glossary.md#mach-number) 0.3, with the fins and surface finish guessed because the curves don't record them | within 10% in four of seven cases; −18.3% for Cavour [power-on](glossary.md#power-on-and-power-off-drag) (motor burning), cause open |
 | [Aerodynamics](physics/aero.md) | Valetudo's drag table, which is 1.44 times the drag in the [OpenRocket](glossary.md#openrocket) export for the same rocket | −47.0% power-off and −50.4% power-on. Against the OpenRocket export, hpr is 23.5% under as designed here, and 1.9% under with the export's own surface finish and launch lugs |
-| [Aerodynamics](physics/aero.md#drag-against-rasaero-ii-through-mach-2) | the same curves every 0.05 from Mach 0.1 to 2.0, as far as each reaches; Calisto's, the one real RASAero II export, to Mach 2 | Calisto within 10% at 15 of 15 subsonic Mach numbers, 2 of 7 transonic and 0 of 17 supersonic, where hpr reads −29.8% to −24.4%; no plausible choice of fins or finish puts every band within 10%. Part of it is hpr's body, which reads low faster than sound against MIL-HDBK-762 too; a boattail's supersonic wave drag, which hpr doesn't model, is a candidate for the rest |
+| [Aerodynamics](physics/aero.md#drag-against-rasaero-ii-through-mach-2) | the same curves every 0.05 from Mach 0.1 to 2.0, as far as each reaches; Calisto's, the one real RASAero II export, to Mach 2 | Calisto within 10% at 15 of 15 subsonic Mach numbers, 6 of 7 transonic and 8 of 17 supersonic, where hpr reads −14.9% to −5.1%, lowest at Mach 2 (−29.8% to −24.4% before the boattail's supersonic wave drag). Other plausible fins put 14 to 17 of the 17 within 10%, so what is left is within the unrecorded inputs; part of it is hpr's body, which reads low faster than sound against MIL-HDBK-762 too |
 | [Aerodynamics](physics/aero.md#drag-against-mil-hdbk-762s-sample-calculation) | MIL-HDBK-762's worked drag example, a rocket whose every term the handbook calculates, from Mach 0.5 to 3.2: a calculation with every input known, not a measurement. Its fins are sharp-edged wedges, which hpr can't represent, so their pressure drag is left out on both sides | 6 of 12 within 10%. From Mach 0.9 to 1.2, +12.3% to +31.9%, mostly the nose and the base; from Mach 1.6, −6.0% to −9.6%, friction and the base |
 | [Rigid-body flight](physics/flight.md) | the exact motion of a tumbling, spinning rocket in a vacuum, over 22 s | the centre of mass within 1.7e-6 m of the exact parabola |
 | [Aerodynamics](physics/aero.md) | NASA's wind-tunnel tests of the half-scale Arcas Robin and a longer version, Mach 0.6 to 4.63: [normal-force slope](glossary.md#normal-force-slope) and centre of pressure, 22 readings at 12 Mach numbers ([fixture][nf-fixture]) | from Mach 1.5 to 2.96, the slope −13.4% to +3.3% and the centre of pressure within 0.42 [calibres](glossary.md#calibre-caliber); past Mach 3 the slope −17.2% to −25.0% (the body's lift, measured with the fins off, is 3.9 to 4.6 against hpr's 2.3 to 2.8), the centre of pressure within 0.19; from Mach 0.8 to 1.2, 2 of 9 within 15% and half a calibre |
 | [Aerodynamics](physics/aero.md) | RASAero II's normal-force slope and centre of pressure for Calisto, Mach 0.1 to 2.0 ([fixture][nf-fixture]) | within 15% and half a calibre at 10 of 15 Mach numbers; hpr's slope rises with Mach through subsonic flow where RASAero II's stays flat (+21.9% at Mach 0.9), and is −16.8% at Mach 2 |
-| [Aerodynamics](physics/aero.md) | NASA's wind-tunnel tests of the same two models, Mach 0.6 to 4.63: drag on the forebody (the models' bases sat on a sting), fins on and off, 44 readings ([Aerodynamics](physics/aero.md#drag-against-the-arcas-robin-wind-tunnel)) | 8 of 44 within 10%. From Mach 0.95 to 1.2, −10.9% to +18.3%. From Mach 0.6 to 0.9, +27.6% to +49.1%, mostly two causes: hpr's boattail rule, which over-predicts the pressure on the models' 15° boattail, and a lip 1.3 mm long at the models' base, which hpr treats as if it met undisturbed air. With the fins off, from Mach 2.3, +20.5% to +71.1%, 0.084 to 0.085 of it the lip. With the fins on, from Mach 1.5, +29.8% to +190.5%, where hpr's fins' drag stays near 0.30 and the measured falls to 0.046. hpr's base drag, on the flat aft end, is not measured by the tunnel: it has been checked at no speed faster than Mach 0.3 |
+| [Aerodynamics](physics/aero.md) | NASA's wind-tunnel tests of the same two models, Mach 0.6 to 4.63: drag on the forebody (the models' bases sat on a sting), fins on and off, 44 readings ([Aerodynamics](physics/aero.md#drag-against-the-arcas-robin-wind-tunnel)) | 4 of 44 within 10%, and every reading high. With the fins off, +13.5% to +24.1% from Mach 1.5 and +2.1% to +50.8% below, most of it the models' 15° boattail, which hpr over-predicts in a thick boundary layer. With the fins on, from Mach 1.5, +39.4% to +154.0%, where hpr's fins' drag stays near 0.30 and the measured falls to 0.046. hpr's base drag behind a plain cylinder is not measured by the tunnel and has been checked at no speed faster than Mach 0.3 |
+| [Aerodynamics](physics/aero.md#boattails-faster-than-sound) | conical boattails measured in five NACA and NASA wind tunnels, jet off, Mach 0.6 to 3.24: the boattail's own pressure drag (47 readings) and the base pressure behind it (12) ([drag fixture][drag-fixture]) | attached boattails of 10° or gentler from Mach 1.2: −6.3% to +17.4% (19 readings); from Mach 1.0 to 1.1, −18.2% to −5.4% (4); 16° in a boundary layer a fifth of the diameter thick, +26.4% to +54.1% (9); separated 30° and 45°, −2.8% to +6.6% (3). The base drag behind them within 0.0102 of the measured, 10 of 12 within 0.004. Below Mach 0.9, Niskanen's rule gives long boattails nothing where they measure 0.024 to 0.051 |
 | [Rigid-body flight](physics/flight.md) | RocketPy's whole flights from the pad to the ground, for six rockets, one past Mach 1, both codes flying one declared drag coefficient | heights, speeds, times and accelerations within 3% ([below](#whole-flights-against-rocketpy)), the largest +1.783% in the [report][report]; the path too, except the drifts of Juno III, Bella Lui and Prometheus 2022 in wind and NDRT 2020's apogee drift, reported, not scored, as measured differences between the models ([ADR-026][adr-026]) |
 | [Time integration](physics/integration.md) | a separate line-by-line transcription of `DOPRI5`, the published Fortran integrator by Hairer and Wanner that hpr's [Dormand–Prince](glossary.md#dormandprince-and-rk4) stepper follows, on the problem Hairer's own example program for `DOPRI5` solves: the Arenstorf orbit, the closed, looping path of a small body pulled by two large ones that circle each other | the same step counts |
 | [Time integration](physics/integration.md) | a vertical flight with drag that has an exact solution | apogee, deployment and landing times within 1.5e-8 s |
@@ -550,17 +553,18 @@ rest.
   Prometheus 2022, where it is above ([report][report]). Which drag is right is open until real
   flights ([M2.3](decisions-and-roadmap.md#m2-3), the real-flights milestone).
 - **Drag faster than sound reads high** against NASA's wind tunnel, above all with fins: with the
-  fins on, +29.8% at Mach 1.5 to +190.5% at 4.63. The fins take a blunt leading edge's formula,
-  and nothing models a thin, sharp fin's own wave drag. From Mach 0.6 to 0.9 the forebody reads
-  +27.6% to +49.1% high, mostly the boattail rule and a lip at the models' base. Niskanen's cone,
-  which ogives share, reads 45% to 105% above a measured cone through the rise near Mach 1
+  fins on, +39.4% at Mach 1.5 to +154.0% at 4.63. The fins take a blunt leading edge's formula,
+  and nothing models a thin, sharp fin's own wave drag. Niskanen's cone, which ogives share,
+  reads 45% to 105% above a measured cone through the rise near Mach 1
   ([Aerodynamics](physics/aero.md#drag-against-the-arcas-robin-wind-tunnel)).
-- **Drag faster than sound reads low against RASAero II's Calisto**, −29.8% to −24.4% from Mach
-  1.2 to 2.0, where the wind tunnel reads hpr high. Part of it is hpr's body, which reads 6% to
-  10% low faster than sound against MIL-HDBK-762's worked example as well. Calisto ends in a
-  short, steep boattail, and a boattail's own supersonic wave drag, which hpr's boattail rule
-  leaves out, is a candidate for the rest; the Arcas Robin's measured boattail supports only part
-  of it. [M1.8b3](decisions-and-roadmap.md#m1-8b3) measures it before hpr changes
+- **A steep boattail's drag reads high** in a thick boundary layer: 16° boattails +26.4% to
+  +54.1% from Mach 1.0 to 1.28, and the Arcas Robin's 15° boattail puts its forebody, fins off,
+  +13.5% to +24.1% high from Mach 1.5 and +20.3% to +50.8% from Mach 1.0 to 1.2. No cited
+  correction exists in the sources used (issue [#72](https://github.com/nrdptel/hpr-sim/issues/72);
+  [Aerodynamics](physics/aero.md#boattails-faster-than-sound)).
+- **Drag past Mach 1.6 reads low against RASAero II's Calisto**, to −14.9% at Mach 2, with the fins
+  and finish the Mach 0.3 check declares; other plausible fins close it. Part of it is hpr's body,
+  which reads 6% to 10% low faster than sound against MIL-HDBK-762's worked example as well
   ([Aerodynamics](physics/aero.md#drag-against-rasaero-ii-through-mach-2)).
 - **The normal force near and far past Mach 1.** Against NASA's wind tunnel, between Mach 0.8
   and 1.2 hpr's slope runs up to +29.3% high and its centre of pressure up to 2.29
@@ -625,3 +629,4 @@ rest.
 [ndrt-flight-case]: https://github.com/nrdptel/hpr-sim/blob/main/validation/cases/flight-ndrt-2020-nose-to-tail.toml
 [prometheus-case]: https://github.com/nrdptel/hpr-sim/blob/main/validation/cases/flight-prometheus-2022-generic-motor.toml
 [nf-fixture]: https://github.com/nrdptel/hpr-sim/blob/main/validation/fixtures/aero/normal-force-vs-mach.json
+[drag-fixture]: https://github.com/nrdptel/hpr-sim/blob/main/validation/fixtures/aero/drag-vs-mach.json

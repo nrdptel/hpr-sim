@@ -289,7 +289,7 @@ mode = "fetched"
 [[file]]
 name = "rasaero-ii-arcas-comparison-2022"
 title = "C. E. Rogers, RASAero II Comparisons with ARCAS Center of Pressure (CP) and Drag Coefficient (CD) Wind Tunnel Data, Rogers Aeroscience, 2022 (slides)"
-url = "http://www.rasaero.com/dloads/RASAero%20II%20Comparisons%20with%20ARCAS%20CP%20and%20CD%20Data.pdf"
+url = "https://www.rasaero.com/dloads/RASAero%20II%20Comparisons%20with%20ARCAS%20CP%20and%20CD%20Data.pdf"
 sha256 = "3d2dd9e9b3ed8c6521eed525baffa6e3c5f4fcd90274cd9a1115ba51ed3fd512"
 dest = "refs/papers/rasaero-ii-arcas-cp-cd-comparison-2022.pdf"
 license = "unknown terms"

@@ -87,7 +87,7 @@ Recruiter's slope is 2.87% high. See [Aerodynamics](physics/aero.md#verification
 
 ## Base drag
 
-The drag on a rocket's flat aft end, its base. hpr works it out on the base's area, with a coefficient of `0.12 + 0.13 M²` below Mach 1 and `0.25/M` above it (`M` the [Mach number](#mach-number)). While a motor burns, the part of the base the motor covers has no base drag, so hpr subtracts the burning motors' cross-section from that area ([power-on drag](#power-on-and-power-off-drag)). See [Aerodynamics](physics/aero.md#drag).
+The drag on a rocket's flat aft end, its base. hpr works it out on the base's area, with a coefficient of `0.12 + 0.13 M²` below Mach 1 and `0.25/M` above it (`M` the [Mach number](#mach-number)). While a motor burns, the part of the base the motor covers has no base drag, so hpr subtracts the burning motors' cross-section from that area ([power-on drag](#power-on-and-power-off-drag)). Behind a [boattail](#boattail), faster than sound, the base's pressure is higher and hpr lowers the base drag to match ([Boattails faster than sound](physics/aero.md#boattails-faster-than-sound)). See [Aerodynamics](physics/aero.md#drag).
 
 ## BATES grain
 
@@ -107,7 +107,7 @@ the wind blows from.
 
 ## Boattail
 
-A transition at the tail that narrows toward the aft end. Its normal-force slope is negative, so it moves the [centre of pressure](#centre-of-pressure-cp) forward. hpr counts its pressure drag as a share of the base drag on the area it removes: all of it for a short, steep boattail and none for a long, gentle one. Faster than sound a boattail also has its own [wave drag](#wave-drag), which hpr doesn't model yet ([M1.8b3](decisions-and-roadmap.md#m1-8b3), a boattail's drag faster than sound). See [Aerodynamics](physics/aero.md#drag).
+A transition at the tail that narrows toward the aft end. Its normal-force slope is negative, so it moves the [centre of pressure](#centre-of-pressure-cp) forward. Below Mach 0.9 hpr counts its pressure drag as a share of the base drag on the area it removes: all of it for a short, steep boattail and none for a long, gentle one. Faster than sound a boattail has its own [wave drag](#wave-drag), which hpr takes from a handbook chart that matches measured boattails of 10° and gentler within about 20%. See [Boattails faster than sound](physics/aero.md#boattails-faster-than-sound).
 
 ## Body frame
 
@@ -125,6 +125,14 @@ nothing at small angles and large at steep ones, such as a slow rocket leaving t
 crosswind. hpr includes it (Galejs's method, with a constant `K` whose value is uncertain); RocketPy
 leaves it out. See [Aerodynamics](physics/aero.md#bodies-of-revolution).
 
+
+## Boundary layer
+
+The thin layer of air next to the rocket's skin, slowed by friction with it. It grows thicker
+toward the tail: on a model rocket a metre long it can be a centimetre or more thick at the base.
+Skin friction comes from it, and where it is thick it softens what the outer flow does, such as the
+expansion around a [boattail](#boattail). hpr takes it as turbulent everywhere. See
+[Aerodynamics](physics/aero.md#drag).
 
 ## Burn time
 
@@ -377,6 +385,14 @@ tail, the drag pages use its length over its rise in diameter, so a conical shou
 fineness of the cone with the same surface angle. See
 [Aerodynamics](physics/aero.md#bodies-of-revolution).
 
+## Flow separation
+
+Air leaving a surface it can't follow, such as the aft end of a steep [boattail](#boattail), and
+leaving a slow, recirculating region behind it. There the pressure is about the base's, not what
+the attached flow would give. hpr blends a boattail's drag toward that value between 16° and 30°,
+where measured boattails separate. Not the same as a [separation](#separation) of stages or
+recovery bodies. See [Boattails faster than sound](physics/aero.md#boattails-faster-than-sound).
+
 ## Forebody
 
 Everything of a rocket but its flat aft end, the base: the nose, the body tube, the fins and any
@@ -601,6 +617,14 @@ burning motor covers has no base drag, so hpr subtracts the burning motors' cros
 base area, and a drag table can carry separate power-on and power-off curves. A flight uses
 power-on drag while any motor burns. See [Aerodynamics](physics/aero.md#drag).
 
+
+## Prandtl–Meyer expansion
+
+What happens to a flow faster than sound when its path turns away from itself, as around the
+shoulder of a [boattail](#boattail): it speeds up and its pressure falls, by an amount that depends
+only on the Mach number and the angle turned (the Prandtl–Meyer function). hpr uses the pressure
+after such a turn as the upper limit of a boattail's [wave drag](#wave-drag). See
+[Boattails faster than sound](physics/aero.md#boattails-faster-than-sound).
 
 ## Property test
 
@@ -920,8 +944,8 @@ nose, a shoulder that widens or a fin's leading edge passes through a shock, whi
 pressure pushing back on the surface. Behind a [boattail](#boattail) the opposite happens: the air
 expands around it, its pressure falls, and that pulls back on the boattail. It is much of the
 steep rise in drag near Mach 1. hpr has no separate term for it: it is part of the pressure drag
-of each nose, shoulder and step, which Niskanen's 2009 method carries through Mach 1. A boattail's
-is missing ([M1.8b3](decisions-and-roadmap.md#m1-8b3), a boattail's drag faster than sound). For
+of each nose, shoulder and step, which Niskanen's 2009 method carries through Mach 1, and of each
+boattail ([Boattails faster than sound](physics/aero.md#boattails-faster-than-sound)). For
 fins, hpr uses a blunt leading edge's formula, which reads far high for thin, sharp fins
 ([Drag limits](physics/aero.md#drag-limits)). See
 [Aerodynamics](physics/aero.md#drag-through-mach-1).
