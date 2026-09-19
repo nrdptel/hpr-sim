@@ -74,10 +74,13 @@ const SUPERSONIC_LAST_STEP: usize = 100;
 /// Rows across the join.
 const SUPERSONIC_JOIN_STEPS: usize = 6;
 
-/// Halvings of the 0.05 step in which the method starts to hold: they place the join's start
-/// within `0.05/2²⁴`, about 3e-9, in Mach, so it moves with the body's shape, not in 0.05 steps
-/// ([issue #87](https://github.com/nrdptel/hpr-sim/issues/87)).
-const SUPERSONIC_JOIN_BISECTIONS: usize = 24;
+/// The most halvings of the 0.05 step in which the method starts to hold. Bisection stops sooner,
+/// after about 48, when no `f64` lies between its ends: the join's start is then as exact as the
+/// number allows, so it moves with the body's shape, not in 0.05 steps
+/// ([issue #87](https://github.com/nrdptel/hpr-sim/issues/87)). It has to be that exact: the
+/// shares climb from zero like `√(M − M_start)` there, so a start off by `δ` puts `√δ`-sized
+/// shares in the table's first row.
+const SUPERSONIC_JOIN_BISECTIONS: usize = 64;
 
 /// The width of the body's supersonic join in Mach, 0.3: over it the shock-expansion shares
 /// replace slender-body theory's linearly ([`SupersonicBody`]).
@@ -99,8 +102,8 @@ pub const SUPERSONIC_JOIN_WIDTH_MACH: f64 =
 /// The method is too slow to run at each step of a flight, so [`AeroModel::supersonic_body`] tabulates each covered segment's slope and moment
 /// every 0.05 in Mach, from Mach 5 down to the lowest Mach from which the method holds, and a
 /// flight interpolates linearly between rows. Where the method stops holding above
-/// [`SUPERSONIC_JOIN_START_MACH`], bisection finds that Mach within about 3e-9 and the table
-/// gains a row there, so the join's start moves with the body's shape rather than in 0.05 steps.
+/// [`SUPERSONIC_JOIN_START_MACH`], bisection finds that Mach to the last bit of an `f64` and the
+/// table gains a row there, so the join's start moves with the body's shape rather than in 0.05 steps.
 /// The join starts at that Mach, or at
 /// [`SUPERSONIC_JOIN_START_MACH`] if higher: at Mach `M`, a covered component's potential-flow
 /// slope, moment and station are slender-body theory's plus `w (shock-expansion − slender-body)`,
@@ -209,6 +212,9 @@ impl SupersonicBody {
             let mut held = None;
             for _ in 0..SUPERSONIC_JOIN_BISECTIONS {
                 let mid = 0.5 * (low + high);
+                if mid <= low || mid >= high {
+                    break;
+                }
                 match at(mid) {
                     Some(row) => {
                         high = mid;
@@ -2017,17 +2023,19 @@ mod tests {
         assert_eq!(body_values(&model, start), body_values(&model, 0.5));
         // The start the aerodynamics page quotes, found by the method, not on the grid (1.35).
         assert!((start - 1.341910).abs() < 1e-6, "{start}");
-        // The lead row is the method's own run there, where the cylinder's share climbs from near
-        // zero (8.6e-5 per radian; 0.41 at the first even row), not a copy of that row.
+        // The lead row is the method's own run there, where the cylinder's share climbs from zero
+        // like the root of the distance in Mach (0.41 per radian at the first even row), not a
+        // copy of that row. A start exact to the last bit leaves about 1e-7; 24 halvings of the
+        // 0.05 step left 2.2e-5 to 2.5e-4, a sawtooth as the nose changed (issue #87).
         let join = model.supersonic_body().unwrap();
         let (lead, row) = (
             join.share(1, start).unwrap(),
             join.share(1, first_row).unwrap(),
         );
-        assert!(lead.0 < 1e-2 * row.0, "{lead:?} against {row:?}");
-        // A millionth of a degree moves the start by little.
+        assert!(lead.0 < 1e-5 && row.0 > 0.3, "{lead:?} against {row:?}");
+        // A millionth of a degree moves the start by 2.7e-8.
         let (_, nudged) = start_at(20.0 + 1e-6);
-        assert!((nudged - start).abs() < 1e-5, "{start} to {nudged}");
+        assert!((nudged - start).abs() < 1e-7, "{start} to {nudged}");
         // Steeper cones start later, each a little: no two share a grid row's Mach.
         let starts: Vec<f64> = [20.0, 20.1, 20.2, 20.3, 20.4, 20.5]
             .into_iter()

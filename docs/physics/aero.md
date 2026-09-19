@@ -412,13 +412,17 @@ the `sin² α` term, is unchanged.
 flight. So the first time a flow faster than Mach 1.2 needs it, hpr runs the method every 0.05 in
 Mach from Mach 5 down, to the lowest Mach at which it holds, and keeps the results. Between those
 Mach numbers it interpolates in a straight line. That took about 0.3 s once per rocket in a debug
-build on the development Mac (measured by hand); a rocket that never passes Mach 1.2 never pays
-it.
+build on the development Mac (measured by hand, for a body the method takes from Mach 1.2); a
+body whose join starts higher adds about 48 runs for the bisection below. A rocket that never
+passes Mach 1.2 never pays it.
 
 **The join.** Write SB for slender-body theory, SE for the shock-expansion method, and `M_j` for
 where the join starts: Mach 1.2, or the lowest Mach at which the method holds if that is higher.
-hpr narrows that Mach down between two rows of the table by halving the gap (bisection) until it
-is within about 3e-9. It then runs the method at that Mach and adds the result as an extra row.
+hpr narrows that Mach down between two rows of the table by halving the gap (bisection) until no
+smaller step exists in the computer's numbers. It then runs the method at that Mach and adds the
+result as an extra row. The start must be that exact: there the method's shares climb from zero
+like the square root of the distance in Mach, so a start off by `δ` puts `√δ`-sized shares in
+that row.
 So the start moves smoothly with the nose's shape instead of in 0.05 steps. A cone with a 20°
 half-angle (the angle between its side and its axis) joins from Mach 1.341910; each 0.1° steeper,
 up to 20.5°, moves the start about 0.0027 later, to 1.355500. From `M_j` to
@@ -432,10 +436,9 @@ Every piece is a straight line in Mach, so nothing jumps. The test
 table rows, between rows and at Mach 4.999, and `a_blunter_cone_joins_where_the_method_starts_to_hold`
 does the same for the 20° cone, whose join starts higher.
 `the_joins_start_moves_with_the_nose_not_in_steps` pins that cone's start and the 20.5° cone's to
-1e-6, checks the start is off the grid, and checks it moves by less than 1e-5 when the cone
-steepens by a millionth of a degree. The start sits where the method's shares climb steeply from
-near zero, so its last digits, and the force there to about 5e-6 per radian, can differ between
-operating systems. Mach 1.2 to 1.5 is a judgement: below Mach 1.2 the flow over the nose is
+1e-6, checks the start is off the grid, that the cylinder's share at the start is under 1e-5 per
+radian (about 1e-7), and that the start moves by less than 1e-7 when the cone steepens by a
+millionth of a degree (2.7e-8). Mach 1.2 to 1.5 is a judgement: below Mach 1.2 the flow over the nose is
 transonic, which the method doesn't cover, and Mach 1.5 is the
 lowest Mach at which NASA measured the Arcas Robin
 ([ADR-034](https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-034-the-bodys-supersonic-normal-force-in-flight-tabulated-shock-expansion-shares-joined-linearly-from-mach-12-2026-09-19),

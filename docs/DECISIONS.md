@@ -3318,11 +3318,15 @@ optimisation studies ([issue #87](https://github.com/nrdptel/hpr-sim/issues/87))
 `validation/fixtures/aero/shock-expansion.json`.
 
 **Update (M1.8e3, 2026-09-19).** The join's start no longer snaps to the grid: where the method
-stops holding above Mach 1.2, bisection between the two rows finds that Mach within
-`0.05/2²⁴` (about 3e-9) and the table gains a row there. 24 halvings, not more, because each
-runs the method once; at 3e-9 a start's step moves a slope by about 1e-8 per radian. The lead
-row itself sits where the shares climb steeply from near zero, so last-bit differences between
-operating systems' maths libraries can move it by up to about 1e-4 and the force near the start
-by up to about 5e-6 per radian (the code review's estimate, not measured across platforms). A 20° cone
+stops holding above Mach 1.2, bisection between the two rows finds that Mach to the last bit of
+an `f64` (about 48 halvings, each one run of the method) and the table gains a row there. It has
+to be that exact: the shares climb from zero like `√(M − M_start)` (the tip cone's surface flow
+turning sonic), so the row's shares are `√δ`-sized for a start off by `δ`. The physics review
+measured 24 halvings (`δ` up to 3e-9) on a 20° cone stepped by 2e-9°: the cylinder's row share
+jumped 2.2e-5 to 2.5e-4 and the blended slope just above the start by 1.5e-6 per radian, a
+sawtooth in shape. At full resolution the row's share is 1e-7 and the slope moves by under 4e-10
+per radian. Between that row and the first even one the table is linear where the method rises
+like a root: at Mach 1.345955 the cylinder's share reads 30% low (0.203 against 0.291), under
+1e-3 per radian after the join's weight (not fixed; recorded). A 20° cone
 now joins from Mach 1.341910, not 1.35. The model switches in #87 remain (M1.8e5). M1.8e3 was
 split: the boattail became M1.8e4, crossflow and blunt tips M1.8e5, which carries M1.8e's bullet.
