@@ -384,7 +384,7 @@ impl StoneyNose {
         let points = self.points();
         let (first, last) = (points[0], points[points.len() - 1]);
         if mach < first.0 {
-            if first.0 > SUBSONIC_MACH_LIMIT && mach > SUBSONIC_MACH_LIMIT {
+            if first.0 > SUBSONIC_MACH_LIMIT && mach >= SUBSONIC_MACH_LIMIT {
                 let slope = first.1 / (first.0 - SUBSONIC_MACH_LIMIT);
                 return (slope * (mach - SUBSONIC_MACH_LIMIT), slope);
             }
@@ -1170,6 +1170,10 @@ mod tests {
         );
         // The x^¼ and the ellipsoid start at Mach 1.2: a straight line joins them to 0 at Mach
         // 0.8, where the other smooth 3:1 noses read 0, so every Stoney shape starts at 0.8.
+        // The line's slope holds from Mach 0.8 itself, where eq. 3.87 is fitted (physics re-check).
+        let (at_08, slope) = StoneyNose::PowerQuarter.value_and_slope(0.8);
+        assert_eq!(at_08, 0.0);
+        close(slope, 0.141 / 0.4, 1e-12, "the line's slope at Mach 0.8");
         let ellipse = at_3(NoseShape::Elliptical {});
         assert_eq!(ellipse.transonic_lower_bound(), 0.8);
         assert_eq!(vk.transonic_lower_bound(), 0.8);
@@ -1269,6 +1273,13 @@ mod tests {
     fn a_stubby_cone_takes_the_blend() {
         let c = cone_pressure_drag_coefficient(0.5, 1.0).unwrap();
         close(c, 0.647, 1e-3, "fineness 0.5 at Mach 1");
+        // At rest the blend sits above eq. 3.86's 0.8 sin² ε = 0.400 (physics re-check).
+        close(
+            cone_pressure_drag_coefficient(0.5, 0.0).unwrap(),
+            0.547,
+            1e-3,
+            "at rest",
+        );
         assert!(
             c < std::f64::consts::FRAC_1_SQRT_2 - 0.05,
             "below sin ε = sin 45°"
@@ -1358,8 +1369,10 @@ mod tests {
             // review found at n = ½, would not shrink).
             let gap = |step: f64| (at(p - step) - at(p + step)).abs();
             let (wide, narrow) = (gap(1e-6), gap(1e-12));
+            // From fineness 1 the exponent is at least ½, and the gap at 1e-12 at most about 1e-6.
+            let bound = if fineness >= 1.0 { 1e-4 } else { 0.01 };
             proptest::prop_assert!(
-                narrow <= wide + 1e-12 && narrow <= 0.01,
+                narrow <= wide + 1e-12 && narrow <= bound,
                 "{shape:?} at Mach {mach}: gaps {wide} and {narrow}",
                 shape = shape(p)
             );

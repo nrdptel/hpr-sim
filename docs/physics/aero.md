@@ -684,6 +684,11 @@ von Kármán noses of Calisto and Prometheus move it under 1% ([ADR-028][adr-028
   Mach 1.
 - **Stoney's curves end** at Mach 1.94 to 1.99 (panel (a)) and 3.59 (panel (b)); past that hpr
   holds their last value, which panel (b) puts within 8% for two shapes (above).
+- **Stubby noses.** Below fineness 1 a cone or ogive blends toward the flat face at every Mach
+  number, so at rest it reads above eq. 3.86: a cone of fineness 0.5 gives 0.547 against eq.
+  3.86's 0.400. And two routes to one shape disagree: a tangent ogive and an ellipse of fineness
+  0.5 are both hemispheres, but the ogive rises from rest by that blend while the ellipse, on
+  Stoney's measured curve scaled by eq. B.9, stays at 0 until Mach 0.8 and then climbs steeply.
 - Before [M1.8b1](../decisions-and-roadmap.md#m1-8b1) the buildup held nose and shoulder pressure
   drag at its value at rest and refused Mach 1.
 - Nothing models laminar flow, fin-tip vortices, interference drag, fin tabs, fillets, canted fins
