@@ -26,7 +26,7 @@
 use std::fmt;
 use std::ops::ControlFlow;
 
-use hpr_aero::{AeroModel, DragTable};
+use hpr_aero::{AeroModel, DragTable, NormalForceTable};
 use hpr_core::DVec3;
 use hpr_design::Rocket;
 use hpr_design::checks::{check, has_errors};
@@ -293,6 +293,18 @@ impl Simulation {
     #[must_use]
     pub fn with_drag_table(mut self, table: DragTable) -> Self {
         self.vehicle.aero = self.vehicle.aero.clone().with_drag_table(table);
+        self
+    }
+
+    /// Flies another tool's normal force and centre of pressure, against Mach number and angle of
+    /// attack, instead of hpr's own ([`hpr_aero::NormalForceTable`], read from a RASAero II
+    /// export). The table sets the static normal force at the centre of mass's airflow; the pitch
+    /// and yaw damping stay hpr's, from the airspeed the rotation adds at each component, since a
+    /// table has none (ADR-032). The flight still refuses Mach 5 and faster, where hpr's
+    /// components, which give that damping, end.
+    #[must_use]
+    pub fn with_normal_force_table(mut self, table: NormalForceTable) -> Self {
+        self.vehicle.aero = self.vehicle.aero.clone().with_normal_force_table(table);
         self
     }
 

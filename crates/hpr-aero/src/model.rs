@@ -36,7 +36,7 @@ use crate::fins::{
     FinAero, FinLoading, FinRollTerms, fin_count_factor, interference_factor,
     roll_damping_interference, roll_forcing_interference, roll_sum, side_sum,
 };
-use crate::table::DragTable;
+use crate::table::{DragTable, NormalForceTable};
 
 /// The largest fin cant the roll model takes, 15°: past it a fin stalls, where its lift stops
 /// growing with the angle, a judgement ([`AeroModel::roll`]).
@@ -273,6 +273,7 @@ pub struct AeroModel {
     fin_sets: Vec<FinSetAero>,
     drag_terms: Vec<ComponentDragTerms>,
     drag_table: Option<DragTable>,
+    normal_force_table: Option<NormalForceTable>,
 }
 
 impl AeroModel {
@@ -478,6 +479,7 @@ impl AeroModel {
             fin_sets,
             drag_terms,
             drag_table: None,
+            normal_force_table: None,
         })
     }
 
@@ -492,6 +494,21 @@ impl AeroModel {
     /// The drag override table, if any.
     pub fn drag_table(&self) -> Option<&DragTable> {
         self.drag_table.as_ref()
+    }
+
+    /// This model with `table` replacing the whole rocket's normal force and centre of pressure
+    /// ([`AeroModel::normal_force`]). Each component's own terms stay hpr's
+    /// ([`AeroModel::components`], [`AeroModel::component_normal_force`]): a flight engine takes
+    /// its pitch and yaw damping from them, which a table doesn't give.
+    #[must_use]
+    pub fn with_normal_force_table(mut self, table: NormalForceTable) -> Self {
+        self.normal_force_table = Some(table);
+        self
+    }
+
+    /// The normal-force override table, if any.
+    pub fn normal_force_table(&self) -> Option<&NormalForceTable> {
+        self.normal_force_table.as_ref()
     }
 
     /// The components' precomputed drag terms, in layout order.
@@ -746,12 +763,35 @@ impl AeroModel {
         }
     }
 
-    /// The whole rocket's normal force at `flow`.
+    /// The whole rocket's normal force at `flow`: the sum of its components, or the override
+    /// table's when there is one ([`AeroModel::with_normal_force_table`]).
+    ///
+    /// A table's normal force acts in the plane of the flow at the table's centre of pressure,
+    /// with no side force; its coefficients are rescaled to the rocket's reference area when the
+    /// table names another reference diameter.
     ///
     /// # Errors
     ///
-    /// As [`Flow::validate`].
+    /// As [`Flow::validate`]. With a table, any finite Mach number from 0 is accepted
+    /// ([`AeroError::Domain`] otherwise), and table errors are returned.
     pub fn normal_force(&self, flow: &Flow) -> Result<NormalForce, AeroError> {
+        if let Some(table) = &self.normal_force_table {
+            flow.validate_angles()?;
+            let lookup = table.lookup(flow.mach, flow.alpha_rad)?;
+            let scale = table
+                .reference_diameter_m()
+                .map_or(1.0, |d| 0.25 * PI * d * d / self.reference_area_m2);
+            let coefficient = lookup.coefficient * scale;
+            let slope = lookup.slope_per_rad * scale;
+            return Ok(NormalForce {
+                coefficient,
+                slope_per_rad: slope,
+                moment_m: coefficient * lookup.cp_station_m,
+                cp_station_m: (slope != 0.0).then_some(lookup.cp_station_m),
+                side_coefficient: 0.0,
+                side_moment_m: 0.0,
+            });
+        }
         flow.validate()?;
         let total = self
             .terms(flow)
@@ -761,6 +801,9 @@ impl AeroModel {
 
     /// Each component's normal force at `flow`, bodies first, then fin sets, in layout order. A
     /// step in radius is part of the component aft of it.
+    ///
+    /// These are always hpr's own terms. With a normal-force table, [`AeroModel::normal_force`]
+    /// returns the table's value instead of their sum.
     ///
     /// # Errors
     ///
@@ -1349,5 +1392,65 @@ mod tests {
         assert_eq!(f.cp_station_m, None);
         let moving = m.normal_force(&flow(0.3, 0.01, 0.0)).unwrap();
         assert!(moving.moment_m.is_finite() && moving.cp_station_m.is_some());
+    }
+
+    /// A normal-force table replaces the whole rocket's normal force and centre of pressure, on
+    /// its own reference area; the components stay hpr's, for the flight's damping.
+    #[test]
+    fn a_normal_force_table_replaces_the_sum() {
+        use crate::table::{NormalForceColumn, NormalForceTable};
+        use hpr_core::interp::{Extrapolation, Interpolation, Table1D};
+
+        let m = model(&finned_rocket(4));
+        let flat = |value| {
+            Table1D::new(
+                vec![0.0, 2.0],
+                vec![value, value],
+                Interpolation::Linear,
+                Extrapolation::Clamp,
+            )
+            .unwrap()
+        };
+        let table = NormalForceTable::new(vec![NormalForceColumn::new(0.0, flat(10.0), flat(0.9))])
+            .unwrap();
+        let with = m.clone().with_normal_force_table(table.clone());
+        let at = flow(0.5, 0.02, 0.3);
+        let replaced = with.normal_force(&at).unwrap();
+        close(replaced.coefficient, 10.0 * 0.02_f64.sin(), 1e-15, "C_N");
+        close(
+            replaced.moment_m,
+            replaced.coefficient * 0.9,
+            1e-15,
+            "moment",
+        );
+        assert_eq!(replaced.cp_station_m, Some(0.9));
+        assert_eq!(
+            (replaced.side_coefficient, replaced.side_moment_m),
+            (0.0, 0.0)
+        );
+        assert_eq!(with.components(&at).unwrap(), m.components(&at).unwrap());
+        assert_eq!(
+            with.component_normal_force(3, &at).unwrap(),
+            m.component_normal_force(3, &at).unwrap()
+        );
+        assert_ne!(m.normal_force(&at).unwrap(), replaced);
+        // A table on a 108 mm reference, twice the rocket's 54 mm, gives four times the coefficient.
+        let wider = m
+            .clone()
+            .with_normal_force_table(table.with_reference_diameter_m(0.108).unwrap());
+        let scaled = wider.normal_force(&at).unwrap();
+        close(
+            scaled.coefficient,
+            4.0 * replaced.coefficient,
+            1e-14,
+            "rescaled",
+        );
+        assert_eq!(scaled.cp_station_m, Some(0.9));
+        // A table takes any Mach number; hpr's own normal force stops at Mach 5.
+        assert!(with.normal_force(&flow(6.0, 0.02, 0.0)).is_ok());
+        assert!(matches!(
+            m.normal_force(&flow(6.0, 0.02, 0.0)),
+            Err(AeroError::Mach { .. })
+        ));
     }
 }

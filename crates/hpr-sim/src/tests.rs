@@ -402,6 +402,117 @@ fn pitch_oscillation_matches_linear_theory() {
 }
 
 #[test]
+fn pitch_oscillation_follows_a_normal_force_table() {
+    // As `pitch_oscillation_matches_linear_theory`, with a normal-force table in place of hpr's
+    // own: a slope of 1.5 times hpr's and a centre of pressure 5 cm further aft. The table sets
+    // the static force and moment, `Z = q̄A C_Nα,T` and `K₁ = q̄A C_Nα,T (X_T − x_cg)`; the damping
+    // stays hpr's, from each component's lever arm: `K₁,h = q̄A Σ C_Nαᵢ ℓᵢ` in the path and
+    // `K₂ = q̄A Σ C_Nαᵢ ℓᵢ²` in the moment. So
+    //   α̇ = −Z/(mV) α + (1 − K₁,h/(mV²)) θ̇,   I θ̈ = −K₁ α − K₂/V θ̇.
+    use hpr_aero::{NormalForceColumn, NormalForceTable};
+    use hpr_core::interp::{Extrapolation, Interpolation, Table1D};
+
+    let t0 = 10.0;
+    let speed = 100.0;
+    let air = UniformAir::sea_level();
+    let own = valetudo(analytic_environment(air, 0.0), capped(t0 + 10.0))
+        .with_drag_table(constant_drag(0.0));
+    let mass = own.assembly().mass_properties(t0);
+    let (m, x_cg, inertia) = (mass.mass_kg, -mass.cg_m.z, mass.inertia_kg_m2.y_axis.y);
+    let aero = own.aero();
+    let mach = speed / air.0.speed_of_sound_m_s;
+    let q_area = 0.5 * air.0.density_kg_m3 * speed * speed * aero.reference_area_m2();
+    let (mut slope_h, mut k1_h, mut k2) = (0.0, 0.0, 0.0);
+    for index in 0..aero.component_count() {
+        let slope = aero
+            .component_normal_force(index, &Flow::new(mach, 1e-7, 0.0))
+            .unwrap()
+            .slope_per_rad;
+        let lever = aero.component_station_m(index, mach).unwrap() - x_cg;
+        slope_h += slope;
+        k1_h += q_area * slope * lever;
+        k2 += q_area * slope * lever * lever;
+    }
+    let cp_h = aero
+        .normal_force(&Flow::axial(mach))
+        .unwrap()
+        .cp_station_m
+        .unwrap();
+    let (slope_t, cp_t) = (1.5 * slope_h, cp_h + 0.05);
+    let flat = |value| {
+        Table1D::new(
+            vec![0.0, 1.0],
+            vec![value, value],
+            Interpolation::Linear,
+            Extrapolation::Clamp,
+        )
+        .unwrap()
+    };
+    let table = NormalForceTable::new(vec![NormalForceColumn::new(0.0, flat(slope_t), flat(cp_t))])
+        .unwrap();
+    let sim = own.with_normal_force_table(table).with_event(UserEvent {
+        name: "pitch rate crosses zero".to_owned(),
+        direction: Direction::Either,
+        function: Box::new(|sample| sample.state.body_rate_rad_s.y),
+    });
+    let (z, k1) = (q_area * slope_t, q_area * slope_t * (cp_t - x_cg));
+    let (a11, a12) = (-z / (m * speed), 1.0 - k1_h / (m * speed * speed));
+    let (a21, a22) = (-k1 / inertia, -k2 / (inertia * speed));
+    let trace = a11 + a22;
+    let determinant = a11 * a22 - a12 * a21;
+    let damped = (determinant - 0.25 * trace * trace).sqrt();
+    let period = 2.0 * PI / damped;
+
+    let state = State {
+        position_enu_m: DVec3::new(0.0, 0.0, 1000.0),
+        velocity_enu_m_s: DVec3::new(0.0, 0.0, speed),
+        attitude: DQuat::from_rotation_y(0.005),
+        body_rate_rad_s: DVec3::ZERO,
+    };
+    let mut recorder = Recorder::new(vec![Channel::Time, Channel::BodyRates], Some(0.001)).unwrap();
+    let result = sim.run_free(t0, state, &mut recorder).unwrap();
+    let crossings: Vec<f64> = result
+        .events
+        .iter()
+        .filter(|event| event.kind == EventKind::User(0))
+        .map(|event| event.sample.time_s)
+        .collect();
+    assert!(crossings.len() >= 6, "{crossings:?}");
+    let measured =
+        2.0 * (crossings[crossings.len() - 1] - crossings[0]) / (crossings.len() - 1) as f64;
+    let times = column(&recorder, "time_s");
+    let rates = column(&recorder, "body_rate_y_rad_s");
+    let peaks: Vec<f64> = crossings
+        .windows(2)
+        .map(|w| {
+            times
+                .iter()
+                .zip(&rates)
+                .filter(|(t, _)| **t > w[0] && **t < w[1])
+                .fold(0.0_f64, |peak, (_, r)| peak.max(r.abs()))
+        })
+        .collect();
+    let decay = (peaks[peaks.len() - 1] / peaks[0]).ln() / (peaks.len() - 1) as f64;
+    let expected_decay = 0.25 * trace * period;
+    // Damping lumped at the table's centre of pressure instead, `K₂ = q̄A C_Nα,T (X_T − x_cg)²`,
+    // would decay differently: the test tells the two apart.
+    let lumped_a22 = -q_area * slope_t * (cp_t - x_cg).powi(2) / (inertia * speed);
+    let lumped_a12 = 1.0 - k1 / (m * speed * speed);
+    let lumped_trace = a11 + lumped_a22;
+    let lumped_damped =
+        (a11 * lumped_a22 - lumped_a12 * a21 - 0.25 * lumped_trace * lumped_trace).sqrt();
+    let lumped_decay = 0.25 * lumped_trace * 2.0 * PI / lumped_damped;
+    // Measured: the period 1.104077 s against 1.104073 s (4e-6; 1.44965 s with hpr's own normal
+    // force), the decay −0.24376 against −0.24369 (3e-4).
+    assert!((measured / period - 1.0).abs() < 3e-4);
+    assert!((decay / expected_decay - 1.0).abs() < 0.01);
+    assert!(
+        (decay / lumped_decay - 1.0).abs() > 0.05,
+        "{decay} against {lumped_decay} lumped"
+    );
+}
+
+#[test]
 fn stable_rocket_weathercocks_into_crosswind() {
     // Loft lesson L20: a 3-DOF boost drifted downwind. A stable 6-DOF rocket turns into the wind
     // off the rail and flies upwind. Wind 5 m/s from the west (toward +x, east).

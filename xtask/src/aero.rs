@@ -36,7 +36,9 @@ pub const USAGE: &str = "\
                            MIL-HDBK-762's sample calculation and write
                            validation/fixtures/aero/drag-vs-mach.json; compare its roll
                            forcing and damping with the Arcas Robin's and the Basic
-                           Finner's and write validation/fixtures/aero/roll-vs-mach.json.
+                           Finner's and write validation/fixtures/aero/roll-vs-mach.json;
+                           read the Calisto export as a normal-force table, fly Calisto on
+                           it and write validation/fixtures/aero/normal-force-override.json.
                            --check fails if a committed fixture differs instead of writing.";
 
 const FIXTURE: &str = "validation/fixtures/aero/rocketpy-drag-curves.json";
@@ -174,6 +176,10 @@ pub fn run(args: &[String]) -> Result<(), String> {
         (
             crate::aero_roll::FIXTURE,
             crate::aero_roll::generate(&root)?,
+        ),
+        (
+            crate::aero_override::FIXTURE,
+            crate::aero_override::generate(&root)?,
         ),
     ] {
         let path = root.join(name);

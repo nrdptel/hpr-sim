@@ -25,15 +25,15 @@ use sha2::{Digest, Sha256};
 
 pub const FIXTURE: &str = "validation/fixtures/aero/normal-force-vs-mach.json";
 pub const WIND_TUNNEL: &str = "validation/fixtures/aero/arcas-robin-wind-tunnel.json";
-const EXPORT: &str = "refs/rocketpy-history/calisto-cd-test-2018.csv";
-const CALISTO_DESIGN: &str = "rocketpy-calisto-tests-motor-at-minus-1.373.json";
+pub const EXPORT: &str = "refs/rocketpy-history/calisto-cd-test-2018.csv";
+pub const CALISTO_DESIGN: &str = "rocketpy-calisto-tests-motor-at-minus-1.373.json";
 const INCH: f64 = 0.0254;
 const CP_TARGET_CALIBERS: f64 = 0.5;
 const CN_ALPHA_TARGET: f64 = 0.15;
 
 /// The Mach numbers compared against the export: its rows from 0.1 to 2.0, closer together
 /// through the transonic region.
-const CALISTO_MACHS: &[f64] = &[
+pub const CALISTO_MACHS: &[f64] = &[
     0.1, 0.3, 0.5, 0.7, 0.8, 0.9, 0.95, 1.0, 1.05, 1.1, 1.2, 1.3, 1.5, 1.75, 2.0,
 ];
 
