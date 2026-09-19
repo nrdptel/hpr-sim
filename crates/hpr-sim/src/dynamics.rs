@@ -129,9 +129,6 @@ pub(crate) struct Evaluation {
 pub(crate) struct Vehicle {
     pub(crate) assembly: Assembly,
     pub(crate) aero: AeroModel,
-    /// The body components' stations, which don't change with Mach; fin sets' are taken at each
-    /// evaluation's Mach number.
-    body_stations_m: Vec<f64>,
     /// The first fin set's index among the aerodynamic components.
     first_fin_index: usize,
     motors: Vec<MotorTerms>,
@@ -140,9 +137,6 @@ pub(crate) struct Vehicle {
 
 impl Vehicle {
     pub(crate) fn new(assembly: Assembly, aero: AeroModel) -> Result<Self, SimError> {
-        let body_stations_m = (0..aero.bodies().len())
-            .map(|index| aero.component_station_m(index, 0.0))
-            .collect::<Result<Vec<f64>, _>>()?;
         let motors = assembly
             .motors
             .iter()
@@ -162,7 +156,6 @@ impl Vehicle {
         Ok(Self {
             assembly,
             aero,
-            body_stations_m,
             first_fin_index,
             motors,
             reference_area_m2,
@@ -498,7 +491,7 @@ impl Vehicle {
         out.axial_coefficient = drag.axial_coefficient;
         out.force = DVec3::new(0.0, 0.0, -q * area * drag.axial_coefficient);
 
-        // The normal force's range, checked once here, before the bodies' cached stations.
+        // The normal force's range, checked once here, before the components' stations.
         flow.validate()?;
         // With a normal-force table, the table gives the static normal force at the centre of
         // mass's flow, and each component only the difference its rotation makes: its force in
@@ -513,11 +506,8 @@ impl Vehicle {
             out.moment += side * (-normal.moment_m * q * area);
         }
         for index in 0..self.aero.component_count() {
-            // A fin set's station moves with Mach.
-            let station = match self.body_stations_m.get(index) {
-                Some(&station) => station,
-                None => self.aero.component_station_m(index, out.mach)?,
-            };
+            // A fin set's station moves with Mach, and so does a body's faster than sound.
+            let station = self.aero.component_station_m(index, out.mach)?;
             let p = DVec3::new(0.0, 0.0, -station);
             let (force, moment) =
                 self.component_force(index, air_velocity_o_body + omega.cross(p), rho, sound)?;
@@ -645,6 +635,63 @@ mod tests {
         let assembly = design("rocketpy-valetudo").assemble("example").unwrap();
         let aero = AeroModel::new(&assembly.layout).unwrap();
         Vehicle::new(assembly, aero).unwrap()
+    }
+
+    #[test]
+    fn a_supersonic_flow_takes_the_body_s_terms_at_its_mach_number() {
+        // Faster than sound the nose and the cylinder behind it take the shock-expansion shares at
+        // the flow's Mach number (ADR-034). With no rotation every component sees the same flow,
+        // so the normal force is `q A Σ C_N,i` and its moment `q A Σ C_N,i X_i`, fins at
+        // `sin α/α` (ADR-011).
+        let vehicle = valetudo();
+        let aero = &vehicle.aero;
+        let covered = aero
+            .supersonic_body()
+            .expect("Valetudo's ogive nose is pointed")
+            .covered;
+        let air = UniformAir::sea_level().0;
+        let alpha: f64 = 0.02;
+        let cg = vehicle.assembly.mass_properties(10.0).cg_m;
+        let normal = |mach: f64| {
+            let speed = mach * air.speed_of_sound_m_s;
+            let v = DVec3::new(alpha.sin(), 0.0, alpha.cos()) * speed;
+            let out = vehicle.aerodynamics(&air, v, DVec3::ZERO, cg, 0.0).unwrap();
+            let q_area = 0.5 * air.density_kg_m3 * speed * speed * vehicle.reference_area_m2;
+            let (a, roll) = flow_angles(v, speed);
+            let flow = Flow::new(mach, a, roll);
+            let (mut force, mut moment, mut body) = (0.0, 0.0, 0.0);
+            for index in 0..aero.component_count() {
+                let n = aero.component_normal_force(index, &flow).unwrap();
+                let scale = if index >= vehicle.first_fin_index {
+                    a.sin() / a
+                } else {
+                    body += n.coefficient * f64::from(u8::from(index < covered));
+                    1.0
+                };
+                force += n.coefficient * scale;
+                moment += n.moment_m * scale;
+            }
+            let got = (
+                out.force.truncate().length() / q_area,
+                out.moment.truncate().length() / q_area,
+            );
+            (got, (force, moment), body)
+        };
+        for mach in [1.0, 2.0, 3.0] {
+            let (got, want, _) = normal(mach);
+            assert!(
+                (got.0 - want.0).abs() <= 1e-12 * want.0,
+                "Mach {mach}: {got:?} {want:?}"
+            );
+            assert!(
+                (got.1 - want.1).abs() <= 1e-12 * want.1,
+                "Mach {mach}: {got:?} {want:?}"
+            );
+        }
+        // The nose and cylinder lift more at Mach 2 than slender-body theory's Mach-free terms.
+        let (_, _, slender) = normal(1.0);
+        let (_, _, supersonic) = normal(2.0);
+        assert!(supersonic > 1.1 * slender, "{supersonic} vs {slender}");
     }
 
     #[test]

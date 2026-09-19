@@ -14,14 +14,19 @@
 //!   flow's Mach number ([`crate::fins::FinAero`]), and for one or two fins the side force
 //!   `(C_Nα)₁ Σ sin Λ cos Λ · K_T(B)` across the flow's plane ([`crate::fins::side_sum`]).
 //!
-//! The bodies' terms don't change with Mach: slender-body theory's slope and centre of pressure
-//! hold at any Mach number (Barrowman 1967 p. 18), and body lift is Galejs's cross-flow term.
+//! Below the speed of sound the bodies' terms don't change with Mach: slender-body theory's slope
+//! and centre of pressure hold at any Mach number (Barrowman 1967 p. 18), and body lift is
+//! Galejs's cross-flow term. Faster than sound, a pointed nose and the cylinders straight behind it
+//! take their potential-flow slope and moment from the second-order shock-expansion method
+//! ([`crate::shock_expansion`], NACA TN 3527), joined to slender-body theory linearly in Mach
+//! ([`SupersonicBody`], ADR-034). Other bodies, and body lift, keep their Mach-free terms.
 //!
 //! Launch lugs and rail buttons add drag only, and internal parts sit inside the body. Tube fins
 //! have no cited normal-force method yet and are refused, as is any part kind this model doesn't
 //! know. Stations are metres aft of the nose tip.
 
 use std::f64::consts::PI;
+use std::sync::OnceLock;
 
 use hpr_design::{Layout, Part, PlacedComponent};
 use serde::{Deserialize, Serialize};
@@ -36,6 +41,9 @@ use crate::fins::{
     FinAero, FinLoading, FinRollTerms, fin_count_factor, interference_factor,
     roll_damping_interference, roll_forcing_interference, roll_sum, side_sum,
 };
+use crate::shock_expansion::{
+    BodySegment, DEFAULT_ELEMENTS_PER_CURVE, SegmentSlope, ShockExpansionBody,
+};
 use crate::table::{DragTable, NormalForceLookup, NormalForceTable, TableReference};
 
 /// The largest fin cant the roll model takes, 15°: past it a fin stalls, where its lift stops
@@ -45,6 +53,120 @@ pub const MAX_CANT_RAD: f64 = 15.0 * std::f64::consts::PI / 180.0;
 /// The top of the normal force's range: Mach 5, where the hypersonic region begins (Niskanen 2009
 /// Table 3.1, p. 19). [`AeroModel::normal_force`] refuses it and anything faster.
 pub const NORMAL_FORCE_MACH_LIMIT: f64 = 5.0;
+
+/// The lowest Mach number at which the body's supersonic join can start (ADR-034): below it every
+/// body keeps slender-body theory's terms. A judgement: the first body that TN 3527's method
+/// covers and TN D-4014 measured is at Mach 1.5, the join's end from here.
+pub const SUPERSONIC_JOIN_START_MACH: f64 = 1.2;
+
+/// Steps of the shock-expansion table per unit Mach: one row every 0.05.
+const SUPERSONIC_STEPS_PER_MACH: f64 = 20.0;
+
+/// The table's first row, Mach 1.2 ([`SUPERSONIC_JOIN_START_MACH`]).
+const SUPERSONIC_FIRST_STEP: usize = 24;
+
+/// The table's last row, Mach 5 ([`NORMAL_FORCE_MACH_LIMIT`]).
+const SUPERSONIC_LAST_STEP: usize = 100;
+
+/// Rows across the join.
+const SUPERSONIC_JOIN_STEPS: usize = 6;
+
+/// The width of the body's supersonic join in Mach, 0.3: over it the shock-expansion shares
+/// replace slender-body theory's linearly (ADR-034).
+pub const SUPERSONIC_JOIN_WIDTH_MACH: f64 =
+    SUPERSONIC_JOIN_STEPS as f64 / SUPERSONIC_STEPS_PER_MACH;
+
+/// The second-order shock-expansion method's share of each body component it covers, tabulated in
+/// Mach, and where it joins slender-body theory (ADR-034).
+///
+/// The method ([`crate::shock_expansion`]) covers a pointed nose and the cylinders straight behind
+/// it, up to the first other body, step in radius or gap. It is too slow to run at each step of a
+/// flight, so [`AeroModel::supersonic_body`] tabulates each covered segment's slope and moment
+/// every 0.05 in Mach, from Mach 5 down to the lowest Mach from which the method holds, and a
+/// flight interpolates linearly between rows. The join starts at that Mach, or at
+/// [`SUPERSONIC_JOIN_START_MACH`] if higher: at Mach `M`, a covered component's potential-flow
+/// slope, moment and station are slender-body theory's plus `w (shock-expansion − slender-body)`,
+/// `w = (M − M_join)/`[`SUPERSONIC_JOIN_WIDTH_MACH`] clamped to `[0, 1]`. Everything is linear
+/// in Mach, so nothing jumps.
+#[derive(Debug, Clone, PartialEq, Serialize)]
+#[non_exhaustive]
+pub struct SupersonicBody {
+    /// How many body components the method covers: the first entries of [`AeroModel::bodies`].
+    pub covered: usize,
+    /// The Mach number where the join starts; the shares count in full from
+    /// [`SUPERSONIC_JOIN_WIDTH_MACH`] above it.
+    pub join_start_mach: f64,
+    /// The table's first row is at Mach `first_step / 20`.
+    first_step: usize,
+    /// Each row's shares, one per covered component: slope per radian and its moment about the
+    /// nose tip, m per radian. Every share is positive.
+    rows: Vec<Vec<SegmentSlope>>,
+}
+
+impl SupersonicBody {
+    /// Tabulates the method's shares of `segments`, whose vertex is at `vertex_m` aft of the nose
+    /// tip, or `None` where the method can't take the body or doesn't hold across a whole join
+    /// below Mach 5.
+    fn new(segments: &[BodySegment], vertex_m: f64, reference_area_m2: f64) -> Option<Self> {
+        let body = ShockExpansionBody::new(segments, DEFAULT_ELEMENTS_PER_CURVE).ok()?;
+        let mut rows = Vec::new();
+        let mut first_step = SUPERSONIC_LAST_STEP + 1;
+        // From Mach 5 down, until the method first fails or a share isn't positive (a share that
+        // crosses zero has no station).
+        for step in (SUPERSONIC_FIRST_STEP..=SUPERSONIC_LAST_STEP).rev() {
+            let mach = step as f64 / SUPERSONIC_STEPS_PER_MACH;
+            let Ok(shares) = body.segment_slopes(mach, reference_area_m2) else {
+                break;
+            };
+            if !shares
+                .iter()
+                .all(|s| s.slope_per_rad > 0.0 && s.moment_slope_m.is_finite())
+            {
+                break;
+            }
+            rows.push(
+                shares
+                    .into_iter()
+                    .map(|s| SegmentSlope {
+                        slope_per_rad: s.slope_per_rad,
+                        moment_slope_m: s.moment_slope_m + s.slope_per_rad * vertex_m,
+                    })
+                    .collect(),
+            );
+            first_step = step;
+        }
+        rows.reverse();
+        // The join needs its whole width inside the table.
+        if first_step + SUPERSONIC_JOIN_STEPS > SUPERSONIC_LAST_STEP {
+            return None;
+        }
+        Some(Self {
+            covered: segments.len(),
+            join_start_mach: first_step as f64 / SUPERSONIC_STEPS_PER_MACH,
+            first_step,
+            rows,
+        })
+    }
+
+    /// The join's weight at `mach`: 0 at its start and below, 1 from its end.
+    fn weight(&self, mach: f64) -> f64 {
+        ((mach - self.join_start_mach) / SUPERSONIC_JOIN_WIDTH_MACH).clamp(0.0, 1.0)
+    }
+
+    /// Covered component `index`'s share at `mach`, interpolated linearly between rows (clamped
+    /// to the table's ends): slope per radian and moment about the nose tip, m per radian.
+    pub fn share(&self, index: usize, mach: f64) -> Option<(f64, f64)> {
+        let x = mach * SUPERSONIC_STEPS_PER_MACH - self.first_step as f64;
+        // `new` keeps at least `SUPERSONIC_JOIN_STEPS + 1` rows.
+        let i = (x.floor().max(0.0) as usize).min(self.rows.len() - 2);
+        let t = (x - i as f64).clamp(0.0, 1.0);
+        let (a, b) = (self.rows[i].get(index)?, self.rows[i + 1].get(index)?);
+        Some((
+            a.slope_per_rad + t * (b.slope_per_rad - a.slope_per_rad),
+            a.moment_slope_m + t * (b.moment_slope_m - a.moment_slope_m),
+        ))
+    }
+}
 
 /// The whole rocket's rolling moment coefficients at one Mach number ([`AeroModel::roll`]).
 #[derive(Debug, Clone, Copy, Default, PartialEq, Serialize, Deserialize)]
@@ -213,9 +335,12 @@ pub struct BodyAero {
     /// The step in cross-section area from the previous body component's aft end to this one's
     /// fore end, m² (zero for the first body component).
     pub step_area_m2: f64,
-    /// Potential-flow slope at `α → 0`, per radian, with the step.
+    /// Slender-body theory's potential-flow slope at `α → 0`, per radian, with the step. Faster
+    /// than sound a body the shock-expansion method covers takes its share instead
+    /// ([`SupersonicBody`]).
     pub slope_per_rad: f64,
-    /// Potential-flow moment slope about the nose tip, m per radian, with the step.
+    /// Slender-body theory's potential-flow moment slope about the nose tip, m per radian, with
+    /// the step.
     pub moment_slope_m: f64,
     /// Body lift `K A_plan / A_ref`: `C_N = lift_factor · sin² α`.
     pub lift_factor: f64,
@@ -278,6 +403,14 @@ pub struct AeroModel {
     /// The largest radius of the bodies, m: RASAero II's reference.
     max_body_radius_m: f64,
     bodies: Vec<BodyAero>,
+    /// The nose and the cylinders straight behind it, for the shock-expansion method, and the
+    /// station of the nose's tip.
+    #[serde(skip)]
+    supersonic_segments: Option<(Vec<BodySegment>, f64)>,
+    /// Their tabulated shares, built the first time a flow faster than
+    /// [`SUPERSONIC_JOIN_START_MACH`] needs them: building takes 77 runs of the method.
+    #[serde(skip)]
+    supersonic: OnceLock<Option<SupersonicBody>>,
     fin_sets: Vec<FinSetAero>,
     drag_terms: Vec<ComponentDragTerms>,
     drag_table: Option<DragTable>,
@@ -318,6 +451,11 @@ impl AeroModel {
         let mut previous_aft_area: Option<f64> = None;
         let mut body_terms_at = Vec::new();
         let mut last_body_terms: Option<usize> = None;
+        // The nose and the cylinders straight behind it, for the shock-expansion method: the run
+        // stops at the first other body, step in radius or gap.
+        let mut supersonic_segments = Vec::new();
+        let mut supersonic_open = true;
+        let (mut vertex_m, mut supersonic_end_m) = (0.0, 0.0);
         for component in &layout.components {
             let in_component = |e: AeroError| AeroError::InComponent {
                 id: component.id.clone(),
@@ -469,6 +607,34 @@ impl AeroModel {
                     .map_err(in_component)?,
                 );
                 body_terms_at.push((drag_terms.len() - 1, geometry));
+                let segment = match &component.part {
+                    Part::NoseCone(nose) if bodies.is_empty() => nose
+                        .profile()
+                        .ok()
+                        .map(|profile| BodySegment::Profile { profile }),
+                    Part::BodyTube(tube)
+                        if !bodies.is_empty()
+                            && step.abs() <= 1e-6 * geometry.fore_area_m2
+                            && (component.fore_station_m - supersonic_end_m).abs()
+                                <= 1e-9 * length_m =>
+                    {
+                        Some(BodySegment::Cylinder {
+                            length_m: tube.length_m,
+                            radius_m: tube.outer_radius_m,
+                        })
+                    }
+                    _ => None,
+                };
+                match segment {
+                    Some(segment) if supersonic_open => {
+                        if supersonic_segments.is_empty() {
+                            vertex_m = component.fore_station_m;
+                        }
+                        supersonic_segments.push(segment);
+                        supersonic_end_m = component.fore_station_m + geometry.length_m;
+                    }
+                    _ => supersonic_open = false,
+                }
                 previous_aft_area = Some(geometry.aft_area_m2);
                 bodies.push(body_terms(component, geometry, step, reference_area_m2));
             }
@@ -479,12 +645,16 @@ impl AeroModel {
         }
         // Boattails, a lip in a boattail's wake, and the base behind them.
         couple_afterbody(&mut drag_terms, &body_terms_at, reference_area_m2)?;
+        let supersonic_segments =
+            (!supersonic_segments.is_empty()).then_some((supersonic_segments, vertex_m));
         Ok(Self {
             reference_area_m2,
             reference_diameter_m: layout.reference_diameter_m,
             length_m,
             max_body_radius_m: max_radius,
             bodies,
+            supersonic_segments,
+            supersonic: OnceLock::new(),
             fin_sets,
             drag_terms,
             drag_table: None,
@@ -702,6 +872,48 @@ impl AeroModel {
         &self.bodies
     }
 
+    /// The shock-expansion method's shares of the nose and the cylinders behind it, and where
+    /// they join slender-body theory; `None` where the method can't take the body (a blunt or
+    /// vertical tip, a tangent cone past TN 3527's Fig. 2) or doesn't hold across a whole join
+    /// below Mach 5.
+    ///
+    /// The first call builds the table, which takes 77 runs of the method; a flow no faster than
+    /// [`SUPERSONIC_JOIN_START_MACH`] never needs it.
+    pub fn supersonic_body(&self) -> Option<&SupersonicBody> {
+        let (segments, vertex_m) = self.supersonic_segments.as_ref()?;
+        self.supersonic
+            .get_or_init(|| SupersonicBody::new(segments, *vertex_m, self.reference_area_m2))
+            .as_ref()
+    }
+
+    /// [`Self::supersonic_body`] where `mach` is past the earliest join, and `None` below it
+    /// without building the table.
+    fn supersonic_at(&self, mach: f64) -> Option<&SupersonicBody> {
+        (mach > SUPERSONIC_JOIN_START_MACH)
+            .then(|| self.supersonic_body())
+            .flatten()
+    }
+
+    /// Body `index`'s potential-flow slope (per radian) and moment slope about the nose tip (m per
+    /// radian) at a checked `mach`: slender-body theory's, joined to the shock-expansion share
+    /// where the method covers it ([`SupersonicBody`]).
+    fn body_potential(&self, index: usize, body: &BodyAero, mach: f64) -> (f64, f64) {
+        let (slope, moment) = (body.slope_per_rad, body.moment_slope_m);
+        match self.supersonic_at(mach) {
+            Some(s) if index < s.covered && mach > s.join_start_mach => {
+                let w = s.weight(mach);
+                let Some((se_slope, se_moment)) = s.share(index, mach) else {
+                    return (slope, moment);
+                };
+                (
+                    slope + w * (se_slope - slope),
+                    moment + w * (se_moment - moment),
+                )
+            }
+            _ => (slope, moment),
+        }
+    }
+
     /// The fin sets' terms.
     pub fn fin_sets(&self) -> &[FinSetAero] {
         &self.fin_sets
@@ -712,10 +924,13 @@ impl AeroModel {
     fn terms<'a>(&'a self, flow: &Flow) -> impl Iterator<Item = (&'a str, Term)> + 'a {
         let (potential, lift) = alpha_factors(flow.alpha_rad);
         let (mach, roll) = (flow.mach, flow.roll_rad);
-        let bodies = self
-            .bodies
-            .iter()
-            .map(move |body| (body.id.as_str(), body_term(body, potential, lift)));
+        let bodies = self.bodies.iter().enumerate().map(move |(index, body)| {
+            let (slope, moment) = self.body_potential(index, body, mach);
+            (
+                body.id.as_str(),
+                body_term(body, slope, moment, potential, lift),
+            )
+        });
         let fins = self
             .fin_sets
             .iter()
@@ -745,7 +960,8 @@ impl AeroModel {
         flow.validate()?;
         let term = if let Some(body) = self.bodies.get(index) {
             let (potential, lift) = alpha_factors(flow.alpha_rad);
-            body_term(body, potential, lift)
+            let (slope, moment) = self.body_potential(index, body, flow.mach);
+            body_term(body, slope, moment, potential, lift)
         } else if let Some(set) = self.fin_sets.get(index - self.bodies.len()) {
             fin_term(set, flow.mach, flow.roll_rad)
         } else {
@@ -760,7 +976,8 @@ impl AeroModel {
     /// The station, m aft of the nose tip, of component `index`'s small-angle centre of
     /// pressure at `mach`: where a flight engine takes the component's local airspeed. A body with
     /// no potential-flow slope (a cylinder) uses its body-lift station; a fin set's moves with
-    /// Mach, and a body's doesn't.
+    /// Mach, and so does a body's that the shock-expansion method covers, joined linearly from
+    /// slender-body theory's station as its slope is ([`SupersonicBody`]).
     ///
     /// # Errors
     ///
@@ -773,10 +990,22 @@ impl AeroModel {
             // a taper) has no potential-flow station.
             let step_slope = 2.0 * body.step_area_m2 / self.reference_area_m2;
             let scale = (body.slope_per_rad - step_slope).abs() + step_slope.abs();
-            Ok(if body.slope_per_rad.abs() <= 1e-12 * scale {
+            let station = if body.slope_per_rad.abs() <= 1e-12 * scale {
                 body.lift_station_m
             } else {
                 body.moment_slope_m / body.slope_per_rad
+            };
+            Ok(match self.supersonic_at(mach) {
+                Some(s) if index < s.covered && mach > s.join_start_mach => {
+                    match s.share(index, mach) {
+                        // Every tabulated share is positive, so the interpolated one is.
+                        Some((slope, moment)) => {
+                            station + s.weight(mach) * (moment / slope - station)
+                        }
+                        None => station,
+                    }
+                }
+                _ => station,
             })
         } else {
             let set = self
@@ -871,12 +1100,14 @@ fn fin_term(set: &FinSetAero, mach: f64, roll: f64) -> Term {
     }
 }
 
-/// A body's contribution at the potential-flow and body-lift factors of [`alpha_factors`].
-fn body_term(body: &BodyAero, potential: f64, lift: f64) -> Term {
-    let (attached, lift) = (body.slope_per_rad * potential, body.lift_factor * lift);
+/// A body's contribution from its potential-flow `slope` and `moment` slope at the flow's Mach
+/// number ([`AeroModel::body_potential`]), at the potential-flow and body-lift factors of
+/// [`alpha_factors`].
+fn body_term(body: &BodyAero, slope: f64, moment: f64, potential: f64, lift: f64) -> Term {
+    let (attached, lift) = (slope * potential, body.lift_factor * lift);
     Term {
         slope: attached + lift,
-        moment: body.moment_slope_m * potential + lift * body.lift_station_m,
+        moment: moment * potential + lift * body.lift_station_m,
         scale: attached.abs() + lift.abs(),
         ..Term::default()
     }
@@ -1545,5 +1776,161 @@ mod tests {
             m.normal_force(&flow(6.0, 0.02, 0.0)),
             Err(AeroError::Mach { .. })
         ));
+    }
+
+    /// The finned rocket's nose and body as the shock-expansion method takes them.
+    fn finned_rocket_body() -> ShockExpansionBody {
+        let nose =
+            hpr_design::Profile::nose(NoseShape::Ogive { radius_ratio: 1.0 }, 0.25, 0.027).unwrap();
+        ShockExpansionBody::new(
+            &[
+                BodySegment::Profile { profile: nose },
+                BodySegment::Cylinder {
+                    length_m: 0.7,
+                    radius_m: 0.027,
+                },
+            ],
+            DEFAULT_ELEMENTS_PER_CURVE,
+        )
+        .unwrap()
+    }
+
+    /// Each body's slope and moment slope at `α = 0` (body lift vanishes there), and its station.
+    fn body_values(model: &AeroModel, mach: f64) -> Vec<[f64; 3]> {
+        (0..model.bodies().len())
+            .map(|index| {
+                let force = model
+                    .component_normal_force(index, &flow(mach, 0.0, 0.0))
+                    .unwrap();
+                // At `α = 0` the moment is zero; the slope's moment is the CP times the slope.
+                let moment = force
+                    .cp_station_m
+                    .map_or(0.0, |cp| cp * force.slope_per_rad);
+                [
+                    force.slope_per_rad,
+                    moment,
+                    model.component_station_m(index, mach).unwrap(),
+                ]
+            })
+            .collect()
+    }
+
+    #[test]
+    fn the_supersonic_join_has_no_jump() {
+        let model = model(&finned_rocket(4));
+        let join = model.supersonic_body().unwrap();
+        assert_eq!(join.covered, 2);
+        assert_eq!(join.join_start_mach, SUPERSONIC_JOIN_START_MACH);
+        // The join's ends, rows of the table, and a point between rows.
+        let start = join.join_start_mach;
+        for mach in [
+            start,
+            start + SUPERSONIC_JOIN_WIDTH_MACH,
+            1.35,
+            2.0,
+            2.05,
+            3.0,
+            4.63,
+        ] {
+            let (below, above) = (
+                body_values(&model, mach - 1e-9),
+                body_values(&model, mach + 1e-9),
+            );
+            for (b, a) in below.iter().zip(&above) {
+                for k in 0..3 {
+                    let scale = b[k].abs().max(a[k].abs()).max(1.0);
+                    assert!(
+                        (a[k] - b[k]).abs() <= 1e-7 * scale,
+                        "a jump at Mach {mach}: {b:?} to {a:?}"
+                    );
+                }
+            }
+        }
+        // The join moves the body: the cylinder carries lift past it.
+        let (low, high) = (body_values(&model, 1.0), body_values(&model, 2.0));
+        assert_eq!(low[1][0], 0.0);
+        assert!(high[1][0] > 0.1, "{:?}", high[1]);
+    }
+
+    #[test]
+    fn below_the_join_the_bodies_keep_slender_body_terms() {
+        let model = model(&finned_rocket(4));
+        let slender: Vec<[f64; 3]> = model
+            .bodies()
+            .iter()
+            .enumerate()
+            .map(|(index, body)| {
+                [
+                    body.slope_per_rad,
+                    body.moment_slope_m,
+                    model.component_station_m(index, 0.0).unwrap(),
+                ]
+            })
+            .collect();
+        for mach in [0.0, 0.5, 0.99, 1.1, SUPERSONIC_JOIN_START_MACH] {
+            let got = body_values(&model, mach);
+            for (index, (g, want)) in got.iter().zip(&slender).enumerate() {
+                assert_eq!(g[0], want[0], "body {index} at Mach {mach}");
+                assert_eq!(g[2], want[2], "body {index} at Mach {mach}");
+                if want[0] != 0.0 {
+                    close(g[1], want[1], 1e-14, "moment");
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn past_the_join_the_covered_bodies_take_the_method() {
+        let model = model(&finned_rocket(4));
+        let area = model.reference_area_m2();
+        let body = finned_rocket_body();
+        let join_end = SUPERSONIC_JOIN_START_MACH + SUPERSONIC_JOIN_WIDTH_MACH;
+        // On the table's rows, the method itself; between them, within interpolation.
+        for (mach, rel) in [
+            (1.5, 1e-12),
+            (2.0, 1e-12),
+            (3.0, 1e-12),
+            (4.95, 1e-12),
+            (2.96, 1e-3),
+        ] {
+            assert!(mach >= join_end);
+            let want = body.slope(mach, area).unwrap();
+            let values = body_values(&model, mach);
+            let slope = values[0][0] + values[1][0];
+            let moment = values[0][1] + values[1][1];
+            close(slope, want.slope_per_rad, rel, "slope");
+            close(
+                moment / slope,
+                want.centre_of_pressure_m,
+                rel,
+                "centre of pressure",
+            );
+            // Each covered body's station is its share's centre of pressure, inside its segment.
+            assert!(values[0][2] > 0.0 && values[0][2] < 0.25, "{:?}", values[0]);
+            assert!(
+                values[1][2] > 0.25 && values[1][2] < 0.95,
+                "{:?}",
+                values[1]
+            );
+        }
+        // The boattail keeps slender-body theory at every Mach (M1.8e3 takes it).
+        let boattail = &model.bodies()[2];
+        assert_eq!(body_values(&model, 3.0)[2][0], boattail.slope_per_rad);
+    }
+
+    #[test]
+    fn a_body_the_method_cannot_take_keeps_slender_body_terms() {
+        // A power-series nose has a vertical tip; a tube that steps in radius ends the run.
+        let mut rocket = finned_rocket(4);
+        rocket.stages[0].components[0].part =
+            nose(NoseShape::PowerSeries { exponent: 0.5 }, 0.25, 0.027);
+        let blunt = model(&rocket);
+        assert!(blunt.supersonic_body().is_none());
+        let at = |m: &AeroModel, mach| body_values(m, mach);
+        assert_eq!(at(&blunt, 3.0), at(&blunt, 0.5));
+        let mut rocket = finned_rocket(4);
+        rocket.stages[0].components[1].part = body_part(0.7, 0.03, 0.03);
+        let stepped = model(&rocket);
+        assert_eq!(stepped.supersonic_body().unwrap().covered, 1);
     }
 }
