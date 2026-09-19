@@ -604,13 +604,12 @@ license = "free to use, attribution appreciated"
 mode = "fetched"
 
 # The oracle Python environment: `uv sync --frozen` from validation/oracles/uv.lock, which pins
-# every package by hash (orhelper by git commit). Selected on the command line as `python`.
+# every package by hash. Selected on the command line as `python`.
 [python]
 project = "validation/oracles"
 venv = "refs/venv"
 checks = [
     { module = "rocketpy", version = "1.13.0" },
-    { module = "orhelper", version = "0.1.5" },
     { module = "jpype" },
     { module = "mpmath", version = "1.3.0" },
     { module = "ambiance", version = "1.3.1" },
