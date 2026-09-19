@@ -5,14 +5,14 @@
       "id": "arcas-robin-short",
       "rows": [
         {
-          "handover_radius_ratio": 0.16348327266875323,
+          "handover_radius_ratio": 0.1634832726687533,
           "hpr": {
             "committed": {
-              "cp_calibers": 2.4019181468153,
-              "cp_error_calibers": 1.4008258271612797,
-              "fitted_c_n_alpha": 3.006620128046977,
-              "fitted_c_n_alpha_error": 0.3716334344017369,
-              "zero_alpha_c_n_alpha": 1.84268000828144
+              "cp_calibers": 2.4019184133006948,
+              "cp_error_calibers": 1.4008260936466743,
+              "fitted_c_n_alpha": 3.0066202068231913,
+              "fitted_c_n_alpha_error": 0.3716334703397952,
+              "zero_alpha_c_n_alpha": 1.842680087112524
             },
             "fitted": {
               "cp_calibers": 2.590646269894057,
@@ -33,14 +33,14 @@
           }
         },
         {
-          "handover_radius_ratio": 0.0700570835217841,
+          "handover_radius_ratio": 0.07005708352178416,
           "hpr": {
             "committed": {
-              "cp_calibers": 3.0591930603321846,
-              "cp_error_calibers": 0.702114613265755,
-              "fitted_c_n_alpha": 3.28926631174972,
-              "fitted_c_n_alpha_error": 0.258838839478744,
-              "zero_alpha_c_n_alpha": 2.1431598699354613
+              "cp_calibers": 3.059193060332181,
+              "cp_error_calibers": 0.7021146132657514,
+              "fitted_c_n_alpha": 3.2892663117497123,
+              "fitted_c_n_alpha_error": 0.2588388394787411,
+              "zero_alpha_c_n_alpha": 2.143159869935454
             },
             "fitted": {
               "cp_calibers": 3.0344211931398086,
@@ -179,14 +179,14 @@
       "id": "arcas-robin-long",
       "rows": [
         {
-          "handover_radius_ratio": 0.0700570835217841,
+          "handover_radius_ratio": 0.07005708352178416,
           "hpr": {
             "committed": {
-              "cp_calibers": 4.303803048214029,
-              "cp_error_calibers": -0.3025284651235296,
-              "fitted_c_n_alpha": 3.768906420572603,
-              "fitted_c_n_alpha_error": 0.1932438794523872,
-              "zero_alpha_c_n_alpha": 2.1431933831969676
+              "cp_calibers": 4.303803048214027,
+              "cp_error_calibers": -0.3025284651235314,
+              "fitted_c_n_alpha": 3.7689064205725957,
+              "fitted_c_n_alpha_error": 0.19324387945238475,
+              "zero_alpha_c_n_alpha": 2.1431933831969605
             },
             "fitted": {
               "cp_calibers": 4.27485796377639,
@@ -323,158 +323,189 @@
   ],
   "generator": "cargo xtask aero (xtask/src/aero_blunt.rs)",
   "note": "Blunt and vertical nose tips faster than sound (M1.8e7): TN D-4865's Newtonian cap and handover ahead of TN 3527's method, which starts behind it from the tangent cone's flow. sphere_cone: TN D-4865's model 1 (readings in tn-d-4865-sphere-cone.json), hpr's C_N_alpha on the base area and centre of pressure from the nose tip in base diameters at alpha -> 0, against the measured C_N and C_m fitted with a straight line (with an intercept) over the plotted angles 0 to 12 deg, and the report's own method fitted the same way through the origin's zero. arcas_robin: the committed design's power-series nose, cylinder and boattail, the lip left off, through the flight's path with hpr's current body model, fitted at the tunnel's plotted angles as arcas-robin-crossflow.json fits them (per radian on the body's cross-section), beside the fitted secant ogive's (M1.8e6's comparison) and the slopes at alpha -> 0. Errors are hpr's over the measured, minus 1; centre-of-pressure errors hpr's minus the measured, calibers. No targets.",
-  "sphere_cone": [
-    {
-      "hpr": {
-        "c_n_alpha_error": -0.11912796427519523,
-        "c_n_alpha_per_rad": 1.6805331473148302,
-        "cp_calibers": 1.026648728328456,
-        "cp_error_calibers": 0.02790077427785176,
-        "handover_calibers": 0.13827891715470814,
-        "handover_deg": 12.112668885838593
-      },
-      "hpr_newtonian_start": {
-        "c_n_alpha_error": 0.7781317276865798,
-        "c_n_alpha_per_rad": 3.3923307671025187,
-        "cp_calibers": 1.0070711954674143
-      },
-      "mach": 1.5,
-      "measured": {
-        "c_n_alpha_per_rad": 1.9078062183368587,
-        "cp_calibers": 0.9987479540506042
-      },
-      "report_method": {
-        "c_n_alpha_error": -0.03348599744725578,
-        "c_n_alpha_per_rad": 1.843921424179772,
-        "cp_calibers": 0.9398955954323002
-      }
+  "sphere_cone": {
+    "body": {
+      "length_calibers": 1.75480446169104,
+      "planform_centroid_calibers": 1.047080841129553,
+      "planform_over_base_area": 1.4263101595964929
     },
-    {
-      "hpr": {
-        "c_n_alpha_error": -0.11176545986117226,
-        "c_n_alpha_per_rad": 1.7108648479360988,
-        "cp_calibers": 1.0142140028293452,
-        "cp_error_calibers": -0.019497605707875287,
-        "handover_calibers": 0.11180832459632593,
-        "handover_deg": 21.167476651578554
+    "rows": [
+      {
+        "hpr": {
+          "cp_calibers": 1.0289958508015757,
+          "cp_error_calibers": 0.030247896750971504,
+          "fitted_c_n_alpha": 1.8850940096856694,
+          "fitted_c_n_alpha_error": -0.011904882389464522,
+          "handover_calibers": 0.13827891715470814,
+          "handover_deg": 12.112668885838591,
+          "zero_alpha_c_n_alpha": 1.6805331473148302,
+          "zero_alpha_cp_calibers": 1.026648728328456
+        },
+        "hpr_newtonian_start": {
+          "zero_alpha_c_n_alpha": 3.3923307671025187
+        },
+        "mach": 1.5,
+        "measured": {
+          "cp_calibers": 0.9987479540506042,
+          "fitted_c_n_alpha": 1.9078062183368587,
+          "zero_alpha_c_n_alpha": 1.7412903591269568,
+          "zero_alpha_cubic_c_n_alpha": 1.810162584815938,
+          "zero_alpha_cubic_standard_error": 0.0763099912619617,
+          "zero_alpha_standard_error": 0.11210260058820568
+        },
+        "report_method": {
+          "cp_calibers": 0.9398955954323002,
+          "fitted_c_n_alpha": 1.843921424179772,
+          "fitted_c_n_alpha_error": -0.03348599744725578
+        }
       },
-      "hpr_newtonian_start": {
-        "c_n_alpha_error": 0.017734728327548188,
-        "c_n_alpha_per_rad": 1.9603004527917294,
-        "cp_calibers": 0.9872055704103255
+      {
+        "hpr": {
+          "cp_calibers": 1.0180987177979777,
+          "cp_error_calibers": -0.015612890739242768,
+          "fitted_c_n_alpha": 1.9263463072613913,
+          "fitted_c_n_alpha_error": 0.0001066585958395816,
+          "handover_calibers": 0.11180832459632593,
+          "handover_deg": 21.167476651578554,
+          "zero_alpha_c_n_alpha": 1.7108648479360988,
+          "zero_alpha_cp_calibers": 1.0142140028293452
+        },
+        "hpr_newtonian_start": {
+          "zero_alpha_c_n_alpha": 1.9603004527917294
+        },
+        "mach": 1.9,
+        "measured": {
+          "cp_calibers": 1.0337116085372204,
+          "fitted_c_n_alpha": 1.9261408677810448,
+          "zero_alpha_c_n_alpha": 1.9787813652086967,
+          "zero_alpha_cubic_c_n_alpha": 1.9515336929623537,
+          "zero_alpha_cubic_standard_error": 0.0763099912619617,
+          "zero_alpha_standard_error": 0.11210260058820568
+        },
+        "report_method": {
+          "cp_calibers": 0.9779702450408403,
+          "fitted_c_n_alpha": 1.964099321708462,
+          "fitted_c_n_alpha_error": 0.019706997843385254
+        }
       },
-      "mach": 1.9,
-      "measured": {
-        "c_n_alpha_per_rad": 1.9261408677810448,
-        "cp_calibers": 1.0337116085372204
+      {
+        "hpr": {
+          "cp_calibers": 1.0177562039199692,
+          "cp_error_calibers": -0.013219108580031058,
+          "fitted_c_n_alpha": 1.9705005078935078,
+          "fitted_c_n_alpha_error": 0.07474130546756963,
+          "handover_calibers": 0.10382108746173496,
+          "handover_deg": 24.0,
+          "zero_alpha_c_n_alpha": 1.7130840978327446,
+          "zero_alpha_cp_calibers": 1.0131073965913946
+        },
+        "hpr_newtonian_start": {
+          "zero_alpha_c_n_alpha": 1.7924322761419769
+        },
+        "mach": 2.3,
+        "measured": {
+          "cp_calibers": 1.0309753125000003,
+          "fitted_c_n_alpha": 1.833464944418634,
+          "zero_alpha_c_n_alpha": 1.6572804224159086,
+          "zero_alpha_cubic_c_n_alpha": 1.7165483392673018,
+          "zero_alpha_cubic_standard_error": 0.0763099912619617,
+          "zero_alpha_standard_error": 0.11210260058820568
+        },
+        "report_method": {
+          "cp_calibers": 1.0515396471011884,
+          "fitted_c_n_alpha": 1.9888797463478702,
+          "fitted_c_n_alpha_error": 0.08476562500000018
+        }
       },
-      "report_method": {
-        "c_n_alpha_error": 0.019706997843385254,
-        "c_n_alpha_per_rad": 1.964099321708462,
-        "cp_calibers": 0.9779702450408403
+      {
+        "hpr": {
+          "cp_calibers": 1.021447548587205,
+          "cp_error_calibers": -0.034434068352159786,
+          "fitted_c_n_alpha": 2.0090227461861376,
+          "fitted_c_n_alpha_error": 0.12492979366077805,
+          "handover_calibers": 0.10382108746173496,
+          "handover_deg": 24.0,
+          "zero_alpha_c_n_alpha": 1.7023815755034786,
+          "zero_alpha_cp_calibers": 1.016613019535899
+        },
+        "hpr_newtonian_start": {
+          "zero_alpha_c_n_alpha": 1.7002229888978124
+        },
+        "mach": 2.96,
+        "measured": {
+          "cp_calibers": 1.0558816169393648,
+          "fitted_c_n_alpha": 1.785909447422776,
+          "zero_alpha_c_n_alpha": 1.6462509848596483,
+          "zero_alpha_cubic_c_n_alpha": 1.6842468055997806,
+          "zero_alpha_cubic_standard_error": 0.0763099912619617,
+          "zero_alpha_standard_error": 0.11210260058820568
+        },
+        "report_method": {
+          "cp_calibers": 1.0951006711409397,
+          "fitted_c_n_alpha": 1.8781556524388385,
+          "fitted_c_n_alpha_error": 0.05165222970805261
+        }
+      },
+      {
+        "hpr": {
+          "cp_calibers": 1.0303219434311222,
+          "cp_error_calibers": -0.01799002540740502,
+          "fitted_c_n_alpha": 2.0987285372984896,
+          "fitted_c_n_alpha_error": 0.2970865113818437,
+          "handover_calibers": 0.10382108746173496,
+          "handover_deg": 24.0,
+          "zero_alpha_c_n_alpha": 1.6777232708894108,
+          "zero_alpha_cp_calibers": 1.0259658717625437
+        },
+        "hpr_newtonian_start": {
+          "zero_alpha_c_n_alpha": 1.6250485354145119
+        },
+        "mach": 3.95,
+        "measured": {
+          "cp_calibers": 1.0483119688385272,
+          "fitted_c_n_alpha": 1.6180328134494446,
+          "zero_alpha_c_n_alpha": 1.4332539245197538,
+          "zero_alpha_cubic_c_n_alpha": 1.4841267641120552,
+          "zero_alpha_cubic_standard_error": 0.0763099912619617,
+          "zero_alpha_standard_error": 0.11210260058820568
+        },
+        "report_method": {
+          "cp_calibers": 1.0605334182049648,
+          "fitted_c_n_alpha": 1.8002333923010467,
+          "fitted_c_n_alpha_error": 0.11260623229461775
+        }
+      },
+      {
+        "hpr": {
+          "cp_calibers": 1.0338013117821174,
+          "cp_error_calibers": -0.055272697272673144,
+          "fitted_c_n_alpha": 2.048338397938013,
+          "fitted_c_n_alpha_error": 0.3212694904941016,
+          "handover_calibers": 0.10382108746173496,
+          "handover_deg": 24.0,
+          "zero_alpha_c_n_alpha": 1.6126339837222194,
+          "zero_alpha_cp_calibers": 1.0300922388904885
+        },
+        "hpr_newtonian_start": {
+          "zero_alpha_c_n_alpha": 1.4842088870278587
+        },
+        "mach": 4.63,
+        "measured": {
+          "cp_calibers": 1.0890740090547906,
+          "fitted_c_n_alpha": 1.550280554175225,
+          "zero_alpha_c_n_alpha": 1.3386442685987703,
+          "zero_alpha_cubic_c_n_alpha": 1.4193887610643934,
+          "zero_alpha_cubic_standard_error": 0.0763099912619617,
+          "zero_alpha_standard_error": 0.11210260058820568
+        },
+        "report_method": {
+          "cp_calibers": 1.0822068292682927,
+          "fitted_c_n_alpha": 1.7618452200272814,
+          "fitted_c_n_alpha_error": 0.13646863161785094
+        }
       }
-    },
-    {
-      "hpr": {
-        "c_n_alpha_error": -0.06565756653943577,
-        "c_n_alpha_per_rad": 1.7130840978327446,
-        "cp_calibers": 1.0131073965913946,
-        "cp_error_calibers": -0.017867915908605703,
-        "handover_calibers": 0.10382108746173496,
-        "handover_deg": 24.0
-      },
-      "hpr_newtonian_start": {
-        "c_n_alpha_error": -0.02237984882207167,
-        "c_n_alpha_per_rad": 1.7924322761419769,
-        "cp_calibers": 1.0031660853103492
-      },
-      "mach": 2.3,
-      "measured": {
-        "c_n_alpha_per_rad": 1.833464944418634,
-        "cp_calibers": 1.0309753125000003
-      },
-      "report_method": {
-        "c_n_alpha_error": 0.08476562500000018,
-        "c_n_alpha_per_rad": 1.9888797463478702,
-        "cp_calibers": 1.0515396471011884
-      }
-    },
-    {
-      "hpr": {
-        "c_n_alpha_error": -0.046770496701182385,
-        "c_n_alpha_per_rad": 1.7023815755034786,
-        "cp_calibers": 1.016613019535899,
-        "cp_error_calibers": -0.039268597403465666,
-        "handover_calibers": 0.10382108746173496,
-        "handover_deg": 24.0
-      },
-      "hpr_newtonian_start": {
-        "c_n_alpha_error": -0.047979173103438466,
-        "c_n_alpha_per_rad": 1.7002229888978124,
-        "cp_calibers": 1.017756801855451
-      },
-      "mach": 2.96,
-      "measured": {
-        "c_n_alpha_per_rad": 1.785909447422776,
-        "cp_calibers": 1.0558816169393648
-      },
-      "report_method": {
-        "c_n_alpha_error": 0.05165222970805261,
-        "c_n_alpha_per_rad": 1.8781556524388385,
-        "cp_calibers": 1.0951006711409397
-      }
-    },
-    {
-      "hpr": {
-        "c_n_alpha_error": 0.03689075829847566,
-        "c_n_alpha_per_rad": 1.6777232708894108,
-        "cp_calibers": 1.0259658717625437,
-        "cp_error_calibers": -0.02234609707598345,
-        "handover_calibers": 0.10382108746173496,
-        "handover_deg": 24.0
-      },
-      "hpr_newtonian_start": {
-        "c_n_alpha_error": 0.0043359577795647475,
-        "c_n_alpha_per_rad": 1.6250485354145119,
-        "cp_calibers": 1.0186500999599062
-      },
-      "mach": 3.95,
-      "measured": {
-        "c_n_alpha_per_rad": 1.6180328134494446,
-        "cp_calibers": 1.0483119688385272
-      },
-      "report_method": {
-        "c_n_alpha_error": 0.11260623229461775,
-        "c_n_alpha_per_rad": 1.8002333923010467,
-        "cp_calibers": 1.0605334182049648
-      }
-    },
-    {
-      "hpr": {
-        "c_n_alpha_error": 0.040220739000475625,
-        "c_n_alpha_per_rad": 1.6126339837222194,
-        "cp_calibers": 1.0300922388904885,
-        "cp_error_calibers": -0.05898177016430206,
-        "handover_calibers": 0.10382108746173496,
-        "handover_deg": 24.0
-      },
-      "hpr_newtonian_start": {
-        "c_n_alpha_error": -0.04261916784637565,
-        "c_n_alpha_per_rad": 1.4842088870278587,
-        "cp_calibers": 1.013239512015272
-      },
-      "mach": 4.63,
-      "measured": {
-        "c_n_alpha_per_rad": 1.550280554175225,
-        "cp_calibers": 1.0890740090547906
-      },
-      "report_method": {
-        "c_n_alpha_error": 0.13646863161785094,
-        "c_n_alpha_per_rad": 1.7618452200272814,
-        "cp_calibers": 1.0822068292682927
-      }
-    }
-  ],
+    ]
+  },
   "starts": {
     "body": "the committed nose and the short model's cylinder, nothing aft",
     "design": "wind-tunnel-arcas-robin-short.json",
@@ -483,25 +514,25 @@
         "mach": 1.5,
         "newtonian": {
           "10": {
-            "c_n_alpha_per_rad": 2.865590291664545,
-            "cp_calibers": 2.7031738274299326,
+            "c_n_alpha_per_rad": 2.8655902916645446,
+            "cp_calibers": 2.7031738274299335,
             "reduced_elements": 0
           },
           "40": {
-            "c_n_alpha_per_rad": 2.769931003145783,
-            "cp_calibers": 2.7613678117228955,
+            "c_n_alpha_per_rad": 2.7699310031457793,
+            "cp_calibers": 2.761367811722892,
             "reduced_elements": 0
           }
         },
         "tangent_cone": {
           "10": {
-            "c_n_alpha_per_rad": 2.530727748141432,
-            "cp_calibers": 3.0394316039299394,
+            "c_n_alpha_per_rad": 2.5307277481414303,
+            "cp_calibers": 3.0394316039299407,
             "reduced_elements": 0
           },
           "40": {
-            "c_n_alpha_per_rad": 2.5316565726442946,
-            "cp_calibers": 3.040074789963536,
+            "c_n_alpha_per_rad": 2.5316565726443008,
+            "cp_calibers": 3.040074789963543,
             "reduced_elements": 0
           }
         }
@@ -510,25 +541,25 @@
         "mach": 1.8,
         "newtonian": {
           "10": {
-            "c_n_alpha_per_rad": 2.6758227022313927,
-            "cp_calibers": 3.0052441487093193,
+            "c_n_alpha_per_rad": 2.675822702231392,
+            "cp_calibers": 3.005244148709319,
             "reduced_elements": 0
           },
           "40": {
-            "c_n_alpha_per_rad": 2.63512784887859,
+            "c_n_alpha_per_rad": 2.635127848878589,
             "cp_calibers": 3.041366325986035,
             "reduced_elements": 0
           }
         },
         "tangent_cone": {
           "10": {
-            "c_n_alpha_per_rad": 2.6968969323728977,
-            "cp_calibers": 3.2138318572729356,
+            "c_n_alpha_per_rad": 2.69689693237289,
+            "cp_calibers": 3.2138318572729303,
             "reduced_elements": 0
           },
           "40": {
-            "c_n_alpha_per_rad": 2.7011980522588837,
-            "cp_calibers": 3.21116589284336,
+            "c_n_alpha_per_rad": 2.7011980522588876,
+            "cp_calibers": 3.2111658928433604,
             "reduced_elements": 0
           }
         }

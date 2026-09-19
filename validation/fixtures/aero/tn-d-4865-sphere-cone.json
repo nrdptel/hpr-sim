@@ -14,8 +14,10 @@
   },
   "reading": {
     "figure": "Fig. 8(a), Model 1, printed p. 101 (PDF p. 104): C_N and C_m against alpha at Mach 1.50 to 4.63; circles are the report's experiment (surface pressures integrated over the forebody, p. 12), the solid line its method",
-    "how": "read from the report's 300-ppi scan by pixel analysis: the axes fitted to the labelled grid lines (residual under 0.0004 in C_N, 0.0011 in C_m, 0.011 deg in alpha), each circle's centre from a fit to its ring, the solid line's centre at alpha = 4, 8 and 12 deg",
-    "uncertainty": "about 0.003 in C_N and C_m from the reading; the plotting itself is good to about 0.005 to 0.01, since the alpha = 0 circles read -0.004 to +0.016 where they should read 0",
+    "file": "the PDF pinned as nasa-tn-d-4865-jackson-1968 in validation/refs.lock.toml (sha256 4ef9c99567d8033810473f75bca1ec2f265563acb57a86b29a7f9bfc3703f93b)",
+    "when": "2026-09-19, M1.8e7",
+    "how": "PDF page 104's image extracted as it is stored (pdfimages -png: a 300-ppi 1-bit scan, 2368 by 3040 px; a higher-dpi render only resamples it) and read by pixel analysis in Python with numpy: in each of the six panels the grid lines found from the dark-pixel counts of each column and row, refined line by line (the scan is turned about 0.1 deg), and an affine map fitted from the labelled lines' crossings (residual under 0.0004 in C_N, 0.0011 in C_m, 0.011 deg in alpha); each circle's centre from a fit to its ring's outer and inner edges; the solid line's centre at alpha = 4, 8 and 12 deg from its tracked dark runs. Every reading checked on overlays of the fits on the scan",
+    "uncertainty": "about 0.003 in C_N and C_m from the reading; the plotting itself is good to about 0.005 to 0.01, since the alpha = 0 circles read -0.0027 to +0.0163 where they should read 0",
     "tunnel_conditions": "Mach 1.50 to 4.63, Reynolds number 8.5e6 to 9.8e6 per metre (p. 3)"
   },
   "rows": [

@@ -2462,6 +2462,65 @@ mod tests {
         }
     }
 
+    /// A blunt tip's join starts where its cap first ends on the nose: at the Mach number whose
+    /// handover angle is the nose's slope at its base, found without the method from
+    /// [`crate::blunt_tip::handover_angle_rad`]. The method holds on one side of it only, with no
+    /// flicker from corners too close to place (the handover packs the nose's elements into
+    /// nanometres there; issue found when CI's Linux and Windows runs bisected a different start).
+    #[test]
+    fn a_blunt_tips_join_starts_where_its_cap_first_ends_on_the_nose() {
+        let mut rocket = crate::testing::committed_design("wind-tunnel-arcas-robin-short.json");
+        // The nose, the cylinder and the boattail; the lip left off.
+        rocket.stages[0].components.truncate(3);
+        let model = model(&rocket);
+        let table = model.supersonic_body().unwrap();
+        let Part::NoseCone(cone) = &rocket.stages[0].components[0].part else {
+            unreachable!("the committed design starts with its nose")
+        };
+        let profile = cone.profile().unwrap();
+        let base_angle = profile.radius_and_slope(profile.length_m()).1.atan();
+        let (mut low, mut high) = (1.0 + 1e-9, 2.0);
+        for _ in 0..200 {
+            let mid = 0.5 * (low + high);
+            if crate::blunt_tip::handover_angle_rad(mid).unwrap() < base_angle {
+                low = mid;
+            } else {
+                high = mid;
+            }
+        }
+        assert!(
+            (table.join_start_mach - high).abs() <= 1e-12,
+            "{} against {high}",
+            table.join_start_mach
+        );
+        let run = model.supersonic_run.as_ref().unwrap();
+        let body = ShockExpansionBody::new(&run.segments, DEFAULT_ELEMENTS_PER_CURVE).unwrap();
+        let in_its_place: Vec<Option<ShockExpansionBody>> = run
+            .boattails
+            .iter()
+            .map(|b| {
+                b.as_ref().map(|b| {
+                    ShockExpansionBody::new(&b.in_its_place, DEFAULT_ELEMENTS_PER_CURVE).unwrap()
+                })
+            })
+            .collect();
+        let holds = |m: f64| {
+            run.shares(&body, &in_its_place, m, model.reference_area_m2())
+                .is_some()
+        };
+        for i in 1..=2000 {
+            let d = f64::from(i) * 1e-10;
+            assert!(
+                !holds(table.join_start_mach - d),
+                "holds {d} below the start"
+            );
+            assert!(
+                holds(table.join_start_mach + d),
+                "fails {d} above the start"
+            );
+        }
+    }
+
     /// Washington and Pettis's boattail: the method's share for a cylinder of the boattail's
     /// length and fore radius in its place, plus the measured increment at its centre of
     /// pressure; footnote 8's is the method's own segment share.

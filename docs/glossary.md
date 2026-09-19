@@ -547,7 +547,7 @@ but often holds the full designation. See [RASP `.eng` files](format/eng.md#head
 A simple rule for the pressure on the front of a body in fast flow: the air hits the surface and
 loses the speed it had toward it, so the pressure rises with the square of the sine of the angle
 between the surface and the wind, `C_p = C_p,max sin²δ`. `C_p,max` is the pressure coefficient
-behind a normal shock at the nose's stagnation point. It suits the steep, blunt front of a body
+at the nose's stagnation point, where the air comes to rest behind a normal shock. It suits the steep, blunt front of a body
 better than its shallow sides. hpr uses it on the cap of a blunt or vertical nose tip faster than
 sound, ahead of the shock-expansion method. See
 [Aerodynamics](physics/aero.md#blunt-tips).

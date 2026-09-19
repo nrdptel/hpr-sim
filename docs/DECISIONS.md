@@ -3504,7 +3504,8 @@ TN 3527's method and compares it with its own tunnel data from Mach 1.50 to 4.63
   and #90, M1.8e's 15% bullet) M1.8e9. e7 keeps "flown with no jump at ±1e-9 in Mach", and takes
   "the Arcas Robin's committed nose (lip left off) through a flight's path in the report" and a
   check against TN D-4865's own sphere-cone; e8 keeps "the committed Arcas Robin designs through a
-  flight's path in the report".
+  flight's path in the report". Like the Arcas Robin's since ADR-036, the sphere-cone check carries
+  no target: it shows where hpr stands, set out before measuring.
 - **The cap** is TN D-4865's modified Newtonian `C_p = C_p,max sin²δ` (eq. 1, p. 5), `C_p,max`
   from the Rayleigh pitot formula (NACA Report 1135 eq. 100, p. 619). At `α → 0`, in TN 3527's
   loading form (`C_Nα = (2π/A_ref) ∫ Λ r dx`), the wind's slope `δ + α cos φ` gives
@@ -3525,9 +3526,11 @@ TN 3527's method and compares it with its own tunnel data from Mach 1.50 to 4.63
     flight's table is built from Mach 5 down (ADR-034), that would leave such a rocket no method;
   - reduces elements from Mach 2.96 (issue #81), so its answer moves with their number (2.544 to
     2.583 per radian at Mach 2.96, 3.361 to 3.418 at 3.5, from 10 to 40 elements);
-  - on the report's own sphere-cone agrees better from Mach 1.9 (−4.8% to +1.8% against hpr's
-    −11.2% to +4.0%), but reads +77.8% at Mach 1.5, where the handover (12.1°) sits 0.6° above the
-    11.5° cone and the linear range is that small.
+  - on the report's own sphere-cone, against the measured slope at `α → 0` (fitted both ways,
+    ADR-036), reads closer than hpr's at Mach 1.9, 3.95 and 4.63, about the same at 2.96, further
+    at 2.3, and 95% high at Mach 1.5, where the handover (12.1°) sits 0.6° above the 11.5° cone
+    and the linear range is that small. That is hpr's `α → 0` reading of the report's start; the
+    report's method itself, at its own angles, reads 1.844 per radian there.
 
   The tangent cone's start holds to Mach 5 on the Arcas Robin's nose and moves by under 0.01 per
   radian from 10 to 40 elements. Both stay in the library: `HandoverStart::Newtonian` selects the
@@ -3542,17 +3545,24 @@ TN 3527's method and compares it with its own tunnel data from Mach 1.50 to 4.63
   2022 peaks at 1.06), so the whole-flight report is unchanged.
 - **TN D-4865's Fig. 8(a)** (model 1, printed p. 101) is read from the report's 300-ppi scan by
   pixel analysis (axes fitted to the labelled grid lines, each circle's centre fitted to its ring)
-  into `tn-d-4865-sphere-cone.json`, to about ±0.003; the α = 0 circles read −0.004 to +0.016,
-  so the plotting itself is good to about ±0.01. Both lines are fitted over the plotted 0° to 12°,
-  as M1.8a fits the tunnel's.
+  into `tn-d-4865-sphere-cone.json`, to about ±0.003; the α = 0 circles read −0.0027 to
+  +0.0163, so the plotting itself is good to about ±0.01. It is compared as ADR-036 compares the
+  Arcas Robin: hpr's `C_N` at the plotted 0° to 12° (the method's slope with Jorgensen's body lift,
+  for a fineness of 1.75, below his Fig. 4's range), fitted with a straight line as the measured
+  `C_N` and `C_m` are, the report's own method the same way; the slopes at `α → 0` beside it under
+  both curved fits, not judged.
 
 **Consequences.**
 
-- TN D-4865's sphere-cone: hpr −11.9% to +4.0%, its centre of pressure within 0.06 diameters of
-  the measured; the report's own method −3.3% to +13.6%.
+- TN D-4865's sphere-cone, like for like: hpr −1.2% to +32.1%, close to Mach 2.3 and high from
+  Mach 2.96 (+12.5%, +29.7%, +32.1%), where the report's own method reads +5.2% to +13.6% (−3.3%
+  to +13.6% overall); its centre of pressure within 0.06 diameters. At Mach 3.95 and 4.63 hpr's
+  slope at `α → 0` is 13% to 21% above the measured, and body lift raises its fitted slope 25% to
+  27% above that where the measured curve rises 9% to 16%. At `α → 0` hpr reads −13.5% to +20.5%
+  (`α |α|` fit) and −12.3% to +13.6% (`α³`).
 - The Arcas Robin's committed nose with the lip left off, like for like: short +37.2% to −4.8%,
   long +19.3% to −4.1%, at or below the fitted secant ogive (+3.4% to +41.0%) at every Mach
-  number, by up to 3.8 points to Mach 2.96 and 5.2 to 8.2 past Mach 3, where it reads within 5% of
+  number, by up to 3.8 points to Mach 2.96 and 5.1 to 8.2 past Mach 3, where it reads within 5% of
   the tunnel. The committed designs themselves keep slender-body theory for their lip until
   M1.8e8, so M1.8a's short model at Mach 2.96 still reads −16.3%.
 - M1.8a (`normal-force-vs-mach.json`): Calisto's von Kármán nose flies the method past Mach 1.2.

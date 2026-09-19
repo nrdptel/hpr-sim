@@ -18,6 +18,7 @@ use std::fs;
 use std::path::Path;
 
 use hpr_aero::blunt_tip::handover_angle_rad;
+use hpr_aero::crossflow::crossflow_factor;
 use hpr_aero::shock_expansion::{
     BodySegment, DEFAULT_ELEMENTS_PER_CURVE, HandoverStart, ShockExpansionBody,
 };
@@ -29,6 +30,7 @@ use crate::aero_body::{
     ARCAS_NOSE_R_IN, INCH, arcas_model, arcas_model_without_lip, arcas_nose_ratio, flight_bodies,
 };
 use crate::aero_crossflow::{CP_DEG, MOMENT};
+use crate::aero_gap::fit3;
 use crate::aero_mach::{WIND_TUNNEL, hpr_force, slope};
 
 pub const FIXTURE: &str = "validation/fixtures/aero/blunt-tips.json";
@@ -176,12 +178,52 @@ pub fn sphere_cone_body(readings: &Value) -> Result<ShockExpansionBody, String> 
     .map_err(|e| e.to_string())
 }
 
+/// The measurement's reading error in `C_N`, for the curved fits' standard errors: the plotting's
+/// own, about 0.005 (the readings file's `reading`).
+const READING: f64 = 0.005;
+
+/// Model 1's planform (the side view's area, `∫ 2r dx`) over its base area, and its centroid from
+/// the tip, in base diameters: the cap by the midpoint rule on `r = √(x(2R − x))`, the cone a
+/// trapezoid.
+fn sphere_cone_planform(radius: f64, half_angle: f64) -> (f64, f64) {
+    let tangent_x = radius * (1.0 - half_angle.sin());
+    let tangent_r = radius * half_angle.cos();
+    let steps = 200_000;
+    let h = tangent_x / f64::from(steps);
+    let (mut area, mut moment) = (0.0, 0.0);
+    for i in 0..steps {
+        let x = (f64::from(i) + 0.5) * h;
+        let width = 2.0 * (x * (2.0 * radius - x)).sqrt();
+        area += width * h;
+        moment += width * x * h;
+    }
+    let cone_length = (0.5 - tangent_r) / half_angle.tan();
+    let (fore, aft) = (2.0 * tangent_r, 1.0);
+    let cone_area = 0.5 * (fore + aft) * cone_length;
+    let cone_centroid = tangent_x + cone_length * (fore + 2.0 * aft) / (3.0 * (fore + aft));
+    area += cone_area;
+    moment += cone_area * cone_centroid;
+    (area / (0.25 * PI), moment / area)
+}
+
 fn sphere_cone_rows(root: &Path) -> Result<Value, String> {
     let readings = read(root, READINGS)?;
     let body = sphere_cone_body(&readings)?;
+    let reports = body.clone().with_handover_start(HandoverStart::Newtonian);
     let length = readings["reference"]["length_over_base_diameter"]
         .as_f64()
         .ok_or(format!("{READINGS}: no reference length"))?;
+    let model = &readings["model"];
+    let radius = model["nose_radius_over_base_diameter"]
+        .as_f64()
+        .ok_or("no nose radius")?;
+    let half_angle = model["cone_half_angle_deg"]
+        .as_f64()
+        .ok_or("no cone half-angle")?
+        .to_radians();
+    let (planform_ratio, planform_centroid) = sphere_cone_planform(radius, half_angle);
+    // Length over largest diameter, as a flight takes a body's fineness for body lift.
+    let fineness = body.length_m();
     let area = 0.25 * PI;
     let mut rows = Vec::new();
     for row in readings["rows"]
@@ -195,6 +237,10 @@ fn sphere_cone_rows(root: &Path) -> Result<Value, String> {
         // C_m about the nose tip on the body length, nose-up positive: the centre of pressure
         // sits `−C_m l / C_N` aft of the tip.
         let measured_cp = -slope(&m_a, &m_c) * length / measured;
+        let ([_, zero_alpha, _], [_, zero_alpha_error, _], _) =
+            fit3(&n_a, &n_c, |a| [1.0, a, a * a.abs()], READING)?;
+        let ([_, zero_alpha_cubic, _], [_, zero_alpha_cubic_error, _], _) =
+            fit3(&n_a, &n_c, |a| [1.0, a, a * a * a], READING)?;
         // The report's method passes through zero at zero angle.
         let (mut t_a, mut t_n) = pairs(row, "report_theory_alpha_deg_c_n")?;
         let (_, mut t_m) = pairs(row, "report_theory_alpha_deg_c_m")?;
@@ -206,11 +252,25 @@ fn sphere_cone_rows(root: &Path) -> Result<Value, String> {
         let hpr = body
             .slope(mach, area)
             .map_err(|e| format!("model 1 at Mach {mach}: {e}"))?;
-        let newtonian = body
-            .clone()
-            .with_handover_start(HandoverStart::Newtonian)
+        let newtonian = reports
             .slope(mach, area)
-            .map_err(|e| format!("model 1 at Mach {mach}, the Newtonian start: {e}"))?;
+            .map_err(|e| format!("model 1 at Mach {mach}, the report's start: {e}"))?;
+        // As a flight flies it at the plotted angles: the method's slope as `sin α`, and body
+        // lift, Jorgensen's `η C_dn (A_plan/A_ref) sin² α` at the planform's centroid.
+        let (c_n, moments): (Vec<f64>, Vec<f64>) = n_a
+            .iter()
+            .map(|&a| {
+                let lift =
+                    crossflow_factor(fineness, mach * a.sin()) * planform_ratio * a.sin() * a.sin();
+                let attached = hpr.slope_per_rad * a.sin();
+                (
+                    attached + lift,
+                    attached * hpr.centre_of_pressure_m + lift * planform_centroid,
+                )
+            })
+            .unzip();
+        let fitted = slope(&n_a, &c_n);
+        let fitted_cp = slope(&n_a, &moments) / fitted;
         let handover_x = body
             .handover_m(mach)
             .map_err(|e| e.to_string())?
@@ -218,30 +278,58 @@ fn sphere_cone_rows(root: &Path) -> Result<Value, String> {
         let handover_deg = handover_angle_rad(mach)
             .map_err(|e| e.to_string())?
             .to_degrees();
+        let numbers = [
+            measured,
+            measured_cp,
+            zero_alpha,
+            zero_alpha_cubic,
+            theory,
+            theory_cp,
+            fitted,
+            fitted_cp,
+            newtonian.slope_per_rad,
+        ];
+        if numbers.iter().any(|x| !x.is_finite()) {
+            return Err(format!("model 1 at Mach {mach}: a result isn't a number"));
+        }
         rows.push(json!({
             "mach": mach,
-            "measured": { "c_n_alpha_per_rad": measured, "cp_calibers": measured_cp },
+            "measured": {
+                "fitted_c_n_alpha": measured,
+                "cp_calibers": measured_cp,
+                "zero_alpha_c_n_alpha": zero_alpha,
+                "zero_alpha_standard_error": zero_alpha_error,
+                "zero_alpha_cubic_c_n_alpha": zero_alpha_cubic,
+                "zero_alpha_cubic_standard_error": zero_alpha_cubic_error,
+            },
             "report_method": {
-                "c_n_alpha_per_rad": theory,
+                "fitted_c_n_alpha": theory,
+                "fitted_c_n_alpha_error": theory / measured - 1.0,
                 "cp_calibers": theory_cp,
-                "c_n_alpha_error": theory / measured - 1.0,
             },
             "hpr": {
-                "c_n_alpha_per_rad": hpr.slope_per_rad,
-                "cp_calibers": hpr.centre_of_pressure_m,
-                "c_n_alpha_error": hpr.slope_per_rad / measured - 1.0,
-                "cp_error_calibers": hpr.centre_of_pressure_m - measured_cp,
+                "fitted_c_n_alpha": fitted,
+                "fitted_c_n_alpha_error": fitted / measured - 1.0,
+                "cp_calibers": fitted_cp,
+                "cp_error_calibers": fitted_cp - measured_cp,
+                "zero_alpha_c_n_alpha": hpr.slope_per_rad,
+                "zero_alpha_cp_calibers": hpr.centre_of_pressure_m,
                 "handover_deg": handover_deg,
                 "handover_calibers": handover_x,
             },
             "hpr_newtonian_start": {
-                "c_n_alpha_per_rad": newtonian.slope_per_rad,
-                "cp_calibers": newtonian.centre_of_pressure_m,
-                "c_n_alpha_error": newtonian.slope_per_rad / measured - 1.0,
+                "zero_alpha_c_n_alpha": newtonian.slope_per_rad,
             },
         }));
     }
-    Ok(json!(rows))
+    Ok(json!({
+        "body": {
+            "length_calibers": body.length_m(),
+            "planform_over_base_area": planform_ratio,
+            "planform_centroid_calibers": planform_centroid,
+        },
+        "rows": rows,
+    }))
 }
 
 /// Where the committed nose's cap hands over at `mach`, as its radius over the base's.
@@ -353,6 +441,11 @@ fn arcas_robin(root: &Path) -> Result<Value, String> {
                 .map(|p| (p.0.to_radians(), p.1))
                 .unzip();
             let measured_cp = moment_center_m / diameter_m - slope(&m_a, &m_c) / slope(&n_a, &n_c);
+            if !(measured_slope.is_finite() && measured_cp.is_finite()) {
+                return Err(format!(
+                    "{id} at Mach {mach}: the measured slope or centre of pressure isn't a number"
+                ));
+            }
             let mut hpr = serde_json::Map::new();
             for (name, model) in models {
                 let scale = model.reference_area_m2() / area;
@@ -443,18 +536,26 @@ mod tests {
         let fixture = read(&root, FIXTURE).unwrap();
         let guide = fs::read_to_string(root.join("docs/physics/aero.md")).unwrap();
         let mut rows = Vec::new();
-        for r in fixture["sphere_cone"].as_array().unwrap() {
+        let sphere_cone = fixture["sphere_cone"]["rows"].as_array().unwrap();
+        for r in sphere_cone {
             rows.push(format!(
-                "| {} | {} | {} | {} | {} | {} | {} | {} | {} |",
+                "| {} | {} | {} | {} | {} | {} | {} | {} |",
                 f(r, "/mach"),
-                num(f(r, "/measured/c_n_alpha_per_rad"), 3),
-                num(f(r, "/report_method/c_n_alpha_per_rad"), 3),
-                num(f(r, "/hpr/c_n_alpha_per_rad"), 3),
-                pct(f(r, "/hpr/c_n_alpha_error")),
-                num(f(r, "/hpr_newtonian_start/c_n_alpha_per_rad"), 3),
-                pct(f(r, "/hpr_newtonian_start/c_n_alpha_error")),
+                num(f(r, "/measured/fitted_c_n_alpha"), 3),
+                num(f(r, "/report_method/fitted_c_n_alpha"), 3),
+                pct(f(r, "/report_method/fitted_c_n_alpha_error")),
+                num(f(r, "/hpr/fitted_c_n_alpha"), 3),
+                pct(f(r, "/hpr/fitted_c_n_alpha_error")),
                 num(f(r, "/measured/cp_calibers"), 2),
                 num(f(r, "/hpr/cp_calibers"), 2),
+            ));
+            rows.push(format!(
+                "| {} | {} | {} | {} | {} |",
+                f(r, "/mach"),
+                num(f(r, "/measured/zero_alpha_c_n_alpha"), 3),
+                num(f(r, "/measured/zero_alpha_cubic_c_n_alpha"), 3),
+                num(f(r, "/hpr/zero_alpha_c_n_alpha"), 3),
+                num(f(r, "/hpr_newtonian_start/zero_alpha_c_n_alpha"), 3),
             ));
         }
         for c in fixture["arcas_robin"].as_array().unwrap() {
@@ -493,20 +594,18 @@ mod tests {
                 cell(&r["newtonian"]["40"]),
             ));
         }
-        // The report's own method's range, which the section's opening quotes.
-        let errors: Vec<f64> = fixture["sphere_cone"]
-            .as_array()
-            .unwrap()
+        // hpr's range like for like, which the section's opening quotes.
+        let errors: Vec<f64> = sphere_cone
             .iter()
-            .map(|r| f(r, "/report_method/c_n_alpha_error"))
+            .map(|r| f(r, "/hpr/fitted_c_n_alpha_error"))
             .collect();
         let (low, high) = errors
             .iter()
             .fold((f64::INFINITY, f64::NEG_INFINITY), |(a, b), &e| {
                 (a.min(e), b.max(e))
             });
-        rows.push(format!("{} to {}", pct(low), pct(high)));
-        assert_eq!(rows.len(), 6 + 11 + START_MACHS.len() + 1);
+        rows.push(format!("hpr reads {} to {}", pct(low), pct(high)));
+        assert_eq!(rows.len(), 2 * 6 + 11 + START_MACHS.len() + 1);
         for row in rows {
             assert!(guide.contains(&row), "aero.md doesn't have the row `{row}`");
         }

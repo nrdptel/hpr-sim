@@ -108,7 +108,7 @@ pub const MAX_ELEMENTS_PER_CURVE: usize = 1000;
 #[serde(tag = "kind", rename_all = "snake_case", deny_unknown_fields)]
 #[non_exhaustive]
 pub enum BodySegment {
-    /// A nose cone (the first segment, pointed) or a transition.
+    /// A nose cone (the first segment, pointed or with a vertical tip) or a transition.
     Profile {
         /// The profile.
         profile: Profile,
@@ -403,6 +403,7 @@ impl ShockExpansionBody {
         }
         let angle = crate::blunt_tip::handover_angle_rad(mach)?;
         let target = angle.tan();
+        // `new` refuses a body without segments.
         let first = &self.segments[0].1;
         let length = first.length_m();
         if first.radius_and_slope(length).1 > target {
@@ -453,7 +454,10 @@ impl ShockExpansionBody {
     ///   detaches, a tangent cone steeper than Fig. 2's 24°, a corner the flow can't turn
     ///   supersonically, a tip cone whose surface flow is subsonic, an element aft of the nose
     ///   whose pressure moves away from its tangent cone's, or a lift that doesn't sum to a
-    ///   positive force.
+    ///   positive force; and for a blunt tip, whose elements are laid out at each Mach number, a
+    ///   nose steeper than the handover's slope all the way to its end, or a tangent body whose
+    ///   elements don't meet in order behind the handover (as [`Self::new`] says for a pointed
+    ///   one).
     ///
     /// The report states the method for Mach number over nose fineness from 0.4 to 2 (Summary,
     /// p. 1); `slope` doesn't enforce that range, and its own Mach 6.28 rows are at 2.09.
@@ -581,7 +585,8 @@ impl ShockExpansionBody {
     /// for a pointed tip, or from a blunt tip's handover, behind its Newtonian cap.
     fn flows(&self, mach: f64) -> Result<March, AeroError> {
         let (cap, elements, first, total) = if self.blunt {
-            self.handover_flow(mach)?
+            let (cap, elements, first, total) = self.handover_flow(mach)?;
+            (cap, std::borrow::Cow::Owned(elements), first, total)
         } else {
             // `new` lays out a pointed body's elements, the vertex's first.
             let vertex = self.elements[0];
@@ -603,7 +608,12 @@ impl ShockExpansionBody {
                 cone_pressure: cone.surface_pressure_ratio,
                 cone_slope: vertex_slope,
             };
-            (None, self.elements.clone(), first, total)
+            (
+                None,
+                std::borrow::Cow::Borrowed(&self.elements[..]),
+                first,
+                total,
+            )
         };
         let mut flows = vec![first];
         for element in &elements[1..] {
@@ -782,12 +792,17 @@ fn lay_out(
     }];
     let (mut xp, mut rp, mut tp) = (x0, r0, t0);
     for &(x, r, t, on_nose) in &points[1..] {
-        // A point on the previous element's line adds nothing.
+        // A point on the previous element's line adds nothing. Nor does one whose tangent turns
+        // by under `NEARLY_PARALLEL_RAD`: its corner with the previous tangent would be lost in the
+        // profile's rounding (a blunt tip's handover close to the nose's end packs its elements
+        // into a few nanometres), and so small a turn changes nothing the method computes.
         let on_line = r - (rp + tp * (x - xp));
+        if (t.atan() - tp.atan()).abs() <= NEARLY_PARALLEL_RAD
+            && on_line.abs() <= 1e-9 * r.max(1e-12)
+        {
+            continue;
+        }
         if (t - tp).abs() <= 1e-12 * (1.0 + tp.abs()) {
-            if on_line.abs() <= 1e-9 * r.max(1e-12) {
-                continue;
-            }
             return Err(AeroError::Unsupported(format!(
                 "the tangent body's elements at {xp} m and {x} m are parallel but apart"
             )));
@@ -833,6 +848,14 @@ fn check_mach(mach: f64) -> Result<(), AeroError> {
 
 /// Below this angle an element is a cylinder: its tangent cone is the free stream.
 const CONE_ANGLE_FLOOR_RAD: f64 = 1e-9;
+
+/// A tangency point turning the tangent body by less than this, rad, on the previous element's
+/// line, is merged into that element. Corners of so small a turn are ill-conditioned: two tangents
+/// a distance `h` apart on a curve of curvature `κ` meet at `h/2` from a numerator of order `κh²`,
+/// while the profile's radius carries rounding of order `ε r`; at this turn the corner's error is
+/// under 1e-4 of `h` for `rκ` up to 1 (a sphere's is at most 1). Pointed noses' ten elements turn by
+/// degrees and never merge.
+const NEARLY_PARALLEL_RAD: f64 = 1e-6;
 
 /// Enough halvings to find a blunt tip's handover to the last bit of an `f64`; the loop stops
 /// sooner, when no `f64` lies between the ends.
@@ -2281,5 +2304,70 @@ mod tests {
 
     fn body_of_cone() -> ShockExpansionBody {
         body(false, 3.0, 2.0, DEFAULT_ELEMENTS_PER_CURVE)
+    }
+
+    /// Just above the Mach number where a blunt tip's handover first falls on its nose (its
+    /// slope at the nose's end), the method holds, and just below it doesn't, at every offset
+    /// from 1e-15 to 1e-3: the nose's elements, packed into nanometres there, merge rather than
+    /// meet at corners lost in rounding. TN D-4865's sphere-cone and two power-series noses.
+    #[test]
+    fn a_blunt_tip_holds_from_where_its_handover_first_falls_on_the_nose() {
+        let (radius, half_angle) = (0.175_f64, 11.5_f64.to_radians());
+        let tangent_r = radius * half_angle.cos();
+        let sphere_cone = [
+            BodySegment::SphericalCap {
+                radius_m: radius,
+                length_m: radius * (1.0 - half_angle.sin()),
+            },
+            BodySegment::Profile {
+                profile: Profile::transition(
+                    NoseShape::Conical {},
+                    (0.5 - tangent_r) / half_angle.tan(),
+                    tangent_r,
+                    0.5,
+                    false,
+                )
+                .unwrap(),
+            },
+        ];
+        let power = |exponent: f64, length_m: f64| {
+            [
+                BodySegment::Profile {
+                    profile: Profile::nose(NoseShape::PowerSeries { exponent }, length_m, 0.5)
+                        .unwrap(),
+                },
+                BodySegment::Cylinder {
+                    length_m: 4.0,
+                    radius_m: 0.5,
+                },
+            ]
+        };
+        for segments in [sphere_cone, power(0.6369, 4.17), power(0.5, 2.28)] {
+            let body = ShockExpansionBody::new(&segments, DEFAULT_ELEMENTS_PER_CURVE).unwrap();
+            let first = segments[0];
+            let end_angle = first.radius_and_slope(first.length_m()).1.atan();
+            let (mut low, mut high) = (1.0 + 1e-9, 3.0);
+            for _ in 0..200 {
+                let mid = 0.5 * (low + high);
+                if crate::blunt_tip::handover_angle_rad(mid).unwrap() < end_angle {
+                    low = mid;
+                } else {
+                    high = mid;
+                }
+            }
+            for k in 0..=12 {
+                for step in [1.0, 2.0, 5.0] {
+                    let d = step * 10f64.powi(-15 + k);
+                    assert!(
+                        body.slope(high + d, 0.25 * PI).is_ok(),
+                        "{segments:?}: fails {d} above Mach {high}"
+                    );
+                    assert!(
+                        body.slope(high - d, 0.25 * PI).is_err(),
+                        "{segments:?}: holds {d} below Mach {high}"
+                    );
+                }
+            }
+        }
     }
 }

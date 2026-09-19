@@ -56,8 +56,8 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
 
 - 2026-09-19: M1.8e7 Blunt tips faster than sound (ADR-038): power-series, Haack and elliptical
   noses fly the method behind TN D-4865's Newtonian cap, started from the tangent cone; no jump at
-  ±1e-9 in Mach; TN D-4865's sphere-cone −11.9% to +4.0% (its own method −3.3% to +13.6%); the
-  Arcas Robin's committed nose, lip off, −4.8% to +37.2% like for like; Calisto@2 now passes.
+  ±1e-9 in Mach; TN D-4865's sphere-cone like for like −1.2% to +32.1% (its own method −3.3% to
+  +13.6%); the Arcas Robin's committed nose, lip off, −4.8% to +37.2%; Calisto@2 now passes.
 
 - 2026-09-19: M1.8e6 Crossflow and the boattail faster than sound (ADR-037): Jorgensen's body lift
   at every speed and Washington and Pettis's measured boattail; like for like the Arcas Robin's

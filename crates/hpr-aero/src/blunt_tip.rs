@@ -61,7 +61,8 @@
 //! body there (Taylor–Maccoll), that cone's loading `tan δ (dC_N/dα)_tc`, and no pressure gradient
 //! (TN 3527 sketch (a), p. 6). The report starts it from the Newtonian pressure and Mach number
 //! instead (eq. 2 and p. 5). Read that way at `α → 0`, the march on the committed Arcas Robin nose
-//! reduces elements from Mach 2.96 (issue #81), so its answer changes as elements are added, and
+//! reduces elements from Mach 2.96 ([issue #81](https://github.com/nrdptel/hpr-sim/issues/81),
+//! the method's open question there), so its answer changes as elements are added, and
 //! fails from Mach 3.96, where the Newtonian pressure at the handover lies below the tangent
 //! cone's; the tangent cone's start holds to Mach 5 and converges. [`crate::shock_expansion::HandoverStart`] keeps the report's start to compare,
 //! and the decision record on it, [ADR-038][adr-038], gives both readings' numbers.
@@ -120,10 +121,19 @@ fn check_slope(slope_rad: f64) -> Result<(), AeroError> {
 ///
 /// # Errors
 ///
-/// [`AeroError::Domain`] for a Mach number that isn't finite and above 1.
+/// [`AeroError::Domain`] for a Mach number that isn't finite and above 1, or so large (past about
+/// 1e76) that the ratio overflows.
 pub fn pitot_pressure_ratio(mach: f64) -> Result<f64, AeroError> {
     check_mach(mach)?;
-    Ok(pitot(mach))
+    let ratio = pitot(mach);
+    if ratio.is_finite() {
+        Ok(ratio)
+    } else {
+        Err(AeroError::Domain {
+            what: "Mach number of a blunt tip's cap, too large for the pitot pressure",
+            value: mach,
+        })
+    }
 }
 
 fn pitot(mach: f64) -> f64 {
@@ -142,11 +152,12 @@ fn pitot(mach: f64) -> f64 {
 pub fn wedge_detachment_angle_rad(mach: f64) -> Result<f64, AeroError> {
     check_mach(mach)?;
     let g = GAMMA;
-    let m2 = mach * mach;
-    let root = ((g + 1.0) * ((g + 1.0) * m2 * m2 / 16.0 + 0.5 * (g - 1.0) * m2 + 1.0)).sqrt();
-    let sin2 = ((0.25 * (g + 1.0) * m2 - 1.0 + root) / (g * m2)).min(1.0);
+    // Both equations divided through by M² (and M⁴ under the root), so nothing overflows.
+    let i2 = 1.0 / (mach * mach);
+    let root = ((g + 1.0) * ((g + 1.0) / 16.0 + 0.5 * (g - 1.0) * i2 + i2 * i2)).sqrt();
+    let sin2 = ((0.25 * (g + 1.0) - i2 + root) / g).min(1.0);
     let cot = ((1.0 - sin2) / sin2).sqrt();
-    let tan = 2.0 * cot * (m2 * sin2 - 1.0) / (2.0 + m2 * (g + 1.0 - 2.0 * sin2));
+    let tan = 2.0 * cot * (sin2 - i2) / (2.0 * i2 + g + 1.0 - 2.0 * sin2);
     Ok(tan.atan())
 }
 
@@ -295,6 +306,11 @@ mod tests {
         close(deg(3.0), 34.07, 0.01, "M 3");
         close(deg(5.0), 41.12, 0.02, "M 5");
         close(deg(1e6), 45.58, 0.01, "M → ∞");
+        close(deg(1e200), 45.58, 0.01, "M → ∞, no overflow");
+        assert!(matches!(
+            pitot_pressure_ratio(1e200),
+            Err(AeroError::Domain { .. })
+        ));
         // Near Mach 1 it falls to zero like (M² − 1)^(3/2).
         assert!(deg(1.0 + 1e-9) < 1e-9);
         // It rises with Mach.
