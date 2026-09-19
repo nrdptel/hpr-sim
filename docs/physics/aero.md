@@ -329,7 +329,8 @@ rate of change across each corner, so the pressure can recover along a piece:
 2. **The tip** is a cone, so its flow is exactly a cone's, found by integrating the
    Taylor–Maccoll equation (the exact equation of supersonic flow over a cone) from the shock to
    the surface ([R1135] eq. 177). The shock must be *attached*, touching the tip, which holds up
-   to a half-angle that grows with the Mach number.
+   to a half-angle that grows with the Mach number. For cones under 0.03°, where that equation
+   can't be integrated, hpr takes slender-cone linear theory, blended in up to 0.06°.
 3. **Around each corner** the flow turns by a
    [Prandtl–Meyer expansion](../glossary.md#prandtlmeyer-expansion).
 4. **Along each element** the pressure relaxes from its value behind the corner toward the
@@ -366,8 +367,8 @@ For a worked example with numbers, see
   report says the equations become at `η = 0`: the pressure stays as it is along the element and
   no gradient passes to the next corner. On the report's fineness-3 ogive at Mach 5.05 that
   departs from its values ([issue #81](https://github.com/nrdptel/hpr-sim/issues/81)). hpr
-  refuses a cylinder or boattail element that would need it, since it would carry its loading
-  over any length.
+  refuses an element aft of the nose that would need it, since it would carry its loading over
+  any length.
 - **Mach number over nose fineness.** The report states the method for 0.4 to 2; hpr doesn't
   enforce it (the report's own Mach 6.28 rows are at 2.09, and the Arcas Robin at Mach 1.5 is at
   0.36).

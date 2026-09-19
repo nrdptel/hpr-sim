@@ -3191,8 +3191,12 @@ source covers a 15° boattail. Doing all of it, and flying it, is more than one 
   and a shock angle found by regula falsi to rounding. A fixed step, in the first draft, gave
   slender cones (under about 2°, a tangent ogive's last elements) pressures that jumped and NaN
   (code and physics review); the step is a continuous function of the state rather than an
-  error estimate's accept-or-reject, so platforms differ in last bits only. Checked against NACA
-  Report 1135's cone charts, slender-cone linear theory and smoothness in Mach; Prandtl–Meyer from `afterbody` (ADR-030). The tangent cones' slopes are TN 3527's
+  error estimate's accept-or-reject, so platforms differ in last bits only. Below 5e-4 rad
+  (0.029°) the start is too near the singular line even so (the second physics review measured
+  errors of 45% at 0.006° and a wrong `Ok` from a capped run), so there the flow is slender-cone
+  linear theory's, blended linearly into Taylor–Maccoll up to twice that angle, and a run whose
+  surface misses the cone by over 1e-3 of its angle is an error. Checked against NACA Report
+  1135's cone charts, slender-cone linear theory, monotone from 1e-6 rad and smooth in Mach; Prandtl–Meyer from `afterbody` (ADR-030). The tangent cones' slopes are TN 3527's
   Fig. 2, read by hand at 0° to 24° for Mach 3 to 10, linear between readings, the Mach 3 curve
   held below Mach 3 and the Mach 10 curve above (an assumption M1.8e2 must measure).
 - **The report's tangent body**: ten elements per curved piece, tangent at `x/l = 0, 0.1, …, 1.0`
@@ -3206,10 +3210,10 @@ source covers a 15° boattail. Doing all of it, and flying it, is more than one 
   on the fineness-3 ogive from Mach 5.05 it then ran away and the surface flow went subsonic at
   every element count. A second held the pressure but kept the gradient, and grew toward the
   generalized method's value (5.4 per radian, against the report's 2.8) as elements were added.
-  This reading converges: 10 and 320 elements agree within 0.008 per radian. A cylinder or
-  boattail element that would need it is refused, since it would carry its loading over any
-  length (physics review found the first guard, on the last element only, bypassed by a small
-  boattail). The report's range of Mach number over nose fineness, 0.4 to 2, isn't enforced: its
+  This reading converges: 10 and 320 elements agree within 0.008 per radian. An element aft of
+  the nose that would need it is refused, since it would carry its loading over any length
+  (physics review found a guard on the last element only bypassed by a small boattail, and one on
+  cylinders and boattails bypassed by a long shallow flare at Mach 16). The report's range of Mach number over nose fineness, 0.4 to 2, isn't enforced: its
   own Mach 6.28 rows are at 2.09; M1.8e2 decides for flights.
 - **Boattails** by footnote 8 (`p_c = p₀`, slope 2), unvalidated here; the Arcas Robin's 57° lip
   is past Fig. 2 and left out.

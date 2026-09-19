@@ -154,6 +154,8 @@ impl BodySegment {
 /// or the vertex) and its angle to the axis.
 #[derive(Debug, Clone, Copy, PartialEq)]
 struct Element {
+    /// Whether the element is tangent to the first segment, the nose.
+    on_nose: bool,
     corner_x_m: f64,
     corner_radius_m: f64,
     angle_rad: f64,
@@ -242,9 +244,9 @@ impl ShockExpansionBody {
         }
         let length_m = station;
 
-        // The tangency points: (x, r, slope).
+        // The tangency points: (x, r, slope, on the nose).
         let mut points = Vec::new();
-        for (start, segment) in &laid {
+        for (index, (start, segment)) in laid.iter().enumerate() {
             let steps = if segment.is_straight() {
                 1
             } else {
@@ -254,19 +256,20 @@ impl ShockExpansionBody {
             for i in 0..count {
                 let local = segment.length_m() * i as f64 / steps as f64;
                 let (r, slope) = segment.radius_and_slope(local);
-                points.push((start + local, r, slope));
+                points.push((start + local, r, slope, index == 0));
             }
         }
 
         // `points` holds at least the tip: the first segment adds one point or more.
-        let (x0, r0, t0) = points[0];
+        let (x0, r0, t0, _) = points[0];
         let mut elements = vec![Element {
+            on_nose: true,
             corner_x_m: 0.0,
             corner_radius_m: 0.0,
             angle_rad: t0.atan(),
         }];
         let (mut xp, mut rp, mut tp) = (x0, r0, t0);
-        for &(x, r, t) in &points[1..] {
+        for &(x, r, t, on_nose) in &points[1..] {
             // A point on the previous element's line adds nothing.
             let on_line = r - (rp + tp * (x - xp));
             if (t - tp).abs() <= 1e-12 * (1.0 + tp.abs()) {
@@ -294,6 +297,7 @@ impl ShockExpansionBody {
                 )));
             }
             elements.push(Element {
+                on_nose,
                 corner_x_m: corner_x,
                 corner_radius_m: corner_r,
                 angle_rad: t.atan(),
@@ -336,9 +340,9 @@ impl ShockExpansionBody {
     ///   isn't positive.
     /// - [`AeroError::Unsupported`] where the method doesn't hold: a tip cone whose shock
     ///   detaches, a tangent cone steeper than Fig. 2's 24°, a corner the flow can't turn
-    ///   supersonically, a tip cone whose surface flow is subsonic, a cylinder or boattail
-    ///   element whose pressure moves away from its tangent cone's, or a lift that doesn't sum
-    ///   to a positive force.
+    ///   supersonically, a tip cone whose surface flow is subsonic, an element aft of the nose
+    ///   whose pressure moves away from its tangent cone's, or a lift that doesn't sum to a
+    ///   positive force.
     ///
     /// The report states the method for Mach number over nose fineness from 0.4 to 2 (Summary,
     /// p. 1); `slope` doesn't enforce that range, and its own Mach 6.28 rows are at 2.09.
@@ -465,12 +469,14 @@ impl ShockExpansionBody {
                 cone_slope,
             };
             // A reduced element keeps the loading behind its corner all along it. On a nose that
-            // is one short element; on a cylinder or boattail it would carry that loading over any
-            // length, so hpr refuses it there.
-            if flow.eta_rate() < 0.0 && element.angle_rad <= CONE_ANGLE_FLOOR_RAD {
+            // is one short element; aft of the nose, a cylinder, boattail or long shallow flare
+            // would carry that loading over any length, so hpr refuses it there.
+            if flow.eta_rate() < 0.0
+                && (element.angle_rad <= CONE_ANGLE_FLOOR_RAD || !element.on_nose)
+            {
                 return Err(AeroError::Unsupported(format!(
-                    "behind the corner at {} m, on a cylinder or boattail, the pressure moves \
-                     away from its tangent cone's",
+                    "behind the corner at {} m, aft of the nose, the pressure moves away from its \
+                     tangent cone's",
                     element.corner_x_m
                 )));
             }
@@ -601,12 +607,21 @@ pub struct ConeFlow {
 /// [((γ − 1)/2)(1 − V_r² − V_θ²) − V_θ²]`, started behind the oblique shock (eqs. 148 to 153,
 /// p. 623) and stopped where `V_θ = 0`.
 ///
+/// Below [`SLENDER_CONE_RAD`] (0.029°) the start behind so weak a shock is too near the
+/// equation's singular line to integrate, and the flow is linearized slender-cone theory's:
+/// `C_p = δ²(2 ln(2/(βδ)) − 1)`, `β = √(M² − 1)`, the shock on the Mach angle and the surface
+/// Mach number isentropic from the free stream. From there to twice that angle the two are
+/// blended linearly, so the flow is continuous in the half-angle. At a millidegree scale these
+/// pressures differ from the free stream's by under 1e-5. Near Mach 1 (1.01) the integration can
+/// still fail just above that angle; it then returns an error.
+///
 /// # Errors
 ///
 /// - [`AeroError::Domain`] for a Mach number that isn't above 1 or a half-angle outside
 ///   `[0, π/2)`.
-/// - [`AeroError::Unsupported`] where the shock detaches: the half-angle exceeds the steepest
-///   cone an attached shock allows at this Mach number.
+/// - [`AeroError::Unsupported`] where the shock detaches (the half-angle exceeds the steepest
+///   cone an attached shock allows at this Mach number), or should the integration fail to
+///   reach the cone.
 pub fn cone_flow(mach: f64, half_angle_rad: f64) -> Result<ConeFlow, AeroError> {
     if !(mach.is_finite() && mach > 1.0) {
         return Err(AeroError::Domain {
@@ -620,17 +635,71 @@ pub fn cone_flow(mach: f64, half_angle_rad: f64) -> Result<ConeFlow, AeroError> 
             value: half_angle_rad,
         });
     }
+    if half_angle_rad <= SLENDER_CONE_RAD {
+        return Ok(slender_cone_flow(mach, half_angle_rad));
+    }
+    let exact = taylor_maccoll_cone_flow(mach, half_angle_rad)?;
+    if half_angle_rad >= 2.0 * SLENDER_CONE_RAD {
+        return Ok(exact);
+    }
+    let slender = slender_cone_flow(mach, half_angle_rad);
+    let w = half_angle_rad / SLENDER_CONE_RAD - 1.0;
+    let blend = |a: f64, b: f64| (1.0 - w) * a + w * b;
+    Ok(ConeFlow {
+        shock_angle_rad: blend(slender.shock_angle_rad, exact.shock_angle_rad),
+        surface_mach: blend(slender.surface_mach, exact.surface_mach),
+        surface_pressure_ratio: blend(slender.surface_pressure_ratio, exact.surface_pressure_ratio),
+    })
+}
+
+/// Below this half-angle, 5e-4 rad (0.029°), [`cone_flow`] takes slender-cone theory; up to twice
+/// it, a blend.
+pub const SLENDER_CONE_RAD: f64 = 5e-4;
+
+/// Linearized slender-cone theory's flow (see [`cone_flow`]).
+fn slender_cone_flow(mach: f64, half_angle_rad: f64) -> ConeFlow {
     let mach_angle = (1.0 / mach).asin();
-    if half_angle_rad <= CONE_ANGLE_FLOOR_RAD {
-        return Ok(ConeFlow {
+    if half_angle_rad <= 0.0 {
+        return ConeFlow {
             shock_angle_rad: mach_angle,
             surface_mach: mach,
             surface_pressure_ratio: 1.0,
-        });
+        };
     }
+    let beta = (mach * mach - 1.0).sqrt();
+    let delta = half_angle_rad;
+    let cp = delta * delta * (2.0 * (2.0 / (beta * delta)).ln() - 1.0);
+    let pressure = 1.0 + 0.5 * GAMMA * mach * mach * cp;
+    // Isentropic from the free stream: the shock's loss is of higher order still.
+    let m2 = ((total_over_static(mach) / pressure).powf((GAMMA - 1.0) / GAMMA) - 1.0) / G1;
+    ConeFlow {
+        shock_angle_rad: mach_angle,
+        surface_mach: m2.sqrt(),
+        surface_pressure_ratio: pressure,
+    }
+}
+
+/// The Taylor–Maccoll solution of [`cone_flow`], above [`SLENDER_CONE_RAD`].
+fn taylor_maccoll_cone_flow(mach: f64, half_angle_rad: f64) -> Result<ConeFlow, AeroError> {
+    let mach_angle = (1.0 / mach).asin();
+    let not_converged = || {
+        AeroError::Unsupported(format!(
+            "the flow over a cone of half-angle {}° at Mach {mach} didn't converge",
+            half_angle_rad.to_degrees()
+        ))
+    };
+    let cone_at = |shock: f64| -> Result<f64, AeroError> {
+        let angle = cone_behind_shock(mach, shock).0;
+        if angle.is_finite() {
+            Ok(angle)
+        } else {
+            Err(not_converged())
+        }
+    };
     // Bracket the shock angle: the cone angle grows with it from zero at the Mach angle up to the
-    // detachment limit.
+    // detachment limit, then falls.
     let step = 0.5_f64.to_radians();
+    let mut before = mach_angle;
     let mut lo = mach_angle;
     let mut lo_angle = 0.0;
     let mut hi = mach_angle;
@@ -640,13 +709,33 @@ pub fn cone_flow(mach: f64, half_angle_rad: f64) -> Result<ConeFlow, AeroError> 
         if hi >= 0.5 * PI {
             return Err(detached(mach, half_angle_rad));
         }
-        hi_angle = cone_behind_shock(mach, hi).0;
+        hi_angle = cone_at(hi)?;
         if hi_angle >= half_angle_rad {
             break;
         }
         if hi_angle < lo_angle {
-            return Err(detached(mach, half_angle_rad));
+            // Past the steepest cone: find it between the last two steps (golden section), in
+            // case it reaches the half-angle between them.
+            let golden = 0.5 * (5.0_f64.sqrt() - 1.0);
+            let (mut a, mut b) = (before, hi);
+            for _ in 0..80 {
+                let c = b - golden * (b - a);
+                let d = a + golden * (b - a);
+                if cone_at(c)? > cone_at(d)? {
+                    b = d;
+                } else {
+                    a = c;
+                }
+            }
+            let peak = 0.5 * (a + b);
+            let peak_angle = cone_at(peak)?;
+            if peak_angle < half_angle_rad {
+                return Err(detached(mach, half_angle_rad));
+            }
+            (hi, hi_angle) = (peak, peak_angle);
+            break;
         }
+        before = lo;
         (lo, lo_angle) = (hi, hi_angle);
     }
     // Regula falsi (Illinois) on the cone angle against the shock angle.
@@ -669,7 +758,7 @@ pub fn cone_flow(mach: f64, half_angle_rad: f64) -> Result<ConeFlow, AeroError> 
         if settled {
             break;
         }
-        let f = cone_behind_shock(mach, shock).0 - half_angle_rad;
+        let f = cone_at(shock)? - half_angle_rad;
         if f == 0.0 {
             break;
         }
@@ -689,7 +778,14 @@ pub fn cone_flow(mach: f64, half_angle_rad: f64) -> Result<ConeFlow, AeroError> 
             side = -1;
         }
     }
-    let (_, surface_speed) = cone_behind_shock(mach, shock);
+    let (angle, surface_speed) = cone_behind_shock(mach, shock);
+    // The shock angle found must put the surface on the cone: near the slender limit to the
+    // integration's own accuracy there (2e-4 of the angle at 0.029°), far inside the 45% and more
+    // of a run that never reached the surface.
+    let miss = (angle - half_angle_rad).abs();
+    if !(miss.is_finite() && miss <= 1e-3 * half_angle_rad) {
+        return Err(not_converged());
+    }
     let surface_mach =
         (surface_speed * surface_speed / (G1 * (1.0 - surface_speed * surface_speed))).sqrt();
     let normal = mach * shock.sin();
@@ -701,10 +797,7 @@ pub fn cone_flow(mach: f64, half_angle_rad: f64) -> Result<ConeFlow, AeroError> 
             / total_over_static(surface_mach),
     };
     if !(flow.surface_mach.is_finite() && flow.surface_pressure_ratio.is_finite()) {
-        return Err(AeroError::Unsupported(format!(
-            "the flow over a cone of half-angle {}° at Mach {mach} didn't converge",
-            half_angle_rad.to_degrees()
-        )));
+        return Err(not_converged());
     }
     Ok(flow)
 }
@@ -739,7 +832,8 @@ const TM_MAX_STEPS: usize = 1_000_000;
 fn tm_step(theta: f64, [vr, vt]: [f64; 2]) -> f64 {
     let denominator = G1 * (1.0 - vr * vr - vt * vt) - vt * vt;
     let acceleration = taylor_maccoll(theta, [vr, vt])[1];
-    let rate = 2.0 * (vt * acceleration).abs();
+    // dD/dθ, with dV_r/dθ = V_θ.
+    let rate = (2.0 * G1 * vr * vt + 2.0 * (1.0 + G1) * vt * acceleration).abs();
     let limit = if rate > 0.0 {
         0.02 * denominator.abs() / rate
     } else {
@@ -1106,10 +1200,18 @@ mod tests {
     fn cone_flow_rises_smoothly_with_the_cone_angle() {
         // Slender cones start almost sonic normal to the shock, where the Taylor–Maccoll equation
         // is nearly singular; a fixed step once gave pressures that jumped and NaN there.
-        for mach in [1.5, 1.97, 2.0, 3.0, 5.0, 7.0] {
+        // Below SLENDER_CONE_RAD slender-cone theory takes over, blended up to twice it.
+        // Nearer Mach 1 the start is nearer still to the singular line, and just above
+        // SLENDER_CONE_RAD the integration may refuse (at Mach 1.01, 0.029°): an error, not a
+        // wrong answer.
+        assert!(cone_flow(1.01, 1e-8).unwrap().surface_pressure_ratio - 1.0 < 1e-12);
+        for mach in [1.2, 1.5, 1.97, 2.0, 3.0, 5.0, 7.0, 10.0] {
             let mut last = 1.0;
-            for i in 1..=100 {
-                let angle = f64::to_radians(0.05 * f64::from(i));
+            let mut angles: Vec<f64> = (0..=54)
+                .map(|i| 1e-6 * 10f64.powf(0.05 * f64::from(i)))
+                .collect();
+            angles.extend((1..=100).map(|i| f64::to_radians(0.05 * f64::from(i))));
+            for angle in angles {
                 let p = cone_flow(mach, angle).unwrap().surface_pressure_ratio;
                 assert!(p.is_finite() && p > last, "Mach {mach}, {angle} rad: {p}");
                 last = p;
