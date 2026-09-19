@@ -53,7 +53,7 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
 
 - 2026-09-19: M1.8e5 The remaining gap, source by source: at the tunnel's angles hpr's body reads
   15–73% high, not low; crossflow's size ranks first, then the slope at `α → 0`, the lip (+0.18),
-  Fig. 2 below Mach 3 (≤ 0.06, SP-3007), the blunt tip; #81 zero (no reduced elements).
+  the blunt tip (≤ 0.07), Fig. 2 below Mach 3 (≤ 0.06, SP-3007); #81 zero (no reduced elements).
 - 2026-09-19: M1.8e4 The boattail's share faster than sound: boattails and tubes behind them
   fly the method (their stations slender-body theory's); no jump at ±1e-9; the Arcas Robin
   through the flight with its boattail equals the method's (long −18.3% to −27.0%).

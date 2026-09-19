@@ -431,6 +431,27 @@ mod tests {
             0.0,
             "#81",
         );
+        // The blunt tip: AFATL-TR-77-8 Table 3's 4-caliber ogive on a 9-caliber cylinder at Mach 4,
+        // 0.063 to 0.057 per degree from sharp to a 0.25 tip, scaled by (0.055/0.25)^n for n from
+        // 1 to 2, on hpr's slope at Mach 3.96 and 4.63: a loss of 0.015 to 0.07.
+        let afatl = 0.057 / 0.063 - 1.0;
+        let high: Vec<f64> = rows
+            .iter()
+            .filter(|r| f(r, "/mach") > 3.0)
+            .map(|r| f(r, "/hpr/zero_alpha_c_n_alpha"))
+            .collect();
+        let least = high.iter().copied().fold(f64::INFINITY, f64::min);
+        let most = high.iter().copied().fold(f64::NEG_INFINITY, f64::max);
+        let tip: f64 = 0.062 / 1.125;
+        near(
+            [
+                -afatl * (tip / 0.25).powi(2) * least,
+                -afatl * (tip / 0.25) * most,
+            ],
+            [0.015, 0.07],
+            0.001,
+            "blunt tip",
+        );
         // The gap is smaller than the tunnel's own crossflow at every row.
         assert!(
             rows.iter()

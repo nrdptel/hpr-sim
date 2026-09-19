@@ -591,7 +591,6 @@
         measurements. Every miss is explained.
       - The Arcas Robin's nose and cylinder, with and without its boattail (footnote 8), are
         computed at each Mach number of TN D-4014 and reported beside the measured body alone.
-
       *Result (ADR-033):* not met, recorded. Against its values, slopes 102 and CPs 125 of 144
       within (a second implementation agrees with hpr; #81 at its limit); against its
       measurements 117 and 109 of 120. Arcas Robin: short −18.7% to +16.4%, long to −26.4%.
@@ -612,9 +611,10 @@
       shares that cross zero). *Done when:* a boattailed body flies the method with no jump at
       ±1e-9 in Mach; the Arcas Robin's long model through a flight's path is in the report.
       *Result:* met; the Arcas Robin with its boattail equals the method's, long to −27.0%.
-    - [ ] **M1.8e5 The remaining gap, source by source.** *Done when:* a `docs/research/` page
+    - [x] **M1.8e5 The remaining gap, source by source.** *Done when:* a `docs/research/` page
       sizes each candidate (crossflow at the tunnel's angles, blunt tip, Fig. 2 below Mach 3, #81)
       from cited sources against the Arcas Robin's gaps at each TN D-4014 Mach from 1.5, ranked.
+      *Result:* met; fitted at the tunnel's angles hpr reads 15–73% high: crossflow's size first.
     - [ ] **M1.8e6 Crossflow and blunt tips faster than sound** (e5's top ranks). *Done when:*
       flown with no jump at ±1e-9 in Mach; the Arcas Robin through a flight's path in the report.
     - [ ] **M1.8e7 #87's model switches and #90's cap.** *Done when:* both closed; M1.8e's bullet.
