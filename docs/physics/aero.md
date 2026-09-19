@@ -110,7 +110,10 @@
   the run) keeps slender-body theory for its whole body at every speed, which reads low past
   Mach 3, and nothing on the roadmap covers those yet. Body lift leaves out
   the fall in crossflow drag past the critical crossflow Reynolds number
-  ([Body lift](#body-lift)). There are no damping coefficients for pitch and
+  ([Body lift](#body-lift)), and it reads too large at the few degrees a slope is fitted over: the
+  body alone misses the 15% target the milestone set on six of eleven wind-tunnel rows, by +37.7%
+  at worst and within 5% at Mach 3.96 and 4.63
+  ([The body alone, against the 15% target](#the-body-alone-against-the-15-target)). There are no damping coefficients for pitch and
   yaw: a flight takes that damping from each part's own local flow. The roll forcing near Mach
   1.5 reads high, and nothing measured checks roll below it
   ([Roll: forcing and damping](#roll-forcing-and-damping)).
@@ -1985,6 +1988,19 @@ and Cubbage's long, gentle boattails 0 to 0.009 where they measure 0.011 to 0.07
 
 ## Validity and open questions
 
+- **The body alone misses the 15% target on six of eleven wind-tunnel rows**, the one
+  [M1.8e set for the body faster than sound](../decisions-and-roadmap.md#m1-8e), by +37.7% at
+  worst (the short Arcas Robin at Mach 1.5) and within 5% at Mach 3.96 and 4.63. The likeliest
+  cause is Jorgensen's crossflow term reading too large at the few degrees a slope is fitted over,
+  but the measurement cannot split its own slope from its curvature cleanly, and one row points at
+  the method instead. Closing it needs a cited rule for how the crossflow term grows from zero
+  over the first few degrees, or measurements at finer angles than the reports plot; neither is in
+  hand, so the gap is left visible
+  ([The body alone, against the 15% target](#the-body-alone-against-the-15-target)).
+- **A boattail steeper than 16° is worth about three quarters of a calibre of doubt.** Nothing
+  measures a separated boattail's supersonic normal force; hpr holds the measured correlation at
+  16° rather than letting it fade, which is the conservative end of that range
+  ([A steep boattail reads the correlation no steeper than 16°](#the-body-faster-than-sound-in-a-flight)).
 - These are small-angle models. `α` is accepted over `[0, π]`, but fin slopes stay linear in `α`
   and nothing models stall. The flight engine uses them at every angle all the same
   ([Rigid-body flight](flight.md)), so its results are least trustworthy where large angles occur:
@@ -2154,13 +2170,15 @@ What the misses come from:
   Mach 2.96 and −28.0% at 4.63. With the cap ([Blunt tips](#blunt-tips)) and the lip carrying
   nothing in the boattail's wake ([A lip in a boattail's wake](#a-lip-in-a-boattails-wake)), the
   body grows with Mach, as the measurement does though not as steeply (3.02 to 3.95 per rad fins
-  off on the short model, against the tunnel's 2.19 to 4.15), and the whole rocket's rows from Mach
-  1.5 read +8.8% to −3.3% (short) and +9.4% to −2.3% (long). What is left is where the body now reads *high*: fins off it
+  off on the short model, against the tunnel's 2.19 to 4.15). The whole rocket's rows from Mach
+  1.5 read +8.8% to −3.3% (short) and +9.4% to −2.3% (long). What is left is where the body reads
+  *high*: fins off it
   is 15% to 19% above the tunnel at Mach 1.8 and 2.3 on the long model, which pulls the whole
   rocket's CP 0.53 and 0.52 calibres forward of the measured one, just outside the half-calibre
   target. [M1.8e6](../decisions-and-roadmap.md#m1-8e6) sized that excess and left it
-  ([ADR-037][adr-037]); [M1.8e9](../decisions-and-roadmap.md#m1-8e9) carries the 15% bullet for
-  the body alone. The fins' share (the fins-on reading less the fins-off one) agrees with hpr's
+  ([ADR-037][adr-037]); the body alone is judged against the 15% target in
+  [The body alone, against the 15% target](#the-body-alone-against-the-15-target), where it is
+  outside on six of eleven rows. The fins' share (the fins-on reading less the fins-off one) agrees with hpr's
   fins within −1.4% to +7.0% at Mach 3.96 and 4.63, with about 5% of doubt of its own: over the
   boattail the models' fin roots follow its 15° surface below the cylinder, and the design leaves
   that strip out, about 0.32 in² of each fin's 5.8 in² (5.5%).
@@ -2276,6 +2294,12 @@ which a flight uses from Mach 1.2 on the bodies it covers, against two reference
 `cargo xtask aero` writes it, and `shock_expansion::tests::against_tn3527_and_the_arcas_robin`
 recomputes every value and pins every miss ([ADR-033][adr-033]).
 
+To check a share by hand from outside the crate,
+[`ShockExpansionBody::element_flows`](../api/hpr_aero/shock_expansion/struct.ShockExpansionBody.html#method.element_flows)
+reports each element's flow — the state behind its corner, the tangent cone it relaxes toward, how
+fast it does so, and the radius eq. 19 needs — which is what the library's own hand integral of a
+boattail and the tube behind it uses (`footnote_eights_boattail_share_by_hand`).
+
 **The tip cone's flow** (`cone_flow_agrees_with_naca_1135_charts`), against [R1135]'s cone
 charts 5 to 7 at Mach 1.5 to 3 and cones of 10° and 20°: the shock angle within 0.3°, the
 surface pressure coefficient within 0.004 and the surface Mach number within 0.015, twice the
@@ -2355,8 +2379,8 @@ rms, and its tip half-angle is 10.76°. hpr's committed design keeps its power-s
 tip is blunt. The measured slope is the fins-off reading fitted over the plotted angles, as
 above. It includes the boattail, the lip behind it, and crossflow lift at those angles. The
 method has neither the lip nor crossflow at `α → 0`, and takes the boattail only by the report's
-footnote 8, so there is no target yet; [M1.8e9](../decisions-and-roadmap.md#m1-8e9) sets one,
-judged at the tunnel's angles. This table is the method's own; the body a flight flies since
+footnote 8, so the target is not applied here; it is applied to the body a flight flies, in
+[The body alone, against the 15% target](#the-body-alone-against-the-15-target). This table is the method's own; the body a flight flies since
 [M1.8e6](../decisions-and-roadmap.md#m1-8e6), with the boattail's measured share, is compared
 below.
 

@@ -13,16 +13,15 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
 
 - **Page rules** (ADR-016 to ADR-020): relative links between pages, GitHub URLs for the rest,
   labels as links to their rows, none in headings, Unicode equations; new pages in `SUMMARY.md`; a
-  new library needs a row in `docs/api.md` and a guide link in its `//!`. *Accuracy*'s numbers must
-  be in a file the item links; its tables must hold every report row, cell for cell.
+  new library needs a row in `docs/api.md`. *Accuracy*'s numbers must be in a file the item links;
+  its tables must hold every report row. Each aero fixture has a `the_guide_quotes_the_fixture`.
 - **Checking a milestone off** fails `cargo xtask site` until its row in
   `docs/decisions-and-roadmap.md` says `done`; a new milestone needs a row.
 - **Validation (M2.1, ADR-021 to ADR-026):** CI checks the report on three OSes; predicted mode's 3%
   are *targets*; every whole flight names both RMS metrics, each held to 3% of its reference's
   apogee or max speed (ADR-024).
 - **The path in wind (ADR-026):** the oracle flies RocketPy 1.13.0 with PRs #1188 and #1196 applied
-  by `corrections.py` (re-pin and delete it when #1196 releases); `wind_response.py` measures the
-  seven drifts reported as model differences.
+  by `corrections.py` (re-pin and delete it when #1196 releases).
 - **M1.8a to e1 (ADR-027 to ADR-033):** `cargo xtask aero` writes the aero fixtures. NTRS serves
   five of ADR-030's PDFs with a 436-byte header (pinned as served). Scratch: `refs/scratch/m18*/`.
   #76: M1.8a's other TN D-4014 zeros. #81: `m18e/sose.py` carries the gradient through reduced
@@ -88,7 +87,8 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
 ## Decided without Neer (one line each; significant ones get an ADR)
 
 - M1.8e splits (one id level): e3 join, e4 boattail, e5 measure, e6 fly, e7 blunt tips, e8 the lip,
-  e9 rest (renumbered when e7 split; done-when bullets unchanged in substance).
+  e9 rest (renumbered when e7 split). e9's done-when restates the parent M1.8e bullet, escape clause
+  included, verbatim from main; #87 moved to e10.
 - ADR-038: the march behind a blunt tip starts from the tangent cone, not TN D-4865's Newtonian
   state (which fails on the Arcas nose from Mach 3.96); handover capped at 24°. ADR-039: a lip in a
   boattail's wake carries nothing faster than sound, and the fins-off moment bounds it rather than
