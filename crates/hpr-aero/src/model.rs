@@ -507,7 +507,8 @@ pub struct AeroModel {
     #[serde(skip)]
     supersonic_run: Option<SupersonicRun>,
     /// Their tabulated shares, built the first time a flow faster than
-    /// [`SUPERSONIC_JOIN_START_MACH`] needs them: building takes up to 101 runs of the method.
+    /// [`SUPERSONIC_JOIN_START_MACH`] needs them: building takes up to about 125 runs of the
+    /// method.
     #[serde(skip)]
     supersonic: SupersonicTable,
     fin_sets: Vec<FinSetAero>,
@@ -989,8 +990,8 @@ impl AeroModel {
     /// vertical tip, a tangent cone past TN 3527's Fig. 2, a later body with a slope of its own
     /// such as a boattail) or doesn't hold across a whole join below Mach 5.
     ///
-    /// The first call builds the table, which takes up to 101 runs of the method; a flow no faster than
-    /// [`SUPERSONIC_JOIN_START_MACH`] never needs it.
+    /// The first call builds the table, which takes up to about 125 runs of the method; a flow no
+    /// faster than [`SUPERSONIC_JOIN_START_MACH`] never needs it.
     pub fn supersonic_body(&self) -> Option<&SupersonicBody> {
         let run = self.supersonic_run.as_ref()?;
         self.supersonic

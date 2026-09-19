@@ -82,8 +82,8 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
 
 ## Decided without Neer (one line each; significant ones get an ADR)
 
-- M1.8e3 split (ids allow one increment level): e3 the join's start by bisection (24 halvings,
-  noted under ADR-034), e4 the boattail, e5 crossflow and blunt tips with M1.8e's bullet.
+- M1.8e3 split (ids allow one increment level): e3 the join's start bisected to the last bit
+  (noted under ADR-034), e4 the boattail, e5 crossflow and blunt tips with M1.8e's bullet.
 - ADR-034: M1.8e2's shares tabulated every 0.05 Mach (lazily; eager took unit tests to 238 s),
   joined over Mach 1.2 to 1.5; a body with a boattail keeps slender-body theory until M1.8e3.
 - M1.8e2 split: e2 flies nose and cylinder; new e3 (boattail, crossflow) carries M1.8e's bullet.
