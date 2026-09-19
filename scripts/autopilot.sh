@@ -24,9 +24,16 @@
 #
 # Environment overrides: HPR_MODEL (default claude-opus-5), HPR_EFFORT (default xhigh),
 #   HPR_PERMISSION_MODE (default bypassPermissions; set it to auto for the classifier-checked mode),
-#   HPR_CYCLE_MAX_HOURS (default 10), HPR_STALL_MINUTES (default 120), HPR_LIMIT_POLL_MINUTES (default 10)
+#   HPR_CYCLE_MAX_HOURS (default 10), HPR_STALL_MINUTES (default 120), HPR_LIMIT_POLL_MINUTES (default 10),
+#   HPR_KEEP_LOGS (default 20 cycle transcripts kept uncompressed),
+#   HPR_CARGO_JOBS (default 6; cargo's parallelism during the run)
 
 set -uo pipefail
+# Job control, so each cycle's `claude` is forked as its own process-group leader. The whole group
+# is killed when the cycle ends (see reap), which is the only way to be sure cargo, rustc, test
+# binaries and anything the session left running in the background go with it: a process group id
+# is inherited by every descendant and survives reparenting to launchd.
+set -m
 
 HOURS="48"
 FRESH=0
@@ -52,6 +59,16 @@ PERM_MODE="${HPR_PERMISSION_MODE:-bypassPermissions}"
 CYCLE_MAX=$(( ${HPR_CYCLE_MAX_HOURS:-10} * 3600 ))
 STALL_MAX=$(( ${HPR_STALL_MINUTES:-120} * 60 ))
 LIMIT_POLL=$(( ${HPR_LIMIT_POLL_MINUTES:-10} * 60 ))
+KEEP_LOGS="${HPR_KEEP_LOGS:-20}"   # cycle transcripts to keep uncompressed; older ones are gzipped
+
+# Cap cargo's parallelism for the run. Measured here over three cold
+# `cargo test --workspace --all-features --no-run` builds on a 10-core, 16 GB machine:
+# 10 jobs peaked at 2.42 GB in 12.0 s, 6 jobs at 1.72 GB in 13.0 s. That buys 0.7 GB of headroom
+# for about a second per build, which is worth it when the rest of the machine is busy and costs
+# well under a percent of a multi-hour cycle. It is set here rather than in .cargo/config.toml on
+# purpose: CI runners have fewer cores, and a fixed 6 there would oversubscribe them.
+export CARGO_BUILD_JOBS="${HPR_CARGO_JOBS:-6}"
+PAGE_BYTES=$(sysctl -n hw.pagesize 2>/dev/null || echo 4096)
 WRAPUP=2700   # don't start a cycle with less than 45 minutes left (matches CLAUDE.md)
 GOAL_FILE="$ROOT/.claude/autopilot/goal.md"
 SETTINGS_FILE="$ROOT/.claude/autopilot/settings.json"
@@ -64,6 +81,78 @@ notify() {
 }
 filesize() { wc -c < "$1" 2>/dev/null | tr -d ' ' || echo 0; }
 fmt_time() { date -r "$1" 2>/dev/null || date -d "@$1"; }
+fmt_gb() { awk -v kb="${1:-0}" 'BEGIN { printf "%.2f", kb / 1048576 }'; }
+free_mb_now() {
+  vm_stat 2>/dev/null | awk -v pb="$PAGE_BYTES" '
+    /Pages free/        { gsub(/\./, "", $3); f = $3 }
+    /Pages speculative/ { gsub(/\./, "", $3); s = $3 }
+    END                 { printf "%d", (f + s) * pb / 1048576 }' 2>/dev/null || echo 0
+}
+swap_mb_now() { sysctl -n vm.swapusage 2>/dev/null | awk '{ gsub(/M/, "", $6); printf "%d", $6 }' 2>/dev/null || echo 0; }
+
+# Kill a cycle's whole process group and wait briefly for it to go. Scoping by process group id is
+# exact: every descendant of the cycle shares it, and nothing outside the cycle can be hit. That
+# matters because a blunter sweep by process name would kill unrelated builds on the same machine.
+reap() {
+  local pgid="$1" grace="${2:-5}" waited=0
+  [ -n "$pgid" ] || return 0
+  kill -TERM -- "-$pgid" 2>/dev/null
+  while [ "$waited" -lt "$grace" ] && kill -0 -- "-$pgid" 2>/dev/null; do
+    sleep 1; waited=$(( waited + 1 ))
+  done
+  kill -KILL -- "-$pgid" 2>/dev/null
+  return 0
+}
+
+# Sample the cycle's memory use into peak_rss_kb / min_free_mb / peak_swap_mb. The RSS figure sums
+# the whole process group, so it double-counts shared pages: read it as a trend between cycles, not
+# as an absolute. Free memory and swap are system-wide and are the honest numbers.
+sample_memory() {
+  local rss free swap
+  rss=$(ps -o rss= -g "$child" 2>/dev/null | awk '{ s += $1 } END { print s + 0 }')
+  [ "${rss:-0}" -gt "$peak_rss_kb" ] && peak_rss_kb="$rss"
+  free=$(free_mb_now)
+  [ "${free:-0}" -gt 0 ] && [ "$free" -lt "$min_free_mb" ] && min_free_mb="$free"
+  swap=$(swap_mb_now)
+  [ "${swap:-0}" -gt "$peak_swap_mb" ] && peak_swap_mb="$swap"
+  if [ "$swap_warned" -eq 0 ] && [ "${swap:-0}" -ge 4096 ]; then
+    swap_warned=1
+    log "Memory is tight: ${swap} MB of swap in use, ${free} MB free. The cycle keeps going; see the cycle's memory line for the peak."
+  fi
+  return 0
+}
+
+# Keep the newest KEEP_LOGS transcripts readable and gzip the rest; drop the oldest archives once
+# there are more than three times that many. A long window writes hundreds of MB of stream-json,
+# and free disk is what the system swaps into.
+prune_logs() {
+  local f
+  ls -t "$LOGS"/cycle-*.jsonl 2>/dev/null | tail -n +$(( KEEP_LOGS + 1 )) | while read -r f; do
+    gzip -f "$f" 2>/dev/null || true
+  done
+  ls -t "$LOGS"/cycle-*.jsonl.gz 2>/dev/null | tail -n +$(( KEEP_LOGS * 3 + 1 )) | while read -r f; do
+    rm -f "$f"
+  done
+  return 0
+}
+
+# What else is holding memory before the run starts. Advisory only: this never touches a process.
+memory_baseline() {
+  local total_gb hogs
+  total_gb=$(awk -v b="$(sysctl -n hw.memsize 2>/dev/null || echo 0)" 'BEGIN { printf "%.0f", b / 1073741824 }')
+  log "Memory at start: ${total_gb} GB installed, $(free_mb_now) MB free, $(swap_mb_now) MB swap in use."
+  hogs=$(ps -Ao rss=,comm= 2>/dev/null | awk '
+    { rss = $1; $1 = ""; name = $0
+      sub(/^ +/, "", name); sub(/\.app\/Contents\/.*$/, "", name); sub(/.*\//, "", name)
+      total[name] += rss }
+    END { n = 0
+          for (k in total) if (total[k] > 524288 && n < 6) { printf "%s %.1f GB; ", k, total[k] / 1048576; n++ } }')
+  if [ -n "$hogs" ]; then
+    log "Already holding 0.5 GB or more: ${hogs%; }"
+    log "Browsers and virtual machines left running take memory the build needs; closing them before an unattended window leaves more room."
+  fi
+  return 0
+}
 
 # Sleep in 30 s slices so STOP and the deadline are still honored. $1 = seconds.
 nap() {
@@ -104,15 +193,16 @@ if command -v caffeinate >/dev/null 2>&1; then
   caffeinate -ims -w $$ &
   log "caffeinate is holding off idle and system sleep (system-sleep prevention needs AC power)."
 fi
+memory_baseline
 
 child=""
 on_signal() {
   log "Interrupted: stopping now. Work is saved in git; rerun scripts/autopilot.sh to resume the same window."
-  if [ -n "$child" ]; then kill "$child" 2>/dev/null; sleep 5; kill -9 "$child" 2>/dev/null; fi
+  reap "$child" 5
   exit 130
 }
 trap on_signal INT TERM HUP
-trap 'if [ -n "$child" ]; then kill "$child" 2>/dev/null; fi' EXIT
+trap 'reap "$child" 2' EXIT
 
 GOAL_TEXT="$(cat "$GOAL_FILE")"
 SETTINGS_JSON="$(cat "$SETTINGS_FILE")"
@@ -194,6 +284,7 @@ while :; do
   if [ $(( deadline - now )) -lt "$WRAPUP" ]; then log "Less than 45 min left; not starting another cycle. Autopilot finished."; notify "Run finished."; break; fi
   if [ -f "$STATE/STOP" ]; then log "STOP file found. Autopilot stopped."; notify "Autopilot stopped."; break; fi
 
+  prune_logs
   cycle=$(( cycle + 1 ))
   echo "$cycle" > "$STATE/cycle"
   stamp=$(date +%Y%m%d-%H%M%S)
@@ -217,7 +308,9 @@ while :; do
 
   # Watchdog: cycle wall-clock cap, stall detection, hard stop 30 min after the deadline.
   last_size=0; last_change=$start; killed=""
+  peak_rss_kb=0; min_free_mb=99999999; peak_swap_mb=0; swap_warned=0
   while kill -0 "$child" 2>/dev/null; do
+    sample_memory
     sleep 30
     t=$(date +%s)
     size=$(filesize "$out")
@@ -230,15 +323,22 @@ while :; do
     if [ "$t" -ge $(( deadline + 1800 )) ]; then killed="30 min past the deadline"; fi
     if [ -n "$killed" ]; then
       log "Watchdog: stopping cycle $cycle ($killed)."
-      kill "$child" 2>/dev/null; sleep 20; kill -9 "$child" 2>/dev/null
+      reap "$child" 20
       break
     fi
   done
   wait "$child" 2>/dev/null; rc=$?
+  # Reap even after a clean exit. CLAUDE_CODE_PRINT_BG_WAIT_CEILING_MS=0 abandons the session's
+  # background tasks rather than draining them, so a build or a CI watch can outlive the session
+  # and go on holding memory through every cycle that follows.
+  reap "$child" 5
   child=""
   dur=$(( $(date +%s) - start ))
   IFS='|' read -r kind is_error turns pmode snippet <<< "$(analyze "$out" "$err")"
   log "Cycle $cycle ended: rc=$rc, ${dur}s, turns=$turns, mode=$pmode, result=$kind (error=$is_error). $snippet"
+  free_note="${min_free_mb} MB"; [ "$min_free_mb" -eq 99999999 ] && free_note="not sampled"
+  rss_note="$(fmt_gb "$peak_rss_kb") GB"; [ "$peak_rss_kb" -eq 0 ] && rss_note="not sampled"
+  log "Cycle $cycle memory: peak group RSS ${rss_note}, least free ${free_note}, most swap ${peak_swap_mb} MB."
 
   if [ "$pmode" != "?" ] && [ "$pmode" != "$PERM_MODE" ]; then
     log "The session ran in '$pmode' mode instead of $PERM_MODE (mode unavailable or disabled by policy?). Stopping; headless runs can't edit files without it."

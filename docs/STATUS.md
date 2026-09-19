@@ -8,7 +8,7 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
 - **Order:** M1.8e2, then M3.1
 - **Run:** M0.1-M0.4, M1.1-M1.7, M2.1 and M1.8a to M1.8e1 have shipped.
   The site is live at https://nrdptel.github.io/hpr-sim/
-- **Last updated:** 2026-09-19 (M1.8e1 done; M1.8e2 not started)
+- **Last updated:** 2026-09-19 (M1.8e1 done; M1.8e2 not started; autopilot memory work shipped)
 
 ## Handoff (overwrite each session)
 
@@ -37,6 +37,10 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
   (footnote 8 takes only 0.03 to 0.18 off), crossflow (the long model's extra 0.57), Mach over
   nose fineness outside 0.4 to 2, #81, and `dynamics.rs` caching body stations at Mach 0. Don't read predicted mode's misses as gaps to
   close (ADR-009, ADR-023). ROADMAP is at 999 of 1000 lines: trim a done entry.
+- **Autopilot memory:** each cycle runs in its own process group and is reaped after a clean
+  finish as well as a watchdog kill, so a build the session abandoned cannot outlive it. `runs.log`
+  gains a memory line per cycle, and the run exports `CARGO_BUILD_JOBS=6`. `docs/perf.md` records
+  that thinning debug info does *not* cut peak build memory, so no profile was changed.
 - **Regeneration is not bit-identical across machines** (last digits). Regenerate reports with
   `cargo xtask validate` (debug), never `--release`: it rounds differently in the 7th digit.
   Fixture checks (`designs::same`) allow 1e-12 relative, or 1e-13 near zero (M1.8b3's PR).
@@ -46,6 +50,9 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
 
 ## Done log (newest first, keep about 15)
 
+- 2026-09-19: Autopilot memory. Cycles run in their own process group and are reaped either way;
+  peak RSS, least free and most swap per cycle in `runs.log`; `CARGO_BUILD_JOBS=6` (measured
+  2.42 → 1.72 GB peak for about a second a build). Transcripts older than 20 cycles are gzipped.
 - 2026-09-19: M1.8e1 The second-order shock-expansion method (ADR-033): not met, recorded.
   Against TN 3527's measurements 117 of 120 slopes and 109 of 120 CPs within ±0.2; its printed
   values 102 and 125 of 144 (#81 at the limit); Arcas Robin short −18.7% to +16.4%, long to −26.4%.
@@ -59,13 +66,6 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
 - 2026-09-18: M1.8b3 The boattail and base faster than sound (ADR-030), and with it M1.8b: not
   met, recorded. Measured boattails of 3° to 10° −21.9% to +28.3%; Arcas Robin fins off from
   Mach 1.5 0 of 11 (+13.5% to +24.1%, the steep boattail, #72); Calisto supersonic 8 of 17.
-- 2026-09-18: M1.8b2 Drag against RASAero through Mach 2 (ADR-029): not met, recorded. Calisto's
-  export 15/15 subsonic, 2/7 transonic, 0/17 supersonic (−29.8% to −24.4%), no fin input closes
-  it; MIL-HDBK-762's worked example (fins left out) 6/12, the body 6–10% low past Mach 1.6; a
-  boattail's wave drag is a candidate (M1.8b3).
-- 2026-09-18: M1.8b1 The drag buildup through Mach 1 (ADR-028): Niskanen's appendix B with
-  Stoney's digitized curves, Mach 0 to 5; against the Arcas Robin's forebody axial force 8 of 44
-  within 10% (high past Mach 1.2 with fins); predicted Prometheus flies; no known gap left.
 
 ## Needs Neer (blocking or one-way decisions; the session keeps working on other things)
 

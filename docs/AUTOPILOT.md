@@ -98,6 +98,49 @@ In `/config`, make sure **Continue automatically at usage limit** is on.
 - Check with `/usage` in any Claude Code session.
 - To spend less, run with `HPR_EFFORT=high scripts/autopilot.sh 48`.
 
+## Memory
+
+The run shares the Mac's memory with everything else that is open. On a 16 GB machine the margin
+is thin, and when it runs out macOS suspends applications and shows "Your system has run out of
+application memory". That dialog waits for a click, so a run left overnight can sit paused for
+hours. Two things fill the memory, and the build is the smaller one.
+
+**What the build needs.** Measured over three cold `cargo test --workspace --all-features
+--no-run` builds on a 10-core, 16 GB machine (full numbers in [Performance](perf.md)):
+
+| cargo jobs | peak build memory | wall time |
+|---|---|---|
+| 10, one per core | 2.42 GB | 12.0 s |
+| 6, what the run uses | 1.72 GB | 13.0 s |
+
+So a full cold build peaks under 2.5 GB. The script exports `CARGO_BUILD_JOBS=6` for its cycles,
+trading about a second per build for 0.7 GB of headroom — well under a percent of a multi-hour
+cycle. Set `HPR_CARGO_JOBS` to take the cores back. This is not in `.cargo/config.toml` on purpose:
+CI runners have fewer cores, where a fixed 6 would oversubscribe them.
+
+**What everything else needs.** Usually the larger half. When the run ran out of memory on
+2026-09-19, a browser, the desktop app and a virtual machine held about 7 GB between them. Quit
+what you are not using and shut down any VM before leaving a long window unattended. The script
+logs whatever is holding 0.5 GB or more when it starts, so the baseline is visible before you walk
+away.
+
+**Leftovers are cleaned up.** Each cycle runs in its own process group, and the group is killed
+when the cycle ends — after a normal finish as well as after a watchdog kill. Without that, a build
+or a CI watch the session left running would survive into every cycle that follows and keep its
+memory.
+
+**Reading it afterwards.** Every cycle appends a memory line to `.autopilot/runs.log`:
+
+```
+Cycle 12 memory: peak group RSS 3.41 GB, least free 512 MB, most swap 2048 MB.
+```
+
+Peak group RSS sums the whole cycle — the session and every build it started — so it double-counts
+shared pages; read it as a trend from cycle to cycle rather than an exact figure. Least free and
+most swap are system-wide and are the honest numbers. If swap passes 4 GB mid-cycle the script says
+so once, and keeps going. Older transcripts are gzipped, keeping the newest 20 readable
+(`HPR_KEEP_LOGS`).
+
 ## Where the project lives
 
 If iCloud Drive's "Desktop & Documents Folders" is on, everything in `~/Documents` syncs to iCloud.

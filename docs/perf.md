@@ -3,6 +3,40 @@
 Measured numbers only, newest first within each section. Record the machine, the toolchain, and
 the command, so a later run can be compared like for like.
 
+## Build memory during an unattended run
+
+- **Benchmark:** `cargo test --workspace --all-features --no-run` from an empty `CARGO_TARGET_DIR`,
+  three repetitions per setting, 2026-09-19 on an Apple M5 (10 cores, 16 GB) with rustc 1.98.1.
+  Peak memory sums the resident memory of the build's process group, sampled once a second; it
+  double-counts pages shared between processes, so compare figures with each other rather than
+  treating one as exact. Each row is the mean of its three repetitions.
+- **Why:** a 14-hour run window ended with macOS suspending applications for want of memory. These
+  numbers say how much of a 16 GB machine the build itself accounts for.
+
+How many parallel jobs cargo is allowed:
+
+| cargo jobs | peak build memory | wall time |
+|---|---|---|
+| 10, one per core | 2.42 GB | 12.0 s |
+| 6 | 1.72 GB | 13.0 s |
+
+How much debug information the dev profile emits, measured separately:
+
+| dev profile | peak build memory | wall time | written to `target/` |
+|---|---|---|---|
+| `debug = 2`, the default | 2.47 GB | 11.3 s | 1201 MB |
+| `debug = "line-tables-only"` | 2.53 GB | 11.0 s | 1037 MB |
+
+- **What this says.** A full cold build of the workspace peaks under 2.5 GB, so the build
+  contributes to memory pressure but is not the main consumer; the rest of the machine matters
+  more. Capping cargo at 6 jobs takes 0.7 GB off the peak for about a second per build, which is
+  why [the autopilot](AUTOPILOT.md) exports `CARGO_BUILD_JOBS=6` for its own cycles. Run-to-run
+  spread on the peak was within 0.06 GB, so the 0.7 GB gap is well outside the noise.
+- **What it rules out.** Thinning debug information does **not** reduce peak build memory: it
+  measured 2.53 GB against the default's 2.47 GB, inside the spread, with wall time unchanged. It
+  does cut what is written to `target/` by 14%, which is a disk saving rather than a memory one.
+  No profile change was made on the strength of it.
+
 ## Normal-force tables (M1.8d)
 
 - **Benchmark:** `cargo bench -p hpr-sim --bench flight -- "K400C to the ground|normal-force
