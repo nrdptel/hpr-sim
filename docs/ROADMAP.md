@@ -38,7 +38,7 @@
     private `loft-fixtures` repo (cloned by `scripts/preflight.sh` or with the user's `gh`
     credentials; skipped with a note when unavailable, as in CI).
   - A `uv`-managed Python venv in `refs/venv` with `rocketpy==1.13.0` and JPype; a
-    Java 17+ check.
+    Java 17 check.
 
   *Done when:*
   - `fetch` is idempotent.

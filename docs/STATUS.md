@@ -40,7 +40,7 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
   them while sampling and reaps them too; the cycle's group alone misses every build.
 - **M2.2's OpenRocket oracle** (ADR-035): orhelper is dropped, so decide how to drive the jar
   when M2.2 starts. JPype still loads the JVM in-process; only a subprocess isolates. The jar
-  needs Java 17 and refuses 21, while our check accepts it (#94).
+  needs Java 17 exactly; `[java] max_major` in the refs lock now keeps doctor off a newer one.
 - **Regeneration is not bit-identical across machines** (last digits). Regenerate reports with
   `cargo xtask validate` (debug), never `--release`: it rounds differently in the 7th digit.
   Fixture checks (`designs::same`) allow 1e-12 relative, or 1e-13 near zero (M1.8b3's PR).

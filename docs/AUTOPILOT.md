@@ -21,6 +21,9 @@
 5. Memory: quit your browser and shut down any virtual machine before a long window. On a 16 GB
    Mac what you leave open is the difference between a run that finishes and one that stalls; see
    [Memory](#memory).
+6. For the OpenRocket oracle (only needed from M2.2 on): `brew install openjdk@17`. OpenRocket
+   24.12 refuses newer runtimes, and the formula is keg-only, so it does not become your default
+   `java` and does not need to be.
 
 ## Start
 

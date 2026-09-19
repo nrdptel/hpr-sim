@@ -57,7 +57,7 @@ mode = "fetched"
 
 [[file]]
 name = "openrocket-jar"
-title = "OpenRocket 24.12 (needs Java 17+)"
+title = "OpenRocket 24.12 (needs Java 17; it refuses 21)"
 url = "https://github.com/openrocket/openrocket/releases/download/release-24.12/OpenRocket-24.12.jar"
 sha256 = "4959b72f52f5f607941e9722abbb7b7f0c4a38ebbbf84204a329db9f31c4f897"
 dest = "refs/openrocket/OpenRocket-24.12.jar"
@@ -619,3 +619,6 @@ checks = [
 # Homebrew's openjdk kegs, then PATH.
 [java]
 min_major = 17
+# OpenRocket 24.12 refuses anything newer: it reports "Supported version(s): 17". Observed from
+# the jar's own dialog on 2026-09-19; widen this if a later release accepts more.
+max_major = 17

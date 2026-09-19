@@ -152,7 +152,7 @@ same license and mode.
 | `openrocket-database` | `openrocket/openrocket-database` (`.orc` parts) | Apache-2.0 | fetched | may be bundled with notices in M5.5 |
 | `fusionspace-loft` | `nrdptel/fusionspace-loft` (the project owner's own) | MIT | fetched | ported with a note |
 | `loft-fixtures` | `nrdptel/loft-fixtures` | private; third-party design files | fetched | never committed; only derived statistics are published |
-| `openrocket-jar` | OpenRocket 24.12 (needs Java 17+) | GPL-3.0 | run-only | second oracle; its source is never read |
+| `openrocket-jar` | OpenRocket 24.12 (needs Java 17; it refuses 21) | GPL-3.0 | run-only | second oracle; its source is never read |
 | `barrowman-1967-thesis` | J. S. Barrowman, The Practical Calculation of the Aerodynamic Characteristics of Slender Finned Vehicles, MS thesis, 1967 (NASA/TM-2001-209983) | US government work | fetched | cited; M1.8c reads the Basic Finner's dimensions (Fig. 5-6) and its plotted roll damping (Fig. 5-7) into `validation/fixtures/aero/basic-finner-roll-damping.json`, with figure and page |
 | `barrowman-1966-cp-report` | J. S. and J. A. Barrowman, The Theoretical Prediction of the Center of Pressure, NARAM-8, 1966 | unknown terms | fetched | cited, not copied or redistributed |
 | `barrowman-1966-naram8-nakka` | J. S. and J. A. Barrowman, The Theoretical Prediction of the Center of Pressure, NARAM-8, 1966 (complete scan with its Testbed II and Aerobee 350 examples), bound with J. S. Barrowman, Calculating the Center of Pressure of a Model Rocket, Centuri TIR-33, 1970 | unknown terms | fetched | cited; the worked examples' printed dimensions and results (facts) are committed in `validation/fixtures/aero/barrowman-worked-examples.json` with page numbers; no figures and no text beyond part names copied |
@@ -220,7 +220,7 @@ Nothing here is bundled.
 | `mpmath` 1.3.0 | BSD-3-Clause | run-only | arbitrary-precision reference values from published formulas (`validation/oracles/wgs84/`, `validation/oracles/ussa76/`, `validation/oracles/atmosphere/`) |
 | `ambiance` 1.3.1 | Apache-2.0 | run-only | an independent 1976 standard atmosphere, cross-checking the transcribed tables (`validation/oracles/ussa76/`) |
 | the dependencies `uv.lock` pins (numpy, scipy, matplotlib, netCDF4 and others) | as each package states | run-only | installed only as the oracles' runtime |
-| a Java 17+ runtime (for example OpenJDK from Homebrew) | GPL-2.0 WITH Classpath-exception-2.0 | run-only | installed by the user, not fetched; `refs doctor` finds it |
+| a Java 17 runtime (for example `brew install openjdk@17`) | GPL-2.0 WITH Classpath-exception-2.0 | run-only | installed by the user, not fetched; `refs doctor` finds it |
 
 ## Planned sources (not fetched yet)
 
