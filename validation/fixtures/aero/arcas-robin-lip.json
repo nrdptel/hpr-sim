@@ -36,12 +36,12 @@
             "cp_with_seiff": 2.6836791471536006,
             "cp_with_slender_body": 3.3330243465437035,
             "implied_share_per_rad": -0.255721839673776,
-            "implied_share_standard_error": 0.06695524122713035
+            "implied_share_standard_error": 0.06783867730652753
           },
           "mach": 1.5,
           "measured": {
             "cp_calibers": 1.0010923196540205,
-            "cp_standard_error_calibers": 0.4166980899393679,
+            "cp_standard_error_calibers": 0.4221961826968794,
             "fitted_c_n_alpha": 2.1919997374213684
           }
         },
@@ -69,12 +69,12 @@
             "cp_with_seiff": 3.238641265213582,
             "cp_with_slender_body": 3.8395896748797536,
             "implied_share_per_rad": -0.14699124826203885,
-            "implied_share_standard_error": 0.06097869257216471
+            "implied_share_standard_error": 0.06204197918358497
           },
           "mach": 1.8,
           "measured": {
             "cp_calibers": 2.3570784470664297,
-            "cp_standard_error_calibers": 0.30710268179075995,
+            "cp_standard_error_calibers": 0.3124576370399715,
             "fitted_c_n_alpha": 2.612936786341712
           }
         },
@@ -102,12 +102,12 @@
             "cp_with_seiff": 3.8119884981735157,
             "cp_with_slender_body": 4.368973745755172,
             "implied_share_per_rad": -0.030472577065120066,
-            "implied_share_standard_error": 0.05395793480828268
+            "implied_share_standard_error": 0.05518687984831501
           },
           "mach": 2.3,
           "measured": {
             "cp_calibers": 3.5622906558800986,
-            "cp_standard_error_calibers": 0.22119819461779763,
+            "cp_standard_error_calibers": 0.2262362010779322,
             "fitted_c_n_alpha": 3.077526441368625
           }
         },
@@ -135,12 +135,12 @@
             "cp_with_seiff": 3.8466726890324026,
             "cp_with_slender_body": 4.433244742416078,
             "implied_share_per_rad": -0.12691928991381923,
-            "implied_share_standard_error": 0.07140188630260709
+            "implied_share_standard_error": 0.07292143711476971
           },
           "mach": 2.96,
           "measured": {
             "cp_calibers": 3.213563598696478,
-            "cp_standard_error_calibers": 0.311145774429003,
+            "cp_standard_error_calibers": 0.3177674736405726,
             "fitted_c_n_alpha": 3.284069313605933
           }
         },
@@ -168,12 +168,12 @@
             "cp_with_seiff": 4.628838192754145,
             "cp_with_slender_body": 5.156323823226539,
             "implied_share_per_rad": 0.09329167199518448,
-            "implied_share_standard_error": 0.044872064052772574
+            "implied_share_standard_error": 0.046338067679485076
           },
           "mach": 3.96,
           "measured": {
             "cp_calibers": 4.883679040010315,
-            "cp_standard_error_calibers": 0.14781107317417058,
+            "cp_standard_error_calibers": 0.1526401706074145,
             "fitted_c_n_alpha": 3.8844772511193657
           }
         },
@@ -201,12 +201,12 @@
             "cp_with_seiff": 4.768425818080915,
             "cp_with_slender_body": 5.302143350887643,
             "implied_share_per_rad": 0.0976747840584833,
-            "implied_share_standard_error": 0.04171217978255695
+            "implied_share_standard_error": 0.043152488257950095
           },
           "mach": 4.63,
           "measured": {
             "cp_calibers": 5.047048514502164,
-            "cp_standard_error_calibers": 0.13544155314475131,
+            "cp_standard_error_calibers": 0.14011830746283596,
             "fitted_c_n_alpha": 4.148728473047325
           }
         }
@@ -248,12 +248,12 @@
             "cp_with_seiff": 4.5058699245948945,
             "cp_with_slender_body": 5.186019374869289,
             "implied_share_per_rad": 0.05834457909877077,
-            "implied_share_standard_error": 0.07884867412767449
+            "implied_share_standard_error": 0.07969584999999689
           },
           "mach": 1.8,
           "measured": {
             "cp_calibers": 4.606331513337558,
-            "cp_standard_error_calibers": 0.3945975605865345,
+            "cp_standard_error_calibers": 0.3988372454804731,
             "fitted_c_n_alpha": 3.1585382380526092
           }
         },
@@ -281,12 +281,12 @@
             "cp_with_seiff": 5.0388982481240125,
             "cp_with_slender_body": 5.683661815271997,
             "implied_share_per_rad": 0.03210251220113214,
-            "implied_share_standard_error": 0.07305227112760741
+            "implied_share_standard_error": 0.07390139406419394
           },
           "mach": 2.3,
           "measured": {
             "cp_calibers": 5.041669250935026,
-            "cp_standard_error_calibers": 0.33333969363273336,
+            "cp_standard_error_calibers": 0.33721426693715334,
             "fitted_c_n_alpha": 3.5254522602158787
           }
         },
@@ -314,12 +314,12 @@
             "cp_with_seiff": 4.764112045367412,
             "cp_with_slender_body": 5.4743288768247105,
             "implied_share_per_rad": 0.1452428846169889,
-            "implied_share_standard_error": 0.096396871321178
+            "implied_share_standard_error": 0.09755054627997731
           },
           "mach": 2.96,
           "measured": {
             "cp_calibers": 5.327730367218287,
-            "cp_standard_error_calibers": 0.4376430518269498,
+            "cp_standard_error_calibers": 0.4428807511720149,
             "fitted_c_n_alpha": 3.8680132902426
           }
         },
@@ -347,12 +347,12 @@
             "cp_with_seiff": 5.28041593778964,
             "cp_with_slender_body": 5.977382352274789,
             "implied_share_per_rad": 0.22890547221004115,
-            "implied_share_standard_error": 0.0833185294166404
+            "implied_share_standard_error": 0.08448883037260306
           },
           "mach": 3.96,
           "measured": {
             "cp_calibers": 6.188555209398116,
-            "cp_standard_error_calibers": 0.3401401641331049,
+            "cp_standard_error_calibers": 0.34491780917837095,
             "fitted_c_n_alpha": 4.455316215903041
           }
         },
@@ -380,12 +380,12 @@
             "cp_with_seiff": 6.016818552642399,
             "cp_with_slender_body": 6.649726480852769,
             "implied_share_per_rad": 0.11065144802482126,
-            "implied_share_standard_error": 0.059046563935921115
+            "implied_share_standard_error": 0.05993201380188635
           },
           "mach": 4.63,
           "measured": {
             "cp_calibers": 6.396380804793436,
-            "cp_standard_error_calibers": 0.22610190096367308,
+            "cp_standard_error_calibers": 0.2294924775621697,
             "fitted_c_n_alpha": 4.615044057113034
           }
         }
@@ -394,10 +394,26 @@
   ],
   "generator": "cargo xtask aero (xtask/src/aero_lip.rs)",
   "note": "The lip behind a boattail faster than sound (M1.8e8): hpr flies a lip wholly in a boattail's wake with no potential-flow slope above the supersonic join, so the committed Arcas Robin designs fly the shock-expansion method to their base. Rows hold the design as committed and the same design with the lip left off (M1.8e7), both through the flight's path with hpr's current body model, fitted at the tunnel's plotted angles as arcas-robin-crossflow.json fits them, against TN D-4014's fins-off measurement. Slopes are per radian on the body's cross-section; centres of pressure are calibers aft of the nose tip, hpr's from the same fits over |alpha| <= 4.5 deg. candidates_per_rad holds the lip's share under the rule flown (zero), slender-body theory (2 dA/A_ref, which hpr flies below the join) and Seiff's embedded Newtonian bound (NASA TN D-1304 eq. 9). implied_share is the share at the lip's station that would put hpr on the measured centre of pressure, with the standard error the readings leave. No targets.",
+  "one_share_fitted_to_each_model": [
+    {
+      "chi_squared_per_degree_of_freedom": 6.365880490592673,
+      "id": "arcas-robin-short",
+      "rows": 6,
+      "share_per_rad": -0.015893345147600737,
+      "standard_error": 0.0223818208273129
+    },
+    {
+      "chi_squared_per_degree_of_freedom": 0.9096195505817074,
+      "id": "arcas-robin-long",
+      "rows": 5,
+      "share_per_rad": 0.10785447710670609,
+      "standard_error": 0.034018150233892167
+    }
+  ],
   "one_share_fitted_to_every_row": {
-    "chi_squared_per_degree_of_freedom": 4.628327415684377,
+    "chi_squared_per_degree_of_freedom": 4.470301759289679,
     "rows": 11,
-    "share_per_rad": 0.02216865313783251,
-    "standard_error": 0.018288771011291408
+    "share_per_rad": 0.021491587639923863,
+    "standard_error": 0.018697787273063447
   }
 }

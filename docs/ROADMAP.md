@@ -609,7 +609,7 @@
     - [x] **M1.8e8 The lip faster than sound** (from e7; ADR-039). *Done when:* flown with no jump
       at ±1e-9 in Mach; the committed Arcas Robin designs through a flight's path in the report.
       *Result:* met; a lip in a boattail's wake carries nothing, so both designs fly the method to
-      their base: M1.8a's rows from Mach 1.5 are all within the slope's 15% (+8.9% to −3.3%).
+      their base: M1.8a's rows from Mach 1.5 are all within the slope's 15% (+9.4% to −3.3%).
     - [ ] **M1.8e9 #87's model switches and #90's cap.** *Done when:* both closed; M1.8e's bullet.
 
 - [ ] **M3.1 OpenRocket `.ork` import.**

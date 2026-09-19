@@ -58,7 +58,7 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
 
 - 2026-09-19: M1.8e8 The lip faster than sound (ADR-039): a lip in a boattail's wake carries
   nothing above the join, so the committed Arcas Robin designs fly the method to their base; every
-  M1.8a row from Mach 1.5 is within the slope's 15% (+8.9% to −3.3%, was −28.0% at worst); the
+  M1.8a row from Mach 1.5 is within the slope's 15% (+9.4% to −3.3%, was −28.0% at worst); the
   long model's CP at Mach 1.8 and 2.3 is 0.53 and 0.52 calibres out, its body 15–19% high.
 - 2026-09-19: M1.8e7 Blunt tips faster than sound (ADR-038): power-series, Haack and elliptical
   noses fly the method behind TN D-4865's Newtonian cap, started from the tangent cone; no jump at

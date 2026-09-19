@@ -130,6 +130,9 @@ pub const SUPERSONIC_JOIN_WIDTH_MACH: f64 =
 #[non_exhaustive]
 pub struct SupersonicBody {
     /// How many body components the method covers: the first entries of [`AeroModel::bodies`].
+    /// The last of them may be lips in a covered boattail's wake, which the method doesn't march:
+    /// their share is zero at every Mach number ([`crate::drag::WakeTerm`], the decision record
+    /// ADR-039 on the lip).
     pub covered: usize,
     /// The Mach number where the join starts; the shares count in full from
     /// [`SUPERSONIC_JOIN_WIDTH_MACH`] above it.
@@ -238,8 +241,8 @@ struct SupersonicRun {
     /// Each segment that is a boattail, when its share is Washington and Pettis's.
     boattails: Vec<Option<RunBoattail>>,
     /// How many bodies behind the marched segments are lips wholly in a covered boattail's wake
-    /// ([`LIPS_IN_A_WAKE`]): they carry nothing faster than sound, so the run covers them with a
-    /// share of zero.
+    /// ([`crate::drag::WakeTerm`]): they widen the body, carry nothing faster than sound, and so
+    /// the run covers them with a share of zero.
     sheltered_lips: usize,
     // `segments`, `bounds_m`, `fore_m` and `boattails` hold one entry per segment: `from_design`
     // pushes all four in the same branch, and `shares` indexes them together; `shares` then adds
@@ -998,16 +1001,34 @@ impl AeroModel {
         // A lip wholly in a covered boattail's wake carries nothing faster than sound (ADR-039),
         // so the run may cover it; the drag buildup's wake already measures the shelter
         // ([`crate::drag::WakeTerm`]), and takes the lip's own drag away at the same threshold.
-        let sheltered_lips = bodies[marched..]
-            .iter()
-            .zip(&body_terms_at[marched..])
-            .take_while(|(_, (index, _))| {
-                let terms = &drag_terms[*index];
-                terms.in_wake_of.is_some_and(|wake| {
-                    // Whatever the part has of a step and a shoulder must be wholly in the wake.
-                    (terms.step.is_none() || wake.step_fraction >= 1.0)
-                        && (terms.shoulder.is_none() || wake.shoulder_fraction >= 1.0)
-                })
+        let sheltered_lips = (marched..bodies.len())
+            .take_while(|&index| {
+                let (term, geometry) = body_terms_at[index];
+                // A lip widens the body: a narrowing part behind the run is a boattail the method
+                // hasn't covered, whatever its drag takes from the wake, and it keeps its
+                // slender-body share.
+                if bodies[index].slope_per_rad <= 0.0 {
+                    return false;
+                }
+                // It must be short enough to stay in the wake, whose scale is the boattail's own
+                // drop in diameter; a longer flare grows out of it.
+                let Some(wake) = drag_terms[term].in_wake_of else {
+                    return false;
+                };
+                let boattail = &wake.boattail;
+                if geometry.length_m > boattail.fore_diameter_m - boattail.aft_diameter_m {
+                    return false;
+                }
+                // Whatever it widens by, a step at its fore end or its own shoulder, must be
+                // wholly in the wake. The geometry says which it has: a drag term can be missing
+                // for reasons of its own (a shape the buildup has no curve for).
+                let steps = body_terms_at[index.saturating_sub(1)]
+                    .1
+                    .aft_area_m2
+                    .lt(&geometry.fore_area_m2);
+                let shoulders = geometry.aft_area_m2 > geometry.fore_area_m2;
+                (!steps || wake.step_fraction >= 1.0)
+                    && (!shoulders || wake.shoulder_fraction >= 1.0)
             })
             .count();
         let covered = marched + sheltered_lips;
@@ -1804,7 +1825,7 @@ mod tests {
     /// Refusals: tube fins, nine fins, Mach 5, angles outside `[0, π]`. Lugs add no normal force.
     #[test]
     fn unsupported_inputs_are_refused() {
-        let mut rocket = finned_rocket(4);
+        let mut rocket = crate::testing::finned_rocket(4);
         rocket.stages[0].components[3].children.push(component(
             "tube-fins",
             Part::TubeFinSet(TubeFinSet {
@@ -2277,7 +2298,7 @@ mod tests {
     /// The finned rocket with its boattail and tail at the body's radius: a nose and three
     /// cylinders, which the shock-expansion method covers to the end.
     fn straight_rocket() -> hpr_design::Rocket {
-        let mut rocket = finned_rocket(4);
+        let mut rocket = crate::testing::finned_rocket(4);
         rocket.stages[0].components[2].part = body_part(0.05, 0.027, 0.027);
         rocket.stages[0].components[3].part = body_part(0.3, 0.027, 0.027);
         rocket
@@ -2634,7 +2655,7 @@ mod tests {
         // boattail's drop in diameter wholly (`crate::drag::WAKE_FULL_RISE`), and one rising half
         // of it not at all. The method covers the first and refuses the body of the second.
         let lipped = |rise: f64| {
-            let mut rocket = finned_rocket(4);
+            let mut rocket = crate::testing::finned_rocket(4);
             // The nose, the tube and the boattail, which drops from 0.027 m to 0.022 m in radius:
             // 0.010 m in diameter. The lip sits straight behind it, since a wake fades over any
             // tube between them.
@@ -2648,6 +2669,67 @@ mod tests {
         };
         assert_eq!(lipped(0.2).supersonic_body().map(|t| t.covered), Some(4));
         assert!(lipped(0.6).supersonic_body().is_none());
+        // The threshold is a switch in shape, of issue #87's family, and this is its size: at
+        // Mach 3 and 4° the whole rocket's normal force falls by a third across it and its centre
+        // of pressure moves 1.8 calibres forward.
+        let at = |rise: f64| {
+            let model = lipped(rise);
+            let f = model
+                .normal_force(&flow(3.0, 4f64.to_radians(), 0.0))
+                .unwrap();
+            (f.coefficient, f.cp_station_m.unwrap())
+        };
+        let (sheltered, bare) = (at(0.2499), at(0.2501));
+        assert_eq!(lipped(0.2499).supersonic_body().map(|t| t.covered), Some(4));
+        assert!(lipped(0.2501).supersonic_body().is_none());
+        assert!(
+            (sheltered.0 - 0.2976).abs() < 5e-4 && (bare.0 - 0.1995).abs() < 5e-4,
+            "{sheltered:?} against {bare:?}"
+        );
+        assert!(
+            (sheltered.1 - bare.1 - 0.0958).abs() < 5e-4,
+            "{sheltered:?} against {bare:?}"
+        );
+        // The shelter follows the geometry, not the drag buildup's tables: a lip out of the wake
+        // is refused whatever its shape, including one whose drag curve the buildup has none for
+        // (a Haack series past C = 1/3; the physics review found this).
+        for shape in [NoseShape::Conical {}, NoseShape::Haack { parameter: 0.5 }] {
+            let mut rocket = crate::testing::committed_design("wind-tunnel-arcas-robin-short.json");
+            let components = &mut rocket.stages[0].components;
+            let last = components.len() - 1;
+            let Part::Transition(lip) = &mut components[last].part else {
+                unreachable!("the committed design ends in its lip")
+            };
+            // Raised to 0.40 of the boattail's drop, out of the wake.
+            lip.aft_radius_m = lip.fore_radius_m + 0.40 * (0.028575 - 0.0166116);
+            lip.shape = shape;
+            assert!(
+                model(&rocket).supersonic_body().is_none(),
+                "{shape:?} out of the wake"
+            );
+        }
+        // A flare longer than the boattail's drop in diameter grows out of the wake, however
+        // little it rises.
+        let mut rocket = finned_rocket(4);
+        rocket.stages[0].components.truncate(3);
+        rocket.stages[0].components.push(component(
+            "long flare",
+            body_part(1.0, 0.022, 0.0229),
+            None,
+        ));
+        assert!(model(&rocket).supersonic_body().is_none());
+        // A narrowing part behind the run is a boattail the method hasn't covered, not a lip,
+        // even where the wake takes its drag: it keeps slender-body theory's share.
+        let mut rocket = finned_rocket(4);
+        rocket.stages[0].components.truncate(3);
+        rocket.stages[0].components.push(component(
+            "second boattail",
+            body_part(0.03, 0.0231, 0.021),
+            None,
+        ));
+        let narrowing = model(&rocket);
+        assert!(narrowing.bodies().last().unwrap().slope_per_rad < 0.0);
+        assert!(narrowing.supersonic_body().is_none());
     }
 
     /// Washington and Pettis's boattail: the method's share for a cylinder of the boattail's
@@ -3012,12 +3094,12 @@ mod tests {
         let flared = model(&rocket);
         // A boattail followed by a flare (a lip), and a boattail at a step down: each leaves a
         // body with a slope of its own behind the run.
-        let mut rocket = finned_rocket(4);
+        let mut rocket = crate::testing::finned_rocket(4);
         rocket.stages[0]
             .components
             .push(component("lip", body_part(0.01, 0.022, 0.025), None));
         let lipped = model(&rocket);
-        let mut rocket = finned_rocket(4);
+        let mut rocket = crate::testing::finned_rocket(4);
         rocket.stages[0].components[2].part = body_part(0.05, 0.026, 0.022);
         let stepped_boattail = model(&rocket);
         let mut rocket = straight_rocket();

@@ -3632,14 +3632,19 @@ M1.8a's short model read −16.3% at Mach 2.96 and −28.0% at 4.63.
     `2 (q₁/q∞) cos²θ ΔA/A_ref`, with `q₁` the flow expanded through the boattail's turn), it gives
     0.044 per radian at Mach 1.5 falling to 0.014 at 4.63 — a quarter to a twelfth of slender-body
     theory's 0.178.
-- **The moment, checked** (`arcas-robin-lip.json`). For each fins-off row, the share at the lip's
-  station that would put hpr's centre of pressure on the measured one runs from −0.256 ± 0.067 per
-  radian (short, Mach 1.5) to +0.229 ± 0.083 (long, Mach 3.96), changing sign with Mach number and
-  with the model's length. One share fitted to all eleven rows is +0.022 ± 0.018 per radian:
-  slender-body theory's 0.178 sits 8.5 standard errors above it, 4 after inflating the error by the
-  rows' scatter (χ² per degree of freedom 4.6); zero and Seiff's bound sit inside it. The scatter
-  says this bounds the lip rather than measuring it: hpr's centre of pressure misses by up to a
-  calibre for reasons that have nothing to do with the lip.
+- **The moment, checked, and found unable to settle it** (`arcas-robin-lip.json`). For each
+  fins-off row, the share at the lip's station that would put hpr's centre of pressure on the
+  measured one runs from −0.256 ± 0.068 per radian (short, Mach 1.5) to +0.229 ± 0.084 (long,
+  Mach 3.96), changing sign with Mach number and with the model's length. Fitting one share gives
+  +0.021 ± 0.019 over all eleven rows (χ² per degree of freedom 4.5), −0.016 ± 0.022 over the short
+  model's six (6.4, so its rows disagree among themselves) and +0.108 ± 0.034 over the long
+  model's five (0.9, so those five agree — on a share three standard errors above zero and two
+  below slender-body theory's). The number blames the lip for every miss in the centre of pressure,
+  and the long model's body alone reads 15% to 19% high at those speeds, which moves its centre of
+  pressure by more than any lip could; the short model's fit comes out negative, which no flare can
+  give. So the moment rejects slender-body theory's 0.178 (8.7 standard errors on the short model,
+  2.1 on the long) and cannot separate zero from Seiff's bound. The physics above, not this,
+  decides the rule (the physics review asked for the split).
 - **"The committed Arcas Robin designs through a flight's path in the report"** means, as for
   M1.8e2, e4, e6 and e7, the committed fixture `arcas-robin-lip.json` and the guide's table pinned
   to it; no validation flight passes Mach 1.2, so the whole-flight report is unchanged.
@@ -3647,14 +3652,23 @@ M1.8a's short model read −16.3% at Mach 2.96 and −28.0% at 4.63.
 **Consequences.**
 
 - M1.8a (`normal-force-vs-mach.json`): every row from Mach 1.5 is now within the 15% slope target,
-  +8.8% to −3.3% on the short model and +8.9% to −2.3% on the long, where the short read −16.3% at
-  Mach 2.96 and −28.0% at 4.63. The body alone, fins off, went from 2.0–2.1 per radian to 3.0–4.4,
-  against the tunnel's 2.2–4.6.
-- Two rows left the target set and two joined it: the long model's centre of pressure at Mach 1.8
-  and 2.3 now sits 0.53 and 0.52 calibres forward of the measured, just outside the half-calibre
-  target, because its body alone reads 15% to 19% high there — the excess M1.8e6 sized and left
-  (ADR-037), which M1.8e9 carries.
-- With the lip left off entirely the same bodies read within 0.1 percentage points, so the rule
-  changes what the method may cover, not the lip's own lift.
-- Unvalidated, and said so: nothing here measures a lip's lift directly. The shelter's threshold is
-  a switch in shape, of issue #87's family.
+  +8.8% to −3.3% on the short model and +9.4% to −2.3% on the long, where the short read −16.3% at
+  Mach 2.96 and −28.0% at 4.63. The short model's body alone, fins off, went from 2.0–2.1 per
+  radian to 3.0–4.0 and the long model's from 2.5–2.6 to 3.8–4.4, against the tunnel's 2.2–4.6.
+- Five rows left the miss list (the short model at Mach 2.96, 3.96 and 4.63, the long at 3.96 and
+  4.63) and two joined it: the long model's centre of pressure at Mach 1.8 and 2.3 now sits 0.53
+  and 0.52 calibres forward of the measured, just outside the half-calibre target, because its body
+  alone reads 15% to 19% high there — the excess M1.8e6 sized and left (ADR-037), which M1.8e9
+  carries.
+- With the lip left off entirely the same bodies read within 0.05 percentage points at ten of the
+  eleven rows, and 0.5 at Mach 1.5 on the short model, so the rule changes which parts the method
+  may cover far more than it changes the lip's own lift.
+- Unvalidated, and said so: nothing here measures a lip's lift directly.
+- The shelter's threshold is a switch in shape, of issue #87's family, and a large one, since it
+  decides whether the whole body flies the method: on the test rocket at Mach 3 and 4°, a lip
+  rising 0.2499 of the boattail's drop gives `C_N` 0.2976 and one rising 0.2501 gives 0.1995, a
+  third less, with the centre of pressure 1.8 calibres further aft. Pinned by
+  `a_lip_in_a_boattails_wake_carries_nothing` and noted on the issue.
+- A narrowing part behind the run is a boattail the method hasn't covered, not a lip, whatever the
+  wake does to its drag: it keeps slender-body theory's share (the code review found this; a second
+  boattail drawn with a small step up would otherwise have been zeroed).

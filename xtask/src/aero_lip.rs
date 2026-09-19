@@ -11,7 +11,9 @@
 //!   the join; and Seiff's embedded Newtonian upper bound (NASA TN D-1304 eq. 9, printed p. 12:
 //!   `C_Nα = 4 ∫ (q₁/q∞) cos²θ (r/r_c) d(r/r_c)`, which for a conical flare at one `q₁` is
 //!   `2 (q₁/q∞) cos²θ ΔA/A_ref`), with `q₁` the dynamic pressure of the flow that has expanded
-//!   through the boattail's own turn.
+//!   through the boattail's own turn. `θ` is taken to the axis (56.8° for the Arcas lip); Seiff's
+//!   is to the local stream, 15° steeper behind this boattail, which would give a smaller share,
+//!   so this is the looser bound of the two.
 //! - **The moment check:** each row's `implied_share` is the lip share that would put hpr's centre
 //!   of pressure on the measured one, with the standard error the readings leave. The summary
 //!   fits one share to every row.
@@ -33,6 +35,11 @@ use crate::aero_gap::{READING, slope_error};
 use crate::aero_mach::{WIND_TUNNEL, hpr_force, slope};
 
 pub const FIXTURE: &str = "validation/fixtures/aero/arcas-robin-lip.json";
+
+/// What the fins-off pitching-moment plots were read to, by configuration
+/// (`arcas-robin-fins-off-moment.json`'s `reading`): the report itself states ±0.05 for `C_m`.
+pub const MOMENT_READING: [(&str, f64); 2] =
+    [("arcas-robin-short", 0.02), ("arcas-robin-long", 0.025)];
 
 fn read(root: &Path, name: &str) -> Result<Value, String> {
     let text = fs::read_to_string(root.join(name)).map_err(|e| format!("{name}: {e}"))?;
@@ -68,6 +75,12 @@ fn expanded_dynamic_pressure(mach: f64, turn_rad: f64) -> Result<f64, String> {
             Ok(angle) if angle < nu => low = mid,
             _ => high = mid,
         }
+    }
+    if high >= 100.0 {
+        return Err(format!(
+            "no Mach number under 100 has turned {} rad past Mach {mach}",
+            turn_rad
+        ));
     }
     let expanded = high;
     let total = |m: f64| (1.0 + 0.2 * m * m).powf(3.5);
@@ -149,6 +162,7 @@ pub fn generate(root: &Path) -> Result<Value, String> {
     let area = 0.25 * PI * diameter_m * diameter_m;
     let mut configurations = Vec::new();
     let mut fit = (0.0, 0.0, 0.0, 0usize);
+    let mut by_model: Vec<(String, f64, f64, usize)> = Vec::new();
     for configuration in reference["configurations"]
         .as_array()
         .ok_or(format!("{WIND_TUNNEL} has no configurations"))?
@@ -164,6 +178,12 @@ pub fn generate(root: &Path) -> Result<Value, String> {
             .find(|(name, _)| *name == id)
             .map(|(_, u)| *u)
             .ok_or(format!("no reading accuracy for {id}"))?;
+        // The moment plots were read to their own accuracy, not the normal force's.
+        let moment_reading = MOMENT_READING
+            .iter()
+            .find(|(name, _)| *name == id)
+            .map(|(_, u)| *u)
+            .ok_or(format!("no moment reading accuracy for {id}"))?;
         let committed = arcas_model(root, design, None, false, BodyModel::CURRENT)?;
         let without = arcas_model_without_lip(root, design, BodyModel::CURRENT)?;
         if committed.supersonic_body().map_or(0, |t| t.covered) != 4 {
@@ -213,8 +233,10 @@ pub fn generate(root: &Path) -> Result<Value, String> {
             let measured_cp = moment_center_m / diameter_m - moment_fit / normal_fit;
             // The readings leave the two fitted slopes these standard errors, so the measured
             // centre of pressure carries this one.
-            let (normal_error, moment_error) =
-                (slope_error(&n_a, reading), slope_error(&m_a, reading));
+            let (normal_error, moment_error) = (
+                slope_error(&n_a, reading),
+                slope_error(&m_a, moment_reading),
+            );
             let measured_cp_error = ((moment_error / normal_fit).powi(2)
                 + (moment_fit * normal_error / (normal_fit * normal_fit)).powi(2))
             .sqrt();
@@ -254,6 +276,12 @@ pub fn generate(root: &Path) -> Result<Value, String> {
             let implied = fitted_slope * (measured_cp - fitted_cp) / lever;
             let implied_error = (fitted_slope * (lip_station - fitted_cp) / (lever * lever)).abs()
                 * measured_cp_error;
+            if !(implied.is_finite() && implied_error.is_finite() && implied_error > 0.0) {
+                return Err(format!(
+                    "{id} at Mach {mach}: the lip's implied share isn't a number (its lever is \
+                     {lever} calibers)"
+                ));
+            }
             let candidates = json!({
                 "zero": 0.0,
                 "slender_body": lip.slender_body(area),
@@ -266,6 +294,19 @@ pub fn generate(root: &Path) -> Result<Value, String> {
             fit.0 += implied / (implied_error * implied_error);
             fit.1 += 1.0 / (implied_error * implied_error);
             fit.3 += 1;
+            match by_model.last_mut().filter(|(name, ..)| name == id) {
+                Some(entry) => {
+                    entry.1 += implied / (implied_error * implied_error);
+                    entry.2 += 1.0 / (implied_error * implied_error);
+                    entry.3 += 1;
+                }
+                None => by_model.push((
+                    id.to_owned(),
+                    implied / (implied_error * implied_error),
+                    1.0 / (implied_error * implied_error),
+                    1,
+                )),
+            }
             rows.push(json!({
                 "mach": mach,
                 "measured": {
@@ -297,10 +338,13 @@ pub fn generate(root: &Path) -> Result<Value, String> {
             "rows": rows,
         }));
     }
-    // One share fitted to every row, and how badly the rows disagree about it.
+    // One share fitted to every row, and how badly the rows disagree about it; then the same for
+    // each model alone, since the two disagree with each other (the physics review).
     let mean = fit.0 / fit.1;
     let error = fit.1.sqrt().recip();
-    for configuration in &configurations {
+    let mut per_model = Vec::new();
+    for (configuration, (id, weighted, weight, rows)) in configurations.iter().zip(&by_model) {
+        let (share, mut chi) = (weighted / weight, 0.0);
         for row in configuration["rows"].as_array().ok_or("no rows")? {
             let implied = row["lip"]["implied_share_per_rad"]
                 .as_f64()
@@ -309,9 +353,17 @@ pub fn generate(root: &Path) -> Result<Value, String> {
                 .as_f64()
                 .ok_or("no error")?;
             fit.2 += ((implied - mean) / sigma).powi(2);
+            chi += ((implied - share) / sigma).powi(2);
         }
+        per_model.push(json!({
+            "id": id,
+            "share_per_rad": share,
+            "standard_error": weight.sqrt().recip(),
+            "chi_squared_per_degree_of_freedom": chi / (rows.saturating_sub(1).max(1) as f64),
+            "rows": rows,
+        }));
     }
-    let dof = (fit.3 - 1).max(1) as f64;
+    let dof = fit.3.saturating_sub(1).max(1) as f64;
     Ok(json!({
         "generator": "cargo xtask aero (xtask/src/aero_lip.rs)",
         "note": "The lip behind a boattail faster than sound (M1.8e8): hpr flies a lip wholly in a \
@@ -334,6 +386,7 @@ pub fn generate(root: &Path) -> Result<Value, String> {
             "chi_squared_per_degree_of_freedom": fit.2 / dof,
             "rows": fit.3,
         },
+        "one_share_fitted_to_each_model": per_model,
     }))
 }
 
@@ -380,20 +433,36 @@ mod tests {
                     num(f(r, "/measured/fitted_c_n_alpha"), 3),
                     num(f(r, "/hpr/committed/fitted_c_n_alpha"), 3),
                     pct(f(r, "/hpr/committed/fitted_c_n_alpha_error")),
-                    num(f(r, "/lip/cp_with_slender_body"), 2),
                     num(f(r, "/measured/cp_calibers"), 2),
                     num(f(r, "/hpr/committed/cp_calibers"), 2),
+                    num(f(r, "/lip/cp_with_slender_body"), 2),
                 ));
             }
         }
         assert_eq!(rows.len(), 11);
-        // The shares the section quotes: the two ends of the implied range and the fit.
-        let fit = &fixture["one_share_fitted_to_every_row"];
-        rows.push(format!(
-            "+{} ± {} per radian",
-            num(f(fit, "/share_per_rad"), 3),
-            num(f(fit, "/standard_error"), 3)
-        ));
+        // The shares the section's table quotes: the pooled fit, each model's, and the two ends
+        // of the implied range.
+        let sigma = |share: f64, error: f64, from: f64| {
+            format!("{} σ", num(((share - from) / error).abs(), 1))
+        };
+        let mut fits = vec![("all eleven", &fixture["one_share_fitted_to_every_row"])];
+        let models = fixture["one_share_fitted_to_each_model"]
+            .as_array()
+            .unwrap();
+        fits.push(("the short model's six", &models[0]));
+        fits.push(("the long model's five", &models[1]));
+        for (label, fit) in fits {
+            let (share, error) = (f(fit, "/share_per_rad"), f(fit, "/standard_error"));
+            rows.push(format!(
+                "| {label} | {}{} ± {} | {} | {} | {} |",
+                if share < 0.0 { "" } else { "+" },
+                num(share, 3),
+                num(error, 3),
+                num(f(fit, "/chi_squared_per_degree_of_freedom"), 1),
+                sigma(share, error, 0.0),
+                sigma(share, error, 0.178),
+            ));
+        }
         let (low, high) = (
             &fixture["configurations"][0]["rows"][0]["lip"],
             &fixture["configurations"][1]["rows"][3]["lip"],

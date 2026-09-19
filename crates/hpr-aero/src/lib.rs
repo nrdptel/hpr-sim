@@ -808,7 +808,7 @@ mod tests {
                 // since M1.8e7, their lip carrying nothing in the boattail's wake since e8), so
                 // every row from Mach 1.5 is within the slope's target, where the short model read
                 // -16.3% to -28.0% before. What is left on the long model at Mach 1.8 and 2.3 is
-                // the centre of pressure, 0.52 and 0.53 calibers forward of the measured, where
+                // the centre of pressure, 0.53 and 0.52 calibers forward of the measured, where
                 // the body reads 15% to 19% high fins off (ADR-039).
                 "arcas-robin-short@0.8",
                 "arcas-robin-short@0.9",
