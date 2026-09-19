@@ -174,7 +174,10 @@ pub fn run(args: &[String]) -> Result<(), String> {
             let committed: Value =
                 serde_json::from_str(&committed).map_err(|e| format!("{name}: {e}"))?;
             if !crate::designs::same(&committed, &fixture) {
-                return Err(format!("{name} differs from `cargo xtask aero`"));
+                return Err(format!(
+                    "{name} differs from `cargo xtask aero`: {}",
+                    crate::designs::difference(&committed, &fixture).unwrap_or_default()
+                ));
             }
             println!("{name} matches its references");
             continue;
