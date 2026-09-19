@@ -612,9 +612,11 @@
       jump at ±1e-9 in Mach at the join's ends or first even row; the report unchanged or its
       changes in the PR. *Result:* met: Mach 1.341910 (was 1.35) to 1.355500; report unchanged.
 
-    - [ ] **M1.8e4 The boattail's share faster than sound** (footnote 8; a station rule for
+    - [x] **M1.8e4 The boattail's share faster than sound** (footnote 8; a station rule for
       shares that cross zero). *Done when:* a boattailed body flies the method with no jump at
       ±1e-9 in Mach; the Arcas Robin's long model through a flight's path is in the report.
+      *Result:* met: boattails and tubes behind them keep slender-body theory's station; the
+      Arcas Robin with its boattail equals the method's, long −18.3% to −27.0%.
 
     - [ ] **M1.8e5 Crossflow and blunt tips faster than sound** (Fig. 2 below Mach 3, #81, #87's
       model switches). *Done when:* M1.8e's bullet above.
