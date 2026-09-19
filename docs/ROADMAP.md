@@ -311,11 +311,9 @@
     *Done when:*
     - A separation gives every body a landing, and the bodies' masses sum to the rocket's.
 
-    *Result (ADR-014):* met. A `Separation` splits the stack at a stage boundary; each body flies
-    as a point mass with its own stages' and motors' mass under the devices that name it. On the
-    two-stage test design both bodies land (the sustainer at 2.11 m/s under a canopy, the booster
-    at 16.74 m/s tumbling), the masses add to the stack's to 1e-12 and the momenta to 1e-9. Every
-    body must carry a device, and a separation must follow the last burnout.
+    *Result (ADR-014):* met. A `Separation` splits the stack at a stage boundary, each body a point
+    mass under its devices; on the two-stage test design both land (2.11 m/s under a canopy, 16.74
+    m/s tumbling), masses to 1e-12, momenta to 1e-9. Every body carries a device.
 
 - [x] **M2.1 Validation harness plus the RocketPy code-to-code suite.** This is the first
   end-to-end milestone.
@@ -516,7 +514,8 @@
 
     *Result (ADR-027):* met. Linear theory from `M_s`, a join from Mach 0.8. L7 passes; 37 rows
     pinned, 16 outside the targets, explained. Mach 1.5–2.96: `C_Nα` −13.4% to +3.3%, CP within
-    0.42 calibers; past Mach 3, 17–25% low (M1.8e). Prometheus flies through Mach 1.010.
+    0.42 calibers; past Mach 3, 17–25% low (M1.8e). Prometheus flies through Mach 1.010. Since
+    M1.8e6's body lift (ADR-037): 17 outside; Mach 1.5–2.96 −16.3% to +1.4%, CP within 0.47.
 
   - [x] **M1.8b Transonic and supersonic drag.** Every drag term's transonic and supersonic
     branch, and nose wave drag. Loft lessons L17 and L18.
@@ -590,7 +589,8 @@
       - The Arcas Robin's nose and cylinder, with and without its boattail (footnote 8), are
         computed at each Mach number of TN D-4014 and reported beside the measured body alone.
       *Result (ADR-033):* not met, recorded: slopes and CPs 102 and 125 of 144 within its values
-      (#81), 117 and 109 of 120 of its measurements; Arcas Robin −18.7% to +16.4%, long to −26.4%.
+      (a second implementation agrees; #81 at its limit), 117 and 109 of 120 of its measurements;
+      Arcas Robin −18.7% to +16.4%, long to −26.4%.
     - [x] **M1.8e2 The body's supersonic normal force in flight.** The body's terms take Mach:
       M1.8e1's method for a pointed nose and its cylinder where it holds, joined to slender-body
       theory below it. *Done when* (targets set before measuring):

@@ -37,13 +37,13 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
   `arcas-robin-crossflow.json` (`xtask/src/aero_crossflow.rs`) compares four models, the 62
   high-angle points and the body's CP; its readings are `arcas-robin-high-alpha.json` and
   `arcas-robin-fins-off-moment.json`. `wind_response.py` carries the same tables (a test checks).
+  #98: a covered boattail doubles the supersonic table's build (NDRT 316 → 616 ms).
 - **M1.8e7 next:** the committed Arcas Robin designs (power-series nose, vertical tip; the lip, a
   flare behind the boattail) keep slender-body theory, so M1.8a's short@2.96 now misses (−16.3%).
   Blunt tip: NASA TN D-4865 puts a Newtonian cap ahead of TN 3527's method (Mach 1.5 to 4.63).
   The lip: `rest_carries_nothing` refuses it; check any rule by the moment about the CG. #97: the
   long model's M1.8a readings may be biased (page skew); settle it before judging e8's 15%.
-- **Autopilot memory:** each command a cycle runs gets its own process group, so the run notes
-  them while sampling and reaps them too; the cycle's group alone misses every build.
+- **Autopilot memory:** each command gets its own process group; the run notes and reaps them.
 - **M2.2's OpenRocket oracle** (ADR-035): orhelper is dropped, so decide how to drive the jar
   when M2.2 starts. JPype still loads the JVM in-process; only a subprocess isolates. The jar
   needs Java 17 exactly; `[java] max_major` in the refs lock now keeps doctor off a newer one.
@@ -127,7 +127,7 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
   reason. API snapshots can't be reproduced once an API moves: CI checks committed fixtures only.
 - Barrowman 1966, TIR-33, Galejs, the `.rse` spec and Knacke have no clear terms: never redistribute.
 - Aero (M1.5a) is small-angle only; the Recruiter's six fins miss the printed slope by +3.42%
-  (ADR-008). Body lift (Jorgensen, M1.8e6) reads 4–17% high where the crossflow is supersonic and
+  (ADR-008). Body lift (Jorgensen, M1.8e6) reads 1–16% high where the crossflow is supersonic and
   leaves out the drop past the critical Reynolds number. The normal force misses the wind tunnel
   between Mach 0.8 and 1.2, and past Mach 3 reads 20–28% low on bodies the method can't take.
 - Drag: against RASAero II's Calisto hpr reads −14.9% to −5.1% supersonic, within what the

@@ -25,7 +25,7 @@
 # - The rail. hpr's rail equation keeps the variable-mass terms (the centre of mass moving inside
 #   the body as propellant burns), which RocketPy's `udot_rail1` leaves out. At a sharp ignition
 #   spike, with thrust and mass the same to five digits, hpr's acceleration is 1.2 to 1.3 m/s^2
-#   higher (Calisto at 0.05 s: 112.34 against 111.18; Bella Lui at 0.007 s: 74.14 against 72.84).
+#   higher (Calisto at 0.05 s: 112.35 against 111.18; Bella Lui at 0.007 s: 74.14 against 72.84).
 #   hpr also keeps the rocket guided until its last button leaves, where RocketPy frees it at the
 #   first. Freed where hpr frees it, RocketPy's apogee moves by at most 0.19% (Bella Lui) and its
 #   drifts by up to 12% (Bella Lui's landing in wind; `wind_response.py`, ADR-026).
@@ -61,7 +61,7 @@
 # drifts by under 1.5% (`wind_response.py`), so both are scored.
 #
 # The time of the maximum acceleration is not scored: the flight has two peaks, and the rail terms
-# above decide which is the higher. Its size agrees to +0.074% only because the two peaks are
+# above decide which is the higher. Its size agrees to +0.099% only because the two peaks are
 # close; at the same instant, 0.05 s on the rail, hpr is 1.05% higher (112.35 against 111.18).
 id = "flight-calisto-tests-motor-at-minus-1.373"
 title = "Calisto, RocketPy's test rocket, from the pad to the ground, same-drag"

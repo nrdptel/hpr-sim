@@ -47,6 +47,28 @@ otherwise runs one thread per core — so the second row caps `RUST_TEST_THREADS
 - Numbers taken during an autopilot cycle inherit that six-job cap. Measure from a plain shell,
   or set `CARGO_BUILD_JOBS` explicitly, when comparing against the rows above.
 
+## Body lift and the measured boattail (M1.8e6)
+
+- **Benchmarks:** `cargo bench -p hpr-aero --bench normal_force -- normal_force` and
+  `cargo bench -p hpr-sim --bench flight -- "K400C to the ground"`, criterion, release profile,
+  2026-09-19 on an Apple M5, `main` before M1.8e6 and the milestone's branch run back to back.
+  The supersonic table was timed by hand (a throwaway release-mode test, best of three).
+
+| measurement | before | after |
+|---|---|---|
+| `AeroModel::normal_force`, synthetic two-stage, Mach 0.6 at 0.05 rad | 26.8 ns | 51.2 ns |
+| `AeroModel::normal_force`, Calisto, the same flow | 23.1 ns | 44.0 ns |
+| Valetudo K400C to the ground | 1.321 ms | 1.385 ms |
+| NDRT 2020's supersonic table, built once per model | 316 ms | 616 ms |
+
+- **Where the time goes.** Body lift now takes Jorgensen's factor at the flow's crossflow Mach
+  number: two table lookups and two divisions per evaluation, where Galejs's was a constant. A
+  whole flight pays 4.9% more, well under the M1.6 budget of 5 ms. A fast path below crossflow
+  Mach 0.2, where most flights stay and both tables are straight lines, would win most of it back.
+- **The table.** A boattail the shock-expansion method covers now marches the forebody twice per
+  row, once as it is and once with a cylinder in the boattail's place
+  ([issue #98](https://github.com/nrdptel/hpr-sim/issues/98)); bodies without one are unchanged.
+
 ## Normal-force tables (M1.8d)
 
 - **Benchmark:** `cargo bench -p hpr-sim --bench flight -- "K400C to the ground|normal-force

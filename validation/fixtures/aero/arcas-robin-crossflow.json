@@ -17,8 +17,8 @@
             "hpr": {
               "before": 4.85381654341683,
               "boattail_only": 3.154295591502374,
-              "crossflow_only": 4.486878510596294,
-              "current": 2.5906462698940556
+              "crossflow_only": 4.486878510596295,
+              "current": 2.590646269894057
             },
             "measured": 1.0010923196540205,
             "points": [
@@ -164,9 +164,9 @@
               "crossflow_mach": 0.26388178253328776,
               "current_c_n": 0.7264471853877865,
               "current_error": 0.169802230898207,
-              "current_factor": 0.9135051756989487,
+              "current_factor": 0.9135051756989488,
               "measured_c_n": 0.621,
-              "needed_factor": 0.6775502685665723
+              "needed_factor": 0.6775502685665724
             },
             {
               "alpha_deg": 12.63,
@@ -272,7 +272,7 @@
               "crossflow_mach": 0.24600391571529392,
               "current_c_n": 0.478978008018558,
               "current_error": 0.12436152117032395,
-              "current_factor": 0.9109435881437438,
+              "current_factor": 0.9109435881437439,
               "measured_c_n": 0.426,
               "needed_factor": 0.6882359630965807
             },
@@ -283,7 +283,7 @@
               "crossflow_mach": 0.32645718113279204,
               "current_c_n": 0.7382195143788812,
               "current_error": 0.09042764310026752,
-              "current_factor": 0.9313551901974813,
+              "current_factor": 0.9313551901974814,
               "measured_c_n": 0.677,
               "needed_factor": 0.7852179405665339
             },
@@ -325,11 +325,11 @@
               "before_c_n": 4.020269714231577,
               "before_error": -0.21140256684355097,
               "crossflow_mach": 0.8324849780225183,
-              "current_c_n": 5.016817736446409,
-              "current_error": -0.015924335730402195,
-              "current_factor": 1.5157995437463347,
+              "current_c_n": 5.013363412037944,
+              "current_error": -0.016601919961172107,
+              "current_factor": 1.5145315012392566,
               "measured_c_n": 5.098,
-              "needed_factor": 1.5456006130247542
+              "needed_factor": 1.5456006130247544
             }
           ],
           "hpr": {
@@ -391,7 +391,7 @@
               "crossflow_mach": 0.29964060784634816,
               "current_c_n": 0.47066848615505075,
               "current_error": -0.017393557087576728,
-              "current_factor": 0.9186395508569469,
+              "current_factor": 0.918639550856947,
               "measured_c_n": 0.479,
               "needed_factor": 0.9577392876096252
             },
@@ -413,9 +413,9 @@
               "crossflow_mach": 0.6255213975079504,
               "current_c_n": 1.7473220309582929,
               "current_error": -0.06560319200091291,
-              "current_factor": 1.2636138005612365,
+              "current_factor": 1.2636138005612367,
               "measured_c_n": 1.87,
-              "needed_factor": 1.395723130135922
+              "needed_factor": 1.3957231301359223
             },
             {
               "alpha_deg": 14.3,
@@ -433,22 +433,22 @@
               "before_c_n": 2.70761242528546,
               "before_error": -0.14908471864064743,
               "crossflow_mach": 0.8396946830968978,
-              "current_c_n": 3.309989274483376,
-              "current_error": 0.040222902100369495,
-              "current_factor": 1.5176372117434174,
+              "current_c_n": 3.3073909385163542,
+              "current_error": 0.03940632888634643,
+              "current_factor": 1.516084453833151,
               "measured_c_n": 3.182,
-              "needed_factor": 1.4411511988083279
+              "needed_factor": 1.441151198808328
             },
             {
               "alpha_deg": 20.53,
               "before_c_n": 3.8848436171580407,
               "before_error": -0.16039688412404562,
               "crossflow_mach": 1.038065409982734,
-              "current_c_n": 5.114889337092916,
-              "current_error": 0.1054439889978207,
-              "current_factor": 1.6276158499831783,
+              "current_c_n": 4.972597809120293,
+              "current_error": 0.07469155157127583,
+              "current_factor": 1.5719766527798331,
               "measured_c_n": 4.627,
-              "needed_factor": 1.4368401135307256
+              "needed_factor": 1.4368401135307252
             }
           ],
           "hpr": {
@@ -530,20 +530,20 @@
               "before_c_n": 1.802344228516952,
               "before_error": -0.10642328779526422,
               "crossflow_mach": 0.864521728014299,
-              "current_c_n": 2.15722455156871,
-              "current_error": 0.06952134435731794,
-              "current_factor": 1.5239207209942818,
+              "current_c_n": 2.1547049905915663,
+              "current_error": 0.06827218175090044,
+              "current_factor": 1.521378394933796,
               "measured_c_n": 2.017,
-              "needed_factor": 1.3824291933007637
+              "needed_factor": 1.3824291933007635
             },
             {
               "alpha_deg": 14.61,
               "before_c_n": 2.278145639664315,
               "before_error": -0.09704889430665276,
               "crossflow_mach": 0.9988634760005358,
-              "current_c_n": 2.8695860899268335,
-              "current_error": 0.13737062620960505,
-              "current_factor": 1.6040305106128008,
+              "current_c_n": 2.7703694487815467,
+              "current_error": 0.0980457585341048,
+              "current_factor": 1.5290358307285925,
               "measured_c_n": 2.523,
               "needed_factor": 1.342057190750853
             },
@@ -552,9 +552,9 @@
               "before_c_n": 2.834446556831243,
               "before_error": -0.09064916367300513,
               "crossflow_mach": 1.1399335006814562,
-              "current_c_n": 3.6562052900412363,
-              "current_error": 0.17298854348451598,
-              "current_factor": 1.6268459945996747,
+              "current_c_n": 3.618827642456889,
+              "current_error": 0.16099699790083055,
+              "current_factor": 1.605153418356258,
               "measured_c_n": 3.117,
               "needed_factor": 1.3139115907242556
             },
@@ -563,9 +563,9 @@
               "before_c_n": 4.007818357238003,
               "before_error": -0.07140445847126897,
               "crossflow_mach": 1.399113827548649,
-              "current_c_n": 5.033609845777631,
-              "current_error": 0.16626734146840394,
-              "current_factor": 1.535874001605194,
+              "current_c_n": 5.027281488736581,
+              "current_error": 0.16480108636158053,
+              "current_factor": 1.5334359489676161,
               "measured_c_n": 4.316,
               "needed_factor": 1.259408788612158
             }
@@ -649,9 +649,9 @@
               "before_c_n": 1.7328515913641602,
               "before_error": -0.14384802798213425,
               "crossflow_mach": 0.9800134229696127,
-              "current_c_n": 2.140373313841222,
-              "current_error": 0.05749669656186862,
-              "current_factor": 1.601630151350884,
+              "current_c_n": 2.0852550182261265,
+              "current_error": 0.030264337068244274,
+              "current_factor": 1.5424656044060192,
               "measured_c_n": 2.024,
               "needed_factor": 1.4767138361228282
             },
@@ -660,31 +660,31 @@
               "before_c_n": 2.1994900178167027,
               "before_error": -0.1163157823155071,
               "crossflow_mach": 1.1365565759306415,
-              "current_c_n": 2.792927304993158,
-              "current_error": 0.12210819806876572,
-              "current_factor": 1.6289624657953659,
+              "current_c_n": 2.7653497851791826,
+              "current_error": 0.11102843920417138,
+              "current_factor": 1.6069533346139082,
               "measured_c_n": 2.489,
-              "needed_factor": 1.3864034550379372
+              "needed_factor": 1.386403455037937
             },
             {
               "alpha_deg": 16.32,
               "before_c_n": 2.7461317219059773,
               "before_error": -0.10198439440615514,
               "crossflow_mach": 1.3010379963121121,
-              "current_c_n": 3.4267434600300826,
-              "current_error": 0.12058321125901994,
-              "current_factor": 1.562876670494008,
+              "current_c_n": 3.411969797860454,
+              "current_error": 0.11575205947039047,
+              "current_factor": 1.5538788356941833,
               "measured_c_n": 3.058,
-              "needed_factor": 1.338295067180567
+              "needed_factor": 1.3382950671805662
             },
             {
               "alpha_deg": 20.21,
               "before_c_n": 3.8854304283943546,
               "before_error": -0.0836248989635957,
               "crossflow_mach": 1.599489021436972,
-              "current_c_n": 4.704568443894732,
-              "current_error": 0.1095680292204555,
-              "current_factor": 1.4694146985344658,
+              "current_c_n": 4.698282732106994,
+              "current_error": 0.10808555002523446,
+              "current_factor": 1.4668817769280762,
               "measured_c_n": 4.24,
               "needed_factor": 1.2822098935856658
             }
@@ -739,8 +739,8 @@
             "hpr": {
               "before": 6.5510361588237975,
               "boattail_only": 4.876676162467034,
-              "crossflow_only": 6.125522529968604,
-              "current": 4.274857963776392
+              "crossflow_only": 6.1255225299686025,
+              "current": 4.27485796377639
             },
             "measured": 4.606331513337558,
             "points": [
@@ -765,11 +765,11 @@
               "before_c_n": 1.049813705894899,
               "before_error": 0.39417490822695767,
               "crossflow_mach": 0.26574622748553545,
-              "current_c_n": 0.8947860535241832,
-              "current_error": 0.188294891798384,
-              "current_factor": 0.9445731902923554,
+              "current_c_n": 0.8947860535241834,
+              "current_error": 0.1882948917983842,
+              "current_factor": 0.9445731902923555,
               "measured_c_n": 0.753,
-              "needed_factor": 0.7113836170148196
+              "needed_factor": 0.7113836170148192
             },
             {
               "alpha_deg": 12.82,
@@ -836,8 +836,8 @@
             "hpr": {
               "before": 6.786420932484804,
               "boattail_only": 5.384689284897102,
-              "crossflow_only": 6.398990747750633,
-              "current": 4.860148507427205
+              "crossflow_only": 6.398990747750632,
+              "current": 4.860148507427203
             },
             "measured": 5.041669250935026,
             "points": [
@@ -972,7 +972,7 @@
               "crossflow_mach": 0.6229964090710648,
               "current_c_n": 2.158346665256446,
               "current_error": -0.0516930293249358,
-              "current_factor": 1.2836915683392793,
+              "current_factor": 1.2836915683392796,
               "measured_c_n": 2.276,
               "needed_factor": 1.37890131193136
             },
@@ -992,22 +992,22 @@
               "before_c_n": 3.39205622270107,
               "before_error": -0.19524170279927155,
               "crossflow_mach": 0.8476177059728366,
-              "current_c_n": 4.258468951579482,
-              "current_error": 0.010312918524195025,
-              "current_factor": 1.5214148955070765,
+              "current_c_n": 4.251990902157126,
+              "current_error": 0.00877601474664913,
+              "current_factor": 1.5185829006663132,
               "measured_c_n": 4.215,
-              "needed_factor": 1.5024116680569015
+              "needed_factor": 1.5024116680569017
             },
             {
               "alpha_deg": 18.86,
               "before_c_n": 4.19516353695284,
               "before_error": -0.217028081942359,
               "crossflow_mach": 0.9568402675179325,
-              "current_c_n": 5.582040505097397,
-              "current_error": 0.04181420401220559,
-              "current_factor": 1.6135601969119953,
+              "current_c_n": 5.399949988664327,
+              "current_error": 0.007829411844779255,
+              "current_factor": 1.5510923293118886,
               "measured_c_n": 5.358,
-              "needed_factor": 1.5367009903830844
+              "needed_factor": 1.536700990383085
             }
           ],
           "hpr": {
@@ -1089,20 +1089,20 @@
               "before_c_n": 2.1013541699093765,
               "before_error": -0.17204327426738508,
               "crossflow_mach": 0.8463012655442178,
-              "current_c_n": 2.573448896478486,
-              "current_error": 0.013967256295699837,
-              "current_factor": 1.521053767645267,
+              "current_c_n": 2.5699418287127003,
+              "current_error": 0.012585432904925309,
+              "current_factor": 1.518301127953399,
               "measured_c_n": 2.538,
-              "needed_factor": 1.493230513007431
+              "needed_factor": 1.4932305130074315
             },
             {
               "alpha_deg": 14.44,
               "before_c_n": 2.724737537852483,
               "before_error": -0.17004643988654178,
               "crossflow_mach": 0.9874894594568021,
-              "current_c_n": 3.5824985411411716,
-              "current_error": 0.09122709142283636,
-              "current_factor": 1.6377809093088662,
+              "current_c_n": 3.410645195970158,
+              "current_error": 0.0388806567073281,
+              "current_factor": 1.5387095221567963,
               "measured_c_n": 3.283,
               "needed_factor": 1.4651236014668196
             },
@@ -1111,22 +1111,22 @@
               "before_c_n": 3.4469985197921598,
               "before_error": -0.16999794852103056,
               "crossflow_mach": 1.1326505560027489,
-              "current_c_n": 4.601914066412838,
-              "current_error": 0.10809392400983353,
-              "current_factor": 1.6438171046325536,
+              "current_c_n": 4.524454244313379,
+              "current_error": 0.08944238967333962,
+              "current_factor": 1.609874919254949,
               "measured_c_n": 4.153,
-              "needed_factor": 1.447107067766807
+              "needed_factor": 1.4471070677668068
             },
             {
               "alpha_deg": 20.83,
               "before_c_n": 5.044615083733533,
               "before_error": -0.16424534729398055,
               "crossflow_mach": 1.408161693660625,
-              "current_c_n": 6.474022711255916,
-              "current_error": 0.07256837495956203,
-              "current_factor": 1.5355933459882012,
+              "current_c_n": 6.461242506650422,
+              "current_error": 0.0704510448393676,
+              "current_factor": 1.531970182379401,
               "measured_c_n": 6.036,
-              "needed_factor": 1.4114147435135298
+              "needed_factor": 1.41141474351353
             }
           ],
           "hpr": {
@@ -1208,9 +1208,9 @@
               "before_c_n": 2.2064729766757702,
               "before_error": -0.12649525863983757,
               "crossflow_mach": 1.013157465603673,
-              "current_c_n": 2.8775176644135025,
-              "current_error": 0.1391598038058206,
-              "current_factor": 1.649305637497015,
+              "current_c_n": 2.7381304755582536,
+              "current_error": 0.08397881059313295,
+              "current_factor": 1.5449548423891566,
               "measured_c_n": 2.526,
               "needed_factor": 1.3861455287577602
             },
@@ -1219,9 +1219,9 @@
               "before_c_n": 2.8339283348892117,
               "before_error": -0.12098997056786243,
               "crossflow_mach": 1.1756809024546306,
-              "current_c_n": 3.6865074611043434,
-              "current_error": 0.14345764922591298,
-              "current_factor": 1.6144513295559881,
+              "current_c_n": 3.6362746227633016,
+              "current_error": 0.12787674403328197,
+              "current_factor": 1.5865236024695302,
               "measured_c_n": 3.224,
               "needed_factor": 1.3573131192586163
             },
@@ -1230,9 +1230,9 @@
               "before_c_n": 3.540588212140029,
               "before_error": -0.11152115128230133,
               "crossflow_mach": 1.3389907973323012,
-              "current_c_n": 4.523543228898337,
-              "current_error": 0.1351425919443756,
-              "current_factor": 1.5568270236753528,
+              "current_c_n": 4.500883452482183,
+              "current_error": 0.12945632433680898,
+              "current_factor": 1.5471146085404053,
               "measured_c_n": 3.985,
               "needed_factor": 1.3259970582284375
             },
@@ -1241,11 +1241,11 @@
               "before_c_n": 5.110892432290573,
               "before_error": -0.09733443442413048,
               "crossflow_mach": 1.6524518305947713,
-              "current_c_n": 6.282812002343518,
-              "current_error": 0.10964535541213682,
-              "current_factor": 1.4585893019985756,
+              "current_c_n": 6.269276274080615,
+              "current_error": 0.10725472873200537,
+              "current_factor": 1.4547799525780758,
               "measured_c_n": 5.662,
-              "needed_factor": 1.2838746656351867
+              "needed_factor": 1.283874665635187
             }
           ],
           "hpr": {

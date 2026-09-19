@@ -1,5 +1,5 @@
 //! Bodies of revolution (nose cones, body tubes, transitions): Barrowman's normal-force slope and
-//! centre of pressure, and Galejs's body lift.
+//! centre of pressure, and the planform body lift acts on.
 //!
 //! - **Potential flow** (slender-body theory). A body whose cross-section area runs from `A(0)` at
 //!   its fore end to `A(l)` at its aft end has
@@ -11,9 +11,11 @@
 //!   crossflow `v₀ sin α` (eq. 3.19). No Mach term: Barrowman 1967 p. 18 leaves body
 //!   compressibility out, and Niskanen p. 22 takes the body's normal force as the same at all
 //!   speeds.
-//! - **Body lift** (Galejs, after Hoerner p. 3-11; Niskanen eq. 3.26–3.27):
-//!   `C_N = K (A_plan/A_ref) sin² α` with `K = 1.1`, acting at the centroid of the side-view
-//!   (planform) area. It is zero at `α = 0`, so it doesn't change `C_Nα` there.
+//! - **Body lift**: `C_N = f (A_plan/A_ref) sin² α`, acting at the centroid of the side-view
+//!   (planform) area (Niskanen eq. 3.26–3.27). Its factor `f` is [`crate::crossflow`]'s:
+//!   Jorgensen's `η C_dn` since body lift was sized
+//!   ([M1.8e6](https://nrdptel.github.io/hpr-sim/decisions-and-roadmap.html#m1-8e6)), Galejs's
+//!   `K = 1.1` before (after Hoerner p. 3-11). It is zero at `α = 0`, so it doesn't change `C_Nα` there.
 //!
 //! See `docs/physics/aero.md`.
 
@@ -25,7 +27,8 @@ use serde::{Deserialize, Serialize};
 use crate::error::{AeroError, check_dimension};
 
 /// Galejs's body-lift constant `K` (Niskanen 2009 eq. 3.26: "K ≈ 1.1"; Galejs quotes Hoerner's
-/// 1.1 to 1.5 and fitted 1.0 to his own data).
+/// 1.1 to 1.5 and fitted 1.0 to his own data): hpr's body lift before Jorgensen's, kept as
+/// [`crate::crossflow::BodyLift::GALEJS`].
 pub const BODY_LIFT_K: f64 = 1.1;
 
 /// The aerodynamic geometry of one body component, in its own frame (fore end at 0, stations
@@ -142,12 +145,14 @@ impl BodyGeometry {
         (delta != 0.0).then(|| (self.length_m * self.aft_area_m2 - self.volume_m3) / delta)
     }
 
-    /// Galejs's body-lift normal-force coefficient at `alpha_rad`:
-    /// `C_N = K (A_plan/A_ref) sin² α` (Niskanen 2009 eq. 3.26), acting at
-    /// [`BodyGeometry::planform_centroid_m`] (eq. 3.27).
-    pub fn lift_coefficient(&self, reference_area_m2: f64, alpha_rad: f64) -> f64 {
+    /// The body-lift normal-force coefficient at `alpha_rad` with factor `factor`:
+    /// `C_N = factor · (A_plan/A_ref) sin² α` (Niskanen 2009 eq. 3.26), acting at
+    /// [`BodyGeometry::planform_centroid_m`] (eq. 3.27). The factor is
+    /// [`crate::crossflow::BodyLift::factor`]'s: Jorgensen's `η C_dn`, or Galejs's
+    /// [`BODY_LIFT_K`].
+    pub fn lift_coefficient(&self, reference_area_m2: f64, alpha_rad: f64, factor: f64) -> f64 {
         let s = alpha_rad.sin();
-        BODY_LIFT_K * self.planform_area_m2 / reference_area_m2 * s * s
+        factor * self.planform_area_m2 / reference_area_m2 * s * s
     }
 }
 
@@ -298,22 +303,22 @@ mod tests {
     fn body_lift_limits() {
         let tube = BodyGeometry::cylinder(0.8, 0.04).unwrap();
         let a_ref = PI * 0.04 * 0.04;
-        assert_eq!(tube.lift_coefficient(a_ref, 0.0), 0.0);
+        assert_eq!(tube.lift_coefficient(a_ref, 0.0, BODY_LIFT_K), 0.0);
         let broadside = BODY_LIFT_K * 2.0 * 0.04 * 0.8 / a_ref;
         close(
-            tube.lift_coefficient(a_ref, std::f64::consts::FRAC_PI_2),
+            tube.lift_coefficient(a_ref, std::f64::consts::FRAC_PI_2, BODY_LIFT_K),
             broadside,
             1e-15,
             "broadside",
         );
         close(
-            tube.lift_coefficient(a_ref, 0.1),
-            tube.lift_coefficient(a_ref, -0.1),
+            tube.lift_coefficient(a_ref, 0.1, BODY_LIFT_K),
+            tube.lift_coefficient(a_ref, -0.1, BODY_LIFT_K),
             1e-15,
             "symmetric",
         );
         close(
-            tube.lift_coefficient(a_ref, 0.01),
+            tube.lift_coefficient(a_ref, 0.01, BODY_LIFT_K),
             broadside * 0.01f64.sin().powi(2),
             1e-15,
             "small angle",

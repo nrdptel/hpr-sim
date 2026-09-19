@@ -15,9 +15,9 @@
 #
 # Every metric carries M2.1's 3% as a target: reported as within or outside it, never gated, so a
 # miss does not fail the run and a number that moves still shows in the committed report. Nothing
-# misses. The apogee is -0.60%, with hpr's C_D0 4.4% above the example's curve at Mach 0.3
-# (`validation/fixtures/aero/rocketpy-drag-curves.json`), and the drifts are -2.32% and +1.08%
-# (-0.99% and +1.43% on the same drag, where they are gated). Against RocketPy as released the
+# misses. The apogee is -0.61%, with hpr's C_D0 4.4% above the example's curve at Mach 0.3
+# (`validation/fixtures/aero/rocketpy-drag-curves.json`), and the drifts are -2.23% and +0.90%
+# (-0.90% and +1.26% on the same drag, where they are gated). Against RocketPy as released the
 # drifts missed by -7.00% and +6.92% (issue #50); the corrected reference (ADR-026) closes them.
 id = "predicted-calisto-tests-motor-at-minus-1.373"
 title = "Calisto from the pad to the ground, predicted: hpr's own aerodynamics"

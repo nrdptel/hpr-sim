@@ -96,13 +96,22 @@ def held_linear(xs, ys, x):
 
 
 def crossflow_factor(fineness, crossflow_mach):
-    """Jorgensen's `eta C_dn` as `hpr_aero::crossflow::crossflow_factor` computes it."""
+    """Jorgensen's `eta C_dn` as `hpr_aero::crossflow::crossflow_factor` computes it: Fig. 6's
+    `eta` scaled for fineness by Fig. 4's, the scaling fading with the running maximum of Fig. 6's
+    rise toward 1."""
     low = held_linear(ETA_FINENESS, ETA_BY_FINENESS, fineness)
-    share = (
-        held_linear(ETA_MACHS, ETA_BY_CROSSFLOW_MACH, crossflow_mach) - ETA_REFERENCE
-    ) / (1.0 - ETA_REFERENCE)
-    eta = low + (1.0 - low) * share
-    return eta * held_linear(CROSSFLOW_DRAG_MACHS, CROSSFLOW_DRAG, crossflow_mach)
+    m = max(crossflow_mach, 0.0)
+    eta6 = held_linear(ETA_MACHS, ETA_BY_CROSSFLOW_MACH, m)
+
+    def share(eta):
+        return (eta - ETA_REFERENCE) / (1.0 - ETA_REFERENCE)
+
+    risen = max(
+        [share(eta6)] + [share(e) for x, e in zip(ETA_MACHS, ETA_BY_CROSSFLOW_MACH) if x <= m]
+    )
+    risen = max(risen, 0.0)
+    eta = eta6 * (low + (1.0 - low) * risen) / (ETA_REFERENCE + (1.0 - ETA_REFERENCE) * risen)
+    return eta * held_linear(CROSSFLOW_DRAG_MACHS, CROSSFLOW_DRAG, m)
 
 # Whole-flight cases hpr doesn't fly. Prometheus 2022 joined when hpr's normal force passed Mach 1
 # (M1.8a).
@@ -157,7 +166,9 @@ class BodyLift(AeroSurface):
 
 def body_fineness(design):
     """hpr's fineness for body lift's `eta`: the bodies' length over their largest diameter
-    (`AeroModel::fineness`)."""
+    (`AeroModel::fineness`), for a one-stage design, as every case here is."""
+    if len(design["stages"]) != 1:
+        fail("body_fineness takes one stage; hpr's fineness spans the whole layout")
     length, radius = 0.0, 0.0
     for component in design["stages"][0]["components"]:
         part = component["part"]

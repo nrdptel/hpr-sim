@@ -536,7 +536,7 @@ Why the misses, largest first:
 - **The drifts of Juno III and Bella Lui in wind:** hpr's body lift and rail release, and Juno
   III's fin slope, as in same-drag mode ([ADR-026][adr-026]).
 - **Prometheus 2022 flies low: the drag again, the other way.** It passes Mach 1 on hpr's own drag
-  since [M1.8b1](decisions-and-roadmap.md#m1-8b1), the drag through Mach 1, peaking at Mach 1.059
+  since [M1.8b1](decisions-and-roadmap.md#m1-8b1), the drag through Mach 1, peaking at Mach 1.060
   against RocketPy's 1.048. Its coasting drag rises to about 0.49 at Mach 0.8, where the example's
   falls to 0.30, so hpr peaks −7.280% low and sooner, and its drifts and times follow. Flown on
   the same drag the apogees agree to +1.208% ([report][report],

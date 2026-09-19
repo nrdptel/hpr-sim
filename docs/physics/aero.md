@@ -343,7 +343,7 @@ What this covers: the size of body lift, the sideways push of the air crossing a
 of attack. How far to trust it: it is Jorgensen's method ([J77]) with hpr's own way of combining
 two of his figures (below). Against NASA's Arcas Robin body alone at the 62 angles the wind tunnel
 plotted from 5.5° to 21.7°, from Mach 1.5 to 4.63, hpr's normal force with it is within 15% at 48
-(34 with Galejs's constant); where the air crosses the body faster than sound, it reads 4% to 17%
+(34 with Galejs's constant); where the air crosses the body faster than sound, it reads 1% to 16%
 high. Below Mach 1 the only check is that body's slope fitted from −4° to +4°, where body lift
 adds a little: at Mach 0.6 hpr's body reads 25% high (41% with Galejs's constant), against
 readings the tunnel determines poorly. No real flight checks it, so whether it is better than
@@ -365,7 +365,7 @@ its length over its largest diameter.
 | `C_dn` | 1.20 up to `M_n` 0.2, rising to 1.334 at 0.5 and 1.985 at 1.0, then falling to 1.266 by 4.8 | [J77] Fig. 1, p. 75 |
 | `η` at low `M_n`, `η₄(f)` | 0.577 at `f` = 2, 0.685 at 10, 0.753 at 20, 0.815 at 40 | [J77] Fig. 4, p. 77 |
 | `η` with `M_n`, `η₆` | 0.69 at 0; 0.717, 0.804, 0.815, 0.845, 0.994, 0.979, 0.769, 0.910 and 0.937 at 0.4 to 1.2 in steps of 0.1; 0.985 at 1.4; 0.984 at 1.6 | [J77] Fig. 6, p. 78 |
-| `η` for fineness `f` | `η = η₄(f) + [1 − η₄(f)] s`, `s = (η₆ − 0.69)/0.31` | hpr's, a judgement |
+| `η` for fineness `f` | `η = η₆ [η₄(f) + (1 − η₄(f)) r] / [0.69 + 0.31 r]`, `r` the most `s = (η₆ − 0.69)/0.31` has reached up to that `M_n` | hpr's, a judgement |
 
 - **`C_dn`** is Jorgensen's value below the critical crossflow Reynolds number, where the air
   separates from a smooth cylinder early: "C_dn = 1.2" at low speed (p. 15). From `M_n` 0.6 to 1.2
@@ -375,9 +375,13 @@ its length over its largest diameter.
   gives `η` against length for cylinders measured only at low speed. Fig. 6 gives
   how `η` grows toward 1 as the crossflow speeds up, but only for the two bodies (fineness 10 and
   12) it was computed from: Jorgensen divided the `η C_dn` those bodies' measured normal force
-  gives (his Fig. 5) by Fig. 1's `C_dn`. For any other fineness hpr keeps Fig. 4's value at low
-  speed and moves it toward 1 by the share Fig. 6 moves its own bodies. That rule is hpr's; it
-  gives Fig. 6 back for a body of fineness about 10.3 and stays below 1.
+  gives (his Fig. 5) by Fig. 1's `C_dn`. For any other fineness hpr scales Fig. 6's `η` by how
+  much Fig. 4 changes it for the body's length, and lets that scaling fade by the share `s` Fig. 6
+  has risen toward 1. The share it uses, `r`, never falls back: Fig. 6 dips at `M_n` = 1 only
+  because Jorgensen divided by Fig. 1's peak there, not because length counts again. Below `M_n`
+  0.8, where Fig. 6 only rises, this is `η = η₄ + (1 − η₄) s`; past 0.8 every fineness takes
+  Fig. 5's `η C_dn` to within 0.3%. That rule is hpr's; it gives Fig. 6 back for a body of
+  fineness about 10.6 and stays below 1.
 - **Sampled, not smoothed.** Near `M_n` = 1 Fig. 1's `C_dn` peaks and Fig. 6's `η` dips, each
   steeply. hpr reads both at the eleven crossflow Mach numbers Jorgensen computed Fig. 6 at and
   interpolates between them, so their product is his own `η C_dn` there: within 3% of his Fig. 5
@@ -409,11 +413,15 @@ off ([Checking the shock-expansion method](#checking-the-shock-expansion-method)
 |---|---|---|---|
 | under 0.45 | 21 | −6.9% to +31.7% | +1.9% to +61.4% |
 | 0.45 to 0.95 | 25 | −22.3% to +13.0% | −21.1% to +17.0% |
-| 0.95 and over | 16 | +4.2% to +17.3% | −21.7% to −7.1% |
+| 0.95 and over | 16 | +0.8% to +16.5% | −21.7% to −7.1% |
 
-At the lowest crossflow speeds most of what is left is the slope at `α → 0`, not body lift. Where
-the air crosses faster than sound, hpr's `η C_dn` (1.5 to 1.65) is above what the tunnel's points
-need (1.3 to 1.45). Two cautions from Jorgensen: his `η` comes from cylinders measured "only at
+At the lowest crossflow speeds the readings can't say how much of what is left is body lift and
+how much the slope at `α → 0` ([Checking the shock-expansion method](#checking-the-shock-expansion-method)).
+Where the air crosses faster than sound, hpr's `η C_dn` (1.45 to 1.61) is above what the tunnel's
+points need (1.26 to 1.54). Jorgensen's `η C_dn` was worked out from measured normal force less
+his own attached-flow term, `sin 2α cos(α/2)`; hpr pairs it with its own, `sin α` times its slope,
+which is 8% larger at 20° and, faster than sound, carries the method's slope, 25% to 65% above
+slender-body theory's. Two cautions from Jorgensen: his `η` comes from cylinders measured "only at
 very low subsonic Mach numbers" (p. 17), and the tunnel tripped its boundary layer, which can
 move the flow past the critical crossflow Reynolds number, where `C_dn` falls to "between about
 0.15 and 0.30" (p. 15).
@@ -518,8 +526,9 @@ What this covers: how a flight uses the method above, from Mach 1.2, and a boatt
 share. How far to trust it: as far as the method's own checks above, for a pointed nose and
 cylinder. A boattail behind them takes Washington and Pettis's measured increment ([WP68]), which
 their data give within about 15% for conical boattails of 4° to 9.5°; a steeper, shorter or
-narrower one, like the Arcas Robin's 15°, is an extrapolation, and hpr takes a boattail of any
-angle (issue #90). A tube behind the boattail takes the method's decay of its expansion, which no
+narrower one, like the Arcas Robin's 15°, is an extrapolation, as is a transition that isn't
+conical (it takes the same correlation from its length and radii), and hpr takes a boattail of
+any angle (issue #90). A tube behind the boattail takes the method's decay of its expansion, which no
 measurement here checks. A rocket with a flare or a step behind the nose, or whose nose has a
 blunt or vertical tip (power-series, elliptical, Haack), gets nothing from it yet and keeps
 slender-body theory, which reads 61% to 82% low on the Arcas Robin faster than sound
@@ -1121,7 +1130,7 @@ gives no side force: RASAero II's rockets are symmetric.
 | [Valetudo](../glossary.md#example-rockets) at 100 m/s on a table of 1.5 times hpr's slope with the centre of pressure 5 cm further aft, against the small-angle equations of motion, in pitch and in yaw | period 1.104077 s against 1.104073 s, within the test's 3e-5 (1.44965 s on hpr's own); the decay within 0.03%, the test's bound 1% | `hpr_sim::tests::pitch_oscillation_follows_a_normal_force_table` |
 | Tables of hpr's own normal force flown in a crosswind: every 0.5° and every Mach 0.01, and at 0°, 2° and 4° only, where the flight uses the continuation past 4° | apogee within 7.8 mm and 5.5 cm of hpr's own flight, the test's bounds 5 cm and 10 cm | `hpr_sim::tests::a_table_of_hpr_s_own_normal_force_flies_as_hpr_does` |
 | The continuation past the last angle: a table shaped as RASAero II's (a part linear in the angle, one as `sin² α`), and random tables | the `sin² α` part continues to 1e-12; the force never turns round, the centre of pressure stays within the rocket, and nothing jumps as the table's values change with Mach number | `hpr_aero::table::tests` |
-| Calisto from a 5.2 m rail at 85° in a 5 m/s crosswind, up to Mach 0.746: on the export, on hpr's own normal force, and on hpr's own as a table at the export's angles | the export: apogee 2,793.11 m against 2,794.39 m, 14.2 m further into the wind. hpr's own as a table moves it 0.03 m: the table's method, apart from its numbers. Each flight spends about 2.2 s past 4° before apogee | [`normal-force-override.json`][override-fixture] |
+| Calisto from a 5.2 m rail at 85° in a 5 m/s crosswind, up to Mach 0.746: on the export, on hpr's own normal force, and on hpr's own as a table at the export's angles | the export: apogee 2,793.09 m against 2,794.21 m, 12.4 m further into the wind. hpr's own as a table moves it 0.02 m: the table's method, apart from its numbers. Each flight spends 2.1 to 2.2 s past 4° before apogee | [`normal-force-override.json`][override-fixture] |
 
 The Calisto flights show how much the change matters. They are not a check of accuracy: nothing
 measured flew. `cargo xtask aero` writes the fixture from the export, which isn't committed, and
@@ -1979,10 +1988,17 @@ The rows are in
 [`arcas-robin-crossflow.json`](https://github.com/nrdptel/hpr-sim/blob/main/validation/fixtures/aero/arcas-robin-crossflow.json),
 which `cargo xtask aero` writes and `aero_crossflow::tests::committed_fixture_is_current` keeps
 current; `aero_crossflow::tests::the_guide_quotes_the_fixture` checks this table against it cell
-by cell. What is left at Mach 1.5 to 2.96 is mostly the slope at `α → 0`: at the lowest angles,
-where body lift is small, hpr reads high by as much (+12% to +32% at 6°, Mach 1.5 to 2.3), and
-[M1.8e5](../decisions-and-roadmap.md#m1-8e5) found no sized cause of that. The fixture also holds each of the 62 points above +4° and
-the boattail's share at `α → 0` under each rule.
+by cell. What is left at Mach 1.5 to 2.96 can't be split between body lift and the slope at
+`α → 0` from these readings, as [M1.8e5](../decisions-and-roadmap.md#m1-8e5) found. On the short
+model at Mach 1.5 and 1.8 the tunnel's points barely curve, while hpr's slope at `α → 0` (1.93 and
+2.17) is within the tunnel's own uncertainty of it (1.78 ± 0.32 and 2.52 ± 0.33): there most of
+the excess is body lift, which at 6° is already about half of hpr's normal force. From Mach 2.3 the
+tunnel's curvature supports Jorgensen's size. The fixture also holds each of the 62 points above +4° and
+the boattail's share at `α → 0` under each rule. One caution on the long model: its points from
+−5° to +4° are [M1.8a](../decisions-and-roadmap.md#m1-8a)'s reading, which may carry a skew of the
+page that puts its slope 3% to 5% high
+([issue #97](https://github.com/nrdptel/hpr-sim/issues/97)); its rows here depend on how that is
+settled.
 
 **Where the body's lift acts.** A body model can match the slope with its lift in the wrong place,
 so the body's centre of pressure is checked too, from the tunnel's fins-off pitching moment (read

@@ -441,7 +441,9 @@ pub fn generate(root: &Path) -> Result<Value, String> {
     Ok(json!({
         "generator": "cargo xtask aero",
         "note": "The Arcas Robin's body alone faster than sound (TN D-4014, fins off) against \
-                 hpr's bodies in a flight: the nose as the fitted secant ogive of \
+                 hpr's bodies in a flight as M1.8e5 measured them, built with \
+                 BodyModel::BEFORE_M1_8E6 (Galejs's K = 1.1, footnote 8's boattail; M1.8e6 \
+                 changed both, arcas-robin-crossflow.json): the nose as the fitted secant ogive of \
                  shock-expansion.json, the cylinder and the boattail, not the lip (M1.8e4's \
                  in_flight_with_boattail). All slopes per radian on the body's cross-section. \
                  measured.fitted_c_n_alpha is M1.8a's straight line through the plotted points; \

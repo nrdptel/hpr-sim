@@ -48,16 +48,13 @@ pub const MODELS: [(&str, BodyModel); 4] = [
     ("before", BodyModel::BEFORE_M1_8E6),
     (
         "crossflow_only",
-        BodyModel::new(BodyLift::Jorgensen, SupersonicBoattail::Footnote8),
+        BodyModel::BEFORE_M1_8E6.with_body_lift(BodyLift::JORGENSEN),
     ),
     (
         "boattail_only",
-        BodyModel::new(BodyLift::GALEJS, SupersonicBoattail::WashingtonPettis),
+        BodyModel::BEFORE_M1_8E6.with_supersonic_boattail(SupersonicBoattail::WashingtonPettis),
     ),
-    (
-        "current",
-        BodyModel::new(BodyLift::Jorgensen, SupersonicBoattail::WashingtonPettis),
-    ),
+    ("current", BodyModel::CURRENT),
 ];
 
 /// The boattail's index among the body's components: nose, cylinder, boattail.

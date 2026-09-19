@@ -28,14 +28,19 @@
 //!   unity" (p. 17), and hpr holds the last point, 0.984.
 //!
 //! **Combining the two `η`s, a judgement.** Fig. 6 holds for bodies of fineness 10 to 12 only.
-//! For another fineness `f`, hpr keeps Fig. 4's value at `M_n = 0` and moves it toward 1 by the
-//! share Fig. 6 moves its own bodies there:
+//! For another fineness `f`, hpr scales Fig. 6's `η` by how much longer or shorter Fig. 4 makes
+//! the body, and lets that scaling fade as the crossflow speeds up, by the share `s` Fig. 6's own
+//! bodies have risen toward 1:
 //!
-//! `η(f, M_n) = η₄(f) + [1 − η₄(f)] s(M_n)`, `s = [η₆(M_n) − η₆(0)] / [1 − η₆(0)]`,
+//! `η(f, M_n) = η₆(M_n) [η₄(f) + (1 − η₄(f)) r] / [η₆(0) + (1 − η₆(0)) r]`,
 //!
-//! with `η₆(0)` = 0.69, midway between Fig. 6's starting points for fineness 10 and 12. It gives
-//! Fig. 6 back for a body of fineness about 10.3, Fig. 4 at low `M_n` for any fineness, and stays
-//! below 1.
+//! `s = [η₆(M_n) − η₆(0)] / [1 − η₆(0)]` and `r` its running maximum over `[0, M_n]`, with
+//! `η₆(0)` = 0.69, midway between Fig. 6's starting points for fineness 10 and 12. `r` never
+//! falls back: Fig. 6 dips at `M_n` = 1 only because Jorgensen divided by Fig. 1's peak there, not
+//! because the body's length counts again. The rule gives Fig. 6 back for a body of fineness about
+//! 10.6 (where this reading of Fig. 4 gives 0.69), Fig. 4 at `M_n = 0` for any fineness, and
+//! Fig. 5's `η C_dn` for every fineness once `M_n` passes 0.8, where Fig. 6 reaches 0.99. Where
+//! `r = s`, below `M_n` 0.8, it equals `η₄ + (1 − η₄) s`.
 //!
 //! **Sampling, not smoothing.** Fig. 1's `C_dn` peaks at `M_n` ≈ 0.96 and Fig. 6's `η` dips at
 //! 1.0; each is steep there. hpr samples both at Fig. 6's points and interpolates each linearly
@@ -99,8 +104,9 @@ pub const ETA_BY_CROSSFLOW_MACH: [f64; 12] = [
     0.984,
 ];
 
-/// Fig. 6's `η` at `M_n = 0`: 0.69, midway between Fig. 4's values for its two bodies, 0.68 at
-/// fineness 10 and 0.70 at 12 (the square and the diamond at `M_n = 0`).
+/// Fig. 6's `η` at `M_n = 0`: 0.69, midway between its square and diamond there, about 0.68 and
+/// 0.70, which Jorgensen takes from Fig. 4 for its two bodies of fineness 10 and 12 (this module's
+/// own reading of Fig. 4, [`ETA_BY_FINENESS`], gives 0.685 and 0.701).
 pub const ETA_REFERENCE: f64 = 0.69;
 
 /// The fineness ratios (length over diameter) of [`ETA_BY_FINENESS`].
@@ -116,15 +122,15 @@ pub const ETA_BY_FINENESS: [f64; 12] = [
     0.577, 0.607, 0.643, 0.668, 0.685, 0.701, 0.724, 0.753, 0.775, 0.795, 0.805, 0.815,
 ];
 
-/// How a body's crossflow lift is sized: its `C_N = factor · (A_plan/A_ref) sin² α`.
-#[derive(Debug, Clone, Copy, Default, PartialEq, Serialize, Deserialize)]
+/// How a body's crossflow lift is sized: its `C_N = factor · (A_plan/A_ref) sin² α`. In JSON,
+/// `{"kind": "jorgensen"}` or `{"kind": "galejs", "k": 1.1}`.
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
 #[serde(tag = "kind", rename_all = "snake_case", deny_unknown_fields)]
 #[non_exhaustive]
 pub enum BodyLift {
     /// Jorgensen's `η C_dn` ([`crossflow_factor`]), from the body's fineness and the crossflow
     /// Mach number: hpr's model since body lift was sized ([M1.8e6](https://nrdptel.github.io/hpr-sim/decisions-and-roadmap.html#m1-8e6)).
-    #[default]
-    Jorgensen,
+    Jorgensen {},
     /// Galejs's constant `K` at every Mach number: hpr's model before, with `k` =
     /// [`BODY_LIFT_K`] (1.1). Galejs gives 1.0 to 1.5.
     Galejs {
@@ -133,7 +139,17 @@ pub enum BodyLift {
     },
 }
 
+impl Default for BodyLift {
+    /// Jorgensen's, hpr's current model.
+    fn default() -> Self {
+        Self::JORGENSEN
+    }
+}
+
 impl BodyLift {
+    /// Jorgensen's `η C_dn`, hpr's current model.
+    pub const JORGENSEN: Self = Self::Jorgensen {};
+
     /// hpr's model before Jorgensen's: Galejs's `K` = [`BODY_LIFT_K`].
     pub const GALEJS: Self = Self::Galejs { k: BODY_LIFT_K };
 
@@ -141,7 +157,7 @@ impl BodyLift {
     /// diameter) at crossflow Mach number `crossflow_mach` (`M sin α`).
     pub fn factor(&self, fineness: f64, crossflow_mach: f64) -> f64 {
         match *self {
-            Self::Jorgensen => crossflow_factor(fineness, crossflow_mach),
+            Self::Jorgensen {} => crossflow_factor(fineness, crossflow_mach),
             Self::Galejs { k } => k,
         }
     }
@@ -153,7 +169,7 @@ impl BodyLift {
     /// [`AeroError::Domain`] for a `K` that isn't finite and non-negative.
     pub fn validate(&self) -> Result<(), AeroError> {
         match *self {
-            Self::Jorgensen => Ok(()),
+            Self::Jorgensen {} => Ok(()),
             Self::Galejs { k } if k.is_finite() && k >= 0.0 => Ok(()),
             Self::Galejs { k } => Err(AeroError::Domain {
                 what: "body-lift K",
@@ -182,24 +198,67 @@ pub fn crossflow_drag(crossflow_mach: f64) -> f64 {
     )
 }
 
+/// Fig. 4's `η` for a body of fineness `fineness`, at low crossflow Mach number
+/// ([`ETA_BY_FINENESS`]).
+pub fn crossflow_eta_low(fineness: f64) -> f64 {
+    held_linear(&ETA_FINENESS, &ETA_BY_FINENESS, finite_or_zero(fineness))
+}
+
 /// `η` for a body of fineness `fineness` at crossflow Mach number `crossflow_mach`: Fig. 4's value
 /// moved toward 1 by the share Fig. 6 moves its own bodies (see the module's *Combining the two
 /// `η`s*).
 pub fn crossflow_eta(fineness: f64, crossflow_mach: f64) -> f64 {
-    let low = held_linear(&ETA_FINENESS, &ETA_BY_FINENESS, finite_or_zero(fineness));
-    let share = (held_linear(
-        &ETA_MACHS,
-        &ETA_BY_CROSSFLOW_MACH,
-        finite_or_zero(crossflow_mach),
-    ) - ETA_REFERENCE)
-        / (1.0 - ETA_REFERENCE);
-    low + (1.0 - low) * share
+    eta_from_low(crossflow_eta_low(fineness), crossflow_mach)
 }
+
+/// [`crossflow_eta`] from Fig. 4's `low` for the body.
+fn eta_from_low(low: f64, crossflow_mach: f64) -> f64 {
+    let n = ETA_MACHS.len();
+    let m = finite_or_zero(crossflow_mach).clamp(ETA_MACHS[0], ETA_MACHS[n - 1]);
+    // The rows at or below `m`: at least the first, since `m` is at least its Mach number.
+    let below = ETA_MACHS.partition_point(|&c| c <= m).clamp(1, n);
+    let i = below.clamp(1, n - 1);
+    let w = (m - ETA_MACHS[i - 1]) / (ETA_MACHS[i] - ETA_MACHS[i - 1]);
+    let eta6 = (1.0 - w) * ETA_BY_CROSSFLOW_MACH[i - 1] + w * ETA_BY_CROSSFLOW_MACH[i];
+    // How far Fig. 6's `η` has risen toward 1 by `m`, never falling back: Fig. 6's dip at
+    // `M_n` = 1 comes from dividing by Fig. 1's peak there, not from the body's length, so the
+    // length's effect doesn't return with it.
+    let risen = RISEN_SHARE[below - 1].max(share(eta6));
+    eta6 * (low + (1.0 - low) * risen) / (ETA_REFERENCE + (1.0 - ETA_REFERENCE) * risen)
+}
+
+/// The share of the way from Fig. 6's low-speed `η` to 1: `(η − η₆(0))/(1 − η₆(0))`.
+const fn share(eta: f64) -> f64 {
+    (eta - ETA_REFERENCE) / (1.0 - ETA_REFERENCE)
+}
+
+/// The running maximum of [`share`] over Fig. 6's rows up to each: how far its `η` has risen by
+/// then, never falling back.
+const RISEN_SHARE: [f64; 12] = {
+    let mut risen = [0.0; 12];
+    let mut best = 0.0;
+    let mut i = 0;
+    while i < 12 {
+        let s = share(ETA_BY_CROSSFLOW_MACH[i]);
+        if s > best {
+            best = s;
+        }
+        risen[i] = best;
+        i += 1;
+    }
+    risen
+};
 
 /// Jorgensen's `η C_dn` for a body of fineness `fineness` at crossflow Mach number
 /// `crossflow_mach`: the factor on `(A_plan/A_ref) sin² α` in its body lift.
 pub fn crossflow_factor(fineness: f64, crossflow_mach: f64) -> f64 {
-    crossflow_eta(fineness, crossflow_mach) * crossflow_drag(crossflow_mach)
+    crossflow_factor_from_eta_low(crossflow_eta_low(fineness), crossflow_mach)
+}
+
+/// [`crossflow_factor`] from the body's Fig. 4 `η` ([`crossflow_eta_low`]), which a model
+/// computes once.
+pub fn crossflow_factor_from_eta_low(eta_low: f64, crossflow_mach: f64) -> f64 {
+    eta_from_low(eta_low, crossflow_mach) * crossflow_drag(crossflow_mach)
 }
 
 fn finite_or_zero(x: f64) -> f64 {
@@ -256,8 +315,9 @@ mod tests {
             (1.4, 1.51),
             (1.6, 1.46),
         ];
-        // Fineness where Fig. 4 gives Fig. 6's own starting value.
+        // Fineness where Fig. 4 gives Fig. 6's own starting value, about 10.6.
         let f = 10.0 + 2.0 * (ETA_REFERENCE - 0.685) / (0.701 - 0.685);
+        assert!((f - 10.625).abs() < 1e-12);
         for (m, want) in fig5 {
             let got = crossflow_factor(f, m);
             assert!(
@@ -270,8 +330,17 @@ mod tests {
     #[test]
     fn low_crossflow_mach_is_figure_4_times_1_2() {
         for (&f, &eta) in ETA_FINENESS.iter().zip(&ETA_BY_FINENESS) {
-            assert!((crossflow_eta(f, 0.0) - eta).abs() < 1e-15);
-            assert!((crossflow_factor(f, 0.0) - 1.2 * eta).abs() < 1e-15);
+            assert!((crossflow_eta(f, 0.0) - eta).abs() < 1e-14);
+            assert!((crossflow_factor(f, 0.0) - 1.2 * eta).abs() < 1e-14);
+        }
+        // Up to Mach 0.8, where Fig. 6 only rises, the rule is `η₄ + (1 − η₄) s`.
+        for m in [0.1, 0.3, 0.45, 0.62, 0.79] {
+            let s = (held_linear(&ETA_MACHS, &ETA_BY_CROSSFLOW_MACH, m) - ETA_REFERENCE)
+                / (1.0 - ETA_REFERENCE);
+            for f in [3.0, 18.2, 40.0] {
+                let low = crossflow_eta_low(f);
+                assert!((crossflow_eta(f, m) - (low + (1.0 - low) * s)).abs() < 1e-14);
+            }
         }
         // The Arcas Robin's two models (fineness 18.2 and 23.8), 0.74 and 0.77 to the reading.
         assert!((crossflow_eta(18.2, 0.0) - 0.7426).abs() < 1e-4);
@@ -302,14 +371,36 @@ mod tests {
         assert_eq!(BodyLift::Galejs { k: 1.5 }.factor(30.0, 0.0), 1.5);
         assert!(BodyLift::Galejs { k: -1.0 }.validate().is_err());
         assert!(BodyLift::Galejs { k: f64::NAN }.validate().is_err());
-        assert!(BodyLift::Jorgensen.validate().is_ok());
-        assert_eq!(BodyLift::default(), BodyLift::Jorgensen);
+        assert!(BodyLift::JORGENSEN.validate().is_ok());
+        assert_eq!(BodyLift::default(), BodyLift::JORGENSEN);
+    }
+
+    /// The JSON form is a file format: each model round-trips, and a field a model doesn't have
+    /// is refused, not dropped.
+    #[test]
+    fn body_lift_in_json() {
+        for (model, text) in [
+            (BodyLift::JORGENSEN, r#"{"kind":"jorgensen"}"#),
+            (BodyLift::GALEJS, r#"{"kind":"galejs","k":1.1}"#),
+        ] {
+            assert_eq!(serde_json::to_string(&model).unwrap(), text);
+            assert_eq!(serde_json::from_str::<BodyLift>(text).unwrap(), model);
+        }
+        for bad in [
+            r#"{"kind":"jorgensen","k":1.5}"#,
+            r#"{"kind":"galejs"}"#,
+            r#"{"kind":"galejs","k":1.1,"eta":0.7}"#,
+            r#"{"kind":"hoerner"}"#,
+        ] {
+            assert!(serde_json::from_str::<BodyLift>(bad).is_err(), "{bad}");
+        }
     }
 
     proptest! {
         /// `η` stays within Fig. 4's lowest value and 1 and grows with fineness, and the factor
         /// is continuous: a step of 1e-9 in the crossflow Mach number moves it by no more than
-        /// its steepest slope (under 20 per unit) allows.
+        /// its steepest slope (under 20 per unit) allows. Once the crossflow passes Mach 0.8 the
+        /// body's length no longer matters: every fineness is within 0.3% of Fig. 6's own bodies.
         #[test]
         fn eta_is_bounded_and_the_factor_continuous(f in 0.5f64..80.0, m in 0.0f64..5.0) {
             let eta = crossflow_eta(f, m);
@@ -317,6 +408,10 @@ mod tests {
             prop_assert!(crossflow_eta(f + 1.0, m) >= eta - 1e-15);
             let d = (crossflow_factor(f, m + 1e-9) - crossflow_factor(f, m)).abs();
             prop_assert!(d < 2e-8, "jump {d} at M_n {m}");
+            if m >= 0.8 {
+                let reference = crossflow_factor(10.625, m);
+                prop_assert!((crossflow_factor(f, m) / reference - 1.0).abs() < 3e-3);
+            }
         }
     }
 }
