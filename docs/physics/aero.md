@@ -402,7 +402,7 @@ so no flight checks it yet.
 tip, and the body tubes straight behind it at the same radius. It flies only if nothing behind
 those tubes changes the radius: no boattail, flare or step. Mixing the method's nose and cylinder
 with slender-body theory's boattail would put the centre of pressure further off than slender-body
-theory alone, so such a body waits for [M1.8e3](../decisions-and-roadmap.md#m1-8e3), which takes
+theory alone, so such a body waits for [M1.8e4](../decisions-and-roadmap.md#m1-8e4), which takes
 the boattail. Each covered part gets its own share of the method's lift, at its own centre of
 pressure, so the flight's pitch damping still comes from each part's own local flow. Body lift,
 the `sin² α` term, is unchanged.
@@ -415,7 +415,10 @@ build on the development Mac (measured by hand); a rocket that never passes Mach
 it.
 
 **The join.** Write SB for slender-body theory, SE for the shock-expansion method, and `M_j` for
-where the join starts: Mach 1.2, or the table's lowest Mach if that is higher. From `M_j` to
+where the join starts: Mach 1.2, or the lowest Mach at which the method holds if that is higher.
+hpr finds that Mach by bisection between the table's rows, to about 3e-9, and adds a row there.
+So the start moves smoothly with the nose's shape instead of in 0.05 steps: a 20° cone joins from
+Mach 1.341910, and each 0.1° steeper, to 20.5°, moves it about 0.0027 later, to 1.355500. From `M_j` to
 `M_j + 0.3`, each covered part's slope, moment and station move in a straight line from SB's to
 SE's:
 
@@ -424,11 +427,14 @@ SE's:
 Every piece is a straight line in Mach, so nothing jumps. The test
 `the_supersonic_join_has_no_jump` looks at ±1e-9 in Mach on each side of the join's ends, of
 table rows, between rows and at Mach 4.999, and `a_blunter_cone_joins_where_the_method_starts_to_hold`
-does the same for a 20° cone whose join starts higher. Mach 1.2 to 1.5 is a judgement: below Mach
+does the same for a 20° cone whose join starts higher.
+`the_joins_start_moves_with_the_nose_not_in_steps` checks that cone's start is off the grid and
+moves by less than 1e-5 when the cone steepens by a millionth of a degree. Mach 1.2 to 1.5 is a judgement: below Mach
 1.2 the flow over the nose is transonic, which the method doesn't cover, and Mach 1.5 is the
 lowest Mach at which NASA measured the Arcas Robin
 ([ADR-034](https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-034-the-bodys-supersonic-normal-force-in-flight-tabulated-shock-expansion-shares-joined-linearly-from-mach-12-2026-09-19),
-the decision behind it). Small changes in shape can still switch a body between the two models
+the decision behind it). Small changes in shape can still switch a body between the two models,
+for example a nose just steep enough that the method refuses it at every Mach
 ([issue #87](https://github.com/nrdptel/hpr-sim/issues/87)).
 
 **A worked example: the Arcas Robin's nose and cylinder.** NASA measured the Arcas Robin's body

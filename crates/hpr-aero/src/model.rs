@@ -74,6 +74,11 @@ const SUPERSONIC_LAST_STEP: usize = 100;
 /// Rows across the join.
 const SUPERSONIC_JOIN_STEPS: usize = 6;
 
+/// Halvings of the 0.05 step in which the method starts to hold: they place the join's start
+/// within `0.05/2²⁴`, about 3e-9, in Mach, so it moves with the body's shape, not in 0.05 steps
+/// ([issue #87](https://github.com/nrdptel/hpr-sim/issues/87)).
+const SUPERSONIC_JOIN_BISECTIONS: usize = 24;
+
 /// The width of the body's supersonic join in Mach, 0.3: over it the shock-expansion shares
 /// replace slender-body theory's linearly ([`SupersonicBody`]).
 pub const SUPERSONIC_JOIN_WIDTH_MACH: f64 =
@@ -88,12 +93,15 @@ pub const SUPERSONIC_JOIN_WIDTH_MACH: f64 =
 /// a potential-flow slope of its own (a boattail, a flare, a step). The method's nose and
 /// cylinder beside slender-body theory's boattail would put the body's centre of pressure further
 /// off than slender-body theory alone, so such a body waits for the milestone
-/// [M1.8e3](https://nrdptel.github.io/hpr-sim/decisions-and-roadmap.html#m1-8e3), the boattail
-/// and crossflow faster than sound.
+/// [M1.8e4](https://nrdptel.github.io/hpr-sim/decisions-and-roadmap.html#m1-8e4), the boattail's
+/// share faster than sound.
 ///
 /// The method is too slow to run at each step of a flight, so [`AeroModel::supersonic_body`] tabulates each covered segment's slope and moment
 /// every 0.05 in Mach, from Mach 5 down to the lowest Mach from which the method holds, and a
-/// flight interpolates linearly between rows. The join starts at that Mach, or at
+/// flight interpolates linearly between rows. Where the method stops holding above
+/// [`SUPERSONIC_JOIN_START_MACH`], bisection finds that Mach within about 3e-9 and the table
+/// gains a row there, so the join's start moves with the body's shape rather than in 0.05 steps.
+/// The join starts at that Mach, or at
 /// [`SUPERSONIC_JOIN_START_MACH`] if higher: at Mach `M`, a covered component's potential-flow
 /// slope, moment and station are slender-body theory's plus `w (shock-expansion − slender-body)`,
 /// `w = (M − M_join)/`[`SUPERSONIC_JOIN_WIDTH_MACH`] clamped to `[0, 1]`. Everything is linear
@@ -108,11 +116,14 @@ pub struct SupersonicBody {
     /// The Mach number where the join starts; the shares count in full from
     /// [`SUPERSONIC_JOIN_WIDTH_MACH`] above it.
     pub join_start_mach: f64,
-    /// The table's first row is at Mach `first_step / 20`.
+    /// The table's first even row is at Mach `first_step / 20`.
     first_step: usize,
-    /// Each row's shares, one per covered component: slope per radian and its moment about the
-    /// nose tip, m per radian. Every share is positive.
+    /// Each even row's shares, one per covered component: slope per radian and its moment about
+    /// the nose tip, m per radian. Every share is positive.
     rows: Vec<Vec<SegmentSlope>>,
+    /// The shares at `join_start_mach`, where the method starts to hold, when that lies between
+    /// even rows: the table's first row.
+    lead: Option<Vec<SegmentSlope>>,
 }
 
 /// The segments the shock-expansion method covers, the station of the nose's tip, and each
@@ -122,6 +133,36 @@ struct SupersonicRun {
     segments: Vec<BodySegment>,
     vertex_m: f64,
     bounds_m: Vec<(f64, f64)>,
+}
+
+impl SupersonicRun {
+    /// The method's shares at `mach`, moments about the nose tip, or `None` where it fails or a
+    /// share isn't positive with its station on its own segment (a share that crosses zero has
+    /// no station, and one that is positive but small could put a part's damping station far off
+    /// the rocket).
+    fn shares(
+        &self,
+        body: &ShockExpansionBody,
+        mach: f64,
+        reference_area_m2: f64,
+    ) -> Option<Vec<SegmentSlope>> {
+        let shares = body.segment_slopes(mach, reference_area_m2).ok()?;
+        let vertex_m = self.vertex_m;
+        let on_segment = shares.iter().zip(&self.bounds_m).all(|(s, &(fore, aft))| {
+            let station = (s.moment_slope_m + s.slope_per_rad * vertex_m) / s.slope_per_rad;
+            let slack = 1e-9 * (aft - vertex_m);
+            s.slope_per_rad > 0.0 && station >= fore - slack && station <= aft + slack
+        });
+        on_segment.then(|| {
+            shares
+                .into_iter()
+                .map(|s| SegmentSlope {
+                    slope_per_rad: s.slope_per_rad,
+                    moment_slope_m: s.moment_slope_m + s.slope_per_rad * vertex_m,
+                })
+                .collect()
+        })
+    }
 }
 
 /// The table, built once and shared by a model's clones. It follows from the covered segments, so
@@ -140,37 +181,16 @@ impl SupersonicBody {
     /// of the nose tip, or `None` where the method can't take the body or doesn't hold across a
     /// whole join below Mach 5.
     fn new(run: &SupersonicRun, reference_area_m2: f64) -> Option<Self> {
-        let (segments, vertex_m) = (&run.segments, run.vertex_m);
-        let body = ShockExpansionBody::new(segments, DEFAULT_ELEMENTS_PER_CURVE).ok()?;
+        let body = ShockExpansionBody::new(&run.segments, DEFAULT_ELEMENTS_PER_CURVE).ok()?;
+        let at = |step: f64| run.shares(&body, step / SUPERSONIC_STEPS_PER_MACH, reference_area_m2);
         let mut rows = Vec::new();
         let mut first_step = SUPERSONIC_LAST_STEP + 1;
-        // From Mach 5 down, until the method first fails or a share isn't positive (a share that
-        // crosses zero has no station).
+        // From Mach 5 down, until the method first fails or a share isn't on its segment.
         for step in (SUPERSONIC_FIRST_STEP..=SUPERSONIC_LAST_STEP).rev() {
-            let mach = step as f64 / SUPERSONIC_STEPS_PER_MACH;
-            let Ok(shares) = body.segment_slopes(mach, reference_area_m2) else {
+            let Some(row) = at(step as f64) else {
                 break;
             };
-            // Each share's station, `moment/slope` from the tip, must lie on its own segment: a
-            // share that is positive but small could otherwise put a part's damping station far
-            // off the rocket.
-            let on_segment = shares.iter().zip(&run.bounds_m).all(|(s, &(fore, aft))| {
-                let station = (s.moment_slope_m + s.slope_per_rad * vertex_m) / s.slope_per_rad;
-                let slack = 1e-9 * (aft - vertex_m);
-                s.slope_per_rad > 0.0 && station >= fore - slack && station <= aft + slack
-            });
-            if !on_segment {
-                break;
-            }
-            rows.push(
-                shares
-                    .into_iter()
-                    .map(|s| SegmentSlope {
-                        slope_per_rad: s.slope_per_rad,
-                        moment_slope_m: s.moment_slope_m + s.slope_per_rad * vertex_m,
-                    })
-                    .collect(),
-            );
+            rows.push(row);
             first_step = step;
         }
         rows.reverse();
@@ -178,11 +198,35 @@ impl SupersonicBody {
         if first_step + SUPERSONIC_JOIN_STEPS > SUPERSONIC_LAST_STEP {
             return None;
         }
+        // Where the method stops holding between two rows, bisect for that Mach: `high` holds,
+        // `low` doesn't. The join's start is then continuous in the body's shape wherever that
+        // Mach is (issue #87).
+        let mut lead = None;
+        let mut join_start_mach = first_step as f64 / SUPERSONIC_STEPS_PER_MACH;
+        if first_step > SUPERSONIC_FIRST_STEP {
+            let (mut low, mut high) = (first_step as f64 - 1.0, first_step as f64);
+            let mut held = None;
+            for _ in 0..SUPERSONIC_JOIN_BISECTIONS {
+                let mid = 0.5 * (low + high);
+                match at(mid) {
+                    Some(row) => {
+                        high = mid;
+                        held = Some(row);
+                    }
+                    None => low = mid,
+                }
+            }
+            if let Some(row) = held {
+                join_start_mach = high / SUPERSONIC_STEPS_PER_MACH;
+                lead = Some(row);
+            }
+        }
         Some(Self {
-            covered: segments.len(),
-            join_start_mach: first_step as f64 / SUPERSONIC_STEPS_PER_MACH,
+            covered: run.segments.len(),
+            join_start_mach,
             first_step,
             rows,
+            lead,
         })
     }
 
@@ -195,10 +239,21 @@ impl SupersonicBody {
     /// to the table's ends): slope per radian and moment about the nose tip, m per radian.
     pub fn share(&self, index: usize, mach: f64) -> Option<(f64, f64)> {
         let x = mach * SUPERSONIC_STEPS_PER_MACH - self.first_step as f64;
-        // `new` keeps at least `SUPERSONIC_JOIN_STEPS + 1` rows.
-        let i = (x.floor().max(0.0) as usize).min(self.rows.len() - 2);
-        let t = (x - i as f64).clamp(0.0, 1.0);
-        let (a, b) = (self.rows[i].get(index)?, self.rows[i + 1].get(index)?);
+        let (a, b, t) = match &self.lead {
+            // Between the lead row and the first even row.
+            Some(lead) if x < 0.0 => {
+                let lead_x =
+                    self.join_start_mach * SUPERSONIC_STEPS_PER_MACH - self.first_step as f64;
+                let t = ((x - lead_x) / -lead_x).clamp(0.0, 1.0);
+                (lead.get(index)?, self.rows[0].get(index)?, t)
+            }
+            _ => {
+                // `new` keeps at least `SUPERSONIC_JOIN_STEPS + 1` even rows.
+                let i = (x.floor().max(0.0) as usize).min(self.rows.len() - 2);
+                let t = (x - i as f64).clamp(0.0, 1.0);
+                (self.rows[i].get(index)?, self.rows[i + 1].get(index)?, t)
+            }
+        };
         Some((
             a.slope_per_rad + t * (b.slope_per_rad - a.slope_per_rad),
             a.moment_slope_m + t * (b.moment_slope_m - a.moment_slope_m),
@@ -1936,6 +1991,40 @@ mod tests {
         }
         // Below its join the terms are slender-body theory's.
         assert_eq!(body_values(&model, start), body_values(&model, 0.5));
+    }
+
+    #[test]
+    fn the_joins_start_moves_with_the_nose_not_in_steps() {
+        // Issue #87: the start used to snap to the table's 0.05 grid in Mach, so a steeper cone
+        // moved it in steps. It now sits where the method starts to hold.
+        let start_at = |degrees: f64| {
+            let mut rocket = straight_rocket();
+            let length = 0.027 / degrees.to_radians().tan();
+            rocket.stages[0].components[0].part = nose(NoseShape::Conical {}, length, 0.027);
+            let model = model(&rocket);
+            let start = model.supersonic_body().unwrap().join_start_mach;
+            (model, start)
+        };
+        let (model, start) = start_at(20.0);
+        let grid = start * SUPERSONIC_STEPS_PER_MACH;
+        assert!((grid - grid.round()).abs() > 1e-3, "on the grid: {start}");
+        // Nothing jumps at the start, at the first even row after it, or across the join.
+        let first_row = grid.ceil() / SUPERSONIC_STEPS_PER_MACH;
+        for mach in [start, first_row, start + SUPERSONIC_JOIN_WIDTH_MACH] {
+            no_jump(&model, mach);
+        }
+        assert_eq!(body_values(&model, start), body_values(&model, 0.5));
+        // A millionth of a degree moves the start by little.
+        let (_, nudged) = start_at(20.0 + 1e-6);
+        assert!((nudged - start).abs() < 1e-5, "{start} to {nudged}");
+        // Steeper cones start later, each a little: no two share a grid row's Mach.
+        let starts: Vec<f64> = [20.0, 20.1, 20.2, 20.3, 20.4, 20.5]
+            .into_iter()
+            .map(|degrees| start_at(degrees).1)
+            .collect();
+        for pair in starts.windows(2) {
+            assert!(pair[1] > pair[0] && pair[1] - pair[0] < 0.02, "{starts:?}");
+        }
     }
 
     #[test]

@@ -581,7 +581,7 @@
 
     *Done when:* the Arcas Robin's body-alone `C_Nα` (fins off, TN D-4014) is within 15% at every
     Mach number from 1.5, and both configurations' `C_Nα` within 15% at Mach 3.96 and 4.63, or an
-    ADR records why not with the gap in the report. Split below into M1.8e1 to M1.8e3; M1.8e3
+    ADR records why not with the gap in the report. Split below into M1.8e1 to M1.8e5; M1.8e5
     carries this bullet.
 
     - [x] **M1.8e1 The second-order shock-expansion method.**
@@ -612,8 +612,27 @@
         Mach number from 1.5, beside the measurement and M1.8a's values, and in the report.
       - The validation report is regenerated; each changed row is listed in the PR.
 
-    - [ ] **M1.8e3 The boattail and crossflow faster than sound.**
-      - The boattail's share (footnote 8), crossflow at the angles flown, blunt tips.
+    - [x] **M1.8e3 The supersonic join's start without grid steps.**
+      - The join starts where the method starts to hold, found by bisection, not on the table's
+        0.05 grid in Mach: the grid half of #87.
+
+      *Done when:* a test finds the start off the grid, moved by under 1e-5 in Mach by a 1e-6°
+      change in a 20° cone and strictly by each 0.1° to 20.5°, with no jump at ±1e-9 in Mach at
+      the start, the first even row and the join's end; the report is unchanged or each changed
+      row is listed in the PR.
+
+      *Result:* met. The 20° cone joins from Mach 1.341910 (1.35 before); 20.0° to 20.5° move it
+      to 1.355500 in steps of 0.0027 to 0.0028; the report is unchanged.
+
+    - [ ] **M1.8e4 The boattail's share faster than sound.**
+      - The boattail through the method (footnote 8), with a station rule for shares that cross
+        zero, so boattailed bodies fly it.
+
+      *Done when:* a boattailed body flies the method with no jump at ±1e-9 in Mach; the Arcas
+      Robin's long model through the flight's path is in the report beside the measurement.
+
+    - [ ] **M1.8e5 Crossflow and blunt tips faster than sound.**
+      - Crossflow at the angles flown, blunt tips, Fig. 2 below Mach 3, #81, #87's model switches.
 
       *Done when:* M1.8e's bullet above.
 

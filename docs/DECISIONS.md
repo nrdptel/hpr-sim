@@ -3316,3 +3316,10 @@ two models (a step in radius past a millionth of the area, a nose just past Fig.
 appearing), and the join's start snaps to the 0.05 grid; both matter for dispersion and
 optimisation studies ([issue #87](https://github.com/nrdptel/hpr-sim/issues/87)). `cargo xtask aero` adds the flight's values to
 `validation/fixtures/aero/shock-expansion.json`.
+
+**Update (M1.8e3, 2026-09-19).** The join's start no longer snaps to the grid: where the method
+stops holding above Mach 1.2, bisection between the two rows finds that Mach within
+`0.05/2²⁴` (about 3e-9) and the table gains a row there. 24 halvings, not more, because each
+runs the method once; at 3e-9 a start's step moves a slope by about 1e-8 per radian. A 20° cone
+now joins from Mach 1.341910, not 1.35. The model switches in #87 remain (M1.8e5). M1.8e3 was
+split: the boattail became M1.8e4, crossflow and blunt tips M1.8e5, which carries M1.8e's bullet.
