@@ -93,7 +93,7 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
 ## Decided without Neer (one line each; significant ones get an ADR)
 
 - ADR-030: Fig. 5-122 to the Prandtl–Meyer limit, 16°–30° separation, Fig. 5-141 as a ratio, the
-  flow behind boattails shared among their tails, a step down sheltering a lip (a retainer: 5% to
+  flow behind boattails shared among their tails, a step down sheltering a lip (a retainer: up to
   23% less `C_D0`, unmeasured); targets not met, not tuned.
 - ADR-029: M1.8's drag bullet recorded as not met, not chased; MIL-HDBK-762's worked example
   added (fins left out); L18's test renamed to measure and pin; M1.8b3 added for the afterbody.

@@ -564,7 +564,8 @@ pub struct PressureDragTerm {
 /// share of the boattails it may continue.
 ///
 /// A share is the drag of the cone from the start of the surface it continues through its aft
-/// end, less that of the cone from the same start through its fore end, and not below 0. Each
+/// end, less that of the cone from the same start through its fore end; it can be below 0 where the
+/// longer cone drags less, and parts of one straight cone add up to the cone exactly. Each
 /// surface ahead that the flow may still follow has a weight: its hold of the flow behind the
 /// boattails, times 1 for a turn of up to [`MERGE_FULL_TURN_RAD`] between this part and it, 0 from
 /// [`MERGE_NONE_TURN_RAD`] (a corner), linear between, and, when either part is shallower than
@@ -1190,8 +1191,9 @@ impl ComponentDragTerms {
                 let share = m.area_ratio
                     * (m.through_aft.pressure_drag_coefficient(mach)?
                         - m.through_fore.pressure_drag_coefficient(mach)?);
-                // Not below 0; a NaN stays one, for `AeroModel::drag` to refuse.
-                merged += m.weight * if share < 0.0 { 0.0 } else { share };
+                // It may be below 0: extending a boattail can lower its drag. Merged wholly, the
+                // parts' shares add up to the whole cone's drag, which is not.
+                merged += m.weight * share;
             }
             if term.own_weight > 0.0 {
                 merged += term.own_weight
@@ -2753,8 +2755,8 @@ mod tests {
         assert!(last.step.is_some() && last.in_wake_of.unwrap().step_fraction == 1.0);
     }
 
-    /// A narrowing part merged with the one before it never drags less than nothing, and a pair
-    /// of parts drags between its two limits (physics review): as two boattails, built with a
+    /// A pair of narrowing parts never drags less than nothing, and drags between its two limits
+    /// (physics review): as two boattails, built with a
     /// tube between them, and as the first part plus its share of the one cone through the pair's
     /// ends, built as a rocket of its own. A 15° part is followed by parts turned from −12° to
     /// +12°, at every Mach number to 4.9; at a turn of 0° the pair is that cone.
@@ -2802,14 +2804,14 @@ mod tests {
                 let flow = Flow::axial(mach);
                 let parts = joined.buildup_components(&flow, &conditions).unwrap();
                 let what = format!("turn {turn}° at Mach {mach:.2}");
-                assert!(parts[3].drag.pressure >= 0.0, "{what}");
                 let got = parts[2].drag.pressure + parts[3].drag.pressure;
+                assert!(got >= 0.0, "{what}");
                 let separate = apart.buildup_components(&flow, &conditions).unwrap();
                 let (own_a, own_b) = (separate[2].drag.pressure, separate[4].drag.pressure);
                 let cone = whole.buildup_components(&flow, &conditions).unwrap()[2]
                     .drag
                     .pressure;
-                let merged = own_a + (cone - own_a).max(0.0);
+                let merged = cone;
                 if turn == 0.0 {
                     assert_eq!(weight, 1.0, "{what}");
                     assert!((got - cone).abs() <= 1e-12 * cone.max(1e-3), "{what}");
@@ -3084,15 +3086,23 @@ mod tests {
         assert!(drag.zero_lift_coefficient.is_finite());
     }
 
-    /// A straight cone under 1° drawn in parts merges wholly and drags as the one cone (physics
-    /// review): 0.8° and 0.5° cones 300 mm long, whole and in 2 and 8 parts, but for a share the
-    /// model holds at 0.
+    /// A straight cone drawn in parts merges wholly and drags as the one cone, where a part's share
+    /// is below 0 too (physics review, rounds 3 and 4): 0.8° and 0.5° cones 300 mm long, a 7°
+    /// boattail from 98 mm to 44 mm, and a 5° one closing to an eighth of its diameter, whole and
+    /// in 2, 4 and 8 parts, from Mach 0.5 to 3. Held at 0, a share had put the 7° one 1.35% high
+    /// in 4 parts at Mach 1.0, and the 5° one 5% high in 2 at Mach 1.3.
     #[test]
-    fn a_shallow_cone_in_parts_is_one_cone() {
-        let big = 0.03;
+    fn a_straight_cone_in_parts_is_one_cone() {
         let conditions = DragConditions::coasting(RE_PER_M);
-        for angle in [0.8_f64, 0.5] {
-            let end = big - 0.3 * angle.to_radians().tan();
+        // Fore radius, half-angle (degrees), aft radius.
+        let cones = [
+            (0.03, 0.8_f64, 0.03 - 0.3 * 0.8_f64.to_radians().tan()),
+            (0.03, 0.5, 0.03 - 0.3 * 0.5_f64.to_radians().tan()),
+            (0.049, 7.0, 0.022),
+            (0.049, 5.0, 0.049 / 8.0),
+        ];
+        for (big, angle, end) in cones {
+            let length = (big - end) / angle.to_radians().tan();
             let rocket = |parts: usize| {
                 let mut components = vec![
                     component(
@@ -3106,14 +3116,14 @@ mod tests {
                 for k in 0..parts {
                     components.push(component(
                         &format!("c{k}"),
-                        body_part(0.3 / parts as f64, at(k), at(k + 1)),
+                        body_part(length / parts as f64, at(k), at(k + 1)),
                         None,
                     ));
                 }
                 model(&one_stage(components, ReferenceDiameter::Maximum {}))
             };
             let one = rocket(1);
-            for parts in [2, 8] {
+            for parts in [2, 4, 8] {
                 let split = rocket(parts);
                 // Every later part merges wholly with the cone ahead of it.
                 for t in split.drag_terms().iter().skip(3) {
@@ -3125,24 +3135,16 @@ mod tests {
                         t.id
                     );
                 }
-                for mach in [0.5, 1.5, 3.0] {
+                for mach in [0.5, 0.95, 1.0, 1.2, 1.3, 1.5, 3.0] {
                     let (a, b) = (
                         one.drag(&Flow::axial(mach), &conditions).unwrap(),
                         split.drag(&Flow::axial(mach), &conditions).unwrap(),
                     );
                     let what = format!("{angle}° in {parts} at Mach {mach}");
-                    // A part's share is held at 0 where the chart makes the longer cone drag less
-                    // than the shorter, so in 8 parts the 0.8° cone reads 0.035% high at Mach 1.5
-                    // (ADR-030); otherwise the parts add up to the cone.
-                    let bound = if parts == 8 && mach == 1.5 && angle == 0.8 {
-                        4e-4
-                    } else {
-                        1e-12
-                    };
                     close(
                         b.zero_lift_coefficient,
                         a.zero_lift_coefficient,
-                        bound,
+                        1e-12,
                         &what,
                     );
                 }

@@ -2790,7 +2790,7 @@ What the sources give (all NACA and NASA reports are U.S. Government works; pinn
 - **A boattail in parts** (physics review, three rounds): a narrowing part right after another
   drags as a blend, by a merge weight, of its own drag as a boattail and its share of the boattail
   it continues: the cone from that boattail's start through its aft end less the cone through its
-  fore end, never below 0. The weight is 1 for a turn of up to 3° between the parts, 0 from 10°
+  fore end (held at 0 until the fourth round, below). The weight is 1 for a turn of up to 3° between the parts, 0 from 10°
   (a corner), linear between, and faded by what the parts between have left of that boattail
   (below). So parts of one straight cone add up to one cone, a corner keeps each part its own
   boattail, and a pair drags between the two. It applies at every speed, so below Mach 0.8 a
@@ -2824,8 +2824,9 @@ What the sources give (all NACA and NASA reports are U.S. Government works; pinn
   boattails is shared among their tails, the surfaces it may still follow, and each tail holds its
   share faded over one fall (its drop in diameter) by what follows it: a tube's, a lip's or a
   part's length, a step's or a narrowing part's drop in diameter, and a lip's rise. A narrowing
-  part moves to a continuation of each tail the share it merges with (the turn's weight, times
-  each part's half-angle over 1°, at most 1, so a part narrowing by nothing is a tube), fades what
+  part moves to a continuation of each tail the share it merges with (the turn's weight, times,
+  from the third round, the smaller half-angle over the larger, the larger at most 1°, so a part
+  narrowing by nothing is a tube), fades what
   it leaves as a step and a tube, and takes what no tail then holds as its own boattail; a step
   down does the same as a boattail of no length, fully separated, so a closure drawn ever shorter
   is a step. The base and each lip add the tails' holds, at most 1, and tails in the same state
@@ -2846,17 +2847,22 @@ What the sources give (all NACA and NASA reports are U.S. Government works; pinn
   leave the base out, don't move. A straight cone drawn in parts behind a boattail it partly
   merges with can drag a little differently from the one cone, the old tail's unmerged share
   getting a second chance at a later part: an 8° cone behind a 14° part reads the same in 2 or 4
-  parts, −0.13% to −0.34% of `C_D0` in 8, and toward −1.6% in very many (−1.25% in 32, Mach 1.5).
-  And a share is held at 0 where the chart makes a longer cone drag less, so a straight cone in
-  parts can read a little high: a 3° cone 300 mm long in 8 parts, up to +0.40% at Mach 1.2 (a
-  0.8° one +0.035% at Mach 1.5, as before). Third round (physics and code reviews): the 1° factor
+  parts, up to −0.45% of `C_D0` in 8 and −2.24% in 512, worst at Mach 1.0 (physics review's Mach
+  scan). Fourth round: a part's share is no longer held at 0 where the chart makes the longer cone
+  drag less than the shorter, so extending a boattail can lower its drag and a part's pressure
+  drag can be below 0; merged wholly, the shares add up to the whole cone's drag exactly, which
+  is not below 0, and a pair of parts stays between its two limits. Held at 0, they had read a
+  7° boattail from 98 mm to 44 mm in 4 parts 1.35% high at Mach 1.0, and a 5° one closing to an
+  eighth of its diameter 5% high in 2 at Mach 1.3 (`a_straight_cone_in_parts_is_one_cone`). Third
+  round (physics and code reviews): the 1° factor
   now takes the smaller angle over the larger (the larger at most 1°), so a straight cone under
   1° merges wholly (the product of the two angles over 1° had put a 0.8° cone in 8 parts 3.3%
   high); a step down's corner now shelters a lip behind a plain step with no boattail ahead, as a
   closure drawn ever shorter already did: a 98 mm airframe stepping down to a 54 mm motor tube
-  showing for 12 mm, then a 62 mm retainer, reads 15% to 23% lower from Mach 0.3 to 2.5, and a
-  54 mm one with a 38 mm motor tube and a 44 mm retainer 4.6% to 8.5%, unmeasured
-  (`a_retainer_behind_a_step_down_is_in_its_wake`); and fades now add where steps multiplied
+  showing for 12 mm, then a 62 mm retainer, reads 12% to 23% lower in `C_D0` from Mach 0.3 to 2.5
+  (15% at 0.3, 12% at 0.95, 23% at 2.5), unmeasured; the retainer's step keeps 12/44 of its drag
+  (`a_retainer_behind_a_step_down_is_in_its_wake`), and none of the shelter is left once the
+  exposed motor tube is as long as the step's drop in diameter; and fades now add where steps multiplied
   (behind a 10° boattail, a 1 mm step and a 2 mm tube leave the base 0.433 of its relief, was
   0.513).
 - **Fig. 5-141 is power-off**, as is Fleeman's base drag it scales; under power hpr applies both to

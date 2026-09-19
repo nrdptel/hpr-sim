@@ -540,8 +540,10 @@ parasitic term on its own area. The axial coefficient is `C_A = C_D0 f(α)`.
   body with no nose cone gets the same flat face on its front. Each is the limit of the
   transition it replaces ([Loft lesson L15](../decisions-and-roadmap.md#l15)), and it is reported with the aft component.
   A step up just behind a step down, such as a motor retainer behind the step to the motor tube,
-  is sheltered by the step's corner at every speed; this is unmeasured, and for such an aft end
-  it lowers the rocket's `C_D0` by 5% to 23%
+  is sheltered by the step's corner at every speed, by how far it rises and how much motor tube
+  shows ahead of it, and not at all once that is as long as the step's drop in diameter. This is
+  unmeasured; for a 98 mm airframe with 12 mm of a 54 mm motor tube showing and a 62 mm retainer
+  it lowers the rocket's `C_D0` 12% to 23% from Mach 0.3 to 2.5
   ([Boattails faster than sound](#boattails-faster-than-sound)).
 - **Boattails.** [N09] eq. 3.88 writes `A_base/A_boattail` without defining the areas, and p. 48
   says a zero-length boattail drags like "the total base drag". Taking `A_base` as the aft base
@@ -754,8 +756,8 @@ were made with no motor exhaust.
 | separation | between 16° and 30°, a straight-line blend in `θ` from the attached value to the base drag on the annulus, `(C_D•)_base(1 − a)`, where [flow separates](../glossary.md#flow-separation) | [C57] pp. 6, 8 |
 | through Mach 1 | the rule to Mach 0.8, where the buildup's other transonic terms start; a straight line to Mach 1; from there the attached drag held at its Mach 1.2 value to Mach 1.2 | [N09] p. 47, [762] p. 5-47 |
 | base behind a boattail | from Mach 2.5, `p_cyl/p_bt = 0.442 + 0.558 a_b`, with the cylinder's pressure from Love's correlation of measured bases, turned into the ratio of the two base-pressure coefficients, `k = (1 − p_bt/p)/(1 − p_cyl/p)`, which multiplies hpr's own base drag; below Mach 2.5, `k` at Mach 2.5; back to 1 between Mach 1 and 0.8; none for a separated boattail | [762] Figs. 5-139, 5-141, pp. 5-208, 5-210 |
-| a lip in its wake | a lip behind a boattail or a step down (a boattail of no length), drawn as a shoulder, a step up or both, in one part or several, loses its pressure drag while its top rises up to a quarter of the boattail's drop in diameter above the boattail's end, keeps all of it from half, and a straight-line share between; a lip in parts takes at each part the smallest share any top so far leaves; the base behind it takes the same share of the relief, less the lip's length's fade. A lip's rise is its top diameter less the boattail's aft diameter. So a motor retainer behind the step down to its motor tube loses much of its step's drag: behind a 98 mm airframe stepping down to a 54 mm motor tube, a 62 mm retainer rises 8 mm, 0.18 of the 44 mm drop, so its rise alone would shelter it wholly, and the 12 mm of motor tube ahead of it fades that by 12/44: its step keeps 27% of its drag (`a_retainer_behind_a_step_down_is_in_its_wake`), and the rocket's `C_D0` reads 15% to 23% lower from Mach 0.3 to 2.5 than with the retainer's step in full (the physics review's measurement; unmeasured in any tunnel) | [D4014] p. 6, [R22] slide 2; the quarter and half are a judgement |
-| a boattail in parts | a narrowing part after another drags, as its share of the boattail it continues, as the cone from that boattail's start through its aft end less the cone through its fore end (never below 0); so parts of one straight cone add up to one cone. Its drag is that share for a turn of up to 3° between the parts, its own drag as a boattail from 10° (a corner), and a straight-line blend of the two between (the *turn* is the difference of the two parts' half-angles); when either part is shallower than 1°, the merge is scaled by the smaller angle over the larger (the larger taken as at most 1°), so a part narrowing by almost nothing acts as a tube and a straight cone of any angle drawn in parts merges wholly. This holds at every speed, so below Mach 0.8 a curved boattail in parts drags as the cones through its ends, not part by part as eq. 3.88 would | a judgement |
+| a lip in its wake | a lip behind a boattail or a step down (a boattail of no length), drawn as a shoulder, a step up or both, in one part or several, loses its pressure drag while its top rises up to a quarter of the boattail's drop in diameter above the boattail's end, keeps all of it from half, and a straight-line share between; a lip in parts takes at each part the smallest share any top so far leaves; the base behind it takes the same share of the relief, less the lip's length's fade. A lip's rise is its top diameter less the boattail's aft diameter. So a motor retainer behind the step down to its motor tube loses much of its step's drag: behind a 98 mm airframe stepping down to a 54 mm motor tube, a 62 mm retainer rises 8 mm, 0.18 of the 44 mm drop, so its rise alone would shelter it wholly, and the 12 mm of motor tube ahead of it fades that by 12/44: its step keeps 27% of its drag (`a_retainer_behind_a_step_down_is_in_its_wake`), and the rocket's `C_D0` reads 12% to 23% lower from Mach 0.3 to 2.5 than with the retainer's step in full (the physics review's measurement; unmeasured in any tunnel); with the exposed motor tube as long as the 44 mm drop, none | [D4014] p. 6, [R22] slide 2; the quarter and half are a judgement |
+| a boattail in parts | a narrowing part after another drags, as its share of the boattail it continues, as the cone from that boattail's start through its aft end less the cone through its fore end (below 0 where extending the boattail lowers its drag); so parts of one straight cone add up to one cone. Its drag is that share for a turn of up to 3° between the parts, its own drag as a boattail from 10° (a corner), and a straight-line blend of the two between (the *turn* is the difference of the two parts' half-angles); when either part is shallower than 1°, the merge is scaled by the smaller angle over the larger (the larger taken as at most 1°), so a part narrowing by almost nothing acts as a tube and a straight cone of any angle drawn in parts merges wholly. This holds at every speed, so below Mach 0.8 a curved boattail in parts drags as the cones through its ends, not part by part as eq. 3.88 would | a judgement |
 | gaps and steps | whatever lies between a boattail and what follows weakens its effect in a straight line, gone once the gaps add up to one of the boattail's drops in diameter; gaps add: the lengths of tubes, lips and parts, and the drops in diameter of steps down and narrowing parts. With several boattails ahead, the flow is shared among them: a narrowing part takes over the share it merges with, and takes what no boattail holds as its own; a step down counts as a boattail of no length. The base and each lip add the boattails' shares. So a part narrowing by nothing drags as a tube, a part of no length as a step, and a small change in any radius or length changes the drag a little | a judgement |
 
 Why each piece is there:
@@ -851,12 +853,11 @@ and Cubbage's long, gentle boattails 0 to 0.009 where they measure 0.011 to 0.07
   quarter and half that shape the merge and the wake are judgements, with no measurement behind
   them but the Arcas Robin's lip. Its own 1.3 mm length is a gap too: the base keeps 0.944 of its
   relief.
-- A straight cone drawn in parts drags as one cone, with two exceptions. Behind a boattail it
-  only partly merges with (a turn of 3° to 10°) its parts may drag a little less: an 8° cone
-  behind a 14° part reads the same in 2 or 4 parts, 0.13% to 0.34% lower in 8, and up to about
-  1.6% lower drawn in very many. And where the chart makes a longer cone drag less than a shorter
-  one, a part's share is held at 0 rather than below it, so the parts read a little high: a 3°
-  cone 300 mm long in 8 parts, up to 0.40%.
+- A straight cone drawn in parts drags as one cone. A part's share can be below 0, where the chart
+  makes the longer cone drag less than the shorter: extending the boattail lowers its drag. The
+  one exception: behind a boattail it only partly merges with (a turn of 3° to 10°), a cone's
+  parts may drag a little less than the whole: an 8° cone behind a 14° part reads the same in 2
+  or 4 parts, up to 0.45% lower in 8, and up to 2.2% lower drawn in hundreds, worst near Mach 1.
 - The 1° below which a part merges only in part, and the fade of a step's corner over one drop in
   diameter (flow behind a backward-facing step reattaches farther downstream, so this likely
   understates a lip's shelter), are judgements too.
@@ -1193,8 +1194,8 @@ is in the join. Nothing past Mach 4.63 has been checked, though the model runs t
   every boattail from 1° to 89° finite and non-negative to Mach 5. The comparison with measured
   boattails and Jack's theory is `tests::boattails_against_measurements`.
 - **Boattails in parts, wakes and gaps** (`drag::tests`): a boattail split in two drags as one
-  (`a_boattail_split_in_two_drags_as_one`), and so does a cone under 1° in 2 or 8 parts but for a
-  share held at 0 (`a_shallow_cone_in_parts_is_one_cone`); a corner keeps two parts apart and the
+  (`a_boattail_split_in_two_drags_as_one`), and so does a straight cone of 0.5° to 7° in 2, 4 or 8
+  parts, where a part's share is below 0 too (`a_straight_cone_in_parts_is_one_cone`); a corner keeps two parts apart and the
   merge is continuous in the turn (`a_sharp_corner_keeps_its_boattails_apart`); a pair drags
   between its two limits (`soft_merges_stay_between_their_limits`); a partial merge shares the
   flow (`a_partial_merge_shares_the_flow`); a change of `ε` in any radius or length behind 2° to
