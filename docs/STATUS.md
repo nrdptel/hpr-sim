@@ -129,11 +129,11 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
   Recruiter's six fins miss the printed slope by +3.42% (+2.87% whole; ADR-008). Through Mach 1
   (M1.8a) the normal force misses the wind tunnel between Mach 0.8 and 1.2, and past Mach 3 reads
   17–25% low from the body (M1.8e; ADR-027).
-- Drag: against RASAero II's Calisto hpr reads −29.8% to −24.4% supersonic, likely the boattail's
-  wave drag (M1.8b3; ADR-029). Against the Arcas Robin (ADR-028) and MIL-HDBK-762's worked example
+- Drag: against RASAero II's Calisto hpr reads −29.8% to −24.4% supersonic, cause open (a
+  boattail's wave drag a candidate, M1.8b3; ADR-029); against MIL-HDBK-762 the body reads 6–10%
+  low past Mach 1.6 and high through Mach 1 (nose #67, base #68). Against the Arcas Robin (ADR-028)
   it reads high: fins take a blunt edge's formula (#70), a base lip counts as a shoulder, the
-  boattail rule over-predicts subsonic, and Niskanen's cone runs 45–105% over Stoney's through
-  Mach 0.8–1.2 (#67). Base drag is unmeasured past Mach 0.3 (#68).
+  boattail rule over-predicts subsonic. Base drag is unmeasured past Mach 0.3.
 - In wind, a slow rocket's drift in hpr rests on body lift's uncertain `K`: Juno III's apogee
   drift is 240 to 194 m over Galejs's 1.0 to 1.5 (ADR-026, `wind_response.py`). The oracle carries two unreleased
   RocketPy corrections; if #1196 changes before it merges, revisit `corrections.py`.

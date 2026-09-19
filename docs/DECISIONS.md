@@ -2662,7 +2662,7 @@ comparison is between two codes, one of whose inputs are guessed.
   codes' models, not the inputs.
 - **Against MIL-HDBK-762's sample calculation, fins left out, hpr's body reads high through
   Mach 1 and low faster than sound.** 6 of 12 within 10%: −10.3% at Mach 0.5 and −1.1% at 0.7;
-  +23.1% to +31.9% from 0.9 to 1.1 and +12.3% at 1.2; −6.0% to −9.6% from 1.6 to 3.2. By term
+  +20.1% to +31.9% from 0.9 to 1.1 and +12.3% at 1.2; −6.0% to −9.6% from 1.6 to 3.2. By term
   (handbook against hpr):
   - Nose, Niskanen's ogive: 0.052 against 0.164 at Mach 1.0, and 0.109 against 0.234 at 1.1.
     The handbook's transonic ogive curve (Fig. 5-113) and Stoney's measured 3:1 cone (ADR-028)
@@ -2693,7 +2693,7 @@ comparison is between two codes, one of whose inputs are guessed.
     part of the term; that is not subtracted here.
   - The one measured boattail argues against the whole term. The Arcas Robin's 15° boattail is in
     the tunnel's forebody. With the fins off the short model reads +8.1% at Mach 1.5, where hpr's
-    boattail is 0.069; with the chart's 0.198 in its place it would read about +47%, or +22% with
+    boattail is 0.069; with the chart's 0.198 in its place it would read about +46%, or +21% with
     the whole lip removed. At Mach 2.96, with the lip removed, hpr's rule already agrees (−1.2%),
     where the chart's 0.072 would put it about +17% high.
   So the chart's term is a candidate, not a finding: the measured boattail wants more pressure

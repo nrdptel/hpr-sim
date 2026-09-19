@@ -1171,7 +1171,7 @@ Against taking the chart's term whole:
 - The one measured boattail doesn't support it. The Arcas Robin's 15° boattail is in the wind
   tunnel's forebody ([above](#drag-against-the-arcas-robin-wind-tunnel)). With the fins off, the
   short model reads +8.1% at Mach 1.5; with the chart's value for its boattail it would read
-  about +47%, or +22% with the whole lip removed. At Mach 2.96, with the lip removed, hpr's rule
+  about +46%, or +21% with the whole lip removed. At Mach 2.96, with the lip removed, hpr's rule
   already agrees within 1.2%.
 - The handbook itself advises boattails under 8° to avoid flow separation ([762] p. 5-12). A
   separated 18.4° boattail sees about the base's pressure, which is roughly what hpr's rule
