@@ -245,7 +245,7 @@ hpr flies its own aerodynamics; the reference is RocketPy flying each example's 
 | predicted-ndrt-2020-nose-to-tail | impact_speed_m_s | 4.604797 | 4.603801 | +0.022% | 3.000% | within target |  |
 | predicted-ndrt-2020-nose-to-tail | landing_drift_m | 412.962544 | 365.630290 | +12.945% | 3.000% | outside target |  |
 | predicted-ndrt-2020-nose-to-tail | max_acceleration_m_s2 | 351.125924 | 191.810759 | +83.059% | 3.000% | outside target |  |
-| predicted-ndrt-2020-nose-to-tail | max_acceleration_power_on_m_s2 | 115.312175 | 114.560133 | +0.656% | 3.000% | within target |  |
+| predicted-ndrt-2020-nose-to-tail | max_acceleration_power_on_m_s2 | 115.312179 | 114.560133 | +0.656% | 3.000% | within target |  |
 | predicted-ndrt-2020-nose-to-tail | max_acceleration_time_s | 62.759925 | 57.219060 | +9.684% | 3.000% | outside target |  |
 | predicted-ndrt-2020-nose-to-tail | max_mach | 0.551505 | 0.544156 | +1.351% | 3.000% | within target |  |
 | predicted-ndrt-2020-nose-to-tail | max_speed_m_s | 186.676505 | 184.138171 | +1.378% | 3.000% | within target |  |

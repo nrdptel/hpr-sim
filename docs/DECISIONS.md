@@ -37,7 +37,6 @@ renumber. Supersede an entry by adding a new one that points back to it.
 | ADR-029 | Drag against RASAero II through Mach 2: the gap by band, MIL-HDBK-762's sample calculation, and the boattail's wave drag | accepted |
 | ADR-030 | The afterbody faster than sound: a boattail's wave drag, the base behind it, and a lip in its wake | accepted |
 | ADR-031 | Roll from canted fins and roll damping by Barrowman's strip theory | accepted |
-| ADR-032 | A peak acceleration reproduces across platforms to 1e-6 | accepted |
 
 ---
 
@@ -3025,30 +3024,3 @@ appendix A, Figs. 5-6 and 5-7; Niskanen 2009 §3.3; TN D-4014 Fig. 14.
 - Open: roll near Mach 1.5 reads high; nothing measured checks roll below Mach 1.5 (TN D-4013's
   rolling-moment plots at Mach 0.6 to 1.2, with the fins canted 2°, are the next reference); the
   roll forcing doesn't change with the angle of attack, where TN D-4014 measures up to 13%.
-
-## ADR-032: A peak acceleration reproduces across platforms to 1e-6 (2026-09-19)
-
-**Context.** The committed validation report must reproduce on macOS, Linux and Windows: each
-number within 2e-6, or 1e-7 of itself (ADR-022, `Report::reproduces`). With roll in the flight
-(M1.8c, ADR-031), Windows read predicted NDRT 2020's powered peak acceleration as
-115.312161661 m/s² where macOS reads 115.312174812, 1.14e-7 apart; Linux and macOS agree. Roll
-damping acts on the small roll rate inertia coupling gives these rockets, and moves macOS's
-value by 3.8e-8; it adds no maths that rounds differently by platform. The peak is found on the
-solver's steps, and the equations of motion's acceleration is smooth only to about 1e-7 m/s²
-(issue #53: second differences of the mass properties), so predicted mode's step control, at
-1e-11, works at that noise floor and its step sequence differs between the platforms' maths
-libraries. Measured on macOS: moving predicted mode's tolerance by 1e-7 of itself moves this peak
-by 4.25e-8 of itself.
-
-**Decision.** A metric named `max_acceleration…` reproduces within 2e-6 or 1e-6 of itself;
-every other number keeps 2e-6 or 1e-7. The bound is on reproduction across platforms, not on
-agreement with a reference; each peak acceleration is still compared with its reference at its
-own tolerance, and on one platform the report is bit-identical.
-
-**Alternatives considered.** Fixing the noise at its source, analytic mass-property derivatives
-or a wider difference (issue #53), would change every flight's numbers and belongs with that
-issue. A different solver tolerance moves the step sequence without taming the noise. Leaving
-roll damping out of rockets without cant would make the physics wrong to keep a pin.
-
-**Consequences.** `hpr_validate::report::same_but_for_platform_rounding` takes the metric; the
-test `a_peak_acceleration_reproduces_to_1e_6` pins both bounds. When #53 is fixed, restore 1e-7.

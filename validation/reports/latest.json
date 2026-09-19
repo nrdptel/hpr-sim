@@ -2955,14 +2955,14 @@
     {
       "case": "predicted-ndrt-2020-nose-to-tail",
       "metric": "max_acceleration_power_on_m_s2",
-      "measured": 115.312174811623,
+      "measured": 115.31217921780403,
       "reference": 114.5601332648773,
       "source": "rocketpy 1.13.0 with upstream PRs #1188 and #1196 applied (corrections.py), validation/oracles/rocketpy/flight.py, case ndrt-2020-nose-to-tail, metrics.max_acceleration_power_on_m_s2",
       "tolerance": {
         "relative": 0.03
       },
-      "difference": 0.7520415467457013,
-      "relative": 0.006564600837246651,
+      "difference": 0.7520459529267356,
+      "relative": 0.0065646392989776965,
       "verdict": "within_target"
     },
     {

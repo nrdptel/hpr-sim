@@ -1281,7 +1281,9 @@ impl Peaks {
     /// where the event-located apogee moved by 1.3e-9. So where a quantity rises out of the step's start and falls into its end,
     /// as read one microsecond (or a quarter of the step) inside each, a golden-section search on
     /// the step's dense output narrows onto the peak between them. What it finds is the
-    /// interpolant's peak, which the tolerance controls, wherever the steps fall.
+    /// interpolant's peak, which the tolerance controls, wherever the steps fall. A second pair of
+    /// samples, a millisecond (or a quarter of the step) inside each end, catches a peak too flat
+    /// to rise above the acceleration's noise over a microsecond.
     ///
     /// Its limits, measured by sampling every step at 400 points: a step whose quantity turns more
     /// than once, or jumps (the skin friction at the critical Reynolds number), is not searched;
@@ -1299,21 +1301,32 @@ impl Peaks {
         last: &Row,
     ) -> Result<Vec<Row>, SimError> {
         let (start_s, end_s) = (step.start_s(), step.end_s());
-        let inside = (0.25 * (end_s - start_s)).min(1e-6);
+        // Two probes inside each end: one microsecond, for a peak close to an end, and a
+        // millisecond, for a flat peak whose rise over a microsecond is below the acceleration's
+        // noise of about 1e-7 m/s² (issue #53), where the near probe alone found it at random
+        // (the validation audit on M1.8c: predicted NDRT 2020's powered peak).
+        let (near, far) = (
+            (0.25 * (end_s - start_s)).min(1e-6),
+            (0.25 * (end_s - start_s)).min(1e-3),
+        );
         // A step of no length has no inside: in free flight `row` gives none there, and elsewhere
         // every sample of it is one instant, so no quantity rises out of its start.
-        let (Some(second), Some(penultimate)) = (
-            self.row(step, start_s + inside)?,
-            self.row(step, end_s - inside)?,
+        let (Some(second), Some(penultimate), Some(inner), Some(inner_end)) = (
+            self.row(step, start_s + near)?,
+            self.row(step, end_s - near)?,
+            self.row(step, start_s + far)?,
+            self.row(step, end_s - far)?,
         ) else {
             return Ok(Vec::new());
         };
-        let mut not_a_number = [second, penultimate]
+        let mut not_a_number = [second, penultimate, inner, inner_end]
             .into_iter()
             .find(|row| !row.is_finite());
         let mut peaks = Vec::new();
         for quantity in Row::PEAKED {
-            if !(quantity(&second) > quantity(first) && quantity(&penultimate) > quantity(last)) {
+            let brackets =
+                |a: &Row, b: &Row| quantity(a) > quantity(first) && quantity(b) > quantity(last);
+            if !(brackets(&second, &penultimate) || brackets(&inner, &inner_end)) {
                 continue;
             }
             let peak_s = peak_between(start_s, end_s, |t_s| -> Result<f64, SimError> {

@@ -387,7 +387,7 @@ impl Report {
                 ("hpr value", old.measured, new.measured),
                 ("reference value", old.reference, new.reference),
             ] {
-                if !same_but_for_platform_rounding(&old.metric, was, is) {
+                if !same_but_for_platform_rounding(was, is) {
                     return differs(format!(
                         "{row}'s {what} is {was} there and {is} in this run"
                     ));
@@ -568,26 +568,14 @@ fn table<'a>(out: &mut String, bound: &str, comparisons: impl Iterator<Item = &'
 }
 
 /// Whether a committed number and this run's are the same but for the last digits the platforms
-/// round differently: within 2e-6, or 1e-7 of this run's value, whichever is larger; for a peak
-/// acceleration (a metric named `max_acceleration…`), 1e-6 of it.
+/// round differently: within 2e-6, or 1e-7 of this run's value, whichever is larger.
 ///
 /// hpr is bit-identical on one platform, not across three (ADR-015). The descents reproduce to
 /// about 1e-12; a whole flight does to about 1e-8 of each value: NDRT 2020's landing drift is
 /// 354.240893 m on macOS and 354.240895 m on Linux, after 84 s of six-degree-of-freedom flight in
-/// a sheared wind. A peak acceleration is found on the solver's steps, and the acceleration is
-/// smooth only to about 1e-7 m/s² (issue #53), so it moves with the step sequence, which the
-/// platforms' maths libraries change: moving predicted mode's tolerance by 1e-7 of itself moves
-/// NDRT 2020's powered peak by 4.3e-8 of itself on one platform, and with roll in the flight
-/// (M1.8c) Windows reads it 1.1e-7 from macOS ([ADR-032][adr-032]).
-///
-/// [adr-032]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-032-a-peak-acceleration-reproduces-across-platforms-to-1e-6-2026-09-19
-pub(crate) fn same_but_for_platform_rounding(metric: &str, committed: f64, computed: f64) -> bool {
-    let relative = if metric.starts_with("max_acceleration") {
-        1e-6
-    } else {
-        1e-7
-    };
-    (committed - computed).abs() <= (2e-6_f64).max(relative * computed.abs())
+/// a sheared wind.
+pub(crate) fn same_but_for_platform_rounding(committed: f64, computed: f64) -> bool {
+    (committed - computed).abs() <= (2e-6_f64).max(1e-7 * computed.abs())
 }
 
 /// Why a run does not reproduce a committed report ([`Report::reproduces`]): the first difference
@@ -595,35 +583,3 @@ pub(crate) fn same_but_for_platform_rounding(metric: &str, committed: f64, compu
 #[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)]
 #[error("{0}")]
 pub struct NotReproduced(pub String);
-
-#[cfg(test)]
-mod platform_rounding_tests {
-    use super::same_but_for_platform_rounding;
-
-    /// A peak acceleration may differ across platforms by 1e-6 of itself, everything else by 1e-7
-    /// or 2e-6 (ADR-032): predicted NDRT 2020's powered peak as macOS and Windows read it.
-    #[test]
-    fn a_peak_acceleration_reproduces_to_1e_6() {
-        let (macos, windows) = (115.312_174_811_623, 115.312_161_660_783_77);
-        assert!(same_but_for_platform_rounding(
-            "max_acceleration_power_on_m_s2",
-            macos,
-            windows
-        ));
-        assert!(!same_but_for_platform_rounding(
-            "apogee_agl_m",
-            macos,
-            windows
-        ));
-        assert!(!same_but_for_platform_rounding(
-            "max_acceleration_m_s2",
-            macos,
-            macos * (1.0 + 2e-6)
-        ));
-        assert!(same_but_for_platform_rounding(
-            "apogee_agl_m",
-            1.0,
-            1.0 + 1.9e-6
-        ));
-    }
-}
