@@ -3,7 +3,8 @@
 //!
 //! **Flown faster than sound** for a pointed nose and the cylinders behind it since the milestone
 //! [M1.8e2](https://nrdptel.github.io/hpr-sim/decisions-and-roadmap.html#m1-8e2), the body's
-//! supersonic normal force in flight, through [`crate::model::SupersonicBody`]. The guide's
+//! supersonic normal force in flight, and for boattails and cylinders behind those since
+//! [M1.8e4](https://nrdptel.github.io/hpr-sim/decisions-and-roadmap.html#m1-8e4), through [`crate::model::SupersonicBody`]. The guide's
 //! [Bodies faster than sound](https://nrdptel.github.io/hpr-sim/physics/aero.html#bodies-faster-than-sound)
 //! explains the method and how it was checked.
 //!

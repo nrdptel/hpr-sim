@@ -249,11 +249,20 @@ fn arcas_nose(ratio: f64) -> Result<ShockExpansionBody, String> {
 }
 
 /// hpr's model of the design `name` under `validation/designs/`, or with `ratio` of its nose and
-/// cylinder alone, the nose replaced by the secant ogive of that arc radius ratio.
-fn arcas_model(root: &Path, name: &str, ratio: Option<f64>) -> Result<AeroModel, String> {
+/// cylinder alone, the nose replaced by the secant ogive of that arc radius ratio, and with
+/// `boattail` the boattail behind them too (not the lip behind that).
+fn arcas_model(
+    root: &Path,
+    name: &str,
+    ratio: Option<f64>,
+    boattail: bool,
+) -> Result<AeroModel, String> {
     let path = root.join("validation/designs").join(name);
     let text = fs::read_to_string(&path).map_err(|e| format!("{name}: {e}"))?;
     let mut design: Value = serde_json::from_str(&text).map_err(|e| format!("{name}: {e}"))?;
+    if boattail && ratio.is_none() {
+        return Err(format!("{name}: a boattail without the fitted nose"));
+    }
     if let Some(ratio) = ratio {
         let shape = design
             .pointer_mut("/stages/0/components/0/part/nose_cone/shape")
@@ -267,7 +276,15 @@ fn arcas_model(root: &Path, name: &str, ratio: Option<f64>) -> Result<AeroModel,
         if components.len() < 2 || components[1].pointer("/part/body_tube").is_none() {
             return Err(format!("{name}: its second component isn't a body tube"));
         }
-        components.truncate(2);
+        if boattail
+            && components
+                .get(2)
+                .and_then(|c| c.pointer("/part/transition"))
+                .is_none()
+        {
+            return Err(format!("{name}: its third component isn't a transition"));
+        }
+        components.truncate(if boattail { 3 } else { 2 });
     }
     let rocket: Rocket = serde_json::from_value(design).map_err(|e| format!("{name}: {e}"))?;
     let layout = rocket.layout().map_err(|e| format!("{name}: {e}"))?;
@@ -330,8 +347,9 @@ fn arcas_robin(root: &Path) -> Result<Value, String> {
         let design = configuration["design"]
             .as_str()
             .ok_or(format!("{WIND_TUNNEL}: {id} has no design"))?;
-        let as_designed = arcas_model(root, design, None)?;
-        let fitted = arcas_model(root, design, Some(ratio))?;
+        let as_designed = arcas_model(root, design, None, false)?;
+        let fitted = arcas_model(root, design, Some(ratio), false)?;
+        let fitted_tailed = arcas_model(root, design, Some(ratio), true)?;
         let mut rows = Vec::new();
         for curve in configuration["cn_alpha_fins_off"]
             .as_array()
@@ -376,6 +394,7 @@ fn arcas_robin(root: &Path) -> Result<Value, String> {
                 "nose_and_cylinder": entry(&bare)?,
                 "with_boattail": entry(&tailed)?,
                 "in_flight": flight(&fitted)?,
+                "in_flight_with_boattail": flight(&fitted_tailed)?,
                 "as_designed": flight(&as_designed)?,
             }));
         }
@@ -393,9 +412,11 @@ fn arcas_robin(root: &Path) -> Result<Value, String> {
                  measured, minus 1. No target. in_flight is the design's nose and cylinder \
                  alone, the nose the fitted secant ogive, through the flight's path (AeroModel) \
                  at alpha -> 0: the method's shares tabulated every 0.05 in Mach and \
-                 interpolated (M1.8e2). as_designed is the whole design as committed, flown the \
-                 same way: its power-series nose, which the method can't take (a vertical tip), \
-                 and its boattail keep slender-body theory, M1.8a's model.",
+                 interpolated (M1.8e2). in_flight_with_boattail adds the design's boattail, \
+                 footnote 8's share (M1.8e4), not the lip behind it. as_designed is the whole \
+                 design as committed, flown the same way: its power-series nose, which the \
+                 method can't take (a vertical tip), keeps slender-body theory, M1.8a's model, \
+                 and so does the rest of the body.",
         "nose": {
             "shape": "the secant ogive through the tip and base nearest TN D-4014 Fig. 1(a)'s \
                       coordinates",
