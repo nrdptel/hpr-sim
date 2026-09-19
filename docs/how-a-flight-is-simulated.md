@@ -6,7 +6,7 @@ the model pages it links. It describes the method, not how well it works. When b
 the same drag, whole flights match RocketPy's in height, speed and time, and in where they go,
 except for rockets that leave the rail slowly in a wind
 ([Accuracy](accuracy.md#whole-flights-against-rocketpy)). With hpr's own drag, against RocketPy
-flying the drag its examples ship, heights differ by −0.604% to +10.322%
+flying the drag its examples ship, heights differ by −6.985% to +10.306%
 ([Accuracy](accuracy.md#whole-flights-with-each-codes-own-drag)). [Accuracy](accuracy.md) keeps
 every result so far.
 
@@ -98,8 +98,8 @@ A [stiff](glossary.md#stiff-problem) stretch of flight, one that forces very sho
 up as the step limit ([Time integration](physics/integration.md#defaults-and-limits)). Both limits
 are fields of `FlightSettings` (`max_time_s` and `step_limit`), and a program can change them.
 
-Anything else that stops a flight is an error: reaching Mach 1 on hpr's own drag, for example,
-because its drag has no transonic terms yet.
+Anything else that stops a flight is an error: reaching Mach 5, for example, the top of the
+speeds hpr's normal force and drag cover.
 
 ## How hpr steps through time
 
@@ -139,14 +139,15 @@ integrator builds the flight from them by stepping forward in time, one short st
 Each model page lists what its model leaves out. These are the gaps that matter most for a whole
 flight:
 
-- **Mach 1 and above.** The normal force and centre of pressure carry on past Mach 1, checked
-  against a wind tunnel to Mach 4.63 ([Aerodynamics](physics/aero.md#normal-force-through-mach-1)),
-  but hpr's own drag stops a flight at Mach 1 with an error until its transonic terms arrive with
-  [M1.8b](decisions-and-roadmap.md#m1-8b). A flight on a drag table flies on to Mach 5. The drag
-  was checked only at Mach 0.3. It reads low from about Mach 0.6,
-  because the pressure drag on the nose, and on any transition where the body widens, is held at
-  its low-speed value. The drag buildup is documented only to Mach 0.8
-  ([Aerodynamics](physics/aero.md#drag-limits)).
+- **Near and past Mach 1, the drag is lightly checked.** The normal force, centre of pressure and
+  drag all carry a flight from Mach 0 to 5. The normal force was checked against a wind tunnel to
+  Mach 4.63 ([Aerodynamics](physics/aero.md#normal-force-through-mach-1)). The drag was checked at
+  Mach 0.3 against other programs' curves, and against the same wind tunnel from Mach 0.6 to 4.63,
+  where it reads high at most speeds, most of all with fins past Mach 1
+  ([Aerodynamics](physics/aero.md#drag-against-the-arcas-robin-wind-tunnel)). Near and above the
+  speed of sound it is Niskanen's semi-empirical method (formulas fitted to measurements), not yet
+  compared with [RASAero II](glossary.md#rasaero-ii)'s
+  ([M1.8b2](decisions-and-roadmap.md#m1-8b2), the drag against RASAero II).
 - **Large angles of attack.** The aerodynamics are for small angles, with no
   [stall](glossary.md#stall), but a flight uses them at every angle: just off the rail in a strong
   crosswind, and near apogee.

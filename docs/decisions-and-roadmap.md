@@ -44,6 +44,7 @@ new record replaces it and points back. All of them are in the [decision log][de
 | [ADR-025: The calm-air cases][adr-025] | Juno III, Calisto and Bella Lui flown with no wind, and why Juno III's drifts were at first reported but not scored: the two codes free the rocket from the rail at different points | [Accuracy](accuracy.md#whole-flights-against-rocketpy) |
 | [ADR-026: The path in wind][adr-026] | Why hpr turned into the wind less than RocketPy: RocketPy's equations took the turning moments about the wrong point during the burn (corrected upstream, and in the comparison), and hpr's body lift, which RocketPy leaves out, pushes a slow rocket downwind | [Accuracy](accuracy.md#whole-flights-against-rocketpy) |
 | [ADR-027: The normal force through Mach 1][adr-027] | How the fins' normal force and centre of pressure carry through Mach 1: Barrowman's subsonic method to Mach 0.8, supersonic linear theory once it holds, a straight-line join between, and how they compare with a wind tunnel and with RASAero II | [Aerodynamics](physics/aero.md#fins-through-mach-1) |
+| [ADR-028: Drag through Mach 1][adr-028] | How noses, shoulders and steps drag through Mach 1: Niskanen's method with Stoney's measured nose curves, and how the drag compares with NASA's wind tunnel | [Aerodynamics](physics/aero.md#drag-through-mach-1) |
 
 ## The roadmap
 
@@ -127,6 +128,8 @@ missing or its status disagrees.
 | <a id="m1-8"></a>[M1.8][phase-1] | Transonic and supersonic aerodynamics, damping, and overriding the aerodynamics | not yet done |
 | <a id="m1-8a"></a>[M1.8a][phase-1] | The normal force and centre of pressure through Mach 1 | done |
 | <a id="m1-8b"></a>[M1.8b][phase-1] | Drag through Mach 1: the transonic rise and supersonic wave drag | not yet done |
+| <a id="m1-8b1"></a>[M1.8b1][phase-1] | The drag of noses, shoulders and steps through Mach 1, against NASA's Arcas Robin wind tunnel | done |
+| <a id="m1-8b2"></a>[M1.8b2][phase-1] | Drag against RASAero II's from Mach 0.1 to 2 | not yet done |
 | <a id="m1-8c"></a>[M1.8c][phase-1] | Roll from canted fins, roll damping, and pitch and yaw damping | not yet done |
 | <a id="m1-8d"></a>[M1.8d][phase-1] | Tables that override the normal force and centre of pressure, read from RASAero II | not yet done |
 | <a id="m1-8e"></a>[M1.8e][phase-1] | The body's normal force faster than sound, which slender-body theory underestimates past Mach 3 | not yet done |
@@ -202,6 +205,7 @@ is the milestone that added or will add that test.
 | <a id="l14"></a>[L14][lessons-physics] | Loft's launch-lug drag was uncited, and rail buttons dragged as lugs | [M1.5b](#m1-5b) |
 | <a id="l15"></a>[L15][lessons-physics] | Loft gave a bare step in diameter no drag, and shoulder drag jumped to zero as a transition shrank | [M1.5b](#m1-5b) |
 | <a id="l16"></a>[L16][lessons-physics] | Loft silently capped the drag coefficient at 10, which hid malformed designs | [M1.5b](#m1-5b) |
+| <a id="l17"></a>[L17][lessons-physics] | Loft froze the fins' leading-edge drag at its Mach 1 value, and gave nose and shoulder pressure drag no Mach term | [M1.8](#m1-8) |
 | <a id="l18"></a>[L18][lessons-physics] | Loft's transonic wave drag was an invented curve, never checked against RASAero | [M1.8](#m1-8) |
 | <a id="l20"></a>[L20][lessons-physics] | Loft flew in 3-DOF: no angle of attack, body lift, damping or roll, and no weathercocking | [M1.6b](#m1-6b) |
 | <a id="l21"></a>[L21][lessons-physics] | Loft stepped with RK4 without error control, and never tested that the apogee converges | [M1.6a](#m1-6a) |
@@ -266,6 +270,7 @@ is the milestone that added or will add that test.
 [adr-025]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-025-the-calm-air-cases-and-juno-iiis-drifts-left-to-the-rail-release-2026-09-18
 [adr-026]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-026-the-path-in-wind-rocketpys-corrected-equations-and-hprs-body-lift-2026-09-18
 [adr-027]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-027-the-normal-force-through-mach-1-supersonic-linear-theory-a-transonic-join-and-the-measured-references-2026-09-18
+[adr-028]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-028-drag-through-mach-1-niskanens-appendix-b-stoneys-curves-and-the-arcas-robins-axial-force-2026-09-18
 [decisions]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md
 [lessons]: https://github.com/nrdptel/hpr-sim/blob/main/docs/research/loft-lessons.md
 [lessons-motors]: https://github.com/nrdptel/hpr-sim/blob/main/docs/research/loft-lessons.md#motors-mass-and-design-checks

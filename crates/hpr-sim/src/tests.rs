@@ -2,7 +2,7 @@
 
 use std::f64::consts::PI;
 
-use hpr_aero::{AeroError, Flow};
+use hpr_aero::Flow;
 use hpr_atmos::ConstantWind;
 use hpr_core::{DQuat, DVec3};
 
@@ -710,9 +710,16 @@ fn a_flight_on_a_drag_table_flies_through_mach_1() {
 }
 
 #[test]
-fn a_supersonic_flight_is_refused_until_m1_8() {
-    // The drag buildup refuses Mach 1 until M1.8b (ADR-008); a flight that gets there on it stops
-    // with that error rather than flying on with wrong forces.
+fn a_supersonic_flight_flies_on_the_drag_buildup() {
+    // The drag buildup covers Mach 0 to 5 since M1.8b1 (ADR-028), so the same rocket on its own
+    // drag passes Mach 1 and lands, slower than on the table's 0.5 through the rise.
+    struct Fastest(f64);
+    impl crate::recorder::Observer for Fastest {
+        fn step(&mut self, step: &dyn crate::recorder::FlightStep) -> Result<(), SimError> {
+            self.0 = self.0.max(step.sample(step.end_s())?.mach);
+            Ok(())
+        }
+    }
     let sim = Simulation::new(
         &design("synthetic-54mm-three-fin"),
         "i175",
@@ -721,13 +728,8 @@ fn a_supersonic_flight_is_refused_until_m1_8() {
         FlightSettings::default(),
     )
     .unwrap();
-    let error = sim.run(&mut ()).unwrap_err();
-    assert!(
-        matches!(
-            error,
-            SimError::Aero(AeroError::Mach { mach, limit, model })
-                if mach >= 1.0 && limit == 1.0 && model == "the drag buildup"
-        ),
-        "{error:?}"
-    );
+    let mut fastest = Fastest(0.0);
+    let result = sim.run(&mut fastest).unwrap();
+    assert_eq!(result.termination, Termination::GroundHit);
+    assert!((1.0..1.6).contains(&fastest.0), "{}", fastest.0);
 }

@@ -33,13 +33,15 @@ pub struct Case {
     /// its metrics keep the tolerances they will be held to once the limit is lifted, but nothing
     /// is scored: the report shows the case as a gap, with this reason and hpr's own refusal.
     ///
-    /// The one gap the harness accepts is hpr's refusal of `M ≥ 1` before the transonic and
-    /// supersonic aerodynamics of [M1.8][m1-8]. It is checked, not trusted: the reference must
-    /// itself reach Mach 1, and hpr must refuse the flight with exactly that error. A gap that
-    /// starts flying fails the run, so it cannot stay excused after it is fixed
-    /// ([Loft lesson L85][l85]).
+    /// The one gap the harness accepts is hpr's refusal of a Mach number past its models' range,
+    /// which ends at Mach 5 for the normal force and the drag buildup alike (until
+    /// [M1.8b1][m1-8b1] the buildup stopped at Mach 1, and Prometheus on its own drag was such a
+    /// gap). It is checked, not trusted: the reference must itself reach that Mach number, and hpr
+    /// must refuse the flight with exactly that error. A gap that starts flying fails the run, so
+    /// it cannot stay excused after it is fixed ([Loft lesson L85][l85]). No committed case
+    /// declares one.
     ///
-    /// [m1-8]: https://nrdptel.github.io/hpr-sim/decisions-and-roadmap.html#m1-8
+    /// [m1-8b1]: https://nrdptel.github.io/hpr-sim/decisions-and-roadmap.html#m1-8b1
     /// [l85]: https://nrdptel.github.io/hpr-sim/decisions-and-roadmap.html#l85
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub known_gap: Option<String>,

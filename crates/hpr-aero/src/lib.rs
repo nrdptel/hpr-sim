@@ -8,6 +8,7 @@
 //! [guide-cp]: https://nrdptel.github.io/hpr-sim/physics/aero.html#your-rockets-centre-of-pressure
 //! [guide-flight]: https://nrdptel.github.io/hpr-sim/physics/flight.html#aerodynamics-in-flight
 //! [guide-fins-mach]: https://nrdptel.github.io/hpr-sim/physics/aero.html#fins-through-mach-1
+//! [guide-drag-mach]: https://nrdptel.github.io/hpr-sim/physics/aero.html#drag-through-mach-1
 //! [m1-8]: https://nrdptel.github.io/hpr-sim/decisions-and-roadmap.html#m1-8
 //!
 //! - [`body`]: nose cones, body tubes and transitions: Barrowman's slope and centre of pressure,
@@ -17,6 +18,8 @@
 //!   fin–body interference.
 //! - [`drag`]: the terms of Niskanen's zero-lift drag buildup, and axial drag at an angle of
 //!   attack.
+//! - [`nose_drag`]: the pressure drag of noses, shoulders and steps from rest through Mach 1 to
+//!   supersonic speeds, with Stoney's measured curves.
 //! - [`table`]: drag override tables, the drag coefficient against Mach number from another tool.
 //! - [`model`]: a rocket's terms built from a [`hpr_design::Layout`] and summed at a [`Flow`].
 //!
@@ -26,8 +29,9 @@
 //!
 //! Status: the normal force and centre of pressure from Mach 0 to 5 (fins through the transonic
 //! region to supersonic linear theory, [Fins through Mach 1][guide-fins-mach]); the drag buildup
-//! below Mach 1 only, until [M1.8][m1-8] adds its transonic and supersonic terms; drag override
-//! tables at any Mach number. The crate has no damping coefficients.
+//! from Mach 0 to 5 (noses, shoulders and steps through Mach 1 by Niskanen's appendix B,
+//! [Drag through Mach 1][guide-drag-mach]); drag override tables at any Mach number. The crate has
+//! no damping coefficients.
 //!
 //! - Pitch and yaw damping in a flight come only from the flight engine (`hpr_sim`) evaluating
 //!   each component in its own local flow, which includes the speed the rocket's rotation adds
@@ -35,9 +39,8 @@
 //! - Only components with a normal-force slope give that damping: nose cones, transitions and fin
 //!   sets. Body tubes give none at small angles: their own slope is 0, and their body lift grows
 //!   with `sin² α`.
-//! - The drag buildup's transonic and supersonic terms, damping coefficients for pitch, yaw and
-//!   roll, and roll forcing from canted fins are planned for [M1.8][m1-8], the second aerodynamics
-//!   milestone. For pitch and yaw, those coefficients will have to replace the local-flow damping,
+//! - Damping coefficients for pitch, yaw and roll, and roll forcing from canted fins are planned
+//!   for [M1.8][m1-8], the second aerodynamics milestone. For pitch and yaw, those coefficients will have to replace the local-flow damping,
 //!   not add to it.
 
 pub mod body;
@@ -45,10 +48,11 @@ pub mod drag;
 pub mod error;
 pub mod fins;
 pub mod model;
+pub mod nose_drag;
 pub mod table;
 
 pub use body::{BODY_LIFT_K, BodyGeometry};
-pub use drag::{ComponentDrag, ComponentDragTerms, Drag, DragConditions};
+pub use drag::{ComponentDrag, ComponentDragTerms, Drag, DragConditions, PressureDragTerm};
 pub use error::AeroError;
 pub use fins::{
     FinAero, FinGeometry, FinLoading, FinOutline, fin_count_factor, interference_factor, roll_sum,
@@ -58,6 +62,7 @@ pub use model::{
     AeroModel, BodyAero, ComponentNormalForce, FinSetAero, Flow, NORMAL_FORCE_MACH_LIMIT,
     NormalForce,
 };
+pub use nose_drag::{PressureDragCurve, StoneyNose};
 pub use table::{DragTable, parse_mach_csv};
 
 #[cfg(test)]
@@ -815,6 +820,131 @@ mod tests {
                 "arcas-robin-long@1.2",
                 "arcas-robin-long@3.96",
                 "arcas-robin-long@4.63",
+            ]
+        );
+    }
+
+    #[derive(Deserialize)]
+    struct DragVsMach {
+        target_rel: f64,
+        reynolds_per_m: f64,
+        references: Vec<DragReference>,
+    }
+
+    #[derive(Deserialize)]
+    struct DragReference {
+        id: String,
+        design: String,
+        rows: Vec<DragRow>,
+    }
+
+    #[derive(Deserialize)]
+    struct DragRow {
+        mach: f64,
+        fins: String,
+        reference_forebody_c_a: f64,
+        hpr_forebody_c_d: f64,
+        hpr_base: f64,
+        error: f64,
+        within_target: bool,
+    }
+
+    #[derive(Deserialize)]
+    struct AxialTunnel {
+        configurations: Vec<AxialConfiguration>,
+    }
+
+    #[derive(Deserialize)]
+    struct AxialConfiguration {
+        id: String,
+        design: String,
+        axial_force: Vec<AxialPoint>,
+    }
+
+    #[derive(Deserialize)]
+    struct AxialPoint {
+        mach: f64,
+        fins: String,
+        forebody_c_a: f64,
+    }
+
+    /// M1.8b1 done-when: hpr's forebody drag (`C_D0` less the base drag) against the Arcas Robin
+    /// wind-tunnel models' forebody axial force at every Mach number the reports give, fins on
+    /// and off (TN D-4013's `C_A,corr`, Mach 0.6–1.2; TN D-4014's `C_A` less its chamber force,
+    /// Mach 1.5–4.63). `cargo xtask aero` writes `validation/fixtures/aero/drag-vs-mach.json`;
+    /// this test recomputes every hpr value from the committed designs at the tunnels' Reynolds
+    /// number, checks every measured point is compared, and pins the rows within the 10% target
+    /// set before measuring, so every other row is a pinned miss (36 of 44). Each miss is
+    /// explained in `docs/physics/aero.md` and ADR-028.
+    #[test]
+    fn drag_against_mach() {
+        let fixture: DragVsMach = serde_json::from_str(include_str!(
+            "../../../validation/fixtures/aero/drag-vs-mach.json"
+        ))
+        .unwrap();
+        let tunnel: AxialTunnel = serde_json::from_str(include_str!(
+            "../../../validation/fixtures/aero/arcas-robin-wind-tunnel.json"
+        ))
+        .unwrap();
+        assert_eq!(fixture.target_rel, 0.10);
+        assert_eq!(fixture.reynolds_per_m, 3.0e6 / 0.3048);
+        let conditions = DragConditions::coasting(fixture.reynolds_per_m);
+        let (mut within, mut rows) = (Vec::new(), 0);
+        assert_eq!(fixture.references.len(), tunnel.configurations.len());
+        for (reference, configuration) in fixture.references.iter().zip(&tunnel.configurations) {
+            assert_eq!(reference.id, configuration.id);
+            assert_eq!(reference.design, configuration.design);
+            assert_eq!(
+                reference.rows.len(),
+                configuration.axial_force.len(),
+                "{}: every measured point is compared",
+                reference.id
+            );
+            let model =
+                AeroModel::new(&committed_design(&reference.design).layout().unwrap()).unwrap();
+            let fin_ids: Vec<&str> = model.fin_sets().iter().map(|f| f.id.as_str()).collect();
+            for (row, point) in reference.rows.iter().zip(&configuration.axial_force) {
+                let what = format!("{}@{} fins {}", reference.id, row.mach, row.fins);
+                assert_eq!((row.mach, &row.fins), (point.mach, &point.fins), "{what}");
+                assert_eq!(row.reference_forebody_c_a, point.forebody_c_a, "{what}");
+                let parts = model
+                    .buildup_components(&Flow::axial(row.mach), &conditions)
+                    .unwrap();
+                let kept = parts
+                    .iter()
+                    .filter(|p| row.fins == "on" || !fin_ids.contains(&p.id.as_str()));
+                let (mut forebody, mut base) = (0.0, 0.0);
+                for part in kept {
+                    forebody += part.drag.friction + part.drag.pressure + part.drag.parasitic;
+                    base += part.drag.base;
+                }
+                close(row.hpr_forebody_c_d, forebody, 1e-12, &what);
+                close(row.hpr_base, base, 1e-12, &what);
+                let error = forebody / point.forebody_c_a - 1.0;
+                assert!((row.error - error).abs() < 1e-12, "{what}");
+                assert_eq!(
+                    row.within_target,
+                    error.abs() <= fixture.target_rel,
+                    "{what}"
+                );
+                rows += 1;
+                if row.within_target {
+                    within.push(what);
+                }
+            }
+        }
+        assert_eq!(rows, 44);
+        assert_eq!(
+            within,
+            [
+                "arcas-robin-short@0.95 fins on",
+                "arcas-robin-short@1 fins off",
+                "arcas-robin-short@1.2 fins on",
+                "arcas-robin-short@1.2 fins off",
+                "arcas-robin-short@1.5 fins off",
+                "arcas-robin-short@1.8 fins off",
+                "arcas-robin-long@1 fins on",
+                "arcas-robin-long@1.2 fins off",
             ]
         );
     }

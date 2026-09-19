@@ -18,11 +18,8 @@ pub enum AeroError {
         value: f64,
     },
     /// A Mach number past the range of the model asked: `0 ≤ M < 5` for the normal force
-    /// ([`crate::model::NORMAL_FORCE_MACH_LIMIT`]), and `0 ≤ M < 1` for the drag buildup until its
-    /// transonic and supersonic terms arrive in [M1.8][m1-8] (an override table takes any Mach
-    /// number).
-    ///
-    /// [m1-8]: https://nrdptel.github.io/hpr-sim/decisions-and-roadmap.html#m1-8
+    /// ([`crate::model::NORMAL_FORCE_MACH_LIMIT`]) and the drag buildup
+    /// ([`crate::drag::BUILDUP_MACH_LIMIT`]); an override table takes any Mach number.
     #[error("Mach {mach} is outside {model}'s range [0, {limit})")]
     Mach {
         /// The Mach number.

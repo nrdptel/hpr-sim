@@ -9,8 +9,9 @@
 //!   §3.4.1) with the Reynolds number `R = V L/ν` on the rocket's length, limited by roughness
 //!   (eq. 3.78–3.81) and corrected for compressibility (eq. 3.82–3.84). Wetted areas are weighted
 //!   by the body form factor `1 + 1/(2 f_B)` and the fin thickness factor `1 + 2t/c̄` (eq. 3.85).
-//! - **Body pressure drag**: `0.8 sin² φ` at a nose's or shoulder's aft joint (eq. 3.86) and the
-//!   boattail rule (eq. 3.88) ([`joint_pressure_drag_coefficient`], [`boattail_factor`]).
+//! - **Body pressure drag**: noses, shoulders and steps up in radius from `0.8 sin² φ` at rest
+//!   (eq. 3.86) through Mach 1 to appendix B's wave drag ([`crate::nose_drag`]), and the boattail
+//!   rule (eq. 3.88) ([`boattail_factor`]).
 //! - **Base drag** ([`base_drag_coefficient`], eq. 3.94) on the aft base, less the thrusting
 //!   motors' area.
 //! - **Fin pressure drag** ([`fin_pressure_drag_coefficient`], eq. 3.89–3.93) on the fins' frontal
@@ -21,18 +22,23 @@
 //!
 //! Interference drag and fin-tip vortices are neglected, as in Niskanen p. 41.
 //!
-//! See `docs/physics/aero.md` and the decision record on subsonic drag and drag override tables,
-//! [ADR-009][adr-009].
+//! Every term has its transonic and supersonic branch, and the buildup covers Mach 0 to 5
+//! ([`BUILDUP_MACH_LIMIT`]).
+//!
+//! See `docs/physics/aero.md` and the decision records on subsonic drag and drag override tables,
+//! [ADR-009][adr-009], and on drag through Mach 1, [ADR-028][adr-028].
 //!
 //! [adr-009]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-009-subsonic-drag-buildup-surface-finishes-and-drag-override-tables-2026-09-17
+//! [adr-028]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-028-drag-through-mach-1-niskanens-appendix-b-stoneys-curves-and-the-arcas-robins-axial-force-2026-09-18
 
 use hpr_core::interp::Lookup;
-use hpr_design::{FinCrossSection, FinSet, LaunchLug, PlacedComponent, RailButton};
+use hpr_design::{FinCrossSection, FinSet, LaunchLug, NoseShape, PlacedComponent, RailButton};
 use serde::{Deserialize, Serialize};
 
 use crate::body::BodyGeometry;
 use crate::error::{AeroError, check_dimension};
 use crate::fins::FinGeometry;
+use crate::nose_drag::PressureDragCurve;
 
 /// Reynolds number below which the friction formulas no longer hold and the coefficient is held
 /// at its value there (Niskanen 2009 p. 44).
@@ -42,20 +48,15 @@ pub const LOW_REYNOLDS: f64 = 1.0e4;
 pub const LOW_REYNOLDS_FRICTION: f64 = 1.48e-2;
 
 /// The top of the subsonic region, Mach 0.8 (Niskanen 2009 Table 3.1, p. 19), where Niskanen's
-/// semi-empirical transonic method starts (p. 47). The buildup accepts Mach numbers up to 1 and
-/// flags results above this ([`Drag::beyond_subsonic_methods`]). The flag marks the region's edge,
-/// not the start of the error: without eq. 3.87's high-subsonic interpolation, which comes with
-/// the transonic aerodynamics of [M1.8][m1-8], nose and shoulder pressure drag already reads low
-/// from about Mach 0.6.
-///
-/// [m1-8]: https://nrdptel.github.io/hpr-sim/decisions-and-roadmap.html#m1-8
+/// semi-empirical transonic method starts (p. 47): the lower bound `M_L` of a step's and a blunt
+/// face's transonic method ([`crate::nose_drag::PressureDragCurve::step`]).
 pub const SUBSONIC_MACH_LIMIT: f64 = 0.8;
 
-/// The top of the buildup's range, which it doesn't reach: Mach 1, until the transonic and
-/// supersonic terms of [M1.8][m1-8]. The term functions themselves are defined past it.
-///
-/// [m1-8]: https://nrdptel.github.io/hpr-sim/decisions-and-roadmap.html#m1-8
-pub const BUILDUP_MACH_LIMIT: f64 = 1.0;
+/// The top of the buildup's range, which it doesn't reach: Mach 5, where the hypersonic region
+/// begins (Niskanen 2009 Table 3.1, p. 19), as for the normal force. Niskanen expects the
+/// simulation "to be reasonably accurate to at least Mach 1.5" (p. 94); how far it holds against
+/// measurements is in `docs/physics/aero.md`.
+pub const BUILDUP_MACH_LIMIT: f64 = 5.0;
 
 /// Checks a Mach number of any speed regime: finite and non-negative.
 pub(crate) fn check_mach_any(mach: f64) -> Result<(), AeroError> {
@@ -194,13 +195,18 @@ pub fn fin_friction_thickness_factor(
 /// [`AeroError::Domain`] for a negative or non-finite Mach number.
 pub fn stagnation_pressure_ratio(mach: f64) -> Result<f64, AeroError> {
     check_mach_any(mach)?;
+    Ok(stagnation_ratio(mach))
+}
+
+/// [`stagnation_pressure_ratio`] at a Mach number already checked.
+pub(crate) fn stagnation_ratio(mach: f64) -> f64 {
     let m2 = mach * mach;
-    Ok(if mach < 1.0 {
+    if mach < 1.0 {
         1.0 + 0.25 * m2 + m2 * m2 / 40.0
     } else {
         let i2 = 1.0 / m2;
         1.84 - 0.76 * i2 + 0.166 * i2 * i2 + 0.035 * i2 * i2 * i2
-    })
+    }
 }
 
 /// Pressure drag of a blunt circular cylinder face, `(C_D•)_stag = 0.85 q_stag/q` on its frontal
@@ -228,16 +234,13 @@ pub fn base_drag_coefficient(mach: f64) -> Result<f64, AeroError> {
     })
 }
 
-/// Low-subsonic pressure drag of a nose cone or shoulder, `(C_D•)_p = 0.8 sin² φ` on its frontal
+/// Pressure drag at rest of a nose cone or shoulder, `(C_D•)_p,0 = 0.8 sin² φ` on its frontal
 /// area (a nose's base area, or a shoulder's increase in area), with `φ` the joint angle between
 /// the surface and the body axis at the aft joint (Niskanen 2009 eq. 3.86, after NAVWEPS 1488
 /// p. 237). A smooth joint (`φ = 0`) has none; a bare step (`φ = π/2`) has 0.8.
 ///
-/// Niskanen interpolates from this value toward the transonic method above low subsonic speeds
-/// (eq. 3.87); that arrives with the transonic method in [M1.8][m1-8], and until then the value
-/// is held.
-///
-/// [m1-8]: https://nrdptel.github.io/hpr-sim/decisions-and-roadmap.html#m1-8
+/// It holds "only at low subsonic velocities"; eq. 3.87 carries it to the transonic method
+/// ([`crate::nose_drag`]).
 ///
 /// # Errors
 ///
@@ -518,13 +521,6 @@ pub struct Drag {
     /// Set when an override table gave `C_D0` (the four parts are then zero): the lookup, on the
     /// table's own reference area, and whether it extrapolated.
     pub table: Option<Lookup>,
-    /// Whether the buildup ran above [`SUBSONIC_MACH_LIMIT`], the top of Niskanen's subsonic
-    /// region. Nose, shoulder and step pressure drag miss their rise toward Mach 1 until the
-    /// transonic aerodynamics of [M1.8][m1-8], so `C_D0` is low there (and somewhat low from about
-    /// Mach 0.6). Never set with an override table.
-    ///
-    /// [m1-8]: https://nrdptel.github.io/hpr-sim/decisions-and-roadmap.html#m1-8
-    pub beyond_subsonic_methods: bool,
 }
 
 /// One component's share of the drag buildup, at zero lift.
@@ -550,6 +546,16 @@ pub struct FinPressureTerms {
     pub frontal_area_ratio: f64,
 }
 
+/// A nose's, shoulder's or step's pressure drag: its coefficient against Mach number, on an area.
+#[derive(Debug, Clone, Copy, PartialEq, Serialize)]
+#[non_exhaustive]
+pub struct PressureDragTerm {
+    /// The coefficient on the increase in area (eq. 3.86–3.87, appendix B).
+    pub curve: PressureDragCurve,
+    /// The increase in area over the reference area.
+    pub area_ratio: f64,
+}
+
 /// A component's precomputed drag terms, built by [`crate::AeroModel::new`]. Areas are divided by
 /// the reference area.
 ///
@@ -564,9 +570,11 @@ pub struct ComponentDragTerms {
     pub friction_area_ratio: f64,
     /// Relative roughness `R_s/L` of the component's finish on the rocket's length.
     pub relative_roughness: f64,
-    /// Pressure drag of a nose or shoulder joint and of a step up in radius (eq. 3.86), which the
-    /// subsonic model holds constant.
-    pub joint_pressure: f64,
+    /// Pressure drag of a step up in radius at the fore end, or of a bare front face: a flat
+    /// face ([`PressureDragCurve::step`]).
+    pub step: Option<PressureDragTerm>,
+    /// Pressure drag of a nose or shoulder: its own increase in area.
+    pub shoulder: Option<PressureDragTerm>,
     /// Boattails and steps down in radius: `Σ` factor × decrease in area (eq. 3.88), times the
     /// base drag coefficient.
     pub boattail_area_ratio: f64,
@@ -585,7 +593,8 @@ impl ComponentDragTerms {
             id: component.id.clone(),
             friction_area_ratio: 0.0,
             relative_roughness: component.finish.roughness_m()? / length_m,
-            joint_pressure: 0.0,
+            step: None,
+            shoulder: None,
             boattail_area_ratio: 0.0,
             fins: None,
             parasitic_area_ratio: 0.0,
@@ -595,7 +604,11 @@ impl ComponentDragTerms {
 
     /// A body component's terms: friction on its surface, the step in area from the previous body
     /// component (`None` for the first, whose fore face counts as a step up from nothing), and its
-    /// own pressure drag.
+    /// own pressure drag. `shape` is a nose's or transition's profile shape, `None` for a tube.
+    ///
+    /// A nose or shoulder's fineness ratio is its length over its rise in diameter,
+    /// `l/(d_aft − d_fore)`: a nose's `l/d`, and for a shoulder the fineness of the nose with the
+    /// same surface angle ([`crate::nose_drag`], ADR-028).
     ///
     /// The friction area is the surface's projection along the axis, `2π ∫ r dx = π A_plan`: the
     /// wall shear acts along the surface, so each element's axial share is `τ cos θ dA`. Niskanen's
@@ -605,28 +618,39 @@ impl ComponentDragTerms {
     pub(crate) fn body(
         component: &PlacedComponent,
         geometry: &BodyGeometry,
+        shape: Option<NoseShape>,
         previous_aft_area_m2: Option<f64>,
         form_factor: f64,
         length_m: f64,
         reference_area_m2: f64,
     ) -> Result<Self, AeroError> {
-        use std::f64::consts::{FRAC_PI_2, PI};
+        use std::f64::consts::PI;
         let mut terms = Self::empty(component, length_m)?;
         terms.friction_area_ratio =
             form_factor * PI * geometry.planform_area_m2 / reference_area_m2;
         let step = geometry.fore_area_m2 - previous_aft_area_m2.unwrap_or(0.0);
         if step > 0.0 {
-            terms.joint_pressure += joint_pressure_drag_coefficient(FRAC_PI_2)? * step;
+            terms.step = Some(PressureDragTerm {
+                curve: PressureDragCurve::step(),
+                area_ratio: step / reference_area_m2,
+            });
         } else if step < 0.0 {
             // A zero-length boattail: `γ = 0`.
             terms.boattail_area_ratio -= step;
         }
+        let diameter = |area: f64| 2.0 * (area / PI).sqrt();
         let change = geometry.aft_area_m2 - geometry.fore_area_m2;
         if change > 0.0 {
+            let shape = shape.ok_or_else(|| {
+                AeroError::Layout("a body that widens needs a profile shape".to_owned())
+            })?;
+            let rise = diameter(geometry.aft_area_m2) - diameter(geometry.fore_area_m2);
             let joint = geometry.aft_angle_rad.max(0.0);
-            terms.joint_pressure += joint_pressure_drag_coefficient(joint)? * change;
+            terms.shoulder = Some(PressureDragTerm {
+                curve: PressureDragCurve::new(shape, geometry.length_m / rise, joint)?,
+                area_ratio: change / reference_area_m2,
+            });
         } else if change < 0.0 {
-            let diameter = |area: f64| 2.0 * (area / PI).sqrt();
             let factor = boattail_factor(
                 geometry.length_m,
                 diameter(geometry.fore_area_m2),
@@ -634,7 +658,6 @@ impl ComponentDragTerms {
             )?;
             terms.boattail_area_ratio -= factor * change;
         }
-        terms.joint_pressure /= reference_area_m2;
         terms.boattail_area_ratio /= reference_area_m2;
         Ok(terms)
     }
@@ -715,7 +738,10 @@ impl ComponentDragTerms {
             0.0
         };
         let base_coefficient = base_drag_coefficient(mach)?;
-        let mut pressure = self.joint_pressure + base_coefficient * self.boattail_area_ratio;
+        let mut pressure = base_coefficient * self.boattail_area_ratio;
+        for term in [&self.step, &self.shoulder].into_iter().flatten() {
+            pressure += term.area_ratio * term.curve.coefficient(mach)?;
+        }
         if let Some(fins) = &self.fins {
             pressure += fins.frontal_area_ratio
                 * fin_pressure_drag_coefficient(
@@ -740,7 +766,6 @@ impl ComponentDragTerms {
             base,
             parasitic,
             table: None,
-            beyond_subsonic_methods: mach > SUBSONIC_MACH_LIMIT,
         })
     }
 }
@@ -758,6 +783,15 @@ mod tests {
     use crate::table::DragTable;
     use crate::testing::{body_part, component, fin_set, material, nose, one_stage};
     use crate::{AeroModel, Flow};
+
+    /// A flat face's pressure drag below Mach 0.8, by hand: eq. 3.87 from 0.8 at rest to the
+    /// blunt cylinder `0.85 (1 + M²/4 + M⁴/40)` and its slope at Mach 0.8.
+    fn step_by_hand(mach: f64) -> f64 {
+        let at_08 = 0.85 * (1.0 + 0.16 + 0.4096 / 40.0);
+        let slope = 0.85 * (0.4 + 0.0512);
+        let b = slope * 0.8 / (at_08 - 0.8);
+        0.8 + (at_08 - 0.8) * (mach / 0.8).powf(b)
+    }
 
     fn close(got: f64, want: f64, rel: f64, what: &str) {
         let err = if want == 0.0 {
@@ -1350,21 +1384,25 @@ mod tests {
                 .zero_lift_coefficient
         };
 
-        // Shoulder: 0.8 sin² φ ΔA with tan φ = Δr/l, and a bare step 0.8 ΔA.
+        // Shoulder: a cone of fineness l/(2Δr) and joint angle tan φ = Δr/l on ΔA, and a bare
+        // step the flat face's curve on ΔA.
         let step = rocket(small, big, None);
         close(
             pressure_of(&step),
-            0.8 * delta / a_ref,
-            1e-14,
+            step_by_hand(0.3) * delta / a_ref,
+            1e-13,
             "bare step up",
         );
         let mut previous = f64::INFINITY;
         for l in [0.1, 0.01, 1e-3, 1e-5, 1e-8] {
             let s = rocket(small, big, Some(l));
             let phi = f64::atan((big - small) / l);
+            let curve =
+                PressureDragCurve::new(NoseShape::Conical {}, l / (2.0 * (big - small)), phi)
+                    .unwrap();
             close(
                 pressure_of(&s),
-                0.8 * phi.sin().powi(2) * delta / a_ref,
+                curve.coefficient(0.3).unwrap() * delta / a_ref,
                 1e-12,
                 "shoulder",
             );
@@ -1489,7 +1527,7 @@ mod tests {
             assert!(m.drag(&flow, &conditions).is_err(), "{conditions:?}");
         }
         assert!(matches!(
-            m.drag(&Flow::axial(1.0), &DragConditions::coasting(RE_PER_M)),
+            m.drag(&Flow::axial(5.0), &DragConditions::coasting(RE_PER_M)),
             Err(AeroError::Mach { .. })
         ));
 
@@ -1502,7 +1540,12 @@ mod tests {
             .drag(&flow, &DragConditions::coasting(RE_PER_M))
             .unwrap();
         let area_ratio = 100.0;
-        close(d.pressure, 0.8 * area_ratio, 1e-14, "flat face");
+        close(
+            d.pressure,
+            step_by_hand(0.3) * area_ratio,
+            1e-13,
+            "flat face",
+        );
         close(
             d.base,
             (0.12 + 0.13 * 0.09) * area_ratio,
@@ -1510,6 +1553,66 @@ mod tests {
             "flat base",
         );
         assert!(d.zero_lift_coefficient > 90.0);
+    }
+
+    /// Loft lesson L17: Loft froze the fin leading-edge drag at its Mach 1 value and gave nose and
+    /// shoulder pressure drag no Mach term. Here the rounded leading edge follows eq. 3.89's
+    /// supersonic branch `1.214 − 0.502/M² + 0.1095/M⁴` and the square one the stagnation
+    /// pressure, both times `cos² Γ_L`; a cone nose rises from `0.8 sin² ε` at rest to `sin ε` at
+    /// Mach 1 and follows eq. B.4 from Mach 1.3, in the whole rocket's buildup.
+    #[test]
+    fn leading_edge_and_cone_pressure_drag_have_supersonic_branches() {
+        let sweep: f64 = 0.4;
+        let c2 = sweep.cos().powi(2);
+        let at_1 = fin_pressure_drag_coefficient(FinCrossSection::Airfoil, sweep, 1.0).unwrap();
+        close(at_1, 0.8215 * c2, 1e-12, "rounded edge at Mach 1");
+        for m in [1.5f64, 2.0, 3.0, 4.5] {
+            let rounded = 1.214 - 0.502 / (m * m) + 0.1095 / m.powi(4);
+            close(
+                fin_pressure_drag_coefficient(FinCrossSection::Airfoil, sweep, m).unwrap(),
+                rounded * c2,
+                1e-14,
+                "rounded, supersonic",
+            );
+            let i2 = 1.0 / (m * m);
+            let stagnation = 0.85 * (1.84 - 0.76 * i2 + 0.166 * i2 * i2 + 0.035 * i2 * i2 * i2);
+            close(
+                fin_pressure_drag_coefficient(FinCrossSection::Square, sweep, m).unwrap(),
+                stagnation * c2 + 0.25 / m,
+                1e-14,
+                "square, supersonic",
+            );
+            assert!((rounded * c2 - at_1).abs() > 0.05, "not frozen at Mach {m}");
+        }
+
+        // A 3:1 cone on a tube: the nose's pressure drag against Mach, on its base area.
+        let (r, l) = (0.025, 0.15);
+        let rocket = one_stage(
+            vec![
+                component("nose", nose(NoseShape::Conical {}, l, r), None),
+                component("tube", body_part(0.8, r, r), None),
+            ],
+            ReferenceDiameter::Maximum {},
+        );
+        let m = model(&rocket);
+        let nose_pressure = |mach: f64| {
+            m.buildup_components(&Flow::axial(mach), &DragConditions::coasting(RE_PER_M))
+                .unwrap()[0]
+                .drag
+                .pressure
+        };
+        let s = 1.0 / 37f64.sqrt();
+        close(nose_pressure(0.0), 0.8 * s * s, 1e-14, "at rest");
+        close(nose_pressure(1.0), s, 1e-14, "eq. B.6 at Mach 1");
+        let mut previous = f64::INFINITY;
+        for mach in [1.3f64, 1.5, 2.0, 3.0, 4.9] {
+            let b4 = 2.1 * s * s + 0.5 * s / (mach * mach - 1.0).sqrt();
+            let got = nose_pressure(mach);
+            close(got, b4, 1e-14, "eq. B.4");
+            assert!(got < previous, "falls past the peak: {got} at Mach {mach}");
+            previous = got;
+        }
+        assert!(nose_pressure(4.9) > 2.1 * s * s);
     }
 
     /// The stagnation-pressure ratio: 1 at rest, the isentropic `(p₀ − p)/q` with
@@ -1813,8 +1916,12 @@ mod tests {
         let c_base = 0.12 + 0.13 * mach * mach;
         let gamma_l = (0.07f64 / span).atan();
         let fin_pressure = (stag * gamma_l.cos().powi(2) + c_base) * 3.0 * 0.004 * span / a_ref;
-        let cone_joint = (r / l_nose).atan();
-        let nose_pressure = 0.8 * cone_joint.sin().powi(2);
+        // Eq. 3.87 from 0.8 sin² ε at rest to eq. B.5–B.6 at Mach 1, by hand: `tan ε = r/l`.
+        let s = (r / l_nose).atan().sin();
+        let rest = 0.8 * s * s;
+        let slope_at_1 = 4.0 / 2.4 * (1.0 - 0.5 * s);
+        let b = slope_at_1 / (s - rest);
+        let nose_pressure = (s - rest) * mach.powf(b) + rest;
         let base = c_base;
         let lug = stag * PI * 0.004 * 0.004 / a_ref;
         let cd0 = body_friction + fin_friction + fin_pressure + nose_pressure + base + lug;
@@ -1842,14 +1949,6 @@ mod tests {
             "C_A",
         );
         assert_eq!(got.table, None);
-        assert!(!got.beyond_subsonic_methods);
-        let fast = m.drag(&Flow::axial(0.85), &conditions).unwrap();
-        assert!(fast.beyond_subsonic_methods);
-        assert!(
-            !m.drag(&Flow::axial(0.8), &conditions)
-                .unwrap()
-                .beyond_subsonic_methods
-        );
 
         let parts = m.buildup_components(&flow, &conditions).unwrap();
         let ids: Vec<&str> = parts.iter().map(|p| p.id.as_str()).collect();
@@ -1874,7 +1973,7 @@ mod tests {
             .unwrap();
         assert_eq!(unknown.base, got.base);
 
-        // An override: the table's C_D0 (extrapolation reported), the same factor, and Mach 1.5
+        // An override: the table's C_D0 (extrapolation reported), the same factor, and Mach 5
         // allowed for drag while the buildup refuses it.
         let table = DragTable::from_csv("0.1,0.6\n1.2,0.9\n", None).unwrap();
         let o = m.clone().with_drag_table(table);
@@ -1895,14 +1994,14 @@ mod tests {
             (d.friction, d.pressure, d.base, d.parasitic),
             (0.0, 0.0, 0.0, 0.0)
         );
-        let fast = o.drag(&Flow::axial(1.5), &conditions).unwrap();
+        let fast = o.drag(&Flow::axial(5.0), &conditions).unwrap();
         assert_eq!(fast.zero_lift_coefficient, 0.9);
         assert!(fast.table.unwrap().extrapolated.is_some());
-        assert!(!fast.beyond_subsonic_methods);
-        assert!(m.drag(&Flow::axial(1.5), &conditions).is_err());
+        assert!(m.drag(&Flow::axial(5.0), &conditions).is_err());
+        assert!(m.drag(&Flow::axial(4.99), &conditions).is_ok());
         assert!(o.drag(&Flow::new(0.5, 4.0, 0.0), &conditions).is_err());
         assert!(
-            o.buildup_components(&Flow::axial(1.5), &conditions)
+            o.buildup_components(&Flow::axial(5.0), &conditions)
                 .is_err()
         );
     }
@@ -2019,22 +2118,36 @@ mod tests {
                 .drag
                 .pressure
         };
+        // At rest eq. 3.86's `0.8 sin² φ`; at Mach 0.3 the x^½ nose falls toward Stoney's 0 at
+        // Mach 0.8 by the quadratic (eq. 3.87 has no rise to fit), and the cone rises by eq. 3.87.
         let phi = (0.5 * r / l).atan();
+        let rest = 0.8 * phi.sin().powi(2);
         close(
             nose_pressure(NoseShape::PowerSeries { exponent: 0.5 }),
-            0.8 * phi.sin().powi(2),
+            rest * (1.0 - (0.3f64 / 0.8).powi(2)),
             1e-12,
             "x^0.5 nose",
         );
-        let cone = (r / l).atan();
+        let s = (r / l).atan().sin();
+        let rest = 0.8 * s * s;
+        let b = 4.0 / 2.4 * (1.0 - 0.5 * s) / (s - rest);
         close(
             nose_pressure(NoseShape::Conical {}),
-            0.8 * cone.sin().powi(2),
+            rest + (s - rest) * 0.3f64.powf(b),
             1e-12,
             "cone",
         );
+        // Smooth joints: von Kármán stays at 0 until Stoney's curve leaves 0 past Mach 0.9; the
+        // tangent ogive rises by eq. 3.87 toward the 4:1 cone's `sin ε` at Mach 1, by 1e-6 here.
         assert!(nose_pressure(NoseShape::Haack { parameter: 0.0 }) < 1e-20);
-        assert!(nose_pressure(NoseShape::Ogive { radius_ratio: 1.0 }) < 1e-20);
+        let s = (0.125f64).atan().sin();
+        let b = 4.0 / 2.4 * (1.0 - 0.5 * s) / s;
+        close(
+            nose_pressure(NoseShape::Ogive { radius_ratio: 1.0 }),
+            s * 0.3f64.powf(b),
+            1e-12,
+            "tangent ogive",
+        );
 
         // A 0.1 m cone closing a 30 mm tube to a point: γ = 0.1/0.06 < 3, no base.
         let rocket = one_stage(

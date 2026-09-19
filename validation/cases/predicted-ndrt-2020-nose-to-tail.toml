@@ -17,19 +17,19 @@
 # miss does not fail the run and a number that moves still shows in the committed report. The
 # misses, and why:
 #
-# - apogee_agl_m (+10.32%), apogee_time_s (+6.58%), flight_time_s (+6.91%), apogee_drift_m
-#   (+11.91%) and landing_drift_m (+12.97%): the drag. hpr's coasting C_D0 at Mach 0.3, sea level,
+# - apogee_agl_m (+10.31%), apogee_time_s (+6.58%), flight_time_s (+6.90%), apogee_drift_m
+#   (+11.88%) and landing_drift_m (+12.95%): the drag. hpr's coasting C_D0 at Mach 0.3, sea level,
 #   is 0.318 (computed as `cargo xtask aero` computes it, pinned by
 #   `aero::tests::the_drags_the_predicted_cases_quote_are_hpr_s`), 28% below the example's 0.44.
 #   Flown on the same drag the apogees agree to +0.068% (`flight-ndrt-2020-nose-to-tail.toml`). So
 #   it flies 10% higher and comes down later and further. On the same drag the apogee drift is
 #   -4.65%, a measured model difference (ADR-026), which the drag's extra height more than offsets
 #   here.
-# - max_acceleration_m_s2 (+83.06%) and max_acceleration_time_s (+9.70%): the whole flight's peak is
+# - max_acceleration_m_s2 (+83.06%) and max_acceleration_time_s (+9.68%): the whole flight's peak is
 #   the main parachute opening, where RocketPy counts the canopy's added mass and hpr does not
 #   (ADR-012; +83.06% and not scored in the same-drag case). Its time is later because the apogee
 #   is. The power-on peak, the flight load, is within target at +0.66%.
-# - series_height_rms_m (116.7 m, target 38.1) and series_speed_rms_m_s (6.8 m/s, target 5.5): the
+# - series_height_rms_m (116.6 m, target 38.1) and series_speed_rms_m_s (6.8 m/s, target 5.5): the
 #   drag again, over the whole trace: hpr climbs 131 m higher and lands 6.0 s later, and while
 #   RocketPy's rocket is already under its main hpr's is still falling faster under the drogue.
 #   Flown on the same drag they are 2.8 m and 0.23 m/s.

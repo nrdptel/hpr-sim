@@ -1,0 +1,924 @@
+{
+  "generator": "cargo xtask aero",
+  "note": "hpr's forebody drag, C_D0 less the base drag (friction + pressure + parasitic, on the maximum cross-section), against each reference's forebody axial force, at zero angle of attack and the reference's Reynolds number. error is hpr's over the reference's, minus 1. Bands are Niskanen 2009 Table 3.1's. hpr's base drag is given for information: the tunnels' base pressure is the sting's, not a free flight's.",
+  "references": [
+    {
+      "design": "wind-tunnel-arcas-robin-short.json",
+      "id": "arcas-robin-short",
+      "rows": [
+        {
+          "band": "subsonic",
+          "error": 0.3461488781588491,
+          "fins": "on",
+          "hpr_base": 0.07119765333333332,
+          "hpr_forebody_by_part": {
+            "boattail": 0.0697205182219302,
+            "body": 0.15129622681951652,
+            "fins": 0.08478924370329913,
+            "lip": 0.0651441673460021,
+            "nose": 0.031144513815300263
+          },
+          "hpr_forebody_c_d": 0.40209466990604825,
+          "hpr_friction": 0.22375787516438544,
+          "hpr_pressure": 0.17833679474166278,
+          "mach": 0.6,
+          "reference_forebody_c_a": 0.2987,
+          "reference_uncertainty": 0.002,
+          "source": "TN D-4013 Fig. 11, printed p. 60 (PDF p. 62): C_A,corr, fins at 0 deg",
+          "within_target": false
+        },
+        {
+          "band": "subsonic",
+          "error": 0.4312378268053634,
+          "fins": "off",
+          "hpr_base": 0.07119765333333332,
+          "hpr_forebody_by_part": {
+            "boattail": 0.0697205182219302,
+            "body": 0.15129622681951652,
+            "lip": 0.0651441673460021,
+            "nose": 0.031144513815300263
+          },
+          "hpr_forebody_c_d": 0.3173054262027491,
+          "hpr_friction": 0.18763583391575098,
+          "hpr_pressure": 0.12966959228699812,
+          "mach": 0.6,
+          "reference_forebody_c_a": 0.2217,
+          "reference_uncertainty": 0.002,
+          "source": "TN D-4013 Fig. 11, printed p. 60 (PDF p. 62): C_A,corr, fins off",
+          "within_target": false
+        },
+        {
+          "band": "subsonic",
+          "error": 0.4734084988694385,
+          "fins": "on",
+          "hpr_base": 0.0867347911111111,
+          "hpr_forebody_by_part": {
+            "boattail": 0.08318924140251345,
+            "body": 0.14690173060484177,
+            "fins": 0.1614524701193225,
+            "lip": 0.0662676442661002,
+            "nose": 0.028266377384249856
+          },
+          "hpr_forebody_c_d": 0.48607746377702776,
+          "hpr_friction": 0.21725868376956928,
+          "hpr_pressure": 0.2688187800074585,
+          "mach": 0.8,
+          "reference_forebody_c_a": 0.3299,
+          "reference_uncertainty": 0.002,
+          "source": "TN D-4013 Fig. 11, printed p. 60 (PDF p. 62): C_A,corr, fins at 0 deg",
+          "within_target": false
+        },
+        {
+          "band": "subsonic",
+          "error": 0.4065207697474231,
+          "fins": "off",
+          "hpr_base": 0.0867347911111111,
+          "hpr_forebody_by_part": {
+            "boattail": 0.08318924140251345,
+            "body": 0.14690173060484177,
+            "lip": 0.0662676442661002,
+            "nose": 0.028266377384249856
+          },
+          "hpr_forebody_c_d": 0.32462499365770525,
+          "hpr_friction": 0.18218583044101963,
+          "hpr_pressure": 0.14243916321668565,
+          "mach": 0.8,
+          "reference_forebody_c_a": 0.2308,
+          "reference_uncertainty": 0.002,
+          "source": "TN D-4013 Fig. 11, printed p. 60 (PDF p. 62): C_A,corr, fins off",
+          "within_target": false
+        },
+        {
+          "band": "transonic",
+          "error": 0.44064512548986,
+          "fins": "on",
+          "hpr_base": 0.09616805333333332,
+          "hpr_forebody_by_part": {
+            "boattail": 0.09136668047643899,
+            "body": 0.14423364361736069,
+            "fins": 0.27236517331928495,
+            "lip": 0.06677624087548892,
+            "nose": 0.030617343442265632
+          },
+          "hpr_forebody_c_d": 0.6053590817308392,
+          "hpr_friction": 0.21331274613700232,
+          "hpr_pressure": 0.3920463355938369,
+          "mach": 0.9,
+          "reference_forebody_c_a": 0.4202,
+          "reference_uncertainty": 0.002,
+          "source": "TN D-4013 Fig. 11, printed p. 60 (PDF p. 62): C_A,corr, fins at 0 deg",
+          "within_target": false
+        },
+        {
+          "band": "transonic",
+          "error": 0.2758387295461846,
+          "fins": "off",
+          "hpr_base": 0.09616805333333332,
+          "hpr_forebody_by_part": {
+            "boattail": 0.09136668047643899,
+            "body": 0.14423364361736069,
+            "lip": 0.06677624087548892,
+            "nose": 0.030617343442265632
+          },
+          "hpr_forebody_c_d": 0.3329939084115542,
+          "hpr_friction": 0.17887689975993273,
+          "hpr_pressure": 0.15411700865162148,
+          "mach": 0.9,
+          "reference_forebody_c_a": 0.261,
+          "reference_uncertainty": 0.002,
+          "source": "TN D-4013 Fig. 11, printed p. 60 (PDF p. 62): C_A,corr, fins off",
+          "within_target": false
+        },
+        {
+          "band": "transonic",
+          "error": 0.04860776761055763,
+          "fins": "on",
+          "hpr_base": 0.10130085777777777,
+          "hpr_forebody_by_part": {
+            "boattail": 0.09581616938431026,
+            "body": 0.1427818904035842,
+            "fins": 0.2507833741660928,
+            "lip": 0.06702805505148314,
+            "nose": 0.03919972299732628
+          },
+          "hpr_forebody_c_d": 0.5956092120027967,
+          "hpr_friction": 0.21116569183692913,
+          "hpr_pressure": 0.3844435201658676,
+          "mach": 0.95,
+          "reference_forebody_c_a": 0.568,
+          "reference_uncertainty": 0.008,
+          "source": "TN D-4013 Fig. 11, printed p. 60 (PDF p. 62): C_A,corr, fins at 0 deg",
+          "within_target": true
+        },
+        {
+          "band": "transonic",
+          "error": 0.1825303080819749,
+          "fins": "off",
+          "hpr_base": 0.10130085777777777,
+          "hpr_forebody_by_part": {
+            "boattail": 0.09581616938431026,
+            "body": 0.1427818904035842,
+            "lip": 0.06702805505148314,
+            "nose": 0.03919972299732628
+          },
+          "hpr_forebody_c_d": 0.3448258378367039,
+          "hpr_friction": 0.177076452183459,
+          "hpr_pressure": 0.1677493856532449,
+          "mach": 0.95,
+          "reference_forebody_c_a": 0.2916,
+          "reference_uncertainty": 0.008,
+          "source": "TN D-4013 Fig. 11, printed p. 60 (PDF p. 62): C_A,corr, fins off",
+          "within_target": false
+        },
+        {
+          "band": "transonic",
+          "error": -0.10916368119156983,
+          "fins": "on",
+          "hpr_base": 0.10671111111111109,
+          "hpr_forebody_by_part": {
+            "boattail": 0.10066832271323684,
+            "body": 0.14472591899343268,
+            "fins": 0.2300123194244465,
+            "lip": 0.06746371631143426,
+            "nose": 0.0680652699962711
+          },
+          "hpr_forebody_c_d": 0.6109355474388214,
+          "hpr_friction": 0.21404079133985474,
+          "hpr_pressure": 0.39689475609896663,
+          "mach": 1.0,
+          "reference_forebody_c_a": 0.6858,
+          "reference_uncertainty": 0.002,
+          "source": "TN D-4013 Fig. 11, printed p. 60 (PDF p. 62): C_A,corr, fins at 0 deg",
+          "within_target": false
+        },
+        {
+          "band": "transonic",
+          "error": -0.09174242247407038,
+          "fins": "off",
+          "hpr_base": 0.10671111111111109,
+          "hpr_forebody_by_part": {
+            "boattail": 0.10066832271323684,
+            "body": 0.14472591899343268,
+            "lip": 0.06746371631143426,
+            "nose": 0.0680652699962711
+          },
+          "hpr_forebody_c_d": 0.3809232280143749,
+          "hpr_friction": 0.17948741399843815,
+          "hpr_pressure": 0.20143581401593674,
+          "mach": 1.0,
+          "reference_forebody_c_a": 0.4194,
+          "reference_uncertainty": 0.002,
+          "source": "TN D-4013 Fig. 11, printed p. 60 (PDF p. 62): C_A,corr, fins off",
+          "within_target": true
+        },
+        {
+          "band": "supersonic",
+          "error": 0.09241828157508336,
+          "fins": "on",
+          "hpr_base": 0.08892592592592591,
+          "hpr_forebody_by_part": {
+            "boattail": 0.084800923531947,
+            "body": 0.14011659984259342,
+            "fins": 0.2519185618999682,
+            "lip": 0.08435785320935983,
+            "nose": 0.08715631163094356
+          },
+          "hpr_forebody_c_d": 0.6483502501148121,
+          "hpr_friction": 0.2072238899482778,
+          "hpr_pressure": 0.4411263601665342,
+          "mach": 1.2,
+          "reference_forebody_c_a": 0.5935,
+          "reference_uncertainty": 0.002,
+          "source": "TN D-4013 Fig. 11, printed p. 60 (PDF p. 62): C_A,corr, fins at 0 deg",
+          "within_target": true
+        },
+        {
+          "band": "supersonic",
+          "error": -0.08041825976607786,
+          "fins": "off",
+          "hpr_base": 0.08892592592592591,
+          "hpr_forebody_by_part": {
+            "boattail": 0.084800923531947,
+            "body": 0.14011659984259342,
+            "lip": 0.08435785320935983,
+            "nose": 0.08715631163094356
+          },
+          "hpr_forebody_c_d": 0.3964316882148438,
+          "hpr_friction": 0.17377098959822304,
+          "hpr_pressure": 0.22266069861662077,
+          "mach": 1.2,
+          "reference_forebody_c_a": 0.4311,
+          "reference_uncertainty": 0.002,
+          "source": "TN D-4013 Fig. 11, printed p. 60 (PDF p. 62): C_A,corr, fins off",
+          "within_target": true
+        },
+        {
+          "band": "supersonic",
+          "error": 0.29774198869000656,
+          "fins": "on",
+          "hpr_base": 0.07114074074074071,
+          "hpr_forebody_by_part": {
+            "boattail": 0.06879722412241798,
+            "body": 0.13258691472593445,
+            "fins": 0.27256303431689627,
+            "lip": 0.08584465731618589,
+            "nose": 0.08025451834047667
+          },
+          "hpr_forebody_c_d": 0.6400463488219112,
+          "hpr_friction": 0.1960879457295871,
+          "hpr_pressure": 0.44395840309232415,
+          "mach": 1.5,
+          "reference_forebody_c_a": 0.4932,
+          "reference_uncertainty": 0.0016,
+          "source": "TN D-4014 Fig. 5(b), printed p. 26 (PDF p28); TN D-4014 Fig. 4(a) middle panel (dF = 0), printed p. 21 (PDF p23)",
+          "within_target": false
+        },
+        {
+          "band": "supersonic",
+          "error": 0.08051547928554825,
+          "fins": "off",
+          "hpr_base": 0.07114074074074071,
+          "hpr_forebody_by_part": {
+            "boattail": 0.06879722412241798,
+            "body": 0.13258691472593445,
+            "lip": 0.08584465731618589,
+            "nose": 0.08025451834047667
+          },
+          "hpr_forebody_c_d": 0.367483314505015,
+          "hpr_friction": 0.16443276104033094,
+          "hpr_pressure": 0.20305055346468404,
+          "mach": 1.5,
+          "reference_forebody_c_a": 0.3401,
+          "reference_uncertainty": 0.002,
+          "source": "TN D-4014 Fig. 5(a), printed p. 23 (PDF p25); TN D-4014 Fig. 4(a) top panel (fins off), printed p. 21 (PDF p23)",
+          "within_target": true
+        },
+        {
+          "band": "supersonic",
+          "error": 0.475013824606604,
+          "fins": "on",
+          "hpr_base": 0.05928395061728394,
+          "hpr_forebody_by_part": {
+            "boattail": 0.05799579976362628,
+            "body": 0.12473265134670469,
+            "fins": 0.2842436503080801,
+            "lip": 0.08555946544513524,
+            "nose": 0.0758243224188669
+          },
+          "hpr_forebody_c_d": 0.6283558892824133,
+          "hpr_friction": 0.18447197009250535,
+          "hpr_pressure": 0.4438839191899079,
+          "mach": 1.8,
+          "reference_forebody_c_a": 0.426,
+          "reference_uncertainty": 0.0016,
+          "source": "TN D-4014 Fig. 5(b), printed p. 26 (PDF p28); TN D-4014 Fig. 4(a) middle panel (dF = 0), printed p. 21 (PDF p23)",
+          "within_target": false
+        },
+        {
+          "band": "supersonic",
+          "error": 0.09520126981009902,
+          "fins": "off",
+          "hpr_base": 0.05928395061728394,
+          "hpr_forebody_by_part": {
+            "boattail": 0.05799579976362628,
+            "body": 0.12473265134670469,
+            "lip": 0.08555946544513524,
+            "nose": 0.0758243224188669
+          },
+          "hpr_forebody_c_d": 0.3441122389743331,
+          "hpr_friction": 0.15469199426817762,
+          "hpr_pressure": 0.18942024470615548,
+          "mach": 1.8,
+          "reference_forebody_c_a": 0.3142,
+          "reference_uncertainty": 0.002,
+          "source": "TN D-4014 Fig. 5(a), printed p. 23 (PDF p25); TN D-4014 Fig. 4(a) top panel (fins off), printed p. 21 (PDF p23)",
+          "within_target": true
+        },
+        {
+          "band": "supersonic",
+          "error": 0.827556473050796,
+          "fins": "on",
+          "hpr_base": 0.04639613526570048,
+          "hpr_forebody_by_part": {
+            "boattail": 0.04605192951548165,
+            "body": 0.11184182944127366,
+            "fins": 0.29390094297385855,
+            "lip": 0.085349017295617,
+            "nose": 0.07106707500507406
+          },
+          "hpr_forebody_c_d": 0.6082107942313049,
+          "hpr_friction": 0.16540723213230077,
+          "hpr_pressure": 0.4428035620990041,
+          "mach": 2.3,
+          "reference_forebody_c_a": 0.3328,
+          "reference_uncertainty": 0.0016,
+          "source": "TN D-4014 Fig. 5(b), printed p. 26 (PDF p28); TN D-4014 Fig. 4(a) middle panel (dF = 0), printed p. 21 (PDF p23)",
+          "within_target": false
+        },
+        {
+          "band": "supersonic",
+          "error": 0.2704521069419821,
+          "fins": "off",
+          "hpr_base": 0.04639613526570048,
+          "hpr_forebody_by_part": {
+            "boattail": 0.04605192951548165,
+            "body": 0.11184182944127366,
+            "lip": 0.085349017295617,
+            "nose": 0.07106707500507406
+          },
+          "hpr_forebody_c_d": 0.31430985125744637,
+          "hpr_friction": 0.13870494575459916,
+          "hpr_pressure": 0.1756049055028472,
+          "mach": 2.3,
+          "reference_forebody_c_a": 0.2474,
+          "reference_uncertainty": 0.002,
+          "source": "TN D-4014 Fig. 5(a), printed p. 23 (PDF p25); TN D-4014 Fig. 4(a) top panel (fins off), printed p. 21 (PDF p23)",
+          "within_target": false
+        },
+        {
+          "band": "supersonic",
+          "error": 1.213408501284846,
+          "fins": "on",
+          "hpr_base": 0.036051051051051046,
+          "hpr_forebody_by_part": {
+            "boattail": 0.036230075264676954,
+            "body": 0.09647042544578101,
+            "fins": 0.29858567391562185,
+            "lip": 0.08500244631146789,
+            "nose": 0.06782988255152322
+          },
+          "hpr_forebody_c_d": 0.5841185034890709,
+          "hpr_friction": 0.14267386482613673,
+          "hpr_pressure": 0.44144463866293415,
+          "mach": 2.96,
+          "reference_forebody_c_a": 0.2639,
+          "reference_uncertainty": 0.0026,
+          "source": "TN D-4014 Fig. 5(b), printed p. 26 (PDF p28); TN D-4014 Fig. 4(a) middle panel (dF = 0), printed p. 21 (PDF p23)",
+          "within_target": false
+        },
+        {
+          "band": "supersonic",
+          "error": 0.40656566292339424,
+          "fins": "off",
+          "hpr_base": 0.036051051051051046,
+          "hpr_forebody_by_part": {
+            "boattail": 0.036230075264676954,
+            "body": 0.09647042544578101,
+            "lip": 0.08500244631146789,
+            "nose": 0.06782988255152322
+          },
+          "hpr_forebody_c_d": 0.28553282957344905,
+          "hpr_friction": 0.11964150796912944,
+          "hpr_pressure": 0.16589132160431963,
+          "mach": 2.96,
+          "reference_forebody_c_a": 0.203,
+          "reference_uncertainty": 0.0029,
+          "source": "TN D-4014 Fig. 5(a), printed p. 23 (PDF p25); TN D-4014 Fig. 4(a) top panel (fins off), printed p. 21 (PDF p23)",
+          "within_target": false
+        },
+        {
+          "band": "supersonic",
+          "error": 1.6926004932495813,
+          "fins": "on",
+          "hpr_base": 0.02694725028058361,
+          "hpr_forebody_by_part": {
+            "boattail": 0.02734731356027833,
+            "body": 0.07781381410182413,
+            "fins": 0.29991362771584373,
+            "lip": 0.08447194384475012,
+            "nose": 0.06405196218941756
+          },
+          "hpr_forebody_c_d": 0.5535986614121139,
+          "hpr_friction": 0.11508187657998262,
+          "hpr_pressure": 0.4385167848321313,
+          "mach": 3.96,
+          "reference_forebody_c_a": 0.2056,
+          "reference_uncertainty": 0.0026,
+          "source": "TN D-4014 Fig. 5(b), printed p. 26 (PDF p28); TN D-4014 Fig. 4(a) middle panel (dF = 0), printed p. 21 (PDF p23)",
+          "within_target": false
+        },
+        {
+          "band": "supersonic",
+          "error": 0.6324648243003226,
+          "fins": "off",
+          "hpr_base": 0.02694725028058361,
+          "hpr_forebody_by_part": {
+            "boattail": 0.02734731356027833,
+            "body": 0.07781381410182413,
+            "lip": 0.08447194384475012,
+            "nose": 0.06405196218941756
+          },
+          "hpr_forebody_c_d": 0.25368503369627016,
+          "hpr_friction": 0.09650379395500941,
+          "hpr_pressure": 0.15718123974126072,
+          "mach": 3.96,
+          "reference_forebody_c_a": 0.1554,
+          "reference_uncertainty": 0.0029,
+          "source": "TN D-4014 Fig. 5(a), printed p. 23 (PDF p25); TN D-4014 Fig. 4(a) top panel (fins off), printed p. 21 (PDF p23)",
+          "within_target": false
+        },
+        {
+          "band": "supersonic",
+          "error": 1.9053102539838833,
+          "fins": "on",
+          "hpr_base": 0.02304775617950563,
+          "hpr_forebody_by_part": {
+            "boattail": 0.02346349199543323,
+            "body": 0.0681297033124321,
+            "fins": 0.2995971684334006,
+            "lip": 0.08416735761412329,
+            "nose": 0.0621246756316292
+          },
+          "hpr_forebody_c_d": 0.5374823969870184,
+          "hpr_friction": 0.10075966842818396,
+          "hpr_pressure": 0.4367227285588345,
+          "mach": 4.63,
+          "reference_forebody_c_a": 0.185,
+          "reference_uncertainty": 0.0026,
+          "source": "TN D-4014 Fig. 5(b), printed p. 26 (PDF p28); TN D-4014 Fig. 4(a) middle panel (dF = 0), printed p. 21 (PDF p23)",
+          "within_target": false
+        },
+        {
+          "band": "supersonic",
+          "error": 0.7114045219684735,
+          "fins": "off",
+          "hpr_base": 0.02304775617950563,
+          "hpr_forebody_by_part": {
+            "boattail": 0.02346349199543323,
+            "body": 0.0681297033124321,
+            "lip": 0.08416735761412329,
+            "nose": 0.0621246756316292
+          },
+          "hpr_forebody_c_d": 0.23788522855361782,
+          "hpr_friction": 0.08449367154879948,
+          "hpr_pressure": 0.15339155700481832,
+          "mach": 4.63,
+          "reference_forebody_c_a": 0.139,
+          "reference_uncertainty": 0.0029,
+          "source": "TN D-4014 Fig. 5(a), printed p. 23 (PDF p25); TN D-4014 Fig. 4(a) top panel (fins off), printed p. 21 (PDF p23)",
+          "within_target": false
+        }
+      ],
+      "source": "NASA's half-scale Arcas Robin (short, configuration 1) and bioscience Arcas (long, configuration 2) wind-tunnel models: J. C. Ferris, NASA TN D-4013 (1967), Mach 0.60 to 1.20, Langley 8-foot transonic pressure tunnel; C. D. Babb and D. E. Fuller, NASA TN D-4014 (1967), Mach 1.50 to 4.63, Langley Unitary Plan wind tunnel. Reynolds number 9.8e6 per metre, transition fixed by grit. US Government works. Forebody axial force at zero angle of attack, fins at 0 degrees or off: TN D-4013's C_A,corr (the axial force corrected for the base's), and TN D-4014's C_A less the balance chamber's C_A,c. A measurement."
+    },
+    {
+      "design": "wind-tunnel-arcas-robin-long.json",
+      "id": "arcas-robin-long",
+      "rows": [
+        {
+          "band": "subsonic",
+          "error": 0.3093325477698068,
+          "fins": "on",
+          "hpr_base": 0.07119765333333332,
+          "hpr_forebody_by_part": {
+            "boattail": 0.06938336758656687,
+            "body": 0.20481859465072272,
+            "fins": 0.08328167045046211,
+            "lip": 0.06513622672646034,
+            "nose": 0.029754535840256217
+          },
+          "hpr_forebody_c_d": 0.4523743952544682,
+          "hpr_friction": 0.27403760051280546,
+          "hpr_pressure": 0.17833679474166278,
+          "mach": 0.6,
+          "reference_forebody_c_a": 0.3455,
+          "reference_uncertainty": 0.002,
+          "source": "TN D-4013 Fig. 12, printed p. 61 (PDF p. 63): C_A,corr, fins at 0 deg",
+          "within_target": false
+        },
+        {
+          "band": "subsonic",
+          "error": 0.49007963182884984,
+          "fins": "off",
+          "hpr_base": 0.07119765333333332,
+          "hpr_forebody_by_part": {
+            "boattail": 0.06938336758656687,
+            "body": 0.20481859465072272,
+            "lip": 0.06513622672646034,
+            "nose": 0.029754535840256217
+          },
+          "hpr_forebody_c_d": 0.3690927248040061,
+          "hpr_friction": 0.23942313251700803,
+          "hpr_pressure": 0.12966959228699812,
+          "mach": 0.6,
+          "reference_forebody_c_a": 0.2477,
+          "reference_uncertainty": 0.002,
+          "source": "TN D-4013 Fig. 12, printed p. 61 (PDF p. 63): C_A,corr, fins off",
+          "within_target": false
+        },
+        {
+          "band": "subsonic",
+          "error": 0.4433264494471676,
+          "fins": "on",
+          "hpr_base": 0.0867347911111111,
+          "hpr_forebody_by_part": {
+            "boattail": 0.08286188352419385,
+            "body": 0.19886950683929092,
+            "fins": 0.1599886853012152,
+            "lip": 0.06625993428696007,
+            "nose": 0.026916772213460203
+          },
+          "hpr_forebody_c_d": 0.5348967821651203,
+          "hpr_friction": 0.26607800215766175,
+          "hpr_pressure": 0.2688187800074585,
+          "mach": 0.8,
+          "reference_forebody_c_a": 0.3706,
+          "reference_uncertainty": 0.002,
+          "source": "TN D-4013 Fig. 12, printed p. 61 (PDF p. 63): C_A,corr, fins at 0 deg",
+          "within_target": false
+        },
+        {
+          "band": "subsonic",
+          "error": 0.4895037618748712,
+          "fins": "off",
+          "hpr_base": 0.0867347911111111,
+          "hpr_forebody_by_part": {
+            "boattail": 0.08286188352419385,
+            "body": 0.19886950683929092,
+            "lip": 0.06625993428696007,
+            "nose": 0.026916772213460203
+          },
+          "hpr_forebody_c_d": 0.374908096863905,
+          "hpr_friction": 0.23246893364721938,
+          "hpr_pressure": 0.14243916321668565,
+          "mach": 0.8,
+          "reference_forebody_c_a": 0.2517,
+          "reference_uncertainty": 0.002,
+          "source": "TN D-4013 Fig. 12, printed p. 61 (PDF p. 63): C_A,corr, fins off",
+          "within_target": false
+        },
+        {
+          "band": "transonic",
+          "error": 0.4485404090120777,
+          "fins": "on",
+          "hpr_base": 0.09616805333333332,
+          "hpr_forebody_by_part": {
+            "boattail": 0.09104526820061025,
+            "body": 0.1952575606680645,
+            "fins": 0.27092797433654925,
+            "lip": 0.0667686709280212,
+            "nose": 0.029292250331201856
+          },
+          "hpr_forebody_c_d": 0.653291724464447,
+          "hpr_friction": 0.26124538887061016,
+          "hpr_pressure": 0.3920463355938369,
+          "mach": 0.9,
+          "reference_forebody_c_a": 0.451,
+          "reference_uncertainty": 0.008,
+          "source": "TN D-4013 Fig. 12, printed p. 61 (PDF p. 63): C_A,corr, fins at 0 deg",
+          "within_target": false
+        },
+        {
+          "band": "transonic",
+          "error": 0.4315378140318151,
+          "fins": "off",
+          "hpr_base": 0.09616805333333332,
+          "hpr_forebody_by_part": {
+            "boattail": 0.09104526820061025,
+            "body": 0.1952575606680645,
+            "lip": 0.0667686709280212,
+            "nose": 0.029292250331201856
+          },
+          "hpr_forebody_c_d": 0.3823637501278978,
+          "hpr_friction": 0.22824674147627633,
+          "hpr_pressure": 0.15411700865162148,
+          "mach": 0.9,
+          "reference_forebody_c_a": 0.2671,
+          "reference_uncertainty": 0.008,
+          "source": "TN D-4013 Fig. 12, printed p. 61 (PDF p. 63): C_A,corr, fins off",
+          "within_target": false
+        },
+        {
+          "band": "transonic",
+          "error": -0.09061434212838992,
+          "fins": "on",
+          "hpr_base": 0.10671111111111109,
+          "hpr_forebody_by_part": {
+            "boattail": 0.10034581344405072,
+            "body": 0.19592398277803888,
+            "fins": 0.2285702152222906,
+            "lip": 0.06745612052742353,
+            "nose": 0.06673565428775213
+          },
+          "hpr_forebody_c_d": 0.6590317862595558,
+          "hpr_friction": 0.26213703016058926,
+          "hpr_pressure": 0.39689475609896663,
+          "mach": 1.0,
+          "reference_forebody_c_a": 0.7247,
+          "reference_uncertainty": 0.002,
+          "source": "TN D-4013 Fig. 12, printed p. 61 (PDF p. 63): C_A,corr, fins at 0 deg",
+          "within_target": true
+        },
+        {
+          "band": "transonic",
+          "error": 0.17164281719451613,
+          "fins": "off",
+          "hpr_base": 0.10671111111111109,
+          "hpr_forebody_by_part": {
+            "boattail": 0.10034581344405072,
+            "body": 0.19592398277803888,
+            "lip": 0.06745612052742353,
+            "nose": 0.06673565428775213
+          },
+          "hpr_forebody_c_d": 0.43046157103726523,
+          "hpr_friction": 0.22902575702132852,
+          "hpr_pressure": 0.20143581401593674,
+          "mach": 1.0,
+          "reference_forebody_c_a": 0.3674,
+          "reference_uncertainty": 0.002,
+          "source": "TN D-4013 Fig. 12, printed p. 61 (PDF p. 63): C_A,corr, fins off",
+          "within_target": false
+        },
+        {
+          "band": "supersonic",
+          "error": 0.11275370800539286,
+          "fins": "on",
+          "hpr_base": 0.08892592592592591,
+          "hpr_forebody_by_part": {
+            "boattail": 0.08448868573425072,
+            "body": 0.18968407653174657,
+            "fins": 0.25052238671013255,
+            "lip": 0.08435049934050122,
+            "nose": 0.08586904233273696
+          },
+          "hpr_forebody_c_d": 0.694914690649368,
+          "hpr_friction": 0.2537883304828338,
+          "hpr_pressure": 0.4411263601665342,
+          "mach": 1.2,
+          "reference_forebody_c_a": 0.6245,
+          "reference_uncertainty": 0.002,
+          "source": "TN D-4013 Fig. 12, printed p. 61 (PDF p. 63): C_A,corr, fins at 0 deg",
+          "within_target": false
+        },
+        {
+          "band": "supersonic",
+          "error": 0.05306233160956264,
+          "fins": "off",
+          "hpr_base": 0.08892592592592591,
+          "hpr_forebody_by_part": {
+            "boattail": 0.08448868573425072,
+            "body": 0.18968407653174657,
+            "lip": 0.08435049934050122,
+            "nose": 0.08586904233273696
+          },
+          "hpr_forebody_c_d": 0.44439230393923546,
+          "hpr_friction": 0.22173160532261468,
+          "hpr_pressure": 0.22266069861662077,
+          "mach": 1.2,
+          "reference_forebody_c_a": 0.422,
+          "reference_uncertainty": 0.002,
+          "source": "TN D-4013 Fig. 12, printed p. 61 (PDF p. 63): C_A,corr, fins off",
+          "within_target": true
+        },
+        {
+          "band": "supersonic",
+          "error": 0.4743734054775115,
+          "fins": "on",
+          "hpr_base": 0.05928395061728394,
+          "hpr_forebody_by_part": {
+            "boattail": 0.05771784377267971,
+            "body": 0.16885792126439936,
+            "fins": 0.2830007666428446,
+            "lip": 0.08555291898624727,
+            "nose": 0.07467838744226243
+          },
+          "hpr_forebody_c_d": 0.6698078381084335,
+          "hpr_friction": 0.22592391891852556,
+          "hpr_pressure": 0.4438839191899079,
+          "mach": 1.8,
+          "reference_forebody_c_a": 0.4543,
+          "reference_uncertainty": 0.0016,
+          "source": "TN D-4014 Fig. 6(b), printed p. 35 (PDF p37); TN D-4014 Fig. 4(b) middle panel (dF = 0), printed p. 22 (PDF p24)",
+          "within_target": false
+        },
+        {
+          "band": "supersonic",
+          "error": 0.18398246545940866,
+          "fins": "off",
+          "hpr_base": 0.05928395061728394,
+          "hpr_forebody_by_part": {
+            "boattail": 0.05771784377267971,
+            "body": 0.16885792126439936,
+            "lip": 0.08555291898624727,
+            "nose": 0.07467838744226243
+          },
+          "hpr_forebody_c_d": 0.3868070714655888,
+          "hpr_friction": 0.19738682675943328,
+          "hpr_pressure": 0.18942024470615548,
+          "mach": 1.8,
+          "reference_forebody_c_a": 0.3267,
+          "reference_uncertainty": 0.0029,
+          "source": "TN D-4014 Fig. 6(a), printed p. 32 (PDF p34); TN D-4014 Fig. 4(b) top panel (fins off), printed p. 22 (PDF p24)",
+          "within_target": false
+        },
+        {
+          "band": "supersonic",
+          "error": 0.7302380242633286,
+          "fins": "on",
+          "hpr_base": 0.04639613526570048,
+          "hpr_forebody_by_part": {
+            "boattail": 0.04580269961299832,
+            "body": 0.15140685799556608,
+            "fins": 0.29278650836991327,
+            "lip": 0.0853431473976353,
+            "nose": 0.07003956967410867
+          },
+          "hpr_forebody_c_d": 0.6453787830502216,
+          "hpr_friction": 0.20257522095121747,
+          "hpr_pressure": 0.4428035620990041,
+          "mach": 2.3,
+          "reference_forebody_c_a": 0.373,
+          "reference_uncertainty": 0.0016,
+          "source": "TN D-4014 Fig. 6(b), printed p. 35 (PDF p37); TN D-4014 Fig. 4(b) middle panel (dF = 0), printed p. 22 (PDF p24)",
+          "within_target": false
+        },
+        {
+          "band": "supersonic",
+          "error": 0.20462000232425104,
+          "fins": "off",
+          "hpr_base": 0.04639613526570048,
+          "hpr_forebody_by_part": {
+            "boattail": 0.04580269961299832,
+            "body": 0.15140685799556608,
+            "lip": 0.0853431473976353,
+            "nose": 0.07003956967410867
+          },
+          "hpr_forebody_c_d": 0.3525922746803083,
+          "hpr_friction": 0.17698736917746113,
+          "hpr_pressure": 0.1756049055028472,
+          "mach": 2.3,
+          "reference_forebody_c_a": 0.2927,
+          "reference_uncertainty": 0.0016,
+          "source": "TN D-4014 Fig. 6(a), printed p. 32 (PDF p34); TN D-4014 Fig. 4(b) top panel (fins off), printed p. 22 (PDF p24)",
+          "within_target": false
+        },
+        {
+          "band": "supersonic",
+          "error": 1.047103553048804,
+          "fins": "on",
+          "hpr_base": 0.036051051051051046,
+          "hpr_forebody_by_part": {
+            "boattail": 0.036015099214602574,
+            "body": 0.13059768495570553,
+            "fins": 0.29762440583809496,
+            "lip": 0.08499738316507224,
+            "nose": 0.06694359629421474
+          },
+          "hpr_forebody_c_d": 0.61617816946769,
+          "hpr_friction": 0.17473353080475584,
+          "hpr_pressure": 0.44144463866293415,
+          "mach": 2.96,
+          "reference_forebody_c_a": 0.301,
+          "reference_uncertainty": 0.0026,
+          "source": "TN D-4014 Fig. 6(b), printed p. 35 (PDF p37); TN D-4014 Fig. 4(b) middle panel (dF = 0), printed p. 22 (PDF p24)",
+          "within_target": false
+        },
+        {
+          "band": "supersonic",
+          "error": 0.3486611499982857,
+          "fins": "off",
+          "hpr_base": 0.036051051051051046,
+          "hpr_forebody_by_part": {
+            "boattail": 0.036015099214602574,
+            "body": 0.13059768495570553,
+            "lip": 0.08499738316507224,
+            "nose": 0.06694359629421474
+          },
+          "hpr_forebody_c_d": 0.3185537636295951,
+          "hpr_friction": 0.15266244202527546,
+          "hpr_pressure": 0.16589132160431963,
+          "mach": 2.96,
+          "reference_forebody_c_a": 0.2362,
+          "reference_uncertainty": 0.0031,
+          "source": "TN D-4014 Fig. 6(a), printed p. 32 (PDF p34); TN D-4014 Fig. 4(b) top panel (fins off), printed p. 22 (PDF p24)",
+          "within_target": false
+        },
+        {
+          "band": "supersonic",
+          "error": 1.4742025769794749,
+          "fins": "on",
+          "hpr_base": 0.02694725028058361,
+          "hpr_forebody_by_part": {
+            "boattail": 0.02717391216477776,
+            "body": 0.10534113364083124,
+            "fins": 0.2991382612225268,
+            "lip": 0.08446785987051054,
+            "nose": 0.06333707662994664
+          },
+          "hpr_forebody_c_d": 0.579458243528593,
+          "hpr_friction": 0.14094145869646169,
+          "hpr_pressure": 0.4385167848321313,
+          "mach": 3.96,
+          "reference_forebody_c_a": 0.2342,
+          "reference_uncertainty": 0.0026,
+          "source": "TN D-4014 Fig. 6(b), printed p. 35 (PDF p37); TN D-4014 Fig. 4(b) middle panel (dF = 0), printed p. 22 (PDF p24)",
+          "within_target": false
+        },
+        {
+          "band": "supersonic",
+          "error": 0.4800421452273822,
+          "fins": "off",
+          "hpr_base": 0.02694725028058361,
+          "hpr_forebody_by_part": {
+            "boattail": 0.02717391216477776,
+            "body": 0.10534113364083124,
+            "lip": 0.08446785987051054,
+            "nose": 0.06333707662994664
+          },
+          "hpr_forebody_c_d": 0.2803199823060662,
+          "hpr_friction": 0.12313874256480548,
+          "hpr_pressure": 0.15718123974126072,
+          "mach": 3.96,
+          "reference_forebody_c_a": 0.1894,
+          "reference_uncertainty": 0.0026,
+          "source": "TN D-4014 Fig. 6(a), printed p. 32 (PDF p34); TN D-4014 Fig. 4(b) top panel (fins off), printed p. 22 (PDF p24)",
+          "within_target": false
+        },
+        {
+          "band": "supersonic",
+          "error": 1.6508456874137156,
+          "fins": "on",
+          "hpr_base": 0.02304775617950563,
+          "hpr_forebody_by_part": {
+            "boattail": 0.02331167080833711,
+            "body": 0.09223118368357747,
+            "fins": 0.29891829810995185,
+            "lip": 0.08416378190001018,
+            "nose": 0.06149875924864145
+          },
+          "hpr_forebody_c_d": 0.5601236937505181,
+          "hpr_friction": 0.12340096519168357,
+          "hpr_pressure": 0.4367227285588345,
+          "mach": 4.63,
+          "reference_forebody_c_a": 0.2113,
+          "reference_uncertainty": 0.0031,
+          "source": "TN D-4014 Fig. 6(b), printed p. 35 (PDF p37); TN D-4014 Fig. 4(b) middle panel (dF = 0), printed p. 22 (PDF p24)",
+          "within_target": false
+        },
+        {
+          "band": "supersonic",
+          "error": 0.584984196848096,
+          "fins": "off",
+          "hpr_base": 0.02304775617950563,
+          "hpr_forebody_by_part": {
+            "boattail": 0.02331167080833711,
+            "body": 0.09223118368357747,
+            "lip": 0.08416378190001018,
+            "nose": 0.06149875924864145
+          },
+          "hpr_forebody_c_d": 0.2612053956405662,
+          "hpr_friction": 0.10781383863574788,
+          "hpr_pressure": 0.15339155700481832,
+          "mach": 4.63,
+          "reference_forebody_c_a": 0.1648,
+          "reference_uncertainty": 0.0026,
+          "source": "TN D-4014 Fig. 6(a), printed p. 32 (PDF p34); TN D-4014 Fig. 4(b) top panel (fins off), printed p. 22 (PDF p24)",
+          "within_target": false
+        }
+      ],
+      "source": "NASA's half-scale Arcas Robin (short, configuration 1) and bioscience Arcas (long, configuration 2) wind-tunnel models: J. C. Ferris, NASA TN D-4013 (1967), Mach 0.60 to 1.20, Langley 8-foot transonic pressure tunnel; C. D. Babb and D. E. Fuller, NASA TN D-4014 (1967), Mach 1.50 to 4.63, Langley Unitary Plan wind tunnel. Reynolds number 9.8e6 per metre, transition fixed by grit. US Government works. Forebody axial force at zero angle of attack, fins at 0 degrees or off: TN D-4013's C_A,corr (the axial force corrected for the base's), and TN D-4014's C_A less the balance chamber's C_A,c. A measurement."
+    }
+  ],
+  "reynolds_per_m": 9842519.68503937,
+  "target_rel": 0.1
+}

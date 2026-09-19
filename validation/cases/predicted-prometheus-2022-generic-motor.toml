@@ -17,17 +17,28 @@
 # miss does not fail the run and a number that moves still shows in the committed report. The
 # misses, and why:
 #
-# - Every metric: a known gap. RocketPy flying the example's own drag peaks at Mach 1.048 near
-#   burnout, and hpr's drag buildup refuses M >= 1 until M1.8b (ADR-009, ADR-027), so hpr's flight
-#   stops at Mach 1 and nothing can be compared. The harness checks this rather than trusting it:
-#   the reference must reach Mach 1, hpr must refuse with that error, and the run fails once hpr
-#   flies it (L85). The same-drag case flies the example's drag table, not the buildup, and since
-#   hpr's normal force passed Mach 1 (M1.8a) it flies to the ground and is scored.
+# - apogee_agl_m (-6.99%), apogee_time_s (-4.76%), flight_time_s (-4.78%) and landing_drift_m
+#   (-4.67%): the drag. hpr flies this rocket through Mach 1 since M1.8b1 (ADR-028), and its
+#   coasting C_D0 rises from about 0.41 at Mach 0.1 (the example's 0.42) to 0.49 at Mach 0.8 and
+#   0.54 at Mach 1, mostly base drag (0.12 + 0.13 M^2 on the base, eq. 3.94), where the example's
+#   falls to 0.30 at Mach 0.82 and is 0.37 at 0.99. Under power hpr takes the motor's area off the
+#   base, so it burns out 1.8% faster and peaks at Mach 1.059 against 1.048 (both within target),
+#   then coasts 300 m lower. Flown on the same drag the two codes agree on the apogee to +1.525%
+#   (`flight-prometheus-2022-generic-motor.toml`), so the rest is the drag: a lower apogee means a
+#   shorter descent and less time to drift.
+# - apogee_drift_m (-19.40%): the same drag on the coast, on top of the same-drag case's -9.27%,
+#   which `wind_response.py` measured as hpr's body lift and rail release (ADR-026) and which is not
+#   scored there.
+# - series_height_rms_m (253.9 m, target 128.8): the same drag over the whole trace: hpr peaks 300 m
+#   lower and lands 10.8 s sooner. Its speed RMS, 7.1 m/s, is within its 10.3 m/s target.
+# - max_acceleration_m_s2 (+19.06%) and max_acceleration_time_s (-6.64%): the whole flight's
+#   maximum is the main parachute opening, not a flight load. RocketPy counts the canopy's added
+#   mass and hpr has none (ADR-012), which is why the same-drag case doesn't score it; here it comes
+#   10.9 s sooner because the apogee is lower.
 id = "predicted-prometheus-2022-generic-motor"
 title = "Prometheus 2022 from the pad to the ground, predicted: hpr's own aerodynamics"
 reference = "validation/fixtures/flight/rocketpy-whole-flight-own-drag.json"
 reference_case = "prometheus-2022-generic-motor"
-known_gap = "RocketPy flying the example's own drag peaks at Mach 1.048 near burnout, and hpr's drag buildup refuses M >= 1 until M1.8b (ADR-009, ADR-027), so the flight stops at Mach 1 and no metric can be compared."
 
 [flight.whole_flight]
 design = "rocketpy-prometheus-2022-generic-motor"

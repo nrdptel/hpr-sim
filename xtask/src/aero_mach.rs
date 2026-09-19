@@ -38,7 +38,7 @@ const CALISTO_MACHS: &[f64] = &[
 ];
 
 /// Niskanen 2009 Table 3.1's regions: subsonic to 0.8, transonic to 1.2, supersonic beyond.
-fn band(mach: f64) -> &'static str {
+pub fn band(mach: f64) -> &'static str {
     if mach <= 0.8 {
         "subsonic"
     } else if mach < 1.2 {

@@ -3223,8 +3223,7 @@ mod tests {
             devices,
             Separation::new(Trigger::Apogee, 0),
         );
-        // From just past apogee: this stack goes supersonic on the way up, which the aero refuses
-        // until M1.8, and the ascent is not what this test is about.
+        // From just past apogee: the ascent is not what this test is about.
         let start = dropped(&sim, 2_000.0, DVec3::new(0.0, 0.0, -0.5));
         let result = sim.run_free(START_S, start, &mut ()).unwrap();
         assert_eq!(result.termination, Termination::Separated);

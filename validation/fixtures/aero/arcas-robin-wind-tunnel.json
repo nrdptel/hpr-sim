@@ -839,6 +839,224 @@
           "uncertainty_percent": 0.3,
           "source": "TN D-4014 Fig. 7, printed p. 41: configuration 1, low angles of attack"
         }
+      ],
+      "axial_force": [
+        {
+          "mach": 0.6,
+          "fins": "on",
+          "forebody_c_a": 0.2987,
+          "uncertainty": 0.002,
+          "base_c_a": -0.0419,
+          "source": "TN D-4013 Fig. 11, printed p. 60 (PDF p. 62): C_A,corr, fins at 0 deg"
+        },
+        {
+          "mach": 0.6,
+          "fins": "off",
+          "forebody_c_a": 0.2217,
+          "uncertainty": 0.002,
+          "base_c_a": -0.0294,
+          "source": "TN D-4013 Fig. 11, printed p. 60 (PDF p. 62): C_A,corr, fins off"
+        },
+        {
+          "mach": 0.8,
+          "fins": "on",
+          "forebody_c_a": 0.3299,
+          "uncertainty": 0.002,
+          "base_c_a": -0.0408,
+          "source": "TN D-4013 Fig. 11, printed p. 60 (PDF p. 62): C_A,corr, fins at 0 deg"
+        },
+        {
+          "mach": 0.8,
+          "fins": "off",
+          "forebody_c_a": 0.2308,
+          "uncertainty": 0.002,
+          "base_c_a": -0.0408,
+          "source": "TN D-4013 Fig. 11, printed p. 60 (PDF p. 62): C_A,corr, fins off"
+        },
+        {
+          "mach": 0.9,
+          "fins": "on",
+          "forebody_c_a": 0.4202,
+          "uncertainty": 0.002,
+          "base_c_a": -0.0148,
+          "source": "TN D-4013 Fig. 11, printed p. 60 (PDF p. 62): C_A,corr, fins at 0 deg"
+        },
+        {
+          "mach": 0.9,
+          "fins": "off",
+          "forebody_c_a": 0.261,
+          "uncertainty": 0.002,
+          "base_c_a": -0.0339,
+          "source": "TN D-4013 Fig. 11, printed p. 60 (PDF p. 62): C_A,corr, fins off"
+        },
+        {
+          "mach": 0.95,
+          "fins": "on",
+          "forebody_c_a": 0.568,
+          "uncertainty": 0.008,
+          "base_c_a": -0.0073,
+          "source": "TN D-4013 Fig. 11, printed p. 60 (PDF p. 62): C_A,corr, fins at 0 deg"
+        },
+        {
+          "mach": 0.95,
+          "fins": "off",
+          "forebody_c_a": 0.2916,
+          "uncertainty": 0.008,
+          "base_c_a": -0.0188,
+          "source": "TN D-4013 Fig. 11, printed p. 60 (PDF p. 62): C_A,corr, fins off"
+        },
+        {
+          "mach": 1.0,
+          "fins": "on",
+          "forebody_c_a": 0.6858,
+          "uncertainty": 0.002,
+          "base_c_a": 0.0143,
+          "source": "TN D-4013 Fig. 11, printed p. 60 (PDF p. 62): C_A,corr, fins at 0 deg"
+        },
+        {
+          "mach": 1.0,
+          "fins": "off",
+          "forebody_c_a": 0.4194,
+          "uncertainty": 0.002,
+          "base_c_a": -0.0208,
+          "source": "TN D-4013 Fig. 11, printed p. 60 (PDF p. 62): C_A,corr, fins off"
+        },
+        {
+          "mach": 1.2,
+          "fins": "on",
+          "forebody_c_a": 0.5935,
+          "uncertainty": 0.002,
+          "base_c_a": 0.0438,
+          "source": "TN D-4013 Fig. 11, printed p. 60 (PDF p. 62): C_A,corr, fins at 0 deg"
+        },
+        {
+          "mach": 1.2,
+          "fins": "off",
+          "forebody_c_a": 0.4311,
+          "uncertainty": 0.002,
+          "base_c_a": 0.0278,
+          "source": "TN D-4013 Fig. 11, printed p. 60 (PDF p. 62): C_A,corr, fins off"
+        },
+        {
+          "mach": 1.5,
+          "fins": "on",
+          "forebody_c_a": 0.4932,
+          "uncertainty": 0.0016,
+          "c_a": 0.5353,
+          "chamber_c_a": 0.0305,
+          "forebody_c_a_chamber_only": 0.5049,
+          "source": "TN D-4014 Fig. 5(b), printed p. 26 (PDF p28); TN D-4014 Fig. 4(a) middle panel (dF = 0), printed p. 21 (PDF p23)"
+        },
+        {
+          "mach": 1.5,
+          "fins": "off",
+          "forebody_c_a": 0.3401,
+          "uncertainty": 0.002,
+          "c_a": 0.3472,
+          "chamber_c_a": 0.0051,
+          "forebody_c_a_chamber_only": 0.3421,
+          "source": "TN D-4014 Fig. 5(a), printed p. 23 (PDF p25); TN D-4014 Fig. 4(a) top panel (fins off), printed p. 21 (PDF p23)"
+        },
+        {
+          "mach": 1.8,
+          "fins": "on",
+          "forebody_c_a": 0.426,
+          "uncertainty": 0.0016,
+          "c_a": 0.4697,
+          "chamber_c_a": 0.0315,
+          "forebody_c_a_chamber_only": 0.4381,
+          "source": "TN D-4014 Fig. 5(b), printed p. 26 (PDF p28); TN D-4014 Fig. 4(a) middle panel (dF = 0), printed p. 21 (PDF p23)"
+        },
+        {
+          "mach": 1.8,
+          "fins": "off",
+          "forebody_c_a": 0.3142,
+          "uncertainty": 0.002,
+          "c_a": 0.3338,
+          "chamber_c_a": 0.0142,
+          "forebody_c_a_chamber_only": 0.3196,
+          "source": "TN D-4014 Fig. 5(a), printed p. 23 (PDF p25); TN D-4014 Fig. 4(a) top panel (fins off), printed p. 21 (PDF p23)"
+        },
+        {
+          "mach": 2.3,
+          "fins": "on",
+          "forebody_c_a": 0.3328,
+          "uncertainty": 0.0016,
+          "c_a": 0.3815,
+          "chamber_c_a": 0.0352,
+          "forebody_c_a_chamber_only": 0.3463,
+          "source": "TN D-4014 Fig. 5(b), printed p. 26 (PDF p28); TN D-4014 Fig. 4(a) middle panel (dF = 0), printed p. 21 (PDF p23)"
+        },
+        {
+          "mach": 2.3,
+          "fins": "off",
+          "forebody_c_a": 0.2474,
+          "uncertainty": 0.002,
+          "c_a": 0.2906,
+          "chamber_c_a": 0.0312,
+          "forebody_c_a_chamber_only": 0.2594,
+          "source": "TN D-4014 Fig. 5(a), printed p. 23 (PDF p25); TN D-4014 Fig. 4(a) top panel (fins off), printed p. 21 (PDF p23)"
+        },
+        {
+          "mach": 2.96,
+          "fins": "on",
+          "forebody_c_a": 0.2639,
+          "uncertainty": 0.0026,
+          "c_a": 0.3044,
+          "chamber_c_a": 0.0293,
+          "forebody_c_a_chamber_only": 0.2751,
+          "source": "TN D-4014 Fig. 5(b), printed p. 26 (PDF p28); TN D-4014 Fig. 4(a) middle panel (dF = 0), printed p. 21 (PDF p23)"
+        },
+        {
+          "mach": 2.96,
+          "fins": "off",
+          "forebody_c_a": 0.203,
+          "uncertainty": 0.0029,
+          "c_a": 0.2403,
+          "chamber_c_a": 0.027,
+          "forebody_c_a_chamber_only": 0.2133,
+          "source": "TN D-4014 Fig. 5(a), printed p. 23 (PDF p25); TN D-4014 Fig. 4(a) top panel (fins off), printed p. 21 (PDF p23)"
+        },
+        {
+          "mach": 3.96,
+          "fins": "on",
+          "forebody_c_a": 0.2056,
+          "uncertainty": 0.0026,
+          "c_a": 0.2313,
+          "chamber_c_a": 0.0185,
+          "forebody_c_a_chamber_only": 0.2127,
+          "source": "TN D-4014 Fig. 5(b), printed p. 26 (PDF p28); TN D-4014 Fig. 4(a) middle panel (dF = 0), printed p. 21 (PDF p23)"
+        },
+        {
+          "mach": 3.96,
+          "fins": "off",
+          "forebody_c_a": 0.1554,
+          "uncertainty": 0.0029,
+          "c_a": 0.1817,
+          "chamber_c_a": 0.019,
+          "forebody_c_a_chamber_only": 0.1626,
+          "source": "TN D-4014 Fig. 5(a), printed p. 23 (PDF p25); TN D-4014 Fig. 4(a) top panel (fins off), printed p. 21 (PDF p23)"
+        },
+        {
+          "mach": 4.63,
+          "fins": "on",
+          "forebody_c_a": 0.185,
+          "uncertainty": 0.0026,
+          "c_a": 0.2026,
+          "chamber_c_a": 0.0127,
+          "forebody_c_a_chamber_only": 0.1899,
+          "source": "TN D-4014 Fig. 5(b), printed p. 26 (PDF p28); TN D-4014 Fig. 4(a) middle panel (dF = 0), printed p. 21 (PDF p23)"
+        },
+        {
+          "mach": 4.63,
+          "fins": "off",
+          "forebody_c_a": 0.139,
+          "uncertainty": 0.0029,
+          "c_a": 0.1549,
+          "chamber_c_a": 0.0115,
+          "forebody_c_a_chamber_only": 0.1434,
+          "source": "TN D-4014 Fig. 5(a), printed p. 23 (PDF p25); TN D-4014 Fig. 4(a) top panel (fins off), printed p. 21 (PDF p23)"
+        }
       ]
     },
     {
@@ -1430,7 +1648,190 @@
           "uncertainty_percent": 0.3,
           "source": "TN D-4014 Fig. 7, printed p. 41: configuration 2, low angles of attack"
         }
+      ],
+      "axial_force": [
+        {
+          "mach": 0.6,
+          "fins": "on",
+          "forebody_c_a": 0.3455,
+          "uncertainty": 0.002,
+          "base_c_a": -0.0396,
+          "source": "TN D-4013 Fig. 12, printed p. 61 (PDF p. 63): C_A,corr, fins at 0 deg"
+        },
+        {
+          "mach": 0.6,
+          "fins": "off",
+          "forebody_c_a": 0.2477,
+          "uncertainty": 0.002,
+          "base_c_a": -0.0237,
+          "source": "TN D-4013 Fig. 12, printed p. 61 (PDF p. 63): C_A,corr, fins off"
+        },
+        {
+          "mach": 0.8,
+          "fins": "on",
+          "forebody_c_a": 0.3706,
+          "uncertainty": 0.002,
+          "base_c_a": -0.0416,
+          "source": "TN D-4013 Fig. 12, printed p. 61 (PDF p. 63): C_A,corr, fins at 0 deg"
+        },
+        {
+          "mach": 0.8,
+          "fins": "off",
+          "forebody_c_a": 0.2517,
+          "uncertainty": 0.002,
+          "base_c_a": -0.0356,
+          "source": "TN D-4013 Fig. 12, printed p. 61 (PDF p. 63): C_A,corr, fins off"
+        },
+        {
+          "mach": 0.9,
+          "fins": "on",
+          "forebody_c_a": 0.451,
+          "uncertainty": 0.008,
+          "base_c_a": -0.0203,
+          "source": "TN D-4013 Fig. 12, printed p. 61 (PDF p. 63): C_A,corr, fins at 0 deg"
+        },
+        {
+          "mach": 0.9,
+          "fins": "off",
+          "forebody_c_a": 0.2671,
+          "uncertainty": 0.008,
+          "base_c_a": -0.0427,
+          "source": "TN D-4013 Fig. 12, printed p. 61 (PDF p. 63): C_A,corr, fins off"
+        },
+        {
+          "mach": 1.0,
+          "fins": "on",
+          "forebody_c_a": 0.7247,
+          "uncertainty": 0.002,
+          "base_c_a": 0.012,
+          "source": "TN D-4013 Fig. 12, printed p. 61 (PDF p. 63): C_A,corr, fins at 0 deg"
+        },
+        {
+          "mach": 1.0,
+          "fins": "off",
+          "forebody_c_a": 0.3674,
+          "uncertainty": 0.002,
+          "base_c_a": -0.028,
+          "source": "TN D-4013 Fig. 12, printed p. 61 (PDF p. 63): C_A,corr, fins off"
+        },
+        {
+          "mach": 1.2,
+          "fins": "on",
+          "forebody_c_a": 0.6245,
+          "uncertainty": 0.002,
+          "base_c_a": 0.0267,
+          "source": "TN D-4013 Fig. 12, printed p. 61 (PDF p. 63): C_A,corr, fins at 0 deg"
+        },
+        {
+          "mach": 1.2,
+          "fins": "off",
+          "forebody_c_a": 0.422,
+          "uncertainty": 0.002,
+          "base_c_a": -0.0416,
+          "source": "TN D-4013 Fig. 12, printed p. 61 (PDF p. 63): C_A,corr, fins off"
+        },
+        {
+          "mach": 1.8,
+          "fins": "on",
+          "forebody_c_a": 0.4543,
+          "uncertainty": 0.0016,
+          "c_a": 0.5086,
+          "chamber_c_a": 0.0392,
+          "forebody_c_a_chamber_only": 0.4693,
+          "source": "TN D-4014 Fig. 6(b), printed p. 35 (PDF p37); TN D-4014 Fig. 4(b) middle panel (dF = 0), printed p. 22 (PDF p24)"
+        },
+        {
+          "mach": 1.8,
+          "fins": "off",
+          "forebody_c_a": 0.3267,
+          "uncertainty": 0.0029,
+          "c_a": 0.3684,
+          "chamber_c_a": 0.0302,
+          "forebody_c_a_chamber_only": 0.3383,
+          "source": "TN D-4014 Fig. 6(a), printed p. 32 (PDF p34); TN D-4014 Fig. 4(b) top panel (fins off), printed p. 22 (PDF p24)"
+        },
+        {
+          "mach": 2.3,
+          "fins": "on",
+          "forebody_c_a": 0.373,
+          "uncertainty": 0.0016,
+          "c_a": 0.4122,
+          "chamber_c_a": 0.0283,
+          "forebody_c_a_chamber_only": 0.3839,
+          "source": "TN D-4014 Fig. 6(b), printed p. 35 (PDF p37); TN D-4014 Fig. 4(b) middle panel (dF = 0), printed p. 22 (PDF p24)"
+        },
+        {
+          "mach": 2.3,
+          "fins": "off",
+          "forebody_c_a": 0.2927,
+          "uncertainty": 0.0016,
+          "c_a": 0.3245,
+          "chamber_c_a": 0.023,
+          "forebody_c_a_chamber_only": 0.3015,
+          "source": "TN D-4014 Fig. 6(a), printed p. 32 (PDF p34); TN D-4014 Fig. 4(b) top panel (fins off), printed p. 22 (PDF p24)"
+        },
+        {
+          "mach": 2.96,
+          "fins": "on",
+          "forebody_c_a": 0.301,
+          "uncertainty": 0.0026,
+          "c_a": 0.3334,
+          "chamber_c_a": 0.0234,
+          "forebody_c_a_chamber_only": 0.31,
+          "source": "TN D-4014 Fig. 6(b), printed p. 35 (PDF p37); TN D-4014 Fig. 4(b) middle panel (dF = 0), printed p. 22 (PDF p24)"
+        },
+        {
+          "mach": 2.96,
+          "fins": "off",
+          "forebody_c_a": 0.2362,
+          "uncertainty": 0.0031,
+          "c_a": 0.2643,
+          "chamber_c_a": 0.0204,
+          "forebody_c_a_chamber_only": 0.244,
+          "source": "TN D-4014 Fig. 6(a), printed p. 32 (PDF p34); TN D-4014 Fig. 4(b) top panel (fins off), printed p. 22 (PDF p24)"
+        },
+        {
+          "mach": 3.96,
+          "fins": "on",
+          "forebody_c_a": 0.2342,
+          "uncertainty": 0.0026,
+          "c_a": 0.2591,
+          "chamber_c_a": 0.018,
+          "forebody_c_a_chamber_only": 0.2411,
+          "source": "TN D-4014 Fig. 6(b), printed p. 35 (PDF p37); TN D-4014 Fig. 4(b) middle panel (dF = 0), printed p. 22 (PDF p24)"
+        },
+        {
+          "mach": 3.96,
+          "fins": "off",
+          "forebody_c_a": 0.1894,
+          "uncertainty": 0.0026,
+          "c_a": 0.208,
+          "chamber_c_a": 0.0134,
+          "forebody_c_a_chamber_only": 0.1946,
+          "source": "TN D-4014 Fig. 6(a), printed p. 32 (PDF p34); TN D-4014 Fig. 4(b) top panel (fins off), printed p. 22 (PDF p24)"
+        },
+        {
+          "mach": 4.63,
+          "fins": "on",
+          "forebody_c_a": 0.2113,
+          "uncertainty": 0.0031,
+          "c_a": 0.225,
+          "chamber_c_a": 0.0099,
+          "forebody_c_a_chamber_only": 0.2151,
+          "source": "TN D-4014 Fig. 6(b), printed p. 35 (PDF p37); TN D-4014 Fig. 4(b) middle panel (dF = 0), printed p. 22 (PDF p24)"
+        },
+        {
+          "mach": 4.63,
+          "fins": "off",
+          "forebody_c_a": 0.1648,
+          "uncertainty": 0.0026,
+          "c_a": 0.1766,
+          "chamber_c_a": 0.0085,
+          "forebody_c_a_chamber_only": 0.168,
+          "source": "TN D-4014 Fig. 6(a), printed p. 32 (PDF p34); TN D-4014 Fig. 4(b) top panel (fins off), printed p. 22 (PDF p24)"
+        }
       ]
     }
-  ]
+  ],
+  "axial_reading": "Axial force at zero angle of attack, roll 0, read from the reports' plots on 600-dpi renders with each plot's grid calibrated locally, tilt and shear measured (2026-09-18, M1.8b1). The reports state +-0.004 for C_A. TN D-4013 (Figs. 11-12): C_A,corr, the axial force 'corrected for base axial force' to free-stream pressure at the base (the full 1.470-in base, 0.427 of the reference area: TN D-4013 Fig. 3's base pressure over Fig. 11's C_A,b gives 0.43), read from the faired curves at the test Mach numbers to +-0.002 (+-0.008 on the steep rise at Mach 0.95 on the short model and 0.90 on the long); Fig. 11's scan is sheared, and its grid was mapped across the plot. base_c_a is C_A,b, the base's own axial force, which the sting and its flare shape (TN D-4013 p. 5): information, not a free flight's base drag. TN D-4014 (Figs. 4-6): C_A includes the balance chamber's pressure force, which the report gives as C_A,c without correcting (printed p. 4); C_A at zero angle of attack is a quadratic through the symbols within 2.6 deg, and C_A,c the same. forebody_c_a = C_A - 1.383 C_A,c, which takes the chamber's pressure over the whole base as D-4013's correction does (1.383 = (1.470/1.250)^2, the base over the 1.250-in cavity of Fig. 1(a); the report states no chamber area); forebody_c_a_chamber_only = C_A - C_A,c, the bound if C_A,c already covers the base. The two differ by 0.002 to 0.014. TN D-4014 has no configuration 2 run at Mach 1.50. uncertainty is the reading's, in C_A."
 }
