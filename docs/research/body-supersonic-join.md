@@ -33,7 +33,9 @@ number over nose fineness from 0.4 to 2; `slope` doesn't enforce that range.
    its `force`/`moment` loop lies inside one segment. Grouping the windows by segment changes
    the whole-body totals only by summation order, well inside the 1e-12 relative that
    M1.8e1's fixture check allows. Stations are metres aft of the vertex, which for a pointed
-   nose is hpr's nose tip.
+   nose is hpr's nose tip. Done on this branch: `ShockExpansionBody::segment_slopes`, with
+   `slope` left bit-identical (same pieces, same order) and a test that the shares sum to it
+   within 1e-12 and each acts within its segment.
 2. **A correction on the nose (fallback).** Keep the slender-body terms, and add one term for
    (shock-expansion minus slender-body over the same segments), placed so the whole-body
    moment matches the shock-expansion CP. This is simpler, but it puts the cylinder's carried

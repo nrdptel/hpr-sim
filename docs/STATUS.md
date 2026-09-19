@@ -30,16 +30,16 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
   rolling-moment plots are unread; #76: M1.8a's other TN D-4014 zeros. M1.8e1's Python check,
   `m18e/sose.py` (patch in hpr's Fig. 2), carries the gradient through reduced elements; hpr
   doesn't (#81).
-- **Resume M1.8e2 here.** Branch `m1.8e2-body-supersonic-in-flight` (draft PR) holds only the
-  split (M1.8e3 now carries M1.8e's 15% bullet). Next, in order: (1) in `hpr-aero/src/model.rs`
-  (its `//!` says body terms are Mach-free), take `ShockExpansionBody::slope` past a join (it
-  returns `Unsupported` where the method fails), slender-body below, a ±1e-9 probe test; (2) drop the Mach-free `body_stations_m` cache (`crates/hpr-sim/src/dynamics.rs`,
-  line 132; take stations at each Mach as fin sets do); (3) evaluate the Arcas Robin body alone
-  through that path from Mach 1.5, into the report; (4) `cargo xtask validate` (debug), list the
-  changed rows. Open: Fig. 2 held below Mach 3; Prometheus peaks at Mach 1.01 to 1.06; Mach over
-  nose fineness outside 0.4 to 2; hpr's Arcas Robin nose is a power series (fixture: secant ogive,
-  ratio 1.744); #81. Plan: `docs/research/body-supersonic-join.md`. ROADMAP: 998 lines.
-  Predicted mode's misses aren't gaps to close (ADR-009, ADR-023).
+- **Resume M1.8e2 here.** Branch `m1.8e2-body-supersonic-in-flight` (draft PR) holds the split
+  (M1.8e3 now carries M1.8e's 15% bullet) and `ShockExpansionBody::segment_slopes` (each
+  segment's share, tested to sum to `slope`). Plan: `docs/research/body-supersonic-join.md`.
+  Next: (1) in `hpr-aero/src/model.rs` (its `//!` says body terms are Mach-free), give each body
+  component its segment's share past a join (`Unsupported` where the method fails), slender-body
+  below, a ±1e-9 probe test; (2) drop the Mach-free `body_stations_m` cache
+  (`crates/hpr-sim/src/dynamics.rs`, line 132); (3) the Arcas Robin body alone from Mach 1.5
+  through that path, into the report; (4) `cargo xtask validate` (debug), list changed rows;
+  (5) physics review of the whole diff. Open questions are in the plan, and #81. Predicted
+  mode's misses aren't gaps to close (ADR-009, ADR-023). ROADMAP: 998 of 1000 lines.
 - **Autopilot memory:** cycles run in their own process group, reaped either way; `runs.log`
   gets a memory line per cycle (% spare from `memory_pressure`). `scripts/build-memory.sh`
   reproduces `docs/perf.md`; thinning debug info doesn't cut peak memory.
