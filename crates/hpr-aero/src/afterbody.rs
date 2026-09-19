@@ -48,8 +48,9 @@
 //!   Mach 1 it returns to 1 by Mach 0.8, where the base drag is Niskanen's again. A separated
 //!   boattail gives no relief (weight as above).
 //!
-//! Adjacent narrowing transitions are one boattail, the cone through the run's ends, and a lip
-//! right behind a boattail sits in its wake ([`crate::drag::WakeTerm`]).
+//! Narrowing parts of one smooth surface drag as one cone ([`crate::drag::BoattailTerm`]), and a
+//! lip right behind a boattail sits in its wake ([`crate::drag::WakeTerm`]); both weights, and the
+//! base's relief, are continuous in the geometry.
 //!
 //! Outside the data: the chart below `a = 0.25` (Jack's theory reaches 0.2), attached flow up to
 //! 16° where Jack's theory stops at 11°, Cubbage's separation angles (measured to Mach 1.28) at

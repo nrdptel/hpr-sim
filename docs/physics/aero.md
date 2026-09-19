@@ -747,8 +747,9 @@ were made with no motor exhaust.
 | separation | between 16° and 30°, a straight-line blend in `θ` from the attached value to the base drag on the annulus, `(C_D•)_base(1 − a)`, where [flow separates](../glossary.md#flow-separation) | [C57] pp. 6, 8 |
 | through Mach 1 | the rule to Mach 0.8, where the buildup's other transonic terms start; a straight line to Mach 1; from there the attached drag held at its Mach 1.2 value to Mach 1.2 | [N09] p. 47, [762] p. 5-47 |
 | base behind a boattail | from Mach 2.5, `p_cyl/p_bt = 0.442 + 0.558 a_b`, with the cylinder's pressure from Love's correlation of measured bases, turned into the ratio of the two base-pressure coefficients, `k = (1 − p_bt/p)/(1 − p_cyl/p)`, which multiplies hpr's own base drag; below Mach 2.5, `k` at Mach 2.5; back to 1 between Mach 1 and 0.8; none for a separated boattail | [762] Figs. 5-139, 5-141, pp. 5-208, 5-210 |
-| a lip in its wake | a shoulder right behind a boattail, with no step or other part between, loses its pressure drag while it rises up to a quarter of the boattail's drop in diameter, keeps all of it from half, and a straight-line share between; the base behind it takes the same share of the relief | [D4014] p. 6, [R22] slide 2; the quarter and half are a judgement |
-| a boattail in parts | adjacent narrowing transitions are one boattail, the cone through the run's ends, each part taking its share of the decrease in area | |
+| a lip in its wake | a shoulder behind a boattail loses its pressure drag while its aft end rises up to a quarter of the boattail's drop in diameter above the boattail's end, keeps all of it from half, and a straight-line share between; the base behind it takes the same share of the relief | [D4014] p. 6, [R22] slide 2; the quarter and half are a judgement |
+| a boattail in parts | a narrowing part right after another drags as the cone from their joint start less the cone to its own start, so parts of one smooth surface add up to one cone; the merge is whole for a turn of up to 3° between them and none from 10°, a corner, where each part is its own boattail | a judgement |
+| gaps and steps | a tube between a boattail and what follows fades the merge, the wake and the base's relief over one drop in diameter; so does a step down, a corner the flow separates at; a small gap or step changes the drag a little | a judgement |
 
 Why each piece is there:
 
@@ -782,7 +783,9 @@ Why each piece is there:
   separates or the boundary layer thickens ([D4014] p. 6); RASAero II's own comparison with the
   tunnel left it out as "buried in the boattail boundary layer" ([R22]). hpr used to take it as a
   stubby cone in undisturbed air, 0.085 of drag. The quarter and half that bound the wake were
-  chosen knowing this lip rises 0.17 of its boattail's drop.
+  chosen knowing this lip rises 0.17 of its boattail's drop, and every one of the 44 Arcas Robin
+  rows depends on that choice: with the lip counted as a shoulder in undisturbed air, each would
+  read 0.065 to 0.086 higher.
 
 **A worked example: Calisto at Mach 1.5.** Calisto's boattail is 60 mm long from 127 mm to 87 mm:
 `a = 0.469`, `l/d₁ = 0.472`, `θ = 18.4°`. The chart's `x` is `√1.25/(2 × 0.472) = 1.18`, where it
@@ -806,7 +809,7 @@ rows helped build the model: those check it on its own data.
 | boattails | Mach | rows | hpr against measured | helped build it |
 |---|---|---|---|---|
 | attached, 3° to 10°: [CS51], [DN54], [C72], [MJ54], [C57] | 1.2 to 3.12 | 58 | −21.9% to +28.3%, within 0.0123 | no |
-| attached, 5.6° and 8° ([C57]) | 1.0 and 1.1 | 4 | −18.2% to −5.4% | no |
+| attached, 5.6° and 8° ([C57]) | 1.0 and 1.1 | 4 | −18.2% to −5.4% | partly: Cubbage's peak was weighed in holding the Mach 1.2 value |
 | attached, 3° to 10°, points near Mach 1 that Compton calls questionable (strut interference, reflected bow shock; [C72] p. 9) | 0.95 to 1.1 | 27 | −46.2% to +60.0% | no |
 | attached, 3° to 10°, in the rise ([C72], [C57]) | 0.85 to 0.95 | 28 | −77.5% to +7.6% | no |
 | attached, 3° to 10°, under the rule ([C72], [C57]) | 0.3 to 0.8 | 58 | −100% to −83.5% | no |
@@ -837,8 +840,9 @@ and Cubbage's long, gentle boattails 0 to 0.009 where they measure 0.011 to 0.07
 - For one length and area ratio, Jack found the cone's wave drag the smallest of three shapes
   ([J53] p. 1), so a curved boattail likely drags more than hpr gives. The chart's 0.70 and 0.80
   curves read up to 32% above Jack past `x ≈ 1`, 0.0084 at most.
-- A boattail with a tube behind it keeps its wave drag, but the base gets no relief, however
-  short the tube.
+- A tube behind a boattail loses the base's relief over one drop in diameter, and the 3°, 10°,
+  quarter and half that shape the merge and the wake are judgements, with no measurement behind
+  them but the Arcas Robin's lip.
 - Nothing models the jet. Fig. 5-141 is measured with the motor off, as is the base drag it
   scales, and under power hpr applies both to what the motors leave of the base.
 

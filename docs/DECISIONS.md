@@ -2787,23 +2787,39 @@ What the sources give (all NACA and NASA reports are U.S. Government works; pinn
   validation audit caught it, and Compton's transonic data, transcribed then, put the measured
   rise's half-way at about 0.89, earlier than the 0.95 a start at 0.9 gives. The start went back
   to the buildup's own 0.8, half-way at 0.9. It costs the Arcas Robin 2 of its 4 rows within 10%.
-- **A boattail in parts is one boattail** (physics review): adjacent narrowing transitions, with
-  no step or other part between, are the cone through the run's ends, each taking its share of
-  the decrease in area, and the base relief takes its area ratio from the run's fore area. Before,
-  the same cone drawn as two transitions read +10% at Mach 1.5 on the Arcas Robin.
+- **A boattail in parts** (physics review, twice): a narrowing part right after another drags
+  as the cone from a virtual start through its aft end, less the cone from the same start through
+  its fore end. Its virtual start is its own fore end moved toward the previous part's virtual
+  start by a merge weight: whole for a turn of up to 3° between the parts, none from 10° (a
+  corner, where each part is its own boattail), linear between, and faded by any tube between
+  over the first part's drop in diameter. So parts of one smooth surface add up to one cone, and
+  the base relief takes its area ratio from the virtual start. The first draft left each part
+  its own boattail (the same cone drawn as two transitions read +10% at Mach 1.5 on the Arcas
+  Robin); the second merged any adjacent parts into one cone, which made a 15° boattail closed
+  by a near-vertical transition read +13% at Mach 0.6 against the same boattail and a step down.
+  The 3° and 10° are a judgement.
 - **The base behind a boattail** (the last body component a boattail, or a lip in its wake):
   from Mach 2.5, Fig. 5-141 with Love's cylinder, taken as the ratio of the two pressure
   coefficients and applied to hpr's own base drag (Fleeman's, unchanged, #68); below Mach 2.5
   that ratio at Mach 2.5, chosen because it matches the measured bases at Mach 1.59 and 1.91,
   which therefore check it in sample; back to 1 from Mach 1 to 0.8; toward 1 with the separation
   weight.
-- **A lip in a boattail's wake**: a shoulder right behind a boattail, with no step or other part
-  between, loses its pressure drag while it rises up to a quarter of the boattail's drop in
-  diameter, keeps all of it from half, and a straight-line share between; the base behind it takes
-  the same share of the relief. The quarter and half are a judgement made knowing the Arcas Robin's
-  lip, the one measured, rises 0.17. The first draft gave any shoulder up to the boattail's fore
-  diameter no drag, which the physics review showed switching abruptly (a flare back to full
-  diameter got none).
+- **A lip in a boattail's wake**: a shoulder behind a boattail loses its pressure drag while its
+  aft end rises up to a quarter of the boattail's drop in diameter above the boattail's end, keeps
+  all of it from half, and a straight-line share between; the base behind it takes the same share
+  of the relief. The quarter and half are a judgement made knowing the Arcas Robin's lip, the one
+  measured, rises 0.17, and all 44 Arcas Robin rows depend on it (with the lip as a shoulder in
+  undisturbed air each would read 0.065 to 0.086 higher). The first draft gave any shoulder up to
+  the boattail's fore diameter no drag, and the second required an exact match of radii; the
+  physics review showed both switching abruptly (a flare back to full diameter got none; a
+  micrometre of step or tube moved the Arcas Robin 25%).
+- **Gaps and steps are continuous** (physics review): a tube between a boattail and what follows
+  fades the merge, the wake and the base's relief over one drop in diameter, and so does a step
+  down, a corner the flow separates at; a lip's rise is measured from the boattail's end, so a
+  step up before it counts in its rise. A micrometre of step or tube changes the drag by under
+  0.1%, and a boattail closed by a micrometre-long transition drags as it does with a step down
+  (`drag::tests::a_sharp_corner_keeps_its_boattails_apart`,
+  `a_lip_in_a_boattails_wake_fades_with_its_rise`).
 - **Fig. 5-141 is power-off**, as is Fleeman's base drag it scales; under power hpr applies both to
   what the motors leave of the base. Love's value held past Mach 5.5 would ask for less than a
   vacuum, and is clamped there.
@@ -2826,7 +2842,8 @@ What the sources give (all NACA and NASA reports are U.S. Government works; pinn
   - Attached, 3° to 10°, from Mach 1.2 to 3.12: −21.9% to +28.3%, within 0.0123 in drag
     coefficient (58 rows of 20 boattails); the largest percentages are 3° and 5° boattails whose
     drag is 0.01 to 0.02. Inviscid theory reads such boattails up to about 20% high.
-  - From Mach 1.0 to 1.1, Cubbage's 5.6° and 8°: −18.2% to −5.4% (4, under the peak). Compton's
+  - From Mach 1.0 to 1.1, Cubbage's 5.6° and 8°: −18.2% to −5.4% (4, under the peak; partly in
+    sample, as his peak was weighed in holding the Mach 1.2 value). Compton's
     questionable points from Mach 0.95 to 1.1: −46.2% to +60.0% (27). Through the rise, Mach 0.85
     to 0.95: −77.5% to +7.6% (28). Under the rule, to Mach 0.8: −100% to −83.5% (58, #73).
   - Cubbage's 16° in his thick boundary layer: +26.4% to +54.2% from Mach 1.0 (9), −30.2% to
