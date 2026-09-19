@@ -2173,8 +2173,8 @@ is in the join. Nothing past Mach 4.63 has been checked, though the model runs t
 
 What this covers: how far hpr's body alone is from NASA's measurement of the same body, and where
 what is left of the gap sits. How far to trust it: from Mach 3 the two agree within 5%; below it
-hpr reads up to 38% high, and the excess is [body lift](#body-lift), not the
-[method](#bodies-faster-than-sound).
+hpr reads up to 38% high, and as far as these readings resolve, the excess is
+[body lift](#body-lift) rather than the [method](#bodies-faster-than-sound).
 
 The milestone [M1.8e](../decisions-and-roadmap.md#m1-8e) set a target before any of this was
 built: the Arcas Robin's body alone within 15% at every Mach number from 1.5, and both
@@ -2200,9 +2200,11 @@ vanishes, against the measurement's own `α |α|` fit and its standard error:
 | long | 3.96 | 0.95 | 4.455 | 4.428 | −0.6% | 3.129 ± 0.41 | 2.740 | 1.27 |
 | long | 4.63 | 1.11 | 4.615 | 4.425 | −4.1% | 2.877 ± 0.41 | 2.724 | 0.98 |
 
-**Where the gap is.** At `α → 0` hpr sits inside the measurement's own standard error on every row
-outside the target: the shock-expansion method, the Newtonian cap and the boattail's measured share
-are not what is missing. The gap is in the curvature — what the rest of the plotted angles add,
+**Where the gap is.** At `α → 0` hpr is within 1.5 standard errors of the measurement on every row
+outside the target (0.2 to 1.5 of one), so the shock-expansion method, the Newtonian cap and the
+boattail's measured share are not resolvably wrong. That is a weak test, because the measurement's
+own `α → 0` slope is uncertain: its widest standard error, ±0.42 per radian, sits on a slope of
+1.920. What the readings do resolve is the curvature — what the rest of the plotted angles add,
 which for hpr is body lift. Past Mach 3 hpr's curvature matches the measured one (×0.89 to ×1.33);
 below it, hpr's is 1.3 to 2.8 times the measured, and at Mach 1.8 on the short model 12 times, where
 the tunnel's own curve barely bends at all (0.094 per radian, against a standard error of 0.33 on

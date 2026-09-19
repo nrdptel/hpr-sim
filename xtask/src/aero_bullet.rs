@@ -170,7 +170,7 @@ mod tests {
             ]
         );
         // Every row's gap is in the curvature body lift adds, not the method's slope at α → 0:
-        // that agrees within the measurement's own standard error on every row outside.
+        // that agrees within 1.5 standard errors of the measurement on every row outside.
         for configuration in fixture["configurations"].as_array().unwrap() {
             for row in configuration["rows"].as_array().unwrap() {
                 if row["within_target"].as_bool().unwrap() {

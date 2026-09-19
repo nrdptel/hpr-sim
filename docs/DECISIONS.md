@@ -3709,12 +3709,13 @@ the method at all.
     (+37.7%), 1.8 (+25.9%), 2.3 and 2.96 (+16.9%), and the long at 1.8 (+19.4%) and 2.3 (+15.5%).
     From Mach 3 both are within 5%.
   - **Where the gap is.** Splitting each fitted slope into its value at `α → 0` and the curvature
-    the plotted angles add: at `α → 0` hpr sits inside the measurement's own standard error on
+    the plotted angles add: at `α → 0` hpr is within 1.5 standard errors of the measurement on
     every row outside the target, so the shock-expansion method, the Newtonian cap and the
-    boattail's share are not what is missing. The curvature is: past Mach 3 hpr's matches the
-    measured (×0.89 to ×1.33), below it hpr's is 1.3 to 2.8 times it, and 12 times at Mach 1.8 on
-    the short model, where the tunnel's own curve barely bends (0.094 per radian against a standard
-    error of 0.33 on the slope it comes from). For hpr that curvature is body lift: Jorgensen's
+    boattail's share are not resolvably wrong — a weak test, since the widest of those standard
+    errors, ±0.42 per radian, sits on a slope of 1.920. The curvature is: past Mach 3 hpr's
+    matches the measured (×0.89 to ×1.33), below it hpr's is 1.3 to 2.8 times it, and 12 times at
+    Mach 1.8 on the short model, where the tunnel's own curve barely bends (0.094 per radian
+    against a standard error of 0.33 on the slope it comes from). For hpr that curvature is body lift: Jorgensen's
     crossflow term, chosen in ADR-037 because the tunnel's high-angle points support its size, is
     too large at the small angles these slopes are fitted over.
   - **Not tuned.** Closing it needs a cited rule for how the crossflow term grows over the first

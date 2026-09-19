@@ -61,7 +61,7 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
 
 - 2026-09-19: M1.8e9 #90's cap and M1.8e's 15% bullet (ADR-040): the measured boattail increment
   fades from 16° to 30° as the flow separates; footnote 8 pinned by a hand integral; the bullet met
-  at Mach 3.96 and 4.63, the body alone outside on six rows, all of it body lift's curvature.
+  at Mach 3.96 and 4.63, the body alone outside on six rows, the resolvable gap all in body lift.
 - 2026-09-19: M1.8e8 The lip faster than sound (ADR-039): a lip in a boattail's wake carries
   nothing above the join, so every M1.8a row from Mach 1.5 is within the slope's 15% (+9.4% to
   −3.3%, was −28.0%); the long model's CP at Mach 1.8 and 2.3 is 0.53 and 0.52 calibres out.
