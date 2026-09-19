@@ -30,7 +30,7 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
   rolling-moment plots are unread; #76: M1.8a's other TN D-4014 zeros. M1.8e1's Python check,
   `m18e/sose.py` (patch in hpr's Fig. 2), carries the gradient through reduced elements; hpr
   doesn't (#81).
-- **Resume here (clean stop at 45 minutes left):** branch `m1.8e5-gap-by-source`, draft PR; only
+- **Resume here (clean stop at 45 minutes left):** branch `m1.8e5-gap-by-source`, draft #91; only
   the split so far. Next cycle: write e5's `docs/research/` page on this branch (site link, gate,
   review), mark the PR ready, merge. e7 carries M1.8e's 15% bullet.
 - **M1.8e4** (ADR-034 flies M1.8e2): `SupersonicBody` in `hpr-aero/src/model.rs` tabulates
