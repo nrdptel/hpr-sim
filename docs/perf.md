@@ -3,6 +3,49 @@
 Measured numbers only, newest first within each section. Record the machine, the toolchain, and
 the command, so a later run can be compared like for like.
 
+## Build memory during an unattended run
+
+- **Benchmark:** `scripts/build-memory.sh`, which builds into an empty `CARGO_TARGET_DIR` and sums
+  the resident memory of the build's process group once a second. 2026-09-19 on an Apple M5
+  (10 cores, 16 GB) with rustc 1.98.1. Each row is the mean of its repetitions. Summing processes
+  double-counts the pages they share, so compare rows with each other rather than reading one as
+  exact, and a one-second sample can pass over a shorter spike, so these are floors.
+- **Why:** a run window ended with macOS suspending applications for want of memory. These numbers
+  say how much of a 16 GB machine the build accounts for.
+
+Compiling only, `cargo test --workspace --all-features --no-run`, three repetitions each:
+
+| setting | peak memory | wall time | written to `target/` |
+|---|---|---|---|
+| one job per core, `debug = 2` | 2.55 GB | 11.7 s | 1201 MB |
+| `CARGO_BUILD_JOBS=6`, `debug = 2` | 1.62 GB | 13.7 s | 1200 MB |
+| one job per core, `debug = "line-tables-only"` | 2.37 GB | 11.3 s | 1037 MB |
+
+Compiling **and running** the tests, `cargo test --workspace --all-features`, two repetitions each
+(`HPR_MEASURE_RUN=1`). `CARGO_BUILD_JOBS` does not reach test execution — each test binary
+otherwise runs one thread per core — so the second row caps `RUST_TEST_THREADS` too:
+
+| setting | peak memory | wall time |
+|---|---|---|
+| one per core | 2.58 GB | 25.5 s |
+| `CARGO_BUILD_JOBS=6` and `RUST_TEST_THREADS=6` | 1.72 GB | 29.0 s |
+
+- **What this says.** Building *and* running the whole suite peaks at 2.58 GB, barely above
+  compiling alone. So the build contributes to memory pressure but is not the main consumer on a
+  16 GB machine; what else is open matters more. Capping both to six takes 0.86 GB off that peak
+  for 3.5 s on a 25 s run, which is why [the autopilot](AUTOPILOT.md) exports `CARGO_BUILD_JOBS=6`
+  and `RUST_TEST_THREADS=6` for its own cycles.
+- **What it rules out.** Thinning debug information does not reliably cut peak memory. Across two
+  measurement sessions the default came in at 2.42, 2.47 and 2.55 GB and `line-tables-only` at
+  2.53 and 2.37 GB — overlapping ranges, so the 0.18 GB gap in the table above cannot be told
+  apart from run-to-run spread. It does cut what is written to `target/` by 14%, consistently.
+  That is a disk saving rather than a memory one, so no profile was changed.
+- **Not measured:** `cargo doc`, `cargo xtask site` (which builds rustdoc into a second target
+  directory) and `cargo xtask validate`. Nor the session process itself, which is the largest
+  remaining unknown; the autopilot's per-cycle memory line exists to close it.
+- Numbers taken during an autopilot cycle inherit that six-job cap. Measure from a plain shell,
+  or set `CARGO_BUILD_JOBS` explicitly, when comparing against the rows above.
+
 ## Normal-force tables (M1.8d)
 
 - **Benchmark:** `cargo bench -p hpr-sim --bench flight -- "K400C to the ground|normal-force
