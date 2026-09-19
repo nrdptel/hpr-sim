@@ -19,17 +19,10 @@
 ## Phase 0: Foundations
 
 - [x] **M0.1 Workspace, CI, licenses.**
-  - Cargo workspace with the crate skeletons from `ARCHITECTURE.md` (empty crates are fine).
-  - `rust-toolchain.toml` pinned to the current stable.
-  - Edition 2024; `rustfmt.toml`, clippy lints and `[workspace.dependencies]`.
-  - Dual `LICENSE-MIT` and `LICENSE-APACHE`; `THIRD-PARTY-NOTICES.md` started.
-  - `deny.toml` (cargo-deny: licenses allowlist with copyleft denied, advisories, bans).
-  - `xtask` with `wasm-check` (checks the pure crates for `wasm32-unknown-unknown`).
-  - GitHub Actions: fmt, clippy, test (ubuntu/macos/windows), doc, wasm-check, deny. Rust cache on.
-    CI runs on **every** PR with no `paths-ignore`, so docs-only PRs also get green checks to merge
-    on.
-  - README with status "pre-alpha" and the project goals.
-  - `.gitignore` already covers `refs/`, `.autopilot/`, `corpus/`.
+  - The workspace from `ARCHITECTURE.md` (edition 2024, pinned stable, shared lints and
+    dependencies); dual licenses and notices; `deny.toml` denying copyleft; `xtask wasm-check`; CI
+    (fmt, clippy, test on three OSes, doc, wasm-check, deny) on **every** PR, no `paths-ignore`;
+    README "pre-alpha"; `.gitignore` covers `refs/`, `.autopilot/`, `corpus/`.
 
   *Done when:*
   - The local gate passes.
@@ -596,12 +589,17 @@
       Arcas Robin fins off from Mach 1.5: 0 of 11, +13.5% to +24.1% (steep boattail, #72); Calisto:
       8 of 17, −14.9% to −5.1%; plausible fins bring 14 to 17 within 10%.
 
-  - [ ] **M1.8c Roll and damping.**
+  - [x] **M1.8c Roll and damping.**
     - Roll forcing from fin cant and roll damping. Pitch and yaw damping keep hpr's local-flow
-      damping (ADR-026).
+      damping (ADR-011).
 
     *Done when:* M1.8's roll bullet is met, and hpr's roll forcing is compared with the Arcas
     Robin's measured roll effectiveness (TN D-4014).
+
+    *Result (ADR-031):* met. Barrowman's strip theory with his body factors. Valetudo canted 1° at
+    100 m/s settles on the closed-form balance, −16.948 rad/s, within 1e-11. Against TN D-4014:
+    from Mach 2.3, 8 of 8 within 5.3%; at Mach 1.5 and 1.8, +14.3% to +47.8%. Damping against the
+    Basic Finner: −5.9% to −16.2%.
 
   - [ ] **M1.8d Normal-force overrides.**
     - `C_Nα` and CP tables against Mach and angle of attack, read from a RASAero II export.

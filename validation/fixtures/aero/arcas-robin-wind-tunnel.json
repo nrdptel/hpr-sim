@@ -1057,6 +1057,116 @@
           "forebody_c_a_chamber_only": 0.1434,
           "source": "TN D-4014 Fig. 5(a), printed p. 23 (PDF p25); TN D-4014 Fig. 4(a) top panel (fins off), printed p. 21 (PDF p23)"
         }
+      ],
+      "roll_effectiveness": [
+        {
+          "mach": 1.5,
+          "alpha_deg_c_l_delta_per_deg": [
+            [
+              -4.02,
+              0.1834
+            ],
+            [
+              -0.03,
+              0.1684
+            ],
+            [
+              3.97,
+              0.1714
+            ]
+          ],
+          "source": "TN D-4014 Fig. 14, printed p. 75: configuration 1, short model, fins canted 2 deg"
+        },
+        {
+          "mach": 1.8,
+          "alpha_deg_c_l_delta_per_deg": [
+            [
+              -4.02,
+              0.1841
+            ],
+            [
+              -0.03,
+              0.1722
+            ],
+            [
+              3.97,
+              0.1801
+            ]
+          ],
+          "source": "TN D-4014 Fig. 14, printed p. 75: configuration 1, short model, fins canted 2 deg"
+        },
+        {
+          "mach": 2.3,
+          "alpha_deg_c_l_delta_per_deg": [
+            [
+              -4.02,
+              0.1539
+            ],
+            [
+              -0.03,
+              0.1449
+            ],
+            [
+              3.97,
+              0.1609
+            ]
+          ],
+          "source": "TN D-4014 Fig. 14, printed p. 75: configuration 1, short model, fins canted 2 deg"
+        },
+        {
+          "mach": 2.96,
+          "alpha_deg_c_l_delta_per_deg": [
+            [
+              -4.02,
+              0.1206
+            ],
+            [
+              -0.02,
+              0.1152
+            ],
+            [
+              3.97,
+              0.1296
+            ]
+          ],
+          "source": "TN D-4014 Fig. 14, printed p. 75: configuration 1, short model, fins canted 2 deg"
+        },
+        {
+          "mach": 3.96,
+          "alpha_deg_c_l_delta_per_deg": [
+            [
+              -4.02,
+              0.0904
+            ],
+            [
+              -0.02,
+              0.0874
+            ],
+            [
+              3.97,
+              0.0944
+            ]
+          ],
+          "source": "TN D-4014 Fig. 14, printed p. 75: configuration 1, short model, fins canted 2 deg"
+        },
+        {
+          "mach": 4.63,
+          "alpha_deg_c_l_delta_per_deg": [
+            [
+              -4.01,
+              0.0781
+            ],
+            [
+              -0.02,
+              0.0721
+            ],
+            [
+              3.98,
+              0.0811
+            ]
+          ],
+          "source": "TN D-4014 Fig. 14, printed p. 75: configuration 1, short model, fins canted 2 deg"
+        }
       ]
     },
     {
@@ -1830,8 +1940,101 @@
           "forebody_c_a_chamber_only": 0.168,
           "source": "TN D-4014 Fig. 6(a), printed p. 32 (PDF p34); TN D-4014 Fig. 4(b) top panel (fins off), printed p. 22 (PDF p24)"
         }
+      ],
+      "roll_effectiveness": [
+        {
+          "mach": 1.8,
+          "alpha_deg_c_l_delta_per_deg": [
+            [
+              -4.01,
+              0.186
+            ],
+            [
+              0.03,
+              0.167
+            ],
+            [
+              4.06,
+              0.167
+            ]
+          ],
+          "source": "TN D-4014 Fig. 14, printed p. 76: configuration 2, long model, fins canted 2 deg"
+        },
+        {
+          "mach": 2.3,
+          "alpha_deg_c_l_delta_per_deg": [
+            [
+              -4.0,
+              0.151
+            ],
+            [
+              0.04,
+              0.146
+            ],
+            [
+              4.07,
+              0.161
+            ]
+          ],
+          "source": "TN D-4014 Fig. 14, printed p. 76: configuration 2, long model, fins canted 2 deg"
+        },
+        {
+          "mach": 2.96,
+          "alpha_deg_c_l_delta_per_deg": [
+            [
+              -4.0,
+              0.117
+            ],
+            [
+              0.03,
+              0.114
+            ],
+            [
+              4.06,
+              0.126
+            ]
+          ],
+          "source": "TN D-4014 Fig. 14, printed p. 76: configuration 2, long model, fins canted 2 deg"
+        },
+        {
+          "mach": 3.96,
+          "alpha_deg_c_l_delta_per_deg": [
+            [
+              -4.01,
+              0.089
+            ],
+            [
+              0.02,
+              0.087
+            ],
+            [
+              4.06,
+              0.096
+            ]
+          ],
+          "source": "TN D-4014 Fig. 14, printed p. 76: configuration 2, long model, fins canted 2 deg"
+        },
+        {
+          "mach": 4.63,
+          "alpha_deg_c_l_delta_per_deg": [
+            [
+              -3.72,
+              0.077
+            ],
+            [
+              0.03,
+              0.078
+            ],
+            [
+              4.07,
+              0.084
+            ]
+          ],
+          "source": "TN D-4014 Fig. 14, printed p. 76: configuration 2, long model, fins canted 2 deg"
+        }
       ]
     }
   ],
-  "axial_reading": "Axial force at zero angle of attack, roll 0, read from the reports' plots on 600-dpi renders with each plot's grid calibrated locally, tilt and shear measured (2026-09-18, M1.8b1). The reports state +-0.004 for C_A. TN D-4013 (Figs. 11-12): C_A,corr, the axial force 'corrected for base axial force' to free-stream pressure at the base (the full 1.470-in base, 0.427 of the reference area: TN D-4013 Fig. 3's base pressure over Fig. 11's C_A,b gives 0.43), read from the faired curves at the test Mach numbers to +-0.002 (+-0.008 on the steep rise at Mach 0.95 on the short model and 0.90 on the long); Fig. 11's scan is sheared, and its grid was mapped across the plot. base_c_a is C_A,b, the base's own axial force, which the sting and its flare shape (TN D-4013 p. 5): information, not a free flight's base drag. TN D-4014 (Figs. 4-6): C_A includes the balance chamber's pressure force, which the report gives as C_A,c without correcting (printed p. 4); C_A at zero angle of attack is a quadratic through the symbols within 2.6 deg, and C_A,c the same. forebody_c_a = C_A - 1.383 C_A,c, which takes the chamber's pressure over the whole base as D-4013's correction does (1.383 = (1.470/1.250)^2, the base over the 1.250-in cavity of Fig. 1(a); the report states no chamber area); forebody_c_a_chamber_only = C_A - C_A,c, the bound if C_A,c already covers the base. The two differ by 0.002 to 0.015. TN D-4014 has no configuration 2 run at Mach 1.50. uncertainty is the reading's, in C_A."
+  "axial_reading": "Axial force at zero angle of attack, roll 0, read from the reports' plots on 600-dpi renders with each plot's grid calibrated locally, tilt and shear measured (2026-09-18, M1.8b1). The reports state +-0.004 for C_A. TN D-4013 (Figs. 11-12): C_A,corr, the axial force 'corrected for base axial force' to free-stream pressure at the base (the full 1.470-in base, 0.427 of the reference area: TN D-4013 Fig. 3's base pressure over Fig. 11's C_A,b gives 0.43), read from the faired curves at the test Mach numbers to +-0.002 (+-0.008 on the steep rise at Mach 0.95 on the short model and 0.90 on the long); Fig. 11's scan is sheared, and its grid was mapped across the plot. base_c_a is C_A,b, the base's own axial force, which the sting and its flare shape (TN D-4013 p. 5): information, not a free flight's base drag. TN D-4014 (Figs. 4-6): C_A includes the balance chamber's pressure force, which the report gives as C_A,c without correcting (printed p. 4); C_A at zero angle of attack is a quadratic through the symbols within 2.6 deg, and C_A,c the same. forebody_c_a = C_A - 1.383 C_A,c, which takes the chamber's pressure over the whole base as D-4013's correction does (1.383 = (1.470/1.250)^2, the base over the 1.250-in cavity of Fig. 1(a); the report states no chamber area); forebody_c_a_chamber_only = C_A - C_A,c, the bound if C_A,c already covers the base. The two differ by 0.002 to 0.015. TN D-4014 has no configuration 2 run at Mach 1.50. uncertainty is the reading's, in C_A.",
+  "roll_reading": "TN D-4014 Fig. 14 (printed pp. 75-76, PDF pp. 77-78) plots the roll effectiveness C_l_delta, per degree of fin cant, against the angle of attack for each Mach number, as faired curves with staggered zeros 0.2 apart; C_l = L/(q A d), with A the body's cross-section and d its diameter (symbol list, printed p. 2). Each fin was canted 2 deg in the direction that gives a positive rolling moment; the report doesn't say how C_l_delta was formed from its runs at 0 and 2 deg (presumably their difference over 2 deg). Read on 600-dpi renders at alpha = -4, 0 and +4 deg (M1.8a, 2026-09-18), +-0.002 per reading. The report gives C_l's accuracy as about +-0.01, which over 2 deg of cant allows up to +-0.01 per degree in a difference of two runs. Configuration 1's readings were corrected in M1.8c (2026-09-19, validation audit): M1.8a had placed each panel's zero 14.5 to 18.5 px (0.005 to 0.007) above the grid line it lies on; the zeros are the grid's bottom edge at 4830 px for Mach 1.50 and every 554 px (0.2) above it, with the grid 277 px per 0.1, and each reading is M1.8a's curve position measured from them. An independent re-read by the audit agrees within 0.0016. Configuration 2's zeros were on their grid lines and are unchanged."
 }

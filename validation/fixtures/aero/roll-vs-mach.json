@@ -1,0 +1,176 @@
+{
+  "arcas_robin": [
+    {
+      "design": "wind-tunnel-arcas-robin-short.json",
+      "fin_count": 4,
+      "id": "arcas-robin-short",
+      "reference": "TN D-4014 Fig. 14",
+      "roll_damping_interference": 1.2005941407763432,
+      "roll_forcing_interference": 0.9347458738824379,
+      "rows": [
+        {
+          "alpha_deg": -0.03,
+          "band": "supersonic",
+          "error": 0.47777903574605207,
+          "hpr_c_l_delta_per_deg": 0.24885798961963515,
+          "hpr_without_body_interference_per_deg": 0.2662306371955527,
+          "mach": 1.5,
+          "reference_c_l_delta_per_deg": 0.1684
+        },
+        {
+          "alpha_deg": -0.03,
+          "band": "supersonic",
+          "error": 0.14261529353686453,
+          "hpr_c_l_delta_per_deg": 0.19675835354704807,
+          "hpr_without_body_interference_per_deg": 0.21049395246840552,
+          "mach": 1.8,
+          "reference_c_l_delta_per_deg": 0.1722
+        },
+        {
+          "alpha_deg": -0.03,
+          "band": "supersonic",
+          "error": 0.031828059977009326,
+          "hpr_c_l_delta_per_deg": 0.14951188589066866,
+          "hpr_without_body_interference_per_deg": 0.15994923333512637,
+          "mach": 2.3,
+          "reference_c_l_delta_per_deg": 0.1449
+        },
+        {
+          "alpha_deg": -0.02,
+          "band": "supersonic",
+          "error": -0.0005345016549184178,
+          "hpr_c_l_delta_per_deg": 0.1151384254093534,
+          "hpr_without_body_interference_per_deg": 0.12317617935143113,
+          "mach": 2.96,
+          "reference_c_l_delta_per_deg": 0.1152
+        },
+        {
+          "alpha_deg": -0.02,
+          "band": "supersonic",
+          "error": -0.014339779832454824,
+          "hpr_c_l_delta_per_deg": 0.08614670324264345,
+          "hpr_without_body_interference_per_deg": 0.09216056005129587,
+          "mach": 3.96,
+          "reference_c_l_delta_per_deg": 0.0874
+        },
+        {
+          "alpha_deg": -0.02,
+          "band": "supersonic",
+          "error": 0.024721956332925954,
+          "hpr_c_l_delta_per_deg": 0.07388245305160396,
+          "hpr_without_body_interference_per_deg": 0.07904014889601543,
+          "mach": 4.63,
+          "reference_c_l_delta_per_deg": 0.0721
+        }
+      ]
+    },
+    {
+      "design": "wind-tunnel-arcas-robin-long.json",
+      "fin_count": 4,
+      "id": "arcas-robin-long",
+      "reference": "TN D-4014 Fig. 14",
+      "roll_damping_interference": 1.2005941407763432,
+      "roll_forcing_interference": 0.9347458738824379,
+      "rows": [
+        {
+          "alpha_deg": 0.03,
+          "band": "supersonic",
+          "error": 0.17819373381465908,
+          "hpr_c_l_delta_per_deg": 0.19675835354704807,
+          "hpr_without_body_interference_per_deg": 0.21049395246840552,
+          "mach": 1.8,
+          "reference_c_l_delta_per_deg": 0.167
+        },
+        {
+          "alpha_deg": 0.04,
+          "band": "supersonic",
+          "error": 0.024054012949785486,
+          "hpr_c_l_delta_per_deg": 0.14951188589066866,
+          "hpr_without_body_interference_per_deg": 0.15994923333512637,
+          "mach": 2.3,
+          "reference_c_l_delta_per_deg": 0.146
+        },
+        {
+          "alpha_deg": 0.03,
+          "band": "supersonic",
+          "error": 0.009986187801345636,
+          "hpr_c_l_delta_per_deg": 0.1151384254093534,
+          "hpr_without_body_interference_per_deg": 0.12317617935143113,
+          "mach": 2.96,
+          "reference_c_l_delta_per_deg": 0.114
+        },
+        {
+          "alpha_deg": 0.02,
+          "band": "supersonic",
+          "error": -0.009808008705247562,
+          "hpr_c_l_delta_per_deg": 0.08614670324264345,
+          "hpr_without_body_interference_per_deg": 0.09216056005129587,
+          "mach": 3.96,
+          "reference_c_l_delta_per_deg": 0.087
+        },
+        {
+          "alpha_deg": 0.03,
+          "band": "supersonic",
+          "error": -0.05278906344097489,
+          "hpr_c_l_delta_per_deg": 0.07388245305160396,
+          "hpr_without_body_interference_per_deg": 0.07904014889601543,
+          "mach": 4.63,
+          "reference_c_l_delta_per_deg": 0.078
+        }
+      ]
+    }
+  ],
+  "basic_finner": {
+    "barrowman_theory": [
+      {
+        "band": "subsonic",
+        "error": -0.019896233554198783,
+        "hpr_c_lp": -33.52934985011086,
+        "mach": 0.07,
+        "reference_c_lp": -34.21
+      }
+    ],
+    "id": "basic-finner",
+    "reference": "Barrowman 1967 Fig. 5-7",
+    "roll_damping_interference": 1.1666666666666667,
+    "wind_tunnel": [
+      {
+        "band": "supersonic",
+        "error": -0.05883525383877741,
+        "hpr_c_lp": -31.62313547101708,
+        "mach": 1.51,
+        "reference_c_lp": -33.6
+      },
+      {
+        "band": "supersonic",
+        "error": -0.07795440418437471,
+        "hpr_c_lp": -25.310151605138913,
+        "mach": 1.82,
+        "reference_c_lp": -27.45
+      },
+      {
+        "band": "supersonic",
+        "error": -0.14309059079358644,
+        "hpr_c_lp": -20.12023292816659,
+        "mach": 2.27,
+        "reference_c_lp": -23.48
+      },
+      {
+        "band": "supersonic",
+        "error": -0.15801331558640708,
+        "hpr_c_lp": -17.614361437932367,
+        "mach": 2.6,
+        "reference_c_lp": -20.92
+      },
+      {
+        "band": "supersonic",
+        "error": -0.16166045120306227,
+        "hpr_c_lp": -15.358380533959899,
+        "mach": 3.0,
+        "reference_c_lp": -18.32
+      }
+    ]
+  },
+  "generator": "cargo xtask aero",
+  "note": "hpr's roll forcing C_l_delta (per degree of cant, the rolling moment the cant drives, positive, on the body's cross-section and diameter) against the Arcas Robin's measured roll effectiveness at an angle of attack of 0, and hpr's roll damping C_lp (per unit of p d/(2V)) against the Basic Finner's. error is hpr's over the reference's, minus 1. The roadmap sets no target (M1.8c)."
+}

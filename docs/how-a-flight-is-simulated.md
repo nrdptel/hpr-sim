@@ -155,9 +155,10 @@ flight:
   clusters milestone. Every motor ignites at time zero, so a two-stage design flies with all its
   motors lit at once. A cluster whose motors all light then is flown, but no test or comparison
   has checked one yet.
-- **Roll**, the torques that spin a rocket up and slow its spin, planned for [M1.8](decisions-and-roadmap.md#m1-8), the
-  second aerodynamics milestone; [tip-off](glossary.md#tip-off), thrust misalignment (a motor
-  pushing slightly off the rocket's axis) and turbulence, which no milestone plans yet.
+- [Tip-off](glossary.md#tip-off), thrust misalignment (a motor pushing slightly off the rocket's
+  axis) and turbulence, which no milestone plans yet. Roll from canted fins and roll damping are
+  modelled, and checked against measurements only from Mach 1.5 up
+  ([Roll: forcing and damping](physics/aero.md#roll-forcing-and-damping)).
 - **One term counted twice.** A thrust curve measured on a test stand already includes the
   propellant's [internal momentum](glossary.md#internal-momentum), and the equations of motion add
   it again, as RocketPy's do. hpr keeps it so that the two codes can be compared like for like. On

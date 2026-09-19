@@ -455,6 +455,9 @@ impl Vehicle {
     ///   moments give (`docs/physics/frames.md`).
     /// - Fin sets use `sin α` in place of their model's `α`, so their force vanishes when the air
     ///   comes from the tail as well as from the nose.
+    /// - The rolling moment about `z_B` is `q A d (C_l0 cos α + C_lp p d/2V)` from the fins' cant
+    ///   and the roll rate `p = ω_z` at the centre of mass's Mach number
+    ///   ([`hpr_aero::AeroModel::roll`]); the cant's forcing follows the axial flow.
     fn aerodynamics(
         &self,
         air: &hpr_atmos::AirState,
@@ -523,6 +526,15 @@ impl Vehicle {
             out.force += (across * normal.coefficient + side * normal.side_coefficient) * q_i;
             out.moment += (side * -normal.moment_m + across * normal.side_moment_m) * q_i;
         }
+        // Roll about the axis, from the fins' cant and against the roll rate:
+        // `q A d (C_l0 cos α + C_lp p d/2V)`, the damping written as `ρ V A d² C_lp p/4`. The
+        // cant meets the air as it runs along the axis, so its forcing follows the axial flow,
+        // `cos α`: none broadside, reversed tail first, as the fins' normal force follows
+        // `sin α` (ADR-011).
+        let roll = self.aero.roll(out.mach)?;
+        let d = self.aero.reference_diameter_m();
+        out.moment.z += q * area * d * roll.forcing * alpha.cos()
+            + 0.25 * rho * speed * area * d * d * roll.damping * omega.z;
         Ok(out)
     }
 }

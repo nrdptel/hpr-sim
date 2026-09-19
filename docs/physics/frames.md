@@ -90,6 +90,11 @@ converted before use. hpr has no geoid model, so a flight takes `N` at the launc
   crossing air pushes the body, and `C_Y` is across the flow's plane ([Aerodynamics](aero.md)). The
   axial force is `−q A_ref C_A z_B`: `C_A` is positive when the flow meets the nose and drag pushes
   toward the tail, and negative past `α = 90°`, when the rocket moves tail first.
+- **Rolling moment.** `q A_ref d C_l` about `+z_B`, right-handed, with `d` the reference diameter:
+  positive turns `x_B` toward `y_B`. A fin set's positive cant turns fin 0's (the fin along
+  `+x_B`) leading edge toward `−y_B`, so it turns the rocket about `−z_B`, clockwise seen from
+  ahead of the nose, and the roll rate `p = ω_z` settles negative
+  ([Roll: forcing and damping](aero.md#roll-forcing-and-damping)).
 
 ## Attitude
 

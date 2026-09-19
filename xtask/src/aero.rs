@@ -5,7 +5,9 @@
 //! Mach with two references ([`crate::aero_mach`]), written to
 //! `validation/fixtures/aero/normal-force-vs-mach.json`; and compares its drag against Mach with
 //! NASA's Arcas Robin wind tunnel and MIL-HDBK-762's sample calculation ([`crate::aero_drag`]),
-//! written to `validation/fixtures/aero/drag-vs-mach.json`.
+//! written to `validation/fixtures/aero/drag-vs-mach.json`; and compares its roll forcing and
+//! damping with the Arcas Robin's and the Basic Finner's ([`crate::aero_roll`]), written to
+//! `validation/fixtures/aero/roll-vs-mach.json`.
 //!
 //! RocketPy's data files carry their own terms (`THIRD-PARTY-NOTICES.md`), so the curves are read
 //! from the `refs/rocketpy` checkout (`cargo xtask refs fetch`) and never committed. The fixture
@@ -32,8 +34,10 @@ pub const USAGE: &str = "\
                            validation/fixtures/aero/normal-force-vs-mach.json; compare its
                            drag against Mach with the Arcas Robin wind tunnel and
                            MIL-HDBK-762's sample calculation and write
-                           validation/fixtures/aero/drag-vs-mach.json. --check fails if a
-                           committed fixture differs instead of writing.";
+                           validation/fixtures/aero/drag-vs-mach.json; compare its roll
+                           forcing and damping with the Arcas Robin's and the Basic
+                           Finner's and write validation/fixtures/aero/roll-vs-mach.json.
+                           --check fails if a committed fixture differs instead of writing.";
 
 const FIXTURE: &str = "validation/fixtures/aero/rocketpy-drag-curves.json";
 const CHECKOUT: &str = "refs/rocketpy";
@@ -166,6 +170,10 @@ pub fn run(args: &[String]) -> Result<(), String> {
         (
             crate::aero_drag::FIXTURE,
             crate::aero_drag::generate(&root)?,
+        ),
+        (
+            crate::aero_roll::FIXTURE,
+            crate::aero_roll::generate(&root)?,
         ),
     ] {
         let path = root.join(name);

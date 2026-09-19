@@ -3,6 +3,25 @@
 Measured numbers only, newest first within each section. Record the machine, the toolchain, and
 the command, so a later run can be compared like for like.
 
+## Roll (M1.8c)
+
+- **Benchmark:** `cargo bench -p hpr-aero --bench normal_force -- roll`, criterion, release
+  profile, 2026-09-19 on an Apple M5 with rustc 1.98.1.
+- **Input:** `synthetic-two-stage-75mm-54mm.json`'s two fin sets.
+
+| call | median |
+|---|---|
+| `AeroModel::roll`, Mach 0.6 | 10.5 ns |
+| `AeroModel::roll`, Mach 1.0 (the transonic join) | 6.1 ns |
+| `AeroModel::roll`, Mach 2.0 | 35.2 ns |
+
+- **Where the time goes.** Each fin set's span moments and the join's two ends are built with the
+  model (`FinRollTerms`), so below Mach 0.8 and on the join a call is a few multiplications per
+  set. Faster than sound each set clips its outline against the tip's Mach cone twice, as the
+  normal force does. The code review measured the first version, which rebuilt those terms on
+  every call, at up to 670 ns for elliptical fins (a 257-sided outline); now only the clip scales
+  with the outline.
+
 ## Recovery (M1.7a)
 
 - **Benchmark:** `cargo bench -p hpr-sim --bench flight`, criterion, release profile.

@@ -16,6 +16,7 @@
 mod aero;
 mod aero_drag;
 mod aero_mach;
+mod aero_roll;
 mod designs;
 #[cfg(test)]
 mod docs;

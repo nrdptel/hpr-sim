@@ -39,6 +39,13 @@ fn benches(c: &mut Criterion) {
     c.bench_function("AeroModel::normal_force, Calisto", |b| {
         b.iter(|| black_box(&model).normal_force(black_box(&flow)).unwrap())
     });
+    let model = AeroModel::new(&two_stage).unwrap();
+    for mach in [0.6, 1.0, 2.0] {
+        c.bench_function(
+            &format!("AeroModel::roll, synthetic two-stage, Mach {mach}"),
+            |b| b.iter(|| black_box(&model).roll(black_box(mach)).unwrap()),
+        );
+    }
 }
 
 criterion_group!(group, benches);
