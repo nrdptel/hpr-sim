@@ -200,6 +200,10 @@ pub fn run(args: &[String]) -> Result<(), String> {
             crate::aero_blunt::generate(&root)?,
         ),
         (crate::aero_lip::FIXTURE, crate::aero_lip::generate(&root)?),
+        (
+            crate::aero_bullet::FIXTURE,
+            crate::aero_bullet::generate(&root)?,
+        ),
     ] {
         let path = root.join(name);
         if check {

@@ -593,6 +593,18 @@ centre of pressure (test `the_boattail_takes_washington_and_pettis_increment`). 
 gives the same boattail `2[(D_B/D)² − 1]` at every speed, which is Fig. 5's own subsonic line;
 faster than sound the measured increment is less than half of it, and footnote 8's less again.
 
+**A boattail steep enough to separate keeps less of it.** Washington and Pettis measured boattails
+of 4° to 9.5°, where the flow follows the surface. Past about 16° it doesn't: the drag buildup
+already treats a boattail as separating from there, fully by 30°
+([Boattails faster than sound](#boattails-faster-than-sound), Cubbage's shallowest separated and
+steepest attached boattails). A separated surface no longer turns the flow, so its measured
+increment fades out over those same angles — all of it to 16°, none from 30°, straight-line between
+([ADR-040][adr-040], [issue #90](https://github.com/nrdptel/hpr-sim/issues/90)). The Arcas Robin's
+15° boattail keeps all of it; Calisto's 18.4° keeps five sixths; a 30° boattail keeps none, and
+takes just the share the method gives a cylinder in its place. The change is continuous in the
+angle, so a rocket doesn't jump as its boattail is drawn steeper (test
+`a_separating_boattail_keeps_less_of_the_measured_increment`).
+
 *A worked example.* The Arcas Robin's boattail narrows from 2.25 in to 1.308 in over 1.757 in, so
 `L_B/D` = 0.781 and `1 − (D_B/D)²` = 0.662. At Mach 2.3, `√(M² − 1)` = 2.071 and Fig. 5's
 argument is 2.071/0.781 = 2.652, where the curve reads −0.01263 per degree, −0.7237 per radian;
@@ -2157,6 +2169,53 @@ from [`AeroModel::fin_sets`](../api/hpr_aero/model/struct.AeroModel.html#method.
 swept further back start later: a leading edge swept 48° starts at Mach 1.5, and until then it
 is in the join. Nothing past Mach 4.63 has been checked, though the model runs to 5.
 
+#### The body alone, against the 15% target
+
+What this covers: how far hpr's body alone is from NASA's measurement of the same body, and where
+what is left of the gap sits. How far to trust it: from Mach 3 the two agree within 5%; below it
+hpr reads up to 38% high, and the excess is [body lift](#body-lift), not the
+[method](#bodies-faster-than-sound).
+
+The milestone [M1.8e](../decisions-and-roadmap.md#m1-8e) set a target before any of this was
+built: the Arcas Robin's body alone within 15% at every Mach number from 1.5, and both
+configurations' whole-rocket slope within 15% at Mach 3.96 and 4.63. **The second half is met**
+(+2.8% to −3.3%). **The first is not**, on six of eleven rows, and this is where they stand
+([ADR-040][adr-040]). Rows outside the target are in bold. `M/f_n` is the Mach number over the
+nose's fineness, which TN 3527 states its method for from 0.4 to 2. Slopes are per radian on the
+body's cross-section, fitted at the tunnel's plotted angles as
+[ADR-036][adr-036] judges them; the `α → 0` columns are hpr's method alone, where body lift
+vanishes, against the measurement's own `α |α|` fit and its standard error:
+
+| model | Mach | `M/f_n` | measured | hpr | difference | measured at `α → 0` | hpr at `α → 0` | curvature, hpr ÷ measured |
+|---|---|---|---|---|---|---|---|---|
+| short | **1.5** | 0.36 | 2.192 | 3.017 | +37.7% | 1.779 ± 0.32 | 1.852 | 2.82 |
+| short | **1.8** | 0.43 | 2.613 | 3.290 | +25.9% | 2.519 ± 0.33 | 2.143 | 12.20 |
+| short | **2.3** | 0.55 | 3.078 | 3.598 | +16.9% | 2.196 ± 0.32 | 2.394 | 1.37 |
+| short | **2.96** | 0.71 | 3.284 | 3.838 | +16.9% | 2.184 ± 0.30 | 2.612 | 1.11 |
+| short | 3.96 | 0.95 | 3.884 | 3.946 | +1.6% | 2.694 ± 0.32 | 2.735 | 1.02 |
+| short | 4.63 | 1.11 | 4.149 | 3.950 | −4.8% | 2.758 ± 0.32 | 2.718 | 0.89 |
+| long | **1.8** | 0.43 | 3.159 | 3.770 | +19.4% | 1.920 ± 0.42 | 2.143 | 1.31 |
+| long | **2.3** | 0.55 | 3.525 | 4.071 | +15.5% | 2.245 ± 0.41 | 2.394 | 1.31 |
+| long | 2.96 | 0.71 | 3.868 | 4.400 | +13.7% | 2.521 ± 0.36 | 2.614 | 1.33 |
+| long | 3.96 | 0.95 | 4.455 | 4.428 | −0.6% | 3.129 ± 0.41 | 2.740 | 1.27 |
+| long | 4.63 | 1.11 | 4.615 | 4.425 | −4.1% | 2.877 ± 0.41 | 2.724 | 0.98 |
+
+**Where the gap is.** At `α → 0` hpr sits inside the measurement's own standard error on every row
+outside the target: the shock-expansion method, the Newtonian cap and the boattail's measured share
+are not what is missing. The gap is in the curvature — what the rest of the plotted angles add,
+which for hpr is body lift. Past Mach 3 hpr's curvature matches the measured one (×0.89 to ×1.33);
+below it, hpr's is 1.3 to 2.8 times the measured, and at Mach 1.8 on the short model 12 times, where
+the tunnel's own curve barely bends at all (0.094 per radian, against a standard error of 0.33 on
+the slope it is taken from). Jorgensen's crossflow term, which
+[ADR-037][adr-037] chose because the tunnel's high-angle points support its size, is too large at
+these small angles and low speeds.
+
+**What would close it.** A cited rule for how the crossflow term grows from zero over the first few
+degrees, or measurements of this body at finer angles than the reports plot. Neither is in hand,
+so the gap is left visible here rather than tuned away. The rows are in
+[`validation/fixtures/aero/arcas-robin-body-gap.json`](https://github.com/nrdptel/hpr-sim/blob/main/validation/fixtures/aero/arcas-robin-body-gap.json),
+written by `cargo xtask aero`, and a test pins which rows are outside.
+
 ### Checking the shock-expansion method
 
 The second-order shock-expansion method of [Bodies faster than sound](#bodies-faster-than-sound),
@@ -2821,4 +2880,5 @@ ellipse's integrals ([N09] eq. 3.70–3.71); the supersonic forcing and damping 
 [adr-037]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-037-body-lift-by-jorgensens-crossflow-at-every-speed-and-a-boattails-measured-share-faster-than-sound-2026-09-19
 [adr-038]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-038-blunt-and-vertical-nose-tips-faster-than-sound-by-a-newtonian-cap-the-method-started-from-the-tangent-cone-2026-09-19
 [adr-039]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-039-a-lip-in-a-boattails-wake-carries-nothing-faster-than-sound-2026-09-19
+[adr-040]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-040-a-separating-boattail-keeps-less-of-its-measured-share-and-m18es-15-target-judged-2026-09-19
 [gap-fixture]: https://github.com/nrdptel/hpr-sim/blob/main/validation/fixtures/aero/arcas-robin-gap.json

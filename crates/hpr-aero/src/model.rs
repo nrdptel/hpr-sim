@@ -40,6 +40,7 @@ use std::sync::{Arc, OnceLock};
 use hpr_design::{Layout, Part, PlacedComponent};
 use serde::{Deserialize, Serialize};
 
+use crate::afterbody::{SEPARATION_COMPLETE_RAD, SEPARATION_ONSET_RAD};
 use crate::body::{BodyGeometry, sinc};
 use crate::crossflow::BodyLift;
 use crate::drag::{
@@ -287,17 +288,25 @@ impl SupersonicRun {
                 .ok()?
                 .last()?;
             let fore_radius_m = boattail.fore_radius_m;
-            let increment = wp_slope(
+            // A boattail steep enough to separate the flow no longer turns it along its surface,
+            // so the measured increment, which is attached-flow data, fades out over the angles
+            // the drag buildup separates across (Cubbage's 16° to 30°, `crate::afterbody`):
+            // issue #90's cap, graded rather than a switch.
+            let half_angle_rad =
+                ((fore_radius_m - boattail.aft_radius_m) / boattail.length_m).atan();
+            let attached = 1.0
+                - ((half_angle_rad - SEPARATION_ONSET_RAD)
+                    / (SEPARATION_COMPLETE_RAD - SEPARATION_ONSET_RAD))
+                    .clamp(0.0, 1.0);
+            let measured = wp_slope(
                 mach,
                 fore_radius_m,
                 boattail.aft_radius_m,
                 boattail.length_m,
             )
-            .ok()?
-                * PI
-                * fore_radius_m
-                * fore_radius_m
-                / reference_area_m2;
+            .ok()?;
+            let increment =
+                attached * measured * PI * fore_radius_m * fore_radius_m / reference_area_m2;
             let centre_m =
                 self.fore_m[index] + wp_centre_fraction(mach) * boattail.length_m - vertex_m;
             shares[index] = SegmentSlope {
@@ -2732,6 +2741,153 @@ mod tests {
         let narrowing = model(&rocket);
         assert!(narrowing.bodies().last().unwrap().slope_per_rad < 0.0);
         assert!(narrowing.supersonic_body().is_none());
+    }
+
+    /// A boattail steep enough to separate the flow keeps less and less of Washington and Pettis's
+    /// measured increment, which is attached-flow data: all of it to 16°, none from 30°, linear
+    /// between, over the angles the drag buildup separates across (Cubbage, [issue
+    /// #90](https://github.com/nrdptel/hpr-sim/issues/90)). The share stays continuous in the
+    /// angle, so no rocket jumps as its boattail is drawn steeper.
+    #[test]
+    fn a_separating_boattail_keeps_less_of_the_measured_increment() {
+        let mach = 3.0;
+        let ogive = nose(NoseShape::Ogive { radius_ratio: 1.0 }, 0.25, 0.027);
+        let Part::NoseCone(ogive) = ogive else {
+            unreachable!("`nose` builds a nose cone")
+        };
+        // The test rocket's boattail redrawn at each angle from the same fore radius, and what the
+        // method gives a cylinder of the same length in its place.
+        let kept = |half_angle_deg: f64| {
+            let length_m = (0.027 - 0.022) / half_angle_deg.to_radians().tan();
+            let mut rocket = finned_rocket(4);
+            rocket.stages[0].components[2].part = body_part(length_m, 0.027, 0.022);
+            let model = model(&rocket);
+            let a_ref = model.reference_area_m2();
+            let table = model.supersonic_body().expect("a table");
+            let share = table.share(2, mach).expect("the boattail's share").0;
+            let in_its_place = ShockExpansionBody::new(
+                &[
+                    BodySegment::Profile {
+                        profile: ogive.profile().unwrap(),
+                    },
+                    BodySegment::Cylinder {
+                        length_m: 0.7,
+                        radius_m: 0.027,
+                    },
+                    BodySegment::Cylinder {
+                        length_m,
+                        radius_m: 0.027,
+                    },
+                ],
+                DEFAULT_ELEMENTS_PER_CURVE,
+            )
+            .unwrap();
+            let cylinder = in_its_place.segment_slopes(mach, a_ref).unwrap()[2].slope_per_rad;
+            let measured = crate::supersonic_boattail::wp_slope(mach, 0.027, 0.022, length_m)
+                .unwrap()
+                * PI
+                * 0.027
+                * 0.027
+                / a_ref;
+            // The share the rocket flies, less the cylinder's, over the increment as measured.
+            (share - cylinder) / measured
+        };
+        let close = |got: f64, want: f64, what: &str| {
+            assert!((got - want).abs() < 0.02, "{what}: {got} against {want}");
+        };
+        close(kept(15.0), 1.0, "attached at 15°");
+        close(kept(16.0), 1.0, "attached at the onset");
+        close(kept(23.0), 0.5, "half at 23°");
+        close(kept(30.0), 0.0, "none at 30°");
+        close(kept(40.0), 0.0, "none past 30°");
+        // Continuous in the angle, at both ends of the band and inside it.
+        for angle in [16.0_f64, 23.0, 30.0] {
+            let (below, above) = (kept(angle - 1e-6), kept(angle + 1e-6));
+            assert!((above - below).abs() < 1e-5, "{angle}°: {below} to {above}");
+        }
+    }
+
+    /// Footnote 8's size, by hand. On one conical boattail element the method's loading is
+    /// `Λ = (1 − e^(−η)) tan δ · 2 + (λ₂/λ₁) e^(−η) Λ₁` with the footnote's `p_c = p₀` and
+    /// `(dC_N/dα)_tc = 2` (TN 3527 p. 12), and `C_Nα = (2π/A_ref) ∫ Λ r dx` over it. This checks
+    /// the library's share of a boattail against that integral evaluated by hand from the flow the
+    /// method reports at its corner ([issue #90](https://github.com/nrdptel/hpr-sim/issues/90)).
+    #[test]
+    fn footnote_eights_boattail_share_by_hand() {
+        let a_ref = PI * 0.027 * 0.027;
+        let ogive = nose(NoseShape::Ogive { radius_ratio: 1.0 }, 0.25, 0.027);
+        let Part::NoseCone(ogive) = ogive else {
+            unreachable!("`nose` builds a nose cone")
+        };
+        let (length_m, fore_radius_m, aft_radius_m) = (0.05, 0.027, 0.022);
+        let body = ShockExpansionBody::new(
+            &[
+                BodySegment::Profile {
+                    profile: ogive.profile().unwrap(),
+                },
+                BodySegment::Cylinder {
+                    length_m: 0.7,
+                    radius_m: 0.027,
+                },
+                BodySegment::Profile {
+                    profile: hpr_design::Profile::transition(
+                        NoseShape::Conical {},
+                        length_m,
+                        fore_radius_m,
+                        aft_radius_m,
+                        false,
+                    )
+                    .unwrap(),
+                },
+            ],
+            DEFAULT_ELEMENTS_PER_CURVE,
+        )
+        .unwrap();
+        let mach = 2.0;
+        let shares = body.segment_slopes(mach, a_ref).unwrap();
+        // The boattail is one straight element: the corner at its fore end, then a cone of
+        // half-angle −δ to its aft end.
+        let flows = body.element_flows(mach).unwrap();
+        let boattail = flows.last().expect("the boattail's element");
+        let (load, decay) = (boattail.loading, boattail.decay_per_m);
+        // Footnote 8 gives a boattail element the free stream's pressure and a tangent cone of 2
+        // per radian, so its loading relaxes toward `tan δ · 2`.
+        let delta = ((aft_radius_m - fore_radius_m) / length_m).atan();
+        let cone_load = delta.tan() * 2.0;
+        assert!((boattail.tangent_cone_loading - cone_load).abs() < 1e-12);
+        assert!((boattail.tangent_cone_pressure_ratio - 1.0).abs() < 1e-12);
+        // C_Nα = (2π/A_ref) ∫ Λ(x) r(x) dx over the boattail, by Simpson's rule on 4001 points.
+        let steps = 4000;
+        let mut sum = 0.0;
+        for i in 0..=steps {
+            let t = f64::from(i) / f64::from(steps);
+            let x = t * length_m;
+            let r = fore_radius_m + (aft_radius_m - fore_radius_m) * t;
+            let e = (-decay * x).exp();
+            let lambda = (1.0 - e) * cone_load + e * load;
+            let weight = if i == 0 || i == steps {
+                1.0
+            } else if i % 2 == 1 {
+                4.0
+            } else {
+                2.0
+            };
+            sum += weight * lambda * r;
+        }
+        let integral = sum * length_m / (3.0 * f64::from(steps));
+        let by_hand = 2.0 * PI * integral / a_ref;
+        assert!(
+            (shares[2].slope_per_rad - by_hand).abs() < 1e-6,
+            "{} against {by_hand}",
+            shares[2].slope_per_rad
+        );
+        // And its size: footnote 8 takes far less lift off than slender-body theory's
+        // 2 (A_aft − A_fore)/A_ref.
+        let slender = 2.0 * (aft_radius_m.powi(2) - fore_radius_m.powi(2)) / (0.027 * 0.027);
+        assert!(
+            by_hand < 0.0 && by_hand / slender < 0.2,
+            "{by_hand} against slender-body theory's {slender}"
+        );
     }
 
     /// Washington and Pettis's boattail: the method's share for a cylinder of the boattail's

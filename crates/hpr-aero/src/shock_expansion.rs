@@ -238,6 +238,32 @@ struct March {
     flows: Vec<ElementFlow>,
 }
 
+/// The flow on one element of the tangent body ([`ShockExpansionBody::element_flows`]): its state
+/// just behind the element's corner, the tangent cone it relaxes toward, and how fast it does so.
+/// Along the element, `x` from its corner, the pressure is `p_c − (p_c − p₂) e^(−η)` and the
+/// loading `(1 − e^(−η)) Λ_c + e^(−η) Λ₂`, with `η = `[`Self::decay_per_m`]` · x` (TN 3527 eqs. 8,
+/// 9 and 19).
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+#[non_exhaustive]
+pub struct ElementFlowReport {
+    /// Where the element starts, m aft of the vertex.
+    pub corner_x_m: f64,
+    /// Its angle to the axis, rad; negative on a boattail.
+    pub angle_rad: f64,
+    /// `p₂/p₀`, the pressure just behind its corner.
+    pub pressure_ratio: f64,
+    /// `Λ₂`, the loading just behind its corner.
+    pub loading: f64,
+    /// `p_c/p₀` on its tangent cone (the free stream's for a cylinder, and footnote 8's for a
+    /// boattail).
+    pub tangent_cone_pressure_ratio: f64,
+    /// `Λ_c = tan δ (dC_N/dα)_tc`, the loading it relaxes toward.
+    pub tangent_cone_loading: f64,
+    /// `dη/dx` along the element, per m; zero where the pressure already sits at its tangent
+    /// cone's or the element is reduced (issue #81).
+    pub decay_per_m: f64,
+}
+
 /// One segment's share of the body's normal-force slope at `α → 0`
 /// ([`ShockExpansionBody::segment_slopes`]).
 ///
@@ -500,6 +526,29 @@ impl ShockExpansionBody {
             shares[index].moment_slope_m += per_unit * moment;
         }
         Ok(shares)
+    }
+
+    /// The flow the method computes on each element of the tangent body at Mach `mach`, in order
+    /// from the vertex or a blunt tip's handover: what a hand calculation of eq. 19 needs.
+    ///
+    /// # Errors
+    ///
+    /// As [`Self::slope`], less the check that the lift sums to a positive force.
+    pub fn element_flows(&self, mach: f64) -> Result<Vec<ElementFlowReport>, AeroError> {
+        Ok(self
+            .flows(mach)?
+            .flows
+            .iter()
+            .map(|flow| ElementFlowReport {
+                corner_x_m: flow.corner_x_m,
+                angle_rad: flow.angle_rad,
+                pressure_ratio: flow.pressure,
+                loading: flow.load,
+                tangent_cone_pressure_ratio: flow.cone_pressure,
+                tangent_cone_loading: flow.angle_rad.tan() * flow.cone_slope,
+                decay_per_m: flow.decay_rate(),
+            })
+            .collect())
     }
 
     /// How many of the nose's elements the march reduces to the generalized method at Mach
