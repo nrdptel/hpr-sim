@@ -322,18 +322,25 @@ supersonic stability of thin fins ([762] p. 5-15). Two things change the load ne
 `A_cone` is the part of the fin (and of its mirror image) inside the tip's Mach cone. The
 fin-count factor, the sum over fins and `K_T(B)` apply as above.
 
-**Where it starts.** Linear theory's strips need three things, so it starts at
-`M_s = max(1.2, 1/cos Γ_L, √(1 + 1/AR²))`, where `Γ_L` is the leading-edge sweep and
-`AR = 2s²/A_fin` is the aspect ratio of the fin and its mirror image:
+**Where it starts.** Linear theory's strips need four things, so it starts at
+`M_s = max(1.2, 1/cos Γ_L, 1/cos Γ_T, √(1 + 1/AR²), √(1 + (c_t/2s)²))`, where `Γ_L` and `Γ_T`
+are the leading- and trailing-edge sweeps, `AR = 2s²/A_fin` is the aspect ratio of the fin and
+its mirror image, and `c_t` the tip chord:
 
 - Mach 1.2, the bottom of the supersonic region ([N09] Table 3.1, p. 19);
-- a supersonic leading edge, one whose Mach number square to the edge, `M cos Γ_L`, is past 1;
-- `β·AR ≥ 1`, where linear theory's tip loss holds; a rectangle's slope peaks there, at `2·AR`.
+- supersonic edges, each with its Mach number square to the edge, `M cos Γ`, past 1, the case
+  [TN2114] covers;
+- `β·AR ≥ 1`, where linear theory's tip loss holds; a rectangle's slope peaks there, at `2·AR`;
+- `β ≥ c_t/(2s)`, so the mirror fin's tip cone stays off this fin's tip, which matters for a tip
+  chord longer than the fin's average.
+
+Calisto's and the Arcas Robin's fins start at their leading edge's 1.2806 and at 1.2.
 
 **The transonic join.** From Mach 0.8 to `M_s`, the slope and the CP are each a straight line in
 `M` between their values at the two ends. No source gives this region in closed form. MIL-HDBK-762
 reads it from charts of transonic similarity (the way thickness and Mach number combine near
-Mach 1, [762] pp. 5-104–5-105). The join keeps both continuous. The slope peaks at `M_s`, and the
+Mach 1, [762] pp. 5-104–5-105). The join keeps both continuous. For most fins the slope peaks at
+`M_s` (a leading edge swept forward can make it fall across the join instead), and the
 CP moves aft from the quarter chord toward the middle of the chord.
 
 **Worked example.** Calisto's 2018 fins: root chord 0.12 m, tip chord 0.04 m, span 0.10 m and
@@ -355,15 +362,23 @@ gives, per fin:
 - Exact linear theory for a tapered fin. The strip method's constant load outside the tip cone
   runs above it. Against [TN2114] eq. A7 (printed p. 18), a fin with a taper ratio of 0.5, an
   unswept trailing edge and `βA = 3` gets 4.5% more slope.
-- Subsonic leading edges, which the join covers without a method of its own.
+- Subsonic leading and trailing edges, which the join covers without a method of its own. A
+  curved edge counts by its span-averaged sweep, so an elliptical fin, whose edge is swept 90° at
+  the tip, or a freeform fin with a raked outboard edge, keeps a subsonic stretch past `M_s`.
+- Leading edges swept forward. The tip then sits ahead of the root and its Mach cone covers much
+  of the fin, where the half-load overstates the loss; for a fin swept 29° forward the slope still
+  rises for half a Mach number past `M_s`. Such fins are rare on rockets; a property test holds
+  every other trapezoid, swept aft up to 65° and tapered either way, to a slope that falls past
+  `M_s`.
 - The fins' lift carried onto the body behind them, `K_B(T)`, as below Mach 1.
 
 **Other choices, and why not.**
 
 - *Niskanen's supersonic slope* ([N09] eq. 3.48–3.49) multiplies the fin's area by one strip's
   pressure coefficient, `K₁α + …` with `K₁ = 2/β`: the pressure on one face. A plate is pushed by
-  the difference between its faces, twice that. His thesis finds its own supersonic slope
-  "notably lower than the experimental values" for the Arcas Robin (p. 91). hpr counts both faces.
+  the difference between its faces, twice that. His thesis finds its simulated `C_Nα` for the
+  Arcas Robin "notably lower than the experimental values", with the cause unknown (p. 91, a
+  comparison that runs to Mach 4). hpr counts both faces.
 - *RocketPy 1.13.0* flies Diederich's subsonic slope at every Mach number, with `β` held at 0.6
   from Mach 0.8 to 1.1; past Mach 1 that tends to `2π cos Γ_c/β`, about π/2 times linear theory's
   `4/β`. Its fin CP doesn't move with Mach.
@@ -647,7 +662,7 @@ calibres (a calibre is one reference diameter). 16 of the 37 rows miss, each for
 reason below.
 
 - **A wind tunnel.** NASA tested half-scale models of the Arcas Robin sounding rocket from Mach 0.6
-  to 4.63 ([D4013], [D4014]): a 4.7-calibre nose, a cylinder, a 15° boattail and four trapezoidal
+  to 4.63 ([D4013], [D4014]): a nose 4.2 calibres long, a cylinder, a 15° boattail and four trapezoidal
   fins swept 30°, 18.2 calibres long in all, and a longer version of 23.8. The reports print only
   plots, so their points were read off the pages into
   [`validation/fixtures/aero/arcas-robin-wind-tunnel.json`](https://github.com/nrdptel/hpr-sim/blob/main/validation/fixtures/aero/arcas-robin-wind-tunnel.json),
@@ -698,7 +713,12 @@ What the misses come from:
   gives 2.3 to 2.8: slender-body theory's nose and boattail don't change with Mach, and the real
   body lifts more as it flies faster. The CP stays within 0.19 calibres, so the stability margin
   holds, but the slope is low. The planned increment
-  [M1.8e](../decisions-and-roadmap.md#m1-8e) takes this on.
+  [M1.8e](../decisions-and-roadmap.md#m1-8e) takes this on. The fins' agreement carries about 5%
+  of doubt of its own: over the boattail the models' fin roots follow its 15° surface below the
+  cylinder, and the design leaves that strip out, about 0.32 in² of each fin's 5.8 in² (5.5%).
+- **Mach 0.6, within the targets by errors that cancel.** Both models pass there, but hpr's body
+  is 40% and 34% above the fins-off readings, which are poorly determined at these speeds, and its
+  fins' share 9.3% and 3.9% below the measured one.
 - **Transonic, Mach 0.8 to 1.2.** The fins' measured share lifts less at Mach 0.8 and 0.9 than at
   0.6, then jumps at Mach 1. hpr's fins lift more, by Prandtl–Glauert and then along
   the join to linear theory's peak at `M_s` (1.2 for these fins). The long model's CP jumps

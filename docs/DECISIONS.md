@@ -2245,8 +2245,9 @@ Three findings shaped the method:
   `K₁ = 2/β`. That is the pressure on one face. A flat plate carries the difference between its
   faces, `2(K₁α + K₃α³)` (the `K₂` terms cancel), whose first term is Ackeret's `4α/β`.
   Barrowman's own method sums every surface region ([B67] appendix A, pp. 82–86). Niskanen's
-  thesis finds its simulated supersonic `C_Nα` "notably lower than the experimental values" for
-  the Arcas Robin, with the reason unknown (p. 91). hpr uses both faces.
+  thesis finds its simulated `C_Nα` for the Arcas Robin "notably lower than the experimental
+  values", with the reason unknown (p. 91, over a comparison that runs to Mach 4). hpr uses both
+  faces.
 - *Barrowman's half-load in the tip's Mach cone is exact linear theory for a rectangle*, in lift
   and in CP: the exact cone load `(2/π) asin √t` averages one half, and [N09] eq. 3.35 (from
   Fleeman, *Tactical Missile Design*, p. 33) is the rectangle's exact CP. For tapered fins the
@@ -2269,9 +2270,14 @@ Three findings shaped the method:
   line by Sutherland–Hodgman and summed by the shoelace formula without allocating. Only the
   first-order term: `K₃α²` adds 1% at 0.1 rad at Mach 2, but 35% at Mach 1.2, where the expansion
   itself fails.
-- **Where linear theory starts:** `M_s = max(1.2, 1/cos Γ_L, √(1 + 1/A²))`, the bottom of
-  [N09]'s supersonic region (Table 3.1), a supersonic leading edge, and `βA ≥ 1`, with
-  `A = 2s²/A_fin`.
+- **Where linear theory starts:** `M_s = max(1.2, 1/cos Γ_L, 1/cos Γ_T, √(1 + 1/A²),
+  √(1 + (c_t/2s)²))`: the bottom of [N09]'s supersonic region (Table 3.1), supersonic leading and
+  trailing edges ([TN2114]'s case), `βA ≥ 1` with `A = 2s²/A_fin`, and the mirror fin's tip cone
+  off this fin's tip, `β ≥ c_t/(2s)`. The last two came from review: `βA ≥ 1` alone let an
+  inverse-tapered fin's two tip cones overlap its tip, and a property test over random
+  trapezoids found forward-swept trailing edges, whose slope rose past `M_s`. Neither binds for
+  any validated fin, so no reported number moved. Leading edges swept forward stay outside the
+  half-load's domain (the tip ahead of the root; documented in `docs/physics/aero.md`).
 - **The transonic join:** from Mach 0.8, the top of [N09]'s subsonic region and of the drag
   buildup's documented range, to `M_s`, slope and CP each linear in `M` between the subsonic
   method's values at 0.8 and linear theory's at `M_s`. Continuous, with the slope's peak at `M_s`.
@@ -2331,7 +2337,11 @@ Every miss, measured:
   the same way, against hpr's 2.3 to 2.8 with its body lift. Slender-body theory's nose (2 per
   radian) and boattail (−1.15 here) don't change with Mach, and the real body's lift grows. The
   CP stays within 0.19 calibers, so the stability margin holds; the slope, and so the weathercock
-  rate, is low. M1.8e takes this on.
+  rate, is low. M1.8e takes this on. The fins' agreement is uncertain by about its own size: the
+  design leaves out the strip where each fin's root follows the boattail below the cylinder, about
+  0.32 in² of 5.8 in² (5.5%).
+- *Mach 0.6 passes by cancelling errors:* hpr's body is 40% (short) and 34% (long) above the
+  fins-off readings and its fins' share 9.3% and 3.9% below the measured one.
 - *Transonic, Mach 0.8 to 1.2.* Fins on less fins off, the measured fin lift falls from Mach 0.6
   to 0.9 (9.5, 8.5, 7.8 per radian on the short model) and jumps at 1.0 (14.2); hpr's rises by
   Prandtl–Glauert and then along the join to linear theory's peak at `M_s = 1.2` (16.6 against

@@ -28,7 +28,8 @@
 //!   flat plate's load `4α/β`, `β = √(M² − 1)`, halved inside the tip's Mach cone, with the root a
 //!   reflection plane: `(C_Nα)₁ = (4/β)(A_fin − A_cone/2)/A_ref` at the load's centroid.
 //! - **Through Mach 1** ([`FinAero`]): the subsonic method to Mach 0.8, linear theory from
-//!   `M_s = max(1.2, 1/cos Γ_L, √(1 + 1/A²))`, and slope and CP linear in `M` between
+//!   `M_s = max(1.2, 1/cos Γ_L, 1/cos Γ_T, √(1 + 1/A²), √(1 + (c_t/2s)²))`, and slope and CP
+//!   linear in `M` between
 //!   ([ADR-027, the normal force through Mach 1][adr-027]).
 //!
 //! See `docs/physics/aero.md`.
@@ -55,6 +56,9 @@ pub struct FinGeometry {
     /// Leading-edge sweep `Γ_L`, rad, positive with the tip aft; the span average of the edge's
     /// angle when it is curved or kinked (Niskanen 2009 eq. 3.91).
     pub leading_edge_sweep_rad: f64,
+    /// Trailing-edge sweep, rad, positive with the tip aft; the span average of the edge's angle
+    /// when it is curved or kinked. Negative for a trailing edge that sweeps forward to the tip.
+    pub trailing_edge_sweep_rad: f64,
     /// Length of the mean aerodynamic chord `c̄`, m.
     pub mac_length_m: f64,
     /// Leading edge of the mean aerodynamic chord, m aft of the root leading edge.
@@ -85,6 +89,7 @@ impl FinGeometry {
                     area_m2: 0.5 * s * sum,
                     midchord_sweep_rad: (x_t + 0.5 * c_t - 0.5 * c_r).atan2(s),
                     leading_edge_sweep_rad: x_t.atan2(s),
+                    trailing_edge_sweep_rad: (x_t + c_t - c_r).atan2(s),
                     mac_length_m: 2.0 / 3.0 * (c_r * c_r + c_r * c_t + c_t * c_t) / sum,
                     mac_leading_edge_m: x_t * y_mac / s,
                     mac_span_m: y_mac,
@@ -100,6 +105,8 @@ impl FinGeometry {
                     area_m2: 0.25 * PI * c_r * s,
                     midchord_sweep_rad: 0.0,
                     leading_edge_sweep_rad: elliptical_leading_edge_sweep(0.5 * c_r / s),
+                    // The trailing edge is the leading edge's mirror across mid-chord.
+                    trailing_edge_sweep_rad: -elliptical_leading_edge_sweep(0.5 * c_r / s),
                     mac_length_m: mac,
                     mac_leading_edge_m: 0.5 * (c_r - mac),
                     mac_span_m: 4.0 * s / (3.0 * PI),
@@ -125,8 +132,8 @@ impl FinGeometry {
             ((0.6f64).sqrt(), 5.0 / 9.0),
         ];
         let mut chords = Vec::new();
-        let (mut area, mut filled, mut c2, mut yc, mut xc, mut sweep, mut le_sweep) =
-            (0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0);
+        let (mut area, mut filled, mut c2, mut yc, mut xc, mut sweep, mut le_sweep, mut te_sweep) =
+            (0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0);
         for band in heights.windows(2) {
             let (lo, hi) = (band[0], band[1]);
             // Vertex heights a few rounding steps apart (a tip given in inches and in metres) make
@@ -139,6 +146,7 @@ impl FinGeometry {
             let mid = 0.5 * (hi + lo);
             let mut mids = [0.0; 2];
             let mut leading = [0.0; 2];
+            let mut trailing = [0.0; 2];
             for (k, &(t, w)) in nodes.iter().enumerate() {
                 let y = mid + half * t;
                 planform.chords_at(y, &mut chords);
@@ -160,12 +168,14 @@ impl FinGeometry {
                 if k != 1 {
                     mids[k / 2] = 0.5 * (le + te);
                     leading[k / 2] = le;
+                    trailing[k / 2] = te;
                 }
             }
             // The mid-chord line is straight in the band: its angle from the outer two nodes.
             let dy = 2.0 * half * (0.6f64).sqrt();
             sweep += (hi - lo) * (mids[1] - mids[0]).atan2(dy);
             le_sweep += (hi - lo) * (leading[1] - leading[0]).atan2(dy);
+            te_sweep += (hi - lo) * (trailing[1] - trailing[0]).atan2(dy);
         }
         if !(area > 0.0 && filled > 0.0 && span > 0.0) {
             return Err(AeroError::Domain {
@@ -178,6 +188,7 @@ impl FinGeometry {
             area_m2: area,
             midchord_sweep_rad: sweep / span,
             leading_edge_sweep_rad: le_sweep / span,
+            trailing_edge_sweep_rad: te_sweep / span,
             mac_length_m: c2 / filled,
             mac_leading_edge_m: xc / filled,
             mac_span_m: yc / filled,
@@ -311,6 +322,7 @@ const ELLIPSE_SIDES: u32 = 256;
 pub struct FinOutline {
     points_m: Vec<[f64; 2]>,
     tip_leading_edge_m: [f64; 2],
+    tip_chord_m: f64,
     area_m2: f64,
     centroid_m: f64,
 }
@@ -325,6 +337,12 @@ impl FinOutline {
     /// starts.
     pub fn tip_leading_edge_m(&self) -> [f64; 2] {
         self.tip_leading_edge_m
+    }
+
+    /// The tip's chord, m: the outline's length along the flow at the full span (0 for a pointed
+    /// tip).
+    pub fn tip_chord_m(&self) -> f64 {
+        self.tip_chord_m
     }
 
     /// The polygon's area, m².
@@ -368,10 +386,9 @@ impl FinOutline {
         let span = points.iter().fold(0.0_f64, |m, p| m.max(p[1]));
         // The same tolerance as a freeform fin's bands: tip vertices a few rounding steps apart
         // are one tip.
-        let tip_x = points
-            .iter()
-            .filter(|p| p[1] >= span * (1.0 - 1e-12))
-            .fold(f64::INFINITY, |m, p| m.min(p[0]));
+        let at_tip = || points.iter().filter(|p| p[1] >= span * (1.0 - 1e-12));
+        let tip_x = at_tip().fold(f64::INFINITY, |m, p| m.min(p[0]));
+        let tip_end = at_tip().fold(f64::NEG_INFINITY, |m, p| m.max(p[0]));
         let (area, moment) = area_and_moment(&points);
         if !(area > 0.0 && tip_x.is_finite()) {
             return Err(AeroError::Domain {
@@ -381,6 +398,7 @@ impl FinOutline {
         }
         Ok(Self {
             tip_leading_edge_m: [tip_x, span],
+            tip_chord_m: tip_end - tip_x,
             area_m2: area,
             centroid_m: moment / area,
             points_m: points,
@@ -454,11 +472,14 @@ pub struct FinLoading {
 ///
 /// - **Subsonic**, `M ≤ 0.8`: Diederich's slope with Prandtl–Glauert
 ///   ([`FinGeometry::single_fin_slope`]) at the quarter mean aerodynamic chord.
-/// - **Supersonic**, from `M_s = max(1.2, 1/cos Γ_L, √(1 + 1/A²))`: linear theory
-///   ([`FinOutline::supersonic`]). Its strips need a supersonic leading edge, one whose normal
-///   Mach number `M cos Γ_L` is past 1, and its tip loss holds while `βA ≥ 1`, with
-///   `A = 2s²/A_fin` the aspect ratio of the fin and its mirror image (for a rectangle, where the
-///   slope peaks at `2A`). So a swept or stubby fin starts later than Mach 1.2.
+/// - **Supersonic**, from `M_s = max(1.2, 1/cos Γ_L, 1/cos Γ_T, √(1 + 1/A²), √(1 + (c_t/2s)²))`:
+///   linear theory ([`FinOutline::supersonic`]). Its strips need supersonic leading and trailing
+///   edges, whose Mach numbers square to the edge, `M cos Γ_L` and `M cos Γ_T`, are past 1 (NACA
+///   TN 2114's case). Its half-load tip cone holds while the mirror fin's
+///   cone stays off this fin's tip, `β ≥ c_t/(2s)` with `c_t` the tip chord, and while
+///   `βA ≥ 1`, with `A = 2s²/A_fin` the aspect ratio of the fin and its mirror image (for a
+///   rectangle the two agree, and the slope peaks there at `2A`). So a swept, stubby or
+///   inverse-tapered fin starts later than Mach 1.2.
 /// - **Transonic**, between: slope and CP each linear in `M` between their values at the two
 ///   ends. No method in the sources gives this region in closed form (MIL-HDBK-762 reads it from
 ///   transonic-similarity charts, pp. 5-104–5-105); the join keeps both continuous, with the
@@ -508,9 +529,12 @@ impl FinAero {
         let geometry = FinGeometry::from_planform(planform)?;
         let outline = FinOutline::from_planform(planform)?;
         let aspect = 2.0 * geometry.span_m * geometry.span_m / geometry.area_m2;
+        let tip_ratio = outline.tip_chord_m / (2.0 * outline.tip_leading_edge_m[1]);
         let supersonic_mach = SUPERSONIC_START_MACH
             .max(1.0 / geometry.leading_edge_sweep_rad.cos())
-            .max((1.0 + 1.0 / (aspect * aspect)).sqrt());
+            .max(1.0 / geometry.trailing_edge_sweep_rad.cos())
+            .max((1.0 + 1.0 / (aspect * aspect)).sqrt())
+            .max((1.0 + tip_ratio * tip_ratio).sqrt());
         let beta_sub = (1.0 - TRANSONIC_START_MACH * TRANSONIC_START_MACH).sqrt();
         let transonic_start = FinLoading {
             slope_per_rad: geometry.slope_at(beta_sub, reference_area_m2),
@@ -1126,6 +1150,40 @@ mod tests {
         first / area
     }
 
+    /// An inverse taper, its tip chord longer than its root: the mirror fin's tip cone reaches this
+    /// fin's tip until `β ≥ c_t/(2s)`, so linear theory starts there (Mach 1.6 for this fin, where
+    /// `βA ≥ 1` alone would give 1.27), and from there the slope falls with Mach and the cone
+    /// never takes more than the fin and its mirror.
+    #[test]
+    fn an_inverse_taper_waits_for_its_tip_cones_to_part() {
+        let fin = FinAero::new(
+            &FinPlanform::Freeform {
+                points_m: vec![[0.0, 0.0], [-0.05, 0.08], [0.15, 0.08], [0.05, 0.0]],
+            },
+            0.01,
+        )
+        .unwrap();
+        close(fin.outline().tip_chord_m(), 0.2, 1e-15, "tip chord");
+        close(
+            fin.supersonic_mach(),
+            (1.0 + 1.25_f64 * 1.25).sqrt(),
+            1e-15,
+            "M_s",
+        );
+        let mut last = fin.loading(fin.supersonic_mach()).unwrap().slope_per_rad;
+        for i in 1..=30 {
+            let mach = fin.supersonic_mach() + 0.1 * f64::from(i);
+            if mach >= 5.0 {
+                break;
+            }
+            let slope = fin.loading(mach).unwrap().slope_per_rad;
+            assert!(slope < last, "Mach {mach}: {slope} after {last}");
+            last = slope;
+            let beta = (mach * mach - 1.0).sqrt();
+            assert!(fin.outline().tip_cone(beta).0 <= 2.0 * fin.outline().area_m2());
+        }
+    }
+
     /// A stubby strake: `βA ≥ 1` puts linear theory's start past Mach 5, so the slope and CP
     /// stay on the join, finite and continuous, up to the normal force's limit.
     #[test]
@@ -1176,27 +1234,37 @@ mod tests {
     }
 
     proptest::proptest! {
-        /// Any trapezoid, swept either way, with a trailing edge swept either way, at any Mach
-        /// number from linear theory's start: the cone takes no more than the fin and its mirror,
-        /// the loaded area is positive, the slope positive, and the CP inside the outline's chord.
+        /// Any trapezoid, tapered either way, swept either way, with a trailing edge swept either
+        /// way, at any Mach number from linear theory's start: the cone takes no more than the
+        /// fin and its mirror, the slope is positive and lower half a Mach number on (it can
+        /// still rise just past `M_s`, as a rectangle's peaks at `βA = 1`), and the CP stays
+        /// inside the outline's chord.
         #[test]
         fn supersonic_loading_stays_inside_the_fin(
             c_r in 0.02..0.4_f64,
-            taper in 0.0..1.0_f64,
+            taper in 0.0..2.0_f64,
             s in 0.02..0.3_f64,
-            sweep in -0.2..0.4_f64,
+            sweep_deg in 0.0..65.0_f64,
             extra in 0.0..3.0_f64,
         ) {
             let c_t = taper * c_r;
+            let sweep = s * sweep_deg.to_radians().tan();
             let fin = FinAero::new(&trapezoid(c_r, c_t, s, sweep), 0.01).unwrap();
             let mach = fin.supersonic_mach() + extra;
-            proptest::prop_assume!(mach < 5.0);
+            if mach >= 5.0 {
+                // Past the normal force's range: nothing to check.
+                return Ok(());
+            }
             let beta = (mach * mach - 1.0).sqrt();
             let (cone, _) = fin.outline().tip_cone(beta);
             let area = fin.outline().area_m2();
             proptest::prop_assert!((0.0..=2.0 * area * (1.0 + 1e-12)).contains(&cone));
             let loading = fin.loading(mach).unwrap();
             proptest::prop_assert!(loading.slope_per_rad > 0.0);
+            if mach + 0.5 < 5.0 {
+                let faster = fin.loading(mach + 0.5).unwrap();
+                proptest::prop_assert!(faster.slope_per_rad < loading.slope_per_rad);
+            }
             let xs: Vec<f64> = fin.outline().points_m().iter().map(|p| p[0]).collect();
             let (lo, hi) = xs.iter().fold((f64::INFINITY, f64::NEG_INFINITY), |(a, b), &x| (a.min(x), b.max(x)));
             proptest::prop_assert!(loading.cp_m >= lo - 1e-12 && loading.cp_m <= hi + 1e-12);
