@@ -287,18 +287,23 @@ impl NormalForceColumn {
 ///   it. Below the first column's angle it holds that column. So `C_N = (C_N/α)·α` gives the
 ///   columns' normal force back at their own angles, and between them a quadratic in `α`: a
 ///   potential-flow term linear in `α` plus a viscous cross-flow term in `α²`. RASAero II's
-///   viscous part has that shape through Mach 1.1 in the Calisto export; faster, it grows more
-///   slowly than `α²`, and the quadratic between the columns is an assumption.
-/// - Past the last column's angle `α_n`, the normal force at `α_n` splits in two. The first
-///   column's slope times `α_n` is the linear share, at the first column's centre of pressure;
-///   the rest, with the rest of the moment, is the nonlinear share. The linear share grows as
-///   `sin α / sin α_n`, as hpr's own fins do (the decision record on flight, [ADR-011][adr-011]),
-///   and the nonlinear share as `(sin α / sin α_n)²`, the cross flow's form (Galejs; Niskanen
-///   2009 eq. 3.26), which RASAero II's viscous part takes from Jorgensen (RASAero II Users
-///   Manual, 2019, p. 55). The centre of pressure is the two moments over the two forces. So the
-///   table's force and centre of pressure hold at `α_n`, and the force is zero when the air
-///   comes from the tail. With one column at 0°, the force is its slope times `sin α`. This part
-///   is an assumption, not the other tool's result; the lookup reports it.
+///   viscous part is `sin² α` through Mach 1.1 in the Calisto export, which `α²` matches within
+///   0.1% to 4°; faster, it grows more slowly, and the quadratic between the columns is an
+///   assumption.
+/// - Past the last column's angle `α_n`, the normal force at `α_n` splits in two when the table
+///   starts at 0°. The 0° column's slope times `α_n` is the linear share, at the 0° centre of
+///   pressure; the rest, with the rest of the moment, is the nonlinear share. The linear share
+///   grows as `sin α / sin α_n`, as hpr's own fins do (the decision record on flight,
+///   [ADR-011][adr-011]), and the nonlinear share as `(sin α / sin α_n)²`, the cross flow's form
+///   (Galejs; Niskanen 2009 eq. 3.26), which RASAero II's viscous part takes from Jorgensen
+///   (RASAero II Users Manual, 2019, p. 55). The centre of pressure is the two moments over the
+///   two forces, so it stays between the two shares' centres. Force and centre of pressure are
+///   continuous at `α_n`, and the force is zero when the air comes from the tail.
+/// - The split needs both shares positive and the nonlinear share's centre of pressure aft of the
+///   nose tip (a positive rest of the moment about it). Otherwise (a table not starting at 0°,
+///   or one whose `C_N/α` falls with the angle, as a stalling fin's does) the whole force at `α_n`
+///   grows as `sin α / sin α_n` at the last column's centre of pressure. Either way this part is
+///   an assumption, not the other tool's result; the lookup reports it.
 ///
 /// The table serializes as its columns and its [`TableReference`], and re-checks them when
 /// read. The decisions are in the record on normal-force overrides, [ADR-032][adr-032].
@@ -494,16 +499,36 @@ impl NormalForceTable {
             // One column, at 0°: its slope, following the cross flow.
             (slope * alpha_rad.sin(), cp)
         } else {
-            // The first column's slope is the linear share, at its centre of pressure; the rest
-            // of the last column's force and moment grows as the cross flow's square.
-            let (linear_slope, linear_cp) = read(&self.columns[0])?;
-            let (force_n, linear) = (slope * alpha_n, linear_slope * alpha_n);
-            let (moment_n, linear_moment) = (force_n * cp, linear * linear_cp);
             let s1 = alpha_rad.sin() / alpha_n.sin();
-            let s2 = s1 * s1;
-            let force = linear * s1 + (force_n - linear) * s2;
-            let moment = linear_moment * s1 + (moment_n - linear_moment) * s2;
-            (force, if force != 0.0 { moment / force } else { cp })
+            let force_n = slope * alpha_n;
+            // The two shares, when the table starts at 0° and they make sense: the slope at 0°
+            // times `α_n` at the 0° centre of pressure, and a positive rest whose centre of
+            // pressure isn't ahead of the nose tip.
+            let first = &self.columns[0];
+            let split = if first.alpha_rad == 0.0 {
+                let (linear_slope, linear_cp) = read(first)?;
+                let linear = linear_slope * alpha_n;
+                let (rest, rest_moment) = (force_n - linear, force_n * cp - linear * linear_cp);
+                (linear > 0.0 && rest > 0.0 && rest_moment >= 0.0).then_some((
+                    linear,
+                    linear * linear_cp,
+                    rest,
+                    rest_moment,
+                ))
+            } else {
+                None
+            };
+            match split {
+                // The linear share grows as the cross flow, the rest as its square.
+                Some((linear, linear_moment, rest, rest_moment)) => {
+                    let s2 = s1 * s1;
+                    let force = linear * s1 + rest * s2;
+                    (force, (linear_moment * s1 + rest_moment * s2) / force)
+                }
+                // Otherwise the whole force follows the cross flow at the last column's centre
+                // of pressure.
+                None => (force_n * s1, cp),
+            }
         };
         Ok(NormalForceLookup {
             coefficient,
@@ -529,7 +554,8 @@ impl NormalForceTable {
     /// - At `α = 0` the export's `CN` is zero, so the slope is its potential-flow normal force at
     ///   the smallest positive angle `α₁` and the same Mach number over that angle,
     ///   `CN Potential(α₁)/α₁`: the potential part is linear in `α`, and the viscous cross-flow
-    ///   part, which grows as `α²`, has no slope at zero. The centre of pressure is the export's at
+    ///   part, `sin² α` through Mach 1.1 in the Calisto export, has no slope at zero (faster, how
+    ///   it starts from 0° isn't in the export, and leaving it out is an assumption). The centre of pressure is the export's at
     ///   `α = 0`.
     /// - `CP` is in inches (the manual, p. 13) from the nose tip ("distance measured from the
     ///   nose", p. 114), converted at 0.0254 m to the inch. hpr's stations are also aft of the
@@ -1060,5 +1086,89 @@ mod tests {
         assert!(lookup.beyond_alpha);
         // Mach 7 is fine for a table.
         assert_eq!(single.lookup(7.0, 0.0).unwrap().slope_per_rad, 6.0);
+    }
+
+    fn flat(value: f64) -> Table1D {
+        Table1D::new(
+            vec![0.0, 2.0],
+            vec![value, value],
+            Interpolation::Linear,
+            Extrapolation::Clamp,
+        )
+        .unwrap()
+    }
+
+    /// A table shaped as RASAero II's export is (Calisto's: the potential part exactly linear in
+    /// the angle, the viscous part exactly as `sin² α`), sampled at 0°, 2° and 4°: past 4° the
+    /// viscous part continues exactly, and the potential part as `α₄ sin α / sin α₄`.
+    #[test]
+    fn a_rasaero_shaped_table_continues_its_crossflow_exactly() {
+        let (a, x_a, b, x_b) = (9.0, 1.6, 4.0, 1.1);
+        let (r2, r4) = (2.0_f64.to_radians(), 4.0_f64.to_radians());
+        let force = |alpha: f64| a * alpha + b * alpha.sin().powi(2);
+        let cp = |alpha: f64| (a * alpha * x_a + b * alpha.sin().powi(2) * x_b) / force(alpha);
+        let column =
+            |alpha: f64, slope, centre| NormalForceColumn::new(alpha, flat(slope), flat(centre));
+        let table = NormalForceTable::new(vec![
+            column(0.0, a, x_a),
+            column(r2, force(r2) / r2, cp(r2)),
+            column(r4, force(r4) / r4, cp(r4)),
+        ])
+        .unwrap();
+        for alpha_deg in [10.0_f64, 30.0, 60.0, 90.0, 150.0] {
+            let alpha = alpha_deg.to_radians();
+            let s1 = alpha.sin() / r4.sin();
+            let (linear, viscous) = (a * r4 * s1, b * alpha.sin().powi(2));
+            let lookup = table.lookup(1.0, alpha).unwrap();
+            close(lookup.coefficient, linear + viscous, 1e-12, "C_N");
+            close(
+                lookup.cp_station_m,
+                (linear * x_a + viscous * x_b) / (linear + viscous),
+                1e-12,
+                "CP",
+            );
+        }
+    }
+
+    proptest::proptest! {
+        /// Past the last column the normal force never turns round, and its centre of pressure
+        /// stays between the two shares' (or at the last column's), whatever the table: slopes
+        /// that grow or fall with the angle, and centres of pressure that move either way.
+        #[test]
+        fn the_continuation_keeps_its_sign_and_centre(
+            slope_0 in 0.5..20.0_f64,
+            slope_n in 0.5..20.0_f64,
+            cp_0 in 0.1..3.0_f64,
+            cp_n in 0.1..3.0_f64,
+            alpha_n_deg in 1.0..40.0_f64,
+            beyond in 0.0..1.0_f64,
+        ) {
+            let alpha_n = alpha_n_deg.to_radians();
+            let table = NormalForceTable::new(vec![
+                NormalForceColumn::new(0.0, flat(slope_0), flat(cp_0)),
+                NormalForceColumn::new(alpha_n, flat(slope_n), flat(cp_n)),
+            ])
+            .unwrap();
+            let alpha = alpha_n + beyond * (PI - alpha_n);
+            let lookup = table.lookup(1.0, alpha).unwrap();
+            // `sin π` rounds to 1.2e-16.
+            proptest::prop_assert!(lookup.coefficient >= -1e-13, "{lookup:?}");
+            let (linear, rest) = (slope_0 * alpha_n, (slope_n - slope_0) * alpha_n);
+            let rest_moment = slope_n * alpha_n * cp_n - linear * cp_0;
+            let (low, high) = if rest > 0.0 && rest_moment >= 0.0 {
+                let cp_rest = rest_moment / rest;
+                (cp_0.min(cp_rest), cp_0.max(cp_rest))
+            } else {
+                (cp_n, cp_n)
+            };
+            if lookup.coefficient > 1e-9 {
+                proptest::prop_assert!(
+                    lookup.cp_station_m >= low - 1e-9 && lookup.cp_station_m <= high + 1e-9,
+                    "{} outside [{low}, {high}]",
+                    lookup.cp_station_m
+                );
+                proptest::prop_assert!(lookup.cp_station_m >= 0.0);
+            }
+        }
     }
 }

@@ -569,17 +569,51 @@ fn a_table_of_hpr_s_own_normal_force_flies_as_hpr_does() {
     // A dense table of hpr's own whole-rocket normal force (every 0.5° and Mach 0.01), flown in a
     // crosswind, lands its apogee where hpr's own components do: the table's static force at the
     // centre of mass's flow and hpr's damping from the components add up to hpr's own. What's left
-    // is the table's interpolation. Measured: 7.8 mm on a 779 m apogee; the same table at 0°, 1°,
-    // 2°, 4°, 8°, 16°, 30°, 60° and 89°, every Mach 0.05, is 1.17 m off, nearly all downwind.
+    // is the table's interpolation. The same at 0°, 2° and 4° only, a RASAero II export's angles,
+    // flies past 4° on the table's continuation: hpr's body lift grows as `sin² α`, the form the
+    // continuation gives its nonlinear share, so it lands close too.
+    let own = valetudo(windy(), FlightSettings::default());
+    let aero = own.aero().clone();
+    let dense: Vec<f64> = (0..=178).map(|i| 0.5 * f64::from(i)).collect();
+    let apogee = |sim: Simulation| {
+        sim.run(&mut ())
+            .unwrap()
+            .event(EventKind::Apogee)
+            .unwrap()
+            .sample
+    };
+    let own = apogee(own);
+    let gap = |alphas_deg: &[f64]| {
+        let tabled = apogee(
+            valetudo(windy(), FlightSettings::default())
+                .with_normal_force_table(own_table(&aero, alphas_deg))
+                .unwrap(),
+        );
+        tabled.cg_enu_m - own.cg_enu_m
+    };
+    // Measured: 7.8 mm on a 779 m apogee dense, and 5.5 cm at 0°, 2° and 4°. At 0°, 1°, 2°, 4°,
+    // 8°, 16°, 30°, 60° and 89°, every Mach 0.05, the interpolation between the wide columns put
+    // it 1.18 m upwind.
+    let dense_gap = gap(&dense);
+    assert!(dense_gap.length() < 0.05, "{dense_gap:?}");
+    let export_gap = gap(&[0.0, 2.0, 4.0]);
+    assert!(export_gap.length() < 0.1, "{export_gap:?}");
+}
+
+/// Valetudo's windy environment: 5 m/s from the west.
+fn windy() -> Environment {
+    windy_environment(ConstantWind::new(5.0, 1.5 * PI).unwrap())
+}
+
+/// hpr's own whole-rocket normal force as the flight sums it, fin sets' force times `sin α/α`
+/// (ADR-011), as a table at `alphas_deg` and every Mach 0.01 to 1.
+fn own_table(aero: &hpr_aero::AeroModel, alphas_deg: &[f64]) -> hpr_aero::NormalForceTable {
     use hpr_aero::{NormalForceColumn, NormalForceTable};
     use hpr_core::interp::{Extrapolation, Interpolation, Table1D};
 
-    let wind = || windy_environment(ConstantWind::new(5.0, 1.5 * PI).unwrap());
-    let own = valetudo(wind(), FlightSettings::default());
-    let aero = own.aero().clone();
     let machs: Vec<f64> = (0..=100).map(|i| 0.01 * f64::from(i)).collect();
     let mut columns = Vec::new();
-    for alpha_deg in (0..=178).map(|i| 0.5 * f64::from(i)) {
+    for &alpha_deg in alphas_deg {
         let alpha = alpha_deg.to_radians();
         let (mut slopes, mut cps) = (Vec::new(), Vec::new());
         for &mach in &machs {
@@ -589,7 +623,6 @@ fn a_table_of_hpr_s_own_normal_force_flies_as_hpr_does() {
                 cps.push(force.cp_station_m.unwrap());
                 continue;
             }
-            // As the flight sums them: fin sets' force times `sin α/α` (ADR-011).
             let (mut force, mut moment) = (0.0, 0.0);
             let components = aero.components(&Flow::new(mach, alpha, 0.0)).unwrap();
             for (index, component) in components.iter().enumerate() {
@@ -611,29 +644,11 @@ fn a_table_of_hpr_s_own_normal_force_flies_as_hpr_does() {
                 Interpolation::Linear,
                 Extrapolation::Clamp,
             )
+            .unwrap()
         };
-        columns.push(NormalForceColumn::new(
-            alpha,
-            table(slopes).unwrap(),
-            table(cps).unwrap(),
-        ));
+        columns.push(NormalForceColumn::new(alpha, table(slopes), table(cps)));
     }
-    let table = NormalForceTable::new(columns).unwrap();
-    let apogee = |sim: Simulation| {
-        sim.run(&mut ())
-            .unwrap()
-            .event(EventKind::Apogee)
-            .unwrap()
-            .sample
-    };
-    let tabled = apogee(
-        valetudo(wind(), FlightSettings::default())
-            .with_normal_force_table(table)
-            .unwrap(),
-    );
-    let own = apogee(own);
-    let gap = tabled.cg_enu_m - own.cg_enu_m;
-    assert!(gap.length() < 0.05, "{gap:?}");
+    NormalForceTable::new(columns).unwrap()
 }
 
 #[test]

@@ -606,8 +606,8 @@
     reading is tested on the Calisto export.
 
     *Result (ADR-032):* met. The table's force at the centre of mass's flow, hpr's damping kept.
-    Calisto's export (0°, 2°, 4°): all 4,999 rows re-read, M1.8a's 30 values to 1e-12; Calisto
-    flies on it; a table's pitch period within 4e-6 of linear theory, in pitch and yaw.
+    Calisto's export (0°, 2°, 4°): 4,999 rows re-read with `refs/`, M1.8a's 30 values in CI;
+    Calisto flies on it; a table's pitch period within 4e-6 of linear theory, pitch and yaw.
 
   - [ ] **M1.8e The body's supersonic normal force.**
     - M1.8a measured the gap: past Mach 3 the Arcas Robin's body alone lifts 3.9 to 4.6 per rad,

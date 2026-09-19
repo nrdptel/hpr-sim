@@ -119,14 +119,14 @@
       "past_4_degrees_s": 2.1642554088640287
     },
     {
-      "apogee_east_m": -255.82117556142458,
-      "apogee_m": 2793.1106071016748,
-      "apogee_north_m": 485.42815094210914,
-      "apogee_time_s": 23.790734176189567,
-      "burnout_angle_of_attack_deg": 0.04625357957213985,
-      "max_mach": 0.7463476846430419,
+      "apogee_east_m": -255.82117554971163,
+      "apogee_m": 2793.1106071848662,
+      "apogee_north_m": 485.42815095032466,
+      "apogee_time_s": 23.790734176456024,
+      "burnout_angle_of_attack_deg": 0.046253579541344104,
+      "max_mach": 0.7463476846510443,
       "normal_force": "the RASAero II export",
-      "past_4_degrees_s": 2.215956475891992
+      "past_4_degrees_s": 2.2159579195558767
     },
     {
       "apogee_east_m": -255.75226623268554,
@@ -171,6 +171,10 @@
     {
       "mach": 3.0,
       "ratio": 1.7341413513916804
+    },
+    {
+      "mach": 4.0,
+      "ratio": 1.052221459220798
     }
   ]
 }

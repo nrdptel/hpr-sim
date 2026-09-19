@@ -513,10 +513,14 @@ impl AeroModel {
     /// # Errors
     ///
     /// [`AeroError::Domain`] for a centre of pressure in the table outside the rocket, from its
-    /// nose tip to its aft end: the sign of a length in the wrong unit or from another datum.
+    /// nose tip to its aft end: the sign of a length in the wrong unit or from another datum. Only
+    /// the Mach numbers a flight can use are checked, up to [`NORMAL_FORCE_MACH_LIMIT`] and the
+    /// first past it; a hypersonic row may move where it likes.
     pub fn with_normal_force_table(mut self, table: NormalForceTable) -> Result<Self, AeroError> {
         for column in table.columns() {
-            for &cp in column.cp_station_m.ys() {
+            let knots = column.cp_station_m.xs();
+            let used = knots.partition_point(|&mach| mach <= NORMAL_FORCE_MACH_LIMIT) + 1;
+            for &cp in column.cp_station_m.ys().iter().take(used) {
                 if !(0.0..=self.length_m).contains(&cp) {
                     return Err(AeroError::Domain {
                         what: "normal-force table centre of pressure, m aft of the nose tip",
@@ -1494,6 +1498,37 @@ mod tests {
             1e-14,
             "largest body",
         );
+        // On a rocket whose reference is half its largest body, RASAero II's reference, the
+        // largest body, is four times the area.
+        let mut half = finned_rocket(4);
+        half.reference_diameter = ReferenceDiameter::Custom { diameter_m: 0.027 };
+        let half = model(&half)
+            .with_normal_force_table(
+                table
+                    .clone()
+                    .with_reference(TableReference::LargestBody)
+                    .unwrap(),
+            )
+            .unwrap();
+        close(
+            half.normal_force(&at).unwrap().coefficient,
+            4.0 * replaced.coefficient,
+            1e-14,
+            "largest body on a half-size reference",
+        );
+        // Past Mach 5 a centre of pressure may leave the rocket; below, it may not.
+        let hypersonic = |cp_at_6: f64| {
+            let cps = Table1D::new(
+                vec![0.0, 5.0, 6.0, 25.0],
+                vec![0.9, 0.9, cp_at_6, -3.0],
+                Interpolation::Linear,
+                Extrapolation::Clamp,
+            )
+            .unwrap();
+            NormalForceTable::new(vec![NormalForceColumn::new(0.0, flat(10.0), cps)]).unwrap()
+        };
+        assert!(m.clone().with_normal_force_table(hypersonic(0.8)).is_ok());
+        assert!(m.clone().with_normal_force_table(hypersonic(-0.1)).is_err());
         // A centre of pressure behind the tail or ahead of the nose is refused.
         for cp in [-0.01, 1.4] {
             let outside =
