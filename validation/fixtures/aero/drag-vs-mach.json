@@ -6,7 +6,11 @@
       "rows": [
         {
           "band": "subsonic",
-          "error": 0.005225560591131995,
+          "compared": {
+            "hpr": 0.37942796882075686,
+            "reference": 0.423
+          },
+          "error": -0.10300716590837622,
           "hpr": {
             "base": 0.1525,
             "fins": 0.06890263120288805,
@@ -24,11 +28,15 @@
             "total": 0.446
           },
           "reynolds_per_m": 11590000.0,
-          "within_target": true
+          "within_target": false
         },
         {
           "band": "subsonic",
-          "error": 0.10995660765073567,
+          "compared": {
+            "hpr": 0.4005541634447309,
+            "reference": 0.40499999999999997
+          },
+          "error": -0.010977374210541013,
           "hpr": {
             "base": 0.18369999999999997,
             "fins": 0.07450726462978396,
@@ -46,11 +54,15 @@
             "total": 0.428
           },
           "reynolds_per_m": 16140000.0,
-          "within_target": false
+          "within_target": true
         },
         {
           "band": "transonic",
-          "error": 0.3608469257012501,
+          "compared": {
+            "hpr": 0.48388396888800034,
+            "reference": 0.39299999999999996
+          },
+          "error": 0.23125691829007722,
           "hpr": {
             "base": 0.2253,
             "fins": 0.08222835220371974,
@@ -72,7 +84,11 @@
         },
         {
           "band": "transonic",
-          "error": 0.4357555599956857,
+          "compared": {
+            "hpr": 0.5328618044511242,
+            "reference": 0.40399999999999997
+          },
+          "error": 0.3189648625027828,
           "hpr": {
             "base": 0.237325,
             "fins": 0.08451308634702065,
@@ -94,7 +110,11 @@
         },
         {
           "band": "transonic",
-          "error": 0.37107397297027633,
+          "compared": {
+            "hpr": 0.6092261279281044,
+            "reference": 0.465
+          },
+          "error": 0.31016371597441794,
           "hpr": {
             "base": 0.25,
             "fins": 0.08727945034079601,
@@ -116,7 +136,11 @@
         },
         {
           "band": "transonic",
-          "error": 0.2654428710757042,
+          "compared": {
+            "hpr": 0.6509378023281697,
+            "reference": 0.5419999999999999
+          },
+          "error": 0.20099225521802544,
           "hpr": {
             "base": 0.22727272727272724,
             "fins": 0.08934627725111721,
@@ -138,7 +162,11 @@
         },
         {
           "band": "supersonic",
-          "error": 0.2129588914511349,
+          "compared": {
+            "hpr": 0.5927301379011133,
+            "reference": 0.5279999999999999
+          },
+          "error": 0.12259495814604815,
           "hpr": {
             "base": 0.20833333333333331,
             "fins": 0.0913786768773267,
@@ -160,7 +188,11 @@
         },
         {
           "band": "supersonic",
-          "error": 0.09469588258615458,
+          "compared": {
+            "hpr": 0.44356801137026414,
+            "reference": 0.472
+          },
+          "error": -0.060237264046050454,
           "hpr": {
             "base": 0.15625,
             "fins": 0.09721175462729623,
@@ -182,7 +214,11 @@
         },
         {
           "band": "supersonic",
-          "error": 0.10643079863539628,
+          "compared": {
+            "hpr": 0.3766889596768047,
+            "reference": 0.415
+          },
+          "error": -0.09231575981492834,
           "hpr": {
             "base": 0.125,
             "fins": 0.1001827145350511,
@@ -200,11 +236,15 @@
             "total": 0.431
           },
           "reynolds_per_m": 43660000.0,
-          "within_target": false
+          "within_target": true
         },
         {
           "band": "supersonic",
-          "error": 0.15045836985037186,
+          "compared": {
+            "hpr": 0.3308486197622457,
+            "reference": 0.363
+          },
+          "error": -0.08857129542081066,
           "hpr": {
             "base": 0.10416666666666666,
             "fins": 0.10172372730149411,
@@ -222,11 +262,15 @@
             "total": 0.376
           },
           "reynolds_per_m": 51020000.0,
-          "within_target": false
+          "within_target": true
         },
         {
           "band": "supersonic",
-          "error": 0.17687355659735804,
+          "compared": {
+            "hpr": 0.29640050152742786,
+            "reference": 0.328
+          },
+          "error": -0.09633993436759802,
           "hpr": {
             "base": 0.08928571428571429,
             "fins": 0.10255963415907653,
@@ -244,11 +288,15 @@
             "total": 0.339
           },
           "reynolds_per_m": 57900000.0,
-          "within_target": false
+          "within_target": true
         },
         {
           "band": "supersonic",
-          "error": 0.21307360275124743,
+          "compared": {
+            "hpr": 0.26938672528535823,
+            "reference": 0.298
+          },
+          "error": -0.09601770038470392,
           "hpr": {
             "base": 0.078125,
             "fins": 0.10302687075927472,
@@ -266,13 +314,13 @@
             "total": 0.307
           },
           "reynolds_per_m": 63840000.0,
-          "within_target": false
+          "within_target": true
         }
       ],
-      "source": "MIL-HDBK-762(MI), Design of Aerodynamically Stabilized Free Rockets (U.S. Army Missile Command, 1990; Distribution A, a U.S. Government work), par. 5-5.4.2 'Sample Drag Calculation' (printed p. 5-56): Table 5-4 'Drag Calculation Sheets' (printed pp. 5-58 to 5-66) for the configuration of Fig. 5-155 (printed pp. 5-223 to 5-224). A calculation by the handbook's methods, not a measurement."
+      "source": "MIL-HDBK-762(MI), Design of Aerodynamically Stabilized Free Rockets (U.S. Army Missile Command, 1990; Distribution A, a U.S. Government work), par. 5-5.4.2 'Sample Drag Calculation' (printed p. 5-56): Table 5-4 'Drag Calculation Sheets' (printed pp. 5-58 to 5-66) for the configuration of Fig. 5-155 (printed pp. 5-223 to 5-224). A calculation by the handbook's methods, not a measurement. Pinned as `mil-hdbk-762` in validation/refs.lock.toml; Table 5-4 starts on PDF page 296 and Fig. 5-155 is on PDF page 461."
     }
   ],
-  "calculations_note": "hpr's whole C_D0, base included, against MIL-HDBK-762's sample drag calculation (Table 5-4) for the rocket of its Fig. 5-155, at the Reynolds number per metre the table gives for each Mach number, term by term: friction (body and fins), the nose's wave drag against hpr's nose pressure drag, the fins' wave and trailing-edge base drag against hpr's fin pressure drag, and the body's jet-off base drag. A calculation with every input known, not a measurement. error is hpr's total over the handbook's, minus 1.",
+  "calculations_note": "hpr's C_D0, base included, against MIL-HDBK-762's sample drag calculation (Table 5-4) for the rocket of its Fig. 5-155, at the Reynolds number per metre the table gives for each Mach number, term by term: friction (body and fins), the nose's wave drag against hpr's nose pressure drag, the fins' pressure drag, and the body's jet-off base drag. A calculation with every input known, not a measurement. The handbook's fins are single wedges, sharp at the leading edge, a section hpr doesn't have; the design takes square edges, so the fins' pressure drag (hpr's square edges; the handbook's wave and trailing-edge base drag) is recorded but left out of the comparison: compared is each total less it, and error is hpr's compared over the handbook's, minus 1.",
   "generator": "cargo xtask aero",
   "note": "hpr's forebody drag, C_D0 less the base drag (friction + pressure + parasitic, on the maximum cross-section), against each reference's forebody axial force, at zero angle of attack and the reference's Reynolds number. error is hpr's over the reference's, minus 1. Bands are Niskanen 2009 Table 3.1's. hpr's base drag is given for information: the tunnels' base pressure is the sting's, not a free flight's.",
   "references": [

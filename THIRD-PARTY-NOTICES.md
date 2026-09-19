@@ -43,7 +43,8 @@ adds a source.
   Juno III, Cavour and Valetudo curves from the `refs/rocketpy` checkout and commits only derived
   numbers to `validation/fixtures/aero/rocketpy-drag-curves.json` (each curve's value at Mach 0.3,
   hpr's drag coefficients, the relative errors and each file's sha256; from Mach 0.1 to 2.0, hpr's
-  values and the errors only, ADR-029). The curves themselves carry
+  values and the errors, which together give each curve's value back at the sampled Mach numbers,
+  147 in all, ADR-029). The curve files themselves carry
   their own terms and are **not** committed. The designs' drag inputs cite RASAero II's Users
   Manual (2019, p. 53) for its default surface finish, and Projeto Jupiter's rocket page
   (projetojupiter.com/foguetes) for Juno III's fin profile; neither is redistributed.

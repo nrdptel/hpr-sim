@@ -1019,7 +1019,7 @@ mod tests {
                     assert!(within[1] <= 3, "{what}: {within:?}");
                     if within[2] > 0 {
                         assert!(section == FinCrossSection::Square && t >= 0.00476, "{what}");
-                        supersonic_with.push((t, within[2]));
+                        supersonic_with.push((format!("{section:?} {t} {finish:?}"), within[2]));
                         subsonic_errors.extend(sub);
                     } else {
                         others.extend(sup);
@@ -1028,9 +1028,17 @@ mod tests {
             }
         }
         // Square fins 4.76 mm painted, and 6.35 mm smooth and painted (all 17 supersonic rows).
+        let supersonic_with: Vec<(&str, usize)> = supersonic_with
+            .iter()
+            .map(|(w, n)| (w.as_str(), *n))
+            .collect();
         assert_eq!(
             supersonic_with,
-            [(0.00476, 4), (0.00635, 12), (0.00635, 17)]
+            [
+                ("Square 0.00476 MassProductionPaint", 4),
+                ("Square 0.00635 Mirror", 12),
+                ("Square 0.00635 MassProductionPaint", 17),
+            ]
         );
         let lowest = subsonic_errors
             .iter()
@@ -1040,11 +1048,17 @@ mod tests {
             .iter()
             .copied()
             .fold(f64::NEG_INFINITY, f64::max);
-        assert!((0.14..0.15).contains(&lowest) && (0.44..0.45).contains(&highest));
+        assert!(
+            (0.14..0.15).contains(&lowest) && (0.44..0.45).contains(&highest),
+            "subsonic {lowest} to {highest}"
+        );
         // Every other combination stays 10% to 38% low supersonic.
         let lowest = others.iter().copied().fold(f64::INFINITY, f64::min);
         let highest = others.iter().copied().fold(f64::NEG_INFINITY, f64::max);
-        assert!((-0.38..-0.37).contains(&lowest) && (-0.11..-0.10).contains(&highest));
+        assert!(
+            (-0.38..-0.37).contains(&lowest) && (-0.11..-0.10).contains(&highest),
+            "supersonic {lowest} to {highest}"
+        );
     }
 
     #[derive(Deserialize)]
@@ -1064,8 +1078,15 @@ mod tests {
         reynolds_per_m: f64,
         reference: HandbookParts,
         hpr: HandbookParts,
+        compared: HandbookCompared,
         error: f64,
         within_target: bool,
+    }
+
+    #[derive(Deserialize)]
+    struct HandbookCompared {
+        reference: f64,
+        hpr: f64,
     }
 
     #[derive(Deserialize)]
@@ -1099,11 +1120,13 @@ mod tests {
         total_jet_off: f64,
     }
 
-    /// M1.8b2: hpr's whole `C_D0`, base drag included, against MIL-HDBK-762's sample drag
-    /// calculation (Table 5-4, pp. 5-58 to 5-66) for the rocket of its Fig. 5-155, term by term,
-    /// at the table's Reynolds numbers. A calculation with every input known, not a measurement:
-    /// it shows which way hpr's methods lean where RASAero II's curves can't, because their inputs
-    /// are unrecorded (ADR-029). `cargo xtask aero` writes the comparison to
+    /// M1.8b2: hpr's `C_D0`, base drag included, against MIL-HDBK-762's sample drag calculation
+    /// (Table 5-4, pp. 5-58 to 5-66) for the rocket of its Fig. 5-155, term by term, at the
+    /// table's Reynolds numbers. A calculation with every input known, not a measurement: it
+    /// shows which way hpr's methods lean where RASAero II's curves can't, because their inputs
+    /// are unrecorded (ADR-029). The handbook's fins are single wedges, sharp at the leading edge,
+    /// which hpr can't represent, so the fins' pressure drag is recorded but compared on neither
+    /// side. `cargo xtask aero` writes the comparison to
     /// `validation/fixtures/aero/drag-vs-mach.json`; this checks the transcription's sums,
     /// recomputes hpr's terms, and pins the rows within M1.8's 10%.
     #[test]
@@ -1115,8 +1138,14 @@ mod tests {
         // Each printed row's parts add up to its totals, to the table's 3 decimals.
         for row in &reference.rows {
             let what = format!("Table 5-4 at Mach {}", row.mach);
-            assert!((row.body_friction + row.fin_friction - row.friction).abs() < 1.5e-3);
-            assert!((row.fin_wave.unwrap_or(0.0) + row.fin_base - row.fins).abs() < 1.5e-3);
+            assert!(
+                (row.body_friction + row.fin_friction - row.friction).abs() < 1.5e-3,
+                "{what}"
+            );
+            assert!(
+                (row.fin_wave.unwrap_or(0.0) + row.fin_base - row.fins).abs() < 1.5e-3,
+                "{what}"
+            );
             let sum = row.friction + row.nose_wave.unwrap_or(0.0) + row.fins + row.base;
             assert!((sum - row.total_jet_off).abs() < 1.5e-3, "{what}");
             assert_eq!(row.nose_wave.is_none(), row.mach < 0.9, "{what}");
@@ -1163,28 +1192,42 @@ mod tests {
                     .sum::<f64>()
             };
             let h = &row.hpr;
+            // To 1e-12, not bit for bit: the nose's drag goes through `powf`, `ln` and `atan`,
+            // whose last bit differs between platforms' maths libraries.
             close(h.total, drag.zero_lift_coefficient, 1e-12, &what);
             close(h.friction, drag.friction, 1e-12, &what);
-            assert_eq!(h.base, drag.base, "{what}");
+            close(h.base, drag.base, 1e-12, &what);
+            close(h.nose, pressure("nose"), 1e-12, &what);
+            close(h.fins, pressure("fins"), 1e-12, &what);
             assert_eq!(
-                (h.nose, h.fins, h.other),
-                (pressure("nose"), pressure("fins"), 0.0)
+                h.other, 0.0,
+                "{what}: only the nose and fins have pressure drag"
             );
-            assert!((h.friction + h.nose + h.fins + h.base - h.total).abs() < 1e-12);
-            let error = h.total / printed.total_jet_off - 1.0;
+            assert!(
+                (h.friction + h.nose + h.fins + h.base - h.total).abs() < 1e-12,
+                "{what}"
+            );
+            let c = &row.compared;
+            close(c.hpr, h.total - h.fins, 1e-12, &what);
+            close(
+                c.reference,
+                printed.total_jet_off - printed.fins,
+                1e-12,
+                &what,
+            );
+            let error = c.hpr / c.reference - 1.0;
             assert!((row.error - error).abs() < 1e-12, "{what}");
             assert_eq!(row.within_target, error.abs() <= 0.10, "{what}");
             if row.within_target {
                 within.push(row.mach);
             }
         }
-        // Within 10% only at Mach 0.5 and 1.6 (ADR-029). From Mach 0.9 to 1.2 hpr reads 21% to
-        // 44% high, most of it the nose (Niskanen's ogive, 0.234 against the handbook's 0.109 at
-        // Mach 1.1) and the base (Fleeman's 0.25 against 0.183 at Mach 1.0); past Mach 1.6 it
-        // reads 11% to 21% high from the fins' square leading edges, which the handbook gives no
-        // drag (0.100 against 0.016 at Mach 2), less friction (hpr's body form factor 1.02
-        // against the handbook's 1.15).
-        assert_eq!(within, [0.5, 1.6]);
+        // Within 10% at Mach 0.7 and from 1.6 (ADR-029). From Mach 0.9 to 1.2 hpr reads 12% to
+        // 32% high, the nose (Niskanen's ogive, 0.234 against the handbook's 0.109 at Mach 1.1)
+        // and the base (Fleeman's 0.25 against 0.183 at Mach 1.0). From Mach 1.6 it reads 6% to
+        // 10% low: friction (hpr's body form factor 1.02 against the handbook's 1.15) and base
+        // drag (0.125 against 0.147 at Mach 2). At Mach 0.5 it is 10.3% low, the friction.
+        assert_eq!(within, [0.7, 1.6, 2.0, 2.4, 2.8, 3.2]);
     }
 
     /// The Arcas Robin comparison's two input choices (validation audit): of the 44 rows, 3 within

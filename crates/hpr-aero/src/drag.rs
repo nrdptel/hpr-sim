@@ -2269,15 +2269,19 @@ mod tests {
     /// 0.05 from Mach 0.1 to 2.0, at sea level's Reynolds number for each Mach number, and records
     /// the errors by band in `validation/fixtures/aero/rocketpy-drag-curves.json` (the curves
     /// stay in `refs/`). This recomputes hpr's value at every row from the committed designs,
-    /// checks every recorded error, verdict and band summary against the rows, and pins how many
-    /// rows of each band are within M1.8's 10%.
+    /// checks every verdict and band summary against the rows, checks the errors where it can
+    /// without the curves (at Mach 0.3 against the curve value recorded there, and between two
+    /// cases on one curve), and pins how many rows of each band are within M1.8's 10%.
+    /// `cargo xtask aero --check` checks every error against the curves when `refs/rocketpy` is
+    /// fetched.
     ///
     /// The lesson named this test for supersonic drag within that tolerance. It isn't, and the
     /// decision record on the comparison, ADR-029, measures why: Calisto's curve, the one real
-    /// RASAero II export, reads above hpr from Mach 1 for every plausible fin section, thickness
-    /// and finish, while MIL-HDBK-762's worked example (every input known) and NASA's Arcas Robin
-    /// wind tunnel read below it; the other curves are hand-edited or disagree with their own
-    /// rockets' OpenRocket files.
+    /// RASAero II export, reads 24% to 30% above hpr from Mach 1.2, and no plausible fin section,
+    /// thickness or finish is within 10% both below Mach 0.8 and from 1.2. MIL-HDBK-762's worked
+    /// example, every input known, reads hpr's body 6% to 10% low there too, and a boattail's
+    /// wave drag is a candidate for the rest; the other curves are hand-edited, short, or
+    /// disagree with their own rockets' OpenRocket files.
     #[test]
     fn supersonic_cd_against_rasaero_tables() {
         use serde::Deserialize;
@@ -2291,7 +2295,9 @@ mod tests {
         struct Case {
             id: String,
             design: String,
+            curve: String,
             thrusting: bool,
+            curve_cd0: f64,
             sweep: Sweep,
         }
         #[derive(Deserialize)]
@@ -2334,6 +2340,9 @@ mod tests {
             }
         };
         let mut within = Vec::new();
+        // Each curve's values, as each case's rows imply them.
+        let mut curves: std::collections::BTreeMap<&str, Vec<Vec<f64>>> =
+            std::collections::BTreeMap::new();
         for case in &fixture.cases {
             let rocket = crate::testing::committed_design(&case.design);
             let model = AeroModel::new(&rocket.layout().unwrap()).unwrap();
@@ -2350,7 +2359,12 @@ mod tests {
             // Every 0.05 from Mach 0.1, without a gap, to the curve's end or its usable limit.
             for (i, row) in rows.iter().enumerate() {
                 assert_eq!(row.mach, f64::from(i as u32 + 2) / 20.0, "{}", case.id);
-                assert!(row.mach <= case.sweep.usable_to_mach.unwrap_or(2.0));
+                assert!(
+                    row.mach <= case.sweep.usable_to_mach.unwrap_or(2.0),
+                    "{}@{}",
+                    case.id,
+                    row.mach
+                );
                 assert_eq!(row.band, band_of(row.mach), "{}@{}", case.id, row.mach);
                 let reynolds_per_m =
                     row.mach * air.speed_of_sound_m_s / air.kinematic_viscosity_m2_s();
@@ -2369,15 +2383,32 @@ mod tests {
                 );
                 assert_eq!(
                     row.within_target,
-                    row.relative_error.abs() <= fixture.tolerance_rel
+                    row.relative_error.abs() <= fixture.tolerance_rel,
+                    "{}@{}",
+                    case.id,
+                    row.mach
                 );
             }
+            // The curves stay in `refs/`, so CI can't recompute the errors against them. What
+            // it can check: at Mach 0.3 the error implies the curve value the Mach 0.3
+            // comparison records, and two cases on one curve imply the same curve row by row.
+            let implied = |r: &Row| r.hpr_cd0 / (1.0 + r.relative_error);
+            let at_0_3 = rows.iter().find(|r| r.mach == 0.3).unwrap();
+            assert!(
+                (implied(at_0_3) / case.curve_cd0 - 1.0).abs() < 1e-12,
+                "{}: the sweep's error at Mach 0.3 doesn't match the recorded curve",
+                case.id
+            );
+            curves
+                .entry(case.curve.as_str())
+                .or_default()
+                .push(rows.iter().map(implied).collect());
             let mut from = 0;
             for band in &case.sweep.bands {
                 let errors: Vec<f64> = rows[from..from + band.rows]
                     .iter()
                     .map(|r| {
-                        assert_eq!(r.band, band.band);
+                        assert_eq!(r.band, band.band, "{}@{}", case.id, r.mach);
                         r.relative_error
                     })
                     .collect();
@@ -2387,12 +2418,22 @@ mod tests {
                 let min = errors.iter().copied().fold(f64::INFINITY, f64::min);
                 let max = errors.iter().copied().fold(f64::NEG_INFINITY, f64::max);
                 let rms = (errors.iter().map(|e| e * e).sum::<f64>() / errors.len() as f64).sqrt();
-                assert_eq!((band.min_error, band.max_error), (min, max));
-                assert!((band.rms_error - rms).abs() < 1e-15);
+                assert_eq!((band.min_error, band.max_error), (min, max), "{}", case.id);
+                assert!((band.rms_error - rms).abs() < 1e-15, "{}", case.id);
                 within.push((case.id.as_str(), band.band.as_str(), count, band.rows));
             }
             assert_eq!(from, rows.len(), "{}: every row is in a band", case.id);
         }
+        for (curve, cases) in &curves {
+            for other in &cases[1..] {
+                assert_eq!(other.len(), cases[0].len(), "{curve}");
+                for (a, b) in cases[0].iter().zip(other) {
+                    assert!((a / b - 1.0).abs() < 1e-12, "{curve}: {a} against {b}");
+                }
+            }
+        }
+        // Calisto's two designs share one export.
+        assert_eq!(curves.values().filter(|c| c.len() == 2).count(), 1);
         // Rows within 10%, by case and band (ADR-029). Calisto's export on the 2018 fins: every
         // subsonic row, none supersonic, where hpr reads 24% to 30% low. The getting-started fins
         // (a variant on the same export, thick NACA 0012) cross it from low to high. Juno III's

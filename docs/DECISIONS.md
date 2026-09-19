@@ -2602,8 +2602,12 @@ comparison is between two codes, one of whose inputs are guessed.
   for the inputs is unchanged, and Juno III's curve is used to Mach 0.92. Bands are Niskanen's
   Table 3.1: subsonic to 0.8, transonic below 1.2, supersonic from 1.2.
   `validation/fixtures/aero/rocketpy-drag-curves.json` records hpr's value and the error at each
-  Mach number, and each band's count within 10%, least and greatest error, and RMS. It records no
-  curve values: the curves carry their own terms (ADR-009).
+  Mach number, and each band's count within 10%, least and greatest error, and RMS. It doesn't
+  record the curves, which carry their own terms (ADR-009), but hpr's value and the error at full
+  precision give the curve back exactly at each sampled Mach number: 147 values of five curves.
+  That is more than ADR-009's one value per curve, so the Needs Neer entry on RASAero values now
+  covers it. The report for this comparison, as for M1.8a's and M1.8b1's, is the fixtures and the
+  *Aerodynamics* and *Accuracy* pages; `validation/reports/latest.md` holds whole flights only.
 - **Loft lesson L18's test measures and pins** instead of asserting agreement. It is renamed
   `hpr_aero::drag::tests::supersonic_cd_against_rasaero_tables`. It recomputes every row from the
   committed designs, checks every verdict and band summary, and pins each band's count within
@@ -2611,22 +2615,28 @@ comparison is between two codes, one of whose inputs are guessed.
   doesn't hold, and a changed assertion needs a decision record (`docs/research/loft-lessons.md`).
 - **A second reference, with every input known: MIL-HDBK-762's sample drag calculation.** This is
   Table 5-4 (printed pp. 5-58 to 5-66) for the rocket of Fig. 5-155 (pp. 5-223 to 5-224): a
-  3-calibre tangent ogive on a 21-calibre cylinder 0.16 m across, and four flat-plate fins flush
-  with the base. The table gives each term from Mach 0.5 to 3.2 at a flight's Reynolds numbers:
-  friction, the nose's wave drag, the fins' wave and trailing-edge base drag, and the body's
-  jet-off base drag. It is a calculation by the handbook's methods, not a measurement. The
-  handbook is a U.S. Government work. Its values are transcribed with their pages into
-  `validation/fixtures/aero/mil-hdbk-762-sample-drag.json`, checked against the rendered pages,
-  with each row summing to its printed total. `cargo xtask designs` builds the rocket, with square
-  fins (the flat plate drawn) and a smooth finish (the handbook's flat-plate friction).
-  `cargo xtask aero` compares it term by term in `validation/fixtures/aero/drag-vs-mach.json`, and
-  `hpr_aero::tests::drag_against_mil_hdbk_762_sample` pins it. The target is M1.8's 10%, and it
-  was not set blind: hpr's numbers were first computed in a scratch run while choosing references.
-- **M1.8's drag bullet is not met, and the gap stays in the report.** The report is the fixtures,
-  *Accuracy* and the *Aerodynamics* page. The first cause measured below, the boattail's
-  supersonic wave drag, becomes a new increment, M1.8b3. Its done-when is measured first against
-  the Arcas Robin's forebody, whose 15° boattail the wind tunnel includes. Then Calisto's bands are
-  reported again. The other causes are issues.
+  3-calibre tangent ogive on a 21-calibre cylinder 0.16 m across, and four fins flush with the
+  base. The table gives each term from Mach 0.5 to 3.2 at a flight's Reynolds numbers: friction,
+  the nose's wave drag, the fins' wave and trailing-edge base drag, and the body's jet-off base
+  drag. It is a calculation by the handbook's methods, not a measurement; its base drag comes
+  from measured bases. The handbook is a U.S. Government work. Its values are transcribed with
+  their pages into `validation/fixtures/aero/mil-hdbk-762-sample-drag.json`, checked against the
+  rendered pages, with each row summing to its printed total. `cargo xtask designs` builds the
+  rocket with a smooth finish (the handbook's flat-plate friction).
+  - **The fins are left out.** Fig. 5-155 draws each fin as a single wedge, sharp at the leading
+    edge and blunt at the trailing edge, and the calculation gives them a double wedge's wave drag
+    and base drag on the trailing edge. hpr has no such section (#70). The design takes square
+    edges, and the fins' pressure drag is recorded on both sides but compared on neither: a first
+    draft compared the totals and read hpr high faster than sound, which was the square leading
+    edge's 0.06 to 0.10 (review).
+  - `cargo xtask aero` compares it term by term in `validation/fixtures/aero/drag-vs-mach.json`,
+    and `hpr_aero::tests::drag_against_mil_hdbk_762_sample` pins it. The target is M1.8's 10%,
+    not set blind: hpr's numbers were first computed in a scratch run while choosing references.
+- **M1.8's drag bullet is not met, and the gap stays in the report.** Closing it by tuning would
+  move hpr away from the references whose inputs are known. The candidates for its cause become a
+  new increment, M1.8b3, for the afterbody (a boattail's supersonic wave drag and the base), with
+  targets on the Arcas Robin's measured forebody and on Calisto's supersonic band, and issues for
+  the rest.
 
 **Result.**
 
@@ -2650,44 +2660,61 @@ comparison is between two codes, one of whose inputs are guessed.
   6.35 mm painted), and those put every subsonic row 14.6% to 44.9% high. Every other combination
   stays 10.1% to 37.6% low supersonic. So the supersonic gap is a difference between the two
   codes' models, not the inputs.
-- **Against MIL-HDBK-762's sample calculation, hpr reads high, not low.** It is 2 of 12 within
-  10%: +0.5% at Mach 0.5 and +9.5% at 1.6; +11.0% at 0.7; +21% to +44% from 0.9 to 1.2; +10.6% to
-  +21.3% from 2.0 to 3.2. By term (handbook against hpr):
-  - Nose, Niskanen's ogive: 0.052 against 0.164 at Mach 1.0, and 0.109 against 0.234 at Mach 1.1.
+- **Against MIL-HDBK-762's sample calculation, fins left out, hpr's body reads high through
+  Mach 1 and low faster than sound.** 6 of 12 within 10%: −10.3% at Mach 0.5 and −1.1% at 0.7;
+  +23.1% to +31.9% from 0.9 to 1.1 and +12.3% at 1.2; −6.0% to −9.6% from 1.6 to 3.2. By term
+  (handbook against hpr):
+  - Nose, Niskanen's ogive: 0.052 against 0.164 at Mach 1.0, and 0.109 against 0.234 at 1.1.
     The handbook's transonic ogive curve (Fig. 5-113) and Stoney's measured 3:1 cone (ADR-028)
-    both sit well under it.
-  - Base, Fleeman's formula (eq. 3.94): 0.183 against 0.250 at Mach 1.0. At Mach 2 hpr's is lower,
-    0.147 against 0.125, and above 1.2 the handbook's values follow Love's correlation of measured
-    bases (NACA TN 3819, Fig. 5-139).
-  - Fins: the square leading edge, which the handbook gives no drag, 0.016 against 0.100 at
-    Mach 2.
-  - Friction, lower in hpr: its body form factor is 1.02, the handbook's 1.15.
-  NASA's Arcas Robin wind tunnel also reads below hpr at most Mach numbers (ADR-028).
-- **What Calisto's curve has that hpr doesn't: the boattail's supersonic wave drag.** Calisto's
-  boattail is short and steep, 0.472 calibres long, down to `(d_b/d)² = 0.469` (18.4°). hpr's
-  boattail rule (eq. 3.88) only scales base drag, and gives it 0.083 at Mach 1.2, 0.066 at 1.5 and
-  0.050 at 2.0. MIL-HDBK-762's chart for conical boattails at supersonic speeds (Fig. 5-122,
-  p. 5-187, read for this decision) gives 0.338 ± 0.008, 0.215 ± 0.007 and about 0.13 ± 0.02.
-  The last is extrapolated past the chart's end at `√(M² − 1)/(2 l/d) = 1.4`. That is 0.255, 0.149
-  and about 0.08 more, against hpr's whole gap to the curve of 0.20, 0.156 and 0.128. RASAero II
-  lists such drag as "other body wave" drag. The same handbook finds a boattail raises its base
-  pressure (Fig. 5-141, at Mach 2.5 to 3.5), which lowers base drag and which hpr doesn't model
-  either.
+    both sit well under it (#67). From Mach 2 the two agree within 10%.
+  - Base, Fleeman's formula (eq. 3.94): 0.183 against 0.250 at Mach 1.0, but 0.147 against 0.125
+    at Mach 2. Above Mach 1.2 the handbook's base pressure follows Love's correlation of measured
+    bases (NACA TN 3819, Fig. 5-139) (#68).
+  - Friction, 10.4% to 15.9% lower in hpr: its body form factor is 1.02, the handbook's 1.15,
+    which accounts for about 11 points; the rest, unexplained, may be the two methods'
+    compressibility corrections.
+  So faster than sound hpr's body reads 6% to 10% low against a method with every input known:
+  the same sign as Calisto's gap, a third of its size. NASA's Arcas Robin wind tunnel, with the
+  fins off and the base left out, reads hpr high, most of it a lip at the model's base (ADR-028).
+- **A candidate for the rest: the boattail's supersonic wave drag.** Calisto's boattail is short
+  and steep, 0.472 calibres long, down to `(d_b/d)² = 0.469` (18.4°). hpr's boattail rule (eq.
+  3.88) only scales base drag, and gives it 0.083 at Mach 1.2, 0.066 at 1.5 and 0.050 at 2.0.
+  MIL-HDBK-762's chart for conical boattails at supersonic speeds (Fig. 5-122, p. 5-187, read for
+  this decision) gives 0.338 ± 0.008 at Mach 1.2 and 0.215 ± 0.007 at 1.5; at Mach 2 its
+  parameter `√(M² − 1)/(2 l/d)` is 1.83, past the chart's end at 1.4 (Mach 1.66 here), and
+  extrapolating gives about 0.13. Against hpr's whole gap of 0.20, 0.156 and 0.128, the chart's
+  extra 0.255, 0.149 and about 0.08 would overshoot at Mach 1.2, match at 1.5 and fall short at 2.
+  RASAero II lists such drag as its own term, "other body wave" drag (p. 92). Against it:
+  - The Mach trends differ: the gap falls by 1.6 times from Mach 1.2 to 2, the chart's extra
+    over hpr's rule by 3.2 times.
+  - The handbook advises boattails under 8° to avoid flow separation (p. 5-12); a separated
+    18.4° boattail sees about the base's pressure, which is roughly what hpr's rule gives.
+  - A boattail raises its base pressure (Fig. 5-141, only at Mach 2.5 to 3.5), which would offset
+    part of the term; that is not subtracted here.
+  - The one measured boattail argues against the whole term. The Arcas Robin's 15° boattail is in
+    the tunnel's forebody. With the fins off the short model reads +8.1% at Mach 1.5, where hpr's
+    boattail is 0.069; with the chart's 0.198 in its place it would read about +47%, or +22% with
+    the whole lip removed. At Mach 2.96, with the lip removed, hpr's rule already agrees (−1.2%),
+    where the chart's 0.072 would put it about +17% high.
+  So the chart's term is a candidate, not a finding: the measured boattail wants more pressure
+  drag than hpr's rule at Mach 1.5, less than the chart's, and about the rule's at Mach 2.96.
+  M1.8b3 measures it before hpr changes.
 
 **Consequences.**
 
 - **M1.8b3, the supersonic afterbody**, is next:
-  - The conical boattail's wave drag (Fig. 5-122 or the linear theory behind it).
-  - The base pressure behind a boattail.
+  - The conical boattail's wave drag (Fig. 5-122 or the linear theory behind it), weighed against
+    the Arcas Robin's measured boattail.
+  - The base pressure behind a boattail, and the base drag faster than sound (#68).
   - The Arcas Robin's lip, which hpr takes as a shoulder in the free stream though it sits in the
     boattail's wake (ADR-028).
-  - Its done-when is the Arcas Robin's fins-off forebody first, then Calisto's bands reported
-    again.
+  - Its targets, set before measuring, are on the Arcas Robin's fins-off forebody and Calisto's
+    supersonic band (`ROADMAP.md`).
 - **Issues, outside M1.8b3:**
   - #67: Niskanen's transonic cone and ogive drag, against Stoney's measured cone and the
     handbook's ogive.
   - #68: Fleeman's base drag against Love's correlation.
   - #69: fin–body interference drag, which RASAero II has and Niskanen's buildup neglects (p. 41).
   - #70: a sharp double-wedge fin section, for the Arcas Robin's fins supersonic (ADR-028).
-- **The Needs Neer entry on RASAero values is unaffected:** the drag sweep commits hpr's values
-  and the errors only.
+- **The Needs Neer entry on RASAero values is widened** to the drag sweep's 147 recoverable values.
+  If Neer objects, the sweep keeps its band summaries and drops its rows' errors.

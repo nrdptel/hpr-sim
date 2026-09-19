@@ -294,8 +294,19 @@ fn sweep(
     let mut bands: Vec<(&str, Vec<f64>)> = Vec::new();
     for mach in sweep_machs().filter(|&m| m <= usable) {
         let Some(reference) = curve(mach)? else {
-            continue;
+            // The rows run without a gap from Mach 0.1 (the tests check it): a curve that starts
+            // late or has a hole is refused here, where the cause is clear.
+            if rows.is_empty() {
+                return Err(format!("{}: the curve doesn't reach Mach {mach}", case.id));
+            }
+            break;
         };
+        if !(reference.is_finite() && reference > 0.0) {
+            return Err(format!(
+                "{}: the curve gives {reference} at Mach {mach}",
+                case.id
+            ));
+        }
         let reynolds_per_m = mach * air.speed_of_sound_m_s / nu;
         let drag = hpr_drag(rocket, mach, reynolds_per_m, case.thrusting)
             .map_err(|e| format!("{} at Mach {mach}: {e}", case.id))?;

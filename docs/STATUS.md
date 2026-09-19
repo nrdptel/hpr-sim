@@ -38,17 +38,16 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
   `drag-vs-mach.json`'s `calculations`. L18's test is `supersonic_cd_against_rasaero_tables`
   (renamed; it pins, it doesn't assert agreement). Scratch tools: `refs/scratch/m18b2/`
   (`range` sweeps Calisto's fin inputs by band; `mh` the handbook rocket).
-- **M1.8b3** next: a conical boattail's supersonic wave drag. MIL-HDBK-762 Fig. 5-122 (p. 5-187,
-  PDF page 425) plots `4 C_Dw (l/d)²` against `√(M²−1)/(2 l/d)` from 0.05 to 1.4 for
-  `(d_b/d)²` 0.25 to 0.80; read for ADR-029 at Calisto's boattail (0.338, 0.215, ≈0.13 at Mach
-  1.2, 1.5, 2.0) and the Arcas Robin's (0.198 at 1.5, 0.130 at 2.0, ≈0.072 at 2.96, ≈0.049 at
-  3.96, the last two extrapolated). Prefer the linear theory behind the chart, if a source gives
-  it, over digitizing past x = 1.4. Also the base pressure behind a boattail (Fig. 5-141, only
-  Mach 2.5 to 3.5) and the Arcas Robin's lip in the boattail's wake. Measure the fins-off forebody
-  from Mach 1.5 first (target set in ROADMAP), then re-report Calisto. Issues #67 to #70 hold the
-  other drag gaps (cone and ogive transonic, base drag, interference, sharp fins). Don't read
-  predicted mode's misses as gaps to close (ADR-009, ADR-023). M1.8c's damping must keep hpr's
-  local-flow pitch damping (ADR-026).
+- **M1.8b3** next: the supersonic afterbody. MIL-HDBK-762 Fig. 5-122 (p. 5-187, PDF page 425)
+  plots `4 C_Dw (l/d)²` against `√(M²−1)/(2 l/d)` from 0.05 to 1.4 for `(d_b/d)²` 0.25 to 0.80;
+  read for ADR-029 at Calisto's boattail (0.338, 0.215, ≈0.13 at Mach 1.2, 1.5, 2.0) and the
+  Arcas Robin's (0.198 at 1.5, 0.130 at 2.0, ≈0.072 at 2.96). The Arcas Robin's measured forebody
+  wants about half the chart's extra at Mach 1.5 and none at 2.96 (lip removed), so the chart
+  alone won't do: find the method behind it (no source cited), weigh the 8° separation advice
+  (p. 5-12), the base behind a boattail (Fig. 5-141) and Love's base drag (#68), and the lip.
+  Targets are in ROADMAP. Issues #67 to #70 hold the other drag gaps. Don't read predicted mode's
+  misses as gaps to close (ADR-009, ADR-023). M1.8c's damping must keep hpr's local-flow pitch
+  damping (ADR-026). ROADMAP is at its 1000-line budget: trim a done entry when adding.
 - **Regeneration is not bit-identical across machines** (last digits, so hashes move); the
   script prints each fixture's move. Regenerate reports with `cargo xtask validate` (the alias's
   debug build), never `cargo run --release`: release rounds differently in the 7th digit.
@@ -60,8 +59,8 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
 
 - 2026-09-18: M1.8b2 Drag against RASAero through Mach 2 (ADR-029): not met, recorded. Calisto's
   export 15/15 subsonic, 2/7 transonic, 0/17 supersonic (−29.8% to −24.4%), no fin input closes
-  it; MIL-HDBK-762's worked example (2/12) and the wind tunnel read below hpr; the boattail's
-  supersonic wave drag is the likely cause (M1.8b3).
+  it; MIL-HDBK-762's worked example (fins left out) 6/12, the body 6–10% low past Mach 1.6; a
+  boattail's wave drag is a candidate (M1.8b3).
 - 2026-09-18: M1.8b1 The drag buildup through Mach 1 (ADR-028): Niskanen's appendix B with
   Stoney's digitized curves, Mach 0 to 5; against the Arcas Robin's forebody axial force 8 of 44
   within 10% (high past Mach 1.2 with fins); predicted Prometheus flies; no known gap left.
@@ -89,15 +88,16 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
   14.7 psi), so its "1.5 margin" is about 1.06. Fix it or post a notice before Loft shuts down.
 - **crates.io names** (whenever): `hpr`, `hpr-sim`, `hpr-core`... are unreserved. Reserve them?
 - **orhelper** (no action if fine): GPL-2.0, so M2.2 drives OpenRocket via JPype, never imports it.
-- **RASAero values in a fixture** (no action if fine): `normal-force-vs-mach.json` commits 30 values
-  of RocketPy's 2018 Calisto RASAero II export (ADR-027), more than ADR-009's one per curve. If not
-  fine, say so in an issue; the next session keeps only hpr's values and the errors.
+- **RASAero values in fixtures** (no action if fine): `normal-force-vs-mach.json` commits 30 values
+  of RocketPy's 2018 Calisto RASAero II export (ADR-027), and `rocketpy-drag-curves.json` hpr's
+  values and errors from which 147 values of five RocketPy drag curves can be rebuilt (ADR-029),
+  more than ADR-009's one per curve. If not fine, say so in an issue; the next session keeps band
+  summaries only.
 
 ## Decided without Neer (one line each; significant ones get an ADR)
 
-- ADR-029: M1.8's drag bullet recorded as not met rather than chased: closing Calisto's gap would
-  move hpr away from the wind tunnel; MIL-HDBK-762's worked example added as a reference; L18's
-  test renamed to measure and pin; M1.8b3 added for the boattail.
+- ADR-029: M1.8's drag bullet recorded as not met, not chased; MIL-HDBK-762's worked example
+  added (fins left out); L18's test renamed to measure and pin; M1.8b3 added for the afterbody.
 - ADR-028: M1.8b split into b1 and b2; Stoney's Figure 12 read by hand into the code (panel (a),
   (b) for two shapes); cones and ogives below fineness 1 scale toward a flat face (L15 holds);
   the buildup refuses bulged ogives and Haack past `C = ⅓`; the known gap means a refusal at Mach 5.

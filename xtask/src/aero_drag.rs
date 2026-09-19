@@ -45,14 +45,18 @@ pub fn generate(root: &Path) -> Result<Value, String> {
         "target_rel": TARGET,
         "reynolds_per_m": REYNOLDS_PER_M,
         "references": wind_tunnel(root)?,
-        "calculations_note": "hpr's whole C_D0, base included, against MIL-HDBK-762's sample drag \
+        "calculations_note": "hpr's C_D0, base included, against MIL-HDBK-762's sample drag \
                               calculation (Table 5-4) for the rocket of its Fig. 5-155, at the \
                               Reynolds number per metre the table gives for each Mach number, term \
                               by term: friction (body and fins), the nose's wave drag against \
-                              hpr's nose pressure drag, the fins' wave and trailing-edge base drag \
-                              against hpr's fin pressure drag, and the body's jet-off base drag. \
-                              A calculation with every input known, not a measurement. error is \
-                              hpr's total over the handbook's, minus 1.",
+                              hpr's nose pressure drag, the fins' pressure drag, and the body's \
+                              jet-off base drag. A calculation with every input known, not a \
+                              measurement. The handbook's fins are single wedges, sharp at the \
+                              leading edge, a section hpr doesn't have; the design takes square \
+                              edges, so the fins' pressure drag (hpr's square edges; the \
+                              handbook's wave and trailing-edge base drag) is recorded but left \
+                              out of the comparison: compared is each total less it, and error is \
+                              hpr's compared over the handbook's, minus 1.",
         "calculations": [handbook(root)?],
     }))
 }
@@ -95,9 +99,17 @@ fn handbook(root: &Path) -> Result<Value, String> {
                 other += part.drag.pressure + part.drag.parasitic;
             }
         }
-        let measured = get("total_jet_off")?;
+        let reference_total = get("total_jet_off")?;
+        let reference_fins = get("fins")?;
+        let reference_compared = reference_total - reference_fins;
+        if !(reference_compared.is_finite() && reference_compared > 0.0) {
+            return Err(format!(
+                "{HANDBOOK} at Mach {mach}: a total without its fins of {reference_compared}"
+            ));
+        }
         let hpr = total.zero_lift_coefficient;
-        let error = hpr / measured - 1.0;
+        let hpr_compared = hpr - fins;
+        let error = hpr_compared / reference_compared - 1.0;
         rows.push(json!({
             "mach": mach,
             "band": crate::aero_mach::band(mach),
@@ -105,9 +117,9 @@ fn handbook(root: &Path) -> Result<Value, String> {
             "reference": {
                 "friction": get("friction")?,
                 "nose": row["nose_wave"].as_f64().unwrap_or(0.0),
-                "fins": get("fins")?,
+                "fins": reference_fins,
                 "base": get("base")?,
-                "total": measured,
+                "total": reference_total,
             },
             "hpr": {
                 "friction": total.friction,
@@ -116,6 +128,10 @@ fn handbook(root: &Path) -> Result<Value, String> {
                 "base": total.base,
                 "other": other,
                 "total": hpr,
+            },
+            "compared": {
+                "reference": reference_compared,
+                "hpr": hpr_compared,
             },
             "error": error,
             "within_target": error.abs() <= TARGET,
@@ -249,4 +265,23 @@ fn wind_tunnel(root: &Path) -> Result<Vec<Value>, String> {
         }));
     }
     Ok(out)
+}
+
+#[cfg(test)]
+mod tests {
+    /// The committed fixture is what the generator writes from the committed designs and
+    /// references. Unlike `cargo xtask aero --check`, this needs nothing from `refs/`, so CI runs
+    /// it: it catches a hand edit to any field, including the ones `hpr_aero`'s tests don't read.
+    #[test]
+    fn committed_fixture_matches_the_generator() {
+        let root = crate::designs::root().unwrap();
+        let committed: serde_json::Value =
+            serde_json::from_str(&std::fs::read_to_string(root.join(super::FIXTURE)).unwrap())
+                .unwrap();
+        assert!(
+            crate::designs::same(&committed, &super::generate(&root).unwrap()),
+            "{} differs from `cargo xtask aero`",
+            super::FIXTURE
+        );
+    }
 }

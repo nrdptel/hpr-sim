@@ -192,13 +192,18 @@ const WIND_TUNNEL: &str = "validation/fixtures/aero/arcas-robin-wind-tunnel.json
 const HANDBOOK_SAMPLE: &str = "validation/fixtures/aero/mil-hdbk-762-sample-drag.json";
 
 /// MIL-HDBK-762's sample drag rocket (Fig. 5-155) from the reference's geometry, in calibres of
-/// its 0.16-m diameter: a 3-calibre tangent ogive, a 21-calibre cylinder, and four rectangular
-/// flat-plate fins two calibres long, 0.32 tall and 0.04 thick with their trailing edges flush
-/// with the base. The fins take hpr's square section, the flat plate drawn; the surface is
-/// smooth, as the handbook's flat-plate friction is (Fig. 5-134). Steel; its mass plays no part.
+/// its 0.16-m diameter: a 3-calibre tangent ogive, a 21-calibre cylinder, and four rectangular fins
+/// two calibres (0.32 m) long, 0.32 calibres (51.2 mm) tall and 0.04 calibres (6.4 mm) thick, with
+/// their trailing edges flush with the base. The handbook's fins are single wedges, sharp at the
+/// leading edge, a section hpr doesn't have: they take the square section, and `cargo xtask aero`
+/// leaves the fins' pressure drag out of the comparison. The surface is smooth, as the handbook's
+/// flat-plate friction is (Fig. 5-134). Steel; its mass plays no part.
 fn handbook_sample(geometry: &Value) -> Result<Rocket, String> {
     let d = num(geometry, "diameter_m")?;
     let radius = 0.5 * d;
+    if !geometry["boattail"].is_null() {
+        return Err("the sample rocket has no boattail; this generator builds none".to_owned());
+    }
     let nose = &geometry["nose"];
     let fins = &geometry["fins"];
     let nose_length = num(nose, "length_calibers")? * d;

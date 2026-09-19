@@ -1,6 +1,6 @@
 {
-  "source": "MIL-HDBK-762(MI), Design of Aerodynamically Stabilized Free Rockets (U.S. Army Missile Command, 1990; Distribution A, a U.S. Government work), par. 5-5.4.2 'Sample Drag Calculation' (printed p. 5-56): Table 5-4 'Drag Calculation Sheets' (printed pp. 5-58 to 5-66) for the configuration of Fig. 5-155 (printed pp. 5-223 to 5-224). A calculation by the handbook's methods, not a measurement.",
-  "note": "Transcribed from the printed table. Each row's parts sum to its jet-off total to the table's 3 decimals. Columns: altitude (col. 2, p. 5-58); Reynolds number per metre (col. 4, p. 5-58); body friction, 1.15 C_f times the body's wetted area 92.15 A_ref (col. 8, p. 5-59; C_f from the handbook's smooth turbulent flat-plate chart, Fig. 5-134); fin friction, C_f times 6.52 A_ref (col. 10, p. 5-60); their sum (col. 11, p. 5-60); nose wave drag, transonic from Fig. 5-113 to Mach 1.2 (col. 14, p. 5-61) and supersonic from Fig. 5-114 (col. 17, p. 5-61), none below Mach 0.9; fin wave drag, transonic from Fig. 5-130 (col. 25, p. 5-63) and supersonic from Fig. 5-128(H) (col. 21, p. 5-62), none below Mach 0.95; fin base drag on the fins' blunt trailing edges, 0.0652 A_ref (col. 28, p. 5-64, from Figs. 5-152 and 5-153); the fins' total (col. 29, p. 5-64); the body's jet-off base drag on the whole base, the base pressure read from Fig. 5-140's 1-atm data (cols. 30 to 31, p. 5-64); and the jet-off total (col. 40, p. 5-66). All on A_ref = 0.020 m^2. The handbook's own slips, as printed: Fig. 5-155 labels d = 167 mm where the calculation uses 0.16 m; col. 21's header gives S_Fe/A_ref = 1.36 where its values use Fig. 5-155's 1.63; col. 10's header multiplies col. 9 by 6.52.",
+  "source": "MIL-HDBK-762(MI), Design of Aerodynamically Stabilized Free Rockets (U.S. Army Missile Command, 1990; Distribution A, a U.S. Government work), par. 5-5.4.2 'Sample Drag Calculation' (printed p. 5-56): Table 5-4 'Drag Calculation Sheets' (printed pp. 5-58 to 5-66) for the configuration of Fig. 5-155 (printed pp. 5-223 to 5-224). A calculation by the handbook's methods, not a measurement. Pinned as `mil-hdbk-762` in validation/refs.lock.toml; Table 5-4 starts on PDF page 296 and Fig. 5-155 is on PDF page 461.",
+  "note": "Transcribed from the printed table. Each row's parts sum to its jet-off total to the table's 3 decimals. Columns: altitude (col. 2, p. 5-58); Reynolds number per metre (col. 4, p. 5-58); body friction, 1.15 C_f times the body's wetted area 92.15 A_ref (col. 8, p. 5-59; C_f from the handbook's smooth turbulent flat-plate chart, Fig. 5-134); fin friction, C_f times 6.52 A_ref (col. 10, p. 5-60); their sum (col. 11, p. 5-60); nose wave drag, transonic from Fig. 5-113 to Mach 1.2 (col. 14, p. 5-61) and supersonic from Fig. 5-114 (col. 17, p. 5-61), none below Mach 0.9; fin wave drag, transonic from Fig. 5-130 (col. 25, p. 5-63) and supersonic from Fig. 5-128(H) (col. 21, p. 5-62), none below Mach 0.95; fin base drag on the fins' blunt trailing edges, 0.0652 A_ref (col. 28, p. 5-64, from Figs. 5-152 and 5-153); the fins' total (col. 29, p. 5-64); the body's jet-off base drag on the whole base, the base pressure read from Fig. 5-140's 1-atm data (cols. 30 to 31, p. 5-64); and the jet-off total (col. 40, p. 5-66). All on A_ref = 0.020 m^2. The handbook's own slips, as printed: Fig. 5-155 labels d = 167 mm where the calculation uses 0.16 m; col. 21's header gives S_Fe/A_ref = 1.36 where its values use Fig. 5-155's 1.63; col. 8 multiplies by a body wetted area of 92.15 A_ref where Fig. 5-155 works out 92.04.",
   "geometry": {
     "diameter_m": 0.16,
     "reference_area_m2": 0.02,
@@ -13,12 +13,12 @@
     "boattail": null,
     "fins": {
       "count": 4,
-      "planform": "rectangular, unswept",
+      "planform": "rectangular, unswept; S_Fe/A_ref = 1.63 is the exposed area of two joined panels, so col. 21's fin wave drag covers two of the four fins",
       "chord_m": 0.32,
       "exposed_semispan_calibers": 0.32,
       "thickness_calibers": 0.04,
       "thickness_to_chord": 0.02,
-      "section": "a flat plate, 0.04 d thick, drawn with square edges (Fig. 5-155); the calculation gives its leading edge wave drag only and its trailing edge base drag",
+      "section": "a single wedge: Fig. 5-155's side view draws each fin sharp at the leading edge and 0.04 d thick at its base, and the calculation gives the fins wave drag from a double wedge's chart (Fig. 5-128(H)) and base drag on their blunt trailing edges (Figs. 5-152 and 5-153)",
       "trailing_edge": "flush with the base"
     },
     "source": "Fig. 5-155, printed pp. 5-223 to 5-224"

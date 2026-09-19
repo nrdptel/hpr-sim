@@ -12,9 +12,10 @@
   of noses through Mach 1; MIL-HDBK-762 (1990) for comparison.
 - **How well it is validated:**
   - *Faster than sound, drag is not validated, and it misses both ways.* It reads high against a
-    wind tunnel and against a handbook's worked example, most of all for fins with blunt or square
-    edges, and low against RASAero II for a rocket with a short, steep boattail. Treat a
-    supersonic flight's drag, and its apogee, as rough. The three bullets below give the numbers.
+    wind tunnel, most of all for thin, sharp fins; the body alone reads a little low against a
+    handbook's worked example; and the whole rocket reads low against RASAero II for a rocket with
+    a short, steep boattail. Treat a supersonic flight's drag, and its apogee, as rough. The
+    bullets below give the numbers.
   - *Drag reads high against a wind tunnel.* Against NASA's wind-tunnel tests of the Arcas Robin
     sounding rocket, Mach 0.6 to 4.63, on the [forebody](../glossary.md#forebody) only (the models'
     bases sat on a [sting](../glossary.md#sting)), 8 of 44 readings are within 10%, all between
@@ -31,18 +32,17 @@
     record their fins or surface finish, so hpr uses stated guesses for them. Against Calisto's,
     the one real RASAero II export, hpr is within 10% at every Mach number up to 0.8, at 2 of the 7
     between, and at none from 1.2 to 2.0, where it reads −29.8% to −24.4%. No plausible choice
-    of fins or finish closes that. The likely cause is the wave drag of Calisto's boattail, which
-    hpr doesn't model yet
+    of fins or finish closes that. Part of it may be the wave drag of Calisto's boattail, which hpr
+    doesn't model, but the one measured boattail doesn't support all of it
     ([Drag against RASAero II through Mach 2](#drag-against-rasaero-ii-through-mach-2)).
   - *Drag at Mach 0.3* against the same curves: four of seven cases within 10%. Cavour
     [under power](../glossary.md#power-on-and-power-off-drag) (motor burning) is −18.3%, cause
     open, and Valetudo's table is 1.44 times its own [OpenRocket](../glossary.md#openrocket)
     export.
-  - *Drag reads high against [MIL-HDBK-762](../glossary.md#mil-hdbk-762)'s worked example*, a
-    rocket whose drag the U.S. Army's handbook calculates term by term with every input known:
-    2 of 12 Mach numbers within 10%, hpr reading
-    +21.3% to +43.6% from Mach 0.9 to 1.2 (the nose and the base) and +10.6% to +21.3% from Mach 2
-    (square fin edges)
+  - *Against [MIL-HDBK-762](../glossary.md#mil-hdbk-762)'s worked example*, a rocket whose drag
+    the U.S. Army's handbook calculates term by term with every input known, the fins left out:
+    6 of 12 Mach numbers within 10%; hpr reads +12.3% to +31.9% from Mach 0.9 to 1.2 (the nose and
+    the base) and −6.0% to −9.6% from Mach 1.6 (friction and the base)
     ([Drag against MIL-HDBK-762's sample calculation](#drag-against-mil-hdbk-762s-sample-calculation)).
   - *The normal force and centre of pressure* at Mach 0 against Barrowman's worked examples
     (rockets he calculated by hand), where every centre of pressure agrees within 1%, and so does
@@ -689,11 +689,12 @@ von Kármán noses of Calisto and Prometheus move it under 1% ([ADR-028][adr-028
   The fins' leading edge takes [N09]'s rounded-edge formula, a blunt edge's, for the airfoil and
   rounded sections alike. Nothing models the wave drag of a thin, sharp fin, which is far smaller:
   the Arcas Robin's four double-wedge fins measure 0.046 at Mach 4.63, against hpr's 0.30.
-  Against MIL-HDBK-762's worked example it reads high too, from Mach 0.9
+- **Against MIL-HDBK-762's worked example**, fins left out, the body reads high from Mach 0.9 to
+  1.2 (the nose and the base) and 6% to 10% low from Mach 1.6 (friction and the base)
   ([Drag against MIL-HDBK-762's sample calculation](#drag-against-mil-hdbk-762s-sample-calculation)).
 - **It reads low against RASAero II's Calisto faster than sound**, −29.8% to −24.4% from Mach 1.2
   to 2.0 ([Drag against RASAero II through Mach 2](#drag-against-rasaero-ii-through-mach-2)).
-  The likely reason is below: a boattail's own wave drag.
+  Part of that is the body's lean above; a boattail's own wave drag is a candidate for the rest.
 - **Through the transonic rise,** from Mach 0.8 to 1.2, the measured shapes follow Stoney's
   curves, and cones and ogives Niskanen's closed form, which reads 45% to 105% above Stoney's
   measured 3:1 cone there (the cross-check above).
@@ -701,8 +702,9 @@ von Kármán noses of Calisto and Prometheus move it under 1% ([ADR-028][adr-028
   "somewhat dubious at supersonic velocities" (p. 48), even where it sits in another part's wake,
   as the Arcas Robin's 1.3-mm lip does. A boattail keeps eq. 3.88 at every speed, a rule "based
   primarily on subsonic data" (p. 49), which over-predicts the Arcas Robin's 15° boattail below
-  Mach 1. Faster than sound it leaves out the boattail's own wave drag: for Calisto's short, steep
-  boattail MIL-HDBK-762's chart gives 0.338 at Mach 1.2 where the rule gives 0.083
+  Mach 1. Faster than sound it leaves out a boattail's own wave drag: for Calisto's short, steep
+  boattail MIL-HDBK-762's chart gives 0.338 at Mach 1.2 where the rule gives 0.083, though the
+  Arcas Robin's measured boattail wants much less than the chart
   ([M1.8b3](../decisions-and-roadmap.md#m1-8b3)).
 - **Stoney's curves end** at Mach 1.94 to 1.99 (panel (a)) and 3.59 (panel (b)); past that hpr
   holds their last value, which panel (b) puts within 8% for two shapes (above).
@@ -1098,8 +1100,7 @@ the tunnel can't measure, is compared only with a calculation
 [M1.8](../decisions-and-roadmap.md#m1-8) asks for drag within 10% of the curves labelled
 [RASAero](../glossary.md#rasaero-ii) in [RocketPy](../glossary.md#rocketpy)'s example rockets
 from Mach 0.1 to 2.0, with the errors by band. hpr doesn't meet that. This section gives the
-errors, why no choice of the curves' unrecorded inputs closes them, and the likely cause: the
-boattail's supersonic [wave drag](../glossary.md#wave-drag), which hpr doesn't model yet
+errors, why no choice of the curves' unrecorded inputs closes them, and what may cause them
 ([ADR-029][adr-029], the decision on this comparison).
 
 **How it is compared.** `cargo xtask aero` compares hpr's zero-lift
@@ -1109,7 +1110,8 @@ atmosphere, at the [Reynolds number](../glossary.md#reynolds-number) for its Mac
 RASAero II computes its exports. The designs and their inputs are those of the Mach 0.3 check
 above. Bands are Niskanen's (Table 3.1): subsonic to Mach 0.8, transonic below 1.2, supersonic from
 1.2. The fixture, [`rocketpy-drag-curves.json`][curves-fixture], holds hpr's value and the error
-at every Mach number and each band's summary, not the curves' values.
+at every Mach number and each band's summary. It doesn't hold the curves, but the two numbers
+give a curve's value back at each Mach number.
 `drag::tests::supersonic_cd_against_rasaero_tables` recomputes every row and pins the counts
 ([Loft lesson L18](../decisions-and-roadmap.md#l18): Loft, the earlier simulator this project
 learns from, used an invented transonic drag curve).
@@ -1137,7 +1139,9 @@ agreement: its 6 supersonic rows within 10% come from thick fins' drag making up
 term. Calisto on its 2018 fins is within 10% up to Mach 0.9. From Mach 0.95 hpr falls below the curve:
 −21.6% at Mach 1.0, −30.4% at 1.1, −26.0% at 1.5 and −25.0% at 2.0. Valetudo's curve is
 1.44 times its own OpenRocket export, as the Mach 0.3 check found, and Cavour's power-on miss is
-the same open question.
+the same open question. Two misses are unexplained: Cavour's power-off curve rises faster than
+hpr's through subsonic flow, from −8.3% at Mach 0.3 to −12.6% at 0.85; and Juno III's stays flat
+up to Mach 0.91, where hpr's has begun its rise, +14.1% at Mach 0.85 and +21.9% at 0.9.
 
 **The unrecorded inputs don't explain it.** Calisto's fins could be square, rounded or an
 airfoil, 2 to 6.35 mm thick, smooth or painted. No combination has rows within 10% both below
@@ -1147,78 +1151,98 @@ subsonic row 14.6% to 44.9% high; every other combination stays 10.1% to 37.6% l
 (`tests::calistos_supersonic_gap_survives_every_plausible_fin_and_finish`). So the supersonic gap
 is a difference in the two codes' models.
 
-**The boattail's wave drag is the likely difference.** Calisto ends in a short, steep conical
-[boattail](../glossary.md#boattail): 0.47 calibres long, narrowing to 69% of the diameter, a slope
-of 18.4°. Faster than sound, the air expanding around such a boattail pulls back on it. hpr's
-boattail rule ([N09] eq. 3.88) only takes a share of the [base drag](../glossary.md#base-drag),
-and gives Calisto's boattail 0.083 at Mach 1.2, 0.066 at 1.5 and 0.050 at 2.0.
-MIL-HDBK-762's chart for conical boattails at supersonic speeds ([762] Fig. 5-122, p. 5-187)
-gives 0.338, 0.215 and about 0.13 (the last read past the chart's end). All of these are drag
-coefficients on the reference area. The chart's values are 0.255, 0.149 and 0.08 more than hpr's,
-where hpr's whole gap to Calisto's curve is 0.20, 0.156 and 0.128. So the missing term is larger
-than the whole gap at Mach 1.2, about equal to it at 1.5, and about two-thirds of it at 2.0.
-Behind a boattail the base's pressure also rises, which lowers the base drag and offsets part of
-it; the handbook's correlation for that covers only Mach 2.5 to 3.5. RASAero II lists this drag
-as its own term, "other body wave" drag. The fix is the next increment,
-[M1.8b3](../decisions-and-roadmap.md#m1-8b3), checked first against the Arcas Robin's 15°
-boattail, which the wind tunnel measured.
+**Where the gap may come from.** Part of it is hpr's body: against a worked example with every
+input known, hpr's body reads 6% to 10% low faster than sound
+([below](#drag-against-mil-hdbk-762s-sample-calculation)). The rest has one candidate, not a
+finding. Calisto ends in a short, steep conical [boattail](../glossary.md#boattail): 0.47
+calibres long, narrowing to 69% of the diameter, a slope of 18.4°. Faster than sound, the air
+expanding around a boattail pulls back on it, a [wave drag](../glossary.md#wave-drag) of its own.
+hpr's boattail rule ([N09] eq. 3.88) only takes a share of the
+[base drag](../glossary.md#base-drag), and gives Calisto's boattail 0.083 at Mach 1.2, 0.066 at
+1.5 and 0.050 at 2.0. MIL-HDBK-762's chart for conical boattails at supersonic speeds ([762]
+Fig. 5-122, p. 5-187) gives 0.338 at Mach 1.2 and 0.215 at 1.5; at Mach 2 the chart has ended,
+and carrying its curves on gives about 0.13. All of these are drag coefficients on the reference
+area. The chart's extra over hpr's rule, 0.255, 0.149 and about 0.08, would overshoot hpr's whole
+gap to the curve (0.20, 0.156 and 0.128) at Mach 1.2, match it at 1.5 and fall short at 2.0.
+RASAero II lists such drag as its own term, "other body wave" drag.
+
+Against taking the chart's term whole:
+
+- The one measured boattail doesn't support it. The Arcas Robin's 15° boattail is in the wind
+  tunnel's forebody ([above](#drag-against-the-arcas-robin-wind-tunnel)). With the fins off, the
+  short model reads +8.1% at Mach 1.5; with the chart's value for its boattail it would read
+  about +47%, or +22% with the whole lip removed. At Mach 2.96, with the lip removed, hpr's rule
+  already agrees within 1.2%.
+- The handbook itself advises boattails under 8° to avoid flow separation ([762] p. 5-12). A
+  separated 18.4° boattail sees about the base's pressure, which is roughly what hpr's rule
+  gives.
+- Behind a boattail the base's pressure rises, which lowers the base drag and offsets part of
+  the term; the handbook's correlation for that covers only Mach 2.5 to 3.5.
+
+[M1.8b3](../decisions-and-roadmap.md#m1-8b3) measures the boattail against the Arcas Robin before
+hpr changes.
 
 ### Drag against MIL-HDBK-762's sample calculation
 
 RASAero II's curves can't show which way hpr leans, because their inputs are guessed. A reference
-with every input known can. MIL-HDBK-762, the U.S. Army's handbook for designing free rockets,
+with every input known can. MIL-HDBK-762, the U.S. Army's handbook for designing unguided rockets,
 works one rocket's drag through by its own methods, term by term, from Mach 0.5 to 3.2 ([762]
 Table 5-4, pp. 5-58 to 5-66). The rocket is 3.84 m long and 0.16 m across. It has a 3-calibre
 [tangent ogive](../glossary.md#tangent-ogive) nose, a plain cylinder with no boattail, and four
-flat-plate fins 0.32 m long, 51 mm tall and 6.4 mm thick, flush with the base (Fig. 5-155).
+fins 0.32 m long, 51 mm tall and 6.4 mm thick, flush with the base (Fig. 5-155).
 
 This is a calculation, not a measurement: it checks hpr's methods against another set of
 methods, whose base drag comes from measured bases. The table is transcribed with its pages in
 [`mil-hdbk-762-sample-drag.json`][handbook-fixture], and every row sums to its printed total.
-The rocket is `validation/designs/mil-hdbk-762-sample-rocket.json`, with square fins (the flat
-plate drawn) and a smooth finish, as the handbook's friction is. hpr flies it at the table's
-Reynolds numbers. `tests::drag_against_mil_hdbk_762_sample` recomputes the comparison in
+The rocket is `validation/designs/mil-hdbk-762-sample-rocket.json`, with a smooth finish, as the
+handbook's friction is. hpr flies it at the table's Reynolds numbers.
+`tests::drag_against_mil_hdbk_762_sample` recomputes the comparison in
 [`drag-vs-mach.json`][drag-fixture] and pins the rows within 10%. The 10% target comes from
 [M1.8](../decisions-and-roadmap.md#m1-8). hpr's numbers for this rocket were seen before it was
 chosen as a reference, so this is not a blind test.
 
+**The fins are left out.** The handbook draws each fin as a single wedge, sharp at the leading
+edge and blunt at the trailing edge, and gives the fins a thin wedge's wave drag and the base drag
+of their trailing edges. hpr has no such section. The design gives them square edges, whose
+leading edges hpr charges the pressure of air brought to a stop against them (0.100 at Mach 2,
+against the handbook's 0.016 for the whole fin). So each side's fin pressure drag is shown but
+left out of the totals compared; the fins' friction stays in.
+
 Each term, the handbook's first and then hpr's, on the reference area:
 
-| Mach | handbook | hpr | error | nose (handbook, hpr) | fins | base | friction |
+| Mach | handbook | hpr | error | nose (handbook, hpr) | base | friction | fins, left out (handbook, hpr) |
 |---|---|---|---|---|---|---|---|
-| 0.5 | 0.446 | 0.448 | +0.5% | 0.000, 0.000 | 0.023, 0.069 | 0.170, 0.152 | 0.253, 0.227 |
-| 0.7 | 0.428 | 0.475 | +11.0% | 0.000, 0.006 | 0.023, 0.075 | 0.163, 0.184 | 0.242, 0.211 |
-| 0.9 | 0.416 | 0.566 | +36.1% | 0.007, 0.062 | 0.023, 0.082 | 0.156, 0.225 | 0.230, 0.197 |
-| 0.95 | 0.430 | 0.617 | +43.6% | 0.011, 0.102 | 0.026, 0.085 | 0.163, 0.237 | 0.230, 0.194 |
-| 1.0 | 0.508 | 0.697 | +37.1% | 0.052, 0.164 | 0.043, 0.087 | 0.183, 0.250 | 0.230, 0.195 |
-| 1.1 | 0.585 | 0.740 | +26.5% | 0.109, 0.234 | 0.043, 0.089 | 0.215, 0.227 | 0.218, 0.189 |
-| 1.2 | 0.564 | 0.684 | +21.3% | 0.117, 0.200 | 0.036, 0.091 | 0.194, 0.208 | 0.217, 0.184 |
-| 1.6 | 0.494 | 0.541 | +9.5% | 0.109, 0.123 | 0.022, 0.097 | 0.168, 0.156 | 0.195, 0.165 |
-| 2.0 | 0.431 | 0.477 | +10.6% | 0.095, 0.104 | 0.016, 0.100 | 0.147, 0.125 | 0.173, 0.147 |
-| 2.4 | 0.376 | 0.433 | +15.0% | 0.089, 0.094 | 0.013, 0.102 | 0.124, 0.104 | 0.150, 0.132 |
-| 2.8 | 0.339 | 0.399 | +17.7% | 0.085, 0.088 | 0.011, 0.103 | 0.106, 0.089 | 0.137, 0.119 |
-| 3.2 | 0.307 | 0.372 | +21.3% | 0.083, 0.084 | 0.009, 0.103 | 0.089, 0.078 | 0.126, 0.107 |
+| 0.5 | 0.423 | 0.379 | −10.3% | 0.000, 0.000 | 0.170, 0.152 | 0.253, 0.227 | 0.023, 0.069 |
+| 0.7 | 0.405 | 0.401 | −1.1% | 0.000, 0.006 | 0.163, 0.184 | 0.242, 0.211 | 0.023, 0.075 |
+| 0.9 | 0.393 | 0.484 | +23.1% | 0.007, 0.062 | 0.156, 0.225 | 0.230, 0.197 | 0.023, 0.082 |
+| 0.95 | 0.404 | 0.533 | +31.9% | 0.011, 0.102 | 0.163, 0.237 | 0.230, 0.194 | 0.026, 0.085 |
+| 1.0 | 0.465 | 0.609 | +31.0% | 0.052, 0.164 | 0.183, 0.250 | 0.230, 0.195 | 0.043, 0.087 |
+| 1.1 | 0.542 | 0.651 | +20.1% | 0.109, 0.234 | 0.215, 0.227 | 0.218, 0.189 | 0.043, 0.089 |
+| 1.2 | 0.528 | 0.593 | +12.3% | 0.117, 0.200 | 0.194, 0.208 | 0.217, 0.184 | 0.036, 0.091 |
+| 1.6 | 0.472 | 0.444 | −6.0% | 0.109, 0.123 | 0.168, 0.156 | 0.195, 0.165 | 0.022, 0.097 |
+| 2.0 | 0.415 | 0.377 | −9.2% | 0.095, 0.104 | 0.147, 0.125 | 0.173, 0.147 | 0.016, 0.100 |
+| 2.4 | 0.363 | 0.331 | −8.9% | 0.089, 0.094 | 0.124, 0.104 | 0.150, 0.132 | 0.013, 0.102 |
+| 2.8 | 0.328 | 0.296 | −9.6% | 0.085, 0.088 | 0.106, 0.089 | 0.137, 0.119 | 0.011, 0.103 |
+| 3.2 | 0.298 | 0.269 | −9.6% | 0.083, 0.084 | 0.089, 0.078 | 0.126, 0.107 | 0.009, 0.103 |
 
-Two of twelve rows are within 10%, and hpr reads high, not low: +21.3% to +43.6% from Mach 0.9 to
-1.2, and +10.6% to +21.3% from Mach 2.0.
+Six of twelve rows are within 10%. hpr reads +12.3% to +31.9% high from Mach 0.9 to 1.2, and
+−6.0% to −9.6% low from Mach 1.6:
 
 - **The nose through Mach 1.** Niskanen's ogive gives two to three times the handbook's: 0.164
   against 0.052 at Mach 1.0, and 0.234 against 0.109 at 1.1. Stoney's measured 3:1 cone also sits
   under Niskanen's closed form through the rise ([Drag through Mach 1](#drag-through-mach-1)).
   From Mach 2 the two agree within 10%.
-- **The base through Mach 1.** Niskanen's base drag (eq. 3.94, after Fleeman's missile design
-  textbook) gives 0.250 at
-  Mach 1.0 where the handbook reads 0.183 from measured bases. Past Mach 1.2 hpr's is the lower:
-  0.125 against 0.147 at Mach 2.
-- **The fins' square edges.** hpr gives a blunt leading edge the pressure of air brought to a
-  stop against it (its stagnation pressure), 0.100 at Mach 2. The handbook gives the fins wave drag only, as if their edges were sharp, and
-  base drag on their blunt trailing edges: 0.016.
-- **Friction** reads 10% to 15% lower in hpr. The handbook takes a smooth flat plate's friction
-  and adds 15% on the body; hpr's body factor ([N09] eq. 3.85) adds 2% for this slender body.
+- **The base.** Niskanen's base drag (eq. 3.94, after Fleeman's missile design textbook) gives
+  0.250 at Mach 1.0 where the handbook reads 0.183 from measured bases. Faster than sound hpr's is
+  the lower: 0.125 against 0.147 at Mach 2.
+- **Friction** reads 10.4% to 15.9% lower in hpr. The handbook takes a smooth flat plate's
+  friction and adds 15% on the body; hpr's body factor ([N09] eq. 3.85) adds 2% for this slender
+  body, which accounts for about 11 points. The rest is unexplained; the two methods correct
+  friction for Mach number differently.
 
-This rocket has no boattail, so it can't show the term Calisto's curve points to. What it shows
-is that hpr's buildup doesn't read low through Mach 1 on its own. Its nose and base read high,
-which the measured cone agrees with.
+So hpr's body reads high through Mach 1, from the nose and the base, and 6% to 10% low faster than
+sound, from friction and the base. That is the same sign as Calisto's gap to RASAero II, a third
+of its size. This rocket has no boattail, so it says nothing about a boattail's own drag.
 
 [adr-008]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-008-subsonic-normal-force-and-centre-of-pressure-2026-09-17
 [adr-026]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-026-the-path-in-wind-rocketpys-corrected-equations-and-hprs-body-lift-2026-09-18

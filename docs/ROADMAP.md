@@ -585,17 +585,17 @@
 
       *Done when:* M1.8's Cd bullet is met or an ADR records why not, with the gap in the report.
 
-      *Result (ADR-029):* not met, recorded. Calisto's export: 15/15 subsonic within 10%, 2/7
-      transonic, 0/17 supersonic (−29.8% to −24.4%), for any plausible fins; MIL-HDBK-762's worked
-      example (2/12) and the wind tunnel read below hpr. Likely cause: a boattail's wave drag.
+      *Result (ADR-029):* not met, recorded. Calisto's export: 15/15 subsonic, 2/7 transonic,
+      0/17 supersonic within 10%; no fin input is within 10% subsonic and supersonic both.
+      MIL-HDBK-762's worked example: 6/12, the body 6–10% low past Mach 1.6. Boattail a candidate.
 
     - [ ] **M1.8b3 The boattail and base faster than sound.**
       - A conical boattail's supersonic wave drag (MIL-HDBK-762 Fig. 5-122), the base behind it,
         and a lip in its wake.
 
-      *Done when:* the Arcas Robin's fins-off forebody from Mach 1.5 is compared again, each row's
-      change reported (target, set before measuring: within 10%, or an ADR records why not), and
-      Calisto's bands against RASAero II are reported again (ADR-029).
+      *Done when* (targets set before measuring; or an ADR records why not): the Arcas Robin's 11
+      fins-off rows from Mach 1.5 within 10%, the 2 now within staying; Calisto's 17 supersonic
+      rows against RASAero II within 10%; each row's change reported (ADR-029).
 
   - [ ] **M1.8c Roll and damping.**
     - Roll forcing from fin cant and roll damping. Pitch and yaw damping keep hpr's local-flow
