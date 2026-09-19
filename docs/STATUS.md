@@ -4,10 +4,10 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
 
 ## Now
 
-- **Current milestone:** M1.8e3 The boattail and crossflow faster than sound
-- **Order:** M1.8e3, then M3.1
-- **Run:** M0.1-M0.4, M1.1-M1.7, M2.1, M1.8a to M1.8e2 shipped; https://nrdptel.github.io/hpr-sim/
-- **Last updated:** 2026-09-19 (M1.8e2 done; M1.8e3 not started)
+- **Current milestone:** M1.8e4 The boattail's share faster than sound
+- **Order:** M1.8e4, M1.8e5, then M3.1
+- **Run:** M0.1-M0.4, M1.1-M1.7, M2.1, M1.8a to M1.8e3 shipped; https://nrdptel.github.io/hpr-sim/
+- **Last updated:** 2026-09-19 (M1.8e3 done; M1.8e4 not started)
 
 ## Handoff (overwrite each session)
 
@@ -30,11 +30,12 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
   rolling-moment plots are unread; #76: M1.8a's other TN D-4014 zeros. M1.8e1's Python check,
   `m18e/sose.py` (patch in hpr's Fig. 2), carries the gradient through reduced elements; hpr
   doesn't (#81).
-- **M1.8e3** next (ADR-034 flies M1.8e2): `SupersonicBody` in `hpr-aero/src/model.rs` tabulates
+- **M1.8e4** next (ADR-034 flies M1.8e2): `SupersonicBody` in `hpr-aero/src/model.rs` tabulates
   the method's shares (nose and same-radius tubes) every 0.05 Mach, lazily, joined linearly from
-  max(1.2, first valid row) over 0.3; only when nothing behind has a slope (a boattail beside the
-  method moved the CP the wrong way). M1.8e3: fly the boattail's share (a station rule for shares
-  crossing zero), crossflow (long model +0.57), blunt tips, Fig. 2 below Mach 3, #81, #87.
+  max(1.2, where the method starts to hold, bisected since M1.8e3) over 0.3; only when nothing
+  behind has a slope (a boattail beside the method moved the CP the wrong way). M1.8e4: fly the
+  boattail's share (a station rule for shares crossing zero). M1.8e5: crossflow (long model
+  +0.57), blunt tips, Fig. 2 below Mach 3, #81, #87's model switches.
 - **Autopilot memory:** per-cycle process groups; `scripts/build-memory.sh` → `docs/perf.md`.
 - **Regeneration is not bit-identical across machines** (last digits). Regenerate reports with
   `cargo xtask validate` (debug), never `--release`: it rounds differently in the 7th digit.
@@ -45,6 +46,9 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
 
 ## Done log (newest first, keep about 15)
 
+- 2026-09-19: M1.8e3 The supersonic join's start (#87's grid half): bisected where the method
+  starts to hold, not on the 0.05 grid; a 20° cone joins from Mach 1.341910 (was 1.35), moving
+  smoothly to 1.355500 at 20.5°; no jump at ±1e-9 in Mach; the report unchanged.
 - 2026-09-19: M1.8e2 The body's supersonic normal force in flight (ADR-034): nose and cylinder
   take the method's shares, joined over Mach 1.2 to 1.5, no jump at ±1e-9; Arcas Robin nose and
   cylinder through the flight equal the method (+16.4% to −26.4%); boattailed bodies unchanged.
@@ -57,10 +61,6 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
 - 2026-09-19: M1.8d Normal-force overrides (ADR-032): RASAero II's export read per angle of
   attack, flown with hpr's damping kept; every row of Calisto's export re-read, and it flies
   (apogee −1.28 m, 14.2 m upwind); a table's pitch period within 4e-6 of theory.
-- 2026-09-19: M1.8c Roll and damping (ADR-031): Barrowman's strip theory; Valetudo canted 1°
-  settles on the closed-form roll rate within 1e-11; TN D-4014's roll effectiveness from Mach 2.3
-  8 of 8 within 5.3%, +14.3% to +47.8% at Mach 1.5 and 1.8; the Basic Finner's damping −5.9% to
-  −16.2%.
 
 ## Needs Neer (blocking or one-way decisions; the session keeps working on other things)
 
@@ -82,6 +82,8 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
 
 ## Decided without Neer (one line each; significant ones get an ADR)
 
+- M1.8e3 split (ids allow one increment level): e3 the join's start by bisection (24 halvings,
+  noted under ADR-034), e4 the boattail, e5 crossflow and blunt tips with M1.8e's bullet.
 - ADR-034: M1.8e2's shares tabulated every 0.05 Mach (lazily; eager took unit tests to 238 s),
   joined over Mach 1.2 to 1.5; a body with a boattail keeps slender-body theory until M1.8e3.
 - M1.8e2 split: e2 flies nose and cylinder; new e3 (boattail, crossflow) carries M1.8e's bullet.

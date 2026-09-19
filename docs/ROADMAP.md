@@ -574,21 +574,17 @@
     Calisto's export (0°, 2°, 4°): 4,999 rows re-read with `refs/`, M1.8a's 30 values in CI;
     Calisto flies on it; a table's pitch period within 4e-6 of linear theory, pitch and yaw.
 
-  - [ ] **M1.8e The body's supersonic normal force.**
-    - M1.8a measured the gap: past Mach 3 the Arcas Robin's body alone lifts 3.9 to 4.6 per rad,
-      where slender-body theory gives 2.3 to 2.8 with body lift. A cited supersonic method for
-      noses, boattails and crossflow.
+  - [ ] **M1.8e The body's supersonic normal force.** M1.8a measured the gap: past Mach 3 the
+    Arcas Robin's body alone lifts 3.9 to 4.6 per rad, where slender-body theory gives 2.3 to 2.8
+    with body lift. A cited supersonic method for noses, boattails and crossflow. *Done when:*
+    the Arcas Robin's body-alone `C_Nα` (fins off, TN D-4014) is within 15% at every Mach number
+    from 1.5, and both configurations' `C_Nα` within 15% at Mach 3.96 and 4.63, or an ADR records
+    why not with the gap in the report. Split below into M1.8e1 to M1.8e5; M1.8e5 carries this
+    bullet.
 
-    *Done when:* the Arcas Robin's body-alone `C_Nα` (fins off, TN D-4014) is within 15% at every
-    Mach number from 1.5, and both configurations' `C_Nα` within 15% at Mach 3.96 and 4.63, or an
-    ADR records why not with the gap in the report. Split below into M1.8e1 to M1.8e5; M1.8e5
-    carries this bullet.
-
-    - [x] **M1.8e1 The second-order shock-expansion method.**
-      - NACA TN 3527's method for a pointed body's `C_Nα` and CP at `α → 0`, the cylinder's
-        lift behind the nose included; its Fig. 2's tangent-cone slopes read by hand.
-
-      *Done when* (targets set before measuring):
+    - [x] **M1.8e1 The second-order shock-expansion method.** NACA TN 3527's method for a
+      pointed body's `C_Nα` and CP at `α → 0`, the cylinder's lift behind the nose included; its
+      Fig. 2's tangent-cone slopes read by hand. *Done when* (targets set before measuring):
       - A committed fixture, pinned by a test, holds hpr's values against every row of TN 3527's
         Tables I and II (cone and tangent-ogive noses of fineness 3, 5 and 7, cylinders of 0 to
         10 calibers, Mach 3 to 6.28): within 0.05 per radian and 0.1 calibers of the report's own
@@ -601,40 +597,27 @@
       within (a second implementation agrees with hpr; #81 at its limit); against its
       measurements 117 and 109 of 120. Arcas Robin: short −18.7% to +16.4%, long to −26.4%.
 
-    - [x] **M1.8e2 The body's supersonic normal force in flight.**
-      - The body's terms take Mach: M1.8e1's method for a pointed nose and its cylinder where it
-        holds, joined to slender-body theory below it.
-
-      *Done when* (targets set before measuring):
+    - [x] **M1.8e2 The body's supersonic normal force in flight.** The body's terms take Mach:
+      M1.8e1's method for a pointed nose and its cylinder where it holds, joined to slender-body
+      theory below it. *Done when* (targets set before measuring):
       - A flight takes the body's `C_Nα` and CP at its Mach number (`dynamics.rs` caches body
         stations as Mach-free); a test probes the join at ±1e-9 in Mach and finds no jump.
       - The Arcas Robin's body alone (TN D-4014) is evaluated through the flight's path at each
         Mach number from 1.5, beside the measurement and M1.8a's values, and in the report.
       - The validation report is regenerated; each changed row is listed in the PR.
 
-    - [x] **M1.8e3 The supersonic join's start without grid steps.**
-      - The join starts where the method starts to hold, found by bisection, not on the table's
-        0.05 grid in Mach: the grid half of #87.
+    - [x] **M1.8e3 The supersonic join's start without grid steps** (#87's grid half).
+      *Done when:* a test finds a 20° cone's start off the 0.05 grid, moved under 1e-5 in Mach
+      by 1e-6° and strictly by each 0.1° to 20.5°, no jump at ±1e-9 in Mach at the start, the
+      first even row and the join's end; the report unchanged or each changed row in the PR.
+      *Result:* met. Mach 1.341910 (1.35 before) to 1.355500 at 20.5°; the report unchanged.
 
-      *Done when:* a test finds the start off the grid, moved by under 1e-5 in Mach by a 1e-6°
-      change in a 20° cone and strictly by each 0.1° to 20.5°, with no jump at ±1e-9 in Mach at
-      the start, the first even row and the join's end; the report is unchanged or each changed
-      row is listed in the PR.
+    - [ ] **M1.8e4 The boattail's share faster than sound** (footnote 8; a station rule for
+      shares that cross zero). *Done when:* a boattailed body flies the method with no jump at
+      ±1e-9 in Mach; the Arcas Robin's long model through a flight's path is in the report.
 
-      *Result:* met. The 20° cone joins from Mach 1.341910 (1.35 before); 20.0° to 20.5° move it
-      to 1.355500 in steps of 0.0027 to 0.0028; the report is unchanged.
-
-    - [ ] **M1.8e4 The boattail's share faster than sound.**
-      - The boattail through the method (footnote 8), with a station rule for shares that cross
-        zero, so boattailed bodies fly it.
-
-      *Done when:* a boattailed body flies the method with no jump at ±1e-9 in Mach; the Arcas
-      Robin's long model through the flight's path is in the report beside the measurement.
-
-    - [ ] **M1.8e5 Crossflow and blunt tips faster than sound.**
-      - Crossflow at the angles flown, blunt tips, Fig. 2 below Mach 3, #81, #87's model switches.
-
-      *Done when:* M1.8e's bullet above.
+    - [ ] **M1.8e5 Crossflow and blunt tips faster than sound** (Fig. 2 below Mach 3, #81, #87's
+      model switches). *Done when:* M1.8e's bullet above.
 
 - [ ] **M3.1 OpenRocket `.ork` import.**
   - Handles zip, gz and raw XML, schema 1.0 to 1.10, plus the documented 1.11 additions.
