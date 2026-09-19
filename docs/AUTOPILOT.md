@@ -110,11 +110,16 @@ someone clicks it — which is what happened on 2026-09-19, about 14 hours into 
 below were added afterwards and **have not yet been through a full unattended window**. They
 reduce what the run holds; they do not guarantee a 16 GB machine will not run out.
 
-**Before you start, close things.** This is the larger half. On 2026-09-19 a web browser, the
-Claude desktop app and a virtual machine held about 7 GB between them. Quit what you are not
-using and shut down any VM before leaving a long window unattended. At startup the run logs the
-largest processes holding 0.5 GB or more, up to six of them, so the baseline is visible before
-you walk away.
+**Before you start, close things.** This is the larger half. The dialog on 2026-09-19 listed
+five applications holding 6.33 GB between them: 2.58 GB the Claude desktop app, 2.36 GB Safari,
+1.18 GB Chrome, and a little over 0.2 GB for Terminal and Finder. Quit what you are not using
+before leaving a long window unattended.
+
+Note what that dialog does **not** show. It lists applications only, so `cargo`, `rustc`, the
+session itself and any virtual machine were all absent from it — which is why the numbers in it
+do not add up to a full machine. At startup the run logs the largest processes holding 0.5 GB or
+more, up to six of them, counting everything rather than applications alone, so the baseline you
+see there is the honest one.
 
 **The build is the smaller half.** Building and running the whole test suite peaks at 2.58 GB —
 [Performance](perf.md) has the measurements and `scripts/build-memory.sh` repeats them. The run
@@ -124,8 +129,9 @@ cores back. Both are set in the script rather than in the repository's cargo con
 they do not follow the project into CI, where the hosted runners have fewer cores than this Mac
 and a fixed six would start more jobs than there are cores to run them.
 
-Those two together account for roughly 9.5 GB of the 16. The rest is the session process itself,
-which nothing has measured yet — the per-cycle line below is there to find out.
+That is about 8.9 GB of the 16 accounted for. The rest is the kernel, anything the dialog left
+out, and the session process itself, which nothing has measured yet — the per-cycle line below is
+there to find out.
 
 **Leftovers are cleaned up.** Each cycle runs in its own process group, and the group is killed
 when the cycle ends, after a normal finish as well as after a watchdog kill. Without that, a build
