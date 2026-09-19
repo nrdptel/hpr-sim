@@ -1775,7 +1775,7 @@ Mach number (fixture [`arcas-robin-gap.json`][gap-fixture], which `cargo xtask a
 - The fit's slope at `α → 0` and its curvature move together (their errors correlate at −0.95
   to −0.96), so the readings can't split hpr's excess between body lift and its slope at
   `α → 0`. With body lift at Jorgensen's size alone, hpr still reads 8.2% to 60.7% high.
-- The one candidate that size is the boattail's share: TN 3527's footnote 8, which a flight uses,
+- The one sized cause that size is the boattail's share: TN 3527's footnote 8, which a flight uses,
   gives −0.177 to −0.026, slender-body theory −1.324. The lip, which the method can't take, adds
   +0.178 by slender-body theory; a blunt tip like the tunnel's, scaled from a blunter one
   measured, loses 0.015 to 0.07 past Mach 3. Below Mach 3, where the tangent cones' slopes are

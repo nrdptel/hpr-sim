@@ -42,7 +42,7 @@ depends on the form fitted (section 2).
 | 1 | crossflow's size at the tunnel's angles | 0.09 to 1.74 (tunnel); 1.40 to 2.09 (hpr) | fits of committed readings; Jorgensen |
 | 2 | the boattail's share | −0.18 to −0.03 (hpr); −1.32 (slender-body theory) | two theories, nothing measured alone |
 | 3 | the lip | +0.178 | slender-body theory, unmeasured |
-| 4 | the blunt tip | 0 to −0.07 (−0.011 at most below Mach 3) | a tip four times larger, scaled; swaps with 5 if `n` = 2 |
+| 4 | the blunt tip | 0 to −0.07 (about −0.01 at most below Mach 3) | a tip four times larger, scaled; swaps with 5 if `n` = 2 |
 | 5 | TN 3527's Fig. 2 below Mach 3 | −0.031 to +0.056 | Sims's tables, a bound |
 | 6 | [issue #81](https://github.com/nrdptel/hpr-sim/issues/81) | 0 | counted by the method |
 
@@ -118,7 +118,7 @@ boundary layer "to obtain turbulent flow" (TN D-4014 p. 4); past the critical Re
   all eight, by up to 2.2 standard errors.
 - The short model at Mach 1.5 and 1.8 shows almost no curvature (`K` 0.32 and 0.07), while the
   long model at Mach 1.8 shows 0.71. A lead: at those two Mach numbers the report finds the short
-  model's axial force low with its fins off, "believed to be because of the reflex lip" (p. 6).
+  model's chamber axial force low, fins off, "believed to be because of the reflex lip" (p. 6).
 
 ## 2. What remains at `α → 0`
 
@@ -130,6 +130,8 @@ much of hpr's excess is body lift and how much its slope at `α → 0`:
   to 0.61 higher, between 0.35 below and 0.43 above.
 - With the curvature held at Jorgensen's `K`, the tunnel's slope at `α → 0` is 1.04 to 2.98,
   0.37 to 1.33 below hpr's at every row, and hpr fitted the same way reads 8.2% to 60.7% high.
+- No single `K`, whatever `C_dn` really is, puts all 11 rows within 15%: the short model at Mach
+  1.5 needs `K` at most 0.11, the long at 4.63 at least 0.32.
 
 TN 3527 states its method within ±0.2 per radian (Summary, p. 1), for Mach number over nose
 fineness from 0.4: the Arcas Robin is at 0.36 at Mach 1.5. The causes that could make hpr's
@@ -139,20 +141,22 @@ slope too high follow, the boattail first.
 
 M1.8e4 flies the 15° boattail by TN 3527's footnote 8, which takes its tangent cone (the cone
 tangent to the profile) as the free stream with a slope of 2, for "reasonable results for bodies
-having moderate amounts of boattail". Nothing measures it on its own (issue #90). As hpr flies
+having moderate amounts of boattail". Nothing measures it on its own (issue #90); the report
+says flow separates over it "at the higher Mach numbers" (TN D-4014 p. 6). As hpr flies
 it, the boattail's share is −0.177 at Mach 1.5 to −0.026 at 4.63. Slender-body theory, which the
 committed design uses at every Mach number, gives it `2 (A_aft − A)/A_ref` = −1.324. The spread,
 1.15 to 1.30, is as large as what remains at Jorgensen's `K` (0.37 to 1.33), so the boattail
-ranks second: the only candidate that size. Nothing here says where between the two theories
-the real share lies.
+ranks second: the only sized cause that size (the fitted form and the method's own ±0.2 aren't
+causes). Nothing here says where between the two theories the real share lies.
 
 ## What this means for M1.8e6 and M1.8e7
 
 - **Crossflow and the boattail together,** judged fitted at the plotted angles
   (`hpr.fitted_c_n_alpha`), not at `α → 0`. Jorgensen's `η C_dn` fits the curvature better than
   `K` = 1.1 from Mach 2.3, but at his `K` hpr still reads 8% to 61% high, and only the boattail is
-  that size. The report plots `C_N` to 16° to 21° (Figs. 5(a), 6(a)); reading those points would
-  pin `K` far better than ±0.2. Body lift drives a slow rocket's drift in wind
+  that size. The report plots `C_N` to 16° to 21° (Figs. 5(a), 6(a)), where `M sin α` passes 1:
+  those points would show how `C_dn` grows with it, not the small-angle `K`. Body lift drives a
+  slow rocket's drift in wind
   ([ADR-026](../DECISIONS.md#adr-026-the-path-in-wind-rocketpys-corrected-equations-and-hprs-body-lift-2026-09-18)),
   so M1.8e6 should decide whether a change applies below Mach 1, and regenerate the report.
 - **Blunt tips are a coverage question.** The committed design's power-series nose has a vertical

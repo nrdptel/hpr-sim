@@ -332,6 +332,10 @@ pub fn generate(root: &Path) -> Result<Value, String> {
             let crossflow = slope(&alphas, &lift);
             let gap = fitted - at_zero;
             let jorgensen_fitted = hpr_fitted - crossflow * (1.0 - jorgensen_k / BODY_LIFT_K);
+            // The K that puts hpr's fitted slope within 15% of the measured, everything else as
+            // it is: its body lift scales with K.
+            let k_within = [0.85, 1.15]
+                .map(|f| (f * fitted - (hpr_fitted - crossflow)) * BODY_LIFT_K / crossflow);
             // AFATL's change, the larger at its Mach numbers at or around the row's (its Mach 4
             // past that, an extrapolation), scaled to the Arcas Robin's tip.
             let tip = ARCAS_TIP_RADIUS_IN / ARCAS_NOSE_R_IN[8] / AFATL_TIP_RATIO;
@@ -398,6 +402,7 @@ pub fn generate(root: &Path) -> Result<Value, String> {
                     "above_zero_alpha": at_zero - zero_alpha,
                     "above_inner": at_zero - inner,
                     "above_zero_alpha_cubic": at_zero - zero_alpha_cubic,
+                    "k_within_15_percent": k_within,
                 },
                 "at_jorgensen_k": {
                     "hpr_fitted_c_n_alpha": jorgensen_fitted,
@@ -459,7 +464,7 @@ pub fn generate(root: &Path) -> Result<Value, String> {
                  change in the nose and cylinder's share (nose_and_cylinder_c_n_alpha, the \
                  method's, no boattail) if each tangent cone's slope, held at TN 3527 Fig. 2's \
                  Mach 3 curve below Mach 3, took Sims's value instead (NASA SP-3007 Table 2, \
-                 p. 20): the least and greatest ratio of his slopes to his Mach 3 slopes at his \
+                 p. 20): the least and greatest ratio of his slopes to the Mach 3 slopes hpr holds at his \
                  angles to 12.5 deg and his Mach numbers at or around the row's, less 1, times \
                  the share; zero from Mach 3. sources.blunt_tip is AFATL-TR-77-8's change from a \
                  sharp 4-caliber ogive to a tip of 0.25 of its radius (Table 3, the larger at its \
@@ -469,7 +474,9 @@ pub fn generate(root: &Path) -> Result<Value, String> {
                  reading_c_n, on degrees_of_freedom. remaining = \
                  gap - crossflow - lip. zero_alpha_crossflow_correlation is the correlation of b's and c's \
                  errors; zero_alpha_cubic_c_n_alpha is b of C_N = a + b alpha + d alpha^3 \
-                 instead, and hpr.above_zero_alpha_cubic hpr's slope less it. at_jorgensen_k \
+                 instead, and hpr.above_zero_alpha_cubic hpr's slope less it; \
+                 hpr.k_within_15_percent is the range of K that puts hpr's fitted slope within \
+                 15% of the measured. at_jorgensen_k \
                  holds the curvature at Jorgensen's eta C_dn (jorgensen_k: eta from TR R-474 \
                  Fig. 4 at the model's fineness, C_dn = 1.2, p. 15): the tunnel's slope at \
                  alpha -> 0 with that curvature taken out, and hpr's fitted slope with its body \
@@ -726,7 +733,14 @@ mod tests {
                 .filter(|r| f(r, "/mach") < 2.0)
                 .all(|r| loss(r, 0) == 0.0 && loss(r, 1) == 0.0)
         );
-        assert!(note.contains("nothing at Mach 1.5 and 1.8"));
+        assert!(note.contains("nothing the table resolves at Mach 1.5 and 1.8"));
+        // No single K puts all 11 rows within 15%.
+        let (lo, hi) = (
+            range("/hpr/k_within_15_percent/0", 0.0)[1],
+            range("/hpr/k_within_15_percent/1", 0.0)[0],
+        );
+        quoted([hi, lo], [0.11, 0.32], 0.005, "at most 0.11");
+        assert!(note.contains("at least 0.32"));
         // Only the Mach 4.63 rows extrapolate past AFATL's Mach 4.
         assert!(
             rows.iter()
@@ -803,6 +817,22 @@ mod tests {
                 .unwrap();
             let within = if *angle < 5.0 { 0.01 } else { 0.003 };
             assert!((hpr - sims).abs() < within, "{angle}°: {hpr} {sims}");
+        }
+    }
+
+    /// The boattail's share barely depends on the loading the cylinder carries to it:
+    /// lengthening the Arcas Robin's cylinder from 39.14 in to 1000 in moves it by under 0.002
+    /// per radian at every tunnel Mach number, so the nose's loading has died away before it.
+    #[test]
+    fn the_boattail_share_carries_almost_nothing_from_the_nose() {
+        let (ratio, _) = arcas_nose_ratio().unwrap();
+        let area = 0.25 * PI * (2.0 * ARCAS_NOSE_R_IN[8] * INCH).powi(2);
+        let short = arcas_body(ratio, 39.14, true).unwrap();
+        let long = arcas_body(ratio, 1000.0, true).unwrap();
+        for mach in [1.5, 1.8, 2.3, 2.96, 3.96, 4.63] {
+            let a = short.segment_slopes(mach, area).unwrap()[2].slope_per_rad;
+            let b = long.segment_slopes(mach, area).unwrap()[2].slope_per_rad;
+            assert!((a - b).abs() < 0.002, "Mach {mach}: {a} {b}");
         }
     }
 

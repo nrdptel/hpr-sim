@@ -3384,7 +3384,7 @@ comparing hpr's slope at `α → 0` with a straight line fitted through points f
 reads 15% to 73% high. The fit's slope at `α → 0` and its curvature correlate at −0.95 to −0.96,
 so the readings can't say how much of that is body lift and how much the slope at `α → 0`. With
 body lift at Jorgensen's `η C_dn` (NASA TR R-474), hpr still reads 8% to 61% high. The one
-candidate that size is the boattail's share: TN 3527's footnote 8 gives −0.18 to −0.03 per
+sized cause that size is the boattail's share: TN 3527's footnote 8 gives −0.18 to −0.03 per
 radian, slender-body theory −1.32. M1.8e's 15% bullet names no comparison basis, and M1.8e6's
 title ("crossflow and blunt tips", "e5's top ranks") predates the ranking.
 
@@ -3397,7 +3397,8 @@ title ("crossflow and blunt tips", "e5's top ranks") predates the ranking.
 - **The tunnel's slope at `α → 0` is never one number.** Report it under both fitted forms
   (`α |α|` and `α³`) and with the curvature held at a cited `K`.
 - **M1.8e6's scope follows the ranking:** crossflow's size (Jorgensen's `η C_dn` or a cited
-  alternative; the report's points to 16° to 21° may pin it) and the boattail's share, together.
+  alternative; the report's points to 16° to 21° show how it grows with `M sin α`) and the
+  boattail's share, together.
   Blunt tips stay in it for coverage: the committed design's power-series nose is refused by the
   method. Its done-when is unchanged.
 
