@@ -371,9 +371,9 @@ and a declared wind.
 | cases scored | 6, one of them (Prometheus 2022) past Mach 1, since [M1.8a](../decisions-and-roadmap.md#m1-8a) |
 | height, speed, time, acceleration | all scored, all within 3% of RocketPy's |
 | largest of those | +1.783%, Bella Lui's peak acceleration, on the rail |
-| largest in apogee | +1.525%, Prometheus 2022; RocketPy flown with hpr's body lift and rail release comes within 0.01% ([case file](https://github.com/nrdptel/hpr-sim/blob/main/validation/cases/flight-prometheus-2022-generic-motor.toml)) |
-| path without wind (drift of apogee and landing) | all scored, within 2.2% (largest −2.141%, Bella Lui's calm landing) |
-| path in wind | Calisto's scored (largest +1.433%), and NDRT 2020's landing; Juno III's, Bella Lui's and Prometheus 2022's, and NDRT 2020's apogee drift, differ by 4.7 to 43% and are reported, not scored: hpr's body lift and rail release, and Juno III's fin slope ([ADR-026][adr-026]) |
+| largest in apogee | +1.208%, Prometheus 2022; RocketPy flown with hpr's body lift and rail release comes within 0.01% ([case file](https://github.com/nrdptel/hpr-sim/blob/main/validation/cases/flight-prometheus-2022-generic-motor.toml)) |
+| path without wind (drift of apogee and landing) | all scored, within 1.9% (largest −1.807%, Juno III's calm landing) |
+| path in wind | Calisto's scored (largest +1.257%), and NDRT 2020's landing; Juno III's, Bella Lui's and Prometheus 2022's, and NDRT 2020's apogee drift, differ by 4.3 to 38% and are reported, not scored: hpr's body lift and rail release, and Juno III's fin slope ([ADR-026][adr-026]) |
 
 What the two codes still do differently, and how much it moves:
 
@@ -382,9 +382,9 @@ What the two codes still do differently, and how much it moves:
   body lift ([Aerodynamics](aero.md#bodies-of-revolution)), which RocketPy's leaves out. Much of
   it acts ahead of the centre of mass, the nose's above all, so it moves the centre of pressure
   forward and weakens the turn into the wind, and hpr turns into it less: Juno III's apogee is
-  228.0 m from the pad in hpr and 396.6 m in RocketPy. Given hpr's body lift, its rail release and
+  245.3 m from the pad in hpr and 396.6 m in RocketPy. Given hpr's body lift, its rail release and
   its flat-plate fin slope (it cannot model the airfoil lift curve Juno III's example gives its
-  fins), RocketPy puts it 231.1 m out, and every windy drift within 1.4% of hpr's
+  fins), RocketPy puts it 248.3 m out, and every windy drift within 1.3% of hpr's
   ([ADR-026][adr-026]). hpr's growth of drag with the angle of attack moves no drift by more than
   0.1%.
 - **RocketPy's equations, corrected.** hpr's equations of motion follow RocketPy's technical

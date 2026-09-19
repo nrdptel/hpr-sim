@@ -49,7 +49,8 @@
 //! it out. hpr's potential-flow term stays its own (`sin α`, slender-body theory or TN 3527's
 //! method), not Jorgensen's `sin 2α cos(α/2)`.
 //!
-//! **Galejs's constant** ([`BodyLift::Galejs`]): hpr's body lift until milestone M1.8e6 was
+//! **Galejs's constant** ([`BodyLift::Galejs`]): hpr's body lift until the milestone that sized it
+//! ([M1.8e6](https://nrdptel.github.io/hpr-sim/decisions-and-roadmap.html#m1-8e6)) was
 //! `K (A_plan/A_ref) sin² α` with `K` = 1.1 at every Mach number (R. Galejs, *Wind Instability*,
 //! after Hoerner; Niskanen 2009 eq. 3.26), kept to reproduce earlier results.
 //!
@@ -121,11 +122,11 @@ pub const ETA_BY_FINENESS: [f64; 12] = [
 #[non_exhaustive]
 pub enum BodyLift {
     /// Jorgensen's `η C_dn` ([`crossflow_factor`]), from the body's fineness and the crossflow
-    /// Mach number: hpr's model since milestone M1.8e6.
+    /// Mach number: hpr's model since body lift was sized ([M1.8e6](https://nrdptel.github.io/hpr-sim/decisions-and-roadmap.html#m1-8e6)).
     #[default]
     Jorgensen,
-    /// Galejs's constant `K` at every Mach number: hpr's model before M1.8e6, with
-    /// `k` = [`BODY_LIFT_K`] (1.1). Galejs gives 1.0 to 1.5.
+    /// Galejs's constant `K` at every Mach number: hpr's model before, with `k` =
+    /// [`BODY_LIFT_K`] (1.1). Galejs gives 1.0 to 1.5.
     Galejs {
         /// `K`, dimensionless.
         k: f64,
@@ -133,7 +134,7 @@ pub enum BodyLift {
 }
 
 impl BodyLift {
-    /// hpr's model before milestone M1.8e6: Galejs's `K` = [`BODY_LIFT_K`].
+    /// hpr's model before Jorgensen's: Galejs's `K` = [`BODY_LIFT_K`].
     pub const GALEJS: Self = Self::Galejs { k: BODY_LIFT_K };
 
     /// The factor on `(A_plan/A_ref) sin² α` for a body of fineness `fineness` (length over

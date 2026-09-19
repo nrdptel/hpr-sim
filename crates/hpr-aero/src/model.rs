@@ -22,7 +22,8 @@
 //! moment from the second-order shock-expansion method ([`crate::shock_expansion`], NACA TN
 //! 3527), and a boattail behind them Washington and Pettis's measured increment
 //! ([`crate::supersonic_boattail`]), joined to slender-body theory linearly in Mach
-//! ([`SupersonicBody`]; the decision records on flying them, [ADR-034][adr-034] and ADR-037).
+//! ([`SupersonicBody`]; the decision records on flying them, [ADR-034][adr-034] and
+//! [ADR-037][adr-037]).
 //! Other bodies keep slender-body theory's terms. [`BodyModel`] chooses the body-lift and boattail
 //! rules; the default is hpr's current one.
 //!
@@ -31,6 +32,7 @@
 //! know. Stations are metres aft of the nose tip.
 //!
 //! [adr-034]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-034-the-bodys-supersonic-normal-force-in-flight-tabulated-shock-expansion-shares-joined-linearly-from-mach-12-2026-09-19
+//! [adr-037]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-037-body-lift-by-jorgensens-crossflow-at-every-speed-and-a-boattails-measured-share-faster-than-sound-2026-09-19
 
 use std::f64::consts::PI;
 use std::sync::{Arc, OnceLock};
@@ -153,11 +155,13 @@ pub struct SupersonicBody {
 pub enum SupersonicBoattail {
     /// The share the method gives a cylinder of the boattail's length and fore radius in its
     /// place, plus Washington and Pettis's measured increment at their centre of pressure
-    /// ([`crate::supersonic_boattail`]): hpr's rule since milestone M1.8e6 (ADR-037).
+    /// ([`crate::supersonic_boattail`]): hpr's rule since [M1.8e6](https://nrdptel.github.io/hpr-sim/decisions-and-roadmap.html#m1-8e6) (the decision
+    /// record, [ADR-037](https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-037-body-lift-by-jorgensens-crossflow-at-every-speed-and-a-boattails-measured-share-faster-than-sound-2026-09-19)).
     #[default]
     WashingtonPettis,
-    /// The method's own share, TN 3527 footnote 8's tangent cone: hpr's rule in M1.8e4 and
-    /// M1.8e5.
+    /// The method's own share, TN 3527 footnote 8's tangent cone: hpr's rule from the milestone
+    /// that first flew a boattail by the method ([M1.8e4](https://nrdptel.github.io/hpr-sim/decisions-and-roadmap.html#m1-8e4)) until
+    /// [M1.8e6](https://nrdptel.github.io/hpr-sim/decisions-and-roadmap.html#m1-8e6).
     Footnote8,
 }
 
@@ -174,8 +178,8 @@ pub struct BodyModel {
 }
 
 impl BodyModel {
-    /// hpr's body model in milestones M1.8e4 and M1.8e5: Galejs's `K` = 1.1 and TN 3527
-    /// footnote 8's boattail.
+    /// hpr's body model before [M1.8e6](https://nrdptel.github.io/hpr-sim/decisions-and-roadmap.html#m1-8e6) sized body lift and the boattail: Galejs's
+    /// `K` = 1.1 and TN 3527 footnote 8's boattail.
     pub const BEFORE_M1_8E6: Self = Self {
         body_lift: BodyLift::GALEJS,
         supersonic_boattail: SupersonicBoattail::Footnote8,

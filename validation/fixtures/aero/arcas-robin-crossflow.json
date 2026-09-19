@@ -13,6 +13,19 @@
             "slender_body": -1.324103111111111,
             "washington_pettis_increment": -0.6219006798810479
           },
+          "centre_of_pressure_calibers": {
+            "hpr": {
+              "before": 4.85381654341683,
+              "boattail_only": 3.154295591502374,
+              "crossflow_only": 4.486878510596294,
+              "current": 2.5906462698940556
+            },
+            "measured": 1.0010923196540205,
+            "points": [
+              7,
+              7
+            ]
+          },
           "high_alpha": [
             {
               "alpha_deg": 6.12,
@@ -118,6 +131,19 @@
             "footnote_8": -0.1438012369927921,
             "slender_body": -1.324103111111111,
             "washington_pettis_increment": -0.5537623979768982
+          },
+          "centre_of_pressure_calibers": {
+            "hpr": {
+              "before": 4.9781250548761955,
+              "boattail_only": 3.5201308795963375,
+              "crossflow_only": 4.646075668646167,
+              "current": 3.0344211931398086
+            },
+            "measured": 2.3570784470664297,
+            "points": [
+              7,
+              7
+            ]
           },
           "high_alpha": [
             {
@@ -225,6 +251,19 @@
             "slender_body": -1.324103111111111,
             "washington_pettis_increment": -0.47910329396105555
           },
+          "centre_of_pressure_calibers": {
+            "hpr": {
+              "before": 5.2744797084149955,
+              "boattail_only": 4.081541910854195,
+              "crossflow_only": 4.976937958664608,
+              "current": 3.667043841123606
+            },
+            "measured": 3.5622906558800986,
+            "points": [
+              7,
+              7
+            ]
+          },
           "high_alpha": [
             {
               "alpha_deg": 6.14,
@@ -330,6 +369,19 @@
             "footnote_8": -0.06811768707718249,
             "slender_body": -1.324103111111111,
             "washington_pettis_increment": -0.4091852435286822
+          },
+          "centre_of_pressure_calibers": {
+            "hpr": {
+              "before": 5.198713502212175,
+              "boattail_only": 4.096829981827717,
+              "crossflow_only": 4.959055525650489,
+              "current": 3.772337986840093
+            },
+            "measured": 3.213563598696478,
+            "points": [
+              6,
+              6
+            ]
           },
           "high_alpha": [
             {
@@ -437,6 +489,19 @@
             "slender_body": -1.324103111111111,
             "washington_pettis_increment": -0.34032711911706204
           },
+          "centre_of_pressure_calibers": {
+            "hpr": {
+              "before": 5.792422796714366,
+              "boattail_only": 4.976964520969809,
+              "crossflow_only": 5.5730742808983065,
+              "current": 4.694184429365515
+            },
+            "measured": 4.883679040010315,
+            "points": [
+              7,
+              7
+            ]
+          },
           "high_alpha": [
             {
               "alpha_deg": 6.25,
@@ -542,6 +607,19 @@
             "footnote_8": -0.025756956891914092,
             "slender_body": -1.324103111111111,
             "washington_pettis_increment": -0.3144071073776015
+          },
+          "centre_of_pressure_calibers": {
+            "hpr": {
+              "before": 5.942120106813696,
+              "boattail_only": 5.192323385740138,
+              "crossflow_only": 5.755389983826629,
+              "current": 4.9547138682466905
+            },
+            "measured": 5.047048514502164,
+            "points": [
+              7,
+              7
+            ]
           },
           "high_alpha": [
             {
@@ -657,6 +735,19 @@
             "slender_body": -1.324103111111111,
             "washington_pettis_increment": -0.5537623979768982
           },
+          "centre_of_pressure_calibers": {
+            "hpr": {
+              "before": 6.5510361588237975,
+              "boattail_only": 4.876676162467034,
+              "crossflow_only": 6.125522529968604,
+              "current": 4.274857963776392
+            },
+            "measured": 4.606331513337558,
+            "points": [
+              7,
+              7
+            ]
+          },
           "high_alpha": [
             {
               "alpha_deg": 6.23,
@@ -741,6 +832,19 @@
             "slender_body": -1.324103111111111,
             "washington_pettis_increment": -0.47910329396105555
           },
+          "centre_of_pressure_calibers": {
+            "hpr": {
+              "before": 6.786420932484804,
+              "boattail_only": 5.384689284897102,
+              "crossflow_only": 6.398990747750633,
+              "current": 4.860148507427205
+            },
+            "measured": 5.041669250935026,
+            "points": [
+              7,
+              7
+            ]
+          },
           "high_alpha": [
             {
               "alpha_deg": 6.27,
@@ -824,6 +928,19 @@
             "footnote_8": -0.06843252630183086,
             "slender_body": -1.324103111111111,
             "washington_pettis_increment": -0.4091852435286822
+          },
+          "centre_of_pressure_calibers": {
+            "hpr": {
+              "before": 6.434858424586823,
+              "boattail_only": 5.0812125938031345,
+              "crossflow_only": 6.105412727885172,
+              "current": 4.645463662053626
+            },
+            "measured": 5.327730367218287,
+            "points": [
+              6,
+              6
+            ]
           },
           "high_alpha": [
             {
@@ -931,6 +1048,19 @@
             "slender_body": -1.324103111111111,
             "washington_pettis_increment": -0.34032711911706204
           },
+          "centre_of_pressure_calibers": {
+            "hpr": {
+              "before": 6.777850254249462,
+              "boattail_only": 5.672916428421674,
+              "crossflow_only": 6.490305445414157,
+              "current": 5.30696545111267
+            },
+            "measured": 6.188555209398116,
+            "points": [
+              6,
+              6
+            ]
+          },
           "high_alpha": [
             {
               "alpha_deg": 5.89,
@@ -1036,6 +1166,19 @@
             "footnote_8": -0.026677983230246716,
             "slender_body": -1.324103111111111,
             "washington_pettis_increment": -0.3144071073776015
+          },
+          "centre_of_pressure_calibers": {
+            "hpr": {
+              "before": 7.3539588582442095,
+              "boattail_only": 6.433284121402709,
+              "crossflow_only": 7.1035302708902295,
+              "current": 6.121334734227592
+            },
+            "measured": 6.396380804793436,
+            "points": [
+              7,
+              7
+            ]
           },
           "high_alpha": [
             {

@@ -4,10 +4,10 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
 
 ## Now
 
-- **Current milestone:** M1.8e6 Crossflow and the boattail faster than sound
-- **Order:** M1.8e6, e7, then M3.1
-- **Run:** M0.1-M0.4, M1.1-M1.7, M2.1, M1.8a to M1.8e5 shipped; https://nrdptel.github.io/hpr-sim/
-- **Last updated:** 2026-09-19 (M1.8e5 done)
+- **Current milestone:** M1.8e7 Blunt tips and the lip faster than sound
+- **Order:** M1.8e7, e8, then M3.1
+- **Run:** M0.1-M0.4, M1.1-M1.7, M2.1, M1.8a to M1.8e6 shipped; https://nrdptel.github.io/hpr-sim/
+- **Last updated:** 2026-09-19 (M1.8e6 done)
 
 ## Handoff (overwrite each session)
 
@@ -31,12 +31,17 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
   Python check) carries the gradient through reduced elements; hpr doesn't (#81).
 - **M1.8e2 to e4** (ADR-034): `SupersonicBody` (`hpr-aero/src/model.rs`) tabulates the method's
   shares every 0.05 Mach, lazily, joined from max(1.2, its bisected start) over 0.3; boattails too.
-- **M1.8e6 next** (ADR-036; notes `docs/research/body-supersonic-gap*.md`, fixture
-  `arcas-robin-gap.json` from `xtask/src/aero_gap.rs`): like for like hpr's body reads 15–73%
-  *high*. `b` and `c` correlate −0.95, so body lift (`K` 1.1; tunnel 0.66–1.05; Jorgensen ≈ 0.9)
-  and the `α → 0` slope can't be split; at Jorgensen's `K` still 8–61% high, and only the
-  boattail (footnote 8 −0.18..−0.03 vs slender-body −1.32) is that size. Judge at the plotted
-  angles; read Figs. 5(a)/6(a) to 21° to pin `K`; decide body lift below Mach 1 (M2.1's drift).
+- **M1.8e6** (ADR-037): body lift is Jorgensen's `η C_dn` (`hpr-aero/src/crossflow.rs`) at every
+  speed; a supersonic boattail W&P's increment (`supersonic_boattail.rs`) on the method's cylinder
+  in its place. `BodyModel::BEFORE_M1_8E6` reproduces the old model (M1.8e5's fixture uses it).
+  `arcas-robin-crossflow.json` (`xtask/src/aero_crossflow.rs`) compares four models, the 62
+  high-angle points and the body's CP; its readings are `arcas-robin-high-alpha.json` and
+  `arcas-robin-fins-off-moment.json`. `wind_response.py` carries the same tables (a test checks).
+- **M1.8e7 next:** the committed Arcas Robin designs (power-series nose, vertical tip; the lip, a
+  flare behind the boattail) keep slender-body theory, so M1.8a's short@2.96 now misses (−16.3%).
+  Blunt tip: NASA TN D-4865 puts a Newtonian cap ahead of TN 3527's method (Mach 1.5 to 4.63).
+  The lip: `rest_carries_nothing` refuses it; check any rule by the moment about the CG. #97: the
+  long model's M1.8a readings may be biased (page skew); settle it before judging e8's 15%.
 - **Autopilot memory:** each command a cycle runs gets its own process group, so the run notes
   them while sampling and reaps them too; the cycle's group alone misses every build.
 - **M2.2's OpenRocket oracle** (ADR-035): orhelper is dropped, so decide how to drive the jar
@@ -51,6 +56,10 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
 
 ## Done log (newest first, keep about 15)
 
+- 2026-09-19: M1.8e6 Crossflow and the boattail faster than sound (ADR-037): Jorgensen's body lift
+  at every speed and Washington and Pettis's measured boattail; like for like the Arcas Robin's
+  body reads +3.4% to +41.0% (was +14.9% to +73.2%), its CP 0.9–3.9 cal nearer the tunnel's; 48
+  of 62 high-angle points within 15%; M1.8a's short@2.96 now misses (−16.3%); split e7, e8.
 - 2026-09-19: M1.8e5 The remaining gap, source by source (ADR-036): like for like hpr's body
   reads 15–73% high, not low; crossflow's size ranks first, the boattail second, then the lip
   (+0.18), the blunt tip (≤ 0.07), Fig. 2 below Mach 3 (≤ 0.06, SP-3007); #81 zero.
@@ -63,11 +72,8 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
 - 2026-09-19: M1.8e2 The body's supersonic normal force in flight (ADR-034): nose and cylinder
   take the method's shares, joined over Mach 1.2 to 1.5, no jump at ±1e-9; Arcas Robin nose and
   cylinder through the flight equal the method (+16.4% to −26.4%); boattailed bodies unchanged.
-- 2026-09-19: Autopilot memory, then its fix. Scoping by the cycle's process group missed
-  everything: each command gets its own, so a full-gate cycle reported 0.66 GB and left an
-  escaped build alive. The run now notes its commands' groups while sampling and reaps those,
-  guarded against a reused id; failing test first (0.00 GB and a live 400 MB build → 0.41 GB and
-  reaped). Jobs and test threads capped at 6; transcripts past 20 gzipped, past 60 deleted.
+- 2026-09-19: Autopilot memory: the run notes its commands' process groups while sampling and
+  reaps them (a cycle's own group missed every build); jobs capped at 6, old transcripts pruned.
 
 ## Needs Neer (blocking or one-way decisions; the session keeps working on other things)
 
@@ -84,26 +90,20 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
 
 ## Decided without Neer (one line each; significant ones get an ADR)
 
-- M1.8e splits (one id level): e3 join start, e4 boattail; old e5 → e5 measure, e6 fly, e7 rest.
+- M1.8e splits (one id level): e3 join, e4 boattail, e5 measure, e6 fly, e7 blunt tips, e8 rest.
+- ADR-037: Jorgensen's body lift at every speed, his two `η`s blended (a judgement), sampled at
+  Fig. 6's points; W&P's measured boattail; old model kept selectable; M1.8a's new miss recorded.
 - ADR-036: the Arcas Robin judged at the tunnel's angles; e6 retitled to crossflow and the boattail.
-- M1.8e4: boattail shares can cross zero, so it and tubes behind keep slender-body's station.
-- ADR-034: M1.8e2's shares tabulated every 0.05 Mach (lazily; eager took unit tests to 238 s),
-  joined over Mach 1.2 to 1.5; boattails fly it since M1.8e4.
-- ADR-033: M1.8e split into e1 (the method) and e2 (flying it); TN 3527's ten-element tangent
-  body; `η < 0` elements reduced to the generalized method with no gradient carried (p. 13); Fig. 2
-  held below Mach 3; the Arcas Robin's nose as a fitted secant ogive for the comparison only.
-- ADR-032: a normal-force table replaces only the static force, hpr's damping kept; the 0° slope
-  from `CN Potential`; past the last angle `sin α` and `sin² α` shares; no new RASAero values.
-- ADR-031: roll damping takes the fin's own slope, not the airfoil's Barrowman's text writes (his
-  computed curve does); Barrowman's body factors kept; no target set after measuring.
+- ADR-033/034: TN 3527's method (ten-element tangent body, `η < 0` reduced, Fig. 2 held below
+  Mach 3), tabulated every 0.05 Mach lazily, joined over Mach 1.2 to 1.5; boattails since M1.8e4.
+- ADR-032: a normal-force table replaces only the static force; hpr's damping kept. ADR-031: roll
+  damping takes the fin's own slope (Barrowman's computed curve does); no target set after.
 - ADR-030: Fig. 5-122 to the Prandtl–Meyer limit, 16°–30° separation, Fig. 5-141 as a ratio, the
   flow behind boattails shared among their tails, a step down sheltering a lip (a retainer: up to
   23% less `C_D0`, unmeasured); targets not met, not tuned.
-- ADR-029: M1.8's drag bullet recorded as not met, not chased; MIL-HDBK-762's worked example
-  added (fins left out); L18's test renamed to measure and pin; M1.8b3 added for the afterbody.
-- ADR-028: M1.8b split into b1 and b2; Stoney's Figure 12 read by hand into the code (panel (a),
-  (b) for two shapes); cones and ogives below fineness 1 scale toward a flat face (L15 holds);
-  the buildup refuses bulged ogives and Haack past `C = ⅓`; the known gap means a refusal at Mach 5.
+- ADR-029: M1.8's drag bullet recorded as not met, not chased; MIL-HDBK-762's example added.
+- ADR-028: Stoney's Figure 12 read by hand; cones and ogives below fineness 1 scale toward a flat
+  face; the buildup refuses bulged ogives and Haack past `C = ⅓`.
 - ADR-027: M1.8 split into a to e; fins' supersonic slope counts both faces (Niskanen's eq. 3.49
   counts one); the transonic join is not fitted to the wind tunnel; NASA's plots were read by hand
   into a committed fixture; the body's supersonic gap became M1.8e.
@@ -126,19 +126,19 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
 - A new RustSec notice can turn CI red with no code change: upgrade, replace, or `ignore` with a
   reason. API snapshots can't be reproduced once an API moves: CI checks committed fixtures only.
 - Barrowman 1966, TIR-33, Galejs, the `.rse` spec and Knacke have no clear terms: never redistribute.
-- Aero (M1.5a) is small-angle only; body-lift `K` is uncertain (Galejs: 1.0 to 1.5) and the
-  Recruiter's six fins miss the printed slope by +3.42% (+2.87% whole; ADR-008). Through Mach 1
-  (M1.8a) the normal force misses the wind tunnel between Mach 0.8 and 1.2, and past Mach 3 reads
-  17–25% low from the body (M1.8e2; ADR-027, ADR-033).
+- Aero (M1.5a) is small-angle only; the Recruiter's six fins miss the printed slope by +3.42%
+  (ADR-008). Body lift (Jorgensen, M1.8e6) reads 4–17% high where the crossflow is supersonic and
+  leaves out the drop past the critical Reynolds number. The normal force misses the wind tunnel
+  between Mach 0.8 and 1.2, and past Mach 3 reads 20–28% low on bodies the method can't take.
 - Drag: against RASAero II's Calisto hpr reads −14.9% to −5.1% supersonic, within what the
   unrecorded fins span (ADR-030); against MIL-HDBK-762 the body reads 6–10% low past Mach 1.6 and
   high through Mach 1 (nose #67, base #68). Against the Arcas Robin it reads high at every row:
   fins take a blunt edge's formula (#70), a steep boattail in a thick boundary layer reads high
   (#72), the boattail rule over-predicts subsonic (#73). A cylinder's base drag is unmeasured
   past Mach 0.3; behind a boattail its relief matches 12 measured bases.
-- In wind, a slow rocket's drift in hpr rests on body lift's uncertain `K`: Juno III's apogee
-  drift is 240 to 194 m over Galejs's 1.0 to 1.5 (ADR-026, `wind_response.py`). The oracle carries two unreleased
-  RocketPy corrections; if #1196 changes before it merges, revisit `corrections.py`.
+- In wind, a slow rocket's drift rests on body lift's size: Juno III's apogee drift is 245 m in
+  hpr (Jorgensen's), 240 to 194 m over Galejs's `K` 1.0 to 1.5 (`wind_response.py`). The oracle
+  carries two unreleased RocketPy corrections; if #1196 changes, revisit `corrections.py`.
 - Flight: no tip-off, turbulence or thrust misalignment; small-angle aero at every `α`.
 - Recovery: no canopy overshoot or opening-load factor (a 1.5 m canopy peaks at 1.6 kN where
   Knacke's infinite-mass `C_x` gives 5.1 kN), no added mass or airframe drag under a canopy, the

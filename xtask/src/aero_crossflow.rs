@@ -36,6 +36,13 @@ pub const FIXTURE: &str = "validation/fixtures/aero/arcas-robin-crossflow.json";
 /// The committed readings of the fins-off normal force above +4°.
 pub const HIGH_ALPHA: &str = "validation/fixtures/aero/arcas-robin-high-alpha.json";
 
+/// The committed readings of the fins-off pitching moment.
+pub const MOMENT: &str = "validation/fixtures/aero/arcas-robin-fins-off-moment.json";
+
+/// The angles, degrees, over which the body's centre of pressure is taken: both lines fitted
+/// through the points with `|α|` up to this, the low angles the tunnel plotted (six or seven).
+pub const CP_DEG: f64 = 4.5;
+
 /// The body models compared, by name.
 pub const MODELS: [(&str, BodyModel); 4] = [
     ("before", BodyModel::BEFORE_M1_8E6),
@@ -75,6 +82,7 @@ fn points(curve: &Value, key: &str) -> Result<Vec<(f64, f64)>, String> {
 pub fn generate(root: &Path) -> Result<Value, String> {
     let reference = read(root, WIND_TUNNEL)?;
     let high = read(root, HIGH_ALPHA)?;
+    let moment = read(root, MOMENT)?;
     let (ratio, _) = arcas_nose_ratio()?;
     let diameter_m = 2.0 * ARCAS_NOSE_R_IN[8] * INCH;
     let area = 0.25 * PI * diameter_m * diameter_m;
@@ -108,6 +116,15 @@ pub fn generate(root: &Path) -> Result<Value, String> {
                 .iter()
                 .map(|b| b.planform_ratio)
                 .sum::<f64>();
+        let moment_center_m = moment["moment_center_in"][id]
+            .as_f64()
+            .ok_or(format!("{MOMENT}: no moment center for {id}"))?
+            * INCH;
+        let moment_curves = moment["configurations"]
+            .as_array()
+            .and_then(|c| c.iter().find(|c| c["id"] == id))
+            .and_then(|c| c["cm_fins_off"].as_array())
+            .ok_or(format!("{MOMENT} has no curves for {id}"))?;
         let high_curves = high["configurations"]
             .as_array()
             .and_then(|c| c.iter().find(|c| c["id"] == id))
@@ -146,6 +163,39 @@ pub fn generate(root: &Path) -> Result<Value, String> {
                     }),
                 );
                 zero.insert(name.to_string(), json!(at_zero));
+            }
+            // The body's centre of pressure at low angles, calibers from the nose tip: the
+            // measured from the fitted slopes of C_m about the moment center and of C_N (nose-up
+            // C_m positive), hpr's from its C_N and moment about the tip at the same angles.
+            let m_points = moment_curves
+                .iter()
+                .find(|c| c["mach"].as_f64() == Some(mach))
+                .map(|c| points(c, "alpha_deg_c_m"))
+                .ok_or(format!("{MOMENT}: no curve for {id} at Mach {mach}"))??;
+            let inner = |p: &&(f64, f64)| p.0.abs() <= CP_DEG;
+            let (n_a, n_c): (Vec<f64>, Vec<f64>) = low
+                .iter()
+                .filter(inner)
+                .map(|p| (p.0.to_radians(), p.1))
+                .unzip();
+            let (m_a, m_c): (Vec<f64>, Vec<f64>) = m_points
+                .iter()
+                .filter(inner)
+                .map(|p| (p.0.to_radians(), p.1))
+                .unzip();
+            let measured_cp = moment_center_m / diameter_m - slope(&m_a, &m_c) / slope(&n_a, &n_c);
+            let mut cp = serde_json::Map::new();
+            for (name, model) in &models {
+                let forces: Vec<(f64, f64)> = low
+                    .iter()
+                    .filter(inner)
+                    .map(|p| hpr_force(model, mach, p.0, true))
+                    .collect::<Result<_, _>>()?;
+                let (c_n, moments): (Vec<f64>, Vec<f64>) = forces.into_iter().unzip();
+                cp.insert(
+                    name.to_string(),
+                    json!(slope(&n_a, &moments) / slope(&n_a, &c_n) / diameter_m),
+                );
             }
             // The boattail's share at alpha -> 0, per radian on the body's cross-section.
             let share = |model: &AeroModel| -> Result<f64, String> {
@@ -216,6 +266,11 @@ pub fn generate(root: &Path) -> Result<Value, String> {
                     "slender_body": slender,
                 },
                 "high_alpha": high_points,
+                "centre_of_pressure_calibers": {
+                    "measured": measured_cp,
+                    "points": [n_a.len(), m_a.len()],
+                    "hpr": Value::Object(cp),
+                },
             }));
         }
         configurations.push(json!({
@@ -257,6 +312,156 @@ mod tests {
             "{FIXTURE} differs from `cargo xtask aero`: {}",
             crate::designs::difference(&committed, &fresh).unwrap_or_default()
         );
+    }
+
+    /// A signed percentage as the guide writes it: one decimal, a Unicode minus.
+    fn pct(x: f64) -> String {
+        format!("{:+.1}%", 100.0 * x).replace('-', "−")
+    }
+
+    /// `docs/physics/aero.md` quotes the fixture: its like-for-like table cell by cell, the
+    /// boattail's shares, and the ranges over the high angles.
+    #[test]
+    fn the_guide_quotes_the_fixture() {
+        let root = crate::designs::root().unwrap();
+        let fixture = read(&root, FIXTURE).unwrap();
+        let guide = fs::read_to_string(root.join("docs/physics/aero.md")).unwrap();
+        let joined = guide.split_whitespace().collect::<Vec<_>>().join(" ");
+        let (mut fitted, mut high) = (Vec::new(), Vec::new());
+        let mut bands = [[f64::MAX, f64::MIN, f64::MAX, f64::MIN, 0.0]; 3];
+        let (mut within, mut count) = (0, 0);
+        let (mut shares, mut increments) = (Vec::new(), Vec::new());
+        for configuration in fixture["configurations"].as_array().unwrap() {
+            let short = configuration["id"] == "arcas-robin-short";
+            let model = if short { "short" } else { "long" };
+            for row in configuration["rows"].as_array().unwrap() {
+                let f = |pointer: &str| row.pointer(pointer).unwrap().as_f64().unwrap();
+                let cell = |name: &str| {
+                    format!(
+                        "{:.2} ({})",
+                        f(&format!("/hpr/{name}/fitted_c_n_alpha")),
+                        pct(f(&format!("/hpr/{name}/fitted_c_n_alpha_error")))
+                    )
+                };
+                let line = format!(
+                    "| {model} | {} | {:.2} ± {:.2} | {} | {} | {} | {} | {:.2} |",
+                    row["mach"].as_f64().unwrap(),
+                    f("/measured/fitted_c_n_alpha"),
+                    f("/measured/fitted_standard_error"),
+                    cell("before"),
+                    cell("crossflow_only"),
+                    cell("boattail_only"),
+                    cell("current"),
+                    f("/zero_alpha_c_n_alpha/current"),
+                );
+                assert!(
+                    guide.contains(&line),
+                    "aero.md doesn't have the row `{line}`"
+                );
+                fitted.push(f("/hpr/current/fitted_c_n_alpha_error"));
+                if short {
+                    shares.push(-f("/boattail/current"));
+                    increments.push(f("/boattail/washington_pettis_increment"));
+                }
+                for point in row["high_alpha"].as_array().unwrap() {
+                    let p = |key: &str| point[key].as_f64().unwrap();
+                    let band = match p("crossflow_mach") {
+                        m if m < 0.45 => 0,
+                        m if m < 0.95 => 1,
+                        _ => 2,
+                    };
+                    let b = &mut bands[band];
+                    b[0] = b[0].min(p("current_error"));
+                    b[1] = b[1].max(p("current_error"));
+                    b[2] = b[2].min(p("before_error"));
+                    b[3] = b[3].max(p("before_error"));
+                    b[4] += 1.0;
+                    count += 1;
+                    within += usize::from(p("current_error").abs() <= 0.15);
+                    high.push(p("alpha_deg"));
+                }
+            }
+        }
+        let range = |xs: &[f64]| {
+            (
+                xs.iter().cloned().fold(f64::MAX, f64::min),
+                xs.iter().cloned().fold(f64::MIN, f64::max),
+            )
+        };
+        let (lo, hi) = range(&fitted);
+        assert!(joined.contains(&format!("reads {} to {}", pct(lo), pct(hi))));
+        assert!(joined.contains(&format!("At its {count} angles from")));
+        assert!(joined.contains(&format!("{within} are within 15%")));
+        let (a, b) = range(&high);
+        assert!(joined.contains(&format!("from {a:.1}° to {b:.1}°")));
+        for (band, name) in bands
+            .iter()
+            .zip(["under 0.45", "0.45 to 0.95", "0.95 and over"])
+        {
+            let line = format!(
+                "| {name} | {} | {} to {} | {} to {} |",
+                band[4],
+                pct(band[0]),
+                pct(band[1]),
+                pct(band[2]),
+                pct(band[3])
+            );
+            assert!(
+                guide.contains(&line),
+                "aero.md doesn't have the row `{line}`"
+            );
+        }
+        let (a, b) = range(&shares);
+        assert!(joined.contains(&format!("{a:.2} to {b:.2} per radian off")));
+        // The body's centre of pressure, row by row, and the ranges the text quotes.
+        let signed = |x: f64| format!("{x:+.2}").replace('-', "−");
+        let mut errors = [[f64::MAX, f64::MIN]; 4];
+        for configuration in fixture["configurations"].as_array().unwrap() {
+            let short = configuration["id"] == "arcas-robin-short";
+            for row in configuration["rows"].as_array().unwrap() {
+                let cp = &row["centre_of_pressure_calibers"];
+                let measured = cp["measured"].as_f64().unwrap();
+                let (before, now) = (
+                    cp["hpr"]["before"].as_f64().unwrap(),
+                    cp["hpr"]["current"].as_f64().unwrap(),
+                );
+                let line = format!(
+                    "| {} | {} | {measured:.2} | {before:.2} ({}) | {now:.2} ({}) |",
+                    if short { "short" } else { "long" },
+                    row["mach"].as_f64().unwrap(),
+                    signed(before - measured),
+                    signed(now - measured),
+                );
+                assert!(
+                    guide.contains(&line),
+                    "aero.md doesn't have the row `{line}`"
+                );
+                let k = if short { 0 } else { 1 };
+                for (j, e) in [(k, before - measured), (k + 2, now - measured)] {
+                    errors[j] = [errors[j][0].min(e), errors[j][1].max(e)];
+                }
+            }
+        }
+        let quote = format!(
+            "hpr put it {:.2} to {:.2} calibres aft of the tunnel's on the short model and {:.2} \
+             to {:.2} on the long; now {} to {} and {} to {}",
+            errors[0][0],
+            errors[0][1],
+            errors[1][0],
+            errors[1][1],
+            signed(errors[2][0]),
+            signed(errors[2][1]),
+            signed(errors[3][0]),
+            signed(errors[3][1]),
+        );
+        assert!(joined.contains(&quote), "aero.md doesn't say `{quote}`");
+        // The guide's table of Washington and Pettis's increments on the short model.
+        for increment in &increments {
+            assert!(
+                joined.contains(&format!("{increment:.3}").replace('-', "−")),
+                "aero.md doesn't quote {increment:.3}"
+            );
+        }
     }
 
     /// The current model is the library's default, and the first is M1.8e5's.
