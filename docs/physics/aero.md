@@ -79,8 +79,8 @@
       and cylinder of the short model within 5% from Mach 1.8 to 2.96, and −15.0% and −18.7% past
       Mach 3; the long model −13.7% to −26.4% throughout.
 
-    hpr's committed Arcas Robin design has a blunt power-series nose and the lip, so it keeps
-    slender-body theory; like for like, its short model's body reads 2.00 to 2.09 per radian from
+    hpr's committed Arcas Robin design has a lip, a flare behind the boattail, which keeps it on
+    slender-body theory ([M1.8e8](../decisions-and-roadmap.md#m1-8e8) is to cover it); like for like, its short model's body reads 2.00 to 2.09 per radian from
     Mach 1.5, where the tunnel reads 2.19 to 4.15
     ([Normal force through Mach 1](#normal-force-through-mach-1)).
   - *In whole flights* in wind, body lift, which RocketPy leaves out, is the largest reason a slow
@@ -102,12 +102,13 @@
   own wave drag or the drag where fins meet the body. Faster than sound a flight takes a pointed
   nose and its cylinder from the method that adds the cylinder's lift, and a boattail behind them
   from a measured correlation of boattails of 4° to 9.5°, an extrapolation for steeper ones
-  ([The body faster than sound in a flight](#the-body-faster-than-sound-in-a-flight)). A rocket
-  with a flare or step anywhere behind the nose (a lip or a motor retainer wider than the tube in
-  front counts), or whose nose has a blunt or vertical tip, keeps slender-body theory for its
-  whole body at every speed, which reads low past Mach 3;
-  [M1.8e7](../decisions-and-roadmap.md#m1-8e7) is to cover blunt tips and a lip behind a
-  boattail, and nothing on the roadmap covers other flares and steps yet. Body lift leaves out
+  ([The body faster than sound in a flight](#the-body-faster-than-sound-in-a-flight)). A nose
+  with a vertical tip (power-series, Haack, elliptical) takes a Newtonian cap ahead of the method,
+  checked on a sphere-cone only ([Blunt tips](#blunt-tips)). A rocket with a flare or step
+  anywhere behind the nose (a lip or a motor retainer wider than the tube in front counts) keeps
+  slender-body theory for its whole body at every speed, which reads low past Mach 3;
+  [M1.8e8](../decisions-and-roadmap.md#m1-8e8) is to cover a lip behind a boattail, and nothing on
+  the roadmap covers other flares and steps yet. Body lift leaves out
   the fall in crossflow drag past the critical crossflow Reynolds number
   ([Body lift](#body-lift)). There are no damping coefficients for pitch and
   yaw: a flight takes that damping from each part's own local flow. The roll forcing near Mach
@@ -195,6 +196,9 @@ Sources:
 - **[WP68]** W. D. Washington and W. Pettis Jr., *Boattail Effects on Static Stability at Small
   Angles of Attack*, U.S. Army Missile Command report RD-TM-68-5, 1968
   (`washington-pettis-1968-rd-tm-68-5`).
+- **[J68]** C. M. Jackson Jr., W. C. Sawyer and R. S. Smith, *A Method for Determining Surface
+  Pressures on Blunt Bodies of Revolution at Small Angles of Attack in Supersonic Flow*, NASA TN
+  D-4865, 1968 (`nasa-tn-d-4865-jackson-1968`).
 - **[R22]** C. E. Rogers, *RASAero II Comparisons with ARCAS Center of Pressure (CP) and Drag
   Coefficient (CD) Wind Tunnel Data*, Rogers Aeroscience, 2022 (slides).
 - **[RAS]** C. E. Rogers and D. Cooper, *Rogers Aeroscience RASAero II Aerodynamic Analysis and
@@ -446,8 +450,8 @@ to 27% low past Mach 3 at `α → 0`, a comparison that leaves out the
 [body lift](../glossary.md#body-lift) a flight adds; compared the way the tunnel measures, the
 body reads high
 ([Checking the shock-expansion method](#checking-the-shock-expansion-method), under
-Verification). It needs a pointed tip: power-series, elliptical and Haack noses, whose tips are
-blunt or vertical, are refused.
+Verification). It needs a pointed tip; a blunt or vertical one (power-series, elliptical and
+Haack noses) takes a Newtonian cap ahead of it ([Blunt tips](#blunt-tips), below).
 
 Slender-body theory, above, gives a pointed nose a slope of 2 and a cylinder none, at any speed.
 Faster than sound that is too little. The air speeds up around the shoulder where the nose meets
@@ -529,24 +533,27 @@ their data give within about 15% for conical boattails of 4° to 9.5°; a steepe
 narrower one, like the Arcas Robin's 15°, is an extrapolation, as is a transition that isn't
 conical (it takes the same correlation from its length and radii), and hpr takes a boattail of
 any angle (issue #90). A tube behind the boattail takes the method's decay of its expansion, which no
-measurement here checks. A rocket with a flare or a step behind the nose, or whose nose has a
-blunt or vertical tip (power-series, elliptical, Haack), gets nothing from it yet and keeps
-slender-body theory, which reads 61% to 82% low on the Arcas Robin faster than sound
-([M1.8e7](../decisions-and-roadmap.md#m1-8e7) is to cover blunt tips and the lip). The join between the two models is a
+measurement here checks. A blunt or vertical nose tip takes a Newtonian cap ahead of the method
+([Blunt tips](#blunt-tips)), an extrapolation from spherical caps. A rocket with a flare or a
+step behind the nose gets nothing from the method yet and keeps slender-body theory, which reads
+61% to 82% low on the Arcas Robin faster than sound
+([M1.8e8](../decisions-and-roadmap.md#m1-8e8) is to cover the lip). The join between the two models is a
 judgement, not a measurement, and no validation flight goes past Mach 1.06 (Prometheus, the
 fastest; see its `max_mach` rows in the
 [validation report](https://github.com/nrdptel/hpr-sim/blob/main/validation/reports/latest.md)),
 so no flight checks it yet.
 
 **Which model your rocket gets.** Every body takes [body lift](#body-lift) at every speed. Past
-Mach 1.2, a rocket whose first body is a pointed nose, followed only by tubes of its radius and
-boattails (and tubes behind those), takes the method below for those parts, and each boattail its
-measured share. Anything else (a blunt or vertical tip, a flare, a step in radius, a lip, a motor
-retainer wider than the tube in front) keeps slender-body theory for its whole body at every
+Mach 1.2, a rocket whose first body is a nose (pointed, or with a blunt or vertical tip that the
+cap covers), followed only by tubes of its radius and boattails (and tubes behind those), takes
+the method below for those parts, and each boattail its measured share. Anything else (a flare, a
+step in radius, a lip, a motor retainer wider than the tube in front, or a nose steeper than the
+cap's handover all the way to its base) keeps slender-body theory for its whole body at every
 speed.
 
-**What a flight takes.** The method covers the nose, when it is the first body and has a pointed
-tip, the body tubes straight behind it at the same radius, and [boattails](../glossary.md#boattail)
+**What a flight takes.** The method covers the nose, when it is the first body (a blunt or vertical
+tip behind its [Newtonian cap](#blunt-tips)), the body tubes straight behind it at the same radius,
+and [boattails](../glossary.md#boattail)
 (transitions that narrow toward the tail) and tubes behind those, with no step between them
 ([M1.8e4](../decisions-and-roadmap.md#m1-8e4)). It flies only if nothing behind them changes the
 radius: no flare or step. Mixing the method's nose and cylinder with slender-body theory's
@@ -682,9 +689,224 @@ The rows are in
 (`arcas_robin`: `nose_and_cylinder`, `in_flight`, `in_flight_with_boattail` and `as_designed`), written by
 `cargo xtask aero`; no test re-reads the flight columns, so they are regenerated by hand.
 
-**What it leaves out.** Flares, steps and blunt tips, as above. The method itself has no crossflow
-lift; a flight adds [body lift](#body-lift) on top.
+**What it leaves out.** Flares and steps, as above; a blunt or vertical tip takes the cap of
+[Blunt tips](#blunt-tips), below. The method itself has no crossflow lift; a flight adds
+[body lift](#body-lift) on top.
 
+### Blunt tips
+
+What this covers: the body faster than sound when the nose's tip is blunt or vertical, as on
+power-series noses with `n` below 1, Haack series (the von Kármán and L-V Haack) and elliptical
+noses, whose profile leaves the tip at 90°. How far to trust it: the cap comes from a NASA method
+checked only on spherical caps. On that report's own sphere-cone, compared as its tunnel measured
+it (at the plotted angles, body lift included), hpr reads −1.2% to +32.1%: close through Mach 2.3,
+high from Mach 2.96, where the report's own method reads +5.2% to +13.6%. On the Arcas Robin's
+power-series nose the cap is an extrapolation. There, like for like, the body reads +37.2% at Mach
+1.5 and +13.7% to +25.9% from Mach 1.8 to 2.96, and within 5% past Mach 3. Against the smooth
+secant ogive fitted to the same nose it reads lower at every Mach number: closer to the tunnel at
+nine of the eleven rows, by 0.7 to 5.8 points, and past Mach 4 it crosses into under-prediction and
+lands 0.6 to 1.5 points further out. A nose that is
+nearly a cone but for a vanishing tip carries a bias nothing here measures
+([issue #101](https://github.com/nrdptel/hpr-sim/issues/101), below). No validation flight reaches
+the speeds where any of this applies.
+
+**Why a cap.** The [shock-expansion method](#bodies-faster-than-sound) replaces the nose by
+straight *elements*, short cones and frustums each tangent to the profile, and starts at a
+pointed tip, where the air flows as it does over a cone. A vertical tip has no such cone: the
+shock stands off the nose, and the air just behind it is slower than sound. Jackson, Sawyer and
+Smith ([J68]) handled blunt noses by giving the tip's *cap* [Newtonian](../glossary.md#newtonian-theory)
+pressures and handing over to the method where the flow behind the cap is fast again, the
+*handover*. hpr does the same.
+
+**The cap.** Newtonian theory takes the pressure from the angle `δ` between the surface and the
+wind: `C_p = C_p,max sin²δ` ([J68] eq. 1, p. 5). `C_p,max` is the pressure coefficient at the
+*stagnation point*, the tip, where the air comes to rest behind a normal shock: it follows from the
+*pitot pressure* a probe would read there, the Rayleigh pitot formula ([R1135] eq. 100). At a small angle of
+attack the windward side meets the wind a little more steeply, so the cap carries
+`C_p,max sin δ cos δ` of loading in the method's terms (a hemisphere then carries its Newtonian
+drag turned into the body's axes, `C_p,max/2`, as it must; test
+`a_hemisphere_carries_its_drag_turned`).
+
+**The handover.** The method takes over where the surface's slope falls to the largest angle a
+wedge can turn the flow through with its shock attached: 12.1° at Mach 1.5, 22.97° at Mach 2
+([R1135] eqs. 138 and 168). The report chose this point "simply because it gave the best
+agreement with the available data in the low supersonic-speed range" ([J68] p. 5). hpr stops at
+24° from about Mach 2.1: the method needs the normal-force slope of a cone tangent to the body,
+and its chart stops at 24° ([SD56] Fig. 2).
+
+**How much of the nose the cap covers** depends strongly on speed. Where it ends, as a share of
+the nose's length and of its base radius:
+
+| nose | Mach 1.25 | Mach 1.5 | Mach 2 | Mach 3 |
+|---|---|---|---|---|
+| arcas robin, the committed nose | 59.1% / 0.72 | 5.8% / 0.16 | 0.9% / 0.05 | 0.8% / 0.05 |
+| von Karman, five calibres | 47.8% / 0.69 | 4.1% / 0.12 | 0.3% / 0.02 | 0.2% / 0.01 |
+| power series n = 0.5, five calibres | 29.2% / 0.54 | 5.4% / 0.23 | 1.4% / 0.12 | 1.3% / 0.11 |
+| elliptical, two calibres | 65.3% / 0.94 | 34.9% / 0.76 | 13.9% / 0.51 | 12.8% / 0.49 |
+| TN D-4865's sphere-cone (model 1) | past the sphere: the method doesn't hold | 7.8% / 0.34 | 6.0% / 0.32 | 5.9% / 0.32 |
+
+Near the join's start a slender nose leans on Newtonian pressures over far more of itself than
+anything the report checked; by Mach 2 the cap is a percent or so of the nose, less than the
+report's own. The join's weight rises from 0 at its start to 1 a third of a Mach number later,
+which damps that, but read a vertical tip's numbers between the join's ends as the blend they are.
+
+A power-series nose meets its base at a slope of `n/(2f)`, with `f` its length over its diameter,
+and the cap can't end on the nose while that is steeper than the handover's angle. So such a nose
+takes the method no earlier than the Mach number where the handover's angle passes its base's,
+and its join to slender-body theory starts there rather than at Mach 1.2: for `n` = 0.5, Mach 1.23 at
+3 diameters long, 1.49 at 1.2 diameters; the Arcas Robin's from 1.22. One shorter than `n`/0.89
+diameters (0.56 for `n` = 0.5) never takes it, since the handover stops at 24°, and keeps
+slender-body theory: hpr doesn't warn, and
+[`AeroModel::supersonic_body`](../api/hpr_aero/model/struct.AeroModel.html#method.supersonic_body)
+returns `None`. Haack and elliptical noses end level, so the cap always ends on them.
+
+**Behind the handover.** hpr starts the method there as it starts at a pointed tip, with the flow
+on the *tangent cone*, the cone that touches the body at the handover. The report starts it from
+the Newtonian pressure instead. What that choice is worth is set out in
+[The two starts](#the-two-starts), after the checks below.
+
+*A worked example.* The report's sphere-cone at Mach 1.5: a nose radius of 0.175 base diameters
+on an 11.5° cone. The pitot pressure is 3.413 times the free stream's, so `C_p,max` = 2.413/(γM²/2) =
+2.413/(0.7 × 1.5²) = 1.532. The wedge's largest angle is 12.11°, reached on the sphere
+0.175 (1 − sin 12.11°) = 0.138 diameters behind the tip. On a sphere, with `θ` the angle from the
+tip, the loading `C_p,max sin δ cos δ` integrates over the cap to `C_p,max sin⁴θ/2` on the
+sphere's own cross-section; to `θ` = 90° − 12.11° that is 0.700, and 0.086 on the base (times
+0.35²). The cone behind it, marched from the flow on a 12.11° cone, carries the other 1.595 of
+hpr's 1.681.
+
+**How it was checked.** Against the report's own model 1, measured at Mach 1.50 to 4.63 ([J68]
+Fig. 8(a), p. 101, read from the scan by pixel analysis to about ±0.003, the plotting itself
+good to about ±0.01), compared as [ADR-036][adr-036] compares the Arcas Robin: hpr's `C_N` at the
+plotted 0° to 12°, the method's slope with [body lift](#body-lift) (Jorgensen's, for a body of
+fineness 1.75, shorter than his Fig. 4 covers), fitted with a straight line just as the measured
+`C_N` and `C_m` are, and the report's own method fitted the same way; per radian on the base, the
+centre of pressure in base diameters from the tip:
+
+| Mach | `C_Nα` measured, per rad | the report's method | vs measured | hpr | vs measured | CP measured, diameters | hpr |
+|---|---|---|---|---|---|---|---|
+| 1.5 | 1.908 | 1.844 | −3.3% | 1.885 | −1.2% | 1.00 | 1.03 |
+| 1.9 | 1.926 | 1.964 | +2.0% | 1.926 | +0.0% | 1.03 | 1.02 |
+| 2.3 | 1.833 | 1.989 | +8.5% | 1.971 | +7.5% | 1.03 | 1.02 |
+| 2.96 | 1.786 | 1.878 | +5.2% | 2.009 | +12.5% | 1.06 | 1.02 |
+| 3.95 | 1.618 | 1.800 | +11.3% | 2.099 | +29.7% | 1.05 | 1.03 |
+| 4.63 | 1.550 | 1.762 | +13.6% | 2.048 | +32.1% | 1.09 | 1.03 |
+
+Past Mach 2.3 hpr reads high twice over. At Mach 3.95 and 4.63 its slope at `α → 0` is 13% to 21%
+above the measured one, and its body lift lifts its fitted slope 25% to 27% above that, where the
+measured curve rises only 9% to 16% above its own. The slopes at `α → 0`, beside it and not
+judged, with the measured one fitted with a curve two ways, as the decision record on comparing
+with a wind tunnel, [ADR-036][adr-036], asks:
+
+| Mach | measured, `α\|α\|` fit | measured, `α³` fit | hpr | hpr from the report's start |
+|---|---|---|---|---|
+| 1.5 | 1.741 | 1.810 | 1.681 | 3.392 |
+| 1.9 | 1.979 | 1.952 | 1.711 | 1.960 |
+| 2.3 | 1.657 | 1.717 | 1.713 | 1.792 |
+| 2.96 | 1.646 | 1.684 | 1.702 | 1.700 |
+| 3.95 | 1.433 | 1.484 | 1.678 | 1.625 |
+| 4.63 | 1.339 | 1.419 | 1.613 | 1.484 |
+
+And the Arcas Robin's committed design, its power-series nose, cylinder and boattail with the lip
+left off (the lip is [M1.8e8](../decisions-and-roadmap.md#m1-8e8)), through a flight's path, fitted
+at the tunnel's plotted angles as
+[Checking the shock-expansion method](#checking-the-shock-expansion-method) fits them, beside the
+secant ogive fitted to the same nose:
+
+| model | Mach | measured | committed nose | vs measured | fitted ogive | vs measured | cap to `r/R` |
+|---|---|---|---|---|---|---|---|
+| short | 1.5 | 2.192 | 3.007 | +37.2% | 3.090 | +41.0% | 0.163 |
+| short | 1.8 | 2.613 | 3.289 | +25.9% | 3.312 | +26.8% | 0.070 |
+| short | 2.3 | 3.078 | 3.597 | +16.9% | 3.651 | +18.6% | 0.045 |
+| short | 2.96 | 3.284 | 3.837 | +16.8% | 3.936 | +19.8% | 0.045 |
+| short | 3.96 | 3.884 | 3.944 | +1.5% | 4.168 | +7.3% | 0.045 |
+| short | 4.63 | 4.149 | 3.948 | −4.8% | 4.288 | +3.4% | 0.045 |
+| long | 1.8 | 3.159 | 3.769 | +19.3% | 3.792 | +20.0% | 0.070 |
+| long | 2.3 | 3.525 | 4.070 | +15.4% | 4.124 | +17.0% | 0.045 |
+| long | 2.96 | 3.868 | 4.398 | +13.7% | 4.497 | +16.3% | 0.045 |
+| long | 3.96 | 4.455 | 4.426 | −0.7% | 4.655 | +4.5% | 0.045 |
+| long | 4.63 | 4.615 | 4.424 | −4.1% | 4.777 | +3.5% | 0.045 |
+
+The rows are in
+[`validation/fixtures/aero/blunt-tips.json`](https://github.com/nrdptel/hpr-sim/blob/main/validation/fixtures/aero/blunt-tips.json),
+written by `cargo xtask aero`; the readings in
+[`tn-d-4865-sphere-cone.json`](https://github.com/nrdptel/hpr-sim/blob/main/validation/fixtures/aero/tn-d-4865-sphere-cone.json).
+A test holds these tables to the fixture, cell by cell. The committed nose reads within 3.8
+points of the fitted ogive up to Mach 2.96 and 5.1 to 8.2 points below it past Mach 3. Below it is
+not always closer: past Mach 4 its error changes sign, so at Mach 4.63 it reads −4.8% where the
+ogive reads +3.4%, 1.5 points further from the tunnel. Over the eleven rows it is nearer at nine. Below Mach 3 both read high, most at Mach 1.5, for
+the reasons in [Checking the shock-expansion method](#checking-the-shock-expansion-method).
+
+#### The two starts
+
+hpr starts the march from the tangent cone at the handover, the report from the Newtonian pressure
+there. Read at a small angle, the report's start fails on
+the Arcas Robin's nose from Mach 3.96, where the march *reduces* the element at the nose's end,
+holding its pressure where the method's exponential law would run the wrong way, which hpr refuses
+aft of a nose; from Mach 2.96 its answer drifts as the nose is cut into more elements, for the
+same reason
+([issue #81](https://github.com/nrdptel/hpr-sim/issues/81), the method's open question there). A flight's table is built from Mach 5
+down, so that failure would leave such a rocket no method at all. The tangent cone's start holds
+to Mach 5 and settles: the Arcas nose moves under 0.01 per radian from 10 elements to 40, a
+five-calibre elliptical or von Kármán nose under 0.02 from 10 to 160. On the report's sphere-cone, against the
+measured slope at `α → 0`, the report's start reads closer than hpr's at Mach 1.9, 3.95 and
+4.63, about the same at 2.96 and further at 2.3, and 95% high at Mach 1.5. That last is hpr's
+reading of the report's start at `α → 0`, not the report's method, which reads 1.844 there at
+its own angles: the handover sits 0.6° above the cone, so its linear range is that small. hpr
+takes the start that holds and settles everywhere over one that fits one body better where it
+holds. Both are kept:
+[`HandoverStart`](../api/hpr_aero/shock_expansion/enum.HandoverStart.html) selects the report's
+for comparison ([ADR-038][adr-038]). Slopes per radian on the body's cross-section, at `α → 0`, for
+the committed nose and the short model's cylinder, nothing aft:
+
+| Mach | the tangent cone's start, 10 elements | 40 elements | the report's start, 10 elements | 40 elements |
+|---|---|---|---|---|
+| 1.5 | 2.531 | 2.532 | 2.866 | 2.770 |
+| 1.8 | 2.697 | 2.701 | 2.676 | 2.635 |
+| 2.3 | 2.873 | 2.880 | 2.641 | 2.635 |
+| 2.96 | 3.021 | 3.028 | 2.544 | 2.583 (6 reduced) |
+| 3.5 | 3.071 | 3.078 | 3.361 (9 reduced) | 3.418 (39 reduced) |
+| 3.96 | 3.073 | 3.080 | fails | fails |
+| 4.63 | 3.030 | 3.031 (1 reduced) | fails | fails |
+| 5 | 2.980 | 2.982 (1 reduced) | fails | fails |
+
+**What it means for a rocket.** Mostly more force, barely any change of balance. On Calisto,
+whose von Kármán nose now takes the method past Mach 1.2, the whole rocket's normal-force slope
+rises 17% to 31% from Mach 1.5 to 2
+([Normal force through Mach 1](#normal-force-through-mach-1)), while its centre of pressure moves
+by under 0.15 calibres (forward at Mach 1.5, aft at Mach 2). So the stability margin moves by under
+a sixth of a calibre, and the force that holds the rocket into the wind grows by about a quarter.
+
+**What it leaves out.**
+
+- **No measurement checks a tip that isn't spherical.** The report tested spherical caps only.
+  Newtonian theory on the cap and the tangent cone's start are both approximations, and the
+  method's reduced elements ([issue #81](https://github.com/nrdptel/hpr-sim/issues/81)) still
+  apply behind them.
+- **A cap that shrinks to nothing doesn't reach the cone it sits on**
+  ([issue #101](https://github.com/nrdptel/hpr-sim/issues/101)). The march carries its start
+  cone's total pressure the whole way, as the method does from any vertex, and nothing makes that
+  fade as the cap shrinks. A power-series nose of `n` = 0.99 is a 7.1° cone but for a tip 1e-55
+  calibres across, yet at Mach 4 its cylinder carries 1.21 per radian where the cone's carries
+  1.37, 12% less, because the march runs on the 24° cone's total pressure rather than the 7.1°
+  cone's. The shapes a rocket really uses have caps that are small but not vanishing — at Mach 1.5
+  the table above puts their ends at 0.12 to 0.76 of the base radius, where that nose's is 1e-55 —
+  and how much of this bias they carry is unknown.
+- **At `α → 0` the handover is held where it sits on the body**, as TN 3527 holds every other
+  point. The report's equivalent bodies turn the body about the sphere's centre, which slides the
+  handover along the surface instead; hpr leaves that term out. How much it is worth is not
+  measured here. The two starts in the tables above differ by more than it alone, since their
+  pressure and total pressure differ too: 2.53 against 2.87 per radian on the Arcas nose at
+  Mach 1.5, and 1.70 against 1.70 on the sphere-cone at Mach 2.96.
+- **Two switches in shape**, of the family [issue #87](https://github.com/nrdptel/hpr-sim/issues/87)
+  tracks: a vertical-tip nose steeper than 24° all the way to its base gets no method at all, and
+  a pointed tip steeper than Fig. 2's 24° is refused where a vertical one flies.
+- **Elements that merge, merge with Mach.** Behind the cap, a tangency point whose tangent turns by
+  under a microradian is folded into the element before it, because its corner can't be placed in
+  floating point. Which points merge changes with the handover, so the method's answer takes a step
+  of about a millionth of a per-radian slope as it does: far below anything measured here, but
+  there.
+- **Drag is unchanged:** the nose's wave drag already covers blunt shapes
+  ([Drag through Mach 1](#drag-through-mach-1)). 
 ## Fins
 
 A fin set is `N` identical fins spaced evenly around a body tube. For one fin of the set:
@@ -1742,8 +1964,9 @@ reason below.
 
 The short model (the Arcas Robin itself, 18.2 calibres long), rows outside the targets in bold.
 The last column is the body alone: the fins-off wind-tunnel reading, and hpr's body terms fitted
-the same way. The design's blunt tip and lip keep hpr's body on slender-body theory at every Mach
-number, but its [body lift](#body-lift) grows as `sin² α` and with the crossflow Mach number, so
+the same way. The design's lip, a flare behind the boattail, keeps hpr's body on slender-body
+theory at every Mach number (its vertical tip alone would fly the method since
+[M1.8e7](../decisions-and-roadmap.md#m1-8e7); the lip is [M1.8e8](../decisions-and-roadmap.md#m1-8e8)), but its [body lift](#body-lift) grows as `sin² α` and with the crossflow Mach number, so
 their fitted slope moves a little with Mach and with the angles each plot happens to cover (1.90
 to 2.09). From Mach 0.6 to 1.2 the fins-off readings, on a coarse grid (±0.02 per point), scatter
 from 1.41 to 2.88 with no trend, so they don't settle whether hpr's 1.91 is high there.
@@ -1770,21 +1993,23 @@ from 1.41 to 2.88 with no trend, so they don't settle whether hpr's 1.91 is high
 | Arcas, long, 1.8 to 2.96 | −11.5% to −1.9% | −0.04 to +0.04 | 3 of 3 |
 | Arcas, long, 3.96 and 4.63 | −20.5%, −25.8% | −0.12, −0.17 | 0 of 2 |
 | Calisto against RASAero II, 0.1 to 0.7 | +0.1% to +10.1% | −0.08 to +0.43 | 4 of 4 |
-| Calisto against RASAero II, 0.8 to 2.0 | −16.8% to +21.9% | −0.56 to +0.95 | 6 of 11 |
+| Calisto against RASAero II, 0.8 to 2.0 | −6.3% to +21.9% | −0.41 to +0.95 | 7 of 11 |
 
 What the misses come from:
 
 - **Past Mach 3, the body, and at Mach 2.96 on the short model.** The fins' share (the fins-on
   reading less the fins-off one) agrees with hpr's fins within −1.4% to +7.0% at Mach 3.96 and
   4.63. The body alone lifts 3.9 to 4.6 per rad there, where hpr gives 2.1 to 2.6: the design's
-  blunt tip and lip keep the shock-expansion method off, slender-body theory's nose and boattail
-  don't change with Mach, and the real body lifts more as it flies faster. The CP stays within 0.17
+  lip keeps the shock-expansion method off, slender-body theory's nose and boattail don't change
+  with Mach, and the real body lifts more as it flies faster. The CP stays within 0.17
   calibres, so the stability margin holds, but the slope is low. At Mach 2.96 the short model's
   body reads 37% low fins off (2.08 against 3.28); until [M1.8e6](../decisions-and-roadmap.md#m1-8e6)
   Galejs's larger body lift covered enough of that to pass (−13.4%), and with Jorgensen's, which the
   tunnel's own fins-off points support ([Body lift](#body-lift)), the row reads −16.3%
-  ([ADR-037][adr-037]). The increment [M1.8e7](../decisions-and-roadmap.md#m1-8e7) (blunt tips and
-  the lip) takes this on. The fins' agreement carries about 5%
+  ([ADR-037][adr-037]). [M1.8e7](../decisions-and-roadmap.md#m1-8e7) gave the vertical tip the
+  method (with the lip left off, the body reads −4.8% to +37.2% like for like;
+  [Blunt tips](#blunt-tips)); the lip, [M1.8e8](../decisions-and-roadmap.md#m1-8e8), still keeps it
+  off. The fins' agreement carries about 5%
   of doubt of its own: over the boattail the models' fin roots follow its 15° surface below the
   cylinder, and the design leaves that strip out, about 0.32 in² of each fin's 5.8 in² (5.5%).
 - **Mach 0.6, within the targets by errors that cancel.** Both models pass there, but hpr's body
@@ -1796,13 +2021,18 @@ What the misses come from:
   forward at Mach 1, 2.29 calibres from hpr's. No closed-form method covers this region, and the
   join is not fitted to it.
 - **RASAero II** keeps its slope and CP constant through subsonic flow, where hpr's rise with
-  Prandtl–Glauert, so they part from Mach 0.8. The wind tunnel sides with neither there. Below
+  Prandtl–Glauert, so they part from Mach 0.8. Past Mach 1.2 Calisto's von Kármán nose flies the
+  shock-expansion method behind a [Newtonian cap](#blunt-tips), so its cylinder carries lift:
+  Mach 1.5 reads +13.2% and Mach 2 +8.8% (−3.1% and −16.8% on slender-body theory, before
+  [M1.8e7](../decisions-and-roadmap.md#m1-8e7)). The wind tunnel sides with neither there. Below
   that the agreement is partly by construction: the Calisto design has the 2018 fins because
   they reproduce this export at low speed ([ADR-009][adr-009]). Past Mach 1 the result rests on
   the choice of RASAero's columns: against its secant slope and CP to 4°, which include its
-  crossflow lift, 1 of the 11 rows from Mach 0.8 is within the targets, not 6, and Mach 2 is
-  −30.6%. Calisto has no fins-off data, so its Mach 2 miss can't be split as the wind tunnel's
-  can.
+  crossflow lift, 3 of the 11 rows from Mach 0.8 are within the targets (Mach 1 by 0.00002
+  calibres), not 7, and Mach 2 is
+  −9.2% (−30.6% before its von Kármán nose flew the shock-expansion method,
+  [M1.8e7](../decisions-and-roadmap.md#m1-8e7)). Calisto has no fins-off data, so its body and fins
+  can't be split as the wind tunnel's can.
 
 So, for fins like these, whose linear theory starts at `M_s` = 1.2: from Mach 1.5 to about 3,
 trust hpr's slope to about 15% (the short model reads −16.3% at Mach 2.96) and its CP to about half
@@ -1889,8 +2119,9 @@ not met ([ADR-033][adr-033] records it):
     the report reads −0.13.
 
 **The Arcas Robin** ([D4014], the wind tunnel of
-[Normal force through Mach 1](#normal-force-through-mach-1)). The method needs a pointed tip, so
-here the nose is the secant ogive (a circular arc meeting the body at an angle) through the tip
+[Normal force through Mach 1](#normal-force-through-mach-1)). The method needed a pointed tip when
+this comparison was made (the committed nose, behind the cap it now takes, is compared in
+[Blunt tips](#blunt-tips)), so here the nose is the secant ogive (a circular arc meeting the body at an angle) through the tip
 and base that best fits the report's coordinate table, 4.17 calibres long, so the report's
 Mach-over-fineness range of 0.4 to 2 covers Mach 1.67 to 8.3: its arc radius is 1.744 times a
 tangent ogive's, it misses the table by 0.003 in
@@ -1898,7 +2129,7 @@ rms, and its tip half-angle is 10.76°. hpr's committed design keeps its power-s
 tip is blunt. The measured slope is the fins-off reading fitted over the plotted angles, as
 above. It includes the boattail, the lip behind it, and crossflow lift at those angles. The
 method has neither the lip nor crossflow at `α → 0`, and takes the boattail only by the report's
-footnote 8, so there is no target yet; [M1.8e8](../decisions-and-roadmap.md#m1-8e8) sets one,
+footnote 8, so there is no target yet; [M1.8e9](../decisions-and-roadmap.md#m1-8e9) sets one,
 judged at the tunnel's angles. This table is the method's own; the body a flight flies since
 [M1.8e6](../decisions-and-roadmap.md#m1-8e6), with the boattail's measured share, is compared
 below.
@@ -2473,4 +2704,5 @@ ellipse's integrals ([N09] eq. 3.70–3.71); the supersonic forcing and damping 
 [gap-note]: https://github.com/nrdptel/hpr-sim/blob/main/docs/research/body-supersonic-gap.md
 [adr-036]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-036-the-arcas-robins-supersonic-body-gap-judged-as-the-tunnel-measures-m18e6-takes-crossflows-size-and-the-boattail-2026-09-19
 [adr-037]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-037-body-lift-by-jorgensens-crossflow-at-every-speed-and-a-boattails-measured-share-faster-than-sound-2026-09-19
+[adr-038]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-038-blunt-and-vertical-nose-tips-faster-than-sound-by-a-newtonian-cap-the-method-started-from-the-tangent-cone-2026-09-19
 [gap-fixture]: https://github.com/nrdptel/hpr-sim/blob/main/validation/fixtures/aero/arcas-robin-gap.json

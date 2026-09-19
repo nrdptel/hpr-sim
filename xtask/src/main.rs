@@ -14,6 +14,7 @@
 )]
 
 mod aero;
+mod aero_blunt;
 mod aero_body;
 mod aero_crossflow;
 mod aero_drag;

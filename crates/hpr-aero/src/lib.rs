@@ -53,6 +53,7 @@
 //!   with `sin² α`.
 
 pub mod afterbody;
+pub mod blunt_tip;
 pub mod body;
 pub mod crossflow;
 pub mod drag;
@@ -792,18 +793,20 @@ mod tests {
             misses,
             [
                 // Calisto against RASAero II: hpr's Prandtl-Glauert rise and aft CP near Mach 1,
-                // which RASAero II's constant subsonic slope doesn't have, the linear join's peak
-                // at M_s = 1.28, and at Mach 2 a gap that no fins-off data can split (the wind
-                // tunnel's points to the body).
+                // which RASAero II's constant subsonic slope doesn't have, and the linear join's
+                // peak at M_s = 1.28. Since M1.8e7 its von Karman nose's vertical tip flies the
+                // shock-expansion method behind a Newtonian cap, so its body carries lift on the
+                // cylinder past Mach 1.2: Mach 2 reads +8.8% (-16.8% on slender-body theory) and
+                // Mach 1.5 +13.2% (-3.1%; ADR-038).
                 "calisto-rasaero-ii@0.8",
                 "calisto-rasaero-ii@0.9",
                 "calisto-rasaero-ii@0.95",
                 "calisto-rasaero-ii@1.3",
-                "calisto-rasaero-ii@2",
                 // The Arcas Robin: the measured transonic dip in the fins' lift and the join's
                 // peak (Mach 0.8 to 1.2); the body, which grows with Mach where slender-body
-                // theory's doesn't (Mach 3.96 and 4.63). The committed designs' blunt tip and lip
-                // keep the shock-expansion method off, so their bodies fly slender-body theory
+                // theory's doesn't (Mach 3.96 and 4.63). The committed designs' lip (a flare
+                // behind the boattail) keeps the shock-expansion method off (their vertical tips
+                // fly it since M1.8e7; the lip is M1.8e8), so their bodies fly slender-body theory
                 // past Mach 1, 37% low fins off at Mach 2.96 on the short model. Galejs's body
                 // lift (K = 1.1) covered part of that until M1.8e6; Jorgensen's, which the
                 // tunnel's own fins-off curvature supports, doesn't, and the short model at 2.96

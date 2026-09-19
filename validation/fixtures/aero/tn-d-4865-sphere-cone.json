@@ -1,0 +1,427 @@
+{
+  "id": "tn-d-4865-sphere-cone",
+  "source": "C. M. Jackson Jr., W. C. Sawyer and R. S. Smith, A Method for Determining Surface Pressures on Blunt Bodies of Revolution at Small Angles of Attack in Supersonic Flow, NASA TN D-4865 (1968), NTRS 19690000884. US Government work.",
+  "model": {
+    "note": "Model 1 (Fig. 3(a), printed p. 91): a spherical nose of radius 0.175 d on an 11.5 deg cone to the base diameter d, drawn 1.764 d long. The stated radius and angle give 1.755 d; hpr builds the body from them.",
+    "nose_radius_over_base_diameter": 0.175,
+    "cone_half_angle_deg": 11.5,
+    "drawn_length_over_base_diameter": 1.764
+  },
+  "reference": {
+    "area": "the model's base area, for C_N (symbols, printed p. 3)",
+    "moment": "C_m = pitching moment / (q S l) with l the body length, 1.764 d, about the nose tip: 'The reference center for moments is taken at the nose of the models' (p. 3); nose-up positive",
+    "length_over_base_diameter": 1.764
+  },
+  "reading": {
+    "figure": "Fig. 8(a), Model 1, printed p. 101 (PDF p. 104): C_N and C_m against alpha at Mach 1.50 to 4.63; circles are the report's experiment (surface pressures integrated over the forebody, p. 12), the solid line its method",
+    "file": "the PDF pinned as nasa-tn-d-4865-jackson-1968 in validation/refs.lock.toml (sha256 4ef9c99567d8033810473f75bca1ec2f265563acb57a86b29a7f9bfc3703f93b)",
+    "when": "2026-09-19, M1.8e7",
+    "how": "PDF page 104's image extracted as it is stored (pdfimages -png: a 300-ppi 1-bit scan, 2368 by 3040 px; a higher-dpi render only resamples it) and read by pixel analysis in Python with numpy: in each of the six panels the grid lines found from the dark-pixel counts of each column and row, refined line by line (the scan is turned about 0.1 deg), and an affine map fitted from the labelled lines' crossings (residual under 0.0004 in C_N, 0.0011 in C_m, 0.011 deg in alpha); each circle's centre from a fit to its ring's outer and inner edges; the solid line's centre at alpha = 4, 8 and 12 deg from its tracked dark runs. Every reading checked on overlays of the fits on the scan",
+    "uncertainty": "about 0.003 in C_N and C_m from the reading; the plotting itself is good to about 0.005 to 0.01, since the alpha = 0 circles read -0.0027 to +0.0163 where they should read 0",
+    "tunnel_conditions": "Mach 1.50 to 4.63, Reynolds number 8.5e6 to 9.8e6 per metre (p. 3)"
+  },
+  "rows": [
+    {
+      "mach": 1.5,
+      "alpha_deg_c_n": [
+        [
+          0,
+          0.0163
+        ],
+        [
+          4,
+          0.138
+        ],
+        [
+          8,
+          0.2768
+        ],
+        [
+          12,
+          0.414
+        ]
+      ],
+      "alpha_deg_c_m": [
+        [
+          0,
+          -0.0018
+        ],
+        [
+          4,
+          -0.0749
+        ],
+        [
+          8,
+          -0.1522
+        ],
+        [
+          12,
+          -0.2274
+        ]
+      ],
+      "report_theory_alpha_deg_c_n": [
+        [
+          4,
+          0.1061
+        ],
+        [
+          8,
+          0.2369
+        ],
+        [
+          12,
+          0.3855
+        ]
+      ],
+      "report_theory_alpha_deg_c_m": [
+        [
+          4,
+          -0.0557
+        ],
+        [
+          8,
+          -0.1224
+        ],
+        [
+          12,
+          -0.2064
+        ]
+      ]
+    },
+    {
+      "mach": 1.9,
+      "alpha_deg_c_n": [
+        [
+          0,
+          0.0021
+        ],
+        [
+          4,
+          0.1426
+        ],
+        [
+          8,
+          0.2717
+        ],
+        [
+          12,
+          0.4073
+        ]
+      ],
+      "alpha_deg_c_m": [
+        [
+          0,
+          0.0005
+        ],
+        [
+          4,
+          -0.0749
+        ],
+        [
+          8,
+          -0.154
+        ],
+        [
+          12,
+          -0.2358
+        ]
+      ],
+      "report_theory_alpha_deg_c_n": [
+        [
+          4,
+          0.1548
+        ],
+        [
+          8,
+          0.2924
+        ],
+        [
+          12,
+          0.4112
+        ]
+      ],
+      "report_theory_alpha_deg_c_m": [
+        [
+          4,
+          -0.0925
+        ],
+        [
+          8,
+          -0.1801
+        ],
+        [
+          12,
+          -0.2242
+        ]
+      ]
+    },
+    {
+      "mach": 2.3,
+      "alpha_deg_c_n": [
+        [
+          0,
+          0.0008
+        ],
+        [
+          4,
+          0.1226
+        ],
+        [
+          8,
+          0.2476
+        ],
+        [
+          12,
+          0.3858
+        ]
+      ],
+      "alpha_deg_c_m": [
+        [
+          0,
+          -0.0003
+        ],
+        [
+          4,
+          -0.0692
+        ],
+        [
+          8,
+          -0.1456
+        ],
+        [
+          12,
+          -0.2242
+        ]
+      ],
+      "report_theory_alpha_deg_c_n": [
+        [
+          4,
+          0.1424
+        ],
+        [
+          8,
+          0.2799
+        ],
+        [
+          12,
+          0.417
+        ]
+      ],
+      "report_theory_alpha_deg_c_m": [
+        [
+          4,
+          -0.0885
+        ],
+        [
+          8,
+          -0.1704
+        ],
+        [
+          12,
+          -0.2486
+        ]
+      ]
+    },
+    {
+      "mach": 2.96,
+      "alpha_deg_c_n": [
+        [
+          0,
+          0.0005
+        ],
+        [
+          4,
+          0.1242
+        ],
+        [
+          8,
+          0.2406
+        ],
+        [
+          12,
+          0.3773
+        ]
+      ],
+      "alpha_deg_c_m": [
+        [
+          0,
+          -0.0023
+        ],
+        [
+          4,
+          -0.0688
+        ],
+        [
+          8,
+          -0.147
+        ],
+        [
+          12,
+          -0.225
+        ]
+      ],
+      "report_theory_alpha_deg_c_n": [
+        [
+          4,
+          0.1332
+        ],
+        [
+          8,
+          0.2651
+        ],
+        [
+          12,
+          0.3931
+        ]
+      ],
+      "report_theory_alpha_deg_c_m": [
+        [
+          4,
+          -0.0863
+        ],
+        [
+          8,
+          -0.1671
+        ],
+        [
+          12,
+          -0.2444
+        ]
+      ]
+    },
+    {
+      "mach": 3.95,
+      "alpha_deg_c_n": [
+        [
+          0,
+          -0.0016
+        ],
+        [
+          4,
+          0.1098
+        ],
+        [
+          8,
+          0.2122
+        ],
+        [
+          12,
+          0.3408
+        ]
+      ],
+      "alpha_deg_c_m": [
+        [
+          0,
+          -0.0027
+        ],
+        [
+          4,
+          -0.0649
+        ],
+        [
+          8,
+          -0.1284
+        ],
+        [
+          12,
+          -0.2053
+        ]
+      ],
+      "report_theory_alpha_deg_c_n": [
+        [
+          4,
+          0.133
+        ],
+        [
+          8,
+          0.2573
+        ],
+        [
+          12,
+          0.3775
+        ]
+      ],
+      "report_theory_alpha_deg_c_m": [
+        [
+          4,
+          -0.0744
+        ],
+        [
+          8,
+          -0.1508
+        ],
+        [
+          12,
+          -0.2264
+        ]
+      ]
+    },
+    {
+      "mach": 4.63,
+      "alpha_deg_c_n": [
+        [
+          0,
+          0.0004
+        ],
+        [
+          4,
+          0.097
+        ],
+        [
+          8,
+          0.2079
+        ],
+        [
+          12,
+          0.3242
+        ]
+      ],
+      "alpha_deg_c_m": [
+        [
+          0,
+          -0.0012
+        ],
+        [
+          4,
+          -0.0582
+        ],
+        [
+          8,
+          -0.1213
+        ],
+        [
+          12,
+          -0.2029
+        ]
+      ],
+      "report_theory_alpha_deg_c_n": [
+        [
+          4,
+          0.1135
+        ],
+        [
+          8,
+          0.2365
+        ],
+        [
+          12,
+          0.369
+        ]
+      ],
+      "report_theory_alpha_deg_c_m": [
+        [
+          4,
+          -0.0701
+        ],
+        [
+          8,
+          -0.144
+        ],
+        [
+          12,
+          -0.2269
+        ]
+      ]
+    }
+  ]
+}

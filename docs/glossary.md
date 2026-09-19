@@ -542,6 +542,16 @@ after a dash. A RASP `.eng` file's name field is meant to hold only the class an
 but often holds the full designation. See [RASP `.eng` files](format/eng.md#header-fields-r-header).
 
 
+## Newtonian theory
+
+A simple rule for the pressure on the front of a body in fast flow: the air hits the surface and
+loses the speed it had toward it, so the pressure rises with the square of the sine of the angle
+between the surface and the wind, `C_p = C_p,max sin²δ`. `C_p,max` is the pressure coefficient
+at the nose's stagnation point, where the air comes to rest behind a normal shock. It suits the steep, blunt front of a body
+better than its shallow sides. hpr uses it on the cap of a blunt or vertical nose tip faster than
+sound, ahead of the shock-expansion method. See
+[Aerodynamics](physics/aero.md#blunt-tips).
+
 ## NFPA 1125
 
 The US National Fire Protection Association's code for making model and high-power rocket motors. ThrustCurve.org measures a motor's [burn time](#burn-time) by its rule: from the moment the thrust first reaches 5% of its peak to the moment it last falls to 5%. hpr does the same. See [Solid motors](physics/motor.md#thrust-curve).
@@ -760,8 +770,8 @@ A way to work out the air's forces on a long, thin body from how fast its cross-
 along its length. It gives a nose as wide as the reference a normal-force slope of 2 per radian whatever its shape, a
 transition `2ΔA/A_ref`, and a plain tube nothing, at any Mach number. Barrowman's method uses it
 for every body part. hpr uses it below Mach 1.2, and at every speed for bodies the shock-expansion
-method can't take (blunt tips, flares, steps); NASA's wind tunnel shows a real body lifting more
-past Mach 3. See
+method can't take (flares, steps, a nose too blunt for its cap); NASA's wind tunnel shows a real
+body lifting more past Mach 3. See
 [Aerodynamics](physics/aero.md#bodies-of-revolution).
 
 

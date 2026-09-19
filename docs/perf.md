@@ -47,6 +47,22 @@ otherwise runs one thread per core — so the second row caps `RUST_TEST_THREADS
 - Numbers taken during an autopilot cycle inherit that six-job cap. Measure from a plain shell,
   or set `CARGO_BUILD_JOBS` explicitly, when comparing against the rows above.
 
+## Blunt tips faster than sound (M1.8e7)
+
+- **Measured:** the supersonic table of a rocket with a vertical nose tip, timed by hand (a
+  throwaway release-mode test, best of three), 2026-09-19 on an Apple M5.
+
+| measurement | before | after |
+|---|---|---|
+| Calisto's supersonic table (von Kármán nose, boattail), built once per model | none: slender-body theory | 363 ms |
+
+- **What changed.** A vertical tip (power-series, Haack or elliptical nose) now flies the
+  shock-expansion method behind a Newtonian cap, so its rocket builds the table a pointed nose
+  already did: about 125 marches of the method, each laying out the nose's elements again from
+  the cap's handover, which moves with the Mach number. The table is built only once a flow passes
+  Mach 1.2, so a subsonic flight never pays for it, and a model's clones share it. Pointed noses
+  are unchanged.
+
 ## Body lift and the measured boattail (M1.8e6)
 
 - **Benchmarks:** `cargo bench -p hpr-aero --bench normal_force -- normal_force` and

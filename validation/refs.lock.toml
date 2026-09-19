@@ -268,6 +268,15 @@ dest = "refs/papers/washington-pettis-1968-rd-tm-68-5.pdf"
 license = "US government work"
 mode = "fetched"
 
+[[file]]
+name = "nasa-tn-d-4865-jackson-1968"
+title = "C. M. Jackson Jr., W. C. Sawyer and R. S. Smith, A method for determining surface pressures on blunt bodies of revolution at small angles of attack in supersonic flow, NASA TN D-4865, 1968"
+url = "https://ntrs.nasa.gov/api/citations/19690000884/downloads/19690000884.pdf"
+sha256 = "4ef9c99567d8033810473f75bca1ec2f265563acb57a86b29a7f9bfc3703f93b"
+dest = "refs/papers/nasa-tn-d-4865-jackson-1968.pdf"
+license = "US government work"
+mode = "fetched"
+
 # NTRS serves this one with a 436-byte header before the %PDF marker; the pin is for the bytes as
 # served.
 [[file]]

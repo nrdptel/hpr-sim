@@ -4,57 +4,58 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
 
 ## Now
 
-- **Current milestone:** M1.8e7 Blunt tips and the lip faster than sound
-- **Order:** M1.8e7, e8, then M3.1
-- **Run:** M0.1-M0.4, M1.1-M1.7, M2.1, M1.8a to M1.8e6 shipped; https://nrdptel.github.io/hpr-sim/
-- **Last updated:** 2026-09-19 (M1.8e6 done)
+- **Current milestone:** M1.8e8 The lip faster than sound
+- **Order:** M1.8e8, e9, then M3.1
+- **Run:** M0.1-M0.4, M1.1-M1.7, M2.1, M1.8a to M1.8e7 shipped; https://nrdptel.github.io/hpr-sim/
+- **Last updated:** 2026-09-19 (M1.8e7 done)
 
 ## Handoff (overwrite each session)
 
 - **Page rules** (ADR-016 to ADR-020): relative links between pages, GitHub URLs for the rest,
   labels as links to their rows, none in headings, Unicode equations; new pages in `SUMMARY.md`; a
-  new library needs a row in `docs/api.md` and a guide link in its `//!`. *Accuracy*'s numbers
-  must be in a file the same item links (the report, a case file); its results tables must hold
-  every row of the report, cell for cell.
-- **Checking a milestone off** in `ROADMAP.md` fails `cargo xtask site` until its row in
+  new library needs a row in `docs/api.md` and a guide link in its `//!`. *Accuracy*'s numbers must
+  be in a file the same item links; its results tables must hold every report row, cell for cell.
+- **Checking a milestone off** fails `cargo xtask site` until its row in
   `docs/decisions-and-roadmap.md` says `done`; a new milestone needs a row.
 - **Validation (M2.1, ADR-021 to ADR-026):** CI checks the report on three OSes; predicted mode's
   3% are *targets*; every whole flight names both RMS metrics, each held to 3% of its reference's
-  apogee or max speed (ADR-024); a reference that moves moves those bounds with it.
-- **The path in wind (ADR-026):** the oracle flies RocketPy 1.13.0 with upstream PRs #1188 and
-  #1196 applied by `corrections.py`; when RocketPy releases #1196, re-pin, regenerate and delete
-  it. `wind_response.py` measures the seven drifts reported as model differences.
-- **M1.8a to e1 (ADR-027 to ADR-033):** `cargo xtask aero` writes the aero fixtures (hpr's
-  values and errors only). NTRS serves five of ADR-030's PDFs with a 436-byte header (pinned as
-  served). Scratch: `refs/scratch/{arcas,stoney,m18b2,m18b3,m18c,m18d,m18e}/`. TN D-4013's
-  rolling-moment plots are unread; #76: M1.8a's other TN D-4014 zeros. `m18e/sose.py` (M1.8e1's
-  Python check) carries the gradient through reduced elements; hpr doesn't (#81).
-- **M1.8e2 to e4** (ADR-034): `SupersonicBody` (`hpr-aero/src/model.rs`) tabulates the method's
-  shares every 0.05 Mach, lazily, joined from max(1.2, its bisected start) over 0.3; boattails too.
-- **M1.8e6** (ADR-037): body lift is Jorgensen's `η C_dn` (`hpr-aero/src/crossflow.rs`) at every
-  speed; a supersonic boattail W&P's increment (`supersonic_boattail.rs`) on the method's cylinder
-  in its place. `BodyModel::BEFORE_M1_8E6` reproduces the old model (M1.8e5's fixture uses it).
-  `arcas-robin-crossflow.json` (`xtask/src/aero_crossflow.rs`) compares four models, the 62
-  high-angle points and the body's CP; its readings are `arcas-robin-high-alpha.json` and
-  `arcas-robin-fins-off-moment.json`. `wind_response.py` carries the same tables (a test checks).
-  #98: a covered boattail doubles the supersonic table's build (NDRT 316 → 616 ms).
-- **M1.8e7 next:** the committed Arcas Robin designs (power-series nose, vertical tip; the lip, a
-  flare behind the boattail) keep slender-body theory, so M1.8a's short@2.96 now misses (−16.3%).
-  Blunt tip: NASA TN D-4865 puts a Newtonian cap ahead of TN 3527's method (Mach 1.5 to 4.63).
-  The lip: `rest_carries_nothing` refuses it; check any rule by the moment about the CG. #97: the
-  long model's M1.8a readings may be biased (page skew); settle it before judging e8's 15%.
-- **Autopilot memory:** each command gets its own process group; the run notes and reaps them.
-- **M2.2's OpenRocket oracle** (ADR-035): orhelper is dropped, so decide how to drive the jar
-  when M2.2 starts. JPype still loads the JVM in-process; only a subprocess isolates. The jar
-  needs Java 17 exactly; `[java] max_major` in the refs lock now keeps doctor off a newer one.
-- **Regeneration is not bit-identical across machines** (last digits). Regenerate reports with
-  `cargo xtask validate` (debug), never `--release`: it rounds differently in the 7th digit.
-  Fixture checks (`designs::same`) allow 1e-12 relative, or 1e-13 near zero (M1.8b3's PR).
-- **Process notes:** `cargo test -p xtask` guards STATUS, ROADMAP, notices, lessons and the lock.
-  Oracles run from the repo root with `refs/venv/bin/python`. `cargo xtask designs` and
-  `cargo xtask examples` rewrite designs and example outputs; pages quoting them must follow.
+  apogee or max speed (ADR-024); a moving reference moves those bounds.
+- **The path in wind (ADR-026):** the oracle flies RocketPy 1.13.0 with PRs #1188 and #1196 applied
+  by `corrections.py` (re-pin and delete it when #1196 releases); `wind_response.py` measures the
+  seven drifts reported as model differences.
+- **M1.8a to e1 (ADR-027 to ADR-033):** `cargo xtask aero` writes the aero fixtures. NTRS serves
+  five of ADR-030's PDFs with a 436-byte header (pinned as served). Scratch: `refs/scratch/m18*/`.
+  TN D-4013's rolling-moment plots are unread; #76: M1.8a's other TN D-4014 zeros. #81:
+  `m18e/sose.py` carries the gradient through reduced elements; hpr doesn't.
+- **M1.8e2 to e7** (ADR-034, 037, 038): `SupersonicBody` (`model.rs`) tabulates the method's
+  shares every 0.05 Mach, lazily, joined from max(1.2, its bisected start) over 0.3. Body lift is
+  Jorgensen's (`crossflow.rs`); a boattail W&P's increment (`supersonic_boattail.rs`);
+  `BodyModel::BEFORE_M1_8E6` keeps the old rules. A vertical tip takes TN D-4865's Newtonian cap
+  (`blunt_tip.rs`), the march started from the tangent cone (`HandoverStart::Newtonian`, the
+  report's, fails on the Arcas nose from Mach 3.96). Fixtures: `arcas-robin-crossflow.json`,
+  `blunt-tips.json` (readings `tn-d-4865-sphere-cone.json`, by pixel analysis). #98: a boattail
+  doubles the table's build (NDRT 616 ms); Calisto's is 363 ms, built only past Mach 1.2.
+- **M1.8e8 next:** the committed Arcas Robin designs keep slender-body theory only for the lip (a
+  1.35 mm flare, 57°, behind the 15° boattail): `rest_carries_nothing` refuses it, so M1.8a's
+  short@2.96 still misses (−16.3%). TN D-4865 eq. 3 (Seiff's embedded Newtonian, p. 6) treats a
+  flare whose shock detaches; its listing may invert `q₁/q∞`. Check any rule by the moment about
+  the CG (`arcas-robin-fins-off-moment.json`). #97: the long model's M1.8a readings may be biased
+  (page skew); settle it before judging e9's 15%.
+- **M2.2's OpenRocket oracle** (ADR-035): orhelper is dropped, so decide how to drive the jar when
+  M2.2 starts; JPype loads the JVM in-process, only a subprocess isolates, and the jar needs Java
+  17 exactly (`[java] max_major` in the refs lock keeps doctor off a newer one).
+- **Regeneration is not bit-identical across machines** (last digits): regenerate with `cargo
+  xtask validate` (debug), never `--release`; fixture checks allow 1e-12 relative (1e-13 near 0).
+- **Process notes:** `cargo test -p xtask` guards STATUS, ROADMAP, notices, lessons and the lock;
+  oracles run from the repo root with `refs/venv/bin/python`; `cargo xtask designs` and `examples`
+  rewrite designs and example outputs, and pages quoting them must follow.
 
 ## Done log (newest first, keep about 15)
+
+- 2026-09-19: M1.8e7 Blunt tips faster than sound (ADR-038): power-series, Haack and elliptical
+  noses fly the method behind TN D-4865's Newtonian cap, started from the tangent cone; no jump at
+  ±1e-9 in Mach; TN D-4865's sphere-cone like for like −1.2% to +32.1% (its own method −3.3% to
+  +13.6%); the Arcas Robin's committed nose, lip off, −4.8% to +37.2%; Calisto@2 now passes.
 
 - 2026-09-19: M1.8e6 Crossflow and the boattail faster than sound (ADR-037): Jorgensen's body lift
   at every speed and Washington and Pettis's measured boattail; like for like the Arcas Robin's
@@ -63,17 +64,8 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
 - 2026-09-19: M1.8e5 The remaining gap, source by source (ADR-036): like for like hpr's body
   reads 15–73% high, not low; crossflow's size ranks first, the boattail second, then the lip
   (+0.18), the blunt tip (≤ 0.07), Fig. 2 below Mach 3 (≤ 0.06, SP-3007); #81 zero.
-- 2026-09-19: M1.8e4 The boattail's share faster than sound: boattails and tubes behind them
-  fly the method (their stations slender-body theory's); no jump at ±1e-9; the Arcas Robin
-  through the flight with its boattail equals the method's (long −18.3% to −27.0%).
-- 2026-09-19: M1.8e3 The supersonic join's start (#87's grid half): bisected where the method
-  starts to hold, not on the 0.05 grid; a 20° cone joins from Mach 1.341910 (was 1.35), moving
-  smoothly to 1.355500 at 20.5°; no jump at ±1e-9 in Mach; the report unchanged.
-- 2026-09-19: M1.8e2 The body's supersonic normal force in flight (ADR-034): nose and cylinder
-  take the method's shares, joined over Mach 1.2 to 1.5, no jump at ±1e-9; Arcas Robin nose and
-  cylinder through the flight equal the method (+16.4% to −26.4%); boattailed bodies unchanged.
-- 2026-09-19: Autopilot memory: the run notes its commands' process groups while sampling and
-  reaps them (a cycle's own group missed every build); jobs capped at 6, old transcripts pruned.
+- 2026-09-19: M1.8e2 to e4 (ADR-034): the body's supersonic shares in flight, joined over Mach
+  1.2 to 1.5 from a bisected start; boattails and tubes behind them; no jump at ±1e-9.
 
 ## Needs Neer (blocking or one-way decisions; the session keeps working on other things)
 
@@ -90,7 +82,11 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
 
 ## Decided without Neer (one line each; significant ones get an ADR)
 
-- M1.8e splits (one id level): e3 join, e4 boattail, e5 measure, e6 fly, e7 blunt tips, e8 rest.
+- M1.8e splits (one id level): e3 join, e4 boattail, e5 measure, e6 fly, e7 blunt tips, e8 the
+  lip, e9 rest (the old e8, renumbered when e7 split; done-when bullets unchanged in substance).
+- ADR-038: the march behind a blunt tip starts from the tangent cone, not TN D-4865's Newtonian
+  state (which fails on the Arcas nose from Mach 3.96); handover capped at 24°; Fig. 8(a) read by
+  pixel analysis into a committed fixture.
 - ADR-037: Jorgensen's body lift at every speed, his two `η`s blended (a judgement), sampled at
   Fig. 6's points; W&P's measured boattail; old model kept selectable; M1.8a's new miss recorded.
 - ADR-036: the Arcas Robin judged at the tunnel's angles; e6 retitled to crossflow and the boattail.
@@ -130,6 +126,10 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
   (ADR-008). Body lift (Jorgensen, M1.8e6) reads 1–16% high where the crossflow is supersonic and
   leaves out the drop past the critical Reynolds number. The normal force misses the wind tunnel
   between Mach 0.8 and 1.2, and past Mach 3 reads 20–28% low on bodies the method can't take.
+  A blunt tip's cap (M1.8e7) is checked only on a sphere-cone; other tips are an extrapolation.
+  #101: the march keeps its start cone's entropy, so a vanishing cap doesn't reach the cone it
+  sits on (a 0.99-power nose's cylinder reads 12% low at Mach 4). Near the join's start the cap
+  covers half a slender nose.
 - Drag: against RASAero II's Calisto hpr reads −14.9% to −5.1% supersonic, within what the
   unrecorded fins span (ADR-030); against MIL-HDBK-762 the body reads 6–10% low past Mach 1.6 and
   high through Mach 1 (nose #67, base #68). Against the Arcas Robin it reads high at every row:
