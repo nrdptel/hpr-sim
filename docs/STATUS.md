@@ -69,11 +69,11 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
   `validate (...)` checks; block force
   pushes. Don't require approvals: the autopilot merges its own PRs as you, and authors can't
   self-approve.
-- **Loft's flutter calculator overstates flutter speed by √2** (safety). fusionspace-loft
-  `lib/sim/flutter.ts:287` uses 1.337·(λ+1)/2; NACA TN 4197 eq. 18 gives 2.674·(λ+1)/2 (39.3 over
-  14.7 psi), so its "1.5 margin" is about 1.06. Fix it or post a notice before Loft shuts down.
 - **crates.io names** (whenever): `hpr`, `hpr-sim`, `hpr-core`... are unreserved. Reserve them?
-- **orhelper** (no action if fine): GPL-2.0, so M2.2 drives OpenRocket via JPype, never imports it.
+- **orhelper** (no action if fine): GPL-2.0 and already a dependency in
+  `validation/oracles/pyproject.toml:15`, though nothing imports it yet. The plan for M2.2 is to
+  drive the jar through JPype and never import orhelper, which keeps the GPL at arm's length.
+  Say so before M2.2 if you would rather drop the dependency outright.
 - **RASAero values in fixtures** (no action if fine): `normal-force-vs-mach.json` commits 30 values
   of RocketPy's 2018 Calisto RASAero II export (ADR-027), and `rocketpy-drag-curves.json` hpr's
   values and errors from which 147 values of five RocketPy drag curves can be rebuilt (ADR-029),
