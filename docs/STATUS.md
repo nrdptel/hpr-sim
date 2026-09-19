@@ -39,8 +39,7 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
   below, a ±1e-9 probe test; (2) drop the Mach-free `body_stations_m` cache
   (`crates/hpr-sim/src/dynamics.rs`, line 132); (3) the Arcas Robin body alone from Mach 1.5
   through that path, into the report; (4) `cargo xtask validate` (debug), list changed rows;
-  (5) physics review of the rest. Open questions: the plan, and #81. Predicted mode's misses
-  aren't gaps to close (ADR-009, ADR-023). ROADMAP: 998 of 1000 lines.
+  (5) review the rest. Open: the plan, #81. Predicted misses aren't gaps (ADR-009, ADR-023).
 - **Autopilot memory:** cycles run in their own process group, reaped either way; `runs.log`
   gets a memory line per cycle (% spare from `memory_pressure`). `scripts/build-memory.sh`
   reproduces `docs/perf.md`; thinning debug info doesn't cut peak memory.
