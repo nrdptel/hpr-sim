@@ -78,6 +78,13 @@ the command, so a later run can be compared like for like.
   power and a logarithm on Stoney's measured shapes from Mach 0.8. A new point, Calisto coasting
   at Mach 1.5 (`AeroModel::drag, Calisto at Mach 1.5`), takes 110 ns: its von Kármán nose is on
   Stoney's curve there, and the supersonic friction and stagnation terms take more powers.
+- **After M1.8b3** (2026-09-18, same machine and inputs; `main` measured in the same session in
+  brackets): 117.5 ns (119.1), 54.7 ns (50.3) and 11.0 ns (11.4); Calisto at Mach 1.5, 239.8 ns
+  (108.2). Faster than sound a boattail's drag inverts the Prandtl–Meyer function, a bracketed
+  Newton iteration of about ten evaluations: the 132 ns. A rocket without a boattail, or below
+  Mach 0.8, doesn't pay it; a supersonic flight of a few thousand evaluations pays well under a
+  millisecond. A table of each boattail's drag against Mach number, built with the model, would
+  remove it if it ever matters.
 - **Normal force after M1.5b.** Re-measured in the same session: `AeroModel::new` 3.86 µs and
   11.2 µs, `normal_force` 28.0 ns (two-stage) and 22.2 ns (Calisto), where `main` before M1.5b
   measured 14.8 ns and 11.1 ns in that session (the M1.5a numbers below came from an earlier
