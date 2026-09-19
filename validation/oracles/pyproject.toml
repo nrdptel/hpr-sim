@@ -10,10 +10,8 @@ requires-python = ">=3.12,<3.13"
 dependencies = [
     # The primary code-to-code oracle (MIT).
     "rocketpy==1.13.0",
-    # Drives the OpenRocket jar (GPL-2.0, run-only; its source is never read). The PyPI release
-    # predates OpenRocket 24.12, so this comes from the maintained fork at a pinned commit.
-    "orhelper",
-    # Starts the JVM for the OpenRocket oracle (Apache-2.0). orhelper needs it too.
+    # Starts the JVM for the OpenRocket oracle (Apache-2.0). How M2.2 drives the jar through it
+    # is still open; until then nothing GPL is installed here.
     "jpype1>=1.7.1",
     # Arbitrary-precision arithmetic (BSD-3-Clause) for reference values computed from published
     # formulas, such as WGS 84 normal gravity.
@@ -27,6 +25,3 @@ dependencies = [
 package = false
 # `refs` relies on `uv sync --locked --check`.
 required-version = ">=0.12"
-
-[tool.uv.sources]
-orhelper = { git = "https://github.com/openrocket/orhelper", rev = "fb132c49e661bb00c5586cce6a4ac0c655425197" }

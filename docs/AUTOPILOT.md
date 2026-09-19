@@ -21,6 +21,9 @@
 5. Memory: quit your browser and shut down any virtual machine before a long window. On a 16 GB
    Mac what you leave open is the difference between a run that finishes and one that stalls; see
    [Memory](#memory).
+6. For the OpenRocket oracle (only needed from M2.2 on): `brew install openjdk@17`. OpenRocket
+   24.12 refuses newer runtimes, and the formula is keg-only, so it does not become your default
+   `java` and does not need to be.
 
 ## Start
 
@@ -133,23 +136,30 @@ That is about 8.9 GB of the 16 accounted for. The rest is the kernel, anything t
 out, and the session process itself, which nothing has measured yet — the per-cycle line below is
 there to find out.
 
-**Leftovers are cleaned up.** Each cycle runs in its own process group, and the group is killed
-when the cycle ends, after a normal finish as well as after a watchdog kill. Without that, a build
-or a CI watch the session left running would survive into every cycle that follows and go on
-holding memory. A descendant that deliberately detaches itself into a new group escapes this, so
-it reduces leftovers rather than eliminating them.
+**Leftovers are cleaned up.** Every command a cycle runs — each `cargo`, each `rustc` — is given
+a process group of its own, separate from the cycle's. So the run notes which groups the cycle's
+commands are using as it samples, and when the cycle ends it stops the cycle's own group *and*
+every group it noted, after a normal finish as well as after a watchdog kill. Without that, a
+build or a CI watch the session left running would survive into every cycle that follows and go
+on holding memory.
+
+Noting the groups is what makes this work after the fact: a process group id survives its parent
+dying, whereas walking the process tree would not, because an abandoned build is reparented the
+moment the session exits. A group whose processes are older than the cycle is left alone and said
+so in the log, since over a long run a group id can be reused by something unrelated.
 
 **Reading it afterwards.** Every cycle appends a memory line to `.autopilot/runs.log`, like this
 made-up example:
 
 ```
-Cycle 12 memory (sampled every 5 s): peak group RSS 3.41 GB, least 12% spare, worst pressure
-level 2, most swap 1830 MB.
+Cycle 12 memory (sampled every 5 s): peak RSS of the session and its commands 3.41 GB,
+least 12% spare, worst pressure level 2, most swap 1830 MB.
 ```
 
-- **Peak group RSS** is the resident set size — the memory actually held — summed over the
-  session and everything it started. Summing double-counts pages those processes share, so read
-  it as a trend from cycle to cycle rather than an exact total.
+- **Peak RSS of the session and its commands** is the resident set size — the memory actually
+  held — summed over the session and every process descended from it, builds included. Summing
+  double-counts pages those processes share, so read it as a trend from cycle to cycle rather
+  than an exact total.
 - **Least spare** is the lowest percentage of memory macOS reported as available. This is the
   figure the system itself acts on; counting free pages instead would read near-empty on a
   perfectly healthy Mac.

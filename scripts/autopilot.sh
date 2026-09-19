@@ -111,12 +111,47 @@ swap_mb_now() {
     printf "%d", v }' 2>/dev/null || echo 0
 }
 
-# Resident memory of every process in group $1, in KB. `ps -eo pgid=,rss=` rather than `ps -g`,
-# whose meaning differs between systems.
+# Everything below is descendant-scoped rather than group-scoped, because a cycle's real work is
+# not in the cycle's process group. Each command the session runs is given a process group of its
+# own, so `cargo`, `rustc` and the rest sit outside it: measured on this machine, a cycle that ran
+# the whole gate reported 0.66 GB for its group while its builds, which peak far higher, were
+# invisible to it. What the commands do stay is descendants of the session, so the process tree
+# finds them while the session lives, and the groups recorded from it reach them after it dies.
+#
+# bash 3.2 (what macOS ships) has no mapfile and no associative arrays; none are used here.
+
+# Resident KB of $1 and every descendant.
+descendant_rss_kb() {
+  ps -eo pid=,ppid=,rss= 2>/dev/null | awk -v root="${1:-0}" '
+    { ppid[$1] = $2; rss[$1] = $3; pid[n++] = $1 }
+    END { desc[root] = 1; ch = 1
+          while (ch) { ch = 0
+            for (i = 0; i < n; i++) { p = pid[i]; if (!desc[p] && desc[ppid[p]]) { desc[p] = 1; ch = 1 } } }
+          s = 0; for (i = 0; i < n; i++) { p = pid[i]; if (desc[p]) s += rss[p] }
+          print s + 0 }'
+}
+# Distinct process groups among $1's descendants, leaving out group $2 (this script's own).
+descendant_pgids() {
+  ps -eo pid=,ppid=,pgid= 2>/dev/null | awk -v root="${1:-0}" -v skip="${2:-0}" '
+    { ppid[$1] = $2; pgid[$1] = $3; pid[n++] = $1 }
+    END { desc[root] = 1; ch = 1
+          while (ch) { ch = 0
+            for (i = 0; i < n; i++) { p = pid[i]; if (!desc[p] && desc[ppid[p]]) { desc[p] = 1; ch = 1 } } }
+          for (i = 0; i < n; i++) { p = pid[i]; if (desc[p] && p != root && pgid[p] != skip) g[pgid[p]] = 1 }
+          for (k in g) print k }'
+}
+group_count() { ps -eo pgid= 2>/dev/null | awk -v g="${1:-}" '$1 == g { n++ } END { print n + 0 }'; }
 group_rss_kb() { ps -eo pgid=,rss= 2>/dev/null | awk -v g="${1:-}" '$1 == g { s += $2 } END { print s + 0 }'; }
 group_survivors() {
   ps -eo pgid=,rss= 2>/dev/null | awk -v g="${1:-}" '$1 == g { n++; s += $2 }
     END { if (n) printf "%d process%s holding %.2f GB", n, (n == 1 ? "" : "es"), s / 1048576 }'
+}
+# "3-05:12" / "05:12" / "12" -> seconds. macOS ps accepts etimes but prints nothing, so etime it is.
+etime_seconds() {
+  awk -v t="${1:-0}" 'BEGIN { d = 0; if (index(t, "-")) { split(t, a, "-"); d = a[1]; t = a[2] }
+    m = split(t, b, ":")
+    if (m == 3) s = b[1] * 3600 + b[2] * 60 + b[3]; else if (m == 2) s = b[1] * 60 + b[2]; else s = b[1]
+    print d * 86400 + s }'
 }
 
 # Stop a finished or wedged cycle. $1 is the session's pid, $2 the process group captured when it
@@ -143,17 +178,46 @@ reap() {
     [ -n "$left" ] && log "Cycle left work behind: $left. Stopping it."
   fi
   kill -KILL -- "$target" 2>/dev/null
+
+  # Then the groups the cycle's own commands ran in, recorded while it was alive. A process group
+  # id survives reparenting, so this reaches a build the session abandoned; the process tree no
+  # longer would, because an orphan's parent is launchd by now. A group whose processes are older
+  # than the cycle is left alone: over a long run a group id can be reused by something unrelated.
+  local g oldest e secs age
+  age=$(( $(date +%s) - ${cycle_start:-0} ))
+  for g in ${cycle_groups:-}; do
+    [ -z "$g" ] && continue
+    [ "$g" = "$pgid" ] && continue
+    [ "$(group_count "$g")" -eq 0 ] && continue
+    oldest=0
+    for e in $(ps -eo pgid=,etime= 2>/dev/null | awk -v g="$g" '$1 == g { print $2 }'); do
+      secs=$(etime_seconds "$e"); [ "${secs:-0}" -gt "$oldest" ] && oldest="$secs"
+    done
+    if [ "$oldest" -gt "$(( age + 30 ))" ]; then
+      log "Leaving process group $g alone: ${oldest}s old, older than the ${age}s cycle, so it is not ours."
+      continue
+    fi
+    log "Cycle left a command running in group $g ($(group_survivors "$g")). Stopping it."
+    kill -TERM -- "-$g" 2>/dev/null
+    sleep 1
+    kill -KILL -- "-$g" 2>/dev/null
+  done
   return 0
 }
 
-# Sample the cycle's memory into peak_rss_kb / min_free_pct / worst_pressure / peak_swap_mb. Called
-# every few seconds rather than once a tick, because a link step's peak can last only seconds.
-# These are still samples, so read them as a floor rather than a true maximum. The RSS figure sums
-# the process group, which double-counts pages the processes share; read it as a trend between
-# cycles. The rest are system-wide and include everything else running on the machine.
+# Sample the cycle's memory into peak_rss_kb / min_free_pct / worst_pressure / peak_swap_mb, and
+# record the process groups its commands are running in. Called every few seconds rather than once
+# a tick, because a link step's peak can last only seconds. These are still samples, so read them
+# as a floor rather than a true maximum. The RSS figure sums the session and every descendant,
+# which double-counts pages they share; read it as a trend between cycles. The rest are
+# system-wide and include everything else running on the machine.
 sample_memory() {
-  local rss pct swap level
-  rss=$(group_rss_kb "${child_pgid:-$child}")
+  local rss pct swap level g
+  rss=$(descendant_rss_kb "$child")
+  # Remember each group the cycle's commands run in, so they can be reaped once it ends.
+  for g in $(descendant_pgids "$child" "$SCRIPT_PGID"); do
+    case " ${cycle_groups:-} " in *" $g "*) ;; *) cycle_groups="${cycle_groups:-} $g" ;; esac
+  done
   [ "${rss:-0}" -gt "$peak_rss_kb" ] && peak_rss_kb="$rss"
   pct=$(free_pct_now)
   [ "${pct:--1}" -ge 0 ] && [ "$pct" -lt "$min_free_pct" ] && min_free_pct="$pct"
@@ -245,6 +309,8 @@ memory_baseline
 
 child=""
 child_pgid=""
+cycle_groups=""
+cycle_start=0
 NOT_SAMPLED=101   # a free-percentage sentinel: no real sample can exceed 100
 on_signal() {
   log "Interrupted: stopping now. Work is saved in git; rerun scripts/autopilot.sh to resume the same window."
@@ -368,6 +434,7 @@ while :; do
   # Watchdog: cycle wall-clock cap, stall detection, hard stop 30 min after the deadline.
   last_size=0; last_change=$start; killed=""
   peak_rss_kb=0; min_free_pct=$NOT_SAMPLED; worst_pressure=0; peak_swap_mb=-1; mem_warned=0
+  cycle_groups=""; cycle_start=$start
   while kill -0 "$child" 2>/dev/null; do
     # Sample every 5 s across the 30 s tick. A link step's peak lasts seconds, so one sample a
     # tick would usually walk straight past the thing these numbers exist to catch.
@@ -405,7 +472,7 @@ while :; do
   free_note="${min_free_pct}% spare"; [ "$min_free_pct" -eq "$NOT_SAMPLED" ] && free_note="spare not sampled"
   rss_note="$(fmt_gb "$peak_rss_kb") GB"; [ "$peak_rss_kb" -eq 0 ] && rss_note="not sampled"
   swap_note="${peak_swap_mb} MB"; [ "$peak_swap_mb" -lt 0 ] && swap_note="not sampled"
-  log "Cycle $cycle memory (sampled every 5 s): peak group RSS ${rss_note}, least ${free_note}, worst pressure level ${worst_pressure}, most swap ${swap_note}."
+  log "Cycle $cycle memory (sampled every 5 s): peak RSS of the session and its commands ${rss_note}, least ${free_note}, worst pressure level ${worst_pressure}, most swap ${swap_note}."
 
   if [ "$pmode" != "?" ] && [ "$pmode" != "$PERM_MODE" ]; then
     log "The session ran in '$pmode' mode instead of $PERM_MODE (mode unavailable or disabled by policy?). Stopping; headless runs can't edit files without it."

@@ -361,15 +361,15 @@ mod tests {
     fn parses_import_results() {
         let json = r#"{"rocketpy": {"ok": true, "version": "1.13.0"},
                        "jpype": {"ok": true, "version": null},
-                       "orhelper": {"ok": false, "error": "ModuleNotFoundError: x"}}"#;
-        let imports = parse_imports(json, &["rocketpy", "jpype", "orhelper"]).unwrap();
+                       "notinstalled": {"ok": false, "error": "ModuleNotFoundError: x"}}"#;
+        let imports = parse_imports(json, &["rocketpy", "jpype", "notinstalled"]).unwrap();
         assert_eq!(
             imports,
             [
                 ("rocketpy".to_owned(), Import::Ok(Some("1.13.0".to_owned()))),
                 ("jpype".to_owned(), Import::Ok(None)),
                 (
-                    "orhelper".to_owned(),
+                    "notinstalled".to_owned(),
                     Import::Failed("ModuleNotFoundError: x".to_owned())
                 ),
             ]

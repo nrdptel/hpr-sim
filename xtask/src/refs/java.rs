@@ -17,26 +17,68 @@ pub struct Java {
     pub home: Option<PathBuf>,
 }
 
-/// Finds the first runtime with at least `min_major`, looking in `JAVA_HOME`, then (on macOS)
-/// `/usr/libexec/java_home`, then Homebrew's keg-only `openjdk` formulae, then `PATH`.
-/// Returns the best runtime found when none is new enough.
-pub fn find(min_major: u32) -> Result<Java, Option<Java>> {
+/// Finds a runtime whose feature release is at least `min_major` and, when `max_major` is given,
+/// no newer than that. Looks in `JAVA_HOME`, then (on macOS) `/usr/libexec/java_home`, then
+/// Homebrew's keg-only `openjdk` formulae, then `PATH`. Returns the closest runtime found when
+/// none is acceptable, so the caller can say what is installed.
+///
+/// The upper bound matters: OpenRocket 24.12 refuses Java 21. With a floor alone, `java_home`
+/// answers with the newest runtime, so a machine with both 17 and 21 installed hands back 21 and
+/// the jar then rejects it. Asking `java_home` for the exact release does not fix that on its own
+/// (it answered `-v 17` with 21 when only 21 was registered); rejecting out-of-range candidates
+/// and carrying on to the Homebrew kegs is what finds the keg-only 17.
+pub fn find(min_major: u32, max_major: Option<u32>) -> Result<Java, Option<Java>> {
+    let probed = candidates(min_major, max_major)
+        .into_iter()
+        .filter_map(|candidate| probe(&candidate));
+    choose(probed, min_major, max_major)
+}
+
+/// Picks the first acceptable runtime, or the nearest miss. Separate from `find` so it can be
+/// tested without a JDK installed: the floor-only version of this choice is what let a machine
+/// with Java 17 and 21 hand the OpenRocket oracle the 21 that the jar refuses.
+fn choose(
+    runtimes: impl Iterator<Item = Java>,
+    min_major: u32,
+    max_major: Option<u32>,
+) -> Result<Java, Option<Java>> {
+    let accepts = |major: u32| major >= min_major && max_major.is_none_or(|max| major <= max);
     let mut best: Option<Java> = None;
-    for candidate in candidates(min_major) {
-        let Some(java) = probe(&candidate) else {
-            continue;
-        };
-        if java.major >= min_major {
+    for java in runtimes {
+        if accepts(java.major) {
             return Ok(java);
         }
-        if best.as_ref().is_none_or(|b| java.major > b.major) {
+        // Keep the nearest miss, preferring a too-old runtime over a too-new one: "install a
+        // newer JDK" is more useful to report than "uninstall the one you have".
+        let too_old = java.major < min_major;
+        let better = match &best {
+            None => true,
+            Some(b) => match (too_old, b.major < min_major) {
+                (true, false) => true,
+                (false, true) => false,
+                (true, true) => java.major > b.major, // the newest of the too-old
+                (false, false) => java.major < b.major, // the closest above the range
+            },
+        };
+        if better {
             best = Some(java);
         }
     }
     Err(best)
 }
 
-fn candidates(min_major: u32) -> Vec<PathBuf> {
+/// The version argument for `/usr/libexec/java_home`. `-v 17+` always answers with the newest
+/// installed runtime, so a pinned release is asked for without the `+`. That is a hint, not a
+/// guarantee: measured on macOS 27 with only Java 21 registered, `-v 17` still answered with 21.
+/// The range check in `choose` is what actually keeps an unusable runtime out.
+fn java_home_version(min_major: u32, max_major: Option<u32>) -> String {
+    match max_major {
+        Some(max) if max == min_major => format!("{min_major}"),
+        _ => format!("{min_major}+"),
+    }
+}
+
+fn candidates(min_major: u32, max_major: Option<u32>) -> Vec<PathBuf> {
     let exe = if cfg!(windows) { "java.exe" } else { "java" };
     let mut out = Vec::new();
     if let Some(home) = std::env::var_os("JAVA_HOME") {
@@ -46,7 +88,7 @@ fn candidates(min_major: u32) -> Vec<PathBuf> {
     let macos = cfg!(target_os = "macos") && java_home.exists();
     if macos
         && let Ok(output) = Command::new(java_home)
-            .args(["-v", &format!("{min_major}+")])
+            .args(["-v", &java_home_version(min_major, max_major)])
             .output()
         && output.status.success()
     {
@@ -147,6 +189,56 @@ pub fn parse_version(text: &str) -> Option<(String, u32)> {
 
 #[cfg(test)]
 mod tests {
+    /// A runtime with only the fields the choice looks at.
+    fn jdk(major: u32) -> Java {
+        Java {
+            java: PathBuf::from(format!("/jdk{major}/bin/java")),
+            major,
+            version: format!("openjdk version \"{major}.0.1\""),
+            home: None,
+        }
+    }
+
+    #[test]
+    fn an_upper_bound_skips_a_runtime_the_oracle_would_refuse() {
+        // The real ordering on a Mac with both installed: java_home answers first, with 21.
+        let found = choose([jdk(21), jdk(17)].into_iter(), 17, Some(17)).unwrap();
+        assert_eq!(found.major, 17, "should skip 21 and take the keg-only 17");
+    }
+
+    #[test]
+    fn without_an_upper_bound_the_first_new_enough_runtime_wins() {
+        let found = choose([jdk(21), jdk(17)].into_iter(), 17, None).unwrap();
+        assert_eq!(found.major, 21);
+    }
+
+    #[test]
+    fn nothing_acceptable_reports_the_nearest_miss() {
+        // Too new: report what is installed, so the message can say 21 was found.
+        let miss = choose([jdk(21)].into_iter(), 17, Some(17)).unwrap_err();
+        assert_eq!(miss.unwrap().major, 21);
+        // Too old: the newest of the old ones is the most useful to name.
+        let miss = choose([jdk(8), jdk(11)].into_iter(), 17, Some(17)).unwrap_err();
+        assert_eq!(miss.unwrap().major, 11);
+        // A too-old runtime is reported in preference to a too-new one.
+        let miss = choose([jdk(21), jdk(11)].into_iter(), 17, Some(17)).unwrap_err();
+        assert_eq!(miss.unwrap().major, 11);
+        assert!(
+            choose(std::iter::empty(), 17, Some(17))
+                .unwrap_err()
+                .is_none()
+        );
+    }
+
+    #[test]
+    fn a_pinned_release_is_asked_for_without_the_plus() {
+        // A hint only: macOS answered `-v 17` with 21 when just 21 was registered, so the range
+        // check is what really protects the choice.
+        assert_eq!(java_home_version(17, Some(17)), "17");
+        assert_eq!(java_home_version(17, None), "17+");
+        assert_eq!(java_home_version(17, Some(21)), "17+");
+    }
+
     use super::*;
 
     #[test]

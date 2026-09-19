@@ -51,6 +51,7 @@ new record replaces it and points back. All of them are in the [decision log][de
 | [ADR-032: Normal-force overrides][adr-032] | Flying RASAero II's normal force and centre of pressure: how its export is read, the slope at 0°, the angles past its last, and why the damping stays hpr's | [Aerodynamics](physics/aero.md#the-normal-force-from-rasaero-ii) |
 | [ADR-033: The body faster than sound][adr-033] | The lift a body's cylinder carries behind its nose faster than sound, by the second-order shock-expansion method: the report's tangent body, its limit, and the cone slopes read by hand | [Aerodynamics](physics/aero.md#bodies-faster-than-sound) |
 | [ADR-034: The body's supersonic normal force in flight][adr-034] | How a flight uses that method: a table of each part's share every 0.05 in Mach, joined in a straight line from slender-body theory over Mach 1.2 to 1.5 | [Aerodynamics](physics/aero.md#the-body-faster-than-sound-in-a-flight) |
+| [ADR-035: Drop the orhelper dependency][adr-035] | The GPL-2.0 wrapper for the OpenRocket jar is removed from the oracle environment, unused; how [the OpenRocket oracle milestone](#m2-2) drives the jar is decided when it starts | [How correctness is proven](https://github.com/nrdptel/hpr-sim/blob/main/docs/VALIDATION.md) |
 
 ## The roadmap
 
@@ -291,6 +292,7 @@ is the milestone that added or will add that test.
 [adr-032]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-032-normal-force-overrides-from-rasaero-ii-the-static-force-replaced-hprs-damping-kept-2026-09-19
 [adr-033]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-033-the-body-faster-than-sound-syvertson-and-denniss-second-order-shock-expansion-method-2026-09-19
 [adr-034]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-034-the-bodys-supersonic-normal-force-in-flight-tabulated-shock-expansion-shares-joined-linearly-from-mach-12-2026-09-19
+[adr-035]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-035-drop-the-orhelper-dependency-how-m22-drives-openrocket-is-decided-when-m22-starts-2026-09-19
 [decisions]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md
 [lessons]: https://github.com/nrdptel/hpr-sim/blob/main/docs/research/loft-lessons.md
 [lessons-motors]: https://github.com/nrdptel/hpr-sim/blob/main/docs/research/loft-lessons.md#motors-mass-and-design-checks

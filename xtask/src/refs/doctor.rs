@@ -14,7 +14,7 @@ pub const OPENROCKET_JAR: &str = "openrocket-jar";
 
 /// Python modules each oracle imports.
 const ROCKETPY_MODULES: &[&str] = &["rocketpy"];
-const OPENROCKET_MODULES: &[&str] = &["orhelper", "jpype"];
+const OPENROCKET_MODULES: &[&str] = &["jpype"];
 
 /// A readiness verdict with its reason.
 struct Check {
@@ -40,7 +40,8 @@ impl Check {
 
 pub fn run(root: &Path, lock: &Lock) -> Result<(), String> {
     let min_java = lock.java.as_ref().map_or(17, |java| java.min_major);
-    let java = java::find(min_java);
+    let max_java = lock.java.as_ref().and_then(|java| java.max_major);
+    let java = java::find(min_java, max_java);
 
     println!("Tools");
     let mut rows = vec![row(["tool", "status", "detail"])];
@@ -182,8 +183,13 @@ fn openrocket_check(root: &Path, lock: &Lock, java: Option<java::Java>) -> Check
         missing.push(modules.detail.clone());
     }
     let min = lock.java.as_ref().map_or(17, |java| java.min_major);
+    let want = match lock.java.as_ref().and_then(|java| java.max_major) {
+        Some(max) if max == min => format!("Java {min}"),
+        Some(max) => format!("Java {min} to {max}"),
+        None => format!("Java {min}+"),
+    };
     let Some(java) = java else {
-        missing.push(format!("Java {min}+ ({})", java_hint()));
+        missing.push(format!("{want} ({})", java_hint()));
         return Check::no(format!("needs {}", missing.join("; ")));
     };
     if !missing.is_empty() {

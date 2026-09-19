@@ -37,8 +37,8 @@
     metadata and motor.fusionspace.co snapshots, and `fusionspace-loft` (public, MIT) plus the
     private `loft-fixtures` repo (cloned by `scripts/preflight.sh` or with the user's `gh`
     credentials; skipped with a note when unavailable, as in CI).
-  - A `uv`-managed Python venv in `refs/venv` with `rocketpy==1.13.0` and orhelper from git; a
-    Java 17+ check.
+  - A `uv`-managed Python venv in `refs/venv` with `rocketpy==1.13.0` and JPype; a
+    Java 17 check.
 
   *Done when:*
   - `fetch` is idempotent.
@@ -637,7 +637,7 @@
   - The RocketSerializer cross-check agrees on the key geometry.
 
 - [ ] **M2.2 OpenRocket oracle and corpus.**
-  - `validation/oracles/openrocket/` (orhelper/JPype, OR 24.12) flies the OR examples and the
+  - `validation/oracles/openrocket/` (JPype, OR 24.12) flies the OR examples and the
     corpus.
   - The stored results inside the `.ork` files are used as a second reference.
   - The deferred M1.4 mass/CG checks run against OR values.
