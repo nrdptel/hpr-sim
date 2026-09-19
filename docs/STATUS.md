@@ -7,7 +7,7 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
 - **Current milestone:** M1.8e2 The body's supersonic normal force in flight
 - **Order:** M1.8e2, M1.8e3, then M3.1
 - **Run:** M0.1-M0.4, M1.1-M1.7, M2.1, M1.8a to M1.8e1 shipped; https://nrdptel.github.io/hpr-sim/
-- **Last updated:** 2026-09-19 (M1.8e2 split; its code not started; see the handoff)
+- **Last updated:** 2026-09-19 (M1.8e2 split; its first piece is on a draft PR; see the handoff)
 
 ## Handoff (overwrite each session)
 
