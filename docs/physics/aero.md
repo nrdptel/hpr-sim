@@ -65,9 +65,12 @@
     ([Normal force through Mach 1](#normal-force-through-mach-1)).
   - *The body faster than sound*, by a method no flight uses yet: against its report's
     wind-tunnel measurements of 120 cone- and ogive-cylinders from Mach 3 to 6.28, 117 slopes
-    within ±0.2 per radian and 109 centres of pressure within 0.2 calibres; on the Arcas Robin's
-    nose and cylinder, within 5% from Mach 1.8 to 2.96 and −15.0% to −26.4% past Mach 3, where the
-    measurement includes crossflow ([The body faster than sound](#the-body-faster-than-sound)).
+    within ±0.2 per radian and 109 centres of pressure within 0.2 calibres. On the Arcas Robin's
+    nose and cylinder, the short model within 5% from Mach 1.8 to 2.96, where the tangent cones'
+    slopes are extended below their chart's Mach 3, and −15.0% and −18.7% past it; the long model
+    −13.7% to −26.4% throughout, since the method leaves out the crossflow of
+    [body lift](../glossary.md#body-lift)
+    ([Checking the shock-expansion method](#checking-the-shock-expansion-method)).
   - *In whole flights* in wind, body lift, which RocketPy leaves out, is the largest reason a slow
     rocket's drift differs from RocketPy's ([ADR-026][adr-026]). Nothing against a real flight.
   - *Roll*: the spin that [canted](../glossary.md#cant) fins give, against NASA's measured roll
@@ -300,9 +303,12 @@ Body lift is the extra push of the air crossing the body at larger angles of att
 ### Bodies faster than sound
 
 *Not yet used in a flight:* this is [M1.8e1](../decisions-and-roadmap.md#m1-8e1)'s method, which
-[M1.8e2](../decisions-and-roadmap.md#m1-8e2) will fly. It is checked against the tables of the
-report it comes from, measurements included (see
-[The body faster than sound](#the-body-faster-than-sound) under Verification).
+[M1.8e2](../decisions-and-roadmap.md#m1-8e2) will fly. Against its report's wind-tunnel data, 117 of
+120 slopes are within 0.2 per radian; on the Arcas Robin's body it reads from 16% high at Mach 1.5 to 27%
+low past Mach 3, lower on the longer model, because it leaves out crossflow
+([Checking the shock-expansion method](#checking-the-shock-expansion-method), under
+Verification). It needs a pointed tip: power-series, elliptical and Haack noses, whose tips are
+blunt or vertical, are refused.
 
 Slender-body theory, above, gives a pointed nose a slope of 2 and a cylinder none, at any speed.
 Faster than sound that is too little. The air speeds up around the shoulder where the nose meets
@@ -312,16 +318,23 @@ longer it is. NASA measured the Arcas Robin's body alone at 3.9 per radian at Ma
 slender-body theory gives 2 for its nose.
 
 hpr computes that lift by Syvertson and Dennis's *second-order shock-expansion method* ([SD56]),
-for a body with a pointed tip and supersonic flow everywhere on it, at `α → 0`:
+for a body with a pointed tip and supersonic flow everywhere on it, as the slope at small angles
+of attack (`α → 0`). The older *generalized* shock-expansion method holds the pressure constant
+along each straight piece of the profile; the second-order method also carries the pressure's
+rate of change across each corner, so the pressure can recover along a piece:
 
 1. **The tangent body.** The profile becomes straight elements, each tangent to it: the first at
    the tip, the rest at equal steps along a curved nose (ten per curved piece, the report's own
    choice), one per cone or cylinder. Where two elements meet is a corner.
 2. **The tip** is a cone, so its flow is exactly a cone's, found by integrating the
-   Taylor–Maccoll equation from the shock to the surface ([R1135] eq. 177).
-3. **Around each corner** the flow turns by a Prandtl–Meyer expansion.
+   Taylor–Maccoll equation (the exact equation of supersonic flow over a cone) from the shock to
+   the surface ([R1135] eq. 177). The shock must be *attached*, touching the tip, which holds up
+   to a half-angle that grows with the Mach number.
+3. **Around each corner** the flow turns by a
+   [Prandtl–Meyer expansion](../glossary.md#prandtlmeyer-expansion).
 4. **Along each element** the pressure relaxes from its value behind the corner toward the
-   pressure on a cone tangent to the body there. The lift per unit length relaxes the same way,
+   pressure on the element's *tangent cone*: the cone, pointed into the oncoming flow, whose
+   surface has the body's local slope there. The lift per unit length relaxes the same way,
    toward that cone's.
 5. **The slope and CP** follow by adding the lift over the body.
 
@@ -333,11 +346,14 @@ for a body with a pointed tip and supersonic flow everywhere on it, at `α → 0
 | lift per unit length | `Λ = (1 − e^(−η)) tan δ · (dC_N/dα)_tc + (λ₂/λ₁) e^(−η) Λ₁`, `λ = 2γp / sin 2μ` | [SD56] eqs. 5, 19 |
 | slope and CP | `C_Nα = (2π/A_ref) ∫ Λ r dx`, `x_cp = ∫ Λ r x dx / ∫ Λ r dx` | [SD56] eqs. 14, 21 |
 
-Here `δ` is an element's angle to the axis, `p` the pressure over the free stream's, `M` the
-Mach number at the surface, `r` the radius at the corner, `Ω` the ratio of a stream tube's area
-to its area at Mach 1 ([SD56] eq. 7), `μ` the Mach angle, and `(dC_N/dα)_tc` the slope of the
-tangent cone, which the report plots in its Fig. 2 and hpr reads by hand
+Here `δ` is an element's angle to the axis, `p` the pressure over the free stream's (the
+undisturbed air ahead of the rocket), `M` the Mach number at the surface, `r` the radius at the
+corner, `Ω` how much a thin tube of flowing air widens as its Mach number rises (its area over
+its area at Mach 1, [SD56] eq. 7), `μ` the Mach angle `asin(1/M)`, and `(dC_N/dα)_tc` the slope
+of the tangent cone, digitised by hand from the report's Fig. 2 into a table
 ([`cone_normal_force_slope`](../api/hpr_aero/shock_expansion/fn.cone_normal_force_slope.html)).
+For a worked example with numbers, see
+[Checking the shock-expansion method](#checking-the-shock-expansion-method).
 
 - **A cylinder's tangent cone** is the free stream, so its lift decays to nothing along it.
 - **A boattail has no tangent cone.** The report's footnote 8 takes the free stream's pressure
@@ -352,8 +368,9 @@ tangent cone, which the report plots in its Fig. 2 and hpr reads by hand
   within ±0.2 per radian and ±0.2 calibres of its measurements. Fig. 2 covers Mach 3 to 10; below
   Mach 3 hpr holds the Mach 3 curve, an assumption. The tip's shock must be attached, and the
   profile continuous.
-- **What it leaves out:** the crossflow lift that grows with `sin² α` (body lift, above), and
-  anything viscous. It is the slope at `α → 0` only.
+- **What it leaves out:** the crossflow lift that grows with `sin² α`
+  ([body lift](../glossary.md#body-lift), above), and anything viscous. It is the slope at small
+  angles only.
 
 ## Fins
 
@@ -1474,7 +1491,7 @@ from [`AeroModel::fin_sets`](../api/hpr_aero/model/struct.AeroModel.html#method.
 swept further back start later: a leading edge swept 48° starts at Mach 1.5, and until then it
 is in the join. Nothing past Mach 4.63 has been checked, though the model runs to 5.
 
-### The body faster than sound
+### Checking the shock-expansion method
 
 The second-order shock-expansion method of [Bodies faster than sound](#bodies-faster-than-sound),
 which no flight uses yet, against two references in the fixture
@@ -1498,7 +1515,7 @@ wind-tunnel measurements. The targets were set before measuring: within 0.05 per
 claims against its measurements. Each cell counts the rows within, with the range of hpr's value
 less the reference's:
 
-| nose | slope within 0.05 of the report's | CP within 0.1 calibre of the report's | slope within 0.2 of the measured | CP within 0.2 calibre of the measured |
+| nose | slope within 0.05 per radian of the report's | CP within 0.1 calibre of the report's | slope within 0.2 per radian of the measured | CP within 0.2 calibre of the measured |
 |---|---|---|---|---|
 | cone, fineness 3 | 24 of 24 (−0.006 to +0.024) | 24 of 24 (−0.003 to +0.040) | 20 of 20 (−0.128 to +0.145) | 19 of 20 (−0.194 to +0.250) |
 | cone, fineness 5 | 23 of 24 (−0.003 to +0.066) | 24 of 24 (−0.003 to +0.072) | 20 of 20 (−0.075 to +0.176) | 19 of 20 (−0.165 to +0.272) |
@@ -1516,7 +1533,9 @@ the report's ±0.2; against the report's own values, 104 of 144 slopes and 122 o
 pressure are within 0.05 and 0.1. That is 76 of the 528 comparisons outside:
 
 - **Against the report's own values** (62 misses). A second implementation of the same
-  equations was written separately from the paper during this work, with its own cone solver.
+  equations was written separately from the paper during this work, with its own cone solver. It
+  is a scratch script that is not committed, so this check can't be rerun from the repository;
+  the numbers here are what it gave.
   For the cone-cylinders it used the report's closed form (its Appendix C), for the ogives its
   ten-element march. It agrees with hpr within 0.0007 per radian on all 72 cone-cylinders, and
   within 0.009 per radian and 0.016 calibres on the 60 ogive-cylinders whose march never reaches
@@ -1536,8 +1555,10 @@ pressure are within 0.05 and 0.1. That is 76 of the 528 comparisons outside:
 
 **The Arcas Robin** ([D4014], the wind tunnel of
 [Normal force through Mach 1](#normal-force-through-mach-1)). The method needs a pointed tip, so
-here the nose is the circular arc through the tip and base that best fits the report's
-coordinate table: its radius is 1.744 times a tangent ogive's, it misses the table by 0.003 in
+here the nose is the secant ogive (a circular arc meeting the body at an angle) through the tip
+and base that best fits the report's coordinate table, 4.17 calibres long, so the report's
+Mach-over-fineness range of 0.4 to 2 covers Mach 1.67 to 8.3: its arc radius is 1.744 times a
+tangent ogive's, it misses the table by 0.003 in
 rms, and its tip half-angle is 10.76°. hpr's committed design keeps its power-series nose, whose
 tip is blunt. The measured slope is the fins-off reading fitted over the plotted angles, as
 above. It includes the boattail, the lip behind it, and crossflow lift at those angles, none of

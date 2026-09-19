@@ -3191,7 +3191,8 @@ source covers a 15° boattail. Doing all of it, and flying it, is more than one 
   Fig. 2, read by hand at 0° to 24° for Mach 3 to 10, linear between readings, the Mach 3 curve
   held below Mach 3 and the Mach 10 curve above (an assumption M1.8e2 must measure).
 - **The report's tangent body**: ten elements per curved piece, tangent at `x/l = 0, 0.1, …, 1.0`
-  (footnote 9, p. 15), one per cone or cylinder. Forty move none of its ogive-cylinders by 0.01.
+  (footnote 9, p. 15), one per cone or cylinder. With 40 elements per curve in place of 10, no
+  ogive-cylinder tried moves by 0.01.
 - **Its limit** (p. 13): the exponential relaxation holds only where the gradient behind a corner
   has the sign of `p_c − p₂` (`η ≥ 0`); where it doesn't, the element is the generalized method's,
   its pressure constant and no gradient carried on. A first version carried the gradient on;

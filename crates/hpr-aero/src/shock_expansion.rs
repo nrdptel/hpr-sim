@@ -1,6 +1,37 @@
 //! The normal force of a pointed body of revolution faster than sound, by Syvertson and Dennis's
 //! second-order shock-expansion method (NACA TN 3527, 1956, also NACA Report 1328).
 //!
+//! **Not yet used in a flight**: the milestone
+//! [M1.8e2](https://nrdptel.github.io/hpr-sim/decisions-and-roadmap.html#m1-8e2), the body's
+//! supersonic normal force in flight, will fly it. The guide's
+//! [Bodies faster than sound](https://nrdptel.github.io/hpr-sim/physics/aero.html#bodies-faster-than-sound)
+//! explains the method and how it was checked.
+//!
+//! ```
+//! use hpr_aero::shock_expansion::{BodySegment, DEFAULT_ELEMENTS_PER_CURVE, ShockExpansionBody};
+//! use hpr_design::{NoseShape, Profile};
+//!
+//! # fn main() -> Result<(), Box<dyn std::error::Error>> {
+//! // A cone five calibres long on a cylinder of four, 1 m across, at Mach 4.24.
+//! let body = ShockExpansionBody::new(
+//!     &[
+//!         BodySegment::Profile {
+//!             profile: Profile::nose(NoseShape::Conical {}, 5.0, 0.5)?,
+//!         },
+//!         BodySegment::Cylinder {
+//!             length_m: 4.0,
+//!             radius_m: 0.5,
+//!         },
+//!     ],
+//!     DEFAULT_ELEMENTS_PER_CURVE,
+//! )?;
+//! let slope = body.slope(4.24, std::f64::consts::PI / 4.0)?;
+//! // Slender-body theory: 2 per radian. TN 3527's own value: 2.91; its wind tunnel: 2.84.
+//! assert!((slope.slope_per_rad - 2.922).abs() < 5e-4);
+//! # Ok(())
+//! # }
+//! ```
+//!
 //! Slender-body theory gives a body's nose `C_Nα = 2` and its cylinder nothing, at every Mach
 //! number ([B67] p. 18). Faster than sound the cylinder behind a nose carries lift too: the flow
 //! that expands around the shoulder recovers toward free-stream pressure along the cylinder, and
