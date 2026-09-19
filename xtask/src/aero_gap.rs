@@ -217,6 +217,7 @@ pub fn generate(root: &Path) -> Result<Value, String> {
                 .zip(&measured)
                 .filter(|(a, _)| a.to_degrees().abs() < INNER_DEG)
                 .unzip();
+            let inner = slope(&inner_alphas, &inner_measured);
             let (_, at_zero, _) = flight_bodies(&model, mach, area)?;
             let share = bare
                 .slope(mach, area)
@@ -250,13 +251,15 @@ pub fn generate(root: &Path) -> Result<Value, String> {
                     "implied_k": BODY_LIFT_K * curvature / body_lift,
                     "implied_k_standard_error": BODY_LIFT_K * curvature_error / body_lift,
                     "inner_points": inner_alphas.len(),
-                    "inner_c_n_alpha": slope(&inner_alphas, &inner_measured),
+                    "inner_c_n_alpha": inner,
                     "inner_standard_error": slope_error(&inner_alphas, reading),
                 },
                 "hpr": {
                     "zero_alpha_c_n_alpha": at_zero,
                     "fitted_c_n_alpha": hpr_fitted,
                     "fitted_c_n_alpha_error": hpr_fitted / fitted - 1.0,
+                    "above_zero_alpha": at_zero - zero_alpha,
+                    "above_inner": at_zero - inner,
                 },
                 "gap": gap,
                 "sources": {
@@ -294,7 +297,8 @@ pub fn generate(root: &Path) -> Result<Value, String> {
                  standard errors take each point's reading_c_n as an independent standard \
                  deviation. hpr.zero_alpha_c_n_alpha is its slope at alpha -> 0; \
                  hpr.fitted_c_n_alpha its bodies' C_N through the flight's path at the plotted \
-                 angles, fitted the same way. gap = measured.fitted_c_n_alpha - \
+                 angles, fitted the same way; above_zero_alpha and above_inner its slope at \
+                 alpha -> 0 less measured.zero_alpha_c_n_alpha and measured.inner_c_n_alpha. gap = measured.fitted_c_n_alpha - \
                  hpr.zero_alpha_c_n_alpha. sources.crossflow is hpr's body lift, K (A_plan/A_ref) \
                  sin^2 alpha with K = 1.1, fitted at the plotted angles (body_lift_per_rad2 is K \
                  A_plan/A_ref); crossflow_galejs_range the same at K = 1.0 and 1.5. sources.lip is \
@@ -335,6 +339,136 @@ mod tests {
             "{FIXTURE} differs from `cargo xtask aero`: {}",
             crate::designs::difference(&committed, &fresh).unwrap_or_default()
         );
+    }
+
+    /// The ranges `docs/research/body-supersonic-gap.md` quotes, from the committed fixture.
+    #[test]
+    fn the_research_note_quotes_the_fixture() {
+        let root = crate::designs::root().unwrap();
+        let fixture: Value =
+            serde_json::from_str(&fs::read_to_string(root.join(FIXTURE)).unwrap()).unwrap();
+        let rows: Vec<&Value> = fixture["configurations"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .flat_map(|c| c["rows"].as_array().unwrap())
+            .collect();
+        assert_eq!(rows.len(), 11);
+        let f = |row: &Value, pointer: &str| row.pointer(pointer).unwrap().as_f64().unwrap();
+        let range = |pointer: &str, from_mach: f64| {
+            rows.iter()
+                .filter(|r| f(r, "/mach") >= from_mach)
+                .map(|r| f(r, pointer))
+                .fold([f64::INFINITY, f64::NEG_INFINITY], |[a, b], x| {
+                    [a.min(x), b.max(x)]
+                })
+        };
+        let near = |[a, b]: [f64; 2], [lo, hi]: [f64; 2], within: f64, what: &str| {
+            assert!(
+                (a - lo).abs() <= within && (b - hi).abs() <= within,
+                "{what}: {a} to {b}"
+            );
+        };
+        near(range("/gap", 0.0), [-0.18, 1.25], 0.005, "gap");
+        near(
+            range("/hpr/fitted_c_n_alpha_error", 0.0),
+            [0.149, 0.732],
+            0.0005,
+            "hpr fitted",
+        );
+        near(
+            range("/sources/crossflow", 0.0),
+            [1.40, 2.09],
+            0.005,
+            "hpr crossflow",
+        );
+        near(
+            range("/measured/crossflow_share", 0.0),
+            [0.09, 1.74],
+            0.005,
+            "tunnel crossflow",
+        );
+        near(
+            range("/measured/implied_k", 2.3),
+            [0.66, 1.05],
+            0.005,
+            "K from 2.3",
+        );
+        near(
+            range("/measured/implied_k_standard_error", 2.3),
+            [0.18, 0.23],
+            0.005,
+            "K errors",
+        );
+        near(
+            range("/hpr/above_zero_alpha", 0.0),
+            [0.06, 0.87],
+            0.005,
+            "above b",
+        );
+        near(
+            range("/hpr/above_inner", 0.0),
+            [-0.37, 0.36],
+            0.005,
+            "above inner",
+        );
+        near(
+            range("/sources/fig2_below_mach_3/0", 0.0),
+            [-0.033, 0.0],
+            0.0005,
+            "Fig. 2 low",
+        );
+        near(
+            range("/sources/fig2_below_mach_3/1", 0.0),
+            [0.0, 0.057],
+            0.0005,
+            "Fig. 2 high",
+        );
+        near(range("/sources/lip", 0.0), [0.178, 0.178], 0.0005, "lip");
+        near(
+            range("/sources/reduced_elements", 0.0),
+            [0.0, 0.0],
+            0.0,
+            "#81",
+        );
+        // The gap is smaller than the tunnel's own crossflow at every row.
+        assert!(
+            rows.iter()
+                .all(|r| f(r, "/gap").abs() < f(r, "/measured/crossflow_share"))
+        );
+        // Jorgensen's eta C_dn (Fig. 4's eta at l/d 18.2 and 23.8, times C_dn = 1.2) lies within
+        // 1.3 standard errors of every implied K from Mach 2.3; hpr's 1.1 above all of them, by
+        // up to 2.2.
+        for configuration in fixture["configurations"].as_array().unwrap() {
+            let jorgensen = if configuration["id"] == "arcas-robin-short" {
+                0.74 * 1.2
+            } else {
+                0.77 * 1.2
+            };
+            for row in configuration["rows"].as_array().unwrap() {
+                if f(row, "/mach") < 2.3 {
+                    continue;
+                }
+                let (k, e) = (
+                    f(row, "/measured/implied_k"),
+                    f(row, "/measured/implied_k_standard_error"),
+                );
+                assert!((k - jorgensen).abs() < 1.3 * e);
+                assert!(k < BODY_LIFT_K && (BODY_LIFT_K - k) < 2.2 * e);
+            }
+        }
+    }
+
+    /// Sims's Mach 3 slopes against hpr's reading of TN 3527's Fig. 2, which Sims's theory
+    /// plots: within 0.003 from 5° to 12.5°, 0.01 at 2.5°.
+    #[test]
+    fn sims_agrees_with_hpr_s_fig2_at_mach_3() {
+        for (angle, sims) in SIMS_ANGLES_DEG.iter().zip(SIMS_SLOPES[4]) {
+            let hpr = hpr_aero::shock_expansion::cone_normal_force_slope(3.0, angle.to_radians())
+                .unwrap();
+            let within = if *angle < 5.0 { 0.01 } else { 0.003 };
+            assert!((hpr - sims).abs() < within, "{angle}°: {hpr} {sims}");
+        }
     }
 
     #[test]

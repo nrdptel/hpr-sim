@@ -63,13 +63,16 @@
     [calibres](../glossary.md#calibre-caliber); past Mach 3 the slope reads −17.2% to −25.0% (the
     body), and between Mach 0.8 and 1.2 both miss
     ([Normal force through Mach 1](#normal-force-through-mach-1)).
-  - *The body faster than sound*, by a method no flight uses yet: against its report's
+  - *The body faster than sound*, by the method a flight uses from Mach 1.2 on the bodies it
+    covers: against its report's
     wind-tunnel measurements of 120 cone- and ogive-cylinders from Mach 3 to 6.28, 117 slopes
     within ±0.2 per radian and 109 centres of pressure within 0.2 calibres. On the Arcas Robin's
     nose and cylinder, the short model within 5% from Mach 1.8 to 2.96, where the tangent cones'
     slopes are extended below their chart's Mach 3, and −15.0% and −18.7% past it; the long model
-    −13.7% to −26.4% throughout, since the method leaves out the crossflow of
-    [body lift](../glossary.md#body-lift)
+    −13.7% to −26.4% throughout. Those compare the slope at `α → 0` with a line fitted over
+    about ±4°. Fitted the same way, with the [body lift](../glossary.md#body-lift) a flight adds,
+    the body with its boattail reads 14.9% to 73.2% high: hpr's body lift is larger than the
+    tunnel's there
     ([Checking the shock-expansion method](#checking-the-shock-expansion-method)).
   - *In whole flights* in wind, body lift, which RocketPy leaves out, is the largest reason a slow
     rocket's drift differs from RocketPy's ([ADR-026][adr-026]). Nothing against a real flight.
@@ -94,7 +97,7 @@
   with a flare or step anywhere behind the nose (a lip or a motor retainer wider than the tube in
   front counts), or whose nose has a blunt or vertical tip, keeps slender-body theory for its
   whole body at every speed, which reads low past Mach 3, until
-  [M1.8e5](../decisions-and-roadmap.md#m1-8e5), crossflow and blunt tips. There are no damping coefficients for pitch and
+  [M1.8e6](../decisions-and-roadmap.md#m1-8e6), crossflow and blunt tips faster than sound. There are no damping coefficients for pitch and
   yaw: a flight takes that damping from each part's own local flow. The roll forcing near Mach
   1.5 reads high, and nothing measured checks roll below it
   ([Roll: forcing and damping](#roll-forcing-and-damping)).
@@ -1733,9 +1736,27 @@ died away, so the long model gets almost nothing more (3.313 against 3.300 at Ma
 its measurement is 0.57 higher. That difference goes with the longer body's larger side area,
 the mark of crossflow lift. The boattail flies by footnote 8 since
 [M1.8e4](../decisions-and-roadmap.md#m1-8e4) (the worked example under
-[The body faster than sound in a flight](#the-body-faster-than-sound-in-a-flight));
-crossflow and the lip are [M1.8e5](../decisions-and-roadmap.md#m1-8e5)'s, crossflow and blunt tips
-faster than sound. Below Mach 3 the tangent cones' slopes are an assumption.
+[The body faster than sound in a flight](#the-body-faster-than-sound-in-a-flight)).
+
+**Most of that gap is the comparison, not missing lift**
+([M1.8e5](../decisions-and-roadmap.md#m1-8e5) sized each cause; [the research note][gap-note]
+has the tables). The measurement is a straight line through points from about −5° to +4°, and
+crossflow lift, which grows as `α |α|`, steepens it. Fitted the same way at the same angles, with
+the body lift a flight adds, hpr's body with its boattail reads 14.9% to 73.2% *high* at every
+Mach number (fixture [`arcas-robin-gap.json`][gap-fixture], which `cargo xtask aero` writes).
+
+- hpr's body lift puts 1.40 to 2.09 per radian into the fitted line, and the tunnel's own
+  curvature 0.09 to 1.74. From Mach 2.3 that curvature matches body lift with `K` from 0.66 to
+  1.05, each ±0.18 to ±0.23, where hpr uses 1.1. Jorgensen's crossflow method (NASA TR R-474)
+  gives about 0.9 for these bodies.
+- With crossflow fitted out, hpr's slope at `α → 0` lies between 0.37 below and 0.87 above the
+  tunnel's, which the readings can't narrow.
+- The lip, which the method can't take, adds +0.178 by slender-body theory. Below Mach 3, where
+  the tangent cones' slopes are held at Fig. 2's Mach 3 curve, NASA SP-3007's tables move the
+  nose and cylinder's share by −0.033 to +0.057 at most. hpr's reading of
+  [issue #81](https://github.com/nrdptel/hpr-sim/issues/81) changes nothing on this body.
+
+[M1.8e6](../decisions-and-roadmap.md#m1-8e6) sizes crossflow faster than sound from this.
 
 ### Drag verification
 
@@ -2178,3 +2199,5 @@ ellipse's integrals ([N09] eq. 3.70–3.71); the supersonic forcing and damping 
 [adr-031]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-031-roll-from-canted-fins-and-roll-damping-by-barrowmans-strip-theory-2026-09-19
 [adr-032]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-032-normal-force-overrides-from-rasaero-ii-the-static-force-replaced-hprs-damping-kept-2026-09-19
 [adr-033]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-033-the-body-faster-than-sound-syvertson-and-denniss-second-order-shock-expansion-method-2026-09-19
+[gap-note]: https://github.com/nrdptel/hpr-sim/blob/main/docs/research/body-supersonic-gap.md
+[gap-fixture]: https://github.com/nrdptel/hpr-sim/blob/main/validation/fixtures/aero/arcas-robin-gap.json

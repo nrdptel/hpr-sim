@@ -4,10 +4,10 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
 
 ## Now
 
-- **Current milestone:** M1.8e5 The remaining gap, source by source (split from the old e5)
-- **Order:** M1.8e5, e6, e7, then M3.1
-- **Run:** M0.1-M0.4, M1.1-M1.7, M2.1, M1.8a to M1.8e4 shipped; https://nrdptel.github.io/hpr-sim/
-- **Last updated:** 2026-09-19 (M1.8e5 split into e5 to e7; clean stop, draft PR open)
+- **Current milestone:** M1.8e6 Crossflow and blunt tips faster than sound
+- **Order:** M1.8e6, e7, then M3.1
+- **Run:** M0.1-M0.4, M1.1-M1.7, M2.1, M1.8a to M1.8e5 shipped; https://nrdptel.github.io/hpr-sim/
+- **Last updated:** 2026-09-19 (M1.8e5 done)
 
 ## Handoff (overwrite each session)
 
@@ -27,18 +27,16 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
 - **M1.8a to e1 (ADR-027 to ADR-033):** `cargo xtask aero` writes the aero fixtures (hpr's
   values and errors only). NTRS serves five of ADR-030's PDFs with a 436-byte header (pinned as
   served). Scratch: `refs/scratch/{arcas,stoney,m18b2,m18b3,m18c,m18d,m18e}/`. TN D-4013's
-  rolling-moment plots are unread; #76: M1.8a's other TN D-4014 zeros. M1.8e1's Python check,
-  `m18e/sose.py` (patch in hpr's Fig. 2), carries the gradient through reduced elements; hpr
-  doesn't (#81).
-- **Resume here (clean stop at 45 minutes left):** branch `m1.8e5-gap-by-source`, draft #91; only
-  the split so far. Next cycle: write e5's `docs/research/` page on this branch (site link, gate,
-  review), mark the PR ready, merge. e7 carries M1.8e's 15% bullet.
-- **M1.8e4** (ADR-034 flies M1.8e2): `SupersonicBody` in `hpr-aero/src/model.rs` tabulates
-  the method's shares (nose and same-radius tubes) every 0.05 Mach, lazily, joined linearly from
-  max(1.2, where the method starts to hold, bisected since M1.8e3) over 0.3; only when nothing
-  behind has a slope; since M1.8e4 boattails and tubes behind them too (slender-body stations).
-  Gap left: long model to −27.0% with its boattail; e5 sizes crossflow at the tunnel's angles
-  (a finite-α slope), blunt tips, Fig. 2 below Mach 3 and #81 before any model is built.
+  rolling-moment plots are unread; #76: M1.8a's other TN D-4014 zeros. `m18e/sose.py` (M1.8e1's
+  Python check) carries the gradient through reduced elements; hpr doesn't (#81).
+- **M1.8e2 to e4** (ADR-034): `SupersonicBody` (`hpr-aero/src/model.rs`) tabulates the method's
+  shares every 0.05 Mach, lazily, joined from max(1.2, its bisected start) over 0.3; boattails too.
+- **M1.8e6 next** (M1.8e5: `docs/research/body-supersonic-gap.md`, fixture `arcas-robin-gap.json`
+  from `xtask/src/aero_gap.rs`): the −27% was the comparison. Fitted at the tunnel's angles, hpr's
+  body reads 15–73% *high*: its body lift (`K` 1.1) beats the tunnel's curvature (`K` 0.66–1.05
+  from Mach 2.3; Jorgensen's `η C_dn` ≈ 0.9). Size crossflow, don't add it; decide supersonic-only
+  or every speed (body lift drives M2.1's drift in wind); judge fitted at the plotted angles. Blunt
+  tips are coverage: the committed power-series nose is refused. e7 carries M1.8e's 15% bullet.
 - **Autopilot memory:** each command a cycle runs gets its own process group, so the run notes
   them while sampling and reaps them too; the cycle's group alone misses every build.
 - **M2.2's OpenRocket oracle** (ADR-035): orhelper is dropped, so decide how to drive the jar
@@ -53,6 +51,9 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
 
 ## Done log (newest first, keep about 15)
 
+- 2026-09-19: M1.8e5 The remaining gap, source by source: at the tunnel's angles hpr's body reads
+  15–73% high, not low; crossflow's size ranks first, then the slope at `α → 0`, the lip (+0.18),
+  Fig. 2 below Mach 3 (≤ 0.06, SP-3007), the blunt tip; #81 zero (no reduced elements).
 - 2026-09-19: M1.8e4 The boattail's share faster than sound: boattails and tubes behind them
   fly the method (their stations slender-body theory's); no jump at ±1e-9; the Arcas Robin
   through the flight with its boattail equals the method's (long −18.3% to −27.0%).
@@ -72,9 +73,8 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
 
 - **Protect `main`** (2 minutes, optional). Settings → Branches → rule for `main`: require the
   `fmt`, `clippy`, `doc`, `deny`, `wasm-check`, `site` and the three `test (...)` and three
-  `validate (...)` checks; block force
-  pushes. Don't require approvals: the autopilot merges its own PRs as you, and authors can't
-  self-approve.
+  `validate (...)` checks; block force pushes. Don't require approvals: the autopilot merges its
+  own PRs as you, and authors can't self-approve.
 - **crates.io names** (whenever): `hpr`, `hpr-sim`, `hpr-core`... are unreserved. Reserve them?
 - **RASAero values in fixtures** (no action if fine): `normal-force-vs-mach.json` commits 30 values
   of RocketPy's 2018 Calisto RASAero II export (ADR-027), and `rocketpy-drag-curves.json` hpr's
@@ -85,6 +85,7 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
 ## Decided without Neer (one line each; significant ones get an ADR)
 
 - M1.8e splits (one id level): e3 join start, e4 boattail; old e5 → e5 measure, e6 fly, e7 rest.
+- M1.8e5: gap sized at the tunnel's angles; its `α → 0` slope from `a + bα + cα|α|` and `|α| < 3°`.
 - M1.8e4: boattail shares can cross zero, so it and tubes behind keep slender-body's station.
 - ADR-034: M1.8e2's shares tabulated every 0.05 Mach (lazily; eager took unit tests to 238 s),
   joined over Mach 1.2 to 1.5; boattails fly it since M1.8e4.

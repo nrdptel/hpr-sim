@@ -145,7 +145,7 @@ missing or its status disagrees.
 | <a id="m1-8e2"></a>[M1.8e2][phase-1] | The body's supersonic normal force in a flight: the nose and its cylinder, joined to the subsonic model | done |
 | <a id="m1-8e3"></a>[M1.8e3][phase-1] | Faster than sound: the blend into the shock-expansion method now starts at the exact Mach where the method starts to hold, not rounded to a 0.05 step | done |
 | <a id="m1-8e4"></a>[M1.8e4][phase-1] | Faster than sound: a boattail, and a tube behind it, take their share of the body's normal force from the shock-expansion method | done |
-| <a id="m1-8e5"></a>[M1.8e5][phase-1] | Faster than sound: how much of the Arcas Robin's remaining gap each missing effect (crossflow, the blunt tip, and others) explains, measured before modelling | not yet done |
+| <a id="m1-8e5"></a>[M1.8e5][phase-1] | Faster than sound: how much of the Arcas Robin's remaining gap each missing effect (crossflow, the blunt tip, and others) explains, measured before modelling | done |
 | <a id="m1-8e6"></a>[M1.8e6][phase-1] | Crossflow and blunt tips faster than sound, the models chosen by that measurement, in flight | not yet done |
 | <a id="m1-8e7"></a>[M1.8e7][phase-1] | Faster than sound: the body's model switches and the boattail angle cap, and the Arcas Robin wind tunnel's 15% target | not yet done |
 | <a id="m3-1"></a>[M3.1][phase-1] | Reading OpenRocket `.ork` design files | not yet done |

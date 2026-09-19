@@ -8,6 +8,8 @@
         {
           "gap": -0.1827384133322938,
           "hpr": {
+            "above_inner": 0.3317025200636503,
+            "above_zero_alpha": 0.5959719075853243,
             "fitted_c_n_alpha": 3.7956764764194983,
             "fitted_c_n_alpha_error": 0.7316044393712693,
             "zero_alpha_c_n_alpha": 2.3747381507536622
@@ -47,6 +49,8 @@
         {
           "gap": 0.032438903272078434,
           "hpr": {
+            "above_inner": 0.03284938865684239,
+            "above_zero_alpha": 0.061569913567375956,
             "fitted_c_n_alpha": 3.977881787335554,
             "fitted_c_n_alpha_error": 0.522379648879626,
             "zero_alpha_c_n_alpha": 2.5804978830696337
@@ -86,6 +90,8 @@
         {
           "gap": 0.24918957754940996,
           "hpr": {
+            "above_inner": 0.21395467582336458,
+            "above_zero_alpha": 0.6320559343565626,
             "fitted_c_n_alpha": 4.290975121423319,
             "fitted_c_n_alpha_error": 0.39429350264657814,
             "zero_alpha_c_n_alpha": 2.828336863819215
@@ -125,6 +131,8 @@
         {
           "gap": 0.22814264054271405,
           "hpr": {
+            "above_inner": 0.3633641100599516,
+            "above_zero_alpha": 0.8722799927513805,
             "fitted_c_n_alpha": 4.536268410040175,
             "fitted_c_n_alpha_error": 0.38129496574459254,
             "zero_alpha_c_n_alpha": 3.055926673063219
@@ -164,6 +172,8 @@
         {
           "gap": 0.622224198286224,
           "hpr": {
+            "above_inner": -0.03658939271394157,
+            "above_zero_alpha": 0.5685148183767801,
             "fitted_c_n_alpha": 4.710706320194573,
             "fitted_c_n_alpha_error": 0.21270019507441273,
             "zero_alpha_c_n_alpha": 3.2622530528331417
@@ -203,6 +213,8 @@
         {
           "gap": 0.8034558215590395,
           "hpr": {
+            "above_inner": -0.031449847909480244,
+            "above_zero_alpha": 0.5868685996373402,
             "fitted_c_n_alpha": 4.790960537039821,
             "fitted_c_n_alpha_error": 0.1548021443593688,
             "zero_alpha_c_n_alpha": 3.3452726514882856
@@ -249,6 +261,8 @@
         {
           "gap": 0.5780049287072253,
           "hpr": {
+            "above_inner": 0.0036130005047634306,
+            "above_zero_alpha": 0.6602639577078762,
             "fitted_c_n_alpha": 4.496618514030548,
             "fitted_c_n_alpha_error": 0.4236390935076757,
             "zero_alpha_c_n_alpha": 2.580533309345384
@@ -288,6 +302,8 @@
         {
           "gap": 0.6966928355708992,
           "hpr": {
+            "above_inner": -0.05046213678029998,
+            "above_zero_alpha": 0.5841635854995895,
             "fitted_c_n_alpha": 4.799253234123522,
             "fitted_c_n_alpha_error": 0.36131562134091766,
             "zero_alpha_c_n_alpha": 2.8287594246449794
@@ -327,6 +343,8 @@
         {
           "gap": 0.8093867959044996,
           "hpr": {
+            "above_inner": 0.023776296778284856,
+            "above_zero_alpha": 0.5372074649560625,
             "fitted_c_n_alpha": 5.142233724757487,
             "fitted_c_n_alpha_error": 0.3294250404281751,
             "zero_alpha_c_n_alpha": 3.0586264943381005
@@ -366,6 +384,8 @@
         {
           "gap": 1.1804842663505806,
           "hpr": {
+            "above_inner": -0.2811466189937506,
+            "above_zero_alpha": 0.14544246411086803,
             "fitted_c_n_alpha": 5.225540287902316,
             "fitted_c_n_alpha_error": 0.17287753207056245,
             "zero_alpha_c_n_alpha": 3.2748319495524605
@@ -405,6 +425,8 @@
         {
           "gap": 1.2464017023762493,
           "hpr": {
+            "above_inner": -0.3714922371469136,
+            "above_zero_alpha": 0.4914412098211107,
             "fitted_c_n_alpha": 5.304576579092301,
             "fitted_c_n_alpha_error": 0.14940973768527965,
             "zero_alpha_c_n_alpha": 3.3686423547367843
@@ -499,5 +521,5 @@
   },
   "generator": "cargo xtask aero",
   "nose_fineness": 4.166666666666667,
-  "note": "The Arcas Robin's body alone faster than sound (TN D-4014, fins off) against hpr's bodies in a flight: the nose as the fitted secant ogive of shock-expansion.json, the cylinder and the boattail, not the lip (M1.8e4's in_flight_with_boattail). All slopes per radian on the body's cross-section. measured.fitted_c_n_alpha is M1.8a's straight line through the plotted points; zero_alpha_c_n_alpha and crossflow_per_rad2 are b and c of C_N = a + b alpha + c alpha |alpha| through the same points (Jorgensen, NASA TR R-474, eq. 1), crossflow_share = fitted - zero_alpha the curvature's part of the straight line, and implied_k = 1.1 c / body_lift_per_rad2 the K that makes hpr's body lift that curvature; standard errors take each point's reading_c_n as an independent standard deviation. hpr.zero_alpha_c_n_alpha is its slope at alpha -> 0; hpr.fitted_c_n_alpha its bodies' C_N through the flight's path at the plotted angles, fitted the same way. gap = measured.fitted_c_n_alpha - hpr.zero_alpha_c_n_alpha. sources.crossflow is hpr's body lift, K (A_plan/A_ref) sin^2 alpha with K = 1.1, fitted at the plotted angles (body_lift_per_rad2 is K A_plan/A_ref); crossflow_galejs_range the same at K = 1.0 and 1.5. sources.lip is slender-body theory's share of the lip behind the boattail, 2 dA/A_ref. sources.reduced_elements counts the nose's elements the method reduces to the generalized method (issue #81). measured.inner_c_n_alpha is the straight line through the points within 3 deg only. sources.fig2_below_mach_3 bounds the change in the nose and cylinder's share (nose_and_cylinder_c_n_alpha, the method's, no boattail) if each tangent cone's slope, held at TN 3527 Fig. 2's Mach 3 curve below Mach 3, took Sims's value instead (NASA SP-3007 Table 2, p. 20): the least and greatest ratio of his slopes to his Mach 3 slopes at his angles to 12.5 deg and his Mach numbers at or around the row's, less 1, times the share; zero from Mach 3. remaining = gap - crossflow - lip. No target."
+  "note": "The Arcas Robin's body alone faster than sound (TN D-4014, fins off) against hpr's bodies in a flight: the nose as the fitted secant ogive of shock-expansion.json, the cylinder and the boattail, not the lip (M1.8e4's in_flight_with_boattail). All slopes per radian on the body's cross-section. measured.fitted_c_n_alpha is M1.8a's straight line through the plotted points; zero_alpha_c_n_alpha and crossflow_per_rad2 are b and c of C_N = a + b alpha + c alpha |alpha| through the same points (Jorgensen, NASA TR R-474, eq. 1), crossflow_share = fitted - zero_alpha the curvature's part of the straight line, and implied_k = 1.1 c / body_lift_per_rad2 the K that makes hpr's body lift that curvature; standard errors take each point's reading_c_n as an independent standard deviation. hpr.zero_alpha_c_n_alpha is its slope at alpha -> 0; hpr.fitted_c_n_alpha its bodies' C_N through the flight's path at the plotted angles, fitted the same way; above_zero_alpha and above_inner its slope at alpha -> 0 less measured.zero_alpha_c_n_alpha and measured.inner_c_n_alpha. gap = measured.fitted_c_n_alpha - hpr.zero_alpha_c_n_alpha. sources.crossflow is hpr's body lift, K (A_plan/A_ref) sin^2 alpha with K = 1.1, fitted at the plotted angles (body_lift_per_rad2 is K A_plan/A_ref); crossflow_galejs_range the same at K = 1.0 and 1.5. sources.lip is slender-body theory's share of the lip behind the boattail, 2 dA/A_ref. sources.reduced_elements counts the nose's elements the method reduces to the generalized method (issue #81). measured.inner_c_n_alpha is the straight line through the points within 3 deg only. sources.fig2_below_mach_3 bounds the change in the nose and cylinder's share (nose_and_cylinder_c_n_alpha, the method's, no boattail) if each tangent cone's slope, held at TN 3527 Fig. 2's Mach 3 curve below Mach 3, took Sims's value instead (NASA SP-3007 Table 2, p. 20): the least and greatest ratio of his slopes to his Mach 3 slopes at his angles to 12.5 deg and his Mach numbers at or around the row's, less 1, times the share; zero from Mach 3. remaining = gap - crossflow - lip. No target."
 }
