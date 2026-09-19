@@ -41,7 +41,7 @@ These parts are built and tested. Each page gives its sources, and most say what
 | Wind | Constant, layered, power-law and logarithmic wind profiles; [turbulence](glossary.md#turbulence-dryden) (random gusts) from a random-number generator started from a [seed](glossary.md#seed), a number you choose: the same seed gives exactly the same gusts every time on the same platform (operating system and processor) | [Wind](physics/wind.md), [Turbulence](physics/turbulence.md) |
 | Motors | Reads `.eng` and `.rse` [thrust curves](glossary.md#thrust-curve); thrust, mass, centre of gravity and inertia through the burn; [32 bundled motors](physics/motor.md#the-bundled-motors) | [Solid motors](physics/motor.md), [`.eng` files](format/eng.md), [`.rse` files](format/rse.md) |
 | Rocket | Nose cones, body tubes, transitions (tapered sections between tubes of different diameters), fins and other parts, their materials, the whole rocket's mass properties, and design checks | [Design tree](physics/design.md), [Shapes](physics/shapes.md), [Mass properties](physics/mass.md) |
-| Aerodynamics | The [centre of pressure](glossary.md#centre-of-pressure-cp) (where the aerodynamic force acts; its distance behind the centre of gravity is the [stability margin](glossary.md#stability-margin)), the [normal force](glossary.md#normal-force) (the sideways force when the rocket flies at an angle to the airflow, its [angle of attack](glossary.md#angle-of-attack)) and drag. For small angles of attack: the normal force and the drag from [Mach](glossary.md#mach-number) 0 to 5, both checked against a wind tunnel from 0.6 to 4.63 | [Aerodynamics](physics/aero.md) |
+| Aerodynamics | The [centre of pressure](glossary.md#centre-of-pressure-cp) (where the aerodynamic force acts; its distance behind the centre of gravity is the [stability margin](glossary.md#stability-margin)), the [normal force](glossary.md#normal-force) (the sideways force when the rocket flies at an angle to the airflow, its [angle of attack](glossary.md#angle-of-attack)) and drag. For small angles of attack: the normal force and the drag from [Mach](glossary.md#mach-number) 0 to 5, both checked against a wind tunnel from 0.6 to 4.63 (the drag reads high at most speeds) | [Aerodynamics](physics/aero.md) |
 | Flight | The launch rail, powered flight and coast to apogee, with an [adaptive time step](glossary.md#adaptive-time-step) and [events](glossary.md#event) such as burnout and apogee | [Rigid-body flight](physics/flight.md), [Time integration](physics/integration.md) |
 | Recovery | Parachutes, [streamers](glossary.md#streamer) and [tumbling](glossary.md#tumble-recovery), the [drift](glossary.md#drift) they carry the rocket downwind, and a rocket that [separates](glossary.md#separation) into bodies that each descend on their own | [Recovery](physics/recovery.md) |
 
@@ -61,8 +61,12 @@ out.
   - Against NASA's wind-tunnel tests of the Arcas Robin sounding rocket, from Mach 0.6 to 4.63, it
     reads high at most speeds, most of all with fins past Mach 1
     ([Aerodynamics](physics/aero.md#drag-against-the-arcas-robin-wind-tunnel)).
+  - So for a rocket that goes past Mach 1, expect hpr's apogee to come out low rather than high.
+    Its base drag, on the flat aft end, hasn't been checked faster than Mach 0.3 at all.
   - It hasn't been compared with [RASAero II](glossary.md#rasaero-ii)'s drag near Mach 1 yet; that
-    comes with [M1.8b2](decisions-and-roadmap.md#m1-8b2).
+    comes with [M1.8b2](decisions-and-roadmap.md#m1-8b2). Until then, a drag table from another
+    tool can replace hpr's own drag
+    ([Aerodynamics](physics/aero.md#drag)).
 - **The normal force misses near Mach 1 and past Mach 3.** The normal force and centre of pressure
   carry on to Mach 5, checked against the same wind tunnel to Mach 4.63. Between Mach 0.8 and 1.2
   they miss it, and past Mach 3 the normal force reads 17 to 25% low

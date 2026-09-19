@@ -669,7 +669,16 @@ The example leaves out several kinds of part and setting that a design can have:
   widens, because no drag data covers them: a bulged secant ogive (`NoseShape::Ogive` with a
   `radius_ratio` below 1, which bulges wider than the body just ahead of its base) and a Haack
   shape whose parameter `C` is above 1/3, past the LV-Haack ([Shapes](physics/shapes.md#profiles)).
-  As with tube fins, a design can hold them, but a flight or a CP can't be worked out with them.
+  As with tube fins, a design can hold them, but a flight or a CP can't be worked out with them:
+  the whole aerodynamic model is built at once, so a gap in the drag blocks the CP too. Designs
+  with these shapes gave a CP before [M1.8b1](decisions-and-roadmap.md#m1-8b1), the drag through
+  Mach 1.
+- **Fin sections and supersonic drag.** Faster than sound, every fin section takes a blunt
+  leading edge's drag: the square section a flat face's, the rounded and airfoil sections a
+  rounded edge's. The airfoil section differs from the rounded only in having no trailing-edge
+  base drag. That reads far high for thin, sharp fins, and the one wind tunnel hpr has been
+  measured against tested only double-wedge fins, so how well square or rounded edges fare is
+  unmeasured ([Drag limits](physics/aero.md#drag-limits)).
 
 ## Where next
 

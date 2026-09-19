@@ -25,8 +25,22 @@
 //!
 //! Niskanen p. 48 treats shoulders "similar to nose cones" at all speeds and calls the result
 //! "somewhat dubious at supersonic velocities"; a step is a shoulder of zero length, fineness 0.
-//! See `docs/physics/aero.md` and the decision record [ADR-028][adr-028].
+//! See [Drag through Mach 1][guide] in the guide and the decision record [ADR-028][adr-028].
 //!
+//! A 5:1 von Kármán nose at Mach 1.5, the guide's worked example: Stoney's 3:1 curve gives 0.0893,
+//! scaled by eq. B.9 to 0.0407 on the base area, where a 5:1 cone drags 0.0653.
+//!
+//! ```
+//! use hpr_aero::nose_drag::{PressureDragCurve, cone_pressure_drag_coefficient};
+//! use hpr_design::NoseShape;
+//!
+//! let von_karman = PressureDragCurve::new(NoseShape::VON_KARMAN, 5.0, 0.0)?;
+//! assert!((von_karman.coefficient(1.5)? - 0.0407).abs() < 5e-5);
+//! assert!((cone_pressure_drag_coefficient(5.0, 1.5)? - 0.0653).abs() < 5e-5);
+//! # Ok::<(), hpr_aero::AeroError>(())
+//! ```
+//!
+//! [guide]: https://nrdptel.github.io/hpr-sim/physics/aero.html#drag-through-mach-1
 //! [adr-028]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-028-drag-through-mach-1-niskanens-appendix-b-stoneys-curves-and-the-arcas-robins-axial-force-2026-09-18
 
 use hpr_design::NoseShape;
@@ -1132,7 +1146,12 @@ mod tests {
         close(exponent, 1.2925, 1e-4, "log₄ 6");
         let by_hand = blunt * (0.0893 / blunt).powf(exponent);
         let vk = PressureDragCurve::new(NoseShape::VON_KARMAN, 5.0, 0.0).unwrap();
-        close(vk.coefficient(1.5).unwrap(), by_hand, 1e-12, "5:1 von Kármán");
+        close(
+            vk.coefficient(1.5).unwrap(),
+            by_hand,
+            1e-12,
+            "5:1 von Kármán",
+        );
         close(by_hand, 0.0407, 1e-3, "0.0407");
         let cone = cone_pressure_drag_coefficient(5.0, 1.5).unwrap();
         close(cone, 0.0653, 1e-3, "5:1 cone");
@@ -1155,7 +1174,10 @@ mod tests {
         for (m, measured, error) in stoney {
             let hpr = cone_pressure_drag_coefficient(3.0, m).unwrap();
             let got = hpr / measured - 1.0;
-            assert!((got - error).abs() < 0.001, "Mach {m}: {got:+.4}, recorded {error:+.3}");
+            assert!(
+                (got - error).abs() < 0.001,
+                "Mach {m}: {got:+.4}, recorded {error:+.3}"
+            );
         }
     }
 

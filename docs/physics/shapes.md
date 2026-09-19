@@ -61,6 +61,11 @@ shape is a normalized curve `g(ξ)` with `g(0) = 0` at the tip and `g(1) = 1` at
     OpenRocket jar.
 - **Haack.** Monotone for `C ≤ 2/3`, because `d(g²)/dθ = sin²θ (2 + 3C cos θ)/π`. `C = 0` is the
   von Kármán (LD-Haack) ogive and `C = 1/3` the LV-Haack. [TD] limits `C` to `1/3` in the program.
+- **Two shapes the aerodynamics refuse.** A Haack nose or widening transition above `C = 1/3`,
+  and a bulged secant ogive (arc radius below the tangent ogive's), have no drag data faster than
+  sound, so the aerodynamic model refuses them, and with it the centre of pressure, since
+  [M1.8b1](../decisions-and-roadmap.md#m1-8b1). Their shapes and mass properties here are
+  unaffected ([Aerodynamics](aero.md#drag-through-mach-1)).
 - **Blunt tips.** The elliptical, power-series (`n < 1`) and Haack slopes are infinite at the tip.
   `n = 0` (a flat cylinder) is rejected; model it as a tube and a bulkhead.
 - **Errors in [CR].** Its prose says "greater than twice the length" for the bulged secant ogive,

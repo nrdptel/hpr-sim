@@ -372,8 +372,18 @@ examples from his papers, with their printed values in
 ## Fineness ratio
 
 A nose cone's length divided by its base diameter. A 3:1 tangent ogive has a fineness ratio of 3,
-which the pages also write as "fineness 3". See
+which the pages also write as "fineness 3". For a shoulder, a transition that widens toward the
+tail, the drag pages use its length over its rise in diameter, so a conical shoulder has the
+fineness of the cone with the same surface angle. See
 [Aerodynamics](physics/aero.md#bodies-of-revolution).
+
+## Forebody
+
+Everything of a rocket but its flat aft end, the base: the nose, the body tube, the fins and any
+boattail. A wind-tunnel model sits on a [sting](#sting) that disturbs the air behind its base, so
+tunnel reports often give the forebody's drag alone, as NASA's Arcas Robin reports do, and hpr is
+compared with them on its drag without the base drag. See
+[Aerodynamics](physics/aero.md#drag-against-the-arcas-robin-wind-tunnel).
 
 
 ## Gate and target
@@ -762,6 +772,13 @@ Station `s` is `z_B = −s` in the [body frame](#body-frame). See
 [The design tree](physics/design.md#stations-and-the-body-origin).
 
 
+## Sting
+
+The rod that holds a wind-tunnel model from behind, entering its base. It changes the air
+pressure on the base, so a tunnel can't measure a free-flying rocket's base drag, only the
+[forebody](#forebody)'s. See
+[Aerodynamics](physics/aero.md#drag-against-the-arcas-robin-wind-tunnel).
+
 ## Stiff problem
 
 A problem in which some motion is so fast, and so strongly damped, that a method such as
@@ -893,8 +910,9 @@ source* (printed tables and worked examples), *another code*
 The drag from the shock waves that form on a rocket at and above the speed of sound. Air meeting a
 nose, a shoulder that widens or a fin's leading edge passes through a shock, which raises the
 pressure pushing back on the surface. It is much of the steep rise in drag near Mach 1. hpr has no
-separate term for it: it is part of the pressure drag of each nose, shoulder, step and fin, which
-Niskanen's 2009 method carries through Mach 1. See
+separate term for it: it is part of the pressure drag of each nose, shoulder and step, which
+Niskanen's 2009 method carries through Mach 1. For fins, hpr uses a blunt leading edge's formula,
+which reads far high for thin, sharp fins ([Drag limits](physics/aero.md#drag-limits)). See
 [Aerodynamics](physics/aero.md#drag-through-mach-1).
 
 

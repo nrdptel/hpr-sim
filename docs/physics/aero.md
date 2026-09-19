@@ -10,29 +10,35 @@
   [Barrowman's method](../glossary.md#barrowmans-method); supersonic linear theory for fins past
   Mach 1; for drag, mainly Niskanen's 2009 OpenRocket thesis, with Stoney's 1961 NASA measurements
   of noses through Mach 1.
-- **How well it is validated:** the normal force and centre of pressure at Mach 0 against
-  Barrowman's worked examples (rockets he calculated by hand), where every centre of pressure agrees
-  within 1%, and so does every [normal-force slope](../glossary.md#normal-force-slope) but his
-  six-fin Recruiter's: +2.87% high for the rocket and +3.42% for its fins, mostly from a different
-  six-fin rule; and from Mach 0.6 to 4.63 against NASA's wind-tunnel tests of the Arcas Robin
-  sounding rocket: from Mach 1.5 to 2.96 the slope within −13.4% to +3.3% and the centre of pressure
-  within 0.42 [calibres](../glossary.md#calibre-caliber); past Mach 3 the slope reads 17 to 25%
-  low (the body), and between Mach 0.8 and 1.2 both miss
-  ([Normal force through Mach 1](#normal-force-through-mach-1)).
-  Drag only at Mach 0.3, against curves labelled [RASAero](../glossary.md#rasaero-ii) in
-  [RocketPy](../glossary.md#rocketpy)'s [example rockets](../glossary.md#example-rockets), which
-  don't record their fins or surface finish, so hpr's follow a declared rule: within 10% in four
-  of seven cases, and −18.3% for Cavour [under power](../glossary.md#power-on-and-power-off-drag)
-  (motor burning), cause open. Valetudo's −47.0% and −50.4% are against a table 1.44 times its own
-  [OpenRocket](../glossary.md#openrocket) export; hpr is 23.5% under that export as designed here,
-  and 1.9% under it with the export's own finish and launch lugs. In whole flights in wind, body
-  lift, which RocketPy leaves out, is the largest reason a slow rocket's drift differs from
-  RocketPy's ([ADR-026][adr-026]). Drag through Mach 1 against the same NASA wind tunnel, forebody
-  only (the base was on a sting): 8 of 44 readings within 10%, all between Mach 0.95 and 1.8. It
-  reads high elsewhere: +27.6% to +49.0% from Mach 0.6 to 0.9, and from Mach 1.5 up with the fins
-  on, to +190.5% at 4.63
-  ([Drag against the Arcas Robin wind tunnel](#drag-against-the-arcas-robin-wind-tunnel)).
-  Nothing against a real flight.
+- **How well it is validated:**
+  - *Drag faster than sound reads high.* Against NASA's wind-tunnel tests of the Arcas Robin
+    sounding rocket, Mach 0.6 to 4.63, on the [forebody](../glossary.md#forebody) only (the models'
+    bases sat on a [sting](../glossary.md#sting)), 8 of 44 readings are within 10%, all between
+    Mach 0.95 and 1.8. With the fins on, from Mach 1.5 up, hpr reads +29.8% to +190.5% high: the
+    fins take a blunt edge's formula. With the fins off, from Mach 2.3, +20.5% to +71.1%, 0.084
+    to 0.086 of it a lip 1.3 mm long at the models' base that hpr treats as if it met undisturbed
+    air. From Mach 0.6 to 0.9 it is +27.6% to +49.0% high, much of it how the comparison is
+    booked: hpr's boattail rule counts part of the base's drag on the boattail. hpr's base drag,
+    on the flat aft end, has been checked against nothing faster than Mach 0.3
+    ([Drag against the Arcas Robin wind tunnel](#drag-against-the-arcas-robin-wind-tunnel)).
+  - *Drag at Mach 0.3*, against curves labelled [RASAero](../glossary.md#rasaero-ii) in
+    [RocketPy](../glossary.md#rocketpy)'s [example rockets](../glossary.md#example-rockets), which
+    don't record their fins or surface finish, so hpr's follow a declared rule: within 10% in four
+    of seven cases, and −18.3% for Cavour [under power](../glossary.md#power-on-and-power-off-drag)
+    (motor burning), cause open. Valetudo's −47.0% and −50.4% are against a table 1.44 times its
+    own [OpenRocket](../glossary.md#openrocket) export; hpr is 23.5% under that export as designed
+    here, and 1.9% under it with the export's own finish and launch lugs.
+  - *The normal force and centre of pressure* at Mach 0 against Barrowman's worked examples
+    (rockets he calculated by hand), where every centre of pressure agrees within 1%, and so does
+    every [normal-force slope](../glossary.md#normal-force-slope) but his six-fin Recruiter's:
+    +2.87% high for the rocket and +3.42% for its fins, mostly from a different six-fin rule; and
+    from Mach 0.6 to 4.63 against the same wind tunnel: from Mach 1.5 to 2.96 the slope within
+    −13.4% to +3.3% and the centre of pressure within 0.42
+    [calibres](../glossary.md#calibre-caliber); past Mach 3 the slope reads −17.2% to −25.0% (the
+    body), and between Mach 0.8 and 1.2 both miss
+    ([Normal force through Mach 1](#normal-force-through-mach-1)).
+  - *In whole flights* in wind, body lift, which RocketPy leaves out, is the largest reason a slow
+    rocket's drift differs from RocketPy's ([ADR-026][adr-026]). Nothing against a real flight.
 - **What it leaves out:** large angles and [stall](../glossary.md#stall), though a flight uses
   these models at every angle. Faster than sound, the fins' drag takes a blunt edge's formula,
   which reads far high for thin, sharp fins, and nothing models a thin fin's own wave drag;
@@ -46,7 +52,8 @@
 ## Code and sources
 
 Code: [`hpr_aero::body`](../api/hpr_aero/body/index.html) (bodies of revolution),
-[`hpr_aero::fins`](../api/hpr_aero/fins/index.html) (fin sets) and
+[`hpr_aero::fins`](../api/hpr_aero/fins/index.html) (fin sets),
+[`hpr_aero::nose_drag`](../api/hpr_aero/nose_drag/index.html) (noses' drag through Mach 1) and
 [`hpr_aero::model`](../api/hpr_aero/model/index.html) (a whole rocket's terms, built from its
 [`Layout`](../api/hpr_design/tree/struct.Layout.html)). Decisions: [ADR-008][adr-008] (normal force
 and centre of pressure) and [ADR-009][adr-009] (drag). The milestone [M1.5a](../decisions-and-roadmap.md#m1-5a) covers the
@@ -535,7 +542,8 @@ parasitic term on its own area. The axial coefficient is `C_A = C_D0 f(α)`.
 ### Drag through Mach 1
 
 Near the speed of sound a nose starts to push shock waves ahead of it, and the pressure on its
-surface climbs: the transonic drag rise. Past Mach 1 this pressure drag, called wave drag, settles
+surface climbs: the transonic drag rise. Past Mach 1 this pressure drag, called
+[wave drag](../glossary.md#wave-drag), settles
 to a value set mostly by the nose's shape and how slender it is. hpr follows Niskanen's method
 ([N09] §3.4.3 and appendix B, pp. 47–48 and 106–110) for noses, shoulders and steps. The other
 terms already had their faster-than-sound forms in the table above: friction's Mach correction,
@@ -548,8 +556,10 @@ all with fins on.
 A nose's or shoulder's pressure-drag coefficient, on the area it adds, has three parts:
 
 - **At rest**, eq. 3.86's `0.8 sin² φ`, with `φ` the joint angle at the aft end (the table above).
-- **From a lower bound `M_L`**, a transonic and supersonic value `C_T(M)` that depends on the shape
-  and the fineness ratio `f = l/(d_aft − d_fore)`: a nose's length over its base diameter, and for
+- **From `M_L`**, the Mach number where the transonic formula takes over (0.8, 1 or 1.2 by shape,
+  in the table below), a transonic and supersonic value `C_T(M)` that depends on the shape
+  and the [fineness ratio](../glossary.md#fineness-ratio) `f = l/(d_aft − d_fore)`: a nose's
+  length over its base diameter, and for
   a shoulder its length over its rise in diameter, so that a conical shoulder drags like the cone
   with the same surface angle.
 - **Between rest and `M_L`**, eq. 3.87: `a Mᵇ + 0.8 sin² φ`, with `a` and `b` chosen so the curve
@@ -581,7 +591,7 @@ points and where each was read are in the code
 ([`StoneyNose`](../api/hpr_aero/nose_drag/enum.StoneyNose.html)). A sample, on the nose's base
 area:
 
-| shape | panel, configuration | Mach 0.9 | Mach 1.0 | Mach 1.2 | Mach 1.5 | Mach 2.0 | Mach 3.0 |
+| shape | Fig. 12 panel, Stoney's model number | Mach 0.9 | Mach 1.0 | Mach 1.2 | Mach 1.5 | Mach 2.0 | Mach 3.0 |
 |---|---|---|---|---|---|---|---|
 | von Kármán | (a), 58 | 0.000 | 0.025 | 0.076 | 0.089 | 0.079 | 0.079 |
 | L-V Haack | (a), 60 | 0.000 | 0.025 | 0.100 | 0.116 | 0.112 | 0.112 |
@@ -593,13 +603,16 @@ area:
 | x^¼ | (b) | — | — | 0.141 | 0.181 | 0.216 | 0.246 |
 | ellipsoid | (b) | — | — | 0.111 | 0.151 | 0.158 | 0.160 |
 
-A shape between two measured ones interpolates between their curves in its parameter, before the
-fineness scaling ([N09] p. 108): a power series `xⁿ` runs through a flat face (`n = 0`), x^¼, x^½,
+A shape between two measured ones interpolates between their curves in its parameter (the
+exponent `n`, `K′` or `C` of [Shapes](shapes.md#profiles)), before the fineness scaling ([N09]
+p. 108): a power series `xⁿ` runs through a flat face (`n = 0`), x^¼, x^½,
 x^¾ and the 3:1 cone (`n = 1`); a parabolic series through the 3:1 cone (`K′ = 0`) and the ½, ¾
 and full parabolas; a Haack series between von Kármán (`C = 0`) and L-V Haack (`C = ⅓`).
 
-**Worked example.** A 5:1 von Kármán nose at Mach 1.5. Stoney's 3:1 von Kármán gives 0.0893, the
-flat face `0.85 q_stag/q` gives 1.3074, and `log₄ 6 = 1.2925`, so the nose drags
+**Worked example.** A 5:1 von Kármán nose at Mach 1.5. Stoney's 3:1 von Kármán gives 0.0893. The
+flat face gives `0.85 q_stag/q = 0.85 × 1.5381 = 1.3074`, with
+`q_stag/q = 1.84 − 0.76/1.5² + 0.166/1.5⁴ + 0.035/1.5⁶`. The exponent is `log₄ 6 = 1.2925`, so
+the nose drags
 `1.3074 × (0.0893/1.3074)^1.2925 = 0.0407` on its base area. A 5:1 cone drags 0.0653 there, from
 eq. B.4, so the von Kármán's wave drag is 38% lower. The test
 `nose_drag::tests::the_guides_worked_example` pins these numbers.
@@ -615,9 +628,10 @@ eq. B.4, so the von Kármán's wave drag is 38% lower. The test
 - **Steps.** A step up in radius, or a body with no nose cone, is a flat face: 0.8 at rest, rising
   by eq. 3.87 to the flat face's 0.9947 at Mach 0.8 and following it above (1.0888 at Mach 1,
   1.4118 at Mach 2). Before [M1.8b1](../decisions-and-roadmap.md#m1-8b1) it stayed at 0.8.
-- **Where eq. 3.87 has no solution.** It needs the transonic value above the value at rest and a
-  rising slope at `M_L`. Where a joint that isn't smooth meets a measured curve still at 0 at Mach
-  0.8 (an x^½ nose, for one), hpr goes from the value at rest to `C_T(M_L)` along
+- **Where eq. 3.87 has no solution.** An x^½ nose meets its tube at a small angle, so it has some
+  drag at rest, but Stoney's measured x^½ curve is still at 0 at Mach 0.8: no `a Mᵇ` can rise
+  from the first to the second. Eq. 3.87 needs the transonic value above the value at rest and a
+  rising slope at `M_L`; where it has neither, hpr goes from the value at rest to `C_T(M_L)` along
   `0.8 sin² φ + Δ (M/M_L)²` instead: continuous, flat at rest, with a kink at `M_L`. The
   coefficients involved are below 0.01.
 - **Refused shapes.** A bulged secant ogive (its arc radius below the tangent ogive's) is outside
@@ -633,9 +647,10 @@ against the measured 0.138, then +15% at Mach 1.5 and +4% at Mach 1.94, the curv
 
 - The buildup covers Mach 0 to 5 and refuses Mach 5 and faster, like the normal force
   (`drag::BUILDUP_MACH_LIMIT`); an override table takes any Mach number.
-- **It reads high against the one wind tunnel it has been measured against**, except from Mach
-  0.95 to about 1.2: below, by the boattail rule and a lip at the model's base; above, most of all
-  with fins on ([Verification](#drag-against-the-arcas-robin-wind-tunnel)).
+- **It reads high against the one wind tunnel it has been measured against**: below Mach 0.95,
+  mostly by the boattail rule and a lip at the model's base, and above about Mach 1.2, mostly by
+  the fins. Between those it is within about 10%
+  ([Verification](#drag-against-the-arcas-robin-wind-tunnel)).
   The fins' leading edge takes [N09]'s rounded-edge formula, a blunt edge's, for the airfoil and
   rounded sections alike. Nothing models the wave drag of a thin, sharp fin, which is far smaller:
   the Arcas Robin's four double-wedge fins measure 0.046 at Mach 4.63, against hpr's 0.30.
@@ -952,7 +967,8 @@ and [D4014] the axial force and, separately, the force on the balance chamber in
 (`C_A,c`, Figs. 4–6). What compares, then, is the forebody: hpr's `C_D0` less its base drag
 (friction, pressure and parasitic drag) against the measured axial force with the base at the free
 stream's pressure. For [D4014] that is `C_A − 1.383 C_A,c`, which takes the chamber's pressure over
-the whole base as [D4013]'s correction does; the report states no chamber area, and taking it over
+the whole base as [D4013]'s correction does: 1.383 is (1.470/1.250)², the base's diameter in inches
+over the 1.250-inch cavity drawn in [D4014] Fig. 1(a), squared. The report states no chamber area, and taking it over
 the chamber alone moves the measured values by 0.002 to 0.014. The readings are in
 [`arcas-robin-wind-tunnel.json`][wind-tunnel], read off the reports' plots with their figure,
 page and reading uncertainty (±0.002 in `C_A` for most, against the reports' own ±0.004).
