@@ -25,23 +25,23 @@ time_s,height_above_ground_m,vertical_speed_m_s,airspeed_m_s,cg_east_m,cg_north_
 0.000,0.9,0.0,5.0,0.0,0.0,0.9
 0.002,0.9,0.0,5.0,0.0,0.0,0.9
 0.371,3.9,16.2,17.0,0.0,0.0,3.9
-3.259,216.0,110.7,111.4,-9.3,0.0,216.0
-5.000,390.8,90.4,91.3,-23.2,0.0,390.8
-10.000,707.9,37.5,39.4,-60.1,0.0,707.9
-13.836,779.0,0.0,11.2,-85.8,0.0,779.0
-14.336,777.9,-4.5,11.7,-88.8,0.0,777.9
-15.000,773.0,-10.2,14.1,-92.3,0.0,773.0
-20.000,665.9,-26.4,26.5,-94.5,0.1,665.9
-25.000,531.5,-27.0,27.0,-74.6,0.1,531.5
-30.000,396.8,-26.8,26.8,-50.4,0.1,396.8
-35.000,263.0,-26.7,26.7,-25.5,0.1,263.0
-39.249,150.0,-26.5,26.5,-4.2,0.0,150.0
-40.000,130.1,-26.5,26.5,-0.5,0.0,130.1
-40.249,123.5,-26.5,26.5,0.8,0.0,123.5
-45.000,89.1,-6.4,6.4,24.6,0.0,89.1
-50.000,57.1,-6.4,6.4,49.6,0.0,57.1
-55.000,25.2,-6.4,6.4,74.6,0.0,25.2
-58.948,0.0,-6.4,6.4,94.3,0.0,0.0
+3.259,216.0,110.6,111.4,-9.7,0.0,216.0
+5.000,390.8,90.3,91.3,-24.1,0.0,390.8
+10.000,707.8,37.5,39.4,-62.1,0.0,707.8
+13.830,778.7,0.0,11.4,-88.7,0.0,778.7
+14.330,777.6,-4.5,12.0,-91.9,0.0,777.6
+15.000,772.6,-10.2,14.3,-95.6,0.0,772.6
+20.000,665.5,-26.4,26.5,-98.4,0.1,665.5
+25.000,531.1,-27.0,27.0,-78.6,0.1,531.1
+30.000,396.4,-26.8,26.8,-54.4,0.1,396.4
+35.000,262.6,-26.7,26.7,-29.5,0.1,262.6
+39.234,150.0,-26.5,26.5,-8.4,0.1,150.0
+40.000,129.7,-26.5,26.5,-4.5,0.0,129.7
+40.234,123.5,-26.5,26.5,-3.3,0.0,123.5
+45.000,89.0,-6.4,6.4,20.5,0.0,89.0
+50.000,57.0,-6.4,6.4,45.5,0.0,57.0
+55.000,25.1,-6.4,6.4,70.5,0.0,25.1
+58.933,0.0,-6.4,6.4,90.2,0.0,0.0
 ```
 
 Like the first flight's, this output is committed in
@@ -66,22 +66,22 @@ happened:
 | 0.002 | [liftoff](glossary.md#liftoff): the push up the rail first beats the weight, and the rocket starts to move |
 | 0.371 | the rocket leaves the 3 m rail |
 | 3.259 | burnout |
-| 13.836 | apogee; the drogue's charge fires at the same moment, so it shares this row |
-| 14.336 | the drogue opens, half a second later |
-| 39.249 | the main's charge fires, as the rocket falls past 150 m |
-| 40.249 | the main opens, a second later |
-| 58.948 | landing |
+| 13.830 | apogee; the drogue's charge fires at the same moment, so it shares this row |
+| 14.330 | the drogue opens, half a second later |
+| 39.234 | the main's charge fires, as the rocket falls past 150 m |
+| 40.234 | the main opens, a second later |
+| 58.933 | landing |
 
 What the numbers show:
 
 - **On the pad the airspeed is 5.0 m/s** with the rocket standing still: that is the wind.
 - **The rocket climbs into the wind.** The wind blows from the west, and off the rail a stable
   rocket turns its nose toward the wind it feels
-  ([weathercocking](glossary.md#weathercocking)), so it drifts west: `cg_east_m` is −85.8 m at
+  ([weathercocking](glossary.md#weathercocking)), so it drifts west: `cg_east_m` is −88.7 m at
   apogee.
 - **Under the drogue alone it falls at about 27 m/s**, and the wind carries it east.
-- **The main slows it from 26.5 to 6.4 m/s** between the row where it opens (40.249) and the
-  next (45.000), and it lands at 6.4 m/s, 94.3 m east of the pad.
+- **The main slows it from 26.5 to 6.4 m/s** between the row where it opens (40.234) and the
+  next (45.000), and it lands at 6.4 m/s, 90.2 m east of the pad.
 - **`cg_north_m` shows 0.1 m for a while, with no wind from the south.** The Earth's rotation
   nudges a moving rocket sideways, to the right of its motion in the northern hemisphere
   ([Coriolis acceleration](glossary.md#coriolis-acceleration)). While the rocket moves west, that

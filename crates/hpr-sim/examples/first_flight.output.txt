@@ -5,14 +5,14 @@ event                time (s)   CG height (m)   speed (m/s)
 liftoff                  0.00             0.9           0.0
 rail exit                0.37             3.9          16.2
 burnout                  3.26           216.0         111.0
-apogee                  13.84           779.0           6.2
-drogue charge fires     13.84           779.0           6.2
-drogue opens            14.34           777.9           7.4
-main charge fires       39.25           150.0          27.0
-main opens              40.25           123.5          27.0
-landing                 58.95             0.0           8.1
+apogee                  13.83           778.7           6.4
+drogue charge fires     13.83           778.7           6.4
+drogue opens            14.33           777.6           7.7
+main charge fires       39.23           150.0          27.0
+main opens              40.23           123.5          27.0
+landing                 58.93             0.0           8.1
 
-Apogee:     779.0 m (2556 ft) above the pad, 85.8 m from it at a bearing of 270°, at 13.84 s
+Apogee:     778.7 m (2555 ft) above the pad, 88.7 m from it at a bearing of 270°, at 13.83 s
 Top speed:  112.3 m/s (Mach 0.34), at 3.0 s
 Rail exit:  16.2 m/s
-Landing:    94.3 m from the pad at a bearing of 90°, falling at 6.4 m/s, at 58.95 s
+Landing:    90.2 m from the pad at a bearing of 90°, falling at 6.4 m/s, at 58.93 s
