@@ -1,0 +1,1573 @@
+{
+  "note": "Measured conical boattails behind a cylinder, jet off, zero angle of attack, and Jack's second-order theory, for hpr's boattail pressure drag and the base pressure behind a boattail (M1.8b3, ADR-030). Coefficients on the cylinder's cross-section. Values read from the reports' figures, with a reading uncertainty; geometry as the reports give it (length_ratio l/d, diameter_ratio d_b/d), or for Jack as area ratio and half-angle. All are U.S. Government works.",
+  "boattails": {
+    "source": "measured boattail pressure drag (the boattail's surface only)",
+    "rows": [
+      {
+        "source": "Cortright and Schroeder, NACA RM E51F26, 1951",
+        "figure": "Fig. 29, printed p. 55",
+        "mach": 1.91,
+        "length_ratio": 2.5,
+        "diameter_ratio": 0.506,
+        "cd": 0.041,
+        "uncertainty": 0.001,
+        "flow": "attached",
+        "notes": "Reynolds number 3.24e6/ft, natural transition, turbulent at the base (boundary layer about 0.06 d thick); geometry Fig. 6, printed p. 27"
+      },
+      {
+        "source": "Cortright and Schroeder, NACA RM E51F26, 1951",
+        "figure": "Fig. 29, printed p. 55",
+        "mach": 1.91,
+        "length_ratio": 2.0,
+        "diameter_ratio": 0.506,
+        "cd": 0.056,
+        "uncertainty": 0.001,
+        "flow": "attached",
+        "notes": "Reynolds number 3.24e6/ft, natural transition, turbulent at the base (boundary layer about 0.06 d thick); geometry Fig. 6, printed p. 27"
+      },
+      {
+        "source": "Cortright and Schroeder, NACA RM E51F26, 1951",
+        "figure": "Fig. 29, printed p. 55",
+        "mach": 1.91,
+        "length_ratio": 1.5,
+        "diameter_ratio": 0.506,
+        "cd": 0.077,
+        "uncertainty": 0.001,
+        "flow": "attached",
+        "notes": "Reynolds number 3.24e6/ft, natural transition, turbulent at the base (boundary layer about 0.06 d thick); geometry Fig. 6, printed p. 27"
+      },
+      {
+        "source": "Cortright and Schroeder, NACA RM E51F26, 1951",
+        "figure": "Fig. 30, printed p. 56",
+        "mach": 1.91,
+        "length_ratio": 1.5,
+        "diameter_ratio": 0.704,
+        "cd": 0.033,
+        "uncertainty": 0.001,
+        "flow": "attached",
+        "notes": "Reynolds number 3.24e6/ft, natural transition, turbulent at the base (boundary layer about 0.06 d thick); geometry Fig. 6, printed p. 27; this run's boundary layer went turbulent early by accident (p. 18)"
+      },
+      {
+        "source": "Cortright and Schroeder, NACA RM E51F26, 1951",
+        "figure": "Fig. 30, printed p. 56",
+        "mach": 1.91,
+        "length_ratio": 1.2,
+        "diameter_ratio": 0.704,
+        "cd": 0.045,
+        "uncertainty": 0.001,
+        "flow": "attached",
+        "notes": "Reynolds number 3.24e6/ft, natural transition, turbulent at the base (boundary layer about 0.06 d thick); geometry Fig. 6, printed p. 27"
+      },
+      {
+        "source": "Cortright and Schroeder, NACA RM E51F26, 1951",
+        "figure": "Fig. 30, printed p. 56",
+        "mach": 1.91,
+        "length_ratio": 0.9,
+        "diameter_ratio": 0.704,
+        "cd": 0.062,
+        "uncertainty": 0.001,
+        "flow": "attached",
+        "notes": "Reynolds number 3.24e6/ft, natural transition, turbulent at the base (boundary layer about 0.06 d thick); geometry Fig. 6, printed p. 27"
+      },
+      {
+        "source": "de Moraes and Nowitzky, NACA RM L54C16, 1954",
+        "figure": "Fig. 5(b), printed p. 21",
+        "mach": 1.59,
+        "length_ratio": 1.92,
+        "diameter_ratio": 0.664,
+        "cd": 0.034,
+        "uncertainty": 0.003,
+        "flow": "attached",
+        "notes": "Reynolds number 17.8e6 on the length, natural transition, turbulent; 5-degree boattail"
+      },
+      {
+        "source": "de Moraes and Nowitzky, NACA RM L54C16, 1954",
+        "figure": "Fig. 5(b), printed p. 21",
+        "mach": 1.59,
+        "length_ratio": 0.94,
+        "diameter_ratio": 0.669,
+        "cd": 0.085,
+        "uncertainty": 0.005,
+        "flow": "attached",
+        "notes": "as above; 10-degree boattail, drawn through three orifices only"
+      },
+      {
+        "source": "Compton, NASA TN D-6789, 1972",
+        "figure": "Fig. 12, printed p. 33",
+        "mach": 1.83,
+        "length_ratio": 1.0,
+        "diameter_ratio": 0.653,
+        "cd": 0.085,
+        "uncertainty": 0.003,
+        "flow": "attached",
+        "notes": "transition fixed near the nose, boundary layer about 0.1 d thick; the 10-degree boattails of Fig. 4 (printed p. 18), jet off with the nozzle open; the measured (open) symbols"
+      },
+      {
+        "source": "Compton, NASA TN D-6789, 1972",
+        "figure": "Fig. 12, printed p. 33",
+        "mach": 2.2,
+        "length_ratio": 1.0,
+        "diameter_ratio": 0.653,
+        "cd": 0.062,
+        "uncertainty": 0.003,
+        "flow": "attached",
+        "notes": "transition fixed near the nose, boundary layer about 0.1 d thick; the 10-degree boattails of Fig. 4 (printed p. 18), jet off with the nozzle open; the measured (open) symbols"
+      },
+      {
+        "source": "Compton, NASA TN D-6789, 1972",
+        "figure": "Fig. 12, printed p. 33",
+        "mach": 1.83,
+        "length_ratio": 0.8,
+        "diameter_ratio": 0.722,
+        "cd": 0.07,
+        "uncertainty": 0.003,
+        "flow": "attached",
+        "notes": "transition fixed near the nose, boundary layer about 0.1 d thick; the 10-degree boattails of Fig. 4 (printed p. 18), jet off with the nozzle open; the measured (open) symbols"
+      },
+      {
+        "source": "Compton, NASA TN D-6789, 1972",
+        "figure": "Fig. 12, printed p. 33",
+        "mach": 2.2,
+        "length_ratio": 0.8,
+        "diameter_ratio": 0.722,
+        "cd": 0.055,
+        "uncertainty": 0.003,
+        "flow": "attached",
+        "notes": "transition fixed near the nose, boundary layer about 0.1 d thick; the 10-degree boattails of Fig. 4 (printed p. 18), jet off with the nozzle open; the measured (open) symbols"
+      },
+      {
+        "source": "Compton, NASA TN D-6789, 1972",
+        "figure": "Fig. 12, printed p. 33",
+        "mach": 1.83,
+        "length_ratio": 0.6,
+        "diameter_ratio": 0.792,
+        "cd": 0.059,
+        "uncertainty": 0.003,
+        "flow": "attached",
+        "notes": "transition fixed near the nose, boundary layer about 0.1 d thick; the 10-degree boattails of Fig. 4 (printed p. 18), jet off with the nozzle open; the measured (open) symbols"
+      },
+      {
+        "source": "Compton, NASA TN D-6789, 1972",
+        "figure": "Fig. 12, printed p. 33",
+        "mach": 2.2,
+        "length_ratio": 0.6,
+        "diameter_ratio": 0.792,
+        "cd": 0.044,
+        "uncertainty": 0.003,
+        "flow": "attached",
+        "notes": "transition fixed near the nose, boundary layer about 0.1 d thick; the 10-degree boattails of Fig. 4 (printed p. 18), jet off with the nozzle open; the measured (open) symbols"
+      },
+      {
+        "source": "Moskowitz and Jack, NACA RM E54B11, 1954",
+        "figure": "Fig. 4, printed p. 14",
+        "mach": 3.12,
+        "length_ratio": 2.0,
+        "diameter_ratio": 0.5,
+        "cd": 0.0383,
+        "uncertainty": 0.0005,
+        "flow": "attached",
+        "notes": "Reynolds number 14e6 on the length; 7.13-degree boattail (model 4)"
+      },
+      {
+        "source": "Cubbage, NACA RM L57B21, 1957",
+        "figure": "Fig. 9, printed pp. 51-53",
+        "mach": 1.2,
+        "length_ratio": 0.26,
+        "diameter_ratio": 0.85,
+        "cd": 0.12,
+        "uncertainty": 0.01,
+        "flow": "attached",
+        "notes": "Reynolds number 3.4e6 to 4.8e6/ft; turbulent, the boundary layer about 0.4 in (0.20 d) thick 5.5 in ahead of the base (p. 5, from its ref. 1); no jet flow, the nozzle open; drag on the boattail's surface only (p. 2)"
+      },
+      {
+        "source": "Cubbage, NACA RM L57B21, 1957",
+        "figure": "Fig. 9, printed pp. 51-53",
+        "mach": 1.2,
+        "length_ratio": 0.26,
+        "diameter_ratio": 0.7,
+        "cd": 0.1,
+        "uncertainty": 0.01,
+        "flow": "separated",
+        "notes": "Reynolds number 3.4e6 to 4.8e6/ft; turbulent, the boundary layer about 0.4 in (0.20 d) thick 5.5 in ahead of the base (p. 5, from its ref. 1); no jet flow, the nozzle open; drag on the boattail's surface only (p. 2)"
+      },
+      {
+        "source": "Cubbage, NACA RM L57B21, 1957",
+        "figure": "Fig. 9, printed pp. 51-53",
+        "mach": 1.2,
+        "length_ratio": 0.39,
+        "diameter_ratio": 0.55,
+        "cd": 0.15,
+        "uncertainty": 0.01,
+        "flow": "separated",
+        "notes": "Reynolds number 3.4e6 to 4.8e6/ft; turbulent, the boundary layer about 0.4 in (0.20 d) thick 5.5 in ahead of the base (p. 5, from its ref. 1); no jet flow, the nozzle open; drag on the boattail's surface only (p. 2)"
+      },
+      {
+        "source": "Cubbage, NACA RM L57B21, 1957",
+        "figure": "Fig. 9, printed pp. 51-53",
+        "mach": 1.2,
+        "length_ratio": 0.23,
+        "diameter_ratio": 0.55,
+        "cd": 0.145,
+        "uncertainty": 0.01,
+        "flow": "separated",
+        "notes": "Reynolds number 3.4e6 to 4.8e6/ft; turbulent, the boundary layer about 0.4 in (0.20 d) thick 5.5 in ahead of the base (p. 5, from its ref. 1); no jet flow, the nozzle open; drag on the boattail's surface only (p. 2)"
+      },
+      {
+        "source": "Cubbage, NACA RM L57B21, 1957",
+        "figure": "Fig. 7(c) printed p. 31; Fig. 8(c) printed p. 42 (the no-jet points of its two models, averaged)",
+        "mach": 0.6,
+        "length_ratio": 1.53,
+        "diameter_ratio": 0.7,
+        "cd": 0.024,
+        "uncertainty": 0.005,
+        "flow": "attached",
+        "notes": "Reynolds number 3.4e6 to 4.8e6/ft; turbulent, the boundary layer about 0.4 in (0.20 d) thick 5.5 in ahead of the base (p. 5, from its ref. 1); no jet flow, the nozzle open; drag on the boattail's surface only (p. 2); fig7 circle hidden under the 0.8/0.9 symbols (~0.024); fig8/fig9 second candidate 0.020"
+      },
+      {
+        "source": "Cubbage, NACA RM L57B21, 1957",
+        "figure": "Fig. 7(c) printed p. 31; Fig. 8(c) printed p. 42 (the no-jet points of its two models, averaged)",
+        "mach": 0.8,
+        "length_ratio": 1.53,
+        "diameter_ratio": 0.7,
+        "cd": 0.025,
+        "uncertainty": 0.004,
+        "flow": "attached",
+        "notes": "Reynolds number 3.4e6 to 4.8e6/ft; turbulent, the boundary layer about 0.4 in (0.20 d) thick 5.5 in ahead of the base (p. 5, from its ref. 1); no jet flow, the nozzle open; drag on the boattail's surface only (p. 2)"
+      },
+      {
+        "source": "Cubbage, NACA RM L57B21, 1957",
+        "figure": "Fig. 7(c) printed p. 31; Fig. 8(c) printed p. 42 (the no-jet points of its two models, averaged)",
+        "mach": 0.9,
+        "length_ratio": 1.53,
+        "diameter_ratio": 0.7,
+        "cd": 0.027,
+        "uncertainty": 0.004,
+        "flow": "attached",
+        "notes": "Reynolds number 3.4e6 to 4.8e6/ft; turbulent, the boundary layer about 0.4 in (0.20 d) thick 5.5 in ahead of the base (p. 5, from its ref. 1); no jet flow, the nozzle open; drag on the boattail's surface only (p. 2)"
+      },
+      {
+        "source": "Cubbage, NACA RM L57B21, 1957",
+        "figure": "Fig. 7(c) printed p. 31; Fig. 8(c) printed p. 42 (the no-jet points of its two models, averaged)",
+        "mach": 1.0,
+        "length_ratio": 1.53,
+        "diameter_ratio": 0.7,
+        "cd": 0.064,
+        "uncertainty": 0.005,
+        "flow": "attached",
+        "notes": "Reynolds number 3.4e6 to 4.8e6/ft; turbulent, the boundary layer about 0.4 in (0.20 d) thick 5.5 in ahead of the base (p. 5, from its ref. 1); no jet flow, the nozzle open; drag on the boattail's surface only (p. 2)"
+      },
+      {
+        "source": "Cubbage, NACA RM L57B21, 1957",
+        "figure": "Fig. 7(c) printed p. 31; Fig. 8(c) printed p. 42 (the no-jet points of its two models, averaged)",
+        "mach": 1.1,
+        "length_ratio": 1.53,
+        "diameter_ratio": 0.7,
+        "cd": 0.071,
+        "uncertainty": 0.005,
+        "flow": "attached",
+        "notes": "Reynolds number 3.4e6 to 4.8e6/ft; turbulent, the boundary layer about 0.4 in (0.20 d) thick 5.5 in ahead of the base (p. 5, from its ref. 1); no jet flow, the nozzle open; drag on the boattail's surface only (p. 2)"
+      },
+      {
+        "source": "Cubbage, NACA RM L57B21, 1957",
+        "figure": "Fig. 7(c) printed p. 31; Fig. 8(c) printed p. 42 (the no-jet points of its two models, averaged)",
+        "mach": 1.2,
+        "length_ratio": 1.53,
+        "diameter_ratio": 0.7,
+        "cd": 0.062,
+        "uncertainty": 0.005,
+        "flow": "attached",
+        "notes": "Reynolds number 3.4e6 to 4.8e6/ft; turbulent, the boundary layer about 0.4 in (0.20 d) thick 5.5 in ahead of the base (p. 5, from its ref. 1); no jet flow, the nozzle open; drag on the boattail's surface only (p. 2)"
+      },
+      {
+        "source": "Cubbage, NACA RM L57B21, 1957",
+        "figure": "Fig. 7(c) printed p. 31; Fig. 8(c) printed p. 42 (the no-jet points of its two models, averaged)",
+        "mach": 1.28,
+        "length_ratio": 1.53,
+        "diameter_ratio": 0.7,
+        "cd": 0.056,
+        "uncertainty": 0.005,
+        "flow": "attached",
+        "notes": "Reynolds number 3.4e6 to 4.8e6/ft; turbulent, the boundary layer about 0.4 in (0.20 d) thick 5.5 in ahead of the base (p. 5, from its ref. 1); no jet flow, the nozzle open; drag on the boattail's surface only (p. 2)"
+      },
+      {
+        "source": "Cubbage, NACA RM L57B21, 1957",
+        "figure": "Fig. 7(e) printed p. 33; Fig. 8(e) printed p. 44 (the no-jet points of its two models, averaged)",
+        "mach": 0.6,
+        "length_ratio": 1.07,
+        "diameter_ratio": 0.7,
+        "cd": 0.031,
+        "uncertainty": 0.004,
+        "flow": "attached",
+        "notes": "Reynolds number 3.4e6 to 4.8e6/ft; turbulent, the boundary layer about 0.4 in (0.20 d) thick 5.5 in ahead of the base (p. 5, from its ref. 1); no jet flow, the nozzle open; drag on the boattail's surface only (p. 2); fig8 circle hidden"
+      },
+      {
+        "source": "Cubbage, NACA RM L57B21, 1957",
+        "figure": "Fig. 7(e) printed p. 33; Fig. 8(e) printed p. 44 (the no-jet points of its two models, averaged)",
+        "mach": 0.8,
+        "length_ratio": 1.07,
+        "diameter_ratio": 0.7,
+        "cd": 0.038,
+        "uncertainty": 0.004,
+        "flow": "attached",
+        "notes": "Reynolds number 3.4e6 to 4.8e6/ft; turbulent, the boundary layer about 0.4 in (0.20 d) thick 5.5 in ahead of the base (p. 5, from its ref. 1); no jet flow, the nozzle open; drag on the boattail's surface only (p. 2)"
+      },
+      {
+        "source": "Cubbage, NACA RM L57B21, 1957",
+        "figure": "Fig. 7(e) printed p. 33; Fig. 8(e) printed p. 44 (the no-jet points of its two models, averaged)",
+        "mach": 0.9,
+        "length_ratio": 1.07,
+        "diameter_ratio": 0.7,
+        "cd": 0.051,
+        "uncertainty": 0.006,
+        "flow": "attached",
+        "notes": "Reynolds number 3.4e6 to 4.8e6/ft; turbulent, the boundary layer about 0.4 in (0.20 d) thick 5.5 in ahead of the base (p. 5, from its ref. 1); no jet flow, the nozzle open; drag on the boattail's surface only (p. 2); the two models differ by 0.009"
+      },
+      {
+        "source": "Cubbage, NACA RM L57B21, 1957",
+        "figure": "Fig. 7(e) printed p. 33; Fig. 8(e) printed p. 44 (the no-jet points of its two models, averaged)",
+        "mach": 1.0,
+        "length_ratio": 1.07,
+        "diameter_ratio": 0.7,
+        "cd": 0.112,
+        "uncertainty": 0.005,
+        "flow": "attached",
+        "notes": "Reynolds number 3.4e6 to 4.8e6/ft; turbulent, the boundary layer about 0.4 in (0.20 d) thick 5.5 in ahead of the base (p. 5, from its ref. 1); no jet flow, the nozzle open; drag on the boattail's surface only (p. 2)"
+      },
+      {
+        "source": "Cubbage, NACA RM L57B21, 1957",
+        "figure": "Fig. 7(e) printed p. 33; Fig. 8(e) printed p. 44 (the no-jet points of its two models, averaged)",
+        "mach": 1.1,
+        "length_ratio": 1.07,
+        "diameter_ratio": 0.7,
+        "cd": 0.105,
+        "uncertainty": 0.005,
+        "flow": "attached",
+        "notes": "Reynolds number 3.4e6 to 4.8e6/ft; turbulent, the boundary layer about 0.4 in (0.20 d) thick 5.5 in ahead of the base (p. 5, from its ref. 1); no jet flow, the nozzle open; drag on the boattail's surface only (p. 2)"
+      },
+      {
+        "source": "Cubbage, NACA RM L57B21, 1957",
+        "figure": "Fig. 7(e) printed p. 33; Fig. 8(e) printed p. 44 (the no-jet points of its two models, averaged)",
+        "mach": 1.2,
+        "length_ratio": 1.07,
+        "diameter_ratio": 0.7,
+        "cd": 0.093,
+        "uncertainty": 0.007,
+        "flow": "attached",
+        "notes": "Reynolds number 3.4e6 to 4.8e6/ft; turbulent, the boundary layer about 0.4 in (0.20 d) thick 5.5 in ahead of the base (p. 5, from its ref. 1); no jet flow, the nozzle open; drag on the boattail's surface only (p. 2)"
+      },
+      {
+        "source": "Cubbage, NACA RM L57B21, 1957",
+        "figure": "Fig. 7(e) printed p. 33; Fig. 8(e) printed p. 44 (the no-jet points of its two models, averaged)",
+        "mach": 1.28,
+        "length_ratio": 1.07,
+        "diameter_ratio": 0.7,
+        "cd": 0.087,
+        "uncertainty": 0.006,
+        "flow": "attached",
+        "notes": "Reynolds number 3.4e6 to 4.8e6/ft; turbulent, the boundary layer about 0.4 in (0.20 d) thick 5.5 in ahead of the base (p. 5, from its ref. 1); no jet flow, the nozzle open; drag on the boattail's surface only (p. 2)"
+      },
+      {
+        "source": "Cubbage, NACA RM L57B21, 1957",
+        "figure": "Fig. 7(g) printed p. 35; Fig. 8(g) printed p. 46 (the no-jet points of its two models, averaged)",
+        "mach": 0.6,
+        "length_ratio": 0.52,
+        "diameter_ratio": 0.7,
+        "cd": 0.065,
+        "uncertainty": 0.005,
+        "flow": "attached",
+        "notes": "Reynolds number 3.4e6 to 4.8e6/ft; turbulent, the boundary layer about 0.4 in (0.20 d) thick 5.5 in ahead of the base (p. 5, from its ref. 1); no jet flow, the nozzle open; drag on the boattail's surface only (p. 2); fig7 jet-off circle not resolvable"
+      },
+      {
+        "source": "Cubbage, NACA RM L57B21, 1957",
+        "figure": "Fig. 7(g) printed p. 35; Fig. 8(g) printed p. 46 (the no-jet points of its two models, averaged)",
+        "mach": 0.8,
+        "length_ratio": 0.52,
+        "diameter_ratio": 0.7,
+        "cd": 0.094,
+        "uncertainty": 0.004,
+        "flow": "attached",
+        "notes": "Reynolds number 3.4e6 to 4.8e6/ft; turbulent, the boundary layer about 0.4 in (0.20 d) thick 5.5 in ahead of the base (p. 5, from its ref. 1); no jet flow, the nozzle open; drag on the boattail's surface only (p. 2)"
+      },
+      {
+        "source": "Cubbage, NACA RM L57B21, 1957",
+        "figure": "Fig. 7(g) printed p. 35; Fig. 8(g) printed p. 46 (the no-jet points of its two models, averaged)",
+        "mach": 0.9,
+        "length_ratio": 0.52,
+        "diameter_ratio": 0.7,
+        "cd": 0.123,
+        "uncertainty": 0.004,
+        "flow": "attached",
+        "notes": "Reynolds number 3.4e6 to 4.8e6/ft; turbulent, the boundary layer about 0.4 in (0.20 d) thick 5.5 in ahead of the base (p. 5, from its ref. 1); no jet flow, the nozzle open; drag on the boattail's surface only (p. 2)"
+      },
+      {
+        "source": "Cubbage, NACA RM L57B21, 1957",
+        "figure": "Fig. 7(g) printed p. 35; Fig. 8(g) printed p. 46 (the no-jet points of its two models, averaged)",
+        "mach": 1.0,
+        "length_ratio": 0.52,
+        "diameter_ratio": 0.7,
+        "cd": 0.178,
+        "uncertainty": 0.006,
+        "flow": "attached",
+        "notes": "Reynolds number 3.4e6 to 4.8e6/ft; turbulent, the boundary layer about 0.4 in (0.20 d) thick 5.5 in ahead of the base (p. 5, from its ref. 1); no jet flow, the nozzle open; drag on the boattail's surface only (p. 2)"
+      },
+      {
+        "source": "Cubbage, NACA RM L57B21, 1957",
+        "figure": "Fig. 7(g) printed p. 35; Fig. 8(g) printed p. 46 (the no-jet points of its two models, averaged)",
+        "mach": 1.1,
+        "length_ratio": 0.52,
+        "diameter_ratio": 0.7,
+        "cd": 0.217,
+        "uncertainty": 0.005,
+        "flow": "attached",
+        "notes": "Reynolds number 3.4e6 to 4.8e6/ft; turbulent, the boundary layer about 0.4 in (0.20 d) thick 5.5 in ahead of the base (p. 5, from its ref. 1); no jet flow, the nozzle open; drag on the boattail's surface only (p. 2)"
+      },
+      {
+        "source": "Cubbage, NACA RM L57B21, 1957",
+        "figure": "Fig. 7(g) printed p. 35; Fig. 8(g) printed p. 46 (the no-jet points of its two models, averaged)",
+        "mach": 1.2,
+        "length_ratio": 0.52,
+        "diameter_ratio": 0.7,
+        "cd": 0.195,
+        "uncertainty": 0.005,
+        "flow": "attached",
+        "notes": "Reynolds number 3.4e6 to 4.8e6/ft; turbulent, the boundary layer about 0.4 in (0.20 d) thick 5.5 in ahead of the base (p. 5, from its ref. 1); no jet flow, the nozzle open; drag on the boattail's surface only (p. 2)"
+      },
+      {
+        "source": "Cubbage, NACA RM L57B21, 1957",
+        "figure": "Fig. 7(g) printed p. 35; Fig. 8(g) printed p. 46 (the no-jet points of its two models, averaged)",
+        "mach": 1.28,
+        "length_ratio": 0.52,
+        "diameter_ratio": 0.7,
+        "cd": 0.176,
+        "uncertainty": 0.006,
+        "flow": "attached",
+        "notes": "Reynolds number 3.4e6 to 4.8e6/ft; turbulent, the boundary layer about 0.4 in (0.20 d) thick 5.5 in ahead of the base (p. 5, from its ref. 1); no jet flow, the nozzle open; drag on the boattail's surface only (p. 2)"
+      },
+      {
+        "source": "Cubbage, NACA RM L57B21, 1957",
+        "figure": "Fig. 7(h) printed p. 36; Fig. 8(h) printed p. 47 (the no-jet points of its two models, averaged)",
+        "mach": 0.6,
+        "length_ratio": 0.78,
+        "diameter_ratio": 0.55,
+        "cd": 0.052,
+        "uncertainty": 0.004,
+        "flow": "attached",
+        "notes": "Reynolds number 3.4e6 to 4.8e6/ft; turbulent, the boundary layer about 0.4 in (0.20 d) thick 5.5 in ahead of the base (p. 5, from its ref. 1); no jet flow, the nozzle open; drag on the boattail's surface only (p. 2)"
+      },
+      {
+        "source": "Cubbage, NACA RM L57B21, 1957",
+        "figure": "Fig. 7(h) printed p. 36; Fig. 8(h) printed p. 47 (the no-jet points of its two models, averaged)",
+        "mach": 0.8,
+        "length_ratio": 0.78,
+        "diameter_ratio": 0.55,
+        "cd": 0.079,
+        "uncertainty": 0.004,
+        "flow": "attached",
+        "notes": "Reynolds number 3.4e6 to 4.8e6/ft; turbulent, the boundary layer about 0.4 in (0.20 d) thick 5.5 in ahead of the base (p. 5, from its ref. 1); no jet flow, the nozzle open; drag on the boattail's surface only (p. 2)"
+      },
+      {
+        "source": "Cubbage, NACA RM L57B21, 1957",
+        "figure": "Fig. 7(h) printed p. 36; Fig. 8(h) printed p. 47 (the no-jet points of its two models, averaged)",
+        "mach": 0.9,
+        "length_ratio": 0.78,
+        "diameter_ratio": 0.55,
+        "cd": 0.128,
+        "uncertainty": 0.004,
+        "flow": "attached",
+        "notes": "Reynolds number 3.4e6 to 4.8e6/ft; turbulent, the boundary layer about 0.4 in (0.20 d) thick 5.5 in ahead of the base (p. 5, from its ref. 1); no jet flow, the nozzle open; drag on the boattail's surface only (p. 2)"
+      },
+      {
+        "source": "Cubbage, NACA RM L57B21, 1957",
+        "figure": "Fig. 7(h) printed p. 36; Fig. 8(h) printed p. 47 (the no-jet points of its two models, averaged)",
+        "mach": 1.0,
+        "length_ratio": 0.78,
+        "diameter_ratio": 0.55,
+        "cd": 0.22,
+        "uncertainty": 0.015,
+        "flow": "attached",
+        "notes": "Reynolds number 3.4e6 to 4.8e6/ft; turbulent, the boundary layer about 0.4 in (0.20 d) thick 5.5 in ahead of the base (p. 5, from its ref. 1); no jet flow, the nozzle open; drag on the boattail's surface only (p. 2); the two models disagree"
+      },
+      {
+        "source": "Cubbage, NACA RM L57B21, 1957",
+        "figure": "Fig. 7(h) printed p. 36; Fig. 8(h) printed p. 47 (the no-jet points of its two models, averaged)",
+        "mach": 1.1,
+        "length_ratio": 0.78,
+        "diameter_ratio": 0.55,
+        "cd": 0.24,
+        "uncertainty": 0.01,
+        "flow": "attached",
+        "notes": "Reynolds number 3.4e6 to 4.8e6/ft; turbulent, the boundary layer about 0.4 in (0.20 d) thick 5.5 in ahead of the base (p. 5, from its ref. 1); no jet flow, the nozzle open; drag on the boattail's surface only (p. 2)"
+      },
+      {
+        "source": "Cubbage, NACA RM L57B21, 1957",
+        "figure": "Fig. 7(h) printed p. 36; Fig. 8(h) printed p. 47 (the no-jet points of its two models, averaged)",
+        "mach": 1.2,
+        "length_ratio": 0.78,
+        "diameter_ratio": 0.55,
+        "cd": 0.212,
+        "uncertainty": 0.018,
+        "flow": "attached",
+        "notes": "Reynolds number 3.4e6 to 4.8e6/ft; turbulent, the boundary layer about 0.4 in (0.20 d) thick 5.5 in ahead of the base (p. 5, from its ref. 1); no jet flow, the nozzle open; drag on the boattail's surface only (p. 2); fig 9(c) confirms 0.195 for the dj/db=0.65 model; fig 8(h) is clearly above the 0.2 gridline"
+      },
+      {
+        "source": "Cubbage, NACA RM L57B21, 1957",
+        "figure": "Fig. 7(h) printed p. 36; Fig. 8(h) printed p. 47 (the no-jet points of its two models, averaged)",
+        "mach": 1.28,
+        "length_ratio": 0.78,
+        "diameter_ratio": 0.55,
+        "cd": 0.203,
+        "uncertainty": 0.006,
+        "flow": "attached",
+        "notes": "Reynolds number 3.4e6 to 4.8e6/ft; turbulent, the boundary layer about 0.4 in (0.20 d) thick 5.5 in ahead of the base (p. 5, from its ref. 1); no jet flow, the nozzle open; drag on the boattail's surface only (p. 2)"
+      }
+    ]
+  },
+  "base_pressures": {
+    "source": "measured base pressure coefficients behind a cylinder and behind boattails, each report's own cylinder",
+    "rows": [
+      {
+        "source": "Cortright and Schroeder, NACA RM E51F26, 1951",
+        "figure": "Fig. 24, printed p. 47",
+        "mach": 1.91,
+        "length_ratio": 2.5,
+        "diameter_ratio": 0.506,
+        "cylinder_cp": -0.133,
+        "boattail_cp": -0.08,
+        "uncertainty": 0.001,
+        "notes": "free-stream C_p,b (plain symbols); the cylinder's -0.133 is its C'_p,b (local), which for a cylinder is taken as the free stream's; Reynolds number 3.24e6/ft, natural transition"
+      },
+      {
+        "source": "Cortright and Schroeder, NACA RM E51F26, 1951",
+        "figure": "Fig. 24, printed p. 47",
+        "mach": 1.91,
+        "length_ratio": 2.0,
+        "diameter_ratio": 0.506,
+        "cylinder_cp": -0.133,
+        "boattail_cp": -0.058,
+        "uncertainty": 0.001,
+        "notes": "free-stream C_p,b (plain symbols); the cylinder's -0.133 is its C'_p,b (local), which for a cylinder is taken as the free stream's; Reynolds number 3.24e6/ft, natural transition"
+      },
+      {
+        "source": "Cortright and Schroeder, NACA RM E51F26, 1951",
+        "figure": "Fig. 24, printed p. 47",
+        "mach": 1.91,
+        "length_ratio": 1.5,
+        "diameter_ratio": 0.506,
+        "cylinder_cp": -0.133,
+        "boattail_cp": -0.034,
+        "uncertainty": 0.001,
+        "notes": "free-stream C_p,b (plain symbols); the cylinder's -0.133 is its C'_p,b (local), which for a cylinder is taken as the free stream's; Reynolds number 3.24e6/ft, natural transition"
+      },
+      {
+        "source": "Cortright and Schroeder, NACA RM E51F26, 1951",
+        "figure": "Fig. 24, printed p. 47",
+        "mach": 1.91,
+        "length_ratio": 1.5,
+        "diameter_ratio": 0.704,
+        "cylinder_cp": -0.133,
+        "boattail_cp": -0.084,
+        "uncertainty": 0.001,
+        "notes": "free-stream C_p,b (plain symbols); the cylinder's -0.133 is its C'_p,b (local), which for a cylinder is taken as the free stream's; this run's boundary layer went turbulent early by accident (p. 18); Reynolds number 3.24e6/ft, natural transition"
+      },
+      {
+        "source": "Cortright and Schroeder, NACA RM E51F26, 1951",
+        "figure": "Fig. 24, printed p. 47",
+        "mach": 1.91,
+        "length_ratio": 1.2,
+        "diameter_ratio": 0.704,
+        "cylinder_cp": -0.133,
+        "boattail_cp": -0.09,
+        "uncertainty": 0.001,
+        "notes": "free-stream C_p,b (plain symbols); the cylinder's -0.133 is its C'_p,b (local), which for a cylinder is taken as the free stream's; Reynolds number 3.24e6/ft, natural transition"
+      },
+      {
+        "source": "Cortright and Schroeder, NACA RM E51F26, 1951",
+        "figure": "Fig. 24, printed p. 47",
+        "mach": 1.91,
+        "length_ratio": 0.9,
+        "diameter_ratio": 0.704,
+        "cylinder_cp": -0.133,
+        "boattail_cp": -0.089,
+        "uncertainty": 0.001,
+        "notes": "free-stream C_p,b (plain symbols); the cylinder's -0.133 is its C'_p,b (local), which for a cylinder is taken as the free stream's; Reynolds number 3.24e6/ft, natural transition"
+      },
+      {
+        "source": "de Moraes and Nowitzky, NACA RM L54C16, 1954",
+        "figure": "Fig. 6, printed p. 22",
+        "mach": 1.59,
+        "length_ratio": 1.92,
+        "diameter_ratio": 0.664,
+        "cylinder_cp": -0.195,
+        "boattail_cp": -0.121,
+        "uncertainty": 0.002,
+        "notes": "Reynolds number 17.8e6 on the length, natural transition, turbulent; Fig. 7's afterbody drag agrees with these readings"
+      },
+      {
+        "source": "de Moraes and Nowitzky, NACA RM L54C16, 1954",
+        "figure": "Fig. 6, printed p. 22",
+        "mach": 1.59,
+        "length_ratio": 0.94,
+        "diameter_ratio": 0.669,
+        "cylinder_cp": -0.195,
+        "boattail_cp": -0.093,
+        "uncertainty": 0.002,
+        "notes": "Reynolds number 17.8e6 on the length, natural transition, turbulent; Fig. 7's afterbody drag agrees with these readings"
+      },
+      {
+        "source": "Love, NACA TN 3819, 1957 (Kurzweg's data, its ref. 5)",
+        "figure": "Fig. 25(b), printed p. 54",
+        "mach": 3.24,
+        "length_ratio": 1.0,
+        "diameter_ratio": 0.9127,
+        "cylinder_cp": -0.092,
+        "boattail_cp": -0.087,
+        "uncertainty": 0.0015,
+        "notes": "turbulent; every boattail runs from about 18.26 in to 20.22 in on a 1.97-in body (Fig. 25(a)), so about 1.0 calibre (±0.03) long, which the diameter ratio assumes"
+      },
+      {
+        "source": "Love, NACA TN 3819, 1957 (Kurzweg's data, its ref. 5)",
+        "figure": "Fig. 25(b), printed p. 54",
+        "mach": 3.24,
+        "length_ratio": 1.0,
+        "diameter_ratio": 0.825,
+        "cylinder_cp": -0.092,
+        "boattail_cp": -0.078,
+        "uncertainty": 0.0015,
+        "notes": "turbulent; every boattail runs from about 18.26 in to 20.22 in on a 1.97-in body (Fig. 25(a)), so about 1.0 calibre (±0.03) long, which the diameter ratio assumes"
+      },
+      {
+        "source": "Love, NACA TN 3819, 1957 (Kurzweg's data, its ref. 5)",
+        "figure": "Fig. 25(b), printed p. 54",
+        "mach": 3.24,
+        "length_ratio": 1.0,
+        "diameter_ratio": 0.6473,
+        "cylinder_cp": -0.092,
+        "boattail_cp": -0.062,
+        "uncertainty": 0.0015,
+        "notes": "turbulent; every boattail runs from about 18.26 in to 20.22 in on a 1.97-in body (Fig. 25(a)), so about 1.0 calibre (±0.03) long, which the diameter ratio assumes"
+      },
+      {
+        "source": "Love, NACA TN 3819, 1957 (Kurzweg's data, its ref. 5)",
+        "figure": "Fig. 25(b), printed p. 54",
+        "mach": 3.24,
+        "length_ratio": 1.0,
+        "diameter_ratio": 0.4641,
+        "cylinder_cp": -0.092,
+        "boattail_cp": -0.055,
+        "uncertainty": 0.0015,
+        "notes": "turbulent; every boattail runs from about 18.26 in to 20.22 in on a 1.97-in body (Fig. 25(a)), so about 1.0 calibre (±0.03) long, which the diameter ratio assumes"
+      }
+    ]
+  },
+  "second_order_theory": {
+    "source": "J. R. Jack, Theoretical pressure distributions and wave drags for conical boattails, NACA TN 2972, 1953, Fig. 3 (printed pp. 8-9): Van Dyke's second-order theory at Mach 1.5, 2.5, 3.5 and 4.5, read at each legible curve (±0.001 at Mach 1.5, ±0.0007 at 2.5, ±0.0005 at 3.5 and 4.5)",
+    "rows": [
+      {
+        "mach": 1.5,
+        "area_ratio": 0.25,
+        "half_angle_deg": 11,
+        "cd": 0.1351
+      },
+      {
+        "mach": 1.5,
+        "area_ratio": 0.25,
+        "half_angle_deg": 9,
+        "cd": 0.1036
+      },
+      {
+        "mach": 1.5,
+        "area_ratio": 0.25,
+        "half_angle_deg": 7,
+        "cd": 0.0722
+      },
+      {
+        "mach": 1.5,
+        "area_ratio": 0.3,
+        "half_angle_deg": 11,
+        "cd": 0.132
+      },
+      {
+        "mach": 1.5,
+        "area_ratio": 0.3,
+        "half_angle_deg": 9,
+        "cd": 0.1017
+      },
+      {
+        "mach": 1.5,
+        "area_ratio": 0.3,
+        "half_angle_deg": 7,
+        "cd": 0.0711
+      },
+      {
+        "mach": 1.5,
+        "area_ratio": 0.35,
+        "half_angle_deg": 11,
+        "cd": 0.1279
+      },
+      {
+        "mach": 1.5,
+        "area_ratio": 0.35,
+        "half_angle_deg": 9,
+        "cd": 0.099
+      },
+      {
+        "mach": 1.5,
+        "area_ratio": 0.35,
+        "half_angle_deg": 7,
+        "cd": 0.0697
+      },
+      {
+        "mach": 1.5,
+        "area_ratio": 0.35,
+        "half_angle_deg": 5,
+        "cd": 0.0438
+      },
+      {
+        "mach": 1.5,
+        "area_ratio": 0.4,
+        "half_angle_deg": 11,
+        "cd": 0.123
+      },
+      {
+        "mach": 1.5,
+        "area_ratio": 0.4,
+        "half_angle_deg": 9,
+        "cd": 0.0956
+      },
+      {
+        "mach": 1.5,
+        "area_ratio": 0.4,
+        "half_angle_deg": 7,
+        "cd": 0.068
+      },
+      {
+        "mach": 1.5,
+        "area_ratio": 0.4,
+        "half_angle_deg": 5,
+        "cd": 0.043
+      },
+      {
+        "mach": 1.5,
+        "area_ratio": 0.5,
+        "half_angle_deg": 11,
+        "cd": 0.1104
+      },
+      {
+        "mach": 1.5,
+        "area_ratio": 0.5,
+        "half_angle_deg": 9,
+        "cd": 0.0864
+      },
+      {
+        "mach": 1.5,
+        "area_ratio": 0.5,
+        "half_angle_deg": 7,
+        "cd": 0.0633
+      },
+      {
+        "mach": 1.5,
+        "area_ratio": 0.5,
+        "half_angle_deg": 5,
+        "cd": 0.0405
+      },
+      {
+        "mach": 1.5,
+        "area_ratio": 0.5,
+        "half_angle_deg": 3,
+        "cd": 0.0191
+      },
+      {
+        "mach": 1.5,
+        "area_ratio": 0.6,
+        "half_angle_deg": 11,
+        "cd": 0.0939
+      },
+      {
+        "mach": 1.5,
+        "area_ratio": 0.6,
+        "half_angle_deg": 9,
+        "cd": 0.0743
+      },
+      {
+        "mach": 1.5,
+        "area_ratio": 0.6,
+        "half_angle_deg": 7,
+        "cd": 0.056
+      },
+      {
+        "mach": 1.5,
+        "area_ratio": 0.6,
+        "half_angle_deg": 5,
+        "cd": 0.0365
+      },
+      {
+        "mach": 1.5,
+        "area_ratio": 0.6,
+        "half_angle_deg": 3,
+        "cd": 0.0174
+      },
+      {
+        "mach": 1.5,
+        "area_ratio": 0.7,
+        "half_angle_deg": 11,
+        "cd": 0.0738
+      },
+      {
+        "mach": 1.5,
+        "area_ratio": 0.7,
+        "half_angle_deg": 9,
+        "cd": 0.0595
+      },
+      {
+        "mach": 1.5,
+        "area_ratio": 0.7,
+        "half_angle_deg": 7,
+        "cd": 0.0457
+      },
+      {
+        "mach": 1.5,
+        "area_ratio": 0.7,
+        "half_angle_deg": 5,
+        "cd": 0.0305
+      },
+      {
+        "mach": 1.5,
+        "area_ratio": 0.7,
+        "half_angle_deg": 3,
+        "cd": 0.015
+      },
+      {
+        "mach": 1.5,
+        "area_ratio": 0.8,
+        "half_angle_deg": 11,
+        "cd": 0.0506
+      },
+      {
+        "mach": 1.5,
+        "area_ratio": 0.8,
+        "half_angle_deg": 9,
+        "cd": 0.0419
+      },
+      {
+        "mach": 1.5,
+        "area_ratio": 0.8,
+        "half_angle_deg": 7,
+        "cd": 0.0324
+      },
+      {
+        "mach": 1.5,
+        "area_ratio": 0.8,
+        "half_angle_deg": 5,
+        "cd": 0.0224
+      },
+      {
+        "mach": 1.5,
+        "area_ratio": 0.8,
+        "half_angle_deg": 3,
+        "cd": 0.0116
+      },
+      {
+        "mach": 2.5,
+        "area_ratio": 0.25,
+        "half_angle_deg": 11,
+        "cd": 0.0749
+      },
+      {
+        "mach": 2.5,
+        "area_ratio": 0.25,
+        "half_angle_deg": 9,
+        "cd": 0.061
+      },
+      {
+        "mach": 2.5,
+        "area_ratio": 0.25,
+        "half_angle_deg": 7,
+        "cd": 0.0449
+      },
+      {
+        "mach": 2.5,
+        "area_ratio": 0.25,
+        "half_angle_deg": 5,
+        "cd": 0.0296
+      },
+      {
+        "mach": 2.5,
+        "area_ratio": 0.3,
+        "half_angle_deg": 11,
+        "cd": 0.0718
+      },
+      {
+        "mach": 2.5,
+        "area_ratio": 0.3,
+        "half_angle_deg": 9,
+        "cd": 0.0588
+      },
+      {
+        "mach": 2.5,
+        "area_ratio": 0.3,
+        "half_angle_deg": 7,
+        "cd": 0.0438
+      },
+      {
+        "mach": 2.5,
+        "area_ratio": 0.3,
+        "half_angle_deg": 5,
+        "cd": 0.0291
+      },
+      {
+        "mach": 2.5,
+        "area_ratio": 0.35,
+        "half_angle_deg": 11,
+        "cd": 0.0684
+      },
+      {
+        "mach": 2.5,
+        "area_ratio": 0.35,
+        "half_angle_deg": 9,
+        "cd": 0.0562
+      },
+      {
+        "mach": 2.5,
+        "area_ratio": 0.35,
+        "half_angle_deg": 7,
+        "cd": 0.0422
+      },
+      {
+        "mach": 2.5,
+        "area_ratio": 0.35,
+        "half_angle_deg": 5,
+        "cd": 0.0283
+      },
+      {
+        "mach": 2.5,
+        "area_ratio": 0.35,
+        "half_angle_deg": 3,
+        "cd": 0.0137
+      },
+      {
+        "mach": 2.5,
+        "area_ratio": 0.4,
+        "half_angle_deg": 11,
+        "cd": 0.0644
+      },
+      {
+        "mach": 2.5,
+        "area_ratio": 0.4,
+        "half_angle_deg": 9,
+        "cd": 0.0533
+      },
+      {
+        "mach": 2.5,
+        "area_ratio": 0.4,
+        "half_angle_deg": 7,
+        "cd": 0.0404
+      },
+      {
+        "mach": 2.5,
+        "area_ratio": 0.4,
+        "half_angle_deg": 5,
+        "cd": 0.0273
+      },
+      {
+        "mach": 2.5,
+        "area_ratio": 0.4,
+        "half_angle_deg": 3,
+        "cd": 0.0134
+      },
+      {
+        "mach": 2.5,
+        "area_ratio": 0.5,
+        "half_angle_deg": 11,
+        "cd": 0.0562
+      },
+      {
+        "mach": 2.5,
+        "area_ratio": 0.5,
+        "half_angle_deg": 9,
+        "cd": 0.0467
+      },
+      {
+        "mach": 2.5,
+        "area_ratio": 0.5,
+        "half_angle_deg": 7,
+        "cd": 0.0358
+      },
+      {
+        "mach": 2.5,
+        "area_ratio": 0.5,
+        "half_angle_deg": 5,
+        "cd": 0.0244
+      },
+      {
+        "mach": 2.5,
+        "area_ratio": 0.5,
+        "half_angle_deg": 3,
+        "cd": 0.0123
+      },
+      {
+        "mach": 2.5,
+        "area_ratio": 0.6,
+        "half_angle_deg": 11,
+        "cd": 0.047
+      },
+      {
+        "mach": 2.5,
+        "area_ratio": 0.6,
+        "half_angle_deg": 9,
+        "cd": 0.0389
+      },
+      {
+        "mach": 2.5,
+        "area_ratio": 0.6,
+        "half_angle_deg": 7,
+        "cd": 0.0301
+      },
+      {
+        "mach": 2.5,
+        "area_ratio": 0.6,
+        "half_angle_deg": 5,
+        "cd": 0.0207
+      },
+      {
+        "mach": 2.5,
+        "area_ratio": 0.6,
+        "half_angle_deg": 3,
+        "cd": 0.0106
+      },
+      {
+        "mach": 2.5,
+        "area_ratio": 0.7,
+        "half_angle_deg": 11,
+        "cd": 0.0359
+      },
+      {
+        "mach": 2.5,
+        "area_ratio": 0.7,
+        "half_angle_deg": 9,
+        "cd": 0.0301
+      },
+      {
+        "mach": 2.5,
+        "area_ratio": 0.7,
+        "half_angle_deg": 7,
+        "cd": 0.0235
+      },
+      {
+        "mach": 2.5,
+        "area_ratio": 0.7,
+        "half_angle_deg": 5,
+        "cd": 0.0162
+      },
+      {
+        "mach": 2.5,
+        "area_ratio": 0.7,
+        "half_angle_deg": 3,
+        "cd": 0.0085
+      },
+      {
+        "mach": 2.5,
+        "area_ratio": 0.8,
+        "half_angle_deg": 11,
+        "cd": 0.0244
+      },
+      {
+        "mach": 2.5,
+        "area_ratio": 0.8,
+        "half_angle_deg": 9,
+        "cd": 0.0205
+      },
+      {
+        "mach": 2.5,
+        "area_ratio": 0.8,
+        "half_angle_deg": 7,
+        "cd": 0.0162
+      },
+      {
+        "mach": 2.5,
+        "area_ratio": 0.8,
+        "half_angle_deg": 5,
+        "cd": 0.0113
+      },
+      {
+        "mach": 2.5,
+        "area_ratio": 0.8,
+        "half_angle_deg": 3,
+        "cd": 0.0062
+      },
+      {
+        "mach": 3.5,
+        "area_ratio": 0.25,
+        "half_angle_deg": 11,
+        "cd": 0.0509
+      },
+      {
+        "mach": 3.5,
+        "area_ratio": 0.25,
+        "half_angle_deg": 9,
+        "cd": 0.0425
+      },
+      {
+        "mach": 3.5,
+        "area_ratio": 0.25,
+        "half_angle_deg": 7,
+        "cd": 0.0327
+      },
+      {
+        "mach": 3.5,
+        "area_ratio": 0.25,
+        "half_angle_deg": 5,
+        "cd": 0.023
+      },
+      {
+        "mach": 3.5,
+        "area_ratio": 0.25,
+        "half_angle_deg": 3,
+        "cd": 0.0119
+      },
+      {
+        "mach": 3.5,
+        "area_ratio": 0.3,
+        "half_angle_deg": 11,
+        "cd": 0.0484
+      },
+      {
+        "mach": 3.5,
+        "area_ratio": 0.3,
+        "half_angle_deg": 9,
+        "cd": 0.0406
+      },
+      {
+        "mach": 3.5,
+        "area_ratio": 0.3,
+        "half_angle_deg": 7,
+        "cd": 0.0314
+      },
+      {
+        "mach": 3.5,
+        "area_ratio": 0.3,
+        "half_angle_deg": 5,
+        "cd": 0.0223
+      },
+      {
+        "mach": 3.5,
+        "area_ratio": 0.3,
+        "half_angle_deg": 3,
+        "cd": 0.0116
+      },
+      {
+        "mach": 3.5,
+        "area_ratio": 0.35,
+        "half_angle_deg": 11,
+        "cd": 0.0457
+      },
+      {
+        "mach": 3.5,
+        "area_ratio": 0.35,
+        "half_angle_deg": 9,
+        "cd": 0.0385
+      },
+      {
+        "mach": 3.5,
+        "area_ratio": 0.35,
+        "half_angle_deg": 7,
+        "cd": 0.03
+      },
+      {
+        "mach": 3.5,
+        "area_ratio": 0.35,
+        "half_angle_deg": 5,
+        "cd": 0.0214
+      },
+      {
+        "mach": 3.5,
+        "area_ratio": 0.35,
+        "half_angle_deg": 3,
+        "cd": 0.0113
+      },
+      {
+        "mach": 3.5,
+        "area_ratio": 0.4,
+        "half_angle_deg": 11,
+        "cd": 0.0429
+      },
+      {
+        "mach": 3.5,
+        "area_ratio": 0.4,
+        "half_angle_deg": 9,
+        "cd": 0.0362
+      },
+      {
+        "mach": 3.5,
+        "area_ratio": 0.4,
+        "half_angle_deg": 7,
+        "cd": 0.0284
+      },
+      {
+        "mach": 3.5,
+        "area_ratio": 0.4,
+        "half_angle_deg": 5,
+        "cd": 0.0204
+      },
+      {
+        "mach": 3.5,
+        "area_ratio": 0.4,
+        "half_angle_deg": 3,
+        "cd": 0.0108
+      },
+      {
+        "mach": 3.5,
+        "area_ratio": 0.5,
+        "half_angle_deg": 11,
+        "cd": 0.0368
+      },
+      {
+        "mach": 3.5,
+        "area_ratio": 0.5,
+        "half_angle_deg": 9,
+        "cd": 0.0313
+      },
+      {
+        "mach": 3.5,
+        "area_ratio": 0.5,
+        "half_angle_deg": 7,
+        "cd": 0.0248
+      },
+      {
+        "mach": 3.5,
+        "area_ratio": 0.5,
+        "half_angle_deg": 5,
+        "cd": 0.0179
+      },
+      {
+        "mach": 3.5,
+        "area_ratio": 0.5,
+        "half_angle_deg": 3,
+        "cd": 0.0096
+      },
+      {
+        "mach": 3.5,
+        "area_ratio": 0.6,
+        "half_angle_deg": 11,
+        "cd": 0.0302
+      },
+      {
+        "mach": 3.5,
+        "area_ratio": 0.6,
+        "half_angle_deg": 9,
+        "cd": 0.0258
+      },
+      {
+        "mach": 3.5,
+        "area_ratio": 0.6,
+        "half_angle_deg": 7,
+        "cd": 0.0206
+      },
+      {
+        "mach": 3.5,
+        "area_ratio": 0.6,
+        "half_angle_deg": 5,
+        "cd": 0.015
+      },
+      {
+        "mach": 3.5,
+        "area_ratio": 0.6,
+        "half_angle_deg": 3,
+        "cd": 0.0081
+      },
+      {
+        "mach": 3.5,
+        "area_ratio": 0.7,
+        "half_angle_deg": 11,
+        "cd": 0.0231
+      },
+      {
+        "mach": 3.5,
+        "area_ratio": 0.7,
+        "half_angle_deg": 9,
+        "cd": 0.0199
+      },
+      {
+        "mach": 3.5,
+        "area_ratio": 0.7,
+        "half_angle_deg": 7,
+        "cd": 0.0159
+      },
+      {
+        "mach": 3.5,
+        "area_ratio": 0.7,
+        "half_angle_deg": 5,
+        "cd": 0.0117
+      },
+      {
+        "mach": 3.5,
+        "area_ratio": 0.7,
+        "half_angle_deg": 3,
+        "cd": 0.0065
+      },
+      {
+        "mach": 3.5,
+        "area_ratio": 0.8,
+        "half_angle_deg": 11,
+        "cd": 0.0155
+      },
+      {
+        "mach": 3.5,
+        "area_ratio": 0.8,
+        "half_angle_deg": 9,
+        "cd": 0.0135
+      },
+      {
+        "mach": 3.5,
+        "area_ratio": 0.8,
+        "half_angle_deg": 7,
+        "cd": 0.0108
+      },
+      {
+        "mach": 3.5,
+        "area_ratio": 0.8,
+        "half_angle_deg": 5,
+        "cd": 0.008
+      },
+      {
+        "mach": 3.5,
+        "area_ratio": 0.8,
+        "half_angle_deg": 3,
+        "cd": 0.0046
+      },
+      {
+        "mach": 4.5,
+        "area_ratio": 0.25,
+        "half_angle_deg": 11,
+        "cd": 0.0364
+      },
+      {
+        "mach": 4.5,
+        "area_ratio": 0.25,
+        "half_angle_deg": 9,
+        "cd": 0.031
+      },
+      {
+        "mach": 4.5,
+        "area_ratio": 0.25,
+        "half_angle_deg": 7,
+        "cd": 0.0248
+      },
+      {
+        "mach": 4.5,
+        "area_ratio": 0.25,
+        "half_angle_deg": 5,
+        "cd": 0.0184
+      },
+      {
+        "mach": 4.5,
+        "area_ratio": 0.3,
+        "half_angle_deg": 11,
+        "cd": 0.0344
+      },
+      {
+        "mach": 4.5,
+        "area_ratio": 0.3,
+        "half_angle_deg": 9,
+        "cd": 0.0294
+      },
+      {
+        "mach": 4.5,
+        "area_ratio": 0.3,
+        "half_angle_deg": 7,
+        "cd": 0.0236
+      },
+      {
+        "mach": 4.5,
+        "area_ratio": 0.3,
+        "half_angle_deg": 5,
+        "cd": 0.0176
+      },
+      {
+        "mach": 4.5,
+        "area_ratio": 0.3,
+        "half_angle_deg": 3,
+        "cd": 0.0095
+      },
+      {
+        "mach": 4.5,
+        "area_ratio": 0.35,
+        "half_angle_deg": 11,
+        "cd": 0.0324
+      },
+      {
+        "mach": 4.5,
+        "area_ratio": 0.35,
+        "half_angle_deg": 9,
+        "cd": 0.0277
+      },
+      {
+        "mach": 4.5,
+        "area_ratio": 0.35,
+        "half_angle_deg": 7,
+        "cd": 0.0224
+      },
+      {
+        "mach": 4.5,
+        "area_ratio": 0.35,
+        "half_angle_deg": 5,
+        "cd": 0.0167
+      },
+      {
+        "mach": 4.5,
+        "area_ratio": 0.35,
+        "half_angle_deg": 3,
+        "cd": 0.0092
+      },
+      {
+        "mach": 4.5,
+        "area_ratio": 0.4,
+        "half_angle_deg": 11,
+        "cd": 0.0302
+      },
+      {
+        "mach": 4.5,
+        "area_ratio": 0.4,
+        "half_angle_deg": 9,
+        "cd": 0.0259
+      },
+      {
+        "mach": 4.5,
+        "area_ratio": 0.4,
+        "half_angle_deg": 7,
+        "cd": 0.0211
+      },
+      {
+        "mach": 4.5,
+        "area_ratio": 0.4,
+        "half_angle_deg": 5,
+        "cd": 0.0158
+      },
+      {
+        "mach": 4.5,
+        "area_ratio": 0.4,
+        "half_angle_deg": 3,
+        "cd": 0.0087
+      },
+      {
+        "mach": 4.5,
+        "area_ratio": 0.5,
+        "half_angle_deg": 11,
+        "cd": 0.0257
+      },
+      {
+        "mach": 4.5,
+        "area_ratio": 0.5,
+        "half_angle_deg": 9,
+        "cd": 0.022
+      },
+      {
+        "mach": 4.5,
+        "area_ratio": 0.5,
+        "half_angle_deg": 7,
+        "cd": 0.0181
+      },
+      {
+        "mach": 4.5,
+        "area_ratio": 0.5,
+        "half_angle_deg": 5,
+        "cd": 0.0137
+      },
+      {
+        "mach": 4.5,
+        "area_ratio": 0.5,
+        "half_angle_deg": 3,
+        "cd": 0.0076
+      },
+      {
+        "mach": 4.5,
+        "area_ratio": 0.6,
+        "half_angle_deg": 11,
+        "cd": 0.0209
+      },
+      {
+        "mach": 4.5,
+        "area_ratio": 0.6,
+        "half_angle_deg": 9,
+        "cd": 0.0179
+      },
+      {
+        "mach": 4.5,
+        "area_ratio": 0.6,
+        "half_angle_deg": 7,
+        "cd": 0.0148
+      },
+      {
+        "mach": 4.5,
+        "area_ratio": 0.6,
+        "half_angle_deg": 5,
+        "cd": 0.0112
+      },
+      {
+        "mach": 4.5,
+        "area_ratio": 0.6,
+        "half_angle_deg": 3,
+        "cd": 0.0063
+      },
+      {
+        "mach": 4.5,
+        "area_ratio": 0.7,
+        "half_angle_deg": 11,
+        "cd": 0.0158
+      },
+      {
+        "mach": 4.5,
+        "area_ratio": 0.7,
+        "half_angle_deg": 9,
+        "cd": 0.0135
+      },
+      {
+        "mach": 4.5,
+        "area_ratio": 0.7,
+        "half_angle_deg": 7,
+        "cd": 0.0112
+      },
+      {
+        "mach": 4.5,
+        "area_ratio": 0.7,
+        "half_angle_deg": 5,
+        "cd": 0.0086
+      },
+      {
+        "mach": 4.5,
+        "area_ratio": 0.7,
+        "half_angle_deg": 3,
+        "cd": 0.0049
+      },
+      {
+        "mach": 4.5,
+        "area_ratio": 0.8,
+        "half_angle_deg": 11,
+        "cd": 0.0105
+      },
+      {
+        "mach": 4.5,
+        "area_ratio": 0.8,
+        "half_angle_deg": 9,
+        "cd": 0.009
+      },
+      {
+        "mach": 4.5,
+        "area_ratio": 0.8,
+        "half_angle_deg": 7,
+        "cd": 0.0075
+      },
+      {
+        "mach": 4.5,
+        "area_ratio": 0.8,
+        "half_angle_deg": 5,
+        "cd": 0.0058
+      },
+      {
+        "mach": 4.5,
+        "area_ratio": 0.8,
+        "half_angle_deg": 3,
+        "cd": 0.0033
+      }
+    ]
+  }
+}

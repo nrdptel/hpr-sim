@@ -15,27 +15,27 @@
         "bands": [
           {
             "band": "subsonic",
-            "max_error": 0.08890690127996215,
+            "max_error": 0.08890690127996237,
             "min_error": 0.03862682367196957,
-            "rms_error": 0.054667923285509526,
+            "rms_error": 0.0546679232855096,
             "rows": 15,
             "within_target": 15
           },
           {
             "band": "transonic",
             "max_error": 0.038288083203959156,
-            "min_error": -0.3144748135166531,
-            "rms_error": 0.22136906304190368,
+            "min_error": -0.10521061699797851,
+            "rms_error": 0.05953410418893245,
             "rows": 7,
-            "within_target": 2
+            "within_target": 6
           },
           {
             "band": "supersonic",
-            "max_error": -0.24396039475102216,
-            "min_error": -0.29781930113640875,
-            "rms_error": 0.26165243142880323,
+            "max_error": -0.05113774699508167,
+            "min_error": -0.14935894068159772,
+            "rms_error": 0.1076941435526358,
             "rows": 17,
-            "within_target": 0
+            "within_target": 8
           }
         ],
         "rows": [
@@ -62,9 +62,9 @@
           },
           {
             "band": "subsonic",
-            "hpr_cd0": 0.40101678418480513,
+            "hpr_cd0": 0.40101678418480524,
             "mach": 0.25,
-            "relative_error": 0.04413045977260022,
+            "relative_error": 0.04413045977260066,
             "within_target": true
           },
           {
@@ -83,9 +83,9 @@
           },
           {
             "band": "subsonic",
-            "hpr_cd0": 0.39747298759836786,
+            "hpr_cd0": 0.3974729875983679,
             "mach": 0.4,
-            "relative_error": 0.047448401322035094,
+            "relative_error": 0.047448401322035316,
             "within_target": true
           },
           {
@@ -104,16 +104,16 @@
           },
           {
             "band": "subsonic",
-            "hpr_cd0": 0.40538111045750336,
+            "hpr_cd0": 0.4053811104575034,
             "mach": 0.55,
             "relative_error": 0.055621000573380375,
             "within_target": true
           },
           {
             "band": "subsonic",
-            "hpr_cd0": 0.40996633154004797,
+            "hpr_cd0": 0.4099663315400481,
             "mach": 0.6,
-            "relative_error": 0.052619159894319534,
+            "relative_error": 0.052619159894319756,
             "within_target": true
           },
           {
@@ -139,9 +139,9 @@
           },
           {
             "band": "subsonic",
-            "hpr_cd0": 0.43676765233185466,
+            "hpr_cd0": 0.43676765233185477,
             "mach": 0.8,
-            "relative_error": 0.08890690127996215,
+            "relative_error": 0.08890690127996237,
             "within_target": true
           },
           {
@@ -160,156 +160,156 @@
           },
           {
             "band": "transonic",
-            "hpr_cd0": 0.46779907071157834,
+            "hpr_cd0": 0.5418046732298646,
             "mach": 0.95,
-            "relative_error": -0.11189442161765684,
-            "within_target": false
+            "relative_error": 0.0286034813133198,
+            "within_target": true
           },
           {
             "band": "transonic",
-            "hpr_cd0": 0.49164567707890644,
+            "hpr_cd0": 0.6375112188666039,
             "mach": 1.0,
-            "relative_error": -0.21643306049519473,
-            "within_target": false
+            "relative_error": 0.01604211723214366,
+            "within_target": true
           },
           {
             "band": "transonic",
-            "hpr_cd0": 0.49916735547634505,
+            "hpr_cd0": 0.65154374897979,
             "mach": 1.05,
-            "relative_error": -0.3144748135166531,
+            "relative_error": -0.10521061699797851,
             "within_target": false
           },
           {
             "band": "transonic",
-            "hpr_cd0": 0.49548463979906504,
+            "hpr_cd0": 0.653779989407735,
             "mach": 1.1,
-            "relative_error": -0.3043579358787907,
-            "within_target": false
+            "relative_error": -0.08211713384864183,
+            "within_target": true
           },
           {
             "band": "transonic",
-            "hpr_cd0": 0.48793992007382503,
+            "hpr_cd0": 0.6516395339524829,
             "mach": 1.15,
-            "relative_error": -0.3010848584922492,
-            "within_target": false
+            "relative_error": -0.06660488648779461,
+            "within_target": true
           },
           {
             "band": "supersonic",
-            "hpr_cd0": 0.4800733841356334,
+            "hpr_cd0": 0.6487269069284468,
             "mach": 1.2,
-            "relative_error": -0.29781930113640875,
-            "within_target": false
+            "relative_error": -0.05113774699508167,
+            "within_target": true
           },
           {
             "band": "supersonic",
-            "hpr_cd0": 0.4726437644429388,
+            "hpr_cd0": 0.6248695672811873,
             "mach": 1.25,
-            "relative_error": -0.29436479239474933,
-            "within_target": false
+            "relative_error": -0.06709873269068334,
+            "within_target": true
           },
           {
             "band": "supersonic",
-            "hpr_cd0": 0.46745708561978283,
+            "hpr_cd0": 0.6057275736307113,
             "mach": 1.3,
-            "relative_error": -0.2870834596496714,
-            "within_target": false
+            "relative_error": -0.07620780715077824,
+            "within_target": true
           },
           {
             "band": "supersonic",
-            "hpr_cd0": 0.4614809153983574,
+            "hpr_cd0": 0.5877597881323701,
             "mach": 1.35,
-            "relative_error": -0.2790146435754415,
-            "within_target": false
+            "relative_error": -0.08172540575629572,
+            "within_target": true
           },
           {
             "band": "supersonic",
-            "hpr_cd0": 0.45594020808560753,
+            "hpr_cd0": 0.571812314830281,
             "mach": 1.4,
-            "relative_error": -0.2710675093536261,
-            "within_target": false
+            "relative_error": -0.08581746588744743,
+            "within_target": true
           },
           {
             "band": "supersonic",
-            "hpr_cd0": 0.44942288742537234,
+            "hpr_cd0": 0.5561848770729567,
             "mach": 1.45,
-            "relative_error": -0.2654895852105319,
-            "within_target": false
+            "relative_error": -0.09100404944035478,
+            "within_target": true
           },
           {
             "band": "supersonic",
-            "hpr_cd0": 0.44325360346973225,
+            "hpr_cd0": 0.541979030996908,
             "mach": 1.5,
-            "relative_error": -0.26017485069910373,
-            "within_target": false
+            "relative_error": -0.09539434223094145,
+            "within_target": true
           },
           {
             "band": "supersonic",
-            "hpr_cd0": 0.43724413981706267,
+            "hpr_cd0": 0.5288312750271278,
             "mach": 1.55,
-            "relative_error": -0.255418652366324,
-            "within_target": false
+            "relative_error": -0.09945527550059974,
+            "within_target": true
           },
           {
             "band": "supersonic",
-            "hpr_cd0": 0.4312207974980419,
+            "hpr_cd0": 0.5164283803392101,
             "mach": 1.6,
-            "relative_error": -0.2515227553262981,
+            "relative_error": -0.10362651006100931,
             "within_target": false
           },
           {
             "band": "supersonic",
-            "hpr_cd0": 0.4249512836511479,
+            "hpr_cd0": 0.5044256880055864,
             "mach": 1.65,
-            "relative_error": -0.24891927480659715,
+            "relative_error": -0.10845213056366398,
             "within_target": false
           },
           {
             "band": "supersonic",
-            "hpr_cd0": 0.41892697086990593,
+            "hpr_cd0": 0.4932231278387936,
             "mach": 1.7,
-            "relative_error": -0.2467686818492263,
+            "relative_error": -0.11318408086016607,
             "within_target": false
           },
           {
             "band": "supersonic",
-            "hpr_cd0": 0.4131290089251883,
+            "hpr_cd0": 0.48272672311428955,
             "mach": 1.75,
-            "relative_error": -0.24510491136367218,
+            "relative_error": -0.11793162774857391,
             "within_target": false
           },
           {
             "band": "supersonic",
-            "hpr_cd0": 0.4075408107789625,
+            "hpr_cd0": 0.47285762651242486,
             "mach": 1.8,
-            "relative_error": -0.24396039475102216,
+            "relative_error": -0.12278946345494046,
             "within_target": false
           },
           {
             "band": "supersonic",
-            "hpr_cd0": 0.40134293427035395,
+            "hpr_cd0": 0.46274438481695945,
             "mach": 1.85,
-            "relative_error": -0.24557948739203272,
+            "relative_error": -0.13016070250559197,
             "within_target": false
           },
           {
             "band": "supersonic",
-            "hpr_cd0": 0.39533463246270656,
+            "hpr_cd0": 0.45314248101360527,
             "mach": 1.9,
-            "relative_error": -0.24712775412300125,
+            "relative_error": -0.13703893013933943,
             "within_target": false
           },
           {
             "band": "supersonic",
-            "hpr_cd0": 0.38950408692443683,
+            "hpr_cd0": 0.4440030100176521,
             "mach": 1.95,
-            "relative_error": -0.24865144587856491,
+            "relative_error": -0.14352369897714057,
             "within_target": false
           },
           {
             "band": "supersonic",
-            "hpr_cd0": 0.3839921570898876,
+            "hpr_cd0": 0.43543520817374975,
             "mach": 2.0,
-            "relative_error": -0.24985511243600944,
+            "relative_error": -0.14935894068159772,
             "within_target": false
           }
         ],
@@ -325,43 +325,43 @@
       "curve_rows_dropped": 0,
       "curve_sha256": "94760a42d5f5fad4fb815f448db72201fafd2b2a3c6ec2d2c83618b2953207e0",
       "design": "rocketpy-calisto-getting-started-motor-at-minus-1.255.json",
-      "hpr_cd0": 0.35366457846519544,
+      "hpr_cd0": 0.3536645784651955,
       "id": "calisto-getting-started-power-off",
       "origin": "the same RASAero II export, for the larger NACA 0012 fins RocketPy's getting-started example gives Calisto (tip chord 0.06 m, span 0.11 m, against the 2018 notebook's 0.04 m and 0.10 m)",
-      "relative_error": -0.07297710326286078,
+      "relative_error": -0.07297710326286055,
       "sweep": {
         "bands": [
           {
             "band": "subsonic",
             "max_error": 0.30721086556367583,
             "min_error": -0.0817284183049164,
-            "rms_error": 0.11196329085712539,
+            "rms_error": 0.11196329085712538,
             "rows": 15,
             "within_target": 12
           },
           {
             "band": "transonic",
             "max_error": 0.4845698790229085,
-            "min_error": -0.07804971553503903,
-            "rms_error": 0.2514001670841074,
+            "min_error": 0.13121448098363553,
+            "rms_error": 0.31280621954291804,
             "rows": 7,
-            "within_target": 4
+            "within_target": 0
           },
           {
             "band": "supersonic",
-            "max_error": 0.21627562503734743,
-            "min_error": -0.01824654441987683,
-            "rms_error": 0.14081430810778436,
+            "max_error": 0.3167717967917594,
+            "min_error": 0.22605849299748204,
+            "rms_error": 0.2780761586623471,
             "rows": 17,
-            "within_target": 6
+            "within_target": 0
           }
         ],
         "rows": [
           {
             "band": "subsonic",
-            "hpr_cd0": 0.3779736818321173,
+            "hpr_cd0": 0.3779736818321174,
             "mach": 0.1,
-            "relative_error": -0.05948994531185914,
+            "relative_error": -0.05948994531185903,
             "within_target": true
           },
           {
@@ -387,9 +387,9 @@
           },
           {
             "band": "subsonic",
-            "hpr_cd0": 0.35366457846519544,
+            "hpr_cd0": 0.3536645784651955,
             "mach": 0.3,
-            "relative_error": -0.07297710326286078,
+            "relative_error": -0.07297710326286055,
             "within_target": true
           },
           {
@@ -401,16 +401,16 @@
           },
           {
             "band": "subsonic",
-            "hpr_cd0": 0.3614911686800742,
+            "hpr_cd0": 0.36149116868007425,
             "mach": 0.4,
-            "relative_error": -0.047373385009541025,
+            "relative_error": -0.047373385009540914,
             "within_target": true
           },
           {
             "band": "subsonic",
-            "hpr_cd0": 0.3689384737279405,
+            "hpr_cd0": 0.36893847372794053,
             "mach": 0.45,
-            "relative_error": -0.028726186267324816,
+            "relative_error": -0.028726186267324705,
             "within_target": true
           },
           {
@@ -443,7 +443,7 @@
           },
           {
             "band": "subsonic",
-            "hpr_cd0": 0.4513115692377356,
+            "hpr_cd0": 0.45131156923773563,
             "mach": 0.7,
             "relative_error": 0.11146936331890545,
             "within_target": false
@@ -478,156 +478,156 @@
           },
           {
             "band": "transonic",
-            "hpr_cd0": 0.6619587926314014,
+            "hpr_cd0": 0.7359643951496877,
             "mach": 0.95,
-            "relative_error": 0.25671326259998417,
+            "relative_error": 0.3972111655309609,
             "within_target": false
           },
           {
             "band": "transonic",
-            "hpr_cd0": 0.6561567276006723,
+            "hpr_cd0": 0.8020222693883698,
             "mach": 1.0,
-            "relative_error": 0.04575864865995749,
-            "within_target": true
+            "relative_error": 0.2782338263872959,
+            "within_target": false
           },
           {
             "band": "transonic",
-            "hpr_cd0": 0.6713210461862704,
+            "hpr_cd0": 0.8236974396897154,
             "mach": 1.05,
-            "relative_error": -0.07804971553503903,
-            "within_target": true
+            "relative_error": 0.13121448098363553,
+            "within_target": false
           },
           {
             "band": "transonic",
-            "hpr_cd0": 0.6745819955399233,
+            "hpr_cd0": 0.8328773451485931,
             "mach": 1.1,
-            "relative_error": -0.0529118884760994,
-            "within_target": true
+            "relative_error": 0.16932891355404944,
+            "within_target": false
           },
           {
             "band": "transonic",
-            "hpr_cd0": 0.673345712785109,
+            "hpr_cd0": 0.8370453266637669,
             "mach": 1.15,
-            "relative_error": -0.03551340078172216,
-            "within_target": true
+            "relative_error": 0.19896657122273242,
+            "within_target": false
           },
           {
             "band": "supersonic",
-            "hpr_cd0": 0.6712142680224275,
+            "hpr_cd0": 0.8398677908152409,
             "mach": 1.2,
-            "relative_error": -0.01824654441987683,
-            "within_target": true
+            "relative_error": 0.22843500972145026,
+            "within_target": false
           },
           {
             "band": "supersonic",
-            "hpr_cd0": 0.6690043389005783,
+            "hpr_cd0": 0.8212301417388267,
             "mach": 1.25,
-            "relative_error": -0.0012075667065838402,
-            "within_target": true
+            "relative_error": 0.22605849299748204,
+            "within_target": false
           },
           {
             "band": "supersonic",
-            "hpr_cd0": 0.6685750453330987,
+            "hpr_cd0": 0.8068455333440272,
             "mach": 1.3,
-            "relative_error": 0.01964056797102809,
-            "within_target": true
+            "relative_error": 0.23051622046992137,
+            "within_target": false
           },
           {
             "band": "supersonic",
-            "hpr_cd0": 0.66694195264881,
+            "hpr_cd0": 0.7932208253828228,
             "mach": 1.35,
-            "relative_error": 0.041983244377314266,
-            "within_target": true
+            "relative_error": 0.23927248219646025,
+            "within_target": false
           },
           {
             "band": "supersonic",
-            "hpr_cd0": 0.665373035305351,
+            "hpr_cd0": 0.7812451420500245,
             "mach": 1.4,
-            "relative_error": 0.06376234258988855,
-            "within_target": true
+            "relative_error": 0.24901238605606735,
+            "within_target": false
           },
           {
             "band": "supersonic",
-            "hpr_cd0": 0.6624945708751763,
+            "hpr_cd0": 0.7692565605227607,
             "mach": 1.45,
-            "relative_error": 0.08274228052103583,
-            "within_target": true
+            "relative_error": 0.25722781629121294,
+            "within_target": false
           },
           {
             "band": "supersonic",
-            "hpr_cd0": 0.659665294473961,
+            "hpr_cd0": 0.7583907220011368,
             "mach": 1.5,
-            "relative_error": 0.10103329370032688,
+            "relative_error": 0.26581380216848904,
             "within_target": false
           },
           {
             "band": "supersonic",
-            "hpr_cd0": 0.6567272296279261,
+            "hpr_cd0": 0.7483143648379912,
             "mach": 1.55,
-            "relative_error": 0.11833824889837885,
+            "relative_error": 0.2743016257641031,
             "within_target": false
           },
           {
             "band": "supersonic",
-            "hpr_cd0": 0.6535334881457209,
+            "hpr_cd0": 0.7387410709868892,
             "mach": 1.6,
-            "relative_error": 0.13434914862037428,
+            "relative_error": 0.2822453938856633,
             "within_target": false
           },
           {
             "band": "supersonic",
-            "hpr_cd0": 0.6498755494267827,
+            "hpr_cd0": 0.7293499537812211,
             "mach": 1.65,
-            "relative_error": 0.14862342514919602,
+            "relative_error": 0.28909056939212907,
             "within_target": false
           },
           {
             "band": "supersonic",
-            "hpr_cd0": 0.6462658768854649,
+            "hpr_cd0": 0.7205620338543526,
             "mach": 1.7,
-            "relative_error": 0.1619870100783556,
+            "relative_error": 0.2955716110674158,
             "within_target": false
           },
           {
             "band": "supersonic",
-            "hpr_cd0": 0.6427043505289769,
+            "hpr_cd0": 0.7123020647180782,
             "mach": 1.75,
-            "relative_error": 0.17438946957942547,
+            "relative_error": 0.30156275319452375,
             "within_target": false
           },
           {
             "band": "supersonic",
-            "hpr_cd0": 0.6391910380610004,
+            "hpr_cd0": 0.7045078537944628,
             "mach": 1.8,
-            "relative_error": 0.1857799938382736,
+            "relative_error": 0.3069509251343552,
             "within_target": false
           },
           {
             "band": "supersonic",
-            "hpr_cd0": 0.6349213280053165,
+            "hpr_cd0": 0.6963227785519222,
             "mach": 1.85,
-            "relative_error": 0.19348724703556952,
+            "relative_error": 0.3089060319220105,
             "within_target": false
           },
           {
             "band": "supersonic",
-            "hpr_cd0": 0.630707700734427,
+            "hpr_cd0": 0.6885155492853258,
             "mach": 1.9,
-            "relative_error": 0.2011149141825812,
+            "relative_error": 0.31120373816624314,
             "within_target": false
           },
           {
             "band": "supersonic",
-            "hpr_cd0": 0.626550154841481,
+            "hpr_cd0": 0.6810490779346964,
             "mach": 1.95,
-            "relative_error": 0.2086074799416271,
+            "relative_error": 0.31373522684305155,
             "within_target": false
           },
           {
             "band": "supersonic",
-            "hpr_cd0": 0.6226001251446266,
+            "hpr_cd0": 0.6740431762284889,
             "mach": 2.0,
-            "relative_error": 0.21627562503734743,
+            "relative_error": 0.3167717967917594,
             "within_target": false
           }
         ],

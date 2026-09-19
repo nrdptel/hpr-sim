@@ -10,10 +10,11 @@
 //!   (eq. 3.78–3.81) and corrected for compressibility (eq. 3.82–3.84). Wetted areas are weighted
 //!   by the body form factor `1 + 1/(2 f_B)` and the fin thickness factor `1 + 2t/c̄` (eq. 3.85).
 //! - **Body pressure drag**: noses, shoulders and steps up in radius from `0.8 sin² φ` at rest
-//!   (eq. 3.86) through Mach 1 to appendix B's wave drag ([`crate::nose_drag`]), and the boattail
-//!   rule (eq. 3.88) ([`boattail_factor`]).
+//!   (eq. 3.86) through Mach 1 to appendix B's wave drag ([`crate::nose_drag`]); boattails by the
+//!   boattail rule (eq. 3.88, [`boattail_factor`]) to Mach 0.8 and their supersonic wave drag
+//!   from Mach 1 ([`crate::afterbody`]); a shoulder in a boattail's wake has none.
 //! - **Base drag** ([`base_drag_coefficient`], eq. 3.94) on the aft base, less the thrusting
-//!   motors' area.
+//!   motors' area, relieved behind a boattail faster than sound ([`crate::afterbody`]).
 //! - **Fin pressure drag** ([`fin_pressure_drag_coefficient`], eq. 3.89–3.93) on the fins' frontal
 //!   area `N t s`.
 //! - **Parasitic drag** of launch lugs and rail buttons ([`launch_lug_drag`], eq. 3.95–3.96, and
@@ -26,15 +27,18 @@
 //! ([`BUILDUP_MACH_LIMIT`]).
 //!
 //! See `docs/physics/aero.md` and the decision records on subsonic drag and drag override tables,
-//! [ADR-009][adr-009], and on drag through Mach 1, [ADR-028][adr-028].
+//! [ADR-009][adr-009], on drag through Mach 1, [ADR-028][adr-028], and on the afterbody faster
+//! than sound, [ADR-030][adr-030].
 //!
 //! [adr-009]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-009-subsonic-drag-buildup-surface-finishes-and-drag-override-tables-2026-09-17
 //! [adr-028]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-028-drag-through-mach-1-niskanens-appendix-b-stoneys-curves-and-the-arcas-robins-axial-force-2026-09-18
+//! [adr-030]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-030-the-afterbody-faster-than-sound-a-boattails-wave-drag-the-base-behind-it-and-a-lip-in-its-wake-2026-09-18
 
 use hpr_core::interp::Lookup;
 use hpr_design::{FinCrossSection, FinSet, LaunchLug, NoseShape, PlacedComponent, RailButton};
 use serde::{Deserialize, Serialize};
 
+use crate::afterbody::Boattail;
 use crate::body::BodyGeometry;
 use crate::error::{AeroError, check_dimension};
 use crate::fins::FinGeometry;
@@ -556,6 +560,35 @@ pub struct PressureDragTerm {
     pub area_ratio: f64,
 }
 
+/// The aft end of the body component before the one being built.
+#[derive(Debug, Clone, Copy)]
+pub(crate) struct PreviousBody {
+    /// Its aft cross-section area, m².
+    pub aft_area_m2: f64,
+    /// Its boattail, if it narrowed.
+    pub boattail: Option<Boattail>,
+}
+
+/// A boattail's pressure drag: its coefficient against Mach number, on its fore area.
+#[derive(Debug, Clone, Copy, PartialEq, Serialize)]
+#[non_exhaustive]
+pub struct BoattailTerm {
+    /// The boattail ([`crate::afterbody`]).
+    pub boattail: Boattail,
+    /// Its fore area over the reference area.
+    pub area_ratio: f64,
+}
+
+/// The aft base behind a boattail.
+#[derive(Debug, Clone, Copy, PartialEq, Serialize)]
+#[non_exhaustive]
+pub struct BaseBehindBoattail {
+    /// The boattail ([`crate::afterbody`]).
+    pub boattail: Boattail,
+    /// The base's area over the boattail's fore area, `a_b`, at most 1.
+    pub base_area_ratio: f64,
+}
+
 /// A component's precomputed drag terms, built by [`crate::AeroModel::new`]. Areas are divided by
 /// the reference area.
 ///
@@ -580,9 +613,22 @@ pub struct ComponentDragTerms {
     /// builds, so the normal force and a drag table work; [`crate::AeroModel::drag`] without a
     /// table returns [`AeroError::Unsupported`] for it.
     pub unsupported: Option<String>,
-    /// Boattails and steps down in radius: `Σ` factor × decrease in area (eq. 3.88), times the
-    /// base drag coefficient.
+    /// A step down in radius at the fore end: its decrease in area, a boattail of no length
+    /// (eq. 3.88 at `γ = 0`), times the base drag coefficient.
     pub boattail_area_ratio: f64,
+    /// A transition that narrows: its pressure drag on its fore area
+    /// ([`Boattail::pressure_drag_coefficient`]), times that area over the reference area.
+    pub boattail: Option<BoattailTerm>,
+    /// A shoulder right behind a boattail, with no step between, widening to no more than the
+    /// boattail's fore diameter: it sits in the boattail's wake and has no pressure drag. This is
+    /// that boattail. NASA's Arcas Robin models end in such a lip, whose effect TN D-4014 finds
+    /// "masked" when the flow over the boattail separates or the boundary layer thickens (Babb and
+    /// Fuller 1967, p. 6), and which RASAero II's own comparison with them left out as "buried in
+    /// the boattail boundary layer".
+    pub in_wake_of: Option<Boattail>,
+    /// The boattail right ahead of the aft base, when the base belongs to it or to a shoulder in
+    /// its wake: the base drag's factor ([`Boattail::base_pressure_ratio`]).
+    pub base_behind: Option<BaseBehindBoattail>,
     /// A fin set's pressure-drag inputs.
     pub fins: Option<FinPressureTerms>,
     /// Launch lugs' and rail buttons' areas (a lug's times its length factor), times the
@@ -602,6 +648,9 @@ impl ComponentDragTerms {
             shoulder: None,
             unsupported: None,
             boattail_area_ratio: 0.0,
+            boattail: None,
+            in_wake_of: None,
+            base_behind: None,
             fins: None,
             parasitic_area_ratio: 0.0,
             base_area_m2: 0.0,
@@ -611,6 +660,10 @@ impl ComponentDragTerms {
     /// A body component's terms: friction on its surface, the step in area from the previous body
     /// component (`None` for the first, whose fore face counts as a step up from nothing), and its
     /// own pressure drag. `shape` is a nose's or transition's profile shape, `None` for a tube.
+    /// `previous` is the previous body component's aft end.
+    ///
+    /// A transition that narrows over a length is a [`Boattail`]. One that widens right behind a
+    /// boattail is in its wake ([`ComponentDragTerms::in_wake_of`]).
     ///
     /// A nose or shoulder's fineness ratio is its length over its rise in diameter,
     /// `l/(d_aft − d_fore)`: a nose's `l/d`, and for a shoulder the fineness of the nose with the
@@ -625,7 +678,7 @@ impl ComponentDragTerms {
         component: &PlacedComponent,
         geometry: &BodyGeometry,
         shape: Option<NoseShape>,
-        previous_aft_area_m2: Option<f64>,
+        previous: Option<PreviousBody>,
         form_factor: f64,
         length_m: f64,
         reference_area_m2: f64,
@@ -634,7 +687,7 @@ impl ComponentDragTerms {
         let mut terms = Self::empty(component, length_m)?;
         terms.friction_area_ratio =
             form_factor * PI * geometry.planform_area_m2 / reference_area_m2;
-        let step = geometry.fore_area_m2 - previous_aft_area_m2.unwrap_or(0.0);
+        let step = geometry.fore_area_m2 - previous.map_or(0.0, |p| p.aft_area_m2);
         if step > 0.0 {
             terms.step = Some(PressureDragTerm {
                 curve: PressureDragCurve::step(),
@@ -648,7 +701,12 @@ impl ComponentDragTerms {
         let change = geometry.aft_area_m2 - geometry.fore_area_m2;
         let rise = diameter(geometry.aft_area_m2) - diameter(geometry.fore_area_m2);
         // A widening too small to change the diameter as computed is none.
-        if change > 0.0 && rise > 0.0 {
+        let wake = previous.and_then(|p| p.boattail).filter(|boattail| {
+            step <= 0.0 && diameter(geometry.aft_area_m2) <= boattail.fore_diameter_m
+        });
+        if change > 0.0 && rise > 0.0 && wake.is_some() {
+            terms.in_wake_of = wake;
+        } else if change > 0.0 && rise > 0.0 {
             let shape = shape.ok_or_else(|| {
                 AeroError::Layout("a body that widens needs a profile shape".to_owned())
             })?;
@@ -664,12 +722,20 @@ impl ComponentDragTerms {
                 Err(error) => return Err(error),
             }
         } else if change < 0.0 {
-            let factor = boattail_factor(
-                geometry.length_m,
+            let (fore, aft) = (
                 diameter(geometry.fore_area_m2),
                 diameter(geometry.aft_area_m2),
-            )?;
-            terms.boattail_area_ratio -= factor * change;
+            );
+            if geometry.length_m > 0.0 && fore > aft {
+                terms.boattail = Some(BoattailTerm {
+                    boattail: Boattail::new(geometry.length_m, fore, aft)?,
+                    area_ratio: geometry.fore_area_m2 / reference_area_m2,
+                });
+            } else {
+                // No length, or a narrowing too small to change the diameter as computed: the
+                // rule's `γ = 0`, factor 1, as a step.
+                terms.boattail_area_ratio -= change;
+            }
         }
         terms.boattail_area_ratio /= reference_area_m2;
         Ok(terms)
@@ -758,6 +824,9 @@ impl ComponentDragTerms {
         };
         let base_coefficient = base_drag_coefficient(mach)?;
         let mut pressure = base_coefficient * self.boattail_area_ratio;
+        if let Some(term) = &self.boattail {
+            pressure += term.area_ratio * term.boattail.pressure_drag_coefficient(mach)?;
+        }
         for term in [&self.step, &self.shoulder].into_iter().flatten() {
             pressure += term.area_ratio * term.curve.coefficient(mach)?;
         }
@@ -774,8 +843,15 @@ impl ComponentDragTerms {
         } else {
             0.0
         };
-        let base = base_coefficient * (self.base_area_m2 - thrusting_motor_area_m2).max(0.0)
-            / reference_area_m2;
+        let relief = match &self.base_behind {
+            Some(behind) => behind
+                .boattail
+                .base_pressure_ratio(mach, behind.base_area_ratio)?,
+            None => 1.0,
+        };
+        let base =
+            base_coefficient * relief * (self.base_area_m2 - thrusting_motor_area_m2).max(0.0)
+                / reference_area_m2;
         let zero_lift = friction + pressure + base + parasitic;
         Ok(Drag {
             zero_lift_coefficient: zero_lift,
@@ -2276,11 +2352,12 @@ mod tests {
     /// fetched.
     ///
     /// The lesson named this test for supersonic drag within that tolerance. It isn't, and the
-    /// decision record on the comparison, ADR-029, measures why: Calisto's curve, the one real
-    /// RASAero II export, reads 24% to 30% above hpr from Mach 1.2, and no plausible fin section,
-    /// thickness or finish is within 10% both below Mach 0.8 and from 1.2. MIL-HDBK-762's worked
-    /// example, every input known, reads hpr's body 6% to 10% low there too, and a boattail's
-    /// wave drag is a candidate for the rest; the other curves are hand-edited, short, or
+    /// decision records on the comparison measure why. Before the boattail's supersonic wave drag
+    /// (ADR-030), Calisto's curve, the one real RASAero II export, read 24% to 30% above hpr from
+    /// Mach 1.2, and no plausible fin section, thickness or finish was within 10% both below
+    /// Mach 0.8 and from 1.2 (ADR-029). With it, 8 of its 17 supersonic rows are within 10% on
+    /// the committed inputs (ADR-009's rule), and plausible fins close the rest
+    /// (`tests::calistos_rows_by_fin_and_finish`); the other curves are hand-edited, short, or
     /// disagree with their own rockets' OpenRocket files.
     #[test]
     fn supersonic_cd_against_rasaero_tables() {
@@ -2434,20 +2511,21 @@ mod tests {
         }
         // Calisto's two designs share one export.
         assert_eq!(curves.values().filter(|c| c.len() == 2).count(), 1);
-        // Rows within 10%, by case and band (ADR-029). Calisto's export on the 2018 fins: every
-        // subsonic row, none supersonic, where hpr reads 24% to 30% low. The getting-started fins
-        // (a variant on the same export, thick NACA 0012) cross it from low to high. Juno III's
+        // Rows within 10%, by case and band (ADR-029, ADR-030). Calisto's export on the 2018 fins:
+        // every subsonic row, 6 of 7 transonic, and 8 of 17 supersonic, where hpr reads −14.9% to
+        // −5.1% (−29.8% to −24.4% before the boattail's wave drag). The getting-started fins (a
+        // variant on the same export, thick NACA 0012) now read 23% to 32% high. Juno III's
         // table is hand-edited from Mach 0.93 and Cavour's stop below Mach 0.93; Valetudo's is
         // 1.44 times its own OpenRocket export at Mach 0.3 (ADR-009).
         assert_eq!(
             within,
             [
                 ("calisto-power-off", "subsonic", 15, 15),
-                ("calisto-power-off", "transonic", 2, 7),
-                ("calisto-power-off", "supersonic", 0, 17),
+                ("calisto-power-off", "transonic", 6, 7),
+                ("calisto-power-off", "supersonic", 8, 17),
                 ("calisto-getting-started-power-off", "subsonic", 12, 15),
-                ("calisto-getting-started-power-off", "transonic", 4, 7),
-                ("calisto-getting-started-power-off", "supersonic", 6, 17),
+                ("calisto-getting-started-power-off", "transonic", 0, 7),
+                ("calisto-getting-started-power-off", "supersonic", 0, 17),
                 ("juno-iii-power-off", "subsonic", 15, 15),
                 ("juno-iii-power-off", "transonic", 0, 2),
                 ("cavour-power-off", "subsonic", 6, 15),
