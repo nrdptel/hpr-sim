@@ -222,6 +222,43 @@ dest = "refs/papers/naca-tn-3527-syvertson-dennis-1956.pdf"
 license = "US government work"
 mode = "fetched"
 
+[[file]]
+name = "nasa-sp-3007-sims-1964-cones-small-alpha"
+title = "J. L. Sims, Tables for supersonic flow around right circular cones at small angle of attack, NASA SP-3007, 1964"
+url = "https://ntrs.nasa.gov/api/citations/19640015103/downloads/19640015103.pdf"
+sha256 = "a6a837276684651daf2b59758141d091b9f979fe3648ed7a9cc7202b6fc4a01a"
+dest = "refs/papers/nasa-sp-3007-sims-1964-cones-small-alpha.pdf"
+license = "US government work"
+mode = "fetched"
+
+[[file]]
+name = "nasa-tr-r-474-jorgensen-1977"
+title = "L. H. Jorgensen, Prediction of static aerodynamic characteristics for slender bodies alone and with lifting surfaces to very high angles of attack, NASA TR R-474, 1977"
+url = "https://ntrs.nasa.gov/api/citations/19770026166/downloads/19770026166.pdf"
+sha256 = "ddab387548811ed386b885b77bef8432ee62e8f964399370277c0153c1c9f59b"
+dest = "refs/papers/nasa-tr-r-474-jorgensen-1977.pdf"
+license = "US government work"
+mode = "fetched"
+
+# DTIC's own site refuses scripted downloads; these are the Internet Archive's DTIC copies.
+[[file]]
+name = "afatl-tr-77-8-butler-sears-pallas-1977-ogive-bluffness"
+title = "C. B. Butler, E. S. Sears and S. G. Pallas, Aerodynamic characteristics of 2-, 3-, and 4-caliber tangent-ogive cylinders with nose bluffness ratios of 0.00, 0.25, 0.50, and 0.75 at Mach numbers from 0.6 to 4.0, AFATL-TR-77-8 (DTIC AD-B031340), 1977"
+url = "https://archive.org/download/DTIC_ADB031340/DTIC_ADB031340.pdf"
+sha256 = "2073e82e8dc022b09ac4f6d270f251425c7c92d0bb072ee7c3ca46f150fe4ac2"
+dest = "refs/papers/afatl-tr-77-8-butler-sears-pallas-1977-ogive-bluffness.pdf"
+license = "US government work"
+mode = "fetched"
+
+[[file]]
+name = "nswc-tr-81-156-mason-1981-aero-design-manual"
+title = "L. A. Mason, L. Devan, F. G. Moore and D. McMillan, Aerodynamic design manual for tactical weapons, NSWC TR 81-156 (DTIC AD-A109180), 1981"
+url = "https://archive.org/download/DTIC_ADA109180/DTIC_ADA109180.pdf"
+sha256 = "f0c578d25879e579af3d4ccecfb59d13bce0497362c20d60470aaf546486ffee"
+dest = "refs/papers/nswc-tr-81-156-mason-1981-aero-design-manual.pdf"
+license = "US government work"
+mode = "fetched"
+
 # NTRS serves this one with a 436-byte header before the %PDF marker; the pin is for the bytes as
 # served.
 [[file]]

@@ -41,7 +41,9 @@ pub const USAGE: &str = "\
                            it and write validation/fixtures/aero/normal-force-override.json;
                            compare the body's supersonic normal force (second-order
                            shock-expansion) with NACA TN 3527's tables and the Arcas Robin
-                           and write validation/fixtures/aero/shock-expansion.json.
+                           and write validation/fixtures/aero/shock-expansion.json;
+                           size the Arcas Robin body's remaining supersonic gap by source
+                           and write validation/fixtures/aero/arcas-robin-gap.json.
                            --check fails if a committed fixture differs instead of writing.";
 
 const FIXTURE: &str = "validation/fixtures/aero/rocketpy-drag-curves.json";
@@ -188,6 +190,7 @@ pub fn run(args: &[String]) -> Result<(), String> {
             crate::aero_body::FIXTURE,
             crate::aero_body::generate(&root)?,
         ),
+        (crate::aero_gap::FIXTURE, crate::aero_gap::generate(&root)?),
     ] {
         let path = root.join(name);
         if check {

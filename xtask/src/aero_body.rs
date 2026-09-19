@@ -27,7 +27,7 @@ use crate::aero_mach::{WIND_TUNNEL, slope};
 
 pub const FIXTURE: &str = "validation/fixtures/aero/shock-expansion.json";
 pub const TABLES: &str = "validation/fixtures/aero/tn3527-bodies.json";
-const INCH: f64 = 0.0254;
+pub const INCH: f64 = 0.0254;
 
 /// The targets set before measuring: against the report's second-order values, per radian and
 /// calibers; against its measurements, per radian and calibers (its stated accuracy, p. 1).
@@ -193,8 +193,8 @@ pub fn arcas_nose_ratio() -> Result<(f64, f64), String> {
 
 /// The Arcas Robin's body for the method, in metres: the fitted nose, the cylinder to
 /// `cylinder_end_in`, and with `boattail` its 15° conical boattail (1.757 in long, to 1.308 in
-/// across). The lip behind the boattail, a 57° flare, is past the method (its tangent cone is
-/// past Fig. 2).
+/// across). The lip behind the boattail, a face square to it (75° to the axis, Fig. 1(a) Detail
+/// A), is past the method (its tangent cone is past Fig. 2).
 pub fn arcas_body(
     ratio: f64,
     cylinder_end_in: f64,
@@ -251,7 +251,7 @@ fn arcas_nose(ratio: f64) -> Result<ShockExpansionBody, String> {
 /// hpr's model of the design `name` under `validation/designs/`, or with `ratio` of its nose and
 /// cylinder alone, the nose replaced by the secant ogive of that arc radius ratio, and with
 /// `boattail` the boattail behind them too (not the lip behind that).
-fn arcas_model(
+pub fn arcas_model(
     root: &Path,
     name: &str,
     ratio: Option<f64>,
@@ -293,7 +293,7 @@ fn arcas_model(
 
 /// The bodies' `C_Nα` at `α → 0` through the flight's path (`AeroModel::components`), on
 /// `area_m2`: the first `covered` bodies' and all of them, and all of their CP, m from the tip.
-fn flight_bodies(
+pub fn flight_bodies(
     model: &AeroModel,
     mach: f64,
     area_m2: f64,
