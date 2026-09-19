@@ -565,7 +565,7 @@ pub struct PressureDragTerm {
 ///
 /// A share is the drag of the cone from the start of the surface it continues through its aft
 /// end, less that of the cone from the same start through its fore end, and not below 0. Each
-/// surface ahead that the flow may still follow ([`couple_afterbody`]) has a weight: 1 for a turn
+/// surface ahead that the flow may still follow has a weight: 1 for a turn
 /// of up to [`MERGE_FULL_TURN_RAD`] between this part and it, 0 from [`MERGE_NONE_TURN_RAD`] (a
 /// corner), linear between, times what the tubes, steps and lips since have left of it. With `W`
 /// the largest weight, the part drags `W` times the shares averaged by weight, plus `1 − W` times
