@@ -91,10 +91,9 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
 
 ## Decided without Neer (one line each; significant ones get an ADR)
 
-- ADR-030: Fig. 5-122 held to the Prandtl–Meyer limit, a 16°–30° separation blend, a rise from
-  Mach 0.8 to the Mach 1.2 value, Fig. 5-141 as a ratio held below Mach 2.5, boattails in parts
-  blended by their turn, every part after a boattail fading it continuously, a lip's wake fading
-  with its rise; targets not met, not tuned; one test renamed.
+- ADR-030: Fig. 5-122 to the Prandtl–Meyer limit, 16°–30° separation, Fig. 5-141 as a ratio, the
+  flow behind boattails shared among their tails, a step down sheltering a lip (a retainer: 5% to
+  23% less `C_D0`, unmeasured); targets not met, not tuned.
 - ADR-029: M1.8's drag bullet recorded as not met, not chased; MIL-HDBK-762's worked example
   added (fins left out); L18's test renamed to measure and pin; M1.8b3 added for the afterbody.
 - ADR-028: M1.8b split into b1 and b2; Stoney's Figure 12 read by hand into the code (panel (a),

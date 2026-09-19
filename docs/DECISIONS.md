@@ -2846,7 +2846,19 @@ What the sources give (all NACA and NASA reports are U.S. Government works; pinn
   leave the base out, don't move. A straight cone drawn in parts behind a boattail it partly
   merges with can drag a little differently from the one cone, the old tail's unmerged share
   getting a second chance at a later part: an 8° cone behind a 14° part reads the same in 2 or 4
-  parts and −0.13% to −0.34% of `C_D0` in 8.
+  parts, −0.13% to −0.34% of `C_D0` in 8, and toward −1.6% in very many (−1.25% in 32, Mach 1.5).
+  And a share is held at 0 where the chart makes a longer cone drag less, so a straight cone in
+  parts can read a little high: a 3° cone 300 mm long in 8 parts, up to +0.40% at Mach 1.2 (a
+  0.8° one +0.035% at Mach 1.5, as before). Third round (physics and code reviews): the 1° factor
+  now takes the smaller angle over the larger (the larger at most 1°), so a straight cone under
+  1° merges wholly (the product of the two angles over 1° had put a 0.8° cone in 8 parts 3.3%
+  high); a step down's corner now shelters a lip behind a plain step with no boattail ahead, as a
+  closure drawn ever shorter already did: a 98 mm airframe stepping down to a 54 mm motor tube
+  showing for 12 mm, then a 62 mm retainer, reads 15% to 23% lower from Mach 0.3 to 2.5, and a
+  54 mm one with a 38 mm motor tube and a 44 mm retainer 4.6% to 8.5%, unmeasured
+  (`a_retainer_behind_a_step_down_is_in_its_wake`); and fades now add where steps multiplied
+  (behind a 10° boattail, a 1 mm step and a 2 mm tube leave the base 0.433 of its relief, was
+  0.513).
 - **Fig. 5-141 is power-off**, as is Fleeman's base drag it scales; under power hpr applies both to
   what the motors leave of the base. Love's value held past Mach 5.5 would ask for less than a
   vacuum, and is clamped there.
