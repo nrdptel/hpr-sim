@@ -32,6 +32,7 @@
           },
           "remaining": -1.7831216340684737,
           "sources": {
+            "blunt_tip": null,
             "crossflow": 1.42259122073618,
             "crossflow_galejs_range": [
               1.2932647461237998,
@@ -73,6 +74,7 @@
           },
           "remaining": -1.5444732850995844,
           "sources": {
+            "blunt_tip": null,
             "crossflow": 1.3991201883716629,
             "crossflow_galejs_range": [
               1.271927443974239,
@@ -114,6 +116,7 @@
           },
           "remaining": -1.3933299794713194,
           "sources": {
+            "blunt_tip": null,
             "crossflow": 1.4647275570207294,
             "crossflow_galejs_range": [
               1.3315705063824812,
@@ -155,6 +158,7 @@
           },
           "remaining": -1.432322523840554,
           "sources": {
+            "blunt_tip": null,
             "crossflow": 1.482673164383268,
             "crossflow_galejs_range": [
               1.3478846948938799,
@@ -196,6 +200,10 @@
           },
           "remaining": -1.0063839888522783,
           "sources": {
+            "blunt_tip": [
+              -0.015098251796276038,
+              -0.06849005351133283
+            ],
             "crossflow": 1.4508161871385024,
             "crossflow_galejs_range": [
               1.3189238064895474,
@@ -237,6 +245,10 @@
           },
           "remaining": -0.8224391115014246,
           "sources": {
+            "blunt_tip": [
+              -0.015482480359854995,
+              -0.07023302582595511
+            ],
             "crossflow": 1.4481029330604642,
             "crossflow_galejs_range": [
               1.3164572118731492,
@@ -285,6 +297,7 @@
           },
           "remaining": -1.517684910921676,
           "sources": {
+            "blunt_tip": null,
             "crossflow": 1.9178978396289013,
             "crossflow_galejs_range": [
               1.7435434905717282,
@@ -326,6 +339,7 @@
           },
           "remaining": -1.4536958218778973,
           "sources": {
+            "blunt_tip": null,
             "crossflow": 1.9725966574487965,
             "crossflow_galejs_range": [
               1.793269688589815,
@@ -367,6 +381,7 @@
           },
           "remaining": -1.4545979182557438,
           "sources": {
+            "blunt_tip": null,
             "crossflow": 2.0861927141602434,
             "crossflow_galejs_range": [
               1.8965388310547666,
@@ -408,6 +423,10 @@
           },
           "remaining": -0.9504112657236047,
           "sources": {
+            "blunt_tip": [
+              -0.015156469030473333,
+              -0.06875414378742943
+            ],
             "crossflow": 1.9531035320741854,
             "crossflow_galejs_range": [
               1.7755486655219865,
@@ -449,6 +468,10 @@
           },
           "remaining": -0.869744052055473,
           "sources": {
+            "blunt_tip": [
+              -0.01559063924830899,
+              -0.07072366594495005
+            ],
             "crossflow": 1.9383537544317224,
             "crossflow_galejs_range": [
               1.762139776756111,
@@ -521,5 +544,5 @@
   },
   "generator": "cargo xtask aero",
   "nose_fineness": 4.166666666666667,
-  "note": "The Arcas Robin's body alone faster than sound (TN D-4014, fins off) against hpr's bodies in a flight: the nose as the fitted secant ogive of shock-expansion.json, the cylinder and the boattail, not the lip (M1.8e4's in_flight_with_boattail). All slopes per radian on the body's cross-section. measured.fitted_c_n_alpha is M1.8a's straight line through the plotted points; zero_alpha_c_n_alpha and crossflow_per_rad2 are b and c of C_N = a + b alpha + c alpha |alpha| through the same points (Jorgensen, NASA TR R-474, eq. 1), crossflow_share = fitted - zero_alpha the curvature's part of the straight line, and implied_k = 1.1 c / body_lift_per_rad2 the K that makes hpr's body lift that curvature; standard errors take each point's reading_c_n as an independent standard deviation. hpr.zero_alpha_c_n_alpha is its slope at alpha -> 0; hpr.fitted_c_n_alpha its bodies' C_N through the flight's path at the plotted angles, fitted the same way; above_zero_alpha and above_inner its slope at alpha -> 0 less measured.zero_alpha_c_n_alpha and measured.inner_c_n_alpha. gap = measured.fitted_c_n_alpha - hpr.zero_alpha_c_n_alpha. sources.crossflow is hpr's body lift, K (A_plan/A_ref) sin^2 alpha with K = 1.1, fitted at the plotted angles (body_lift_per_rad2 is K A_plan/A_ref); crossflow_galejs_range the same at K = 1.0 and 1.5. sources.lip is slender-body theory's share of the lip behind the boattail, 2 dA/A_ref. sources.reduced_elements counts the nose's elements the method reduces to the generalized method (issue #81). measured.inner_c_n_alpha is the straight line through the points within 3 deg only. sources.fig2_below_mach_3 bounds the change in the nose and cylinder's share (nose_and_cylinder_c_n_alpha, the method's, no boattail) if each tangent cone's slope, held at TN 3527 Fig. 2's Mach 3 curve below Mach 3, took Sims's value instead (NASA SP-3007 Table 2, p. 20): the least and greatest ratio of his slopes to his Mach 3 slopes at his angles to 12.5 deg and his Mach numbers at or around the row's, less 1, times the share; zero from Mach 3. remaining = gap - crossflow - lip. No target."
+  "note": "The Arcas Robin's body alone faster than sound (TN D-4014, fins off) against hpr's bodies in a flight: the nose as the fitted secant ogive of shock-expansion.json, the cylinder and the boattail, not the lip (M1.8e4's in_flight_with_boattail). All slopes per radian on the body's cross-section. measured.fitted_c_n_alpha is M1.8a's straight line through the plotted points; zero_alpha_c_n_alpha and crossflow_per_rad2 are b and c of C_N = a + b alpha + c alpha |alpha| through the same points (Jorgensen, NASA TR R-474, eq. 2.12), crossflow_share = fitted - zero_alpha the curvature's part of the straight line, and implied_k = 1.1 c / body_lift_per_rad2 the K that makes hpr's body lift that curvature; standard errors take each point's reading_c_n as an independent standard deviation. hpr.zero_alpha_c_n_alpha is its slope at alpha -> 0; hpr.fitted_c_n_alpha its bodies' C_N through the flight's path at the plotted angles, fitted the same way; above_zero_alpha and above_inner its slope at alpha -> 0 less measured.zero_alpha_c_n_alpha and measured.inner_c_n_alpha. gap = measured.fitted_c_n_alpha - hpr.zero_alpha_c_n_alpha. sources.crossflow is hpr's body lift, K (A_plan/A_ref) sin^2 alpha with K = 1.1, fitted at the plotted angles (body_lift_per_rad2 is K A_plan/A_ref); crossflow_galejs_range the same at K = 1.0 and 1.5. sources.lip is slender-body theory's share of the lip behind the boattail, 2 dA/A_ref. sources.reduced_elements counts the nose's elements the method reduces to the generalized method (issue #81). measured.inner_c_n_alpha is the straight line through the points within 3 deg only. sources.fig2_below_mach_3 bounds the change in the nose and cylinder's share (nose_and_cylinder_c_n_alpha, the method's, no boattail) if each tangent cone's slope, held at TN 3527 Fig. 2's Mach 3 curve below Mach 3, took Sims's value instead (NASA SP-3007 Table 2, p. 20): the least and greatest ratio of his slopes to his Mach 3 slopes at his angles to 12.5 deg and his Mach numbers at or around the row's, less 1, times the share; zero from Mach 3. sources.blunt_tip, past Mach 3 only (null below), is AFATL-TR-77-8's Mach 4 change from a sharp 4-caliber ogive to a tip of 0.25 of its radius (0.063 to 0.057 per deg, Table 3(d)), scaled by (0.055/0.25)^n for n = 2 and 1 (an assumption), times hpr's slope at alpha -> 0. remaining = gap - crossflow - lip. No target."
 }

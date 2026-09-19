@@ -1,25 +1,29 @@
 # The Arcas Robin's supersonic body gap, source by source (M1.8e5)
 
-What this covers: after [M1.8e4](../decisions-and-roadmap.md#m1-8e4), hpr's body alone faster
-than sound read from 8.3% high to 27.0% low against NASA's Arcas Robin wind tunnel (TN D-4014,
-fins off, Mach 1.5 to 4.63). This note sizes each candidate cause against that gap, row by row,
-and ranks them, before any model is built. What it is for:
-[M1.8e6](../decisions-and-roadmap.md#m1-8e6) and [M1.8e7](../decisions-and-roadmap.md#m1-8e7)
-start from its ranking. How far to trust it: every fit and every hpr number below is in
+**What this covers.** After [M1.8e4](../decisions-and-roadmap.md#m1-8e4), hpr's body alone
+faster than sound read from 8.3% high to 27.0% low against NASA's Arcas Robin wind tunnel
+(TN D-4014, fins off, Mach 1.5 to 4.63). hpr computes that body's normal force by the
+[second-order shock-expansion method](../physics/aero.md#bodies-faster-than-sound) (NACA TN 3527),
+plus [body lift](../glossary.md#body-lift) at an angle. This note sizes each candidate cause of
+the gap, row by row, and ranks them, before any model is built. Slopes are per radian, on the
+body's cross-section (2.25 in across); `α` is the angle of attack.
+
+**What it is for.** [M1.8e6](../decisions-and-roadmap.md#m1-8e6) and
+[M1.8e7](../decisions-and-roadmap.md#m1-8e7) start from its ranking.
+
+**How far to trust it.** Every fit and every hpr number below is in
 [`validation/fixtures/aero/arcas-robin-gap.json`](../../validation/fixtures/aero/arcas-robin-gap.json),
-which `cargo xtask aero` writes from committed files and a test keeps current. The outside sources
+which `cargo xtask aero` writes from committed files and a test keeps current; the outside sources
 are pinned in `validation/refs.lock.toml`. The tunnel's points were read off plots to ±0.01 in
-`C_N`, so its slope at `α → 0` is known only to ±0.2 to ±0.4 per radian. The blunt tip's size
-rests on an assumed scaling from a tip four times larger. Slopes are per radian, on the body's
-cross-section (2.25 in across); `α` is the angle of attack.
+`C_N`, so its slope at `α → 0` is known only to ±0.2 to ±0.4. The blunt tip's size rests on an
+assumed scaling from a tip four times larger.
 
 ## In short
 
 1. **Most of the gap is the comparison, not missing lift.** The measured slope is a straight line
-   fitted through `C_N` plotted from about −5° to +4° (M1.8a's fit). hpr's is its slope at
-   `α → 0`. Crossflow lift grows as `α |α|`, so it steepens the fitted line. Fitted the same way,
-   at the same angles, with the body lift a flight adds, hpr's body reads **15% to 73% high** at
-   every Mach number, not low.
+   through `C_N` from about −5° to +4° ([M1.8a](../decisions-and-roadmap.md#m1-8a)'s fit), hpr's
+   its slope at `α → 0`. Crossflow lift grows as `α |α|` and steepens the line. Fitted the same
+   way, with the body lift a flight adds, hpr's body reads **15% to 73% high**, not low.
 2. **Crossflow's size is the lever.** From Mach 2.3 the tunnel's curvature matches hpr's body lift
    with `K` from 0.66 to 1.05 (±0.2), where hpr uses 1.1 and Jorgensen's method gives about 0.9.
 3. **The ranking,** largest first ([issue #81](https://github.com/nrdptel/hpr-sim/issues/81) last):
@@ -27,7 +31,7 @@ cross-section (2.25 in across); `α` is the angle of attack.
 | rank | source | size across the 11 rows, per radian | evidence |
 |---|---|---|---|
 | 1 | crossflow at the tunnel's angles | 0.09 to 1.74 (tunnel); 1.40 to 2.09 (hpr) | fits of committed readings; Jorgensen |
-| 2 | the slope at `α → 0` | hpr 0.37 below to 0.87 above | within the readings' ±0.2 to ±0.4 |
+| 2 | the slope at `α → 0` | hpr 0.37 below to 0.87 above | readings ±0.2 to ±0.4; two readings disagree |
 | 3 | the lip | +0.18 | slender-body theory, likely an upper bound |
 | 4 | the blunt tip | −0.015 to −0.07 past Mach 3 | one measured tip four times larger, scaled |
 | 5 | Fig. 2 below Mach 3 | −0.033 to +0.057 | Sims's tables, a bound |
@@ -35,15 +39,15 @@ cross-section (2.25 in across); `α` is the angle of attack.
 
 ## The gap
 
-The measured slope is the least-squares straight line, with an intercept, through the tunnel's
-fins-off points. Its standard error treats each point's reading error as independent, with the
-standard deviation the reading states: ±0.01 in `C_N` on the short model (TN D-4014 Fig. 5),
-±0.013 on the long one (Fig. 6). hpr's body is the one M1.8e4 compared: the nose as the secant
-ogive that best fits the report's coordinates, the cylinder and the 15° boattail, without the lip,
-through a flight's own path (`AeroModel::components`). The gap is the measured slope less hpr's
-at `α → 0`. The last two columns fit hpr's bodies' `C_N` at the tunnel's own angles, the same way.
+The measured slope is the least-squares line, with an intercept, through the fins-off points; its
+standard error takes each point's stated reading error as an independent standard deviation:
+±0.01 in `C_N` on the short model (TN D-4014 Fig. 5), ±0.013 on the long (Fig. 6). hpr's body is
+M1.8e4's: the nose as the secant ogive (a circular arc meeting the body at an angle) that best
+fits the report's coordinates, the cylinder and the 15° boattail, without the lip, through a
+flight's own path (`AeroModel::components`). The last two columns fit hpr's bodies' `C_N` at the
+tunnel's own angles, the same way; that is the comparison a flight sees.
 
-| model | Mach | measured, fitted | hpr at `α → 0` | gap | hpr, fitted the same way | difference |
+| model | Mach | measured, fitted | hpr at `α → 0` | gap: measured − hpr | hpr, fitted the same way | hpr fitted vs measured |
 |---|---|---|---|---|---|---|
 | short | 1.5 | 2.19 ± 0.09 | 2.37 | −0.18 | 3.80 | +73.2% |
 | short | 1.8 | 2.61 ± 0.09 | 2.58 | +0.03 | 3.98 | +52.2% |
@@ -56,8 +60,6 @@ at `α → 0`. The last two columns fit hpr's bodies' `C_N` at the tunnel's own 
 | long | 2.96 | 3.87 ± 0.11 | 3.06 | +0.81 | 5.14 | +32.9% |
 | long | 3.96 | 4.46 ± 0.11 | 3.27 | +1.18 | 5.23 | +17.3% |
 | long | 4.63 | 4.62 ± 0.11 | 3.37 | +1.25 | 5.30 | +14.9% |
-
-The second comparison is the one a flight sees, because a flight adds body lift at every angle.
 
 ## 1. Crossflow at the tunnel's angles
 
@@ -72,8 +74,8 @@ C_N,body lift = K (A_plan / A_ref) sin² α,     K = 1.1
 Here `A_plan` is the body's planform area (its outline seen from the side) and `A_ref` the
 reference area. Galejs gives `K` from 1.0 to 1.5 (*Wind Instability*, p. 1). Jorgensen writes the
 same term as `η C_dn (A_p / A_r) sin² α` (NASA TR R-474, eq. 2.12, printed p. 10): `C_dn` is a
-long cylinder's crossflow drag coefficient, and `η` the ratio of a finite cylinder's to an
-infinite one's. hpr's `K (A_plan/A_ref)` is 22.87 per radian² on the short model with its
+long cylinder's crossflow drag coefficient, and his `η` the ratio of a finite cylinder's to an
+infinite one's (not TN 3527's `η` of section 6). hpr's `K (A_plan/A_ref)` is 22.87 per radian² on the short model with its
 boattail, and 30.69 on the long.
 
 **How it is sized.** Fit the tunnel's points with a curvature term, `C_N = a + b α + c α |α|`.
@@ -117,10 +119,9 @@ number of 0.4, for bodies of fineness 10 and 12 only.
 
 ## 2. The slope at `α → 0`
 
-With crossflow fitted out, what remains is the slope at `α → 0`. The two readings of it disagree
-by more than their standard errors suggest. The `α |α|` form bends from the smallest angle; if the
-real curve bends later, `b` reads low. The middle points' line still carries some crossflow, so it
-reads high. hpr's slope lies 0.06 to 0.87 above `b`, and between 0.37 below and 0.36 above the
+With crossflow fitted out, the slope at `α → 0` remains, and its two readings disagree by more
+than their standard errors suggest: the `α |α|` form bends from the smallest angle, so if the
+real curve bends later `b` reads low, and the middle points' line still carries crossflow. hpr's slope lies 0.06 to 0.87 above `b`, and between 0.37 below and 0.36 above the
 middle points' line. TN 3527 states its method within ±0.2 per radian of its own measurements
 (Summary, p. 1); at Mach 1.5 the Arcas Robin is at 0.36 in Mach number over nose fineness, below
 its stated 0.4. This ranks second: it could be as large as 0.9, or nothing.
@@ -154,8 +155,8 @@ account would bring hpr's slope at `α → 0` toward the tunnel's.
 
 ## 5. TN 3527's Fig. 2 below Mach 3
 
-The method needs each tangent cone's normal-force slope. TN 3527 plots it in Fig. 2 (p. 40) from
-Mach 3 to 10, and below Mach 3 hpr holds the Mach 3 curve. Sims (NASA SP-3007, 1964, Table 2,
+The method needs the normal-force slope of each piece's *tangent cone* (the cone tangent to the
+profile there). TN 3527 plots it in Fig. 2 (p. 40) from Mach 3 to 10; below, hpr holds Mach 3's. Sims (NASA SP-3007, 1964, Table 2,
 printed p. 20) tabulates the same theory from Mach 1.5. His expressions are "identical to those
 found by Kopal" (p. 7), whose tables Fig. 2 plots. At Mach 3 his table agrees with hpr's reading
 of Fig. 2 within 0.003 from 5° to 12.5°, and within 0.01 at 2.5°.
@@ -169,8 +170,8 @@ Mach 2.96. In slope that is −0.033 to +0.057, and nothing from Mach 3. It rank
 
 ## 6. Issue #81
 
-Where the gradient behind a corner points away from its tangent cone's pressure (`η < 0`), hpr
-reduces the element to the generalized method; #81 records where that departs from TN 3527.
+Where the gradient behind a corner points away from its tangent cone's pressure (TN 3527's
+`η < 0`), hpr reduces the element to the generalized method; #81 records where that departs.
 `ShockExpansionBody::reduced_elements` counts such elements: none on the Arcas Robin's body, both
 lengths with the boattail, at all six Mach numbers. So #81 changes nothing here; it matters for
 shorter noses at higher Mach numbers, such as TN 3527's fineness-3 ogive at Mach 5.05.
@@ -194,7 +195,6 @@ thickness. The secant ogive misses the nose's coordinates by 0.003 in rms, too l
   committed keeps slender-body theory at every Mach number: 0.854 at `α → 0`, where the tunnel
   reads 2.19 to 4.62 fitted. A lead: NASA TN D-4865 (Jackson, Sawyer and Smith, 1968) puts a
   Newtonian cap ahead of TN 3527's method and compares it from Mach 1.50 to 4.63.
-- **M1.8e7's 15% bullet** is judged the way M1.8a fits it, at the plotted angles. There the body
-  with the fitted nose now reads 15% to 73% high. The committed short model's body, on
-  slender-body theory, reads from 4% high to 44% low
-  (the [guide's table](../physics/aero.md#normal-force-through-mach-1)).
+- **M1.8e7's target** (the body within 15% of the tunnel) is judged as M1.8a fits it. There the
+  fitted nose's body reads 15% to 73% high; the committed short model's, on slender-body theory,
+  2.26 to 2.34 where the tunnel reads 2.19 to 4.15 ([table](../physics/aero.md#normal-force-through-mach-1)).

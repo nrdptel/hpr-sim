@@ -411,19 +411,14 @@ impl ShockExpansionBody {
     ///
     /// # Errors
     ///
-    /// As [`Self::slope`], for a Mach number the march can't take.
+    /// - [`AeroError::Domain`] for a Mach number that isn't finite and above 1.
+    /// - [`AeroError::Unsupported`] where the march fails, as for [`Self::slope`]: a detached tip
+    ///   shock, a tangent cone past Fig. 2's 24°, a corner the flow can't turn, subsonic surface
+    ///   flow, or an element aft of the nose that would be reduced. An `Ok` count doesn't promise
+    ///   that [`Self::slope`] succeeds: it also needs a positive total lift.
     pub fn reduced_elements(&self, mach: f64) -> Result<usize, AeroError> {
-        if !(mach.is_finite() && mach > 1.0) {
-            return Err(AeroError::Domain {
-                what: "Mach number of the second-order shock-expansion method",
-                value: mach,
-            });
-        }
-        Ok(self
-            .flows(mach)?
-            .iter()
-            .filter(|flow| flow.eta_rate() < 0.0)
-            .count())
+        check_mach(mach)?;
+        Ok(self.flows(mach)?.iter().filter(|f| f.is_reduced()).count())
     }
 
     /// The integrals of the lift per unit length and of its moment about the vertex (both over
@@ -434,12 +429,7 @@ impl ShockExpansionBody {
         mach: f64,
         reference_area_m2: f64,
     ) -> Result<Vec<(f64, [f64; 2])>, AeroError> {
-        if !(mach.is_finite() && mach > 1.0) {
-            return Err(AeroError::Domain {
-                what: "Mach number of the second-order shock-expansion method",
-                value: mach,
-            });
-        }
+        check_mach(mach)?;
         check_dimension("reference area", reference_area_m2, false)?;
         let flows = self.flows(mach)?;
         let loading = |x: f64| {
@@ -546,8 +536,7 @@ impl ShockExpansionBody {
             // A reduced element keeps the loading behind its corner all along it. On a nose that
             // is one short element; aft of the nose, a cylinder, boattail or long shallow flare
             // would carry that loading over any length, so hpr refuses it there.
-            if flow.eta_rate() < 0.0
-                && (element.angle_rad <= CONE_ANGLE_FLOOR_RAD || !element.on_nose)
+            if flow.is_reduced() && (element.angle_rad <= CONE_ANGLE_FLOOR_RAD || !element.on_nose)
             {
                 return Err(AeroError::Unsupported(format!(
                     "behind the corner at {} m, aft of the nose, the pressure moves away from its \
@@ -558,6 +547,18 @@ impl ShockExpansionBody {
             flows.push(flow);
         }
         Ok(flows)
+    }
+}
+
+/// The method's Mach number: finite and above 1.
+fn check_mach(mach: f64) -> Result<(), AeroError> {
+    if mach.is_finite() && mach > 1.0 {
+        Ok(())
+    } else {
+        Err(AeroError::Domain {
+            what: "Mach number of the second-order shock-expansion method",
+            value: mach,
+        })
     }
 }
 
@@ -592,6 +593,11 @@ impl ElementFlow {
         }
     }
 
+    /// Whether the element is reduced to the generalized method (see [`Self::decay_rate`]).
+    fn is_reduced(&self) -> bool {
+        self.eta_rate() < 0.0
+    }
+
     /// The rate `η` grows at along the element. The exponential form holds only where the
     /// gradient behind the corner has the sign of `p_c − p₂`, `η ≥ 0` (TN 3527 p. 13), which the
     /// report states as a condition of the method without saying how it continued where the
@@ -618,7 +624,7 @@ impl ElementFlow {
     /// method (see [`Self::decay_rate`]).
     fn gradient_at(&self, pressure: f64) -> f64 {
         let gap = self.cone_pressure - self.pressure;
-        if gap == 0.0 || self.eta_rate() < 0.0 {
+        if gap == 0.0 || self.is_reduced() {
             0.0
         } else {
             (self.cone_pressure - pressure) / gap * self.gradient
@@ -1339,11 +1345,11 @@ mod tests {
 
     #[test]
     fn reduced_elements_are_counted_where_issue_81_bites() {
-        // The fineness-3 ogive at Mach 5.05, where hpr departs from TN 3527 (#81), reduces some
-        // of its nose's elements; a cone has one element, the tip's, and never does; the same
-        // ogive at Mach 3 doesn't either.
+        // The fineness-3 ogive at Mach 5.05, where hpr departs from TN 3527 (#81), reduces two of
+        // its nose's elements near the tip; a cone's nose is one element, the tip's, and is never
+        // reduced; the same ogive at Mach 3 has none either.
         let ogive = body(true, 3.0, 10.0, DEFAULT_ELEMENTS_PER_CURVE);
-        assert!(ogive.reduced_elements(5.05).unwrap() > 0);
+        assert_eq!(ogive.reduced_elements(5.05).unwrap(), 2);
         assert_eq!(ogive.reduced_elements(3.0).unwrap(), 0);
         assert_eq!(
             body(false, 3.0, 10.0, DEFAULT_ELEMENTS_PER_CURVE)

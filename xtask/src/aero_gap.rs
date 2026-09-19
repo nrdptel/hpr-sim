@@ -7,7 +7,7 @@
 //! - **The fit's angles.** The measured slope (M1.8a's) is a straight line fitted through `C_N`
 //!   plotted from about −5° to +4°. Crossflow lift grows as `α |α|`, so it steepens that line.
 //!   The fixture fits the same points with a crossflow term, `C_N = a + b α + c α |α|`
-//!   (Jorgensen, NASA TR R-474, eq. 1, where the term is `η C_dc (A_p/A) sin² α`), to separate
+//!   (Jorgensen, NASA TR R-474, eq. 2.12, where the term is `η C_dn (A_p/A_r) sin² α`), to separate
 //!   the slope at `α → 0` from the curvature. Standard errors take each point's stated reading
 //!   accuracy as independent.
 //! - **hpr at the same angles.** hpr's bodies alone through the flight's path
@@ -27,7 +27,8 @@ use hpr_aero::BODY_LIFT_K;
 use serde_json::{Value, json};
 
 use crate::aero_body::{
-    ARCAS_NOSE_R_IN, ARCAS_NOSE_X_IN, arcas_body, arcas_model, arcas_nose_ratio, flight_bodies,
+    ARCAS_NOSE_R_IN, ARCAS_NOSE_X_IN, INCH, arcas_body, arcas_model, arcas_nose_ratio,
+    flight_bodies,
 };
 use crate::aero_mach::{WIND_TUNNEL, hpr_force, slope};
 
@@ -43,6 +44,21 @@ pub const GALEJS_K: [f64; 2] = [1.0, 1.5];
 /// The measured points kept for the inner straight line: `|α|` under this, degrees: each plot's
 /// middle five points.
 pub const INNER_DEG: f64 = 3.0;
+
+/// Butler, Sears and Pallas, AFATL-TR-77-8 (1977), Table 3(d), printed p. 13: `C_Nα` per degree
+/// at Mach 4 of a 4-caliber tangent ogive on a 9-caliber midsection, sharp (nose N22) and with a
+/// spherical tip of 0.25 of its base radius (N23).
+pub const AFATL_MACH_4_PER_DEG: [f64; 2] = [0.063, 0.057];
+
+/// N23's tip radius over its base radius (AFATL-TR-77-8's nose table).
+pub const AFATL_TIP_RATIO: f64 = 0.25;
+
+/// The Arcas Robin's tip radius, in (TN D-4014 Fig. 1(a); the wind-tunnel fixture's geometry).
+pub const ARCAS_TIP_RADIUS_IN: f64 = 0.062;
+
+/// The exponents `n` that scale AFATL's change to the Arcas Robin's tip by `(ratio / 0.25)ⁿ`: an
+/// assumption, as no source measures a tip this small. The square gives the smaller loss.
+pub const BLUNT_EXPONENTS: [i32; 2] = [2, 1];
 
 /// The Mach numbers of [`SIMS_SLOPES`]' rows.
 pub const SIMS_MACHS: [f64; 5] = [1.5, 1.75, 2.0, 2.5, 3.0];
@@ -65,16 +81,21 @@ pub const SIMS_SLOPES: [[f64; 5]; 5] = [
 
 /// Below Mach 3 hpr holds Fig. 2's Mach 3 curve. The ratio of Sims's slope at a Mach number to
 /// his slope at Mach 3, over his tabulated angles and the rows at or around `mach` (and 1 at a
-/// cone of 0°): its least and greatest, or `[1, 1]` from Mach 3. The body's lift is a sum of its
-/// tangent cones' slopes with positive weights (TN 3527 eq. 19), so replacing each held slope by
-/// Sims's scales the nose's share by a ratio within these.
-pub fn fig2_ratio_range(mach: f64) -> [f64; 2] {
+/// cone of 0°): its least and greatest, or `[1, 1]` from Mach 3; `None` below his first row or
+/// for a Mach number that isn't a number. The body's lift is a sum of its tangent cones' slopes
+/// with positive weights (TN 3527 eq. 19), so replacing each held slope by Sims's scales the
+/// nose's share by a ratio within these.
+pub fn fig2_ratio_range(mach: f64) -> Option<[f64; 2]> {
     let last = SIMS_MACHS.len() - 1;
-    if mach >= SIMS_MACHS[last] {
-        return [1.0, 1.0];
+    if mach.is_nan() || mach < SIMS_MACHS[0] {
+        return None;
     }
-    let above = SIMS_MACHS.partition_point(|&m| m < mach).min(last);
-    let below = if SIMS_MACHS[above] == mach || above == 0 {
+    if mach >= SIMS_MACHS[last] {
+        return Some([1.0, 1.0]);
+    }
+    // `SIMS_MACHS[0] <= mach < SIMS_MACHS[last]`, so `above` is 0 only at the first row.
+    let above = SIMS_MACHS.partition_point(|&m| m < mach);
+    let below = if SIMS_MACHS[above] == mach {
         above
     } else {
         above - 1
@@ -86,7 +107,7 @@ pub fn fig2_ratio_range(mach: f64) -> [f64; 2] {
             range = [range[0].min(ratio), range[1].max(ratio)];
         }
     }
-    range
+    Some(range)
 }
 
 /// The least-squares fit of `ys` on three columns `basis(x)`, each point's reading error
@@ -97,6 +118,9 @@ pub fn fit3(
     basis: impl Fn(f64) -> [f64; 3],
     reading: f64,
 ) -> Result<([f64; 3], [f64; 3]), String> {
+    if xs.len() != ys.len() {
+        return Err(format!("{} angles for {} readings", xs.len(), ys.len()));
+    }
     let mut normal = [[0.0; 3]; 3];
     let mut rhs = [0.0; 3];
     for (x, y) in xs.iter().zip(ys) {
@@ -118,7 +142,9 @@ pub fn fit3(
     Ok((coefficients, errors))
 }
 
-/// The inverse of a symmetric 3 × 3 matrix by its adjugate, or `None` if it is singular.
+/// The inverse of a normal-equations matrix (symmetric, positive semi-definite) by its adjugate,
+/// or `None` if it is singular. Its determinant is at most the product of its diagonal
+/// (Hadamard), so their ratio says how independent the columns are whatever their units.
 fn invert3(m: &[[f64; 3]; 3]) -> Option<[[f64; 3]; 3]> {
     let cofactor = |i: usize, j: usize| {
         let (r0, r1) = ((i + 1) % 3, (i + 2) % 3);
@@ -126,7 +152,9 @@ fn invert3(m: &[[f64; 3]; 3]) -> Option<[[f64; 3]; 3]> {
         m[r0][c0] * m[r1][c1] - m[r0][c1] * m[r1][c0]
     };
     let determinant: f64 = (0..3).map(|j| m[0][j] * cofactor(0, j)).sum();
-    if determinant.abs() <= f64::EPSILON * m[0][0].abs().max(1.0).powi(3) {
+    // `partial_cmp` so that a NaN determinant is singular too.
+    let floor = 1e-12 * m[0][0] * m[1][1] * m[2][2];
+    if determinant.partial_cmp(&floor) != Some(std::cmp::Ordering::Greater) {
         return None;
     }
     let mut inverse = [[0.0; 3]; 3];
@@ -165,7 +193,7 @@ pub fn generate(root: &Path) -> Result<Value, String> {
     let lip = 2.0 * (lip_in.powi(2) - boattail_in.powi(2)) / diameter_in.powi(2);
     let nose_fineness = ARCAS_NOSE_X_IN[8] / (2.0 * ARCAS_NOSE_R_IN[8]);
     let (ratio, _) = arcas_nose_ratio()?;
-    let diameter_m = 2.0 * ARCAS_NOSE_R_IN[8] * 0.0254;
+    let diameter_m = 2.0 * ARCAS_NOSE_R_IN[8] * INCH;
     let area = 0.25 * PI * diameter_m * diameter_m;
     let mut configurations = Vec::new();
     for configuration in reference["configurations"]
@@ -223,7 +251,9 @@ pub fn generate(root: &Path) -> Result<Value, String> {
                 .slope(mach, area)
                 .map_err(|e| format!("{id} at Mach {mach}: {e}"))?
                 .slope_per_rad;
-            let fig2 = fig2_ratio_range(mach).map(|r| (r - 1.0) * share);
+            let fig2 = fig2_ratio_range(mach)
+                .ok_or(format!("Mach {mach} is below Sims's table"))?
+                .map(|r| (r - 1.0) * share);
             let hpr: Vec<f64> = points
                 .iter()
                 .map(|p| hpr_force(&model, mach, p.0, true).map(|f| scale * f.0))
@@ -237,6 +267,28 @@ pub fn generate(root: &Path) -> Result<Value, String> {
                 .collect();
             let crossflow = slope(&alphas, &lift);
             let gap = fitted - at_zero;
+            // AFATL's change at Mach 4 scaled to the Arcas Robin's tip, past Mach 3 only.
+            let tip = ARCAS_TIP_RADIUS_IN / ARCAS_NOSE_R_IN[8] / AFATL_TIP_RATIO;
+            let afatl = AFATL_MACH_4_PER_DEG[1] / AFATL_MACH_4_PER_DEG[0] - 1.0;
+            let blunt_tip =
+                (mach > 3.0).then(|| BLUNT_EXPONENTS.map(|n| afatl * tip.powi(n) * at_zero));
+            let numbers = [
+                fitted,
+                zero_alpha,
+                zero_alpha_error,
+                curvature,
+                curvature_error,
+                inner,
+                at_zero,
+                hpr_fitted,
+                crossflow,
+                share,
+                fig2[0],
+                fig2[1],
+            ];
+            if inner_alphas.len() < 2 || numbers.iter().any(|x| !x.is_finite()) {
+                return Err(format!("{id} at Mach {mach}: a fit that isn't a number"));
+            }
             rows.push(json!({
                 "mach": mach,
                 "mach_over_nose_fineness": mach / nose_fineness,
@@ -268,6 +320,7 @@ pub fn generate(root: &Path) -> Result<Value, String> {
                     "lip": lip,
                     "nose_and_cylinder_c_n_alpha": share,
                     "fig2_below_mach_3": fig2,
+                    "blunt_tip": blunt_tip,
                     "reduced_elements": method
                         .reduced_elements(mach)
                         .map_err(|e| format!("{id} at Mach {mach}: {e}"))?,
@@ -290,7 +343,7 @@ pub fn generate(root: &Path) -> Result<Value, String> {
                  in_flight_with_boattail). All slopes per radian on the body's cross-section. \
                  measured.fitted_c_n_alpha is M1.8a's straight line through the plotted points; \
                  zero_alpha_c_n_alpha and crossflow_per_rad2 are b and c of C_N = a + b alpha + \
-                 c alpha |alpha| through the same points (Jorgensen, NASA TR R-474, eq. 1), \
+                 c alpha |alpha| through the same points (Jorgensen, NASA TR R-474, eq. 2.12), \
                  crossflow_share = fitted - zero_alpha the curvature's part of the straight \
                  line, and implied_k = 1.1 c / body_lift_per_rad2 the K that makes hpr's body \
                  lift that curvature; \
@@ -311,7 +364,11 @@ pub fn generate(root: &Path) -> Result<Value, String> {
                  Mach 3 curve below Mach 3, took Sims's value instead (NASA SP-3007 Table 2, \
                  p. 20): the least and greatest ratio of his slopes to his Mach 3 slopes at his \
                  angles to 12.5 deg and his Mach numbers at or around the row's, less 1, times \
-                 the share; zero from Mach 3. remaining = gap - crossflow - lip. No target.",
+                 the share; zero from Mach 3. sources.blunt_tip, past Mach 3 only (null below), \
+                 is AFATL-TR-77-8's Mach 4 change from a sharp 4-caliber ogive to a tip of 0.25 \
+                 of its radius (0.063 to 0.057 per deg, Table 3(d)), scaled by (0.055/0.25)^n \
+                 for n = 2 and 1 (an assumption), times hpr's slope at alpha -> 0. remaining = \
+                 gap - crossflow - lip. No target.",
         "fig2_sims": {
             "machs": SIMS_MACHS,
             "angles_deg": SIMS_ANGLES_DEG,
@@ -327,7 +384,8 @@ mod tests {
     use super::*;
 
     /// The committed fixture is what the generator writes from the committed designs and
-    /// wind-tunnel reference (no `refs/` needed), so CI catches a stale one.
+    /// wind-tunnel reference. `cargo xtask aero --check` needs `refs/rocketpy` for the other
+    /// fixtures and CI has none, so this test is what keeps this one current there.
     #[test]
     fn committed_fixture_is_current() {
         let root = crate::designs::root().unwrap();
@@ -341,10 +399,28 @@ mod tests {
         );
     }
 
-    /// The ranges `docs/research/body-supersonic-gap.md` quotes, from the committed fixture.
+    /// [`READING`] and [`ARCAS_TIP_RADIUS_IN`] are the wind-tunnel reference's own.
+    #[test]
+    fn constants_match_the_wind_tunnel_reference() {
+        let root = crate::designs::root().unwrap();
+        let reference: Value =
+            serde_json::from_str(&fs::read_to_string(root.join(WIND_TUNNEL)).unwrap()).unwrap();
+        let reading = reference["reading"].as_str().unwrap();
+        assert!(reading.contains("+-0.01 (TN D-4014 Fig. 5), +-0.013 (Fig. 6)"));
+        assert_eq!(
+            READING,
+            [("arcas-robin-short", 0.01), ("arcas-robin-long", 0.013)]
+        );
+        let shape = reference["geometry"]["nose"]["shape"].as_str().unwrap();
+        assert!(shape.contains(&format!("{ARCAS_TIP_RADIUS_IN}-in tip radius")));
+    }
+
+    /// Every range `docs/research/body-supersonic-gap.md` quotes: in the note, and from the
+    /// committed fixture.
     #[test]
     fn the_research_note_quotes_the_fixture() {
         let root = crate::designs::root().unwrap();
+        let note = fs::read_to_string(root.join("docs/research/body-supersonic-gap.md")).unwrap();
         let fixture: Value =
             serde_json::from_str(&fs::read_to_string(root.join(FIXTURE)).unwrap()).unwrap();
         let rows: Vec<&Value> = fixture["configurations"]
@@ -363,94 +439,79 @@ mod tests {
                     [a.min(x), b.max(x)]
                 })
         };
-        let near = |[a, b]: [f64; 2], [lo, hi]: [f64; 2], within: f64, what: &str| {
+        // Each range as the fixture rounds it, and the words the note quotes it in.
+        let quoted = |[a, b]: [f64; 2], [lo, hi]: [f64; 2], within: f64, text: &str| {
             assert!(
                 (a - lo).abs() <= within && (b - hi).abs() <= within,
-                "{what}: {a} to {b}"
+                "{text}: {a} to {b}"
             );
+            assert!(note.contains(text), "the note doesn't say `{text}`");
         };
-        near(range("/gap", 0.0), [-0.18, 1.25], 0.005, "gap");
-        near(
+        quoted(range("/gap", 0.0), [-0.18, 1.25], 0.005, "−0.18");
+        quoted(
             range("/hpr/fitted_c_n_alpha_error", 0.0),
             [0.149, 0.732],
             0.0005,
-            "hpr fitted",
+            "15% to 73% high",
         );
-        near(
+        quoted(
             range("/sources/crossflow", 0.0),
             [1.40, 2.09],
             0.005,
-            "hpr crossflow",
+            "1.40 to 2.09",
         );
-        near(
+        quoted(
             range("/measured/crossflow_share", 0.0),
             [0.09, 1.74],
             0.005,
-            "tunnel crossflow",
+            "0.09 to 1.74",
         );
-        near(
+        quoted(
             range("/measured/implied_k", 2.3),
             [0.66, 1.05],
             0.005,
-            "K from 2.3",
+            "0.66 to 1.05",
         );
-        near(
+        quoted(
             range("/measured/implied_k_standard_error", 2.3),
             [0.18, 0.23],
             0.005,
-            "K errors",
+            "±0.18 to ±0.23",
         );
-        near(
+        quoted(
             range("/hpr/above_zero_alpha", 0.0),
             [0.06, 0.87],
             0.005,
-            "above b",
+            "0.06 to 0.87 above",
         );
-        near(
+        quoted(
             range("/hpr/above_inner", 0.0),
             [-0.37, 0.36],
             0.005,
-            "above inner",
+            "0.37 below and 0.36 above",
         );
-        near(
-            range("/sources/fig2_below_mach_3/0", 0.0),
-            [-0.033, 0.0],
-            0.0005,
-            "Fig. 2 low",
-        );
-        near(
-            range("/sources/fig2_below_mach_3/1", 0.0),
-            [0.0, 0.057],
-            0.0005,
-            "Fig. 2 high",
-        );
-        near(range("/sources/lip", 0.0), [0.178, 0.178], 0.0005, "lip");
-        near(
+        let fig2 = [
+            range("/sources/fig2_below_mach_3/0", 0.0)[0],
+            range("/sources/fig2_below_mach_3/1", 0.0)[1],
+        ];
+        quoted(fig2, [-0.033, 0.057], 0.0005, "−0.033 to +0.057");
+        quoted(range("/sources/lip", 0.0), [0.178, 0.178], 0.0005, "+0.178");
+        quoted(
             range("/sources/reduced_elements", 0.0),
             [0.0, 0.0],
             0.0,
-            "#81",
+            "none on the Arcas Robin's body",
         );
-        // The blunt tip: AFATL-TR-77-8 Table 3's 4-caliber ogive on a 9-caliber cylinder at Mach 4,
-        // 0.063 to 0.057 per degree from sharp to a 0.25 tip, scaled by (0.055/0.25)^n for n from
-        // 1 to 2, on hpr's slope at Mach 3.96 and 4.63: a loss of 0.015 to 0.07.
-        let afatl = 0.057 / 0.063 - 1.0;
-        let high: Vec<f64> = rows
-            .iter()
-            .filter(|r| f(r, "/mach") > 3.0)
-            .map(|r| f(r, "/hpr/zero_alpha_c_n_alpha"))
-            .collect();
-        let least = high.iter().copied().fold(f64::INFINITY, f64::min);
-        let most = high.iter().copied().fold(f64::NEG_INFINITY, f64::max);
-        let tip: f64 = 0.062 / 1.125;
-        near(
-            [
-                -afatl * (tip / 0.25).powi(2) * least,
-                -afatl * (tip / 0.25) * most,
-            ],
-            [0.015, 0.07],
-            0.001,
-            "blunt tip",
+        let blunt = [
+            -range("/sources/blunt_tip/0", 3.0)[1],
+            -range("/sources/blunt_tip/1", 3.0)[0],
+        ];
+        quoted(blunt, [0.015, 0.07], 0.001, "0.015 to 0.07");
+        // Below Mach 3 the fixture holds no blunt tip.
+        assert!(
+            rows.iter()
+                .filter(|r| f(r, "/mach") < 3.0)
+                .all(|r| r["sources"]["blunt_tip"].is_null())
         );
         // The gap is smaller than the tunnel's own crossflow at every row.
         assert!(
@@ -458,8 +519,9 @@ mod tests {
                 .all(|r| f(r, "/gap").abs() < f(r, "/measured/crossflow_share"))
         );
         // Jorgensen's eta C_dn (Fig. 4's eta at l/d 18.2 and 23.8, times C_dn = 1.2) lies within
-        // 1.3 standard errors of every implied K from Mach 2.3; hpr's 1.1 above all of them, by
-        // up to 2.2.
+        // 1.3 standard errors of each of the eight implied K from Mach 2.3; hpr's 1.1 lies above
+        // all eight, by up to 2.2.
+        let (mut checked, mut widest) = (0, 0.0_f64);
         for configuration in fixture["configurations"].as_array().unwrap() {
             let jorgensen = if configuration["id"] == "arcas-robin-short" {
                 0.74 * 1.2
@@ -475,8 +537,15 @@ mod tests {
                     f(row, "/measured/implied_k_standard_error"),
                 );
                 assert!((k - jorgensen).abs() < 1.3 * e);
-                assert!(k < BODY_LIFT_K && (BODY_LIFT_K - k) < 2.2 * e);
+                assert!(k < BODY_LIFT_K);
+                widest = widest.max((BODY_LIFT_K - k) / e);
+                checked += 1;
             }
+        }
+        assert_eq!(checked, 8);
+        assert!((widest - 2.2).abs() < 0.05, "{widest}");
+        for text in ["within 1.3 standard errors", "by up to 2.2 standard errors"] {
+            assert!(note.contains(text), "the note doesn't say `{text}`");
         }
     }
 
@@ -494,46 +563,58 @@ mod tests {
 
     #[test]
     fn fig2_ratios_bracket_the_tabulated_rows() {
-        // From Mach 3 nothing changes; at a tabulated Mach number only its own row counts.
-        assert_eq!(fig2_ratio_range(3.0), [1.0, 1.0]);
-        assert_eq!(fig2_ratio_range(4.63), [1.0, 1.0]);
-        let at = |row: usize| {
-            SIMS_SLOPES[row]
-                .iter()
-                .zip(SIMS_SLOPES[4])
-                .map(|(s, t)| s / t)
-                .fold([1.0_f64, 1.0_f64], |r, x| [r[0].min(x), r[1].max(x)])
+        let close = |got: Option<[f64; 2]>, want: [f64; 2]| {
+            let got = got.unwrap();
+            assert!(
+                (got[0] - want[0]).abs() < 1e-6 && (got[1] - want[1]).abs() < 1e-6,
+                "{got:?} {want:?}"
+            );
         };
-        assert_eq!(fig2_ratio_range(1.5), at(0));
-        assert_eq!(fig2_ratio_range(2.0), at(2));
-        // Between rows, both rows' ratios.
-        let (a, b) = (at(1), at(2));
-        assert_eq!(fig2_ratio_range(1.8), [a[0].min(b[0]), a[1].max(b[1])]);
+        // By hand from Table 2: at Mach 1.5 its own row (12.5° and 5° set the ends); at 2.96 the
+        // rows for 2.5 and 3.0 (12.5° and 5° again, and 1 from Mach 3's own row).
+        close(fig2_ratio_range(1.5), [0.988_522, 1.022_149]);
+        close(fig2_ratio_range(2.96), [0.993_280, 1.006_323]);
+        // From Mach 3 nothing changes; below the table, or not a number, there is no answer.
+        assert_eq!(fig2_ratio_range(3.0), Some([1.0, 1.0]));
+        assert_eq!(fig2_ratio_range(4.63), Some([1.0, 1.0]));
+        assert_eq!(fig2_ratio_range(1.49), None);
+        assert_eq!(fig2_ratio_range(f64::NAN), None);
         // Sims's 10° cone at Mach 1.5 over Mach 3, straight from the table.
         assert!((SIMS_SLOPES[0][3] / SIMS_SLOPES[4][3] - 1.004_287).abs() < 1e-6);
     }
 
     #[test]
-    fn fit3_recovers_an_exact_curve_and_scales_its_errors() {
+    fn fit3_recovers_an_exact_curve_and_its_errors_by_hand() {
         let xs: [f64; 7] = [-0.07, -0.035, -0.017, 0.0, 0.019, 0.037, 0.072];
         let ys: Vec<f64> = xs
             .iter()
             .map(|&a| 0.02 + 2.5 * a + 20.0 * a * a.abs())
             .collect();
-        let (c, e) = fit3(&xs, &ys, |a| [1.0, a, a * a.abs()], 0.01).unwrap();
+        let (c, _) = fit3(&xs, &ys, |a| [1.0, a, a * a.abs()], 0.01).unwrap();
         for (got, want) in c.iter().zip([0.02, 2.5, 20.0]) {
             assert!((got - want).abs() < 1e-9, "{got} {want}");
         }
-        let (_, twice) = fit3(&xs, &ys, |a| [1.0, a, a * a.abs()], 0.02).unwrap();
-        for (a, b) in e.iter().zip(twice) {
-            assert!((2.0 * a - b).abs() < 1e-15 * b);
+        // At -2 to 2 the normal matrix is [[5, 0, 0], [0, 10, 18], [0, 18, 34]], whose inverse's
+        // diagonal is 1/5, 34/16 and 10/16.
+        let xs = [-2.0, -1.0, 0.0, 1.0, 2.0];
+        let ys = [0.0; 5];
+        let (_, e) = fit3(&xs, &ys, |a| [1.0, a, a * a.abs()], 1.0).unwrap();
+        for (got, want) in e
+            .iter()
+            .zip([0.2_f64.sqrt(), 2.125_f64.sqrt(), 0.625_f64.sqrt()])
+        {
+            assert!((got - want).abs() < 1e-12, "{got} {want}");
         }
-        // With the curvature column dropped (a repeated column), the fit is singular.
+        // The slope's error alone is 1/sqrt(10), and an even column beside it doesn't change it.
+        assert!((slope_error(&xs, 1.0) - 0.1_f64.sqrt()).abs() < 1e-15);
+        let (_, even) = fit3(&xs, &ys, |a| [1.0, a, a * a], 1.0).unwrap();
+        assert!((even[1] - 0.1_f64.sqrt()).abs() < 1e-12);
+        // A repeated column is singular whatever its units, and a well-posed fit at small angles
+        // is not.
         assert!(fit3(&xs, &ys, |a| [1.0, a, a], 0.01).is_err());
-        // The straight line's error: u / sqrt(sum (x - mean)^2).
-        let n = xs.len() as f64;
-        let mean = xs.iter().sum::<f64>() / n;
-        let sxx: f64 = xs.iter().map(|x| (x - mean).powi(2)).sum();
-        assert!((slope_error(&xs, 0.01) - 0.01 / sxx.sqrt()).abs() < 1e-15);
+        assert!(fit3(&xs, &ys, |a| [1.0, 57.3 * a, 3.0 * 57.3 * a], 0.01).is_err());
+        let small: Vec<f64> = xs.iter().map(|x| 0.1 * x * 0.001).collect();
+        assert!(fit3(&small, &ys, |a| [1.0, a, a * a.abs()], 0.01).is_ok());
+        assert!(fit3(&xs, &ys[..4], |a| [1.0, a, a * a.abs()], 0.01).is_err());
     }
 }
