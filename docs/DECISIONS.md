@@ -3469,7 +3469,8 @@ slender-body theory gives −1.32; nothing measured it. Measured, the fitted-nos
   change takes about half of the old excess off. From Mach 3.96 both models are within 15% (+3.4% to
   +7.3%); Mach 1.5 to 2.96 still read 16% to 41% high, which the readings can't split between
   body lift and the slope at `α → 0`; at Mach 1.5 and 1.8 on the short model, where the tunnel's
-  points barely curve, it is mostly body lift.
+  points from −5° to +4° barely curve (its 6° points need a factor of 0.47 and 0.58 on body lift,
+  hpr's is about 0.9), it is mostly body lift.
 - At the tunnel's 62 plotted angles from 5.5° to 21.7° (`arcas-robin-high-alpha.json`, read for this
   milestone), 48 are within 15% (34 before).
 - **The moment, checked** (a partial model swap can match a slope with its lift in the wrong place):

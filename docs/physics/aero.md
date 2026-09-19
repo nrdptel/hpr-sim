@@ -420,8 +420,8 @@ how much the slope at `α → 0` ([Checking the shock-expansion method](#checkin
 Where the air crosses faster than sound, hpr's `η C_dn` (1.45 to 1.61) is above what the tunnel's
 points need (1.26 to 1.54). Jorgensen's `η C_dn` was worked out from measured normal force less
 his own attached-flow term, `sin 2α cos(α/2)`; hpr pairs it with its own, `sin α` times its slope,
-which is 8% larger at 20° and, faster than sound, carries the method's slope, 25% to 65% above
-slender-body theory's. Two cautions from Jorgensen: his `η` comes from cylinders measured "only at
+which is 8% larger at 20° and, faster than sound, carries the method's slope for the nose and
+cylinder, 2.55 to 3.40 against slender-body theory's 2. Two cautions from Jorgensen: his `η` comes from cylinders measured "only at
 very low subsonic Mach numbers" (p. 17), and the tunnel tripped its boundary layer, which can
 move the flow past the critical crossflow Reynolds number, where `C_dn` falls to "between about
 0.15 and 0.30" (p. 15).
@@ -1990,10 +1990,13 @@ which `cargo xtask aero` writes and `aero_crossflow::tests::committed_fixture_is
 current; `aero_crossflow::tests::the_guide_quotes_the_fixture` checks this table against it cell
 by cell. What is left at Mach 1.5 to 2.96 can't be split between body lift and the slope at
 `α → 0` from these readings, as [M1.8e5](../decisions-and-roadmap.md#m1-8e5) found. On the short
-model at Mach 1.5 and 1.8 the tunnel's points barely curve, while hpr's slope at `α → 0` (1.93 and
-2.17) is within the tunnel's own uncertainty of it (1.78 ± 0.32 and 2.52 ± 0.33): there most of
-the excess is body lift, which at 6° is already about half of hpr's normal force. From Mach 2.3 the
-tunnel's curvature supports Jorgensen's size. The fixture also holds each of the 62 points above +4° and
+model at Mach 1.5 and 1.8 the tunnel's points from −5° to +4° barely curve (a factor of 0.32 ± 0.24
+and 0.07 ± 0.25 on body lift, where hpr uses about 0.9), while hpr's slope at `α → 0` (1.93 and
+2.17) lies within about one standard error of the tunnel's (1.78 ± 0.32, and 2.52 ± 0.33, which
+hpr is 1.1 below): there most of the excess is body lift, which at 6° is already about half of
+hpr's normal force, and the points at 6° need a factor of 0.47 and 0.58 on it. From Mach 2.3 the
+curvature gives factors of 0.66 to 1.05, each within about one standard error (±0.18 to ±0.23) of
+Jorgensen's, five of the eight below it. The fixture also holds each of the 62 points above +4° and
 the boattail's share at `α → 0` under each rule. One caution on the long model: its points from
 −5° to +4° are [M1.8a](../decisions-and-roadmap.md#m1-8a)'s reading, which may carry a skew of the
 page that puts its slope 3% to 5% high

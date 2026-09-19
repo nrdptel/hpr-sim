@@ -509,14 +509,11 @@ mod tests {
         let table = find("hpr's own as a table at the export's angles and Mach numbers");
         let export = find("the RASAero II export");
         let f = |flight: &Value, key: &str| flight[key].as_f64().unwrap();
+        // Metres to two decimals with a thousands comma, rounded once so that .995 carries.
         let comma = |x: f64| {
-            let whole = x.trunc() as i64;
-            format!(
-                "{},{:03}.{:02}",
-                whole / 1000,
-                whole % 1000,
-                ((x.fract()) * 100.0).round() as i64
-            )
+            let cents = (x * 100.0).round() as i64;
+            let whole = cents / 100;
+            format!("{},{:03}.{:02}", whole / 1000, whole % 1000, cents % 100)
         };
         let upwind = f(own, "apogee_east_m") - f(export, "apogee_east_m");
         let moved = (f(table, "apogee_east_m") - f(own, "apogee_east_m"))

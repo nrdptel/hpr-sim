@@ -410,6 +410,55 @@ mod tests {
         }
         let (a, b) = range(&shares);
         assert!(joined.contains(&format!("{a:.2} to {b:.2} per radian off")));
+        // What the gap at Mach 1.5 to 2.96 rests on: the factor the short model's 6° points need
+        // at Mach 1.5 and 1.8, the factors M1.8e5's fit implies from Mach 2.3, and the method's
+        // slope for the nose and cylinder.
+        let short = &fixture["configurations"][0];
+        assert_eq!(short["id"], "arcas-robin-short");
+        let needed: Vec<String> = short["rows"].as_array().unwrap()[..2]
+            .iter()
+            .map(|r| {
+                format!(
+                    "{:.2}",
+                    r["high_alpha"][0]["needed_factor"].as_f64().unwrap()
+                )
+            })
+            .collect();
+        let quote = format!(
+            "the points at 6° need a factor of {} and {} on it",
+            needed[0], needed[1]
+        );
+        assert!(joined.contains(&quote), "aero.md doesn't say `{quote}`");
+        let gap = read(&root, crate::aero_gap::FIXTURE).unwrap();
+        let (mut implied, mut nose) = (Vec::new(), Vec::new());
+        for configuration in gap["configurations"].as_array().unwrap() {
+            for row in configuration["rows"].as_array().unwrap() {
+                nose.push(
+                    row["sources"]["nose_and_cylinder_c_n_alpha"]
+                        .as_f64()
+                        .unwrap(),
+                );
+                if row["mach"].as_f64().unwrap() >= 2.3 {
+                    implied.push(row["measured"]["implied_k"].as_f64().unwrap());
+                }
+            }
+        }
+        let (a, b) = range(&implied);
+        let below = implied.iter().filter(|&&k| k < 0.9).count();
+        let quote = format!(
+            "curvature gives factors of {a:.2} to {b:.2}, each within about one standard error \
+             (±0.18 to ±0.23) of Jorgensen's, {} of the {} below it",
+            [
+                "zero", "one", "two", "three", "four", "five", "six", "seven", "eight"
+            ][below],
+            [
+                "zero", "one", "two", "three", "four", "five", "six", "seven", "eight"
+            ][implied.len()],
+        );
+        assert!(joined.contains(&quote), "aero.md doesn't say `{quote}`");
+        let (a, b) = range(&nose);
+        let quote = format!("cylinder, {a:.2} to {b:.2} against slender-body theory's 2");
+        assert!(joined.contains(&quote), "aero.md doesn't say `{quote}`");
         // The body's centre of pressure, row by row, and the ranges the text quotes.
         let signed = |x: f64| format!("{x:+.2}").replace('-', "−");
         let mut errors = [[f64::MAX, f64::MIN]; 4];
@@ -495,6 +544,29 @@ mod tests {
         assert_eq!(list("ETA_FINENESS"), c::ETA_FINENESS);
         assert_eq!(list("ETA_BY_FINENESS"), c::ETA_BY_FINENESS);
         assert!(script.contains(&format!("\nETA_REFERENCE = {}\n", c::ETA_REFERENCE)));
+        // Its pinned factors, which it checks against its own formula when it starts, are the
+        // library's: the formula can't drift apart either.
+        let start = script
+            .find("\nCROSSFLOW_CHECKS = [")
+            .expect("no CROSSFLOW_CHECKS");
+        let body = &script[start..];
+        let body = &body[body.find('[').unwrap() + 1..body.find("\n]").unwrap()];
+        let mut checked = 0;
+        for line in body.lines().map(str::trim).filter(|l| l.starts_with('(')) {
+            let values: Vec<f64> = line
+                .trim_start_matches('(')
+                .trim_end_matches("),")
+                .split(',')
+                .map(|v| v.trim().parse().unwrap())
+                .collect();
+            let got = c::crossflow_factor(values[0], values[1]);
+            assert!(
+                (got - values[2]).abs() < 1e-12,
+                "{line}: the library gives {got}"
+            );
+            checked += 1;
+        }
+        assert!(checked >= 5, "{checked} pinned factors");
         assert!(script.contains(&format!("\nBODY_LIFT_K = {}\n", hpr_aero::BODY_LIFT_K)));
     }
 }

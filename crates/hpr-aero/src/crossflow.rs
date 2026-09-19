@@ -204,9 +204,9 @@ pub fn crossflow_eta_low(fineness: f64) -> f64 {
     held_linear(&ETA_FINENESS, &ETA_BY_FINENESS, finite_or_zero(fineness))
 }
 
-/// `η` for a body of fineness `fineness` at crossflow Mach number `crossflow_mach`: Fig. 4's value
-/// moved toward 1 by the share Fig. 6 moves its own bodies (see the module's *Combining the two
-/// `η`s*).
+/// `η` for a body of fineness `fineness` at crossflow Mach number `crossflow_mach`: Fig. 6's value
+/// scaled by Fig. 4's for the body's length, the scaling fading as Fig. 6 rises toward 1 (see the
+/// module's *Combining the two `η`s*).
 pub fn crossflow_eta(fineness: f64, crossflow_mach: f64) -> f64 {
     eta_from_low(crossflow_eta_low(fineness), crossflow_mach)
 }
@@ -234,11 +234,11 @@ const fn share(eta: f64) -> f64 {
 
 /// The running maximum of [`share`] over Fig. 6's rows up to each: how far its `η` has risen by
 /// then, never falling back.
-const RISEN_SHARE: [f64; 12] = {
-    let mut risen = [0.0; 12];
+const RISEN_SHARE: [f64; ETA_BY_CROSSFLOW_MACH.len()] = {
+    let mut risen = [0.0; ETA_BY_CROSSFLOW_MACH.len()];
     let mut best = 0.0;
     let mut i = 0;
-    while i < 12 {
+    while i < ETA_BY_CROSSFLOW_MACH.len() {
         let s = share(ETA_BY_CROSSFLOW_MACH[i]);
         if s > best {
             best = s;
@@ -330,8 +330,8 @@ mod tests {
     #[test]
     fn low_crossflow_mach_is_figure_4_times_1_2() {
         for (&f, &eta) in ETA_FINENESS.iter().zip(&ETA_BY_FINENESS) {
-            assert!((crossflow_eta(f, 0.0) - eta).abs() < 1e-14);
-            assert!((crossflow_factor(f, 0.0) - 1.2 * eta).abs() < 1e-14);
+            assert!((crossflow_eta(f, 0.0) - eta).abs() < 1e-15);
+            assert!((crossflow_factor(f, 0.0) - 1.2 * eta).abs() < 1e-15);
         }
         // Up to Mach 0.8, where Fig. 6 only rises, the rule is `η₄ + (1 − η₄) s`.
         for m in [0.1, 0.3, 0.45, 0.62, 0.79] {

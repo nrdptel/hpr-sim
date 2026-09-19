@@ -118,6 +118,21 @@ def crossflow_factor(fineness, crossflow_mach):
 SKIP = set()
 
 
+# Pinned values of `crossflow_factor`: checked here when the script starts, and against
+# `hpr_aero::crossflow::crossflow_factor` by `cargo test -p xtask`, so the formula can't drift.
+CROSSFLOW_CHECKS = [
+    (3.0, 0.0, 0.7103999999999999),
+    (18.2, 0.5, 1.116866799483871),
+    (23.8, 0.96, 1.5505982343493219),
+    (10.625, 1.0, 1.5264650000000002),
+    (40.0, 1.05, 1.5863091360258326),
+    (5.0, 3.0, 1.3050980982670215),
+]
+for _fineness, _mach, _factor in CROSSFLOW_CHECKS:
+    if abs(crossflow_factor(_fineness, _mach) - _factor) > 1e-12:
+        sys.exit(f"wind_response.py: crossflow_factor({_fineness}, {_mach}) moved")
+
+
 class BodyLift(AeroSurface):
     """hpr's body lift on one body component: `C_N = f(M sin alpha) (A_plan/A_ref) sin^2 alpha` on
     the rocket's reference area, acting at the position the surface is added at, with no slope at
