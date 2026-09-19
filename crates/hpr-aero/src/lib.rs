@@ -803,26 +803,22 @@ mod tests {
                 "calisto-rasaero-ii@0.95",
                 "calisto-rasaero-ii@1.3",
                 // The Arcas Robin: the measured transonic dip in the fins' lift and the join's
-                // peak (Mach 0.8 to 1.2); the body, which grows with Mach where slender-body
-                // theory's doesn't (Mach 3.96 and 4.63). The committed designs' lip (a flare
-                // behind the boattail) keeps the shock-expansion method off (their vertical tips
-                // fly it since M1.8e7; the lip is M1.8e8), so their bodies fly slender-body theory
-                // past Mach 1, 37% low fins off at Mach 2.96 on the short model. Galejs's body
-                // lift (K = 1.1) covered part of that until M1.8e6; Jorgensen's, which the
-                // tunnel's own fins-off curvature supports, doesn't, and the short model at 2.96
-                // reads -16.3% (-13.4% before; ADR-037).
+                // peak (Mach 0.8 to 1.2). Since M1.8e8 the committed designs fly the
+                // shock-expansion method to their base (their vertical tip behind a Newtonian cap
+                // since M1.8e7, their lip carrying nothing in the boattail's wake since e8), so
+                // every row from Mach 1.5 is within the slope's target, where the short model read
+                // -16.3% to -28.0% before. What is left on the long model at Mach 1.8 and 2.3 is
+                // the centre of pressure, 0.53 and 0.52 calibers forward of the measured, where
+                // the body reads 15% to 19% high fins off (ADR-039).
                 "arcas-robin-short@0.8",
                 "arcas-robin-short@0.9",
                 "arcas-robin-short@0.95",
                 "arcas-robin-short@1.2",
-                "arcas-robin-short@2.96",
-                "arcas-robin-short@3.96",
-                "arcas-robin-short@4.63",
                 "arcas-robin-long@0.9",
                 "arcas-robin-long@1",
                 "arcas-robin-long@1.2",
-                "arcas-robin-long@3.96",
-                "arcas-robin-long@4.63",
+                "arcas-robin-long@1.8",
+                "arcas-robin-long@2.3",
             ]
         );
     }

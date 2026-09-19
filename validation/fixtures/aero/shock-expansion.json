@@ -7,10 +7,10 @@
         "rows": [
           {
             "as_designed": {
-              "bodies_c_n_alpha": 0.8536888888888887,
-              "bodies_c_n_alpha_error": -0.6105433434526073,
-              "bodies_cp_calibers": -18.27681642991586,
-              "covered_c_n_alpha": -0.0
+              "bodies_c_n_alpha": 1.8522190610436258,
+              "bodies_c_n_alpha_error": -0.1550094512225877,
+              "bodies_cp_calibers": -2.15595077320158,
+              "covered_c_n_alpha": 1.8522190610436258
             },
             "in_flight": {
               "bodies_c_n_alpha": 2.5519429083240626,
@@ -39,10 +39,10 @@
           },
           {
             "as_designed": {
-              "bodies_c_n_alpha": 0.8536888888888887,
-              "bodies_c_n_alpha_error": -0.6732837574367381,
-              "bodies_cp_calibers": -18.27681642991586,
-              "covered_c_n_alpha": -0.0
+              "bodies_c_n_alpha": 2.143159869935454,
+              "bodies_c_n_alpha_error": -0.17978885630217534,
+              "bodies_cp_calibers": -0.5371158532863926,
+              "covered_c_n_alpha": 2.143159869935454
             },
             "in_flight": {
               "bodies_c_n_alpha": 2.7242991200624256,
@@ -71,10 +71,10 @@
           },
           {
             "as_designed": {
-              "bodies_c_n_alpha": 0.8536888888888887,
-              "bodies_c_n_alpha_error": -0.7226055063529399,
-              "bodies_cp_calibers": -18.27681642991586,
-              "covered_c_n_alpha": -0.0
+              "bodies_c_n_alpha": 2.3938078233141953,
+              "bodies_c_n_alpha_error": -0.2221649857703153,
+              "bodies_cp_calibers": 0.613844912466478,
+              "covered_c_n_alpha": 2.3938078233141953
             },
             "in_flight": {
               "bodies_c_n_alpha": 2.9311022022065734,
@@ -103,10 +103,10 @@
           },
           {
             "as_designed": {
-              "bodies_c_n_alpha": 0.8536888888888887,
-              "bodies_c_n_alpha_error": -0.7400515009375572,
-              "bodies_cp_calibers": -18.27681642991586,
-              "covered_c_n_alpha": -0.0
+              "bodies_c_n_alpha": 2.612302052941766,
+              "bodies_c_n_alpha_error": -0.20455331374433172,
+              "bodies_cp_calibers": 1.5471146608814361,
+              "covered_c_n_alpha": 2.612302052941766
             },
             "in_flight": {
               "bodies_c_n_alpha": 3.1240443601404015,
@@ -135,10 +135,10 @@
           },
           {
             "as_designed": {
-              "bodies_c_n_alpha": 0.8536888888888887,
-              "bodies_c_n_alpha_error": -0.780230689047571,
-              "bodies_cp_calibers": -18.27681642991586,
-              "covered_c_n_alpha": -0.0
+              "bodies_c_n_alpha": 2.735048434711876,
+              "bodies_c_n_alpha_error": -0.29590308865273074,
+              "bodies_cp_calibers": 2.257647054321268,
+              "covered_c_n_alpha": 2.735048434711876
             },
             "in_flight": {
               "bodies_c_n_alpha": 3.3001170100032793,
@@ -167,10 +167,10 @@
           },
           {
             "as_designed": {
-              "bodies_c_n_alpha": 0.8536888888888887,
-              "bodies_c_n_alpha_error": -0.7942287873417184,
-              "bodies_cp_calibers": -18.27681642991586,
-              "covered_c_n_alpha": -0.0
+              "bodies_c_n_alpha": 2.718186106966553,
+              "bodies_c_n_alpha_error": -0.3448146523385295,
+              "bodies_cp_calibers": 2.426159722205865,
+              "covered_c_n_alpha": 2.718186106966553
             },
             "in_flight": {
               "bodies_c_n_alpha": 3.3710296083801996,
@@ -205,10 +205,10 @@
         "rows": [
           {
             "as_designed": {
-              "bodies_c_n_alpha": 0.8536888888888887,
-              "bodies_c_n_alpha_error": -0.7297202615424947,
-              "bodies_cp_calibers": -25.766510538851943,
-              "covered_c_n_alpha": -0.0
+              "bodies_c_n_alpha": 2.1431933831969605,
+              "bodies_c_n_alpha_error": -0.3214603649951877,
+              "bodies_cp_calibers": -1.97799978001676,
+              "covered_c_n_alpha": 2.1431933831969605
             },
             "in_flight": {
               "bodies_c_n_alpha": 2.724345873775973,
@@ -237,10 +237,10 @@
           },
           {
             "as_designed": {
-              "bodies_c_n_alpha": 0.8536888888888887,
-              "bodies_c_n_alpha_error": -0.7578498229794173,
-              "bodies_cp_calibers": -25.766510538851943,
-              "covered_c_n_alpha": -0.0
+              "bodies_c_n_alpha": 2.394134059675274,
+              "bodies_c_n_alpha_error": -0.3209001617487026,
+              "bodies_cp_calibers": -0.49975360289133813,
+              "covered_c_n_alpha": 2.394134059675274
             },
             "in_flight": {
               "bodies_c_n_alpha": 2.9316079665344597,
@@ -269,10 +269,10 @@
           },
           {
             "as_designed": {
-              "bodies_c_n_alpha": 0.8536888888888887,
-              "bodies_c_n_alpha_error": -0.7792952544805383,
-              "bodies_cp_calibers": -25.766510538851943,
-              "covered_c_n_alpha": -0.0
+              "bodies_c_n_alpha": 2.6139769125345556,
+              "bodies_c_n_alpha_error": -0.32420684305078795,
+              "bodies_cp_calibers": 0.6857404041075433,
+              "covered_c_n_alpha": 2.6139769125345556
             },
             "in_flight": {
               "bodies_c_n_alpha": 3.1270590206399316,
@@ -301,10 +301,10 @@
           },
           {
             "as_designed": {
-              "bodies_c_n_alpha": 0.8536888888888887,
-              "bodies_c_n_alpha_error": -0.8083887096853672,
-              "bodies_cp_calibers": -25.766510538851943,
-              "covered_c_n_alpha": -0.0
+              "bodies_c_n_alpha": 2.739996224197268,
+              "bodies_c_n_alpha_error": -0.3850052181667868,
+              "bodies_cp_calibers": 1.5969723826822222,
+              "covered_c_n_alpha": 2.739996224197268
             },
             "in_flight": {
               "bodies_c_n_alpha": 3.3134433400215277,
@@ -333,10 +333,10 @@
           },
           {
             "as_designed": {
-              "bodies_c_n_alpha": 0.8536888888888887,
-              "bodies_c_n_alpha_error": -0.8150204248704576,
-              "bodies_cp_calibers": -25.766510538851943,
-              "covered_c_n_alpha": -0.0
+              "bodies_c_n_alpha": 2.724404223106963,
+              "bodies_c_n_alpha_error": -0.40966885919368035,
+              "bodies_cp_calibers": 1.8227690861521744,
+              "covered_c_n_alpha": 2.724404223106963
             },
             "in_flight": {
               "bodies_c_n_alpha": 3.395320337967031,

@@ -490,6 +490,14 @@ against each one, or will once its milestone ships. See
 [Start here](start-here.md#reading-these-pages) and [Lessons from Loft][lessons].
 
 
+## Lip
+
+A short flare at the very base of a rocket, rising from the end of a
+[boattail](#boattail) or a step down: the Arcas Robin wind-tunnel models end in one, and a motor
+retainer ring is another. Sitting in the wake of what narrows ahead of it, a lip sees slow, turned
+air, so hpr takes its drag away there and gives it no normal force faster than sound. See
+[Aerodynamics](physics/aero.md#a-lip-in-a-boattails-wake).
+
 ## Mach cone
 
 Faster than sound, a disturbance, such as a fin's tip, can only affect the air downstream of it
