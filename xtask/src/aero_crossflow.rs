@@ -17,7 +17,7 @@
 //!   measured point with its potential-flow part as it is.
 //! - **The boattail's share** at `α → 0`: footnote 8's, the current, and slender-body theory's.
 //!
-//! No targets: M1.8e8 carries M1.8e's 15% bullet. The fixture shows where hpr stands.
+//! No targets: M1.8e9 carries M1.8e's 15% bullet. The fixture shows where hpr stands.
 
 use std::f64::consts::PI;
 use std::fs;

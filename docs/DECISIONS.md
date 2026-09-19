@@ -43,6 +43,7 @@ renumber. Supersede an entry by adding a new one that points back to it.
 | ADR-035 | Drop the orhelper dependency; how M2.2 drives OpenRocket is decided when M2.2 starts | accepted |
 | ADR-036 | The Arcas Robin's supersonic body gap: judged as the tunnel measures; M1.8e6 takes crossflow's size and the boattail | accepted |
 | ADR-037 | Body lift by Jorgensen's crossflow at every speed, and a boattail's measured share faster than sound | accepted |
+| ADR-038 | Blunt and vertical nose tips faster than sound by a Newtonian cap, the method started from the tangent cone | accepted |
 
 ---
 
@@ -3484,3 +3485,82 @@ slender-body theory gives −1.32; nothing measured it. Measured, the fitted-nos
   (Juno III's apogee drift from −42.5% to −38.2%); RocketPy flown with hpr's rail release, body lift
   and fin slope lands within 1.3% of hpr's in every windy case.
 
+
+## ADR-038: Blunt and vertical nose tips faster than sound by a Newtonian cap, the method started from the tangent cone (2026-09-19)
+
+**Context.** The second-order shock-expansion method (NACA TN 3527, ADR-033) starts at a pointed
+tip with the flow on a cone. Power-series noses with `n` below 1, Haack series and elliptical noses
+leave the tip at 90°, so hpr refused them and their rockets kept slender-body theory past Mach 1:
+the committed Arcas Robin designs (whose power-series nose stands in for the model's tabulated
+nose with a 0.062-in spherical tip) and the von Kármán noses of Calisto, Cavour, Juno III and
+Prometheus 2022 among them. ADR-037 split blunt tips and the lip into M1.8e7 with a lead: NASA
+TN D-4865 (C. M. Jackson Jr., W. C. Sawyer and R. S. Smith, 1968) puts a Newtonian cap ahead of
+TN 3527's method and compares it with its own tunnel data from Mach 1.50 to 4.63.
+
+**Decision.**
+
+- **The split.** Milestone ids allow one increment level, so the siblings are renumbered: M1.8e7
+  is blunt tips, M1.8e8 the lip (with the committed designs' done-when), and the old e8 (issues #87
+  and #90, M1.8e's 15% bullet) M1.8e9. e7 keeps "flown with no jump at ±1e-9 in Mach", and takes
+  "the Arcas Robin's committed nose (lip left off) through a flight's path in the report" and a
+  check against TN D-4865's own sphere-cone; e8 keeps "the committed Arcas Robin designs through a
+  flight's path in the report".
+- **The cap** is TN D-4865's modified Newtonian `C_p = C_p,max sin²δ` (eq. 1, p. 5), `C_p,max`
+  from the Rayleigh pitot formula (NACA Report 1135 eq. 100, p. 619). At `α → 0`, in TN 3527's
+  loading form (`C_Nα = (2π/A_ref) ∫ Λ r dx`), the wind's slope `δ + α cos φ` gives
+  `Λ = C_p,max sin δ cos δ`; a hemisphere then carries its Newtonian drag turned, `C_p,max/2`.
+- **The handover** is TN D-4865's (p. 5): where the slope falls to the largest angle a
+  two-dimensional wedge turns with an attached shock (NACA Report 1135 eqs. 138 and 168, p. 621 and
+  p. 624), which the report chose for its agreement at low supersonic speeds; capped at 24°, the
+  steepest cone of TN 3527's Fig. 2, whose slope the method needs. From about Mach 2.1 the cap
+  therefore reaches further aft than the report's.
+- **The march starts behind it as at a pointed vertex**: the flow on the cone tangent to the body
+  at the handover, that cone's loading and no gradient (TN 3527 sketch (a), p. 6), not the
+  report's Newtonian pressure and Mach number (eq. 2). Read at `α → 0` as the report's equivalent
+  bodies imply (eqs. 4a and 4b: the handover holds still in the wind, so the flow behind it turns
+  by `α cos φ` less and its loading is the Prandtl–Meyer flow's `λ/(γM²)`, hpr's reading), the
+  report's start, measured in `blunt-tips.json` (`starts`, `sphere_cone`):
+  - fails on the Arcas Robin's committed nose from Mach 3.96, where the Newtonian pressure at the
+    handover lies below the tangent cone's and the march reduces the cylinder's element; since a
+    flight's table is built from Mach 5 down (ADR-034), that would leave such a rocket no method;
+  - reduces elements from Mach 2.96 (issue #81), so its answer moves with their number (2.544 to
+    2.583 per radian at Mach 2.96, 3.361 to 3.418 at 3.5, from 10 to 40 elements);
+  - on the report's own sphere-cone agrees better from Mach 1.9 (−4.8% to +1.8% against hpr's
+    −11.2% to +4.0%), but reads +77.8% at Mach 1.5, where the handover (12.1°) sits 0.6° above the
+    11.5° cone and the linear range is that small.
+
+  The tangent cone's start holds to Mach 5 on the Arcas Robin's nose and moves by under 0.01 per
+  radian from 10 to 40 elements. Both stay in the library: `HandoverStart::Newtonian` selects the
+  report's, for comparison; a flight takes the tangent cone's.
+- **Scope.** A blunt tip is a first segment whose slope is infinite at the tip (power series with
+  `n` below 1, Haack, elliptical, and `BodySegment::SphericalCap` in the library for sphere-cones).
+  Pointed noses are unchanged. A nose steeper than the handover's slope all the way to its base is
+  refused and keeps slender-body theory. The table, the join and its bisected start (ADR-034) are
+  unchanged, and so is drag.
+- **"In the report"** means, as for M1.8e2, e4 and e6, the committed fixture `blunt-tips.json` and
+  the guide's tables pinned to it cell by cell: no validation flight passes Mach 1.2 (Prometheus
+  2022 peaks at 1.06), so the whole-flight report is unchanged.
+- **TN D-4865's Fig. 8(a)** (model 1, printed p. 101) is read from the report's 300-ppi scan by
+  pixel analysis (axes fitted to the labelled grid lines, each circle's centre fitted to its ring)
+  into `tn-d-4865-sphere-cone.json`, to about ±0.003; the α = 0 circles read −0.004 to +0.016,
+  so the plotting itself is good to about ±0.01. Both lines are fitted over the plotted 0° to 12°,
+  as M1.8a fits the tunnel's.
+
+**Consequences.**
+
+- TN D-4865's sphere-cone: hpr −11.9% to +4.0%, its centre of pressure within 0.06 diameters of
+  the measured; the report's own method −3.3% to +13.6%.
+- The Arcas Robin's committed nose with the lip left off, like for like: short +37.2% to −4.8%,
+  long +19.3% to −4.1%, at or below the fitted secant ogive (+3.4% to +41.0%) at every Mach
+  number, by up to 3.8 points to Mach 2.96 and 5.2 to 8.2 past Mach 3, where it reads within 5% of
+  the tunnel. The committed designs themselves keep slender-body theory for their lip until
+  M1.8e8, so M1.8a's short model at Mach 2.96 still reads −16.3%.
+- M1.8a (`normal-force-vs-mach.json`): Calisto's von Kármán nose flies the method past Mach 1.2.
+  Against RASAero II's potential-flow slope, Mach 1.5 −3.1% to +13.2%, 1.75 −11.7% to +9.7%, 2.0
+  −16.8% to +8.8% (now within both targets), 1.3 +12.7% to +16.1% (still outside); 11 of 15 rows
+  within both targets (10 before). Against its secant slope to 4°, which carries its crossflow
+  lift, 3 of the 11 rows from Mach 0.8 (1 before), Mach 2 −9.2% (−30.6%).
+- Unvalidated, and said so: no measurement checks a tip that isn't spherical; Newtonian theory on
+  the cap and the tangent cone's start are approximations; #81 still applies behind the handover.
+- Cost: a vertical-tip rocket builds the supersonic table (Calisto's 363 ms, once per model, only
+  once a flow passes Mach 1.2); a subsonic flight never builds it (`docs/perf.md`).

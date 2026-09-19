@@ -4,7 +4,9 @@
 //! **Flown faster than sound** for a pointed nose and the cylinders behind it since the milestone
 //! [M1.8e2](https://nrdptel.github.io/hpr-sim/decisions-and-roadmap.html#m1-8e2), the body's
 //! supersonic normal force in flight, and for boattails and cylinders behind those since
-//! [M1.8e4](https://nrdptel.github.io/hpr-sim/decisions-and-roadmap.html#m1-8e4), through [`crate::model::SupersonicBody`]. The guide's
+//! [M1.8e4](https://nrdptel.github.io/hpr-sim/decisions-and-roadmap.html#m1-8e4), and behind a
+//! blunt or vertical nose tip's Newtonian cap ([`crate::blunt_tip`]) since
+//! [M1.8e7](https://nrdptel.github.io/hpr-sim/decisions-and-roadmap.html#m1-8e7), through [`crate::model::SupersonicBody`]. The guide's
 //! [Bodies faster than sound](https://nrdptel.github.io/hpr-sim/physics/aero.html#bodies-faster-than-sound)
 //! explains the method and how it was checked.
 //!
@@ -72,8 +74,10 @@
 //! moderate amounts of boattail". That is unvalidated here.
 //!
 //! **Limits.** The report states the method for `M/f_n` (Mach number over nose fineness) from
-//! 0.4 to 2, within ±0.2 per radian and ±0.2 calibers of its measurements (Summary, p. 1). The
-//! tip must be pointed, with its cone shock attached. Fig. 2 spans Mach 3 to 10; below Mach 3 its
+//! 0.4 to 2, within ±0.2 per radian and ±0.2 calibers of its measurements (Summary, p. 1). A
+//! pointed tip's cone shock must be attached; a blunt or vertical tip (an infinite slope, or a
+//! [`BodySegment::SphericalCap`]) takes TN D-4865's Newtonian cap and starts the march at its
+//! handover ([`crate::blunt_tip`], [`HandoverStart`]). Fig. 2 spans Mach 3 to 10; below Mach 3 its
 //! Mach 3 curve is held, and above 10 its Mach 10 curve, both assumptions. Viscous crossflow is
 //! not part of it: the method is the slope at `α → 0`.
 //!
@@ -116,21 +120,40 @@ pub enum BodySegment {
         /// Radius, m.
         radius_m: f64,
     },
+    /// A sphere's cap from its pole, the first segment of a sphere-cone: the first `length_m` of
+    /// a sphere of `radius_m`, up to a hemisphere. Its tip is blunt, so the body flies
+    /// TN D-4865's Newtonian cap ahead of the method ([`crate::blunt_tip`]).
+    SphericalCap {
+        /// The sphere's radius, m.
+        radius_m: f64,
+        /// Length along the axis from the pole, m, in `(0, radius_m]`.
+        length_m: f64,
+    },
 }
 
 impl BodySegment {
     fn length_m(&self) -> f64 {
         match self {
             Self::Profile { profile } => profile.length_m(),
-            Self::Cylinder { length_m, .. } => *length_m,
+            Self::Cylinder { length_m, .. } | Self::SphericalCap { length_m, .. } => *length_m,
         }
     }
 
-    /// Radius and slope `dr/dx` at `x_m` aft of the segment's forward end.
+    /// Radius and slope `dr/dx` at `x_m` aft of the segment's forward end; the slope is infinite
+    /// at a blunt tip.
     fn radius_and_slope(&self, x_m: f64) -> (f64, f64) {
         match self {
             Self::Profile { profile } => profile.radius_and_slope(x_m),
             Self::Cylinder { radius_m, .. } => (*radius_m, 0.0),
+            Self::SphericalCap { radius_m, length_m } => {
+                let x = x_m.clamp(0.0, *length_m);
+                let r = (x * (2.0 * radius_m - x)).max(0.0).sqrt();
+                if r == 0.0 {
+                    (0.0, f64::INFINITY)
+                } else {
+                    (r, (radius_m - x) / r)
+                }
+            }
         }
     }
 
@@ -147,12 +170,13 @@ impl BodySegment {
         match self {
             Self::Profile { profile } => matches!(profile.shape(), NoseShape::Conical {}),
             Self::Cylinder { .. } => true,
+            Self::SphericalCap { .. } => false,
         }
     }
 }
 
 /// A straight element of the tangent body: where it starts (its corner with the element ahead,
-/// or the vertex) and its angle to the axis.
+/// the vertex, or a blunt tip's handover) and its angle to the axis.
 #[derive(Debug, Clone, Copy, PartialEq)]
 struct Element {
     /// Whether the element is tangent to the first segment, the nose.
@@ -162,14 +186,56 @@ struct Element {
     angle_rad: f64,
 }
 
-/// A pointed body of revolution laid out for the second-order shock-expansion method: its
-/// segments and the straight elements of its tangent body.
+/// A body of revolution laid out for the second-order shock-expansion method: its segments and
+/// the straight elements of its tangent body. A pointed nose's elements are laid out once; a blunt
+/// tip's start at a handover that moves with the Mach number ([`crate::blunt_tip`]), so they are
+/// laid out at each.
 #[derive(Debug, Clone, PartialEq)]
 pub struct ShockExpansionBody {
     /// Each segment with the station of its forward end, m aft of the vertex.
     segments: Vec<(f64, BodySegment)>,
     length_m: f64,
+    elements_per_curve: usize,
+    /// The tangent body's elements from the vertex; empty for a blunt tip.
     elements: Vec<Element>,
+    /// Whether the tip is blunt or vertical (an infinite slope at the vertex).
+    blunt: bool,
+    /// Where the march behind a blunt tip's cap starts from.
+    handover_start: HandoverStart,
+}
+
+/// Where the method's march starts behind a blunt tip's Newtonian cap
+/// ([`crate::blunt_tip`]; the decision record on it, [ADR-038][adr-038]).
+///
+/// [adr-038]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-038-blunt-and-vertical-nose-tips-faster-than-sound-by-a-newtonian-cap-the-method-started-from-the-tangent-cone-2026-09-19
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+#[non_exhaustive]
+pub enum HandoverStart {
+    /// As the method starts at a pointed vertex: the flow on the cone tangent to the body at the
+    /// handover, that cone's loading and no pressure gradient (TN 3527 sketch (a), p. 6). hpr's
+    /// choice, and what a flight takes.
+    #[default]
+    TangentCone,
+    /// TN D-4865's own: the Newtonian pressure and Mach number there (eqs. 1 and 2), the total
+    /// pressure behind the normal shock and no gradient, with the loading of a handover fixed in
+    /// the wind ([`crate::blunt_tip::handover_loading`]). Kept to compare: on the Arcas Robin's
+    /// nose the march then fails from Mach 3.96.
+    Newtonian,
+}
+
+/// A blunt tip's Newtonian cap at one Mach number: where it hands over and its `C_p,max`.
+#[derive(Debug, Clone, Copy, PartialEq)]
+struct Cap {
+    end_x_m: f64,
+    c_p_max: f64,
+}
+
+/// The flow over the body at one Mach number: a blunt tip's cap, then each element's flow.
+#[derive(Debug, Clone, PartialEq)]
+struct March {
+    cap: Option<Cap>,
+    flows: Vec<ElementFlow>,
 }
 
 /// One segment's share of the body's normal-force slope at `α → 0`
@@ -200,16 +266,20 @@ pub struct ShockExpansionSlope {
 impl ShockExpansionBody {
     /// Lays out a body from its segments, nose first: a curved segment gets
     /// `elements_per_curve` equal steps in `x` (tangent at both ends and between), a straight
-    /// one a single element.
+    /// one a single element. A blunt tip's first segment gets its steps from the handover aft,
+    /// laid out at each Mach number ([`crate::blunt_tip`]).
     ///
     /// # Errors
     ///
-    /// - [`AeroError::Unsupported`] if the first segment isn't a pointed nose with a finite tip
-    ///   angle, the radius steps between segments (by more than a millionth of it), the radius
-    ///   falls to zero anywhere but the tip, or the tangent lines of consecutive elements don't
-    ///   meet in order along the body (a profile the tangent body can't follow).
+    /// - [`AeroError::Unsupported`] if the first segment doesn't close to a point at its front
+    ///   (pointed, or blunt with a vertical tip), a spherical cap isn't the first segment, the
+    ///   radius steps between segments (by more than a millionth of it), the radius falls to zero
+    ///   anywhere but the tip, or, for a pointed nose, the tangent lines of consecutive elements
+    ///   don't meet in order along the body (a profile the tangent body can't follow).
     /// - [`AeroError::Domain`] for no segments, elements per curve outside
-    ///   `1..=`[`MAX_ELEMENTS_PER_CURVE`], or a negative or non-finite cylinder dimension.
+    ///   `1..=`[`MAX_ELEMENTS_PER_CURVE`], a negative or non-finite cylinder dimension, or a
+    ///   spherical cap whose radius isn't finite and positive or whose length isn't in
+    ///   `(0, radius]`.
     pub fn new(segments: &[BodySegment], elements_per_curve: usize) -> Result<Self, AeroError> {
         let Some(first) = segments.first() else {
             return Err(AeroError::Domain {
@@ -223,24 +293,42 @@ impl ShockExpansionBody {
                 value: elements_per_curve as f64,
             });
         }
-        for segment in segments {
-            if let BodySegment::Cylinder { length_m, radius_m } = segment {
-                check_dimension("cylinder length", *length_m, true)?;
-                check_dimension("cylinder radius", *radius_m, false)?;
+        for (index, segment) in segments.iter().enumerate() {
+            match segment {
+                BodySegment::Cylinder { length_m, radius_m } => {
+                    check_dimension("cylinder length", *length_m, true)?;
+                    check_dimension("cylinder radius", *radius_m, false)?;
+                }
+                BodySegment::SphericalCap { radius_m, length_m } => {
+                    check_dimension("spherical cap radius", *radius_m, false)?;
+                    if !(*length_m > 0.0 && *length_m <= *radius_m) {
+                        return Err(AeroError::Domain {
+                            what: "spherical cap length",
+                            value: *length_m,
+                        });
+                    }
+                    if index > 0 {
+                        return Err(AeroError::Unsupported(
+                            "a spherical cap can only be the body's first segment".to_owned(),
+                        ));
+                    }
+                }
+                BodySegment::Profile { .. } => {}
             }
         }
         let tip_slope = first.radius_and_slope(0.0).1;
-        if !matches!(first, BodySegment::Profile { .. })
+        // A NaN slope compares as nothing, so it is refused too.
+        if matches!(first, BodySegment::Cylinder { .. })
             || first.fore_radius_m() != 0.0
-            || !tip_slope.is_finite()
-            || tip_slope <= 0.0
+            || tip_slope.partial_cmp(&0.0) != Some(std::cmp::Ordering::Greater)
         {
             return Err(AeroError::Unsupported(
-                "the second-order shock-expansion method needs a pointed nose with a finite tip \
-                 angle"
+                "the second-order shock-expansion method needs a nose that closes to a point at \
+                 its front, pointed or blunt"
                     .to_owned(),
             ));
         }
+        let blunt = tip_slope.is_infinite();
         let mut laid = Vec::with_capacity(segments.len());
         let mut station = 0.0;
         let mut previous_aft: Option<f64> = None;
@@ -259,72 +347,27 @@ impl ShockExpansionBody {
             previous_aft = Some(segment.aft_radius_m());
         }
         let length_m = station;
-
-        // The tangency points: (x, r, slope, on the nose).
-        let mut points = Vec::new();
-        for (index, (start, segment)) in laid.iter().enumerate() {
-            let steps = if segment.is_straight() {
-                1
-            } else {
-                elements_per_curve
-            };
-            let count = if segment.is_straight() { 1 } else { steps + 1 };
-            for i in 0..count {
-                let local = segment.length_m() * i as f64 / steps as f64;
-                let (r, slope) = segment.radius_and_slope(local);
-                points.push((start + local, r, slope, index == 0));
-            }
-        }
-
-        // `points` holds at least the tip: the first segment adds one point or more.
-        let (x0, r0, t0, _) = points[0];
-        let mut elements = vec![Element {
-            on_nose: true,
-            corner_x_m: 0.0,
-            corner_radius_m: 0.0,
-            angle_rad: t0.atan(),
-        }];
-        let (mut xp, mut rp, mut tp) = (x0, r0, t0);
-        for &(x, r, t, on_nose) in &points[1..] {
-            // A point on the previous element's line adds nothing.
-            let on_line = r - (rp + tp * (x - xp));
-            if (t - tp).abs() <= 1e-12 * (1.0 + tp.abs()) {
-                if on_line.abs() <= 1e-9 * r.max(1e-12) {
-                    continue;
-                }
-                return Err(AeroError::Unsupported(format!(
-                    "the tangent body's elements at {xp} m and {x} m are parallel but apart"
-                )));
-            }
-            let corner_x = (r - rp + tp * xp - t * x) / (tp - t);
-            let corner_r = rp + tp * (corner_x - xp);
-            if corner_r.partial_cmp(&0.0) != Some(std::cmp::Ordering::Greater) {
-                return Err(AeroError::Unsupported(format!(
-                    "the tangent body's corner at {corner_x} m has no radius: the method needs \
-                     the body open everywhere but its tip"
-                )));
-            }
-            // `elements` starts with the tip's.
-            let last = elements[elements.len() - 1].corner_x_m;
-            if !(corner_x.is_finite() && corner_x >= last && corner_x <= x + 1e-12 * length_m) {
-                return Err(AeroError::Unsupported(format!(
-                    "the tangent body's corner at {corner_x} m falls outside [{last}, {x}] m: \
-                     the profile turns too quickly for its elements"
-                )));
-            }
-            elements.push(Element {
-                on_nose,
-                corner_x_m: corner_x,
-                corner_radius_m: corner_r,
-                angle_rad: t.atan(),
-            });
-            (xp, rp, tp) = (x, r, t);
-        }
+        let elements = if blunt {
+            Vec::new()
+        } else {
+            lay_out(&laid, length_m, elements_per_curve, 0.0)?
+        };
         Ok(Self {
             segments: laid,
             length_m,
+            elements_per_curve,
             elements,
+            blunt,
+            handover_start: HandoverStart::default(),
         })
+    }
+
+    /// This body with its march behind a blunt tip's cap starting from `start`; a pointed body
+    /// is unchanged.
+    #[must_use]
+    pub fn with_handover_start(mut self, start: HandoverStart) -> Self {
+        self.handover_start = start;
+        self
     }
 
     /// The body's length, m.
@@ -332,19 +375,71 @@ impl ShockExpansionBody {
         self.length_m
     }
 
-    /// The tip's half-angle, rad.
+    /// The tip's half-angle, rad: `π/2` for a blunt or vertical tip.
     pub fn vertex_angle_rad(&self) -> f64 {
-        // `new` always lays out the tip's element.
-        self.elements[0].angle_rad
+        // `new` refuses a body without segments.
+        self.segments[0].1.radius_and_slope(0.0).1.atan()
     }
 
-    fn radius_m(&self, x_m: f64) -> f64 {
+    /// Whether the tip is blunt or vertical, so the body flies TN D-4865's Newtonian cap ahead of
+    /// the method ([`crate::blunt_tip`]).
+    pub fn has_blunt_tip(&self) -> bool {
+        self.blunt
+    }
+
+    /// Where a blunt tip's cap hands over to the method at Mach `mach`, m aft of the vertex:
+    /// where the first segment's slope falls to [`crate::blunt_tip::handover_angle_rad`]. `None`
+    /// for a pointed tip.
+    ///
+    /// # Errors
+    ///
+    /// - [`AeroError::Domain`] for a Mach number that isn't finite and above 1.
+    /// - [`AeroError::Unsupported`] if the first segment is steeper than the handover's slope all
+    ///   the way to its end.
+    pub fn handover_m(&self, mach: f64) -> Result<Option<f64>, AeroError> {
+        check_mach(mach)?;
+        if !self.blunt {
+            return Ok(None);
+        }
+        let angle = crate::blunt_tip::handover_angle_rad(mach)?;
+        let target = angle.tan();
+        let first = &self.segments[0].1;
+        let length = first.length_m();
+        if first.radius_and_slope(length).1 > target {
+            return Err(AeroError::Unsupported(format!(
+                "the nose is steeper than the blunt tip's handover slope, {}°, all the way to its \
+                 end at Mach {mach}",
+                angle.to_degrees()
+            )));
+        }
+        // The slope falls from infinite at the tip; bisect to the last bit of an `f64` for the
+        // first station where it is at most the handover's.
+        let (mut low, mut high) = (0.0_f64, length);
+        for _ in 0..HANDOVER_BISECTIONS {
+            let mid = 0.5 * (low + high);
+            if mid <= low || mid >= high {
+                break;
+            }
+            if first.radius_and_slope(mid).1 > target {
+                low = mid;
+            } else {
+                high = mid;
+            }
+        }
+        Ok(Some(high))
+    }
+
+    fn radius_and_slope_m(&self, x_m: f64) -> (f64, f64) {
         let index = self
             .segments
             .partition_point(|(start, _)| *start <= x_m)
             .saturating_sub(1);
         let (start, segment) = &self.segments[index];
-        segment.radius_and_slope(x_m - start).0
+        segment.radius_and_slope(x_m - start)
+    }
+
+    fn radius_m(&self, x_m: f64) -> f64 {
+        self.radius_and_slope_m(x_m).0
     }
 
     /// `C_Nα` (per radian, on `reference_area_m2`) and the centre of pressure at Mach `mach`, by
@@ -418,12 +513,17 @@ impl ShockExpansionBody {
     ///   that [`Self::slope`] succeeds: it also needs a positive total lift.
     pub fn reduced_elements(&self, mach: f64) -> Result<usize, AeroError> {
         check_mach(mach)?;
-        Ok(self.flows(mach)?.iter().filter(|f| f.is_reduced()).count())
+        Ok(self
+            .flows(mach)?
+            .flows
+            .iter()
+            .filter(|f| f.is_reduced())
+            .count())
     }
 
     /// The integrals of the lift per unit length and of its moment about the vertex (both over
-    /// `2π`), one per piece between consecutive corners, segment starts and the body's end, keyed
-    /// by the piece's forward end.
+    /// `2π`), one per piece between consecutive corners, segment starts, a blunt tip's handover
+    /// and the body's end, keyed by the piece's forward end.
     fn windows(
         &self,
         mach: f64,
@@ -431,19 +531,25 @@ impl ShockExpansionBody {
     ) -> Result<Vec<(f64, [f64; 2])>, AeroError> {
         check_mach(mach)?;
         check_dimension("reference area", reference_area_m2, false)?;
-        let flows = self.flows(mach)?;
+        let March { cap, flows } = self.flows(mach)?;
+        let cap_end_m = cap.map_or(0.0, |c| c.end_x_m);
         let loading = |x: f64| {
+            if let Some(cap) = cap.filter(|c| x < c.end_x_m) {
+                return crate::blunt_tip::newtonian_loading_at_slope(
+                    cap.c_p_max,
+                    self.radius_and_slope_m(x).1,
+                );
+            }
             let index = flows
                 .partition_point(|f| f.corner_x_m <= x)
                 .saturating_sub(1);
             flows[index].at(x).1
         };
-        let mut breaks: Vec<f64> = self
-            .elements
+        let mut breaks: Vec<f64> = flows
             .iter()
-            .map(|e| e.corner_x_m)
+            .map(|f| f.corner_x_m)
             .chain(self.segments.iter().map(|(start, _)| *start))
-            .chain([self.length_m])
+            .chain([0.0, cap_end_m, self.length_m])
             .filter(|x| *x >= 0.0 && *x <= self.length_m)
             .collect();
         breaks.sort_by(f64::total_cmp);
@@ -471,30 +577,36 @@ impl ShockExpansionBody {
             .collect()
     }
 
-    /// Marches the flow over the tangent body's elements at Mach `mach`.
-    fn flows(&self, mach: f64) -> Result<Vec<ElementFlow>, AeroError> {
-        // `new` always lays out the tip's element, and `flows` starts with its flow.
-        let vertex = self.elements[0];
-        let cone = cone_flow(mach, vertex.angle_rad)?;
-        if cone.surface_mach <= 1.0 {
-            return Err(AeroError::Unsupported(format!(
-                "the flow on the tip's cone is subsonic (Mach {}) at Mach {mach}",
-                cone.surface_mach
-            )));
-        }
-        let total = cone.surface_pressure_ratio * total_over_static(cone.surface_mach);
-        let vertex_slope = cone_normal_force_slope(mach, vertex.angle_rad)?;
-        let vertex_load = vertex.angle_rad.tan() * vertex_slope;
-        let mut flows = vec![ElementFlow {
-            corner_x_m: 0.0,
-            angle_rad: vertex.angle_rad,
-            pressure: cone.surface_pressure_ratio,
-            gradient: 0.0,
-            load: vertex_load,
-            cone_pressure: cone.surface_pressure_ratio,
-            cone_slope: vertex_slope,
-        }];
-        for element in &self.elements[1..] {
+    /// Marches the flow over the tangent body's elements at Mach `mach`: from the vertex's cone
+    /// for a pointed tip, or from a blunt tip's handover, behind its Newtonian cap.
+    fn flows(&self, mach: f64) -> Result<March, AeroError> {
+        let (cap, elements, first, total) = if self.blunt {
+            self.handover_flow(mach)?
+        } else {
+            // `new` lays out a pointed body's elements, the vertex's first.
+            let vertex = self.elements[0];
+            let cone = cone_flow(mach, vertex.angle_rad)?;
+            if cone.surface_mach <= 1.0 {
+                return Err(AeroError::Unsupported(format!(
+                    "the flow on the tip's cone is subsonic (Mach {}) at Mach {mach}",
+                    cone.surface_mach
+                )));
+            }
+            let total = cone.surface_pressure_ratio * total_over_static(cone.surface_mach);
+            let vertex_slope = cone_normal_force_slope(mach, vertex.angle_rad)?;
+            let first = ElementFlow {
+                corner_x_m: 0.0,
+                angle_rad: vertex.angle_rad,
+                pressure: cone.surface_pressure_ratio,
+                gradient: 0.0,
+                load: vertex.angle_rad.tan() * vertex_slope,
+                cone_pressure: cone.surface_pressure_ratio,
+                cone_slope: vertex_slope,
+            };
+            (None, self.elements.clone(), first, total)
+        };
+        let mut flows = vec![first];
+        for element in &elements[1..] {
             let before = flows[flows.len() - 1];
             let (p1, load1) = before.at(element.corner_x_m);
             let gradient1 = before.gradient_at(p1);
@@ -546,8 +658,165 @@ impl ShockExpansionBody {
             }
             flows.push(flow);
         }
-        Ok(flows)
+        Ok(March { cap, flows })
     }
+
+    /// A blunt tip at Mach `mach` ([`crate::blunt_tip`]): its Newtonian cap and handover
+    /// (TN D-4865), the elements from the handover aft, the flow just behind the handover (as
+    /// [`HandoverStart`] says) and the total pressure the march expands from.
+    fn handover_flow(
+        &self,
+        mach: f64,
+    ) -> Result<(Option<Cap>, Vec<Element>, ElementFlow, f64), AeroError> {
+        // A blunt body always has a handover where the method holds.
+        let Some(end_x_m) = self.handover_m(mach)? else {
+            return Err(AeroError::Unsupported(
+                "a blunt tip without a handover".to_owned(),
+            ));
+        };
+        let elements = lay_out(
+            &self.segments,
+            self.length_m,
+            self.elements_per_curve,
+            end_x_m,
+        )?;
+        // `lay_out` always returns the handover's element first.
+        let handover = elements[0];
+        let cone = cone_flow(mach, handover.angle_rad)?;
+        let cone_slope = cone_normal_force_slope(mach, handover.angle_rad)?;
+        let (pressure, load, total) = match self.handover_start {
+            HandoverStart::TangentCone => {
+                if cone.surface_mach <= 1.0 {
+                    return Err(AeroError::Unsupported(format!(
+                        "the flow on the cone tangent at the blunt tip's handover is subsonic \
+                         (Mach {}) at Mach {mach}",
+                        cone.surface_mach
+                    )));
+                }
+                (
+                    cone.surface_pressure_ratio,
+                    handover.angle_rad.tan() * cone_slope,
+                    cone.surface_pressure_ratio * total_over_static(cone.surface_mach),
+                )
+            }
+            HandoverStart::Newtonian => {
+                use crate::blunt_tip::{
+                    handover_loading, newtonian_pressure_ratio, newtonian_surface_mach,
+                    pitot_pressure_ratio,
+                };
+                let pressure = newtonian_pressure_ratio(mach, handover.angle_rad)?;
+                let surface_mach = newtonian_surface_mach(mach, pressure)?;
+                if surface_mach <= 1.0 {
+                    return Err(AeroError::Unsupported(format!(
+                        "the flow at the blunt tip's handover is subsonic (Mach {surface_mach}) \
+                         at Mach {mach}"
+                    )));
+                }
+                (
+                    pressure,
+                    handover_loading(mach, pressure, surface_mach)?,
+                    pitot_pressure_ratio(mach)?,
+                )
+            }
+        };
+        let first = ElementFlow {
+            corner_x_m: end_x_m,
+            angle_rad: handover.angle_rad,
+            pressure,
+            gradient: 0.0,
+            load,
+            cone_pressure: cone.surface_pressure_ratio,
+            cone_slope,
+        };
+        let cap = Cap {
+            end_x_m,
+            c_p_max: crate::blunt_tip::newtonian_pressure_coefficient_max(mach)?,
+        };
+        Ok((Some(cap), elements, first, total))
+    }
+}
+
+/// The tangent body's elements over `segments` (each with its fore station, the body `length_m`
+/// long): tangent at `elements_per_curve` equal steps along a curved segment (a straight one
+/// takes one element), the first segment's steps from `start_m`, the vertex or a blunt tip's
+/// handover. The first element starts at `start_m`.
+///
+/// # Errors
+///
+/// [`AeroError::Unsupported`] where the tangent lines of consecutive elements don't meet in order
+/// along the body, meet at no radius, or are parallel but apart.
+fn lay_out(
+    segments: &[(f64, BodySegment)],
+    length_m: f64,
+    elements_per_curve: usize,
+    start_m: f64,
+) -> Result<Vec<Element>, AeroError> {
+    // The tangency points: (x, r, slope, on the nose).
+    let mut points = Vec::new();
+    for (index, (start, segment)) in segments.iter().enumerate() {
+        let (from, span) = if index == 0 {
+            (start_m, segment.length_m() - start_m)
+        } else {
+            (0.0, segment.length_m())
+        };
+        let steps = if segment.is_straight() {
+            1
+        } else {
+            elements_per_curve
+        };
+        let count = if segment.is_straight() { 1 } else { steps + 1 };
+        for i in 0..count {
+            let local = from + span * i as f64 / steps as f64;
+            let (r, slope) = segment.radius_and_slope(local);
+            points.push((start + local, r, slope, index == 0));
+        }
+    }
+
+    // `segments` isn't empty, so `points` holds at least the first segment's start.
+    let (x0, r0, t0, _) = points[0];
+    let mut elements = vec![Element {
+        on_nose: true,
+        corner_x_m: x0,
+        corner_radius_m: r0,
+        angle_rad: t0.atan(),
+    }];
+    let (mut xp, mut rp, mut tp) = (x0, r0, t0);
+    for &(x, r, t, on_nose) in &points[1..] {
+        // A point on the previous element's line adds nothing.
+        let on_line = r - (rp + tp * (x - xp));
+        if (t - tp).abs() <= 1e-12 * (1.0 + tp.abs()) {
+            if on_line.abs() <= 1e-9 * r.max(1e-12) {
+                continue;
+            }
+            return Err(AeroError::Unsupported(format!(
+                "the tangent body's elements at {xp} m and {x} m are parallel but apart"
+            )));
+        }
+        let corner_x = (r - rp + tp * xp - t * x) / (tp - t);
+        let corner_r = rp + tp * (corner_x - xp);
+        if corner_r.partial_cmp(&0.0) != Some(std::cmp::Ordering::Greater) {
+            return Err(AeroError::Unsupported(format!(
+                "the tangent body's corner at {corner_x} m has no radius: the method needs the \
+                 body open everywhere but its tip"
+            )));
+        }
+        // `elements` starts with the first element's.
+        let last = elements[elements.len() - 1].corner_x_m;
+        if !(corner_x.is_finite() && corner_x >= last && corner_x <= x + 1e-12 * length_m) {
+            return Err(AeroError::Unsupported(format!(
+                "the tangent body's corner at {corner_x} m falls outside [{last}, {x}] m: the \
+                 profile turns too quickly for its elements"
+            )));
+        }
+        elements.push(Element {
+            on_nose,
+            corner_x_m: corner_x,
+            corner_radius_m: corner_r,
+            angle_rad: t.atan(),
+        });
+        (xp, rp, tp) = (x, r, t);
+    }
+    Ok(elements)
 }
 
 /// The method's Mach number: finite and above 1.
@@ -564,6 +833,10 @@ fn check_mach(mach: f64) -> Result<(), AeroError> {
 
 /// Below this angle an element is a cylinder: its tangent cone is the free stream.
 const CONE_ANGLE_FLOOR_RAD: f64 = 1e-9;
+
+/// Enough halvings to find a blunt tip's handover to the last bit of an `f64`; the loop stops
+/// sooner, when no `f64` lies between the ends.
+const HANDOVER_BISECTIONS: usize = 1100;
 
 /// The flow along one element: its state just behind its corner, and its tangent cone.
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -1481,12 +1754,41 @@ mod tests {
     #[test]
     fn refuses_what_the_method_does_not_cover() {
         let area = 0.25 * PI;
-        // A blunt tip has no finite half-angle.
-        let blunt = BodySegment::Profile {
-            profile: Profile::nose(NoseShape::Elliptical {}, 3.0, 0.5).unwrap(),
+        // A blunt tip steeper than the handover's slope all the way to its end: a power-series
+        // nose one radius long (45° at its base).
+        let stubby = BodySegment::Profile {
+            profile: Profile::nose(NoseShape::PowerSeries { exponent: 0.5 }, 0.5, 0.5).unwrap(),
+        };
+        let stubby = ShockExpansionBody::new(&[stubby], 10).unwrap();
+        assert!(stubby.has_blunt_tip());
+        for mach in [1.5, 3.0, 5.0] {
+            assert!(matches!(
+                stubby.slope(mach, area),
+                Err(AeroError::Unsupported(_))
+            ));
+        }
+        // A spherical cap anywhere but first, or longer than a hemisphere.
+        let cap = |length_m| BodySegment::SphericalCap {
+            radius_m: 0.5,
+            length_m,
+        };
+        let cylinder = BodySegment::Cylinder {
+            length_m: 1.0,
+            radius_m: 0.5,
         };
         assert!(matches!(
-            ShockExpansionBody::new(&[blunt], 10),
+            ShockExpansionBody::new(&[cap(0.5), cylinder, cap(0.5)], 10),
+            Err(AeroError::Unsupported(_))
+        ));
+        for length in [0.0, 0.6, f64::NAN] {
+            assert!(matches!(
+                ShockExpansionBody::new(&[cap(length), cylinder], 10),
+                Err(AeroError::Domain { .. })
+            ));
+        }
+        // A body that doesn't start with a nose.
+        assert!(matches!(
+            ShockExpansionBody::new(&[cylinder], 10),
             Err(AeroError::Unsupported(_))
         ));
         // A step in radius.
@@ -1812,5 +2114,172 @@ mod tests {
         }
         // Mach 1.5 to 4.63 on the short model, 1.8 to 4.63 on the long.
         assert_eq!(rows, 11);
+    }
+
+    /// A hemisphere on a cylinder, reference its cross-section.
+    fn hemisphere_cylinder() -> ShockExpansionBody {
+        ShockExpansionBody::new(
+            &[
+                BodySegment::SphericalCap {
+                    radius_m: 0.5,
+                    length_m: 0.5,
+                },
+                BodySegment::Cylinder {
+                    length_m: 4.0,
+                    radius_m: 0.5,
+                },
+            ],
+            DEFAULT_ELEMENTS_PER_CURVE,
+        )
+        .unwrap()
+    }
+
+    /// The handover sits where a sphere's slope is the handover's, `x = R(1 − sin δ)`, found to
+    /// the last few bits of an `f64`. The tip's half-angle is 90°.
+    #[test]
+    fn a_blunt_tip_hands_over_where_its_slope_falls_to_the_wedges() {
+        let sphere = hemisphere_cylinder();
+        assert!(sphere.has_blunt_tip());
+        assert_eq!(sphere.vertex_angle_rad(), 0.5 * PI);
+        for mach in [1.3, 1.5, 2.0, 3.0, 5.0] {
+            let delta = crate::blunt_tip::handover_angle_rad(mach).unwrap();
+            let want = 0.5 * (1.0 - delta.sin());
+            let got = sphere.handover_m(mach).unwrap().unwrap();
+            assert!(
+                (got - want).abs() <= 1e-14,
+                "Mach {mach}: {got} against {want}"
+            );
+        }
+        // A pointed nose has none.
+        let pointed = body(false, 3.0, 2.0, DEFAULT_ELEMENTS_PER_CURVE);
+        assert!(!pointed.has_blunt_tip());
+        assert_eq!(pointed.handover_m(2.0).unwrap(), None);
+        assert!(matches!(
+            sphere.handover_m(1.0),
+            Err(AeroError::Domain { .. })
+        ));
+    }
+
+    /// The cap's Newtonian loading integrates to its closed form: on a sphere of radius `R`, with
+    /// `θ` from the pole, `C_Nα = 2 C_p,max ∫ cos θ sin³θ dθ = C_p,max sin⁴θ_h / 2` on `πR²` to
+    /// the handover's `θ_h = 90° − δ_h`.
+    #[test]
+    fn the_cap_carries_its_newtonian_loading() {
+        let body = hemisphere_cylinder();
+        let area = 0.25 * PI;
+        for mach in [1.5, 3.0] {
+            let windows = body.windows(mach, area).unwrap();
+            // The first window runs from the pole to the handover.
+            let (start, [force, _]) = windows[0];
+            assert_eq!(start, 0.0);
+            let cap = 2.0 * PI * force / area;
+            let theta = 0.5 * PI - crate::blunt_tip::handover_angle_rad(mach).unwrap();
+            let c_p_max = crate::blunt_tip::newtonian_pressure_coefficient_max(mach).unwrap();
+            let want = 0.5 * c_p_max * theta.sin().powi(4);
+            assert!(
+                (cap - want).abs() <= 1e-9 * want,
+                "Mach {mach}: {cap} against {want}"
+            );
+            // The rest of the body carries lift too, and the whole places a centre of pressure
+            // on the body.
+            let slope = body.slope(mach, area).unwrap();
+            assert!(slope.slope_per_rad > cap);
+            assert!(slope.centre_of_pressure_m > 0.0 && slope.centre_of_pressure_m < 4.5);
+        }
+    }
+
+    /// The Arcas Robin's committed nose (a power series, `n` = 0.6369, 9.375 in long on a
+    /// 2.25-in body) and the short model's cylinder: four times the default elements move its
+    /// slope by under 0.01 per radian and its centre of pressure by under 0.01 calibers, through
+    /// Mach 5.
+    #[test]
+    fn a_vertical_tip_converges_as_elements_are_added() {
+        let radius = 1.125 * 0.0254;
+        let area = PI * radius * radius;
+        let body = |steps| {
+            ShockExpansionBody::new(
+                &[
+                    BodySegment::Profile {
+                        profile: Profile::nose(
+                            NoseShape::PowerSeries { exponent: 0.6369 },
+                            9.375 * 0.0254,
+                            radius,
+                        )
+                        .unwrap(),
+                    },
+                    BodySegment::Cylinder {
+                        length_m: (39.14 - 9.375) * 0.0254,
+                        radius_m: radius,
+                    },
+                ],
+                steps,
+            )
+            .unwrap()
+        };
+        let (coarse, fine) = (body(DEFAULT_ELEMENTS_PER_CURVE), body(40));
+        for mach in [1.5, 2.3, 2.96, 3.96, 4.63, 5.0] {
+            let a = coarse.slope(mach, area).unwrap();
+            let b = fine.slope(mach, area).unwrap();
+            assert!(
+                (a.slope_per_rad - b.slope_per_rad).abs() < 0.01,
+                "Mach {mach}: {a:?} against {b:?}"
+            );
+            assert!(
+                (a.centre_of_pressure_m - b.centre_of_pressure_m).abs() < 0.01 * 2.0 * radius,
+                "Mach {mach}: {a:?} against {b:?}"
+            );
+        }
+    }
+
+    /// TN D-4865's own start behind the cap, kept to compare (ADR-038): on the Arcas Robin's
+    /// committed nose its march fails from Mach 3.96, where the tangent cone's start holds; on a
+    /// pointed body the choice changes nothing. Its JSON form is snake case.
+    #[test]
+    fn the_reports_own_start_is_kept_to_compare() {
+        let radius = 1.125 * 0.0254;
+        let area = PI * radius * radius;
+        let nose = BodySegment::Profile {
+            profile: Profile::nose(
+                NoseShape::PowerSeries { exponent: 0.6369 },
+                9.375 * 0.0254,
+                radius,
+            )
+            .unwrap(),
+        };
+        let cylinder = BodySegment::Cylinder {
+            length_m: 0.75,
+            radius_m: radius,
+        };
+        let body = ShockExpansionBody::new(&[nose, cylinder], DEFAULT_ELEMENTS_PER_CURVE).unwrap();
+        let reports = body.clone().with_handover_start(HandoverStart::Newtonian);
+        assert!(body.slope(3.96, area).is_ok());
+        assert!(matches!(
+            reports.slope(3.96, area),
+            Err(AeroError::Unsupported(_))
+        ));
+        let (a, b) = (
+            body.slope(2.3, area).unwrap(),
+            reports.slope(2.3, area).unwrap(),
+        );
+        assert!((a.slope_per_rad - b.slope_per_rad).abs() > 0.1);
+        let pointed = body_of_cone();
+        assert_eq!(
+            pointed.slope(3.0, area).unwrap(),
+            pointed
+                .clone()
+                .with_handover_start(HandoverStart::Newtonian)
+                .slope(3.0, area)
+                .unwrap()
+        );
+        assert_eq!(
+            serde_json::to_string(&HandoverStart::TangentCone).unwrap(),
+            "\"tangent_cone\""
+        );
+        let back: HandoverStart = serde_json::from_str("\"newtonian\"").unwrap();
+        assert_eq!(back, HandoverStart::Newtonian);
+    }
+
+    fn body_of_cone() -> ShockExpansionBody {
+        body(false, 3.0, 2.0, DEFAULT_ELEMENTS_PER_CURVE)
     }
 }

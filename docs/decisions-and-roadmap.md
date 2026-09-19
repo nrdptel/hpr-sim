@@ -54,6 +54,7 @@ new record replaces it and points back. All of them are in the [decision log][de
 | [ADR-035: Drop the orhelper dependency][adr-035] | The GPL-2.0 wrapper for the OpenRocket jar is removed from the oracle environment, unused; how [the OpenRocket oracle milestone](#m2-2) drives the jar is decided when it starts | [How correctness is proven](https://github.com/nrdptel/hpr-sim/blob/main/docs/VALIDATION.md) |
 | [ADR-036: The Arcas Robin's supersonic body gap][adr-036] | How hpr's body faster than sound is compared with NASA's wind tunnel from now on (as the tunnel measures, at its angles), and why [M1.8e6](#m1-8e6) takes the size of crossflow lift and the boattail's share together | [Aerodynamics](physics/aero.md#checking-the-shock-expansion-method) |
 | [ADR-037: Body lift by Jorgensen's crossflow][adr-037] | Body lift's size at every speed from Jorgensen's crossflow drag, how his two `η` figures are combined, a boattail's share faster than sound from Washington and Pettis's measurements, and why [blunt tips moved to M1.8e7](#m1-8e7) | [Aerodynamics](physics/aero.md#body-lift) |
+| [ADR-038: Blunt tips by a Newtonian cap][adr-038] | How a nose with a blunt or vertical tip (power-series, Haack, elliptical) flies the shock-expansion method faster than sound: NASA TN D-4865's Newtonian cap and handover, the method started behind it from the tangent cone rather than the report's own start, and how both were checked | [Aerodynamics](physics/aero.md#blunt-tips) |
 
 ## The roadmap
 
@@ -149,8 +150,9 @@ missing or its status disagrees.
 | <a id="m1-8e4"></a>[M1.8e4][phase-1] | Faster than sound: a boattail, and a tube behind it, take their share of the body's normal force from the shock-expansion method | done |
 | <a id="m1-8e5"></a>[M1.8e5][phase-1] | Faster than sound: how much of the Arcas Robin's remaining gap each missing effect (crossflow, the blunt tip, and others) explains, measured before modelling | done |
 | <a id="m1-8e6"></a>[M1.8e6][phase-1] | The size of crossflow lift at every speed (Jorgensen) and a boattail's measured share faster than sound (Washington and Pettis), the causes that measurement ranked first, in flight | done |
-| <a id="m1-8e7"></a>[M1.8e7][phase-1] | Faster than sound: blunt nose tips and the lip behind a boattail, so that the committed Arcas Robin designs fly the shock-expansion method | not yet done |
-| <a id="m1-8e8"></a>[M1.8e8][phase-1] | Faster than sound: the body's model switches and the boattail angle cap, and the Arcas Robin wind tunnel's 15% target | not yet done |
+| <a id="m1-8e7"></a>[M1.8e7][phase-1] | Faster than sound: blunt and vertical nose tips (power-series, Haack and elliptical noses) by a Newtonian cap ahead of the shock-expansion method | done |
+| <a id="m1-8e8"></a>[M1.8e8][phase-1] | Faster than sound: the lip behind a boattail, so that the committed Arcas Robin designs fly the shock-expansion method | not yet done |
+| <a id="m1-8e9"></a>[M1.8e9][phase-1] | Faster than sound: the body's model switches and the boattail angle cap, and the Arcas Robin wind tunnel's 15% target | not yet done |
 | <a id="m3-1"></a>[M3.1][phase-1] | Reading OpenRocket `.ork` design files | not yet done |
 | <a id="m2-2"></a>[M2.2][phase-1] | OpenRocket as a reference program, and a corpus of designs to compare | not yet done |
 | <a id="m1-9"></a>[M1.9][phase-1] | Staging, clusters and air starts, for COTS motors | not yet done |
@@ -298,6 +300,7 @@ is the milestone that added or will add that test.
 [adr-035]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-035-drop-the-orhelper-dependency-how-m22-drives-openrocket-is-decided-when-m22-starts-2026-09-19
 [adr-036]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-036-the-arcas-robins-supersonic-body-gap-judged-as-the-tunnel-measures-m18e6-takes-crossflows-size-and-the-boattail-2026-09-19
 [adr-037]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-037-body-lift-by-jorgensens-crossflow-at-every-speed-and-a-boattails-measured-share-faster-than-sound-2026-09-19
+[adr-038]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-038-blunt-and-vertical-nose-tips-faster-than-sound-by-a-newtonian-cap-the-method-started-from-the-tangent-cone-2026-09-19
 [decisions]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md
 [lessons]: https://github.com/nrdptel/hpr-sim/blob/main/docs/research/loft-lessons.md
 [lessons-motors]: https://github.com/nrdptel/hpr-sim/blob/main/docs/research/loft-lessons.md#motors-mass-and-design-checks

@@ -195,6 +195,10 @@ pub fn run(args: &[String]) -> Result<(), String> {
             crate::aero_crossflow::FIXTURE,
             crate::aero_crossflow::generate(&root)?,
         ),
+        (
+            crate::aero_blunt::FIXTURE,
+            crate::aero_blunt::generate(&root)?,
+        ),
     ] {
         let path = root.join(name);
         if check {

@@ -10,7 +10,7 @@ the gap, row by row, and ranks them, before any model is built. The smaller caus
 cross-section (2.25 in across); `α` is the angle of attack.
 
 **What it is for.** [M1.8e6](../decisions-and-roadmap.md#m1-8e6) and
-[M1.8e8](../decisions-and-roadmap.md#m1-8e8) (numbered M1.8e7 when this note was written) start
+[M1.8e9](../decisions-and-roadmap.md#m1-8e9) (numbered M1.8e7, then e8, when this note was written) start
 from its ranking; M1.8e6 has since taken its first two ranks, crossflow's size and the boattail's
 share ([Checking the shock-expansion method](../physics/aero.md#checking-the-shock-expansion-method));
 [ADR-036](../DECISIONS.md#adr-036-the-arcas-robins-supersonic-body-gap-judged-as-the-tunnel-measures-m18e6-takes-crossflows-size-and-the-boattail-2026-09-19)
@@ -151,7 +151,7 @@ committed design uses at every Mach number, gives it `2 (A_aft − A)/A_ref` = �
 ranks second: the only sized cause that size (the fitted form and the method's own ±0.2 aren't
 causes). Nothing here says where between the two theories the real share lies.
 
-## What this means for M1.8e6, M1.8e7 and M1.8e8
+## What this means for M1.8e6, M1.8e7 and M1.8e9
 
 - **Crossflow and the boattail together,** judged fitted at the plotted angles
   (`hpr.fitted_c_n_alpha`), not at `α → 0`. Jorgensen's `η C_dn` fits the curvature better than
@@ -161,11 +161,13 @@ causes). Nothing here says where between the two theories the real share lies.
   slow rocket's drift in wind
   ([ADR-026](../DECISIONS.md#adr-026-the-path-in-wind-rocketpys-corrected-equations-and-hprs-body-lift-2026-09-18)),
   so M1.8e6 should decide whether a change applies below Mach 1, and regenerate the report.
-- **Blunt tips are a coverage question** (since split out as
-  [M1.8e7](../decisions-and-roadmap.md#m1-8e7), with the lip). The committed design's
-  power-series nose has a vertical tip, which the method refuses. A lead: NASA TN D-4865 (1968) puts a Newtonian cap ahead of
-  TN 3527's method and compares it from Mach 1.50 to 4.63.
-- **M1.8e8's target** (the body within 15% of the tunnel) is judged as M1.8a fits it (ADR-036).
+- **Blunt tips are a coverage question** (since done as
+  [M1.8e7](../decisions-and-roadmap.md#m1-8e7), the lip left for
+  [M1.8e8](../decisions-and-roadmap.md#m1-8e8)). The committed design's power-series nose has a
+  vertical tip, which the method then refused. A lead: NASA TN D-4865 (1968) puts a Newtonian cap
+  ahead of TN 3527's method and compares it from Mach 1.50 to 4.63; M1.8e7 took it
+  ([Blunt tips](../physics/aero.md#blunt-tips)).
+- **M1.8e9's target** (the body within 15% of the tunnel) is judged as M1.8a fits it (ADR-036).
   At the time of writing the fitted nose's body read 15% to 73% high, and the committed short
   model's, on slender-body theory, 2.26 to 2.34 where the tunnel reads 2.19 to 4.15; M1.8e6's
   numbers are in

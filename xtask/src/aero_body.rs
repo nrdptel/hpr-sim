@@ -269,27 +269,49 @@ pub fn arcas_model(
             .pointer_mut("/stages/0/components/0/part/nose_cone/shape")
             .ok_or(format!("{name}: its first component isn't a nose cone"))?;
         *shape = json!({ "kind": "ogive", "radius_ratio": ratio });
-        let components = design
-            .pointer_mut("/stages/0/components")
-            .and_then(Value::as_array_mut)
-            .ok_or(format!("{name}: no components"))?;
-        // The nose and the body tube behind it, and nothing aft.
-        if components.len() < 2 || components[1].pointer("/part/body_tube").is_none() {
-            return Err(format!("{name}: its second component isn't a body tube"));
-        }
-        if boattail
-            && components
-                .get(2)
-                .and_then(|c| c.pointer("/part/transition"))
-                .is_none()
-        {
-            return Err(format!("{name}: its third component isn't a transition"));
-        }
-        components.truncate(if boattail { 3 } else { 2 });
+        truncate(&mut design, name, boattail)?;
     }
     let rocket: Rocket = serde_json::from_value(design).map_err(|e| format!("{name}: {e}"))?;
     let layout = rocket.layout().map_err(|e| format!("{name}: {e}"))?;
     AeroModel::with_body_model(&layout, body_model).map_err(|e| format!("{name}: {e}"))
+}
+
+/// The committed design `name` with its own nose (a power series with a vertical tip), the
+/// cylinder and the boattail, the lip behind it left off (M1.8e7's comparison).
+pub fn arcas_model_without_lip(
+    root: &Path,
+    name: &str,
+    body_model: BodyModel,
+) -> Result<AeroModel, String> {
+    let path = root.join("validation/designs").join(name);
+    let text = fs::read_to_string(&path).map_err(|e| format!("{name}: {e}"))?;
+    let mut design: Value = serde_json::from_str(&text).map_err(|e| format!("{name}: {e}"))?;
+    truncate(&mut design, name, true)?;
+    let rocket: Rocket = serde_json::from_value(design).map_err(|e| format!("{name}: {e}"))?;
+    let layout = rocket.layout().map_err(|e| format!("{name}: {e}"))?;
+    AeroModel::with_body_model(&layout, body_model).map_err(|e| format!("{name}: {e}"))
+}
+
+/// Keeps the design's nose and the body tube behind it, and its boattail when `boattail`, and
+/// nothing aft.
+fn truncate(design: &mut Value, name: &str, boattail: bool) -> Result<(), String> {
+    let components = design
+        .pointer_mut("/stages/0/components")
+        .and_then(Value::as_array_mut)
+        .ok_or(format!("{name}: no components"))?;
+    if components.len() < 2 || components[1].pointer("/part/body_tube").is_none() {
+        return Err(format!("{name}: its second component isn't a body tube"));
+    }
+    if boattail
+        && components
+            .get(2)
+            .and_then(|c| c.pointer("/part/transition"))
+            .is_none()
+    {
+        return Err(format!("{name}: its third component isn't a transition"));
+    }
+    components.truncate(if boattail { 3 } else { 2 });
+    Ok(())
 }
 
 /// The bodies' `C_Nα` at `α → 0` through the flight's path (`AeroModel::components`), on

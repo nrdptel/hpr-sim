@@ -286,11 +286,8 @@
     - Analytic tests for terminal velocity, descent time and drift pass.
     - Descent rate and drift match RocketPy's for 3 example rockets within 3%.
 
-    *Result (ADR-012):* met. Knacke's `v_e` reproduces Loft's case (5.294 m/s); a descent follows
-    the closed-form fall to 2.1e-8 of `v_t`; drift is the wind times the time of flight to 1e-8.
-    Five RocketPy examples agree within 0.71% in descent time, 0.03% in impact descent rate and
-    0.27% in drift, worst single drift component 2.87% (NDRT, where RocketPy's added mass is
-    nearly the rocket's).
+    *Result (ADR-012):* met. Analytic descents to 2.1e-8; five RocketPy examples within 0.71%
+    (time), 0.03% (rate), 0.27% (drift); worst drift component 2.87% (NDRT's added mass).
 
   - [x] **M1.7b Streamers and tumble.**
     - Streamers and tumble, each with a cited drag model.
@@ -299,11 +296,8 @@
     - A streamer's and a tumbling body's descent rates match the terminal velocity of their cited
       drag models (analytic tests).
 
-    *Result (ADR-013):* met. Streamers take all three of Carruthers and Filippone's printed
-    curves by default and OpenRocket's appendix C on request; tumble takes OpenRocket's §3.5 with
-    its fin efficiency table. Against Kidwell's 2001 drop tests the default is within 9% on his
-    one flat streamer, where appendix C is 88% fast. The tumble model reproduces its own drop
-    tests to −10 to +19%, not the 3 to 14% its source claims, and the docs say so.
+    *Result (ADR-013):* met. Streamers: Carruthers and Filippone (within 9% of Kidwell's flat
+    streamer; appendix C 88% fast). Tumble: OpenRocket §3.5, −10 to +19% on its own drop tests.
 
   - [x] **M1.7c Separated bodies.**
     - Separation, with every body flown to its own landing and its own mass properties and drag.
@@ -427,11 +421,8 @@
       - Predicted-mode results are in the report for every case, each gap explained in the case
         file or `docs/VALIDATION.md`; `M ≥ 1` cases are reported as gaps, not hidden, until M1.8.
 
-      *Result (ADR-023):* met. `flight.py --own-drag` flies the drag RocketPy 1.13.0 really flies
-      and records each curve's hash, never its values. Six `predicted-*` cases (3% targets, never
-      gated): 56 of 75 within; Valetudo and NDRT 2020 +10% in apogee (hpr's drag is well below
-      theirs); every miss explained and pinned. Flown at rtol = atol = 1e-11 so the report
-      reproduces across platforms.
+      *Result (ADR-023):* met. `flight.py --own-drag` (hashes, never values). Six `predicted-*`
+      cases, 3% targets: 56 of 75 within; Valetudo and NDRT 2020 +10% in apogee; misses pinned.
 
   - [x] **M2.1d The time-series RMS and the path in wind.**
     - The two items of M2.1's list that M2.1a to M2.1c leave open: the time-series RMS after
@@ -446,12 +437,9 @@
       - Every whole-flight case reports its time-series RMS after alignment against the
         reference's series, gated with its tolerance argued in the case file.
 
-      *Result (ADR-024):* met for every case hpr flies. `series_height_rms_m` and
-      `series_speed_rms_m_s` at RocketPy's 120 series times from ignition (no fitted shift) until
-      hpr lands, held to 3% of the reference's apogee and max speed, set before measuring.
-      Same-drag, gated: height 1.4 to 39.2 m, speed 0.13 to 2.06 m/s, all ten RMS rows pass.
-      Predicted, targets (ADR-023): three outside (Valetudo, NDRT 2020: the drag), explained and
-      pinned. Both Prometheus 2022 cases stay the checked `M ≥ 1` gap, flying nothing, until M1.8.
+      *Result (ADR-024):* met for every case hpr flies: RMS at RocketPy's 120 series times, held to
+      3% of apogee and max speed; same-drag 1.4–39.2 m and 0.13–2.06 m/s, all pass; predicted,
+      three outside (the drag), pinned.
 
     - [x] **M2.1d2 The calm-air cases (issue #50).**
       - Issue #50's zero-wind runs of Juno III, Calisto and Bella Lui, committed as same-drag
@@ -461,11 +449,8 @@
       - The three calm-air cases are in the suite, their apogee and landing drifts scored at 3%,
         and each passes or is a gap its case file explains.
 
-      *Result (ADR-025):* met. Calisto and Bella Lui pass every scored metric (drifts −1.258% to
-      −2.583%). Juno III's drifts miss by −3.670% and −3.695% with its apogee within 0.060%, and are
-      reported, not scored: about 1.6 of the 3.7 points are the rail release (hpr frees the rocket
-      at its last rail button, RocketPy at its first; `rail_release.py`). A same-sign rest remains in
-      every calm drift, for M2.1d3.
+      *Result (ADR-025):* met. Calisto and Bella Lui pass (drifts −1.258% to −2.583%); Juno III's
+      drifts miss (−3.7%), reported not scored: 1.6 points are the rail release (`rail_release.py`).
 
     - [x] **M2.1d3 The path in wind (issue #50).**
       - Fly the windy cases with each suspected cause of the gap matched to RocketPy in turn: rail
@@ -576,7 +561,7 @@
     with body lift. A cited supersonic method for noses, boattails and crossflow. *Done when:*
     the Arcas Robin's body-alone `C_Nα` (fins off, TN D-4014) is within 15% at every Mach number
     from 1.5, and both configurations' `C_Nα` within 15% at Mach 3.96 and 4.63, or an ADR records
-    why not with the gap in the report. Split below into M1.8e1 to e8; e8 carries this bullet.
+    why not with the gap in the report. Split below into M1.8e1 to e9; e9 carries this bullet.
 
     - [x] **M1.8e1 The second-order shock-expansion method.** NACA TN 3527's method for a
       pointed body's `C_Nα` and CP at `α → 0`, the cylinder's lift behind the nose included; its
@@ -615,9 +600,14 @@
     - [x] **M1.8e6 Crossflow and the boattail faster than sound** (ADR-036, ADR-037). *Done when:*
       flown with no jump at ±1e-9 in Mach; the Arcas Robin through a flight's path in the report.
       *Result:* met; like for like +3.4% to +41.0% (was +14.9% to +73.2%); M1.8a gains a miss.
-    - [ ] **M1.8e7 Blunt tips and the lip faster than sound** (from e6). *Done when:* flown with no
-      jump at ±1e-9 in Mach; the Arcas Robin through a flight's path in the report.
-    - [ ] **M1.8e8 #87's model switches and #90's cap.** *Done when:* both closed; M1.8e's bullet.
+    - [x] **M1.8e7 Blunt tips faster than sound** (from e6; split, ADR-038). A vertical or blunt
+      nose tip flies a Newtonian cap ahead of TN 3527's method (NASA TN D-4865). *Done when:* flown
+      with no jump at ±1e-9 in Mach; the Arcas Robin's committed nose (lip left off) through a
+      flight's path in the report; TN D-4865's sphere-cone against its measured normal force.
+      *Result:* met; sphere-cone −11.9% to +4.0%; committed nose, lip off, −4.8% to +37.2%.
+    - [ ] **M1.8e8 The lip faster than sound** (from e7). *Done when:* flown with no jump at ±1e-9
+      in Mach; the committed Arcas Robin designs through a flight's path in the report.
+    - [ ] **M1.8e9 #87's model switches and #90's cap.** *Done when:* both closed; M1.8e's bullet.
 
 - [ ] **M3.1 OpenRocket `.ork` import.**
   - Handles zip, gz and raw XML, schema 1.0 to 1.10, plus the documented 1.11 additions.

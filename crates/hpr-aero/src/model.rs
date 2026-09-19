@@ -1218,9 +1218,10 @@ impl AeroModel {
     }
 
     /// The shock-expansion method's shares of the nose, the cylinders and boattails behind it,
-    /// and where they join slender-body theory; `None` where the method can't take the body (a blunt or
-    /// vertical tip, a tangent cone past TN 3527's Fig. 2, a later body with a slope of its own
-    /// such as a flare) or doesn't hold across a whole join below Mach 5.
+    /// and where they join slender-body theory; `None` where the method can't take the body (a nose
+    /// steeper than a blunt tip's handover all the way to its base, a tangent cone past TN 3527's
+    /// Fig. 2, a later body with a slope of its own such as a flare) or doesn't hold across a
+    /// whole join below Mach 5.
     ///
     /// The first call builds the table, which takes up to about 125 runs of the method; a flow no
     /// faster than [`SUPERSONIC_JOIN_START_MACH`] never needs it.
@@ -2379,6 +2380,88 @@ mod tests {
         }
     }
 
+    /// Vertical tips (power-series noses below `n` = 1, the von Kármán and L-V Haack, an
+    /// elliptical nose) fly the method behind TN D-4865's Newtonian cap (M1.8e7), with a boattail
+    /// and without, and nothing jumps at ±1e-9 in Mach: across the join, every row of the table
+    /// and Mach 2.1, near where the cap's handover reaches Fig. 2's 24°.
+    #[test]
+    fn vertical_tips_fly_the_method_without_a_jump() {
+        for shape in [
+            NoseShape::PowerSeries { exponent: 0.6369 },
+            NoseShape::PowerSeries { exponent: 0.5 },
+            NoseShape::VON_KARMAN,
+            NoseShape::LV_HAACK,
+            NoseShape::Elliptical {},
+        ] {
+            for boattail in [true, false] {
+                let mut rocket = if boattail {
+                    finned_rocket(4)
+                } else {
+                    straight_rocket()
+                };
+                rocket.stages[0].components[0].part = nose(shape, 0.25, 0.027);
+                let model = model(&rocket);
+                let table = model
+                    .supersonic_body()
+                    .unwrap_or_else(|| panic!("{shape:?}: no table"));
+                assert_eq!(table.covered, 4, "{shape:?}");
+                // On a row, the straight body's shares are the method's own.
+                if !boattail {
+                    let Part::NoseCone(cone) = &rocket.stages[0].components[0].part else {
+                        unreachable!("`nose` builds a nose cone")
+                    };
+                    let cylinder = |length_m| BodySegment::Cylinder {
+                        length_m,
+                        radius_m: 0.027,
+                    };
+                    let body = ShockExpansionBody::new(
+                        &[
+                            BodySegment::Profile {
+                                profile: cone.profile().unwrap(),
+                            },
+                            cylinder(0.7),
+                            cylinder(0.05),
+                            cylinder(0.3),
+                        ],
+                        DEFAULT_ELEMENTS_PER_CURVE,
+                    )
+                    .unwrap();
+                    let method = body.segment_slopes(3.0, model.reference_area_m2()).unwrap();
+                    let (nose_slope, _) = table.share(0, 3.0).unwrap();
+                    assert!(
+                        (nose_slope - method[0].slope_per_rad).abs() <= 1e-12,
+                        "{shape:?}: {nose_slope} against {:?}",
+                        method[0]
+                    );
+                }
+                let start = table.join_start_mach;
+                let mut machs = vec![start, start + SUPERSONIC_JOIN_WIDTH_MACH, 2.1, 4.999];
+                machs.extend(
+                    (SUPERSONIC_FIRST_STEP..SUPERSONIC_LAST_STEP)
+                        .map(|step| step as f64 / SUPERSONIC_STEPS_PER_MACH),
+                );
+                for alpha_deg in [1.0_f64, 10.0] {
+                    for &mach in &machs {
+                        let at = |m: f64| {
+                            let f = model
+                                .normal_force(&flow(m, alpha_deg.to_radians(), 0.0))
+                                .unwrap();
+                            [f.coefficient, f.cp_station_m.unwrap()]
+                        };
+                        let (below, above) = (at(mach - 1e-9), at(mach + 1e-9));
+                        for k in 0..2 {
+                            let scale = below[k].abs().max(1.0);
+                            assert!(
+                                (above[k] - below[k]).abs() <= 1e-7 * scale,
+                                "{shape:?} at {alpha_deg}° and Mach {mach}: {below:?} to {above:?}"
+                            );
+                        }
+                    }
+                }
+            }
+        }
+    }
+
     /// Washington and Pettis's boattail: the method's share for a cylinder of the boattail's
     /// length and fore radius in its place, plus the measured increment at its centre of
     /// pressure; footnote 8's is the method's own segment share.
@@ -2732,8 +2815,9 @@ mod tests {
     #[test]
     fn a_body_the_method_cannot_finish_keeps_slender_body_terms() {
         let at = |m: &AeroModel, mach| body_values(m, mach);
-        // A flare (a boattail flies the method since M1.8e4), a vertical tip (a power-series
-        // nose), a step in radius behind the nose.
+        // A flare (a boattail flies the method since M1.8e4), a vertical tip steeper than the
+        // blunt tip's handover all the way to its base (a power-series nose one radius long;
+        // longer ones fly the method since M1.8e7), a step in radius behind the nose.
         let mut rocket = straight_rocket();
         rocket.stages[0].components[2].part = body_part(0.05, 0.027, 0.032);
         rocket.stages[0].components[3].part = body_part(0.3, 0.032, 0.032);
@@ -2750,7 +2834,7 @@ mod tests {
         let stepped_boattail = model(&rocket);
         let mut rocket = straight_rocket();
         rocket.stages[0].components[0].part =
-            nose(NoseShape::PowerSeries { exponent: 0.5 }, 0.25, 0.027);
+            nose(NoseShape::PowerSeries { exponent: 0.5 }, 0.027, 0.027);
         let blunt = model(&rocket);
         let mut rocket = straight_rocket();
         rocket.stages[0].components[1].part = body_part(0.7, 0.03, 0.03);
