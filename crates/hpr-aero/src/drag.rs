@@ -565,12 +565,12 @@ pub struct PressureDragTerm {
 ///
 /// A share is the drag of the cone from the start of the surface it continues through its aft
 /// end, less that of the cone from the same start through its fore end, and not below 0. Each
-/// surface ahead that the flow may still follow has a weight: 1 for a turn
-/// of up to [`MERGE_FULL_TURN_RAD`] between this part and it, 0 from [`MERGE_NONE_TURN_RAD`] (a
-/// corner), linear between, times what the tubes, steps and lips since have left of it. With `W`
-/// the largest weight, the part drags `W` times the shares averaged by weight, plus `1 − W` times
-/// its own. So parts of one smooth surface add up to one cone, a sharp corner keeps each part its
-/// own boattail, and the drag stays between the two.
+/// surface ahead that the flow may still follow has a weight: its hold of the flow behind the
+/// boattails, times 1 for a turn of up to [`MERGE_FULL_TURN_RAD`] between this part and it, 0 from
+/// [`MERGE_NONE_TURN_RAD`] (a corner), linear between, and times each part's half-angle over
+/// [`MERGE_MIN_ANGLE_RAD`], at most 1. The part drags the weights times the shares, plus its own
+/// drag times what they leave. So parts of one straight cone add up to one cone, a sharp corner
+/// keeps each part its own boattail, and the drag stays between the two.
 #[derive(Debug, Clone, PartialEq, Serialize)]
 #[non_exhaustive]
 pub struct BoattailTerm {
@@ -578,9 +578,11 @@ pub struct BoattailTerm {
     pub own: Boattail,
     /// Its fore area over the reference area.
     pub own_area_ratio: f64,
-    /// Its shares of the boattails it continues, each with its part of the merge; the weights add
-    /// up to the largest merge weight, at most 1. Empty when it continues none.
+    /// Its shares of the boattails it continues, each with its part of the merge. Empty when it
+    /// continues none.
     pub merged: Vec<MergedBoattail>,
+    /// The weight of its own drag: 1 less the merges' weights.
+    pub own_weight: f64,
 }
 
 /// A narrowing transition's share of a boattail it continues ([`BoattailTerm`]).
@@ -638,18 +640,18 @@ pub const MERGE_FULL_TURN_RAD: f64 = 3.0 * std::f64::consts::PI / 180.0;
 /// a corner: 10°.
 pub const MERGE_NONE_TURN_RAD: f64 = 10.0 * std::f64::consts::PI / 180.0;
 
-/// The aft base behind a boattail: its drag coefficient is scaled by `1 − max w (1 − k)` over its
-/// sources, each a boattail the base may still take relief from, with `k` that boattail's
-/// base-pressure ratio ([`Boattail::base_pressure_ratio`]) and `w` what the parts between have
-/// left of it.
+/// The aft base behind a boattail: its drag coefficient is scaled by `1 − Σ w (1 − k)` over its
+/// sources, each a boattail the base still takes relief from, with `k` that boattail's
+/// base-pressure ratio ([`Boattail::base_pressure_ratio`]) and `w` its share of the flow behind
+/// the boattails; the shares add up to at most 1.
 #[derive(Debug, Clone, PartialEq, Serialize)]
 #[non_exhaustive]
 pub struct BaseBehindBoattail {
-    /// The boattails the base may take relief from; the strongest at each Mach number counts.
+    /// The boattails the base takes relief from.
     pub sources: Vec<ReliefSource>,
 }
 
-/// A boattail the aft base may take relief from ([`BaseBehindBoattail`]).
+/// A boattail the aft base takes relief from ([`BaseBehindBoattail`]).
 #[derive(Debug, Clone, Copy, PartialEq, Serialize)]
 #[non_exhaustive]
 pub struct ReliefSource {
@@ -657,10 +659,19 @@ pub struct ReliefSource {
     pub boattail: Boattail,
     /// The base's area over the boattail's fore area, at most 1.
     pub area_ratio: f64,
-    /// How much of its relief the base takes, from 0 to 1: less with a merge shared, a tube, a
-    /// step down, a lip or another part between.
+    /// Its share of the flow behind the boattails, faded by the parts between it and the base,
+    /// from 0 to 1.
     pub weight: f64,
 }
+
+/// A step down's boattail of no length, for the tails behind a boattail ([`couple_afterbody`]):
+/// its length over its drop in radius. Any length this short is a fully separated corner, so the
+/// step is the limit of a closure drawn ever shorter.
+const STEP_LENGTH_RATIO: f64 = 1e-9;
+
+/// A narrowing part shallower than this is partly a tube: it merges with the boattails before it,
+/// and a later part with it, only by its half-angle over this, a judgement: 1°.
+pub const MERGE_MIN_ANGLE_RAD: f64 = std::f64::consts::PI / 180.0;
 
 /// 1 with no gap, falling linearly to 0 at a gap of `scale`.
 fn gap_weight(gap_m: f64, scale_m: f64) -> f64 {
@@ -671,14 +682,20 @@ fn gap_weight(gap_m: f64, scale_m: f64) -> f64 {
     }
 }
 
-/// 1 for a turn up to [`MERGE_FULL_TURN_RAD`], 0 from [`MERGE_NONE_TURN_RAD`], linear between.
-fn smooth_turn(turn_rad: f64) -> f64 {
-    ((MERGE_NONE_TURN_RAD - turn_rad) / (MERGE_NONE_TURN_RAD - MERGE_FULL_TURN_RAD)).clamp(0.0, 1.0)
+/// How far a narrowing part at `turn_rad` from a boattail's last part merges with it: 1 up to
+/// [`MERGE_FULL_TURN_RAD`], 0 from [`MERGE_NONE_TURN_RAD`], linear between; times each part's
+/// half-angle over [`MERGE_MIN_ANGLE_RAD`], at most 1, so a part narrowing by nothing is a tube.
+fn merge_fraction(angle_rad: f64, previous_angle_rad: f64) -> f64 {
+    let turn = (angle_rad - previous_angle_rad).abs();
+    let smooth = ((MERGE_NONE_TURN_RAD - turn) / (MERGE_NONE_TURN_RAD - MERGE_FULL_TURN_RAD))
+        .clamp(0.0, 1.0);
+    let steep = |a: f64| (a / MERGE_MIN_ANGLE_RAD).clamp(0.0, 1.0);
+    smooth * steep(angle_rad) * steep(previous_angle_rad)
 }
 
-/// One boattail surface the flow behind it may still follow, with what the parts since have left
-/// of it.
-#[derive(Clone, Copy)]
+/// One boattail surface the flow behind it may follow, with its share of that flow and what the
+/// parts since have left of it.
+#[derive(Clone, Copy, PartialEq)]
 struct Tail {
     /// The start `(x, r)` of the surface a next part would continue.
     start: (f64, f64),
@@ -688,57 +705,74 @@ struct Tail {
     angle_rad: f64,
     /// The surface as a boattail: a part's own, or the cone of the surface it continues.
     cone: Boattail,
-    /// The cone's drop in diameter, m: the scale every fade is measured on.
+    /// The cone's drop in diameter, m: the length every fade is measured on.
     fall_m: f64,
-    /// Its part of the merge it came from, from 0 to 1.
-    strength: f64,
-    /// The length of the parts since its end, m.
-    gap_m: f64,
-    /// What steps down, and narrowing parts taken as steps, have left of it.
-    weight: f64,
+    /// Its share of the flow behind the boattails, from 0 to 1.
+    share: f64,
+    /// The length it fades over since its end, m: tubes' and parts' lengths, and steps' and
+    /// narrowing parts' drops in diameter.
+    fade_m: f64,
     /// What the lips so far have left of the wake: the smallest share by rise of any top.
     lip: f64,
 }
 
 impl Tail {
-    /// The share of a lip whose top is at radius `top_m` that the wake removes by its rise alone.
-    fn share_by_rise(&self, top_m: f64) -> f64 {
-        let rise = 2.0 * (top_m - self.end.1) / self.fall_m;
-        ((WAKE_NONE_RISE - rise) / (WAKE_NONE_RISE - WAKE_FULL_RISE)).clamp(0.0, 1.0)
-    }
-
-    /// What is left of it: its strength, faded by the gap, the steps and the lips since.
-    fn hold(&self) -> f64 {
-        self.strength * gap_weight(self.gap_m, self.fall_m) * self.weight * self.lip
-    }
-
-    /// A step down in radius of `drop_m` fades it over one fall.
-    fn step_down(&mut self, drop_m: f64) {
-        self.weight *= gap_weight(2.0 * drop_m, self.fall_m);
-    }
-
-    /// A boattail of its own: a narrowing part from `(x0, r0)` to `(x1, r1)`.
-    fn own(cone: Boattail, fore: (f64, f64), aft: (f64, f64), strength: f64) -> Self {
+    /// A narrowing part's own boattail, from `(x0, r0)` to `(x1, r1)`.
+    fn own(cone: Boattail, fore: (f64, f64), aft: (f64, f64), share: f64) -> Self {
         Self {
             start: fore,
             end: aft,
             angle_rad: cone.half_angle_rad,
             cone,
             fall_m: cone.fore_diameter_m - cone.aft_diameter_m,
-            strength,
-            gap_m: 0.0,
-            weight: 1.0,
+            share,
+            fade_m: 0.0,
             lip: 1.0,
         }
     }
+
+    /// The share of a lip whose top is at radius `top_m` that the wake removes by its rise alone.
+    fn share_by_rise(&self, top_m: f64) -> f64 {
+        let rise = 2.0 * (top_m - self.end.1) / self.fall_m;
+        ((WAKE_NONE_RISE - rise) / (WAKE_NONE_RISE - WAKE_FULL_RISE)).clamp(0.0, 1.0)
+    }
+
+    /// What it holds of the flow: its share, faded over one fall and by the lips since.
+    fn hold(&self) -> f64 {
+        self.share * gap_weight(self.fade_m, self.fall_m) * self.lip
+    }
+
+    /// The same state as `other` but for the share: the two may be added.
+    fn same_as(&self, other: &Self) -> bool {
+        Self {
+            share: other.share,
+            ..*self
+        } == *other
+    }
 }
 
-/// The largest `hold` of `tails` and the cone that has it.
-fn strongest(tails: &[Tail]) -> Option<(f64, Boattail)> {
-    tails.iter().fold(None, |best, t| match best {
-        Some((h, _)) if h >= t.hold() => best,
-        _ => Some((t.hold(), t.cone)),
-    })
+/// Adds `tail` to `tails`, into a tail in the same state if there is one.
+fn add_tail(tails: &mut Vec<Tail>, tail: Tail) {
+    match tails.iter_mut().find(|t| t.same_as(&tail)) {
+        Some(same) => same.share += tail.share,
+        None => tails.push(tail),
+    }
+}
+
+/// The wake's fraction: the tails' holds added up, at most 1.
+fn wake_fraction(tails: &[Tail]) -> f64 {
+    tails.iter().map(Tail::hold).sum::<f64>().min(1.0)
+}
+
+/// The tail that holds the most, for [`WakeTerm::boattail`].
+fn strongest(tails: &[Tail]) -> Option<Boattail> {
+    tails
+        .iter()
+        .fold(None::<&Tail>, |best, t| match best {
+            Some(b) if b.hold() >= t.hold() => Some(b),
+            _ => Some(t),
+        })
+        .map(|t| t.cone)
 }
 
 /// Couples a rocket's afterbody terms once every body component is built: each narrowing
@@ -746,14 +780,16 @@ fn strongest(tails: &[Tail]) -> Option<(f64, Boattail)> {
 /// wake ([`WakeTerm`]), and the aft base behind a boattail ([`BaseBehindBoattail`]). `bodies` are
 /// the body components in order, each as its index in `terms` and its geometry, end to end.
 ///
-/// Every boattail starts a tail the flow behind it may still follow, and every part after it
-/// changes what is left of each tail: a tube's length fades it over one fall (its drop in
-/// diameter), a step down fades it by its own drop over one fall, a lip fades it by its rise, and
-/// a narrowing part both starts a tail of its own and fades each one before it as a step down of
-/// its drop and a tube of its length, less what it merges with that tail. So a part narrowing by
-/// nothing is a tube and a part of no length is a step, every weight is continuous in the
-/// geometry, and a small change in a radius or a length changes the drag a little. The lips and
-/// the base take the strongest tail; a tail can only fade, so one faded to nothing is dropped.
+/// The flow behind the boattails is shared among their tails, the surfaces it may still follow,
+/// and each tail holds its share faded by what follows it: over one fall (its drop in diameter),
+/// by the length of each tube, lip and part, and the drop of each step down and narrowing part,
+/// and by each lip's rise. A narrowing part moves to a continuation of each tail the share it
+/// merges with ([`BoattailTerm`]), fades what it leaves as a step and a tube, and takes what no
+/// tail then holds as its own boattail; a step down does the same as a boattail of no length,
+/// fully separated. The lips and the base add the tails' holds, at most 1. Tails in the same state are one, so
+/// there are at most as many as pairs of parts. So a part narrowing by nothing is a tube, a part
+/// of no length is a step, every weight is continuous in the geometry, and a small change in a
+/// radius or a length changes the drag a little.
 pub(crate) fn couple_afterbody(
     terms: &mut [ComponentDragTerms],
     bodies: &[(usize, BodyGeometry)],
@@ -774,78 +810,96 @@ pub(crate) fn couple_afterbody(
         let terms = &mut terms[*index];
         let mut wake: Option<WakeTerm> = None;
         if r0 < before {
-            // A step down: a corner the flow separates at.
+            // A step down: a corner the flow separates at, and a boattail of no length.
             for t in &mut tails {
-                t.step_down(before - r0);
+                t.fade_m += 2.0 * (before - r0);
+            }
+            tails.retain(|t| t.hold() > 0.0);
+            let held: f64 = tails.iter().map(Tail::hold).sum();
+            if held < 1.0 {
+                let corner =
+                    Boattail::new(STEP_LENGTH_RATIO * (before - r0), 2.0 * before, 2.0 * r0)?;
+                add_tail(
+                    &mut tails,
+                    Tail::own(corner, (x0, before), (x0, r0), 1.0 - held),
+                );
             }
         } else if r0 > before {
             // A step up: a lip, by its top.
             for t in &mut tails {
                 t.lip = t.lip.min(t.share_by_rise(r0));
             }
-            wake = strongest(&tails).map(|(fraction, boattail)| WakeTerm {
+            wake = strongest(&tails).map(|boattail| WakeTerm {
                 boattail,
-                step_fraction: fraction,
+                step_fraction: wake_fraction(&tails),
                 shoulder_fraction: 0.0,
             });
         }
         tails.retain(|t| t.hold() > 0.0);
         if geometry.aft_area_m2 > geometry.fore_area_m2 {
-            // A shoulder: a lip, by its top; then its length is a gap.
+            // A shoulder: a lip, by its top; then its length fades the tails.
             for t in &mut tails {
                 t.lip = t.lip.min(t.share_by_rise(r1));
             }
-            if let Some((fraction, boattail)) = strongest(&tails) {
+            if let Some(boattail) = strongest(&tails) {
                 wake = Some(WakeTerm {
                     boattail,
                     step_fraction: wake.map_or(0.0, |w| w.step_fraction),
-                    shoulder_fraction: fraction,
+                    shoulder_fraction: wake_fraction(&tails),
                 });
             }
             for t in &mut tails {
-                t.gap_m += geometry.length_m;
+                t.fade_m += geometry.length_m;
             }
         } else if let Some(term) = &mut terms.boattail {
             let own = term.own;
-            // Merge with each tail it may continue, by the turn and what is left of the tail.
-            let mut next = Vec::with_capacity(2 * tails.len() + 1);
+            let angle = own.half_angle_rad;
+            let mut next: Vec<Tail> = Vec::with_capacity(2 * tails.len() + 1);
             for t in &mut tails {
-                let smooth = smooth_turn((own.half_angle_rad - t.angle_rad).abs());
-                let weight = smooth * t.hold();
+                let fraction = merge_fraction(angle, t.angle_rad);
+                let weight = fraction * t.hold();
                 if weight > 0.0 && x0 > t.start.0 && t.start.1 > r0 {
                     let through_aft = Boattail::new(x1 - t.start.0, 2.0 * t.start.1, 2.0 * r1)?;
                     let through_fore = Boattail::new(x0 - t.start.0, 2.0 * t.start.1, 2.0 * r0)?;
-                    term.merged.push(MergedBoattail {
-                        through_aft,
-                        through_fore,
-                        area_ratio: PI * t.start.1 * t.start.1 / reference_area_m2,
-                        weight,
-                    });
-                    next.push(Tail {
-                        angle_rad: own.half_angle_rad,
-                        ..Tail::own(through_aft, t.start, (x1, r1), weight)
-                    });
-                    t.strength *= 1.0 - smooth;
+                    match term
+                        .merged
+                        .iter_mut()
+                        .find(|m| m.through_aft == through_aft && m.through_fore == through_fore)
+                    {
+                        Some(same) => same.weight += weight,
+                        None => term.merged.push(MergedBoattail {
+                            through_aft,
+                            through_fore,
+                            area_ratio: PI * t.start.1 * t.start.1 / reference_area_m2,
+                            weight,
+                        }),
+                    }
+                    add_tail(
+                        &mut next,
+                        Tail {
+                            angle_rad: angle,
+                            ..Tail::own(through_aft, t.start, (x1, r1), weight)
+                        },
+                    );
+                    t.share *= 1.0 - fraction;
                 }
                 // What it doesn't merge carries on past this part, as a step and a tube.
-                t.step_down(r0 - r1);
-                t.gap_m += geometry.length_m;
+                t.fade_m += geometry.length_m + 2.0 * (r0 - r1);
             }
-            let largest = term.merged.iter().fold(0.0_f64, |m, b| m.max(b.weight));
-            let total: f64 = term.merged.iter().map(|b| b.weight).sum();
-            for m in &mut term.merged {
-                m.weight *= largest / total;
+            for t in tails.iter().filter(|t| t.hold() > 0.0) {
+                add_tail(&mut next, *t);
             }
-            if largest < 1.0 {
-                next.push(Tail::own(own, (x0, r0), (x1, r1), 1.0 - largest));
+            let merged: f64 = term.merged.iter().map(|m| m.weight).sum();
+            term.own_weight = (1.0 - merged).max(0.0);
+            let held: f64 = next.iter().map(Tail::hold).sum();
+            if held < 1.0 {
+                add_tail(&mut next, Tail::own(own, (x0, r0), (x1, r1), 1.0 - held));
             }
-            next.extend(tails.iter().filter(|t| t.hold() > 0.0));
             tails = next;
         } else {
-            // A tube, or a narrowing too small to count as a boattail: a step and a gap.
+            // A tube, or a narrowing too small to count as a boattail: a gap and a step.
             for t in &mut tails {
-                t.step_down((r0 - r1).max(0.0));
-                t.gap_m += geometry.length_m;
+                t.fade_m += geometry.length_m + 2.0 * (r0 - r1).max(0.0);
             }
         }
         terms.in_wake_of = wake.filter(|w| w.step_fraction > 0.0 || w.shoulder_fraction > 0.0);
@@ -857,15 +911,19 @@ pub(crate) fn couple_afterbody(
         && !tails.is_empty()
     {
         let base = geometry.aft_area_m2;
-        let sources = tails
-            .iter()
-            .map(|t| ReliefSource {
-                boattail: t.cone,
-                area_ratio: (base / (0.25 * PI * t.cone.fore_diameter_m * t.cone.fore_diameter_m))
-                    .min(1.0),
-                weight: t.hold(),
-            })
-            .collect();
+        let mut sources: Vec<ReliefSource> = Vec::new();
+        for t in &tails {
+            match sources.iter_mut().find(|s| s.boattail == t.cone) {
+                Some(same) => same.weight += t.hold(),
+                None => sources.push(ReliefSource {
+                    boattail: t.cone,
+                    area_ratio: (base
+                        / (0.25 * PI * t.cone.fore_diameter_m * t.cone.fore_diameter_m))
+                        .min(1.0),
+                    weight: t.hold(),
+                }),
+            }
+        }
         terms[*index].base_behind = Some(BaseBehindBoattail { sources });
     }
     Ok(())
@@ -1005,6 +1063,7 @@ impl ComponentDragTerms {
                     own: Boattail::new(geometry.length_m, fore, aft)?,
                     own_area_ratio: geometry.fore_area_m2 / reference_area_m2,
                     merged: Vec::new(),
+                    own_weight: 1.0,
                 });
             } else {
                 // No length, or a narrowing too small to change the diameter as computed: the
@@ -1108,10 +1167,10 @@ impl ComponentDragTerms {
                 // Not below 0; a NaN stays one, for `AeroModel::drag` to refuse.
                 merged += m.weight * if share < 0.0 { 0.0 } else { share };
             }
-            let own_weight = 1.0 - term.merged.iter().map(|m| m.weight).sum::<f64>();
-            if own_weight > 0.0 {
-                merged +=
-                    own_weight * term.own_area_ratio * term.own.pressure_drag_coefficient(mach)?;
+            if term.own_weight > 0.0 {
+                merged += term.own_weight
+                    * term.own_area_ratio
+                    * term.own.pressure_drag_coefficient(mach)?;
             }
             pressure += merged;
         }
@@ -1138,19 +1197,14 @@ impl ComponentDragTerms {
         } else {
             0.0
         };
-        // The base takes the strongest relief of the boattails it may take relief from.
-        let mut relief = 0.0_f64;
+        // The base takes each boattail's relief by its share of the flow.
+        let mut relief = 1.0;
         for source in self.base_behind.iter().flat_map(|b| &b.sources) {
             let k = source
                 .boattail
                 .base_pressure_ratio(mach, source.area_ratio)?;
-            let r = source.weight * (1.0 - k);
-            // A NaN stays one, for `AeroModel::drag` to refuse.
-            if r > relief || r.is_nan() {
-                relief = r;
-            }
+            relief -= source.weight * (1.0 - k);
         }
-        let relief = 1.0 - relief;
         let base =
             base_coefficient * relief * (self.base_area_m2 - thrusting_motor_area_m2).max(0.0)
                 / reference_area_m2;
@@ -2741,106 +2795,122 @@ mod tests {
         }
     }
 
-    /// Every weight is continuous in the geometry (physics and code reviews): a part narrowing
-    /// or widening by `ε` drags as a tube, a part `ε` long as a step down, a step up and a
-    /// shoulder `ε` apart as the two in one part, and a cone drawn in two parts as one, with the
-    /// difference shrinking in proportion to `ε`, behind a 14° boattail and at every speed.
+    /// Every weight is continuous in the geometry (physics and code reviews, three rounds): a
+    /// part narrowing or widening by `ε` drags as a tube, a part `ε` long as a step down (with or
+    /// without a lip behind it), a step up and a shoulder `ε` apart as the two in one part, and a
+    /// tube tapered by `ε` before the boattail as a tube, with the difference shrinking in
+    /// proportion to `ε`, behind boattails of 2°, 5°, 9° and 14° and at every speed.
     #[test]
     fn a_part_narrowing_by_nothing_is_a_tube_and_one_of_no_length_a_step() {
-        let (big, small, l) = (0.03, 0.02, 0.04);
-        let drop = 2.0 * (big - small);
-        let lip = small + 0.5 * 0.17 * drop;
-        let rocket = |parts: &[(f64, f64, f64)]| {
-            let mut components = vec![
-                component(
-                    "nose",
-                    nose(NoseShape::Ogive { radius_ratio: 1.0 }, 0.2, big),
-                    None,
-                ),
-                component("tube", body_part(0.8, big, big), None),
-                component("tail", body_part(l, big, small), None),
-            ];
-            for (i, &(length, fore, aft)) in parts.iter().enumerate() {
-                components.push(component(
-                    &format!("p{i}"),
-                    body_part(length, fore, aft),
-                    None,
-                ));
-            }
-            model(&one_stage(components, ReferenceDiameter::Maximum {}))
-        };
+        let (big, l) = (0.03, 0.04);
         let conditions = DragConditions::coasting(RE_PER_M);
         let total = |m: &AeroModel, mach: f64| {
             m.drag(&Flow::axial(mach), &conditions)
                 .unwrap()
                 .zero_lift_coefficient
         };
-        type Case = fn(f64, f64, f64, f64) -> Vec<(f64, f64, f64)>;
-        // Each case: the exact drawing at `ε = 0` and the drawing `ε` away, from `small`, `lip`
-        // and `drop`.
-        let cases: [(&str, Case); 6] = [
-            ("a spacer narrowing by ε before the lip", |e, s, lip, _| {
-                vec![(0.001, s, s - e), (0.0013, s - e, lip)]
+        type Case = fn(f64, f64, f64, f64) -> (f64, Vec<(f64, f64, f64)>);
+        // Each case, from `ε`, the boattail's aft radius, a lip's top and the boattail's drop in
+        // diameter: a taper of the tube ahead of the boattail, and the parts behind it.
+        let cases: [(&str, Case); 8] = [
+            ("a spacer narrowing by ε before a lip", |e, s, lip, _| {
+                (0.0, vec![(0.001, s, s - e), (0.0013, s - e, lip)])
             }),
             ("an aft section narrowing by ε", |e, s, _, _| {
-                vec![(0.1, s, s - e)]
+                (0.0, vec![(0.1, s, s - e)])
             }),
             ("an aft section widening by ε", |e, s, _, _| {
-                vec![(0.1, s, s + e)]
+                (0.0, vec![(0.1, s, s + e)])
             }),
             ("a step down drawn ε long", |e, s, _, d| {
                 let low = s - 0.05 * d;
+                let mut parts = vec![(0.005, low, low)];
                 if e > 0.0 {
-                    vec![(e, s, low), (0.005, low, low)]
-                } else {
-                    vec![(0.005, low, low)]
+                    parts.insert(0, (e, s, low));
                 }
+                (0.0, parts)
+            }),
+            ("a step down drawn ε long, then a lip", |e, s, _, d| {
+                let low = s - 0.25 * d;
+                let mut parts = vec![(0.003, low, low + 0.05 * d)];
+                if e > 0.0 {
+                    parts.insert(0, (e, s, low));
+                }
+                (0.0, parts)
             }),
             ("a step up and a shoulder ε apart", |e, s, _, d| {
                 let (top, high) = (s + 0.1 * d, s + 0.3 * d);
+                let mut parts = vec![(0.002, top, high)];
                 if e > 0.0 {
-                    vec![(e, top, top), (0.002, top, high)]
-                } else {
-                    vec![(0.002, top, high)]
+                    parts.insert(0, (e, top, top));
                 }
+                (0.0, parts)
             }),
             (
                 "a gap of ε before a boattail's second part",
                 |e, s, _, _| {
                     let end = s - 0.005 * 8f64.to_radians().tan();
+                    let mut parts = vec![(0.005, s, end)];
                     if e > 0.0 {
-                        vec![(e, s, s), (0.005, s, end)]
-                    } else {
-                        vec![(0.005, s, end)]
+                        parts.insert(0, (e, s, s));
                     }
+                    (0.0, parts)
                 },
             ),
+            ("the tube ahead tapered by ε", |e, _, _, _| (e, vec![])),
         ];
-        for (what, case) in cases {
-            let exact = rocket(&case(0.0, small, lip, drop));
-            for mach in [0.5, 0.95, 1.5, 3.0, 4.5] {
-                // A part of no length drags its own boattail drag where a step drags the base
-                // drag's: the two part between Mach 0.8 and 1.2, where the boattail's rise is a
-                // straight line (`a_sharp_corner_keeps_its_boattails_apart`); the weights don't.
-                if what.starts_with("a step down") && mach == 0.95 {
-                    continue;
+        for angle in [2.0_f64, 5.0, 9.0, 14.0] {
+            let small = big - l * angle.to_radians().tan();
+            let drop = 2.0 * (big - small);
+            let lip = small + 0.5 * 0.17 * drop;
+            let rocket = |(taper, parts): (f64, Vec<(f64, f64, f64)>)| {
+                let mut components = vec![
+                    component(
+                        "nose",
+                        nose(NoseShape::Ogive { radius_ratio: 1.0 }, 0.2, big),
+                        None,
+                    ),
+                    component("tube", body_part(0.8, big, big - taper), None),
+                    component("tail", body_part(l, big - taper, small), None),
+                ];
+                for (i, &(length, fore, aft)) in parts.iter().enumerate() {
+                    components.push(component(
+                        &format!("p{i}"),
+                        body_part(length, fore, aft),
+                        None,
+                    ));
                 }
-                let base = total(&exact, mach);
-                let off = |e: f64| (total(&rocket(&case(e, small, lip, drop)), mach) - base).abs();
-                let (coarse, fine) = (off(1e-6), off(1e-8));
-                assert!(coarse < 1e-3 * base, "{what} at Mach {mach}: {coarse}");
-                assert!(
-                    fine <= 0.02 * coarse + 1e-13,
-                    "{what} at Mach {mach}: {fine} against {coarse}"
-                );
+                model(&one_stage(components, ReferenceDiameter::Maximum {}))
+            };
+            for (what, case) in cases {
+                let exact = rocket(case(0.0, small, lip, drop));
+                for mach in [0.5, 0.95, 1.5, 3.0, 4.5] {
+                    // A part of no length drags its own boattail drag where a step drags the base
+                    // drag's: the two part between Mach 0.8 and 1.2, where the boattail's rise is
+                    // a straight line (`a_sharp_corner_keeps_its_boattails_apart`); the weights
+                    // don't.
+                    if what.starts_with("a step down") && mach == 0.95 {
+                        continue;
+                    }
+                    let base = total(&exact, mach);
+                    let off =
+                        |e: f64| (total(&rocket(case(e, small, lip, drop)), mach) - base).abs();
+                    let (coarse, fine) = (off(1e-6), off(1e-8));
+                    let at = format!("{what} behind {angle}° at Mach {mach}");
+                    assert!(coarse < 1e-3 * base, "{at}: {coarse}");
+                    assert!(
+                        fine <= 0.02 * coarse + 1e-13,
+                        "{at}: {fine} against {coarse}"
+                    );
+                }
             }
         }
         // An 8° cone behind the body tube drawn in one part or two, then a tube 0.3 of its drop
-        // long and another part (physics review). Behind a boattail it partly merges with, a cone
-        // in parts is not exactly one cone (ADR-030).
-        let (fore, aft, tip) = (big, big - 0.02 * 8f64.to_radians().tan(), 0.012);
+        // long and a 12° part that merges with it (physics review).
+        let (aft, tip) = (big - 0.02 * 8f64.to_radians().tan(), 0.02);
         let mid = big - 0.01 * 8f64.to_radians().tan();
-        let gap = 0.3 * 2.0 * (fore - aft);
+        let gap = 0.3 * 2.0 * (big - aft);
+        let end = aft - 0.01 * 12f64.to_radians().tan();
         let cone = |parts: &[(f64, f64, f64)]| {
             let mut components = vec![
                 component(
@@ -2857,15 +2927,24 @@ mod tests {
                     None,
                 ));
             }
+            components.push(component("end", body_part(0.01, tip, tip), None));
             model(&one_stage(components, ReferenceDiameter::Maximum {}))
         };
-        let one = cone(&[(0.02, fore, aft), (gap, aft, aft), (0.01, aft, tip)]);
+        let one = cone(&[(0.02, big, aft), (gap, aft, aft), (0.01, aft, end)]);
         let two = cone(&[
-            (0.01, fore, mid),
+            (0.01, big, mid),
             (0.01, mid, aft),
             (gap, aft, aft),
-            (0.01, aft, tip),
+            (0.01, aft, end),
         ]);
+        assert!(
+            !one.drag_terms()[4]
+                .boattail
+                .as_ref()
+                .unwrap()
+                .merged
+                .is_empty()
+        );
         for mach in [0.5, 1.5, 3.0] {
             let (a, b) = (total(&one, mach), total(&two, mach));
             assert!(
@@ -2873,6 +2952,101 @@ mod tests {
                 "cone in parts at Mach {mach}: {a} against {b}"
             );
         }
+    }
+
+    /// A merge shares the flow (physics and code reviews): a lip that both limits, the two parts
+    /// as one cone and as two boattails, put wholly in the wake stays wholly in it at every turn
+    /// between; and the base's shares of the flow add up to 1 with nothing between.
+    #[test]
+    fn a_partial_merge_shares_the_flow() {
+        let big = 0.03;
+        let (first, length) = (5f64.to_radians(), 0.01);
+        let mid = big - length * first.tan();
+        for turn in (0..=24).map(|t| f64::from(t) * 0.5) {
+            let second = first + turn.to_radians();
+            let end = mid - length * second.tan();
+            let drop = 2.0 * (big - end);
+            let rocket = |lip: bool| {
+                let mut components = vec![
+                    component(
+                        "nose",
+                        nose(NoseShape::Ogive { radius_ratio: 1.0 }, 0.2, big),
+                        None,
+                    ),
+                    component("tube", body_part(0.8, big, big), None),
+                    component("a", body_part(length, big, mid), None),
+                    component("b", body_part(length, mid, end), None),
+                ];
+                if lip {
+                    components.push(component("lip", body_part(1e-4, end, end), None));
+                    let top = end + 0.5 * 0.1 * 2.0 * (mid - end);
+                    components.push(component("rise", body_part(1e-4, end, top), None));
+                }
+                model(&one_stage(components, ReferenceDiameter::Maximum {}))
+            };
+            let what = format!("turn {turn}°, drop {drop}");
+            let bare = rocket(false);
+            let sources = &bare.drag_terms()[3].base_behind.as_ref().unwrap().sources;
+            let shares: f64 = sources.iter().map(|s| s.weight).sum();
+            assert!((shares - 1.0).abs() < 1e-12, "{what}: {shares}");
+            let with_lip = rocket(true);
+            let wake = with_lip.drag_terms()[5].in_wake_of.unwrap();
+            // Every tail takes the lip wholly by its rise; only the 0.1 mm tube ahead of it
+            // fades them, by at most its length over the smallest fall, the second part's own.
+            let least = 1.0 - 1e-4 / (2.0 * (mid - end));
+            assert!(
+                wake.shoulder_fraction >= least - 1e-12 && wake.shoulder_fraction <= 1.0,
+                "{what}: {}",
+                wake.shoulder_fraction
+            );
+        }
+    }
+
+    /// The tails stay few (code review): a boattail drawn as 40 parts turning 7° each way, each a
+    /// partial merge with the one before, keeps at most one merge per earlier part and one base
+    /// source per pair of parts, and builds and drags in a moment.
+    #[test]
+    fn a_zigzag_boattail_keeps_its_tails_few() {
+        let big = 0.03;
+        let mut components = vec![
+            component(
+                "nose",
+                nose(NoseShape::Ogive { radius_ratio: 1.0 }, 0.2, big),
+                None,
+            ),
+            component("tube", body_part(0.8, big, big), None),
+        ];
+        let mut r = big;
+        let parts = 40;
+        for i in 0..parts {
+            let angle = if i % 2 == 0 { 12f64 } else { 5.0 };
+            let next = r - 0.0005 * angle.to_radians().tan();
+            components.push(component(
+                &format!("z{i}"),
+                body_part(0.0005, r, next),
+                None,
+            ));
+            r = next;
+        }
+        let m = model(&one_stage(components, ReferenceDiameter::Maximum {}));
+        let terms = m.drag_terms();
+        for t in terms.iter().skip(2) {
+            let merges = t.boattail.as_ref().map_or(0, |b| b.merged.len());
+            assert!(merges <= parts, "{}: {merges}", t.id);
+        }
+        let sources = terms
+            .last()
+            .unwrap()
+            .base_behind
+            .as_ref()
+            .unwrap()
+            .sources
+            .len();
+        assert!(sources <= parts * (parts + 1) / 2, "{sources}");
+        let drag = m
+            .drag(&Flow::axial(1.5), &DragConditions::coasting(RE_PER_M))
+            .unwrap();
+        assert!(drag.zero_lift_coefficient.is_finite());
     }
 
     /// A lip counts however it is drawn in parts (physics review): a tube a hair above the
@@ -2966,9 +3140,9 @@ mod tests {
             let last = terms.iter().find(|t| t.id == "lip").unwrap();
             (
                 last.in_wake_of.map_or(0.0, |w| w.shoulder_fraction),
-                last.base_behind.as_ref().map_or(0.0, |b| {
-                    b.sources.iter().fold(0.0_f64, |m, s| m.max(s.weight))
-                }),
+                last.base_behind
+                    .as_ref()
+                    .map_or(0.0, |b| b.sources.iter().map(|s| s.weight).sum::<f64>()),
             )
         };
         // The lip's own length, 1 mm, is a gap between the boattail and the base.
