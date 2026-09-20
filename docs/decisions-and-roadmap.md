@@ -162,7 +162,8 @@ missing or its status disagrees.
 | <a id="m1-8e11"></a>[M1.8e11][phase-1] | Cone slopes from 24° to 30°, from NASA SP-3007, where TN 3527's own chart stops | done |
 | <a id="m1-8e12"></a>[M1.8e12][phase-1] | What a blunt tip's handover cap is worth once the cone slopes reach 30°, and what stops it moving there | done |
 | <a id="m1-8e13"></a>[M1.8e13][phase-1] | A blunt tip's handover moved past 24°, once the march carries it | not yet done |
-| <a id="m1-8e14"></a>[M1.8e14][phase-1] | What a step in radius and a flare behind the run still switch, and how big each is | not yet done |
+| <a id="m1-8e14"></a>[M1.8e14][phase-1] | A flare flown through the shock-expansion method, which already marches one, against the flared body NASA TN D-4865 measured | not yet done |
+| <a id="m1-8e15"></a>[M1.8e15][phase-1] | What a step in radius still switches, how big it is, and what a model of one would need | not yet done |
 | <a id="m3-1"></a>[M3.1][phase-1] | Reading OpenRocket `.ork` design files | not yet done |
 | <a id="m2-2"></a>[M2.2][phase-1] | OpenRocket as a reference program, and a corpus of designs to compare | not yet done |
 | <a id="m1-9"></a>[M1.9][phase-1] | Staging, clusters and air starts, for COTS motors | not yet done |
