@@ -300,6 +300,13 @@ pub struct AftFlow {
     pub surface_mach: f64,
     /// The surface's angle to the axis there, rad; zero on a cylinder, negative on a boattail.
     pub angle_rad: f64,
+    /// `p₁/p₀`, the surface pressure there over the free stream's.
+    pub pressure_ratio: f64,
+    /// `(∂p/∂s)₁`, the pressure gradient the last element carries to there, `p₀` per m of axial
+    /// distance (TN 3527 eq. 10). Positive where the pressure is still climbing.
+    pub gradient: f64,
+    /// The body's radius there, m: eq. 4's `r` at a corner behind it.
+    pub radius_m: f64,
 }
 
 /// The body's normal-force slope at `α → 0` and where it acts.
@@ -554,9 +561,9 @@ impl ShockExpansionBody {
     ///   isn't positive.
     /// - [`AeroError::Unsupported`] where the method doesn't hold: a tip cone whose shock
     ///   detaches, a tangent cone steeper than the cone tables' 30°, a corner the flow can't turn
-    ///   supersonically, a tip cone whose surface flow is subsonic, an element aft of the nose
-    ///   whose pressure moves away from its tangent cone's, or a lift that doesn't sum to a
-    ///   positive force; and for a blunt tip, whose elements are laid out at each Mach number, a
+    ///   supersonically, a tip cone whose surface flow is subsonic, a cylinder's or a boattail's
+    ///   element whose pressure moves away from the free stream's, or a lift that doesn't sum to
+    ///   a positive force; and for a blunt tip, whose elements are laid out at each Mach number, a
     ///   nose steeper than the handover's slope all the way to its end, or a tangent body whose
     ///   elements don't meet in order behind the handover (as [`Self::new`] says for a pointed
     ///   one).
@@ -656,22 +663,29 @@ impl ShockExpansionBody {
         Ok(AftFlow {
             surface_mach: mach_from_pressure(march.total, pressure)?,
             angle_rad: last.angle_rad,
+            pressure_ratio: pressure,
+            gradient: last.gradient_at(pressure),
+            // `new` refuses a body with no segments, so there is always a last one.
+            radius_m: self.segments[self.segments.len() - 1].1.aft_radius_m(),
         })
     }
 
-    /// How many of the nose's elements the march reduces to the generalized method at Mach
+    /// How many of the body's elements the march reduces to the generalized method at Mach
     /// `mach`: those where the gradient behind the corner points away from the tangent cone's
     /// pressure (`η < 0`, TN 3527 p. 13), which carry no gradient on (see
     /// [issue #81](https://github.com/nrdptel/hpr-sim/issues/81)). Zero means the result doesn't
     /// depend on that reading.
+    ///
+    /// Which turns a corner reduces is a property of its own state, and
+    /// [`flare_reduction_turns_rad`] solves for the two that bound them.
     ///
     /// # Errors
     ///
     /// - [`AeroError::Domain`] for a Mach number that isn't finite and above 1.
     /// - [`AeroError::Unsupported`] where the march fails, as for [`Self::slope`]: a detached tip
     ///   shock, a tangent cone past the cone tables' 30°, a corner the flow can't turn, subsonic surface
-    ///   flow, or an element aft of the nose that would be reduced. An `Ok` count doesn't promise
-    ///   that [`Self::slope`] succeeds: it also needs a positive total lift.
+    ///   flow, or a cylinder's or boattail's element that would be reduced. An `Ok` count doesn't
+    ///   promise that [`Self::slope`] succeeds: it also needs a positive total lift.
     pub fn reduced_elements(&self, mach: f64) -> Result<usize, AeroError> {
         check_mach(mach)?;
         Ok(self
@@ -894,14 +908,14 @@ impl ShockExpansionBody {
                 cone_pressure,
                 cone_slope,
             };
-            // A reduced element keeps the loading behind its corner all along it. On a nose that
-            // is one short element; aft of the nose, a cylinder, boattail or long shallow flare
-            // would carry that loading over any length, so hpr refuses it there.
-            if flow.is_reduced() && (element.angle_rad <= CONE_ANGLE_FLOOR_RAD || !element.on_nose)
-            {
+            // Where the element has no tangent cone of its own — a cylinder's is the free
+            // stream, a boattail's is footnote 8's — there is nothing for the reduction to
+            // relax toward, and a reduced element would carry its corner's loading over any
+            // length. Nothing measures what that is worth, so hpr refuses those (issue #123).
+            if flow.is_reduced() && element.angle_rad <= CONE_ANGLE_FLOOR_RAD {
                 return Err(AeroError::Unsupported(format!(
-                    "behind the corner at {} m, aft of the nose, the pressure moves away from its \
-                     tangent cone's",
+                    "behind the corner at {} m, where the tangent cone is the free stream's, the \
+                     pressure moves away from it",
                     element.corner_x_m
                 )));
             }
@@ -1282,6 +1296,162 @@ fn mach_from_pressure(total: f64, pressure: f64) -> Result<f64, AeroError> {
 pub fn flare_corner_limit_rad(surface_mach: f64) -> Result<f64, AeroError> {
     crate::blunt_tip::wedge_detachment_angle_rad(surface_mach)
 }
+
+/// The two turns that bound where the second-order method's exponential form does not hold at a
+/// corner behind a body ([`flare_reduction_turns_rad`]).
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+#[non_exhaustive]
+pub struct ReductionTurns {
+    /// The turn whose pressure just behind the corner lands exactly on its tangent cone's,
+    /// `p₂ = p_c`. `η` has a pole here, because eq. 9 divides by that gap.
+    pub crossing_rad: f64,
+    /// The turn whose own compression exactly cancels the pressure gradient the body ahead
+    /// delivers to the corner, `(∂p/∂s)₂ = 0` (TN 3527 eq. 4). `η` is zero here, so the method is
+    /// already the generalized one.
+    pub balance_rad: f64,
+    /// What each solution left behind: `p₂ − p_c` at [`Self::crossing_rad`], in units of the free
+    /// stream's pressure, and `(∂p/∂s)₂` at [`Self::balance_rad`], `p₀` per m. Both are taken at
+    /// the last iterate, so they say how far the equations were really driven to zero.
+    pub residuals: [f64; 2],
+}
+
+/// Where the second-order shock-expansion method's exponential form fails at a corner behind
+/// `aft`, the flow a body delivers to its aft end ([`ShockExpansionBody::aft_flow`]), in a free
+/// stream at Mach `mach`: the two turns between which the march reduces the element behind that
+/// corner to the generalized method.
+///
+/// **An element is reduced exactly when its turn lies strictly between the two.** Eq. 9's rate is
+/// `η = (∂p/∂s)₂ / ((p_c − p₂) cos δ₂)`, and TN 3527 p. 13 keeps the exponential form only where
+/// `η ≥ 0`, so a reduced element is one whose gradient behind the corner and whose gap to its
+/// tangent cone have opposite signs. Each of those two is a continuous function of the turn with
+/// one zero — [`ReductionTurns::crossing_rad`] closes the gap, [`ReductionTurns::balance_rad`]
+/// the gradient — so the signs disagree on exactly the open interval between them, and nowhere
+/// else.
+///
+/// Both zeros are properties of the corner's own state. With `δ₁` the angle ahead, `r` the radius
+/// at the corner, `B = γpM²/(2(M² − 1))` (eq. 6) and `Ω = A/A*` (eq. 7), all read from `aft`:
+///
+/// - the balance solves `sin(δ₁ + θ) = (Ω₁/Ω₂(θ)) (sin δ₁ + r (∂p/∂s)₁ / B₁)`, which is eq. 4 set
+///   to zero and rearranged. `Ω₁/Ω₂` is `1 + O(θ)`, so iterating on it contracts;
+/// - the crossing solves `p₂(θ) = p_c(δ₁ + θ)`, the isentropic turn's pressure against its
+///   tangent cone's ([`cone_flow`]). A secant started from the turn that would bring `p₂` back to
+///   the free stream's pressure, `θ ≈ (1/p₁ − 1)√(M₁² − 1)/(γM₁²)`, reaches it in a few steps.
+///
+/// Neither is a search over the march's own refusal, which is a sign test on two pressures within
+/// a thousandth of each other and so carries about nine significant digits
+/// ([issue #117](https://github.com/nrdptel/hpr-sim/issues/117)). What is left is the accuracy of
+/// `aft` itself: differentiating the crossing's equation, a change `Δp₁` in the pressure the body
+/// delivers moves the crossing by about `Δp₁ √(M₁² − 1) / (γ p₁ M₁²)`.
+///
+/// # Errors
+///
+/// - [`AeroError::Domain`] for a Mach number that isn't finite and above 1.
+/// - [`AeroError::Unsupported`] where the corner's state can't carry a turn — a surface that
+///   isn't supersonic, no radius — or where either solution runs outside an isentropic turn, a
+///   cone the tables hold, or a widening body.
+pub fn flare_reduction_turns_rad(aft: &AftFlow, mach: f64) -> Result<ReductionTurns, AeroError> {
+    if !(mach.is_finite() && mach > 1.0) {
+        return Err(AeroError::Domain {
+            what: "Mach number of a corner's reduced turns",
+            value: mach,
+        });
+    }
+    let (m1, p1, d1) = (aft.surface_mach, aft.pressure_ratio, aft.angle_rad);
+    if !(m1 > 1.0 && p1 > 0.0 && aft.radius_m > 0.0 && aft.gradient.is_finite()) {
+        return Err(AeroError::Unsupported(format!(
+            "a corner behind a surface at Mach {m1}, {p1} of the free stream's pressure and {} m \
+             of radius turns nothing",
+            aft.radius_m
+        )));
+    }
+    let nu1 = prandtl_meyer(m1);
+    let total = p1 * total_over_static(m1);
+    // The surface Mach number and pressure just behind a corner turning the flow by `turn`,
+    // compressing where that is positive.
+    let behind = |turn: f64| -> Option<(f64, f64)> {
+        let nu2 = nu1 - turn;
+        (nu2 > 0.0 && nu2 < MAX_TURNING_RAD).then(|| {
+            let m2 = inverse_prandtl_meyer(nu2);
+            (m2, total / total_over_static(m2))
+        })
+    };
+    let unreached = |what: &str| {
+        AeroError::Unsupported(format!(
+            "the {what} of a corner behind a surface at Mach {m1} isn't reached by a turn this \
+             method holds in a Mach {mach} stream"
+        ))
+    };
+
+    // The balance: eq. 4 set to zero. `k` is the corner's own state, and the only turn left in
+    // the equation is through the `Ω₂` that turn reaches.
+    let (o1, b1) = (area_ratio(m1), b_factor(p1, m1));
+    let k = d1.sin() + aft.radius_m * aft.gradient / b1;
+    if !(k.abs() < 1.0) {
+        return Err(unreached("balance"));
+    }
+    let mut balance = k.asin() - d1;
+    for _ in 0..REDUCTION_ITERATIONS {
+        let (m2, _) = behind(balance).ok_or_else(|| unreached("balance"))?;
+        let next = (o1 / area_ratio(m2) * k).asin() - d1;
+        if !next.is_finite() {
+            return Err(unreached("balance"));
+        }
+        let step = next - balance;
+        balance = next;
+        if step.abs() <= f64::EPSILON * (1.0 + balance.abs()) {
+            break;
+        }
+    }
+    let (m2, p2) = behind(balance).ok_or_else(|| unreached("balance"))?;
+    let (o2, b2) = (area_ratio(m2), b_factor(p2, m2));
+    let balance_left = b2 / aft.radius_m * (o1 / o2 * d1.sin() - (d1 + balance).sin())
+        + b2 * o1 / (b1 * o2) * aft.gradient;
+
+    // The crossing: the isentropic turn's pressure against its tangent cone's.
+    let gap = |turn: f64| -> Option<f64> {
+        let (_, p2) = behind(turn)?;
+        let angle = d1 + turn;
+        if !(0.0..crate::blunt_tip::CONE_TABLE_CAP_RAD).contains(&angle) {
+            return None;
+        }
+        let cone = if angle <= CONE_ANGLE_FLOOR_RAD {
+            1.0
+        } else {
+            cone_flow(mach, angle).ok()?.surface_pressure_ratio
+        };
+        Some(p2 - cone)
+    };
+    let beta1 = (m1 * m1 - 1.0).sqrt();
+    let mut crossing = (1.0 / p1 - 1.0) * beta1 / (GAMMA * m1 * m1);
+    let mut step = (1e-3 * crossing.abs()).max(1e-9);
+    let mut here = gap(crossing).ok_or_else(|| unreached("crossing"))?;
+    for _ in 0..REDUCTION_ITERATIONS {
+        let there = gap(crossing + step).ok_or_else(|| unreached("crossing"))?;
+        if there == here {
+            break;
+        }
+        let next = crossing - here * step / (there - here);
+        if !next.is_finite() {
+            return Err(unreached("crossing"));
+        }
+        let moved = next - crossing;
+        step = (1e-3 * moved.abs()).max(f64::EPSILON * (1.0 + next.abs()));
+        crossing = next;
+        here = gap(crossing).ok_or_else(|| unreached("crossing"))?;
+        if moved.abs() <= f64::EPSILON * (1.0 + crossing.abs()) {
+            break;
+        }
+    }
+    Ok(ReductionTurns {
+        crossing_rad: crossing,
+        balance_rad: balance,
+        residuals: [here, balance_left],
+    })
+}
+
+/// Enough steps for either solution of [`flare_reduction_turns_rad`] to stop moving; both take
+/// well under ten, and the loops break when they do.
+const REDUCTION_ITERATIONS: usize = 64;
 
 /// The flow over a cone at zero angle of attack.
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
@@ -3530,6 +3700,143 @@ mod tests {
         }
     }
 
+
+    /// The body the tests' flared rocket puts ahead of its flare: an ogive nose 0.25 m long on a
+    /// 27 mm radius and a 0.7 m tube, which is what delivers the flow to the flare's corner.
+    fn ahead_of_the_flare() -> Vec<BodySegment> {
+        vec![
+            BodySegment::Profile {
+                profile: Profile::nose(NoseShape::Ogive { radius_ratio: 1.0 }, 0.25, 0.027)
+                    .unwrap(),
+            },
+            BodySegment::Cylinder {
+                length_m: 0.7,
+                radius_m: 0.027,
+            },
+        ]
+    }
+
+    /// That body with a conical flare 0.3 m long of `deg` on the back of it.
+    fn with_a_flare(deg: f64) -> Vec<BodySegment> {
+        let mut segments = ahead_of_the_flare();
+        segments.push(BodySegment::Profile {
+            profile: Profile::transition(
+                NoseShape::Conical {},
+                0.3,
+                0.027,
+                0.027 + 0.3 * deg.to_radians().tan(),
+                false,
+            )
+            .unwrap(),
+        });
+        segments
+    }
+
+    /// Which turns the march reduces to the generalized method is a property of the corner's own
+    /// state, and [`flare_reduction_turns_rad`] solves for the two that bound them: the crossing,
+    /// where the pressure behind the corner lands on its tangent cone's, and the balance, where
+    /// the corner's own compression cancels the gradient the body ahead delivers. An element is
+    /// reduced strictly between them.
+    ///
+    /// The three angles [issue #117](https://github.com/nrdptel/hpr-sim/issues/117) reported,
+    /// each found by bisecting the model's own refusal, come back out of those two equations: the
+    /// band's edges are the crossing at Mach 4.70 and the balance at Mach 5, and the shallowest
+    /// angle that lifted the join's start is the crossing at Mach 2.20.
+    ///
+    /// **What is left is the tangent cone's own accuracy, not the search's.** Below
+    /// [`SLENDER_CONE_RAD`] the tangent cone is slender-cone theory's closed form and the
+    /// crossing solves to the last bits of an `f64`; above it the cone flow is a Taylor–Maccoll
+    /// integration, and the residual is that integration's, about 1e-10 of the free stream's
+    /// pressure. Dividing by the gap's slope in the turn, that is about 2e-10° — which is the
+    /// spread the three platforms of CI showed on the band's lower edge.
+    #[test]
+    fn the_turns_a_reduced_element_lies_between_come_from_the_corners_own_state() {
+        let ahead = ShockExpansionBody::new(&ahead_of_the_flare(), DEFAULT_ELEMENTS_PER_CURVE)
+            .expect("the body ahead of the flare");
+        let turns = |mach: f64| {
+            flare_reduction_turns_rad(&ahead.aft_flow(mach).unwrap(), mach).unwrap()
+        };
+        // The three angles issue #117 quoted, from the corner's state instead of a bisection.
+        assert!(
+            (turns(4.7).crossing_rad.to_degrees() - 0.038_161_270_2).abs() < 5e-10,
+            "the band's lower edge is {}°",
+            turns(4.7).crossing_rad.to_degrees()
+        );
+        assert!(
+            (turns(5.0).balance_rad.to_degrees() - 0.058_820_517_4).abs() < 5e-10,
+            "the band's upper edge is {}°",
+            turns(5.0).balance_rad.to_degrees()
+        );
+        assert!(
+            (turns(2.2).crossing_rad.to_degrees() - 0.000_901_824_655).abs() < 5e-13,
+            "the join's shallowest step is at {}°",
+            turns(2.2).crossing_rad.to_degrees()
+        );
+        // A turn strictly between the two is reduced, and one outside is not. The march's own
+        // reading of it: a reduced element carries no decay (`η = 0`).
+        let reduced = |mach: f64, deg: f64| {
+            let body = ShockExpansionBody::new(&with_a_flare(deg), DEFAULT_ELEMENTS_PER_CURVE)
+                .expect("a flared body");
+            let flows = body.element_flows(mach).expect("a march over it");
+            flows[flows.len() - 1].decay_per_m == 0.0
+        };
+        for mach in [2.0, 2.2, 3.0, 4.0, 4.3, 4.65, 4.7, 5.0] {
+            let both = turns(mach);
+            let (low, high) = (
+                both.crossing_rad.min(both.balance_rad).to_degrees(),
+                both.crossing_rad.max(both.balance_rad).to_degrees(),
+            );
+            // The crossing is the shallower of the two on this body at every row it has.
+            assert!(low == both.crossing_rad.to_degrees(), "Mach {mach}");
+            for (deg, want) in [
+                (low * (1.0 - 1e-6), false),
+                (low * (1.0 + 1e-6), true),
+                (0.5 * (low + high), true),
+                (high * (1.0 - 1e-6), true),
+                (high * (1.0 + 1e-6), false),
+            ] {
+                assert_eq!(
+                    reduced(mach, deg),
+                    want,
+                    "Mach {mach}: {deg}° should{} be reduced, between {low}° and {high}°",
+                    if want { "" } else { " not" }
+                );
+            }
+        }
+        // The residual each solution left: `p₂ − p_c` at the crossing and `(∂p/∂s)₂` at the
+        // balance. The balance is trigonometry and closes to nothing; the crossing closes to
+        // nothing while its tangent cone is slender-cone theory's (Mach 3's turn is 0.0066°,
+        // under `SLENDER_CONE_RAD`'s 0.029°) and to the integration's own accuracy above it.
+        assert!(turns(3.0).crossing_rad < SLENDER_CONE_RAD);
+        assert!(turns(4.7).crossing_rad > SLENDER_CONE_RAD);
+        for mach in [2.0, 2.2, 3.0] {
+            assert!(
+                turns(mach).residuals[0].abs() < 1e-15,
+                "Mach {mach} leaves {} of the pressure at the crossing",
+                turns(mach).residuals[0]
+            );
+        }
+        for mach in [4.3, 4.65, 4.7, 5.0] {
+            let left = turns(mach).residuals[0].abs();
+            assert!(
+                left < 1e-9,
+                "Mach {mach} leaves {left} of the pressure at the crossing"
+            );
+        }
+        for mach in [2.0, 3.0, 4.7, 5.0] {
+            assert!(
+                turns(mach).residuals[1].abs() < 1e-15,
+                "Mach {mach} leaves {} of the gradient at the balance",
+                turns(mach).residuals[1]
+            );
+        }
+        // Below about Mach 1.5 on this body the two turns are shallower than
+        // `NEARLY_PARALLEL_RAD`, so a flare of either angle is merged into the tube ahead of it
+        // and there is no corner to reduce. Nothing switches there because nothing is drawn.
+        let low = turns(1.2);
+        assert!(low.crossing_rad < NEARLY_PARALLEL_RAD && low.balance_rad < NEARLY_PARALLEL_RAD);
+    }
+
     /// The method's flare limit is the corner's **isentropic** turn running out — the flow reaching
     /// the flare turned to Mach 1 — and not the shock detaching, which is a different angle on
     /// either side of it (M1.8e14, ADR-045 in `docs/DECISIONS.md`).
@@ -3642,3 +3949,5 @@ mod tests {
         assert!(err.contains("can't turn through"), "Mach 2: {err}");
     }
 }
+
+

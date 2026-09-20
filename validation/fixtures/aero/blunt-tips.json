@@ -1741,10 +1741,10 @@
         "mach": 3.96,
         "newtonian": {
           "10": {
-            "fails": "no aerodynamic model: behind the corner at 0.23812500000000003 m, aft of the nose, the pressure moves away from its tangent cone's"
+            "fails": "no aerodynamic model: behind the corner at 0.23812500000000003 m, where the tangent cone is the free stream's, the pressure moves away from it"
           },
           "40": {
-            "fails": "no aerodynamic model: behind the corner at 0.23812500000000003 m, aft of the nose, the pressure moves away from its tangent cone's"
+            "fails": "no aerodynamic model: behind the corner at 0.23812500000000003 m, where the tangent cone is the free stream's, the pressure moves away from it"
           }
         },
         "tangent_cone": {
@@ -1764,10 +1764,10 @@
         "mach": 4.63,
         "newtonian": {
           "10": {
-            "fails": "no aerodynamic model: behind the corner at 0.23812500000000003 m, aft of the nose, the pressure moves away from its tangent cone's"
+            "fails": "no aerodynamic model: behind the corner at 0.23812500000000003 m, where the tangent cone is the free stream's, the pressure moves away from it"
           },
           "40": {
-            "fails": "no aerodynamic model: behind the corner at 0.23812500000000003 m, aft of the nose, the pressure moves away from its tangent cone's"
+            "fails": "no aerodynamic model: behind the corner at 0.23812500000000003 m, where the tangent cone is the free stream's, the pressure moves away from it"
           }
         },
         "tangent_cone": {
@@ -1787,10 +1787,10 @@
         "mach": 5.0,
         "newtonian": {
           "10": {
-            "fails": "no aerodynamic model: behind the corner at 0.23812500000000003 m, aft of the nose, the pressure moves away from its tangent cone's"
+            "fails": "no aerodynamic model: behind the corner at 0.23812500000000003 m, where the tangent cone is the free stream's, the pressure moves away from it"
           },
           "40": {
-            "fails": "no aerodynamic model: behind the corner at 0.23812500000000003 m, aft of the nose, the pressure moves away from its tangent cone's"
+            "fails": "no aerodynamic model: behind the corner at 0.23812500000000003 m, where the tangent cone is the free stream's, the pressure moves away from it"
           }
         },
         "tangent_cone": {
