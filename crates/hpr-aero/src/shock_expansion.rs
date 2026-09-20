@@ -624,6 +624,11 @@ impl ShockExpansionBody {
     /// The surface flow the march delivers to the body's aft end at Mach `mach`: the Mach number
     /// there and the surface's angle to the axis.
     ///
+    /// The angle is the **last element's**, so on a body that ends in a curve it is that element's
+    /// chord rather than the tangent at the very end, and it moves a little with
+    /// `elements_per_curve`. On a body that ends in a cylinder or a cone — every body a flare
+    /// joins in a flight today — the two are the same.
+    ///
     /// This is the flow a corner *behind* the body turns. The march is downstream-only — TN 3527
     /// eq. 3 fixes each element from the one ahead of it and nothing behind — so a flare added at
     /// the aft end cannot change it, and the limit on that flare's corner
@@ -1192,8 +1197,13 @@ fn mach_from_pressure(total: f64, pressure: f64) -> Result<f64, AeroError> {
 }
 
 /// The steepest turn the method reads at a flare's corner, rad, where the surface flow reaching
-/// that corner is `surface_mach` ([`ShockExpansionBody::aft_flow`]): the lesser of the wedge's
-/// largest deflection and the cone tables' 30°.
+/// that corner is `surface_mach` ([`ShockExpansionBody::aft_flow`]): the largest deflection
+/// behind an attached plane oblique shock.
+///
+/// This is a bound on the **turn**, measured from the surface just ahead of the corner. The cone
+/// tables' [`crate::blunt_tip::CONE_TABLE_CAP_RAD`] bounds the flare's **surface angle** instead,
+/// since that is what an element's tangent cone is looked up by, and a caller that draws a flare
+/// to this turn must cap the angle it draws separately.
 ///
 /// **The attachment test.** A flare's shock springs from a circular corner, not from a point, so
 /// where it forms the flow is two-dimensional: the body's radius is the scale over which the
@@ -1207,19 +1217,19 @@ fn mach_from_pressure(total: f64, pressure: f64) -> Result<f64, AeroError> {
 /// side of the boundary: it stops reading some flares whose shock is in fact still attached, and
 /// never marches one whose shock is not.
 ///
-/// **The second term is not the flow.** Past [`crate::blunt_tip::CONE_TABLE_CAP_RAD`] the march
-/// has no tangent cone to relax toward, because NASA SP-3007's tables stop at 30°
-/// ([ADR-042][adr-042]); from about Mach 2.6 up that is
-/// what binds, and a faster flow does not lift it.
+/// **Where it is read matters.** The march is downstream-only, so `surface_mach` is the flow the
+/// body ahead delivers to the corner, not the free stream: on a flare behind an ogive nose and a
+/// tube it comes out a little below the free stream, on one behind a cone and a tube a little
+/// above ([ADR-047][adr-047]).
 ///
 /// # Errors
 ///
 /// As [`crate::blunt_tip::wedge_detachment_angle_rad`] for the Mach number.
 ///
-/// [adr-042]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-042-cone-slopes-from-24-to-30-come-from-simss-tables-where-tn-3527s-chart-stops-2026-09-20
 /// [adr-045]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-045-where-a-flares-march-stops-is-the-corners-isentropic-turn-not-the-shock-detaching-2026-09-20
+/// [adr-047]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-047-a-flare-flies-the-method-where-its-corners-shock-is-attached-and-is-read-drawn-out-where-it-is-not-2026-09-20
 pub fn flare_corner_limit_rad(surface_mach: f64) -> Result<f64, AeroError> {
-    crate::blunt_tip::handover_angle_capped_rad(surface_mach, crate::blunt_tip::CONE_TABLE_CAP_RAD)
+    crate::blunt_tip::wedge_detachment_angle_rad(surface_mach)
 }
 
 /// The flow over a cone at zero angle of attack.
@@ -2149,18 +2159,38 @@ mod tests {
         }
     }
 
-    /// The turn a flare's corner is read at is the lesser of the wedge's largest deflection and
-    /// the cone tables' 30°, and it is read at the flow reaching the corner, not the free stream
-    /// (M1.8e17, ADR-047 in `docs/DECISIONS.md`).
+    /// The turn a flare's corner is read at is the largest deflection an attached plane oblique
+    /// shock can turn the flow through, at the flow reaching the corner rather than at the free
+    /// stream (M1.8e17, ADR-047 in `docs/DECISIONS.md`). The cone tables' 30° bounds the flare's
+    /// surface angle instead, and the model applies it there.
     #[test]
-    fn a_flares_corner_is_read_to_the_wedges_limit_under_the_tables_cap() {
-        for mach in [1.2, 1.5, 2.0, 2.5, 2.6, 3.0, 5.0] {
-            let want = crate::blunt_tip::wedge_detachment_angle_rad(mach)
-                .unwrap()
-                .min(crate::blunt_tip::CONE_TABLE_CAP_RAD);
-            assert_eq!(flare_corner_limit_rad(mach).unwrap(), want);
+    fn a_flares_corner_turns_no_more_than_an_attached_shock_can() {
+        // Below the cap the limit is the largest deflection an attached plane shock can turn the
+        // flow through, which is the maximum of NACA 1135 eq. 138's θ over the shock angle β.
+        // Swept here rather than read from eq. 168, so the closed form is checked, not restated.
+        let swept = |mach: f64| {
+            let (g, m2) = (GAMMA, mach * mach);
+            let start = (1.0_f64 / mach).asin();
+            (0..=2_000_000)
+                .map(|i| start + (PI / 2.0 - start) * i as f64 / 2_000_000.0)
+                .map(|beta| {
+                    let s2 = beta.sin() * beta.sin();
+                    (2.0 / beta.tan() * (m2 * s2 - 1.0) / (m2 * (g + (2.0 * beta).cos()) + 2.0))
+                        .atan()
+                })
+                .fold(f64::NEG_INFINITY, f64::max)
+        };
+        for mach in [1.2, 1.5, 2.0, 2.5, 3.0, 5.0] {
+            let limit = flare_corner_limit_rad(mach).unwrap();
+            assert!(
+                (limit - swept(mach)).abs() < 1e-6,
+                "Mach {mach}: the corner is read to {}°, the swept maximum is {}°",
+                limit.to_degrees(),
+                swept(mach).to_degrees()
+            );
         }
-        // Where the cap takes over from the shock, bisected: above it a faster flow buys nothing.
+        // Where the cone tables' 30° takes over from the shock, bisected: a flare on a cylinder
+        // is drawn no steeper than that above it, whatever the flow could turn through.
         let (mut low, mut high) = (2.0_f64, 3.0_f64);
         loop {
             let middle = 0.5 * (low + high);

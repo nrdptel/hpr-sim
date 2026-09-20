@@ -47,6 +47,27 @@ otherwise runs one thread per core — so the second row caps `RUST_TEST_THREADS
 - Numbers taken during an autopilot cycle inherit that six-job cap. Measure from a plain shell,
   or set `CARGO_BUILD_JOBS` explicitly, when comparing against the rows above.
 
+## A flare through the method (M1.8e17)
+
+- **Measured:** the supersonic table of a rocket with a conical flare, timed by hand (a throwaway
+  release-mode test, best of three), 2026-09-20 on an Apple M5.
+
+| measurement | time |
+|---|---|
+| a 2° flare, never drawn out, built once per model | 389 ms |
+| a 30° flare, drawn out at most rows, built once per model | 716 ms |
+| the same rocket on `SupersonicFlare::SlenderBody` | 4.8 µs |
+
+- **What changed.** A flared rocket used to have no table at all: a flare ended the method's run,
+  so the third row is what every flared rocket paid before this milestone. Now it builds one, and
+  a flare whose corner needs drawing out costs roughly twice a plain one, because each row marches
+  the body ahead of the flare for the flow at its corner and then lays out and marches a second
+  body with the flare drawn. Both are one-time costs behind the table's `OnceLock`, paid only once
+  a flow passes Mach 1.2 and shared by a model's clones, so a Monte Carlo of one design pays them
+  once. Two obvious savings are left on the table for a later milestone: reading the flow at an
+  interior station instead of marching the fore body again, and swapping the last segment of one
+  body instead of rebuilding it.
+
 ## Blunt tips faster than sound (M1.8e7)
 
 - **Measured:** the supersonic table of a rocket with a vertical nose tip, timed by hand (a

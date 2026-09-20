@@ -25,25 +25,26 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
   `corrections.py`, ADR-026 (re-pin and delete when #1196 releases).
 - **M1.8a to e8** (ADR-027 to ADR-039): `cargo xtask aero` writes the aero fixtures (five of
   ADR-030's PDFs come from NTRS with a 436-byte header, scratch `refs/scratch/m18*/`);
-  `SupersonicBody` tabulates the shares every 0.05 Mach lazily from max(1.2, its bisected start)
-  over 0.3; `BEFORE_M1_8E6` keeps the old rules.
+  `SupersonicBody` tabulates the shares every 0.05 Mach lazily from max(1.2, its bisected start),
+  joined over 0.3; `BEFORE_M1_8E6` keeps the old rules.
 - **M1.8e9 to e13** (ADR-040 to ADR-044): #90's cap holds W&P's correlation at 16°, M1.8e's 15%
   bullet (`arcas-robin-body-gap.json`) outside on six rows; #87's switches flip one gate
   (`supersonic_run`), so the lip's **rise** is a weight (`shape_weight`); `CONE_SLOPES` runs to 30°
-  (Fig. 2 to 24°, then SP-3007 Table 2); the handover's cap is a parameter
-  (`with_handover_cap_rad`), 24° stands; a mesh-following answer is marked by the pressure
-  **crossing** its tangent cone's (`tangent_cone_crossings`), not `η < 0` — a flag, not a verdict.
-  #108 is re-scoped to the loading through a crossing; the rest of e13 is **M1.8e16**, blocked.
+  (Fig. 2 to 24°, then SP-3007 Table 2); the handover's cap is a parameter, 24° stands; a
+  mesh-following answer is marked by the pressure **crossing** its tangent cone's
+  (`tangent_cone_crossings`), not `η < 0`. #108 is re-scoped; the rest of e13 is M1.8e16, blocked.
 - **M1.8e14 and e17** (ADR-045, ADR-047): the march's edge is the corner's isentropic turn, not the
   shock detaching, so e17 **chose** the attachment test — NACA 1135's wedge limit at `aft_flow`'s
-  surface Mach (TN D-4865 p. 5's, as the blunt tip's cap uses) under the cone tables' 30°, binding
-  from Mach 2.5192. A steeper flare reads one of the **same radii drawn out** to that turn, CP
-  mapped back on the real flare, so the branches meet at the limit (4.527e-11 per 1e-9°). Only a
-  conical flare not behind a boattail joins the run, which ends at it;
-  `SupersonicFlare::SlenderBody` keeps the old rule. **Left visible:** a 0.0382°-0.0588° band the
-  march refuses, −8.3% and 1.16 calibres (#117, M1.8e19). **M1.8e18 is next:** TN D-4865 model 2's
-  fig. 8 readings, nothing having been compared with a measured flare yet. #97: the long model's
-  M1.8a readings may be biased.
+  surface Mach (TN D-4865 p. 5's, as the blunt tip's cap uses); it bounds the corner's **turn**,
+  the cone tables' 30° the flare's **angle**. A steeper flare reads one of the **same radii drawn
+  out** to that angle, CP mapped back on the real flare, so the branches meet at the limit
+  (4.527e-11 per 1e-9°): the value is continuous, its slope is not (−31.4%, measured). Held above
+  the limit, so a 75° flare reads 18.5% under slender-body theory. Only a conical flare not behind
+  a boattail joins the run, which ends at it, and nothing behind it may carry lift;
+  `SupersonicFlare::SlenderBody` keeps the old rule. **Left visible:** the near-flat region the
+  march refuses — 0.0009° steps the join (−4.6%), 0.0382°-0.0588° loses the table (−8.3%) — #117,
+  M1.8e19. **M1.8e18 is next:** TN D-4865 model 2's fig. 8 readings; nothing compared with a
+  measured flare yet. #97: the long model's M1.8a readings may be biased.
 - **Debrief, folded in** (ADR-046): `hpr-flightdata` is off `hpr-sim` and must stay off it (`forbids
   = ["hpr-sim"]`, walked transitively by `cargo xtask wasm-check`); sim-versus-flight work goes in
   the new `hpr-forensics`. Three research notes: `debrief-log-formats.md`,
@@ -51,8 +52,8 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
   from its `COMPETITION.md`** (OpenRocket rows read out of GPL-3 Java). Its 12 public fixtures may
   be used; `refs/debrief-fixtures` may not.
 - **M2.2's OpenRocket oracle** (ADR-035): orhelper is dropped, so decide how to drive the jar when
-  M2.2 starts; JPype loads the JVM in-process, only a subprocess isolates, Java 17 only
-  (`[java] max_major` in the refs lock keeps doctor off a newer one).
+  M2.2 starts; JPype loads the JVM in-process, only a subprocess isolates, Java 17 only (`[java]
+  max_major` in the refs lock keeps doctor off a newer one).
 - **Regeneration is not bit-identical across machines** (last digits): regenerate with `cargo xtask
   validate` (debug), never `--release`; fixture checks allow 1e-12 relative, `handover_caps` six
   decimals (a reduced march drifts 2.4e-12).
@@ -65,13 +66,12 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
 - 2026-09-20: M1.8e17 The flare through the method (ADR-047): a conical flare flies the method while
   its corner's shock is attached and reads as one of the same radii drawn out where it is not, so
   nothing jumps across that boundary (4.527e-11 per ±1e-9°, 1.235e-9 per ±1e-9 in Mach). A flared
-  rocket reads 5-6% below slender-body theory, unchecked against a measured flare (M1.8e18).
+  rocket reads 4.8-6.2% below slender-body theory, unchecked against a flare (M1.8e18).
 - 2026-09-20: Debrief folded in (ADR-046): a flight log analyzer that stands without the simulator —
   `hpr-flightdata` re-layered, `hpr-forensics` added, Phase 5 re-cut, both repos mirrored and
   written up. No physics moved.
 - 2026-09-20: M1.8e14 Where the flare's march stops (ADR-045): the corner's isentropic turn running
-  out, not the shock detaching; which side of a wedge's limit it lands on is the tube's doing. The
-  rest of the old e14 is M1.8e17 and M1.8e18, next up.
+  out, not the shock detaching; which side of a wedge's limit it lands on is the tube's doing.
 - 2026-09-20: M1.8e13 What the answer follows when it follows the mesh (ADR-044): a crossing of the
   tangent cone, not a reduced element; across three meshes the 27 readings without one hold to 0.012
   per radian and the 5 with one move 0.035 or more. No fixture number moved.
@@ -82,7 +82,7 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
   `fmt`, `clippy`, `doc`, `deny`, `wasm-check`, `site` and the three `test (...)` and three
   `validate (...)` checks; block force pushes. Don't require approvals: the autopilot merges its own
   PRs as you, and authors can't self-approve.
-- **crates.io names** (whenever): `hpr`, `hpr-sim`, `hpr-core`… are unreserved. Reserve them?
+- **crates.io names** (whenever): `hpr`, `hpr-sim`, `hpr-core`… unreserved. Reserve them?
 - **RASAero values in fixtures** (no action if fine): `normal-force-vs-mach.json` commits 30 values
   of RocketPy's 2018 Calisto RASAero II export (ADR-027) plus four summary numbers from its secant
   columns; `rocketpy-drag-curves.json` enough to rebuild 147 values of five RocketPy drag curves
@@ -121,8 +121,8 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
 - Two M1.2 sources are pinned from third-party mirrors (MIL-F-8785C, WMO-No. 8). Dryden turbulence
   is an aircraft model, unvalidated for rockets, and no flight uses it (#39). Only 32 motor curves
   are bundled (none in class A); the rest wait for M5's cache, whose checks ran on unpinned
-  `refs/samples/` caches. Wall and fin mass may differ from OpenRocket's undocumented conventions
-  (M2.2 measures it); `.CDX1` has no public spec, and ERA5 `.nc` may be netCDF4.
+  `refs/samples/`. Wall and fin mass may differ from OpenRocket's undocumented conventions (M2.2
+  measures it); `.CDX1` has no public spec, and ERA5 `.nc` may be netCDF4.
 - A new RustSec notice can turn CI red with no code change: upgrade, replace, or `ignore` with a
   reason. Barrowman 1966, TIR-33, Galejs, the `.rse` spec and Knacke: never redistribute.
 - Aero (M1.5a) is small-angle only; the Recruiter's six fins miss the printed slope by +3.42%

@@ -582,6 +582,13 @@ rest.
   Mach 1 faster than the fins' does; the roll damping reads 5.9% to 16.2% low against the Basic
   Finner's. Nothing measured checks either below Mach 1.5
   ([Aerodynamics](physics/aero.md#roll-forcing-and-damping)).
+- **A flared rocket's supersonic normal force has no reference at all.** A conical flare flies the
+  shock-expansion method since [M1.8e17](decisions-and-roadmap.md#m1-8e17), which moves the
+  [centre of pressure](glossary.md#centre-of-pressure-cp) of a test rocket with a 10° flare
+  forward by 0.089 to 0.238 [calibres](glossary.md#calibre-caliber) against the model it had
+  before, growing with Mach number. Nothing measured has been put beside either model:
+  [M1.8e18](decisions-and-roadmap.md#m1-8e18) commits NASA TN D-4865 model 2's readings and closes
+  it ([Aerodynamics](physics/aero.md#a-flare-through-the-method)).
 - **The normal force near and far past Mach 1.** Against NASA's wind tunnel, between Mach 0.8
   and 1.2 hpr's slope runs up to +29.3% high and its centre of pressure up to 2.29
   [calibres](glossary.md#calibre-caliber) off. From Mach 1.5 up its slope holds to within 9.4%

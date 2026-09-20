@@ -587,9 +587,11 @@
       the cone tables' 30°, which binds from Mach 2.5192034260. A steeper flare is read as one of
       the same radii drawn out to that turn, so at the limit the two branches are the same body:
       across the Mach 2 boundary (22.969761173077°) a ±1e-9° probe moves the slope 4.527e-11 and a
-      ±1e-5° probe 4.527e-7, a slope and not a step; ±1e-9 in Mach at 18.5° moves it 1.235e-9.
-      Left visible: a band of flares 0.0382° to 0.0588° the march refuses, worth −8.3% and 1.16
-      calibres — #117, M1.8e19.
+      ±1e-5° probe 4.527e-7, a slope and not a step; in Mach at 18.5°, probed on the table's own
+      rows, 3.622e-10 and 3.622e-6. The *value* is continuous; its slope is not, and the kink is
+      measured (−31.4% on the rocket) rather than claimed away. Left visible: the near-flat region
+      the march refuses — 0.00090182° steps the join 1.2 → 2.2 (−4.6%) and 0.03816° to 0.05882°
+      loses the table (−8.3%, 1.16 calibres) — #117, M1.8e19.
     - [ ] **M1.8e18 What a marched flare is worth** (the third, ADR-045). TN D-4865's model 2 is a
       2.75° blunted cone with an 18.5° flare; its fig. 8 carries normal force and pitching moment
       from Mach 1.50 to 4.63, integrated from the pressures its tables VII to XII print, and from Mach
@@ -599,14 +601,15 @@
       outright, so unlike the flare it needs a model of its own rather than a decision about one
       that exists. *Done when:* #87 closed or narrowed to the step alone, its measured size in an
       ADR and the guide.
-    - [ ] **M1.8e19 The near-flat flare the march refuses.** A flare of about 0.038° to 0.059° on
-      the tests' rocket — a third of a millimetre of rise over 0.3 m — has its one element reduced
-      aft of the nose (issue #81), so the march refuses it at Mach 5 and the whole body falls back
-      to slender-body theory: a switch of shape worth −8.3% and 1.16 calibres (ADR-047, issue
-      #117). Separate from #87, which M1.8e15 is to narrow to the step.
-      *Done when:* the band's edges are derived rather than bisected, a rule carries the reading
+    - [ ] **M1.8e19 The near-flat flare the march refuses.** Below about 0.059° on the tests'
+      rocket a flare's one element is reduced aft of the nose (issue #81), so the march refuses
+      Mach rows from the top down: from 0.00090182° the join's start steps (1.2 → 2.2, −4.6% and
+      0.75 calibres), and from 0.03816° to 0.05882° the table goes altogether (−8.3% and 1.16
+      calibres). Not monotone in the angle either (ADR-047, issue #117). Separate from #87, which
+      M1.8e15 is to narrow to the step.
+      *Done when:* the region's edges are derived rather than bisected, a rule carries the reading
       across it or the refusal is shown to be right, and a test pins whichever it is with the
-      switch's size measured on both sides.
+      switches' sizes measured on both sides.
     - [ ] **M1.8e16 The blunt tip's handover, past 24°** (the rest of the old e13; the next free
       number, so the flare and the step keep theirs, ADR-044). Blocked, so it goes last.
       *Done when:* the vertical-tip switch is gone or measured again, fixtures and the guide moving
