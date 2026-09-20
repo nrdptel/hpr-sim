@@ -571,17 +571,24 @@ threshold is worth this much (`issue_87s_switches_are_this_big`, and
 
 | drawing this, a hair past its threshold | normal force | centre of pressure |
 |---|---|---|
-| a step in radius, past a millionth of the body's area | −8.7% | 1.03 calibres |
+| a step in radius, past a billionth of the local radius | −8.7% | 1.03 calibres |
 | a flare behind the run, however small | −27.5% | 0.29 calibres |
 | a pointed tip steeper than TN 3527 Fig. 2's 24° | −10.4% | 1.14 calibres |
 | a vertical tip steeper than the cap's handover to its base | −7.0% | 0.64 calibres |
-| *a lip leaving its boattail's wake, before [M1.8e10](../decisions-and-roadmap.md#m1-8e10)* | *−33%* | *1.77 calibres* |
+| a lip leaving its boattail's wake | −29 to −34% | 0.93 to 1.97 calibres |
 
-The lip's is gone: it is now weighed, not switched (above). The two tips are next
+In every one of them the centre of pressure moves **aft** when the method is lost, because
+slender-body theory puts it further back: a rocket that trips one of these thresholds reads *more*
+stable than one that doesn't, which is the direction worth knowing about.
+
+The lip's row is no longer a switch: it is spread over the band the wake grades, as
+[above](#a-lip-in-a-boattails-wake) — the same difference between the models, as a ramp. The two tips are next
 ([M1.8e11](../decisions-and-roadmap.md#m1-8e11)), where a second source's cone tables reach past
 Fig. 2's edge. For the step and the flare nothing measures what they carry faster than sound, so
 there is nothing to blend toward yet ([M1.8e12](../decisions-and-roadmap.md#m1-8e12)). Until then,
-a rocket whose shape sits near one of those thresholds is worth checking on both sides.
+a rocket whose shape sits near one of those thresholds is worth checking on both sides. The step's
+is finer than it sounds: a billionth of the radius, a few hundredths of a nanometre on a 54 mm
+body, so any step a person would draw is past it.
 
 **What a flight takes.** The method covers the nose, when it is the first body (a blunt or vertical
 tip behind its [Newtonian cap](#blunt-tips)), the body tubes straight behind it at the same radius,
@@ -827,15 +834,27 @@ to a rise of a quarter of the boattail's drop in diameter, not at all from half 
 fades over any tube between them. The decision record on the lip, [ADR-039][adr-039], sets out the
 readings behind it.
 
-**A lip part way out of the wake.** Between that quarter and that half, the wake covers the lip
-only partly, and the drag model has always graded it so. Since
-[M1.8e10](../decisions-and-roadmap.md#m1-8e10) the normal force reads the same number as a
-**weight**: the method's share counts for the wake's share of the lip, slender-body theory for the
-rest, exactly as they blend across the Mach join ([ADR-041][adr-041]). So a lip drawn a little
-taller moves a rocket between the two models a little, instead of switching the whole body at a
-threshold — which it used to do, by a third of the normal force and 1.77 calibres of centre of
-pressure on the tests' rocket at Mach 3. A lip rising half the drop or more, or sitting further
-back, keeps the whole body on slender-body theory, as any other flare does.
+**A lip part way out of the wake.** Where the wake covers the lip only partly, the drag model has
+always graded it so. Since [M1.8e10](../decisions-and-roadmap.md#m1-8e10) the normal force reads
+the same number as a **weight**: the method's share counts for the wake's share of the lip,
+slender-body theory for the rest, exactly as they blend across the Mach join
+([ADR-041][adr-041]). It is the whole wake fraction, not the rise alone — the shelter fades with
+the lip's rise, with any tube between it and the boattail, and with anything else in the way.
+
+Be clear about what that buys. The **jump** is gone: a lip drawn a hair taller no longer switches
+the whole body between the two models, which it used to do by a third of the normal force and 1.77
+calibres of centre of pressure on the tests' rocket at Mach 3. The **sensitivity** is not gone; it
+is spread over the band. On that rocket, at Mach 3 and 4°:
+
+| drawn from | to | normal force | centre of pressure |
+|---|---|---|---|
+| a lip rising a quarter of the boattail's drop | rising a half (1.25 mm of radius) | −29.1% | 0.93 calibres |
+| a lip flush behind the boattail | one a boattail's drop in diameter behind it (10 mm) | −33.8% | 1.97 calibres |
+
+So a rocket whose lip sits in that band is worth about three quarters of a calibre per millimetre
+of lip radius, and about two calibres per centimetre of gap. That is the difference between the
+two models, and nothing measured says which is right for a part-sheltered lip; it is now a ramp
+rather than a cliff, which is all the change claims.
 
 **Why nothing.** Three readings point the same way.
 
