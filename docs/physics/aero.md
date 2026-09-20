@@ -1206,8 +1206,10 @@ by 0.1%.
 The steeper cap starts the march from a steeper cone at a higher pressure, and from there the
 tangent cone's own pressure falls away faster than the marched pressure does as the nose flattens.
 So the surface pressure catches its tangent cone's and passes through it — at Mach 4.63 under the
-30° cap, 11.9% of the way back — and stays above it until the nose flattens enough for the cone to
-catch up again. Two crossings.
+30° cap, about a tenth of the way back (11.9% on the 160-element march) — and stays above it until
+the nose flattens enough for the cone to catch up again. Two crossings, and where the second one
+falls is itself poorly pinned by a coarse mesh: 65% of the nose on 10 elements, 79% on 160
+(test `a_crossing_is_a_pole_in_the_rate_the_march_relaxes_at`).
 
 At a crossing the method loses its footing, for a reason that has nothing to do with `η < 0`. The
 rate an element relaxes toward its tangent cone at is `η = (∂p/∂s)₂ / (p_c − p₂)` — the gradient just

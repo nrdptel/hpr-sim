@@ -2693,6 +2693,57 @@ mod tests {
             worst < 1.0,
             "the flown cap should relax gently: its worst exponent is {worst:.2}"
         );
+        // Where a crossing falls is the mesh's answer too, and a coarse mesh pins the second one
+        // badly: the guide quotes 65% of the nose on 10 elements against 79% on 160.
+        let nose_length_m = 9.375 * 0.0254;
+        let second_crossing_share = |elements: usize| {
+            let body = ShockExpansionBody::new(
+                &[
+                    BodySegment::Profile {
+                        profile: Profile::nose(
+                            NoseShape::PowerSeries { exponent: 0.6369 },
+                            nose_length_m,
+                            radius,
+                        )
+                        .unwrap(),
+                    },
+                    BodySegment::Cylinder {
+                        length_m: (39.14 - 9.375) * 0.0254,
+                        radius_m: radius,
+                    },
+                ],
+                elements,
+            )
+            .unwrap()
+            .with_handover_cap_rad(CONE_TABLE_CAP_RAD);
+            let flows = body.element_flows(mach).unwrap();
+            let gap = |e: &ElementFlowReport| e.tangent_cone_pressure_ratio - e.pressure_ratio;
+            let mut last = 0.0;
+            let mut shares = Vec::new();
+            for flow in &flows {
+                let this = gap(flow);
+                if this == 0.0 {
+                    continue;
+                }
+                if last != 0.0 && (this > 0.0) != (last > 0.0) {
+                    shares.push(100.0 * flow.corner_x_m / nose_length_m);
+                }
+                last = this;
+            }
+            shares
+        };
+        for (elements, want) in [
+            (DEFAULT_ELEMENTS_PER_CURVE, 65.0),
+            (16 * DEFAULT_ELEMENTS_PER_CURVE, 79.1),
+        ] {
+            let shares = second_crossing_share(elements);
+            assert_eq!(shares.len(), 2, "two crossings on {elements} elements");
+            assert!(
+                (shares[1] - want).abs() < 0.5,
+                "the second crossing on {elements} elements sits at {:.1}% of the nose, not {want}%",
+                shares[1]
+            );
+        }
     }
 
     /// The Arcas Robin's committed nose (a power series, `n` = 0.6369, 9.375 in long on a
