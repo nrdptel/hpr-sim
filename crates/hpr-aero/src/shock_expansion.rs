@@ -2680,6 +2680,32 @@ mod tests {
             "at the crossing after element {first} the gap should be closing ({gap:.2e} of the \
              pressure) with the rate unbounded (exponent {exponent:.2})"
         );
+        // What re-scopes issue #108: the second crossing's step is taken by an element the
+        // method still owns. It is not reduced — its rate is positive — and the loading falls by
+        // a fifth from it to the next corner, so no reading of `η < 0` reaches it.
+        let flows = body(CONE_TABLE_CAP_RAD).element_flows(mach).unwrap();
+        let gap = |e: &ElementFlowReport| e.tangent_cone_pressure_ratio - e.pressure_ratio;
+        let second = tables
+            .iter()
+            .enumerate()
+            // `first` indexes the element before the first crossing, so its far side is
+            // `first + 1`; the second crossing is somewhere after that.
+            .skip(first + 2)
+            .find(|(i, _)| {
+                gap(&flows[*i]) != 0.0
+                    && gap(&flows[i - 1]) != 0.0
+                    && (gap(&flows[*i]) > 0.0) != (gap(&flows[i - 1]) > 0.0)
+            })
+            .map(|(i, _)| i)
+            .expect("a second crossing");
+        let drop = 1.0 - flows[second + 1].loading_per_rad / flows[second].loading_per_rad;
+        assert!(
+            flows[second].decay_per_m > 0.0 && drop > 0.15,
+            "the element at the second crossing should be inside the method (rate {}) and shed \
+             the loading ({:.1}% from element {second} to the next)",
+            flows[second].decay_per_m,
+            100.0 * drop
+        );
         // The cap hpr flies marches the same nose at the same Mach number and element count
         // without ever closing the gap, and never relaxes more than a little per element.
         let flown = read(MAX_HANDOVER_RAD);
