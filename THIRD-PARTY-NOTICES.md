@@ -110,18 +110,20 @@ adds a source.
 | crate | license | used by | why |
 |---|---|---|---|
 | `criterion` | Apache-2.0 OR MIT | `hpr-core` (benchmarks only) | statistics for `cargo bench` (`docs/perf.md`) |
+| `flate2` | MIT OR Apache-2.0 | `hpr-io` | gzip and deflate, with the pure-Rust `miniz_oxide` backend so that `hpr-io` still builds for wasm32 and links no C: one of the three containers a `.ork` design arrives in, and the compression inside the other |
 | `glam` | MIT OR Apache-2.0 | `hpr-core` | `f64` vectors, quaternions and matrices (`ARCHITECTURE.md`) |
 | `proptest` | MIT OR Apache-2.0 | `hpr-core`, `hpr-atmos`, `hpr-motor` (tests only) | property tests |
 | `pulldown-cmark` | MIT | `xtask` | reads the documentation site's Markdown, with the parser mdBook itself uses, to check its links and labels (ADR-016) |
 | `rand_core` | MIT OR Apache-2.0 | `hpr-core` (tests only) | the generator traits `rand_xoshiro` implements |
 | `rand_xoshiro` | MIT OR Apache-2.0 | `hpr-core` (tests only) | an independent xoshiro256++ and SplitMix64 that `hpr_core::random` is checked against, bit for bit |
-| `roxmltree` | MIT OR Apache-2.0 | `hpr-motor` | a strict, read-only XML 1.0 parser for `.rse` motor files |
+| `roxmltree` | MIT OR Apache-2.0 | `hpr-motor`, `hpr-io` | a strict, read-only XML 1.0 parser for `.rse` motor files and `.ork` designs |
 | `serde_json` | MIT OR Apache-2.0 | `xtask`, `hpr-motor`; `hpr-core`, `hpr-atmos` (tests only) | reads `cargo metadata` output and the bundled motor catalog index; serde round-trip tests and JSON fixtures |
 | `serde` | MIT OR Apache-2.0 | `xtask`, `hpr-core`, `hpr-atmos`, `hpr-motor` | derives the `validation/refs.lock.toml` types and the public data types |
 | `thiserror` | MIT OR Apache-2.0 | `hpr-core`, `hpr-atmos`, `hpr-motor` | library error types |
 | `sha2` | MIT OR Apache-2.0 | `xtask`; `hpr-motor` (tests only) | SHA-256 of fetched references and of the bundled motor curves |
 | `toml` | MIT OR Apache-2.0 | `xtask` | reads `validation/refs.lock.toml` |
 | `tempfile` | MIT OR Apache-2.0 | `xtask` (tests only) | temporary directories for the `refs` tests |
+| `zip` | MIT | `hpr-io`, `xtask` | reads the zip archive a `.ork` design is packed in, and the example designs inside the OpenRocket jar. Read-only, with only the deflate method OpenRocket writes: the default features would pull bzip2, lzma, zstd and AES |
 
 ## Documentation site tools
 

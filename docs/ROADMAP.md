@@ -39,45 +39,33 @@
   runnable, `git status` shows nothing from `refs/`, and `THIRD-PARTY-NOTICES.md` lists every
   source with its license and usage mode (bundled, fetched or run-only). *Met.*
 
-- [x] **M0.3 Lessons from Loft.** Read `refs/fusionspace-loft` (docs/methods, the limitations
-  page, `COMPETITION.md`, the importer-bug entries in `BACKLOG.md`, `lib/sim`, `lib/ork`,
-  `lib/validation`). Write `docs/research/loft-lessons.md` (at most 200 lines) covering the models
-  used, known weaknesses, importer quirks, test cases worth porting, and process mistakes to avoid.
-
-  *Done when:* the file exists, and every quirk or weakness it lists maps to a roadmap milestone or
-  a named test to write.
+- [x] **M0.3 Lessons from Loft.** Read `refs/fusionspace-loft` and write
+  `docs/research/loft-lessons.md` (at most 200 lines): the models used, known weaknesses, importer
+  quirks, test cases worth porting, and process mistakes to avoid. *Done when:* the file exists,
+  and every quirk it lists maps to a roadmap milestone or a named test to write.
 
 - [x] **M0.4 A documentation site people can read.** Added by Neer on 2026-09-17 (VISION V15,
   CLAUDE.md "Documentation is a deliverable"). Retrofit everything shipped so far; later milestones
-  keep the site current. Split it into increments if it is bigger than one session.
-  Tool and layout by ADR (mdBook first); each page has one source, equations render on the site
-  and on GitHub, and workspace rustdoc is published next to the guide, each linking the other.
-  Pages: *Start here*; *Getting started* (a runnable first flight); *How a flight is simulated*;
-  one page per model, each opening with *In short*; *Accuracy* (every result, gaps included);
-  *Glossary*; *Checking a claim*; the decisions; the roadmap.
+  keep the site current. Tool and layout by ADR (mdBook first); each page has one source, equations
+  render on the site and on GitHub, and workspace rustdoc is published next to the guide, each
+  linking the other. Pages: *Start here*; *Getting started* (a runnable first flight); *How a
+  flight is simulated*; one page per model, each opening with *In short*; *Accuracy* (every result,
+  gaps included); *Glossary*; *Checking a claim*; the decisions; the roadmap.
 
   *Done when:* split on 2026-09-17 into M0.4a to M0.4e, which carry its four done-when bullets
-  unchanged (M0.4a checks links and bare labels, M0.4b *In short*). Done 2026-09-18, with M0.4d's
-  first deploy.
+  unchanged. Done 2026-09-18, with M0.4d's first deploy.
 
-  - [x] **M0.4a The site and its link checks.** An ADR picks the tool and the layout;
-    `docs/physics/` and `docs/format/` move into the site's source. *Done when:* CI builds the site
-    on every PR and checks its links, a broken link or a bare internal label (`L\d+`, `ADR-\d+`, a
-    milestone id that isn't a link) fails CI, and a test shows each failing. *Met* (mdBook,
-    ADR-016 to ADR-018).
-  - [x] **M0.4b Model pages, Accuracy, Glossary, Checking a claim.** *Done when:* a model page
-    without *In short* (what it models, its source, how well it is validated, what it leaves out)
-    fails CI, a test shows it, and every model page passes. *Accuracy* gives every result so far,
-    gaps included, from the committed report. *Met.*
-  - [x] **M0.4c Getting started, and how a flight is simulated.** *Done when:* the *Getting
-    started* example — a runnable `examples/` program that flies a first rocket — runs in CI, and
-    *How a flight is simulated* walks pad to landing with a diagram. *Met.*
-  - [x] **M0.4d Publish.** *Done when:* a workflow deploys the site and the rustdoc to GitHub Pages
-    from `main`, and the README's first lines link to it. *Met* 2026-09-18 (ADR-019): Neer turned
-    Pages on, and CI run 35396233336 on `main` deployed https://nrdptel.github.io/hpr-sim/.
-  - [x] **M0.4e The reader test.** *Done when:* a reviewer with no project context, given only the
-    site, answers ten questions a new user would ask, listed in the PR. Each answer cites a page,
-    and every term it flags as unclear is fixed. *Met.*
+  - [x] **M0.4a The site and its link checks** (ADR-016 to ADR-018): CI builds the site on every
+    PR, and a broken link or a bare internal label fails it. *Met.*
+  - [x] **M0.4b Model pages, Accuracy, Glossary, Checking a claim**: a model page without *In
+    short* fails CI, and *Accuracy* gives every result so far from the committed report. *Met.*
+  - [x] **M0.4c Getting started, and how a flight is simulated**: the first-flight example runs in
+    CI, and the page walks pad to landing with a diagram. *Met.*
+  - [x] **M0.4d Publish** (ADR-019): a workflow deploys the site and the rustdoc to GitHub Pages
+    from `main`. *Met* 2026-09-18; Neer turned Pages on, and CI run 35396233336 deployed
+    https://nrdptel.github.io/hpr-sim/.
+  - [x] **M0.4e The reader test**: a reviewer with no project context answers ten questions from
+    the site alone, citing a page each. *Met.*
 
 ## Phase 1: Physics core (the heart), with validation interleaved
 
@@ -86,23 +74,18 @@
   `docs/physics/frames.md` (ENU launch frame, body frame, Euler conventions, geodetic/ECEF); WGS84
   Somigliana gravity with altitude, optional Earth-rotation terms.
   - Loft lessons: L1 (tests named in `docs/research/loft-lessons.md`).
-  *Done when:*
-  - Gravity matches the published formula values at at least 6 latitude/altitude points to 1e-6
-    relative.
-  - Frame round-trip property tests pass.
-  - Quaternion integration keeps the norm within 1e-12 over 1e6 steps in tests.
-  - Everything compiles for wasm32.
+  *Done when:* gravity matches the published formula values at at least 6 latitude/altitude points
+  to 1e-6 relative; frame round-trip property tests pass; quaternion integration keeps the norm
+  within 1e-12 over 1e6 steps in tests; everything compiles for wasm32.
 
 - [x] **M1.2 Atmosphere and wind.** USSA76 from 0 to 86 km (temperature, pressure, density, speed
   of sound, dynamic viscosity by Sutherland); ISA temperature offset; custom profiles from soundings
   (p, T, RH, wind vs height) with interpolation; wind models constant, power/log law, tabulated
   layers and seeded Dryden turbulence.
   - Loft lessons: L2, L3, L4, L5, L6 (tests named in `docs/research/loft-lessons.md`).
-  *Done when:*
-  - USSA76 matches the tables at at least 25 altitudes to at most 0.1% (the small table fixture is
-    committed with its citation).
-  - A Dryden spectrum test passes (PSD within tolerance of theory).
-  - `docs/physics/atmosphere.md` cites every equation.
+  *Done when:* USSA76 matches the tables at at least 25 altitudes to at most 0.1% (the small table
+  fixture is committed with its citation); a Dryden spectrum test passes (PSD within tolerance of
+  theory); `docs/physics/atmosphere.md` cites every equation.
 
 - [x] **M1.3 Solid motors.**
   - `.eng` and `.rse` readers and writers (clean room, from the public specs).
@@ -111,12 +94,10 @@
   - Delays (including plugged); case/retainer mass. Offline catalog type with per-curve
     provenance and license; bundle only curves with clear terms, the rest cached later (M5).
   - Loft lessons: L36, L37, L38, L39, L40, L41, L42, L43 (`docs/research/loft-lessons.md`).
-  *Done when:*
-  - For every bundled curve, total impulse, average thrust and burn time match the ThrustCurve
-    metadata within 1%.
-  - Parse-write-parse round trips are identical.
-  - Mass and inertia evolution matches RocketPy's SolidMotor for 3 motors within 1% (reference
-    JSON generated by a script in `validation/oracles/rocketpy/`).
+  *Done when:* for every bundled curve, total impulse, average thrust and burn time match the
+  ThrustCurve metadata within 1%; parse-write-parse round trips are identical; mass and inertia
+  evolution matches RocketPy's SolidMotor for 3 motors within 1% (reference JSON generated by a
+  script in `validation/oracles/rocketpy/`).
 
 - [x] **M1.4 Design model and mass properties.**
   - `hpr-design` components: nose cones (conical, tangent/secant ogive, elliptical, power series,
@@ -127,11 +108,10 @@
     geometry, with overrides; structural checks with typed warnings. A small public test-design
     set, `validation/designs/`, so tests never snapshot the private corpus.
 
-  *Done when:*
-  - Analytic volume, area and CG tests pass for every shape.
-  - The inertia tensor of composite test bodies matches hand calculations.
-  - Mass, CG and inertia match RocketPy's example rockets where RocketPy exposes them.
-  - The OpenRocket stored-value comparison is deferred to M2.2 and noted there.
+  *Done when:* analytic volume, area and CG tests pass for every shape; the inertia tensor of
+  composite test bodies matches hand calculations; mass, CG and inertia match RocketPy's example
+  rockets where RocketPy exposes them; the OpenRocket stored-value comparison is deferred to M2.2
+  and noted there.
 
   - [x] **M1.4a Shapes, materials and component mass properties.**
     - Every nose and transition shape above (clipped or not), solids of revolution filled or with a
@@ -140,18 +120,16 @@
     - Cited materials; `MassProperties` with the parallel-axis theorem and rotations.
     - Loft lessons: L44, L45, L46, L48, L49, L91 (tests named in `docs/research/loft-lessons.md`).
 
-    *Done when:*
-    - Analytic volume, area and CG tests pass for every shape.
-    - The inertia tensor of composite test bodies matches hand calculations.
+    *Done when:* analytic volume, area and CG tests pass for every shape, and the inertia tensor
+    of composite test bodies matches hand calculations.
 
   - [x] **M1.4b Design tree, configurations and checks.**
     - Stages and component placement, configurations with motors, overrides, reference diameter,
       structural checks with typed warnings, and `validation/designs/`.
     - Loft lessons: L47, L50 (tests named in `docs/research/loft-lessons.md`).
 
-    *Done when:*
-    - Mass, CG and inertia match RocketPy's example rockets where RocketPy exposes them.
-    - The OpenRocket stored-value comparison is deferred to M2.2 and noted there.
+    *Done when:* mass, CG and inertia match RocketPy's example rockets where RocketPy exposes
+    them, and the OpenRocket stored-value comparison is deferred to M2.2 and noted there.
 
 - [x] **M1.5 Aerodynamics I (subsonic).**
   - Barrowman CNα and CP for every component, with Prandtl–Glauert; body lift at angle of attack;
@@ -173,18 +151,15 @@
       fin–body interference, and the `aero.md` sections for them.
     - Loft lessons: L8, L9, L10, L89 (tests named in `docs/research/loft-lessons.md`).
 
-    *Done when:*
-    - CNα and CP reproduce Barrowman's worked example(s) within 1%.
+    *Done when:* CNα and CP reproduce Barrowman's worked example(s) within 1%.
 
   - [x] **M1.5b Drag and override tables.**
     - The drag buildup, Cd at angle of attack, Cd-vs-Mach override tables from CSV, and the `aero.md`
       sections for them.
     - Loft lessons: L11, L12, L13, L14, L15, L16, L90 (tests named in
       `docs/research/loft-lessons.md`).
-    *Done when:*
-    - Subsonic Cd for the RocketPy example rockets is within 10% of their RASAero CSVs at Mach 0.3
-      (tighten this later).
-    - Unit tests cover every drag term's limits.
+    *Done when:* subsonic Cd for the RocketPy example rockets is within 10% of their RASAero CSVs
+    at Mach 0.3 (tighten this later), and unit tests cover every drag term's limits.
 
     *Result (ADR-009):* not met for Valetudo (−47% power-off, −50% power-on; its table is 1.44 times
     its own OpenRocket export, which hpr matches to 2%) or Cavour power-on (−18.3%, cause open).
@@ -212,20 +187,17 @@
       discontinuities on step boundaries; the fixed-step RK4 option; `docs/physics/integration.md`.
     - Loft lessons: L21, L22, L23 (tests named in `docs/research/loft-lessons.md`).
 
-    *Done when:*
-    - Step-halving convergence shows the expected order.
-    - Events are located to ≤1e-6 s.
+    *Done when:* step-halving convergence shows the expected order, and events are located to
+    ≤1e-6 s.
 
   - [x] **M1.6b Rigid-body flight.**
     - The state, the rail phase, powered and coast phases with jet damping, the flight events, the
       recorder and observer, and the `criterion` benchmark.
     - Loft lessons: L20, L24, L25, L26 (tests named in `docs/research/loft-lessons.md`).
 
-    *Done when:*
-    - Analytic tests pass: vacuum ballistic, terminal velocity, torque-free precession, and pitch
-      oscillation frequency vs linear theory.
-    - A single typical L2 flight simulates in ≤5 ms release-mode (number recorded in
-      `docs/perf.md`).
+    *Done when:* analytic tests pass (vacuum ballistic, terminal velocity, torque-free precession,
+    and pitch oscillation frequency vs linear theory), and a single typical L2 flight simulates in
+    ≤5 ms release-mode (number recorded in `docs/perf.md`).
 
 - [x] **M1.7 Recovery.** Parachutes (Cd·S, inflation time or area growth), streamers and tumble;
   drogue and main with their triggers; descent with wind drift, separated bodies tracked
@@ -253,17 +225,16 @@
 
   - [x] **M1.7b Streamers and tumble,** each with a cited drag model.
 
-    *Done when:*
-    - A streamer's and a tumbling body's descent rates match the terminal velocity of their cited
-      drag models (analytic tests).
+    *Done when:* a streamer's and a tumbling body's descent rates match the terminal velocity of
+    their cited drag models (analytic tests).
     *Result (ADR-013):* met. Streamers: Carruthers and Filippone (within 9% of Kidwell's flat
     streamer; appendix C 88% fast). Tumble: OpenRocket §3.5, −10 to +19% on its own drop tests.
 
   - [x] **M1.7c Separated bodies.**
     - Separation, with every body flown to its own landing and its own mass properties and drag.
 
-    *Done when:*
-    - A separation gives every body a landing, and the bodies' masses sum to the rocket's.
+    *Done when:* a separation gives every body a landing, and the bodies' masses sum to the
+    rocket's.
 
     *Result (ADR-014):* met. A `Separation` splits the stack at a stage boundary, each body a point
     mass under its devices; on the two-stage test design both land (2.11 m/s under a canopy, 16.74
@@ -476,23 +447,22 @@
 
     - [x] **M1.8e1 The second-order shock-expansion method.** NACA TN 3527's method for a
       pointed body's `C_Nα` and CP at `α → 0`, the cylinder's lift behind the nose included; its
-      Fig. 2's tangent-cone slopes read by hand. *Done when* (targets set before measuring):
-      - A committed fixture, pinned by a test, holds hpr's values against every row of TN 3527's
-        Tables I and II (cones and tangent ogives of fineness 3, 5 and 7, cylinders of 0 to 10
-        calibers, Mach 3 to 6.28): within 0.05 per radian and 0.1 calibers of its second-order
-        values, and within its stated ±0.2 of its measurements, every miss explained.
-      - The Arcas Robin's nose and cylinder, with and without its boattail (footnote 8), at each
-        Mach number of TN D-4014, beside the measured body alone.
+      Fig. 2's tangent-cone slopes read by hand. *Done when* (targets set before measuring): a
+      committed fixture, pinned by a test, holds hpr's values against every row of TN 3527's
+      Tables I and II (cones and tangent ogives of fineness 3, 5 and 7, cylinders of 0 to 10
+      calibers, Mach 3 to 6.28) within 0.05 per radian and 0.1 calibers of its second-order values
+      and within its stated ±0.2 of its measurements, every miss explained; and the Arcas Robin's
+      nose and cylinder, with and without its boattail (footnote 8), at each Mach number of TN
+      D-4014, beside the measured body alone.
       *Result (ADR-033):* not met, recorded: slopes and CPs 102 and 125 of 144 within its values
       (#81 at its limit), 117 and 109 of 120 of its measurements; Arcas Robin −18.7% to +16.4%.
     - [x] **M1.8e2 The body's supersonic normal force in flight.** The body's terms take Mach:
       M1.8e1's method for a pointed nose and its cylinder where it holds, joined to slender-body
-      theory below it. *Done when* (targets set before measuring):
-      - A flight takes the body's `C_Nα` and CP at its Mach number; a test probes the join at
-        ±1e-9 in Mach and finds no jump.
-      - The Arcas Robin's body alone (TN D-4014) through the flight's path at each Mach number
-        from 1.5, beside the measurement and M1.8a's, in the regenerated report, its changed rows
-        listed in the PR.
+      theory below it. *Done when* (targets set before measuring): a flight takes the body's `C_Nα`
+      and CP at its Mach number, and a test probes the join at ±1e-9 in Mach and finds no jump; and
+      the Arcas Robin's body alone (TN D-4014) through the flight's path at each Mach number from
+      1.5, beside the measurement and M1.8a's, in the regenerated report, its changed rows in the
+      PR.
     - [x] **M1.8e3 The supersonic join's start without grid steps** (#87's grid half). *Done when*
       (set after building): a test finds a 20° cone's start off the grid, moved under 1e-7 in Mach
       by 1e-6° and strictly by each 0.1° to 20.5°, its cylinder share under 1e-5, no jump at ±1e-9
@@ -632,6 +602,36 @@
     designs).
   - Private-corpus results go to a gitignored `corpus-out/` and are summarised as counts only.
   - The RocketSerializer cross-check agrees on the key geometry.
+
+  Split into M3.1a to M3.1d (ADR-051): the container and the document first, because everything
+  after it walks that tree.
+  - [x] **M3.1a The container and the design document.** Sniff zip, gzip and raw XML by their
+    first bytes; take the design out of the archive and keep every other entry; read the XML into
+    a tree that keeps everything the file said, with its schema version and its creator; warn
+    rather than fail; never crash. Loft lesson L56.
+    *Done when:* every `.ork` in the reference library and in the OpenRocket jar's example set
+    either reads or is shown by a second XML parser not to be well-formed; each one written back
+    out and read again gives the same document; `cargo xtask ork` prints those counts and writes
+    the per-file detail to a gitignored `corpus-out/`; and
+    `hpr_io::ork::tests::malformed_inputs_error_not_panic` is live.
+    *Result:* met (ADR-051). 78 files: 76 read, all 76 unchanged through a write and a read, 0
+    warnings, 2 refused — Loft browser-test fixtures closing a `<databranch>` with `</flightdata>`,
+    which Python's expat refuses at the same line. 73 zip, 3 raw XML (no gzip survives, so a test
+    holds that path); schema 1.4 ×4, 1.5 ×10, 1.8 ×5, 1.9 ×3, 1.10 ×53, 1.11 ×1. Nesting is
+    counted before `roxmltree` sees the text: it read 120 levels on a debug build's stack and died
+    on 130, while the corpus's deepest design nests 17.
+  - [ ] **M3.1b The component tree.** Components, shapes, materials, finishes and overrides into
+    `hpr-design` types, automatic dimensions resolved. Loft lessons L49, L58, L59, L60, L61, L62,
+    L63. *Done when:* every design in the reference library gives a `hpr_design::Rocket` whose
+    `layout()` succeeds, each of those lessons' named tests is live, and the counts go to
+    `corpus-out/` as above.
+  - [ ] **M3.1c Motors, recovery, stages and what OpenRocket last did.** Motor configurations and
+    embedded `.rse` curves, recovery devices, stage and pod structure, stored conditions and
+    results, and `extensions.x-openrocket` for the rest. Loft lessons L57, L64, L65, L66.
+    *Done when:* those lessons' named tests are live, a design's stored results are read back, and
+    a document with unknown content round-trips through `extensions.x-openrocket`.
+  - [ ] **M3.1d The corpus and the cross-check.** `insta` snapshots on public files only, and the
+    RocketSerializer cross-check. *Done when:* the parent's four bullets above are met.
 
 - [ ] **M2.2 OpenRocket oracle and corpus.**
   - `validation/oracles/openrocket/` (JPype, OR 24.12) flies the OR examples and the

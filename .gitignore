@@ -5,6 +5,7 @@
 # Reference library and private corpora: never commit these (see CLAUDE.md rules 3–4)
 /refs/
 /corpus/
+/corpus-out/
 
 # Autopilot runtime state and logs
 /.autopilot/

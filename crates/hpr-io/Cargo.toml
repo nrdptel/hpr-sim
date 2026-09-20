@@ -16,5 +16,14 @@ workspace = true
 wasm = true
 
 [dependencies]
+flate2.workspace = true
 hpr-design.workspace = true
 hpr-format.workspace = true
+roxmltree.workspace = true
+serde.workspace = true
+thiserror.workspace = true
+zip.workspace = true
+
+[dev-dependencies]
+proptest.workspace = true
+roxmltree.workspace = true

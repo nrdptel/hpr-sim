@@ -67,6 +67,7 @@ new record replaces it and points back. All of them are in the [decision log][de
 | [ADR-048: What a marched flare is worth][adr-048] | That TN D-4865 model 2's readings are committed and compared: an 18.5° flare read −1.9% and +7.0% against the wind tunnel at Mach 1.9 and 2.3, +13.4% at 2.96 and about +51% at 3.95 and 4.63, whose flare the report's shadowgraphs show separated; with no reading at all below Mach 1.5289, where drawing the flare out to its shock's limit lands past the march's own | [Aerodynamics](physics/aero.md#what-a-marched-flare-is-worth) |
 | [ADR-049: What a step in radius costs][adr-049] | That a step's cost is measured and published rather than modelled: it takes the whole body off the shock-expansion method, worth −8.65% and 1.03 calibres at its threshold and −12.55% and 1.36 calibres at a 2 mm step down, and −11.34% and 1.10 calibres on a boattailed body, whose threshold is 1.3e−13 m rather than 2.7e−11 m; and that stopping the march at the step instead was built, measured and rejected, because the mixed reading lands outside both pure models and misses the boattail's band | [Aerodynamics](physics/aero.md#a-step-in-radius) |
 | [ADR-050: A reduced element read by the generalized method][adr-050] | That where the second-order method's exponential form cannot hold — the pressure behind a corner on the far side of its tangent cone's from where its own gradient points — the element is read by the generalized method wherever it has a tangent cone of its own, so a near-flat flare no longer takes the whole body off the method; that the region's two edges are solved from the corner's own state rather than bisected, reproducing all three published angles; and that what is left is the loading's step at the crossing, +0.129% and 0.0051 calibres on the tests' rocket but not bounded by it — +4.3% and 0.19 calibres on a body with a short shoulder, and −2.8% between two adjacent Mach rows | [Aerodynamics](physics/aero.md#a-near-flat-flare) |
+| [ADR-051: M3.1 split, and a `.ork` document kept whole][adr-051] | That reading an OpenRocket file is split into four increments, the container and the document first; that the document is read into a tree and interpreted by nobody, because with no schema for `.ork` keeping the whole file is the only way to be sure nothing was dropped; that reading it, writing it and reading it again gives the same document, checked over generated trees and over all 76 corpus files that open; that nesting is counted before the text is parsed, since the XML parser underneath overflows the stack past 120 levels; and that the corpus survey names the two files that are not XML rather than skipping them quietly | [OpenRocket `.ork` design files](format/ork.md) |
 
 ## The roadmap
 
@@ -177,6 +178,10 @@ missing or its status disagrees.
 | <a id="m1-8e19"></a>[M1.8e19][phase-1] | The band of near-flat flares the march used to refuse, which took the whole body off the method as a shape crossed it (found by [M1.8e17](#m1-8e17)); now read by the generalized method | done |
 | <a id="m1-8e16"></a>[M1.8e16][phase-1] | A blunt tip's handover moved past 24°, once the march has a rule for the loading through a crossing (the rest of what [M1.8e13](#m1-8e13) used to be, renumbered so the flare and the step keep their ids). Blocked on [issue #108](https://github.com/nrdptel/hpr-sim/issues/108): the loading through a tangent-cone crossing has no reading that settles as the nose is cut finer | blocked |
 | <a id="m3-1"></a>[M3.1][phase-1] | Reading OpenRocket `.ork` design files | not yet done |
+| <a id="m3-1a"></a>[M3.1a][phase-1] | The container a `.ork` arrives in, and its design document read whole | done |
+| <a id="m3-1b"></a>[M3.1b][phase-1] | The component tree: parts, shapes, materials, finishes and overrides into a design | not yet done |
+| <a id="m3-1c"></a>[M3.1c][phase-1] | Motors, recovery, stages, and what OpenRocket last simulated | not yet done |
+| <a id="m3-1d"></a>[M3.1d][phase-1] | The corpus and the cross-check against RocketSerializer | not yet done |
 | <a id="m2-2"></a>[M2.2][phase-1] | OpenRocket as a reference program, and a corpus of designs to compare | not yet done |
 | <a id="m1-9"></a>[M1.9][phase-1] | Staging, clusters and air starts, for COTS motors | not yet done |
 | <a id="m1-10"></a>[M1.10][phase-1] | Flight outputs: the stability margin over the flight, the best ejection delay, the peak dynamic pressure, fin flutter and the landing point | not yet done |
@@ -266,6 +271,8 @@ is the milestone that added or will add that test.
 | <a id="l41"></a>[L41][lessons-motors] | Loft bundled thrust curves under mixed or unknown licences | [M1.3](#m1-3) |
 | <a id="l42"></a>[L42][lessons-motors] | Loft's impulse checks were loose (±8%); a mis-sourced curve flew about 26% high until caught | [M1.3](#m1-3) |
 | <a id="l43"></a>[L43][lessons-motors] | ThrustCurve's data must override a `.eng` header's size: one said 75 mm for a 54 mm motor | [M1.3](#m1-3) |
+| <a id="l56"></a>[L56][lessons-formats] | Loft told a design file's container apart by its first bytes, and a malformed one had to give an error rather than crash | [M3.1a](#m3-1a) |
+| <a id="l57"></a>[L57][lessons-formats] | Loft threw away the thrust curves stored inside a `.ork` archive | [M3.1a](#m3-1a), [M3.1c](#m3-1c) |
 | <a id="l44"></a>[L44][lessons-motors] | Loft's inertia was pitch only, with simplified formulas, and zero for rings and masses | [M1.4a](#m1-4a) |
 | <a id="l45"></a>[L45][lessons-motors] | Loft put a hollow transition's centre of gravity at the solid's centroid | [M1.4a](#m1-4a) |
 | <a id="l46"></a>[L46][lessons-motors] | Loft never read fin tabs (100 to 120 g lost on two designs), and rail buttons weighed nothing | [M1.4a](#m1-4a) |
@@ -336,8 +343,10 @@ is the milestone that added or will add that test.
 [adr-048]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-048-what-a-marched-flare-is-worth-measured-against-tn-d-4865s-model-2-2026-09-20
 [adr-049]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-049-what-a-step-in-radius-costs-and-why-the-obvious-fix-is-not-taken-yet-2026-09-20
 [adr-050]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-050-a-reduced-element-is-read-by-the-generalized-method-wherever-it-has-a-tangent-cone-of-its-own-2026-09-20
+[adr-051]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-051-m31-split-and-the-ork-document-kept-whole-rather-than-interpreted-2026-09-20
 [decisions]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md
 [lessons]: https://github.com/nrdptel/hpr-sim/blob/main/docs/research/loft-lessons.md
+[lessons-formats]: https://github.com/nrdptel/hpr-sim/blob/main/docs/research/loft-lessons.md#file-formats
 [lessons-motors]: https://github.com/nrdptel/hpr-sim/blob/main/docs/research/loft-lessons.md#motors-mass-and-design-checks
 [lessons-physics]: https://github.com/nrdptel/hpr-sim/blob/main/docs/research/loft-lessons.md#physics-and-numerics
 [lessons-tests]: https://github.com/nrdptel/hpr-sim/blob/main/docs/research/loft-lessons.md#tests-worth-porting-closed-forms-lofts-tolerances-were-loose
