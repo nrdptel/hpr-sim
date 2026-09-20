@@ -3710,19 +3710,25 @@ the method at all.
     and then read that branch, so the *extra* the holding removes stops at potential flow's
     `2 (A_aft − A_fore)/A_fore`. The two reads are equal at 16°, so this adds a kink, never a
     jump (`holding_the_correlation_stops_at_potential_flow`).
-    - It bites when the aft radius is under `1 − √(M² − 1)/1.107` of the fore radius: two fifths
-      at Mach 1.2, a quarter at 1.3, a twentieth at 1.45, never above Mach 1.49. The table starts
-      late on such shapes, so in practice only an aft radius near a tenth reaches it, over about
-      0.06 Mach where the join is barely open; it moves a printed coefficient by at most about
-      0.01 per radian on the boattail's cross-section, and no committed design reaches it.
+    - It bites when the aft radius is under about `1 − √(M² − 1)/1.11` of the fore radius (the
+      constant is 0.635 over `2 tan 16°`, from a curve traced to ±0.0003 per degree, so it is
+      good to about a percent): two fifths at Mach 1.2, a quarter at 1.3, a twentieth at 1.45,
+      none above Mach 1.4915. Swept over boattails of 16.2° to 50° narrowing to between a
+      fiftieth and a quarter of the fore radius, it reaches an aft radius of a quarter, binds
+      over bands up to 0.154 Mach, and moves a printed coefficient by at most 0.046 per radian on
+      the boattail's cross-section (50°, a fiftieth, Mach 1.404). No committed design reaches it —
+      the steepest, Calisto's 18.4°, has an aft radius 0.685 of its fore radius against the 0.40
+      the bound needs even at Mach 1.2. All four figures are pinned by
+      `what_the_potential_flow_bound_reaches`.
     - It does **not** bound the correlation itself. A boattail's read at its own length is used as
       published, wherever it sits — a genuinely long one reads the same near-Mach-1 branch
       unbounded (a 4° boattail to 0.6 of the radius reads 1.29 times Munk at Mach 1.5). The
       extrapolation list in the guide therefore names longer boattails as well as steeper,
       shorter and narrower ones.
-    - Two things are left open. Where a steep boattail's own read already passes potential flow,
-      the floor is that read and the hold contributes nothing — no shape reaches that today, since
-      the table starts later than the condition needs, which is luck rather than design. And when
+    - Two things are left open. Where a boattail's **own** read already passes potential flow the
+      bound does not clip it — that is the correlation as published — so the 16° hold contributes
+      nothing there and the boattail flies an unvalidated extrapolation. It is live from about
+      16.2° narrowing to a fiftieth of the radius, from Mach 1.42, and is pinned as such. And when
       the bound binds, hpr reports slender-body theory's size at Washington and Pettis's station,
       which for a cone differs from slender-body theory's own by up to about a tenth of the
       boattail's length.

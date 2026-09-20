@@ -646,12 +646,22 @@ Be clear about what this does and does not do. A boattail's read **at its own le
 clipped, wherever it sits — that is the correlation as published, and a genuinely long boattail
 reads the same near-Mach-1 branch with no bound at all. A 4° boattail to 0.6 of the radius reads
 1.29 times Munk's line at Mach 1.5, and hpr flies it. Only the length the 16° hold invents is
-capped. The bound bites when the aft radius is under `1 − √(M² − 1)/1.107` of the fore radius —
-two fifths at Mach 1.2, a quarter at 1.3, a twentieth at 1.45, never above Mach 1.49 — and because
-the method's table starts late on such shapes, in practice only an aft radius near a tenth reaches
-it, over a band about 0.06 Mach wide where the join is barely open. It changes a printed
-coefficient by at most about 0.01 per radian on the boattail's cross-section, and no committed
-design reaches it at all.
+capped. The bound bites when the aft radius is under about `1 − √(M² − 1)/1.11` of the fore
+radius — two fifths at Mach 1.2, a quarter at 1.3, a twentieth at 1.45, none above Mach 1.4915 —
+and the method's table has to have started, which on such shapes it barely has.
+
+Swept over boattails of 16.2° to 50° narrowing to between a fiftieth and a quarter of the fore
+radius (`what_the_potential_flow_bound_reaches`), the bound reaches an aft radius of a quarter, it
+binds over bands up to 0.154 Mach wide, and at most it moves a printed coefficient by **0.046 per
+radian** on the boattail's cross-section — a 50° boattail to a fiftieth of the radius, at Mach
+1.404. No committed design comes near: the steepest is Calisto's 18.4°, whose aft radius is 0.685
+of its fore radius, where the bound would need under 0.40 even at Mach 1.2.
+
+One more thing is worth saying plainly. Just past 16°, a boattail deep enough that **its own** read
+already passes potential flow keeps that read, since the bound never clips a boattail's own
+length — so there the hold does nothing at all. That is live, not hypothetical: it starts at about
+16.2° narrowing to a fiftieth of the radius, from Mach 1.42. Nothing measured says what such a
+boattail carries.
 
 **How far to trust the 16°.** It is Cubbage's, measured at Mach 0.6 to 1.28 and on *drag*, and it
 is used here on the normal force from Mach 1.2 up. A shoulder turns the flow through a

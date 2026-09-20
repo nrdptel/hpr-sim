@@ -3021,6 +3021,99 @@ mod tests {
         );
     }
 
+    /// How far the potential-flow bound reaches, measured rather than argued: the largest change
+    /// it makes to a printed coefficient, the widest band of Mach it binds over, the largest aft
+    /// radius that reaches it, and whether the floor — a boattail whose own read already passes
+    /// potential flow, where the hold contributes nothing — is live. The guide and ADR-040 quote
+    /// these numbers, so they are pinned here.
+    #[test]
+    fn what_the_potential_flow_bound_reaches() {
+        let fore_radius_m = 0.027_f64;
+        let mut worst = (0.0_f64, 0.0_f64, 0.0_f64, 0.0_f64);
+        let mut widest_band = (0.0_f64, 0.0_f64, 0.0_f64);
+        let mut largest_ratio = 0.0_f64;
+        let mut floor_live: Option<(f64, f64, f64)> = None;
+        for angle_deg in [16.2_f64, 20.0, 30.0, 40.0, 50.0] {
+            for ratio in [0.02_f64, 0.1, 0.25] {
+                let aft_radius_m = ratio * fore_radius_m;
+                let drop_m = fore_radius_m - aft_radius_m;
+                let length_m = drop_m / angle_deg.to_radians().tan();
+                let mut rocket = finned_rocket(4);
+                rocket.stages[0].components[2].part =
+                    body_part(length_m, fore_radius_m, aft_radius_m);
+                rocket.stages[0].components[3].part = body_part(0.3, aft_radius_m, aft_radius_m);
+                let flown = model(&rocket);
+                let Some(table) = flown.supersonic_body() else {
+                    continue;
+                };
+                let per_area = PI * fore_radius_m * fore_radius_m / flown.reference_area_m2();
+                let ceiling = 2.0 * (ratio * ratio - 1.0);
+                let read = |mach: f64, length: f64| {
+                    crate::supersonic_boattail::wp_slope(mach, fore_radius_m, aft_radius_m, length)
+                        .unwrap()
+                };
+                let (mut first, mut last) = (f64::NAN, f64::NAN);
+                let mut mach = table.join_start_mach;
+                while mach <= 1.55 {
+                    let held = read(mach, drop_m / SEPARATION_ONSET_RAD.tan());
+                    let at_true = read(mach, length_m);
+                    let bounded = held.max(at_true.min(ceiling));
+                    // What the hold alone would give, which is what the bound holds back.
+                    if bounded > held + 1e-12 {
+                        if first.is_nan() {
+                            first = mach;
+                        }
+                        last = mach;
+                        largest_ratio = largest_ratio.max(ratio);
+                        let moved = (bounded - held).abs() * per_area * table.weight(mach);
+                        if moved > worst.0 {
+                            worst = (moved, angle_deg, ratio, mach);
+                        }
+                        // The floor: the boattail's own read is already past potential flow, so
+                        // the hold is doing nothing at all.
+                        if at_true < ceiling && floor_live.is_none() {
+                            floor_live = Some((angle_deg, ratio, mach));
+                        }
+                    }
+                    mach += 0.002;
+                }
+                if !first.is_nan() && last - first > widest_band.0 {
+                    widest_band = (last - first, angle_deg, ratio);
+                }
+            }
+        }
+        // The numbers the guide and ADR-040 quote, over the shapes swept above: boattails of
+        // 16.2° to 50° narrowing to between a fiftieth and a quarter of the fore radius.
+        assert!(
+            (worst.0 - 0.046).abs() < 0.002,
+            "the bound moves a printed coefficient by at most {:.4} per rad, at {}° to {} of the \
+             radius at Mach {:.3}",
+            worst.0,
+            worst.1,
+            worst.2,
+            worst.3
+        );
+        assert!(
+            (widest_band.0 - 0.154).abs() < 0.005,
+            "the widest band it binds over is {:.3} Mach, at {}° to {} of the radius",
+            widest_band.0,
+            widest_band.1,
+            widest_band.2
+        );
+        assert!(
+            (largest_ratio - 0.25).abs() < 1e-12,
+            "the largest aft radius it reaches is {largest_ratio} of the fore radius"
+        );
+        // The floor is live, not hypothetical: just past the hold's own angle, a boattail deep
+        // enough that its own read already passes potential flow keeps that read, and the hold
+        // does nothing. ADR-040 records it rather than claiming no shape reaches it.
+        let (angle, ratio, mach) = floor_live.expect("the floor case, which the ADR records");
+        assert!(
+            (angle - 16.2).abs() < 1e-12 && (ratio - 0.02).abs() < 1e-12 && mach < 1.43,
+            "the floor first appears at {angle}°, {ratio} of the radius, Mach {mach}"
+        );
+    }
+
     /// Footnote 8's size, by hand, on a boattail **and the tube behind it**
     /// ([issue #90](https://github.com/nrdptel/hpr-sim/issues/90)). On each straight element the
     /// method's loading is `Λ(x) = (1 − e^(−η)) Λ_c + e^(−η) Λ₂`, `x` axial from its corner, and
