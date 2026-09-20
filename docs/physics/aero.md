@@ -1531,7 +1531,9 @@ thousandths of a degree on the rocket measured here, nearly a degree on the body
 [Where a flare's march stops](#where-a-flares-march-stops) — a pointed 2.75° cone and five
 calibres of tube, whose radius is nearly four times as large.
 
-**What a flare that small does to the method.** The march fixes the pressure just behind each
+**What a flare that small does to the method.** *The march* is the walk along the
+[tangent body](#bodies-faster-than-sound)'s straight elements, from the nose tip aft, that the
+method makes. It fixes the pressure just behind each
 corner from the [Prandtl–Meyer](../glossary.md#prandtlmeyer-expansion) turn there, and then lets it
 relax along the element toward the pressure on that element's [tangent
 cone](#bodies-faster-than-sound), as
@@ -1641,7 +1643,7 @@ that, and both are gone:
 
 | drawing this | was worth | is worth |
 |---|---|---|
-| a flare of 0.05882052°, the band's steep edge, at Mach 3 and 4° | −8.30% of the normal force and 1.16 calibres | nothing |
+| a flare of 0.05882052°, the band's steep edge, at Mach 3 and 4° | −8.30% of the normal force and 1.16 [calibres](../glossary.md#calibre-caliber) | nothing |
 | a flare of 0.00090182°, which lifted the table's start from Mach 1.2 to Mach 2.2, at Mach 2 and 4° | −4.62% and 0.75 calibres | nothing |
 
 The sizes in the middle column are still measured, because they are the size of the fallback the
