@@ -613,11 +613,10 @@
       *Done when:* the steepest flare it marches is bisected to f64 resolution over Mach, tests pin it
       and what stops it, and an ADR records what happens where the flare's shock is detached.
       *Result:* met (ADR-045). The edge is the corner's **isentropic** turn running out, not the
-      shock detaching, and is neither above nor below it: 11.9312175° at Mach 1.5 against a wedge's
-      12.1126689°, 26.4714031° at Mach 2 against its 22.9735318°, crossing at Mach 1.547787962528
-      (13.346819°), then the cone tables' 30° from Mach 2.129702032593. So a march that answers is no
-      evidence of attachment: TN D-4865's 18.5° flare marches from 1.721760, the wedge limit
-      reaching it at 1.767575.
+      shock detaching, and lands either side of a wedge's limit: 11.9312175° at Mach 1.5 against
+      12.1126689°, 26.4714031° at Mach 2 against 22.9735318°, then the cone tables' 30° from Mach
+      2.129702032593. Which side is the body's doing — take the tube away and Mach 1.5 gives
+      14.194333° — so a march that answers is no evidence of attachment.
     - [ ] **M1.8e17 The flare through the method** (the second of the old e14's three, ADR-045;
       M1.8e14 says the attachment test has to be chosen, not read off the march's own refusal).
       *Done when:* a flared body flies the method where the flare's shock is attached, with no jump
@@ -626,7 +625,7 @@
       2.75° blunted cone with an 18.5° flare; its fig. 8 carries normal force and pitching moment
       from Mach 1.50 to 4.63, integrated from the pressures its tables VII to XII print, and from Mach
       2.96 up its boundary layer separates ahead of the juncture. *Done when:* those readings are
-      committed with their provenance, and the guide says what a marched flare is worth.
+      committed with their provenance, and the guide says what it is worth and leaves out.
     - [ ] **M1.8e15 The step in radius.** A step is a discontinuous profile, which the march refuses
       outright, so unlike the flare it needs a model of its own rather than a decision about one
       that exists. *Done when:* #87 closed or narrowed to the step alone, its measured size in an

@@ -4151,18 +4151,20 @@ march itself does on either side of it. NASA TN D-4865 tested exactly this shape
 Mach 1.50 run is past attachment even in theory.
 
 **Decision.** Measure the edge before moving it. M1.8e14 bisects, to f64 resolution, the steepest
-flare the method marches over Mach, on TN D-4865 model 2's proportions (a 2.75° cone, a tube, a
-conical flare; the method is inviscid, so only the angles and the ratios of lengths to radii
-matter). Two tests in `crates/hpr-aero/src/shock_expansion.rs` pin the edge and what makes it:
+flare the method marches over Mach, on a pointed 2.75° cone with five calibres of tube and a
+conical flare. Both angles are TN D-4865 model 2's; the layout is not — that model is blunt-nosed
+with no tube — and the edge depends on the body ahead of the flare, which is what sets the flow
+reaching it. Two tests in `crates/hpr-aero/src/shock_expansion.rs` pin the edge and what makes it:
 `a_flare_marches_to_the_isentropic_turn_not_to_detachment` and
 `past_mach_2_13_the_flare_stops_where_the_cone_tables_do`.
 
 **What the edge is made of.** Two different things, one below Mach 2.13 and one above.
 
-- **The corner's isentropic turn.** Second-order shock-expansion turns every corner with Prandtl
-  and Meyer (TN 3527 eq. 3), so the march stops where the turn would take the flow reaching the
-  flare to Mach 1: not where an oblique shock would detach. The two are different angles, and
-  neither bounds the other.
+- **The corner's isentropic turn.** Second-order shock-expansion fixes the pressure just behind a
+  corner from the Prandtl and Meyer turn there (TN 3527 pp. 7-8, the first of the three conditions
+  on eq. 3; `ν` itself is NACA 1135 eq. 171c), so the march stops where the turn would take the
+  flow reaching the flare to Mach 1: not where an oblique shock would detach. The two are different
+  angles, and neither bounds the other.
 
   | free stream | the method marches to | a wedge's shock detaches at (NACA 1135) | the method is |
   |---|---|---|---|
@@ -4181,9 +4183,10 @@ matter). Two tests in `crates/hpr-aero/src/shock_expansion.rs` pin the edge and 
 **What happens where the shock is detached.** The march keeps marching, and returns a number. It
 is a number from an isentropic compression through a corner that a real flow crosses through a
 detached bow shock standing ahead of the juncture, with a subsonic pocket behind it, so it is
-wrong in a way the march cannot report. For the report's own 18.5° flare the band is narrow but
-real: the method answers from **Mach 1.721760**, and a wedge's shock reaches 18.5° only at **Mach
-1.767575**. TN D-4865's Mach 1.50 run is below both, where the method refuses outright.
+wrong in a way the march cannot report. Taking a wedge's limit as the stand-in, the band on the
+body above is narrow but real for an 18.5° flare, the report's angle: the method answers from
+**Mach 1.721760**, and a wedge's shock reaches 18.5° only at **Mach 1.767575**. TN D-4865's Mach
+1.50 run is below both, where the method refuses outright.
 
 **Consequences.**
 

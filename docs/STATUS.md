@@ -40,8 +40,8 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
   crossing; the rest of the old e13 is **M1.8e16**, last because blocked.
 - **M1.8e14** (ADR-045): the old e14 split into three; **M1.8e17 (the flare through the method)
   then M1.8e18 (the readings and the guide) are next**. The march's edge is the corner's isentropic
-  turn running out, not the shock detaching — short of the wedge's limit at Mach 1.5, past it at
-  Mach 2, and the cone tables' 30° from Mach 2.1297 — so **e17 must choose an attachment test**
+  turn running out, not the shock detaching, landing either side of a wedge's limit depending on
+  the tube ahead of the flare — so **e17 must choose an attachment test**
   rather than read one off the march's refusal, and the wedge's limit is a conservative stand-in,
   not the flare's own boundary. #97: the long model's M1.8a readings may be biased.
 - **M2.2's OpenRocket oracle** (ADR-035): orhelper is dropped, so decide how to drive the jar when
@@ -57,8 +57,8 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
 ## Done log (newest first, keep about 15)
 
 - 2026-09-20: M1.8e14 Where the flare's march stops (ADR-045): the corner's isentropic turn running
-  out, not the shock detaching — short of the wedge's limit at Mach 1.5, past it at Mach 2, and the
-  cone tables' 30° from Mach 2.1297. The rest of the old e14 is M1.8e17 and M1.8e18, next up.
+  out, not the shock detaching; which side of a wedge's limit it lands on is the tube's doing. The
+  rest of the old e14 is M1.8e17 and M1.8e18, next up.
 
 - 2026-09-20: M1.8e13 What the answer follows when it follows the mesh (ADR-044): a crossing of the
   tangent cone, not a reduced element; over the sweep's three meshes the 27 readings without one

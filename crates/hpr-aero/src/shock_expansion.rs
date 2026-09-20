@@ -3098,9 +3098,10 @@ mod tests {
             }
         }
     }
-    /// A flare of `flare_deg` behind TN D-4865 model 2's proportions: its 2.75° cone, a tube, and
-    /// a conical flare. Lengths are the report's shape, not its size: the method is inviscid, so
-    /// only the angles and the ratios of lengths to radii matter.
+    /// A pointed 2.75° cone, five calibres of tube, and a conical flare of `flare_deg`. The two
+    /// angles are TN D-4865 model 2's; the layout is **not** (that model is blunt-nosed and has no
+    /// tube), and the edge below depends on the tube, which sets the flow reaching the flare. The
+    /// method is inviscid, so only angles and ratios of lengths to radii matter.
     fn flared_body(flare_deg: f64) -> Vec<BodySegment> {
         let radius_m = 0.1;
         let flare_length_m = 0.3;
@@ -3139,6 +3140,10 @@ mod tests {
 
     /// The steepest flare the method marches at `mach`, bisected to f64 resolution: the last angle
     /// that returns a slope, with the first that doesn't a bit above it.
+    ///
+    /// The marchable set is not an interval — a band of very shallow flares, under a degree on
+    /// this body, is refused because the pressure behind the corner moves away from its tangent
+    /// cone's — so the bracket's lower end is asserted to march rather than assumed.
     fn steepest_flare_deg(mach: f64) -> f64 {
         let (mut lo, mut hi) = (1.0_f64, 45.0_f64);
         assert!(
@@ -3161,10 +3166,11 @@ mod tests {
 
     /// The method's flare limit is the corner's **isentropic** turn running out — the flow reaching
     /// the flare turned to Mach 1 — and not the shock detaching, which is a different angle on
-    /// either side of it (M1.8e14a, ADR-045 in `docs/DECISIONS.md`).
+    /// either side of it (M1.8e14, ADR-045 in `docs/DECISIONS.md`).
     ///
-    /// Second-order shock-expansion turns every corner with Prandtl and Meyer (TN 3527 eq. 3), so
-    /// the march stops where `ν` reaches zero. The wedge's largest deflection
+    /// Second-order shock-expansion fixes the pressure just behind a corner from the Prandtl and
+    /// Meyer turn there (TN 3527 pp. 7-8, the first of eq. 3's three conditions; `ν` itself is
+    /// NACA 1135 eq. 171c), so the march stops where `ν` reaches zero. The wedge's largest deflection
     /// ([`crate::blunt_tip::wedge_detachment_angle_rad`], NACA 1135) is the angle past which no
     /// attached shock exists at all. Neither bounds the other: at Mach 1.5 the method stops 0.18°
     /// **short** of detachment, and at Mach 2 it marches 3.5° **past** it, so a march that returns
@@ -3219,7 +3225,7 @@ mod tests {
 
     /// Above Mach 2.1297 the flare's limit is not the flow at all: it is where the cone tables
     /// stop (NASA SP-3007 Table 2, 30°), a limit of the reference data and not of the physics
-    /// (M1.8e14a, ADR-045 in `docs/DECISIONS.md`).
+    /// (M1.8e14, ADR-045 in `docs/DECISIONS.md`).
     ///
     /// The crossing is bisected to f64 resolution. Above it every Mach number gives the same
     /// edge, 30° plus the millionth of a degree [`cone_normal_force_slope`] admits for the

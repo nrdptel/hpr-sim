@@ -394,7 +394,6 @@ tail, the drag pages use its length over its rise in diameter, so a conical shou
 fineness of the cone with the same surface angle. See
 [Aerodynamics](physics/aero.md#bodies-of-revolution).
 
-
 ## Flare
 
 A transition that widens toward the aft end, the opposite of a [boattail](#boattail): a conical
@@ -403,6 +402,7 @@ it moves the [centre of pressure](#centre-of-pressure-cp) aft, which is why one 
 for stability. hpr's supersonic method will march a flare but no rocket flies one through it yet;
 where the march stops, and why that is not where the flare's shock detaches, is in
 [Where a flare's march stops](physics/aero.md#where-a-flares-march-stops).
+
 ## Flow separation
 
 Air leaving a surface it can't follow, such as the aft end of a steep [boattail](#boattail), and
