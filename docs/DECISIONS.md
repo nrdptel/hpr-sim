@@ -3703,18 +3703,29 @@ the method at all.
     rocket the two rules differ by 1.35 calibres of body centre of pressure at 30° at Mach 1.5,
     0.91 at Mach 2, 0.75 at Mach 3 and 0.67 at Mach 4.63 — largest at the low speeds a hobby
     rocket flies — and both ends are pinned by a test.
-  - **One further bound, on the holding only.** Reading a longer boattail walks the correlation's
-    argument toward zero, where Fig. 5's curve is drawn from model No. 1's Mach 1.04 to 1.19
-    points and rises past Munk's slender-body line — which RD-TM-68-5 plots there for comparison
-    at subsonic speeds (p. 3), not as a supersonic bound. hpr declines to extrapolate that
-    transonic branch onto a long supersonic boattail, so the *extra* the holding removes stops at
-    potential flow's `2 (A_aft − A_fore)/A_fore`. A boattail's read at its own angle is never
-    clipped, wherever it sits: that is the measurement. The two reads are equal at 16°, so the
-    bound adds a kink, never a jump. It reaches only deep boattails (aft radius under about a
-    fifth of the fore radius) below about Mach 1.45, and no committed design reaches it
-    (`holding_the_correlation_stops_at_potential_flow`). When it binds, hpr reports slender-body
-    theory's size at Washington and Pettis's station, which for a cone differs from slender-body
-    theory's own by up to 0.08 of the boattail's length.
+  - **One further bound, on the invented length only.** Reading a longer boattail walks the
+    correlation's argument toward zero, where Fig. 5's curve comes from the report's lowest
+    supersonic runs and rises past Munk's slender-body line — which RD-TM-68-5 plots there for
+    comparison at subsonic speeds (p. 3), not as a supersonic bound. hpr does not invent a length
+    and then read that branch, so the *extra* the holding removes stops at potential flow's
+    `2 (A_aft − A_fore)/A_fore`. The two reads are equal at 16°, so this adds a kink, never a
+    jump (`holding_the_correlation_stops_at_potential_flow`).
+    - It bites when the aft radius is under `1 − √(M² − 1)/1.107` of the fore radius: two fifths
+      at Mach 1.2, a quarter at 1.3, a twentieth at 1.45, never above Mach 1.49. The table starts
+      late on such shapes, so in practice only an aft radius near a tenth reaches it, over about
+      0.06 Mach where the join is barely open; it moves a printed coefficient by at most about
+      0.01 per radian on the boattail's cross-section, and no committed design reaches it.
+    - It does **not** bound the correlation itself. A boattail's read at its own length is used as
+      published, wherever it sits — a genuinely long one reads the same near-Mach-1 branch
+      unbounded (a 4° boattail to 0.6 of the radius reads 1.29 times Munk at Mach 1.5). The
+      extrapolation list in the guide therefore names longer boattails as well as steeper,
+      shorter and narrower ones.
+    - Two things are left open. Where a steep boattail's own read already passes potential flow,
+      the floor is that read and the hold contributes nothing — no shape reaches that today, since
+      the table starts later than the condition needs, which is luck rather than design. And when
+      the bound binds, hpr reports slender-body theory's size at Washington and Pettis's station,
+      which for a cone differs from slender-body theory's own by up to about a tenth of the
+      boattail's length.
   - **What is not known.** Nothing measures a separated boattail's supersonic normal force, so
     neither limit is validated. The 16° itself is Cubbage's, from transonic *drag* data (Mach 0.6
     to 1.28), used here from Mach 1.2 up, where a shoulder's Prandtl–Meyer turn makes separation

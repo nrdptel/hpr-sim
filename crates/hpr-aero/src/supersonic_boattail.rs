@@ -19,10 +19,13 @@
 //! **What it covers.** The models were conical boattails "with diameter ratios of 0.72 to 0.86
 //! and angles from 4 to 10 degrees" (p. 1), 0.82 to 1.18 diameters long, behind a cylinder; the
 //! correlation's points span `F`'s argument from about 0.3 to 5.4, its curve to 6.1. Past 6.1 hpr
-//! holds its end, an extrapolation, as is any boattail steeper, shorter or narrower than those
-//! tested. The data scatter about the curve by up to about 15%. Slender-body theory gives a
-//! boattail `2[(D_B/D)² − 1]` per radian at any Mach number (Munk's value, the dashed line on
-//! Fig. 5); the measured increment is 0.24 to 0.47 of that at the Arcas Robin's Mach numbers.
+//! holds its end, an extrapolation, as is any boattail steeper, shorter, **longer** or narrower
+//! than those tested: a long one reads the curve near zero argument, which comes from the
+//! report's lowest supersonic runs. The data scatter about the curve by up to about 15%.
+//! Slender-body theory gives a boattail `2[(D_B/D)² − 1]` per radian at any Mach number (Munk's
+//! value, which the report plots for comparison at subsonic speeds, p. 3). The measured curve
+//! runs from 0.23 to 1.58 times it, crossing at an argument of 0.635; it is 0.24 to 0.47 of it at
+//! the Arcas Robin's Mach numbers.
 //!
 //! See `docs/physics/aero.md` (*The body faster than sound in a flight*).
 

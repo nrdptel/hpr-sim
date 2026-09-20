@@ -534,9 +534,10 @@ For a worked example with numbers, see
 What this covers: how a flight uses the method above, from Mach 1.2, and a boattail's measured
 share. How far to trust it: as far as the method's own checks above, for a pointed nose and
 cylinder. A boattail behind them takes Washington and Pettis's measured increment ([WP68]), which
-their data give within about 15% for conical boattails of 4° to 9.5°; a steeper, shorter or
-narrower one, like the Arcas Robin's 15°, is an extrapolation, as is a transition that isn't
-conical (it takes the same correlation from its length and radii). Past 16°, where the flow
+their data give within about 15% for conical boattails of 4° to 9.5°; a steeper, shorter, longer
+or narrower one, like the Arcas Robin's 15°, is an extrapolation, as is a transition that isn't
+conical (it takes the same correlation from its length and radii). A long boattail reads the
+curve near zero argument, which comes from the report's lowest supersonic runs. Past 16°, where the flow
 separates, hpr stops reading the correlation any steeper and holds it there
 ([A steep boattail reads the correlation no steeper than 16°](#the-body-faster-than-sound-in-a-flight),
 [issue #90: how steep a boattail the correlation should cover](https://github.com/nrdptel/hpr-sim/issues/90));
@@ -599,7 +600,9 @@ Mach 2 to 64% at 4.5 ([WP68] Fig. 6, p. 9). A flight gives a boattail the share 
 a cylinder of the boattail's length and fore diameter in its place, plus that increment at that
 centre of pressure (test `the_boattail_takes_washington_and_pettis_increment`). Slender-body theory
 gives the same boattail `2[(D_B/D)² − 1]` at every speed, which is Fig. 5's own subsonic line;
-faster than sound the measured increment is less than half of it, and footnote 8's less again.
+faster than sound the measured increment is less than half of it at the Arcas Robin's speeds
+(0.24 to 0.47), and footnote 8's less again — though the curve is not always below that line:
+across Fig. 5 it runs from 0.23 to 1.58 times it, passing it at an argument of 0.635, near Mach 1.
 
 **A steep boattail reads the correlation no steeper than 16°.** Washington and Pettis measured
 boattails of 4° to 9.5°, where the flow follows the surface. Past about 16° it doesn't: the drag
@@ -633,16 +636,22 @@ more than one at Mach 1.5. hpr takes the forward end of that range (test
 `a_separating_boattail_reads_the_correlation_at_its_steepest_measured_angle` pins both ends).
 
 There is one more bound, on the holding rather than on the measurement. Reading a longer boattail
-walks the correlation's argument `√(M² − 1)/(L_B/D)` toward zero, and near zero Fig. 5's curve is
-drawn from model No. 1's points at Mach 1.04 to 1.19 and rises past Munk's slender-body line —
-which the report plots there for comparison *at subsonic speeds*. Extrapolating that transonic
-branch onto a long supersonic boattail is not something the report supports, so the extra lift the
-holding takes off stops at potential flow's `2 (A_aft − A_fore)/A_fore`. The correlation read at a
-boattail's true angle is never clipped, wherever it sits: that is the measurement
-(`holding_the_correlation_stops_at_potential_flow`). Across Fig. 5 the measured curve runs from
-0.23 to 1.58 times Munk's line, passing it below an argument of 0.63; it is 0.24 to 0.47 of it at
-the Arcas Robin's Mach numbers. In practice the bound reaches only deep boattails — an aft radius
-under about a fifth of the fore radius — below about Mach 1.45; no committed design reaches it.
+walks the correlation's argument `√(M² − 1)/(L_B/D)` toward zero, where Fig. 5's curve comes from
+the report's lowest supersonic runs and rises past Munk's slender-body line — which the report
+plots there for comparison *at subsonic speeds* (p. 3). hpr does not invent a length and then read
+that branch, so the extra the holding takes off stops at potential flow's
+`2 (A_aft − A_fore)/A_fore` (`holding_the_correlation_stops_at_potential_flow`).
+
+Be clear about what this does and does not do. A boattail's read **at its own length** is never
+clipped, wherever it sits — that is the correlation as published, and a genuinely long boattail
+reads the same near-Mach-1 branch with no bound at all. A 4° boattail to 0.6 of the radius reads
+1.29 times Munk's line at Mach 1.5, and hpr flies it. Only the length the 16° hold invents is
+capped. The bound bites when the aft radius is under `1 − √(M² − 1)/1.107` of the fore radius —
+two fifths at Mach 1.2, a quarter at 1.3, a twentieth at 1.45, never above Mach 1.49 — and because
+the method's table starts late on such shapes, in practice only an aft radius near a tenth reaches
+it, over a band about 0.06 Mach wide where the join is barely open. It changes a printed
+coefficient by at most about 0.01 per radian on the boattail's cross-section, and no committed
+design reaches it at all.
 
 **How far to trust the 16°.** It is Cubbage's, measured at Mach 0.6 to 1.28 and on *drag*, and it
 is used here on the normal force from Mach 1.2 up. A shoulder turns the flow through a

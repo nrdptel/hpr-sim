@@ -301,14 +301,14 @@ impl SupersonicRun {
             let read = |length_m| wp_slope(mach, fore_radius_m, boattail.aft_radius_m, length_m);
             let at_true_angle = read(boattail.length_m).ok()?;
             let held = read(boattail.length_m.max(drop_m / SEPARATION_ONSET_RAD.tan())).ok()?;
-            // How far the holding may go. Reading a longer boattail walks left along Fig. 5,
-            // toward the peak near Mach 1 that the curve's own points come from (model No. 1 at
-            // Mach 1.04 to 1.19, `crate::supersonic_boattail`), and that branch passes Munk's
-            // slender-body line, which RD-TM-68-5 plots for comparison at subsonic speeds
-            // (p. 3). hpr does not extrapolate the transonic branch onto a long supersonic
-            // boattail: the *extra* the holding removes stops at potential flow's
-            // `2 (A_aft − A_fore)/A_fore`. The correlation read at the boattail's true angle is
-            // never clipped, whatever it says — that is the measurement. At 16° the two reads are
+            // How far the holding may go. Reading a longer boattail walks Fig. 5's argument
+            // toward zero, where the curve comes from the report's lowest supersonic runs
+            // (`crate::supersonic_boattail`) and passes Munk's slender-body line, which
+            // RD-TM-68-5 plots for comparison at subsonic speeds (p. 3). hpr does not invent a
+            // length and then read that branch: the *extra* the holding removes stops at
+            // potential flow's `2 (A_aft − A_fore)/A_fore`. A boattail's read at its own length
+            // is never clipped, whatever it says — that is the correlation as published, and a
+            // genuinely long boattail reads the same branch unbounded. At 16° the two reads are
             // equal, so this is continuous in shape.
             let ratio = boattail.aft_radius_m / fore_radius_m;
             let measured = held.max(at_true_angle.min(2.0 * (ratio * ratio - 1.0)));
@@ -2909,9 +2909,11 @@ mod tests {
     /// the boattail's true angle is never clipped: that is the measurement, wherever it sits.
     #[test]
     fn holding_the_correlation_stops_at_potential_flow() {
-        // A 30° boattail to a tenth of the radius at Mach 1.3: held −2.256, true −1.085, and
-        // potential flow −1.980 per radian on the boattail's own area, so the bound bites.
-        let (fore_radius_m, aft_radius_m, mach) = (0.027_f64, 0.0027_f64, 1.3_f64);
+        // A 30° boattail to a twentieth of the radius at Mach 1.42: held −2.077, true −0.981
+        // and potential flow −1.995 per radian on the boattail's own area, so the bound bites.
+        // The window is narrow — this shape's table starts at Mach 1.3906 and the held read
+        // stops passing potential flow at 1.4509 — so the Mach is checked against the join.
+        let (fore_radius_m, aft_radius_m, mach) = (0.027_f64, 0.05 * 0.027_f64, 1.42_f64);
         let slender = 2.0 * ((aft_radius_m / fore_radius_m).powi(2) - 1.0);
         let length_m = (fore_radius_m - aft_radius_m) / 30.0_f64.to_radians().tan();
         let mut rocket = finned_rocket(4);
@@ -2921,6 +2923,13 @@ mod tests {
         let a_ref = steep.reference_area_m2();
         let per_boattail_area = PI * fore_radius_m * fore_radius_m / a_ref;
         let table = steep.supersonic_body().expect("the method covers it");
+        // Inside the table: below its start `share` clamps to the lead row, and the numbers
+        // above would belong to a Mach number the assertions never touch.
+        assert!(
+            mach > table.join_start_mach,
+            "Mach {mach} is below the table's start, {}",
+            table.join_start_mach
+        );
         let cylinder = ShockExpansionBody::new(
             &[
                 BodySegment::Profile {
@@ -2959,8 +2968,8 @@ mod tests {
         )
         .unwrap();
         assert!(
-            held < slender - 0.2,
-            "the held read {held} must pass the bound to pin it"
+            held < slender - 0.05,
+            "the held read {held} must pass the bound's {slender} to pin it"
         );
         // And a boattail inside the measured angles keeps its own read, even where that read is
         // itself past potential flow: the bound belongs to the holding, not to the measurement.
