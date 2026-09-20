@@ -3021,23 +3021,36 @@ mod tests {
         );
     }
 
-    /// How far the potential-flow bound reaches, measured rather than argued: the largest change
-    /// it makes to a printed coefficient, the widest band of Mach it binds over, the largest aft
-    /// radius that reaches it, and whether the floor — a boattail whose own read already passes
-    /// potential flow, where the hold contributes nothing — is live. The guide and ADR-040 quote
-    /// these numbers, so they are pinned here.
+    /// How far the potential-flow bound reaches, read back out of the table rather than
+    /// recomputed: over every boattail the method will fly, from the hold's own angle to the
+    /// steepest it accepts, the share a rocket flies never passes potential flow, and the most
+    /// the bound holds back is the figure the guide quotes. Deleting the bound fails this.
     #[test]
     fn what_the_potential_flow_bound_reaches() {
         let fore_radius_m = 0.027_f64;
+        let ogive = nose(NoseShape::Ogive { radius_ratio: 1.0 }, 0.25, 0.027);
+        let Part::NoseCone(ogive) = ogive else {
+            unreachable!("`nose` builds a nose cone")
+        };
         let mut worst = (0.0_f64, 0.0_f64, 0.0_f64, 0.0_f64);
-        let mut widest_band = (0.0_f64, 0.0_f64, 0.0_f64);
-        let mut largest_ratio = 0.0_f64;
-        let mut floor_live: Option<(f64, f64, f64)> = None;
-        for angle_deg in [16.2_f64, 20.0, 30.0, 40.0, 50.0] {
-            for ratio in [0.02_f64, 0.1, 0.25] {
+        let mut steepest_tabled = 0.0_f64;
+        let mut floor_angles: Vec<f64> = Vec::new();
+        for angle_deg in [16.0_f64, 16.5, 17.0, 17.5, 30.0, 50.0, 53.0, 54.0] {
+            for ratio in [0.02_f64, 0.25, 0.3] {
                 let aft_radius_m = ratio * fore_radius_m;
                 let drop_m = fore_radius_m - aft_radius_m;
                 let length_m = drop_m / angle_deg.to_radians().tan();
+                let held_length_m = drop_m / SEPARATION_ONSET_RAD.tan();
+                let ceiling = 2.0 * (ratio * ratio - 1.0);
+                let read = |mach: f64, length: f64| {
+                    crate::supersonic_boattail::wp_slope(mach, fore_radius_m, aft_radius_m, length)
+                        .unwrap()
+                };
+                // Skip shapes the bound cannot touch at any Mach the table covers: building a
+                // supersonic table is the expensive part of this sweep.
+                if read(1.2, held_length_m) >= ceiling {
+                    continue;
+                }
                 let mut rocket = finned_rocket(4);
                 rocket.stages[0].components[2].part =
                     body_part(length_m, fore_radius_m, aft_radius_m);
@@ -3046,71 +3059,93 @@ mod tests {
                 let Some(table) = flown.supersonic_body() else {
                     continue;
                 };
-                let per_area = PI * fore_radius_m * fore_radius_m / flown.reference_area_m2();
-                let ceiling = 2.0 * (ratio * ratio - 1.0);
-                let read = |mach: f64, length: f64| {
-                    crate::supersonic_boattail::wp_slope(mach, fore_radius_m, aft_radius_m, length)
-                        .unwrap()
-                };
-                let (mut first, mut last) = (f64::NAN, f64::NAN);
-                let mut mach = table.join_start_mach;
-                while mach <= 1.55 {
-                    let held = read(mach, drop_m / SEPARATION_ONSET_RAD.tan());
-                    let at_true = read(mach, length_m);
-                    let bounded = held.max(at_true.min(ceiling));
-                    // What the hold alone would give, which is what the bound holds back.
-                    if bounded > held + 1e-12 {
-                        if first.is_nan() {
-                            first = mach;
-                        }
-                        last = mach;
-                        largest_ratio = largest_ratio.max(ratio);
-                        let moved = (bounded - held).abs() * per_area * table.weight(mach);
-                        if moved > worst.0 {
-                            worst = (moved, angle_deg, ratio, mach);
-                        }
-                        // The floor: the boattail's own read is already past potential flow, so
-                        // the hold is doing nothing at all.
-                        if at_true < ceiling && floor_live.is_none() {
-                            floor_live = Some((angle_deg, ratio, mach));
+                steepest_tabled = steepest_tabled.max(angle_deg);
+                let a_ref = flown.reference_area_m2();
+                let per_area = PI * fore_radius_m * fore_radius_m / a_ref;
+                // The method's share for a cylinder of the boattail's length in its place, which
+                // the flown share is the increment on top of.
+                let cylinder_body = ShockExpansionBody::new(
+                    &[
+                        BodySegment::Profile {
+                            profile: ogive.profile().unwrap(),
+                        },
+                        BodySegment::Cylinder {
+                            length_m: 0.7,
+                            radius_m: fore_radius_m,
+                        },
+                        BodySegment::Cylinder {
+                            length_m,
+                            radius_m: fore_radius_m,
+                        },
+                    ],
+                    DEFAULT_ELEMENTS_PER_CURVE,
+                )
+                .unwrap();
+                // The shares are computed at the table's rows: its lead row at the join, then
+                // every 0.05 Mach. Between rows the table interpolates, so a printed value can
+                // sit a little past the ceiling beside a row on the floor branch below; the
+                // guarantee belongs to the rows.
+                let mut rows = vec![table.join_start_mach];
+                let mut step = (table.join_start_mach * SUPERSONIC_STEPS_PER_MACH).ceil();
+                while step / SUPERSONIC_STEPS_PER_MACH <= 1.55 {
+                    rows.push(step / SUPERSONIC_STEPS_PER_MACH);
+                    step += 1.0;
+                }
+                for mach in rows {
+                    let Some((share, _)) = table.share(2, mach) else {
+                        break;
+                    };
+                    let cylinder =
+                        cylinder_body.segment_slopes(mach, a_ref).unwrap()[2].slope_per_rad;
+                    let increment = (share - cylinder) / per_area;
+                    if read(mach, length_m) >= ceiling {
+                        // The usual case: the boattail's own read is inside potential flow, so
+                        // the bound is what stops the hold. Read out of the table, the share a
+                        // rocket flies never passes potential flow.
+                        assert!(
+                            increment >= ceiling - 2e-3,
+                            "{angle_deg}° to {ratio} of the radius at Mach {mach}: the boattail \
+                             takes {increment} off, past potential flow's {ceiling}"
+                        );
+                    } else {
+                        // The floor: the boattail's own read already passes potential flow, and
+                        // that read is never clipped, so the hold does nothing here.
+                        assert!(
+                            increment <= ceiling,
+                            "{angle_deg}° to {ratio} at Mach {mach}: {increment} against {ceiling}"
+                        );
+                        if !floor_angles.contains(&angle_deg) {
+                            floor_angles.push(angle_deg);
                         }
                     }
-                    mach += 0.002;
-                }
-                if !first.is_nan() && last - first > widest_band.0 {
-                    widest_band = (last - first, angle_deg, ratio);
+                    // And how much of the holding that costs, against the unbounded read.
+                    let moved = (increment - read(mach, held_length_m)).abs()
+                        * per_area
+                        * table.weight(mach);
+                    if moved > worst.0 {
+                        worst = (moved, angle_deg, ratio, mach);
+                    }
                 }
             }
         }
-        // The numbers the guide and ADR-040 quote, over the shapes swept above: boattails of
-        // 16.2° to 50° narrowing to between a fiftieth and a quarter of the fore radius.
+        // The floor is a sliver just above the hold's own angle, not a whole band of shape.
+        assert_eq!(
+            floor_angles,
+            [16.0, 16.5, 17.0],
+            "the angles where a boattail's own read already passes potential flow"
+        );
+        // The method itself refuses a boattail past about 53°, which is where the sweep ends.
         assert!(
-            (worst.0 - 0.046).abs() < 0.002,
-            "the bound moves a printed coefficient by at most {:.4} per rad, at {}° to {} of the \
-             radius at Mach {:.3}",
+            (steepest_tabled - 53.0).abs() < 1e-12,
+            "the steepest boattail the method tables is {steepest_tabled}°"
+        );
+        assert!(
+            (worst.0 - 0.053).abs() < 0.003,
+            "the bound holds back at most {:.4} per rad, at {}° to {} of the radius at Mach {:.3}",
             worst.0,
             worst.1,
             worst.2,
             worst.3
-        );
-        assert!(
-            (widest_band.0 - 0.154).abs() < 0.005,
-            "the widest band it binds over is {:.3} Mach, at {}° to {} of the radius",
-            widest_band.0,
-            widest_band.1,
-            widest_band.2
-        );
-        assert!(
-            (largest_ratio - 0.25).abs() < 1e-12,
-            "the largest aft radius it reaches is {largest_ratio} of the fore radius"
-        );
-        // The floor is live, not hypothetical: just past the hold's own angle, a boattail deep
-        // enough that its own read already passes potential flow keeps that read, and the hold
-        // does nothing. ADR-040 records it rather than claiming no shape reaches it.
-        let (angle, ratio, mach) = floor_live.expect("the floor case, which the ADR records");
-        assert!(
-            (angle - 16.2).abs() < 1e-12 && (ratio - 0.02).abs() < 1e-12 && mach < 1.43,
-            "the floor first appears at {angle}°, {ratio} of the radius, Mach {mach}"
         );
     }
 

@@ -3711,27 +3711,30 @@ the method at all.
     `2 (A_aft − A_fore)/A_fore`. The two reads are equal at 16°, so this adds a kink, never a
     jump (`holding_the_correlation_stops_at_potential_flow`).
     - It bites when the aft radius is under about `1 − √(M² − 1)/1.11` of the fore radius (the
-      constant is 0.635 over `2 tan 16°`, from a curve traced to ±0.0003 per degree, so it is
-      good to about a percent): two fifths at Mach 1.2, a quarter at 1.3, a twentieth at 1.45,
-      none above Mach 1.4915. Swept over boattails of 16.2° to 50° narrowing to between a
-      fiftieth and a quarter of the fore radius, it reaches an aft radius of a quarter, binds
-      over bands up to 0.154 Mach, and moves a printed coefficient by at most 0.046 per radian on
-      the boattail's cross-section (50°, a fiftieth, Mach 1.404). No committed design reaches it —
-      the steepest, Calisto's 18.4°, has an aft radius 0.685 of its fore radius against the 0.40
-      the bound needs even at Mach 1.2. All four figures are pinned by
-      `what_the_potential_flow_bound_reaches`.
+      constant is the curve's crossing, 0.635, over `2 tan 16°`, from a trace read to ±0.0003 per
+      degree, so it is good to about a percent): two fifths at Mach 1.2, a quarter at 1.3, a
+      twentieth at 1.45, nothing much above Mach 1.49.
+    - What that is worth is measured, not argued. `what_the_potential_flow_bound_reaches` sweeps
+      every boattail the method will fly, reads the shares back out of the table, and pins two
+      things: at the table's rows a boattail never takes off more than potential flow, and the
+      most the bound holds back is 0.053 per radian on the boattail's cross-section, at 53°
+      narrowing to a fiftieth of the radius — the steepest boattail the method accepts, since
+      past about 53° it refuses the body altogether. Deleting the bound fails that test.
+    - No committed design reaches it: the steepest, Calisto's 18.4°, has an aft radius 0.685 of
+      its fore radius against the 0.40 the bound would need even at Mach 1.2.
     - It does **not** bound the correlation itself. A boattail's read at its own length is used as
       published, wherever it sits — a genuinely long one reads the same near-Mach-1 branch
       unbounded (a 4° boattail to 0.6 of the radius reads 1.29 times Munk at Mach 1.5). The
       extrapolation list in the guide therefore names longer boattails as well as steeper,
       shorter and narrower ones.
-    - Two things are left open. Where a boattail's **own** read already passes potential flow the
-      bound does not clip it — that is the correlation as published — so the 16° hold contributes
-      nothing there and the boattail flies an unvalidated extrapolation. It is live from about
-      16.2° narrowing to a fiftieth of the radius, from Mach 1.42, and is pinned as such. And when
-      the bound binds, hpr reports slender-body theory's size at Washington and Pettis's station,
-      which for a cone differs from slender-body theory's own by up to about a tenth of the
-      boattail's length.
+    - Three things are left open. Where a boattail's **own** read already passes potential flow
+      the bound does not clip it — that is the correlation as published — so the 16° hold
+      contributes nothing there and the boattail flies an extrapolation nothing measured checks;
+      the sweep finds that sliver at 16° to 17°, and pins which angles it covers. The bound
+      applies at the table's rows, where the shares are computed, so a printed value between a
+      bounded row and a floor row can sit a little past potential flow. And when the bound binds,
+      hpr reports slender-body theory's size at Washington and Pettis's station, which for a cone
+      differs from slender-body theory's own by up to about a tenth of the boattail's length.
   - **What is not known.** Nothing measures a separated boattail's supersonic normal force, so
     neither limit is validated. The 16° itself is Cubbage's, from transonic *drag* data (Mach 0.6
     to 1.28), used here from Mach 1.2 up, where a shoulder's Prandtl–Meyer turn makes separation
