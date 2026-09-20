@@ -481,7 +481,7 @@ impl ShockExpansionBody {
     /// - [`AeroError::Domain`] for a Mach number that isn't above 1, or a reference area that
     ///   isn't positive.
     /// - [`AeroError::Unsupported`] where the method doesn't hold: a tip cone whose shock
-    ///   detaches, a tangent cone steeper than Fig. 2's 24°, a corner the flow can't turn
+    ///   detaches, a tangent cone steeper than the cone tables' 30°, a corner the flow can't turn
     ///   supersonically, a tip cone whose surface flow is subsonic, an element aft of the nose
     ///   whose pressure moves away from its tangent cone's, or a lift that doesn't sum to a
     ///   positive force; and for a blunt tip, whose elements are laid out at each Mach number, a
@@ -568,7 +568,7 @@ impl ShockExpansionBody {
     ///
     /// - [`AeroError::Domain`] for a Mach number that isn't finite and above 1.
     /// - [`AeroError::Unsupported`] where the march fails, as for [`Self::slope`]: a detached tip
-    ///   shock, a tangent cone past Fig. 2's 24°, a corner the flow can't turn, subsonic surface
+    ///   shock, a tangent cone past the cone tables' 30°, a corner the flow can't turn, subsonic surface
     ///   flow, or an element aft of the nose that would be reduced. An `Ok` count doesn't promise
     ///   that [`Self::slope`] succeeds: it also needs a positive total lift.
     pub fn reduced_elements(&self, mach: f64) -> Result<usize, AeroError> {
@@ -1381,62 +1381,80 @@ fn rk4(theta: f64, y: [f64; 2], h: f64) -> [f64; 2] {
 }
 
 /// The semivertex angles of [`CONE_SLOPES`], degrees.
-const CONE_ANGLES_DEG: [f64; 19] = [
+const CONE_ANGLES_DEG: [f64; 22] = [
     0.0, 1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0, 10.0, 11.0, 12.0, 14.0, 16.0, 18.0, 20.0,
-    22.0, 24.0,
+    22.0, 24.0, 25.0, 27.5, 30.0,
 ];
 
 /// The Mach numbers of [`CONE_SLOPES`]' rows.
 const CONE_MACHS: [f64; 6] = [3.0, 4.0, 5.0, 6.0, 8.0, 10.0];
 
-/// `dC_N/dα` at `α = 0` for cones, per radian on the base area: TN 3527 Fig. 2 (p. 40, from its
-/// ref. 14), read by hand at [`CONE_ANGLES_DEG`] for each of [`CONE_MACHS`] from a 400-dpi render
-/// against the chart's 0.2° by 0.002 grid, to about ±0.001 (±0.0025 below 3°, where the Mach 8
-/// and 10 curves merge; read as crossing, so the values stay ordered in Mach). Interpolated as
-/// [`cone_normal_force_slope`] does, it gives all 12 of Table I's cone-alone values (4.1° to
-/// 9.5°, Mach 3 to 6.28) to their printed two decimals.
-const CONE_SLOPES: [[f64; 19]; 6] = [
+/// `dC_N/dα` at `α = 0` for cones, per radian on the base area, from two sources.
+///
+/// To 24°, TN 3527 Fig. 2 (p. 40, from its ref. 14), read by hand at [`CONE_ANGLES_DEG`] for each
+/// of [`CONE_MACHS`] from a 400-dpi render against the chart's 0.2° by 0.002 grid, to about
+/// ±0.001 (±0.0025 below 3°, where the Mach 8 and 10 curves merge; read as crossing, so the
+/// values stay ordered in Mach). Interpolated as [`cone_normal_force_slope`] does, it gives all
+/// 12 of Table I's cone-alone values (4.1° to 9.5°, Mach 3 to 6.28) to their printed two
+/// decimals.
+///
+/// Past 24°, where the chart stops, the last three columns are J. L. Sims, *Tables for Supersonic
+/// Flow Around Right Circular Cones at Small Angle of Attack*, NASA SP-3007 (1964), Table 2
+/// (printed p. 20), at his own 25°, 27.5° and 30° — the same theory the chart plots (Stone's,
+/// which Sims says gives expressions "identical to those found by Kopal", p. 7; Fig. 2 plots
+/// Kopal's tables), tabulated rather than drawn, on the same base area and for `γ = 1.4`. His
+/// Mach rows include all six of [`CONE_MACHS`] exactly, so nothing is interpolated between
+/// sources. Where the two overlap they agree to about the chart's own reading error: at 22.5°,
+/// the steepest angle both cover, this reading of Fig. 2 and Sims's value differ by 0.0005 to
+/// 0.0021 per radian, the largest at Mach 6 (1.7013 read against his 1.6992) — twice the ±0.001
+/// the chart is read to, so the hand reading is the looser of the two there
+/// (`sims_and_fig_2_agree_where_they_overlap`). The chart's columns are kept below 24° rather
+/// than replaced by Sims's so that nothing already validated moves; M1.8e12 revisits that.
+const CONE_SLOPES: [[f64; 22]; 6] = [
     // Mach 3
     [
         2.000, 1.976, 1.953, 1.931, 1.911, 1.892, 1.874, 1.858, 1.843, 1.831, 1.820, 1.810, 1.799,
-        1.776, 1.750, 1.721, 1.687, 1.648, 1.605,
+        1.776, 1.750, 1.721, 1.687, 1.648, 1.605, 1.5798551, 1.5174588, 1.4497109,
     ],
     // Mach 4
     [
         2.000, 1.963, 1.935, 1.912, 1.893, 1.877, 1.865, 1.856, 1.849, 1.844, 1.838, 1.831, 1.823,
-        1.805, 1.782, 1.753, 1.718, 1.678, 1.634,
+        1.805, 1.782, 1.753, 1.718, 1.678, 1.634, 1.6096523, 1.5454397, 1.4756774,
     ],
     // Mach 5
     [
         2.000, 1.958, 1.927, 1.904, 1.885, 1.873, 1.865, 1.863, 1.863, 1.862, 1.859, 1.853, 1.847,
-        1.828, 1.805, 1.775, 1.740, 1.699, 1.652,
+        1.828, 1.805, 1.775, 1.740, 1.699, 1.652, 1.6272149, 1.5613461, 1.4900257,
     ],
     // Mach 6
     [
         2.000, 1.950, 1.917, 1.890, 1.878, 1.874, 1.874, 1.876, 1.879, 1.880, 1.877, 1.872, 1.865,
-        1.847, 1.822, 1.790, 1.754, 1.713, 1.666,
+        1.847, 1.822, 1.790, 1.754, 1.713, 1.666, 1.6381839, 1.5710540, 1.4986224,
     ],
     // Mach 8
     [
         2.000, 1.926, 1.891, 1.883, 1.884, 1.890, 1.899, 1.904, 1.907, 1.908, 1.905, 1.899, 1.891,
-        1.870, 1.843, 1.811, 1.771, 1.727, 1.678,
+        1.870, 1.843, 1.811, 1.771, 1.727, 1.678, 1.6503536, 1.5816157, 1.5078364,
     ],
     // Mach 10
     [
         2.000, 1.904, 1.885, 1.887, 1.897, 1.908, 1.916, 1.921, 1.924, 1.924, 1.921, 1.916, 1.907,
-        1.884, 1.855, 1.819, 1.779, 1.734, 1.684,
+        1.884, 1.855, 1.819, 1.779, 1.734, 1.684, 1.6564935, 1.5868584, 1.5123524,
     ],
 ];
 
-/// A cone's normal-force slope at `α → 0`, per radian on its base area, from TN 3527 Fig. 2:
-/// linear between the hand-read angles and Mach numbers; below Mach 3 the Mach 3 curve, above 10
-/// the Mach 10 curve.
+/// A cone's normal-force slope at `α → 0`, per radian on its base area, interpolated linearly
+/// between the table's angles and Mach numbers; below Mach 3 its Mach 3 row, above 10 its Mach 10
+/// row. The slopes are TN 3527's Fig. 2 to 24°, and NASA SP-3007's tables of the same theory from
+/// there to 30° ([ADR-042: cone slopes past Fig. 2's edge][adr-042]).
+///
+/// [adr-042]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-042-cone-slopes-from-24-to-30-come-from-simss-tables-where-tn-3527s-chart-stops-2026-09-20
 ///
 /// # Errors
 ///
 /// - [`AeroError::Domain`] for a negative or non-finite half-angle, or a Mach number that isn't
 ///   finite and above 1.
-/// - [`AeroError::Unsupported`] for a half-angle past Fig. 2's 24°.
+/// - [`AeroError::Unsupported`] for a half-angle past the tables' 30°.
 pub fn cone_normal_force_slope(mach: f64, half_angle_rad: f64) -> Result<f64, AeroError> {
     let degrees = half_angle_rad.to_degrees();
     if !(degrees.is_finite() && degrees >= 0.0) {
@@ -1446,10 +1464,10 @@ pub fn cone_normal_force_slope(mach: f64, half_angle_rad: f64) -> Result<f64, Ae
         });
     }
     let last = CONE_ANGLES_DEG[CONE_ANGLES_DEG.len() - 1];
-    // A millionth of a degree over admits 24° itself through the degree conversion's rounding.
+    // A millionth of a degree over admits 30° itself through the degree conversion's rounding.
     if degrees > last + 1e-6 {
         return Err(AeroError::Unsupported(format!(
-            "a tangent cone of {degrees}° is past TN 3527 Fig. 2's {last}°"
+            "a tangent cone of {degrees}° is past the cone tables' {last}° (NASA SP-3007 Table 2)"
         )));
     }
     let degrees = degrees.min(last);
@@ -1836,6 +1854,44 @@ mod tests {
         );
     }
 
+    /// The two sources of [`CONE_SLOPES`] agree where they overlap. TN 3527's Fig. 2 is read by
+    /// hand to about ±0.001 per radian and stops at 24°; Sims's tables (NASA SP-3007 Table 2,
+    /// printed p. 20) are printed to eight digits and start their 2.5° grid well below that. At
+    /// 22.5°, the steepest angle both cover, the chart's reading and Sims's value differ by no
+    /// more than the chart's own error — which is the check that the two are the same theory and
+    /// that the columns line up.
+    #[test]
+    fn sims_and_fig_2_agree_where_they_overlap() {
+        // Sims's 22.5° column at each of `CONE_MACHS`, the rows the table holds.
+        let sims = [
+            1.6362061, 1.6674853, 1.6867491, 1.6991506, 1.7132534, 1.7205191,
+        ];
+        for (index, mach) in CONE_MACHS.iter().enumerate() {
+            let read = cone_normal_force_slope(*mach, 22.5f64.to_radians()).unwrap();
+            // 0.0022: the measured worst, at Mach 6, twice the ±0.001 the chart is read to.
+            assert!(
+                (read - sims[index]).abs() <= 2.2e-3,
+                "Mach {mach}: the chart reads {read}, Sims has {}",
+                sims[index]
+            );
+        }
+        // And the join at 24° is smooth to the same order: the chart's last value against Sims's
+        // first, a degree apart, differ by less than the chart's error times that gap's slope.
+        for mach in CONE_MACHS {
+            let (at_24, at_25) = (
+                cone_normal_force_slope(mach, 24f64.to_radians()).unwrap(),
+                cone_normal_force_slope(mach, 25f64.to_radians()).unwrap(),
+            );
+            let step = (at_24 - at_25) / 1.0;
+            // Over 22° to 24° the chart falls about 0.022 per degree; the first Sims step should
+            // be of that order, not a jump.
+            assert!(
+                (0.015..=0.035).contains(&step),
+                "Mach {mach}: {at_24} to {at_25} across the sources' join"
+            );
+        }
+    }
+
     #[test]
     fn refuses_what_the_method_does_not_cover() {
         let area = 0.25 * PI;
@@ -1898,12 +1954,18 @@ mod tests {
             cone_flow(1.5, 40f64.to_radians()),
             Err(AeroError::Unsupported(_))
         ));
-        // A cone steeper than Fig. 2's 24°, and angles Fig. 2 can't have.
+        // A fineness-1 cone is 26.57°, past TN 3527's chart and inside Sims's tables, so it flies
+        // since M1.8e11; a fineness-0.8 cone is 32.0°, past 30°, and does not.
+        assert!(body(false, 1.0, 2.0, 1).slope(3.0, area).is_ok());
         assert!(matches!(
-            body(false, 1.0, 2.0, 1).slope(3.0, area),
+            body(false, 0.8, 2.0, 1).slope(3.0, area),
             Err(AeroError::Unsupported(_))
         ));
-        assert!(cone_normal_force_slope(3.0, 24f64.to_radians()).is_ok());
+        assert!(cone_normal_force_slope(3.0, 30f64.to_radians()).is_ok());
+        assert!(matches!(
+            cone_normal_force_slope(3.0, 30.001f64.to_radians()),
+            Err(AeroError::Unsupported(_))
+        ));
         for (mach, angle) in [(3.0, -0.1), (3.0, f64::NAN), (0.5, 0.1)] {
             assert!(matches!(
                 cone_normal_force_slope(mach, angle),

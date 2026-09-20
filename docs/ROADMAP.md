@@ -555,36 +555,31 @@
       pointed body's `C_Nα` and CP at `α → 0`, the cylinder's lift behind the nose included; its
       Fig. 2's tangent-cone slopes read by hand. *Done when* (targets set before measuring):
       - A committed fixture, pinned by a test, holds hpr's values against every row of TN 3527's
-        Tables I and II (cone and tangent-ogive noses of fineness 3, 5 and 7, cylinders of 0 to
-        10 calibers, Mach 3 to 6.28): within 0.05 per radian and 0.1 calibers of the report's own
-        second-order values, and within its stated ±0.2 per radian and ±0.2 calibers of its
-        measurements. Every miss is explained.
-      - The Arcas Robin's nose and cylinder, with and without its boattail (footnote 8), are
-        computed at each Mach number of TN D-4014 and reported beside the measured body alone.
+        Tables I and II (cones and tangent ogives of fineness 3, 5 and 7, cylinders of 0 to 10
+        calibers, Mach 3 to 6.28): within 0.05 per radian and 0.1 calibers of its second-order
+        values, and within its stated ±0.2 of its measurements, every miss explained.
+      - The Arcas Robin's nose and cylinder, with and without its boattail (footnote 8), at each
+        Mach number of TN D-4014, beside the measured body alone.
       *Result (ADR-033):* not met, recorded: slopes and CPs 102 and 125 of 144 within its values
-      (a second implementation agrees; #81 at its limit), 117 and 109 of 120 of its measurements;
-      Arcas Robin −18.7% to +16.4%, long to −26.4%.
+      (#81 at its limit), 117 and 109 of 120 of its measurements; Arcas Robin −18.7% to +16.4%.
     - [x] **M1.8e2 The body's supersonic normal force in flight.** The body's terms take Mach:
       M1.8e1's method for a pointed nose and its cylinder where it holds, joined to slender-body
       theory below it. *Done when* (targets set before measuring):
-      - A flight takes the body's `C_Nα` and CP at its Mach number (`dynamics.rs` caches body
-        stations as Mach-free); a test probes the join at ±1e-9 in Mach and finds no jump.
-      - The Arcas Robin's body alone (TN D-4014) is evaluated through the flight's path at each
-        Mach number from 1.5, beside the measurement and M1.8a's values, and in the report.
-      - The validation report is regenerated; each changed row is listed in the PR.
-    - [x] **M1.8e3 The supersonic join's start without grid steps** (#87's grid half).
-      *Done when* (set after building): a test finds a 20° cone's start off the grid, moved under
-      1e-7 in Mach by 1e-6° and strictly by each 0.1° to 20.5°, its cylinder share under 1e-5, no
-      jump at ±1e-9 in Mach at the join's ends or first even row; the report unchanged or its
-      changes in the PR. *Result:* met: Mach 1.341910 (was 1.35) to 1.355500; report unchanged.
-    - [x] **M1.8e4 The boattail's share faster than sound** (footnote 8; a station rule for
-      shares that cross zero). *Done when:* a boattailed body flies the method with no jump at
-      ±1e-9 in Mach; the Arcas Robin's long model through a flight's path is in the report.
-      *Result:* met; the Arcas Robin with its boattail equals the method's, long to −27.0%.
-    - [x] **M1.8e5 The remaining gap, source by source.** *Done when:* a `docs/research/` page
-      sizes each candidate (crossflow at the tunnel's angles, blunt tip, Fig. 2 below Mach 3, #81)
-      from cited sources against the Arcas Robin's gaps at each TN D-4014 Mach from 1.5, ranked.
-      *Result:* met; like for like hpr reads 15–73% high: crossflow's size, then the boattail.
+      - A flight takes the body's `C_Nα` and CP at its Mach number; a test probes the join at
+        ±1e-9 in Mach and finds no jump.
+      - The Arcas Robin's body alone (TN D-4014) through the flight's path at each Mach number
+        from 1.5, beside the measurement and M1.8a's, in the regenerated report, its changed rows
+        listed in the PR.
+    - [x] **M1.8e3 The supersonic join's start without grid steps** (#87's grid half). *Done when*
+      (set after building): a test finds a 20° cone's start off the grid, moved under 1e-7 in Mach
+      by 1e-6° and strictly by each 0.1° to 20.5°, its cylinder share under 1e-5, no jump at ±1e-9
+      at the join's ends or first even row. *Result:* met: Mach 1.341910 (was 1.35); report same.
+    - [x] **M1.8e4 The boattail's share faster than sound** (footnote 8; a station rule for shares
+      that cross zero). *Done when:* a boattailed body flies with no jump at ±1e-9 in Mach; the
+      long Arcas Robin through a flight's path in the report. *Result:* met, long to −27.0%.
+    - [x] **M1.8e5 The remaining gap, source by source.** *Done when:* a `docs/research/` page sizes
+      each candidate from cited sources against the Arcas Robin's gaps, ranked. *Result:* met; like
+      for like hpr reads 15–73% high: crossflow's size, then the boattail.
     - [x] **M1.8e6 Crossflow and the boattail faster than sound** (ADR-036, ADR-037). *Done when:*
       flown with no jump at ±1e-9 in Mach; the Arcas Robin through a flight's path in the report.
       *Result:* met; like for like +3.4% to +41.0% (was +14.9% to +73.2%); M1.8a gains a miss.
@@ -613,11 +608,16 @@
       *Result:* met (ADR-041); the lip's **rise** is a weight, not a switch, and five keep measured
       sizes — a step −8.7%/1.03 cal, a flare −27.5%/0.29 cal, a pointed tip −10.4%/1.14 cal, a
       vertical tip −7.0%/0.64 cal, and the lip's own length −33.0%/1.77 cal, which #87 didn't list.
-    - [ ] **M1.8e11 Fig. 2's edge, from Sims.** NASA SP-3007 (already pinned) tabulates cone slopes
-      to 30°, retiring both tip switches at TN 3527 Fig. 2's 24°. *Done when:* a fineness-1 cone
-      flies the method; both tip switches' sides agree to 1e-9; fixtures move only with the guide.
-    - [ ] **M1.8e12 The step and the flare.** *Done when:* #87 closed or narrowed to these two,
-      each remaining switch's measured size in an ADR and the guide.
+    - [x] **M1.8e11 Cone slopes past Fig. 2's edge, from Sims.** NASA SP-3007 (pinned) tabulates
+      the same theory to 30°, where TN 3527's Fig. 2 stops at 24°. *Done when:* the method flies a
+      tangent cone of 24° to 30°, a fineness-1 cone among them, from Sims's slopes checked against
+      Fig. 2 where they overlap; no committed fixture moves.
+      *Result:* met (ADR-042); SP-3007 Table 2 at 25°, 27.5° and 30°, agreeing with the chart to
+      0.0021 per rad at 22.5°; the pointed tip's switch moves to 30° and falls to −7.7%/0.81 cal.
+    - [ ] **M1.8e12 The blunt tip's handover, past 24°.** With slopes to 30° a cap can hand over at
+      the detachment angle, not Fig. 2's edge. *Done when:* the vertical-tip switch is gone or
+      measured again, fixtures and the guide moving together.
+    - [ ] **M1.8e13 The step and the flare.** *Done when:* #87 closed or narrowed to these two, each switch's measured size in an ADR and the guide.
 
 - [ ] **M3.1 OpenRocket `.ork` import.**
   - Handles zip, gz and raw XML, schema 1.0 to 1.10, plus the documented 1.11 additions.

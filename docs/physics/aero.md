@@ -499,8 +499,9 @@ Here `δ` is an element's angle to the axis, `p` the pressure over the free stre
 undisturbed air ahead of the rocket), `M` the Mach number at the surface, `r` the radius at the
 corner, `Ω` how much a thin tube of flowing air widens as its Mach number rises (its area over
 its area at Mach 1, [SD56] eq. 7), `μ` the Mach angle `asin(1/M)`, and `(dC_N/dα)_tc` the slope
-of the tangent cone, digitised by hand from the report's Fig. 2 into a table
-([`cone_normal_force_slope`](../api/hpr_aero/shock_expansion/fn.cone_normal_force_slope.html)).
+of the tangent cone, digitised by hand from the report's Fig. 2 into a table and continued past
+that chart's 24° by Sims's own tables of the same theory, to 30° ([ADR-042][adr-042],
+[`cone_normal_force_slope`](../api/hpr_aero/shock_expansion/fn.cone_normal_force_slope.html)).
 For a worked example with numbers, see
 [Checking the shock-expansion method](#checking-the-shock-expansion-method).
 
@@ -525,7 +526,10 @@ For a worked example with numbers, see
 - **Its range.** The report states the method for Mach number over nose fineness from 0.4 to 2,
   within ±0.2 per radian and ±0.2 calibres of its measurements. Fig. 2 covers Mach 3 to 10; below
   Mach 3 hpr holds the Mach 3 curve, an assumption. The tip's shock must be attached, and the
-  profile continuous.
+  profile continuous. Tangent cones run to **30°**: to 24° from Fig. 2, and from there to 30° from
+  NASA SP-3007's tables of the same theory, which agree with the chart to 0.0021 per radian where
+  both cover the same angle ([ADR-042][adr-042]). A cone steeper than 30° is refused, and the
+  whole body then keeps slender-body theory.
 - **What it leaves out:** the crossflow lift that grows with `sin² α`
   ([Body lift](#body-lift), above), and anything viscous. It is the slope at small angles only.
 
@@ -576,7 +580,7 @@ threshold is worth this much (`issue_87s_switches_are_this_big` for the first fo
 |---|---|---|
 | a step in radius, past a billionth of the local radius | −8.7% | 1.03 calibres |
 | a flare behind the run, however small | −27.5% | 0.29 calibres |
-| a pointed tip steeper than TN 3527 Fig. 2's 24° | −10.4% | 1.14 calibres |
+| a pointed tip steeper than the cone tables' 30° | −7.7% | 0.81 calibres |
 | a vertical tip steeper than the cap's handover to its base | −7.0% | 0.64 calibres |
 | a lip leaving its boattail's wake by rising or by sitting back | −29 to −34% | 0.93 to 1.97 calibres |
 | a lip longer than its boattail's drop in diameter, however little it rises | −33.0% | 1.77 calibres, forward |
@@ -1001,7 +1005,9 @@ wedge can turn the flow through with its shock attached: 12.1° at Mach 1.5, 22.
 ([R1135] eqs. 138 and 168). The report chose this point "simply because it gave the best
 agreement with the available data in the low supersonic-speed range" ([J68] p. 5). hpr stops at
 24° from about Mach 2.1: the method needs the normal-force slope of a cone tangent to the body,
-and its chart stops at 24° ([SD56] Fig. 2).
+and TN 3527's chart stops at 24° ([SD56] Fig. 2). The slopes themselves now reach 30°
+([ADR-042][adr-042]), so that cap is a choice rather than a limit — raising it moves what every
+committed blunt nose flies, which is [M1.8e12](../decisions-and-roadmap.md#m1-8e12)'s decision.
 
 **How much of the nose the cap covers** depends strongly on speed. Where it ends, as a share of
 the nose's length and of its base radius:
@@ -1168,8 +1174,10 @@ a sixth of a calibre, and the force that holds the rocket into the wind grows by
   pressure and total pressure differ too: 2.53 against 2.87 per radian on the Arcas nose at
   Mach 1.5, and 1.70 against 1.70 on the sphere-cone at Mach 2.96.
 - **Two switches in shape**, of the family [issue #87](https://github.com/nrdptel/hpr-sim/issues/87)
-  tracks: a vertical-tip nose steeper than 24° all the way to its base gets no method at all, and
-  a pointed tip steeper than Fig. 2's 24° is refused where a vertical one flies.
+  tracks: a vertical-tip nose steeper than the cap's handover all the way to its base gets no
+  method at all, and a pointed tip steeper than the cone tables' 30° is refused where a vertical
+  one flies. The pointed tip's edge was Fig. 2's 24° until
+  [M1.8e11](../decisions-and-roadmap.md#m1-8e11).
 - **Elements that merge, merge with Mach.** Behind the cap, a tangency point whose tangent turns by
   under a microradian is folded into the element before it, because its corner can't be placed in
   floating point. Which points merge changes with the handover, so the method's answer takes a step
@@ -3084,4 +3092,5 @@ ellipse's integrals ([N09] eq. 3.70–3.71); the supersonic forcing and damping 
 [adr-039]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-039-a-lip-in-a-boattails-wake-carries-nothing-faster-than-sound-2026-09-19
 [adr-040]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-040-a-steep-boattail-reads-its-measured-correlation-no-steeper-than-16-and-m18es-15-target-judged-2026-09-19
 [adr-041]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-041-a-lips-shelter-is-weighed-as-the-drag-buildup-weighs-it-not-switched-at-a-threshold-2026-09-20
+[adr-042]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-042-cone-slopes-from-24-to-30-come-from-simss-tables-where-tn-3527s-chart-stops-2026-09-20
 [gap-fixture]: https://github.com/nrdptel/hpr-sim/blob/main/validation/fixtures/aero/arcas-robin-gap.json
