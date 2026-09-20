@@ -4544,12 +4544,17 @@ this source gets to "with a flare and without".
   never past the nose.** Model 2's nose is a 0.257 sphere blended into its cone by a 0.429 arc
   whose centre sits 0.135 below the axis, and the sphere is still at 38.3° where the arc takes
   over, steeper than the handover's 24° cap at any Mach number. `ShockExpansionBody::handover_m`
-  therefore searches the nose's segments — the leading run of curved ones — instead of the first
-  segment alone, and `lay_out` skips the segments a cap covers wholly. The same run says which
-  elements the rule on a reduced element treats as the nose's. The search deliberately stops at
-  the nose: a cap that reached a cylinder would hand the flow over at no angle at all, with none
-  of the total pressure the tip took out of it, so that body is still refused. No committed number
-  moved.
+  therefore searches the nose's segments instead of the first segment alone, and `lay_out` skips
+  the segments a cap covers wholly. The same run says which elements the rule on a reduced element
+  treats as the nose's.
+
+  What counts as the nose is deliberately narrow: normally the first segment and nothing else,
+  and behind a **spherical cap** — the one shape that is a piece of a nose rather than a whole one
+  — the curved segments that follow it, stopping at the first straight one. So a pointed nose
+  followed by a curved widening transition reads exactly as it did before, and a cap that reached
+  a cylinder is still refused: it would hand the flow over at no angle at all, with none of the
+  total pressure the tip took out of it. No committed number moved, and
+  `a_blunt_nose_hands_over_on_a_later_segment_but_never_past_the_nose` pins all three cases.
 
 - **What it is worth is published as three tables, with no target.** M1.8e18 set none, and none is
   invented here. hpr reads model 2's normal-force slope −1.9% at Mach 1.90, +7.0% at 2.30, +13.4%
@@ -4561,14 +4566,16 @@ this source gets to "with a flare and without".
   measured `C_Nα` itself falls from 1.594 to 1.270 while every theory on the page stays near 1.6 to
   1.9, and where the report's own method degrades the same way on model 2 and not on model 1.
 
-- **Below Mach 1.528869598743478 hpr has no reading for model 2, and that is left standing.** At
+- **Below Mach 1.5288695987434653 hpr has no reading for model 2, and that is left standing.** At
   Mach 1.50 the 18.5° flare is steeper than the 15.4885° its corner's shock holds, so ADR-047 draws
   it out to 15.4885° — and the march then refuses, because the corner's *isentropic* turn runs out
   at 15.3647°. ADR-045 and ADR-047 bound different quantities and cross near Mach 1.55; below the
   crossing the march's bound is the tighter one, so drawing a flare out to the shock's bound can
   land past what the march can do. Bisected to `f64` resolution the first reading is at Mach
-  1.528869598743478, where the two bounds are 16.284428° and 16.284427°: the reading begins exactly
-  where they meet. A flared body below that takes slender-body theory, carried up by the join.
+  1.5288695987434653, where the two bounds agree to five parts in 1e14, both 16.2844275°: the
+  reading begins exactly where they meet. Swept every 0.005 Mach from 1.05 to 4.63, the reading
+  turns on exactly once, so "the first" is a measured claim and not the artefact of a bisection
+  over a predicate that can refuse in bands. A flared body below that takes slender-body theory, carried up by the join.
 
 **Consequences.**
 

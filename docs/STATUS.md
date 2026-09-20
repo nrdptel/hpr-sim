@@ -42,7 +42,7 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
   M1.8e7's pipeline into `tn-d-4865-flared-cone.json`; `xtask/src/aero_flare.rs` writes
   `marched-flare.json`. hpr reads −1.9%/+7.0%/+13.4% at Mach 1.90/2.30/2.96 and +51.5%/+50.4% at
   3.95/4.63, separated there (model 1, unflared, +29.7%/+32.1%, so the flare adds 21.7 and 18.3
-  points). **No reading below Mach 1.528869598743478** — ADR-047's drawn-out flare lands past the
+  points). **No reading below Mach 1.5288695987434653** — ADR-047's drawn-out flare lands past the
   march's own turn. The 1%-inconsistent drawing is closed on the base (≤0.18 points either way). A
   blunt nose may span two curved segments, but a cap may not reach a cylinder; `hpr-design` has no
   spherical-cap nose, so `aero_flare` repeats the flare rule, pinned by a test.

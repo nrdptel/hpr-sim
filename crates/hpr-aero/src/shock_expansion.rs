@@ -179,7 +179,8 @@ impl BodySegment {
 /// the vertex, or a blunt tip's handover) and its angle to the axis.
 #[derive(Debug, Clone, Copy, PartialEq)]
 struct Element {
-    /// Whether the element is tangent to the first segment, the nose.
+    /// Whether the element is tangent to one of the nose's segments ([`nose_segments`]): the first
+    /// one, and behind a spherical cap the curved segments that carry the nose on past it.
     on_nose: bool,
     corner_x_m: f64,
     corner_radius_m: f64,
@@ -497,11 +498,10 @@ impl ShockExpansionBody {
         let angle = crate::blunt_tip::handover_angle_capped_rad(mach, self.handover_cap_rad)?;
         let target = angle.tan();
         // The cap ends where the nose's slope first falls to the handover's, which needn't be in
-        // the first segment: TN D-4865's own model 2 is a sphere blended into a 2.75° cone by a
-        // second arc, and at every Mach number the sphere is still steeper than the handover
-        // where the arc takes over. Take the first of the nose's segments that is shallower than
-        // the handover at its aft end, and bisect inside it — the slope falls from infinite at
-        // the tip, so the segments ahead of that one are steeper all through. The search stops
+        // the first segment: behind a spherical cap the nose can carry on through another curved
+        // segment ([`nose_segments`]). Take the first of the nose's segments that is shallower
+        // than the handover at its aft end, and bisect inside it — the slope falls from infinite
+        // at the tip, so the segments ahead of that one are steeper all through. The search stops
         // where the nose does: a cap that reached a cylinder would hand over at no angle at all,
         // with none of the total pressure the tip took out of the flow.
         for (start, segment) in &self.segments[..nose_segments(&self.segments)] {
@@ -986,14 +986,28 @@ impl ShockExpansionBody {
     }
 }
 
-/// How many leading segments are the nose: the run of curved segments at the front, which a blunt
-/// tip can split in two — TN D-4865's model 2 is a sphere blended into its cone by a second arc,
-/// and both are its nose. A body whose first segment is straight (a conical nose) still has that
-/// segment, and only that one, as its nose.
+/// How many leading segments are the nose.
+///
+/// Normally one: a nose is a single [`Profile`](hpr_design::Profile), and everything behind it is
+/// the afterbody. A [`BodySegment::SphericalCap`] is the exception — it is a *piece* of a nose,
+/// never a whole one — so behind a cap the nose carries on through the curved segments that
+/// follow it, and stops at the first straight one. TN D-4865's own model 2 needs that: its nose is
+/// a 0.257-diameter sphere blended into a 2.75° cone by a 0.429 arc, and the sphere is still at
+/// 38.3° where the arc takes over, steeper than the handover's 24° cap at any Mach number
+/// (M1.8e18, ADR-048).
 ///
 /// It says where a blunt tip's cap may hand the flow over ([`ShockExpansionBody::handover_m`]),
-/// and which elements the rule on a reduced element treats as the nose's.
+/// and which elements the rule on a reduced element treats as the nose's. Deliberately narrow: a
+/// body that isn't led by a cap reads exactly as it did before, so no committed number moved.
+///
+/// [adr-048]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-048-what-a-marched-flare-is-worth-measured-against-tn-d-4865s-model-2-2026-09-20
 fn nose_segments(segments: &[(f64, BodySegment)]) -> usize {
+    if !matches!(
+        segments.first(),
+        Some((_, BodySegment::SphericalCap { .. }))
+    ) {
+        return 1;
+    }
     segments
         .iter()
         .take_while(|(_, segment)| !segment.is_straight())
@@ -3314,6 +3328,31 @@ mod tests {
             // The cap is still the sphere plus part of the arc, so the march starts behind it.
             body.slope(mach, 0.25 * PI).expect("model 2's nose marches");
         }
+        // A pointed nose is one segment however many curved shapes follow it, so a curved
+        // widening transition behind one is still the afterbody and a reduced element there is
+        // still refused: only a spherical cap, which is a piece of a nose rather than a whole
+        // one, carries the nose past its own segment.
+        let pointed = [
+            BodySegment::Profile {
+                profile: Profile::nose(NoseShape::TANGENT_OGIVE, 1.0, 0.25).unwrap(),
+            },
+            BodySegment::Profile {
+                profile: Profile::transition(
+                    NoseShape::Ogive { radius_ratio: 2.0 },
+                    0.4,
+                    0.25,
+                    0.35,
+                    false,
+                )
+                .unwrap(),
+            },
+        ];
+        let pointed = ShockExpansionBody::new(&pointed, DEFAULT_ELEMENTS_PER_CURVE).unwrap();
+        assert_eq!(
+            super::nose_segments(&pointed.segments),
+            1,
+            "a pointed nose is one segment"
+        );
         // A cylinder behind a nose is not the nose: the cap may not reach it.
         let steep = [
             BodySegment::Profile {

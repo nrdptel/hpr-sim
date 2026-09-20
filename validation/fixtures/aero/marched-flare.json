@@ -110,7 +110,8 @@
         "flare_deg": 18.500000000000004,
         "flow_mach": 1.5250956752494205,
         "limit_deg": 15.51531446837088,
-        "march_edge_deg": 15.39531062580049,
+        "march_edge_at_the_cone_table_cap": false,
+        "march_edge_deg": 15.39531087126139,
         "marched_length": 0.6251151669440969,
         "surface_ahead_deg": 2.749999999999992
       },
@@ -137,7 +138,8 @@
         "flare_deg": 18.500000000000004,
         "flow_mach": 1.9367905854561285,
         "limit_deg": 24.60203496232146,
-        "march_edge_deg": 27.372320112645625,
+        "march_edge_at_the_cone_table_cap": false,
+        "march_edge_deg": 27.37232061464681,
         "marched_length": 0.5186555758047138,
         "surface_ahead_deg": 2.749999999999992
       },
@@ -175,7 +177,8 @@
         "flare_deg": 18.500000000000004,
         "flow_mach": 2.3084983993255586,
         "limit_deg": 29.999999999999996,
-        "march_edge_deg": 29.999999999999996,
+        "march_edge_at_the_cone_table_cap": true,
+        "march_edge_deg": null,
         "marched_length": 0.5186555758047138,
         "surface_ahead_deg": 2.749999999999992
       },
@@ -213,7 +216,8 @@
         "flare_deg": 18.500000000000004,
         "flow_mach": 2.8977072990611257,
         "limit_deg": 29.999999999999996,
-        "march_edge_deg": 29.999999999999996,
+        "march_edge_at_the_cone_table_cap": true,
+        "march_edge_deg": null,
         "marched_length": 0.5186555758047138,
         "surface_ahead_deg": 2.749999999999992
       },
@@ -251,7 +255,8 @@
         "flare_deg": 18.500000000000004,
         "flow_mach": 3.692193539559503,
         "limit_deg": 29.999999999999996,
-        "march_edge_deg": 29.999999999999996,
+        "march_edge_at_the_cone_table_cap": true,
+        "march_edge_deg": null,
         "marched_length": 0.5186555758047138,
         "surface_ahead_deg": 2.749999999999992
       },
@@ -289,7 +294,8 @@
         "flare_deg": 18.500000000000004,
         "flow_mach": 4.164437581204492,
         "limit_deg": 29.999999999999996,
-        "march_edge_deg": 29.999999999999996,
+        "march_edge_at_the_cone_table_cap": true,
+        "march_edge_deg": null,
         "marched_length": 0.5186555758047138,
         "surface_ahead_deg": 2.749999999999992
       },
@@ -323,11 +329,16 @@
     }
   ],
   "reads_from_mach": {
-    "mach": 1.528869598743478,
-    "march_edge_deg_just_below": 16.284426869928836,
-    "note": "The slowest flow hpr reads model 2 in, bisected to f64 resolution: below it the march refuses, so a flared body drops to slender-body theory however the flare is drawn out. The refusal is the corner's isentropic turn running out (ADR-045), not the shock detaching (ADR-047), and the two bounds cross near Mach 1.55.",
-    "refused_just_below": "the flow at Mach 1.5551810544352846 can't turn through -0.236220322649481 rad supersonically at 1.1006158718953303 m",
-    "wedge_limit_deg_just_below": 16.28442752303382
+    "mach": 1.5288695987434653,
+    "march_edge_deg_just_below": 16.28442752303358,
+    "note": "The slowest flow hpr reads model 2 in: below it the march refuses, so a flared body drops to slender-body theory however the flare is drawn out. The refusal is the corner's isentropic turn running out (ADR-045), not the shock detaching (ADR-047). Swept every 0.005 Mach from 1.05 to 4.63, where the reading turns on exactly once, and that one crossing bisected to f64 resolution.",
+    "refused_just_below": "the flow at Mach 1.555181054435277 can't turn through -0.23622032264947762 rad supersonically at 1.1006158718953305 m",
+    "swept": [
+      1.05,
+      4.63,
+      0.005
+    ],
+    "wedge_limit_deg_just_below": 16.28442752303363
   },
   "rows": [
     {
@@ -336,7 +347,8 @@
         "flare_deg": 18.499999999999993,
         "flow_mach": 1.5240580495511433,
         "limit_deg": 15.488524821786172,
-        "march_edge_deg": 15.364675430619714,
+        "march_edge_at_the_cone_table_cap": false,
+        "march_edge_deg": 15.364676096696721,
         "marched_length": 0.6138488019751778,
         "surface_ahead_deg": 2.749999999999992
       },
@@ -363,7 +375,8 @@
         "flare_deg": 18.499999999999993,
         "flow_mach": 1.9354412718176321,
         "limit_deg": 24.577348259490428,
-        "march_edge_deg": 27.334485892465707,
+        "march_edge_at_the_cone_table_cap": false,
+        "march_edge_deg": 27.334485960303816,
         "marched_length": 0.5083841281046689,
         "surface_ahead_deg": 2.749999999999992
       },
@@ -401,7 +414,8 @@
         "flare_deg": 18.499999999999993,
         "flow_mach": 2.307225255650843,
         "limit_deg": 29.999999999999996,
-        "march_edge_deg": 29.999999999999996,
+        "march_edge_at_the_cone_table_cap": true,
+        "march_edge_deg": null,
         "marched_length": 0.5083841281046689,
         "surface_ahead_deg": 2.749999999999992
       },
@@ -439,7 +453,8 @@
         "flare_deg": 18.499999999999993,
         "flow_mach": 2.89659122231408,
         "limit_deg": 29.999999999999996,
-        "march_edge_deg": 29.999999999999996,
+        "march_edge_at_the_cone_table_cap": true,
+        "march_edge_deg": null,
         "marched_length": 0.5083841281046689,
         "surface_ahead_deg": 2.749999999999992
       },
@@ -477,7 +492,8 @@
         "flare_deg": 18.499999999999993,
         "flow_mach": 3.6912554220226395,
         "limit_deg": 29.999999999999996,
-        "march_edge_deg": 29.999999999999996,
+        "march_edge_at_the_cone_table_cap": true,
+        "march_edge_deg": null,
         "marched_length": 0.5083841281046689,
         "surface_ahead_deg": 2.749999999999992
       },
@@ -515,7 +531,8 @@
         "flare_deg": 18.499999999999993,
         "flow_mach": 4.163643282049556,
         "limit_deg": 29.999999999999996,
-        "march_edge_deg": 29.999999999999996,
+        "march_edge_at_the_cone_table_cap": true,
+        "march_edge_deg": null,
         "marched_length": 0.5083841281046689,
         "surface_ahead_deg": 2.749999999999992
       },

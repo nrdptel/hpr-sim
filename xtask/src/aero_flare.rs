@@ -33,11 +33,6 @@ pub const READINGS: &str = "validation/fixtures/aero/tn-d-4865-flared-cone.json"
 /// plotting's own, about 0.004 (the readings file's `reading`).
 const READING: f64 = 0.004;
 
-/// The Mach number from which the report's own shadowgraphs show the laminar boundary layer
-/// separating ahead of the flare's juncture (printed p. 12), so that the measured rows are a
-/// separated flare and no attached-flow method models them.
-const SEPARATES_FROM_MACH: f64 = 2.96;
-
 /// How model 2's drawing is closed. Its printed dimensions close on the length exactly — the nose
 /// derived from its three radii is 0.3429960 long, and 0.3429960 + 0.743 + 0.523 = 1.6090 is the
 /// printed total — but the two printed half-angles then carry the base to 1.0084 diameters
@@ -102,10 +97,10 @@ impl Geometry {
         // `arc_radius − sphere_radius` apart, and the drawing puts that centre `offset` below the
         // axis. The sphere's centre is on the axis, `sphere_radius` aft of the tip.
         let gap = arc_radius - sphere_radius;
-        let along = (gap * gap - offset * offset).max(0.0).sqrt();
-        if !(gap > 0.0 && gap > offset) {
+        if !(gap > 0.0 && gap > offset.abs()) {
             return Err(format!("{READINGS}: the nose's two arcs can't be tangent"));
         }
+        let along = (gap * gap - offset * offset).sqrt();
         let arc_centre_x = sphere_radius + along;
         let arc_centre_r = -offset;
         // The join: on the line through the two centres, `arc_radius` from the blend arc's.
@@ -285,6 +280,7 @@ impl Geometry {
 }
 
 /// What the method does with a body's flare at one Mach number.
+#[derive(Clone, Copy)]
 struct Corner {
     /// The Mach number of the flow the march delivers to the corner.
     mach: f64,
@@ -295,32 +291,57 @@ struct Corner {
     limit_deg: f64,
     /// The flare's own surface angle, degrees.
     angle_deg: f64,
+    /// Whether the flare was read drawn out, decided on the radians the march works in rather
+    /// than on the degrees the fixture prints.
+    drawn_out: bool,
     /// The length of the flare the method marched, calibers: the real one's where its corner is
     /// within the limit, and a longer one drawn to the limit where it is not.
     marched_length: f64,
-    /// The steepest flare of these radii the march itself gets through, degrees: the corner's
-    /// **isentropic** turn running out, which is what stops a march (M1.8e14, ADR-045) and is not
-    /// the same bound as the shock staying attached. `None` where even a flare drawn to nothing
-    /// fails for some other reason.
-    march_edge_deg: Option<f64>,
+    /// The steepest flare of these radii the march itself gets through, where that was asked for.
+    march_edge: Option<MarchEdge>,
 }
 
-impl Corner {
-    fn drawn_out(&self) -> bool {
-        self.angle_deg > self.limit_deg
+/// The steepest flare of a given pair of radii the march itself gets through at one Mach number:
+/// the corner's **isentropic** turn running out, which is what stops a march (M1.8e14, ADR-045)
+/// and is a different bound from the shock staying attached.
+#[derive(Clone, Copy, PartialEq)]
+enum MarchEdge {
+    /// Bisected to `f64` resolution, degrees.
+    At(f64),
+    /// The march still holds at the cone tables' 30°, which is as far as an element has a tangent
+    /// cone to relax toward: the edge is at least that, and is not measured here.
+    AtLeastTheConeTableCap,
+}
+
+impl MarchEdge {
+    /// The number to publish, or `None` where the search only reached its own cap.
+    fn degrees(self) -> Option<f64> {
+        match self {
+            Self::At(deg) => Some(deg),
+            Self::AtLeastTheConeTableCap => None,
+        }
     }
 }
 
 /// What the method made of a flared body at one Mach number.
 struct Marched {
-    corner: Corner,
-    /// The slope per radian and the centre of pressure, m aft of the vertex; `None` where the
-    /// method refused the row.
-    read: Option<(f64, f64)>,
-    /// The flare's own share of that slope, per radian, and its station, m aft of the vertex.
-    flare: Option<(f64, f64)>,
+    /// What the flare's corner was read as. `None` where the method declined the body before the
+    /// corner was reached at all — a blunt nose whose cap can't hand the flow over, say.
+    corner: Option<Corner>,
+    /// The whole reading, or `None` with the reason where the method refused the row.
+    read: Option<Reading>,
     /// Why it refused, where it did.
     refused: Option<String>,
+}
+
+/// One Mach number's reading, in the body's own units (a calibre, since the base diameter is 1).
+struct Reading {
+    /// The body's slope, per radian, and its centre of pressure aft of the vertex.
+    slope_per_rad: f64,
+    cp_m: f64,
+    /// The flare's own share of that slope, per radian, and where that share acts.
+    flare_slope_per_rad: f64,
+    flare_station_m: f64,
 }
 
 /// What the method reads for a body whose **last segment is a conical flare**, the way a flight
@@ -330,71 +351,104 @@ struct Marched {
 ///
 /// This repeats, on a hand-built body, what `hpr-aero`'s private `SupersonicRun::shares` runs for
 /// a flare: `hpr-design` has no spherical-cap nose, so model 2 cannot be flown through a `Rocket`
-/// and the run that would do this is out of reach. [`tests::the_flare_is_read_as_the_model_reads_it`]
+/// and the run that would do this is out of reach. `the_flare_is_read_as_the_model_reads_it`
 /// pins the two against each other, share by share, on a flared body the design route *can*
 /// express — above the limit and below it.
-fn march(segments: &[BodySegment], mach: f64, reference_area_m2: f64) -> Result<Marched, String> {
+fn march(
+    segments: &[BodySegment],
+    mach: f64,
+    reference_area_m2: f64,
+    want_edge: bool,
+) -> Result<Marched, String> {
     let (flare, ahead_segments) = segments
         .split_last()
         .ok_or("a body with no segments".to_string())?;
     let BodySegment::Profile { profile } = flare else {
-        return Err("model 2's last segment isn't a flare".to_string());
+        return Err("the body's last segment isn't a flare".to_string());
     };
+    if !matches!(profile.shape(), NoseShape::Conical {}) {
+        return Err("the body's last segment isn't a *conical* flare".to_string());
+    }
     let (fore_radius_m, aft_radius_m) = (profile.fore_radius_m(), profile.aft_radius_m());
+    if aft_radius_m <= fore_radius_m {
+        return Err("the body's last segment doesn't widen".to_string());
+    }
     let ahead = ShockExpansionBody::new(ahead_segments, DEFAULT_ELEMENTS_PER_CURVE)
         .map_err(|e| format!("the body ahead of the flare: {e}"))?;
-    let aft = ahead
-        .aft_flow(mach)
-        .map_err(|e| format!("the flow reaching the corner at Mach {mach}: {e}"))?;
+    let aft = match ahead.aft_flow(mach) {
+        Ok(aft) => aft,
+        // The body ahead of the flare didn't march, so the corner was never reached: the method
+        // declines the row, as it would in a flight.
+        Err(AeroError::Unsupported(why)) => {
+            return Ok(Marched {
+                corner: None,
+                read: None,
+                refused: Some(format!("the body ahead of the flare: {why}")),
+            });
+        }
+        Err(e) => return Err(format!("the flow reaching the corner at Mach {mach}: {e}")),
+    };
     let rise_m = aft_radius_m - fore_radius_m;
     let angle_rad = (rise_m / profile.length_m()).atan();
-    let turn_limit_rad = flare_corner_limit_rad(aft.surface_mach)
-        .map_err(|e| format!("the corner's limit at Mach {mach}: {e}"))?;
+    let turn_limit_rad = match flare_corner_limit_rad(aft.surface_mach) {
+        Ok(limit) => limit,
+        Err(AeroError::Unsupported(why)) => {
+            return Ok(Marched {
+                corner: None,
+                read: None,
+                refused: Some(format!("the corner's limit: {why}")),
+            });
+        }
+        Err(e) => return Err(format!("the corner's limit at Mach {mach}: {e}")),
+    };
     let angle_limit_rad = (turn_limit_rad + aft.angle_rad).min(CONE_TABLE_CAP_RAD);
+    let drawn_out = angle_rad > angle_limit_rad;
     let corner = Corner {
         mach: aft.surface_mach,
         ahead_deg: aft.angle_rad.to_degrees(),
         limit_deg: angle_limit_rad.to_degrees(),
         angle_deg: angle_rad.to_degrees(),
-        marched_length: if angle_rad > angle_limit_rad {
+        drawn_out,
+        marched_length: if drawn_out {
             rise_m / angle_limit_rad.tan()
         } else {
             profile.length_m()
         },
-        march_edge_deg: march_edge_deg(ahead_segments, profile, mach, reference_area_m2),
+        march_edge: match want_edge {
+            true => Some(march_edge(
+                ahead_segments,
+                profile,
+                mach,
+                reference_area_m2,
+            )?),
+            false => None,
+        },
     };
-    // The flare's fore station, aft of the vertex: the length of everything ahead of it.
-    let fore_m = ahead.length_m();
-    if corner.drawn_out() && !(angle_limit_rad > 0.0 && angle_limit_rad.is_finite()) {
-        return Ok(Marched {
-            corner,
+    let refuse = |why: String| {
+        Ok(Marched {
+            corner: Some(corner),
             read: None,
-            flare: None,
-            refused: Some(format!("no flare can be drawn to {angle_limit_rad} rad")),
-        });
+            refused: Some(why),
+        })
+    };
+    if drawn_out && !(angle_limit_rad > 0.0 && angle_limit_rad.is_finite()) {
+        return refuse(format!("no flare can be drawn to {angle_limit_rad} rad"));
     }
-    let shares = match at_angle(
+    let mut shares = match at_angle(
         ahead_segments,
         profile,
         corner.marched_length,
         mach,
         reference_area_m2,
-    ) {
-        Ok(shares) => shares,
-        Err(AeroError::Unsupported(why)) => {
-            return Ok(Marched {
-                corner,
-                read: None,
-                flare: None,
-                refused: Some(why),
-            });
-        }
-        Err(e) => return Err(format!("model 2 at Mach {mach}: {e}")),
+    )? {
+        Outcome::Read(shares) => shares,
+        Outcome::Refused(why) => return refuse(why),
     };
-    let mut shares = shares;
-    if corner.drawn_out() {
+    if drawn_out {
         // The length only enters the march: the centre of pressure stays on the real flare, at
-        // the same fraction along it as the drawn-out one reads.
+        // the same fraction along it as the drawn-out one reads. The flare's fore station, aft of
+        // the vertex, is the length of everything ahead of it.
+        let fore_m = ahead.length_m();
         let index = shares.len() - 1;
         let share = shares[index];
         if share.slope_per_rad > 0.0 {
@@ -407,30 +461,43 @@ fn march(segments: &[BodySegment], mach: f64, reference_area_m2: f64) -> Result<
     let slope_per_rad: f64 = shares.iter().map(|s| s.slope_per_rad).sum();
     let moment_m: f64 = shares.iter().map(|s| s.moment_slope_m).sum();
     if slope_per_rad <= 0.0 {
-        return Ok(Marched {
-            corner,
-            read: None,
-            flare: None,
-            refused: Some(format!("the slope isn't positive ({slope_per_rad})")),
-        });
+        return refuse(format!("the slope isn't positive ({slope_per_rad})"));
     }
     let own = shares[shares.len() - 1];
+    if own.slope_per_rad <= 0.0 {
+        return refuse(format!(
+            "the flare's share isn't positive ({})",
+            own.slope_per_rad
+        ));
+    }
     Ok(Marched {
-        corner,
-        read: Some((slope_per_rad, moment_m / slope_per_rad)),
-        flare: Some((own.slope_per_rad, own.moment_slope_m / own.slope_per_rad)),
+        corner: Some(corner),
+        read: Some(Reading {
+            slope_per_rad,
+            cp_m: moment_m / slope_per_rad,
+            flare_slope_per_rad: own.slope_per_rad,
+            flare_station_m: own.moment_slope_m / own.slope_per_rad,
+        }),
         refused: None,
     })
 }
 
-/// The method's shares for `ahead` and a flare of `flare`'s radii drawn `length_m` long.
+/// What one march came to: the shares it read, or the method declining the body.
+enum Outcome {
+    Read(Vec<SegmentSlope>),
+    Refused(String),
+}
+
+/// The method's shares for `ahead` and a flare of `flare`'s radii drawn `length_m` long. `Err` is
+/// a body that couldn't be built at all; a method that declines the body it was given is
+/// [`Outcome::Refused`], which is what `SupersonicRun::shares` returns `None` for.
 fn at_angle(
     ahead: &[BodySegment],
     flare: &Profile,
     length_m: f64,
     mach: f64,
     reference_area_m2: f64,
-) -> Result<Vec<SegmentSlope>, AeroError> {
+) -> Result<Outcome, String> {
     let mut segments = ahead.to_vec();
     segments.push(BodySegment::Profile {
         profile: Profile::transition(
@@ -440,48 +507,65 @@ fn at_angle(
             flare.aft_radius_m(),
             flare.clipped(),
         )
-        .map_err(|e| AeroError::Unsupported(e.to_string()))?,
+        .map_err(|e| format!("a flare {length_m} long: {e}"))?,
     });
-    ShockExpansionBody::new(&segments, DEFAULT_ELEMENTS_PER_CURVE)?
-        .segment_slopes(mach, reference_area_m2)
+    let shares = ShockExpansionBody::new(&segments, DEFAULT_ELEMENTS_PER_CURVE)
+        .and_then(|body| body.segment_slopes(mach, reference_area_m2));
+    match shares {
+        Ok(shares) => Ok(Outcome::Read(shares)),
+        Err(AeroError::Unsupported(why)) => Ok(Outcome::Refused(why)),
+        Err(e) => Err(format!("a flare {length_m} long at Mach {mach}: {e}")),
+    }
 }
 
-/// The steepest flare of `flare`'s radii the march itself gets through at `mach`, degrees,
-/// bisected to a millionth of a degree: the corner's **isentropic** turn running out (ADR-045),
-/// which is a different bound from the shock staying attached and can be the tighter one.
-fn march_edge_deg(
+/// The steepest flare of `flare`'s radii the march itself gets through at `mach`, bisected to
+/// `f64` resolution between a flare of 1e-4° and the cone tables' 30°.
+///
+/// The bisection assumes the march holds below the edge and fails above it, which is how a
+/// corner's isentropic turn runs out; it is checked at both ends, and an end that disagrees is an
+/// error rather than a number.
+fn march_edge(
     ahead: &[BodySegment],
     flare: &Profile,
     mach: f64,
     reference_area_m2: f64,
-) -> Option<f64> {
+) -> Result<MarchEdge, String> {
     let rise_m = flare.aft_radius_m() - flare.fore_radius_m();
-    let marches = |deg: f64| {
-        at_angle(
-            ahead,
-            flare,
-            rise_m / deg.to_radians().tan(),
-            mach,
-            reference_area_m2,
-        )
-        .is_ok()
+    let marches = |deg: f64| -> Result<bool, String> {
+        Ok(matches!(
+            at_angle(
+                ahead,
+                flare,
+                rise_m / deg.to_radians().tan(),
+                mach,
+                reference_area_m2,
+            )?,
+            Outcome::Read(_)
+        ))
     };
     let (mut low, mut high) = (1e-4_f64, CONE_TABLE_CAP_RAD.to_degrees());
-    if !marches(low) {
-        return None;
+    if !marches(low)? {
+        return Err(format!(
+            "at Mach {mach} the march refuses even a flare of {low}°, so its edge isn't bracketed"
+        ));
     }
-    if marches(high) {
-        return Some(high);
+    if marches(high)? {
+        return Ok(MarchEdge::AtLeastTheConeTableCap);
     }
-    while high - low > 1e-6 {
+    for _ in 0..200 {
         let mid = 0.5 * (low + high);
-        if marches(mid) { low = mid } else { high = mid }
+        if mid <= low || mid >= high {
+            break;
+        }
+        if marches(mid)? { low = mid } else { high = mid }
     }
-    Some(low)
+    Ok(MarchEdge::At(low))
 }
 
 pub fn generate(root: &Path) -> Result<Value, String> {
     let readings = read(root, READINGS)?;
+    let closed = rows(&readings, Closure::OnTheBase)?;
+    let beside = beside_model_1(root, &closed)?;
     Ok(json!({
         "generator": "cargo xtask aero (xtask/src/aero_flare.rs)",
         "note": "What a marched flare is worth (M1.8e18): hpr's reading of NASA TN D-4865's \
@@ -507,47 +591,83 @@ pub fn generate(root: &Path) -> Result<Value, String> {
                  targets.",
         "geometry": geometry_section(&readings)?,
         "reads_from_mach": reads_from_mach(&readings)?,
-        "rows": rows(&readings, Closure::OnTheBase)?,
+        "rows": closed,
         "printed_lengths": rows(&readings, Closure::PrintedLengths)?,
-        "beside_model_1": beside_model_1(root, &rows(&readings, Closure::OnTheBase)?)?,
+        "beside_model_1": beside,
     }))
 }
 
-/// The slowest flow hpr has a reading for model 2 in, bisected to f64 resolution between Mach
-/// 1.05 and 1.9: below it the flare's corner turns the flow further than the march can take it
-/// isentropically, even drawn out to the steepest turn an attached shock holds (ADR-045 and
-/// ADR-047 bound different things, and below their crossing the march's is the tighter one).
+/// The Mach numbers swept to find where model 2's reading starts, and the step between them.
+const SWEEP: (f64, f64, f64) = (1.05, 4.63, 0.005);
+
+/// The slowest flow hpr has a reading for model 2 in: below it the flare's corner turns the flow
+/// further than the march can take it isentropically, even drawn out to the steepest turn an
+/// attached shock holds (ADR-045 and ADR-047 bound different things, and below their crossing the
+/// march's is the tighter one).
+///
+/// A flare's march can refuse a *band* of Mach numbers rather than everything below a threshold
+/// (`the_march_refuses_two_bands_of_flare_and_the_model_keeps_slender_body_theory` in
+/// `hpr-aero`), so bisection alone would find some crossing and call it the first. This sweeps
+/// [`SWEEP`] across the whole range the report plots, refuses to publish a number unless the
+/// reading turns on exactly once, and only then bisects that one crossing to `f64` resolution.
 fn reads_from_mach(readings: &Value) -> Result<Value, String> {
     let g = Geometry::read(readings, Closure::OnTheBase)?;
     let segments = g.segments()?;
     let area = PI * g.base_r * g.base_r;
-    let reads = |mach: f64| {
-        march(&segments, mach, area)
-            .map(|m| m.read.is_some())
-            .unwrap_or(false)
+    let reads = |mach: f64| -> Result<bool, String> {
+        Ok(march(&segments, mach, area, false)?.read.is_some())
     };
-    let (mut low, mut high) = (1.05_f64, 1.9_f64);
-    if reads(low) || !reads(high) {
-        return Err("model 2's reading doesn't start between Mach 1.05 and 1.9".to_string());
+    let (from, to, step) = SWEEP;
+    let steps = ((to - from) / step).round() as u32;
+    let mut crossings = Vec::new();
+    let mut was = reads(from)?;
+    if was {
+        return Err(format!("model 2 already reads at Mach {from}"));
     }
-    for _ in 0..200 {
-        let mid = 0.5 * (low + high);
-        if mid <= low || mid >= high {
-            break;
+    for i in 1..=steps {
+        let mach = from + f64::from(i) * step;
+        let now = reads(mach)?;
+        if now != was {
+            crossings.push((mach - step, mach, now));
+            was = now;
         }
-        if reads(mid) { high = mid } else { low = mid }
     }
-    let below = march(&segments, low, area)?;
-    Ok(json!({
-        "note": "The slowest flow hpr reads model 2 in, bisected to f64 resolution: below it the \
-                 march refuses, so a flared body drops to slender-body theory however the flare \
-                 is drawn out. The refusal is the corner's isentropic turn running out (ADR-045), \
-                 not the shock detaching (ADR-047), and the two bounds cross near Mach 1.55.",
-        "mach": high,
-        "refused_just_below": below.refused,
-        "wedge_limit_deg_just_below": below.corner.limit_deg,
-        "march_edge_deg_just_below": below.corner.march_edge_deg,
-    }))
+    match crossings.as_slice() {
+        [(low, high, true)] => {
+            let (mut low, mut high) = (*low, *high);
+            for _ in 0..200 {
+                let mid = 0.5 * (low + high);
+                if mid <= low || mid >= high {
+                    break;
+                }
+                if reads(mid)? { high = mid } else { low = mid }
+            }
+            let below = march(&segments, low, area, true)?;
+            let below_corner = below
+                .corner
+                .ok_or(format!("model 2 has no corner at Mach {low}"))?;
+            Ok(json!({
+                "note": format!(
+                    "The slowest flow hpr reads model 2 in: below it the march refuses, so a \
+                     flared body drops to slender-body theory however the flare is drawn out. The \
+                     refusal is the corner's isentropic turn running out (ADR-045), not the shock \
+                     detaching (ADR-047). Swept every {step} Mach from {from} to {to}, where the \
+                     reading turns on exactly once, and that one crossing bisected to f64 \
+                     resolution.",
+                ),
+                "mach": high,
+                "swept": [from, to, step],
+                "refused_just_below": below.refused,
+                "wedge_limit_deg_just_below": below_corner.limit_deg,
+                "march_edge_deg_just_below": below_corner.march_edge.and_then(MarchEdge::degrees),
+            }))
+        }
+        other => Err(format!(
+            "model 2's reading turns on and off {} time(s) between Mach {from} and {to}, not once: \
+             {other:?}",
+            other.len()
+        )),
+    }
 }
 
 /// The same report's model 1 — the sphere-cone of `blunt-tips.json`, read from the same figure,
@@ -667,6 +787,13 @@ fn rows(readings: &Value, closure: Closure) -> Result<Value, String> {
     let length_calibers = readings["reference"]["length_over_base_diameter"]
         .as_f64()
         .ok_or(format!("{READINGS}: no reference length"))?;
+    // The Mach number from which the report's own shadowgraphs show the laminar boundary layer
+    // separating ahead of the flare's juncture, so that the measured rows are a separated flare
+    // and no attached-flow method models them. The readings file carries the report's words for
+    // it beside the number, so the two cannot drift.
+    let separates_from = readings["report_says"]["separates_from_mach"]
+        .as_f64()
+        .ok_or(format!("{READINGS}: no separation Mach number"))?;
     let mut rows = Vec::new();
     for row in readings["rows"]
         .as_array()
@@ -688,24 +815,26 @@ fn rows(readings: &Value, closure: Closure) -> Result<Value, String> {
         let theory = slope(&t_a, &t_n);
         let theory_cp = -slope(&t_a, &t_m) * length_calibers / theory;
 
-        let marched = march(&segments, mach, area)?;
-        let corner = &marched.corner;
-        let hpr = marched.read.map(|(hpr_slope, hpr_cp_m)| {
+        let marched = march(&segments, mach, area, true)?;
+        let corner = marched
+            .corner
+            .ok_or(format!("model 2 at Mach {mach}: no corner was reached"))?;
+        let hpr = marched.read.as_ref().map(|r| {
             // The march works in the body's own units; the centre of pressure is in calibers.
-            let hpr_cp = hpr_cp_m / calibers;
-            let (fitted, fitted_cp) = flown_fit(hpr_slope, hpr_cp, &n_a, mach, fineness, planform);
-            let (flare_share, flare_station) = marched.flare.unwrap_or((f64::NAN, f64::NAN));
+            let hpr_cp = r.cp_m / calibers;
+            let (fitted, fitted_cp) =
+                flown_fit(r.slope_per_rad, hpr_cp, &n_a, mach, fineness, planform);
             json!({
-                "zero_alpha_c_n_alpha": hpr_slope,
+                "zero_alpha_c_n_alpha": r.slope_per_rad,
                 "zero_alpha_cp_calibers": hpr_cp,
-                "zero_alpha_error": hpr_slope / zero_alpha - 1.0,
+                "zero_alpha_error": r.slope_per_rad / zero_alpha - 1.0,
                 "fitted_c_n_alpha": fitted,
                 "fitted_c_n_alpha_error": fitted / measured - 1.0,
                 "cp_calibers": fitted_cp,
                 "cp_error_calibers": fitted_cp - measured_cp,
-                "flare_share_c_n_alpha": flare_share,
-                "flare_share_of_the_body": flare_share / hpr_slope,
-                "flare_station_calibers": flare_station / calibers,
+                "flare_share_c_n_alpha": r.flare_slope_per_rad,
+                "flare_share_of_the_body": r.flare_slope_per_rad / r.slope_per_rad,
+                "flare_station_calibers": r.flare_station_m / calibers,
             })
         });
         let numbers = [measured, measured_cp, zero_alpha, theory, theory_cp];
@@ -721,7 +850,7 @@ fn rows(readings: &Value, closure: Closure) -> Result<Value, String> {
         }
         rows.push(json!({
             "mach": mach,
-            "separated": mach >= SEPARATES_FROM_MACH,
+            "separated": mach >= separates_from,
             "measured": {
                 "fitted_c_n_alpha": measured,
                 "cp_calibers": measured_cp,
@@ -741,9 +870,11 @@ fn rows(readings: &Value, closure: Closure) -> Result<Value, String> {
                 "surface_ahead_deg": corner.ahead_deg,
                 "limit_deg": corner.limit_deg,
                 "flare_deg": corner.angle_deg,
-                "drawn_out": corner.drawn_out(),
+                "drawn_out": corner.drawn_out,
                 "marched_length": corner.marched_length,
-                "march_edge_deg": corner.march_edge_deg,
+                "march_edge_deg": corner.march_edge.and_then(MarchEdge::degrees),
+                "march_edge_at_the_cone_table_cap":
+                    corner.march_edge == Some(MarchEdge::AtLeastTheConeTableCap),
             },
         }));
     }
@@ -826,7 +957,7 @@ mod tests {
     /// angles it does not, where the reading is the same radii drawn out (ADR-047).
     #[test]
     fn the_flare_is_read_as_the_model_reads_it() {
-        let mut drawn_out = 0;
+        let (mut drawn_out, mut as_drawn) = (0, 0);
         for flare_deg in [10.0, 18.5, 30.0] {
             let (design, segments, area) = flared_design(flare_deg);
             let rocket: Rocket = serde_json::from_str(&design).unwrap();
@@ -857,33 +988,37 @@ mod tests {
                         .unwrap_or_else(|| panic!("{flare_deg}° at Mach {mach}: no share {index}"));
                     want = (want.0 + s, want.1 + m);
                 }
-                let marched = march(&segments, mach, area).unwrap();
-                let (got_slope, got_cp) = marched.read.unwrap_or_else(|| {
+                let marched = march(&segments, mach, area, false).unwrap();
+                let Some(got) = &marched.read else {
                     panic!(
                         "{flare_deg}° at Mach {mach}: the model read it and `march` refused: {:?}",
                         marched.refused
                     )
-                });
+                };
                 assert!(
-                    (got_slope - want.0).abs() <= 1e-12 * want.0.abs(),
-                    "{flare_deg}° at Mach {mach}: {got_slope} against the model's {}",
+                    (got.slope_per_rad - want.0).abs() <= 1e-12 * want.0.abs(),
+                    "{flare_deg}° at Mach {mach}: {} against the model's {}",
+                    got.slope_per_rad,
                     want.0
                 );
                 let want_cp = want.1 / want.0;
                 assert!(
-                    (got_cp - want_cp).abs() <= 1e-12 * want_cp.abs(),
-                    "{flare_deg}° at Mach {mach}: the centre of pressure is {got_cp} against the \
-                     model's {want_cp}"
+                    (got.cp_m - want_cp).abs() <= 1e-12 * want_cp.abs(),
+                    "{flare_deg}° at Mach {mach}: the centre of pressure is {} against the \
+                     model's {want_cp}",
+                    got.cp_m
                 );
-                if marched.corner.drawn_out() {
+                if marched.corner.expect("a corner").drawn_out {
                     drawn_out += 1;
+                } else {
+                    as_drawn += 1;
                 }
             }
         }
         assert!(
-            drawn_out >= 3,
-            "only {drawn_out} of the rows read a flare drawn out; the rule above the limit \
-             isn't pinned"
+            drawn_out >= 3 && as_drawn >= 3,
+            "{drawn_out} row(s) read a flare drawn out and {as_drawn} read one as drawn; both \
+             sides of the corner's limit have to be pinned"
         );
     }
 
@@ -929,6 +1064,13 @@ mod tests {
         let root = crate::designs::root().unwrap();
         let fixture = read(&root, FIXTURE).unwrap();
         let guide = fs::read_to_string(root.join("docs/physics/aero.md")).unwrap();
+        // Only this section's tables: a stale row left behind elsewhere on the page must not
+        // stand in for one of these, and one left behind here must be caught.
+        let heading = "#### What a marched flare is worth\n";
+        let from = guide.find(heading).expect("the section") + heading.len();
+        let rest = &guide[from..];
+        let to = rest.find("\n### ").unwrap_or(rest.len());
+        let section = &rest[..to];
         let mut rows = Vec::new();
         for r in fixture["rows"].as_array().unwrap() {
             let mach = f(r, "/mach");
@@ -951,11 +1093,14 @@ mod tests {
                 (false, true) => "drawn out",
                 (false, false) => "as drawn",
             };
+            let edge = match corner["march_edge_at_the_cone_table_cap"].as_bool() {
+                Some(true) => "\u{2265} 30\u{b0} (the tables)".to_string(),
+                _ => format!("{}\u{b0}", num(f(corner, "/march_edge_deg"), 4)),
+            };
             rows.push(format!(
-                "| {mach} | Mach {} | {}° | {}° | {read} |",
+                "| {mach} | Mach {} | {}\u{b0} | {edge} | {read} |",
                 num(f(corner, "/flow_mach"), 4),
                 num(f(corner, "/limit_deg"), 4),
-                num(f(corner, "/march_edge_deg"), 4),
             ));
         }
         for r in fixture["beside_model_1"]["rows"].as_array().unwrap() {
@@ -972,10 +1117,44 @@ mod tests {
                 pct(f(r, "/model_2_report_method_error")),
             ));
         }
-        assert_eq!(rows.len(), 18, "the fixture's tables changed shape");
+        // Three tables, one row per Mach number in each.
+        let plotted = fixture["rows"].as_array().unwrap().len();
+        assert_eq!(plotted, 6, "the report plots six Mach numbers");
+        assert_eq!(
+            fixture["beside_model_1"]["rows"].as_array().unwrap().len(),
+            plotted,
+            "model 1 doesn't have a row for every Mach number"
+        );
+        assert_eq!(
+            rows.len(),
+            3 * plotted,
+            "the fixture's tables changed shape"
+        );
         for row in &rows {
-            assert!(guide.contains(row), "aero.md doesn't have the row `{row}`");
+            assert!(
+                section.contains(row),
+                "the guide's section doesn't have the row `{row}`"
+            );
         }
+        // And nothing else: a row the fixture no longer writes can't be left behind.
+        let printed: Vec<&str> = section
+            .lines()
+            .map(str::trim_end)
+            .filter(|line| {
+                line.starts_with("| ")
+                    && line[2..]
+                        .split('|')
+                        .next()
+                        .is_some_and(|cell| cell.trim().parse::<f64>().is_ok())
+            })
+            .collect();
+        assert_eq!(
+            printed.len(),
+            rows.len(),
+            "the guide's section has {} table rows against the fixture's {}: {printed:#?}",
+            printed.len(),
+            rows.len()
+        );
         // The numbers the section's prose turns on, written as it writes them.
         let geometry = &fixture["geometry"];
         let quoted = [
@@ -990,10 +1169,34 @@ mod tests {
             format!("{}", f(&fixture, "/reads_from_mach/mach")),
             num(
                 f(&fixture, "/reads_from_mach/wedge_limit_deg_just_below"),
-                6,
+                7,
             ),
-            num(f(&fixture, "/reads_from_mach/march_edge_deg_just_below"), 6),
+            num(f(&fixture, "/reads_from_mach/march_edge_deg_just_below"), 7),
         ];
+        // The flare's own share of the body, which the prose quotes at both ends and at its
+        // smallest, and where that share acts.
+        let shares: Vec<f64> = fixture["rows"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .filter(|r| !r["hpr"].is_null())
+            .map(|r| f(r, "/hpr/flare_share_of_the_body"))
+            .collect();
+        let stations: Vec<f64> = fixture["rows"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .filter(|r| !r["hpr"].is_null())
+            .map(|r| f(r, "/hpr/flare_station_calibers"))
+            .collect();
+        let least = shares.iter().copied().fold(f64::INFINITY, f64::min);
+        let quoted = quoted.into_iter().chain([
+            format!("{:.1}%", 100.0 * shares[0]),
+            format!("{:.1}%", 100.0 * shares[shares.len() - 1]),
+            format!("{:.1}%", 100.0 * least),
+            num(stations.iter().copied().fold(f64::INFINITY, f64::min), 3),
+            num(stations.iter().copied().fold(0.0_f64, f64::max), 3),
+        ]);
         for number in quoted {
             assert!(
                 guide.contains(&number),
