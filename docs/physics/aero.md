@@ -568,10 +568,11 @@ slender-body theory for its whole body at every speed.
 **Where that choice still jumps.** It is one choice for the whole body, so wherever it turns on a
 threshold, a rocket either side of that threshold gets two different models — and the difference is
 the whole body's, not the part that changed. On the tests' rocket at Mach 3 and 4°, each remaining
-threshold is worth this much (`issue_87s_switches_are_this_big`, and
+threshold is worth this much (`issue_87s_switches_are_this_big` for the first four,
+`a_lip_in_a_boattails_wake_carries_nothing` for the lip's two, and
 [issue #87: the body's normal force jumps with small changes of shape](https://github.com/nrdptel/hpr-sim/issues/87)):
 
-| drawing this, a hair past its threshold | normal force | centre of pressure |
+| drawing this | normal force | centre of pressure |
 |---|---|---|
 | a step in radius, past a billionth of the local radius | −8.7% | 1.03 calibres |
 | a flare behind the run, however small | −27.5% | 0.29 calibres |
@@ -586,13 +587,13 @@ whose boattail takes a lot of lift off, slender-body theory puts the centre of p
 **forward** of the method's, so losing the method there reads *less* stable. Which way it goes
 depends on the body; what is reliable is the size.
 
-The last row is a switch the wake's grading does not cover: a lip is only sheltered if it is
-shorter than the boattail's drop in diameter, which is the wake's own scale, and that length is a
+The last row is a switch the wake's grading does not cover: a lip is only sheltered if it is no
+longer than the boattail's drop in diameter, which is the wake's own scale, and that length is a
 threshold, not a ramp. It is the one this page's measurements use to take a rocket off the method
 without changing a radius or an angle.
 
-The lip's row is no longer a switch: it is spread over the band the wake grades, as
-[above](#a-lip-in-a-boattails-wake) — the same difference between the models, as a ramp. The two tips are next
+The first lip row is no longer a switch: it is spread over the band the wake grades, as
+[above](#a-lip-in-a-boattails-wake). The second still is one. The two tips are next
 ([M1.8e11](../decisions-and-roadmap.md#m1-8e11)), where a second source's cone tables reach past
 Fig. 2's edge. For the step and the flare nothing measures what they carry faster than sound, so
 there is nothing to blend toward yet ([M1.8e12](../decisions-and-roadmap.md#m1-8e12)). Until then,
@@ -842,8 +843,8 @@ Mach number where the method takes over; below the join it keeps slender-body th
 drag model ([ADR-030][adr-030], which takes the same lip's drag away): wholly in the wake up
 to a rise of a quarter of the boattail's drop in diameter, not at all from half of it, and the wake
 fades over any tube between them. On top of that fraction the normal force asks one thing the drag
-model doesn't: the lip must be shorter than the boattail's drop in diameter, the wake's own scale,
-or it grows out of the wake however little it rises. The decision record on the lip,
+model doesn't: the lip must be no longer than the boattail's drop in diameter, the wake's own
+scale, or it grows out of the wake however little it rises. The decision record on the lip,
 [ADR-039][adr-039], sets out the readings behind the share itself.
 
 **A lip part way out of the wake.** Where the wake covers the lip only partly, the drag model has

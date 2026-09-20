@@ -3850,10 +3850,11 @@ third off the normal force and moved the centre of pressure 1.77 calibres forwar
 - **Nothing measured moves.** Both committed Arcas Robin designs have lips rising 0.17 of their
   boattail's drop, inside the wake's full-shelter quarter, so their weight is exactly 1 and every
   aero fixture is unchanged — checked by `cargo xtask aero --check`.
-- **The rest of #87's switches are measured, not smoothed** (`issue_87s_switches_are_this_big`).
-  On the tests' rocket at Mach 3 and 4°, each side of the threshold:
+- **What each remaining switch is worth, measured** (`issue_87s_switches_are_this_big` for the
+  four of #87's list, `a_lip_in_a_boattails_wake_carries_nothing` for the lip's two rows). On the
+  tests' rocket at Mach 3 and 4°:
 
-  | switch | normal force | centre of pressure |
+  | drawing this | normal force | centre of pressure |
   |---|---|---|
   | a step in radius, past a billionth of the local radius | −8.7% | 1.03 calibres |
   | a flare behind the run, however small | −27.5% | 0.29 calibres |
@@ -3866,7 +3867,7 @@ third off the normal force and moved the centre of pressure 1.77 calibres forwar
   more stable. The lip rows go the other way — on that body the boattail takes enough lift off
   that slender-body theory's centre of pressure sits forward of the method's — so the direction is
   the body's, not the switch's; the size is what carries over. The last row is a switch this ADR
-  does **not** smooth: shelter requires the lip to be shorter than the boattail's drop in
+  does **not** smooth: shelter requires the lip to be no longer than the boattail's drop in
   diameter, the wake's own scale, and that length is a threshold. It is also the one the tests use
   to take a rocket off the method without changing a radius or an angle.
 

@@ -2744,14 +2744,14 @@ mod tests {
                 .unwrap();
             (f.coefficient, f.cp_station_m.unwrap())
         };
-        // Across the old threshold, a quarter of the drop: before M1.8e10a the whole rocket's
+        // Across the old threshold, a quarter of the drop: before M1.8e10 the whole rocket's
         // normal force fell by a third here and its centre of pressure jumped 1.8 calibres
         // forward (issue #87). What is left is the weight ramping off its clamp, proportional to
         // the change in shape — a ten-thousandth of the force over a ten-thousandth of the drop.
         let (below, above) = (at(0.2499), at(0.2501));
         assert!(
-            (above.0 - below.0).abs() <= 1e-3 * below.0.abs()
-                && (above.1 - below.1).abs() <= 1e-3 * below.1.abs(),
+            (above.0 - below.0).abs() <= 2e-4 * below.0.abs()
+                && (above.1 - below.1).abs() <= 2e-4 * below.1.abs(),
             "{below:?} to {above:?} across the wake's full-shelter rise"
         );
         // How far apart the two models are at one shape, which is what a lip in the band is
@@ -2788,7 +2788,7 @@ mod tests {
         // What the band is worth, end to end: the jump is gone, but the same difference between
         // the two models is spread over it, and the guide quotes these numbers.
         let (full, nearly_none) = (at(0.25), at(0.4999));
-        let calibers = (nearly_none.1 - full.1) / 0.054;
+        let calibers = (nearly_none.1 - full.1) / diameter_m;
         assert!(
             (nearly_none.0 / full.0 - 1.0 + 0.291).abs() < 5e-4 && (calibers + 0.932).abs() < 5e-3,
             "across the band: {full:?} to {nearly_none:?}, {calibers} calibres"
@@ -2833,7 +2833,11 @@ mod tests {
             let m = model(&rocket);
             let weight = m.supersonic_body().map_or(0.0, |t| t.shape_weight);
             let f = m.normal_force(&flow(3.0, 4f64.to_radians(), 0.0)).unwrap();
-            (weight, f.coefficient, f.cp_station_m.unwrap() / 0.054)
+            (
+                weight,
+                f.coefficient,
+                f.cp_station_m.unwrap() / m.reference_diameter_m(),
+            )
         };
         let (near, far) = (gapped(1e-6), gapped(0.010));
         assert!(
@@ -3029,7 +3033,7 @@ mod tests {
                 slope += share;
                 moment += share * station;
             }
-            moment / slope / 0.054
+            moment / slope / steep.reference_diameter_m()
         };
         // The gap grows as the speed falls, so it is quoted as a range, not one number.
         let gaps: Vec<(f64, f64)> = [1.5_f64, 2.0, 3.0, 4.63]

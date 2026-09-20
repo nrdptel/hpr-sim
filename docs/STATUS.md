@@ -37,9 +37,9 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
   `arcas-robin-body-gap.json`: met at Mach 3.96 and 4.63, outside on six body-alone rows; the
   α→0/curvature split is soft (the tunnel's fit correlates at −0.96), short@2.96 a counterexample.
 - **M1.8e10** (ADR-041): #87's five switches flip one gate (`supersonic_run`), so each is worth the
-  whole body. The lip's is now a weight (`SupersonicBody::shape_weight`, the drag buildup's whole
-  `wake_fraction`: rise, gap and prior lips); the four that remain are pinned, as is what the
-  models still differ by at one shape (33.0%, 1.77 cal). #106: station vs CP where the weight < 1.
+  whole body. The lip's **rise** is now a weight (`SupersonicBody::shape_weight`, the drag
+  buildup's whole `wake_fraction`); five switches keep measured sizes, including the lip's own
+  length (−33.0%, 1.77 cal), which #87 never listed. #106: station vs CP where the weight < 1.
 - **M1.8e11 next:** SP-3007 (pinned, used by `aero_gap.rs`) tabulates cone slopes to 30°, retiring
   Fig. 2's 24° edge for both tip switches; `CONE_ANGLES_DEG`/`CONE_SLOPES` hold Fig. 2, and
   `MAX_HANDOVER_RAD` exists only because of that edge. Then M1.8e12: nothing can be cited for a
@@ -57,7 +57,7 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
 
 - 2026-09-20: M1.8e10 The lip's shelter, weighed not switched (ADR-041): the drag buildup's wake
   fraction is now the method's weight, so a lip drawn taller moves a rocket between the models
-  instead of switching it (was −33% and 1.77 calibres); the four switches left are measured.
+  instead of switching it (was −33% and 1.77 calibres); five switches left, each measured.
 
 - 2026-09-19: M1.8e9 #90's cap and M1.8e's 15% bullet (ADR-040): a boattail steeper than 16° reads
   W&P's correlation as a 16° one, the conservative end of a 0.67 to 1.35 calibre range; the bullet

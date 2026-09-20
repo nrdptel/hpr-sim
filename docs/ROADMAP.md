@@ -610,9 +610,9 @@
       a threshold. *Done when:* every switch's size is measured by a test; the lip's is gone, its
       two sides agreeing across the old threshold in proportion to the change in shape; no
       committed fixture moves; an ADR records the weight.
-      *Result:* met (ADR-041); the lip's switch (−33%, 1.77 calibres) is a weight, and the four
-      that remain are measured, each moving the CP aft: a step −8.7%/1.03 cal, a flare
-      −27.5%/0.29 cal, a pointed tip −10.4%/1.14 cal, a vertical tip −7.0%/0.64 cal.
+      *Result:* met (ADR-041); the lip's **rise** is a weight, not a switch, and five keep measured
+      sizes — a step −8.7%/1.03 cal, a flare −27.5%/0.29 cal, a pointed tip −10.4%/1.14 cal, a
+      vertical tip −7.0%/0.64 cal, and the lip's own length −33.0%/1.77 cal, which #87 didn't list.
     - [ ] **M1.8e11 Fig. 2's edge, from Sims.** NASA SP-3007 (already pinned) tabulates cone slopes
       to 30°, retiring both tip switches at TN 3527 Fig. 2's 24°. *Done when:* a fineness-1 cone
       flies the method; both tip switches' sides agree to 1e-9; fixtures move only with the guide.
