@@ -1,0 +1,446 @@
+{
+ "id": "tn-d-4865-flared-cone",
+ "source": "C. M. Jackson Jr., W. C. Sawyer and R. S. Smith, A Method for Determining Surface Pressures on Blunt Bodies of Revolution at Small Angles of Attack in Supersonic Flow, NASA TN D-4865 (1968), NTRS 19690000884. US Government work.",
+ "model": {
+  "note": "Model 2 (Fig. 3(b), printed p. 91): a blunt nose on a 2.75 deg half-angle cone with an 18.5 deg half-angle flare afterbody, drawn 1.609 d long in terms of the base diameter d = 0.583 ft (0.178 m). Both half-angles are the report's own text, not only its drawing: 'Model 2 (fig. 3(b)) consists of a blunted cone with a 2.75 deg half-angle and a flare afterbody having an 18.500 deg half-angle' (printed p. 8). The drawing's printed lengths close on each other and on that length -- the nose derived from its three radii is 0.3429960 long, and 0.3429960 + 0.743 + 0.523 = 1.6090 -- but with the two stated angles they carry the base to 1.0084 d rather than 1.000. The disagreement is the flare's: 0.586 + 2 x 0.743 tan 2.75 deg = 0.65737 matches the printed 0.657, while 0.657 + 2 x 0.523 tan 18.5 deg = 1.0074 misses 1.000. hpr builds the body from the nose, the two stated angles and the base diameter; the fixture marched-flare.json also carries the two other ways of closing it and what each is worth.",
+  "nose_length_over_base_diameter": 0.343,
+  "nose_end_diameter_over_base_diameter": 0.586,
+  "nose_sphere_radius_over_base_diameter": 0.257,
+  "nose_second_arc_radius_over_base_diameter": 0.429,
+  "nose_second_arc_centre_below_axis_over_base_diameter": 0.135,
+  "cone_half_angle_deg": 2.75,
+  "cone_length_over_base_diameter": 0.743,
+  "cone_length_from_the_blend_arc_centre_over_base_diameter": 0.722,
+  "flare_juncture_diameter_over_base_diameter": 0.657,
+  "flare_half_angle_deg": 18.5,
+  "flare_length_over_base_diameter": 0.523,
+  "drawn_length_over_base_diameter": 1.609,
+  "nose_note": "The nose is two arcs, not one: a 0.257 sphere from the tip, then a 0.429 arc whose centre sits 0.135 below the axis. Those three printed numbers fix the join and the end: two circles of radius 0.257 and 0.429 are internally tangent when their centres are 0.172 apart, which with the 0.135 offset puts the 0.429 centre 0.3636 aft of the tip; its tangent to the 2.75 deg cone then falls at 0.34302 aft of the tip and radius 0.29351, i.e. the printed 0.343 and 0.586.",
+  "printed_lengths_note": "Fig. 3(b) prints four longitudinal dimensions: 0.343 from the tip to the cone's start, 0.743 from there to the flare juncture, 0.722 from the blend arc's CENTRE to the same juncture, and 0.523 for the flare. The 0.722 is an independent check on the derived arc centre: 0.3635786 + 0.722 = 1.08558 against 0.343 + 0.743 = 1.08600, a residual of 0.0004 d. hpr does not use it."
+ },
+ "reference": {
+  "area": "the model's base area, for C_N (symbols, printed p. 3)",
+  "moment": "C_m = pitching moment / (q S l) with l the body length, 1.609 d, about the nose tip: 'The reference center for moments is taken at the nose of the models' (p. 3), and Fig. 3(b) draws the moment-centre symbol on the axis at the tip; nose-up positive",
+  "length_over_base_diameter": 1.609
+ },
+ "reading": {
+  "figure": "Fig. 8(b), Model 2, printed p. 102 (PDF p. 105): C_N, C_m and C_A against alpha at Mach 1.50 to 4.63; circles are the report's experiment (surface pressures integrated over the forebody, printed p. 12), the solid line its method, the dashed line modified Newtonian. C_N and C_m are read here; C_A is not, because hpr's supersonic drag is a separate model that this comparison does not touch",
+  "file": "the PDF pinned as nasa-tn-d-4865-jackson-1968 in validation/refs.lock.toml (sha256 4ef9c99567d8033810473f75bca1ec2f265563acb57a86b29a7f9bfc3703f93b)",
+  "when": "2026-09-20, M1.8e18",
+  "how": "The pipeline written for Fig. 8(a) in M1.8e7 and re-run on this page: PDF page 105's image extracted as it is stored (pdfimages -png: a 300-ppi 1-bit scan, 2376 by 3136 px) and read by pixel analysis in Python with numpy. Each of the six panels is one frame carrying C_m, C_N and C_A on a 13-row lattice of 0.2 per row; its grid lines are found from the dark-pixel counts of each column and row, refined line by line (the printed grid is not square on this scan: its rows lie within 0.12 deg of horizontal and its columns 0.44 to 0.61 deg off vertical, a shear rather than a turn, which the per-line fits and the affine map absorb), and an affine map fitted from the labelled lines' crossings (residual under 0.0007 in C_N and C_m, 0.021 deg in alpha, over every line including the unlabelled ones). Each circle's centre comes from a fit to its ring's outer and inner edges; the solid line's centre at alpha = 4, 8 and 12 deg from its tracked dark runs. Every reading was checked on overlays of the fits on the scan",
+  "uncertainty": "about 0.006 in C_N and C_m from the reading (the largest single figure is 0.0055); the plotting itself is good to about 0.004, since the alpha = 0 circles read -0.0039 to +0.0043 where they should read 0",
+  "tunnel_conditions": "Langley Unitary Plan wind tunnel, Mach 1.50 to 4.63; Reynolds number 8.50e6 per metre at Mach 1.50 and 1.90 and 9.84e6 per metre from Mach 2.30 up, stagnation temperature 339 K to 353 K (printed p. 8). 'No attempt was made to artificially induce boundary-layer transition' (p. 8), so the boundary layer approaching the flare is laminar"
+ },
+ "report_says": {
+  "flare_shock_at_mach_1_50": "'At M_inf = 1.50, the shock wave produced by the flare is not theoretically attached' (printed p. 10), and Fig. 8(b) 'indicates that significant discrepancies exist between the theoretical and experimental forces and moments at M_inf = 1.50 for model 2' (printed p. 12)",
+  "separation_from_mach_2_96": "'at M_inf >= 2.96, the laminar boundary layer separates upstream of the flare juncture to produce a weak compression and reattachment occurs downstream of the flare juncture to produce a strong compression' (printed p. 10). The measured rows from Mach 2.96 up are therefore a separated flare, which no attached-flow method models",
+  "separates_from_mach": 2.96,
+  "experiment_is_forebody_only": "'In order to obtain experimental values of the forebody forces and moments, the surface-pressure distributions of tables I to XII were integrated' (printed p. 12): base pressure is not in C_N, C_m or C_A",
+  "what_the_report_blames_on_separation": "Its own method's disagreement with the measured PRESSURES at the high Mach numbers, 'due to the condition of separated flow on the flare' (printed p. 10), and its over-prediction of AXIAL force, 'flow separation induced by the flare causes lower pressures on the flare and consequently a reduction in axial force, a condition which the present theory does not consider' (printed p. 12). The report says nothing about what separation does to the normal force or the pitching moment",
+  "where_the_reports_method_works": "'the present theory accurately predicts the pressure rise due to the flare afterbody in the Mach number range from 1.90 to 2.96' (printed p. 10) -- about the pressures, not the integrated forces, which Fig. 8(b) shows it reading high at every Mach number on this model"
+ },
+ "rows": [
+  {
+   "mach": 1.5,
+   "alpha_deg_c_n": [
+    [
+     0,
+     0.0023
+    ],
+    [
+     4,
+     0.1227
+    ],
+    [
+     8,
+     0.2352
+    ],
+    [
+     12,
+     0.3488
+    ]
+   ],
+   "alpha_deg_c_m": [
+    [
+     0,
+     -0.0022
+    ],
+    [
+     4,
+     -0.0621
+    ],
+    [
+     8,
+     -0.1207
+    ],
+    [
+     12,
+     -0.176
+    ]
+   ],
+   "report_theory_alpha_deg_c_n": [
+    [
+     4,
+     0.2179
+    ],
+    [
+     8,
+     0.364
+    ],
+    [
+     12,
+     0.4452
+    ]
+   ],
+   "report_theory_alpha_deg_c_m": [
+    [
+     4,
+     -0.1365
+    ],
+    [
+     8,
+     -0.2123
+    ],
+    [
+     12,
+     -0.2537
+    ]
+   ]
+  },
+  {
+   "mach": 1.9,
+   "alpha_deg_c_n": [
+    [
+     0,
+     0.0
+    ],
+    [
+     4,
+     0.1299
+    ],
+    [
+     8,
+     0.247
+    ],
+    [
+     12,
+     0.3798
+    ]
+   ],
+   "alpha_deg_c_m": [
+    [
+     0,
+     -0.003
+    ],
+    [
+     4,
+     -0.067
+    ],
+    [
+     8,
+     -0.1377
+    ],
+    [
+     12,
+     -0.2105
+    ]
+   ],
+   "report_theory_alpha_deg_c_n": [
+    [
+     4,
+     0.1185
+    ],
+    [
+     8,
+     0.2812
+    ],
+    [
+     12,
+     0.4684
+    ]
+   ],
+   "report_theory_alpha_deg_c_m": [
+    [
+     4,
+     -0.0758
+    ],
+    [
+     8,
+     -0.172
+    ],
+    [
+     12,
+     -0.2851
+    ]
+   ]
+  },
+  {
+   "mach": 2.3,
+   "alpha_deg_c_n": [
+    [
+     0,
+     0.0
+    ],
+    [
+     4,
+     0.1066
+    ],
+    [
+     8,
+     0.2236
+    ],
+    [
+     12,
+     0.3489
+    ]
+   ],
+   "alpha_deg_c_m": [
+    [
+     0,
+     -0.0039
+    ],
+    [
+     4,
+     -0.0708
+    ],
+    [
+     8,
+     -0.1354
+    ],
+    [
+     12,
+     -0.2045
+    ]
+   ],
+   "report_theory_alpha_deg_c_n": [
+    [
+     4,
+     0.1321
+    ],
+    [
+     8,
+     0.2728
+    ],
+    [
+     12,
+     0.4634
+    ]
+   ],
+   "report_theory_alpha_deg_c_m": [
+    [
+     4,
+     -0.0799
+    ],
+    [
+     8,
+     -0.156
+    ],
+    [
+     12,
+     -0.297
+    ]
+   ]
+  },
+  {
+   "mach": 2.96,
+   "alpha_deg_c_n": [
+    [
+     0,
+     0.0009
+    ],
+    [
+     4,
+     0.1065
+    ],
+    [
+     8,
+     0.2159
+    ],
+    [
+     12,
+     0.3354
+    ]
+   ],
+   "alpha_deg_c_m": [
+    [
+     0,
+     0.0005
+    ],
+    [
+     4,
+     -0.0637
+    ],
+    [
+     8,
+     -0.1266
+    ],
+    [
+     12,
+     -0.197
+    ]
+   ],
+   "report_theory_alpha_deg_c_n": [
+    [
+     4,
+     0.1231
+    ],
+    [
+     8,
+     0.2467
+    ],
+    [
+     12,
+     0.3747
+    ]
+   ],
+   "report_theory_alpha_deg_c_m": [
+    [
+     4,
+     -0.0794
+    ],
+    [
+     8,
+     -0.1557
+    ],
+    [
+     12,
+     -0.2352
+    ]
+   ]
+  },
+  {
+   "mach": 3.95,
+   "alpha_deg_c_n": [
+    [
+     0,
+     0.0043
+    ],
+    [
+     4,
+     0.0878
+    ],
+    [
+     8,
+     0.1905
+    ],
+    [
+     12,
+     0.2656
+    ]
+   ],
+   "alpha_deg_c_m": [
+    [
+     0,
+     0.0003
+    ],
+    [
+     4,
+     -0.0481
+    ],
+    [
+     8,
+     -0.1134
+    ],
+    [
+     12,
+     -0.1701
+    ]
+   ],
+   "report_theory_alpha_deg_c_n": [
+    [
+     4,
+     0.1129
+    ],
+    [
+     8,
+     0.2239
+    ],
+    [
+     12,
+     0.3437
+    ]
+   ],
+   "report_theory_alpha_deg_c_m": [
+    [
+     4,
+     -0.0578
+    ],
+    [
+     8,
+     -0.1284
+    ],
+    [
+     12,
+     -0.201
+    ]
+   ]
+  },
+  {
+   "mach": 4.63,
+   "alpha_deg_c_n": [
+    [
+     0,
+     0.0031
+    ],
+    [
+     4,
+     0.0907
+    ],
+    [
+     8,
+     0.1811
+    ],
+    [
+     12,
+     0.2762
+    ]
+   ],
+   "alpha_deg_c_m": [
+    [
+     0,
+     -0.0006
+    ],
+    [
+     4,
+     -0.0497
+    ],
+    [
+     8,
+     -0.1026
+    ],
+    [
+     12,
+     -0.1711
+    ]
+   ],
+   "report_theory_alpha_deg_c_n": [
+    [
+     4,
+     0.1206
+    ],
+    [
+     8,
+     0.2247
+    ],
+    [
+     12,
+     0.33
+    ]
+   ],
+   "report_theory_alpha_deg_c_m": [
+    [
+     4,
+     -0.0642
+    ],
+    [
+     8,
+     -0.1279
+    ],
+    [
+     12,
+     -0.1972
+    ]
+   ]
+  }
+ ]
+}

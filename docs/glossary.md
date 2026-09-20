@@ -401,8 +401,9 @@ skirt at the tail, or the step up onto a wider aft section. Its normal-force slo
 it moves the [centre of pressure](#centre-of-pressure-cp) aft, which is why one is sometimes added
 for stability. Faster than sound, hpr marches a conical flare through the shock-expansion method
 while the shock at its corner stays attached, and reads a steeper one as a flare of the same radii
-drawn out to that angle — a model **not yet compared with any measured flare**:
-[A flare through the method](physics/aero.md#a-flare-through-the-method). Where the march itself
+drawn out to that angle. What that is worth against the one measured flare in the sources is
+[What a marched flare is worth](physics/aero.md#what-a-marched-flare-is-worth); how the model
+works is [A flare through the method](physics/aero.md#a-flare-through-the-method). Where the march itself
 stops, which is not where that shock detaches, is in
 [Where a flare's march stops](physics/aero.md#where-a-flares-march-stops).
 

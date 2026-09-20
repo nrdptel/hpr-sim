@@ -107,8 +107,9 @@
   checked on a sphere-cone only ([Blunt tips](#blunt-tips)), and a lip inside a boattail's wake
   carries nothing ([A lip in a boattail's wake](#a-lip-in-a-boattails-wake)). A **conical**
   [flare](../glossary.md#flare) flush with the tube ahead of it flies the method too, and ends the
-  run, while its corner's shock stays attached — a model compared with **no measured flare** so
-  far ([A flare through the method](#a-flare-through-the-method)). A rocket with any other
+  run, while its corner's shock stays attached — checked against **one** measured flare, where it
+  reads −1.9% and +7.0% at Mach 1.9 and 2.3, +13.4% at 2.96, then +51.5% and +50.4% at 3.95 and
+  4.63 ([What a marched flare is worth](#what-a-marched-flare-is-worth)). A rocket with any other
   widening shape, or any step, behind the nose (a motor retainer behind a step down counts: the
   step ends the run) keeps slender-body theory for its whole body at every speed, which reads low
   past Mach 3. Body lift leaves out
@@ -557,8 +558,9 @@ measurement here checks. A blunt or vertical nose tip takes a Newtonian cap ahea
 ([Blunt tips](#blunt-tips)), an extrapolation from spherical caps, and a lip inside a boattail's
 wake rides along carrying nothing ([A lip in a boattail's wake](#a-lip-in-a-boattails-wake)). A
 conical flare flush with the part ahead of it flies the method while its corner's shock is
-attached, and is read drawn out where it is not, which **nothing here has checked against a
-measured flare** ([A flare through the method](#a-flare-through-the-method)). A rocket with any
+attached, and is read drawn out where it is not; **one** measured flare has been put beside it
+([What a marched flare is worth](#what-a-marched-flare-is-worth)), and the drawn-out half still
+has none. A rocket with any
 other widening shape, or any step, behind the nose gets nothing from the method and keeps
 slender-body theory, which on the Arcas Robin's body reads 15% to 50% below the tunnel faster than
 sound. The join between the two models is a
@@ -1013,9 +1015,10 @@ checked, the limit is neither — it is the 30° where the cone tables end. The 
 angle is not known here: the wedge's is a conservative stand-in for it. This section is the
 measurement, and it is why the attachment test a flight uses had to be **chosen** rather than read
 off the march's refusal ([ADR-045][adr-045]). What a flight does with a flare is the next section,
-[A flare through the method](#a-flare-through-the-method). Nothing in either is compared with a
-measured flare force — that is [M1.8e18](../decisions-and-roadmap.md#m1-8e18), which commits TN
-D-4865 model 2's readings.
+[A flare through the method](#a-flare-through-the-method), and how close that comes to a measured
+flare is the one after it, [What a marched flare is
+worth](#what-a-marched-flare-is-worth). Neither this section's edge nor the drawn-out reading past
+it is itself compared with a measurement.
 
 Second-order shock-expansion turns every corner
 isentropically — no entropy rise, so no shock — with the
@@ -1109,9 +1112,10 @@ is read as one of the same radii **drawn out** to the steepest attached angle, w
 the answer from jumping as a shape or a speed crosses that boundary. How far to trust it: the
 attachment test is a standard relation, applied at a corner it was not derived for; the reading
 either side of the boundary it draws agrees to four parts in 1e11, though its *slope* kinks there;
-and **no measured flare force has been compared with any of it yet**. That last is
-[M1.8e18](../decisions-and-roadmap.md#m1-8e18). Read the numbers below as what this program now
-does, not as accuracy. What qualifies is narrow: a *conical* flare, flush with the part ahead of
+and what it is worth against the one measured flare in the
+sources is [the section after this one](#what-a-marched-flare-is-worth): −1.9% and +7.0% at Mach
+1.9 and 2.3, +13.4% at 2.96, and +51.5% and +50.4% at 3.95 and 4.63. Read the numbers below as
+what this program does, and that section as how close it lands. What qualifies is narrow: a *conical* flare, flush with the part ahead of
 it, not in a boattail's wake, with nothing behind it that carries lift of its own. A boattail then
 a flare is a [lip in a wake](#a-lip-in-a-boattails-wake) and keeps that rule; any other widening
 shape still ends the run. The decision record is [ADR-047][adr-047].
@@ -1233,10 +1237,11 @@ already uses faster than sound, not because it is known to be closer.
 
 **What it leaves out.**
 
-- **Nothing here is compared with a measured flare.** Not one number above answers "is it right?".
-  [M1.8e18](../decisions-and-roadmap.md#m1-8e18) commits TN D-4865 model 2's readings and says what
-  a marched flare is worth; until then the size of the difference in the table above is a change of
-  model, not a correction.
+- **The one measured flare is not this flare.** [What a marched flare is
+  worth](#what-a-marched-flare-is-worth) compares an 18.5° flare on a 2.75° cone, at six speeds,
+  three of them with its boundary layer separated. The 10° flare in the table above is not that
+  body, so the size of the difference it shows is still a change of model rather than a measured
+  correction.
 - **The flare's own detachment angle is still the wedge's.** A conical flare on a cylinder sits
   between a wedge and a cone, and nothing here measures where it actually is.
 - **Below about Mach 1.5552 the method has no reading for an 18.5° flare on the tests' rocket at
@@ -1280,6 +1285,225 @@ already uses faster than sound, not because it is known to be closer.
   separating ahead of the juncture and reattaching on the flare, which moves the pressure rise
   downstream of where a tangent body puts it. Nothing here models that.
 
+
+#### What a marched flare is worth
+
+**In short:** [A flare through the method](#a-flare-through-the-method), above, says what hpr
+*does* with a flare — it marches the [shock-expansion method](#bodies-faster-than-sound) through
+the flare's corner while the shock there stays attached. This section says how close that comes to
+a measured flare, which before [M1.8e18](../decisions-and-roadmap.md#m1-8e18), the milestone that
+did this work, nothing had.
+
+There is one flared body in the sources whose normal force and pitching moment are printed: NASA
+TN D-4865's model 2 ([J68]), a blunt 2.75° cone with an 18.5° flare, in the Langley Unitary Plan
+tunnel from Mach 1.50 to 4.63. Against it hpr reads the normal-force slope **−1.9% at Mach 1.90,
++7.0% at 2.30, +13.4% at 2.96, then +51.5% and +50.4% at 3.95 and 4.63**, with the centre of
+pressure within 0.05 [calibres](../glossary.md#calibre-caliber) through Mach 2.96 and 0.088 at
+3.95. The report's own shadowgraphs show that flare's boundary layer separated ahead of the
+juncture from Mach 2.96 up, but the cost only shows in the two fastest rows; why is not settled
+here. Below **Mach 1.5289** there is no reading at all, and a flared body falls back to
+[slender-body theory](../glossary.md#slender-body-theory) instead.
+
+One body, one flare angle, six speeds, three of them separated: that is the whole of the evidence,
+and it is not enough to call the model right — only enough to say where it is not obviously wrong.
+The decision record is [ADR-048][adr-048].
+
+**The body.** Two things about it bear on the comparison: its nose is blunter and more compound
+than model 1's, so hpr had to learn to hand a blunt tip's cap over on a later piece of a nose; and
+the report's own drawing does not quite close, so which of its printed numbers to keep had to be
+chosen. Neither is worth much — the closure is worth 0.64 points at most, measured three ways —
+but both are choices, so here they are.
+
+Fig. 3(b) (printed p. 91) draws model 2 in base diameters, `d` = 0.583 ft (0.178 m). Its nose is
+not a sphere-cone: a 0.257 sphere from the tip, then a **second arc of 0.429** whose
+centre sits 0.135 *below* the axis, then the 2.75° cone, then the 18.5° flare. Those three printed
+radii fix everything else. The two arcs are internally tangent, so their centres are 0.429 − 0.257
+= 0.172 apart, which with the 0.135 offset puts the second centre 0.3635786 aft of the tip; its
+tangent to the 2.75° cone then falls at **0.3429960** aft of the tip, matching the drawing's
+printed 0.343 to four figures, at diameter **0.5870**, which misses its printed 0.586 by 0.001 of
+a diameter. A fourth printed dimension checks the same derivation from the other end: 0.722 runs
+from the arc's centre to the flare juncture, and 0.3635786 + 0.722 = 1.08558 against 0.343 + 0.743
+= 1.08600, a residual of 0.0004. hpr draws that blend arc as a circular arc — the [tangent
+ogive](../glossary.md#tangent-ogive)'s shape with its radius ratio solved for a 0.429 arc — and
+the profile it builds misses the drawn circle by 8.3e−17 of a diameter.
+
+The printed dimensions do not quite close, and the gap is the **flare's**. Nose, cone and flare
+come to 0.3429960 + 0.743 + 0.523 = 1.6090, the printed length exactly. The cone closes on its own
+numbers too: 0.586 + 2 × 0.743 tan 2.75° = 0.65737, against the printed 0.657. The flare does not:
+0.657 + 2 × 0.523 tan 18.5° = **1.0074**, against a base that is 1.000 by definition — and
+**1.0084** with the nose taken from its three radii rather than from its printed 0.586. So either
+the flare is shorter than 0.523, or it is shallower than 18.5°.
+
+hpr keeps both half-angles, because they are the report's **text** and not only its drawing —
+*"a blunted cone with a 2.75° half-angle and a flare afterbody having an 18.500° half-angle"*
+(printed p. 8), stated to three decimals — along with the nose, the length 1.609 and the base
+1.000, which are the numbers the measured coefficients are divided by. What gives is the split of
+the length between the cone and the flare: a **0.7576199** cone and a **0.5083841** flare, which
+puts the juncture 0.0146 diameters aft of the printed one, at diameter 0.6598 against 0.657.
+
+Two other closures are computed and published beside it, so the choice can be checked rather than
+trusted. Keeping the printed lengths and scaling the whole body to a 1.000 base moves the error by
+−0.12 to −0.17 points (points here and below are percentage points of error). Keeping the printed
+lengths **and** the base and giving up the flare's stated angle instead — 18.5° becomes
+18.0864° — moves it by +0.06 to +0.64 points. Over all three the spread is **0.64 points or less**
+in the slope and **0.0043 calibres or less** in the centre of pressure, and Mach 1.50 is refused in
+every one of them, so nothing below turns on which closure is flown.
+
+**What it is compared with.** Fig. 8(b) (printed p. 102) plots normal force `C_N`, pitching moment
+`C_m` and axial force `C_A` — all three as coefficients, `C_m` about the nose tip on the body's
+own length — against `α` at 0°, 4°, 8° and 12°, for each of six Mach numbers. The circles are the
+report's experiment: the surface pressures of its tables VII to XII integrated over the
+**forebody** (printed p. 12), so no base pressure is in them. Every circle was read off the
+page's 300-ppi
+scan by pixel analysis, the method written for [model 1](#blunt-tips) in
+[M1.8e7](../decisions-and-roadmap.md#m1-8e7); the `α` = 0 circles come out at −0.0039 to +0.0043
+where they should read 0, which is what the plotting itself is worth. `C_A` is not read, because
+hpr's supersonic drag is a separate model this comparison does not touch. hpr's slope and centre
+of pressure are fitted the way that section fits model 1 — a straight line through hpr's own `C_N`
+at those same four angles, [body lift](#body-lift) included — so the two sides are the same
+quantity.
+
+| Mach | measured `C_Nα`, per radian | hpr | hpr's error | measured CP, calibres aft of the tip | hpr | hpr − measured, calibres |
+|---|---|---|---|---|---|---|
+| 1.5 | 1.650 | none | none | 0.810 | none | none |
+| 1.9 | 1.800 | 1.766 | −1.9% | 0.888 | 0.934 | 0.046 |
+| 2.3 | 1.667 | 1.784 | +7.0% | 0.921 | 0.926 | 0.005 |
+| 2.96 | 1.594 | 1.807 | +13.4% | 0.948 | 0.935 | −0.013 |
+| 3.95 | 1.270 | 1.923 | +51.5% | 1.046 | 0.958 | −0.088 |
+| 4.63 | 1.303 | 1.960 | +50.4% | 0.998 | 0.975 | −0.023 |
+
+A positive number in the last column means hpr puts the centre of pressure **further aft** than the
+tunnel did, which reads as more stable than the rocket is; a negative one reads as less. The
+half-calibre the rest of this page uses as a target is the scale to hold them against.
+
+**The flare is most of what is being compared.** Its own share of the body's slope is 52.1% at Mach
+1.90 and 60.8% at 4.63, and never below 51.5% (at Mach 2.30) in between. That share acts 1.382 to
+1.390 calibres aft of the tip — on the flare itself, which runs from 1.101 to 1.609. So this is a
+test of the flare and not of a body that happens to have one.
+
+**How much of the miss is the flare's.** The same report, the same tunnel, the same figure and the
+same reading and fit also give **model 1** — a sphere-cone with *no* flare, the body
+[Blunt tips](#blunt-tips) already checks. Putting the two side by side separates what the flare
+costs from what the rest of the body costs:
+
+| Mach | hpr's error, model 1 (no flare) | hpr's error, model 2 (flared) | the flare adds | the report's own method, model 1 | the report's own method, model 2 |
+|---|---|---|---|---|---|
+| 1.5 | −1.2% | none | none | −3.3% | +28.6% |
+| 1.9 | +0.0% | −1.9% | −1.9 points | +2.0% | +24.8% |
+| 2.3 | +7.5% | +7.0% | −0.5 points | +8.5% | +31.6% |
+| 2.96 | +12.5% | +13.4% | +0.9 points | +5.2% | +12.1% |
+| 3.95 | +29.7% | +51.5% | +21.7 points | +11.3% | +28.8% |
+| 4.63 | +32.1% | +50.4% | +18.3 points | +13.6% | +20.3% |
+
+They are not one body with and without a flare — model 1 is an 11.5° cone on a 0.175-diameter nose
+radius, 1.755 diameters long, and model 2 a 2.75° cone on a 0.257-diameter one, 1.609 long — so
+**the flare adds** column bounds what the flare costs rather than measuring it. Read it as a
+signed difference and nothing more: it is *not* a verdict on which body hpr reads better. At Mach
+1.90 the unflared model 1 is almost exact (+0.011%) and the flared one is 1.9% low, so in size of
+error the flare is the worse row, not the better one.
+
+Taken that way the column still says something clear. **Through Mach 2.96 the flare moves the
+error by −1.9 to +0.9 points** — that is, by less than the rest of the body already misses by. At
+Mach 3.95 and 4.63 it moves it by 21.7 and 18.3 points, an order of magnitude more, and that is
+where the measured `C_Nα` itself falls away — from 1.594 at Mach 2.96 to 1.270 at 3.95 — while
+both attached-flow methods on the figure, the report's own and hpr's, stay between 1.57 and 1.96.
+
+The obvious explanation is the flow: from Mach 2.96 the report's shadowgraphs show the laminar
+boundary layer separating *ahead* of the juncture and reattaching behind it (printed p. 10), and
+nothing in an attached-flow method describes that. How far the report backs it up is worth being
+exact about. It blames the separated flow for its **own method's** disagreement with the measured
+*pressures* at the high Mach numbers (printed p. 10) and for its over-prediction of *axial* force
+(printed p. 12). It says nothing at all about what separation does to the normal force or the
+pitching moment. Nor does its method carry a separation signature on this body: it reads +24.8% at
+Mach 1.90 and +31.6% at 2.30, both attached rows, against +28.8% and +20.3% at the separated ones —
+uniformly high on model 2 and near the tunnel on model 1, which is a large offset this milestone
+has not explained. So read the separation as **consistent with** the two fast rows rather than
+measured by them. What nothing here settles is why it costs 0.9 points at Mach 2.96, where the
+report says it has already begun, and twenty times that at 3.95.
+
+**Where the method has no reading.** At Mach 1.50 hpr refuses model 2 outright, and the refusal is
+worth following, because it is not the rule the section above describes. Two limits decide what the
+march does with a flare's corner: the steepest **surface angle** whose shock stays attached there,
+which is the rule that section sets, and the steepest the march itself can turn the flow through.
+Both are in the table below as surface angles of the flare, so they can be read against its 18.5°
+and against each other:
+
+| Mach | the flow reaching the corner | the steepest angle its shock holds | the steepest the march takes | the flare is read |
+|---|---|---|---|---|
+| 1.5 | Mach 1.5241 | 15.4885° | 15.3647° | drawn out, then refused |
+| 1.9 | Mach 1.9354 | 24.5773° | 27.3345° | as drawn |
+| 2.3 | Mach 2.3072 | 30.0000° | ≥ 30° (the tables) | as drawn |
+| 2.96 | Mach 2.8966 | 30.0000° | ≥ 30° (the tables) | as drawn |
+| 3.95 | Mach 3.6913 | 30.0000° | ≥ 30° (the tables) | as drawn |
+| 4.63 | Mach 4.1636 | 30.0000° | ≥ 30° (the tables) | as drawn |
+
+The turn the corner actually makes is each of those angles less the 2.75° of the cone ahead. From
+Mach 2.3 up the third column is clipped at the cone tables' 30° — past that an element has no
+[tangent cone](../glossary.md#tangent-cone) to relax toward — and the search behind the fourth
+stops at the same place, so neither is a measured edge there and the fourth says so rather than
+printing the cap as though it were one. At Mach 1.50 the flare is steeper than the 15.4885° its
+corner's shock holds, so [ADR-047][adr-047]'s rule draws it out to 15.4885° — and the march then
+refuses that body too, because the steepest flare it can march there is 15.3647°, a tenth of a
+degree shallower. The two limits are different things: one is where the corner's shock detaches,
+the other where the corner's **isentropic** turn runs out ([Where a flare's march
+stops](#where-a-flares-march-stops), [ADR-045][adr-045]), and which is the tighter one changes
+with speed. Below where they cross, drawing a flare out to the shock's limit lands past what the
+march can do. Swept every 0.005 Mach from 1.05 to 4.63 the reading turns on exactly once, and
+bisecting that one crossing to `f64` resolution puts hpr's first reading of model 2 at **Mach
+1.5288696**; just below it the two limits agree to five parts in 1e14, both 16.2844275°, so the
+reading begins exactly where they cross. (The fixture keeps the whole `f64`; seven figures is what
+the three operating systems CI runs agree on, since each regenerates the bisection to within a
+part in 1e12 of the others.) That is a different number from the Mach 1.5552
+[the section above](#a-flare-through-the-method) quotes for the same 18.5° flare, and it should be
+— the body ahead of the corner is different, so the flow it delivers there is different, and the
+crossing moves with that flow. Below that a flared body takes [slender-body
+theory](../glossary.md#slender-body-theory) instead, carried up over 0.3 Mach by the
+[join](#bodies-faster-than-sound) — which is continuous, but means the method is not used at the
+low end of what a flight flies. The report says the same thing about its own method at that speed:
+*"at M∞ = 1.50, the shock wave produced by the flare is not theoretically attached"*
+(printed p. 10), and its method reads +28.6% there against +2.0% on model 1.
+
+The rows above are in
+[`validation/fixtures/aero/marched-flare.json`](https://github.com/nrdptel/hpr-sim/blob/main/validation/fixtures/aero/marched-flare.json),
+written by `cargo xtask aero`; the readings in
+[`tn-d-4865-flared-cone.json`](https://github.com/nrdptel/hpr-sim/blob/main/validation/fixtures/aero/tn-d-4865-flared-cone.json),
+with how each circle was read. A test holds every table here to the fixture, cell by cell. The
+reading is hpr's own rule and not a second copy of it: `hpr-design` has no spherical-cap nose, so
+model 2 cannot be flown through a `Rocket`, and `the_flare_is_read_as_the_model_reads_it` pins the
+fixture's reading against the model's own shares — share by share, to a part in 1e12, on a flared
+body the design route *can* express, at angles the corner's shock holds and at angles it does not.
+That pins the arithmetic, not the physics: an error in the rule itself would be in both and pass.
+
+**What it leaves out.**
+
+- **Three of the six rows are a separated flare.** From Mach 2.96 the report's shadowgraphs show
+  the boundary layer separating ahead of the juncture; nothing in hpr models that, and the +51.5%
+  and +50.4% at Mach 3.95 and 4.63 are what those rows cost on this body — which the report's own
+  words make *consistent with* separation rather than caused by it, since it never says what
+  separation does to the normal force. No source here says how a
+  separated flare scales with the flare's angle, its length or the boundary layer's thickness, so
+  those two numbers do not transfer to another flare.
+- **One body and one flare angle.** 18.5°, on a 2.75° cone, at six speeds. Nothing here measures a
+  shallow flare, a steep one, a flare behind a cylinder rather than a cone, or a flare on a
+  pointed nose. A reader with a different flare has no measured error to apply: what this section
+  supports is that hpr's flare is *not obviously wrong* where the flow stays attached, not that it
+  is good to 7% on some other body.
+- **The drawn-out reading past the limit is measured against nothing at all.** The one row where
+  [it](#a-flare-through-the-method) would have applied is the row the march then refused, so the
+  rule above the corner's limit is still a construction chosen for continuity.
+- **The measurement is the forebody only.** Its `C_N` and `C_m` are integrated surface pressures
+  with no base term, which is what hpr's body model computes too — but it also means the tunnel's
+  own balance never weighed this body, and a reading error of about 0.004 in `C_N` sits under
+  every circle.
+- **`C_A` is not compared.** The same figure plots axial force, and the report notes its own
+  method reads it high where the flare separates. hpr's supersonic drag is a different model with
+  its own [checks](#drag-verification); this milestone did not touch it.
+- **The drawing is 1% inconsistent and one closure had to be chosen.** The spread over the three
+  closures is small (0.64 points, 0.0043 calibres) and the flare's own angle is inside it, but it
+  is the drawing's disagreement with itself, not an error bar on the measurement.
+- **No target was set, and none is met or missed here.**
+  [M1.8e18](../decisions-and-roadmap.md#m1-8e18) asked what a marched flare is worth, not that it
+  reach a number. The tables above are the answer.
 
 ### Blunt tips
 
@@ -1351,6 +1575,21 @@ diameters (0.56 for `n` = 0.5) never takes it, since the handover stops at 24°,
 slender-body theory: hpr doesn't warn, and
 [`AeroModel::supersonic_body`](../api/hpr_aero/model/struct.AeroModel.html#method.supersonic_body)
 returns `None`. Haack and elliptical noses end level, so the cap always ends on them.
+
+**A blunt nose can be more than one shape, and the cap may end on any of them.** Since
+[M1.8e18](../decisions-and-roadmap.md#m1-8e18), a nose that *starts with a sphere* carries on
+through the curved, widening shapes behind that sphere, and hpr looks for the handover along all
+of them rather than in the sphere alone. TN D-4865's own model 2 needs it: its nose is a sphere
+blended into a 2.75° cone by a second arc, and the sphere is still at 38.3° where the arc takes
+over, steeper than the 24° cap at any speed, so the handover always falls on the arc
+([What a marched flare is worth](#what-a-marched-flare-is-worth)).
+
+Everything else reads exactly as it did before, on purpose. A *pointed* nose is one shape however
+many curved shapes follow it, so a curved transition behind one is still the afterbody. And the
+search stops at the first shape that is straight or narrows: a cap that reached a cylinder or a
+boattail would hand the flow over at no angle at all, with none of the total pressure the tip took
+out of it, so a nose steeper than the handover all the way to one is still refused — which is the
+case in the paragraph above, and its numbers are unchanged.
 
 **Behind the handover.** hpr starts the method there as it starts at a pointed tip, with the flow
 on the *tangent cone*, the cone that touches the body at the handover. The report starts it from
@@ -2626,12 +2865,14 @@ and Cubbage's long, gentle boattails 0 to 0.009 where they measure 0.011 to 0.07
 
 ## Validity and open questions
 
-- **A flared body's supersonic normal force is compared with nothing at all.** Since
+- **A flared body's supersonic normal force rests on one measured flare.** Since
   [M1.8e17](../decisions-and-roadmap.md#m1-8e17) a conical flare flies the shock-expansion method
   while its corner's shock is attached, which moves a flared rocket's centre of pressure forward
-  by a tenth to a quarter of a calibre against the model it had before — and no measured flare
-  force has been put beside either. [M1.8e18](../decisions-and-roadmap.md#m1-8e18) commits NASA TN
-  D-4865 model 2's readings and closes it. Two more things about that model are open: the
+  by a tenth to a quarter of a calibre against the model it had before. The one measurement beside
+  it is TN D-4865's model 2, an 18.5° flare on a 2.75° cone: −1.9% and +7.0% at Mach 1.9 and 2.3,
+  +13.4% at 2.96, and +51.5% and +50.4% at 3.95 and 4.63, where that flare's boundary layer is
+  separated ([What a marched flare is worth](#what-a-marched-flare-is-worth)). No other flare
+  angle, and no other body, has been checked. Two more things about that model are open: the
   attachment test is a wedge's limit, not a flare's own, and a band of near-flat flares (0.03816°
   to 0.05882° on the tests' rocket) is refused outright and takes the whole body off the method,
   [issue #117](https://github.com/nrdptel/hpr-sim/issues/117) and
@@ -3625,4 +3866,5 @@ ellipse's integrals ([N09] eq. 3.70–3.71); the supersonic forcing and damping 
 [adr-044]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-044-what-the-answer-follows-when-it-follows-the-mesh-is-a-crossing-of-the-tangent-cone-not-a-reduced-element-2026-09-20
 [adr-045]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-045-where-a-flares-march-stops-is-the-corners-isentropic-turn-not-the-shock-detaching-2026-09-20
 [adr-047]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-047-a-flare-flies-the-method-where-its-corners-shock-is-attached-and-is-read-drawn-out-where-it-is-not-2026-09-20
+[adr-048]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-048-what-a-marched-flare-is-worth-measured-against-tn-d-4865s-model-2-2026-09-20
 [gap-fixture]: https://github.com/nrdptel/hpr-sim/blob/main/validation/fixtures/aero/arcas-robin-gap.json

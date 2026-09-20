@@ -23,7 +23,7 @@ use hpr_aero::blunt_tip::{
 };
 use hpr_aero::crossflow::crossflow_factor;
 use hpr_aero::shock_expansion::{
-    BodySegment, DEFAULT_ELEMENTS_PER_CURVE, HandoverStart, ShockExpansionBody, ShockExpansionSlope,
+    BodySegment, DEFAULT_ELEMENTS_PER_CURVE, HandoverStart, ShockExpansionBody,
 };
 use hpr_aero::{AeroModel, BodyModel};
 use hpr_design::{NoseShape, Part, Profile, Rocket};
@@ -41,13 +41,13 @@ pub const FIXTURE: &str = "validation/fixtures/aero/blunt-tips.json";
 /// The committed readings of TN D-4865's model 1.
 pub const READINGS: &str = "validation/fixtures/aero/tn-d-4865-sphere-cone.json";
 
-fn read(root: &Path, name: &str) -> Result<Value, String> {
+pub fn read(root: &Path, name: &str) -> Result<Value, String> {
     let text = fs::read_to_string(root.join(name)).map_err(|e| format!("{name}: {e}"))?;
     serde_json::from_str(&text).map_err(|e| format!("{name}: {e}"))
 }
 
 /// `[α°, value]` pairs as radians and values.
-fn pairs(value: &Value, key: &str) -> Result<(Vec<f64>, Vec<f64>), String> {
+pub fn pairs(value: &Value, key: &str) -> Result<(Vec<f64>, Vec<f64>), String> {
     value[key]
         .as_array()
         .ok_or(format!("no `{key}`"))?
@@ -261,7 +261,14 @@ fn handover_caps(root: &Path) -> Result<Value, String> {
             let hpr = body
                 .slope(mach, area)
                 .map_err(|e| format!("model 1 at Mach {mach} under {}°: {e}", cap_key(cap)))?;
-            let (fitted, fitted_cp) = flown_fit(&hpr, &n_a, mach, case.fineness, case.planform);
+            let (fitted, fitted_cp) = flown_fit(
+                hpr.slope_per_rad,
+                hpr.centre_of_pressure_m,
+                &n_a,
+                mach,
+                case.fineness,
+                case.planform,
+            );
             let at = |what: &str| {
                 format!(
                     "the sphere-cone at Mach {mach} under {}°: {what}",
@@ -558,11 +565,11 @@ struct SphereConeCase {
 
 /// A body's planform, which carries its body lift ([`crossflow_factor`]).
 #[derive(Clone, Copy)]
-struct Planform {
+pub struct Planform {
     /// The planform's area over the reference area.
-    ratio: f64,
+    pub ratio: f64,
     /// Its centroid, base diameters aft of the tip.
-    centroid_calibers: f64,
+    pub centroid_calibers: f64,
 }
 
 impl SphereConeCase {
@@ -616,8 +623,9 @@ impl SphereConeCase {
 /// A body's slope and centre of pressure fitted as a flight flies it at the plotted angles
 /// `alphas_rad`: the method's slope as `sin α`, and body lift, Jorgensen's
 /// `η C_dn (A_plan/A_ref) sin² α` at the planform's centroid.
-fn flown_fit(
-    hpr: &ShockExpansionSlope,
+pub fn flown_fit(
+    slope_per_rad: f64,
+    centre_of_pressure_m: f64,
     alphas_rad: &[f64],
     mach: f64,
     fineness: f64,
@@ -628,10 +636,10 @@ fn flown_fit(
         .map(|&a| {
             let lift =
                 crossflow_factor(fineness, mach * a.sin()) * planform.ratio * a.sin() * a.sin();
-            let attached = hpr.slope_per_rad * a.sin();
+            let attached = slope_per_rad * a.sin();
             (
                 attached + lift,
-                attached * hpr.centre_of_pressure_m + lift * planform.centroid_calibers,
+                attached * centre_of_pressure_m + lift * planform.centroid_calibers,
             )
         })
         .unzip();
@@ -639,7 +647,7 @@ fn flown_fit(
     (fitted, slope(alphas_rad, &moments) / fitted)
 }
 
-fn sphere_cone_rows(root: &Path) -> Result<Value, String> {
+pub fn sphere_cone_rows(root: &Path) -> Result<Value, String> {
     let case = SphereConeCase::read(root)?;
     let body = &case.body;
     let reports = body.clone().with_handover_start(HandoverStart::Newtonian);
@@ -667,7 +675,14 @@ fn sphere_cone_rows(root: &Path) -> Result<Value, String> {
         let newtonian = reports
             .slope(mach, area)
             .map_err(|e| format!("model 1 at Mach {mach}, the report's start: {e}"))?;
-        let (fitted, fitted_cp) = flown_fit(&hpr, &n_a, mach, case.fineness, case.planform);
+        let (fitted, fitted_cp) = flown_fit(
+            hpr.slope_per_rad,
+            hpr.centre_of_pressure_m,
+            &n_a,
+            mach,
+            case.fineness,
+            case.planform,
+        );
         let handover_x = body
             .handover_m(mach)
             .map_err(|e| e.to_string())?

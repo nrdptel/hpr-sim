@@ -179,7 +179,8 @@ impl BodySegment {
 /// the vertex, or a blunt tip's handover) and its angle to the axis.
 #[derive(Debug, Clone, Copy, PartialEq)]
 struct Element {
-    /// Whether the element is tangent to the first segment, the nose.
+    /// Whether the element is tangent to one of the nose's segments ([`nose_segments`]): the first
+    /// one, and behind a spherical cap the curved segments that carry the nose on past it.
     on_nose: bool,
     corner_x_m: f64,
     corner_radius_m: f64,
@@ -314,8 +315,8 @@ pub struct ShockExpansionSlope {
 impl ShockExpansionBody {
     /// Lays out a body from its segments, nose first: a curved segment gets
     /// `elements_per_curve` equal steps in `x` (tangent at both ends and between), a straight
-    /// one a single element. A blunt tip's first segment gets its steps from the handover aft,
-    /// laid out at each Mach number ([`crate::blunt_tip`]).
+    /// one a single element. Behind a blunt tip the steps are counted from the handover aft, laid
+    /// out at each Mach number ([`crate::blunt_tip`]); the segments its cap covers get none.
     ///
     /// # Errors
     ///
@@ -480,15 +481,15 @@ impl ShockExpansionBody {
     }
 
     /// Where a blunt tip's cap hands over to the method at Mach `mach`, m aft of the vertex:
-    /// where the first segment's slope falls to [`crate::blunt_tip::handover_angle_rad`], or to
-    /// the body's own cap ([`Self::with_handover_cap_rad`]). `None` for a pointed tip.
+    /// where the body's slope first falls to [`crate::blunt_tip::handover_angle_rad`], or to the
+    /// body's own cap ([`Self::with_handover_cap_rad`]). `None` for a pointed tip.
     ///
     /// # Errors
     ///
     /// - [`AeroError::Domain`] for a Mach number that isn't finite and above 1, or a handover cap
     ///   outside `(0, `[`crate::blunt_tip::CONE_TABLE_CAP_RAD`]`]`.
-    /// - [`AeroError::Unsupported`] if the first segment is steeper than the handover's slope all
-    ///   the way to its end.
+    /// - [`AeroError::Unsupported`] if the body is steeper than the handover's slope all the way
+    ///   to its end.
     pub fn handover_m(&self, mach: f64) -> Result<Option<f64>, AeroError> {
         check_mach(mach)?;
         if !self.blunt {
@@ -496,31 +497,39 @@ impl ShockExpansionBody {
         }
         let angle = crate::blunt_tip::handover_angle_capped_rad(mach, self.handover_cap_rad)?;
         let target = angle.tan();
-        // `new` refuses a body without segments.
-        let first = &self.segments[0].1;
-        let length = first.length_m();
-        if first.radius_and_slope(length).1 > target {
-            return Err(AeroError::Unsupported(format!(
-                "the nose is steeper than the blunt tip's handover slope, {}°, all the way to its \
-                 end at Mach {mach}",
-                angle.to_degrees()
-            )));
-        }
-        // The slope falls from infinite at the tip; bisect to the last bit of an `f64` for the
-        // first station where it is at most the handover's.
-        let (mut low, mut high) = (0.0_f64, length);
-        for _ in 0..HANDOVER_BISECTIONS {
-            let mid = 0.5 * (low + high);
-            if mid <= low || mid >= high {
-                break;
+        // The cap ends where the nose's slope first falls to the handover's, which needn't be in
+        // the first segment: behind a spherical cap the nose can carry on through another curved
+        // segment ([`nose_segments`]). Take the first of the nose's segments that is shallower
+        // than the handover at its aft end, and bisect inside it — the slope falls from infinite
+        // at the tip, so the segments ahead of that one are steeper all through. The search stops
+        // where the nose does: a cap that reached a cylinder would hand over at no angle at all,
+        // with none of the total pressure the tip took out of the flow.
+        for (start, segment) in &self.segments[..nose_segments(&self.segments)] {
+            let length = segment.length_m();
+            if segment.radius_and_slope(length).1 > target {
+                continue;
             }
-            if first.radius_and_slope(mid).1 > target {
-                low = mid;
-            } else {
-                high = mid;
+            // Bisect to the last bit of an `f64` for the first station where the slope is at most
+            // the handover's.
+            let (mut low, mut high) = (0.0_f64, length);
+            for _ in 0..HANDOVER_BISECTIONS {
+                let mid = 0.5 * (low + high);
+                if mid <= low || mid >= high {
+                    break;
+                }
+                if segment.radius_and_slope(mid).1 > target {
+                    low = mid;
+                } else {
+                    high = mid;
+                }
             }
+            return Ok(Some(start + high));
         }
-        Ok(Some(high))
+        Err(AeroError::Unsupported(format!(
+            "the nose is steeper than the blunt tip's handover slope, {}°, all the way to its \
+             end at Mach {mach}",
+            angle.to_degrees()
+        )))
     }
 
     fn radius_and_slope_m(&self, x_m: f64) -> (f64, f64) {
@@ -977,10 +986,46 @@ impl ShockExpansionBody {
     }
 }
 
+/// How many leading segments are the nose.
+///
+/// Normally one: a nose is a single [`Profile`](hpr_design::Profile), and everything behind it is
+/// the afterbody. A [`BodySegment::SphericalCap`] is the exception — it is a *piece* of a nose,
+/// never a whole one — so behind a cap the nose carries on through the curved segments that
+/// follow it, and stops at the first that is straight or doesn't widen. TN D-4865's own model 2
+/// needs that: its nose is
+/// a 0.257-diameter sphere blended into a 2.75° cone by a 0.429 arc, and the sphere is still at
+/// 38.3° where the arc takes over, steeper than the handover's 24° cap at any Mach number
+/// (M1.8e18, ADR-048).
+///
+/// It says where a blunt tip's cap may hand the flow over ([`ShockExpansionBody::handover_m`]),
+/// and which elements the rule on a reduced element treats as the nose's. Deliberately narrow: a
+/// body that isn't led by a cap reads exactly as it did before, so no committed number moved.
+///
+/// [adr-048]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-048-what-a-marched-flare-is-worth-measured-against-tn-d-4865s-model-2-2026-09-20
+fn nose_segments(segments: &[(f64, BodySegment)]) -> usize {
+    if !matches!(
+        segments.first(),
+        Some((_, BodySegment::SphericalCap { .. }))
+    ) {
+        return 1;
+    }
+    segments
+        .iter()
+        .take_while(|(_, segment)| {
+            // A curved segment that narrows is a boattail, not the nose: letting a cap reach one
+            // would hand the flow over on a falling surface, at a slope the handover angle meets
+            // from the wrong side.
+            !segment.is_straight()
+                && segment.radius_and_slope(segment.length_m()).0 > segment.radius_and_slope(0.0).0
+        })
+        .count()
+        .max(1)
+}
+
 /// The tangent body's elements over `segments` (each with its fore station, the body `length_m`
 /// long): tangent at `elements_per_curve` equal steps along a curved segment (a straight one
-/// takes one element), the first segment's steps from `start_m`, the vertex or a blunt tip's
-/// handover. The first element starts at `start_m`.
+/// takes one element), counted from `start_m` — the vertex, or a blunt tip's handover, whose cap
+/// may cover whole segments. The first element starts at `start_m`.
 ///
 /// # Errors
 ///
@@ -992,14 +1037,17 @@ fn lay_out(
     elements_per_curve: usize,
     start_m: f64,
 ) -> Result<Vec<Element>, AeroError> {
+    let nose_segments = nose_segments(segments);
     // The tangency points: (x, r, slope, on the nose).
     let mut points = Vec::new();
     for (index, (start, segment)) in segments.iter().enumerate() {
-        let (from, span) = if index == 0 {
-            (start_m, segment.length_m() - start_m)
-        } else {
-            (0.0, segment.length_m())
-        };
+        // A blunt tip's cap can cover whole segments: those carry no elements, and the one the
+        // handover falls in starts there.
+        if start + segment.length_m() <= start_m {
+            continue;
+        }
+        let from = (start_m - start).max(0.0);
+        let span = segment.length_m() - from;
         let steps = if segment.is_straight() {
             1
         } else {
@@ -1009,12 +1057,15 @@ fn lay_out(
         for i in 0..count {
             let local = from + span * i as f64 / steps as f64;
             let (r, slope) = segment.radius_and_slope(local);
-            points.push((start + local, r, slope, index == 0));
+            points.push((start + local, r, slope, index < nose_segments));
         }
     }
 
-    // `segments` isn't empty, so `points` holds at least the first segment's start.
-    let (x0, r0, t0, _) = points[0];
+    let Some(&(x0, r0, t0, _)) = points.first() else {
+        return Err(AeroError::Unsupported(format!(
+            "a blunt tip's cap reaches the body's end at {start_m} m"
+        )));
+    };
     let mut elements = vec![Element {
         on_nose: true,
         corner_x_m: x0,
@@ -3223,6 +3274,130 @@ mod tests {
             "the cylinder behind the vanishing cap",
         );
         near(cone[1].slope_per_rad, 1.374, 5e-3, "the cone's cylinder");
+    }
+
+    /// A blunt nose can take more than one segment, and the cap hands over wherever its slope
+    /// falls to the handover's — but never past the nose (M1.8e18).
+    ///
+    /// TN D-4865's model 2 is a 0.257-diameter sphere blended into a 2.75° cone by a 0.429 arc,
+    /// and the sphere is still at 38.3° where the arc takes over, steeper than the handover's 24°
+    /// cap at any Mach number. The handover is on the arc. A cylinder behind a nose is not the
+    /// nose, so a cap that reaches one is refused instead of handing over at no angle at all,
+    /// with none of the total pressure the tip took out of the flow.
+    #[test]
+    fn a_blunt_nose_hands_over_on_a_later_segment_but_never_past_the_nose() {
+        // Model 2's nose, in base diameters, as `xtask/src/aero_flare.rs` builds it.
+        let (sphere_end_x, sphere_end_r) = (0.097_751_728_849_191_7, 0.201_715_116_279_069_8);
+        let (nose_end_x, nose_end_r) = (0.342_995_992_350_487_5, 0.293_505_957_802_043_8);
+        let arc = Profile::transition(
+            NoseShape::Ogive {
+                radius_ratio: 1.148_551_684_394_344_9,
+            },
+            nose_end_x - sphere_end_x,
+            sphere_end_r,
+            nose_end_r,
+            false,
+        )
+        .unwrap();
+        let cone = Profile::transition(
+            NoseShape::Conical {},
+            0.757_619_879_544_843_6,
+            nose_end_r,
+            0.329_897_050_227_035_4,
+            false,
+        )
+        .unwrap();
+        let segments = [
+            BodySegment::SphericalCap {
+                radius_m: 0.257,
+                length_m: sphere_end_x,
+            },
+            BodySegment::Profile { profile: arc },
+            BodySegment::Profile { profile: cone },
+        ];
+        let body = ShockExpansionBody::new(&segments, DEFAULT_ELEMENTS_PER_CURVE).unwrap();
+        for mach in [1.6, 2.0, 3.0, 4.63] {
+            let handover = body.handover_m(mach).unwrap().expect("a blunt tip");
+            assert!(
+                handover > sphere_end_x && handover < nose_end_x,
+                "Mach {mach}: the handover is at {handover}, not on the blend arc"
+            );
+            let angle = crate::blunt_tip::handover_angle_rad(mach)
+                .unwrap()
+                .min(crate::blunt_tip::MAX_HANDOVER_RAD);
+            let slope = arc.radius_and_slope(handover - sphere_end_x).1;
+            assert!(
+                (slope.atan() - angle).abs() < 1e-12,
+                "Mach {mach}: the handover is at {}°, not the handover's {}°",
+                slope.atan().to_degrees(),
+                angle.to_degrees()
+            );
+            // The cap is still the sphere plus part of the arc, so the march starts behind it.
+            body.slope(mach, 0.25 * PI).expect("model 2's nose marches");
+        }
+        // A curved segment that narrows is a boattail, so a cap may not reach one either: the
+        // handover would land on its fore end at a slope of zero, with none of the total pressure
+        // the tip took out of the flow.
+        let boattail = [
+            BodySegment::SphericalCap {
+                radius_m: 0.5,
+                length_m: 0.1,
+            },
+            BodySegment::Profile {
+                profile: Profile::transition(NoseShape::TANGENT_OGIVE, 0.4, 0.3, 0.2, false)
+                    .unwrap(),
+            },
+        ];
+        let boattail = ShockExpansionBody::new(&boattail, DEFAULT_ELEMENTS_PER_CURVE).unwrap();
+        for mach in [1.5, 2.0, 3.0] {
+            let err = boattail
+                .handover_m(mach)
+                .expect_err("a cap that reaches a boattail")
+                .to_string();
+            assert!(err.contains("all the way to its end"), "Mach {mach}: {err}");
+        }
+        // A pointed nose is one segment however many curved shapes follow it, so a curved
+        // widening transition behind one is still the afterbody and a reduced element there is
+        // still refused: only a spherical cap, which is a piece of a nose rather than a whole
+        // one, carries the nose past its own segment.
+        let pointed = [
+            BodySegment::Profile {
+                profile: Profile::nose(NoseShape::TANGENT_OGIVE, 1.0, 0.25).unwrap(),
+            },
+            BodySegment::Profile {
+                profile: Profile::transition(
+                    NoseShape::Ogive { radius_ratio: 2.0 },
+                    0.4,
+                    0.25,
+                    0.35,
+                    false,
+                )
+                .unwrap(),
+            },
+        ];
+        let pointed = ShockExpansionBody::new(&pointed, DEFAULT_ELEMENTS_PER_CURVE).unwrap();
+        assert_eq!(
+            super::nose_segments(&pointed.segments),
+            1,
+            "a pointed nose is one segment"
+        );
+        // A cylinder behind a nose is not the nose: the cap may not reach it.
+        let steep = [
+            BodySegment::Profile {
+                profile: Profile::nose(NoseShape::PowerSeries { exponent: 0.6369 }, 4.17, 0.5)
+                    .unwrap(),
+            },
+            BodySegment::Cylinder {
+                length_m: 4.0,
+                radius_m: 0.5,
+            },
+        ];
+        let steep = ShockExpansionBody::new(&steep, DEFAULT_ELEMENTS_PER_CURVE).unwrap();
+        let err = steep
+            .handover_m(1.2)
+            .expect_err("a cap that reaches the cylinder")
+            .to_string();
+        assert!(err.contains("all the way to its end"), "{err}");
     }
 
     /// Just above the Mach number where a blunt tip's handover first falls on its nose (its
