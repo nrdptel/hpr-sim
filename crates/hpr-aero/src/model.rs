@@ -4738,6 +4738,201 @@ mod tests {
         }
     }
 
+    /// What a **step in radius** costs, measured (M1.8e15, ADR-049).
+    ///
+    /// A step is a joint where one component's fore radius does not match the previous one's aft
+    /// radius. The march cannot cross one — its tangent body needs a profile without a jump in it
+    /// — and the model around it then takes the *whole* body off the method, because mixing the
+    /// method's shares with slender-body theory's is what ADR-034 rejected.
+    ///
+    /// This pins where that switch sits and what it is worth, so that a fix can be measured
+    /// against it rather than argued about.
+    /// What a **step in radius** costs, and where the march refuses one (M1.8e15, ADR-049).
+    ///
+    /// A step is a joint where one part's radius does not match the next one's. The tangent body
+    /// the march walks needs a profile without a jump in it, so a step takes the **whole** body
+    /// back to slender-body theory, at every speed. Nothing measures a stepped body faster than
+    /// sound, so the size of that switch is published rather than modelled.
+    #[test]
+    fn a_step_takes_the_whole_body_off_the_method() {
+        use hpr_design::ReferenceDiameter;
+        // The tests' straight rocket: a tangent-ogive nose 0.25 m and three tubes, 0.7, 0.05 and
+        // 0.3 m, all at 0.027 m. `joint` is which tube the step is at: 1 is the nose's own joint,
+        // 3 the last. A positive `drop_m` steps the body **down** from that joint aft, a negative
+        // one steps it **up**. The reference is pinned at 54 mm so that every row is divided by
+        // the same area: left on `Maximum`, a step up would widen the reference with it and the
+        // rows would not be comparable.
+        let at_joint = |joint: usize, drop_m: f64| {
+            let mut rocket = straight_rocket();
+            rocket.reference_diameter = ReferenceDiameter::Custom { diameter_m: 0.054 };
+            let lengths = [0.0, 0.7, 0.05, 0.3];
+            for (i, length_m) in lengths.iter().enumerate().skip(joint) {
+                rocket.stages[0].components[i].part =
+                    body_part(*length_m, 0.027 - drop_m, 0.027 - drop_m);
+            }
+            rocket
+        };
+        let read = |joint: usize, drop_m: f64| {
+            let rocket = at_joint(joint, drop_m);
+            let model = model(&rocket);
+            let force = model
+                .normal_force(&flow(3.0, 4f64.to_radians(), 0.0))
+                .unwrap();
+            (
+                force.coefficient,
+                force.cp_station_m.unwrap() / model.reference_diameter_m(),
+                model.supersonic_body().is_some(),
+            )
+        };
+        let (flush, flush_cp, marched) = read(3, 0.0);
+        assert!(marched, "with no step the method covers the body");
+        assert!(
+            (flush - 0.899_591_695).abs() < 5e-7 && (flush_cp - 16.949_177_4).abs() < 5e-5,
+            "the flush rocket reads {flush} at {flush_cp} calibres"
+        );
+
+        // What it costs. At the threshold the body is flush to a part in 1e9, so the whole
+        // difference is the method itself: the same −8.65% and 1.03 calibres wherever the step is
+        // and whichever way it goes. It grows with a step **down**, which takes area off the body;
+        // it shrinks with a step **up**, because the area a step up adds carries slender-body
+        // normal force of its own. Either way the centre of pressure moves aft.
+        for (joint, drop_m, want_force, want_calibers) in [
+            (1, 2.8e-11, -0.086_518_790, 1.028_480_4),
+            (2, 2.8e-11, -0.086_518_790, 1.028_480_4),
+            (3, 2.8e-11, -0.086_518_789, 1.028_480_4),
+            (1, 1e-3, -0.106_197_868, 1.193_751_6),
+            (3, 1e-3, -0.102_873_512, 0.994_855_8),
+            (1, 2e-3, -0.125_539_709, 1.359_310_7),
+            (3, 2e-3, -0.118_890_998, 0.959_745_0),
+            (1, -2.8e-11, -0.086_518_788, 1.028_480_4),
+            (3, -2.8e-11, -0.086_518_789, 1.028_480_4),
+            (1, -1e-3, -0.067_194_034, 0.867_387_3),
+            (3, -1e-3, -0.070_503_028, 1.064_443_7),
+            (1, -2e-3, -0.047_519_789, 0.706_432_7),
+            (3, -2e-3, -0.054_109_172, 1.098_652_0),
+        ] {
+            let (force, cp, marched) = read(joint, drop_m);
+            assert!(
+                !marched,
+                "a {drop_m} m step at joint {joint} kept the method"
+            );
+            let (force, calibers) = (force / flush - 1.0, cp - flush_cp);
+            assert!(
+                (force - want_force).abs() < 5e-6 && (calibers - want_calibers).abs() < 5e-5,
+                "a {drop_m} m step at joint {joint} moves the force {force:.9} and the centre of \
+                 pressure {calibers:.7} calibres, against {want_force} and {want_calibers}"
+            );
+        }
+
+        // Where the switch sits at a joint whose slope does not change: the tangent body merges
+        // two elements within a billionth of the radius of each other and refuses them past that
+        // (`shock_expansion::lay_out`), so the step the march refuses is 1e-9 × 0.027 m. Bisected
+        // at the last joint to a part in 1e6; the other joints and the other direction are
+        // bracketed either side of it, which is what "wherever it sits, whichever way" means.
+        let (mut low, mut high) = (1e-13, 1e-8);
+        assert!(
+            read(3, low).2 && !read(3, high).2,
+            "the bisection has to start with the march covering one end and refusing the other"
+        );
+        while high - low > 1e-6 * high {
+            let mid = 0.5 * (low + high);
+            if read(3, mid).2 {
+                low = mid
+            } else {
+                high = mid
+            }
+        }
+        assert!(
+            (high / 2.7e-11 - 1.0).abs() < 2e-6,
+            "the march refuses a step of {high} m, not a billionth of the 0.027 m radius"
+        );
+        for joint in [1, 2, 3] {
+            for sign in [1.0, -1.0] {
+                assert!(
+                    read(joint, sign * 2.6e-11).2 && !read(joint, sign * 2.8e-11).2,
+                    "at joint {joint} with sign {sign} the switch is not at 2.7e-11 m"
+                );
+            }
+        }
+
+        // The run's own coverage gate is a different, much looser test — a millionth of the fore
+        // area, 13.5 nm of radius here — and it owns every step anyone could draw. Below it the
+        // stepped tube still joins the run and `lay_out` is what refuses the body; above it the
+        // run never forms. Both give the same reading, so this pins which one owns which range.
+        let run_segments = |drop_m: f64| {
+            let rocket = at_joint(3, drop_m);
+            model(&rocket)
+                .supersonic_run
+                .as_ref()
+                .map(|run| run.segments.len())
+        };
+        for drop_m in [1e-8, -1e-8] {
+            assert_eq!(
+                run_segments(drop_m),
+                Some(4),
+                "{drop_m} m is inside the gate"
+            );
+        }
+        for drop_m in [2e-8, -2e-8] {
+            assert_eq!(run_segments(drop_m), None, "{drop_m} m is outside the gate");
+        }
+
+        // At a joint where the slope **does** change, the binding constraint is not the merge
+        // tolerance but the corner ordering (`shock_expansion::lay_out`'s `corner_x <= x + 1e-12 *
+        // length_m`), so a step **up** is refused at 1e-12 × the body's length × the change of
+        // slope. On the tests' finned rocket — the same body with a 0.027 → 0.022 m boattail, so
+        // 1.3 m and a slope change of 0.1 — that is 1.3e-13 m, 208× finer than the 2.7e-11 m a
+        // tube-to-tube joint needs, and it costs more: −11.34% and 1.095 calibres. The threshold
+        // is a pair, not a number, and this is the common shape it bites on.
+        let boattail = |drop_m: f64| {
+            let mut rocket = crate::testing::finned_rocket(4);
+            rocket.reference_diameter = ReferenceDiameter::Custom { diameter_m: 0.054 };
+            rocket.stages[0].components[2].part = body_part(0.05, 0.027 - drop_m, 0.022);
+            let model = model(&rocket);
+            let force = model
+                .normal_force(&flow(3.0, 4f64.to_radians(), 0.0))
+                .unwrap();
+            (
+                force.coefficient,
+                force.cp_station_m.unwrap() / model.reference_diameter_m(),
+                model.supersonic_body().is_some(),
+            )
+        };
+        let (boattail_flush, boattail_flush_cp, marched) = boattail(0.0);
+        assert!(marched, "flush, the method covers the boattailed body too");
+        let (mut low, mut high) = (1e-18, 1e-8);
+        assert!(boattail(-low).2 && !boattail(-high).2);
+        while high - low > 1e-6 * high {
+            let mid = 0.5 * (low + high);
+            if boattail(-mid).2 {
+                low = mid
+            } else {
+                high = mid
+            }
+        }
+        assert!(
+            (high / (1e-12 * 1.3 * 0.1) - 1.0).abs() < 2e-4,
+            "a step up at the boattail's joint is refused at {high} m, not 1e-12 × 1.3 m × 0.1"
+        );
+        assert!(
+            boattail(2.6e-11).2 && !boattail(2.8e-11).2,
+            "stepping down at that joint, the merge tolerance still binds"
+        );
+        for drop_m in [-1.4e-13, -2.8e-11, 2.8e-11] {
+            let (force, cp, marched) = boattail(drop_m);
+            assert!(
+                !marched,
+                "a {drop_m} m step at the boattail kept the method"
+            );
+            let (force, calibers) = (force / boattail_flush - 1.0, cp - boattail_flush_cp);
+            assert!(
+                (force + 0.113_409_121).abs() < 5e-6 && (calibers - 1.095_116_4).abs() < 5e-5,
+                "a {drop_m} m step at the boattail moves the force {force:.9} and the centre of \
+                 pressure {calibers:.7} calibres"
+            );
+        }
+    }
+
     #[test]
     fn a_body_the_method_cannot_finish_keeps_slender_body_terms() {
         let at = |m: &AeroModel, mach| body_values(m, mach);
