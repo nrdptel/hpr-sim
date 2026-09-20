@@ -1712,7 +1712,9 @@ where the neighbouring rows move by a fifth of that or less. Before
 [M1.8e19: the near-flat flare](../decisions-and-roadmap.md#m1-8e19) those lower rows were refused,
 so the table began above them and the [join](#bodies-faster-than-sound) covered the pole; it is
 now inside the table. That is the milestone's trade, and it is the honest description of it: two
-switches in shape removed, one pole exposed in both shape and speed.
+switches in shape removed, one pole exposed in both shape and speed. On a body whose reduced rows
+sit at the bottom of its table, what is given up is a continuous join; what is bought is that an
+arbitrarily small change of shape no longer moves the whole body between two models.
 
 It is not a new question, though: it is the loading through a tangent-cone crossing, which is
 [what a crossing costs](#what-a-crossing-is-and-what-it-costs) inside a segment, and which is open

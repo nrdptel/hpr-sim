@@ -4853,7 +4853,19 @@ across or a demonstration that refusing is right.
   the method. Nothing measures it on a cylinder or a boattail, which is why those keep the
   refusal, and #123 is what would close that.
 
-  Refusing is **not** right for the flare, and the measurement says so plainly. With the reading
+  **The trade is not one-way, and that is the decision.** On a body whose reduced rows sit at the
+  bottom of the table, the old refusal truncated the table there, so the join carried the reading
+  up from slender-body theory continuously and the pole was outside it; reading those rows puts
+  the pole inside the table, where it is a step between two neighbouring Mach rows. What is given
+  up on such a body is a continuous join; what is bought is that an arbitrarily small change of
+  shape no longer moves the whole body between two models. The refusal is taken to be **not**
+  right because the reason published for it does not hold — a reduced element behaves the same
+  whatever it sits on — and because refusing one whole side of a pole is not the same as having no
+  reading there: TN 3527 names `η = 0` as what its equations become, and both sides of the pole
+  are then readings of the method. What the method does not say is what the loading does through
+  the pole itself, and that is issue #108, unchanged by this either way.
+
+  The measurement says the rest plainly. With the reading
   carried, the table starts at Mach 1.2 at fifteen flare angles from zero to a degree, and swept
   in sixteen steps from a cylinder to 0.08° — well past the region's steep end — the whole
   rocket's normal force falls all the way at both Mach 3 and Mach 4, with no neighbouring pair
