@@ -30,6 +30,7 @@ mod designs;
 mod docs;
 mod examples;
 mod layering;
+mod ork;
 mod refs;
 mod site;
 mod validate;
@@ -51,6 +52,7 @@ Commands:
 {VALIDATE}
 {SITE}
 {EXAMPLES}
+{ORK}
   help                     Print this message.";
 
 fn usage() -> String {
@@ -61,6 +63,7 @@ fn usage() -> String {
         .replace("{VALIDATE}", validate::USAGE)
         .replace("{SITE}", site::USAGE)
         .replace("{EXAMPLES}", examples::USAGE)
+        .replace("{ORK}", ork::USAGE)
 }
 
 fn main() -> ExitCode {
@@ -73,6 +76,7 @@ fn main() -> ExitCode {
         Some("validate") => validate::run(&args.collect::<Vec<_>>()),
         Some("site") => site::run(&args.collect::<Vec<_>>()),
         Some("examples") => examples::run(&args.collect::<Vec<_>>()),
+        Some("ork") => ork::run(&args.collect::<Vec<_>>()),
         Some("help" | "-h" | "--help") => {
             println!("{}", usage());
             Ok(())
