@@ -1128,11 +1128,12 @@ rocket flies: the cap is where it was, and no committed number moved.
 The cap could move because the cone slopes the method reads now reach 30° ([ADR-042][adr-042]),
 where they once stopped at 24°. Moving it would follow the report's own rule further: the wedge's
 largest deflection passes 24° at Mach 2.06 and 30° at Mach 2.52, so a 30° cap keeps TN D-4865's
-([J68]'s) rule over that whole band, where 24° cuts it short from Mach 2.06 up. Where a cap binds
-at all, a steeper one also reads nearer the report's own sphere-cone. And on the Arcas Robin's
-committed nose it breaks *the march* — the method stepping element by element down the body from
-the handover — above Mach 4. hpr keeps 24° until that is settled ([ADR-043][adr-043]), and the cap
-is a parameter of the method rather than a constant to argue over
+([J68]'s) rule over that whole band, where 24° cuts it short from Mach 2.06 up. Where a cap binds at
+all, going all the way to 30° reads nearer the report's own sphere-cone at every row, though not at
+every step of the way. And on the Arcas Robin's committed nose it breaks *the march* — the method
+stepping element by element down the body from the handover — above Mach 4. hpr keeps 24° until that
+is settled ([ADR-043][adr-043]), and the cap is a parameter of the method rather than a constant to
+argue over
 ([`with_handover_cap_rad`](../api/hpr_aero/shock_expansion/struct.ShockExpansionBody.html#method.with_handover_cap_rad)).
 
 Each cap starts to bind at its own speed — Mach 2.06, 2.19, 2.34 and 2.52 — and below that it
