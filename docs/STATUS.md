@@ -42,11 +42,11 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
   −1.9%/+7.0%/+13.4% at Mach 1.90/2.30/2.96 and +51.5%/+50.4% at 3.95/4.63, separated there (model 1,
   unflared, +29.7%/+32.1%). **No reading below about Mach 1.5289.** A blunt nose may span two curved
   segments, but a cap may not reach a cylinder; `aero_flare` repeats the flare rule, pinned by a test.
-- **M1.8e15** (ADR-049): a step in radius past 2.7e-11 m (a billionth of the radius, bisected) takes
-  the **whole** body off the method — −8.65% and 1.03 calibres at the threshold wherever the step
-  sits, −12.55% and 1.36 at 2 mm on the nose's joint. Stopping the march *at* the step was built and
-  rejected: +7.2% on shapes that aren't steps, ADR-034's mixture re-opened behind a boattail, and a
-  band with no reading (−11.3%). #87 is the step alone; its ownerless switches are #120 and #121.
+- **M1.8e15** (ADR-049): a step in radius past 2.7e-11 m (a billionth of the radius, bisected both
+  ways) takes the **whole** body off the method — −8.65% and 1.03 calibres at the threshold wherever
+  it sits and whichever way, −12.55% and 1.36 at 2 mm down (a step up moves the reference too).
+  Stopping the march *at* the step was rejected: +7.2% on shapes that aren't steps, ADR-034's
+  mixture re-opened behind a boattail, a band with no reading. #87 is the step; #120, #121 the rest.
 - **Debrief, folded in** (ADR-046): `hpr-flightdata` is off `hpr-sim` and must stay off it (`forbids
   = ["hpr-sim"]`, walked by `cargo xtask wasm-check`); sim-versus-flight goes in `hpr-forensics`.
   Notes: `debrief-{log-formats,flight-readings,porting-boundary}.md`. **Port from Debrief's `lib/`,

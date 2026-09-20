@@ -4751,7 +4751,8 @@ mod tests {
     fn a_step_takes_the_whole_body_off_the_method() {
         // The tests' straight rocket: a tangent-ogive nose 0.25 m and three tubes, 0.7, 0.05 and
         // 0.3 m, all at 0.027 m, on a 54 mm reference. `joint` is which tube the step is at: 1 is
-        // the nose's own joint, 3 the last.
+        // the nose's own joint, 3 the last. A positive `drop_m` steps the body **down** from that
+        // joint aft, a negative one steps it **up**.
         let at_joint = |joint: usize, drop_m: f64| {
             let mut rocket = straight_rocket();
             let lengths = [0.0, 0.7, 0.05, 0.3];
@@ -4771,56 +4772,78 @@ mod tests {
                 force.coefficient,
                 force.cp_station_m.unwrap() / model.reference_diameter_m(),
                 model.supersonic_body().is_some(),
+                model.reference_diameter_m(),
             )
         };
-        let (flush, flush_cp, marched) = read(3, 0.0);
+        let (flush, flush_cp, marched, flush_diameter) = read(3, 0.0);
         assert!(marched, "with no step the method covers the body");
         assert!(
-            (flush - 0.899_592).abs() < 5e-7 && (flush_cp - 16.9492).abs() < 5e-5,
-            "the flush rocket reads {flush} at {flush_cp} calibres"
+            (flush - 0.899_592).abs() < 5e-7
+                && (flush_cp - 16.9492).abs() < 5e-5
+                && (flush_diameter - 0.054).abs() < 1e-12,
+            "the flush rocket reads {flush} at {flush_cp} calibres on {flush_diameter} m"
         );
 
-        // Where the switch sits: the tangent body merges two elements within a billionth of the
-        // radius of each other and refuses them past that (`shock_expansion::lay_out`), so the
-        // step the march refuses is 1e-9 × 0.027 m, recovered here through the area the run's
-        // coverage works in. Bisected to a part in 1e6.
-        let (mut low, mut high) = (1e-13, 1e-8);
-        assert!(read(3, low).2 && !read(3, high).2);
-        while high - low > 1e-6 * high {
-            let mid = 0.5 * (low + high);
-            if read(3, mid).2 {
-                low = mid
-            } else {
-                high = mid
+        // Where the switch sits, in both directions: the tangent body merges two elements within a
+        // billionth of the radius of each other and refuses them past that
+        // (`shock_expansion::lay_out`), so the step the march refuses is 1e-9 × 0.027 m, whichever
+        // way the profile jumps. Bisected to a part in 1e6. The run's own coverage gate is 500×
+        // looser (a millionth of the area, 13.5 nm of radius) and never binds here.
+        let threshold = |sign: f64| {
+            let (mut low, mut high) = (1e-13, 1e-8);
+            assert!(read(3, sign * low).2 && !read(3, sign * high).2);
+            while high - low > 1e-6 * high {
+                let mid = 0.5 * (low + high);
+                if read(3, sign * mid).2 {
+                    low = mid
+                } else {
+                    high = mid
+                }
             }
+            high
+        };
+        for sign in [1.0, -1.0] {
+            let edge = threshold(sign);
+            assert!(
+                (edge / 2.7e-11 - 1.0).abs() < 2e-6,
+                "the march refuses a step of {edge} m with sign {sign}, not a billionth of the \
+                 0.027 m radius"
+            );
         }
-        assert!(
-            (high / 2.7e-11 - 1.0).abs() < 2e-6,
-            "the march refuses a step of {high} m, not a billionth of the 0.027 m radius"
-        );
 
         // What it costs. At the threshold the body is flush to a part in 1e9, so the whole
-        // difference is the method itself: the same −8.65% and 1.03 calibres wherever the step
-        // is. It grows with the step, and then where the step sits starts to matter.
-        for (joint, drop_m, want_force, want_calibers) in [
-            (1, 2.8e-11, -0.086_519, 1.028_5),
-            (2, 2.8e-11, -0.086_519, 1.028_5),
-            (3, 2.8e-11, -0.086_519, 1.028_5),
-            (1, 1e-3, -0.106_198, 1.193_8),
-            (3, 1e-3, -0.102_874, 0.994_9),
-            (1, 2e-3, -0.125_540, 1.359_3),
-            (3, 2e-3, -0.118_891, 0.959_7),
+        // difference is the method itself: the same −8.65% and 1.03 calibres wherever the step is
+        // and whichever way it goes. It grows with the step, and then where the step sits starts
+        // to matter. Stepping **up** past that also widens the body, so `reference_diameter_m`
+        // moves with it and those rows are not like for like — the last column pins that too.
+        for (joint, drop_m, want_force, want_calibers, want_diameter) in [
+            (1, 2.8e-11, -0.086_519, 1.028_5, 0.054),
+            (2, 2.8e-11, -0.086_519, 1.028_5, 0.054),
+            (3, 2.8e-11, -0.086_519, 1.028_5, 0.054),
+            (1, 1e-3, -0.106_198, 1.193_8, 0.054),
+            (3, 1e-3, -0.102_874, 0.994_9, 0.054),
+            (1, 2e-3, -0.125_540, 1.359_3, 0.054),
+            (3, 2e-3, -0.118_891, 0.959_7, 0.054),
+            (1, -2.8e-11, -0.086_519, 1.028_5, 0.054),
+            (3, -2.8e-11, -0.086_519, 1.028_5, 0.054),
+            (1, -1e-3, -0.132_633, 0.231_1, 0.056),
+            (3, -1e-3, -0.135_710, 0.421_1, 0.056),
+            (1, -2e-3, -0.174_366, -0.511_2, 0.058),
+            (3, -2e-3, -0.180_078, -0.146_0, 0.058),
         ] {
-            let (force, cp, marched) = read(joint, drop_m);
+            let (force, cp, marched, diameter) = read(joint, drop_m);
             assert!(
                 !marched,
                 "a {drop_m} m step at joint {joint} kept the method"
             );
             let (force, calibers) = (force / flush - 1.0, cp - flush_cp);
             assert!(
-                (force - want_force).abs() < 5e-6 && (calibers - want_calibers).abs() < 5e-5,
+                (force - want_force).abs() < 5e-6
+                    && (calibers - want_calibers).abs() < 5e-5
+                    && (diameter - want_diameter).abs() < 1e-9,
                 "a {drop_m} m step at joint {joint} moves the force {force:.6} and the centre of \
-                 pressure {calibers:.4} calibres, against {want_force} and {want_calibers}"
+                 pressure {calibers:.4} calibres on a {diameter} m reference, against \
+                 {want_force}, {want_calibers} and {want_diameter}"
             );
         }
     }

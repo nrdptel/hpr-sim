@@ -597,8 +597,8 @@
       the guide.
       *Result:* met (ADR-049). No source gives a step's normal force faster than sound, so the size
       is published and the model left alone: a step past 2.7e-11 m (a billionth of the radius,
-      bisected) takes the **whole** body off the method, worth −8.65% and 1.03 calibres at the
-      threshold wherever it sits, and −12.55% and 1.36 at 2 mm on the nose's joint. Stopping the
+      bisected either way) takes the **whole** body off the method, worth −8.65% and 1.03 calibres
+      at the threshold wherever it sits and whichever way, and −12.55% and 1.36 at 2 mm down. Stopping the
       march *at* the step was built and rejected: it adds a +7.2% jump on shapes that aren't steps,
       re-opens ADR-034's mixture behind a boattail, and leaves a band with no reading (−11.3%).
       #87 is narrowed to the step; its two ownerless switches split out as #120 and #121.

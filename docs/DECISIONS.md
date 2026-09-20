@@ -4671,17 +4671,25 @@ force faster than sound.
 54 mm reference) at Mach 3 and 4°. With no step it reads `C_N` = 0.899592 with its centre of
 pressure 16.9492 calibres aft of the tip.
 
-- **Where the switch sits:** a step of **2.7e−11 m**, a billionth of the 27 mm radius, bisected.
-  That is the tangent body's own tolerance for two elements parallel but apart
+- **Where the switch sits:** a step of **2.7e−11 m**, a billionth of the 27 mm radius, bisected —
+  and the same size whichever way the outline jumps: bisecting a step **up** lands on 2.7e−11 m
+  too. That is the tangent body's own tolerance for two elements parallel but apart
   (`shock_expansion::lay_out`), **not** the run's coverage gate at a millionth of the area
   (13.5 nm), which is 500× looser and never binds. Any step a person could build or draw is far
   past it.
 - **What it costs at the threshold:** −8.6519% of the normal force and 1.0285 calibres of centre of
-  pressure, **wherever on the body the step is** — at that size the shape is flush to a part in
-  1e9, so the whole difference is the method itself.
-- **What it costs as the step grows:** at 1 mm, −10.62% and 1.194 calibres with the step at the
-  nose's joint, −10.29% and 0.995 at the last; at 2 mm, −12.55% and 1.359, against −11.89% and
-  0.960. Where the step sits matters only once the step is large enough to change the shape.
+  pressure, **wherever on the body the step is and whichever way it goes** — at that size the shape
+  is flush to a part in 1e9, so the whole difference is the method itself.
+- **What it costs as the step grows, stepping down:** at 1 mm, −10.62% and 1.194 calibres with the
+  step at the nose's joint, −10.29% and 0.995 at the last; at 2 mm, −12.55% and 1.359, against
+  −11.89% and 0.960. Where the step sits matters only once the step is large enough to change the
+  shape.
+- **Stepping up, the reference moves with it.** A step up of 1 mm or 2 mm makes the rocket wider
+  than its 54 mm reference (56 mm and 58 mm), so the coefficients are divided by a different area
+  and the calibres by a different diameter. As measured: −13.26% and 0.231 calibres at the nose's
+  joint and −13.57% and 0.421 at the last at 1 mm; −17.44% and −0.511 against −18.01% and −0.146 at
+  2 mm. These four are **not like for like** with the rows above, and the guide says so; the test
+  pins each row's reference diameter beside its reading so the confound cannot go unnoticed.
 
 **Why the obvious fix is not taken.** The obvious fix is to stop the march *at* the step and let
 the body ahead of it keep the method, as the run already ends at a flare (ADR-047). It was built
