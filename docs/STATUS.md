@@ -49,7 +49,7 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
   (`forbids = ["hpr-sim"]`, walked transitively by `cargo xtask wasm-check`); sim-versus-flight
   work goes in the new `hpr-forensics`. Written up in `docs/research/debrief-log-formats.md` and
   `debrief-flight-readings.md`; both repos are in the refs lock. **Port from Debrief's `lib/`,
-  never from its `COMPETITION.md`** (OpenRocket rows read out of GPL-3 Java). Its 13 public
+  never from its `COMPETITION.md`** (OpenRocket rows read out of GPL-3 Java). Its 12 public
   fixtures may be used; `refs/debrief-fixtures` may not.
 - **M2.2's OpenRocket oracle** (ADR-035): orhelper is dropped, so decide how to drive the jar when
   M2.2 starts; JPype loads the JVM in-process, only a subprocess isolates, and the jar needs Java

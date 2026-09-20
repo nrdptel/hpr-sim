@@ -4311,7 +4311,7 @@ filled the crate.
   hpr-sim may not vendor one either, and M3.1 will need its own sample designs.
 - The corpus is other people's flight logs. It is fetched, never committed, and only counts, error
   statistics and anonymised case ids are published from it, exactly as the Loft fixtures are. The
-  thirteen fixtures Debrief ships publicly in its own repository are the ones that may appear in
+  twelve fixtures Debrief ships publicly in its own repository are the ones that may appear in
   examples and doctests.
 
 **Not chosen: start Phase 5 now.** The knowledge is perishable, so it is mirrored and written up

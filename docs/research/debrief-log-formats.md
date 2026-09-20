@@ -180,7 +180,7 @@ has no public `.ork` fixture and three of its tests skip in CI. hpr-sim may not 
 
 ## Fixtures
 
-Debrief ships 13 public fixtures in its own repository — AltimeterCloud, AltOS CSV, Blue Raven
+Debrief ships 12 public fixtures in its own repository — AltimeterCloud, AltOS CSV, Blue Raven
 (low-rate, high-rate and summary), Entacore AIM, Raven FIP, both Featherweight GPS variants, both
 PerfectFlite shapes, and a spreadsheet — each trimmed from a publicly shared flight with its source
 and ground truth recorded. **Those are the ones that may appear in hpr's examples and doctests.**
