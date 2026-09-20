@@ -600,7 +600,7 @@
       and 1.10 on a boattailed body. Stopping the march *at* the step was built and rejected: it
       re-opens ADR-034's mixture (the mixed reading's CP lands **forward of both** pure models) and
       does not close the boattail's band. #87 is narrowed to the step; #120 and #121 split off it.
-    - [ ] **M1.8e19 The near-flat flare the march refuses.** Below about 0.059° on the tests' rocket
+    - [x] **M1.8e19 The near-flat flare the march refuses.** Below about 0.059° on the tests' rocket
       a flare's one element is reduced aft of the nose (issue #81), so the march refuses Mach rows
       from the top down: from 0.00090182° the join's start steps (1.2 → 2.2, −4.6% and 0.75
       calibres), and from 0.03816° to 0.05882° the table goes altogether (−8.3% and 1.16 calibres).
@@ -608,8 +608,10 @@
       *Done when:* the region's edges are derived rather than bisected, a rule carries the reading
       across it or the refusal is shown to be right, and a test pins whichever it is with the
       switches' sizes measured on both sides.
-    - [ ] **M1.8e16 The blunt tip's handover, past 24°** (the rest of the old e13; the next free
-      number, so the flare and the step keep theirs, ADR-044). Blocked, so it goes last.
+      *Result:* met (ADR-050). The edges are the corner's **crossing** and **balance**, solved from
+      its own state; the reduction is read there, so both switches go. What is left: ADR-050.
+    - [ ] [blocked] **M1.8e16 The blunt tip's handover, past 24°** (the rest of the old e13, ADR-044;
+      the next free number, so the flare and the step keep theirs). On issue #108; see `STATUS.md`.
       *Done when:* the vertical-tip switch is gone or measured again, fixtures and the guide moving
       together; and, ahead of that, issue #108 closed — a rule for the loading through a crossing
       whose answer settles as the nose is cut finer, on a body that crosses (the committed nose

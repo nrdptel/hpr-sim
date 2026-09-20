@@ -4345,107 +4345,99 @@ mod tests {
         }
     }
 
-    /// Where the method refuses a flare it is the march that refuses it, and the model says so by
-    /// keeping slender-body theory rather than by reading a flare it hasn't marched.
+    /// A near-flat flare is marched at every row, and what dropping it would still cost.
     ///
-    /// Two bands do it, and they are different. Below about Mach 1.56 on this body the corner's
-    /// isentropic turn runs out before its shock detaches (ADR-045), so the table starts there and
-    /// the join carries the reading across in Mach — nothing switches. A **near-flat** flare,
-    /// though, has its one element reduced aft of the nose
-    /// ([issue #81](https://github.com/nrdptel/hpr-sim/issues/81)), and the march then refuses a
-    /// run of Mach numbers from the top down: at 0.0589° none, at 0.045° from Mach 5.0, at
-    /// 0.03817° from Mach 4.70. The table is built downward from Mach 5 and needs the join's whole
-    /// width inside it, so once that run reaches Mach 4.70 there is no table at all and the whole
-    /// body falls back to slender-body theory at **every** Mach number. That is a switch of a
-    /// shape, the size below, carried by
-    /// [issue #117](https://github.com/nrdptel/hpr-sim/issues/117) and M1.8e19.
+    /// Before M1.8e19 the march refused a run of Mach rows on a flare of about 0.03816° to
+    /// 0.05882°, because its one element is reduced ([issue
+    /// #81](https://github.com/nrdptel/hpr-sim/issues/81)) and hpr read a reduced element aft of
+    /// the nose as a refusal. The table is built downward from Mach 5 and needs the join's whole
+    /// width inside it, so the body then fell back to slender-body theory at **every** Mach
+    /// number. The march now reads those elements by the generalized method, as it always has on
+    /// the nose, so every row marches and the table is whole.
     ///
-    /// The two edges are bisected but **not pinned to f64**. Each is a root of the march's own
-    /// refusal at a fixed Mach number, and that refusal turns on the sign of `p_c − p₂`, a
-    /// difference of two pressures within a thousandth of each other there: the cancellation
-    /// leaves the root about nine significant digits, and the three CI platforms spread the lower
-    /// edge over 2.6e-10° (6.8e-9 relative). The mechanism either side, which the sample angles
-    /// below pin, is what this test is really for.
+    /// The size of what that switch was worth is still here, because it is the size of the
+    /// fallback: [`SupersonicFlare::SlenderBody`] is the reading the model used to drop to.
+    /// Against the method, at 4° on this rocket, it is −8.30% of the normal force and 1.16
+    /// calibres at Mach 3 and −4.62% and 0.75 calibres at Mach 2 — which is what the two edges
+    /// [issue #117](https://github.com/nrdptel/hpr-sim/issues/117) reported used to cross.
+    ///
+    /// The low-Mach band is a different thing and has not moved: below about Mach 1.56 on this
+    /// body the corner's isentropic turn runs out before its shock detaches (ADR-045), the table
+    /// simply starts there, and the join carries the reading across in Mach
+    /// ([`where_the_corners_turn_runs_out_the_join_carries_the_reading`]).
     #[test]
-    fn the_march_refuses_two_bands_of_flare_and_the_model_keeps_slender_body_theory() {
-        // The highest Mach row the march refuses, and where the table then starts.
-        let refusal = |deg: f64| {
-            let model = model(&flared_rocket(deg));
-            let run = model
-                .supersonic_run
-                .as_ref()
-                .expect("a run with a flare")
-                .clone();
-            let body = ShockExpansionBody::new(&run.segments, DEFAULT_ELEMENTS_PER_CURVE).unwrap();
-            let highest = (SUPERSONIC_FIRST_STEP..=SUPERSONIC_LAST_STEP)
-                .rev()
-                .find(|step| {
-                    let mach = *step as f64 / SUPERSONIC_STEPS_PER_MACH;
-                    body.slope(mach, model.reference_area_m2()).is_err()
-                });
-            (
-                highest.map(|step| step as f64 / SUPERSONIC_STEPS_PER_MACH),
-                model.supersonic_body().map(|s| s.join_start_mach),
-            )
-        };
-        // Steeper than the band nothing is refused; through it the refused run walks up from
-        // Mach 4.3 to Mach 5, and the table dies where the run passes Mach 4.7.
-        assert_eq!(refusal(0.0589).0, None);
-        assert_eq!(refusal(0.045).0, Some(5.0));
-        assert_eq!(refusal(0.03817).0, Some(4.7));
-        assert_eq!(refusal(0.03816).0, Some(4.65));
-        assert_eq!(refusal(0.03).0, Some(4.3));
-        assert!(refusal(0.03817).1.is_none() && refusal(0.045).1.is_none());
-        for deg in [0.03, 0.03816] {
-            let start = refusal(deg).1.expect("a table that reaches below Mach 4.7");
-            assert!(start < 4.7, "{deg}° starts its table at Mach {start}");
-        }
-        // Where the model loses the method, bisected. Nine significant digits: see above.
-        let covered = |deg: f64| model(&flared_rocket(deg)).supersonic_body().is_some();
-        let edge = |low: f64, high: f64| {
-            let (mut low, mut high) = (low, high);
-            let want = covered(low);
-            loop {
-                let middle = 0.5 * (low + high);
-                if middle <= low || middle >= high {
-                    return high;
-                }
-                if covered(middle) == want {
-                    low = middle;
-                } else {
-                    high = middle;
-                }
-            }
-        };
-        let (lower, upper) = (edge(0.01, 0.05), edge(0.05, 0.1));
-        assert!(
-            (lower / 0.038_161_270 - 1.0).abs() < 1e-7
-                && (upper / 0.058_820_517 - 1.0).abs() < 1e-7,
-            "the band runs from {lower}° to {upper}°"
-        );
-        assert!(!covered(0.5 * (lower + upper)));
-        for deg in [lower - 1e-9, upper + 1e-9, 1.0, 18.5] {
-            assert!(covered(deg), "{deg}° should fly the method");
-        }
-        // How big the switch at the band's steep edge is, at Mach 3 and 4°: the guide quotes it.
-        let at = |deg: f64| {
-            let model = model(&flared_rocket(deg));
-            let force = model
-                .normal_force(&flow(3.0, 4f64.to_radians(), 0.0))
+    fn a_near_flat_flare_marches_every_row_and_the_fallback_is_still_measured() {
+        // Every row from Mach 1.2 to Mach 5 marches, at the angles that used to lose whole runs
+        // of them and at two inside the region Mach 3's own corner reduces.
+        let ahead = flared_run(&flared_rocket(1.0));
+        let at_mach_3 =
+            crate::shock_expansion::flare_reduction_turns_rad(&ahead.aft_flow(3.0).unwrap())
                 .unwrap();
-            (
-                force.coefficient,
-                force.cp_station_m.unwrap() / model.reference_diameter_m(),
-            )
+        let reduced_at_mach_3 =
+            at_mach_3.crossing_rad.to_degrees()..at_mach_3.balance_rad.to_degrees();
+        assert!(
+            reduced_at_mach_3.contains(&0.007) && reduced_at_mach_3.contains(&0.008),
+            "Mach 3 reduces {reduced_at_mach_3:?}, which was meant to hold 0.007° and 0.008°"
+        );
+        for deg in [0.001, 0.007, 0.008, 0.01, 0.03, 0.038_17, 0.045, 0.0589] {
+            let model = model(&flared_rocket(deg));
+            let run = model.supersonic_run.as_ref().expect("a run with a flare");
+            let body = ShockExpansionBody::new(&run.segments, DEFAULT_ELEMENTS_PER_CURVE).unwrap();
+            let area = model.reference_area_m2();
+            let refused = (SUPERSONIC_FIRST_STEP..=SUPERSONIC_LAST_STEP).find(|step| {
+                body.slope(*step as f64 / SUPERSONIC_STEPS_PER_MACH, area)
+                    .is_err()
+            });
+            assert_eq!(
+                refused,
+                None,
+                "a {deg}° flare loses Mach {:?}",
+                refused.map(|step| step as f64 / SUPERSONIC_STEPS_PER_MACH)
+            );
+            // And the march reduces the flare's element exactly on the region Mach 3's corner
+            // gives, which is what makes these rows the region's rows and not an ordinary march.
+            let flows = body.element_flows(3.0).unwrap();
+            assert_eq!(
+                flows[flows.len() - 1].decay_per_m == 0.0,
+                reduced_at_mach_3.contains(&deg),
+                "a {deg}° flare at Mach 3, where the region is {reduced_at_mach_3:?}"
+            );
+        }
+        // What the model used to fall back to, and what that is worth against the method: the
+        // sizes the two edges of the band used to switch by.
+        let dropped = |deg: f64, mach: f64| {
+            let rocket = flared_rocket(deg);
+            let layout = rocket.layout().unwrap();
+            let read = |model: AeroModel| {
+                let force = model
+                    .normal_force(&flow(mach, 4f64.to_radians(), 0.0))
+                    .unwrap();
+                (
+                    force.coefficient,
+                    force.cp_station_m.unwrap() / model.reference_diameter_m(),
+                )
+            };
+            let method = read(AeroModel::new(&layout).unwrap());
+            let bare = read(
+                AeroModel::with_body_model(
+                    &layout,
+                    BodyModel::CURRENT.with_supersonic_flare(SupersonicFlare::SlenderBody),
+                )
+                .unwrap(),
+            );
+            (bare.0 / method.0 - 1.0, bare.1 - method.1)
         };
-        let (bare, method) = (at(upper - 1e-9), at(upper + 1e-9));
-        // Read as `issue_87s_switches_are_this_big` reads the others: what losing the method is
-        // worth, bare over covered.
-        let force = bare.0 / method.0 - 1.0;
-        let calibers = bare.1 - method.1;
+        let (force, calibers) = dropped(0.058_820_517_4, 3.0);
         assert!(
             (force + 0.083_0).abs() < 5e-5 && (calibers - 1.157_4).abs() < 5e-5,
-            "the force moves {force:.4} and the centre of pressure {calibers:.4} calibres"
+            "at the band's steep edge the fallback moves the force {force:.4} and the centre of \
+             pressure {calibers:.4} calibres"
+        );
+        let (force, calibers) = dropped(9.018_246_55e-4, 2.0);
+        assert!(
+            (force + 0.046_2).abs() < 5e-4 && (calibers - 0.752_2).abs() < 5e-4,
+            "at the join's shallowest step the fallback moves the force {force:.4} and the centre \
+             of pressure {calibers:.4} calibres"
         );
     }
 
@@ -4559,66 +4551,164 @@ mod tests {
         }
     }
 
-    /// A near-flat flare lifts the join's start, and it does not do so smoothly: the march
-    /// refuses whole Mach rows, and the table is built downward from Mach 5 and stops at the first
-    /// it cannot take, so the start steps rather than slides — and not even monotonically.
+    /// A near-flat flare is read through, and what is left of the region is the corner's
+    /// crossing.
     ///
-    /// The steepest of these switches is the band of
-    /// [`the_march_refuses_two_bands_of_flare_and_the_model_keeps_slender_body_theory`], where the
-    /// table goes altogether. This is the shallowest: a flare of **0.00090182°** — a rise of
-    /// 4.7 µm over 0.3 m — takes the join's start from Mach 1.2 to Mach 2.2, worth −4.6% of the
-    /// rocket's normal force and 0.75 calibres at Mach 2. Both belong to
-    /// [issue #117](https://github.com/nrdptel/hpr-sim/issues/117) and M1.8e19, and the guide says
-    /// so; nothing here is a claim that the region is smooth.
+    /// The march reduces the flare's one element to the generalized method between the two turns
+    /// [`crate::shock_expansion::flare_reduction_turns_rad`] solves for, and hpr now reads it
+    /// there as it always has on the nose ([issue #81](https://github.com/nrdptel/hpr-sim/issues/81),
+    /// M1.8e19) instead of refusing the row. So the table starts at
+    /// [`SUPERSONIC_JOIN_START_MACH`] at every angle across the region, and the two switches
+    /// [issue #117](https://github.com/nrdptel/hpr-sim/issues/117) measured are gone:
+    ///
+    /// | crossing it | was worth | is worth |
+    /// |---|---|---|
+    /// | the band's steep edge, 0.05882052°, at Mach 3 and 4° | −8.30% and 1.1574 calibres | nothing |
+    /// | the join's shallowest step, 0.00090182°, at Mach 2 and 4° | −4.62% and 0.7522 calibres | nothing |
+    ///
+    /// What is left is the crossing itself, and it is small. At the turn where the pressure
+    /// behind the corner lands on its tangent cone's, `η` has a pole: an angle a hair below it
+    /// relaxes the loading onto the tangent cone's within the element, and a hair above it holds
+    /// the corner's. The pressure rides through — the gap it is multiplied by is zero there — but
+    /// the loading steps, by the gap between the two. That step does not shrink with the probe,
+    /// so it is a step and not a slope, and it is the same open question as the loading through a
+    /// crossing inside a segment ([issue #108](https://github.com/nrdptel/hpr-sim/issues/108),
+    /// ADR-044). Measured on this rocket at 4°, it is worth well under a tenth of a percent.
     #[test]
-    fn a_near_flat_flare_lifts_the_joins_start_in_steps() {
+    fn a_near_flat_flare_reads_through_and_leaves_only_the_corners_crossing() {
         let join = |deg: f64| {
             model(&flared_rocket(deg))
                 .supersonic_body()
                 .map(|body| body.join_start_mach)
         };
-        // Not monotone: 0.00024° and 0.0003° are back at the floor, 0.00025° is not.
-        assert_eq!(join(2.4e-4), Some(SUPERSONIC_JOIN_START_MACH));
-        assert_eq!(join(3e-4), Some(SUPERSONIC_JOIN_START_MACH));
-        assert!(join(2.5e-4).is_some_and(|start| start > 1.8));
-        // The shallowest switch that stays switched, bisected. The edge itself carries about nine
-        // significant digits, for the reason in
-        // `the_march_refuses_two_bands_of_flare_and_the_model_keeps_slender_body_theory`.
-        let (mut low, mut high) = (5e-4_f64, 1e-3_f64);
-        loop {
-            let middle = 0.5 * (low + high);
-            if middle <= low || middle >= high {
-                break;
-            }
-            if join(middle) == Some(SUPERSONIC_JOIN_START_MACH) {
-                low = middle;
-            } else {
-                high = middle;
-            }
+        // The table starts at the floor everywhere across the region, including the two edges of
+        // the band that used to take it away and the three angles whose start was not monotone.
+        for deg in [
+            0.0,
+            2.4e-4,
+            2.5e-4,
+            3e-4,
+            9.018_246_55e-4,
+            0.001,
+            0.01,
+            0.03,
+            0.038_161_270_2,
+            0.045,
+            0.05,
+            0.058_820_517_4,
+            0.06,
+            0.1,
+            1.0,
+        ] {
+            assert_eq!(
+                join(deg),
+                Some(SUPERSONIC_JOIN_START_MACH),
+                "a {deg}° flare starts its table at {:?}",
+                join(deg)
+            );
         }
-        assert!(
-            (high / 9.018_246_5e-4 - 1.0).abs() < 1e-7,
-            "the join leaves its floor at {high}°"
-        );
-        assert_eq!(join(low), Some(SUPERSONIC_JOIN_START_MACH));
-        assert!(join(high).is_some_and(|start| (start - 2.2).abs() < 1e-9));
-        let at = |deg: f64| {
+        // The whole rocket either side of an angle, as `issue_87s_switches_are_this_big` reads
+        // the switches it lists: the force's fraction and the centre of pressure in calibres.
+        let at = |deg: f64, mach: f64| {
             let model = model(&flared_rocket(deg));
             let force = model
-                .normal_force(&flow(2.0, 4f64.to_radians(), 0.0))
+                .normal_force(&flow(mach, 4f64.to_radians(), 0.0))
                 .unwrap();
             (
                 force.coefficient,
                 force.cp_station_m.unwrap() / model.reference_diameter_m(),
             )
         };
-        let (below, above) = (at(low), at(high));
-        let force = above.0 / below.0 - 1.0;
-        let calibers = above.1 - below.1;
-        assert!(
-            (force + 0.046_2).abs() < 5e-5 && (calibers - 0.752_2).abs() < 5e-5,
-            "the force moves {force:.4} and the centre of pressure {calibers:.4} calibres"
-        );
+        let across = |deg: f64, mach: f64, epsilon: f64| {
+            let (below, above) = (at(deg - epsilon, mach), at(deg + epsilon, mach));
+            (above.0 / below.0 - 1.0, above.1 - below.1)
+        };
+        // The two switches issue #117 measured, where it measured them.
+        for (deg, mach) in [(0.058_820_517_4, 3.0), (9.018_246_55e-4, 2.0)] {
+            let (force, calibers) = across(deg, mach, 1e-9);
+            assert!(
+                force.abs() < 1e-7 && calibers.abs() < 1e-7,
+                "crossing {deg}° at Mach {mach} moves the force {force:.3e} and the centre of \
+                 pressure {calibers:.3e} calibres"
+            );
+        }
+        // What is left: the corner's crossing, at the row it belongs to. It is a step, so it
+        // holds its size as the probe shrinks, and it grows with the Mach number because the
+        // crossing itself moves to a steeper flare there.
+        let ahead = flared_run(&flared_rocket(1.0));
+        let turns = |mach: f64| {
+            crate::shock_expansion::flare_reduction_turns_rad(&ahead.aft_flow(mach).unwrap())
+                .unwrap()
+        };
+        for (mach, force_want, caliber_want) in [
+            (2.0_f64, 3.234e-6, -1.589e-6),
+            (3.0, 1.1369e-4, 1.8258e-4),
+            (4.0, 5.5377e-4, 1.6709e-3),
+            (4.95, 1.2874e-3, 5.1095e-3),
+        ] {
+            let crossing = turns(mach).crossing_rad.to_degrees();
+            // A hundredfold in the probe leaves the step where it is — except at Mach 2, where
+            // 3.2e-6 is already what the reading itself moves over a 1e-7° probe.
+            let probes: &[f64] = if mach > 2.0 { &[1e-9, 1e-7] } else { &[1e-9] };
+            for epsilon in probes {
+                let (force, calibers) = across(crossing, mach, *epsilon);
+                assert!(
+                    (force - force_want).abs() < 0.02 * force_want.abs()
+                        && (calibers - caliber_want).abs() < 0.02 * caliber_want.abs(),
+                    "Mach {mach}: ±{epsilon}° across the crossing at {crossing}° moves the force \
+                     {force:.4e} and the centre of pressure {calibers:.4e} calibres"
+                );
+            }
+            // The region's other edge, the balance, is where `η` is zero: the exponential form
+            // and the generalized method are the same reading there, so nothing steps.
+            let balance = turns(mach).balance_rad.to_degrees();
+            let (force, calibers) = across(balance, mach, 1e-9);
+            assert!(
+                force.abs() < 1e-7 && calibers.abs() < 1e-7,
+                "Mach {mach}: the balance at {balance}° moves the force {force:.3e} and the \
+                 centre of pressure {calibers:.3e} calibres"
+            );
+        }
+        // And the reading really does move smoothly through the whole region, which is what the
+        // switch it replaced did not: swept in twenty steps from a cylinder to well past the
+        // region's steep end, no neighbouring pair moves the force by a fifth of a percent, and
+        // the reading falls all the way — bar the one pair that straddles the crossing.
+        let machs = [3.0, 4.0];
+        let step = 0.08 / 16.0;
+        let swept: Vec<[f64; 2]> = (0..=16)
+            .map(|index| {
+                let model = model(&flared_rocket(index as f64 * step));
+                machs.map(|mach| {
+                    model
+                        .normal_force(&flow(mach, 4f64.to_radians(), 0.0))
+                        .unwrap()
+                        .coefficient
+                })
+            })
+            .collect();
+        for (column, mach) in machs.iter().enumerate() {
+            let crossing = turns(*mach).crossing_rad.to_degrees();
+            let mut rises = Vec::new();
+            for index in 1..swept.len() {
+                let moved = swept[index][column] / swept[index - 1][column] - 1.0;
+                let deg = index as f64 * step;
+                assert!(
+                    moved.abs() < 2e-3,
+                    "Mach {mach}: from {}° to {deg}° the force moves {moved:.4}",
+                    deg - step
+                );
+                if moved > 0.0 {
+                    rises.push(deg);
+                }
+            }
+            assert!(
+                rises.len() <= 1
+                    && rises
+                        .first()
+                        .is_none_or(|deg| (deg - step..*deg).contains(&crossing)),
+                "Mach {mach}: the force rises over {rises:?}, against a crossing at {crossing}°"
+            );
+        }
     }
 
     /// The size of each switch issue #87 lists, measured on one rocket at Mach 3 and 4°: the

@@ -109,7 +109,9 @@
   [flare](../glossary.md#flare) flush with the tube ahead of it flies the method too, and ends the
   run, while its corner's shock stays attached — checked against **one** measured flare, where it
   reads −1.9% and +7.0% at Mach 1.9 and 2.3, +13.4% at 2.96, then +51.5% and +50.4% at 3.95 and
-  4.63 ([What a marched flare is worth](#what-a-marched-flare-is-worth)). A rocket with any other
+  4.63 ([What a marched flare is worth](#what-a-marched-flare-is-worth)); a flare shallow enough
+  to turn the flow almost not at all is read by an older, rougher method instead, which nothing
+  measures ([A near-flat flare](#a-near-flat-flare)). A rocket with any other
   widening shape, or any step, behind the nose (a motor retainer behind a step down counts: the
   step ends the run) keeps slender-body theory for its whole body at every speed, which reads low
   past Mach 3 ([A step in radius](#a-step-in-radius): −8.65% and 1.03 calibres at the threshold). Body lift leaves out
@@ -524,9 +526,14 @@ For a worked example with numbers, see
   hpr's own reading is to reduce such an element to the older *generalized* method, which the
   report says the equations become at `η = 0`: the pressure stays as it is along the element and
   no gradient passes to the next corner. On the report's fineness-3 ogive at Mach 5.05 that
-  departs from its values ([issue #81](https://github.com/nrdptel/hpr-sim/issues/81)). hpr
-  refuses an element aft of the nose that would need it, since it would carry its loading over
-  any length.
+  departs from its values ([issue #81: the method's limit near a sharp
+  tip](https://github.com/nrdptel/hpr-sim/issues/81)). hpr reads an element that way wherever it
+  has a tangent cone of its own, behind the nose as well as on it
+  ([A near-flat flare](#a-near-flat-flare)). A cylinder's tangent cone is the free stream and a
+  boattail's is footnote 8's, so neither is a solution of that element's own flow: one of those
+  that would need reducing is refused instead, and the whole body keeps slender-body theory
+  ([issue #123: a cylinder's or a boattail's reduced
+  element](https://github.com/nrdptel/hpr-sim/issues/123)).
 - **Mach number over nose fineness.** The report states the method for 0.4 to 2; hpr doesn't
   enforce it (the report's own Mach 6.28 rows are at 2.09, and the Arcas Robin at Mach 1.5 is at
   0.36).
@@ -587,10 +594,11 @@ every speed.
 threshold, a rocket either side of that threshold gets two different models — and the difference is
 the whole body's, not the part that changed. On the tests' rocket at Mach 3 and 4°, each remaining
 threshold is worth this much, and the last column says who owns it — *open* means an issue with no
-milestone behind it, *queued* a milestone on the roadmap
+milestone behind it, *queued* a milestone on the roadmap, and *no longer a switch* a threshold
+since removed, kept here because its size is the measured cost of the model it replaced
 (`issue_87s_switches_are_this_big` pins the first four,
 `a_lip_in_a_boattails_wake_carries_nothing` the lip's two, and
-`the_march_refuses_two_bands_of_flare_and_the_model_keeps_slender_body_theory` the last):
+`a_near_flat_flare_marches_every_row_and_the_fallback_is_still_measured` the last):
 
 | drawing this | normal force | centre of pressure | who owns it |
 |---|---|---|---|
@@ -600,7 +608,7 @@ milestone behind it, *queued* a milestone on the roadmap
 | a vertical tip steeper than the cap's handover to its base | −7.0% | 0.64 calibres | queued: [M1.8e16: the handover past 24°](../decisions-and-roadmap.md#m1-8e16) |
 | a lip leaving its boattail's wake by rising or by sitting back | −29 to −34% | 0.93 to 1.97 calibres | no longer a switch: the rise is weighed, [ADR-041][adr-041] |
 | a lip longer than its boattail's drop in diameter, however little it rises | −33.0% | 1.77 calibres, forward | open: [issue #120: a lip longer than its wake](https://github.com/nrdptel/hpr-sim/issues/120) |
-| a near-flat flare, 0.03816° to 0.05882°, which the march refuses | −8.3% | 1.16 calibres | queued: [M1.8e19: the flare the march refuses](../decisions-and-roadmap.md#m1-8e19) |
+| a near-flat flare, 0.03816° to 0.05882° at the table's top rows, which the march used to refuse | −8.3% | 1.16 calibres | no longer a switch: the element is read by the generalized method, [ADR-050][adr-050] |
 
 In the first four rows the centre of pressure moves **aft** when the method is lost, so a rocket
 that trips one reads *more* stable than one that doesn't. The two lip rows and the near-flat-flare
@@ -615,7 +623,11 @@ threshold, not a ramp. It is the one this page's measurements use to take a rock
 without changing a radius or an angle.
 
 The first lip row is no longer a switch: it is spread over the band the wake grades, as
-[above](#a-lip-in-a-boattails-wake). The second still is one. The two tips moved rather than
+[above](#a-lip-in-a-boattails-wake). The second still is one. Nor is the last: since
+[M1.8e19](../decisions-and-roadmap.md#m1-8e19) the march reads that flare's element rather than
+refusing it, and what is left where it used to switch is the loading's step at the corner's
+crossing — +0.129% and 0.0051 calibres on this rocket, but larger on other bodies and on longer
+flares, in [A near-flat flare](#a-near-flat-flare). The two tips moved rather than
 went: a pointed tip's edge is the cone tables' 30° since
 [M1.8e11](../decisions-and-roadmap.md#m1-8e11), and a vertical tip's is the handover's cap, which
 stands at 24° for the reason in [What the cap is worth](#what-the-cap-is-worth).
@@ -625,10 +637,9 @@ flare in the free stream now flies the method, and the boundary where its shock 
 nothing jumping across it — see [A flare through the method](#a-flare-through-the-method) below.
 The second row is what is left of it, a flare *behind a boattail*, which is a lip in the
 boattail's wake rather than a flare in the free stream and keeps [its own
-rule](#a-lip-in-a-boattails-wake). The last row is what that milestone turned up on the way: a
-band of
-near-flat flares, a third of a millimetre tall, that the march itself refuses
-([M1.8e19](../decisions-and-roadmap.md#m1-8e19)).
+rule](#a-lip-in-a-boattails-wake). The last row is what that milestone turned up on the way, and
+[M1.8e19](../decisions-and-roadmap.md#m1-8e19) closed it: a band of near-flat flares, a third of a
+millimetre tall, whose one element the march reduces to the generalized method.
 
 **The step stayed**, and [M1.8e15](../decisions-and-roadmap.md#m1-8e15) says why: the march needs a
 profile without a jump in it, so a step needs a model of its own rather than a decision about an
@@ -1097,10 +1108,14 @@ above shows.
 
 **What it leaves out.** These digits pin what this program does, not what air does: every one of
 them comes from bisecting hpr's own refusal, and the 30° rows come from where a lookup table ends.
-The marchable angles are not even an interval: a band of very shallow flares — 0.773° to 0.823° at
-Mach 3 on the 2.5-calibre body, rising with Mach — is refused too, because the pressure behind such
-a corner moves away from its tangent cone's rather than toward it. The whole edge is inviscid,
-too. From Mach 2.96 up TN D-4865 records the boundary layer separating
+A band of very shallow flares is not marched by the second-order law at all: the pressure behind
+such a corner moves away from its tangent cone's rather than toward it, so its one element is
+*reduced* to the older generalized method, which since
+[M1.8e19](../decisions-and-roadmap.md#m1-8e19) is read rather than refused
+([A near-flat flare](#a-near-flat-flare)). **Where that band sits is a property of the body ahead
+of the corner, and it moves by orders of magnitude**: 0.773° to 0.823° at Mach 3 on this
+2.5-calibre body, against 0.0066° to 0.0081° at the same Mach number on the flared rocket of
+[A near-flat flare](#a-near-flat-flare). The whole edge is inviscid, too. From Mach 2.96 up TN D-4865 records the boundary layer separating
 ahead of the flare and reattaching on it, which moves the pressure rise downstream of where a
 tangent body puts it; nothing here models that. And below Mach 1.5 nothing here was measured,
 although a flight uses the method from Mach 1.2.
@@ -1253,31 +1268,18 @@ already uses faster than sound, not because it is known to be closer.
   and the [join](#bodies-faster-than-sound) carries the reading up from slender-body theory's over
   0.3 Mach. That is continuous — a ±1e-9 probe at the join's start moves the slope 8.5e-10 of
   itself — but it means a flare's march is not used at all at the low end of what a flight uses.
-- **A band of near-flat flares is refused outright, and it is a switch.** A flare of about
-  **0.03816° to 0.05882°** on the tests' rocket — a rise of a third of a millimetre over 0.3 m —
-  has its single element [*reduced*](#what-the-cap-is-worth) aft of the nose ([issue
-  #81](https://github.com/nrdptel/hpr-sim/issues/81): the pressure behind the corner moves away
-  from its tangent cone's rather than toward it), and the march then refuses a run of Mach numbers
-  from the top down — none at 0.0589°, from Mach 5.0 at 0.045°, from Mach 4.70 at 0.03817°. hpr
-  builds each body's table of the method's shares downward from Mach 5 and needs the join's whole
-  0.3 Mach inside it, so once that refused run reaches Mach 4.70 there is no table at all and the
-  whole body falls back to slender-body theory at **every** Mach number. (Shallower than that, the
-  refusal only shortens the table and lifts the join, which stays continuous.) Crossing the steep
-  edge of the band is worth −8.3% of the normal force and 1.16 calibres at Mach 3 and 4°, the last
-  row of [Where that choice still jumps](#the-body-faster-than-sound-in-a-flight). Shallower than
-  the band the same refusal only lifts the table's start, but it does that in steps and not even
-  monotonically: 0.00024° and 0.0003° sit at the floor of Mach 1.2 while 0.00025° between them
-  does not, and at **0.00090182°** — a rise of 4.7 µm over 0.3 m — the start goes from Mach 1.2 to
-  Mach 2.2, worth −4.6% of the normal force and 0.75 calibres at Mach 2
-  (`a_near_flat_flare_lifts_the_joins_start_in_steps`). **The whole near-flat region, not just the
-  band, is unsettled.** It is tracked
-  on its own — [issue #117](https://github.com/nrdptel/hpr-sim/issues/117) and
-  [M1.8e19](../decisions-and-roadmap.md#m1-8e19) — rather than under [issue
-  #87](https://github.com/nrdptel/hpr-sim/issues/87), because
-  [M1.8e15](../decisions-and-roadmap.md#m1-8e15) is to narrow that issue to the step alone. The
-  two edges are quoted to five digits because that is about what they carry: each is the root of a
-  difference between two pressures within a thousandth of each other, and the three operating
-  systems CI runs spread the shallow edge over 7 parts in 1e9.
+- **A near-flat flare is read by the older, rougher method.** Between about **0.0004° and 0.059°**
+  on the tests' rocket, depending on the Mach number, a flare's single element is *reduced*: the
+  pressure behind its corner sits just past its tangent cone's while the gradient the tube
+  delivers still pushes it away, so hpr reads that element by the generalized shock-expansion
+  method instead ([issue #81: the method's limit near a sharp
+  tip](https://github.com/nrdptel/hpr-sim/issues/81) is the same reading on a nose). Until
+  [M1.8e19: the near-flat flare](../decisions-and-roadmap.md#m1-8e19) the march refused such an
+  element behind the nose and the whole body fell back to slender-body theory at every Mach
+  number, which was a switch worth −8.3% and 1.16 calibres.
+  [A near-flat flare](#a-near-flat-flare) below solves for where the region is at each Mach
+  number, says what the change was worth, and gives the one step that is left: +0.129% and 0.0051
+  calibres on this rocket, and up to +4.3% and 0.19 calibres on a body with a short shoulder.
 - **The march ends at the flare, and nothing behind it may carry lift.** Anything behind the flare
   takes slender-body theory's share, which for a tube is nothing — but a part that carries a share
   of its own, such as a small tail cone behind the flare, takes the *whole rocket* off the method
@@ -1507,6 +1509,276 @@ That pins the arithmetic, not the physics: an error in the rule itself would be 
 - **No target was set, and none is met or missed here.**
   [M1.8e18](../decisions-and-roadmap.md#m1-8e18) asked what a marched flare is worth, not that it
   reach a number. The tables above are the answer.
+
+
+#### A near-flat flare
+
+**In short:** a flare that opens by very little turns the flow so little that the [second-order
+shock-expansion method](#bodies-faster-than-sound)'s own pressure curve has nothing left to
+describe, and the march falls back on the older *generalized* method for that one element. Until
+[M1.8e19: the near-flat flare](../decisions-and-roadmap.md#m1-8e19) hpr refused to read such an
+element at all behind the nose, which took a rocket with a flare of about a third of a
+millimetre's rise off the method entirely. It now reads it. This section says which flares those
+are — the two angles that bound them are solved from two equations about the corner's own flow,
+rather than found by bisecting the model's refusal — what the change was worth, and the one small
+step that is left.
+
+**How far to trust it.** No wind tunnel has measured a flare this shallow, and the report does not
+say what it would have done here, so what follows is hpr's own reading of the report's own limit,
+chosen because it is continuous in the flare's angle and smooth through the region — not because
+it is known to be nearer the air. What changed is which model runs, not how well either matches a
+measurement. And **where the region sits depends entirely on the body ahead of the corner**: a few
+thousandths of a degree on the rocket measured here, nearly a degree on the body of
+[Where a flare's march stops](#where-a-flares-march-stops) — a pointed 2.75° cone and five
+calibres of tube, whose radius is nearly four times as large.
+
+**What a flare that small does to the method.** *The march* is the walk along the
+[tangent body](#bodies-faster-than-sound)'s straight elements, from the nose tip aft, that the
+method makes. It fixes the pressure just behind each
+corner from the [Prandtl–Meyer](../glossary.md#prandtlmeyer-expansion) turn there, and then lets it
+relax along the element toward the pressure on that element's [tangent
+cone](#bodies-faster-than-sound), as
+
+*p* = *p*_c − (*p*_c − *p*₂) e^(−η),  η = (∂*p*/∂*s*)₂ (*x* − *x*₂) ⁄ ((*p*_c − *p*₂) cos δ₂)
+
+(NACA TN 3527 eqs. 8 and 9), where *x* − *x*₂ is the distance back from the corner. The same
+exponent written as a rate per metre is the `k` of [What a crossing is, and what it
+costs](#what-a-crossing-is-and-what-it-costs). The symbols are the method's own, listed under
+[Bodies faster than sound](#bodies-faster-than-sound): δ an element's angle to the axis, *p* the
+pressure over the free stream's, *s* distance along the surface, *r* the radius at the corner, Ω a
+stream tube's widening and *B* = γ*pM*²/(2(*M*² − 1)); θ below is the flare's own turn through its
+corner, and subscript 1 is the state the body ahead delivers, 2 the state just behind the corner.
+
+That is a curve that starts at *p*₂ and walks one way, toward *p*_c. It can only do that if the
+gradient just behind the corner points at *p*_c — the report keeps the form only for η ≥ 0 (p. 13)
+and says that at η = 0 "all equations reduce to those given by the generalized shock-expansion
+method", whose pressure is simply constant along the element.
+
+On a near-flat flare the two disagree, for a reason you can picture. The flow arrives at the flare
+along a long tube, where the pressure is still climbing back toward the free stream's after the
+nose let it down: it is *below* the free stream and *rising*. The flare's corner compresses it a
+little. Turn far enough and the pressure lands well above the tiny cone's, and the gradient behind
+the corner turns downward with it — everything agrees and the method runs. Turn less and the
+pressure stays below the cone's, still rising toward it — again everything agrees. In between there
+is a band where the compression has already carried the pressure just past its cone's value while
+the tube's own climb still pushes it further away. It has to rise, overshoot and come back, and one
+exponential cannot rise and fall. So η is negative there, and the element is *reduced* to the
+generalized method ([issue #81: the method's limit near a sharp
+tip](https://github.com/nrdptel/hpr-sim/issues/81) is the same reading on a nose).
+
+**The region's two edges are solved from the corner, not searched for.** Each of the two
+quantities whose signs must agree is a smooth function of the flare's turn, and on every corner
+state checked here each has a single zero — so the signs disagree on the open interval between
+those two zeros and nowhere else:
+
+| the turn | what is zero there | what it means |
+|---|---|---|
+| the **crossing** | *p*_c − *p*₂ | the compression lands the pressure exactly on its tangent cone's, and η has a pole |
+| the **balance** | (∂*p*/∂*s*)₂ | the corner's own compression exactly cancels the climb the tube delivers, and η is zero |
+
+*Single zero* is not a promise, and a corner that breaks it exists: on a 25° cone with 20 mm of
+tube behind it at Mach 7, the pressure meets its tangent cone's three times — at about 0.91°,
+7.3° and 24° — so a flare there is reduced from 0.91° to 3.88° **and again** from 7.3° to 24°.
+`flare_reduction_turns_rad` sweeps the widening turns at a hundred stations before it brackets,
+so it reports that corner rather than handing back whichever of the three roots it walked to
+(`a_corner_whose_gap_has_three_zeros_is_refused_rather_than_guessed_at`). A pair of roots inside
+one station would still slip through, and the two turns would then be reported as one band when
+they are two.
+
+Which of the two is the shallower is not fixed either — on this rocket the crossing is below the
+balance from Mach 1.5 up, and below that the order swaps.
+
+Both are properties of the flow the body hands to the corner — its Mach number, its pressure, the
+gradient it carries, the radius there, the angle ahead and the free stream it was read in — and
+`flare_reduction_turns_rad` takes exactly that and nothing else. The balance is TN 3527's eq. 4
+set to zero and rearranged, sin(δ₁ + θ) = (Ω₁/Ω₂(θ)) (sin δ₁ + *r* (∂*p*/∂*s*)₁ ⁄ *B*₁), which
+iterates on itself. The crossing is *p*₂(θ) = *p*_c(δ₁ + θ): an isentropic turn on one side, a
+cone solution on the other. It is bracketed over the turns a widening corner can make at all —
+from a surface lying along the axis up to the isentropic turn running out or the cone tables' 30°,
+whichever comes first — and found by false position from the turn that would bring the pressure
+back to the free stream's.
+
+On the tests' flared rocket — an ogive nose 0.25 m long on a 27 mm radius, a 0.7 m tube and a
+0.3 m conical flare — they are these:
+
+| Mach | crossing | balance | a flare between them rises, over 0.3 m, by |
+|---|---|---|---|
+| 2.00 | 0.000403337° | 0.000454464° | 2.1 to 2.4 µm |
+| 2.20 | 0.000901825° | 0.001041403° | 4.7 to 5.5 µm |
+| 3.00 | 0.006619249° | 0.008121929° | 35 to 43 µm |
+| 4.00 | 0.023088893° | 0.029499725° | 0.12 to 0.15 mm |
+| 4.70 | 0.038161270° | 0.049811274° | 0.20 to 0.26 mm |
+| 5.00 | 0.044649637° | 0.058820517° | 0.23 to 0.31 mm |
+
+`the_turns_a_reduced_element_lies_between_come_from_the_corners_own_state`, in
+[`shock_expansion.rs`](https://github.com/nrdptel/hpr-sim/blob/main/crates/hpr-aero/src/shock_expansion.rs),
+checks at eight Mach numbers that an angle a millionth either side of each edge falls on the right
+side of the march's own reduction, and that the midpoint between them is reduced. That is a spot
+check at each edge, not an exhaustive sweep of the angles in between.
+
+Those are the same numbers [issue #117: the near-flat band the march used to
+refuse](https://github.com/nrdptel/hpr-sim/issues/117) reported after bisecting the model's own
+refusal — the band it quoted, 0.03816127° to 0.05882052°, is the crossing at Mach 4.70 and the
+balance at Mach 5, and the 0.00090182° it quoted is the crossing at Mach 2.20 — but they are now
+read off two equations rather than found by trying the whole model against a sign test. Note what
+the table shows and that band hides: the region is **not one interval in the angle**. It moves
+with the Mach number, so a 0.04° flare is reduced at Mach 4.70 and marched at Mach 2.
+
+**How far to trust those digits.** Not the search's accuracy any more, but the tangent cone's. Up
+to a half-thousandth of a radian (0.029°) hpr's [cone flow](#bodies-faster-than-sound) is
+slender-cone theory's closed form, and the crossing closes to the last bits of an `f64` — the
+residual it leaves in the pressure is under 2e-14 at Mach 2.00, 2.20 and 3.00. Above that angle
+the cone flow is a Taylor–Maccoll integration, blended with the closed form up to 0.0573°, so the
+two edges past Mach 4 are read off the blend; there the residual is that integration's own, about
+1e-10 of the free stream's pressure. Divided by how fast the gap closes with the turn, that is
+about 2e-10° — close to the 2.6e-10° the three operating systems CI runs were seen to spread the
+band's lower edge over, so that spread was the cone's and not the bisection's.
+
+**Neither residual is promised to be zero**, and on a body whose cone flow is harder it is
+larger — 4e-9 of the free stream's pressure has been seen on a fatter body at Mach 2.6. So
+`flare_reduction_turns_rad` returns both of them beside the turns, and a caller who needs the
+digits should read them.
+
+**What hpr does now, and what changed.** A reduced element is read by the generalized method
+wherever it has a tangent cone of its own: constant pressure and constant loading along it, which
+is what the report says the equations become. Before
+[M1.8e19](../decisions-and-roadmap.md#m1-8e19) that reading was allowed only on the nose, and
+anywhere behind it the march refused. Because hpr builds a body's table of the method's shares
+downward from Mach 5 and needs the whole 0.3 Mach of the [join](#bodies-faster-than-sound) inside
+it, one refused row near the top took the table away and dropped the **whole body** to
+[slender-body theory](../glossary.md#slender-body-theory) at every speed. Two switches came of
+that, and both are gone:
+
+| drawing this | was worth | is worth |
+|---|---|---|
+| a flare of 0.05882052°, the band's steep edge, at Mach 3 and 4° | −8.30% of the normal force and 1.16 [calibres](../glossary.md#calibre-caliber) | nothing |
+| a flare of 0.00090182°, which lifted the table's start from Mach 1.2 to Mach 2.2, at Mach 2 and 4° | −4.62% and 0.75 calibres | nothing |
+
+The sizes in the middle column are still measured, because they are the size of the fallback the
+model used to drop to: `a_near_flat_flare_marches_every_row_and_the_fallback_is_still_measured`,
+in [`model.rs`](https://github.com/nrdptel/hpr-sim/blob/main/crates/hpr-aero/src/model.rs), reads
+the same rocket on `SupersonicFlare::SlenderBody` and finds them again. The table's start is now
+Mach 1.2 at fifteen flare angles from 0° to 1°, including 0.00024°, 0.00025° and 0.0003° — three
+angles a hair apart that used to give three different answers.
+
+**What is left is the crossing, and here is how big it is.** At the crossing itself η has a pole,
+and that leaves a step — not in the pressure, which rides through because the gap it multiplies is
+zero there, but in the *loading*. On the side the method still owns, η runs to +∞ as the turn
+approaches the crossing, so the element sheds its corner's loading onto its tangent cone's within
+its own length; on the reduced side it holds the corner's. The two differ, so the reading steps.
+On the whole rocket at 4°, measured
+either side of that Mach number's own crossing with a ±1e-9° probe by
+`a_near_flat_flare_reads_through_and_leaves_only_the_corners_crossing`, in
+[`model.rs`](https://github.com/nrdptel/hpr-sim/blob/main/crates/hpr-aero/src/model.rs)
+(Mach 4.95 rather than 5 because the body's normal force stops at Mach 5):
+
+| Mach | at a flare of | normal force | centre of pressure |
+|---|---|---|---|
+| 2.00 | 0.000403337° | +0.00032% | −0.0000016 calibres |
+| 3.00 | 0.006619249° | +0.011% | +0.00018 calibres |
+| 4.00 | 0.023088893° | +0.055% | +0.0017 calibres |
+| 4.95 | 0.043584193° | +0.129% | +0.0051 calibres |
+
+**A step, not a slope — except on the first row.** Widening the probe a hundredfold, to ±1e-7°,
+leaves the figure where it is at Mach 3, 4 and 4.95, which is what says it is a step rather than
+the reading's ordinary movement. At Mach 2 it does not: +0.00032% is already about what the
+reading itself moves over a ±1e-7° probe there, so that row is an upper bound on the step, not a
+measurement of one.
+
+**Those four numbers are one rocket, and they are not a bound.** The step is the loading's gap at
+the pole, so it grows with the length of the element that holds it, and where the region sits
+depends on the body ahead. Read on the **body alone** at Mach 5, either side of that body's own
+crossing (`what_the_crossing_costs_is_the_loading_gap_times_the_element_that_holds_it`, in
+[`shock_expansion.rs`](https://github.com/nrdptel/hpr-sim/blob/main/crates/hpr-aero/src/shock_expansion.rs)):
+
+| the body | its crossing | `C_Nα` steps by | its centre of pressure by |
+|---|---|---|---|
+| the tests' rocket's body: ogive nose, 0.7 m tube, 0.3 m flare | 0.044650° | +0.40% | 0.064 calibres |
+| the same, with a **2 m** flare | 0.044650° | +2.61% | 0.761 calibres |
+| the same, with the tube cut to **0.1 m** | 1.387993° | +4.34% | 0.186 calibres |
+| a 10° cone and a 0.3 m tube, 0.3 m flare | 0.695840° | +3.82% | 0.251 calibres |
+
+Read the third and fourth rows twice: with a short shoulder the region is not near-flat at all —
+it sits between **0.7° and 4.6°**, which is where real flares live.
+
+**But there is a bound, and it is exact — you can work out your own.** At the crossing the two
+sides take the two constants the method relaxes *between*: the side it still owns sheds the
+corner's loading onto its tangent cone's at once, Λ_c = tan δ₂ (d*C_N*/dα)_tc, and the reduced
+side holds the corner's, Λ₂ = (λ₂/λ₁) Λ₁. Along a conical flare both are constant, so eq. 19's
+*C*_Nα = (2π/*A*_ref) ∫ Λ *r* d*x* integrates a constant and the whole step is
+
+Δ*C*_Nα = (2π/*A*_ref) (Λ₂ − Λ_c) · ½(*r*_fore + *r*_aft) · *L*
+
+for a flare of length *L* between those radii. `flare_reduction_turns_rad` returns Λ₂ − Λ_c beside
+the turns, as `crossing_loading_gap_per_rad`; on the tests' rocket's body at Mach 5 it is
+6.116195e-4 per radian, and the formula reproduces the measured step to a part in 1e5 at flare
+lengths of 0.3, 1, 2 and 5 m. So the four rows above are an illustration of that formula, not the
+claim: the claim is the formula, and it holds for any conical flare.
+
+The worst of the whole-rocket rows is a 64th of the switch it replaced in the force and a 227th of
+it in the centre of pressure — the step at Mach 4.95 against the switch measured at Mach 3, so
+that is a comparison of sizes, not of the same flight condition, and the body-alone numbers above
+are not that small.
+
+**And the same pole is crossed in the Mach number.** At a fixed flare angle the corner's crossing
+sweeps past it as the speed changes, and the [table](#bodies-faster-than-sound)'s rows are 0.05
+Mach apart, so a flight reads it as a step between two neighbouring rows. On the short-shouldered
+body above with a 1° flare, the rows from Mach 2.90 to 2.95 step **−2.77% and 0.14 calibres**,
+where the neighbouring rows move by a fifth of that or less. Before
+[M1.8e19: the near-flat flare](../decisions-and-roadmap.md#m1-8e19) those lower rows were refused,
+so the table began above them and the [join](#bodies-faster-than-sound) covered the pole; it is
+now inside the table. That is the milestone's trade, and it is the honest description of it: two
+switches in shape removed, one pole exposed in both shape and speed. On a body whose reduced rows
+sit at the bottom of its table, what is given up is a continuous join; what is bought is that an
+arbitrarily small change of shape no longer moves the whole body between two models.
+
+It is not a new question, though: it is the loading through a tangent-cone crossing, which is
+[what a crossing costs](#what-a-crossing-is-and-what-it-costs) inside a segment, and which is open
+as [issue #108: the loading through a crossing](https://github.com/nrdptel/hpr-sim/issues/108).
+The region's other edge, the balance, has no step at all — η is zero there, so the exponential
+form and the generalized method are the same reading, and the two branches meet.
+
+**What it leaves out.**
+
+- **A cylinder's and a boattail's reduced elements are still refused**, and still take the whole
+  body off the method. Not because a flare relaxes toward something and they do not — **a reduced
+  element does not relax at all**, on a flare exactly as on a cylinder: it holds the pressure and
+  the loading behind its corner for its whole length. What differs is what it is read against. A
+  widening element's *p*_c and Λ_c are a real cone's at the flow's own Mach number, so the two
+  readings either side of the region are two readings of one picture and they meet at the
+  balance. A cylinder's Λ_c is identically zero and its *p*_c is the free stream's, so there is no
+  cone there to meet, and a boattail's is footnote 8's constant — a stand-in, not a solution of
+  that element's own flow. Nothing here
+  measures what that would be worth, so the refusal stands: [issue #123: a cylinder's or a
+  boattail's reduced element](https://github.com/nrdptel/hpr-sim/issues/123). How near is it? An
+  ogive nose on a tube — 0.25 m on a 27 mm radius, with tubes of 0.7 m, 3 m and 6 m — marches
+  every row from Mach 1.2 to Mach 5 with nothing reduced, so it is not something a plain rocket
+  walks into. What does hit it is TN D-4865's own Newtonian start on the Arcas Robin's nose from
+  Mach 3.96, which is a reason hpr does not use that start
+  ([The two starts](#the-two-starts)).
+- **The generalized method is the older, rougher one.** Reading an element with it is a real
+  choice, not a formality, and TN 3527 does not say it is what it would have done. What is checked
+  here is that the choice joins the second-order reading continuously at the balance and that it
+  makes the reading smooth in the flare's angle — not that it is closer to a measured flare. No
+  measured flare in this band exists.
+- **Below about a millionth of a radian the flare is not drawn at all.** Corners turning by less
+  than that are merged into the element ahead of them, because two tangents that nearly coincide
+  meet at an ill-conditioned point. That covers every flare shallower than about 0.00006°, which
+  at the bottom of the table's range swallows both turns: at Mach 1.2 the crossing is 0.00000023°
+  and the balance 0.00000018°, so there is no corner there to reduce and nothing the reading could
+  switch on.
+- **Only the flare's own element was measured.** The two turns are solved for a corner behind a
+  body; where a body has several corners that could be reduced at once, nothing here says how their
+  readings combine. Nor does anything here say whether the generalized reading or the slender-body
+  fallback it replaced was the nearer of the two to the air: what is claimed is that one of them
+  moves smoothly with the shape and the other jumps.
+- **There is no rule of thumb for "is my flare one of these?".** The region belongs to the corner,
+  so the only way to ask is to run the model:
+  [`ShockExpansionBody::aft_flow`](https://nrdptel.github.io/hpr-sim/api/hpr_aero/shock_expansion/struct.ShockExpansionBody.html#method.aft_flow)
+  on the body ahead of the flare, at the Mach number you care about, then
+  [`flare_reduction_turns_rad`](https://nrdptel.github.io/hpr-sim/api/hpr_aero/shock_expansion/fn.flare_reduction_turns_rad.html)
+  on what it returns.
+
 
 #### A step in radius
 
@@ -1974,10 +2246,12 @@ machine's maths library to another's, so pinning more would only break the build
 
 hpr starts the march from the tangent cone at the handover, the report from the Newtonian pressure
 there. Read at a small angle, the report's start fails on
-the Arcas Robin's nose from Mach 3.96, where the march *reduces* the element at the nose's end,
-holding its pressure where the method's exponential law would run the wrong way, which hpr refuses
-aft of a nose; from Mach 2.96 its answer drifts as the nose is cut into more elements, for the
-same reason
+the Arcas Robin's nose from Mach 3.96, where the march *reduces* the element at the nose's end —
+holding its pressure where the method's exponential law would run the wrong way — on the
+**cylinder** behind it, whose tangent cone is the free stream rather than a cone of its own, and
+which hpr therefore refuses ([issue #123: a cylinder's or a boattail's reduced
+element](https://github.com/nrdptel/hpr-sim/issues/123)); from Mach 2.96 its answer drifts as the
+nose is cut into more elements, for the same reason
 ([issue #81](https://github.com/nrdptel/hpr-sim/issues/81), the method's open question there). A flight's table is built from Mach 5
 down, so that failure would leave such a rocket no method at all. The tangent cone's start holds
 to Mach 5 and settles: the Arcas nose moves under 0.01 per radian from 10 elements to 40, a
@@ -2985,11 +3259,12 @@ and Cubbage's long, gentle boattails 0 to 0.009 where they measure 0.011 to 0.07
   +13.4% at 2.96, and +51.5% and +50.4% at 3.95 and 4.63, where that flare's boundary layer is
   separated ([What a marched flare is worth](#what-a-marched-flare-is-worth)). No other flare
   angle, and no other body, has been checked. Two more things about that model are open: the
-  attachment test is a wedge's limit, not a flare's own, and a band of near-flat flares (0.03816°
-  to 0.05882° on the tests' rocket) is refused outright and takes the whole body off the method,
-  [issue #117](https://github.com/nrdptel/hpr-sim/issues/117) and
-  [M1.8e19](../decisions-and-roadmap.md#m1-8e19)
-  ([A flare through the method](#a-flare-through-the-method)).
+  attachment test is a wedge's limit, not a flare's own
+  ([A flare through the method](#a-flare-through-the-method)), and a near-flat flare has its one
+  element read by the older generalized method, which leaves a step at the corner's crossing —
+  +0.129% of the normal force and 0.0051 calibres on the tests' rocket, and +4.3% and 0.19
+  calibres on a body whose shoulder is short, where the region sits at degrees rather than
+  thousandths of one ([A near-flat flare](#a-near-flat-flare)).
 - **A step in radius is unmodelled, and nothing measures one faster than sound.** Any mismatch of
   radius at a joint — past 2.7e−11 m between two tubes, or past 1.3e−13 m stepping up at a
   boattail's fore end, both far below any tolerance anyone builds to — takes the **whole** body off
@@ -3990,5 +4265,6 @@ ellipse's integrals ([N09] eq. 3.70–3.71); the supersonic forcing and damping 
 [adr-047]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-047-a-flare-flies-the-method-where-its-corners-shock-is-attached-and-is-read-drawn-out-where-it-is-not-2026-09-20
 [adr-048]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-048-what-a-marched-flare-is-worth-measured-against-tn-d-4865s-model-2-2026-09-20
 [adr-049]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-049-what-a-step-in-radius-costs-and-why-the-obvious-fix-is-not-taken-yet-2026-09-20
+[adr-050]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-050-a-reduced-element-is-read-by-the-generalized-method-wherever-it-has-a-tangent-cone-of-its-own-2026-09-20
 [adr-034]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-034-the-bodys-supersonic-normal-force-in-flight-tabulated-shock-expansion-shares-joined-linearly-from-mach-12-2026-09-19
 [gap-fixture]: https://github.com/nrdptel/hpr-sim/blob/main/validation/fixtures/aero/arcas-robin-gap.json
