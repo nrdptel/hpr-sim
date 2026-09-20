@@ -20,14 +20,13 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
 - **Validation (M2.1, ADR-021 to ADR-026):** CI checks the report on three OSes; predicted mode's
   3% are *targets*; every whole flight names both RMS metrics, each held to 3% of its reference's
   apogee or max speed (ADR-024).
-- **The path in wind (ADR-026):** the oracle flies RocketPy 1.13.0 with PRs #1188 and #1196 by
+- **The path in wind (ADR-026):** the oracle flies RocketPy 1.13.0 with #1188 and #1196 applied by
   `corrections.py` (re-pin and delete it when #1196 releases).
 - **M1.8a to e1 (ADR-027 to ADR-033):** `cargo xtask aero` writes the aero fixtures; five of
   ADR-030's PDFs come from NTRS with a 436-byte header. Scratch: `refs/scratch/m18*/`.
 - **M1.8e2 to e8** (ADR-034, 037, 038, 039): `SupersonicBody` tabulates the method's shares every
-  0.05 Mach, lazily, joined from max(1.2, its bisected start) over 0.3. Body lift is Jorgensen's, a
-  boattail W&P's increment, a vertical tip TN D-4865's cap marched from the tangent cone;
-  `BodyModel::BEFORE_M1_8E6` keeps the old rules.
+  0.05 Mach, lazily, from max(1.2, its bisected start) over 0.3. Body lift is Jorgensen's, a
+  boattail W&P's increment, a vertical tip TN D-4865's cap; `BEFORE_M1_8E6` keeps the old rules.
 - **M1.8e9** (ADR-040): #90's cap holds W&P's correlation at 16° for steeper boattails. M1.8e's
   15% bullet (`arcas-robin-body-gap.json`): met at Mach 3.96 and 4.63, outside on six rows.
 - **M1.8e10** (ADR-041): #87's five switches flip one gate (`supersonic_run`), so each is worth
@@ -35,16 +34,17 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
   measured sizes, the lip's own length (−33.0%, 1.77 cal) among them. #106: station vs CP.
 - **M1.8e11** (ADR-042): `CONE_SLOPES` runs to 30° — Fig. 2's chart to 24°, then SP-3007 Table 2.
 - **M1.8e12** (ADR-043): the handover's cap is a parameter (`with_handover_cap_rad`), swept into
-  `blunt-tips.json`. 24° stands: 30° reads nearer TN D-4865's sphere-cone everywhere but puts 109 of
-  the nose's 160 elements into `η < 0` at Mach 4.63, where the answer follows the count.
+  `blunt-tips.json`. 24° stands: steeper caps read nearer TN D-4865's sphere-cone but none keeps its
+  answer to Mach 5 (28° is worst); at 30°, 108 of the nose's 160 elements sit above their cone.
 - **M1.8e13 starts at #108**: it needs a reading of `η < 0` that settles as the nose is cut finer,
-  checked on TN 3527's ogive at Mach 5.05 and 6.28 (#81); `|η|` was tried and is worse. Too deep?
-  Take M1.8e14, the step and the flare. #97: the long model's M1.8a readings may be biased.
+  checked on TN 3527's ogive at 5.05 and 6.28 (#81); `|η|` is worse. Too deep? Take M1.8e14, the
+  step and the flare. #97: the long model's M1.8a readings may be biased.
 - **M2.2's OpenRocket oracle** (ADR-035): orhelper is dropped, so decide how to drive the jar when
   M2.2 starts; JPype loads the JVM in-process, only a subprocess isolates, and the jar needs Java
   17 exactly (`[java] max_major` in the refs lock keeps doctor off a newer one).
 - **Regeneration is not bit-identical across machines** (last digits): regenerate with `cargo xtask
-  validate` (debug), never `--release`; fixture checks allow 1e-12 relative (1e-13 near 0).
+  validate` (debug), never `--release`; fixture checks allow 1e-12 relative. A reduced march drifts
+  2.4e-12, so `handover_caps` is stored to six decimals (`sweep_number`).
 - **Process notes:** `cargo test -p xtask` guards STATUS, ROADMAP, notices, lessons and the lock;
   oracles run from the repo root with `refs/venv/bin/python`; `cargo xtask designs` and `examples`
   rewrite their outputs, and pages quoting them follow.
@@ -52,8 +52,8 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
 ## Done log (newest first, keep about 15)
 
 - 2026-09-20: M1.8e12 What the handover's cap is worth (ADR-043): the cap is a method parameter,
-  swept into the fixture and the guide; 24° stays because 30° breaks the march above Mach 4
-  (#108), though it reads nearer the report's own sphere-cone everywhere; no fixture moved.
+  swept into the fixture and the guide; 24° stays because no steeper cap keeps its answer to Mach
+  5 (#108), though each reads nearer the report's own sphere-cone; no fixture moved.
 - 2026-09-20: M1.8e11 Cone slopes past Fig. 2's edge (ADR-042): SP-3007 Table 2 carries the same
   theory from 24° to 30°, so a fineness-1 cone flies; the pointed tip's switch moves to 30° and
   falls to −7.7%/0.81 cal; no fixture moved.
@@ -68,8 +68,8 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
 - 2026-09-19: M1.8e8 The lip faster than sound (ADR-039): a lip in a boattail's wake carries nothing
   above the join, so every M1.8a row from Mach 1.5 is within the slope's 15% (+9.4% to −3.3%, was
   −28.0%); the long model's CP at Mach 1.8 and 2.3 is 0.5 calibres out.
-- 2026-09-19: M1.8e7 Blunt tips (ADR-038): power-series, Haack and elliptical noses fly behind TN
-  D-4865's cap; its sphere-cone −1.2% to +32.1%. e2 to e6 before that.
+- 2026-09-19: M1.8e7 Blunt tips (ADR-038): noses with a vertical tip fly behind TN D-4865's cap;
+  its sphere-cone −1.2% to +32.1%. e2 to e6 before that.
 
 
 ## Needs Neer (blocking or one-way decisions; the session keeps working on other things)
