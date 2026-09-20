@@ -3719,9 +3719,10 @@ the method at all.
       radius, reads the shares back out of the table, and pins three things: at the table's rows
       a boattail never takes off more than potential flow, except in the sliver where its own
       read already passes it; there, the table carries the correlation as published; and at most
-      the bound moves a **printed** coefficient (after the join's weight) by 0.060 per radian, at
-      53.5° narrowing to a thousandth of the radius, the steepest the sweep found the method
-      willing to table. Deleting the bound fails that test, and so does clipping the floor.
+      the bound moves a **printed** coefficient (after the join's weight) by about 0.060 per
+      radian, at 53.5° narrowing to a thousandth of the radius, the steepest the sweep found the
+      method willing to table; the holdback on the boattail's own cross-section is up to about six
+      times that, near the join where the weight is small. Deleting the bound fails that test, and so does clipping the floor.
     - No committed design reaches it: the steepest, Calisto's 18.4°, has an aft radius 0.685 of
       its fore radius against the 0.40 the bound would need even at Mach 1.2.
     - It does **not** bound the correlation itself. A boattail's read at its own length is used as

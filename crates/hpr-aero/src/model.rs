@@ -3022,9 +3022,12 @@ mod tests {
     }
 
     /// How far the potential-flow bound reaches, read back out of the table rather than
-    /// recomputed: over every boattail the method will fly, from the hold's own angle to the
-    /// steepest it accepts, the share a rocket flies never passes potential flow, and the most
-    /// the bound holds back is the figure the guide quotes. Deleting the bound fails this.
+    /// recomputed. Over the boattails swept below — 16° to 53.6°, narrowing to between a
+    /// thousandth and three tenths of the fore radius — this pins three things: at the table's
+    /// rows a boattail never takes off more than potential flow, **except** where its own read
+    /// already passes it, since the bound never clips that; there, the table carries the
+    /// correlation as published; and the most the bound moves a **printed** coefficient, after
+    /// the join's weight. Deleting the bound fails this, and so does clipping the floor.
     #[test]
     fn what_the_potential_flow_bound_reaches() {
         let fore_radius_m = 0.027_f64;
