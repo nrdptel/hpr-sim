@@ -20,6 +20,13 @@
 //!
 //! The check walks workspace crates only. An outside crate from crates.io is not a layer of this
 //! project and is governed by `deny.toml` instead.
+//!
+//! It is deliberately conservative about *which* dependencies count. Normal, build and
+//! target-specific ones all do, and so does an optional one whose feature is off — `cargo
+//! metadata` lists it either way — because a crate that has to stand on its own has to do so in
+//! every configuration, not just the default one. Dev-dependencies are the exception and are
+//! excluded: they never reach someone who depends on the crate, so a test here may fly a
+//! simulated flight and compare it with a parsed one.
 
 use std::collections::{BTreeSet, VecDeque};
 
