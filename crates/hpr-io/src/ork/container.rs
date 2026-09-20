@@ -46,7 +46,9 @@ impl Container {
     /// with `<`. Returns `None` when it is none of the three.
     pub fn sniff(bytes: &[u8]) -> Option<Self> {
         match bytes {
-            [b'P', b'K', 3 | 5 | 7, 4 | 6 | 8, ..] => Some(Self::Zip),
+            [b'P', b'K', 3, 4, ..] | [b'P', b'K', 5, 6, ..] | [b'P', b'K', 7, 8, ..] => {
+                Some(Self::Zip)
+            }
             [0x1f, 0x8b, ..] => Some(Self::Gzip),
             _ if xml_body(bytes).starts_with(b"<") => Some(Self::Xml),
             _ => None,
@@ -86,26 +88,39 @@ pub struct Unpacked {
 /// or when no entry inside it can be the design. An archive entry that cannot be decompressed is
 /// skipped with a warning, unless it is the design.
 pub fn unpack(bytes: &[u8]) -> Result<Imported<Unpacked>, OrkError> {
+    unpack_within(bytes, MAX_UNPACKED_BYTES)
+}
+
+/// Unpacks `bytes`, decompressing at most `budget` bytes out of the archive.
+///
+/// [`unpack`] is this with [`MAX_UNPACKED_BYTES`]. An entry that would pass the budget is left out
+/// with a [`WarningKind::Skipped`] warning; if that entry was the design, the read fails with
+/// [`OrkError::NoDesign`] rather than returning half a file.
+pub fn unpack_within(bytes: &[u8], budget: u64) -> Result<Imported<Unpacked>, OrkError> {
     match Container::sniff(bytes) {
-        Some(Container::Zip) => unpack_zip(bytes),
+        Some(Container::Zip) => unpack_zip(bytes, budget),
         Some(Container::Gzip) => {
             let mut text = Vec::new();
             flate2::read::GzDecoder::new(bytes)
+                .take(budget.saturating_add(1))
                 .read_to_end(&mut text)
                 .map_err(|error| OrkError::Gzip {
                     reason: error.to_string(),
                 })?;
+            if text.len() as u64 > budget {
+                return Err(OrkError::TooBig { limit: budget });
+            }
             Ok(Imported::clean(Unpacked {
                 container: Container::Gzip,
                 design_entry: None,
-                design: utf8(&text)?,
+                design: utf8(text)?,
                 attachments: Vec::new(),
             }))
         }
         Some(Container::Xml) => Ok(Imported::clean(Unpacked {
             container: Container::Xml,
             design_entry: None,
-            design: utf8(bytes)?,
+            design: utf8(bytes.to_vec())?,
             attachments: Vec::new(),
         })),
         None => Err(OrkError::UnknownContainer { head: head(bytes) }),
@@ -115,12 +130,24 @@ pub fn unpack(bytes: &[u8]) -> Result<Imported<Unpacked>, OrkError> {
 /// The name OpenRocket gives the design entry inside the archive.
 const DESIGN_ENTRY: &str = "rocket.ork";
 
-fn unpack_zip(bytes: &[u8]) -> Result<Imported<Unpacked>, OrkError> {
+/// How many bytes [`unpack`] will decompress out of one archive, over all its entries.
+///
+/// A deflate stream can expand by about a thousand to one, so a small `.ork` could otherwise ask
+/// for more memory than a machine has — which aborts rather than returning the error [Loft lesson
+/// L56: malformed input must give an error rather than crash][lessons] asks for. The largest
+/// design in the reference corpus unpacks to under 6 MiB, so 256 MiB is room to spare. Use
+/// [`unpack_within`] to choose another.
+///
+/// [lessons]: https://github.com/nrdptel/hpr-sim/blob/main/docs/research/loft-lessons.md
+pub const MAX_UNPACKED_BYTES: u64 = 256 * 1024 * 1024;
+
+fn unpack_zip(bytes: &[u8], budget: u64) -> Result<Imported<Unpacked>, OrkError> {
     let mut archive = zip::ZipArchive::new(Cursor::new(bytes)).map_err(|error| OrkError::Zip {
         reason: error.to_string(),
     })?;
     let mut warnings = Vec::new();
     let mut entries: Vec<Attachment> = Vec::new();
+    let mut used = 0u64;
     for index in 0..archive.len() {
         let mut entry = match archive.by_index(index) {
             Ok(entry) => entry,
@@ -137,8 +164,11 @@ fn unpack_zip(bytes: &[u8]) -> Result<Imported<Unpacked>, OrkError> {
             continue;
         }
         let name = entry.name().to_owned();
+        let left = budget.saturating_sub(used);
         let mut content = Vec::new();
-        if let Err(error) = entry.read_to_end(&mut content) {
+        // One byte past what is left, so that an entry filling the budget exactly is still known
+        // to have overrun it.
+        if let Err(error) = entry.by_ref().take(left + 1).read_to_end(&mut content) {
             warnings.push(Warning::new(
                 name,
                 WarningKind::Skipped,
@@ -146,6 +176,18 @@ fn unpack_zip(bytes: &[u8]) -> Result<Imported<Unpacked>, OrkError> {
             ));
             continue;
         }
+        if content.len() as u64 > left {
+            warnings.push(Warning::new(
+                name,
+                WarningKind::Skipped,
+                format!(
+                    "this entry was left out: unpacking it would pass the {budget}-byte limit on \
+                     what one archive may decompress to"
+                ),
+            ));
+            continue;
+        }
+        used += content.len() as u64;
         entries.push(Attachment {
             name,
             bytes: content,
@@ -154,7 +196,7 @@ fn unpack_zip(bytes: &[u8]) -> Result<Imported<Unpacked>, OrkError> {
 
     let chosen = choose_design(&entries, &mut warnings).ok_or(OrkError::NoDesign)?;
     let design_bytes = entries.remove(chosen);
-    let design = utf8(&design_bytes.bytes)?;
+    let design = utf8(design_bytes.bytes)?;
     Ok(Imported {
         value: Unpacked {
             container: Container::Zip,
@@ -207,9 +249,14 @@ fn xml_body(bytes: &[u8]) -> &[u8] {
     &rest[start..]
 }
 
-fn utf8(bytes: &[u8]) -> Result<String, OrkError> {
-    let text = std::str::from_utf8(bytes).map_err(|_| OrkError::NotUtf8)?;
-    Ok(text.strip_prefix('\u{feff}').unwrap_or(text).to_owned())
+/// Takes the design's bytes by value: they may be tens of megabytes, and a second copy is one too
+/// many.
+fn utf8(bytes: Vec<u8>) -> Result<String, OrkError> {
+    let mut text = String::from_utf8(bytes).map_err(|_| OrkError::NotUtf8)?;
+    if text.starts_with('\u{feff}') {
+        text.remove(0);
+    }
+    Ok(text)
 }
 
 /// The first four bytes as hex, for the error that says what was seen instead of a `.ork`.

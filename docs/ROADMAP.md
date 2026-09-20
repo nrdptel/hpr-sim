@@ -618,8 +618,8 @@
     warnings, 2 refused — Loft browser-test fixtures closing a `<databranch>` with `</flightdata>`,
     which Python's expat refuses at the same line. 73 zip, 3 raw XML (no gzip survives, so a test
     holds that path); schema 1.4 ×4, 1.5 ×10, 1.8 ×5, 1.9 ×3, 1.10 ×53, 1.11 ×1. Nesting is
-    counted before `roxmltree` sees the text: it overflows the stack past 120 levels in a debug
-    build.
+    counted before `roxmltree` sees the text: it read 120 levels on a debug build's stack and died
+    on 130, while the corpus's deepest design nests 17.
   - [ ] **M3.1b The component tree.** Components, shapes, materials, finishes and overrides into
     `hpr-design` types, automatic dimensions resolved. Loft lessons L49, L58, L59, L60, L61, L62,
     L63. *Done when:* every design in the reference library gives a `hpr_design::Rocket` whose

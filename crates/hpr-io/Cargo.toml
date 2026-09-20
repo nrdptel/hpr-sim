@@ -26,3 +26,4 @@ zip.workspace = true
 
 [dev-dependencies]
 proptest.workspace = true
+roxmltree.workspace = true

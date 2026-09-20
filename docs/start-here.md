@@ -44,6 +44,7 @@ These parts are built and tested. Each page gives its sources, and most say what
 | Aerodynamics | The [centre of pressure](glossary.md#centre-of-pressure-cp) (where the aerodynamic force acts; its distance behind the centre of gravity is the [stability margin](glossary.md#stability-margin)), the [normal force](glossary.md#normal-force) (the sideways force when the rocket flies at an angle to the airflow, its [angle of attack](glossary.md#angle-of-attack)) and drag. For small angles of attack: the normal force and the drag from [Mach](glossary.md#mach-number) 0 to 5, both checked against a wind tunnel from 0.6 to 4.63 (the drag reads high at most speeds) | [Aerodynamics](physics/aero.md) |
 | Flight | The launch rail, powered flight and coast to apogee, with an [adaptive time step](glossary.md#adaptive-time-step) and [events](glossary.md#event) such as burnout and apogee | [Rigid-body flight](physics/flight.md), [Time integration](physics/integration.md) |
 | Recovery | Parachutes, [streamers](glossary.md#streamer) and [tumbling](glossary.md#tumble-recovery), the [drift](glossary.md#drift) they carry the rocket downwind, and a rocket that [separates](glossary.md#separation) into bodies that each descend on their own | [Recovery](physics/recovery.md) |
+| Design files | Opens an OpenRocket `.ork` file — zip, gzip or plain XML — and reads its design document whole. It does not build a rocket from it yet | [`.ork` design files](format/ork.md) |
 
 ## What doesn't work yet
 
@@ -112,7 +113,9 @@ out.
   margin tracked through the flight comes with [M1.10](decisions-and-roadmap.md#m1-10), the outputs milestone.
 - **No way to use it without writing Rust.** A simpler library interface ([M4.1](decisions-and-roadmap.md#m4-1)), a
   command-line tool ([M4.2](decisions-and-roadmap.md#m4-2)), Python ([M4.3](decisions-and-roadmap.md#m4-3)) and OpenRocket `.ork` import
-  ([M3.1](decisions-and-roadmap.md#m3-1)) are planned. Until then, [Getting started](getting-started.md) flies a first
+  ([M3.1](decisions-and-roadmap.md#m3-1)) are planned — reading a `.ork` file's container and its
+  XML document works today ([`.ork` design files](format/ork.md)), but nothing builds a rocket from
+  it yet. Until then, [Getting started](getting-started.md) flies a first
   rocket with a short Rust program, and [Your own rocket](your-own-rocket.md) builds a design of
   your own.
 - **No Monte Carlo (flying many copies of a flight with randomly scattered inputs), optimization or

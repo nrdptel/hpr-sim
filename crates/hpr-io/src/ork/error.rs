@@ -45,6 +45,13 @@ pub enum OrkError {
         /// The root element's name.
         root: String,
     },
+    /// The container decompresses to more than
+    /// [`MAX_UNPACKED_BYTES`](super::container::MAX_UNPACKED_BYTES).
+    #[error("the file decompresses to more than the {limit}-byte limit")]
+    TooBig {
+        /// The limit that was passed.
+        limit: u64,
+    },
     /// The document nests deeper than [`MAX_DEPTH`](super::MAX_DEPTH).
     #[error("elements nest {depth} deep, past the limit of {limit}")]
     TooDeep {

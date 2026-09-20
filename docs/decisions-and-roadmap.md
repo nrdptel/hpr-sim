@@ -271,6 +271,8 @@ is the milestone that added or will add that test.
 | <a id="l41"></a>[L41][lessons-motors] | Loft bundled thrust curves under mixed or unknown licences | [M1.3](#m1-3) |
 | <a id="l42"></a>[L42][lessons-motors] | Loft's impulse checks were loose (±8%); a mis-sourced curve flew about 26% high until caught | [M1.3](#m1-3) |
 | <a id="l43"></a>[L43][lessons-motors] | ThrustCurve's data must override a `.eng` header's size: one said 75 mm for a 54 mm motor | [M1.3](#m1-3) |
+| <a id="l56"></a>[L56][lessons-formats] | Loft told a design file's container apart by its first bytes, and a malformed one had to give an error rather than crash | [M3.1a](#m3-1a) |
+| <a id="l57"></a>[L57][lessons-formats] | Loft threw away the thrust curves stored inside a `.ork` archive | [M3.1a](#m3-1a), [M3.1c](#m3-1c) |
 | <a id="l44"></a>[L44][lessons-motors] | Loft's inertia was pitch only, with simplified formulas, and zero for rings and masses | [M1.4a](#m1-4a) |
 | <a id="l45"></a>[L45][lessons-motors] | Loft put a hollow transition's centre of gravity at the solid's centroid | [M1.4a](#m1-4a) |
 | <a id="l46"></a>[L46][lessons-motors] | Loft never read fin tabs (100 to 120 g lost on two designs), and rail buttons weighed nothing | [M1.4a](#m1-4a) |
@@ -344,6 +346,7 @@ is the milestone that added or will add that test.
 [adr-051]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-051-m31-split-and-the-ork-document-kept-whole-rather-than-interpreted-2026-09-20
 [decisions]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md
 [lessons]: https://github.com/nrdptel/hpr-sim/blob/main/docs/research/loft-lessons.md
+[lessons-formats]: https://github.com/nrdptel/hpr-sim/blob/main/docs/research/loft-lessons.md#file-formats
 [lessons-motors]: https://github.com/nrdptel/hpr-sim/blob/main/docs/research/loft-lessons.md#motors-mass-and-design-checks
 [lessons-physics]: https://github.com/nrdptel/hpr-sim/blob/main/docs/research/loft-lessons.md#physics-and-numerics
 [lessons-tests]: https://github.com/nrdptel/hpr-sim/blob/main/docs/research/loft-lessons.md#tests-worth-porting-closed-forms-lofts-tolerances-were-loose

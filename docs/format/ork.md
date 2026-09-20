@@ -2,14 +2,38 @@
 
 A `.ork` file is an OpenRocket design: the tree of parts a rocket is built from, the materials they
 are made of, the motors flown in it, and the results of the simulations OpenRocket last ran. It is
-the format most hobby rocketeers already have their rockets in, so reading it is how a design gets
-into hpr without being typed again.
+the format hobby designs are most often shared in, so reading it is how a design gets into hpr
+without being typed again.
 
 **What works today:** hpr opens a `.ork` file, whichever of its three containers it is in, and
 reads its design document into a tree that keeps everything the file said, with the schema version
-and the program that wrote it. **It does not yet build a rocket from that tree** — no components,
-no materials, no motors. That is the next increment
-([M3.1b](../decisions-and-roadmap.md#m3-1b)), and until it lands there is nothing here to fly.
+and the program that wrote it — from Rust; there is no command-line tool yet. **It does not yet
+build a rocket from that tree** — no components, no materials, no motors. That is the next
+increment ([M3.1b](../decisions-and-roadmap.md#m3-1b)), and until it lands there is nothing here
+to fly.
+
+## Opening a file today
+
+This is the doctest on `hpr_io::ork`, which CI runs:
+
+```rust
+let xml = br#"<?xml version="1.0" encoding="UTF-8"?>
+<openrocket version="1.10" creator="OpenRocket 24.12">
+  <rocket><name>Sounder</name></rocket>
+</openrocket>"#;
+
+let read = hpr_io::ork::read(xml)?;
+assert_eq!(read.value.container, hpr_io::ork::Container::Xml);
+assert_eq!(read.value.document.version.to_string(), "1.10");
+let rocket = read.value.document.root.child("rocket").expect("a rocket");
+assert_eq!(rocket.child("name").expect("a name").text(), "Sounder");
+assert!(read.warnings.is_empty());
+```
+
+`read` takes bytes, not a path: `hpr-io` does no file I/O, so that it can also run in a browser.
+Hand it the bytes of a real `.ork` and the three containers are all the same call. What comes back
+is an `OrkFile` — the container, the document, and the archive's other entries — beside the
+warnings the read raised.
 
 Code: `hpr_io::ork` ([API reference](../api/hpr_io/ork/index.html)), written for
 [M3.1a](../decisions-and-roadmap.md#m3-1a). Rules below are from the format documentation unless
@@ -21,18 +45,21 @@ marked **Observed** (seen in real files) or **Policy** (hpr's own choice).
   <https://openrocket.readthedocs.io/en/latest/dev_guide/file_specification.html>, and the
   `fileformat.txt` shipped with the program. There is **no XSD**: nothing machine-checkable
   describes a `.ork`, and every OpenRocket release has added tags.
-- **Observed:** 78 `.ork` files — the OpenRocket example designs inside the pinned
-  `OpenRocket-24.12.jar`, the `openrocket-database` parts library, and the private design corpus.
-  They are cached under `refs/` and never committed; the counts below are over those files and are
-  reproduced by `cargo xtask ork`.
+- **Observed:** 78 `.ork` files, all cached under `refs/` and never committed: 27 from the private
+  design corpus, 20 hand-authored fixtures from [Loft][loft] and 1 from Debrief (hpr's two
+  predecessors), 17 example designs inside the pinned `OpenRocket-24.12.jar`, 9 from the
+  `openrocket-database` parts library, and 4 cached elsewhere. By the files' own `creator`
+  attribute, **58 of the 76 that open were written by OpenRocket** and 18 were hand-authored, so
+  where a count says what a real OpenRocket writes it is given over those 58. Every count below is
+  printed by `cargo xtask ork` unless it names another source.
 - OpenRocket's own Java source is **not** consulted: it is GPL, and hpr is MIT OR Apache-2.0
-  ([ADR-051](https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-051-m31-split-and-the-ork-document-kept-whole-rather-than-interpreted-2026-09-20),
-  clean-room rule).
+  ([ADR-051][adr-051]): hpr is built from published documentation and real
+  files, never from another program's source, which is what "clean room" means here.
 
 ## The three containers
 
-The first bytes say which one a file is in ([F]; Loft lesson
-[L56][l56], containers sniffed by magic bytes):
+The first bytes say which one a file is in ([F]; [Loft lesson L56](../decisions-and-roadmap.md#l56): Loft told them apart by their magic
+bytes, and a malformed file had to give an error rather than crash):
 
 | container | first bytes | what it holds |
 |---|---|---|
@@ -40,14 +67,19 @@ The first bytes say which one a file is in ([F]; Loft lesson
 | gzip | `1f 8b` | the design document, compressed on its own. What older OpenRocket versions wrote |
 | XML | `<`, after an optional byte-order mark and blank lines | the design document itself |
 
-**Observed:** of the 78 files, 73 are zip and 3 are plain XML. No gzip `.ork` survives in the
-reference library, so that path is held by a test rather than by a real file.
+**Observed:** of the 76 files that open, 73 are zip and 3 are plain XML — and two of those three
+are the same design, one of them the unzipped document of the other, so plain XML rests on two
+designs. No gzip `.ork` survives in the reference library at all, so that path is held by a test
+rather than by a real file.
 
 **Policy.** Inside a zip, the design is the entry named `rocket.ork`. If there is none, the first
 entry whose name ends in `.ork` or `.xml` is read as the design and a warning says so. Every other
 entry is kept byte for byte as an *attachment*: `thrustcurves/*.rse` motor curves (schema 1.11),
 `preview.png`, lookup tables. **Observed:** 38 `.png`, 11 `.jpg`, 3 `.gif` and 3 `.rse`
-attachments across the corpus. Nothing reads them yet; they are kept so that
+attachments across the corpus — but all three `.rse` curves come from the single schema 1.11 file,
+so the 1.11 attachments [M3.1c](../decisions-and-roadmap.md#m3-1c) will read
+([Loft lesson L57](../decisions-and-roadmap.md#l57): Loft threw them away) are a sample of one.
+Nothing reads them yet; they are kept so that
 [M3.1c](../decisions-and-roadmap.md#m3-1c) can, and so an export can put them back.
 
 ## The schema version
@@ -83,19 +115,29 @@ dropped something is to keep the whole file and be able to write it back.
 - The text of a leaf element exactly as written, including leading and trailing spaces —
   `<name> Sounder </name>` is not the same as `<name>Sounder</name>` until something decides to
   trim it.
-- Text an element holds *beside* child elements. **Observed:** OpenRocket writes this. A
-  simulation's `<warning>` prints its own message after its fields, in 48 elements of 19 files.
+- Text an element holds *beside* child elements. **Observed:** OpenRocket writes this, and only
+  here — a simulation's `<warning>` prints its own message after its fields, in 48 elements of 19
+  files, and `cargo xtask ork` finds no other tag that does it.
 - The blank text that only lays the file out — the indentation between child elements — is **not**
   kept, so that writing the document out again is free to lay it out afresh.
 - An XML comment or processing instruction is dropped, and counted as a warning. No `.ork` tag
-  carries meaning in one.
+  carries meaning in one. A comment, a processing instruction or a CDATA section splits a run of
+  text in two as it is parsed; the pieces are joined back, because dropping the comment leaves the
+  writer nowhere to put the split.
 
-Writing the document back out gives canonical XML: two-space indentation, `<tag/>` for an empty
-element, and character references for the characters that would otherwise change when read again
+The one thing the tree does **not** keep is XML namespaces: a prefix and its declaration are
+dropped, and two attributes differing only by prefix become one. No `.ork` OpenRocket writes uses
+them, and a document that declares any says so in a warning.
+
+Writing the document back out uses one fixed style (not W3C Canonical XML, which is a different
+thing): two-space indentation, `<tag/>` for an empty element, and character references for the characters that would otherwise change when read again
 (a carriage return in text; a tab, newline or return in an attribute). **Reading a document,
 writing it, and reading it again gives the same document** — that is what "keeps everything" means
-here, and it is checked two ways: by a property test over generated trees, and over every real file
-in the corpus.
+here. **Invariant (tested):**
+`parse(to_xml(parse(x))) == parse(x)` — by `hpr_io::ork::tests::any_document_written_and_read_again_is_unchanged`
+over generated trees, by `reading_writing_and_reading_again_gives_the_same_document` and
+`awkward_text_and_attributes_survive_being_written` on awkward text, and by `cargo xtask ork` over
+every real file in the corpus.
 
 ## Warnings, not failures
 
@@ -105,28 +147,55 @@ departs from [F] but leaves the file readable is a warning that travels with the
 
 | kind | means | raised for |
 |---|---|---|
-| `Skipped` | a whole part was left out | an archive entry that could not be decompressed |
-| `Dropped` | a value was ignored | a comment or processing instruction |
+| `Skipped` | a whole part was left out | an **attachment** entry that could not be decompressed, or one that would pass the unpacking limit; a damaged *design* entry is an error, not a warning |
+| `Dropped` | a value was ignored | a comment or processing instruction; an XML namespace |
 | `Unusual` | read as it stands | a schema version past 1.11; no `creator` attribute; a design entry not called `rocket.ork` |
 
-**Observed:** the corpus raises **no warnings at all** — every file that opens is ordinary.
+**Observed:** the corpus raises **no warnings at all** — every file that opens is ordinary. So
+every row of the table above is exercised by a test rather than by a file anyone shipped.
 
-Only these stop a read: bytes that are none of the three containers, a damaged zip or gzip, a zip
-with no entry that could be the design, a design that is not UTF-8 or not well-formed XML, a root
-that is not `<openrocket>`, an unreadable version, and a document that nests more than 64 elements
-deep.
+Only these stop a read:
 
-### Why there is a depth limit
+- bytes that are none of the three containers;
+- a damaged zip or gzip;
+- a zip with no entry that could be the design;
+- a design that is not UTF-8, or not well-formed XML;
+- a root element that is not `<openrocket>`;
+- a `version` attribute that is missing or is not `major.minor`;
+- a document that nests more than 64 elements deep;
+- an archive that unpacks to more than 256 MiB.
+
+### Why there are two limits
+
+A deflate stream can expand by about a thousand to one, so a `.ork` of a megabyte can ask for more
+than a gigabyte of memory, and one of forty megabytes can ask for more than a machine has. Running
+out is an abort, not an error. So a read decompresses at most 256 MiB out of one archive — the
+largest in the corpus unpacks to 2,052,024 bytes, document and attachments together — and an entry
+that would pass the limit is left out with a warning. If the entry left out was the design, the read fails rather than
+returning half a file. `hpr_io::ork::container::unpack_within` takes another limit, for a caller
+with less memory to spend.
+
+
 
 Reading descends the tree, and so does the XML parser underneath. A file written to nest deeply
-enough exhausts the stack, which is a crash rather than an error — and [L56] asks for an error.
-Measured on a debug test build with a 2 MiB stack, `roxmltree` survives 120 levels of nesting and
-dies somewhere before 130. So hpr counts the nesting **before** the text reaches the parser, with a
-scan that skips comments, CDATA and processing instructions and tracks quotes, and refuses anything
-past 64 levels. A `.ork` design nests about ten deep; the deepest in the corpus reaches 11.
+enough exhausts the stack, which is a crash rather than an error, where
+[Loft lesson L56](../decisions-and-roadmap.md#l56) asks for an error. Feeding `roxmltree` documents
+of increasing nesting in a debug test build, on a 2 MiB test-thread stack, it read 120 levels and
+died on 130 — the process aborts, so this one measurement cannot itself be a committed test, and
+the figure moves with the stack a platform gives a thread. That is the argument for not relying on
+it.
 
-[l56]: https://github.com/nrdptel/hpr-sim/blob/main/docs/research/loft-lessons.md
-[L56]: https://github.com/nrdptel/hpr-sim/blob/main/docs/research/loft-lessons.md
+So hpr counts the nesting **before** the text reaches the parser, with a scan that skips comments,
+CDATA and processing instructions and tracks quotes, and refuses anything past 64 levels. The scan
+can only ever count *more* levels than a parser will descend — XML forbids a raw `<` in an
+attribute value, so every element start it sees is a real one — and
+`hpr_io::ork::tests::the_depth_scan_never_undercounts` holds it to that over generated documents.
+
+**Observed** for the depth, over the 76 files that open: 53 nest 11 deep, and the distribution runs 4, 7, 9, 10,
+11, 12, 13, 14 and 17. An ordinary single-stage design reaches 11; the deepest, at 17, is
+OpenRocket's own parallel-booster example, where each nested stage or inner tube costs two levels
+and a component's appearance three. So 64 leaves about three more levels of nesting than anything
+anyone has written.
 
 ## Checked against real files
 
@@ -137,16 +206,28 @@ the per-file detail goes to a gitignored `corpus-out/`, and only counts are publ
 
 | | |
 |---|---|
-| files read | 78 |
+| files found | 78 |
 | opened | 76 |
-| unchanged by a write and a read | 76 |
-| warnings | 0 |
-| not well-formed XML | 2 |
+| written and read back unchanged | 76 |
+| warnings raised | 0 |
+| refused, not well-formed XML | 2 |
+| deepest nesting | 17 |
+| elements holding text beside children | 48, in 19 files |
+| largest unpacked (document and attachments) | 2,052,024 bytes |
 
 The two that do not open are hand-written fixtures for Loft's browser tests, and neither is XML: a
-`<databranch>` is closed with `</flightdata>`. Python's `expat` refuses them at the same line, so
-this is the files' fault and not the reader's. They are listed by name in the survey, which fails
-if either one ever behaves differently.
+`<databranch>` is closed with `</flightdata>`. Python's `expat` refuses both at the same lines hpr
+does, so this is the files' fault and not the reader's. They are listed by name in the survey,
+which fails if either one ever behaves differently.
+
+**What you can check yourself.** The corpus is not public, so these counts are not reproducible on
+a fresh clone: `cargo xtask ork` needs `cargo xtask refs fetch` first, and stops with
+"no .ork files found" without it. What *is* reproducible anywhere is everything the tests cover —
+`cargo test -p hpr-io` — and the same command on any `.ork` files you have, with
+`cargo xtask ork --dir <path>`.
+
+[adr-051]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-051-m31-split-and-the-ork-document-kept-whole-rather-than-interpreted-2026-09-20
+[loft]: https://github.com/nrdptel/fusionspace-loft
 
 ## What is not read yet
 
@@ -155,3 +236,10 @@ dimensions ([M3.1b](../decisions-and-roadmap.md#m3-1b)); motor configurations, t
 curves, recovery devices, stages, pods, stored launch conditions and simulation results
 ([M3.1c](../decisions-and-roadmap.md#m3-1c)). Writing a `.ork` back out as a design — rather than
 as the document it was read from — is [M3.2](../decisions-and-roadmap.md#m3-2).
+
+What keeping the whole document buys you is this: when
+[M3.1b](../decisions-and-roadmap.md#m3-1b) meets a part hpr does not model, it
+can say so and carry the part's own XML along untouched, rather than dropping it silently the way
+Loft did with pods and parallel stages. Nothing is lost between opening a file and writing it back;
+what a later step chooses to do with a part it does not understand is that step's decision, taken
+in the open.

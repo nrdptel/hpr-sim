@@ -5014,10 +5014,13 @@ The reference library holds 78 `.ork` files spanning schema 1.4 to 1.11.
    a simulation's `<warning>` prints its message that way in 48 elements of 19 corpus files. The
    property is tested over generated trees and over all 76 corpus files that open.
 4. **Nesting is counted before the text is parsed**, and a document deeper than 64 elements is
-   refused. `roxmltree` descends the tree and overflows the stack past 120 levels in a debug test
-   build, which is a crash where L56 asks for an error. A real design nests about ten deep. The
-   count comes from a scan that skips comments, CDATA and processing instructions and tracks
-   quotes, so it can only overstate the depth a parser will find.
+   refused. On a debug test build with a 2 MiB stack `roxmltree` read 120 levels of nesting and
+   died on 130 — a crash where L56 asks for an error, and a figure that moves with the stack a
+   platform gives a thread, which is the argument for not relying on it. Of the 76 corpus files
+   that open, 53 nest 11 deep and the deepest reaches 17 (OpenRocket's parallel-booster example,
+   where a nested stage or inner tube costs two levels and an appearance three). The count comes
+   from a scan that skips comments, CDATA and processing instructions and tracks quotes, so it can
+   only overstate the depth a parser will find, which a property test holds it to.
 5. **Two dependencies**, both with justification in `THIRD-PARTY-NOTICES.md`: `zip` 8.6 (MIT,
    read-only, only the deflate method OpenRocket writes — the default features would pull bzip2,
    lzma, zstd and AES) and `flate2` 1.1 (MIT OR Apache-2.0, pure-Rust backend). Both build for
@@ -5028,6 +5031,15 @@ The reference library holds 78 `.ork` files spanning schema 1.4 to 1.11.
    prints counts only. Two files that are not well-formed XML are named in a committed list with
    the reason, and the survey fails if either ever reads or fails differently — an exclusion that
    polices itself rather than one that hides a regression.
+
+7. **Two limits, both because the alternative is an abort rather than an error.** A read
+   decompresses at most 256 MiB out of one archive (deflate expands about a thousandfold, so a
+   1 MB `.ork` can ask for 2 GB of memory; the largest corpus design unpacks to 2,052,024 bytes), and
+   an entry that would pass it is left out with a warning. And a run of text split by a comment, a
+   processing instruction or a CDATA section is joined back as it is read: the writer drops the
+   comment that made the split, so without joining, reading what was written would not give the
+   same document. XML namespaces are the one thing the tree does not keep, and a document that
+   declares any says so in a warning.
 
 **Consequences.** M3.1a ships a reader that cannot yet produce a rocket, and the guide says so in
 its second paragraph. The 78-file corpus gives every later increment a regression net it can run in

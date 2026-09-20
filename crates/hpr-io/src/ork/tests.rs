@@ -264,7 +264,7 @@ fn malformed_inputs_error_not_panic() {
             b"<openrocket version=\"ten\"/>".to_vec(),
         ),
         ("a design nested past the limit", deep.into_bytes()),
-        ("a zip bomb of angle brackets", vec![b'<'; 64 * 1024]),
+        ("a bomb of angle brackets", vec![b'<'; 64 * 1024]),
     ];
 
     for (what, bytes) in cases {
@@ -307,7 +307,8 @@ fn nesting_is_counted_before_the_document_is_parsed() {
     );
 
     // Comments, CDATA, processing instructions and quoted attributes hide tags from the count,
-    // and a self-closing tag opens nothing.
+    // and a self-closing tag opens nothing. Hiding them is safe because a parser does not descend
+    // into them either; the test below shows the scan never counts fewer levels than the tree has.
     let hidden = concat!(
         r#"<openrocket version="1.10" creator="x">"#,
         "<!-- <a><b><c> --><![CDATA[<d><e>]]><?pi <f><g>?>",
@@ -354,6 +355,107 @@ fn an_element_that_mixes_text_and_children_keeps_both() {
         .expect("read what was written")
         .value;
     assert_eq!(once, twice);
+}
+
+/// A comment, a processing instruction or a CDATA section splits a run of text in two, and the
+/// writer has nowhere to put the split — it drops the comment that made it. So the reader joins
+/// the pieces, and reading what was written gives the same document.
+#[test]
+fn text_split_by_a_comment_is_joined() {
+    for xml in [
+        r#"<openrocket version="1.10" creator="x"><a>foo<!--c-->bar</a></openrocket>"#,
+        r#"<openrocket version="1.10" creator="x"><a>foo<?pi x?>bar</a></openrocket>"#,
+        r#"<openrocket version="1.10" creator="x"><a>foo<![CDATA[bar]]></a></openrocket>"#,
+    ] {
+        let once = Document::parse(xml).expect("read the design").value;
+        let a = once.root.child("a").expect("an a");
+        assert_eq!(a.text(), "foobar", "{xml}");
+        assert_eq!(a.children.len(), 1, "{xml}: {:?}", a.children);
+        let twice = Document::parse(&once.to_xml())
+            .expect("read what was written")
+            .value;
+        assert_eq!(once, twice, "{xml}");
+    }
+}
+
+/// The two fields that are read off the root are written back onto it, so setting either changes
+/// the file rather than being dropped without a word.
+#[test]
+fn the_version_and_creator_are_written_back_onto_the_root() {
+    let mut document = Document::parse(DESIGN).expect("read the design").value;
+    document.version = SchemaVersion {
+        major: 1,
+        minor: 11,
+    };
+    document.creator = None;
+    let again = Document::parse(&document.to_xml())
+        .expect("read what was written")
+        .value;
+    assert_eq!(
+        again.version,
+        SchemaVersion {
+            major: 1,
+            minor: 11
+        }
+    );
+    assert_eq!(again.creator, None);
+    assert_eq!(again.root.attribute("creator"), None);
+    assert_eq!(again.root.attribute("version"), Some("1.11"));
+}
+
+/// XML namespaces are the one thing the tree does not keep, so it says so.
+#[test]
+fn a_namespaced_document_says_what_it_dropped() {
+    let xml = concat!(
+        r#"<or:openrocket xmlns:or="urn:x" version="1.10" creator="x">"#,
+        r#"<or:rocket/></or:openrocket>"#,
+    );
+    let read = read(xml.as_bytes()).expect("read the design");
+    assert!(read.value.document.root.child("rocket").is_some());
+    assert_eq!(read.count(WarningKind::Dropped), 1);
+    assert!(
+        read.warnings[0].message.contains("namespaces"),
+        "{:?}",
+        read.warnings[0]
+    );
+}
+
+/// A deflate stream can expand about a thousandfold, so an archive that unpacks to more than it
+/// is allowed leaves the entry out rather than asking for the memory.
+#[test]
+fn an_archive_that_unpacks_too_far_is_refused_not_swallowed() {
+    let big = vec![b'A'; 4 * 1024 * 1024];
+    let bytes = zip_of(&[("rocket.ork", DESIGN.as_bytes()), ("pad.bin", &big)]);
+    assert!(
+        bytes.len() < 64 * 1024,
+        "the bomb should be small on disk, not {} bytes",
+        bytes.len()
+    );
+
+    // Room for the design and nothing else: the padding is left out, with a warning.
+    let tight = container::unpack_within(&bytes, DESIGN.len() as u64).expect("read the design");
+    assert_eq!(tight.value.design.len(), DESIGN.len());
+    assert!(tight.value.attachments.is_empty());
+    assert_eq!(tight.count(WarningKind::Skipped), 1);
+    assert!(
+        tight.warnings[0].message.contains("limit"),
+        "{:?}",
+        tight.warnings[0]
+    );
+
+    // No room even for the design: an error, not half a file.
+    assert_eq!(container::unpack_within(&bytes, 8), Err(OrkError::NoDesign));
+
+    // And the same for a gzip stream.
+    assert_eq!(
+        container::unpack_within(&gzip_of(&big), 1024),
+        Err(OrkError::TooBig { limit: 1024 })
+    );
+
+    // The default budget reads it all.
+    let whole = read(&bytes).expect("read the whole archive");
+    assert_eq!(whole.value.attachments.len(), 1);
+    assert!(whole.warnings.is_empty(), "{:?}", whole.warnings);
 }
 
 #[test]
@@ -450,16 +552,75 @@ fn any_element(depth: u32) -> impl Strategy<Value = Element> {
             "[a-z][a-z0-9]{0,6}",
             attributes(),
             proptest::collection::vec(inner, 1..3),
+            // Text beside child elements, which is what sends the writer down its compact path.
+            proptest::option::of(any_text(0..6)),
         )
-            .prop_map(|(name, attributes, children)| Element {
-                name,
-                attributes,
-                children: children.into_iter().map(Node::Element).collect(),
+            .prop_map(|(name, attributes, children, text)| {
+                let mut nodes: Vec<Node> = children.into_iter().map(Node::Element).collect();
+                if let Some(text) = text {
+                    nodes.insert(0, Node::Text { text });
+                }
+                Element {
+                    name,
+                    attributes,
+                    children: nodes,
+                }
             })
     })
 }
 
 proptest! {
+    /// The guard is only worth anything if it never *under*counts: the scan runs before the text
+    /// reaches a parser that would overflow the stack, so every level the parser will descend has
+    /// to be a level the scan saw. The hazards are the four things a scan of text can misread —
+    /// a comment, a CDATA section, a processing instruction, and a `>` inside a quoted attribute
+    /// value — so the text here is built from them rather than from the writer's output, which
+    /// escapes them all away.
+    #[test]
+    fn the_depth_scan_never_undercounts(
+        openers in proptest::collection::vec(
+            proptest::sample::select(vec![
+                "<s>",
+                "<s x=\">\">",
+                "<s x='>'>",
+                "<s x=\"a/\">",
+                "<s x=\"--> ]]> ?>\">",
+            ]),
+            1..40,
+        ),
+        noise in proptest::collection::vec(
+            proptest::sample::select(vec![
+                "",
+                "<!-- <a><b> -->",
+                "<![CDATA[<c><d>]]>",
+                "<?pi <e><f>?>",
+                "<g/>",
+                "<h />",
+            ]),
+            1..40,
+        ),
+    ) {
+        let mut xml = String::from(r#"<openrocket version="1.10">"#);
+        for (opener, noise) in openers.iter().zip(noise.iter().cycle()) {
+            xml.push_str(noise);
+            xml.push_str(opener);
+        }
+        for _ in &openers {
+            xml.push_str("</s>");
+        }
+        xml.push_str("</openrocket>");
+
+        let scanned = super::document::deepest_nesting(&xml);
+        let parsed = roxmltree::Document::parse(&xml).expect("well-formed by construction");
+        let deepest = parsed
+            .descendants()
+            .filter(|node| node.is_element())
+            .map(|node| node.ancestors().filter(|a| a.is_element()).count())
+            .max()
+            .unwrap_or(0);
+        prop_assert!(scanned >= deepest, "scan {scanned} < tree {deepest} in {xml}");
+    }
+
     /// Whatever the tree, writing it and reading it back settles at once: the document written
     /// from a parsed document parses to that same document. That is what "lossless" means here.
     #[test]

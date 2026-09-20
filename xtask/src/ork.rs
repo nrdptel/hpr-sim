@@ -36,17 +36,20 @@ const DEFAULT_DIRS: [&str; 1] = ["refs"];
 /// Files in the reference library that are not well-formed XML, so no reader can open them.
 ///
 /// Both are hand-written fixtures for Loft's browser tests, and both close a `<databranch>` with
-/// `</flightdata>`. Python's expat refuses them at the same line, which is the second opinion this
-/// list rests on. They are counted apart rather than skipped: if one of them ever reads, or fails
-/// for some other reason, this command says so, because then the list has gone stale.
-const NOT_WELL_FORMED: [(&str, &str); 2] = [
+/// `</flightdata>`. Python's expat refuses them at the same lines, which is the second opinion
+/// this list rests on. They are counted apart rather than skipped, and each row carries the error
+/// it must still give: if one of them ever reads, or fails differently, this command says so,
+/// because then the list has gone stale.
+const NOT_WELL_FORMED: [(&str, &str, &str); 2] = [
     (
         "refs/fusionspace-loft/e2e/fixtures/logged-sample.ork",
         "a <databranch> closed with </flightdata> (line 150)",
+        "expected 'databranch' tag, not 'flightdata' at 150:",
     ),
     (
         "refs/fusionspace-loft/e2e/fixtures/fallback-canopy-cd.ork",
         "a <databranch> closed with </flightdata> (line 153)",
+        "expected 'databranch' tag, not 'flightdata' at 153:",
     ),
 ];
 
@@ -98,6 +101,10 @@ fn report(root: &Path, files: &[Case]) -> Result<(), String> {
     let mut kinds: BTreeMap<&'static str, usize> = BTreeMap::new();
     let mut messages: BTreeMap<String, usize> = BTreeMap::new();
     let mut attachments: BTreeMap<String, usize> = BTreeMap::new();
+    let mut depths: BTreeMap<usize, usize> = BTreeMap::new();
+    let mut mixed: BTreeMap<String, usize> = BTreeMap::new();
+    let mut files_with_mixed = 0usize;
+    let mut largest_unpacked = 0usize;
     let mut failures = 0usize;
     let mut not_round_tripped = 0usize;
     let mut known_bad = 0usize;
@@ -105,13 +112,18 @@ fn report(root: &Path, files: &[Case]) -> Result<(), String> {
     let mut detail = Vec::new();
 
     for (name, bytes) in files {
+        let slashed = name.replace('\\', "/");
         let excuse = NOT_WELL_FORMED
             .iter()
-            .find(|(path, _)| name.replace('\\', "/").ends_with(path))
-            .map(|(_, reason)| *reason);
+            .find(|(path, _, _)| {
+                slashed
+                    .strip_suffix(path)
+                    .is_some_and(|before| before.is_empty() || before.ends_with('/'))
+            })
+            .map(|(_, reason, expected)| (*reason, *expected));
         match ork::read(bytes) {
             Ok(read) => {
-                if let Some(reason) = excuse {
+                if let Some((reason, _)) = excuse {
                     stale.push(format!("{name} reads, though it is listed as {reason}"));
                 }
                 *containers.entry(read.value.container.as_str()).or_default() += 1;
@@ -134,6 +146,24 @@ fn report(root: &Path, files: &[Case]) -> Result<(), String> {
                 for attachment in &read.value.attachments {
                     *attachments.entry(extension(&attachment.name)).or_default() += 1;
                 }
+                let unpacked = read.value.document.to_xml().len()
+                    + read
+                        .value
+                        .attachments
+                        .iter()
+                        .map(|attachment| attachment.bytes.len())
+                        .sum::<usize>();
+                largest_unpacked = largest_unpacked.max(unpacked);
+                let depth = depth_of(&read.value.document.root);
+                *depths.entry(depth).or_default() += 1;
+                let mut here = Vec::new();
+                mixed_content(&read.value.document.root, "", &mut here);
+                if !here.is_empty() {
+                    files_with_mixed += 1;
+                }
+                for at in &here {
+                    *mixed.entry(at.clone()).or_default() += 1;
+                }
                 let written = read.value.document.to_xml();
                 let round_trip = match ork::Document::parse(&written) {
                     Ok(again) => again.value == read.value.document,
@@ -150,6 +180,9 @@ fn report(root: &Path, files: &[Case]) -> Result<(), String> {
                     "creator": read.value.document.creator,
                     "design_entry": read.value.design_entry,
                     "elements": count_elements(&read.value.document.root),
+                    "depth": depth,
+                    "unpacked_bytes": unpacked,
+                    "mixed_content": here,
                     "attachments": read.value.attachments.iter()
                         .map(|attachment| json!({
                             "name": attachment.name,
@@ -165,33 +198,39 @@ fn report(root: &Path, files: &[Case]) -> Result<(), String> {
                         .collect::<Vec<_>>(),
                 }));
             }
-            Err(error) => match excuse {
-                Some(reason) if matches!(error, ork::OrkError::Xml { .. }) => {
-                    known_bad += 1;
-                    detail.push(json!({
-                        "file": name,
-                        "not_well_formed": reason,
-                        "error": error.to_string(),
-                    }));
+            Err(error) => {
+                let text = error.to_string();
+                match excuse {
+                    // Not merely "it failed with an XML error", which a later size or node limit
+                    // could also raise: the error it is listed for, word for word.
+                    Some((reason, expected)) if text.contains(expected) => {
+                        known_bad += 1;
+                        detail.push(json!({
+                            "file": name,
+                            "not_well_formed": reason,
+                            "error": text,
+                        }));
+                    }
+                    Some((reason, expected)) => {
+                        stale.push(format!(
+                            "{name} is listed as {reason}, whose error says `{expected}`, but it \
+                             failed with: {text}"
+                        ));
+                        failures += 1;
+                        detail.push(json!({ "file": name, "error": text }));
+                    }
+                    None => {
+                        failures += 1;
+                        detail.push(json!({ "file": name, "error": text }));
+                    }
                 }
-                Some(reason) => {
-                    stale.push(format!(
-                        "{name} is listed as {reason} but failed for another reason: {error}"
-                    ));
-                    failures += 1;
-                    detail.push(json!({ "file": name, "error": error.to_string() }));
-                }
-                None => {
-                    failures += 1;
-                    detail.push(json!({ "file": name, "error": error.to_string() }));
-                }
-            },
+            }
         }
     }
 
     let summary = json!({
         "files": files.len(),
-        "read": files.len() - failures,
+        "read": files.len() - failures - known_bad,
         "failed": failures,
         "not_well_formed_xml": known_bad,
         "not_round_tripped": not_round_tripped,
@@ -201,6 +240,10 @@ fn report(root: &Path, files: &[Case]) -> Result<(), String> {
         "warnings": to_value(&kinds),
         "warning_messages": to_value(&messages),
         "attachment_kinds": to_value(&attachments),
+        "depths": to_value(&depths),
+        "mixed_content_elements": to_value(&mixed),
+        "files_with_mixed_content": files_with_mixed,
+        "largest_unpacked_bytes": largest_unpacked,
     });
     let path = root.join(REPORT);
     if let Some(parent) = path.parent() {
@@ -227,6 +270,22 @@ fn report(root: &Path, files: &[Case]) -> Result<(), String> {
     print_counts("schema versions", &versions);
     print_counts("warnings", &kinds);
     print_counts("attachments by extension", &attachments);
+    print_counts("nesting depth", &depths);
+    println!(
+        "  largest unpacked (document and attachments): {largest_unpacked} bytes"
+    );
+    println!(
+        "  text beside child elements: {} element(s) in {files_with_mixed} file(s){}",
+        mixed.values().sum::<usize>(),
+        if mixed.is_empty() {
+            String::new()
+        } else {
+            format!(
+                ", at {}",
+                mixed.keys().cloned().collect::<Vec<_>>().join(", ")
+            )
+        }
+    );
     println!("per-file detail (names and all): {REPORT}");
 
     if !stale.is_empty() {
@@ -288,6 +347,27 @@ fn extension(name: &str) -> String {
 
 fn count_elements(element: &ork::Element) -> usize {
     1 + element.elements().map(count_elements).sum::<usize>()
+}
+
+/// How deeply the tree nests, counting the root as one level.
+fn depth_of(element: &ork::Element) -> usize {
+    1 + element.elements().map(depth_of).max().unwrap_or(0)
+}
+
+/// Elements holding text beside child elements, and the name of each, deepest name last.
+fn mixed_content(element: &ork::Element, at: &str, found: &mut Vec<String>) {
+    let here = if at.is_empty() {
+        element.name.clone()
+    } else {
+        format!("{at}/{}", element.name)
+    };
+    let has_elements = element.elements().next().is_some();
+    if has_elements && !element.text().trim().is_empty() {
+        found.push(here.clone());
+    }
+    for child in element.elements() {
+        mixed_content(child, &here, found);
+    }
 }
 
 /// Every `.ork` under `dir`, deepest last, with its path relative to the repository root.

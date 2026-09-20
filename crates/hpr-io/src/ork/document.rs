@@ -22,12 +22,12 @@ pub const MAX_KNOWN_MINOR: u32 = 11;
 
 /// How deeply elements may nest before the document is refused.
 ///
-/// A `.ork` design nests about ten deep — the deepest file in the reference corpus reaches 11 —
-/// so 64 leaves room to spare. The limit is here because both the XML parser underneath and this
-/// module's own reader descend the tree: a file written to nest far enough exhausts the stack,
-/// which is a crash where [Loft lesson L56: malformed input must give an error rather than
-/// crash][lessons] asks for an error. Measured on a debug test build with
-/// a 2 MiB stack, `roxmltree` survives 120 levels and dies somewhere before 130, so the depth is
+/// An ordinary `.ork` design nests 11 deep, and the deepest of the 76 in the reference corpus —
+/// OpenRocket's own parallel-booster example — reaches 17, so 64 leaves room to spare. The limit
+/// is here because both the XML parser underneath and this module's own reader descend the tree:
+/// a file written to nest far enough exhausts the stack, which is a crash where [Loft lesson L56:
+/// malformed input must give an error rather than crash][lessons] asks for an error. On a debug
+/// test build with a 2 MiB stack, `roxmltree` read 120 levels and died on 130, so the depth is
 /// counted before the text is handed to it.
 ///
 /// [lessons]: https://github.com/nrdptel/hpr-sim/blob/main/docs/research/loft-lessons.md
@@ -119,7 +119,8 @@ impl Element {
     }
 
     /// The child elements called `name`, in document order.
-    pub fn children_named<'a>(&'a self, name: &'a str) -> impl Iterator<Item = &'a Element> {
+    pub fn children_named<'a>(&'a self, name: &str) -> impl Iterator<Item = &'a Element> {
+        let name = name.to_owned();
         self.elements().filter(move |child| child.name == name)
     }
 
@@ -196,10 +197,17 @@ impl Document {
             warnings.push(Warning::new(
                 "openrocket",
                 WarningKind::Unusual,
-                format!(
-                    "schema version {version} is newer than 1.{MAX_KNOWN_MINOR}, the newest this \
-                     reader knows; it was read as far as it is understood"
-                ),
+                if version.major == 1 {
+                    format!(
+                        "schema version {version} is newer than 1.{MAX_KNOWN_MINOR}, the newest \
+                         this reader knows; it was read as far as it is understood"
+                    )
+                } else {
+                    format!(
+                        "schema version {version} is not one this reader knows (1.0 to \
+                         1.{MAX_KNOWN_MINOR}); it was read as far as it is understood"
+                    )
+                },
             ));
         }
         if creator.is_none() {
@@ -208,6 +216,19 @@ impl Document {
                 WarningKind::Unusual,
                 "the root element has no `creator` attribute, so the program that wrote this \
                  design is unknown",
+            ));
+        }
+        if root.tag_name().namespace().is_some()
+            || parsed
+                .descendants()
+                .any(|node| node.namespaces().next().is_some())
+        {
+            warnings.push(Warning::new(
+                "openrocket",
+                WarningKind::Dropped,
+                "this document declares XML namespaces; prefixes and declarations are dropped, \
+                 and two attributes that differ only by prefix become one. No `.ork` OpenRocket \
+                 writes uses them",
             ));
         }
         let root = read_element(root, "", &mut warnings);
@@ -223,12 +244,23 @@ impl Document {
 
     /// Writes the document back out as XML.
     ///
-    /// The result is canonical rather than byte-identical to the file it was read from: two-space
-    /// indentation, attributes in the order they were read, and `<tag/>` for an empty element.
-    /// Reading it again gives an equal [`Document`], which is what makes the tree lossless.
+    /// The result is written in one fixed style rather than byte-identical to the file it was
+    /// read from: two-space indentation, attributes in the order they were read, and `<tag/>` for
+    /// an empty element. Reading it again gives an equal [`Document`], which is what makes the
+    /// tree lossless.
+    ///
+    /// [`version`](Self::version) and [`creator`](Self::creator) are written onto the root, so
+    /// changing either changes the file. Everything else comes from [`root`](Self::root).
+    ///
+    /// This is defined for a document that came from [`parse`](Self::parse). `Element`'s fields
+    /// are public, and a tree built by hand can hold a name that is not an XML name, or nest
+    /// deeper than [`MAX_DEPTH`] — writing either gives XML that will not read back.
     pub fn to_xml(&self) -> String {
+        let mut root = self.root.clone();
+        set_attribute(&mut root, "version", Some(self.version.to_string()));
+        set_attribute(&mut root, "creator", self.creator.clone());
         let mut out = String::from("<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n");
-        write_element(&self.root, 0, &mut out);
+        write_element(&root, 0, &mut out);
         out.push('\n');
         out
     }
@@ -258,6 +290,15 @@ fn read_element(
             children.push(Node::Element(read_element(child, &at, warnings)));
         } else if child.is_text() {
             let text = child.text().unwrap_or_default();
+            // A comment, a processing instruction or a CDATA section splits a run of text in two.
+            // Joining them here is what keeps writing and reading again exact: the writer has
+            // nowhere to put the split, since it drops the comment that made it.
+            if let Some(Node::Text { text: last }) = children.last_mut()
+                && (keeps_blank_text || !text.trim().is_empty())
+            {
+                last.push_str(text);
+                continue;
+            }
             if keeps_blank_text {
                 children.push(Node::Text {
                     text: text.to_owned(),
@@ -298,7 +339,7 @@ fn read_element(
 /// counts start tags against end tags. It can only ever return more nesting than a parser will
 /// find — XML forbids a raw `<` inside an attribute value, so every element start it sees is one —
 /// which is what makes it safe to use as a guard.
-fn deepest_nesting(text: &str) -> usize {
+pub(super) fn deepest_nesting(text: &str) -> usize {
     let bytes = text.as_bytes();
     let mut index = 0;
     let mut depth = 0usize;
@@ -365,6 +406,19 @@ fn skipped(rest: &[u8], opening: &[u8], closing: &[u8]) -> Option<usize> {
         .position(|window| window == closing)
         .map(|at| from + at + closing.len());
     Some(found.unwrap_or(rest.len()))
+}
+
+/// Sets, replaces or removes one attribute of an element, keeping the order of the rest.
+fn set_attribute(element: &mut Element, name: &str, value: Option<String>) {
+    let at = element.attributes.iter().position(|(key, _)| key == name);
+    match (at, value) {
+        (Some(at), Some(value)) => element.attributes[at].1 = value,
+        (Some(at), None) => {
+            element.attributes.remove(at);
+        }
+        (None, Some(value)) => element.attributes.push((name.to_owned(), value)),
+        (None, None) => {}
+    }
 }
 
 /// Writes an element, indented by `depth`, laying out child elements one per line.
