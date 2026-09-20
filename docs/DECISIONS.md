@@ -4888,8 +4888,10 @@ march — and would have published readings at Mach numbers where the method ret
 - A flared rocket's reading is continuous and monotone in the flare's angle across the whole
   near-flat region, at every Mach number the table covers. No committed flight number moves: no
   validation case has a flare.
-- `AftFlow` gains `pressure_ratio`, `gradient` and `radius_m`, which with the two it had make it
-  the corner's whole state. `flare_reduction_turns_rad` and `ReductionTurns` are public, and the
+- `AftFlow` gains `pressure_ratio`, `gradient_p0_per_m`, `radius_m` and `free_stream_mach`, which
+  with the two it had make it the corner's whole state — so `flare_reduction_turns_rad` takes it
+  and nothing else, and the two halves of one state cannot be passed in disagreeing with each
+  other. It and `ReductionTurns` are public, and the
   guide's *A near-flat flare* explains them with the table above.
 - `ShockExpansionBody::reduced_elements` now counts reduced elements anywhere on the body, not
   only on the nose, and `slope`'s error list says the refusal is a cylinder's or a boattail's.
