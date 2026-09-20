@@ -52,6 +52,7 @@ renumber. Supersede an entry by adding a new one that points back to it.
 | ADR-044 | What the answer follows when it follows the mesh is a crossing of the tangent cone, not a reduced element | accepted |
 | ADR-045 | Where a flare's march stops is the corner's isentropic turn, not the shock detaching | accepted |
 | ADR-046 | Debrief folded in, and flight-log analysis that stands without the simulator | accepted |
+| ADR-047 | A flare flies the method where its corner's shock is attached, and is read drawn out where it is not | accepted |
 
 ---
 
@@ -2113,7 +2114,7 @@ RocketPy's own `center_of_mass` puts the centre of mass at 1.639 m. The margin R
 is 1.75 times the one its own `static_margin` reports. After burnout `r_CM` is zero and the
 error ends. A rocket that is too stable during the burn turns into the wind too much.
 
-Upstream, an outside contributor reported the sign in issue #1186 (2026-08-25) and proposed the
+Upstream, an outside contributor reported the sign in issue #1176 (2026-08-25) and proposed the
 fix in PR #1196 (open, not yet reviewed, head `927e771e`): three edits that negate `r_CM` with its
 derivatives, negate `r_NOZ`, and flip the `r_CM ^ w_dot` term in `v_dot`, which was written for
 the reversed vector. PR #1196 builds on PR #1188, merged into `develop` 2026-09-09 and not yet
@@ -4327,3 +4328,123 @@ against — is left open rather than decided here.
 so it may be ported freely with a note. But a browser analyzer's code is not a Rust library's
 code; what is worth carrying is the format knowledge and the methods, which the research notes
 record, not the implementation.
+
+
+## ADR-047: A flare flies the method where its corner's shock is attached, and is read drawn out where it is not (2026-09-20)
+
+**Status:** accepted. **Milestone:** M1.8e17, the second of the three the old M1.8e14 split into.
+
+**Context.** M1.8e17 asks for a flared body that flies the second-order shock-expansion method
+**where the flare's shock is attached**, with no jump across that boundary. The march has always
+been able to take a flare; what refused one was the model around it, which ended its run at the
+first widening body and then dropped the *whole* body to slender-body theory at every Mach number
+— worth −27.5% of the normal force and 0.29 calibres on the tests' rocket at Mach 3.
+
+M1.8e14 measured the march's own edge first (ADR-045) and found it is the corner's isentropic turn
+running out, not the shock detaching, and that it lands on **both** sides of a wedge's detachment
+angle depending on the tube ahead of the flare. So the attachment test had to be chosen here, not
+read off the march's refusal.
+
+**Decision.**
+
+- **The test is the corner's, read at the flow reaching it.** A flare's shock springs from a
+  circular corner, not from a point apex, so where it forms the flow is two-dimensional: the
+  body's radius is the scale over which the axisymmetric relief acts, and at the corner itself
+  there is none of it yet. hpr therefore takes NACA Report 1135's largest deflection behind an
+  attached plane oblique shock (eq. 168 into eq. 138,
+  `blunt_tip::wedge_detachment_angle_rad`) — **the same test TN D-4865 p. 5 uses to hand a blunt
+  tip's Newtonian cap over to this method**, so the project now applies one attachment rule at
+  both corners it has.
+
+  It is read at the surface Mach number the march delivers to the corner, not at the free stream:
+  a new `ShockExpansionBody::aft_flow` returns it, and the march is downstream-only, so the flare
+  cannot change it. On the tests' flared rocket that flow is Mach 1.9998 in a Mach 2.0 free
+  stream, and the limit 22.9698° rather than 22.9735°.
+
+  A cone's shock holds to steeper angles than a wedge's and a conical flare on a cylinder sits
+  between the two (ADR-045), so this is the conservative side of the boundary: it stops reading
+  some flares whose shock is in fact still attached, and reads none whose shock is not.
+
+- **Past the limit, the flare is read drawn out, not dropped.** A flare steeper than the limit is
+  read as one of **the same radii** drawn out to the limiting turn — a longer, shallower flare —
+  with its centre of pressure kept on the real flare, at the same fraction along it. This is
+  Washington and Pettis's boattail rule turned around (ADR-039: a boattail past 16° reads the
+  correlation of one of the same radii drawn out to 16°), and it is what makes the reading
+  continuous: **at the limit the drawn-out flare is the real flare**, so the two branches meet by
+  construction. The radii, which set how much air the flare turns, are never changed.
+
+- **The 30° of the cone tables caps it too.** Past `CONE_TABLE_CAP_RAD` the march has no tangent
+  cone to relax toward (NASA SP-3007 stops at 30°, ADR-042). The limit is therefore the lesser of
+  the two, `shock_expansion::flare_corner_limit_rad`; from Mach 2.5192034260 up it is the tables
+  that bind, and a faster flow buys nothing.
+
+- **The run ends at the flare.** Nothing behind a flare is marched, and it takes slender-body
+  theory's share, which for a cylinder is nothing. Keeping the run open would have meant marching
+  parts whose stations move when the flare is drawn out.
+
+- **Only a conical flare joins the run, and only in the free stream.** Any other widening shape
+  ends the run as before: the corner's turn is then the profile's own slope at its fore end, which
+  this test is not written for. A widening part behind a boattail stays a lip in its wake under
+  ADR-039, whose flow the march does not compute.
+
+- **The old rule stays selectable.** `BodyModel::with_supersonic_flare(SupersonicFlare::SlenderBody)`
+  reproduces every number from before this milestone, and `BodyModel::BEFORE_M1_8E6` takes it.
+
+**What it is worth.** On the tests' flared rocket — an ogive nose, a tube, a 0.3 m conical flare,
+a tail tube and four fins — the method reads *less* normal force than slender-body theory and puts
+the centre of pressure forward of it, so a flared rocket now reads **less** stable, not more:
+
+| | the method | slender-body theory |
+|---|---|---|
+| Mach 2.0 | 3.5371 per rad at 1.1769 m | 3.7153 per rad |
+| Mach 3.0 | 2.8899 per rad at 1.1209 m | 3.0815 per rad |
+| Mach 4.95 | 2.4880 per rad at 1.0676 m | 2.6431 per rad |
+
+Nothing here compares either column with a measured flare. That is M1.8e18, which commits TN
+D-4865 model 2's readings, and until it lands the guide says the size is unvalidated.
+
+**That it does not jump.** At Mach 2.0 — a row of the table, so the reading is that row's and not
+an interpolation — the boundary is a flare of 22.969761173077°. Probing either side of it:
+
+| probe | the normal-force slope moves by |
+|---|---|
+| ±1e-9° | 4.527e-11 |
+| ±1e-7° | 4.527e-9 |
+| ±1e-5° | 4.527e-7 |
+
+The gap falls a thousandfold for each thousandfold in the probe, so it is a slope and not a step:
+the reading is continuous across the boundary and so is its first derivative. The same probe in
+the Mach number, at 18.5° — TN D-4865 model 2's angle, whose shock holds on this body from Mach
+1.767666917849 — gives 1.235e-9, 1.235e-7 and 1.235e-5. `nothing_jumps_where_the_flares_shock_detaches`
+pins both.
+
+**What still switches, and it is not the boundary above.** Two bands of flare the march itself
+refuses remain, and they behave differently.
+
+- **Below Mach 1.5552** on this body the corner's isentropic turn runs out before its shock
+  detaches (ADR-045's crossing), so the table simply starts there. The join's weight rises from
+  zero over 0.3 Mach, so the reading is continuous in Mach through it — measured at 8.5e-10 for a
+  1e-9 probe.
+- **A flare of 0.0381612703° to 0.0588205174°** — a rise of a third of a millimetre over 0.3 m —
+  has its one element *reduced* aft of the nose (issue #81: the pressure behind the corner moves
+  away from its tangent cone's), and the march refuses it at Mach 5, where the table starts. The
+  whole body then falls back to slender-body theory at every Mach number. Crossing the steep edge
+  of that band is worth −8.3% of the normal force and 1.16 calibres at Mach 3 and 4°, which is the
+  size of the switches issue #87 already tracks. It is **not** in #87, because M1.8e15's *done
+  when* is to close or narrow that issue to the step alone: it has its own issue, #117, and its
+  own milestone, **M1.8e19**. `the_march_refuses_two_bands_of_flare_and_the_model_keeps_slender_body_theory`
+  measures both edges and the switch.
+
+**Not chosen: fade the method out approaching detachment.** A weight going to zero at the
+boundary would also be continuous, but it throws away the method exactly where it is still valid,
+and it needs a fade width nothing measures. ADR-039 rejected the same construction for a boattail,
+for the same reason.
+
+**Not chosen: hold the flare's share at its value at the limit.** Freezing the number, rather than
+the geometry it is read from, makes a 30° flare read the force of a 23° one with different radii —
+far below even slender-body theory's, which depends on the radii alone. Drawing the flare out
+keeps the radii and changes only the angle, which is the quantity the attachment test is about.
+
+**Not chosen: read a detached flare by a detached-shock model.** There isn't one here. A bow shock
+standing ahead of the juncture with a subsonic pocket behind it is not something a tangent-body
+march describes, and inventing one would have been a model with nothing to check it against.

@@ -24,11 +24,8 @@
     (fmt, clippy, test on three OSes, doc, wasm-check, deny) on **every** PR, no `paths-ignore`;
     README "pre-alpha"; `.gitignore` covers `refs/`, `.autopilot/`, `corpus/`.
 
-  *Done when:*
-  - The local gate passes.
-  - The PR's CI is green on all 3 operating systems.
-  - `cargo deny check` passes.
-  - ADR-001 records the license choice and workspace layout.
+  *Done when:* the local gate passes, CI is green on all three operating systems, `cargo deny
+  check` passes, and ADR-001 records the license choice and workspace layout. *Met.*
 
 - [x] **M0.2 Reference library.**
   - `cargo xtask refs fetch|verify|doctor`, driven by `validation/refs.lock.toml`, populates
@@ -38,13 +35,9 @@
     (skipped with a note when unavailable, as in CI).
   - A `uv`-managed Python venv in `refs/venv` with `rocketpy==1.13.0` and JPype; a Java 17 check.
 
-  *Done when:*
-  - `fetch` is idempotent.
-  - `verify` checks every hash.
-  - `doctor` prints a table of which oracles are runnable.
-  - `git status` shows nothing from `refs/`.
-  - `THIRD-PARTY-NOTICES.md` lists every source with its license and usage mode (bundled /
-    fetched / run-only).
+  *Done when:* `fetch` is idempotent, `verify` checks every hash, `doctor` prints which oracles are
+  runnable, `git status` shows nothing from `refs/`, and `THIRD-PARTY-NOTICES.md` lists every
+  source with its license and usage mode (bundled, fetched or run-only). *Met.*
 
 - [x] **M0.3 Lessons from Loft.** Read `refs/fusionspace-loft` (docs/methods, the limitations
   page, `COMPETITION.md`, the importer-bug entries in `BACKLOG.md`, `lib/sim`, `lib/ork`,
@@ -67,35 +60,24 @@
   unchanged (M0.4a checks links and bare labels, M0.4b *In short*). Done 2026-09-18, with M0.4d's
   first deploy.
 
-  - [x] **M0.4a The site and its link checks.** An ADR picks the tool (mdBook is the first
-    candidate) and the layout. `docs/physics/` and `docs/format/` move into the site's source, so
-    each page has one source, and equations render on the site and on GitHub. *Start here* page.
-    *Done when:* CI builds the site on every PR and checks its links. A broken link, or a bare
-    internal label (`L\d+`, `ADR-\d+`, a milestone id that isn't a link), fails CI, and a test
-    shows each failing.
-  - [x] **M0.4b Model pages, Accuracy, Glossary, Checking a claim.** Every model page opens with
-    *In short*: what it models, its source, how well it is validated, what it leaves out.
-    *Accuracy* gives every validation result so far, gaps included, from the committed report.
-    The decisions and the roadmap are reachable from the site.
-    *Done when:* a model page without *In short* fails CI, a test shows it, and every model page
-    passes.
-  - [x] **M0.4c Getting started, and how a flight is simulated.** A runnable `examples/` program
-    flies a first rocket; *How a flight is simulated* walks pad to landing with a diagram.
-    *Done when:* the *Getting started* example runs in CI.
-  - [x] **M0.4d Publish.** Workspace rustdoc sits next to the guide, each linking to the
-    other.
-    *Done when:* a workflow deploys the site and the rustdoc to GitHub Pages from `main`, and the
-    README's first lines link to it. (Needs Neer to enable Pages. Until he does, only this bullet
-    is blocked.)
-
-    Done 2026-09-18 (ADR-019): Neer turned Pages on, and CI run 35396233336 on `main` deployed
-    the guide and the rustdoc to https://nrdptel.github.io/hpr-sim/.
-  - [x] **M0.4e The reader test.**
-
-    *Done when:* a reviewer with no project context, given only the site, answers ten questions a
-    new user would ask, listed in the PR (for example: "How far can I trust the descent drift, and
-    what was it checked against?"). Each answer cites a page. Every term it flags as unclear is
-    fixed.
+  - [x] **M0.4a The site and its link checks.** An ADR picks the tool and the layout;
+    `docs/physics/` and `docs/format/` move into the site's source. *Done when:* CI builds the site
+    on every PR and checks its links, a broken link or a bare internal label (`L\d+`, `ADR-\d+`, a
+    milestone id that isn't a link) fails CI, and a test shows each failing. *Met* (mdBook,
+    ADR-016 to ADR-018).
+  - [x] **M0.4b Model pages, Accuracy, Glossary, Checking a claim.** *Done when:* a model page
+    without *In short* (what it models, its source, how well it is validated, what it leaves out)
+    fails CI, a test shows it, and every model page passes. *Accuracy* gives every result so far,
+    gaps included, from the committed report. *Met.*
+  - [x] **M0.4c Getting started, and how a flight is simulated.** *Done when:* the *Getting
+    started* example — a runnable `examples/` program that flies a first rocket — runs in CI, and
+    *How a flight is simulated* walks pad to landing with a diagram. *Met.*
+  - [x] **M0.4d Publish.** *Done when:* a workflow deploys the site and the rustdoc to GitHub Pages
+    from `main`, and the README's first lines link to it. *Met* 2026-09-18 (ADR-019): Neer turned
+    Pages on, and CI run 35396233336 on `main` deployed https://nrdptel.github.io/hpr-sim/.
+  - [x] **M0.4e The reader test.** *Done when:* a reviewer with no project context, given only the
+    site, answers ten questions a new user would ask, listed in the PR. Each answer cites a page,
+    and every term it flags as unclear is fixed. *Met.*
 
 ## Phase 1: Physics core (the heart), with validation interleaved
 
@@ -596,10 +578,18 @@
       12.1126689°, 26.4714031° at Mach 2 against 22.9735318°, then the cone tables' 30° from Mach
       2.129702032593. Which side is the body's doing — take the tube away and Mach 1.5 gives
       14.194333° — so a march that answers is no evidence of attachment.
-    - [ ] **M1.8e17 The flare through the method** (the second of the old e14's three, ADR-045;
+    - [x] **M1.8e17 The flare through the method** (the second of the old e14's three, ADR-045;
       M1.8e14 says the attachment test has to be chosen, not read off the march's own refusal).
       *Done when:* a flared body flies the method where the flare's shock is attached, with no jump
       at ±1e-9 in Mach or in the flare's angle across that boundary.
+      *Result:* met (ADR-047). The test is NACA 1135's wedge limit read at the flow the march
+      delivers to the corner — TN D-4865 p. 5's own, which a blunt tip's cap already uses — under
+      the cone tables' 30°, which binds from Mach 2.5192034260. A steeper flare is read as one of
+      the same radii drawn out to that turn, so at the limit the two branches are the same body:
+      across the Mach 2 boundary (22.969761173077°) a ±1e-9° probe moves the slope 4.527e-11 and a
+      ±1e-5° probe 4.527e-7, a slope and not a step; ±1e-9 in Mach at 18.5° moves it 1.235e-9.
+      Left visible: a band of flares 0.0382° to 0.0588° the march refuses, worth −8.3% and 1.16
+      calibres — #117, M1.8e19.
     - [ ] **M1.8e18 What a marched flare is worth** (the third, ADR-045). TN D-4865's model 2 is a
       2.75° blunted cone with an 18.5° flare; its fig. 8 carries normal force and pitching moment
       from Mach 1.50 to 4.63, integrated from the pressures its tables VII to XII print, and from Mach
@@ -609,6 +599,14 @@
       outright, so unlike the flare it needs a model of its own rather than a decision about one
       that exists. *Done when:* #87 closed or narrowed to the step alone, its measured size in an
       ADR and the guide.
+    - [ ] **M1.8e19 The near-flat flare the march refuses.** A flare of about 0.038° to 0.059° on
+      the tests' rocket — a third of a millimetre of rise over 0.3 m — has its one element reduced
+      aft of the nose (issue #81), so the march refuses it at Mach 5 and the whole body falls back
+      to slender-body theory: a switch of shape worth −8.3% and 1.16 calibres (ADR-047, issue
+      #117). Separate from #87, which M1.8e15 is to narrow to the step.
+      *Done when:* the band's edges are derived rather than bisected, a rule carries the reading
+      across it or the refusal is shown to be right, and a test pins whichever it is with the
+      switch's size measured on both sides.
     - [ ] **M1.8e16 The blunt tip's handover, past 24°** (the rest of the old e13; the next free
       number, so the flare and the step keep theirs, ADR-044). Blocked, so it goes last.
       *Done when:* the vertical-tip switch is gone or measured again, fixtures and the guide moving
