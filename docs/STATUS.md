@@ -16,76 +16,63 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
   labels as links to their rows, none in headings, Unicode equations; new pages in `SUMMARY.md`; a
   new library needs a row in `docs/api.md`. *Accuracy*'s numbers live in a file the item links, its
   tables hold every report row, and each aero fixture has a `the_guide_quotes_the_fixture`.
-- **Checking a milestone off** fails `cargo xtask site` until its row in
-  `decisions-and-roadmap.md` says `done`; a new milestone needs a row.
+  Checking a milestone off fails `cargo xtask site` until its row in `decisions-and-roadmap.md`
+  says `done`; a new milestone needs a row, and an id carries one increment level (so e14's
+  siblings are e17 and e18, not e14a).
 - **Validation (M2.1, ADR-021 to ADR-026):** CI checks the report on three OSes; predicted mode's
   3% are *targets*; every whole flight names both RMS metrics, each held to 3% of its reference's
   apogee or max speed (ADR-024).
 - **The path in wind (ADR-026):** the oracle flies RocketPy 1.13.0 with #1188 and #1196 applied by
-  `corrections.py` (re-pin and delete it when #1196 releases).
+  `corrections.py` (re-pin and delete when #1196 releases).
 - **M1.8a to e1 (ADR-027 to ADR-033):** `cargo xtask aero` writes the aero fixtures; five of
-  ADR-030's PDFs come from NTRS with a 436-byte header. Scratch: `refs/scratch/m18*/`.
+  ADR-030's PDFs come from NTRS with a 436-byte header (scratch: `refs/scratch/m18*/`).
 - **M1.8e2 to e8** (ADR-034, 037, 038, 039): `SupersonicBody` tabulates the method's shares every
-  0.05 Mach, lazily, from max(1.2, its bisected start) over 0.3. Body lift is Jorgensen's, a
-  boattail W&P's increment, a vertical tip TN D-4865's cap; `BEFORE_M1_8E6` keeps the old rules.
-- **M1.8e9** (ADR-040): #90's cap holds W&P's correlation at 16° for steeper boattails; M1.8e's
-  15% bullet (`arcas-robin-body-gap.json`) is outside on six rows.
-- **M1.8e10** (ADR-041): #87's five switches flip one gate (`supersonic_run`), so each is worth
-  the whole body; the lip's **rise** is a weight now (`SupersonicBody::shape_weight`).
-- **M1.8e11** (ADR-042): `CONE_SLOPES` runs to 30° — Fig. 2's chart to 24°, then SP-3007 Table 2.
-- **M1.8e12** (ADR-043): the handover's cap is a parameter (`with_handover_cap_rad`), swept into
-  `blunt-tips.json`. 24° stands: no steeper cap keeps its answer to Mach 5 (28° is worst).
+  0.05 Mach lazily, from max(1.2, its bisected start) over 0.3; body lift is Jorgensen's, a boattail
+  W&P's increment, a vertical tip TN D-4865's cap (`BEFORE_M1_8E6` keeps the old rules).
+- **M1.8e9 to e12** (ADR-040 to ADR-043): #90's cap holds W&P's correlation at 16° for steeper
+  boattails, M1.8e's 15% bullet (`arcas-robin-body-gap.json`) outside on six rows; #87's switches
+  flip one gate (`supersonic_run`), so the lip's **rise** is a weight (`shape_weight`);
+  `CONE_SLOPES` runs to 30° (Fig. 2's chart to 24°, then SP-3007 Table 2); the handover's cap is a
+  parameter (`with_handover_cap_rad`) and 24° stands, no steeper cap holding to Mach 5.
 - **M1.8e13** (ADR-044): what an answer follows when it follows the mesh is the surface pressure
-  **crossing** its tangent cone's — where the relaxation rate has a pole — not `η < 0`.
-  `tangent_cone_crossings` counts it; over the sweep's three meshes it splits all 32 readings with
-  no overlap (27 clean, 5 not). A flag, not a verdict: zero at a coarse mesh means "not proven",
-  and 28° at Mach 5 crosses yet settles by 60 elements. #108 is re-scoped to the loading through a
-  crossing, tangled with `η < 0`; the rest of the old e13 is **M1.8e16**, last because blocked.
-- **M1.8e14** (ADR-045): the old e14 split into three; e14 measured where the method stops
-  marching a flare, and **M1.8e17 (the flare through the method) and M1.8e18 (the readings and the
-  guide) are next**, in that order. The edge is the corner's isentropic turn running out, not the
-  shock detaching: 0.181451° short of the wedge's limit at Mach 1.5, 3.497871° past it at Mach 2,
-  crossing at Mach 1.547787962528, and from Mach 2.129702032593 it is the cone tables' 30°
-  instead. So **e17 must choose an attachment test**, not read one off the march's refusal, and
-  the wedge's limit used here is a conservative stand-in, not the flare's own boundary. For e18,
-  TN D-4865 model 2 is fig. 8, Mach 1.50 to 4.63, from tables VII to XII. #97: the long model's
-  M1.8a readings may be biased.
+  **crossing** its tangent cone's (`tangent_cone_crossings`), not `η < 0`; a flag, not a verdict,
+  since zero at a coarse mesh only means "not proven". #108 is re-scoped to the loading through a
+  crossing; the rest of the old e13 is **M1.8e16**, last because blocked.
+- **M1.8e14** (ADR-045): the old e14 split into three; **M1.8e17 (the flare through the method)
+  then M1.8e18 (the readings and the guide) are next**. The march's edge is the corner's isentropic
+  turn running out, not the shock detaching — short of the wedge's limit at Mach 1.5, past it at
+  Mach 2, and the cone tables' 30° from Mach 2.1297 — so **e17 must choose an attachment test**
+  rather than read one off the march's refusal, and the wedge's limit is a conservative stand-in,
+  not the flare's own boundary. #97: the long model's M1.8a readings may be biased.
 - **M2.2's OpenRocket oracle** (ADR-035): orhelper is dropped, so decide how to drive the jar when
   M2.2 starts; JPype loads the JVM in-process, only a subprocess isolates, and the jar needs Java
   17 exactly (`[java] max_major` in the refs lock keeps doctor off a newer one).
 - **Regeneration is not bit-identical across machines** (last digits): regenerate with `cargo xtask
-  validate` (debug), never `--release`; fixture checks allow 1e-12 relative. A reduced march drifts
-  2.4e-12, so `handover_caps` is stored to six decimals (`sweep_number`).
-- **Process notes:** `cargo test -p xtask` guards STATUS, ROADMAP, notices, lessons and the lock;
-  oracles run from the repo root with `refs/venv/bin/python`; `cargo xtask designs` and `examples`
-  rewrite their outputs, and pages quoting them follow.
+  validate` (debug), never `--release`; fixture checks allow 1e-12 relative, and `handover_caps` is
+  stored to six decimals since a reduced march drifts 2.4e-12.
+- **Process notes:** `cargo test -p xtask` guards STATUS, ROADMAP, notices, lessons and the lock
+  (STATUS 150 lines, ROADMAP 1000: trim an old entry when adding one); oracles run from the repo
+  root with `refs/venv/bin/python`; `cargo xtask designs` and `examples` rewrite their outputs.
 
 ## Done log (newest first, keep about 15)
 
 - 2026-09-20: M1.8e14 Where the flare's march stops (ADR-045): the corner's isentropic turn running
-  out, not the shock detaching. Bisected to f64 resolution on TN D-4865 model 2's proportions, the
-  method marches a flare to 11.931217° at Mach 1.5 (0.181451° short of the wedge's 12.112669°) and
-  to 26.471403° at Mach 2 (3.497871° past its 22.973532°), crossing at Mach 1.547787962528; from
-  Mach 2.129702032593 the limit is the cone tables' 30°. So a march that answers is not evidence
-  of an attached shock, and M1.8e17 has to choose the test. The old e14's other clauses are
-  M1.8e17 and M1.8e18, next in the order.
+  out, not the shock detaching — short of the wedge's limit at Mach 1.5, past it at Mach 2, and the
+  cone tables' 30° from Mach 2.1297. The rest of the old e14 is M1.8e17 and M1.8e18, next up.
 
-- 2026-09-20: M1.8e13 What the answer follows when it follows the mesh (ADR-044): a crossing of
-  the tangent cone, not a reduced element; over the sweep's three meshes the 27 readings without
-  one hold to 0.012 per radian and the 5 with one move 0.035 or more, no overlap — but it is a
-  flag, not a verdict, at either end. No fixture number moved.
-
+- 2026-09-20: M1.8e13 What the answer follows when it follows the mesh (ADR-044): a crossing of the
+  tangent cone, not a reduced element; over the sweep's three meshes the 27 readings without one
+  hold to 0.012 per radian and the 5 with one move 0.035 or more, no overlap — a flag, not a
+  verdict, at either end. No fixture number moved.
 - 2026-09-20: M1.8e12 What the handover's cap is worth (ADR-043): the cap is a method parameter,
-  swept into the fixture and the guide; 24° stays because no steeper cap keeps its answer to Mach
-  5 (#108), though each reads nearer the report's own sphere-cone; no fixture moved.
+  swept into the fixture and the guide; 24° stays because no steeper cap keeps its answer to Mach 5
+  (#108), though each reads nearer the report's own sphere-cone; no fixture moved.
 - 2026-09-20: M1.8e10 The lip's shelter, weighed not switched (ADR-041): the drag buildup's wake
-  fraction is now the method's weight, so a lip drawn taller moves a rocket between the models
+  fraction is the method's weight now, so a lip drawn taller moves a rocket between the models
   instead of switching it (was −33% and 1.77 calibres); five switches left, each measured.
-
 - 2026-09-19: M1.8e9 #90's cap and M1.8e's 15% bullet (ADR-040): a boattail steeper than 16° reads
   W&P's correlation as a 16° one, the conservative end of a 0.67 to 1.35 calibre range; the bullet
   met at Mach 3.96 and 4.63, the body alone outside on six rows.
-
 
 ## Needs Neer (blocking or one-way decisions; the session keeps working on other things)
 
@@ -97,7 +84,7 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
 - **RASAero values in fixtures** (no action if fine): `normal-force-vs-mach.json` commits 30 values
   of RocketPy's 2018 Calisto RASAero II export (ADR-027) plus four summary numbers from its secant
   columns; `rocketpy-drag-curves.json` enough to rebuild 147 values of five RocketPy drag curves
-  (ADR-029). If not fine, say so in an issue; the next session summarises.
+  (ADR-029). If not fine, open an issue; the next session summarises.
 
 ## Decided without Neer (one line each; significant ones get an ADR)
 
@@ -116,9 +103,9 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
 - ADR-033/034: TN 3527's method (ten-element tangent body, `η < 0` reduced, Fig. 2 held below Mach
   3), tabulated every 0.05 Mach lazily, joined over Mach 1.2 to 1.5; boattails since M1.8e4.
 - ADR-032: a table replaces only the static force. ADR-031: roll damping takes the fin's own slope.
-- ADR-030: Fig. 5-122 to the Prandtl–Meyer limit, 16°–30° separation, Fig. 5-141 as a ratio, the
+  ADR-030: Fig. 5-122 to the Prandtl–Meyer limit, 16°–30° separation, Fig. 5-141 as a ratio, the
   flow behind boattails shared among their tails, a step down sheltering a lip; targets not tuned.
-- ADR-029: M1.8's drag bullet recorded as not met, not chased; MIL-HDBK-762's example added.
+  ADR-029: M1.8's drag bullet recorded as not met, not chased; MIL-HDBK-762's example added.
 - ADR-028: Stoney's Figure 12 read by hand; cones and ogives below fineness 1 scale toward a flat
   face; bulged ogives and Haack past `C = ⅓` refused. M0.4, M1.4 to M1.7 and M2.1b were split.
 - ADR-027: M1.8 split into a to e; fins' supersonic slope counts both faces; the transonic join is
@@ -132,13 +119,11 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
 
 - Two M1.2 sources are pinned from third-party mirrors (MIL-F-8785C, WMO-No. 8). Dryden turbulence
   is an aircraft model, unvalidated for rockets, and no flight uses it (#39).
-- Only 32 curves are bundled (none in class A); the rest wait for M5's cache, and its checks ran on
-  unpinned `refs/samples/` caches.
-- Wall and fin mass may differ from OpenRocket's undocumented conventions; M2.2 measures it.
-- `.CDX1` has no public spec (the importer relies on samples); ERA5 `.nc` may be netCDF4 (HDF5).
+- Only 32 curves are bundled (none in class A); the rest wait for M5's cache, whose checks ran on
+  unpinned `refs/samples/` caches. Wall and fin mass may differ from OpenRocket's undocumented
+  conventions (M2.2 measures it); `.CDX1` has no public spec, and ERA5 `.nc` may be netCDF4.
 - A new RustSec notice can turn CI red with no code change: upgrade, replace, or `ignore` with a
-  reason. API snapshots can't be reproduced once an API moves.
-- Barrowman 1966, TIR-33, Galejs, the `.rse` spec and Knacke have no clear terms: never
+  reason. Barrowman 1966, TIR-33, Galejs, the `.rse` spec and Knacke have no clear terms: never
   redistribute.
 - Aero (M1.5a) is small-angle only; the Recruiter's six fins miss the printed slope by +3.42%
   (ADR-008). Body lift (Jorgensen, M1.8e6) reads 1–16% high where the crossflow is supersonic and
@@ -155,8 +140,8 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
 - In wind, a slow rocket's drift rests on body lift's size: Juno III's apogee drift is 245 m in hpr
   (Jorgensen's), 240 to 194 m over Galejs's `K` 1.0 to 1.5. The oracle carries two unreleased
   RocketPy corrections; if #1196 changes, revisit `corrections.py`.
-- Flight: no tip-off, turbulence or thrust misalignment; small-angle aero at every `α`.
-- Recovery: no canopy overshoot or opening-load factor (a 1.5 m canopy peaks at 1.6 kN where
+- Flight: no tip-off, turbulence or thrust misalignment; small-angle aero at every `α`. Recovery:
+  no canopy overshoot or opening-load factor (a 1.5 m canopy peaks at 1.6 kN where
   Knacke's infinite-mass `C_x` gives 5.1 kN), no added mass or airframe drag under a canopy, the
   attitude freezes at deployment, and his filling time is stated only for 150 to 500 ft/s (M1.7a).
   Streamer pleats are not modelled (+58% fast on Kidwell's pleated streamer); tumble +19% (M1.7b).

@@ -4166,10 +4166,10 @@ matter). Two tests in `crates/hpr-aero/src/shock_expansion.rs` pin the edge and 
 
   | free stream | the method marches to | a wedge's shock detaches at (NACA 1135) | the method is |
   |---|---|---|---|
-  | Mach 1.5 | 11.931217° | 12.112669° | 0.181451° short |
-  | Mach 2 | 26.471403° | 22.973532° | 3.497871° past |
+  | Mach 1.5 | 11.9312175° | 12.1126689° | 0.1814514° short |
+  | Mach 2 | 26.4714031° | 22.9735318° | 3.4978713° past |
 
-  They cross at **Mach 1.547787962528**, bisected to f64 resolution. Below it the method refuses
+  They cross at **Mach 1.547787962528**, both at 13.346819°, bisected to f64 resolution. Below it the method refuses
   flares whose shock is attached; above it the method answers for flares whose shock is not.
 - **The cone tables' 30°.** From **Mach 2.129702032593** up, the limit is not the flow at all: the
   tangent cone at each element is looked up in NASA SP-3007 Table 2, which stops at 30°

@@ -108,7 +108,8 @@
   carries nothing ([A lip in a boattail's wake](#a-lip-in-a-boattails-wake)). A rocket with any
   other flare or step behind the nose (a motor retainer behind a step down counts: the step ends
   the run) keeps slender-body theory for its whole body at every speed, which reads low past
-  Mach 3, and nothing on the roadmap covers those yet. Body lift leaves out
+  Mach 3; the flare is next on the roadmap, its march's edge measured in
+  [Where a flare's march stops](#where-a-flares-march-stops). Body lift leaves out
   the fall in crossflow drag past the critical crossflow Reynolds number
   ([Body lift](#body-lift)), and it reads too large at the few degrees a slope is fitted over: the
   body alone misses the 15% target the milestone set on six of eleven wind-tunnel rows, by +37.7%
@@ -614,8 +615,8 @@ also clear about where a march stops being the right tool: at Mach 1.50 that fla
 attached even in theory, and from Mach 2.96 up its boundary layer separates ahead of the corner and
 reattaches behind it, so the pressure rise arrives downstream of where a tangent body would put it.
 
-Where a march stops being the tool is not where the march stops, and the two edges are measured in
-[Where a flare's march stops](#where-a-flares-march-stops) below.
+The angle where the march refuses is not the angle where a flare's shock detaches; both are
+measured in [Where a flare's march stops](#where-a-flares-march-stops) below.
 
 A step in radius is further off ([M1.8e15](../decisions-and-roadmap.md#m1-8e15)): the march needs a
 profile without a jump in it, so a step needs a model of its own rather than a decision about an
@@ -987,55 +988,77 @@ does a flare anywhere else on the body, which keeps the whole body off the metho
 
 #### Where a flare's march stops
 
-**In short:** the method marches a flare up to a limit that is *not* the flare's shock detaching.
-Below about Mach 1.55 it stops before the shock would detach; above it, it keeps answering for
-flares whose shock has already detached; and from Mach 2.13 up the limit is the cone tables' 30°
-rather than the flow. No rocket flies a flare through the method yet
-([M1.8e17](../decisions-and-roadmap.md#m1-8e17)); this is the measurement that milestone starts
-from ([ADR-045][adr-045]).
+**In short:** a [flare](../glossary.md#flare) is a transition that widens toward the tail, and the
+method will march one — but only up to a limit, and that limit is *not* where the flare's shock
+detaches. It is where the corner's turn would take the flow to Mach 1, which is a property of hpr's
+method rather than of the air: between Mach 1.5 and 1.5478 the march stops while an attached shock
+is still possible, and above that it answers for flares past the angle where a *wedge's* shock
+would detach. From Mach 2.13 to Mach 5, the highest checked, the limit is neither — it is the 30°
+where the cone tables end. The flare's own detachment angle is not known here: the wedge's is a
+conservative stand-in for it. No rocket flies a flare through the method yet
+([M1.8e17](../decisions-and-roadmap.md#m1-8e17), which will have to pick that attachment test);
+this section is the measurement that milestone starts from ([ADR-045][adr-045]). Nothing below is
+compared with a measured flare force — that is
+[M1.8e18](../decisions-and-roadmap.md#m1-8e18), which commits TN D-4865 model 2's readings.
 
-Second-order shock-expansion turns every corner isentropically, with Prandtl and Meyer's function
-(TN 3527 eq. 3). A flare is a compression corner, so the turn spends that function: the march can
-go on only while the flow reaching the flare has enough of it left to turn through the flare's
-angle without dropping to Mach 1. That is a different question from whether a shock stands attached
-to the corner, which is what "the flare's shock is attached" means and what decides whether the
-march is modelling the right flow at all.
+Until then, a rocket with a flare keeps [slender-body theory](../glossary.md#slender-body-theory)
+for its whole body, which reads low past Mach 3, and drawing one costs the body about 27.5% of its
+normal force and 0.29 calibres of balance relative to the same rocket without it
+([What a flight takes](#the-body-faster-than-sound-in-a-flight) above).
 
-The steepest flare the method marches, on the proportions of NASA TN D-4865's second model (a 2.75°
-cone, a tube and a conical flare), bisected to the last bit of a `f64`:
+Second-order shock-expansion turns every corner
+isentropically — no entropy rise, so no shock — with the
+[Prandtl–Meyer](../glossary.md#prandtlmeyer-expansion) angle ν ([SD56]) eq. 3. A flare
+is a compression corner, so the turn spends ν: the march goes on only while the flow reaching the
+flare has enough of it left to turn through the flare's angle without dropping to Mach 1. Whether a
+shock instead stands attached to that corner is a separate question, and it is the one that decides
+whether the march is modelling the real flow at all.
 
-| free stream | the method marches a flare to | a wedge's shock detaches at | so the method is |
+The table below sweeps the flare's angle with the rest of the body fixed — NASA TN D-4865's second
+model in proportion (a 2.75° cone, a tube and a conical flare; the method is inviscid, so only the
+angles and the ratios of lengths to radii matter) — and bisects, until the two angles are adjacent
+double-precision numbers, the steepest flare the march accepts. Angles are quoted to seven decimals
+so the differences add up. Both tests are in
+[`shock_expansion.rs`](https://github.com/nrdptel/hpr-sim/blob/main/crates/hpr-aero/src/shock_expansion.rs):
+`a_flare_marches_to_the_isentropic_turn_not_to_detachment` and
+`past_mach_2_13_the_flare_stops_where_the_cone_tables_do`.
+
+| free stream | the march accepts a flare to | a wedge's shock detaches at | so the march is |
 |---|---|---|---|
-| Mach 1.5 | 11.931217° | 12.112669° | 0.181451° short of it |
-| Mach 1.547787962528 | the same angle as detachment | the same | exactly on it |
-| Mach 2 | 26.471403° | 22.973532° | 3.497871° past it |
-| Mach 2.129702032593 and up | 30° | 29.80° at Mach 2.5, 34.07° at Mach 3 | limited by the tables |
+| Mach 1.5 | 11.9312175° | 12.1126689° | 0.1814514° short of it |
+| Mach 1.547787962528 | 13.346819° | 13.346819° | exactly on it |
+| Mach 2 | 26.4714031° | 22.9735318° | 3.4978713° past it |
+| Mach 2.5 | 30° (the tables) | 29.7974° | 0.20° past it |
+| Mach 3 | 30° (the tables) | 34.0734° | 4.07° short of it |
 
-The detachment angles are a *wedge's* largest deflection (NACA 1135, through
-[`wedge_detachment_angle_rad`](../api/hpr_aero/blunt_tip/fn.wedge_detachment_angle_rad.html)). A
-cone's shock holds to steeper angles than a wedge's, and a conical flare on a cylinder sits between
-the two, so the wedge's limit is a conservative stand-in and not the flare's own boundary. Picking
-that boundary is [M1.8e17](../decisions-and-roadmap.md#m1-8e17)'s job; what the table shows is
-that the march's own edge lands on both sides of any such boundary, so the march returning a number
-cannot be the test.
+The detachment angles are a *wedge's* largest deflection ([R1135], through
+[`wedge_detachment_angle_rad`](../api/hpr_aero/blunt_tip/fn.wedge_detachment_angle_rad.html), which
+lives with the blunt-tip cap because that cap uses the same relation). A cone's shock holds to
+steeper angles than a wedge's, and a conical flare on a cylinder sits between the two, so the
+wedge's column is a conservative stand-in, not the flare's own boundary. Picking that boundary is
+[M1.8e17](../decisions-and-roadmap.md#m1-8e17)'s job. What the table shows is that the march's edge
+lands on *both* sides of any such boundary: you cannot tell, from hpr returning an answer, that the
+flow it modelled is the flow that would be there.
 
-The last row is a different limit altogether. Each element's tangent cone is looked up in NASA
-SP-3007 Table 2, which stops at 30° since
-[M1.8e11](../decisions-and-roadmap.md#m1-8e11) ([ADR-042][adr-042]), so from Mach 2.1297 up every Mach number gives the same edge: the reference
-data runs out long before the flow does.
+The last two rows are a different limit altogether. Each element's tangent cone is looked up in
+NASA SP-3007 Table 2, whose slopes stop at 30° — the milestone that took them there from 24° is
+[M1.8e11](../decisions-and-roadmap.md#m1-8e11) ([ADR-042][adr-042]) — so from Mach 2.129702032593
+to Mach 5, the highest checked, every Mach number gives the same edge. The reference data runs out
+before the flow does, and the last column then says nothing about attachment.
 
-**What it means for the report's own model.** TN D-4865's flare is 18.5°. The method answers for it
-from Mach 1.721760; a wedge's shock reaches 18.5° only at Mach 1.767575. Between the two the march
-returns a number for a flare whose shock is, on that reckoning, detached — a bow shock standing
-ahead of the juncture with a subsonic pocket behind it, which an isentropic corner turn does not
-describe. The report's lowest run, Mach 1.50, is below both: there the method refuses outright, as
-the report itself says it should.
+**What it means for TN D-4865's own model.** That flare is 18.5°. The march accepts it from Mach
+1.721760; a wedge's shock reaches 18.5° only at Mach 1.767575. Between the two, hpr returns a
+number for a flare whose shock is, on that reckoning, detached — a bow shock standing ahead of the
+juncture with a pocket of subsonic flow behind it, which an isentropic corner turn does not
+describe. The report's lowest run, Mach 1.50, is below both, and there the march refuses outright,
+as the report itself says it should.
 
-**What it leaves out.** The whole edge is inviscid. From Mach 2.96 up TN D-4865 records the
-boundary layer separating ahead of the flare and reattaching on it, which moves the pressure rise
-downstream of where a tangent body puts it; nothing here models that. Nor is any flare's force
-checked against a measurement yet — that is
-[M1.8e18](../decisions-and-roadmap.md#m1-8e18).
+**What it leaves out.** These digits pin what this program does, not what air does: every one of
+them comes from bisecting hpr's own refusal, and the 30° rows come from where a lookup table ends.
+The whole edge is inviscid, too. From Mach 2.96 up TN D-4865 records the boundary layer separating
+ahead of the flare and reattaching on it, which moves the pressure rise downstream of where a
+tangent body puts it; nothing here models that. And below Mach 1.5 nothing here was measured,
+although a flight uses the method from Mach 1.2.
 
 ### Blunt tips
 
