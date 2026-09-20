@@ -3889,6 +3889,11 @@ mod tests {
         // The two past Mach 4 are held to 2e-9°, ten times the 2e-10° the tangent cone's own
         // integration leaves in them (see the residuals at the end): pinning them tighter would
         // be a statement about one machine.
+        //
+        // These three are **regression pins on the solver's own answer**, not measurements of the
+        // march: they catch a change in either equation or in the cone flow beneath them. What
+        // checks the answer against something else is the `±1e-6` relative probe below, which
+        // brackets each edge against the march's own reduction to about 4e-8°.
         assert!(
             (turns(4.7).crossing_rad.to_degrees() - 0.038_161_270_2).abs() < 2e-9,
             "the band's lower edge is {}°",
