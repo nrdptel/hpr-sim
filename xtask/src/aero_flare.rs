@@ -1188,7 +1188,12 @@ mod tests {
         let heading = "#### What a marched flare is worth\n";
         let from = guide.find(heading).expect("the section") + heading.len();
         let rest = &guide[from..];
-        let to = rest.find("\n### ").unwrap_or(rest.len());
+        // Stop at the next heading of any level, so a later section's tables can't stand in.
+        let to = ["\n### ", "\n#### "]
+            .iter()
+            .filter_map(|h| rest.find(h))
+            .min()
+            .unwrap_or(rest.len());
         let section = &rest[..to];
         let mut rows = Vec::new();
         for r in fixture["rows"].as_array().unwrap() {

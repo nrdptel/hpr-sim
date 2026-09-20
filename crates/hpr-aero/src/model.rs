@@ -4379,7 +4379,8 @@ mod tests {
                     .is_err()
             });
             assert_eq!(
-                refused, None,
+                refused,
+                None,
                 "a {deg}° flare loses Mach {:?}",
                 refused.map(|step| step as f64 / SUPERSONIC_STEPS_PER_MACH)
             );
@@ -4626,11 +4627,8 @@ mod tests {
         // crossing itself moves to a steeper flare there.
         let ahead = flared_run(&flared_rocket(1.0));
         let turns = |mach: f64| {
-            crate::shock_expansion::flare_reduction_turns_rad(
-                &ahead.aft_flow(mach).unwrap(),
-                mach,
-            )
-            .unwrap()
+            crate::shock_expansion::flare_reduction_turns_rad(&ahead.aft_flow(mach).unwrap(), mach)
+                .unwrap()
         };
         for (mach, force_want, caliber_want) in [
             (2.0_f64, 3.234e-6, -1.589e-6),
@@ -5023,5 +5021,4 @@ mod tests {
         assert_eq!(model, clone);
         assert!(std::ptr::eq(built, clone.supersonic_body().unwrap()));
     }
-
 }

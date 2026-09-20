@@ -1386,7 +1386,7 @@ pub fn flare_reduction_turns_rad(aft: &AftFlow, mach: f64) -> Result<ReductionTu
     // the equation is through the `Ω₂` that turn reaches.
     let (o1, b1) = (area_ratio(m1), b_factor(p1, m1));
     let k = d1.sin() + aft.radius_m * aft.gradient / b1;
-    if !(k.abs() < 1.0) {
+    if !(-1.0..=1.0).contains(&k) {
         return Err(unreached("balance"));
     }
     let mut balance = k.asin() - d1;
@@ -3700,7 +3700,6 @@ mod tests {
         }
     }
 
-
     /// The body the tests' flared rocket puts ahead of its flare: an ogive nose 0.25 m long on a
     /// 27 mm radius and a 0.7 m tube, which is what delivers the flow to the flare's corner.
     fn ahead_of_the_flare() -> Vec<BodySegment> {
@@ -3753,9 +3752,8 @@ mod tests {
     fn the_turns_a_reduced_element_lies_between_come_from_the_corners_own_state() {
         let ahead = ShockExpansionBody::new(&ahead_of_the_flare(), DEFAULT_ELEMENTS_PER_CURVE)
             .expect("the body ahead of the flare");
-        let turns = |mach: f64| {
-            flare_reduction_turns_rad(&ahead.aft_flow(mach).unwrap(), mach).unwrap()
-        };
+        let turns =
+            |mach: f64| flare_reduction_turns_rad(&ahead.aft_flow(mach).unwrap(), mach).unwrap();
         // The three angles issue #117 quoted, from the corner's state instead of a bisection.
         assert!(
             (turns(4.7).crossing_rad.to_degrees() - 0.038_161_270_2).abs() < 5e-10,
@@ -3949,5 +3947,3 @@ mod tests {
         assert!(err.contains("can't turn through"), "Mach 2: {err}");
     }
 }
-
-

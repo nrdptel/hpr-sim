@@ -55,6 +55,7 @@ renumber. Supersede an entry by adding a new one that points back to it.
 | ADR-047 | A flare flies the method where its corner's shock is attached, and is read drawn out where it is not | accepted |
 | ADR-048 | What a marched flare is worth, measured against TN D-4865's model 2 | accepted |
 | ADR-049 | What a step in radius costs, and why the obvious fix is not taken yet | accepted |
+| ADR-050 | A reduced element is read by the generalized method wherever it has a tangent cone of its own | accepted |
 
 ---
 
@@ -4753,3 +4754,138 @@ itself measured against nothing, and this would lean the whole of a step's force
 **Not chosen: model the step's supersonic normal force.** There is no source in hand. What one
 would need is a measurement of normal force on a body with a forward- or rearward-facing step at
 small angles of attack, which none of the pinned reports provides.
+
+## ADR-050: A reduced element is read by the generalized method wherever it has a tangent cone of its own (2026-09-20)
+
+**Status:** accepted. **Milestone:** M1.8e19.
+
+**Context.** Along each element the second-order shock-expansion method relaxes the pressure toward
+its tangent cone's as `p = p_c − (p_c − p₂) e^(−η)`, `η = (∂p/∂s)₂ (x − x₂) / ((p_c − p₂) cos δ₂)`
+(TN 3527 eqs. 8 and 9). That form is monotone, so it holds only where the gradient behind the
+corner points at `p_c`; the report keeps it for `η ≥ 0` (p. 13) and says that at `η = 0` "all
+equations reduce to those given by the generalized shock-expansion method". Where `η < 0` hpr takes
+`η = 0`, which is issue #81's reading. Until now it took it **only on the nose**: behind the nose
+the march refused outright, on the ground that a cylinder, a boattail or a long shallow flare would
+otherwise carry its corner's loading over any length.
+
+A conical flare is one element behind the nose, and on a *near-flat* one it is reduced — so the
+march refused a run of Mach rows, the table (built downward from Mach 5, needing the join's whole
+0.3 Mach inside it) vanished, and a flare of about 0.03816° to 0.05882° on the tests' rocket, a
+rise of a third of a millimetre over 0.3 m, took the whole body to slender-body theory at every
+Mach number: −8.3% of the normal force and 1.16 calibres at Mach 3 and 4°. Shallower still the
+refusal lifted the table's start in steps — −4.6% and 0.75 calibres at 0.00090182° — and not even
+monotonically. ADR-047 recorded all of it; issue #117 and M1.8e19 carry it. M1.8e19 asks for the
+region's edges **derived** rather than bisected, and then for a rule that carries the reading
+across or a demonstration that refusing is right.
+
+**Decision.**
+
+- **The edges are two turns, each the zero of one of the quantities whose signs must agree.**
+  `η`'s sign is the sign of `(∂p/∂s)₂` over the sign of `p_c − p₂`. Each of those is a smooth
+  function of the turn through the corner with exactly one zero, so an element is reduced on
+  exactly the open interval between them:
+
+  - the **crossing**, where `p₂(θ) = p_c(δ₁ + θ)` — the compression lands the pressure on its
+    tangent cone's, and `η` has a pole;
+  - the **balance**, where `(∂p/∂s)₂ = 0` — eq. 4 rearranged to
+    `sin(δ₁ + θ) = (Ω₁/Ω₂(θ)) (sin δ₁ + r (∂p/∂s)₁ / B₁)` — the corner's own compression cancels
+    the gradient the body ahead delivers, and `η` is zero.
+
+  Both are functions of the corner's own state alone: the Mach number, pressure, gradient, radius
+  and angle the body hands to it. `ShockExpansionBody::aft_flow` now reports all five, and
+  `flare_reduction_turns_rad` solves the two equations — a contraction on `Ω₁/Ω₂` for the balance,
+  a secant from `θ ≈ (1/p₁ − 1)√(M₁² − 1)/(γM₁²)` for the crossing — and returns the residual each
+  left. Nothing bisects the model's refusal.
+
+  On the tests' flared rocket the derivation reproduces all three numbers issue #117 bisected: the
+  band's lower edge is the **crossing at Mach 4.70**, 0.038161270°; its upper edge is the
+  **balance at Mach 5**, 0.058820517°; and the shallowest angle that lifted the join's start is
+  the **crossing at Mach 2.20**, 0.000901825°. The non-monotone part is explained too: the refused
+  rows at a given angle are the Mach numbers between the two turns' inverses, an interval that
+  narrows as the flare flattens until it holds no 0.05-Mach row at all.
+
+  **What limits the digits is now stated, not observed.** Where the tangent cone is slender-cone
+  theory's closed form (under `SLENDER_CONE_RAD`, 0.029°) the crossing closes to the last bits of
+  an `f64` — the residual is 2e-16 to 9e-16 of the free stream's pressure at Mach 2.0, 2.2 and
+  3.0. Above it the cone flow is a Taylor–Maccoll integration and the residual is that
+  integration's, about 1e-10 (Mach 4.3 to 5). Divided by the gap's slope in the turn that is about
+  2e-10°, which is the 2.6e-10° the three CI platforms were seen to spread the band's lower edge
+  over. The spread was the cone's, not the search's.
+
+- **The reading is carried across, by TN 3527's own reduction, wherever the element has a tangent
+  cone of its own.** The refusal keeps only its first clause: an element whose angle is under
+  `CONE_ANGLE_FLOOR_RAD` — a cylinder, whose tangent cone is the free stream, or a boattail, whose
+  is footnote 8's constant 2 — still refuses, because neither is a tangent-cone solution of that
+  element's own flow and nothing here measures what holding a corner's loading over an arbitrary
+  length would be worth there. That is issue #123. On a widening element the tangent cone is a
+  real cone at the flow's own Mach number, and the reduction relaxes toward it.
+
+  Refusing is **not** right for the flare, and the measurement says so plainly. With the reading
+  carried, the table starts at Mach 1.2 at every flare angle from zero to a degree, and the whole
+  rocket's normal force and centre of pressure move smoothly and monotonically with the angle
+  through the entire near-flat region at Mach 2, 3 and 4 — joining the branch above the band
+  exactly where the band used to end. Both switches are gone
+  (`a_near_flat_flare_reads_through_and_leaves_only_the_corners_crossing`), and their sizes are
+  still measured, because they are the size of the fallback the model dropped to:
+  `SupersonicFlare::SlenderBody` on the same rocket still reads −8.30% and 1.1574 calibres at
+  0.058820517° and Mach 3, and −4.62% and 0.7522 calibres at 0.00090182° and Mach 2
+  (`a_near_flat_flare_marches_every_row_and_the_fallback_is_still_measured`).
+
+- **What is left is the crossing itself, and it is reported, not hidden.** At the crossing `η` has
+  a pole. The pressure rides through — the gap it multiplies is zero there — but the loading does
+  not: a hair below, `η → +∞` sheds the corner's loading onto the tangent cone's within the
+  element; a hair above, the element is reduced and holds the corner's. Measured on the whole
+  rocket at 4° with a ±1e-9° probe, and holding its size at ±1e-7°:
+
+  | Mach | normal force | centre of pressure |
+  |---|---|---|
+  | 2.00 | +0.00032% | −0.0000016 calibres |
+  | 3.00 | +0.011% | +0.00018 calibres |
+  | 4.00 | +0.055% | +0.0017 calibres |
+  | 4.95 | +0.129% | +0.0051 calibres |
+
+  The worst is a 64th of the switch it replaces in the force and a 227th of it in the centre of
+  pressure. It is also not a new question but ADR-044's: the loading through a tangent-cone
+  crossing, open as issue #108. The region's other edge, the balance, leaves nothing at all —
+  `η` is zero there, so the two readings coincide by construction, and a ±1e-9° probe moves the
+  rocket's force and station by under 1e-7.
+
+**Not chosen: read `η < 0` as `η = +∞` instead, putting the element on its tangent cone.** That is
+continuous at the crossing — which is exactly where the pressure already sits on the cone — but it
+tears the other edge open: at the balance the accepted branch is the `η = 0` reading, so the whole
+gap `p_c − p₂` and the loading with it would step there, and that gap is far larger than the
+crossing's (1.7e-3 of the free stream's pressure at Mach 5 against nothing). The two edges demand
+opposite branches, and `η = 0` is the one the report names.
+
+**Not chosen: blend the two branches across the band.** A weight running from the tangent cone's
+loading at the crossing to the corner's at the balance would be continuous at both. It is also a
+model with no source: nothing sets the weight, and the band is exactly where the method has no
+statement to make. ADR-047 rejected a fade at a flare's detachment boundary for the same reason.
+
+**Not chosen: let the table skip a refused row.** Building the table from the rows that hold and
+interpolating over the ones that do not would have removed both switches without touching the
+march — and would have published readings at Mach numbers where the method returns nothing.
+
+**Consequences.**
+
+- A flared rocket's reading is continuous and monotone in the flare's angle across the whole
+  near-flat region, at every Mach number the table covers. No committed flight number moves: no
+  validation case has a flare.
+- `AftFlow` gains `pressure_ratio`, `gradient` and `radius_m`, which with the two it had make it
+  the corner's whole state. `flare_reduction_turns_rad` and `ReductionTurns` are public, and the
+  guide's *A near-flat flare* explains them with the table above.
+- `ShockExpansionBody::reduced_elements` now counts reduced elements anywhere on the body, not
+  only on the nose, and `slope`'s error list says the refusal is a cylinder's or a boattail's.
+- `validation/fixtures/aero/blunt-tips.json` changes in six strings only: the refusal TN D-4865's
+  own Newtonian start hits on the Arcas Robin from Mach 3.96 is a **cylinder's** element, so it
+  still refuses and ADR-038's evidence stands; the message names the cause more exactly.
+- Issue #117 is closed. Issue #123 is opened for the cylinder and the boattail. Issue #81 is
+  unchanged: what the report would have done where `η < 0` is still unknown, and this ADR widens
+  where hpr's own reading of it is used rather than narrowing it.
+- ADR-047's two tests are replaced. `the_march_refuses_two_bands_of_flare_and_the_model_keeps_slender_body_theory`
+  and `a_near_flat_flare_lifts_the_joins_start_in_steps` became
+  `a_near_flat_flare_marches_every_row_and_the_fallback_is_still_measured` and
+  `a_near_flat_flare_reads_through_and_leaves_only_the_corners_crossing`, with
+  `the_turns_a_reduced_element_lies_between_come_from_the_corners_own_state` added for the
+  derivation. The low-Mach band ADR-047 also described is untouched and still pinned by
+  `where_the_corners_turn_runs_out_the_join_carries_the_reading`.

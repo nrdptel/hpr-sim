@@ -792,7 +792,7 @@ along its length. It gives a nose as wide as the reference a normal-force slope 
 transition `2ΔA/A_ref`, and a plain tube nothing, at any Mach number. Barrowman's method uses it
 for every body part. hpr uses it below Mach 1.2, and at every speed for bodies the shock-expansion
 method can't take (steps; a widening shape that isn't a cone, isn't flush with the part ahead of
-it, or rides in a boattail's wake; a near-flat flare the march refuses; a nose too blunt for its
+it, or rides in a boattail's wake; a nose too blunt for its
 cap); NASA's wind tunnel shows a real
 body lifting more past Mach 3. See
 [Aerodynamics](physics/aero.md#bodies-of-revolution).

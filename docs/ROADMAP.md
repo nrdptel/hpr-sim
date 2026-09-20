@@ -476,40 +476,35 @@
 
     - [x] **M1.8e1 The second-order shock-expansion method.** NACA TN 3527's method for a
       pointed body's `C_Nα` and CP at `α → 0`, the cylinder's lift behind the nose included; its
-      Fig. 2's tangent-cone slopes read by hand. *Done when* (targets set before measuring):
-      - A committed fixture, pinned by a test, holds hpr's values against every row of TN 3527's
-        Tables I and II (cones and tangent ogives of fineness 3, 5 and 7, cylinders of 0 to 10
-        calibers, Mach 3 to 6.28): within 0.05 per radian and 0.1 calibers of its second-order
-        values, and within its stated ±0.2 of its measurements, every miss explained.
-      - The Arcas Robin's nose and cylinder, with and without its boattail (footnote 8), at each
-        Mach number of TN D-4014, beside the measured body alone.
+      Fig. 2's tangent-cone slopes read by hand. *Done when* (targets set before measuring): a
+      committed fixture, pinned by a test, holds hpr against every row of TN 3527's Tables I and
+      II within 0.05 per radian and 0.1 calibers of its second-order values and its stated ±0.2 of
+      its measurements, every miss explained; and the Arcas Robin's nose and cylinder, with and
+      without its boattail, at each Mach number of TN D-4014.
       *Result (ADR-033):* not met, recorded: slopes and CPs 102 and 125 of 144 within its values
       (#81 at its limit), 117 and 109 of 120 of its measurements; Arcas Robin −18.7% to +16.4%.
     - [x] **M1.8e2 The body's supersonic normal force in flight.** The body's terms take Mach:
       M1.8e1's method for a pointed nose and its cylinder where it holds, joined to slender-body
-      theory below it. *Done when* (targets set before measuring):
-      - A flight takes the body's `C_Nα` and CP at its Mach number; a test probes the join at
-        ±1e-9 in Mach and finds no jump.
-      - The Arcas Robin's body alone (TN D-4014) through the flight's path at each Mach number
-        from 1.5, beside the measurement and M1.8a's, in the regenerated report, its changed rows
-        listed in the PR.
+      theory below it. *Done when* (targets set before measuring): a flight takes the body's
+      `C_Nα` and CP at its Mach number and a test probes the join at ±1e-9 in Mach with no jump;
+      and the Arcas Robin's body alone (TN D-4014) sits beside the measurement and M1.8a's in the
+      regenerated report.
     - [x] **M1.8e3 The supersonic join's start without grid steps** (#87's grid half). *Done when*
       (set after building): a test finds a 20° cone's start off the grid, moved under 1e-7 in Mach
-      by 1e-6° and strictly by each 0.1° to 20.5°, its cylinder share under 1e-5, no jump at ±1e-9
-      at the join's ends or first even row. *Result:* met: Mach 1.341910 (was 1.35); report same.
+      by 1e-6° and strictly by each 0.1° to 20.5°, no jump at ±1e-9 at the join's ends or first
+      even row. *Result:* met: Mach 1.341910 (was 1.35); report same.
     - [x] **M1.8e4 The boattail's share faster than sound** (footnote 8; a station rule for shares
       that cross zero). *Done when:* a boattailed body flies with no jump at ±1e-9 in Mach; the
       long Arcas Robin through a flight's path in the report. *Result:* met, long to −27.0%.
     - [x] **M1.8e5 The remaining gap, source by source.** *Done when:* a `docs/research/` page sizes
-      each candidate from cited sources against the Arcas Robin's gaps, ranked. *Result:* met; like
-      for like hpr reads 15–73% high: crossflow's size, then the boattail.
+      each candidate against the Arcas Robin's gaps, ranked. *Result:* met; hpr reads 15–73% high.
     - [x] **M1.8e6 Crossflow and the boattail faster than sound** (ADR-036, ADR-037). *Done when:*
       flown with no jump at ±1e-9 in Mach; the Arcas Robin through a flight's path in the report.
       *Result:* met; like for like +3.4% to +41.0% (was +14.9% to +73.2%); M1.8a gains a miss.
     - [x] **M1.8e7 Blunt tips faster than sound** (from e6; split, ADR-038). A vertical or blunt
       nose tip flies a Newtonian cap ahead of TN 3527's method (NASA TN D-4865). *Done when:* flown
-      with no jump at ±1e-9 in Mach; the Arcas Robin's committed nose (lip left off) through a
-      flight's path in the report; TN D-4865's sphere-cone against its measured normal force.
+      with no jump at ±1e-9 in Mach; the Arcas Robin's nose (lip off) in the report; TN D-4865's
+      sphere-cone against its measured normal force.
       *Result:* met; like for like, sphere-cone −1.2% to +32.1%; the nose lip off −4.8% to +37.2%.
     - [x] **M1.8e8 The lip faster than sound** (from e7; ADR-039). *Done when:* flown with no jump
       at ±1e-9 in Mach; the committed Arcas Robin designs through a flight's path in the report.
@@ -572,44 +567,51 @@
     - [x] **M1.8e17 The flare through the method** (the second of the old e14's three, ADR-045).
       *Done when:* a flared body flies the method where the flare's shock is attached, with no jump
       at ±1e-9 in Mach or in the flare's angle across that boundary.
-      *Result:* met (ADR-047). The test is NACA 1135's wedge limit read at the flow the march
-      delivers to the corner — TN D-4865 p. 5's own — under the cone tables' 30°, which binds from
-      Mach 2.5192034260. A steeper flare reads as the same radii drawn out to that turn, so at the
-      limit the branches are one body: at Mach 2 (22.969761173077°) a ±1e-9° probe moves the slope
-      4.527e-11 and a ±1e-5° probe 4.527e-7; in Mach at 18.5°, 3.622e-10 and 3.622e-6. The value is
-      continuous; its slope is not (−31.4%). The near-flat region it refuses is M1.8e19's (#117).
+      *Result:* met (ADR-047). The test is NACA 1135's wedge limit at the flow the march delivers
+      to the corner — TN D-4865 p. 5's own — under the cone tables' 30°, binding from Mach
+      2.5192034260. A steeper flare reads as the same radii drawn out to that turn, so at the limit
+      the branches are one body: at Mach 2 a ±1e-9° probe moves the slope 4.527e-11, a ±1e-5° one
+      4.527e-7; in Mach at 18.5°, 3.622e-10 and 3.622e-6. Continuous; its slope is not (−31.4%).
     - [x] **M1.8e18 What a marched flare is worth** (the third, ADR-045). TN D-4865's model 2 is a
-      2.75° blunted cone with an 18.5° flare; its fig. 8 carries normal force and pitching moment from
-      Mach 1.50 to 4.63, integrated from the pressures its tables VII to XII print, and from Mach 2.96
-      up its boundary layer separates ahead of the juncture. *Done when:* those readings are committed
-      with provenance, and the guide says what it is worth and leaves out.
-      *Result:* met (ADR-048). Fig. 8(b) read by M1.8e7's pipeline into
-      `tn-d-4865-flared-cone.json`. hpr reads −1.9%, +7.0% and +13.4% at Mach 1.90, 2.30 and 2.96,
-      then +51.5% and +50.4% at 3.95 and 4.63, where the shadowgraphs show that flare separated
-      (unflared, model 1 reads +29.7% and +32.1%). No reading below about Mach 1.5289.
+      2.75° blunted cone with an 18.5° flare; its fig. 8 carries normal force and pitching moment
+      from Mach 1.50 to 4.63, and from Mach 2.96 up its boundary layer separates ahead of the
+      juncture. *Done when:* those readings are committed with provenance, and the guide says what
+      it is worth and leaves out.
+      *Result:* met (ADR-048). Fig. 8(b) read into `tn-d-4865-flared-cone.json`; hpr reads −1.9%,
+      +7.0% and +13.4% at Mach 1.90, 2.30 and 2.96, then +51.5% and +50.4% at 3.95 and 4.63, where
+      the shadowgraphs show that flare separated. No reading below about Mach 1.5289.
     - [x] **M1.8e15 The step in radius.** A step is a discontinuous profile, which the march refuses
-      outright, so unlike the flare it needs a model of its own rather than a decision about one that
-      exists. *Done when:* #87 closed or narrowed to the step alone, its measured size in an ADR and
-      the guide.
+      outright, so unlike the flare it needs a model of its own. *Done when:* #87 closed or narrowed
+      to the step alone, its measured size in an ADR and the guide.
       *Result:* met (ADR-049). No source gives a step's normal force faster than sound, so the size
       is published and the model left alone. The threshold is a **pair**, both bisected: 2.7e-11 m
       (a billionth of the radius) between two tubes either way, and 1.3e-13 m stepping **up** where
-      the slope changes too, which is 1e-12 × the body's length × the change of slope and so is not
-      a property of the step at all. Worth −8.65% and 1.03 calibres at the threshold wherever it
-      sits and whichever way, −12.55% and 1.36 at 2 mm down, −4.75% and 0.71 at 2 mm up, and −11.34%
-      and 1.10 on a boattailed body. Stopping the march *at* the step was built and rejected: it
-      re-opens ADR-034's mixture (the mixed reading's CP lands **forward of both** pure models) and
-      does not close the boattail's band. #87 is narrowed to the step; #120 and #121 split off it.
-    - [ ] **M1.8e19 The near-flat flare the march refuses.** Below about 0.059° on the tests' rocket
-      a flare's one element is reduced aft of the nose (issue #81), so the march refuses Mach rows
-      from the top down: from 0.00090182° the join's start steps (1.2 → 2.2, −4.6% and 0.75
-      calibres), and from 0.03816° to 0.05882° the table goes altogether (−8.3% and 1.16 calibres).
-      Not monotone in the angle either, and separate from #87 (ADR-047, #117).
+      the slope changes (1e-12 × length × Δslope, so not a property of the step at all). Worth
+      −8.65% and 1.03 calibres at the threshold either way, −12.55%/1.36 at 2 mm down, −4.75%/0.71
+      at 2 mm up, −11.34%/1.10 boattailed. Stopping the march *at* the step was built and rejected:
+      it re-opens ADR-034's mixture (CP **forward of both** pure models) and misses the boattail's
+      band. #87 is narrowed to the step; #120 and #121 split off it.
+    - [x] **M1.8e19 The near-flat flare the march refuses.** Below about 0.059° a flare's one
+      element is reduced aft of the nose (#81), so the march refuses Mach rows: from 0.00090182°
+      the join's start steps (−4.6%, 0.75 calibres), from 0.03816° the table goes (−8.3%, 1.16).
+      Not monotone in the angle, and separate from #87 (ADR-047, #117).
       *Done when:* the region's edges are derived rather than bisected, a rule carries the reading
       across it or the refusal is shown to be right, and a test pins whichever it is with the
       switches' sizes measured on both sides.
-    - [ ] **M1.8e16 The blunt tip's handover, past 24°** (the rest of the old e13; the next free
-      number, so the flare and the step keep theirs, ADR-044). Blocked, so it goes last.
+      *Result:* met (ADR-050). The edges are two turns solved from the corner's own state
+      (`flare_reduction_turns_rad`): the **crossing**, where the pressure behind it lands on its
+      tangent cone's, and the **balance**, where eq. 4's gradient vanishes; between them `η < 0`.
+      They reproduce all three bisected numbers — 0.038161270° is the crossing at Mach 4.70,
+      0.058820517° the balance at Mach 5, 0.000901825° the crossing at Mach 2.20 — to `f64` where
+      the cone is slender-cone theory's and to 1e-10 of the pressure (about 2e-10°, CI's spread)
+      where it is Taylor–Maccoll. Refusing is **not** right: a reduced element now takes TN 3527's
+      own `η = 0` wherever it has a tangent cone of its own, so both switches go (the fallback's
+      −8.30%/1.1574 and −4.62%/0.7522 still measured) and the reading is smooth in the angle. Left
+      is the crossing's pole in the loading: +0.00032%, +0.011%, +0.055%, +0.129% at Mach 2, 3, 4
+      and 4.95, up to 0.0051 calibres — #108's question, 64× smaller. Cylinders and boattails
+      still refuse (#123).
+    - [ ] [blocked] **M1.8e16 The blunt tip's handover, past 24°** (the rest of the old e13, ADR-044;
+      the next free number, so the flare and the step keep theirs). On issue #108; see `STATUS.md`.
       *Done when:* the vertical-tip switch is gone or measured again, fixtures and the guide moving
       together; and, ahead of that, issue #108 closed — a rule for the loading through a crossing
       whose answer settles as the nose is cut finer, on a body that crosses (the committed nose
