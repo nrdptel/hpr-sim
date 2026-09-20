@@ -37,13 +37,13 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
   `arcas-robin-body-gap.json`: met at Mach 3.96 and 4.63, outside on six body-alone rows; the
   α→0/curvature split is soft (the tunnel's fit correlates at −0.96), short@2.96 a counterexample.
 - **M1.8e10** (ADR-041): #87's five switches flip one gate (`supersonic_run`), so each is worth the
-  whole body. The lip's is now a weight (`SupersonicBody::shape_weight`, the drag buildup's
-  `share_by_rise`); `issue_87s_switches_are_this_big` pins the four that remain.
-- **M1.8e11 next:** SP-3007 (pinned, used by `aero_gap.rs`) tabulates cone slopes to 30°, which
-  retires Fig. 2's 24° edge for both tip switches; `CONE_ANGLES_DEG`/`CONE_SLOPES` in
-  `shock_expansion.rs` hold Fig. 2, and `MAX_HANDOVER_RAD` in `blunt_tip.rs` exists only because of
-  that edge. Then M1.8e12: nothing can be cited for a step's or a flare's band, so an ADR records
-  those two with their sizes. #97: the long model's M1.8a readings may be biased.
+  whole body. The lip's is now a weight (`SupersonicBody::shape_weight`, the drag buildup's whole
+  `wake_fraction`: rise, gap and prior lips); the four that remain are pinned, as is what the
+  models still differ by at one shape (33.0%, 1.77 cal). #106: station vs CP where the weight < 1.
+- **M1.8e11 next:** SP-3007 (pinned, used by `aero_gap.rs`) tabulates cone slopes to 30°, retiring
+  Fig. 2's 24° edge for both tip switches; `CONE_ANGLES_DEG`/`CONE_SLOPES` hold Fig. 2, and
+  `MAX_HANDOVER_RAD` exists only because of that edge. Then M1.8e12: nothing can be cited for a
+  step's or a flare's band. #97: the long model's M1.8a readings may be biased.
 - **M2.2's OpenRocket oracle** (ADR-035): orhelper is dropped, so decide how to drive the jar when
   M2.2 starts; JPype loads the JVM in-process, only a subprocess isolates, and the jar needs Java 17
   exactly (`[java] max_major` in the refs lock keeps doctor off a newer one).

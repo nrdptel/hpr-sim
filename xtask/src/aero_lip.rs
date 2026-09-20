@@ -192,6 +192,8 @@ pub fn generate(root: &Path) -> Result<Value, String> {
         let table = committed
             .supersonic_body()
             .ok_or(format!("{id}: the committed design doesn't fly the method"))?;
+        // Exact on purpose: anything short of the whole method makes the comparison below a
+        // blend of two models rather than the method's own share.
         if table.covered != 4 || (table.shape_weight - 1.0).abs() > 0.0 {
             return Err(format!(
                 "{id}: the method covers {} bodies at a shape weight of {}",

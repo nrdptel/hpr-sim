@@ -558,7 +558,9 @@ so no flight checks it yet.
 Mach 1.2, a rocket whose first body is a nose (pointed, or with a blunt or vertical tip that the
 cap covers), followed only by tubes of its radius and boattails (and tubes behind those), takes
 the method below for those parts, and each boattail its measured share. A lip wholly inside a
-boattail's wake rides along, carrying nothing ([A lip in a boattail's wake](#a-lip-in-a-boattails-wake)).
+boattail's wake rides along, carrying nothing; one only partly in the wake gets the method in the
+wake's own proportion, and slender-body theory for the rest
+([A lip in a boattail's wake](#a-lip-in-a-boattails-wake)).
 Anything else (a flare or step out of a wake, a motor retainer behind a step down — the step itself
 ends the run — or a nose steeper than the cap's handover all the way to its base) keeps
 slender-body theory for its whole body at every speed.
@@ -577,9 +579,11 @@ threshold is worth this much (`issue_87s_switches_are_this_big`, and
 | a vertical tip steeper than the cap's handover to its base | −7.0% | 0.64 calibres |
 | a lip leaving its boattail's wake | −29 to −34% | 0.93 to 1.97 calibres |
 
-In every one of them the centre of pressure moves **aft** when the method is lost, because
-slender-body theory puts it further back: a rocket that trips one of these thresholds reads *more*
-stable than one that doesn't, which is the direction worth knowing about.
+In the four switches the centre of pressure moves **aft** when the method is lost, so a rocket
+that trips one reads *more* stable than one that doesn't. The lip's row goes the other way: on a
+body whose boattail takes a lot of lift off, slender-body theory puts the centre of pressure
+**forward** of the method's, so losing the method there reads *less* stable. Which way it goes
+depends on the body; what is reliable is the size.
 
 The lip's row is no longer a switch: it is spread over the band the wake grades, as
 [above](#a-lip-in-a-boattails-wake) — the same difference between the models, as a ramp. The two tips are next
@@ -851,10 +855,12 @@ is spread over the band. On that rocket, at Mach 3 and 4°:
 | a lip rising a quarter of the boattail's drop | rising a half (1.25 mm of radius) | −29.1% | 0.93 calibres |
 | a lip flush behind the boattail | one a boattail's drop in diameter behind it (10 mm) | −33.8% | 1.97 calibres |
 
-So a rocket whose lip sits in that band is worth about three quarters of a calibre per millimetre
-of lip radius, and about two calibres per centimetre of gap. That is the difference between the
-two models, and nothing measured says which is right for a part-sheltered lip; it is now a ramp
-rather than a cliff, which is all the change claims.
+That table is a **design** sensitivity: how the printed answer moves as you draw the lip
+differently. It is not the same as how far apart the two models are, which is what a lip in the
+band is actually uncertain by. At one fixed shape — a lip rising a quarter of the drop — the
+method and slender-body theory differ by **33.0% of the normal force and 1.77 calibres**, and
+nothing measured says which is right for a part-sheltered lip. That number has not changed; what
+changed is that a rocket can no longer cross it in a ten-thousandth of its geometry.
 
 **Why nothing.** Three readings point the same way.
 

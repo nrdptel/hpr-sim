@@ -139,8 +139,8 @@ pub struct SupersonicBody {
     /// How many body components the method covers: the first entries of [`AeroModel::bodies`].
     /// The last of them may be lips in a covered boattail's wake, which the method doesn't march:
     /// the method gives them nothing at any Mach number, so what such a lip carries is
-    /// `(1 − `[`SupersonicBody::shape_weight`]`)` of slender-body theory's share, none of it
-    /// where the wake covers it wholly ([`crate::drag::WakeTerm`]; the decision record on
+    /// `(1 − `[`SupersonicBody::weight`]`(M))` of slender-body theory's share, none of it above
+    /// the join where the wake covers it wholly ([`crate::drag::WakeTerm`]; the decision record on
     /// the lip, [ADR-039][adr-039]).
     ///
     /// [adr-039]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-039-a-lip-in-a-boattails-wake-carries-nothing-faster-than-sound-2026-09-19
@@ -2754,6 +2754,33 @@ mod tests {
                 && (above.1 - below.1).abs() <= 1e-3 * below.1.abs(),
             "{below:?} to {above:?} across the wake's full-shelter rise"
         );
+        // How far apart the two models are at one shape, which is what a lip in the band is
+        // uncertain by: take the same rocket out of the wake by making the lip a hair longer
+        // than the boattail's drop, which changes no radius and no angle.
+        let out_of_wake = {
+            let mut rocket = crate::testing::finned_rocket(4);
+            rocket.stages[0].components.truncate(3);
+            rocket.stages[0].components.push(component(
+                "lip",
+                body_part(0.0101, 0.022, 0.022 + 0.5 * 0.25 * 0.010),
+                None,
+            ));
+            let m = model(&rocket);
+            assert!(
+                m.supersonic_body().is_none(),
+                "out of the wake by its length"
+            );
+            let f = m.normal_force(&flow(3.0, 4f64.to_radians(), 0.0)).unwrap();
+            (f.coefficient, f.cp_station_m.unwrap() / 0.054)
+        };
+        let in_wake = at(0.25);
+        let gap_force = out_of_wake.0 / in_wake.0 - 1.0;
+        let gap_calibers = out_of_wake.1 - in_wake.1 / 0.054;
+        assert!(
+            (gap_force + 0.3295).abs() < 5e-4 && (gap_calibers + 1.774).abs() < 5e-3,
+            "at one shape the two models differ by {gap_force} in force and {gap_calibers} \
+             calibres in centre of pressure"
+        );
         // What the band is worth, end to end: the jump is gone, but the same difference between
         // the two models is spread over it, and the guide quotes these numbers.
         let (full, nearly_none) = (at(0.25), at(0.4999));
@@ -2765,10 +2792,15 @@ mod tests {
         // The weight is the wake's own share, and it carries the body to slender-body theory by
         // the far edge: at half the drop the method is gone, and just inside it is nearly gone.
         assert!((lipped(0.25).supersonic_body().unwrap().shape_weight - 1.0).abs() < 1e-12);
-        assert!(
-            (lipped(0.375).supersonic_body().unwrap().shape_weight - 0.5).abs() < 1e-9,
-            "half way out of the wake"
-        );
+        // The ramp's shape, not just its ends: linear in the rise, as the wake's own fraction
+        // is. A smoothstep through the same ends would read 0.896 at a rise of 0.3.
+        for (rise, want) in [(0.3_f64, 0.8_f64), (0.375, 0.5), (0.45, 0.2)] {
+            let weight = lipped(rise).supersonic_body().unwrap().shape_weight;
+            assert!(
+                (weight - want).abs() < 1e-9,
+                "at a rise of {rise} the wake covers {weight}, not {want}"
+            );
+        }
         // Just inside the far edge the weight is all but gone; at the edge itself there is no
         // run, since a share of shelter under a millionth is not worth a table.
         assert!(
@@ -2806,8 +2838,9 @@ mod tests {
              {near:?} to {far:?}"
         );
         assert!(
-            (far.2 - near.2 + 1.973).abs() < 0.01,
-            "over that tube the centre of pressure moves {} calibres",
+            (far.2 - near.2 + 1.973).abs() < 0.01 && (far.1 / near.1 - 1.0 + 0.3381).abs() < 5e-4,
+            "over that tube the force moves {} and the centre of pressure {} calibres",
+            far.1 / near.1 - 1.0,
             far.2 - near.2
         );
         // Where the method is weighed in only partly, a component's station and its own centre of
@@ -3830,12 +3863,11 @@ mod tests {
             rocket
         };
         let at_16 = 0.027 / 24.0_f64.to_radians().tan();
-        for d in [2.6e-11_f64, 2.8e-11, 1e-8, 1.4e-8] {
-            println!(
-                "PROBE step {d:e} covered {:?}",
-                model(&stepped(d)).supersonic_body().map(|t| t.covered)
-            );
-        }
+        // Where the step's threshold sits, bracketed: a billionth of the radius, which is the
+        // tangent body's own tolerance for two elements parallel but apart
+        // (`shock_expansion::lay_out`), not the coverage gate's millionth of the area.
+        assert!(model(&stepped(2.6e-11)).supersonic_body().is_some());
+        assert!(model(&stepped(2.8e-11)).supersonic_body().is_none());
         // (what it is, the covered side, the bare side, what the docs say it is worth); a side
         // is (force, calibres, covered), and the expected pair is signed: bare over covered less
         // one, and bare's centre of pressure less covered's, in calibres.
@@ -3873,7 +3905,6 @@ mod tests {
             );
             let force = bare.0 / covered.0 - 1.0;
             let calibers = bare.1 - covered.1;
-            println!("SIGNED {what}: {force:.4} {calibers:.4}");
             assert!(
                 (force - want_force).abs() < 5e-4 && (calibers - want_calibers).abs() < 5e-4,
                 "{what}: the force moves {force:.4} and the centre of pressure {calibers:.4} \

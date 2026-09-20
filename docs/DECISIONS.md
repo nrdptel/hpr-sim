@@ -3825,11 +3825,14 @@ third off the normal force and moved the centre of pressure 1.77 calibres forwar
     part-method, part-slender-body body is exactly the mixture ADR-034 refuses. So the whole body
     is weighed, which keeps the total an honest convex combination of two admissible whole-body
     models at the cost below.
-  - **It removes the jump, not the sensitivity.** On the tests' rocket at Mach 3 and 4°, over the
-    band the normal force still falls 29.1% and the centre of pressure moves 0.93 calibres — 1.25
-    mm of lip radius — and over a gap of one boattail drop in diameter, 33.8% and 1.97 calibres.
-    A ramp of about three quarters of a calibre per millimetre of lip radius is a slope, not a
-    cliff, but a dispersion run over a lip tolerance will still see the two models disagreeing.
+  - **It removes the jump, not the disagreement.** At one fixed shape — a lip rising a quarter of
+    the boattail's drop — the two models still differ by 33.0% of the normal force and 1.77
+    calibres of centre of pressure, and nothing measured says which is right. What the band buys
+    is that a rocket crosses that difference over its whole width instead of in a ten-thousandth
+    of its geometry. As a design sensitivity that is still steep: over the rise band the printed
+    force moves 29.1% and the centre of pressure 0.93 calibres (1.25 mm of lip radius), and over a
+    gap of one boattail drop in diameter, 33.8% and 1.97 calibres. A dispersion run over a lip
+    tolerance will see it.
   - **It is the whole wake fraction**, not the rise alone: the shelter fades with the rise, with
     any tube between the lip and the boattail, and with anything else in the way. Both are pinned.
   - **Two rough edges, recorded.** The weight clamps at 1, so the blend is continuous but has a
@@ -3856,9 +3859,10 @@ third off the normal force and moved the centre of pressure 1.77 calibres forwar
   | a vertical tip steeper than the cap's handover to its base | −7.0% | 0.64 calibres |
   | a lip leaving its boattail's wake (a ramp since this ADR, not a jump) | −29 to −34% | 0.93 to 1.97 calibres |
 
-  The centre of pressure moves **aft** across every one of them, since slender-body theory puts
-  it further back than the method does: a rocket that trips one of these thresholds reads more
-  stable, not less, which is the direction worth knowing about.
+  Across the four the centre of pressure moves **aft**, so a rocket that trips one reads more
+  stable. The lip's goes the other way — on that body the boattail takes enough lift off that
+  slender-body theory's centre of pressure sits forward of the method's — so the direction is the
+  body's, not the switch's; the size is what carries over.
 
   M1.8e11 takes the two tips, where NASA SP-3007's cone tables reach 30° and retire Fig. 2's edge.
   The step and the flare are M1.8e12: nothing measures what either carries faster than sound, so
@@ -3874,10 +3878,13 @@ third off the normal force and moved the centre of pressure 1.77 calibres forwar
   above.
 - Where the weight is below 1 at every speed, a component's station and its own centre of pressure
   part company — the station blends stations, the force blends slopes and moments — by about two
-  calibres at half weight. That mismatch is ADR-034's, and has always existed inside the Mach
-  join; M1.8e10 makes it reachable at every supersonic Mach number, and
+  calibres at half weight. The moment is not affected: the station is only where a flight samples
+  the local flow (`ω × p`), so the cost is a small error in that component's pitch and yaw
+  damping, of order `Δx ω / V` — about 1e-4 rad at Mach 3 and 1 rad/s — not a stability margin.
+  The mismatch is ADR-034's and has always existed inside the Mach join; M1.8e10 makes it
+  reachable at every supersonic Mach number, and
   [issue #106](https://github.com/nrdptel/hpr-sim/issues/106) records it with its size.
 - `SupersonicBody::shape_weight` is new public API, and `SupersonicBody::weight` now includes it.
 - The four remaining switches keep their sizes on record, in the guide and in this ADR, until
-  M1.8e10b and M1.8e10c close or bound them.
+  M1.8e11 and M1.8e12 close or bound them.
 
