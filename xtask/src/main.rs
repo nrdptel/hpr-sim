@@ -28,6 +28,7 @@ mod designs;
 #[cfg(test)]
 mod docs;
 mod examples;
+mod layering;
 mod refs;
 mod site;
 mod validate;
@@ -40,8 +41,9 @@ const USAGE_TEMPLATE: &str = "\
 Usage: cargo xtask <command> [args]
 
 Commands:
-  wasm-check [cargo args]  Check the pure-core crates for wasm32-unknown-unknown. Extra
-                           arguments (for example --locked) are passed on to `cargo check`.
+  wasm-check [cargo args]  Check the crate layering rules, and that the pure-core crates
+                           build for wasm32-unknown-unknown. Extra arguments (for example
+                           --locked) are passed on to `cargo check`.
 {REFS}
 {DESIGNS}
 {AERO}

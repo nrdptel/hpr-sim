@@ -12,8 +12,15 @@ publish.workspace = true
 workspace = true
 
 # Pure crate: no I/O, and it must build for wasm32-unknown-unknown (`cargo xtask wasm-check`).
+#
+# `forbids` is the layering rule of ADR-046: analysing a flight log is a use of this project in
+# its own right, so nothing here may need the simulator. Readings that compare a flight with a
+# simulation of it belong in `hpr-forensics`. `hpr-atmos` is here because a few readings — Mach
+# number, dynamic pressure, pressure altitude — are meaningless without an atmosphere.
 [package.metadata.hpr]
 wasm = true
+forbids = ["hpr-sim"]
 
 [dependencies]
-hpr-sim.workspace = true
+hpr-core.workspace = true
+hpr-atmos.workspace = true

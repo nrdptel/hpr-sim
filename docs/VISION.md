@@ -51,6 +51,17 @@ Neer's ideas, verbatim (2026-09-18; the same elision):
 > take off a bit, I don't mind paying for my goals to be accomplished. This stuff may be on the
 > eventual path anyways but multistage, transitions, clusters, sidepod would be a good add too.
 
+Neer's ideas, verbatim (2026-09-20; the same elision):
+
+> i had some more ideas while this autopilot session was running. i have another project i am
+> sunsetting, debrief. [...] I had similar problems that I had with loft where it was going in the
+> wrong direction and it was too web based. I want the use case of it, a universal flight log
+> analyzer, to be a part of this project. We already have goals where we can compare sim and flight
+> logs so we would have had to bring some of this in anyways. [...]
+
+> u might already agree but i do want a user to be able to use this product as just a flight
+> analyzer as well if they would like.
+
 Decisions Neer confirmed at kickoff:
 
 - **Name:** keep `hpr-sim` for now.
@@ -71,6 +82,7 @@ Decisions Neer confirmed at kickoff:
 | V8 | Works fully offline on macOS, Windows and Linux | every milestone |
 | V9 | Competition challenges: constraint specs, optimizer, live stock and prices | M6.x |
 | V10 | Import flight data, compare it with the simulation, and infer what went wrong | M7.x |
+| V21 | A universal flight log analyzer that a user can use on its own: read any logger's file and get the flight's readings, with no design file and no simulation (ADR-046) | M7.1, M7.2 |
 | V11 | Later: a modern UI inspired by OpenRocket, RASAero and RockSim, with 3D whole-flight simulation and the sim shown as a "ghost" beside the real flight | M9.x |
 | V12 | Later: a client-side web version (installable PWA), then mobile (offline PWA and/or iOS/Android apps) | M9.x |
 | V13 | COTS solid motors only, for now | scope rule |
@@ -99,7 +111,8 @@ Decisions Neer confirmed at kickoff:
 ## Beyond the brief: ideas to consider (keep, drop, or queue each through the roadmap)
 
 - **Flight forensics.** Compare a flight log with its simulation, rank fault hypotheses by
-  likelihood, and say which extra data would tell them apart.
+  likelihood, and say which extra data would tell them apart. *Queued:* M7.3 and M7.4, with the
+  analyzer it stands on in M7.1 and M7.2 (V21).
 - **A drag model that learns.** Each logged flight updates the rocket's drag and mass estimates by
   Bayesian updating, so predictions get sharper with every flight.
 - **Buy what flies.** "Which motors in stock this week get my design to 10,000 ft ±2%, under $150?"

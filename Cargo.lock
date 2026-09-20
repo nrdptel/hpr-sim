@@ -315,6 +315,7 @@ dependencies = [
  "hpr-core",
  "hpr-design",
  "hpr-flightdata",
+ "hpr-forensics",
  "hpr-format",
  "hpr-io",
  "hpr-motor",
@@ -401,6 +402,16 @@ dependencies = [
 name = "hpr-flightdata"
 version = "0.1.0"
 dependencies = [
+ "hpr-atmos",
+ "hpr-core",
+]
+
+[[package]]
+name = "hpr-forensics"
+version = "0.1.0"
+dependencies = [
+ "hpr-analysis",
+ "hpr-flightdata",
  "hpr-sim",
 ]
 

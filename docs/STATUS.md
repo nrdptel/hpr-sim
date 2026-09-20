@@ -8,7 +8,9 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
 - **Order:** M1.8e17, then M1.8e18, then M1.8e15, then M3.1; M1.8e16 (the handover past 24°)
   waits on #108
 - **Run:** M0.1-M0.4, M1.1-M1.7, M2.1, M1.8a to M1.8e14 shipped; https://nrdptel.github.io/hpr-sim/
-- **Last updated:** 2026-09-20 (M1.8e14 done)
+- **Neer, 2026-09-20:** Debrief is sunset; its use case — a universal flight log analyzer, usable
+  **on its own** — is part of this project now (ADR-046, V21). Phase 5 re-cut; M1.8e17 still next.
+- **Last updated:** 2026-09-20 (Debrief folded in, ADR-046; M1.8e17 is next)
 
 ## Handoff (overwrite each session)
 
@@ -21,19 +23,18 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
   siblings are e17 and e18, not e14a).
 - **Validation (M2.1, ADR-021 to ADR-026):** CI checks the report on three OSes; predicted mode's
   3% are *targets*; every whole flight names both RMS metrics, each held to 3% of its reference's
-  apogee or max speed (ADR-024).
-- **The path in wind (ADR-026):** the oracle flies RocketPy 1.13.0 with #1188 and #1196 applied by
-  `corrections.py` (re-pin and delete when #1196 releases).
-- **M1.8a to e1 (ADR-027 to ADR-033):** `cargo xtask aero` writes the aero fixtures; five of
-  ADR-030's PDFs come from NTRS with a 436-byte header (scratch: `refs/scratch/m18*/`).
-- **M1.8e2 to e8** (ADR-034, 037, 038, 039): `SupersonicBody` tabulates the method's shares every
-  0.05 Mach lazily, from max(1.2, its bisected start) over 0.3; body lift is Jorgensen's, a boattail
-  W&P's increment, a vertical tip TN D-4865's cap (`BEFORE_M1_8E6` keeps the old rules).
-- **M1.8e9 to e12** (ADR-040 to ADR-043): #90's cap holds W&P's correlation at 16° for steeper
-  boattails, M1.8e's 15% bullet (`arcas-robin-body-gap.json`) outside on six rows; #87's switches
-  flip one gate (`supersonic_run`), so the lip's **rise** is a weight (`shape_weight`);
-  `CONE_SLOPES` runs to 30° (Fig. 2's chart to 24°, then SP-3007 Table 2); the handover's cap is a
-  parameter (`with_handover_cap_rad`) and 24° stands, no steeper cap holding to Mach 5.
+  apogee or max speed (ADR-024). The wind oracle flies RocketPy 1.13.0 with #1188 and #1196 applied
+  by `corrections.py`, ADR-026 (re-pin and delete when #1196 releases).
+- **M1.8a to e8** (ADR-027 to ADR-039): `cargo xtask aero` writes the aero fixtures (five of
+  ADR-030's PDFs come from NTRS with a 436-byte header, scratch `refs/scratch/m18*/`);
+  `SupersonicBody` tabulates the method's shares every 0.05 Mach lazily from max(1.2, its bisected
+  start) over 0.3; body lift is Jorgensen's, a boattail W&P's increment, a vertical tip TN
+  D-4865's cap (`BEFORE_M1_8E6` keeps the old rules).
+- **M1.8e9 to e12** (ADR-040 to ADR-043): #90's cap holds W&P's correlation at 16°, M1.8e's 15%
+  bullet (`arcas-robin-body-gap.json`) outside on six rows; #87's switches flip one gate
+  (`supersonic_run`), so the lip's **rise** is a weight (`shape_weight`); `CONE_SLOPES` runs to 30°
+  (Fig. 2's chart to 24°, then SP-3007 Table 2); the handover's cap is a parameter
+  (`with_handover_cap_rad`), 24° stands.
 - **M1.8e13** (ADR-044): what an answer follows when it follows the mesh is the surface pressure
   **crossing** its tangent cone's (`tangent_cone_crossings`), not `η < 0`; a flag, not a verdict,
   since zero at a coarse mesh only means "not proven". #108 is re-scoped to the loading through a
@@ -44,6 +45,12 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
   the tube ahead of the flare — so **e17 must choose an attachment test**
   rather than read one off the march's refusal, and the wedge's limit is a conservative stand-in,
   not the flare's own boundary. #97: the long model's M1.8a readings may be biased.
+- **Debrief, folded in** (ADR-046): `hpr-flightdata` is off `hpr-sim` and must stay off it
+  (`forbids = ["hpr-sim"]`, walked transitively by `cargo xtask wasm-check`); sim-versus-flight
+  work goes in the new `hpr-forensics`. Written up in `docs/research/debrief-log-formats.md` and
+  `debrief-flight-readings.md`; both repos are in the refs lock. **Port from Debrief's `lib/`,
+  never from its `COMPETITION.md`** (OpenRocket rows read out of GPL-3 Java). Its 13 public
+  fixtures may be used; `refs/debrief-fixtures` may not.
 - **M2.2's OpenRocket oracle** (ADR-035): orhelper is dropped, so decide how to drive the jar when
   M2.2 starts; JPype loads the JVM in-process, only a subprocess isolates, and the jar needs Java
   17 exactly (`[java] max_major` in the refs lock keeps doctor off a newer one).
@@ -56,23 +63,18 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
 
 ## Done log (newest first, keep about 15)
 
+- 2026-09-20: Debrief folded in (ADR-046): a flight log analyzer that stands without the simulator
+  — `hpr-flightdata` re-layered, `hpr-forensics` added, Phase 5 re-cut, both repos mirrored and
+  written up in two research notes. No physics moved.
 - 2026-09-20: M1.8e14 Where the flare's march stops (ADR-045): the corner's isentropic turn running
   out, not the shock detaching; which side of a wedge's limit it lands on is the tube's doing. The
   rest of the old e14 is M1.8e17 and M1.8e18, next up.
-
 - 2026-09-20: M1.8e13 What the answer follows when it follows the mesh (ADR-044): a crossing of the
-  tangent cone, not a reduced element; over the sweep's three meshes the 27 readings without one
-  hold to 0.012 per radian and the 5 with one move 0.035 or more, no overlap — a flag, not a
-  verdict, at either end. No fixture number moved.
+  tangent cone, not a reduced element; across three meshes the 27 readings without one hold to
+  0.012 per radian and the 5 with one move 0.035 or more, no overlap. No fixture number moved.
 - 2026-09-20: M1.8e12 What the handover's cap is worth (ADR-043): the cap is a method parameter,
   swept into the fixture and the guide; 24° stays because no steeper cap keeps its answer to Mach 5
-  (#108), though each reads nearer the report's own sphere-cone; no fixture moved.
-- 2026-09-20: M1.8e10 The lip's shelter, weighed not switched (ADR-041): the drag buildup's wake
-  fraction is the method's weight now, so a lip drawn taller moves a rocket between the models
-  instead of switching it (was −33% and 1.77 calibres); five switches left, each measured.
-- 2026-09-19: M1.8e9 #90's cap and M1.8e's 15% bullet (ADR-040): a boattail steeper than 16° reads
-  W&P's correlation as a 16° one, the conservative end of a 0.67 to 1.35 calibre range; the bullet
-  met at Mach 3.96 and 4.63, the body alone outside on six rows.
+  (#108); no fixture moved.
 
 ## Needs Neer (blocking or one-way decisions; the session keeps working on other things)
 
@@ -88,28 +90,26 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
 
 ## Decided without Neer (one line each; significant ones get an ADR)
 
-- M1.8e splits (one id level, so siblings are renumbered): e3 join, e4 boattail, e5 measure, e6
-  fly, e7 blunt tips, e8 lip, e9 rest, e10 the lip's weight, e11 Fig. 2's edge, e12 step and flare.
-  e9's done-when restates the parent bullet, escape clause included, verbatim from main.
-- ADR-038: the march behind a blunt tip starts from the tangent cone, not TN D-4865's Newtonian
-  state (which fails on the Arcas nose from Mach 3.96); handover capped at 24°. ADR-039: a lip in a
-  boattail's wake carries nothing faster than sound, and the fins-off moment bounds it rather than
-  measuring it. ADR-040: a boattail steeper than 16° reads its measured correlation as a 16° one (a
-  fade to zero was rejected: it flatters stability); M1.8e's 15% bullet is recorded not met for the
-  body alone, the gap left visible.
-- ADR-037: Jorgensen's body lift at every speed, his two `η`s blended (a judgement), sampled at Fig.
-  6's points; W&P's measured boattail; old model kept selectable; M1.8a's new miss recorded.
-- ADR-036: the Arcas Robin judged at the tunnel's angles; e6 retitled to crossflow and the boattail.
-- ADR-033/034: TN 3527's method (ten-element tangent body, `η < 0` reduced, Fig. 2 held below Mach
-  3), tabulated every 0.05 Mach lazily, joined over Mach 1.2 to 1.5; boattails since M1.8e4.
-- ADR-032: a table replaces only the static force. ADR-031: roll damping takes the fin's own slope.
-  ADR-030: Fig. 5-122 to the Prandtl–Meyer limit, 16°–30° separation, Fig. 5-141 as a ratio, the
-  flow behind boattails shared among their tails, a step down sheltering a lip; targets not tuned.
-  ADR-029: M1.8's drag bullet recorded as not met, not chased; MIL-HDBK-762's example added.
-- ADR-028: Stoney's Figure 12 read by hand; cones and ogives below fineness 1 scale toward a flat
-  face; bulged ogives and Haack past `C = ⅓` refused. M0.4, M1.4 to M1.7 and M2.1b were split.
-- ADR-027: M1.8 split into a to e; fins' supersonic slope counts both faces; the transonic join is
-  not fitted to the tunnel; NASA's plots read by hand into a fixture; the body's gap became M1.8e.
+- ADR-046: Debrief folded in; `hpr-flightdata` re-layered off `hpr-sim` while still a stub, with a
+  `forbids` rule and a graph-walking check; `hpr-forensics` added; Phase 5 re-cut (M7.1/M7.2 need
+  no design or simulator, M7.3 takes the residuals); `hpr analyze` added to M4.2. Debrief's `.ork`
+  parser is clean room from the published page; its `COMPETITION.md` is not, and is excluded.
+- M1.8e splits (one id level, so siblings are renumbered): e3 join, e4 boattail, e5 measure, e6 fly,
+  e7 blunt tips, e8 lip, e9 rest, e10 the lip's weight, e11 Fig. 2's edge, e12 step and flare; e9's
+  done-when restates the parent bullet verbatim, escape clause included.
+- ADR-038 to ADR-040: the march behind a blunt tip starts from the tangent cone, not TN D-4865's
+  Newtonian state (which fails on the Arcas nose from Mach 3.96), handover capped at 24°; a lip in
+  a boattail's wake carries nothing faster than sound, bounded by the fins-off moment, not
+  measured; a boattail past 16° reads its correlation as a 16° one (a fade to zero was rejected as
+  flattering stability), and M1.8e's 15% bullet is recorded **not met** for the body alone.
+- ADR-027 to ADR-037 (details in `DECISIONS.md`): M1.8 split a to e; fins' supersonic slope counts
+  both faces and the transonic join is not fitted to the tunnel; Stoney's Fig. 12 read by hand,
+  bulged ogives and Haack past `C = ⅓` refused; Fig. 5-122 to the Prandtl–Meyer limit, 16°–30°
+  separation, a step down sheltering a lip, targets not tuned; a table replaces only the static
+  force; roll damping takes the fin's own slope; TN 3527's method tabulated every 0.05 Mach lazily
+  and joined over Mach 1.2 to 1.5; Jorgensen's body lift with his two `η`s blended (a judgement),
+  W&P's measured boattail, the old model still selectable. **Two gaps left visible rather than
+  chased:** M1.8's drag bullet (ADR-029) and M1.8a's new miss (ADR-037), both recorded not met.
 - ADR-001 to ADR-026 (details in `DECISIONS.md`), among them: refs pinned by hash; body `+z` to the
   nose; Niskanen's drag as printed at 20 µm; own DOPRI5; recovery in `hpr-sim`; the site's link,
   label and number checks; references read, never written; 3% gates or a written reason. #11:

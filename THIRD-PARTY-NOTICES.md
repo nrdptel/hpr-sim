@@ -151,7 +151,9 @@ same license and mode.
 | `rocketpy` | RocketPy v1.13.0 (example rockets, flight data, RASAero Cd exports, acceptance tests) | MIT; data files carry their own terms | fetched | code is MIT and may be ported with attribution; flight data carries team permissions recorded in RocketPy's notebooks; the ERA5 weather files in `data/weather/` are Copernicus (C3S) data with attribution required; the NASADEM tile is NASA data |
 | `openrocket-database` | `openrocket/openrocket-database` (`.orc` parts) | Apache-2.0 | fetched | may be bundled with notices in M5.5 |
 | `fusionspace-loft` | `nrdptel/fusionspace-loft` (the project owner's own) | MIT | fetched | ported with a note |
+| `fusionspace-debrief` | `nrdptel/fusionspace-debrief` (the project owner's own) | MIT | fetched | ported with a note; the flight-log format knowledge behind Phase 5 |
 | `loft-fixtures` | `nrdptel/loft-fixtures` | private; third-party design files | fetched | never committed; only derived statistics are published |
+| `debrief-fixtures` | `nrdptel/debrief-fixtures` | private; third-party flight logs | fetched | never committed; only derived statistics and anonymised case ids are published |
 | `openrocket-jar` | OpenRocket 24.12 (needs Java 17; it refuses 21) | GPL-3.0 | run-only | second oracle; its source is never read |
 | `barrowman-1967-thesis` | J. S. Barrowman, The Practical Calculation of the Aerodynamic Characteristics of Slender Finned Vehicles, MS thesis, 1967 (NASA/TM-2001-209983) | US government work | fetched | cited; M1.8c reads the Basic Finner's dimensions (Fig. 5-6) and its plotted roll damping (Fig. 5-7) into `validation/fixtures/aero/basic-finner-roll-damping.json`, with figure and page |
 | `barrowman-1966-cp-report` | J. S. and J. A. Barrowman, The Theoretical Prediction of the Center of Pressure, NARAM-8, 1966 | unknown terms | fetched | cited, not copied or redistributed |

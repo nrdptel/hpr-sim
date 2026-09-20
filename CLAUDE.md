@@ -31,10 +31,12 @@ At the start of every session, read these in order. They are short on purpose; k
    - Published specs, papers, file samples, and file-format docs.
    - Running GPL tools (the OpenRocket jar, via JPype/orhelper) as **external oracles**.
    - Reading and porting MIT/Apache/BSD code, with attribution in `THIRD-PARTY-NOTICES.md`.
-   - `nrdptel/fusionspace-loft` is Neer's own MIT project. Port from it freely and note it.
+   - `nrdptel/fusionspace-loft` and `nrdptel/fusionspace-debrief` are Neer's own MIT
+     projects, both sunset. Port from them freely and note it.
    - `cargo deny` must reject copyleft dependencies.
-4. **Keep private data private.** `nrdptel/loft-fixtures` is a private repo of other people's design
-   files. Its contents live only under the gitignored `refs/` and must never be committed or quoted
+4. **Keep private data private.** `nrdptel/loft-fixtures` (design files) and
+   `nrdptel/debrief-fixtures` (flight logs) are private repos of other people's data. Their
+   contents live only under the gitignored `refs/` and must never be committed or quoted
    at length in this public repo, in PRs, or in reports. Results computed from it are fine to
    publish: counts, error statistics, and anonymised case ids. The same goes for any third-party
    data whose license is unclear. Fetch it, cache it, don't commit it. Record the status in

@@ -13,7 +13,9 @@ publish = false
 
 [workspace.dependencies]
 # Workspace crates. Crates in the pure core must not depend on hpr-net, hpr-cli, hpr-py, hpr-ffi
-# or hpr-validate; `cargo xtask wasm-check` enforces this.
+# or hpr-validate; `cargo xtask wasm-check` enforces this. It also enforces the rules a crate
+# declares in `[package.metadata.hpr] forbids`, which is how hpr-flightdata keeps the simulator
+# out of flight-log analysis (ADR-046).
 hpr = { path = "crates/hpr", version = "0.1.0" }
 hpr-aero = { path = "crates/hpr-aero", version = "0.1.0" }
 hpr-analysis = { path = "crates/hpr-analysis", version = "0.1.0" }
@@ -21,6 +23,7 @@ hpr-atmos = { path = "crates/hpr-atmos", version = "0.1.0" }
 hpr-core = { path = "crates/hpr-core", version = "0.1.0" }
 hpr-design = { path = "crates/hpr-design", version = "0.1.0" }
 hpr-flightdata = { path = "crates/hpr-flightdata", version = "0.1.0" }
+hpr-forensics = { path = "crates/hpr-forensics", version = "0.1.0" }
 hpr-format = { path = "crates/hpr-format", version = "0.1.0" }
 hpr-io = { path = "crates/hpr-io", version = "0.1.0" }
 hpr-motor = { path = "crates/hpr-motor", version = "0.1.0" }

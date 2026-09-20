@@ -18,6 +18,10 @@ pub struct Package {
     pub name: String,
     /// `[package.metadata.hpr] wasm = true`: the crate belongs to the pure core.
     pub wasm: bool,
+    /// `[package.metadata.hpr] forbids = ["hpr-sim"]`: workspace crates that must never reach this
+    /// one, directly or through another crate. This is how a layer that has to stand on its own
+    /// says so; `layering::check` enforces it.
+    pub forbids: Vec<String>,
     /// The crate name of its library (`hpr_core` for `hpr-core`), if it has one, which is where
     /// rustdoc writes its documentation (`target/doc/hpr_core/`).
     pub lib: Option<String>,
@@ -98,6 +102,24 @@ fn parse_package(package: &Value) -> Result<Package, String> {
             ));
         }
     };
+    let forbids = match &package["metadata"]["hpr"]["forbids"] {
+        Value::Null => Vec::new(),
+        Value::Array(entries) => entries
+            .iter()
+            .map(|entry| {
+                entry.as_str().map(str::to_owned).ok_or_else(|| {
+                    format!(
+                        "{name}: [package.metadata.hpr] forbids must be crate names, found {entry}"
+                    )
+                })
+            })
+            .collect::<Result<_, _>>()?,
+        other => {
+            return Err(format!(
+                "{name}: [package.metadata.hpr] forbids must be an array, found {other}"
+            ));
+        }
+    };
     let dependencies = package["dependencies"]
         .as_array()
         .map_or(&[][..], Vec::as_slice)
@@ -148,6 +170,7 @@ fn parse_package(package: &Value) -> Result<Package, String> {
     }
     Ok(Package {
         name,
+        forbids,
         wasm,
         lib,
         dependencies,
