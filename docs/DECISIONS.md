@@ -4036,3 +4036,72 @@ carries all three of its tables.
   step and the flare become M1.8e14. This increment, the measurement, takes the M1.8e12 number.
 - The sweep runs four caps over eight Mach numbers at three element counts each time
   `cargo xtask aero` runs, about four seconds of it.
+
+## ADR-044: What moves the march's answer is a crossing of the tangent cone, not a reduced element (2026-09-20)
+
+**Context.** ADR-043 left the blunt tip's handover cap at 24° because a steeper cap puts the
+second-order shock-expansion march into readings whose answer follows the element count instead of
+settling, and recorded the blocker as issue #108: *a reading of `η < 0` whose answer settles as the
+nose is cut finer*. That framing came from the observation that a steep cap reduces most of the
+nose to the generalized method (`η < 0`, TN 3527 p. 13, issue #81). M1.8e13 was to move the cap
+once such a reading existed. It cannot start there, because the framing is wrong.
+
+**Decision.** Record the measured cause, and re-aim the work at it. The count that says an answer
+cannot be trusted is `ShockExpansionBody::tangent_cone_crossings`: how many times the marched
+surface pressure passes through its own tangent cone's. `cargo xtask aero` stores it beside every
+reading of the cap sweep in `validation/fixtures/aero/blunt-tips.json`, and the guide's
+[Why a crossing is fatal](https://nrdptel.github.io/hpr-sim/physics/aero.html#why-a-crossing-is-fatal)
+explains it. Issue #108 is re-scoped to the crossing, and what is left of the old M1.8e13 — the
+reading, then the vertical-tip switch of issue #87 — becomes M1.8e16, after the flare and the step,
+because it is the only one of the three that is blocked.
+
+- **A crossing is a pole in the rate, and it separates the sweep exactly.** The method relaxes an
+  element toward its tangent cone at `η = (∂p/∂s)₂ / ((p_c − p₂) cos δ)`. A crossing closes
+  `p_c − p₂` while the gradient carries on, so `η` runs to infinity. The pressure is unharmed:
+  `η (p_c − p)` is the gradient, which stays finite. The loading is not, because eq. 19 relaxes it
+  at the pressure's `η` while its own gap `Λ_c − Λ` stays open, so at a crossing the loading is
+  driven onto the tangent cone's arbitrarily fast. A march applies `η` from one corner across a
+  whole element, so it takes one step of whatever size the mesh gives it: on the 40-element march
+  at Mach 4.63 under a 30° cap the element before the first crossing raises `e^(−η)` to 8.5 over
+  its own length, finishing within 0.02% of its tangent cone's loading in that one step, at a
+  station the mesh chose. Over the sweep's thirty-two readings — four caps at eight Mach numbers —
+  every one without a crossing holds to 0.012 per radian across 10, 40 and 160 elements, and every
+  one with a crossing moves by at least 0.035, up to 0.69. No overlap, and a factor of three
+  between the two groups (`a_crossing_is_what_separates_a_settled_reading_from_a_moving_one`).
+- **Reduced elements do not move an answer, and TN 3527's bodies prove it.** Its fineness-3 tangent
+  ogive reduces 27 of 160 elements at Mach 5.05 and 50 of 160 at Mach 6.28, and settles to 0.002
+  per radian from 10 elements to 160. There `η < 0` comes from the *gradient* changing sign, with
+  the surface pressure below its tangent cone's the whole way; the gap never closes, so `η` stays
+  bounded (`a_reduced_element_settles_where_tn3527s_own_bodies_never_cross`). The report's own
+  bodies never cross, which is why it never had to say what a crossing does — it states the
+  condition (gradient and `p_c − p₂` of one sign, p. 13) and stops.
+- **So issue #108 could not have been closed as written.** Its trouble does not begin on the
+  `η < 0` side. On the 40-element Mach 4.63 march the loading falls by a fifth across the *second*
+  crossing, at an element with `η = +653` per m — inside the method, not reduced. Any reading of
+  `η < 0`, however good, leaves that step where it is. This is why `|η|` failed in ADR-043 and why
+  the other candidates in issue #81 failed: all of them answer the wrong question.
+- **Not chosen: clamp the rate, or the exponent.** Bounding `η`, or the exponent `η Δx` an element
+  may apply, would make every answer settle, and would be arbitrary at exactly the point where the
+  physics is unknown — the bound, not the method, would then set the loading through the crossing.
+  What is missing is a statement about the loading where the pressure gap closes, and a clamp
+  hides the question instead of answering it.
+- **Not chosen: renumber the milestones.** Making the remainder M1.8e14 would push the flare to
+  e15 and the step to e16, and would leave ADR-043's record of the last split describing entries
+  that no longer exist. Milestone ids carry one increment level, so the remainder takes the next
+  free number, e16, and the roadmap's order does the rest.
+
+**Consequences.**
+
+- Nothing a rocket flies changes. The cap is still 24°, and no committed number moved except the
+  new count beside each reading of the sweep.
+- `ShockExpansionBody::tangent_cone_crossings` is public, and its documentation says plainly that
+  a non-zero count means the answer is the mesh's rather than the model's. `reduced_elements`
+  stays, and is no longer the thing to read for that.
+- The guide's *What the cap is worth* now carries the crossing count in all three of its tables
+  and a section explaining it, so a reader meets the real cause where they meet the numbers.
+- **Issue #108 is re-scoped, not closed, and the gap stays visible.** What would close it is a
+  reading of the loading through a crossing that settles as the nose is cut finer. Nothing
+  measured here is one. The blunt tip's handover past 24°, and issue #87's vertical-tip switch
+  with it, wait on that as M1.8e16; the flare (M1.8e14) and the step (M1.8e15) do not, so they go
+  first.
+- The sweep costs one more march per cell to count crossings, about a second of `cargo xtask aero`.

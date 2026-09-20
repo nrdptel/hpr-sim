@@ -536,12 +536,10 @@
       (#81 at its limit), 117 and 109 of 120 of its measurements; Arcas Robin −18.7% to +16.4%.
     - [x] **M1.8e2 The body's supersonic normal force in flight.** The body's terms take Mach:
       M1.8e1's method for a pointed nose and its cylinder where it holds, joined to slender-body
-      theory below it. *Done when* (targets set before measuring):
-      - A flight takes the body's `C_Nα` and CP at its Mach number; a test probes the join at
-        ±1e-9 in Mach and finds no jump.
-      - The Arcas Robin's body alone (TN D-4014) through the flight's path at each Mach number
-        from 1.5, beside the measurement and M1.8a's, in the regenerated report, its changed rows
-        listed in the PR.
+      theory below it. *Done when* (targets set before measuring): a flight takes the body's
+      `C_Nα` and CP at its Mach number, with no jump at ±1e-9 in Mach across the join; and the
+      Arcas Robin's body alone (TN D-4014) goes through the flight's path from Mach 1.5 in the
+      regenerated report, beside the measurement and M1.8a's.
     - [x] **M1.8e3 The supersonic join's start without grid steps** (#87's grid half). *Done when*
       (set after building): a test finds a 20° cone's start off the grid, moved under 1e-7 in Mach
       by 1e-6° and strictly by each 0.1° to 20.5°, its cylinder share under 1e-5, no jump at ±1e-9
@@ -557,68 +555,70 @@
       *Result:* met; like for like +3.4% to +41.0% (was +14.9% to +73.2%); M1.8a gains a miss.
     - [x] **M1.8e7 Blunt tips faster than sound** (from e6; split, ADR-038). A vertical or blunt
       nose tip flies a Newtonian cap ahead of TN 3527's method (NASA TN D-4865). *Done when:* flown
-      with no jump at ±1e-9 in Mach; the Arcas Robin's committed nose (lip left off) through a
-      flight's path in the report; TN D-4865's sphere-cone against its measured normal force.
-      *Result:* met; like for like, sphere-cone −1.2% to +32.1%; the nose lip off −4.8% to +37.2%.
+      with no jump at ±1e-9 in Mach; the committed nose (lip off) through a flight's path in the
+      report; TN D-4865's sphere-cone against its measured normal force. *Result:* met; like for
+      like, sphere-cone −1.2% to +32.1%; the nose lip off −4.8% to +37.2%.
     - [x] **M1.8e8 The lip faster than sound** (from e7; ADR-039). *Done when:* flown with no jump
       at ±1e-9 in Mach; the committed Arcas Robin designs through a flight's path in the report.
-      *Result:* met; a lip in a boattail's wake carries nothing, so both designs fly the method to
-      their base: M1.8a's rows from Mach 1.5 are all within the slope's 15% (+9.4% to −3.3%).
+      *Result:* met; M1.8a's rows from Mach 1.5 are all within the slope's 15% (+9.4% to −3.3%).
     - [x] **M1.8e9 #90's boattail cap, and M1.8e's 15% bullet judged** (split from e9's pair;
-      ADR-040). *Done when:* #90 closed (a bound on the boattail angle, and footnote 8's size
-      pinned by a hand calculation); M1.8e's 15% bullet met for the Arcas Robin's body alone, or an
-      ADR records why not with the gap in the report.
-      *Result:* met; the correlation is read no steeper than 16° and the boattail with its tube
-      integrated by hand; the bullet met at Mach 3.96 and 4.63, the body alone outside on six rows.
+      ADR-040). *Done when:* #90 closed (a bound on the boattail angle, footnote 8's size pinned by
+      hand); M1.8e's 15% bullet met for the body alone, or an ADR records why not.
+      *Result:* met; the correlation is read no steeper than 16°, the bullet met at Mach 3.96 and
+      4.63, the body alone outside on six rows.
     - [x] **M1.8e10 The lip's shelter, weighed not switched.** #87's five switches all flip one
-      gate — whether the method covers the body at all — so each is worth the whole body. The
-      largest is the lip's, and the drag buildup already grades its shelter continuously
-      (`share_by_rise`, a quarter to a half of the boattail's drop) where the normal force reads
-      a threshold. *Done when:* every switch's size is measured by a test; the lip's is gone, its
-      two sides agreeing across the old threshold in proportion to the change in shape; no
-      committed fixture moves; an ADR records the weight.
-      *Result:* met (ADR-041); the lip's **rise** is a weight, not a switch, and five keep measured
-      sizes — a step −8.7%/1.03 cal, a flare −27.5%/0.29 cal, a pointed tip −10.4%/1.14 cal, a
-      vertical tip −7.0%/0.64 cal, and the lip's own length −33.0%/1.77 cal, which #87 didn't list.
+      gate — whether the method covers the body at all — so each is worth the whole body, and the
+      drag buildup already grades the largest of them continuously. *Done when:* every switch's
+      size is measured by a test; the lip's is gone, its two sides agreeing across the old
+      threshold in proportion to the change in shape; no committed fixture moves; an ADR records
+      the weight. *Result:* met (ADR-041); the lip's **rise** is a weight, not a switch, and the
+      five that remain keep measured sizes.
     - [x] **M1.8e11 Cone slopes past Fig. 2's edge, from Sims.** NASA SP-3007 (pinned) tabulates
       the same theory to 30°, where TN 3527's Fig. 2 stops at 24°. *Done when:* the method flies a
       tangent cone of 24° to 30°, a fineness-1 cone among them, from Sims's slopes checked against
-      Fig. 2 where they overlap; no committed fixture moves.
-      *Result:* met (ADR-042); SP-3007 Table 2 at 25°, 27.5° and 30°, agreeing with the chart to
-      0.0021 per rad at 22.5°; the pointed tip's switch moves to 30° and falls to −7.7%/0.81 cal.
-    - [x] **M1.8e12 What the handover's cap is worth, and what stops it** (split from the old e12,
-      whose aim is now M1.8e13). With slopes to 30° a cap can hand over at the detachment angle,
-      not Fig. 2's edge — but moving it there turns out to take the march out of its range on a
-      nose that flattens fast, so this increment measures the move and the next one makes it.
-      *Done when:* the cap is a parameter of the method, its flown default unchanged so that no
+      Fig. 2 where they overlap; no committed fixture moves. *Result:* met (ADR-042); SP-3007
+      Table 2 agrees with the chart to 0.0021 per rad at 22.5°.
+    - [x] **M1.8e12 What the handover's cap is worth, and what stops it** (split from the old e12).
+      With slopes to 30° a cap can hand over at the detachment angle, not Fig. 2's edge, but moving
+      it there takes the march out of its range on a nose that flattens fast. *Done when:* the cap is a parameter of the method, its flown default unchanged so that no
       committed fixture moves; a sweep of it is measured into a committed fixture — each cap's
       sphere-cone error, and the committed nose's readings over 10 to 160 elements with the counts
       of reduced elements; tests pin both ends of the sweep; an ADR records why the default stays;
       the guide says it plainly; and the blocker is a GitHub issue.
-      *Result:* met (ADR-043); 30° follows TN D-4865's rule to Mach 2.52 and reads nearer its
-      sphere-cone at every row where a cap binds, and puts 109 of the committed nose's 160 elements
-      into `η < 0` at Mach 4.63, where the answer follows the element count (3.047 to 3.260); the
-      cap stays at 24°, and issue #108 holds what would move it.
-    - [ ] **M1.8e13 The blunt tip's handover, past 24°** (the old e12's aim, once the march carries
-      it). *Done when:* the vertical-tip switch is gone or measured again, fixtures and the guide
-      moving together; and, ahead of that, issue #108 closed.
+      *Result:* met (ADR-043); 30° reads nearer TN D-4865's sphere-cone wherever a cap binds, but
+      at Mach 4.63 the answer follows the element count (3.047 to 3.260), so 24° stays.
+    - [x] **M1.8e13 What puts a marched answer at the mercy of the mesh** (split from the old e13,
+      whose aim is now M1.8e16). Issue #108 asked for a reading of `η < 0` that settles as the nose
+      is cut finer; before writing one, find out whether `η < 0` is what moves the answer.
+      *Done when:* the count that separates a settled reading from a moving one is measured over
+      the whole cap sweep and stored beside every reading; a pointed body of TN 3527's own is shown
+      reducing without moving; tests pin both and the mechanism; an ADR and the guide say what it
+      means; and issue #108 is re-scoped to it.
+      *Result:* met (ADR-044); it is the surface pressure **crossing** its tangent cone's, where
+      `η = (∂p/∂s)₂/((p_c − p₂) cos δ)` has a pole, not `η < 0`. All 32 readings separate with no
+      overlap: without a crossing each holds to 0.012 per radian over 10 to 160 elements, with one
+      each moves 0.035 or more. TN 3527's ogive reduces 50 of 160 and settles to 0.002.
     - [ ] **M1.8e14 The flare through the method** (split from the old e14; the step is M1.8e15).
       The method already marches a flare — a cone, a tube and a flare return a finite `C_Nα` at Mach
       3 — and it is the model around it that refuses one, since the run stops at the first widening
       body and a flare on slender-body theory would mix the models over one rocket, as a boattail
-      did before M1.8e4. There is a measurement too, which the guide once said there wasn't: TN
-      D-4865's model 2 is a 2.75° blunted cone with an 18.5° flare, and its fig. 8 carries normal
-      force and pitching moment from Mach 1.50 to 4.63, integrated from the pressures its tables VII
-      to XII print. The report is clear about where a march stops being the tool: at Mach 1.50 that
-      flare's shock isn't attached even in theory, and from 2.96 up the boundary layer separates
-      ahead of the juncture. *Done when:* a flared body flies the method where the flare's shock is
-      attached, with no jump at ±1e-9 in Mach or in the flare's angle across that boundary; TN
-      D-4865 model 2's readings are committed with their provenance; the guide says what it is worth
-      and leaves out; an ADR records what happens where the shock is detached.
+      did before M1.8e4. There is a measurement too, which the guide once said there wasn't:
+      TN D-4865's model 2, a 2.75° blunted cone with an 18.5° flare, whose fig. 8 carries normal
+      force and pitching moment from Mach 1.50 to 4.63. The report says where a march stops being
+      the tool: at Mach 1.50 the flare's shock isn't attached even in theory, and from 2.96 up the
+      boundary layer separates ahead of the juncture. *Done when:* a flared body flies the method
+      where the flare's shock is attached, with no jump at ±1e-9 in Mach or in the flare's angle
+      across that boundary; model 2's readings are committed with their provenance; the guide says
+      what it is worth and leaves out; an ADR records what happens where the shock is detached.
     - [ ] **M1.8e15 The step in radius.** A step is a discontinuous profile, which the march refuses
       outright, so unlike the flare it needs a model of its own rather than a decision about one
       that exists. *Done when:* #87 closed or narrowed to the step alone, its measured size in an
       ADR and the guide.
+    - [ ] **M1.8e16 The blunt tip's handover, past 24°** (the rest of the old e13; the next free
+      number, so the flare and the step keep theirs, ADR-044). Blocked, so it goes last.
+      *Done when:* the vertical-tip switch is gone or measured again, fixtures and the guide moving
+      together; and, ahead of that, issue #108 closed — a reading of the loading through a crossing
+      that settles as the nose is cut finer, checked against TN 3527's ogive at Mach 5.05 and 6.28.
 - [ ] **M3.1 OpenRocket `.ork` import.**
   - Handles zip, gz and raw XML, schema 1.0 to 1.10, plus the documented 1.11 additions.
   - Reads components, materials, finishes, motor configurations, recovery, stages, and stored

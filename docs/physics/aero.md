@@ -1171,13 +1171,16 @@ whole step from 24° to 30° reads nearer the tunnel by 0.4 to 1.7 points, most 
 one place a steeper cap reads further out is the last step at Mach 4.63, where 28° reads +30.9%
 and 30° +31.3%.
 
-Now the cost. A *reduced* element is one where the method's exponential law would run the wrong
-way — the pressure behind the corner heading away from the tangent cone's instead of toward it,
-`η < 0` in [the method's own terms](#bodies-faster-than-sound) ([SD56] p. 13) — so hpr holds the
-pressure along it instead, [issue #81](https://github.com/nrdptel/hpr-sim/issues/81)'s open
-question. The more of them, the less of the method is left. Here are two of the four caps on the
-Arcas Robin's committed power-series nose and the short model's cylinder, nothing aft, `C_Nα` per
-radian on its cross-section at `α → 0`, read with the flown 10 elements per curve and with 160:
+Now the cost, which two counts tell you about. A *reduced* element is one where the method's
+exponential law would run the wrong way — the pressure behind the corner heading away from the
+tangent cone's instead of toward it, `η < 0` in [the method's own terms](#bodies-faster-than-sound)
+([SD56] p. 13) — so hpr holds the pressure along it instead,
+[issue #81](https://github.com/nrdptel/hpr-sim/issues/81)'s open question. A *crossing* is the
+rarer and worse thing: the marched surface pressure passing through its own tangent cone's, from
+below it to above. The next section says why a crossing is fatal and a reduced element is not.
+Here are two of the four caps on the Arcas Robin's committed power-series nose and the short
+model's cylinder, nothing aft, `C_Nα` per radian on its cross-section at `α → 0`, read with the
+flown 10 elements per curve and with 160:
 
 | Mach | 24°, 10 elements | 24°, 160 | 30°, 10 elements | 30°, 160 |
 |---|---|---|---|---|
@@ -1187,8 +1190,8 @@ radian on its cross-section at `α → 0`, read with the flown 10 elements per c
 | 2.96 | 3.021 | 3.029 | 2.943 | 2.955 |
 | 3.5 | 3.071 | 3.079 | 2.953 | 2.964 |
 | 3.96 | 3.073 | 3.080 (1 of 160 reduced) | 2.919 | 2.927 (1 of 160 reduced) |
-| 4.63 | 3.030 | 3.034 (2 of 160 reduced) | 3.047 (5 of 10 reduced) | 3.260 (109 of 160 reduced) |
-| 5 | 2.980 | 2.984 (2 of 160 reduced) | 3.400 (9 of 10 reduced) | 3.454 (145 of 160 reduced) |
+| 4.63 | 3.030 | 3.034 (2 of 160 reduced) | 3.047 (5 of 10 reduced, 2 crossings) | 3.260 (109 of 160 reduced, 2 crossings) |
+| 5 | 2.980 | 2.984 (2 of 160 reduced) | 3.400 (9 of 10 reduced, 2 crossings) | 3.454 (145 of 160 reduced, 2 crossings) |
 
 Through Mach 3.96 cutting the nose into sixteen times as many elements moves the answer by under
 0.01 per radian under the flown cap and under 0.013 under the 30° one: the answer is the model's,
@@ -1198,14 +1201,45 @@ follows the element count instead, and not even in order: 3.047 at 10 elements, 
 fixture also holds, and 3.260 at 160 — a spread of 0.33 per radian, 11% — where the flown cap moves
 by 0.1%.
 
-Why: the steeper cap starts the march from a steeper cone at a higher pressure, and from there the
+### Why a crossing is fatal
+
+The steeper cap starts the march from a steeper cone at a higher pressure, and from there the
 tangent cone's own pressure falls away faster than the marched pressure does as the nose flattens.
-The surface pressure ends up *above* the local cone's — on 108 of the 160 elements at Mach 4.63,
-from 11.9% of the nose back — with the gradient behind each corner still driving it away from that
-cone. That is `η < 0`, and 108 of those elements are 108 of the 109 reduced. Under the flown cap
-not one element of the nose sits above its cone. It is not rounding either: nudge the Mach number
-by eight units in its last place — about a part in 10^15 — and the same elements reduce, for an
-answer that follows to a part in a billion (test
+So the surface pressure catches its tangent cone's and passes through it — at Mach 4.63 under the
+30° cap, 11.9% of the way back — and stays above it until the nose flattens enough for the cone to
+catch up again. Two crossings.
+
+At a crossing the method loses its footing, for a reason that has nothing to do with `η < 0`. The
+rate an element relaxes toward its tangent cone at is `η = (∂p/∂s)₂ / (p_c − p₂)` — the gradient just
+behind the corner divided by how far the pressure has to go. A crossing closes that gap while the
+gradient carries on, so `η` has a **pole**: it runs to infinity. The pressure itself doesn't mind,
+because `η (p_c − p)` is only the gradient again, and that stays finite. The *loading* does mind.
+It relaxes toward the tangent cone's loading at the same `η` ([SD56] eq. 19) while its own gap,
+`Λ_c − Λ`, stays wide open — so near the crossing the loading is dragged onto the tangent cone's
+arbitrarily fast.
+
+A march can only apply `η` from one corner across a whole element, so what it actually does is take
+one step of whatever size the mesh happens to give it. On the 40-element march at Mach 4.63 the
+element just before the first crossing raises `e^(−η)` to 8.5 over its own length: its loading
+finishes within 0.02% of its tangent cone's, in one step, at a station the mesh chose. Cut the nose
+differently and that step lands somewhere else and is a different size. That is the whole of the
+disorder in the tables above — not how many elements were reduced.
+
+The counts say the same thing. Over all thirty-two readings in the sweep — four caps at eight Mach
+numbers — every one with no crossing holds its answer to within 0.012 per radian across 10, 40 and
+160 elements, and every one with a crossing moves by at least 0.035: three times as much as the
+worst that stays clean, and up to 0.69 (28° at Mach 5). No overlap
+(test `a_crossing_is_what_separates_a_settled_reading_from_a_moving_one`).
+
+Reduced elements, on their own, are harmless. TN 3527's own fineness-3 ogive reduces 27 of 160
+elements at Mach 5.05 and 50 of 160 at Mach 6.28 — and its answer settles to 0.002 per radian from
+10 elements to 160. On the report's bodies `η < 0` comes from the *gradient* changing sign, with
+the surface pressure below its tangent cone's the whole way down; the gap never closes, so there is
+no pole. The report's bodies never cross, which is why the report never had to say what a crossing
+does (test `a_reduced_element_settles_where_tn3527s_own_bodies_never_cross`).
+
+It is not rounding either: nudge the Mach number by eight units in its last place — about a part in
+10^15 — and the same elements reduce, for an answer that follows to a part in a billion (test
 `a_steeper_handover_moves_the_march_out_of_its_range`).
 
 The break is not at 30°, and it is not orderly. It sits between the flown cap and the next step,
@@ -1215,9 +1249,9 @@ count, twelve times the 30° cap's 0.055. No cap above the flown one holds its a
 | cap | Mach 4.63, 10 elements | 160 elements | Mach 5, 10 elements | 160 elements |
 |---|---|---|---|---|
 | 24°, as flown | 3.030 | 3.034 (2 of 160 reduced) | 2.980 | 2.984 (2 of 160 reduced) |
-| 26° | 2.961 | 2.965 (2 of 160 reduced) | 2.900 | 2.946 (40 of 160 reduced) |
-| 28° | 2.892 | 2.926 (33 of 160 reduced) | 2.923 (4 of 10 reduced) | 3.612 (140 of 160 reduced) |
-| 30° | 3.047 (5 of 10 reduced) | 3.260 (109 of 160 reduced) | 3.400 (9 of 10 reduced) | 3.454 (145 of 160 reduced) |
+| 26° | 2.961 | 2.965 (2 of 160 reduced) | 2.900 | 2.946 (40 of 160 reduced, 2 crossings) |
+| 28° | 2.892 | 2.926 (33 of 160 reduced, 2 crossings) | 2.923 (4 of 10 reduced, 2 crossings) | 3.612 (140 of 160 reduced, 2 crossings) |
+| 30° | 3.047 (5 of 10 reduced, 2 crossings) | 3.260 (109 of 160 reduced, 2 crossings) | 3.400 (9 of 10 reduced, 2 crossings) | 3.454 (145 of 160 reduced, 2 crossings) |
 
 Below Mach 4 the four agree to 0.013 per radian, so nothing here says a cap between the two ends
 is a middle ground. It says the flown cap is the last one whose answer is the model's all the way
@@ -1228,10 +1262,12 @@ the sphere-cone at Mach 3.95 and 4.63, as the first table says. The cap chooses 
 that is high and one that is high *and* moves with the mesh.
 
 So the cap hpr flies is set by the march's range rather than by a chart's edge. It moves when the
-march has a rule for `η < 0` whose answer stops depending on how finely the nose is cut
-([issue #108: a steeper handover puts the march into `η < 0` above Mach
+method has a reading for what the loading does where the surface pressure crosses its tangent
+cone's ([issue #108: a steeper handover crosses the tangent cone above Mach
 4](https://github.com/nrdptel/hpr-sim/issues/108)); the milestone that would then move it,
-[M1.8e13, the blunt tip's handover past 24°](../decisions-and-roadmap.md#m1-8e13), waits on that.
+[M1.8e16, the blunt tip's handover past 24°](../decisions-and-roadmap.md#m1-8e16), waits on that.
+That reading is not the same question as `η < 0`'s, and answering `η < 0` would not settle this
+([ADR-044][adr-044]).
 All three tables are held to
 [`blunt-tips.json`](https://github.com/nrdptel/hpr-sim/blob/main/validation/fixtures/aero/blunt-tips.json)
 by a test, cell by cell; the second shows the two ends of the sweep, and the fixture holds 26° and
@@ -3232,4 +3268,5 @@ ellipse's integrals ([N09] eq. 3.70–3.71); the supersonic forcing and damping 
 [adr-041]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-041-a-lips-shelter-is-weighed-as-the-drag-buildup-weighs-it-not-switched-at-a-threshold-2026-09-20
 [adr-042]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-042-cone-slopes-from-24-to-30-come-from-simss-tables-where-tn-3527s-chart-stops-2026-09-20
 [adr-043]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-043-the-blunt-tips-handover-cap-what-it-is-worth-and-what-stops-it-moving-2026-09-20
+[adr-044]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-044-what-moves-the-marchs-answer-is-a-crossing-of-the-tangent-cone-not-a-reduced-element-2026-09-20
 [gap-fixture]: https://github.com/nrdptel/hpr-sim/blob/main/validation/fixtures/aero/arcas-robin-gap.json
