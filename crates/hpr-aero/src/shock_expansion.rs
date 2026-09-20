@@ -3148,7 +3148,7 @@ mod tests {
         let (mut lo, mut hi) = (1.0_f64, 45.0_f64);
         assert!(
             flare_marches(mach, lo).is_ok(),
-            "Mach {mach}: 1° already fails"
+            "Mach {mach}: 1° already fails, so the shallow band this brackets above has moved"
         );
         assert!(flare_marches(mach, hi).is_err(), "Mach {mach}: 45° marches");
         loop {
@@ -3170,11 +3170,13 @@ mod tests {
     ///
     /// Second-order shock-expansion fixes the pressure just behind a corner from the Prandtl and
     /// Meyer turn there (TN 3527 pp. 7-8, the first of eq. 3's three conditions; `ν` itself is
-    /// NACA 1135 eq. 171c), so the march stops where `ν` reaches zero. The wedge's largest deflection
-    /// ([`crate::blunt_tip::wedge_detachment_angle_rad`], NACA 1135) is the angle past which no
-    /// attached shock exists at all. Neither bounds the other: at Mach 1.5 the method stops 0.18°
-    /// **short** of detachment, and at Mach 2 it marches 3.5° **past** it, so a march that returns
-    /// a number is not on its own evidence the flare's shock is attached.
+    /// NACA 1135 eq. 171c), so the march stops where `ν` reaches zero. The wedge's largest
+    /// deflection ([`crate::blunt_tip::wedge_detachment_angle_rad`], NACA 1135) is a conservative
+    /// stand-in for the flare's own boundary, not the boundary itself: a cone's shock holds to
+    /// steeper angles, so only the side where the march stops **below** the wedge's angle proves
+    /// anything. On this body it stops 0.18° short of it at Mach 1.5 and marches 3.5° past it at
+    /// Mach 2, and which side is the tube's doing — so a march that returns a number is not on its
+    /// own evidence the flare's shock is attached.
     #[test]
     fn a_flare_marches_to_the_isentropic_turn_not_to_detachment() {
         let edge_1_5 = steepest_flare_deg(1.5);
@@ -3263,12 +3265,14 @@ mod tests {
             );
             // Just past the edge: it is the tables that refuse, not the corner's turn.
             let err = flare_marches(mach, edge * (1.0 + 1e-12))
-                .unwrap_err()
+                .expect_err(&format!("Mach {mach}: {edge}° plus a part in 1e12 marched"))
                 .to_string();
             assert!(err.contains("cone tables"), "Mach {mach}: {err}");
         }
         // Below the crossing it is the corner's turn that stops the march, not the tables.
-        let err = flare_marches(2.0, 27.0).unwrap_err().to_string();
+        let err = flare_marches(2.0, 27.0)
+            .expect_err("Mach 2: a 27° flare marched")
+            .to_string();
         assert!(err.contains("can't turn through"), "Mach 2: {err}");
     }
 }
