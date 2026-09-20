@@ -56,6 +56,7 @@ new record replaces it and points back. All of them are in the [decision log][de
 | [ADR-037: Body lift by Jorgensen's crossflow][adr-037] | Body lift's size at every speed from Jorgensen's crossflow drag, how his two `η` figures are combined, a boattail's share faster than sound from Washington and Pettis's measurements, and why [blunt tips moved to M1.8e7](#m1-8e7) | [Aerodynamics](physics/aero.md#body-lift) |
 | [ADR-038: Blunt tips by a Newtonian cap][adr-038] | How a nose with a blunt or vertical tip (power-series, Haack, elliptical) flies the shock-expansion method faster than sound: NASA TN D-4865's Newtonian cap and handover, the method started behind it from the tangent cone rather than the report's own start, and how both were checked | [Aerodynamics](physics/aero.md#blunt-tips) |
 | [ADR-039: A lip in a boattail's wake carries nothing][adr-039] | Why a short flare at the very base, behind a boattail, gets no normal force faster than sound, what the tunnel's pitching moment says about that, and how far the shelter reaches | [Aerodynamics](physics/aero.md#a-lip-in-a-boattails-wake) |
+| [ADR-041: A lip's shelter weighed, not switched][adr-041] | Why a lip rising out of its boattail's wake now moves a rocket between the two supersonic body models smoothly, and how big the switches that remain are | [Aerodynamics](physics/aero.md#a-lip-in-a-boattails-wake) |
 | [ADR-040: A steep boattail's correlation, and the 15% target judged][adr-040] | How steep a boattail hpr still reads its measured share for, how footnote 8 and the tube behind it were integrated by hand, and where the Arcas Robin's body alone still misses its 15% target | [Aerodynamics](physics/aero.md#the-body-alone-against-the-15-target) |
 
 ## The roadmap
@@ -155,7 +156,9 @@ missing or its status disagrees.
 | <a id="m1-8e7"></a>[M1.8e7][phase-1] | Faster than sound: blunt and vertical nose tips (power-series, Haack and elliptical noses) by a Newtonian cap ahead of the shock-expansion method | done |
 | <a id="m1-8e8"></a>[M1.8e8][phase-1] | Faster than sound: the lip behind a boattail, so that the committed Arcas Robin designs fly the shock-expansion method | done |
 | <a id="m1-8e9"></a>[M1.8e9][phase-1] | Faster than sound: a bound on the boattail angle, footnote 8's size pinned by hand, and the Arcas Robin wind tunnel's 15% target judged | done |
-| <a id="m1-8e10"></a>[M1.8e10][phase-1] | The body's normal force faster than sound jumps with small changes of shape: which of those switches are smoothed, and how big the rest are | not yet done |
+| <a id="m1-8e10"></a>[M1.8e10][phase-1] | A lip's shelter weighed as the drag buildup weighs it, instead of switching the whole body's model at a threshold, and the size of every switch that remains | done |
+| <a id="m1-8e11"></a>[M1.8e11][phase-1] | Cone slopes past TN 3527 Fig. 2's 24°, from NASA SP-3007, so a blunt or pointed tip no longer switches there | not yet done |
+| <a id="m1-8e12"></a>[M1.8e12][phase-1] | What a step in radius and a flare behind the run still switch, and how big each is | not yet done |
 | <a id="m3-1"></a>[M3.1][phase-1] | Reading OpenRocket `.ork` design files | not yet done |
 | <a id="m2-2"></a>[M2.2][phase-1] | OpenRocket as a reference program, and a corpus of designs to compare | not yet done |
 | <a id="m1-9"></a>[M1.9][phase-1] | Staging, clusters and air starts, for COTS motors | not yet done |
@@ -306,6 +309,7 @@ is the milestone that added or will add that test.
 [adr-038]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-038-blunt-and-vertical-nose-tips-faster-than-sound-by-a-newtonian-cap-the-method-started-from-the-tangent-cone-2026-09-19
 [adr-039]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-039-a-lip-in-a-boattails-wake-carries-nothing-faster-than-sound-2026-09-19
 [adr-040]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-040-a-steep-boattail-reads-its-measured-correlation-no-steeper-than-16-and-m18es-15-target-judged-2026-09-19
+[adr-041]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-041-a-lips-shelter-is-weighed-as-the-drag-buildup-weighs-it-not-switched-at-a-threshold-2026-09-20
 [decisions]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md
 [lessons]: https://github.com/nrdptel/hpr-sim/blob/main/docs/research/loft-lessons.md
 [lessons-motors]: https://github.com/nrdptel/hpr-sim/blob/main/docs/research/loft-lessons.md#motors-mass-and-design-checks

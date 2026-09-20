@@ -46,6 +46,7 @@ renumber. Supersede an entry by adding a new one that points back to it.
 | ADR-038 | Blunt and vertical nose tips faster than sound by a Newtonian cap, the method started from the tangent cone | accepted |
 | ADR-039 | A lip in a boattail's wake carries nothing faster than sound | accepted |
 | ADR-040 | A steep boattail reads its measured correlation no steeper than 16°, and M1.8e's 15% target judged | accepted |
+| ADR-041 | A lip's shelter is weighed as the drag buildup weighs it, not switched at a threshold | accepted |
 
 ---
 
@@ -3794,3 +3795,54 @@ the method at all.
   its tangent cone, how fast the pressure relaxes toward it, and the radius eq. 19 needs.
 - M1.8e's bullet is now judged in one place, with a test pinning which rows are outside; M1.8e10
   carries issue #87's model switches, the last of M1.8e's open work.
+
+## ADR-041: A lip's shelter is weighed as the drag buildup weighs it, not switched at a threshold (2026-09-20)
+
+**Context.** Issue #87 lists five places where the body's supersonic normal force is continuous in
+Mach but jumps with a tiny change of shape. All five flip the same gate — whether the
+shock-expansion method covers the body at all — so each is worth the *whole body*, not the part
+that changed. The largest was the lip's: ADR-039 let a lip ride along when the drag buildup's wake
+covered it wholly, and the aero rule read that as a threshold, `fraction >= 1`. On the tests'
+rocket at Mach 3 and 4°, drawing the lip a ten-thousandth of the boattail's drop taller took a
+third off the normal force and moved the centre of pressure 1.77 calibres forward.
+
+**Decision.**
+
+- **The weight is the wake's own share.** `crate::drag::WakeTerm` already grades a lip's shelter
+  continuously as it rises out of the wake — all of it up to a quarter of the boattail's drop in
+  diameter, none from a half, a straight line between (ADR-030, from TN D-4014 p. 6 and Cubbage).
+  The normal force now reads that same number as a weight on the method's share
+  (`SupersonicBody::shape_weight`, which multiplies the Mach join's weight) instead of a threshold
+  on it. Slender-body theory takes the rest, exactly as it does below the Mach join.
+  - The run's *shape* does not change across the band: the lip stays inside the run, carrying
+    nothing, and the weight carries the whole body to slender-body theory by the far edge. So the
+    set of parts being blended never jumps.
+  - No new judgement and no new citation: the band, and the grading across it, are the drag
+    buildup's, already decided in ADR-030.
+- **Nothing measured moves.** Both committed Arcas Robin designs have lips rising 0.17 of their
+  boattail's drop, inside the wake's full-shelter quarter, so their weight is exactly 1 and every
+  aero fixture is unchanged — checked by `cargo xtask aero --check`.
+- **The rest of #87's switches are measured, not smoothed** (`issue_87s_switches_are_this_big`).
+  On the tests' rocket at Mach 3 and 4°, each side of the threshold:
+
+  | switch | normal force | centre of pressure |
+  |---|---|---|
+  | a step in radius past a millionth of the area | −8.7% | 1.03 calibres |
+  | a flare behind the run, however small | −27.5% | 0.29 calibres |
+  | a pointed tip past TN 3527 Fig. 2's 24° | −10.4% | 1.14 calibres |
+  | a vertical tip steeper than the cap's handover to its base | −7.0% | 0.64 calibres |
+  | *a lip leaving its boattail's wake (before this ADR)* | *−33%* | *1.77 calibres* |
+
+  M1.8e10b takes the two tips, where NASA SP-3007's cone tables reach 30° and retire Fig. 2's
+  edge. The step and the flare are M1.8e10c: nothing measures what either carries faster than
+  sound, so there is nothing to blend toward and no band anyone can cite.
+
+**Consequences.**
+
+- A lip drawn taller moves a rocket between the two models smoothly. Between a quarter and a half
+  of the boattail's drop the body's normal force is part method, part slender-body theory, in the
+  wake's own proportion; dispersion and optimisation see a slope there instead of a cliff.
+- `SupersonicBody::shape_weight` is new public API, and `SupersonicBody::weight` now includes it.
+- The four remaining switches keep their sizes on record, in the guide and in this ADR, until
+  M1.8e10b and M1.8e10c close or bound them.
+

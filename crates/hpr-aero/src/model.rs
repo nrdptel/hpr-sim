@@ -151,6 +151,16 @@ pub struct SupersonicBody {
     /// The shares at `join_start_mach`, where the method starts to hold, when that lies between
     /// even rows: the table's first row.
     lead: Option<Vec<SegmentSlope>>,
+    /// How much of the method the body's shape takes, in `(0, 1]`, which multiplies the join's
+    /// weight: below 1 where a lip rides along only partly inside its boattail's wake
+    /// ([`crate::drag::WakeTerm`], [issue #87: the body's normal force jumps with small changes of
+    /// shape](https://github.com/nrdptel/hpr-sim/issues/87), [ADR-041: a lip's shelter weighed,
+    /// not switched][adr-041]). Slender-body theory takes the rest, so a
+    /// lip drawn a hair taller moves the body between the models continuously instead of
+    /// switching it.
+    ///
+    /// [adr-041]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-041-a-lips-shelter-is-weighed-as-the-drag-buildup-weighs-it-not-switched-at-a-threshold-2026-09-20
+    pub shape_weight: f64,
 }
 
 /// How a boattail that the shock-expansion method covers takes its share of the normal force
@@ -247,6 +257,10 @@ struct SupersonicRun {
     /// ([`crate::drag::WakeTerm`]): they widen the body, carry nothing faster than sound, and so
     /// the run covers them with a share of zero.
     sheltered_lips: usize,
+    /// How much of the run's shape the method takes, in `(0, 1]`: the smallest share of the wake
+    /// covering a sheltered lip (issue #87). One where no lip rides along, or where the
+    /// wake covers it wholly.
+    shape_weight: f64,
     // `segments`, `bounds_m`, `fore_m` and `boattails` hold one entry per segment: `from_design`
     // pushes all four in the same branch, and `shares` indexes them together; `shares` then adds
     // one zero for each sheltered lip.
@@ -422,6 +436,7 @@ impl SupersonicBody {
             first_step,
             rows,
             lead,
+            shape_weight: run.shape_weight,
             stationed: run
                 .bounds_m
                 .iter()
@@ -432,9 +447,11 @@ impl SupersonicBody {
         })
     }
 
-    /// The join's weight at `mach`: 0 at its start and below, 1 from its end.
+    /// The method's weight at `mach`: the join's, 0 at its start and below and 1 from its end,
+    /// times the run's share of shape ([`SupersonicBody::shape_weight`]).
     fn weight(&self, mach: f64) -> f64 {
-        ((mach - self.join_start_mach) / SUPERSONIC_JOIN_WIDTH_MACH).clamp(0.0, 1.0)
+        self.shape_weight
+            * ((mach - self.join_start_mach) / SUPERSONIC_JOIN_WIDTH_MACH).clamp(0.0, 1.0)
     }
 
     /// Covered component `index`'s share at `mach`, interpolated linearly between rows (clamped
@@ -1018,6 +1035,7 @@ impl AeroModel {
         // A lip wholly in a covered boattail's wake carries nothing faster than sound (ADR-039),
         // so the run may cover it; the drag buildup's wake already measures the shelter
         // ([`crate::drag::WakeTerm`]), and takes the lip's own drag away at the same threshold.
+        let mut shelter_weight = 1.0_f64;
         let sheltered_lips = (marched..bodies.len())
             .take_while(|&index| {
                 let (term, geometry) = body_terms_at[index];
@@ -1044,8 +1062,24 @@ impl AeroModel {
                     .aft_area_m2
                     .lt(&geometry.fore_area_m2);
                 let shoulders = geometry.aft_area_m2 > geometry.fore_area_m2;
-                (!steps || wake.step_fraction >= 1.0)
-                    && (!shoulders || wake.shoulder_fraction >= 1.0)
+                // How much of it the wake covers. The drag buildup grades this continuously as
+                // the lip rises out of the wake (`crate::drag::WakeTerm`, a quarter of the
+                // boattail's drop in diameter to a half), and the normal force now reads the same
+                // number rather than a threshold on it: the method's share is weighed by it
+                // ([`SupersonicBody::weight`]), so a lip drawn a hair taller no longer switches
+                // the whole body between the two models (issue #87, ADR-041 in DECISIONS.md).
+                let mut covered = 1.0_f64;
+                if steps {
+                    covered = covered.min(wake.step_fraction);
+                }
+                if shoulders {
+                    covered = covered.min(wake.shoulder_fraction);
+                }
+                if covered <= 0.0 {
+                    return false;
+                }
+                shelter_weight = shelter_weight.min(covered);
+                true
             })
             .count();
         let covered = marched + sheltered_lips;
@@ -1059,6 +1093,7 @@ impl AeroModel {
             fore_m: supersonic_fore,
             boattails: supersonic_boattails,
             sheltered_lips,
+            shape_weight: shelter_weight,
         });
         Ok(Self {
             reference_area_m2,
@@ -2668,9 +2703,10 @@ mod tests {
                 }
             }
         }
-        // The shelter's threshold: the drag buildup's wake takes a lip rising a quarter of the
-        // boattail's drop in diameter wholly (`crate::drag::WAKE_FULL_RISE`), and one rising half
-        // of it not at all. The method covers the first and refuses the body of the second.
+        // The shelter, weighed. The drag buildup's wake takes a lip rising a quarter of the
+        // boattail's drop in diameter wholly (`crate::drag::WAKE_FULL_RISE`) and one rising half
+        // of it not at all, grading between; the method reads the same number as its weight, so
+        // the body moves between the two models continuously as the lip is drawn taller.
         let lipped = |rise: f64| {
             let mut rocket = crate::testing::finned_rocket(4);
             // The nose, the tube and the boattail, which drops from 0.027 m to 0.022 m in radius:
@@ -2686,9 +2722,6 @@ mod tests {
         };
         assert_eq!(lipped(0.2).supersonic_body().map(|t| t.covered), Some(4));
         assert!(lipped(0.6).supersonic_body().is_none());
-        // The threshold is a switch in shape, of issue #87's family, and this is its size: at
-        // Mach 3 and 4° the whole rocket's normal force falls by a third across it and its centre
-        // of pressure moves 1.8 calibres forward.
         let at = |rise: f64| {
             let model = lipped(rise);
             let f = model
@@ -2696,17 +2729,40 @@ mod tests {
                 .unwrap();
             (f.coefficient, f.cp_station_m.unwrap())
         };
-        let (sheltered, bare) = (at(0.2499), at(0.2501));
-        assert_eq!(lipped(0.2499).supersonic_body().map(|t| t.covered), Some(4));
-        assert!(lipped(0.2501).supersonic_body().is_none());
+        // Across the old threshold, a quarter of the drop: before M1.8e10a the whole rocket's
+        // normal force fell by a third here and its centre of pressure jumped 1.8 calibres
+        // forward (issue #87). What is left is the weight ramping off its clamp, proportional to
+        // the change in shape — a ten-thousandth of the force over a ten-thousandth of the drop.
+        let (below, above) = (at(0.2499), at(0.2501));
         assert!(
-            (sheltered.0 - 0.2976).abs() < 5e-4 && (bare.0 - 0.1995).abs() < 5e-4,
-            "{sheltered:?} against {bare:?}"
+            (above.0 - below.0).abs() <= 1e-3 * below.0.abs()
+                && (above.1 - below.1).abs() <= 1e-3 * below.1.abs(),
+            "{below:?} to {above:?} across the wake's full-shelter rise"
+        );
+        // The weight is the wake's own share, and it carries the body to slender-body theory by
+        // the far edge: at half the drop the method is gone, and just inside it is nearly gone.
+        assert!((lipped(0.25).supersonic_body().unwrap().shape_weight - 1.0).abs() < 1e-12);
+        assert!(
+            (lipped(0.375).supersonic_body().unwrap().shape_weight - 0.5).abs() < 1e-9,
+            "half way out of the wake"
         );
         assert!(
-            (sheltered.1 - bare.1 - 0.0958).abs() < 5e-4,
-            "{sheltered:?} against {bare:?}"
+            lipped(0.5).supersonic_body().unwrap().shape_weight.abs() < 1e-12,
+            "at the wake's far edge the method has no weight left"
         );
+        assert!(
+            lipped(0.55).supersonic_body().is_none(),
+            "past the wake there is no run at all"
+        );
+        // And no jump anywhere across the band, at either end or inside it.
+        for rise in [0.2499_f64, 0.25, 0.3, 0.375, 0.45, 0.4999] {
+            let (low, high) = (at(rise - 1e-9), at(rise + 1e-9));
+            assert!(
+                (high.0 - low.0).abs() <= 1e-7 * low.0.abs().max(1.0)
+                    && (high.1 - low.1).abs() <= 1e-7 * low.1.abs().max(1.0),
+                "at a rise of {rise}: {low:?} to {high:?}"
+            );
+        }
         // The shelter follows the geometry, not the drag buildup's tables: a lip out of the wake
         // is refused whatever its shape, including one whose drag curve the buildup has none for
         // (a Haack series past C = 1/3; the physics review found this).
@@ -2717,8 +2773,8 @@ mod tests {
             let Part::Transition(lip) = &mut components[last].part else {
                 unreachable!("the committed design ends in its lip")
             };
-            // Raised to 0.40 of the boattail's drop, out of the wake.
-            lip.aft_radius_m = lip.fore_radius_m + 0.40 * (0.028575 - 0.0166116);
+            // Raised to 0.60 of the boattail's drop, past the wake's far edge.
+            lip.aft_radius_m = lip.fore_radius_m + 0.60 * (0.028575 - 0.0166116);
             lip.shape = shape;
             assert!(
                 model(&rocket).supersonic_body().is_none(),
@@ -3643,6 +3699,107 @@ mod tests {
             for (v, (fore, aft)) in values.iter().zip(bounds) {
                 assert!(v[2] > fore && v[2] < aft, "{v:?} not in {fore} to {aft}");
             }
+        }
+    }
+
+    /// The size of each switch issue #87 lists, measured on one rocket at Mach 3 and 4°: the
+    /// whole rocket's normal force and centre of pressure either side of the threshold, as a
+    /// share and in calibres. The lip's is gone since M1.8e10; these are what remain, and
+    /// ADR-041 and the guide quote them from here.
+    #[test]
+    fn issue_87s_switches_are_this_big() {
+        let at = |rocket: &hpr_design::Rocket| {
+            let model = model(rocket);
+            let force = model
+                .normal_force(&flow(3.0, 4f64.to_radians(), 0.0))
+                .unwrap();
+            (
+                force.coefficient,
+                force.cp_station_m.unwrap() / model.reference_diameter_m(),
+                model.supersonic_body().is_some(),
+            )
+        };
+        // A step in radius, past a millionth of the cylinder's area: the run stops at it.
+        let stepped = |drop_m: f64| {
+            let mut rocket = straight_rocket();
+            // The nose and its first tubes stay at 0.027 m; the last tube steps down, which is
+            // where the run stops once the step passes a millionth of the cylinder's area.
+            rocket.stages[0].components[3].part = body_part(0.3, 0.027 - drop_m, 0.027 - drop_m);
+            rocket
+        };
+        // A flare behind the run, however small.
+        let flared = |rise_m: f64| {
+            let mut rocket = crate::testing::finned_rocket(4);
+            rocket.stages[0].components.truncate(3);
+            rocket.stages[0].components.push(component(
+                "flare",
+                body_part(1.0, 0.022, 0.022 + rise_m),
+                None,
+            ));
+            rocket
+        };
+        // A pointed tip at TN 3527 Fig. 2's edge, 24°.
+        let coned = |half_angle_deg: f64| {
+            let mut rocket = straight_rocket();
+            rocket.stages[0].components[0].part = nose(
+                NoseShape::Conical {},
+                0.027 / half_angle_deg.to_radians().tan(),
+                0.027,
+            );
+            rocket
+        };
+        // A vertical tip whose base slope is steeper than the cap's handover, at 24°.
+        let blunt = |length_m: f64| {
+            let mut rocket = straight_rocket();
+            rocket.stages[0].components[0].part =
+                nose(NoseShape::PowerSeries { exponent: 0.5 }, length_m, 0.027);
+            rocket
+        };
+        let at_16 = 0.027 / 24.0_f64.to_radians().tan();
+        for d in [0.0_f64, 1e-12, 1e-10, 1e-9, 5e-9, 1.3e-8, 1.4e-8] {
+            println!(
+                "PROBE step {d:e} covered {:?}",
+                model(&stepped(d)).supersonic_body().map(|t| t.covered)
+            );
+        }
+        // (what it is, the covered side, the bare side); a side is (force, calibres, covered).
+        type Side = (f64, f64, bool);
+        let switches: [(&str, Side, Side); 4] = [
+            ("a step in radius", at(&stepped(1e-12)), at(&stepped(1e-10))),
+            (
+                "a flare behind the run",
+                at(&flared(1e-12)),
+                at(&flared(1e-10)),
+            ),
+            (
+                "a pointed tip past 24°",
+                at(&coned(23.999)),
+                at(&coned(24.002)),
+            ),
+            (
+                "a vertical tip steeper than the handover",
+                at(&blunt(0.5 * at_16 * 1.0002)),
+                at(&blunt(0.5 * at_16 * 0.9998)),
+            ),
+        ];
+        for (what, covered, bare) in switches {
+            assert!(
+                covered.2 && !bare.2,
+                "{what}: the method should cover one side only ({covered:?}, {bare:?})"
+            );
+            let force = (bare.0 / covered.0 - 1.0).abs();
+            let calibers = (bare.1 - covered.1).abs();
+            let (want_force, want_calibers) = match what {
+                "a step in radius" => (0.0865, 1.0285),
+                "a flare behind the run" => (0.2749, 0.2872),
+                "a pointed tip past 24°" => (0.1041, 1.1395),
+                _ => (0.0699, 0.6383),
+            };
+            assert!(
+                (force - want_force).abs() < 5e-4 && (calibers - want_calibers).abs() < 5e-4,
+                "{what}: the force moves {force:.4} and the centre of pressure {calibers:.4} \
+                 calibres, against {want_force} and {want_calibers}"
+            );
         }
     }
 

@@ -563,6 +563,26 @@ Anything else (a flare or step out of a wake, a motor retainer behind a step dow
 ends the run — or a nose steeper than the cap's handover all the way to its base) keeps
 slender-body theory for its whole body at every speed.
 
+**Where that choice still jumps.** It is one choice for the whole body, so wherever it turns on a
+threshold, a rocket either side of that threshold gets two different models — and the difference is
+the whole body's, not the part that changed. On the tests' rocket at Mach 3 and 4°, each remaining
+threshold is worth this much (`issue_87s_switches_are_this_big`, and
+[issue #87: the body's normal force jumps with small changes of shape](https://github.com/nrdptel/hpr-sim/issues/87)):
+
+| drawing this, a hair past its threshold | normal force | centre of pressure |
+|---|---|---|
+| a step in radius, past a millionth of the body's area | −8.7% | 1.03 calibres |
+| a flare behind the run, however small | −27.5% | 0.29 calibres |
+| a pointed tip steeper than TN 3527 Fig. 2's 24° | −10.4% | 1.14 calibres |
+| a vertical tip steeper than the cap's handover to its base | −7.0% | 0.64 calibres |
+| *a lip leaving its boattail's wake, before [M1.8e10](../decisions-and-roadmap.md#m1-8e10)* | *−33%* | *1.77 calibres* |
+
+The lip's is gone: it is now weighed, not switched (above). The two tips are next
+([M1.8e11](../decisions-and-roadmap.md#m1-8e11)), where a second source's cone tables reach past
+Fig. 2's edge. For the step and the flare nothing measures what they carry faster than sound, so
+there is nothing to blend toward yet ([M1.8e12](../decisions-and-roadmap.md#m1-8e12)). Until then,
+a rocket whose shape sits near one of those thresholds is worth checking on both sides.
+
 **What a flight takes.** The method covers the nose, when it is the first body (a blunt or vertical
 tip behind its [Newtonian cap](#blunt-tips)), the body tubes straight behind it at the same radius,
 and [boattails](../glossary.md#boattail)
@@ -805,8 +825,17 @@ Mach number where the method takes over; below the join it keeps slender-body th
 drag model does ([ADR-030][adr-030], which takes the same lip's drag away): wholly in the wake up
 to a rise of a quarter of the boattail's drop in diameter, not at all from half of it, and the wake
 fades over any tube between them. The decision record on the lip, [ADR-039][adr-039], sets out the
-readings behind it. A lip that rises further, or sits further back, still keeps the whole body on
-slender-body theory, as any other flare does.
+readings behind it.
+
+**A lip part way out of the wake.** Between that quarter and that half, the wake covers the lip
+only partly, and the drag model has always graded it so. Since
+[M1.8e10](../decisions-and-roadmap.md#m1-8e10) the normal force reads the same number as a
+**weight**: the method's share counts for the wake's share of the lip, slender-body theory for the
+rest, exactly as they blend across the Mach join ([ADR-041][adr-041]). So a lip drawn a little
+taller moves a rocket between the two models a little, instead of switching the whole body at a
+threshold — which it used to do, by a third of the normal force and 1.77 calibres of centre of
+pressure on the tests' rocket at Mach 3. A lip rising half the drop or more, or sitting further
+back, keeps the whole body on slender-body theory, as any other flare does.
 
 **Why nothing.** Three readings point the same way.
 
@@ -3017,4 +3046,5 @@ ellipse's integrals ([N09] eq. 3.70–3.71); the supersonic forcing and damping 
 [adr-038]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-038-blunt-and-vertical-nose-tips-faster-than-sound-by-a-newtonian-cap-the-method-started-from-the-tangent-cone-2026-09-19
 [adr-039]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-039-a-lip-in-a-boattails-wake-carries-nothing-faster-than-sound-2026-09-19
 [adr-040]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-040-a-steep-boattail-reads-its-measured-correlation-no-steeper-than-16-and-m18es-15-target-judged-2026-09-19
+[adr-041]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-041-a-lips-shelter-is-weighed-as-the-drag-buildup-weighs-it-not-switched-at-a-threshold-2026-09-20
 [gap-fixture]: https://github.com/nrdptel/hpr-sim/blob/main/validation/fixtures/aero/arcas-robin-gap.json

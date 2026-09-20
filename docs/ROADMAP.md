@@ -32,13 +32,11 @@
 
 - [x] **M0.2 Reference library.**
   - `cargo xtask refs fetch|verify|doctor`, driven by `validation/refs.lock.toml`, populates
-    `refs/` with RocketPy (pinned tag; shallow clone), the OpenRocket 24.12 jar (sha256 pinned),
-    the public PDFs listed in `VALIDATION.md`, `openrocket-database` (pinned commit), ThrustCurve
-    metadata and motor.fusionspace.co snapshots, and `fusionspace-loft` (public, MIT) plus the
-    private `loft-fixtures` repo (cloned by `scripts/preflight.sh` or with the user's `gh`
-    credentials; skipped with a note when unavailable, as in CI).
-  - A `uv`-managed Python venv in `refs/venv` with `rocketpy==1.13.0` and JPype; a
-    Java 17 check.
+    `refs/` with RocketPy (pinned tag), the OpenRocket 24.12 jar (sha256 pinned), the public PDFs
+    listed in `VALIDATION.md`, `openrocket-database` (pinned commit), ThrustCurve and
+    motor.fusionspace.co snapshots, and `fusionspace-loft` plus the private `loft-fixtures` repo
+    (skipped with a note when unavailable, as in CI).
+  - A `uv`-managed Python venv in `refs/venv` with `rocketpy==1.13.0` and JPype; a Java 17 check.
 
   *Done when:*
   - `fetch` is idempotent.
@@ -59,13 +57,11 @@
 - [x] **M0.4 A documentation site people can read.** Added by Neer on 2026-09-17 (VISION V15,
   CLAUDE.md "Documentation is a deliverable"). Retrofit everything shipped so far; later milestones
   keep the site current. Split it into increments if it is bigger than one session.
-  - Tool and layout by ADR (mdBook first); each page has one source, and equations render on the
-    site and on GitHub. Workspace rustdoc is published next to the guide, each linking the other.
-  - Pages: *Start here*; *Getting started* (fly a first rocket with a runnable `examples/`
-    program); *How a flight is simulated* (pad to landing, with a diagram); one page per model,
-    each opening with *In short* (what it models, its source, how well it is validated, what it
-    leaves out); *Accuracy* (every validation result, gaps included); *Glossary*; *Checking a
-    claim* (tracing a number to its source, test and validation); the decisions; the roadmap.
+  Tool and layout by ADR (mdBook first); each page has one source, equations render on the site
+  and on GitHub, and workspace rustdoc is published next to the guide, each linking the other.
+  Pages: *Start here*; *Getting started* (a runnable first flight); *How a flight is simulated*;
+  one page per model, each opening with *In short*; *Accuracy* (every result, gaps included);
+  *Glossary*; *Checking a claim*; the decisions; the roadmap.
 
   *Done when:* split on 2026-09-17 into M0.4a to M0.4e, which carry its four done-when bullets
   unchanged (M0.4a checks links and bare labels, M0.4b *In short*). Done 2026-09-18, with M0.4d's
@@ -140,11 +136,9 @@
   - `.eng` and `.rse` readers and writers (clean room, from the public specs).
   - Motor model: thrust(t), propellant mass by impulse fraction (default) with an optional
     grain-geometry model; CG and inertia over time; nozzle exit area.
-  - Delays (including plugged); case/retainer mass.
-  - Offline catalog type with per-curve provenance and license. Bundle only curves with clear
-    terms; the rest are fetched and cached later (M5).
-  - Loft lessons: L36, L37, L38, L39, L40, L41, L42, L43 (tests named in
-    `docs/research/loft-lessons.md`).
+  - Delays (including plugged); case/retainer mass. Offline catalog type with per-curve
+    provenance and license; bundle only curves with clear terms, the rest cached later (M5).
+  - Loft lessons: L36, L37, L38, L39, L40, L41, L42, L43 (`docs/research/loft-lessons.md`).
 
   *Done when:*
   - For every bundled curve, total impulse, average thrust and burn time match the ThrustCurve
@@ -159,9 +153,8 @@
     (trapezoidal, elliptical, freeform, tube fins); launch lugs, rail buttons; inner tubes, motor
     mounts, centering rings, bulkheads; mass components; parachutes, streamers, shock cords.
   - Cited clean-room materials; stages and configurations; mass, CG and full inertia tensor from
-    geometry, with overrides; structural checks (motor fits the mount, etc.) with typed warnings.
-  - A small public test-design set, `validation/designs/`, from the RocketPy examples and
-    synthetic rockets, so tests never snapshot the private corpus.
+    geometry, with overrides; structural checks with typed warnings. A small public test-design
+    set, `validation/designs/`, so tests never snapshot the private corpus.
 
   *Done when:*
   - Analytic volume, area and CG tests pass for every shape.
@@ -309,19 +302,14 @@
     mass under its devices; on the two-stage test design both land (2.11 m/s under a canopy, 16.74
     m/s tumbling), masses to 1e-12, momenta to 1e-9. Every body carries a device.
 
-- [x] **M2.1 Validation harness plus the RocketPy code-to-code suite.** This is the first
-  end-to-end milestone.
-  - `hpr-validate` and `cargo xtask validate [--fast]`; case files (TOML) and reference JSON with
-    provenance; Markdown and JSON reports; generator scripts in `validation/oracles/rocketpy/`.
-  - Metrics: apogee and time to apogee; maximum velocity, Mach and acceleration; rail-exit
-    velocity; burnout altitude and velocity; descent rates; landing offset; time-series RMS after
-    alignment.
-  - Rebuild at least 5 RocketPy example rockets in hpr-sim (for example Calisto, Bella Lui,
-    NDRT 2020, Prometheus, Juno III) with a matching environment, and run each in two modes:
-    **same-drag** (hpr uses the oracle's Cd(M) tables, which isolates dynamics, environment and
-    motor) and **predicted** (hpr's own aero; supersonic gaps are expected until M1.8 and are
-    reported, not hidden).
-  - A CI job compares against the stored references.
+- [x] **M2.1 Validation harness plus the RocketPy code-to-code suite.** The first end-to-end
+  milestone: `hpr-validate` and `cargo xtask validate [--fast]`, TOML cases and reference JSON with
+  provenance, Markdown and JSON reports, oracle scripts in `validation/oracles/rocketpy/`. Metrics
+  cover apogee and its time, maximum velocity, Mach and acceleration, rail exit, burnout, descent
+  rates, landing offset and time-series RMS after alignment. At least five RocketPy example
+  rockets fly in two modes — **same-drag**, which isolates dynamics, environment and motor, and
+  **predicted**, hpr's own aero, whose supersonic gaps are reported rather than hidden — and CI
+  compares against the stored references.
 
   *Done when:*
   - At least 5 cases pass their same-drag tolerances.
@@ -561,7 +549,7 @@
     with body lift. A cited supersonic method for noses, boattails and crossflow. *Done when:*
     the Arcas Robin's body-alone `C_Nα` (fins off, TN D-4014) is within 15% at every Mach number
     from 1.5, and both configurations' `C_Nα` within 15% at Mach 3.96 and 4.63, or an ADR records
-    why not with the gap in the report. Split below into M1.8e1 to e10; e9 judged this bullet.
+    why not with the gap in the report. Split below into M1.8e1 to e12; e9 judged this bullet.
 
     - [x] **M1.8e1 The second-order shock-expansion method.** NACA TN 3527's method for a
       pointed body's `C_Nα` and CP at `α → 0`, the cylinder's lift behind the nose included; its
@@ -615,9 +603,21 @@
       ADR records why not with the gap in the report.
       *Result:* met; the correlation is read no steeper than 16° and the boattail with its tube
       integrated by hand; the bullet met at Mach 3.96 and 4.63, the body alone outside on six rows.
-    - [ ] **M1.8e10 #87's model switches.** The body's supersonic normal force is continuous in
-      Mach but jumps with small changes of shape. *Done when:* #87 closed, or an ADR records which
-      switches remain, each with its measured size.
+    - [x] **M1.8e10 The lip's shelter, weighed not switched.** #87's five switches all flip one
+      gate — whether the method covers the body at all — so each is worth the whole body. The
+      largest is the lip's, and the drag buildup already grades its shelter continuously
+      (`share_by_rise`, a quarter to a half of the boattail's drop) where the normal force reads
+      a threshold. *Done when:* every switch's size is measured by a test; the lip's is gone, its
+      two sides agreeing across the old threshold in proportion to the change in shape; no
+      committed fixture moves; an ADR records the weight.
+      *Result:* met (ADR-041); the lip's switch (−33%, 1.77 calibres) is a weight, and the four
+      that remain are measured: a step −8.7%/1.03 cal, a flare −27.5%/0.29 cal, a pointed tip
+      −10.4%/1.14 cal, a vertical tip −7.0%/0.64 cal.
+    - [ ] **M1.8e11 Fig. 2's edge, from Sims.** NASA SP-3007 (already pinned) tabulates cone slopes
+      to 30°, retiring both tip switches at TN 3527 Fig. 2's 24°. *Done when:* a fineness-1 cone
+      flies the method; both tip switches' sides agree to 1e-9; fixtures move only with the guide.
+    - [ ] **M1.8e12 The step and the flare.** *Done when:* #87 closed or narrowed to these two,
+      each remaining switch's measured size in an ADR and the guide.
 
 - [ ] **M3.1 OpenRocket `.ork` import.**
   - Handles zip, gz and raw XML, schema 1.0 to 1.10, plus the documented 1.11 additions.
