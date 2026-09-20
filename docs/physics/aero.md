@@ -1002,9 +1002,10 @@ compared with a measured flare force — that is
 [M1.8e18](../decisions-and-roadmap.md#m1-8e18), which commits TN D-4865 model 2's readings.
 
 Until then, a rocket with a flare keeps [slender-body theory](../glossary.md#slender-body-theory)
-for its whole body, which reads low past Mach 3, and drawing one costs the body about 27.5% of its
-normal force and 0.29 calibres of balance relative to the same rocket without it
-([What a flight takes](#the-body-faster-than-sound-in-a-flight) above).
+for its whole body, which reads low past Mach 3. Adding one therefore switches the whole body's
+model: on the tests' rocket at Mach 3 and 4° that is worth −27.5% of its normal force and 0.29
+calibres of centre of pressure, the third row of
+[Where that choice still jumps](#the-body-faster-than-sound-in-a-flight) above.
 
 Second-order shock-expansion turns every corner
 isentropically — no entropy rise, so no shock — with the
