@@ -430,10 +430,10 @@
   "generator": "cargo xtask aero (xtask/src/aero_blunt.rs)",
   "handover_caps": {
     "binds_from_mach": [
-      2.061429987854372,
-      2.1927755450203055,
-      2.3433030908552555,
-      2.5192034260416047
+      2.06143,
+      2.192776,
+      2.343303,
+      2.519203
     ],
     "caps": [
       "24",
@@ -461,82 +461,82 @@
             "24": {
               "elements": {
                 "10": {
-                  "c_n_alpha_per_rad": 2.5307277481414303,
-                  "cp_calibers": 3.0394316039299407,
+                  "c_n_alpha_per_rad": 2.530728,
+                  "cp_calibers": 3.039432,
                   "reduced_elements": 0
                 },
                 "160": {
-                  "c_n_alpha_per_rad": 2.5317030402143734,
-                  "cp_calibers": 3.0401259297572376,
+                  "c_n_alpha_per_rad": 2.531703,
+                  "cp_calibers": 3.040126,
                   "reduced_elements": 0
                 },
                 "40": {
-                  "c_n_alpha_per_rad": 2.5316565726443008,
-                  "cp_calibers": 3.040074789963543,
+                  "c_n_alpha_per_rad": 2.531657,
+                  "cp_calibers": 3.040075,
                   "reduced_elements": 0
                 }
               },
-              "handover_deg": 12.112668885838591
+              "handover_deg": 12.112669
             },
             "26": {
               "elements": {
                 "10": {
-                  "c_n_alpha_per_rad": 2.5307277481414303,
-                  "cp_calibers": 3.0394316039299407,
+                  "c_n_alpha_per_rad": 2.530728,
+                  "cp_calibers": 3.039432,
                   "reduced_elements": 0
                 },
                 "160": {
-                  "c_n_alpha_per_rad": 2.5317030402143734,
-                  "cp_calibers": 3.0401259297572376,
+                  "c_n_alpha_per_rad": 2.531703,
+                  "cp_calibers": 3.040126,
                   "reduced_elements": 0
                 },
                 "40": {
-                  "c_n_alpha_per_rad": 2.5316565726443008,
-                  "cp_calibers": 3.040074789963543,
+                  "c_n_alpha_per_rad": 2.531657,
+                  "cp_calibers": 3.040075,
                   "reduced_elements": 0
                 }
               },
-              "handover_deg": 12.112668885838591
+              "handover_deg": 12.112669
             },
             "28": {
               "elements": {
                 "10": {
-                  "c_n_alpha_per_rad": 2.5307277481414303,
-                  "cp_calibers": 3.0394316039299407,
+                  "c_n_alpha_per_rad": 2.530728,
+                  "cp_calibers": 3.039432,
                   "reduced_elements": 0
                 },
                 "160": {
-                  "c_n_alpha_per_rad": 2.5317030402143734,
-                  "cp_calibers": 3.0401259297572376,
+                  "c_n_alpha_per_rad": 2.531703,
+                  "cp_calibers": 3.040126,
                   "reduced_elements": 0
                 },
                 "40": {
-                  "c_n_alpha_per_rad": 2.5316565726443008,
-                  "cp_calibers": 3.040074789963543,
+                  "c_n_alpha_per_rad": 2.531657,
+                  "cp_calibers": 3.040075,
                   "reduced_elements": 0
                 }
               },
-              "handover_deg": 12.112668885838591
+              "handover_deg": 12.112669
             },
             "30": {
               "elements": {
                 "10": {
-                  "c_n_alpha_per_rad": 2.5307277481414303,
-                  "cp_calibers": 3.0394316039299407,
+                  "c_n_alpha_per_rad": 2.530728,
+                  "cp_calibers": 3.039432,
                   "reduced_elements": 0
                 },
                 "160": {
-                  "c_n_alpha_per_rad": 2.5317030402143734,
-                  "cp_calibers": 3.0401259297572376,
+                  "c_n_alpha_per_rad": 2.531703,
+                  "cp_calibers": 3.040126,
                   "reduced_elements": 0
                 },
                 "40": {
-                  "c_n_alpha_per_rad": 2.5316565726443008,
-                  "cp_calibers": 3.040074789963543,
+                  "c_n_alpha_per_rad": 2.531657,
+                  "cp_calibers": 3.040075,
                   "reduced_elements": 0
                 }
               },
-              "handover_deg": 12.112668885838591
+              "handover_deg": 12.112669
             }
           },
           "mach": 1.5
@@ -546,82 +546,82 @@
             "24": {
               "elements": {
                 "10": {
-                  "c_n_alpha_per_rad": 2.69689693237289,
-                  "cp_calibers": 3.2138318572729303,
+                  "c_n_alpha_per_rad": 2.696897,
+                  "cp_calibers": 3.213832,
                   "reduced_elements": 0
                 },
                 "160": {
-                  "c_n_alpha_per_rad": 2.701531125970003,
-                  "cp_calibers": 3.2109208986381033,
+                  "c_n_alpha_per_rad": 2.701531,
+                  "cp_calibers": 3.210921,
                   "reduced_elements": 0
                 },
                 "40": {
-                  "c_n_alpha_per_rad": 2.7011980522588876,
-                  "cp_calibers": 3.2111658928433604,
+                  "c_n_alpha_per_rad": 2.701198,
+                  "cp_calibers": 3.211166,
                   "reduced_elements": 0
                 }
               },
-              "handover_deg": 19.183270988090058
+              "handover_deg": 19.183271
             },
             "26": {
               "elements": {
                 "10": {
-                  "c_n_alpha_per_rad": 2.69689693237289,
-                  "cp_calibers": 3.2138318572729303,
+                  "c_n_alpha_per_rad": 2.696897,
+                  "cp_calibers": 3.213832,
                   "reduced_elements": 0
                 },
                 "160": {
-                  "c_n_alpha_per_rad": 2.701531125970003,
-                  "cp_calibers": 3.2109208986381033,
+                  "c_n_alpha_per_rad": 2.701531,
+                  "cp_calibers": 3.210921,
                   "reduced_elements": 0
                 },
                 "40": {
-                  "c_n_alpha_per_rad": 2.7011980522588876,
-                  "cp_calibers": 3.2111658928433604,
+                  "c_n_alpha_per_rad": 2.701198,
+                  "cp_calibers": 3.211166,
                   "reduced_elements": 0
                 }
               },
-              "handover_deg": 19.183270988090058
+              "handover_deg": 19.183271
             },
             "28": {
               "elements": {
                 "10": {
-                  "c_n_alpha_per_rad": 2.69689693237289,
-                  "cp_calibers": 3.2138318572729303,
+                  "c_n_alpha_per_rad": 2.696897,
+                  "cp_calibers": 3.213832,
                   "reduced_elements": 0
                 },
                 "160": {
-                  "c_n_alpha_per_rad": 2.701531125970003,
-                  "cp_calibers": 3.2109208986381033,
+                  "c_n_alpha_per_rad": 2.701531,
+                  "cp_calibers": 3.210921,
                   "reduced_elements": 0
                 },
                 "40": {
-                  "c_n_alpha_per_rad": 2.7011980522588876,
-                  "cp_calibers": 3.2111658928433604,
+                  "c_n_alpha_per_rad": 2.701198,
+                  "cp_calibers": 3.211166,
                   "reduced_elements": 0
                 }
               },
-              "handover_deg": 19.183270988090058
+              "handover_deg": 19.183271
             },
             "30": {
               "elements": {
                 "10": {
-                  "c_n_alpha_per_rad": 2.69689693237289,
-                  "cp_calibers": 3.2138318572729303,
+                  "c_n_alpha_per_rad": 2.696897,
+                  "cp_calibers": 3.213832,
                   "reduced_elements": 0
                 },
                 "160": {
-                  "c_n_alpha_per_rad": 2.701531125970003,
-                  "cp_calibers": 3.2109208986381033,
+                  "c_n_alpha_per_rad": 2.701531,
+                  "cp_calibers": 3.210921,
                   "reduced_elements": 0
                 },
                 "40": {
-                  "c_n_alpha_per_rad": 2.7011980522588876,
-                  "cp_calibers": 3.2111658928433604,
+                  "c_n_alpha_per_rad": 2.701198,
+                  "cp_calibers": 3.211166,
                   "reduced_elements": 0
                 }
               },
-              "handover_deg": 19.183270988090058
+              "handover_deg": 19.183271
             }
           },
           "mach": 1.8
@@ -631,18 +631,18 @@
             "24": {
               "elements": {
                 "10": {
-                  "c_n_alpha_per_rad": 2.8727234052420547,
-                  "cp_calibers": 3.469008121307883,
+                  "c_n_alpha_per_rad": 2.872723,
+                  "cp_calibers": 3.469008,
                   "reduced_elements": 0
                 },
                 "160": {
-                  "c_n_alpha_per_rad": 2.8808810109054765,
-                  "cp_calibers": 3.4619683596489126,
+                  "c_n_alpha_per_rad": 2.880881,
+                  "cp_calibers": 3.461968,
                   "reduced_elements": 0
                 },
                 "40": {
-                  "c_n_alpha_per_rad": 2.8801447052661318,
-                  "cp_calibers": 3.4626860670846287,
+                  "c_n_alpha_per_rad": 2.880145,
+                  "cp_calibers": 3.462686,
                   "reduced_elements": 0
                 }
               },
@@ -651,18 +651,18 @@
             "26": {
               "elements": {
                 "10": {
-                  "c_n_alpha_per_rad": 2.8610777683818354,
-                  "cp_calibers": 3.458669338291013,
+                  "c_n_alpha_per_rad": 2.861078,
+                  "cp_calibers": 3.458669,
                   "reduced_elements": 0
                 },
                 "160": {
-                  "c_n_alpha_per_rad": 2.8708016328283796,
-                  "cp_calibers": 3.4498744054522335,
+                  "c_n_alpha_per_rad": 2.870802,
+                  "cp_calibers": 3.449874,
                   "reduced_elements": 0
                 },
                 "40": {
-                  "c_n_alpha_per_rad": 2.8698431661075197,
-                  "cp_calibers": 3.4508481751207563,
+                  "c_n_alpha_per_rad": 2.869843,
+                  "cp_calibers": 3.450848,
                   "reduced_elements": 0
                 }
               },
@@ -671,42 +671,42 @@
             "28": {
               "elements": {
                 "10": {
-                  "c_n_alpha_per_rad": 2.8514622238267586,
-                  "cp_calibers": 3.449756460316171,
+                  "c_n_alpha_per_rad": 2.851462,
+                  "cp_calibers": 3.449756,
                   "reduced_elements": 0
                 },
                 "160": {
-                  "c_n_alpha_per_rad": 2.8622922306718954,
-                  "cp_calibers": 3.439717323934522,
+                  "c_n_alpha_per_rad": 2.862292,
+                  "cp_calibers": 3.439717,
                   "reduced_elements": 0
                 },
                 "40": {
-                  "c_n_alpha_per_rad": 2.8611687797383833,
-                  "cp_calibers": 3.440881786519681,
+                  "c_n_alpha_per_rad": 2.861169,
+                  "cp_calibers": 3.440882,
                   "reduced_elements": 0
                 }
               },
-              "handover_deg": 27.454072477626156
+              "handover_deg": 27.454072
             },
             "30": {
               "elements": {
                 "10": {
-                  "c_n_alpha_per_rad": 2.8514622238267586,
-                  "cp_calibers": 3.449756460316171,
+                  "c_n_alpha_per_rad": 2.851462,
+                  "cp_calibers": 3.449756,
                   "reduced_elements": 0
                 },
                 "160": {
-                  "c_n_alpha_per_rad": 2.8622922306718954,
-                  "cp_calibers": 3.439717323934522,
+                  "c_n_alpha_per_rad": 2.862292,
+                  "cp_calibers": 3.439717,
                   "reduced_elements": 0
                 },
                 "40": {
-                  "c_n_alpha_per_rad": 2.8611687797383833,
-                  "cp_calibers": 3.440881786519681,
+                  "c_n_alpha_per_rad": 2.861169,
+                  "cp_calibers": 3.440882,
                   "reduced_elements": 0
                 }
               },
-              "handover_deg": 27.454072477626156
+              "handover_deg": 27.454072
             }
           },
           "mach": 2.3
@@ -716,18 +716,18 @@
             "24": {
               "elements": {
                 "10": {
-                  "c_n_alpha_per_rad": 3.020752998435366,
-                  "cp_calibers": 3.740239669957483,
+                  "c_n_alpha_per_rad": 3.020753,
+                  "cp_calibers": 3.74024,
                   "reduced_elements": 0
                 },
                 "160": {
-                  "c_n_alpha_per_rad": 3.0291329755429413,
-                  "cp_calibers": 3.732647691829091,
+                  "c_n_alpha_per_rad": 3.029133,
+                  "cp_calibers": 3.732648,
                   "reduced_elements": 0
                 },
                 "40": {
-                  "c_n_alpha_per_rad": 3.028383983272461,
-                  "cp_calibers": 3.7334003727074627,
+                  "c_n_alpha_per_rad": 3.028384,
+                  "cp_calibers": 3.7334,
                   "reduced_elements": 0
                 }
               },
@@ -736,18 +736,18 @@
             "26": {
               "elements": {
                 "10": {
-                  "c_n_alpha_per_rad": 2.9970214755942055,
-                  "cp_calibers": 3.713046498313913,
+                  "c_n_alpha_per_rad": 2.997021,
+                  "cp_calibers": 3.713046,
                   "reduced_elements": 0
                 },
                 "160": {
-                  "c_n_alpha_per_rad": 3.0067280884347145,
-                  "cp_calibers": 3.7039289036595635,
+                  "c_n_alpha_per_rad": 3.006728,
+                  "cp_calibers": 3.703929,
                   "reduced_elements": 0
                 },
                 "40": {
-                  "c_n_alpha_per_rad": 3.005798276911728,
-                  "cp_calibers": 3.704895974367039,
+                  "c_n_alpha_per_rad": 3.005798,
+                  "cp_calibers": 3.704896,
                   "reduced_elements": 0
                 }
               },
@@ -756,18 +756,18 @@
             "28": {
               "elements": {
                 "10": {
-                  "c_n_alpha_per_rad": 2.9708431553558823,
-                  "cp_calibers": 3.6825054246647073,
+                  "c_n_alpha_per_rad": 2.970843,
+                  "cp_calibers": 3.682505,
                   "reduced_elements": 0
                 },
                 "160": {
-                  "c_n_alpha_per_rad": 2.9817503299235755,
-                  "cp_calibers": 3.671989443219445,
+                  "c_n_alpha_per_rad": 2.98175,
+                  "cp_calibers": 3.671989,
                   "reduced_elements": 0
                 },
                 "40": {
-                  "c_n_alpha_per_rad": 2.9806486697096313,
-                  "cp_calibers": 3.6731624525822406,
+                  "c_n_alpha_per_rad": 2.980649,
+                  "cp_calibers": 3.673162,
                   "reduced_elements": 0
                 }
               },
@@ -776,22 +776,22 @@
             "30": {
               "elements": {
                 "10": {
-                  "c_n_alpha_per_rad": 2.942532955580256,
-                  "cp_calibers": 3.6492066012882183,
+                  "c_n_alpha_per_rad": 2.942533,
+                  "cp_calibers": 3.649207,
                   "reduced_elements": 0
                 },
                 "160": {
-                  "c_n_alpha_per_rad": 2.954571549103622,
-                  "cp_calibers": 3.637356857142541,
+                  "c_n_alpha_per_rad": 2.954572,
+                  "cp_calibers": 3.637357,
                   "reduced_elements": 0
                 },
                 "40": {
-                  "c_n_alpha_per_rad": 2.95329156479299,
-                  "cp_calibers": 3.638745279665032,
+                  "c_n_alpha_per_rad": 2.953292,
+                  "cp_calibers": 3.638745,
                   "reduced_elements": 0
                 }
               },
-              "handover_deg": 29.999999999999996
+              "handover_deg": 30.0
             }
           },
           "mach": 2.96
@@ -801,18 +801,18 @@
             "24": {
               "elements": {
                 "10": {
-                  "c_n_alpha_per_rad": 3.07079291086546,
-                  "cp_calibers": 3.8922660848081807,
+                  "c_n_alpha_per_rad": 3.070793,
+                  "cp_calibers": 3.892266,
                   "reduced_elements": 0
                 },
                 "160": {
-                  "c_n_alpha_per_rad": 3.079032347114555,
-                  "cp_calibers": 3.8846533236647516,
+                  "c_n_alpha_per_rad": 3.079032,
+                  "cp_calibers": 3.884653,
                   "reduced_elements": 0
                 },
                 "40": {
-                  "c_n_alpha_per_rad": 3.0784080373639635,
-                  "cp_calibers": 3.88527627361451,
+                  "c_n_alpha_per_rad": 3.078408,
+                  "cp_calibers": 3.885276,
                   "reduced_elements": 0
                 }
               },
@@ -821,18 +821,18 @@
             "26": {
               "elements": {
                 "10": {
-                  "c_n_alpha_per_rad": 3.033924596711127,
-                  "cp_calibers": 3.846263867679026,
+                  "c_n_alpha_per_rad": 3.033925,
+                  "cp_calibers": 3.846264,
                   "reduced_elements": 0
                 },
                 "160": {
-                  "c_n_alpha_per_rad": 3.0430892260636684,
-                  "cp_calibers": 3.8375346370630656,
+                  "c_n_alpha_per_rad": 3.043089,
+                  "cp_calibers": 3.837535,
                   "reduced_elements": 0
                 },
                 "40": {
-                  "c_n_alpha_per_rad": 3.042434355130139,
-                  "cp_calibers": 3.838197482193589,
+                  "c_n_alpha_per_rad": 3.042434,
+                  "cp_calibers": 3.838197,
                   "reduced_elements": 0
                 }
               },
@@ -841,18 +841,18 @@
             "28": {
               "elements": {
                 "10": {
-                  "c_n_alpha_per_rad": 2.9945163564041426,
-                  "cp_calibers": 3.796584307261571,
+                  "c_n_alpha_per_rad": 2.994516,
+                  "cp_calibers": 3.796584,
                   "reduced_elements": 0
                 },
                 "160": {
-                  "c_n_alpha_per_rad": 3.004410864971491,
-                  "cp_calibers": 3.7869584671615564,
+                  "c_n_alpha_per_rad": 3.004411,
+                  "cp_calibers": 3.786958,
                   "reduced_elements": 0
                 },
                 "40": {
-                  "c_n_alpha_per_rad": 3.003768343392902,
-                  "cp_calibers": 3.78760806214311,
+                  "c_n_alpha_per_rad": 3.003768,
+                  "cp_calibers": 3.787608,
                   "reduced_elements": 0
                 }
               },
@@ -861,22 +861,22 @@
             "30": {
               "elements": {
                 "10": {
-                  "c_n_alpha_per_rad": 2.9531910279814295,
-                  "cp_calibers": 3.744221012632208,
+                  "c_n_alpha_per_rad": 2.953191,
+                  "cp_calibers": 3.744221,
                   "reduced_elements": 0
                 },
                 "160": {
-                  "c_n_alpha_per_rad": 2.963702313492162,
-                  "cp_calibers": 3.7338324455272764,
+                  "c_n_alpha_per_rad": 2.963702,
+                  "cp_calibers": 3.733832,
                   "reduced_elements": 0
                 },
                 "40": {
-                  "c_n_alpha_per_rad": 2.9630725541588743,
-                  "cp_calibers": 3.7344667818592217,
+                  "c_n_alpha_per_rad": 2.963073,
+                  "cp_calibers": 3.734467,
                   "reduced_elements": 0
                 }
               },
-              "handover_deg": 29.999999999999996
+              "handover_deg": 30.0
             }
           },
           "mach": 3.5
@@ -886,18 +886,18 @@
             "24": {
               "elements": {
                 "10": {
-                  "c_n_alpha_per_rad": 3.073466350825613,
-                  "cp_calibers": 3.9739127392978486,
+                  "c_n_alpha_per_rad": 3.073466,
+                  "cp_calibers": 3.973913,
                   "reduced_elements": 0
                 },
                 "160": {
-                  "c_n_alpha_per_rad": 3.080124311812049,
-                  "cp_calibers": 3.967992032308838,
+                  "c_n_alpha_per_rad": 3.080124,
+                  "cp_calibers": 3.967992,
                   "reduced_elements": 1
                 },
                 "40": {
-                  "c_n_alpha_per_rad": 3.0802370617523263,
-                  "cp_calibers": 3.967746424229322,
+                  "c_n_alpha_per_rad": 3.080237,
+                  "cp_calibers": 3.967746,
                   "reduced_elements": 0
                 }
               },
@@ -906,18 +906,18 @@
             "26": {
               "elements": {
                 "10": {
-                  "c_n_alpha_per_rad": 3.0239720375128303,
-                  "cp_calibers": 3.9094372872951526,
+                  "c_n_alpha_per_rad": 3.023972,
+                  "cp_calibers": 3.909437,
                   "reduced_elements": 0
                 },
                 "160": {
-                  "c_n_alpha_per_rad": 3.0310582728936923,
-                  "cp_calibers": 3.902981065373893,
+                  "c_n_alpha_per_rad": 3.031058,
+                  "cp_calibers": 3.902981,
                   "reduced_elements": 1
                 },
                 "40": {
-                  "c_n_alpha_per_rad": 3.0310952201545374,
-                  "cp_calibers": 3.902813949264866,
+                  "c_n_alpha_per_rad": 3.031095,
+                  "cp_calibers": 3.902814,
                   "reduced_elements": 0
                 }
               },
@@ -926,18 +926,18 @@
             "28": {
               "elements": {
                 "10": {
-                  "c_n_alpha_per_rad": 2.9722706876841825,
-                  "cp_calibers": 3.8415749234775287,
+                  "c_n_alpha_per_rad": 2.972271,
+                  "cp_calibers": 3.841575,
                   "reduced_elements": 0
                 },
                 "160": {
-                  "c_n_alpha_per_rad": 2.979732298804072,
-                  "cp_calibers": 3.8346498425195716,
+                  "c_n_alpha_per_rad": 2.979732,
+                  "cp_calibers": 3.83465,
                   "reduced_elements": 1
                 },
                 "40": {
-                  "c_n_alpha_per_rad": 2.979630502078322,
-                  "cp_calibers": 3.8346482590611957,
+                  "c_n_alpha_per_rad": 2.979631,
+                  "cp_calibers": 3.834648,
                   "reduced_elements": 0
                 }
               },
@@ -946,22 +946,22 @@
             "30": {
               "elements": {
                 "10": {
-                  "c_n_alpha_per_rad": 2.919248463210927,
-                  "cp_calibers": 3.771691697164462,
+                  "c_n_alpha_per_rad": 2.919248,
+                  "cp_calibers": 3.771692,
                   "reduced_elements": 0
                 },
                 "160": {
-                  "c_n_alpha_per_rad": 2.9270239455219103,
-                  "cp_calibers": 3.7643855872408163,
+                  "c_n_alpha_per_rad": 2.927024,
+                  "cp_calibers": 3.764386,
                   "reduced_elements": 1
                 },
                 "40": {
-                  "c_n_alpha_per_rad": 2.926847631203821,
-                  "cp_calibers": 3.764473215785408,
+                  "c_n_alpha_per_rad": 2.926848,
+                  "cp_calibers": 3.764473,
                   "reduced_elements": 0
                 }
               },
-              "handover_deg": 29.999999999999996
+              "handover_deg": 30.0
             }
           },
           "mach": 3.96
@@ -971,18 +971,18 @@
             "24": {
               "elements": {
                 "10": {
-                  "c_n_alpha_per_rad": 3.0302951465787475,
-                  "cp_calibers": 4.021068600662377,
+                  "c_n_alpha_per_rad": 3.030295,
+                  "cp_calibers": 4.021069,
                   "reduced_elements": 0
                 },
                 "160": {
-                  "c_n_alpha_per_rad": 3.034186410265488,
-                  "cp_calibers": 4.018281286816518,
+                  "c_n_alpha_per_rad": 3.034186,
+                  "cp_calibers": 4.018281,
                   "reduced_elements": 2
                 },
                 "40": {
-                  "c_n_alpha_per_rad": 3.0313426127117293,
-                  "cp_calibers": 4.021664918713549,
+                  "c_n_alpha_per_rad": 3.031343,
+                  "cp_calibers": 4.021665,
                   "reduced_elements": 1
                 }
               },
@@ -991,18 +991,18 @@
             "26": {
               "elements": {
                 "10": {
-                  "c_n_alpha_per_rad": 2.961173651501279,
-                  "cp_calibers": 3.927646027220215,
+                  "c_n_alpha_per_rad": 2.961174,
+                  "cp_calibers": 3.927646,
                   "reduced_elements": 0
                 },
                 "160": {
-                  "c_n_alpha_per_rad": 2.9654005540960853,
-                  "cp_calibers": 3.9244410665489484,
+                  "c_n_alpha_per_rad": 2.965401,
+                  "cp_calibers": 3.924441,
                   "reduced_elements": 2
                 },
                 "40": {
-                  "c_n_alpha_per_rad": 2.9618807054804672,
-                  "cp_calibers": 3.928654698474752,
+                  "c_n_alpha_per_rad": 2.961881,
+                  "cp_calibers": 3.928655,
                   "reduced_elements": 1
                 }
               },
@@ -1011,18 +1011,18 @@
             "28": {
               "elements": {
                 "10": {
-                  "c_n_alpha_per_rad": 2.8915495071496156,
-                  "cp_calibers": 3.8318845620059747,
+                  "c_n_alpha_per_rad": 2.89155,
+                  "cp_calibers": 3.831885,
                   "reduced_elements": 0
                 },
                 "160": {
-                  "c_n_alpha_per_rad": 2.9262458618884,
-                  "cp_calibers": 3.8018108231989727,
+                  "c_n_alpha_per_rad": 2.926246,
+                  "cp_calibers": 3.801811,
                   "reduced_elements": 33
                 },
                 "40": {
-                  "c_n_alpha_per_rad": 2.894182154529245,
-                  "cp_calibers": 3.8310106973450417,
+                  "c_n_alpha_per_rad": 2.894182,
+                  "cp_calibers": 3.831011,
                   "reduced_elements": 3
                 }
               },
@@ -1031,22 +1031,22 @@
             "30": {
               "elements": {
                 "10": {
-                  "c_n_alpha_per_rad": 3.0467644511019727,
-                  "cp_calibers": 3.6261033810514682,
+                  "c_n_alpha_per_rad": 3.046764,
+                  "cp_calibers": 3.626103,
                   "reduced_elements": 5
                 },
                 "160": {
-                  "c_n_alpha_per_rad": 3.259763045663582,
-                  "cp_calibers": 3.655246069004584,
+                  "c_n_alpha_per_rad": 3.259763,
+                  "cp_calibers": 3.655246,
                   "reduced_elements": 109
                 },
                 "40": {
-                  "c_n_alpha_per_rad": 2.9281808115271684,
-                  "cp_calibers": 3.6666296082004743,
+                  "c_n_alpha_per_rad": 2.928181,
+                  "cp_calibers": 3.66663,
                   "reduced_elements": 17
                 }
               },
-              "handover_deg": 29.999999999999996
+              "handover_deg": 30.0
             }
           },
           "mach": 4.63
@@ -1056,18 +1056,18 @@
             "24": {
               "elements": {
                 "10": {
-                  "c_n_alpha_per_rad": 2.980238131711836,
-                  "cp_calibers": 4.0155271169390225,
+                  "c_n_alpha_per_rad": 2.980238,
+                  "cp_calibers": 4.015527,
                   "reduced_elements": 0
                 },
                 "160": {
-                  "c_n_alpha_per_rad": 2.9843854163538794,
-                  "cp_calibers": 4.01227010966381,
+                  "c_n_alpha_per_rad": 2.984385,
+                  "cp_calibers": 4.01227,
                   "reduced_elements": 2
                 },
                 "40": {
-                  "c_n_alpha_per_rad": 2.982363954093349,
-                  "cp_calibers": 4.014660350883978,
+                  "c_n_alpha_per_rad": 2.982364,
+                  "cp_calibers": 4.01466,
                   "reduced_elements": 1
                 }
               },
@@ -1076,18 +1076,18 @@
             "26": {
               "elements": {
                 "10": {
-                  "c_n_alpha_per_rad": 2.900073192835667,
-                  "cp_calibers": 3.9061511054868316,
+                  "c_n_alpha_per_rad": 2.900073,
+                  "cp_calibers": 3.906151,
                   "reduced_elements": 0
                 },
                 "160": {
-                  "c_n_alpha_per_rad": 2.9456847310790977,
-                  "cp_calibers": 3.869431195123053,
+                  "c_n_alpha_per_rad": 2.945685,
+                  "cp_calibers": 3.869431,
                   "reduced_elements": 40
                 },
                 "40": {
-                  "c_n_alpha_per_rad": 2.9183854104846483,
-                  "cp_calibers": 3.8908128092812855,
+                  "c_n_alpha_per_rad": 2.918385,
+                  "cp_calibers": 3.890813,
                   "reduced_elements": 7
                 }
               },
@@ -1096,18 +1096,18 @@
             "28": {
               "elements": {
                 "10": {
-                  "c_n_alpha_per_rad": 2.92327527614779,
-                  "cp_calibers": 3.733100453824289,
+                  "c_n_alpha_per_rad": 2.923275,
+                  "cp_calibers": 3.7331,
                   "reduced_elements": 4
                 },
                 "160": {
-                  "c_n_alpha_per_rad": 3.6121315596438675,
-                  "cp_calibers": 3.982565673380234,
+                  "c_n_alpha_per_rad": 3.612132,
+                  "cp_calibers": 3.982566,
                   "reduced_elements": 140
                 },
                 "40": {
-                  "c_n_alpha_per_rad": 3.278101793608016,
-                  "cp_calibers": 3.790392723510759,
+                  "c_n_alpha_per_rad": 3.278102,
+                  "cp_calibers": 3.790393,
                   "reduced_elements": 30
                 }
               },
@@ -1116,56 +1116,56 @@
             "30": {
               "elements": {
                 "10": {
-                  "c_n_alpha_per_rad": 3.4003892286497,
-                  "cp_calibers": 3.7529314642685203,
+                  "c_n_alpha_per_rad": 3.400389,
+                  "cp_calibers": 3.752931,
                   "reduced_elements": 9
                 },
                 "160": {
-                  "c_n_alpha_per_rad": 3.4535161412405584,
-                  "cp_calibers": 3.669402969603055,
+                  "c_n_alpha_per_rad": 3.453516,
+                  "cp_calibers": 3.669403,
                   "reduced_elements": 145
                 },
                 "40": {
-                  "c_n_alpha_per_rad": 3.4548761864911324,
-                  "cp_calibers": 3.7244924617059576,
+                  "c_n_alpha_per_rad": 3.454876,
+                  "cp_calibers": 3.724492,
                   "reduced_elements": 36
                 }
               },
-              "handover_deg": 29.999999999999996
+              "handover_deg": 30.0
             }
           },
           "mach": 5.0
         }
       ]
     },
-    "note": "What the cap on a blunt tip's handover slope is worth (M1.8e12). hpr hands over at the lesser of the wedge's largest deflection and the cap; 24 deg is flown, 30 deg is the steepest cone the method's normal-force tables carry. sphere_cone: TN D-4865's model 1, whose handover rule this is, fitted as `sphere_cone` above fits it. committed_nose: the Arcas Robin's committed power-series nose on the short model's cylinder, nothing aft, at alpha -> 0 per radian on its cross-section, read at 10, 40 and 160 elements; reduced_elements counts the elements the march reduces to the generalized method (eta < 0, issue #81). What the element count is worth is the spread of the three, which is not stored: it is a difference of nearly equal numbers, and the last digits of one of them move between machines. No targets.",
+    "note": "What the cap on a blunt tip's handover slope is worth (M1.8e12). hpr hands over at the lesser of the wedge's largest deflection and the cap; 24 deg is flown, 30 deg is the steepest cone the method's normal-force tables carry. sphere_cone: TN D-4865's model 1, whose handover rule this is, fitted as `sphere_cone` above fits it. committed_nose: the Arcas Robin's committed power-series nose on the short model's cylinder, nothing aft, at alpha -> 0 per radian on its cross-section, read at 10, 40 and 160 elements; reduced_elements counts the elements the march reduces to the generalized method (eta < 0, issue #81). What the element count is worth is the spread of the three, which is not stored: it is a difference of nearly equal numbers, and the last digits of one of them move between machines. Every number here is rounded to six decimals for the same reason: where most of the nose is reduced the march chains its loadings through one ratio per corner, which amplifies the last bits of exp and powf, and those are a platform's to round. No targets.",
     "sphere_cone": {
       "rows": [
         {
           "by_cap": {
             "24": {
-              "cp_error_calibers": 0.030247896750971504,
-              "fitted_c_n_alpha": 1.8850940096856694,
-              "fitted_c_n_alpha_error": -0.011904882389464522,
-              "handover_deg": 12.112668885838591
+              "cp_error_calibers": 0.030248,
+              "fitted_c_n_alpha": 1.885094,
+              "fitted_c_n_alpha_error": -0.011905,
+              "handover_deg": 12.112669
             },
             "26": {
-              "cp_error_calibers": 0.030247896750971504,
-              "fitted_c_n_alpha": 1.8850940096856694,
-              "fitted_c_n_alpha_error": -0.011904882389464522,
-              "handover_deg": 12.112668885838591
+              "cp_error_calibers": 0.030248,
+              "fitted_c_n_alpha": 1.885094,
+              "fitted_c_n_alpha_error": -0.011905,
+              "handover_deg": 12.112669
             },
             "28": {
-              "cp_error_calibers": 0.030247896750971504,
-              "fitted_c_n_alpha": 1.8850940096856694,
-              "fitted_c_n_alpha_error": -0.011904882389464522,
-              "handover_deg": 12.112668885838591
+              "cp_error_calibers": 0.030248,
+              "fitted_c_n_alpha": 1.885094,
+              "fitted_c_n_alpha_error": -0.011905,
+              "handover_deg": 12.112669
             },
             "30": {
-              "cp_error_calibers": 0.030247896750971504,
-              "fitted_c_n_alpha": 1.8850940096856694,
-              "fitted_c_n_alpha_error": -0.011904882389464522,
-              "handover_deg": 12.112668885838591
+              "cp_error_calibers": 0.030248,
+              "fitted_c_n_alpha": 1.885094,
+              "fitted_c_n_alpha_error": -0.011905,
+              "handover_deg": 12.112669
             }
           },
           "mach": 1.5
@@ -1173,28 +1173,28 @@
         {
           "by_cap": {
             "24": {
-              "cp_error_calibers": -0.015612890739242768,
-              "fitted_c_n_alpha": 1.9263463072613913,
-              "fitted_c_n_alpha_error": 0.0001066585958395816,
-              "handover_deg": 21.167476651578554
+              "cp_error_calibers": -0.015613,
+              "fitted_c_n_alpha": 1.926346,
+              "fitted_c_n_alpha_error": 0.000107,
+              "handover_deg": 21.167477
             },
             "26": {
-              "cp_error_calibers": -0.015612890739242768,
-              "fitted_c_n_alpha": 1.9263463072613913,
-              "fitted_c_n_alpha_error": 0.0001066585958395816,
-              "handover_deg": 21.167476651578554
+              "cp_error_calibers": -0.015613,
+              "fitted_c_n_alpha": 1.926346,
+              "fitted_c_n_alpha_error": 0.000107,
+              "handover_deg": 21.167477
             },
             "28": {
-              "cp_error_calibers": -0.015612890739242768,
-              "fitted_c_n_alpha": 1.9263463072613913,
-              "fitted_c_n_alpha_error": 0.0001066585958395816,
-              "handover_deg": 21.167476651578554
+              "cp_error_calibers": -0.015613,
+              "fitted_c_n_alpha": 1.926346,
+              "fitted_c_n_alpha_error": 0.000107,
+              "handover_deg": 21.167477
             },
             "30": {
-              "cp_error_calibers": -0.015612890739242768,
-              "fitted_c_n_alpha": 1.9263463072613913,
-              "fitted_c_n_alpha_error": 0.0001066585958395816,
-              "handover_deg": 21.167476651578554
+              "cp_error_calibers": -0.015613,
+              "fitted_c_n_alpha": 1.926346,
+              "fitted_c_n_alpha_error": 0.000107,
+              "handover_deg": 21.167477
             }
           },
           "mach": 1.9
@@ -1202,28 +1202,28 @@
         {
           "by_cap": {
             "24": {
-              "cp_error_calibers": -0.013219108580031058,
-              "fitted_c_n_alpha": 1.9705005078935078,
-              "fitted_c_n_alpha_error": 0.07474130546756963,
+              "cp_error_calibers": -0.013219,
+              "fitted_c_n_alpha": 1.970501,
+              "fitted_c_n_alpha_error": 0.074741,
               "handover_deg": 24.0
             },
             "26": {
-              "cp_error_calibers": -0.012199213673990572,
-              "fitted_c_n_alpha": 1.9672532860312626,
-              "fitted_c_n_alpha_error": 0.0729702206851035,
+              "cp_error_calibers": -0.012199,
+              "fitted_c_n_alpha": 1.967253,
+              "fitted_c_n_alpha_error": 0.07297,
               "handover_deg": 26.0
             },
             "28": {
-              "cp_error_calibers": -0.011177275847727985,
-              "fitted_c_n_alpha": 1.9639718318601525,
-              "fitted_c_n_alpha_error": 0.07118046507450426,
-              "handover_deg": 27.454072477626156
+              "cp_error_calibers": -0.011177,
+              "fitted_c_n_alpha": 1.963972,
+              "fitted_c_n_alpha_error": 0.07118,
+              "handover_deg": 27.454072
             },
             "30": {
-              "cp_error_calibers": -0.011177275847727985,
-              "fitted_c_n_alpha": 1.9639718318601525,
-              "fitted_c_n_alpha_error": 0.07118046507450426,
-              "handover_deg": 27.454072477626156
+              "cp_error_calibers": -0.011177,
+              "fitted_c_n_alpha": 1.963972,
+              "fitted_c_n_alpha_error": 0.07118,
+              "handover_deg": 27.454072
             }
           },
           "mach": 2.3
@@ -1231,28 +1231,28 @@
         {
           "by_cap": {
             "24": {
-              "cp_error_calibers": -0.034434068352159786,
-              "fitted_c_n_alpha": 2.0090227461861376,
-              "fitted_c_n_alpha_error": 0.12492979366077805,
+              "cp_error_calibers": -0.034434,
+              "fitted_c_n_alpha": 2.009023,
+              "fitted_c_n_alpha_error": 0.12493,
               "handover_deg": 24.0
             },
             "26": {
-              "cp_error_calibers": -0.03308430030291798,
-              "fitted_c_n_alpha": 2.0041042700887073,
-              "fitted_c_n_alpha_error": 0.12217574803739661,
+              "cp_error_calibers": -0.033084,
+              "fitted_c_n_alpha": 2.004104,
+              "fitted_c_n_alpha_error": 0.122176,
               "handover_deg": 26.0
             },
             "28": {
-              "cp_error_calibers": -0.031522166586879674,
-              "fitted_c_n_alpha": 1.9984375762057662,
-              "fitted_c_n_alpha_error": 0.1190027462420824,
+              "cp_error_calibers": -0.031522,
+              "fitted_c_n_alpha": 1.998438,
+              "fitted_c_n_alpha_error": 0.119003,
               "handover_deg": 28.0
             },
             "30": {
-              "cp_error_calibers": -0.02968769332341825,
-              "fitted_c_n_alpha": 1.9919768825024076,
-              "fitted_c_n_alpha_error": 0.11538515313696629,
-              "handover_deg": 29.999999999999996
+              "cp_error_calibers": -0.029688,
+              "fitted_c_n_alpha": 1.991977,
+              "fitted_c_n_alpha_error": 0.115385,
+              "handover_deg": 30.0
             }
           },
           "mach": 2.96
@@ -1260,28 +1260,28 @@
         {
           "by_cap": {
             "24": {
-              "cp_error_calibers": -0.01799002540740502,
-              "fitted_c_n_alpha": 2.0987285372984896,
-              "fitted_c_n_alpha_error": 0.2970865113818437,
+              "cp_error_calibers": -0.01799,
+              "fitted_c_n_alpha": 2.098729,
+              "fitted_c_n_alpha_error": 0.297087,
               "handover_deg": 24.0
             },
             "26": {
-              "cp_error_calibers": -0.015837849828085337,
-              "fitted_c_n_alpha": 2.085968451400476,
-              "fitted_c_n_alpha_error": 0.2892003388691795,
+              "cp_error_calibers": -0.015838,
+              "fitted_c_n_alpha": 2.085968,
+              "fitted_c_n_alpha_error": 0.2892,
               "handover_deg": 26.0
             },
             "28": {
-              "cp_error_calibers": -0.013684193851507098,
-              "fitted_c_n_alpha": 2.076622763858581,
-              "fitted_c_n_alpha_error": 0.2834243821245377,
+              "cp_error_calibers": -0.013684,
+              "fitted_c_n_alpha": 2.076623,
+              "fitted_c_n_alpha_error": 0.283424,
               "handover_deg": 28.0
             },
             "30": {
-              "cp_error_calibers": -0.011577675381204466,
-              "fitted_c_n_alpha": 2.0709994789192927,
-              "fitted_c_n_alpha_error": 0.2799489983791983,
-              "handover_deg": 29.999999999999996
+              "cp_error_calibers": -0.011578,
+              "fitted_c_n_alpha": 2.070999,
+              "fitted_c_n_alpha_error": 0.279949,
+              "handover_deg": 30.0
             }
           },
           "mach": 3.95
@@ -1289,28 +1289,28 @@
         {
           "by_cap": {
             "24": {
-              "cp_error_calibers": -0.055272697272673144,
-              "fitted_c_n_alpha": 2.048338397938013,
-              "fitted_c_n_alpha_error": 0.3212694904941016,
+              "cp_error_calibers": -0.055273,
+              "fitted_c_n_alpha": 2.048338,
+              "fitted_c_n_alpha_error": 0.321269,
               "handover_deg": 24.0
             },
             "26": {
-              "cp_error_calibers": -0.05260761514139545,
-              "fitted_c_n_alpha": 2.034139284703349,
-              "fitted_c_n_alpha_error": 0.3121104300927937,
+              "cp_error_calibers": -0.052608,
+              "fitted_c_n_alpha": 2.034139,
+              "fitted_c_n_alpha_error": 0.31211,
               "handover_deg": 26.0
             },
             "28": {
-              "cp_error_calibers": -0.04970036932706612,
-              "fitted_c_n_alpha": 2.0298445408336145,
-              "fitted_c_n_alpha_error": 0.3093401290281459,
+              "cp_error_calibers": -0.0497,
+              "fitted_c_n_alpha": 2.029845,
+              "fitted_c_n_alpha_error": 0.30934,
               "handover_deg": 28.0
             },
             "30": {
-              "cp_error_calibers": -0.046821744523674935,
-              "fitted_c_n_alpha": 2.0359850214606383,
-              "fitted_c_n_alpha_error": 0.3133010125020992,
-              "handover_deg": 29.999999999999996
+              "cp_error_calibers": -0.046822,
+              "fitted_c_n_alpha": 2.035985,
+              "fitted_c_n_alpha_error": 0.313301,
+              "handover_deg": 30.0
             }
           },
           "mach": 4.63

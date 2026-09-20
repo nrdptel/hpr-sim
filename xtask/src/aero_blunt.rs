@@ -197,6 +197,31 @@ const CAP_ELEMENTS: [usize; 3] = [
     16 * DEFAULT_ELEMENTS_PER_CURVE,
 ];
 
+/// A number of the cap sweep, rounded to six decimals.
+///
+/// Under a cap it does not fly, above Mach 4, the march reduces most of the nose's elements
+/// (issue #108) and chains their loadings through the `λ₂/λ₁` ratio at every corner. That
+/// amplifies the last bits of `exp` and `powf`, which a platform's library is free to round its
+/// own way: the 30° cap's Mach 4.63 slope at 160 elements read 3.259763045663582 here and
+/// 3.2597630456558506 on CI's Linux, 2.4e-12 apart, where the fixture check allows 1e-12. Six
+/// decimals is far more than the three the guide quotes and far less than the march can promise
+/// there. The value must also sit clear of the rounding boundary, or two machines would round it
+/// two ways and the check would flicker; `what` names it if it doesn't.
+fn sweep_number(what: &str, x: f64) -> Result<f64, String> {
+    let scaled = x * 1e6;
+    if !scaled.is_finite() {
+        return Err(format!("{what} isn't a number: {x}"));
+    }
+    // At least 1e-10 from where the rounding turns over, a hundred times the drift measured.
+    if (scaled - scaled.round()).abs() > 0.499_9 {
+        return Err(format!(
+            "{what} = {x} sits on the sixth decimal's rounding boundary, where two machines \
+             would round it two ways"
+        ));
+    }
+    Ok(scaled.round() / 1e6)
+}
+
 /// The Mach number a cap starts to bind at: where the wedge's largest deflection reaches it,
 /// bisected. The handover is the lesser of the two, so below this the cap costs nothing.
 fn binds_from(cap_rad: f64) -> Result<f64, String> {
@@ -233,15 +258,30 @@ fn handover_caps(root: &Path) -> Result<Value, String> {
                 .slope(mach, area)
                 .map_err(|e| format!("model 1 at Mach {mach} under {}°: {e}", cap_key(cap)))?;
             let (fitted, fitted_cp) = flown_fit(&hpr, &n_a, mach, case.fineness, case.planform);
+            let at = |what: &str| {
+                format!(
+                    "the sphere-cone at Mach {mach} under {}°: {what}",
+                    cap_key(cap)
+                )
+            };
             by_cap.insert(
                 cap_key(cap),
                 json!({
-                    "handover_deg": handover_angle_capped_rad(mach, cap)
-                        .map_err(|e| e.to_string())?
-                        .to_degrees(),
-                    "fitted_c_n_alpha": fitted,
-                    "fitted_c_n_alpha_error": fitted / measured - 1.0,
-                    "cp_error_calibers": fitted_cp - measured_cp,
+                    "handover_deg": sweep_number(
+                        &at("the handover"),
+                        handover_angle_capped_rad(mach, cap)
+                            .map_err(|e| e.to_string())?
+                            .to_degrees(),
+                    )?,
+                    "fitted_c_n_alpha": sweep_number(&at("the fitted slope"), fitted)?,
+                    "fitted_c_n_alpha_error": sweep_number(
+                        &at("the slope's error"),
+                        fitted / measured - 1.0,
+                    )?,
+                    "cp_error_calibers": sweep_number(
+                        &at("the centre of pressure's error"),
+                        fitted_cp - measured_cp,
+                    )?,
                 }),
             );
         }
@@ -269,11 +309,20 @@ fn handover_caps(root: &Path) -> Result<Value, String> {
                 )
                 .map_err(|e| e.to_string())?
                 .with_handover_cap_rad(cap);
+                let at = |what: &str| {
+                    format!(
+                        "the committed nose at Mach {mach} under {}°, {elements} elements: {what}",
+                        cap_key(cap)
+                    )
+                };
                 let value = match (body.slope(mach, nose_area), body.reduced_elements(mach)) {
                     (Ok(slope), Ok(reduced)) => {
                         json!({
-                            "c_n_alpha_per_rad": slope.slope_per_rad,
-                            "cp_calibers": slope.centre_of_pressure_m / (2.0 * base_radius),
+                            "c_n_alpha_per_rad": sweep_number(&at("the slope"), slope.slope_per_rad)?,
+                            "cp_calibers": sweep_number(
+                                &at("the centre of pressure"),
+                                slope.centre_of_pressure_m / (2.0 * base_radius),
+                            )?,
                             "reduced_elements": reduced,
                         })
                     }
@@ -284,9 +333,12 @@ fn handover_caps(root: &Path) -> Result<Value, String> {
             by_cap.insert(
                 cap_key(cap),
                 json!({
-                    "handover_deg": handover_angle_capped_rad(mach, cap)
-                        .map_err(|e| e.to_string())?
-                        .to_degrees(),
+                    "handover_deg": sweep_number(
+                        &format!("the nose's handover at Mach {mach} under {}°", cap_key(cap)),
+                        handover_angle_capped_rad(mach, cap)
+                            .map_err(|e| e.to_string())?
+                            .to_degrees(),
+                    )?,
                     "elements": Value::Object(by_count),
                 }),
             );
@@ -305,12 +357,17 @@ fn handover_caps(root: &Path) -> Result<Value, String> {
                  elements the march reduces to the generalized method (eta < 0, issue #81). What \
                  the element count is worth is the spread of the three, which is not stored: it \
                  is a difference of nearly equal numbers, and the last digits of one of them \
-                 move between machines. No targets.",
+                 move between machines. Every number here is rounded to six decimals for the same \
+                 reason: where most of the nose is reduced the march chains its loadings through \
+                 one ratio per corner, which amplifies the last bits of exp and powf, and those \
+                 are a platform's to round. No targets.",
         "caps": CAPS_RAD.map(cap_key),
         "caps_rad": CAPS_RAD,
         "binds_from_mach": CAPS_RAD
             .iter()
-            .map(|&c| binds_from(c))
+            .map(|&c| {
+                sweep_number(&format!("where {}° starts to bind", cap_key(c)), binds_from(c)?)
+            })
             .collect::<Result<Vec<_>, _>>()?,
         "sphere_cone": { "rows": sphere_cone },
         "committed_nose": {
