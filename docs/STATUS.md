@@ -4,8 +4,7 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
 
 ## Now
 
-- **Current milestone:** M1.8e The body's supersonic normal force — all done bar M1.8e16, which is
-  `[blocked]` on #108, so **start the next cycle on M3.1**.
+- **Current milestone:** M1.8e — all done bar M1.8e16, `[blocked]` on #108: **start on M3.1**.
 - **Order:** M3.1, then M1.9; M1.8e16 (the handover past 24°) waits on #108
 - **Run:** M0.1-M0.4, M1.1-M1.7, M2.1, M1.8a to e19 bar e16; https://nrdptel.github.io/hpr-sim/
 - **Neer, 2026-09-20:** Debrief is sunset; its use case — a universal flight log analyzer, usable
@@ -17,15 +16,16 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
 - **Page rules** (ADR-016 to ADR-020): relative links between pages, GitHub URLs for the rest,
   labels as links to their rows, none in headings, Unicode equations; new pages in `SUMMARY.md`; a
   new library a row in `docs/api.md`. *Accuracy*'s numbers live in a file the item links; each aero
-  fixture has a `the_guide_quotes_the_fixture`. Checking a milestone off needs its
-  `decisions-and-roadmap.md` row to say `done`; an id carries one increment level.
+  fixture has a `the_guide_quotes_the_fixture`. A milestone's `decisions-and-roadmap.md` row must
+  say `done` (or `blocked`) to match; an id carries one increment level.
 - **Validation (M2.1, ADR-021 to ADR-026):** CI checks the report on three OSes; predicted mode's 3%
   are *targets*; every whole flight names both RMS metrics, each held to 3% of its reference's
   apogee or max speed (ADR-024). The wind oracle flies RocketPy 1.13.0 with #1188 and #1196 by
-  `corrections.py` (re-pin and delete when #1196 releases). **Regeneration is not bit-identical
-  across machines** (last digits): regenerate with `cargo xtask validate` (debug), never
-  `--release`; fixture checks allow 1e-12 relative, but **a fixture's strings are compared as
-  text** (`handover_caps` and `marched-flare`'s refusals: six decimals).
+  `corrections.py` (re-pin and delete when #1196 releases). **Regeneration is not bit-identical**
+  (last digits): regenerate with `cargo xtask validate` (debug), never `--release`; checks allow
+  1e-12 relative but **compare a fixture's strings as text**. `cargo xtask aero` rewrites
+  `arcas-robin-gap.json`'s last digits whatever you changed — `git checkout` it and let `--check`
+  pass rather than committing the churn.
 - **M1.8a to e8** (ADR-027 to ADR-039): `cargo xtask aero` writes the aero fixtures (five of
   ADR-030's PDFs come from NTRS with a 436-byte header, scratch `refs/scratch/m18*/`);
   `SupersonicBody` tabulates every 0.05 Mach from max(1.2, its bisected start), joined over 0.3;
