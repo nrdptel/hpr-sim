@@ -4,10 +4,10 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
 
 ## Now
 
-- **Current milestone:** M1.8e13 The handover moved past 24° — it begins by settling #108
-- **Order:** M1.8e13 (M1.8e14 first if #108 proves too deep), then M1.8e15 and M3.1
-- **Run:** M0.1-M0.4, M1.1-M1.7, M2.1, M1.8a to M1.8e12 shipped; https://nrdptel.github.io/hpr-sim/
-- **Last updated:** 2026-09-20 (M1.8e12 done)
+- **Current milestone:** M1.8e14 The flare through the method
+- **Order:** M1.8e14, then M1.8e15, then M3.1; M1.8e16 (the handover past 24°) waits on #108
+- **Run:** M0.1-M0.4, M1.1-M1.7, M2.1, M1.8a to M1.8e13 shipped; https://nrdptel.github.io/hpr-sim/
+- **Last updated:** 2026-09-20 (M1.8e13 done)
 
 ## Handoff (overwrite each session)
 
@@ -27,18 +27,22 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
 - **M1.8e2 to e8** (ADR-034, 037, 038, 039): `SupersonicBody` tabulates the method's shares every
   0.05 Mach, lazily, from max(1.2, its bisected start) over 0.3. Body lift is Jorgensen's, a
   boattail W&P's increment, a vertical tip TN D-4865's cap; `BEFORE_M1_8E6` keeps the old rules.
-- **M1.8e9** (ADR-040): #90's cap holds W&P's correlation at 16° for steeper boattails. M1.8e's
-  15% bullet (`arcas-robin-body-gap.json`): met at Mach 3.96 and 4.63, outside on six rows.
+- **M1.8e9** (ADR-040): #90's cap holds W&P's correlation at 16° for steeper boattails; M1.8e's
+  15% bullet (`arcas-robin-body-gap.json`) is outside on six rows.
 - **M1.8e10** (ADR-041): #87's five switches flip one gate (`supersonic_run`), so each is worth
-  the whole body. The lip's **rise** is a weight now (`SupersonicBody::shape_weight`); five keep
-  measured sizes, the lip's own length (−33.0%, 1.77 cal) among them. #106: station vs CP.
+  the whole body; the lip's **rise** is a weight now (`SupersonicBody::shape_weight`).
 - **M1.8e11** (ADR-042): `CONE_SLOPES` runs to 30° — Fig. 2's chart to 24°, then SP-3007 Table 2.
 - **M1.8e12** (ADR-043): the handover's cap is a parameter (`with_handover_cap_rad`), swept into
-  `blunt-tips.json`. 24° stands: steeper caps read nearer TN D-4865's sphere-cone but none keeps its
-  answer to Mach 5 (28° is worst); at 30°, 108 of the nose's 160 elements sit above their cone.
-- **M1.8e13 starts at #108**: a reading of `η < 0` that settles as the nose is cut finer (#81);
-  `|η|` is worse. Too deep? **M1.8e14** is scoped and unblocked: the method marches a flare already,
-  and TN D-4865's model 2 measures one. #97: the long model's M1.8a readings may be biased.
+  `blunt-tips.json`. 24° stands: no steeper cap keeps its answer to Mach 5 (28° is worst).
+- **M1.8e13** (ADR-044): what an answer follows when it follows the mesh is the surface pressure
+  **crossing** its tangent cone's — where the relaxation rate has a pole — not `η < 0`.
+  `tangent_cone_crossings` counts it; over the sweep's three meshes it splits all 32 readings with
+  no overlap (27 clean, 5 not). A flag, not a verdict: zero at a coarse mesh means "not proven",
+  and 28° at Mach 5 crosses yet settles by 60 elements. #108 is re-scoped to the loading through a
+  crossing, tangled with `η < 0`; the rest of the old e13 is **M1.8e16**, last because blocked.
+- **M1.8e14 is next and unblocked**: the method marches a flare already, and TN D-4865's model 2
+  measures one (fig. 8, Mach 1.50 to 4.63, from tables VII to XII). #97: the long model's M1.8a
+  readings may be biased.
 - **M2.2's OpenRocket oracle** (ADR-035): orhelper is dropped, so decide how to drive the jar when
   M2.2 starts; JPype loads the JVM in-process, only a subprocess isolates, and the jar needs Java
   17 exactly (`[java] max_major` in the refs lock keeps doctor off a newer one).
@@ -51,13 +55,14 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
 
 ## Done log (newest first, keep about 15)
 
+- 2026-09-20: M1.8e13 What the answer follows when it follows the mesh (ADR-044): a crossing of
+  the tangent cone, not a reduced element; over the sweep's three meshes the 27 readings without
+  one hold to 0.012 per radian and the 5 with one move 0.035 or more, no overlap — but it is a
+  flag, not a verdict, at either end. No fixture number moved.
+
 - 2026-09-20: M1.8e12 What the handover's cap is worth (ADR-043): the cap is a method parameter,
   swept into the fixture and the guide; 24° stays because no steeper cap keeps its answer to Mach
   5 (#108), though each reads nearer the report's own sphere-cone; no fixture moved.
-- 2026-09-20: M1.8e11 Cone slopes past Fig. 2's edge (ADR-042): SP-3007 Table 2 carries the same
-  theory from 24° to 30°, so a fineness-1 cone flies; the pointed tip's switch moves to 30° and
-  falls to −7.7%/0.81 cal; no fixture moved.
-
 - 2026-09-20: M1.8e10 The lip's shelter, weighed not switched (ADR-041): the drag buildup's wake
   fraction is now the method's weight, so a lip drawn taller moves a rocket between the models
   instead of switching it (was −33% and 1.77 calibres); five switches left, each measured.
@@ -65,11 +70,6 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
 - 2026-09-19: M1.8e9 #90's cap and M1.8e's 15% bullet (ADR-040): a boattail steeper than 16° reads
   W&P's correlation as a 16° one, the conservative end of a 0.67 to 1.35 calibre range; the bullet
   met at Mach 3.96 and 4.63, the body alone outside on six rows.
-- 2026-09-19: M1.8e8 The lip faster than sound (ADR-039): a lip in a boattail's wake carries nothing
-  above the join, so every M1.8a row from Mach 1.5 is within the slope's 15% (+9.4% to −3.3%, was
-  −28.0%); the long model's CP at Mach 1.8 and 2.3 is 0.5 calibres out.
-- 2026-09-19: M1.8e7 Blunt tips (ADR-038): noses with a vertical tip fly behind TN D-4865's cap;
-  its sphere-cone −1.2% to +32.1%. e2 to e6 before that.
 
 
 ## Needs Neer (blocking or one-way decisions; the session keeps working on other things)

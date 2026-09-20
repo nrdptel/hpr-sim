@@ -319,8 +319,12 @@ fn handover_caps(root: &Path) -> Result<Value, String> {
                         cap_key(cap)
                     )
                 };
-                let value = match (body.slope(mach, nose_area), body.reduced_elements(mach)) {
-                    (Ok(slope), Ok(reduced)) => {
+                let value = match (
+                    body.slope(mach, nose_area),
+                    body.reduced_elements(mach),
+                    body.tangent_cone_crossings(mach),
+                ) {
+                    (Ok(slope), Ok(reduced), Ok(crossings)) => {
                         json!({
                             "c_n_alpha_per_rad": sweep_number(&at("the slope"), slope.slope_per_rad)?,
                             "cp_calibers": sweep_number(
@@ -328,9 +332,12 @@ fn handover_caps(root: &Path) -> Result<Value, String> {
                                 slope.centre_of_pressure_m / (2.0 * base_radius),
                             )?,
                             "reduced_elements": reduced,
+                            "tangent_cone_crossings": crossings,
                         })
                     }
-                    (Err(e), _) | (_, Err(e)) => json!({ "fails": e.to_string() }),
+                    (Err(e), _, _) | (_, Err(e), _) | (_, _, Err(e)) => {
+                        json!({ "fails": e.to_string() })
+                    }
                 };
                 by_count.insert(elements.to_string(), value);
             }
@@ -358,7 +365,9 @@ fn handover_caps(root: &Path) -> Result<Value, String> {
                  fits it. committed_nose: the Arcas Robin's committed power-series nose on the \
                  short model's cylinder, nothing aft, at alpha -> 0 per radian on its \
                  cross-section, read at 10, 40 and 160 elements; reduced_elements counts the \
-                 elements the march reduces to the generalized method (eta < 0, issue #81). What \
+                 elements the march reduces to the generalized method (eta < 0, issue #81), and \
+                 tangent_cone_crossings how many times the marched surface pressure crosses its \
+                 own tangent cone's, where the decay rate eta has a pole (issue #108). What \
                  the element count is worth is the spread of the three, which is not stored: it \
                  is a difference of nearly equal numbers, and the last digits of one of them \
                  move between machines. Every measured number here is rounded to six decimals for \
@@ -904,6 +913,71 @@ mod tests {
         );
     }
 
+    /// Every reading in the cap sweep that holds still has no crossing of the surface pressure
+    /// with its tangent cone's, and every reading that moves has one. The separation is the whole
+    /// of [issue #108](https://github.com/nrdptel/hpr-sim/issues/108): it is the crossing, where
+    /// the method's decay rate has a pole, that puts the answer at the mercy of the mesh — not a
+    /// reduced element, which TN 3527's own bodies have by the dozen and still settle.
+    #[test]
+    fn over_the_sweeps_meshes_a_crossing_separates_the_readings_that_move() {
+        let root = crate::designs::root().unwrap();
+        let fixture = read(&root, FIXTURE).unwrap();
+        let counts: Vec<String> = CAP_ELEMENTS.iter().map(usize::to_string).collect();
+        let (mut worst_settled, mut least_moved) = (0.0_f64, f64::MAX);
+        let (mut settled, mut moved) = (0, 0);
+        for row in fixture["handover_caps"]["committed_nose"]["rows"]
+            .as_array()
+            .unwrap()
+        {
+            for cap in CAPS_RAD {
+                let elements = &row["by_cap"][cap_key(cap)]["elements"];
+                let read = |key: &String| {
+                    let cell = &elements[key];
+                    assert!(
+                        cell.get("fails").is_none(),
+                        "the sweep should read every cell: {} at Mach {} on {key} elements says \
+                         {}",
+                        cap_key(cap),
+                        row["mach"],
+                        cell["fails"]
+                    );
+                    (
+                        f(cell, "/c_n_alpha_per_rad"),
+                        cell["tangent_cone_crossings"].as_u64().unwrap(),
+                    )
+                };
+                let slopes: Vec<f64> = counts.iter().map(|n| read(n).0).collect();
+                let spread = slopes.iter().copied().fold(f64::MIN, f64::max)
+                    - slopes.iter().copied().fold(f64::MAX, f64::min);
+                if counts.iter().all(|n| read(n).1 == 0) {
+                    settled += 1;
+                    worst_settled = worst_settled.max(spread);
+                } else {
+                    moved += 1;
+                    least_moved = least_moved.min(spread);
+                }
+            }
+        }
+        // Both kinds are there to compare, in the split the guide quotes.
+        assert_eq!(
+            (settled, moved),
+            (27, 5),
+            "the guide says 27 readings without a crossing and 5 with one"
+        );
+        assert!(
+            worst_settled < least_moved / 2.0,
+            "a crossing should separate the two: the most any reading without one moves over \
+             {CAP_ELEMENTS:?} elements is {worst_settled:.4} per radian, the least any reading \
+             with one moves {least_moved:.4}"
+        );
+        // The guide and the ADR round these to 0.012 and 0.035, so hold them there too: the
+        // ratio alone would let both drift and still read as a separation.
+        assert!(
+            (0.0115..0.0125).contains(&worst_settled) && (0.0345..0.0355).contains(&least_moved),
+            "the guide says 0.012 per radian and 0.035: {worst_settled:.5} and {least_moved:.5}"
+        );
+    }
+
     /// A number as the guide writes it: `digits` decimals, a Unicode minus.
     fn num(x: f64, digits: usize) -> String {
         format!("{x:.digits$}").replace('-', "−")
@@ -966,15 +1040,30 @@ mod tests {
             }
         }
         // A cell says how many of the march's elements were reduced, out of how many the body
-        // was cut into: 5 of 10 is half the nose, 5 of 160 is nothing.
+        // was cut into: 5 of 10 is half the nose, 5 of 160 is nothing. It also says how many times
+        // the surface pressure crossed its tangent cone's, where the sweep counted them: any
+        // crossing is a pole of the decay rate, and the answer stops being the model's.
         let cell = |v: &Value, of: usize| match v.get("c_n_alpha_per_rad").and_then(Value::as_f64) {
             None => "fails".to_owned(),
             Some(slope) => {
                 let reduced = v["reduced_elements"].as_u64().unwrap();
+                let mut notes = Vec::new();
                 if reduced > 0 {
-                    format!("{} ({reduced} of {of} reduced)", num(slope, 3))
-                } else {
+                    notes.push(format!("{reduced} of {of} reduced"));
+                }
+                // `starts` has no crossing count; the cap sweep does.
+                if let Some(crossings) = v
+                    .get("tangent_cone_crossings")
+                    .and_then(Value::as_u64)
+                    .filter(|&c| c > 0)
+                {
+                    let plural = if crossings == 1 { "" } else { "s" };
+                    notes.push(format!("{crossings} crossing{plural}"));
+                }
+                if notes.is_empty() {
                     num(slope, 3)
+                } else {
+                    format!("{} ({})", num(slope, 3), notes.join(", "))
                 }
             }
         };

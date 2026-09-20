@@ -106,7 +106,6 @@
     geodetic/ECEF conversion.
   - WGS84 Somigliana gravity with altitude; optional Earth-rotation terms.
   - Loft lessons: L1 (tests named in `docs/research/loft-lessons.md`).
-
   *Done when:*
   - Gravity matches the published formula values at at least 6 latitude/altitude points to 1e-6
     relative.
@@ -121,7 +120,6 @@
     interpolation.
   - Wind models: constant, power/log law, tabulated layers, seeded Dryden turbulence.
   - Loft lessons: L2, L3, L4, L5, L6 (tests named in `docs/research/loft-lessons.md`).
-
   *Done when:*
   - USSA76 matches the tables at at least 25 altitudes to at most 0.1% (the small table fixture is
     committed with its citation).
@@ -135,7 +133,6 @@
   - Delays (including plugged); case/retainer mass. Offline catalog type with per-curve
     provenance and license; bundle only curves with clear terms, the rest cached later (M5).
   - Loft lessons: L36, L37, L38, L39, L40, L41, L42, L43 (`docs/research/loft-lessons.md`).
-
   *Done when:*
   - For every bundled curve, total impulse, average thrust and burn time match the ThrustCurve
     metadata within 1%.
@@ -443,7 +440,6 @@
   - Pitch, yaw and roll damping; roll forcing from cant.
   - Extend the M1.5 override tables to CNα and CP vs Mach and AoA, importable from RASAero CSV.
   - Loft lessons: L7, L17, L18 (tests named in `docs/research/loft-lessons.md`).
-
   *Done when:*
   - Cd vs Mach is within 10% of RocketPy's RASAero CSVs across Mach 0.1–2.0 for the available
     rockets. Per-band errors are in the report.
@@ -599,9 +595,18 @@
       sphere-cone at every row where a cap binds, and puts 109 of the committed nose's 160 elements
       into `η < 0` at Mach 4.63, where the answer follows the element count (3.047 to 3.260); the
       cap stays at 24°, and issue #108 holds what would move it.
-    - [ ] **M1.8e13 The blunt tip's handover, past 24°** (the old e12's aim, once the march carries
-      it). *Done when:* the vertical-tip switch is gone or measured again, fixtures and the guide
-      moving together; and, ahead of that, issue #108 closed.
+    - [x] **M1.8e13 What the answer follows when it follows the mesh** (split from the old e13,
+      whose aim is now M1.8e16). Issue #108 asked for a reading of `η < 0` that settles as the nose
+      is cut finer; before writing one, find out what the answer actually follows.
+      *Done when:* the count that separates a settled reading from a moving one over the cap
+      sweep's meshes is measured and stored beside every reading; a pointed body of TN 3527's own
+      is shown reducing without moving; tests pin both and the mechanism; an ADR and the guide say
+      what it means and what it does not; and issue #108 is re-scoped to it.
+      *Result:* met (ADR-044); it is the surface pressure **crossing** its tangent cone's, where
+      the relaxation rate has a pole, not `η < 0`. Across 10, 40 and 160 elements the 27 readings
+      without a crossing hold to 0.012 per radian and the 5 with one move 0.035 or more, no
+      overlap. A crossing is a flag, not a verdict: 28° at Mach 5 crosses and still settles by 60
+      elements, and a zero count at a coarse mesh only means "not proven".
     - [ ] **M1.8e14 The flare through the method** (split from the old e14; the step is M1.8e15).
       The method already marches a flare — a cone, a tube and a flare return a finite `C_Nα` at Mach
       3 — and it is the model around it that refuses one, since the run stops at the first widening
@@ -619,6 +624,12 @@
       outright, so unlike the flare it needs a model of its own rather than a decision about one
       that exists. *Done when:* #87 closed or narrowed to the step alone, its measured size in an
       ADR and the guide.
+    - [ ] **M1.8e16 The blunt tip's handover, past 24°** (the rest of the old e13; the next free
+      number, so the flare and the step keep theirs, ADR-044). Blocked, so it goes last.
+      *Done when:* the vertical-tip switch is gone or measured again, fixtures and the guide moving
+      together; and, ahead of that, issue #108 closed — a rule for the loading through a crossing
+      whose answer settles as the nose is cut finer, on a body that crosses (the committed nose
+      under a 30° cap at Mach 4.63), and that leaves TN 3527's printed ogives where they are.
 - [ ] **M3.1 OpenRocket `.ork` import.**
   - Handles zip, gz and raw XML, schema 1.0 to 1.10, plus the documented 1.11 additions.
   - Reads components, materials, finishes, motor configurations, recovery, stages, and stored
@@ -642,7 +653,6 @@
   - The stored results inside the `.ork` files are used as a second reference.
   - The deferred M1.4 mass/CG checks run against OR values.
   - Loft lessons: L19, L51, L80, L81, L82, L87 (tests named in `docs/research/loft-lessons.md`).
-
   *Done when:*
   - At least 20 designs are in the report with an error distribution (apogee, max velocity,
     stability margin, mass, CG).
@@ -654,7 +664,6 @@
   - Booster tracked through recovery.
   - Clustered motor mounts, with mass and thrust summed and the thrust offset handled.
   - Loft lessons: L30, L31, L93 (tests named in `docs/research/loft-lessons.md`).
-
   *Done when:*
   - A two-stage design and a cluster design each match OpenRocket within the per-case tolerance.
   - Event ordering tests pass.
@@ -665,7 +674,6 @@
   - Landing point in lat/lon.
   - Exports: CSV, JSON, Parquet (feature), KML and GeoJSON.
   - Loft lessons: L32, L33, L34, L35, L94 (tests named in `docs/research/loft-lessons.md`).
-
   *Done when:*
   - Metrics are unit-tested.
   - Exported files are validated (GeoJSON by schema, KML by parsing).
@@ -676,7 +684,6 @@
     reader: a netCDF reader or a documented conversion.
   - Also the corpus flights that have logs.
   - Loft lessons: L83 (tests named in `docs/research/loft-lessons.md`).
-
   *Done when:*
   - At least 6 real flights are in the report, with apogee error and altitude-trace RMS.
   - Mean absolute apogee error is reported against the 5% target.
@@ -684,9 +691,7 @@
 
 - [ ] **M2.4 Accuracy census gate.** Generate a summary census (a README table and badge) from the
   report. CI fails on any per-case regression beyond tolerance.
-
   - Loft lessons: L84, L85, L86, L88 (tests named in `docs/research/loft-lessons.md`).
-
   *Done when:* a deliberately perturbed drag coefficient on a throwaway draft PR makes CI fail.
   The failing run is linked from the real PR's description, and the throwaway PR is closed with
   `gh pr close --delete-branch`.
@@ -731,9 +736,7 @@
 - [ ] **M4.1 Facade API.** The `hpr` crate offers a RocketPy-like builder (`Environment`, `Motor`,
   `Rocket`, `Flight`) plus trait-based custom models. Add `examples/` (at least 4) and a rustdoc
   guide.
-
   - Loft lessons: L95 (tests named in `docs/research/loft-lessons.md`).
-
   *Done when:*
   - The examples run in CI.
   - rustdoc has zero warnings.
@@ -747,9 +750,7 @@
   against the published schemas.
 
 - [ ] **M3.2 OpenRocket `.ork` export** (schema 1.10).
-
   - Loft lessons: L67, L68 (tests named in `docs/research/loft-lessons.md`).
-
   *Done when:*
   - `.ork` → hpr → `.ork` → OR 24.12 (oracle) loads every corpus design.
   - OR re-simulation of the exported file matches the original's within 0.5% apogee.
@@ -825,7 +826,6 @@
   - Landing ellipses at confidence levels; apogee distribution.
   - Sensitivity analysis (Morris screening and Sobol indices).
   - Loft lessons: L52, L53, L54, L55, L96 (tests named in `docs/research/loft-lessons.md`).
-
   *Done when:*
   - Results are bit-reproducible for the same seed.
   - The ellipse math is tested against analytic Gaussians.
@@ -880,17 +880,13 @@
 ## Phase 4: More formats and embeddings
 
 - [ ] **M3.4 RockSim `.rkt` import/export** (clean room, from the RockSim XML doc and samples).
-
   - Loft lessons: L69, L70, L71 (tests named in `docs/research/loft-lessons.md`).
-
   *Done when:* the corpus `.rkt` files import, and the exports reopen in our importer with
   semantic equality.
 
 - [ ] **M3.5 RASAero `.CDX1` import/export** (from samples only). Fix the Loft `<Location>` bug
   class.
-
   - Loft lessons: L72, L73, L74 (tests named in `docs/research/loft-lessons.md`).
-
   *Done when:* the corpus `.CDX1` files import with overall length within 0.5% of the stated
   values.
 
@@ -954,7 +950,6 @@
   - Auto-size parachutes to a target descent rate.
   - Suggestions with reasons.
   - Loft lessons: L97 (tests named in `docs/research/loft-lessons.md`).
-
   *Done when:* every template simulates and passes its own checks, and each check has
   positive/negative tests.
 
@@ -970,9 +965,7 @@
   PWA, Tauri v2 for desktop and mobile) against all-Rust. Build a throwaway 3D trajectory spike in
   each and measure bundle size, frame rate on a phone-class device profile, and development
   effort.
-
   - Loft lessons: P15 (read Loft's `OWNER-NOTES.md` UI notes before the spike).
-
   *Done when:* the ADR is merged with measurements.
 
 - [ ] **M9.1 Desktop app shell.** Design editor (2D profile plus 3D model), simulation runner,
