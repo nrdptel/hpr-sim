@@ -1660,11 +1660,12 @@ the same rocket on `SupersonicFlare::SlenderBody` and finds them again. The tabl
 Mach 1.2 at fifteen flare angles from 0° to 1°, including 0.00024°, 0.00025° and 0.0003° — three
 angles a hair apart that used to give three different answers.
 
-**The one step that is left, and how big it is.** At the crossing itself η has a pole, and that
-does leave a step — not in the pressure, which rides through because the gap it multiplies is zero
-there, but in the *loading*. On the side the method still owns, η runs to +∞ as the turn
+**What is left is the crossing, and here is how big it is.** At the crossing itself η has a pole,
+and that leaves a step — not in the pressure, which rides through because the gap it multiplies is
+zero there, but in the *loading*. On the side the method still owns, η runs to +∞ as the turn
 approaches the crossing, so the element sheds its corner's loading onto its tangent cone's within
-its own length; on the reduced side it holds the corner's. The two differ, so the reading steps. On the whole rocket at 4°, measured
+its own length; on the reduced side it holds the corner's. The two differ, so the reading steps.
+On the whole rocket at 4°, measured
 either side of that Mach number's own crossing with a ±1e-9° probe by
 `a_near_flat_flare_reads_through_and_leaves_only_the_corners_crossing`, in
 [`model.rs`](https://github.com/nrdptel/hpr-sim/blob/main/crates/hpr-aero/src/model.rs)
