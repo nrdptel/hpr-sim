@@ -1687,9 +1687,12 @@ generalized method are the same reading, and the two branches meet.
   stream and a boattail toward footnote 8's constant — so there is nothing for the reduction to
   relax toward, and a reduced element holds its corner's loading over any length. Nothing here
   measures what that would be worth, so the refusal stands: [issue #123: a cylinder's or a
-  boattail's reduced element](https://github.com/nrdptel/hpr-sim/issues/123). It is not a remote
-  corner either — it is what the report's own Newtonian start hits on the Arcas Robin's nose from
-  Mach 3.96 ([The two starts](#the-two-starts)).
+  boattail's reduced element](https://github.com/nrdptel/hpr-sim/issues/123). How near is it? An
+  ogive nose on a tube — 0.25 m on a 27 mm radius, with tubes of 0.7 m, 3 m and 6 m — marches
+  every row from Mach 1.2 to Mach 5 with nothing reduced, so it is not something a plain rocket
+  walks into. What does hit it is TN D-4865's own Newtonian start on the Arcas Robin's nose from
+  Mach 3.96, which is a reason hpr does not use that start
+  ([The two starts](#the-two-starts)).
 - **The generalized method is the older, rougher one.** Reading an element with it is a real
   choice, not a formality, and TN 3527 does not say it is what it would have done. What is checked
   here is that the choice joins the second-order reading continuously at the balance and that it
