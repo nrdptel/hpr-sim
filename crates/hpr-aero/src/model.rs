@@ -3035,8 +3035,8 @@ mod tests {
         let mut worst = (0.0_f64, 0.0_f64, 0.0_f64, 0.0_f64);
         let mut steepest_tabled = 0.0_f64;
         let mut floor_angles: Vec<f64> = Vec::new();
-        for angle_deg in [16.0_f64, 16.5, 17.0, 17.5, 30.0, 50.0, 53.0, 54.0] {
-            for ratio in [0.02_f64, 0.25, 0.3] {
+        for angle_deg in [16.0_f64, 16.5, 17.0, 17.25, 17.5, 30.0, 53.0, 53.5, 53.6] {
+            for ratio in [0.001_f64, 0.02, 0.25, 0.3] {
                 let aft_radius_m = ratio * fore_radius_m;
                 let drop_m = fore_radius_m - aft_radius_m;
                 let length_m = drop_m / angle_deg.to_radians().tan();
@@ -3103,7 +3103,7 @@ mod tests {
                         // the bound is what stops the hold. Read out of the table, the share a
                         // rocket flies never passes potential flow.
                         assert!(
-                            increment >= ceiling - 2e-3,
+                            increment >= ceiling - 1e-12,
                             "{angle_deg}° to {ratio} of the radius at Mach {mach}: the boattail \
                              takes {increment} off, past potential flow's {ceiling}"
                         );
@@ -3113,6 +3113,14 @@ mod tests {
                         assert!(
                             increment <= ceiling,
                             "{angle_deg}° to {ratio} at Mach {mach}: {increment} against {ceiling}"
+                        );
+                        // The boattail's own read, as published: the bound never clips it, so
+                        // the table carries the correlation itself here.
+                        let published = read(mach, length_m);
+                        assert!(
+                            (increment - published).abs() < 1e-9,
+                            "{angle_deg}° to {ratio} at Mach {mach}: {increment} against the \
+                             correlation's own {published}"
                         );
                         if !floor_angles.contains(&angle_deg) {
                             floor_angles.push(angle_deg);
@@ -3128,20 +3136,24 @@ mod tests {
                 }
             }
         }
-        // The floor is a sliver just above the hold's own angle, not a whole band of shape.
+        // The floor is a sliver just above the hold's own angle, on the angles swept: the
+        // condition is that the boattail's own read passes the curve's Munk crossing, so it
+        // closes as the angle or the Mach number rises.
         assert_eq!(
             floor_angles,
-            [16.0, 16.5, 17.0],
-            "the angles where a boattail's own read already passes potential flow"
+            [16.0, 16.5, 17.0, 17.25],
+            "the swept angles where a boattail's own read already passes potential flow"
         );
-        // The method itself refuses a boattail past about 53°, which is where the sweep ends.
+        // The steepest shape this sweep both tables and can bind: the method refuses steeper
+        // bodies, at an angle that depends on how far the boattail narrows.
         assert!(
-            (steepest_tabled - 53.0).abs() < 1e-12,
-            "the steepest boattail the method tables is {steepest_tabled}°"
+            (steepest_tabled - 53.5).abs() < 1e-12,
+            "the steepest boattail swept that the method tables is {steepest_tabled}°"
         );
         assert!(
-            (worst.0 - 0.053).abs() < 0.003,
-            "the bound holds back at most {:.4} per rad, at {}° to {} of the radius at Mach {:.3}",
+            (worst.0 - 0.060).abs() < 5e-4,
+            "the bound moves a printed coefficient by at most {:.4} per rad, at {}° to {} of the \
+             radius at Mach {:.3}",
             worst.0,
             worst.1,
             worst.2,

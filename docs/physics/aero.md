@@ -650,22 +650,28 @@ capped. The bound bites when the aft radius is under about `1 − √(M² − 1)
 radius — two fifths at Mach 1.2, a quarter at 1.3, a twentieth at 1.45, nothing much above Mach
 1.49 — and only where the method's table has started, which on such shapes it barely has.
 
-How much that is worth is measured rather than argued, by sweeping every boattail the method will
-fly and reading its shares back out of the table
-(`what_the_potential_flow_bound_reaches`). Two things come out. At the table's rows a rocket's
-boattail never takes off more lift than potential flow. And the most the bound holds back is
-**0.053 per radian** on the boattail's cross-section, at 53° narrowing to a fiftieth of the
-radius — the steepest boattail the method accepts at all, since past about 53° it refuses the
-body and the rocket keeps slender-body theory. No committed design comes near: the steepest is
-Calisto's 18.4°, whose aft radius is 0.685 of its fore radius, where the bound would need under
-0.40 even at Mach 1.2.
+How much that is worth is measured rather than argued, by sweeping boattails of 16° to 53.6°
+narrowing to between a thousandth and three tenths of the fore radius, and reading their shares
+back out of the table (`what_the_potential_flow_bound_reaches`). Two things come out.
+
+- **At the table's rows a boattail never takes off more lift than potential flow** — except in
+  the sliver described below, where its own read already passes it and the bound never clips that.
+- **At most the bound moves a printed coefficient by 0.060 per radian**, at 53.5° narrowing to a
+  thousandth of the radius. That is the printed number, after the join's weight; the holdback on
+  the boattail's own cross-section is several times larger, but the join is barely open there.
+  53.5° is the steepest boattail the sweep found the method willing to table at all — it refuses
+  53.6°, and refuses shallower angles than that where the boattail narrows less.
+
+No committed design comes near: the steepest is Calisto's 18.4°, whose aft radius is 0.685 of its
+fore radius, where the bound would need under 0.40 even at Mach 1.2.
 
 Two caveats, both small and both real. The bound applies where the shares are computed, at the
 table's rows; between rows the table interpolates, so a printed value beside a row of the next
-kind can sit a little past potential flow. And in a sliver just above the hold's own angle — 16°
-to 17° on the shapes swept — a boattail is deep enough that **its own** read already passes
-potential flow, and since the bound never clips a boattail's own length, the hold does nothing
-there and the rocket flies an extrapolation nothing measured checks.
+kind can sit a little past potential flow. And in a sliver just above the hold's own angle — the
+sweep finds it at 16°, 16.5°, 17° and 17.25° — a boattail is deep enough that **its own** read
+already passes potential flow, and since the bound never clips a boattail's own length, the hold
+does nothing there and the rocket flies an extrapolation nothing measured checks. The sliver
+closes as the angle or the speed rises, not at a fixed angle.
 
 **How far to trust the 16°.** It is Cubbage's, measured at Mach 0.6 to 1.28 and on *drag*, and it
 is used here on the normal force from Mach 1.2 up. A shoulder turns the flow through a

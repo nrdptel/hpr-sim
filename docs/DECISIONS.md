@@ -3715,11 +3715,13 @@ the method at all.
       degree, so it is good to about a percent): two fifths at Mach 1.2, a quarter at 1.3, a
       twentieth at 1.45, nothing much above Mach 1.49.
     - What that is worth is measured, not argued. `what_the_potential_flow_bound_reaches` sweeps
-      every boattail the method will fly, reads the shares back out of the table, and pins two
-      things: at the table's rows a boattail never takes off more than potential flow, and the
-      most the bound holds back is 0.053 per radian on the boattail's cross-section, at 53°
-      narrowing to a fiftieth of the radius — the steepest boattail the method accepts, since
-      past about 53° it refuses the body altogether. Deleting the bound fails that test.
+      boattails of 16° to 53.6° narrowing to between a thousandth and three tenths of the fore
+      radius, reads the shares back out of the table, and pins three things: at the table's rows
+      a boattail never takes off more than potential flow, except in the sliver where its own
+      read already passes it; there, the table carries the correlation as published; and at most
+      the bound moves a **printed** coefficient (after the join's weight) by 0.060 per radian, at
+      53.5° narrowing to a thousandth of the radius, the steepest the sweep found the method
+      willing to table. Deleting the bound fails that test, and so does clipping the floor.
     - No committed design reaches it: the steepest, Calisto's 18.4°, has an aft radius 0.685 of
       its fore radius against the 0.40 the bound would need even at Mach 1.2.
     - It does **not** bound the correlation itself. A boattail's read at its own length is used as
@@ -3730,7 +3732,8 @@ the method at all.
     - Three things are left open. Where a boattail's **own** read already passes potential flow
       the bound does not clip it — that is the correlation as published — so the 16° hold
       contributes nothing there and the boattail flies an extrapolation nothing measured checks;
-      the sweep finds that sliver at 16° to 17°, and pins which angles it covers. The bound
+      the sweep finds that sliver at 16°, 16.5°, 17° and 17.25°, and pins those; it closes as the
+      angle or the speed rises rather than at a fixed angle. The bound
       applies at the table's rows, where the shares are computed, so a printed value between a
       bounded row and a floor row can sit a little past potential flow. And when the bound binds,
       hpr reports slender-body theory's size at Washington and Pettis's station, which for a cone
