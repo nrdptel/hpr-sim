@@ -202,6 +202,8 @@ pub struct ShockExpansionBody {
     blunt: bool,
     /// Where the march behind a blunt tip's cap starts from.
     handover_start: HandoverStart,
+    /// The cap on the handover slope, rad ([`crate::blunt_tip::MAX_HANDOVER_RAD`] as flown).
+    handover_cap_rad: f64,
 }
 
 /// Where the method's march starts behind a blunt tip's Newtonian cap
@@ -389,6 +391,7 @@ impl ShockExpansionBody {
             elements,
             blunt,
             handover_start: HandoverStart::default(),
+            handover_cap_rad: crate::blunt_tip::MAX_HANDOVER_RAD,
         })
     }
 
@@ -397,6 +400,21 @@ impl ShockExpansionBody {
     #[must_use]
     pub fn with_handover_start(mut self, start: HandoverStart) -> Self {
         self.handover_start = start;
+        self
+    }
+
+    /// This body with its blunt tip handing over no steeper than `cap_rad` instead of the flown
+    /// [`crate::blunt_tip::MAX_HANDOVER_RAD`]; a pointed body is unchanged. A steeper cap follows
+    /// TN D-4865's own rule to a higher Mach number and starts the march from a steeper cone;
+    /// what each is worth is measured in [ADR-043][adr-043].
+    ///
+    /// The cap is checked when the handover is taken ([`Self::handover_m`]), which refuses one
+    /// outside `(0, `[`crate::blunt_tip::CONE_TABLE_CAP_RAD`]`]`.
+    ///
+    /// [adr-043]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-043-the-blunt-tips-handover-cap-what-it-is-worth-and-what-stops-it-moving-2026-09-20
+    #[must_use]
+    pub fn with_handover_cap_rad(mut self, cap_rad: f64) -> Self {
+        self.handover_cap_rad = cap_rad;
         self
     }
 
@@ -418,12 +436,13 @@ impl ShockExpansionBody {
     }
 
     /// Where a blunt tip's cap hands over to the method at Mach `mach`, m aft of the vertex:
-    /// where the first segment's slope falls to [`crate::blunt_tip::handover_angle_rad`]. `None`
-    /// for a pointed tip.
+    /// where the first segment's slope falls to [`crate::blunt_tip::handover_angle_rad`], or to
+    /// the body's own cap ([`Self::with_handover_cap_rad`]). `None` for a pointed tip.
     ///
     /// # Errors
     ///
-    /// - [`AeroError::Domain`] for a Mach number that isn't finite and above 1.
+    /// - [`AeroError::Domain`] for a Mach number that isn't finite and above 1, or a handover cap
+    ///   outside `(0, `[`crate::blunt_tip::CONE_TABLE_CAP_RAD`]`]`.
     /// - [`AeroError::Unsupported`] if the first segment is steeper than the handover's slope all
     ///   the way to its end.
     pub fn handover_m(&self, mach: f64) -> Result<Option<f64>, AeroError> {
@@ -431,7 +450,7 @@ impl ShockExpansionBody {
         if !self.blunt {
             return Ok(None);
         }
-        let angle = crate::blunt_tip::handover_angle_rad(mach)?;
+        let angle = crate::blunt_tip::handover_angle_capped_rad(mach, self.handover_cap_rad)?;
         let target = angle.tan();
         // `new` refuses a body without segments.
         let first = &self.segments[0].1;
@@ -2332,6 +2351,110 @@ mod tests {
             let slope = body.slope(mach, area).unwrap();
             assert!(slope.slope_per_rad > cap);
             assert!(slope.centre_of_pressure_m > 0.0 && slope.centre_of_pressure_m < 4.5);
+        }
+    }
+
+    /// What stops a blunt tip's handover moving to the cone tables' 30° (M1.8e12, ADR-043).
+    /// Under the flown cap the committed Arcas Robin nose's march holds its answer to 0.01 per
+    /// radian from 10 elements to 160 at every Mach, reducing at most 2 of 160 elements to the
+    /// generalized method. Under the tables' cap the same nose reduces 109 of 160 at Mach 4.63
+    /// and 145 at Mach 5, and the answer moves with the element count: 0.21 per radian at Mach
+    /// 4.63, 7% of it. That is the method, not the arithmetic — both readings are unchanged when
+    /// the Mach number is nudged by eight of its last bits.
+    #[test]
+    fn a_steeper_handover_moves_the_march_out_of_its_range() {
+        use crate::blunt_tip::{CONE_TABLE_CAP_RAD, MAX_HANDOVER_RAD};
+        let radius = 1.125 * 0.0254;
+        let area = PI * radius * radius;
+        let body = |steps: usize, cap_rad: f64| {
+            ShockExpansionBody::new(
+                &[
+                    BodySegment::Profile {
+                        profile: Profile::nose(
+                            NoseShape::PowerSeries { exponent: 0.6369 },
+                            9.375 * 0.0254,
+                            radius,
+                        )
+                        .unwrap(),
+                    },
+                    BodySegment::Cylinder {
+                        length_m: (39.14 - 9.375) * 0.0254,
+                        radius_m: radius,
+                    },
+                ],
+                steps,
+            )
+            .unwrap()
+            .with_handover_cap_rad(cap_rad)
+        };
+        let counts = [
+            DEFAULT_ELEMENTS_PER_CURVE,
+            4 * DEFAULT_ELEMENTS_PER_CURVE,
+            16 * DEFAULT_ELEMENTS_PER_CURVE,
+        ];
+        let read = |cap_rad: f64, mach: f64| {
+            let slopes: Vec<f64> = counts
+                .iter()
+                .map(|&n| body(n, cap_rad).slope(mach, area).unwrap().slope_per_rad)
+                .collect();
+            let high = slopes.iter().copied().fold(f64::MIN, f64::max);
+            let low = slopes.iter().copied().fold(f64::MAX, f64::min);
+            let reduced = body(counts[2], cap_rad).reduced_elements(mach).unwrap();
+            (slopes[0], high - low, reduced)
+        };
+        // The cap hpr flies: the element count is worth a thousandth of the answer, all the way
+        // to Mach 5, and the march barely leaves the second-order method.
+        for mach in [1.5, 2.3, 2.96, 3.96, 4.63, 5.0] {
+            let (_, spread, reduced) = read(MAX_HANDOVER_RAD, mach);
+            assert!(
+                spread < 0.01 && reduced <= 2,
+                "the flown cap at Mach {mach}: the count is worth {spread:.4} per radian, \
+                 {reduced} of {} elements reduced",
+                counts[2]
+            );
+        }
+        // The cone tables' cap costs nothing below Mach 4 — that is not where it is blocked.
+        for mach in [1.5, 2.3, 2.96, 3.96] {
+            let (_, spread, reduced) = read(CONE_TABLE_CAP_RAD, mach);
+            assert!(
+                spread < 0.02 && reduced <= 2,
+                "the tables' cap at Mach {mach}: the count is worth {spread:.4} per radian, \
+                 {reduced} of {} elements reduced",
+                counts[2]
+            );
+        }
+        // Above it the march reduces most of the nose and the answer follows the element count.
+        for (mach, least_reduced, least_spread) in [(4.63, 100, 0.2), (5.0, 140, 0.0)] {
+            let (coarse, spread, reduced) = read(CONE_TABLE_CAP_RAD, mach);
+            let (flown, _, _) = read(MAX_HANDOVER_RAD, mach);
+            assert!(
+                reduced >= least_reduced && spread >= least_spread,
+                "the tables' cap at Mach {mach}: {reduced} of {} elements reduced, the count \
+                 worth {spread:.4} per radian",
+                counts[2]
+            );
+            assert!(
+                coarse - flown > 0.01,
+                "the tables' cap at Mach {mach} should read above the flown cap's \
+                 ({coarse:.4} against {flown:.4})"
+            );
+        }
+        // The arithmetic isn't what moves. Which elements reduce is a decision on the sign of
+        // `η`, and none of them is close enough to zero to turn on rounding: nudge the Mach
+        // number by eight of its last bits and the same elements reduce, for an answer that
+        // follows to a part in a billion.
+        for cap in [MAX_HANDOVER_RAD, CONE_TABLE_CAP_RAD] {
+            for mach in [4.63_f64, 5.0] {
+                let nudged = mach * (1.0 + 8.0 * f64::EPSILON);
+                let (slope, _, reduced) = read(cap, mach);
+                let (nudged_slope, _, nudged_reduced) = read(cap, nudged);
+                assert_eq!(
+                    (reduced, (nudged_slope / slope - 1.0).abs() < 1e-9),
+                    (nudged_reduced, true),
+                    "{}° at Mach {mach} against {nudged}: {slope} against {nudged_slope}",
+                    cap.to_degrees()
+                );
+            }
         }
     }
 

@@ -17,10 +17,10 @@ use std::f64::consts::PI;
 use std::fs;
 use std::path::Path;
 
-use hpr_aero::blunt_tip::handover_angle_rad;
+use hpr_aero::blunt_tip::{CONE_TABLE_CAP_RAD, handover_angle_capped_rad, handover_angle_rad};
 use hpr_aero::crossflow::crossflow_factor;
 use hpr_aero::shock_expansion::{
-    BodySegment, DEFAULT_ELEMENTS_PER_CURVE, HandoverStart, ShockExpansionBody,
+    BodySegment, DEFAULT_ELEMENTS_PER_CURVE, HandoverStart, ShockExpansionBody, ShockExpansionSlope,
 };
 use hpr_aero::{AeroModel, BodyModel};
 use hpr_design::{NoseShape, Part, Profile, Rocket};
@@ -77,6 +77,7 @@ pub fn generate(root: &Path) -> Result<Value, String> {
         "sphere_cone": sphere_cone_rows(root)?,
         "arcas_robin": arcas_robin(root)?,
         "starts": starts(root)?,
+        "handover_caps": handover_caps(root)?,
         "coverage": coverage(root)?,
     }))
 }
@@ -171,6 +172,212 @@ fn coverage(root: &Path) -> Result<Value, String> {
         "cap_ends_at": Value::Object(by_mach),
     }));
     Ok(json!(rows))
+}
+
+/// The caps on the handover slope the sweep reads, degrees: the flown 24°
+/// ([`hpr_aero::blunt_tip::MAX_HANDOVER_RAD`]) to the steepest cone the method's tables carry
+/// ([`CONE_TABLE_CAP_RAD`]).
+pub const CAPS_DEG: [f64; 4] = [24.0, 26.0, 28.0, 30.0];
+
+/// The element counts the committed nose's march is read at: the flown default, four times it,
+/// and sixteen times.
+pub const CAP_ELEMENTS: [usize; 3] = [
+    DEFAULT_ELEMENTS_PER_CURVE,
+    4 * DEFAULT_ELEMENTS_PER_CURVE,
+    16 * DEFAULT_ELEMENTS_PER_CURVE,
+];
+
+/// The Mach number a cap starts to bind at: where the wedge's largest deflection reaches it,
+/// bisected.
+fn binds_from(cap_rad: f64) -> f64 {
+    let (mut low, mut high) = (1.0_f64, 20.0_f64);
+    for _ in 0..200 {
+        let mid = 0.5 * (low + high);
+        // `handover_angle_capped_rad` is the lesser of the two: below the cap it is the wedge's.
+        if handover_angle_capped_rad(mid, cap_rad).is_ok_and(|a| a < cap_rad) {
+            low = mid;
+        } else {
+            high = mid;
+        }
+    }
+    0.5 * (low + high)
+}
+
+/// What the cap on a blunt tip's handover ([`hpr_aero::blunt_tip::MAX_HANDOVER_RAD`], 24° as
+/// flown) is worth, and what stops it moving to the cone tables' 30° (M1.8e12, ADR-043).
+///
+/// For each cap in [`CAPS_DEG`]: the Mach number it starts to bind at, TN D-4865's sphere-cone
+/// read under it (the report's own case, whose handover rule this is), and the committed Arcas
+/// Robin nose's march read at [`CAP_ELEMENTS`] elements, with how many elements the march reduces
+/// to the generalized method (`η < 0`, issue #81) and the spread the element count leaves.
+fn handover_caps(root: &Path) -> Result<Value, String> {
+    let steepest = CAPS_DEG[CAPS_DEG.len() - 1];
+    if (steepest - CONE_TABLE_CAP_RAD.to_degrees()).abs() > 1e-9 {
+        return Err(format!(
+            "the sweep's steepest cap, {steepest}°, isn't the cone tables' {}°",
+            CONE_TABLE_CAP_RAD.to_degrees()
+        ));
+    }
+    let readings = read(root, READINGS)?;
+    let base = sphere_cone_body(&readings)?;
+    let model = &readings["model"];
+    let radius = model["nose_radius_over_base_diameter"]
+        .as_f64()
+        .ok_or("no nose radius")?;
+    let half_angle = model["cone_half_angle_deg"]
+        .as_f64()
+        .ok_or("no cone half-angle")?
+        .to_radians();
+    let (planform_ratio, planform_centroid) = sphere_cone_planform(radius, half_angle);
+    let length = readings["reference"]["length_over_base_diameter"]
+        .as_f64()
+        .ok_or(format!("{READINGS}: no reference length"))?;
+    let fineness = base.length_m();
+    let area = 0.25 * PI;
+    let mut sphere_cone = Vec::new();
+    for row in readings["rows"]
+        .as_array()
+        .ok_or(format!("{READINGS}: no rows"))?
+    {
+        let mach = row["mach"].as_f64().ok_or("a row without `mach`")?;
+        let (n_a, n_c) = pairs(row, "alpha_deg_c_n")?;
+        let (m_a, m_c) = pairs(row, "alpha_deg_c_m")?;
+        let measured = slope(&n_a, &n_c);
+        let measured_cp = -slope(&m_a, &m_c) * length / measured;
+        let mut by_cap = serde_json::Map::new();
+        for cap_deg in CAPS_DEG {
+            let cap = cap_deg.to_radians();
+            let body = base.clone().with_handover_cap_rad(cap);
+            let hpr = body
+                .slope(mach, area)
+                .map_err(|e| format!("model 1 at Mach {mach} under {cap_deg}°: {e}"))?;
+            let (fitted, fitted_cp) = flown_fit(
+                &hpr,
+                &n_a,
+                mach,
+                fineness,
+                planform_ratio,
+                planform_centroid,
+            );
+            by_cap.insert(
+                num(cap_deg),
+                json!({
+                    "handover_deg": handover_angle_capped_rad(mach, cap)
+                        .map_err(|e| e.to_string())?
+                        .to_degrees(),
+                    "fitted_c_n_alpha": fitted,
+                    "fitted_c_n_alpha_error": fitted / measured - 1.0,
+                    "cp_error_calibers": fitted_cp - measured_cp,
+                }),
+            );
+        }
+        sphere_cone.push(json!({ "mach": mach, "by_cap": Value::Object(by_cap) }));
+    }
+
+    let design = "wind-tunnel-arcas-robin-short.json";
+    let (profile, tube_length, tube_radius, base_radius) = committed_nose(root, design)?;
+    let nose_area = PI * base_radius * base_radius;
+    let mut nose_rows = Vec::new();
+    for mach in START_MACHS {
+        let mut by_cap = serde_json::Map::new();
+        for cap_deg in CAPS_DEG {
+            let cap = cap_deg.to_radians();
+            let mut by_count = serde_json::Map::new();
+            let mut slopes = Vec::new();
+            for elements in CAP_ELEMENTS {
+                let body = ShockExpansionBody::new(
+                    &[
+                        BodySegment::Profile { profile },
+                        BodySegment::Cylinder {
+                            length_m: tube_length,
+                            radius_m: tube_radius,
+                        },
+                    ],
+                    elements,
+                )
+                .map_err(|e| e.to_string())?
+                .with_handover_cap_rad(cap);
+                let value = match (body.slope(mach, nose_area), body.reduced_elements(mach)) {
+                    (Ok(slope), Ok(reduced)) => {
+                        slopes.push(slope.slope_per_rad);
+                        json!({
+                            "c_n_alpha_per_rad": slope.slope_per_rad,
+                            "cp_calibers": slope.centre_of_pressure_m / (2.0 * base_radius),
+                            "reduced_elements": reduced,
+                        })
+                    }
+                    (Err(e), _) | (_, Err(e)) => json!({ "fails": e.to_string() }),
+                };
+                by_count.insert(elements.to_string(), value);
+            }
+            let spread = match (
+                slopes.iter().copied().reduce(f64::max),
+                slopes.iter().copied().reduce(f64::min),
+            ) {
+                (Some(high), Some(low)) if slopes.len() == CAP_ELEMENTS.len() => {
+                    json!(high - low)
+                }
+                _ => Value::Null,
+            };
+            by_cap.insert(
+                num(cap_deg),
+                json!({
+                    "handover_deg": handover_angle_capped_rad(mach, cap)
+                        .map_err(|e| e.to_string())?
+                        .to_degrees(),
+                    "elements": Value::Object(by_count),
+                    "spread_per_rad": spread,
+                }),
+            );
+        }
+        nose_rows.push(json!({ "mach": mach, "by_cap": Value::Object(by_cap) }));
+    }
+
+    Ok(json!({
+        "note": "What the cap on a blunt tip's handover slope is worth (M1.8e12). hpr hands over \
+                 at the lesser of the wedge's largest deflection and the cap; 24 deg is flown, 30 \
+                 deg is the steepest cone the method's normal-force tables carry. sphere_cone: TN \
+                 D-4865's model 1, whose handover rule this is, fitted as `sphere_cone` above \
+                 fits it. committed_nose: the Arcas Robin's committed power-series nose on the \
+                 short model's cylinder, nothing aft, at alpha -> 0 per radian on its \
+                 cross-section, read at 10, 40 and 160 elements; reduced_elements counts the \
+                 elements the march reduces to the generalized method (eta < 0, issue #81) and \
+                 spread_per_rad is the largest of the three slopes less the smallest. No targets.",
+        "caps_deg": CAPS_DEG,
+        "binds_from_mach": CAPS_DEG.map(|c| binds_from(c.to_radians())),
+        "sphere_cone": { "rows": sphere_cone },
+        "committed_nose": {
+            "design": design,
+            "body": "the committed nose and the short model's cylinder, nothing aft",
+            "elements": CAP_ELEMENTS,
+            "rows": nose_rows,
+        },
+    }))
+}
+
+/// A cap's key in the fixture: whole degrees where it is whole.
+fn num(degrees: f64) -> String {
+    format!("{degrees}")
+}
+
+/// The committed nose's profile, the cylinder behind it and the base radius, from a design.
+fn committed_nose(root: &Path, design: &str) -> Result<(Profile, f64, f64, f64), String> {
+    let text = fs::read_to_string(root.join("validation/designs").join(design))
+        .map_err(|e| format!("{design}: {e}"))?;
+    let rocket: Rocket = serde_json::from_str(&text).map_err(|e| format!("{design}: {e}"))?;
+    let stage = rocket.stages.first().ok_or(format!("{design}: no stage"))?;
+    let (Some(Part::NoseCone(nose)), Some(Part::BodyTube(tube))) = (
+        stage.components.first().map(|c| &c.part),
+        stage.components.get(1).map(|c| &c.part),
+    ) else {
+        return Err(format!("{design}: not a nose and a body tube"));
+    };
+    Ok((
+        nose.profile().map_err(|e| e.to_string())?,
+        tube.length_m,
+        tube.outer_radius_m,
+        nose.base_radius_m,
+    ))
 }
 
 /// The Mach numbers the two starts are compared at: the tunnel's, Mach 3.5 between them, and 5.
@@ -299,6 +506,33 @@ fn sphere_cone_planform(radius: f64, half_angle: f64) -> (f64, f64) {
     (area / (0.25 * PI), moment / area)
 }
 
+/// A body's slope and centre of pressure fitted as a flight flies it at the plotted angles
+/// `alphas_rad`: the method's slope as `sin α`, and body lift, Jorgensen's
+/// `η C_dn (A_plan/A_ref) sin² α` at the planform's centroid.
+fn flown_fit(
+    hpr: &ShockExpansionSlope,
+    alphas_rad: &[f64],
+    mach: f64,
+    fineness: f64,
+    planform_ratio: f64,
+    planform_centroid: f64,
+) -> (f64, f64) {
+    let (c_n, moments): (Vec<f64>, Vec<f64>) = alphas_rad
+        .iter()
+        .map(|&a| {
+            let lift =
+                crossflow_factor(fineness, mach * a.sin()) * planform_ratio * a.sin() * a.sin();
+            let attached = hpr.slope_per_rad * a.sin();
+            (
+                attached + lift,
+                attached * hpr.centre_of_pressure_m + lift * planform_centroid,
+            )
+        })
+        .unzip();
+    let fitted = slope(alphas_rad, &c_n);
+    (fitted, slope(alphas_rad, &moments) / fitted)
+}
+
 fn sphere_cone_rows(root: &Path) -> Result<Value, String> {
     let readings = read(root, READINGS)?;
     let body = sphere_cone_body(&readings)?;
@@ -348,22 +582,14 @@ fn sphere_cone_rows(root: &Path) -> Result<Value, String> {
         let newtonian = reports
             .slope(mach, area)
             .map_err(|e| format!("model 1 at Mach {mach}, the report's start: {e}"))?;
-        // As a flight flies it at the plotted angles: the method's slope as `sin α`, and body
-        // lift, Jorgensen's `η C_dn (A_plan/A_ref) sin² α` at the planform's centroid.
-        let (c_n, moments): (Vec<f64>, Vec<f64>) = n_a
-            .iter()
-            .map(|&a| {
-                let lift =
-                    crossflow_factor(fineness, mach * a.sin()) * planform_ratio * a.sin() * a.sin();
-                let attached = hpr.slope_per_rad * a.sin();
-                (
-                    attached + lift,
-                    attached * hpr.centre_of_pressure_m + lift * planform_centroid,
-                )
-            })
-            .unzip();
-        let fitted = slope(&n_a, &c_n);
-        let fitted_cp = slope(&n_a, &moments) / fitted;
+        let (fitted, fitted_cp) = flown_fit(
+            &hpr,
+            &n_a,
+            mach,
+            fineness,
+            planform_ratio,
+            planform_centroid,
+        );
         let handover_x = body
             .handover_m(mach)
             .map_err(|e| e.to_string())?
@@ -687,6 +913,33 @@ mod tests {
                 cell(&r["newtonian"]["40"]),
             ));
         }
+        for r in fixture["handover_caps"]["sphere_cone"]["rows"]
+            .as_array()
+            .unwrap()
+        {
+            let by_cap = &r["by_cap"];
+            let cells: Vec<String> = CAPS_DEG
+                .iter()
+                .map(|cap| pct(f(&by_cap[format!("{cap}")], "/fitted_c_n_alpha_error")))
+                .collect();
+            rows.push(format!("| {} | {} |", f(r, "/mach"), cells.join(" | ")));
+        }
+        for r in fixture["handover_caps"]["committed_nose"]["rows"]
+            .as_array()
+            .unwrap()
+        {
+            let by_cap = &r["by_cap"];
+            // The guide shows the two ends of the sweep; the fixture holds all four caps.
+            let cells: Vec<String> = [CAPS_DEG[0], CAPS_DEG[CAPS_DEG.len() - 1]]
+                .iter()
+                .flat_map(|cap| {
+                    let elements = &by_cap[format!("{cap}")]["elements"];
+                    [CAP_ELEMENTS[0], CAP_ELEMENTS[CAP_ELEMENTS.len() - 1]]
+                        .map(|n| cell(&elements[n.to_string()]))
+                })
+                .collect();
+            rows.push(format!("| {} | {} |", f(r, "/mach"), cells.join(" | ")));
+        }
         for r in fixture["coverage"].as_array().unwrap() {
             let by_mach = &r["cap_ends_at"];
             let cells: Vec<String> = COVERAGE_MACHS
@@ -721,7 +974,10 @@ mod tests {
                 (a.min(e), b.max(e))
             });
         rows.push(format!("hpr reads {} to {}", pct(low), pct(high)));
-        assert_eq!(rows.len(), 2 * 6 + 11 + START_MACHS.len() + 5 + 1);
+        assert_eq!(
+            rows.len(),
+            2 * 6 + 11 + START_MACHS.len() + 6 + START_MACHS.len() + 5 + 1
+        );
         for row in rows {
             assert!(guide.contains(&row), "aero.md doesn't have the row `{row}`");
         }

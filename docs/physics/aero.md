@@ -600,7 +600,7 @@ The first lip row is no longer a switch: it is spread over the band the wake gra
 [above](#a-lip-in-a-boattails-wake). The second still is one. The two tips are next
 ([M1.8e11](../decisions-and-roadmap.md#m1-8e11)), where a second source's cone tables reach past
 Fig. 2's edge. For the step and the flare nothing measures what they carry faster than sound, so
-there is nothing to blend toward yet ([M1.8e12](../decisions-and-roadmap.md#m1-8e12)). Until then,
+there is nothing to blend toward yet ([M1.8e14](../decisions-and-roadmap.md#m1-8e14)). Until then,
 a rocket whose shape sits near one of those thresholds is worth checking on both sides. The step's
 is finer than it sounds: a billionth of the radius, a few hundredths of a nanometre on a 54 mm
 body, so any step a person would draw is past it.
@@ -1004,10 +1004,10 @@ drag turned into the body's axes, `C_p,max/2`, as it must; test
 wedge can turn the flow through with its shock attached: 12.1° at Mach 1.5, 22.97° at Mach 2
 ([R1135] eqs. 138 and 168). The report chose this point "simply because it gave the best
 agreement with the available data in the low supersonic-speed range" ([J68] p. 5). hpr stops at
-24° from about Mach 2.1: the method needs the normal-force slope of a cone tangent to the body,
-and TN 3527's chart stops at 24° ([SD56] Fig. 2). The slopes themselves now reach 30°
-([ADR-042][adr-042]), so that cap is a choice rather than a limit — raising it moves what every
-committed blunt nose flies, which is [M1.8e12](../decisions-and-roadmap.md#m1-8e12)'s decision.
+24°, which the wedge's angle passes at Mach 2.06: the method needs the normal-force slope of a
+cone tangent to the body, and TN 3527's chart stopped at 24° ([SD56] Fig. 2). Those slopes now
+reach 30° ([ADR-042][adr-042]), and the handover still stops at 24°, because that is as far as
+the march carries it — [What the cap is worth](#what-the-cap-is-worth) measures both ends.
 
 **How much of the nose the cap covers** depends strongly on speed. Where it ends, as a share of
 the nose's length and of its base radius:
@@ -1112,6 +1112,65 @@ not always closer: past Mach 4 its error changes sign, so at Mach 4.63 it reads 
 ogive reads +3.4%, 1.5 points further from the tunnel. Over the eleven rows it is nearer at nine. Below Mach 3 both read high, most at Mach 1.5, for
 the reasons in [Checking the shock-expansion method](#checking-the-shock-expansion-method).
 
+#### What the cap is worth
+
+The cap on the handover is 24° and the cone slopes the method reads now reach 30°
+([ADR-042][adr-042]), so the cap could move. Moving it would follow the report's own rule further:
+the wedge's largest deflection passes 24° at Mach 2.06 and 30° at Mach 2.52, so a 30° cap keeps
+[J68]'s rule over that whole band where 24° cuts it short from Mach 2.06 up. It also reads nearer
+the report's own sphere-cone at every row. And on the Arcas Robin's committed nose it breaks the
+march above Mach 4. hpr keeps 24° until that is settled ([ADR-043][adr-043]), and the cap is a
+parameter of the method rather than a constant to argue over
+([`with_handover_cap_rad`](../api/hpr_aero/shock_expansion/struct.ShockExpansionBody.html#method.with_handover_cap_rad)).
+
+hpr's error against TN D-4865's sphere-cone, fitted as the table above fits it, under four caps:
+
+| Mach | 24°, as flown | 26° | 28° | 30° |
+|---|---|---|---|---|
+| 1.5 | −1.2% | −1.2% | −1.2% | −1.2% |
+| 1.9 | +0.0% | +0.0% | +0.0% | +0.0% |
+| 2.3 | +7.5% | +7.3% | +7.1% | +7.1% |
+| 2.96 | +12.5% | +12.2% | +11.9% | +11.5% |
+| 3.95 | +29.7% | +28.9% | +28.3% | +28.0% |
+| 4.63 | +32.1% | +31.2% | +30.9% | +31.3% |
+
+Below Mach 2.06 no cap binds and the four are the same reading. Above it a steeper cap reads
+nearer the tunnel by 0.3 to 1.7 points, most at Mach 3.95. The one place it reads further out is
+the last step at Mach 4.63, where 28° reads +30.9% and 30° +31.3%.
+
+The same caps on the Arcas Robin's committed power-series nose and the short model's cylinder,
+nothing aft, per radian on its cross-section at `α → 0`, read with the flown 10 elements per curve
+and with 160:
+
+| Mach | 24°, 10 elements | 160 elements | 30°, 10 elements | 160 elements |
+|---|---|---|---|---|
+| 1.5 | 2.531 | 2.532 | 2.531 | 2.532 |
+| 1.8 | 2.697 | 2.702 | 2.697 | 2.702 |
+| 2.3 | 2.873 | 2.881 | 2.851 | 2.862 |
+| 2.96 | 3.021 | 3.029 | 2.943 | 2.955 |
+| 3.5 | 3.071 | 3.079 | 2.953 | 2.964 |
+| 3.96 | 3.073 | 3.080 (1 reduced) | 2.919 | 2.927 (1 reduced) |
+| 4.63 | 3.030 | 3.034 (2 reduced) | 3.047 (5 reduced) | 3.260 (109 reduced) |
+| 5 | 2.980 | 2.984 (2 reduced) | 3.400 (9 reduced) | 3.454 (145 reduced) |
+
+Through Mach 3.96 the element count is worth under 0.01 per radian under either cap: the answer is
+the model's, not the mesh's. Above it the 30° cap's march *reduces* most of the nose — 109 of 160
+elements at Mach 4.63, 145 at Mach 5 — and the answer follows the element count instead: 3.047 at
+10 elements against 3.260 at 160, 7% apart, where the flown cap moves by 0.1%. A *reduced* element
+is one where TN 3527's exponential law would run the wrong way (`η < 0`, [SD56] p. 13), so hpr
+holds the pressure along it,
+[issue #81](https://github.com/nrdptel/hpr-sim/issues/81)'s open question. The steeper cap starts
+the march from a steeper cone at a higher pressure, and the expansion behind it drops the surface
+pressure below the local tangent cone's, which is the condition the law cannot carry. It is not
+rounding: nudge the Mach number by eight of its last bits and the same elements reduce, for an
+answer that follows to a part in a billion (test
+`a_steeper_handover_moves_the_march_out_of_its_range`).
+
+So the cap hpr flies is set by the march's range rather than by a chart's edge. Moving it waits on
+[issue #108](https://github.com/nrdptel/hpr-sim/issues/108), and then on
+[M1.8e13](../decisions-and-roadmap.md#m1-8e13). All four caps are in the fixture, including the
+26° and 28° columns of the second table.
+
 #### The two starts
 
 hpr starts the march from the tangent cone at the handover, the report from the Newtonian pressure
@@ -1177,7 +1236,9 @@ a sixth of a calibre, and the force that holds the rocket into the wind grows by
   tracks: a vertical-tip nose steeper than the cap's handover all the way to its base gets no
   method at all, and a pointed tip steeper than the cone tables' 30° is refused where a vertical
   one flies. The pointed tip's edge was Fig. 2's 24° until
-  [M1.8e11](../decisions-and-roadmap.md#m1-8e11).
+  [M1.8e11](../decisions-and-roadmap.md#m1-8e11). The vertical tip's edge is the handover's cap,
+  which stands at 24° for the reason [above](#what-the-cap-is-worth), so that switch waits on the
+  same thing the cap does.
 - **Elements that merge, merge with Mach.** Behind the cap, a tangency point whose tangent turns by
   under a microradian is folded into the element before it, because its corner can't be placed in
   floating point. Which points merge changes with the handover, so the method's answer takes a step
@@ -3093,4 +3154,5 @@ ellipse's integrals ([N09] eq. 3.70–3.71); the supersonic forcing and damping 
 [adr-040]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-040-a-steep-boattail-reads-its-measured-correlation-no-steeper-than-16-and-m18es-15-target-judged-2026-09-19
 [adr-041]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-041-a-lips-shelter-is-weighed-as-the-drag-buildup-weighs-it-not-switched-at-a-threshold-2026-09-20
 [adr-042]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-042-cone-slopes-from-24-to-30-come-from-simss-tables-where-tn-3527s-chart-stops-2026-09-20
+[adr-043]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-043-the-blunt-tips-handover-cap-what-it-is-worth-and-what-stops-it-moving-2026-09-20
 [gap-fixture]: https://github.com/nrdptel/hpr-sim/blob/main/validation/fixtures/aero/arcas-robin-gap.json

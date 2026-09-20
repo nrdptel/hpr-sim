@@ -48,6 +48,7 @@ renumber. Supersede an entry by adding a new one that points back to it.
 | ADR-040 | A steep boattail reads its measured correlation no steeper than 16°, and M1.8e's 15% target judged | accepted |
 | ADR-041 | A lip's shelter is weighed as the drag buildup weighs it, not switched at a threshold | accepted |
 | ADR-042 | Cone slopes from 24° to 30° come from Sims's tables, where TN 3527's chart stops | accepted |
+| ADR-043 | The blunt tip's handover cap: what it is worth, and what stops it moving | accepted |
 
 ---
 
@@ -3937,3 +3938,63 @@ grid of 25°, 27.5° and 30°.
   slopes now reach 30°. Raising it changes what every committed blunt nose flies, so it is
   M1.8e12's decision, not a side effect of this one.
 
+## ADR-043: The blunt tip's handover cap: what it is worth, and what stops it moving (2026-09-20)
+
+**Context.** A blunt or vertical nose tip flies a Newtonian cap (TN D-4865) that hands over to the
+second-order shock-expansion method where the surface slope falls to the largest angle a wedge can
+turn the flow through with its shock attached, `δ_max` (ADR-038). hpr hands over at the lesser of
+`δ_max` and a cap, `blunt_tip::MAX_HANDOVER_RAD`, 24°: the march reads the normal-force slope of
+the tangent cone at the handover, and TN 3527's Fig. 2 stopped at 24°. Since ADR-042 those slopes
+reach 30°, so the cap became a choice. `δ_max` passes 24° at Mach 2.06 and 30° at Mach 2.52, so a
+30° cap keeps the report's own rule over that band instead of cutting it short, and above Mach
+2.52 it still starts the march nearer the report's handover.
+
+**Decision.** The cap stays at 24°, and becomes a parameter of the method
+(`ShockExpansionBody::with_handover_cap_rad`, bounded by `blunt_tip::CONE_TABLE_CAP_RAD`) so that
+the sweep is measured rather than argued. `cargo xtask aero` writes it to `handover_caps` in
+`validation/fixtures/aero/blunt-tips.json`, and the guide's
+[What the cap is worth](https://nrdptel.github.io/hpr-sim/physics/aero.html#what-the-cap-is-worth)
+carries both tables.
+
+- **A steeper cap reads nearer the report's own case.** On TN D-4865's sphere-cone, the body whose
+  handover rule this is, fitted as the tunnel measured it, hpr's error falls with every step of
+  the cap where the cap binds at all: +12.5% to +11.5% at Mach 2.96, +29.7% to +28.0% at Mach
+  3.95, +7.5% to +7.1% at Mach 2.3. The one step that reads further out is 28° to 30° at Mach
+  4.63, +30.9% against +31.3%. Below Mach 2.06 no cap binds and all four readings are the same.
+- **And it breaks the march on a nose that flattens fast.** On the Arcas Robin's committed
+  power-series nose, a 30° cap puts 109 of 160 elements at Mach 4.63 and 145 at Mach 5 into
+  TN 3527's `η < 0`, where the exponential law would run away from the tangent cone's pressure and
+  hpr reduces the element to the generalized method (issue #81). The answer then follows the
+  element count: 3.047 per radian at 10 elements against 3.260 at 160, 7% apart, where under the
+  flown cap the same nose moves 3.030 to 3.034, a part in a thousand. Through Mach 3.96 both caps
+  hold to under 0.01 per radian, so this is the top of the range only.
+- **It is the method, not the arithmetic.** Which elements reduce is a decision on the sign of
+  `η`, and none sits close enough to zero to turn on rounding: nudging the Mach number by eight of
+  its last bits leaves the same elements reduced and the answer within a part in a billion
+  (`a_steeper_handover_moves_the_march_out_of_its_range`). What drifts is the loading, not the
+  pressure — at Mach 4.63 the last nose element carries `Λ` = 0.1485 at 40 elements against 0.1590
+  at 80, where its pressure agrees to 0.0005 — because a reduced element transports `Λ` by the
+  `λ₂/λ₁` ratio at each corner instead of relaxing it toward the tangent cone's, and how much of
+  each the march does depends on how the nose is cut up.
+- **`|η|` as a relaxation rate was tried and rejected.** Reading `η < 0` as a decay toward the
+  tangent cone at the rate's magnitude — `ElementFlow::decay_rate` returning `self.eta_rate()
+  .abs()` in place of `.max(0.0)`, a one-line change to measure by hand — leaves the blunt case just as loose (2.826 per radian at 10
+  elements against 3.095 at 160 at Mach 4.63) and makes TN 3527's own fineness-3 ogive settle more
+  slowly, 2.7865 to 2.7131 per radian from 10 to 160 elements at Mach 6.28 where the flown reading
+  moves 2.6992 to 2.6984. hpr's reading is the report's own `η = 0` equations, and nothing
+  measured here beats it.
+- **Not chosen: raise the cap and disclose.** It would trade a converged answer at Mach 4 to 5 for
+  a nearer one at Mach 2.3 to 4, and the guide would have to say the top of the range depends on
+  the element count. A model whose answer moves with its mesh is not a model, and nothing forces
+  the trade: 24° is a measured position, not a target that cannot be met.
+
+**Consequences.**
+
+- Nothing a rocket flies changes: the default cap is what it was, and no committed fixture moves.
+- The cap's justification changes. It was Fig. 2's edge; it is now the march's range, measured
+  over the whole sweep and recorded in the fixture, the guide and issue #108.
+- Issue #108 holds what would let the cap move, and M1.8e13 moves it. The vertical-tip switch of
+  issue #87 — a nose steeper than the handover all the way to its base gets no method — waits on
+  the same thing, since its edge is the cap.
+- The sweep runs four caps over eight Mach numbers at three element counts each time
+  `cargo xtask aero` runs, about four seconds of it.

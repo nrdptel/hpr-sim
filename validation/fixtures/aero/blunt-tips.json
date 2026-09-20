@@ -428,6 +428,922 @@
     }
   ],
   "generator": "cargo xtask aero (xtask/src/aero_blunt.rs)",
+  "handover_caps": {
+    "binds_from_mach": [
+      2.061429987854372,
+      2.1927755450203055,
+      2.3433030908552555,
+      2.5192034260416047
+    ],
+    "caps_deg": [
+      24.0,
+      26.0,
+      28.0,
+      30.0
+    ],
+    "committed_nose": {
+      "body": "the committed nose and the short model's cylinder, nothing aft",
+      "design": "wind-tunnel-arcas-robin-short.json",
+      "elements": [
+        10,
+        40,
+        160
+      ],
+      "rows": [
+        {
+          "by_cap": {
+            "24": {
+              "elements": {
+                "10": {
+                  "c_n_alpha_per_rad": 2.5307277481414303,
+                  "cp_calibers": 3.0394316039299407,
+                  "reduced_elements": 0
+                },
+                "160": {
+                  "c_n_alpha_per_rad": 2.5317030402143734,
+                  "cp_calibers": 3.0401259297572376,
+                  "reduced_elements": 0
+                },
+                "40": {
+                  "c_n_alpha_per_rad": 2.5316565726443008,
+                  "cp_calibers": 3.040074789963543,
+                  "reduced_elements": 0
+                }
+              },
+              "handover_deg": 12.112668885838591,
+              "spread_per_rad": 0.0009752920729431125
+            },
+            "26": {
+              "elements": {
+                "10": {
+                  "c_n_alpha_per_rad": 2.5307277481414303,
+                  "cp_calibers": 3.0394316039299407,
+                  "reduced_elements": 0
+                },
+                "160": {
+                  "c_n_alpha_per_rad": 2.5317030402143734,
+                  "cp_calibers": 3.0401259297572376,
+                  "reduced_elements": 0
+                },
+                "40": {
+                  "c_n_alpha_per_rad": 2.5316565726443008,
+                  "cp_calibers": 3.040074789963543,
+                  "reduced_elements": 0
+                }
+              },
+              "handover_deg": 12.112668885838591,
+              "spread_per_rad": 0.0009752920729431125
+            },
+            "28": {
+              "elements": {
+                "10": {
+                  "c_n_alpha_per_rad": 2.5307277481414303,
+                  "cp_calibers": 3.0394316039299407,
+                  "reduced_elements": 0
+                },
+                "160": {
+                  "c_n_alpha_per_rad": 2.5317030402143734,
+                  "cp_calibers": 3.0401259297572376,
+                  "reduced_elements": 0
+                },
+                "40": {
+                  "c_n_alpha_per_rad": 2.5316565726443008,
+                  "cp_calibers": 3.040074789963543,
+                  "reduced_elements": 0
+                }
+              },
+              "handover_deg": 12.112668885838591,
+              "spread_per_rad": 0.0009752920729431125
+            },
+            "30": {
+              "elements": {
+                "10": {
+                  "c_n_alpha_per_rad": 2.5307277481414303,
+                  "cp_calibers": 3.0394316039299407,
+                  "reduced_elements": 0
+                },
+                "160": {
+                  "c_n_alpha_per_rad": 2.5317030402143734,
+                  "cp_calibers": 3.0401259297572376,
+                  "reduced_elements": 0
+                },
+                "40": {
+                  "c_n_alpha_per_rad": 2.5316565726443008,
+                  "cp_calibers": 3.040074789963543,
+                  "reduced_elements": 0
+                }
+              },
+              "handover_deg": 12.112668885838591,
+              "spread_per_rad": 0.0009752920729431125
+            }
+          },
+          "mach": 1.5
+        },
+        {
+          "by_cap": {
+            "24": {
+              "elements": {
+                "10": {
+                  "c_n_alpha_per_rad": 2.69689693237289,
+                  "cp_calibers": 3.2138318572729303,
+                  "reduced_elements": 0
+                },
+                "160": {
+                  "c_n_alpha_per_rad": 2.701531125970003,
+                  "cp_calibers": 3.2109208986381033,
+                  "reduced_elements": 0
+                },
+                "40": {
+                  "c_n_alpha_per_rad": 2.7011980522588876,
+                  "cp_calibers": 3.2111658928433604,
+                  "reduced_elements": 0
+                }
+              },
+              "handover_deg": 19.183270988090058,
+              "spread_per_rad": 0.004634193597112812
+            },
+            "26": {
+              "elements": {
+                "10": {
+                  "c_n_alpha_per_rad": 2.69689693237289,
+                  "cp_calibers": 3.2138318572729303,
+                  "reduced_elements": 0
+                },
+                "160": {
+                  "c_n_alpha_per_rad": 2.701531125970003,
+                  "cp_calibers": 3.2109208986381033,
+                  "reduced_elements": 0
+                },
+                "40": {
+                  "c_n_alpha_per_rad": 2.7011980522588876,
+                  "cp_calibers": 3.2111658928433604,
+                  "reduced_elements": 0
+                }
+              },
+              "handover_deg": 19.183270988090058,
+              "spread_per_rad": 0.004634193597112812
+            },
+            "28": {
+              "elements": {
+                "10": {
+                  "c_n_alpha_per_rad": 2.69689693237289,
+                  "cp_calibers": 3.2138318572729303,
+                  "reduced_elements": 0
+                },
+                "160": {
+                  "c_n_alpha_per_rad": 2.701531125970003,
+                  "cp_calibers": 3.2109208986381033,
+                  "reduced_elements": 0
+                },
+                "40": {
+                  "c_n_alpha_per_rad": 2.7011980522588876,
+                  "cp_calibers": 3.2111658928433604,
+                  "reduced_elements": 0
+                }
+              },
+              "handover_deg": 19.183270988090058,
+              "spread_per_rad": 0.004634193597112812
+            },
+            "30": {
+              "elements": {
+                "10": {
+                  "c_n_alpha_per_rad": 2.69689693237289,
+                  "cp_calibers": 3.2138318572729303,
+                  "reduced_elements": 0
+                },
+                "160": {
+                  "c_n_alpha_per_rad": 2.701531125970003,
+                  "cp_calibers": 3.2109208986381033,
+                  "reduced_elements": 0
+                },
+                "40": {
+                  "c_n_alpha_per_rad": 2.7011980522588876,
+                  "cp_calibers": 3.2111658928433604,
+                  "reduced_elements": 0
+                }
+              },
+              "handover_deg": 19.183270988090058,
+              "spread_per_rad": 0.004634193597112812
+            }
+          },
+          "mach": 1.8
+        },
+        {
+          "by_cap": {
+            "24": {
+              "elements": {
+                "10": {
+                  "c_n_alpha_per_rad": 2.8727234052420547,
+                  "cp_calibers": 3.469008121307883,
+                  "reduced_elements": 0
+                },
+                "160": {
+                  "c_n_alpha_per_rad": 2.8808810109054757,
+                  "cp_calibers": 3.4619683596489144,
+                  "reduced_elements": 0
+                },
+                "40": {
+                  "c_n_alpha_per_rad": 2.8801447052660976,
+                  "cp_calibers": 3.462686067084585,
+                  "reduced_elements": 0
+                }
+              },
+              "handover_deg": 24.000000000000004,
+              "spread_per_rad": 0.008157605663420942
+            },
+            "26": {
+              "elements": {
+                "10": {
+                  "c_n_alpha_per_rad": 2.8610777683818354,
+                  "cp_calibers": 3.458669338291013,
+                  "reduced_elements": 0
+                },
+                "160": {
+                  "c_n_alpha_per_rad": 2.8708016328283796,
+                  "cp_calibers": 3.4498744054522335,
+                  "reduced_elements": 0
+                },
+                "40": {
+                  "c_n_alpha_per_rad": 2.8698431661075197,
+                  "cp_calibers": 3.4508481751207563,
+                  "reduced_elements": 0
+                }
+              },
+              "handover_deg": 26.0,
+              "spread_per_rad": 0.009723864446544273
+            },
+            "28": {
+              "elements": {
+                "10": {
+                  "c_n_alpha_per_rad": 2.8514622238267586,
+                  "cp_calibers": 3.449756460316171,
+                  "reduced_elements": 0
+                },
+                "160": {
+                  "c_n_alpha_per_rad": 2.8622922306718954,
+                  "cp_calibers": 3.439717323934522,
+                  "reduced_elements": 0
+                },
+                "40": {
+                  "c_n_alpha_per_rad": 2.8611687797383833,
+                  "cp_calibers": 3.440881786519681,
+                  "reduced_elements": 0
+                }
+              },
+              "handover_deg": 27.454072477626156,
+              "spread_per_rad": 0.010830006845136797
+            },
+            "30": {
+              "elements": {
+                "10": {
+                  "c_n_alpha_per_rad": 2.8514622238267586,
+                  "cp_calibers": 3.449756460316171,
+                  "reduced_elements": 0
+                },
+                "160": {
+                  "c_n_alpha_per_rad": 2.8622922306718954,
+                  "cp_calibers": 3.439717323934522,
+                  "reduced_elements": 0
+                },
+                "40": {
+                  "c_n_alpha_per_rad": 2.8611687797383833,
+                  "cp_calibers": 3.440881786519681,
+                  "reduced_elements": 0
+                }
+              },
+              "handover_deg": 27.454072477626156,
+              "spread_per_rad": 0.010830006845136797
+            }
+          },
+          "mach": 2.3
+        },
+        {
+          "by_cap": {
+            "24": {
+              "elements": {
+                "10": {
+                  "c_n_alpha_per_rad": 3.020752998435366,
+                  "cp_calibers": 3.740239669957483,
+                  "reduced_elements": 0
+                },
+                "160": {
+                  "c_n_alpha_per_rad": 3.0291329755429413,
+                  "cp_calibers": 3.732647691829091,
+                  "reduced_elements": 0
+                },
+                "40": {
+                  "c_n_alpha_per_rad": 3.028383983272461,
+                  "cp_calibers": 3.7334003727074627,
+                  "reduced_elements": 0
+                }
+              },
+              "handover_deg": 24.000000000000004,
+              "spread_per_rad": 0.008379977107575431
+            },
+            "26": {
+              "elements": {
+                "10": {
+                  "c_n_alpha_per_rad": 2.9970214755942055,
+                  "cp_calibers": 3.713046498313913,
+                  "reduced_elements": 0
+                },
+                "160": {
+                  "c_n_alpha_per_rad": 3.0067280884347145,
+                  "cp_calibers": 3.7039289036595635,
+                  "reduced_elements": 0
+                },
+                "40": {
+                  "c_n_alpha_per_rad": 3.005798276911728,
+                  "cp_calibers": 3.704895974367039,
+                  "reduced_elements": 0
+                }
+              },
+              "handover_deg": 26.0,
+              "spread_per_rad": 0.009706612840508999
+            },
+            "28": {
+              "elements": {
+                "10": {
+                  "c_n_alpha_per_rad": 2.9708431553558823,
+                  "cp_calibers": 3.6825054246647073,
+                  "reduced_elements": 0
+                },
+                "160": {
+                  "c_n_alpha_per_rad": 2.9817503299235755,
+                  "cp_calibers": 3.671989443219445,
+                  "reduced_elements": 0
+                },
+                "40": {
+                  "c_n_alpha_per_rad": 2.9806486697096313,
+                  "cp_calibers": 3.6731624525822406,
+                  "reduced_elements": 0
+                }
+              },
+              "handover_deg": 28.0,
+              "spread_per_rad": 0.01090717456769319
+            },
+            "30": {
+              "elements": {
+                "10": {
+                  "c_n_alpha_per_rad": 2.942532955580256,
+                  "cp_calibers": 3.6492066012882183,
+                  "reduced_elements": 0
+                },
+                "160": {
+                  "c_n_alpha_per_rad": 2.954571549103622,
+                  "cp_calibers": 3.637356857142541,
+                  "reduced_elements": 0
+                },
+                "40": {
+                  "c_n_alpha_per_rad": 2.95329156479299,
+                  "cp_calibers": 3.638745279665032,
+                  "reduced_elements": 0
+                }
+              },
+              "handover_deg": 29.999999999999996,
+              "spread_per_rad": 0.012038593523366004
+            }
+          },
+          "mach": 2.96
+        },
+        {
+          "by_cap": {
+            "24": {
+              "elements": {
+                "10": {
+                  "c_n_alpha_per_rad": 3.07079291086546,
+                  "cp_calibers": 3.8922660848081807,
+                  "reduced_elements": 0
+                },
+                "160": {
+                  "c_n_alpha_per_rad": 3.0790323471145578,
+                  "cp_calibers": 3.8846533236647502,
+                  "reduced_elements": 0
+                },
+                "40": {
+                  "c_n_alpha_per_rad": 3.078408037363964,
+                  "cp_calibers": 3.885276273614509,
+                  "reduced_elements": 0
+                }
+              },
+              "handover_deg": 24.000000000000004,
+              "spread_per_rad": 0.008239436249097842
+            },
+            "26": {
+              "elements": {
+                "10": {
+                  "c_n_alpha_per_rad": 3.033924596711127,
+                  "cp_calibers": 3.846263867679026,
+                  "reduced_elements": 0
+                },
+                "160": {
+                  "c_n_alpha_per_rad": 3.0430892260636684,
+                  "cp_calibers": 3.8375346370630656,
+                  "reduced_elements": 0
+                },
+                "40": {
+                  "c_n_alpha_per_rad": 3.042434355130139,
+                  "cp_calibers": 3.838197482193589,
+                  "reduced_elements": 0
+                }
+              },
+              "handover_deg": 26.0,
+              "spread_per_rad": 0.009164629352541365
+            },
+            "28": {
+              "elements": {
+                "10": {
+                  "c_n_alpha_per_rad": 2.9945163564041426,
+                  "cp_calibers": 3.796584307261571,
+                  "reduced_elements": 0
+                },
+                "160": {
+                  "c_n_alpha_per_rad": 3.004410864971491,
+                  "cp_calibers": 3.7869584671615564,
+                  "reduced_elements": 0
+                },
+                "40": {
+                  "c_n_alpha_per_rad": 3.003768343392902,
+                  "cp_calibers": 3.78760806214311,
+                  "reduced_elements": 0
+                }
+              },
+              "handover_deg": 28.0,
+              "spread_per_rad": 0.009894508567348304
+            },
+            "30": {
+              "elements": {
+                "10": {
+                  "c_n_alpha_per_rad": 2.9531910279814295,
+                  "cp_calibers": 3.744221012632208,
+                  "reduced_elements": 0
+                },
+                "160": {
+                  "c_n_alpha_per_rad": 2.963702313492162,
+                  "cp_calibers": 3.7338324455272764,
+                  "reduced_elements": 0
+                },
+                "40": {
+                  "c_n_alpha_per_rad": 2.9630725541588743,
+                  "cp_calibers": 3.7344667818592217,
+                  "reduced_elements": 0
+                }
+              },
+              "handover_deg": 29.999999999999996,
+              "spread_per_rad": 0.010511285510732549
+            }
+          },
+          "mach": 3.5
+        },
+        {
+          "by_cap": {
+            "24": {
+              "elements": {
+                "10": {
+                  "c_n_alpha_per_rad": 3.073466350825613,
+                  "cp_calibers": 3.9739127392978486,
+                  "reduced_elements": 0
+                },
+                "160": {
+                  "c_n_alpha_per_rad": 3.080124311812049,
+                  "cp_calibers": 3.9679920323088327,
+                  "reduced_elements": 1
+                },
+                "40": {
+                  "c_n_alpha_per_rad": 3.0802370617523263,
+                  "cp_calibers": 3.967746424229322,
+                  "reduced_elements": 0
+                }
+              },
+              "handover_deg": 24.000000000000004,
+              "spread_per_rad": 0.006770710926713441
+            },
+            "26": {
+              "elements": {
+                "10": {
+                  "c_n_alpha_per_rad": 3.0239720375128303,
+                  "cp_calibers": 3.9094372872951526,
+                  "reduced_elements": 0
+                },
+                "160": {
+                  "c_n_alpha_per_rad": 3.0310582728936923,
+                  "cp_calibers": 3.902981065373893,
+                  "reduced_elements": 1
+                },
+                "40": {
+                  "c_n_alpha_per_rad": 3.0310952201545374,
+                  "cp_calibers": 3.902813949264866,
+                  "reduced_elements": 0
+                }
+              },
+              "handover_deg": 26.0,
+              "spread_per_rad": 0.007123182641707082
+            },
+            "28": {
+              "elements": {
+                "10": {
+                  "c_n_alpha_per_rad": 2.9722706876841825,
+                  "cp_calibers": 3.8415749234775287,
+                  "reduced_elements": 0
+                },
+                "160": {
+                  "c_n_alpha_per_rad": 2.979732298804072,
+                  "cp_calibers": 3.8346498425195716,
+                  "reduced_elements": 1
+                },
+                "40": {
+                  "c_n_alpha_per_rad": 2.979630502078322,
+                  "cp_calibers": 3.8346482590611957,
+                  "reduced_elements": 0
+                }
+              },
+              "handover_deg": 28.0,
+              "spread_per_rad": 0.007461611119889522
+            },
+            "30": {
+              "elements": {
+                "10": {
+                  "c_n_alpha_per_rad": 2.919248463210927,
+                  "cp_calibers": 3.771691697164462,
+                  "reduced_elements": 0
+                },
+                "160": {
+                  "c_n_alpha_per_rad": 2.9270239455219103,
+                  "cp_calibers": 3.7643855872408163,
+                  "reduced_elements": 1
+                },
+                "40": {
+                  "c_n_alpha_per_rad": 2.926847631203821,
+                  "cp_calibers": 3.764473215785408,
+                  "reduced_elements": 0
+                }
+              },
+              "handover_deg": 29.999999999999996,
+              "spread_per_rad": 0.007775482310983239
+            }
+          },
+          "mach": 3.96
+        },
+        {
+          "by_cap": {
+            "24": {
+              "elements": {
+                "10": {
+                  "c_n_alpha_per_rad": 3.0302951465787475,
+                  "cp_calibers": 4.021068600662377,
+                  "reduced_elements": 0
+                },
+                "160": {
+                  "c_n_alpha_per_rad": 3.0341864102655274,
+                  "cp_calibers": 4.0182812868164834,
+                  "reduced_elements": 2
+                },
+                "40": {
+                  "c_n_alpha_per_rad": 3.0313426127117293,
+                  "cp_calibers": 4.021664918713549,
+                  "reduced_elements": 1
+                }
+              },
+              "handover_deg": 24.000000000000004,
+              "spread_per_rad": 0.0038912636867798334
+            },
+            "26": {
+              "elements": {
+                "10": {
+                  "c_n_alpha_per_rad": 2.961173651501279,
+                  "cp_calibers": 3.927646027220215,
+                  "reduced_elements": 0
+                },
+                "160": {
+                  "c_n_alpha_per_rad": 2.9654005540960853,
+                  "cp_calibers": 3.9244410665489484,
+                  "reduced_elements": 2
+                },
+                "40": {
+                  "c_n_alpha_per_rad": 2.9618807054804672,
+                  "cp_calibers": 3.928654698474752,
+                  "reduced_elements": 1
+                }
+              },
+              "handover_deg": 26.0,
+              "spread_per_rad": 0.00422690259480607
+            },
+            "28": {
+              "elements": {
+                "10": {
+                  "c_n_alpha_per_rad": 2.8915495071496156,
+                  "cp_calibers": 3.8318845620059747,
+                  "reduced_elements": 0
+                },
+                "160": {
+                  "c_n_alpha_per_rad": 2.9262458618884,
+                  "cp_calibers": 3.8018108231989727,
+                  "reduced_elements": 33
+                },
+                "40": {
+                  "c_n_alpha_per_rad": 2.894182154529245,
+                  "cp_calibers": 3.8310106973450417,
+                  "reduced_elements": 3
+                }
+              },
+              "handover_deg": 28.0,
+              "spread_per_rad": 0.03469635473878441
+            },
+            "30": {
+              "elements": {
+                "10": {
+                  "c_n_alpha_per_rad": 3.0467644511019727,
+                  "cp_calibers": 3.6261033810514682,
+                  "reduced_elements": 5
+                },
+                "160": {
+                  "c_n_alpha_per_rad": 3.259763045663582,
+                  "cp_calibers": 3.655246069004584,
+                  "reduced_elements": 109
+                },
+                "40": {
+                  "c_n_alpha_per_rad": 2.9281808115271684,
+                  "cp_calibers": 3.6666296082004743,
+                  "reduced_elements": 17
+                }
+              },
+              "handover_deg": 29.999999999999996,
+              "spread_per_rad": 0.33158223413641386
+            }
+          },
+          "mach": 4.63
+        },
+        {
+          "by_cap": {
+            "24": {
+              "elements": {
+                "10": {
+                  "c_n_alpha_per_rad": 2.980238131711836,
+                  "cp_calibers": 4.0155271169390225,
+                  "reduced_elements": 0
+                },
+                "160": {
+                  "c_n_alpha_per_rad": 2.984385416353881,
+                  "cp_calibers": 4.012270109663803,
+                  "reduced_elements": 2
+                },
+                "40": {
+                  "c_n_alpha_per_rad": 2.982363954093349,
+                  "cp_calibers": 4.014660350883978,
+                  "reduced_elements": 1
+                }
+              },
+              "handover_deg": 24.000000000000004,
+              "spread_per_rad": 0.004147284642045168
+            },
+            "26": {
+              "elements": {
+                "10": {
+                  "c_n_alpha_per_rad": 2.900073192835667,
+                  "cp_calibers": 3.9061511054868316,
+                  "reduced_elements": 0
+                },
+                "160": {
+                  "c_n_alpha_per_rad": 2.9456847310790977,
+                  "cp_calibers": 3.869431195123053,
+                  "reduced_elements": 40
+                },
+                "40": {
+                  "c_n_alpha_per_rad": 2.9183854104846483,
+                  "cp_calibers": 3.8908128092812855,
+                  "reduced_elements": 7
+                }
+              },
+              "handover_deg": 26.0,
+              "spread_per_rad": 0.04561153824343078
+            },
+            "28": {
+              "elements": {
+                "10": {
+                  "c_n_alpha_per_rad": 2.92327527614779,
+                  "cp_calibers": 3.733100453824289,
+                  "reduced_elements": 4
+                },
+                "160": {
+                  "c_n_alpha_per_rad": 3.6121315596438675,
+                  "cp_calibers": 3.982565673380234,
+                  "reduced_elements": 140
+                },
+                "40": {
+                  "c_n_alpha_per_rad": 3.278101793608016,
+                  "cp_calibers": 3.790392723510759,
+                  "reduced_elements": 30
+                }
+              },
+              "handover_deg": 28.0,
+              "spread_per_rad": 0.6888562834960776
+            },
+            "30": {
+              "elements": {
+                "10": {
+                  "c_n_alpha_per_rad": 3.4003892286497,
+                  "cp_calibers": 3.7529314642685203,
+                  "reduced_elements": 9
+                },
+                "160": {
+                  "c_n_alpha_per_rad": 3.4535161412405584,
+                  "cp_calibers": 3.669402969603055,
+                  "reduced_elements": 145
+                },
+                "40": {
+                  "c_n_alpha_per_rad": 3.4548761864911324,
+                  "cp_calibers": 3.7244924617059576,
+                  "reduced_elements": 36
+                }
+              },
+              "handover_deg": 29.999999999999996,
+              "spread_per_rad": 0.054486957841432204
+            }
+          },
+          "mach": 5.0
+        }
+      ]
+    },
+    "note": "What the cap on a blunt tip's handover slope is worth (M1.8e12). hpr hands over at the lesser of the wedge's largest deflection and the cap; 24 deg is flown, 30 deg is the steepest cone the method's normal-force tables carry. sphere_cone: TN D-4865's model 1, whose handover rule this is, fitted as `sphere_cone` above fits it. committed_nose: the Arcas Robin's committed power-series nose on the short model's cylinder, nothing aft, at alpha -> 0 per radian on its cross-section, read at 10, 40 and 160 elements; reduced_elements counts the elements the march reduces to the generalized method (eta < 0, issue #81) and spread_per_rad is the largest of the three slopes less the smallest. No targets.",
+    "sphere_cone": {
+      "rows": [
+        {
+          "by_cap": {
+            "24": {
+              "cp_error_calibers": 0.030247896750971504,
+              "fitted_c_n_alpha": 1.8850940096856694,
+              "fitted_c_n_alpha_error": -0.011904882389464522,
+              "handover_deg": 12.112668885838591
+            },
+            "26": {
+              "cp_error_calibers": 0.030247896750971504,
+              "fitted_c_n_alpha": 1.8850940096856694,
+              "fitted_c_n_alpha_error": -0.011904882389464522,
+              "handover_deg": 12.112668885838591
+            },
+            "28": {
+              "cp_error_calibers": 0.030247896750971504,
+              "fitted_c_n_alpha": 1.8850940096856694,
+              "fitted_c_n_alpha_error": -0.011904882389464522,
+              "handover_deg": 12.112668885838591
+            },
+            "30": {
+              "cp_error_calibers": 0.030247896750971504,
+              "fitted_c_n_alpha": 1.8850940096856694,
+              "fitted_c_n_alpha_error": -0.011904882389464522,
+              "handover_deg": 12.112668885838591
+            }
+          },
+          "mach": 1.5
+        },
+        {
+          "by_cap": {
+            "24": {
+              "cp_error_calibers": -0.015612890739242768,
+              "fitted_c_n_alpha": 1.9263463072613913,
+              "fitted_c_n_alpha_error": 0.0001066585958395816,
+              "handover_deg": 21.167476651578554
+            },
+            "26": {
+              "cp_error_calibers": -0.015612890739242768,
+              "fitted_c_n_alpha": 1.9263463072613913,
+              "fitted_c_n_alpha_error": 0.0001066585958395816,
+              "handover_deg": 21.167476651578554
+            },
+            "28": {
+              "cp_error_calibers": -0.015612890739242768,
+              "fitted_c_n_alpha": 1.9263463072613913,
+              "fitted_c_n_alpha_error": 0.0001066585958395816,
+              "handover_deg": 21.167476651578554
+            },
+            "30": {
+              "cp_error_calibers": -0.015612890739242768,
+              "fitted_c_n_alpha": 1.9263463072613913,
+              "fitted_c_n_alpha_error": 0.0001066585958395816,
+              "handover_deg": 21.167476651578554
+            }
+          },
+          "mach": 1.9
+        },
+        {
+          "by_cap": {
+            "24": {
+              "cp_error_calibers": -0.013219108580031058,
+              "fitted_c_n_alpha": 1.9705005078935078,
+              "fitted_c_n_alpha_error": 0.07474130546756963,
+              "handover_deg": 24.000000000000004
+            },
+            "26": {
+              "cp_error_calibers": -0.012199213673990572,
+              "fitted_c_n_alpha": 1.9672532860312626,
+              "fitted_c_n_alpha_error": 0.0729702206851035,
+              "handover_deg": 26.0
+            },
+            "28": {
+              "cp_error_calibers": -0.011177275847727985,
+              "fitted_c_n_alpha": 1.9639718318601525,
+              "fitted_c_n_alpha_error": 0.07118046507450426,
+              "handover_deg": 27.454072477626156
+            },
+            "30": {
+              "cp_error_calibers": -0.011177275847727985,
+              "fitted_c_n_alpha": 1.9639718318601525,
+              "fitted_c_n_alpha_error": 0.07118046507450426,
+              "handover_deg": 27.454072477626156
+            }
+          },
+          "mach": 2.3
+        },
+        {
+          "by_cap": {
+            "24": {
+              "cp_error_calibers": -0.034434068352159786,
+              "fitted_c_n_alpha": 2.0090227461861376,
+              "fitted_c_n_alpha_error": 0.12492979366077805,
+              "handover_deg": 24.000000000000004
+            },
+            "26": {
+              "cp_error_calibers": -0.03308430030291798,
+              "fitted_c_n_alpha": 2.0041042700887073,
+              "fitted_c_n_alpha_error": 0.12217574803739661,
+              "handover_deg": 26.0
+            },
+            "28": {
+              "cp_error_calibers": -0.031522166586879674,
+              "fitted_c_n_alpha": 1.9984375762057662,
+              "fitted_c_n_alpha_error": 0.1190027462420824,
+              "handover_deg": 28.0
+            },
+            "30": {
+              "cp_error_calibers": -0.02968769332341825,
+              "fitted_c_n_alpha": 1.9919768825024076,
+              "fitted_c_n_alpha_error": 0.11538515313696629,
+              "handover_deg": 29.999999999999996
+            }
+          },
+          "mach": 2.96
+        },
+        {
+          "by_cap": {
+            "24": {
+              "cp_error_calibers": -0.01799002540740502,
+              "fitted_c_n_alpha": 2.0987285372984896,
+              "fitted_c_n_alpha_error": 0.2970865113818437,
+              "handover_deg": 24.000000000000004
+            },
+            "26": {
+              "cp_error_calibers": -0.015837849828085337,
+              "fitted_c_n_alpha": 2.085968451400476,
+              "fitted_c_n_alpha_error": 0.2892003388691795,
+              "handover_deg": 26.0
+            },
+            "28": {
+              "cp_error_calibers": -0.013684193851507098,
+              "fitted_c_n_alpha": 2.076622763858581,
+              "fitted_c_n_alpha_error": 0.2834243821245377,
+              "handover_deg": 28.0
+            },
+            "30": {
+              "cp_error_calibers": -0.011577675381204466,
+              "fitted_c_n_alpha": 2.0709994789192927,
+              "fitted_c_n_alpha_error": 0.2799489983791983,
+              "handover_deg": 29.999999999999996
+            }
+          },
+          "mach": 3.95
+        },
+        {
+          "by_cap": {
+            "24": {
+              "cp_error_calibers": -0.055272697272673144,
+              "fitted_c_n_alpha": 2.048338397938013,
+              "fitted_c_n_alpha_error": 0.3212694904941016,
+              "handover_deg": 24.000000000000004
+            },
+            "26": {
+              "cp_error_calibers": -0.05260761514139545,
+              "fitted_c_n_alpha": 2.034139284703349,
+              "fitted_c_n_alpha_error": 0.3121104300927937,
+              "handover_deg": 26.0
+            },
+            "28": {
+              "cp_error_calibers": -0.04970036932706612,
+              "fitted_c_n_alpha": 2.0298445408336145,
+              "fitted_c_n_alpha_error": 0.3093401290281459,
+              "handover_deg": 28.0
+            },
+            "30": {
+              "cp_error_calibers": -0.046821744523674935,
+              "fitted_c_n_alpha": 2.0359850214606383,
+              "fitted_c_n_alpha_error": 0.3133010125020992,
+              "handover_deg": 29.999999999999996
+            }
+          },
+          "mach": 4.63
+        }
+      ]
+    }
+  },
   "note": "Blunt and vertical nose tips faster than sound (M1.8e7): TN D-4865's Newtonian cap and handover ahead of TN 3527's method, which starts behind it from the tangent cone's flow. sphere_cone: TN D-4865's model 1 (readings in tn-d-4865-sphere-cone.json), hpr's C_N_alpha on the base area and centre of pressure from the nose tip in base diameters at alpha -> 0, against the measured C_N and C_m fitted with a straight line (with an intercept) over the plotted angles 0 to 12 deg, and the report's own method fitted the same way through the origin's zero. arcas_robin: the committed design's power-series nose, cylinder and boattail, the lip left off, through the flight's path with hpr's current body model, fitted at the tunnel's plotted angles as arcas-robin-crossflow.json fits them (per radian on the body's cross-section), beside the fitted secant ogive's (M1.8e6's comparison) and the slopes at alpha -> 0. Errors are hpr's over the measured, minus 1; centre-of-pressure errors hpr's minus the measured, calibers. No targets.",
   "sphere_cone": {
     "body": {
