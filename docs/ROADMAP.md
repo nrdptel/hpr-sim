@@ -607,7 +607,9 @@
       without a crossing hold to 0.012 per radian and the 5 with one move 0.035 or more, no
       overlap. A crossing is a flag, not a verdict: 28° at Mach 5 crosses and still settles by 60
       elements, and a zero count at a coarse mesh only means "not proven".
-    - [ ] **M1.8e14 The flare through the method** (split from the old e14; the step is M1.8e15).
+    - [x] **M1.8e14 Where the flare's march stops** (the first of the three the old e14 splits
+      into: the rest are M1.8e17 and M1.8e18, which carry its other clauses word for word and go
+      next in the order, ADR-045).
       The method already marches a flare — a cone, a tube and a flare return a finite `C_Nα` at Mach
       3 — and it is the model around it that refuses one, since the run stops at the first widening
       body and a flare on slender-body theory would mix the models over one rocket, as a boattail
@@ -616,10 +618,25 @@
       force and pitching moment from Mach 1.50 to 4.63, integrated from the pressures its tables VII
       to XII print. The report is clear about where a march stops being the tool: at Mach 1.50 that
       flare's shock isn't attached even in theory, and from 2.96 up the boundary layer separates
-      ahead of the juncture. *Done when:* a flared body flies the method where the flare's shock is
-      attached, with no jump at ±1e-9 in Mach or in the flare's angle across that boundary; TN
-      D-4865 model 2's readings are committed with their provenance; the guide says what it is worth
-      and leaves out; an ADR records what happens where the shock is detached.
+      ahead of the juncture. Before letting a flare into the run, find out where
+      the method can march one and what the edge is made of.
+      *Done when:* the steepest flare the method marches is bisected to f64 resolution over Mach,
+      tests pin it and what stops it; and an ADR records what happens where the flare's shock is
+      detached.
+      *Result:* met (ADR-045). The edge is the corner's **isentropic** turn running out, not the
+      shock detaching, and it is neither above nor below detachment: at Mach 1.5 the march stops
+      0.181451° short of the wedge's limit (11.931217° against 12.112669°) and at Mach 2 it marches
+      3.497871° past it, crossing over at Mach 1.547787962528. From Mach 2.129702032593 the edge is
+      not the flow at all but the cone tables' 30° (NASA SP-3007 Table 2). So a march that returns a
+      number is not evidence the shock is attached: for the report's own 18.5° flare the method
+      answers from Mach 1.721760 while the wedge limit reaches 18.5° only at Mach 1.767575.
+    - [ ] **M1.8e17 The flare through the method** (the second of the old e14's three, ADR-045).
+      What M1.8e14 measured says the attachment test has to be chosen, not read off the march's own
+      refusal. *Done when:* a flared body flies the method where the flare's shock is attached, with
+      no jump at ±1e-9 in Mach or in the flare's angle across that boundary.
+    - [ ] **M1.8e18 What a marched flare is worth** (the third, ADR-045). *Done when:* TN D-4865
+      model 2's readings are committed with their provenance, and the guide says what a marched
+      flare is worth and what it leaves out.
     - [ ] **M1.8e15 The step in radius.** A step is a discontinuous profile, which the march refuses
       outright, so unlike the flare it needs a model of its own rather than a decision about one
       that exists. *Done when:* #87 closed or narrowed to the step alone, its measured size in an

@@ -605,7 +605,7 @@ went: a pointed tip's edge is the cone tables' 30° since
 [M1.8e11](../decisions-and-roadmap.md#m1-8e11), and a vertical tip's is the handover's cap, which
 stands at 24° for the reason in [What the cap is worth](#what-the-cap-is-worth).
 
-The flare is the next one to go ([M1.8e14](../decisions-and-roadmap.md#m1-8e14)). The method marches
+The flare is the next one to go ([M1.8e17](../decisions-and-roadmap.md#m1-8e17)). The method marches
 a flare already — a cone, a tube and a flare behind them return a normal-force slope at Mach 3 — and
 it is the model around the method that stops at the first widening body, rather than run the two
 models over one rocket. There is a measurement to check it against too: NASA TN D-4865's second
@@ -613,6 +613,9 @@ model is a blunted 2.75° cone with an 18.5° flare, measured from Mach 1.50 to 
 also clear about where a march stops being the right tool: at Mach 1.50 that flare's shock is not
 attached even in theory, and from Mach 2.96 up its boundary layer separates ahead of the corner and
 reattaches behind it, so the pressure rise arrives downstream of where a tangent body would put it.
+
+Where a march stops being the tool is not where the march stops, and the two edges are measured in
+[Where a flare's march stops](#where-a-flares-march-stops) below.
 
 A step in radius is further off ([M1.8e15](../decisions-and-roadmap.md#m1-8e15)): the march needs a
 profile without a jump in it, so a step needs a model of its own rather than a decision about an
@@ -980,6 +983,59 @@ force, and the centre of pressure 1.77 calibres **forward** on slender-body theo
 the band the wake grades ([above](#a-lip-in-a-boattails-wake)). A narrowing part behind the
 run is a boattail the method hasn't covered, not a lip, and keeps slender-body theory's share; so
 does a flare anywhere else on the body, which keeps the whole body off the method.
+
+
+#### Where a flare's march stops
+
+**In short:** the method marches a flare up to a limit that is *not* the flare's shock detaching.
+Below about Mach 1.55 it stops before the shock would detach; above it, it keeps answering for
+flares whose shock has already detached; and from Mach 2.13 up the limit is the cone tables' 30°
+rather than the flow. No rocket flies a flare through the method yet
+([M1.8e17](../decisions-and-roadmap.md#m1-8e17)); this is the measurement that milestone starts
+from ([ADR-045][adr-045]).
+
+Second-order shock-expansion turns every corner isentropically, with Prandtl and Meyer's function
+(TN 3527 eq. 3). A flare is a compression corner, so the turn spends that function: the march can
+go on only while the flow reaching the flare has enough of it left to turn through the flare's
+angle without dropping to Mach 1. That is a different question from whether a shock stands attached
+to the corner, which is what "the flare's shock is attached" means and what decides whether the
+march is modelling the right flow at all.
+
+The steepest flare the method marches, on the proportions of NASA TN D-4865's second model (a 2.75°
+cone, a tube and a conical flare), bisected to the last bit of a `f64`:
+
+| free stream | the method marches a flare to | a wedge's shock detaches at | so the method is |
+|---|---|---|---|
+| Mach 1.5 | 11.931217° | 12.112669° | 0.181451° short of it |
+| Mach 1.547787962528 | the same angle as detachment | the same | exactly on it |
+| Mach 2 | 26.471403° | 22.973532° | 3.497871° past it |
+| Mach 2.129702032593 and up | 30° | 29.80° at Mach 2.5, 34.07° at Mach 3 | limited by the tables |
+
+The detachment angles are a *wedge's* largest deflection (NACA 1135, through
+[`wedge_detachment_angle_rad`](../api/hpr_aero/blunt_tip/fn.wedge_detachment_angle_rad.html)). A
+cone's shock holds to steeper angles than a wedge's, and a conical flare on a cylinder sits between
+the two, so the wedge's limit is a conservative stand-in and not the flare's own boundary. Picking
+that boundary is [M1.8e17](../decisions-and-roadmap.md#m1-8e17)'s job; what the table shows is
+that the march's own edge lands on both sides of any such boundary, so the march returning a number
+cannot be the test.
+
+The last row is a different limit altogether. Each element's tangent cone is looked up in NASA
+SP-3007 Table 2, which stops at 30° since
+[M1.8e11](../decisions-and-roadmap.md#m1-8e11) ([ADR-042][adr-042]), so from Mach 2.1297 up every Mach number gives the same edge: the reference
+data runs out long before the flow does.
+
+**What it means for the report's own model.** TN D-4865's flare is 18.5°. The method answers for it
+from Mach 1.721760; a wedge's shock reaches 18.5° only at Mach 1.767575. Between the two the march
+returns a number for a flare whose shock is, on that reckoning, detached — a bow shock standing
+ahead of the juncture with a subsonic pocket behind it, which an isentropic corner turn does not
+describe. The report's lowest run, Mach 1.50, is below both: there the method refuses outright, as
+the report itself says it should.
+
+**What it leaves out.** The whole edge is inviscid. From Mach 2.96 up TN D-4865 records the
+boundary layer separating ahead of the flare and reattaching on it, which moves the pressure rise
+downstream of where a tangent body puts it; nothing here models that. Nor is any flare's force
+checked against a measurement yet — that is
+[M1.8e18](../decisions-and-roadmap.md#m1-8e18).
 
 ### Blunt tips
 
@@ -3312,4 +3368,5 @@ ellipse's integrals ([N09] eq. 3.70–3.71); the supersonic forcing and damping 
 [adr-042]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-042-cone-slopes-from-24-to-30-come-from-simss-tables-where-tn-3527s-chart-stops-2026-09-20
 [adr-043]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-043-the-blunt-tips-handover-cap-what-it-is-worth-and-what-stops-it-moving-2026-09-20
 [adr-044]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-044-what-the-answer-follows-when-it-follows-the-mesh-is-a-crossing-of-the-tangent-cone-not-a-reduced-element-2026-09-20
+[adr-045]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-045-where-a-flares-march-stops-is-the-corners-isentropic-turn-not-the-shock-detaching-2026-09-20
 [gap-fixture]: https://github.com/nrdptel/hpr-sim/blob/main/validation/fixtures/aero/arcas-robin-gap.json

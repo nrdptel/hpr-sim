@@ -4,10 +4,11 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
 
 ## Now
 
-- **Current milestone:** M1.8e14 The flare through the method
-- **Order:** M1.8e14, then M1.8e15, then M3.1; M1.8e16 (the handover past 24°) waits on #108
-- **Run:** M0.1-M0.4, M1.1-M1.7, M2.1, M1.8a to M1.8e13 shipped; https://nrdptel.github.io/hpr-sim/
-- **Last updated:** 2026-09-20 (M1.8e13 done)
+- **Current milestone:** M1.8e17 The flare through the method
+- **Order:** M1.8e17, then M1.8e18, then M1.8e15, then M3.1; M1.8e16 (the handover past 24°)
+  waits on #108
+- **Run:** M0.1-M0.4, M1.1-M1.7, M2.1, M1.8a to M1.8e14 shipped; https://nrdptel.github.io/hpr-sim/
+- **Last updated:** 2026-09-20 (M1.8e14 done)
 
 ## Handoff (overwrite each session)
 
@@ -40,9 +41,15 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
   no overlap (27 clean, 5 not). A flag, not a verdict: zero at a coarse mesh means "not proven",
   and 28° at Mach 5 crosses yet settles by 60 elements. #108 is re-scoped to the loading through a
   crossing, tangled with `η < 0`; the rest of the old e13 is **M1.8e16**, last because blocked.
-- **M1.8e14 is next and unblocked**: the method marches a flare already, and TN D-4865's model 2
-  measures one (fig. 8, Mach 1.50 to 4.63, from tables VII to XII). #97: the long model's M1.8a
-  readings may be biased.
+- **M1.8e14** (ADR-045): the old e14 split into three; e14 measured where the method stops
+  marching a flare, and **M1.8e17 (the flare through the method) and M1.8e18 (the readings and the
+  guide) are next**, in that order. The edge is the corner's isentropic turn running out, not the
+  shock detaching: 0.181451° short of the wedge's limit at Mach 1.5, 3.497871° past it at Mach 2,
+  crossing at Mach 1.547787962528, and from Mach 2.129702032593 it is the cone tables' 30°
+  instead. So **e17 must choose an attachment test**, not read one off the march's refusal, and
+  the wedge's limit used here is a conservative stand-in, not the flare's own boundary. For e18,
+  TN D-4865 model 2 is fig. 8, Mach 1.50 to 4.63, from tables VII to XII. #97: the long model's
+  M1.8a readings may be biased.
 - **M2.2's OpenRocket oracle** (ADR-035): orhelper is dropped, so decide how to drive the jar when
   M2.2 starts; JPype loads the JVM in-process, only a subprocess isolates, and the jar needs Java
   17 exactly (`[java] max_major` in the refs lock keeps doctor off a newer one).
@@ -54,6 +61,14 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
   rewrite their outputs, and pages quoting them follow.
 
 ## Done log (newest first, keep about 15)
+
+- 2026-09-20: M1.8e14 Where the flare's march stops (ADR-045): the corner's isentropic turn running
+  out, not the shock detaching. Bisected to f64 resolution on TN D-4865 model 2's proportions, the
+  method marches a flare to 11.931217° at Mach 1.5 (0.181451° short of the wedge's 12.112669°) and
+  to 26.471403° at Mach 2 (3.497871° past its 22.973532°), crossing at Mach 1.547787962528; from
+  Mach 2.129702032593 the limit is the cone tables' 30°. So a march that answers is not evidence
+  of an attached shock, and M1.8e17 has to choose the test. The old e14's other clauses are
+  M1.8e17 and M1.8e18, next in the order.
 
 - 2026-09-20: M1.8e13 What the answer follows when it follows the mesh (ADR-044): a crossing of
   the tangent cone, not a reduced element; over the sweep's three meshes the 27 readings without

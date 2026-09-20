@@ -3098,4 +3098,171 @@ mod tests {
             }
         }
     }
+    /// A flare of `flare_deg` behind TN D-4865 model 2's proportions: its 2.75° cone, a tube, and
+    /// a conical flare. Lengths are the report's shape, not its size: the method is inviscid, so
+    /// only the angles and the ratios of lengths to radii matter.
+    fn flared_body(flare_deg: f64) -> Vec<BodySegment> {
+        let radius_m = 0.1;
+        let flare_length_m = 0.3;
+        vec![
+            BodySegment::Profile {
+                profile: Profile::nose(
+                    NoseShape::Conical {},
+                    radius_m / 2.75_f64.to_radians().tan(),
+                    radius_m,
+                )
+                .unwrap(),
+            },
+            BodySegment::Cylinder {
+                length_m: 1.0,
+                radius_m,
+            },
+            BodySegment::Profile {
+                profile: Profile::transition(
+                    NoseShape::Conical {},
+                    flare_length_m,
+                    radius_m,
+                    radius_m + flare_length_m * flare_deg.to_radians().tan(),
+                    false,
+                )
+                .unwrap(),
+            },
+        ]
+    }
+
+    /// Whether the method marches that body at `mach`.
+    fn flare_marches(mach: f64, flare_deg: f64) -> Result<(), AeroError> {
+        ShockExpansionBody::new(&flared_body(flare_deg), DEFAULT_ELEMENTS_PER_CURVE)?
+            .slope(mach, PI * 0.01)
+            .map(|_| ())
+    }
+
+    /// The steepest flare the method marches at `mach`, bisected to f64 resolution: the last angle
+    /// that returns a slope, with the first that doesn't a bit above it.
+    fn steepest_flare_deg(mach: f64) -> f64 {
+        let (mut lo, mut hi) = (1.0_f64, 45.0_f64);
+        assert!(
+            flare_marches(mach, lo).is_ok(),
+            "Mach {mach}: 1° already fails"
+        );
+        assert!(flare_marches(mach, hi).is_err(), "Mach {mach}: 45° marches");
+        loop {
+            let mid = 0.5 * (lo + hi);
+            if mid <= lo || mid >= hi {
+                return lo;
+            }
+            if flare_marches(mach, mid).is_ok() {
+                lo = mid;
+            } else {
+                hi = mid;
+            }
+        }
+    }
+
+    /// The method's flare limit is the corner's **isentropic** turn running out — the flow reaching
+    /// the flare turned to Mach 1 — and not the shock detaching, which is a different angle on
+    /// either side of it (M1.8e14a, ADR-045 in `docs/DECISIONS.md`).
+    ///
+    /// Second-order shock-expansion turns every corner with Prandtl and Meyer (TN 3527 eq. 3), so
+    /// the march stops where `ν` reaches zero. The wedge's largest deflection
+    /// ([`crate::blunt_tip::wedge_detachment_angle_rad`], NACA 1135) is the angle past which no
+    /// attached shock exists at all. Neither bounds the other: at Mach 1.5 the method stops 0.18°
+    /// **short** of detachment, and at Mach 2 it marches 3.5° **past** it, so a march that returns
+    /// a number is not on its own evidence the flare's shock is attached.
+    #[test]
+    fn a_flare_marches_to_the_isentropic_turn_not_to_detachment() {
+        let edge_1_5 = steepest_flare_deg(1.5);
+        let edge_2 = steepest_flare_deg(2.0);
+        assert!(
+            (edge_1_5 - 11.931_217_467_660).abs() < 1e-9,
+            "Mach 1.5 edge {edge_1_5}"
+        );
+        assert!(
+            (edge_2 - 26.471_403_089_0).abs() < 1e-9,
+            "Mach 2 edge {edge_2}"
+        );
+        let detach = |mach: f64| {
+            crate::blunt_tip::wedge_detachment_angle_rad(mach)
+                .unwrap()
+                .to_degrees()
+        };
+        // Short of detachment at Mach 1.5, past it at Mach 2: the two orders both happen.
+        assert!(
+            (detach(1.5) - edge_1_5 - 0.181_451).abs() < 1e-6,
+            "Mach 1.5: detaches at {}, marches to {edge_1_5}",
+            detach(1.5)
+        );
+        assert!(
+            (edge_2 - detach(2.0) - 3.497_871).abs() < 1e-6,
+            "Mach 2: detaches at {}, marches to {edge_2}",
+            detach(2.0)
+        );
+        // Where they cross, bisected: below it the method stops before the shock detaches, above
+        // it the method runs on past a shock that is already detached.
+        let (mut lo, mut hi) = (1.5_f64, 2.0_f64);
+        loop {
+            let mid = 0.5 * (lo + hi);
+            if mid <= lo || mid >= hi {
+                break;
+            }
+            if steepest_flare_deg(mid) < detach(mid) {
+                lo = mid;
+            } else {
+                hi = mid;
+            }
+        }
+        assert!(
+            (lo - 1.547_787_962_528).abs() < 1e-9,
+            "the crossing is at Mach {lo}"
+        );
+    }
+
+    /// Above Mach 2.1297 the flare's limit is not the flow at all: it is where the cone tables
+    /// stop (NASA SP-3007 Table 2, 30°), a limit of the reference data and not of the physics
+    /// (M1.8e14a, ADR-045 in `docs/DECISIONS.md`).
+    ///
+    /// The crossing is bisected to f64 resolution. Above it every Mach number gives the same
+    /// edge, 30° plus the millionth of a degree [`cone_normal_force_slope`] admits for the
+    /// degree conversion's rounding.
+    #[test]
+    fn past_mach_2_13_the_flare_stops_where_the_cone_tables_do() {
+        let (mut lo, mut hi) = (1.5_f64, 6.0_f64);
+        loop {
+            let mid = 0.5 * (lo + hi);
+            if mid <= lo || mid >= hi {
+                break;
+            }
+            if steepest_flare_deg(mid) < 30.0 {
+                lo = mid;
+            } else {
+                hi = mid;
+            }
+        }
+        assert!(
+            (hi - 2.129_702_032_593).abs() < 1e-9,
+            "the tables bind from Mach {hi}"
+        );
+        // At the crossing itself the corner's turn runs out at 30° exactly; above it the tables
+        // bind first, and the edge sits a millionth of a degree past 30°.
+        let at_crossing = steepest_flare_deg(hi);
+        assert!(
+            (at_crossing - 30.0).abs() < 1e-9,
+            "at the crossing the edge is {at_crossing}"
+        );
+        for mach in [2.13, 2.5, 3.0, 4.63, 5.0] {
+            let edge = steepest_flare_deg(mach);
+            assert!(
+                (edge - 30.000_001).abs() < 1e-9,
+                "Mach {mach}: the edge is {edge}, not the tables' 30°"
+            );
+            // Just past the edge: it is the tables that refuse, not the corner's turn.
+            let err = flare_marches(mach, edge * (1.0 + 1e-12))
+                .unwrap_err()
+                .to_string();
+            assert!(err.contains("cone tables"), "Mach {mach}: {err}");
+        }
+        // Below the crossing it is the corner's turn that stops the march, not the tables.
+        let err = flare_marches(2.0, 27.0).unwrap_err().to_string();
+        assert!(err.contains("can't turn through"), "Mach 2: {err}");
+    }
 }
