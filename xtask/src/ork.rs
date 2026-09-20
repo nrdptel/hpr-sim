@@ -271,9 +271,7 @@ fn report(root: &Path, files: &[Case]) -> Result<(), String> {
     print_counts("warnings", &kinds);
     print_counts("attachments by extension", &attachments);
     print_counts("nesting depth", &depths);
-    println!(
-        "  largest unpacked (document and attachments): {largest_unpacked} bytes"
-    );
+    println!("  largest unpacked (document and attachments): {largest_unpacked} bytes");
     println!(
         "  text beside child elements: {} element(s) in {files_with_mixed} file(s){}",
         mixed.values().sum::<usize>(),
