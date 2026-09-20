@@ -919,7 +919,7 @@ mod tests {
     /// the method's decay rate has a pole, that puts the answer at the mercy of the mesh — not a
     /// reduced element, which TN 3527's own bodies have by the dozen and still settle.
     #[test]
-    fn a_crossing_is_what_separates_a_settled_reading_from_a_moving_one() {
+    fn over_the_sweeps_meshes_a_crossing_separates_the_readings_that_move() {
         let root = crate::designs::root().unwrap();
         let fixture = read(&root, FIXTURE).unwrap();
         let counts: Vec<String> = CAP_ELEMENTS.iter().map(usize::to_string).collect();
@@ -933,6 +933,14 @@ mod tests {
                 let elements = &row["by_cap"][cap_key(cap)]["elements"];
                 let read = |key: &String| {
                     let cell = &elements[key];
+                    assert!(
+                        cell.get("fails").is_none(),
+                        "the sweep should read every cell: {} at Mach {} on {key} elements says \
+                         {}",
+                        cap_key(cap),
+                        row["mach"],
+                        cell["fails"]
+                    );
                     (
                         f(cell, "/c_n_alpha_per_rad"),
                         cell["tangent_cone_crossings"].as_u64().unwrap(),
@@ -950,17 +958,23 @@ mod tests {
                 }
             }
         }
-        // Both kinds are there to compare, and no reading without a crossing moves as much as
-        // the least of those with one.
-        assert!(
-            settled >= 24 && moved >= 4,
-            "the sweep should hold both kinds: {settled} without a crossing, {moved} with one"
+        // Both kinds are there to compare, in the split the guide quotes.
+        assert_eq!(
+            (settled, moved),
+            (27, 5),
+            "the guide says 27 readings without a crossing and 5 with one"
         );
         assert!(
             worst_settled < least_moved / 2.0,
             "a crossing should separate the two: the most any reading without one moves over \
              {CAP_ELEMENTS:?} elements is {worst_settled:.4} per radian, the least any reading \
              with one moves {least_moved:.4}"
+        );
+        // The guide and the ADR round these to 0.012 and 0.035, so hold them there too: the
+        // ratio alone would let both drift and still read as a separation.
+        assert!(
+            (0.0115..0.0125).contains(&worst_settled) && (0.0345..0.0355).contains(&least_moved),
+            "the guide says 0.012 per radian and 0.035: {worst_settled:.5} and {least_moved:.5}"
         );
     }
 
@@ -1033,14 +1047,18 @@ mod tests {
             None => "fails".to_owned(),
             Some(slope) => {
                 let reduced = v["reduced_elements"].as_u64().unwrap();
-                let crossings = v.get("tangent_cone_crossings").and_then(Value::as_u64);
                 let mut notes = Vec::new();
                 if reduced > 0 {
                     notes.push(format!("{reduced} of {of} reduced"));
                 }
-                if crossings.is_some_and(|c| c > 0) {
-                    let crossings = crossings.unwrap_or_default();
-                    notes.push(format!("{crossings} crossings"));
+                // `starts` has no crossing count; the cap sweep does.
+                if let Some(crossings) = v
+                    .get("tangent_cone_crossings")
+                    .and_then(Value::as_u64)
+                    .filter(|&c| c > 0)
+                {
+                    let plural = if crossings == 1 { "" } else { "s" };
+                    notes.push(format!("{crossings} crossing{plural}"));
                 }
                 if notes.is_empty() {
                     num(slope, 3)

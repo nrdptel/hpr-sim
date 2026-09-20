@@ -60,7 +60,7 @@ new record replaces it and points back. All of them are in the [decision log][de
 | [ADR-041: A lip's shelter weighed, not switched][adr-041] | Why a lip rising out of its boattail's wake now moves a rocket between the two supersonic body models smoothly, and how big the switches that remain are | [Aerodynamics](physics/aero.md#a-lip-in-a-boattails-wake) |
 | [ADR-042: Cone slopes past Fig. 2's edge, from Sims][adr-042] | Where the slopes for tangent cones of 24° to 30° come from, how they were checked against the chart they extend, and what a cone steeper than 30° still costs | [Aerodynamics](physics/aero.md#bodies-faster-than-sound) |
 | [ADR-043: The blunt tip's handover cap][adr-043] | What moving a blunt tip's handover from 24° to the cone tables' 30° would be worth on the report's own sphere-cone, what it does to the march on a nose that flattens fast, and why the cap stays where it is | [Aerodynamics](physics/aero.md#what-the-cap-is-worth) |
-| [ADR-044: What moves the march's answer][adr-044] | That a marched answer stops being the model's where the surface pressure crosses its tangent cone's, not where the method is reduced, and what that re-aims issue #108 at | [Aerodynamics](physics/aero.md#why-a-crossing-is-fatal) |
+| [ADR-044: What the answer follows when it follows the mesh][adr-044] | That it is the surface pressure crossing its tangent cone's, not the method being reduced, that marks a reading whose answer moves with the element count — how far that goes, and what it re-aims issue #108 at | [Aerodynamics](physics/aero.md#what-a-crossing-is-and-what-it-costs) |
 
 ## The roadmap
 
@@ -165,7 +165,7 @@ missing or its status disagrees.
 | <a id="m1-8e13"></a>[M1.8e13][phase-1] | What puts a marched answer at the mercy of the mesh: the surface pressure crossing its tangent cone's, counted and told apart from a reduced element | done |
 | <a id="m1-8e14"></a>[M1.8e14][phase-1] | A flare flown through the shock-expansion method, which already marches one, against the flared body NASA TN D-4865 measured | not yet done |
 | <a id="m1-8e15"></a>[M1.8e15][phase-1] | What a step in radius still switches, how big it is, and what a model of one would need | not yet done |
-| <a id="m1-8e16"></a>[M1.8e16][phase-1] | A blunt tip's handover moved past 24°, once the march has a reading for the loading through a crossing | not yet done |
+| <a id="m1-8e16"></a>[M1.8e16][phase-1] | A blunt tip's handover moved past 24°, once the march has a rule for the loading through a crossing (the rest of what [M1.8e13](#m1-8e13) used to be, renumbered so the flare and the step keep their ids) | not yet done |
 | <a id="m3-1"></a>[M3.1][phase-1] | Reading OpenRocket `.ork` design files | not yet done |
 | <a id="m2-2"></a>[M2.2][phase-1] | OpenRocket as a reference program, and a corpus of designs to compare | not yet done |
 | <a id="m1-9"></a>[M1.9][phase-1] | Staging, clusters and air starts, for COTS motors | not yet done |
@@ -319,7 +319,7 @@ is the milestone that added or will add that test.
 [adr-041]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-041-a-lips-shelter-is-weighed-as-the-drag-buildup-weighs-it-not-switched-at-a-threshold-2026-09-20
 [adr-042]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-042-cone-slopes-from-24-to-30-come-from-simss-tables-where-tn-3527s-chart-stops-2026-09-20
 [adr-043]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-043-the-blunt-tips-handover-cap-what-it-is-worth-and-what-stops-it-moving-2026-09-20
-[adr-044]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-044-what-moves-the-marchs-answer-is-a-crossing-of-the-tangent-cone-not-a-reduced-element-2026-09-20
+[adr-044]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-044-what-the-answer-follows-when-it-follows-the-mesh-is-a-crossing-of-the-tangent-cone-not-a-reduced-element-2026-09-20
 [decisions]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md
 [lessons]: https://github.com/nrdptel/hpr-sim/blob/main/docs/research/loft-lessons.md
 [lessons-motors]: https://github.com/nrdptel/hpr-sim/blob/main/docs/research/loft-lessons.md#motors-mass-and-design-checks

@@ -1195,7 +1195,7 @@
                   "c_n_alpha_per_rad": 3.612132,
                   "cp_calibers": 3.982566,
                   "reduced_elements": 140,
-                  "tangent_cone_crossings": 2
+                  "tangent_cone_crossings": 1
                 },
                 "40": {
                   "c_n_alpha_per_rad": 3.278102,
@@ -1212,19 +1212,19 @@
                   "c_n_alpha_per_rad": 3.400389,
                   "cp_calibers": 3.752931,
                   "reduced_elements": 9,
-                  "tangent_cone_crossings": 2
+                  "tangent_cone_crossings": 1
                 },
                 "160": {
                   "c_n_alpha_per_rad": 3.453516,
                   "cp_calibers": 3.669403,
                   "reduced_elements": 145,
-                  "tangent_cone_crossings": 2
+                  "tangent_cone_crossings": 1
                 },
                 "40": {
                   "c_n_alpha_per_rad": 3.454876,
                   "cp_calibers": 3.724492,
                   "reduced_elements": 36,
-                  "tangent_cone_crossings": 2
+                  "tangent_cone_crossings": 1
                 }
               },
               "handover_deg": 30.0

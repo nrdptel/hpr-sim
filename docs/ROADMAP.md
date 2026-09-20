@@ -106,7 +106,6 @@
     geodetic/ECEF conversion.
   - WGS84 Somigliana gravity with altitude; optional Earth-rotation terms.
   - Loft lessons: L1 (tests named in `docs/research/loft-lessons.md`).
-
   *Done when:*
   - Gravity matches the published formula values at at least 6 latitude/altitude points to 1e-6
     relative.
@@ -121,7 +120,6 @@
     interpolation.
   - Wind models: constant, power/log law, tabulated layers, seeded Dryden turbulence.
   - Loft lessons: L2, L3, L4, L5, L6 (tests named in `docs/research/loft-lessons.md`).
-
   *Done when:*
   - USSA76 matches the tables at at least 25 altitudes to at most 0.1% (the small table fixture is
     committed with its citation).
@@ -135,7 +133,6 @@
   - Delays (including plugged); case/retainer mass. Offline catalog type with per-curve
     provenance and license; bundle only curves with clear terms, the rest cached later (M5).
   - Loft lessons: L36, L37, L38, L39, L40, L41, L42, L43 (`docs/research/loft-lessons.md`).
-
   *Done when:*
   - For every bundled curve, total impulse, average thrust and burn time match the ThrustCurve
     metadata within 1%.
@@ -443,7 +440,6 @@
   - Pitch, yaw and roll damping; roll forcing from cant.
   - Extend the M1.5 override tables to CNα and CP vs Mach and AoA, importable from RASAero CSV.
   - Loft lessons: L7, L17, L18 (tests named in `docs/research/loft-lessons.md`).
-
   *Done when:*
   - Cd vs Mach is within 10% of RocketPy's RASAero CSVs across Mach 0.1–2.0 for the available
     rockets. Per-band errors are in the report.
@@ -536,10 +532,12 @@
       (#81 at its limit), 117 and 109 of 120 of its measurements; Arcas Robin −18.7% to +16.4%.
     - [x] **M1.8e2 The body's supersonic normal force in flight.** The body's terms take Mach:
       M1.8e1's method for a pointed nose and its cylinder where it holds, joined to slender-body
-      theory below it. *Done when* (targets set before measuring): a flight takes the body's
-      `C_Nα` and CP at its Mach number, with no jump at ±1e-9 in Mach across the join; and the
-      Arcas Robin's body alone (TN D-4014) goes through the flight's path from Mach 1.5 in the
-      regenerated report, beside the measurement and M1.8a's.
+      theory below it. *Done when* (targets set before measuring):
+      - A flight takes the body's `C_Nα` and CP at its Mach number; a test probes the join at
+        ±1e-9 in Mach and finds no jump.
+      - The Arcas Robin's body alone (TN D-4014) through the flight's path at each Mach number
+        from 1.5, beside the measurement and M1.8a's, in the regenerated report, its changed rows
+        listed in the PR.
     - [x] **M1.8e3 The supersonic join's start without grid steps** (#87's grid half). *Done when*
       (set after building): a test finds a 20° cone's start off the grid, moved under 1e-7 in Mach
       by 1e-6° and strictly by each 0.1° to 20.5°, its cylinder share under 1e-5, no jump at ±1e-9
@@ -555,61 +553,73 @@
       *Result:* met; like for like +3.4% to +41.0% (was +14.9% to +73.2%); M1.8a gains a miss.
     - [x] **M1.8e7 Blunt tips faster than sound** (from e6; split, ADR-038). A vertical or blunt
       nose tip flies a Newtonian cap ahead of TN 3527's method (NASA TN D-4865). *Done when:* flown
-      with no jump at ±1e-9 in Mach; the committed nose (lip off) through a flight's path in the
-      report; TN D-4865's sphere-cone against its measured normal force. *Result:* met; like for
-      like, sphere-cone −1.2% to +32.1%; the nose lip off −4.8% to +37.2%.
+      with no jump at ±1e-9 in Mach; the Arcas Robin's committed nose (lip left off) through a
+      flight's path in the report; TN D-4865's sphere-cone against its measured normal force.
+      *Result:* met; like for like, sphere-cone −1.2% to +32.1%; the nose lip off −4.8% to +37.2%.
     - [x] **M1.8e8 The lip faster than sound** (from e7; ADR-039). *Done when:* flown with no jump
       at ±1e-9 in Mach; the committed Arcas Robin designs through a flight's path in the report.
-      *Result:* met; M1.8a's rows from Mach 1.5 are all within the slope's 15% (+9.4% to −3.3%).
+      *Result:* met; a lip in a boattail's wake carries nothing, so both designs fly the method to
+      their base: M1.8a's rows from Mach 1.5 are all within the slope's 15% (+9.4% to −3.3%).
     - [x] **M1.8e9 #90's boattail cap, and M1.8e's 15% bullet judged** (split from e9's pair;
-      ADR-040). *Done when:* #90 closed (a bound on the boattail angle, footnote 8's size pinned by
-      hand); M1.8e's 15% bullet met for the body alone, or an ADR records why not.
-      *Result:* met; the correlation is read no steeper than 16°, the bullet met at Mach 3.96 and
-      4.63, the body alone outside on six rows.
+      ADR-040). *Done when:* #90 closed (a bound on the boattail angle, and footnote 8's size
+      pinned by a hand calculation); M1.8e's 15% bullet met for the Arcas Robin's body alone, or an
+      ADR records why not with the gap in the report.
+      *Result:* met; the correlation is read no steeper than 16° and the boattail with its tube
+      integrated by hand; the bullet met at Mach 3.96 and 4.63, the body alone outside on six rows.
     - [x] **M1.8e10 The lip's shelter, weighed not switched.** #87's five switches all flip one
-      gate — whether the method covers the body at all — so each is worth the whole body, and the
-      drag buildup already grades the largest of them continuously. *Done when:* every switch's
-      size is measured by a test; the lip's is gone, its two sides agreeing across the old
-      threshold in proportion to the change in shape; no committed fixture moves; an ADR records
-      the weight. *Result:* met (ADR-041); the lip's **rise** is a weight, not a switch, and the
-      five that remain keep measured sizes.
+      gate — whether the method covers the body at all — so each is worth the whole body. The
+      largest is the lip's, and the drag buildup already grades its shelter continuously
+      (`share_by_rise`, a quarter to a half of the boattail's drop) where the normal force reads
+      a threshold. *Done when:* every switch's size is measured by a test; the lip's is gone, its
+      two sides agreeing across the old threshold in proportion to the change in shape; no
+      committed fixture moves; an ADR records the weight.
+      *Result:* met (ADR-041); the lip's **rise** is a weight, not a switch, and five keep measured
+      sizes — a step −8.7%/1.03 cal, a flare −27.5%/0.29 cal, a pointed tip −10.4%/1.14 cal, a
+      vertical tip −7.0%/0.64 cal, and the lip's own length −33.0%/1.77 cal, which #87 didn't list.
     - [x] **M1.8e11 Cone slopes past Fig. 2's edge, from Sims.** NASA SP-3007 (pinned) tabulates
       the same theory to 30°, where TN 3527's Fig. 2 stops at 24°. *Done when:* the method flies a
       tangent cone of 24° to 30°, a fineness-1 cone among them, from Sims's slopes checked against
-      Fig. 2 where they overlap; no committed fixture moves. *Result:* met (ADR-042); SP-3007
-      Table 2 agrees with the chart to 0.0021 per rad at 22.5°.
-    - [x] **M1.8e12 What the handover's cap is worth, and what stops it** (split from the old e12).
-      With slopes to 30° a cap can hand over at the detachment angle, not Fig. 2's edge, but moving
-      it there takes the march out of its range on a nose that flattens fast. *Done when:* the cap is a parameter of the method, its flown default unchanged so that no
+      Fig. 2 where they overlap; no committed fixture moves.
+      *Result:* met (ADR-042); SP-3007 Table 2 at 25°, 27.5° and 30°, agreeing with the chart to
+      0.0021 per rad at 22.5°; the pointed tip's switch moves to 30° and falls to −7.7%/0.81 cal.
+    - [x] **M1.8e12 What the handover's cap is worth, and what stops it** (split from the old e12,
+      whose aim is now M1.8e13). With slopes to 30° a cap can hand over at the detachment angle,
+      not Fig. 2's edge — but moving it there turns out to take the march out of its range on a
+      nose that flattens fast, so this increment measures the move and the next one makes it.
+      *Done when:* the cap is a parameter of the method, its flown default unchanged so that no
       committed fixture moves; a sweep of it is measured into a committed fixture — each cap's
       sphere-cone error, and the committed nose's readings over 10 to 160 elements with the counts
       of reduced elements; tests pin both ends of the sweep; an ADR records why the default stays;
       the guide says it plainly; and the blocker is a GitHub issue.
-      *Result:* met (ADR-043); 30° reads nearer TN D-4865's sphere-cone wherever a cap binds, but
-      at Mach 4.63 the answer follows the element count (3.047 to 3.260), so 24° stays.
-    - [x] **M1.8e13 What puts a marched answer at the mercy of the mesh** (split from the old e13,
+      *Result:* met (ADR-043); 30° follows TN D-4865's rule to Mach 2.52 and reads nearer its
+      sphere-cone at every row where a cap binds, and puts 109 of the committed nose's 160 elements
+      into `η < 0` at Mach 4.63, where the answer follows the element count (3.047 to 3.260); the
+      cap stays at 24°, and issue #108 holds what would move it.
+    - [x] **M1.8e13 What the answer follows when it follows the mesh** (split from the old e13,
       whose aim is now M1.8e16). Issue #108 asked for a reading of `η < 0` that settles as the nose
-      is cut finer; before writing one, find out whether `η < 0` is what moves the answer.
-      *Done when:* the count that separates a settled reading from a moving one is measured over
-      the whole cap sweep and stored beside every reading; a pointed body of TN 3527's own is shown
-      reducing without moving; tests pin both and the mechanism; an ADR and the guide say what it
-      means; and issue #108 is re-scoped to it.
+      is cut finer; before writing one, find out what the answer actually follows.
+      *Done when:* the count that separates a settled reading from a moving one over the cap
+      sweep's meshes is measured and stored beside every reading; a pointed body of TN 3527's own
+      is shown reducing without moving; tests pin both and the mechanism; an ADR and the guide say
+      what it means and what it does not; and issue #108 is re-scoped to it.
       *Result:* met (ADR-044); it is the surface pressure **crossing** its tangent cone's, where
-      `η = (∂p/∂s)₂/((p_c − p₂) cos δ)` has a pole, not `η < 0`. All 32 readings separate with no
-      overlap: without a crossing each holds to 0.012 per radian over 10 to 160 elements, with one
-      each moves 0.035 or more. TN 3527's ogive reduces 50 of 160 and settles to 0.002.
+      the relaxation rate has a pole, not `η < 0`. Across 10, 40 and 160 elements the 27 readings
+      without a crossing hold to 0.012 per radian and the 5 with one move 0.035 or more, no
+      overlap. A crossing is a flag, not a verdict: 28° at Mach 5 crosses and still settles by 60
+      elements, and a zero count at a coarse mesh only means "not proven".
     - [ ] **M1.8e14 The flare through the method** (split from the old e14; the step is M1.8e15).
       The method already marches a flare — a cone, a tube and a flare return a finite `C_Nα` at Mach
       3 — and it is the model around it that refuses one, since the run stops at the first widening
       body and a flare on slender-body theory would mix the models over one rocket, as a boattail
-      did before M1.8e4. There is a measurement too, which the guide once said there wasn't:
-      TN D-4865's model 2, a 2.75° blunted cone with an 18.5° flare, whose fig. 8 carries normal
-      force and pitching moment from Mach 1.50 to 4.63. The report says where a march stops being
-      the tool: at Mach 1.50 the flare's shock isn't attached even in theory, and from 2.96 up the
-      boundary layer separates ahead of the juncture. *Done when:* a flared body flies the method
-      where the flare's shock is attached, with no jump at ±1e-9 in Mach or in the flare's angle
-      across that boundary; model 2's readings are committed with their provenance; the guide says
-      what it is worth and leaves out; an ADR records what happens where the shock is detached.
+      did before M1.8e4. There is a measurement too, which the guide once said there wasn't: TN
+      D-4865's model 2 is a 2.75° blunted cone with an 18.5° flare, and its fig. 8 carries normal
+      force and pitching moment from Mach 1.50 to 4.63, integrated from the pressures its tables VII
+      to XII print. The report is clear about where a march stops being the tool: at Mach 1.50 that
+      flare's shock isn't attached even in theory, and from 2.96 up the boundary layer separates
+      ahead of the juncture. *Done when:* a flared body flies the method where the flare's shock is
+      attached, with no jump at ±1e-9 in Mach or in the flare's angle across that boundary; TN
+      D-4865 model 2's readings are committed with their provenance; the guide says what it is worth
+      and leaves out; an ADR records what happens where the shock is detached.
     - [ ] **M1.8e15 The step in radius.** A step is a discontinuous profile, which the march refuses
       outright, so unlike the flare it needs a model of its own rather than a decision about one
       that exists. *Done when:* #87 closed or narrowed to the step alone, its measured size in an
@@ -617,8 +627,9 @@
     - [ ] **M1.8e16 The blunt tip's handover, past 24°** (the rest of the old e13; the next free
       number, so the flare and the step keep theirs, ADR-044). Blocked, so it goes last.
       *Done when:* the vertical-tip switch is gone or measured again, fixtures and the guide moving
-      together; and, ahead of that, issue #108 closed — a reading of the loading through a crossing
-      that settles as the nose is cut finer, checked against TN 3527's ogive at Mach 5.05 and 6.28.
+      together; and, ahead of that, issue #108 closed — a rule for the loading through a crossing
+      whose answer settles as the nose is cut finer, on a body that crosses (the committed nose
+      under a 30° cap at Mach 4.63), and that leaves TN 3527's printed ogives where they are.
 - [ ] **M3.1 OpenRocket `.ork` import.**
   - Handles zip, gz and raw XML, schema 1.0 to 1.10, plus the documented 1.11 additions.
   - Reads components, materials, finishes, motor configurations, recovery, stages, and stored
@@ -642,7 +653,6 @@
   - The stored results inside the `.ork` files are used as a second reference.
   - The deferred M1.4 mass/CG checks run against OR values.
   - Loft lessons: L19, L51, L80, L81, L82, L87 (tests named in `docs/research/loft-lessons.md`).
-
   *Done when:*
   - At least 20 designs are in the report with an error distribution (apogee, max velocity,
     stability margin, mass, CG).
@@ -654,7 +664,6 @@
   - Booster tracked through recovery.
   - Clustered motor mounts, with mass and thrust summed and the thrust offset handled.
   - Loft lessons: L30, L31, L93 (tests named in `docs/research/loft-lessons.md`).
-
   *Done when:*
   - A two-stage design and a cluster design each match OpenRocket within the per-case tolerance.
   - Event ordering tests pass.
@@ -665,7 +674,6 @@
   - Landing point in lat/lon.
   - Exports: CSV, JSON, Parquet (feature), KML and GeoJSON.
   - Loft lessons: L32, L33, L34, L35, L94 (tests named in `docs/research/loft-lessons.md`).
-
   *Done when:*
   - Metrics are unit-tested.
   - Exported files are validated (GeoJSON by schema, KML by parsing).
@@ -676,7 +684,6 @@
     reader: a netCDF reader or a documented conversion.
   - Also the corpus flights that have logs.
   - Loft lessons: L83 (tests named in `docs/research/loft-lessons.md`).
-
   *Done when:*
   - At least 6 real flights are in the report, with apogee error and altitude-trace RMS.
   - Mean absolute apogee error is reported against the 5% target.
@@ -684,9 +691,7 @@
 
 - [ ] **M2.4 Accuracy census gate.** Generate a summary census (a README table and badge) from the
   report. CI fails on any per-case regression beyond tolerance.
-
   - Loft lessons: L84, L85, L86, L88 (tests named in `docs/research/loft-lessons.md`).
-
   *Done when:* a deliberately perturbed drag coefficient on a throwaway draft PR makes CI fail.
   The failing run is linked from the real PR's description, and the throwaway PR is closed with
   `gh pr close --delete-branch`.
@@ -731,9 +736,7 @@
 - [ ] **M4.1 Facade API.** The `hpr` crate offers a RocketPy-like builder (`Environment`, `Motor`,
   `Rocket`, `Flight`) plus trait-based custom models. Add `examples/` (at least 4) and a rustdoc
   guide.
-
   - Loft lessons: L95 (tests named in `docs/research/loft-lessons.md`).
-
   *Done when:*
   - The examples run in CI.
   - rustdoc has zero warnings.
@@ -747,9 +750,7 @@
   against the published schemas.
 
 - [ ] **M3.2 OpenRocket `.ork` export** (schema 1.10).
-
   - Loft lessons: L67, L68 (tests named in `docs/research/loft-lessons.md`).
-
   *Done when:*
   - `.ork` → hpr → `.ork` → OR 24.12 (oracle) loads every corpus design.
   - OR re-simulation of the exported file matches the original's within 0.5% apogee.
@@ -825,7 +826,6 @@
   - Landing ellipses at confidence levels; apogee distribution.
   - Sensitivity analysis (Morris screening and Sobol indices).
   - Loft lessons: L52, L53, L54, L55, L96 (tests named in `docs/research/loft-lessons.md`).
-
   *Done when:*
   - Results are bit-reproducible for the same seed.
   - The ellipse math is tested against analytic Gaussians.
@@ -880,17 +880,13 @@
 ## Phase 4: More formats and embeddings
 
 - [ ] **M3.4 RockSim `.rkt` import/export** (clean room, from the RockSim XML doc and samples).
-
   - Loft lessons: L69, L70, L71 (tests named in `docs/research/loft-lessons.md`).
-
   *Done when:* the corpus `.rkt` files import, and the exports reopen in our importer with
   semantic equality.
 
 - [ ] **M3.5 RASAero `.CDX1` import/export** (from samples only). Fix the Loft `<Location>` bug
   class.
-
   - Loft lessons: L72, L73, L74 (tests named in `docs/research/loft-lessons.md`).
-
   *Done when:* the corpus `.CDX1` files import with overall length within 0.5% of the stated
   values.
 
@@ -954,7 +950,6 @@
   - Auto-size parachutes to a target descent rate.
   - Suggestions with reasons.
   - Loft lessons: L97 (tests named in `docs/research/loft-lessons.md`).
-
   *Done when:* every template simulates and passes its own checks, and each check has
   positive/negative tests.
 
@@ -970,9 +965,7 @@
   PWA, Tauri v2 for desktop and mobile) against all-Rust. Build a throwaway 3D trajectory spike in
   each and measure bundle size, frame rate on a phone-class device profile, and development
   effort.
-
   - Loft lessons: P15 (read Loft's `OWNER-NOTES.md` UI notes before the spike).
-
   *Done when:* the ADR is merged with measurements.
 
 - [ ] **M9.1 Desktop app shell.** Design editor (2D profile plus 3D model), simulation runner,

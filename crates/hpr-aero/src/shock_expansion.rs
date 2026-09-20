@@ -630,40 +630,80 @@ impl ShockExpansionBody {
 
     /// How many times the marched surface pressure crosses its own tangent cone's at Mach `mach`:
     /// the number of elements whose gap `p_c − p₂` has the opposite sign to the last element that
-    /// had one.
+    /// had one, counting only pairs within one segment of the body. A pair that straddles a
+    /// segment's start does not count: there `p_c` itself steps — from a cone's pressure to the
+    /// free stream's where a nose meets a cylinder, to footnote 8's where a boattail begins, or
+    /// to a steeper cone's where a flare does — so the gap changes sign without ever passing
+    /// through zero, and there is no pole. Within a segment the profile is continuous, so `p_c`
+    /// is too, and a sign change means the gap really closed.
     ///
-    /// **Any crossing makes the answer the mesh's, not the model's.** The method relaxes an
-    /// element's pressure and loading toward its tangent cone's at the rate `η` that matches the
-    /// gradient behind the corner (eqs. 8, 9 and 19): `η = (∂p/∂s)₂ / (p_c − p₂)`. Where the
-    /// pressure crosses its tangent cone's the gap passes through zero while the gradient does
-    /// not, so `η` has a pole. The pressure itself rides through it — `η (p_c − p)` is just the
-    /// gradient, which stays finite — but the loading borrows the pressure's `η` (eq. 19) and its
-    /// own gap `Λ_c − Λ` does not vanish there, so the loading is driven onto the tangent cone's
-    /// arbitrarily fast. A march applies `η` from the corner over a whole element, so how much of
-    /// that lands depends on where the crossing falls between corners, and the answer follows the
-    /// element count instead of settling.
+    /// **A crossing is what marks an answer that moves with the element count.** Along an element
+    /// the method
+    /// relaxes the pressure and the loading toward the tangent cone's as `e^(−η)` with
+    /// `η = k (x − x₂)` (eqs. 8, 9 and 19), where the rate per unit length is
+    /// `k = (∂p/∂s)₂ / ((p_c − p₂) cos δ₂)`. Where the pressure crosses its tangent cone's the gap
+    /// passes through zero while the gradient does not, so `k` has a pole. The pressure itself
+    /// rides through it — `k (p_c − p) cos δ₂` is just the gradient, which stays finite — but the
+    /// loading borrows the pressure's `k` (eq. 19) while its own gap `Λ_c − Λ` does not close
+    /// with it, so the loading is driven onto the tangent cone's arbitrarily fast. A march applies
+    /// `k` from the corner over a whole element, so how much of that lands depends on where the
+    /// crossing falls between corners, and the answer follows the element count instead of
+    /// settling.
     ///
-    /// TN 3527's own bodies never cross: on them `η < 0` comes from the gradient changing sign
-    /// with the gap all one way, which is bounded and settles. So a count above zero, not
-    /// [`Self::reduced_elements`], is what says an answer can't be trusted; see
+    /// **It is a flag, not a verdict, at either end.** A count of zero does not promise an answer
+    /// settled: whether a crossing is seen depends on the mesh, and the count is not even
+    /// monotone in it — readings that cross at 40 and 160 elements per curve can show none at 10.
+    /// Nor does a count above zero promise the answer never settles: one reading of hpr's own
+    /// sweep crosses at every mesh and still holds to 0.003 per radian from 60 elements on. What
+    /// is measured is that over 10, 40 and 160 elements the crossings, and only the crossings,
+    /// mark the readings that move
+    /// ([ADR-044](https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md)). Nothing in a
+    /// flight calls this: it is a tool for studying a body, not a guard.
+    ///
+    /// The fineness-3 ogive TN 3527 prints values for never crosses at the Mach numbers hpr can
+    /// check it at; there `η < 0` comes from the gradient changing sign with the gap all one way,
+    /// which is bounded and settles. So this count, not [`Self::reduced_elements`], is the one to
+    /// read when an answer moves with the element count; see
     /// [issue #108](https://github.com/nrdptel/hpr-sim/issues/108).
+    ///
+    /// An element whose gap is exactly zero is skipped rather than given a sign: behind a blunt
+    /// tip the march starts on its own tangent cone under the default
+    /// [`HandoverStart::TangentCone`], and that element has no side to be on. Under
+    /// [`HandoverStart::Newtonian`] it does, because its pressure and its tangent cone's come
+    /// from different models, and the count then includes that mismatch.
     ///
     /// # Errors
     ///
     /// As [`Self::reduced_elements`].
     pub fn tangent_cone_crossings(&self, mach: f64) -> Result<usize, AeroError> {
         check_mach(mach)?;
+        // Where `p_c` may step: the start of every segment after the first.
+        let starts: Vec<f64> = self
+            .segments
+            .iter()
+            .skip(1)
+            .map(|(start, _)| *start)
+            .collect();
+        let within_one_segment = |from: f64, to: f64| {
+            !starts
+                .iter()
+                .any(|start| *start > from && *start <= to + 1e-12 * self.length_m)
+        };
         let mut crossings = 0;
-        let mut last = 0.0;
+        // The last element that had a gap: where it starts, and which side of its cone it is on.
+        let mut last: Option<(f64, bool)> = None;
         for flow in &self.flows(mach)?.flows {
             let gap = flow.cone_pressure - flow.pressure;
             if gap == 0.0 {
                 continue;
             }
-            if last != 0.0 && (gap > 0.0) != (last > 0.0) {
+            if let Some((at_m, was_positive)) = last
+                && was_positive != (gap > 0.0)
+                && within_one_segment(at_m, flow.corner_x_m)
+            {
                 crossings += 1;
             }
-            last = gap;
+            last = Some((flow.corner_x_m, gap > 0.0));
         }
         Ok(crossings)
     }
@@ -2570,7 +2610,7 @@ mod tests {
             .unwrap()
         };
         let counts = [DEFAULT_ELEMENTS_PER_CURVE, 16 * DEFAULT_ELEMENTS_PER_CURVE];
-        for (mach, least_reduced) in [(5.05, 27), (6.28, 50)] {
+        for (mach, coarse_want, fine_want) in [(5.05, 2, 27), (6.28, 3, 50)] {
             let read = |n: usize| {
                 let b = body(n);
                 (
@@ -2581,10 +2621,12 @@ mod tests {
             };
             let (coarse, coarse_reduced, _) = read(counts[0]);
             let (fine, fine_reduced, _) = read(counts[1]);
-            assert!(
-                coarse_reduced >= 2 && fine_reduced >= least_reduced,
-                "the ogive at Mach {mach} should reduce elements at both counts: \
-                 {coarse_reduced} of {}, {fine_reduced} of {}",
+            // Exact, because the guide and the ADR quote these counts.
+            assert_eq!(
+                (coarse_reduced, fine_reduced),
+                (coarse_want, fine_want),
+                "the ogive at Mach {mach} should reduce {coarse_want} of {} elements and \
+                 {fine_want} of {}",
                 counts[0],
                 counts[1]
             );
@@ -2605,22 +2647,24 @@ mod tests {
         }
     }
 
-    /// Why a crossing costs what it does (M1.8e13, ADR-044). The method relaxes an element's
-    /// pressure and loading toward its tangent cone's at `η = (∂p/∂s)₂/((p_c − p₂) cos δ)`, so
-    /// where the surface pressure crosses its tangent cone's the gap passes through zero while
-    /// the gradient does not, and `η` has a pole. The pressure rides through it, because
-    /// `η (p_c − p)` is only the gradient; the loading does not, because eq. 19 borrows the
-    /// pressure's `η` while its own gap `Λ_c − Λ` stays open. Here, at the case
-    /// [issue #108](https://github.com/nrdptel/hpr-sim/issues/108) reports, the element before
-    /// the first crossing raises `e^(−η)` to 8.5 over its own length: the loading lands within
-    /// 0.02% of its tangent cone's in one step, and where that step falls is the mesh's to
-    /// choose. Under the cap hpr flies the same nose never raises it past 1.
+    /// Why a crossing costs what it does (M1.8e13, ADR-044). Along an element the method relaxes
+    /// the pressure and the loading toward the tangent cone's as `e^(−η)`, `η = k (x − x₂)` with
+    /// `k = (∂p/∂s)₂/((p_c − p₂) cos δ₂)`, so where the pressure crosses its tangent cone's the gap
+    /// closes while the gradient carries on and `k` has a pole. The pressure rides through it;
+    /// the loading does not, because eq. 19 borrows the pressure's `k` while its own gap stays
+    /// open. Here, at the case [issue #108](https://github.com/nrdptel/hpr-sim/issues/108)
+    /// reports — the committed nose under the cone tables' cap at Mach 4.63 — the march crosses
+    /// twice. Between the crossings nearly every element is reduced, so the loading never relaxes
+    /// and stands about a quarter above its tangent cone's by the second one. The element there is
+    /// back inside the method, and how much of that gap it sheds in one step is the mesh's to
+    /// choose: 98% of it on the 40-element march against 12% on the 160-element one. The cap hpr
+    /// flies never crosses at all.
     #[test]
     fn a_crossing_is_a_pole_in_the_rate_the_march_relaxes_at() {
         use crate::blunt_tip::{CONE_TABLE_CAP_RAD, MAX_HANDOVER_RAD};
-        let (mach, steps) = (4.63, 4 * DEFAULT_ELEMENTS_PER_CURVE);
+        let mach = 4.63;
         let radius = 1.125 * 0.0254;
-        let body = |cap_rad: f64| {
+        let body = |steps: usize, cap_rad: f64| {
             ShockExpansionBody::new(
                 &[
                     BodySegment::Profile {
@@ -2641,94 +2685,126 @@ mod tests {
             .unwrap()
             .with_handover_cap_rad(cap_rad)
         };
-        // The exponent `e^(−η)` is raised to over each element of the march, and the gap that
-        // sets `η` for it, over the element's own pressure.
-        let read = |cap_rad: f64| {
-            let flows = body(cap_rad).element_flows(mach).unwrap();
-            flows
-                .windows(2)
-                .map(|pair| {
-                    let gap = pair[0].tangent_cone_pressure_ratio - pair[0].pressure_ratio;
-                    (
-                        pair[0].decay_per_m * (pair[1].corner_x_m - pair[0].corner_x_m),
-                        gap / pair[0].pressure_ratio,
-                    )
-                })
-                .collect::<Vec<_>>()
+        // The elements a crossing falls between, as `tangent_cone_crossings` counts them: the gap
+        // changes sign between two elements that have one and share a kind of tangent cone.
+        let crossings = |steps: usize, cap_rad: f64| {
+            let flows = body(steps, cap_rad).element_flows(mach).unwrap();
+            let gap = |e: &ElementFlowReport| e.tangent_cone_pressure_ratio - e.pressure_ratio;
+            let mut last: Option<(usize, f64)> = None;
+            let mut at = Vec::new();
+            for (index, flow) in flows.iter().enumerate() {
+                let this = gap(flow);
+                if this == 0.0 {
+                    continue;
+                }
+                if let Some((previous, was)) = last
+                    && (this > 0.0) != (was > 0.0)
+                    && (flows[previous].angle_rad > CONE_ANGLE_FLOOR_RAD)
+                        == (flow.angle_rad > CONE_ANGLE_FLOOR_RAD)
+                {
+                    at.push(index);
+                }
+                last = Some((index, this));
+            }
+            (flows, at)
         };
-        let tables = read(CONE_TABLE_CAP_RAD);
-        assert_eq!(
-            body(CONE_TABLE_CAP_RAD)
-                .tangent_cone_crossings(mach)
-                .unwrap(),
-            2,
-            "the tables' cap at Mach {mach} should cross its tangent cone twice"
-        );
-        // The element before the first crossing: its gap is nearly closed, and the exponent it
-        // applies over its own length is large enough to finish the relaxation in one step.
-        // The handover element starts on its own tangent cone, gap and all, so a crossing is a
-        // sign change between two elements that have a sign, as `tangent_cone_crossings` counts.
-        let first = tables
-            .windows(2)
-            .position(|pair| {
-                pair[0].1 != 0.0 && pair[1].1 != 0.0 && (pair[0].1 > 0.0) != (pair[1].1 > 0.0)
-            })
-            .expect("a crossing");
-        let (exponent, gap) = tables[first];
+        // What the mesh decides: the share of the loading's gap the element at the second
+        // crossing sheds in its own length, `1 − e^(−η)`.
+        let mut shares = Vec::new();
+        for steps in [
+            4 * DEFAULT_ELEMENTS_PER_CURVE,
+            16 * DEFAULT_ELEMENTS_PER_CURVE,
+        ] {
+            let (flows, at) = crossings(steps, CONE_TABLE_CAP_RAD);
+            assert_eq!(
+                (
+                    at.len(),
+                    body(steps, CONE_TABLE_CAP_RAD)
+                        .tangent_cone_crossings(mach)
+                        .unwrap()
+                ),
+                (2, 2),
+                "the tables' cap on {steps} elements should cross its tangent cone twice, and \
+                 the shipped count should agree with the rule spelled out here"
+            );
+            // The sign test behind the count is not a coin flip: the gap either side of a
+            // crossing is far larger than the 1e-12 a march reproduces to across platforms.
+            for &index in &at {
+                let margin =
+                    (flows[index].tangent_cone_pressure_ratio - flows[index].pressure_ratio).abs()
+                        / flows[index].pressure_ratio;
+                assert!(
+                    margin > 1e-8,
+                    "the crossing at element {index} on {steps} elements leaves a gap of \
+                     {margin:.2e} of the pressure, too near the noise to decide a sign on"
+                );
+            }
+            assert!(
+                at[1] + 1 < flows.len(),
+                "a crossing needs an element after it"
+            );
+            let second = &flows[at[1]];
+            let length_m = flows[at[1] + 1].corner_x_m - second.corner_x_m;
+            let loading_gap = (second.tangent_cone_loading_per_rad - second.loading_per_rad)
+                / second.loading_per_rad;
+            // The step is taken by an element the method still owns, across a gap the reduced
+            // stretch behind it left wide open. This is why a rule for `η < 0` alone would not
+            // settle the answer, and why it cannot be judged apart from the crossing either.
+            assert!(
+                second.decay_per_m > 0.0 && loading_gap < -0.15,
+                "on {steps} elements the second crossing's element should be inside the method \
+                 (rate {}) with its loading {:.1}% from its tangent cone's",
+                second.decay_per_m,
+                100.0 * loading_gap
+            );
+            shares.push(1.0 - (-second.decay_per_m * length_m).exp());
+        }
         assert!(
-            gap.abs() < 1e-3 && exponent > 3.0,
-            "at the crossing after element {first} the gap should be closing ({gap:.2e} of the \
-             pressure) with the rate unbounded (exponent {exponent:.2})"
+            shares[0] > 0.9 && shares[1] < 0.2,
+            "how much of the gap one step sheds should be the mesh's answer, not the model's: \
+             {:.0}% on {} elements against {:.0}% on {}",
+            100.0 * shares[0],
+            4 * DEFAULT_ELEMENTS_PER_CURVE,
+            100.0 * shares[1],
+            16 * DEFAULT_ELEMENTS_PER_CURVE
         );
-        // What re-scopes issue #108: the second crossing's step is taken by an element the
-        // method still owns. It is not reduced — its rate is positive — and the loading falls by
-        // a fifth from it to the next corner, so no reading of `η < 0` reaches it.
-        let flows = body(CONE_TABLE_CAP_RAD).element_flows(mach).unwrap();
-        let gap = |e: &ElementFlowReport| e.tangent_cone_pressure_ratio - e.pressure_ratio;
-        let second = tables
-            .iter()
-            .enumerate()
-            // `first` indexes the element before the first crossing, so its far side is
-            // `first + 1`; the second crossing is somewhere after that.
-            .skip(first + 2)
-            .find(|(i, _)| {
-                gap(&flows[*i]) != 0.0
-                    && gap(&flows[i - 1]) != 0.0
-                    && (gap(&flows[*i]) > 0.0) != (gap(&flows[i - 1]) > 0.0)
-            })
-            .map(|(i, _)| i)
-            .expect("a second crossing");
-        let drop = 1.0 - flows[second + 1].loading_per_rad / flows[second].loading_per_rad;
-        assert!(
-            flows[second].decay_per_m > 0.0 && drop > 0.15,
-            "the element at the second crossing should be inside the method (rate {}) and shed \
-             the loading ({:.1}% from element {second} to the next)",
-            flows[second].decay_per_m,
-            100.0 * drop
-        );
-        // The cap hpr flies marches the same nose at the same Mach number and element count
-        // without ever closing the gap, and never relaxes more than a little per element.
-        let flown = read(MAX_HANDOVER_RAD);
-        assert_eq!(
-            body(MAX_HANDOVER_RAD).tangent_cone_crossings(mach).unwrap(),
-            0,
-            "the flown cap at Mach {mach} should not cross its tangent cone"
-        );
-        let worst = flown.iter().map(|&(e, _)| e).fold(0.0_f64, f64::max);
-        assert!(
-            worst < 1.0,
-            "the flown cap should relax gently: its worst exponent is {worst:.2}"
-        );
-        // Where a crossing falls is the mesh's answer too, and a coarse mesh pins the second one
-        // badly: the guide quotes 65% of the nose on 10 elements against 79% on 160.
-        let nose_length_m = 9.375 * 0.0254;
-        let second_crossing_share = |elements: usize| {
+        // The cap hpr flies marches the same nose at the same Mach numbers without crossing.
+        for steps in [
+            DEFAULT_ELEMENTS_PER_CURVE,
+            4 * DEFAULT_ELEMENTS_PER_CURVE,
+            16 * DEFAULT_ELEMENTS_PER_CURVE,
+        ] {
+            for mach in [4.63, 5.0] {
+                assert_eq!(
+                    body(steps, MAX_HANDOVER_RAD)
+                        .tangent_cone_crossings(mach)
+                        .unwrap(),
+                    0,
+                    "the flown cap at Mach {mach} on {steps} elements should not cross"
+                );
+            }
+        }
+    }
+
+    /// A crossing is a flag, not a verdict (M1.8e13, ADR-044). It says the answer moved over the
+    /// meshes the cap sweep holds — 10, 40 and 160 elements per curve — not that no mesh settles
+    /// it. Under a 28° cap at Mach 5 the committed nose crosses at every mesh, and its 0.69 per
+    /// radian spread over the sweep's three is all in the coarse end: from 60 elements on it holds
+    /// to 0.005, tighter than the worst reading in the sweep that never crosses. Under the cone
+    /// tables' cap at Mach 4.63 it is the other kind, still moving by 0.2 per radian from 60
+    /// elements to 640. The guide says both.
+    #[test]
+    fn a_crossing_says_the_answer_moved_not_that_it_never_settles() {
+        use crate::blunt_tip::CONE_TABLE_CAP_RAD;
+        let radius = 1.125 * 0.0254;
+        let area = PI * radius * radius;
+        let read = |steps: usize, cap_rad: f64, mach: f64| {
             let body = ShockExpansionBody::new(
                 &[
                     BodySegment::Profile {
                         profile: Profile::nose(
                             NoseShape::PowerSeries { exponent: 0.6369 },
-                            nose_length_m,
+                            9.375 * 0.0254,
                             radius,
                         )
                         .unwrap(),
@@ -2738,38 +2814,44 @@ mod tests {
                         radius_m: radius,
                     },
                 ],
-                elements,
+                steps,
             )
             .unwrap()
-            .with_handover_cap_rad(CONE_TABLE_CAP_RAD);
-            let flows = body.element_flows(mach).unwrap();
-            let gap = |e: &ElementFlowReport| e.tangent_cone_pressure_ratio - e.pressure_ratio;
-            let mut last = 0.0;
-            let mut shares = Vec::new();
-            for flow in &flows {
-                let this = gap(flow);
-                if this == 0.0 {
-                    continue;
-                }
-                if last != 0.0 && (this > 0.0) != (last > 0.0) {
-                    shares.push(100.0 * flow.corner_x_m / nose_length_m);
-                }
-                last = this;
-            }
-            shares
+            .with_handover_cap_rad(cap_rad);
+            (
+                body.slope(mach, area).unwrap().slope_per_rad,
+                body.tangent_cone_crossings(mach).unwrap(),
+            )
         };
-        for (elements, want) in [
-            (DEFAULT_ELEMENTS_PER_CURVE, 65.0),
-            (16 * DEFAULT_ELEMENTS_PER_CURVE, 79.1),
-        ] {
-            let shares = second_crossing_share(elements);
-            assert_eq!(shares.len(), 2, "two crossings on {elements} elements");
+        // Past the coarse end: six, sixteen and sixty-four times the flown element count.
+        let fine = [
+            6 * DEFAULT_ELEMENTS_PER_CURVE,
+            16 * DEFAULT_ELEMENTS_PER_CURVE,
+            64 * DEFAULT_ELEMENTS_PER_CURVE,
+        ];
+        let spread = |cap_rad: f64, mach: f64| {
+            let slopes: Vec<(f64, usize)> = fine.iter().map(|&n| read(n, cap_rad, mach)).collect();
             assert!(
-                (shares[1] - want).abs() < 0.5,
-                "the second crossing on {elements} elements sits at {:.1}% of the nose, not {want}%",
-                shares[1]
+                slopes.iter().all(|&(_, crossings)| crossings > 0),
+                "this case should cross at every mesh: {slopes:?}"
             );
-        }
+            let high = slopes.iter().map(|&(s, _)| s).fold(f64::MIN, f64::max);
+            let low = slopes.iter().map(|&(s, _)| s).fold(f64::MAX, f64::min);
+            high - low
+        };
+        // Crossing, and settled once the mesh is fine enough.
+        let settles = spread(28_f64.to_radians(), 5.0);
+        assert!(
+            settles < 0.005,
+            "28° at Mach 5 crosses but settles: it moves {settles:.4} per radian over {fine:?}"
+        );
+        // Crossing, and still moving there.
+        let wanders = spread(CONE_TABLE_CAP_RAD, 4.63);
+        assert!(
+            wanders > 0.2,
+            "the tables' cap at Mach 4.63 crosses and keeps moving: {wanders:.4} per radian over \
+             {fine:?}"
+        );
     }
 
     /// The Arcas Robin's committed nose (a power series, `n` = 0.6369, 9.375 in long on a

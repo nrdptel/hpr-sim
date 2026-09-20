@@ -34,10 +34,12 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
 - **M1.8e11** (ADR-042): `CONE_SLOPES` runs to 30° — Fig. 2's chart to 24°, then SP-3007 Table 2.
 - **M1.8e12** (ADR-043): the handover's cap is a parameter (`with_handover_cap_rad`), swept into
   `blunt-tips.json`. 24° stands: no steeper cap keeps its answer to Mach 5 (28° is worst).
-- **M1.8e13** (ADR-044): what moves a marched answer is the surface pressure **crossing** its
-  tangent cone's — where `η` has a pole — not `η < 0`. `tangent_cone_crossings` counts it, the cap
-  sweep stores it, and it separates all 32 readings with no overlap. #108 is re-scoped to the
-  loading through a crossing; the rest of the old e13 is **M1.8e16**, last because it is blocked.
+- **M1.8e13** (ADR-044): what an answer follows when it follows the mesh is the surface pressure
+  **crossing** its tangent cone's — where the relaxation rate has a pole — not `η < 0`.
+  `tangent_cone_crossings` counts it; over the sweep's three meshes it splits all 32 readings with
+  no overlap (27 clean, 5 not). A flag, not a verdict: zero at a coarse mesh means "not proven",
+  and 28° at Mach 5 crosses yet settles by 60 elements. #108 is re-scoped to the loading through a
+  crossing, tangled with `η < 0`; the rest of the old e13 is **M1.8e16**, last because blocked.
 - **M1.8e14 is next and unblocked**: the method marches a flare already, and TN D-4865's model 2
   measures one (fig. 8, Mach 1.50 to 4.63, from tables VII to XII). #97: the long model's M1.8a
   readings may be biased.
@@ -53,10 +55,10 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
 
 ## Done log (newest first, keep about 15)
 
-- 2026-09-20: M1.8e13 What puts a marched answer at the mercy of the mesh (ADR-044): the trigger
-  is a crossing of the tangent cone, not a reduced element; every reading of the cap sweep without
-  one holds to 0.012 per radian over 10 to 160 elements, every reading with one moves 0.035 or
-  more; no fixture number moved.
+- 2026-09-20: M1.8e13 What the answer follows when it follows the mesh (ADR-044): a crossing of
+  the tangent cone, not a reduced element; over the sweep's three meshes the 27 readings without
+  one hold to 0.012 per radian and the 5 with one move 0.035 or more, no overlap — but it is a
+  flag, not a verdict, at either end. No fixture number moved.
 
 - 2026-09-20: M1.8e12 What the handover's cap is worth (ADR-043): the cap is a method parameter,
   swept into the fixture and the guide; 24° stays because no steeper cap keeps its answer to Mach
