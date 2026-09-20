@@ -4446,7 +4446,9 @@ there would look continuous whatever the two branches did.
 
 **What still switches, and it is not the boundary above.** Where the march itself refuses a flare,
 the model keeps slender-body theory rather than reading a flare it has not marched — and that
-refusal is a switch of shape. Three cases, which behave differently.
+refusal is a switch of shape. Three cases, which behave differently. *(The second and third of
+them are superseded by ADR-050, which reads that element rather than refusing it; the two tests
+named below were replaced with it. The first is unchanged.)*
 
 - **Below Mach 1.5552** on this body the corner's isentropic turn runs out before its shock
   detaches (ADR-045's crossing), so the table simply starts there. The join's weight rises from
@@ -4791,8 +4793,13 @@ across or a demonstration that refusing is right.
     `sin(δ₁ + θ) = (Ω₁/Ω₂(θ)) (sin δ₁ + r (∂p/∂s)₁ / B₁)` — the corner's own compression cancels
     the gradient the body ahead delivers, and `η` is zero.
 
-  *A single zero* is an observation, not a proof: a corner state that broke it would put a reduced
-  element outside the interval. Which of the two is the shallower is not fixed either — on the
+  *A single zero* is not a promise, and a corner that breaks it exists: a 25° cone with 20 mm of
+  tube behind it at Mach 7 meets its tangent cone's three times (about 0.91°, 7.3° and 24°), so a
+  flare there is reduced on **two** bands. `flare_reduction_turns_rad` therefore sweeps the
+  widening turns at a hundred stations before it brackets, and reports a corner with any number of
+  crossings but one as an error rather than returning whichever root it reached
+  (`a_corner_whose_gap_has_three_zeros_is_refused_rather_than_guessed_at`). A pair of roots inside
+  one station would still be missed. Which of the two is the shallower is not fixed either — on the
   tests' rocket the crossing is below the balance from about Mach 1.5 up and above it below that,
   where both turns are shallower than the element-merging floor anyway, so no corner is drawn.
 
@@ -4824,11 +4831,27 @@ across or a demonstration that refusing is right.
 
 - **The reading is carried across, by TN 3527's own reduction, wherever the element has a tangent
   cone of its own.** The refusal keeps only its first clause: an element whose angle is under
-  `CONE_ANGLE_FLOOR_RAD` — a cylinder, whose tangent cone is the free stream, or a boattail, whose
-  is footnote 8's constant 2 — still refuses, because neither is a tangent-cone solution of that
-  element's own flow and nothing here measures what holding a corner's loading over an arbitrary
-  length would be worth there. That is issue #123. On a widening element the tangent cone is a
-  real cone at the flow's own Mach number, and the reduction relaxes toward it.
+  `CONE_ANGLE_FLOOR_RAD` still refuses. That is issue #123.
+
+  **What that line is and is not.** It is *not* that a widening element relaxes toward something
+  and a cylinder does not: a reduced element does not relax at all. `decay_rate` returns zero, so
+  in `ElementFlow::at` the decay is 1, `p_c` and `Λ_c` are multiplied by nothing, and the element
+  holds `p₂` and `Λ₂` over its whole length — on a flare exactly as on a cylinder. What differs is
+  what the element is being read *against*. On a widening element `p_c` and `Λ_c` are a real
+  cone's at the flow's own Mach number, so the two branches either side of the region are two
+  readings of one picture and they meet where `η = 0`. A cylinder's `Λ_c = tan δ (dC_N/dα)_tc` is
+  identically zero and its `p_c` is the free stream's, so there is no cone there to meet; a
+  boattail's is footnote 8's `p_c = p₀`, `(dC_N/dα)_tc = 2`, a stand-in rather than a solution of
+  that element's flow.
+
+  **And the length the old refusal worried about is real, admitted and measured.** Because a
+  reduced element's reading does not depend on its length, what it costs grows with it. On the
+  body alone, either side of its own crossing at Mach 5, the tests' rocket's 0.3 m flare moves
+  `C_Nα` by +0.40% and its centre of pressure by 0.064 calibres, and the same body with a **2 m**
+  flare by +2.61% and 0.761 calibres. That is the failure the blanket refusal existed to prevent,
+  now taken on the flare with its size on the page rather than avoided by throwing the body off
+  the method. Nothing measures it on a cylinder or a boattail, which is why those keep the
+  refusal, and #123 is what would close that.
 
   Refusing is **not** right for the flare, and the measurement says so plainly. With the reading
   carried, the table starts at Mach 1.2 at fifteen flare angles from zero to a degree, and swept
@@ -4862,10 +4885,25 @@ across or a demonstration that refusing is right.
   row is an upper bound on the step rather than a measurement of one, and the test only pins the
   ±1e-9° figure for it.
 
-  The worst is a 64th of the switch it replaces in the force and a 227th of it in the centre of
-  pressure — the step at Mach 4.95 against the switch measured at Mach 3, so a comparison of sizes
-  rather than of one flight condition. It is also not a new question but ADR-044's: the loading
-  through a tangent-cone crossing, open as issue #108. (That issue had been closed by mistake
+  **That is one rocket, and it is not a bound.** The step is the loading's gap at the pole, so it
+  grows with the length of the element holding it, and where the region sits depends on the body
+  ahead. On the **body alone** at Mach 5, either side of its own crossing: the tests' rocket's
+  body +0.40% and 0.064 calibres; the same with a 2 m flare +2.61% and 0.761; the same with the
+  tube cut to 0.1 m +4.34% and 0.186, its crossing at **1.388°**; a 10° cone with 0.3 m of tube
+  +3.82% and 0.251, crossing at 0.696°. With a short shoulder the region is not near-flat at all —
+  0.7° to 4.6°, where real flares live.
+
+  **And the pole is crossed in Mach as well as in shape.** On that short-shouldered body with a 1°
+  flare the table's rows step **−2.77% and 0.14 calibres** from Mach 2.90 to 2.95, against a fifth
+  of that either side. Under the old rule those rows were refused, so the table started above them
+  and the join covered the pole; it is now inside the table.
+  `what_the_crossing_costs_is_not_bounded_by_the_tests_rocket` pins all of it.
+
+  The whole-rocket worst above is a 64th of the switch it replaces in the force and a 227th of it
+  in the centre of pressure — the step at Mach 4.95 against the switch measured at Mach 3, so a
+  comparison of sizes rather than of one flight condition; the body-alone numbers are not that
+  small. It is not a new question, though, but ADR-044's: the loading through a tangent-cone
+  crossing, open as issue #108. (That issue had been closed by mistake
   while ADR-044 was being written, which said in terms that it was re-scoped and *not* closed; it
   is reopened.) The region's other edge, the balance, leaves nothing at all —
   `η` is zero there, so the two readings coincide by construction, and a ±1e-9° probe moves the
@@ -4908,7 +4946,12 @@ march — and would have published readings at Mach numbers where the method ret
 - ADR-047's two tests are replaced. `the_march_refuses_two_bands_of_flare_and_the_model_keeps_slender_body_theory`
   and `a_near_flat_flare_lifts_the_joins_start_in_steps` became
   `a_near_flat_flare_marches_every_row_and_the_fallback_is_still_measured` and
-  `a_near_flat_flare_reads_through_and_leaves_only_the_corners_crossing`, with
-  `the_turns_a_reduced_element_lies_between_come_from_the_corners_own_state` added for the
-  derivation. The low-Mach band ADR-047 also described is untouched and still pinned by
+  `a_near_flat_flare_reads_through_and_leaves_only_the_corners_crossing`; three more were added —
+  `the_turns_a_reduced_element_lies_between_come_from_the_corners_own_state` for the derivation,
+  `what_the_crossing_costs_is_not_bounded_by_the_tests_rocket` for the sizes above, and
+  `a_corner_whose_gap_has_three_zeros_is_refused_rather_than_guessed_at` for the counter-example.
+  A fourth, `a_corner_behind_a_relaxed_body_still_has_both_turns`, guards a body that hands the
+  free stream's own pressure to the corner, where the crossing is a turn of nothing and rounding
+  it through the isentropic relations would have decided the answer on one bit. The low-Mach band
+  ADR-047 also described is untouched and still pinned by
   `where_the_corners_turn_runs_out_the_join_carries_the_reading`.

@@ -33,11 +33,10 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
   W&P's correlation at 16°, M1.8e's 15% bullet (`arcas-robin-body-gap.json`) outside on six rows;
   `CONE_SLOPES` runs to 30°; the handover's cap is a parameter, 24° stands; a mesh-following
   answer is marked by the pressure **crossing** its tangent cone's, not `η < 0`.
-- **The flare, the step and the near-flat region** (ADR-045, ADR-047 to ADR-050; the guide's
-  *A flare through the method*, *What a marched flare is worth*, *A step in radius*, *A near-flat
-  flare*): a conical flare not behind a boattail flies the method while its corner's shock holds
-  (NACA 1135's wedge limit at `aft_flow`'s surface Mach, under 30°), reads the **same radii drawn
-  out** past it, and ends the run. Against TN D-4865 model 2: −1.9%/+7.0%/+13.4% at Mach
+- **The flare, the step and the near-flat region** (ADR-045, ADR-047 to ADR-050; the guide's four
+  flare and step sections): a conical flare not behind a boattail flies the method while its
+  corner's shock holds (NACA 1135's wedge limit at `aft_flow`'s surface Mach, under 30°), reads
+  the **same radii drawn out** past it, and ends the run. Against TN D-4865 model 2: −1.9%/+7.0%/+13.4% at Mach
   1.90/2.30/2.96, +51.5%/+50.4% at 3.95/4.63 (separated), none below Mach 1.5289. A **step** in
   radius still takes the whole body off the method — threshold a pair, 2.7e-11 m tube to tube and
   1.3e-13 m up at a slope change; worth −8.65% to −12.55% and about a calibre (#87, #120, #121).
@@ -45,7 +44,8 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
   its **balance** (`(∂p/∂s)₂ = 0`), both solved by `flare_reduction_turns_rad`; it now takes TN
   3527's `η = 0` wherever it has a tangent cone of its own, and a cylinder's or boattail's still
   refuses (#123), which keeps ADR-038's Newtonian-start rows in `blunt-tips.json`. Left over:
-  the crossing's pole in the loading, ≤ +0.129% and 0.0051 calibres (#108).
+  the crossing's pole in the loading: +0.129% and 0.0051 calibres on the tests' rocket, but +4.3%
+  and 0.19 calibres on a short shoulder and −2.8% between two Mach rows — **not bounded** (#108).
 - **Debrief, folded in** (ADR-046): `hpr-flightdata` is off `hpr-sim` and must stay off it (`forbids
   = ["hpr-sim"]`, walked by `cargo xtask wasm-check`); sim-versus-flight goes in `hpr-forensics`.
   Notes: `debrief-{log-formats,flight-readings,porting-boundary}.md`. **Port from its `lib/`, never
@@ -61,7 +61,7 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
 - 2026-09-20: M1.8e19 The near-flat flare (ADR-050): the region's edges come out of the corner's
   own state instead of a bisection — the crossing and the balance, reproducing 0.038161270°,
   0.058820517° and 0.000901825° — and refusing is shown wrong: a reduced element takes the
-  generalized method where it has a tangent cone, so both switches go and ≤ +0.129% is left.
+  generalized method where it has a tangent cone, so both switches go; the crossing's pole is left.
 - 2026-09-20: M1.8e15 The step in radius (ADR-049): what a step costs is measured and published —
   −8.65% and 1.03 calibres at its threshold, a pair (2.7e-11 m tube to tube, 1.3e-13 m stepping up
   at a slope change) — with the measurements that sank the obvious fix. #87 narrowed to the step.
@@ -134,8 +134,8 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
   sphere-cone (#101). A lip's share (M1.8e8) is bounded, not measured; a boattail past 16° (M1.8e9)
   is worth 0.67 to 1.35 calibres of doubt. A marched flare (M1.8e18) reads +51.5% and +50.4% at Mach
   3.95 and 4.63 on the one measured flare, separated there, and none below Mach 1.5289; a near-flat
-  flare's element takes the generalized method, ≤ +0.129% and 0.0051 calibres at the crossing
-  (M1.8e19, #108); a step in radius takes the whole body off the method past 2.7e-11 m tube to tube
+  flare's element takes the generalized method, leaving the crossing's pole — +0.129% and 0.0051
+  calibres on the tests' rocket, +4.3% and 0.19 on a short shoulder (M1.8e19, #108); a step in radius takes the whole body off the method past 2.7e-11 m tube to tube
   or 1.3e-13 m up at a boattail — −8.65% to −11.34% and about a calibre, only measured (#87).
 - Drag: against RASAero II's Calisto hpr reads −14.9% to −5.1% supersonic (ADR-030); against
   MIL-HDBK-762 the body reads 6–10% low past Mach 1.6 and high through Mach 1 (#67, #68); against

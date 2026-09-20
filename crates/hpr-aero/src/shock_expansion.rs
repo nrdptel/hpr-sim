@@ -310,9 +310,11 @@ pub struct AftFlow {
     /// read without being told it again ([`flare_reduction_turns_rad`]).
     pub free_stream_mach: f64,
     /// The body's radius there, m: eq. 4's `r` at a corner behind it. This is the **profile's**
-    /// radius at the aft end, so on a body that ends in a curve the tangent body's corner sits a
-    /// little off it, as [`Self::angle_rad`] does; on a body that ends in a cylinder or a cone —
-    /// every body a flare joins in a flight today — the two are the same.
+    /// radius at the aft end, so where the tangent body's last corner is not at the aft end — a
+    /// body that ends in a curve, or one whose last tangency point was merged as nearly parallel
+    /// — it sits a little off the element's own corner radius, as [`Self::angle_rad`] does. On a
+    /// body that ends in a cylinder or a cone, which is every body a flare joins in a flight
+    /// today, the two are the same.
     pub radius_m: f64,
 }
 
@@ -1429,10 +1431,15 @@ pub fn flare_reduction_turns_rad(aft: &AftFlow) -> Result<ReductionTurns, AeroEr
     if !(-1.0..=1.0).contains(&k) {
         return Err(outside("balance"));
     }
-    let mut balance = (k.asin() - d1).clamp(lowest, highest);
+    let mut balance = k.asin() - d1;
     for _ in 0..REDUCTION_ITERATIONS {
+        // A fixed point that wants to sit outside the widening turns has no root among them:
+        // say so rather than iterate against an end and hand that back as one.
+        if !(lowest..=highest).contains(&balance) {
+            return Err(outside("balance"));
+        }
         let (m2, _) = behind(balance).ok_or_else(|| outside("balance"))?;
-        let next = ((o1 / area_ratio(m2) * k).asin() - d1).clamp(lowest, highest);
+        let next = (o1 / area_ratio(m2) * k).asin() - d1;
         if !next.is_finite() {
             return Err(outside("balance"));
         }
@@ -1442,14 +1449,19 @@ pub fn flare_reduction_turns_rad(aft: &AftFlow) -> Result<ReductionTurns, AeroEr
             break;
         }
     }
+    if !(lowest..=highest).contains(&balance) {
+        return Err(outside("balance"));
+    }
     let (m2, p2) = behind(balance).ok_or_else(|| outside("balance"))?;
     let (o2, b2) = (area_ratio(m2), b_factor(p2, m2));
     let balance_left = b2 / aft.radius_m * (o1 / o2 * d1.sin() - (d1 + balance).sin())
         + b2 * o1 / (b1 * o2) * aft.gradient_p0_per_m;
 
-    // The crossing: the isentropic turn's pressure against its tangent cone's. Bracketed over the
-    // widening turns, then false position, which stays inside the bracket and so always lands on
-    // the root rather than wandering off a flat end.
+    // The crossing: the isentropic turn's pressure against its tangent cone's. Swept over the
+    // widening turns first, because the gap is not promised to have one zero — a blunt shoulder
+    // at high Mach has three, and a bracket taken on the ends alone would hide two of them and
+    // return whichever root the solver happened to walk to. Where the sweep finds exactly one
+    // sign change, false position inside that bracket lands on the root and stays there.
     let gap = |turn: f64| -> Option<f64> {
         let (_, p2) = behind(turn)?;
         let angle = d1 + turn;
@@ -1463,34 +1475,52 @@ pub fn flare_reduction_turns_rad(aft: &AftFlow) -> Result<ReductionTurns, AeroEr
         };
         Some(p2 - cone)
     };
-    let (mut low, mut high) = (lowest, highest);
-    let (mut at_low, mut at_high) = (
-        gap(low).ok_or_else(|| outside("crossing"))?,
-        gap(high).ok_or_else(|| outside("crossing"))?,
-    );
-    if at_low == 0.0 || at_high == 0.0 || at_low.signum() == at_high.signum() {
-        // Either an end is the root, or the pressure never meets its tangent cone's in between.
-        return if at_low == 0.0 {
-            Ok(ReductionTurns {
-                crossing_rad: low,
-                crossing_residual_p0: 0.0,
-                balance_rad: balance,
-                balance_residual_p0_per_m: balance_left,
-            })
-        } else if at_high == 0.0 {
-            Ok(ReductionTurns {
-                crossing_rad: high,
-                crossing_residual_p0: 0.0,
-                balance_rad: balance,
-                balance_residual_p0_per_m: balance_left,
-            })
+    let start = gap(lowest).ok_or_else(|| outside("crossing"))?;
+    // A body that has handed the free stream's own pressure to the corner meets its tangent
+    // cone's at a turn of nothing, which is the first end rather than a station.
+    let mut bracket = (start == 0.0).then_some(((lowest, start), (lowest, start)));
+    let mut crossings = usize::from(start == 0.0);
+    let mut before = (lowest, start);
+    for station in 1..=REDUCTION_STATIONS {
+        // The last station is the end itself: stepping to it can round a hair past it, and a
+        // hair past is where the isentropic turn has run out.
+        let turn = if station == REDUCTION_STATIONS {
+            highest
         } else {
-            Err(outside("crossing"))
+            lowest + (highest - lowest) * station as f64 / REDUCTION_STATIONS as f64
         };
+        let here = (turn, gap(turn).ok_or_else(|| outside("crossing"))?);
+        if here.1 == 0.0 || before.1.signum() != here.1.signum() {
+            crossings += 1;
+            bracket = Some((before, here));
+        }
+        before = here;
     }
-    // Start from the linearized guess, which is inside the bracket on every body measured here.
-    let beta1 = (m1 * m1 - 1.0).sqrt();
-    let mut crossing = ((1.0 / p1 - 1.0) * beta1 / (GAMMA * m1 * m1)).clamp(low, high);
+    if crossings != 1 {
+        return Err(AeroError::Unsupported(format!(
+            "the pressure behind a corner behind a surface at Mach {m1} in a Mach {mach} stream \
+             meets its tangent cone's {crossings} times over the turns a widening corner can \
+             make, so the element it reduces is not one band of turns"
+        )));
+    }
+    // `crossings == 1` put a bracket there.
+    let ((mut low, mut at_low), (mut high, mut at_high)) =
+        bracket.ok_or_else(|| outside("crossing"))?;
+    let mut crossing = if at_low == 0.0 {
+        low
+    } else if at_high == 0.0 {
+        high
+    } else {
+        // Start from the linearized guess where it falls inside the bracket, the midpoint where
+        // it does not.
+        let beta1 = (m1 * m1 - 1.0).sqrt();
+        let guess = (1.0 / p1 - 1.0) * beta1 / (GAMMA * m1 * m1);
+        if guess > low && guess < high {
+            guess
+        } else {
+            0.5 * (low + high)
+        }
+    };
     let mut here = gap(crossing).ok_or_else(|| outside("crossing"))?;
     for _ in 0..REDUCTION_ITERATIONS {
         if here == 0.0 {
@@ -1524,8 +1554,13 @@ pub fn flare_reduction_turns_rad(aft: &AftFlow) -> Result<ReductionTurns, AeroEr
     })
 }
 
+/// How many stations [`flare_reduction_turns_rad`] sweeps the widening turns at before bracketing
+/// the crossing. A pair of extra roots closer together than a hundredth of that range would not
+/// be seen, and the gap would be reported as one band when it is three.
+const REDUCTION_STATIONS: usize = 100;
+
 /// Enough steps for either solution of [`flare_reduction_turns_rad`] to stop moving; both take
-/// well under ten, and the loops break when they do.
+/// well under twenty, and the loops break when they do.
 const REDUCTION_ITERATIONS: usize = 64;
 
 /// The flow over a cone at zero angle of attack.
@@ -3998,6 +4033,220 @@ mod tests {
             relaxed > 20,
             "only {relaxed} rows reached the free stream's pressure"
         );
+    }
+
+    /// A body of a nose, a tube and a conical flare, for measuring what the crossing costs.
+    fn nosed_tube_and_flare(
+        cone_deg: Option<f64>,
+        radius_m: f64,
+        tube_m: f64,
+        flare_m: f64,
+        flare_deg: f64,
+    ) -> Vec<BodySegment> {
+        let (shape, nose_m) = match cone_deg {
+            Some(deg) => (NoseShape::Conical {}, radius_m / deg.to_radians().tan()),
+            None => (NoseShape::Ogive { radius_ratio: 1.0 }, 0.25),
+        };
+        let mut segments = vec![
+            BodySegment::Profile {
+                profile: Profile::nose(shape, nose_m, radius_m).unwrap(),
+            },
+            BodySegment::Cylinder {
+                length_m: tube_m,
+                radius_m,
+            },
+        ];
+        if flare_m > 0.0 {
+            segments.push(BodySegment::Profile {
+                profile: Profile::transition(
+                    NoseShape::Conical {},
+                    flare_m,
+                    radius_m,
+                    radius_m + flare_m * flare_deg.to_radians().tan(),
+                    false,
+                )
+                .unwrap(),
+            });
+        }
+        segments
+    }
+
+    /// What the crossing costs is **not** bounded by the tests' rocket, and it is crossed in the
+    /// Mach number as well as in the flare's angle.
+    ///
+    /// [`the_turns_a_reduced_element_lies_between_come_from_the_corners_own_state`] shows where the
+    /// march reduces an element; where a drawn flare's angle sweeps past the crossing the loading
+    /// steps, because `η` has a pole there. The whole rocket of
+    /// `a_near_flat_flare_reads_through_and_leaves_only_the_corners_crossing` puts that step at
+    /// +0.129% at worst — but that is one body, one flare length and one place to measure. On the
+    /// body alone it is an order larger, it **grows with the flare's length**, and shortening the
+    /// tube ahead of the corner moves the whole region from thousandths of a degree to degrees,
+    /// where real flares live. None of these is a bound either: what is claimed is only that the
+    /// tests' rocket's figure is not one.
+    ///
+    /// The same pole is crossed in Mach at a fixed angle, and the table's rows are 0.05 Mach
+    /// apart, so a flight reads it as a step between two adjacent rows. Before
+    /// [M1.8e19](https://github.com/nrdptel/hpr-sim/blob/main/docs/ROADMAP.md) the reduced rows
+    /// were refused, so the table stopped above them and the join covered the pole; it is now
+    /// inside the table. That trade is the milestone's, and this test is its size.
+    #[test]
+    fn what_the_crossing_costs_is_not_bounded_by_the_tests_rocket() {
+        // Either side of a body's own crossing, on the body alone: the fraction its `C_Nα` moves
+        // and how far its centre of pressure moves, in calibres of the tube ahead of the flare.
+        let across = |cone_deg: Option<f64>,
+                      radius_m: f64,
+                      tube_m: f64,
+                      flare_m: f64,
+                      mach: f64|
+         -> (f64, f64) {
+            let ahead = ShockExpansionBody::new(
+                &nosed_tube_and_flare(cone_deg, radius_m, tube_m, 0.0, 0.0),
+                DEFAULT_ELEMENTS_PER_CURVE,
+            )
+            .expect("the body ahead");
+            let turns = flare_reduction_turns_rad(&ahead.aft_flow(mach).expect("its aft flow"))
+                .expect("its crossing");
+            let deg = turns.crossing_rad.to_degrees();
+            let area = PI * radius_m * radius_m;
+            let read = |flare_deg: f64| {
+                ShockExpansionBody::new(
+                    &nosed_tube_and_flare(cone_deg, radius_m, tube_m, flare_m, flare_deg),
+                    DEFAULT_ELEMENTS_PER_CURVE,
+                )
+                .expect("a flared body")
+                .slope(mach, area)
+                .expect("its slope")
+            };
+            let (below, above) = (read(deg * (1.0 - 1e-6)), read(deg * (1.0 + 1e-6)));
+            (
+                above.slope_per_rad / below.slope_per_rad - 1.0,
+                (above.centre_of_pressure_m - below.centre_of_pressure_m) / (2.0 * radius_m),
+            )
+        };
+        // The tests' rocket's body, then the same body with a flare seven times as long, then
+        // with the tube cut from 0.7 m to 0.1 m, then a 10° cone in front instead of an ogive.
+        for (label, cone, tube, flare, mach, force, calibres) in [
+            (
+                "as the rocket has it",
+                None,
+                0.7,
+                0.3,
+                5.0,
+                0.004_045,
+                0.064,
+            ),
+            ("a 2 m flare", None, 0.7, 2.0, 5.0, 0.026_058, 0.761),
+            ("a 0.1 m tube", None, 0.1, 0.3, 5.0, 0.043_396, 0.186),
+            (
+                "a 10° cone, 0.3 m tube",
+                Some(10.0),
+                0.3,
+                0.3,
+                5.0,
+                0.038_235,
+                0.251,
+            ),
+        ] {
+            let (moved, shifted) = across(cone, 0.027, tube, flare, mach);
+            assert!(
+                (moved - force).abs() < 0.03 * force
+                    && (shifted - calibres).abs() < 0.03 * calibres,
+                "{label}: the crossing moves the body's slope {moved:+.6} and its centre of \
+                 pressure {shifted:+.4} calibres"
+            );
+        }
+        // And in the Mach number, on the table's own 0.05 grid. A 1° flare on the short-tubed
+        // body: the rows below Mach 2.95 are the reduced ones, and the first row above them is
+        // where the reading steps.
+        let body = ShockExpansionBody::new(
+            &nosed_tube_and_flare(None, 0.027, 0.1, 0.3, 1.0),
+            DEFAULT_ELEMENTS_PER_CURVE,
+        )
+        .expect("the short-tubed flared body");
+        let area = PI * 0.027 * 0.027;
+        let row = |step: usize| {
+            // The table's own grid: `SUPERSONIC_STEPS_PER_MACH` rows to the Mach number.
+            let mach = step as f64 / 20.0;
+            let slope = body.slope(mach, area).expect("a slope at every row");
+            let flows = body.element_flows(mach).expect("a march at every row");
+            (
+                slope.slope_per_rad,
+                slope.centre_of_pressure_m,
+                flows[flows.len() - 1].decay_per_m == 0.0,
+            )
+        };
+        for step in 56..=58 {
+            assert!(row(step).2, "Mach {} should be reduced", step as f64 / 20.0);
+        }
+        for step in 59..=62 {
+            assert!(!row(step).2, "Mach {} should not be", step as f64 / 20.0);
+        }
+        let (before, after) = (row(58), row(59));
+        let moved = after.0 / before.0 - 1.0;
+        let shifted = (after.1 - before.1) / 0.054;
+        assert!(
+            (moved + 0.027_72).abs() < 5e-5 && (shifted + 0.137_5).abs() < 5e-4,
+            "Mach 2.90 to 2.95 moves the slope {moved:+.5} and the centre of pressure \
+             {shifted:+.4} calibres"
+        );
+        // Its neighbours move by a fifth of that or less, so it is the pole and not the trend.
+        for pair in [(56, 57), (57, 58), (59, 60), (60, 61)] {
+            let step = row(pair.1).0 / row(pair.0).0 - 1.0;
+            assert!(
+                step.abs() < 0.2 * moved.abs(),
+                "Mach {} to {} moves the slope {step:+.5}",
+                pair.0 as f64 / 20.0,
+                pair.1 as f64 / 20.0
+            );
+        }
+    }
+
+    /// The gap between the pressure behind a corner and its tangent cone's is not promised to
+    /// have one zero, and where it has three the element it reduces is two bands rather than one.
+    ///
+    /// On a 25° cone with 0.02 m of tube behind it at Mach 7, `p₂ − p_c` vanishes at about 0.91°,
+    /// 7.3° and 24°, so a 0.1 m flare is reduced from 0.91° to 3.88° **and again** from 7.3° to
+    /// 24°. [`flare_reduction_turns_rad`] sweeps the widening turns before it brackets, so it
+    /// reports that rather than returning whichever root it walked to.
+    #[test]
+    fn a_corner_whose_gap_has_three_zeros_is_refused_rather_than_guessed_at() {
+        let ahead = ShockExpansionBody::new(
+            &nosed_tube_and_flare(Some(25.0), 0.027, 0.02, 0.0, 0.0),
+            DEFAULT_ELEMENTS_PER_CURVE,
+        )
+        .expect("the blunt-shouldered body");
+        let aft = ahead.aft_flow(7.0).expect("its aft flow");
+        let Err(AeroError::Unsupported(why)) = flare_reduction_turns_rad(&aft) else {
+            panic!("a corner whose gap has three zeros should not report one band");
+        };
+        assert!(
+            why.contains("meets its tangent cone's 3 times"),
+            "it reported: {why}"
+        );
+        // The march's own flag either side of the second band, which is what makes it real.
+        let reduced = |deg: f64| {
+            ShockExpansionBody::new(
+                &nosed_tube_and_flare(Some(25.0), 0.027, 0.02, 0.1, deg),
+                DEFAULT_ELEMENTS_PER_CURVE,
+            )
+            .expect("a flared body")
+            .element_flows(7.0)
+            .map(|flows| flows[flows.len() - 1].decay_per_m == 0.0)
+        };
+        for (deg, want) in [
+            (0.5, false),
+            (3.0, true),
+            (6.0, false),
+            (10.0, true),
+            (22.0, true),
+            (25.0, false),
+        ] {
+            assert_eq!(
+                reduced(deg),
+                Ok(want),
+                "a {deg}° flare on that body at Mach 7"
+            );
+        }
     }
 
     /// The method's flare limit is the corner's **isentropic** turn running out — the flow reaching
