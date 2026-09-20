@@ -991,7 +991,8 @@ impl ShockExpansionBody {
 /// Normally one: a nose is a single [`Profile`](hpr_design::Profile), and everything behind it is
 /// the afterbody. A [`BodySegment::SphericalCap`] is the exception — it is a *piece* of a nose,
 /// never a whole one — so behind a cap the nose carries on through the curved segments that
-/// follow it, and stops at the first straight one. TN D-4865's own model 2 needs that: its nose is
+/// follow it, and stops at the first that is straight or doesn't widen. TN D-4865's own model 2
+/// needs that: its nose is
 /// a 0.257-diameter sphere blended into a 2.75° cone by a 0.429 arc, and the sphere is still at
 /// 38.3° where the arc takes over, steeper than the handover's 24° cap at any Mach number
 /// (M1.8e18, ADR-048).
@@ -1010,7 +1011,13 @@ fn nose_segments(segments: &[(f64, BodySegment)]) -> usize {
     }
     segments
         .iter()
-        .take_while(|(_, segment)| !segment.is_straight())
+        .take_while(|(_, segment)| {
+            // A curved segment that narrows is a boattail, not the nose: letting a cap reach one
+            // would hand the flow over on a falling surface, at a slope the handover angle meets
+            // from the wrong side.
+            !segment.is_straight()
+                && segment.radius_and_slope(segment.length_m()).0 > segment.radius_and_slope(0.0).0
+        })
         .count()
         .max(1)
 }
@@ -3327,6 +3334,27 @@ mod tests {
             );
             // The cap is still the sphere plus part of the arc, so the march starts behind it.
             body.slope(mach, 0.25 * PI).expect("model 2's nose marches");
+        }
+        // A curved segment that narrows is a boattail, so a cap may not reach one either: the
+        // handover would land on its fore end at a slope of zero, with none of the total pressure
+        // the tip took out of the flow.
+        let boattail = [
+            BodySegment::SphericalCap {
+                radius_m: 0.5,
+                length_m: 0.1,
+            },
+            BodySegment::Profile {
+                profile: Profile::transition(NoseShape::TANGENT_OGIVE, 0.4, 0.3, 0.2, false)
+                    .unwrap(),
+            },
+        ];
+        let boattail = ShockExpansionBody::new(&boattail, DEFAULT_ELEMENTS_PER_CURVE).unwrap();
+        for mach in [1.5, 2.0, 3.0] {
+            let err = boattail
+                .handover_m(mach)
+                .expect_err("a cap that reaches a boattail")
+                .to_string();
+            assert!(err.contains("all the way to its end"), "Mach {mach}: {err}");
         }
         // A pointed nose is one segment however many curved shapes follow it, so a curved
         // widening transition behind one is still the afterbody and a reduced element there is

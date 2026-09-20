@@ -49,6 +49,17 @@ enum Closure {
     /// printed 1.609, so its `C_m` would be on a different reference length. Carried only to
     /// measure what the drawing's disagreement is worth.
     PrintedLengths,
+    /// Keep the nose, the printed lengths, the printed total and the base, and give up the
+    /// **flare's half-angle** instead — the printed 18.5° becomes whatever closes the base.
+    ///
+    /// The disagreement is the flare's alone: the cone closes on its own printed numbers
+    /// (0.586 + 2 × 0.743 tan 2.75° = 0.65737 against the printed 0.657), while the flare does not
+    /// (0.657 + 2 × 0.523 tan 18.5° = 1.0074 against 1.000). This is the closure worth carrying,
+    /// because the flare's angle is what sets the corner's turn, the attachment test and most of
+    /// the normal force — the other two closures both hold it at exactly 18.5°, so neither bounds
+    /// it. It is not the one hpr flies: both half-angles are the report's *text* (printed p. 8),
+    /// to three decimals, while the lengths are only its drawing.
+    PrintedFlareAngle,
 }
 
 /// Model 2's geometry in base diameters: the base radius is 0.5, so a "metre" is a calibre and the
@@ -71,6 +82,8 @@ struct Geometry {
     cone_length: f64,
     juncture_r: f64,
     flare_length: f64,
+    /// The flare's half-angle as this closure reads it, rad.
+    flare_half_angle_rad: f64,
     /// The body's length and base radius.
     length: f64,
     base_r: f64,
@@ -115,18 +128,28 @@ impl Geometry {
         let nose_length = arc_centre_x - arc_radius * cone_half_angle_rad.sin();
         let nose_end_r = arc_centre_r + arc_radius * cone_half_angle_rad.cos();
 
-        let (cone_length, flare_length, scale) = match closure {
+        let (cone_length, flare_length, flare_half_angle_rad, scale) = match closure {
             Closure::OnTheBase => {
                 let rest = printed_length - nose_length;
                 let rise = 0.5 - nose_end_r - rest * cone_half_angle_rad.tan();
                 let flare = rise / (flare_half_angle_rad.tan() - cone_half_angle_rad.tan());
-                (rest - flare, flare, 1.0)
+                (rest - flare, flare, flare_half_angle_rad, 1.0)
             }
             Closure::PrintedLengths => {
                 let base = nose_end_r
                     + printed_cone * cone_half_angle_rad.tan()
                     + printed_flare * flare_half_angle_rad.tan();
-                (printed_cone, printed_flare, 0.5 / base)
+                (
+                    printed_cone,
+                    printed_flare,
+                    flare_half_angle_rad,
+                    0.5 / base,
+                )
+            }
+            Closure::PrintedFlareAngle => {
+                let juncture_r = nose_end_r + printed_cone * cone_half_angle_rad.tan();
+                let angle = ((0.5 - juncture_r) / printed_flare).atan();
+                (printed_cone, printed_flare, angle, 1.0)
             }
         };
         let juncture_r = nose_end_r + cone_length * cone_half_angle_rad.tan();
@@ -154,6 +177,7 @@ impl Geometry {
             cone_length,
             juncture_r,
             flare_length,
+            flare_half_angle_rad,
             length,
             base_r,
         };
@@ -353,7 +377,8 @@ struct Reading {
 /// a flare: `hpr-design` has no spherical-cap nose, so model 2 cannot be flown through a `Rocket`
 /// and the run that would do this is out of reach. `the_flare_is_read_as_the_model_reads_it`
 /// pins the two against each other, share by share, on a flared body the design route *can*
-/// express — above the limit and below it.
+/// express — above the limit and below it. That pins the arithmetic, not the physics: an error
+/// shared by both, in the rule itself, passes by construction.
 fn march(
     segments: &[BodySegment],
     mach: f64,
@@ -458,18 +483,31 @@ fn march(
                 share.slope_per_rad * (fore_m + along * profile.length_m());
         }
     }
+    // `SupersonicRun::shares` refuses a row unless **every** segment's share is positive with its
+    // station on its own segment; nothing here has a boattail, which is the one exemption, so the
+    // same gate applies to all four. A row that missed it would be published by this fixture and
+    // refused by a flight.
+    let mut fore_m = 0.0;
+    for (index, (share, segment)) in shares.iter().zip(segments).enumerate() {
+        let aft_m = fore_m + length_of(segment);
+        let station_m = share.moment_slope_m / share.slope_per_rad;
+        let slack = 1e-9 * aft_m;
+        if !(share.slope_per_rad > 0.0 && station_m >= fore_m - slack && station_m <= aft_m + slack)
+        {
+            return refuse(format!(
+                "segment {index}'s share is {} per rad at {station_m}, off its own {fore_m} to \
+                 {aft_m}",
+                share.slope_per_rad
+            ));
+        }
+        fore_m = aft_m;
+    }
     let slope_per_rad: f64 = shares.iter().map(|s| s.slope_per_rad).sum();
     let moment_m: f64 = shares.iter().map(|s| s.moment_slope_m).sum();
     if slope_per_rad <= 0.0 {
         return refuse(format!("the slope isn't positive ({slope_per_rad})"));
     }
     let own = shares[shares.len() - 1];
-    if own.slope_per_rad <= 0.0 {
-        return refuse(format!(
-            "the flare's share isn't positive ({})",
-            own.slope_per_rad
-        ));
-    }
     Ok(Marched {
         corner: Some(corner),
         read: Some(Reading {
@@ -480,6 +518,17 @@ fn march(
         }),
         refused: None,
     })
+}
+
+/// A segment's length, in the body's own units.
+fn length_of(segment: &BodySegment) -> f64 {
+    match segment {
+        BodySegment::Profile { profile } => profile.length_m(),
+        BodySegment::Cylinder { length_m, .. } | BodySegment::SphericalCap { length_m, .. } => {
+            *length_m
+        }
+        _ => f64::NAN,
+    }
 }
 
 /// What one march came to: the shares it read, or the method declining the body.
@@ -582,17 +631,24 @@ pub fn generate(root: &Path) -> Result<Value, String> {
                  Errors are hpr's over the measured, minus 1; centre-of-pressure errors hpr's \
                  minus the measured, in calibers. corner: what the method did with the flare — the \
                  flow its march delivers to the corner, the steepest surface angle an attached \
-                 shock holds there, and the length of the flare it marched (longer than the real \
-                 one where the flare is read drawn out, ADR-047). separated: whether the report's \
+                 shock holds there (limit_deg, itself capped at the cone tables' 30 deg), the \
+                 steepest the march itself gets through (march_edge_deg, bisected to f64 \
+                 resolution, and null with march_edge_at_the_cone_table_cap where the march still \
+                 holds at that same 30 deg, so the edge is only known to be at least it), and the \
+                 length of the flare it marched (longer than the real one where the flare is read \
+                 drawn out, ADR-047). separated: whether the report's \
                  own shadowgraphs show the laminar boundary layer separating ahead of the juncture \
-                 at that Mach number, which no attached-flow method models. printed_lengths: the \
-                 same rows for the body the drawing's printed lengths give once it is scaled to a \
-                 1.000 base, which measures what the drawing's own disagreement is worth. No \
-                 targets.",
+                 at that Mach number, which no attached-flow method models. printed_lengths and \
+                 printed_flare_angle: the same rows for the two other ways of closing the drawing, \
+                 which between them bound what its 0.84 percent disagreement is worth — the first \
+                 keeps its printed lengths and scales the body to a 1.000 base, the second keeps \
+                 its printed lengths and the base and gives up the flare's stated half-angle \
+                 instead. No targets.",
         "geometry": geometry_section(&readings)?,
         "reads_from_mach": reads_from_mach(&readings)?,
         "rows": closed,
         "printed_lengths": rows(&readings, Closure::PrintedLengths)?,
+        "printed_flare_angle": rows(&readings, Closure::PrintedFlareAngle)?,
         "beside_model_1": beside,
     }))
 }
@@ -680,6 +736,13 @@ fn beside_model_1(root: &Path, flared: &Value) -> Result<Value, String> {
     let model_1 = crate::aero_blunt::sphere_cone_rows(root)?;
     let plain = model_1["rows"].as_array().ok_or("model 1 has no rows")?;
     let flared = flared.as_array().ok_or("model 2 has no rows")?;
+    if plain.len() != flared.len() {
+        return Err(format!(
+            "model 1 has {} rows and model 2 has {}",
+            plain.len(),
+            flared.len()
+        ));
+    }
     let mut rows = Vec::new();
     for (one, two) in plain.iter().zip(flared) {
         let mach = one["mach"]
@@ -717,6 +780,7 @@ fn beside_model_1(root: &Path, flared: &Value) -> Result<Value, String> {
 fn geometry_section(readings: &Value) -> Result<Value, String> {
     let g = Geometry::read(readings, Closure::OnTheBase)?;
     let printed = Geometry::read(readings, Closure::PrintedLengths)?;
+    let angled = Geometry::read(readings, Closure::PrintedFlareAngle)?;
     let segments = g.segments()?;
     let body = ShockExpansionBody::new(&segments, DEFAULT_ELEMENTS_PER_CURVE)
         .map_err(|e| format!("model 2's body: {e}"))?;
@@ -769,6 +833,15 @@ fn geometry_section(readings: &Value) -> Result<Value, String> {
             "base_diameter": 2.0 * printed.base_r,
             "length": printed.length,
             "scale": printed.length / g.length,
+        },
+        "printed_flare_angle": {
+            "cone_length": angled.cone_length,
+            "flare_length": angled.flare_length,
+            "flare_half_angle_deg": angled.flare_half_angle_rad.to_degrees(),
+            "juncture_at": angled.nose_length + angled.cone_length,
+            "juncture_diameter": 2.0 * angled.juncture_r,
+            "base_diameter": 2.0 * angled.base_r,
+            "length": angled.length,
         },
         "planform_over_base_area": planform.ratio,
         "planform_centroid": planform.centroid_calibers,
@@ -1173,6 +1246,19 @@ mod tests {
             ),
             num(f(&fixture, "/reads_from_mach/march_edge_deg_just_below"), 7),
         ];
+        // The one row the prose quotes to more digits than its table: model 1 at Mach 1.90, where
+        // the flared body is the worse of the two and the unflared one is nearly exact.
+        let nearly_exact = fixture["beside_model_1"]["rows"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .find(|r| f(r, "/mach") == 1.9)
+            .map(|r| num(100.0 * f(r, "/model_1_error"), 3))
+            .expect("model 1 at Mach 1.9");
+        assert!(
+            guide.contains(&format!("+{nearly_exact}%")),
+            "aero.md doesn't quote model 1's +{nearly_exact}% at Mach 1.9"
+        );
         // The flare's own share of the body, which the prose quotes at both ends and at its
         // smallest, and where that share acts.
         let shares: Vec<f64> = fixture["rows"]

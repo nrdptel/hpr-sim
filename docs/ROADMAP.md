@@ -597,7 +597,7 @@
       (its α = 0 circles read −0.0039 to +0.0043). hpr reads the slope −1.9%, +7.0% and +13.4% at Mach
       1.90, 2.30 and 2.96, then +51.5% and +50.4% at 3.95 and 4.63, where the report's shadowgraphs
       show that flare separated (unflared, its model 1 reads +29.7% and +32.1%). No reading below
-      Mach 1.5288695987434653: ADR-047's drawn-out flare lands past the march's own turn.
+      about Mach 1.5289: ADR-047's drawn-out flare lands past the march's own turn.
     - [ ] **M1.8e15 The step in radius.** A step is a discontinuous profile, which the march refuses
       outright, so unlike the flare it needs a model of its own rather than a decision about one that
       exists. *Done when:* #87 closed or narrowed to the step alone, its measured size in an ADR and

@@ -92,6 +92,15 @@
     "note": "Model 2 in base diameters, from Fig. 3(b)'s printed numbers. The nose is a sphere blended into the 2.75 deg cone by a second arc, and its three printed radii fix where each piece ends. The drawing closes on the printed length but carries the base to 1.0084 diameters, so hpr keeps the nose, both half-angles, the length and the base and solves for the split of the rest between the cone and the flare; printed_lengths keeps the printed lengths instead and scales the whole body to a 1.000 base.",
     "planform_centroid": 0.9084411988280643,
     "planform_over_base_area": 1.3373181722317018,
+    "printed_flare_angle": {
+      "base_diameter": 1.0,
+      "cone_length": 0.743,
+      "flare_half_angle_deg": 18.086383832905412,
+      "flare_length": 0.523,
+      "juncture_at": 1.0859959923504876,
+      "juncture_diameter": 0.6583896141090761,
+      "length": 1.6089959923504877
+    },
     "printed_lengths": {
       "base_diameter": 1.0,
       "cone_length": 0.7368280933516297,
@@ -102,7 +111,232 @@
       "scale": 0.9916907914967065
     }
   },
-  "note": "What a marched flare is worth (M1.8e18): hpr's reading of NASA TN D-4865's model 2 — a blunt 2.75 deg cone with an 18.5 deg flare — against the normal force and pitching moment its Fig. 8(b) plots (readings in tn-d-4865-flared-cone.json). hpr's C_N_alpha is on the base area and its centre of pressure is measured from the nose tip in base diameters. measured: the plotted circles fitted with a straight line (with an intercept) over the plotted angles 0 to 12 deg, as aero_blunt fits the same report's model 1; zero_alpha is the same points fitted with a curve and read at alpha -> 0. report_theory: the report's own method, fitted the same way through the origin's zero. hpr.flown is hpr as a flight flies it, fitted at those same angles with body lift included; hpr.zero_alpha is the method's own slope and centre of pressure at alpha -> 0, body lift left out. Errors are hpr's over the measured, minus 1; centre-of-pressure errors hpr's minus the measured, in calibers. corner: what the method did with the flare — the flow its march delivers to the corner, the steepest surface angle an attached shock holds there, and the length of the flare it marched (longer than the real one where the flare is read drawn out, ADR-047). separated: whether the report's own shadowgraphs show the laminar boundary layer separating ahead of the juncture at that Mach number, which no attached-flow method models. printed_lengths: the same rows for the body the drawing's printed lengths give once it is scaled to a 1.000 base, which measures what the drawing's own disagreement is worth. No targets.",
+  "note": "What a marched flare is worth (M1.8e18): hpr's reading of NASA TN D-4865's model 2 — a blunt 2.75 deg cone with an 18.5 deg flare — against the normal force and pitching moment its Fig. 8(b) plots (readings in tn-d-4865-flared-cone.json). hpr's C_N_alpha is on the base area and its centre of pressure is measured from the nose tip in base diameters. measured: the plotted circles fitted with a straight line (with an intercept) over the plotted angles 0 to 12 deg, as aero_blunt fits the same report's model 1; zero_alpha is the same points fitted with a curve and read at alpha -> 0. report_theory: the report's own method, fitted the same way through the origin's zero. hpr.flown is hpr as a flight flies it, fitted at those same angles with body lift included; hpr.zero_alpha is the method's own slope and centre of pressure at alpha -> 0, body lift left out. Errors are hpr's over the measured, minus 1; centre-of-pressure errors hpr's minus the measured, in calibers. corner: what the method did with the flare — the flow its march delivers to the corner, the steepest surface angle an attached shock holds there (limit_deg, itself capped at the cone tables' 30 deg), the steepest the march itself gets through (march_edge_deg, bisected to f64 resolution, and null with march_edge_at_the_cone_table_cap where the march still holds at that same 30 deg, so the edge is only known to be at least it), and the length of the flare it marched (longer than the real one where the flare is read drawn out, ADR-047). separated: whether the report's own shadowgraphs show the laminar boundary layer separating ahead of the juncture at that Mach number, which no attached-flow method models. printed_lengths and printed_flare_angle: the same rows for the two other ways of closing the drawing, which between them bound what its 0.84 percent disagreement is worth — the first keeps its printed lengths and scales the body to a 1.000 base, the second keeps its printed lengths and the base and gives up the flare's stated half-angle instead. No targets.",
+  "printed_flare_angle": [
+    {
+      "corner": {
+        "drawn_out": true,
+        "flare_deg": 18.086383832905412,
+        "flow_mach": 1.5250956752494207,
+        "limit_deg": 15.515314468370887,
+        "march_edge_at_the_cone_table_cap": false,
+        "march_edge_deg": 15.395310871261383,
+        "marched_length": 0.6152649763446701,
+        "surface_ahead_deg": 2.749999999999992
+      },
+      "hpr": null,
+      "mach": 1.5,
+      "measured": {
+        "cp_calibers": 0.8100868055555556,
+        "fitted_c_n_alpha": 1.6501184499767707,
+        "zero_alpha_c_n_alpha": 1.7231705688559416,
+        "zero_alpha_standard_error": 0.08968208047056454
+      },
+      "refused": "the flow at Mach 1.5250956752494207 can't turn through -0.22279676752554167 rad supersonically at 1.0859959923504874 m",
+      "report_method": {
+        "cp_calibers": 0.9088021191874196,
+        "cp_error_calibers": 0.09871531363186403,
+        "fitted_c_n_alpha": 2.122378912613352,
+        "fitted_c_n_alpha_error": 0.28619791666666683
+      },
+      "separated": false
+    },
+    {
+      "corner": {
+        "drawn_out": false,
+        "flare_deg": 18.086383832905412,
+        "flow_mach": 1.9367905854561231,
+        "limit_deg": 24.602034962321365,
+        "march_edge_at_the_cone_table_cap": false,
+        "march_edge_deg": 27.37232061464665,
+        "marched_length": 0.523,
+        "surface_ahead_deg": 2.749999999999992
+      },
+      "hpr": {
+        "cp_calibers": 0.9323360284252765,
+        "cp_error_calibers": 0.04466487840538025,
+        "fitted_c_n_alpha": 1.766879427665166,
+        "fitted_c_n_alpha_error": -0.018293243183123642,
+        "flare_share_c_n_alpha": 0.821967466321853,
+        "flare_share_of_the_body": 0.525512636627156,
+        "flare_station_calibers": 1.3839127185770854,
+        "zero_alpha_c_n_alpha": 1.5641250257984332,
+        "zero_alpha_cp_calibers": 0.9355282661599222,
+        "zero_alpha_error": -0.11563857904761554
+      },
+      "mach": 1.9,
+      "measured": {
+        "cp_calibers": 0.8876711500198963,
+        "fitted_c_n_alpha": 1.7998036739546988,
+        "zero_alpha_c_n_alpha": 1.7686490938444592,
+        "zero_alpha_standard_error": 0.08968208047056454
+      },
+      "refused": null,
+      "report_method": {
+        "cp_calibers": 0.9764420562535876,
+        "cp_error_calibers": 0.08877090623369133,
+        "fitted_c_n_alpha": 2.245851317464045,
+        "fitted_c_n_alpha_error": 0.2478312773577398
+      },
+      "separated": false
+    },
+    {
+      "corner": {
+        "drawn_out": false,
+        "flare_deg": 18.086383832905412,
+        "flow_mach": 2.3084983993255586,
+        "limit_deg": 29.999999999999996,
+        "march_edge_at_the_cone_table_cap": true,
+        "march_edge_deg": null,
+        "marched_length": 0.523,
+        "surface_ahead_deg": 2.749999999999992
+      },
+      "hpr": {
+        "cp_calibers": 0.9250224580802796,
+        "cp_error_calibers": 0.003618659850495476,
+        "fitted_c_n_alpha": 1.7870435366921629,
+        "fitted_c_n_alpha_error": 0.0720905247662571,
+        "flare_share_c_n_alpha": 0.8036648190923386,
+        "flare_share_of_the_body": 0.5202596751766607,
+        "flare_station_calibers": 1.3833844000257098,
+        "zero_alpha_c_n_alpha": 1.544737863489889,
+        "zero_alpha_cp_calibers": 0.9276423226429584,
+        "zero_alpha_error": 0.05372072101700076
+      },
+      "mach": 2.3,
+      "measured": {
+        "cp_calibers": 0.9214037982297841,
+        "fitted_c_n_alpha": 1.6668774654843477,
+        "zero_alpha_c_n_alpha": 1.4659841385666041,
+        "zero_alpha_standard_error": 0.08968208047056454
+      },
+      "refused": null,
+      "report_method": {
+        "cp_calibers": 1.01643732444967,
+        "cp_error_calibers": 0.09503352621988592,
+        "fitted_c_n_alpha": 2.192852721414443,
+        "fitted_c_n_alpha_error": 0.31554524361948944
+      },
+      "separated": false
+    },
+    {
+      "corner": {
+        "drawn_out": false,
+        "flare_deg": 18.086383832905412,
+        "flow_mach": 2.8977072990611257,
+        "limit_deg": 29.999999999999996,
+        "march_edge_at_the_cone_table_cap": true,
+        "march_edge_deg": null,
+        "marched_length": 0.523,
+        "surface_ahead_deg": 2.749999999999992
+      },
+      "hpr": {
+        "cp_calibers": 0.9334928494741046,
+        "cp_error_calibers": -0.014066320262619225,
+        "fitted_c_n_alpha": 1.8109059991085976,
+        "fitted_c_n_alpha_error": 0.1359968417130928,
+        "flare_share_c_n_alpha": 0.8199338528975294,
+        "flare_share_of_the_body": 0.5386276016963714,
+        "flare_station_calibers": 1.381191173842095,
+        "zero_alpha_c_n_alpha": 1.5222648269698822,
+        "zero_alpha_cp_calibers": 0.9383144722588737,
+        "zero_alpha_error": 0.05362745522932544
+      },
+      "mach": 2.96,
+      "measured": {
+        "cp_calibers": 0.9475591697367238,
+        "fitted_c_n_alpha": 1.594111825502733,
+        "zero_alpha_c_n_alpha": 1.444784700146748,
+        "zero_alpha_standard_error": 0.08968208047056454
+      },
+      "refused": null,
+      "report_method": {
+        "cp_calibers": 1.0083169832491787,
+        "cp_error_calibers": 0.060757813512454906,
+        "fitted_c_n_alpha": 1.7871986024618203,
+        "fitted_c_n_alpha_error": 0.12112498876808342
+      },
+      "separated": true
+    },
+    {
+      "corner": {
+        "drawn_out": false,
+        "flare_deg": 18.086383832905412,
+        "flow_mach": 3.692193539559504,
+        "limit_deg": 29.999999999999996,
+        "march_edge_at_the_cone_table_cap": true,
+        "march_edge_deg": null,
+        "marched_length": 0.523,
+        "surface_ahead_deg": 2.749999999999992
+      },
+      "hpr": {
+        "cp_calibers": 0.9571158343653144,
+        "cp_error_calibers": -0.08911527323676072,
+        "fitted_c_n_alpha": 1.9290811825208174,
+        "fitted_c_n_alpha_error": 0.5190082640764244,
+        "flare_share_c_n_alpha": 0.892267776450511,
+        "flare_share_of_the_body": 0.5819499951302374,
+        "flare_station_calibers": 1.3787854921650025,
+        "zero_alpha_c_n_alpha": 1.533237879400319,
+        "zero_alpha_cp_calibers": 0.9699300838000566,
+        "zero_alpha_error": 0.12721353040570227
+      },
+      "mach": 3.95,
+      "measured": {
+        "cp_calibers": 1.0462311076020752,
+        "fitted_c_n_alpha": 1.2699609529074698,
+        "zero_alpha_c_n_alpha": 1.3602018056405711,
+        "zero_alpha_standard_error": 0.08968208047056454
+      },
+      "refused": null,
+      "report_method": {
+        "cp_calibers": 0.9489732948078102,
+        "cp_error_calibers": -0.09725781279426493,
+        "fitted_c_n_alpha": 1.635937744547283,
+        "fitted_c_n_alpha_error": 0.2881795623731105
+      },
+      "separated": true
+    },
+    {
+      "corner": {
+        "drawn_out": false,
+        "flare_deg": 18.086383832905412,
+        "flow_mach": 4.164437581204492,
+        "limit_deg": 29.999999999999996,
+        "march_edge_at_the_cone_table_cap": true,
+        "march_edge_deg": null,
+        "marched_length": 0.523,
+        "surface_ahead_deg": 2.749999999999992
+      },
+      "hpr": {
+        "cp_calibers": 0.9742009377879902,
+        "cp_error_calibers": -0.02406178618694621,
+        "fitted_c_n_alpha": 1.9678399326458478,
+        "fitted_c_n_alpha_error": 0.5101807618728587,
+        "flare_share_c_n_alpha": 0.9553489245682267,
+        "flare_share_of_the_body": 0.6128725149923466,
+        "flare_station_calibers": 1.374545838710326,
+        "zero_alpha_c_n_alpha": 1.5588052999572952,
+        "zero_alpha_cp_calibers": 0.9918575277986846,
+        "zero_alpha_error": 0.27512027098448333
+      },
+      "mach": 4.63,
+      "measured": {
+        "cp_calibers": 0.9982627239749364,
+        "fitted_c_n_alpha": 1.3030492655762749,
+        "zero_alpha_c_n_alpha": 1.2224770756360002,
+        "zero_alpha_standard_error": 0.08968208047056454
+      },
+      "refused": null,
+      "report_method": {
+        "cp_calibers": 0.9636940864637603,
+        "cp_error_calibers": -0.034568637511176115,
+        "fitted_c_n_alpha": 1.567182809131584,
+        "fitted_c_n_alpha_error": 0.20270418819390978
+      },
+      "separated": true
+    }
+  ],
   "printed_lengths": [
     {
       "corner": {
