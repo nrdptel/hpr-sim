@@ -62,7 +62,7 @@ new record replaces it and points back. All of them are in the [decision log][de
 | [ADR-043: The blunt tip's handover cap][adr-043] | What moving a blunt tip's handover from 24° to the cone tables' 30° would be worth on the report's own sphere-cone, what it does to the march on a nose that flattens fast, and why the cap stays where it is | [Aerodynamics](physics/aero.md#what-the-cap-is-worth) |
 | [ADR-044: What the answer follows when it follows the mesh][adr-044] | That it is the surface pressure crossing its tangent cone's, not the method being reduced, that marks a reading whose answer moves with the element count — how far that goes, and what it re-aims issue #108 at | [Aerodynamics](physics/aero.md#what-a-crossing-is-and-what-it-costs) |
 | [ADR-045: Where a flare's march stops][adr-045] | That what stops the march is the corner's isentropic turn, not the flare's shock detaching; that the two limits cross near Mach 1.55, so neither bounds the other; and that above Mach 2.13 neither binds — the cone tables' 30° does | [Aerodynamics](physics/aero.md#where-a-flares-march-stops) |
-| [ADR-046: Debrief folded in, and analysis that stands on its own][adr-046] | That a universal flight log analyzer becomes part of this project, and that reading a log never needs the simulator: `hpr-flightdata` may not depend on `hpr-sim`, a check enforces it, and comparing a flight with a simulation lives in `hpr-forensics` | [Start here](start-here.md#what-doesnt-work-yet) |
+| [ADR-046: Debrief folded in, and analysis that stands on its own][adr-046] | That a universal flight log analyzer becomes part of this project, and that reading a log never needs the simulator: `hpr-flightdata` may not depend on `hpr-sim`, a check enforces it, and comparing a flight with a simulation lives in `hpr-forensics` | [Start here](start-here.md#what-doesnt-work-yet)  What the analyzer is being built from is written up in [the log formats](https://github.com/nrdptel/hpr-sim/blob/main/docs/research/debrief-log-formats.md), [the readings](https://github.com/nrdptel/hpr-sim/blob/main/docs/research/debrief-flight-readings.md) and [what may be ported](https://github.com/nrdptel/hpr-sim/blob/main/docs/research/debrief-porting-boundary.md). |
 
 ## The roadmap
 
@@ -91,7 +91,8 @@ the analysis tools, and an app last.
 - [Phase 4: More formats and embeddings][phase-4]: RockSim, RASAero and RocketPy files, and use
   from C and the web.
 - [Phase 5: Flight data and forensics][phase-5]: reading flight logs and taking a flight's
-  readings off them, which works on its own, and then comparing a real flight with its simulation.
+  readings off them — planned to work on its own, with no design file and no simulation — and then
+  comparing a real flight with its simulation.
 - [Phase 6: Design experience][phase-6]: a design assistant for apps to build on.
 - [Phase 7: UI, 3D, web, mobile][phase-7]: a desktop app, 3D flight replay, a web app and mobile.
 

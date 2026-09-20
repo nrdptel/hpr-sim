@@ -18,9 +18,10 @@ pub struct Package {
     pub name: String,
     /// `[package.metadata.hpr] wasm = true`: the crate belongs to the pure core.
     pub wasm: bool,
-    /// `[package.metadata.hpr] forbids = ["hpr-sim"]`: workspace crates that must never reach this
-    /// one, directly or through another crate. This is how a layer that has to stand on its own
-    /// says so; `layering::check` enforces it.
+    /// `[package.metadata.hpr] forbids = ["hpr-sim"]`: the workspace crates this one must never
+    /// reach, directly or through another crate. The walk starts here and follows dependencies,
+    /// so the rule is about what this crate pulls in, not about who pulls it in;
+    /// `layering::check` enforces it.
     pub forbids: Vec<String>,
     /// The crate name of its library (`hpr_core` for `hpr-core`), if it has one, which is where
     /// rustdoc writes its documentation (`target/doc/hpr_core/`).
@@ -120,6 +121,19 @@ fn parse_package(package: &Value) -> Result<Package, String> {
             ));
         }
     };
+    // A typo here would disable a safety rule in silence: `forbid = [...]` parses as nothing at
+    // all, and so does a `forbids` left outside the `hpr` table. The table has two keys, so
+    // refusing anything else is cheap and it guards `wasm` as well.
+    if let Value::Object(table) = &package["metadata"]["hpr"] {
+        for key in table.keys() {
+            if key != "wasm" && key != "forbids" {
+                return Err(format!(
+                    "{name}: [package.metadata.hpr] has no `{key}` key (expected `wasm` or \
+                     `forbids`)"
+                ));
+            }
+        }
+    }
     let dependencies = package["dependencies"]
         .as_array()
         .map_or(&[][..], Vec::as_slice)

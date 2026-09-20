@@ -4259,8 +4259,12 @@ filled the crate.
 
   The check walks the workspace graph, not just direct dependencies, and fails with the path it
   found (`hpr-flightdata -> hpr-analysis -> hpr-sim`), because the way this rule breaks is a
-  forbidden crate arriving through a helper that looked harmless. The mechanism is general: any
-  crate that has to stand on its own can name what must not reach it.
+  forbidden crate arriving through a helper that looked harmless. It follows normal, build and
+  target-specific dependencies, and an optional one whose feature is off, since a crate that stands
+  on its own must do so in every configuration. **Dev-dependencies are excluded**, because they
+  never reach anyone who depends on the crate: a test in `hpr-flightdata` may fly a simulated
+  flight and compare it with a parsed one. The mechanism is general, and it reads outwards — a
+  crate names what **it** must not reach, not who may not reach it.
 - **`hpr-forensics` is added to the crate map**, depending on `hpr-flightdata`, `hpr-sim` and
   `hpr-analysis`. It is the only place a reading taken from a log and a number the simulator
   produced meet.

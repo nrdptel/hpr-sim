@@ -52,17 +52,19 @@ declare `[package.metadata.hpr] wasm = true`. They are `hpr-core`, `hpr-atmos`, 
 build and the rule that they depend on no workspace crate outside the core; `clippy.toml` bans the
 I/O, clock and thread APIs.
 
-**Layering rules within the core** (ADR-046): a crate that has to be usable on its own names the
-crates that must never reach it, directly or through anything else, in its own manifest:
+**Layering rules within the core** (ADR-046): a crate that has to be usable on its own names, in
+its own manifest, the crates **it** must never reach, directly or through anything else:
 
 ```toml
 [package.metadata.hpr]
 forbids = ["hpr-sim"]
 ```
 
-`cargo xtask wasm-check` walks the workspace graph and fails with the path it found, so the rule
-catches a forbidden crate arriving through an innocent-looking helper, not just a direct
-dependency. `hpr-flightdata` is the crate this was written for.
+`cargo xtask wasm-check` walks the workspace graph — the same walk that enforces the pure core,
+which is why the rule lives under that command — and fails with the path it found, so it catches a
+forbidden crate arriving through an innocent-looking helper and not just a direct dependency.
+Dev-dependencies are excluded, since they never reach a dependent. `hpr-flightdata` is the crate
+this was written for.
 
 Crate names on crates.io are **not** reserved yet. Publishing is a "Needs Neer" item.
 

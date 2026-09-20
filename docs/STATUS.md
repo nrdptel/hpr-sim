@@ -47,10 +47,10 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
   not the flare's own boundary. #97: the long model's M1.8a readings may be biased.
 - **Debrief, folded in** (ADR-046): `hpr-flightdata` is off `hpr-sim` and must stay off it
   (`forbids = ["hpr-sim"]`, walked transitively by `cargo xtask wasm-check`); sim-versus-flight
-  work goes in the new `hpr-forensics`. Written up in `docs/research/debrief-log-formats.md` and
-  `debrief-flight-readings.md`; both repos are in the refs lock. **Port from Debrief's `lib/`,
-  never from its `COMPETITION.md`** (OpenRocket rows read out of GPL-3 Java). Its 12 public
-  fixtures may be used; `refs/debrief-fixtures` may not.
+  work goes in the new `hpr-forensics`. Three research notes: `debrief-log-formats.md`,
+  `debrief-flight-readings.md`, `debrief-porting-boundary.md` (what may be ported, and the five
+  sources). **Port from Debrief's `lib/`, never from its `COMPETITION.md`** (OpenRocket rows read
+  out of GPL-3 Java). Its 12 public fixtures may be used; `refs/debrief-fixtures` may not.
 - **M2.2's OpenRocket oracle** (ADR-035): orhelper is dropped, so decide how to drive the jar when
   M2.2 starts; JPype loads the JVM in-process, only a subprocess isolates, and the jar needs Java
   17 exactly (`[java] max_major` in the refs lock keeps doctor off a newer one).

@@ -7,7 +7,7 @@
 //! wasm = true
 //! ```
 //!
-//! The check has two parts:
+//! The check has three parts:
 //!
 //! 1. The layering rules each crate declares for itself in `[package.metadata.hpr] forbids`
 //!    (see [`layering`](crate::layering)), so that a crate meant to stand on its own does.
@@ -36,6 +36,22 @@ pub const TARGET: &str = "wasm32-unknown-unknown";
 pub fn run(cargo_args: &[String]) -> Result<(), String> {
     let workspace = workspace::load(Path::new(env!("CARGO_MANIFEST_DIR")))?;
     crate::layering::check(&workspace)?;
+    let rules: Vec<String> = workspace
+        .packages
+        .iter()
+        .filter(|package| !package.forbids.is_empty())
+        .map(|package| format!("{} forbids {}", package.name, package.forbids.join(", ")))
+        .collect();
+    // Say which rules ran. Silence on success reads the same as a rule that was never parsed.
+    println!(
+        "wasm-check: {} crate rule(s) ok{}",
+        rules.len(),
+        if rules.is_empty() {
+            String::new()
+        } else {
+            format!(" ({})", rules.join("; "))
+        }
+    );
     let pure = pure_crates(&workspace.packages);
     if pure.is_empty() {
         return Err("no crate declares `[package.metadata.hpr] wasm = true`".to_owned());

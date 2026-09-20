@@ -115,15 +115,19 @@ out.
   ([M3.1](decisions-and-roadmap.md#m3-1)) are planned. Until then, [Getting started](getting-started.md) flies a first
   rocket with a short Rust program, and [Your own rocket](your-own-rocket.md) builds a design of
   your own.
-- **No Monte Carlo (flying many copies of a flight with randomly scattered inputs), optimization,
-  flight-log analysis or app.** They are on the [roadmap][roadmap].
-- **No flight-log analyzer yet, and when it comes it will not need the rest of this.** Reading a
-  log from an altimeter or tracker and getting the flight's readings off it — apogee, maximum
-  speed, burnout, descent rates — is planned as something you can use on its own, with no design
-  file and no simulation: [M7.1](decisions-and-roadmap.md#m7-1) reads the loggers' files and
-  [M7.2](decisions-and-roadmap.md#m7-2) takes the readings, each saying whether an instrument
-  measured it or hpr worked it out. Comparing that flight with a simulation of it is separate
-  ([M7.3](decisions-and-roadmap.md#m7-3)).
+- **No Monte Carlo (flying many copies of a flight with randomly scattered inputs), optimization or
+  app.** They are on the [roadmap][roadmap].
+- **No flight-log analyzer yet — the crates are empty, and its milestones come after the file
+  formats, the command-line tool and the Python bindings.** When it does arrive it will not need
+  the rest of this: reading a log from an altimeter or tracker and getting the flight's readings
+  off it — apogee, maximum speed, burnout, descent rates — is planned as something you can use on
+  its own, with no design file and no simulation. [M7.1](decisions-and-roadmap.md#m7-1) reads the
+  loggers' files and [M7.2](decisions-and-roadmap.md#m7-2) takes the readings, each saying whether
+  an instrument measured it or hpr worked it out, or withheld with the reason when the log cannot
+  support it. Comparing that flight with a simulation of it is separate
+  ([M7.3](decisions-and-roadmap.md#m7-3)). The loggers planned first are Altus Metrum (AltOS),
+  Featherweight (Raven, Blue Raven and the GPS tracker), Missile Works RRC3, Eggtimer,
+  PerfectFlite, Entacore AIM, Mercury/AltimeterCloud, CATS, and plain CSV with column mapping.
 
 ## How far to trust it
 

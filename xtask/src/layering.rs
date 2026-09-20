@@ -1,8 +1,10 @@
 //! Which workspace crates are allowed to reach which others.
 //!
 //! [`wasm_check`](crate::wasm_check) already keeps the pure core free of crates that do I/O. This
-//! is the other kind of layering rule: a crate that has to be usable **on its own** says which
-//! crates must never reach it, directly or through anything else.
+//! is the other kind of layering rule: a crate that has to be usable **on its own** names the
+//! crates **it** must never reach, directly or through anything else. The walk runs that way
+//! round — outwards from the crate that declares the rule, following its dependencies — so
+//! `forbids` says what this crate may not pull in, never who may not depend on it.
 //!
 //! A crate declares the rule in its own manifest, so it is read where the dependency would be
 //! added:
@@ -19,7 +21,10 @@
 //! simulation of it belongs in `hpr-forensics`, which depends on both.
 //!
 //! The check walks workspace crates only. An outside crate from crates.io is not a layer of this
-//! project and is governed by `deny.toml` instead.
+//! project and is governed by `deny.toml` instead. That assumes every hop worth following is a
+//! workspace member, which holds while every path dependency lives under `crates/`, since cargo
+//! makes those members. A path dependency pointing outside the workspace would be invisible to
+//! the walk, and a forbidden crate could be reached through it.
 //!
 //! It is deliberately conservative about *which* dependencies count. Normal, build and
 //! target-specific ones all do, and so does an optional one whose feature is off — `cargo
@@ -187,6 +192,35 @@ mod tests {
         let workspace = workspace_of(vec![package("logs", &["serde"], &["serde"])]);
         let err = check(&workspace).unwrap_err();
         assert!(err.contains("not a crate in this workspace"), "{err}");
+    }
+
+    #[test]
+    fn a_dev_dependency_is_not_a_layering_violation() {
+        // Deliberate, and pinned here so the next person to touch the `kind == "dev"` filter in
+        // `workspace::parse_package` can see it is a decision. A dev-dependency never reaches
+        // anyone who depends on the crate, so a test here may fly a simulated flight and compare
+        // it with a parsed one.
+        let root = Path::new(env!("CARGO_MANIFEST_DIR")).parent().unwrap();
+        let manifest = root.join("crates/hpr-flightdata/Cargo.toml");
+        let original = std::fs::read_to_string(&manifest).unwrap();
+        std::fs::write(
+            &manifest,
+            format!("{original}\n[dev-dependencies]\nhpr-sim.workspace = true\n"),
+        )
+        .unwrap();
+        let loaded = workspace::load(root);
+        std::fs::write(&manifest, &original).unwrap();
+        assert_eq!(check(&loaded.unwrap()), Ok(()));
+    }
+
+    #[test]
+    fn a_misspelled_rule_is_refused_rather_than_ignored() {
+        // `forbid` instead of `forbids` would otherwise parse as no rule at all, and the crate it
+        // was meant to protect would be unguarded with nothing to show for it.
+        let json = r#"{"workspace_root":"/nowhere","packages":[{"name":"logs",
+            "metadata":{"hpr":{"forbid":["sim"]}},"dependencies":[],"targets":[]}]}"#;
+        let err = workspace::parse(json).unwrap_err();
+        assert!(err.contains("no `forbid` key"), "{err}");
     }
 
     /// The rule that ADR-046 is about, checked against the real workspace rather than a fixture,
