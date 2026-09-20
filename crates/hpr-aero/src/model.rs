@@ -37,7 +37,7 @@
 use std::f64::consts::PI;
 use std::sync::{Arc, OnceLock};
 
-use hpr_design::{Layout, Part, PlacedComponent};
+use hpr_design::{Layout, NoseShape, Part, PlacedComponent};
 use serde::{Deserialize, Serialize};
 
 use crate::afterbody::SEPARATION_ONSET_RAD;
@@ -54,6 +54,7 @@ use crate::fins::{
 };
 use crate::shock_expansion::{
     BodySegment, DEFAULT_ELEMENTS_PER_CURVE, SegmentSlope, ShockExpansionBody,
+    flare_corner_limit_rad,
 };
 use crate::supersonic_boattail::{wp_centre_fraction, wp_slope};
 use crate::table::{DragTable, NormalForceLookup, NormalForceTable, TableReference};
@@ -189,12 +190,32 @@ pub enum SupersonicBoattail {
     Footnote8,
 }
 
+/// How a flare — a transition that widens the body — takes its share of the normal force faster
+/// than sound ([`SupersonicBody`]).
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+#[non_exhaustive]
+pub enum SupersonicFlare {
+    /// The shock-expansion method's own share, marched through the flare's corner where the shock
+    /// there is attached: hpr's rule since [M1.8e17](https://nrdptel.github.io/hpr-sim/decisions-and-roadmap.html#m1-8e17) (the decision record,
+    /// [ADR-047](https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-047-a-flare-flies-the-method-where-its-corners-shock-is-attached-and-is-read-drawn-out-where-it-is-not-2026-09-20)).
+    /// Only a **conical** flare, flush with the part ahead of it and not behind a boattail, joins
+    /// the run, which then ends at it. A widening part behind a boattail is a lip in its wake and
+    /// keeps [`SupersonicBody::shape_weight`]'s rule instead; any other widening shape ends the
+    /// run without joining it, as every flare did before that milestone.
+    #[default]
+    Marched,
+    /// None: a flare ends the method's run, so the whole body takes slender-body theory's share
+    /// at every Mach number. hpr's rule until [M1.8e17](https://nrdptel.github.io/hpr-sim/decisions-and-roadmap.html#m1-8e17).
+    SlenderBody,
+}
+
 /// The choices in the bodies' normal-force model ([`AeroModel::with_body_model`]). The default is
 /// hpr's current model, [`BodyModel::CURRENT`]; [`BodyModel::BEFORE_M1_8E6`] reproduces earlier
-/// results. Change one choice with [`BodyModel::with_body_lift`] or
-/// [`BodyModel::with_supersonic_boattail`]. In JSON, for example
-/// `{"body_lift": {"kind": "galejs", "k": 1.1}, "supersonic_boattail": "footnote8"}`; a missing
-/// field takes the current choice.
+/// results. Change one choice with [`BodyModel::with_body_lift`],
+/// [`BodyModel::with_supersonic_boattail`] or [`BodyModel::with_supersonic_flare`]. In JSON, for
+/// example `{"body_lift": {"kind": "galejs", "k": 1.1}, "supersonic_boattail": "footnote8"}`; a
+/// missing field takes the current choice.
 #[derive(Debug, Clone, Copy, Default, PartialEq, Serialize, Deserialize)]
 #[serde(default, deny_unknown_fields)]
 #[non_exhaustive]
@@ -203,20 +224,26 @@ pub struct BodyModel {
     pub body_lift: BodyLift,
     /// How a boattail takes its share faster than sound.
     pub supersonic_boattail: SupersonicBoattail,
+    /// How a flare takes its share faster than sound.
+    pub supersonic_flare: SupersonicFlare,
 }
 
 impl BodyModel {
-    /// hpr's current body model: Jorgensen's body lift and Washington and Pettis's boattail.
+    /// hpr's current body model: Jorgensen's body lift, Washington and Pettis's boattail and a
+    /// marched flare.
     pub const CURRENT: Self = Self {
         body_lift: BodyLift::JORGENSEN,
         supersonic_boattail: SupersonicBoattail::WashingtonPettis,
+        supersonic_flare: SupersonicFlare::Marched,
     };
 
     /// hpr's body model before [M1.8e6](https://nrdptel.github.io/hpr-sim/decisions-and-roadmap.html#m1-8e6) sized body lift and the boattail: Galejs's
-    /// `K` = 1.1 and TN 3527 footnote 8's boattail.
+    /// `K` = 1.1, TN 3527 footnote 8's boattail, and a flare that ends the method's run rather
+    /// than flying it ([`SupersonicFlare::SlenderBody`], as before [M1.8e17](https://nrdptel.github.io/hpr-sim/decisions-and-roadmap.html#m1-8e17)).
     pub const BEFORE_M1_8E6: Self = Self {
         body_lift: BodyLift::GALEJS,
         supersonic_boattail: SupersonicBoattail::Footnote8,
+        supersonic_flare: SupersonicFlare::SlenderBody,
     };
 
     /// This model with body lift sized by `body_lift`.
@@ -235,6 +262,13 @@ impl BodyModel {
         self.supersonic_boattail = supersonic_boattail;
         self
     }
+
+    /// This model with a supersonic flare's share by `supersonic_flare`.
+    #[must_use]
+    pub const fn with_supersonic_flare(mut self, supersonic_flare: SupersonicFlare) -> Self {
+        self.supersonic_flare = supersonic_flare;
+        self
+    }
 }
 
 /// A boattail in the shock-expansion run, for Washington and Pettis's increment: the method's
@@ -246,6 +280,21 @@ struct RunBoattail {
     fore_radius_m: f64,
     aft_radius_m: f64,
     length_m: f64,
+}
+
+/// A flare in the shock-expansion run — always its last segment — and the run ahead of it, whose
+/// march delivers the flow its corner turns ([`ShockExpansionBody::aft_flow`]). Its radii and
+/// length are the real flare's; where the corner's shock would be detached the method reads one
+/// of the same radii drawn out to the steepest attached turn ([`flare_corner_limit_rad`]).
+#[derive(Debug, Clone, PartialEq)]
+struct RunFlare {
+    /// Which segment of the run the flare is: always its last.
+    index: usize,
+    ahead: Vec<BodySegment>,
+    fore_radius_m: f64,
+    aft_radius_m: f64,
+    length_m: f64,
+    clipped: bool,
 }
 
 /// The segments the shock-expansion method covers, the station of the nose's tip, and each
@@ -261,6 +310,8 @@ struct SupersonicRun {
     fore_m: Vec<f64>,
     /// Each segment that is a boattail, when its share is Washington and Pettis's.
     boattails: Vec<Option<RunBoattail>>,
+    /// The flare that ends the run, where one does ([`SupersonicFlare::Marched`]).
+    flare: Option<RunFlare>,
     /// How many bodies behind the marched segments are lips wholly in a covered boattail's wake
     /// ([`crate::drag::WakeTerm`]): they widen the body, carry nothing faster than sound, and so
     /// the run covers them with a share of zero.
@@ -288,11 +339,76 @@ impl SupersonicRun {
         &self,
         body: &ShockExpansionBody,
         in_its_place: &[Option<ShockExpansionBody>],
+        ahead: Option<&ShockExpansionBody>,
         mach: f64,
         reference_area_m2: f64,
     ) -> Option<Vec<SegmentSlope>> {
-        let mut shares = body.segment_slopes(mach, reference_area_m2).ok()?;
         let vertex_m = self.vertex_m;
+        // A flare steeper than its corner's shock can stay attached to is read as one of the same
+        // radii drawn out to that turn (ADR-047 in `docs/DECISIONS.md`). The march is
+        // downstream-only, so the flow reaching the corner comes from the run ahead of the flare,
+        // and the drawn-out body differs from the real one in its last segment alone.
+        let held = match (&self.flare, ahead) {
+            // `SupersonicBody::new` builds one whenever the run has a flare; a run that has one
+            // without it would read the real flare however steep, so refuse the row instead.
+            (Some(_), None) => return None,
+            (Some(flare), Some(ahead)) => {
+                let aft = ahead.aft_flow(mach).ok()?;
+                let rise_m = flare.aft_radius_m - flare.fore_radius_m;
+                let angle_rad = (rise_m / flare.length_m).atan();
+                // The corner's turn is bounded by the shock staying attached; the flare's own
+                // surface angle by the cone tables, which an element's tangent cone is looked up
+                // by. They are bounds on different things, so each caps its own quantity.
+                let turn_limit_rad = flare_corner_limit_rad(aft.surface_mach).ok()?;
+                let angle_limit_rad =
+                    (turn_limit_rad + aft.angle_rad).min(crate::blunt_tip::CONE_TABLE_CAP_RAD);
+                if angle_rad > angle_limit_rad {
+                    // A surface ahead already steeper than the limit turns the flow past it
+                    // however the flare is drawn, and a flare drawn to nothing has no length:
+                    // the method has no reading there. Unreachable while only a flare not behind
+                    // a boattail joins the run, since the angle ahead is then zero or positive.
+                    if angle_limit_rad <= 0.0 || !angle_limit_rad.is_finite() {
+                        return None;
+                    }
+                    let length_m = rise_m / angle_limit_rad.tan();
+                    let mut segments = flare.ahead.clone();
+                    segments.push(BodySegment::Profile {
+                        profile: hpr_design::Profile::transition(
+                            NoseShape::Conical {},
+                            length_m,
+                            flare.fore_radius_m,
+                            flare.aft_radius_m,
+                            flare.clipped,
+                        )
+                        .ok()?,
+                    });
+                    Some((
+                        ShockExpansionBody::new(&segments, DEFAULT_ELEMENTS_PER_CURVE).ok()?,
+                        length_m,
+                    ))
+                } else {
+                    None
+                }
+            }
+            _ => None,
+        };
+        let mut shares = match &held {
+            Some((drawn, _)) => drawn.segment_slopes(mach, reference_area_m2).ok()?,
+            None => body.segment_slopes(mach, reference_area_m2).ok()?,
+        };
+        // The length only enters the march: the centre of pressure stays on the real flare, at
+        // the same fraction along it as the drawn-out one reads. At the limit the two lengths are
+        // equal, so this is continuous in the flare's angle and in the Mach number.
+        if let (Some(flare), Some((_, drawn_length_m))) = (&self.flare, &held) {
+            let index = flare.index;
+            let share = *shares.get(index)?;
+            if share.slope_per_rad > 0.0 {
+                let fore_m = self.fore_m[index] - vertex_m;
+                let along = (share.moment_slope_m / share.slope_per_rad - fore_m) / drawn_length_m;
+                shares[index].moment_slope_m =
+                    share.slope_per_rad * (fore_m + along * flare.length_m);
+            }
+        }
         // A lip in a boattail's wake carries nothing faster than sound (ADR-039).
         shares.extend(std::iter::repeat_n(
             SegmentSlope::default(),
@@ -380,6 +496,12 @@ impl SupersonicBody {
     /// whole join below Mach 5.
     fn new(run: &SupersonicRun, reference_area_m2: f64) -> Option<Self> {
         let body = ShockExpansionBody::new(&run.segments, DEFAULT_ELEMENTS_PER_CURVE).ok()?;
+        let ahead = match &run.flare {
+            Some(flare) => {
+                Some(ShockExpansionBody::new(&flare.ahead, DEFAULT_ELEMENTS_PER_CURVE).ok()?)
+            }
+            None => None,
+        };
         let mut in_its_place = Vec::with_capacity(run.boattails.len());
         for boattail in &run.boattails {
             in_its_place.push(match boattail {
@@ -393,6 +515,7 @@ impl SupersonicBody {
             run.shares(
                 &body,
                 &in_its_place,
+                ahead.as_ref(),
                 step / SUPERSONIC_STEPS_PER_MACH,
                 reference_area_m2,
             )
@@ -804,6 +927,8 @@ impl AeroModel {
         let mut supersonic_bounds = Vec::new();
         let mut supersonic_fore = Vec::new();
         let mut supersonic_boattails = Vec::new();
+        let mut flare: Option<RunFlare> = None;
+        let mut proposed_flare: Option<&hpr_design::Transition> = None;
         let mut supersonic_open = true;
         let mut behind_boattail = false;
         let (mut vertex_m, mut supersonic_end_m) = (0.0, 0.0);
@@ -987,12 +1112,47 @@ impl AeroModel {
                             .ok()
                             .map(|profile| BodySegment::Profile { profile })
                     }
+                    // A conical flare: the march turns the flow at its corner, and the run ends
+                    // there (ADR-047). Any other widening shape ends the run without joining it,
+                    // as every flare did before M1.8e17: the corner's turn is then the profile's
+                    // own slope at its fore end, which the attachment test is not written for.
+                    // A widening part behind a boattail is not a flare in the free stream but a
+                    // lip in the boattail's wake, whose flow the march does not compute: it keeps
+                    // its own rule (ADR-039, `sheltered_lips` below).
+                    Part::Transition(transition)
+                        if !bodies.is_empty()
+                            && !behind_boattail
+                            && transition.aft_radius_m > transition.fore_radius_m
+                            && matches!(transition.shape, NoseShape::Conical {})
+                            && body_model.supersonic_flare == SupersonicFlare::Marched
+                            && step.abs() <= 1e-6 * geometry.fore_area_m2
+                            && (component.fore_station_m - supersonic_end_m).abs()
+                                <= 1e-9 * length_m =>
+                    {
+                        proposed_flare = Some(transition);
+                        transition
+                            .profile()
+                            .ok()
+                            .map(|profile| BodySegment::Profile { profile })
+                    }
                     _ => None,
                 };
                 match segment {
                     Some(segment) if supersonic_open => {
                         if supersonic_segments.is_empty() {
                             vertex_m = component.fore_station_m;
+                        }
+                        // Only a segment the run actually takes is the run's flare, and its index
+                        // is the one `shares` reads its share and station back at.
+                        if let Some(transition) = proposed_flare.take() {
+                            flare = Some(RunFlare {
+                                index: supersonic_segments.len(),
+                                ahead: supersonic_segments.clone(),
+                                fore_radius_m: transition.fore_radius_m,
+                                aft_radius_m: transition.aft_radius_m,
+                                length_m: transition.length_m,
+                                clipped: transition.clipped,
+                            });
                         }
                         // Washington and Pettis's boattail: the run so far with a cylinder of its
                         // length and fore radius in its place.
@@ -1003,7 +1163,7 @@ impl AeroModel {
                                     supersonic_boattail: SupersonicBoattail::WashingtonPettis,
                                     ..
                                 },
-                            ) => {
+                            ) if transition.aft_radius_m < transition.fore_radius_m => {
                                 let mut in_its_place = supersonic_segments.clone();
                                 in_its_place.push(BodySegment::Cylinder {
                                     length_m: transition.length_m,
@@ -1023,10 +1183,15 @@ impl AeroModel {
                         supersonic_fore.push(fore_m);
                         supersonic_end_m = fore_m + geometry.length_m;
                         // From a boattail aft, the shares may cross zero: the tail behind it
-                        // carries the decay of the boattail's expansion.
-                        behind_boattail |= matches!(&component.part, Part::Transition(_));
+                        // carries the decay of the boattail's expansion. A flare's share does
+                        // not: it is positive with a station on the flare, and the run ends
+                        // there, so nothing behind it is marched.
+                        behind_boattail |= matches!(&component.part, Part::Transition(t)
+                            if t.aft_radius_m < t.fore_radius_m);
                         supersonic_bounds
                             .push((!behind_boattail).then_some((fore_m, supersonic_end_m)));
+                        // The run ends at the flare it just took.
+                        supersonic_open &= flare.is_none();
                     }
                     _ => supersonic_open = false,
                 }
@@ -1107,6 +1272,7 @@ impl AeroModel {
             bounds_m: supersonic_bounds,
             fore_m: supersonic_fore,
             boattails: supersonic_boattails,
+            flare,
             sheltered_lips,
             shape_weight: shelter_weight,
         });
@@ -1798,7 +1964,18 @@ mod tests {
         let old = serde_json::to_string(&BodyModel::BEFORE_M1_8E6).unwrap();
         assert_eq!(
             old,
-            r#"{"body_lift":{"kind":"galejs","k":1.1},"supersonic_boattail":"footnote8"}"#
+            r#"{"body_lift":{"kind":"galejs","k":1.1},"supersonic_boattail":"footnote8","supersonic_flare":"slender_body"}"#
+        );
+        // A document stored before M1.8e17 has no `supersonic_flare`, so it now reads as a
+        // marched flare rather than the rule it was stored under. Deliberate — a missing field
+        // takes the current choice — and stated here so it cannot change silently.
+        let before_m1_8e17 =
+            r#"{"body_lift":{"kind":"galejs","k":1.1},"supersonic_boattail":"footnote8"}"#;
+        assert_eq!(
+            serde_json::from_str::<BodyModel>(before_m1_8e17)
+                .unwrap()
+                .supersonic_flare,
+            SupersonicFlare::Marched
         );
         assert_eq!(
             serde_json::from_str::<BodyModel>(&old).unwrap(),
@@ -2640,7 +2817,7 @@ mod tests {
             })
             .collect();
         let holds = |m: f64| {
-            run.shares(&body, &in_its_place, m, model.reference_area_m2())
+            run.shares(&body, &in_its_place, None, m, model.reference_area_m2())
                 .is_some()
         };
         for i in 1..=2000 {
@@ -3825,6 +4002,625 @@ mod tests {
         }
     }
 
+    /// A nose, a tube, a conical flare of `flare_deg`, a tail tube and four fins: the shape
+    /// M1.8e17 flies through the method.
+    fn flared_rocket(flare_deg: f64) -> hpr_design::Rocket {
+        let (fore_r, flare_l) = (0.027, 0.3);
+        let aft_r = fore_r + flare_l * flare_deg.to_radians().tan();
+        let mut tail = component("tail", body_part(0.2, aft_r, aft_r), None);
+        tail.children = vec![component(
+            "fins",
+            fin_set(
+                4,
+                FinPlanform::Trapezoidal {
+                    root_chord_m: 0.12,
+                    tip_chord_m: 0.05,
+                    span_m: 0.06,
+                    sweep_m: 0.07,
+                },
+            ),
+            Some(Position::Bottom { aft_offset_m: 0.0 }),
+        )];
+        one_stage(
+            vec![
+                component(
+                    "nose",
+                    nose(NoseShape::Ogive { radius_ratio: 1.0 }, 0.25, fore_r),
+                    None,
+                ),
+                component("body", body_part(0.7, fore_r, fore_r), None),
+                component("flare", body_part(flare_l, fore_r, aft_r), None),
+                tail,
+            ],
+            ReferenceDiameter::Maximum {},
+        )
+    }
+
+    /// The whole rocket's normal-force slope and centre of pressure, m aft of the nose tip, at
+    /// `mach` and a small angle of attack.
+    fn flared_at(rocket: &hpr_design::Rocket, mach: f64) -> (f64, f64) {
+        let model = model(rocket);
+        let force = model.normal_force(&flow(mach, 1e-4, 0.0)).unwrap();
+        (force.coefficient / 1e-4, force.cp_station_m.unwrap())
+    }
+
+    /// The run's flare, the march of the body ahead of it, and the reference area: what the
+    /// flare's corner turns at a Mach number.
+    fn flared_run(rocket: &hpr_design::Rocket) -> ShockExpansionBody {
+        let model = model(rocket);
+        let run = model.supersonic_run.as_ref().expect("a run with a flare");
+        let flare = run.flare.as_ref().expect("the flare in the run");
+        ShockExpansionBody::new(&flare.ahead, DEFAULT_ELEMENTS_PER_CURVE).unwrap()
+    }
+
+    /// The steepest **surface angle** the flare is read at, degrees, at `mach`: the corner's turn
+    /// limit on the flow `ahead` delivers to it, taken from that surface's own angle, under the
+    /// cone tables' 30°.
+    fn corner_limit_deg(ahead: &ShockExpansionBody, mach: f64) -> f64 {
+        let aft = ahead.aft_flow(mach).unwrap();
+        (crate::shock_expansion::flare_corner_limit_rad(aft.surface_mach).unwrap() + aft.angle_rad)
+            .min(crate::blunt_tip::CONE_TABLE_CAP_RAD)
+            .to_degrees()
+    }
+
+    /// A flared body flies the shock-expansion method (M1.8e17, ADR-047). Before it, a flare
+    /// anywhere behind the run took the whole body off the method at every Mach number; now the
+    /// run marches through the flare's corner and ends there, and the flare's own share is
+    /// positive with its centre of pressure on the flare.
+    #[test]
+    fn a_flared_body_flies_the_method() {
+        let rocket = flared_rocket(10.0);
+        let model = model(&rocket);
+        let body = model
+            .supersonic_body()
+            .expect("the method covers the flare");
+        // Nose, tube and flare: the run ends at the flare, and the tail tube behind it carries no
+        // slender-body slope of its own.
+        assert_eq!(body.covered, 3);
+        let old = AeroModel::with_body_model(
+            &rocket.layout().unwrap(),
+            BodyModel::CURRENT.with_supersonic_flare(SupersonicFlare::SlenderBody),
+        )
+        .unwrap();
+        assert!(old.supersonic_body().is_none());
+        // The flare's share, and where it acts: on the flare, which runs from 0.95 m to 1.25 m.
+        for mach in [2.0, 3.0, 4.95] {
+            let (slope, moment) = body.share(2, mach).unwrap();
+            assert!(slope > 0.0, "the flare's share at Mach {mach} is {slope}");
+            let station = moment / slope;
+            assert!(
+                (0.95..=1.25).contains(&station),
+                "the flare's share acts at {station} m at Mach {mach}"
+            );
+        }
+        // What the method says the rocket is worth, against slender-body theory's answer: the
+        // slope per radian, the centre of pressure in calibres of the 0.1598 m reference, and how
+        // far forward of slender-body theory's the method puts it. The guide quotes these.
+        let diameter_m = model.reference_diameter_m();
+        assert!((diameter_m - 0.159_796).abs() < 5e-7, "{diameter_m} m");
+        for (mach, want_slope, want_calibers, want_old_slope, want_forward) in [
+            (2.0, 3.537_087_3, 7.365_003, 3.715_259_2, 0.089_048),
+            (3.0, 2.889_886_8, 7.014_772, 3.081_544_6, 0.168_593),
+            (4.95, 2.488_028_5, 6.680_843, 2.643_091_4, 0.237_654),
+        ] {
+            let (slope, station_m) = flared_at(&rocket, mach);
+            let old = old.normal_force(&flow(mach, 1e-4, 0.0)).unwrap();
+            let forward = (old.cp_station_m.unwrap() - station_m) / diameter_m;
+            assert!(
+                (slope - want_slope).abs() < 5e-7
+                    && (station_m / diameter_m - want_calibers).abs() < 5e-6,
+                "Mach {mach}: {slope} per rad at {} calibres",
+                station_m / diameter_m
+            );
+            assert!(
+                (old.coefficient / 1e-4 - want_old_slope).abs() < 5e-7
+                    && (forward - want_forward).abs() < 5e-6,
+                "Mach {mach} on slender-body theory: {} per rad, the method {forward} calibres \
+                 forward",
+                old.coefficient / 1e-4
+            );
+        }
+    }
+
+    /// The flare's corner is read no steeper than the turn its shock stays attached through, and
+    /// a steeper flare reads one of the same radii drawn out to that turn, with its centre of
+    /// pressure on the real flare (M1.8e17, ADR-047).
+    ///
+    /// The limit is [`crate::shock_expansion::flare_corner_limit_rad`] at the flow the march
+    /// delivers to the corner, which is a little faster than the free stream: the nose and the
+    /// tube ahead of the flare have expanded it.
+    #[test]
+    fn a_flare_is_read_no_steeper_than_its_corners_shock_holds() {
+        let ahead = flared_run(&flared_rocket(18.5));
+        for (mach, want_surface_mach, want_limit_deg) in [
+            (1.5, 1.499_968_751_529, 12.111_850_220_062),
+            (2.0, 1.999_780_928_628, 22.969_761_173_077),
+            (2.5, 2.498_954_764_087, 29.786_310_648_004),
+            // From about Mach 2.51 the cone tables' 30° binds, not the shock (ADR-042).
+            (3.0, 2.996_526_706_276, 30.0),
+            (4.95, 4.892_298_698_955, 30.0),
+        ] {
+            let aft = ahead.aft_flow(mach).unwrap();
+            assert!(
+                (aft.surface_mach - want_surface_mach).abs() < 5e-10 && aft.angle_rad == 0.0,
+                "Mach {mach}: the corner turns Mach {} at {} rad",
+                aft.surface_mach,
+                aft.angle_rad
+            );
+            let limit = corner_limit_deg(&ahead, mach);
+            assert!(
+                (limit - want_limit_deg).abs() < 5e-10,
+                "Mach {mach}: the corner is read to {limit}°"
+            );
+        }
+        // At Mach 2 a 30° flare is read drawn out to 22.97°: the same radii, a longer flare.
+        let steep = model(&flared_rocket(30.0));
+        let run = steep.supersonic_run.as_ref().unwrap();
+        let flare = run.flare.as_ref().unwrap();
+        let rise_m = flare.aft_radius_m - flare.fore_radius_m;
+        let drawn_length_m = rise_m / corner_limit_deg(&ahead, 2.0).to_radians().tan();
+        assert!(drawn_length_m > flare.length_m);
+        let mut segments = flare.ahead.clone();
+        segments.push(BodySegment::Profile {
+            profile: hpr_design::Profile::transition(
+                NoseShape::Conical {},
+                drawn_length_m,
+                flare.fore_radius_m,
+                flare.aft_radius_m,
+                false,
+            )
+            .unwrap(),
+        });
+        let drawn = ShockExpansionBody::new(&segments, DEFAULT_ELEMENTS_PER_CURVE).unwrap();
+        let area = steep.reference_area_m2();
+        let want = *drawn.segment_slopes(2.0, area).unwrap().last().unwrap();
+        let body = steep.supersonic_body().unwrap();
+        let (slope, moment) = body.share(2, 2.0).unwrap();
+        assert!(
+            (slope - want.slope_per_rad).abs() < 1e-12 * want.slope_per_rad,
+            "the held share is {slope}, the drawn-out flare's {}",
+            want.slope_per_rad
+        );
+        // The length only enters the march: the centre of pressure comes back onto the real
+        // flare. The drawn-out one's own station lies behind the real flare's aft end, so this is
+        // a real move and not an identity.
+        let (fore_m, aft_m) = (run.fore_m[2], run.fore_m[2] + flare.length_m);
+        let drawn_station_m = want.moment_slope_m / want.slope_per_rad;
+        let station_m = moment / slope;
+        assert!(
+            station_m > fore_m && station_m < aft_m,
+            "the held share acts at {station_m}, off the flare's {fore_m} to {aft_m}"
+        );
+        // The drawn-out flare is 0.409 m long against the real 0.3 m, so its own station sits
+        // further aft of the corner than anywhere on the real flare it maps to.
+        assert!(
+            (drawn_station_m - 1.207_758).abs() < 5e-6 && station_m < drawn_station_m - 0.05,
+            "the drawn-out share acts at {drawn_station_m}, the mapped one at {station_m}"
+        );
+        // Above the limit the reading is held: the drawn body follows the radii and the flow
+        // ahead, not the angle. The guide quotes what that costs at the extreme — a 75° flare, an
+        // annular face a detached bow shock would stand in front of, read 18.5% below
+        // slender-body theory, where the truth is above both.
+        let at = |deg: f64| {
+            let rocket = flared_rocket(deg);
+            let new = model(&rocket).normal_force(&flow(2.0, 1e-4, 0.0)).unwrap();
+            let old = AeroModel::with_body_model(
+                &rocket.layout().unwrap(),
+                BodyModel::CURRENT.with_supersonic_flare(SupersonicFlare::SlenderBody),
+            )
+            .unwrap()
+            .normal_force(&flow(2.0, 1e-4, 0.0))
+            .unwrap();
+            (new.coefficient / 1e-4, old.coefficient / 1e-4)
+        };
+        for (deg, want_method, want_slender) in
+            [(30.0, 1.946_513, 2.307_693), (75.0, 1.637_856, 2.010_350)]
+        {
+            let (method, slender) = at(deg);
+            assert!(
+                (method - want_method).abs() < 5e-6 && (slender - want_slender).abs() < 5e-6,
+                "{deg}°: the method reads {method}, slender-body theory {slender}"
+            );
+            assert!(
+                method < slender,
+                "{deg}° should read below slender-body theory"
+            );
+        }
+        // At the limit angle itself the drawn-out flare *is* the real flare, so the reading is
+        // the march's own, station included, with nothing mapped.
+        let at_limit = model(&flared_rocket(corner_limit_deg(&ahead, 2.0)));
+        let limit_run = at_limit.supersonic_run.as_ref().unwrap();
+        let limit_body =
+            ShockExpansionBody::new(&limit_run.segments, DEFAULT_ELEMENTS_PER_CURVE).unwrap();
+        let marched = *limit_body
+            .segment_slopes(2.0, at_limit.reference_area_m2())
+            .unwrap()
+            .last()
+            .unwrap();
+        let (limit_slope, limit_moment) =
+            at_limit.supersonic_body().unwrap().share(2, 2.0).unwrap();
+        assert!(
+            (limit_slope - marched.slope_per_rad).abs() < 1e-12 * marched.slope_per_rad
+                && (limit_moment - marched.moment_slope_m).abs() < 1e-12 * marched.moment_slope_m,
+            "at the limit the reading is {limit_slope} at {}, the march's {} at {}",
+            limit_moment / limit_slope,
+            marched.slope_per_rad,
+            marched.moment_slope_m / marched.slope_per_rad
+        );
+    }
+
+    /// **The milestone's own check.** Nothing jumps where the flare's shock detaches: neither in
+    /// the flare's angle at a fixed Mach number, nor in the Mach number at a fixed angle
+    /// (M1.8e17, ADR-047).
+    ///
+    /// The reading is continuous because it is built that way — at the limit the drawn-out flare
+    /// *is* the real flare, so the two branches meet — and the test shows it as a probe either
+    /// side of the boundary: the gap falls with the probe, a thousandfold over three decades, so
+    /// the slope is continuous across it too and not merely the value.
+    #[test]
+    fn nothing_jumps_where_the_flares_shock_detaches() {
+        // In the flare's angle, at Mach 2, where the boundary is the corner's own limit. Mach 2
+        // is a row of the table, so the reading there is that row's and not an interpolation.
+        let ahead = flared_run(&flared_rocket(18.5));
+        let boundary_deg = corner_limit_deg(&ahead, 2.0);
+        assert!((boundary_deg - 22.969_761_173_077).abs() < 5e-12);
+        for (epsilon, want) in [(1e-9, 4.527e-11), (1e-7, 4.527e-9), (1e-5, 4.527e-7)] {
+            let below = flared_at(&flared_rocket(boundary_deg - epsilon), 2.0);
+            let above = flared_at(&flared_rocket(boundary_deg + epsilon), 2.0);
+            let gap = (above.0 / below.0 - 1.0).abs();
+            assert!(
+                (gap - want).abs() < 0.01 * want,
+                "±{epsilon}° across the boundary moves the slope by {gap}, not {want}"
+            );
+            assert!(
+                (above.1 - below.1).abs() < 2e-3 * epsilon,
+                "the station moves"
+            );
+        }
+        // In the Mach number, at 18.5°: the angle TN D-4865's model 2 carries, whose shock holds
+        // from Mach 1.7677 on this body.
+        //
+        // This half probes the **rows** the table is built from, not a reading interpolated
+        // between them. The crossing falls between the Mach 1.75 and 1.80 rows, and
+        // [`SupersonicBody::share`] runs a straight line across a whole row interval, so a
+        // reading taken there would be linear whatever the two branches did at the crossing —
+        // the probe has to ask the row's own function.
+        let rocket = flared_rocket(18.5);
+        let model = model(&rocket);
+        let run = model.supersonic_run.as_ref().expect("a run with a flare");
+        let body = ShockExpansionBody::new(&run.segments, DEFAULT_ELEMENTS_PER_CURVE).unwrap();
+        let in_its_place: Vec<Option<ShockExpansionBody>> =
+            run.segments.iter().map(|_| None).collect();
+        let area = model.reference_area_m2();
+        let (mut low, mut high) = (1.2_f64, 5.0_f64);
+        for _ in 0..80 {
+            let mid = 0.5 * (low + high);
+            if corner_limit_deg(&ahead, mid) < 18.5 {
+                low = mid;
+            } else {
+                high = mid;
+            }
+        }
+        assert!(
+            (high - 1.767_666_917_849).abs() < 5e-12,
+            "18.5° attaches from Mach {high}"
+        );
+        // Either side of the crossing the flare really is read from two different bodies: below
+        // it the drawn-out one, above it the flare as drawn.
+        assert!(corner_limit_deg(&ahead, high - 1e-9) < 18.5);
+        assert!(corner_limit_deg(&ahead, high + 1e-9) > 18.5);
+        let flare_share = |mach: f64| {
+            let shares = run
+                .shares(&body, &in_its_place, Some(&ahead), mach, area)
+                .expect("the row holds either side of the crossing");
+            shares[2]
+        };
+        for (epsilon, want) in [(1e-9, 3.622e-10), (1e-7, 3.622e-8), (1e-5, 3.622e-6)] {
+            let (below, above) = (flare_share(high - epsilon), flare_share(high + epsilon));
+            let gap = (above.slope_per_rad / below.slope_per_rad - 1.0).abs();
+            assert!(
+                (gap - want).abs() < 0.01 * want,
+                "±{epsilon} in Mach across the boundary moves the flare's share by {gap}, not \
+                 {want}"
+            );
+            // Its station moves with it, and stays on the flare.
+            let station = |s: SegmentSlope| s.moment_slope_m / s.slope_per_rad;
+            assert!(
+                (station(above) - station(below)).abs() < 0.1 * epsilon
+                    && (0.95..=1.25).contains(&station(below)),
+                "the flare's share acts at {} then {}",
+                station(below),
+                station(above)
+            );
+        }
+        // And the whole rocket's reading is continuous there too, interpolation and all.
+        for epsilon in [1e-9, 1e-7, 1e-5] {
+            let below = flared_at(&rocket, high - epsilon);
+            let above = flared_at(&rocket, high + epsilon);
+            assert!(
+                (above.0 / below.0 - 1.0).abs() < 2.0 * epsilon,
+                "±{epsilon} in Mach moves the rocket's slope by {}",
+                above.0 / below.0 - 1.0
+            );
+        }
+    }
+
+    /// Where the method refuses a flare it is the march that refuses it, and the model says so by
+    /// keeping slender-body theory rather than by reading a flare it hasn't marched.
+    ///
+    /// Two bands do it, and they are different. Below about Mach 1.56 on this body the corner's
+    /// isentropic turn runs out before its shock detaches (ADR-045), so the table starts there and
+    /// the join carries the reading across in Mach — nothing switches. A **near-flat** flare,
+    /// though, has its one element reduced aft of the nose
+    /// ([issue #81](https://github.com/nrdptel/hpr-sim/issues/81)), and the march then refuses a
+    /// run of Mach numbers from the top down: at 0.0589° none, at 0.045° from Mach 5.0, at
+    /// 0.03817° from Mach 4.70. The table is built downward from Mach 5 and needs the join's whole
+    /// width inside it, so once that run reaches Mach 4.70 there is no table at all and the whole
+    /// body falls back to slender-body theory at **every** Mach number. That is a switch of a
+    /// shape, the size below, carried by
+    /// [issue #117](https://github.com/nrdptel/hpr-sim/issues/117) and M1.8e19.
+    ///
+    /// The two edges are bisected but **not pinned to f64**. Each is a root of the march's own
+    /// refusal at a fixed Mach number, and that refusal turns on the sign of `p_c − p₂`, a
+    /// difference of two pressures within a thousandth of each other there: the cancellation
+    /// leaves the root about nine significant digits, and the three CI platforms spread the lower
+    /// edge over 2.6e-10° (6.8e-9 relative). The mechanism either side, which the sample angles
+    /// below pin, is what this test is really for.
+    #[test]
+    fn the_march_refuses_two_bands_of_flare_and_the_model_keeps_slender_body_theory() {
+        // The highest Mach row the march refuses, and where the table then starts.
+        let refusal = |deg: f64| {
+            let model = model(&flared_rocket(deg));
+            let run = model
+                .supersonic_run
+                .as_ref()
+                .expect("a run with a flare")
+                .clone();
+            let body = ShockExpansionBody::new(&run.segments, DEFAULT_ELEMENTS_PER_CURVE).unwrap();
+            let highest = (SUPERSONIC_FIRST_STEP..=SUPERSONIC_LAST_STEP)
+                .rev()
+                .find(|step| {
+                    let mach = *step as f64 / SUPERSONIC_STEPS_PER_MACH;
+                    body.slope(mach, model.reference_area_m2()).is_err()
+                });
+            (
+                highest.map(|step| step as f64 / SUPERSONIC_STEPS_PER_MACH),
+                model.supersonic_body().map(|s| s.join_start_mach),
+            )
+        };
+        // Steeper than the band nothing is refused; through it the refused run walks up from
+        // Mach 4.3 to Mach 5, and the table dies where the run passes Mach 4.7.
+        assert_eq!(refusal(0.0589).0, None);
+        assert_eq!(refusal(0.045).0, Some(5.0));
+        assert_eq!(refusal(0.03817).0, Some(4.7));
+        assert_eq!(refusal(0.03816).0, Some(4.65));
+        assert_eq!(refusal(0.03).0, Some(4.3));
+        assert!(refusal(0.03817).1.is_none() && refusal(0.045).1.is_none());
+        for deg in [0.03, 0.03816] {
+            let start = refusal(deg).1.expect("a table that reaches below Mach 4.7");
+            assert!(start < 4.7, "{deg}° starts its table at Mach {start}");
+        }
+        // Where the model loses the method, bisected. Nine significant digits: see above.
+        let covered = |deg: f64| model(&flared_rocket(deg)).supersonic_body().is_some();
+        let edge = |low: f64, high: f64| {
+            let (mut low, mut high) = (low, high);
+            let want = covered(low);
+            loop {
+                let middle = 0.5 * (low + high);
+                if middle <= low || middle >= high {
+                    return high;
+                }
+                if covered(middle) == want {
+                    low = middle;
+                } else {
+                    high = middle;
+                }
+            }
+        };
+        let (lower, upper) = (edge(0.01, 0.05), edge(0.05, 0.1));
+        assert!(
+            (lower / 0.038_161_270 - 1.0).abs() < 1e-7
+                && (upper / 0.058_820_517 - 1.0).abs() < 1e-7,
+            "the band runs from {lower}° to {upper}°"
+        );
+        assert!(!covered(0.5 * (lower + upper)));
+        for deg in [lower - 1e-9, upper + 1e-9, 1.0, 18.5] {
+            assert!(covered(deg), "{deg}° should fly the method");
+        }
+        // How big the switch at the band's steep edge is, at Mach 3 and 4°: the guide quotes it.
+        let at = |deg: f64| {
+            let model = model(&flared_rocket(deg));
+            let force = model
+                .normal_force(&flow(3.0, 4f64.to_radians(), 0.0))
+                .unwrap();
+            (
+                force.coefficient,
+                force.cp_station_m.unwrap() / model.reference_diameter_m(),
+            )
+        };
+        let (bare, method) = (at(upper - 1e-9), at(upper + 1e-9));
+        // Read as `issue_87s_switches_are_this_big` reads the others: what losing the method is
+        // worth, bare over covered.
+        let force = bare.0 / method.0 - 1.0;
+        let calibers = bare.1 - method.1;
+        assert!(
+            (force + 0.083_0).abs() < 5e-5 && (calibers - 1.157_4).abs() < 5e-5,
+            "the force moves {force:.4} and the centre of pressure {calibers:.4} calibres"
+        );
+    }
+
+    /// The low-Mach band moves the join, and the join moves the reading continuously: below the
+    /// Mach number where the march first takes the flare there is no table row, and the weight
+    /// the method's share carries rises from zero over [`SUPERSONIC_JOIN_WIDTH_MACH`].
+    #[test]
+    fn where_the_corners_turn_runs_out_the_join_carries_the_reading() {
+        let model = model(&flared_rocket(18.5));
+        let body = model.supersonic_body().unwrap();
+        assert!(
+            (body.join_start_mach - 1.555_220_046_128_9).abs() < 5e-13,
+            "the table starts at Mach {}",
+            body.join_start_mach
+        );
+        // No lip rides along here, so the join is the whole of the method's weight: zero at the
+        // start and the shape's full share a join's width above it.
+        assert_eq!(body.shape_weight, 1.0);
+        assert_eq!(body.weight(body.join_start_mach), 0.0);
+        assert_eq!(
+            body.weight(body.join_start_mach + SUPERSONIC_JOIN_WIDTH_MACH),
+            1.0
+        );
+        // At the join's start the method carries nothing, so the reading is slender-body
+        // theory's, and it stays continuous through it.
+        let old = AeroModel::with_body_model(
+            &flared_rocket(18.5).layout().unwrap(),
+            BodyModel::CURRENT.with_supersonic_flare(SupersonicFlare::SlenderBody),
+        )
+        .unwrap();
+        let at = |model: &AeroModel, mach| {
+            model
+                .normal_force(&flow(mach, 1e-4, 0.0))
+                .unwrap()
+                .coefficient
+                / 1e-4
+        };
+        assert!((at(&model, body.join_start_mach) - at(&old, body.join_start_mach)).abs() < 1e-12);
+        for (epsilon, want) in [
+            (1e-9, 8.547_36e-10),
+            (1e-7, 8.547_36e-8),
+            (1e-5, 8.547_38e-6),
+        ] {
+            let below = at(&model, body.join_start_mach - epsilon);
+            let above = at(&model, body.join_start_mach + epsilon);
+            let gap = (above / below - 1.0).abs();
+            assert!(
+                (gap - want).abs() < 1e-5 * want,
+                "±{epsilon} across the join's start moves the slope by {gap}, not {want}"
+            );
+        }
+    }
+
+    /// **What the drawn-out rule does not give: a smooth first derivative.** The reading is
+    /// continuous in value across the attachment boundary — that is
+    /// [`nothing_jumps_where_the_flares_shock_detaches`] and the milestone's own check — but a cap
+    /// makes a kink, and this measures it so the guide does not have to claim otherwise.
+    ///
+    /// Below the boundary the flare's angle moves the body the march sees; above it, only the
+    /// radii do, so the slope of the reading changes. On the tests' flared rocket at Mach 2 the
+    /// whole rocket's `dC_Nα/dδ` changes by −31.4% there and the flare's own share's by −141.6%,
+    /// which is a change of sign. The marched branch is not smooth in the flare's angle either:
+    /// the same probe at 20°, away from any boundary, finds +3.5% and +41.1%.
+    #[test]
+    fn the_cap_makes_a_kink_in_the_slope_even_though_the_reading_holds() {
+        let ahead = flared_run(&flared_rocket(18.5));
+        let boundary_deg = corner_limit_deg(&ahead, 2.0);
+        let whole = |deg: f64| flared_at(&flared_rocket(deg), 2.0).0;
+        let share = |deg: f64| {
+            model(&flared_rocket(deg))
+                .supersonic_body()
+                .unwrap()
+                .share(2, 2.0)
+                .unwrap()
+                .0
+        };
+        let kink = |f: &dyn Fn(f64) -> f64, at: f64| {
+            let epsilon = 1e-6;
+            let (down, up) = (
+                (f(at) - f(at - epsilon)) / epsilon,
+                (f(at + epsilon) - f(at)) / epsilon,
+            );
+            up / down - 1.0
+        };
+        for (what, f, at_boundary, at_20, at_26) in [
+            (
+                "the whole rocket",
+                &whole as &dyn Fn(f64) -> f64,
+                -0.313_9,
+                0.035_0,
+                0.0,
+            ),
+            ("the flare's share", &share, -1.415_6, 0.410_6, 0.0),
+        ] {
+            assert!(
+                (kink(f, boundary_deg) - at_boundary).abs() < 5e-4,
+                "{what} kinks {} at the boundary",
+                kink(f, boundary_deg)
+            );
+            assert!(
+                (kink(f, 20.0) - at_20).abs() < 5e-4,
+                "{what} kinks {} at 20°",
+                kink(f, 20.0)
+            );
+            // Well past the boundary both sides are drawn out, and the slope is smooth again.
+            assert!(
+                (kink(f, 26.0) - at_26).abs() < 1e-6,
+                "{what} kinks {} at 26°",
+                kink(f, 26.0)
+            );
+        }
+    }
+
+    /// A near-flat flare lifts the join's start, and it does not do so smoothly: the march
+    /// refuses whole Mach rows, and the table is built downward from Mach 5 and stops at the first
+    /// it cannot take, so the start steps rather than slides — and not even monotonically.
+    ///
+    /// The steepest of these switches is the band of
+    /// [`the_march_refuses_two_bands_of_flare_and_the_model_keeps_slender_body_theory`], where the
+    /// table goes altogether. This is the shallowest: a flare of **0.00090182°** — a rise of
+    /// 4.7 µm over 0.3 m — takes the join's start from Mach 1.2 to Mach 2.2, worth −4.6% of the
+    /// rocket's normal force and 0.75 calibres at Mach 2. Both belong to
+    /// [issue #117](https://github.com/nrdptel/hpr-sim/issues/117) and M1.8e19, and the guide says
+    /// so; nothing here is a claim that the region is smooth.
+    #[test]
+    fn a_near_flat_flare_lifts_the_joins_start_in_steps() {
+        let join = |deg: f64| {
+            model(&flared_rocket(deg))
+                .supersonic_body()
+                .map(|body| body.join_start_mach)
+        };
+        // Not monotone: 0.00024° and 0.0003° are back at the floor, 0.00025° is not.
+        assert_eq!(join(2.4e-4), Some(SUPERSONIC_JOIN_START_MACH));
+        assert_eq!(join(3e-4), Some(SUPERSONIC_JOIN_START_MACH));
+        assert!(join(2.5e-4).is_some_and(|start| start > 1.8));
+        // The shallowest switch that stays switched, bisected. The edge itself carries about nine
+        // significant digits, for the reason in
+        // `the_march_refuses_two_bands_of_flare_and_the_model_keeps_slender_body_theory`.
+        let (mut low, mut high) = (5e-4_f64, 1e-3_f64);
+        loop {
+            let middle = 0.5 * (low + high);
+            if middle <= low || middle >= high {
+                break;
+            }
+            if join(middle) == Some(SUPERSONIC_JOIN_START_MACH) {
+                low = middle;
+            } else {
+                high = middle;
+            }
+        }
+        assert!(
+            (high / 9.018_246_5e-4 - 1.0).abs() < 1e-7,
+            "the join leaves its floor at {high}°"
+        );
+        assert_eq!(join(low), Some(SUPERSONIC_JOIN_START_MACH));
+        assert!(join(high).is_some_and(|start| (start - 2.2).abs() < 1e-9));
+        let at = |deg: f64| {
+            let model = model(&flared_rocket(deg));
+            let force = model
+                .normal_force(&flow(2.0, 4f64.to_radians(), 0.0))
+                .unwrap();
+            (
+                force.coefficient,
+                force.cp_station_m.unwrap() / model.reference_diameter_m(),
+            )
+        };
+        let (below, above) = (at(low), at(high));
+        let force = above.0 / below.0 - 1.0;
+        let calibers = above.1 - below.1;
+        assert!(
+            (force + 0.046_2).abs() < 5e-5 && (calibers - 0.752_2).abs() < 5e-5,
+            "the force moves {force:.4} and the centre of pressure {calibers:.4} calibres"
+        );
+    }
+
     /// The size of each switch issue #87 lists, measured on one rocket at Mach 3 and 4°: the
     /// whole rocket's normal force and centre of pressure either side of the threshold, as a
     /// share and in calibres. The lip's is gone since M1.8e10; these are what remain, and
@@ -3850,7 +4646,9 @@ mod tests {
             rocket.stages[0].components[3].part = body_part(0.3, 0.027 - drop_m, 0.027 - drop_m);
             rocket
         };
-        // A flare behind the run, however small.
+        // A flare behind a boattail, however small: not a flare in the free stream but a lip in
+        // the boattail's wake, and too long for the wake to cover, so the run stops at it
+        // (ADR-039). A conical flare not behind a boattail flies the method since M1.8e17.
         let flared = |rise_m: f64| {
             let mut rocket = crate::testing::finned_rocket(4);
             rocket.stages[0].components.truncate(3);
@@ -3896,7 +4694,7 @@ mod tests {
                 (-0.0865, 1.0285),
             ),
             (
-                "a flare behind the run",
+                "a flare behind a boattail",
                 at(&flared(1e-12)),
                 at(&flared(1e-9)),
                 (-0.2749, 0.2872),
@@ -3943,11 +4741,17 @@ mod tests {
     #[test]
     fn a_body_the_method_cannot_finish_keeps_slender_body_terms() {
         let at = |m: &AeroModel, mach| body_values(m, mach);
-        // A flare (a boattail flies the method since M1.8e4), a vertical tip steeper than the
-        // blunt tip's handover all the way to its base (a power-series nose one radius long;
+        // A flare the method cannot take (a boattail flies it since M1.8e4, a conical flare
+        // since M1.8e17), a vertical tip steeper than the blunt tip's handover all the way to
+        // its base (a power-series nose one radius long;
         // longer ones fly the method since M1.8e7), a step in radius behind the nose.
         let mut rocket = straight_rocket();
+        // A conical flare flies the method since M1.8e17
+        // (`a_flared_body_flies_the_method`); any other widening shape still ends the run.
         rocket.stages[0].components[2].part = body_part(0.05, 0.027, 0.032);
+        if let Part::Transition(transition) = &mut rocket.stages[0].components[2].part {
+            transition.shape = NoseShape::Ogive { radius_ratio: 1.0 };
+        }
         rocket.stages[0].components[3].part = body_part(0.3, 0.032, 0.032);
         let flared = model(&rocket);
         // A boattail followed by a flare (a lip), and a boattail at a step down: each leaves a

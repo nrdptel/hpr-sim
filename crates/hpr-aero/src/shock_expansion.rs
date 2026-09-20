@@ -238,6 +238,9 @@ struct Cap {
 struct March {
     cap: Option<Cap>,
     flows: Vec<ElementFlow>,
+    /// The total pressure the march expands from, over the free stream's static pressure: what
+    /// turns a surface pressure back into a surface Mach number ([`mach_from_pressure`]).
+    total: f64,
 }
 
 /// The flow on one element of the tangent body ([`ShockExpansionBody::element_flows`]): its state
@@ -283,6 +286,19 @@ pub struct SegmentSlope {
     pub slope_per_rad: f64,
     /// That slope's moment about the vertex, `C_Nα · x̄`, m per radian (x̄ aft of the vertex).
     pub moment_slope_m: f64,
+}
+
+/// The surface flow the march delivers to a body's aft end
+/// ([`ShockExpansionBody::aft_flow`]): what a corner behind that body — the juncture of a flare,
+/// say — turns.
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+#[non_exhaustive]
+pub struct AftFlow {
+    /// The Mach number on the surface at the aft end, from the pressure the last element's decay
+    /// has reached there (TN 3527 eq. 8) expanded back through the march's total pressure.
+    pub surface_mach: f64,
+    /// The surface's angle to the axis there, rad; zero on a cylinder, negative on a boattail.
+    pub angle_rad: f64,
 }
 
 /// The body's normal-force slope at `α → 0` and where it acts.
@@ -605,6 +621,35 @@ impl ShockExpansionBody {
             .collect())
     }
 
+    /// The surface flow the march delivers to the body's aft end at Mach `mach`: the Mach number
+    /// there and the surface's angle to the axis.
+    ///
+    /// The angle is the **last element's**, so on a body that ends in a curve it is that element's
+    /// chord rather than the tangent at the very end, and it moves a little with
+    /// `elements_per_curve`. On a body that ends in a cylinder or a cone — every body a flare
+    /// joins in a flight today — the two are the same.
+    ///
+    /// This is the flow a corner *behind* the body turns. The march is downstream-only — TN 3527
+    /// eq. 3 fixes each element from the one ahead of it and nothing behind — so a flare added at
+    /// the aft end cannot change it, and the limit on that flare's corner
+    /// ([`flare_corner_limit_rad`]) can be read from this body before the flare is drawn.
+    ///
+    /// # Errors
+    ///
+    /// As [`Self::slope`], less the check that the lift sums to a positive force, and
+    /// [`AeroError::Unsupported`] where the surface flow at the aft end is not supersonic.
+    pub fn aft_flow(&self, mach: f64) -> Result<AftFlow, AeroError> {
+        check_mach(mach)?;
+        let march = self.flows(mach)?;
+        // `flows` starts with the vertex's or the handover's element, so it is never empty.
+        let last = march.flows[march.flows.len() - 1];
+        let (pressure, _) = last.at(self.length_m);
+        Ok(AftFlow {
+            surface_mach: mach_from_pressure(march.total, pressure)?,
+            angle_rad: last.angle_rad,
+        })
+    }
+
     /// How many of the nose's elements the march reduces to the generalized method at Mach
     /// `mach`: those where the gradient behind the corner points away from the tangent cone's
     /// pressure (`η < 0`, TN 3527 p. 13), which carry no gradient on (see
@@ -718,7 +763,7 @@ impl ShockExpansionBody {
     ) -> Result<Vec<(f64, [f64; 2])>, AeroError> {
         check_mach(mach)?;
         check_dimension("reference area", reference_area_m2, false)?;
-        let March { cap, flows } = self.flows(mach)?;
+        let March { cap, flows, .. } = self.flows(mach)?;
         let cap_end_m = cap.map_or(0.0, |c| c.end_x_m);
         let loading = |x: f64| {
             if let Some(cap) = cap.filter(|c| x < c.end_x_m) {
@@ -853,7 +898,7 @@ impl ShockExpansionBody {
             }
             flows.push(flow);
         }
-        Ok(March { cap, flows })
+        Ok(March { cap, flows, total })
     }
 
     /// A blunt tip at Mach `mach` ([`crate::blunt_tip`]): its Newtonian cap and handover
@@ -1149,6 +1194,42 @@ fn mach_from_pressure(total: f64, pressure: f64) -> Result<f64, AeroError> {
         )));
     }
     Ok(m2.sqrt())
+}
+
+/// The steepest turn the method reads at a flare's corner, rad, where the surface flow reaching
+/// that corner is `surface_mach` ([`ShockExpansionBody::aft_flow`]): the largest deflection
+/// behind an attached plane oblique shock.
+///
+/// This is a bound on the **turn**, measured from the surface just ahead of the corner. The cone
+/// tables' [`crate::blunt_tip::CONE_TABLE_CAP_RAD`] bounds the flare's **surface angle** instead,
+/// since that is what an element's tangent cone is looked up by, and a caller that draws a flare
+/// to this turn must cap the angle it draws separately.
+///
+/// **The attachment test.** A flare's shock springs from a circular corner, not from a point, so
+/// where it forms the flow is two-dimensional: the body's radius is the scale over which the
+/// axisymmetric relief acts, and at the corner itself there is none of it yet. The test is
+/// therefore NACA Report 1135's largest deflection behind an attached plane oblique shock
+/// ([`crate::blunt_tip::wedge_detachment_angle_rad`], eq. 168 into eq. 138), read at the flow
+/// reaching the corner rather than at the free stream — the same test TN D-4865 p. 5 uses to hand
+/// a blunt tip's cap over to this method ([`crate::blunt_tip::handover_angle_rad`]). A cone's
+/// shock holds to steeper angles than a wedge's and a conical flare on a cylinder sits between
+/// the two ([ADR-045][adr-045]), so this is the conservative
+/// side of the boundary: it stops reading some flares whose shock is in fact still attached, and
+/// never marches one whose shock is not.
+///
+/// **Where it is read matters.** The march is downstream-only, so `surface_mach` is the flow the
+/// body ahead delivers to the corner, not the free stream: on a flare behind an ogive nose and a
+/// tube it comes out a little below the free stream, on one behind a cone and a tube a little
+/// above ([ADR-047][adr-047]).
+///
+/// # Errors
+///
+/// As [`crate::blunt_tip::wedge_detachment_angle_rad`] for the Mach number.
+///
+/// [adr-045]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-045-where-a-flares-march-stops-is-the-corners-isentropic-turn-not-the-shock-detaching-2026-09-20
+/// [adr-047]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-047-a-flare-flies-the-method-where-its-corners-shock-is-attached-and-is-read-drawn-out-where-it-is-not-2026-09-20
+pub fn flare_corner_limit_rad(surface_mach: f64) -> Result<f64, AeroError> {
+    crate::blunt_tip::wedge_detachment_angle_rad(surface_mach)
 }
 
 /// The flow over a cone at zero angle of attack.
@@ -2017,6 +2098,116 @@ mod tests {
                 "Mach {mach}: {at_24} to {at_25} across the sources' join"
             );
         }
+    }
+
+    /// [`ShockExpansionBody::aft_flow`] is the flow the march has reached at the body's aft end:
+    /// the last element's pressure decayed to that station (TN 3527 eq. 8), read back as a Mach
+    /// number through the total pressure the march expands from, and that element's angle.
+    ///
+    /// The hand calculation is exact here: a conical nose's vertex fixes the total pressure, and
+    /// the flow along the cylinder behind it is an isentropic expansion from it.
+    #[test]
+    fn the_aft_flow_is_what_the_march_has_reached_at_the_end() {
+        let segments = [
+            BodySegment::Profile {
+                profile: Profile::nose(NoseShape::Conical {}, 0.25, 0.027).unwrap(),
+            },
+            BodySegment::Cylinder {
+                length_m: 0.7,
+                radius_m: 0.027,
+            },
+        ];
+        let body = ShockExpansionBody::new(&segments, DEFAULT_ELEMENTS_PER_CURVE).unwrap();
+        let half_angle_rad = (0.027_f64 / 0.25).atan();
+        for mach in [1.3, 2.0, 3.0, 5.0] {
+            let aft = body.aft_flow(mach).unwrap();
+            let flows = body.element_flows(mach).unwrap();
+            let last = *flows.last().unwrap();
+            assert_eq!(aft.angle_rad, last.angle_rad);
+            // The total pressure the march expands from: the vertex cone's own state.
+            let cone = cone_flow(mach, half_angle_rad).unwrap();
+            let total = cone.surface_pressure_ratio * total_over_static(cone.surface_mach);
+            // The pressure the last element's decay has reached at the body's aft end, 0.95 m.
+            let decay = (-last.decay_per_m * (0.95 - last.corner_x_m)).exp();
+            let pressure = last.tangent_cone_pressure_ratio
+                - (last.tangent_cone_pressure_ratio - last.pressure_ratio) * decay;
+            let want = mach_from_pressure(total, pressure).unwrap();
+            assert!(
+                (aft.surface_mach - want).abs() < 1e-12 * want,
+                "Mach {mach}: the aft flow is Mach {}, by hand {want}",
+                aft.surface_mach
+            );
+            // A cylinder behind a cone has expanded past the free stream by the aft end.
+            assert!(aft.surface_mach > mach, "Mach {mach}: {}", aft.surface_mach);
+        }
+        // A flare at the aft end cannot change it: the march is downstream-only, so every
+        // element ahead of the flare's corner carries the same flow with it and without it.
+        let mut flared = segments.to_vec();
+        flared.push(BodySegment::Profile {
+            profile: Profile::transition(NoseShape::Conical {}, 0.3, 0.027, 0.08, false).unwrap(),
+        });
+        let with_flare = ShockExpansionBody::new(&flared, DEFAULT_ELEMENTS_PER_CURVE).unwrap();
+        for mach in [2.0, 3.0, 5.0] {
+            let bare = body.element_flows(mach).unwrap();
+            let both = with_flare.element_flows(mach).unwrap();
+            assert!(both.len() > bare.len());
+            assert_eq!(&both[..bare.len()], &bare[..]);
+            // Its own aft flow is the flare's, not the cylinder's.
+            let aft = with_flare.aft_flow(mach).unwrap();
+            assert_eq!(aft.angle_rad, both[bare.len()].angle_rad);
+            assert!((aft.angle_rad - (0.053_f64 / 0.3).atan()).abs() < 1e-12);
+        }
+    }
+
+    /// The turn a flare's corner is read at is the largest deflection an attached plane oblique
+    /// shock can turn the flow through, at the flow reaching the corner rather than at the free
+    /// stream (M1.8e17, ADR-047 in `docs/DECISIONS.md`). The cone tables' 30° bounds the flare's
+    /// surface angle instead, and the model applies it there.
+    #[test]
+    fn a_flares_corner_turns_no_more_than_an_attached_shock_can() {
+        // Below the cap the limit is the largest deflection an attached plane shock can turn the
+        // flow through, which is the maximum of NACA 1135 eq. 138's θ over the shock angle β.
+        // Swept here rather than read from eq. 168, so the closed form is checked, not restated.
+        let swept = |mach: f64| {
+            let (g, m2) = (GAMMA, mach * mach);
+            let start = (1.0_f64 / mach).asin();
+            (0..=2_000_000)
+                .map(|i| start + (PI / 2.0 - start) * i as f64 / 2_000_000.0)
+                .map(|beta| {
+                    let s2 = beta.sin() * beta.sin();
+                    (2.0 / beta.tan() * (m2 * s2 - 1.0) / (m2 * (g + (2.0 * beta).cos()) + 2.0))
+                        .atan()
+                })
+                .fold(f64::NEG_INFINITY, f64::max)
+        };
+        for mach in [1.2, 1.5, 2.0, 2.5, 3.0, 5.0] {
+            let limit = flare_corner_limit_rad(mach).unwrap();
+            assert!(
+                (limit - swept(mach)).abs() < 1e-6,
+                "Mach {mach}: the corner is read to {}°, the swept maximum is {}°",
+                limit.to_degrees(),
+                swept(mach).to_degrees()
+            );
+        }
+        // Where the cone tables' 30° takes over from the shock, bisected: a flare on a cylinder
+        // is drawn no steeper than that above it, whatever the flow could turn through.
+        let (mut low, mut high) = (2.0_f64, 3.0_f64);
+        loop {
+            let middle = 0.5 * (low + high);
+            if middle <= low || middle >= high {
+                break;
+            }
+            if flare_corner_limit_rad(middle).unwrap() < crate::blunt_tip::CONE_TABLE_CAP_RAD {
+                low = middle;
+            } else {
+                high = middle;
+            }
+        }
+        assert!(
+            (high - 2.519_203_426_042).abs() < 5e-12,
+            "the tables bind from Mach {high}"
+        );
+        assert!(flare_corner_limit_rad(1.0).is_err());
     }
 
     #[test]

@@ -399,8 +399,11 @@ fineness of the cone with the same surface angle. See
 A transition that widens toward the aft end, the opposite of a [boattail](#boattail): a conical
 skirt at the tail, or the step up onto a wider aft section. Its normal-force slope is positive, so
 it moves the [centre of pressure](#centre-of-pressure-cp) aft, which is why one is sometimes added
-for stability. hpr's supersonic method will march a flare but no rocket flies one through it yet;
-where the march stops, and why that is not where the flare's shock detaches, is in
+for stability. Faster than sound, hpr marches a conical flare through the shock-expansion method
+while the shock at its corner stays attached, and reads a steeper one as a flare of the same radii
+drawn out to that angle — a model **not yet compared with any measured flare**:
+[A flare through the method](physics/aero.md#a-flare-through-the-method). Where the march itself
+stops, which is not where that shock detaches, is in
 [Where a flare's march stops](physics/aero.md#where-a-flares-march-stops).
 
 ## Flow separation
@@ -787,7 +790,9 @@ A way to work out the air's forces on a long, thin body from how fast its cross-
 along its length. It gives a nose as wide as the reference a normal-force slope of 2 per radian whatever its shape, a
 transition `2ΔA/A_ref`, and a plain tube nothing, at any Mach number. Barrowman's method uses it
 for every body part. hpr uses it below Mach 1.2, and at every speed for bodies the shock-expansion
-method can't take (flares, steps, a nose too blunt for its cap); NASA's wind tunnel shows a real
+method can't take (steps; a widening shape that isn't a cone, isn't flush with the part ahead of
+it, or rides in a boattail's wake; a near-flat flare the march refuses; a nose too blunt for its
+cap); NASA's wind tunnel shows a real
 body lifting more past Mach 3. See
 [Aerodynamics](physics/aero.md#bodies-of-revolution).
 
@@ -896,6 +901,14 @@ the speed where it holds (about Mach 1.2 or later, set by each fin's sweep and s
 ## Surface layer
 
 The air nearest the ground, where friction with the ground sets how fast the wind grows with height. hpr's power-law and log-law winds describe it, but keep growing above it, so winds aloft should come from a table of levels. See [Wind](physics/wind.md#models).
+
+## Tangent cone
+
+The cone that touches a body along one short element of it: the same half-angle, with its apex on
+the axis. hpr's supersonic body method works element by element, and each element's pressure
+relaxes toward the pressure on its own tangent cone, looked up in tables that stop at 30°. A
+cylinder's tangent cone is the free stream. See
+[Bodies faster than sound](physics/aero.md#bodies-faster-than-sound).
 
 ## Tangent ogive
 
