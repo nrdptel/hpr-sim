@@ -3954,7 +3954,7 @@ reach 30°, so the cap became a choice. `δ_max` passes 24° at Mach 2.06 and 30
 the sweep is measured rather than argued. `cargo xtask aero` writes it to `handover_caps` in
 `validation/fixtures/aero/blunt-tips.json`, and the guide's
 [What the cap is worth](https://nrdptel.github.io/hpr-sim/physics/aero.html#what-the-cap-is-worth)
-carries both tables.
+carries all three of its tables.
 
 - **A steeper cap reads nearer the report's own case.** On TN D-4865's sphere-cone, the body whose
   handover rule this is, fitted as the tunnel measured it, the whole step from 24° to 30° reads
@@ -3968,8 +3968,9 @@ carries both tables.
   power-series nose, a 30° cap puts 109 of 160 elements at Mach 4.63 and 145 at Mach 5 into
   TN 3527's `η < 0`, where the exponential law would run away from the tangent cone's pressure and
   hpr reduces the element to the generalized method (issue #81). The answer then follows the
-  element count: 3.047 per radian at 10 elements against 3.260 at 160, 7% apart, where under the
-  flown cap the same nose moves 3.030 to 3.034, a part in a thousand. Through Mach 3.96 sixteen
+  element count, and not even in order: 3.047 per radian at 10 elements, 2.928 at 40 and 3.260 at
+  160, a spread of 0.33 or 11%, where under the flown cap the same nose moves 3.030 to 3.034, a
+  part in a thousand. Through Mach 3.96 sixteen
   times the elements move the answer by under 0.01 per radian under the flown cap and under 0.013
   under the 30° one, so this is the top of the range only. At the flown 10 elements the 30° cap
   reduces 5 of them at Mach 4.63 and 9 at Mach 5.
@@ -3978,7 +3979,7 @@ carries both tables.
   (140), and 0.055 at 30° (145), against 0.004 at 24° (2). 28° is the worst of the four, so no
   cap between the ends is a middle ground, and none above the flown one holds its answer to Mach
   5. The flown cap has little room to spare either: at the flown 10 elements the same nose first
-  reduces an element at Mach 5.61, just past the range hpr's aerodynamics claim.
+  reduces an element at Mach 5.6024 (bisected), just past the range hpr's aerodynamics claim.
 - **It is the method, not the arithmetic.** Which elements reduce is a decision on the sign of
   `η`, and none sits close enough to zero to turn on rounding: nudging the Mach number by eight of
   its last bits leaves the same elements reduced and the answer within a part in a billion
@@ -4018,6 +4019,18 @@ carries both tables.
   on how finely the nose is cut. The vertical-tip switch of issue #87 — a nose steeper than the
   handover all the way to its base gets no method — waits on the same thing, since its edge is the
   cap.
+- **The sweep's numbers are stored to six decimals, which loosens their check.** CI's Linux and
+  Windows runs read the 30° cap's Mach 4.63 slope at 160 elements as 3.2597630456558506 where this
+  machine reads 3.259763045663582 — 7.7e-12 apart, 2.4e-12 relative — against a fixture check that
+  allows 1e-12 relative (`designs::same`). That is the reduced march amplifying the last bits of
+  `exp` and `powf`, which each platform's library rounds its own way, and it is the number the
+  march is least able to promise. So `handover_caps`, and only it, is written through
+  `sweep_number`, which rounds to six decimals and refuses a value sitting on the rounding
+  boundary. What this gives up is real and worth stating: within that section a later change that
+  moves a number by up to about 5e-7 absolute now passes where 1e-12 used to fail. The guide's
+  tables quote three decimals, so nothing a reader sees is affected; everything outside the
+  section keeps the old check, and a sweep of the `starts` section found its worst 1-ulp-of-Mach
+  sensitivity at 3.2e-14 relative, so it needs nothing.
 - **The milestone numbers move with the split.** What ADR-040 to ADR-042 call M1.8e12 — moving the
   handover past 24° — is M1.8e13 from here, with its *done when* carried over word for word; the
   step and the flare become M1.8e14. This increment, the measurement, takes the M1.8e12 number.

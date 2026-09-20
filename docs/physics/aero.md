@@ -1182,8 +1182,9 @@ Through Mach 3.96 cutting the nose into sixteen times as many elements moves the
 0.01 per radian under the flown cap and under 0.013 under the 30° one: the answer is the model's,
 not the mesh's. Above it the 30° cap's march reduces most of the nose — 5 of 10 elements at Mach
 4.63 and 9 of 10 at Mach 5, which is what hpr would fly, and 109 and 145 of 160 — and the answer
-follows the element count instead: 3.047 at 10 elements against 3.260 at 160, 7% apart, where the
-flown cap moves by 0.1%.
+follows the element count instead, and not even in order: 3.047 at 10 elements, 2.928 at the 40 the
+fixture also holds, and 3.260 at 160 — a spread of 0.33 per radian, 11% — where the flown cap moves
+by 0.1%.
 
 Why: the steeper cap starts the march from a steeper cone at a higher pressure, and from there the
 tangent cone's own pressure falls away faster than the marched pressure does as the nose flattens.
@@ -1219,10 +1220,13 @@ march has a rule for `η < 0` whose answer stops depending on how finely the nos
 ([issue #108: a steeper handover puts the march into `η < 0` above Mach
 4](https://github.com/nrdptel/hpr-sim/issues/108)); the milestone that would then move it,
 [M1.8e13, the blunt tip's handover past 24°](../decisions-and-roadmap.md#m1-8e13), waits on that.
-Both tables are held to
+All three tables are held to
 [`blunt-tips.json`](https://github.com/nrdptel/hpr-sim/blob/main/validation/fixtures/aero/blunt-tips.json)
 by a test, cell by cell; the second shows the two ends of the sweep, and the fixture holds 26° and
-28° too.
+28° and a 40-element reading too. Its numbers are stored to six decimals, three more than the tables
+quote: where most of the nose is reduced the march is not reproducible past about 1e-11 from one
+machine's maths library to another's, so pinning more would only break the build
+([ADR-043][adr-043]).
 
 #### The two starts
 

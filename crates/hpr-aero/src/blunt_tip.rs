@@ -394,10 +394,10 @@ mod tests {
             }
             0.5 * (low + high)
         };
-        close(binds_from(MAX_HANDOVER_RAD), 2.061, 5e-4, "24° binds from");
+        close(binds_from(MAX_HANDOVER_RAD), 2.0614, 5e-4, "24° binds from");
         close(
             binds_from(CONE_TABLE_CAP_RAD),
-            2.519,
+            2.5192,
             5e-4,
             "30° binds from",
         );

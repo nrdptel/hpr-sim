@@ -203,7 +203,8 @@ const CAP_ELEMENTS: [usize; 3] = [
 /// (issue #108) and chains their loadings through the `λ₂/λ₁` ratio at every corner. That
 /// amplifies the last bits of `exp` and `powf`, which a platform's library is free to round its
 /// own way: the 30° cap's Mach 4.63 slope at 160 elements read 3.259763045663582 here and
-/// 3.2597630456558506 on CI's Linux, 2.4e-12 apart, where the fixture check allows 1e-12. Six
+/// 3.2597630456558506 on CI's Linux, 7.7e-12 apart and 2.4e-12 of it, where the fixture check
+/// allows 1e-12 relative. Six
 /// decimals is far more than the three the guide quotes and far less than the march can promise
 /// there. The value must also sit clear of the rounding boundary, or two machines would round it
 /// two ways and the check would flicker; `what` names it if it doesn't.
@@ -212,8 +213,11 @@ fn sweep_number(what: &str, x: f64) -> Result<f64, String> {
     if !scaled.is_finite() {
         return Err(format!("{what} isn't a number: {x}"));
     }
-    // At least 1e-10 from where the rounding turns over, a hundred times the drift measured.
-    if (scaled - scaled.round()).abs() > 0.499_9 {
+    // Clear of where the rounding turns over by a hundred times the drift measured (2.4e-12 of
+    // the value), and by 1e-10 whatever the value: the closest any number of the sweep comes is
+    // 1.7e-9, so the margin is not what decides anything today.
+    let margin = (1e-10_f64).max(2.4e-10 * x.abs()) * 1e6;
+    if (scaled - scaled.round()).abs() > 0.5 - margin {
         return Err(format!(
             "{what} = {x} sits on the sixth decimal's rounding boundary, where two machines \
              would round it two ways"
@@ -357,7 +361,8 @@ fn handover_caps(root: &Path) -> Result<Value, String> {
                  elements the march reduces to the generalized method (eta < 0, issue #81). What \
                  the element count is worth is the spread of the three, which is not stored: it \
                  is a difference of nearly equal numbers, and the last digits of one of them \
-                 move between machines. Every number here is rounded to six decimals for the same \
+                 move between machines. Every measured number here is rounded to six decimals for \
+                 the same \
                  reason: where most of the nose is reduced the march chains its loadings through \
                  one ratio per corner, which amplifies the last bits of exp and powf, and those \
                  are a platform's to round. No targets.",
