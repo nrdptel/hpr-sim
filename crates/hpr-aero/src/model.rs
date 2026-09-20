@@ -1481,13 +1481,21 @@ impl AeroModel {
         Ok(NormalForce::new(term, flow.alpha_rad))
     }
 
-    /// The station, m aft of the nose tip, of component `index`'s small-angle centre of
-    /// pressure at `mach`: where a flight engine takes the component's local airspeed. A body with
-    /// no potential-flow slope (a cylinder) uses its body-lift station; a fin set's moves with
-    /// Mach, and so does a nose's or cylinder's that the shock-expansion method covers, joined
-    /// linearly from slender-body theory's station as its slope is ([`SupersonicBody`]). A covered
-    /// boattail, and a cylinder behind it, keep slender-body theory's station: their shares may
-    /// cross zero, where a station would run off to infinity.
+    /// The station, m aft of the nose tip, where a flight engine takes component `index`'s local
+    /// airspeed at `mach`.
+    ///
+    /// It is the component's small-angle centre of pressure wherever one model carries it: a fin
+    /// set's own, and a body's `moment_slope / slope`, or its body-lift station where it has no
+    /// potential-flow slope (a cylinder). Where two models share it, it is not: faster than sound
+    /// a nose's or cylinder's station is joined linearly from slender-body theory's to the
+    /// method's as the weight rises ([`SupersonicBody`]), while the force blends slopes and
+    /// moments, so the two agree only at the ends of the join. On a lip riding half in its
+    /// boattail's wake, which never reaches an end, the tests' tube sits 0.114 m — about two
+    /// calibres — behind its own centre of pressure
+    /// ([issue #106](https://github.com/nrdptel/hpr-sim/issues/106), which measures it and holds
+    /// what a fix has to settle). A covered boattail, and a cylinder behind it, keep
+    /// slender-body theory's station: their shares may cross zero, where a station would run off
+    /// to infinity.
     ///
     /// # Errors
     ///

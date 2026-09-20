@@ -506,7 +506,9 @@ impl Vehicle {
             out.moment += side * (-normal.moment_m * q * area);
         }
         for index in 0..self.aero.component_count() {
-            // A fin set's station moves with Mach, and so does a body's faster than sound.
+            // A fin set's station moves with Mach, and so does a body's faster than sound. It is
+            // the component's centre of pressure where one model carries it, and between the two
+            // models it is not (issue #106).
             let station = self.aero.component_station_m(index, out.mach)?;
             let p = DVec3::new(0.0, 0.0, -station);
             let (force, moment) =

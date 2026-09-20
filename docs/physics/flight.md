@@ -179,8 +179,16 @@ q̇   = ½ q ⊗ (0, ω)
   (`DragConditions::thrusting`, with the burning motors' cross-section) while any motor burns in
   the interval. It acts along the axis, so it has no moment about `O`.
 - **Normal and side forces, component by component.** Each body and fin set is evaluated at its
-  own local flow: `v_O − wind + ω × p_i` at its small-angle centre of pressure `p_i`
-  (`AeroModel::component_station_m`). Its `C_N` acts along the crossing air `ŵ` and its `C_Y`
+  own local flow: `v_O − wind + ω × p_i` at the station `p_i` the aerodynamics gives it
+  (`AeroModel::component_station_m`). That station is the component's small-angle centre of
+  pressure wherever one model carries the component. Faster than sound, where the
+  [shock-expansion method and slender-body theory share one](aero.md#the-body-faster-than-sound-in-a-flight),
+  it is not: the station is joined between the two models while the force joins their slopes and
+  moments, and the two agree only at the ends of the join. On a body that sits between the models
+  at every speed — a lip riding half in its boattail's wake — a tube's station can sit two
+  calibres from its own centre of pressure
+  ([issue #106](https://github.com/nrdptel/hpr-sim/issues/106)), which moves the lever arm the
+  damping below uses by that much. Its `C_N` acts along the crossing air `ŵ` and its `C_Y`
   along `z_B × ŵ` ([Frames](frames.md)), with moments `−q A M_N (z_B × ŵ) + q A M_Y ŵ` about `O` from the
   component's moment coefficients.
 - **Fins at any angle of attack.** A fin set's normal force follows the crossflow `V sin α`: its
@@ -192,8 +200,10 @@ q̇   = ½ q ⊗ (0, ω)
     velocity. A calm vertical flight falling tail first after apogee then collapsed the step size
     and never landed (`tests::a_calm_vertical_flight_falls_tail_first_and_lands`).
 - **Damping.** The rotation's contribution to each local flow is the only aerodynamic pitch and
-  yaw damping. At a component's CP the rotation adds a velocity `ω × p_i`, which changes the angle
-  at which the air meets that component.
+  yaw damping. At a component's station the rotation adds a velocity `ω × p_i`, which changes the
+  angle at which the air meets that component. The station is the lever arm, so where it is not
+  the centre of pressure (above) the damping is levered from the wrong point by the same
+  distance.
   - Only components with a [normal-force slope](../glossary.md#normal-force-slope) damp this way:
     nose cones, transitions and fin sets. A boattail's slope is negative, so it takes some away.
   - Body tubes give none at small angles: their own slope is 0, and their body lift grows with
