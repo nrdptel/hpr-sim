@@ -23,3 +23,8 @@ edit-url-template = "https://github.com/nrdptel/hpr-sim/edit/main/{path}"
 # Code blocks are quotes and output, not Rust to run in the playground.
 [output.html.playground]
 runnable = false
+
+# The physics pages are long, and their answers live under `####` headings (a single model, a
+# single check). Index those too, so a search lands on the subsection instead of the page.
+[output.html.search]
+heading-split-level = 4
