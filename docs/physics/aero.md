@@ -632,10 +632,17 @@ a boattail steeper than 16° is worth two thirds of a calibre at Mach 4.63 and a
 more than one at Mach 1.5. hpr takes the forward end of that range (test
 `a_separating_boattail_reads_the_correlation_at_its_steepest_measured_angle` pins both ends).
 
-There is one more bound. Reading a longer boattail walks left along Fig. 5, toward the transonic
-peak it was drawn with, and for a deep boattail below about Mach 1.3 that peak lies past potential
-flow. Slender-body theory is the ceiling — the measured curve otherwise sits at 0.24 to 0.47 of it
-— so the held increment stops there (`a_held_increment_never_passes_potential_flow`).
+There is one more bound, on the holding rather than on the measurement. Reading a longer boattail
+walks the correlation's argument `√(M² − 1)/(L_B/D)` toward zero, and near zero Fig. 5's curve is
+drawn from model No. 1's points at Mach 1.04 to 1.19 and rises past Munk's slender-body line —
+which the report plots there for comparison *at subsonic speeds*. Extrapolating that transonic
+branch onto a long supersonic boattail is not something the report supports, so the extra lift the
+holding takes off stops at potential flow's `2 (A_aft − A_fore)/A_fore`. The correlation read at a
+boattail's true angle is never clipped, wherever it sits: that is the measurement
+(`holding_the_correlation_stops_at_potential_flow`). Across Fig. 5 the measured curve runs from
+0.23 to 1.58 times Munk's line, passing it below an argument of 0.63; it is 0.24 to 0.47 of it at
+the Arcas Robin's Mach numbers. In practice the bound reaches only deep boattails — an aft radius
+under about a fifth of the fore radius — below about Mach 1.45; no committed design reaches it.
 
 **How far to trust the 16°.** It is Cubbage's, measured at Mach 0.6 to 1.28 and on *drag*, and it
 is used here on the normal force from Mach 1.2 up. A shoulder turns the flow through a

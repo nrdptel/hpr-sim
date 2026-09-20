@@ -24,8 +24,7 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
   by `corrections.py` (re-pin and delete it when #1196 releases).
 - **M1.8a to e1 (ADR-027 to ADR-033):** `cargo xtask aero` writes the aero fixtures. NTRS serves
   five of ADR-030's PDFs with a 436-byte header (pinned as served). Scratch: `refs/scratch/m18*/`.
-  #76: M1.8a's other TN D-4014 zeros. #81: `m18e/sose.py` carries the gradient through reduced
-  elements; hpr doesn't.
+  #76: M1.8a's other TN D-4014 zeros. #81: reduced elements carry no gradient on.
 - **M1.8e2 to e8** (ADR-034, 037, 038, 039): `SupersonicBody` (`model.rs`) tabulates the method's
   shares every 0.05 Mach, lazily, joined from max(1.2, its bisected start) over 0.3. Body lift is
   Jorgensen's (`crossflow.rs`); a boattail W&P's increment (`supersonic_boattail.rs`); a vertical
@@ -34,8 +33,9 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
   slope, so both Arcas designs fly the method to their base (e8, `arcas-robin-lip.json`). #98: a
   boattail doubles the table's build. #101: a vanishing cap keeps its cone's entropy.
 - **M1.8e9** (ADR-040): #90's cap holds W&P's correlation at 16°, the steepest attached angle, for
-  steeper boattails, bounded by slender-body theory — a fade to zero was written first and rejected,
-  since it moves the CP aft (0.67 to 1.35 calibres at 30°) and flatters stability. Eq. 19 is integrated by hand over a boattail and its tube
+  steeper boattails, the extra it removes bounded by potential flow — a fade to zero was written
+  first and rejected, since it moves the CP aft (0.67 to 1.35 calibres at 30°) and flatters
+  stability. Eq. 19 is integrated by hand over a boattail and its tube
   (`ShockExpansionBody::element_flows` is new public API); it pins the integration and footnote 8's
   tangent-cone terms, not η. M1.8e's 15% bullet, in `arcas-robin-body-gap.json`: met at Mach 3.96
   and 4.63, outside on six body-alone rows; the α→0/curvature split is soft (the tunnel's fit

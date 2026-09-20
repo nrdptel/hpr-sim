@@ -298,21 +298,20 @@ impl SupersonicRun {
             // lift the boattail takes off rather than letting it go to zero, which would move the
             // centre of pressure aft and make a steep boattail look more stable than measured.
             let drop_m = fore_radius_m - boattail.aft_radius_m;
-            let correlation_length_m = boattail.length_m.max(drop_m / SEPARATION_ONSET_RAD.tan());
-            let measured = wp_slope(
-                mach,
-                fore_radius_m,
-                boattail.aft_radius_m,
-                correlation_length_m,
-            )
-            .ok()?;
-            // Reading a longer boattail walks left along Fig. 5, toward the transonic peak it was
-            // drawn with, and for a deep boattail below about Mach 1.3 that peak lies past
-            // potential flow. Slender-body theory's `2 (A_aft − A_fore)/A_fore` is the ceiling —
-            // the measured curve otherwise sits at 0.24 to 0.47 of it
-            // (`crate::supersonic_boattail`) — so the held increment stops there.
+            let read = |length_m| wp_slope(mach, fore_radius_m, boattail.aft_radius_m, length_m);
+            let at_true_angle = read(boattail.length_m).ok()?;
+            let held = read(boattail.length_m.max(drop_m / SEPARATION_ONSET_RAD.tan())).ok()?;
+            // How far the holding may go. Reading a longer boattail walks left along Fig. 5,
+            // toward the peak near Mach 1 that the curve's own points come from (model No. 1 at
+            // Mach 1.04 to 1.19, `crate::supersonic_boattail`), and that branch passes Munk's
+            // slender-body line, which RD-TM-68-5 plots for comparison at subsonic speeds
+            // (p. 3). hpr does not extrapolate the transonic branch onto a long supersonic
+            // boattail: the *extra* the holding removes stops at potential flow's
+            // `2 (A_aft − A_fore)/A_fore`. The correlation read at the boattail's true angle is
+            // never clipped, whatever it says — that is the measurement. At 16° the two reads are
+            // equal, so this is continuous in shape.
             let ratio = boattail.aft_radius_m / fore_radius_m;
-            let measured = measured.max(2.0 * (ratio * ratio - 1.0));
+            let measured = held.max(at_true_angle.min(2.0 * (ratio * ratio - 1.0)));
             let increment = measured * PI * fore_radius_m * fore_radius_m / reference_area_m2;
             let centre_m =
                 self.fore_m[index] + wp_centre_fraction(mach) * boattail.length_m - vertex_m;
@@ -2757,9 +2756,10 @@ mod tests {
     /// or falls to zero, which would move the centre of pressure aft of where anything measured.
     #[test]
     fn a_separating_boattail_reads_the_correlation_at_its_steepest_measured_angle() {
-        // Mach 1.5, where both the true and the held reads sit on Fig. 5's curve. Higher up the
-        // correlation's parameter runs past its last entry and both reads clamp to the same
-        // number, which would make the assertions below identities.
+        // Mach 1.5, where the held read and the true reads at 17° and 23° sit on Fig. 5's curve
+        // (30° and 40° run past its last entry and clamp, but against a held read that does not).
+        // At Mach 3 every read clamps to the same number and the assertions below would all be
+        // identities: the test then passes with the hold deleted, inverted or moved.
         let mach = 1.5;
         let ogive = nose(NoseShape::Ogive { radius_ratio: 1.0 }, 0.25, 0.027);
         let Part::NoseCone(ogive) = ogive else {
@@ -2823,7 +2823,13 @@ mod tests {
         // strictly more lift taken off than reading the true angle would give. Past about 45° the
         // method no longer covers the body at all and the rocket keeps slender-body theory (a
         // switch of its own, issue #87), so the cap is read below that.
-        let at_16_read = crate::supersonic_boattail::wp_slope(mach, 0.027, 0.022, at_16).unwrap();
+        // Scaled onto the rocket's reference area, as the flown increment is.
+        let a_ref = model(&finned_rocket(4)).reference_area_m2();
+        let at_16_read = crate::supersonic_boattail::wp_slope(mach, 0.027, 0.022, at_16).unwrap()
+            * PI
+            * 0.027
+            * 0.027
+            / a_ref;
         for angle in [17.0, 23.0, 30.0, 40.0] {
             let (flown, raw) = kept(angle);
             let (held, _) = kept(16.0);
@@ -2874,11 +2880,18 @@ mod tests {
                 "Mach {at}: the fading rule sits {gap} calibres aft"
             );
         }
-        let (low, high) = (gaps.last().unwrap().1, gaps[0].1);
-        assert!(
-            (low - 0.67).abs() < 0.02 && (high - 1.35).abs() < 0.02,
-            "the gap runs {low} at Mach 4.63 to {high} at Mach 1.5"
-        );
+        // Every value the guide's table quotes, pinned.
+        for (at, want) in [(1.5, 1.35), (2.0, 0.91), (3.0, 0.75), (4.63, 0.67)] {
+            let got = gaps
+                .iter()
+                .find(|(m, _)| (m - at).abs() < 1e-9)
+                .expect("a measured gap")
+                .1;
+            assert!(
+                (got - want).abs() < 0.02,
+                "Mach {at}: the gap is {got} calibres, the guide says {want}"
+            );
+        }
         // Continuous in the angle, at the cap and either side of it. Below the cap the read
         // moves with the angle, so this is not zero: over ±1e-6 of a degree it is a few times
         // 1e-8, where a switch at the cap would show as the 7e-3 that separates the held and raw
@@ -2890,53 +2903,113 @@ mod tests {
         assert!((at_16 - (0.027 - 0.022) / 16.0_f64.to_radians().tan()).abs() < 1e-15);
     }
 
-    /// Reading the correlation at 16° walks left along Fig. 5, toward the transonic peak it was
-    /// drawn with. For a deep boattail below about Mach 1.3 that peak is past potential flow, so
-    /// the held increment is bounded by slender-body theory's `2 (A_aft − A_fore)/A_fore`, which
-    /// the measured curve otherwise sits at 0.24 to 0.47 of (`crate::supersonic_boattail`).
+    /// Holding the correlation at 16° reads it at a longer boattail, which walks left along
+    /// Fig. 5 toward the peak near Mach 1 its points come from. That branch passes Munk's
+    /// slender-body line, so the extra the holding takes off stops at potential flow. The read at
+    /// the boattail's true angle is never clipped: that is the measurement, wherever it sits.
     #[test]
-    fn a_held_increment_never_passes_potential_flow() {
-        let fore_radius_m = 0.027;
-        let mut bound_bites = 0;
-        for mach in [1.2_f64, 1.21, 1.25, 1.3, 1.5, 2.0, 3.0, 4.9] {
-            for aft_radius_m in [0.002_f64, 0.008, 0.014, 0.020, 0.026] {
-                let drop_m = fore_radius_m - aft_radius_m;
-                let held = crate::supersonic_boattail::wp_slope(
-                    mach,
-                    fore_radius_m,
-                    aft_radius_m,
-                    drop_m / SEPARATION_ONSET_RAD.tan(),
-                )
-                .unwrap();
-                let ratio = aft_radius_m / fore_radius_m;
-                let slender = 2.0 * (ratio * ratio - 1.0);
-                if held < slender {
-                    bound_bites += 1;
-                }
-                assert!(
-                    held.max(slender) >= slender,
-                    "Mach {mach}, aft {aft_radius_m}: past potential flow's {slender}"
-                );
-            }
-        }
-        // The bound is not decoration: without it these reads would pass potential flow.
-        assert!(bound_bites > 0, "the bound never binds, so it pins nothing");
-        // On a rocket: a 43.5° transition to under a third of the radius, which the method still
-        // covers. Its flown increment stays inside potential flow at every Mach the table holds.
+    fn holding_the_correlation_stops_at_potential_flow() {
+        // A 30° boattail to a tenth of the radius at Mach 1.3: held −2.256, true −1.085, and
+        // potential flow −1.980 per radian on the boattail's own area, so the bound bites.
+        let (fore_radius_m, aft_radius_m, mach) = (0.027_f64, 0.0027_f64, 1.3_f64);
+        let slender = 2.0 * ((aft_radius_m / fore_radius_m).powi(2) - 1.0);
+        let length_m = (fore_radius_m - aft_radius_m) / 30.0_f64.to_radians().tan();
         let mut rocket = finned_rocket(4);
-        rocket.stages[0].components[2].part = body_part(0.020, 0.027, 0.008);
-        rocket.stages[0].components[3].part = body_part(0.3, 0.008, 0.008);
-        let model = model(&rocket);
-        let table = model.supersonic_body().expect("the method covers it");
-        let a_ref = model.reference_area_m2();
-        let slender = 2.0 * (0.008 * 0.008 - 0.027 * 0.027) / (0.027 * 0.027);
-        for mach in [1.3_f64, 1.5, 2.0, 3.0] {
-            let share = table.share(2, mach).expect("the boattail's share").0;
-            assert!(
-                share >= slender * PI * 0.027 * 0.027 / a_ref - 1e-12,
-                "Mach {mach}: the boattail takes {share} off, past potential flow's {slender}"
-            );
-        }
+        rocket.stages[0].components[2].part = body_part(length_m, fore_radius_m, aft_radius_m);
+        rocket.stages[0].components[3].part = body_part(0.3, aft_radius_m, aft_radius_m);
+        let steep = model(&rocket);
+        let a_ref = steep.reference_area_m2();
+        let per_boattail_area = PI * fore_radius_m * fore_radius_m / a_ref;
+        let table = steep.supersonic_body().expect("the method covers it");
+        let cylinder = ShockExpansionBody::new(
+            &[
+                BodySegment::Profile {
+                    profile: match nose(NoseShape::Ogive { radius_ratio: 1.0 }, 0.25, 0.027) {
+                        Part::NoseCone(ogive) => ogive.profile().unwrap(),
+                        _ => unreachable!("`nose` builds a nose cone"),
+                    },
+                },
+                BodySegment::Cylinder {
+                    length_m: 0.7,
+                    radius_m: fore_radius_m,
+                },
+                BodySegment::Cylinder {
+                    length_m,
+                    radius_m: fore_radius_m,
+                },
+            ],
+            DEFAULT_ELEMENTS_PER_CURVE,
+        )
+        .unwrap()
+        .segment_slopes(mach, a_ref)
+        .unwrap()[2]
+            .slope_per_rad;
+        let flown = table.share(2, mach).expect("the boattail's share").0 - cylinder;
+        // It flies potential flow's value exactly, not the held read that would pass it.
+        assert!(
+            (flown / per_boattail_area - slender).abs() < 2e-3,
+            "{} against potential flow's {slender}",
+            flown / per_boattail_area
+        );
+        let held = crate::supersonic_boattail::wp_slope(
+            mach,
+            fore_radius_m,
+            aft_radius_m,
+            (fore_radius_m - aft_radius_m) / SEPARATION_ONSET_RAD.tan(),
+        )
+        .unwrap();
+        assert!(
+            held < slender - 0.2,
+            "the held read {held} must pass the bound to pin it"
+        );
+        // And a boattail inside the measured angles keeps its own read, even where that read is
+        // itself past potential flow: the bound belongs to the holding, not to the measurement.
+        let gentle_m = (fore_radius_m - 0.6 * fore_radius_m) / 4.0_f64.to_radians().tan();
+        let gentle =
+            crate::supersonic_boattail::wp_slope(1.5, fore_radius_m, 0.6 * fore_radius_m, gentle_m)
+                .unwrap();
+        let gentle_slender = 2.0 * (0.6_f64.powi(2) - 1.0);
+        assert!(
+            gentle < gentle_slender,
+            "the 4° read {gentle} should pass {gentle_slender}"
+        );
+        let mut gentle_rocket = finned_rocket(4);
+        gentle_rocket.stages[0].components[2].part =
+            body_part(gentle_m, fore_radius_m, 0.6 * fore_radius_m);
+        gentle_rocket.stages[0].components[3].part =
+            body_part(0.3, 0.6 * fore_radius_m, 0.6 * fore_radius_m);
+        let gentle_model = model(&gentle_rocket);
+        let gentle_table = gentle_model.supersonic_body().expect("a table");
+        let gentle_cylinder = ShockExpansionBody::new(
+            &[
+                BodySegment::Profile {
+                    profile: match nose(NoseShape::Ogive { radius_ratio: 1.0 }, 0.25, 0.027) {
+                        Part::NoseCone(ogive) => ogive.profile().unwrap(),
+                        _ => unreachable!("`nose` builds a nose cone"),
+                    },
+                },
+                BodySegment::Cylinder {
+                    length_m: 0.7,
+                    radius_m: fore_radius_m,
+                },
+                BodySegment::Cylinder {
+                    length_m: gentle_m,
+                    radius_m: fore_radius_m,
+                },
+            ],
+            DEFAULT_ELEMENTS_PER_CURVE,
+        )
+        .unwrap()
+        .segment_slopes(1.5, gentle_model.reference_area_m2())
+        .unwrap()[2]
+            .slope_per_rad;
+        let gentle_flown = gentle_table.share(2, 1.5).expect("the share").0 - gentle_cylinder;
+        let gentle_area = PI * fore_radius_m * fore_radius_m / gentle_model.reference_area_m2();
+        assert!(
+            (gentle_flown / gentle_area - gentle).abs() < 2e-3,
+            "the 4° boattail flies {} and its correlation reads {gentle}",
+            gentle_flown / gentle_area
+        );
     }
 
     /// Footnote 8's size, by hand, on a boattail **and the tube behind it**

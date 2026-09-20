@@ -3703,11 +3703,18 @@ the method at all.
     rocket the two rules differ by 1.35 calibres of body centre of pressure at 30° at Mach 1.5,
     0.91 at Mach 2, 0.75 at Mach 3 and 0.67 at Mach 4.63 — largest at the low speeds a hobby
     rocket flies — and both ends are pinned by a test.
-  - **One further bound.** Reading a longer boattail walks left along Fig. 5 toward the transonic
-    peak it was drawn with, which for a deep boattail below about Mach 1.3 lies past potential
-    flow. The held increment is therefore bounded by slender-body theory's
-    `2 (A_aft − A_fore)/A_fore`, the ceiling the measured curve otherwise sits at 0.24 to 0.47 of
-    (`a_held_increment_never_passes_potential_flow`).
+  - **One further bound, on the holding only.** Reading a longer boattail walks the correlation's
+    argument toward zero, where Fig. 5's curve is drawn from model No. 1's Mach 1.04 to 1.19
+    points and rises past Munk's slender-body line — which RD-TM-68-5 plots there for comparison
+    at subsonic speeds (p. 3), not as a supersonic bound. hpr declines to extrapolate that
+    transonic branch onto a long supersonic boattail, so the *extra* the holding removes stops at
+    potential flow's `2 (A_aft − A_fore)/A_fore`. A boattail's read at its own angle is never
+    clipped, wherever it sits: that is the measurement. The two reads are equal at 16°, so the
+    bound adds a kink, never a jump. It reaches only deep boattails (aft radius under about a
+    fifth of the fore radius) below about Mach 1.45, and no committed design reaches it
+    (`holding_the_correlation_stops_at_potential_flow`). When it binds, hpr reports slender-body
+    theory's size at Washington and Pettis's station, which for a cone differs from slender-body
+    theory's own by up to 0.08 of the boattail's length.
   - **What is not known.** Nothing measures a separated boattail's supersonic normal force, so
     neither limit is validated. The 16° itself is Cubbage's, from transonic *drag* data (Mach 0.6
     to 1.28), used here from Mach 1.2 up, where a shoulder's Prandtl–Meyer turn makes separation
