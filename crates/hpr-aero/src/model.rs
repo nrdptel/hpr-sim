@@ -930,9 +930,6 @@ impl AeroModel {
         let mut flare: Option<RunFlare> = None;
         let mut proposed_flare: Option<&hpr_design::Transition> = None;
         let mut supersonic_open = true;
-        // Whether what stopped the march was a step in radius at the joint rather than a shape
-        // the method has no reading for: a step leaves the body ahead of it marched (M1.8e15).
-        let mut closed_by_step = false;
         let mut behind_boattail = false;
         let (mut vertex_m, mut supersonic_end_m) = (0.0, 0.0);
         for component in &layout.components {
@@ -1068,16 +1065,6 @@ impl AeroModel {
             if let Some(geometry) = body {
                 let geometry = geometry.map_err(in_component)?;
                 let step = previous_aft_area.map_or(0.0, |aft| geometry.fore_area_m2 - aft);
-                // Whether the joint is flush as far as the *march* is concerned. The tangent
-                // body merges two elements that lie within a billionth of the radius of each
-                // other and refuses them past that (`shock_expansion::lay_out`), so that is the
-                // tolerance the run's coverage has to use too: a looser one admits a step the
-                // march then chokes on, and the body gets no reading at all rather than a
-                // reading up to the step (M1.8e15).
-                let flush = previous_aft_area.is_none_or(|aft| {
-                    let (before, after) = ((aft / PI).sqrt(), (geometry.fore_area_m2 / PI).sqrt());
-                    (after - before).abs() <= 1e-9 * after.max(before)
-                });
                 last_body_terms = Some(drag_terms.len());
                 drag_terms.push(
                     ComponentDragTerms::body(
@@ -1103,7 +1090,7 @@ impl AeroModel {
                         .map(|profile| BodySegment::Profile { profile }),
                     Part::BodyTube(tube)
                         if !bodies.is_empty()
-                            && flush
+                            && step.abs() <= 1e-6 * geometry.fore_area_m2
                             && (component.fore_station_m - supersonic_end_m).abs()
                                 <= 1e-9 * length_m =>
                     {
@@ -1116,7 +1103,7 @@ impl AeroModel {
                     Part::Transition(transition)
                         if !bodies.is_empty()
                             && transition.aft_radius_m < transition.fore_radius_m
-                            && flush
+                            && step.abs() <= 1e-6 * geometry.fore_area_m2
                             && (component.fore_station_m - supersonic_end_m).abs()
                                 <= 1e-9 * length_m =>
                     {
@@ -1138,7 +1125,7 @@ impl AeroModel {
                             && transition.aft_radius_m > transition.fore_radius_m
                             && matches!(transition.shape, NoseShape::Conical {})
                             && body_model.supersonic_flare == SupersonicFlare::Marched
-                            && flush
+                            && step.abs() <= 1e-6 * geometry.fore_area_m2
                             && (component.fore_station_m - supersonic_end_m).abs()
                                 <= 1e-9 * length_m =>
                     {
@@ -1206,18 +1193,7 @@ impl AeroModel {
                         // The run ends at the flare it just took.
                         supersonic_open &= flare.is_none();
                     }
-                    _ => {
-                        // Why the run stops here decides whether what is ahead of it keeps the
-                        // method (M1.8e15). A **step in radius** is a joint the march cannot
-                        // cross — its profile has a jump in it — but it says nothing about the
-                        // body ahead, which the march has already walked. Any other reason (a
-                        // widening shape that is not a cone, a nose the cap can't hand over on)
-                        // is a shape the method has no reading for at all.
-                        if supersonic_open {
-                            closed_by_step = !flush;
-                        }
-                        supersonic_open = false;
-                    }
+                    _ => supersonic_open = false,
                 }
                 previous_aft_area = Some(geometry.aft_area_m2);
                 bodies.push(body_terms(component, geometry, step, reference_area_m2));
@@ -1229,11 +1205,9 @@ impl AeroModel {
         }
         // Boattails, a lip in a boattail's wake, and the base behind them.
         couple_afterbody(&mut drag_terms, &body_terms_at, reference_area_m2)?;
-        // The method flies a body it covers to the end, one whose later bodies carry no
-        // potential-flow slope, or one the march stopped at a **step in radius** (M1.8e15,
-        // ADR-049): mixing its shares with slender-body theory's is what ADR-034 rejected for a
-        // boattail, but a step stops the march without saying anything about the body ahead of
-        // it, and dropping that body's reading costs more than the mixture does.
+        // The method flies only a body it covers to the end, or whose later bodies carry no
+        // potential-flow slope: its shares beside slender-body theory's for a flare or step would
+        // mix the models the way a boattail did before M1.8e4 (physics review, ADR-034).
         let marched = supersonic_segments.len();
         // A lip wholly in a covered boattail's wake carries nothing faster than sound (ADR-039),
         // so the run may cover it; the drag buildup's wake already measures the shelter
@@ -1292,8 +1266,7 @@ impl AeroModel {
         let rest_carries_nothing = bodies[covered..]
             .iter()
             .all(|body| body.slope_per_rad.abs() <= 1e-9);
-        let keep = marched > 0 && (rest_carries_nothing || closed_by_step);
-        let supersonic_run = keep.then_some(SupersonicRun {
+        let supersonic_run = (marched > 0 && rest_carries_nothing).then_some(SupersonicRun {
             segments: supersonic_segments,
             vertex_m,
             bounds_m: supersonic_bounds,
@@ -3129,13 +3102,7 @@ mod tests {
         ));
         let narrowing = model(&rocket);
         assert!(narrowing.bodies().last().unwrap().slope_per_rad < 0.0);
-        // Its fore radius steps up from the first boattail's aft radius, so since M1.8e15 the
-        // march stops at that step and the body ahead of it keeps the method; the second
-        // boattail itself still takes slender-body theory's share.
-        let table = narrowing
-            .supersonic_body()
-            .expect("the body ahead of the step marches");
-        assert_eq!(table.covered, narrowing.bodies().len() - 1);
+        assert!(narrowing.supersonic_body().is_none());
     }
 
     /// Washington and Pettis's correlation is read no steeper than the angle where the flow
@@ -4671,6 +4638,14 @@ mod tests {
                 model.supersonic_body().is_some(),
             )
         };
+        // A step in radius, past a millionth of the cylinder's area: the run stops at it.
+        let stepped = |drop_m: f64| {
+            let mut rocket = straight_rocket();
+            // The nose and its first tubes stay at 0.027 m; the last tube steps down, which is
+            // where the run stops once the step passes a millionth of the cylinder's area.
+            rocket.stages[0].components[3].part = body_part(0.3, 0.027 - drop_m, 0.027 - drop_m);
+            rocket
+        };
         // A flare behind a boattail, however small: not a flare in the free stream but a lip in
         // the boattail's wake, and too long for the wake to cover, so the run stops at it
         // (ADR-039). A conical flare not behind a boattail flies the method since M1.8e17.
@@ -4702,14 +4677,22 @@ mod tests {
             rocket
         };
         let at_16 = 0.027 / 24.0_f64.to_radians().tan();
-        // A step in radius is no longer one of these: since M1.8e15 it stops the march where it
-        // is and leaves the body ahead of it marched, so it costs the last part rather than the
-        // whole body (`a_step_stops_the_march_where_it_is`).
+        // Where the step's threshold sits, bracketed: a billionth of the radius, which is the
+        // tangent body's own tolerance for two elements parallel but apart
+        // (`shock_expansion::lay_out`), not the coverage gate's millionth of the area.
+        assert!(model(&stepped(2.6e-11)).supersonic_body().is_some());
+        assert!(model(&stepped(2.8e-11)).supersonic_body().is_none());
         // (what it is, the covered side, the bare side, what the docs say it is worth); a side
         // is (force, calibres, covered), and the expected pair is signed: bare over covered less
         // one, and bare's centre of pressure less covered's, in calibres.
         type Side = (f64, f64, bool);
-        let switches: [(&str, Side, Side, (f64, f64)); 3] = [
+        let switches: [(&str, Side, Side, (f64, f64)); 4] = [
+            (
+                "a step in radius",
+                at(&stepped(1e-12)),
+                at(&stepped(1e-9)),
+                (-0.0865, 1.0285),
+            ),
             (
                 "a flare behind a boattail",
                 at(&flared(1e-12)),
@@ -4755,72 +4738,89 @@ mod tests {
         }
     }
 
-    /// A step in radius stops the march where it is and leaves the body ahead of it marched
-    /// (M1.8e15, ADR-049), so drawing one no longer takes the **whole** body off the method.
+    /// What a **step in radius** costs, measured (M1.8e15, ADR-049).
     ///
-    /// What is left is a switch the size of the part the march no longer reaches, measured here
-    /// on the tests' straight rocket at Mach 3 and 4°: the last 0.3 m tube of a 1.3 m body.
+    /// A step is a joint where one component's fore radius does not match the previous one's aft
+    /// radius. The march cannot cross one — its tangent body needs a profile without a jump in it
+    /// — and the model around it then takes the *whole* body off the method, because mixing the
+    /// method's shares with slender-body theory's is what ADR-034 rejected.
+    ///
+    /// This pins where that switch sits and what it is worth, so that a fix can be measured
+    /// against it rather than argued about.
     #[test]
-    fn a_step_stops_the_march_where_it_is() {
-        let stepped = |drop_m: f64| {
+    fn a_step_takes_the_whole_body_off_the_method() {
+        // The tests' straight rocket: a tangent-ogive nose 0.25 m and three tubes, 0.7, 0.05 and
+        // 0.3 m, all at 0.027 m, on a 54 mm reference. `joint` is which tube the step is at: 1 is
+        // the nose's own joint, 3 the last.
+        let at_joint = |joint: usize, drop_m: f64| {
             let mut rocket = straight_rocket();
-            rocket.stages[0].components[3].part = body_part(0.3, 0.027 - drop_m, 0.027 - drop_m);
+            let lengths = [0.0, 0.7, 0.05, 0.3];
+            for (i, length_m) in lengths.iter().enumerate().skip(joint) {
+                rocket.stages[0].components[i].part =
+                    body_part(*length_m, 0.027 - drop_m, 0.027 - drop_m);
+            }
             rocket
         };
-        let read = |drop_m: f64| {
-            let model = model(&stepped(drop_m));
+        let read = |joint: usize, drop_m: f64| {
+            let rocket = at_joint(joint, drop_m);
+            let model = model(&rocket);
             let force = model
                 .normal_force(&flow(3.0, 4f64.to_radians(), 0.0))
                 .unwrap();
             (
                 force.coefficient,
                 force.cp_station_m.unwrap() / model.reference_diameter_m(),
-                model.supersonic_body().map(|t| t.covered),
+                model.supersonic_body().is_some(),
             )
         };
-        // Where the march stops is the tangent body's own tolerance for two elements parallel
-        // but apart, a billionth of the radius (`shock_expansion::lay_out`), not the coverage
-        // gate's millionth of the area. Bisected to a part in 1e6 of itself.
-        let marches = |drop_m: f64| read(drop_m).2 == Some(4);
+        let (flush, flush_cp, marched) = read(3, 0.0);
+        assert!(marched, "with no step the method covers the body");
+        assert!(
+            (flush - 0.899_592).abs() < 5e-7 && (flush_cp - 16.9492).abs() < 5e-5,
+            "the flush rocket reads {flush} at {flush_cp} calibres"
+        );
+
+        // Where the switch sits: the tangent body merges two elements within a billionth of the
+        // radius of each other and refuses them past that (`shock_expansion::lay_out`), so the
+        // step the march refuses is 1e-9 × 0.027 m, recovered here through the area the run's
+        // coverage works in. Bisected to a part in 1e6.
         let (mut low, mut high) = (1e-13, 1e-8);
-        assert!(marches(low) && !marches(high));
+        assert!(read(3, low).2 && !read(3, high).2);
         while high - low > 1e-6 * high {
             let mid = 0.5 * (low + high);
-            if marches(mid) { low = mid } else { high = mid }
+            if read(3, mid).2 {
+                low = mid
+            } else {
+                high = mid
+            }
         }
         assert!(
-            (high - 2.700_001e-11).abs() < 1e-17,
-            "the march stops at a step of {high} m, not a billionth of the 0.027 m radius"
+            (high / 2.7e-11 - 1.0).abs() < 2e-6,
+            "the march refuses a step of {high} m, not a billionth of the 0.027 m radius"
         );
-        // Either side of it the reading barely moves: the march loses the last tube, not the
-        // body. Before M1.8e15 this step cost the whole body the method, −8.7% and 1.03 calibres.
-        let (flush, flush_cp, _) = read(low);
-        let (just_stepped, just_stepped_cp, covered) = read(high);
-        assert_eq!(
-            covered,
-            Some(3),
-            "the march keeps everything ahead of the step"
-        );
-        let force = just_stepped / flush - 1.0;
-        let calibers = just_stepped_cp - flush_cp;
-        assert!(
-            (force + 1.2936e-4).abs() < 5e-8 && (calibers + 4.2996e-4).abs() < 5e-8,
-            "across the step's threshold the force moves {force:.3e} and the centre of pressure \
-             {calibers:.3e} calibres"
-        );
-        // And it grows with the step, smoothly, rather than standing at the threshold's size.
-        for (drop_m, want_force, want_calibers) in [
-            (1e-6, -1.4588e-4, -4.7702e-4),
-            (1e-4, -1.7801e-3, -5.1434e-3),
-            (1e-3, -1.6484e-2, -4.8211e-2),
-            (2e-3, -3.2502e-2, -9.7455e-2),
+
+        // What it costs. At the threshold the body is flush to a part in 1e9, so the whole
+        // difference is the method itself: the same −8.65% and 1.03 calibres wherever the step
+        // is. It grows with the step, and then where the step sits starts to matter.
+        for (joint, drop_m, want_force, want_calibers) in [
+            (1, 2.8e-11, -0.086_519, 1.028_5),
+            (2, 2.8e-11, -0.086_519, 1.028_5),
+            (3, 2.8e-11, -0.086_519, 1.028_5),
+            (1, 1e-3, -0.106_198, 1.193_8),
+            (3, 1e-3, -0.102_874, 0.994_9),
+            (1, 2e-3, -0.125_540, 1.359_3),
+            (3, 2e-3, -0.118_891, 0.959_7),
         ] {
-            let (force, cp, _) = read(drop_m);
+            let (force, cp, marched) = read(joint, drop_m);
+            assert!(
+                !marched,
+                "a {drop_m} m step at joint {joint} kept the method"
+            );
             let (force, calibers) = (force / flush - 1.0, cp - flush_cp);
             assert!(
-                (force - want_force).abs() < 5e-7 && (calibers - want_calibers).abs() < 5e-7,
-                "a {drop_m} m step moves the force {force:.4e} and the centre of pressure \
-                 {calibers:.4e} calibres, against {want_force} and {want_calibers}"
+                (force - want_force).abs() < 5e-6 && (calibers - want_calibers).abs() < 5e-5,
+                "a {drop_m} m step at joint {joint} moves the force {force:.6} and the centre of \
+                 pressure {calibers:.4} calibres, against {want_force} and {want_calibers}"
             );
         }
     }
@@ -4841,38 +4841,26 @@ mod tests {
         }
         rocket.stages[0].components[3].part = body_part(0.3, 0.032, 0.032);
         let flared = model(&rocket);
-        // A boattail followed by a flare (a lip) leaves a body with a slope of its own behind
-        // the run, and the method has no reading for the shape itself.
+        // A boattail followed by a flare (a lip), and a boattail at a step down: each leaves a
+        // body with a slope of its own behind the run.
         let mut rocket = crate::testing::finned_rocket(4);
         rocket.stages[0]
             .components
             .push(component("lip", body_part(0.01, 0.022, 0.025), None));
         let lipped = model(&rocket);
-        let mut rocket = straight_rocket();
-        rocket.stages[0].components[0].part =
-            nose(NoseShape::PowerSeries { exponent: 0.5 }, 0.027, 0.027);
-        let blunt = model(&rocket);
-        for model in [&flared, &lipped, &blunt] {
-            assert!(model.supersonic_body().is_none());
-            assert_eq!(at(model, 3.0), at(model, 0.5));
-        }
-        // A **step in radius** is different, since M1.8e15: it stops the march where it is, and
-        // the body ahead of it keeps the method ([`AeroModel::from_design`]). Both of these used
-        // to lose the method for the whole body.
         let mut rocket = crate::testing::finned_rocket(4);
         rocket.stages[0].components[2].part = body_part(0.05, 0.026, 0.022);
         let stepped_boattail = model(&rocket);
         let mut rocket = straight_rocket();
+        rocket.stages[0].components[0].part =
+            nose(NoseShape::PowerSeries { exponent: 0.5 }, 0.027, 0.027);
+        let blunt = model(&rocket);
+        let mut rocket = straight_rocket();
         rocket.stages[0].components[1].part = body_part(0.7, 0.03, 0.03);
         let stepped = model(&rocket);
-        // The nose and the tube are ahead of the boattail's step; only the nose is ahead of the
-        // step straight behind it.
-        for (model, covered) in [(&stepped_boattail, 2), (&stepped, 1)] {
-            let table = model
-                .supersonic_body()
-                .expect("the body ahead of the step marches");
-            assert_eq!(table.covered, covered, "what the march reached");
-            assert_ne!(at(model, 3.0), at(model, 0.5));
+        for model in [&flared, &lipped, &stepped_boattail, &blunt, &stepped] {
+            assert!(model.supersonic_body().is_none());
+            assert_eq!(at(model, 3.0), at(model, 0.5));
         }
     }
 

@@ -54,7 +54,7 @@ renumber. Supersede an entry by adding a new one that points back to it.
 | ADR-046 | Debrief folded in, and flight-log analysis that stands without the simulator | accepted |
 | ADR-047 | A flare flies the method where its corner's shock is attached, and is read drawn out where it is not | accepted |
 | ADR-048 | What a marched flare is worth, measured against TN D-4865's model 2 | accepted |
-| ADR-049 | A step in radius stops the march where it is | accepted |
+| ADR-049 | What a step in radius costs, and why the obvious fix is not taken yet | accepted |
 
 ---
 
@@ -4633,24 +4633,16 @@ named by the report that measured them. Counting them as a model error would hid
 rows read +29.7% and +32.1% on the unflared model 1, and that the report's own attached-flow method
 goes the same way.
 
-## ADR-049: A step in radius stops the march where it is, and leaves the body ahead of it marched (2026-09-20)
+## ADR-049: What a step in radius costs, and why the obvious fix is not taken yet (2026-09-20)
 
 **Status:** accepted. **Milestone:** M1.8e15.
 
 **Context.** [Issue #87](https://github.com/nrdptel/hpr-sim/issues/87) collected the places where
 the body's supersonic normal force jumps with a small change of shape. The largest of them, and the
-last without an owner, was a **step in radius**: a joint where one component's fore area differs
-from the previous one's aft area. Drawing one took the **whole body** off the second-order
-shock-expansion method, at every Mach number — worth −8.7% of the normal force and 1.03 calibres of
-centre of pressure on the tests' straight rocket at Mach 3 and 4°, for a step of a billionth of the
-radius.
-
-Two separate tolerances were involved, and they disagreed by 500×. The run's coverage gate admitted
-a joint whose area stepped by less than a millionth (`1e-6 · A`, about 13.5 nm of radius on a 27 mm
-body). The march's own tangent body merges two elements that lie within a **billionth of the
-radius** of each other and refuses them past that (`shock_expansion::lay_out`, about 27 pm). So a
-step between 27 pm and 13.5 nm was admitted to the run and then choked the march, and the body got
-no reading at all.
+last without an owner, was a **step in radius**: a joint where one component's fore radius does not
+match the previous one's aft radius. The march cannot cross one — its tangent body needs a profile
+without a jump in it — and the model around it then takes the **whole body** off the second-order
+shock-expansion method, at every Mach number.
 
 M1.8e15 asks for #87 closed or narrowed to the step alone, with the step's measured size in an ADR
 and the guide. It says a step "needs a model of its own rather than a decision about one that
@@ -4660,69 +4652,81 @@ TN 3527, the method's own source, requires a continuous profile; NASA TR-1386 is
 Washington and Pettis's boattails are continuous. Nothing in `refs/papers/` gives a step's normal
 force faster than sound.
 
-**Decision.** Since no source supplies a model of the step, this milestone changes what hpr does
-with the body *around* it.
+**Decision.** Measure it, publish it, and leave the model alone for now.
 
-- **A step stops the march where it is; the body ahead of it keeps the method.** The step itself,
-  and everything behind it, takes slender-body theory. What decides this is *why* the run closed:
-  a step is a joint the march cannot cross — its profile has a jump in it — and it says nothing
-  about the body ahead, which the march has already walked. A shape the method has no reading for
-  at all (a widening part that is not a cone, a nose the cap can't hand over on) still takes the
-  whole body off it.
-
-- **The coverage gate now uses the march's own tolerance.** A joint counts as flush when the radius
-  steps by no more than a billionth of it — `lay_out`'s number, on the same quantity — instead of
-  the area stepping by less than a millionth. That closes the dead band: there is no longer a step
-  that the run admits and the march then refuses.
-
-- **The step's own force is unchanged**: slender-body theory's `(2/A_ref)ΔA` at the joint, the
-  limit of a transition whose length goes to zero. That is already an extrapolation — Barrowman
-  1967 p. 18 assumes no discontinuities, and the guide says so — and nothing here makes it better.
+- **What a step costs is measured and pinned**, by
+  `a_step_takes_the_whole_body_off_the_method`, so that a fix can be weighed against a number
+  rather than argued about.
+- **The step's own force stays slender-body theory's** `(2/A_ref)ΔA` at the joint, the limit of a
+  transition whose length goes to zero. That is already an extrapolation — Barrowman 1967 p. 18
+  assumes no discontinuities, and the guide says so.
+- **Issue #87 is narrowed to the step alone.** Its other switches are owned elsewhere, and the two
+  that were not now have issues of their own: [#120](https://github.com/nrdptel/hpr-sim/issues/120)
+  (a lip longer than its boattail's drop in diameter) and
+  [#121](https://github.com/nrdptel/hpr-sim/issues/121) (a pointed tip steeper than the cone
+  tables' 30°). Its body text is rewritten: it said the threshold was the coverage gate's millionth
+  of the area, and it is not.
 
 **Measured**, on the tests' straight rocket (a tangent-ogive nose and three tubes, 1.3 m over a
-54 mm reference) at Mach 3 and 4°, with the last 0.3 m tube stepped down
-(`a_step_stops_the_march_where_it_is`):
+54 mm reference) at Mach 3 and 4°. With no step it reads `C_N` = 0.899592 with its centre of
+pressure 16.9492 calibres aft of the tip.
 
-| the step | the normal force moves | the centre of pressure moves |
-|---|---|---|
-| 2.700001e−11 m, the threshold, bisected | −1.2936e−4 | −4.2996e−4 calibres |
-| 1 µm | −1.4588e−4 | −4.7702e−4 calibres |
-| 0.1 mm | −1.7801e−3 | −5.1434e−3 calibres |
-| 1 mm | −1.6484e−2 | −4.8211e−2 calibres |
-| 2 mm | −3.2502e−2 | −9.7455e−2 calibres |
+- **Where the switch sits:** a step of **2.7e−11 m**, a billionth of the 27 mm radius, bisected.
+  That is the tangent body's own tolerance for two elements parallel but apart
+  (`shock_expansion::lay_out`), **not** the run's coverage gate at a millionth of the area
+  (13.5 nm), which is 500× looser and never binds. Any step a person could build or draw is far
+  past it.
+- **What it costs at the threshold:** −8.6519% of the normal force and 1.0285 calibres of centre of
+  pressure, **wherever on the body the step is** — at that size the shape is flush to a part in
+  1e9, so the whole difference is the method itself.
+- **What it costs as the step grows:** at 1 mm, −10.62% and 1.194 calibres with the step at the
+  nose's joint, −10.29% and 0.995 at the last; at 2 mm, −12.55% and 1.359, against −11.89% and
+  0.960. Where the step sits matters only once the step is large enough to change the shape.
 
-So the switch at the threshold falls from −8.7% and 1.03 calibres to **−0.013% and 0.0004
-calibres**, a factor of 670 and 2400, and what is left grows smoothly with the step instead of
-standing at its threshold's size. The residue is not zero and is not claimed to be: it is the last
-tube's own share, which the march no longer reaches.
+**Why the obvious fix is not taken.** The obvious fix is to stop the march *at* the step and let
+the body ahead of it keep the method, as the run already ends at a flare (ADR-047). It was built
+and measured, and it is not good enough:
+
+- **It does not stay inside ADR-034's objection.** That decision rejected mixing the method's
+  shares with slender-body theory's on a *measured* case, a boattail. A step's remainder is
+  supposed to be a tube, whose slender-body share is zero — but "the run stopped at a step" does
+  not imply "what follows is a tube". On the tests' finned rocket with its boattail's fore radius
+  stepped 2.8e−11 m, the mixture's moment is more negative than **both** pure models for every
+  reference station between 6.06 and 17.08 calibres, which is the pathology ADR-034 measured.
+- **It cannot tell a step from a shape the method has no reading for.** The run closes in one
+  place for many reasons. Keying off "was the joint flush" makes a *non-conical* flare, or a lip
+  out of its wake, or a flare under `SupersonicFlare::SlenderBody`, keep the forebody marched as
+  soon as its fore radius is a picometre off. Measured, that is a **new** switch of +7.2% and 0.69
+  calibres on an ogive flare — larger than the −7.7% and −7.0% rows the milestone kept — where
+  today's behaviour is continuous. It would also stop `BodyModel::BEFORE_M1_8E6` reproducing
+  earlier results on such a body.
+- **It does not close the dead band it was meant to close.** Matching the coverage gate to
+  `lay_out`'s tolerance only matches it where the slope does not change. At a joint where it does,
+  the binding constraint is the corner-ordering bound, and a band survives: on that same rocket, a
+  step **up** of 1e−12 to 2.7e−11 m is admitted and then refused by the march, so the body gets no
+  reading at all — worth −11.3% and 1.10 calibres, and not monotone in the step.
+
+So the fix needs to be built on which *shape* stopped the run, not on whether the joint was flush,
+and on what the march itself accepts rather than on a tolerance guessed to match it. That is a
+model, not a condition, and it is what the narrowed issue #87 now asks for.
 
 **Consequences.**
 
-- Issue #87 is closed. Its step row is gone; its other switches are owned elsewhere, and the two
-  that were not have issues of their own now.
-- The guide's *Where that choice still jumps* table loses its step row and gains a paragraph on
-  what a step now costs.
-- **No committed number moved**: no design in `validation/designs/` has a step, and all twelve aero
-  fixtures and the validation report are unchanged.
-- A body whose joints are flush only to a millionth of the area, rather than a billionth of the
-  radius, now has its run stopped at that joint. None exists in this repo; a design that computes
-  its radii could make one, and it will read the method up to the joint rather than not at all.
+- Nothing in `hpr-aero` changed. No committed number moved, and no design in `validation/designs/`
+  has a step.
+- The guide keeps the step in its table of switches and gains a section saying what it costs, where
+  the threshold is and what a fix would have to handle.
+- Issue #87 stays open, narrowed to the step, with the three measurements above in it.
 
-**Not chosen: keep dropping the whole body (ADR-034's rule against mixing the two models).** That
-rule was written on a *measured* case — mixing the method's nose and cylinder with slender-body
-theory's boattail put the centre of pressure further off than slender-body theory alone. Behind a
-step what is mixed is different: a tube, whose slender-body share is zero, plus the step's own term
-at the joint. And the cost of the alternative is measured above — dropping the body's reading is
-worth 670 times what the mixture is. ADR-034's objection is recorded here as the reason this is a
-choice and not a correction: nothing measures a stepped body faster than sound, so which of the two
-is nearer the truth is unknown.
+**Not chosen: ship the truncating fix anyway and record its faults.** Two of them are *new*
+discontinuities larger than ones the same milestone left in the table, and one is a body that gets
+no reading at all where today it gets one. A milestone whose subject is a jump in the model should
+not add two.
 
-**Not chosen: read a step as a flare of zero length, drawn out to its corner's limit
-([ADR-047](#adr-047-a-flare-flies-the-method-where-its-corners-shock-is-attached-and-is-read-drawn-out-where-it-is-not-2026-09-20)).**
-It is tempting — it would make the reading continuous in the step's rise rather than leaving a
-residue — but a step is *infinitely* past the limit whatever its rise, so every step would read the
-same held value, and a step of a micron would read like a step of a centimetre. ADR-047's drawn-out
-rule is itself measured against nothing, and this would lean the whole of a step's force on it.
+**Not chosen: read a step as a flare of zero length, drawn out to its corner's limit (ADR-047).**
+A step is infinitely past that limit whatever its rise, so every step would read the same held
+value and a step of a micron would read like a step of a centimetre. ADR-047's drawn-out rule is
+itself measured against nothing, and this would lean the whole of a step's force on it.
 
 **Not chosen: model the step's supersonic normal force.** There is no source in hand. What one
 would need is a measurement of normal force on a body with a forward- or rearward-facing step at

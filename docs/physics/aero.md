@@ -109,10 +109,10 @@
   [flare](../glossary.md#flare) flush with the tube ahead of it flies the method too, and ends the
   run, while its corner's shock stays attached — checked against **one** measured flare, where it
   reads −1.9% and +7.0% at Mach 1.9 and 2.3, +13.4% at 2.96, then +51.5% and +50.4% at 3.95 and
-  4.63 ([What a marched flare is worth](#what-a-marched-flare-is-worth)). A **step in radius** stops the march where it is,
-  leaving the body ahead of it on the method ([A step in radius](#a-step-in-radius)); a rocket
-  with any other widening shape behind the nose keeps slender-body theory for its whole body at
-  every speed, which reads low past Mach 3. Body lift leaves out
+  4.63 ([What a marched flare is worth](#what-a-marched-flare-is-worth)). A rocket with any other
+  widening shape, or any step, behind the nose (a motor retainer behind a step down counts: the
+  step ends the run) keeps slender-body theory for its whole body at every speed, which reads low
+  past Mach 3. Body lift leaves out
   the fall in crossflow drag past the critical crossflow Reynolds number
   ([Body lift](#body-lift)), and it reads too large at the few degrees a slope is fitted over: the
   body alone misses the 15% target the milestone set on six of eleven wind-tunnel rows, by +37.7%
@@ -578,34 +578,28 @@ wake's own proportion, and slender-body theory for the rest
 ([A lip in a boattail's wake](#a-lip-in-a-boattails-wake)). A **conical flare** flush with the
 part ahead of it joins the run as well, and ends it
 ([A flare through the method](#a-flare-through-the-method)); a widening part behind a boattail is
-a lip, not a flare, and keeps the lip's rule. A **step in radius** stops the run where it is: the
-body ahead of it keeps the method, and the step and everything behind it take slender-body theory
-([A step in radius](#a-step-in-radius)). Anything else (a widening shape that is not a cone, or a
-nose steeper than the cap's handover all the way to its base) keeps slender-body theory for its
-whole body at every speed.
+a lip, not a flare, and keeps the lip's rule. Anything else (a step, a widening shape that is not
+a cone, a motor retainer behind a step down — the step itself ends the run — or a nose steeper
+than the cap's handover all the way to its base) keeps slender-body theory for its whole body at
+every speed.
 
 **Where that choice still jumps.** It is one choice for the whole body, so wherever it turns on a
 threshold, a rocket either side of that threshold gets two different models — and the difference is
 the whole body's, not the part that changed. On the tests' rocket at Mach 3 and 4°, each remaining
-threshold is worth this much (`issue_87s_switches_are_this_big` for the first three,
-`a_lip_in_a_boattails_wake_carries_nothing` for the lip's two, and
-`the_march_refuses_two_bands_of_flare_and_the_model_keeps_slender_body_theory` for the last). Each
-has an owner now: [issue #120: a lip longer than its boattail's
-drop](https://github.com/nrdptel/hpr-sim/issues/120) takes the two lip rows and the flare-behind-a-
-boattail row, which are the same threshold seen from two sides; [issue #121: a pointed tip past the
-cone tables](https://github.com/nrdptel/hpr-sim/issues/121) the third row;
-[M1.8e16](../decisions-and-roadmap.md#m1-8e16) the vertical tip; and
-[M1.8e19](../decisions-and-roadmap.md#m1-8e19) the last. The list they came from, issue #87, is
-closed:
+threshold is worth this much, and each has an owner in the last column
+(`issue_87s_switches_are_this_big` pins the first four,
+`a_lip_in_a_boattails_wake_carries_nothing` the lip's two, and
+`the_march_refuses_two_bands_of_flare_and_the_model_keeps_slender_body_theory` the last):
 
-| drawing this | normal force | centre of pressure |
-|---|---|---|
-| a flare behind a boattail and too long for its wake, however small | −27.5% | 0.29 calibres |
-| a pointed tip steeper than the cone tables' 30° | −7.7% | 0.81 calibres |
-| a vertical tip steeper than the cap's handover to its base | −7.0% | 0.64 calibres |
-| a lip leaving its boattail's wake by rising or by sitting back | −29 to −34% | 0.93 to 1.97 calibres |
-| a lip longer than its boattail's drop in diameter, however little it rises | −33.0% | 1.77 calibres, forward |
-| a near-flat flare, 0.03816° to 0.05882°, which the march refuses | −8.3% | 1.16 calibres |
+| drawing this | normal force | centre of pressure | whose it is |
+|---|---|---|---|
+| a step in radius, past a billionth of the local radius | −8.7% | 1.03 calibres | [issue #87](https://github.com/nrdptel/hpr-sim/issues/87) |
+| a flare behind a boattail and too long for its wake, however small | −27.5% | 0.29 calibres | [issue #120](https://github.com/nrdptel/hpr-sim/issues/120) |
+| a pointed tip steeper than the cone tables' 30° | −7.7% | 0.81 calibres | [issue #121](https://github.com/nrdptel/hpr-sim/issues/121) |
+| a vertical tip steeper than the cap's handover to its base | −7.0% | 0.64 calibres | [M1.8e16](../decisions-and-roadmap.md#m1-8e16) |
+| a lip leaving its boattail's wake by rising or by sitting back | −29 to −34% | 0.93 to 1.97 calibres | [issue #120](https://github.com/nrdptel/hpr-sim/issues/120) |
+| a lip longer than its boattail's drop in diameter, however little it rises | −33.0% | 1.77 calibres, forward | [issue #120](https://github.com/nrdptel/hpr-sim/issues/120) |
+| a near-flat flare, 0.03816° to 0.05882°, which the march refuses | −8.3% | 1.16 calibres | [M1.8e19](../decisions-and-roadmap.md#m1-8e19) |
 
 In the first four rows the centre of pressure moves **aft** when the method is lost, so a rocket
 that trips one reads *more* stable than one that doesn't. The two lip rows and the near-flat-flare
@@ -635,11 +629,13 @@ band of
 near-flat flares, a third of a millimetre tall, that the march itself refuses
 ([M1.8e19](../decisions-and-roadmap.md#m1-8e19)).
 
-**The step went too** ([M1.8e15](../decisions-and-roadmap.md#m1-8e15), [ADR-049][adr-049]), and
-differently: a step still stops the march, because the march needs a profile without a jump in it,
-but it no longer takes the **whole body** off the method — only the part behind it. See
-[A step in radius](#a-step-in-radius) below. A rocket whose shape sits near one of the thresholds
-that are left is still worth checking on both sides.
+**The step stayed**, and [M1.8e15](../decisions-and-roadmap.md#m1-8e15) says why: the march needs a
+profile without a jump in it, so a step needs a model of its own rather than a decision about an
+existing one, and the obvious fix turned out to cost more than it saved. What that milestone did
+measure is in [A step in radius](#a-step-in-radius) below. Its threshold is finer than it sounds —
+a billionth of the radius, a few hundredths of a nanometre on a 54 mm body — so any step a person
+would draw is past it, and a rocket whose shape sits near one of these thresholds is worth checking
+on both sides.
 
 **What a flight takes.** The method covers the nose, when it is the first body (a blunt or vertical
 tip behind its [Newtonian cap](#blunt-tips)), the body tubes straight behind it at the same radius,
@@ -824,8 +820,8 @@ lowest Mach at which NASA measured the Arcas Robin
 ([ADR-034](https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-034-the-bodys-supersonic-normal-force-in-flight-tabulated-shock-expansion-shares-joined-linearly-from-mach-12-2026-09-19),
 the decision behind it). Small changes in shape can still switch a body between the two models,
 for example a nose so steep that the method never holds at any Mach up to 5, so the rocket
-keeps slender-body theory throughout ([Where that choice still
-jumps](#the-body-faster-than-sound-in-a-flight) lists the ones that are left, and what each costs).
+keeps slender-body theory throughout
+([issue #87](https://github.com/nrdptel/hpr-sim/issues/87)).
 
 **A worked example: the Arcas Robin's body.** NASA measured the Arcas Robin's body
 without fins in a wind tunnel ([TN D-4014](#code-and-sources)). Flown through a flight's own code,
@@ -994,8 +990,9 @@ stability margin, and a good deal more restoring force.
 
 **What it leaves out.** The lip still has drag, and its own wake rule there ([ADR-030][adr-030]).
 Nothing here measures a lip's lift directly: the tunnel gives forces for the whole body, and the
-moment bounds the share rather than measuring it. The shelter used to be a switch in shape, and a
-large one, because it decides whether the *whole body* flies the method. Since
+moment bounds the share rather than measuring it. The shelter used to be a switch in shape, of the
+family [issue #87](https://github.com/nrdptel/hpr-sim/issues/87) tracks, and a large one, because
+it decides whether the *whole body* flies the method. Since
 [M1.8e10](../decisions-and-roadmap.md#m1-8e10) the rise no longer switches it: on the test rocket
 at Mach 3 and 4°, lips rising 0.2499 and 0.2501 of the boattail's drop now agree to a
 ten-thousandth. What is left is how far apart the models are at one shape — 33.0% of the normal
@@ -1275,7 +1272,7 @@ already uses faster than sound, not because it is known to be closer.
   band, is unsettled.** It is tracked
   on its own — [issue #117](https://github.com/nrdptel/hpr-sim/issues/117) and
   [M1.8e19](../decisions-and-roadmap.md#m1-8e19) — rather than under [issue
-  #87](https://github.com/nrdptel/hpr-sim/issues/87), now closed, because
+  #87](https://github.com/nrdptel/hpr-sim/issues/87), because
   [M1.8e15](../decisions-and-roadmap.md#m1-8e15) is to narrow that issue to the step alone. The
   two edges are quoted to five digits because that is about what they carry: each is the root of a
   difference between two pressures within a thousandth of each other, and the three operating
@@ -1512,56 +1509,74 @@ That pins the arithmetic, not the physics: an error in the rule itself would be 
 
 #### A step in radius
 
-**In short:** a **step** is a joint where one part's radius does not match the next one's — a 54 mm
-tube butted onto a 75 mm one, a motor retainer standing off the airframe. The march cannot cross
-one: its tangent body needs a profile without a jump in it. Since
-[M1.8e15](../decisions-and-roadmap.md#m1-8e15) that stops the march **where the step is** and
-leaves the body ahead of it on the method, instead of taking the whole rocket off it. The step
-itself, and everything behind it, takes [slender-body
-theory](../glossary.md#slender-body-theory). How far to trust it: the step's own force is
-slender-body theory's, which is an extrapolation even below Mach 1, and **nothing measures a
-stepped body faster than sound** — no source in hand gives one. The decision record is
-[ADR-049][adr-049].
+**In short:** a **step** is a joint where one part's radius does not match the next one's, so the
+rocket's outline jumps rather than bending — a 54 mm tube butted straight onto a 75 mm one, or a
+coupler left standing proud of the airframe. The march cannot cross one: the
+[tangent body](#bodies-faster-than-sound) it walks along needs an outline without a jump in it.
+What hpr does about that is drop the **whole body** to [slender-body
+theory](../glossary.md#slender-body-theory), at every speed — a rocket with a step reads as though
+the method did not exist. [M1.8e15](../decisions-and-roadmap.md#m1-8e15) measured what that costs
+and tried the obvious fix; the fix was worse, so the behaviour is unchanged and the cost is
+published instead. The decision record is [ADR-049][adr-049]. **Nothing measures a stepped body
+faster than sound**, so neither the present reading nor any replacement has a reference.
 
-**What it is worth.** On the tests' straight rocket — a tangent-ogive nose and three tubes, 1.3 m
-long on a 54 mm reference — with the last 0.3 m tube stepped down, at Mach 3 and 4°:
+**What it costs.** On the tests' straight rocket — a tangent-ogive nose 0.25 m and three tubes of
+0.7, 0.05 and 0.3 m, all 27 mm in radius, on a 54 mm reference — at Mach 3 and 4°. With no step it
+reads `C_N` = 0.899592, its centre of pressure 16.9492
+[calibres](../glossary.md#calibre-caliber) aft of the nose tip. Each row is the change from that:
 
-| the step | the normal force moves | the centre of pressure moves |
+| the step, and which joint it is at | normal force | centre of pressure |
 |---|---|---|
-| 2.700001e−11 m, where the march stops | −1.2936e−4 | −4.2996e−4 calibres |
-| 1 µm | −1.4588e−4 | −4.7702e−4 calibres |
-| 0.1 mm | −1.7801e−3 | −5.1434e−3 calibres |
-| 1 mm | −1.6484e−2 | −4.8211e−2 calibres |
-| 2 mm | −3.2502e−2 | −9.7455e−2 calibres |
+| 2.8e−11 m, just past the threshold, at any of the three joints | −8.65% | +1.0285 calibres |
+| 1 mm, at the nose's joint | −10.62% | +1.1938 calibres |
+| 1 mm, at the last joint | −10.29% | +0.9949 calibres |
+| 2 mm, at the nose's joint | −12.55% | +1.3593 calibres |
+| 2 mm, at the last joint | −11.89% | +0.9597 calibres |
 
-Before this milestone the first row read **−8.7% and 1.03 calibres**: a step of 27 picometres —
-a ten-thousandth of a human hair — moved a rocket's whole body between two models. It now costs
-0.013% and four ten-thousandths of a calibre, and what is left grows with the step rather than
-standing at the threshold's size. `a_step_stops_the_march_where_it_is` pins every figure in the
-table.
+A positive centre-of-pressure change means the reading moves **aft**, so a rocket that trips this
+reads *more* stable than the same rocket drawn flush. At the threshold the shape is flush to a part
+in a billion, so the whole difference is the method itself, and it is the same wherever the step
+is; where the step sits starts to matter only once the step is big enough to change the shape.
+`a_step_takes_the_whole_body_off_the_method` pins every figure, and the flush rocket's own readings
+with it.
 
-**Where the march stops, and why it is so fine.** The tangent body merges two elements that lie
-within a **billionth of the radius** of each other and refuses them past that — 27 picometres on a
-27 mm body. That number is not a judgement about steps; it is the width of the rounding the
-element layout can absorb. The run's coverage now uses the same tolerance on the same quantity.
-It used to use a looser one, a millionth of the *area*, and the two disagreed by 500×: a step
-between 27 picometres and 13.5 nanometres was let into the run and then choked the march, so the
-body got no reading at all. That gap is closed.
+**Where the threshold is, and why it is so fine.** Two elements of the tangent body count as one
+surface when their radii agree to **a billionth of the radius** — 2.7e−11 m, 27 picometres, on a
+27 mm radius, bisected. Past that the outline has a genuine jump in it and the march has nothing to
+walk along. That number is not a judgement about steps; it is the width of the rounding the tangent
+body can absorb, and **every step anyone could build or draw is far past it**, so in practice a step
+always takes the body off the method. (The run's own coverage gate is 500× looser — a millionth of
+the *area*, 13.5 nm of radius — so it never decides anything here.)
+
+**What a fix has to handle.** The obvious one is to stop the march *at* the step and let the body
+ahead of it keep the method, the way the run already ends at a flare. That was built and measured,
+and it failed three ways, each of which a real fix has to answer:
+
+- **Which shape stopped the run, not whether the joint was flush.** The run closes in one place for
+  many reasons. Keying off the joint makes a *non-conical* flare, or a lip out of its wake, keep
+  the forebody marched as soon as its fore radius is a picometre off — a **new** jump of +7.2% and
+  0.69 calibres, where today the reading is continuous.
+- **What is behind the step.** [ADR-034][adr-034], the decision that the method covers a body or
+  nothing, rejected mixing the two models on a measured case. A step's
+  remainder is supposed to be a plain tube, but "the run stopped at a step" does not make it one:
+  with a boattail behind the step, the mixture's moment is more negative than **both** pure models
+  at every plausible centre of gravity — the same pathology.
+- **What the march itself accepts.** Matching the coverage gate to the tangent body's tolerance
+  only matches it where the slope does not change. At a joint where it does, a band survives in
+  which the body gets no reading at all: on the finned rocket, a step **up** of 1e−12 to 2.7e−11 m
+  costs −11.3% and 1.10 calibres, and is not monotone in the step.
 
 **What it leaves out.**
 
 - **The step's own force is slender-body theory's, at any speed.** `(2/A_ref)ΔA` at the joint, the
-  limit of a transition whose length goes to zero — [B67] p. 18 assumes no discontinuities, so
-  this goes beyond its source, and there is no compressibility term. A forward-facing step at
-  supersonic speed stands a detached shock with a separated pocket ahead of it; none of that is
-  modelled.
-- **Nothing measures it.** MIL-HDBK-762 treats a rearward-facing step only as base drag,
-  TN 3527 ([S56]) needs a continuous profile, and no pinned report gives a stepped body's normal
-  force. So the choice between "march up to the step" and "take the whole body off the method" is
-  argued, not measured: what is measured is that the second costs 670 times more at the threshold.
-- **A residue is left at the threshold.** It is the last part's own share, which the march no
-  longer reaches, and it does not go to zero as the step does. On a rocket whose step is further
-  forward it is larger, because more of the body is behind it.
+  limit of a transition whose length goes to zero — [B67] p. 18 assumes no discontinuities, so this
+  goes beyond its source, and there is no compressibility term. A forward-facing step at supersonic
+  speed stands a detached shock with a separated pocket ahead of it; none of that is modelled.
+- **No source gives a stepped body's normal force faster than sound.** MIL-HDBK-762 treats a
+  rearward-facing step only as base drag, TN 3527 ([SD56]) needs a continuous profile, and nothing
+  else pinned here covers one. So "take the whole body off the method" is not known to be right
+  either; it is the reading that does not mix two models, which is the only argument for it.
+- **One body, one placement sweep.** Three joints on one rocket at one Mach number and one angle.
 
 
 ### Blunt tips
@@ -1978,10 +1993,8 @@ a sixth of a calibre, and the force that holds the rocket into the wind grows by
   measured here. The two starts in the tables above differ by more than it alone, since their
   pressure and total pressure differ too: 2.53 against 2.87 per radian on the Arcas nose at
   Mach 1.5, and 1.70 against 1.70 on the sphere-cone at Mach 2.96.
-- **Two switches in shape**, of the family issue #87 collected before it was closed
-  ([M1.8e16](../decisions-and-roadmap.md#m1-8e16) and [issue #121: a pointed tip past the cone
-  tables](https://github.com/nrdptel/hpr-sim/issues/121) own them now): a vertical-tip nose steeper
-  than the cap's handover all the way to its base gets no
+- **Two switches in shape**, of the family [issue #87](https://github.com/nrdptel/hpr-sim/issues/87)
+  tracks: a vertical-tip nose steeper than the cap's handover all the way to its base gets no
   method at all, and a pointed tip steeper than the cone tables' 30° is refused where a vertical
   one flies. The pointed tip's edge was Fig. 2's 24° until
   [M1.8e11](../decisions-and-roadmap.md#m1-8e11). The vertical tip's edge is the handover's cap,
@@ -3928,5 +3941,6 @@ ellipse's integrals ([N09] eq. 3.70–3.71); the supersonic forcing and damping 
 [adr-045]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-045-where-a-flares-march-stops-is-the-corners-isentropic-turn-not-the-shock-detaching-2026-09-20
 [adr-047]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-047-a-flare-flies-the-method-where-its-corners-shock-is-attached-and-is-read-drawn-out-where-it-is-not-2026-09-20
 [adr-048]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-048-what-a-marched-flare-is-worth-measured-against-tn-d-4865s-model-2-2026-09-20
-[adr-049]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-049-a-step-in-radius-stops-the-march-where-it-is-and-leaves-the-body-ahead-of-it-marched-2026-09-20
+[adr-049]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-049-what-a-step-in-radius-costs-and-why-the-obvious-fix-is-not-taken-yet-2026-09-20
+[adr-034]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-034-the-bodys-supersonic-normal-force-in-flight-tabulated-shock-expansion-shares-joined-linearly-from-mach-12-2026-09-19
 [gap-fixture]: https://github.com/nrdptel/hpr-sim/blob/main/validation/fixtures/aero/arcas-robin-gap.json
