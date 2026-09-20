@@ -4,10 +4,10 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
 
 ## Now
 
-- **Current milestone:** M1.8e11 Fig. 2's edge, from Sims
-- **Order:** M1.8e11, M1.8e12, then M3.1
-- **Run:** M0.1-M0.4, M1.1-M1.7, M2.1, M1.8a to M1.8e10 shipped; https://nrdptel.github.io/hpr-sim/
-- **Last updated:** 2026-09-20 (M1.8e10 done)
+- **Current milestone:** M1.8e12 The blunt tip's handover, past 24°
+- **Order:** M1.8e12, M1.8e13, then M3.1
+- **Run:** M0.1-M0.4, M1.1-M1.7, M2.1, M1.8a to M1.8e11 shipped; https://nrdptel.github.io/hpr-sim/
+- **Last updated:** 2026-09-20 (M1.8e11 done)
 
 ## Handoff (overwrite each session)
 
@@ -25,25 +25,24 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
 - **M1.8a to e1 (ADR-027 to ADR-033):** `cargo xtask aero` writes the aero fixtures; NTRS serves
   five of ADR-030's PDFs with a 436-byte header (pinned as served). Scratch: `refs/scratch/m18*/`.
 - **M1.8e2 to e8** (ADR-034, 037, 038, 039): `SupersonicBody` tabulates the method's shares every
-  0.05 Mach, lazily, joined from max(1.2, its bisected start) over 0.3. Body lift is Jorgensen's
-  (`crossflow.rs`); a boattail W&P's increment (`supersonic_boattail.rs`); a vertical tip TN
-  D-4865's cap (`blunt_tip.rs`), marched from the tangent cone; `BodyModel::BEFORE_M1_8E6` keeps the
-  old rules. A lip wholly in a boattail's wake (the drag buildup's `WakeTerm`) carries no slope, so
-  both Arcas designs fly the method to their base (e8, `arcas-robin-lip.json`). #98: a boattail
-  doubles the table's build. #101: a vanishing cap keeps its cone's entropy.
-- **M1.8e9** (ADR-040): #90's cap holds W&P's correlation at 16° for steeper boattails, the extra
-  bounded by potential flow; a fade to zero was rejected (it moves the CP aft, 0.67 to 1.35 calibres
-  at 30°). `ShockExpansionBody::element_flows` is new public API. M1.8e's 15% bullet, in
+  0.05 Mach, lazily, joined from max(1.2, its bisected start) over 0.3. Body lift is Jorgensen's; a
+  boattail W&P's increment; a vertical tip TN D-4865's cap, marched from the tangent cone;
+  `BodyModel::BEFORE_M1_8E6` keeps the old rules. #98: a boattail doubles the table's build. #101:
+  a vanishing cap keeps its cone's entropy.
+- **M1.8e9** (ADR-040): #90's cap holds W&P's correlation at 16° for steeper boattails, bounded by
+  potential flow; a fade to zero was rejected (it moves the CP aft). M1.8e's 15% bullet, in
   `arcas-robin-body-gap.json`: met at Mach 3.96 and 4.63, outside on six body-alone rows; the
-  α→0/curvature split is soft (the tunnel's fit correlates at −0.96), short@2.96 a counterexample.
+  α→0/curvature split is soft (the tunnel's fit correlates at −0.96).
 - **M1.8e10** (ADR-041): #87's five switches flip one gate (`supersonic_run`), so each is worth the
   whole body. The lip's **rise** is now a weight (`SupersonicBody::shape_weight`, the drag
   buildup's whole `wake_fraction`); five switches keep measured sizes, including the lip's own
   length (−33.0%, 1.77 cal), which #87 never listed. #106: station vs CP where the weight < 1.
-- **M1.8e11 next:** SP-3007 (pinned, used by `aero_gap.rs`) tabulates cone slopes to 30°, retiring
-  Fig. 2's 24° edge for both tip switches; `CONE_ANGLES_DEG`/`CONE_SLOPES` hold Fig. 2, and
-  `MAX_HANDOVER_RAD` exists only because of that edge. Then M1.8e12: nothing can be cited for a
-  step's or a flare's band. #97: the long model's M1.8a readings may be biased.
+- **M1.8e11** (ADR-042): `CONE_SLOPES` runs to 30°, Fig. 2's chart to 24° then SP-3007 Table 2 at
+  25/27.5/30 (they agree to 0.0021 per rad at 22.5°). Nothing below 24° moved, so no fixture did.
+- **M1.8e12 next:** `MAX_HANDOVER_RAD` (24°) now exists only as a choice — the slopes reach 30°.
+  Raising it moves every committed blunt nose from about Mach 2.1, so fixtures and the guide's
+  tables move together. Then M1.8e13: nothing can be cited for a step's or a flare's band. #97:
+  the long model's M1.8a readings may be biased.
 - **M2.2's OpenRocket oracle** (ADR-035): orhelper is dropped, so decide how to drive the jar when
   M2.2 starts; JPype loads the JVM in-process, only a subprocess isolates, and the jar needs Java 17
   exactly (`[java] max_major` in the refs lock keeps doctor off a newer one).
@@ -55,6 +54,10 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
 
 ## Done log (newest first, keep about 15)
 
+- 2026-09-20: M1.8e11 Cone slopes past Fig. 2's edge (ADR-042): SP-3007 Table 2 carries the same
+  theory from 24° to 30°, so a fineness-1 cone flies; the pointed tip's switch moves to 30° and
+  falls to −7.7%/0.81 cal; no fixture moved.
+
 - 2026-09-20: M1.8e10 The lip's shelter, weighed not switched (ADR-041): the drag buildup's wake
   fraction is now the method's weight, so a lip drawn taller moves a rocket between the models
   instead of switching it (was −33% and 1.77 calibres); five switches left, each measured.
@@ -65,12 +68,9 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
 - 2026-09-19: M1.8e8 The lip faster than sound (ADR-039): a lip in a boattail's wake carries nothing
   above the join, so every M1.8a row from Mach 1.5 is within the slope's 15% (+9.4% to −3.3%, was
   −28.0%); the long model's CP at Mach 1.8 and 2.3 is 0.5 calibres out.
-- 2026-09-19: M1.8e7 Blunt tips (ADR-038): power-series, Haack and elliptical noses fly the method
-  behind TN D-4865's cap; its sphere-cone like for like −1.2% to +32.1%.
-- 2026-09-19: M1.8e6 Crossflow and the boattail (ADR-037): Jorgensen's body lift at every speed and
-  W&P's measured boattail; like for like the body reads +3.4% to +41.0% (was +14.9% to +73.2%).
-- 2026-09-19: M1.8e2 to e5 (ADR-034, 036): the body's supersonic shares in flight, boattails and
-  their tubes, and the gap sized source by source.
+- 2026-09-19: M1.8e7 Blunt tips (ADR-038): power-series, Haack and elliptical noses fly behind TN
+  D-4865's cap; its sphere-cone like for like −1.2% to +32.1%. e2 to e6 before that.
+
 
 ## Needs Neer (blocking or one-way decisions; the session keeps working on other things)
 

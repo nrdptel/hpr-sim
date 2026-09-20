@@ -3894,10 +3894,10 @@ mod tests {
                 (-0.2749, 0.2872),
             ),
             (
-                "a pointed tip past 24°",
-                at(&coned(23.999)),
-                at(&coned(24.002)),
-                (-0.1041, 1.1395),
+                "a pointed tip past the cone tables' 30°",
+                at(&coned(29.999)),
+                at(&coned(30.002)),
+                (-0.0770, 0.8107),
             ),
             (
                 "a vertical tip steeper than the handover",
@@ -3906,6 +3906,17 @@ mod tests {
                 (-0.0699, 0.6383),
             ),
         ];
+        // Since M1.8e11 the cone tables reach 30°, so a tip at TN 3527 Fig. 2's old 24° edge no
+        // longer switches anything: both sides fly the method and agree to a part in a million.
+        let (below, above) = (at(&coned(23.999)), at(&coned(24.002)));
+        assert!(
+            below.2 && above.2,
+            "a 24° tip flies the method on both sides now"
+        );
+        assert!(
+            (above.0 / below.0 - 1.0).abs() < 1e-4 && (above.1 - below.1).abs() < 1e-4,
+            "across Fig. 2's old edge: {below:?} to {above:?}"
+        );
         for (what, covered, bare, (want_force, want_calibers)) in switches {
             assert!(
                 covered.2 && !bare.2,
