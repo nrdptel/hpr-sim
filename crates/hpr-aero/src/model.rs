@@ -40,6 +40,7 @@ use std::sync::{Arc, OnceLock};
 use hpr_design::{Layout, Part, PlacedComponent};
 use serde::{Deserialize, Serialize};
 
+use crate::afterbody::SEPARATION_ONSET_RAD;
 use crate::body::{BodyGeometry, sinc};
 use crate::crossflow::BodyLift;
 use crate::drag::{
@@ -287,17 +288,31 @@ impl SupersonicRun {
                 .ok()?
                 .last()?;
             let fore_radius_m = boattail.fore_radius_m;
-            let increment = wp_slope(
-                mach,
-                fore_radius_m,
-                boattail.aft_radius_m,
-                boattail.length_m,
-            )
-            .ok()?
-                * PI
-                * fore_radius_m
-                * fore_radius_m
-                / reference_area_m2;
+            // Issue #90's cap. Washington and Pettis measured boattails of 4° to 9.5°, whose
+            // flow follows the surface; past about 16° it separates (Cubbage, the angle the drag
+            // buildup uses, `crate::afterbody::SEPARATION_ONSET_RAD`) and nothing measures what
+            // the body then carries. So the correlation is read no steeper than 16°: a boattail
+            // past it takes the increment of one of the same radii drawn out to that angle. The
+            // length only enters the correlation; the centre of pressure stays on the real
+            // boattail. Continuous in shape (at 16° the two lengths are equal), and it holds the
+            // lift the boattail takes off rather than letting it go to zero, which would move the
+            // centre of pressure aft and make a steep boattail look more stable than measured.
+            let drop_m = fore_radius_m - boattail.aft_radius_m;
+            let read = |length_m| wp_slope(mach, fore_radius_m, boattail.aft_radius_m, length_m);
+            let at_true_angle = read(boattail.length_m).ok()?;
+            let held = read(boattail.length_m.max(drop_m / SEPARATION_ONSET_RAD.tan())).ok()?;
+            // How far the holding may go. Reading a longer boattail walks Fig. 5's argument
+            // toward zero, where the curve comes from the report's lowest supersonic runs
+            // (`crate::supersonic_boattail`) and passes Munk's slender-body line, which
+            // RD-TM-68-5 plots for comparison at subsonic speeds (p. 3). hpr does not invent a
+            // length and then read that branch: the *extra* the holding removes stops at
+            // potential flow's `2 (A_aft − A_fore)/A_fore`. A boattail's read at its own length
+            // is never clipped, whatever it says — that is the correlation as published, and a
+            // genuinely long boattail reads the same branch unbounded. At 16° the two reads are
+            // equal, so this is continuous in shape.
+            let ratio = boattail.aft_radius_m / fore_radius_m;
+            let measured = held.max(at_true_angle.min(2.0 * (ratio * ratio - 1.0)));
+            let increment = measured * PI * fore_radius_m * fore_radius_m / reference_area_m2;
             let centre_m =
                 self.fore_m[index] + wp_centre_fraction(mach) * boattail.length_m - vertex_m;
             shares[index] = SegmentSlope {
@@ -2732,6 +2747,553 @@ mod tests {
         let narrowing = model(&rocket);
         assert!(narrowing.bodies().last().unwrap().slope_per_rad < 0.0);
         assert!(narrowing.supersonic_body().is_none());
+    }
+
+    /// Washington and Pettis's correlation is read no steeper than the angle where the flow
+    /// separates, 16° (Cubbage, [issue #90](https://github.com/nrdptel/hpr-sim/issues/90)): a
+    /// steeper boattail takes the increment of one of the same radii drawn out to 16°. Shallower
+    /// boattails are untouched, the increment is continuous in the angle, and it never runs away
+    /// or falls to zero, which would move the centre of pressure aft of where anything measured.
+    #[test]
+    fn a_separating_boattail_reads_the_correlation_at_its_steepest_measured_angle() {
+        // Mach 1.5, where the held read and the true reads at 17° and 23° sit on Fig. 5's curve
+        // (30° and 40° run past its last entry and clamp, but against a held read that does not).
+        // At Mach 3 every read clamps to the same number and the assertions below would all be
+        // identities: the test then passes with the hold deleted, inverted or moved.
+        let mach = 1.5;
+        let ogive = nose(NoseShape::Ogive { radius_ratio: 1.0 }, 0.25, 0.027);
+        let Part::NoseCone(ogive) = ogive else {
+            unreachable!("`nose` builds a nose cone")
+        };
+        // The test rocket's boattail redrawn at each angle from the same fore radius, and what the
+        // method gives a cylinder of the same length in its place.
+        let kept_pair = |at: f64, half_angle_deg: f64| {
+            let length_m = (0.027 - 0.022) / half_angle_deg.to_radians().tan();
+            let mut rocket = finned_rocket(4);
+            rocket.stages[0].components[2].part = body_part(length_m, 0.027, 0.022);
+            let model = model(&rocket);
+            let a_ref = model.reference_area_m2();
+            let table = model
+                .supersonic_body()
+                .unwrap_or_else(|| panic!("a table at {half_angle_deg}°"));
+            let share = table.share(2, at).expect("the boattail's share").0;
+            let in_its_place = ShockExpansionBody::new(
+                &[
+                    BodySegment::Profile {
+                        profile: ogive.profile().unwrap(),
+                    },
+                    BodySegment::Cylinder {
+                        length_m: 0.7,
+                        radius_m: 0.027,
+                    },
+                    BodySegment::Cylinder {
+                        length_m,
+                        radius_m: 0.027,
+                    },
+                ],
+                DEFAULT_ELEMENTS_PER_CURVE,
+            )
+            .unwrap();
+            let cylinder = in_its_place.segment_slopes(at, a_ref).unwrap()[2].slope_per_rad;
+            let raw = |l: f64| {
+                crate::supersonic_boattail::wp_slope(at, 0.027, 0.022, l).unwrap()
+                    * PI
+                    * 0.027
+                    * 0.027
+                    / a_ref
+            };
+            // The increment the rocket flies, over the correlation read at the true angle.
+            (share - cylinder, raw(length_m))
+        };
+        let kept = |half_angle_deg: f64| kept_pair(mach, half_angle_deg);
+        let kept_at = |at: f64, half_angle_deg: f64| kept_pair(at, half_angle_deg).0;
+        let at_16 = (0.027 - 0.022) / 16.0_f64.to_radians().tan();
+        let close = |got: f64, want: f64, what: &str| {
+            assert!(
+                (got - want).abs() < 0.02 * want.abs(),
+                "{what}: {got} against {want}"
+            );
+        };
+        // Shallower than the onset: the correlation as measured, untouched.
+        for angle in [8.0, 15.0, 16.0] {
+            let (flown, raw) = kept(angle);
+            close(flown, raw, "read at the true angle");
+        }
+        // Steeper: held at the 16° geometry, the same for every angle past it, never zero, and
+        // strictly more lift taken off than reading the true angle would give. Past about 45° the
+        // method no longer covers the body at all and the rocket keeps slender-body theory (a
+        // switch of its own, issue #87), so the cap is read below that.
+        // Scaled onto the rocket's reference area, as the flown increment is.
+        let a_ref = model(&finned_rocket(4)).reference_area_m2();
+        let at_16_read = crate::supersonic_boattail::wp_slope(mach, 0.027, 0.022, at_16).unwrap()
+            * PI
+            * 0.027
+            * 0.027
+            / a_ref;
+        for angle in [17.0, 23.0, 30.0, 40.0] {
+            let (flown, raw) = kept(angle);
+            let (held, _) = kept(16.0);
+            close(flown, held, "held at 16°");
+            // The cap's own angle, read straight from the correlation at the 16° length.
+            close(flown, at_16_read, "the correlation at the 16° geometry");
+            assert!(flown < 0.0, "{angle}°: the boattail still takes lift off");
+            // The correlation read at the true angle takes off strictly less, which is the
+            // optimistic side: holding it keeps the centre of pressure forward of that.
+            assert!(flown < raw, "{angle}°: {flown} against {raw} read raw");
+        }
+        // What the choice is worth, and which way it runs: the body's centre of pressure with the
+        // increment held at 16°, against the same body with the boattail's increment faded to
+        // nothing (the other honest limit for separated flow, a cylinder's share alone). Letting
+        // it fade moves the centre of pressure aft, so the rocket reads more stable.
+        let length_m = (0.027 - 0.022) / 30.0_f64.to_radians().tan();
+        let mut steep = finned_rocket(4);
+        steep.stages[0].components[2].part = body_part(length_m, 0.027, 0.022);
+        steep.stages[0].components.truncate(3);
+        let steep = model(&steep);
+        let body_cp_calibers = |at: f64, increment_kept: bool| {
+            let parts = steep.components(&Flow::axial(at)).unwrap();
+            let (mut slope, mut moment) = (0.0, 0.0);
+            for (index, part) in parts.iter().take(steep.bodies().len()).enumerate() {
+                let mut share = part.normal_force.slope_per_rad;
+                let station = part.normal_force.cp_station_m.unwrap_or(0.0);
+                if index == 2 && !increment_kept {
+                    share -= kept_at(at, 30.0);
+                }
+                slope += share;
+                moment += share * station;
+            }
+            moment / slope / 0.054
+        };
+        // The gap grows as the speed falls, so it is quoted as a range, not one number.
+        let gaps: Vec<(f64, f64)> = [1.5_f64, 2.0, 3.0, 4.63]
+            .iter()
+            .map(|at| {
+                (
+                    *at,
+                    body_cp_calibers(*at, false) - body_cp_calibers(*at, true),
+                )
+            })
+            .collect();
+        for (at, gap) in &gaps {
+            assert!(
+                *gap > 0.6,
+                "Mach {at}: the fading rule sits {gap} calibres aft"
+            );
+        }
+        // Every value the guide's table quotes, pinned.
+        for (at, want) in [(1.5, 1.35), (2.0, 0.91), (3.0, 0.75), (4.63, 0.67)] {
+            let got = gaps
+                .iter()
+                .find(|(m, _)| (m - at).abs() < 1e-9)
+                .expect("a measured gap")
+                .1;
+            assert!(
+                (got - want).abs() < 0.02,
+                "Mach {at}: the gap is {got} calibres, the guide says {want}"
+            );
+        }
+        // Continuous in the angle, at the cap and either side of it. Below the cap the read
+        // moves with the angle, so this is not zero: over ±1e-6 of a degree it is a few times
+        // 1e-8, where a switch at the cap would show as the 7e-3 that separates the held and raw
+        // reads just past 16°.
+        for angle in [15.9_f64, 16.0, 16.1] {
+            let (below, above) = (kept(angle - 1e-6).0, kept(angle + 1e-6).0);
+            assert!((above - below).abs() < 1e-6, "{angle}°: {below} to {above}");
+        }
+        assert!((at_16 - (0.027 - 0.022) / 16.0_f64.to_radians().tan()).abs() < 1e-15);
+    }
+
+    /// Holding the correlation at 16° reads it at a longer boattail, which walks left along
+    /// Fig. 5 toward the peak near Mach 1 its points come from. That branch passes Munk's
+    /// slender-body line, so the extra the holding takes off stops at potential flow. The read at
+    /// the boattail's true angle is never clipped: that is the measurement, wherever it sits.
+    #[test]
+    fn holding_the_correlation_stops_at_potential_flow() {
+        // A 30° boattail to a twentieth of the radius at Mach 1.42: held −2.077, true −0.981
+        // and potential flow −1.995 per radian on the boattail's own area, so the bound bites.
+        // The window is narrow — this shape's table starts at Mach 1.3906 and the held read
+        // stops passing potential flow at 1.4509 — so the Mach is checked against the join.
+        let (fore_radius_m, aft_radius_m, mach) = (0.027_f64, 0.05 * 0.027_f64, 1.42_f64);
+        let slender = 2.0 * ((aft_radius_m / fore_radius_m).powi(2) - 1.0);
+        let length_m = (fore_radius_m - aft_radius_m) / 30.0_f64.to_radians().tan();
+        let mut rocket = finned_rocket(4);
+        rocket.stages[0].components[2].part = body_part(length_m, fore_radius_m, aft_radius_m);
+        rocket.stages[0].components[3].part = body_part(0.3, aft_radius_m, aft_radius_m);
+        let steep = model(&rocket);
+        let a_ref = steep.reference_area_m2();
+        let per_boattail_area = PI * fore_radius_m * fore_radius_m / a_ref;
+        let table = steep.supersonic_body().expect("the method covers it");
+        // Inside the table: below its start `share` clamps to the lead row, and the numbers
+        // above would belong to a Mach number the assertions never touch.
+        assert!(
+            mach > table.join_start_mach,
+            "Mach {mach} is below the table's start, {}",
+            table.join_start_mach
+        );
+        let cylinder = ShockExpansionBody::new(
+            &[
+                BodySegment::Profile {
+                    profile: match nose(NoseShape::Ogive { radius_ratio: 1.0 }, 0.25, 0.027) {
+                        Part::NoseCone(ogive) => ogive.profile().unwrap(),
+                        _ => unreachable!("`nose` builds a nose cone"),
+                    },
+                },
+                BodySegment::Cylinder {
+                    length_m: 0.7,
+                    radius_m: fore_radius_m,
+                },
+                BodySegment::Cylinder {
+                    length_m,
+                    radius_m: fore_radius_m,
+                },
+            ],
+            DEFAULT_ELEMENTS_PER_CURVE,
+        )
+        .unwrap()
+        .segment_slopes(mach, a_ref)
+        .unwrap()[2]
+            .slope_per_rad;
+        let flown = table.share(2, mach).expect("the boattail's share").0 - cylinder;
+        // It flies potential flow's value exactly, not the held read that would pass it.
+        assert!(
+            (flown / per_boattail_area - slender).abs() < 2e-3,
+            "{} against potential flow's {slender}",
+            flown / per_boattail_area
+        );
+        let held = crate::supersonic_boattail::wp_slope(
+            mach,
+            fore_radius_m,
+            aft_radius_m,
+            (fore_radius_m - aft_radius_m) / SEPARATION_ONSET_RAD.tan(),
+        )
+        .unwrap();
+        assert!(
+            held < slender - 0.05,
+            "the held read {held} must pass the bound's {slender} to pin it"
+        );
+        // And a boattail inside the measured angles keeps its own read, even where that read is
+        // itself past potential flow: the bound belongs to the holding, not to the measurement.
+        let gentle_m = (fore_radius_m - 0.6 * fore_radius_m) / 4.0_f64.to_radians().tan();
+        let gentle =
+            crate::supersonic_boattail::wp_slope(1.5, fore_radius_m, 0.6 * fore_radius_m, gentle_m)
+                .unwrap();
+        let gentle_slender = 2.0 * (0.6_f64.powi(2) - 1.0);
+        assert!(
+            gentle < gentle_slender,
+            "the 4° read {gentle} should pass {gentle_slender}"
+        );
+        let mut gentle_rocket = finned_rocket(4);
+        gentle_rocket.stages[0].components[2].part =
+            body_part(gentle_m, fore_radius_m, 0.6 * fore_radius_m);
+        gentle_rocket.stages[0].components[3].part =
+            body_part(0.3, 0.6 * fore_radius_m, 0.6 * fore_radius_m);
+        let gentle_model = model(&gentle_rocket);
+        let gentle_table = gentle_model.supersonic_body().expect("a table");
+        let gentle_cylinder = ShockExpansionBody::new(
+            &[
+                BodySegment::Profile {
+                    profile: match nose(NoseShape::Ogive { radius_ratio: 1.0 }, 0.25, 0.027) {
+                        Part::NoseCone(ogive) => ogive.profile().unwrap(),
+                        _ => unreachable!("`nose` builds a nose cone"),
+                    },
+                },
+                BodySegment::Cylinder {
+                    length_m: 0.7,
+                    radius_m: fore_radius_m,
+                },
+                BodySegment::Cylinder {
+                    length_m: gentle_m,
+                    radius_m: fore_radius_m,
+                },
+            ],
+            DEFAULT_ELEMENTS_PER_CURVE,
+        )
+        .unwrap()
+        .segment_slopes(1.5, gentle_model.reference_area_m2())
+        .unwrap()[2]
+            .slope_per_rad;
+        let gentle_flown = gentle_table.share(2, 1.5).expect("the share").0 - gentle_cylinder;
+        let gentle_area = PI * fore_radius_m * fore_radius_m / gentle_model.reference_area_m2();
+        assert!(
+            (gentle_flown / gentle_area - gentle).abs() < 2e-3,
+            "the 4° boattail flies {} and its correlation reads {gentle}",
+            gentle_flown / gentle_area
+        );
+    }
+
+    /// How far the potential-flow bound reaches, read back out of the table rather than
+    /// recomputed. Over the boattails swept below — 16° to 53.6°, narrowing to between a
+    /// thousandth and three tenths of the fore radius — this pins three things: at the table's
+    /// rows a boattail never takes off more than potential flow, **except** where its own read
+    /// already passes it, since the bound never clips that; there, the table carries the
+    /// correlation as published; and the most the bound moves a **printed** coefficient, after
+    /// the join's weight. Deleting the bound fails this, and so does clipping the floor.
+    #[test]
+    fn what_the_potential_flow_bound_reaches() {
+        let fore_radius_m = 0.027_f64;
+        let ogive = nose(NoseShape::Ogive { radius_ratio: 1.0 }, 0.25, 0.027);
+        let Part::NoseCone(ogive) = ogive else {
+            unreachable!("`nose` builds a nose cone")
+        };
+        let mut worst = (0.0_f64, 0.0_f64, 0.0_f64, 0.0_f64);
+        let mut steepest_tabled = 0.0_f64;
+        let mut floor_angles: Vec<f64> = Vec::new();
+        for angle_deg in [16.0_f64, 16.5, 17.0, 17.25, 17.5, 30.0, 53.0, 53.5, 53.6] {
+            for ratio in [0.001_f64, 0.02, 0.25, 0.3] {
+                let aft_radius_m = ratio * fore_radius_m;
+                let drop_m = fore_radius_m - aft_radius_m;
+                let length_m = drop_m / angle_deg.to_radians().tan();
+                let held_length_m = drop_m / SEPARATION_ONSET_RAD.tan();
+                let ceiling = 2.0 * (ratio * ratio - 1.0);
+                let read = |mach: f64, length: f64| {
+                    crate::supersonic_boattail::wp_slope(mach, fore_radius_m, aft_radius_m, length)
+                        .unwrap()
+                };
+                // Skip shapes the bound cannot touch at any Mach the table covers: building a
+                // supersonic table is the expensive part of this sweep.
+                if read(1.2, held_length_m) >= ceiling {
+                    continue;
+                }
+                let mut rocket = finned_rocket(4);
+                rocket.stages[0].components[2].part =
+                    body_part(length_m, fore_radius_m, aft_radius_m);
+                rocket.stages[0].components[3].part = body_part(0.3, aft_radius_m, aft_radius_m);
+                let flown = model(&rocket);
+                let Some(table) = flown.supersonic_body() else {
+                    continue;
+                };
+                steepest_tabled = steepest_tabled.max(angle_deg);
+                let a_ref = flown.reference_area_m2();
+                let per_area = PI * fore_radius_m * fore_radius_m / a_ref;
+                // The method's share for a cylinder of the boattail's length in its place, which
+                // the flown share is the increment on top of.
+                let cylinder_body = ShockExpansionBody::new(
+                    &[
+                        BodySegment::Profile {
+                            profile: ogive.profile().unwrap(),
+                        },
+                        BodySegment::Cylinder {
+                            length_m: 0.7,
+                            radius_m: fore_radius_m,
+                        },
+                        BodySegment::Cylinder {
+                            length_m,
+                            radius_m: fore_radius_m,
+                        },
+                    ],
+                    DEFAULT_ELEMENTS_PER_CURVE,
+                )
+                .unwrap();
+                // The shares are computed at the table's rows: its lead row at the join, then
+                // every 0.05 Mach. Between rows the table interpolates, so a printed value can
+                // sit a little past the ceiling beside a row on the floor branch below; the
+                // guarantee belongs to the rows.
+                let mut rows = vec![table.join_start_mach];
+                let mut step = (table.join_start_mach * SUPERSONIC_STEPS_PER_MACH).ceil();
+                while step / SUPERSONIC_STEPS_PER_MACH <= 1.55 {
+                    rows.push(step / SUPERSONIC_STEPS_PER_MACH);
+                    step += 1.0;
+                }
+                for mach in rows {
+                    let Some((share, _)) = table.share(2, mach) else {
+                        break;
+                    };
+                    let cylinder =
+                        cylinder_body.segment_slopes(mach, a_ref).unwrap()[2].slope_per_rad;
+                    let increment = (share - cylinder) / per_area;
+                    if read(mach, length_m) >= ceiling {
+                        // The usual case: the boattail's own read is inside potential flow, so
+                        // the bound is what stops the hold. Read out of the table, the share a
+                        // rocket flies never passes potential flow.
+                        assert!(
+                            increment >= ceiling - 1e-12,
+                            "{angle_deg}° to {ratio} of the radius at Mach {mach}: the boattail \
+                             takes {increment} off, past potential flow's {ceiling}"
+                        );
+                    } else {
+                        // The floor: the boattail's own read already passes potential flow, and
+                        // that read is never clipped, so the hold does nothing here.
+                        assert!(
+                            increment <= ceiling,
+                            "{angle_deg}° to {ratio} at Mach {mach}: {increment} against {ceiling}"
+                        );
+                        // The boattail's own read, as published: the bound never clips it, so
+                        // the table carries the correlation itself here.
+                        let published = read(mach, length_m);
+                        assert!(
+                            (increment - published).abs() < 1e-9,
+                            "{angle_deg}° to {ratio} at Mach {mach}: {increment} against the \
+                             correlation's own {published}"
+                        );
+                        if !floor_angles.contains(&angle_deg) {
+                            floor_angles.push(angle_deg);
+                        }
+                    }
+                    // And how much of the holding that costs, against the unbounded read.
+                    let moved = (increment - read(mach, held_length_m)).abs()
+                        * per_area
+                        * table.weight(mach);
+                    if moved > worst.0 {
+                        worst = (moved, angle_deg, ratio, mach);
+                    }
+                }
+            }
+        }
+        // The floor is a sliver just above the hold's own angle, on the angles swept: the
+        // condition is that the boattail's own read passes the curve's Munk crossing, so it
+        // closes as the angle or the Mach number rises.
+        assert_eq!(
+            floor_angles,
+            [16.0, 16.5, 17.0, 17.25],
+            "the swept angles where a boattail's own read already passes potential flow"
+        );
+        // The steepest shape this sweep both tables and can bind: the method refuses steeper
+        // bodies, at an angle that depends on how far the boattail narrows.
+        assert!(
+            (steepest_tabled - 53.5).abs() < 1e-12,
+            "the steepest boattail swept that the method tables is {steepest_tabled}°"
+        );
+        assert!(
+            (worst.0 - 0.060).abs() < 5e-4,
+            "the bound moves a printed coefficient by at most {:.4} per rad, at {}° to {} of the \
+             radius at Mach {:.3}",
+            worst.0,
+            worst.1,
+            worst.2,
+            worst.3
+        );
+    }
+
+    /// Footnote 8's size, by hand, on a boattail **and the tube behind it**
+    /// ([issue #90](https://github.com/nrdptel/hpr-sim/issues/90)). On each straight element the
+    /// method's loading is `Λ(x) = (1 − e^(−η)) Λ_c + e^(−η) Λ₂`, `x` axial from its corner, and
+    /// `C_Nα = (2π/A_ref) ∫ Λ r dx` over it (TN 3527 eqs. 8, 9, 19). Footnote 8 gives a boattail
+    /// element the free stream's pressure and a tangent cone of 2 per radian (p. 12), checked
+    /// here against hard-coded values; the tube behind relaxes from the boattail's loading toward
+    /// `Λ_c = 0`, so its share is set by the decay rate alone.
+    ///
+    /// What this pins: the integration, the footnote's two tangent-cone terms, and that the two
+    /// segments' shares follow from the reported flow. What it does not pin: the decay rate `η`
+    /// itself, which comes from eq. 9 and is read from the method here.
+    #[test]
+    fn footnote_eights_boattail_share_by_hand() {
+        let a_ref = PI * 0.027 * 0.027;
+        let ogive = nose(NoseShape::Ogive { radius_ratio: 1.0 }, 0.25, 0.027);
+        let Part::NoseCone(ogive) = ogive else {
+            unreachable!("`nose` builds a nose cone")
+        };
+        let (length_m, fore_radius_m, aft_radius_m) = (0.05, 0.027, 0.022);
+        const TUBE_LENGTH_M: f64 = 0.2;
+        let body = ShockExpansionBody::new(
+            &[
+                BodySegment::Profile {
+                    profile: ogive.profile().unwrap(),
+                },
+                BodySegment::Cylinder {
+                    length_m: 0.7,
+                    radius_m: 0.027,
+                },
+                BodySegment::Profile {
+                    profile: hpr_design::Profile::transition(
+                        NoseShape::Conical {},
+                        length_m,
+                        fore_radius_m,
+                        aft_radius_m,
+                        false,
+                    )
+                    .unwrap(),
+                },
+                BodySegment::Cylinder {
+                    length_m: TUBE_LENGTH_M,
+                    radius_m: aft_radius_m,
+                },
+            ],
+            DEFAULT_ELEMENTS_PER_CURVE,
+        )
+        .unwrap();
+        let mach = 2.0;
+        let shares = body.segment_slopes(mach, a_ref).unwrap();
+        // The boattail is one straight element: the corner at its fore end, then a cone of
+        // half-angle −δ to its aft end.
+        let flows = body.element_flows(mach).unwrap();
+        let boattail = flows
+            .iter()
+            .rev()
+            .nth(1)
+            .copied()
+            .expect("the boattail's element");
+        let (load, decay) = (boattail.loading_per_rad, boattail.decay_per_m);
+        // Eq. 19's `r` at the corner is the boattail's fore radius.
+        assert!((boattail.corner_radius_m - fore_radius_m).abs() < 1e-12);
+        // Footnote 8 gives a boattail element the free stream's pressure and a tangent cone of 2
+        // per radian, so its loading relaxes toward `tan δ · 2`.
+        let delta = ((aft_radius_m - fore_radius_m) / length_m).atan();
+        let cone_load = delta.tan() * 2.0;
+        assert!((boattail.tangent_cone_loading_per_rad - cone_load).abs() < 1e-12);
+        assert!((boattail.tangent_cone_pressure_ratio - 1.0).abs() < 1e-12);
+        // C_Nα = (2π/A_ref) ∫ Λ(x) r(x) dx over a segment, by Simpson's rule on 4001 points.
+        let integrate = |span_m: f64, fore_r: f64, aft_r: f64, load: f64, cone: f64, decay: f64| {
+            let steps = 4000;
+            let mut sum = 0.0;
+            for i in 0..=steps {
+                let t = f64::from(i) / f64::from(steps);
+                let x = t * span_m;
+                let r = fore_r + (aft_r - fore_r) * t;
+                let e = (-decay * x).exp();
+                let lambda = (1.0 - e) * cone + e * load;
+                let weight = if i == 0 || i == steps {
+                    1.0
+                } else if i % 2 == 1 {
+                    4.0
+                } else {
+                    2.0
+                };
+                sum += weight * lambda * r;
+            }
+            2.0 * PI * (sum * span_m / (3.0 * f64::from(steps))) / a_ref
+        };
+        let by_hand = integrate(
+            length_m,
+            fore_radius_m,
+            aft_radius_m,
+            load,
+            cone_load,
+            decay,
+        );
+        assert!(
+            (shares[2].slope_per_rad - by_hand).abs() < 1e-6,
+            "{} against {by_hand}",
+            shares[2].slope_per_rad
+        );
+        // The tube behind it, which issue #90 asks for too: a cylinder's tangent cone carries no
+        // loading, so the decay alone takes its share from the boattail's exit loading to zero.
+        let tube = flows.last().expect("the tube's element");
+        assert!(tube.angle_rad.abs() < 1e-12 && tube.tangent_cone_loading_per_rad.abs() < 1e-12);
+        let tube_by_hand = integrate(
+            TUBE_LENGTH_M,
+            aft_radius_m,
+            aft_radius_m,
+            tube.loading_per_rad,
+            0.0,
+            tube.decay_per_m,
+        );
+        assert!(
+            (shares[3].slope_per_rad - tube_by_hand).abs() < 1e-6,
+            "the tube: {} against {tube_by_hand}",
+            shares[3].slope_per_rad
+        );
+        // The tube carries the larger part of the pair, so the decay sets most of the answer.
+        assert!(
+            tube_by_hand < by_hand && tube_by_hand < 0.0,
+            "the tube's {tube_by_hand} against the boattail's {by_hand}"
+        );
+        // And its size: footnote 8 takes far less lift off than slender-body theory's
+        // 2 (A_aft − A_fore)/A_ref.
+        let slender = 2.0 * (aft_radius_m.powi(2) - fore_radius_m.powi(2)) / (0.027 * 0.027);
+        assert!(
+            by_hand < 0.0 && by_hand / slender < 0.2,
+            "{by_hand} against slender-body theory's {slender}"
+        );
     }
 
     /// Washington and Pettis's boattail: the method's share for a cylinder of the boattail's

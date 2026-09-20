@@ -18,11 +18,15 @@
 //!
 //! **What it covers.** The models were conical boattails "with diameter ratios of 0.72 to 0.86
 //! and angles from 4 to 10 degrees" (p. 1), 0.82 to 1.18 diameters long, behind a cylinder; the
-//! correlation's points span `F`'s argument from about 0.3 to 5.4, its curve to 6.1. Past 6.1 hpr
-//! holds its end, an extrapolation, as is any boattail steeper, shorter or narrower than those
-//! tested. The data scatter about the curve by up to about 15%. Slender-body theory gives a
-//! boattail `2[(D_B/D)² − 1]` per radian at any Mach number (Munk's value, the dashed line on
-//! Fig. 5); the measured increment is 0.24 to 0.47 of that at the Arcas Robin's Mach numbers.
+//! correlation's points reach the peak near zero argument, with the next near 0.3 and the rest
+//! out to about 5.4; the curve is drawn to 6.1. Past 6.1 hpr
+//! holds its end, an extrapolation, as is any boattail steeper, shorter, **longer** or narrower
+//! than those tested: a long one reads the curve near zero argument, which comes from the
+//! report's lowest supersonic runs. The data scatter about the curve by up to about 15%.
+//! Slender-body theory gives a boattail `2[(D_B/D)² − 1]` per radian at any Mach number (Munk's
+//! value, which the report plots for comparison at subsonic speeds, p. 3). The measured curve
+//! runs from 0.23 to 1.58 times it, crossing at an argument of 0.635; it is 0.24 to 0.47 of it at
+//! the Arcas Robin's Mach numbers.
 //!
 //! See `docs/physics/aero.md` (*The body faster than sound in a flight*).
 
@@ -39,7 +43,9 @@ pub const WP_PARAMETERS: [f64; 24] = [
 /// `ΔC_Nα / [1 − (D_B/D)²]`, per degree on the cylinder's area, at [`WP_PARAMETERS`]: RD-TM-68-5
 /// Fig. 5, the supersonic side of the faired curve, read by tracing it on a 300-dpi scan to about
 /// ±0.0003 per degree (±0.02 per radian). At 0 (Mach 1) the curve peaks near −0.055, past the
-/// axis's last tick; from 0.3 to 1.2 it follows the points of model No. 1 (Mach 1.04 to 1.5).
+/// axis's last tick; from there to about 1.2 it follows model No. 1's points, the report's lowest
+/// supersonic runs. Their Mach numbers are not read off here: the report gives model No. 1 as
+/// Mach 0.8 to 4.5, 0.8 to 1.5 of it in the AEDC tunnel (p. 1).
 pub const WP_SLOPE_PER_DEG: [f64; 24] = [
     -0.05500, -0.05291, -0.05080, -0.04818, -0.04486, -0.04100, -0.03681, -0.03131, -0.02531,
     -0.02186, -0.01985, -0.01876, -0.01726, -0.01614, -0.01429, -0.01299, -0.01181, -0.01089,

@@ -561,7 +561,7 @@
     with body lift. A cited supersonic method for noses, boattails and crossflow. *Done when:*
     the Arcas Robin's body-alone `C_Nα` (fins off, TN D-4014) is within 15% at every Mach number
     from 1.5, and both configurations' `C_Nα` within 15% at Mach 3.96 and 4.63, or an ADR records
-    why not with the gap in the report. Split below into M1.8e1 to e9; e9 carries this bullet.
+    why not with the gap in the report. Split below into M1.8e1 to e10; e9 judged this bullet.
 
     - [x] **M1.8e1 The second-order shock-expansion method.** NACA TN 3527's method for a
       pointed body's `C_Nα` and CP at `α → 0`, the cylinder's lift behind the nose included; its
@@ -604,13 +604,20 @@
       nose tip flies a Newtonian cap ahead of TN 3527's method (NASA TN D-4865). *Done when:* flown
       with no jump at ±1e-9 in Mach; the Arcas Robin's committed nose (lip left off) through a
       flight's path in the report; TN D-4865's sphere-cone against its measured normal force.
-      *Result:* met; like for like, sphere-cone −1.2% to +32.1%; the committed nose, lip off, −4.8%
-      to +37.2%.
+      *Result:* met; like for like, sphere-cone −1.2% to +32.1%; the nose lip off −4.8% to +37.2%.
     - [x] **M1.8e8 The lip faster than sound** (from e7; ADR-039). *Done when:* flown with no jump
       at ±1e-9 in Mach; the committed Arcas Robin designs through a flight's path in the report.
       *Result:* met; a lip in a boattail's wake carries nothing, so both designs fly the method to
       their base: M1.8a's rows from Mach 1.5 are all within the slope's 15% (+9.4% to −3.3%).
-    - [ ] **M1.8e9 #87's model switches and #90's cap.** *Done when:* both closed; M1.8e's bullet.
+    - [x] **M1.8e9 #90's boattail cap, and M1.8e's 15% bullet judged** (split from e9's pair;
+      ADR-040). *Done when:* #90 closed (a bound on the boattail angle, and footnote 8's size
+      pinned by a hand calculation); M1.8e's 15% bullet met for the Arcas Robin's body alone, or an
+      ADR records why not with the gap in the report.
+      *Result:* met; the correlation is read no steeper than 16° and the boattail with its tube
+      integrated by hand; the bullet met at Mach 3.96 and 4.63, the body alone outside on six rows.
+    - [ ] **M1.8e10 #87's model switches.** The body's supersonic normal force is continuous in
+      Mach but jumps with small changes of shape. *Done when:* #87 closed, or an ADR records which
+      switches remain, each with its measured size.
 
 - [ ] **M3.1 OpenRocket `.ork` import.**
   - Handles zip, gz and raw XML, schema 1.0 to 1.10, plus the documented 1.11 additions.
