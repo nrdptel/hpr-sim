@@ -4781,19 +4781,20 @@ across or a demonstration that refusing is right.
 **Decision.**
 
 - **The edges are two turns, each the zero of one of the quantities whose signs must agree.**
-  That each has exactly one zero is an observation over the corner states measured here, not a
-  proof; which of the two is the shallower is not fixed either — on the tests' rocket the crossing
-  is below the balance from about Mach 1.5 up and above it below that, where both turns are
-  shallower than the element-merging floor anyway.
   `η`'s sign is the sign of `(∂p/∂s)₂` over the sign of `p_c − p₂`. Each of those is a smooth
-  function of the turn through the corner with exactly one zero, so an element is reduced on
-  exactly the open interval between them:
+  function of the turn through the corner, and on every corner state measured here each has a
+  single zero, so an element is reduced on exactly the open interval between them:
 
   - the **crossing**, where `p₂(θ) = p_c(δ₁ + θ)` — the compression lands the pressure on its
     tangent cone's, and `η` has a pole;
   - the **balance**, where `(∂p/∂s)₂ = 0` — eq. 4 rearranged to
     `sin(δ₁ + θ) = (Ω₁/Ω₂(θ)) (sin δ₁ + r (∂p/∂s)₁ / B₁)` — the corner's own compression cancels
     the gradient the body ahead delivers, and `η` is zero.
+
+  *A single zero* is an observation, not a proof: a corner state that broke it would put a reduced
+  element outside the interval. Which of the two is the shallower is not fixed either — on the
+  tests' rocket the crossing is below the balance from about Mach 1.5 up and above it below that,
+  where both turns are shallower than the element-merging floor anyway, so no corner is drawn.
 
   Both are functions of the corner's own state alone: the Mach number, pressure, gradient, radius
   and angle the body hands to it, plus the free stream it was read in.
@@ -4814,11 +4815,12 @@ across or a demonstration that refusing is right.
 
   **What limits the digits is now stated, not observed.** Where the tangent cone is slender-cone
   theory's closed form (under `SLENDER_CONE_RAD`, 0.029°) the crossing closes to the last bits of
-  an `f64` — the residual is 2e-16 to 9e-16 of the free stream's pressure at Mach 2.0, 2.2 and
-  3.0. Above it the cone flow is a Taylor–Maccoll integration and the residual is that
-  integration's, about 1e-10 (Mach 4.3 to 5). Divided by the gap's slope in the turn that is about
-  2e-10°, which is the 2.6e-10° the three CI platforms were seen to spread the band's lower edge
-  over. The spread was the cone's, not the search's.
+  an `f64` — the residual is under 2e-14 of the free stream's pressure at Mach 2.0, 2.2 and 3.0.
+  Above it the cone flow is a Taylor–Maccoll integration, blended with the closed form up to
+  0.0573°, and the residual is that integration's, about 1e-10 (Mach 4.3 to 5). Divided by the
+  gap's slope in the turn that is about 2e-10°, which is the 2.6e-10° the three CI platforms were
+  seen to spread the band's lower edge over. The spread was the cone's, not the search's, and the
+  two edges past Mach 4 are pinned to 2e-9° rather than tighter for that reason.
 
 - **The reading is carried across, by TN 3527's own reduction, wherever the element has a tangent
   cone of its own.** The refusal keeps only its first clause: an element whose angle is under
@@ -4829,10 +4831,11 @@ across or a demonstration that refusing is right.
   real cone at the flow's own Mach number, and the reduction relaxes toward it.
 
   Refusing is **not** right for the flare, and the measurement says so plainly. With the reading
-  carried, the table starts at Mach 1.2 at every flare angle from zero to a degree, and the whole
-  rocket's normal force and centre of pressure move smoothly and monotonically with the angle
-  through the entire near-flat region at Mach 2, 3 and 4 — joining the branch above the band
-  exactly where the band used to end. Both switches are gone
+  carried, the table starts at Mach 1.2 at fifteen flare angles from zero to a degree, and swept
+  in sixteen steps from a cylinder to 0.08° — well past the region's steep end — the whole
+  rocket's normal force falls all the way at both Mach 3 and Mach 4, with no neighbouring pair
+  moving it by a fifth of a percent, bar the single pair that straddles that Mach number's
+  crossing. The old switch moved it by 8.3% in one step. Both switches are gone
   (`a_near_flat_flare_reads_through_and_leaves_only_the_corners_crossing`), and their sizes are
   still measured, because they are the size of the fallback the model dropped to:
   `SupersonicFlare::SlenderBody` on the same rocket still reads −8.30% and 1.1574 calibres at
