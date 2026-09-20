@@ -1525,10 +1525,10 @@ not on the roadmap. **Nothing measures a stepped body faster than sound**, so ne
 reading nor any replacement has a reference.
 
 **What it costs.** On the tests' straight rocket — a tangent-ogive nose 0.25 m and three tubes of
-0.7, 0.05 and 0.3 m, all 27 mm in radius, on a 54 mm reference — at Mach 3 and 4°. With no step it
-reads `C_N` = 0.899592, its centre of pressure 16.9492
-[calibres](../glossary.md#calibre-caliber) aft of the nose tip. Each row is the change from that.
-**Down** means the body narrows from that joint aft, **up** that it widens:
+0.7, 0.05 and 0.3 m, all 27 mm in radius — at Mach 3 and 4°, with the reference diameter pinned at
+54 mm so that every row is divided by the same area. With no step it reads `C_N` = 0.899592, its
+centre of pressure 16.9492 [calibres](../glossary.md#calibre-caliber) aft of the nose tip. Each row
+is the change from that. **Down** means the body narrows from that joint aft, **up** that it widens:
 
 | the step, and which joint it is at | normal force | centre of pressure |
 |---|---|---|
@@ -1538,59 +1538,70 @@ reads `C_N` = 0.899592, its centre of pressure 16.9492
 | down 2 mm, at the nose's joint | −12.55% | +1.3593 calibres |
 | down 2 mm, at the last joint | −11.89% | +0.9597 calibres |
 | up 2.8e−11 m, at any of the three joints | −8.65% | +1.0285 calibres |
-| up 1 mm, at the nose's joint | −13.26% | +0.2311 calibres |
-| up 1 mm, at the last joint | −13.57% | +0.4211 calibres |
-| up 2 mm, at the nose's joint | −17.44% | −0.5112 calibres |
-| up 2 mm, at the last joint | −18.01% | −0.1460 calibres |
+| up 1 mm, at the nose's joint | −6.72% | +0.8674 calibres |
+| up 1 mm, at the last joint | −7.05% | +1.0644 calibres |
+| up 2 mm, at the nose's joint | −4.75% | +0.7064 calibres |
+| up 2 mm, at the last joint | −5.41% | +1.0987 calibres |
 
-A step **up** of a millimetre or more also makes the rocket wider than 54 mm, so the reference
-diameter every coefficient is divided by moves with it — 56 mm at 1 mm, 58 mm at 2 mm. Those four
-rows are therefore **not like for like**: part of what they show is the change of reference, not the
-change of model. The two threshold rows are, because at 2.8e−11 m the shape is flush to a part in a
-billion either way, so the whole difference there is the method itself, the same wherever the step
-is and whichever way it goes. Where the step sits starts to matter only once the step is big enough
-to change the shape. `a_step_takes_the_whole_body_off_the_method` pins every figure in the table,
-the reference diameter of each row, and the flush rocket's own readings with it; [Checking a
-claim](../checking-a-claim.md) says how to run a named test.
+At the threshold the shape is flush to a part in a billion either way, so the whole difference there
+is the method itself — the same wherever the step sits and whichever way it goes. Past that the
+shape itself starts to matter, and the two directions part: a step **down** takes area off the body
+and costs more, a step **up** adds area that carries slender-body normal force of its own and costs
+less. The centre of pressure moves **aft** in every row, so a rocket that trips this reads *more*
+stable than the same rocket drawn flush. That extra margin is more likely optimistic than real: the
+model it falls back to reads 15% to 50% below the wind tunnel on the Arcas Robin's body faster than
+sound ([The body faster than sound in a flight](#the-body-faster-than-sound-in-a-flight)). If you
+can draw the joint as a short transition instead of a butt joint, the body keeps the method; hpr's
+own `radius_step` warning ([the design model's checks](design.md#checks)) is what tells you a design
+has tripped this.
 
-A positive centre-of-pressure change means the reading moves **aft**, so a rocket that trips this
-reads *more* stable than the same rocket drawn flush. That extra margin is more likely optimistic
-than real: the model it falls back to reads 15% to 50% below the wind tunnel on the Arcas Robin's
-body faster than sound ([The body faster than sound in a
-flight](#the-body-faster-than-sound-in-a-flight)). If you can
-draw the joint as a short transition instead of a butt joint, the body keeps the method; hpr's own
-`radius_step` warning ([the design model's checks](design.md#checks)) is what tells you a design has
-tripped this.
+`a_step_takes_the_whole_body_off_the_method` pins every figure in this section and the flush
+rocket's own readings with it; [Checking a claim](../checking-a-claim.md) says how to run a named
+test.
 
-**Where the threshold is, and why it is so fine.** Two elements of the tangent body count as one
-surface when their radii agree to **a billionth of the radius** — 2.7e−11 m, 27 picometres, on a
-27 mm radius, bisected, and the same size whichever way the outline jumps. Past that the outline
-has a genuine jump in it and the march has nothing to walk along. That number is not a judgement
-about steps; it is the width of the rounding the tangent body can absorb, and **every step anyone
-could build or draw is far past it**, so in practice a step always takes the body off the method.
+**Where the threshold is.** It is a **pair**, not one number, and which of the two binds depends on
+the joint:
+
+| the joint | what binds | on the tests' bodies |
+|---|---|---|
+| radius changes, slope does not (tube to tube), either direction | the tangent body merges two elements whose radii agree to a billionth of the radius | 1e−9 × 27 mm = **2.7e−11 m** |
+| slope changes too (a step **up** at a boattail's fore end) | the elements' corners have to stay in order along the body | 1e−12 × 1.3 m × 0.1 = **1.3e−13 m** |
+
+Both are bisected. The second is 208× finer, and it depends on the body's **length** and the change
+of slope rather than on its radius — so it is not a property of the step at all. It bites on the
+commonest high-power shape there is: on the tests' finned rocket, a boattail whose fore radius is
+27.0000000000002 mm rather than 27 mm loses the method for the whole body, worth **−11.34% and
+1.0951 calibres** — larger than the tube-to-tube switch above.
+
+Neither number is a judgement about steps. They are the widths of the rounding the tangent body can
+absorb, and **every step anyone could build or draw is far past both**, so in practice a step always
+takes the body off the method. (A third, much looser test — the run's own *coverage gate*, which
+asks how much of the body the method can cover, at a millionth of the fore area or 13.5 nm of radius
+here — is what actually refuses every step bigger than that. It gives the same reading, and the test
+pins which of the two owns which range.)
 
 **What a fix has to handle.** The obvious fix is to stop the march *at* the step and let the body
 ahead of it keep the method, the way the run already ends at a flare. That was built and measured,
-and it failed three ways, each of which a real fix has to answer. The numbers in this list were
-taken on that prototype, which was **not kept**: unlike the table above, no committed test
-reproduces them, and [ADR-049][adr-049] records how each was measured.
+and it failed three ways. The numbers in this list were taken on that prototype, which was **not
+kept**: unlike the tables above, no committed test reproduces them, and [ADR-049][adr-049] records
+how each was measured and where the prototype lives.
 
-- **Which shape stopped the run, not whether the joint was flush.** The run closes in one place for
-  many reasons. Keying off the joint makes a *non-conical* flare, or a lip out of its wake, keep
-  the forebody marched as soon as its fore radius is a picometre off — a **new** jump of +7.2% and
-  0.69 calibres, where today the reading is continuous.
 - **What is behind the step.** [ADR-034][adr-034], the decision that the method covers a body or
-  nothing, rejected mixing the two models on a measured case. A step's
-  remainder is supposed to be a plain tube, but "the run stopped at a step" does not make it one:
-  with a boattail behind the step, the mixture's moment is more negative than **both** pure models
-  at every plausible centre of gravity — the same pathology.
-- **What the march itself accepts.** A body reaches the march only if it first passes the run's own
-  *coverage gate*, a coarser check on how much of the body the method can cover. The prototype
-  matched that gate to the tangent body's tolerance, which only lines the two up where the slope
-  does not change. At a joint where it does, a band survived in which the gate admitted the body and
-  the march then refused it, so the method returned nothing and the body fell back to slender-body
-  theory after all — on the finned rocket, a step **up** of 1e−12 to 2.7e−11 m, worth −11.3% and
-  1.10 calibres, and not monotone in the step.
+  nothing, rejected mixing the two models on a measured case. A step's remainder is supposed to be
+  a plain tube, but "the run stopped at a step" does not make it one: with a boattail behind the
+  step, the mixture's centre of pressure lands at 16.7209 calibres — **forward of both** pure
+  models, the method's 16.7286 and slender-body theory's 17.8237. A reading outside the envelope of
+  both models it is made of is the pathology [ADR-034][adr-034] measured.
+- **It does not close the band it was meant to close.** The prototype removes the step's switch at
+  a tube-to-tube joint, but at a joint whose slope changes it is the corner ordering that refuses
+  the body, at 1.3e−13 m — so a boattailed rocket still loses the method, worth −11.34% and 1.0951
+  calibres. The commonest shape it was supposed to help is the one it does not.
+- **Which shape stopped the run, not whether the joint was flush.** The prototype keyed off the
+  joint: any reason the run closed — a *non-conical* flare, a lip out of its wake — kept the
+  forebody marched as soon as its fore radius was a picometre off, a **new** jump of +7.2% and 0.69
+  calibres where today the reading is continuous. That one is a property of how the prototype was
+  built rather than of the idea, and a fix keyed off the shape would not have it; it is listed here
+  because it is what a fix has to get right, not as evidence the idea cannot work.
 
 **What it leaves out.**
 
@@ -2980,13 +2991,14 @@ and Cubbage's long, gentle boattails 0 to 0.009 where they measure 0.011 to 0.07
   [M1.8e19](../decisions-and-roadmap.md#m1-8e19)
   ([A flare through the method](#a-flare-through-the-method)).
 - **A step in radius is unmodelled, and nothing measures one faster than sound.** Any mismatch of
-  radius at a joint, past 2.7e−11 m — a billionth of the radius, far below any tolerance anyone
-  builds to — takes the **whole** body off the shock-expansion method at every speed. On the tests'
-  rocket that is worth −8.65% of the normal force and 1.03 calibres of centre of pressure at the
-  threshold, and up to −12.55% and 1.36 calibres at a 2 mm step down
+  radius at a joint — past 2.7e−11 m between two tubes, or past 1.3e−13 m stepping up at a
+  boattail's fore end, both far below any tolerance anyone builds to — takes the **whole** body off
+  the shock-expansion method at every speed. On the tests' straight rocket that is worth −8.65% of
+  the normal force and 1.03 calibres of centre of pressure at the threshold, and −12.55% and 1.36
+  calibres at a 2 mm step down; on the boattailed one, −11.34% and 1.10 calibres
   ([A step in radius](#a-step-in-radius)). No published source gives a stepped body's normal force
   faster than sound, so the present behaviour is not known to be right either; stopping the march at
-  the step was built and rejected for adding larger jumps of its own ([ADR-049][adr-049],
+  the step was built and rejected ([ADR-049][adr-049],
   [issue #87: a step has no model of its own](https://github.com/nrdptel/hpr-sim/issues/87)).
 - **The body alone misses the 15% target on six of eleven wind-tunnel rows**, the one
   [M1.8e set for the body faster than sound](../decisions-and-roadmap.md#m1-8e), by +37.7% at

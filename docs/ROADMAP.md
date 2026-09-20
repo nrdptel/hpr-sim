@@ -81,12 +81,10 @@
 
 ## Phase 1: Physics core (the heart), with validation interleaved
 
-- [x] **M1.1 Core math, frames, Earth.**
-  - `hpr-core`: vectors and quaternions (glam f64), interpolation tables (linear/cubic, clamped,
-    with extrapolation flags).
-  - Frames spec in `docs/physics/frames.md`: ENU launch frame, body frame, Euler conventions,
-    geodetic/ECEF conversion.
-  - WGS84 Somigliana gravity with altitude; optional Earth-rotation terms.
+- [x] **M1.1 Core math, frames, Earth.** `hpr-core`: vectors and quaternions (glam f64) and
+  interpolation tables (linear/cubic, clamped, with extrapolation flags); the frames spec in
+  `docs/physics/frames.md` (ENU launch frame, body frame, Euler conventions, geodetic/ECEF); WGS84
+  Somigliana gravity with altitude, optional Earth-rotation terms.
   - Loft lessons: L1 (tests named in `docs/research/loft-lessons.md`).
   *Done when:*
   - Gravity matches the published formula values at at least 6 latitude/altitude points to 1e-6
@@ -95,12 +93,10 @@
   - Quaternion integration keeps the norm within 1e-12 over 1e6 steps in tests.
   - Everything compiles for wasm32.
 
-- [x] **M1.2 Atmosphere and wind.**
-  - USSA76 from 0 to 86 km: temperature, pressure, density, speed of sound, dynamic viscosity
-    (Sutherland).
-  - ISA temperature offset; custom profile from soundings (p, T, RH, wind vs height) with
-    interpolation.
-  - Wind models: constant, power/log law, tabulated layers, seeded Dryden turbulence.
+- [x] **M1.2 Atmosphere and wind.** USSA76 from 0 to 86 km (temperature, pressure, density, speed
+  of sound, dynamic viscosity by Sutherland); ISA temperature offset; custom profiles from soundings
+  (p, T, RH, wind vs height) with interpolation; wind models constant, power/log law, tabulated
+  layers and seeded Dryden turbulence.
   - Loft lessons: L2, L3, L4, L5, L6 (tests named in `docs/research/loft-lessons.md`).
   *Done when:*
   - USSA76 matches the tables at at least 25 altitudes to at most 0.1% (the small table fixture is
@@ -559,9 +555,9 @@
       measured and stored beside every reading; a pointed body of TN 3527's own is shown reducing
       without moving; tests pin both and the mechanism; an ADR and the guide say what it means and
       does not; and #108 is re-scoped to it.
-      *Result:* met (ADR-044); it is the surface pressure **crossing** its tangent cone's, where the
-      relaxation rate has a pole, not `η < 0`. Across 10, 40 and 160 elements the 27 readings without
-      a crossing hold to 0.012 per radian and the 5 with one move 0.035 or more, with no overlap.
+      *Result:* met (ADR-044); it is the surface pressure **crossing** its tangent cone's, not
+      `η < 0`. Across 10, 40 and 160 elements the 27 readings without a crossing hold to 0.012 per
+      radian and the 5 with one move 0.035 or more — a flag, not a verdict.
     - [x] **M1.8e14 Where the flare's march stops** (the first of three the old e14 splits into;
       M1.8e17 and M1.8e18 carry its other clauses word for word and go next, ADR-045). The method
       already marches a flare — a cone, a tube and a flare return a finite `C_Nα` at Mach 3 — and the
@@ -586,27 +582,29 @@
       2.75° blunted cone with an 18.5° flare; its fig. 8 carries normal force and pitching moment from
       Mach 1.50 to 4.63, integrated from the pressures its tables VII to XII print, and from Mach 2.96
       up its boundary layer separates ahead of the juncture. *Done when:* those readings are committed
-      with their provenance, and the guide says what it is worth and leaves out.
-      *Result:* met (ADR-048). Fig. 8(b) read into `tn-d-4865-flared-cone.json` (α = 0 circles read
-      −0.0039 to +0.0043). hpr reads −1.9%, +7.0% and +13.4% at Mach 1.90, 2.30 and 2.96, then
-      +51.5% and +50.4% at 3.95 and 4.63, where the report's shadowgraphs show that flare separated
+      with provenance, and the guide says what it is worth and leaves out.
+      *Result:* met (ADR-048). Fig. 8(b) read by M1.8e7's pipeline into
+      `tn-d-4865-flared-cone.json`. hpr reads −1.9%, +7.0% and +13.4% at Mach 1.90, 2.30 and 2.96,
+      then +51.5% and +50.4% at 3.95 and 4.63, where the shadowgraphs show that flare separated
       (unflared, model 1 reads +29.7% and +32.1%). No reading below about Mach 1.5289.
     - [x] **M1.8e15 The step in radius.** A step is a discontinuous profile, which the march refuses
       outright, so unlike the flare it needs a model of its own rather than a decision about one that
       exists. *Done when:* #87 closed or narrowed to the step alone, its measured size in an ADR and
       the guide.
       *Result:* met (ADR-049). No source gives a step's normal force faster than sound, so the size
-      is published and the model left alone: a step past 2.7e-11 m (a billionth of the radius,
-      bisected either way) takes the **whole** body off the method, worth −8.65% and 1.03 calibres
-      at the threshold wherever it sits and whichever way, and −12.55% and 1.36 at 2 mm down. Stopping the
-      march *at* the step was built and rejected: it adds a +7.2% jump on shapes that aren't steps,
-      re-opens ADR-034's mixture behind a boattail, and leaves a band with no reading (−11.3%).
-      #87 is narrowed to the step; its two ownerless switches split out as #120 and #121.
+      is published and the model left alone. The threshold is a **pair**, both bisected: 2.7e-11 m
+      (a billionth of the radius) between two tubes either way, and 1.3e-13 m stepping **up** where
+      the slope changes too, which is 1e-12 × the body's length × the change of slope and so is not
+      a property of the step at all. Worth −8.65% and 1.03 calibres at the threshold wherever it
+      sits and whichever way, −12.55% and 1.36 at 2 mm down, −4.75% and 0.71 at 2 mm up, and −11.34%
+      and 1.10 on a boattailed body. Stopping the march *at* the step was built and rejected: it
+      re-opens ADR-034's mixture (the mixed reading's CP lands **forward of both** pure models) and
+      does not close the boattail's band. #87 is narrowed to the step; #120 and #121 split off it.
     - [ ] **M1.8e19 The near-flat flare the march refuses.** Below about 0.059° on the tests' rocket
       a flare's one element is reduced aft of the nose (issue #81), so the march refuses Mach rows
       from the top down: from 0.00090182° the join's start steps (1.2 → 2.2, −4.6% and 0.75
       calibres), and from 0.03816° to 0.05882° the table goes altogether (−8.3% and 1.16 calibres).
-      Not monotone in the angle either (ADR-047, #117). Separate from #87, which M1.8e15 narrows.
+      Not monotone in the angle either, and separate from #87 (ADR-047, #117).
       *Done when:* the region's edges are derived rather than bisected, a rule carries the reading
       across it or the refusal is shown to be right, and a test pins whichever it is with the
       switches' sizes measured on both sides.

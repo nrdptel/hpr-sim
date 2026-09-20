@@ -15,17 +15,17 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
 
 - **Page rules** (ADR-016 to ADR-020): relative links between pages, GitHub URLs for the rest,
   labels as links to their rows, none in headings, Unicode equations; new pages in `SUMMARY.md`; a
-  new library needs a row in `docs/api.md`. *Accuracy*'s numbers live in a file the item links; each
-  aero fixture has a `the_guide_quotes_the_fixture`. Checking a milestone off fails `cargo xtask
-  site` until its row in `decisions-and-roadmap.md` says `done`; an id carries one increment level.
+  new library a row in `docs/api.md`. *Accuracy*'s numbers live in a file the item links; each aero
+  fixture has a `the_guide_quotes_the_fixture`. Checking a milestone off needs its
+  `decisions-and-roadmap.md` row to say `done`; an id carries one increment level.
 - **Validation (M2.1, ADR-021 to ADR-026):** CI checks the report on three OSes; predicted mode's 3%
   are *targets*; every whole flight names both RMS metrics, each held to 3% of its reference's
   apogee or max speed (ADR-024). The wind oracle flies RocketPy 1.13.0 with #1188 and #1196 by
   `corrections.py` (re-pin and delete when #1196 releases).
 - **M1.8a to e8** (ADR-027 to ADR-039): `cargo xtask aero` writes the aero fixtures (five of
   ADR-030's PDFs come from NTRS with a 436-byte header, scratch `refs/scratch/m18*/`);
-  `SupersonicBody` tabulates the shares every 0.05 Mach lazily from max(1.2, its bisected start),
-  joined over 0.3; `BEFORE_M1_8E6` keeps the old rules.
+  `SupersonicBody` tabulates every 0.05 Mach from max(1.2, its bisected start), joined over 0.3;
+  `BEFORE_M1_8E6` keeps the old rules.
 - **M1.8e9 to e13** (ADR-040 to ADR-044): #90's cap holds W&P's correlation at 16°, M1.8e's 15%
   bullet (`arcas-robin-body-gap.json`) outside on six rows; #87's switches flip one gate
   (`supersonic_run`), so the lip's **rise** is a weight (`shape_weight`); `CONE_SLOPES` runs to 30°;
@@ -33,20 +33,21 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
   **crossing** its tangent cone's, not `η < 0`. The rest of e13 is M1.8e16, blocked on #108.
 - **M1.8e14 and e17** (ADR-045, ADR-047): the march's edge is the corner's isentropic turn, not the
   shock detaching, so e17 **chose** the attachment test — NACA 1135's wedge limit at `aft_flow`'s
-  surface Mach, under the cone tables' 30° on the flare's **angle**. A steeper flare reads the
-  **same radii drawn out** to it, CP mapped back, so the branches meet at the limit (4.527e-11 per
-  1e-9°); the slope kinks (−31.4%). Only a conical flare not behind a boattail joins the run, which
-  ends at it; `SupersonicFlare::SlenderBody` keeps the old rule.
+  surface Mach, under the cone tables' 30°. A steeper flare reads the **same radii drawn out** to
+  it, CP mapped back, so the branches meet at the limit (4.527e-11 per 1e-9°); the slope kinks
+  (−31.4%). Only a conical flare not behind a boattail joins the run, which ends at it.
 - **M1.8e18** (ADR-048): TN D-4865 model 2 (an 18.5° flare on a 2.75° cone) read from fig. 8(b) into
   `tn-d-4865-flared-cone.json`; `xtask/src/aero_flare.rs` writes `marched-flare.json`. hpr reads
   −1.9%/+7.0%/+13.4% at Mach 1.90/2.30/2.96 and +51.5%/+50.4% at 3.95/4.63, separated there (model 1,
   unflared, +29.7%/+32.1%). **No reading below about Mach 1.5289.** A blunt nose may span two curved
   segments, but a cap may not reach a cylinder; `aero_flare` repeats the flare rule, pinned by a test.
-- **M1.8e15** (ADR-049): a step in radius past 2.7e-11 m (a billionth of the radius, bisected both
-  ways) takes the **whole** body off the method — −8.65% and 1.03 calibres at the threshold wherever
-  it sits and whichever way, −12.55% and 1.36 at 2 mm down (a step up moves the reference too).
-  Stopping the march *at* the step was rejected: +7.2% on shapes that aren't steps, ADR-034's
-  mixture re-opened behind a boattail, a band with no reading. #87 is the step; #120, #121 the rest.
+- **M1.8e15** (ADR-049): a step in radius takes the **whole** body off the method, and its
+  threshold is a **pair**: 2.7e-11 m (1e-9 × radius) tube to tube either way, 1.3e-13 m
+  (1e-12 × length × Δslope) stepping **up** where the slope changes. Worth −8.65% and 1.03 calibres
+  at the threshold, −12.55%/1.36 at 2 mm down, −4.75%/0.71 at 2 mm up, −11.34%/1.10 boattailed (pin
+  the reference: `Maximum` widens with a step up). Stopping the march *at* the step was rejected —
+  ADR-034's mixture reads CP **forward of both** pure models, and it misses the boattail's band.
+  #87 is the step alone; #120, #121 the rest.
 - **Debrief, folded in** (ADR-046): `hpr-flightdata` is off `hpr-sim` and must stay off it (`forbids
   = ["hpr-sim"]`, walked by `cargo xtask wasm-check`); sim-versus-flight goes in `hpr-forensics`.
   Notes: `debrief-{log-formats,flight-readings,porting-boundary}.md`. **Port from Debrief's `lib/`,
@@ -63,9 +64,9 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
 ## Done log (newest first, keep about 15)
 
 - 2026-09-20: M1.8e15 The step in radius (ADR-049): what a step costs is measured and published —
-  past 2.7e-11 m it takes the whole body off the method, −8.65% and 1.03 calibres at the threshold,
-  −12.55% and 1.36 at 2 mm — with the three measurements that sank the obvious fix. The model is
-  unchanged, and #87 is narrowed to the step alone.
+  −8.65% and 1.03 calibres at its threshold, which is a pair (2.7e-11 m tube to tube, 1.3e-13 m
+  stepping up where the slope changes, −11.34% and 1.10 on a boattailed body) — with the
+  measurements that sank the obvious fix. The model is unchanged; #87 is narrowed to the step.
 - 2026-09-20: M1.8e18 What a marched flare is worth (ADR-048): TN D-4865 model 2's fig. 8(b)
   committed, and hpr read against it — within 7% through Mach 2.30, +13.4% at 2.96, and +51.5% and
   +50.4% at 3.95 and 4.63 where that flare's boundary layer is separated; no reading at all below
@@ -97,9 +98,8 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
   one curved segment but a cap may not reach a cylinder; the Mach 1.50 refusal is left standing; and
   the three separated rows are reported as a flow hpr doesn't model, not as a model error.
 - ADR-047: a flare's attachment test is NACA 1135's wedge limit at the flow reaching the corner (TN
-  D-4865 p. 5's, already the blunt tip's) under the cone tables' 30°; a steeper flare reads one of
-  the same radii drawn out to it (ADR-039's boattail rule turned around); the run ends at the flare,
-  and only a conical one not behind a boattail joins it; the near-flat band is #117 and M1.8e19.
+  D-4865 p. 5's) under the cone tables' 30°; a steeper flare reads the same radii drawn out to it;
+  the run ends at the flare, and only a conical one not behind a boattail joins it.
 - ADR-046: Debrief folded in; `hpr-flightdata` re-layered off `hpr-sim` while still a stub, with a
   `forbids` rule and a graph-walking check; `hpr-forensics` added; Phase 5 re-cut; `hpr analyze`
   added to M4.2. Its `.ork` parser is clean room; its `COMPETITION.md` is not, and is excluded.
@@ -135,13 +135,13 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
   is worth 0.67 to 1.35 calibres of doubt. A marched flare (M1.8e18) reads +51.5% and +50.4% at Mach
   3.95 and 4.63 on the one measured flare, separated there, and none below Mach 1.5289; a
   0.0382°-0.0588° flare takes the whole body off the method (#117), and so does a step in radius
-  past 2.7e-11 m — −8.65% and 1.03 calibres, unmodelled and only measured (#87, M1.8e15).
+  past 2.7e-11 m tube to tube or 1.3e-13 m up at a boattail — −8.65% to −11.34% and about a calibre,
+  unmodelled and only measured (#87, M1.8e15).
 - Drag: against RASAero II's Calisto hpr reads −14.9% to −5.1% supersonic (ADR-030); against
   MIL-HDBK-762 the body reads 6–10% low past Mach 1.6 and high through Mach 1 (#67, #68); against
   the Arcas Robin it reads high at every row (#70, #72, #73). A cylinder's base drag is unmeasured
-  past Mach 0.3. In wind, a slow rocket's drift rests on body lift's size: Juno III's apogee drift
-  is 245 m in hpr, 240 to 194 m over Galejs's `K` 1.0 to 1.5; the oracle carries two unreleased
-  RocketPy corrections (#1196).
+  past Mach 0.3. In wind, a slow rocket's drift rests on body lift's size: Juno III's apogee drift is
+  245 m in hpr, 240 to 194 m over Galejs's `K` 1.0 to 1.5; the oracle carries two corrections (#1196).
 - Flight: no tip-off, turbulence or thrust misalignment; small-angle aero at every `α`. Recovery: no
   canopy overshoot or opening-load factor (1.6 kN where Knacke's infinite-mass `C_x` gives 5.1 kN),
   no added mass or airframe drag under a canopy, the attitude freezes at deployment, and his filling

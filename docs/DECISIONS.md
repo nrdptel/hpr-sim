@@ -4667,52 +4667,66 @@ force faster than sound.
   tables' 30°). Its body text is rewritten: it said the threshold was the coverage gate's millionth
   of the area, and it is not.
 
-**Measured**, on the tests' straight rocket (a tangent-ogive nose and three tubes, 1.3 m over a
-54 mm reference) at Mach 3 and 4°. With no step it reads `C_N` = 0.899592 with its centre of
-pressure 16.9492 calibres aft of the tip.
+**Measured**, on the tests' straight rocket (a tangent-ogive nose and three tubes, 1.3 m, the
+reference pinned at 54 mm) at Mach 3 and 4°. With no step it reads `C_N` = 0.899592 with its centre
+of pressure 16.9492 calibres aft of the tip. The reference is pinned on purpose: left on
+`ReferenceDiameter::Maximum`, a step **up** widens the reference with it (56 mm at 1 mm, 58 mm at
+2 mm), and a ratio of two coefficients taken on two different areas is not a quantity. A first pass
+published that ratio; it read the step-up cost as −13% to −18% and the centre of pressure as moving
+*forward*, both of which are artifacts of the moving reference. The test now pins the reference.
 
-- **Where the switch sits:** a step of **2.7e−11 m**, a billionth of the 27 mm radius, bisected —
-  and the same size whichever way the outline jumps: bisecting a step **up** lands on 2.7e−11 m
-  too. That is the tangent body's own tolerance for two elements parallel but apart
-  (`shock_expansion::lay_out`), **not** the run's coverage gate at a millionth of the area
-  (13.5 nm), which is 500× looser and never binds. Any step a person could build or draw is far
-  past it.
+- **Where the switch sits is a pair, not a number.** At a joint where the radius changes but the
+  slope does not, the tangent body merges two elements whose radii agree to a billionth of the
+  radius (`shock_expansion::lay_out`) and refuses them past that: **2.7e−11 m** here, bisected, the
+  same either way. At a joint where the slope changes too, a step **up** is refused earlier, by the
+  requirement that the elements' corners stay in order along the body: 1e−12 × the body's length ×
+  the change of slope, which on the tests' finned rocket (1.3 m, a 0.027 → 0.022 m boattail) is
+  **1.3e−13 m**, bisected — 208× finer, and a function of the body rather than of the step. Neither
+  is the run's coverage gate at a millionth of the fore area (13.5 nm of radius), which is looser
+  than both and is what refuses every step anyone could draw; all three give the same reading, and
+  the test pins which owns which range.
 - **What it costs at the threshold:** −8.6519% of the normal force and 1.0285 calibres of centre of
   pressure, **wherever on the body the step is and whichever way it goes** — at that size the shape
   is flush to a part in 1e9, so the whole difference is the method itself.
-- **What it costs as the step grows, stepping down:** at 1 mm, −10.62% and 1.194 calibres with the
-  step at the nose's joint, −10.29% and 0.995 at the last; at 2 mm, −12.55% and 1.359, against
-  −11.89% and 0.960. Where the step sits matters only once the step is large enough to change the
-  shape.
-- **Stepping up, the reference moves with it.** A step up of 1 mm or 2 mm makes the rocket wider
-  than its 54 mm reference (56 mm and 58 mm), so the coefficients are divided by a different area
-  and the calibres by a different diameter. As measured: −13.26% and 0.231 calibres at the nose's
-  joint and −13.57% and 0.421 at the last at 1 mm; −17.44% and −0.511 against −18.01% and −0.146 at
-  2 mm. These four are **not like for like** with the rows above, and the guide says so; the test
-  pins each row's reference diameter beside its reading so the confound cannot go unnoticed.
+- **What it costs as the step grows** — and the two directions part, because a step down takes area
+  off the body while a step up adds area that carries slender-body normal force of its own.
+  Stepping **down**: at 1 mm, −10.62% and 1.194 calibres at the nose's joint, −10.29% and 0.995 at
+  the last; at 2 mm, −12.55% and 1.359 against −11.89% and 0.960. Stepping **up**: at 1 mm, −6.72%
+  and 0.867 against −7.05% and 1.064; at 2 mm, −4.75% and 0.706 against −5.41% and 1.099. The
+  centre of pressure moves aft in every row.
+- **On a boattailed body the switch is larger:** −11.3409% and 1.0951 calibres on the tests' finned
+  rocket, at 1.3e−13 m of step up or 2.7e−11 m of step down. That is the commonest high-power shape
+  there is, and it is the case a fix most needs to handle.
 
 **Why the obvious fix is not taken.** The obvious fix is to stop the march *at* the step and let
-the body ahead of it keep the method, as the run already ends at a flare (ADR-047). It was built
-and measured, and it is not good enough:
+the body ahead of it keep the method, as the run already ends at a flare (ADR-047). It was built in
+this milestone's first commit (`9efe721`, on PR #122, which is squashed on merge — that commit is
+where the three readings below come from and the only place the prototype survives), measured, and
+reverted:
 
 - **It does not stay inside ADR-034's objection.** That decision rejected mixing the method's
   shares with slender-body theory's on a *measured* case, a boattail. A step's remainder is
   supposed to be a tube, whose slender-body share is zero — but "the run stopped at a step" does
   not imply "what follows is a tube". On the tests' finned rocket with its boattail's fore radius
-  stepped 2.8e−11 m, the mixture's moment is more negative than **both** pure models for every
-  reference station between 6.06 and 17.08 calibres, which is the pathology ADR-034 measured.
-- **It cannot tell a step from a shape the method has no reading for.** The run closes in one
-  place for many reasons. Keying off "was the joint flush" makes a *non-conical* flare, or a lip
-  out of its wake, or a flare under `SupersonicFlare::SlenderBody`, keep the forebody marched as
-  soon as its fore radius is a picometre off. Measured, that is a **new** switch of +7.2% and 0.69
-  calibres on an ogive flare — larger than the −7.7% and −7.0% rows the milestone kept — where
-  today's behaviour is continuous. It would also stop `BodyModel::BEFORE_M1_8E6` reproducing
-  earlier results on such a body.
-- **It does not close the dead band it was meant to close.** Matching the coverage gate to
-  `lay_out`'s tolerance only matches it where the slope does not change. At a joint where it does,
-  the binding constraint is the corner-ordering bound, and a band survives: on that same rocket, a
-  step **up** of 1e−12 to 2.7e−11 m is admitted and then refused by the march, so the body gets no
-  reading at all — worth −11.3% and 1.10 calibres, and not monotone in the step.
+  stepped 2.8e−11 m, the mixture reads `C_N` 0.8283554 with its centre of pressure at **16.7209
+  calibres — forward of both pure models**, the method's 16.7286 and slender-body theory's 17.8237.
+  A reading outside the envelope of the two models it is made of is the pathology ADR-034 measured.
+  (Stated as a moment, the mixture crosses the pure method at 17.08 calibres and pure slender-body
+  theory at 6.06, and between those two stations it is *less* restoring than either — an earlier
+  draft of this ADR had that direction backwards.)
+- **It does not close the band it was meant to close.** Matching the coverage gate to `lay_out`'s
+  tolerance only lines the two up where the slope does not change. At a joint where it changes the
+  corner-ordering bound binds instead, at 1.3e−13 m, so a boattailed rocket comes off the method
+  anyway — worth −11.34% and 1.0951 calibres, the same switch `main` has today. The commonest shape
+  the fix was meant to help is the one it does not.
+- **It cannot tell a step from a shape the method has no reading for** — *as built*. The prototype
+  keyed off the joint, not the shape, so any reason the run closed (a *non-conical* flare, a lip out
+  of its wake, a flare under `SupersonicFlare::SlenderBody`) kept the forebody marched as soon as
+  its fore radius was a picometre off: a **new** switch of +7.2% and 0.69 calibres on an ogive
+  flare, where today's behaviour is continuous, and `BodyModel::BEFORE_M1_8E6` would stop
+  reproducing earlier results on such a body. This one is a property of the two-line shortcut rather
+  than of the idea — keying off which shape closed the run avoids it — so it is recorded as what a
+  fix has to get right, not as evidence the idea cannot work. The rejection rests on the two above.
 
 So the fix needs to be built on which *shape* stopped the run, not on whether the joint was flush,
 and on what the march itself accepts rather than on a tolerance guessed to match it. That is a
