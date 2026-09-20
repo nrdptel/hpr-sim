@@ -70,7 +70,6 @@
   - [x] **M0.4a The site and its link checks.** An ADR picks the tool (mdBook is the first
     candidate) and the layout. `docs/physics/` and `docs/format/` move into the site's source, so
     each page has one source, and equations render on the site and on GitHub. *Start here* page.
-
     *Done when:* CI builds the site on every PR and checks its links. A broken link, or a bare
     internal label (`L\d+`, `ADR-\d+`, a milestone id that isn't a link), fails CI, and a test
     shows each failing.
@@ -78,16 +77,13 @@
     *In short*: what it models, its source, how well it is validated, what it leaves out.
     *Accuracy* gives every validation result so far, gaps included, from the committed report.
     The decisions and the roadmap are reachable from the site.
-
     *Done when:* a model page without *In short* fails CI, a test shows it, and every model page
     passes.
   - [x] **M0.4c Getting started, and how a flight is simulated.** A runnable `examples/` program
     flies a first rocket; *How a flight is simulated* walks pad to landing with a diagram.
-
     *Done when:* the *Getting started* example runs in CI.
   - [x] **M0.4d Publish.** Workspace rustdoc sits next to the guide, each linking to the
     other.
-
     *Done when:* a workflow deploys the site and the rustdoc to GitHub Pages from `main`, and the
     README's first lines link to it. (Needs Neer to enable Pages. Until he does, only this bullet
     is blocked.)
@@ -210,7 +206,6 @@
       sections for them.
     - Loft lessons: L11, L12, L13, L14, L15, L16, L90 (tests named in
       `docs/research/loft-lessons.md`).
-
     *Done when:*
     - Subsonic Cd for the RocketPy example rockets is within 10% of their RASAero CSVs at Mach 0.3
       (tighten this later).
@@ -288,7 +283,6 @@
     *Done when:*
     - A streamer's and a tumbling body's descent rates match the terminal velocity of their cited
       drag models (analytic tests).
-
     *Result (ADR-013):* met. Streamers: Carruthers and Filippone (within 9% of Kidwell's flat
     streamer; appendix C 88% fast). Tumble: OpenRocket §3.5, −10 to +19% on its own drop tests.
 
@@ -330,7 +324,6 @@
       `validation/reports/latest.md`.
     - A case whose metric has no tolerance, a reference value with no provenance, and a run with
       fewer cases than the lock expects each fail.
-
     *Result (ADR-015):* met. Five descent cases, 30 metrics, all within 3% with no floor (largest
     NDRT's northward drift, +2.86%); the command refuses every malformed case the done-when names
     and more, with twelve tests, four of them L76–L79. Valetudo's northward drift first read 28x
@@ -348,7 +341,6 @@
         built from `validation/fixtures/design/rocketpy-rocket-mass.json` as `recovery.py` builds
         them (rail, inclination and heading cited per case), on drag **declared by the case**:
         RocketPy's data files carry their own terms (ADR-009) and are absent from M2.1c's CI.
-
       *Done when:*
       - `refs/venv/bin/python validation/oracles/rocketpy/flight.py` writes a fixture of all five
         cases, each with the metrics M2.1 names, a time series, a loose-solver run and a source for
@@ -372,7 +364,6 @@
         exists and passes.
       - `validation/reports/latest.md` carries them, and the gravity rule of ADR-015 is applied:
         the comparison flies the oracle's models where hpr has them.
-
       *Result (ADR-021):* met. Six whole-flight cases, fifteen metrics each; five pass every scored
       metric within 3% (largest +1.783%, Bella Lui's power-on peak). The drifts in wind stayed
       unscored until issue #50 (M2.1d3); Prometheus was a checked `M ≥ 1` gap until M1.8a. The
@@ -382,7 +373,6 @@
     - The same cases flown with hpr's own aero, reported beside the same-drag ones.
     - A CI job that runs `cargo xtask validate` against the stored references, and a separate,
       manually triggered workflow that regenerates them.
-
     *Done when:* split below into M2.1c1 and M2.1c2, which carry M2.1c's three bullets between
     them (the first in M2.1c2, the other two in M2.1c1).
 
@@ -394,7 +384,6 @@
       - The CI job is green on macOS, Windows and Linux.
       - The regeneration workflow runs only when a human triggers it, and its output is a diff to
         review, never an automatic commit.
-
       *Result (ADR-022):* met. `cargo xtask validate --check` writes nothing and fails on a metric
       outside tolerance or a committed report this run does not reproduce; CI runs it on three
       OSes. *Regenerate references* is `workflow_dispatch` only, with a read-only token, and
@@ -404,11 +393,9 @@
       - The same cases flown with hpr's own aero, against a reference in which RocketPy flies each
         example's own drag curves; results computed from those curves are committed, the curves
         are not (ADR-009).
-
       *Done when:*
       - Predicted-mode results are in the report for every case, each gap explained in the case
         file or `docs/VALIDATION.md`; `M ≥ 1` cases are reported as gaps, not hidden, until M1.8.
-
       *Result (ADR-023):* met. `flight.py --own-drag` (hashes, never values). Six `predicted-*`
       cases, 3% targets: 56 of 75 within; Valetudo and NDRT 2020 +10% in apogee; misses pinned.
 
@@ -416,7 +403,6 @@
     - The two items of M2.1's list that M2.1a to M2.1c leave open: the time-series RMS after
       alignment (each whole-flight fixture already carries its series), and the landing offset,
       reported but not scored until issue #50 finds why hpr turns into the wind less than RocketPy.
-
     *Done when:* split below into M2.1d1 to M2.1d3, which carry these two bullets between them.
 
     - [x] **M2.1d1 The time-series RMS.**
@@ -424,7 +410,6 @@
       *Done when:*
       - Every whole-flight case reports its time-series RMS after alignment against the
         reference's series, gated with its tolerance argued in the case file.
-
       *Result (ADR-024):* met for every case hpr flies: RMS at RocketPy's 120 series times, held to
       3% of apogee and max speed; same-drag 1.4–39.2 m and 0.13–2.06 m/s, all pass; predicted,
       three outside (the drag), pinned.
@@ -432,11 +417,9 @@
     - [x] **M2.1d2 The calm-air cases (issue #50).**
       - Issue #50's zero-wind runs of Juno III, Calisto and Bella Lui, committed as same-drag
         whole-flight cases with RocketPy references, to measure the wind's effect against.
-
       *Done when:*
       - The three calm-air cases are in the suite, their apogee and landing drifts scored at 3%,
         and each passes or is a gap its case file explains.
-
       *Result (ADR-025):* met. Calisto and Bella Lui pass (drifts −1.258% to −2.583%); Juno III's
       drifts miss (−3.7%), reported not scored: 1.6 points are the rail release (`rail_release.py`).
 
@@ -444,12 +427,10 @@
       - Fly the windy cases with each suspected cause of the gap matched to RocketPy in turn: rail
         release at the first rail button, drag without the angle-of-attack factor, and each code's
         normal force and damping.
-
       *Done when:*
       - Issue #50's cause is found and the drifts are scored within their tolerances, or an ADR
         records the measured cause and why they cannot be, and the gap stays visible in the
         report.
-
       *Result (ADR-026):* met. Mostly RocketPy's: in the burn it took moments about a point
       mirrored across the dry centre of mass (#1186, PR #1196; PR #1188), both corrected in
       `corrections.py`. `wind_response.py` measures the rest: body lift, the last-button release
@@ -476,7 +457,6 @@
     - Fin slope through the transonic region to supersonic linear theory, and the fin CP shift
       with Mach. The normal force accepts Mach numbers past 1, so a flight on a drag table flies
       through Mach 1. Loft lesson L7.
-
     *Done when:*
     - L7's test passes: the fin slope and CP are Barrowman's at Mach 0 and change with Mach.
     - A committed fixture, pinned by a test, holds hpr's `C_Nα` and CP against two references:
@@ -492,7 +472,6 @@
 
   - [x] **M1.8b Transonic and supersonic drag.** Every drag term's transonic and supersonic
     branch, and nose wave drag. Loft lessons L17 and L18.
-
     *Done when:* M1.8's Cd bullet is met or an ADR records why not, with the gap in the report;
     the Arcas Robin's measured axial force is compared; the predicted Prometheus case flies.
     Split below into M1.8b1 to M1.8b3, which carry these bullets between them.
@@ -500,17 +479,14 @@
     - [x] **M1.8b1 The drag buildup through Mach 1.**
       - Nose, shoulder and step pressure drag through Mach 1 (Niskanen eq. 3.87 and appendix B,
         Stoney's fineness-3 curves); the buildup accepts Mach 0 to 5. Loft lesson L17.
-
       *Done when:* L17's test passes; the predicted Prometheus case flies; the Arcas Robin's
       measured axial force is compared: a committed fixture, pinned by a test, holds hpr's
       forebody drag against TN D-4013's and TN D-4014's at every Mach they give, fins on and off.
-
       *Result (ADR-028):* met. L17's test passes; `drag_against_mach` pins 44 rows, 8 within 10%
       (misses: blunt fin edges, the base lip, the boattail rule). Predicted Prometheus flies.
 
     - [x] **M1.8b2 Drag against RASAero through Mach 2.** Cd against Mach from RocketPy's RASAero
       CSVs, per band (L18). *Done when:* M1.8's Cd bullet is met or an ADR records why not.
-
       *Result (ADR-029):* not met, recorded. Calisto's export: 15/15 subsonic, 2/7 transonic,
       0/17 supersonic within 10%; no fin input is within 10% subsonic and supersonic both.
       MIL-HDBK-762's worked example: 6/12, the body 6–10% low past Mach 1.6. Boattail a candidate.
@@ -518,11 +494,9 @@
     - [x] **M1.8b3 The boattail and base faster than sound.**
       - A conical boattail's supersonic wave drag (MIL-HDBK-762 Fig. 5-122), the base behind it,
         and a lip in its wake.
-
       *Done when* (targets set before measuring; or an ADR records why not): the Arcas Robin's 11
       fins-off rows from Mach 1.5 within 10%, the 2 now within staying; Calisto's 17 supersonic
       rows against RASAero II within 10%; each row's change reported (ADR-029).
-
       *Result (ADR-030):* not met, recorded. Boattails of 3° to 10° from Mach 1.2: −21.9% to
       +28.3%; Arcas Robin fins off from Mach 1.5: 0 of 11, +13.5% to +24.1% (#72); Calisto: 8 of
       17, −14.9% to −5.1%.
@@ -530,7 +504,6 @@
   - [x] **M1.8c Roll and damping.** Roll forcing from fin cant and roll damping; pitch and yaw keep
     hpr's local-flow damping (ADR-011). *Done when:* M1.8's roll bullet is met, and hpr's roll
     forcing is compared with the Arcas Robin's measured roll effectiveness (TN D-4014).
-
     *Result (ADR-031):* met. Barrowman's strip theory with his body factors. Valetudo canted 1° at
     100 m/s settles on the closed-form balance, −16.948 rad/s, within 1e-11. Against TN D-4014:
     from Mach 2.3, 8 of 8 within 5.3%; at Mach 1.5 and 1.8, +14.3% to +47.8%. Damping against the
@@ -539,7 +512,6 @@
   - [x] **M1.8d Normal-force overrides.** `C_Nα` and CP tables against Mach and angle of attack
     from a RASAero II export. *Done when:* its `C_Nα` and CP columns replace hpr's in a flight,
     and the reading is tested on the Calisto export.
-
     *Result (ADR-032):* met. The table's force at the centre of mass's flow, hpr's damping kept.
     Calisto's export (0°, 2°, 4°): 4,999 rows re-read with `refs/`, M1.8a's 30 values in CI;
     Calisto flies on it; a table's pitch period within 4e-6 of linear theory, pitch and yaw.
@@ -553,23 +525,21 @@
 
     - [x] **M1.8e1 The second-order shock-expansion method.** NACA TN 3527's method for a
       pointed body's `C_Nα` and CP at `α → 0`, the cylinder's lift behind the nose included; its
-      Fig. 2's tangent-cone slopes read by hand. *Done when* (targets set before measuring):
-      - A committed fixture, pinned by a test, holds hpr's values against every row of TN 3527's
-        Tables I and II (cones and tangent ogives of fineness 3, 5 and 7, cylinders of 0 to 10
-        calibers, Mach 3 to 6.28): within 0.05 per radian and 0.1 calibers of its second-order
-        values, and within its stated ±0.2 of its measurements, every miss explained.
-      - The Arcas Robin's nose and cylinder, with and without its boattail (footnote 8), at each
-        Mach number of TN D-4014, beside the measured body alone.
+      Fig. 2's tangent-cone slopes read by hand. *Done when* (targets set before measuring): a
+      committed fixture, pinned by a test, holds hpr's values against every row of TN 3527's
+      Tables I and II (cones and tangent ogives of fineness 3, 5 and 7, cylinders of 0 to 10
+      calibers, Mach 3 to 6.28) within 0.05 per radian and 0.1 calibers of its second-order
+      values, and within its stated ±0.2 of its measurements, every miss explained; and the Arcas
+      Robin's nose and cylinder, with and without its boattail (footnote 8), at each Mach number
+      of TN D-4014, beside the measured body alone.
       *Result (ADR-033):* not met, recorded: slopes and CPs 102 and 125 of 144 within its values
       (#81 at its limit), 117 and 109 of 120 of its measurements; Arcas Robin −18.7% to +16.4%.
     - [x] **M1.8e2 The body's supersonic normal force in flight.** The body's terms take Mach:
       M1.8e1's method for a pointed nose and its cylinder where it holds, joined to slender-body
-      theory below it. *Done when* (targets set before measuring):
-      - A flight takes the body's `C_Nα` and CP at its Mach number; a test probes the join at
-        ±1e-9 in Mach and finds no jump.
-      - The Arcas Robin's body alone (TN D-4014) through the flight's path at each Mach number
-        from 1.5, beside the measurement and M1.8a's, in the regenerated report, its changed rows
-        listed in the PR.
+      theory below it. *Done when* (targets set before measuring): a flight takes the body's
+      `C_Nα` and CP at its Mach number, with no jump at ±1e-9 in Mach across the join; the Arcas
+      Robin's body alone (TN D-4014) through the flight's path from Mach 1.5, beside the
+      measurement and M1.8a's, in the regenerated report.
     - [x] **M1.8e3 The supersonic join's start without grid steps** (#87's grid half). *Done when*
       (set after building): a test finds a 20° cone's start off the grid, moved under 1e-7 in Mach
       by 1e-6° and strictly by each 0.1° to 20.5°, its cylinder share under 1e-5, no jump at ±1e-9
@@ -587,37 +557,44 @@
       nose tip flies a Newtonian cap ahead of TN 3527's method (NASA TN D-4865). *Done when:* flown
       with no jump at ±1e-9 in Mach; the Arcas Robin's committed nose (lip left off) through a
       flight's path in the report; TN D-4865's sphere-cone against its measured normal force.
-      *Result:* met; like for like, sphere-cone −1.2% to +32.1%; the nose lip off −4.8% to +37.2%.
+      *Result:* met; sphere-cone −1.2% to +32.1%; the nose lip off −4.8% to +37.2%.
     - [x] **M1.8e8 The lip faster than sound** (from e7; ADR-039). *Done when:* flown with no jump
       at ±1e-9 in Mach; the committed Arcas Robin designs through a flight's path in the report.
       *Result:* met; a lip in a boattail's wake carries nothing, so both designs fly the method to
-      their base: M1.8a's rows from Mach 1.5 are all within the slope's 15% (+9.4% to −3.3%).
+      their base: M1.8a's rows from Mach 1.5 all within the slope's 15% (+9.4% to −3.3%).
     - [x] **M1.8e9 #90's boattail cap, and M1.8e's 15% bullet judged** (split from e9's pair;
-      ADR-040). *Done when:* #90 closed (a bound on the boattail angle, and footnote 8's size
-      pinned by a hand calculation); M1.8e's 15% bullet met for the Arcas Robin's body alone, or an
-      ADR records why not with the gap in the report.
-      *Result:* met; the correlation is read no steeper than 16° and the boattail with its tube
-      integrated by hand; the bullet met at Mach 3.96 and 4.63, the body alone outside on six rows.
+      ADR-040). *Done when:* #90 closed (a bound on the boattail angle, footnote 8's size pinned
+      by hand); M1.8e's 15% bullet met for the Arcas Robin's body alone, or an ADR records why
+      not. *Result:* met; the correlation is read no steeper than 16°; the bullet met at Mach
+      3.96 and 4.63, the body alone outside on six rows.
     - [x] **M1.8e10 The lip's shelter, weighed not switched.** #87's five switches all flip one
-      gate — whether the method covers the body at all — so each is worth the whole body. The
-      largest is the lip's, and the drag buildup already grades its shelter continuously
-      (`share_by_rise`, a quarter to a half of the boattail's drop) where the normal force reads
-      a threshold. *Done when:* every switch's size is measured by a test; the lip's is gone, its
-      two sides agreeing across the old threshold in proportion to the change in shape; no
-      committed fixture moves; an ADR records the weight.
-      *Result:* met (ADR-041); the lip's **rise** is a weight, not a switch, and five keep measured
-      sizes — a step −8.7%/1.03 cal, a flare −27.5%/0.29 cal, a pointed tip −10.4%/1.14 cal, a
-      vertical tip −7.0%/0.64 cal, and the lip's own length −33.0%/1.77 cal, which #87 didn't list.
+      gate — whether the method covers the body at all — and the drag buildup already grades the
+      largest of them, the lip's, continuously. *Done when:* every switch's size is measured by a
+      test; the lip's is gone, its two sides agreeing across the old threshold in proportion to
+      the change in shape; no committed fixture moves; an ADR records the weight. *Result:* met
+      (ADR-041); the lip's **rise** is a weight, not a switch, and five keep measured sizes — a
+      step −8.7%/1.03 cal, a flare −27.5%/0.29 cal, a pointed tip −10.4%/1.14 cal, a vertical tip
+      −7.0%/0.64 cal, and the lip's own length −33.0%/1.77 cal, which #87 didn't list.
     - [x] **M1.8e11 Cone slopes past Fig. 2's edge, from Sims.** NASA SP-3007 (pinned) tabulates
       the same theory to 30°, where TN 3527's Fig. 2 stops at 24°. *Done when:* the method flies a
       tangent cone of 24° to 30°, a fineness-1 cone among them, from Sims's slopes checked against
-      Fig. 2 where they overlap; no committed fixture moves.
-      *Result:* met (ADR-042); SP-3007 Table 2 at 25°, 27.5° and 30°, agreeing with the chart to
-      0.0021 per rad at 22.5°; the pointed tip's switch moves to 30° and falls to −7.7%/0.81 cal.
-    - [ ] **M1.8e12 The blunt tip's handover, past 24°.** With slopes to 30° a cap can hand over at
-      the detachment angle, not Fig. 2's edge. *Done when:* the vertical-tip switch is gone or
-      measured again, fixtures and the guide moving together.
-    - [ ] **M1.8e13 The step and the flare.** *Done when:* #87 closed or narrowed to these two, each switch's measured size in an ADR and the guide.
+      Fig. 2 where they overlap; no committed fixture moves. *Result:* met (ADR-042); SP-3007
+      Table 2 at 25°, 27.5° and 30°, agreeing with the chart to 0.0021 per rad at 22.5°; the
+      pointed tip's switch moves to 30° and falls to −7.7%/0.81 cal.
+    - [x] **M1.8e12 What the handover's cap is worth, and what stops it.** With slopes to 30° a
+      cap can hand over at the detachment angle rather than Fig. 2's edge. *Done when:* the cap is
+      a parameter of the method, its flown default unchanged so no committed fixture moves; a
+      sweep of it is measured into a committed fixture — each cap's sphere-cone error, and the
+      committed nose's spread over 10 to 160 elements with the counts of reduced elements; tests
+      pin both ends; an ADR records why the default stays; the guide says it plainly; the blocker
+      is an issue. *Result:* met (ADR-043); 30° follows TN D-4865's rule to Mach 2.52 and reads
+      nearer its sphere-cone at every row, and puts 109 of the committed nose's 160 elements into
+      `η < 0` at Mach 4.63, where the answer follows the element count (3.047 to 3.260); the cap
+      stays at 24°, and #108 holds what would move it.
+    - [ ] **M1.8e13 The blunt tip's handover, moved past 24°.** *Done when:* #108 is closed, the
+      cap is at the cone tables' 30°, the vertical-tip switch is gone or measured again, and
+      fixtures and the guide move together.
+    - [ ] **M1.8e14 The step and the flare.** *Done when:* #87 closed or narrowed to these two, each switch's measured size in an ADR and the guide.
 
 - [ ] **M3.1 OpenRocket `.ork` import.**
   - Handles zip, gz and raw XML, schema 1.0 to 1.10, plus the documented 1.11 additions.
