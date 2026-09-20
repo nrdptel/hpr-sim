@@ -537,76 +537,76 @@
       *Result:* met (ADR-041); the lip's **rise** is a weight, not a switch, and five keep measured
       sizes — a step −8.7%/1.03 cal, a flare −27.5%/0.29 cal, a pointed tip −10.4%/1.14 cal, a
       vertical tip −7.0%/0.64 cal, and the lip's own length −33.0%/1.77 cal, which #87 didn't list.
-    - [x] **M1.8e11 Cone slopes past Fig. 2's edge, from Sims.** NASA SP-3007 (pinned) tabulates
-      the same theory to 30°, where TN 3527's Fig. 2 stops at 24°. *Done when:* the method flies a
+    - [x] **M1.8e11 Cone slopes past Fig. 2's edge, from Sims.** NASA SP-3007 (pinned) tabulates the
+      same theory to 30°, where TN 3527's Fig. 2 stops at 24°. *Done when:* the method flies a
       tangent cone of 24° to 30°, a fineness-1 cone among them, from Sims's slopes checked against
-      Fig. 2 where they overlap; no committed fixture moves.
-      *Result:* met (ADR-042); SP-3007 Table 2 at 25°, 27.5° and 30°, agreeing with the chart to
-      0.0021 per rad at 22.5°; the pointed tip's switch moves to 30° and falls to −7.7%/0.81 cal.
+      Fig. 2 where they overlap; no committed fixture moves. *Result:* met (ADR-042); SP-3007 Table 2
+      at 25°, 27.5° and 30°, agreeing with the chart to 0.0021 per rad at 22.5°; the pointed tip's
+      switch moves to 30° and falls to −7.7%/0.81 cal.
     - [x] **M1.8e12 What the handover's cap is worth, and what stops it** (split from the old e12,
-      whose aim is now M1.8e13). With slopes to 30° a cap can hand over at the detachment angle,
-      not Fig. 2's edge — but moving it there turns out to take the march out of its range on a
-      nose that flattens fast, so this increment measures the move and the next one makes it.
-      *Done when:* the cap is a parameter of the method, its flown default unchanged so that no
-      committed fixture moves; a sweep of it is measured into a committed fixture — each cap's
-      sphere-cone error, and the committed nose's readings over 10 to 160 elements with the counts
-      of reduced elements; tests pin both ends of the sweep; an ADR records why the default stays;
-      the guide says it plainly; and the blocker is a GitHub issue.
+      whose aim is now M1.8e13). With slopes to 30° a cap can hand over at the detachment angle, not
+      Fig. 2's edge — but moving it there takes the march out of its range on a nose that flattens
+      fast, so this increment measures the move and the next one makes it. *Done when:* the cap is a
+      parameter, its flown default unchanged so that no committed fixture moves; a sweep of it is
+      measured into a fixture (each cap's sphere-cone error, and the nose's readings over 10 to 160
+      elements with their reduced counts); tests pin both ends; an ADR records why the default
+      stays; and the blocker is a GitHub issue.
       *Result:* met (ADR-043); 30° follows TN D-4865's rule to Mach 2.52 and reads nearer its
-      sphere-cone at every row where a cap binds, and puts 109 of the committed nose's 160 elements
-      into `η < 0` at Mach 4.63, where the answer follows the element count (3.047 to 3.260); the
-      cap stays at 24°, and issue #108 holds what would move it.
+      sphere-cone wherever a cap binds, but puts 109 of the committed nose's 160 elements into
+      `η < 0` at Mach 4.63, where the answer follows the element count (3.047 to 3.260). 24° stands.
     - [x] **M1.8e13 What the answer follows when it follows the mesh** (split from the old e13,
       whose aim is now M1.8e16). Issue #108 asked for a reading of `η < 0` that settles as the nose
-      is cut finer; before writing one, find out what the answer actually follows.
-      *Done when:* the count that separates a settled reading from a moving one over the cap
-      sweep's meshes is measured and stored beside every reading; a pointed body of TN 3527's own is
-      shown reducing without moving; tests pin both and the mechanism; an ADR and the guide say what
-      it means and what it does not; and issue #108 is re-scoped to it.
-      *Result:* met (ADR-044); it is the surface pressure **crossing** its tangent cone's, where
-      the relaxation rate has a pole, not `η < 0`. Across 10, 40 and 160 elements the 27 readings
-      without a crossing hold to 0.012 per radian and the 5 with one move 0.035 or more, no overlap
-      — a flag, not a verdict, since a zero count at a coarse mesh only means "not proven".
+      is cut finer; before writing one, find out what the answer actually follows. *Done when:* the
+      count that separates a settled reading from a moving one over the cap sweep's meshes is
+      measured and stored beside every reading; a pointed body of TN 3527's own is shown reducing
+      without moving; tests pin both and the mechanism; an ADR and the guide say what it means and
+      does not; and #108 is re-scoped to it.
+      *Result:* met (ADR-044); it is the surface pressure **crossing** its tangent cone's, where the
+      relaxation rate has a pole, not `η < 0`. Across 10, 40 and 160 elements the 27 readings without
+      a crossing hold to 0.012 per radian and the 5 with one move 0.035 or more — a flag, not a
+      verdict.
     - [x] **M1.8e14 Where the flare's march stops** (the first of three the old e14 splits into;
       M1.8e17 and M1.8e18 carry its other clauses word for word and go next, ADR-045). The method
       already marches a flare — a cone, a tube and a flare return a finite `C_Nα` at Mach 3 — and the
-      model around it refuses one, stopping at the first widening body.
-      *Done when:* the steepest flare it marches is bisected to f64 resolution over Mach, tests pin it
-      and what stops it, and an ADR records what happens where the flare's shock is detached.
-      *Result:* met (ADR-045). The edge is the corner's **isentropic** turn running out, not the
-      shock detaching, and lands either side of a wedge's limit: 11.9312175° at Mach 1.5 against
+      model around it refuses one, stopping at the first widening body. *Done when:* the steepest
+      flare it marches is bisected to f64 resolution over Mach, tests pin it and what stops it, and
+      an ADR records what happens where the flare's shock is detached.
+      *Result:* met (ADR-045). The edge is the corner's **isentropic** turn running out, not the shock
+      detaching, and lands either side of a wedge's limit: 11.9312175° at Mach 1.5 against
       12.1126689°, 26.4714031° at Mach 2 against 22.9735318°, then the cone tables' 30° from Mach
-      2.129702032593. Which side is the body's doing — take the tube away and Mach 1.5 gives
-      14.194333° — so a march that answers is no evidence of attachment.
-    - [x] **M1.8e17 The flare through the method** (the second of the old e14's three, ADR-045;
-      M1.8e14 says the attachment test has to be chosen, not read off the march's own refusal).
+      2.129702032593. Which side is the body's doing (take the tube away and Mach 1.5 gives
+      14.194333°), so a march that answers is no evidence of attachment.
+    - [x] **M1.8e17 The flare through the method** (the second of the old e14's three, ADR-045).
       *Done when:* a flared body flies the method where the flare's shock is attached, with no jump
       at ±1e-9 in Mach or in the flare's angle across that boundary.
       *Result:* met (ADR-047). The test is NACA 1135's wedge limit read at the flow the march
       delivers to the corner — TN D-4865 p. 5's own, which a blunt tip's cap already uses — under
-      the cone tables' 30°, which binds from Mach 2.5192034260. A steeper flare is read as one of
-      the same radii drawn out to that turn, so at the limit the two branches are the same body:
-      across the Mach 2 boundary (22.969761173077°) a ±1e-9° probe moves the slope 4.527e-11 and a
-      ±1e-5° probe 4.527e-7, a slope and not a step; in Mach at 18.5°, probed on the table's own
-      rows, 3.622e-10 and 3.622e-6. The *value* is continuous; its slope is not, and the kink is
-      measured (−31.4% on the rocket) rather than claimed away. Left visible: the near-flat region
-      the march refuses — 0.00090182° steps the join 1.2 → 2.2 (−4.6%) and 0.03816° to 0.05882°
-      loses the table (−8.3%, 1.16 calibres) — #117, M1.8e19.
-    - [ ] **M1.8e18 What a marched flare is worth** (the third, ADR-045). TN D-4865's model 2 is a
+      the cone tables' 30°, which binds from Mach 2.5192034260. A steeper flare reads as one of the
+      same radii drawn out to that turn, so at the limit the two branches are the same body: across
+      the Mach 2 boundary (22.969761173077°) a ±1e-9° probe moves the slope 4.527e-11 and a ±1e-5°
+      probe 4.527e-7; in Mach at 18.5°, on the table's own rows, 3.622e-10 and 3.622e-6. The value
+      is continuous; its slope is not (−31.4%, measured). Left visible: the near-flat region the
+      march refuses — 0.00090182° steps the join (−4.6%), 0.03816° to 0.05882° loses the table
+      (−8.3%, 1.16 calibres) — #117, M1.8e19.
+    - [x] **M1.8e18 What a marched flare is worth** (the third, ADR-045). TN D-4865's model 2 is a
       2.75° blunted cone with an 18.5° flare; its fig. 8 carries normal force and pitching moment
       from Mach 1.50 to 4.63, integrated from the pressures its tables VII to XII print, and from Mach
       2.96 up its boundary layer separates ahead of the juncture. *Done when:* those readings are
       committed with their provenance, and the guide says what it is worth and leaves out.
+      *Result:* met (ADR-048). Fig. 8(b) read by M1.8e7's pipeline into `tn-d-4865-flared-cone.json`
+      (its α = 0 circles read −0.0039 to +0.0043). hpr reads the slope −1.9%, +7.0% and +13.4% at Mach
+      1.90, 2.30 and 2.96, then +51.5% and +50.4% at 3.95 and 4.63, where the report's shadowgraphs
+      show that flare separated (unflared, its model 1 reads +29.7% and +32.1%). No reading below
+      Mach 1.528869598743478: ADR-047's drawn-out flare lands past the march's own turn.
     - [ ] **M1.8e15 The step in radius.** A step is a discontinuous profile, which the march refuses
-      outright, so unlike the flare it needs a model of its own rather than a decision about one
-      that exists. *Done when:* #87 closed or narrowed to the step alone, its measured size in an
-      ADR and the guide.
-    - [ ] **M1.8e19 The near-flat flare the march refuses.** Below about 0.059° on the tests'
-      rocket a flare's one element is reduced aft of the nose (issue #81), so the march refuses
-      Mach rows from the top down: from 0.00090182° the join's start steps (1.2 → 2.2, −4.6% and
-      0.75 calibres), and from 0.03816° to 0.05882° the table goes altogether (−8.3% and 1.16
-      calibres). Not monotone in the angle either (ADR-047, issue #117). Separate from #87, which
-      M1.8e15 is to narrow to the step.
+      outright, so unlike the flare it needs a model of its own rather than a decision about one that
+      exists. *Done when:* #87 closed or narrowed to the step alone, its measured size in an ADR and
+      the guide.
+    - [ ] **M1.8e19 The near-flat flare the march refuses.** Below about 0.059° on the tests' rocket
+      a flare's one element is reduced aft of the nose (issue #81), so the march refuses Mach rows
+      from the top down: from 0.00090182° the join's start steps (1.2 → 2.2, −4.6% and 0.75
+      calibres), and from 0.03816° to 0.05882° the table goes altogether (−8.3% and 1.16 calibres).
+      Not monotone in the angle either (ADR-047, #117). Separate from #87, which M1.8e15 narrows.
       *Done when:* the region's edges are derived rather than bisected, a rule carries the reading
       across it or the refusal is shown to be right, and a test pins whichever it is with the
       switches' sizes measured on both sides.

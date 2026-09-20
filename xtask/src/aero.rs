@@ -201,6 +201,10 @@ pub fn run(args: &[String]) -> Result<(), String> {
         ),
         (crate::aero_lip::FIXTURE, crate::aero_lip::generate(&root)?),
         (
+            crate::aero_flare::FIXTURE,
+            crate::aero_flare::generate(&root)?,
+        ),
+        (
             crate::aero_bullet::FIXTURE,
             crate::aero_bullet::generate(&root)?,
         ),
