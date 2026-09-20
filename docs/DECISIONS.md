@@ -3669,7 +3669,9 @@ M1.8a's short model read −16.3% at Mach 2.96 and −28.0% at 4.63.
 - The shelter's threshold is a switch in shape, of issue #87's family, and a large one, since it
   decides whether the whole body flies the method: on the test rocket at Mach 3 and 4°, a lip
   rising 0.2499 of the boattail's drop gives `C_N` 0.2976 and one rising 0.2501 gives 0.1995, a
-  third less, with the centre of pressure 1.8 calibres further aft. Pinned by
+  third less, with the centre of pressure 1.8 calibres further **forward** — the direction was
+  printed backwards here and corrected in ADR-041, which also replaced the rise's threshold with
+  a weight, so the two sides now agree to a ten-thousandth. Pinned by
   `a_lip_in_a_boattails_wake_carries_nothing` and noted on the issue.
 - A narrowing part behind the run is a boattail the method hasn't covered, not a lip, whatever the
   wake does to its drag: it keeps slender-body theory's share (the code review found this; a second
@@ -3857,12 +3859,16 @@ third off the normal force and moved the centre of pressure 1.77 calibres forwar
   | a flare behind the run, however small | −27.5% | 0.29 calibres |
   | a pointed tip past TN 3527 Fig. 2's 24° | −10.4% | 1.14 calibres |
   | a vertical tip steeper than the cap's handover to its base | −7.0% | 0.64 calibres |
-  | a lip leaving its boattail's wake (a ramp since this ADR, not a jump) | −29 to −34% | 0.93 to 1.97 calibres |
+  | a lip leaving its boattail's wake by rising or sitting back (a ramp since this ADR) | −29 to −34% | 0.93 to 1.97 calibres |
+  | a lip longer than its boattail's drop in diameter, however little it rises | −33.0% | 1.77 calibres, forward |
 
-  Across the four the centre of pressure moves **aft**, so a rocket that trips one reads more
-  stable. The lip's goes the other way — on that body the boattail takes enough lift off that
-  slender-body theory's centre of pressure sits forward of the method's — so the direction is the
-  body's, not the switch's; the size is what carries over.
+  Across the first four the centre of pressure moves **aft**, so a rocket that trips one reads
+  more stable. The lip rows go the other way — on that body the boattail takes enough lift off
+  that slender-body theory's centre of pressure sits forward of the method's — so the direction is
+  the body's, not the switch's; the size is what carries over. The last row is a switch this ADR
+  does **not** smooth: shelter requires the lip to be shorter than the boattail's drop in
+  diameter, the wake's own scale, and that length is a threshold. It is also the one the tests use
+  to take a rocket off the method without changing a radius or an angle.
 
   M1.8e11 takes the two tips, where NASA SP-3007's cone tables reach 30° and retire Fig. 2's edge.
   The step and the flare are M1.8e12: nothing measures what either carries faster than sound, so
@@ -3879,12 +3885,15 @@ third off the normal force and moved the centre of pressure 1.77 calibres forwar
 - Where the weight is below 1 at every speed, a component's station and its own centre of pressure
   part company — the station blends stations, the force blends slopes and moments — by about two
   calibres at half weight. The moment is not affected: the station is only where a flight samples
-  the local flow (`ω × p`), so the cost is a small error in that component's pitch and yaw
-  damping, of order `Δx ω / V` — about 1e-4 rad at Mach 3 and 1 rad/s — not a stability margin.
+  the local flow (`ω × p`), so the cost is an error in the incidence sampled there, of order
+  `Δx ω / V` — about 1e-4 rad at Mach 3 and 1 rad/s — which is a fraction `Δx/(x − x_cg)` of that
+  component's own pitch and yaw damping: appreciable for a part near the centre of mass, small in
+  the total, which the fins dominate. The static margin is untouched.
   The mismatch is ADR-034's and has always existed inside the Mach join; M1.8e10 makes it
   reachable at every supersonic Mach number, and
   [issue #106](https://github.com/nrdptel/hpr-sim/issues/106) records it with its size.
 - `SupersonicBody::shape_weight` is new public API, and `SupersonicBody::weight` now includes it.
-- The four remaining switches keep their sizes on record, in the guide and in this ADR, until
-  M1.8e11 and M1.8e12 close or bound them.
+- Five switches keep their sizes on record, in the guide and in this ADR, until M1.8e11 and
+  M1.8e12 close or bound them: the four of issue #87's list, and the lip's own length, which that
+  list did not name.
 

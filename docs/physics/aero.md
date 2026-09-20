@@ -577,13 +577,19 @@ threshold is worth this much (`issue_87s_switches_are_this_big`, and
 | a flare behind the run, however small | −27.5% | 0.29 calibres |
 | a pointed tip steeper than TN 3527 Fig. 2's 24° | −10.4% | 1.14 calibres |
 | a vertical tip steeper than the cap's handover to its base | −7.0% | 0.64 calibres |
-| a lip leaving its boattail's wake | −29 to −34% | 0.93 to 1.97 calibres |
+| a lip leaving its boattail's wake by rising or by sitting back | −29 to −34% | 0.93 to 1.97 calibres |
+| a lip longer than its boattail's drop in diameter, however little it rises | −33.0% | 1.77 calibres, forward |
 
-In the four switches the centre of pressure moves **aft** when the method is lost, so a rocket
-that trips one reads *more* stable than one that doesn't. The lip's row goes the other way: on a
-body whose boattail takes a lot of lift off, slender-body theory puts the centre of pressure
+In the first four the centre of pressure moves **aft** when the method is lost, so a rocket that
+trips one reads *more* stable than one that doesn't. The two lip rows go the other way: on a body
+whose boattail takes a lot of lift off, slender-body theory puts the centre of pressure
 **forward** of the method's, so losing the method there reads *less* stable. Which way it goes
 depends on the body; what is reliable is the size.
+
+The last row is a switch the wake's grading does not cover: a lip is only sheltered if it is
+shorter than the boattail's drop in diameter, which is the wake's own scale, and that length is a
+threshold, not a ramp. It is the one this page's measurements use to take a rocket off the method
+without changing a radius or an angle.
 
 The lip's row is no longer a switch: it is spread over the band the wake grades, as
 [above](#a-lip-in-a-boattails-wake) — the same difference between the models, as a ramp. The two tips are next
@@ -832,11 +838,13 @@ measuring it.
 
 **The rule.** A lip that sits wholly in a boattail's wake carries no potential-flow slope from the
 Mach number where the method takes over; below the join it keeps slender-body theory's
-`2 ΔA/A_ref`, and the join blends the two, so nothing jumps. hpr decides the shelter exactly as its
-drag model does ([ADR-030][adr-030], which takes the same lip's drag away): wholly in the wake up
+`2 ΔA/A_ref`, and the join blends the two, so nothing jumps. hpr takes the shelter's share from its
+drag model ([ADR-030][adr-030], which takes the same lip's drag away): wholly in the wake up
 to a rise of a quarter of the boattail's drop in diameter, not at all from half of it, and the wake
-fades over any tube between them. The decision record on the lip, [ADR-039][adr-039], sets out the
-readings behind it.
+fades over any tube between them. On top of that fraction the normal force asks one thing the drag
+model doesn't: the lip must be shorter than the boattail's drop in diameter, the wake's own scale,
+or it grows out of the wake however little it rises. The decision record on the lip,
+[ADR-039][adr-039], sets out the readings behind the share itself.
 
 **A lip part way out of the wake.** Where the wake covers the lip only partly, the drag model has
 always graded it so. Since [M1.8e10](../decisions-and-roadmap.md#m1-8e10) the normal force reads
@@ -942,11 +950,14 @@ stability margin, and a good deal more restoring force.
 
 **What it leaves out.** The lip still has drag, and its own wake rule there ([ADR-030][adr-030]).
 Nothing here measures a lip's lift directly: the tunnel gives forces for the whole body, and the
-moment bounds the share rather than measuring it. The shelter's threshold is a switch in shape, of
-the family [issue #87](https://github.com/nrdptel/hpr-sim/issues/87) tracks, and a large one,
-because it decides whether the *whole body* flies the method: on the test rocket at Mach 3 and 4°,
-a lip rising 0.2499 of the boattail's drop gives `C_N` 0.2976, and one rising 0.2501 gives 0.1995,
-a third less, with the centre of pressure 1.8 calibres further aft. A narrowing part behind the
+moment bounds the share rather than measuring it. The shelter used to be a switch in shape, of the
+family [issue #87](https://github.com/nrdptel/hpr-sim/issues/87) tracks, and a large one, because
+it decides whether the *whole body* flies the method. Since
+[M1.8e10](../decisions-and-roadmap.md#m1-8e10) the rise no longer switches it: on the test rocket
+at Mach 3 and 4°, lips rising 0.2499 and 0.2501 of the boattail's drop now agree to a
+ten-thousandth. What is left is how far apart the models are at one shape — 33.0% of the normal
+force, and the centre of pressure 1.77 calibres **forward** on slender-body theory — spread over
+the band the wake grades ([above](#a-lip-in-a-boattails-wake)). A narrowing part behind the
 run is a boattail the method hasn't covered, not a lip, and keeps slender-body theory's share; so
 does a flare anywhere else on the body, which keeps the whole body off the method.
 

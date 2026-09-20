@@ -2771,11 +2771,15 @@ mod tests {
                 "out of the wake by its length"
             );
             let f = m.normal_force(&flow(3.0, 4f64.to_radians(), 0.0)).unwrap();
-            (f.coefficient, f.cp_station_m.unwrap() / 0.054)
+            (
+                f.coefficient,
+                f.cp_station_m.unwrap() / m.reference_diameter_m(),
+            )
         };
         let in_wake = at(0.25);
+        let diameter_m = model(&crate::testing::finned_rocket(4)).reference_diameter_m();
         let gap_force = out_of_wake.0 / in_wake.0 - 1.0;
-        let gap_calibers = out_of_wake.1 - in_wake.1 / 0.054;
+        let gap_calibers = out_of_wake.1 - in_wake.1 / diameter_m;
         assert!(
             (gap_force + 0.3295).abs() < 5e-4 && (gap_calibers + 1.774).abs() < 5e-3,
             "at one shape the two models differ by {gap_force} in force and {gap_calibers} \
