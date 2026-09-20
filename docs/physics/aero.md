@@ -1527,8 +1527,9 @@ say what it would have done here, so what follows is hpr's own reading of the re
 chosen because it is continuous in the flare's angle and smooth through the region — not because
 it is known to be nearer the air. What changed is which model runs, not how well either matches a
 measurement. And **where the region sits depends entirely on the body ahead of the corner**: a few
-thousandths of a degree on the rocket measured here, nearly a degree on the shorter, fatter body
-of [Where a flare's march stops](#where-a-flares-march-stops).
+thousandths of a degree on the rocket measured here, nearly a degree on the body of
+[Where a flare's march stops](#where-a-flares-march-stops) — a pointed 2.75° cone and five
+calibres of tube, whose radius is nearly four times as large.
 
 **What a flare that small does to the method.** The march fixes the pressure just behind each
 corner from the [Prandtl–Meyer](../glossary.md#prandtlmeyer-expansion) turn there, and then lets it
@@ -1578,12 +1579,14 @@ not fixed either — on this rocket the crossing is below the balance from Mach 
 that the order swaps.
 
 Both are properties of the flow the body hands to the corner — its Mach number, its pressure, the
-gradient it carries, the radius there and the angle ahead — and `flare_reduction_turns_rad` solves
-for them from exactly that. The balance is TN 3527's eq. 4 set to zero and rearranged,
-sin(δ₁ + θ) = (Ω₁/Ω₂(θ)) (sin δ₁ + *r* (∂*p*/∂*s*)₁ ⁄ *B*₁), which iterates on itself. The crossing
-is *p*₂(θ) = *p*_c(δ₁ + θ): an isentropic turn on one side, a cone solution on the other. A secant
-method solves it in a few steps, started at the turn that would bring the pressure back to the
-free stream's.
+gradient it carries, the radius there, the angle ahead and the free stream it was read in — and
+`flare_reduction_turns_rad` takes exactly that and nothing else. The balance is TN 3527's eq. 4
+set to zero and rearranged, sin(δ₁ + θ) = (Ω₁/Ω₂(θ)) (sin δ₁ + *r* (∂*p*/∂*s*)₁ ⁄ *B*₁), which
+iterates on itself. The crossing is *p*₂(θ) = *p*_c(δ₁ + θ): an isentropic turn on one side, a
+cone solution on the other. It is bracketed over the turns a widening corner can make at all —
+from a surface lying along the axis up to the isentropic turn running out or the cone tables' 30°,
+whichever comes first — and found by false position from the turn that would bring the pressure
+back to the free stream's.
 
 On the tests' flared rocket — an ogive nose 0.25 m long on a 27 mm radius, a 0.7 m tube and a
 0.3 m conical flare — they are these:
