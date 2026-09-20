@@ -602,8 +602,23 @@
     - [ ] **M1.8e13 The blunt tip's handover, past 24°** (the old e12's aim, once the march carries
       it). *Done when:* the vertical-tip switch is gone or measured again, fixtures and the guide
       moving together; and, ahead of that, issue #108 closed.
-    - [ ] **M1.8e14 The step and the flare.** *Done when:* #87 closed or narrowed to these two, each switch's measured size in an ADR and the guide.
-
+    - [ ] **M1.8e14 The flare through the method** (split from the old e14; the step is M1.8e15).
+      The method already marches a flare — a cone, a tube and a flare return a finite `C_Nα` at Mach
+      3 — and it is the model around it that refuses one, since the run stops at the first widening
+      body and a flare on slender-body theory would mix the models over one rocket, as a boattail
+      did before M1.8e4. There is a measurement too, which the guide once said there wasn't: TN
+      D-4865's model 2 is a 2.75° blunted cone with an 18.5° flare, and its fig. 8 carries normal
+      force and pitching moment from Mach 1.50 to 4.63, integrated from the pressures its tables VII
+      to XII print. The report is clear about where a march stops being the tool: at Mach 1.50 that
+      flare's shock isn't attached even in theory, and from 2.96 up the boundary layer separates
+      ahead of the juncture. *Done when:* a flared body flies the method where the flare's shock is
+      attached, with no jump at ±1e-9 in Mach or in the flare's angle across that boundary; TN
+      D-4865 model 2's readings are committed with their provenance; the guide says what it is worth
+      and leaves out; an ADR records what happens where the shock is detached.
+    - [ ] **M1.8e15 The step in radius.** A step is a discontinuous profile, which the march refuses
+      outright, so unlike the flare it needs a model of its own rather than a decision about one
+      that exists. *Done when:* #87 closed or narrowed to the step alone, its measured size in an
+      ADR and the guide.
 - [ ] **M3.1 OpenRocket `.ork` import.**
   - Handles zip, gz and raw XML, schema 1.0 to 1.10, plus the documented 1.11 additions.
   - Reads components, materials, finishes, motor configurations, recovery, stages, and stored

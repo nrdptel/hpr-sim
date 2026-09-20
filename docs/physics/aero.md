@@ -600,13 +600,25 @@ threshold, not a ramp. It is the one this page's measurements use to take a rock
 without changing a radius or an angle.
 
 The first lip row is no longer a switch: it is spread over the band the wake grades, as
-[above](#a-lip-in-a-boattails-wake). The second still is one. The two tips are next
-([M1.8e11](../decisions-and-roadmap.md#m1-8e11)), where a second source's cone tables reach past
-Fig. 2's edge. For the step and the flare nothing measures what they carry faster than sound, so
-there is nothing to blend toward yet ([M1.8e14](../decisions-and-roadmap.md#m1-8e14)). Until then,
-a rocket whose shape sits near one of those thresholds is worth checking on both sides. The step's
-is finer than it sounds: a billionth of the radius, a few hundredths of a nanometre on a 54 mm
-body, so any step a person would draw is past it.
+[above](#a-lip-in-a-boattails-wake). The second still is one. The two tips moved rather than
+went: a pointed tip's edge is the cone tables' 30° since
+[M1.8e11](../decisions-and-roadmap.md#m1-8e11), and a vertical tip's is the handover's cap, which
+stands at 24° for the reason in [What the cap is worth](#what-the-cap-is-worth).
+
+The flare is the next one to go ([M1.8e14](../decisions-and-roadmap.md#m1-8e14)). The method marches
+a flare already — a cone, a tube and a flare behind them return a normal-force slope at Mach 3 — and
+it is the model around the method that stops at the first widening body, rather than run the two
+models over one rocket. There is a measurement to check it against too: NASA TN D-4865's second
+model is a blunted 2.75° cone with an 18.5° flare, measured from Mach 1.50 to 4.63. The report is
+also clear about where a march stops being the right tool: at Mach 1.50 that flare's shock is not
+attached even in theory, and from Mach 2.96 up its boundary layer separates ahead of the corner and
+reattaches behind it, so the pressure rise arrives downstream of where a tangent body would put it.
+
+A step in radius is further off ([M1.8e15](../decisions-and-roadmap.md#m1-8e15)): the march needs a
+profile without a jump in it, so a step needs a model of its own rather than a decision about an
+existing one. Its threshold is finer than it sounds — a billionth of the radius, a few hundredths of
+a nanometre on a 54 mm body — so any step a person would draw is past it, and a rocket whose shape
+sits near one of these thresholds is worth checking on both sides.
 
 **What a flight takes.** The method covers the nose, when it is the first body (a blunt or vertical
 tip behind its [Newtonian cap](#blunt-tips)), the body tubes straight behind it at the same radius,

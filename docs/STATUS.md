@@ -5,7 +5,7 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
 ## Now
 
 - **Current milestone:** M1.8e13 The handover moved past 24° — it begins by settling #108
-- **Order:** M1.8e13 (M1.8e14 first if #108 proves too deep), then M3.1
+- **Order:** M1.8e13 (M1.8e14 first if #108 proves too deep), then M1.8e15 and M3.1
 - **Run:** M0.1-M0.4, M1.1-M1.7, M2.1, M1.8a to M1.8e12 shipped; https://nrdptel.github.io/hpr-sim/
 - **Last updated:** 2026-09-20 (M1.8e12 done)
 
@@ -36,9 +36,9 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
 - **M1.8e12** (ADR-043): the handover's cap is a parameter (`with_handover_cap_rad`), swept into
   `blunt-tips.json`. 24° stands: steeper caps read nearer TN D-4865's sphere-cone but none keeps its
   answer to Mach 5 (28° is worst); at 30°, 108 of the nose's 160 elements sit above their cone.
-- **M1.8e13 starts at #108**: it needs a reading of `η < 0` that settles as the nose is cut finer,
-  checked on TN 3527's ogive at 5.05 and 6.28 (#81); `|η|` is worse. Too deep? Take M1.8e14, the
-  step and the flare. #97: the long model's M1.8a readings may be biased.
+- **M1.8e13 starts at #108**: a reading of `η < 0` that settles as the nose is cut finer (#81);
+  `|η|` is worse. Too deep? **M1.8e14** is scoped and unblocked: the method marches a flare already,
+  and TN D-4865's model 2 measures one. #97: the long model's M1.8a readings may be biased.
 - **M2.2's OpenRocket oracle** (ADR-035): orhelper is dropped, so decide how to drive the jar when
   M2.2 starts; JPype loads the JVM in-process, only a subprocess isolates, and the jar needs Java
   17 exactly (`[java] max_major` in the refs lock keeps doctor off a newer one).
