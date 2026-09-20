@@ -561,7 +561,7 @@
     with body lift. A cited supersonic method for noses, boattails and crossflow. *Done when:*
     the Arcas Robin's body-alone `C_Nα` (fins off, TN D-4014) is within 15% at every Mach number
     from 1.5, and both configurations' `C_Nα` within 15% at Mach 3.96 and 4.63, or an ADR records
-    why not with the gap in the report. Split below into M1.8e1 to e9; e9 carries this bullet.
+    why not with the gap in the report. Split below into M1.8e1 to e10; e9 judged this bullet.
 
     - [x] **M1.8e1 The second-order shock-expansion method.** NACA TN 3527's method for a
       pointed body's `C_Nα` and CP at `α → 0`, the cylinder's lift behind the nose included; its

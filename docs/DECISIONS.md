@@ -3700,8 +3700,14 @@ the method at all.
     complaint issue #90 filed: with a fade a 30° boattail removed 26 times less lift than
     slender-body theory, against footnote 8's 21 times that the issue measured. Holding the
     correlation keeps the centre of pressure at the forward end of the honest range. On the tests'
-    rocket at Mach 2 the two rules differ by 0.75 calibres of body centre of pressure at 30°, which
-    is the size of the doubt and is pinned by a test.
+    rocket the two rules differ by 1.35 calibres of body centre of pressure at 30° at Mach 1.5,
+    0.91 at Mach 2, 0.75 at Mach 3 and 0.67 at Mach 4.63 — largest at the low speeds a hobby
+    rocket flies — and both ends are pinned by a test.
+  - **One further bound.** Reading a longer boattail walks left along Fig. 5 toward the transonic
+    peak it was drawn with, which for a deep boattail below about Mach 1.3 lies past potential
+    flow. The held increment is therefore bounded by slender-body theory's
+    `2 (A_aft − A_fore)/A_fore`, the ceiling the measured curve otherwise sits at 0.24 to 0.47 of
+    (`a_held_increment_never_passes_potential_flow`).
   - **What is not known.** Nothing measures a separated boattail's supersonic normal force, so
     neither limit is validated. The 16° itself is Cubbage's, from transonic *drag* data (Mach 0.6
     to 1.28), used here from Mach 1.2 up, where a shoulder's Prandtl–Meyer turn makes separation
@@ -3749,7 +3755,10 @@ the method at all.
   forward of that — the conservative end of a range about three quarters of a calibre wide.
   Calisto's four supersonic rows against RASAero II each move under half a point, all closer in
   slope; its Mach 1.3 row stays outside both targets, as it was, and moves slightly in
-  (+16.06% to +15.94%, 0.720 to 0.716 calibres).
+  (+16.06% to +15.94%, 0.720 to 0.716 calibres). Their centres of pressure move the other way at
+  Mach 1.75 and 2.0, from −0.252 to −0.281 and from −0.410 to −0.443 calibres, the last 89% of the
+  half-calibre target: taking more lift off the tail moves the whole rocket's centre of pressure
+  forward.
 - `ShockExpansionBody::element_flows` is new public API: the state behind each element's corner,
   its tangent cone, how fast the pressure relaxes toward it, and the radius eq. 19 needs.
 - M1.8e's bullet is now judged in one place, with a test pinning which rows are outside; M1.8e10

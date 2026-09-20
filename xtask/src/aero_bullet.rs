@@ -96,7 +96,8 @@ pub fn generate(root: &Path) -> Result<Value, String> {
             let (covered, zero_alpha, _) = flight_bodies(&model, mach, area)?;
             if (covered - zero_alpha).abs() > 1e-12 * zero_alpha.abs() {
                 return Err(format!(
-                    "{id} at Mach {mach}: the method covers {covered} per rad of the body's                      {zero_alpha}, so the zero-alpha column is not the method's own"
+                    "{id} at Mach {mach}: the method covers {covered} per rad of the body's \
+                     {zero_alpha}, so the zero-alpha column is not the method's own"
                 ));
             }
             let gap_row = gap_rows

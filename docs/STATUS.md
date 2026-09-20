@@ -34,8 +34,8 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
   slope, so both Arcas designs fly the method to their base (e8, `arcas-robin-lip.json`). #98: a
   boattail doubles the table's build. #101: a vanishing cap keeps its cone's entropy.
 - **M1.8e9** (ADR-040): #90's cap holds W&P's correlation at 16°, the steepest attached angle, for
-  steeper boattails — a fade to zero was written first and rejected, since it moves the CP aft (0.75
-  calibres at 30°) and flatters stability. Eq. 19 is integrated by hand over a boattail and its tube
+  steeper boattails, bounded by slender-body theory — a fade to zero was written first and rejected,
+  since it moves the CP aft (0.67 to 1.35 calibres at 30°) and flatters stability. Eq. 19 is integrated by hand over a boattail and its tube
   (`ShockExpansionBody::element_flows` is new public API); it pins the integration and footnote 8's
   tangent-cone terms, not η. M1.8e's 15% bullet, in `arcas-robin-body-gap.json`: met at Mach 3.96
   and 4.63, outside on six body-alone rows; the α→0/curvature split is soft (the tunnel's fit
@@ -131,7 +131,7 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
   between Mach 0.8 and 1.2; fins off, the body reads 14–38% high from Mach 1.5 to 2.96 (M1.8e9's
   bullet). A blunt tip's cap (M1.8e7) is checked only on a sphere-cone and keeps its start cone's
   entropy however small it is (#101). A lip's share (M1.8e8) is bounded, not measured; a boattail
-  past 16° (M1.8e9) is worth 0.75 calibres of doubt, nothing measuring it.
+  past 16° (M1.8e9) is worth 0.67 to 1.35 calibres of doubt, nothing measuring it.
 - Drag: against RASAero II's Calisto hpr reads −14.9% to −5.1% supersonic (ADR-030); against
   MIL-HDBK-762 the body reads 6–10% low past Mach 1.6 and high through Mach 1 (#67, #68). Against
   the Arcas Robin it reads high at every row (#70 blunt fin edges, #72 a steep boattail in a thick

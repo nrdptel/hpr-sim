@@ -540,8 +540,8 @@ conical (it takes the same correlation from its length and radii). Past 16°, wh
 separates, hpr stops reading the correlation any steeper and holds it there
 ([A steep boattail reads the correlation no steeper than 16°](#the-body-faster-than-sound-in-a-flight),
 [issue #90: how steep a boattail the correlation should cover](https://github.com/nrdptel/hpr-sim/issues/90));
-nothing measures what such a boattail really carries, and the choice is worth about a calibre of
-centre of pressure at 30°. A tube behind the boattail takes the method's decay of its expansion, which no
+nothing measures what such a boattail really carries, and the choice is worth 0.67 to 1.35
+calibres of centre of pressure at 30°, most at the lowest speeds. A tube behind the boattail takes the method's decay of its expansion, which no
 measurement here checks. A blunt or vertical nose tip takes a Newtonian cap ahead of the method
 ([Blunt tips](#blunt-tips)), an extrapolation from spherical caps, and a lip inside a boattail's
 wake rides along carrying nothing ([A lip in a boattail's wake](#a-lip-in-a-boattails-wake)). A
@@ -619,17 +619,32 @@ correlation held at 16°, and nothing at all — the body behaving as though the
 cylinder, since a separated surface no longer turns the flow. hpr takes the first. The increment
 is negative, so it takes lift off the tail: holding it keeps the centre of pressure forward, and
 letting it fade to zero would move the centre of pressure **aft** and make a steep boattail look
-more stable than anything measured. On the tests' rocket at Mach 2 — an ogive nose, a tube, and a
-30° boattail — the body's centre of pressure sits 0.75 calibres further aft if the increment fades
-away than if it is held. That is the size of the doubt: a boattail steeper than 16° is worth about
-three quarters of a calibre of uncertainty in its own right, and hpr takes the forward end of it
-(test `a_separating_boattail_reads_the_correlation_at_its_steepest_measured_angle` pins the gap).
+more stable than anything measured. On the tests' rocket — an ogive nose, a tube, and a 30°
+boattail — the body's centre of pressure sits this much further aft if the increment fades away
+than if it is held:
+
+| Mach | 1.5 | 2 | 3 | 4.63 |
+|---|---|---|---|---|
+| calibres between the two rules | 1.35 | 0.91 | 0.75 | 0.67 |
+
+That is the size of the doubt, and it is largest where a hobby rocket spends its supersonic flight:
+a boattail steeper than 16° is worth two thirds of a calibre at Mach 4.63 and a third of a calibre
+more than one at Mach 1.5. hpr takes the forward end of that range (test
+`a_separating_boattail_reads_the_correlation_at_its_steepest_measured_angle` pins both ends).
+
+There is one more bound. Reading a longer boattail walks left along Fig. 5, toward the transonic
+peak it was drawn with, and for a deep boattail below about Mach 1.3 that peak lies past potential
+flow. Slender-body theory is the ceiling — the measured curve otherwise sits at 0.24 to 0.47 of it
+— so the held increment stops there (`a_held_increment_never_passes_potential_flow`).
 
 **How far to trust the 16°.** It is Cubbage's, measured at Mach 0.6 to 1.28 and on *drag*, and it
 is used here on the normal force from Mach 1.2 up. A shoulder turns the flow through a
 Prandtl–Meyer expansion faster than sound, where separation is less likely than transonically, so
 16° is if anything early. No measurement of a steep boattail's supersonic normal force exists to
-check it. The angle is also read on each narrowing part's own chord angle, while the drag merges
+check it. Note too that the two models take opposite consequences from the same angle: separation
+*lowers* a boattail's pressure drag toward the base value, and here it *holds* the lift the
+boattail takes off instead of letting it shrink. The argument for that is the stability one above,
+not a flow one. The angle is also read on each narrowing part's own chord angle, while the drag merges
 adjacent narrowing parts into one cone before grading, so a boattail drawn in several parts can be
 graded differently by the two.
 
@@ -1997,9 +2012,15 @@ and Cubbage's long, gentle boattails 0 to 0.009 where they measure 0.011 to 0.07
   over the first few degrees, or measurements at finer angles than the reports plot; neither is in
   hand, so the gap is left visible
   ([The body alone, against the 15% target](#the-body-alone-against-the-15-target)).
-- **A boattail steeper than 16° is worth about three quarters of a calibre of doubt.** Nothing
-  measures a separated boattail's supersonic normal force; hpr holds the measured correlation at
-  16° rather than letting it fade, which is the conservative end of that range
+- **A centre of pressure means little where the body's normal force is near zero.** A deep,
+  steep transition can remove almost all the lift the nose and tube carry, and hpr still divides
+  the moment by what is left: one test shape reports its body's centre of pressure 160 calibres
+  ahead of its own nose tip at Mach 1.2
+  ([issue #104: a near-zero normal force gives a meaningless centre of
+  pressure](https://github.com/nrdptel/hpr-sim/issues/104)).
+- **A boattail steeper than 16° is worth 0.67 to 1.35 calibres of doubt**, the most at the lowest
+  supersonic speeds. Nothing measures a separated boattail's supersonic normal force; hpr holds
+  the measured correlation at 16° rather than letting it fade, which is the conservative end
   ([A steep boattail reads the correlation no steeper than 16°](#the-body-faster-than-sound-in-a-flight)).
 - These are small-angle models. `α` is accepted over `[0, π]`, but fin slopes stay linear in `α`
   and nothing models stall. The flight engine uses them at every angle all the same
