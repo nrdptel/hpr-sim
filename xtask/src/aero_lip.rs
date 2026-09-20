@@ -186,8 +186,19 @@ pub fn generate(root: &Path) -> Result<Value, String> {
             .ok_or(format!("no moment reading accuracy for {id}"))?;
         let committed = arcas_model(root, design, None, false, BodyModel::CURRENT)?;
         let without = arcas_model_without_lip(root, design, BodyModel::CURRENT)?;
-        if committed.supersonic_body().map_or(0, |t| t.covered) != 4 {
-            return Err(format!("{id}: the committed design doesn't fly the method"));
+        // Four covered bodies, and the wake covering the lip wholly: since M1.8e10 the shelter
+        // is a weight, so a lip drawn into the band would make this a blend of the two models
+        // and the comparison below would no longer be the method's alone.
+        let table = committed
+            .supersonic_body()
+            .ok_or(format!("{id}: the committed design doesn't fly the method"))?;
+        // Exact on purpose: anything short of the whole method makes the comparison below a
+        // blend of two models rather than the method's own share.
+        if table.covered != 4 || (table.shape_weight - 1.0).abs() > 0.0 {
+            return Err(format!(
+                "{id}: the method covers {} bodies at a shape weight of {}",
+                table.covered, table.shape_weight
+            ));
         }
         let lip = Lip::of(root, design)?;
         let scale = committed.reference_area_m2() / area;

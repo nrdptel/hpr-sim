@@ -4,10 +4,10 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
 
 ## Now
 
-- **Current milestone:** M1.8e10 #87's model switches
-- **Order:** M1.8e10, then M3.1
-- **Run:** M0.1-M0.4, M1.1-M1.7, M2.1, M1.8a to M1.8e9 shipped; https://nrdptel.github.io/hpr-sim/
-- **Last updated:** 2026-09-19 (M1.8e9 done)
+- **Current milestone:** M1.8e11 Fig. 2's edge, from Sims
+- **Order:** M1.8e11, M1.8e12, then M3.1
+- **Run:** M0.1-M0.4, M1.1-M1.7, M2.1, M1.8a to M1.8e10 shipped; https://nrdptel.github.io/hpr-sim/
+- **Last updated:** 2026-09-20 (M1.8e10 done)
 
 ## Handoff (overwrite each session)
 
@@ -22,30 +22,28 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
   apogee or max speed (ADR-024).
 - **The path in wind (ADR-026):** the oracle flies RocketPy 1.13.0 with PRs #1188 and #1196 applied
   by `corrections.py` (re-pin and delete it when #1196 releases).
-- **M1.8a to e1 (ADR-027 to ADR-033):** `cargo xtask aero` writes the aero fixtures. NTRS serves
+- **M1.8a to e1 (ADR-027 to ADR-033):** `cargo xtask aero` writes the aero fixtures; NTRS serves
   five of ADR-030's PDFs with a 436-byte header (pinned as served). Scratch: `refs/scratch/m18*/`.
-  #76: M1.8a's other TN D-4014 zeros. #81: reduced elements carry no gradient on.
-- **M1.8e2 to e8** (ADR-034, 037, 038, 039): `SupersonicBody` (`model.rs`) tabulates the method's
-  shares every 0.05 Mach, lazily, joined from max(1.2, its bisected start) over 0.3. Body lift is
-  Jorgensen's (`crossflow.rs`); a boattail W&P's increment (`supersonic_boattail.rs`); a vertical
-  tip TN D-4865's cap (`blunt_tip.rs`), marched from the tangent cone; `BodyModel::BEFORE_M1_8E6`
-  keeps the old rules. A lip wholly in a boattail's wake (the drag buildup's `WakeTerm`) carries no
-  slope, so both Arcas designs fly the method to their base (e8, `arcas-robin-lip.json`). #98: a
-  boattail doubles the table's build. #101: a vanishing cap keeps its cone's entropy.
-- **M1.8e9** (ADR-040): #90's cap holds W&P's correlation at 16°, the steepest attached angle, for
-  steeper boattails, the extra it removes bounded by potential flow — a fade to zero was written
-  first and rejected, since it moves the CP aft (0.67 to 1.35 calibres at 30°) and flatters
-  stability. Eq. 19 is integrated by hand over a boattail and its tube
-  (`ShockExpansionBody::element_flows` is new public API); it pins the integration and footnote 8's
-  tangent-cone terms, not η. M1.8e's 15% bullet, in `arcas-robin-body-gap.json`: met at Mach 3.96
-  and 4.63, outside on six body-alone rows; the α→0/curvature split is soft (the tunnel's fit
-  correlates at −0.96) and short@2.96 is a counterexample (77% at α→0).
-- **M1.8e10 next:** #87's model switches; all five flip the same gate (`model.rs`'s
-  `supersonic_run`), so each is worth the whole body. Plan: measure all five first; the lip's is
-  already continuous in the drag buildup (`share_by_rise`), so read that fraction as the weight;
-  SP-3007 (pinned, used by `aero_gap.rs`) tabulates cones to 30°, which retires Fig. 2's 24° edge
-  for both tip switches; nothing can be cited for a step's or a flare's band, so an ADR records
-  those two with their sizes. #97: the long model's M1.8a readings may be biased (page skew).
+- **M1.8e2 to e8** (ADR-034, 037, 038, 039): `SupersonicBody` tabulates the method's shares every
+  0.05 Mach, lazily, joined from max(1.2, its bisected start) over 0.3. Body lift is Jorgensen's
+  (`crossflow.rs`); a boattail W&P's increment (`supersonic_boattail.rs`); a vertical tip TN
+  D-4865's cap (`blunt_tip.rs`), marched from the tangent cone; `BodyModel::BEFORE_M1_8E6` keeps the
+  old rules. A lip wholly in a boattail's wake (the drag buildup's `WakeTerm`) carries no slope, so
+  both Arcas designs fly the method to their base (e8, `arcas-robin-lip.json`). #98: a boattail
+  doubles the table's build. #101: a vanishing cap keeps its cone's entropy.
+- **M1.8e9** (ADR-040): #90's cap holds W&P's correlation at 16° for steeper boattails, the extra
+  bounded by potential flow; a fade to zero was rejected (it moves the CP aft, 0.67 to 1.35 calibres
+  at 30°). `ShockExpansionBody::element_flows` is new public API. M1.8e's 15% bullet, in
+  `arcas-robin-body-gap.json`: met at Mach 3.96 and 4.63, outside on six body-alone rows; the
+  α→0/curvature split is soft (the tunnel's fit correlates at −0.96), short@2.96 a counterexample.
+- **M1.8e10** (ADR-041): #87's five switches flip one gate (`supersonic_run`), so each is worth the
+  whole body. The lip's **rise** is now a weight (`SupersonicBody::shape_weight`, the drag
+  buildup's whole `wake_fraction`); five switches keep measured sizes, including the lip's own
+  length (−33.0%, 1.77 cal), which #87 never listed. #106: station vs CP where the weight < 1.
+- **M1.8e11 next:** SP-3007 (pinned, used by `aero_gap.rs`) tabulates cone slopes to 30°, retiring
+  Fig. 2's 24° edge for both tip switches; `CONE_ANGLES_DEG`/`CONE_SLOPES` hold Fig. 2, and
+  `MAX_HANDOVER_RAD` exists only because of that edge. Then M1.8e12: nothing can be cited for a
+  step's or a flare's band. #97: the long model's M1.8a readings may be biased.
 - **M2.2's OpenRocket oracle** (ADR-035): orhelper is dropped, so decide how to drive the jar when
   M2.2 starts; JPype loads the JVM in-process, only a subprocess isolates, and the jar needs Java 17
   exactly (`[java] max_major` in the refs lock keeps doctor off a newer one).
@@ -57,20 +55,22 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
 
 ## Done log (newest first, keep about 15)
 
+- 2026-09-20: M1.8e10 The lip's shelter, weighed not switched (ADR-041): the drag buildup's wake
+  fraction is now the method's weight, so a lip drawn taller moves a rocket between the models
+  instead of switching it (was −33% and 1.77 calibres); five switches left, each measured.
+
 - 2026-09-19: M1.8e9 #90's cap and M1.8e's 15% bullet (ADR-040): a boattail steeper than 16° reads
-  W&P's correlation as a 16° one, the conservative end of a 0.75-calibre range; eq. 19 integrated by
-  hand over a boattail and its tube; the bullet met at Mach 3.96 and 4.63, the body alone outside on
-  six rows.
+  W&P's correlation as a 16° one, the conservative end of a 0.67 to 1.35 calibre range; the bullet
+  met at Mach 3.96 and 4.63, the body alone outside on six rows.
 - 2026-09-19: M1.8e8 The lip faster than sound (ADR-039): a lip in a boattail's wake carries nothing
   above the join, so every M1.8a row from Mach 1.5 is within the slope's 15% (+9.4% to −3.3%, was
   −28.0%); the long model's CP at Mach 1.8 and 2.3 is 0.5 calibres out.
-- 2026-09-19: M1.8e7 Blunt tips faster than sound (ADR-038): power-series, Haack and elliptical
-  noses fly the method behind TN D-4865's cap; its sphere-cone like for like −1.2% to +32.1%.
-- 2026-09-19: M1.8e6 Crossflow and the boattail faster than sound (ADR-037): Jorgensen's body lift
-  at every speed and W&P's measured boattail; like for like the body reads +3.4% to +41.0% (was
-  +14.9% to +73.2%); 48 of 62 high-angle points within 15%; split e7, e8.
-- 2026-09-19: M1.8e2 to e5 (ADR-034, 036): the body's supersonic shares in flight from a bisected
-  start, boattails and their tubes, and the gap sized source by source (crossflow first).
+- 2026-09-19: M1.8e7 Blunt tips (ADR-038): power-series, Haack and elliptical noses fly the method
+  behind TN D-4865's cap; its sphere-cone like for like −1.2% to +32.1%.
+- 2026-09-19: M1.8e6 Crossflow and the boattail (ADR-037): Jorgensen's body lift at every speed and
+  W&P's measured boattail; like for like the body reads +3.4% to +41.0% (was +14.9% to +73.2%).
+- 2026-09-19: M1.8e2 to e5 (ADR-034, 036): the body's supersonic shares in flight, boattails and
+  their tubes, and the gap sized source by source.
 
 ## Needs Neer (blocking or one-way decisions; the session keeps working on other things)
 
@@ -80,15 +80,15 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
   PRs as you, and authors can't self-approve.
 - **crates.io names** (whenever): `hpr`, `hpr-sim`, `hpr-core`... are unreserved. Reserve them?
 - **RASAero values in fixtures** (no action if fine): `normal-force-vs-mach.json` commits 30 values
-  of RocketPy's 2018 Calisto RASAero II export (ADR-027) plus, since M1.8e9, four summary numbers
-  from its secant columns; `rocketpy-drag-curves.json` enough to rebuild 147 values of five RocketPy
-  drag curves (ADR-029). If not fine, say so in an issue; the next session summarises.
+  of RocketPy's 2018 Calisto RASAero II export (ADR-027) plus four summary numbers from its secant
+  columns; `rocketpy-drag-curves.json` enough to rebuild 147 values of five RocketPy drag curves
+  (ADR-029). If not fine, say so in an issue; the next session summarises.
 
 ## Decided without Neer (one line each; significant ones get an ADR)
 
-- M1.8e splits (one id level): e3 join, e4 boattail, e5 measure, e6 fly, e7 blunt tips, e8 the lip,
-  e9 rest (renumbered when e7 split). e9's done-when restates the parent M1.8e bullet, escape clause
-  included, verbatim from main; #87 moved to e10.
+- M1.8e splits (one id level, so siblings are renumbered): e3 join, e4 boattail, e5 measure, e6
+  fly, e7 blunt tips, e8 lip, e9 rest, e10 the lip's weight, e11 Fig. 2's edge, e12 step and flare.
+  e9's done-when restates the parent bullet, escape clause included, verbatim from main.
 - ADR-038: the march behind a blunt tip starts from the tangent cone, not TN D-4865's Newtonian
   state (which fails on the Arcas nose from Mach 3.96); handover capped at 24°. ADR-039: a lip in a
   boattail's wake carries nothing faster than sound, and the fins-off moment bounds it rather than
