@@ -4781,6 +4781,10 @@ across or a demonstration that refusing is right.
 **Decision.**
 
 - **The edges are two turns, each the zero of one of the quantities whose signs must agree.**
+  That each has exactly one zero is an observation over the corner states measured here, not a
+  proof; which of the two is the shallower is not fixed either — on the tests' rocket the crossing
+  is below the balance from about Mach 1.5 up and above it below that, where both turns are
+  shallower than the element-merging floor anyway.
   `η`'s sign is the sign of `(∂p/∂s)₂` over the sign of `p_c − p₂`. Each of those is a smooth
   function of the turn through the corner with exactly one zero, so an element is reduced on
   exactly the open interval between them:
@@ -4792,10 +4796,14 @@ across or a demonstration that refusing is right.
     the gradient the body ahead delivers, and `η` is zero.
 
   Both are functions of the corner's own state alone: the Mach number, pressure, gradient, radius
-  and angle the body hands to it. `ShockExpansionBody::aft_flow` now reports all five, and
-  `flare_reduction_turns_rad` solves the two equations — a contraction on `Ω₁/Ω₂` for the balance,
-  a secant from `θ ≈ (1/p₁ − 1)√(M₁² − 1)/(γM₁²)` for the crossing — and returns the residual each
-  left. Nothing bisects the model's refusal.
+  and angle the body hands to it, plus the free stream it was read in.
+  `ShockExpansionBody::aft_flow` now reports all six, and `flare_reduction_turns_rad` takes just
+  that and solves the two equations — a contraction on `Ω₁/Ω₂` for the balance, false position
+  over the turns a widening corner can make for the crossing, started from
+  `θ ≈ (1/p₁ − 1)√(M₁² − 1)/(γM₁²)`. Neither root is promised: each is returned with the residual
+  it left, and a body whose cone flow is harder leaves more (4e-9 of the free stream's pressure on
+  a fatter body at Mach 2.6). Nothing bisects the model's refusal, which is the search the
+  milestone asked to be rid of; bracketing an explicit residual is not that.
 
   On the tests' flared rocket the derivation reproduces all three numbers issue #117 bisected: the
   band's lower edge is the **crossing at Mach 4.70**, 0.038161270°; its upper edge is the
@@ -4835,7 +4843,7 @@ across or a demonstration that refusing is right.
   a pole. The pressure rides through — the gap it multiplies is zero there — but the loading does
   not: a hair below, `η → +∞` sheds the corner's loading onto the tangent cone's within the
   element; a hair above, the element is reduced and holds the corner's. Measured on the whole
-  rocket at 4° with a ±1e-9° probe, and holding its size at ±1e-7°:
+  rocket at 4° with a ±1e-9° probe either side of that Mach number's own crossing:
 
   | Mach | normal force | centre of pressure |
   |---|---|---|
@@ -4844,9 +4852,18 @@ across or a demonstration that refusing is right.
   | 4.00 | +0.055% | +0.0017 calibres |
   | 4.95 | +0.129% | +0.0051 calibres |
 
+  Widening the probe a hundredfold, to ±1e-7°, leaves the figure where it is at Mach 3, 4 and
+  4.95, which is what says it is a step and not the reading's ordinary movement. **At Mach 2 it
+  does not**: +0.00032% is already about what the reading moves over a ±1e-7° probe there, so that
+  row is an upper bound on the step rather than a measurement of one, and the test only pins the
+  ±1e-9° figure for it.
+
   The worst is a 64th of the switch it replaces in the force and a 227th of it in the centre of
-  pressure. It is also not a new question but ADR-044's: the loading through a tangent-cone
-  crossing, open as issue #108. The region's other edge, the balance, leaves nothing at all —
+  pressure — the step at Mach 4.95 against the switch measured at Mach 3, so a comparison of sizes
+  rather than of one flight condition. It is also not a new question but ADR-044's: the loading
+  through a tangent-cone crossing, open as issue #108. (That issue had been closed by mistake
+  while ADR-044 was being written, which said in terms that it was re-scoped and *not* closed; it
+  is reopened.) The region's other edge, the balance, leaves nothing at all —
   `η` is zero there, so the two readings coincide by construction, and a ±1e-9° probe moves the
   rocket's force and station by under 1e-7.
 

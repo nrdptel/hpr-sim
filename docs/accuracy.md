@@ -591,7 +591,9 @@ rest.
   18.5° flare on a 2.75° cone, and it is not that rocket
   ([Aerodynamics](physics/aero.md#what-a-marched-flare-is-worth)). No other flare angle has been
   checked, and the reading a flare steeper than its corner's limit gets has been checked against
-  nothing at all.
+  nothing at all. A flare shallow enough to *reduce* its own element — a few thousandths of a
+  degree on that rocket — is read by the older generalized method instead, which no measurement
+  checks either ([Aerodynamics](physics/aero.md#a-near-flat-flare)).
 - **The normal force near and far past Mach 1.** Against NASA's wind tunnel, between Mach 0.8
   and 1.2 hpr's slope runs up to +29.3% high and its centre of pressure up to 2.29
   [calibres](glossary.md#calibre-caliber) off. From Mach 1.5 up its slope holds to within 9.4%

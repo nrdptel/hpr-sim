@@ -1189,11 +1189,16 @@ mod tests {
         let from = guide.find(heading).expect("the section") + heading.len();
         let rest = &guide[from..];
         // Stop at the next heading of any level, so a later section's tables can't stand in.
-        let to = ["\n### ", "\n#### "]
-            .iter()
-            .filter_map(|h| rest.find(h))
-            .min()
-            .unwrap_or(rest.len());
+        let mut to = rest.len();
+        let mut at = 0;
+        for line in rest.split_inclusive('\n') {
+            let heading = line.trim_start_matches('#');
+            if heading.len() < line.len() && heading.starts_with(' ') {
+                to = at;
+                break;
+            }
+            at += line.len();
+        }
         let section = &rest[..to];
         let mut rows = Vec::new();
         for r in fixture["rows"].as_array().unwrap() {

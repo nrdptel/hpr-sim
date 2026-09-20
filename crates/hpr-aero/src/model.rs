@@ -4368,8 +4368,18 @@ mod tests {
     #[test]
     fn a_near_flat_flare_marches_every_row_and_the_fallback_is_still_measured() {
         // Every row from Mach 1.2 to Mach 5 marches, at the angles that used to lose whole runs
-        // of them.
-        for deg in [0.001, 0.01, 0.03, 0.038_17, 0.045, 0.0589] {
+        // of them and at two inside the region Mach 3's own corner reduces.
+        let ahead = flared_run(&flared_rocket(1.0));
+        let at_mach_3 =
+            crate::shock_expansion::flare_reduction_turns_rad(&ahead.aft_flow(3.0).unwrap())
+                .unwrap();
+        let reduced_at_mach_3 =
+            at_mach_3.crossing_rad.to_degrees()..at_mach_3.balance_rad.to_degrees();
+        assert!(
+            reduced_at_mach_3.contains(&0.007) && reduced_at_mach_3.contains(&0.008),
+            "Mach 3 reduces {reduced_at_mach_3:?}, which was meant to hold 0.007° and 0.008°"
+        );
+        for deg in [0.001, 0.007, 0.008, 0.01, 0.03, 0.038_17, 0.045, 0.0589] {
             let model = model(&flared_rocket(deg));
             let run = model.supersonic_run.as_ref().expect("a run with a flare");
             let body = ShockExpansionBody::new(&run.segments, DEFAULT_ELEMENTS_PER_CURVE).unwrap();
@@ -4384,13 +4394,13 @@ mod tests {
                 "a {deg}° flare loses Mach {:?}",
                 refused.map(|step| step as f64 / SUPERSONIC_STEPS_PER_MACH)
             );
-            // And the flare's element really is the reduced one there: this is the region, not
-            // an ordinary march.
+            // And the march reduces the flare's element exactly on the region Mach 3's corner
+            // gives, which is what makes these rows the region's rows and not an ordinary march.
             let flows = body.element_flows(3.0).unwrap();
             assert_eq!(
                 flows[flows.len() - 1].decay_per_m == 0.0,
-                (0.006_619_248_7..0.008_121_928_5).contains(&deg.to_radians()),
-                "a {deg}° flare at Mach 3"
+                reduced_at_mach_3.contains(&deg),
+                "a {deg}° flare at Mach 3, where the region is {reduced_at_mach_3:?}"
             );
         }
         // What the model used to fall back to, and what that is worth against the method: the
@@ -4627,7 +4637,7 @@ mod tests {
         // crossing itself moves to a steeper flare there.
         let ahead = flared_run(&flared_rocket(1.0));
         let turns = |mach: f64| {
-            crate::shock_expansion::flare_reduction_turns_rad(&ahead.aft_flow(mach).unwrap(), mach)
+            crate::shock_expansion::flare_reduction_turns_rad(&ahead.aft_flow(mach).unwrap())
                 .unwrap()
         };
         for (mach, force_want, caliber_want) in [
@@ -4657,6 +4667,46 @@ mod tests {
                 force.abs() < 1e-7 && calibers.abs() < 1e-7,
                 "Mach {mach}: the balance at {balance}° moves the force {force:.3e} and the \
                  centre of pressure {calibers:.3e} calibres"
+            );
+        }
+        // And the reading really does move smoothly through the whole region, which is what the
+        // switch it replaced did not: swept in twenty steps from a cylinder to well past the
+        // region's steep end, no neighbouring pair moves the force by a fifth of a percent, and
+        // the reading falls all the way — bar the one pair that straddles the crossing.
+        let machs = [3.0, 4.0];
+        let step = 0.08 / 16.0;
+        let swept: Vec<[f64; 2]> = (0..=16)
+            .map(|index| {
+                let model = model(&flared_rocket(index as f64 * step));
+                machs.map(|mach| {
+                    model
+                        .normal_force(&flow(mach, 4f64.to_radians(), 0.0))
+                        .unwrap()
+                        .coefficient
+                })
+            })
+            .collect();
+        for (column, mach) in machs.iter().enumerate() {
+            let crossing = turns(*mach).crossing_rad.to_degrees();
+            let mut rises = Vec::new();
+            for index in 1..swept.len() {
+                let moved = swept[index][column] / swept[index - 1][column] - 1.0;
+                let deg = index as f64 * step;
+                assert!(
+                    moved.abs() < 2e-3,
+                    "Mach {mach}: from {}° to {deg}° the force moves {moved:.4}",
+                    deg - step
+                );
+                if moved > 0.0 {
+                    rises.push(deg);
+                }
+            }
+            assert!(
+                rises.len() <= 1
+                    && rises
+                        .first()
+                        .is_none_or(|deg| (deg - step..*deg).contains(&crossing)),
+                "Mach {mach}: the force rises over {rises:?}, against a crossing at {crossing}°"
             );
         }
     }

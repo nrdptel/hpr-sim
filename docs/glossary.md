@@ -405,7 +405,9 @@ drawn out to that angle. What that is worth against the one measured flare in th
 [What a marched flare is worth](physics/aero.md#what-a-marched-flare-is-worth); how the model
 works is [A flare through the method](physics/aero.md#a-flare-through-the-method). Where the march itself
 stops, which is not where that shock detaches, is in
-[Where a flare's march stops](physics/aero.md#where-a-flares-march-stops).
+[Where a flare's march stops](physics/aero.md#where-a-flares-march-stops). A flare shallow enough
+that its element is *reduced* is read by the older generalized method instead:
+[A near-flat flare](physics/aero.md#a-near-flat-flare).
 
 ## Flow separation
 
@@ -792,8 +794,7 @@ along its length. It gives a nose as wide as the reference a normal-force slope 
 transition `2ΔA/A_ref`, and a plain tube nothing, at any Mach number. Barrowman's method uses it
 for every body part. hpr uses it below Mach 1.2, and at every speed for bodies the shock-expansion
 method can't take (steps; a widening shape that isn't a cone, isn't flush with the part ahead of
-it, or rides in a boattail's wake; a nose too blunt for its
-cap); NASA's wind tunnel shows a real
+it, or rides in a boattail's wake; a nose too blunt for its cap); NASA's wind tunnel shows a real
 body lifting more past Mach 3. See
 [Aerodynamics](physics/aero.md#bodies-of-revolution).
 
