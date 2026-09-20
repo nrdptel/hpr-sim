@@ -1450,8 +1450,10 @@ stops](#where-a-flares-march-stops), [ADR-045][adr-045]), and which is the tight
 with speed. Below where they cross, drawing a flare out to the shock's limit lands past what the
 march can do. Swept every 0.005 Mach from 1.05 to 4.63 the reading turns on exactly once, and
 bisecting that one crossing to `f64` resolution puts hpr's first reading of model 2 at **Mach
-1.5288695987434653**; just below it the two limits agree to five parts in 1e14, both 16.2844275°,
-so the reading begins exactly where they cross. That is a different number from the Mach 1.5552
+1.5288696**; just below it the two limits agree to five parts in 1e14, both 16.2844275°, so the
+reading begins exactly where they cross. (The fixture keeps the whole `f64`; seven figures is what
+the three operating systems CI runs agree on, since each regenerates the bisection to within a
+part in 1e12 of the others.) That is a different number from the Mach 1.5552
 [the section above](#a-flare-through-the-method) quotes for the same 18.5° flare, and it should be
 — the body ahead of the corner is different, so the flow it delivers there is different, and the
 crossing moves with that flow. Below that a flared body takes [slender-body

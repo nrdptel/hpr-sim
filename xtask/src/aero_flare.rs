@@ -408,7 +408,7 @@ fn march(
             return Ok(Marched {
                 corner: None,
                 read: None,
-                refused: Some(format!("the body ahead of the flare: {why}")),
+                refused: Some(rounded(&format!("the body ahead of the flare: {why}"))),
             });
         }
         Err(e) => return Err(format!("the flow reaching the corner at Mach {mach}: {e}")),
@@ -421,7 +421,7 @@ fn march(
             return Ok(Marched {
                 corner: None,
                 read: None,
-                refused: Some(format!("the corner's limit: {why}")),
+                refused: Some(rounded(&format!("the corner's limit: {why}"))),
             });
         }
         Err(e) => return Err(format!("the corner's limit at Mach {mach}: {e}")),
@@ -453,7 +453,7 @@ fn march(
         Ok(Marched {
             corner: Some(corner),
             read: None,
-            refused: Some(why),
+            refused: Some(rounded(&why)),
         })
     };
     if drawn_out && !(angle_limit_rad > 0.0 && angle_limit_rad.is_finite()) {
@@ -518,6 +518,52 @@ fn march(
         }),
         refused: None,
     })
+}
+
+/// A refusal message with every number in it rounded, for committing.
+///
+/// The message is `hpr-aero`'s own, and it prints `f64`s in full. Those last digits differ between
+/// macOS, Windows and Linux — the same refusal reads `Mach 1.5250956752494207` on one and
+/// `Mach 1.525095675249415` on another — and a fixture's *numbers* are compared to 1e-12 relative
+/// but its *strings* are compared as text. Six decimals is far more than the reading is worth and
+/// far less than the platforms disagree at.
+fn rounded(message: &str) -> String {
+    let text: Vec<char> = message.chars().collect();
+    let mut out = String::with_capacity(message.len());
+    let mut i = 0;
+    while i < text.len() {
+        let start = i;
+        if text[i] == '-' && text.get(i + 1).is_some_and(char::is_ascii_digit) {
+            i += 1;
+        }
+        if !text[i].is_ascii_digit() {
+            out.push(text[start]);
+            i = start + 1;
+            continue;
+        }
+        while text.get(i).is_some_and(|c| c.is_ascii_digit() || *c == '.') {
+            i += 1;
+        }
+        if text.get(i).is_some_and(|c| *c == 'e' || *c == 'E') {
+            let mut j = i + 1;
+            if text.get(j).is_some_and(|c| *c == '-' || *c == '+') {
+                j += 1;
+            }
+            if text.get(j).is_some_and(char::is_ascii_digit) {
+                while text.get(j).is_some_and(char::is_ascii_digit) {
+                    j += 1;
+                }
+                i = j;
+            }
+        }
+        let token: String = text[start..i].iter().collect();
+        match token.parse::<f64>() {
+            Ok(x) if token.contains('.') && x.abs() >= 1e-4 => out.push_str(&format!("{x:.6}")),
+            Ok(x) if token.contains('.') => out.push_str(&format!("{x:.3e}")),
+            _ => out.push_str(&token),
+        }
+    }
+    out
 }
 
 /// A segment's length, in the body's own units.
@@ -1239,7 +1285,8 @@ mod tests {
             num(f(geometry, "/closed_on_the_base/juncture_diameter"), 4),
             // What the printed lengths and angles carry the base to, before scaling.
             num(1.0 / f(geometry, "/printed_lengths/scale"), 4),
-            format!("{}", f(&fixture, "/reads_from_mach/mach")),
+            // Seven figures: the guide can't quote more than the three platforms agree on.
+            num(f(&fixture, "/reads_from_mach/mach"), 7),
             num(
                 f(&fixture, "/reads_from_mach/wedge_limit_deg_just_below"),
                 7,

@@ -132,7 +132,7 @@
         "zero_alpha_c_n_alpha": 1.7231705688559416,
         "zero_alpha_standard_error": 0.08968208047056454
       },
-      "refused": "the flow at Mach 1.5250956752494207 can't turn through -0.22279676752554167 rad supersonically at 1.0859959923504874 m",
+      "refused": "the flow at Mach 1.525096 can't turn through -0.222797 rad supersonically at 1.085996 m",
       "report_method": {
         "cp_calibers": 0.9088021191874196,
         "cp_error_calibers": 0.09871531363186403,
@@ -357,7 +357,7 @@
         "zero_alpha_c_n_alpha": 1.7231705688559416,
         "zero_alpha_standard_error": 0.08968208047056454
       },
-      "refused": "the flow at Mach 1.5250956752494205 can't turn through -0.22279676752554156 rad supersonically at 1.0769749077134865 m",
+      "refused": "the flow at Mach 1.525096 can't turn through -0.222797 rad supersonically at 1.076975 m",
       "report_method": {
         "cp_calibers": 0.9088021191874196,
         "cp_error_calibers": 0.09871531363186403,
@@ -566,7 +566,7 @@
     "mach": 1.5288695987434653,
     "march_edge_deg_just_below": 16.28442752303358,
     "note": "The slowest flow hpr reads model 2 in: below it the march refuses, so a flared body drops to slender-body theory however the flare is drawn out. The refusal is the corner's isentropic turn running out (ADR-045), not the shock detaching (ADR-047). Swept every 0.005 Mach from 1.05 to 4.63, where the reading turns on exactly once, and that one crossing bisected to f64 resolution.",
-    "refused_just_below": "the flow at Mach 1.555181054435277 can't turn through -0.23622032264947762 rad supersonically at 1.1006158718953305 m",
+    "refused_just_below": "the flow at Mach 1.555181 can't turn through -0.236220 rad supersonically at 1.100616 m",
     "swept": [
       1.05,
       4.63,
@@ -594,7 +594,7 @@
         "zero_alpha_c_n_alpha": 1.7231705688559416,
         "zero_alpha_standard_error": 0.08968208047056454
       },
-      "refused": "the flow at Mach 1.5240580495511433 can't turn through -0.2223291999871927 rad supersonically at 1.1006158718953303 m",
+      "refused": "the flow at Mach 1.524058 can't turn through -0.222329 rad supersonically at 1.100616 m",
       "report_method": {
         "cp_calibers": 0.9088021191874196,
         "cp_error_calibers": 0.09871531363186403,

@@ -4584,12 +4584,20 @@ this source gets to "with a flare and without".
   15.3647°. ADR-045 and ADR-047 bound different quantities and cross near Mach 1.55; below the
   crossing the march's bound is the tighter one, so drawing a flare out to the shock's bound can
   land past what the march can do. Bisected to `f64` resolution the first reading is at Mach
-  1.5288695987434653 (the fixture's full value; quote 1.5289 in prose, since the last digits
-  follow the sweep's bracket), where the two bounds agree to five parts in 1e14, both 16.2844275°:
+  1.5288696 (the fixture keeps the whole f64; seven figures is what the three platforms agree
+  on), where the two bounds agree to five parts in 1e14, both 16.2844275°:
   the reading begins exactly where they meet. Swept every 0.005 Mach from 1.05 to 4.63, the
   reading turns on exactly once, so "the first" is a measured claim and not the artefact of a
   bisection over a predicate that can refuse in bands. A flared body below that takes slender-body
   theory, carried up by the join.
+
+- **A refusal is committed with its numbers rounded.** Where the method declines a row, the
+  fixture keeps `hpr-aero`'s own words for why — but that text prints `f64`s in full, and the same
+  refusal reads `Mach 1.5250956752494207` on macOS and `Mach 1.525095675249415` on Linux. The
+  fixture's *numbers* are compared to 1e-12 relative; its *strings* are compared as text, so the
+  message is rounded to six decimals before it is stored. Six decimals is far more than the
+  reading is worth and far less than the platforms disagree at. For the same reason the guide
+  quotes seven figures of the bisected Mach number, not the sixteen the fixture keeps.
 
 **Consequences.**
 
