@@ -65,6 +65,7 @@ new record replaces it and points back. All of them are in the [decision log][de
 | [ADR-046: Debrief folded in, and analysis that stands on its own][adr-046] | That a universal flight log analyzer becomes part of this project, and that reading a log never needs the simulator: `hpr-flightdata` may not depend on `hpr-sim`, a check enforces it, and comparing a flight with a simulation lives in `hpr-forensics` | [Start here](start-here.md#what-doesnt-work-yet)  What the analyzer is being built from is written up in [the log formats](https://github.com/nrdptel/hpr-sim/blob/main/docs/research/debrief-log-formats.md), [the readings](https://github.com/nrdptel/hpr-sim/blob/main/docs/research/debrief-flight-readings.md) and [what may be ported](https://github.com/nrdptel/hpr-sim/blob/main/docs/research/debrief-porting-boundary.md). |
 | [ADR-047: A flare flies the method where its corner's shock is attached][adr-047] | That a flared body now flies the shock-expansion method; that the test for the corner's shock is NACA 1135's wedge limit read at the flow reaching it, the same one a blunt tip's cap already uses; that a steeper flare is read as one of the same radii drawn out to that limit, so nothing jumps across the boundary; and what still switches — a band of flares a third of a millimetre tall the march refuses | [Aerodynamics](physics/aero.md#a-flare-through-the-method) |
 | [ADR-048: What a marched flare is worth][adr-048] | That TN D-4865 model 2's readings are committed and compared: an 18.5° flare read −1.9% and +7.0% against the wind tunnel at Mach 1.9 and 2.3, +13.4% at 2.96 and about +51% at 3.95 and 4.63, whose flare the report's shadowgraphs show separated; with no reading at all below Mach 1.5289, where drawing the flare out to its shock's limit lands past the march's own | [Aerodynamics](physics/aero.md#what-a-marched-flare-is-worth) |
+| [ADR-049: A step in radius stops the march where it is][adr-049] | That a step no longer takes the whole body off the shock-expansion method: it stops the march where it is and the body ahead of it keeps the method, which drops the switch from −8.7% and 1.03 calibres to −0.013% and 0.0004; and that the run's coverage now uses the march's own tolerance, a billionth of the radius, closing the dead band between them | [Aerodynamics](physics/aero.md#a-step-in-radius) |
 
 ## The roadmap
 
@@ -171,7 +172,7 @@ missing or its status disagrees.
 | <a id="m1-8e14"></a>[M1.8e14][phase-1] | Where the method stops marching a flare, bisected over Mach, and what the edge is made of | done |
 | <a id="m1-8e17"></a>[M1.8e17][phase-1] | A flared body flown through the method where its shock is attached, with nothing jumping across that boundary as the model changes (the second of the three the old [M1.8e14](#m1-8e14) splits into) | done |
 | <a id="m1-8e18"></a>[M1.8e18][phase-1] | NASA TN D-4865 model 2's readings committed, and what a marched flare is worth (the third of the three the old [M1.8e14](#m1-8e14) splits into) | done |
-| <a id="m1-8e15"></a>[M1.8e15][phase-1] | What a step in radius still switches, how big it is, and what a model of one would need | not yet done |
+| <a id="m1-8e15"></a>[M1.8e15][phase-1] | What a step in radius still switches, how big it is, and what a model of one would need | done |
 | <a id="m1-8e19"></a>[M1.8e19][phase-1] | The band of near-flat flares the march refuses, which takes the whole body off the method as a shape crosses it (found by [M1.8e17](#m1-8e17)) | not yet done |
 | <a id="m1-8e16"></a>[M1.8e16][phase-1] | A blunt tip's handover moved past 24°, once the march has a rule for the loading through a crossing (the rest of what [M1.8e13](#m1-8e13) used to be, renumbered so the flare and the step keep their ids) | not yet done |
 | <a id="m3-1"></a>[M3.1][phase-1] | Reading OpenRocket `.ork` design files | not yet done |
@@ -332,6 +333,7 @@ is the milestone that added or will add that test.
 [adr-046]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-046-debrief-folded-in-and-flight-log-analysis-that-stands-without-the-simulator-2026-09-20
 [adr-047]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-047-a-flare-flies-the-method-where-its-corners-shock-is-attached-and-is-read-drawn-out-where-it-is-not-2026-09-20
 [adr-048]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-048-what-a-marched-flare-is-worth-measured-against-tn-d-4865s-model-2-2026-09-20
+[adr-049]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-049-a-step-in-radius-stops-the-march-where-it-is-and-leaves-the-body-ahead-of-it-marched-2026-09-20
 [decisions]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md
 [lessons]: https://github.com/nrdptel/hpr-sim/blob/main/docs/research/loft-lessons.md
 [lessons-motors]: https://github.com/nrdptel/hpr-sim/blob/main/docs/research/loft-lessons.md#motors-mass-and-design-checks
