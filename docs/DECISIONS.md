@@ -4905,11 +4905,24 @@ across or a demonstration that refusing is right.
   +3.82% and 0.251, crossing at 0.696°. With a short shoulder the region is not near-flat at all —
   0.7° to 4.6°, where real flares live.
 
+  **There is a bound, though, and it is exact rather than sampled.** The two sides of the pole
+  take the two constants eq. 19 relaxes between — `Λ_c = tan δ₂ (dC_N/dα)_tc` on the side the
+  method owns, `Λ₂ = (λ₂/λ₁) Λ₁` on the reduced side — and along a conical flare both are
+  constant, so eq. 19's `C_Nα = (2π/A_ref) ∫ Λ r dx` integrates a constant:
+
+  `ΔC_Nα = (2π/A_ref) (Λ₂ − Λ_c) · ½(r_fore + r_aft) · L`
+
+  `flare_reduction_turns_rad` returns `Λ₂ − Λ_c` beside the turns as
+  `crossing_loading_gap_per_rad` (6.116195e-4 per radian on the tests' rocket's body at Mach 5),
+  and the formula reproduces the measured step to a part in 1e5 at flare lengths of 0.3, 1, 2 and
+  5 m. So the numbers above are an illustration and the formula is the claim, which a reader
+  evaluates for their own flare in one line.
+
   **And the pole is crossed in Mach as well as in shape.** On that short-shouldered body with a 1°
   flare the table's rows step **−2.77% and 0.14 calibres** from Mach 2.90 to 2.95, against a fifth
   of that either side. Under the old rule those rows were refused, so the table started above them
   and the join covered the pole; it is now inside the table.
-  `what_the_crossing_costs_is_not_bounded_by_the_tests_rocket` pins all of it.
+  `what_the_crossing_costs_is_the_loading_gap_times_the_element_that_holds_it` pins all of it.
 
   The whole-rocket worst above is a 64th of the switch it replaces in the force and a 227th of it
   in the centre of pressure — the step at Mach 4.95 against the switch measured at Mach 3, so a
@@ -4942,8 +4955,8 @@ march — and would have published readings at Mach numbers where the method ret
 - A flared rocket's reading is continuous and monotone in the flare's angle across the whole
   near-flat region, at every Mach number the table covers. No committed flight number moves: no
   validation case has a flare.
-- `AftFlow` gains `pressure_ratio`, `gradient_p0_per_m`, `radius_m` and `free_stream_mach`, which
-  with the two it had make it the corner's whole state — so `flare_reduction_turns_rad` takes it
+- `AftFlow` gains `pressure_ratio`, `gradient_p0_per_m`, `radius_m`, `loading_per_rad` and
+  `free_stream_mach`, which with the two it had make it the corner's whole state — so `flare_reduction_turns_rad` takes it
   and nothing else, and the two halves of one state cannot be passed in disagreeing with each
   other. It and `ReductionTurns` are public, and the
   guide's *A near-flat flare* explains them with the table above.
@@ -4960,7 +4973,7 @@ march — and would have published readings at Mach numbers where the method ret
   `a_near_flat_flare_marches_every_row_and_the_fallback_is_still_measured` and
   `a_near_flat_flare_reads_through_and_leaves_only_the_corners_crossing`; three more were added —
   `the_turns_a_reduced_element_lies_between_come_from_the_corners_own_state` for the derivation,
-  `what_the_crossing_costs_is_not_bounded_by_the_tests_rocket` for the sizes above, and
+  `what_the_crossing_costs_is_the_loading_gap_times_the_element_that_holds_it` for the sizes, and
   `a_corner_whose_gap_has_three_zeros_is_refused_rather_than_guessed_at` for the counter-example.
   A fourth, `a_corner_behind_a_relaxed_body_still_has_both_turns`, guards a body that hands the
   free stream's own pressure to the corner, where the crossing is a turn of nothing and rounding

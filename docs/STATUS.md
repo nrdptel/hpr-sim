@@ -28,7 +28,7 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
   pass rather than committing the churn.
 - **M1.8a to e8** (ADR-027 to ADR-039): `cargo xtask aero` writes the aero fixtures (five of
   ADR-030's PDFs come from NTRS with a 436-byte header, scratch `refs/scratch/m18*/`);
-  `SupersonicBody` tabulates every 0.05 Mach from max(1.2, its bisected start), joined over 0.3;
+  `SupersonicBody` tabulates every 0.05 Mach from max(1.2, its start), joined over 0.3;
   `BEFORE_M1_8E6` keeps the old rules. **M1.8e9 to e13** (ADR-040 to ADR-044): #90's cap holds
   W&P's correlation at 16°, M1.8e's 15% bullet (`arcas-robin-body-gap.json`) outside on six rows;
   `CONE_SLOPES` runs to 30°; the handover's cap is a parameter, 24° stands; a mesh-following
@@ -44,8 +44,9 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
   its **balance** (`(∂p/∂s)₂ = 0`), both solved by `flare_reduction_turns_rad`; it now takes TN
   3527's `η = 0` wherever it has a tangent cone of its own, and a cylinder's or boattail's still
   refuses (#123), which keeps ADR-038's Newtonian-start rows in `blunt-tips.json`. Left over:
-  the crossing's pole in the loading: +0.129% and 0.0051 calibres on the tests' rocket, but +4.3%
-  and 0.19 calibres on a short shoulder and −2.8% between two Mach rows — **not bounded** (#108).
+  the crossing's pole in the loading, exactly `(2π/A_ref)(Λ₂ − Λ_c)·½(r₁+r₂)·L`
+  (`crossing_loading_gap_per_rad`): +0.129% on the tests' rocket, +4.3% and 0.19 calibres on a
+  short shoulder, −2.8% between two Mach rows (#108).
 - **Debrief, folded in** (ADR-046): `hpr-flightdata` is off `hpr-sim` and must stay off it (`forbids
   = ["hpr-sim"]`, walked by `cargo xtask wasm-check`); sim-versus-flight goes in `hpr-forensics`.
   Notes: `debrief-{log-formats,flight-readings,porting-boundary}.md`. **Port from its `lib/`, never
@@ -87,9 +88,8 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
 
 ## Decided without Neer (one line each; significant ones get an ADR)
 
-- ADR-050: refusing a reduced element behind the nose was wrong for a flare, so the reduction is
-  read wherever the element has a tangent cone of its own; a cylinder's and a boattail's keep the
-  refusal, unmeasured, as #123. The region's edges are solved from the corner's state, not searched.
+- ADR-050: a reduced element takes the generalized method wherever it has a tangent cone of its
+  own; a cylinder's and a boattail's keep the refusal, unmeasured (#123). Edges from the corner.
 - ADR-049: a step in radius keeps the model it has, because no source gives a step's normal force
   faster than sound; its size is measured and published instead, and stopping the march at the step
   was built, measured and rejected. #87 is narrowed to the step, #120 and #121 carry the rest.
@@ -135,7 +135,7 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
   is worth 0.67 to 1.35 calibres of doubt. A marched flare (M1.8e18) reads +51.5% and +50.4% at Mach
   3.95 and 4.63 on the one measured flare, separated there, and none below Mach 1.5289; a near-flat
   flare's element takes the generalized method, leaving the crossing's pole — +0.129% and 0.0051
-  calibres on the tests' rocket, +4.3% and 0.19 on a short shoulder (M1.8e19, #108); a step in radius takes the whole body off the method past 2.7e-11 m tube to tube
+  calibres on the tests' rocket, +4.3% and 0.19 on a short shoulder (#108); a step in radius takes the whole body off the method past 2.7e-11 m tube to tube
   or 1.3e-13 m up at a boattail — −8.65% to −11.34% and about a calibre, only measured (#87).
 - Drag: against RASAero II's Calisto hpr reads −14.9% to −5.1% supersonic (ADR-030); against
   MIL-HDBK-762 the body reads 6–10% low past Mach 1.6 and high through Mach 1 (#67, #68); against

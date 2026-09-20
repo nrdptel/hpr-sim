@@ -1579,10 +1579,11 @@ those two zeros and nowhere else:
 *Single zero* is not a promise, and a corner that breaks it exists: on a 25° cone with 20 mm of
 tube behind it at Mach 7, the pressure meets its tangent cone's three times — at about 0.91°,
 7.3° and 24° — so a flare there is reduced from 0.91° to 3.88° **and again** from 7.3° to 24°.
-`flare_reduction_turns_rad` sweeps the widening turns before it brackets, so it reports that
-corner rather than handing back whichever of the three roots it walked to
-(`a_corner_whose_gap_has_three_zeros_is_refused_rather_than_guessed_at`). A pair of roots closer
-together than a hundredth of the turns a widening corner can make would still slip through.
+`flare_reduction_turns_rad` sweeps the widening turns at a hundred stations before it brackets,
+so it reports that corner rather than handing back whichever of the three roots it walked to
+(`a_corner_whose_gap_has_three_zeros_is_refused_rather_than_guessed_at`). A pair of roots inside
+one station would still slip through, and the two turns would then be reported as one band when
+they are two.
 
 Which of the two is the shallower is not fixed either — on this rocket the crossing is below the
 balance from Mach 1.5 up, and below that the order swaps.
@@ -1684,14 +1685,10 @@ the reading's ordinary movement. At Mach 2 it does not: +0.00032% is already abo
 reading itself moves over a ±1e-7° probe there, so that row is an upper bound on the step, not a
 measurement of one.
 
-The worst of those is a 64th of the switch it replaced in the force and a 227th of it in the
-centre of pressure — the step at Mach 4.95 against the switch measured at Mach 3, so that is a
-comparison of sizes, not of the same flight condition.
-
 **Those four numbers are one rocket, and they are not a bound.** The step is the loading's gap at
 the pole, so it grows with the length of the element that holds it, and where the region sits
 depends on the body ahead. Read on the **body alone** at Mach 5, either side of that body's own
-crossing (`what_the_crossing_costs_is_not_bounded_by_the_tests_rocket`, in
+crossing (`what_the_crossing_costs_is_the_loading_gap_times_the_element_that_holds_it`, in
 [`shock_expansion.rs`](https://github.com/nrdptel/hpr-sim/blob/main/crates/hpr-aero/src/shock_expansion.rs)):
 
 | the body | its crossing | `C_Nα` steps by | its centre of pressure by |
@@ -1702,8 +1699,26 @@ crossing (`what_the_crossing_costs_is_not_bounded_by_the_tests_rocket`, in
 | a 10° cone and a 0.3 m tube, 0.3 m flare | 0.695840° | +3.82% | 0.251 calibres |
 
 Read the third and fourth rows twice: with a short shoulder the region is not near-flat at all —
-it sits between **0.7° and 4.6°**, which is where real flares live. Nothing here is a maximum over
-bodies; what is shown is only that the first row is not one either.
+it sits between **0.7° and 4.6°**, which is where real flares live.
+
+**But there is a bound, and it is exact — you can work out your own.** At the crossing the two
+sides take the two constants the method relaxes *between*: the side it still owns sheds the
+corner's loading onto its tangent cone's at once, Λ_c = tan δ₂ (d*C_N*/dα)_tc, and the reduced
+side holds the corner's, Λ₂ = (λ₂/λ₁) Λ₁. Along a conical flare both are constant, so eq. 19's
+*C*_Nα = (2π/*A*_ref) ∫ Λ *r* d*x* integrates a constant and the whole step is
+
+Δ*C*_Nα = (2π/*A*_ref) (Λ₂ − Λ_c) · ½(*r*_fore + *r*_aft) · *L*
+
+for a flare of length *L* between those radii. `flare_reduction_turns_rad` returns Λ₂ − Λ_c beside
+the turns, as `crossing_loading_gap_per_rad`; on the tests' rocket's body at Mach 5 it is
+6.116195e-4 per radian, and the formula reproduces the measured step to a part in 1e5 at flare
+lengths of 0.3, 1, 2 and 5 m. So the four rows above are an illustration of that formula, not the
+claim: the claim is the formula, and it holds for any conical flare.
+
+The worst of the whole-rocket rows is a 64th of the switch it replaced in the force and a 227th of
+it in the centre of pressure — the step at Mach 4.95 against the switch measured at Mach 3, so
+that is a comparison of sizes, not of the same flight condition, and the body-alone numbers above
+are not that small.
 
 **And the same pole is crossed in the Mach number.** At a fixed flare angle the corner's crossing
 sweeps past it as the speed changes, and the [table](#bodies-faster-than-sound)'s rows are 0.05

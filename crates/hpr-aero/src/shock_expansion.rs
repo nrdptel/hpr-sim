@@ -306,6 +306,9 @@ pub struct AftFlow {
     /// stream's pressure per m of **axial** distance, not of distance along the surface
     /// (TN 3527 eq. 10). Positive where the pressure is still climbing.
     pub gradient_p0_per_m: f64,
+    /// `Λ₁`, the loading the last element carries to there, per radian of angle of attack
+    /// (TN 3527 eq. 19): what a corner behind the body carries on through `λ₂/λ₁`.
+    pub loading_per_rad: f64,
     /// The free-stream Mach number the march was run at, so that a corner behind this flow can be
     /// read without being told it again ([`flare_reduction_turns_rad`]).
     pub free_stream_mach: f64,
@@ -671,12 +674,13 @@ impl ShockExpansionBody {
         let march = self.flows(mach)?;
         // `flows` starts with the vertex's or the handover's element, so it is never empty.
         let last = march.flows[march.flows.len() - 1];
-        let (pressure, _) = last.at(self.length_m);
+        let (pressure, loading) = last.at(self.length_m);
         Ok(AftFlow {
             surface_mach: mach_from_pressure(march.total, pressure)?,
             angle_rad: last.angle_rad,
             pressure_ratio: pressure,
             gradient_p0_per_m: last.gradient_at(pressure),
+            loading_per_rad: loading,
             free_stream_mach: mach,
             // `new` refuses a body with no segments, so there is always a last one.
             radius_m: self.segments[self.segments.len() - 1].1.aft_radius_m(),
@@ -1330,6 +1334,23 @@ pub struct ReductionTurns {
     pub balance_rad: f64,
     /// What the balance's solution left behind: `(∂p/∂s)₂` there, `p₀` per m of axial distance.
     pub balance_residual_p0_per_m: f64,
+    /// `Λ₂ − Λ_c` at [`Self::crossing_rad`], per radian of angle of attack: **the whole size of
+    /// the step the crossing leaves**, before it is integrated over the element that holds it.
+    ///
+    /// At the crossing `η` has a pole, and the two sides of it take the two constants eq. 19
+    /// relaxes between: the side the method still owns sheds the corner's loading onto its
+    /// tangent cone's at once (`Λ_c = tan δ₂ (dC_N/dα)_tc`), and the reduced side holds the
+    /// corner's (`Λ₂ = (λ₂/λ₁) Λ₁`). Both are constant along a conical flare, so eq. 19's
+    /// `C_Nα = (2π/A_ref) ∫ Λ r dx` integrates a constant and the step in the body's slope is
+    ///
+    /// `ΔC_Nα = (2π/A_ref) (Λ₂ − Λ_c) · ½(r_fore + r_aft) · L`
+    ///
+    /// for a flare of length `L` between those radii — exact, not a sample, and the one number a
+    /// reader needs to work out what the crossing costs on their own body
+    /// ([ADR-050][adr-050-turns]).
+    ///
+    /// [adr-050-turns]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-050-a-reduced-element-is-read-by-the-generalized-method-wherever-it-has-a-tangent-cone-of-its-own-2026-09-20
+    pub crossing_loading_gap_per_rad: f64,
 }
 
 /// Where the second-order shock-expansion method's exponential form fails at a corner behind
@@ -1546,11 +1567,23 @@ pub fn flare_reduction_turns_rad(aft: &AftFlow) -> Result<ReductionTurns, AeroEr
             break;
         }
     }
+    // The two constants eq. 19 relaxes between, at the crossing: what the reduced side holds and
+    // what the side the method owns sheds onto at once. Their difference is the step.
+    let angle = d1 + crossing;
+    let (m2, p2) = behind(crossing).ok_or_else(|| outside("crossing"))?;
+    let held = lambda(p2, m2) / lambda(p1, m1) * aft.loading_per_rad;
+    let cone_loading = if angle <= CONE_ANGLE_FLOOR_RAD {
+        // A cylinder's tangent cone is the free stream, which carries no loading.
+        0.0
+    } else {
+        angle.tan() * cone_normal_force_slope(mach, angle)?
+    };
     Ok(ReductionTurns {
         crossing_rad: crossing,
         crossing_residual_p0: here,
         balance_rad: balance,
         balance_residual_p0_per_m: balance_left,
+        crossing_loading_gap_per_rad: held - cone_loading,
     })
 }
 
@@ -4076,8 +4109,9 @@ mod tests {
         segments
     }
 
-    /// What the crossing costs is **not** bounded by the tests' rocket, and it is crossed in the
-    /// Mach number as well as in the flare's angle.
+    /// What the crossing costs is the loading's gap at the pole times the element that holds it —
+    /// so it is not bounded by the tests' rocket, and it is crossed in the Mach number as well as
+    /// in the flare's angle.
     ///
     /// [`the_turns_a_reduced_element_lies_between_come_from_the_corners_own_state`] shows where the
     /// march reduces an element; where a drawn flare's angle sweeps past the crossing the loading
@@ -4086,8 +4120,10 @@ mod tests {
     /// +0.129% at worst — but that is one body, one flare length and one place to measure. On the
     /// body alone it is an order larger, it **grows with the flare's length**, and shortening the
     /// tube ahead of the corner moves the whole region from thousandths of a degree to degrees,
-    /// where real flares live. None of these is a bound either: what is claimed is only that the
-    /// tests' rocket's figure is not one.
+    /// where real flares live. None of those four is a bound — but there is one, and it is exact:
+    /// both branches are constant along a conical flare, so the step is
+    /// [`ReductionTurns::crossing_loading_gap_per_rad`] times `2π ∫ r dx / A_ref`, which this
+    /// checks against the measured step at four flare lengths.
     ///
     /// The same pole is crossed in Mach at a fixed angle, and the table's rows are 0.05 Mach
     /// apart, so a flight reads it as a step between two adjacent rows. Before
@@ -4095,7 +4131,7 @@ mod tests {
     /// were refused, so the table stopped above them and the join covered the pole; it is now
     /// inside the table. That trade is the milestone's, and this test is its size.
     #[test]
-    fn what_the_crossing_costs_is_not_bounded_by_the_tests_rocket() {
+    fn what_the_crossing_costs_is_the_loading_gap_times_the_element_that_holds_it() {
         // Either side of a body's own crossing, on the body alone: the fraction its `C_Nα` moves
         // and how far its centre of pressure moves, in calibres of the tube ahead of the flare.
         let across = |cone_deg: Option<f64>,
@@ -4160,6 +4196,47 @@ mod tests {
                  pressure {shifted:+.4} calibres"
             );
         }
+        // And it is not a sample either: the step is the loading's gap at the pole times the
+        // element that holds it, and both branches are constant along a conical flare, so eq.
+        // 19's integral is a constant's. Against the measured step at four flare lengths:
+        let ahead = ShockExpansionBody::new(
+            &nosed_tube_and_flare(None, 0.027, 0.7, 0.0, 0.0),
+            DEFAULT_ELEMENTS_PER_CURVE,
+        )
+        .expect("the body ahead");
+        let turns = flare_reduction_turns_rad(&ahead.aft_flow(5.0).expect("its aft flow"))
+            .expect("its turns");
+        assert!(
+            (turns.crossing_loading_gap_per_rad - 6.116_195e-4).abs() < 1e-9,
+            "the loading gap at the crossing is {}",
+            turns.crossing_loading_gap_per_rad
+        );
+        let area = PI * 0.027 * 0.027;
+        for flare_m in [0.3_f64, 1.0, 2.0, 5.0] {
+            let read = |flare_deg: f64| {
+                ShockExpansionBody::new(
+                    &nosed_tube_and_flare(None, 0.027, 0.7, flare_m, flare_deg),
+                    DEFAULT_ELEMENTS_PER_CURVE,
+                )
+                .expect("a flared body")
+                .slope(5.0, area)
+                .expect("its slope")
+                .slope_per_rad
+            };
+            let deg = turns.crossing_rad.to_degrees();
+            let measured = read(deg * (1.0 + 1e-7)) - read(deg * (1.0 - 1e-7));
+            let aft_radius_m = 0.027 + flare_m * turns.crossing_rad.tan();
+            let closed = 2.0 * PI / area
+                * turns.crossing_loading_gap_per_rad
+                * 0.5
+                * (0.027 + aft_radius_m)
+                * flare_m;
+            assert!(
+                (measured / closed - 1.0).abs() < 1e-5,
+                "a {flare_m} m flare steps {measured:+.8}, against the closed form's {closed:+.8}"
+            );
+        }
+
         // And in the Mach number, on the table's own 0.05 grid. A 1° flare on the short-tubed
         // body: the rows below Mach 2.95 are the reduced ones, and the first row above them is
         // where the reading steps.
