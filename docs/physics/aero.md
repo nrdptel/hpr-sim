@@ -1655,9 +1655,9 @@ angles a hair apart that used to give three different answers.
 
 **The one step that is left, and how big it is.** At the crossing itself η has a pole, and that
 does leave a step — not in the pressure, which rides through because the gap it multiplies is zero
-there, but in the *loading*. A hair below the crossing η runs to +∞, so the element sheds its
-corner's loading onto its tangent cone's immediately; a hair above it the element is reduced and
-holds the corner's. The two differ, so the reading steps. On the whole rocket at 4°, measured
+there, but in the *loading*. On the side the method still owns, η runs to +∞ as the turn
+approaches the crossing, so the element sheds its corner's loading onto its tangent cone's within
+its own length; on the reduced side it holds the corner's. The two differ, so the reading steps. On the whole rocket at 4°, measured
 either side of that Mach number's own crossing with a ±1e-9° probe by
 `a_near_flat_flare_reads_through_and_leaves_only_the_corners_crossing`, in
 [`model.rs`](https://github.com/nrdptel/hpr-sim/blob/main/crates/hpr-aero/src/model.rs)

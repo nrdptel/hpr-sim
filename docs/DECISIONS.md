@@ -4844,8 +4844,9 @@ across or a demonstration that refusing is right.
 
 - **What is left is the crossing itself, and it is reported, not hidden.** At the crossing `η` has
   a pole. The pressure rides through — the gap it multiplies is zero there — but the loading does
-  not: a hair below, `η → +∞` sheds the corner's loading onto the tangent cone's within the
-  element; a hair above, the element is reduced and holds the corner's. Measured on the whole
+  not: on the side the method still owns, `η → +∞` sheds the corner's loading onto the tangent
+  cone's within the element's own length; on the reduced side it holds the corner's. (Which side
+  is which follows the two turns' order, which is not fixed.) Measured on the whole
   rocket at 4° with a ±1e-9° probe either side of that Mach number's own crossing:
 
   | Mach | normal force | centre of pressure |
