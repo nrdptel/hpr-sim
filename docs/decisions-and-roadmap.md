@@ -61,6 +61,7 @@ new record replaces it and points back. All of them are in the [decision log][de
 | [ADR-042: Cone slopes past Fig. 2's edge, from Sims][adr-042] | Where the slopes for tangent cones of 24° to 30° come from, how they were checked against the chart they extend, and what a cone steeper than 30° still costs | [Aerodynamics](physics/aero.md#bodies-faster-than-sound) |
 | [ADR-043: The blunt tip's handover cap][adr-043] | What moving a blunt tip's handover from 24° to the cone tables' 30° would be worth on the report's own sphere-cone, what it does to the march on a nose that flattens fast, and why the cap stays where it is | [Aerodynamics](physics/aero.md#what-the-cap-is-worth) |
 | [ADR-044: What the answer follows when it follows the mesh][adr-044] | That it is the surface pressure crossing its tangent cone's, not the method being reduced, that marks a reading whose answer moves with the element count — how far that goes, and what it re-aims issue #108 at | [Aerodynamics](physics/aero.md#what-a-crossing-is-and-what-it-costs) |
+| [ADR-045: Where a flare's march stops][adr-045] | That what stops the march is the corner's isentropic turn, not the flare's shock detaching; that the two limits cross near Mach 1.55, so neither bounds the other; and that above Mach 2.13 neither binds — the cone tables' 30° does | [Aerodynamics](physics/aero.md#where-a-flares-march-stops) |
 
 ## The roadmap
 
@@ -163,7 +164,9 @@ missing or its status disagrees.
 | <a id="m1-8e11"></a>[M1.8e11][phase-1] | Cone slopes from 24° to 30°, from NASA SP-3007, where TN 3527's own chart stops | done |
 | <a id="m1-8e12"></a>[M1.8e12][phase-1] | What a blunt tip's handover cap is worth once the cone slopes reach 30°, and what stops it moving there | done |
 | <a id="m1-8e13"></a>[M1.8e13][phase-1] | What puts a marched answer at the mercy of the mesh: the surface pressure crossing its tangent cone's, counted and told apart from a reduced element | done |
-| <a id="m1-8e14"></a>[M1.8e14][phase-1] | A flare flown through the shock-expansion method, which already marches one, against the flared body NASA TN D-4865 measured | not yet done |
+| <a id="m1-8e14"></a>[M1.8e14][phase-1] | Where the method stops marching a flare, bisected over Mach, and what the edge is made of | done |
+| <a id="m1-8e17"></a>[M1.8e17][phase-1] | A flared body flown through the method where its shock is attached, with nothing jumping across that boundary as the model changes (the second of the three the old [M1.8e14](#m1-8e14) splits into) | not yet done |
+| <a id="m1-8e18"></a>[M1.8e18][phase-1] | NASA TN D-4865 model 2's readings committed, and what a marched flare is worth (the third of the three the old [M1.8e14](#m1-8e14) splits into) | not yet done |
 | <a id="m1-8e15"></a>[M1.8e15][phase-1] | What a step in radius still switches, how big it is, and what a model of one would need | not yet done |
 | <a id="m1-8e16"></a>[M1.8e16][phase-1] | A blunt tip's handover moved past 24°, once the march has a rule for the loading through a crossing (the rest of what [M1.8e13](#m1-8e13) used to be, renumbered so the flare and the step keep their ids) | not yet done |
 | <a id="m3-1"></a>[M3.1][phase-1] | Reading OpenRocket `.ork` design files | not yet done |
@@ -320,6 +323,7 @@ is the milestone that added or will add that test.
 [adr-042]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-042-cone-slopes-from-24-to-30-come-from-simss-tables-where-tn-3527s-chart-stops-2026-09-20
 [adr-043]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-043-the-blunt-tips-handover-cap-what-it-is-worth-and-what-stops-it-moving-2026-09-20
 [adr-044]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-044-what-the-answer-follows-when-it-follows-the-mesh-is-a-crossing-of-the-tangent-cone-not-a-reduced-element-2026-09-20
+[adr-045]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-045-where-a-flares-march-stops-is-the-corners-isentropic-turn-not-the-shock-detaching-2026-09-20
 [decisions]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md
 [lessons]: https://github.com/nrdptel/hpr-sim/blob/main/docs/research/loft-lessons.md
 [lessons-motors]: https://github.com/nrdptel/hpr-sim/blob/main/docs/research/loft-lessons.md#motors-mass-and-design-checks

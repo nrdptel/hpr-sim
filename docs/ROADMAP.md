@@ -599,27 +599,33 @@
       whose aim is now M1.8e16). Issue #108 asked for a reading of `η < 0` that settles as the nose
       is cut finer; before writing one, find out what the answer actually follows.
       *Done when:* the count that separates a settled reading from a moving one over the cap
-      sweep's meshes is measured and stored beside every reading; a pointed body of TN 3527's own
-      is shown reducing without moving; tests pin both and the mechanism; an ADR and the guide say
-      what it means and what it does not; and issue #108 is re-scoped to it.
+      sweep's meshes is measured and stored beside every reading; a pointed body of TN 3527's own is
+      shown reducing without moving; tests pin both and the mechanism; an ADR and the guide say what
+      it means and what it does not; and issue #108 is re-scoped to it.
       *Result:* met (ADR-044); it is the surface pressure **crossing** its tangent cone's, where
       the relaxation rate has a pole, not `η < 0`. Across 10, 40 and 160 elements the 27 readings
-      without a crossing hold to 0.012 per radian and the 5 with one move 0.035 or more, no
-      overlap. A crossing is a flag, not a verdict: 28° at Mach 5 crosses and still settles by 60
-      elements, and a zero count at a coarse mesh only means "not proven".
-    - [ ] **M1.8e14 The flare through the method** (split from the old e14; the step is M1.8e15).
-      The method already marches a flare — a cone, a tube and a flare return a finite `C_Nα` at Mach
-      3 — and it is the model around it that refuses one, since the run stops at the first widening
-      body and a flare on slender-body theory would mix the models over one rocket, as a boattail
-      did before M1.8e4. There is a measurement too, which the guide once said there wasn't: TN
-      D-4865's model 2 is a 2.75° blunted cone with an 18.5° flare, and its fig. 8 carries normal
-      force and pitching moment from Mach 1.50 to 4.63, integrated from the pressures its tables VII
-      to XII print. The report is clear about where a march stops being the tool: at Mach 1.50 that
-      flare's shock isn't attached even in theory, and from 2.96 up the boundary layer separates
-      ahead of the juncture. *Done when:* a flared body flies the method where the flare's shock is
-      attached, with no jump at ±1e-9 in Mach or in the flare's angle across that boundary; TN
-      D-4865 model 2's readings are committed with their provenance; the guide says what it is worth
-      and leaves out; an ADR records what happens where the shock is detached.
+      without a crossing hold to 0.012 per radian and the 5 with one move 0.035 or more, no overlap
+      — a flag, not a verdict, since a zero count at a coarse mesh only means "not proven".
+    - [x] **M1.8e14 Where the flare's march stops** (the first of three the old e14 splits into;
+      M1.8e17 and M1.8e18 carry its other clauses word for word and go next, ADR-045). The method
+      already marches a flare — a cone, a tube and a flare return a finite `C_Nα` at Mach 3 — and the
+      model around it refuses one, stopping at the first widening body.
+      *Done when:* the steepest flare it marches is bisected to f64 resolution over Mach, tests pin it
+      and what stops it, and an ADR records what happens where the flare's shock is detached.
+      *Result:* met (ADR-045). The edge is the corner's **isentropic** turn running out, not the
+      shock detaching, and lands either side of a wedge's limit: 11.9312175° at Mach 1.5 against
+      12.1126689°, 26.4714031° at Mach 2 against 22.9735318°, then the cone tables' 30° from Mach
+      2.129702032593. Which side is the body's doing — take the tube away and Mach 1.5 gives
+      14.194333° — so a march that answers is no evidence of attachment.
+    - [ ] **M1.8e17 The flare through the method** (the second of the old e14's three, ADR-045;
+      M1.8e14 says the attachment test has to be chosen, not read off the march's own refusal).
+      *Done when:* a flared body flies the method where the flare's shock is attached, with no jump
+      at ±1e-9 in Mach or in the flare's angle across that boundary.
+    - [ ] **M1.8e18 What a marched flare is worth** (the third, ADR-045). TN D-4865's model 2 is a
+      2.75° blunted cone with an 18.5° flare; its fig. 8 carries normal force and pitching moment
+      from Mach 1.50 to 4.63, integrated from the pressures its tables VII to XII print, and from Mach
+      2.96 up its boundary layer separates ahead of the juncture. *Done when:* those readings are
+      committed with their provenance, and the guide says what it is worth and leaves out.
     - [ ] **M1.8e15 The step in radius.** A step is a discontinuous profile, which the march refuses
       outright, so unlike the flare it needs a model of its own rather than a decision about one
       that exists. *Done when:* #87 closed or narrowed to the step alone, its measured size in an
