@@ -62,6 +62,7 @@ new record replaces it and points back. All of them are in the [decision log][de
 | [ADR-043: The blunt tip's handover cap][adr-043] | What moving a blunt tip's handover from 24° to the cone tables' 30° would be worth on the report's own sphere-cone, what it does to the march on a nose that flattens fast, and why the cap stays where it is | [Aerodynamics](physics/aero.md#what-the-cap-is-worth) |
 | [ADR-044: What the answer follows when it follows the mesh][adr-044] | That it is the surface pressure crossing its tangent cone's, not the method being reduced, that marks a reading whose answer moves with the element count — how far that goes, and what it re-aims issue #108 at | [Aerodynamics](physics/aero.md#what-a-crossing-is-and-what-it-costs) |
 | [ADR-045: Where a flare's march stops][adr-045] | That what stops the march is the corner's isentropic turn, not the flare's shock detaching; that the two limits cross near Mach 1.55, so neither bounds the other; and that above Mach 2.13 neither binds — the cone tables' 30° does | [Aerodynamics](physics/aero.md#where-a-flares-march-stops) |
+| [ADR-046: Debrief folded in, and analysis that stands on its own][adr-046] | That a universal flight log analyzer becomes part of this project, and that reading a log never needs the simulator: `hpr-flightdata` may not depend on `hpr-sim`, a check enforces it, and comparing a flight with a simulation lives in `hpr-forensics` | [Start here](start-here.md#what-doesnt-work-yet)  What the analyzer is being built from is written up in [the log formats](https://github.com/nrdptel/hpr-sim/blob/main/docs/research/debrief-log-formats.md), [the readings](https://github.com/nrdptel/hpr-sim/blob/main/docs/research/debrief-flight-readings.md) and [what may be ported](https://github.com/nrdptel/hpr-sim/blob/main/docs/research/debrief-porting-boundary.md). |
 
 ## The roadmap
 
@@ -89,8 +90,9 @@ the analysis tools, and an app last.
   optimization for competitions.
 - [Phase 4: More formats and embeddings][phase-4]: RockSim, RASAero and RocketPy files, and use
   from C and the web.
-- [Phase 5: Flight data and forensics][phase-5]: reading flight logs, and comparing a real flight
-  with its simulation.
+- [Phase 5: Flight data and forensics][phase-5]: reading flight logs and taking a flight's
+  readings off them — planned to work on its own, with no design file and no simulation — and then
+  comparing a real flight with its simulation.
 - [Phase 6: Design experience][phase-6]: a design assistant for apps to build on.
 - [Phase 7: UI, 3D, web, mobile][phase-7]: a desktop app, 3D flight replay, a web app and mobile.
 
@@ -197,9 +199,9 @@ missing or its status disagrees.
 | <a id="m3-5"></a>[M3.5][phase-4] | RASAero `.CDX1` files in and out | not yet done |
 | <a id="m3-6"></a>[M3.6][phase-4] | RocketPy scripts and files in and out | not yet done |
 | <a id="m4-4"></a>[M4.4][phase-4] | Use from C, and in the browser through WebAssembly | not yet done |
-| <a id="m7-1"></a>[M7.1][phase-5] | Reading flight logs from altimeters and trackers | not yet done |
-| <a id="m7-2"></a>[M7.2][phase-5] | Reconstructing a flight from its log, and comparing it with the simulation | not yet done |
-| <a id="m7-3"></a>[M7.3][phase-5] | Fitting drag, mass, impulse and wind to a flight log | not yet done |
+| <a id="m7-1"></a>[M7.1][phase-5] | Reading flight logs from altimeters and trackers, with no design file and no simulation | not yet done |
+| <a id="m7-2"></a>[M7.2][phase-5] | The readings a flight gives, each with where it came from, and reconstructing the flight from its log | not yet done |
+| <a id="m7-3"></a>[M7.3][phase-5] | A flight against its simulation: residuals, and fitting drag, mass, impulse and wind to the log | not yet done |
 | <a id="m7-4"></a>[M7.4][phase-5] | Diagnosing what went wrong in a flight | not yet done |
 | <a id="m8-1"></a>[M8.1][phase-6] | A design assistant | not yet done |
 | <a id="m8-2"></a>[M8.2][phase-6] | An editing model for apps: commands, undo and stable ids | not yet done |
@@ -324,6 +326,7 @@ is the milestone that added or will add that test.
 [adr-043]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-043-the-blunt-tips-handover-cap-what-it-is-worth-and-what-stops-it-moving-2026-09-20
 [adr-044]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-044-what-the-answer-follows-when-it-follows-the-mesh-is-a-crossing-of-the-tangent-cone-not-a-reduced-element-2026-09-20
 [adr-045]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-045-where-a-flares-march-stops-is-the-corners-isentropic-turn-not-the-shock-detaching-2026-09-20
+[adr-046]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-046-debrief-folded-in-and-flight-log-analysis-that-stands-without-the-simulator-2026-09-20
 [decisions]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md
 [lessons]: https://github.com/nrdptel/hpr-sim/blob/main/docs/research/loft-lessons.md
 [lessons-motors]: https://github.com/nrdptel/hpr-sim/blob/main/docs/research/loft-lessons.md#motors-mass-and-design-checks

@@ -15,6 +15,11 @@ or a public trait gets an entry in `DECISIONS.md` first.
   not the only option.
 - **Features for weight.** `net`, `python`, `ffi`, `parallel` and `serde` are cargo features, so a
   minimal embed stays small.
+- **Analysing a flight stands on its own.** Reading a flight log and working out what it says is a
+  use of this project in its own right: someone with a log, no design file and no wish to simulate
+  anything is a first-class user. So `hpr-flightdata` must not depend on `hpr-sim`, which its
+  manifest states as `forbids = ["hpr-sim"]` and `cargo xtask wasm-check` enforces. Anything that
+  needs both a flight and a simulation of it lives in `hpr-forensics` (ADR-046).
 
 ## Crate map (workspace members under `crates/`; `xtask/` sits at the root, per ADR-001)
 
@@ -27,7 +32,8 @@ or a public trait gets an entry in `DECISIONS.md` first.
 | `hpr-aero` | Barrowman plus extensions, drag buildup, compressibility, damping, override tables | core, design |
 | `hpr-sim` | 6-DOF engine: state, rail phase, integrators, events, recovery, staging, recorder | core, atmos, motor, design, aero |
 | `hpr-analysis` | Monte Carlo, sensitivity, optimization, challenge specs (`parallel` feature uses rayon) | sim |
-| `hpr-flightdata` | flight-log importers, filtering and smoothing, alignment, parameter ID, fault diagnosis | sim |
+| `hpr-flightdata` | flight-log importers, the canonical flight record, filtering and smoothing, time alignment, and the readings taken from a flight with the provenance of each | core, atmos |
+| `hpr-forensics` | a flight against a simulation of it: residuals, parameter identification, fault diagnosis | flightdata, sim, analysis |
 | `hpr-format` | the new open design format: types, JSON Schema, versioning and migrations, container | design |
 | `hpr-io` | foreign formats: `.ork`, `.rkt`, `.CDX1`, RocketPy export, `.orc` parts DB | design, format |
 | `hpr-net` | optional online sources plus the on-disk cache: Open-Meteo, NOAA GFS/RAP, soundings, elevation, ThrustCurve, motor.fusionspace.co | atmos, motor |
@@ -42,9 +48,23 @@ or a public trait gets an entry in `DECISIONS.md` first.
 **Pure core** (ADR-001): the crates that do no I/O and must build for `wasm32-unknown-unknown`
 declare `[package.metadata.hpr] wasm = true`. They are `hpr-core`, `hpr-atmos`, `hpr-motor`,
 `hpr-design`, `hpr-aero`, `hpr-sim`, `hpr-analysis`, `hpr-flightdata`, `hpr-format`, `hpr-io`,
-`hpr` (without `net`) and `hpr-wasm`. `cargo xtask wasm-check` enforces both the build and the
-rule that they depend on no workspace crate outside the core; `clippy.toml` bans the I/O, clock
-and thread APIs.
+`hpr-forensics`, `hpr` (without `net`) and `hpr-wasm`. `cargo xtask wasm-check` enforces both the
+build and the rule that they depend on no workspace crate outside the core; `clippy.toml` bans the
+I/O, clock and thread APIs.
+
+**Layering rules within the core** (ADR-046): a crate that has to be usable on its own names, in
+its own manifest, the crates **it** must never reach, directly or through anything else:
+
+```toml
+[package.metadata.hpr]
+forbids = ["hpr-sim"]
+```
+
+`cargo xtask wasm-check` walks the workspace graph — the same walk that enforces the pure core,
+which is why the rule lives under that command — and fails with the path it found, so it catches a
+forbidden crate arriving through an innocent-looking helper and not just a direct dependency.
+Dev-dependencies are excluded, since they never reach a dependent. `hpr-flightdata` is the crate
+this was written for.
 
 Crate names on crates.io are **not** reserved yet. Publishing is a "Needs Neer" item.
 

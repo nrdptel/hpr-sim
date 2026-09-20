@@ -7,13 +7,15 @@
 //! wasm = true
 //! ```
 //!
-//! The check has two parts:
+//! The check has three parts:
 //!
-//! 1. A layering rule. No workspace crate outside the pure core may appear in the pure core's
+//! 1. The layering rules each crate declares for itself in `[package.metadata.hpr] forbids`
+//!    (see [`layering`](crate::layering)), so that a crate meant to stand on its own does.
+//! 2. A layering rule. No workspace crate outside the pure core may appear in the pure core's
 //!    normal dependency graph, on any target. The graph comes from `cargo tree`, so it reflects
 //!    the features cargo actually resolves, including features one pure crate turns on in
 //!    another.
-//! 2. `cargo clippy --target wasm32-unknown-unknown -- -D warnings` on the pure core, with
+//! 3. `cargo clippy --target wasm32-unknown-unknown -- -D warnings` on the pure core, with
 //!    default features. This compiles the core for the target and fails on any warning,
 //!    including warnings that only appear under `cfg(target_arch = "wasm32")`.
 //!
@@ -33,6 +35,23 @@ pub const TARGET: &str = "wasm32-unknown-unknown";
 /// Runs the check. `cargo_args` (for example `--locked`) are passed to every cargo command.
 pub fn run(cargo_args: &[String]) -> Result<(), String> {
     let workspace = workspace::load(Path::new(env!("CARGO_MANIFEST_DIR")))?;
+    crate::layering::check(&workspace)?;
+    let rules: Vec<String> = workspace
+        .packages
+        .iter()
+        .filter(|package| !package.forbids.is_empty())
+        .map(|package| format!("{} forbids {}", package.name, package.forbids.join(", ")))
+        .collect();
+    // Say which rules ran. Silence on success reads the same as a rule that was never parsed.
+    println!(
+        "wasm-check: {} crate rule(s) ok{}",
+        rules.len(),
+        if rules.is_empty() {
+            String::new()
+        } else {
+            format!(" ({})", rules.join("; "))
+        }
+    );
     let pure = pure_crates(&workspace.packages);
     if pure.is_empty() {
         return Err("no crate declares `[package.metadata.hpr] wasm = true`".to_owned());
@@ -155,6 +174,7 @@ mod tests {
 
     fn package(name: &str, wasm: bool) -> Package {
         Package {
+            forbids: Vec::new(),
             name: name.to_owned(),
             wasm,
             lib: Some(name.to_owned()),
@@ -308,7 +328,8 @@ mod tests {
         assert_eq!(scratch.layering(), Ok(()));
     }
 
-    /// The pure core named in docs/ARCHITECTURE.md (ADR-001). Changing it needs an ADR.
+    /// The pure core named in docs/ARCHITECTURE.md (ADR-001; `hpr-forensics` by ADR-046).
+    /// Changing it needs an ADR.
     #[test]
     fn the_workspace_pure_core_matches_the_architecture() {
         let workspace = workspace::load(Path::new(env!("CARGO_MANIFEST_DIR"))).unwrap();
@@ -323,6 +344,7 @@ mod tests {
                 "hpr-core",
                 "hpr-design",
                 "hpr-flightdata",
+                "hpr-forensics",
                 "hpr-format",
                 "hpr-io",
                 "hpr-motor",

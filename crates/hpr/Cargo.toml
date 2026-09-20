@@ -24,6 +24,7 @@ hpr-aero.workspace = true
 hpr-sim.workspace = true
 hpr-analysis.workspace = true
 hpr-flightdata.workspace = true
+hpr-forensics.workspace = true
 hpr-format.workspace = true
 hpr-io.workspace = true
 hpr-net = { workspace = true, optional = true }

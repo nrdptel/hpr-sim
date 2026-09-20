@@ -40,6 +40,14 @@ dest = "refs/fusionspace-loft"
 license = "MIT"
 mode = "fetched"
 
+[[git]]
+name = "fusionspace-debrief"
+url = "https://github.com/nrdptel/fusionspace-debrief.git"
+commit = "9e72db8bebf88a1b8233ef0643d6eebdd31b1efc"
+dest = "refs/fusionspace-debrief"
+license = "MIT"
+mode = "fetched"
+
 # Private: other people's design files. Skipped with a note where GitHub access is missing (CI).
 # The manifest pin is the one Loft used.
 [[git]]
@@ -51,6 +59,16 @@ private = true
 manifest = "CHECKSUMS.sha256"
 manifest_sha256 = "d909aeae6e063b629a161ba36dcc0f8b51e45313997789c8ecbc71e342971510"
 license = "private; third-party design files"
+mode = "fetched"
+
+# Private: other people's flight logs, with the ground-truth notes recorded alongside them.
+[[git]]
+name = "debrief-fixtures"
+url = "https://github.com/nrdptel/debrief-fixtures.git"
+commit = "722f07cd5d9d8595b31c64e2964fb7fbd5e751e7"
+dest = "refs/debrief-fixtures"
+private = true
+license = "private; third-party flight logs"
 mode = "fetched"
 
 # Immutable downloads, pinned by sha256.

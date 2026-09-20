@@ -3972,6 +3972,7 @@ mod tests {
 
     fn package(name: &str, lib: bool, dependencies: &[&str]) -> Package {
         Package {
+            forbids: Vec::new(),
             name: name.to_owned(),
             wasm: false,
             lib: lib.then(|| name.replace('-', "_")),

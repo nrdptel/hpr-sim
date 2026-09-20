@@ -295,12 +295,10 @@
 
 - [x] **M2.1 Validation harness plus the RocketPy code-to-code suite.** The first end-to-end
   milestone: `hpr-validate` and `cargo xtask validate [--fast]`, TOML cases and reference JSON with
-  provenance, Markdown and JSON reports, oracle scripts in `validation/oracles/rocketpy/`. Metrics
-  cover apogee and its time, maximum velocity, Mach and acceleration, rail exit, burnout, descent
-  rates, landing offset and time-series RMS after alignment. At least five RocketPy example
-  rockets fly in two modes — **same-drag**, which isolates dynamics, environment and motor, and
-  **predicted**, hpr's own aero, whose supersonic gaps are reported rather than hidden — and CI
-  compares against the stored references.
+  provenance, Markdown and JSON reports, oracle scripts in `validation/oracles/rocketpy/`. At least
+  five RocketPy example rockets fly in two modes — **same-drag**, which isolates dynamics,
+  environment and motor, and **predicted**, hpr's own aero, whose supersonic gaps are reported
+  rather than hidden — and CI compares against the stored references.
 
   *Done when:*
   - At least 5 cases pass their same-drag tolerances.
@@ -310,10 +308,6 @@
   - A separate, manually triggered workflow regenerates the references.
 
   - [x] **M2.1a The harness.**
-    - `hpr-validate` and `cargo xtask validate [--fast]`: case files (TOML), reference JSON with
-      provenance, per-case tolerances on every metric, a case lock so a silently skipped case
-      fails, and Markdown plus JSON reports.
-    - Its first cases are the recovery descents, whose references M1.7a already generated.
     - Loft lessons: L76, L77, L78, L79 (tests named in `docs/research/loft-lessons.md`).
 
     *Done when:*
@@ -334,10 +328,6 @@
     *Done when:* split below into M2.1b1 and M2.1b2; M2.1b2 carries M2.1b's three bullets.
 
     - [x] **M2.1b1 The whole-flight oracle.**
-      - `validation/oracles/rocketpy/flight.py` flies M2.1b's five example rockets pad to landing,
-        built from `validation/fixtures/design/rocketpy-rocket-mass.json` as `recovery.py` builds
-        them (rail, inclination and heading cited per case), on drag **declared by the case**:
-        RocketPy's data files carry their own terms (ADR-009) and are absent from M2.1c's CI.
       *Done when:*
       - `refs/venv/bin/python validation/oracles/rocketpy/flight.py` writes a fixture of all five
         cases, each with the metrics M2.1 names, a time series, a loose-solver run and a source for
@@ -374,9 +364,6 @@
     them (the first in M2.1c2, the other two in M2.1c1).
 
     - [x] **M2.1c1 The CI job and the regeneration workflow.**
-      - `cargo xtask validate --check`, and a `validate` job running it on three OSes.
-      - `scripts/regenerate-references.sh` and a `workflow_dispatch`-only workflow that runs it.
-
       *Done when:*
       - The CI job is green on macOS, Windows and Linux.
       - The regeneration workflow runs only when a human triggers it, and its output is a diff to
@@ -387,9 +374,6 @@
       uploads the diff; run locally it reproduced every fixture and the report byte for byte.
 
     - [x] **M2.1c2 Predicted mode.**
-      - The same cases flown with hpr's own aero, against a reference in which RocketPy flies each
-        example's own drag curves; results computed from those curves are committed, the curves
-        are not (ADR-009).
       *Done when:*
       - Predicted-mode results are in the report for every case, each gap explained in the case
         file or `docs/VALIDATION.md`; `M ≥ 1` cases are reported as gaps, not hidden, until M1.8.
@@ -412,8 +396,6 @@
       three outside (the drag), pinned.
 
     - [x] **M2.1d2 The calm-air cases (issue #50).**
-      - Issue #50's zero-wind runs of Juno III, Calisto and Bella Lui, committed as same-drag
-        whole-flight cases with RocketPy references, to measure the wind's effect against.
       *Done when:*
       - The three calm-air cases are in the suite, their apogee and landing drifts scored at 3%,
         and each passes or is a gap its case file explains.
@@ -421,9 +403,6 @@
       drifts miss (−3.7%), reported not scored: 1.6 points are the rail release (`rail_release.py`).
 
     - [x] **M2.1d3 The path in wind (issue #50).**
-      - Fly the windy cases with each suspected cause of the gap matched to RocketPy in turn: rail
-        release at the first rail button, drag without the angle-of-attack factor, and each code's
-        normal force and damping.
       *Done when:*
       - Issue #50's cause is found and the drifts are scored within their tolerances, or an ADR
         records the measured cause and why they cannot be, and the gap stays visible in the
@@ -748,12 +727,16 @@
   - rustdoc has zero warnings.
   - A "custom aero model" example overrides a built-in model through the trait.
 
-- [ ] **M4.2 CLI.** `hpr sim|validate|convert|motors|mc|optimize|compare|diagnose` (stubs are fine
-  for commands whose milestone hasn't come yet), `--json` everywhere, and shell completions. The
-  README's command and format table is generated from the registered commands (Loft lesson P10).
+- [ ] **M4.2 CLI.** `hpr sim|validate|convert|motors|mc|optimize|compare|analyze|diagnose` (stubs
+  are fine for commands whose milestone hasn't come yet), `--json` everywhere, and shell
+  completions. The README's command and format table is generated from the registered commands
+  (Loft lesson P10). `hpr analyze <log>` reads a flight log and prints its readings; it takes no
+  design and runs no simulation (ADR-046), which is how the analyzer reaches a user who only ever
+  wants that.
 
   *Done when:* `assert_cmd` tests cover every implemented command and the JSON output validates
-  against the published schemas.
+  against the published schemas, and `hpr analyze` is tested on a log with no design file
+  present.
 
 - [ ] **M3.2 OpenRocket `.ork` export** (schema 1.10).
   - Loft lessons: L67, L68 (tests named in `docs/research/loft-lessons.md`).
@@ -909,30 +892,47 @@
 
 ## Phase 5: Flight data and forensics
 
+M7.1 and M7.2 must work with no design file and no simulator, so that analysing a flight stands on
+its own (ADR-046): `hpr-flightdata` may not depend on `hpr-sim`, and `cargo xtask wasm-check`
+enforces it. M7.3 and M7.4 compare a flight with a simulation of it and live in `hpr-forensics`.
+The formats, reading methods and log corpus come from Debrief (`refs/fusionspace-debrief`), written
+up in `docs/research/`.
+
 - [ ] **M7.1 Flight log importers.**
-  - AltOS CSV (TeleMetrum/TeleMega/EasyMega), RRC3/Missile Works, Eggtimer, Featherweight
-    Raven/Blue Raven, PerfectFlite, CATS.
+  - AltOS (TeleMetrum/TeleMega/EasyMega, CSV and eeprom), Missile Works RRC3 and RFF, Eggtimer,
+    Featherweight Raven/Blue Raven and Featherweight GPS, PerfectFlite, Entacore AIM,
+    AltimeterCloud, spreadsheet exports, CATS.
   - The EuRoC/Juno CSV layouts; generic CSV with column mapping; unit detection.
+  - One canonical flight record every importer maps into, carrying every sample the logger wrote.
 
-  *Done when:* every sample file in refs imports, snapshot-tested. Formats without samples are
-  listed as "needs samples" in `STATUS.md`.
+  *Done when:* every sample file in refs imports, snapshot-tested, and the crate builds with no
+  dependency on `hpr-sim` (`cargo xtask wasm-check`). Formats without samples are listed as
+  "needs samples" in `STATUS.md`.
 
-- [ ] **M7.2 Reconstruction and ghost data.**
-  - RTS/Kalman smoothing fusing baro, accel and GNSS.
-  - Liftoff detection and time alignment.
-  - Sim-vs-real residuals.
-  - A "ghost" data product: time-synced trajectories in a common frame, exported as JSON and
-    CZML/glTF-friendly tracks.
+- [ ] **M7.2 Readings, reconstruction and ghost data.**
+  - The readings a flight gives — apogee, maximum velocity and acceleration, burnout, descent
+    rates per phase, flight time — each carrying its provenance: measured, derived, or clipped
+    when the sensor saturated. A reading the log cannot support is withheld with a reason.
+  - RTS/Kalman smoothing fusing baro, accel and GNSS; liftoff detection and time alignment.
+  - Two recordings of one flight read side by side, never averaged into one number; per-stage logs
+    assembled onto one timeline.
+  - A "ghost" data product: time-synced trajectories in a common frame, as JSON and CZML/glTF.
 
   *Done when:*
   - On synthetic data (a simulated flight plus a noise model), the smoother recovers the truth
-    within the stated error.
-  - Real RocketPy flights produce ghost files.
+    within the stated error, and real RocketPy flights produce ghost files.
+  - Every reading names its method and its provenance, and the corpus has a case for each
+    withheld reading.
+  - A flight is read end to end with no design file present, from the library and from
+    `hpr analyze` (M4.2's command).
 
-- [ ] **M7.3 Parameter identification.** Fit Cd scale, mass, motor impulse scale and wind to a log
-  (Levenberg–Marquardt plus a Bayesian option with uncertainty).
+- [ ] **M7.3 A flight against its simulation.** Sim-versus-real residuals, then fitting Cd scale,
+  mass, motor impulse scale and wind to a log (Levenberg–Marquardt plus a Bayesian option with
+  uncertainty). The first milestone in `hpr-forensics`.
 
-  *Done when:* synthetic-truth recovery is within tolerance, and real-flight fits are reported.
+  *Done when:* residuals are reported for a real flight against its simulation, synthetic-truth
+  recovery is within tolerance, and real-flight fits are reported. A reading keeps the provenance
+  M7.2 gave it wherever it meets a simulated number.
 
 - [ ] **M7.4 Fault diagnosis.**
   - A hypothesis library with simulate-able fault models: motor under/over-performance, CATO or
