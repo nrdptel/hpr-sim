@@ -51,10 +51,18 @@
 //!
 //! turned into a deflection by eq. 138 (p. 621), `tan δ = 2 cot θ (M² sin²θ − 1)/(2 + M²(γ + 1 −
 //! 2 sin²θ))`. It is 12.1° at Mach 1.5 and 22.97° at Mach 2. hpr hands over at the lesser of
-//! `δ_max` and 24°, the steepest tangent cone of TN 3527's Fig. 2 ([`MAX_HANDOVER_RAD`]): the
-//! method needs that cone's normal-force slope (the report's own cone tables stop at 30°, p. 31,
-//! short of its handover from Mach 2.96 up). From about Mach 2.1 up the cap therefore reaches
-//! further aft than the report's.
+//! `δ_max` and 24° ([`MAX_HANDOVER_RAD`]), so from Mach 2.06 up the cap reaches further aft than
+//! the report's. The cap is a cap because the method reads the tangent cone's normal-force slope
+//! at the handover, and those tables ([`crate::shock_expansion::cone_normal_force_slope`]) once
+//! stopped at TN 3527 Fig. 2's 24°. They now reach 30° ([`CONE_TABLE_CAP_RAD`]), and the
+//! handover doesn't, because the march does not carry it there yet: measured over the whole
+//! sweep in [ADR-043][adr-043], a 30° handover reads nearer TN D-4865's own sphere-cone at every
+//! row where a cap binds at all, and on the committed Arcas Robin nose above about Mach 4 it puts
+//! most of the march's elements into `η < 0`
+//! ([issue #108](https://github.com/nrdptel/hpr-sim/issues/108)), where the answer moves with the
+//! element count. No cap above 24° holds its answer to Mach 5, and the failure isn't orderly in
+//! the cap: 28° is the worst of the four measured. [`handover_angle_capped_rad`] takes the cap as
+//! a parameter so both ends are measured rather than argued.
 //!
 //! **The flow behind it: hpr's choice, not the report's.** hpr starts TN 3527's march at the
 //! handover as the method starts at a pointed vertex: with the flow on the cone tangent to the
@@ -89,14 +97,26 @@
 //!
 //! [J68]: https://ntrs.nasa.gov/citations/19690000884
 //! [adr-038]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-038-blunt-and-vertical-nose-tips-faster-than-sound-by-a-newtonian-cap-the-method-started-from-the-tangent-cone-2026-09-19
+//! [adr-043]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-043-the-blunt-tips-handover-cap-what-it-is-worth-and-what-stops-it-moving-2026-09-20
 
 use crate::afterbody::GAMMA;
 use crate::error::AeroError;
 
-/// The steepest slope the cap hands over at: TN 3527 Fig. 2's steepest tangent cone, 24°, whose
-/// normal-force slope the shock-expansion method's loading reads
-/// ([`crate::shock_expansion::cone_normal_force_slope`]).
+/// The steepest slope the cap hands over at, as hpr flies it: 24°. It was TN 3527 Fig. 2's
+/// steepest tangent cone, the steepest whose normal-force slope the method could read; since the
+/// milestone [M1.8e11](https://nrdptel.github.io/hpr-sim/decisions-and-roadmap.html#m1-8e11),
+/// which took the cone slopes to 30°, the tables reach [`CONE_TABLE_CAP_RAD`], and 24° is kept
+/// because that is as far as the march carries the handover, not as far as the tables do
+/// ([ADR-043: what the handover's cap is worth][adr-043]).
+///
+/// [adr-043]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-043-the-blunt-tips-handover-cap-what-it-is-worth-and-what-stops-it-moving-2026-09-20
 pub const MAX_HANDOVER_RAD: f64 = 24.0 * std::f64::consts::PI / 180.0;
+
+/// The steepest cap the method can be given, 30°: the steepest cone its normal-force slopes
+/// cover ([`crate::shock_expansion::cone_normal_force_slope`]), where NASA SP-3007's tables stop
+/// ("cone angles from 2.5° to 30°", Foreword, p. iii). A handover steeper than this has no
+/// tangent cone to start the march from.
+pub const CONE_TABLE_CAP_RAD: f64 = 30.0 * std::f64::consts::PI / 180.0;
 
 /// The Mach number must be finite and above 1: the cap stands behind a normal shock.
 fn check_mach(mach: f64) -> Result<(), AeroError> {
@@ -169,13 +189,35 @@ pub fn wedge_detachment_angle_rad(mach: f64) -> Result<f64, AeroError> {
 
 /// The slope at which the cap hands over to the shock-expansion method at Mach `mach`, rad: the
 /// lesser of the wedge's largest deflection ([`wedge_detachment_angle_rad`], TN D-4865 p. 5) and
-/// [`MAX_HANDOVER_RAD`].
+/// [`MAX_HANDOVER_RAD`], the cap hpr flies.
 ///
 /// # Errors
 ///
 /// As [`wedge_detachment_angle_rad`].
 pub fn handover_angle_rad(mach: f64) -> Result<f64, AeroError> {
-    Ok(wedge_detachment_angle_rad(mach)?.min(MAX_HANDOVER_RAD))
+    handover_angle_capped_rad(mach, MAX_HANDOVER_RAD)
+}
+
+/// The handover slope at Mach `mach` under a cap of `cap_rad` rather than the flown
+/// [`MAX_HANDOVER_RAD`], rad: the lesser of the wedge's largest deflection and the cap. What
+/// [ADR-043][adr-043] sweeps; a body takes it through
+/// [`crate::shock_expansion::ShockExpansionBody::with_handover_cap_rad`].
+///
+/// # Errors
+///
+/// - As [`wedge_detachment_angle_rad`] for the Mach number.
+/// - [`AeroError::Domain`] for a cap outside `(0, `[`CONE_TABLE_CAP_RAD`]`]`, where the march has
+///   no tangent cone to start from.
+///
+/// [adr-043]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-043-the-blunt-tips-handover-cap-what-it-is-worth-and-what-stops-it-moving-2026-09-20
+pub fn handover_angle_capped_rad(mach: f64, cap_rad: f64) -> Result<f64, AeroError> {
+    if !(cap_rad.is_finite() && cap_rad > 0.0 && cap_rad <= CONE_TABLE_CAP_RAD) {
+        return Err(AeroError::Domain {
+            what: "cap on a blunt tip's handover slope",
+            value: cap_rad,
+        });
+    }
+    Ok(wedge_detachment_angle_rad(mach)?.min(cap_rad))
 }
 
 /// Modified Newtonian `C_p,max = (p_t2/p₀ − 1)/(γM²/2)` at Mach `mach`.
@@ -328,8 +370,10 @@ mod tests {
         }
     }
 
+    /// Below the cap the handover is the wedge's own detachment angle, above it the cap. The
+    /// flown cap, 24°, binds from Mach 2.06; the steepest the tables carry, 30°, from Mach 2.52.
     #[test]
-    fn the_handover_is_capped_at_fig_2s_steepest_cone() {
+    fn the_handover_is_the_wedges_until_the_cap_binds() {
         close(
             handover_angle_rad(1.5).unwrap(),
             wedge_detachment_angle_rad(1.5).unwrap(),
@@ -337,6 +381,47 @@ mod tests {
             "M 1.5",
         );
         assert_eq!(handover_angle_rad(3.0).unwrap(), MAX_HANDOVER_RAD);
+        // Where each cap starts to bind, bisected against the wedge's own angle.
+        let binds_from = |cap: f64| {
+            let (mut low, mut high) = (1.0_f64, 20.0_f64);
+            for _ in 0..200 {
+                let mid = 0.5 * (low + high);
+                if wedge_detachment_angle_rad(mid).unwrap() < cap {
+                    low = mid;
+                } else {
+                    high = mid;
+                }
+            }
+            0.5 * (low + high)
+        };
+        close(binds_from(MAX_HANDOVER_RAD), 2.061, 5e-4, "24° binds from");
+        close(
+            binds_from(CONE_TABLE_CAP_RAD),
+            2.519,
+            5e-4,
+            "30° binds from",
+        );
+        // Under a cap of its own the handover is the lesser of the two, and the cap can't ask for
+        // a cone the tables don't carry.
+        assert_eq!(
+            handover_angle_capped_rad(3.0, CONE_TABLE_CAP_RAD).unwrap(),
+            CONE_TABLE_CAP_RAD
+        );
+        close(
+            handover_angle_capped_rad(1.5, CONE_TABLE_CAP_RAD).unwrap(),
+            wedge_detachment_angle_rad(1.5).unwrap(),
+            0.0,
+            "M 1.5, 30° cap",
+        );
+        for bad in [0.0, -1.0, f64::NAN, CONE_TABLE_CAP_RAD * 1.000_001] {
+            assert!(
+                matches!(
+                    handover_angle_capped_rad(3.0, bad),
+                    Err(AeroError::Domain { .. })
+                ),
+                "a cap of {bad} should be refused"
+            );
+        }
     }
 
     #[test]

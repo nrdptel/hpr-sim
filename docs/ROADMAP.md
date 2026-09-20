@@ -586,10 +586,23 @@
       Fig. 2 where they overlap; no committed fixture moves.
       *Result:* met (ADR-042); SP-3007 Table 2 at 25°, 27.5° and 30°, agreeing with the chart to
       0.0021 per rad at 22.5°; the pointed tip's switch moves to 30° and falls to −7.7%/0.81 cal.
-    - [ ] **M1.8e12 The blunt tip's handover, past 24°.** With slopes to 30° a cap can hand over at
-      the detachment angle, not Fig. 2's edge. *Done when:* the vertical-tip switch is gone or
-      measured again, fixtures and the guide moving together.
-    - [ ] **M1.8e13 The step and the flare.** *Done when:* #87 closed or narrowed to these two, each switch's measured size in an ADR and the guide.
+    - [x] **M1.8e12 What the handover's cap is worth, and what stops it** (split from the old e12,
+      whose aim is now M1.8e13). With slopes to 30° a cap can hand over at the detachment angle,
+      not Fig. 2's edge — but moving it there turns out to take the march out of its range on a
+      nose that flattens fast, so this increment measures the move and the next one makes it.
+      *Done when:* the cap is a parameter of the method, its flown default unchanged so that no
+      committed fixture moves; a sweep of it is measured into a committed fixture — each cap's
+      sphere-cone error, and the committed nose's readings over 10 to 160 elements with the counts
+      of reduced elements; tests pin both ends of the sweep; an ADR records why the default stays;
+      the guide says it plainly; and the blocker is a GitHub issue.
+      *Result:* met (ADR-043); 30° follows TN D-4865's rule to Mach 2.52 and reads nearer its
+      sphere-cone at every row where a cap binds, and puts 109 of the committed nose's 160 elements
+      into `η < 0` at Mach 4.63, where the answer follows the element count (3.047 to 3.260); the
+      cap stays at 24°, and issue #108 holds what would move it.
+    - [ ] **M1.8e13 The blunt tip's handover, past 24°** (the old e12's aim, once the march carries
+      it). *Done when:* the vertical-tip switch is gone or measured again, fixtures and the guide
+      moving together; and, ahead of that, issue #108 closed.
+    - [ ] **M1.8e14 The step and the flare.** *Done when:* #87 closed or narrowed to these two, each switch's measured size in an ADR and the guide.
 
 - [ ] **M3.1 OpenRocket `.ork` import.**
   - Handles zip, gz and raw XML, schema 1.0 to 1.10, plus the documented 1.11 additions.
