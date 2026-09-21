@@ -5,20 +5,19 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
 ## Now
 
 - **Current milestone:** M1.8e, all done bar M1.8e16 (`[blocked]` on #108); the work is
-  **M3.1d**, the `.ork` corpus snapshots and the RocketSerializer cross-check, now M3.1c reads a
-  design's motors, recovery, stored simulations, and keeps the rest (ADR-055 to ADR-058).
-- **Order:** M3.1d, M2.2, M1.9; M1.8e16 waits on #108. **Run:** M0.1-M0.4,
-  M1.1-M1.7, M2.1, M1.8a-e19 bar e16, M3.1a-c; the site is published.
+  **M3.1d2**, every `.ork` importing without an error and the RocketSerializer cross-check, now
+  M3.1c reads a design whole and M3.1d1 snapshots the public designs (ADR-055 to ADR-058).
+- **Order:** M3.1d2, M2.2, M1.9; M1.8e16 waits on #108. **Run:** M0.1-M0.4,
+  M1.1-M1.7, M2.1, M1.8a-e19 bar e16, M3.1a-c, M3.1d1; the site is published.
 - **Neer, 2026-09-20:** Debrief is sunset; a flight log analyzer usable **on its own** is part of
   this project (ADR-046, V21); Phase 5 re-cut.
-- **Last updated:** 2026-09-21 (M3.1c4 shipped, and M3.1c: what a `.ork` holds, kept)
+- **Last updated:** 2026-09-21 (M3.1d1 shipped: snapshots of public `.ork` designs)
 
 ## Handoff (overwrite each session)
 
-- **M3.1d next:** `insta` snapshots of `hpr_io::ork::design` on public files only (Loft's demo
-  fixtures, the jar's examples are GPL: counts only; synthetic designs), the RocketSerializer
-  cross-check on key geometry, and private-corpus results as counts in `corpus-out/`; its *done
-  when* is M3.1's four bullets. Probes: `validation/oracles/openrocket/*.py`. **Driving OpenRocket:**
+- **M3.1d2 next:** the 2 `.ork` files that are not well-formed XML (Loft test fixtures; M3.1a
+  refused them) against "imports with zero errors", and RocketSerializer (MIT, not yet in
+  `validation/refs.lock.toml`) run on public files for key geometry. **Driving OpenRocket:**
   `validation/oracles/openrocket/automatic_radius.py` (ADR-054) runs 24.12 headless through JPype,
   binding empty motor and preset databases in a Python Guice module; it logs to stdout, so the
   script writes to a path. **Read OpenRocket after it re-resolves** (a save does it): its first
@@ -57,6 +56,8 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
 
 ## Done log (newest first, keep about 15)
 
+- 2026-09-21: M3.1d1 Loft's seven demo designs committed and snapshotted whole with `insta`
+  (new dev-dependency); M3.1d split into d1 and d2.
 - 2026-09-21: M3.1c4 What a `.ork` holds that hpr does not model, kept whole in `x-openrocket`
   (ADR-058): parts, sections, tags and attributes, 5,183 found again. L66 live; #145. M3.1c done.
 - 2026-09-21: M3.1c3 A `.ork` design's stored simulations read back (ADR-057): 178, 144 with a
@@ -64,10 +65,8 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
 - 2026-09-21: M3.1c2 A `.ork` design's recovery and separation, read not flown (ADR-056): 137
   devices, 2 left out in pods; 18 of 93 stages separate. A committed probe measures its event words,
   `cd auto` (0.8), a deploy height above ground; set above apogee, one did not open.
-- 2026-09-21: M3.1c1 A `.ork` design's motors (ADR-055): 206 motors in 174 configurations, 6 left
-  out in pods and parallel stages; a curve from the file's own `.rse` first, the bundled catalog
-  second. It flies a configuration only if every motor has a curve and lights at launch, on a
-  one-stage airframe read without a warning: 1 of 174. L57, L65 live; #138, #139, #141.
+- 2026-09-21: M3.1c1 A `.ork` design's motors (ADR-055): 206 in 174 configurations; the file's own
+  curve first; 1 flies, on a one-stage airframe read without a warning. L57, L65; #138, #139, #141.
 - 2026-09-20: M3.1b1 to b4 (ADR-052 to ADR-054): all 75 `.ork` designs lay out; L49, L58-L63 live.
 ## Needs Neer (blocking or one-way decisions; the session keeps working on other things)
 

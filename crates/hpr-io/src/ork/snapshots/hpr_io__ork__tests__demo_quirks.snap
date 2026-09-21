@@ -1,0 +1,131 @@
+---
+source: crates/hpr-io/src/ork/tests.rs
+expression: snapshot_of(&design)
+---
+{
+  "configurations": [
+    {
+      "default": true,
+      "id": "cfg-t",
+      "left_out": "NoCurve",
+      "motors": [
+        {
+          "curve": "none: NotFound",
+          "delay": "Some(Plugged)",
+          "ignition": "automatic + 0 s",
+          "motor": "AeroTech J420R",
+          "mount": "bodytube-9"
+        }
+      ],
+      "name": "",
+      "unread": 0
+    }
+  ],
+  "flown": [],
+  "kept": {
+    "attributes": 1,
+    "parts": [
+      "openrocket/rocket/parallelstage[1]"
+    ],
+    "sections": 0,
+    "tags": 1
+  },
+  "layout": {
+    "cg_z_m": -0.537650861,
+    "mass_kg": 1.57981644
+  },
+  "recovery": {
+    "devices": [
+      {
+        "altitude_m": null,
+        "cd": "Some(Stated { value: 0.75 })",
+        "configurations": 0,
+        "delay_s": null,
+        "deploy": "apogee",
+        "id": "streamer-5",
+        "kind": "Streamer"
+      }
+    ],
+    "separations": []
+  },
+  "reduced": true,
+  "rocket": "Quirks regression — auto radii, legacy tags, boattail",
+  "simulations": [
+    {
+      "branches": 0,
+      "configuration": "cfg-t",
+      "max_altitude_m": 900.0,
+      "name": "Sim 1",
+      "rows": 0,
+      "status": "external"
+    }
+  ],
+  "stages": [
+    {
+      "components": [
+        {
+          "id": "nosecone-2",
+          "kind": "nose_cone",
+          "motor_mount": false,
+          "parts": 0
+        },
+        {
+          "id": "bodytube-6",
+          "kind": "body_tube",
+          "motor_mount": false,
+          "parts": 2
+        },
+        {
+          "id": "transition-7",
+          "kind": "transition",
+          "motor_mount": false,
+          "parts": 0
+        },
+        {
+          "id": "bodytube-9",
+          "kind": "body_tube",
+          "motor_mount": true,
+          "parts": 1
+        }
+      ],
+      "id": "stage-1"
+    }
+  ],
+  "warnings": [
+    {
+      "at": "openrocket/rocket/stage[0]/bodytube[1]/tubecoupler[0]",
+      "kind": "Unusual",
+      "says": "no axial offset at all; the part was read flush with its parent's forward end"
+    },
+    {
+      "at": "openrocket/rocket/stage[0]/bodytube[1]/streamer[1]",
+      "kind": "Dropped",
+      "says": "no `packedradius`, so it was read as zero"
+    },
+    {
+      "at": "openrocket/rocket/stage[0]/bodytube[3]/ellipticalfinset[0]",
+      "kind": "Unusual",
+      "says": "this component uses the single `overridesubcomponents` flag that OpenRocket replaced with one flag per quantity; it was read as setting the mass, the centre of gravity, the drag flags"
+    },
+    {
+      "at": "openrocket/rocket",
+      "kind": "Skipped",
+      "says": "1 `parallelstage` were left out: a pod or a parallel stage carries a spine of its own, which is a later milestone's work"
+    },
+    {
+      "at": "openrocket/rocket/stage[0]/nosecone[0]",
+      "kind": "Unusual",
+      "says": "an automatic radius with no fixed radius anywhere along its chain to take, its `aftradius`; it was given 25 mm, OpenRocket's default radius for a tube with nothing to take"
+    },
+    {
+      "at": "openrocket/rocket/stage[0]/bodytube[1]",
+      "kind": "Unusual",
+      "says": "an automatic radius with no fixed radius anywhere along its chain to take, its `radius`; it was given 25 mm, OpenRocket's default radius for a tube with nothing to take"
+    },
+    {
+      "at": "openrocket/rocket/stage[0]/transition[2]",
+      "kind": "Unusual",
+      "says": "an automatic radius with no fixed radius anywhere along its chain to take, its `foreradius`; it was given 25 mm, OpenRocket's default radius for a tube with nothing to take"
+    }
+  ]
+}

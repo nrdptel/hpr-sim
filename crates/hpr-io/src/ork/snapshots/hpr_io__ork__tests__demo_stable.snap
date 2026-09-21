@@ -1,0 +1,81 @@
+---
+source: crates/hpr-io/src/ork/tests.rs
+expression: snapshot_of(&design)
+---
+{
+  "configurations": [
+    {
+      "default": true,
+      "id": "cfg-38-stable-h128",
+      "left_out": "NoCurve",
+      "motors": [
+        {
+          "curve": "none: NotFound",
+          "delay": "Some(Seconds(6.0))",
+          "ignition": "automatic + 0 s",
+          "motor": "AeroTech H128W",
+          "mount": "10f70005-0000-4000-8000-000000000008"
+        }
+      ],
+      "name": "",
+      "unread": 0
+    }
+  ],
+  "flown": [],
+  "kept": {
+    "attributes": 1,
+    "parts": [],
+    "sections": 0,
+    "tags": 3
+  },
+  "layout": {
+    "cg_z_m": -0.515909334,
+    "mass_kg": 0.540098147
+  },
+  "recovery": {
+    "devices": [
+      {
+        "altitude_m": null,
+        "cd": "Some(Stated { value: 0.8 })",
+        "configurations": 0,
+        "delay_s": 0.0,
+        "deploy": "apogee",
+        "id": "10f70005-0000-4000-8000-000000000006",
+        "kind": "Parachute"
+      }
+    ],
+    "separations": []
+  },
+  "reduced": false,
+  "rocket": "Loft Demo 38mm — stable trainer",
+  "simulations": [
+    {
+      "branches": 0,
+      "configuration": "cfg-38-stable-h128",
+      "max_altitude_m": null,
+      "name": "Simulation 1",
+      "rows": 0,
+      "status": "external"
+    }
+  ],
+  "stages": [
+    {
+      "components": [
+        {
+          "id": "10f70005-0000-4000-8000-000000000003",
+          "kind": "nose_cone",
+          "motor_mount": false,
+          "parts": 0
+        },
+        {
+          "id": "10f70005-0000-4000-8000-000000000004",
+          "kind": "body_tube",
+          "motor_mount": false,
+          "parts": 6
+        }
+      ],
+      "id": "10f70005-0000-4000-8000-000000000002"
+    }
+  ],
+  "warnings": []
+}

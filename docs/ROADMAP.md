@@ -304,17 +304,14 @@
 
     - [x] **M2.1d2 The calm-air cases (issue #50).** *Done when:* the three calm-air cases are in
       the suite, their apogee and landing drifts scored at 3%, and each passes or is a gap its case
-      file explains. *Result (ADR-025):* met. Calisto and Bella Lui pass (drifts −1.258% to
-      −2.583%); Juno III's drifts miss (−3.7%), reported not scored: 1.6 points are the rail release
-      (`rail_release.py`).
+      file explains. *Result (ADR-025):* met: Calisto and Bella Lui pass; Juno III's drifts miss
+      (−3.7%), reported not scored, 1.6 points being the rail release (`rail_release.py`).
 
     - [x] **M2.1d3 The path in wind (issue #50).** *Done when:* issue #50's cause is found and the
       drifts are scored within their tolerances, or an ADR records the measured cause and why they
-      cannot be, with the gap left visible in the report. *Result (ADR-026):* met. Mostly
-      RocketPy's: in the burn it took moments about a point mirrored across the dry centre of mass
-      (#1186, PR #1196; PR #1188), both corrected in `corrections.py`. `wind_response.py` measures
-      the rest: body lift, the last-button release and Juno III's thin fins put RocketPy within 1.4%
-      of hpr in wind. Six drifts gated; five not.
+      cannot be, with the gap left visible in the report. *Result (ADR-026):* met: mostly RocketPy's
+      mirrored moment point in the burn (#1186, #1188, #1196), corrected in `corrections.py`; the
+      rest measured by `wind_response.py` (within 1.4%). Six drifts gated; five not.
 
 - [ ] **M1.8 Aerodynamics II (transonic and supersonic, damping, overrides).**
   - Transonic drag rise and supersonic wave drag.
@@ -564,12 +561,8 @@
     example set either reads or is shown by a second XML parser not to be well-formed; each one
     written back out and read again gives the same document; `cargo xtask ork` prints those counts
     and writes the per-file detail to a gitignored `corpus-out/`; and
-    `hpr_io::ork::tests::malformed_inputs_error_not_panic` is live. *Result:* met (ADR-051). 78
-    files: 76 read, all 76 unchanged through a write and a read, 0 warnings, 2 refused — Loft
-    browser-test fixtures closing a `<databranch>` with `</flightdata>`, which Python's expat
-    refuses at the same line. 73 zip, 3 raw XML (no gzip survives, so a test holds that path);
-    schema 1.4 ×4, 1.5 ×10, 1.8 ×5, 1.9 ×3, 1.10 ×53, 1.11 ×1. Nesting is counted before parsing
-    (the guide says why).
+    `hpr_io::ork::tests::malformed_inputs_error_not_panic` is live. *Result:* met (ADR-051): 76 of
+    78 read and round-trip; 2 Loft test fixtures are not well-formed XML, as expat agrees.
   - [x] **M3.1b The component tree.** Components, shapes, materials, finishes and overrides into
     `hpr-design` types, automatic dimensions resolved (L49, L58 to L63). *Done when:* every design
     in the reference library gives a `hpr_design::Rocket` whose `layout()` succeeds, each of those
@@ -631,7 +624,14 @@
       live, and a document with unknown content round-trips through `extensions.x-openrocket`.
       *Result:* met (ADR-058): 17 parts, 87 sections, 1,947 tags, 3,132 attributes, all found again.
   - [ ] **M3.1d The corpus and the cross-check.** `insta` snapshots on public files only, and the
-    RocketSerializer cross-check. *Done when:* the parent's four bullets above are met.
+    RocketSerializer cross-check. *Done when:* the parent's four bullets above are met, split d1, d2.
+    - [x] **M3.1d1 Snapshots of public designs.** *Done when:* committed `insta` snapshots use only
+      public files (the Loft demo fixtures and synthetic designs), and private-corpus results go to
+      a gitignored `corpus-out/`, as counts only. *Result:* met: Loft's seven demo designs,
+      committed, each snapshotted whole by `hpr_io::ork::design`; the library stays counts only.
+    - [ ] **M3.1d2 The cross-check.** *Done when:* every `.ork` in `refs/loft-fixtures` and the OR
+      example set imports with zero errors, and the RocketSerializer cross-check agrees on the key
+      geometry.
 
 - [ ] **M2.2 OpenRocket oracle and corpus.**
   - `validation/oracles/openrocket/` (JPype, OR 24.12) flies the OR examples and the

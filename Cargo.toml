@@ -38,6 +38,7 @@ glam = { version = "0.33.7", default-features = false, features = ["f64", "serde
 # `.ork` designs are gzip streams, and the entries inside their zip container are deflated. The
 # pure-Rust backend (miniz_oxide) keeps `hpr-io` building for wasm32 and links no C.
 flate2 = { version = "1.1.10", default-features = false, features = ["rust_backend"] }
+insta = { version = "1.48.0", default-features = false, features = ["json"] }
 proptest = "1.11.0"
 # xtask only: reads the documentation site's Markdown with the parser mdBook itself uses, to check
 # its links and labels. Parser only: no HTML renderer, no command-line tool.

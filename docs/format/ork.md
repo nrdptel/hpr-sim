@@ -325,6 +325,23 @@ a fresh clone: `cargo xtask ork` needs `cargo xtask refs fetch` first, and stops
 [loft]: https://github.com/nrdptel/fusionspace-loft
 [debrief]: https://github.com/nrdptel/fusionspace-debrief
 
+### Snapshots of public designs
+
+Seven small designs from [Loft][loft], the project owner's earlier tool, are committed in
+`validation/fixtures/ork/loft-demo/` (MIT). The test
+`hpr_io::ork::tests::loft_demo_designs_read_as_snapshotted` reads each with `hpr_io::ork::design`
+and compares what it reads with a committed [`insta`](https://insta.rs) snapshot. A snapshot is a
+saved copy of the output that the next run must match. Each one records:
+
+- the stages and body components;
+- the structure's mass and centre of mass, to nine significant figures;
+- the motor configurations, and which of them fly;
+- the recovery settings and the stored simulations;
+- what is kept in `x-openrocket`, and every warning.
+
+A change in what hpr reads from a real file shows up there as a diff to review. The private
+reference library is never snapshotted; `cargo xtask ork` reports it only as counts, as above.
+
 ## The spine: stages and body components
 
 The trunk of a design is its **spine**: the stages, and inside each of them the nose cones, body

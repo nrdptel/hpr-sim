@@ -83,6 +83,9 @@ adds a source.
   > ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE
   > OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
+- **fusionspace-loft** (MIT, the project owner's own), `fixtures/demo-*.ork` at `64f51ef1b3`: seven
+  hand-made demonstration designs, copied unchanged into `validation/fixtures/ork/loft-demo/` as
+  the public files `hpr_io::ork`'s snapshot test reads (M3.1d1).
 - **DOPRI5** (BSD-2-Clause), E. Hairer and G. Wanner's `dopri5.f`, version of 2004: the
   Dormand–Prince coefficients, the error norm, the PI step-size controller, the starting-step
   estimate and the dense-output formula, re-expressed in Rust in `hpr_sim::integrator`. Its license
@@ -152,7 +155,7 @@ same license and mode.
 |---|---|---|---|---|
 | `rocketpy` | RocketPy v1.13.0 (example rockets, flight data, RASAero Cd exports, acceptance tests) | MIT; data files carry their own terms | fetched | code is MIT and may be ported with attribution; flight data carries team permissions recorded in RocketPy's notebooks; the ERA5 weather files in `data/weather/` are Copernicus (C3S) data with attribution required; the NASADEM tile is NASA data |
 | `openrocket-database` | `openrocket/openrocket-database` (`.orc` parts) | Apache-2.0 | fetched | may be bundled with notices in M5.5. `validation/fixtures/ork/openrocket-automatic-radius.json` records the four radii OpenRocket resolves in its `ork/parachutes.ork`, and nothing else from the file |
-| `fusionspace-loft` | `nrdptel/fusionspace-loft` (the project owner's own) | MIT | fetched | ported with a note |
+| `fusionspace-loft` | `nrdptel/fusionspace-loft` (the project owner's own) | MIT | fetched | ported with a note; its seven `fixtures/demo-*.ork` designs are committed as test data (below) |
 | `fusionspace-debrief` | `nrdptel/fusionspace-debrief` (the project owner's own) | MIT | fetched | ported with a note; the flight-log format knowledge behind Phase 5 |
 | `loft-fixtures` | `nrdptel/loft-fixtures` | private; third-party design files | fetched | never committed; only derived statistics are published |
 | `debrief-fixtures` | `nrdptel/debrief-fixtures` | private; third-party flight logs | fetched | never committed; only derived statistics and anonymised case ids are published |

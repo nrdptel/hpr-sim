@@ -2957,3 +2957,180 @@ fn a_bad_path_leads_nowhere() {
     let empty: Extensions = serde_json::from_str(r#"{"x-openrocket":{}}"#).expect("defaults");
     assert_eq!(empty, Extensions::default());
 }
+
+/// A number rounded to nine significant figures, so a snapshot does not change with the last
+/// digits a platform's arithmetic leaves.
+fn rounded(value: f64) -> serde_json::Value {
+    if !value.is_finite() || value == 0.0 {
+        return serde_json::json!(value);
+    }
+    let text = format!("{value:.8e}");
+    serde_json::json!(text.parse::<f64>().unwrap_or(value))
+}
+
+/// What `design` reads a file as, in the numbers and words a reader would check against the file:
+/// the spine and its mass, the motors and which configurations fly, the recovery settings, the
+/// stored simulations, what is kept in `x-openrocket`, and every warning.
+fn snapshot_of(design: &Imported<Design>) -> serde_json::Value {
+    use serde_json::json;
+    let value = &design.value;
+    let stages: Vec<_> = value
+        .rocket
+        .stages
+        .iter()
+        .map(|stage| {
+            json!({
+                "id": stage.id,
+                "components": stage.components.iter().map(|component| json!({
+                    "id": component.id,
+                    "kind": component.part.kind_name(),
+                    "parts": component.children.len(),
+                    "motor_mount": component.motor_mount.is_some(),
+                })).collect::<Vec<_>>(),
+            })
+        })
+        .collect();
+    let layout = match value.rocket.layout() {
+        Ok(layout) => json!({
+            "mass_kg": rounded(layout.structure.mass_kg),
+            "cg_z_m": rounded(layout.structure.cg_m.z),
+        }),
+        Err(error) => json!({ "error": error.to_string() }),
+    };
+    let configurations: Vec<_> = value
+        .motors
+        .configurations
+        .iter()
+        .map(|configuration| {
+            json!({
+                "id": configuration.id,
+                "name": configuration.name,
+                "default": configuration.default,
+                "left_out": configuration.left_out.as_ref().map(|out| format!("{:?}", out.why)),
+                "motors": configuration.motors.iter().map(|motor| json!({
+                    "motor": format!("{} {}", motor.manufacturer, motor.designation),
+                    "mount": motor.mount,
+                    "curve": match &motor.curve {
+                        Curve::Embedded { .. } => "embedded".to_owned(),
+                        Curve::Catalog { .. } => "catalog".to_owned(),
+                        Curve::Unresolved { why, .. } => format!("none: {why:?}"),
+                        _ => "other".to_owned(),
+                    },
+                    "delay": format!("{:?}", motor.delay),
+                    "ignition": format!("{} + {} s", motor.ignition.event.as_str(), motor.ignition.delay_s),
+                })).collect::<Vec<_>>(),
+                "unread": configuration.unread.len(),
+            })
+        })
+        .collect();
+    let devices: Vec<_> = value
+        .recovery
+        .devices
+        .iter()
+        .map(|device| {
+            json!({
+                "id": device.id,
+                "kind": format!("{:?}", device.kind),
+                "cd": format!("{:?}", device.cd),
+                "deploy": device.deployment.event.as_ref().map(DeployEvent::as_str),
+                "altitude_m": device.deployment.altitude_m,
+                "delay_s": device.deployment.delay_s,
+                "configurations": device.configurations.len(),
+            })
+        })
+        .collect();
+    let separations: Vec<_> = value
+        .recovery
+        .separations
+        .iter()
+        .map(|stage| {
+            json!({
+                "stage": stage.id,
+                "event": stage.separation.event.as_ref().map(SeparationEvent::as_str),
+                "configurations": stage.configurations.len(),
+            })
+        })
+        .collect();
+    let simulations: Vec<_> = value
+        .simulations
+        .iter()
+        .map(|simulation| {
+            let results = simulation.results.as_ref();
+            json!({
+                "name": simulation.name,
+                "status": simulation.status,
+                "configuration": simulation.conditions.as_ref().and_then(|c| c.configuration.clone()),
+                "max_altitude_m": results.and_then(|r| r.max_altitude_m),
+                "branches": results.map_or(0, |r| r.branches.len()),
+                "rows": results.map_or(0, |r| r.branches.iter().map(|b| b.rows.len()).sum::<usize>()),
+            })
+        })
+        .collect();
+    let kept = &value.extensions.x_openrocket;
+    json!({
+        "rocket": value.rocket.name,
+        "stages": stages,
+        "layout": layout,
+        "configurations": configurations,
+        "flown": value.rocket.configurations.iter().map(|c| c.id.clone()).collect::<Vec<_>>(),
+        "recovery": { "devices": devices, "separations": separations },
+        "simulations": simulations,
+        "reduced": value.is_reduced(),
+        "kept": {
+            "parts": kept.parts.iter().map(|k| k.at.clone()).collect::<Vec<_>>(),
+            "sections": kept.sections.len(),
+            "tags": kept.tags.len(),
+            "attributes": kept.attributes.len(),
+        },
+        "warnings": design.warnings.iter().map(|w| json!({
+            "at": w.at,
+            "kind": format!("{:?}", w.kind),
+            "says": w.message,
+        })).collect::<Vec<_>>(),
+    })
+}
+
+/// Loft's seven demonstration designs, committed under `validation/fixtures/ork/loft-demo/` from
+/// `nrdptel/fusionspace-loft` (MIT, Neer's own), read whole and held to a snapshot each: a change
+/// in what hpr reads from a real `.ork` shows up here as a diff to review. The private reference
+/// library is never snapshotted; `cargo xtask ork` reports it as counts.
+#[test]
+fn loft_demo_designs_read_as_snapshotted() {
+    let designs: [(&str, &[u8]); 7] = [
+        (
+            "demo_boattail",
+            include_bytes!("../../../../validation/fixtures/ork/loft-demo/demo-boattail.ork"),
+        ),
+        (
+            "demo_dual_deploy",
+            include_bytes!("../../../../validation/fixtures/ork/loft-demo/demo-dual-deploy.ork"),
+        ),
+        (
+            "demo_multi_config",
+            include_bytes!("../../../../validation/fixtures/ork/loft-demo/demo-multi-config.ork"),
+        ),
+        (
+            "demo_payload_separation",
+            include_bytes!(
+                "../../../../validation/fixtures/ork/loft-demo/demo-payload-separation.ork"
+            ),
+        ),
+        (
+            "demo_quirks",
+            include_bytes!("../../../../validation/fixtures/ork/loft-demo/demo-quirks.ork"),
+        ),
+        (
+            "demo_single_deploy",
+            include_bytes!("../../../../validation/fixtures/ork/loft-demo/demo-single-deploy.ork"),
+        ),
+        (
+            "demo_stable",
+            include_bytes!("../../../../validation/fixtures/ork/loft-demo/demo-stable.ork"),
+        ),
+    ];
+    for (name, bytes) in designs {
+        let file = read(bytes).expect("a readable design");
+        let design = design(&file.value);
+        insta::assert_json_snapshot!(name, snapshot_of(&design));
+    }
+}
