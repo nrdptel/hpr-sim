@@ -73,8 +73,13 @@ impl Dimension {
         matches!(self, Self::Automatic { .. })
     }
 
-    /// Reads a dimension from an element's text.
-    fn read(text: &str) -> Option<Self> {
+    /// Reads a dimension from an element's text, or `None` when the text is neither a finite
+    /// number nor `auto`.
+    ///
+    /// Only a tag that *holds* a dimension should be read this way. `<ignitionevent>automatic
+    /// </ignitionevent>` is a word, not a number, and gives `None` rather than an automatic
+    /// dimension.
+    pub fn parse(text: &str) -> Option<Self> {
         let text = text.trim();
         if let Some(rest) = text.strip_prefix("auto") {
             let rest = rest.trim();
@@ -210,7 +215,7 @@ impl<'a> Values<'a> {
     pub fn dimension(&mut self, names: &[&str]) -> Option<Dimension> {
         let child = self.element(names)?;
         let text = child.text();
-        match Dimension::read(&text) {
+        match Dimension::parse(&text) {
             Some(dimension) => Some(dimension),
             None => {
                 let name = child.name.clone();

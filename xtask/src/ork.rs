@@ -17,7 +17,7 @@ use std::io::Read as _;
 use std::path::{Path, PathBuf};
 
 use hpr_io::ork::{
-    self, ANGLE_OFFSET, AXIAL_OFFSET, Dimension, INSTANCE_COUNT, RADIUS_OFFSET, Values, WarningKind,
+    self, ANGLE_OFFSET, AXIAL_OFFSET, Dimension, INSTANCE_COUNT, RADIUS_OFFSET, WarningKind,
 };
 use serde_json::{Value, json};
 
@@ -394,16 +394,13 @@ fn walk(
     overrides: &mut BTreeMap<String, usize>,
     both_names: &mut BTreeMap<String, [usize; 2]>,
 ) {
-    let mut warnings = Vec::new();
     for child in element.elements() {
         if child.name.starts_with("override") {
             *overrides.entry(child.name.clone()).or_default() += 1;
         }
-        let mut values = Values::new(element, "", &mut warnings);
-        if values
-            .dimension(&[child.name.as_str()])
-            .is_some_and(Dimension::is_automatic)
-        {
+        // Read the child itself, not the first child of that name: an element may carry the same
+        // tag twice, and counting the first one twice would be a wrong count.
+        if Dimension::parse(&child.text()).is_some_and(Dimension::is_automatic) {
             *automatic.entry(child.name.clone()).or_default() += 1;
         }
     }
