@@ -8,11 +8,11 @@
 //! loaded in — a manufacturer, a designation, a `digest`, a case diameter and length and a delay —
 //! plus when it ignites, as a default for the mount and an `<ignitionconfiguration>` per
 //! configuration that changes it ([F], *Motor Mount*). So a configuration is read by collecting
-//! every mount's motor with its id (Loft lesson L65).
+//! every mount's motor with its id ([Loft lesson L65][l65]: Loft read only one of the two places).
 //!
 //! **The thrust curve.** A `<motor>` names a motor; it does not describe one. From schema 1.11 the
 //! archive can carry the curve itself as `thrustcurves/<digest>.rse` ([F], *Embedded Thrust Curve
-//! Data*), and that curve is used first (Loft lesson L57): it is the curve the design was saved
+//! Data*), and that curve is used first ([Loft lesson L57][l57], which threw such curves away): it is the curve the design was saved
 //! with, identified by the digest the file names. Otherwise the motor is looked up in the bundled
 //! catalog by manufacturer and designation. A motor neither reaches is read with its reason, and
 //! nothing is invented for it.
@@ -24,6 +24,8 @@
 //!
 //! [F]: https://openrocket.readthedocs.io/en/latest/dev_guide/file_specification.html
 //! [m1-9]: https://nrdptel.github.io/hpr-sim/decisions-and-roadmap.html#m1-9
+//! [l57]: https://nrdptel.github.io/hpr-sim/decisions-and-roadmap.html#l57
+//! [l65]: https://nrdptel.github.io/hpr-sim/decisions-and-roadmap.html#l65
 
 use std::collections::{BTreeMap, BTreeSet};
 
@@ -258,7 +260,10 @@ pub enum NotFlown {
     NoSize,
     /// A motor sits in a cluster of tubes, which hpr reads as one tube.
     Cluster,
-    /// A motor ignites after launch: staging and air starts come with M1.9.
+    /// A motor ignites after launch: staging and air starts come with [M1.9][m1-9], the
+    /// milestone for staging, clusters and air starts.
+    ///
+    /// [m1-9]: https://nrdptel.github.io/hpr-sim/decisions-and-roadmap.html#m1-9
     IgnitesInFlight,
 }
 
