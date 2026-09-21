@@ -85,7 +85,7 @@ adds a source.
 
 - **fusionspace-loft** (MIT, the project owner's own), `fixtures/demo-*.ork` at `64f51ef1b3`: seven
   hand-made demonstration designs, copied unchanged into `validation/fixtures/ork/loft-demo/` as
-  the public files `hpr_io::ork`'s snapshot test reads (M3.1d1).
+  the public files `hpr_io::ork`'s snapshot test reads (M3.1d1, snapshots of public designs).
 - **DOPRI5** (BSD-2-Clause), E. Hairer and G. Wanner's `dopri5.f`, version of 2004: the
   Dormand–Prince coefficients, the error norm, the PI step-size controller, the starting-step
   estimate and the dense-output formula, re-expressed in Rust in `hpr_sim::integrator`. Its license

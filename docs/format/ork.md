@@ -337,10 +337,20 @@ saved copy of the output that the next run must match. Each one records:
 - the structure's mass and centre of mass, to nine significant figures;
 - the motor configurations, and which of them fly;
 - the recovery settings and the stored simulations;
-- what is kept in `x-openrocket`, and every warning.
+- what is kept in [`x-openrocket`](#what-hpr-keeps-for-writing-the-file-back), and every warning.
 
-A change in what hpr reads from a real file shows up there as a diff to review. The private
-reference library is never snapshotted; `cargo xtask ork` reports it only as counts, as above.
+**A snapshot shows that the reading has not changed, not that it is right.** None of these numbers
+is compared with OpenRocket here; that cross-check is
+[M3.1d2](../decisions-and-roadmap.md#m3-1d2). For example, `demo-stable.ork` is a 38 mm trainer on
+an AeroTech H128W. Its snapshot says the structure weighs 0.540 kg and that its one configuration
+does not fly (`"flown": []`), because that motor has no thrust curve in the file or in hpr's small
+bundled catalog ([motors](#motors-and-their-configurations)). Each field's meaning is in the section
+of this page that reads it.
+
+**When a snapshot changes,** the test fails and shows the old and new output. Run
+`cargo insta review` (from `cargo install cargo-insta`) to see them side by side, and accept only a
+change you can explain; the new `.snap` file goes in the same pull request. The private reference
+library is never snapshotted; `cargo xtask ork` reports it only as counts, as above.
 
 ## The spine: stages and body components
 
