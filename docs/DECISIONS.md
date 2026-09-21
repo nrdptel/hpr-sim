@@ -5100,10 +5100,10 @@ also spoil every flight compared later. So M2.2 is more than one session, and ma
    every design outside a threshold, the survey prints the parts that differ most. A private
    design appears only as the start of its file's hash.
 
-**Consequences.** On 2026-09-21, over 74 designs (54 distinct files):
+**Consequences.** On 2026-09-21, over 74 design files (54 distinct by content):
 - **Within 1%:** 57 in mass and 58 in centre of mass. The medians are 0.020% and 0.013% of length.
-- **Outside a threshold:** 17 designs (11 distinct). The parts behind each fall into five causes,
-  and hpr warns of every one when it reads the file:
+- **Outside a threshold:** 17 files (12 by content, 11 designs). The parts behind each fall into
+  five causes, and hpr warns of every one when it reads the file; four designs have two:
   - a shoulder written with no wall, read as solid, which OpenRocket gives no mass (5 designs);
   - a motor cluster read as one tube (2);
   - fin fillets left out (2);
