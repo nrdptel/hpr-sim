@@ -621,8 +621,9 @@
       (ADR-054). 75 of 75 designs lay out, and Debrief's results-only file is counted as holding
       none. A radius with nothing fixed along its chain takes OpenRocket's default radius (its
       maintainers' words, #1988), 25 mm as a committed OpenRocket 24.12 probe measures, which also
-      shows OpenRocket ignoring the cached number: 7 radii in 2 designs, 2 of them −1 m in
-      OpenRocket, which no shape can take. OpenRocket cannot open Loft's quirks fixture at all.
+      shows OpenRocket ignoring the cached number: 7 radii in 2 designs (on the probe's copy of the
+      quirks chain, OpenRocket says −1 m on 2, which no shape can take). Against OpenRocket run on
+      the same file, 67 of 67 body radii agree over 18 designs.
   - [ ] **M3.1c Motors, recovery, stages and what OpenRocket last did.** Motor configurations and
     embedded `.rse` curves, recovery devices, stage and pod structure, stored conditions and
     results, and `extensions.x-openrocket` for the rest. Loft lessons L57, L64, L65, L66.

@@ -20,7 +20,8 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
   is nothing else, and is counted as holding no design. **Driving OpenRocket:**
   `validation/oracles/openrocket/automatic_radius.py` (ADR-054) runs 24.12 headless through JPype,
   binding empty motor and preset databases in a Python Guice module; it logs to stdout, so the
-  script writes to a path. M2.2 can build on it or choose the subprocess route.
+  script writes to a path. **Read OpenRocket after it re-resolves** (a save does it): its first
+  reading can differ (Dual parachute). M2.2 can build on it or choose the subprocess route.
 - **Page rules** (ADR-016 to ADR-020): relative links between pages, GitHub URLs for the rest
   (rustdoc too), labels as links to their rows — a lesson a page names needs a row in
   `decisions-and-roadmap.md` — none in headings; new pages in `SUMMARY.md`, a new library a row in
@@ -58,7 +59,8 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
 - 2026-09-20: M3.1b4 Every `.ork` design lays out (ADR-054): 75 of 75, and Debrief's results-only
   file counted as holding none. A radius with nothing fixed along its chain takes OpenRocket's
   default, 25 mm, from its maintainers' words and a committed 24.12 probe that also shows it
-  ignoring the cached number: 7 radii in 2 designs. M3.1b checked off.
+  ignoring the cached number: 7 radii in 2 designs. 67 of 67 body radii agree with OpenRocket
+  over 18 designs. M3.1b checked off.
 - 2026-09-20: M3.1b3 The `.ork` parts on and inside the body (ADR-053): 765 parts, 5 left out with
   a reason; angles are degrees (178 of 188 non-zero exceed 2π); sourced finishes; an in-file oracle
   (67 of 71 cached answers match). L49, L60, L61 live; #133, #135, #136 filed.
@@ -82,8 +84,7 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
 
 ## Decided without Neer (one line each; significant ones get an ADR)
 
-- ADR-054: an automatic radius with nothing fixed along its chain is 25 mm, OpenRocket's default,
-  never its cache; −1 m where OpenRocket says so is not copied; a `<rocket>` holding nothing is no design.
+- ADR-054: a radius with nothing fixed along its chain is OpenRocket's 25 mm, never its cache or −1 m.
 - ADR-053: `.ork` angles are degrees; `radialposition` and `radiusoffset` are read on the parts
   that carry them, so ADR-052's pair needs no source; a part that cannot be shaped honestly is left
   out with its reason; a tube of no wall is weightless where a body component's zero is solid; an
