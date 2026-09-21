@@ -9,7 +9,9 @@
 //! [`Component`]s, each of them carrying whatever [`super::attached`] read inside and on it. It
 //! resolves nothing itself. Where OpenRocket wrote `auto`, the component carries an
 //! [`AutoDimension`] and [`Rocket::layout`] works the radius out from the neighbours, which is the
-//! one place that rule lives.
+//! one place that rule lives. The one exception is a radius that rule cannot reach — a chain of
+//! automatic radii with no fixed radius anywhere along it — which takes OpenRocket's default,
+//! [`OPENROCKET_DEFAULT_RADIUS_M`], because the design holds no other number for it.
 //!
 //! [roadmap]: https://github.com/nrdptel/hpr-sim/blob/main/docs/ROADMAP.md
 
@@ -28,6 +30,42 @@ use super::warning::{Imported, Warning, WarningKind};
 
 /// The body tags this milestone reads. Anything else in a `<subcomponents>` is counted and left.
 const BODY_TAGS: [&str; 3] = ["nosecone", "bodytube", "transition"];
+
+/// A filled tube whose automatic radius cached a number, read as solid to that number.
+const FILLED_TO_CACHE: &str = "a filled tube whose radius is automatic; it was read as solid to \
+                               the radius OpenRocket last worked out, which may be stale";
+
+/// A filled tube whose automatic radius cached nothing, so it has no radius to be solid to.
+const FILLED_TO_NOTHING: &str = "a filled tube whose radius is automatic and nothing cached; it \
+                                 carries no mass, because there is no radius to fill until the \
+                                 layout resolves one";
+
+/// What a body component was read from: where it is in the file, and for a body tube the wall as
+/// the file wrote it, before any radius was known to judge it against.
+struct BodyRead {
+    at: String,
+    wall: Option<Wall>,
+}
+
+/// The radius OpenRocket gives an automatic body radius that has no fixed radius anywhere along its
+/// chain to take, in metres: its **default radius**, 25 mm.
+///
+/// OpenRocket's maintainers write that such a radius is "the default radius"
+/// ([openrocket#1988](https://github.com/openrocket/openrocket/issues/1988#issuecomment-1397654629))
+/// and that a tube left with nothing to take "reverts to default diameter"
+/// ([#1992](https://github.com/openrocket/openrocket/issues/1992)); a user guesses that default at
+/// "1.969 in" of diameter ([#871](https://github.com/openrocket/openrocket/issues/871)), which is
+/// 50.0 mm. No document states the number, so it was measured: OpenRocket 24.12, run on fifteen
+/// small designs by `validation/oracles/openrocket/automatic_radius.py`, settles every such tube,
+/// lone nose cone and lone transition at 0.025 m and ignores any number cached after `auto`
+/// (`validation/fixtures/ork/openrocket-automatic-radius.json`, [ADR-054][adr-054]).
+///
+/// hpr departs from OpenRocket in one place, on purpose: where a nose cone's base or a transition's
+/// end looks at another automatic radius, OpenRocket 24.12 settles on −1 m, which no geometry can
+/// take. hpr gives it this default too, so the chain is one radius end to end.
+///
+/// [adr-054]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-054-an-automatic-radius-with-nothing-to-take-is-openrockets-default-and-a-rocket-with-no-stage-or-component-holds-no-design-2026-09-20
+pub const OPENROCKET_DEFAULT_RADIUS_M: f64 = 0.025;
 
 /// Reads a design document into a [`Rocket`]: its stages, the body components stacked in them, and
 /// the parts on and inside each of those.
@@ -92,7 +130,7 @@ pub fn rocket(document: &Document) -> Imported<Rocket> {
         warnings.push(Warning::new(
             "openrocket",
             WarningKind::Skipped,
-            "no `rocket` element, so the design has no components".to_owned(),
+            "no `rocket` element, so the document holds no design".to_owned(),
         ));
         return Imported {
             value: rocket,
@@ -104,21 +142,35 @@ pub fn rocket(document: &Document) -> Imported<Rocket> {
         .word(&["name"])
         .unwrap_or_default();
     rocket.reference_diameter = reference_diameter(element, at, &mut warnings);
+    if subcomponents(element).next().is_none() {
+        // A document can carry a rocket's name and stored results and nothing to build: Debrief's
+        // synthesized demonstration file does. There is no design in it to lay out.
+        warnings.push(Warning::new(
+            at,
+            WarningKind::Unusual,
+            "the `rocket` holds no stage or component of any kind, so the document holds no design"
+                .to_owned(),
+        ));
+    }
 
     let mut ids = Ids::default();
     let mut skipped: Vec<String> = Vec::new();
+    let mut reads: Vec<Vec<BodyRead>> = Vec::new();
     for (index, stage_element) in subcomponents(element).enumerate() {
         if stage_element.name != "stage" {
             skipped.push(stage_element.name.clone());
             continue;
         }
+        let mut read = Vec::new();
         rocket.stages.push(stage(
             stage_element,
             index,
             &mut ids,
+            &mut read,
             &mut skipped,
             &mut warnings,
         ));
+        reads.push(read);
     }
     if let Some(note) = tally(&skipped) {
         warnings.push(Warning::new(
@@ -130,17 +182,73 @@ pub fn rocket(document: &Document) -> Imported<Rocket> {
             ),
         ));
     }
+    default_radii(&mut rocket, &reads, &mut warnings);
     Imported {
         value: rocket,
         warnings,
     }
 }
 
-/// Reads one `<stage>`, and everything stacked inside it.
+/// Gives every automatic body radius that [`Rocket::unresolvable_body_radii`] lists
+/// [`OPENROCKET_DEFAULT_RADIUS_M`], as a fixed radius, with a warning at its tag naming the radius.
+///
+/// A body tube filled that way has its wall judged again, now there is a radius to judge it
+/// against, by the rule a stated radius gets: `filled`, or a wall at least as thick as the radius,
+/// is solid. The warnings that said the radius was not known yet are withdrawn, because it is.
+fn default_radii(rocket: &mut Rocket, reads: &[Vec<BodyRead>], warnings: &mut Vec<Warning>) {
+    let radius_m = OPENROCKET_DEFAULT_RADIUS_M;
+    for filled in rocket.fill_unresolvable_body_radii(radius_m) {
+        let Some(read) = reads
+            .get(filled.stage)
+            .and_then(|stage| stage.get(filled.component))
+        else {
+            continue;
+        };
+        let component = &mut rocket.stages[filled.stage].components[filled.component];
+        if let Part::BodyTube(tube) = &mut component.part {
+            match read.wall {
+                Some(Wall::Filled {}) => tube.thickness_m = radius_m,
+                Some(Wall::Shell { thickness_m }) if thickness_m >= radius_m => {
+                    tube.thickness_m = radius_m;
+                }
+                _ => {}
+            }
+            warnings.retain(|warning| {
+                warning.at != read.at
+                    || (warning.message != FILLED_TO_CACHE && warning.message != FILLED_TO_NOTHING)
+            });
+        }
+        warnings.push(Warning::new(
+            read.at.clone(),
+            WarningKind::Unusual,
+            format!(
+                "an automatic radius with no fixed radius anywhere along its chain to take, its \
+                 `{}`; it was given {:.0} mm, OpenRocket's default radius for a tube with nothing \
+                 to take",
+                radius_tag(filled.dimension),
+                radius_m * 1e3
+            ),
+        ));
+    }
+}
+
+/// The tag a body component's radius is written under: a nose cone's base is its `aftradius`.
+fn radius_tag(dimension: AutoDimension) -> &'static str {
+    match dimension {
+        AutoDimension::OuterRadius => "radius",
+        AutoDimension::ForeRadius => "foreradius",
+        AutoDimension::BaseRadius | AutoDimension::AftRadius => "aftradius",
+        other => other.name(),
+    }
+}
+
+/// Reads one `<stage>`, and everything stacked inside it. What each body component was read from
+/// goes into `reads`, in the stage's order, for [`default_radii`].
 fn stage(
     element: &Element,
     index: usize,
     ids: &mut Ids,
+    reads: &mut Vec<BodyRead>,
     skipped: &mut Vec<String>,
     warnings: &mut Vec<Warning>,
 ) -> Stage {
@@ -155,7 +263,9 @@ fn stage(
     for (index, child) in subcomponents(element).enumerate() {
         if BODY_TAGS.contains(&child.name.as_str()) {
             let at = format!("{at}/{}[{index}]", child.name);
-            components.push(body(child, &at, ids, skipped, warnings));
+            let (component, wall) = body(child, &at, ids, skipped, warnings);
+            reads.push(BodyRead { at, wall });
+            components.push(component);
         } else {
             skipped.push(child.name.clone());
         }
@@ -168,26 +278,30 @@ fn stage(
     }
 }
 
-/// Reads one body component, and everything on and inside it.
+/// Reads one body component, and everything on and inside it; for a body tube, also the wall as
+/// the file wrote it.
 fn body(
     element: &Element,
     at: &str,
     ids: &mut Ids,
     skipped: &mut Vec<String>,
     warnings: &mut Vec<Warning>,
-) -> Component {
+) -> (Component, Option<Wall>) {
     let mut auto = Vec::new();
     let mut values = Values::new(element, at, warnings);
     let name = values.word(&["name"]).unwrap_or_default();
     let (overrides, overrides_include_children) = overrides(&mut values);
     let finish = finish(&mut values);
-    let part = match element.name.as_str() {
-        "nosecone" => nose_cone(element, at, &mut auto, warnings),
-        "bodytube" => body_tube(element, at, &mut auto, warnings),
-        _ => transition(element, at, &mut auto, warnings),
+    let (part, wall) = match element.name.as_str() {
+        "nosecone" => (nose_cone(element, at, &mut auto, warnings), None),
+        "bodytube" => {
+            let (part, wall) = body_tube(element, at, &mut auto, warnings);
+            (part, Some(wall))
+        }
+        _ => (transition(element, at, &mut auto, warnings), None),
     };
     let children = attached::children(element, &part, at, ids, skipped, warnings);
-    Component {
+    let component = Component {
         id: ids.take(
             &mut Values::new(element, at, warnings),
             &element.name.clone(),
@@ -201,7 +315,8 @@ fn body(
         overrides,
         overrides_include_children,
         children,
-    }
+    };
+    (component, wall)
 }
 
 fn nose_cone(
@@ -238,7 +353,7 @@ fn body_tube(
     at: &str,
     auto: &mut Vec<AutoDimension>,
     warnings: &mut Vec<Warning>,
-) -> Part {
+) -> (Part, Wall) {
     let mut values = Values::new(element, at, warnings);
     let length_m = values.number(&["length"]).unwrap_or_default();
     let (stated_m, outer_radius_m) =
@@ -246,14 +361,11 @@ fn body_tube(
     // A body tube is a wall, not a solid of revolution, so `filled` has to be said as a wall as
     // thick as the tube. With an automatic radius there is no such number yet: the tube is read as
     // the wall it caches, and says so.
-    let thickness_m = match (wall(&mut values, stated_m), stated_m) {
+    let read = wall(&mut values, stated_m);
+    let thickness_m = match (read, stated_m) {
         (Wall::Filled {}, Some(radius_m)) => radius_m,
         (Wall::Filled {}, None) if outer_radius_m > 0.0 => {
-            values.warn_at(
-                WarningKind::Dropped,
-                "a filled tube whose radius is automatic; it was read as solid to the radius \
-                 OpenRocket last worked out, which may be stale",
-            );
+            values.warn_at(WarningKind::Dropped, FILLED_TO_CACHE);
             outer_radius_m
         }
         // Nothing cached either, so there is no number that means "solid" until the layout
@@ -261,21 +373,18 @@ fn body_tube(
         // nothing — and that is said as loudly as a part left out, because a solid tube read as an
         // empty one is a mass quietly missing rather than a design that fails (issue #130).
         (Wall::Filled {}, None) => {
-            values.warn_at(
-                WarningKind::Skipped,
-                "a filled tube whose radius is automatic and nothing cached; it carries no mass, \
-                 because there is no radius to fill until the layout resolves one",
-            );
+            values.warn_at(WarningKind::Skipped, FILLED_TO_NOTHING);
             0.0
         }
         (Wall::Shell { thickness_m }, _) => thickness_m,
     };
-    Part::BodyTube(BodyTube {
+    let part = Part::BodyTube(BodyTube {
         length_m,
         outer_radius_m,
         thickness_m,
         material: material(&mut values, &["material"], "bulk"),
-    })
+    });
+    (part, read)
 }
 
 fn transition(

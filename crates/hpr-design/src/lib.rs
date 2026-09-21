@@ -52,7 +52,7 @@ pub use shapes::{NoseShape, Profile};
 pub use solids::{RevolvedGeometry, Wall, revolve};
 pub use tree::{
     AutoDimension, Component, InertiaOverride, Layout, Overrides, Part, PlacedComponent,
-    PlacedStage, Position, ReferenceDiameter, Rocket, Stage,
+    PlacedStage, Position, ReferenceDiameter, Rocket, Stage, UnresolvableRadius,
 };
 
 #[cfg(test)]

@@ -1,0 +1,1231 @@
+{
+  "source": "validation/oracles/openrocket/automatic_radius.py",
+  "command": "automatic_radius.py --library",
+  "openrocket": "24.12",
+  "jar_sha256": "4959b72f52f5f607941e9722abbb7b7f0c4a38ebbbf84204a329db9f31c4f897",
+  "java": "17.0.20.1",
+  "jpype": "1.7.1",
+  "cases": [
+    {
+      "name": "a tube alone",
+      "document": "<?xml version='1.0' encoding='utf-8'?>\n<openrocket version=\"1.10\" creator=\"hpr-sim automatic-radius probe\"><rocket><name>Probe</name><subcomponents><stage><name>Stage 1</name><subcomponents><bodytube><name>Tube</name><material type=\"bulk\" density=\"680.0\">Cardboard</material><length>0.3</length><thickness>0.001</thickness><radius>auto</radius></bodytube></subcomponents></stage></subcomponents></rocket></openrocket>\n",
+      "written": [
+        "auto"
+      ],
+      "opened": [
+        {
+          "kind": "body_tube",
+          "outer": 0.025
+        }
+      ],
+      "saved": [
+        "auto 0.025"
+      ],
+      "resolved": [
+        {
+          "kind": "body_tube",
+          "outer": 0.025
+        }
+      ]
+    },
+    {
+      "name": "a tube alone, caching 0.04",
+      "document": "<?xml version='1.0' encoding='utf-8'?>\n<openrocket version=\"1.10\" creator=\"hpr-sim automatic-radius probe\"><rocket><name>Probe</name><subcomponents><stage><name>Stage 1</name><subcomponents><bodytube><name>Tube</name><material type=\"bulk\" density=\"680.0\">Cardboard</material><length>0.3</length><thickness>0.001</thickness><radius>auto 0.04</radius></bodytube></subcomponents></stage></subcomponents></rocket></openrocket>\n",
+      "written": [
+        "auto 0.04"
+      ],
+      "opened": [
+        {
+          "kind": "body_tube",
+          "outer": 0.025
+        }
+      ],
+      "saved": [
+        "auto 0.025"
+      ],
+      "resolved": [
+        {
+          "kind": "body_tube",
+          "outer": 0.025
+        }
+      ]
+    },
+    {
+      "name": "two tubes, one caching 0.04",
+      "document": "<?xml version='1.0' encoding='utf-8'?>\n<openrocket version=\"1.10\" creator=\"hpr-sim automatic-radius probe\"><rocket><name>Probe</name><subcomponents><stage><name>Stage 1</name><subcomponents><bodytube><name>Tube</name><material type=\"bulk\" density=\"680.0\">Cardboard</material><length>0.3</length><thickness>0.001</thickness><radius>auto</radius></bodytube><bodytube><name>Tube</name><material type=\"bulk\" density=\"680.0\">Cardboard</material><length>0.3</length><thickness>0.001</thickness><radius>auto 0.04</radius></bodytube></subcomponents></stage></subcomponents></rocket></openrocket>\n",
+      "written": [
+        "auto",
+        "auto 0.04"
+      ],
+      "opened": [
+        {
+          "kind": "body_tube",
+          "outer": 0.025
+        },
+        {
+          "kind": "body_tube",
+          "outer": 0.025
+        }
+      ],
+      "saved": [
+        "auto 0.025",
+        "auto 0.025"
+      ],
+      "resolved": [
+        {
+          "kind": "body_tube",
+          "outer": 0.025
+        },
+        {
+          "kind": "body_tube",
+          "outer": 0.025
+        }
+      ]
+    },
+    {
+      "name": "a nose cone alone",
+      "document": "<?xml version='1.0' encoding='utf-8'?>\n<openrocket version=\"1.10\" creator=\"hpr-sim automatic-radius probe\"><rocket><name>Probe</name><subcomponents><stage><name>Stage 1</name><subcomponents><nosecone><name>Nose</name><material type=\"bulk\" density=\"680.0\">Cardboard</material><length>0.2</length><thickness>0.001</thickness><shape>ogive</shape><aftradius>auto</aftradius></nosecone></subcomponents></stage></subcomponents></rocket></openrocket>\n",
+      "written": [
+        "auto"
+      ],
+      "opened": [
+        {
+          "kind": "nose_cone",
+          "base": 0.025
+        }
+      ],
+      "saved": [
+        "auto 0.025"
+      ],
+      "resolved": [
+        {
+          "kind": "nose_cone",
+          "base": 0.025
+        }
+      ]
+    },
+    {
+      "name": "a nose cone alone, caching 0.03",
+      "document": "<?xml version='1.0' encoding='utf-8'?>\n<openrocket version=\"1.10\" creator=\"hpr-sim automatic-radius probe\"><rocket><name>Probe</name><subcomponents><stage><name>Stage 1</name><subcomponents><nosecone><name>Nose</name><material type=\"bulk\" density=\"680.0\">Cardboard</material><length>0.2</length><thickness>0.001</thickness><shape>ogive</shape><aftradius>auto 0.03</aftradius></nosecone></subcomponents></stage></subcomponents></rocket></openrocket>\n",
+      "written": [
+        "auto 0.03"
+      ],
+      "opened": [
+        {
+          "kind": "nose_cone",
+          "base": 0.025
+        }
+      ],
+      "saved": [
+        "auto 0.025"
+      ],
+      "resolved": [
+        {
+          "kind": "nose_cone",
+          "base": 0.025
+        }
+      ]
+    },
+    {
+      "name": "a transition alone, caching both ends",
+      "document": "<?xml version='1.0' encoding='utf-8'?>\n<openrocket version=\"1.10\" creator=\"hpr-sim automatic-radius probe\"><rocket><name>Probe</name><subcomponents><stage><name>Stage 1</name><subcomponents><transition><name>Transition</name><material type=\"bulk\" density=\"680.0\">Cardboard</material><length>0.1</length><thickness>0.001</thickness><shape>conical</shape><foreradius>auto 0.03</foreradius><aftradius>auto 0.02</aftradius></transition></subcomponents></stage></subcomponents></rocket></openrocket>\n",
+      "written": [
+        "auto 0.03",
+        "auto 0.02"
+      ],
+      "opened": [
+        {
+          "kind": "transition",
+          "fore": 0.025,
+          "aft": 0.025
+        }
+      ],
+      "saved": [
+        "auto 0.025",
+        "auto 0.025"
+      ],
+      "resolved": [
+        {
+          "kind": "transition",
+          "fore": 0.025,
+          "aft": 0.025
+        }
+      ]
+    },
+    {
+      "name": "a nose cone and a tube, both caching 0.03",
+      "document": "<?xml version='1.0' encoding='utf-8'?>\n<openrocket version=\"1.10\" creator=\"hpr-sim automatic-radius probe\"><rocket><name>Probe</name><subcomponents><stage><name>Stage 1</name><subcomponents><nosecone><name>Nose</name><material type=\"bulk\" density=\"680.0\">Cardboard</material><length>0.2</length><thickness>0.001</thickness><shape>ogive</shape><aftradius>auto 0.03</aftradius></nosecone><bodytube><name>Tube</name><material type=\"bulk\" density=\"680.0\">Cardboard</material><length>0.3</length><thickness>0.001</thickness><radius>auto 0.03</radius></bodytube></subcomponents></stage></subcomponents></rocket></openrocket>\n",
+      "written": [
+        "auto 0.03",
+        "auto 0.03"
+      ],
+      "opened": [
+        {
+          "kind": "nose_cone",
+          "base": -1.0
+        },
+        {
+          "kind": "body_tube",
+          "outer": 0.025
+        }
+      ],
+      "saved": [
+        "auto -1.0",
+        "auto 0.025"
+      ],
+      "resolved": [
+        {
+          "kind": "nose_cone",
+          "base": -1.0
+        },
+        {
+          "kind": "body_tube",
+          "outer": 0.025
+        }
+      ]
+    },
+    {
+      "name": "nose, tube and transition automatic, the transition's aft end fixed",
+      "document": "<?xml version='1.0' encoding='utf-8'?>\n<openrocket version=\"1.10\" creator=\"hpr-sim automatic-radius probe\"><rocket><name>Probe</name><subcomponents><stage><name>Stage 1</name><subcomponents><nosecone><name>Nose</name><material type=\"bulk\" density=\"680.0\">Cardboard</material><length>0.2</length><thickness>0.001</thickness><shape>ogive</shape><aftradius>auto 0.033</aftradius></nosecone><bodytube><name>Tube</name><material type=\"bulk\" density=\"680.0\">Cardboard</material><length>0.3</length><thickness>0.001</thickness><radius>auto</radius></bodytube><transition><name>Transition</name><material type=\"bulk\" density=\"680.0\">Cardboard</material><length>0.1</length><thickness>0.001</thickness><shape>conical</shape><foreradius>auto</foreradius><aftradius>0.022</aftradius></transition><bodytube><name>Tube</name><material type=\"bulk\" density=\"680.0\">Cardboard</material><length>0.3</length><thickness>0.001</thickness><radius>0.022</radius></bodytube></subcomponents></stage></subcomponents></rocket></openrocket>\n",
+      "written": [
+        "auto 0.033",
+        "auto",
+        "auto",
+        "0.022",
+        "0.022"
+      ],
+      "opened": [
+        {
+          "kind": "nose_cone",
+          "base": -1.0
+        },
+        {
+          "kind": "body_tube",
+          "outer": 0.025
+        },
+        {
+          "kind": "transition",
+          "fore": -1.0,
+          "aft": 0.022
+        },
+        {
+          "kind": "body_tube",
+          "outer": 0.022
+        }
+      ],
+      "saved": [
+        "auto -1.0",
+        "auto 0.025",
+        "auto -1.0",
+        "0.022",
+        "0.022"
+      ],
+      "resolved": [
+        {
+          "kind": "nose_cone",
+          "base": -1.0
+        },
+        {
+          "kind": "body_tube",
+          "outer": 0.025
+        },
+        {
+          "kind": "transition",
+          "fore": -1.0,
+          "aft": 0.022
+        },
+        {
+          "kind": "body_tube",
+          "outer": 0.022
+        }
+      ]
+    },
+    {
+      "name": "a nose cone before a fixed tube",
+      "document": "<?xml version='1.0' encoding='utf-8'?>\n<openrocket version=\"1.10\" creator=\"hpr-sim automatic-radius probe\"><rocket><name>Probe</name><subcomponents><stage><name>Stage 1</name><subcomponents><nosecone><name>Nose</name><material type=\"bulk\" density=\"680.0\">Cardboard</material><length>0.2</length><thickness>0.001</thickness><shape>ogive</shape><aftradius>auto</aftradius></nosecone><bodytube><name>Tube</name><material type=\"bulk\" density=\"680.0\">Cardboard</material><length>0.3</length><thickness>0.001</thickness><radius>0.03</radius></bodytube></subcomponents></stage></subcomponents></rocket></openrocket>\n",
+      "written": [
+        "auto",
+        "0.03"
+      ],
+      "opened": [
+        {
+          "kind": "nose_cone",
+          "base": 0.03
+        },
+        {
+          "kind": "body_tube",
+          "outer": 0.03
+        }
+      ],
+      "saved": [
+        "auto 0.03",
+        "0.03"
+      ],
+      "resolved": [
+        {
+          "kind": "nose_cone",
+          "base": 0.03
+        },
+        {
+          "kind": "body_tube",
+          "outer": 0.03
+        }
+      ]
+    },
+    {
+      "name": "a nose cone and two automatic tubes before a fixed tube",
+      "document": "<?xml version='1.0' encoding='utf-8'?>\n<openrocket version=\"1.10\" creator=\"hpr-sim automatic-radius probe\"><rocket><name>Probe</name><subcomponents><stage><name>Stage 1</name><subcomponents><nosecone><name>Nose</name><material type=\"bulk\" density=\"680.0\">Cardboard</material><length>0.2</length><thickness>0.001</thickness><shape>ogive</shape><aftradius>auto</aftradius></nosecone><bodytube><name>Tube</name><material type=\"bulk\" density=\"680.0\">Cardboard</material><length>0.3</length><thickness>0.001</thickness><radius>auto</radius></bodytube><bodytube><name>Tube</name><material type=\"bulk\" density=\"680.0\">Cardboard</material><length>0.3</length><thickness>0.001</thickness><radius>auto</radius></bodytube><bodytube><name>Tube</name><material type=\"bulk\" density=\"680.0\">Cardboard</material><length>0.3</length><thickness>0.001</thickness><radius>0.03</radius></bodytube></subcomponents></stage></subcomponents></rocket></openrocket>\n",
+      "written": [
+        "auto",
+        "auto",
+        "auto",
+        "0.03"
+      ],
+      "opened": [
+        {
+          "kind": "nose_cone",
+          "base": 0.03
+        },
+        {
+          "kind": "body_tube",
+          "outer": 0.03
+        },
+        {
+          "kind": "body_tube",
+          "outer": 0.03
+        },
+        {
+          "kind": "body_tube",
+          "outer": 0.03
+        }
+      ],
+      "saved": [
+        "auto 0.03",
+        "auto 0.03",
+        "auto 0.03",
+        "0.03"
+      ],
+      "resolved": [
+        {
+          "kind": "nose_cone",
+          "base": 0.03
+        },
+        {
+          "kind": "body_tube",
+          "outer": 0.03
+        },
+        {
+          "kind": "body_tube",
+          "outer": 0.03
+        },
+        {
+          "kind": "body_tube",
+          "outer": 0.03
+        }
+      ]
+    },
+    {
+      "name": "the same, with a coupler of automatic radius inside the second tube",
+      "document": "<?xml version='1.0' encoding='utf-8'?>\n<openrocket version=\"1.10\" creator=\"hpr-sim automatic-radius probe\"><rocket><name>Probe</name><subcomponents><stage><name>Stage 1</name><subcomponents><nosecone><name>Nose</name><material type=\"bulk\" density=\"680.0\">Cardboard</material><length>0.2</length><thickness>0.001</thickness><shape>ogive</shape><aftradius>auto</aftradius></nosecone><bodytube><name>Tube</name><material type=\"bulk\" density=\"680.0\">Cardboard</material><length>0.3</length><thickness>0.001</thickness><radius>auto</radius></bodytube><bodytube><name>Tube</name><material type=\"bulk\" density=\"680.0\">Cardboard</material><length>0.03</length><thickness>0.001</thickness><radius>auto</radius><subcomponents><tubecoupler><name>Coupler</name><material type=\"bulk\" density=\"680.0\">Cardboard</material><length>0.1</length><outerradius>auto</outerradius><thickness>0.002</thickness></tubecoupler></subcomponents></bodytube><bodytube><name>Tube</name><material type=\"bulk\" density=\"680.0\">Cardboard</material><length>0.3</length><thickness>0.001</thickness><radius>0.03</radius></bodytube></subcomponents></stage></subcomponents></rocket></openrocket>\n",
+      "written": [
+        "auto",
+        "auto",
+        "auto",
+        "0.03"
+      ],
+      "opened": [
+        {
+          "kind": "nose_cone",
+          "base": 0.03
+        },
+        {
+          "kind": "body_tube",
+          "outer": 0.025
+        },
+        {
+          "kind": "body_tube",
+          "outer": 0.03
+        },
+        {
+          "kind": "body_tube",
+          "outer": 0.03
+        }
+      ],
+      "saved": [
+        "auto 0.03",
+        "auto 0.03",
+        "auto 0.03",
+        "0.03"
+      ],
+      "resolved": [
+        {
+          "kind": "nose_cone",
+          "base": 0.03
+        },
+        {
+          "kind": "body_tube",
+          "outer": 0.03
+        },
+        {
+          "kind": "body_tube",
+          "outer": 0.03
+        },
+        {
+          "kind": "body_tube",
+          "outer": 0.03
+        }
+      ]
+    },
+    {
+      "name": "a fixed tube and two automatic tubes",
+      "document": "<?xml version='1.0' encoding='utf-8'?>\n<openrocket version=\"1.10\" creator=\"hpr-sim automatic-radius probe\"><rocket><name>Probe</name><subcomponents><stage><name>Stage 1</name><subcomponents><bodytube><name>Tube</name><material type=\"bulk\" density=\"680.0\">Cardboard</material><length>0.3</length><thickness>0.001</thickness><radius>0.03</radius></bodytube><bodytube><name>Tube</name><material type=\"bulk\" density=\"680.0\">Cardboard</material><length>0.3</length><thickness>0.001</thickness><radius>auto</radius></bodytube><bodytube><name>Tube</name><material type=\"bulk\" density=\"680.0\">Cardboard</material><length>0.3</length><thickness>0.001</thickness><radius>auto</radius></bodytube></subcomponents></stage></subcomponents></rocket></openrocket>\n",
+      "written": [
+        "0.03",
+        "auto",
+        "auto"
+      ],
+      "opened": [
+        {
+          "kind": "body_tube",
+          "outer": 0.03
+        },
+        {
+          "kind": "body_tube",
+          "outer": 0.03
+        },
+        {
+          "kind": "body_tube",
+          "outer": 0.03
+        }
+      ],
+      "saved": [
+        "0.03",
+        "auto 0.03",
+        "auto 0.03"
+      ],
+      "resolved": [
+        {
+          "kind": "body_tube",
+          "outer": 0.03
+        },
+        {
+          "kind": "body_tube",
+          "outer": 0.03
+        },
+        {
+          "kind": "body_tube",
+          "outer": 0.03
+        }
+      ]
+    },
+    {
+      "name": "a transition's automatic aft end before an automatic tube",
+      "document": "<?xml version='1.0' encoding='utf-8'?>\n<openrocket version=\"1.10\" creator=\"hpr-sim automatic-radius probe\"><rocket><name>Probe</name><subcomponents><stage><name>Stage 1</name><subcomponents><bodytube><name>Tube</name><material type=\"bulk\" density=\"680.0\">Cardboard</material><length>0.3</length><thickness>0.001</thickness><radius>0.03</radius></bodytube><transition><name>Transition</name><material type=\"bulk\" density=\"680.0\">Cardboard</material><length>0.1</length><thickness>0.001</thickness><shape>conical</shape><foreradius>0.03</foreradius><aftradius>auto</aftradius></transition><bodytube><name>Tube</name><material type=\"bulk\" density=\"680.0\">Cardboard</material><length>0.3</length><thickness>0.001</thickness><radius>auto</radius></bodytube></subcomponents></stage></subcomponents></rocket></openrocket>\n",
+      "written": [
+        "0.03",
+        "0.03",
+        "auto",
+        "auto"
+      ],
+      "opened": [
+        {
+          "kind": "body_tube",
+          "outer": 0.03
+        },
+        {
+          "kind": "transition",
+          "fore": 0.03,
+          "aft": -1.0
+        },
+        {
+          "kind": "body_tube",
+          "outer": 0.025
+        }
+      ],
+      "saved": [
+        "0.03",
+        "0.03",
+        "auto -1.0",
+        "auto 0.025"
+      ],
+      "resolved": [
+        {
+          "kind": "body_tube",
+          "outer": 0.03
+        },
+        {
+          "kind": "transition",
+          "fore": 0.03,
+          "aft": -1.0
+        },
+        {
+          "kind": "body_tube",
+          "outer": 0.025
+        }
+      ]
+    },
+    {
+      "name": "a nose cone before an automatic transition end",
+      "document": "<?xml version='1.0' encoding='utf-8'?>\n<openrocket version=\"1.10\" creator=\"hpr-sim automatic-radius probe\"><rocket><name>Probe</name><subcomponents><stage><name>Stage 1</name><subcomponents><nosecone><name>Nose</name><material type=\"bulk\" density=\"680.0\">Cardboard</material><length>0.2</length><thickness>0.001</thickness><shape>ogive</shape><aftradius>auto</aftradius></nosecone><transition><name>Transition</name><material type=\"bulk\" density=\"680.0\">Cardboard</material><length>0.1</length><thickness>0.001</thickness><shape>conical</shape><foreradius>auto</foreradius><aftradius>0.02</aftradius></transition><bodytube><name>Tube</name><material type=\"bulk\" density=\"680.0\">Cardboard</material><length>0.3</length><thickness>0.001</thickness><radius>0.02</radius></bodytube></subcomponents></stage></subcomponents></rocket></openrocket>\n",
+      "written": [
+        "auto",
+        "auto",
+        "0.02",
+        "0.02"
+      ],
+      "opened": [
+        {
+          "kind": "nose_cone",
+          "base": -1.0
+        },
+        {
+          "kind": "transition",
+          "fore": -1.0,
+          "aft": 0.02
+        },
+        {
+          "kind": "body_tube",
+          "outer": 0.02
+        }
+      ],
+      "saved": [
+        "auto -1.0",
+        "auto -1.0",
+        "0.02",
+        "0.02"
+      ],
+      "resolved": [
+        {
+          "kind": "nose_cone",
+          "base": -1.0
+        },
+        {
+          "kind": "transition",
+          "fore": -1.0,
+          "aft": 0.02
+        },
+        {
+          "kind": "body_tube",
+          "outer": 0.02
+        }
+      ]
+    },
+    {
+      "name": "a nose cone and a tube, both automatic, then a stage with a fixed tube",
+      "document": "<?xml version='1.0' encoding='utf-8'?>\n<openrocket version=\"1.10\" creator=\"hpr-sim automatic-radius probe\"><rocket><name>Probe</name><subcomponents><stage><name>Stage 1</name><subcomponents><nosecone><name>Nose</name><material type=\"bulk\" density=\"680.0\">Cardboard</material><length>0.2</length><thickness>0.001</thickness><shape>ogive</shape><aftradius>auto</aftradius></nosecone><bodytube><name>Tube</name><material type=\"bulk\" density=\"680.0\">Cardboard</material><length>0.3</length><thickness>0.001</thickness><radius>auto</radius></bodytube></subcomponents></stage><stage><name>Stage 2</name><subcomponents><bodytube><name>Tube</name><material type=\"bulk\" density=\"680.0\">Cardboard</material><length>0.3</length><thickness>0.001</thickness><radius>0.03</radius></bodytube></subcomponents></stage></subcomponents></rocket></openrocket>\n",
+      "written": [
+        "auto",
+        "auto",
+        "0.03"
+      ],
+      "opened": [
+        {
+          "kind": "nose_cone",
+          "base": 0.03
+        },
+        {
+          "kind": "body_tube",
+          "outer": 0.03
+        },
+        {
+          "kind": "body_tube",
+          "outer": 0.03
+        }
+      ],
+      "saved": [
+        "auto 0.03",
+        "auto 0.03",
+        "0.03"
+      ],
+      "resolved": [
+        {
+          "kind": "nose_cone",
+          "base": 0.03
+        },
+        {
+          "kind": "body_tube",
+          "outer": 0.03
+        },
+        {
+          "kind": "body_tube",
+          "outer": 0.03
+        }
+      ]
+    }
+  ],
+  "library": [
+    {
+      "file": "refs/fusionspace-loft/fixtures/demo-quirks.ork",
+      "opens": false,
+      "error": "java.lang.IllegalStateException: Component: Booster Set not currently compatible with component: Rocket"
+    },
+    {
+      "file": "refs/openrocket-database/ork/parachutes.ork",
+      "opens": true,
+      "opened": [
+        {
+          "kind": "body_tube",
+          "outer": 0.025
+        },
+        {
+          "kind": "body_tube",
+          "outer": 0.025
+        },
+        {
+          "kind": "body_tube",
+          "outer": 0.025
+        },
+        {
+          "kind": "body_tube",
+          "outer": 0.025
+        }
+      ],
+      "resolved": [
+        {
+          "kind": "body_tube",
+          "outer": 0.025
+        },
+        {
+          "kind": "body_tube",
+          "outer": 0.025
+        },
+        {
+          "kind": "body_tube",
+          "outer": 0.025
+        },
+        {
+          "kind": "body_tube",
+          "outer": 0.025
+        }
+      ]
+    },
+    {
+      "file": "refs/openrocket/OpenRocket-24.12.jar!/datafiles/examples/3D printable nose cone and fins.ork",
+      "opens": true,
+      "opened": [
+        {
+          "kind": "nose_cone",
+          "base": 0.012395199999999999
+        },
+        {
+          "kind": "body_tube",
+          "outer": 0.012395199999999999
+        },
+        {
+          "kind": "body_tube",
+          "outer": 0.012395199999999999
+        }
+      ],
+      "resolved": [
+        {
+          "kind": "nose_cone",
+          "base": 0.012395199999999999
+        },
+        {
+          "kind": "body_tube",
+          "outer": 0.012395199999999999
+        },
+        {
+          "kind": "body_tube",
+          "outer": 0.012395199999999999
+        }
+      ]
+    },
+    {
+      "file": "refs/openrocket/OpenRocket-24.12.jar!/datafiles/examples/A simple model rocket.ork",
+      "opens": true,
+      "opened": [
+        {
+          "kind": "nose_cone",
+          "base": 0.0125
+        },
+        {
+          "kind": "body_tube",
+          "outer": 0.0125
+        }
+      ],
+      "resolved": [
+        {
+          "kind": "nose_cone",
+          "base": 0.0125
+        },
+        {
+          "kind": "body_tube",
+          "outer": 0.0125
+        }
+      ]
+    },
+    {
+      "file": "refs/openrocket/OpenRocket-24.12.jar!/datafiles/examples/ARC payload rocket.ork",
+      "opens": true,
+      "opened": [
+        {
+          "kind": "nose_cone",
+          "base": 0.0281559
+        },
+        {
+          "kind": "body_tube",
+          "outer": 0.0281559
+        },
+        {
+          "kind": "body_tube",
+          "outer": 0.0281559
+        }
+      ],
+      "resolved": [
+        {
+          "kind": "nose_cone",
+          "base": 0.0281559
+        },
+        {
+          "kind": "body_tube",
+          "outer": 0.0281559
+        },
+        {
+          "kind": "body_tube",
+          "outer": 0.0281559
+        }
+      ]
+    },
+    {
+      "file": "refs/openrocket/OpenRocket-24.12.jar!/datafiles/examples/Airstart timing.ork",
+      "opens": true,
+      "opened": [
+        {
+          "kind": "nose_cone",
+          "base": 0.09743439999999999
+        },
+        {
+          "kind": "body_tube",
+          "outer": 0.09743439999999999
+        },
+        {
+          "kind": "body_tube",
+          "outer": 0.09743439999999999
+        },
+        {
+          "kind": "body_tube",
+          "outer": 0.09743439999999999
+        }
+      ],
+      "resolved": [
+        {
+          "kind": "nose_cone",
+          "base": 0.09743439999999999
+        },
+        {
+          "kind": "body_tube",
+          "outer": 0.09743439999999999
+        },
+        {
+          "kind": "body_tube",
+          "outer": 0.09743439999999999
+        },
+        {
+          "kind": "body_tube",
+          "outer": 0.09743439999999999
+        }
+      ]
+    },
+    {
+      "file": "refs/openrocket/OpenRocket-24.12.jar!/datafiles/examples/Base drag hack (short-wide).ork",
+      "opens": true,
+      "opened": [
+        {
+          "kind": "nose_cone",
+          "base": 0.03937
+        },
+        {
+          "kind": "body_tube",
+          "outer": 0.03937
+        },
+        {
+          "kind": "transition",
+          "fore": 1.5142307692307692e-05,
+          "aft": 0.03937
+        }
+      ],
+      "resolved": [
+        {
+          "kind": "nose_cone",
+          "base": 0.03937
+        },
+        {
+          "kind": "body_tube",
+          "outer": 0.03937
+        },
+        {
+          "kind": "transition",
+          "fore": 1.5142307692307692e-05,
+          "aft": 0.03937
+        }
+      ]
+    },
+    {
+      "file": "refs/openrocket/OpenRocket-24.12.jar!/datafiles/examples/Chute release.ork",
+      "opens": true,
+      "opened": [
+        {
+          "kind": "nose_cone",
+          "base": 0.03175
+        },
+        {
+          "kind": "body_tube",
+          "outer": 0.03175
+        },
+        {
+          "kind": "body_tube",
+          "outer": 0.03175
+        }
+      ],
+      "resolved": [
+        {
+          "kind": "nose_cone",
+          "base": 0.03175
+        },
+        {
+          "kind": "body_tube",
+          "outer": 0.03175
+        },
+        {
+          "kind": "body_tube",
+          "outer": 0.03175
+        }
+      ]
+    },
+    {
+      "file": "refs/openrocket/OpenRocket-24.12.jar!/datafiles/examples/Clustered motors.ork",
+      "opens": true,
+      "opened": [
+        {
+          "kind": "nose_cone",
+          "base": 0.0275
+        },
+        {
+          "kind": "body_tube",
+          "outer": 0.0275
+        }
+      ],
+      "resolved": [
+        {
+          "kind": "nose_cone",
+          "base": 0.0275
+        },
+        {
+          "kind": "body_tube",
+          "outer": 0.0275
+        }
+      ]
+    },
+    {
+      "file": "refs/openrocket/OpenRocket-24.12.jar!/datafiles/examples/Deployable payload.ork",
+      "opens": true,
+      "opened": [
+        {
+          "kind": "nose_cone",
+          "base": 0.0125
+        },
+        {
+          "kind": "body_tube",
+          "outer": 0.0125
+        },
+        {
+          "kind": "body_tube",
+          "outer": 0.0125
+        }
+      ],
+      "resolved": [
+        {
+          "kind": "nose_cone",
+          "base": 0.0125
+        },
+        {
+          "kind": "body_tube",
+          "outer": 0.0125
+        },
+        {
+          "kind": "body_tube",
+          "outer": 0.0125
+        }
+      ]
+    },
+    {
+      "file": "refs/openrocket/OpenRocket-24.12.jar!/datafiles/examples/Dual parachute deployment.ork",
+      "opens": true,
+      "opened": [
+        {
+          "kind": "nose_cone",
+          "base": 0.028321
+        },
+        {
+          "kind": "body_tube",
+          "outer": 0.025
+        },
+        {
+          "kind": "body_tube",
+          "outer": 0.028321
+        },
+        {
+          "kind": "body_tube",
+          "outer": 0.028321
+        },
+        {
+          "kind": "body_tube",
+          "outer": 0.028321
+        }
+      ],
+      "resolved": [
+        {
+          "kind": "nose_cone",
+          "base": 0.028321
+        },
+        {
+          "kind": "body_tube",
+          "outer": 0.028321
+        },
+        {
+          "kind": "body_tube",
+          "outer": 0.028321
+        },
+        {
+          "kind": "body_tube",
+          "outer": 0.028321
+        },
+        {
+          "kind": "body_tube",
+          "outer": 0.028321
+        }
+      ]
+    },
+    {
+      "file": "refs/openrocket/OpenRocket-24.12.jar!/datafiles/examples/Parallel booster staging.ork",
+      "opens": true,
+      "opened": [
+        {
+          "kind": "nose_cone",
+          "base": 0.028701999999999995
+        },
+        {
+          "kind": "body_tube",
+          "outer": 0.028701999999999995
+        }
+      ],
+      "resolved": [
+        {
+          "kind": "nose_cone",
+          "base": 0.028701999999999995
+        },
+        {
+          "kind": "body_tube",
+          "outer": 0.028701999999999995
+        }
+      ]
+    },
+    {
+      "file": "refs/openrocket/OpenRocket-24.12.jar!/datafiles/examples/Pods--airframes and winglets.ork",
+      "opens": true,
+      "opened": [
+        {
+          "kind": "nose_cone",
+          "base": 0.0168275
+        },
+        {
+          "kind": "body_tube",
+          "outer": 0.0168275
+        }
+      ],
+      "resolved": [
+        {
+          "kind": "nose_cone",
+          "base": 0.0168275
+        },
+        {
+          "kind": "body_tube",
+          "outer": 0.0168275
+        }
+      ]
+    },
+    {
+      "file": "refs/openrocket/OpenRocket-24.12.jar!/datafiles/examples/Pods--powered with recovery deployment.ork",
+      "opens": true,
+      "opened": [
+        {
+          "kind": "nose_cone",
+          "base": 0.017018000000000002
+        },
+        {
+          "kind": "body_tube",
+          "outer": 0.017018000000000002
+        },
+        {
+          "kind": "body_tube",
+          "outer": 0.017018000000000002
+        },
+        {
+          "kind": "body_tube",
+          "outer": 0.017018000000000002
+        },
+        {
+          "kind": "transition",
+          "fore": 0.017018000000000002,
+          "aft": 0.0096393
+        },
+        {
+          "kind": "body_tube",
+          "outer": 0.0096393
+        }
+      ],
+      "resolved": [
+        {
+          "kind": "nose_cone",
+          "base": 0.017018000000000002
+        },
+        {
+          "kind": "body_tube",
+          "outer": 0.017018000000000002
+        },
+        {
+          "kind": "body_tube",
+          "outer": 0.017018000000000002
+        },
+        {
+          "kind": "body_tube",
+          "outer": 0.017018000000000002
+        },
+        {
+          "kind": "transition",
+          "fore": 0.017018000000000002,
+          "aft": 0.0096393
+        },
+        {
+          "kind": "body_tube",
+          "outer": 0.0096393
+        }
+      ]
+    },
+    {
+      "file": "refs/openrocket/OpenRocket-24.12.jar!/datafiles/examples/Simulation extensions.ork",
+      "opens": true,
+      "opened": [
+        {
+          "kind": "nose_cone",
+          "base": 0.07
+        },
+        {
+          "kind": "body_tube",
+          "outer": 0.07
+        },
+        {
+          "kind": "body_tube",
+          "outer": 0.07
+        },
+        {
+          "kind": "body_tube",
+          "outer": 0.07
+        }
+      ],
+      "resolved": [
+        {
+          "kind": "nose_cone",
+          "base": 0.07
+        },
+        {
+          "kind": "body_tube",
+          "outer": 0.07
+        },
+        {
+          "kind": "body_tube",
+          "outer": 0.07
+        },
+        {
+          "kind": "body_tube",
+          "outer": 0.07
+        }
+      ]
+    },
+    {
+      "file": "refs/openrocket/OpenRocket-24.12.jar!/datafiles/examples/Simulation scripting.ork",
+      "opens": true,
+      "opened": [
+        {
+          "kind": "nose_cone",
+          "base": 0.07
+        },
+        {
+          "kind": "body_tube",
+          "outer": 0.07
+        },
+        {
+          "kind": "body_tube",
+          "outer": 0.07
+        },
+        {
+          "kind": "body_tube",
+          "outer": 0.07
+        }
+      ],
+      "resolved": [
+        {
+          "kind": "nose_cone",
+          "base": 0.07
+        },
+        {
+          "kind": "body_tube",
+          "outer": 0.07
+        },
+        {
+          "kind": "body_tube",
+          "outer": 0.07
+        },
+        {
+          "kind": "body_tube",
+          "outer": 0.07
+        }
+      ]
+    },
+    {
+      "file": "refs/openrocket/OpenRocket-24.12.jar!/datafiles/examples/Three stage low power rocket.ork",
+      "opens": true,
+      "opened": [
+        {
+          "kind": "nose_cone",
+          "base": 0.0125
+        },
+        {
+          "kind": "body_tube",
+          "outer": 0.0125
+        },
+        {
+          "kind": "body_tube",
+          "outer": 0.0125
+        },
+        {
+          "kind": "body_tube",
+          "outer": 0.0125
+        }
+      ],
+      "resolved": [
+        {
+          "kind": "nose_cone",
+          "base": 0.0125
+        },
+        {
+          "kind": "body_tube",
+          "outer": 0.0125
+        },
+        {
+          "kind": "body_tube",
+          "outer": 0.0125
+        },
+        {
+          "kind": "body_tube",
+          "outer": 0.0125
+        }
+      ]
+    },
+    {
+      "file": "refs/openrocket/OpenRocket-24.12.jar!/datafiles/examples/Tube fin rocket.ork",
+      "opens": true,
+      "opened": [
+        {
+          "kind": "nose_cone",
+          "base": 0.012395199999999999
+        },
+        {
+          "kind": "body_tube",
+          "outer": 0.012395199999999999
+        }
+      ],
+      "resolved": [
+        {
+          "kind": "nose_cone",
+          "base": 0.012395199999999999
+        },
+        {
+          "kind": "body_tube",
+          "outer": 0.012395199999999999
+        }
+      ]
+    },
+    {
+      "file": "refs/openrocket/OpenRocket-24.12.jar!/datafiles/examples/Two stage high power rocket.ork",
+      "opens": true,
+      "opened": [
+        {
+          "kind": "nose_cone",
+          "base": 0.0508
+        },
+        {
+          "kind": "body_tube",
+          "outer": 0.0508
+        },
+        {
+          "kind": "body_tube",
+          "outer": 0.0508
+        },
+        {
+          "kind": "body_tube",
+          "outer": 0.0508
+        },
+        {
+          "kind": "body_tube",
+          "outer": 0.0508
+        },
+        {
+          "kind": "body_tube",
+          "outer": 0.0508
+        },
+        {
+          "kind": "body_tube",
+          "outer": 0.0508
+        },
+        {
+          "kind": "body_tube",
+          "outer": 0.0508
+        },
+        {
+          "kind": "body_tube",
+          "outer": 0.0508
+        }
+      ],
+      "resolved": [
+        {
+          "kind": "nose_cone",
+          "base": 0.0508
+        },
+        {
+          "kind": "body_tube",
+          "outer": 0.0508
+        },
+        {
+          "kind": "body_tube",
+          "outer": 0.0508
+        },
+        {
+          "kind": "body_tube",
+          "outer": 0.0508
+        },
+        {
+          "kind": "body_tube",
+          "outer": 0.0508
+        },
+        {
+          "kind": "body_tube",
+          "outer": 0.0508
+        },
+        {
+          "kind": "body_tube",
+          "outer": 0.0508
+        },
+        {
+          "kind": "body_tube",
+          "outer": 0.0508
+        },
+        {
+          "kind": "body_tube",
+          "outer": 0.0508
+        }
+      ]
+    }
+  ]
+}

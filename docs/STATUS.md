@@ -4,24 +4,25 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
 
 ## Now
 
-- **Current milestone:** M1.8e, all done bar M1.8e16 (`[blocked]` on #108); the work is **M3.1b4**,
-  the three `.ork` designs of the 76 whose rocket still does not lay out, now M3.1b3 reads the
-  parts (M3.1b split again: b2 the spine, b3 what hangs off it, b4 the three left).
-- **Order:** M3.1b4, M3.1c, M3.1d, M2.2, M1.9; M1.8e16 waits on #108. **Run:** M0.1-M0.4,
-  M1.1-M1.7, M2.1, M1.8a-e19 bar e16, M3.1a, M3.1b1-b3; the site is published.
+- **Current milestone:** M1.8e, all done bar M1.8e16 (`[blocked]` on #108); the work is **M3.1c**,
+  a `.ork` file's motors, recovery settings, stages, pods and stored results, now every design in
+  the reference library lays out (M3.1b4 finished M3.1b).
+- **Order:** M3.1c, M3.1d, M2.2, M1.9; M1.8e16 waits on #108. **Run:** M0.1-M0.4,
+  M1.1-M1.7, M2.1, M1.8a-e19 bar e16, M3.1a, M3.1b; the site is published.
 - **Neer, 2026-09-20:** Debrief is sunset; a flight log analyzer usable **on its own** is part of
   this project (ADR-046, V21); Phase 5 re-cut.
-- **Last updated:** 2026-09-20 (M3.1b3 shipped: the `.ork` parts on and inside the body)
+- **Last updated:** 2026-09-20 (M3.1b4 shipped: every `.ork` design in the library lays out)
 
 ## Handoff (overwrite each session)
 
-- **M3.1b4 next:** 73 of 76 designs lay out; the 3 left are public files. Debrief's
-  `sample-design.ork` has a `<rocket>` with no `<subcomponents>` at all, so there is no design in
-  it; Loft's `demo-quirks.ork` chains nose → tube → transition all `auto` with only the aft end
-  fixed (the nose caches 0.033); `openrocket-database/ork/parachutes.ork` has four tubes all bare
-  `auto`. Only a rule for an unresolvable chain reaches the second and nothing reaches the other
-  two — decide and publish, don't reach for the cache by default. **Then M3.1c:** motors, recovery
-  settings, pods and parallel stages (9 `podset` and 3 `parallelstage` hold 19 parts nobody reads).
+- **M3.1c next:** motors, recovery settings, pods and parallel stages (9 `podset` and 3
+  `parallelstage` hold 19 parts nobody reads), and stored results — Debrief's `sample-design.ork`
+  is nothing else, and is counted as holding no design. **Driving OpenRocket:**
+  `validation/oracles/openrocket/automatic_radius.py` (ADR-054) runs 24.12 headless through JPype,
+  binding empty motor and preset databases in a Python Guice module; it logs to stdout, so the
+  script writes to a path. **Read OpenRocket after it re-resolves** (a save does it): its first
+  reading can differ (Dual parachute). M2.2 (ADR-035) can build on it or take a subprocess, which
+  alone keeps GPL code out of the process; Java 17 only.
 - **Page rules** (ADR-016 to ADR-020): relative links between pages, GitHub URLs for the rest
   (rustdoc too), labels as links to their rows — a lesson a page names needs a row in
   `decisions-and-roadmap.md` — none in headings; new pages in `SUMMARY.md`, a new library a row in
@@ -43,28 +44,26 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
   (`forbids = ["hpr-sim"]`, walked by `cargo xtask wasm-check`); sim-versus-flight goes in
   `hpr-forensics`; notes in `debrief-{log-formats,flight-readings,porting-boundary}.md`. **Port
   from its `lib/`, never its `COMPETITION.md`** (GPL-3 Java); its 12 public fixtures may be used.
-- **`.ork` parts (M3.1b3, ADR-053):** angles in a `.ork` are **degrees**, but *which way they turn*
-  is assumed — OpenRocket's `+x` points aft, hpr's `+z` at the nose, so every angle may be
-  mirrored; it is on the guide's not-settled list for M2.2, which one asymmetric design settles.
-  `radialposition` is on the parts inside a body and `radiusoffset` on the parts on it, never both,
-  which is what let ADR-052's pair be read at last. `cargo xtask ork` runs an oracle needing no
-  OpenRocket — a cached `auto` is OpenRocket's own answer, 67 of 71 agree — but **nothing caches an
-  `outerradius` or `innerradius`**, so this milestone's two resolution rules have no oracle; it
-  also lists parts that weigh nothing (21, every one explained). Finish heights come from the
-  author's forum post, cached under `refs/sources/openrocket-finish/`.
+- **`.ork` readings (ADR-052 to ADR-054):** angles are **degrees**, but *which way they turn* is
+  assumed (OpenRocket's `+x` points aft, hpr's `+z` at the nose): on the guide's not-settled list
+  for M2.2. A cached `auto` number is what OpenRocket last resolved, never an input — 24.12
+  ignores it on reading — and `cargo xtask ork` holds 67 of 71 to it; nothing caches an
+  `outerradius` or `innerradius`. Finish heights: the author's forum post, cached under
+  `refs/sources/openrocket-finish/`.
 - **Process notes:** `cargo test -p xtask` guards STATUS, ROADMAP, notices, lessons and the lock;
   oracles run from the repo root with `refs/venv/bin/python`; `xtask designs`, `examples` and `ork`
-  rewrite their outputs. **M2.2's oracle** (ADR-035): orhelper is dropped, so decide how to drive
-  the jar — JPype loads the JVM in-process, only a subprocess isolates, Java 17 only.
+  rewrite their outputs.
 
 ## Done log (newest first, keep about 15)
 
-- 2026-09-20: M3.1b3 The `.ork` parts on and inside the body (ADR-053): 765 parts over the 73
-  designs that lay out, against 285 body components, 327 automatic dimensions marked, 5 left out
-  with a reason. Angles are degrees (178 of 188 non-zero exceed 2π); the finish words are sourced.
-  New in-file oracle: hpr matches 67 of the 71 automatic dimensions OpenRocket cached an answer
-  for. A ring's bore takes only a tube narrower than the ring, which stopped 2 rings weighing
-  nothing. L49, L60, L61 live. #130 to #132 fixed bar two bullets; #133, #135, #136 filed.
+- 2026-09-20: M3.1b4 Every `.ork` design lays out (ADR-054): 75 of 75, and Debrief's results-only
+  file counted as holding none. A radius with nothing fixed along its chain takes OpenRocket's
+  default, 25 mm, from its maintainers' words and a committed 24.12 probe that also shows it
+  ignoring the cached number: 7 radii in 2 designs. 67 of 67 body radii agree with OpenRocket
+  over 18 designs. M3.1b checked off.
+- 2026-09-20: M3.1b3 The `.ork` parts on and inside the body (ADR-053): 765 parts, 5 left out with
+  a reason; angles are degrees (178 of 188 non-zero exceed 2π); sourced finishes; an in-file oracle
+  (67 of 71 cached answers match). L49, L60, L61 live; #133, #135, #136 filed.
 - 2026-09-20: M3.1b2 The `.ork` spine into `hpr_design` types, every automatic radius marked for
   `layout()` to resolve, across a stage boundary too (L59 live). OpenRocket's ogive κ is the
   reciprocal of this project's radius ratio (Niskanen A.3). Open for M2.2: a shoulder of no wall
@@ -79,19 +78,20 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
   `clippy`, `doc`, `deny`, `wasm-check`, `site` and the three `test (...)` and `validate (...)`
   checks; block force pushes. Don't require approvals (authors can't self-approve).
 - **crates.io names** (whenever): `hpr`, `hpr-sim`, `hpr-core`… unreserved. Reserve them?
+- **OpenRocket example radii in a fixture** (no action if fine): `openrocket-automatic-radius.json`
+  commits 67 body radii OpenRocket computed: 63 for the jar's 17 GPL example designs, with their
+  names, and 4 for the Apache-2.0 parachute catalogue.
 - **RASAero values in fixtures** (no action if fine): `normal-force-vs-mach.json` commits 30 values
   of RocketPy's 2018 Calisto RASAero II export (ADR-027) plus four summary numbers, and
   `rocketpy-drag-curves.json` enough to rebuild 147 values of five curves (ADR-029).
 
 ## Decided without Neer (one line each; significant ones get an ADR)
 
-- ADR-053: `.ork` angles are degrees; `radialposition` and `radiusoffset` are read on the parts
-  that carry them, so ADR-052's pair needs no source; a part that cannot be shaped honestly is left
-  out with its reason; a tube of no wall is weightless where a body component's zero is solid; an
-  inner tube's automatic radius is its parent's bore; the finish words take published heights.
-- ADR-052: M3.1b splits in two, the values first; an automatic dimension keeps both halves; either
-  name of a rename may be read where the corpus shows the two agree on the number *and* the frame;
-  the pre-1.9 subcomponent-override flag sets all three, with a warning.
+- ADR-054: a radius with nothing fixed along its chain is OpenRocket's 25 mm, never its cache or −1 m.
+- ADR-053: `.ork` angles are degrees; each radial-offset tag is read on its own parts; a part hpr
+  cannot shape is left out; a wall-less tube weighs nothing; published finish heights.
+- ADR-052: an automatic dimension keeps both halves; a renamed tag is read where both names agree on
+  number *and* frame; the pre-1.9 override flag sets all three, warned.
 - ADR-051: M3.1 is split a to d, the container first; a `.ork` document is kept whole because it
   has no schema, and read-write-read is the guarantee; nesting is capped at 64 before parsing.
 - ADR-050: a reduced element takes the generalized method wherever it has a tangent cone of its
@@ -132,8 +132,8 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
   flare leaves the crossing's pole — +0.129% on the tests' rocket, +4.3% on a short shoulder
   (#108); a step in radius takes the body off the method past 2.7e-11 m tube to tube or 1.3e-13 m
   up at a boattail — −8.65% to −11.34% (#87).
-- `.ork` (M3.1a to M3.1b3) builds a rocket, but 3 of 76 designs do not lay out (M3.1b4) and no
-  motor, recovery setting, pod or parallel stage is read (M3.1c). 5 parts are left out with a
+- `.ork` (M3.1a, M3.1b) builds a rocket for all 75 designs, but no motor, recovery setting, pod or
+  parallel stage is read (M3.1c); 7 radii with nothing to take are OpenRocket's default 25 mm. 5 parts are left out with a
   reason, among them the corpus's only tube fins (#133); fin fillets, a rail button's screw head
   and motor clusters are read as the simpler part, with a warning. `polished` is 2 µm here and may
   be 0.5 µm in a newer OpenRocket; a zero-wall tube is weightless, which M2.2 can settle.
