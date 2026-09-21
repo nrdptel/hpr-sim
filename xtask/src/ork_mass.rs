@@ -1011,9 +1011,6 @@ mod tests {
         );
     }
 
-    /// The survey fails on a record written by an older script, on a design missing from it, on a
-    /// probe whose inertias are swapped, and on a design outside a threshold with no warned cause;
-    /// and a cause is read from the importer's own words.
     /// A committed probe of `openrocket-conventions.json`: hpr's rocket and layout of it, and
     /// OpenRocket's record.
     fn conventions_probe(question: &str) -> (Rocket, Layout, Value) {
@@ -1110,6 +1107,9 @@ mod tests {
         assert!(tally.failure().unwrap().contains("with no cause"));
     }
 
+    /// The survey fails on a record written by an older script, on a design missing from it, on a
+    /// probe whose inertias are swapped, and on a design outside a threshold with no warned cause;
+    /// and a cause is read from the importer's own words.
     #[test]
     fn a_record_that_does_not_hold_fails() {
         let mut stale = record();
