@@ -1542,6 +1542,44 @@ fn a_part_that_cannot_be_read_honestly_is_left_out_with_its_reason() {
     }
 }
 
+/// A packed part whose file writes no packed size is packed as OpenRocket 24.12 packs it, 25 mm
+/// long and 12.5 mm in radius, each on its own, and nothing is said: it is the file's meaning, not
+/// a guess ([ADR-063][adr-063]; the probes are `hpr_validate::openrocket`'s).
+///
+/// [adr-063]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-063-packed-parts-read-and-weighed-as-openrocket-packs-them-2026-09-21
+#[test]
+fn an_unwritten_packed_size_is_openrockets() {
+    let whole = with_parts([0, 1, 2, 3, 4]);
+    let written = "<packedlength>0.08</packedlength><packedradius>auto</packedradius>";
+    assert_eq!(whole.matches(written).count(), 1);
+    for (size, length_m, radius_m) in [
+        ("", 0.025, 0.0125),
+        ("<packedlength>0.08</packedlength>", 0.08, 0.0125),
+        ("<packedradius>0.02</packedradius>", 0.025, 0.02),
+    ] {
+        let xml = whole.replacen(written, size, 1);
+        let read = read(xml.as_bytes()).expect("a readable design");
+        let imported = component::rocket(&read.value.document);
+        assert!(
+            imported
+                .warnings
+                .iter()
+                .all(|warning| !warning.message.contains("packed")),
+            "{size}: {:?}",
+            imported.warnings
+        );
+        let layout = imported.value.layout().expect("a design that lays out");
+        let hpr_design::tree::Part::Parachute(chute) = resolved(&layout, "chute") else {
+            panic!("the parachute")
+        };
+        assert_eq!(
+            (chute.packing.length_m, chute.packing.radius_m),
+            (length_m, radius_m),
+            "{size}"
+        );
+    }
+}
+
 /// The fin set of a design read from `xml`.
 fn fins(xml: &str) -> hpr_design::tree::Part {
     spine(xml).stages[0].components[1]

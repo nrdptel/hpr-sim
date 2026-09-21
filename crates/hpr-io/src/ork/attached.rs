@@ -647,11 +647,38 @@ fn shock_cord(values: &mut Values<'_>, auto: &mut Vec<AutoDimension>) -> Option<
     }))
 }
 
-/// How a mass object or a recovery part is packed: the cylinder it takes up inside the body.
+/// The packed length OpenRocket 24.12 gives a mass component, parachute, streamer or shock cord
+/// whose file writes no `packedlength`, in metres: 25 mm.
+///
+/// No document states it, so it was measured ([ADR-063][adr-063]): on probe designs of each kind
+/// written with no packed size, and a parachute written with only one of the two, OpenRocket's
+/// centre of mass and inertias are those of a solid cylinder this long, from the part's position
+/// aft, and [`PACKED_RADIUS_M`] in radius, whichever of the two is missing
+/// (`validation/oracles/openrocket/conventions.py`).
+///
+/// [adr-063]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-063-packed-parts-read-and-weighed-as-openrocket-packs-them-2026-09-21
+const PACKED_LENGTH_M: f64 = 0.025;
+
+/// The packed radius OpenRocket 24.12 gives a packed part whose file writes no `packedradius`, in
+/// metres: 12.5 mm, a fixed number, not the tube's bore. Measured as [`PACKED_LENGTH_M`] is.
+const PACKED_RADIUS_M: f64 = 0.0125;
+
+/// How a mass object or a recovery part is packed: the cylinder it takes up inside the body. A size
+/// the file does not write is OpenRocket's ([`PACKED_LENGTH_M`], [`PACKED_RADIUS_M`]), read with no
+/// warning, as ADR-061 reads what else a file leaves unsaid.
 fn packing(values: &mut Values<'_>, auto: &mut Vec<AutoDimension>) -> Packing {
-    let (_, radius_m) = stated_radius(values, &["packedradius"], AutoDimension::PackedRadius, auto);
+    let radius_m = if values.element(&["packedradius"]).is_none() {
+        PACKED_RADIUS_M
+    } else {
+        stated_radius(values, &["packedradius"], AutoDimension::PackedRadius, auto).1
+    };
+    let length_m = if values.element(&["packedlength"]).is_none() {
+        PACKED_LENGTH_M
+    } else {
+        values.number(&["packedlength"]).unwrap_or_default()
+    };
     Packing {
-        length_m: values.number(&["packedlength"]).unwrap_or_default(),
+        length_m,
         radius_m,
         radial_offset_m: values.number(&["radialposition"]).unwrap_or_default(),
         angle_rad: roll_angle(values),

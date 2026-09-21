@@ -59,8 +59,6 @@ pub(crate) fn differences(layout: &Layout, openrocket: &Value) -> Option<[f64; 4
 pub(crate) struct RollUnderRule {
     /// hpr's less OpenRocket's, relative to OpenRocket's.
     pub(crate) apart: f64,
-    /// hpr's less OpenRocket's, kg·m².
-    pub(crate) apart_kg_m2: f64,
     /// Whether a fin set kept hpr's own: tube fins, which the rule does not cover, or a fin set
     /// with no OpenRocket part to take the mass from, by id or by name.
     pub(crate) unpaired_fins: bool,
@@ -133,7 +131,6 @@ pub(crate) fn roll_under_openrocket_fins(
     }
     Some(RollUnderRule {
         apart: (ours - roll) / roll,
-        apart_kg_m2: ours - roll,
         unpaired_fins,
     })
 }
@@ -218,62 +215,21 @@ fn causes(warnings: &[&str], reduced: bool, stages_apart: bool) -> Vec<&'static 
 
 /// The causes a roll inertia outside [`ROLL_WITHIN`] is traced to, once OpenRocket's fin rule is in
 /// hpr's place.
-pub(crate) const ROLL_CAUSES: [&str; 4] = [
+///
+/// A fourth, packed parts hpr weighed as point masses, went when hpr came to pack them as
+/// OpenRocket does (ADR-063).
+pub(crate) const ROLL_CAUSES: [&str; 3] = [
     "a mass override covering parts inside (ADR-061)",
     "parts hpr keeps unread (a reduced design)",
     "fins the rule was not given OpenRocket's mass for (tube fins, or no id to pair)",
-    "packed parts hpr weighs as point masses, which account for the gap (ADR-062)",
 ];
 
-/// The most roll inertia hpr's packed point masses can lack, kg·m²: each parachute, streamer, shock
-/// cord or mass component with mass but no roll inertia in hpr, spread over a packing as wide as the
-/// tube it sits in (at least the 12.5 mm OpenRocket gives a packing that writes none), `m R²/2`.
-/// OpenRocket gives such a part its packing's roll inertia, where hpr has a point mass: a packing
-/// that writes no radius, or a mass override on a part that weighs nothing (ADR-062's probes).
-fn point_mass_bound_kg_m2(layout: &Layout) -> f64 {
-    layout
-        .components
-        .iter()
-        .filter(|placed| {
-            matches!(
-                placed.part,
-                Part::Parachute(_)
-                    | Part::Streamer(_)
-                    | Part::ShockCord(_)
-                    | Part::MassComponent(_)
-            ) && placed.own.mass_kg > 0.0
-                && placed.own.inertia_kg_m2.z_axis.z == 0.0
-        })
-        .map(|placed| {
-            let mut up = placed.parent;
-            let mut radius_m = 0.0;
-            while let Some(index) = up {
-                if let Some(radius) = layout.components[index].part.fore_radius_m() {
-                    radius_m = radius;
-                    break;
-                }
-                up = layout.components[index].parent;
-            }
-            let radius_m = f64::max(radius_m, 0.0125);
-            placed.own.mass_kg * radius_m * radius_m / 2.0
-        })
-        .sum()
-}
-
 /// The causes of a roll inertia outside [`ROLL_WITHIN`] with OpenRocket's fin rule in hpr's place.
-/// A point mass is a cause only when hpr's shortfall is no more than it could account for.
-fn roll_causes(
-    rocket: &Rocket,
-    layout: &Layout,
-    reduced: bool,
-    under_rule: &RollUnderRule,
-) -> Vec<&'static str> {
-    let bound = point_mass_bound_kg_m2(layout);
+fn roll_causes(rocket: &Rocket, reduced: bool, under_rule: &RollUnderRule) -> Vec<&'static str> {
     let found = [
         covering_mass_override(rocket),
         reduced,
         under_rule.unpaired_fins,
-        under_rule.apart_kg_m2 < 0.0 && -under_rule.apart_kg_m2 <= bound,
     ];
     ROLL_CAUSES
         .iter()
@@ -444,7 +400,6 @@ impl MassTally {
             roll_under_openrocket_fins(rocket, layout, &design["structure"], &design["parts"]);
         let under_rule = under_rule.unwrap_or(RollUnderRule {
             apart: f64::NAN,
-            apart_kg_m2: f64::NAN,
             unpaired_fins: false,
         });
         self.all.push(found);
@@ -467,7 +422,7 @@ impl MassTally {
                 label: named.clone(),
                 hash: digest.clone(),
                 apart: under_rule.apart,
-                causes: roll_causes(rocket, layout, reduced, &under_rule),
+                causes: roll_causes(rocket, reduced, &under_rule),
             });
         }
         if beyond(found[0], MASS_WITHIN) || beyond(found[1], CG_WITHIN) {
@@ -1064,46 +1019,17 @@ mod tests {
             unpaired.unpaired_fins && unpaired.apart < -0.02,
             "{unpaired:?}"
         );
-        assert_eq!(
-            roll_causes(&rocket, &layout, false, &unpaired),
-            [ROLL_CAUSES[2]]
-        );
+        assert_eq!(roll_causes(&rocket, false, &unpaired), [ROLL_CAUSES[2]]);
 
+        // A weightless packed part under an override is OpenRocket's packing now (ADR-063), so it
+        // leaves no gap to need a cause.
         let question = "a tube and a parachute of no canopy, under a mass override";
         let (rocket, layout, probe) = conventions_probe(question);
-        // OpenRocket spreads the 30 g over the 20 mm packing; hpr's bound is the 50 mm tube's.
-        let bound = point_mass_bound_kg_m2(&layout);
-        assert!(
-            (bound - 0.03 * 0.05 * 0.05 / 2.0).abs() < 1e-15,
-            "{bound:e}"
-        );
         let under =
             roll_under_openrocket_fins(&rocket, &layout, &probe["structure"], &probe["parts"])
                 .unwrap();
-        assert!(
-            (under.apart_kg_m2 + 0.03 * 0.02 * 0.02 / 2.0).abs() < 1e-15,
-            "{under:?}"
-        );
-        assert_eq!(
-            roll_causes(&rocket, &layout, false, &under),
-            [ROLL_CAUSES[3]]
-        );
-        let wrong_sign = RollUnderRule {
-            apart_kg_m2: -under.apart_kg_m2,
-            ..under
-        };
-        let too_big = RollUnderRule {
-            apart_kg_m2: -2.0 * bound,
-            ..under
-        };
-        for gap in [wrong_sign, too_big] {
-            assert!(
-                roll_causes(&rocket, &layout, false, &gap).is_empty(),
-                "{gap:?}"
-            );
-        }
-        let (_, plain, _) = conventions_probe("a tube and a parachute");
-        assert_eq!(point_mass_bound_kg_m2(&plain), 0.0);
+        assert!(under.apart.abs() < 1e-12, "{under:?}");
+        assert!(roll_causes(&rocket, false, &under).is_empty());
 
         let tally = MassTally {
             record: Some(BTreeMap::new()),

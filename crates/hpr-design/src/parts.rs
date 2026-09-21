@@ -567,7 +567,7 @@ pub struct Packing {
 
 impl Packing {
     /// A cylinder of `mass_kg` stowed this way, forward end at the origin.
-    fn place(&self, mass_kg: f64) -> Result<MassProperties, DesignError> {
+    pub(crate) fn place(&self, mass_kg: f64) -> Result<MassProperties, DesignError> {
         check_dimension("mass", mass_kg, true)?;
         check_dimension("packed length", self.length_m, true)?;
         check_dimension("packed radius", self.radius_m, true)?;

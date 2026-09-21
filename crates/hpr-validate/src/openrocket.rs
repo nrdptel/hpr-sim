@@ -450,7 +450,7 @@ mod tests {
     ///   apart by 0.406%.
     ///
     /// [adr-062]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-062-fins-and-rail-buttons-against-openrocket-roll-inertia-explained-2026-09-21
-    const ALONE: [(&str, [f64; 4]); 33] = [
+    const ALONE: [(&str, [f64; 4]); 40] = [
         ("a tube and a bulkhead", [0.0, 0.0, 0.0, 0.0]),
         (
             "a tube and a canted fin set",
@@ -484,7 +484,35 @@ mod tests {
         ("a tube and a parachute", [0.0, 0.0, 0.0, 0.0]),
         (
             "a tube and a parachute that writes no packed size",
-            [0.0, -0.000611, -0.00167, 0.00744],
+            [0.0, 0.0, 0.0, 0.0],
+        ),
+        (
+            "a tube and a parachute that writes only a packed length",
+            [0.0, 0.0, 0.0, 0.0],
+        ),
+        (
+            "a tube and a parachute that writes only a packed radius",
+            [0.0, 0.0, 0.0, 0.0],
+        ),
+        (
+            "a tube and a streamer that writes no packed size",
+            [0.0, 0.0, 0.0, 0.0],
+        ),
+        (
+            "a tube and a shock cord that writes no packed size",
+            [0.0, 0.0, 0.0, 0.0],
+        ),
+        (
+            "a tube and a mass component that writes no packed size",
+            [0.0, 0.0, 0.0, 0.0],
+        ),
+        (
+            "a tube and a mass component of no mass, under a mass override",
+            [0.0, 0.0, 0.0, 0.0],
+        ),
+        (
+            "a tube and a shock cord of no length, under a mass override",
+            [0.0, 0.0, 0.0, 0.0],
         ),
         (
             "a tube and a parachute with a mass override",
@@ -534,7 +562,7 @@ mod tests {
         ("a tube and a single fin", [0.0, 0.0, 0.0, 0.00406]),
         (
             "a tube and a parachute of no canopy, under a mass override",
-            [0.0, 0.0, -0.00805, -0.00128],
+            [0.0, 0.0, 0.0, 0.0],
         ),
         ("a tube and triangular fins", [0.0, 0.0, 0.0, 0.00028]),
         ("a wider tube and rectangular fins", [0.0, 0.0, 0.0, 1e-6]),
