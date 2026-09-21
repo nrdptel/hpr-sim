@@ -5133,8 +5133,14 @@ pitch inertia agree within 0.1%. That is more than one session.
   covering the parts inside 7, a reduced design 6, packed point masses 3; some have two.
 - **Mass and centre of mass** unchanged: 61 and 62 of 74 within 1%. The rail button moved no file
   across a threshold.
-- **hpr's own numbers change** only where a `.ork` rail button sits: its station, and so the rail
-  guides a flight leaves the rail by, move forward one button radius.
+- **hpr's own numbers change** only where a `.ork` rail button sits, and so the rail guide a flight
+  leaves the rail by. How far depends on the end the file measures from (r is the button's radius,
+  s the spacing, n the count):
+  - from the top, after a part, or absolute: forward r;
+  - from the middle: aft (n − 1)s/2, so one button does not move;
+  - from the bottom: aft r + (n − 1)s.
+
+  A row placed from the middle or the bottom now leaves the rail later.
 
 ---
 ## ADR-061: What a `.ork` leaves unsaid, read as OpenRocket reads it; overrides measured, two departures kept (2026-09-21)

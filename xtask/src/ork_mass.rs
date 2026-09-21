@@ -1047,6 +1047,17 @@ mod tests {
             paired.apart.abs() < 1e-12 && !paired.unpaired_fins,
             "{paired:?}"
         );
+        // A file with no ids pairs by name.
+        let mut nameless = probe["parts"].clone();
+        for part in nameless.as_array_mut().unwrap() {
+            part.as_object_mut().unwrap().remove("id");
+        }
+        let by_name =
+            roll_under_openrocket_fins(&rocket, &layout, &probe["structure"], &nameless).unwrap();
+        assert!(
+            by_name.apart.abs() < 1e-12 && !by_name.unpaired_fins,
+            "{by_name:?}"
+        );
         let unpaired =
             roll_under_openrocket_fins(&rocket, &layout, &probe["structure"], &json!([])).unwrap();
         assert!(

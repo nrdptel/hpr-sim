@@ -293,7 +293,7 @@ content), `cargo xtask ork` names a cause, and it fails if it can't. Some files 
 | recovery gear or a mass component hpr weighs as a point mass, where OpenRocket spreads it over its packing ([below](#fins-rail-buttons-and-roll-inertia)); counted only when hpr's roll inertia is the lower, by no more than such parts could add in a packing as wide as their tube | 3 |
 
 The pitch inertia is within 1% on 53 of 74. The 21 outside have no named cause yet, and no bound
-is known; on the fin probes below, pitch differs by up to 0.11% where the fins weigh the same.
+is known; on the fin probes below, pitch differs by up to 0.41% where the fins weigh the same.
 
 **What it leaves out.** Motors: this is the structure alone, and a motor's mass is
 [M2.2c](../decisions-and-roadmap.md#m2-2c)'s. Only the design's selected
@@ -455,7 +455,9 @@ I_roll = m (R² + R hₑ + hₑ²/3),   hₑ² = A h / c_r
 
 Here `A` is one fin's area, `h` its span and `c_r` its root chord. For a rectangular fin, `hₑ` is
 the span, and the shortcut is exact except that it leaves out the fin's thickness. `hₑ` is shorter
-than the span when the fin narrows outward, and longer when it widens. A tab's mass goes where the
+than the span when the fin narrows outward, and longer when it widens. The rule is inferred from
+OpenRocket's output, and every tapered probe narrows outward, so a fin that widens is the rule
+carried past what was measured. A tab's mass goes where the
 fin's does, and neither the section nor the thickness enters. A single fin gets the same rod about
 its own middle, `m hₑ²/12`.
 
@@ -496,8 +498,18 @@ fin stays the exact ellipse too; OpenRocket's 30-sided polygon weighs 0.18% less
 **Where a rail button sits.** OpenRocket gives a rail button no length. It puts the button's centre
 where a part of no length would sit, whichever end of the tube the file measures from, and a row's
 first button there, the rest following aft. hpr now reads a `.ork` button so (issue
-[#151](https://github.com/nrdptel/hpr-sim/issues/151)); before, it sat one radius, 5 mm, further aft.
-The probes check the top, the middle and the bottom, with one button and with a row of two.
+[#151](https://github.com/nrdptel/hpr-sim/issues/151)). Before, hpr put the row's forward edge, middle
+or aft edge on the position. The move depends on which end the file measures from:
+
+| measured from | how the row moves (radius r, spacing s, n buttons) | a row of two 10 mm buttons, 100 mm apart |
+|---|---|---|
+| the top, after a part, or absolute | forward r | 5 mm forward |
+| the middle | aft (n − 1)s/2; one button does not move | 50 mm aft |
+| the bottom | aft r + (n − 1)s | 105 mm aft |
+
+A flight leaves the rail when its aft-most guide does, so a row placed from the middle or the
+bottom now leaves it later. The probes check the top, the middle and the bottom, with one button
+and with a row of two.
 
 **What is left, each pinned by a test.**
 
@@ -506,9 +518,9 @@ The probes check the top, the middle and the bottom, with one button and with a 
 - A mass override on a packed part that weighs nothing: OpenRocket spreads it over the packing,
   hpr makes it a point mass.
 - Fin fillets: 0.81% of the probe's mass at a 5 mm radius, left out, with a warning.
-- Small and not traced: a canted fin set's mass (−0.004%), fins' pitch inertia (up to 0.11% where
-  the fins weigh the same), a launch lug's pitch inertia (0.03%) and a rail button's inertias (up to
-  0.05%).
+- Small and not traced: a canted fin set's mass (−0.004%), fins' pitch inertia (up to 0.41% where
+  the fins weigh the same, on a single fin; up to 0.11% on the other probes), a launch lug's pitch
+  inertia (0.03%) and a rail button's inertias (up to 0.05%).
 
 The first three are the next step, [M2.2b3](../decisions-and-roadmap.md#m2-2b3).
 

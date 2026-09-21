@@ -437,7 +437,8 @@ mod tests {
     ///   Its mass is OpenRocket's but for a rounded or airfoil section
     ///   ([`a_fin_section_is_weighed_as_pinned`]), fillets, which hpr leaves out, an ellipse, and a
     ///   cant (−4.19e-5, not traced). Its pitch inertia is apart by up to 0.11% where the masses
-    ///   agree: OpenRocket's pitch rule for fins is not measured here.
+    ///   agree (0.406% on a single fin, below): OpenRocket's pitch rule for fins is not measured
+    ///   here.
     /// - A rail button, one or a row, from any end: OpenRocket's in mass and centre (#151), its
     ///   inertias apart by 7.16e-6 and 9.23e-5 (one), 1.43e-5 and 4.99e-4 (two).
     /// - A launch lug: its pitch inertia is apart by 3.13e-4.

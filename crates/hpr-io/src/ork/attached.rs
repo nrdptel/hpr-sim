@@ -802,7 +802,8 @@ fn position(values: &mut Values<'_>) -> Position {
 /// no length would sit, from whichever end the offset is measured, and a row's first button there,
 /// the rest following aft (#151; measured on `validation/oracles/openrocket/conventions.py`'s
 /// probes: from the top, the middle and the bottom, one button and a row of two). `hpr-design`
-/// places a part by its forward edge and gives a row the length from the first button's forward
+/// puts a part's forward edge, middle or aft edge on the position (from the top, after a part or
+/// absolute; the middle; the bottom) and gives a row the length from the first button's forward
 /// edge to the last one's aft edge, so the offset moves by the difference.
 fn centred_on_its_position(position: Position, button: &RailButton) -> Position {
     let radius_m = 0.5 * button.outer_diameter_m;
