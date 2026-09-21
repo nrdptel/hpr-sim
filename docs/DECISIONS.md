@@ -5127,11 +5127,14 @@ by name, so a two-way comparison could never agree everywhere without hpr copyin
 **Consequences.** On 2026-09-21:
 - **Imports.** `loft-fixtures` imports 27 of 27 files and the jar's examples 17 of 17, each with 0
   errors. The only errors under `refs/` are the two Loft test fixtures that are not XML (ADR-051).
-- **The cross-check.** It compares 1,077 numbers over 71 designs:
-  - 967 agree;
+- **The cross-check.** The record covers all 78 files the survey reads, and it compares 1,113
+  numbers over the 74 designs OpenRocket opens:
+  - 1,003 agree;
   - in 110, RocketSerializer is apart and hpr's number is OpenRocket's (75 stations from its walk,
     15 transition radii from a same-named transition, 20 with no cause shown);
   - in 0, hpr is apart from both.
+  - hpr's number is OpenRocket's in all 1,113, the 1,003 agreements included, so no agreement is a
+    mistake hpr and RocketSerializer share. `cargo xtask ork` prints that count too.
 - **Not compared:** 6 parts inside pods or parallel stages, 1 body radius RocketSerializer has no
   number for, and 4 files OpenRocket does not open.
 - **The public record.** Six of the seven Loft designs open in OpenRocket. Of their 74 numbers, 68

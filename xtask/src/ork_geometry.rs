@@ -50,6 +50,9 @@ pub(crate) struct Compared {
     pub(crate) verdict: Verdict,
     /// Why RocketSerializer is apart, when the record shows it.
     pub(crate) cause: Option<&'static str>,
+    /// Whether hpr's number is OpenRocket's too, when OpenRocket gave one: what shows that an
+    /// agreement is not a mistake the two readers share.
+    pub(crate) openrocket_same: Option<bool>,
     pub(crate) detail: Value,
 }
 
@@ -105,6 +108,7 @@ impl DesignCheck {
             quantity,
             verdict,
             cause,
+            openrocket_same: openrocket.map(|or| same(ours, or)),
             detail: json!({ "hpr": ours, "rocketserializer": theirs, "openrocket": openrocket }),
         });
     }
@@ -131,6 +135,7 @@ impl DesignCheck {
             quantity,
             verdict,
             cause: None,
+            openrocket_same: openrocket.map(|or| or == ours),
             detail: json!({ "hpr": ours, "rocketserializer": theirs, "openrocket": openrocket }),
         });
     }
@@ -502,6 +507,10 @@ pub(crate) struct GeometryTally {
     in_kept_parts: usize,
     not_stated: usize,
     canted: [usize; 2],
+    /// Numbers OpenRocket gave, and how many of them are hpr's; then the same for the numbers
+    /// hpr and RocketSerializer agree on.
+    openrocket_same: [usize; 2],
+    agreeing_openrocket_same: [usize; 2],
     unmatched: Vec<String>,
     extractor_errors: BTreeMap<String, usize>,
     hpr_apart: Vec<Value>,
@@ -568,6 +577,14 @@ impl GeometryTally {
         self.compared_designs += 1;
         let check = compare(&design, rocket, layout);
         for compared in &check.compared {
+            if let Some(same) = compared.openrocket_same {
+                self.openrocket_same[0] += 1;
+                self.openrocket_same[1] += usize::from(same);
+                if compared.verdict == Verdict::Agree {
+                    self.agreeing_openrocket_same[0] += 1;
+                    self.agreeing_openrocket_same[1] += usize::from(same);
+                }
+            }
             let counts = self
                 .by_quantity
                 .entry(compared.quantity.clone())
@@ -641,6 +658,14 @@ impl GeometryTally {
             total[0],
             total[1],
             total[2]
+        );
+        println!(
+            "    hpr's number is OpenRocket's too: {} of the {} OpenRocket gave, and {} of the {} \
+             hpr and RocketSerializer agree on",
+            self.openrocket_same[1],
+            self.openrocket_same[0],
+            self.agreeing_openrocket_same[1],
+            self.agreeing_openrocket_same[0]
         );
         println!(
             "    by quantity, agree/RocketSerializer apart/hpr apart: {}",
@@ -758,6 +783,11 @@ mod tests {
         // each one further aft by the parts before it, and hpr's station is OpenRocket's.
         assert_eq!((tally.compared_designs, tally.refused), (6, 1));
         assert_eq!(total, [68, 6, 0]);
+        // And every one of hpr's 74 numbers is OpenRocket's, the 68 agreements included.
+        assert_eq!(
+            (tally.openrocket_same, tally.agreeing_openrocket_same),
+            ([74, 74], [68, 68])
+        );
         assert_eq!(
             tally.causes,
             BTreeMap::from([

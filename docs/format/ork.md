@@ -13,24 +13,29 @@ finishes, positions and overrides — and its motor configurations, with the mot
 their thrust curves, when its parachutes open and its stages separate, and the simulations
 OpenRocket last ran on it. That is from Rust; there is no command-line tool yet.
 
-**How far to trust it.** Motors are read, but a configuration flies only when every motor in it
-lights at launch and has a thrust curve, in the file or in hpr's small bundled catalog, on an
-airframe read without a warning: **1 of the 174 motor configurations** in the reference library's
-75 designs does
-([motors](#motors-and-their-configurations)). Recovery and separation settings are read but not
-flown ([when parachutes open](#when-parachutes-open-and-stages-separate)). **Pods and parallel
-stages are kept, not modelled**: a design with them is marked *reduced*, and none of its
-configurations flies ([what hpr keeps](#what-hpr-keeps-for-writing-the-file-back)). A part
-hpr cannot give an honest shape — fins on a nose cone, tube fins OpenRocket sizes from the body —
-is **left out**, each one named in a warning rather than guessed at
-([what is left out, and why](#what-is-left-out-and-why)). Every design in the reference library now
-gives a rocket that lays out. Where a file leaves a radius with nothing to be worked out from, it
-gets OpenRocket's own default of 25 mm, with a warning
-([when an automatic radius has nothing to take](#when-an-automatic-radius-has-nothing-to-take)).
-The airframe's key geometry was held against a second reader, RocketSerializer, and against
-OpenRocket where the two differ: the nose cone, transitions, fin sets, where each sits, and the
-body radius. Of 1,077 numbers over 71 designs, none of hpr's is apart from both
-([checked against RocketSerializer](#checked-against-rocketserializer)).
+**How far to trust it.**
+
+- **The shape is cross-checked.** The airframe's key geometry was compared with a second program
+  that reads `.ork` files, RocketSerializer, and with OpenRocket itself. That geometry is the nose
+  cone, the transitions, the fin sets, where each sits, and the body radius. Of 1,113 numbers over
+  74 designs, every one of hpr's is OpenRocket's
+  ([checked against RocketSerializer](#checked-against-rocketserializer)).
+- **Few motor configurations fly yet.** Motors are read, but a configuration flies only when every
+  motor in it lights at launch, every motor has a thrust curve (in the file or in hpr's small
+  bundled catalog), and the airframe was read without a warning. That is **1 of the 174 motor
+  configurations** in the reference library's 75 designs
+  ([motors](#motors-and-their-configurations)).
+- **Recovery is read, not flown.** Recovery and separation settings are read, but no flight uses
+  them yet ([when parachutes open](#when-parachutes-open-and-stages-separate)).
+- **Pods and parallel stages are kept, not modelled.** A design with them is marked *reduced*, and
+  none of its configurations flies ([what hpr keeps](#what-hpr-keeps-for-writing-the-file-back)).
+- **Some parts are left out.** A part hpr cannot give an honest shape, such as fins on a nose cone
+  or tube fins OpenRocket sizes from the body, is left out. Each one is named in a warning rather
+  than guessed at ([what is left out, and why](#what-is-left-out-and-why)).
+- **Every design in the reference library lays out**, meaning every part gets a position and a
+  radius. A radius the file leaves with nothing to be worked out from gets OpenRocket's own
+  default of 25 mm, with a warning
+  ([when an automatic radius has nothing to take](#when-an-automatic-radius-has-nothing-to-take)).
 
 ## Opening a file today
 
@@ -319,13 +324,13 @@ which fails if either one ever behaves differently.
 
 **Every other file imports without an error.** An import error is a file that does not read, or a
 design that reads but does not lay out. Warnings are not errors, because a warning never stops an
-import. The survey counts both kinds of error for each source:
+import. The survey counts both kinds of error for each source. On 2026-09-21:
 
 | source | files | read | laid out | errors |
 |---|---|---|---|---|
 | the private design library (`loft-fixtures`) | 27 | 27 | 27 | 0 |
 | the OpenRocket 24.12 jar's examples | 17 | 17 | 17 | 0 |
-| everything else under `refs/` | 34 | 32 | 31 | 2, the two above |
+| everything else under `refs/` | 34 | 32 | 31 | 2 (the two Loft fixtures that are not XML) |
 
 One file in the last row reads but holds no design, so it has nothing to lay out.
 
@@ -373,14 +378,23 @@ library is never snapshotted; `cargo xtask ork` reports it only as counts, as ab
 ### Checked against RocketSerializer
 
 **In short.** [RocketSerializer][rocketserializer] is a second program that reads `.ork` files.
-RocketPy's team wrote it to turn an OpenRocket design into RocketPy's inputs. Where hpr and
-RocketSerializer read a number the same way, that number rests on two readers, not one. Where they
-differ, OpenRocket itself, run on the same file, settles it. On the reference library and the
-jar's examples, hpr agrees with RocketSerializer on 967 of 1,077 numbers. On each of the other 110,
-hpr's number is OpenRocket's and RocketSerializer's is not. On none is hpr apart from both. This
-checks the *reading*, meaning the numbers in the file and where each part sits. It does not check
-any physics. The check is [M3.1d2](../decisions-and-roadmap.md#m3-1d2); how it was decided is in
-[ADR-059][adr-059].
+RocketPy's team wrote it to turn an OpenRocket design into RocketPy's inputs. This check compares
+hpr's reading of each design's shape with RocketSerializer's. Where the two differ, OpenRocket
+itself, run on the same file, decides which is right.
+
+On 2026-09-21 the check covered 74 designs. Of 1,113 numbers:
+- hpr matched RocketSerializer on 1,003;
+- on the other 110, OpenRocket gave hpr's number, not RocketSerializer's;
+- hpr never differed from both.
+
+**Every one of hpr's 1,113 numbers is also OpenRocket's.** That includes the 1,003 where it matched
+RocketSerializer. So no agreement here is a mistake the two readers happen to share.
+
+This checks the *reading*: the dimensions in the file, and where each part sits. It does not check
+mass, the centre of gravity, or any physics. Comparing those with OpenRocket's is
+[M2.2](../decisions-and-roadmap.md#m2-2), the next roadmap step.
+The check was added by [M3.1d2](../decisions-and-roadmap.md#m3-1d2), the roadmap step that closed
+`.ork` import, and [ADR-059][adr-059] records how it was decided.
 
 **What is compared.** Everything RocketSerializer reports about the airframe's shape:
 
@@ -388,63 +402,69 @@ any physics. The check is [M3.1d2](../decisions-and-roadmap.md#m3-1d2); how it w
 |---|---|
 | the nose cone | its shape, length and base radius |
 | each transition | its length, and its radius at each end |
-| each trapezoidal or elliptical fin set | the number of fins, root chord, tip chord, span, sweep and cant |
-| each of those parts | its station: where its front sits, in metres aft of the nose tip |
+| each trapezoidal or elliptical fin set | the number of fins, root chord, tip chord, span, sweep and [cant](../glossary.md#cant) |
+| each of those parts | its [station](../glossary.md#station): where its front sits, in metres aft of the nose tip |
 | the rocket | its body radius: the largest radius the file writes as a number |
 
-**How a difference is settled.** `validation/oracles/rocketserializer/geometry.py` runs
-RocketSerializer's own extractors on each design. It also asks OpenRocket 24.12, loaded on the same
-file, for every one of the same numbers. `cargo xtask ork` then compares hpr's reading with both:
+**How a difference is settled.** A script, `validation/oracles/rocketserializer/geometry.py`, runs
+RocketSerializer's *extractors*, the functions it uses to pull each part out of a file, on every
+design. It also asks OpenRocket 24.12, loaded on the same file, for each of the same numbers. It
+writes what both programs read to a JSON file, the *record*. `cargo xtask ork` then compares hpr's
+reading with the record. Two numbers count as the same when they differ by less than 1 part in 10⁹:
 
-- hpr's number is RocketSerializer's, to 1 part in 10⁹: they **agree**.
-- It is not, but it is OpenRocket's, and RocketSerializer's is not: **RocketSerializer is apart**.
-- Anything else: **hpr is apart**, and the survey fails.
+- If hpr's number is RocketSerializer's, they **agree**.
+- If it is not, but it is OpenRocket's, and RocketSerializer's is not, then **RocketSerializer
+  differs**.
+- Otherwise **hpr differs**, and the survey fails.
 
 **A worked example.** Loft's public `demo-dual-deploy.ork` puts its fin set at the bottom of the
-booster tube. hpr and OpenRocket both give its station as 1.45 m. RocketSerializer gives 1.53 m. In
-the file, the booster tube holds the drogue parachute first, packed 0.08 m long, and then the fins.
-RocketSerializer's walk down the tree moves its running station on by each part's length as it
-goes, so it places the fins 0.08 m further aft: 1.45 + 0.08 = 1.53. The record keeps that length
+booster tube. The same tube also holds the drogue parachute, packed 0.08 m long, listed before the
+fins in the file. The parachute sits inside the tube, so it adds nothing to where the fins are.
+OpenRocket and hpr both place the fins from the tube's aft end, at 1.45 m. RocketSerializer adds
+up the lengths of every part listed before the fins in the same tube, the parachute's 0.08 m
+included, so it puts them at 1.45 + 0.08 = 1.53 m. The record keeps that sum of earlier lengths
 for every part, so this cause is checked, not assumed.
 
-**The results.** From `cargo xtask ork`, over the 75 designs of the reference library and the jar's
-examples that the record holds:
+**The results.** From `cargo xtask ork` on 2026-09-21, over the 78 files it reads (the reference
+library under `refs/` and the 17 examples inside the OpenRocket jar):
 
 | | count |
 |---|---|
-| designs compared | 71 |
-| numbers compared | 1,077 |
-| hpr agrees with RocketSerializer | 967 |
-| RocketSerializer apart, and hpr's number is OpenRocket's | 110 |
-| hpr apart from both | **0** |
+| files OpenRocket opens, and designs compared | 74 |
+| numbers compared | 1,113 |
+| hpr agrees with RocketSerializer | 1,003 |
+| RocketSerializer differs, and hpr's number is OpenRocket's | 110 |
+| hpr differs from both | **0** |
+| hpr's number is OpenRocket's | 1,113 |
 
 The 110 differences, by cause:
 
 | cause | count |
 |---|---|
-| a station: RocketSerializer's walk adds the lengths of the parts before it in its parent, as in the worked example | 75 |
+| a station: RocketSerializer adds the lengths of the parts before it in its parent, as in the worked example | 75 |
 | a transition's radius: RocketSerializer looks transitions up in OpenRocket by name, and takes the first of that name | 15 |
 | no cause shown | 20 |
 
-The 20 with no cause shown:
+For the 20 with no cause shown, the reason RocketSerializer's number differs has not been traced.
+In each of them hpr's number is OpenRocket's, and the per-file record holds all three programs'
+numbers:
 - 17 are stations, 13 of fin sets and 4 of transitions.
 - 1 is a nose cone's base radius, and 1 is the body radius.
 - 1 is a nose cone's shape: a nose written as an `ogive` of shape parameter 0. OpenRocket draws it
   as a cone, and so does hpr, while RocketSerializer passes on the word `ogive`.
 
-For each of the 20, the per-file record holds all three programs' numbers.
-
 **Two things OpenRocket does that the check allows for.**
 
-- **A canted fin.** OpenRocket turns a canted fin about the middle of its root chord, which moves
-  the front of the root aft by half the chord times (1 − cos δ), where δ is the cant. For a 0.495 m
-  root at 1°, that is 38 µm. The file places the root before it is turned, and so does hpr. So the
-  script reads OpenRocket's station with the cant set to zero, then puts the cant back. It keeps the
-  turned station too. For all 10 canted fin sets in the library and the jar's examples, the turned
-  station is aft of the unturned one by exactly that amount, and `cargo xtask ork` checks it.
+- **A canted fin.** OpenRocket turns a canted fin about the middle of its root chord. That moves
+  the front of the root aft by half the chord times (1 − cos δ), where δ is the cant: 38 µm for a
+  0.495 m root at 1°. The file places the root before it is turned, and so does hpr. So the script
+  reads OpenRocket's station with the cant set to zero, then puts the cant back. It keeps the
+  turned station too. For all 10 canted fin sets, the turned station is aft of the unturned one by
+  exactly that amount, and `cargo xtask ork` checks it.
 - **A shape word.** An ogive of shape parameter 0 is a cone
-  ([the spine](#the-spine-stages-and-body-components) says why). The shape is settled by OpenRocket's profile: its
-  radius a quarter, a half and three quarters of the way along the nose.
+  ([the spine](#the-spine-stages-and-body-components) says why). To tell which shape OpenRocket
+  really draws, the script records OpenRocket's radius a quarter, a half and three quarters of the
+  way along the nose. hpr's profile is compared with those three radii.
 
 **What it leaves out.**
 - RocketSerializer reports no body tube, no inner part, no mass, no fin thickness, and no freeform
@@ -454,15 +474,36 @@ For each of the 20, the per-file record holds all three programs' numbers.
 - 1 body radius is not compared: a file that writes every radius as `auto` gives
   RocketSerializer none.
 - 4 files are not compared, because OpenRocket 24.12 does not open them. One is Loft's
-  `demo-quirks.ork`, whose parallel stage sits directly under the rocket. Two are the files above
-  that are not XML. The fourth holds no design.
+  `demo-quirks.ork`, whose parallel stage sits directly under the rocket. Two are the Loft fixtures
+  above that are not XML. The fourth holds no design.
 
-**Run it yourself.** `cargo test -p xtask rocketserializer` holds hpr to the committed record of
-the seven public Loft designs, `validation/fixtures/ork/rocketserializer-loft-demo.json`, and CI
-runs it. OpenRocket opens six of the seven. Of their 74 numbers, 68 agree. The other 6 are fin
-stations, each RocketSerializer's walk, as in the worked example. To run the whole library, set up
-the environment the script's first lines describe, run it with `refs --jar`, then run
-`cargo xtask ork`.
+**Run it yourself.** CI does not run RocketSerializer or OpenRocket. It holds hpr to their saved
+output for the seven public Loft designs, `validation/fixtures/ork/rocketserializer-loft-demo.json`,
+with `cargo test -p xtask rocketserializer`. OpenRocket opens six of the seven. Of their 74
+numbers, 68 agree, and the other 6 are fin stations that RocketSerializer adds earlier lengths to,
+as in the worked example.
+
+To make a record yourself you need Python 3.11, [`uv`](https://docs.astral.sh/uv/), Java 17 and
+the OpenRocket 24.12 jar (`cargo xtask refs fetch` downloads the jar to `refs/openrocket/`). From
+the repository root:
+
+```sh
+# Once: an environment of its own, with every package pinned.
+uv venv -p 3.11 refs/venv-rs
+uv pip install -p refs/venv-rs --no-deps -r validation/oracles/rocketserializer/requirements.txt
+
+# The seven public designs, written over the committed record:
+refs/venv-rs/bin/python validation/oracles/rocketserializer/geometry.py \
+    validation/fixtures/ork/rocketserializer-loft-demo.json validation/fixtures/ork/loft-demo
+
+# The whole reference library and, with --jar, the jar's example designs; then compare:
+refs/venv-rs/bin/python validation/oracles/rocketserializer/geometry.py \
+    corpus-out/rocketserializer.json refs --jar
+cargo xtask ork
+```
+
+The script takes any directory of `.ork` files in place of `refs` and writes what the two programs
+read. `cargo xtask ork` compares hpr with the reference library's record only.
 
 [rocketserializer]: https://github.com/RocketPy-Team/RocketSerializer
 [adr-059]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-059-the-rocketserializer-cross-check-three-readers-with-openrocket-settling-a-difference-2026-09-21

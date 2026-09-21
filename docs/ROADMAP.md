@@ -630,7 +630,7 @@
       synthetic one, each read by `hpr_io::ork::design` into a summary snapshot; the library: counts.
     - [x] **M3.1d2 The cross-check.** *Done when:* every `.ork` in `refs/loft-fixtures` and the OR
       example set imports with zero errors, and the RocketSerializer cross-check agrees on the key
-      geometry. *Result:* met (ADR-059): 27 and 17 files, 0 errors; of 1,077 numbers over 71
+      geometry. *Result:* met (ADR-059): 27 and 17 files, 0 errors; of 1,113 numbers over 74
       designs, none of hpr's is apart from both RocketSerializer and OpenRocket.
 
 - [ ] **M2.2 OpenRocket oracle and corpus.**

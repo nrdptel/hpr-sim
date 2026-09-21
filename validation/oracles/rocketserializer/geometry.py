@@ -60,8 +60,9 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "openrocket"))
 import automatic_radius  # noqa: E402 - the JVM start and the loader are shared
 
 RS_COMMIT = "66d8ca8c9be36816c4157fbdf249e87fb8c1f5dc"
-# Directories under refs/ that hold no design of their own: environments and scratch copies.
-SKIPPED = {"venv", "venv-rs", "scratch", "snapshots"}
+# Directories under refs/ that are Python environments, not designs. Everything else under refs/
+# is read, as `cargo xtask ork` reads it.
+SKIPPED = {"venv", "venv-rs"}
 
 
 def document_text(path):
