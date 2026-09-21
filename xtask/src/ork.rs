@@ -34,9 +34,17 @@ const JAR: &str = "refs/openrocket/OpenRocket-24.12.jar";
 /// The directories read when none are given.
 const DEFAULT_DIRS: [&str; 1] = ["refs"];
 
+/// What OpenRocket 24.12 resolved for every body radius of the files its probe ran
+/// (`validation/oracles/openrocket/automatic_radius.py --library`, ADR-054).
+const OPENROCKET_RADII: &str = "validation/fixtures/ork/openrocket-automatic-radius.json";
+
 /// How `hpr_io::ork::rocket` begins the warning for a radius it gave OpenRocket's default radius;
 /// a test below holds the two together, so a reworded warning cannot quietly count as none.
 const DEFAULT_RADIUS: &str = "an automatic radius with no fixed radius anywhere along its chain";
+
+/// How `hpr_io::ork::rocket` ends the warning for a document with no design in it, whether it has
+/// no `<rocket>` or one holding nothing; held to the importer by the same test.
+const NO_DESIGN: &str = "so the document holds no design";
 
 /// Files in the reference library that are not well-formed XML, so no reader can open them.
 ///
@@ -211,6 +219,11 @@ fn resolved_dimension(placed: &PlacedComponent, tag: &str) -> Option<f64> {
 type Case = (String, Vec<u8>);
 
 fn report(root: &Path, files: &[Case]) -> Result<(), String> {
+    let openrocket = openrocket_radii(&root.join(OPENROCKET_RADII))?;
+    let mut radii_designs = 0usize;
+    let mut radii_compared = 0usize;
+    let mut radii_agreeing = 0usize;
+    let mut radii_apart: Vec<Value> = Vec::new();
     let mut containers: BTreeMap<&'static str, usize> = BTreeMap::new();
     let mut versions: BTreeMap<String, usize> = BTreeMap::new();
     let mut creators: BTreeMap<String, usize> = BTreeMap::new();
@@ -338,13 +351,10 @@ fn report(root: &Path, files: &[Case]) -> Result<(), String> {
                 if defaulted_here > 0 {
                     designs_defaulted += 1;
                 }
-                let holds_design = read
-                    .value
-                    .document
-                    .root
-                    .child("rocket")
-                    .and_then(|rocket| rocket.child("subcomponents"))
-                    .is_some_and(|parts| parts.elements().next().is_some());
+                let holds_design = !spine
+                    .warnings
+                    .iter()
+                    .any(|warning| warning.message.ends_with(NO_DESIGN));
                 if !holds_design {
                     no_design += 1;
                 }
@@ -360,6 +370,36 @@ fn report(root: &Path, files: &[Case]) -> Result<(), String> {
                         for placed in &layout.components {
                             if placed.own.mass_kg == 0.0 {
                                 *weightless.entry(placed.part.kind_name()).or_default() += 1;
+                            }
+                        }
+                        // OpenRocket itself, run on the same file: every body radius it resolved,
+                        // forward to aft, against the one hpr resolved.
+                        if let Some(theirs) = openrocket.get(&oracle_key(name)) {
+                            let ours: Vec<f64> = layout
+                                .body()
+                                .flat_map(|placed| body_radii(&placed.part))
+                                .collect();
+                            radii_designs += 1;
+                            if ours.len() == theirs.len() {
+                                for (index, (ours, theirs)) in ours.iter().zip(theirs).enumerate() {
+                                    radii_compared += 1;
+                                    if (ours - theirs).abs() <= 1e-9 * theirs.abs().max(1e-6) {
+                                        radii_agreeing += 1;
+                                    } else {
+                                        radii_apart.push(json!({
+                                            "file": oracle_key(name),
+                                            "radius": index,
+                                            "hpr": ours,
+                                            "openrocket": theirs,
+                                        }));
+                                    }
+                                }
+                            } else {
+                                radii_apart.push(json!({
+                                    "file": oracle_key(name),
+                                    "hpr_radii": ours.len(),
+                                    "openrocket_radii": theirs.len(),
+                                }));
                             }
                         }
                         // Every automatic dimension the file cached a number with is an answer
@@ -496,7 +536,13 @@ fn report(root: &Path, files: &[Case]) -> Result<(), String> {
     }
 
     let read_count = files.len() - failures - known_bad;
-    let summary = json!({
+    let openrocket_body_radii = json!({
+        "designs": radii_designs,
+        "compared": radii_compared,
+        "agreeing": radii_agreeing,
+        "apart": radii_apart.clone(),
+    });
+    let mut summary = json!({
         "files": files.len(),
         "read": files.len() - failures - known_bad,
         "failed": failures,
@@ -512,11 +558,6 @@ fn report(root: &Path, files: &[Case]) -> Result<(), String> {
         "mixed_content_elements": to_value(&mixed),
         "files_with_mixed_content": files_with_mixed,
         "largest_unpacked_bytes": largest_unpacked,
-        "designs": read_count - no_design,
-        "designs_laid_out": spines_laid_out,
-        "documents_holding_no_design": no_design,
-        "radii_given_openrocket_default": to_value(&defaulted),
-        "designs_with_radii_given_openrocket_default": designs_defaulted,
         "attached_parts": to_value(&attached_parts),
         "parts_left_out": to_value(&left_out),
         "design_warnings": to_value(&spine_warning_kinds),
@@ -556,6 +597,13 @@ fn report(root: &Path, files: &[Case]) -> Result<(), String> {
                 .collect(),
         ),
     });
+    // Added one by one: a single `json!` this size passes the macro's recursion limit.
+    summary["designs"] = json!(read_count - no_design);
+    summary["designs_laid_out"] = json!(spines_laid_out);
+    summary["documents_holding_no_design"] = json!(no_design);
+    summary["radii_given_openrocket_default"] = to_value(&defaulted);
+    summary["designs_with_radii_given_openrocket_default"] = json!(designs_defaulted);
+    summary["openrocket_body_radii"] = openrocket_body_radii;
     let path = root.join(REPORT);
     if let Some(parent) = path.parent() {
         fs::create_dir_all(parent).map_err(|error| format!("{}: {error}", parent.display()))?;
@@ -591,8 +639,7 @@ fn report(root: &Path, files: &[Case]) -> Result<(), String> {
         attached_parts.values().sum::<usize>()
     );
     println!(
-        "  documents that hold no design (a `rocket` with no stage or component of any kind): \
-         {no_design}"
+        "  documents that hold no design (no `rocket`, or one with nothing in it): {no_design}"
     );
     println!(
         "  automatic radii with no fixed radius along their chain, given OpenRocket's default \
@@ -629,6 +676,36 @@ fn report(root: &Path, files: &[Case]) -> Result<(), String> {
          {cached_checked} agree ({cached_unmatched} cached but not comparable)"
     );
     println!("  by tag, compared of cached: {by_tag}");
+    println!(
+        "  body radii against OpenRocket 24.12 run on the same file ({OPENROCKET_RADII}): \
+         {radii_agreeing} of {radii_compared} agree, over {radii_designs} design(s){}",
+        if radii_apart.is_empty() {
+            String::new()
+        } else {
+            format!(
+                "; apart: {}",
+                radii_apart
+                    .iter()
+                    .map(
+                        |apart| match (apart["hpr"].as_f64(), apart["openrocket"].as_f64()) {
+                            (Some(ours), Some(theirs)) => format!(
+                                "{} radius {}: hpr {ours} m, OpenRocket {theirs} m",
+                                apart["file"].as_str().unwrap_or("?"),
+                                apart["radius"]
+                            ),
+                            _ => format!(
+                                "{}: {} radii in hpr, {} in OpenRocket",
+                                apart["file"].as_str().unwrap_or("?"),
+                                apart["hpr_radii"],
+                                apart["openrocket_radii"]
+                            ),
+                        }
+                    )
+                    .collect::<Vec<_>>()
+                    .join("; ")
+            )
+        }
+    );
     // The rules with no cached answer anywhere have no oracle at all, and that is worth saying.
     let never_cached: Vec<&str> = automatic
         .keys()
@@ -691,6 +768,54 @@ fn report(root: &Path, files: &[Case]) -> Result<(), String> {
             files.len()
         )),
     }
+}
+
+/// A body component's radii, forward to aft, in the order the OpenRocket probe records them: a nose
+/// cone's base, a tube's outer radius, a transition's forward then aft radius.
+fn body_radii(part: &Part) -> Vec<f64> {
+    match part {
+        Part::NoseCone(p) => vec![p.base_radius_m],
+        Part::BodyTube(p) => vec![p.outer_radius_m],
+        Part::Transition(p) => vec![p.fore_radius_m, p.aft_radius_m],
+        _ => Vec::new(),
+    }
+}
+
+/// The key the OpenRocket probe files a design under: its path from `refs/`, or its entry in the
+/// jar, whichever machine ran it.
+fn oracle_key(name: &str) -> String {
+    let name = name.replace('\\', "/");
+    match name.rsplit_once('!') {
+        Some((_, entry)) => entry.trim_start_matches('/').to_owned(),
+        None => name
+            .find("refs/")
+            .map_or_else(|| name.clone(), |at| name[at..].to_owned()),
+    }
+}
+
+/// Every body radius OpenRocket resolved in each file its probe opened, by [`oracle_key`].
+fn openrocket_radii(path: &Path) -> Result<BTreeMap<String, Vec<f64>>, String> {
+    let text = fs::read_to_string(path).map_err(|error| format!("{}: {error}", path.display()))?;
+    let fixture: Value =
+        serde_json::from_str(&text).map_err(|error| format!("{}: {error}", path.display()))?;
+    let mut radii = BTreeMap::new();
+    for run in fixture["library"].as_array().into_iter().flatten() {
+        let (Some(file), Some(resolved)) = (run["file"].as_str(), run["resolved"].as_array())
+        else {
+            continue;
+        };
+        let values = resolved
+            .iter()
+            .flat_map(|component| {
+                ["base", "outer", "fore", "aft"]
+                    .into_iter()
+                    .filter_map(|key| component[key].as_f64())
+                    .collect::<Vec<_>>()
+            })
+            .collect();
+        radii.insert(oracle_key(file), values);
+    }
+    Ok(radii)
 }
 
 fn print_counts<K: std::fmt::Display>(title: &str, counts: &BTreeMap<K, usize>) {
@@ -901,10 +1026,11 @@ fn root() -> Result<PathBuf, String> {
 mod tests {
     use super::*;
 
-    /// The survey counts the radii given OpenRocket's default by the start of their warning; this
-    /// holds that start to what the importer actually says.
+    /// The survey counts the radii given OpenRocket's default, and the documents with no design,
+    /// by the words of their warnings; this holds those words to what the importer actually says,
+    /// and the default's warning to the tag it is about, which the survey tallies by.
     #[test]
-    fn default_radius_warning_is_the_one_counted() {
+    fn the_warnings_the_survey_counts_are_the_ones_raised() {
         let xml = br#"<openrocket version="1.10" creator="test"><rocket><name>R</name>
             <subcomponents><stage><name>S</name><subcomponents>
             <bodytube><name>T</name><length>0.3</length><thickness>0.001</thickness>
@@ -912,11 +1038,38 @@ mod tests {
             </subcomponents></stage></subcomponents></rocket></openrocket>"#;
         let read = ork::read(xml).unwrap();
         let spine = ork::rocket(&read.value.document);
-        let counted = spine
+        let counted: Vec<&str> = spine
             .warnings
             .iter()
             .filter(|warning| warning.message.starts_with(DEFAULT_RADIUS))
-            .count();
-        assert_eq!(counted, 1, "{:?}", spine.warnings);
+            .map(|warning| warning.at.as_str())
+            .collect();
+        assert_eq!(
+            counted,
+            ["openrocket/rocket/stage[0]/bodytube[0]"],
+            "{:?}",
+            spine.warnings
+        );
+        assert!(
+            spine
+                .warnings
+                .iter()
+                .all(|w| !w.message.ends_with(NO_DESIGN))
+        );
+
+        for xml in [
+            &br#"<openrocket version="1.10" creator="test"><rocket><name>R</name></rocket>
+                </openrocket>"#[..],
+            &br#"<openrocket version="1.10" creator="test"></openrocket>"#[..],
+        ] {
+            let read = ork::read(xml).unwrap();
+            let spine = ork::rocket(&read.value.document);
+            let none = spine
+                .warnings
+                .iter()
+                .filter(|warning| warning.message.ends_with(NO_DESIGN))
+                .count();
+            assert_eq!(none, 1, "{:?}", spine.warnings);
+        }
     }
 }

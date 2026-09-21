@@ -8,13 +8,21 @@ This script measures it: it runs OpenRocket 24.12 as an external oracle on small
 here, reads back the radius OpenRocket resolved for every body component, and saves each design
 again to see what OpenRocket writes after `auto`.
 
+Each radius is read twice. `opened` is what OpenRocket holds right after loading the file;
+`resolved` is what it holds once saving has made it work every radius out again, which is also
+what it writes. The two differ on one shape: a tube whose automatic neighbour holds a part with an
+automatic radius of its own reads OpenRocket's default when opened, and its neighbour's radius once
+resolved. `resolved` is the answer hpr is held to.
+
 OpenRocket is run, never read: its source is GPL, and nothing here comes from it. The class and
 method names used are the public API that `javap` prints for the jar. JPype starts the JVM inside
 this Python process (ADR-035 explains why that matters); this is a probe of one behaviour, not a
 decision on how M2.2's flight oracle drives the jar.
 
 With `--library`, the two reference-library designs whose chains motivated the question are run
-too, when `refs/` holds them; only their radii are recorded, never their contents.
+too, when `refs/` holds them, and so are the example designs inside the jar, so that every body
+radius OpenRocket resolves there can be held against hpr's; only their radii are recorded, never
+their contents.
 
 OpenRocket 24.12 needs Java 17 exactly. Set JAVA_HOME to a Java 17 home, or install Homebrew's
 keg-only `openjdk@17`, which is found without it. Run from the repository root:
@@ -25,6 +33,7 @@ keg-only `openjdk@17`, which is found without it. Run from the repository root:
 The fixture is written to the path given, not to standard output, which OpenRocket logs to.
 """
 
+import hashlib
 import io
 import json
 import os
@@ -57,6 +66,17 @@ def tube(radius):
     )
 
 
+def tube_holding_coupler(radius):
+    """A tube with a coupler inside it whose outer radius is automatic: the tube's bore."""
+    return (
+        f"<bodytube><name>Tube</name>{MATERIAL}<length>0.03</length>"
+        f"<thickness>0.001</thickness><radius>{radius}</radius><subcomponents>"
+        f"<tubecoupler><name>Coupler</name>{MATERIAL}<length>0.1</length>"
+        "<outerradius>auto</outerradius><thickness>0.002</thickness></tubecoupler>"
+        "</subcomponents></bodytube>"
+    )
+
+
 def nose(aft):
     return (
         f"<nosecone><name>Nose</name>{MATERIAL}<length>0.2</length>"
@@ -72,8 +92,8 @@ def transition(fore, aft):
     )
 
 
-# Each case is a spine, forward to aft. The numbers after `auto` are what a file would have
-# cached; the question is whether OpenRocket reads them.
+# Each case is a spine, forward to aft; a list of spines is one per stage. The numbers after
+# `auto` are what a file would have cached; the question is whether OpenRocket reads them.
 CASES = {
     "a tube alone": [tube("auto")],
     "a tube alone, caching 0.04": [tube("auto 0.04")],
@@ -90,24 +110,64 @@ CASES = {
     ],
     # A control: here the neighbour rule has a fixed radius to take, and must take it.
     "a nose cone before a fixed tube": [nose("auto"), tube("0.03")],
+    # Chains that do reach a fixed radius, but through more than one automatic radius: where
+    # OpenRocket's neighbour rule and hpr's may part.
+    "a nose cone and two automatic tubes before a fixed tube": [
+        nose("auto"),
+        tube("auto"),
+        tube("auto"),
+        tube("0.03"),
+    ],
+    # The same, but the second tube holds a coupler whose radius is automatic: the shape of the
+    # OpenRocket example "Dual parachute deployment", where OpenRocket's answer for the first tube
+    # changes with that unrelated coupler.
+    "the same, with a coupler of automatic radius inside the second tube": [
+        nose("auto"),
+        tube("auto"),
+        tube_holding_coupler("auto"),
+        tube("0.03"),
+    ],
+    "a fixed tube and two automatic tubes": [tube("0.03"), tube("auto"), tube("auto")],
+    "a transition's automatic aft end before an automatic tube": [
+        tube("0.03"),
+        transition("0.03", "auto"),
+        tube("auto"),
+    ],
+    "a nose cone before an automatic transition end": [
+        nose("auto"),
+        transition("auto", "0.02"),
+        tube("0.02"),
+    ],
+    "a nose cone and a tube, both automatic, then a stage with a fixed tube": [
+        [nose("auto"), tube("auto")],
+        [tube("0.03")],
+    ],
 }
 
 
 def document(spine):
+    stages = spine if isinstance(spine[0], list) else [spine]
     return (
         "<?xml version='1.0' encoding='utf-8'?>\n"
         '<openrocket version="1.10" creator="hpr-sim automatic-radius probe">'
-        "<rocket><name>Probe</name><subcomponents><stage><name>Stage</name><subcomponents>"
-        + "".join(spine)
-        + "</subcomponents></stage></subcomponents></rocket></openrocket>\n"
+        "<rocket><name>Probe</name><subcomponents>"
+        + "".join(
+            f"<stage><name>Stage {k + 1}</name><subcomponents>{''.join(parts)}</subcomponents></stage>"
+            for k, parts in enumerate(stages)
+        )
+        + "</subcomponents></rocket></openrocket>\n"
     )
 
 
 def java_home():
+    """The first Java 17 home: JAVA_HOME if it is one, then the Homebrew kegs."""
     for home in [os.environ.get("JAVA_HOME"), *KEGS]:
-        if home and Path(home).is_dir():
+        if not home or not (Path(home) / "release").is_file():
+            continue
+        release = (Path(home) / "release").read_text(encoding="utf-8")
+        if re.search(r'^JAVA_VERSION="17[."]', release, re.MULTILINE):
             return Path(home)
-    sys.exit("no Java 17 found: set JAVA_HOME to a Java 17 home")
+    sys.exit("no Java 17 found: OpenRocket 24.12 refuses any other; set JAVA_HOME to a Java 17 home")
 
 
 def start():
@@ -204,32 +264,51 @@ def main():
             path = Path(scratch) / "probe.ork"
             path.write_text(text, encoding="utf-8")
             loaded = load(path)
+            opened = body_radii(loaded.getRocket())
+            saved = saved_radii(loaded)
             cases.append(
                 {
                     "name": name,
                     "document": text,
                     "written": re.findall(r"<(?:radius|aftradius|foreradius)>([^<]*)<", text),
+                    "opened": opened,
+                    "saved": saved,
                     "resolved": body_radii(loaded.getRocket()),
-                    "saved": saved_radii(loaded),
                 }
             )
 
     runs = []
     if library:
-        for name in LIBRARY:
-            path = Path(name)
-            if not path.exists():
-                continue
-            try:
-                resolved = body_radii(load(path).getRocket())
-                runs.append({"file": name, "opens": True, "resolved": resolved})
-            except Exception as error:  # noqa: BLE001 - the refusal is the measurement
-                message = str(error).splitlines()[0]
-                runs.append({"file": name, "opens": False, "error": message})
+        with tempfile.TemporaryDirectory() as scratch:
+            files = [(name, Path(name)) for name in LIBRARY if Path(name).exists()]
+            with zipfile.ZipFile(JAR) as jar:
+                for entry in sorted(jar.namelist()):
+                    if entry.startswith("datafiles/examples/") and entry.endswith(".ork"):
+                        path = Path(scratch) / Path(entry).name
+                        path.write_bytes(jar.read(entry))
+                        files.append((f"{JAR}!/{entry}", path))
+            for name, path in files:
+                try:
+                    loaded = load(path)
+                    opened = body_radii(loaded.getRocket())
+                    saved_radii(loaded)
+                    resolved = body_radii(loaded.getRocket())
+                    runs.append(
+                        {"file": name, "opens": True, "opened": opened, "resolved": resolved}
+                    )
+                except Exception as error:  # noqa: BLE001 - the refusal is the measurement
+                    message = str(error).splitlines()[0]
+                    runs.append({"file": name, "opens": False, "error": message})
+
+    from java.lang import System
 
     fixture = {
         "source": "validation/oracles/openrocket/automatic_radius.py",
+        "command": "automatic_radius.py" + (" --library" if library else ""),
         "openrocket": str(BuildProperties.getVersion()),
+        "jar_sha256": hashlib.sha256(JAR.read_bytes()).hexdigest(),
+        "java": str(System.getProperty("java.version")),
+        "jpype": jpype.__version__,
         "cases": cases,
         "library": runs,
     }
