@@ -133,9 +133,9 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
   up at a boattail — −8.65% to −11.34% (#87).
 - `.ork` (M3.1) builds all 75 designs' rockets, motors and recovery, but only 1 of 174
   configurations flies: 197 motors are not in the 32-motor catalog (M5.1), staging waits for M1.9,
-  and recovery is read, not flown. Pods are kept, not read (M1.13). 5 parts are left out with a reason,
-  among them the corpus's only tube fins (#133); fin fillets, a rail button's screw head and motor
-  clusters are read as the simpler part, with a warning. `polished` is 2 µm here and may
+  and recovery is read, not flown. Pods are kept, not read (M1.13). 5 parts are left out with a
+  reason, among them the corpus's only tube fins (#133); fin fillets, a rail button's screw head and
+  motor clusters are read as the simpler part, with a warning. `polished` is 2 µm here and may
   be 0.5 µm in a newer OpenRocket; a zero-wall tube is weightless, which M2.2 can settle.
 - Drag: against RASAero II's Calisto hpr reads −14.9% to −5.1% supersonic (ADR-030); against
   MIL-HDBK-762 the body reads 6–10% low past Mach 1.6 and high through Mach 1 (#67, #68); against

@@ -5075,8 +5075,8 @@ by name, so a two-way comparison could never agree everywhere without hpr copyin
 **Decision.**
 
 1. **Three readers, not two.** `validation/oracles/rocketserializer/geometry.py` calls
-   RocketSerializer's extractors one by one, as its `ork_extractor` does: `process_elements_position`,
-   `get_rocket_radius`, `search_nosecone`, `search_trapezoidal_fins`, `search_elliptical_fins` and
+   RocketSerializer's extractors one by one, as its `ork_extractor` does:
+   `process_elements_position`, `get_rocket_radius`, `search_nosecone`, `search_trapezoidal_fins`, `search_elliptical_fins` and
    `search_transitions`. For each component it reports, the script also asks OpenRocket 24.12,
    loaded on the same file, for the same numbers. `cargo xtask ork` holds each of hpr's numbers to
    RocketSerializer's, to 1 part in 10⁹. Where they differ, OpenRocket settles it:
