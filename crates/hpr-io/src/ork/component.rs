@@ -64,7 +64,7 @@ struct BodyRead {
 /// end looks at another automatic radius, OpenRocket 24.12 settles on −1 m, which no geometry can
 /// take. hpr gives it this default too, so the chain is one radius end to end.
 ///
-/// [adr-054]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-054-an-automatic-radius-with-nothing-to-take-is-openrockets-default-and-a-rocket-with-no-stage-holds-no-design-2026-09-20
+/// [adr-054]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-054-an-automatic-radius-with-nothing-to-take-is-openrockets-default-and-a-rocket-with-no-stage-or-component-holds-no-design-2026-09-20
 pub const OPENROCKET_DEFAULT_RADIUS_M: f64 = 0.025;
 
 /// Reads a design document into a [`Rocket`]: its stages, the body components stacked in them, and

@@ -783,7 +783,7 @@ no design at all: it is a stored simulation with a rocket's name on it. The two 
 a radius the file doesn't give are
 [above](#when-an-automatic-radius-has-nothing-to-take).
 
-[adr-054]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-054-an-automatic-radius-with-nothing-to-take-is-openrockets-default-and-a-rocket-with-no-stage-holds-no-design-2026-09-20
+[adr-054]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-054-an-automatic-radius-with-nothing-to-take-is-openrockets-default-and-a-rocket-with-no-stage-or-component-holds-no-design-2026-09-20
 [adr-053]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-053-the-parts-on-and-inside-a-ork-body-degrees-what-is-left-out-and-a-sourced-finish-2026-09-20
 [techdoc]: https://openrocket.sourceforge.net/techdoc.pdf
 [dialog]: https://openrocket.readthedocs.io/en/latest/_images/body_tube_config.png
