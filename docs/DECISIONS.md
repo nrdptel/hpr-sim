@@ -5100,7 +5100,7 @@ rests on what OpenRocket means by its words, which its file-format page ([F]) mo
    word is kept as written.
 6. **The rocket flies a configuration only when it can be flown as written.** Every motor must be
    read, have a curve and a case size, sit in a mount read as the single tube it is, and light at
-   launch — `launch`, or `automatic` in the rocket's last stage, at no delay — and no stage may be
+   launch — `launch`, or `automatic` in the bottom stage (the last in the file), at no delay — and no stage may be
    switched off (OpenRocket removes an inactive stage from the flight: release notes 22.02.beta.05,
    PR #1478). Only those become `hpr_design::Rocket::configurations`. The reason is that
    `hpr_design::Configuration` lights every motor at `t = 0` until [M1.9] brings staging: flying a

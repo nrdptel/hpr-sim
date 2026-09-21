@@ -122,6 +122,8 @@ pub struct Design {
 /// let motor = &design.motors.configurations[0].motors[0];
 /// assert!(matches!(motor.curve, hpr_io::ork::Curve::Catalog { .. }));
 /// assert_eq!(motor.delay, Some(hpr_motor::Delay::Seconds(4.0)));
+/// let impulse_ns = motor.curve.motor().expect("a curve").curve().total_impulse_ns();
+/// assert!((impulse_ns - 49.61).abs() < 0.01, "{impulse_ns}");
 ///
 /// // ...and it ignites at launch, so the configuration is one the rocket flies.
 /// let assembly = design.rocket.assemble("c1")?;

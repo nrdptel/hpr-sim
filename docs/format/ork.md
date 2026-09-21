@@ -14,7 +14,8 @@ their thrust curves. That is from Rust; there is no command-line tool yet.
 
 **How far to trust it.** Motors are read, but a configuration flies only when every motor in it
 lights at launch and has a thrust curve, in the file or in hpr's small bundled catalog: **2 of the
-reference library's 174** do ([motors](#motors-and-their-configurations)). **Recovery settings,
+174 motor configurations** in the reference library's 75 designs do
+([motors](#motors-and-their-configurations)). **Recovery settings,
 pods and parallel stages are not read yet** ([M3.1c](../decisions-and-roadmap.md#m3-1c)). A part
 hpr cannot give an honest shape — fins on a nose cone, tube fins OpenRocket sizes from the body —
 is **left out**, each one named in a warning rather than guessed at
@@ -390,6 +391,9 @@ Code: [`hpr_io::ork::attached`](../api/hpr_io/ork/attached/index.html), decided 
 [ADR-053: the parts on and inside a `.ork` body][adr-053].
 
 ### Opening a design, in full
+
+`rocket` reads the airframe alone. To get the motors as well, call `hpr_io::ork::design` instead
+([motors and their configurations](#motors-and-their-configurations)).
 
 This is the doctest on [`hpr_io::ork::rocket`](../api/hpr_io/ork/component/fn.rocket.html), which CI runs.
 Hand it the bytes of a `.ork`, and what comes back is a design and the warnings reading it raised:
@@ -822,8 +826,8 @@ places:
 - `<rocket>` declares each one: a `configid`, a name, whether it is the one OpenRocket opens with
   (`default="true"`), and which stages fly.
 - Each **motor mount** (a body tube or inner tube holding a motor) holds a `<motor configid="…">`
-  per configuration: the manufacturer, the designation such as `H148R`, a `digest`, the case
-  diameter and length, and the ejection delay. The mount also says when its motor lights, and may
+  per configuration: the manufacturer, the designation such as `H148R`, a `digest` (OpenRocket's
+  fingerprint of the thrust curve's data), the case diameter and length, and the ejection delay. The mount also says when its motor lights, and may
   say it differently for each configuration.
 
 So hpr collects each mount's motor into its configuration. A mount that names a configuration the
@@ -834,9 +838,11 @@ rocket never declares still gets one, with a warning ([L65](../decisions-and-roa
 A `<motor>` names a motor; it does not describe one. hpr looks for its thrust curve in two places,
 in this order:
 
-1. **Inside the file.** Since schema 1.11, OpenRocket can save each motor's curve in the archive as
-   `thrustcurves/<digest>.rse`, named by the `digest` the `<motor>` gives
-   ([L57](../decisions-and-roadmap.md#l57)). That is exactly the curve the design was saved with.
+1. **Inside the file.** From schema 1.11 (the `version` on the file's `<openrocket>` element),
+   OpenRocket can save each motor's curve in the archive as `thrustcurves/<digest>.rse`, named by
+   the `digest` the `<motor>` gives ([L57](../decisions-and-roadmap.md#l57)). That is exactly the
+   curve the design was saved with. OpenRocket 24.12 still writes 1.10, so few files carry one yet:
+   one file in the reference library does.
 2. **hpr's bundled catalog**: [32 motors from ThrustCurve.org](../physics/motor.md). The
    manufacturer and the designation must both match, ignoring case, spaces and hyphens. Both are
    needed: an Estes `B4` is not a Quest `B4`.
@@ -844,18 +850,27 @@ in this order:
 OpenRocket's own order is the other way round: its motor database first, then the curve in the
 file. hpr's catalog is far smaller than that database, and the curve in the file is the exact one,
 so hpr reads the file first. A motor found in neither place is kept with its reason. Nothing is
-invented for it. A hybrid motor never gets a curve: hpr flies commercial solid motors only.
+invented for it. A hybrid motor (solid fuel burned with a liquid or gas oxidiser) never gets a
+curve: hpr flies commercial solid motors only.
+
+To fly a motor neither place has, build the configuration yourself: read its `.eng` or `.rse` file
+with `hpr_motor` ([Solid motors](../physics/motor.md)) and put it in an
+`hpr_design::Configuration`.
 
 ### Delays and ignition
 
 | the file says | it means | source |
 |---|---|---|
-| `<delay>6.0</delay>` | the ejection charge fires 6 s after burnout | OpenRocket's technical documentation, p. 8 |
+| `<delay>6.0</delay>` | the ejection charge fires 6 s after burnout | OpenRocket's [technical documentation][techdoc], p. 8 |
 | `<delay>0.0</delay>` | the charge fires at burnout | the same, p. 10: "zero-delay motors" |
-| `<delay>none</delay>` | plugged: no ejection charge | the same, p. 8 ("P … stands for plugged"); OpenRocket issue #2002 |
-| `<ignitionevent>automatic</ignitionevent>` | the lowest stage lights at launch; a stage above lights at the ejection charge of the stage below | OpenRocket's FAQ, "How do I create a staged rocket?" |
+| `<delay>none</delay>` | plugged: no ejection charge | the same, p. 8 ("P … stands for plugged"); OpenRocket [issue #2002](https://github.com/openrocket/openrocket/issues/2002) |
+| `<ignitionevent>automatic</ignitionevent>` | the bottom stage lights at launch; a stage above lights at the ejection charge of the stage below | OpenRocket's [FAQ](https://wiki.openrocket.info/FAQ), "How do I create a staged rocket?" |
 | `launch`, `burnout`, `ejectioncharge`, `never` | at launch; at the first burnout or ejection charge of the stage below; never | OpenRocket 24.12's labels for the words it writes |
-| `<ignitiondelay>1.5</ignitiondelay>` | 1.5 s after that event | the technical documentation, section 4.2.6 |
+| `<ignitiondelay>1.5</ignitiondelay>` | 1.5 s after that event | the [technical documentation][techdoc], section 4.2.6 |
+
+A `0` means something different here than in a motor file. An `.eng` file has no word for plugged,
+so hpr reads its `0` as "zero or plugged" ([ejection delay](../glossary.md#ejection-delay)). A
+`.ork` writes `none` for plugged, so its `0` really is a charge at burnout.
 
 A configuration's own `<ignitionconfiguration>` replaces the mount's event and delay one at a time:
 whichever it leaves out, the mount's own value stands.
@@ -867,18 +882,22 @@ hpr lights every motor in a configuration at launch, until staging and air start
 all of these hold. Otherwise flying it would be wrong, for example lighting a sustainer on the pad.
 
 - Every motor has a thrust curve, and a case diameter and length.
-- Every motor lights at launch: `launch`, or `automatic` in the rocket's last stage, with no delay.
+- Every motor lights at launch: `launch`, or `automatic` in the bottom stage (the booster, which
+  OpenRocket lists last), with no delay.
 - No motor sits in a part hpr doesn't read yet, such as a pod
-  ([M3.1c4](../decisions-and-roadmap.md#m3-1c4)), and none sits in a cluster of motor tubes, which
-  hpr reads as one tube.
-- No stage is switched off. OpenRocket leaves a switched-off stage out of the flight, and hpr flies
-  every stage.
+  ([M3.1c4](../decisions-and-roadmap.md#m3-1c4)), and none sits in a
+  [cluster](../glossary.md#cluster) of motor tubes, which hpr reads as one tube.
+- No stage is switched off in the configuration's own stage list
+  (`<stage number="1" active="false"/>`). OpenRocket leaves a switched-off stage out of the flight,
+  and hpr flies every stage.
 
 Every other configuration is still read, whole, with the first reason it can't be flown.
 
 This is the doctest on
 [`hpr_io::ork::design`](../api/hpr_io/ork/fn.design.html), which CI runs. The Estes F15 has no
-curve in the file, so it comes from the bundled catalog, and the rocket assembles with it:
+curve in the file, so it comes from the bundled catalog: 49.6 N·s over 3.45 s, as ThrustCurve.org
+lists it. The rocket assembles with it. `assemble` takes the configuration's `configid`; its name
+is for display, and may be one of OpenRocket's templates, such as `[{motors}]`.
 
 ```rust
 let read = hpr_io::ork::read(xml)?;
@@ -888,6 +907,8 @@ let design = hpr_io::ork::design(&read.value).value;
 let motor = &design.motors.configurations[0].motors[0];
 assert!(matches!(motor.curve, hpr_io::ork::Curve::Catalog { .. }));
 assert_eq!(motor.delay, Some(hpr_motor::Delay::Seconds(4.0)));
+let impulse_ns = motor.curve.motor().expect("a curve").curve().total_impulse_ns();
+assert!((impulse_ns - 49.61).abs() < 0.01, "{impulse_ns}");
 
 // ...and it ignites at launch, so the configuration is one the rocket flies.
 let assembly = design.rocket.assemble("c1")?;
@@ -898,21 +919,21 @@ assert_eq!(assembly.motors[0].mount, "body");
 
 `cargo xtask ork`, over the 75 designs, on 2026-09-21:
 
-| | |
+| quantity | count |
 |---|---|
 | motor configurations | 174, in 66 designs, over 79 motor mounts; none named only by a mount |
-| motors read into their configurations | 206: 132 single-use, 65 reloads, 3 hybrids, 6 with no type written |
+| motors read into their configurations | 206: 132 single-use, 65 reloads, 3 hybrids, and 6 with no type written, read like the rest |
 | motors left out, in parts not read yet | 6: 4 in pod sets, 2 in parallel stages |
 | thrust curve from the file itself | 4 |
 | thrust curve from the bundled catalog | 2 |
 | no curve | 200: 3 hybrids, and 197 in neither place |
-| ejection delays | 128 in seconds, 23 at 0 s, 53 plugged (`none`), 2 not written |
+| ejection delays, of the 206 | 128 in seconds, 23 at 0 s, 53 plugged (`none`), 2 not written |
 | configurations the rocket flies | 2, in 2 designs; both assemble |
 | left out, by first reason | 166 a motor with no curve, 4 a motor in a part not read, 2 a motor lighting in flight |
 
 The catalog is the limit, not the reader. When
-[M5.1](../decisions-and-roadmap.md#m5-1) brings ThrustCurve.org's curves, most of the 197 should
-find one. How this was decided, with the sources in full, is in [ADR-055][adr-055].
+[M5.1](../decisions-and-roadmap.md#m5-1) brings ThrustCurve.org's curves, many of the 197 may find
+one; how many is not measured yet. How this was decided, with the sources in full, is in [ADR-055][adr-055].
 
 [adr-055]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-055-m31c-split-and-the-motors-a-ork-flies-its-own-curve-first-and-only-what-lights-at-launch-2026-09-21
 

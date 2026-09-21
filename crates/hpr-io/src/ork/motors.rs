@@ -7,22 +7,24 @@
 //! carries a `<motormount>`, and that holds one `<motor configid="…">` per configuration it is
 //! loaded in — a manufacturer, a designation, a `digest`, a case diameter and length and a delay —
 //! plus when it ignites, as a default for the mount and an `<ignitionconfiguration>` per
-//! configuration that changes it ([F], *Motor Mount*). So a configuration is read by collecting
-//! every mount's motor with its id ([Loft lesson L65][l65]: Loft read only one of the two places).
+//! configuration that changes it ([the file specification][spec], *Motor Mount*). So a
+//! configuration is read by collecting every mount's motor with its id ([Loft lesson L65][l65]:
+//! Loft read only one of the two places).
 //!
 //! **The thrust curve.** A `<motor>` names a motor; it does not describe one. From schema 1.11 the
-//! archive can carry the curve itself as `thrustcurves/<digest>.rse` ([F], *Embedded Thrust Curve
-//! Data*), and that curve is used first ([Loft lesson L57][l57], which threw such curves away): it is the curve the design was saved
-//! with, identified by the digest the file names. Otherwise the motor is looked up in the bundled
-//! catalog by manufacturer and designation. A motor neither reaches is read with its reason, and
-//! nothing is invented for it.
+//! archive can carry the curve itself as `thrustcurves/<digest>.rse` ([the file
+//! specification][spec], *Embedded Thrust Curve Data*). That curve is used first: it is the one
+//! the design was saved with, named by the file's own digest ([Loft lesson L57][l57]: Loft threw
+//! such curves away). Otherwise the motor is looked up in the bundled catalog by manufacturer and
+//! designation. A motor found in neither place is read with its reason, and nothing is invented
+//! for it.
 //!
 //! **What hpr flies.** [`hpr_design::Configuration`] holds a set of motors that all ignite at
 //! launch; staging and air starts come with [M1.9][m1-9]. So only a configuration whose every motor
 //! has a curve and ignites at launch, in a mount hpr reads, becomes one of the rocket's
 //! configurations. Every other one is kept here, whole, with the reason it is not flown.
 //!
-//! [F]: https://openrocket.readthedocs.io/en/latest/dev_guide/file_specification.html
+//! [spec]: https://openrocket.readthedocs.io/en/latest/dev_guide/file_specification.html
 //! [m1-9]: https://nrdptel.github.io/hpr-sim/decisions-and-roadmap.html#m1-9
 //! [l57]: https://nrdptel.github.io/hpr-sim/decisions-and-roadmap.html#l57
 //! [l65]: https://nrdptel.github.io/hpr-sim/decisions-and-roadmap.html#l65
