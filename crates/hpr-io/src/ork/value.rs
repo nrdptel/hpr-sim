@@ -129,6 +129,7 @@ impl<'a> Values<'a> {
     pub fn element(&mut self, names: &[&str]) -> Option<&'a Element> {
         let mut found: Option<&'a Element> = None;
         for name in names {
+            super::reads::note(self.element, name);
             let Some(child) = self.element.child(name) else {
                 continue;
             };

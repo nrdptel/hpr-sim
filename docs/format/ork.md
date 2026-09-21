@@ -19,7 +19,8 @@ airframe read without a warning: **1 of the 174 motor configurations** in the re
 75 designs does
 ([motors](#motors-and-their-configurations)). Recovery and separation settings are read but not
 flown ([when parachutes open](#when-parachutes-open-and-stages-separate)). **Pods and parallel
-stages are not read yet** ([M3.1c4](../decisions-and-roadmap.md#m3-1c4)). A part
+stages are kept, not modelled**: a design with them is marked *reduced*, and none of its
+configurations flies ([what hpr keeps](#what-hpr-keeps-for-writing-the-file-back)). A part
 hpr cannot give an honest shape — fins on a nose cone, tube fins OpenRocket sizes from the body —
 is **left out**, each one named in a warning rather than guessed at
 ([what is left out, and why](#what-is-left-out-and-why)). Every design in the reference library now
@@ -438,7 +439,7 @@ raise 96 between them, every one of them explained on this page.
 | `launchlug`, `railbutton` | [`LaunchLug`][p-lug], [`RailButton`][p-button] | a row of them is one part with a count and a spacing |
 | `masscomponent` | [`MassComponent`][p-mass] | |
 | `parachute`, `streamer`, `shockcord` | [`Parachute`][p-chute], [`Streamer`][p-streamer], [`ShockCord`][p-cord] | the packed shape, not the deployment |
-| `podset`, `parallelstage` | — | a spine of their own: [M3.1c](../decisions-and-roadmap.md#m3-1c) |
+| `podset`, `parallelstage` | — | kept whole ([what hpr keeps](#what-hpr-keeps-for-writing-the-file-back)); modelled in [M1.13](../decisions-and-roadmap.md#m1-13) |
 
 **Angles in a `.ork` are degrees.** Nothing in the file says so, and every length beside them is in
 metres, so it is easy to read one as radians — which would make `<angleoffset>180</angleoffset>`
@@ -785,7 +786,7 @@ file is broken:
 | `Dropped` | 13 | a part with no material, so it weighs nothing |
 | `Dropped` | 11 | a fin's fillets, a rail button's screw head, a motor cluster read as one tube |
 | `Dropped` | 5 | a `packedradius` the file does not give, read as zero |
-| `Skipped` | 7 | a tally of the pods and parallel stages left for [M3.1c](../decisions-and-roadmap.md#m3-1c), one per design that has any |
+| `Skipped` | 7 | a tally of the pods and parallel stages, kept in `x-openrocket` and modelled in [M1.13](../decisions-and-roadmap.md#m1-13), one per design that has any |
 | `Skipped` | 5 | the five parts left out above |
 
 Every design lays out. The one document that doesn't is Debrief's demonstration file, which holds
@@ -1142,14 +1143,83 @@ How this was decided is in [ADR-057][adr-057].
 
 [adr-057]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-057-a-ork-designs-stored-simulations-read-back-as-written-with-their-units-measured-2026-09-21
 
+## What hpr keeps for writing the file back
+
+**In short.** Some of what a `.ork` holds, hpr's design does not model: pods, parallel stages,
+OpenRocket's 3D-view settings, a simulation's plug-ins, a part's colour, a material's group. hpr keeps
+each whole, beside
+the design, in an *extension* (a named slot for data another program wrote) called `x-openrocket`,
+at a path that leads back to where it was, so that writing the file back out
+([M3.2](../decisions-and-roadmap.md#m3-2)) can put it back. A design whose rocket is missing parts
+this way says it is **reduced**; the flag is on the design, not on its rocket, so check it before
+using the rocket on its own.
+
+Four kinds of thing are kept:
+
+- **Parts** hpr does not read: a pod set or a parallel stage, which hpr does not model until
+  [M1.13](../decisions-and-roadmap.md#m1-13) ([L66](../decisions-and-roadmap.md#l66)), a part hpr
+  cannot give an honest shape ([above](#what-is-left-out-and-why)), or a tag it has never seen.
+- **Sections** of the document hpr does not read: `<photostudio>` (the 3D view), `<docprefs>` (the
+  design's own materials), anything else beside `<rocket>` and `<simulations>`, and the parts of a
+  stored simulation beyond its conditions and results, such as an `<extension>`.
+- **Tags** no reader asks for, inside a part, stage or stored simulation hpr does read, or inside
+  a tag it does read: a part's colour (`<appearance>`), a catalogue preset, a comment, a wind's
+  standard deviation, or a tag hpr has never seen. hpr records every tag its readers ask for while
+  it reads a file, so a tag is kept exactly when nothing asked for it.
+- **Attributes** no reader asks for, on an element hpr does read: a material's `group`, an event's
+  `id`, or the reference an angle or radius offset is measured from, which hpr does not read yet
+  ([issue #145](https://github.com/nrdptel/hpr-sim/issues/145)).
+
+Each is kept with its **path**, such as `openrocket/rocket/stage[0]/bodytube[1]/podset[0]`: the
+podset that is the first part inside the second part of the first stage. A tag's last step starts
+with `@`: `openrocket/rocket/stage[0]/nosecone[0]/@appearance[7]` is the eighth tag of that nose
+cone, and a tag inside it adds another, such as `…/@wind[2]/@gusts[1]`. An attribute is kept with
+the path of the element it was on, its name and its value. The function `hpr_io::ork::element_at`
+follows a path back to the element.
+
+The extension is written under its namespace when the design is saved as JSON, and reads back
+unchanged. The test `hpr_io::ork::tests::unknown_content_round_trips_through_x_openrocket` checks
+both, and that each kept element is the one at its path in the file:
+
+```rust
+let json = serde_json::to_string(&design.extensions).expect("JSON");
+assert!(json.starts_with(r#"{"x-openrocket":"#), "{json}");
+let back: Extensions = serde_json::from_str(&json).expect("read back");
+assert_eq!(back, design.extensions);
+```
+
+**What is not kept.** The text of a second copy of a tag a reader takes once by name. A reader asks
+for a tag by name and uses the first copy, so the second's own value is taken as read, though its
+attributes and anything unread inside it are kept. 13 fin tabs in the library carry a second
+`<tabposition>` this way. That text, and everything else, is still in the document itself, which
+hpr keeps whole when it opens a file ([ADR-051][adr-051]); writing the file back
+([M3.2](../decisions-and-roadmap.md#m3-2)) starts from both.
+
+### Kept in the reference library
+
+`cargo xtask ork`, over the 76 readable files, on 2026-09-21:
+
+| quantity | count |
+|---|---|
+| parts kept | 17, in 10 reduced designs: 9 pod sets, 3 parallel stages, 2 freeform fin sets, 2 tube fin sets, 1 tube coupler |
+| sections kept | 87: 42 `<photostudio>`, 36 `<docprefs>`, 9 simulation `<extension>`s |
+| tags kept | 1,947, most often a part's `<appearance>` (274), `<radialdirection>` (166), `<instanceseparation>` (155), a wind's `<standarddeviation>` (129) and `<preset>` (126) |
+| attributes kept | 3,132, most often an event's `id` (1,623), a material's `group` (552), an active stage's `number` (201) and a stored branch's optimum altitude and its time (170 each) |
+| kept elements and attributes found again at their path | 5,183 of 5,183 (the survey fails if one is not) |
+
+How this was decided is in [ADR-058][adr-058].
+
+[adr-058]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-058-what-a-ork-holds-that-hpr-does-not-model-kept-whole-in-x-openrocket-2026-09-21
+
 ## What is not read yet
 
-Pods and parallel stages ([M3.1c4](../decisions-and-roadmap.md#m3-1c4)). Writing a `.ork` back out as a design — rather than
+Pods and parallel stages are kept, not modelled: hpr's design has no pods until
+[M1.13](../decisions-and-roadmap.md#m1-13) ([what hpr keeps](#what-hpr-keeps-for-writing-the-file-back)).
+Writing a `.ork` back out as a design — rather than
 as the document it was read from — is [M3.2](../decisions-and-roadmap.md#m3-2).
 
-What keeping the whole document buys you is this: when
-[M3.1b](../decisions-and-roadmap.md#m3-1b) meets a part hpr does not model, it
-can say so and carry the part's own XML along untouched, rather than dropping it silently the way
-Loft did with pods and parallel stages. Nothing is lost between opening a file and writing it back;
-what a later step chooses to do with a part it does not understand is that step's decision, taken
-in the open.
+What keeping the whole document buys you is this: when hpr meets a part it does not model, it can
+say so and carry the part's own XML along untouched in `x-openrocket`, rather than dropping it
+silently the way Loft did with pods and parallel stages. The document itself is kept whole too, so
+a writer ([M3.2](../decisions-and-roadmap.md#m3-2)) will have what it needs; what it chooses to do
+with a part hpr does not understand is its decision, taken in the open.

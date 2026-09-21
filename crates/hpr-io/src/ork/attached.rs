@@ -238,6 +238,7 @@ fn one(
     if let Some(device) = device {
         ids.devices.push((id.clone(), device));
     }
+    ids.read.insert(at.to_owned());
     Some(Component {
         id,
         name,
@@ -420,6 +421,7 @@ fn outline(values: &mut Values<'_>) -> Option<FinPlanform> {
         return None;
     };
     let mut points_m = Vec::new();
+    super::reads::note(points, "point");
     for point in points.elements().filter(|point| point.name == "point") {
         let read = |name: &str| {
             point

@@ -393,6 +393,7 @@ fn trigger<E: Clone>(
     };
     let default = own(element, at, warnings);
     let mut configurations = BTreeMap::new();
+    super::reads::note(element, per);
     for child in element.children_named(per) {
         let here = format!("{at}/{per}");
         let Some(id) = child

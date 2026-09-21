@@ -603,12 +603,13 @@
       written down rather than on a cached number; and `cargo xtask ork` says so. *Result:* met
       (ADR-054): 75 of 75 lay out, 1 document holds none; 7 radii take OpenRocket's 25 mm default;
       67 of 67 body radii agree with OpenRocket.
-  - [ ] **M3.1c Motors, recovery, stages and what OpenRocket last did.** Motor configurations and
+  - [x] **M3.1c Motors, recovery, stages and what OpenRocket last did.** Motor configurations and
     embedded `.rse` curves, recovery devices, stage and pod structure, stored conditions and
     results, and `extensions.x-openrocket` for the rest. Loft lessons L57, L64, L65, L66.
     *Done when:* those lessons' named tests are live, a design's stored results are read back, and
     a document with unknown content round-trips through `extensions.x-openrocket`. Split into
-    M3.1c1 to M3.1c4 (ADR-055), which carry that bullet unchanged between them.
+    M3.1c1 to M3.1c4 (ADR-055), carrying that unchanged. *Result:* met (ADR-055 to ADR-058): unknown
+    parts, sections, tags and attributes are kept; the text of a tag's unread second copy is not.
     - [x] **M3.1c1 Motors and their configurations.** The configurations a design declares, the
       motor each mount holds in each, when it ignites, its delay, and a thrust curve from the
       archive's `thrustcurves/<digest>.rse` or the bundled catalog (L57, L65). *Done when:* L57's
@@ -626,8 +627,9 @@
       the time series and the events (L64). *Done when:* L64's named test is live, a design's
       stored results are read back, and `cargo xtask ork` prints the counts. *Result:* met
       (ADR-057): 178 simulations read, 144 with a time series; units measured by a probe.
-    - [ ] **M3.1c4 Pods, parallel stages and the rest** (L66). *Done when:* L66's named test is
+    - [x] **M3.1c4 Pods, parallel stages and the rest** (L66). *Done when:* L66's named test is
       live, and a document with unknown content round-trips through `extensions.x-openrocket`.
+      *Result:* met (ADR-058): 17 parts, 87 sections, 1,947 tags, 3,132 attributes, all found again.
   - [ ] **M3.1d The corpus and the cross-check.** `insta` snapshots on public files only, and the
     RocketSerializer cross-check. *Done when:* the parent's four bullets above are met.
 

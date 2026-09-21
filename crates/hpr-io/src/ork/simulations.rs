@@ -228,6 +228,9 @@ pub(super) fn read(document: &Document, warnings: &mut Vec<Warning>) -> Vec<Stor
 }
 
 fn simulation(element: &Element, at: &str, warnings: &mut Vec<Warning>) -> StoredSimulation {
+    // Looked up directly below, not through `Values`.
+    super::reads::note(element, "conditions");
+    super::reads::note(element, "flightdata");
     let mut values = Values::new(element, at, warnings);
     let name = values.word(&["name"]).unwrap_or_default();
     let simulator = values.word(&["simulator"]);
@@ -249,6 +252,9 @@ fn simulation(element: &Element, at: &str, warnings: &mut Vec<Warning>) -> Store
 }
 
 fn conditions(element: &Element, at: &str, warnings: &mut Vec<Warning>) -> LaunchConditions {
+    // Looked up directly below, not through `Values`.
+    super::reads::note(element, "wind");
+    super::reads::note(element, "atmosphere");
     let average = element
         .children_named("wind")
         .find(|wind| wind.attribute("model") == Some("average"));
@@ -263,6 +269,7 @@ fn conditions(element: &Element, at: &str, warnings: &mut Vec<Warning>) -> Launc
         None => (None, None),
     };
     let wind_levels = multilevel.map_or_else(Vec::new, |wind| {
+        super::reads::note(wind, "windlevel");
         wind.children_named("windlevel")
             .map(|level| {
                 let mut number = |name: &str| attribute_number(level, name, at, warnings);
@@ -375,6 +382,9 @@ fn attribute_number(
 }
 
 fn results(element: &Element, at: &str, warnings: &mut Vec<Warning>) -> StoredResults {
+    // Looked up directly below, not through `Values`.
+    super::reads::note(element, "warning");
+    super::reads::note(element, "databranch");
     let mut number = |name: &str| attribute_number(element, name, at, warnings);
     let mut results = StoredResults {
         max_altitude_m: number("maxaltitude"),
@@ -408,6 +418,8 @@ fn branch(element: &Element, at: &str, warnings: &mut Vec<Warning>) -> StoredBra
     let mut rows = Vec::new();
     let mut dropped = 0usize;
     let mut infinite = 0usize;
+    super::reads::note(element, "datapoint");
+    super::reads::note(element, "event");
     for point in element.children_named("datapoint") {
         let text = point.text();
         // `NaN` is a value OpenRocket did not compute, kept as `None`; a number that does not read
