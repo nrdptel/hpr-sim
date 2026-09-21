@@ -1167,7 +1167,7 @@ Four kinds of thing are kept:
   standard deviation, or a tag hpr has never seen. hpr records every tag its readers ask for while
   it reads a file, so a tag is kept exactly when nothing asked for it.
 - **Attributes** no reader asks for, on an element hpr does read: a material's `group`, an event's
-  `id`, or the reference an angle offset is measured from, which hpr does not read yet
+  `id`, or the reference an angle or radius offset is measured from, which hpr does not read yet
   ([issue #145](https://github.com/nrdptel/hpr-sim/issues/145)).
 
 Each is kept with its **path**, such as `openrocket/rocket/stage[0]/bodytube[1]/podset[0]`: the
@@ -1188,10 +1188,11 @@ let back: Extensions = serde_json::from_str(&json).expect("read back");
 assert_eq!(back, design.extensions);
 ```
 
-**What is not kept.** A second copy of a tag hpr reads once: a reader asks for a tag by name and
-uses the first, so a repeated `<length>` in one part is taken as read. The library has none it
-knows of. That, and everything else, is still in the document itself, which hpr keeps whole when it
-opens a file ([ADR-051][adr-051]); writing the file back
+**What is not kept.** The text of a second copy of a tag a reader takes once by name. A reader asks
+for a tag by name and uses the first copy, so the second's own value is taken as read, though its
+attributes and anything unread inside it are kept. 13 fin tabs in the library carry a second
+`<tabposition>` this way. That text, and everything else, is still in the document itself, which
+hpr keeps whole when it opens a file ([ADR-051][adr-051]); writing the file back
 ([M3.2](../decisions-and-roadmap.md#m3-2)) starts from both.
 
 ### Kept in the reference library
@@ -1203,7 +1204,7 @@ opens a file ([ADR-051][adr-051]); writing the file back
 | parts kept | 17, in 10 reduced designs: 9 pod sets, 3 parallel stages, 2 freeform fin sets, 2 tube fin sets, 1 tube coupler |
 | sections kept | 87: 42 `<photostudio>`, 36 `<docprefs>`, 9 simulation `<extension>`s |
 | tags kept | 1,947, most often a part's `<appearance>` (274), `<radialdirection>` (166), `<instanceseparation>` (155), a wind's `<standarddeviation>` (129) and `<preset>` (126) |
-| attributes kept | 3,132, most often an event's `id` (1,623), a material's `group` (552), a stage's `number` (201) and a stored branch's optimum altitude and its time (170 each) |
+| attributes kept | 3,132, most often an event's `id` (1,623), a material's `group` (552), an active stage's `number` (201) and a stored branch's optimum altitude and its time (170 each) |
 | kept elements and attributes found again at their path | 5,183 of 5,183 (the survey fails if one is not) |
 
 How this was decided is in [ADR-058][adr-058].

@@ -609,7 +609,7 @@
     *Done when:* those lessons' named tests are live, a design's stored results are read back, and
     a document with unknown content round-trips through `extensions.x-openrocket`. Split into
     M3.1c1 to M3.1c4 (ADR-055), carrying that unchanged. *Result:* met (ADR-055 to ADR-058): unknown
-    parts, sections, tags and attributes are kept; a second copy of a tag hpr reads once is not.
+    parts, sections, tags and attributes are kept; the text of a tag's unread second copy is not.
     - [x] **M3.1c1 Motors and their configurations.** The configurations a design declares, the
       motor each mount holds in each, when it ignites, its delay, and a thrust curve from the
       archive's `thrustcurves/<digest>.rse` or the bundled catalog (L57, L65). *Done when:* L57's

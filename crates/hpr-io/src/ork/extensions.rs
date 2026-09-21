@@ -20,9 +20,10 @@
 //! The readers record every tag and attribute they ask for while [`super::design`] reads, so one is
 //! kept exactly when nothing asked for it.
 //!
-//! **What is not.** A second copy of a tag a reader takes once by name. Everything is still in the
-//! document itself, which [`super::OrkFile`] keeps whole ([ADR-051][adr-051]); writing a `.ork` back
-//! out is [M3.2][m3-2]'s work, and it starts from both.
+//! **What is not.** The text of a second copy of a tag a reader takes once by name; its attributes
+//! and unread children are kept. Everything is still in the document itself, which
+//! [`super::OrkFile`] keeps whole ([ADR-051][adr-051]); writing a `.ork` back out is [M3.2][m3-2]'s
+//! work, and it starts from both.
 //!
 //! **The path.** `openrocket/rocket/stage[0]/bodytube[1]/podset[0]` counts each step among its
 //! parent's `<subcomponents>` children, the way a warning's path does; a section's step counts

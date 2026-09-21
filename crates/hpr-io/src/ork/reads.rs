@@ -28,9 +28,14 @@ pub(super) fn note(element: &Element, name: &str) {
     });
 }
 
-/// Records that a reader asked `element` for its attribute `name`, when a recording is on.
+/// Records that a reader asked `element` for its attribute `name`, when a recording is on. Every
+/// attribute lookup comes through here, so it does nothing more than a check when none is.
 pub(super) fn note_attribute(element: &Element, name: &str) {
-    note(element, &attribute_key(name));
+    READS.with(|reads| {
+        if let Some(reads) = reads.borrow_mut().as_mut() {
+            reads.insert((address(element), attribute_key(name)));
+        }
+    });
 }
 
 /// Whether a reader asked `element` for its child tag `name` in `reads`.

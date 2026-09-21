@@ -5084,8 +5084,8 @@ pods until M1.13, and writing a `.ork` is M3.2; ADR-051 already keeps the whole 
    length, is kept whenever it was not asked; a tag read and then dropped with a warning (a fin's
    fillet) is named in that warning and not kept, since it was asked for.
 5. **Attributes:** every attribute no reader asks for on an element hpr does read, with the path of
-   that element: a material's `group`, an event's `id`. The survey shows three hpr should read:
-   the reference an angle offset, a radius offset or a fin tab position is measured from (#145).
+   that element: a material's `group`, an event's `id`. The survey shows two hpr should read: the
+   reference an angle offset or a radius offset is measured from (#145).
 6. **A path leads back.** `openrocket/rocket/stage[0]/bodytube[1]/podset[0]` counts each step among
    its parent's `<subcomponents>`, as a warning's path does; a section's step counts among its
    parent's elements, and so does a tag's, marked `@`, at any depth. `hpr_io::ork::element_at`
@@ -5094,16 +5094,17 @@ pods until M1.13, and writing a `.ork` is M3.2; ADR-051 already keeps the whole 
    and reads it back unchanged, and finds every kept element at its path in the document it came
    from. That is what an export needs; the export itself is M3.2. An unknown namespace beside
    `x-openrocket` is not read back yet; the design format (M3.3) decides how namespaces travel.
-8. **Not kept:** a second copy of a tag hpr reads once, since a reader asks for a tag by name and
-   takes the first. It stays in the document `OrkFile` keeps whole (ADR-051), as everything does;
-   M3.2 starts from both.
+8. **Not kept:** the text of a second copy of a tag a reader takes once by name, since the reading
+   is recorded by name and the reader uses the first copy; the second's attributes and unread
+   children are kept. 13 fin tabs in the library carry a second `<tabposition>`. The text stays in
+   the document `OrkFile` keeps whole (ADR-051), as everything does; M3.2 starts from both.
 
 **Consequences.** On 2026-09-21 the library keeps 17 parts in 10 reduced designs (9 pod sets, 3
 parallel stages, and the 5 parts left out), 87 sections, 1,947 tags and 3,132 attributes, and all
 5,183 are found again at their paths. With M3.1c1 to M3.1c4, M3.1c's *done when* is met: L57, L64,
 L65 and L66's tests are live, a design's stored results are read back, and unknown parts,
-sections, tags and attributes round-trip through `x-openrocket`, short of a second copy of a tag
-hpr reads once (item 8).
+sections, tags and attributes round-trip through `x-openrocket`, short of the text of a second
+copy of a tag a reader takes once (item 8).
 
 ## ADR-057: A `.ork` design's stored simulations, read back as written, with their units measured (2026-09-21)
 
