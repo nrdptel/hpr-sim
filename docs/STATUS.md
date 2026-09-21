@@ -4,20 +4,25 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
 
 ## Now
 
-- **Current milestone:** M1.8e, all done bar M1.8e16 (`[blocked]` on #108); the work is **M3.1c**,
-  a `.ork` file's motors, recovery settings, stages, pods and stored results, now every design in
-  the reference library lays out (M3.1b4 finished M3.1b).
-- **Order:** M3.1c, M3.1d, M2.2, M1.9; M1.8e16 waits on #108. **Run:** M0.1-M0.4,
-  M1.1-M1.7, M2.1, M1.8a-e19 bar e16, M3.1a, M3.1b; the site is published.
+- **Current milestone:** M1.8e, all done bar M1.8e16 (`[blocked]` on #108); the work is
+  **M3.1c2**, when a `.ork` design's parachutes open and its stages separate, now M3.1c1 reads its
+  motors (M3.1c split: c1 motors, c2 recovery, c3 stored results, c4 pods and the rest; ADR-055).
+- **Order:** M3.1c2-c4, M3.1d, M2.2, M1.9; M1.8e16 waits on #108. **Run:** M0.1-M0.4,
+  M1.1-M1.7, M2.1, M1.8a-e19 bar e16, M3.1a, M3.1b, M3.1c1; the site is published.
 - **Neer, 2026-09-20:** Debrief is sunset; a flight log analyzer usable **on its own** is part of
   this project (ADR-046, V21); Phase 5 re-cut.
-- **Last updated:** 2026-09-20 (M3.1b4 shipped: every `.ork` design in the library lays out)
+- **Last updated:** 2026-09-21 (M3.1c1 shipped: a `.ork` design's motors and configurations)
 
 ## Handoff (overwrite each session)
 
-- **M3.1c next:** motors, recovery settings, pods and parallel stages (9 `podset` and 3
-  `parallelstage` hold 19 parts nobody reads), and stored results — Debrief's `sample-design.ork`
-  is nothing else, and is counted as holding no design. **Driving OpenRocket:**
+- **M3.1c2 next:** each parachute's and streamer's `deployevent`, `deployaltitude`, `deploydelay`,
+  per-configuration `<deploymentconfiguration>` and `<cd>`, and each stage's separation, into
+  `hpr-io` types (`hpr-io` must not take `hpr-sim`). **What OpenRocket means**, with sources, is in
+  the gitignored `refs/scratch/m31c/or-semantics.md` (pages in `refs/sources/openrocket-docs/`):
+  event words are its enum names lower-cased without underscores; `cd auto` is 0.8 for a parachute
+  by the tech doc §4.2.5 (cite that, never Loft, whose 0.8 came from OpenRocket's Java); deploy
+  altitude is above ground (oracle only). Its probes in `refs/scratch/m31c/*.py` are uncommitted:
+  commit one before a published count rests on it. **Driving OpenRocket:**
   `validation/oracles/openrocket/automatic_radius.py` (ADR-054) runs 24.12 headless through JPype,
   binding empty motor and preset databases in a Python Guice module; it logs to stdout, so the
   script writes to a path. **Read OpenRocket after it re-resolves** (a save does it): its first
@@ -56,22 +61,18 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
 
 ## Done log (newest first, keep about 15)
 
+- 2026-09-21: M3.1c1 A `.ork` design's motors (ADR-055): 206 motors in 174 configurations, 6 left
+  out inside pods; a curve from the file's own `thrustcurves/<digest>.rse` first, the bundled
+  catalog second; `none` plugged, `0` a charge at burnout. The rocket flies a configuration only if
+  every motor lights at launch with a curve: 2 of 174, both assemble. L57, L65 live; #138, #139.
 - 2026-09-20: M3.1b4 Every `.ork` design lays out (ADR-054): 75 of 75, and Debrief's results-only
   file counted as holding none. A radius with nothing fixed along its chain takes OpenRocket's
   default, 25 mm, from its maintainers' words and a committed 24.12 probe that also shows it
   ignoring the cached number: 7 radii in 2 designs. 67 of 67 body radii agree with OpenRocket
   over 18 designs. M3.1b checked off.
-- 2026-09-20: M3.1b3 The `.ork` parts on and inside the body (ADR-053): 765 parts, 5 left out with
-  a reason; angles are degrees (178 of 188 non-zero exceed 2π); sourced finishes; an in-file oracle
-  (67 of 71 cached answers match). L49, L60, L61 live; #133, #135, #136 filed.
-- 2026-09-20: M3.1b2 The `.ork` spine into `hpr_design` types, every automatic radius marked for
-  `layout()` to resolve, across a stage boundary too (L59 live). OpenRocket's ogive κ is the
-  reciprocal of this project's radius ratio (Niskanen A.3). Open for M2.2: a shoulder of no wall
-  reads as solid, an unstated `shapeclipped` as clipped.
-- 2026-09-20: M3.1b1 What a `.ork` value means (ADR-052): an automatic dimension keeps both its
-  flag and its cached number (413, 309 caching nothing); either name of a rename may be read where
-  the corpus shows both agree on the number *and* the frame; a stated `0` is a value; L58, L62 and
-  L63 live.
+- 2026-09-20: M3.1b1 to b3 (ADR-052, ADR-053): a `.ork` value's meaning, the spine and the parts
+  on and inside it; L49, L58 to L63 live; #133, #135, #136 filed. Open for M2.2: a wall-less
+  shoulder reads solid, an unstated `shapeclipped` clipped.
 ## Needs Neer (blocking or one-way decisions; the session keeps working on other things)
 
 - **Protect `main`** (2 minutes, optional). Settings → Branches → rule for `main`: require `fmt`,
@@ -87,13 +88,10 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
 
 ## Decided without Neer (one line each; significant ones get an ADR)
 
-- ADR-054: a radius with nothing fixed along its chain is OpenRocket's 25 mm, never its cache or −1 m.
-- ADR-053: `.ork` angles are degrees; each radial-offset tag is read on its own parts; a part hpr
-  cannot shape is left out; a wall-less tube weighs nothing; published finish heights.
-- ADR-052: an automatic dimension keeps both halves; a renamed tag is read where both names agree on
-  number *and* frame; the pre-1.9 override flag sets all three, warned.
-- ADR-051: M3.1 is split a to d, the container first; a `.ork` document is kept whole because it
-  has no schema, and read-write-read is the guarantee; nesting is capped at 64 before parsing.
+- ADR-055: M3.1c split c1 to c4; a motor's curve is its file's own first, the bundled catalog
+  second; the rocket flies only a configuration whose every motor lights at launch.
+- ADR-051 to ADR-054: M3.1 split a to d; a `.ork` document kept whole; an automatic dimension
+  keeps both halves; angles are degrees; a radius with nothing to take is OpenRocket's 25 mm.
 - ADR-050: a reduced element takes the generalized method wherever it has a tangent cone of its
   own; a cylinder's and a boattail's keep the refusal (#123). Edges from the corner.
 - ADR-049: a step in radius keeps the model it has (no source gives a step's normal force faster
@@ -132,8 +130,10 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
   flare leaves the crossing's pole — +0.129% on the tests' rocket, +4.3% on a short shoulder
   (#108); a step in radius takes the body off the method past 2.7e-11 m tube to tube or 1.3e-13 m
   up at a boattail — −8.65% to −11.34% (#87).
-- `.ork` (M3.1a, M3.1b) builds a rocket for all 75 designs, but no motor, recovery setting, pod or
-  parallel stage is read (M3.1c); 7 radii with nothing to take are OpenRocket's default 25 mm. 5 parts are left out with a
+- `.ork` (M3.1a to M3.1c1) builds a rocket for all 75 designs and reads their motors, but only 2 of
+  174 configurations fly: 197 motors are not in the 32-motor catalog (M5.1), and staging waits for
+  M1.9. No recovery setting, pod or parallel stage is read (M3.1c2 to c4); 7 radii with nothing to
+  take are OpenRocket's default 25 mm. 5 parts are left out with a
   reason, among them the corpus's only tube fins (#133); fin fillets, a rail button's screw head
   and motor clusters are read as the simpler part, with a warning. `polished` is 2 µm here and may
   be 0.5 µm in a newer OpenRocket; a zero-wall tube is weightless, which M2.2 can settle.
