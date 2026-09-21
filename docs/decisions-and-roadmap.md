@@ -73,6 +73,7 @@ new record replaces it and points back. All of them are in the [decision log][de
 | [ADR-054: An automatic radius with nothing to take][adr-054] | That an automatic body radius with no fixed radius anywhere along its chain takes OpenRocket's default radius, 25 mm, which OpenRocket's maintainers call "the default radius" and OpenRocket 24.12 settles on in a committed oracle run, never the number cached after `auto`, which OpenRocket itself ignores; that hpr departs from OpenRocket only where OpenRocket answers −1 m, a radius no shape can have; that hpr is held to OpenRocket's settled answer rather than its first reading, which settles the Dual parachute example's odd cache in hpr's favour (67 of 67 body radii agree over 18 designs); and that a `<rocket>` holding nothing is a document with no design rather than a design that fails | [`.ork` design files](format/ork.md#when-an-automatic-radius-has-nothing-to-take) |
 | [ADR-055: M3.1c split, and the motors a `.ork` flies][adr-055] | That reading a `.ork` file's motors, recovery, stored results and pods is split into four increments. That a motor's thrust curve comes from the file first and hpr's bundled catalog second, matched on manufacturer and designation both. That `none` is a plugged motor and `0` a charge at burnout. And that the rocket flies a configuration only when every motor in it has a curve and lights at launch, on a one-stage rocket read without a warning, because hpr lights every motor at launch and flies one body until staging arrives: 1 of the library's 174 configurations does | [`.ork` design files](format/ork.md#motors-and-their-configurations) |
 | [ADR-056: A `.ork` design's recovery and separation][adr-056] | That when each parachute and streamer opens, and when each stage separates, is read as the file wrote it and not yet flown. That the words are OpenRocket's own, measured by a committed probe. That a deploy height is above the ground. And that two choices are left open, in plain view, for the step that flies a `.ork`: a deploy height the rocket never reaches, which OpenRocket never opens, and an automatic drag coefficient | [`.ork` design files](format/ork.md#when-parachutes-open-and-stages-separate) |
+| [ADR-057: A `.ork` design's stored simulations][adr-057] | That the simulations OpenRocket last ran on a design are read back as it wrote them: the launch conditions, the summary, and each stage's time series and events. That their units are measured by a committed probe: the rod's angle and direction in degrees, a compass bearing; the wind's direction in radians, where it blows from. And that they are OpenRocket's answers to compare against, not flights hpr makes | [`.ork` design files](format/ork.md#what-openrocket-last-did-stored-simulations) |
 
 ## The roadmap
 
@@ -192,7 +193,7 @@ missing or its status disagrees.
 | <a id="m3-1c"></a>[M3.1c][phase-1] | Motors, recovery, stages, and what OpenRocket last simulated | not yet done |
 | <a id="m3-1c1"></a>[M3.1c1][phase-1] | A design's motor configurations, the motors in them, and their thrust curves | done |
 | <a id="m3-1c2"></a>[M3.1c2][phase-1] | When each parachute and streamer opens, and when each stage separates | done |
-| <a id="m3-1c3"></a>[M3.1c3][phase-1] | The launch conditions and results of the simulations OpenRocket stored | not yet done |
+| <a id="m3-1c3"></a>[M3.1c3][phase-1] | The launch conditions and results of the simulations OpenRocket stored | done |
 | <a id="m3-1c4"></a>[M3.1c4][phase-1] | Pods, parallel stages, and everything else kept for writing the file back | not yet done |
 | <a id="m3-1d"></a>[M3.1d][phase-1] | The corpus and the cross-check against RocketSerializer | not yet done |
 | <a id="m2-2"></a>[M2.2][phase-1] | OpenRocket as a reference program, and a corpus of designs to compare | not yet done |
@@ -292,6 +293,7 @@ is the milestone that added or will add that test.
 | <a id="l58"></a>[L58][lessons-formats] | Loft kept an automatic dimension's number but lost the flag, so saving turned it into a hand-typed one | [M3.1b1](#m3-1b1) |
 | <a id="l62"></a>[L62][lessons-formats] | Loft met a tag written under two names, and read a stated `0` as a missing value | [M3.1b1](#m3-1b1) |
 | <a id="l63"></a>[L63][lessons-formats] | Loft read neither the drag override nor the subcomponent flags, so a part set to no drag was still charged drag | [M3.1b1](#m3-1b1) |
+| <a id="l64"></a>[L64][lessons-formats] | Loft read the wind's direction from the launch rod's, and dropped it from the stored conditions | [M3.1c3](#m3-1c3) |
 | <a id="l65"></a>[L65][lessons-formats] | Loft read a configuration from only one of the two places a `.ork` keeps it, and fired a motor whose mount it could not find from the top stage | [M3.1c1](#m3-1c1) |
 | <a id="l44"></a>[L44][lessons-motors] | Loft's inertia was pitch only, with simplified formulas, and zero for rings and masses | [M1.4a](#m1-4a) |
 | <a id="l45"></a>[L45][lessons-motors] | Loft put a hollow transition's centre of gravity at the solid's centroid | [M1.4a](#m1-4a) |
@@ -367,6 +369,7 @@ is the milestone that added or will add that test.
 [adr-054]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-054-an-automatic-radius-with-nothing-to-take-is-openrockets-default-and-a-rocket-with-no-stage-or-component-holds-no-design-2026-09-20
 [adr-055]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-055-m31c-split-and-the-motors-a-ork-flies-its-own-curve-first-and-only-what-lights-at-launch-2026-09-21
 [adr-056]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-056-a-ork-designs-recovery-and-separation-read-as-written-with-openrockets-words-measured-2026-09-21
+[adr-057]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-057-a-ork-designs-stored-simulations-read-back-as-written-with-their-units-measured-2026-09-21
 [adr-053]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-053-the-parts-on-and-inside-a-ork-body-degrees-what-is-left-out-and-a-sourced-finish-2026-09-20
 [adr-052]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-052-what-a-ork-value-means-automatic-dimensions-two-names-for-one-tag-and-overrides-2026-09-20
 [decisions]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md

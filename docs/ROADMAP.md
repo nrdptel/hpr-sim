@@ -622,9 +622,10 @@
       when:* every recovery device and stage in the library has its settings read or left out
       with a reason, and `cargo xtask ork` prints the counts. *Result:* met (ADR-056): 137 devices
       read, 2 left out in pods; 18 of 93 stages separate, 2 parallel stages' left out.
-    - [ ] **M3.1c3 What OpenRocket last did.** Stored launch conditions and results: the summary,
+    - [x] **M3.1c3 What OpenRocket last did.** Stored launch conditions and results: the summary,
       the time series and the events (L64). *Done when:* L64's named test is live, a design's
-      stored results are read back, and `cargo xtask ork` prints the counts.
+      stored results are read back, and `cargo xtask ork` prints the counts. *Result:* met
+      (ADR-057): 178 simulations read, 144 with a time series; units measured by a probe.
     - [ ] **M3.1c4 Pods, parallel stages and the rest** (L66). *Done when:* L66's named test is
       live, and a document with unknown content round-trips through `extensions.x-openrocket`.
   - [ ] **M3.1d The corpus and the cross-check.** `insta` snapshots on public files only, and the

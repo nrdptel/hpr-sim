@@ -5,23 +5,20 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
 ## Now
 
 - **Current milestone:** M1.8e, all done bar M1.8e16 (`[blocked]` on #108); the work is
-  **M3.1c3**, a `.ork` design's stored launch conditions and results, now M3.1c1 and c2 read its
-  motors and recovery (M3.1c split: c1 motors, c2 recovery, c3 stored results, c4 pods; ADR-055).
-- **Order:** M3.1c3, M3.1c4, M3.1d, M2.2, M1.9; M1.8e16 waits on #108. **Run:** M0.1-M0.4,
-  M1.1-M1.7, M2.1, M1.8a-e19 bar e16, M3.1a, M3.1b, M3.1c1-c2; the site is published.
+  **M3.1c4**, a `.ork` design's pods and parallel stages and the rest, now M3.1c1-c3 read its
+  motors, recovery and stored simulations (M3.1c split four ways; ADR-055).
+- **Order:** M3.1c4, M3.1d, M2.2, M1.9; M1.8e16 waits on #108. **Run:** M0.1-M0.4,
+  M1.1-M1.7, M2.1, M1.8a-e19 bar e16, M3.1a, M3.1b, M3.1c1-c3; the site is published.
 - **Neer, 2026-09-20:** Debrief is sunset; a flight log analyzer usable **on its own** is part of
   this project (ADR-046, V21); Phase 5 re-cut.
-- **Last updated:** 2026-09-21 (M3.1c2 shipped: when a `.ork` design's parachutes open)
+- **Last updated:** 2026-09-21 (M3.1c3 shipped: a `.ork` design's stored simulations)
 
 ## Handoff (overwrite each session)
 
-- **M3.1c3 next:** `<simulations>`: each `<conditions>` (L64: wind direction is `winddirection`,
-  radians, *from*; `launchroddirection` is degrees, a compass bearing; `launchintowind` makes
-  OpenRocket replace it) and `<flightdata>` (summary attributes, SI; one `<databranch>` per stage,
-  `<datapoint>` in `types` order, angles in radians; `<event>`s). Sources and oracle notes are in
-  the gitignored `refs/scratch/m31c/or-semantics.md` §7-8 (pages in
-  `refs/sources/openrocket-docs/`); a claim a count rests on needs a committed probe, as
-  `validation/oracles/openrocket/events.py` (ADR-056) is. **Driving OpenRocket:**
+- **M3.1c4 next:** `<podset>` and `<parallelstage>` (9 and 3, holding 6 motors, 2 parachutes, 2
+  separations; L66: keep them or flag the rocket reduced) and a lossless `extensions.x-openrocket`
+  round trip. Notes: gitignored `refs/scratch/m31c/or-semantics.md` §9; a count needs a committed
+  probe, like `validation/oracles/openrocket/events.py` (ADR-056). **Driving OpenRocket:**
   `validation/oracles/openrocket/automatic_radius.py` (ADR-054) runs 24.12 headless through JPype,
   binding empty motor and preset databases in a Python Guice module; it logs to stdout, so the
   script writes to a path. **Read OpenRocket after it re-resolves** (a save does it): its first
@@ -60,6 +57,8 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
 
 ## Done log (newest first, keep about 15)
 
+- 2026-09-21: M3.1c3 A `.ork` design's stored simulations read back (ADR-057): 178, 144 with a
+  time series (101,955 rows); a probe measures their units. L64 live.
 - 2026-09-21: M3.1c2 A `.ork` design's recovery and separation, read not flown (ADR-056): 137
   devices, 2 left out in pods; 18 of 93 stages separate. A committed probe measures its event words,
   `cd auto` (0.8), a deploy height above ground; set above apogee, one did not open.
@@ -87,6 +86,7 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
 
 ## Decided without Neer (one line each; significant ones get an ADR)
 
+- ADR-057: a `.ork`'s stored simulations are read as written, to compare against; units measured.
 - ADR-056: `.ork` recovery read as written, not flown; a deploy height above apogee and `cd auto`
   are left for the step that flies it.
 - ADR-055: M3.1c split c1 to c4; a motor's curve is its file's own first, the bundled catalog
