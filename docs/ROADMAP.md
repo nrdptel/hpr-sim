@@ -538,12 +538,10 @@
       together; and, ahead of that, issue #108 closed — a rule for the loading through a crossing
       whose answer settles as the nose is cut finer, on a body that crosses (the committed nose
       under a 30° cap at Mach 4.63), and that leaves TN 3527's printed ogives where they are.
-- [x] **M3.1 OpenRocket `.ork` import.**
-  - Handles zip, gz and raw XML, schema 1.0 to 1.10, plus the documented 1.11 additions.
-  - Reads components, materials, finishes, motor configurations, recovery, stages, and stored
-    simulation results.
-  - Unknown content is kept in `extensions.x-openrocket` for a lossless round trip, and warnings
-    are graceful, never failures.
+- [x] **M3.1 OpenRocket `.ork` import.** Handles zip, gz and raw XML, schema 1.0 to 1.10, plus the
+  documented 1.11 additions; reads components, materials, finishes, motor configurations, recovery,
+  stages, and stored simulation results; unknown content is kept in `extensions.x-openrocket` for a
+  lossless round trip, and warnings are graceful, never failures.
   - Loft lessons: L49, L56, L57, L58, L59, L60, L61, L62, L63, L64, L65, L66.
 
   *Done when:* every `.ork` in `refs/loft-fixtures` and the OR example set imports with zero
@@ -571,18 +569,16 @@
       counts, flags, and the dimensions OpenRocket works out for itself; the tags it writes under
       two names; the overrides. Loft lessons L58, L62, L63. *Done when:* those three lessons' named
       tests are live, each resting on what the corpus shows rather than on an assumption, and `cargo
-      xtask ork` prints the counts they rest on. *Result:* met (ADR-052): `auto <number>` keeps flag
-      and number; renamed tags read where both names agree on text and frame; a stated `0` is a
-      value.
+      xtask ork` prints the counts they rest on. *Result:* met (ADR-052): `auto <number>` keeps both;
+      a stated `0` is a value.
     - [x] **M3.1b2 The spine.** The stages and the body components stacked in them, with their
       shapes, lengths, radii, walls, materials and overrides, every automatic radius marked for
       `layout()` to resolve rather than filled in, across a stage boundary too (L59). *Done when:*
       L59's named test is live and `cargo xtask ork` says how many spines lay out and what was left
       off them. *Result:* met: 73 of 76 spines lay out; a wall-less shoulder reads solid, for M2.2.
     - [x] **M3.1b3 The parts on and inside the body**, with their positions, what they take from
-      their parents, and a sourced finish (L49, L60, L61). Its *done when* was M3.1b's bullets,
-      **split** rather than rewritten: M3.1b4 carries "every design gives a `Rocket` whose
-      `layout()` succeeds" unchanged, and M3.1b's bullet stays unticked until it does. *Done when:*
+      their parents, and a sourced finish (L49, L60, L61). It split M3.1b's bullets rather than
+      rewriting them; M3.1b4 carried the rest unchanged. *Done when:*
       every part OpenRocket writes on or inside a body component is read into an `hpr_design` part
       or left out with its reason; those lessons' tests are live; and `cargo xtask ork` says how
       many parts were read and how many left out. *Result:* met (ADR-053): 765 parts, 5 left out
@@ -595,13 +591,10 @@
       written down rather than on a cached number; and `cargo xtask ork` says so. *Result:* met
       (ADR-054): 75 of 75 lay out, 1 document holds none; 7 radii take OpenRocket's 25 mm default;
       67 of 67 body radii agree with OpenRocket.
-  - [x] **M3.1c Motors, recovery, stages and what OpenRocket last did.** Motor configurations and
-    embedded `.rse` curves, recovery devices, stage and pod structure, stored conditions and
-    results, and `extensions.x-openrocket` for the rest. Loft lessons L57, L64, L65, L66.
+  - [x] **M3.1c Motors, recovery, stages and what OpenRocket last did** (L57, L64, L65, L66).
     *Done when:* those lessons' named tests are live, a design's stored results are read back, and
-    a document with unknown content round-trips through `extensions.x-openrocket`. Split into
-    M3.1c1 to M3.1c4 (ADR-055), carrying that unchanged. *Result:* met (ADR-055 to ADR-058): unknown
-    parts, sections, tags and attributes are kept; the text of a tag's unread second copy is not.
+    a document with unknown content round-trips through `extensions.x-openrocket`. Split c1 to c4
+    (ADR-055). *Result:* met (ADR-055 to ADR-058), bar the text of a tag's unread second copy.
     - [x] **M3.1c1 Motors and their configurations.** The configurations a design declares, the
       motor each mount holds in each, when it ignites, its delay, and a thrust curve from the
       archive's `thrustcurves/<digest>.rse` or the bundled catalog (L57, L65). *Done when:* L57's
@@ -626,24 +619,31 @@
     RocketSerializer cross-check. *Done when:* the parent's four bullets above are met. Split: d1, d2.
     - [x] **M3.1d1 Snapshots of public designs.** *Done when:* committed `insta` snapshots use only
       public files (the Loft demo fixtures and synthetic designs), and private-corpus results go to
-      a gitignored `corpus-out/`, as counts only. *Result:* met: Loft's seven demo designs and a
-      synthetic one, each read by `hpr_io::ork::design` into a summary snapshot; the library: counts.
+      a gitignored `corpus-out/`, as counts only. *Result:* met: Loft's 7 demos and a synthetic one.
     - [x] **M3.1d2 The cross-check.** *Done when:* every `.ork` in `refs/loft-fixtures` and the OR
       example set imports with zero errors, and the RocketSerializer cross-check agrees on the key
       geometry. *Result:* met (ADR-059): 27 and 17 files, 0 errors; of 1,212 numbers over 74
       designs, none of hpr's is apart from both RocketSerializer and OpenRocket.
 
-- [ ] **M2.2 OpenRocket oracle and corpus.**
-  - `validation/oracles/openrocket/` (JPype, OR 24.12) flies the OR examples and the
-    corpus.
-  - The stored results inside the `.ork` files are used as a second reference.
-  - The deferred M1.4 mass/CG checks run against OR values.
+- [ ] **M2.2 OpenRocket oracle and corpus.** `validation/oracles/openrocket/` (JPype, OR 24.12)
+  flies the OR examples and the corpus; the stored results inside the `.ork` files are used as a
+  second reference; the deferred M1.4 mass/CG checks run against OR values. *Done when:* at least
+  20 designs are in the report with an error distribution (apogee, max velocity, stability margin,
+  mass, CG); every design with apogee error above 5% has a written hypothesis; private designs
+  appear only as anonymised ids. Split into M2.2a to M2.2e (ADR-060): mass first.
   - Loft lessons: L19, L51, L80, L81, L82, L87.
-  *Done when:*
-  - At least 20 designs are in the report with an error distribution (apogee, max velocity,
-    stability margin, mass, CG).
-  - Every design with apogee error above 5% has a written hypothesis.
-  - Private designs appear only as anonymised ids.
+  - [x] **M2.2a Structure mass, CG and inertia** (the M1.4 deferral). *Done when:* `cargo xtask
+    ork` holds every design OpenRocket opens to its structure's mass, CG and inertias and prints
+    the spread; the Loft demo record is checked in CI; every design outside 1% in mass or 1% of
+    length in CG has a written hypothesis. *Result:* met (ADR-060): 57 and 58 of 74 within 1%; the
+    17 outside, five causes hpr warns of; roll inertia unexplained (median 2.1%).
+  - [ ] **M2.2b OpenRocket's mass conventions** (L51, L87). *Done when:* L51, L87 are live and each
+    convention ADR-060 lists, and roll inertia, is hpr's rule or a written departure, M2.2a rerun.
+  - [ ] **M2.2c The motors OpenRocket flies.** *Done when:* every configuration held back only for
+    want of a curve flies or is named with its reason, each curve's impulse within 0.1% of OR's.
+  - [ ] **M2.2d Flights to apogee on the public designs** (L80, L81). *Done when:* those that fly
+    are in a report against OR (apogee, max velocity, stability margin) and L80, L81 are live.
+  - [ ] **M2.2e The corpus** (L19, L82). *Done when:* the parent's *done when* is met, unchanged.
 
 - [ ] **M1.9 Staging, clusters, airstarts (COTS).**
   - Stage separation triggers (burnout plus delay, altitude, time); sustainer ignition.

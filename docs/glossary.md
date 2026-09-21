@@ -629,13 +629,16 @@ The peak force a parachute puts on the rocket as it opens. Knacke writes it as `
 
 A widely used open-source rocket design and simulation program. hpr may run it as an external
 program to compare results, but never reads or copies its source code, whose licence (GPL) is
-incompatible with hpr's. The comparison with it is planned for [M2.2](decisions-and-roadmap.md#m2-2), the OpenRocket
-milestone.
+incompatible with hpr's. The comparison with it is [M2.2](decisions-and-roadmap.md#m2-2), the
+OpenRocket milestone: its mass comparison is done
+([M2.2a](decisions-and-roadmap.md#m2-2a)), and flights come in
+[M2.2d](decisions-and-roadmap.md#m2-2d).
 
 ## Oracle
 
 An independent program run to produce [reference values](#reference-value-and-fixture) for hpr's
-tests. Usually it is another simulator: RocketPy 1.13.0 now, and OpenRocket later. Scripts that
+tests. Usually it is another simulator: RocketPy 1.13.0, and OpenRocket 24.12, so far for mass and
+the reading of `.ork` files. Scripts that
 evaluate a published formula in high precision, and ThrustCurve.org's own statistics code, serve as
 oracles too; all of them live under `validation/oracles/`. See
 [Recovery](physics/recovery.md#against-rocketpy) and the [list of simulator oracles][oracles].

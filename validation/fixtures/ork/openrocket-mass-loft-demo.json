@@ -1,0 +1,910 @@
+{
+ "command": "mass.py validation/fixtures/ork/openrocket-mass-loft-demo.json validation/fixtures/ork/loft-demo",
+ "designs": [
+  {
+   "comment_removed": false,
+   "file": "validation/fixtures/ork/loft-demo/demo-boattail.ork",
+   "opens": true,
+   "parts": [
+    {
+     "class": "Rocket",
+     "cm_x_m": 0.618495167576544,
+     "component_mass_kg": 0.0,
+     "each_mass_kg": 0.6900445640897314,
+     "id": "10f70000-0000-4000-8000-0000000000b0",
+     "mass_kg": 0.6900445640897314,
+     "mass_overridden": false,
+     "name": "Loft Demo 38mm \u2014 boattail + elliptical fins",
+     "overridden_by": null,
+     "override_mass_kg": 0.0
+    },
+    {
+     "class": "AxialStage",
+     "cm_x_m": 0.0,
+     "component_mass_kg": 0.0,
+     "each_mass_kg": 0.6900445640897314,
+     "id": "10f70000-0000-4000-8000-0000000000b1",
+     "mass_kg": 0.0,
+     "mass_overridden": false,
+     "name": "Sustainer",
+     "overridden_by": null,
+     "override_mass_kg": 0.0
+    },
+    {
+     "class": "NoseCone",
+     "cm_x_m": 0.17892142273350706,
+     "component_mass_kg": 0.10968366064175794,
+     "each_mass_kg": 0.10968366064175794,
+     "id": "10f70000-0000-4000-8000-0000000000b2",
+     "mass_kg": 0.10968366064175794,
+     "mass_overridden": false,
+     "name": "Nose cone",
+     "overridden_by": null,
+     "override_mass_kg": 0.10968366064175794
+    },
+    {
+     "class": "BodyTube",
+     "cm_x_m": 0.64,
+     "component_mass_kg": 0.3012913018498753,
+     "each_mass_kg": 0.3012913018498753,
+     "id": "10f70000-0000-4000-8000-0000000000b3",
+     "mass_kg": 0.3012913018498753,
+     "mass_overridden": false,
+     "name": "Body tube",
+     "overridden_by": null,
+     "override_mass_kg": 0.3012913018498753
+    },
+    {
+     "class": "MassComponent",
+     "cm_x_m": 0.46,
+     "component_mass_kg": 0.07,
+     "each_mass_kg": 0.07,
+     "id": "10f70000-0000-4000-8000-0000000000b4",
+     "mass_kg": 0.07,
+     "mass_overridden": false,
+     "name": "Altimeter + battery",
+     "overridden_by": null,
+     "override_mass_kg": 0.07
+    },
+    {
+     "class": "Parachute",
+     "cm_x_m": 0.375,
+     "component_mass_kg": 0.026060525992212764,
+     "each_mass_kg": 0.026060525992212764,
+     "id": "10f70000-0000-4000-8000-0000000000b5",
+     "mass_kg": 0.026060525992212764,
+     "mass_overridden": false,
+     "name": "Main parachute",
+     "overridden_by": null,
+     "override_mass_kg": 0.026060525992212764
+    },
+    {
+     "class": "InnerTube",
+     "cm_x_m": 0.9,
+     "component_mass_kg": 0.0060884065626570175,
+     "each_mass_kg": 0.0060884065626570175,
+     "id": "10f70000-0000-4000-8000-0000000000b6",
+     "mass_kg": 0.0060884065626570175,
+     "mass_overridden": false,
+     "name": "Motor mount tube",
+     "overridden_by": null,
+     "override_mass_kg": 0.0060884065626570175
+    },
+    {
+     "class": "CenteringRing",
+     "cm_x_m": 0.8180000000000001,
+     "component_mass_kg": 0.0006234490621048946,
+     "each_mass_kg": 0.0006234490621048946,
+     "id": "10f70000-0000-4000-8000-0000000000b7",
+     "mass_kg": 0.0006234490621048946,
+     "mass_overridden": false,
+     "name": "Centering ring fore",
+     "overridden_by": null,
+     "override_mass_kg": 0.0006234490621048946
+    },
+    {
+     "class": "CenteringRing",
+     "cm_x_m": 0.993,
+     "component_mass_kg": 0.0006234490621048946,
+     "each_mass_kg": 0.0006234490621048946,
+     "id": "10f70000-0000-4000-8000-0000000000b8",
+     "mass_kg": 0.0006234490621048946,
+     "mass_overridden": false,
+     "name": "Centering ring aft",
+     "overridden_by": null,
+     "override_mass_kg": 0.0006234490621048946
+    },
+    {
+     "class": "EllipticalFinSet",
+     "cm_x_m": 0.9349999999999999,
+     "component_mass_kg": 0.1583763011199852,
+     "each_mass_kg": 0.1583763011199852,
+     "id": "10f70000-0000-4000-8000-0000000000b9",
+     "mass_kg": 0.1583763011199852,
+     "mass_overridden": false,
+     "name": "Elliptical fins",
+     "overridden_by": null,
+     "override_mass_kg": 0.1583763011199852
+    },
+    {
+     "class": "Transition",
+     "cm_x_m": 1.02181809008028,
+     "component_mass_kg": 0.017297469799033384,
+     "each_mass_kg": 0.017297469799033384,
+     "id": "10f70000-0000-4000-8000-0000000000ba",
+     "mass_kg": 0.017297469799033384,
+     "mass_overridden": false,
+     "name": "Boattail",
+     "overridden_by": null,
+     "override_mass_kg": 0.017297469799033384
+    }
+   ],
+   "parts_skipped": 0,
+   "sha256": "cb96b09570a5a084dbc43bfeac2af9df449ed52f5fdd8fa991c11b94d212da88",
+   "stages": {
+    "active": 1,
+    "total": 1
+   },
+   "structure": {
+    "cm_x_m": 0.618495167576544,
+    "ixx": 0.0005860586170296618,
+    "iyy": 0.057929272265184725,
+    "izz": 0.057929272265184725,
+    "longitudinal_inertia": 0.057929272265184725,
+    "mass_kg": 0.6900445640897314,
+    "rotational_inertia": 0.0005860586170296618
+   }
+  },
+  {
+   "comment_removed": false,
+   "file": "validation/fixtures/ork/loft-demo/demo-dual-deploy.ork",
+   "opens": true,
+   "parts": [
+    {
+     "class": "Rocket",
+     "cm_x_m": 0.9381733514026434,
+     "component_mass_kg": 0.0,
+     "each_mass_kg": 1.5201252630428366,
+     "id": "10f70000-0000-4000-8000-000000000101",
+     "mass_kg": 1.5201252630428366,
+     "mass_overridden": false,
+     "name": "Loft Demo 54mm \u2014 dual deploy",
+     "overridden_by": null,
+     "override_mass_kg": 0.0
+    },
+    {
+     "class": "AxialStage",
+     "cm_x_m": 0.0,
+     "component_mass_kg": 0.0,
+     "each_mass_kg": 1.5201252630428366,
+     "id": "10f70000-0000-4000-8000-000000000102",
+     "mass_kg": 0.0,
+     "mass_overridden": false,
+     "name": "Sustainer",
+     "overridden_by": null,
+     "override_mass_kg": 0.0
+    },
+    {
+     "class": "NoseCone",
+     "cm_x_m": 0.22829804149248636,
+     "component_mass_kg": 0.2165515476371082,
+     "each_mass_kg": 0.2165515476371082,
+     "id": "10f70000-0000-4000-8000-000000000103",
+     "mass_kg": 0.2165515476371082,
+     "mass_overridden": false,
+     "name": "Nose cone",
+     "overridden_by": null,
+     "override_mass_kg": 0.2165515476371082
+    },
+    {
+     "class": "BodyTube",
+     "cm_x_m": 0.635,
+     "component_mass_kg": 0.3118574204216943,
+     "each_mass_kg": 0.3118574204216943,
+     "id": "10f70000-0000-4000-8000-000000000104",
+     "mass_kg": 0.3118574204216943,
+     "mass_overridden": false,
+     "name": "Payload / main bay",
+     "overridden_by": null,
+     "override_mass_kg": 0.3118574204216943
+    },
+    {
+     "class": "MassComponent",
+     "cm_x_m": 0.8400000000000001,
+     "component_mass_kg": 0.18,
+     "each_mass_kg": 0.18,
+     "id": "10f70000-0000-4000-8000-000000000105",
+     "mass_kg": 0.18,
+     "mass_overridden": false,
+     "name": "Dual-deploy avionics",
+     "overridden_by": null,
+     "override_mass_kg": 0.18
+    },
+    {
+     "class": "Parachute",
+     "cm_x_m": 0.48,
+     "component_mass_kg": 0.09832210396885106,
+     "each_mass_kg": 0.09832210396885106,
+     "id": "10f70000-0000-4000-8000-000000000106",
+     "mass_kg": 0.09832210396885106,
+     "mass_overridden": false,
+     "name": "Main parachute",
+     "overridden_by": null,
+     "override_mass_kg": 0.09832210396885106
+    },
+    {
+     "class": "BodyTube",
+     "cm_x_m": 1.26,
+     "component_mass_kg": 0.3969094441730649,
+     "each_mass_kg": 0.3969094441730649,
+     "id": "10f70000-0000-4000-8000-000000000107",
+     "mass_kg": 0.3969094441730649,
+     "mass_overridden": false,
+     "name": "Booster / motor bay",
+     "overridden_by": null,
+     "override_mass_kg": 0.3969094441730649
+    },
+    {
+     "class": "Parachute",
+     "cm_x_m": 1.0,
+     "component_mass_kg": 0.018634746842118306,
+     "each_mass_kg": 0.018634746842118306,
+     "id": "10f70000-0000-4000-8000-000000000108",
+     "mass_kg": 0.018634746842118306,
+     "mass_overridden": false,
+     "name": "Drogue parachute",
+     "overridden_by": null,
+     "override_mass_kg": 0.018634746842118306
+    },
+    {
+     "class": "TrapezoidFinSet",
+     "cm_x_m": 1.5495652173913044,
+     "component_mass_kg": 0.2978499999999999,
+     "each_mass_kg": 0.2978499999999999,
+     "id": "10f70000-0000-4000-8000-000000000109",
+     "mass_kg": 0.2978499999999999,
+     "mass_overridden": false,
+     "name": "Fins",
+     "overridden_by": null,
+     "override_mass_kg": 0.2978499999999999
+    }
+   ],
+   "parts_skipped": 0,
+   "sha256": "c6ff714a234c0cb7cbb236e3d990607a46af55c652822e8cd823a5f33a9431f1",
+   "stages": {
+    "active": 1,
+    "total": 1
+   },
+   "structure": {
+    "cm_x_m": 0.9381733514026434,
+    "ixx": 0.0017943426822657497,
+    "iyy": 0.34000755492309415,
+    "izz": 0.34000755492309415,
+    "longitudinal_inertia": 0.34000755492309415,
+    "mass_kg": 1.5201252630428366,
+    "rotational_inertia": 0.0017943426822657497
+   }
+  },
+  {
+   "comment_removed": false,
+   "file": "validation/fixtures/ork/loft-demo/demo-multi-config.ork",
+   "opens": true,
+   "parts": [
+    {
+     "class": "Rocket",
+     "cm_x_m": 0.5617627242033438,
+     "component_mass_kg": 0.0,
+     "each_mass_kg": 0.6141886922367632,
+     "id": "10f70000-0000-4000-8000-0000000000c1",
+     "mass_kg": 0.6141886922367632,
+     "mass_overridden": false,
+     "name": "Loft Demo 38mm \u2014 motor comparison",
+     "overridden_by": null,
+     "override_mass_kg": 0.0
+    },
+    {
+     "class": "AxialStage",
+     "cm_x_m": 0.0,
+     "component_mass_kg": 0.0,
+     "each_mass_kg": 0.6141886922367632,
+     "id": "10f70000-0000-4000-8000-0000000000c2",
+     "mass_kg": 0.0,
+     "mass_overridden": false,
+     "name": "Sustainer",
+     "overridden_by": null,
+     "override_mass_kg": 0.0
+    },
+    {
+     "class": "NoseCone",
+     "cm_x_m": 0.15971612749362685,
+     "component_mass_kg": 0.09799076253697166,
+     "each_mass_kg": 0.09799076253697166,
+     "id": "10f70000-0000-4000-8000-0000000000c3",
+     "mass_kg": 0.09799076253697166,
+     "mass_overridden": false,
+     "name": "Nose cone",
+     "overridden_by": null,
+     "override_mass_kg": 0.09799076253697166
+    },
+    {
+     "class": "BodyTube",
+     "cm_x_m": 0.6,
+     "component_mass_kg": 0.2929220990207119,
+     "each_mass_kg": 0.2929220990207119,
+     "id": "10f70000-0000-4000-8000-0000000000c4",
+     "mass_kg": 0.2929220990207119,
+     "mass_overridden": false,
+     "name": "Body tube",
+     "overridden_by": null,
+     "override_mass_kg": 0.2929220990207119
+    },
+    {
+     "class": "MassComponent",
+     "cm_x_m": 0.43,
+     "component_mass_kg": 0.07,
+     "each_mass_kg": 0.07,
+     "id": "10f70000-0000-4000-8000-0000000000c5",
+     "mass_kg": 0.07,
+     "mass_overridden": false,
+     "name": "Altimeter + battery",
+     "overridden_by": null,
+     "override_mass_kg": 0.07
+    },
+    {
+     "class": "Parachute",
+     "cm_x_m": 0.345,
+     "component_mass_kg": 0.026060525992212764,
+     "each_mass_kg": 0.026060525992212764,
+     "id": "10f70000-0000-4000-8000-0000000000c6",
+     "mass_kg": 0.026060525992212764,
+     "mass_overridden": false,
+     "name": "Main parachute",
+     "overridden_by": null,
+     "override_mass_kg": 0.026060525992212764
+    },
+    {
+     "class": "TrapezoidFinSet",
+     "cm_x_m": 0.9033333333333333,
+     "component_mass_kg": 0.11988000000000003,
+     "each_mass_kg": 0.11988000000000003,
+     "id": "10f70000-0000-4000-8000-0000000000c7",
+     "mass_kg": 0.11988000000000003,
+     "mass_overridden": false,
+     "name": "Fins",
+     "overridden_by": null,
+     "override_mass_kg": 0.11988000000000003
+    },
+    {
+     "class": "InnerTube",
+     "cm_x_m": 0.85,
+     "component_mass_kg": 0.0060884065626570175,
+     "each_mass_kg": 0.0060884065626570175,
+     "id": "10f70000-0000-4000-8000-0000000000c8",
+     "mass_kg": 0.0060884065626570175,
+     "mass_overridden": false,
+     "name": "Motor mount tube",
+     "overridden_by": null,
+     "override_mass_kg": 0.0060884065626570175
+    },
+    {
+     "class": "CenteringRing",
+     "cm_x_m": 0.768,
+     "component_mass_kg": 0.0006234490621048946,
+     "each_mass_kg": 0.0006234490621048946,
+     "id": "10f70000-0000-4000-8000-0000000000c9",
+     "mass_kg": 0.0006234490621048946,
+     "mass_overridden": false,
+     "name": "Centering ring fore",
+     "overridden_by": null,
+     "override_mass_kg": 0.0006234490621048946
+    },
+    {
+     "class": "CenteringRing",
+     "cm_x_m": 0.943,
+     "component_mass_kg": 0.0006234490621048946,
+     "each_mass_kg": 0.0006234490621048946,
+     "id": "10f70000-0000-4000-8000-0000000000ca",
+     "mass_kg": 0.0006234490621048946,
+     "mass_overridden": false,
+     "name": "Centering ring aft",
+     "overridden_by": null,
+     "override_mass_kg": 0.0006234490621048946
+    }
+   ],
+   "parts_skipped": 0,
+   "sha256": "7075f9819169b6cec9fddb2f94af9b18d9684a7262048d8dcdd39df85551c252",
+   "stages": {
+    "active": 1,
+    "total": 1
+   },
+   "structure": {
+    "cm_x_m": 0.5617627242033438,
+    "ixx": 0.0003991416793459829,
+    "iyy": 0.045981440088701406,
+    "izz": 0.045981440088701406,
+    "longitudinal_inertia": 0.045981440088701406,
+    "mass_kg": 0.6141886922367632,
+    "rotational_inertia": 0.0003991416793459829
+   }
+  },
+  {
+   "comment_removed": false,
+   "file": "validation/fixtures/ork/loft-demo/demo-payload-separation.ork",
+   "opens": true,
+   "parts": [
+    {
+     "class": "Rocket",
+     "cm_x_m": 0.5100401019204095,
+     "component_mass_kg": 0.0,
+     "each_mass_kg": 0.5915918592481484,
+     "id": "10f70000-0000-4000-8000-000000000401",
+     "mass_kg": 0.5915918592481484,
+     "mass_overridden": false,
+     "name": "Loft Demo 38mm \u2014 payload separation",
+     "overridden_by": null,
+     "override_mass_kg": 0.0
+    },
+    {
+     "class": "AxialStage",
+     "cm_x_m": 0.0,
+     "component_mass_kg": 0.0,
+     "each_mass_kg": 0.34430010646550724,
+     "id": "10f70000-0000-4000-8000-000000000402",
+     "mass_kg": 0.0,
+     "mass_overridden": false,
+     "name": "Payload",
+     "overridden_by": null,
+     "override_mass_kg": 0.0
+    },
+    {
+     "class": "NoseCone",
+     "cm_x_m": 0.14050581461699443,
+     "component_mass_kg": 0.08630627384959624,
+     "each_mass_kg": 0.08630627384959624,
+     "id": "10f70000-0000-4000-8000-000000000403",
+     "mass_kg": 0.08630627384959624,
+     "mass_overridden": false,
+     "name": "Nose cone",
+     "overridden_by": null,
+     "override_mass_kg": 0.08630627384959624
+    },
+    {
+     "class": "BodyTube",
+     "cm_x_m": 0.38,
+     "component_mass_kg": 0.1339072452666112,
+     "each_mass_kg": 0.1339072452666112,
+     "id": "10f70000-0000-4000-8000-000000000404",
+     "mass_kg": 0.1339072452666112,
+     "mass_overridden": false,
+     "name": "Payload bay",
+     "overridden_by": null,
+     "override_mass_kg": 0.1339072452666112
+    },
+    {
+     "class": "MassComponent",
+     "cm_x_m": 0.375,
+     "component_mass_kg": 0.09,
+     "each_mass_kg": 0.09,
+     "id": "10f70000-0000-4000-8000-000000000405",
+     "mass_kg": 0.09,
+     "mass_overridden": false,
+     "name": "Payload + altimeter",
+     "overridden_by": null,
+     "override_mass_kg": 0.09
+    },
+    {
+     "class": "Parachute",
+     "cm_x_m": 0.48,
+     "component_mass_kg": 0.0340865873492998,
+     "each_mass_kg": 0.0340865873492998,
+     "id": "10f70000-0000-4000-8000-000000000406",
+     "mass_kg": 0.0340865873492998,
+     "mass_overridden": false,
+     "name": "Payload parachute",
+     "overridden_by": null,
+     "override_mass_kg": 0.0340865873492998
+    },
+    {
+     "class": "AxialStage",
+     "cm_x_m": 0.54,
+     "component_mass_kg": 0.0,
+     "each_mass_kg": 0.24729175278264118,
+     "id": "10f70000-0000-4000-8000-000000000407",
+     "mass_kg": 0.0,
+     "mass_overridden": false,
+     "name": "Booster",
+     "overridden_by": null,
+     "override_mass_kg": 0.0
+    },
+    {
+     "class": "BodyTube",
+     "cm_x_m": 0.7100000000000001,
+     "component_mass_kg": 0.1422764480957744,
+     "each_mass_kg": 0.1422764480957744,
+     "id": "10f70000-0000-4000-8000-000000000408",
+     "mass_kg": 0.1422764480957744,
+     "mass_overridden": false,
+     "name": "Booster / motor bay",
+     "overridden_by": null,
+     "override_mass_kg": 0.1422764480957744
+    },
+    {
+     "class": "InnerTube",
+     "cm_x_m": 0.78,
+     "component_mass_kg": 0.0060884065626570175,
+     "each_mass_kg": 0.0060884065626570175,
+     "id": "10f70000-0000-4000-8000-000000000409",
+     "mass_kg": 0.0060884065626570175,
+     "mass_overridden": false,
+     "name": "Motor mount tube",
+     "overridden_by": null,
+     "override_mass_kg": 0.0060884065626570175
+    },
+    {
+     "class": "CenteringRing",
+     "cm_x_m": 0.6980000000000001,
+     "component_mass_kg": 0.0006234490621048946,
+     "each_mass_kg": 0.0006234490621048946,
+     "id": "10f70000-0000-4000-8000-00000000040a",
+     "mass_kg": 0.0006234490621048946,
+     "mass_overridden": false,
+     "name": "Centering ring fore",
+     "overridden_by": null,
+     "override_mass_kg": 0.0006234490621048946
+    },
+    {
+     "class": "CenteringRing",
+     "cm_x_m": 0.873,
+     "component_mass_kg": 0.0006234490621048946,
+     "each_mass_kg": 0.0006234490621048946,
+     "id": "10f70000-0000-4000-8000-00000000040b",
+     "mass_kg": 0.0006234490621048946,
+     "mass_overridden": false,
+     "name": "Centering ring aft",
+     "overridden_by": null,
+     "override_mass_kg": 0.0006234490621048946
+    },
+    {
+     "class": "TrapezoidFinSet",
+     "cm_x_m": 0.838125,
+     "component_mass_kg": 0.09767999999999999,
+     "each_mass_kg": 0.09767999999999999,
+     "id": "10f70000-0000-4000-8000-00000000040c",
+     "mass_kg": 0.09767999999999999,
+     "mass_overridden": false,
+     "name": "Fins",
+     "overridden_by": null,
+     "override_mass_kg": 0.09767999999999999
+    }
+   ],
+   "parts_skipped": 0,
+   "sha256": "36465f2e852b5b55c40d2c0206e67a9ed7b3e94cd66e8aea260316c017907899",
+   "stages": {
+    "active": 2,
+    "total": 2
+   },
+   "structure": {
+    "cm_x_m": 0.5100401019204095,
+    "ixx": 0.0003199944768334732,
+    "iyy": 0.03552319068617366,
+    "izz": 0.03552319068617366,
+    "longitudinal_inertia": 0.03552319068617366,
+    "mass_kg": 0.5915918592481484,
+    "rotational_inertia": 0.0003199944768334732
+   }
+  },
+  {
+   "file": "validation/fixtures/ork/loft-demo/demo-quirks.ork",
+   "opens": false,
+   "refused": "java.lang.IllegalStateException: Component: Booster Set not currently compatible with component: Rocket",
+   "sha256": "dfa86bcfe7d97bf0b9cfcd1be60f77c99b4dec1a9d6a28ba97f3bc219879aead"
+  },
+  {
+   "comment_removed": false,
+   "file": "validation/fixtures/ork/loft-demo/demo-single-deploy.ork",
+   "opens": true,
+   "parts": [
+    {
+     "class": "Rocket",
+     "cm_x_m": 0.5617627242033438,
+     "component_mass_kg": 0.0,
+     "each_mass_kg": 0.6141886922367632,
+     "id": "10f70000-0000-4000-8000-000000000001",
+     "mass_kg": 0.6141886922367632,
+     "mass_overridden": false,
+     "name": "Loft Demo 38mm \u2014 single deploy",
+     "overridden_by": null,
+     "override_mass_kg": 0.0
+    },
+    {
+     "class": "AxialStage",
+     "cm_x_m": 0.0,
+     "component_mass_kg": 0.0,
+     "each_mass_kg": 0.6141886922367632,
+     "id": "10f70000-0000-4000-8000-000000000002",
+     "mass_kg": 0.0,
+     "mass_overridden": false,
+     "name": "Sustainer",
+     "overridden_by": null,
+     "override_mass_kg": 0.0
+    },
+    {
+     "class": "NoseCone",
+     "cm_x_m": 0.15971612749362685,
+     "component_mass_kg": 0.09799076253697166,
+     "each_mass_kg": 0.09799076253697166,
+     "id": "10f70000-0000-4000-8000-000000000003",
+     "mass_kg": 0.09799076253697166,
+     "mass_overridden": false,
+     "name": "Nose cone",
+     "overridden_by": null,
+     "override_mass_kg": 0.09799076253697166
+    },
+    {
+     "class": "BodyTube",
+     "cm_x_m": 0.6,
+     "component_mass_kg": 0.2929220990207119,
+     "each_mass_kg": 0.2929220990207119,
+     "id": "10f70000-0000-4000-8000-000000000004",
+     "mass_kg": 0.2929220990207119,
+     "mass_overridden": false,
+     "name": "Body tube",
+     "overridden_by": null,
+     "override_mass_kg": 0.2929220990207119
+    },
+    {
+     "class": "MassComponent",
+     "cm_x_m": 0.43,
+     "component_mass_kg": 0.07,
+     "each_mass_kg": 0.07,
+     "id": "10f70000-0000-4000-8000-000000000005",
+     "mass_kg": 0.07,
+     "mass_overridden": false,
+     "name": "Altimeter + battery",
+     "overridden_by": null,
+     "override_mass_kg": 0.07
+    },
+    {
+     "class": "Parachute",
+     "cm_x_m": 0.345,
+     "component_mass_kg": 0.026060525992212764,
+     "each_mass_kg": 0.026060525992212764,
+     "id": "10f70000-0000-4000-8000-000000000006",
+     "mass_kg": 0.026060525992212764,
+     "mass_overridden": false,
+     "name": "Main parachute",
+     "overridden_by": null,
+     "override_mass_kg": 0.026060525992212764
+    },
+    {
+     "class": "TrapezoidFinSet",
+     "cm_x_m": 0.9033333333333333,
+     "component_mass_kg": 0.11988000000000003,
+     "each_mass_kg": 0.11988000000000003,
+     "id": "10f70000-0000-4000-8000-000000000007",
+     "mass_kg": 0.11988000000000003,
+     "mass_overridden": false,
+     "name": "Fins",
+     "overridden_by": null,
+     "override_mass_kg": 0.11988000000000003
+    },
+    {
+     "class": "InnerTube",
+     "cm_x_m": 0.85,
+     "component_mass_kg": 0.0060884065626570175,
+     "each_mass_kg": 0.0060884065626570175,
+     "id": "10f70000-0000-4000-8000-000000000008",
+     "mass_kg": 0.0060884065626570175,
+     "mass_overridden": false,
+     "name": "Motor mount tube",
+     "overridden_by": null,
+     "override_mass_kg": 0.0060884065626570175
+    },
+    {
+     "class": "CenteringRing",
+     "cm_x_m": 0.768,
+     "component_mass_kg": 0.0006234490621048946,
+     "each_mass_kg": 0.0006234490621048946,
+     "id": "10f70000-0000-4000-8000-000000000009",
+     "mass_kg": 0.0006234490621048946,
+     "mass_overridden": false,
+     "name": "Centering ring fore",
+     "overridden_by": null,
+     "override_mass_kg": 0.0006234490621048946
+    },
+    {
+     "class": "CenteringRing",
+     "cm_x_m": 0.943,
+     "component_mass_kg": 0.0006234490621048946,
+     "each_mass_kg": 0.0006234490621048946,
+     "id": "10f70000-0000-4000-8000-00000000000a",
+     "mass_kg": 0.0006234490621048946,
+     "mass_overridden": false,
+     "name": "Centering ring aft",
+     "overridden_by": null,
+     "override_mass_kg": 0.0006234490621048946
+    }
+   ],
+   "parts_skipped": 0,
+   "sha256": "1b63cb63e0290f93440368cf77eae40ca66d47873068a57716864afeb7a0aef4",
+   "stages": {
+    "active": 1,
+    "total": 1
+   },
+   "structure": {
+    "cm_x_m": 0.5617627242033438,
+    "ixx": 0.0003991416793459829,
+    "iyy": 0.045981440088701406,
+    "izz": 0.045981440088701406,
+    "longitudinal_inertia": 0.045981440088701406,
+    "mass_kg": 0.6141886922367632,
+    "rotational_inertia": 0.0003991416793459829
+   }
+  },
+  {
+   "comment_removed": true,
+   "file": "validation/fixtures/ork/loft-demo/demo-stable.ork",
+   "opens": true,
+   "parts": [
+    {
+     "class": "Rocket",
+     "cm_x_m": 0.5159107524380852,
+     "component_mass_kg": 0.0,
+     "each_mass_kg": 0.5400961922367632,
+     "id": "10f70005-0000-4000-8000-000000000001",
+     "mass_kg": 0.5400961922367632,
+     "mass_overridden": false,
+     "name": "Loft Demo 38mm \u2014 stable trainer",
+     "overridden_by": null,
+     "override_mass_kg": 0.0
+    },
+    {
+     "class": "AxialStage",
+     "cm_x_m": 0.0,
+     "component_mass_kg": 0.0,
+     "each_mass_kg": 0.5400961922367632,
+     "id": "10f70005-0000-4000-8000-000000000002",
+     "mass_kg": 0.0,
+     "mass_overridden": false,
+     "name": "Sustainer",
+     "overridden_by": null,
+     "override_mass_kg": 0.0
+    },
+    {
+     "class": "NoseCone",
+     "cm_x_m": 0.15971612749362685,
+     "component_mass_kg": 0.09799076253697166,
+     "each_mass_kg": 0.09799076253697166,
+     "id": "10f70005-0000-4000-8000-000000000003",
+     "mass_kg": 0.09799076253697166,
+     "mass_overridden": false,
+     "name": "Nose cone",
+     "overridden_by": null,
+     "override_mass_kg": 0.09799076253697166
+    },
+    {
+     "class": "BodyTube",
+     "cm_x_m": 0.6,
+     "component_mass_kg": 0.2929220990207119,
+     "each_mass_kg": 0.2929220990207119,
+     "id": "10f70005-0000-4000-8000-000000000004",
+     "mass_kg": 0.2929220990207119,
+     "mass_overridden": false,
+     "name": "Body tube",
+     "overridden_by": null,
+     "override_mass_kg": 0.2929220990207119
+    },
+    {
+     "class": "MassComponent",
+     "cm_x_m": 0.43,
+     "component_mass_kg": 0.07,
+     "each_mass_kg": 0.07,
+     "id": "10f70005-0000-4000-8000-000000000005",
+     "mass_kg": 0.07,
+     "mass_overridden": false,
+     "name": "Altimeter + battery",
+     "overridden_by": null,
+     "override_mass_kg": 0.07
+    },
+    {
+     "class": "Parachute",
+     "cm_x_m": 0.345,
+     "component_mass_kg": 0.026060525992212764,
+     "each_mass_kg": 0.026060525992212764,
+     "id": "10f70005-0000-4000-8000-000000000006",
+     "mass_kg": 0.026060525992212764,
+     "mass_overridden": false,
+     "name": "Main parachute",
+     "overridden_by": null,
+     "override_mass_kg": 0.026060525992212764
+    },
+    {
+     "class": "TrapezoidFinSet",
+     "cm_x_m": 0.9152,
+     "component_mass_kg": 0.04578750000000001,
+     "each_mass_kg": 0.04578750000000001,
+     "id": "10f70005-0000-4000-8000-000000000007",
+     "mass_kg": 0.04578750000000001,
+     "mass_overridden": false,
+     "name": "Fins",
+     "overridden_by": null,
+     "override_mass_kg": 0.04578750000000001
+    },
+    {
+     "class": "InnerTube",
+     "cm_x_m": 0.85,
+     "component_mass_kg": 0.0060884065626570175,
+     "each_mass_kg": 0.0060884065626570175,
+     "id": "10f70005-0000-4000-8000-000000000008",
+     "mass_kg": 0.0060884065626570175,
+     "mass_overridden": false,
+     "name": "Motor mount tube",
+     "overridden_by": null,
+     "override_mass_kg": 0.0060884065626570175
+    },
+    {
+     "class": "CenteringRing",
+     "cm_x_m": 0.768,
+     "component_mass_kg": 0.0006234490621048946,
+     "each_mass_kg": 0.0006234490621048946,
+     "id": "10f70005-0000-4000-8000-000000000009",
+     "mass_kg": 0.0006234490621048946,
+     "mass_overridden": false,
+     "name": "Centering ring fore",
+     "overridden_by": null,
+     "override_mass_kg": 0.0006234490621048946
+    },
+    {
+     "class": "CenteringRing",
+     "cm_x_m": 0.943,
+     "component_mass_kg": 0.0006234490621048946,
+     "each_mass_kg": 0.0006234490621048946,
+     "id": "10f70005-0000-4000-8000-00000000000a",
+     "mass_kg": 0.0006234490621048946,
+     "mass_overridden": false,
+     "name": "Centering ring aft",
+     "overridden_by": null,
+     "override_mass_kg": 0.0006234490621048946
+    }
+   ],
+   "parts_skipped": 0,
+   "sha256": "199f71f9fc774d5f7f29df70ecac94d8ad46e682a001ef7e67b144970934a234",
+   "stages": {
+    "active": 1,
+    "total": 1
+   },
+   "structure": {
+    "cm_x_m": 0.5159107524380852,
+    "ixx": 0.0001829872670596915,
+    "iyy": 0.03638346280967683,
+    "izz": 0.03638346280967683,
+    "longitudinal_inertia": 0.03638346280967683,
+    "mass_kg": 0.5400961922367632,
+    "rotational_inertia": 0.0001829872670596915
+   }
+  }
+ ],
+ "jar_sha256": "4959b72f52f5f607941e9722abbb7b7f0c4a38ebbbf84204a329db9f31c4f897",
+ "java": "17.0.20.1",
+ "jpype": "1.7.1",
+ "openrocket": "24.12",
+ "probe": {
+  "by_hand": {
+   "cm_x_m": 0.5,
+   "mass_kg": 0.6157521601036008,
+   "pitch_inertia": 0.052052198352917814,
+   "roll_inertia": 0.0014790366885688495
+  },
+  "document": "<?xml version='1.0' encoding='utf-8'?>\n<openrocket version=\"1.10\" creator=\"hpr-sim mass probe\"><rocket><name>Probe</name>\n<subcomponents><stage><name>Stage</name><subcomponents>\n<bodytube><name>Tube</name><length>1.0</length><thickness>0.002</thickness>\n<radius>0.05</radius>\n<material type=\"bulk\" density=\"1000.0\">Probe</material></bodytube>\n</subcomponents></stage></subcomponents></rocket></openrocket>\n",
+  "openrocket": {
+   "cm_x_m": 0.5,
+   "ixx": 0.0014790366885688484,
+   "iyy": 0.052052198352917786,
+   "izz": 0.052052198352917786,
+   "longitudinal_inertia": 0.052052198352917786,
+   "mass_kg": 0.6157521601036003,
+   "rotational_inertia": 0.0014790366885688484
+  }
+ },
+ "source": "validation/oracles/openrocket/mass.py"
+}

@@ -76,6 +76,7 @@ new record replaces it and points back. All of them are in the [decision log][de
 | [ADR-057: A `.ork` design's stored simulations][adr-057] | That the simulations OpenRocket last ran on a design are read back as it wrote them: the launch conditions, the summary, and each stage's time series and events. That their units are measured by a committed probe: the rod's angle and direction in degrees, a compass bearing; the wind's direction in radians, where it blows from. And that they are OpenRocket's answers to compare against, not flights hpr makes | [`.ork` design files](format/ork.md#what-openrocket-last-did-stored-simulations) |
 | [ADR-058: What a `.ork` holds that hpr does not model][adr-058] | That the parts and sections of a `.ork` hpr does not read — pods, parallel stages, OpenRocket's 3D-view settings, a simulation's plug-ins — are kept whole beside the design, in an extension called `x-openrocket`, at a path that leads back to where each was, so that writing the file back can put them back; that a design missing parts this way says it is reduced; and that the same goes for every tag and attribute no reader asks for, recorded as hpr reads | [`.ork` design files](format/ork.md#what-hpr-keeps-for-writing-the-file-back) |
 | [ADR-059: The RocketSerializer cross-check][adr-059] | That hpr's reading of a design's key geometry (the nose cone, transitions, fin sets, where each sits, and the body radius) is held to RocketSerializer's, a second program that reads `.ork` files, with OpenRocket itself run on the same file to settle any difference; that "agrees" means no number of hpr's is apart from both; that a cause is named only where the record proves it; and that an import error is a file that does not read or a design that does not lay out | [`.ork` design files](format/ork.md#checked-against-rocketserializer) |
+| [ADR-060: M2.2 split, and the structure's mass held to OpenRocket's][adr-060] | [The OpenRocket comparison](#m2-2) goes mass first, then OpenRocket's mass conventions, the motors OpenRocket flies, flights on public designs, and the corpus. Each design's structure is held to OpenRocket's within 1% in mass and 1% of length in centre of mass, thresholds set before measuring, and every design outside is given its cause. Which of OpenRocket's inertias is roll is measured on a tube worked out by hand | [Mass properties](physics/mass.md#checked-against-openrocket) |
 
 ## The roadmap
 
@@ -201,6 +202,11 @@ missing or its status disagrees.
 | <a id="m3-1d1"></a>[M3.1d1][phase-1] | Snapshots of what hpr reads from public `.ork` designs | done |
 | <a id="m3-1d2"></a>[M3.1d2][phase-1] | Every `.ork` imports without an error, and the cross-check against RocketSerializer | done |
 | <a id="m2-2"></a>[M2.2][phase-1] | OpenRocket as a reference program, and a corpus of designs to compare | not yet done |
+| <a id="m2-2a"></a>[M2.2a][phase-1] | Each design's structure (every stage, no motor): mass, centre of mass and inertia against OpenRocket's | done |
+| <a id="m2-2b"></a>[M2.2b][phase-1] | OpenRocket's mass conventions: a wall-less shoulder, clusters, fillets, a part with no material, and roll inertia | not yet done |
+| <a id="m2-2c"></a>[M2.2c][phase-1] | The motors OpenRocket flies, for the configurations held back for want of a thrust curve | not yet done |
+| <a id="m2-2d"></a>[M2.2d][phase-1] | Flights to apogee on the public designs, against OpenRocket | not yet done |
+| <a id="m2-2e"></a>[M2.2e][phase-1] | The corpus, with a hypothesis for every apogee miss over 5% | not yet done |
 | <a id="m1-9"></a>[M1.9][phase-1] | Staging, clusters and air starts, for COTS motors | not yet done |
 | <a id="m1-10"></a>[M1.10][phase-1] | Flight outputs: the stability margin over the flight, the best ejection delay, the peak dynamic pressure, fin flutter and the landing point | not yet done |
 | <a id="m2-3"></a>[M2.3][phase-1] | Comparisons with real flights | not yet done |
@@ -377,6 +383,7 @@ is the milestone that added or will add that test.
 [adr-057]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-057-a-ork-designs-stored-simulations-read-back-as-written-with-their-units-measured-2026-09-21
 [adr-058]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-058-what-a-ork-holds-that-hpr-does-not-model-kept-whole-in-x-openrocket-2026-09-21
 [adr-059]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-059-the-rocketserializer-cross-check-three-readers-with-openrocket-settling-a-difference-2026-09-21
+[adr-060]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-060-m22-split-and-the-structures-mass-held-to-openrockets-2026-09-21
 [adr-053]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-053-the-parts-on-and-inside-a-ork-body-degrees-what-is-left-out-and-a-sourced-finish-2026-09-20
 [adr-052]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-052-what-a-ork-value-means-automatic-dimensions-two-names-for-one-tag-and-overrides-2026-09-20
 [decisions]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md
