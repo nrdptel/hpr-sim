@@ -38,6 +38,7 @@ pub mod document;
 mod error;
 pub mod motors;
 pub mod recovery;
+pub mod simulations;
 pub mod value;
 mod warning;
 
@@ -53,6 +54,10 @@ pub use motors::{
 pub use recovery::{
     DeployEvent, Deployment, DeviceKind, EventSetting, Recovery, RecoveryDevice, Separation,
     SeparationEvent, StageSeparation, UnreadDevice,
+};
+pub use simulations::{
+    Atmosphere, LaunchConditions, StoredBranch, StoredEvent, StoredResults, StoredSimulation,
+    WindLevel,
 };
 pub use value::{AXIAL_OFFSET, Dimension, INSTANCE_COUNT, Overrides, Values};
 pub use warning::{Imported, Warning, WarningKind};
@@ -95,6 +100,8 @@ pub struct Design {
     pub motors: Motors,
     /// When each parachute and streamer opens and each stage separates.
     pub recovery: Recovery,
+    /// The simulations OpenRocket last ran on the design, with their conditions and results.
+    pub simulations: Vec<StoredSimulation>,
 }
 
 /// Reads the design in a `.ork` file: the rocket ([`rocket`]) and its motors ([`motors`]), with
@@ -164,12 +171,16 @@ pub fn design(file: &OrkFile) -> Imported<Design> {
         [one] => Some((*one).to_owned()),
         [first, rest @ ..] => Some(format!("{first}, and {} more", rest.len())),
     };
+    // Stored simulations stand apart from the airframe, so their warnings come after the check
+    // above; a document can hold them without a design, as Debrief's results-only file does.
     let Some(element) = file.document.root.child("rocket") else {
+        let simulations = simulations::read(&file.document, &mut warnings);
         return Imported {
             value: Design {
                 rocket,
                 motors: Motors::default(),
                 recovery: Recovery::default(),
+                simulations,
             },
             warnings,
         };
@@ -183,11 +194,13 @@ pub fn design(file: &OrkFile) -> Imported<Design> {
         &mut warnings,
     );
     let recovery = recovery::read(element, &rocket, walked.devices, walked.separations);
+    let simulations = simulations::read(&file.document, &mut warnings);
     Imported {
         value: Design {
             rocket,
             motors,
             recovery,
+            simulations,
         },
         warnings,
     }

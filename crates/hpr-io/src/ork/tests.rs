@@ -2573,3 +2573,141 @@ fn recovery_settings_are_read_per_configuration() {
     assert_eq!(recovery.unread[0].inside, "podset");
     assert!(recovery.unread_separations.is_empty());
 }
+
+/// Loft lesson L64: Loft read the wind's direction from `launchroddirection`, and dropped it from
+/// the stored conditions. The wind's direction is `winddirection`, in radians, the bearing it blows
+/// from; the rod's is `launchroddirection`, in degrees, the bearing it tilts toward. Every
+/// condition OpenRocket 24.12 wrote in its committed probe
+/// (`validation/fixtures/ork/openrocket-conditions.json`) reads as the value it held.
+#[test]
+fn wind_direction_is_not_rod_direction() {
+    let fixture: serde_json::Value = serde_json::from_str(include_str!(
+        "../../../../validation/fixtures/ork/openrocket-conditions.json"
+    ))
+    .expect("the fixture is JSON");
+    let written = &fixture["conditions"]["written"];
+    let loaded = &fixture["conditions"]["loaded"];
+    let text = |tag: &str| written[tag].as_str().expect("written").to_owned();
+    let xml = format!(
+        r#"<?xml version="1.0" encoding="UTF-8"?>
+<openrocket version="1.10" creator="OpenRocket 24.12"><rocket><name>R</name></rocket>
+  <simulations><simulation status="uptodate"><name>Probe</name><conditions>
+    <launchrodlength>{}</launchrodlength><launchrodangle>{}</launchrodangle>
+    <launchroddirection>{}</launchroddirection><launchintowind>{}</launchintowind>
+    <windaverage>{}</windaverage><windturbulence>{}</windturbulence>
+    <winddirection>{}</winddirection><launchaltitude>{}</launchaltitude>
+    <launchlatitude>{}</launchlatitude><launchlongitude>{}</launchlongitude>
+    <atmosphere model="{}"><basetemperature>{}</basetemperature>
+      <basepressure>{}</basepressure></atmosphere>
+  </conditions></simulation></simulations>
+</openrocket>"#,
+        text("launchrodlength"),
+        text("launchrodangle"),
+        text("launchroddirection"),
+        text("launchintowind"),
+        text("windaverage"),
+        text("windturbulence"),
+        text("winddirection"),
+        text("launchaltitude"),
+        text("launchlatitude"),
+        text("launchlongitude"),
+        written["atmosphere"]["model"].as_str().expect("a model"),
+        written["atmosphere"]["basetemperature"]
+            .as_str()
+            .expect("K"),
+        written["atmosphere"]["basepressure"].as_str().expect("Pa"),
+    );
+    let design = read_design(xml.as_bytes());
+    let conditions = design.simulations[0]
+        .conditions
+        .as_ref()
+        .expect("conditions");
+    let held = |key: &str| loaded[key].as_f64().expect("a number");
+    let close = |ours: Option<f64>, key: &str| {
+        let theirs = held(key);
+        let ours = ours.expect("read");
+        assert!(
+            (ours - theirs).abs() <= 1e-12 * theirs.abs().max(1.0),
+            "{key}: {ours} against {theirs}"
+        );
+    };
+    // The file wrote 45 for the rod and 0.5 for the wind: degrees for one, radians for the other.
+    assert_eq!(text("launchroddirection"), "45.0");
+    assert_eq!(text("winddirection"), "0.5");
+    close(conditions.rod_direction_rad, "launchroddirection");
+    close(conditions.wind_from_rad, "winddirection");
+    assert_ne!(conditions.wind_from_rad, conditions.rod_direction_rad);
+    close(conditions.rod_angle_rad, "launchrodangle");
+    close(conditions.rod_length_m, "launchrodlength");
+    close(conditions.wind_speed_m_s, "windaverage");
+    close(conditions.wind_turbulence, "windturbulence");
+    close(conditions.launch_altitude_m, "launchaltitude");
+    close(conditions.latitude_deg, "launchlatitude");
+    close(conditions.longitude_deg, "launchlongitude");
+    assert_eq!(conditions.into_wind, Some(false));
+    let Some(Atmosphere::Extended {
+        temperature_k,
+        pressure_pa,
+    }) = conditions.atmosphere
+    else {
+        panic!("an extended atmosphere: {:?}", conditions.atmosphere);
+    };
+    close(temperature_k, "launch_temperature");
+    close(pressure_pa, "launch_pressure");
+
+    // And the rod's direction is a compass bearing: toward 0 the rocket lands north, toward 90
+    // east, as the same probe flew it.
+    let direction = &fixture["direction"];
+    assert!(direction[0]["landed_north_m"].as_f64() > Some(10.0));
+    assert!(direction[1]["landed_east_m"].as_f64() > Some(10.0));
+}
+
+/// A design's stored results read back: the summary, each stage's time series by column, `NaN`
+/// kept where OpenRocket computed nothing, and the events; a row with the wrong number of values
+/// is left out with a warning.
+#[test]
+fn stored_results_are_read_back() {
+    let xml = r#"<?xml version="1.0" encoding="UTF-8"?>
+<openrocket version="1.10" creator="OpenRocket 24.12"><rocket><name>R</name></rocket>
+  <simulations><simulation status="uptodate"><name>Simulation 1</name>
+    <simulator>RK4Simulator</simulator><calculator>BarrowmanCalculator</calculator>
+    <flightdata maxaltitude="50.59" maxvelocity="29.249" maxacceleration="143.649" maxmach="0.086"
+        timetoapogee="3.481" flighttime="15.888" groundhitvelocity="4.681"
+        launchrodvelocity="15.365" deploymentvelocity="2.646" optimumdelay="2.751">
+      <databranch name="Sustainer" types="Time,Altitude,Stability margin calibers">
+        <event time="0" type="launch" source="rocket"/>
+        <event time="3.481" type="apogee" source="rocket"/>
+        <datapoint>0,0,NaN</datapoint>
+        <datapoint>1.5,30.25,1.8</datapoint>
+        <datapoint>3.481,50.59</datapoint>
+      </databranch>
+    </flightdata>
+  </simulation></simulations>
+</openrocket>"#;
+    let read = read(xml.as_bytes()).expect("a readable document");
+    let design = design(&read.value);
+    let simulation = &design.value.simulations[0];
+    assert_eq!(simulation.name, "Simulation 1");
+    assert_eq!(simulation.status.as_deref(), Some("uptodate"));
+    let results = simulation.results.as_ref().expect("results");
+    assert_eq!(results.max_altitude_m, Some(50.59));
+    assert_eq!(results.optimum_delay_s, Some(2.751));
+    let branch = &results.branches[0];
+    assert_eq!(branch.name, "Sustainer");
+    assert_eq!(branch.column("Altitude"), Some(vec![0.0, 30.25]));
+    let margin = branch
+        .column("Stability margin calibers")
+        .expect("a column");
+    assert!(margin[0].is_nan());
+    assert_eq!(margin[1], 1.8);
+    let kinds: Vec<&str> = branch.events.iter().map(|e| e.kind.as_str()).collect();
+    assert_eq!(kinds, ["launch", "apogee"]);
+    assert!(
+        design
+            .warnings
+            .iter()
+            .any(|w| w.message.contains("1 `datapoint` row(s) are not 3 numbers")),
+        "{:?}",
+        design.warnings
+    );
+}
