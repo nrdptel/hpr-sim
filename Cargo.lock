@@ -454,6 +454,7 @@ dependencies = [
  "flate2",
  "hpr-design",
  "hpr-format",
+ "hpr-motor",
  "proptest",
  "roxmltree",
  "serde",

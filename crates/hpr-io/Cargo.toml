@@ -19,6 +19,7 @@ wasm = true
 flate2.workspace = true
 hpr-design.workspace = true
 hpr-format.workspace = true
+hpr-motor.workspace = true
 roxmltree.workspace = true
 serde.workspace = true
 thiserror.workspace = true

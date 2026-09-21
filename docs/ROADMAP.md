@@ -579,56 +579,53 @@
       counts, flags, and the dimensions OpenRocket works out for itself; the tags it writes under
       two names; the overrides. Loft lessons L58, L62, L63. *Done when:* those three lessons' named
       tests are live, each resting on what the corpus shows rather than on an assumption, and `cargo
-      xtask ork` prints the counts they rest on. *Result:* met (ADR-052). `auto <number>` keeps both
-      the flag and the cached number, and a bare `auto` is a dimension with nothing cached (413
-      automatic dimensions across 7 tags). Where OpenRocket writes both names of a real rename it
-      agrees with itself on the text and on the frame: 642 `axialoffset`/`position` and 109
-      `instancecount`/`fincount`, every one. Two lookalike pairs are **not** read:
-      `angleoffset`/`radialdirection` agree on the text on all 26 and differ on the frame on all 26,
-      and `radiusoffset`/`radialposition` (106 and 542) are never written together. A stated `0` is
-      a value, which `<overridecd>0.0</overridecd>` needs (2 in the corpus); the six override tags
-      are read independently, and the single pre-1.9 flag they replaced (20 elements, never beside a
-      per-quantity one) sets all three, with a warning.
+      xtask ork` prints the counts they rest on. *Result:* met (ADR-052): `auto <number>` keeps flag
+      and number; renamed tags read where both names agree on text and frame; a stated `0` is a
+      value.
     - [x] **M3.1b2 The spine.** The stages and the body components stacked in them, with their
       shapes, lengths, radii, walls, materials and overrides, every automatic radius marked for
       `layout()` to resolve rather than filled in, across a stage boundary too (L59). *Done when:*
       L59's named test is live and `cargo xtask ork` says how many spines lay out and what was left
-      off them. *Result:* met — 73 of the 76 readable designs' spines lay out, over 93 stages and
-      285 body components, 81 automatic radii marked; the 3 left need parts off the spine. A
-      shoulder of no wall thickness reads as solid and an unstated `shapeclipped` as clipped, with a
-      warning each, for M2.2's oracle to settle.
+      off them. *Result:* met: 73 of 76 spines lay out; a wall-less shoulder reads solid, for M2.2.
     - [x] **M3.1b3 The parts on and inside the body**, with their positions, what they take from
       their parents, and a sourced finish (L49, L60, L61). Its *done when* was M3.1b's bullets,
       **split** rather than rewritten: M3.1b4 carries "every design gives a `Rocket` whose
       `layout()` succeeds" unchanged, and M3.1b's bullet stays unticked until it does. *Done when:*
       every part OpenRocket writes on or inside a body component is read into an `hpr_design` part
       or left out with its reason; those lessons' tests are live; and `cargo xtask ork` says how
-      many parts were read and how many left out. *Result:* met (ADR-053). 765 parts of nine kinds
-      over the 73 designs that lay out, against 285 body components, 327 automatic dimensions
-      marked, 5 parts left out with a reason. Angles are **degrees** (178 of 188 non-zero exceed
-      2π), though which way they turn is assumed and published as unsettled; `radialposition` and
-      `radiusoffset` are read on the parts that carry them, closing ADR-052's question without its
-      source; a tube of no wall carries no mass, a ring of no annulus is refused. New oracle: a
-      cached `auto` is OpenRocket's own answer and hpr matches 67 of 71 — but nothing caches an
-      `outerradius` or `innerradius`, so this milestone's two rules have no oracle. #130 to #132
-      fixed bar two bullets; #133, #135, #136 filed.
+      many parts were read and how many left out. *Result:* met (ADR-053): 765 parts, 5 left out
+      with a reason; angles are degrees, their sense unsettled; 67 of 71 cached answers match.
     - [x] **M3.1b4 The designs that still do not lay out**, carrying M3.1b's bullet. Three of the
       76: one holds no `<rocket>` with components in it at all, and two have a chain of automatic
       radii with no fixed radius anywhere to resolve against, one caching a number and one not.
       *Done when:* each either lays out or is shown to hold no design, with its reason on the
       `.ork` page; a rule for an unresolvable chain, if there is to be one, rests on something
       written down rather than on a cached number; and `cargo xtask ork` says so. *Result:* met
-      (ADR-054). 75 of 75 designs lay out, and Debrief's results-only file is counted as holding
-      none. A radius with nothing fixed along its chain takes OpenRocket's default radius (its
-      maintainers' words, #1988), 25 mm as a committed OpenRocket 24.12 probe measures, which also
-      shows OpenRocket ignoring the cached number: 7 radii in 2 designs (on the probe's copy of the
-      quirks chain, OpenRocket says −1 m on 2, which no shape can take). Against OpenRocket run on
-      the same file, 67 of 67 body radii agree over 18 designs.
+      (ADR-054): 75 of 75 lay out, 1 document holds none; 7 radii take OpenRocket's 25 mm default;
+      67 of 67 body radii agree with OpenRocket.
   - [ ] **M3.1c Motors, recovery, stages and what OpenRocket last did.** Motor configurations and
     embedded `.rse` curves, recovery devices, stage and pod structure, stored conditions and
     results, and `extensions.x-openrocket` for the rest. Loft lessons L57, L64, L65, L66.
     *Done when:* those lessons' named tests are live, a design's stored results are read back, and
-    a document with unknown content round-trips through `extensions.x-openrocket`.
+    a document with unknown content round-trips through `extensions.x-openrocket`. Split into
+    M3.1c1 to M3.1c4 (ADR-055), which carry that bullet unchanged between them.
+    - [x] **M3.1c1 Motors and their configurations.** The configurations a design declares, the
+      motor each mount holds in each, when it ignites, its delay, and a thrust curve from the
+      archive's `thrustcurves/<digest>.rse` or the bundled catalog (L57, L65). *Done when:* L57's
+      and L65's named tests are live; every `<motor>` in the reference library is read into its
+      configuration or left out with its reason, and flies from a curve or is named as unresolved;
+      and `cargo xtask ork` prints those counts and how many designs assemble a configuration.
+      *Result:* met (ADR-055): 206 motors in 174 configurations, 6 left out in pods; 6 curves
+      found; 2 configurations fly, in 2 designs, both assemble. The catalog is the limit (M5.1).
+    - [ ] **M3.1c2 Recovery and separation.** When each parachute and streamer opens and each
+      stage separates, per configuration, and the drag coefficient each device states. *Done
+      when:* every recovery device and stage in the library has its settings read or left out
+      with a reason, and `cargo xtask ork` prints the counts.
+    - [ ] **M3.1c3 What OpenRocket last did.** Stored launch conditions and results: the summary,
+      the time series and the events (L64). *Done when:* L64's named test is live, a design's
+      stored results are read back, and `cargo xtask ork` prints the counts.
+    - [ ] **M3.1c4 Pods, parallel stages and the rest** (L66). *Done when:* L66's named test is
+      live, and a document with unknown content round-trips through `extensions.x-openrocket`.
   - [ ] **M3.1d The corpus and the cross-check.** `insta` snapshots on public files only, and the
     RocketSerializer cross-check. *Done when:* the parent's four bullets above are met.
 

@@ -1852,3 +1852,218 @@ fn a_rocket_with_nothing_in_it_holds_no_design() {
         spine.warnings
     );
 }
+
+/// A one-stage design with a nose cone and a 33 mm body tube that is a motor mount; `mount` is
+/// the `<motormount>`'s contents, `rocket` any extra children of `<rocket>` (its configurations),
+/// and `inside` any extra parts inside the body tube.
+fn motor_design(rocket: &str, mount: &str, inside: &str) -> String {
+    format!(
+        r#"<?xml version="1.0" encoding="UTF-8"?>
+<openrocket version="1.11" creator="OpenRocket 24.12">
+  <rocket><name>Sounder</name>{rocket}
+    <subcomponents><stage><name>Sustainer</name><id>sustainer</id><subcomponents>
+      <nosecone><name>Nose</name><id>nose</id>
+        <material type="bulk" density="1000.0">Plastic</material>
+        <length>0.15</length><thickness>0.002</thickness><shape>ogive</shape>
+        <aftradius>0.0165</aftradius></nosecone>
+      <bodytube><name>Body</name><id>body</id>
+        <material type="bulk" density="680.0">Cardboard</material>
+        <length>0.6</length><thickness>0.001</thickness><radius>0.0165</radius>
+        <motormount>{mount}</motormount>
+        <subcomponents>{inside}</subcomponents></bodytube>
+    </subcomponents></stage></subcomponents></rocket>
+</openrocket>"#
+    )
+}
+
+/// A synthetic motor no catalog lists: 100 N for a second, ramped up over 0.05 s and down over
+/// 0.1 s, so 102.5 N·s from 60 g of propellant (an exhaust velocity of 1,708 m/s).
+const SYNTHETIC_RSE: &str = r#"<engine-database>
+  <engine-list>
+    <engine mfg="Nobody" code="G100T" Type="single-use" dia="29." len="124." initWt="150."
+      propWt="60." delays="6" Itot="102.5" burn-time="1.1">
+      <data>
+        <eng-data t="0." f="0." m="60."/>
+        <eng-data t="0.05" f="100." m="58."/>
+        <eng-data t="1." f="100." m="3."/>
+        <eng-data t="1.1" f="0." m="0."/>
+      </data>
+    </engine>
+  </engine-list>
+</engine-database>"#;
+
+/// Loft lesson L57: Loft's zip reader kept the design and dropped the `thrustcurves/*.rse`
+/// entries, so a design was refused a flight for want of a curve the file was carrying. Here the
+/// entry the `<digest>` names is the motor's curve, and it is used ahead of the catalog.
+#[test]
+fn embedded_rse_curves_are_read() {
+    let xml = motor_design(
+        r#"<motorconfiguration configid="c1" default="true"><name>G100T</name></motorconfiguration>"#,
+        r"<ignitionevent>automatic</ignitionevent><ignitiondelay>0.0</ignitiondelay>
+          <overhang>0.01</overhang>
+          <motor configid='c1'><type>single</type><manufacturer>Nobody</manufacturer>
+            <digest>d1935f00</digest><designation>G100T</designation>
+            <diameter>0.029</diameter><length>0.124</length><delay>6.0</delay></motor>",
+        "",
+    );
+    let archive = zip_of(&[
+        ("rocket.ork", xml.as_bytes()),
+        ("thrustcurves/d1935f00.rse", SYNTHETIC_RSE.as_bytes()),
+    ]);
+    let read = read(&archive).expect("a readable archive");
+    let design = design(&read.value);
+    assert!(design.warnings.is_empty(), "{:?}", design.warnings);
+    let configuration = &design.value.motors.configurations[0];
+    let motor = &configuration.motors[0];
+    let Curve::Embedded {
+        entry,
+        motor: solid,
+    } = &motor.curve
+    else {
+        panic!("the embedded curve: {:?}", motor.curve);
+    };
+    assert_eq!(entry, "thrustcurves/d1935f00.rse");
+    let impulse_ns = solid.curve().total_impulse_ns();
+    assert!((impulse_ns - 102.5).abs() <= 1e-9 * 102.5, "{impulse_ns}");
+    assert_eq!(motor.delay, Some(hpr_motor::Delay::Seconds(6.0)));
+    assert_eq!(configuration.left_out, None);
+
+    // It flies: the nozzle sits 10 mm aft of the 0.75 m airframe's tail.
+    let assembly = design
+        .value
+        .rocket
+        .assemble("c1")
+        .expect("a flyable configuration");
+    assert_eq!(assembly.motors.len(), 1);
+    assert!((assembly.motors[0].nozzle_m.z + 0.76).abs() < 1e-12);
+
+    // The same document without the curve names what is missing, and flies nothing.
+    let bare = read_design(xml.as_bytes());
+    let configuration = &bare.motors.configurations[0];
+    let Curve::Unresolved { why, reason } = &configuration.motors[0].curve else {
+        panic!("no curve without the entry");
+    };
+    assert_eq!(*why, NoCurve::NotFound);
+    assert!(reason.contains("no embedded curve"), "{reason}");
+    let left_out = configuration.left_out.as_ref().expect("left out");
+    assert_eq!(left_out.why, NotFlown::NoCurve);
+    assert!(bare.rocket.configurations.is_empty());
+}
+
+/// Reads a design from raw XML, expecting it to read.
+fn read_design(xml: &[u8]) -> Design {
+    design(&read(xml).expect("a readable design").value).value
+}
+
+/// Loft lesson L65: a configuration is split between `<rocket>`, which declares it, and each
+/// mount, which holds its motor and may change when that motor ignites; some mounts name a
+/// configuration `<rocket>` never declares; and Loft fired a motor whose mount it could not find
+/// from stage 0. Here each configuration takes its own ignition, an undeclared one is read with a
+/// warning, and a motor in a pod — a mount hpr does not read — keeps its configuration out of the
+/// rocket rather than flying from anywhere else.
+#[test]
+fn per_config_overrides_and_dangling_mount_warn() {
+    let f15 = |config: &str| {
+        format!(
+            "<motor configid='{config}'><type>single</type><manufacturer>Estes</manufacturer>\
+             <designation>F15</designation><diameter>0.029</diameter><length>0.114</length>\
+             <delay>none</delay></motor>"
+        )
+    };
+    let mount = format!(
+        "<ignitionevent>automatic</ignitionevent><ignitiondelay>0.0</ignitiondelay>\
+         <overhang>0.0</overhang>{}{}{}\
+         <ignitionconfiguration configid='a'><ignitionevent>launch</ignitionevent>\
+         </ignitionconfiguration>\
+         <ignitionconfiguration configid='b'><ignitiondelay>1.5</ignitiondelay>\
+         </ignitionconfiguration>",
+        f15("a"),
+        f15("b"),
+        f15("d")
+    );
+    let pod = format!(
+        "<podset><name>Pods</name><id>pods</id><instancecount>2</instancecount>\
+         <subcomponents><bodytube><name>Pod</name><id>pod</id>\
+         <material type='bulk' density='680.0'>Cardboard</material><length>0.2</length>\
+         <thickness>0.001</thickness><radius>0.015</radius>\
+         <motormount><overhang>0.0</overhang>{}</motormount></bodytube></subcomponents></podset>",
+        f15("c")
+    );
+    let xml = motor_design(
+        r#"<motorconfiguration configid="a" default="true"/>
+           <motorconfiguration configid="b"/>
+           <motorconfiguration configid="c"/>"#,
+        &mount,
+        &pod,
+    );
+    let read = read(xml.as_bytes()).expect("a readable design");
+    let design = design(&read.value);
+    let motors = &design.value.motors;
+    let ids: Vec<&str> = motors
+        .configurations
+        .iter()
+        .map(|c| c.id.as_str())
+        .collect();
+    assert_eq!(ids, ["a", "b", "c", "d"]);
+    let by_id = |id: &str| {
+        motors
+            .configurations
+            .iter()
+            .find(|c| c.id == id)
+            .expect("the configuration")
+    };
+
+    // `a` takes its override's event and, having no delay of its own, the mount's.
+    let a = &by_id("a").motors[0];
+    assert_eq!(a.ignition.event, IgnitionEvent::Launch);
+    assert_eq!(a.ignition.delay_s, 0.0);
+    assert_eq!(a.delay, Some(hpr_motor::Delay::Plugged));
+    assert!(matches!(a.curve, Curve::Catalog { .. }));
+    // `b` keeps the mount's event and takes its own delay, so it lights 1.5 s after launch.
+    let b = by_id("b");
+    assert_eq!(
+        b.motors[0].ignition,
+        Ignition {
+            event: IgnitionEvent::Automatic,
+            delay_s: 1.5
+        }
+    );
+    assert_eq!(
+        b.left_out.as_ref().map(|l| l.why),
+        Some(NotFlown::IgnitesInFlight)
+    );
+    // `c`'s only motor is in the pod: read nowhere, flown from nowhere.
+    let c = by_id("c");
+    assert!(c.motors.is_empty());
+    assert_eq!(c.unread.len(), 1);
+    assert!(c.unread[0].reason.contains("pod set"), "{:?}", c.unread);
+    assert_eq!(
+        c.left_out.as_ref().map(|l| l.why),
+        Some(NotFlown::UnreadMotor)
+    );
+    // `d` is named only by the mount: read, flown, and said out loud.
+    let d = by_id("d");
+    assert!(!d.declared);
+    assert!(
+        design.warnings.iter().any(|w| w
+            .message
+            .contains("configuration `d`, which the rocket does not declare")),
+        "{:?}",
+        design.warnings
+    );
+
+    let flown: Vec<&str> = design
+        .value
+        .rocket
+        .configurations
+        .iter()
+        .map(|c| c.id.as_str())
+        .collect();
+    assert_eq!(flown, ["a", "d"]);
+    for id in flown {
+        let assembly = design.value.rocket.assemble(id).expect("assembles");
+        assert_eq!(assembly.motors[0].mount, "body");
+        assert_eq!(assembly.motors[0].stage, 0);
+    }
+    assert!(design.value.rocket.assemble("c").is_err());
+}
