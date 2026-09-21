@@ -66,13 +66,9 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
   `cd auto` (0.8), a deploy height above ground; set above apogee, one did not open.
 - 2026-09-21: M3.1c1 A `.ork` design's motors (ADR-055): 206 motors in 174 configurations, 6 left
   out in pods and parallel stages; a curve from the file's own `.rse` first, the bundled catalog
-  second. The rocket flies a configuration only if every motor has a curve and lights at launch, on
-  a one-stage airframe read without a warning: 1 of 174, and it assembles. L57, L65 live; #138, #139, #141.
-- 2026-09-20: M3.1b4 Every `.ork` design lays out (ADR-054): 75 of 75; 7 radii with nothing to
-  take get OpenRocket's 25 mm default; 67 of 67 body radii agree with OpenRocket. M3.1b done.
-- 2026-09-20: M3.1b1 to b3 (ADR-052, ADR-053): a `.ork` value's meaning, the spine and the parts
-  on and inside it; L49, L58 to L63 live; #133, #135, #136 filed. Open for M2.2: a wall-less
-  shoulder reads solid, an unstated `shapeclipped` clipped.
+  second. It flies a configuration only if every motor has a curve and lights at launch, on a
+  one-stage airframe read without a warning: 1 of 174. L57, L65 live; #138, #139, #141.
+- 2026-09-20: M3.1b1 to b4 (ADR-052 to ADR-054): all 75 `.ork` designs lay out; L49, L58-L63 live.
 ## Needs Neer (blocking or one-way decisions; the session keeps working on other things)
 
 - **Protect `main`** (2 minutes, optional). Settings → Branches → rule for `main`: require `fmt`,
