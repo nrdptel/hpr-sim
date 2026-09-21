@@ -325,6 +325,35 @@ a fresh clone: `cargo xtask ork` needs `cargo xtask refs fetch` first, and stops
 [loft]: https://github.com/nrdptel/fusionspace-loft
 [debrief]: https://github.com/nrdptel/fusionspace-debrief
 
+### Snapshots of public designs
+
+Seven small designs from [Loft][loft], the project owner's earlier tool, are committed in
+`validation/fixtures/ork/loft-demo/` (MIT). The test
+`hpr_io::ork::tests::loft_demo_designs_read_as_snapshotted` reads each with `hpr_io::ork::design`,
+and a synthetic design whose motor flies from the bundled catalog besides, and compares a summary of
+what it reads with a committed [`insta`](https://insta.rs) snapshot. A snapshot is a saved copy of
+the output that the next run must match. Each summary records:
+
+- the stages and body components;
+- the structure's mass and centre of mass, to nine significant figures;
+- the motor configurations, and which of them fly;
+- the recovery settings and the stored simulations;
+- what is kept in [`x-openrocket`](#what-hpr-keeps-for-writing-the-file-back), and every warning.
+
+**A snapshot shows that the reading has not changed, not that it is right.** None of these numbers
+is compared with OpenRocket here; that cross-check is
+[M3.1d2](../decisions-and-roadmap.md#m3-1d2). For example, `demo-stable.ork` is a 38 mm trainer on
+an AeroTech H128W. Its snapshot says the structure weighs 0.540 kg and that its one configuration
+does not fly (`"flown": []`), because that motor has no thrust curve in the file or in hpr's small
+bundled catalog ([motors](#motors-and-their-configurations)). Each field's meaning is in the section
+of this page that reads it.
+
+**When a snapshot changes,** the test fails and shows the old and new output. Run
+`cargo insta review` (from `cargo install cargo-insta`) to see them side by side, and accept only a
+change you can explain (or rerun with `INSTA_UPDATE=always cargo test -p hpr-io` and read the
+diff in git); the new `.snap` file goes in the same pull request. The private reference
+library is never snapshotted; `cargo xtask ork` reports it only as counts, as above.
+
 ## The spine: stages and body components
 
 The trunk of a design is its **spine**: the stages, and inside each of them the nose cones, body

@@ -1,0 +1,106 @@
+---
+source: crates/hpr-io/src/ork/tests.rs
+expression: snapshot_of(&design)
+---
+{
+  "configurations": [
+    {
+      "default": true,
+      "id": "cfg-54-k550",
+      "left_out": "no_curve",
+      "motors": [
+        {
+          "curve": {
+            "none": "not_found"
+          },
+          "delay": {
+            "kind": "plugged"
+          },
+          "ignition": "automatic + 0 s",
+          "motor": "AeroTech K550W",
+          "mount": "10f70000-0000-4000-8000-000000000107"
+        }
+      ],
+      "name": "",
+      "unread": 0
+    }
+  ],
+  "flown": [],
+  "kept": {
+    "attributes": 1,
+    "parts": [],
+    "sections": 0,
+    "tags": 3
+  },
+  "layout": {
+    "cg_z_m": -0.938171283,
+    "mass_kg": 1.52012938
+  },
+  "recovery": {
+    "devices": [
+      {
+        "altitude_m": 150.0,
+        "cd": {
+          "kind": "stated",
+          "value": 0.9
+        },
+        "configurations": 0,
+        "delay_s": 0.0,
+        "deploy": "altitude",
+        "id": "10f70000-0000-4000-8000-000000000106",
+        "kind": "parachute"
+      },
+      {
+        "altitude_m": null,
+        "cd": {
+          "kind": "stated",
+          "value": 0.8
+        },
+        "configurations": 0,
+        "delay_s": 0.0,
+        "deploy": "apogee",
+        "id": "10f70000-0000-4000-8000-000000000108",
+        "kind": "parachute"
+      }
+    ],
+    "separations": []
+  },
+  "reduced": false,
+  "rocket": "Loft Demo 54mm — dual deploy",
+  "simulations": [
+    {
+      "branches": 0,
+      "configuration": "cfg-54-k550",
+      "max_altitude_m": null,
+      "name": "Simulation 1",
+      "rows": 0,
+      "status": "external"
+    }
+  ],
+  "stages": [
+    {
+      "components": [
+        {
+          "id": "10f70000-0000-4000-8000-000000000103",
+          "kind": "nose_cone",
+          "motor_mount": false,
+          "parts": 0
+        },
+        {
+          "id": "10f70000-0000-4000-8000-000000000104",
+          "kind": "body_tube",
+          "motor_mount": false,
+          "parts": 2
+        },
+        {
+          "id": "10f70000-0000-4000-8000-000000000107",
+          "kind": "body_tube",
+          "motor_mount": true,
+          "parts": 2
+        }
+      ],
+      "id": "10f70000-0000-4000-8000-000000000102"
+    }
+  ],
+  "warnings": []
+}

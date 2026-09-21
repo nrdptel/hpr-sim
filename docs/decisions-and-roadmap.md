@@ -197,6 +197,8 @@ missing or its status disagrees.
 | <a id="m3-1c3"></a>[M3.1c3][phase-1] | The launch conditions and results of the simulations OpenRocket stored | done |
 | <a id="m3-1c4"></a>[M3.1c4][phase-1] | Pods, parallel stages, and every part, section, tag and attribute hpr does not read, kept for writing the file back | done |
 | <a id="m3-1d"></a>[M3.1d][phase-1] | The corpus and the cross-check against RocketSerializer | not yet done |
+| <a id="m3-1d1"></a>[M3.1d1][phase-1] | Snapshots of what hpr reads from public `.ork` designs | done |
+| <a id="m3-1d2"></a>[M3.1d2][phase-1] | Every `.ork` imports without an error, and the cross-check against RocketSerializer | not yet done |
 | <a id="m2-2"></a>[M2.2][phase-1] | OpenRocket as a reference program, and a corpus of designs to compare | not yet done |
 | <a id="m1-9"></a>[M1.9][phase-1] | Staging, clusters and air starts, for COTS motors | not yet done |
 | <a id="m1-10"></a>[M1.10][phase-1] | Flight outputs: the stability margin over the flight, the best ejection delay, the peak dynamic pressure, fin flutter and the landing point | not yet done |
