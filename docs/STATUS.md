@@ -5,20 +5,20 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
 ## Now
 
 - **Current milestone:** M1.8e, all done bar M1.8e16 (`[blocked]` on #108); the work is
-  **M3.1c4**, a `.ork` design's pods and parallel stages and the rest, now M3.1c1-c3 read its
-  motors, recovery and stored simulations (M3.1c split four ways; ADR-055).
-- **Order:** M3.1c4, M3.1d, M2.2, M1.9; M1.8e16 waits on #108. **Run:** M0.1-M0.4,
-  M1.1-M1.7, M2.1, M1.8a-e19 bar e16, M3.1a, M3.1b, M3.1c1-c3; the site is published.
+  **M3.1d**, the `.ork` corpus snapshots and the RocketSerializer cross-check, now M3.1c reads a
+  design's motors, recovery, stored simulations, and keeps the rest (ADR-055 to ADR-058).
+- **Order:** M3.1d, M2.2, M1.9; M1.8e16 waits on #108. **Run:** M0.1-M0.4,
+  M1.1-M1.7, M2.1, M1.8a-e19 bar e16, M3.1a-c; the site is published.
 - **Neer, 2026-09-20:** Debrief is sunset; a flight log analyzer usable **on its own** is part of
   this project (ADR-046, V21); Phase 5 re-cut.
-- **Last updated:** 2026-09-21 (M3.1c3 shipped: a `.ork` design's stored simulations)
+- **Last updated:** 2026-09-21 (M3.1c4 shipped, and M3.1c: what a `.ork` holds, kept)
 
 ## Handoff (overwrite each session)
 
-- **M3.1c4 next:** `<podset>` and `<parallelstage>` (9 and 3, holding 6 motors, 2 parachutes, 2
-  separations; L66: keep them or flag the rocket reduced) and a lossless `extensions.x-openrocket`
-  round trip. Notes: gitignored `refs/scratch/m31c/or-semantics.md` §9; a count needs a committed
-  probe, like `validation/oracles/openrocket/events.py` (ADR-056). **Driving OpenRocket:**
+- **M3.1d next:** `insta` snapshots of `hpr_io::ork::design` on public files only (Loft's demo
+  fixtures, the jar's examples are GPL: counts only; synthetic designs), the RocketSerializer
+  cross-check on key geometry, and private-corpus results as counts in `corpus-out/`; its *done
+  when* is M3.1's four bullets. Probes: `validation/oracles/openrocket/*.py`. **Driving OpenRocket:**
   `validation/oracles/openrocket/automatic_radius.py` (ADR-054) runs 24.12 headless through JPype,
   binding empty motor and preset databases in a Python Guice module; it logs to stdout, so the
   script writes to a path. **Read OpenRocket after it re-resolves** (a save does it): its first
@@ -57,6 +57,8 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
 
 ## Done log (newest first, keep about 15)
 
+- 2026-09-21: M3.1c4 What a `.ork` holds that hpr does not model, kept whole in `x-openrocket`
+  (ADR-058): 17 parts in 10 reduced designs, 87 sections, all found again. L66 live; M3.1c done.
 - 2026-09-21: M3.1c3 A `.ork` design's stored simulations read back (ADR-057): 178, 144 with a
   time series (101,955 rows); a probe measures their units. L64 live.
 - 2026-09-21: M3.1c2 A `.ork` design's recovery and separation, read not flown (ADR-056): 137
@@ -86,6 +88,8 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
 
 ## Decided without Neer (one line each; significant ones get an ADR)
 
+- ADR-058: what hpr does not model is kept whole in `x-openrocket` at a path back; not yet tags in
+  a part it reads.
 - ADR-057: a `.ork`'s stored simulations are read as written, to compare against; units measured.
 - ADR-056: `.ork` recovery read as written, not flown; a deploy height above apogee and `cd auto`
   are left for the step that flies it.

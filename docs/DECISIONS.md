@@ -63,6 +63,7 @@ renumber. Supersede an entry by adding a new one that points back to it.
 | ADR-055 | M3.1c split, and the motors a `.ork` flies: its own curve first, and only what lights at launch | accepted |
 | ADR-056 | A `.ork` design's recovery and separation, read as written, with OpenRocket's words measured | accepted |
 | ADR-057 | A `.ork` design's stored simulations, read back as written, with their units measured | accepted |
+| ADR-058 | What a `.ork` holds that hpr does not model, kept whole in `x-openrocket` | accepted |
 
 ---
 
@@ -5054,6 +5055,41 @@ in the tree, so a document built by hand can contradict itself; the round-trip g
 for documents that came from `parse`. The canonical writer means a `.ork` re-written by hpr will
 not be byte-identical to the one it was read from, which M3.2 will have to live with — matching
 OpenRocket's own layout was never achievable without reading its source.
+
+## ADR-058: What a `.ork` holds that hpr does not model, kept whole in `x-openrocket` (2026-09-21)
+
+**Context.** M3.1c4 carries the last of M3.1c's *done when*: Loft lesson L66 (Loft dropped pods,
+parallel stages and booster sets, and its export lost the note that the rocket was reduced), and "a
+document with unknown content round-trips through `extensions.x-openrocket`". hpr's design has no
+pods until M1.13, and writing a `.ork` is M3.2; ADR-051 already keeps the whole document in
+`OrkFile`.
+
+**Decision.**
+
+1. **`hpr_io::ork::Design` gains `extensions`, with one namespace, `x-openrocket`,** serialized
+   under that name. It holds what hpr does not model, each element whole with its path.
+2. **Parts:** every child of a `<subcomponents>` the walk did not read — a pod set, a parallel
+   stage, a part left out for want of an honest shape, a tag it has never seen. The walk records
+   the path of every stage and component it reads, and everything else under `<rocket>` is kept at
+   the first level it was not read. A design with any is *reduced* (`Design::is_reduced`), which
+   is derived from the extension rather than stored beside it, so an export cannot keep one and
+   lose the other.
+3. **Sections:** every child of `<openrocket>` besides `<rocket>` and `<simulations>`, and every
+   child of a stored `<simulation>` besides the five the reader reads.
+4. **A path leads back.** `openrocket/rocket/stage[0]/bodytube[1]/podset[0]` counts each step among
+   its parent's `<subcomponents>`, as a warning's path does; a section's step counts among its
+   parent's elements. `hpr_io::ork::element_at` follows one, and `cargo xtask ork` fails if a kept
+   element is not found again at its path.
+5. **The round trip is to JSON and back, and to the file.** A test writes the extension out as JSON
+   and reads it back unchanged, and finds every kept element at its path in the document it came
+   from. That is what an export needs; the export itself is M3.2.
+6. **Not yet kept:** a tag hpr does not read inside a part it does read (a colour, a decal, a
+   preset). It stays in the document `OrkFile` keeps whole (ADR-051); M3.2 starts from both.
+
+**Consequences.** On 2026-09-21 the library keeps 17 parts in 10 reduced designs (9 pod sets, 3
+parallel stages, and the 5 parts left out) and 87 sections, and all 104 are found again at their
+paths. With M3.1c1 to M3.1c4, M3.1c's *done when* is met: L57, L64, L65 and L66's tests are live, a
+design's stored results are read back, and unknown content round-trips through `x-openrocket`.
 
 ## ADR-057: A `.ork` design's stored simulations, read back as written, with their units measured (2026-09-21)
 
