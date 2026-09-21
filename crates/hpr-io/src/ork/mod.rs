@@ -7,9 +7,9 @@
 //! A `.ork` is a design: a tree of components, the materials they are made of, the motors flown in
 //! them, and the simulations OpenRocket last ran. This module is the first step of reading one —
 //! getting the design document out of whichever container it arrived in, and into a tree that
-//! keeps everything the file said. [`rocket`] turns that tree's spine — the stages and the body
-//! components stacked in them — into [`hpr_design`] types; the parts that hang off it are the next
-//! milestone's work.
+//! keeps everything the file said. [`rocket`] turns that tree into [`hpr_design`] types: the spine
+//! — the stages and the body components stacked in them ([`component`]) — and the parts on and
+//! inside each of those ([`attached`]).
 //!
 //! Nothing here reads a file: `hpr-io` does no I/O and builds for `wasm32-unknown-unknown`, so the
 //! caller supplies the bytes.
@@ -31,6 +31,7 @@
 //! # }
 //! ```
 
+pub mod attached;
 pub mod component;
 pub mod container;
 pub mod document;
@@ -38,6 +39,7 @@ mod error;
 pub mod value;
 mod warning;
 
+pub use attached::ATTACHED_TAGS;
 pub use component::rocket;
 pub use container::{Attachment, Container, MAX_UNPACKED_BYTES, Unpacked};
 pub use document::{Document, Element, MAX_DEPTH, MAX_KNOWN_MINOR, Node, SchemaVersion};

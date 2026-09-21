@@ -9,7 +9,7 @@
 //! **Standard solids** (Meriam and Kraige, appendix B), for mass `m`:
 //!
 //! ```text
-//! hollow cylinder, radii R > r, length L:  I_axis = m (R² + r²)/2,  I_across = m ((R² + r²)/4 + L²/12)
+//! hollow cylinder, radii R ≥ r, length L:  I_axis = m (R² + r²)/2,  I_across = m ((R² + r²)/4 + L²/12)
 //! solid cylinder, radius a, length h:      I_axis = m a²/2,          I_across = m (3a² + h²)/12
 //! ```
 //!
@@ -34,6 +34,12 @@ use crate::solids::{Wall, revolve};
 
 /// A hollow cylinder of `density` on the axis with its forward end at the origin. A thickness
 /// equal to the outer radius gives a solid cylinder.
+///
+/// A thickness of **zero** is allowed, and gives a cylinder of no mass. That is not a mistake
+/// waiting to happen: a tube whose inner radius equals its outer radius is a real thing to say
+/// about a part, imported designs say it, and the formula below already answers it correctly.
+/// Refusing it would leave a reader no choice but to invent a wall — a solid coupler filling a
+/// 50 mm airframe for 180 mm weighs a few hundred grams that the design never had.
 pub(crate) fn hollow_cylinder(
     part: &'static str,
     density_kg_m3: f64,
@@ -43,7 +49,7 @@ pub(crate) fn hollow_cylinder(
 ) -> Result<MassProperties, DesignError> {
     check_dimension("length", length_m, false)?;
     check_dimension("outer radius", outer_radius_m, false)?;
-    check_dimension("wall thickness", thickness_m, false)?;
+    check_dimension("wall thickness", thickness_m, true)?;
     if thickness_m > outer_radius_m {
         return Err(DesignError::Geometry(format!(
             "{part}: wall thickness {thickness_m} m exceeds the outer radius {outer_radius_m} m"
@@ -370,6 +376,15 @@ impl CenteringRing {
     /// Geometry and material errors, including an inner radius not below the outer.
     pub fn mass_properties(&self) -> Result<MassProperties, DesignError> {
         check_dimension("ring inner radius", self.inner_radius_m, true)?;
+        // A ring whose bore reaches its rim is not a ring: it has no material, and would weigh
+        // nothing without saying so. A *tube* of no wall is a real, massless part and
+        // `hollow_cylinder` allows one; a ring of no annulus is a mistake somewhere upstream.
+        if self.inner_radius_m >= self.outer_radius_m {
+            return Err(DesignError::Geometry(format!(
+                "a centering ring's bore ({} m) reaches its outer radius ({} m), leaving no ring",
+                self.inner_radius_m, self.outer_radius_m
+            )));
+        }
         let density = self.material.bulk_kg_m3("centering ring")?;
         hollow_cylinder(
             "centering ring",
@@ -895,5 +910,47 @@ mod tests {
             wrong.mass_properties(),
             Err(DesignError::MaterialKind { .. })
         ));
+    }
+}
+
+#[cfg(test)]
+mod zero_wall_tests {
+    use super::*;
+
+    /// A tube whose inner radius reaches its outer one has no wall, and so no mass and no inertia.
+    /// A design file can say that, and refusing it would leave a reader inventing a wall instead
+    /// (`docs/physics/mass.md`). A **ring** is the exception: a bore that reaches the rim leaves no
+    /// ring, which is a mistake upstream rather than a part, so it is refused loudly.
+    #[test]
+    fn a_tube_of_no_wall_weighs_nothing_and_a_ring_of_no_annulus_is_refused() {
+        let tube = InnerTube {
+            length_m: 0.18,
+            outer_radius_m: 0.025,
+            thickness_m: 0.0,
+            radial_offset_m: 0.0,
+            angle_rad: 0.0,
+            material: Material::bulk("cardboard", 680.0),
+        };
+        let mass = tube.mass_properties().expect("a tube of no wall");
+        assert_eq!(mass.mass_kg, 0.0);
+        assert_eq!(mass.inertia_kg_m2, hpr_core::DMat3::ZERO);
+        mass.validate().expect("a valid body");
+
+        // The same tube with a wall weighs what the annulus weighs, so the limit is the formula's.
+        let walled = InnerTube {
+            thickness_m: 1e-9,
+            ..tube.clone()
+        };
+        let a_little = walled.mass_properties().expect("a thin wall").mass_kg;
+        assert!(a_little > 0.0 && a_little < 1e-7, "{a_little}");
+
+        let ring = CenteringRing {
+            length_m: 0.005,
+            outer_radius_m: 0.0115,
+            inner_radius_m: 0.0115,
+            material: Material::bulk("plywood", 630.0),
+        };
+        let refused = ring.mass_properties().expect_err("a ring of no annulus");
+        assert!(refused.to_string().contains("leaving no ring"), "{refused}");
     }
 }

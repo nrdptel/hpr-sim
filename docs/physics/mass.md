@@ -63,9 +63,17 @@ properties.
 
 ## Standard solids ([MK])
 
-- **Hollow cylinder**, radii `R > r`, length `L`: `I_axis = m(R² + r²)/2` and
+- **Hollow cylinder**, radii `R ≥ r`, length `L`: `I_axis = m(R² + r²)/2` and
   `I_across = m((R² + r²)/4 + L²/12)`. This covers body tubes, inner tubes and couplers, centering
   rings, bulkheads (`r = 0`), launch lugs, tube fins, and shoulders.
+  - `r = R` is allowed, and is a tube of **no wall**: mass `π(R² − r²)L ρ` is exactly zero, and so
+    is the tensor. That is a real thing for a design to say — an imported `.ork` says it of twelve
+    parts ([`.ork` design files](../format/ork.md#what-is-left-out-and-why)) — and refusing it
+    would force a reader to invent a wall instead. A **centering ring** is the exception: a bore
+    that reaches the rim leaves no ring at all, so `CenteringRing` refuses `r ≥ R` rather than
+    weighing nothing in silence. `Wall::Shell` also still refuses a zero thickness, because a
+    solid of revolution says "filled" with `Wall::Filled` and a zero there is a mistake, not a
+    statement.
   - Loft used `mL²/12` with no radial term, and no roll inertia at all ([Loft lesson L44](../decisions-and-roadmap.md#l44)).
 - **Solid cylinder**, radius `a`, height `h`: `I_axis = m a²/2` and `I_across = m(3a² + h²)/12`.
   This covers mass components, packed parachutes, streamers and shock cords ([TD] Table 5.1
