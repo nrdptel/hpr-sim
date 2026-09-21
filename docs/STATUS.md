@@ -7,24 +7,20 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
 - **Current milestone:** M1.8e, all done bar M1.8e16 (`[blocked]` on #108); the work is
   **M3.1b2**, the `.ork` spine, in progress on `m3.1b2-ork-spine` (draft PR): the reader and its
   tests are in, the corpus run is not. M3.1b was split further: M3.1b2 is the spine, M3.1b3 what hangs off it.
-- **Order:** finish M3.1b2, then M3.1b3, M3.1c, M3.1d, then M2.2, then M1.9; M1.8e16 (past 24°)
+- **Order:** M3.1b3, M3.1c, M3.1d, then M2.2, then M1.9; M1.8e16 (past 24°)
   waits on #108
 - **Run:** M0.1-M0.4, M1.1-M1.7, M2.1, M1.8a-e19 bar e16, M3.1a, M3.1b1; the site is published.
 - **Neer, 2026-09-20:** Debrief is sunset; a flight log analyzer usable **on its own** is part of
   this project (ADR-046, V21). Phase 5 re-cut.
-- **Last updated:** 2026-09-20 (M3.1b2 split; M3.1b2a part-built on its branch)
+- **Last updated:** 2026-09-20 (M3.1b2 shipped: the `.ork` spine into `hpr-design` types)
 
 ## Handoff (overwrite each session)
 
-- **Resume M3.1b2 here.** On `m3.1b2-ork-spine`: `hpr_io::ork::component::rocket` reads a
-  document's stages and body components, and four tests pass (`cargo test -p hpr-io --lib`),
-  including L59's `auto_fore_radius_resolves_across_stage_boundary`. **What is left:** wire it into
-  `cargo xtask ork` — build a `Rocket` per corpus design, call `layout()`, print how many lay out
-  and a tally of the tags left off the spine, per-file detail to `corpus-out/` — then the guide's
-  `docs/format/ork.md` section, an ADR for the two decisions below, the reviewers and the gate.
-  Two decisions to check against the corpus run: a `<bodytube>` that is `filled` with an automatic
-  radius (warns, reads the cached radius), and `shapeclipped` defaulting to clipped on a transition
-  (1 of 21 state it; the M2.2 oracle settles it).
+- **M3.1b3 next:** the parts on and inside the body. `cargo xtask ork` already tallies what is left
+  off the spine — 151 `centeringring`, 98 `trapezoidfinset`, 137 `parachute`, 85 `masscomponent`,
+  72 `innertube`, 61 `tubecoupler`, 47 `bulkhead` and the rest. A surface finish needs a roughness
+  for OpenRocket's five words (`rough`, `unfinished`, `normal`, `smooth`, `polished`) from a
+  document this project may read; until then every surface takes `hpr-design`'s default.
 - **Page rules** (ADR-016 to ADR-020): relative links between pages, GitHub URLs for the rest
   (rustdoc too), labels as links to their rows — a lesson a page names needs a row in
   `decisions-and-roadmap.md` — none in headings; new pages in `SUMMARY.md`, a new library a row in
@@ -57,6 +53,12 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
 
 ## Done log (newest first, keep about 15)
 
+- 2026-09-20: M3.1b2 The `.ork` spine: stages and body components into `hpr_design` types, with
+  every automatic radius marked for `layout()` to resolve, across a stage boundary too (L59's test
+  is live). 73 of the 76 readable designs' spines lay out, over 93 stages and 285 body components,
+  81 automatic radii marked; the 3 left need parts off the spine. OpenRocket's ogive κ is the
+  reciprocal of this project's radius ratio (Niskanen A.3). Open for M2.2's oracle: a shoulder of
+  no wall thickness reads as solid, an unstated `shapeclipped` as clipped, each with a warning.
 - 2026-09-20: M3.1b1 The values inside a `.ork`'s tags (ADR-052): an automatic dimension keeps its
   flag and its cached number (413 in the corpus, 309 caching nothing); either name of a rename may
   be read where the corpus shows both agree on the number *and* the frame (642 and 109 elements),

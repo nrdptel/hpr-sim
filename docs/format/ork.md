@@ -295,15 +295,54 @@ a fresh clone: `cargo xtask ork` needs `cargo xtask refs fetch` first, and stops
 `cargo test -p hpr-io` — and the same command on any `.ork` files you have, with
 `cargo xtask ork --dir <path>`.
 
+[api]: https://nrdptel.github.io/hpr-sim/api/hpr_design/tree/struct.Rocket.html
 [adr-051]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-051-m31-split-and-the-ork-document-kept-whole-rather-than-interpreted-2026-09-20
 [adr-052]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-052-what-a-ork-value-means-automatic-dimensions-two-names-for-one-tag-and-overrides-2026-09-20
 [loft]: https://github.com/nrdptel/fusionspace-loft
 
+## The spine: stages and body components
+
+The trunk of a design is its **spine**: the stages, and inside each of them the nose cones, body
+tubes and transitions that stack end to end along the axis. `hpr_io::ork::rocket` turns a document's
+spine into an [`hpr_design::Rocket`][api] — shapes, lengths, radii, walls, materials and overrides —
+and everything else (the tubes and rings inside the body, the fins and lugs on it, the recovery
+gear) is counted and left for [M3.1b3](../decisions-and-roadmap.md#m3-1b3).
+
+**An automatic radius is marked, not filled in.** Where the file says `auto`, the component carries
+the dimension's name and `Rocket::layout()` works the radius out from the neighbours — including
+across a stage boundary, so a booster's first component takes its radius from the stage ahead of
+it. That is [Loft lesson L59](../decisions-and-roadmap.md#l59): Loft resolved within a stage only,
+and a booster came out as whatever number happened to be cached. A stated wall is also kept when
+the radius it sits in is automatic; judging the wall against a radius that is not known yet threw
+it away, which is half of [Loft lesson L61](../decisions-and-roadmap.md#l61).
+
+**The shape parameter is not the same number.** OpenRocket writes the ogive's parameter as
+`κ = ρ_tangent/ρ` — a tangent ogive's radius of curvature over this one's — so `κ = 1` is a tangent
+ogive and `κ = 0` an infinite radius, which is a cone. `hpr-design` states the same shape the other
+way up, as `ρ/ρ_tangent`, so the two are reciprocals: reading one as the other turns every secant
+ogive into a bulged one. The power, parabolic and Haack parameters carry over unchanged. All four
+are Niskanen's appendix A, equations A.3 and A.7 to A.9.
+
+**Two readings this page is not sure of**, both said out loud as warnings and both for the
+OpenRocket oracle ([M2.2](../decisions-and-roadmap.md#m2-2)) to settle:
+
+| what the file says | how it is read | why |
+| --- | --- | --- |
+| a shoulder of zero wall thickness | solid | a wall of nothing has no mass and no geometry; 12 designs in the reference corpus have one |
+| no `shapeclipped` on a transition | clipped | it is the shape that reaches both radii; only 1 of the 21 transitions in the corpus states it |
+
+**Measured on the reference library** (`cargo xtask ork`, 76 readable files): 73 designs' spines lay
+out, over 93 stages and 285 body components — 188 body tubes, 74 nose cones, 23 transitions — with
+81 automatic radii marked (41 outer, 19 base, 14 fore, 7 aft). The 3 that do not lay out all depend
+on parts that are not read yet: one design's stages are parallel stages, and two have no fixed
+radius anywhere on the spine to resolve an automatic one against. The counts are what may be
+published; the per-file detail stays in the gitignored `corpus-out/`.
+
 ## What is not read yet
 
-Everything above the values: components, shapes, materials and finishes, and the automatic
-dimensions worked out rather than cached ([M3.1b2](../decisions-and-roadmap.md#m3-1b2)); motor configurations, the embedded `.rse`
-curves, recovery devices, stages, pods, stored launch conditions and simulation results
+The parts on and inside the body — inner tubes, rings, fins, lugs, rail buttons, mass objects — and
+the surface finish ([M3.1b3](../decisions-and-roadmap.md#m3-1b3)); motor configurations, the
+embedded `.rse` curves, recovery devices, pods, stored launch conditions and simulation results
 ([M3.1c](../decisions-and-roadmap.md#m3-1c)). Writing a `.ork` back out as a design — rather than
 as the document it was read from — is [M3.2](../decisions-and-roadmap.md#m3-2).
 

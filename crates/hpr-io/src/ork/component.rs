@@ -319,16 +319,33 @@ fn shoulder(
         return None;
     }
     let outer_radius_m = radius(values, &[&format!("{end}shoulderradius")], dimension, auto);
-    let thickness_m = values
+    let stated_m = values
         .number(&[&format!("{end}shoulderthickness")])
         .unwrap_or_default();
+    // A shoulder with no wall at all is not a shoulder: OpenRocket offers a shoulder the same
+    // "filled" choice it offers a nose cone, and writes a filled one as a zero thickness. Read as
+    // a wall it would be weightless, and `hpr-design` refuses it outright (12 designs in the
+    // reference corpus). Read as solid it carries the mass a solid shoulder has. Which of the two
+    // OpenRocket means is for the M2.2 oracle to settle, so it is said out loud.
+    let thickness_m = if stated_m > 0.0 {
+        stated_m.min(outer_radius_m)
+    } else {
+        values.warn_at(
+            WarningKind::Unusual,
+            format!("a {end} shoulder with no wall thickness; it was read as solid"),
+        );
+        outer_radius_m
+    };
     Some(Shoulder {
         length_m,
         outer_radius_m,
-        thickness_m: thickness_m.min(outer_radius_m),
-        capped: values
-            .flag(&[&format!("{end}shouldercapped")])
-            .unwrap_or_default(),
+        thickness_m,
+        // A solid shoulder has no bore to close, so a cap on one is nothing: reading it as a cap
+        // asks `hpr-design` for a disc inside a tube that isn't hollow.
+        capped: thickness_m < outer_radius_m
+            && values
+                .flag(&[&format!("{end}shouldercapped")])
+                .unwrap_or_default(),
     })
 }
 
