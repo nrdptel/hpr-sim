@@ -1,0 +1,145 @@
+{
+  "source": "validation/oracles/openrocket/conditions.py",
+  "command": "refs/venv/bin/python validation/oracles/openrocket/conditions.py validation/fixtures/ork/openrocket-conditions.json",
+  "openrocket": "24.12",
+  "jar_sha256": "4959b72f52f5f607941e9722abbb7b7f0c4a38ebbbf84204a329db9f31c4f897",
+  "java": "17.0.20.1",
+  "jpype": "1.7.1",
+  "conditions": {
+    "set": {
+      "launchrodlength": 1.5,
+      "launchrodangle": 0.08726646259971647,
+      "launchroddirection": 0.7853981633974483,
+      "launchintowind": false,
+      "windaverage": 3.0,
+      "windturbulence": 0.10000000000000002,
+      "winddirection": 0.5,
+      "launchaltitude": 200.0,
+      "launchlatitude": 40.0,
+      "launchlongitude": -105.0,
+      "isa": false,
+      "launch_temperature": 300.0,
+      "launch_pressure": 95000.0
+    },
+    "written": {
+      "launchrodlength": "1.5",
+      "launchrodangle": "5.0",
+      "launchroddirection": "45.0",
+      "launchintowind": "false",
+      "windaverage": "3.0",
+      "windturbulence": "0.10000000000000002",
+      "winddirection": "0.5",
+      "launchaltitude": "200.0",
+      "launchlatitude": "40.0",
+      "launchlongitude": "-105.0",
+      "atmosphere": {
+        "model": "extendedisa",
+        "basetemperature": "300.0",
+        "basepressure": "95000.0"
+      }
+    },
+    "loaded": {
+      "launchrodlength": 1.5,
+      "launchrodangle": 0.08726646259971647,
+      "launchroddirection": 0.7853981633974483,
+      "launchintowind": false,
+      "windaverage": 3.0,
+      "windturbulence": 0.10000000000000002,
+      "winddirection": 0.5,
+      "launchaltitude": 200.0,
+      "launchlatitude": 40.0,
+      "launchlongitude": -105.0,
+      "isa": false,
+      "launch_temperature": 300.0,
+      "launch_pressure": 95000.0
+    }
+  },
+  "direction": [
+    {
+      "rod_direction_deg": 0.0,
+      "landed_east_m": 0.0,
+      "landed_north_m": 21.29
+    },
+    {
+      "rod_direction_deg": 90.0,
+      "landed_east_m": 21.29,
+      "landed_north_m": -0.0
+    }
+  ],
+  "into_wind": {
+    "written": {
+      "launchroddirection": "0.0",
+      "winddirection": "0.0",
+      "launchintowind": "true"
+    },
+    "loaded_rod_direction_rad": 0.0
+  },
+  "datapoints": {
+    "branch": "Sustainer",
+    "types": 58,
+    "rows": 173,
+    "row": 86,
+    "columns": [
+      {
+        "column": "Time",
+        "stored": 2.371,
+        "held": 2.3705,
+        "unit": "s"
+      },
+      {
+        "column": "Altitude",
+        "stored": 45.055,
+        "held": 45.054849574325324,
+        "unit": "m"
+      },
+      {
+        "column": "Vertical velocity",
+        "stored": 10.952,
+        "held": 10.952384348057619,
+        "unit": "m/s"
+      },
+      {
+        "column": "Vertical orientation (zenith)",
+        "stored": 1.571,
+        "held": 1.5707880831924088,
+        "unit": "rad"
+      },
+      {
+        "column": "Lateral direction",
+        "stored": 0.218,
+        "held": 0.2177386782027586,
+        "unit": "rad"
+      },
+      {
+        "column": "Latitude",
+        "stored": 45.0,
+        "held": 45.00000000062674,
+        "unit": "\u00b0 N"
+      },
+      {
+        "column": "Air temperature",
+        "stored": 287.857,
+        "held": 287.85714347776684,
+        "unit": "K"
+      },
+      {
+        "column": "Air pressure",
+        "stored": 100800.0,
+        "held": 100796.58211866308,
+        "unit": "Pa"
+      }
+    ],
+    "event_types": [
+      "apogee",
+      "burnout",
+      "ejectioncharge",
+      "groundhit",
+      "ignition",
+      "launch",
+      "launchrod",
+      "liftoff",
+      "recoverydevicedeployment",
+      "simulationend"
+    ]
+  }
+}
