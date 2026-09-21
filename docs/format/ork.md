@@ -10,14 +10,16 @@ its design document into a tree that keeps everything the file said, and builds 
 that tree — the stages and body components stacked in them, and the tubes, rings, fins, lugs,
 buttons and recovery gear on and inside each of those, with their shapes, materials, surface
 finishes, positions and overrides — and its motor configurations, with the motors in them and
-their thrust curves. That is from Rust; there is no command-line tool yet.
+their thrust curves, and when its parachutes open and its stages separate. That is from Rust; there
+is no command-line tool yet.
 
 **How far to trust it.** Motors are read, but a configuration flies only when every motor in it
 lights at launch and has a thrust curve, in the file or in hpr's small bundled catalog, on an
 airframe read without a warning: **1 of the 174 motor configurations** in the reference library's
 75 designs does
-([motors](#motors-and-their-configurations)). **Recovery settings,
-pods and parallel stages are not read yet** ([M3.1c](../decisions-and-roadmap.md#m3-1c)). A part
+([motors](#motors-and-their-configurations)). Recovery and separation settings are read but not
+flown ([when parachutes open](#when-parachutes-open-and-stages-separate)). **Pods and parallel
+stages are not read yet** ([M3.1c4](../decisions-and-roadmap.md#m3-1c4)). A part
 hpr cannot give an honest shape — fins on a nose cone, tube fins OpenRocket sizes from the body —
 is **left out**, each one named in a warning rather than guessed at
 ([what is left out, and why](#what-is-left-out-and-why)). Every design in the reference library now
@@ -873,7 +875,7 @@ with `hpr_motor` ([Solid motors](../physics/motor.md)) and put it in an
 | `<delay>0.0</delay>` | the charge fires at burnout | the same, p. 10: "zero-delay motors" |
 | `<delay>none</delay>` | plugged: no ejection charge | the same, p. 8 ("P … stands for plugged"); OpenRocket [issue #2002](https://github.com/openrocket/openrocket/issues/2002) |
 | `<ignitionevent>automatic</ignitionevent>` | the bottom stage lights at launch; a stage above lights at the ejection charge of the stage below | OpenRocket's [FAQ](https://wiki.openrocket.info/FAQ), "How do I create a staged rocket?" |
-| `launch`, `burnout`, `ejectioncharge`, `never` | at launch; at the first burnout or ejection charge of the stage below; never | OpenRocket 24.12's labels; the library's files use all but `ejectioncharge`, whose spelling comes from a probe of OpenRocket run for this milestone and not committed. A word hpr does not know is kept as written |
+| `launch`, `burnout`, `ejectioncharge`, `never` | at launch; at the first burnout or ejection charge of the stage below; never | OpenRocket 24.12's labels, with every word measured by a committed probe ([below](#what-the-words-mean)). A word hpr does not know is kept as written |
 | `<ignitiondelay>1.5</ignitiondelay>` | 1.5 s after that event | the [technical documentation][techdoc], section 4.2.6 |
 
 A `0` means something different here than in a motor file. An `.eng` file has no word for plugged,
@@ -966,13 +968,87 @@ one; how many is not measured yet. How this was decided, with the sources in ful
 
 [adr-055]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-055-m31c-split-and-the-motors-a-ork-flies-its-own-curve-first-and-only-what-lights-at-launch-2026-09-21
 
+## When parachutes open and stages separate
+
+**In short.** hpr reads when each parachute and streamer opens, with the drag coefficient it states,
+and when each stage separates, in every configuration. It reads them; it does not fly them yet.
+Turning them into hpr's own [recovery devices](../physics/recovery.md) waits for the flight that
+uses them. Every device and stage in the reference library is read, apart from 2 parachutes inside
+pods.
+
+A **deployment** is an event, a height for the event that needs one, and a delay after it. A
+parachute or streamer states its own, and a configuration may change any of the three:
+
+- `<deployevent>ejection</deployevent>`, `<deployaltitude>200.0</deployaltitude>` and
+  `<deploydelay>0.0</deploydelay>` are the device's own.
+- `<deploymentconfiguration configid="…">` changes them for one configuration. Whichever of the
+  three it leaves out, the device's own stands, as with a motor's ignition.
+
+A stage's **separation** is written the same way, with `<separationevent>`,
+`<separationaltitude>`, `<separationdelay>` and `<separationconfiguration configid="…">`. The stage
+that states it is the lower one, which drops away.
+
+### What the words mean
+
+OpenRocket's documentation lists none of these words. The committed probe
+`validation/oracles/openrocket/events.py` runs OpenRocket 24.12, sets every value of each event
+through the program's public setters, saves the design, and records the word written and the label
+OpenRocket shows. Its results are in `validation/fixtures/ork/openrocket-events.json`, and the test
+`hpr_io::ork::tests::every_event_word_openrocket_writes_is_read` holds hpr's reader to every word.
+
+| deploy word | OpenRocket's label |
+|---|---|
+| `launch` | "Launch (plus NN seconds)" |
+| `ejection` | "First ejection charge of this stage" |
+| `apogee` | "Apogee" |
+| `altitude` | "Specific altitude during descent" |
+| `lowerstageseparation` | "Lower stage separation" |
+| `never` | "Never" |
+
+| separation word | OpenRocket's label |
+|---|---|
+| `launch` | "Launch" |
+| `ignition`, `burnout`, `ejection` | "Current stage motor ignition", "… burnout", "Current stage ejection charge" |
+| `upperignition` | "Upper stage motor ignition" |
+| `altitudeascending`, `apogee`, `altitudedescending` | "Specific altitude during ascent", "Apogee", "Specific altitude during descent" |
+| `never` | "Never" |
+
+The same probe measures three things the words do not say:
+
+- **A deploy height is above the ground.** On a pad 1,000 m above sea level, a parachute set to
+  `altitude` 30 m opened at 29.7 m above the ground, 1,029.7 m above the sea.
+- **A height the rocket never reaches opens nothing.** Set to 100 m, on a flight whose apogee was
+  51 m, the parachute never opened. hpr's own altitude trigger opens at apogee instead
+  ([Recovery](../physics/recovery.md#triggers-lag-and-release)), so the two differ here, and the
+  step that flies a `.ork`'s recovery will have to choose.
+- **`<cd>auto</cd>`** is 0.8 for a parachute: OpenRocket's
+  [technical documentation][techdoc] gives 0.8 as the default (section 4.2.5), and the probe
+  measures it. For a streamer it is worked out from the strip's size (the documentation's appendix
+  C): 0.089, 0.060 and 0.050 for strips of 0.5 by 0.05 m, 1.0 by 0.1 m and 1.5 by 0.05 m. OpenRocket
+  [issue #2031](https://github.com/openrocket/openrocket/issues/2031) reports those as far too
+  small. hpr keeps the `auto` or the stated number as the file wrote it.
+
+### Recovery in the reference library
+
+`cargo xtask ork`, over the 75 designs, on 2026-09-21:
+
+| quantity | count |
+|---|---|
+| parachutes and streamers read | 137: 135 parachutes, 2 streamers |
+| left out, inside pod sets hpr does not read yet | 2 |
+| drag coefficient | 77 `auto`, 60 stated |
+| deploy event | 77 `ejection`, 35 `apogee`, 18 `altitude`, 6 `lowerstageseparation`, 1 `never` |
+| devices a configuration changes | 9, with 17 changes in all |
+| stages that state a separation | 18 of 93: 12 `ejection`, 4 `upperignition`, 2 `burnout`; 13 changes per configuration |
+
+How this was decided is in [ADR-056][adr-056].
+
+[adr-056]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-056-a-ork-designs-recovery-and-separation-read-as-written-with-openrockets-words-measured-2026-09-21
+
 ## What is not read yet
 
-Recovery settings (when a parachute opens, at what delay, at what altitude — the chute's *shape*
-is read, its deployment is not) and when a stage separates
-([M3.1c2](../decisions-and-roadmap.md#m3-1c2)); stored launch conditions and simulation results
-([M3.1c3](../decisions-and-roadmap.md#m3-1c3)); pods and parallel stages
-([M3.1c4](../decisions-and-roadmap.md#m3-1c4)). Writing a `.ork` back out as a design — rather than
+Stored launch conditions and simulation results ([M3.1c3](../decisions-and-roadmap.md#m3-1c3));
+pods and parallel stages ([M3.1c4](../decisions-and-roadmap.md#m3-1c4)). Writing a `.ork` back out as a design — rather than
 as the document it was read from — is [M3.2](../decisions-and-roadmap.md#m3-2).
 
 What keeping the whole document buys you is this: when

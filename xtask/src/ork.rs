@@ -228,6 +228,7 @@ fn report(root: &Path, files: &[Case], library: bool) -> Result<(), String> {
     let mut radii_agreeing = 0usize;
     let mut radii_apart: Vec<Value> = Vec::new();
     let mut motor_tally = crate::ork_motors::MotorTally::default();
+    let mut recovery_tally = crate::ork_recovery::RecoveryTally::default();
     let mut containers: BTreeMap<&'static str, usize> = BTreeMap::new();
     let mut versions: BTreeMap<String, usize> = BTreeMap::new();
     let mut creators: BTreeMap<String, usize> = BTreeMap::new();
@@ -315,7 +316,9 @@ fn report(root: &Path, files: &[Case], library: bool) -> Result<(), String> {
                 );
                 let spine = ork::rocket(&read.value.document);
                 // The whole design, motors and all, whose first warnings are the spine's.
-                let motors_here = motor_tally.add(&ork::design(&read.value), spine.warnings.len());
+                let whole = ork::design(&read.value);
+                let motors_here = motor_tally.add(&whole, spine.warnings.len());
+                let recovery_here = recovery_tally.add(&whole);
                 let mut defaulted_here = 0usize;
                 for warning in &spine.warnings {
                     if warning.message.starts_with(DEFAULT_RADIUS) {
@@ -489,6 +492,7 @@ fn report(root: &Path, files: &[Case], library: bool) -> Result<(), String> {
                             .collect::<Vec<_>>(),
                     }),
                     "motors": motors_here,
+                    "recovery": recovery_here,
                     "container": read.value.container.as_str(),
                     "version": read.value.document.version.to_string(),
                     "creator": read.value.document.creator,
@@ -612,6 +616,7 @@ fn report(root: &Path, files: &[Case], library: bool) -> Result<(), String> {
     summary["designs_with_radii_given_openrocket_default"] = json!(designs_defaulted);
     summary["openrocket_body_radii"] = openrocket_body_radii;
     summary["motors"] = motor_tally.summary();
+    summary["recovery"] = recovery_tally.summary();
     let path = root.join(REPORT);
     if let Some(parent) = path.parent() {
         fs::create_dir_all(parent).map_err(|error| format!("{}: {error}", parent.display()))?;
@@ -731,6 +736,7 @@ fn report(root: &Path, files: &[Case], library: bool) -> Result<(), String> {
     }
     print_counts("tags no milestone reads yet", &off_spine);
     motor_tally.print();
+    recovery_tally.print();
     if !spine_errors.is_empty() {
         print_counts("designs that do not lay out", &spine_errors);
     }
