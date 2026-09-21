@@ -3006,16 +3006,16 @@ fn snapshot_of(design: &Imported<Design>) -> serde_json::Value {
                 "id": configuration.id,
                 "name": configuration.name,
                 "default": configuration.default,
-                "left_out": configuration.left_out.as_ref().map(|out| format!("{:?}", out.why)),
+                "left_out": configuration.left_out.as_ref().map(|out| json!(out.why)),
                 "motors": configuration.motors.iter().map(|motor| json!({
                     "motor": format!("{} {}", motor.manufacturer, motor.designation),
                     "mount": motor.mount,
                     "curve": match &motor.curve {
-                        Curve::Embedded { .. } => "embedded".to_owned(),
-                        Curve::Catalog { .. } => "catalog".to_owned(),
-                        Curve::Unresolved { why, .. } => format!("none: {why:?}"),
+                        Curve::Embedded { .. } => json!("embedded"),
+                        Curve::Catalog { .. } => json!("catalog"),
+                        Curve::Unresolved { why, .. } => json!({ "none": why }),
                     },
-                    "delay": format!("{:?}", motor.delay),
+                    "delay": json!(motor.delay),
                     "ignition": format!("{} + {} s", motor.ignition.event.as_str(), motor.ignition.delay_s),
                 })).collect::<Vec<_>>(),
                 "unread": configuration.unread.len(),
@@ -3029,8 +3029,8 @@ fn snapshot_of(design: &Imported<Design>) -> serde_json::Value {
         .map(|device| {
             json!({
                 "id": device.id,
-                "kind": format!("{:?}", device.kind),
-                "cd": format!("{:?}", device.cd),
+                "kind": json!(device.kind),
+                "cd": json!(device.cd),
                 "deploy": device.deployment.event.as_ref().map(DeployEvent::as_str),
                 "altitude_m": device.deployment.altitude_m,
                 "delay_s": device.deployment.delay_s,
@@ -3083,7 +3083,7 @@ fn snapshot_of(design: &Imported<Design>) -> serde_json::Value {
         },
         "warnings": design.warnings.iter().map(|w| json!({
             "at": w.at,
-            "kind": format!("{:?}", w.kind),
+            "kind": json!(w.kind),
             "says": w.message,
         })).collect::<Vec<_>>(),
     })
@@ -3132,4 +3132,15 @@ fn loft_demo_designs_read_as_snapshotted() {
         let design = design(&file.value);
         insta::assert_json_snapshot!(name, snapshot_of(&design));
     }
+    // None of Loft's demonstration motors is in the bundled catalog, so a synthetic design stands
+    // for one that flies: an Estes F15 from the catalog, in a body tube.
+    let flies = motor_design(
+        r#"<motorconfiguration configid="a" default="true"/>"#,
+        "<overhang>0.0</overhang><motor configid='a'><type>single</type>\
+         <manufacturer>Estes</manufacturer><designation>F15</designation>\
+         <diameter>0.029</diameter><length>0.114</length><delay>4.0</delay></motor>",
+        "",
+    );
+    let file = read(flies.as_bytes()).expect("a readable design");
+    insta::assert_json_snapshot!("synthetic_f15", snapshot_of(&design(&file.value)));
 }

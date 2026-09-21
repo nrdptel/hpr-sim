@@ -7,11 +7,16 @@ expression: snapshot_of(&design)
     {
       "default": true,
       "id": "cfg-38-stable-h128",
-      "left_out": "NoCurve",
+      "left_out": "no_curve",
       "motors": [
         {
-          "curve": "none: NotFound",
-          "delay": "Some(Seconds(6.0))",
+          "curve": {
+            "none": "not_found"
+          },
+          "delay": {
+            "kind": "seconds",
+            "value": 6.0
+          },
           "ignition": "automatic + 0 s",
           "motor": "AeroTech H128W",
           "mount": "10f70005-0000-4000-8000-000000000008"
@@ -36,12 +41,15 @@ expression: snapshot_of(&design)
     "devices": [
       {
         "altitude_m": null,
-        "cd": "Some(Stated { value: 0.8 })",
+        "cd": {
+          "kind": "stated",
+          "value": 0.8
+        },
         "configurations": 0,
         "delay_s": 0.0,
         "deploy": "apogee",
         "id": "10f70005-0000-4000-8000-000000000006",
-        "kind": "Parachute"
+        "kind": "parachute"
       }
     ],
     "separations": []

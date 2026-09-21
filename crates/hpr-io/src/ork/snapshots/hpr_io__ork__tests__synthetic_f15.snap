@@ -1,0 +1,67 @@
+---
+source: crates/hpr-io/src/ork/tests.rs
+expression: snapshot_of(&design(&file.value))
+---
+{
+  "configurations": [
+    {
+      "default": true,
+      "id": "a",
+      "left_out": null,
+      "motors": [
+        {
+          "curve": "catalog",
+          "delay": {
+            "kind": "seconds",
+            "value": 4.0
+          },
+          "ignition": "automatic + 0 s",
+          "motor": "Estes F15",
+          "mount": "body"
+        }
+      ],
+      "name": "",
+      "unread": 0
+    }
+  ],
+  "flown": [
+    "a"
+  ],
+  "kept": {
+    "attributes": 0,
+    "parts": [],
+    "sections": 0,
+    "tags": 0
+  },
+  "layout": {
+    "cg_z_m": -0.337637553,
+    "mass_kg": 0.060026946
+  },
+  "recovery": {
+    "devices": [],
+    "separations": []
+  },
+  "reduced": false,
+  "rocket": "Sounder",
+  "simulations": [],
+  "stages": [
+    {
+      "components": [
+        {
+          "id": "nose",
+          "kind": "nose_cone",
+          "motor_mount": false,
+          "parts": 0
+        },
+        {
+          "id": "body",
+          "kind": "body_tube",
+          "motor_mount": true,
+          "parts": 0
+        }
+      ],
+      "id": "sustainer"
+    }
+  ],
+  "warnings": []
+}

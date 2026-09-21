@@ -31,3 +31,7 @@ Thumbs.db
 .vscode/*
 !.vscode/extensions.json
 *.swp
+
+# insta's pending snapshots, reviewed before any is accepted
+*.snap.new
+*.pending-snap

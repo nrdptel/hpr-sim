@@ -329,9 +329,10 @@ a fresh clone: `cargo xtask ork` needs `cargo xtask refs fetch` first, and stops
 
 Seven small designs from [Loft][loft], the project owner's earlier tool, are committed in
 `validation/fixtures/ork/loft-demo/` (MIT). The test
-`hpr_io::ork::tests::loft_demo_designs_read_as_snapshotted` reads each with `hpr_io::ork::design`
-and compares what it reads with a committed [`insta`](https://insta.rs) snapshot. A snapshot is a
-saved copy of the output that the next run must match. Each one records:
+`hpr_io::ork::tests::loft_demo_designs_read_as_snapshotted` reads each with `hpr_io::ork::design`,
+and a synthetic design whose motor flies from the bundled catalog besides, and compares a summary of
+what it reads with a committed [`insta`](https://insta.rs) snapshot. A snapshot is a saved copy of
+the output that the next run must match. Each summary records:
 
 - the stages and body components;
 - the structure's mass and centre of mass, to nine significant figures;
@@ -349,7 +350,8 @@ of this page that reads it.
 
 **When a snapshot changes,** the test fails and shows the old and new output. Run
 `cargo insta review` (from `cargo install cargo-insta`) to see them side by side, and accept only a
-change you can explain; the new `.snap` file goes in the same pull request. The private reference
+change you can explain (or rerun with `INSTA_UPDATE=always cargo test -p hpr-io` and read the
+diff in git); the new `.snap` file goes in the same pull request. The private reference
 library is never snapshotted; `cargo xtask ork` reports it only as counts, as above.
 
 ## The spine: stages and body components

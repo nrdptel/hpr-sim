@@ -7,11 +7,16 @@ expression: snapshot_of(&design)
     {
       "default": true,
       "id": "cfg-38-f50",
-      "left_out": "NoCurve",
+      "left_out": "no_curve",
       "motors": [
         {
-          "curve": "none: NotFound",
-          "delay": "Some(Seconds(8.0))",
+          "curve": {
+            "none": "not_found"
+          },
+          "delay": {
+            "kind": "seconds",
+            "value": 8.0
+          },
           "ignition": "automatic + 0 s",
           "motor": "AeroTech F50T",
           "mount": "10f70000-0000-4000-8000-000000000409"
@@ -36,12 +41,15 @@ expression: snapshot_of(&design)
     "devices": [
       {
         "altitude_m": null,
-        "cd": "Some(Stated { value: 0.9 })",
+        "cd": {
+          "kind": "stated",
+          "value": 0.9
+        },
         "configurations": 0,
         "delay_s": 0.0,
         "deploy": "lowerstageseparation",
         "id": "10f70000-0000-4000-8000-000000000406",
-        "kind": "Parachute"
+        "kind": "parachute"
       }
     ],
     "separations": [

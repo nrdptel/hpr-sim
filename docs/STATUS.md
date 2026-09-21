@@ -56,8 +56,8 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
 
 ## Done log (newest first, keep about 15)
 
-- 2026-09-21: M3.1d1 Loft's seven demo designs committed and snapshotted whole with `insta`
-  (new dev-dependency); M3.1d split into d1 and d2.
+- 2026-09-21: M3.1d1 Loft's seven demo designs committed and read into `insta` summary snapshots
+  (new dev-dependency), with a synthetic design that flies; M3.1d split into d1 and d2.
 - 2026-09-21: M3.1c4 What a `.ork` holds that hpr does not model, kept whole in `x-openrocket`
   (ADR-058): parts, sections, tags and attributes, 5,183 found again. L66 live; #145. M3.1c done.
 - 2026-09-21: M3.1c3 A `.ork` design's stored simulations read back (ADR-057): 178, 144 with a

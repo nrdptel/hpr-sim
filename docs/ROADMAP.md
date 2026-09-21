@@ -310,8 +310,8 @@
     - [x] **M2.1d3 The path in wind (issue #50).** *Done when:* issue #50's cause is found and the
       drifts are scored within their tolerances, or an ADR records the measured cause and why they
       cannot be, with the gap left visible in the report. *Result (ADR-026):* met: mostly RocketPy's
-      mirrored moment point in the burn (#1186, #1188, #1196), corrected in `corrections.py`; the
-      rest measured by `wind_response.py` (within 1.4%). Six drifts gated; five not.
+      mirrored moment point (#1186, PR #1196) and nozzle tensor (PR #1188), both corrected; RocketPy
+      then within 1.4% of hpr in wind (`wind_response.py`). Six drifts gated; five not.
 
 - [ ] **M1.8 Aerodynamics II (transonic and supersonic, damping, overrides).**
   - Transonic drag rise and supersonic wave drag.
@@ -624,11 +624,11 @@
       live, and a document with unknown content round-trips through `extensions.x-openrocket`.
       *Result:* met (ADR-058): 17 parts, 87 sections, 1,947 tags, 3,132 attributes, all found again.
   - [ ] **M3.1d The corpus and the cross-check.** `insta` snapshots on public files only, and the
-    RocketSerializer cross-check. *Done when:* the parent's four bullets above are met, split d1, d2.
+    RocketSerializer cross-check. *Done when:* the parent's four bullets above are met. Split: d1, d2.
     - [x] **M3.1d1 Snapshots of public designs.** *Done when:* committed `insta` snapshots use only
       public files (the Loft demo fixtures and synthetic designs), and private-corpus results go to
-      a gitignored `corpus-out/`, as counts only. *Result:* met: Loft's seven demo designs,
-      committed, each snapshotted whole by `hpr_io::ork::design`; the library stays counts only.
+      a gitignored `corpus-out/`, as counts only. *Result:* met: Loft's seven demo designs and a
+      synthetic one, each read by `hpr_io::ork::design` into a summary snapshot; the library: counts.
     - [ ] **M3.1d2 The cross-check.** *Done when:* every `.ork` in `refs/loft-fixtures` and the OR
       example set imports with zero errors, and the RocketSerializer cross-check agrees on the key
       geometry.
