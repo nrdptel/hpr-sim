@@ -182,7 +182,8 @@ missing or its status disagrees.
 | <a id="m3-1a"></a>[M3.1a][phase-1] | The container a `.ork` arrives in, and its design document read whole | done |
 | <a id="m3-1b"></a>[M3.1b][phase-1] | The component tree: parts, shapes, materials, finishes and overrides into a design | not yet done |
 | <a id="m3-1b1"></a>[M3.1b1][phase-1] | What a `.ork` value means: dimensions OpenRocket works out for itself, tags written under two names, and overrides | done |
-| <a id="m3-1b2"></a>[M3.1b2][phase-1] | The components themselves, with their automatic dimensions resolved | not yet done |
+| <a id="m3-1b2"></a>[M3.1b2][phase-1] | The spine: the stages and the body components stacked in them, with their automatic radii marked for the layout to resolve | not yet done |
+| <a id="m3-1b3"></a>[M3.1b3][phase-1] | The parts on and inside the body, with their positions and the dimensions they take from their parents | not yet done |
 | <a id="m3-1c"></a>[M3.1c][phase-1] | Motors, recovery, stages, and what OpenRocket last simulated | not yet done |
 | <a id="m3-1d"></a>[M3.1d][phase-1] | The corpus and the cross-check against RocketSerializer | not yet done |
 | <a id="m2-2"></a>[M2.2][phase-1] | OpenRocket as a reference program, and a corpus of designs to compare | not yet done |

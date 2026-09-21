@@ -4,10 +4,10 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
 
 ## Now
 
-- **Current milestone:** **M3.1b2a**, the `.ork` spine, in progress on `m3.1b2a-ork-spine`
-  (draft PR): the reader and its tests are in, the corpus run is not. M3.1b2 was split into
-  M3.1b2a (the spine) and M3.1b2b (what hangs off it).
-- **Order:** finish M3.1b2a, then M3.1b2b, M3.1c, M3.1d, then M2.2, then M1.9; M1.8e16 (past 24°)
+- **Current milestone:** M1.8e, all done bar M1.8e16 (`[blocked]` on #108); the work is
+  **M3.1b2**, the `.ork` spine, in progress on `m3.1b2-ork-spine` (draft PR): the reader and its
+  tests are in, the corpus run is not. M3.1b was split further: M3.1b2 is the spine, M3.1b3 what hangs off it.
+- **Order:** finish M3.1b2, then M3.1b3, M3.1c, M3.1d, then M2.2, then M1.9; M1.8e16 (past 24°)
   waits on #108
 - **Run:** M0.1-M0.4, M1.1-M1.7, M2.1, M1.8a-e19 bar e16, M3.1a, M3.1b1; the site is published.
 - **Neer, 2026-09-20:** Debrief is sunset; a flight log analyzer usable **on its own** is part of
@@ -16,7 +16,7 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
 
 ## Handoff (overwrite each session)
 
-- **Resume M3.1b2a here.** On `m3.1b2a-ork-spine`: `hpr_io::ork::component::rocket` reads a
+- **Resume M3.1b2 here.** On `m3.1b2-ork-spine`: `hpr_io::ork::component::rocket` reads a
   document's stages and body components, and four tests pass (`cargo test -p hpr-io --lib`),
   including L59's `auto_fore_radius_resolves_across_stage_boundary`. **What is left:** wire it into
   `cargo xtask ork` — build a `Rocket` per corpus design, call `layout()`, print how many lay out
@@ -62,23 +62,6 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
   be read where the corpus shows both agree on the number *and* the frame (642 and 109 elements),
   and two lookalike pairs are left unread because it shows they do not; a stated `0` is a value,
   and the six override tags are read independently. L58, L62 and L63's named tests are live.
-- 2026-09-20: M3.1a The `.ork` container and its document (ADR-051): M3.1 split into four, and the
-  first shipped — 78 files read by `cargo xtask ork`, 76 opening and all 76 unchanged through a
-  write and a read, 0 warnings; the 2 refused are not XML (a `<databranch>` closed with
-  `</flightdata>`), which expat confirms. Nesting is counted before `roxmltree` sees it.
-- 2026-09-20: M1.8e19 The near-flat flare (ADR-050): the region's edges come out of the corner's
-  own state instead of a bisection — the crossing and the balance, reproducing 0.038161270°,
-  0.058820517° and 0.000901825° — and a reduced element takes the generalized method where it has
-  a tangent cone, so both switches go; the crossing's pole is left.
-- 2026-09-20: M1.8e15 The step in radius (ADR-049): what a step costs is measured and published —
-  −8.65% and 1.03 calibres at its threshold, a pair (2.7e-11 m tube to tube, 1.3e-13 m stepping up
-  at a slope change). #87 narrowed to the step.
-- 2026-09-20: M1.8e18 What a marched flare is worth (ADR-048): TN D-4865 model 2's fig. 8(b)
-  committed, and hpr read against it — within 7% through Mach 2.30, +13.4% at 2.96, +51.5% and
-  +50.4% at 3.95 and 4.63 where it is separated.
-- 2026-09-20: M1.8e17 The flare through the method (ADR-047): a conical flare flies the method
-  while its corner's shock is attached and reads as the same radii drawn out where it is not
-  (4.527e-11 per ±1e-9°, 1.235e-9 per ±1e-9 in Mach).
 ## Needs Neer (blocking or one-way decisions; the session keeps working on other things)
 
 - **Protect `main`** (2 minutes, optional). Settings → Branches → rule for `main`: require `fmt`,

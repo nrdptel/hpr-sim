@@ -558,9 +558,9 @@
       Not monotone in the angle either, and separate from #87 (ADR-047, #117).
       *Done when:* the region's edges are derived rather than bisected, a rule carries the reading
       across it or the refusal is shown to be right, and a test pins whichever it is with the
-      switches' sizes measured on both sides.
-      *Result:* met (ADR-050). The edges are the corner's **crossing** and **balance**, solved from
-      its own state; the reduction is read there, so both switches go. What is left: ADR-050.
+      switches' sizes measured on both sides. *Result:* met (ADR-050) — the edges are the corner's
+      **crossing** and **balance**, solved from its own state, the reduction is read there, so both
+      switches go. What is left: ADR-050.
     - [ ] [blocked] **M1.8e16 The blunt tip's handover, past 24°** (the rest of the old e13, ADR-044;
       the next free number, so the flare and the step keep theirs). On issue #108; see `STATUS.md`.
       *Done when:* the vertical-tip switch is gone or measured again, fixtures and the guide moving
@@ -571,17 +571,15 @@
   - Handles zip, gz and raw XML, schema 1.0 to 1.10, plus the documented 1.11 additions.
   - Reads components, materials, finishes, motor configurations, recovery, stages, and stored
     simulation results.
-  - Unknown content is kept in `extensions.x-openrocket` for a lossless round trip.
-  - Graceful warnings instead of failures.
-  - Port Loft's importer lessons (auto radii, stage boundaries).
+  - Unknown content is kept in `extensions.x-openrocket` for a lossless round trip, and warnings
+    are graceful, never failures.
   - Loft lessons: L49, L56, L57, L58, L59, L60, L61, L62, L63, L64, L65, L66 (tests named in
     `docs/research/loft-lessons.md`).
 
   *Done when:*
   - Every `.ork` in `refs/loft-fixtures` and the OR example set imports with zero errors.
   - Committed `insta` snapshots use only public files (the Loft demo fixtures and synthetic
-    designs).
-  - Private-corpus results go to a gitignored `corpus-out/` and are summarised as counts only.
+    designs), and private-corpus results go to a gitignored `corpus-out/`, as counts only.
   - The RocketSerializer cross-check agrees on the key geometry.
 
   Split into M3.1a to M3.1d (ADR-051): the container and the document first, because everything
@@ -596,16 +594,15 @@
     the per-file detail to a gitignored `corpus-out/`; and
     `hpr_io::ork::tests::malformed_inputs_error_not_panic` is live.
     *Result:* met (ADR-051). 78 files: 76 read, all 76 unchanged through a write and a read, 0
-    warnings, 2 refused — Loft browser-test fixtures closing a `<databranch>` with `</flightdata>`,
-    which Python's expat refuses at the same line. 73 zip, 3 raw XML (no gzip survives, so a test
-    holds that path); schema 1.4 ×4, 1.5 ×10, 1.8 ×5, 1.9 ×3, 1.10 ×53, 1.11 ×1. Nesting is
-    counted before `roxmltree` sees the text: it read 120 levels on a debug build's stack and died
-    on 130, while the corpus's deepest design nests 17.
+    warnings, 2 refused — Loft browser-test fixtures closing a `<databranch>` with
+    `</flightdata>`, which Python's expat refuses at the same line. 73 zip, 3 raw XML (no gzip
+    survives, so a test holds that path); schema 1.4 ×4, 1.5 ×10, 1.8 ×5, 1.9 ×3, 1.10 ×53, 1.11
+    ×1. Nesting is counted before `roxmltree` sees the text: it read 120 levels on a debug
+    build's stack and died on 130, while the corpus's deepest design nests 17.
   - [ ] **M3.1b The component tree.** Components, shapes, materials, finishes and overrides into
-    `hpr-design` types, automatic dimensions resolved. Loft lessons L49, L58, L59, L60, L61, L62,
-    L63. *Done when:* every design in the reference library gives a `hpr_design::Rocket` whose
-    `layout()` succeeds, each of those lessons' named tests is live, and the counts go to
-    `corpus-out/` as above.
+    `hpr-design` types, automatic dimensions resolved (L49, L58 to L63). *Done when:* every design
+    in the reference library gives a `hpr_design::Rocket` whose `layout()` succeeds, each of those
+    lessons' named tests is live, and the counts go to `corpus-out/` as above.
     - [x] **M3.1b1 The values inside the tags.** What every later step asks the tree for: numbers,
       counts, flags, and the dimensions OpenRocket works out for itself; the tags it writes under
       two names; the overrides. Loft lessons L58, L62, L63.
@@ -615,27 +612,19 @@
       bare `auto` is a dimension with nothing cached (413 automatic dimensions across 7 tags).
       Where OpenRocket writes both names of a real rename it agrees with itself on the text and on
       the frame: 642 `axialoffset`/`position` and 109 `instancecount`/`fincount`, every one. Two
-      more pairs look the same and are **not** read: `angleoffset`/`radialdirection` agree on the
-      text on all 26 and differ on the frame on all 26, and `radiusoffset`/`radialposition` (106
-      and 542 elements) are never written together. A stated `0` is a value, which
-      is what a `<overridecd>0.0</overridecd>` needs (2 in the corpus). The six override tags are
-      read independently; the single pre-1.9 flag they replaced (20 elements, never beside a
-      per-quantity one) sets all three, with a warning.
-    - [ ] **M3.1b2a The spine.** The stages and the body components stacked in them — nose
-      cones, body tubes, transitions — with their shapes, lengths, radii, walls, materials and
-      overrides, and every automatic radius marked for `layout()` to resolve rather than filled
-      in, across a stage boundary as well as within one. Loft lesson L59.
-      *Done when:* `hpr_io::ork::tests::auto_fore_radius_resolves_across_stage_boundary` is live;
-      `cargo xtask ork` builds a `hpr_design::Rocket` from every design in the reference library
-      and reports how many spines lay out and what was left off them, with the per-file detail in
-      `corpus-out/`.
-    - [ ] **M3.1b2b The parts on and inside the body.** Inner tubes, rings and bulkheads, fin
-      sets, tube fins, lugs and rail buttons and mass objects, with their positions and the
-      dimensions they take from their parents; a surface finish once OpenRocket's five words
-      (`rough`, `unfinished`, `normal`, `smooth`, `polished`) have a roughness from a document
-      this project may read. Loft lessons L49, L60, L61, and the parent's bullets.
-      *Done when:* those lessons' named tests are live, every design in the reference library
-      gives a `Rocket` whose `layout()` succeeds, and the counts go to `corpus-out/`.
+      lookalike pairs are **not** read: `angleoffset`/`radialdirection` agree on the text on all 26
+      and differ on the frame on all 26, and `radiusoffset`/`radialposition` (106 and 542) are
+      never written together. A stated `0` is a value, which `<overridecd>0.0</overridecd>` needs
+      (2 in the corpus); the six override tags are read independently, and the single pre-1.9 flag
+      they replaced (20 elements, never beside a per-quantity one) sets all three, with a warning.
+    - [ ] **M3.1b2 The spine.** The stages and the body components stacked in them, with their
+      shapes, lengths, radii, walls, materials and overrides, every automatic radius marked for
+      `layout()` to resolve rather than filled in, across a stage boundary too (L59). *Done when:*
+      `hpr_io::ork::tests::auto_fore_radius_resolves_across_stage_boundary` is live, and `cargo
+      xtask ork` says how many designs' spines lay out and what was left off them.
+    - [ ] **M3.1b3 The parts on and inside the body**, with their positions, what they take from
+      their parents, and a sourced finish (L49, L60, L61). *Done when:* the parent's bullets are
+      met, those lessons' tests live.
   - [ ] **M3.1c Motors, recovery, stages and what OpenRocket last did.** Motor configurations and
     embedded `.rse` curves, recovery devices, stage and pod structure, stored conditions and
     results, and `extensions.x-openrocket` for the rest. Loft lessons L57, L64, L65, L66.
