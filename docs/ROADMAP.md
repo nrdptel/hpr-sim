@@ -568,17 +568,16 @@
   - [x] **M3.1a The container and the design document.** Sniff zip, gzip and raw XML by their first
     bytes; take the design out of the archive and keep every other entry; read the XML into a tree
     that keeps everything the file said, with its schema version and creator; warn, never crash.
-    Loft lesson L56. *Done when:* every `.ork` in the reference library and in
-    the OpenRocket jar's example set either reads or is shown by a second XML parser not to be
-    well-formed; each one written back out and read again gives the same document; `cargo xtask ork`
-    prints those counts and writes the per-file detail to a gitignored `corpus-out/`; and
+    Loft lesson L56. *Done when:* every `.ork` in the reference library and in the OpenRocket jar's
+    example set either reads or is shown by a second XML parser not to be well-formed; each one
+    written back out and read again gives the same document; `cargo xtask ork` prints those counts
+    and writes the per-file detail to a gitignored `corpus-out/`; and
     `hpr_io::ork::tests::malformed_inputs_error_not_panic` is live. *Result:* met (ADR-051). 78
     files: 76 read, all 76 unchanged through a write and a read, 0 warnings, 2 refused — Loft
     browser-test fixtures closing a `<databranch>` with `</flightdata>`, which Python's expat
     refuses at the same line. 73 zip, 3 raw XML (no gzip survives, so a test holds that path);
-    schema 1.4 ×4, 1.5 ×10, 1.8 ×5, 1.9 ×3, 1.10 ×53, 1.11 ×1. Nesting is counted before `roxmltree`
-    sees the text: it read 120 levels on a debug build's stack and died on 130, while the corpus's
-    deepest design nests 17.
+    schema 1.4 ×4, 1.5 ×10, 1.8 ×5, 1.9 ×3, 1.10 ×53, 1.11 ×1. Nesting is counted before parsing
+    (the guide says why).
   - [ ] **M3.1b The component tree.** Components, shapes, materials, finishes and overrides into
     `hpr-design` types, automatic dimensions resolved (L49, L58 to L63). *Done when:* every design
     in the reference library gives a `hpr_design::Rocket` whose `layout()` succeeds, each of those
@@ -606,25 +605,26 @@
       shoulder of no wall thickness reads as solid and an unstated `shapeclipped` as clipped, with a
       warning each, for M2.2's oracle to settle.
     - [x] **M3.1b3 The parts on and inside the body**, with their positions, what they take from
-      their parents, and a sourced finish (L49, L60, L61). *Done when:* every part OpenRocket
-      writes on or inside a body component is read into an `hpr_design` part or left out with its
-      reason; those three lessons' named tests are live; and `cargo xtask ork` says how many parts
-      were read, how many left out and why. *Result:* met (ADR-053). 765 parts of nine kinds over
-      the 73 designs that lay out, against 285 body components, with 327 automatic dimensions
-      marked and 5 parts left out with a reason (the guide's `.ork` page breaks them down). `.ork`
-      angles are **degrees** (86 exceed 2π); `radialposition` and `radiusoffset` are read on the
-      parts that carry them, which no element carries both of, closing ADR-052's open question
-      without its source; the five finish words take their author's published heights (500, 150,
-      60, 20, 2 µm), `polished` flagged as possibly moved in OpenRocket 23.09; a tube of no wall
-      carries no mass. New oracle: a cached `auto` is OpenRocket's own answer, and hpr matches 67
-      of the 71 that cache one — the 4 apart are one design's stale cache, contradicting its own
-      others. Issues #130 to #132 fixed bar a flipped nose cone and a shape parameter's range.
-    - [ ] **M3.1b4 The designs that still do not lay out.** Three of the 76: one holds no `<rocket>`
-      with components in it at all (a demonstration file carrying only a simulation), and two have
-      a chain of automatic radii with no fixed radius anywhere to resolve against, one caching a
-      number and one not. *Done when:* each either lays out or is shown to hold no design, with its
-      reason on the `.ork` page; a rule for an unresolvable chain, if there is to be one, rests on
-      something written down rather than on a cached number; and `cargo xtask ork` says so.
+      their parents, and a sourced finish (L49, L60, L61). Its *done when* was M3.1b's bullets,
+      **split** rather than rewritten: M3.1b4 carries "every design gives a `Rocket` whose
+      `layout()` succeeds" unchanged, and M3.1b's bullet stays unticked until it does. *Done when:*
+      every part OpenRocket writes on or inside a body component is read into an `hpr_design` part
+      or left out with its reason; those lessons' tests are live; and `cargo xtask ork` says how
+      many parts were read and how many left out. *Result:* met (ADR-053). 765 parts of nine kinds
+      over the 73 designs that lay out, against 285 body components, 327 automatic dimensions
+      marked, 5 parts left out with a reason. Angles are **degrees** (178 of 188 non-zero exceed
+      2π), though which way they turn is assumed and published as unsettled; `radialposition` and
+      `radiusoffset` are read on the parts that carry them, closing ADR-052's question without its
+      source; a tube of no wall carries no mass, a ring of no annulus is refused. New oracle: a
+      cached `auto` is OpenRocket's own answer and hpr matches 67 of 71 — but nothing caches an
+      `outerradius` or `innerradius`, so this milestone's two rules have no oracle. #130 to #132
+      fixed bar two bullets; #133, #135, #136 filed.
+    - [ ] **M3.1b4 The designs that still do not lay out**, carrying M3.1b's bullet. Three of the
+      76: one holds no `<rocket>` with components in it at all, and two have a chain of automatic
+      radii with no fixed radius anywhere to resolve against, one caching a number and one not.
+      *Done when:* each either lays out or is shown to hold no design, with its reason on the
+      `.ork` page; a rule for an unresolvable chain, if there is to be one, rests on something
+      written down rather than on a cached number; and `cargo xtask ork` says so.
   - [ ] **M3.1c Motors, recovery, stages and what OpenRocket last did.** Motor configurations and
     embedded `.rse` curves, recovery devices, stage and pod structure, stored conditions and
     results, and `extensions.x-openrocket` for the rest. Loft lessons L57, L64, L65, L66.

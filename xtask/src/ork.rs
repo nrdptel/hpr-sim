@@ -11,7 +11,7 @@
 //! OpenRocket jar (`datafiles/examples/`), which is a zip like any other. It fails when any file
 //! cannot be read, which is how milestone M3.1a's "every `.ork` opens" is checked.
 
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 use std::fs;
 use std::io::Read as _;
 use std::path::{Path, PathBuf};
@@ -90,6 +90,37 @@ pub fn run(args: &[String]) -> Result<(), String> {
         );
     }
     report(&root, &files)
+}
+
+/// The tags that hold an angle. A `.ork` writes them in degrees and says so nowhere, so this is
+/// the measurement that settles it: an angle larger than 2π is more than a whole turn, which no
+/// component is written at.
+const ANGLE_TAGS: [&str; 5] = [
+    "angleoffset",
+    "rotation",
+    "radialdirection",
+    "cant",
+    "clusterrotation",
+];
+
+/// Counts the angles written in a document: how many, how many are not zero, and how many of
+/// those are larger than 2π.
+fn angles(element: &ork::Element, counts: &mut [usize; 3]) {
+    if ANGLE_TAGS.contains(&element.name.as_str())
+        && let Ok(value) = element.text().trim().parse::<f64>()
+        && value.is_finite()
+    {
+        counts[0] += 1;
+        if value != 0.0 {
+            counts[1] += 1;
+            if value.abs() > std::f64::consts::TAU {
+                counts[2] += 1;
+            }
+        }
+    }
+    for child in element.elements() {
+        angles(child, counts);
+    }
 }
 
 /// Counts every tag inside a `<subcomponents>` that no milestone reads yet.
@@ -199,7 +230,11 @@ fn report(root: &Path, files: &[Case]) -> Result<(), String> {
     let mut spine_warning_kinds: BTreeMap<&'static str, usize> = BTreeMap::new();
     let mut cached_checked = 0usize;
     let mut cached_agree = 0usize;
+    let mut cached_by_tag: BTreeMap<String, [usize; 2]> = BTreeMap::new();
+    let mut cached_unmatched = 0usize;
     let mut cached_apart: BTreeMap<String, usize> = BTreeMap::new();
+    let mut angle_counts = [0usize; 3];
+    let mut weightless: BTreeMap<&'static str, usize> = BTreeMap::new();
     let mut apart_detail: Vec<Value> = Vec::new();
     let mut off_spine: BTreeMap<String, usize> = BTreeMap::new();
     let mut spines_laid_out = 0usize;
@@ -285,20 +320,34 @@ fn report(root: &Path, files: &[Case]) -> Result<(), String> {
                     }
                 }
                 off_the_spine(&read.value.document.root, &mut off_spine);
+                angles(&read.value.document.root, &mut angle_counts);
                 let laid_out = match spine.value.layout() {
                     Ok(layout) => {
                         spines_laid_out += 1;
+                        // A structural part that weighs nothing is almost always a reading gone
+                        // wrong somewhere upstream, and it is silent by nature: the design lays
+                        // out, the report is written, and the mass is simply missing.
+                        for placed in &layout.components {
+                            if placed.own.mass_kg == 0.0 {
+                                *weightless.entry(placed.part.kind_name()).or_default() += 1;
+                            }
+                        }
                         // Every automatic dimension the file cached a number with is an answer
                         // OpenRocket worked out; hold the resolution to it.
                         let mut cached = Vec::new();
                         cached_dimensions(&read.value.document.root, &mut cached);
                         for (id, tag, value) in cached {
+                            let seen = cached_by_tag.entry(tag.clone()).or_insert([0, 0]);
+                            seen[0] += 1;
                             let Some((_, placed)) = layout.find(&id) else {
+                                cached_unmatched += 1;
                                 continue;
                             };
                             let Some(resolved) = resolved_dimension(placed, &tag) else {
+                                cached_unmatched += 1;
                                 continue;
                             };
+                            cached_by_tag.entry(tag.clone()).or_insert([0, 0])[1] += 1;
                             cached_checked += 1;
                             let apart = (resolved - value).abs();
                             if apart <= 1e-9 * value.abs().max(1e-6) {
@@ -433,7 +482,20 @@ fn report(root: &Path, files: &[Case]) -> Result<(), String> {
         "attached_parts": to_value(&attached_parts),
         "parts_left_out": to_value(&left_out),
         "design_warnings": to_value(&spine_warning_kinds),
+        "parts_weighing_nothing": to_value(&weightless),
+        "angles_written": angle_counts[0],
+        "angles_not_zero": angle_counts[1],
+        "angles_larger_than_tau": angle_counts[2],
         "cached_dimensions_checked": cached_checked,
+        "cached_dimensions_unmatched": cached_unmatched,
+        "cached_dimensions_by_tag": Value::Object(
+            cached_by_tag
+                .iter()
+                .map(|(tag, [seen, checked])| {
+                    (tag.clone(), json!({ "cached": seen, "checked": checked }))
+                })
+                .collect(),
+        ),
         "cached_dimensions_agreeing": cached_agree,
         "cached_dimensions_apart": Value::Array(apart_detail.clone()),
         "automatic_dimensions": to_value(&automatic),
@@ -493,11 +555,34 @@ fn report(root: &Path, files: &[Case]) -> Result<(), String> {
     print_counts("attached parts", &attached_parts);
     print_counts("automatic dimensions marked", &auto_marked);
     print_counts("parts left out, by tag", &left_out);
+    print_counts("parts that weigh nothing", &weightless);
     print_counts("warnings reading designs", &spine_warning_kinds);
     println!(
-        "  automatic dimensions against OpenRocket's cached answer: {cached_agree} of \
-         {cached_checked} agree"
+        "  angles: {} written, {} not zero, {} of those larger than 2π",
+        angle_counts[0], angle_counts[1], angle_counts[2]
     );
+    let by_tag = cached_by_tag
+        .iter()
+        .map(|(tag, [seen, checked])| format!("{tag} {checked}/{seen}"))
+        .collect::<Vec<_>>()
+        .join(", ");
+    println!(
+        "  automatic dimensions against OpenRocket's cached answer: {cached_agree} of \
+         {cached_checked} agree ({cached_unmatched} cached but not comparable)"
+    );
+    println!("  by tag, compared of cached: {by_tag}");
+    // The rules with no cached answer anywhere have no oracle at all, and that is worth saying.
+    let never_cached: Vec<&str> = automatic
+        .keys()
+        .filter(|tag| !cached_by_tag.contains_key(*tag))
+        .map(String::as_str)
+        .collect();
+    if !never_cached.is_empty() {
+        println!(
+            "  automatic dimensions that never cache a number, so no oracle reaches them: {}",
+            never_cached.join(", ")
+        );
+    }
     if !cached_apart.is_empty() {
         print_counts("cached answers hpr resolves differently", &cached_apart);
     }
@@ -595,9 +680,13 @@ fn count_elements(element: &ork::Element) -> usize {
 /// The tag pairs OpenRocket writes a value under two names, newest first.
 /// The two the reader takes either name of, and the two it deliberately does not: the newer name
 /// of each of those carries a `method` the older never does, which the counts here measure.
-const NAME_PAIRS: [[&str; 2]; 4] = [
+const NAME_PAIRS: [[&str; 2]; 5] = [
     AXIAL_OFFSET,
     INSTANCE_COUNT,
+    // The angle, under its newer name and the two older ones a fin set and everything else use.
+    // The reader takes either (ADR-053) because these agree on the *number* every time, which is
+    // narrower than agreeing on the frame as well and is all an angle needs.
+    ["angleoffset", "rotation"],
     ["angleoffset", "radialdirection"],
     ["radiusoffset", "radialposition"],
 ];
@@ -622,17 +711,19 @@ fn walk(
             *automatic.entry(child.name.clone()).or_default() += 1;
         }
     }
+    // Each renamed tag is counted once for the element that carries it, not once per pair it
+    // belongs to: `angleoffset` is half of two pairs, and counting it twice would double it.
+    for name in NAME_PAIRS.iter().flatten().collect::<BTreeSet<_>>() {
+        if element.child(name).is_some() {
+            *tag_totals.entry((*name).to_owned()).or_default() += 1;
+        }
+    }
     let mut carries_a_pair = false;
     for pair in NAME_PAIRS {
         let [modern_name, legacy_name] = pair;
         // Seeded at zero whether or not this element has either, so that a pair never written
         // together is a measured zero rather than a missing row.
         let counts = both_names.entry(pair.join("/")).or_insert([0, 0, 0]);
-        for name in pair {
-            if element.child(name).is_some() {
-                *tag_totals.entry((*name).to_owned()).or_default() += 1;
-            }
-        }
         let (Some(modern), Some(legacy)) = (element.child(modern_name), element.child(legacy_name))
         else {
             continue;

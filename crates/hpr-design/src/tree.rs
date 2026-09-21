@@ -1237,12 +1237,19 @@ fn finish(
                 (AutoDimension::OuterRadius, _) => {}
                 (AutoDimension::InnerRadius, Part::CenteringRing(ring)) => {
                     let aft = fore + length;
+                    // A ring centres something *narrower than itself*. A sibling as wide as the
+                    // ring is not what the ring holds — it is whatever the ring is bolted to — and
+                    // taking its radius would leave the ring no material at all, which is how a
+                    // full-bore coupler brushing a ring by a tenth of a millimetre made the ring
+                    // weigh nothing. The ring's own outer radius is already resolved above.
+                    let outer_radius_m = ring.outer_radius_m;
                     ring.inner_radius_m = resolved
                         .iter()
                         .zip(&stations)
                         .filter_map(|(sibling, &(s_fore, s_length))| match sibling {
                             Part::InnerTube(tube)
                                 if tube.radial_offset_m == 0.0
+                                    && tube.outer_radius_m < outer_radius_m
                                     && s_fore.max(fore) < (s_fore + s_length).min(aft) =>
                             {
                                 Some(tube.outer_radius_m)

@@ -29,11 +29,57 @@ use super::warning::{Imported, Warning, WarningKind};
 /// The body tags this milestone reads. Anything else in a `<subcomponents>` is counted and left.
 const BODY_TAGS: [&str; 3] = ["nosecone", "bodytube", "transition"];
 
-/// Reads a design document's spine.
+/// Reads a design document into a [`Rocket`]: its stages, the body components stacked in them, and
+/// the parts on and inside each of those.
 ///
 /// Never fails: a tag it cannot read is left out with a [`Warning`], so a design written by another
 /// program still opens. The result is a [`Rocket`] whose body components are in file order, forward
-/// to aft, with automatic radii marked rather than filled in.
+/// to aft, with automatic dimensions **marked rather than filled in** — [`Rocket::layout`] resolves
+/// them, and is where a part's mass and station come from.
+///
+/// ```
+/// # fn main() -> Result<(), Box<dyn std::error::Error>> {
+/// let xml = br#"<?xml version="1.0" encoding="UTF-8"?>
+/// <openrocket version="1.10" creator="OpenRocket 24.12">
+///   <rocket><name>Sounder</name><subcomponents><stage><name>Sustainer</name><id>s</id>
+///     <subcomponents>
+///       <nosecone><name>Nose</name><id>nose</id><finish>smooth</finish>
+///         <material type="bulk" density="680.0">Cardboard</material>
+///         <length>0.3</length><thickness>0.002</thickness>
+///         <shape>ogive</shape><shapeparameter>1.0</shapeparameter>
+///         <aftradius>0.05</aftradius></nosecone>
+///       <bodytube><name>Tube</name><id>tube</id>
+///         <material type="bulk" density="680.0">Cardboard</material>
+///         <length>0.6</length><thickness>0.002</thickness><radius>0.05</radius>
+///         <subcomponents>
+///           <centeringring><name>Ring</name><id>ring</id>
+///             <material type="bulk" density="680.0">Plywood</material>
+///             <axialoffset method="bottom">0.0</axialoffset><length>0.005</length>
+///             <outerradius>auto</outerradius><innerradius>0.019</innerradius></centeringring>
+///         </subcomponents></bodytube>
+///     </subcomponents></stage></subcomponents></rocket>
+/// </openrocket>"#;
+///
+/// let read = hpr_io::ork::read(xml)?;
+/// let design = hpr_io::ork::rocket(&read.value.document);
+///
+/// // Anything the reader could not take at face value travels with the result. Nothing here did.
+/// assert!(design.warnings.is_empty(), "{:?}", design.warnings);
+///
+/// // The ring's outer radius says `auto`, so the design carries the dimension, not a number...
+/// use hpr_design::AutoDimension;
+/// let ring = &design.value.stages[0].components[1].children[0];
+/// assert!(ring.auto.contains(&AutoDimension::OuterRadius));
+///
+/// // ...and the layout works it out: the bore of the tube the ring sits in, 0.05 - 0.002.
+/// let layout = design.value.layout()?;
+/// let (_, placed) = layout.find("ring").expect("the ring");
+/// let hpr_design::Part::CenteringRing(ring) = &placed.part else { panic!("a ring") };
+/// assert!((ring.outer_radius_m - 0.048).abs() < 1e-12);
+/// assert!(placed.own.mass_kg > 0.0);
+/// # Ok(())
+/// # }
+/// ```
 pub fn rocket(document: &Document) -> Imported<Rocket> {
     let mut warnings = Vec::new();
     let mut rocket = Rocket {
@@ -367,12 +413,24 @@ fn shoulder(
     // is half of Loft lesson L61 and what issue #130 found still open on a shoulder.
     let thickness_m = if stated_m > 0.0 {
         known_m.map_or(stated_m, |radius_m| stated_m.min(radius_m))
-    } else {
+    } else if let Some(radius_m) = known_m {
         values.warn_at(
             WarningKind::Unusual,
             format!("the {end} shoulder has no wall thickness; it was read as solid"),
         );
-        outer_radius_m
+        radius_m
+    } else {
+        // "Solid" is a wall as thick as the radius, and the radius is not known until the layout
+        // resolves it — so there is no number here that means solid. Saying "read as solid" and
+        // handing on a zero would be a shoulder of no mass wearing the wrong label.
+        values.warn_at(
+            WarningKind::Skipped,
+            format!(
+                "the {end} shoulder has no wall thickness and an automatic radius, so there is no \
+                 number yet that means solid; it carries no mass"
+            ),
+        );
+        0.0
     };
     Some(Shoulder {
         length_m,
@@ -470,7 +528,8 @@ pub(super) fn material(values: &mut Values<'_>, names: &[&str], want: &str) -> M
         values.warn_at(
             WarningKind::Dropped,
             format!(
-                "the material `{name}` is declared `{declared}` where a `{want}` density is                  needed; its number was taken as a `{want}` one"
+                "the material `{name}` is declared `{declared}` where a `{want}` density is \
+                 needed; its number was taken as a `{want}` one"
             ),
         );
     }
@@ -508,7 +567,9 @@ pub(super) fn overrides(values: &mut Values<'_>) -> (Overrides, bool) {
         values.warn_at(
             WarningKind::Dropped,
             format!(
-                "the mass override covers the parts inside this one ({covers_children}) and the                  centre-of-gravity override does not agree; hpr states it once, so the mass                  flag was taken"
+                "the mass override covers the parts inside this one ({covers_children}) and \
+                 the centre-of-gravity override does not agree; hpr states it once, so \
+                 the mass flag was taken"
             ),
         );
     }

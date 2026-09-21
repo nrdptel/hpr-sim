@@ -1348,7 +1348,7 @@ fn auto_ring_bore_and_stated_wall_match_oracle() {
 }
 
 /// A `.ork` writes angles in degrees and `hpr-design` holds them in radians, and nothing in the
-/// file says which it is. Reading 180 as radians turns a fin more than fourteen times round.
+/// file says which it is: read as radians, 180 is more than twenty-eight turns, not half of one.
 #[test]
 fn angles_are_degrees_not_radians() {
     let hpr_design::tree::Part::FinSet(fins) = fins(&with_parts([0, 1, 2, 3, 4])) else {
@@ -1373,6 +1373,39 @@ fn angles_are_degrees_not_radians() {
             offset_m: 0.5 * (0.12 - 0.03),
         })
     );
+}
+
+/// A fin tab's place along the root is written from the fin's front, its centre or its end, under
+/// either of two vocabularies, and `hpr-design` states one thing: the distance from the root
+/// leading edge. A non-zero centre offset is what the corpus actually writes (eight fin sets), and
+/// `end` is written nowhere at all, so both are only held up here.
+#[test]
+fn a_fin_tab_is_placed_from_the_root_leading_edge_whichever_way_the_file_measures_it() {
+    let root = 0.12;
+    let tab = 0.03;
+    for (relative_to, offset, expected) in [
+        ("front", 0.0, 0.0),
+        ("front", 0.006, 0.006),
+        ("top", 0.006, 0.006),
+        ("center", 0.0, 0.5 * (root - tab)),
+        ("center", -0.0022, 0.5 * (root - tab) - 0.0022),
+        ("middle", -0.0022, 0.5 * (root - tab) - 0.0022),
+        ("end", 0.0, root - tab),
+        ("bottom", -0.004, root - tab - 0.004),
+    ] {
+        let xml = with_parts([0, 1, 2, 3, 4]).replace(
+            "<tabposition relativeto=\"center\">0.0</tabposition>",
+            &format!("<tabposition relativeto=\"{relative_to}\">{offset}</tabposition>"),
+        );
+        let hpr_design::tree::Part::FinSet(fins) = fins(&xml) else {
+            panic!("a fin set");
+        };
+        let placed = fins.tab.expect("a tab").offset_m;
+        assert!(
+            (placed - expected).abs() < 1e-12,
+            "`{relative_to}` at {offset}: {placed} m, wanted {expected} m"
+        );
+    }
 }
 
 /// The five words OpenRocket writes for a surface finish, as roughness heights. The numbers are
@@ -1552,5 +1585,55 @@ fn a_number_is_never_lost_in_silence() {
     assert_eq!(
         imported.warnings[0].at,
         "openrocket/rocket/stage[0]/bodytube[1]"
+    );
+}
+
+/// Where a part sits along its parent is five words, and each one has to put it somewhere
+/// different. Nothing in the corpus exercises `after` at all, and the stations below are worked
+/// out by hand from the tube's own geometry rather than from the reader.
+///
+/// The tube runs from station 0.3 (behind a 0.3 m nose) to 0.9, and the ring is 0.005 m long.
+#[test]
+fn every_axial_offset_word_puts_a_part_somewhere_different() {
+    let cases: [(&str, f64, f64); 6] = [
+        // word, offset in the file, the station its forward end should land at
+        ("top", 0.0, 0.3),
+        ("top", 0.1, 0.4),
+        ("middle", 0.0, 0.3 + 0.5 * (0.6 - 0.005)),
+        ("bottom", 0.0, 0.9 - 0.005),
+        ("bottom", -0.02, 0.9 - 0.005 - 0.02),
+        ("absolute", 0.42, 0.42),
+    ];
+    for (word, offset, station) in cases {
+        let xml = with_parts([1, 0, 2, 3, 4]).replace(
+            "<axialoffset method=\"bottom\">0.0</axialoffset>\n                <length>0.005</length>",
+            &format!("<axialoffset method=\"{word}\">{offset}</axialoffset><length>0.005</length>"),
+        );
+        let layout = spine(&xml).layout().expect("a design that lays out");
+        let (_, placed) = layout.find("ring").expect("the ring");
+        assert!(
+            (placed.fore_station_m - station).abs() < 1e-12,
+            "`{word}` at {offset}: {} m, wanted {station} m",
+            placed.fore_station_m
+        );
+    }
+
+    // `after` puts a part behind the sibling written before it, and no file in the reference
+    // library uses it, so this is the only thing holding that arm up.
+    let xml = with_parts([1, 0, 2, 3, 4]).replace(
+        "<axialoffset method=\"bottom\">0.0</axialoffset>\n                <length>0.2</length>",
+        "<axialoffset method=\"after\">0.01</axialoffset><length>0.2</length>",
+    );
+    let layout = spine(&xml).layout().expect("a design that lays out");
+    let (_, ring) = layout.find("ring").expect("the ring");
+    let (_, mount) = layout.find("mount").expect("the mount");
+    // The ring is written first and sits at the tube's aft end; the mount follows it by 0.01 m.
+    assert!(
+        (ring.fore_station_m - (0.9 - 0.005)).abs() < 1e-12,
+        "{ring:?}"
+    );
+    assert!(
+        (mount.fore_station_m - (ring.fore_station_m + 0.005 + 0.01)).abs() < 1e-12,
+        "{mount:?}"
     );
 }

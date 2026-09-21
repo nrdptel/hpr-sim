@@ -30,25 +30,28 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
 - **Validation (M2.1, ADR-021 to ADR-026):** CI checks the report on three OSes; predicted mode's
   3% are *targets*; every whole flight names both RMS metrics, each held to 3% of its reference's
   apogee or max speed (ADR-024). The wind oracle flies RocketPy 1.13.0 with #1188 and #1196 by
-  `corrections.py` (re-pin and delete when #1196 releases). **Regeneration is not bit-identical**:
-  use `cargo xtask validate` (debug), never `--release`; checks allow 1e-12 relative but **compare
-  a fixture's strings as text**. `cargo xtask aero` rewrites `arcas-robin-gap.json`'s last digits
-  whatever you changed — `git checkout` it.
+  `corrections.py`. **Regeneration is not bit-identical**: use `cargo xtask validate` (debug),
+  never `--release`; checks allow 1e-12 relative but **compare a fixture's strings as text**.
+  `cargo xtask aero` rewrites `arcas-robin-gap.json`'s last digits whatever you changed.
 - **M1.8a to e19** (ADR-027 to ADR-050). Measurements: the guide's aero page and *Known issues*.
-  Working notes: `cargo xtask aero` writes the aero fixtures (five of ADR-030's PDFs come from NTRS
-  with a 436-byte header, scratch `refs/scratch/m18*/`); `SupersonicBody` tabulates every 0.05 Mach
-  from max(1.2, its start), joined over 0.3; `BEFORE_M1_8E6` keeps the old rules and `CONE_SLOPES`
-  runs to 30°; a mesh-following answer is marked by the pressure **crossing** its tangent cone's,
-  not `η < 0`; the near-flat flare's edges come from `flare_reduction_turns_rad` (#108).
+  Working notes: `cargo xtask aero` writes the aero fixtures (scratch in `refs/scratch/m18*/`);
+  `SupersonicBody` tabulates every 0.05 Mach from max(1.2, its start), joined over 0.3;
+  `BEFORE_M1_8E6` keeps the old rules and `CONE_SLOPES` runs to 30°; a mesh-following answer is
+  marked by the pressure **crossing** its tangent cone's, not `η < 0`; the near-flat flare's edges
+  come from `flare_reduction_turns_rad` (#108).
 - **Debrief, folded in** (ADR-046): `hpr-flightdata` is off `hpr-sim` and must stay off it
   (`forbids = ["hpr-sim"]`, walked by `cargo xtask wasm-check`); sim-versus-flight goes in
   `hpr-forensics`; notes in `debrief-{log-formats,flight-readings,porting-boundary}.md`. **Port
   from its `lib/`, never its `COMPETITION.md`** (GPL-3 Java); its 12 public fixtures may be used.
-- **`.ork` parts (M3.1b3, ADR-053):** angles in a `.ork` are **degrees**; `radialposition` is on
-  the parts inside a body and `radiusoffset` on the parts on it, never both, which is what let
-  ADR-052's pair be read at last. `cargo xtask ork` now runs an oracle needing no OpenRocket — a
-  cached `auto` is OpenRocket's own answer — and reports 67 of 71 agreeing. The finish heights come
-  from the author's forum post, cached under `refs/sources/openrocket-finish/`.
+- **`.ork` parts (M3.1b3, ADR-053):** angles in a `.ork` are **degrees**, but *which way they turn*
+  is assumed — OpenRocket's `+x` points aft, hpr's `+z` at the nose, so every angle may be
+  mirrored; it is on the guide's not-settled list for M2.2, which one asymmetric design settles.
+  `radialposition` is on the parts inside a body and `radiusoffset` on the parts on it, never both,
+  which is what let ADR-052's pair be read at last. `cargo xtask ork` runs an oracle needing no
+  OpenRocket — a cached `auto` is OpenRocket's own answer, 67 of 71 agree — but **nothing caches an
+  `outerradius` or `innerradius`**, so this milestone's two resolution rules have no oracle; it
+  also lists parts that weigh nothing (21, every one explained). Finish heights come from the
+  author's forum post, cached under `refs/sources/openrocket-finish/`.
 - **Process notes:** `cargo test -p xtask` guards STATUS, ROADMAP, notices, lessons and the lock;
   oracles run from the repo root with `refs/venv/bin/python`; `xtask designs`, `examples` and `ork`
   rewrite their outputs. **M2.2's oracle** (ADR-035): orhelper is dropped, so decide how to drive
@@ -58,10 +61,10 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
 
 - 2026-09-20: M3.1b3 The `.ork` parts on and inside the body (ADR-053): 765 parts over the 73
   designs that lay out, against 285 body components, 327 automatic dimensions marked, 5 left out
-  with a reason. Angles are degrees (86 of the corpus's exceed 2π); the five finish words are
-  sourced (500/150/60/20/2 µm). New in-file oracle: hpr's layout matches 67 of the 71 automatic
-  dimensions OpenRocket cached an answer for, the 4 apart being one design's stale cache. L49, L60
-  and L61 live. #130 to #132 fixed bar a flipped nose and a parameter range; #133 filed.
+  with a reason. Angles are degrees (178 of 188 non-zero exceed 2π); the finish words are sourced.
+  New in-file oracle: hpr matches 67 of the 71 automatic dimensions OpenRocket cached an answer
+  for. A ring's bore takes only a tube narrower than the ring, which stopped 2 rings weighing
+  nothing. L49, L60, L61 live. #130 to #132 fixed bar two bullets; #133, #135, #136 filed.
 - 2026-09-20: M3.1b2 The `.ork` spine into `hpr_design` types, every automatic radius marked for
   `layout()` to resolve, across a stage boundary too (L59 live). OpenRocket's ogive κ is the
   reciprocal of this project's radius ratio (Niskanen A.3). Open for M2.2: a shoulder of no wall
@@ -90,25 +93,23 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
   name of a rename may be read where the corpus shows the two agree on the number *and* the frame;
   the pre-1.9 subcomponent-override flag sets all three, with a warning.
 - ADR-051: M3.1 is split a to d, the container first; a `.ork` document is kept whole because it
-  has no schema, and read-write-read is the guarantee rather than byte fidelity; nesting is capped
-  at 64 before parsing; `zip` and `flate2` added.
+  has no schema, and read-write-read is the guarantee; nesting is capped at 64 before parsing.
 - ADR-050: a reduced element takes the generalized method wherever it has a tangent cone of its
   own; a cylinder's and a boattail's keep the refusal (#123). Edges from the corner.
 - ADR-049: a step in radius keeps the model it has (no source gives a step's normal force faster
   than sound); its size is published. #87 narrowed to it, #120 and #121 carry the rest.
-- ADR-048: model 2's drawing is closed on the base, not on its printed lengths, and the spread
-  published; a blunt nose may span more than one curved segment but a cap may not reach a cylinder;
-  the Mach 1.50 refusal stands; the three separated rows are a flow hpr doesn't model.
+- ADR-048: model 2's drawing is closed on the base, not on its printed lengths; a blunt nose may
+  span more than one curved segment but a cap may not reach a cylinder.
 - ADR-047: a flare's attachment test is NACA 1135's wedge limit at the flow reaching the corner (TN
-  D-4865 p. 5's) under the cone tables' 30°; a steeper flare reads the same radii drawn out to it.
+  D-4865 p. 5's) under the cone tables' 30°; a steeper flare reads the same radii drawn out.
 - ADR-046: Debrief folded in; `hpr-flightdata` off `hpr-sim`, `hpr-forensics` added, Phase 5
   re-cut, `hpr analyze` in M4.2. Its `.ork` parser is clean room, `COMPETITION.md` is not.
 - ADR-038 to ADR-040: the march behind a blunt tip starts from the tangent cone, not TN D-4865's
-  Newtonian state (which fails on the Arcas nose from Mach 3.96), handover capped at 24°; a lip in
-  a boattail's wake is bounded, not measured; M1.8e's 15% bullet is **not met** for the body alone.
+  Newtonian state (which fails on the Arcas nose from Mach 3.96), handover capped at 24°; M1.8e's
+  15% bullet is **not met** for the body alone.
 - ADR-027 to ADR-037 (details in `DECISIONS.md`): M1.8 split a to e; fins' supersonic slope counts
-  both faces; Stoney's Fig. 12 read by hand, bulged ogives and Haack past `C = ⅓` refused; a table
-  replaces only the static force. **Two gaps visible:** M1.8's drag bullet, M1.8a's miss.
+  both faces; bulged ogives and Haack past `C = ⅓` refused. **Two gaps visible:** M1.8's drag
+  bullet, M1.8a's miss.
 - ADR-001 to ADR-026 (details in `DECISIONS.md`), among them: refs pinned by hash; body `+z` to the
   nose; Niskanen's drag as printed at 20 µm; own DOPRI5; recovery in `hpr-sim`; the site's link,
   label and number checks; 3% gates or a written reason. #11: `SolidMotor` refuses `c = I/m_p`
@@ -126,12 +127,11 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
   (ADR-008). Body lift (Jorgensen, M1.8e6) reads 1–16% high where the crossflow is supersonic. The
   normal force misses the tunnel between Mach 0.8 and 1.2; fins off, the body reads 14–38% high
   from Mach 1.5 to 2.96 (M1.8e9's bullet). A blunt tip's cap (M1.8e7) is checked only on a
-  sphere-cone (#101); a lip's share (M1.8e8) is bounded, not measured; a boattail past 16° (M1.8e9)
-  is worth 0.67 to 1.35 calibres of doubt. A marched flare (M1.8e18) reads +51.5% and +50.4% at
-  Mach 3.95 and 4.63 on the one measured flare, separated there, and none below Mach 1.5289; a
-  near-flat flare leaves the crossing's pole — +0.129% on the tests' rocket, +4.3% on a short
-  shoulder (#108); a step in radius takes the body off the method past 2.7e-11 m tube to tube or
-  1.3e-13 m up at a boattail — −8.65% to −11.34% (#87).
+  sphere-cone (#101); a boattail past 16° is worth 0.67 to 1.35 calibres of doubt. A marched flare
+  (M1.8e18) reads +51.5% and +50.4% at Mach 3.95 and 4.63 on the one measured flare; a near-flat
+  flare leaves the crossing's pole — +0.129% on the tests' rocket, +4.3% on a short shoulder
+  (#108); a step in radius takes the body off the method past 2.7e-11 m tube to tube or 1.3e-13 m
+  up at a boattail — −8.65% to −11.34% (#87).
 - `.ork` (M3.1a to M3.1b3) builds a rocket, but 3 of 76 designs do not lay out (M3.1b4) and no
   motor, recovery setting, pod or parallel stage is read (M3.1c). 5 parts are left out with a
   reason, among them the corpus's only tube fins (#133); fin fillets, a rail button's screw head

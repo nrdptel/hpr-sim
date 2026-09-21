@@ -5062,17 +5062,20 @@ them open on purpose: what the older of two names for a radial offset is measure
 **Decision.**
 
 1. **Angles in a `.ork` are degrees.** Nothing in the file says so and every length beside them is
-   in metres, so it is a mistake waiting to happen: read as radians, `<angleoffset>180</angleoffset>`
-   turns a fin more than fourteen times round. The corpus settles it — 86 of the angles written in
-   it are larger than 2π, which is more than a whole turn, and the values themselves are 180, 90,
-   45, 30 and 120, carrying the float dust (`119.99999999999999`) of a conversion that went through
-   radians and back. `hpr_io::ork::tests::angles_are_degrees_not_radians` holds it.
+   in metres, so it is a mistake waiting to happen: read as radians,
+   `<angleoffset>180</angleoffset>` is more than twenty-eight turns instead of half of one. The
+   corpus settles it — of the 993 angles written in it, 188 are not zero and **178 of those are
+   larger than 2π**, more than a whole turn — and the values themselves are 180, 90, 45, 30 and
+   120, carrying the float dust (`119.99999999999999`) of a conversion that went through radians
+   and back. `cargo xtask ork` prints the three counts and
+   `hpr_io::ork::tests::angles_are_degrees_not_radians` holds the reading.
 2. **`radialposition` and `radiusoffset` are read, each on the parts that carry it, and never one
    as the other.** ADR-052 left both unread for want of a source saying what the older name's
    frame is. That question does not have to be answered to read them, because the corpus shows the
    two never meet: `radialposition` (542 elements) is written on the parts *inside* a body — inner
    tubes, couplers, rings, mass objects, recovery gear — and `radiusoffset` (106) on the parts
-   *on* it, fins, tube fins and rail buttons, and no element carries both. They are two tags on
+   *on* it (fins, tube fins and rail buttons: 95) and on the 11 pods and parallel stages, and no
+   element carries both. They are two tags on
    different components, not two names for one. The same goes for the angle: `angleoffset` and the
    older `rotation` or `radialdirection` are read as one number because on all 121 elements that
    carry both they agree on it, and the frames they differ on — `relative` to the parent against
@@ -5107,28 +5110,45 @@ them open on purpose: what the older of two names for a radial offset is measure
    surface roughness of 60 µm", and the user guide's body-tube dialog reads "Regular paint
    (2.36 mil)", which is 59.9 µm — and the other four come from the program's author on The
    Rocketry Forum. Each is a `Finish::Custom` height rather than one of hpr's named finishes, whose
-   names mean other surfaces. **Not settled:** OpenRocket 23.09 added four more finishes and the
-   2 µm row now appears under a different label, so `polished` in a file written by a newer
-   OpenRocket may mean 0.5 µm; no file in the corpus writes any word but the five. An unknown word
+   names mean other surfaces. **`polished` is not settled:** 2 µm rests on that post alone, and the
+   technical documentation's own Table 3.2 puts 2 µm at *aircraft sheet metal* while "finished and
+   polished surface" is 0.5 µm — so OpenRocket's label does not match the row its name points at,
+   and a later version could have moved it (forum posts from 2023 list nine finishes, not five,
+   though no release note mentions them). It would be worth 1.32× in skin friction on the 14
+   components that say it. No file in the corpus writes any word but the five. An unknown word
    takes hpr's default and says so.
-7. **Whether an override covers the parts inside a component is taken from the mass flag.** A
+7. **Which way an angle turns is assumed, and said to be assumed.** hpr measures a roll angle
+   right-handed about an axis pointing at the nose; the OpenRocket technical documentation §3.1.4
+   points its own `x` along the centreline *aft* and leaves the other two axes unstated. If that is
+   what it means, every angle read here is mirrored — a mass object at 90° on the other side, a
+   canted fin set rolling the other way. No file can settle it, because a mirrored design is still
+   a valid design, so it goes on the guide's list of readings that are not settled, for one
+   asymmetric design through the M2.2 oracle to decide.
+8. **Whether an override covers the parts inside a component is taken from the mass flag.** A
    `.ork` says it once per quantity and `hpr-design` says it once for the component, so the two
    cannot always agree; mass is the quantity the flag is written for (95 of the 104 in the corpus),
    and a centre-of-gravity flag that disagrees raises a warning. Until this milestone the spine
    read it as never covering the children, which was harmless while no component had any.
-8. **M3.1b splits once more.** M3.1b3 is the parts; M3.1b4 is the three designs of the 76 that
+9. **M3.1b splits once more.** M3.1b3 is the parts; M3.1b4 is the three designs of the 76 that
    still do not lay out, none of which this milestone could reach: one document holds no rocket at
    all, and two have a chain of automatic radii with no fixed radius anywhere to resolve against.
 
 **Consequences.** 765 parts read across 73 designs that lay out, and every claim above is a count
-`cargo xtask ork` prints. The resolution rules now have an oracle that needs no OpenRocket: `auto
-0.0125` is the answer OpenRocket itself last worked out, so the layout can be held to it — 67 of
-the 71 cached dimensions on a component the file gives an id agree to a part in 10⁹. The four that
+`cargo xtask ork` prints. *Some* of the resolution rules now have an oracle that needs no
+OpenRocket: `auto 0.0125` is the answer OpenRocket itself last worked out, so the layout can be
+held to it — 67 of the 71 cached dimensions on a component the file gives an id agree to a part in
+10⁹. It reaches less far than that sounds: OpenRocket never caches a number for `outerradius`
+(0 of 131) or `innerradius` (0 of 80), so **the two rules point 5 adds have no oracle coverage at
+all**, and rest on their tests and on the argument for them. `cargo xtask ork` prints the per-tag
+denominators and names the tags nothing reaches. The four that
 do not are one body tube and the parachute packed inside it, in one design the corpus holds twice,
-and there the cache contradicts the file's own other caches: the nose cone ahead of that tube
-caches 0.028321 m for the radius of the very tube that caches 0.025 m, which is OpenRocket's
-default body-tube radius and so the stale number. That is ADR-052's point about a cached value
-made visible rather than argued.
+and **that file's caches contradict each other**: the nose cone ahead of that tube caches
+0.028321 m, and a nose cone's automatic base radius *is* the radius of the component behind it,
+while the tube itself caches 0.025 m. hpr resolves it to 0.028321 m, with the design's three other
+cached radii and its one stated radius against the single odd one. That is an argument from the
+file, not a proof — it shows the cache is inconsistent, not which half went stale, and which one
+OpenRocket would compute today is for M2.2 to settle. It is ADR-052's point about a cached value,
+made checkable.
 
 Point 4 is a reading OpenRocket could settle, and M2.2 will: it is listed with the spine's two
 open readings on the guide's `.ork` page. Point 6's `polished` is the one number here that a newer
