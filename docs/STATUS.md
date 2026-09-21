@@ -16,8 +16,8 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
 ## Handoff (overwrite each session)
 
 - **M2.2b next** (ADR-060): the wall-less shoulder (OpenRocket: no mass; hpr reads it solid, in
-  `component.rs`), clusters, fillets, no material (OR: 680 kg/m³), roll inertia 2.4% apart; `xtask
-  ork` prints each design outside 1% with its parts. Then c (motors), d, e. **Read OpenRocket after
+  `component.rs`), clusters, fillets, no material (OR: 680 kg/m³), inertia under an override,
+  airfoil fins, roll inertia 2.1% apart; `xtask ork` prints each file outside 1% with its causes. Then c (motors), d, e. **Read OpenRocket after
   a save**; Java 17. When the library changes, rerun `validation/oracles/openrocket/mass.py` and
   `rocketserializer/geometry.py` (own env) before `xtask ork`, which fails on a stale record.
 - **Page rules** (ADR-016 to ADR-020): relative links between pages, GitHub URLs for the rest
@@ -54,7 +54,7 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
 ## Done log (newest first, keep about 15)
 
 - 2026-09-21: M2.2a Each design's structure against OpenRocket's (ADR-060): 57 and 58 of 74 within
-  1% in mass and CG; the 17 outside have five causes hpr warns of; roll inertia 2.4% unexplained.
+  1% in mass and CG; the 17 outside have five causes hpr warns of; roll inertia 2.1% unexplained.
 - 2026-09-21: M3.1d2 Every `.ork` in `loft-fixtures` (27) and the jar's examples (17) imports with
   0 errors; hpr's key geometry held to RocketSerializer's, OpenRocket settling (ADR-059): 1,212
   numbers over 74 designs, each OpenRocket's. M3.1 done; #147, #148, #135 commented.

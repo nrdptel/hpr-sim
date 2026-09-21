@@ -393,12 +393,18 @@ fn report(root: &Path, files: &[Case], library: bool) -> Result<(), String> {
                         source[2] += 1;
                         geometry_here =
                             geometry.add(&oracle_key(root, name), bytes, &spine.value, &layout);
+                        let said: Vec<&str> = spine
+                            .warnings
+                            .iter()
+                            .map(|warning| warning.message.as_str())
+                            .collect();
                         mass_here = mass.add(
                             &oracle_key(root, name),
                             bytes,
                             &spine.value,
                             &layout,
                             whole.value.is_reduced(),
+                            &said,
                         );
                         // A structural part that weighs nothing is almost always a reading gone
                         // wrong somewhere upstream, and it is silent by nature: the design lays

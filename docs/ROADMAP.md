@@ -636,9 +636,9 @@
     ork` holds every design OpenRocket opens to its structure's mass, CG and inertias and prints
     the spread; the Loft demo record is checked in CI; every design outside 1% in mass or 1% of
     length in CG has a written hypothesis. *Result:* met (ADR-060): 57 and 58 of 74 within 1%; the
-    17 outside, five causes hpr warns of; roll inertia unexplained (median 2.4%).
+    17 outside, five causes hpr warns of; roll inertia unexplained (median 2.1%).
   - [ ] **M2.2b OpenRocket's mass conventions** (L51, L87). *Done when:* L51, L87 are live and each
-    of M2.2a's five causes and roll inertia is hpr's rule or a written departure, M2.2a rerun.
+    convention ADR-060 lists, and roll inertia, is hpr's rule or a written departure, M2.2a rerun.
   - [ ] **M2.2c The motors OpenRocket flies.** *Done when:* every configuration held back only for
     want of a curve flies or is named with its reason, each curve's impulse within 0.1% of OR's.
   - [ ] **M2.2d Flights to apogee on the public designs** (L80, L81). *Done when:* those that fly

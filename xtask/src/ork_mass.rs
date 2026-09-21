@@ -52,6 +52,16 @@ pub(crate) fn differences(layout: &Layout, openrocket: &Value) -> Option<[f64; 4
     ])
 }
 
+/// The median of sorted values: the middle one, or the mean of the two middle ones.
+fn median(sorted: &[f64]) -> f64 {
+    let n = sorted.len();
+    if n % 2 == 1 {
+        sorted[n / 2]
+    } else {
+        (sorted[n / 2 - 1] + sorted[n / 2]) / 2.0
+    }
+}
+
 /// A spread of relative differences: how many within 0.1% and 1%, the median and the worst.
 fn spread(values: &[f64]) -> String {
     if values.is_empty() {
@@ -70,9 +80,73 @@ fn spread(values: &[f64]) -> String {
         within(0.001),
         within(0.01),
         sizes.len(),
-        100.0 * sizes[sizes.len() / 2],
+        100.0 * median(&sizes),
         100.0 * worst
     )
+}
+
+/// The causes a design outside a threshold is traced to, each by what hpr says when it reads the
+/// file, in the order they are printed.
+pub(crate) const CAUSES: [&str; 6] = [
+    "a shoulder written with no wall, read as solid",
+    "a cluster of motor tubes, read as one tube",
+    "fin fillets, left out",
+    "a part written with no material",
+    "parts hpr keeps unread (a reduced design)",
+    "a stage OpenRocket's configuration switches off",
+];
+
+/// The causes a design shows, from the warnings hpr raised reading it, whether it is reduced, and
+/// whether OpenRocket weighs fewer stages than hpr. The words are the importer's; a test holds
+/// them to what it says.
+fn causes(warnings: &[&str], reduced: bool, stages_apart: bool) -> Vec<&'static str> {
+    let said = |words: &str| warnings.iter().any(|warning| warning.contains(words));
+    let found = [
+        said(SHOULDER),
+        said(CLUSTER),
+        said(FILLETS),
+        said(NO_MATERIAL),
+        reduced,
+        stages_apart,
+    ];
+    CAUSES
+        .iter()
+        .zip(found)
+        .filter_map(|(cause, found)| found.then_some(*cause))
+        .collect()
+}
+
+/// How `hpr_io::ork` words the warnings `causes` looks for.
+const SHOULDER: &str = "shoulder has no wall thickness; it was read as solid";
+const CLUSTER: &str = "a cluster of motor tubes is read as the one tube";
+const FILLETS: &str = "the fillets along the fin roots were dropped";
+const NO_MATERIAL: &str = "no material, so this part weighs nothing";
+
+/// How a design is named in print: by its file when it is public (the jar's examples, Loft's own
+/// repository, the parts catalogue, and the repository's own fixtures), and otherwise only by the
+/// start of its content hash, so that a private file's name never leaves the machine.
+fn label(file: &str, hash: &str) -> String {
+    let public = [
+        "datafiles/examples/",
+        "refs/fusionspace-loft/",
+        "refs/openrocket-database/",
+        "validation/fixtures/",
+    ];
+    if public.iter().any(|prefix| file.starts_with(prefix)) {
+        file.rsplit('/').next().unwrap_or(file).to_owned()
+    } else {
+        format!("private {}", hash.chars().take(8).collect::<String>())
+    }
+}
+
+/// A design outside a threshold, as printed.
+#[derive(Debug)]
+struct Outside {
+    label: String,
+    hash: String,
+    found: [f64; 4],
+    causes: Vec<&'static str>,
+    parts: Value,
 }
 
 /// The counts, summed over the designs.
@@ -80,8 +154,6 @@ fn spread(values: &[f64]) -> String {
 pub(crate) struct MassTally {
     /// The record, by design, when the library run has been made.
     record: Option<BTreeMap<String, Value>>,
-    /// The probe's mapping failures: an OpenRocket inertia that is not the one worked by hand.
-    probe: Vec<String>,
     /// Files the record holds, and how many OpenRocket opened.
     recorded: [usize; 2],
     /// Differences for every design compared, and for the first design of each content.
@@ -90,12 +162,12 @@ pub(crate) struct MassTally {
     seen: BTreeSet<String>,
     /// Differences for designs hpr reads reduced (pods and parallel stages kept, not modelled).
     reduced: Vec<[f64; 4]>,
-    /// Designs outside a threshold: the file, its differences, the start of its content hash (how
-    /// a private design is named in print), and its parts that differ most.
-    outside: Vec<(String, [f64; 4], String, Value)>,
+    /// Designs outside a threshold.
+    outside: Vec<Outside>,
     refused: usize,
-    stale: Vec<String>,
-    missing: Vec<String>,
+    /// Problems that fail the survey: a record out of date or incomplete, a design missing from
+    /// it, one OpenRocket opens that hpr does not lay out, and an error in the script itself.
+    problems: Vec<String>,
 }
 
 impl MassTally {
@@ -122,15 +194,23 @@ impl MassTally {
             .values()
             .filter(|design| design["opens"] == true)
             .count();
+        let mut problems = probe_mismatches(&record["probe"]);
+        for (file, design) in &designs {
+            if let Some(error) = design["driver_error"].as_str() {
+                let hash = design["sha256"].as_str().unwrap_or_default();
+                problems.push(format!("mass.py failed on {}: {error}", label(file, hash)));
+            }
+        }
         Self {
-            probe: probe_mismatches(&record["probe"]),
             recorded: [designs.len(), opened],
             record: Some(designs),
+            problems,
             ..Self::default()
         }
     }
 
     /// Compares one design the survey laid out, when the record holds it, and returns the detail.
+    /// `warnings` are what hpr said reading it, which name the cause of a difference.
     pub(crate) fn add(
         &mut self,
         name: &str,
@@ -138,47 +218,71 @@ impl MassTally {
         rocket: &Rocket,
         layout: &Layout,
         reduced: bool,
+        warnings: &[&str],
     ) -> Value {
         let Some(designs) = &mut self.record else {
-            return Value::Null;
-        };
-        let Some(design) = designs.remove(&key(name)) else {
-            self.missing.push(key(name));
             return Value::Null;
         };
         let digest: String = Sha256::digest(bytes)
             .iter()
             .map(|b| format!("{b:02x}"))
             .collect();
+        let named = label(&key(name), &digest);
+        let Some(design) = designs.remove(&key(name)) else {
+            self.problems.push(format!(
+                "{named} lays out but is not in {LIBRARY}: run mass.py again"
+            ));
+            return Value::Null;
+        };
         if design["sha256"].as_str() != Some(digest.as_str()) {
-            self.stale.push(key(name));
+            self.problems
+                .push(format!("{named} has changed since mass.py ran"));
+            return Value::Null;
+        }
+        if design["driver_error"].is_string() {
             return Value::Null;
         }
         if design["opens"] != true {
             self.refused += 1;
             return json!({ "openrocket_refuses": design["refused"] });
         }
-        let Some(found) = differences(layout, &design["structure"]) else {
-            self.stale
-                .push(format!("{}: no structure in the record", key(name)));
+        // A record without OpenRocket's parts, or with some it could not name, was written by an
+        // older script or went wrong: it would leave the trace below empty without a sound.
+        let (Some(found), Some(_)) = (
+            differences(layout, &design["structure"]),
+            design["parts"].as_array().filter(|parts| !parts.is_empty()),
+        ) else {
+            self.problems.push(format!(
+                "{named}: the record has no structure or no parts; run mass.py again"
+            ));
             return Value::Null;
         };
+        if design["parts_skipped"].as_u64() != Some(0) {
+            self.problems.push(format!(
+                "{named}: mass.py could not name some of OpenRocket's parts"
+            ));
+        }
         self.all.push(found);
-        if self.seen.insert(digest) {
+        if self.seen.insert(digest.clone()) {
             self.distinct.push(found);
         }
         if reduced {
             self.reduced.push(found);
         }
+        // OpenRocket's own count, since it counts a parallel stage that hpr keeps unread.
+        let stages_apart = design["stages"]["active"] != design["stages"]["total"];
         let parts = parts(rocket, layout, &design["parts"]);
-        if found[0].abs() > MASS_WITHIN || found[1].abs() > CG_WITHIN {
-            let hash = design["sha256"].as_str().unwrap_or_default();
-            self.outside.push((
-                key(name),
+        // A difference that is not a number counts as outside.
+        let beyond =
+            |difference: f64, within: f64| difference.is_nan() || difference.abs() > within;
+        if beyond(found[0], MASS_WITHIN) || beyond(found[1], CG_WITHIN) {
+            self.outside.push(Outside {
+                label: named,
+                hash: digest,
                 found,
-                hash.chars().take(8).collect(),
-                parts.clone(),
-            ));
+                causes: causes(warnings, reduced, stages_apart),
+                parts: parts.clone(),
+            });
         }
         json!({
             "parts": parts,
@@ -189,10 +293,18 @@ impl MassTally {
         })
     }
 
-    /// Notes a design the survey read but could not lay out: not compared, and not missing.
+    /// Notes a design the survey read but could not lay out: not compared. One OpenRocket opens
+    /// fails the survey, since it would otherwise leave the comparison without a sound.
     pub(crate) fn not_laid_out(&mut self, name: &str) {
-        if let Some(designs) = &mut self.record {
-            designs.remove(&key(name));
+        if let Some(designs) = &mut self.record
+            && let Some(design) = designs.remove(&key(name))
+            && design["opens"] == true
+        {
+            let hash = design["sha256"].as_str().unwrap_or_default();
+            self.problems.push(format!(
+                "{} opens in OpenRocket but does not lay out in hpr",
+                label(&key(name), hash)
+            ));
         }
     }
 
@@ -223,46 +335,66 @@ impl MassTally {
                 spread(&column(&self.reduced))
             );
         }
+        let distinct: BTreeSet<&str> = self.outside.iter().map(|o| o.hash.as_str()).collect();
         println!(
-            "    designs outside 1% in mass or 1% of length in centre of mass: {}, each with the \
-             parts that differ most (a part hpr does not have shows as `none`):",
-            self.outside.len()
+            "    designs outside 1% in mass or 1% of length in centre of mass: {} ({} distinct by \
+             content), each with the causes hpr warned of and the parts that differ most:",
+            self.outside.len(),
+            distinct.len()
         );
-        // A public design is named; one from the private library, by the start of its hash.
-        for (file, found, hash, parts) in &self.outside {
-            let label = if file.starts_with("refs/loft-fixtures/")
-                || file.starts_with("refs/debrief-fixtures/")
-            {
-                format!("private {hash}")
-            } else {
-                file.rsplit('/').next().unwrap_or(file).to_owned()
-            };
-            let top: Vec<String> = parts
+        for outside in &self.outside {
+            let top: Vec<String> = outside
+                .parts
                 .as_array()
                 .into_iter()
                 .flatten()
                 .take(3)
                 .filter(|part| part["apart_kg"].as_f64().is_some_and(|kg| kg.abs() >= 1e-4))
-                .map(|part| match part["hpr_kg"].as_f64() {
-                    Some(_) => format!(
-                        "{} {:+.4} kg",
-                        part["class"].as_str().unwrap_or("?"),
-                        part["apart_kg"].as_f64().unwrap_or_default()
-                    ),
-                    None => format!(
-                        "{} none in hpr ({:.4} kg in OpenRocket)",
-                        part["class"].as_str().unwrap_or("?"),
-                        part["openrocket_kg"].as_f64().unwrap_or_default()
-                    ),
+                .map(|part| {
+                    let class = part["class"].as_str().unwrap_or("?");
+                    match (part["hpr_kg"].as_f64(), part["openrocket_kg"].as_f64()) {
+                        (Some(_), Some(_)) => format!(
+                            "{class} {:+.4} kg",
+                            part["apart_kg"].as_f64().unwrap_or_default()
+                        ),
+                        (None, Some(theirs)) => {
+                            format!("{class} none in hpr ({theirs:.4} kg in OpenRocket)")
+                        }
+                        (Some(ours), None) => {
+                            format!("{class} none in OpenRocket ({ours:.4} kg in hpr)")
+                        }
+                        (None, None) => class.to_owned(),
+                    }
                 })
                 .collect();
             println!(
-                "      {label}: mass {:+.2}%, centre of mass {:+.2}% of length; {}",
-                100.0 * found[0],
-                100.0 * found[1],
+                "      {}: mass {:+.2}%, centre of mass {:+.2}% of length; causes: {}; parts: {}",
+                outside.label,
+                100.0 * outside.found[0],
+                100.0 * outside.found[1],
+                if outside.causes.is_empty() {
+                    "NONE".to_owned()
+                } else {
+                    outside.causes.join("; ")
+                },
                 top.join(", ")
             );
         }
+        // Each cause counted once per distinct design content, as the guide's table counts them.
+        let mut by_cause: BTreeMap<&str, BTreeSet<&str>> = BTreeMap::new();
+        for outside in &self.outside {
+            for cause in &outside.causes {
+                by_cause.entry(cause).or_default().insert(&outside.hash);
+            }
+        }
+        println!(
+            "    causes, by distinct content: {}",
+            CAUSES
+                .iter()
+                .map(|cause| format!("{cause} {}", by_cause.get(cause).map_or(0, BTreeSet::len)))
+                .collect::<Vec<_>>()
+                .join("; ")
+        );
     }
 
     /// The designs outside a threshold, for the per-file report.
@@ -270,34 +402,40 @@ impl MassTally {
         json!(
             self.outside
                 .iter()
-                .map(|(file, found, hash, parts)| json!({
-                    "file": file, "sha256": hash, "differences": found, "parts": parts,
+                .map(|outside| json!({
+                    "label": outside.label, "sha256": outside.hash, "differences": outside.found,
+                    "causes": outside.causes, "parts": outside.parts,
                 }))
                 .collect::<Vec<_>>()
         )
     }
 
-    /// Why the survey fails on the mass record, if it does: a record out of date, or a probe whose
-    /// inertias are not the ones worked by hand. A design outside a threshold does not fail it;
-    /// it needs a hypothesis, which is written, not computed.
+    /// Why the survey fails on the mass record, if it does: a record out of date or incomplete, a
+    /// probe whose inertias are not the ones worked by hand, a design OpenRocket opens that hpr
+    /// does not lay out or compare, and a design outside a threshold with no cause hpr warned of.
     pub(crate) fn failure(&self) -> Option<String> {
         let left = self.record.as_ref()?;
-        let mut problems = self.probe.clone();
-        problems.extend(
-            self.stale
-                .iter()
-                .map(|file| format!("{file} has changed since mass.py ran")),
-        );
-        problems.extend(
-            self.missing
-                .iter()
-                .map(|file| format!("{file} lays out but is not in {LIBRARY}: run mass.py again")),
-        );
+        let mut problems = self.problems.clone();
         problems.extend(
             left.iter()
                 .filter(|(_, design)| design["opens"] == true)
-                .map(|(file, _)| {
-                    format!("{file} is in {LIBRARY} but the survey did not lay it out")
+                .map(|(file, design)| {
+                    let hash = design["sha256"].as_str().unwrap_or_default();
+                    format!(
+                        "{} is in {LIBRARY} but the survey did not read it",
+                        label(file, hash)
+                    )
+                }),
+        );
+        problems.extend(
+            self.outside
+                .iter()
+                .filter(|outside| outside.causes.is_empty())
+                .map(|outside| {
+                    format!(
+                        "{} is outside a threshold with no cause hpr warned of",
+                        outside.label
+                    )
                 }),
         );
         (!problems.is_empty()).then(|| {
@@ -310,72 +448,103 @@ impl MassTally {
 }
 
 /// Each of OpenRocket's parts beside hpr's part of the same id, largest difference first: where a
-/// design's difference comes from. A part hpr has no component for (a pod, a part left out) is
-/// listed with hpr's mass as `null`. hpr's is the part's own mass after the overrides that cover it
-/// alone; an override of a part and everything on it is compared on the assembly (`with_children`),
-/// as OpenRocket reports the overriding part's mass for the whole assembly.
+/// design's difference comes from.
+///
+/// - An override that covers a part and everything on it is compared on the assembly: OpenRocket
+///   reports the overriding part's mass as the override, so hpr's is its `with_children`, and the
+///   parts under it are left out of the ranking.
+/// - An older file writes no ids, and OpenRocket then makes up random ones; there the parts of one
+///   name are compared as a group, the sum of OpenRocket's against the sum of hpr's.
+/// - A part only OpenRocket has shows hpr's mass as `null`, and one only hpr has shows
+///   OpenRocket's as `null`; `apart_kg` is always hpr's less OpenRocket's.
 fn parts(rocket: &Rocket, layout: &Layout, parts: &Value) -> Value {
-    // hpr's parts by name, in its own mass. An older file writes no ids, and OpenRocket then makes
-    // up random ones, so there a part is found by name: the parts of one name are compared as a
-    // group, the sum of OpenRocket's against the sum of hpr's.
-    // Only hpr's parts no id of OpenRocket's matches take part in the groups.
-    let matched: BTreeSet<&str> = parts
+    let rows_in: Vec<&Value> = parts
         .as_array()
         .into_iter()
         .flatten()
+        .filter(|part| {
+            !matches!(
+                part["class"].as_str(),
+                Some("Rocket" | "AxialStage" | "ParallelStage" | "PodSet")
+            )
+        })
+        .collect();
+    // The parts whose override covers the parts on them, and the parts it covers.
+    let assemblies: BTreeSet<&str> = rows_in
+        .iter()
+        .filter_map(|part| {
+            let by = part["overridden_by"].as_str()?;
+            (Some(by) != part["id"].as_str()).then_some(by)
+        })
+        .collect();
+    let covered = |part: &Value| {
+        part["overridden_by"]
+            .as_str()
+            .is_some_and(|by| Some(by) != part["id"].as_str())
+    };
+    let matched: BTreeSet<&str> = rows_in
+        .iter()
         .filter_map(|part| part["id"].as_str())
         .filter(|id| layout.find(id).is_some())
         .collect();
-    let mut ours_named: BTreeMap<&str, (usize, f64)> = BTreeMap::new();
+    // hpr's parts no id matched, by name, in their own mass.
+    let mut ours_named: BTreeMap<&str, Vec<&str>> = BTreeMap::new();
     fn visit<'a>(
         component: &'a Component,
-        layout: &Layout,
         matched: &BTreeSet<&str>,
-        named: &mut BTreeMap<&'a str, (usize, f64)>,
+        named: &mut BTreeMap<&'a str, Vec<&'a str>>,
     ) {
         if !matched.contains(component.id.as_str()) {
-            let entry = named.entry(component.name.as_str()).or_default();
-            entry.0 += 1;
-            entry.1 += layout
-                .find(&component.id)
-                .map_or(0.0, |(_, placed)| placed.own.mass_kg);
+            named
+                .entry(component.name.as_str())
+                .or_default()
+                .push(component.id.as_str());
         }
         for child in &component.children {
-            visit(child, layout, matched, named);
+            visit(child, matched, named);
         }
     }
     for stage in &rocket.stages {
         for component in &stage.components {
-            visit(component, layout, &matched, &mut ours_named);
+            visit(component, &matched, &mut ours_named);
         }
     }
-    let row = |name: &Value, class: &Value, count: usize, theirs: f64, ours: Option<f64>| {
-        let apart = ours.map_or(theirs, |ours| ours - theirs);
-        (
-            apart.abs(),
-            json!({
-                "name": name, "class": class, "count": count,
-                "openrocket_kg": theirs, "hpr_kg": ours, "apart_kg": apart,
-            }),
-        )
+    let own = |id: &str| {
+        layout
+            .find(id)
+            .map_or(0.0, |(_, placed)| placed.own.mass_kg)
     };
+    let row =
+        |name: &Value, class: &Value, count: usize, theirs: Option<f64>, ours: Option<f64>| {
+            let apart = ours.unwrap_or_default() - theirs.unwrap_or_default();
+            (
+                apart.abs(),
+                json!({
+                    "name": name, "class": class, "count": count,
+                    "openrocket_kg": theirs, "hpr_kg": ours, "apart_kg": apart,
+                }),
+            )
+        };
     let mut rows: Vec<(f64, Value)> = Vec::new();
     let mut by_name: BTreeMap<String, (Value, usize, f64)> = BTreeMap::new();
-    for part in parts.as_array().into_iter().flatten().filter(|part| {
-        !matches!(
-            part["class"].as_str(),
-            Some("Rocket" | "AxialStage" | "ParallelStage" | "PodSet")
-        )
-    }) {
+    for part in rows_in.iter().filter(|part| !covered(part)) {
         let theirs = part["mass_kg"].as_f64().unwrap_or_default();
-        match part["id"].as_str().and_then(|id| layout.find(id)) {
-            Some((_, placed)) => rows.push(row(
-                &part["name"],
-                &part["class"],
-                1,
-                theirs,
-                Some(placed.own.mass_kg),
-            )),
+        let id = part["id"].as_str().unwrap_or_default();
+        match layout.find(id) {
+            Some((_, placed)) => {
+                let ours = if assemblies.contains(id) {
+                    placed.with_children.mass_kg
+                } else {
+                    placed.own.mass_kg
+                };
+                rows.push(row(
+                    &part["name"],
+                    &part["class"],
+                    1,
+                    Some(theirs),
+                    Some(ours),
+                ));
+            }
             None => {
                 let name = part["name"].as_str().unwrap_or_default().to_owned();
                 let entry = by_name
@@ -386,13 +555,34 @@ fn parts(rocket: &Rocket, layout: &Layout, parts: &Value) -> Value {
             }
         }
     }
+    let mut grouped: BTreeSet<String> = BTreeSet::new();
     for (name, (class, count, theirs)) in by_name {
-        // Only a whole group is compared: hpr's parts of that name that no id already matched.
+        // Only a whole group is compared: as many of hpr's parts of that name as OpenRocket's.
         let ours = ours_named
             .get(name.as_str())
-            .filter(|(ours_count, _)| *ours_count == count)
-            .map(|(_, kg)| *kg);
-        rows.push(row(&json!(name), &class, count, theirs, ours));
+            .filter(|ids| ids.len() == count)
+            .map(|ids| ids.iter().map(|id| own(id)).sum::<f64>());
+        if ours.is_some() {
+            grouped.insert(name.clone());
+        }
+        rows.push(row(&json!(name), &class, count, Some(theirs), ours));
+    }
+    // hpr's parts OpenRocket has none of, by id or by a whole group of their name.
+    for (name, ids) in &ours_named {
+        if grouped.contains(*name) {
+            continue;
+        }
+        for id in ids {
+            if let Some((_, placed)) = layout.find(id) {
+                rows.push(row(
+                    &json!(name),
+                    &json!(placed.part.kind_name()),
+                    1,
+                    None,
+                    Some(placed.own.mass_kg),
+                ));
+            }
+        }
     }
     rows.sort_by(|a, b| b.0.total_cmp(&a.0));
     json!(rows.into_iter().map(|(_, row)| row).collect::<Vec<_>>())
@@ -453,8 +643,7 @@ mod tests {
 
     /// The committed record of OpenRocket run on Loft's seven public demo designs, held to hpr's
     /// layout of the same files.
-    #[test]
-    fn openrocket_structure_on_the_loft_demos() {
+    fn demo_tally() -> MassTally {
         let root = Path::new(env!("CARGO_MANIFEST_DIR")).parent().unwrap();
         let record = record();
         let mut tally = MassTally::of(&record);
@@ -464,24 +653,156 @@ mod tests {
             let read = ork::read(&bytes).unwrap();
             let whole = ork::design(&read.value);
             let layout = whole.value.rocket.layout().unwrap();
+            let said: Vec<&str> = whole
+                .warnings
+                .iter()
+                .map(|warning| warning.message.as_str())
+                .collect();
             tally.add(
                 file,
                 &bytes,
                 &whole.value.rocket,
                 &layout,
                 whole.value.is_reduced(),
+                &said,
             );
         }
+        tally
+    }
+
+    /// Six designs open in OpenRocket (demo-quirks does not). Their mass, centre of mass and pitch
+    /// inertia are OpenRocket's within 0.1%; their roll inertia is not, by the amounts pinned here
+    /// (sign included), which the guide reports as unexplained. Every part of each is matched by
+    /// id and within 0.3 g of OpenRocket's.
+    #[test]
+    fn openrocket_structure_on_the_loft_demos() {
+        let tally = demo_tally();
         assert_eq!(tally.failure(), None);
-        // Six designs open in OpenRocket (demo-quirks does not). Their mass and centre of mass are
-        // OpenRocket's within 0.1%, their pitch inertia within 0.1%; their roll inertia is not,
-        // by 1.2% to 3.8% either way, which the guide reports as unexplained.
         assert_eq!((tally.all.len(), tally.refused), (6, 1));
         assert!(tally.outside.is_empty());
+        let roll: Vec<f64> = tally
+            .all
+            .iter()
+            .map(|found| (found[2] * 1e4).round() / 1e4)
+            .collect();
+        assert_eq!(roll, [-0.0264, 0.0306, 0.0383, 0.0337, 0.0383, 0.0116]);
         for found in &tally.all {
             assert!(found[0].abs() < 1e-3 && found[1].abs() < 1e-3, "{found:?}");
             assert!(found[3].abs() < 1e-3, "{found:?}");
-            assert!((0.01..0.04).contains(&found[2].abs()), "{found:?}");
         }
+        let root = Path::new(env!("CARGO_MANIFEST_DIR")).parent().unwrap();
+        let record = record();
+        for design in record["designs"].as_array().unwrap() {
+            if design["opens"] != true {
+                continue;
+            }
+            let bytes = std::fs::read(root.join(design["file"].as_str().unwrap())).unwrap();
+            let read = ork::read(&bytes).unwrap();
+            let whole = ork::design(&read.value);
+            let layout = whole.value.rocket.layout().unwrap();
+            let rows = parts(&whole.value.rocket, &layout, &design["parts"]);
+            let rows = rows.as_array().unwrap();
+            // One row for each of OpenRocket's parts other than the rocket and its stages.
+            let theirs = design["parts"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .filter(|part| !matches!(part["class"].as_str(), Some("Rocket" | "AxialStage")))
+                .count();
+            assert!(theirs > 0 && rows.len() == theirs, "{rows:?}");
+            for row in rows {
+                assert_eq!(row["count"], 1, "{row}");
+                assert!(
+                    row["hpr_kg"].is_f64() && row["openrocket_kg"].is_f64(),
+                    "{row}"
+                );
+                assert!(row["apart_kg"].as_f64().unwrap().abs() < 3e-4, "{row}");
+            }
+        }
+    }
+
+    /// A tube whose override covers everything on it: OpenRocket reports the override as the
+    /// tube's mass, so hpr's assembly is what it is compared with, and the parts under it are not
+    /// ranked on their own.
+    #[test]
+    fn an_assembly_override_is_compared_as_the_assembly() {
+        let xml = br#"<openrocket version="1.10" creator="test"><rocket><name>R</name>
+            <subcomponents><stage><name>S</name><id>s</id><subcomponents>
+            <bodytube><name>T</name><id>t</id><length>0.5</length><thickness>0.002</thickness>
+            <radius>0.04</radius><overridemass>1.0</overridemass>
+            <overridesubcomponentsmass>true</overridesubcomponentsmass><subcomponents>
+            <masscomponent><name>M</name><id>m</id><length>0.05</length>
+            <radius>0.02</radius><mass>0.3</mass></masscomponent>
+            </subcomponents></bodytube></subcomponents></stage></subcomponents></rocket></openrocket>"#;
+        let read = ork::read(xml).unwrap();
+        let spine = ork::rocket(&read.value.document);
+        let layout = spine.value.layout().unwrap();
+        let record = json!([
+            { "id": "t", "name": "T", "class": "BodyTube", "mass_kg": 1.0, "overridden_by": "t" },
+            { "id": "m", "name": "M", "class": "MassComponent", "mass_kg": 0.3, "overridden_by": "t" },
+        ]);
+        let rows = parts(&spine.value, &layout, &record);
+        let rows = rows.as_array().unwrap();
+        assert_eq!(rows.len(), 1, "{rows:?}");
+        assert_eq!(rows[0]["name"], "T");
+        assert!(
+            rows[0]["apart_kg"].as_f64().unwrap().abs() < 1e-9,
+            "{rows:?}"
+        );
+    }
+
+    /// The survey fails on a record written by an older script, on a design missing from it, on a
+    /// probe whose inertias are swapped, and on a design outside a threshold with no warned cause;
+    /// and a cause is read from the importer's own words.
+    #[test]
+    fn a_record_that_does_not_hold_fails() {
+        let mut stale = record();
+        for design in stale["designs"].as_array_mut().unwrap() {
+            design.as_object_mut().unwrap().remove("parts");
+        }
+        let root = Path::new(env!("CARGO_MANIFEST_DIR")).parent().unwrap();
+        let file = "validation/fixtures/ork/loft-demo/demo-stable.ork";
+        let bytes = std::fs::read(root.join(file)).unwrap();
+        let read = ork::read(&bytes).unwrap();
+        let whole = ork::design(&read.value);
+        let layout = whole.value.rocket.layout().unwrap();
+        let mut tally = MassTally::of(&stale);
+        tally.add(file, &bytes, &whole.value.rocket, &layout, false, &[]);
+        assert!(
+            tally
+                .failure()
+                .unwrap()
+                .contains("no structure or no parts")
+        );
+
+        let mut tally = MassTally::of(&json!({ "probe": record()["probe"], "designs": [] }));
+        tally.add(file, &bytes, &whole.value.rocket, &layout, false, &[]);
+        assert!(tally.failure().unwrap().contains("is not in"));
+
+        let mut swapped = record();
+        swapped["probe"]["openrocket"]["ixx"] = swapped["probe"]["openrocket"]["iyy"].clone();
+        assert!(!probe_mismatches(&swapped["probe"]).is_empty());
+
+        assert_eq!(causes(&[], false, false), Vec::<&str>::new());
+        let tally = MassTally {
+            record: Some(BTreeMap::new()),
+            outside: vec![Outside {
+                label: "a design".to_owned(),
+                hash: String::new(),
+                found: [0.5, 0.0, 0.0, 0.0],
+                causes: Vec::new(),
+                parts: json!([]),
+            }],
+            ..MassTally::default()
+        };
+        assert!(tally.failure().unwrap().contains("no cause hpr warned of"));
+        assert_eq!(
+            causes(
+                &["the aft shoulder has no wall thickness; it was read as solid"],
+                false,
+                false
+            ),
+            [CAUSES[0]]
+        );
     }
 }

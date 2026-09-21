@@ -129,7 +129,7 @@ may be from its reference and still pass.
 | [Mass properties](physics/mass.md) | a cone, a tube, four fins and an off-axis payload, added up by hand | within 1e-11 relative |
 | [Mass properties](physics/mass.md) | fin cross-sections, against exact numerical integration | within 1e-13 relative |
 | [Mass properties](physics/mass.md) | material densities, converted from the units their sources print | the sources' values, such as white ash at 678 kg/m³ |
-| [Mass properties](physics/mass.md#checked-against-openrocket) | [OpenRocket](glossary.md#openrocket) 24.12's structure (every stage, no motor), on 74 design files | mass within 1% on 57 and centre of mass within 1% of length on 58; each file outside has a cause hpr warns of; roll inertia a median 2.4% apart, unexplained |
+| [Mass properties](physics/mass.md#checked-against-openrocket) | [OpenRocket](glossary.md#openrocket) 24.12's structure (every stage, no motor), on 74 design files | mass within 1% on 57 and centre of mass within 1% of length on 58, each file outside with a cause hpr warns of; pitch inertia within 1% on 46; roll inertia a median 2.1% apart, unexplained |
 | [Solid motors](physics/motor.md) | [ThrustCurve.org](glossary.md#thrustcurveorg)'s own statistics code (total impulse, burn time, average and peak thrust), on all 32 bundled curves | within 1.8e-15 relative |
 | [Solid motors](physics/motor.md) | RocketPy's solid-motor model, on three bundled motors, at 203 times each | total mass and inertias within 7.9e-5 relative; the propellant's own mass and inertias within 1e-4 of their values at ignition |
 | [Aerodynamics](physics/aero.md) | [Barrowman's](glossary.md#barrowmans-method) five worked examples, at Mach 0 (low speed): each rocket's [normal-force slope](glossary.md#normal-force-slope) and [centre of pressure](glossary.md#centre-of-pressure-cp) | every centre of pressure within 1%. Every slope within 1% too, except the six-fin Recruiter's: +2.87% (+3.42% on its fins alone) |
@@ -643,7 +643,7 @@ rest.
 - **Turbulence** is an aircraft model, unvalidated for rockets, and no flight uses it yet
   ([Turbulence](physics/turbulence.md)).
 - **Wall and fin mass** may follow different conventions from OpenRocket's, which its documentation
-  doesn't state; four are measured so far ([Mass properties](physics/mass.md#checked-against-openrocket)). Measuring a nose cone's wall thickness straight out from the axis, rather than
+  doesn't state; six are measured so far ([Mass properties](physics/mass.md#checked-against-openrocket)). Measuring a nose cone's wall thickness straight out from the axis, rather than
   square to its surface, changes the wall's volume by 1.4% on a cone three
   [calibres](glossary.md#calibre-caliber) long ([Shapes](physics/shapes.md)).
 

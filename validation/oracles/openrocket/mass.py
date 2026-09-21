@@ -85,14 +85,15 @@ def parts(document):
     This is what a design's difference is traced to, part by part, by id."""
     from info.openrocket.core.masscalc import MassCalculator
 
-    found = []
+    found, skipped = [], 0
     config = document.getRocket().getSelectedConfiguration()
     for entry in MassCalculator.getCMAnalysis(config).values():
         component = entry.source
         try:
             ident = str(component.getID())
             by = component.getMassOverriddenBy()
-        except Exception:  # noqa: BLE001 - an entry whose source is not a component
+        except Exception:  # noqa: BLE001 - an entry whose source is not a component, counted
+            skipped += 1
             continue
         found.append(
             {
@@ -108,7 +109,7 @@ def parts(document):
                 "overridden_by": str(by.getID()) if by is not None else None,
             }
         )
-    return sorted(found, key=lambda part: part["id"])
+    return sorted(found, key=lambda part: part["id"]), skipped
 
 
 def probe(scratch):
@@ -134,8 +135,14 @@ def probe(scratch):
 
 def read(path, scratch):
     record = {"sha256": hashlib.sha256(Path(path).read_bytes()).hexdigest()}
+    # A file this script cannot unpack is its own failure, not OpenRocket's refusal.
     try:
-        document, stripped = geometry.opened(geometry.document_text(path), scratch)
+        text = geometry.document_text(path)
+    except Exception as error:  # noqa: BLE001 - recorded, and the survey fails on it
+        record["driver_error"] = geometry.first_line(error)
+        return record
+    try:
+        document, stripped = geometry.opened(text, scratch)
     except Exception as error:  # noqa: BLE001 - a refusal is the measurement
         record["opens"] = False
         record["refused"] = geometry.first_line(error)
@@ -144,7 +151,13 @@ def read(path, scratch):
     record["comment_removed"] = stripped
     automatic_radius.saved_radii(document)
     record["structure"] = structure(document)
-    record["parts"] = parts(document)
+    record["parts"], record["parts_skipped"] = parts(document)
+    # OpenRocket weighs the stages its selected configuration holds active; hpr weighs them all.
+    config = document.getRocket().getSelectedConfiguration()
+    record["stages"] = {
+        "active": int(config.getActiveStageCount()),
+        "total": int(config.getStageCount()),
+    }
     return record
 
 
@@ -176,8 +189,8 @@ def main():
         for name, path in files:
             try:
                 runs.append({"file": name, **read(path, scratch)})
-            except Exception as error:  # noqa: BLE001 - one design's failure is recorded
-                runs.append({"file": name, "opens": False, "refused": geometry.first_line(error)})
+            except Exception as error:  # noqa: BLE001 - recorded, and the survey fails on it
+                runs.append({"file": name, "driver_error": geometry.first_line(error)})
 
     output.parent.mkdir(parents=True, exist_ok=True)
     output.write_text(
