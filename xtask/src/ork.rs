@@ -91,6 +91,21 @@ pub fn run(args: &[String]) -> Result<(), String> {
     report(&root, &files)
 }
 
+/// Counts every tag inside a `<subcomponents>` that the spine reader leaves for a later milestone.
+fn off_the_spine(element: &ork::Element, counts: &mut BTreeMap<String, usize>) {
+    const ON_THE_SPINE: [&str; 4] = ["stage", "nosecone", "bodytube", "transition"];
+    if element.name == "subcomponents" {
+        for child in element.elements() {
+            if !ON_THE_SPINE.contains(&child.name.as_str()) {
+                *counts.entry(child.name.clone()).or_default() += 1;
+            }
+        }
+    }
+    for child in element.elements() {
+        off_the_spine(child, counts);
+    }
+}
+
 /// One file to read: how to name it, and its bytes.
 type Case = (String, Vec<u8>);
 
@@ -110,6 +125,13 @@ fn report(root: &Path, files: &[Case]) -> Result<(), String> {
     let mut both_names: BTreeMap<String, [usize; 3]> = BTreeMap::new();
     let mut tag_totals: BTreeMap<String, usize> = BTreeMap::new();
     let mut elements_with_both = 0usize;
+    let mut stages_read = 0usize;
+    let mut body_parts: BTreeMap<&'static str, usize> = BTreeMap::new();
+    let mut auto_marked: BTreeMap<&'static str, usize> = BTreeMap::new();
+    let mut off_spine: BTreeMap<String, usize> = BTreeMap::new();
+    let mut spines_laid_out = 0usize;
+    let mut spine_errors: BTreeMap<String, usize> = BTreeMap::new();
+    let mut spine_warnings: BTreeMap<String, usize> = BTreeMap::new();
     let mut failures = 0usize;
     let mut not_round_tripped = 0usize;
     let mut known_bad = 0usize;
@@ -159,6 +181,33 @@ fn report(root: &Path, files: &[Case]) -> Result<(), String> {
                     &mut tag_totals,
                     &mut elements_with_both,
                 );
+                let spine = ork::rocket(&read.value.document);
+                for warning in &spine.warnings {
+                    *spine_warnings.entry(warning.message.clone()).or_default() += 1;
+                }
+                stages_read += spine.value.stages.len();
+                let mut components = 0usize;
+                for stage in &spine.value.stages {
+                    for component in &stage.components {
+                        components += 1;
+                        *body_parts.entry(component.part.kind_name()).or_default() += 1;
+                        for dimension in &component.auto {
+                            *auto_marked.entry(dimension.name()).or_default() += 1;
+                        }
+                    }
+                }
+                off_the_spine(&read.value.document.root, &mut off_spine);
+                let laid_out = match spine.value.layout() {
+                    Ok(_) => {
+                        spines_laid_out += 1;
+                        None
+                    }
+                    Err(error) => {
+                        let text = error.to_string();
+                        *spine_errors.entry(text.clone()).or_default() += 1;
+                        Some(text)
+                    }
+                };
                 let unpacked = read.value.document.to_xml().len()
                     + read
                         .value
@@ -188,6 +237,15 @@ fn report(root: &Path, files: &[Case]) -> Result<(), String> {
                 detail.push(json!({
                     "file": name,
                     "round_trip": round_trip,
+                    "spine": json!({
+                        "stages": spine.value.stages.len(),
+                        "body_components": components,
+                        "laid_out": laid_out.is_none(),
+                        "error": laid_out,
+                        "warnings": spine.warnings.iter()
+                            .map(|warning| json!({ "at": warning.at, "says": warning.message }))
+                            .collect::<Vec<_>>(),
+                    }),
                     "container": read.value.container.as_str(),
                     "version": read.value.document.version.to_string(),
                     "creator": read.value.document.creator,
@@ -304,6 +362,17 @@ fn report(root: &Path, files: &[Case]) -> Result<(), String> {
     print_counts("attachments by extension", &attachments);
     print_counts("nesting depth", &depths);
     println!("  largest unpacked (document and attachments): {largest_unpacked} bytes");
+    println!(
+        "  spines: {spines_laid_out} of {read} designs lay out, {stages_read} stage(s), \
+         {} body component(s)",
+        body_parts.values().sum::<usize>()
+    );
+    print_counts("body components", &body_parts);
+    print_counts("automatic radii marked", &auto_marked);
+    print_counts("tags left off the spine", &off_spine);
+    if !spine_errors.is_empty() {
+        print_counts("spines that do not lay out", &spine_errors);
+    }
     print_counts("automatic dimensions", &automatic);
     print_counts("override tags", &overrides);
     let names = both_names

@@ -950,3 +950,186 @@ proptest! {
         prop_assert_eq!(once, twice);
     }
 }
+
+/// A two-stage design whose second stage opens with a transition of automatic fore radius.
+const ACROSS_A_STAGE: &str = r#"<?xml version="1.0" encoding="UTF-8"?>
+<openrocket version="1.10" creator="OpenRocket 24.12">
+  <rocket>
+    <name>Two stage</name>
+    <referencetype>maximum</referencetype>
+    <subcomponents>
+      <stage>
+        <name>Sustainer</name>
+        <subcomponents>
+          <nosecone>
+            <name>Nose</name>
+            <material type="bulk" density="680.0">Cardboard</material>
+            <length>0.3</length><thickness>0.002</thickness>
+            <shape>ogive</shape><shapeparameter>1.0</shapeparameter>
+            <aftradius>auto</aftradius>
+          </nosecone>
+          <bodytube>
+            <name>Upper tube</name>
+            <material type="bulk" density="680.0">Cardboard</material>
+            <length>0.6</length><thickness>0.002</thickness>
+            <radius>0.05</radius>
+          </bodytube>
+        </subcomponents>
+      </stage>
+      <stage>
+        <name>Booster</name>
+        <subcomponents>
+          <transition>
+            <name>Shoulder up</name>
+            <material type="bulk" density="680.0">Cardboard</material>
+            <length>0.1</length><thickness>0.002</thickness>
+            <shape>conical</shape>
+            <foreradius>auto</foreradius>
+            <aftradius>0.08</aftradius>
+          </transition>
+          <bodytube>
+            <name>Booster tube</name>
+            <material type="bulk" density="680.0">Cardboard</material>
+            <length>0.5</length><thickness>0.002</thickness>
+            <radius>auto</radius>
+          </bodytube>
+        </subcomponents>
+      </stage>
+    </subcomponents>
+  </rocket>
+</openrocket>
+"#;
+
+/// Reads a design document's spine, failing the test on any warning.
+fn spine(xml: &str) -> hpr_design::tree::Rocket {
+    let read = read(xml.as_bytes()).expect("a readable design");
+    assert!(read.warnings.is_empty(), "container: {:?}", read.warnings);
+    let spine = component::rocket(&read.value.document);
+    assert!(spine.warnings.is_empty(), "spine: {:?}", spine.warnings);
+    spine.value
+}
+
+/// [Loft lesson L59][lessons]: Loft resolved an automatic radius among a stage's own components
+/// only, so the first component of a booster — which takes its radius from the stage ahead of it —
+/// came out as whatever it had cached, or as zero. OpenRocket's own two-stage designs rely on the
+/// resolution crossing that boundary.
+///
+/// [lessons]: https://github.com/nrdptel/hpr-sim/blob/main/docs/research/loft-lessons.md
+#[test]
+fn auto_fore_radius_resolves_across_stage_boundary() {
+    let rocket = spine(ACROSS_A_STAGE);
+    assert_eq!(rocket.stages.len(), 2);
+    let transition = &rocket.stages[1].components[0];
+    assert_eq!(
+        transition.auto,
+        vec![hpr_design::tree::AutoDimension::ForeRadius]
+    );
+
+    let layout = rocket.layout().expect("a design that lays out");
+    let (_, placed) = layout.find(&transition.id).expect("the transition");
+    let hpr_design::tree::Part::Transition(resolved) = &placed.part else {
+        panic!("a transition");
+    };
+    // The tube at the end of the stage ahead, not the 0 the file leaves cached.
+    assert!(
+        (resolved.fore_radius_m - 0.05).abs() < 1e-12,
+        "{resolved:?}"
+    );
+    // And the tube behind it takes the transition's aft radius, forward to aft.
+    let (_, tube) = layout
+        .find(&rocket.stages[1].components[1].id)
+        .expect("the booster tube");
+    let hpr_design::tree::Part::BodyTube(tube) = &tube.part else {
+        panic!("a body tube");
+    };
+    assert!((tube.outer_radius_m - 0.08).abs() < 1e-12, "{tube:?}");
+}
+
+/// OpenRocket's ogive parameter is `κ = ρ_tangent/ρ` (Niskanen, appendix A, equation A.3) and
+/// `hpr-design` states the same shape as `ρ/ρ_tangent`, so reading one as the other would turn
+/// every secant ogive into a bulged one. `κ = 0` is an infinite radius, which is a cone.
+#[test]
+fn ogive_parameter_is_read_as_its_reciprocal() {
+    for (kappa, expected) in [("1.0", 1.0), ("0.5", 2.0), ("0.8", 1.25)] {
+        let xml = ACROSS_A_STAGE.replace(
+            "<shapeparameter>1.0</shapeparameter>",
+            &format!("<shapeparameter>{kappa}</shapeparameter>"),
+        );
+        let rocket = spine(&xml);
+        let hpr_design::tree::Part::NoseCone(nose) = &rocket.stages[0].components[0].part else {
+            panic!("a nose cone");
+        };
+        assert_eq!(
+            nose.shape,
+            hpr_design::shapes::NoseShape::Ogive {
+                radius_ratio: expected
+            },
+            "κ = {kappa}"
+        );
+    }
+    let xml = ACROSS_A_STAGE.replace(
+        "<shapeparameter>1.0</shapeparameter>",
+        "<shapeparameter>0</shapeparameter>",
+    );
+    let hpr_design::tree::Part::NoseCone(nose) = &spine(&xml).stages[0].components[0].part else {
+        panic!("a nose cone");
+    };
+    assert_eq!(nose.shape, hpr_design::shapes::NoseShape::Conical {});
+}
+
+/// `<thickness>filled</thickness>` is a solid part, and a wall as thick as the part is the same
+/// thing. Reading `filled` as a number would leave the part weightless.
+#[test]
+fn a_filled_part_is_solid() {
+    let xml = ACROSS_A_STAGE.replace(
+        "<length>0.3</length><thickness>0.002</thickness>",
+        "<length>0.3</length><thickness>filled</thickness>",
+    );
+    let hpr_design::tree::Part::NoseCone(nose) = &spine(&xml).stages[0].components[0].part else {
+        panic!("a nose cone");
+    };
+    assert_eq!(nose.wall, hpr_design::solids::Wall::Filled {});
+}
+
+/// What hangs off the spine is counted and left for the next milestone, not silently dropped.
+#[test]
+fn parts_off_the_spine_are_reported_not_dropped() {
+    let xml = ACROSS_A_STAGE.replace(
+        "</bodytube>",
+        "<subcomponents><trapezoidfinset><name>Fins</name></trapezoidfinset></subcomponents></bodytube>",
+    );
+    let read = read(xml.as_bytes()).expect("a readable design");
+    let spine = component::rocket(&read.value.document);
+    let warnings: Vec<&str> = spine.warnings.iter().map(|w| w.message.as_str()).collect();
+    assert_eq!(warnings.len(), 1, "{warnings:?}");
+    assert!(warnings[0].contains("2 `trapezoidfinset`"), "{warnings:?}");
+    assert_eq!(spine.count(WarningKind::Skipped), 1);
+}
+
+/// A wall of no thickness, and no wall tag at all, are the same thing: a solid part. Read as a
+/// wall of zero, the part is weightless and `hpr-design` refuses the whole design — so the rule a
+/// shoulder gets applies to a body component too, and either way the reader says so.
+#[test]
+fn a_wall_of_no_thickness_is_solid_and_says_so() {
+    for (from, to) in [
+        (
+            "<thickness>0.002</thickness>\n            <shape>ogive",
+            "<thickness>0</thickness>\n            <shape>ogive",
+        ),
+        (
+            "<thickness>0.002</thickness>\n            <shape>ogive",
+            "<shape>ogive",
+        ),
+    ] {
+        let xml = ACROSS_A_STAGE.replacen(from, to, 1);
+        let read = read(xml.as_bytes()).expect("a readable design");
+        let spine = component::rocket(&read.value.document);
+        let hpr_design::tree::Part::NoseCone(nose) = &spine.value.stages[0].components[0].part
+        else {
+            panic!("a nose cone");
+        };
+        assert_eq!(nose.wall, hpr_design::solids::Wall::Filled {});
+        assert_eq!(spine.count(WarningKind::Unusual), 1, "{:?}", spine.warnings);
+        assert!(spine.value.layout().is_ok());
+    }
+}

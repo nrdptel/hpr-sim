@@ -249,6 +249,12 @@ impl<'a> Values<'a> {
         }
     }
 
+    /// Records a warning about the element being read, for a caller that decided something this
+    /// reader could not.
+    pub fn warn_at(&mut self, kind: WarningKind, message: impl Into<String>) {
+        self.warn(kind, message.into());
+    }
+
     /// The mass, centre of gravity and drag a component's own figures are replaced by.
     pub fn overrides(&mut self) -> Overrides {
         let mass_kg = self.number(&["overridemass"]);

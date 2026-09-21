@@ -4,16 +4,23 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
 
 ## Now
 
-- **Current milestone:** M1.8e, all done bar M1.8e16 (`[blocked]` on #108); the work is **M3.1b2**,
-  the `.ork` components, now M3.1a has its container and M3.1b1 its values.
-- **Order:** M3.1b2, M3.1c, M3.1d, then M2.2, then M1.9; M1.8e16 (past 24°) waits on #108
+- **Current milestone:** M1.8e, all done bar M1.8e16 (`[blocked]` on #108); the work is
+  **M3.1b2**, the `.ork` spine, in progress on `m3.1b2-ork-spine` (draft PR): the reader and its
+  tests are in, the corpus run is not. M3.1b was split further: M3.1b2 is the spine, M3.1b3 what hangs off it.
+- **Order:** M3.1b3, M3.1c, M3.1d, then M2.2, then M1.9; M1.8e16 (past 24°)
+  waits on #108
 - **Run:** M0.1-M0.4, M1.1-M1.7, M2.1, M1.8a-e19 bar e16, M3.1a, M3.1b1; the site is published.
 - **Neer, 2026-09-20:** Debrief is sunset; a flight log analyzer usable **on its own** is part of
   this project (ADR-046, V21). Phase 5 re-cut.
-- **Last updated:** 2026-09-20 (M3.1a and M3.1b1 shipped, ADR-051 and ADR-052; M3.1b2 is next)
+- **Last updated:** 2026-09-20 (M3.1b2 shipped: the `.ork` spine into `hpr-design` types)
 
 ## Handoff (overwrite each session)
 
+- **M3.1b3 next:** the parts on and inside the body. `cargo xtask ork` already tallies what is left
+  off the spine — 151 `centeringring`, 98 `trapezoidfinset`, 137 `parachute`, 85 `masscomponent`,
+  72 `innertube`, 61 `tubecoupler`, 47 `bulkhead` and the rest. A surface finish needs a roughness
+  for OpenRocket's five words (`rough`, `unfinished`, `normal`, `smooth`, `polished`) from a
+  document this project may read; until then every surface takes `hpr-design`'s default.
 - **Page rules** (ADR-016 to ADR-020): relative links between pages, GitHub URLs for the rest
   (rustdoc too), labels as links to their rows — a lesson a page names needs a row in
   `decisions-and-roadmap.md` — none in headings; new pages in `SUMMARY.md`, a new library a row in
@@ -46,28 +53,17 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
 
 ## Done log (newest first, keep about 15)
 
+- 2026-09-20: M3.1b2 The `.ork` spine: stages and body components into `hpr_design` types, with
+  every automatic radius marked for `layout()` to resolve, across a stage boundary too (L59's test
+  is live). 73 of the 76 readable designs' spines lay out, over 93 stages and 285 body components,
+  81 automatic radii marked; the 3 left need parts off the spine. OpenRocket's ogive κ is the
+  reciprocal of this project's radius ratio (Niskanen A.3). Open for M2.2's oracle: a shoulder of
+  no wall thickness reads as solid, an unstated `shapeclipped` as clipped, each with a warning.
 - 2026-09-20: M3.1b1 The values inside a `.ork`'s tags (ADR-052): an automatic dimension keeps its
   flag and its cached number (413 in the corpus, 309 caching nothing); either name of a rename may
   be read where the corpus shows both agree on the number *and* the frame (642 and 109 elements),
   and two lookalike pairs are left unread because it shows they do not; a stated `0` is a value,
   and the six override tags are read independently. L58, L62 and L63's named tests are live.
-- 2026-09-20: M3.1a The `.ork` container and its document (ADR-051): M3.1 split into four, and the
-  first shipped — 78 files read by `cargo xtask ork`, 76 opening and all 76 unchanged through a
-  write and a read, 0 warnings; the 2 refused are not XML (a `<databranch>` closed with
-  `</flightdata>`), which expat confirms. Nesting is counted before `roxmltree` sees it.
-- 2026-09-20: M1.8e19 The near-flat flare (ADR-050): the region's edges come out of the corner's
-  own state instead of a bisection — the crossing and the balance, reproducing 0.038161270°,
-  0.058820517° and 0.000901825° — and a reduced element takes the generalized method where it has
-  a tangent cone, so both switches go; the crossing's pole is left.
-- 2026-09-20: M1.8e15 The step in radius (ADR-049): what a step costs is measured and published —
-  −8.65% and 1.03 calibres at its threshold, a pair (2.7e-11 m tube to tube, 1.3e-13 m stepping up
-  at a slope change). #87 narrowed to the step.
-- 2026-09-20: M1.8e18 What a marched flare is worth (ADR-048): TN D-4865 model 2's fig. 8(b)
-  committed, and hpr read against it — within 7% through Mach 2.30, +13.4% at 2.96, +51.5% and
-  +50.4% at 3.95 and 4.63 where it is separated.
-- 2026-09-20: M1.8e17 The flare through the method (ADR-047): a conical flare flies the method
-  while its corner's shock is attached and reads as the same radii drawn out where it is not
-  (4.527e-11 per ±1e-9°, 1.235e-9 per ±1e-9 in Mach).
 ## Needs Neer (blocking or one-way decisions; the session keeps working on other things)
 
 - **Protect `main`** (2 minutes, optional). Settings → Branches → rule for `main`: require `fmt`,
