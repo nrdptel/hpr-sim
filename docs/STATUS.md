@@ -5,24 +5,25 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
 ## Now
 
 - **Current milestone:** M1.8e, all done bar M1.8e16 (`[blocked]` on #108); the work is
-  **M3.1d2**, every `.ork` importing without an error and the RocketSerializer cross-check, now
-  M3.1c reads a design whole and M3.1d1 snapshots the public designs (ADR-055 to ADR-058).
-- **Order:** M3.1d2, M2.2, M1.9; M1.8e16 waits on #108. **Run:** M0.1-M0.4,
-  M1.1-M1.7, M2.1, M1.8a-e19 bar e16, M3.1a-c, M3.1d1; the site is published.
+  **M2.2**, OpenRocket as a flight oracle over the corpus, now M3.1 reads a `.ork` whole and its
+  key geometry is held to RocketSerializer's and OpenRocket's (ADR-051 to ADR-059).
+- **Order:** M2.2, M1.9; M1.8e16 waits on #108. **Run:** M0.1-M0.4,
+  M1.1-M1.7, M2.1, M1.8a-e19 bar e16, M3.1; the site is published.
 - **Neer, 2026-09-20:** Debrief is sunset; a flight log analyzer usable **on its own** is part of
   this project (ADR-046, V21); Phase 5 re-cut.
-- **Last updated:** 2026-09-21 (M3.1d1 shipped: snapshots of public `.ork` designs)
+- **Last updated:** 2026-09-21 (M3.1d2 shipped, and M3.1: `.ork` import, cross-checked)
 
 ## Handoff (overwrite each session)
 
-- **M3.1d2 next:** the 2 `.ork` files that are not well-formed XML (Loft test fixtures; M3.1a
-  refused them) against "imports with zero errors", and RocketSerializer (MIT, not yet in
-  `validation/refs.lock.toml`) run on public files for key geometry. **Driving OpenRocket:**
-  `validation/oracles/openrocket/automatic_radius.py` (ADR-054) runs 24.12 headless through JPype,
-  binding empty motor and preset databases in a Python Guice module; it logs to stdout, so the
-  script writes to a path. **Read OpenRocket after it re-resolves** (a save does it): its first
-  reading can differ (Dual parachute). M2.2 (ADR-035) can build on it or take a subprocess, which
-  alone keeps GPL code out of the process; Java 17 only.
+- **M2.2 next:** fly the OpenRocket examples and the corpus through OpenRocket 24.12 and compare.
+  **Driving OpenRocket:** `validation/oracles/openrocket/automatic_radius.py` (ADR-054) runs 24.12
+  headless through JPype with empty motor and preset databases; `events.py` loads the real motor
+  database and flies (calm air, seed 1, English locale). **Read OpenRocket after it re-resolves** (a
+  save does it). M2.2 (ADR-035) can build on it or take a subprocess; Java 17 only. The
+  RocketSerializer record (`validation/oracles/rocketserializer/geometry.py`, own environment from
+  its `requirements.txt` in `refs/venv-rs`) is rerun before `cargo xtask ork` when the library
+  changes, or the survey fails on a changed file. Its 23 example designs wait on #147; 3 of them
+  meet #135.
 - **Page rules** (ADR-016 to ADR-020): relative links between pages, GitHub URLs for the rest
   (rustdoc too), labels as links to their rows — a lesson a page names needs a row in
   `decisions-and-roadmap.md` — none in headings; new pages in `SUMMARY.md`, a new library a row in
@@ -56,6 +57,9 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
 
 ## Done log (newest first, keep about 15)
 
+- 2026-09-21: M3.1d2 Every `.ork` in `loft-fixtures` (27) and the jar's examples (17) imports with
+  0 errors; hpr's key geometry held to RocketSerializer's, OpenRocket settling (ADR-059): 1,077
+  numbers over 71 designs, none apart from both. M3.1 done; #147, #135 commented.
 - 2026-09-21: M3.1d1 Loft's seven demo designs committed and read into `insta` summary snapshots
   (new dev-dependency), with a synthetic design that flies; M3.1d split into d1 and d2.
 - 2026-09-21: M3.1c4 What a `.ork` holds that hpr does not model, kept whole in `x-openrocket`
@@ -83,13 +87,10 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
 
 ## Decided without Neer (one line each; significant ones get an ADR)
 
-- ADR-058: what hpr does not read is kept whole in `x-openrocket`, at a path back, down to the
-  attribute; readers record what they ask for.
-- ADR-057: a `.ork`'s stored simulations are read as written, to compare against; units measured.
-- ADR-056: `.ork` recovery read as written, not flown; a deploy height above apogee and `cd auto`
-  are left for the step that flies it.
-- ADR-055: M3.1c split c1 to c4; a motor's curve is its file's own first, the bundled catalog
-  second; the rocket flies only a configuration whose every motor lights at launch.
+- ADR-059: "agrees on the key geometry" means no number of hpr's is apart from both RocketSerializer
+  and OpenRocket; RocketSerializer pinned as a tool, `--no-deps`, so `orhelper` is never installed.
+- ADR-055 to ADR-058: a motor's curve is its file's own first; only what lights at launch flies;
+  recovery and stored simulations read as written, not flown; the unread kept in `x-openrocket`.
 - ADR-051 to ADR-054: M3.1 split a to d; a `.ork` document kept whole; an automatic dimension
   keeps both halves; angles are degrees; a radius with nothing to take is OpenRocket's 25 mm.
 - ADR-050: a reduced element takes the generalized method wherever it has a tangent cone of its
@@ -130,9 +131,9 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
   flare leaves the crossing's pole — +0.129% on the tests' rocket, +4.3% on a short shoulder
   (#108); a step in radius takes the body off the method past 2.7e-11 m tube to tube or 1.3e-13 m
   up at a boattail — −8.65% to −11.34% (#87).
-- `.ork` (M3.1a to c2) builds all 75 designs' rockets, motors and recovery, but only 1 of 174
+- `.ork` (M3.1) builds all 75 designs' rockets, motors and recovery, but only 1 of 174
   configurations flies: 197 motors are not in the 32-motor catalog (M5.1), staging waits for M1.9,
-  and recovery is read, not flown. Pods are not read (M3.1c4). 5 parts are left out with a reason,
+  and recovery is read, not flown. Pods are kept, not read (M1.13). 5 parts are left out with a reason,
   among them the corpus's only tube fins (#133); fin fillets, a rail button's screw head and motor
   clusters are read as the simpler part, with a warning. `polished` is 2 µm here and may
   be 0.5 µm in a newer OpenRocket; a zero-wall tube is weightless, which M2.2 can settle.

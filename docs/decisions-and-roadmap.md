@@ -75,6 +75,7 @@ new record replaces it and points back. All of them are in the [decision log][de
 | [ADR-056: A `.ork` design's recovery and separation][adr-056] | That when each parachute and streamer opens, and when each stage separates, is read as the file wrote it and not yet flown. That the words are OpenRocket's own, measured by a committed probe. That a deploy height is above the ground. And that two choices are left open, in plain view, for the step that flies a `.ork`: a deploy height the rocket never reaches, which OpenRocket never opens, and an automatic drag coefficient | [`.ork` design files](format/ork.md#when-parachutes-open-and-stages-separate) |
 | [ADR-057: A `.ork` design's stored simulations][adr-057] | That the simulations OpenRocket last ran on a design are read back as it wrote them: the launch conditions, the summary, and each stage's time series and events. That their units are measured by a committed probe: the rod's angle and direction in degrees, a compass bearing; the wind's direction in radians, where it blows from. And that they are OpenRocket's answers to compare against, not flights hpr makes | [`.ork` design files](format/ork.md#what-openrocket-last-did-stored-simulations) |
 | [ADR-058: What a `.ork` holds that hpr does not model][adr-058] | That the parts and sections of a `.ork` hpr does not read — pods, parallel stages, OpenRocket's 3D-view settings, a simulation's plug-ins — are kept whole beside the design, in an extension called `x-openrocket`, at a path that leads back to where each was, so that writing the file back can put them back; that a design missing parts this way says it is reduced; and that the same goes for every tag and attribute no reader asks for, recorded as hpr reads | [`.ork` design files](format/ork.md#what-hpr-keeps-for-writing-the-file-back) |
+| [ADR-059: The RocketSerializer cross-check][adr-059] | That hpr's reading of a design's key geometry (the nose cone, transitions, fin sets, where each sits, and the body radius) is held to RocketSerializer's, a second program that reads `.ork` files, with OpenRocket itself run on the same file to settle any difference; that "agrees" means no number of hpr's is apart from both; that a cause is named only where the record proves it; and that an import error is a file that does not read or a design that does not lay out | [`.ork` design files](format/ork.md#checked-against-rocketserializer) |
 
 ## The roadmap
 
@@ -184,7 +185,7 @@ missing or its status disagrees.
 | <a id="m1-8e15"></a>[M1.8e15][phase-1] | What a step in radius still switches, how big it is, and what a model of one would need | done |
 | <a id="m1-8e19"></a>[M1.8e19][phase-1] | The band of near-flat flares the march used to refuse, which took the whole body off the method as a shape crossed it (found by [M1.8e17](#m1-8e17)); now read by the generalized method | done |
 | <a id="m1-8e16"></a>[M1.8e16][phase-1] | A blunt tip's handover moved past 24°, once the march has a rule for the loading through a crossing (the rest of what [M1.8e13](#m1-8e13) used to be, renumbered so the flare and the step keep their ids). Blocked on [issue #108](https://github.com/nrdptel/hpr-sim/issues/108): the loading through a tangent-cone crossing has no reading that settles as the nose is cut finer | blocked |
-| <a id="m3-1"></a>[M3.1][phase-1] | Reading OpenRocket `.ork` design files | not yet done |
+| <a id="m3-1"></a>[M3.1][phase-1] | Reading OpenRocket `.ork` design files | done |
 | <a id="m3-1a"></a>[M3.1a][phase-1] | The container a `.ork` arrives in, and its design document read whole | done |
 | <a id="m3-1b"></a>[M3.1b][phase-1] | The component tree: parts, shapes, materials, finishes and overrides into a design | done |
 | <a id="m3-1b1"></a>[M3.1b1][phase-1] | What a `.ork` value means: dimensions OpenRocket works out for itself, tags written under two names, and overrides | done |
@@ -196,9 +197,9 @@ missing or its status disagrees.
 | <a id="m3-1c2"></a>[M3.1c2][phase-1] | When each parachute and streamer opens, and when each stage separates | done |
 | <a id="m3-1c3"></a>[M3.1c3][phase-1] | The launch conditions and results of the simulations OpenRocket stored | done |
 | <a id="m3-1c4"></a>[M3.1c4][phase-1] | Pods, parallel stages, and every part, section, tag and attribute hpr does not read, kept for writing the file back | done |
-| <a id="m3-1d"></a>[M3.1d][phase-1] | The corpus and the cross-check against RocketSerializer | not yet done |
+| <a id="m3-1d"></a>[M3.1d][phase-1] | The corpus and the cross-check against RocketSerializer | done |
 | <a id="m3-1d1"></a>[M3.1d1][phase-1] | Snapshots of what hpr reads from public `.ork` designs | done |
-| <a id="m3-1d2"></a>[M3.1d2][phase-1] | Every `.ork` imports without an error, and the cross-check against RocketSerializer | not yet done |
+| <a id="m3-1d2"></a>[M3.1d2][phase-1] | Every `.ork` imports without an error, and the cross-check against RocketSerializer | done |
 | <a id="m2-2"></a>[M2.2][phase-1] | OpenRocket as a reference program, and a corpus of designs to compare | not yet done |
 | <a id="m1-9"></a>[M1.9][phase-1] | Staging, clusters and air starts, for COTS motors | not yet done |
 | <a id="m1-10"></a>[M1.10][phase-1] | Flight outputs: the stability margin over the flight, the best ejection delay, the peak dynamic pressure, fin flutter and the landing point | not yet done |
@@ -375,6 +376,7 @@ is the milestone that added or will add that test.
 [adr-056]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-056-a-ork-designs-recovery-and-separation-read-as-written-with-openrockets-words-measured-2026-09-21
 [adr-057]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-057-a-ork-designs-stored-simulations-read-back-as-written-with-their-units-measured-2026-09-21
 [adr-058]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-058-what-a-ork-holds-that-hpr-does-not-model-kept-whole-in-x-openrocket-2026-09-21
+[adr-059]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-059-the-rocketserializer-cross-check-three-readers-with-openrocket-settling-a-difference-2026-09-21
 [adr-053]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-053-the-parts-on-and-inside-a-ork-body-degrees-what-is-left-out-and-a-sourced-finish-2026-09-20
 [adr-052]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-052-what-a-ork-value-means-automatic-dimensions-two-names-for-one-tag-and-overrides-2026-09-20
 [decisions]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md
