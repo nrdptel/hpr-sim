@@ -304,8 +304,8 @@ a wall thickness of 0 weigh? What is a part that names no material made of? When
 parts inside it both have an [override](../glossary.md#override) (a mass or centre of mass the
 designer typed in), which wins? OpenRocket, which writes these files, has an answer to each, and
 its answer is what the file means to the person who wrote it. So hpr asks it:
-`validation/oracles/openrocket/conventions.py` writes 32 small *probe designs*, each a rocket of
-one or two parts built to ask one question, runs OpenRocket 24.12 on them and records its answers.
+`validation/oracles/openrocket/conventions.py` writes 32 small *probe designs*, each a rocket of a
+few parts built to ask one question, runs OpenRocket 24.12 on them and records its answers.
 The test module `hpr_validate::openrocket::tests` reads the same designs with hpr and holds hpr to
 them. Where hpr keeps a rule of its own, the test pins how far apart the two are. This was
 [M2.2b1](../decisions-and-roadmap.md#m2-2b1); [ADR-061][adr-061] records the decisions.
@@ -314,7 +314,8 @@ How far to trust it: each probe asks about one kind of part at one size, so each
 measured, not proven for every case. OpenRocket's defaults were read with its preferences as a
 fresh install sets them; an OpenRocket whose preferences were changed may give others.
 
-**Read as OpenRocket reads it.** On every one of these probes hpr's mass is OpenRocket's within
+**Read as OpenRocket reads it.** On every probe of the readings in this table hpr's mass is
+OpenRocket's within
 0.001%, part by part as well as whole (the worst, a transition, is 0.0003% apart), and its centre
 of mass within 0.001 mm. Where no fin, rail button or recovery part is in the probe, the inertias
 agree within 0.001% too. Two gaps are pinned rather than hidden, and described below: a rail
@@ -387,14 +388,15 @@ test pins each.
   its forward edge, so a button read from a `.ork` sits one radius further aft: 5 mm for a 10 mm
   button (issue [#151](https://github.com/nrdptel/hpr-sim/issues/151)).
 - hpr's elliptical fin is the exact ellipse, with an area of `π c h / 4` for a root chord `c` and
-  a span `h`. OpenRocket's weighs 0.18% less on the probe, as a many-sided polygon drawn inside the
-  ellipse would.
+  a span `h`. OpenRocket's weighs 0.18% less on the probe. That matches, to 13 digits, a 30-sided
+  polygon drawn inside the ellipse at equal angles — an inference from OpenRocket's output, since
+  its source is not read.
 
 **What it leaves out.** An inner tube, coupler or lug that writes no thickness at all is read as
 no wall, with a warning. OpenRocket gives it a wall of its own: on the probe, 0.5 mm for a 20 mm
 inner tube, 1 mm for a 5 mm lug, and none for a coupler. One size each does not say whether that
 wall follows the radius, and no file in the reference library has one, so hpr does not follow it
-yet; the test pins the difference.
+yet; the test pins the difference, −2.4% in the mass of that probe's structure.
 
 **Run it yourself.** With Java 17 and the OpenRocket jar (`cargo xtask refs fetch`), from the
 repository root:

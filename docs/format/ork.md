@@ -794,7 +794,7 @@ missing from a mass is visible: a fin's **fillets** (5), a rail button's **screw
 **cluster** of motor tubes read as the one tube it is written as (4), and a **row** of more than one
 ring read as one.
 
-**A tube of no wall thickness carries no mass** — 12 elements, among them two of OpenRocket's own
+**A tube of no wall thickness carries no mass** — among them couplers in two of OpenRocket's own
 example designs. Reading those as solid would invent the mass — a solid coupler filling a 50 mm
 airframe for 180 mm is a few hundred grams the design never had. Since
 [M2.2b1](../decisions-and-roadmap.md#m2-2b1) it is the rule for every part, and it is not warned
@@ -995,8 +995,7 @@ states as zero, which OpenRocket gives no mass too ([ADR-061][adr-061]); 1 mass 
 says weighs 0 kg; and 2 transitions the designs *override* to zero mass —
 which is OpenRocket's ["base drag hack"](https://openrocket.readthedocs.io/en/latest/), a massless,
 dragless transition added only to change the base geometry. `cargo xtask ork` counts them by kind,
-so a new one would show up. (The files hold 12 attached tubes of no wall; one of them is not among
-the parts that lay out, which this page has not traced.) Before
+so a new one would show up. Before
 [M2.2b1](../decisions-and-roadmap.md#m2-2b1) there were 21: the 7 more (2 body tubes, 2 fin sets,
 2 inner tubes and a nose cone) name no material, and now take OpenRocket's default.
 

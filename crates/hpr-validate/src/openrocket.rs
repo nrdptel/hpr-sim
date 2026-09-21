@@ -243,7 +243,9 @@ mod tests {
     /// - A rail button: hpr places it by its forward edge and gives it its diameter as a length,
     ///   OpenRocket puts its centre at its position, so hpr's sits one radius, 5 mm, aft (#151).
     /// - An elliptical fin set: hpr's planform is the exact ellipse, `π c h / 4`; OpenRocket's
-    ///   weighs 0.18% less, as a polygon inside the ellipse would (M2.2b2, with the fins).
+    ///   weighs 0.18% less, which matches a 30-sided polygon inscribed at equal angles,
+    ///   `(π/30) / sin(π/30) − 1`, to 13 digits: an inference from its output, not its source
+    ///   (M2.2b2, with the fins).
     const PART_GAPS: [(&str, f64, f64); 2] = [
         ("RailButton", 0.0, 0.005),
         ("EllipticalFinSet", 0.001830, 0.0),

@@ -524,7 +524,8 @@ fn wall(values: &mut Values<'_>, outer_radius_m: Option<f64>) -> Wall {
     }
     match (values.number(&["thickness"]), outer_radius_m) {
         (Some(thickness_m), Some(radius_m)) if thickness_m >= radius_m => Wall::Filled {},
-        // OpenRocket's 2 mm, in a part no wider than it, fills the part.
+        // OpenRocket's 2 mm, in a part no wider than it, is taken to fill the part, as a stated wall
+        // that thick does: an assumption, since no probe is that narrow and no file writes one.
         (None, Some(radius_m)) if DEFAULT_WALL_M >= radius_m => Wall::Filled {},
         (Some(thickness_m), _) if thickness_m > 0.0 => Wall::Shell { thickness_m },
         (Some(0.0), _) => Wall::Shell { thickness_m: 0.0 },

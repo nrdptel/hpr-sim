@@ -5147,7 +5147,8 @@ unchanged):
 - **Warnings:** those reading designs fall from 96 to 57, and parts that weigh nothing from 21 to 14.
 - **Two gaps the probes found**, both for b2 and both pinned: OpenRocket puts a rail button's
   centre at its position, where hpr places it by its forward edge, one radius (5 mm) further aft
-  (#151); and OpenRocket's elliptical fin weighs 0.18% less than hpr's exact ellipse.
+  (#151); and OpenRocket's elliptical fin weighs 0.18% less than hpr's exact ellipse, which
+  matches a 30-sided polygon inscribed at equal angles to 13 digits (inferred from its output).
 - **L51 is live:** `hpr_validate::openrocket::tests::override_precedence_matches_oracle`.
 
 ---
