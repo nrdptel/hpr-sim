@@ -58,7 +58,7 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
 ## Done log (newest first, keep about 15)
 
 - 2026-09-21: M3.1c4 What a `.ork` holds that hpr does not model, kept whole in `x-openrocket`
-  (ADR-058): 17 parts in 10 reduced designs, 87 sections, all found again. L66 live; M3.1c done.
+  (ADR-058): 17 parts, 87 sections, 1,570 tags, all found again. L66 live; M3.1c done.
 - 2026-09-21: M3.1c3 A `.ork` design's stored simulations read back (ADR-057): 178, 144 with a
   time series (101,955 rows); a probe measures their units. L64 live.
 - 2026-09-21: M3.1c2 A `.ork` design's recovery and separation, read not flown (ADR-056): 137

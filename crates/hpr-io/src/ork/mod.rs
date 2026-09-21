@@ -37,8 +37,8 @@ pub mod container;
 pub mod document;
 mod error;
 pub mod extensions;
-mod reads;
 pub mod motors;
+mod reads;
 pub mod recovery;
 pub mod simulations;
 pub mod value;
@@ -106,12 +106,17 @@ pub struct Design {
     /// The simulations OpenRocket last ran on the design, with their conditions and results.
     pub simulations: Vec<StoredSimulation>,
     /// What the file holds that hpr does not model, kept whole for an export to put back.
+    #[serde(default)]
     pub extensions: Extensions,
 }
 
 impl Design {
     /// Whether the rocket is reduced: the file describes parts of it — a pod, a parallel stage, a
     /// part hpr cannot shape — that are kept in [`Design::extensions`] rather than read into it.
+    ///
+    /// The flag is on the `Design`, not on [`Design::rocket`]: check it before using the rocket on
+    /// its own. A part read as something simpler, such as a cluster of tubes read as one, does not
+    /// make a design reduced; its warning keeps every configuration of it from flying (ADR-055).
     pub fn is_reduced(&self) -> bool {
         !self.extensions.x_openrocket.parts.is_empty()
     }
@@ -160,9 +165,30 @@ impl Design {
 /// # }
 /// ```
 pub fn design(file: &OrkFile) -> Imported<Design> {
+    // Every tag the readers ask for is recorded, so that the extension can keep the rest.
+    let ((mut design, warnings, read), reads) = reads::recording(|| {
+        let (mut design, mut warnings, read) = read_design(file);
+        // Stored simulations stand apart from the airframe, so their warnings come after the check
+        // in `read_design`; a document can hold them without a design, as Debrief's results-only
+        // file does.
+        design.simulations = simulations::read(&file.document, &mut warnings);
+        (design, warnings, read)
+    });
+    design.extensions = Extensions {
+        x_openrocket: extensions::read(&file.document, &read, &reads),
+    };
+    Imported {
+        value: design,
+        warnings,
+    }
+}
+
+/// The rocket, its motors and its recovery, the warnings reading them raised, and the paths of
+/// the stages and components read.
+fn read_design(file: &OrkFile) -> (Design, Vec<Warning>, std::collections::BTreeSet<String>) {
     let (rocket, walked) = component::walk(&file.document);
     let Imported {
-        value: mut rocket,
+        value: rocket,
         mut warnings,
     } = rocket;
     // Any warning the walk raised about the rocket or a motor mount means it was not read exactly
@@ -184,43 +210,26 @@ pub fn design(file: &OrkFile) -> Imported<Design> {
         [one] => Some((*one).to_owned()),
         [first, rest @ ..] => Some(format!("{first}, and {} more", rest.len())),
     };
-    // Stored simulations stand apart from the airframe, so their warnings come after the check
-    // above; a document can hold them without a design, as Debrief's results-only file does.
-    let Some(element) = file.document.root.child("rocket") else {
-        let simulations = simulations::read(&file.document, &mut warnings);
-        let x_openrocket = extensions::read(&file.document, &walked.read);
-        return Imported {
-            value: Design {
-                rocket,
-                motors: Motors::default(),
-                recovery: Recovery::default(),
-                simulations,
-                extensions: Extensions { x_openrocket },
-            },
-            warnings,
-        };
+    let mut design = Design {
+        rocket,
+        motors: Motors::default(),
+        recovery: Recovery::default(),
+        simulations: Vec::new(),
+        extensions: Extensions::default(),
     };
-    let motors = motors::read(
-        element,
-        &mut rocket,
-        incomplete.as_deref(),
-        &walked.mounts,
-        &file.attachments,
-        &mut warnings,
-    );
-    let recovery = recovery::read(element, &rocket, walked.devices, walked.separations);
-    let simulations = simulations::read(&file.document, &mut warnings);
-    let x_openrocket = extensions::read(&file.document, &walked.read);
-    Imported {
-        value: Design {
-            rocket,
-            motors,
-            recovery,
-            simulations,
-            extensions: Extensions { x_openrocket },
-        },
-        warnings,
+    if let Some(element) = file.document.root.child("rocket") {
+        design.motors = motors::read(
+            element,
+            &mut design.rocket,
+            incomplete.as_deref(),
+            &walked.mounts,
+            &file.attachments,
+            &mut warnings,
+        );
+        design.recovery =
+            recovery::read(element, &design.rocket, walked.devices, walked.separations);
     }
+    (design, warnings, walked.read)
 }
 
 /// Reads a `.ork` file from its bytes: sniffs the container, unpacks it, and parses the design.

@@ -2850,10 +2850,12 @@ fn unknown_content_round_trips_through_x_openrocket() {
       <nosecone><name>Nose</name><id>nose</id>
         <material type="bulk" density="1000.0">Plastic</material>
         <length>0.15</length><thickness>0.002</thickness><shape>ogive</shape>
-        <aftradius>0.02</aftradius></nosecone>
+        <aftradius>0.02</aftradius><appearance><paint red="51" green="51" blue="51"/></appearance>
+        <glowsinthedark>true</glowsinthedark></nosecone>
       <fancything kind="new"><name>Something new</name><size unit="m">0.1</size></fancything>
     </subcomponents></stage></subcomponents></rocket>
   <simulations><simulation status="uptodate"><name>Simulation 1</name>
+    <conditions><launchrodlength>1.0</launchrodlength><randomseed>42</randomseed></conditions>
     <extension extensionid="com.example.Wind"><config key="gust">3.0</config></extension>
   </simulation></simulations>
   <photostudio><roll>0.5</roll><sky>Mountains</sky></photostudio>
@@ -2871,9 +2873,19 @@ fn unknown_content_round_trips_through_x_openrocket() {
     assert_eq!(
         at(&kept.sections),
         [
-            "openrocket/simulations/simulation[0]/extension[1]",
+            "openrocket/simulations/simulation[0]/extension[2]",
             "openrocket/photostudio[2]",
             "openrocket/docprefs[3]",
+        ]
+    );
+    // The tags no reader asked for, in parts it did read: the nose cone's colour and a tag hpr has
+    // never seen, and the stored conditions' random seed.
+    assert_eq!(
+        at(&kept.tags),
+        [
+            "openrocket/rocket/stage[0]/nosecone[0]/@appearance[7]",
+            "openrocket/rocket/stage[0]/nosecone[0]/@glowsinthedark[8]",
+            "openrocket/simulations/simulation[0]/conditions[1]/@randomseed[1]",
         ]
     );
 
@@ -2883,12 +2895,8 @@ fn unknown_content_round_trips_through_x_openrocket() {
     let back: Extensions = serde_json::from_str(&json).expect("read back");
     assert_eq!(back, design.extensions);
     // ...and every element in it is the one at its path in the document it came from.
-    for kept in back
-        .x_openrocket
-        .parts
-        .iter()
-        .chain(&back.x_openrocket.sections)
-    {
+    let every = &back.x_openrocket;
+    for kept in every.parts.iter().chain(&every.sections).chain(&every.tags) {
         assert_eq!(
             element_at(&file.document, &kept.at),
             Some(&kept.element),
@@ -2896,4 +2904,33 @@ fn unknown_content_round_trips_through_x_openrocket() {
             kept.at
         );
     }
+}
+
+/// A path that does not lead to an element gives `None`, never a panic, and an extension written
+/// before a namespace had anything in it still reads.
+#[test]
+fn a_bad_path_leads_nowhere() {
+    let xml = motor_design(
+        r#"<motorconfiguration configid="a"/>"#,
+        "<overhang>0.0</overhang>",
+        "",
+    );
+    let file = read(xml.as_bytes()).expect("a readable design").value;
+    for at in [
+        "",
+        "/",
+        "rocket",
+        "openrocket/rocket/stage[9]",
+        "openrocket/rocket/stage[0]/bodytube[0]",
+        "openrocket/rocket/stage[-1]",
+        "openrocket/rocket/stage[0][0]",
+        "openrocket/rocket/stage[99999999999999999999999]",
+        "openrocket/rocket/stage[0]/@name[0]/@x[0]",
+        "openrocket/photostudio[0]/extra[0]",
+        "openrocket/simulations/simulation[0]/conditions[0]/@x[0]/y[0]",
+    ] {
+        assert_eq!(element_at(&file.document, at), None, "{at}");
+    }
+    let empty: Extensions = serde_json::from_str(r#"{"x-openrocket":{}}"#).expect("defaults");
+    assert_eq!(empty, Extensions::default());
 }

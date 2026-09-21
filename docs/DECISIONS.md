@@ -5068,28 +5068,38 @@ pods until M1.13, and writing a `.ork` is M3.2; ADR-051 already keeps the whole 
 
 1. **`hpr_io::ork::Design` gains `extensions`, with one namespace, `x-openrocket`,** serialized
    under that name. It holds what hpr does not model, each element whole with its path.
-2. **Parts:** every child of a `<subcomponents>` the walk did not read — a pod set, a parallel
-   stage, a part left out for want of an honest shape, a tag it has never seen. The walk records
-   the path of every stage and component it reads, and everything else under `<rocket>` is kept at
-   the first level it was not read. A design with any is *reduced* (`Design::is_reduced`), which
-   is derived from the extension rather than stored beside it, so an export cannot keep one and
-   lose the other.
-3. **Sections:** every child of `<openrocket>` besides `<rocket>` and `<simulations>`, and every
-   child of a stored `<simulation>` besides the five the reader reads.
-4. **A path leads back.** `openrocket/rocket/stage[0]/bodytube[1]/podset[0]` counts each step among
+2. **Parts:** every child of a `<subcomponents>` under `<rocket>` that the reader (the code that
+   walks the tree into `hpr_design` types) did not read — a pod set, a parallel stage, a part left
+   out for want of an honest shape, a tag it has never seen. The walk records the path of every
+   stage and component it reads, and a child it did not is kept whole. A design with any is
+   *reduced* (`Design::is_reduced`), which is derived from the extension rather than stored beside
+   it, so an export cannot keep one and lose the other.
+3. **Sections:** every child of `<openrocket>` besides the first `<rocket>` and the first
+   `<simulations>`, and every child of a stored `<simulation>` that no reader asks for.
+4. **Tags:** every child tag no reader asks for in an element hpr does read — the rocket, a stage,
+   a part, a stored simulation's conditions or results — such as a part's `<appearance>`. The
+   readers record each tag they ask for, by name and element, while `design()` reads, so a tag is
+   kept exactly when nothing asked for it; a tag asked for but not used, such as a solid shoulder's
+   `shouldercapped`, is not kept.
+5. **A path leads back.** `openrocket/rocket/stage[0]/bodytube[1]/podset[0]` counts each step among
    its parent's `<subcomponents>`, as a warning's path does; a section's step counts among its
-   parent's elements. `hpr_io::ork::element_at` follows one, and `cargo xtask ork` fails if a kept
-   element is not found again at its path.
-5. **The round trip is to JSON and back, and to the file.** A test writes the extension out as JSON
+   parent's elements, and so does a tag's, marked `@`. `hpr_io::ork::element_at` follows one, and
+   `cargo xtask ork` fails if a kept element is not found again at its path.
+6. **The round trip is to JSON and back, and to the file.** A test writes the extension out as JSON
    and reads it back unchanged, and finds every kept element at its path in the document it came
-   from. That is what an export needs; the export itself is M3.2.
-6. **Not yet kept:** a tag hpr does not read inside a part it does read (a colour, a decal, a
-   preset). It stays in the document `OrkFile` keeps whole (ADR-051); M3.2 starts from both.
+   from. That is what an export needs; the export itself is M3.2. An unknown namespace beside
+   `x-openrocket` is not read back yet; the design format (M3.3) decides how namespaces travel.
+7. **Not yet kept:** anything deeper than a tag of an element hpr reads — an attribute it does not
+   read, or a tag inside a tag it does (inside `<motormount>`, say). It stays in the document
+   `OrkFile` keeps whole (ADR-051); M3.2 starts from both. How much of it there is, is not
+   counted.
 
 **Consequences.** On 2026-09-21 the library keeps 17 parts in 10 reduced designs (9 pod sets, 3
-parallel stages, and the 5 parts left out) and 87 sections, and all 104 are found again at their
-paths. With M3.1c1 to M3.1c4, M3.1c's *done when* is met: L57, L64, L65 and L66's tests are live, a
-design's stored results are read back, and unknown content round-trips through `x-openrocket`.
+parallel stages, and the 5 parts left out), 87 sections and 1,570 tags, and all 1,674 are found
+again at their paths. With M3.1c1 to M3.1c4, M3.1c's *done when* is met as far as element-level
+content goes: L57, L64, L65 and L66's tests are live, a design's stored results are read back, and
+unknown parts, sections and tags round-trip through `x-openrocket`; an unknown attribute, or a tag
+inside a tag hpr reads, stays only in the document (item 7).
 
 ## ADR-057: A `.ork` design's stored simulations, read back as written, with their units measured (2026-09-21)
 

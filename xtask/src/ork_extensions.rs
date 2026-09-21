@@ -12,6 +12,7 @@ pub(crate) struct ExtensionTally {
     reduced: usize,
     parts: BTreeMap<String, usize>,
     sections: BTreeMap<String, usize>,
+    tags: BTreeMap<String, usize>,
     lost: Vec<String>,
 }
 
@@ -31,7 +32,10 @@ impl ExtensionTally {
                 .entry(section.element.name.clone())
                 .or_default() += 1;
         }
-        for kept in kept.parts.iter().chain(&kept.sections) {
+        for tag in &kept.tags {
+            *self.tags.entry(tag.element.name.clone()).or_default() += 1;
+        }
+        for kept in kept.parts.iter().chain(&kept.sections).chain(&kept.tags) {
             if element_at(document, &kept.at) != Some(&kept.element) {
                 self.lost.push(kept.at.clone());
             }
@@ -49,6 +53,7 @@ impl ExtensionTally {
             "designs_reduced": self.reduced,
             "parts_kept": self.parts,
             "sections_kept": self.sections,
+            "tags_kept": self.tags,
             "not_found_again": self.lost,
         })
     }
@@ -64,10 +69,16 @@ impl ExtensionTally {
             listed(&self.sections, ": ")
         );
         println!(
-            "  kept elements found again at their path: {} of {}",
-            self.parts.values().sum::<usize>() + self.sections.values().sum::<usize>()
-                - self.lost.len(),
-            self.parts.values().sum::<usize>() + self.sections.values().sum::<usize>()
+            "  tags kept, in parts hpr reads: {}{}",
+            self.tags.values().sum::<usize>(),
+            listed(&self.tags, ": ")
+        );
+        let all = self.parts.values().sum::<usize>()
+            + self.sections.values().sum::<usize>()
+            + self.tags.values().sum::<usize>();
+        println!(
+            "  kept elements found again at their path: {} of {all}",
+            all - self.lost.len()
         );
     }
 

@@ -228,6 +228,9 @@ pub(super) fn read(document: &Document, warnings: &mut Vec<Warning>) -> Vec<Stor
 }
 
 fn simulation(element: &Element, at: &str, warnings: &mut Vec<Warning>) -> StoredSimulation {
+    // Looked up directly below, not through `Values`.
+    super::reads::note(element, "conditions");
+    super::reads::note(element, "flightdata");
     let mut values = Values::new(element, at, warnings);
     let name = values.word(&["name"]).unwrap_or_default();
     let simulator = values.word(&["simulator"]);
@@ -249,6 +252,9 @@ fn simulation(element: &Element, at: &str, warnings: &mut Vec<Warning>) -> Store
 }
 
 fn conditions(element: &Element, at: &str, warnings: &mut Vec<Warning>) -> LaunchConditions {
+    // Looked up directly below, not through `Values`.
+    super::reads::note(element, "wind");
+    super::reads::note(element, "atmosphere");
     let average = element
         .children_named("wind")
         .find(|wind| wind.attribute("model") == Some("average"));
@@ -375,6 +381,9 @@ fn attribute_number(
 }
 
 fn results(element: &Element, at: &str, warnings: &mut Vec<Warning>) -> StoredResults {
+    // Looked up directly below, not through `Values`.
+    super::reads::note(element, "warning");
+    super::reads::note(element, "databranch");
     let mut number = |name: &str| attribute_number(element, name, at, warnings);
     let mut results = StoredResults {
         max_altitude_m: number("maxaltitude"),
