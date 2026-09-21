@@ -50,6 +50,7 @@ standard output, which OpenRocket logs to.
 import hashlib
 import json
 import logging
+import os
 import platform
 import re
 import sys
@@ -66,6 +67,12 @@ RS_COMMIT = "66d8ca8c9be36816c4157fbdf249e87fb8c1f5dc"
 # Directories under refs/ that are Python environments, not designs. Everything else under refs/
 # is read, as `cargo xtask ork` reads it.
 SKIPPED = {"venv", "venv-rs"}
+
+
+def first_line(error):
+    """An error's first line, or its type when it has no message."""
+    lines = str(error).splitlines()
+    return lines[0] if lines else type(error).__name__
 
 
 def document_text(path):
@@ -88,12 +95,15 @@ def opened(text, scratch):
     path.write_text(text, encoding="utf-8")
     try:
         return automatic_radius.load(path), False
-    except Exception:  # noqa: BLE001 - retried once without the comment, then reported
+    except Exception as first:  # noqa: BLE001 - retried once without the comment, then reported
         bare = re.sub(r"^(<\?xml[^>]*\?>\s*)<!--.*?-->\s*", r"\1", text, count=1, flags=re.S)
         if bare == text:
             raise
         path.write_text(bare, encoding="utf-8")
-        return automatic_radius.load(path), True
+        try:
+            return automatic_radius.load(path), True
+        except Exception:  # noqa: BLE001 - the first refusal is the one to report
+            raise first from None
 
 
 # The OpenRocket class each tag is read into. A nose cone is a Transition to OpenRocket too, so
@@ -164,9 +174,12 @@ def openrocket_numbers(tag, component):
         # is read with the cant set to zero, then the cant is put back; the turned one is kept.
         numbers["canted_station_m"] = numbers["station_m"]
         cant = component.getCantAngle()
-        component.setCantAngle(0.0)
-        numbers["station_m"] = station(component)
-        component.setCantAngle(cant)
+        if cant != 0.0:
+            component.setCantAngle(0.0)
+            try:
+                numbers["station_m"] = station(component)
+            finally:
+                component.setCantAngle(cant)
         numbers["count"] = int(component.getFinCount())
         numbers["cross_section"] = str(component.getCrossSection().name())
         numbers["span_m"] = float(component.getHeight())
@@ -180,13 +193,26 @@ def openrocket_numbers(tag, component):
     return numbers
 
 
+def in_kept_part(component):
+    """Whether a component sits in a pod or a parallel stage, which hpr keeps unread."""
+    parent = component.getParent()
+    while parent is not None:
+        if str(parent.getClass().getSimpleName()) in ("PodSet", "ParallelStage"):
+            return True
+        parent = parent.getParent()
+    return False
+
+
 def largest_radius(java):
-    """The largest body radius OpenRocket holds, m: every nose cone's base, tube and transition,
-    pods included, as RocketSerializer's `get_rocket_radius` takes every one the file writes."""
-    radii = [float(c.getAftRadius()) for c in java.get("NoseCone", [])]
-    radii += [float(c.getOuterRadius()) for c in java.get("BodyTube", [])]
+    """The largest body radius OpenRocket holds, m, over every nose cone's base, tube and
+    transition that hpr reads: those in pods and parallel stages are left out, as hpr leaves them.
+    RocketSerializer's `get_rocket_radius` takes every radius the file writes, pods included, so a
+    pod wider than the body shows as RocketSerializer differing."""
+    radii = [float(c.getAftRadius()) for c in java.get("NoseCone", []) if not in_kept_part(c)]
+    radii += [float(c.getOuterRadius()) for c in java.get("BodyTube", []) if not in_kept_part(c)]
     for c in java.get("Transition", []):
-        radii += [float(c.getForeRadius()), float(c.getAftRadius())]
+        if not in_kept_part(c):
+            radii += [float(c.getForeRadius()), float(c.getAftRadius())]
     return max(radii, default=0.0)
 
 
@@ -227,8 +253,15 @@ def with_ids(result, elements, tag, java, numbers=None):
         own = element.find("id", recursive=False) if element is not None else None
         name = element.find("name", recursive=False) if element is not None else None
         name = name.text if name is not None else None
-        index = next((i for i, e in enumerate(every) if e is element), None)
-        component = components[index] if index is not None and index < len(components) else None
+        # OpenRocket keeps a file's ids, so an element with one is found by it; an older file's
+        # element is found by its place among the elements of its tag.
+        component = None
+        if own is not None:
+            component = next((c for c in components if str(c.getID()) == own.text.strip()), None)
+        if component is None:
+            index = next((i for i, e in enumerate(every) if e is element), None)
+            if index is not None and index < len(components):
+                component = components[index]
         if component is not None and str(component.getName()) != name:
             component = None
         rows.append(
@@ -261,15 +294,20 @@ def read(path, scratch):
         document, stripped = opened(text, scratch)
     except Exception as error:  # noqa: BLE001 - a refusal is the measurement
         record["opens"] = False
-        record["refused"] = str(error).splitlines()[0]
+        record["refused"] = first_line(error)
         return record
     record["opens"] = True
     record["comment_removed"] = stripped
+    # OpenRocket's first reading of an automatic radius can differ from the one it settles on
+    # once it works the design out again, which saving makes it do (ADR-054). Every number
+    # below, RocketSerializer's included, is read after that, from the settled design.
+    automatic_radius.saved_radii(document)
     bs = BeautifulSoup(text, features="xml")
     rocket = document.getRocket()
     java = in_order(rocket, {})
     elements = safe(process_elements_position, rocket, {}, 0, 0, 0)
     if "error" in elements:
+        # Every extractor below needs the walk; its failure is the design's extractor error.
         record["elements"] = elements
         return record
     elements = elements["value"]
@@ -322,7 +360,8 @@ def designs(arguments, root):
                 path.name == "refs" and parts[0] in SKIPPED
             ):
                 found.append(candidate)
-    return [(str(p.resolve().relative_to(root)), p) for p in found]
+    # `refs` can be a symbolic link (a worktree's is), so the path is taken as written.
+    return [(os.path.relpath(p.absolute(), root).replace(os.sep, "/"), p) for p in found]
 
 
 def main():
@@ -349,7 +388,10 @@ def main():
                         copy.write_bytes(archive.read(entry))
                         files.append((f"{automatic_radius.JAR}!{entry}", copy))
         for name, path in files:
-            runs.append({"file": name, **read(path, scratch)})
+            try:
+                runs.append({"file": name, **read(path, scratch)})
+            except Exception as error:  # noqa: BLE001 - one design's failure is recorded, not fatal
+                runs.append({"file": name, "opens": False, "refused": first_line(error)})
 
     output.parent.mkdir(parents=True, exist_ok=True)
     output.write_text(

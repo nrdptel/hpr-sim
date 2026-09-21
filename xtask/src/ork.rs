@@ -816,6 +816,18 @@ fn report(root: &Path, files: &[Case], library: bool) -> Result<(), String> {
     if let Some(failure) = geometry.failure() {
         return Err(failure);
     }
+    // M3.1's first *done when*: the private design library and the jar's examples import with no
+    // error at all. Held, not only printed.
+    for source in [LIBRARY_SOURCE, EXAMPLES_SOURCE] {
+        if let Some([_, _, _, _, errors]) = sources.get(source)
+            && *errors > 0
+        {
+            return Err(format!(
+                "{errors} file(s) in {source} do not import: they do not read or do not lay out; \
+                 see {REPORT}"
+            ));
+        }
+    }
     if !stale.is_empty() {
         return Err(format!(
             "the list of files that are not well-formed XML is out of date:\n  {}",
@@ -876,19 +888,28 @@ fn oracle_key(root: &Path, name: &str) -> String {
         .map_or_else(|| name.clone(), str::to_owned)
 }
 
+/// The source the private design library's files are counted under.
+const LIBRARY_SOURCE: &str = "refs/loft-fixtures";
+
+/// The source the jar's example designs are counted under.
+const EXAMPLES_SOURCE: &str = "OpenRocket 24.12 examples";
+
 /// Where a file came from, for the import counts: the jar, or the directory under `refs/` (or the
 /// directory given) that holds it.
 fn source_of(root: &Path, name: &str) -> String {
     let name = name.replace('\\', "/");
     if name.contains('!') {
-        return "OpenRocket 24.12 examples".to_owned();
+        return EXAMPLES_SOURCE.to_owned();
     }
     let relative = oracle_key(root, &name);
     let mut steps = relative.split('/');
     match (steps.next(), steps.next()) {
         (Some("refs"), Some(dir)) => format!("refs/{dir}"),
-        (Some(first), _) => first.to_owned(),
-        _ => relative.clone(),
+        // A directory outside the repository, given with `--dir`, is its own source.
+        (Some(first), _) if !first.is_empty() => first.to_owned(),
+        _ => relative
+            .rsplit_once('/')
+            .map_or_else(|| relative.clone(), |(dir, _)| dir.to_owned()),
     }
 }
 

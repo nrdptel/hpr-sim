@@ -416,9 +416,14 @@ writes what both programs read to a JSON file, the *record*. `cargo xtask ork` t
 reading with the record. Two numbers count as the same when they differ by less than 1 part in 10⁹:
 
 - If hpr's number is RocketSerializer's, they **agree**.
-- If it is not, but it is OpenRocket's, and RocketSerializer's is not, then **RocketSerializer
-  differs**.
+- If it is not, but it is OpenRocket's, then **RocketSerializer differs**.
 - Otherwise **hpr differs**, and the survey fails.
+
+Whatever RocketSerializer says, the survey also fails when one of hpr's numbers is not
+OpenRocket's. Otherwise a mistake hpr and RocketSerializer made together would pass as agreement.
+One such mistake is waiting: OpenRocket reads a fin cant over 15° as 15°, and hpr and
+RocketSerializer read it as written ([issue #148](https://github.com/nrdptel/hpr-sim/issues/148)).
+No file here cants a fin that far.
 
 **A worked example.** Loft's public `demo-dual-deploy.ork` puts its fin set at the bottom of the
 booster tube. The same tube also holds the drogue parachute, packed 0.08 m long, listed before the
@@ -466,7 +471,13 @@ numbers:
 - 1 is a nose cone's shape: a nose written as an `ogive` of shape parameter 0. OpenRocket draws it
   as a cone, and so does hpr, while RocketSerializer passes on the word `ogive`.
 
-**Two things OpenRocket does that the check allows for.**
+**Four things OpenRocket does that the check allows for.**
+
+- **A design worked out again.** OpenRocket's first reading of an automatic radius can differ
+  from the answer it settles on once it works the design out again
+  ([when an automatic radius has nothing to take](#when-an-automatic-radius-has-nothing-to-take)).
+  The script saves each design once, to a throwaway, before it reads anything, so every number in
+  the record, RocketSerializer's included, comes from the settled design.
 
 - **A canted fin.** OpenRocket turns a canted fin about the middle of its root chord. That moves
   the front of the root aft by half the chord times (1 − cos δ), where δ is the cant: 38 µm for a

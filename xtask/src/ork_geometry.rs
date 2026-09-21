@@ -97,7 +97,7 @@ impl DesignCheck {
         };
         let verdict = if same(ours, theirs) {
             Verdict::Agree
-        } else if openrocket.is_some_and(|or| same(ours, or) && !same(theirs, or)) {
+        } else if openrocket.is_some_and(|or| same(ours, or)) {
             Verdict::RocketSerializerApart
         } else {
             Verdict::HprApart
@@ -247,6 +247,15 @@ pub(crate) fn compare(record: &Value, rocket: &Rocket, layout: &Layout) -> Desig
         );
     }
 
+    // RocketSerializer's walk of the tree failed, and every extractor after it with it.
+    if let Some(error) = record["elements"]["error"].as_str() {
+        check
+            .extractor_errors
+            .push(format!("process_elements_position: {error}"));
+    }
+    // hpr's ids already matched, so that a file writing one id twice (which hpr renames the
+    // second time, `id-2`) cannot give two rows one component.
+    let mut used: std::collections::BTreeSet<&str> = std::collections::BTreeSet::new();
     for (key, tag) in [
         ("nose", "nosecone"),
         ("transitions", "transition"),
@@ -269,7 +278,16 @@ pub(crate) fn compare(record: &Value, rocket: &Rocket, layout: &Layout) -> Desig
             // RocketSerializer's nose can be a `<transition>` named "Nosecone".
             let tag = row["tag"].as_str().unwrap_or(tag);
             let found = match row["id"].as_str() {
-                Some(id) => ours.iter().find(|(t, i, _)| *t == tag && *i == id),
+                // The file's id, or the name hpr gave a second component carrying it.
+                Some(id) => ours.iter().find(|(t, i, n)| {
+                    *t == tag
+                        && *n == name
+                        && !used.contains(i)
+                        && (*i == id
+                            || i.strip_prefix(id)
+                                .and_then(|rest| rest.strip_prefix('-'))
+                                .is_some_and(|k| k.parse::<usize>().is_ok()))
+                }),
                 None => {
                     let seen = occurrences.entry(name).or_default();
                     *seen += 1;
@@ -278,6 +296,9 @@ pub(crate) fn compare(record: &Value, rocket: &Rocket, layout: &Layout) -> Desig
                         .nth(*seen - 1)
                 }
             };
+            if let Some((_, id, _)) = found {
+                used.insert(id);
+            }
             let Some((_, placed)) = found.and_then(|(_, id, _)| layout.find(id)) else {
                 check.unmatched.push(format!("{tag} `{name}`"));
                 continue;
@@ -497,7 +518,11 @@ fn quantities(
     ) {
         check.canted[0] += 1;
         let shift = canted_shift(root, cant);
-        if (turned - station - shift).abs() <= 1e-9 * shift.abs() {
+        // Relative to the shift, and never finer than a few units in the last place of the
+        // station itself, which a small cant's shift can be below.
+        if (turned - station - shift).abs()
+            <= 1e-9 * shift.abs() + 8.0 * f64::EPSILON * turned.abs()
+        {
             check.canted[1] += 1;
         }
     }
@@ -550,8 +575,12 @@ pub(crate) struct GeometryTally {
     distinct_total: [usize; 3],
     /// Nose profiles compared with OpenRocket's radii, and how many are hpr's.
     profiles: [usize; 2],
-    /// Designs in the record that hpr reads but does not lay out, so has no geometry to compare.
-    not_laid_out: Vec<String>,
+    /// Numbers of hpr's that are not OpenRocket's, whatever RocketSerializer says, and designs
+    /// whose nose OpenRocket draws otherwise: each fails the survey.
+    not_openrocket: Vec<String>,
+    /// Designs in the record that hpr reads but does not lay out, so has no geometry to compare,
+    /// with whether OpenRocket opens them: one it opens is a design hpr failed to import.
+    not_laid_out: Vec<(String, bool)>,
     stale: Vec<String>,
     by_quantity: BTreeMap<String, [usize; 3]>,
     causes: BTreeMap<String, usize>,
@@ -596,9 +625,9 @@ impl GeometryTally {
     /// Notes a design the survey read but could not lay out: not compared, and not missing.
     pub(crate) fn not_laid_out(&mut self, name: &str) {
         if let Some((_, designs)) = &mut self.record
-            && designs.remove(&key(name)).is_some()
+            && let Some(design) = designs.remove(&key(name))
         {
-            self.not_laid_out.push(key(name));
+            self.not_laid_out.push((key(name), design["opens"] == true));
         }
     }
 
@@ -637,9 +666,23 @@ impl GeometryTally {
         let first_copy = self.distinct.insert(digest);
         self.profiles[0] += check.profiles[0];
         self.profiles[1] += check.profiles[1];
+        if check.profiles[1] != check.profiles[0] {
+            self.not_openrocket.push(format!(
+                "{}: a nose OpenRocket draws otherwise than hpr",
+                key(name)
+            ));
+        }
         for compared in &check.compared {
             if first_copy {
                 self.distinct_total[compared.verdict as usize] += 1;
+            }
+            if compared.openrocket_same == Some(false) {
+                self.not_openrocket.push(format!(
+                    "{} {}: {}",
+                    key(name),
+                    compared.quantity,
+                    compared.detail
+                ));
             }
             if let Some(same) = compared.openrocket_same {
                 self.openrocket_same[0] += 1;
@@ -796,6 +839,18 @@ impl GeometryTally {
     pub(crate) fn failure(&self) -> Option<String> {
         let (_, left) = self.record.as_ref()?;
         let mut problems = self.stale.clone();
+        problems.extend(self.not_openrocket.iter().map(|entry| {
+            format!("hpr is not OpenRocket's here, whatever RocketSerializer says: {entry}")
+        }));
+        problems.extend(self.extractor_errors.keys().map(|error| {
+            format!("a RocketSerializer extractor raised, so its parts went uncompared: {error}")
+        }));
+        problems.extend(
+            self.not_laid_out
+                .iter()
+                .filter(|(_, opens)| *opens)
+                .map(|(file, _)| format!("{file} opens in OpenRocket but does not lay out in hpr")),
+        );
         problems.extend(
             self.missing.iter().map(|file| {
                 format!("{file} lays out but is not in {LIBRARY}: run geometry.py again")
@@ -888,8 +943,8 @@ mod tests {
 
     /// One design: a 0.3 m nose cone written as an ogive of parameter 0, on a tube with one
     /// trapezoidal fin set, and a record of RocketSerializer and OpenRocket for it.
-    fn one_design(profile_radii_m: [f64; 3]) -> (Rocket, Layout, Value) {
-        let xml = br#"<openrocket version="1.10" creator="test"><rocket><name>R</name>
+    fn one_design_xml() -> &'static [u8] {
+        br#"<openrocket version="1.10" creator="test"><rocket><name>R</name>
             <subcomponents><stage><name>S</name><subcomponents>
             <nosecone><name>N</name><id>n</id><length>0.3</length><shape>ogive</shape>
             <shapeparameter>0</shapeparameter><aftradius>0.04</aftradius><thickness>0.002</thickness>
@@ -900,10 +955,11 @@ mod tests {
             <position type="bottom">0.0</position><rootchord>0.1</rootchord><tipchord>0.05</tipchord>
             <sweeplength>0.05</sweeplength><height>0.06</height><thickness>0.003</thickness>
             </trapezoidfinset></subcomponents></bodytube>
-            </subcomponents></stage></subcomponents></rocket></openrocket>"#;
-        let read = ork::read(xml).unwrap();
-        let spine = ork::rocket(&read.value.document);
-        let layout = spine.value.layout().unwrap();
+            </subcomponents></stage></subcomponents></rocket></openrocket>"#
+    }
+
+    fn one_design(profile_radii_m: [f64; 3]) -> (Rocket, Layout, Value) {
+        let (rocket, layout) = laid_out(one_design_xml());
         let record = json!({
             "opens": true,
             "rocket_radius": { "value": 0.04 },
@@ -934,7 +990,7 @@ mod tests {
                 },
             }]},
         });
-        (spine.value, layout, record)
+        (rocket, layout, record)
     }
 
     fn verdict(check: &DesignCheck, quantity: &str) -> Option<Verdict> {
@@ -943,6 +999,202 @@ mod tests {
             .iter()
             .find(|compared| compared.quantity == quantity)
             .map(|compared| compared.verdict)
+    }
+
+    /// A rocket laid out from a design document.
+    fn laid_out(xml: &[u8]) -> (Rocket, Layout) {
+        let read = ork::read(xml).unwrap();
+        let spine = ork::rocket(&read.value.document);
+        let layout = spine.value.layout().unwrap();
+        (spine.value, layout)
+    }
+
+    /// A fin set's row: RocketSerializer and OpenRocket agreeing on a 0.1 m root at `station`.
+    fn fin_row(id: Option<&str>, name: &str, station: f64) -> Value {
+        json!({
+            "id": id, "name": name, "in_kept_part": false, "tag": "trapezoidfinset",
+            "rocketserializer": {
+                "number": 3, "root_chord": 0.1, "tip_chord": 0.05, "span": 0.06,
+                "sweep_length": 0.05, "cant_angle": 0.0, "position": station,
+            },
+            "openrocket": {
+                "station_m": station, "length_m": 0.1, "earlier_siblings_m": 0.0, "count": 3,
+                "root_chord_m": 0.1, "tip_chord_m": 0.05, "span_m": 0.06, "sweep_m": 0.05,
+                "cant_rad": 0.0,
+            },
+        })
+    }
+
+    /// Two tubes, each carrying a fin set named `F` at its aft end, with the ids given.
+    fn two_fin_sets(ids: [&str; 2]) -> Vec<u8> {
+        let fins = |id: &str| {
+            format!(
+                "<trapezoidfinset><name>F</name>{id}<fincount>3</fincount>\
+                 <position type=\"bottom\">0.0</position><rootchord>0.1</rootchord>\
+                 <tipchord>0.05</tipchord><sweeplength>0.05</sweeplength><height>0.06</height>\
+                 <thickness>0.003</thickness></trapezoidfinset>"
+            )
+        };
+        let tube = |name: &str, fins: String| {
+            format!(
+                "<bodytube><name>{name}</name><length>0.5</length><thickness>0.002</thickness>\
+                 <radius>0.04</radius><subcomponents>{fins}</subcomponents></bodytube>"
+            )
+        };
+        format!(
+            "<openrocket version=\"1.10\" creator=\"test\"><rocket><name>R</name><subcomponents>\
+             <stage><name>S</name><subcomponents>\
+             <nosecone><name>N</name><length>0.3</length><shape>conical</shape>\
+             <aftradius>0.04</aftradius><thickness>0.002</thickness></nosecone>{}{}\
+             </subcomponents></stage></subcomponents></rocket></openrocket>",
+            tube("A", fins(ids[0])),
+            tube("B", fins(ids[1]))
+        )
+        .into_bytes()
+    }
+
+    fn fins_record(rows: Vec<Value>) -> Value {
+        json!({
+            "opens": true,
+            "rocket_radius": { "value": 0.0 },
+            "nose": { "value": [] },
+            "transitions": { "value": [] },
+            "elliptical_fins": { "value": [] },
+            "trapezoidal_fins": { "value": rows },
+        })
+    }
+
+    fn stations(check: &DesignCheck) -> Vec<(Verdict, f64)> {
+        check
+            .compared
+            .iter()
+            .filter(|compared| compared.quantity == "trapezoidfinset station_m")
+            // To the nanometre: a station is a sum of lengths.
+            .map(|compared| {
+                let station = compared.detail["hpr"].as_f64().unwrap();
+                (compared.verdict, (station * 1e9).round() / 1e9)
+            })
+            .collect()
+    }
+
+    /// Two fin sets of one name, in an older file that writes no ids, are matched in order: each
+    /// row to its own tube's fins, at 0.7 m and 1.2 m, not both to the first.
+    #[test]
+    fn same_named_parts_without_ids_are_matched_in_order() {
+        let (rocket, layout) = laid_out(&two_fin_sets(["", ""]));
+        let record = fins_record(vec![fin_row(None, "F", 0.7), fin_row(None, "F", 1.2)]);
+        let check = compare(&record, &rocket, &layout);
+        assert!(check.unmatched.is_empty(), "{:?}", check.unmatched);
+        assert_eq!(
+            stations(&check),
+            [(Verdict::Agree, 0.7), (Verdict::Agree, 1.2)]
+        );
+    }
+
+    /// A file that writes one id twice: hpr calls the second part `f-2`, and each row still finds
+    /// its own part rather than both finding the first.
+    #[test]
+    fn an_id_written_twice_still_finds_each_part() {
+        let (rocket, layout) = laid_out(&two_fin_sets(["<id>f</id>", "<id>f</id>"]));
+        let record = fins_record(vec![
+            fin_row(Some("f"), "F", 0.7),
+            fin_row(Some("f"), "F", 1.2),
+        ]);
+        let check = compare(&record, &rocket, &layout);
+        assert!(check.unmatched.is_empty(), "{:?}", check.unmatched);
+        assert_eq!(
+            stations(&check),
+            [(Verdict::Agree, 0.7), (Verdict::Agree, 1.2)]
+        );
+    }
+
+    /// With no `<nosecone>`, RocketSerializer takes the `<transition>` named "Nosecone" for the
+    /// nose; hpr reads it as a transition, and it is compared as the nose it is reported as.
+    #[test]
+    fn a_transition_named_nosecone_is_compared_as_the_nose() {
+        let xml = br#"<openrocket version="1.10" creator="test"><rocket><name>R</name>
+            <subcomponents><stage><name>S</name><subcomponents>
+            <transition><name>Nosecone</name><length>0.3</length><shape>conical</shape>
+            <foreradius>0.0</foreradius><aftradius>0.04</aftradius><thickness>0.002</thickness>
+            </transition>
+            <bodytube><name>T</name><length>0.6</length><thickness>0.002</thickness>
+            <radius>0.04</radius></bodytube>
+            </subcomponents></stage></subcomponents></rocket></openrocket>"#;
+        let (rocket, layout) = laid_out(xml);
+        let record = json!({
+            "opens": true,
+            "rocket_radius": { "value": 0.04 },
+            "openrocket_largest_radius_m": 0.04,
+            "nose": { "value": [{
+                "id": null, "name": "Nosecone", "in_kept_part": false, "tag": "transition",
+                "rocketserializer": {
+                    "kind": "conical", "length": 0.3, "base_radius": 0.04, "position": 0.0,
+                },
+                "openrocket": {
+                    "station_m": 0.0, "length_m": 0.3, "earlier_siblings_m": 0.0,
+                    "base_radius_m": 0.04, "shape": "CONICAL", "shape_parameter": 0.0,
+                    "profile_radii_m": [0.01, 0.02, 0.03],
+                },
+            }]},
+            "transitions": { "value": [] },
+            "elliptical_fins": { "value": [] },
+            "trapezoidal_fins": { "value": [] },
+        });
+        let check = compare(&record, &rocket, &layout);
+        assert!(check.unmatched.is_empty(), "{:?}", check.unmatched);
+        assert_eq!(check.profiles, [1, 1]);
+        let nose: Vec<_> = check
+            .compared
+            .iter()
+            .filter(|compared| compared.quantity.starts_with("nosecone"))
+            .map(|compared| (compared.quantity.as_str(), compared.verdict))
+            .collect();
+        assert_eq!(
+            nose,
+            [
+                ("nosecone kind", Verdict::Agree),
+                ("nosecone length_m", Verdict::Agree),
+                ("nosecone base_radius_m", Verdict::Agree),
+                ("nosecone station_m", Verdict::Agree),
+            ]
+        );
+    }
+
+    /// A number hpr and RocketSerializer share, and OpenRocket does not (as a cant OpenRocket
+    /// clamps to 15° would be), agrees with RocketSerializer but fails the survey all the same;
+    /// so does a design whose nose OpenRocket draws otherwise.
+    #[test]
+    fn a_number_openrocket_does_not_share_fails() {
+        let (_, _, mut record) = one_design([0.01, 0.02, 0.03]);
+        record["trapezoidal_fins"]["value"][0]["openrocket"]["cant_rad"] = json!(0.1);
+        let xml = one_design_xml();
+        let digest: String = Sha256::digest(xml)
+            .iter()
+            .map(|b| format!("{b:02x}"))
+            .collect();
+        record["sha256"] = json!(digest);
+        record["file"] = json!("one.ork");
+        let (rocket, layout) = laid_out(xml);
+        let tally_of = |record: &Value| {
+            let mut tally = GeometryTally {
+                record: Some((
+                    "RocketSerializer".to_owned(),
+                    designs(&json!({ "designs": [record] })),
+                )),
+                ..GeometryTally::default()
+            };
+            tally.add("one.ork", xml, &rocket, &layout);
+            tally
+        };
+        let tally = tally_of(&record);
+        assert_eq!(tally.by_quantity["trapezoidfinset cant_rad"], [1, 0, 0]);
+        let failure = tally.failure().unwrap();
+        assert!(failure.contains("trapezoidfinset cant_rad"), "{failure}");
+
+        record["trapezoidal_fins"]["value"][0]["openrocket"]["cant_rad"] = json!(0.0);
+        record["nose"]["value"][0]["openrocket"]["profile_radii_m"] = json!([0.0175, 0.03, 0.0375]);
+        let failure = tally_of(&record).failure().unwrap();
+        assert!(failure.contains("draws otherwise"), "{failure}");
     }
 
     /// OpenRocket's turned station for a 0.495 m root at 1° of cant, from the jar's

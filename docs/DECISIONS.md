@@ -5076,15 +5076,21 @@ by name, so a two-way comparison could never agree everywhere without hpr copyin
 
 1. **Three readers, not two.** `validation/oracles/rocketserializer/geometry.py` calls
    RocketSerializer's extractors one by one, as its `ork_extractor` does:
-   `process_elements_position`, `get_rocket_radius`, `search_nosecone`, `search_trapezoidal_fins`, `search_elliptical_fins` and
-   `search_transitions`. For each component it reports, the script also asks OpenRocket 24.12,
-   loaded on the same file, for the same numbers. `cargo xtask ork` holds each of hpr's numbers to
-   RocketSerializer's, to 1 part in 10⁹. Where they differ, OpenRocket settles it:
-   - When OpenRocket's number is hpr's and not RocketSerializer's, RocketSerializer is apart.
+   `process_elements_position`, `get_rocket_radius`, `search_nosecone`,
+   `search_trapezoidal_fins`, `search_elliptical_fins` and `search_transitions`. For each
+   component it reports, the script also asks OpenRocket 24.12, loaded on the same file and
+   settled by a throwaway save (ADR-054), for the same numbers. `cargo xtask ork` holds each of
+   hpr's numbers to RocketSerializer's, to 1 part in 10⁹. Where they differ, OpenRocket settles it:
+   - When OpenRocket's number is hpr's, RocketSerializer is apart.
    - Otherwise hpr is apart, and the survey fails.
 
+   And whatever RocketSerializer says, the survey fails when one of hpr's numbers is not
+   OpenRocket's, or when OpenRocket draws a nose otherwise than hpr. Without that, a mistake hpr
+   and RocketSerializer share (a cant OpenRocket clamps at 15°, #148) would pass as agreement.
+
    **This is what "agrees on the key geometry" is taken to mean.** Every number RocketSerializer
-   reads as OpenRocket does, hpr reads the same, and no number of hpr's is apart from both.
+   reads as OpenRocket does, hpr reads the same; no number of hpr's is apart from both; and every
+   number of hpr's is OpenRocket's.
 2. **The key geometry** is what RocketSerializer reports about the airframe's shape:
    - the nose cone's shape, length and base radius, and a Haack series's parameter;
    - each transition's length and end radii;
@@ -5120,9 +5126,11 @@ by name, so a two-way comparison could never agree everywhere without hpr copyin
    RocketSerializer's own 23 example designs are not added to the reference library here. Adding
    them moves every count the `.ork` page quotes, and brings findings of their own, so that is
    #147.
-7. **Import errors are counted per source.** An import error is a file that does not read, or a
-   design that reads but does not lay out. Warnings do not count, since they never stop an import.
-   `cargo xtask ork` prints the count for each source.
+7. **Import errors are counted per source, and held.** An import error is a file that does not
+   read, or a design that reads but does not lay out. Warnings do not count, since they never stop
+   an import. `cargo xtask ork` prints the count for each source, and fails if `loft-fixtures` or
+   the jar's examples has any, or if a design OpenRocket opens does not lay out in hpr. It also
+   fails when a RocketSerializer extractor raises, since its parts would go uncompared.
 
 **Consequences.** On 2026-09-21:
 - **Imports.** `loft-fixtures` imports 27 of 27 files and the jar's examples 17 of 17, each with 0
