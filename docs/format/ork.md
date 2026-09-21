@@ -19,12 +19,12 @@ OpenRocket last ran on it. That is from Rust; there is no command-line tool yet.
   that reads `.ork` files, RocketSerializer, and with OpenRocket itself. That geometry is the nose
   cone, the transitions, the fin sets, where each sits, and the body radius. Over 74 designs (all
   but one of the 75 hpr lays out; OpenRocket 24.12 will not open the 75th), hpr's value equals
-  OpenRocket's for all 1,212 numbers. Where parts sit is checked against OpenRocket alone, and mass
-  and the centre of gravity are not checked yet
+  OpenRocket's for all 1,212 numbers. Where parts sit is checked against OpenRocket alone; mass
+  and the centre of gravity are checked in [Mass properties](../physics/mass.md#checked-against-openrocket)
   ([checked against RocketSerializer](#checked-against-rocketserializer)).
 - **Few motor configurations fly yet.** Motors are read, but a configuration flies only when every
   motor in it lights at launch, every motor has a thrust curve (in the file or in hpr's small
-  bundled catalog), and the airframe was read without a warning. That is **1 of the 174 motor
+  bundled catalog), and the airframe was read without a warning. That is **2 of the 174 motor
   configurations** in the reference library's 75 designs
   ([motors](#motors-and-their-configurations)).
 - **Recovery is read, not flown.** Recovery and separation settings are read, but no flight uses
@@ -251,11 +251,11 @@ departs from [F] but leaves the file readable is a warning that travels with the
 |---|---|---|
 | `Skipped` | a whole part was left out | a **component** this reader cannot give an honest shape ([below](#what-is-left-out-and-why)); an **attachment** entry that could not be decompressed, or one that would pass the unpacking limit; a damaged *design* entry is an error, not a warning |
 | `Dropped` | a value was ignored | a comment or processing instruction; an XML namespace; a tag whose text is not the number, count or flag it should be; two names for one value that disagree; a dimension the file does not give, read as zero; a fin's fillets or a rail button's screw head, whose mass hpr does not model |
-| `Unusual` | read as it stands | a schema version past 1.11; no `creator` attribute; a design entry not called `rocket.ork`; the single pre-1.9 subcomponent-override flag; a tube of no wall; a surface finish or an axial-offset method this reader has no rule for; an automatic radius with nothing to take, given OpenRocket's 25 mm default; a `<rocket>` holding nothing |
+| `Unusual` | read as it stands | a schema version past 1.11; no `creator` attribute; a design entry not called `rocket.ork`; the single pre-1.9 subcomponent-override flag; a surface finish or an axial-offset method this reader has no rule for; an automatic radius with nothing to take, given OpenRocket's 25 mm default; a `<rocket>` holding nothing |
 
 **Observed:** reading the corpus's containers and documents raises **no warnings at all** — every
-file that opens is ordinary. Building a *rocket* from those documents raises 96: 29 dropped, 12
-skipped and 55 unusual, over 76 files. Every kind of warning the container and document readers
+file that opens is ordinary. Building a *rocket* from those documents raises 57: 16 dropped, 12
+skipped and 29 unusual, over 76 files. Every kind of warning the container and document readers
 can raise is therefore exercised by a test rather than by a file anyone shipped.
 
 Only these stop a read:
@@ -573,16 +573,16 @@ are Niskanen's appendix A, equations A.3 and A.7 to A.9.
 <a id="not-settled"></a>
 
 **Readings this page is not sure of**, every one of them for the OpenRocket oracle
-([M2.2](../decisions-and-roadmap.md#m2-2)) to settle. The first two are the spine's; the rest come
-from the parts:
+([M2.2](../decisions-and-roadmap.md#m2-2)) to settle. The first is the spine's; the rest come from
+the parts. Two readings this table held are settled: a shoulder, and a tube, of zero wall thickness
+weigh nothing, as in OpenRocket 24.12, measured in [M2.2b1](../decisions-and-roadmap.md#m2-2b1)
+([ADR-061][adr-061]).
 
 | what the file says | how it is read | why it is in doubt |
 | --- | --- | --- |
-| a shoulder of zero wall thickness | solid | a wall of nothing has no mass and no geometry; 12 designs in the reference corpus have one |
 | no `shapeclipped` on a transition | clipped | it is the shape that reaches both radii; only 1 of the 21 transitions in the corpus states it |
 | an angle, **which way it turns** | the same way hpr's own frames turn | hpr measures a roll angle right-handed about an axis pointing at the **nose**; OpenRocket's technical documentation puts its own `x` axis along the centreline pointing **aft** and leaves the rest unstated. If it means what that implies, every angle read here is mirrored — see [below](#which-way-round) |
 | a `polished` finish | 2 µm | the number is the author's, from 2013; a newer OpenRocket may have moved it ([below](#the-surface-finish)) |
-| a tube of zero wall thickness | no mass | OpenRocket's own geometry says a tube's bore is its outer radius less its wall, so this follows — but the spine reads the same zero on a *body component* as solid, and only the oracle can say whether OpenRocket agrees with either |
 
 **Measured on the reference library** (`cargo xtask ork`, 76 readable files): 73 designs' spines lay
 out, over 93 stages and 285 body components — 188 body tubes, 74 nose cones, 23 transitions — with
@@ -794,12 +794,15 @@ missing from a mass is visible: a fin's **fillets** (5), a rail button's **screw
 **cluster** of motor tubes read as the one tube it is written as (4), and a **row** of more than one
 ring read as one.
 
-**A tube of no wall thickness carries no mass** — 12 elements, among them two of OpenRocket's own
-example designs. That is the opposite of the rule the spine gives a body component and a shoulder,
-and deliberately: a body component can be written `<thickness>filled</thickness>`, so a zero there
-is ambiguous, while an inner tube has no such spelling and OpenRocket's own geometry makes a tube's bore its outer
-radius less its wall. Reading those as solid would invent the mass instead — a solid coupler
-filling a 50 mm airframe for 180 mm is a few hundred grams the design never had.
+**A tube of no wall thickness carries no mass** — among them couplers in two of OpenRocket's own
+example designs. Reading those as solid would invent the mass — a solid coupler filling a 50 mm
+airframe for 180 mm is a few hundred grams the design never had. Since
+[M2.2b1](../decisions-and-roadmap.md#m2-2b1) it is the rule for every part, and it is not warned
+of: OpenRocket 24.12 gives an inner tube, coupler, lug, nose cone, transition, body tube or shoulder
+of no wall no mass either, measured on probe designs ([ADR-061][adr-061]), and a solid body
+component is written `<thickness>filled</thickness>`. An inner tube, coupler or lug that writes no
+thickness at all is still read as no wall, with a warning; OpenRocket gives it a wall of its own,
+and no file in the library has one ([Mass properties](../physics/mass.md#what-a-ork-leaves-unsaid-and-overrides)).
 
 ### Checked against the answers OpenRocket cached
 
@@ -981,31 +984,30 @@ How it was decided, and the sources quoted in full, are in [ADR-054][adr-054].
 | by kind | 194 centering rings, 156 inner tubes, 135 parachutes, 107 fin sets, 84 mass components, 40 shock cords, 31 launch lugs, 16 rail buttons, 2 streamers |
 | automatic dimensions marked for the layout to resolve | 320, plus the 7 above given the default: 327 in the files |
 | parts left out, with a reason | 5 |
-| parts that lay out weighing nothing | 21, every one explained (below) |
-| warnings raised | 96: 29 dropped, 12 skipped, 55 unusual (below) |
+| parts that lay out weighing nothing | 14, every one explained (below) |
+| warnings raised | 57: 16 dropped, 12 skipped, 29 unusual (below) |
 | tags no milestone reads yet | 9 `podset`, 3 `parallelstage` |
 
-**The 21 parts that weigh nothing** are worth checking, because a structural part with no mass is
+**The 14 parts that weigh nothing** are worth checking, because a structural part with no mass is
 silent by nature — the design lays out, the report is written, and the mass is simply missing. All
-21 are accounted for: 6 parts in one hand-written fixture that gives no material at all, 9 inner
-tubes and 4 launch lugs whose wall the file states as zero (above), 1 mass object the file says
-weighs 0 kg, and 1 transition the design *overrides* to zero mass — which is
-OpenRocket's ["base drag hack"](https://openrocket.readthedocs.io/en/latest/), a massless, dragless
-transition added only to change the base geometry. `cargo xtask ork` counts them by kind, so a new
-one would show up.
+14 are accounted for: 7 inner tubes (couplers among them) and 4 launch lugs whose wall the file
+states as zero, which OpenRocket gives no mass too ([ADR-061][adr-061]); 1 mass object the file
+says weighs 0 kg; and 2 transitions the designs *override* to zero mass —
+which is OpenRocket's ["base drag hack"](https://openrocket.readthedocs.io/en/latest/), a massless,
+dragless transition added only to change the base geometry. `cargo xtask ork` counts them by kind,
+so a new one would show up. Before
+[M2.2b1](../decisions-and-roadmap.md#m2-2b1) there were 21: the 7 more (2 body tubes, 2 fin sets,
+2 inner tubes and a nose cone) name no material, and now take OpenRocket's default.
 
-**What the 96 warnings are.** Every one is a reading this page explains, and none of them means a
+**What the 57 warnings are.** Every one is a reading this page explains, and none of them means a
 file is broken:
 
 | kind | count | what raised it |
 |---|---|---|
 | `Unusual` | 20 | the single pre-1.9 subcomponent-override flag, read as setting all three |
-| `Unusual` | 13 | a shoulder of no wall thickness, read as solid |
-| `Unusual` | 12 | a tube of no wall thickness, carrying no mass |
-| `Unusual` | 2 | a body component with no wall thickness at all, and a part with no axial offset |
+| `Unusual` | 1 | a part with no axial offset |
 | `Unusual` | 7 | an automatic radius with nothing along its chain to take, given OpenRocket's default ([above](#when-an-automatic-radius-has-nothing-to-take)) |
 | `Unusual` | 1 | a `<rocket>` holding nothing, so the document holds no design |
-| `Dropped` | 13 | a part with no material, so it weighs nothing |
 | `Dropped` | 11 | a fin's fillets, a rail button's screw head, a motor cluster read as one tube |
 | `Dropped` | 5 | a `packedradius` the file does not give, read as zero |
 | `Skipped` | 7 | a tally of the pods and parallel stages, kept in `x-openrocket` and modelled in [M1.13](../decisions-and-roadmap.md#m1-13), one per design that has any |
@@ -1043,7 +1045,7 @@ a radius the file doesn't give are
 its ejection delay, and finds its thrust curve in the file itself or in hpr's bundled catalog. A
 configuration becomes one the rocket can fly only when every motor in it has a curve and lights at
 launch. Most designs in the reference library name motors the bundled catalog doesn't hold yet, so
-**1 of their 174 configurations flies today**; the rest are read, kept, and say why not.
+**2 of their 174 configurations fly today**; the rest are read, kept, and say why not.
 
 A **configuration** is one set of motors to fly the design with: OpenRocket calls it a *flight
 configuration*, and a design can have several, one per motor choice. The file keeps it in two
@@ -1133,10 +1135,10 @@ all of these hold. Otherwise flying it would be wrong, for example lighting a su
 - The rocket and its motor mounts were read without a single warning: nothing left out (a pod, a
   parallel stage, a part hpr could not shape), nothing dropped or simplified (a cluster of tubes
   read as one, a flipped nose cone read pointing forward, a material that could not be read), and
-  nothing assumed (a shoulder of no wall read as solid, a shape hpr does not know read as a cone).
+  nothing assumed (a shape hpr does not know read as a cone).
   Otherwise hpr might fly a different rocket from the design, so no configuration of it is flown.
-  One design in the library is held back only by this: its shoulders have no wall, which
-  [M2.2](../decisions-and-roadmap.md#m2-2)'s oracle is to settle.
+  One design in the library was held back only by its shoulders of no wall; since
+  [M2.2b1](../decisions-and-roadmap.md#m2-2b1) reads them as OpenRocket does, it flies.
 - No mount holds two motors for the configuration. Which one OpenRocket would fly is not known, so
   neither flies.
 - The rocket has one stage. OpenRocket drops a booster when it separates; hpr would carry it to the
@@ -1182,8 +1184,8 @@ assert_eq!(assembly.motors[0].mount, "body");
 | thrust curve from the bundled catalog | 2 |
 | no curve | 200: 3 hybrids, and 197 in neither place |
 | ejection delays, of the 206 | 128 in seconds, 23 at 0 s, 53 plugged (`none`), 2 not written |
-| configurations the rocket flies | 1, and it assembles |
-| left out, by first reason | 166 a motor with no curve, 4 a motor in a part not read, 2 a motor lighting in flight, 1 an airframe not read exactly as written |
+| configurations the rocket flies | 2, in 2 designs, and both assemble |
+| left out, by first reason | 166 a motor with no curve, 4 a motor in a part not read, 2 a motor lighting in flight; the one held back for an airframe not read exactly as written, a shoulder of no wall, flies since [M2.2b1](../decisions-and-roadmap.md#m2-2b1) |
 
 The catalog is the limit, not the reader. When
 [M5.1](../decisions-and-roadmap.md#m5-1) brings ThrustCurve.org's curves, many of the 197 may find
@@ -1445,3 +1447,5 @@ say so and carry the part's own XML along untouched in `x-openrocket`, rather th
 silently the way Loft did with pods and parallel stages. The document itself is kept whole too, so
 a writer ([M3.2](../decisions-and-roadmap.md#m3-2)) will have what it needs; what it chooses to do
 with a part hpr does not understand is its decision, taken in the open.
+
+[adr-061]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-061-what-a-ork-leaves-unsaid-read-as-openrocket-reads-it-overrides-measured-two-departures-kept-2026-09-21

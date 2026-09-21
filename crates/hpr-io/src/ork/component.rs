@@ -508,33 +508,46 @@ pub(super) fn stated_radius(
 /// radius was automatic, which is half of [Loft lesson L61][lessons] — a stated wall dropped
 /// because the outer radius was `auto`.
 ///
+/// Two readings are OpenRocket 24.12's, measured on probe designs by
+/// `validation/oracles/openrocket/conventions.py` ([ADR-061][adr-061]):
+///
+/// - a wall of no thickness is a surface with no wall: the part keeps its shape and weighs
+///   nothing, where a filled part is written `filled`;
+/// - a part that writes no thickness at all has OpenRocket's 2 mm wall
+///   ([`DEFAULT_WALL_M`]), whatever its radius.
+///
 /// [lessons]: https://github.com/nrdptel/hpr-sim/blob/main/docs/research/loft-lessons.md
+/// [adr-061]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-061-what-a-ork-leaves-unsaid-read-as-openrocket-reads-it-overrides-measured-two-departures-kept-2026-09-21
 fn wall(values: &mut Values<'_>, outer_radius_m: Option<f64>) -> Wall {
     if values.word(&["thickness"]).as_deref() == Some("filled") {
         return Wall::Filled {};
     }
     match (values.number(&["thickness"]), outer_radius_m) {
         (Some(thickness_m), Some(radius_m)) if thickness_m >= radius_m => Wall::Filled {},
+        // OpenRocket's 2 mm, in a part no wider than it, is taken to fill the part, as a stated wall
+        // that thick does: an assumption, since no probe is that narrow and no file writes one.
+        (None, Some(radius_m)) if DEFAULT_WALL_M >= radius_m => Wall::Filled {},
         (Some(thickness_m), _) if thickness_m > 0.0 => Wall::Shell { thickness_m },
-        // A wall of nothing has neither mass nor geometry, and `hpr-design` refuses it. Read as
-        // solid, the part carries the mass a solid one has. The same rule a shoulder gets below,
-        // and said out loud for the same reason.
-        (Some(_), _) => {
+        (Some(0.0), _) => Wall::Shell { thickness_m: 0.0 },
+        (Some(thickness_m), _) => {
             values.warn_at(
-                WarningKind::Unusual,
-                "a wall of no thickness; it was read as solid",
+                WarningKind::Dropped,
+                format!("a wall {thickness_m} m thick is no wall; it was read as none"),
             );
-            Wall::Filled {}
+            Wall::Shell { thickness_m: 0.0 }
         }
-        (None, _) => {
-            values.warn_at(
-                WarningKind::Unusual,
-                "no wall thickness at all; it was read as solid",
-            );
-            Wall::Filled {}
-        }
+        (None, _) => Wall::Shell {
+            thickness_m: DEFAULT_WALL_M,
+        },
     }
 }
+
+/// The wall OpenRocket 24.12 gives a nose cone, transition or body tube that writes no thickness,
+/// m: a nose cone and a tube at 50 mm and at 30 mm, and a transition, each weigh what a 2 mm wall
+/// gives ([ADR-061][adr-061]).
+///
+/// [adr-061]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-061-what-a-ork-leaves-unsaid-read-as-openrocket-reads-it-overrides-measured-two-departures-kept-2026-09-21
+const DEFAULT_WALL_M: f64 = 0.002;
 
 /// A shoulder at one end, if the file gives it a length. A zero-length shoulder is no shoulder.
 fn shoulder(
@@ -549,45 +562,34 @@ fn shoulder(
     }
     let (known_m, outer_radius_m) =
         stated_radius(values, &[&format!("{end}shoulderradius")], dimension, auto);
-    let stated_m = values
-        .number(&[&format!("{end}shoulderthickness")])
-        .unwrap_or_default();
-    // A shoulder with no wall at all is not a shoulder: OpenRocket offers a shoulder the same
-    // "filled" choice it offers a nose cone, and writes a filled one as a zero thickness. Read as
-    // a wall it would be weightless, and `hpr-design` refuses it outright (12 designs in the
-    // reference corpus). Read as solid it carries the mass a solid shoulder has. Which of the two
-    // OpenRocket means is for the M2.2 oracle to settle, so it is said out loud.
+    // A shoulder with no wall, or none written, weighs nothing in OpenRocket 24.12, capped or not
+    // and whether or not the part it hangs from is filled: measured on probe designs (ADR-061).
+    // So it is read as a tube of no wall, which weighs nothing.
     // The stated wall is clamped to the radius it sits in, and only when that radius is known:
     // clamping against an automatic one that has not resolved yet would throw the wall away, which
     // is half of Loft lesson L61 and what issue #130 found still open on a shoulder.
-    let thickness_m = if stated_m > 0.0 {
-        known_m.map_or(stated_m, |radius_m| stated_m.min(radius_m))
-    } else if let Some(radius_m) = known_m {
-        values.warn_at(
-            WarningKind::Unusual,
-            format!("the {end} shoulder has no wall thickness; it was read as solid"),
-        );
-        radius_m
-    } else {
-        // "Solid" is a wall as thick as the radius, and the radius is not known until the layout
-        // resolves it — so there is no number here that means solid. Saying "read as solid" and
-        // handing on a zero would be a shoulder of no mass wearing the wrong label.
-        values.warn_at(
-            WarningKind::Skipped,
-            format!(
-                "the {end} shoulder has no wall thickness and an automatic radius, so there is no \
-                 number yet that means solid; it carries no mass"
-            ),
-        );
-        0.0
+    let thickness_m = match values.number(&[&format!("{end}shoulderthickness")]) {
+        Some(stated_m) if stated_m > 0.0 => {
+            known_m.map_or(stated_m, |radius_m| stated_m.min(radius_m))
+        }
+        Some(stated_m) if stated_m < 0.0 => {
+            values.warn_at(
+                WarningKind::Dropped,
+                format!("the {end} shoulder's wall is {stated_m} m thick, which is no wall; it was read as none"),
+            );
+            0.0
+        }
+        _ => 0.0,
     };
     Some(Shoulder {
         length_m,
         outer_radius_m,
         thickness_m,
-        // A solid shoulder has no bore to close, so a cap on one is nothing: reading it as a cap
+        // A cap is as thick as the shoulder's wall, so a shoulder of no wall has none; and a solid
+        // shoulder has no bore to close, so a cap on one is nothing either: reading it as a cap
         // asks `hpr-design` for a disc inside a tube that isn't hollow.
-        capped: known_m.is_none_or(|radius_m| thickness_m < radius_m)
+        capped: thickness_m > 0.0
+            && known_m.is_none_or(|radius_m| thickness_m < radius_m)
             && values
                 .flag(&[&format!("{end}shouldercapped")])
                 .unwrap_or_default(),
@@ -648,7 +650,7 @@ fn shape(values: &mut Values<'_>) -> NoseShape {
 }
 
 /// The material a part is made of. A `.ork` stores the density with the name, so nothing is
-/// looked up. A part with no material is read as weightless, with a warning.
+/// looked up.
 ///
 /// `want` is the kind of density the part needs — `bulk` for anything solid, `surface` for a
 /// canopy or a streamer, `line` for a shroud line or a shock cord. The file declares a kind of its
@@ -656,18 +658,46 @@ fn shape(values: &mut Values<'_>) -> NoseShape {
 /// one kind cannot be converted into another: the part is built with the kind it needs and the
 /// disagreement is reported. No material in the reference corpus is declared as a kind its part
 /// does not want.
+///
+/// A part that names no material is made of the one OpenRocket 24.12 gives it, by kind
+/// ([`unnamed_material`]); a rail button's is its own, so it calls [`material_or`].
 pub(super) fn material(values: &mut Values<'_>, names: &[&str], want: &str) -> Material {
+    material_or(values, names, want, unnamed_material(want))
+}
+
+/// The material OpenRocket 24.12 gives a part that names none, by the kind of density it needs:
+/// cardboard, 680 kg/m³, for a solid part; ripstop nylon, 0.067 kg/m², for a canopy or a streamer;
+/// and a 2 mm elastic cord, 0.0018 kg/m, for shroud lines and a shock cord. Each was read from a
+/// probe part of each kind through OpenRocket's public `getMaterial` and `getLineMaterial`
+/// (`validation/oracles/openrocket/conventions.py`, [ADR-061][adr-061]).
+///
+/// [adr-061]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-061-what-a-ork-leaves-unsaid-read-as-openrocket-reads-it-overrides-measured-two-departures-kept-2026-09-21
+fn unnamed_material(want: &str) -> (&'static str, f64) {
+    match want {
+        "surface" => ("Ripstop nylon", 0.067),
+        "line" => ("Elastic cord (round 2 mm, 1/16 in)", 0.0018),
+        _ => ("Cardboard", 680.0),
+    }
+}
+
+/// The material OpenRocket 24.12 gives a rail button that names none: Delrin, 1,420 kg/m³, measured
+/// as [`unnamed_material`]'s are.
+pub(super) const UNNAMED_RAIL_BUTTON: (&str, f64) = ("Delrin", 1420.0);
+
+/// [`material`], with the material a part that names none is made of.
+pub(super) fn material_or(
+    values: &mut Values<'_>,
+    names: &[&str],
+    want: &str,
+    (unnamed, unnamed_kg): (&str, f64),
+) -> Material {
     let named = |name: &str, kg: f64| match want {
         "surface" => Material::surface(name, kg),
         "line" => Material::line(name, kg),
         _ => Material::bulk(name, kg),
     };
     let Some(element) = values.element(names) else {
-        values.warn_at(
-            WarningKind::Dropped,
-            "no material, so this part weighs nothing",
-        );
-        return named("", 0.0);
+        return named(unnamed, unnamed_kg);
     };
     let name = element.text().trim().to_owned();
     if let Some(declared) = element.attribute("type")
@@ -701,22 +731,28 @@ pub(super) fn material(values: &mut Values<'_>, names: &[&str], want: &str) -> M
 /// The overrides, as `hpr-design` states them, and whether they cover the parts inside this one.
 ///
 /// A `.ork` says "covers the children too" once per quantity and `hpr-design` says it once for the
-/// component, so the two cannot always agree. The mass flag decides, because mass is the quantity
-/// the flag is written for: 95 of the 104 in the reference corpus are `overridesubcomponentsmass`.
-/// A centre-of-gravity flag that disagrees with it is reported. The drag override is read by
-/// [`super::value::Values::overrides`] but waits on the milestone that charges drag to a part.
+/// component. A part that overrides only one quantity takes that quantity's flag; OpenRocket 24.12
+/// applies a centre-of-gravity override alone to the whole assembly when its flag says so
+/// (measured, ADR-061). A part that overrides both, with flags that disagree, cannot be said in
+/// `hpr-design`: the mass flag decides, because mass is the quantity the flag is written for (95 of
+/// the 104 in the reference corpus are `overridesubcomponentsmass`), and the disagreement is
+/// reported. The drag override is read by [`super::value::Values::overrides`] but waits on the
+/// milestone that charges drag to a part.
 pub(super) fn overrides(values: &mut Values<'_>) -> (Overrides, bool) {
     let read = values.overrides();
-    let covers_children = read.subcomponents_mass.unwrap_or_default();
-    if read.cg_m.is_some()
-        && read
-            .subcomponents_cg
-            .is_some_and(|cg| cg != covers_children)
+    let mass_flag = read.subcomponents_mass.unwrap_or_default();
+    let covers_children = match (read.mass_kg, read.cg_m) {
+        (None, Some(_)) => read.subcomponents_cg.unwrap_or_default(),
+        _ => mass_flag,
+    };
+    if read.mass_kg.is_some()
+        && read.cg_m.is_some()
+        && read.subcomponents_cg.unwrap_or_default() != mass_flag
     {
         values.warn_at(
             WarningKind::Dropped,
             format!(
-                "the mass override covers the parts inside this one ({covers_children}) and \
+                "the mass override covers the parts inside this one ({mass_flag}) and \
                  the centre-of-gravity override does not agree; hpr states it once, so \
                  the mass flag was taken"
             ),

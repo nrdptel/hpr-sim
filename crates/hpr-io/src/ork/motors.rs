@@ -277,8 +277,8 @@ pub enum NotFlown {
     /// The airframe or a motor mount was not read exactly as written: reading it raised a
     /// warning. A part was left out (a pod, a parallel stage, a part hpr could not give a shape), a
     /// value was dropped or simplified (a cluster read as one tube, a flipped nose cone read
-    /// forward, a material that could not be read), or something was assumed (a shoulder of no
-    /// wall read as solid, a shape hpr does not know read as a cone). Flying it would fly a
+    /// forward, a material that could not be read), or something was assumed (a shape hpr does
+    /// not know read as a cone). Flying it would fly a
     /// rocket the design may not be.
     AirframeNotAsWritten,
     /// The rocket has more than one stage. Until a stage's separation is read and flown, hpr would

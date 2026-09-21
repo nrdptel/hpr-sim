@@ -86,12 +86,11 @@ fn spread(values: &[f64]) -> String {
 }
 
 /// The causes a design outside a threshold is traced to, each by what hpr says when it reads the
-/// file, in the order they are printed.
-pub(crate) const CAUSES: [&str; 6] = [
-    "a shoulder written with no wall, read as solid",
+/// file, in the order they are printed. M2.2a's first two, a shoulder written with no wall and a
+/// part written with no material, are gone: hpr now reads both as OpenRocket does (ADR-061).
+pub(crate) const CAUSES: [&str; 4] = [
     "a cluster of motor tubes, read as one tube",
     "fin fillets, left out",
-    "a part written with no material",
     "parts hpr keeps unread (a reduced design)",
     "a stage OpenRocket's configuration switches off",
 ];
@@ -101,14 +100,7 @@ pub(crate) const CAUSES: [&str; 6] = [
 /// them to what it says.
 fn causes(warnings: &[&str], reduced: bool, stages_apart: bool) -> Vec<&'static str> {
     let said = |words: &str| warnings.iter().any(|warning| warning.contains(words));
-    let found = [
-        said(SHOULDER),
-        said(CLUSTER),
-        said(FILLETS),
-        said(NO_MATERIAL),
-        reduced,
-        stages_apart,
-    ];
+    let found = [said(CLUSTER), said(FILLETS), reduced, stages_apart];
     CAUSES
         .iter()
         .zip(found)
@@ -117,10 +109,8 @@ fn causes(warnings: &[&str], reduced: bool, stages_apart: bool) -> Vec<&'static 
 }
 
 /// How `hpr_io::ork` words the warnings `causes` looks for.
-const SHOULDER: &str = "shoulder has no wall thickness; it was read as solid";
 const CLUSTER: &str = "a cluster of motor tubes is read as the one tube";
 const FILLETS: &str = "the fillets along the fin roots were dropped";
-const NO_MATERIAL: &str = "no material, so this part weighs nothing";
 
 /// How a design is named in print: by its file when it is public (the jar's examples, Loft's own
 /// repository, the parts catalogue, and the repository's own fixtures), and otherwise only by the
@@ -798,7 +788,7 @@ mod tests {
         assert!(tally.failure().unwrap().contains("no cause hpr warned of"));
         assert_eq!(
             causes(
-                &["the aft shoulder has no wall thickness; it was read as solid"],
+                &["a cluster of motor tubes is read as the one tube, so its mass is too"],
                 false,
                 false
             ),

@@ -19,7 +19,7 @@
   (relative) at the times RocketPy computed, and within 1.1e-5 in mass and 2.6e-5 in inertia
   between them; the propellant grains' mass within 2.4e-9 and 4.9e-5 of its initial value.
   Placement, automatic radii and overrides are checked by hand; the whole structure against
-  OpenRocket on 74 design files, within 1% in mass on 57 and in centre of mass on 58
+  OpenRocket on 74 design files, within 1% in mass on 61 and in centre of mass on 62
   ([mass properties](mass.md#checked-against-openrocket)); and body radii against OpenRocket in
   the `.ork` import ([`.ork` design files](../format/ork.md)). Not compared with a real flight.
 - **What it leaves out:** staged flight. Every motor in a configuration ignites together at
@@ -163,9 +163,14 @@ Errors inside a stage or component name it (`DesignError::InComponent`).
   total, and the stage override applies last.
 - Scaling the tensor with the mass keeps the radii of gyration (`√(I/m)`: how far out, on
   average, the mass sits). That is the natural reading of
-  "this part weighs more than its geometry says", but other tools may differ. How OpenRocket orders
-  its overrides on parts with shoulders ([Loft lesson L51](../decisions-and-roadmap.md#l51)) will be measured by the planned
-  OpenRocket oracle ([M2.2](../decisions-and-roadmap.md#m2-2)).
+  "this part weighs more than its geometry says".
+- OpenRocket differs in two ways, which hpr keeps as measured departures: it scales only the
+  overriding part's own inertia, and when a mass override covers the parts inside and gives no
+  centre, it puts the centre at the overriding part's own. Which override wins, and where a centre
+  override is measured from, the two agree on
+  ([Loft lesson L51](../decisions-and-roadmap.md#l51), measured on probe designs in
+  [M2.2b1](../decisions-and-roadmap.md#m2-2b1); see
+  [Mass properties](mass.md#what-a-ork-leaves-unsaid-and-overrides)).
 
 ## Reference diameter
 

@@ -55,9 +55,13 @@ use crate::shapes::{Profile, check_dimension};
 pub enum Wall {
     /// Solid all the way to the axis.
     Filled {},
-    /// A wall of constant thickness measured normal to the outer surface.
+    /// A wall of constant thickness measured normal to the outer surface. A thickness of zero is a
+    /// surface with no wall: the part keeps its shape and weighs nothing, which is what OpenRocket
+    /// makes of a part written with no wall ([ADR-061][adr-061]).
+    ///
+    /// [adr-061]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-061-what-a-ork-leaves-unsaid-read-as-openrocket-reads-it-overrides-measured-two-departures-kept-2026-09-21
     Shell {
-        /// Wall thickness, m.
+        /// Wall thickness, m; zero or more.
         thickness_m: f64,
     },
 }
@@ -100,7 +104,7 @@ const WALL: Tolerance = Tolerance {
 ///
 /// # Errors
 ///
-/// - [`DesignError::Domain`] for a non-positive or non-finite wall thickness.
+/// - [`DesignError::Domain`] for a negative or non-finite wall thickness.
 /// - [`DesignError::Numerics`] if an integral doesn't converge.
 pub fn revolve(profile: &Profile, wall: Wall) -> Result<RevolvedGeometry, DesignError> {
     let length = profile.length_m();
@@ -108,7 +112,7 @@ pub fn revolve(profile: &Profile, wall: Wall) -> Result<RevolvedGeometry, Design
     let thickness = match wall {
         Wall::Filled {} => None,
         Wall::Shell { thickness_m } => {
-            check_dimension("wall thickness", thickness_m, false)?;
+            check_dimension("wall thickness", thickness_m, true)?;
             Some(thickness_m)
         }
     };
@@ -151,6 +155,9 @@ pub fn revolve(profile: &Profile, wall: Wall) -> Result<RevolvedGeometry, Design
     // A wall subtracts the hollow's moments: [∫Yi², ∫XYi², ∫Yi⁴, ∫X²Yi²].
     let moments = match thickness {
         None => filled,
+        // No wall: no volume and no moments, taken as exact rather than as a difference of two
+        // equal integrals that would leave rounding behind.
+        Some(0.0) => [0.0; 4],
         Some(t) => {
             let inner = |x: f64| inner_radius(profile, x * length, t).0 / scale;
             let integrand = |x: f64| {
@@ -656,5 +663,14 @@ mod tests {
         let thin = revolve(&profile, Wall::Shell { thickness_m: t }).unwrap();
         close(thin.volume_m3, filled.wetted_area_m2 * t, 2e-3, "thin wall");
         assert!(revolve(&profile, Wall::Shell { thickness_m: -1.0 }).is_err());
+        // No wall at all: the shape is kept, and the part weighs nothing (ADR-061).
+        let none = revolve(&profile, Wall::Shell { thickness_m: 0.0 }).unwrap();
+        assert_eq!(
+            (none.volume_m3, none.axial_m5, none.transverse_m5),
+            (0.0, 0.0, 0.0)
+        );
+        assert_eq!(none.wetted_area_m2, filled.wetted_area_m2);
+        assert_eq!(none.planform_area_m2, filled.planform_area_m2);
+        assert!(none.centroid_m.is_finite());
     }
 }

@@ -1107,21 +1107,23 @@ fn parts_no_milestone_reads_yet_are_reported_not_dropped() {
     assert_eq!(spine.count(WarningKind::Skipped), 1);
 }
 
-/// A wall of no thickness, and no wall tag at all, are the same thing: a solid part. Read as a
-/// wall of zero, the part is weightless and `hpr-design` refuses the whole design — so the rule a
-/// shoulder gets applies to a body component too, and either way the reader says so.
+/// A wall of no thickness is a surface with no wall: the nose keeps its shape and weighs nothing.
+/// A nose that writes no thickness at all has a 2 mm wall. Both are OpenRocket 24.12's readings,
+/// measured on its probe designs (`validation/fixtures/ork/openrocket-conventions.json`, ADR-061),
+/// so neither is an assumption to warn of.
 #[test]
-fn a_wall_of_no_thickness_is_solid_and_says_so() {
-    for (from, to) in [
+fn a_wall_of_no_thickness_weighs_nothing_and_an_unwritten_one_is_two_millimetres() {
+    for (to, wall) in [
         (
-            "<thickness>0.002</thickness>\n            <shape>ogive",
             "<thickness>0</thickness>\n            <shape>ogive",
+            hpr_design::solids::Wall::Shell { thickness_m: 0.0 },
         ),
         (
-            "<thickness>0.002</thickness>\n            <shape>ogive",
             "<shape>ogive",
+            hpr_design::solids::Wall::Shell { thickness_m: 0.002 },
         ),
     ] {
+        let from = "<thickness>0.002</thickness>\n            <shape>ogive";
         let xml = ACROSS_A_STAGE.replacen(from, to, 1);
         let read = read(xml.as_bytes()).expect("a readable design");
         let spine = component::rocket(&read.value.document);
@@ -1129,10 +1131,51 @@ fn a_wall_of_no_thickness_is_solid_and_says_so() {
         else {
             panic!("a nose cone");
         };
-        assert_eq!(nose.wall, hpr_design::solids::Wall::Filled {});
-        assert_eq!(spine.count(WarningKind::Unusual), 1, "{:?}", spine.warnings);
-        assert!(spine.value.layout().is_ok());
+        assert_eq!(nose.wall, wall);
+        assert_eq!(spine.count(WarningKind::Unusual), 0, "{:?}", spine.warnings);
+        let layout = spine.value.layout().expect("a layout");
+        let nose_mass = layout.body().next().expect("the nose").own.mass_kg;
+        assert_eq!(
+            nose_mass == 0.0,
+            wall == hpr_design::solids::Wall::Shell { thickness_m: 0.0 }
+        );
     }
+}
+
+/// A negative wall, on a nose or on its shoulder, is no wall, and the reader says so for each; a
+/// nose that writes no thickness and is no wider than OpenRocket's 2 mm default wall is solid.
+#[test]
+fn a_negative_wall_is_no_wall_and_a_narrow_default_one_is_solid() {
+    let from = "<thickness>0.002</thickness>\n            <shape>ogive";
+    let to = "<thickness>-0.001</thickness><aftshoulderlength>0.05</aftshoulderlength>\
+              <aftshoulderradius>0.01</aftshoulderradius>\
+              <aftshoulderthickness>-0.001</aftshoulderthickness>\n            <shape>ogive";
+    let xml = ACROSS_A_STAGE.replacen(from, to, 1);
+    let first = read(xml.as_bytes()).expect("a readable design");
+    let spine = component::rocket(&first.value.document);
+    let hpr_design::tree::Part::NoseCone(nose) = &spine.value.stages[0].components[0].part else {
+        panic!("a nose cone");
+    };
+    assert_eq!(
+        nose.wall,
+        hpr_design::solids::Wall::Shell { thickness_m: 0.0 }
+    );
+    let shoulder = nose.shoulder.expect("a shoulder");
+    assert_eq!((shoulder.thickness_m, shoulder.capped), (0.0, false));
+    assert_eq!(spine.count(WarningKind::Dropped), 2, "{:?}", spine.warnings);
+
+    let narrow = ACROSS_A_STAGE.replacen(from, "<shape>ogive", 1).replacen(
+        "<aftradius>auto</aftradius>\n          </nosecone>",
+        "<aftradius>0.0015</aftradius>\n          </nosecone>",
+        1,
+    );
+    assert_ne!(narrow, ACROSS_A_STAGE.replacen(from, "<shape>ogive", 1));
+    let second = read(narrow.as_bytes()).expect("a readable design");
+    let spine = component::rocket(&second.value.document);
+    let hpr_design::tree::Part::NoseCone(nose) = &spine.value.stages[0].components[0].part else {
+        panic!("a nose cone");
+    };
+    assert_eq!(nose.wall, hpr_design::solids::Wall::Filled {});
 }
 
 /// A single-stage design carrying one of most of the parts that hang off a spine: a motor tube, a
@@ -2344,9 +2387,9 @@ fn a_configuration_on_an_incomplete_airframe_is_not_flown() {
     assert!(design.rocket.configurations.is_empty());
 }
 
-/// Nor is one whose airframe rests on an assumption: a nose cone's shoulder of no wall is read as
-/// solid, a reading OpenRocket has not confirmed, and with a warning. The same design with a
-/// shoulder wall stated flies.
+/// Nor is one whose airframe rests on an assumption: a nose shape hpr does not know is read as a
+/// cone, with a warning. A shoulder of no wall is no assumption: OpenRocket gives it no mass, and
+/// so does hpr (ADR-061), so that design flies, as does one with a shoulder wall stated.
 #[test]
 fn a_configuration_on_an_assumed_airframe_is_not_flown() {
     let with_shoulder = |thickness: &str| {
@@ -2366,7 +2409,11 @@ fn a_configuration_on_an_assumed_airframe_is_not_flown() {
             ),
         )
     };
-    let assumed = read_design(with_shoulder("0.0").as_bytes());
+    let assumed = read_design(
+        with_shoulder("0.001")
+            .replacen("<shape>ogive</shape>", "<shape>fancy</shape>", 1)
+            .as_bytes(),
+    );
     assert_eq!(
         assumed.motors.configurations[0]
             .left_out
@@ -2374,14 +2421,16 @@ fn a_configuration_on_an_assumed_airframe_is_not_flown() {
             .map(|l| l.why),
         Some(NotFlown::AirframeNotAsWritten)
     );
-    let stated = read_design(with_shoulder("0.001").as_bytes());
-    let flown: Vec<&str> = stated
-        .rocket
-        .configurations
-        .iter()
-        .map(|c| c.id.as_str())
-        .collect();
-    assert_eq!(flown, ["a"]);
+    for thickness in ["0.001", "0.0"] {
+        let stated = read_design(with_shoulder(thickness).as_bytes());
+        let flown: Vec<&str> = stated
+            .rocket
+            .configurations
+            .iter()
+            .map(|c| c.id.as_str())
+            .collect();
+        assert_eq!(flown, ["a"], "a shoulder wall of {thickness} m");
+    }
 }
 
 /// Every event word OpenRocket 24.12 writes, as its committed probe measured them
