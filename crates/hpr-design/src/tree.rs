@@ -812,6 +812,49 @@ impl Rocket {
         })
     }
 
+    /// The automatic body radii that [`layout`](Self::layout) cannot resolve, as each component's
+    /// id and the dimension, forward to aft.
+    ///
+    /// These are the radii on a chain of automatic radii with no fixed radius anywhere along it:
+    /// a nose cone whose base looks back at a tube that looks forward at it, or a stage of tubes
+    /// that all say "automatic". Neighbours are followed by the rule each [`AutoDimension`]
+    /// documents. `layout` refuses a design for which this list is not empty; what such a radius
+    /// should be is not in the design, so an importer that knows its source program's convention
+    /// fills them in first.
+    ///
+    /// Only the body's outer radii are listed, which are the only automatic dimensions that can
+    /// have nothing to take: a shoulder, a ring or a packed part takes its radius from a body or a
+    /// parent that is always there. Automatic dimensions a part does not have are not listed
+    /// either; `layout` refuses those separately.
+    pub fn unresolvable_body_radii(&self) -> Vec<(String, AutoDimension)> {
+        let nodes: Vec<&Component> = self
+            .stages
+            .iter()
+            .flat_map(|stage| stage.components.iter())
+            .collect();
+        let parts: Vec<Part> = nodes.iter().map(|c| c.part.clone()).collect();
+        let autos: Vec<&[AutoDimension]> = nodes.iter().map(|c| c.auto.as_slice()).collect();
+        let (fore, aft) = sweep_body_radii(&parts, &autos);
+        let mut unresolvable = Vec::new();
+        for (i, node) in nodes.iter().enumerate() {
+            let mut add = |dimension| unresolvable.push((node.id.clone(), dimension));
+            match node.part {
+                Part::NoseCone(_) if aft[i].is_none() => add(AutoDimension::BaseRadius),
+                Part::BodyTube(_) if aft[i].is_none() => add(AutoDimension::OuterRadius),
+                Part::Transition(_) => {
+                    if fore[i].is_none() {
+                        add(AutoDimension::ForeRadius);
+                    }
+                    if aft[i].is_none() {
+                        add(AutoDimension::AftRadius);
+                    }
+                }
+                _ => {}
+            }
+        }
+        unresolvable
+    }
+
     fn reference_diameter_m(&self, components: &[PlacedComponent]) -> Result<f64, DesignError> {
         let diameter = match self.reference_diameter {
             ReferenceDiameter::Maximum {} => {
@@ -957,18 +1000,46 @@ fn check_node(
     Ok(())
 }
 
-/// Fills in the body components' automatic outer radii from their neighbours, through every stage.
+/// Fills in the body components' automatic outer radii from their neighbours, through every stage,
+/// by [`sweep_body_radii`]'s rule; a radius the sweep leaves unknown is an error.
+fn resolve_body_radii(
+    parts: &mut [Part],
+    autos: &[&[AutoDimension]],
+    ids: &[&str],
+) -> Result<(), DesignError> {
+    let (fore, aft) = sweep_body_radii(parts, autos);
+    for (i, part) in parts.iter_mut().enumerate() {
+        let missing = || {
+            tree(
+                ids[i],
+                "an automatic radius has no fixed radius among its neighbours to take",
+            )
+        };
+        match part {
+            Part::NoseCone(p) => p.base_radius_m = aft[i].ok_or_else(missing)?,
+            Part::BodyTube(p) => p.outer_radius_m = aft[i].ok_or_else(missing)?,
+            Part::Transition(p) => {
+                p.fore_radius_m = fore[i].ok_or_else(missing)?;
+                p.aft_radius_m = aft[i].ok_or_else(missing)?;
+            }
+            _ => {}
+        }
+    }
+    Ok(())
+}
+
+/// Each body component's forward and aft radius, following automatic radii to their sources;
+/// `None` where a radius is automatic and nothing reaches it.
 ///
 /// Each automatic radius has a source: a nose cone's base and a transition's aft radius take the
 /// next component's forward radius; a body tube and a transition's forward radius take the previous
 /// component's aft radius. Sources are followed until nothing changes. Then a body tube still
 /// unresolved takes the next component's forward radius instead (the first one that can), and the
 /// sweep repeats.
-fn resolve_body_radii(
-    parts: &mut [Part],
+fn sweep_body_radii(
+    parts: &[Part],
     autos: &[&[AutoDimension]],
-    ids: &[&str],
-) -> Result<(), DesignError> {
+) -> (Vec<Option<f64>>, Vec<Option<f64>>) {
     let n = parts.len();
     let is_auto = |i: usize, a: AutoDimension| autos[i].contains(&a);
     let mut fore: Vec<Option<f64>> = Vec::with_capacity(n);
@@ -1048,24 +1119,7 @@ fn resolve_body_radii(
             None => break,
         }
     }
-    for (i, part) in parts.iter_mut().enumerate() {
-        let missing = || {
-            tree(
-                ids[i],
-                "an automatic radius has no fixed radius among its neighbours to take",
-            )
-        };
-        match part {
-            Part::NoseCone(p) => p.base_radius_m = aft[i].ok_or_else(missing)?,
-            Part::BodyTube(p) => p.outer_radius_m = aft[i].ok_or_else(missing)?,
-            Part::Transition(p) => {
-                p.fore_radius_m = fore[i].ok_or_else(missing)?;
-                p.aft_radius_m = aft[i].ok_or_else(missing)?;
-            }
-            _ => {}
-        }
-    }
-    Ok(())
+    (fore, aft)
 }
 
 /// Fills in automatic shoulder radii from the adjoining body tubes' inner radii.
@@ -1536,6 +1590,78 @@ mod tests {
             design.layout(),
             Err(DesignError::Tree { ref id, .. }) if id == "nose"
         ));
+    }
+
+    /// A conical transition with a 1 mm wall.
+    fn cone_transition(fore_radius_m: f64, aft_radius_m: f64) -> Part {
+        Part::Transition(Transition {
+            shape: crate::NoseShape::Conical {},
+            clipped: false,
+            length_m: 0.1,
+            fore_radius_m,
+            aft_radius_m,
+            wall: crate::Wall::Shell { thickness_m: 0.001 },
+            fore_shoulder: None,
+            aft_shoulder: None,
+            material: crate::testing::cardboard(),
+        })
+    }
+
+    /// The chain in Loft's quirks fixture: a nose's base, a tube and a transition's forward end all
+    /// automatic, with only the transition's aft end fixed. Each automatic radius there looks at
+    /// another automatic one, so all three are listed, forward to aft — and giving them a radius is
+    /// all `layout` needs. The fixed tube behind is never listed.
+    #[test]
+    fn unresolvable_body_radii_are_the_chain_with_nothing_fixed() {
+        let auto = |mut c: Component, dims: &[AutoDimension]| {
+            c.auto = dims.to_vec();
+            c
+        };
+        let mut design = rocket(vec![stage(
+            "only",
+            vec![
+                auto(body("nose", nose(0.3, 0.0)), &[AutoDimension::BaseRadius]),
+                auto(
+                    body("upper", tube(0.5, 0.0, 0.002)),
+                    &[AutoDimension::OuterRadius],
+                ),
+                auto(
+                    body("shoulder", cone_transition(0.0, 0.022)),
+                    &[AutoDimension::ForeRadius],
+                ),
+                body("lower", tube(0.45, 0.022, 0.0018)),
+            ],
+        )]);
+        assert_eq!(
+            design.unresolvable_body_radii(),
+            vec![
+                ("nose".to_owned(), AutoDimension::BaseRadius),
+                ("upper".to_owned(), AutoDimension::OuterRadius),
+                ("shoulder".to_owned(), AutoDimension::ForeRadius),
+            ]
+        );
+        assert!(design.layout().is_err());
+        let components = &mut design.stages[0].components;
+        if let Part::NoseCone(n) = &mut components[0].part {
+            n.base_radius_m = 0.025;
+        }
+        components[0].auto.clear();
+        assert!(design.unresolvable_body_radii().is_empty());
+        let layout = design.layout().unwrap();
+        // One fixed radius at the front of the chain is enough; the neighbour rule carries it on.
+        assert_eq!(
+            layout.find("upper").unwrap().1.part.aft_radius_m(),
+            Some(0.025)
+        );
+        let Part::Transition(t) = &layout.find("shoulder").unwrap().1.part else {
+            panic!("a transition")
+        };
+        assert_eq!((t.fore_radius_m, t.aft_radius_m), (0.025, 0.022));
+
+        // A design that resolves lists nothing.
+        let design = three_fin_rocket();
+        assert!(design.unresolvable_body_radii().is_empty());
+        design.layout().unwrap();
     }
 
     /// Rings take the tube's bore and the mount tube's outside; the parachute packs to the bore; a
@@ -2055,7 +2181,75 @@ mod tests {
         assert!(serde_json::from_str::<Rocket>(&bad).is_err());
     }
 
+    /// A random spine for the property below: a kind (0 a nose cone, first only; 1 a tube; 2 a
+    /// transition), whether each end is automatic, and each end's fixed radius in centimetres.
+    type SpineSpec = Vec<(usize, bool, bool, u8, u8)>;
+
+    fn random_spine(spec: &SpineSpec, split: usize) -> Rocket {
+        let mut components = Vec::new();
+        for (k, &(kind, fore_auto, aft_auto, fore_cm, aft_cm)) in spec.iter().enumerate() {
+            let (fore, aft) = (f64::from(fore_cm) * 0.01, f64::from(aft_cm) * 0.01);
+            let id = format!("c{k}");
+            let mut c = match kind {
+                0 if k == 0 => body(&id, nose(0.2, aft)),
+                2 => body(&id, cone_transition(fore, aft)),
+                _ => body(&id, tube(0.3, aft, 0.001)),
+            };
+            c.auto = match &c.part {
+                Part::NoseCone(_) if aft_auto => vec![AutoDimension::BaseRadius],
+                Part::BodyTube(_) if aft_auto => vec![AutoDimension::OuterRadius],
+                Part::Transition(_) => [
+                    (fore_auto, AutoDimension::ForeRadius),
+                    (aft_auto, AutoDimension::AftRadius),
+                ]
+                .into_iter()
+                .filter_map(|(on, dimension)| on.then_some(dimension))
+                .collect(),
+                _ => Vec::new(),
+            };
+            components.push(c);
+        }
+        // Split into two stages somewhere, so the property crosses a stage boundary too.
+        let split = split.clamp(1, components.len());
+        let aft = components.split_off(split);
+        let mut stages = vec![stage("upper", components)];
+        if !aft.is_empty() {
+            stages.push(stage("lower", aft));
+        }
+        rocket(stages)
+    }
+
     proptest! {
+        /// Over random spines, `unresolvable_body_radii` is empty exactly when `layout` succeeds,
+        /// and giving every listed radius a fixed value is all `layout` then needs.
+        #[test]
+        fn unresolvable_radii_are_exactly_what_layout_refuses(
+            spec in proptest::collection::vec((0usize..3, any::<bool>(), any::<bool>(), 1u8..5, 1u8..5), 1..7),
+            split in 1usize..7,
+        ) {
+            let mut design = random_spine(&spec, split);
+            let unresolvable = design.unresolvable_body_radii();
+            prop_assert_eq!(unresolvable.is_empty(), design.layout().is_ok(), "{:?}", unresolvable);
+            for (id, dimension) in &unresolvable {
+                let c = design
+                    .stages
+                    .iter_mut()
+                    .flat_map(|s| s.components.iter_mut())
+                    .find(|c| &c.id == id)
+                    .unwrap();
+                match (&mut c.part, dimension) {
+                    (Part::NoseCone(p), AutoDimension::BaseRadius) => p.base_radius_m = 0.025,
+                    (Part::BodyTube(p), AutoDimension::OuterRadius) => p.outer_radius_m = 0.025,
+                    (Part::Transition(p), AutoDimension::ForeRadius) => p.fore_radius_m = 0.025,
+                    (Part::Transition(p), AutoDimension::AftRadius) => p.aft_radius_m = 0.025,
+                    other => prop_assert!(false, "an unexpected pairing {:?}", other),
+                }
+                c.auto.retain(|a| a != dimension);
+            }
+            prop_assert!(design.unresolvable_body_radii().is_empty());
+            prop_assert!(design.layout().is_ok(), "{:?}", design.layout().err());
+        }
+
         /// Placed at random along a tube and rolled, point-like masses sum to the structure's mass
         /// and centre, and sliding every part aft by `d` slides the centre by `d` without changing
         /// the tensor.
