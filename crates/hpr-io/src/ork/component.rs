@@ -15,16 +15,17 @@
 //!
 //! [roadmap]: https://github.com/nrdptel/hpr-sim/blob/main/docs/ROADMAP.md
 
-use hpr_design::Material;
 use hpr_design::parts::{BodyTube, NoseCone, Shoulder, Transition};
 use hpr_design::shapes::NoseShape;
 use hpr_design::solids::Wall;
 use hpr_design::tree::{
     AutoDimension, Component, Overrides, Part, ReferenceDiameter, Rocket, Stage,
 };
+use hpr_design::{Material, MotorMount};
 
 use super::attached::{self, finish};
 use super::document::{Document, Element};
+use super::motors::{self, MountRead};
 use super::value::Values;
 use super::warning::{Imported, Warning, WarningKind};
 
@@ -75,6 +76,10 @@ pub const OPENROCKET_DEFAULT_RADIUS_M: f64 = 0.025;
 /// to aft, with automatic dimensions **marked rather than filled in** — [`Rocket::layout`] resolves
 /// them, and is where a part's mass and station come from.
 ///
+/// A body tube or inner tube that holds a motor is marked as a motor mount, but the motors
+/// themselves are not read here, and [`Rocket::configurations`] is left empty:
+/// [`super::design`] reads them. A `<motormount>` it cannot read still warns here.
+///
 /// ```
 /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
 /// let xml = br#"<?xml version="1.0" encoding="UTF-8"?>
@@ -119,6 +124,12 @@ pub const OPENROCKET_DEFAULT_RADIUS_M: f64 = 0.025;
 /// # }
 /// ```
 pub fn rocket(document: &Document) -> Imported<Rocket> {
+    walk(document).0
+}
+
+/// [`rocket`], and every motor mount it read with the id it gave the mount's component, for
+/// [`super::motors::read`].
+pub(super) fn walk(document: &Document) -> (Imported<Rocket>, Vec<(String, MountRead)>) {
     let mut warnings = Vec::new();
     let mut rocket = Rocket {
         name: String::new(),
@@ -132,10 +143,13 @@ pub fn rocket(document: &Document) -> Imported<Rocket> {
             WarningKind::Skipped,
             "no `rocket` element, so the document holds no design".to_owned(),
         ));
-        return Imported {
-            value: rocket,
-            warnings,
-        };
+        return (
+            Imported {
+                value: rocket,
+                warnings,
+            },
+            Vec::new(),
+        );
     };
     let at = "openrocket/rocket";
     rocket.name = Values::new(element, at, &mut warnings)
@@ -183,10 +197,13 @@ pub fn rocket(document: &Document) -> Imported<Rocket> {
         ));
     }
     default_radii(&mut rocket, &reads, &mut warnings);
-    Imported {
-        value: rocket,
-        warnings,
-    }
+    (
+        Imported {
+            value: rocket,
+            warnings,
+        },
+        ids.mounts,
+    )
 }
 
 /// Gives every automatic body radius that [`Rocket::unresolvable_body_radii`] lists
@@ -301,16 +318,28 @@ fn body(
         _ => (transition(element, at, &mut auto, warnings), None),
     };
     let children = attached::children(element, &part, at, ids, skipped, warnings);
+    let mount = match part {
+        Part::BodyTube(_) => motors::mount(element, at, warnings),
+        _ => None,
+    };
+    let id = ids.take(
+        &mut Values::new(element, at, warnings),
+        &element.name.clone(),
+    );
+    let motor_mount = mount.map(|mount| {
+        let spec = MotorMount {
+            overhang_m: mount.overhang_m,
+        };
+        ids.mounts.push((id.clone(), mount));
+        spec
+    });
     let component = Component {
-        id: ids.take(
-            &mut Values::new(element, at, warnings),
-            &element.name.clone(),
-        ),
+        id,
         name,
         part,
         position: None,
         auto,
-        motor_mount: None,
+        motor_mount,
         finish,
         overrides,
         overrides_include_children,
@@ -736,6 +765,10 @@ pub(super) fn subcomponents(element: &Element) -> impl Iterator<Item = &Element>
 pub(super) struct Ids {
     used: usize,
     taken: std::collections::BTreeSet<String>,
+    /// Every motor mount read, with the id its component was given, in file order: the walk
+    /// records them here because this is what it carries everywhere, and [`super::motors::read`]
+    /// needs the ids.
+    pub(super) mounts: Vec<(String, MountRead)>,
 }
 
 impl Ids {

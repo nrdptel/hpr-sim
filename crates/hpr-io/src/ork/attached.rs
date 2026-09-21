@@ -28,16 +28,17 @@
 //! [guide]: https://nrdptel.github.io/hpr-sim/format/ork.html
 //! [lessons]: https://github.com/nrdptel/hpr-sim/blob/main/docs/research/loft-lessons.md
 
-use hpr_design::Finish;
 use hpr_design::fins::{FinCrossSection, FinPlanform, FinSet, FinTab, TubeFinSet};
 use hpr_design::parts::{
     CenteringRing, InnerTube, LaunchLug, MassComponent, Packing, Parachute, RailButton, ShockCord,
     Streamer,
 };
 use hpr_design::tree::{AutoDimension, Component, Part, Position};
+use hpr_design::{Finish, MotorMount};
 
 use super::component::{Ids, material, overrides, stated_radius, subcomponents};
 use super::document::Element;
+use super::motors;
 use super::value::{AXIAL_OFFSET, INSTANCE_COUNT, Values};
 use super::warning::{Warning, WarningKind};
 
@@ -214,16 +215,28 @@ fn one(
         }
         Vec::new()
     };
+    let mount = match part {
+        Part::InnerTube(_) => motors::mount(element, at, warnings),
+        _ => None,
+    };
+    let id = ids.take(
+        &mut Values::new(element, at, warnings),
+        &element.name.clone(),
+    );
+    let motor_mount = mount.map(|mount| {
+        let spec = MotorMount {
+            overhang_m: mount.overhang_m,
+        };
+        ids.mounts.push((id.clone(), mount));
+        spec
+    });
     Some(Component {
-        id: ids.take(
-            &mut Values::new(element, at, warnings),
-            &element.name.clone(),
-        ),
+        id,
         name,
         part,
         position: Some(position),
         auto,
-        motor_mount: None,
+        motor_mount,
         finish,
         overrides,
         overrides_include_children: include_children,

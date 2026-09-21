@@ -9,10 +9,15 @@ without being typed again.
 its design document into a tree that keeps everything the file said, and builds a rocket out of
 that tree — the stages and body components stacked in them, and the tubes, rings, fins, lugs,
 buttons and recovery gear on and inside each of those, with their shapes, materials, surface
-finishes, positions and overrides. That is from Rust; there is no command-line tool yet.
+finishes, positions and overrides — and its motor configurations, with the motors in them and
+their thrust curves. That is from Rust; there is no command-line tool yet.
 
-**How far to trust it.** **Motors, recovery settings, pods and parallel stages are not read**
-([M3.1c](../decisions-and-roadmap.md#m3-1c)), so a design that opens still cannot be flown. A part
+**How far to trust it.** Motors are read, but a configuration flies only when every motor in it
+lights at launch and has a thrust curve, in the file or in hpr's small bundled catalog, on an
+airframe read without a warning: **1 of the 174 motor configurations** in the reference library's
+75 designs does
+([motors](#motors-and-their-configurations)). **Recovery settings,
+pods and parallel stages are not read yet** ([M3.1c](../decisions-and-roadmap.md#m3-1c)). A part
 hpr cannot give an honest shape — fins on a nose cone, tube fins OpenRocket sizes from the body —
 is **left out**, each one named in a warning rather than guessed at
 ([what is left out, and why](#what-is-left-out-and-why)). Every design in the reference library now
@@ -387,6 +392,9 @@ Code: [`hpr_io::ork::attached`](../api/hpr_io/ork/attached/index.html), decided 
 [ADR-053: the parts on and inside a `.ork` body][adr-053].
 
 ### Opening a design, in full
+
+`rocket` reads the airframe alone. To get the motors as well, call `hpr_io::ork::design` instead
+([motors and their configurations](#motors-and-their-configurations)).
 
 This is the doctest on [`hpr_io::ork::rocket`](../api/hpr_io/ork/component/fn.rocket.html), which CI runs.
 Hand it the bytes of a `.ork`, and what comes back is a design and the warnings reading it raised:
@@ -804,12 +812,167 @@ a radius the file doesn't give are
 [p-position]: https://nrdptel.github.io/hpr-sim/api/hpr_design/tree/enum.Position.html
 [p-layout]: https://nrdptel.github.io/hpr-sim/api/hpr_design/tree/struct.Rocket.html#method.layout
 
+## Motors and their configurations
+
+**In short.** hpr reads every motor a design names, in every configuration, with when it lights and
+its ejection delay, and finds its thrust curve in the file itself or in hpr's bundled catalog. A
+configuration becomes one the rocket can fly only when every motor in it has a curve and lights at
+launch. Most designs in the reference library name motors the bundled catalog doesn't hold yet, so
+**1 of their 174 configurations flies today**; the rest are read, kept, and say why not.
+
+A **configuration** is one set of motors to fly the design with: OpenRocket calls it a *flight
+configuration*, and a design can have several, one per motor choice. The file keeps it in two
+places:
+
+- `<rocket>` declares each one: a `configid`, a name, whether it is the one OpenRocket opens with
+  (`default="true"`), and which stages fly.
+- Each **motor mount** (a body tube or inner tube holding a motor) holds a `<motor configid="…">`
+  per configuration: the manufacturer, the designation such as `H148R`, a `digest` (OpenRocket's
+  fingerprint of the thrust curve's data), the case diameter and length, and the ejection delay. The mount also says when its motor lights, and may
+  say it differently for each configuration.
+
+So hpr collects each mount's motor into its configuration. A mount that names a configuration the
+rocket never declares still gets one, with a warning ([L65](../decisions-and-roadmap.md#l65)).
+
+### Where the thrust curve comes from
+
+A `<motor>` names a motor; it does not describe one. hpr looks for its thrust curve in two places,
+in this order:
+
+1. **Inside the file.** From schema 1.11 (the `version` on the file's `<openrocket>` element),
+   OpenRocket can save each motor's curve in the archive as `thrustcurves/<digest>.rse`, named by
+   the `digest` the `<motor>` gives ([L57](../decisions-and-roadmap.md#l57)). That is exactly the
+   curve the design was saved with. OpenRocket 24.12 still writes 1.10, so few files carry one yet:
+   one file in the reference library does.
+2. **hpr's bundled catalog**: [32 motors from ThrustCurve.org](../physics/motor.md). The
+   manufacturer and the designation must both match, ignoring case, spaces and hyphens. Both are
+   needed: an Estes `B4` is not a Quest `B4`.
+
+OpenRocket's own order is the other way round: its motor database first, then the curve in the
+file, because the database "may have more accurate or updated data" (its file specification). hpr's
+catalog is far smaller than that database, and the curve in the file is the exact one, so hpr reads
+the file first. So on a file that carries curves, hpr and OpenRocket can fly different curves for
+the same motor.
+
+hpr builds the motor from the curve file's header — its case size and its loaded and propellant
+masses — as it does for any catalog motor, and does not use the mass or centre-of-gravity column
+listed beside each thrust point. Where the design's case size and the curve's differ by more than a
+millimetre, a warning says so: the design's size places the motor, and the curve's gives its mass. A motor found in neither place is kept with its reason. Nothing is
+invented for it. A hybrid motor (solid fuel burned with a liquid or gas oxidiser) never gets a
+curve: hpr flies commercial solid motors only.
+
+To fly a motor neither place has, build the configuration yourself: read its `.eng` or `.rse` file
+with `hpr_motor` ([Solid motors](../physics/motor.md)) and put it in an
+`hpr_design::Configuration`.
+
+### Delays and ignition
+
+| the file says | it means | source |
+|---|---|---|
+| `<delay>6.0</delay>` | the ejection charge fires 6 s after burnout | OpenRocket's [technical documentation][techdoc], p. 8 |
+| `<delay>0.0</delay>` | the charge fires at burnout | the same, p. 10: "zero-delay motors" |
+| `<delay>none</delay>` | plugged: no ejection charge | the same, p. 8 ("P … stands for plugged"); OpenRocket [issue #2002](https://github.com/openrocket/openrocket/issues/2002) |
+| `<ignitionevent>automatic</ignitionevent>` | the bottom stage lights at launch; a stage above lights at the ejection charge of the stage below | OpenRocket's [FAQ](https://wiki.openrocket.info/FAQ), "How do I create a staged rocket?" |
+| `launch`, `burnout`, `ejectioncharge`, `never` | at launch; at the first burnout or ejection charge of the stage below; never | OpenRocket 24.12's labels; the library's files use all but `ejectioncharge`, whose spelling comes from a probe of OpenRocket run for this milestone and not committed. A word hpr does not know is kept as written |
+| `<ignitiondelay>1.5</ignitiondelay>` | 1.5 s after that event | the [technical documentation][techdoc], section 4.2.6 |
+
+A `0` means something different here than in a motor file. An `.eng` file has no word for plugged,
+so hpr reads its `0` as "zero or plugged" ([ejection delay](../glossary.md#ejection-delay)). A
+`.ork` has `none` for plugged, and OpenRocket flies a `0` as a charge at burnout: in its own
+"Parallel booster staging" example, the E12-0's burnout and ejection charge are stored at the same
+2.44 s. But until OpenRocket 23.09 put *plugged* in its delay list
+([issue #2090](https://github.com/openrocket/openrocket/issues/2090)), few authors knew to type
+`none`, and some used `0` to mean plugged, as OpenRocket's own examples did
+([issue #2111](https://github.com/openrocket/openrocket/issues/2111)). So a `0` in an older design
+may be meant as plugged; hpr reads it as the file says, as OpenRocket does. 23 motors in the
+reference library have one.
+
+A configuration's own `<ignitionconfiguration>` replaces the mount's event and delay one at a time:
+whichever it leaves out, the mount's own value stands.
+
+### Which configurations the rocket flies
+
+hpr lights every motor in a configuration at launch, until staging and air starts arrive with
+[M1.9](../decisions-and-roadmap.md#m1-9). So a configuration becomes one of the rocket's only when
+all of these hold. Otherwise flying it would be wrong, for example lighting a sustainer on the pad.
+
+- Every motor has a thrust curve, and a case diameter and length.
+- Every motor lights at launch: `launch`, or `automatic` in the bottom stage (the booster, which
+  OpenRocket lists last), with no delay.
+- No motor sits in a part hpr doesn't read yet, such as a pod
+  ([M3.1c4](../decisions-and-roadmap.md#m3-1c4)), and none sits in a
+  [cluster](../glossary.md#cluster) of motor tubes, which hpr reads as one tube.
+- No stage is switched off in the configuration's own stage list
+  (`<stage number="1" active="false"/>`). OpenRocket leaves a switched-off stage out of the flight,
+  and hpr flies every stage.
+- The rocket and its motor mounts were read without a single warning: nothing left out (a pod, a
+  parallel stage, a part hpr could not shape), nothing dropped or simplified (a cluster of tubes
+  read as one, a flipped nose cone read pointing forward, a material that could not be read), and
+  nothing assumed (a shoulder of no wall read as solid, a shape hpr does not know read as a cone).
+  Otherwise hpr might fly a different rocket from the design, so no configuration of it is flown.
+  One design in the library is held back only by this: its shoulders have no wall, which
+  [M2.2](../decisions-and-roadmap.md#m2-2)'s oracle is to settle.
+- No mount holds two motors for the configuration. Which one OpenRocket would fly is not known, so
+  neither flies.
+- The rocket has one stage. OpenRocket drops a booster when it separates; hpr would carry it to the
+  ground, until separation is read ([M3.1c2](../decisions-and-roadmap.md#m3-1c2)) and flown
+  ([M1.9](../decisions-and-roadmap.md#m1-9)).
+
+Every other configuration is still read, whole, with the first reason it can't be flown. The
+motors' reasons are checked first, each across every motor, and the two about the whole rocket
+last.
+
+This is the doctest on
+[`hpr_io::ork::design`](../api/hpr_io/ork/fn.design.html), which CI runs. The Estes F15 has no
+curve in the file, so it comes from the bundled catalog: 49.6 N·s over 3.45 s, as ThrustCurve.org
+lists it. The rocket assembles with it. `assemble` takes the configuration's `configid`; its name
+is for display, and may be one of OpenRocket's templates, such as `[{motors}]`.
+
+```rust
+let read = hpr_io::ork::read(xml)?;
+let design = hpr_io::ork::design(&read.value).value;
+
+// The F15 has no curve in this file, so it comes from the bundled catalog...
+let motor = &design.motors.configurations[0].motors[0];
+assert!(matches!(motor.curve, hpr_io::ork::Curve::Catalog { .. }));
+assert_eq!(motor.delay, Some(hpr_motor::Delay::Seconds(4.0)));
+let impulse_ns = motor.curve.motor().expect("a curve").curve().total_impulse_ns();
+assert!((impulse_ns - 49.61).abs() < 0.01, "{impulse_ns}");
+
+// ...and it ignites at launch, so the configuration is one the rocket flies.
+let assembly = design.rocket.assemble("c1")?;
+assert_eq!(assembly.motors[0].mount, "body");
+```
+
+### Motors in the reference library
+
+`cargo xtask ork`, over the 75 designs, on 2026-09-21:
+
+| quantity | count |
+|---|---|
+| motor configurations | 174, in 66 designs, over 79 motor mounts; none named only by a mount |
+| motors read into their configurations | 206: 132 single-use, 65 reloads, 3 hybrids, and 6 with no type written, read like the rest |
+| motors left out, in parts not read yet | 6: 4 in pod sets, 2 in parallel stages |
+| thrust curve from the file itself | 4 |
+| thrust curve from the bundled catalog | 2 |
+| no curve | 200: 3 hybrids, and 197 in neither place |
+| ejection delays, of the 206 | 128 in seconds, 23 at 0 s, 53 plugged (`none`), 2 not written |
+| configurations the rocket flies | 1, and it assembles |
+| left out, by first reason | 166 a motor with no curve, 4 a motor in a part not read, 2 a motor lighting in flight, 1 an airframe not read exactly as written |
+
+The catalog is the limit, not the reader. When
+[M5.1](../decisions-and-roadmap.md#m5-1) brings ThrustCurve.org's curves, many of the 197 may find
+one; how many is not measured yet. How this was decided, with the sources in full, is in [ADR-055][adr-055].
+
+[adr-055]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-055-m31c-split-and-the-motors-a-ork-flies-its-own-curve-first-and-only-what-lights-at-launch-2026-09-21
+
 ## What is not read yet
 
-Motor configurations and the embedded `.rse` curves, recovery settings (when a parachute opens, at
-what delay, at what altitude — the chute's *shape* is read, its deployment is not), pods and
-parallel stages, stored launch conditions and simulation results
-([M3.1c](../decisions-and-roadmap.md#m3-1c)). Writing a `.ork` back out as a design — rather than
+Recovery settings (when a parachute opens, at what delay, at what altitude — the chute's *shape*
+is read, its deployment is not) and when a stage separates
+([M3.1c2](../decisions-and-roadmap.md#m3-1c2)); stored launch conditions and simulation results
+([M3.1c3](../decisions-and-roadmap.md#m3-1c3)); pods and parallel stages
+([M3.1c4](../decisions-and-roadmap.md#m3-1c4)). Writing a `.ork` back out as a design — rather than
 as the document it was read from — is [M3.2](../decisions-and-roadmap.md#m3-2).
 
 What keeping the whole document buys you is this: when

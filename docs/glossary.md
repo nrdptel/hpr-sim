@@ -355,7 +355,8 @@ kilograms; ThrustCurve.org's catalog has a median of 1,867 m/s. See
 
 The time from a motor's [burnout](#burnout) to its ejection charge, in seconds. Motor files list
 the delays available; `P` means plugged, with no ejection charge, and hpr reads a `0` as "zero or
-plugged" rather than as ejection at burnout, because most files mean plugged. A recovery device can
+plugged" rather than as ejection at burnout, because most files mean plugged. A `.ork` design says
+`none` for plugged, so its `0` is a charge at burnout ([`.ork` files](format/ork.md#delays-and-ignition)). A recovery device can
 use a motor's delay as its trigger. See [Solid motors](physics/motor.md#delays) and
 [Recovery](physics/recovery.md#triggers-lag-and-release).
 

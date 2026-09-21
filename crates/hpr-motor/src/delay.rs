@@ -26,7 +26,8 @@ use crate::text::WarningKind;
 #[serde(tag = "kind", content = "value", rename_all = "snake_case")]
 #[non_exhaustive]
 pub enum Delay {
-    /// The ejection charge fires this many seconds after burnout (positive).
+    /// The ejection charge fires this many seconds after burnout: positive, or zero where a file
+    /// says so plainly, as a `.ork` does for a charge at burnout (`hpr_io::ork`).
     Seconds(f64),
     /// No ejection charge: the forward closure is plugged.
     Plugged,

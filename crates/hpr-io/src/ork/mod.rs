@@ -36,6 +36,7 @@ pub mod component;
 pub mod container;
 pub mod document;
 mod error;
+pub mod motors;
 pub mod value;
 mod warning;
 
@@ -44,6 +45,10 @@ pub use component::{OPENROCKET_DEFAULT_RADIUS_M, rocket};
 pub use container::{Attachment, Container, MAX_UNPACKED_BYTES, Unpacked};
 pub use document::{Document, Element, MAX_DEPTH, MAX_KNOWN_MINOR, Node, SchemaVersion};
 pub use error::OrkError;
+pub use motors::{
+    Curve, Ignition, IgnitionEvent, LeftOut, MotorConfiguration, Motors, NoCurve, NotFlown,
+    OrkMotor, UnreadMotor,
+};
 pub use value::{AXIAL_OFFSET, Dimension, INSTANCE_COUNT, Overrides, Values};
 pub use warning::{Imported, Warning, WarningKind};
 
@@ -68,6 +73,94 @@ impl OrkFile {
         self.attachments
             .iter()
             .find(|attachment| attachment.name == name)
+    }
+}
+
+/// A `.ork` design read whole: its rocket, carrying every motor configuration hpr can fly as
+/// written, and everything the file says about its motors.
+#[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
+#[non_exhaustive]
+pub struct Design {
+    /// The rocket, as [`rocket`] reads it, with [`Rocket::configurations`] holding the
+    /// configurations in [`Design::motors`] that were not left out.
+    ///
+    /// [`Rocket::configurations`]: hpr_design::Rocket::configurations
+    pub rocket: hpr_design::Rocket,
+    /// Every motor configuration in the file, flown or not.
+    pub motors: Motors,
+}
+
+/// Reads the design in a `.ork` file: the rocket ([`rocket`]) and its motors ([`motors`]), with
+/// thrust curves from the archive's `thrustcurves/*.rse` entries or the bundled catalog.
+///
+/// ```
+/// # fn main() -> Result<(), Box<dyn std::error::Error>> {
+/// let xml = br#"<?xml version="1.0" encoding="UTF-8"?>
+/// <openrocket version="1.10" creator="OpenRocket 24.12">
+///   <rocket><name>Sounder</name>
+///     <motorconfiguration configid="c1" default="true"><name>F15</name></motorconfiguration>
+///     <subcomponents><stage><name>Sustainer</name><subcomponents>
+///       <nosecone><name>Nose</name><id>nose</id>
+///         <material type="bulk" density="1000.0">Plastic</material>
+///         <length>0.15</length><thickness>0.002</thickness><shape>ogive</shape>
+///         <aftradius>0.0165</aftradius></nosecone>
+///       <bodytube><name>Body</name><id>body</id>
+///         <material type="bulk" density="680.0">Cardboard</material>
+///         <length>0.6</length><thickness>0.001</thickness><radius>0.0165</radius>
+///         <motormount><ignitionevent>automatic</ignitionevent><ignitiondelay>0.0</ignitiondelay>
+///           <overhang>0.005</overhang>
+///           <motor configid="c1"><type>single</type><manufacturer>Estes</manufacturer>
+///             <designation>F15</designation><diameter>0.029</diameter><length>0.114</length>
+///             <delay>4.0</delay></motor>
+///         </motormount></bodytube>
+///     </subcomponents></stage></subcomponents></rocket>
+/// </openrocket>"#;
+///
+/// let read = hpr_io::ork::read(xml)?;
+/// let design = hpr_io::ork::design(&read.value).value;
+///
+/// // The F15 has no curve in this file, so it comes from the bundled catalog...
+/// let motor = &design.motors.configurations[0].motors[0];
+/// assert!(matches!(motor.curve, hpr_io::ork::Curve::Catalog { .. }));
+/// assert_eq!(motor.delay, Some(hpr_motor::Delay::Seconds(4.0)));
+/// let impulse_ns = motor.curve.motor().expect("a curve").curve().total_impulse_ns();
+/// assert!((impulse_ns - 49.61).abs() < 0.01, "{impulse_ns}");
+///
+/// // ...and it ignites at launch, so the configuration is one the rocket flies.
+/// let assembly = design.rocket.assemble("c1")?;
+/// assert_eq!(assembly.motors[0].mount, "body");
+/// # Ok(())
+/// # }
+/// ```
+pub fn design(file: &OrkFile) -> Imported<Design> {
+    let (rocket, mounts) = component::walk(&file.document);
+    let Imported {
+        value: mut rocket,
+        mut warnings,
+    } = rocket;
+    // Any warning the walk raised means the rocket or a motor mount was not read exactly as written:
+    // a part left out, a value dropped or simplified, or something assumed. No configuration of
+    // such a rocket is flown (ADR-055).
+    let skipped: Vec<&str> = warnings.iter().map(|w| w.message.as_str()).collect();
+    let incomplete = match skipped.as_slice() {
+        [] => None,
+        [one] => Some((*one).to_owned()),
+        [first, rest @ ..] => Some(format!("{first}, and {} more", rest.len())),
+    };
+    let motors = match file.document.root.child("rocket") {
+        Some(element) => motors::read(
+            element,
+            &mut rocket,
+            incomplete.as_deref(),
+            &mounts,
+            &file.attachments,
+            &mut warnings,
+        ),
+        None => Motors::default(),
+    };
+    Imported {
+        value: Design { rocket, motors },
+        warnings,
     }
 }
 
