@@ -18,10 +18,10 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
 - **M2.2b3 next** (ADR-060 to ADR-062): clusters (M1.9's, or a written departure); fillets
   (OpenRocket's mass on two probes, pinned); a packed part with no size (OpenRocket: 25 × 12.5 mm)
   and an override on a weightless packed part (OpenRocket spreads it over the packing); unread
-  parts. `cargo xtask ork` fails on a roll gap past 1% without a cause (`ROLL_CAUSES`). Probes go
-  in `conventions.py` with fixed UUIDs; `every_probe_is_checked`. Then b4 (L87), c, d, e. **Read
-  OpenRocket after a save**; Java 17. Rerun `mass.py` and `rocketserializer/geometry.py` when the
-  corpus changes.
+  parts. `cargo xtask ork` fails on a roll gap past 1% without a cause (`ROLL_CAUSES`; #155 bounds
+  them). Probes go in `conventions.py` with fixed UUIDs; `every_probe_is_checked`. Then b4 (L87),
+  c, d, e. **Read OpenRocket after a save**; Java 17. Rerun `mass.py` and
+  `rocketserializer/geometry.py` when the corpus changes.
 - **Page rules** (ADR-016 to ADR-020): relative links between pages, GitHub URLs for the rest
   (rustdoc too), labels as links to their rows — a lesson a page names needs a row in
   `decisions-and-roadmap.md` — none in headings; new pages in `SUMMARY.md`, a new library a row in
