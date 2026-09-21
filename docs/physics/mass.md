@@ -11,12 +11,16 @@
 - **How well it is validated:** by analytic tests, the first of four [kinds of evidence][levels]:
   a cone, a tube, four fins and an off-axis payload agree with hand calculation to 1e-11, and fin
   cross-sections with exact numerical integration to 1e-13. Density unit conversions reproduce
-  their sources, such as the *Wood Handbook*'s white ash at 678 kg/m³. Not compared with
-  OpenRocket, weighed parts or a real flight.
+  their sources, such as the *Wood Handbook*'s white ash at 678 kg/m³. Against
+  [OpenRocket](../glossary.md#openrocket) 24.12, on the structure of 74 real designs: the mass is
+  within 1% on 57 and the centre of mass within 1% of the rocket's length on 58. Every design
+  outside either has one of five differences that hpr names in a warning. The roll inertia is not
+  explained yet (median 2.4% apart). Not compared with weighed parts or a real flight
+  ([checked against OpenRocket](#checked-against-openrocket)).
 - **What it leaves out:** fin fillets, the sliver between a flat fin root and the round tube, and
-  the step ring at a nose shoulder. Parachutes weigh as flat circular canopies. Wall and fin mass
-  may differ from OpenRocket's undocumented conventions until the OpenRocket comparison
-  ([M2.2](../decisions-and-roadmap.md#m2-2)) measures them.
+  the step ring at a nose shoulder. Parachutes weigh as flat circular canopies. Five of its
+  conventions differ from OpenRocket's, as measured [below](#checked-against-openrocket); the
+  next roadmap step, [M2.2b](../decisions-and-roadmap.md#m2-2b), decides each one.
 
 ## Code and sources
 
@@ -166,6 +170,88 @@ the URL it was read from, and a basis:
 - **openrocket-database** (Apache-2.0) was used only as a cross-check. Two problems turned up in it:
   - Its ripstop weights use 31 g/m² per oz/yd² (the factor is 33.906), so they are 8.6% low.
   - Its "Plywood, aircraft" at 337–361 kg/m³ is lite-ply, not birch.
+
+## Checked against OpenRocket
+
+**In short.** hpr adds a design's parts into its *structure*: every stage together, with no
+motor. OpenRocket 24.12 computes the same thing. On 2026-09-21 the two were compared on every design
+in the reference library and the jar's examples that OpenRocket opens: 74 designs, 54 of them
+distinct files. Mass and centre of mass agree closely on most designs, and every design outside 1%
+has a cause hpr already warns about. The roll inertia does not agree, and why is not known yet.
+This was [M2.2a](../decisions-and-roadmap.md#m2-2a); [ADR-060][adr-060] records how it was decided.
+
+**How.** `validation/oracles/openrocket/mass.py` runs OpenRocket and asks it for each design's
+structure, after saving the design once so that every automatic dimension is the one OpenRocket
+settles on. `cargo xtask ork` compares hpr's with it:
+
+- the mass, relative to OpenRocket's;
+- the centre of mass's [station](../glossary.md#station), as a share of the rocket's length;
+- the roll inertia (about the rocket's axis) and the pitch inertia (the mean of the two about axes
+  across it), each relative to OpenRocket's.
+
+Which of OpenRocket's numbers is roll was measured, not assumed. The script first reads a probe: one
+tube, 1 m long, 50 mm in outer radius with a 2 mm wall, of a material at 1,000 kg/m³. Worked by
+hand, it weighs 0.61575 kg, with a roll inertia of `m (r_o² + r_i²)/2` = 0.0014790 kg·m² and a
+pitch inertia about its middle of `m ((r_o² + r_i²)/4 + L²/12)` = 0.052052 kg·m². OpenRocket's
+numbers match to 15 digits, and so does hpr's layout of the same file.
+
+The thresholds, 1% of the mass and 1% of the length, were set before any design was measured. A
+design outside either needs a written reason, not a pass.
+
+**The results.**
+
+| | within 0.1% | within 1% | median |
+|---|---|---|---|
+| mass | 50 of 74 | 57 of 74 | 0.020% |
+| centre of mass (share of length) | 48 of 74 | 58 of 74 | 0.013% |
+| pitch inertia | 28 of 74 | 46 of 74 | 0.23% |
+| roll inertia | 10 of 74 | 27 of 74 | 2.4% |
+
+Counting each file's content once, 42 of 54 are within 1% in mass and 43 of 54 in centre of mass.
+
+**The 17 designs outside a threshold** (11 distinct) each have one or more of five causes. hpr
+already warns of every one when it reads the file:
+
+| cause | what hpr does | what OpenRocket does | designs |
+|---|---|---|---|
+| a shoulder written with no wall thickness | reads it as solid, with a warning | gives it no mass | 5 |
+| a [cluster](../glossary.md#cluster) of motor tubes | reads one tube, with a warning | counts every tube | 2 |
+| fin fillets | leaves them out, with a warning | counts them | 2 |
+| a part written with no material | gives it no mass, with a warning | uses 680 kg/m³ (cardboard) | 1 |
+| pods, parallel stages, tube fins and parts left out | keeps them unread (the design is *reduced*) | counts them | 5 |
+
+`cargo xtask ork` prints each of the 17 with the parts that differ most, by id, or by name in an
+older file that writes no ids. A private design is named only by the start of its file's hash.
+
+**A worked example.** The OpenRocket jar's *Two stage high power rocket* is 18.74% heavier in hpr:
+1.956 kg in OpenRocket, 0.3666 kg more in hpr. All of it is the nose cone. Its shoulder is written
+with a radius of 49.3 mm, a length of 50.8 mm and a wall thickness of 0. hpr reads that as solid:
+a cylinder of `π × 0.04928² × 0.0508` = 3.875e-4 m³ of polypropylene at 946 kg/m³ weighs 0.3666 kg.
+OpenRocket gives the same shoulder no mass. The *Airstart timing* example works the same way: its
+nose's shoulder is 5.853 kg of solid fibreglass in hpr and nothing in OpenRocket.
+
+**Roll inertia.** It is 1.2% to 3.8% apart even on Loft's small public designs, whose mass, centre
+of mass and pitch inertia agree within 0.1%. So it is not the five causes above. Parts far from the
+axis, such as tubes and fins, weigh the most in roll, so their shapes are the first place to look;
+[M2.2b](../decisions-and-roadmap.md#m2-2b) takes it up. Until then, treat hpr's roll inertia as
+within a few percent of OpenRocket's, and its pitch inertia as close where the mass is.
+
+**What it leaves out.** Motors: this is the structure alone, and a motor's mass is
+[M2.2c](../decisions-and-roadmap.md#m2-2c)'s. Only the design's selected configuration is weighed.
+The 4 files OpenRocket 24.12 does not open are not compared.
+
+**Run it yourself.** CI holds hpr to OpenRocket's saved answers for Loft's seven public designs,
+`validation/fixtures/ork/openrocket-mass-loft-demo.json`, with `cargo test -p xtask ork_mass`. With
+Java 17 and the OpenRocket jar (`cargo xtask refs fetch`), from the repository root:
+
+```sh
+refs/venv/bin/python validation/oracles/openrocket/mass.py \
+    validation/fixtures/ork/openrocket-mass-loft-demo.json validation/fixtures/ork/loft-demo
+refs/venv/bin/python validation/oracles/openrocket/mass.py corpus-out/openrocket-mass.json refs --jar
+cargo xtask ork
+```
+
+[adr-060]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-060-m22-split-and-the-structures-mass-held-to-openrockets-2026-09-21
 
 ## Verification
 

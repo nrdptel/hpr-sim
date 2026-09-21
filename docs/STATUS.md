@@ -5,22 +5,21 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
 ## Now
 
 - **Current milestone:** M1.8e, all done bar M1.8e16 (`[blocked]` on #108); the work is
-  **M2.2**, OpenRocket as a flight oracle over the corpus, now M3.1 reads a `.ork` whole and its
-  key geometry is held to RocketSerializer's and OpenRocket's (ADR-051 to ADR-059).
-- **Order:** M2.2, M1.9; M1.8e16 waits on #108. **Run:** M0.1-M0.4,
-  M1.1-M1.7, M2.1, M1.8a-e19 bar e16, M3.1; the site is published.
+  **M2.2b**, OpenRocket's mass conventions, now M2.2a holds each design's structure mass to
+  OpenRocket's (ADR-060) and M3.1 reads a `.ork` whole (ADR-051 to ADR-059).
+- **Order:** M2.2b to e, M1.9; M1.8e16 waits on #108. **Run:** M0.1-M0.4,
+  M1.1-M1.7, M2.1, M1.8a-e19 bar e16, M3.1, M2.2a; the site is published.
 - **Neer, 2026-09-20:** Debrief is sunset; a flight log analyzer usable **on its own** is part of
   this project (ADR-046, V21); Phase 5 re-cut.
-- **Last updated:** 2026-09-21 (M3.1d2 shipped, and M3.1: `.ork` import, cross-checked)
+- **Last updated:** 2026-09-21 (M2.2a shipped: each design's structure against OpenRocket's)
 
 ## Handoff (overwrite each session)
 
-- **M2.2 next:** fly the OR examples and the corpus through OpenRocket 24.12 and compare.
-  `validation/oracles/openrocket/automatic_radius.py` (ADR-054) runs it headless through JPype;
-  `events.py` loads the motor database and flies (calm air, seed 1). **Read OpenRocket after it
-  re-resolves** (a save does it); Java 17 only. When the library changes, rerun
-  `validation/oracles/rocketserializer/geometry.py` (env: its `requirements.txt`) before `xtask
-  ork`, which fails on a stale record. RocketSerializer's 23 examples wait on #147.
+- **M2.2b next** (ADR-060): the wall-less shoulder (OpenRocket: no mass; hpr reads it solid, in
+  `component.rs`), clusters, fillets, no material (OR: 680 kg/m³), roll inertia 2.4% apart; `xtask
+  ork` prints each design outside 1% with its parts. Then c (motors), d, e. **Read OpenRocket after
+  a save**; Java 17. When the library changes, rerun `validation/oracles/openrocket/mass.py` and
+  `rocketserializer/geometry.py` (own env) before `xtask ork`, which fails on a stale record.
 - **Page rules** (ADR-016 to ADR-020): relative links between pages, GitHub URLs for the rest
   (rustdoc too), labels as links to their rows — a lesson a page names needs a row in
   `decisions-and-roadmap.md` — none in headings; new pages in `SUMMARY.md`, a new library a row in
@@ -54,6 +53,8 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
 
 ## Done log (newest first, keep about 15)
 
+- 2026-09-21: M2.2a Each design's structure against OpenRocket's (ADR-060): 57 and 58 of 74 within
+  1% in mass and CG; the 17 outside have five causes hpr warns of; roll inertia 2.4% unexplained.
 - 2026-09-21: M3.1d2 Every `.ork` in `loft-fixtures` (27) and the jar's examples (17) imports with
   0 errors; hpr's key geometry held to RocketSerializer's, OpenRocket settling (ADR-059): 1,212
   numbers over 74 designs, each OpenRocket's. M3.1 done; #147, #148, #135 commented.
@@ -61,13 +62,9 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
   (new dev-dependency), with a synthetic design that flies; M3.1d split into d1 and d2.
 - 2026-09-21: M3.1c4 What a `.ork` holds that hpr does not model, kept whole in `x-openrocket`
   (ADR-058): parts, sections, tags and attributes, 5,183 found again. L66 live; #145. M3.1c done.
-- 2026-09-21: M3.1c3 A `.ork` design's stored simulations read back (ADR-057): 178, 144 with a
-  time series (101,955 rows); a probe measures their units. L64 live.
-- 2026-09-21: M3.1c2 A `.ork` design's recovery and separation, read not flown (ADR-056): 137
-  devices, 2 left out in pods; 18 of 93 stages separate. A committed probe measures its event words,
-  `cd auto` (0.8), a deploy height above ground; set above apogee, one did not open.
-- 2026-09-21: M3.1c1 A `.ork` design's motors (ADR-055): 206 in 174 configurations; the file's own
-  curve first; 1 flies, on a one-stage airframe read without a warning. L57, L65; #138, #139, #141.
+- 2026-09-21: M3.1c1 to c3 (ADR-055 to ADR-057): a `.ork`'s motors (206 in 174 configurations, 1
+  flies), recovery and separation (read, not flown; probes measure OpenRocket's words), and stored
+  simulations (178, their units measured). L57, L64, L65 live; #138, #139, #141.
 - 2026-09-20: M3.1b1 to b4 (ADR-052 to ADR-054): all 75 `.ork` designs lay out; L49, L58-L63 live.
 ## Needs Neer (blocking or one-way decisions; the session keeps working on other things)
 
@@ -86,6 +83,7 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
 
 ## Decided without Neer (one line each; significant ones get an ADR)
 
+- ADR-060: M2.2 split a to e, mass first; thresholds (1% mass, 1% of length) set before measuring.
 - ADR-059: "agrees on the key geometry" means no number of hpr's is apart from both RocketSerializer
   and OpenRocket; RocketSerializer pinned as a tool, `--no-deps`, so `orhelper` is never installed.
 - ADR-055 to ADR-058: a motor's curve is its file's own first; only what lights at launch flies;

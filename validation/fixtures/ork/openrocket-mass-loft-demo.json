@@ -1,0 +1,124 @@
+{
+ "command": "mass.py validation/fixtures/ork/openrocket-mass-loft-demo.json validation/fixtures/ork/loft-demo",
+ "designs": [
+  {
+   "comment_removed": false,
+   "file": "validation/fixtures/ork/loft-demo/demo-boattail.ork",
+   "opens": true,
+   "sha256": "cb96b09570a5a084dbc43bfeac2af9df449ed52f5fdd8fa991c11b94d212da88",
+   "structure": {
+    "cm_x_m": 0.618495167576544,
+    "ixx": 0.0005860586170296618,
+    "iyy": 0.057929272265184725,
+    "izz": 0.057929272265184725,
+    "longitudinal_inertia": 0.057929272265184725,
+    "mass_kg": 0.6900445640897314,
+    "rotational_inertia": 0.0005860586170296618
+   }
+  },
+  {
+   "comment_removed": false,
+   "file": "validation/fixtures/ork/loft-demo/demo-dual-deploy.ork",
+   "opens": true,
+   "sha256": "c6ff714a234c0cb7cbb236e3d990607a46af55c652822e8cd823a5f33a9431f1",
+   "structure": {
+    "cm_x_m": 0.9381733514026434,
+    "ixx": 0.0017943426822657497,
+    "iyy": 0.34000755492309415,
+    "izz": 0.34000755492309415,
+    "longitudinal_inertia": 0.34000755492309415,
+    "mass_kg": 1.5201252630428366,
+    "rotational_inertia": 0.0017943426822657497
+   }
+  },
+  {
+   "comment_removed": false,
+   "file": "validation/fixtures/ork/loft-demo/demo-multi-config.ork",
+   "opens": true,
+   "sha256": "7075f9819169b6cec9fddb2f94af9b18d9684a7262048d8dcdd39df85551c252",
+   "structure": {
+    "cm_x_m": 0.5617627242033438,
+    "ixx": 0.0003991416793459829,
+    "iyy": 0.045981440088701406,
+    "izz": 0.045981440088701406,
+    "longitudinal_inertia": 0.045981440088701406,
+    "mass_kg": 0.6141886922367632,
+    "rotational_inertia": 0.0003991416793459829
+   }
+  },
+  {
+   "comment_removed": false,
+   "file": "validation/fixtures/ork/loft-demo/demo-payload-separation.ork",
+   "opens": true,
+   "sha256": "36465f2e852b5b55c40d2c0206e67a9ed7b3e94cd66e8aea260316c017907899",
+   "structure": {
+    "cm_x_m": 0.5100401019204095,
+    "ixx": 0.0003199944768334732,
+    "iyy": 0.03552319068617366,
+    "izz": 0.03552319068617366,
+    "longitudinal_inertia": 0.03552319068617366,
+    "mass_kg": 0.5915918592481484,
+    "rotational_inertia": 0.0003199944768334732
+   }
+  },
+  {
+   "file": "validation/fixtures/ork/loft-demo/demo-quirks.ork",
+   "opens": false,
+   "refused": "java.lang.IllegalStateException: Component: Booster Set not currently compatible with component: Rocket",
+   "sha256": "dfa86bcfe7d97bf0b9cfcd1be60f77c99b4dec1a9d6a28ba97f3bc219879aead"
+  },
+  {
+   "comment_removed": false,
+   "file": "validation/fixtures/ork/loft-demo/demo-single-deploy.ork",
+   "opens": true,
+   "sha256": "1b63cb63e0290f93440368cf77eae40ca66d47873068a57716864afeb7a0aef4",
+   "structure": {
+    "cm_x_m": 0.5617627242033438,
+    "ixx": 0.0003991416793459829,
+    "iyy": 0.045981440088701406,
+    "izz": 0.045981440088701406,
+    "longitudinal_inertia": 0.045981440088701406,
+    "mass_kg": 0.6141886922367632,
+    "rotational_inertia": 0.0003991416793459829
+   }
+  },
+  {
+   "comment_removed": true,
+   "file": "validation/fixtures/ork/loft-demo/demo-stable.ork",
+   "opens": true,
+   "sha256": "199f71f9fc774d5f7f29df70ecac94d8ad46e682a001ef7e67b144970934a234",
+   "structure": {
+    "cm_x_m": 0.5159107524380852,
+    "ixx": 0.0001829872670596915,
+    "iyy": 0.03638346280967683,
+    "izz": 0.03638346280967683,
+    "longitudinal_inertia": 0.03638346280967683,
+    "mass_kg": 0.5400961922367632,
+    "rotational_inertia": 0.0001829872670596915
+   }
+  }
+ ],
+ "jar_sha256": "4959b72f52f5f607941e9722abbb7b7f0c4a38ebbbf84204a329db9f31c4f897",
+ "java": "17.0.20.1",
+ "jpype": "1.7.1",
+ "openrocket": "24.12",
+ "probe": {
+  "by_hand": {
+   "cm_x_m": 0.5,
+   "mass_kg": 0.6157521601036008,
+   "pitch_inertia": 0.052052198352917814,
+   "roll_inertia": 0.0014790366885688495
+  },
+  "document": "<?xml version='1.0' encoding='utf-8'?>\n<openrocket version=\"1.10\" creator=\"hpr-sim mass probe\"><rocket><name>Probe</name>\n<subcomponents><stage><name>Stage</name><subcomponents>\n<bodytube><name>Tube</name><length>1.0</length><thickness>0.002</thickness>\n<radius>0.05</radius>\n<material type=\"bulk\" density=\"1000.0\">Probe</material></bodytube>\n</subcomponents></stage></subcomponents></rocket></openrocket>\n",
+  "openrocket": {
+   "cm_x_m": 0.5,
+   "ixx": 0.0014790366885688484,
+   "iyy": 0.052052198352917786,
+   "izz": 0.052052198352917786,
+   "longitudinal_inertia": 0.052052198352917786,
+   "mass_kg": 0.6157521601036003,
+   "rotational_inertia": 0.0014790366885688484
+  }
+ },
+ "source": "validation/oracles/openrocket/mass.py"
+}

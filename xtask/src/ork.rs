@@ -232,6 +232,7 @@ fn report(root: &Path, files: &[Case], library: bool) -> Result<(), String> {
     let mut simulation_tally = crate::ork_simulations::SimulationTally::default();
     let mut extension_tally = crate::ork_extensions::ExtensionTally::default();
     let mut geometry = crate::ork_geometry::GeometryTally::load(root, library)?;
+    let mut mass = crate::ork_mass::MassTally::load(root, library)?;
     // Per source (a directory under `refs/`, or the jar): files, read, laid out, holding no
     // design, and errors (not read, or read but not laid out).
     let mut sources: BTreeMap<String, [usize; 5]> = BTreeMap::new();
@@ -379,6 +380,7 @@ fn report(root: &Path, files: &[Case], library: bool) -> Result<(), String> {
                     no_design += 1;
                 }
                 let mut geometry_here = Value::Null;
+                let mut mass_here = Value::Null;
                 let laid_out = match spine.value.layout() {
                     // A document with nothing in its `rocket` is not a design that failed; it is
                     // not a design, and is counted as such rather than as a failure.
@@ -391,6 +393,13 @@ fn report(root: &Path, files: &[Case], library: bool) -> Result<(), String> {
                         source[2] += 1;
                         geometry_here =
                             geometry.add(&oracle_key(root, name), bytes, &spine.value, &layout);
+                        mass_here = mass.add(
+                            &oracle_key(root, name),
+                            bytes,
+                            &spine.value,
+                            &layout,
+                            whole.value.is_reduced(),
+                        );
                         // A structural part that weighs nothing is almost always a reading gone
                         // wrong somewhere upstream, and it is silent by nature: the design lays
                         // out, the report is written, and the mass is simply missing.
@@ -465,6 +474,7 @@ fn report(root: &Path, files: &[Case], library: bool) -> Result<(), String> {
                     Err(error) => {
                         source[4] += 1;
                         geometry.not_laid_out(&oracle_key(root, name));
+                        mass.not_laid_out(&oracle_key(root, name));
                         let text = error.to_string();
                         *spine_errors.entry(text.clone()).or_default() += 1;
                         Some(text)
@@ -516,6 +526,7 @@ fn report(root: &Path, files: &[Case], library: bool) -> Result<(), String> {
                     "simulations": simulations_here,
                     "extensions": extensions_here,
                     "rocketserializer": geometry_here,
+                    "openrocket_mass": mass_here,
                     "container": read.value.container.as_str(),
                     "version": read.value.document.version.to_string(),
                     "creator": read.value.document.creator,
@@ -639,6 +650,7 @@ fn report(root: &Path, files: &[Case], library: bool) -> Result<(), String> {
     summary["radii_given_openrocket_default"] = to_value(&defaulted);
     summary["designs_with_radii_given_openrocket_default"] = json!(designs_defaulted);
     summary["openrocket_body_radii"] = openrocket_body_radii;
+    summary["openrocket_mass_outside"] = mass.outside();
     summary["motors"] = motor_tally.summary();
     summary["recovery"] = recovery_tally.summary();
     summary["simulations"] = simulation_tally.summary();
@@ -778,6 +790,7 @@ fn report(root: &Path, files: &[Case], library: bool) -> Result<(), String> {
     simulation_tally.print();
     extension_tally.print();
     geometry.print();
+    mass.print();
     if !spine_errors.is_empty() {
         print_counts("designs that do not lay out", &spine_errors);
     }
@@ -814,6 +827,9 @@ fn report(root: &Path, files: &[Case], library: bool) -> Result<(), String> {
         return Err(failure);
     }
     if let Some(failure) = geometry.failure() {
+        return Err(failure);
+    }
+    if let Some(failure) = mass.failure() {
         return Err(failure);
     }
     // M3.1's first *done when*: the private design library and the jar's examples import with no
