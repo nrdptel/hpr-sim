@@ -162,6 +162,10 @@ PROBES = {
             "<radius>0.05</radius>", "<radius>0.03</radius>"
         ),
     ],
+    "a transition that writes no thickness at all": [
+        tube(),
+        transition(thickness="").replace("<thickness></thickness>", ""),
+    ],
     # Materials.
     "a nose and a tube that name no material, with one part of each kind inside": [
         nose(material=""),

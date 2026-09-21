@@ -226,6 +226,7 @@ mod tests {
             "a tube of no wall",
             "a nose, a shoulder and a tube that write no thickness at all",
             "a narrower nose and tube that write no thickness at all",
+            "a transition that writes no thickness at all",
             "a nose and a tube that name no material, with one part of each kind inside",
         ] {
             let probe = probe(&record, question);

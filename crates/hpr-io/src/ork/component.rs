@@ -525,7 +525,7 @@ fn wall(values: &mut Values<'_>, outer_radius_m: Option<f64>) -> Wall {
     match (values.number(&["thickness"]), outer_radius_m) {
         (Some(thickness_m), Some(radius_m)) if thickness_m >= radius_m => Wall::Filled {},
         (Some(thickness_m), _) if thickness_m > 0.0 => Wall::Shell { thickness_m },
-        (Some(thickness_m), _) if thickness_m == 0.0 => Wall::Shell { thickness_m: 0.0 },
+        (Some(0.0), _) => Wall::Shell { thickness_m: 0.0 },
         (Some(thickness_m), _) => {
             values.warn_at(
                 WarningKind::Dropped,
@@ -540,7 +540,8 @@ fn wall(values: &mut Values<'_>, outer_radius_m: Option<f64>) -> Wall {
 }
 
 /// The wall OpenRocket 24.12 gives a nose cone, transition or body tube that writes no thickness,
-/// m: measured on a 50 mm and a 30 mm probe, each the mass of a 2 mm wall ([ADR-061][adr-061]).
+/// m: a nose cone and a tube at 50 mm and at 30 mm, and a transition, each weigh what a 2 mm wall
+/// gives ([ADR-061][adr-061]).
 ///
 /// [adr-061]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-061-what-a-ork-leaves-unsaid-read-as-openrocket-reads-it-overrides-measured-two-departures-kept-2026-09-21
 const DEFAULT_WALL_M: f64 = 0.002;

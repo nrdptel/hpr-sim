@@ -221,14 +221,11 @@
   five RocketPy example rockets fly in two modes — **same-drag**, which isolates dynamics,
   environment and motor, and **predicted**, hpr's own aero, whose supersonic gaps are reported
   rather than hidden — and CI compares against the stored references.
-
   *Done when:* at least 5 cases pass their same-drag tolerances; predicted-mode results are
   reported, with explained gaps; `validation/reports/latest.md` is generated; the CI job is green;
   and a separate, manually triggered workflow regenerates the references.
-
   - [x] **M2.1a The harness.**
     - Loft lessons: L76, L77, L78, L79.
-
     *Done when:* `cargo xtask validate` runs every case in the lock against its stored reference
     and writes `validation/reports/latest.md`; and a case whose metric has no tolerance, a
     reference value with no provenance, and a run with fewer cases than the lock expects each fail.
@@ -236,30 +233,24 @@
     NDRT's northward drift, +2.86%); the command refuses every malformed case the done-when names
     and more, with twelve tests, four of them L76–L79. Valetudo's northward drift first read 28x
     RocketPy's: hpr's gravity had a horizontal part RocketPy's lacks (issue #27).
-
   - [x] **M2.1b Whole flights against RocketPy, same-drag:** a
     `validation/oracles/rocketpy/flight.py` generator (M2.1b1) and a `Flight::WholeFlight` case
     variant taking the oracle's `C_D0(M)` through `Simulation::with_drag_table` (M2.1b2).
     - Loft lessons: L75.
-
     *Done when:* split below into M2.1b1 and M2.1b2; M2.1b2 carries M2.1b's three bullets.
-
     - [x] **M2.1b1 The whole-flight oracle.** *Done when:* `refs/venv/bin/python
       validation/oracles/rocketpy/flight.py` writes a fixture of all five cases, each with the
       metrics M2.1 names, a time series, a loose-solver run and a source for every value, and
       re-running it reproduces the committed fixture byte for byte; no RocketPy data file is
       committed, and `git status` shows nothing from `refs/`; and every case's declared drag table
       is argued in the generator, with its source.
-
       *Result:* met. A declared constant `C_D0` of 0.5; the fixture reproduces byte for byte;
       apogees 779 to 3,623 m AGL, Prometheus to Mach 1.014. The oracle's own step-size cliff
       (thrust(0) = 0, an unbounded step) was fixed by bounding `max_time_step` (issue #33).
-
     - [x] **M2.1b2 The whole-flight cases:** a `Flight::WholeFlight` case variant beside
       `RecoveryDescent`, taking the case's `C_D0(M)` through `Simulation::with_drag_table`, and the
       five cases in the lock.
       - Loft lessons: L75.
-
       *Done when:* at least 5 whole-flight cases run in the lock and pass their same-drag
       tolerances, with each metric's tolerance argued in the case file;
       `hpr_validate::rocketpy::tests::oracle_inputs_come_from_the_case_file_not_hpr_outputs` exists
@@ -269,13 +260,11 @@
       metric within 3% (largest +1.783%, Bella Lui's power-on peak). The drifts in wind stayed
       unscored until issue #50 (M2.1d3); Prometheus was a checked `M ≥ 1` gap until M1.8a. The
       comparison flies RocketPy's gravity, atmosphere, rail and thrust.
-
   - [x] **M2.1c Predicted mode, CI and regeneration:** the same cases flown with hpr's own aero,
     reported beside the same-drag ones; a CI job that runs `cargo xtask validate` against the
     stored references, and a separate, manually triggered workflow that regenerates them.
     *Done when:* split below into M2.1c1 and M2.1c2, which carry M2.1c's three bullets between
     them (the first in M2.1c2, the other two in M2.1c1).
-
     - [x] **M2.1c1 The CI job and the regeneration workflow.** *Done when:* the CI job is green on
       macOS, Windows and Linux, and the regeneration workflow runs only when a human triggers it,
       its output a diff to review rather than a commit. *Result (ADR-022):* met. `cargo xtask
@@ -283,30 +272,25 @@
       this run does not reproduce; CI runs it on three OSes. *Regenerate references* is
       `workflow_dispatch` only, with a read-only token, and uploads the diff; run locally it
       reproduced every fixture and the report byte for byte.
-
     - [x] **M2.1c2 Predicted mode.** *Done when:* predicted-mode results are in the report for every
       case, each gap explained in the case file or `docs/VALIDATION.md`, with `M ≥ 1` cases reported
       as gaps until M1.8. *Result (ADR-023):* met. `flight.py --own-drag` (hashes, never values).
       Six `predicted-*` cases, 3% targets: 56 of 75 within; Valetudo and NDRT 2020 +10% in apogee;
       misses pinned.
-
   - [x] **M2.1d The time-series RMS and the path in wind:** the two items of M2.1's list that
     M2.1a to M2.1c leave open — the time-series RMS after alignment (each whole-flight fixture
     already carries its series), and the landing offset, reported but not scored until issue #50
     finds why hpr turns into the wind less than RocketPy. *Done when:* split below into M2.1d1 to
     M2.1d3, which carry these two bullets between them.
-
     - [x] **M2.1d1 The time-series RMS.** *Done when:* every whole-flight case reports its
       time-series RMS after alignment against the reference's series, gated with its tolerance
       argued in the case file. *Result (ADR-024):* met for every case hpr flies: RMS at RocketPy's
       120 series times, held to 3% of apogee and max speed; same-drag 1.4–39.2 m and 0.13–2.06 m/s,
       all pass; predicted, three outside (the drag), pinned.
-
     - [x] **M2.1d2 The calm-air cases (issue #50).** *Done when:* the three calm-air cases are in
       the suite, their apogee and landing drifts scored at 3%, and each passes or is a gap its case
       file explains. *Result (ADR-025):* met: Calisto and Bella Lui pass; Juno III's drifts miss
       (−3.7%), reported not scored, 1.6 points being the rail release (`rail_release.py`).
-
     - [x] **M2.1d3 The path in wind (issue #50).** *Done when:* issue #50's cause is found and the
       drifts are scored within their tolerances, or an ADR records the measured cause and why they
       cannot be, with the gap left visible in the report. *Result (ADR-026):* met: mostly RocketPy's

@@ -5073,7 +5073,7 @@ stored results).
 
 **Decision.**
 
-1. **Measured, not assumed.** `validation/oracles/openrocket/conventions.py` writes 27 small probe
+1. **Measured, not assumed.** `validation/oracles/openrocket/conventions.py` writes 28 small probe
    designs, each asking one question, and records what OpenRocket 24.12 makes of each: its
    structure and its own per-part breakdown, and the material it gives each part through the
    public `getMaterial` and `getLineMaterial`. The record is
@@ -5088,7 +5088,8 @@ stored results).
      its nose is filled. A filled nose keeps its shoulder's own wall (the probe: 0.84446 kg, the
      solid cone and the walled shoulder).
    - A nose cone, transition or body tube that writes no thickness has a 2 mm wall, whatever its
-     radius: a 50 mm and a 30 mm probe each weigh what a 2 mm wall gives.
+     radius: a nose and a tube at 50 mm and at 30 mm, and a transition, each weigh what a 2 mm
+     wall gives.
    - A part that names no material is made of OpenRocket's default for its kind: cardboard,
      680 kg/m³, for a solid part; ripstop nylon, 0.067 kg/m², for a canopy or streamer; an elastic
      cord, 0.0018 kg/m, for shroud lines and a shock cord; and Delrin, 1,420 kg/m³, for a rail
@@ -5117,7 +5118,9 @@ stored results).
      inside at theirs, and a stage, having none of its own, scales nothing. On a lone part the two
      agree. On the probes hpr's roll inertia is 6.9% to 37% below OpenRocket's under a tube's
      covering override, and 2.5 to 5.0 times OpenRocket's under a stage's. Neither rule is right
-     for every rocket; hpr's is consistent with its own mass.
+     for every rocket; hpr's is consistent with its own mass. Likewise under a centre override
+     that covers the parts inside: hpr moves the assembly whole, OpenRocket the part alone, and
+     OpenRocket adds the parts inside where they were (pitch inertia 2.65% apart on the probe).
    - **Flags that disagree.** A part overriding both quantities with flags that disagree cannot be
      said in `hpr-design`, which scopes a part's overrides once: the mass flag decides, with a
      warning, as before. On the probe that is 4.7 mm.

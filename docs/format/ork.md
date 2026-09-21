@@ -988,13 +988,14 @@ How it was decided, and the sources quoted in full, are in [ADR-054][adr-054].
 **The 14 parts that weigh nothing** are worth checking, because a structural part with no mass is
 silent by nature — the design lays out, the report is written, and the mass is simply missing. All
 14 are accounted for: 7 inner tubes (couplers among them) and 4 launch lugs whose wall the file
-states as zero, which OpenRocket gives no mass too
-([ADR-061][adr-061]),
-1 mass object the file says weighs 0 kg, and 2 transitions the designs *override* to zero mass —
+states as zero, which OpenRocket gives no mass too ([ADR-061][adr-061]); 1 mass object the file
+says weighs 0 kg; and 2 transitions the designs *override* to zero mass —
 which is OpenRocket's ["base drag hack"](https://openrocket.readthedocs.io/en/latest/), a massless,
 dragless transition added only to change the base geometry. `cargo xtask ork` counts them by kind,
-so a new one would show up. Before [M2.2b1](../decisions-and-roadmap.md#m2-2b1) there were 21: the
-7 more were parts that name no material, which now take OpenRocket's default.
+so a new one would show up. (The files hold 12 attached tubes of no wall, the warning count
+below; one of them is not among the parts that lay out, which this page has not traced.) Before
+[M2.2b1](../decisions-and-roadmap.md#m2-2b1) there were 21: the 7 more (2 body tubes, 2 fin sets,
+2 inner tubes and a nose cone) name no material, and now take OpenRocket's default.
 
 **What the 69 warnings are.** Every one is a reading this page explains, and none of them means a
 file is broken:
