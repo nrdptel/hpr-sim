@@ -980,8 +980,8 @@ mod tests {
 
     /// The roll causes are measured on OpenRocket's probes, not assumed: which overrides cover the
     /// parts inside; OpenRocket's fin rule on its own fin mass closes an airfoil probe, and a fin
-    /// set with nothing to pair keeps hpr's; and a packed point mass is a cause only for a gap of
-    /// its sign and no larger than it can account for.
+    /// set with nothing to pair keeps hpr's; and a weightless packed part under an override, once a
+    /// cause (a point mass in hpr), now leaves no gap (ADR-063).
     #[test]
     fn roll_causes_are_measured_not_assumed() {
         for (question, covering) in [

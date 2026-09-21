@@ -5075,14 +5075,16 @@ fits in the same session.
 1. **M2.2b3 splits.** b3 takes the packed parts. A new b4 takes clusters, fillets and the parts
    kept unread, and the stored results (Loft lesson L87) become b5. Every item of the old *done
    when* is in b3's or b4's.
-2. **Measured on seven more probes** in `validation/oracles/openrocket/conventions.py`, each a
+2. **Measured on nine more probes** in `validation/oracles/openrocket/conventions.py`, each a
    tube and one part, fixed ids: a streamer, a shock cord and a mass component written with no
    packed size; a parachute written with only a packed length, and one with only a packed radius;
-   a mass component of no mass and a shock cord of no length, each under a 30 g override. The
-   earlier probes' records are unchanged by the rerun, bit for bit.
+   a parachute with no packed size in a tube twice as wide, and in one whose bore is 8 mm in
+   radius; a mass component of no mass and a shock cord of no length, each under a 30 g override.
+   The earlier probes' records are unchanged by the rerun, bit for bit.
 3. **An unwritten packed size is OpenRocket's.** A packed part that writes no `packedlength` is
-   25 mm long; one that writes no `packedradius` is 12.5 mm in radius, a fixed number, not the
-   tube's bore (48 mm on the probes). Each holds on its own: the half-written parachutes take the
+   25 mm long; one that writes no `packedradius` is 12.5 mm in radius, a fixed number: it is the
+   same in bores of 48 and 98 mm, and OpenRocket does not shrink it to fit an 8 mm bore. hpr does
+   not either (only an automatic radius is fitted to the bore). Each holds on its own: the half-written parachutes take the
    written half and the default for the other. It holds for all four kinds. The numbers are
    inferred from OpenRocket's output, not taken from its source. `hpr_io::ork` reads them with no
    warning, as ADR-061 reads what else a file leaves unsaid. Before, hpr read a length of zero
@@ -5095,8 +5097,8 @@ fits in the same session.
 5. **One cause retired.** `cargo xtask ork` no longer counts "packed parts hpr weighs as point
    masses" as a cause for a roll gap: hpr no longer makes such a point mass.
 
-**Consequences.** `hpr_validate::openrocket::tests` holds all 40 probes of one tube and one part:
-the two that were pinned gaps and the seven new ones are OpenRocket's to 1e-12 in mass, centre,
+**Consequences.** `hpr_validate::openrocket::tests` holds all 42 probes of one tube and one part:
+the two that were pinned gaps and the nine new ones are OpenRocket's to 1e-12 in mass, centre,
 roll and pitch. On 2026-09-21 (`cargo xtask ork`, 74 files OpenRocket opens, before and after):
 
 | | before | after |
@@ -5112,7 +5114,10 @@ The last row moves the wrong way on purpose: in one file the point mass's missin
 offset part of hpr's fin departure (ADR-062 §3). The 17 still outside each have a cause: a
 covering override (7 by content) or a reduced design (6). The Loft demo whose streamer writes no
 packed radius no longer warns of it. A flight changes only where a `.ork` packed part writes no
-size, or a weightless one carries an override.
+size, or a weightless one carries an override. Two readings are hpr's and unprobed: a packed size
+written but unreadable is read as zero, with a warning, as every unreadable number is; and every
+probe places its part from the top, so the 25 mm length's effect on a part placed from the middle,
+bottom or after another is derived, not measured.
 
 ## ADR-062: Fins and rail buttons against OpenRocket; roll inertia explained (2026-09-21)
 

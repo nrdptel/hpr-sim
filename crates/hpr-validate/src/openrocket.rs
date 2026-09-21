@@ -320,7 +320,7 @@ mod tests {
     /// transition or tube that writes no thickness has a 2 mm wall, and a shoulder that writes none
     /// has no wall; a part that names no material is made of OpenRocket's cardboard, ripstop nylon,
     /// elastic cord or (a rail button) Delrin; and a mass override on a part that weighs nothing is
-    /// a point mass at the middle of its length. So the mass and the centre of mass agree, part by
+    /// a point mass at the middle of its length, unless the part is packed (ADR-063, below). So the mass and the centre of mass agree, part by
     /// part as well as whole, and nothing is warned of; where no fin, rail button or recovery part
     /// is in the probe, the inertias agree as well.
     ///
@@ -442,15 +442,17 @@ mod tests {
     /// - A rail button, one or a row, from any end: OpenRocket's in mass and centre (#151), its
     ///   inertias apart by 7.16e-6 and 9.23e-5 (one), 1.43e-5 and 4.99e-4 (two).
     /// - A launch lug: its pitch inertia is apart by 3.13e-4.
-    /// - A parachute that writes no packed size: OpenRocket packs it 25 mm long and 12.5 mm in
-    ///   radius (read from its centre and roll inertia); hpr reads no radius, with a warning.
-    /// - A parachute that weighs nothing, under a mass override: OpenRocket spreads the override
-    ///   over its packing, `m r²/2` in roll; hpr makes it a point mass (ADR-061), so −0.805%.
+    /// - A packed part that writes no packed size, or only half of one: OpenRocket packs it 25 mm
+    ///   long and 12.5 mm in radius, whatever the tube, and so does hpr now (ADR-063; before, hpr
+    ///   read zero and was 0.611 mm off in the centre, −0.167% in roll).
+    /// - A packed part that weighs nothing, under a mass override: OpenRocket spreads the override
+    ///   over its packing, `m r²/2` in roll, and so does hpr now (ADR-063; before, a point mass,
+    ///   −0.805%).
     /// - A single fin: the rule about the fin's own centre, `m hₑ²/12`, agrees; its pitch is
     ///   apart by 0.406%.
     ///
     /// [adr-062]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-062-fins-and-rail-buttons-against-openrocket-roll-inertia-explained-2026-09-21
-    const ALONE: [(&str, [f64; 4]); 40] = [
+    const ALONE: [(&str, [f64; 4]); 42] = [
         ("a tube and a bulkhead", [0.0, 0.0, 0.0, 0.0]),
         (
             "a tube and a canted fin set",
@@ -512,6 +514,14 @@ mod tests {
         ),
         (
             "a tube and a shock cord of no length, under a mass override",
+            [0.0, 0.0, 0.0, 0.0],
+        ),
+        (
+            "a wider tube and a parachute that writes no packed size",
+            [0.0, 0.0, 0.0, 0.0],
+        ),
+        (
+            "a narrow tube and a parachute that writes no packed size",
             [0.0, 0.0, 0.0, 0.0],
         ),
         (

@@ -1254,9 +1254,10 @@ fn place(
     Ok(mass.translated(DVec3::new(0.0, 0.0, -fore_station_m)))
 }
 
-/// The body a mass override rescales: `mass` itself, but for a packed part that weighs nothing
-/// under a mass override, which becomes that mass as a solid cylinder of its packing rather than
-/// the point [`Overrides::apply`] makes of any other weightless body. OpenRocket 24.12 does the
+/// The body a mass override rescales: `mass` itself, but for a packed part under a mass override,
+/// which becomes that mass as a solid cylinder of its packing. For a part that weighs something this
+/// is the rescaling [`Overrides::apply`] does anyway; for one that weighs nothing it replaces the
+/// point `apply` makes of any other weightless body. OpenRocket 24.12 does the
 /// same: on probes of a parachute, a mass component and a shock cord each weighing nothing, its
 /// roll inertia is the override's `m r²/2` over the packing's radius `r`, and its pitch inertia and
 /// centre are the cylinder's ([ADR-063][adr-063]). `fore_station_m` is the part's forward end.
@@ -1269,9 +1270,14 @@ fn packed_for_override(
     fore_station_m: f64,
 ) -> Result<MassProperties, DesignError> {
     match (overrides.mass_kg, part.packing()) {
-        (Some(mass_kg), Some(packing)) if mass.mass_kg == 0.0 => Ok(packing
-            .place(mass_kg)?
-            .translated(DVec3::new(0.0, 0.0, -fore_station_m))),
+        // A packed part of any mass is its packing's cylinder, so building the cylinder of `m′`
+        // directly is what rescaling gives, and holds for a weightless (or subnormal) mass too.
+        (Some(mass_kg), Some(packing)) => {
+            check_dimension("mass override (kg)", mass_kg, true)?;
+            Ok(packing
+                .place(mass_kg)?
+                .translated(DVec3::new(0.0, 0.0, -fore_station_m)))
+        }
         _ => Ok(mass),
     }
 }

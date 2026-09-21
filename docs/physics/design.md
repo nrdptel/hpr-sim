@@ -144,8 +144,8 @@ moments and products of inertia; see [Mass properties](mass.md)). Primes mark th
 They apply in this order:
 
 1. **Mass** `m′`: `I′ = I m′/m`, same centre. The body keeps its shape. A body with `m = 0` becomes
-   a point mass `m′` at `c`, but for a packed part (a mass component, parachute, streamer or shock
-   cord), which becomes a solid cylinder of `m′` filling its packing, as OpenRocket's does
+   a point mass `m′` at `c`. A packed part (a mass component, parachute, streamer or shock cord)
+   with `m = 0` instead becomes a solid cylinder of `m′` filling its packing, as OpenRocket's does
    ([Packed parts](mass.md#packed-parts)).
 2. **Centre** `a` (`cg_aft_m`): `c′_z = −(s_fore + a)`, with `s_fore` the station of the
    component's own forward end (a stage's for a stage, and never a shoulder's), whether or not the

@@ -665,7 +665,10 @@ const PACKED_RADIUS_M: f64 = 0.0125;
 
 /// How a mass object or a recovery part is packed: the cylinder it takes up inside the body. A size
 /// the file does not write is OpenRocket's ([`PACKED_LENGTH_M`], [`PACKED_RADIUS_M`]), read with no
-/// warning, as ADR-061 reads what else a file leaves unsaid.
+/// warning, as [ADR-061][adr-061] reads what else a file leaves unsaid (a wall of no thickness, no
+/// material): that is what the file means, not a guess.
+///
+/// [adr-061]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-061-what-a-ork-leaves-unsaid-read-as-openrocket-reads-it-overrides-measured-two-departures-kept-2026-09-21
 fn packing(values: &mut Values<'_>, auto: &mut Vec<AutoDimension>) -> Packing {
     let radius_m = if values.element(&["packedradius"]).is_none() {
         PACKED_RADIUS_M
