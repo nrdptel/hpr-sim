@@ -5,24 +5,23 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
 ## Now
 
 - **Current milestone:** M1.8e, all done bar M1.8e16 (`[blocked]` on #108); the work is
-  **M2.2b2**, clusters, fillets, airfoil fins, unread parts and roll inertia, now M2.2b1 reads what
-  a `.ork` leaves unsaid as OpenRocket does (ADR-061) and M2.2a holds each structure to it.
-- **Order:** M2.2b2, b3, c to e, M1.9; M1.8e16 waits on #108. **Run:** M0.1-M0.4,
-  M1.1-M1.7, M2.1, M1.8a-e19 bar e16, M3.1, M2.2a, M2.2b1; the site is published.
+  **M2.2b3**, clusters, fillets, packed parts OpenRocket sizes and unread parts, now M2.2b2 has
+  traced the roll inertia's gap to OpenRocket's fin shortcut (ADR-062).
+- **Order:** M2.2b3, b4, c to e, M1.9; M1.8e16 waits on #108. **Run:** M0.1-M0.4,
+  M1.1-M1.7, M2.1, M1.8a-e19 bar e16, M3.1, M2.2a, M2.2b1, b2; the site is published.
 - **Neer, 2026-09-20:** Debrief is sunset; a flight log analyzer usable **on its own** is part of
   this project (ADR-046, V21); Phase 5 re-cut.
-- **Last updated:** 2026-09-21 (M2.2b1 shipped: walls, materials and overrides as OpenRocket's)
+- **Last updated:** 2026-09-21 (M2.2b2 shipped: fins, rail buttons and roll inertia)
 
 ## Handoff (overwrite each session)
 
-- **M2.2b2 next** (ADR-060, ADR-061): clusters (M1.9's, or a written departure), fillets, airfoil
-  fins (OpenRocket 19.4% heavier), elliptical fins (OpenRocket 0.18% lighter), unread parts, a
-  rail button's place (#151), roll inertia 2.1%
-  apart (nose, shoulder, transition and tube roll already agree on probes, so fins and inner
-  parts). Add probes to `validation/oracles/openrocket/conventions.py`; every probe needs a test
-  in `hpr_validate::openrocket` (`every_probe_is_checked`). Then
-  b3 (L87), c (motors), d, e. **Read OpenRocket after a save**; Java 17. When the library
-  changes, rerun `mass.py` and `rocketserializer/geometry.py` (own env) before `xtask ork`.
+- **M2.2b3 next** (ADR-060 to ADR-062): clusters (M1.9's, or a written departure); fillets
+  (OpenRocket's mass on two probes, pinned); a packed part with no size (OpenRocket: 25 × 12.5 mm)
+  and an override on a weightless packed part (OpenRocket spreads it over the packing); unread
+  parts. `cargo xtask ork` fails on a roll gap past 1% without a cause (`ROLL_CAUSES`; #155 bounds
+  them). Probes go in `conventions.py` with fixed UUIDs; `every_probe_is_checked`. Then b4 (L87),
+  c, d, e. **Read OpenRocket after a save**; Java 17. Rerun `mass.py` and
+  `rocketserializer/geometry.py` when the corpus changes.
 - **Page rules** (ADR-016 to ADR-020): relative links between pages, GitHub URLs for the rest
   (rustdoc too), labels as links to their rows — a lesson a page names needs a row in
   `decisions-and-roadmap.md` — none in headings; new pages in `SUMMARY.md`, a new library a row in
@@ -56,6 +55,8 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
 
 ## Done log (newest first, keep about 15)
 
+- 2026-09-21: M2.2b2 Fins, rail buttons, roll inertia (ADR-062): OpenRocket's fin shortcut
+  inferred on 33 probes; roll median 2.1% → 0.001% with it; sections kept hpr's; #151 fixed.
 - 2026-09-21: M2.2b1 What a `.ork` leaves unsaid, and overrides (ADR-061): 32 probes; walls,
   shoulders, materials as OpenRocket's; L51 live; 61 and 62 of 74 within 1%; #151. M2.2b split.
 - 2026-09-21: M2.2a Each design's structure against OpenRocket's (ADR-060): 57 and 58 of 74 within
@@ -82,6 +83,7 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
 
 ## Decided without Neer (one line each; significant ones get an ADR)
 
+- ADR-062: M2.2b2 split; hpr keeps its exact fin roll inertia and fin sections, pinned as departures.
 - ADR-061: what a `.ork` leaves unsaid is OpenRocket's reading; two override rules stay hpr's.
 - ADR-060: M2.2 split a to e, mass first; thresholds (1% mass, 1% of length) set before measuring.
 - ADR-059: "agrees on the key geometry" means no number of hpr's is apart from both RocketSerializer

@@ -1,4 +1,5 @@
-//! hpr held to OpenRocket's own answers ([M2.2][m2-2]). For now this is only tests.
+//! hpr held to OpenRocket's own answers ([M2.2][m2-2]): the tests, and one rule of OpenRocket's
+//! that `cargo xtask ork` needs to explain a gap, [`openrocket_fin_set_roll_kg_m2`].
 //!
 //! `validation/fixtures/ork/openrocket-conventions.json` is OpenRocket 24.12 reading small probe
 //! designs, each asking one question a `.ork` leaves to its reader. What does a shoulder written
@@ -12,9 +13,76 @@
 //! [m2-2]: https://nrdptel.github.io/hpr-sim/decisions-and-roadmap.html#m2-2
 //! [adr-061]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-061-what-a-ork-leaves-unsaid-read-as-openrocket-reads-it-overrides-measured-two-departures-kept-2026-09-21
 
+use hpr_design::fins::FinSet;
+
+/// The roll inertia OpenRocket 24.12 gives a fin set about its own centre of mass, kg·m², **inferred
+/// from its output, not taken from its source** (which is GPL and not read). For two or more fins,
+/// whose centre is on the rocket's axis, it is the set's mass `m` spread evenly along a thin rod
+/// from the body at `R` out to `R + hₑ`,
+///
+/// ```text
+/// I = m (R² + R hₑ + hₑ²/3),   hₑ² = A h / c_r,
+/// ```
+///
+/// where `A` is one fin's planform area, `h` its span and `c_r` its root chord: a rectangle's own
+/// span, shorter for a fin that narrows outward. For one fin it is the same rod about its own
+/// middle, `m hₑ²/12`. `validation/oracles/openrocket/conventions.py` measured it on rectangles of
+/// two chords, two spans and two body radii, a trapezoid, a triangle, an ellipse (OpenRocket's
+/// 30-sided polygon), one fin, and fins with a rounded or airfoil section, a tab or fillets: every
+/// one to 1e-12 on the probe's structure but the ellipse (by its polygon) and a cant (2.66e-5). A
+/// tab's mass takes the planform's value, and the section and thickness play no part. hpr's own is
+/// the exact integral of `r²` over the fin ([`FinSet::mass_properties`]); the two agree on a
+/// rectangle without a tab, but for the thickness ([ADR-062][adr-062]).
+///
+/// `mass_kg` is the set's, all fins together. `None` for a planform `hpr-design` refuses, a count
+/// of zero, or a radius or mass that is negative or not finite.
+///
+/// [adr-062]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-062-fins-and-rail-buttons-against-openrocket-roll-inertia-explained-2026-09-21
+#[must_use]
+pub fn openrocket_fin_set_roll_kg_m2(
+    fins: &FinSet,
+    body_radius_m: f64,
+    mass_kg: f64,
+) -> Option<f64> {
+    let area_m2 = fins.planform.geometry().ok()?.area_m2;
+    rod_roll_kg_m2(
+        fins.count,
+        area_m2,
+        fins.planform.span_m(),
+        fins.planform.root_chord_m(),
+        body_radius_m,
+        mass_kg,
+    )
+}
+
+/// [`openrocket_fin_set_roll_kg_m2`] from the numbers it uses, so that a test can give it
+/// OpenRocket's polygon for an ellipse.
+fn rod_roll_kg_m2(
+    count: u32,
+    area_m2: f64,
+    span_m: f64,
+    root_m: f64,
+    body_radius_m: f64,
+    mass_kg: f64,
+) -> Option<f64> {
+    let usable = |x: f64| x.is_finite() && x >= 0.0;
+    if count == 0
+        || !(usable(area_m2) && usable(span_m) && usable(body_radius_m) && usable(mass_kg))
+        || !(root_m.is_finite() && root_m > 0.0)
+    {
+        return None;
+    }
+    let reach2 = area_m2 * span_m / root_m;
+    if count == 1 {
+        return Some(mass_kg * reach2 / 12.0);
+    }
+    let r = body_radius_m;
+    Some(mass_kg * (r * r + r * reach2.sqrt() + reach2 / 3.0))
+}
+
 #[cfg(test)]
 mod tests {
-    use hpr_design::tree::Layout;
+    use hpr_design::tree::{Layout, Part};
     use hpr_io::ork;
     use serde_json::Value;
 
@@ -240,16 +308,11 @@ mod tests {
     /// The gaps a reading probe shows, each pinned rather than hidden: a part's class, and how far
     /// hpr's is from OpenRocket's, as its mass relative to OpenRocket's and its station in metres.
     ///
-    /// - A rail button: hpr places it by its forward edge and gives it its diameter as a length,
-    ///   OpenRocket puts its centre at its position, so hpr's sits one radius, 5 mm, aft (#151).
     /// - An elliptical fin set: hpr's planform is the exact ellipse, `π c h / 4`; OpenRocket's
     ///   weighs 0.18% less, which matches a 30-sided polygon inscribed at equal angles,
     ///   `(π/30) / sin(π/30) − 1`, to 13 digits: an inference from its output, not its source
     ///   (M2.2b2, with the fins).
-    const PART_GAPS: [(&str, f64, f64); 2] = [
-        ("RailButton", 0.0, 0.005),
-        ("EllipticalFinSet", 0.001830, 0.0),
-    ];
+    const PART_GAPS: [(&str, f64, f64); 1] = [("EllipticalFinSet", 0.001830, 0.0)];
 
     /// hpr reads OpenRocket's words for walls, shoulders and materials as OpenRocket 24.12 does
     /// (ADR-061): a wall or a shoulder of no thickness weighs nothing, capped or not, on a filled
@@ -360,6 +423,314 @@ mod tests {
         }
     }
 
+    /// The probes of one tube and one part (M2.2b2, [ADR-062][adr-062]), each with how far hpr's
+    /// structure is from OpenRocket's: the mass (relative), the centre of mass (metres, hpr's less
+    /// OpenRocket's), the roll inertia (relative) with OpenRocket's fin rule on OpenRocket's own fin
+    /// mass in place of hpr's ([`super::openrocket_fin_set_roll_kg_m2`]), and the pitch inertia
+    /// (relative). Each is pinned to three figures, and a zero to 1e-12. The tube alone is
+    /// OpenRocket's, so each row is its one part's:
+    ///
+    /// - A bulkhead, centering ring, inner tube, mass component, parachute (under an override too),
+    ///   shock cord and streamer: OpenRocket's in all four.
+    /// - A fin set: its roll is OpenRocket's rule exactly, whatever its outline, section, tab or
+    ///   fillets, but for an ellipse (OpenRocket's is a 30-sided polygon) and a cant (−2.66e-5).
+    ///   Its mass is OpenRocket's but for a rounded or airfoil section
+    ///   ([`a_fin_section_is_weighed_as_pinned`]), fillets, which hpr leaves out, an ellipse, and a
+    ///   cant (−4.19e-5, not traced). Its pitch inertia is apart by up to 0.11% where the masses
+    ///   agree (0.406% on a single fin, below): OpenRocket's pitch rule for fins is not measured
+    ///   here.
+    /// - A rail button, one or a row, from any end: OpenRocket's in mass and centre (#151), its
+    ///   inertias apart by 7.16e-6 and 9.23e-5 (one), 1.43e-5 and 4.99e-4 (two).
+    /// - A launch lug: its pitch inertia is apart by 3.13e-4.
+    /// - A parachute that writes no packed size: OpenRocket packs it 25 mm long and 12.5 mm in
+    ///   radius (read from its centre and roll inertia); hpr reads no radius, with a warning.
+    /// - A parachute that weighs nothing, under a mass override: OpenRocket spreads the override
+    ///   over its packing, `m r²/2` in roll; hpr makes it a point mass (ADR-061), so −0.805%.
+    /// - A single fin: the rule about the fin's own centre, `m hₑ²/12`, agrees; its pitch is
+    ///   apart by 0.406%.
+    ///
+    /// [adr-062]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-062-fins-and-rail-buttons-against-openrocket-roll-inertia-explained-2026-09-21
+    const ALONE: [(&str, [f64; 4]); 33] = [
+        ("a tube and a bulkhead", [0.0, 0.0, 0.0, 0.0]),
+        (
+            "a tube and a canted fin set",
+            [-4.19e-5, -4.54e-6, -2.66e-5, 7.58e-5],
+        ),
+        ("a tube and a centering ring", [0.0, 0.0, 0.0, 0.0]),
+        (
+            "a tube and a fin set of airfoil section",
+            [-0.0165, 0.000935, 0.0, -0.00488],
+        ),
+        (
+            "a tube and a fin set of rounded section",
+            [0.00014, -1.24e-5, 0.0, 7.37e-5],
+        ),
+        (
+            "a tube and a fin set of square section",
+            [0.0, 0.0, 0.0, 4.57e-5],
+        ),
+        ("a tube and a fin set with a tab", [0.0, 0.0, 0.0, -0.00109]),
+        (
+            "a tube and a fin set with fillets",
+            [-0.00808, 0.000737, 0.0, -0.00439],
+        ),
+        (
+            "a tube and a fin set with wider fillets",
+            [-0.0279, 0.00254, 0.0, -0.0152],
+        ),
+        ("a tube and a freeform fin set", [0.0, 0.0, 0.0, 4.57e-5]),
+        ("a tube and a launch lug", [0.0, 0.0, 0.0, 0.000313]),
+        ("a tube and a mass component", [0.0, 0.0, 0.0, 0.0]),
+        ("a tube and a parachute", [0.0, 0.0, 0.0, 0.0]),
+        (
+            "a tube and a parachute that writes no packed size",
+            [0.0, -0.000611, -0.00167, 0.00744],
+        ),
+        (
+            "a tube and a parachute with a mass override",
+            [0.0, 0.0, 0.0, 0.0],
+        ),
+        ("a tube and a rail button", [0.0, 0.0, 7.16e-6, 9.23e-5]),
+        (
+            "a tube and a rail button from the bottom",
+            [0.0, 0.0, 7.16e-6, 9.23e-5],
+        ),
+        (
+            "a tube and a rail button from the middle",
+            [0.0, 0.0, 7.16e-6, 9.24e-5],
+        ),
+        (
+            "a tube and a row of two rail buttons from the bottom",
+            [0.0, 0.0, 1.43e-5, 0.000497],
+        ),
+        (
+            "a tube and a row of two rail buttons from the middle",
+            [0.0, 0.0, 1.43e-5, 0.000499],
+        ),
+        (
+            "a tube and a row of two rail buttons from the top",
+            [0.0, 0.0, 1.43e-5, 0.000499],
+        ),
+        ("a tube and a shock cord", [0.0, 0.0, 0.0, 0.0]),
+        ("a tube and a streamer", [0.0, 0.0, 0.0, 0.0]),
+        (
+            "a tube and a thicker fin set of airfoil section",
+            [-0.0305, 0.00155, 0.0, -0.00842],
+        ),
+        (
+            "a tube and an elliptical fin set",
+            [0.000188, -1.69e-5, 0.000122, -0.000328],
+        ),
+        ("a tube and an inner tube", [0.0, 0.0, 0.0, 0.0]),
+        ("a tube and rectangular fins", [0.0, 0.0, 0.0, 2.3e-6]),
+        (
+            "a tube and rectangular fins of twice the chord",
+            [0.0, 0.0, 0.0, 4.49e-6],
+        ),
+        (
+            "a tube and rectangular fins of twice the span",
+            [0.0, 0.0, 0.0, 4.2e-6],
+        ),
+        ("a tube and a single fin", [0.0, 0.0, 0.0, 0.00406]),
+        (
+            "a tube and a parachute of no canopy, under a mass override",
+            [0.0, 0.0, -0.00805, -0.00128],
+        ),
+        ("a tube and triangular fins", [0.0, 0.0, 0.0, 0.00028]),
+        ("a wider tube and rectangular fins", [0.0, 0.0, 0.0, 1e-6]),
+    ];
+
+    #[test]
+    fn each_part_alone_is_openrocket_s_or_pinned() {
+        let record = record();
+        for (question, pinned) in ALONE {
+            let probe = probe(&record, question);
+            let (ours, theirs, _) = both(probe);
+            let (layout, _) = hpr(probe);
+            let mut roll = ours[2];
+            for part in probe["parts"].as_array().expect("parts") {
+                let Some((_, placed)) = part["id"].as_str().and_then(|id| layout.find(id)) else {
+                    continue;
+                };
+                if let Part::FinSet(fins) = &placed.part {
+                    let mass_kg = part["mass_kg"].as_f64().expect("a mass");
+                    let radius_m = placed.body_radius_m.expect("fins sit on a tube");
+                    let rule = super::openrocket_fin_set_roll_kg_m2(fins, radius_m, mass_kg)
+                        .expect("three fins");
+                    roll += rule - placed.own.inertia_kg_m2.z_axis.z;
+                }
+            }
+            let found = [
+                relative(ours[0], theirs[0]),
+                ours[1] - theirs[1],
+                relative(roll, theirs[2]),
+                relative(ours[3], theirs[3]),
+            ];
+            for (k, (found, pinned)) in found.iter().zip(pinned).enumerate() {
+                let bound = if pinned == 0.0 {
+                    1e-12
+                } else {
+                    5e-3 * pinned.abs()
+                };
+                assert!(
+                    (found - pinned).abs() <= bound,
+                    "{question}: quantity {k} is {found:e}, not {pinned:e}"
+                );
+            }
+        }
+    }
+
+    /// hpr's own fin roll inertia against OpenRocket's, set by set: the departure
+    /// [ADR-062][adr-062] keeps. OpenRocket's set is its structure's roll inertia less everything
+    /// else, which is hpr's (every other part of these probes is OpenRocket's to 1e-15). Pinned to
+    /// three figures: the guide's table quotes them.
+    ///
+    /// [adr-062]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-062-fins-and-rail-buttons-against-openrocket-roll-inertia-explained-2026-09-21
+    #[test]
+    fn hpr_s_own_fin_roll_departs_as_pinned() {
+        let record = record();
+        let departures = [
+            ("a tube and rectangular fins", 0.000_129),
+            ("a tube and a fin set of square section", 0.0241),
+            ("a tube and triangular fins", -0.0214),
+            ("a tube and a fin set with a tab", -0.0512),
+        ];
+        for (question, pinned) in departures {
+            let probe = probe(&record, question);
+            let (ours, theirs, _) = both(probe);
+            let (layout, _) = hpr(probe);
+            let fins = layout
+                .components
+                .iter()
+                .find(|placed| matches!(placed.part, Part::FinSet(_)))
+                .expect("a fin set");
+            let hpr_fins = fins.own.inertia_kg_m2.z_axis.z;
+            let their_fins = theirs[2] - (ours[2] - hpr_fins);
+            let found = relative(hpr_fins, their_fins);
+            assert!(
+                (found - pinned).abs() <= 5e-3 * pinned.abs(),
+                "{question}: {found:e}, not {pinned:e}"
+            );
+        }
+    }
+
+    /// OpenRocket weighs a fin set as its outline times its thickness times a factor for its
+    /// section, whatever the thickness: 1 for square, 0.99 for rounded and 0.85 for airfoil (read from
+    /// its output, at 3 mm and 6 mm for the airfoil). hpr integrates the section: a rounded edge is a
+    /// semicircle, and an airfoil is NACA's four-digit section, `0.6851 t c` (Abbott and von
+    /// Doenhoff). hpr keeps its own ([ADR-062][adr-062]); the ratios are pinned.
+    ///
+    /// [adr-062]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-062-fins-and-rail-buttons-against-openrocket-roll-inertia-explained-2026-09-21
+    #[test]
+    fn a_fin_section_is_weighed_as_pinned() {
+        let record = record();
+        let fins = |question: &str| -> (f64, f64) {
+            let probe = probe(&record, question);
+            let (layout, _) = hpr(probe);
+            let theirs = probe["parts"]
+                .as_array()
+                .expect("parts")
+                .iter()
+                .find(|part| part["class"] == "TrapezoidFinSet")
+                .expect("a fin set");
+            let id = theirs["id"].as_str().expect("an id");
+            let (_, ours) = layout.find(id).expect("hpr's fin set");
+            (
+                ours.own.mass_kg,
+                theirs["mass_kg"].as_f64().expect("a mass"),
+            )
+        };
+        let square = fins("a tube and a fin set of square section");
+        assert!((square.0 - square.1).abs() < 1e-15, "{square:?}");
+        let sections = [
+            (
+                "a tube and a fin set of rounded section",
+                1.0,
+                0.99,
+                0.991_416,
+            ),
+            (
+                "a tube and a fin set of airfoil section",
+                1.0,
+                0.85,
+                0.685_083,
+            ),
+            (
+                "a tube and a thicker fin set of airfoil section",
+                2.0,
+                0.85,
+                0.685_083,
+            ),
+        ];
+        for (question, thickness, openrocket, ours) in sections {
+            let (hpr, theirs) = fins(question);
+            let slab = thickness * square.1;
+            assert!(
+                (theirs / slab - openrocket).abs() < 1e-12,
+                "{question}: {}",
+                theirs / slab
+            );
+            assert!(
+                (hpr / slab - ours).abs() < 1e-6,
+                "{question}: {}",
+                hpr / slab
+            );
+        }
+    }
+
+    /// Loft's `demo-boattail.ork`, whose roll inertia is 2.64% from OpenRocket's, 0.093% with
+    /// OpenRocket's fin rule in place of hpr's (`cargo xtask ork`). Its fins are elliptical, and
+    /// OpenRocket's ellipse is a 30-sided polygon, of `sin(π/30) / (π/30)` the area and so the
+    /// mass: with that in the rule too, the two are 1.5e-6 apart. The design and OpenRocket's
+    /// record of it are both committed (ADR-060).
+    #[test]
+    fn the_loft_boattail_s_roll_is_the_rule_on_openrocket_s_ellipse() {
+        let text = include_str!("../../../validation/fixtures/ork/openrocket-mass-loft-demo.json");
+        let record: Value = serde_json::from_str(text).expect("the committed record is JSON");
+        let file = "validation/fixtures/ork/loft-demo/demo-boattail.ork";
+        let design = record["designs"]
+            .as_array()
+            .expect("designs")
+            .iter()
+            .find(|design| design["file"] == file)
+            .expect("the boattail's record");
+        let theirs = design["structure"]["ixx"].as_f64().expect("a roll inertia");
+        let bytes = include_bytes!("../../../validation/fixtures/ork/loft-demo/demo-boattail.ork");
+        let read = ork::read(bytes.as_slice()).expect("the design reads");
+        let layout = ork::design(&read.value)
+            .value
+            .rocket
+            .layout()
+            .expect("it lays out");
+        let polygon = (std::f64::consts::PI / 30.0).sin() / (std::f64::consts::PI / 30.0);
+        let mut ours = layout.structure.inertia_kg_m2.z_axis.z;
+        let mut fins = 0;
+        for placed in &layout.components {
+            let Part::FinSet(set) = &placed.part else {
+                continue;
+            };
+            assert!(matches!(
+                set.planform,
+                hpr_design::fins::FinPlanform::Elliptical { .. }
+            ));
+            // The rule on the polygon: its mass, and its area in `hₑ² = A h / c_r`.
+            let rule = super::rod_roll_kg_m2(
+                set.count,
+                set.planform.geometry().expect("an outline").area_m2 * polygon,
+                set.planform.span_m(),
+                set.planform.root_chord_m(),
+                placed.body_radius_m.expect("fins sit on a tube"),
+                placed.own.mass_kg * polygon,
+            )
+            .expect("three fins");
+            ours += rule - placed.own.inertia_kg_m2.z_axis.z;
+            fins += 1;
+        }
+        assert_eq!(fins, 1);
+        let apart = relative(ours, theirs);
+        assert!(apart.abs() < 2e-6, "{apart:e}");
+    }
+
     /// The record was written by the script it names, from OpenRocket 24.12 with no default
     /// materials saved in its preferences, and every probe it holds is one a test here reads: a
     /// probe added to the script and not to a test would be a question nobody checks the answer
@@ -377,6 +748,7 @@ mod tests {
         read.extend(PRECEDENCE.iter().map(|(question, _)| *question));
         read.extend(DISAGREEING.iter().map(|(question, _)| *question));
         read.extend(INERTIA.iter().map(|(question, _)| *question));
+        read.extend(ALONE.iter().map(|(question, _)| *question));
         let probes: Vec<&str> = record["probes"]
             .as_object()
             .expect("probes")

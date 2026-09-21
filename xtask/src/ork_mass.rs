@@ -9,7 +9,8 @@
 
 use std::collections::{BTreeMap, BTreeSet};
 
-use hpr_design::tree::{Component, Layout, Rocket};
+use hpr_design::tree::{Component, Layout, Part, Rocket};
+use hpr_validate::openrocket::openrocket_fin_set_roll_kg_m2;
 use serde_json::{Value, json};
 use sha2::{Digest, Sha256};
 
@@ -50,6 +51,113 @@ pub(crate) fn differences(layout: &Layout, openrocket: &Value) -> Option<[f64; 4
         (inertia.z_axis.z - roll) / roll,
         (hpr_pitch - pitch) / pitch,
     ])
+}
+
+/// hpr's roll inertia with OpenRocket's fin rule in place of hpr's exact integral, against
+/// OpenRocket's (ADR-062).
+#[derive(Debug, Clone, Copy)]
+pub(crate) struct RollUnderRule {
+    /// hpr's less OpenRocket's, relative to OpenRocket's.
+    pub(crate) apart: f64,
+    /// hpr's less OpenRocket's, kg·m².
+    pub(crate) apart_kg_m2: f64,
+    /// Whether a fin set kept hpr's own: tube fins, which the rule does not cover, or a fin set
+    /// with no OpenRocket part to take the mass from, by id or by name.
+    pub(crate) unpaired_fins: bool,
+}
+
+/// hpr's roll inertia with each fin set given OpenRocket's rule ([`openrocket_fin_set_roll_kg_m2`],
+/// inferred from OpenRocket's output) on OpenRocket's own mass for it in place of hpr's: what is
+/// left of the roll inertia's difference once that rule, and the way OpenRocket weighs a fin
+/// section or fillets, are set aside. OpenRocket's mass is paired by id. An older file writes no
+/// ids, so there a fin set takes the mass of OpenRocket's set of the same name nearest its own, if
+/// within 30% (the most a section moves it is 24%, an airfoil's `0.85 / 0.6851`).
+pub(crate) fn roll_under_openrocket_fins(
+    rocket: &Rocket,
+    layout: &Layout,
+    openrocket: &Value,
+    their_parts: &Value,
+) -> Option<RollUnderRule> {
+    fn names<'a>(components: &'a [Component], into: &mut BTreeMap<&'a str, &'a str>) {
+        for component in components {
+            into.insert(component.id.as_str(), component.name.as_str());
+            names(&component.children, into);
+        }
+    }
+    let mut name_of = BTreeMap::new();
+    for stage in &rocket.stages {
+        names(&stage.components, &mut name_of);
+    }
+    let theirs: Vec<&Value> = their_parts
+        .as_array()
+        .into_iter()
+        .flatten()
+        .filter(|part| {
+            part["class"]
+                .as_str()
+                .is_some_and(|c| c.ends_with("FinSet"))
+        })
+        .collect();
+    let by_name = |name: &str, ours_kg: f64| -> Option<f64> {
+        theirs
+            .iter()
+            .filter(|part| part["name"].as_str() == Some(name))
+            .filter_map(|part| part["mass_kg"].as_f64())
+            .min_by(|a, b| (a - ours_kg).abs().total_cmp(&(b - ours_kg).abs()))
+            .filter(|theirs_kg| (theirs_kg - ours_kg).abs() <= 0.3 * theirs_kg.abs())
+    };
+    let roll = openrocket["ixx"].as_f64()?;
+    let mut ours = layout.structure.inertia_kg_m2.z_axis.z;
+    let mut unpaired_fins = false;
+    for placed in &layout.components {
+        match &placed.part {
+            Part::TubeFinSet(_) => unpaired_fins = true,
+            Part::FinSet(fins) => {
+                let mass_kg = theirs
+                    .iter()
+                    .find(|part| part["id"].as_str() == Some(placed.id.as_str()))
+                    .and_then(|part| part["mass_kg"].as_f64())
+                    .or_else(|| by_name(name_of.get(placed.id.as_str())?, placed.own.mass_kg));
+                let rule = mass_kg
+                    .zip(placed.body_radius_m)
+                    .and_then(|(mass_kg, radius_m)| {
+                        openrocket_fin_set_roll_kg_m2(fins, radius_m, mass_kg)
+                    });
+                match rule {
+                    Some(rule) => ours += rule - placed.own.inertia_kg_m2.z_axis.z,
+                    None => unpaired_fins = true,
+                }
+            }
+            _ => {}
+        }
+    }
+    Some(RollUnderRule {
+        apart: (ours - roll) / roll,
+        apart_kg_m2: ours - roll,
+        unpaired_fins,
+    })
+}
+
+/// How far the roll inertia may be from OpenRocket's, once OpenRocket's fin rule is in hpr's place,
+/// before a design needs a cause: 1%, as for the mass (ADR-062).
+pub(crate) const ROLL_WITHIN: f64 = 0.01;
+
+/// Whether a stage, or a part with parts inside it, overrides the mass of what it covers: there hpr
+/// scales the inertia of everything covered and OpenRocket that of the overriding part alone, a
+/// departure ADR-061 keeps. On a lone part the two agree, so its own override is not counted.
+fn covering_mass_override(rocket: &Rocket) -> bool {
+    fn any(components: &[Component]) -> bool {
+        components.iter().any(|component| {
+            (component.overrides.mass_kg.is_some()
+                && component.overrides_include_children
+                && !component.children.is_empty())
+                || any(&component.children)
+        })
+    }
+    rocket
+        .stages
+        .iter()
+        .any(|stage| stage.overrides.mass_kg.is_some() || any(&stage.components))
 }
 
 /// The median of sorted values: the middle one, or the mean of the two middle ones.
@@ -108,6 +216,81 @@ fn causes(warnings: &[&str], reduced: bool, stages_apart: bool) -> Vec<&'static 
         .collect()
 }
 
+/// The causes a roll inertia outside [`ROLL_WITHIN`] is traced to, once OpenRocket's fin rule is in
+/// hpr's place.
+pub(crate) const ROLL_CAUSES: [&str; 4] = [
+    "a mass override covering parts inside (ADR-061)",
+    "parts hpr keeps unread (a reduced design)",
+    "fins the rule was not given OpenRocket's mass for (tube fins, or no id to pair)",
+    "packed parts hpr weighs as point masses, which account for the gap (ADR-062)",
+];
+
+/// The most roll inertia hpr's packed point masses can lack, kg·m²: each parachute, streamer, shock
+/// cord or mass component with mass but no roll inertia in hpr, spread over a packing as wide as the
+/// tube it sits in (at least the 12.5 mm OpenRocket gives a packing that writes none), `m R²/2`.
+/// OpenRocket gives such a part its packing's roll inertia, where hpr has a point mass: a packing
+/// that writes no radius, or a mass override on a part that weighs nothing (ADR-062's probes).
+fn point_mass_bound_kg_m2(layout: &Layout) -> f64 {
+    layout
+        .components
+        .iter()
+        .filter(|placed| {
+            matches!(
+                placed.part,
+                Part::Parachute(_)
+                    | Part::Streamer(_)
+                    | Part::ShockCord(_)
+                    | Part::MassComponent(_)
+            ) && placed.own.mass_kg > 0.0
+                && placed.own.inertia_kg_m2.z_axis.z == 0.0
+        })
+        .map(|placed| {
+            let mut up = placed.parent;
+            let mut radius_m = 0.0;
+            while let Some(index) = up {
+                if let Some(radius) = layout.components[index].part.fore_radius_m() {
+                    radius_m = radius;
+                    break;
+                }
+                up = layout.components[index].parent;
+            }
+            let radius_m = f64::max(radius_m, 0.0125);
+            placed.own.mass_kg * radius_m * radius_m / 2.0
+        })
+        .sum()
+}
+
+/// The causes of a roll inertia outside [`ROLL_WITHIN`] with OpenRocket's fin rule in hpr's place.
+/// A point mass is a cause only when hpr's shortfall is no more than it could account for.
+fn roll_causes(
+    rocket: &Rocket,
+    layout: &Layout,
+    reduced: bool,
+    under_rule: &RollUnderRule,
+) -> Vec<&'static str> {
+    let bound = point_mass_bound_kg_m2(layout);
+    let found = [
+        covering_mass_override(rocket),
+        reduced,
+        under_rule.unpaired_fins,
+        under_rule.apart_kg_m2 < 0.0 && -under_rule.apart_kg_m2 <= bound,
+    ];
+    ROLL_CAUSES
+        .iter()
+        .zip(found)
+        .filter_map(|(cause, found)| found.then_some(*cause))
+        .collect()
+}
+
+/// A design whose roll inertia is outside [`ROLL_WITHIN`] even with OpenRocket's fin rule.
+#[derive(Debug)]
+struct RollOutside {
+    label: String,
+    hash: String,
+    apart: f64,
+    causes: Vec<&'static str>,
+}
+
 /// How `hpr_io::ork` words the warnings `causes` looks for.
 const CLUSTER: &str = "a cluster of motor tubes is read as the one tube";
 const FILLETS: &str = "the fillets along the fin roots were dropped";
@@ -149,6 +332,11 @@ pub(crate) struct MassTally {
     /// Differences for every design compared, and for the first design of each content.
     all: Vec<[f64; 4]>,
     distinct: Vec<[f64; 4]>,
+    /// The roll inertia's difference with OpenRocket's fin rule, for every design and each content.
+    roll_under_rule: [Vec<f64>; 2],
+    /// Designs whose roll inertia is outside [`ROLL_WITHIN`] even so, each with its causes, of
+    /// [`ROLL_CAUSES`].
+    roll_outside: Vec<RollOutside>,
     seen: BTreeSet<String>,
     /// Differences for designs hpr reads reduced (pods and parallel stages kept, not modelled).
     reduced: Vec<[f64; 4]>,
@@ -252,19 +440,36 @@ impl MassTally {
                 "{named}: mass.py could not name some of OpenRocket's parts"
             ));
         }
+        let under_rule =
+            roll_under_openrocket_fins(rocket, layout, &design["structure"], &design["parts"]);
+        let under_rule = under_rule.unwrap_or(RollUnderRule {
+            apart: f64::NAN,
+            apart_kg_m2: f64::NAN,
+            unpaired_fins: false,
+        });
         self.all.push(found);
+        self.roll_under_rule[0].push(under_rule.apart);
         if self.seen.insert(digest.clone()) {
             self.distinct.push(found);
+            self.roll_under_rule[1].push(under_rule.apart);
         }
         if reduced {
             self.reduced.push(found);
         }
         // OpenRocket's own count, since it counts a parallel stage that hpr keeps unread.
         let stages_apart = design["stages"]["active"] != design["stages"]["total"];
-        let parts = parts(rocket, layout, &design["parts"]);
         // A difference that is not a number counts as outside.
         let beyond =
             |difference: f64, within: f64| difference.is_nan() || difference.abs() > within;
+        let parts = parts(rocket, layout, &design["parts"]);
+        if beyond(under_rule.apart, ROLL_WITHIN) {
+            self.roll_outside.push(RollOutside {
+                label: named.clone(),
+                hash: digest.clone(),
+                apart: under_rule.apart,
+                causes: roll_causes(rocket, layout, reduced, &under_rule),
+            });
+        }
         if beyond(found[0], MASS_WITHIN) || beyond(found[1], CG_WITHIN) {
             self.outside.push(Outside {
                 label: named,
@@ -279,6 +484,7 @@ impl MassTally {
             "reduced": reduced,
             "differences": QUANTITIES.iter().zip(found).map(|(q, d)| (q.to_string(), json!(d)))
                 .collect::<BTreeMap<_, _>>(),
+            "roll_inertia_with_openrocket_fins": under_rule.apart,
             "openrocket": design["structure"],
         })
     }
@@ -323,6 +529,47 @@ impl MassTally {
                 spread(&column(&self.all)),
                 spread(&column(&self.distinct)),
                 spread(&column(&self.reduced))
+            );
+        }
+        println!(
+            "    roll_inertia with OpenRocket's fin rule in place of hpr's (ADR-062): {}; each file \
+             once: {}",
+            spread(&self.roll_under_rule[0]),
+            spread(&self.roll_under_rule[1])
+        );
+        let roll_distinct: BTreeSet<&str> =
+            self.roll_outside.iter().map(|o| o.hash.as_str()).collect();
+        let by_roll_cause = |cause: &str| {
+            let hashes: BTreeSet<&str> = self
+                .roll_outside
+                .iter()
+                .filter(|o| o.causes.contains(&cause))
+                .map(|o| o.hash.as_str())
+                .collect();
+            hashes.len()
+        };
+        println!(
+            "    roll inertia outside {}% even with OpenRocket's fin rule: {} ({} distinct by \
+             content); by distinct content: {}",
+            100.0 * ROLL_WITHIN,
+            self.roll_outside.len(),
+            roll_distinct.len(),
+            ROLL_CAUSES
+                .iter()
+                .map(|cause| format!("{cause} {}", by_roll_cause(cause)))
+                .collect::<Vec<_>>()
+                .join("; ")
+        );
+        for outside in &self.roll_outside {
+            println!(
+                "      {}: roll inertia {:+.2}%; causes: {}",
+                outside.label,
+                100.0 * outside.apart,
+                if outside.causes.is_empty() {
+                    "NONE".to_owned()
+                } else {
+                    outside.causes.join("; ")
+                }
             );
         }
         let distinct: BTreeSet<&str> = self.outside.iter().map(|o| o.hash.as_str()).collect();
@@ -402,7 +649,8 @@ impl MassTally {
 
     /// Why the survey fails on the mass record, if it does: a record out of date or incomplete, a
     /// probe whose inertias are not the ones worked by hand, a design OpenRocket opens that hpr
-    /// does not lay out or compare, and a design outside a threshold with no cause hpr warned of.
+    /// does not lay out or compare, a design outside a threshold with no cause hpr warned of, and a
+    /// roll inertia outside [`ROLL_WITHIN`] with OpenRocket's fin rule and no cause.
     pub(crate) fn failure(&self) -> Option<String> {
         let left = self.record.as_ref()?;
         let mut problems = self.problems.clone();
@@ -414,6 +662,19 @@ impl MassTally {
                     format!(
                         "{} is in {LIBRARY} but the survey did not read it",
                         label(file, hash)
+                    )
+                }),
+        );
+        problems.extend(
+            self.roll_outside
+                .iter()
+                .filter(|outside| outside.causes.is_empty())
+                .map(|outside| {
+                    format!(
+                        "{}'s roll inertia is {:+.3}% from OpenRocket's with its fin rule, with \
+                         no cause",
+                        outside.label,
+                        100.0 * outside.apart
                     )
                 }),
         );
@@ -662,8 +923,11 @@ mod tests {
 
     /// Six designs open in OpenRocket (demo-quirks does not). Their mass, centre of mass and pitch
     /// inertia are OpenRocket's within 0.1%; their roll inertia is not, by the amounts pinned here
-    /// (sign included), which the guide reports as unexplained. Every part of each is matched by
-    /// id and within 0.3 g of OpenRocket's.
+    /// (sign included). With OpenRocket's fin rule on its own fin mass in place of hpr's exact
+    /// integral, five are within 5e-6 and the sixth, whose fins are elliptical, 0.093% apart:
+    /// OpenRocket's 30-sided ellipse has less area, which the rule's `hₑ` takes, and with it the
+    /// two are 1.5e-6 apart (`hpr_validate::openrocket`'s test of it; ADR-062). Every part of each
+    /// is matched by id and within 0.3 g of OpenRocket's.
     #[test]
     fn openrocket_structure_on_the_loft_demos() {
         let tally = demo_tally();
@@ -676,6 +940,12 @@ mod tests {
             .map(|found| (found[2] * 1e4).round() / 1e4)
             .collect();
         assert_eq!(roll, [-0.0264, 0.0306, 0.0383, 0.0337, 0.0383, 0.0116]);
+        let under_rule: Vec<f64> = tally.roll_under_rule[0]
+            .iter()
+            .map(|found| (found * 1e5).round() / 1e5)
+            .collect();
+        assert_eq!(under_rule, [0.00093, 0.0, 0.0, 0.0, 0.0, 0.0]);
+        assert!(tally.roll_outside.is_empty());
         for found in &tally.all {
             assert!(found[0].abs() < 1e-3 && found[1].abs() < 1e-3, "{found:?}");
             assert!(found[3].abs() < 1e-3, "{found:?}");
@@ -739,6 +1009,113 @@ mod tests {
             rows[0]["apart_kg"].as_f64().unwrap().abs() < 1e-9,
             "{rows:?}"
         );
+    }
+
+    /// A committed probe of `openrocket-conventions.json`: hpr's rocket and layout of it, and
+    /// OpenRocket's record.
+    fn conventions_probe(question: &str) -> (Rocket, Layout, Value) {
+        let text = include_str!("../../validation/fixtures/ork/openrocket-conventions.json");
+        let record: Value = serde_json::from_str(text).unwrap();
+        let probe = record["probes"][question].clone();
+        let read = ork::read(probe["document"].as_str().unwrap().as_bytes()).unwrap();
+        let rocket = ork::design(&read.value).value.rocket;
+        let layout = rocket.layout().unwrap();
+        (rocket, layout, probe)
+    }
+
+    /// The roll causes are measured on OpenRocket's probes, not assumed: which overrides cover the
+    /// parts inside; OpenRocket's fin rule on its own fin mass closes an airfoil probe, and a fin
+    /// set with nothing to pair keeps hpr's; and a packed point mass is a cause only for a gap of
+    /// its sign and no larger than it can account for.
+    #[test]
+    fn roll_causes_are_measured_not_assumed() {
+        for (question, covering) in [
+            ("a mass override on a tube and the part inside", true),
+            ("a mass override on a tube, not the part inside", false),
+            ("a mass override on the part inside only", false),
+            ("a mass override on the stage", true),
+        ] {
+            let (rocket, _, _) = conventions_probe(question);
+            assert_eq!(covering_mass_override(&rocket), covering, "{question}");
+        }
+
+        let (rocket, layout, probe) = conventions_probe("a tube and a fin set of airfoil section");
+        let paired =
+            roll_under_openrocket_fins(&rocket, &layout, &probe["structure"], &probe["parts"])
+                .unwrap();
+        assert!(
+            paired.apart.abs() < 1e-12 && !paired.unpaired_fins,
+            "{paired:?}"
+        );
+        // A file with no ids pairs by name.
+        let mut nameless = probe["parts"].clone();
+        for part in nameless.as_array_mut().unwrap() {
+            part.as_object_mut().unwrap().remove("id");
+        }
+        let by_name =
+            roll_under_openrocket_fins(&rocket, &layout, &probe["structure"], &nameless).unwrap();
+        assert!(
+            by_name.apart.abs() < 1e-12 && !by_name.unpaired_fins,
+            "{by_name:?}"
+        );
+        let unpaired =
+            roll_under_openrocket_fins(&rocket, &layout, &probe["structure"], &json!([])).unwrap();
+        assert!(
+            unpaired.unpaired_fins && unpaired.apart < -0.02,
+            "{unpaired:?}"
+        );
+        assert_eq!(
+            roll_causes(&rocket, &layout, false, &unpaired),
+            [ROLL_CAUSES[2]]
+        );
+
+        let question = "a tube and a parachute of no canopy, under a mass override";
+        let (rocket, layout, probe) = conventions_probe(question);
+        // OpenRocket spreads the 30 g over the 20 mm packing; hpr's bound is the 50 mm tube's.
+        let bound = point_mass_bound_kg_m2(&layout);
+        assert!(
+            (bound - 0.03 * 0.05 * 0.05 / 2.0).abs() < 1e-15,
+            "{bound:e}"
+        );
+        let under =
+            roll_under_openrocket_fins(&rocket, &layout, &probe["structure"], &probe["parts"])
+                .unwrap();
+        assert!(
+            (under.apart_kg_m2 + 0.03 * 0.02 * 0.02 / 2.0).abs() < 1e-15,
+            "{under:?}"
+        );
+        assert_eq!(
+            roll_causes(&rocket, &layout, false, &under),
+            [ROLL_CAUSES[3]]
+        );
+        let wrong_sign = RollUnderRule {
+            apart_kg_m2: -under.apart_kg_m2,
+            ..under
+        };
+        let too_big = RollUnderRule {
+            apart_kg_m2: -2.0 * bound,
+            ..under
+        };
+        for gap in [wrong_sign, too_big] {
+            assert!(
+                roll_causes(&rocket, &layout, false, &gap).is_empty(),
+                "{gap:?}"
+            );
+        }
+        let (_, plain, _) = conventions_probe("a tube and a parachute");
+        assert_eq!(point_mass_bound_kg_m2(&plain), 0.0);
+
+        let tally = MassTally {
+            record: Some(BTreeMap::new()),
+            roll_outside: vec![RollOutside {
+                label: "probe".to_owned(),
+                hash: "0".to_owned(),
+                apart: 0.02,
+                causes: Vec::new(),
+            }],
+            ..MassTally::default()
+        };
+        assert!(tally.failure().unwrap().contains("with no cause"));
     }
 
     /// The survey fails on a record written by an older script, on a design missing from it, on a

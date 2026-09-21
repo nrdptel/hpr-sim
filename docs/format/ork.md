@@ -678,8 +678,12 @@ radians would be 57° and 228°, a fin turned past half a turn from the airflow.
 
 **Where a part sits** is one tag: `<axialoffset method="bottom">` on the newer name,
 `<position type="bottom">` on the older, with the same five words — `top`, `middle`, `bottom`,
-`after` and `absolute` — which are [`hpr_design::Position`][p-position] unchanged. **Observed:** one tube coupler
-in the corpus has neither tag; it is read flush with its parent's forward end, with a warning.
+`after` and `absolute` — which are [`hpr_design::Position`][p-position] unchanged, but for a rail
+button. OpenRocket gives a button no length and puts its centre at the position, a row's first
+button there and the rest aft, so hpr moves the offset to where the button's forward edge must be
+([issue #151](https://github.com/nrdptel/hpr-sim/issues/151); measured on probes from the top, the
+middle and the bottom). **Observed:** one tube coupler in the corpus has neither tag; it is read
+flush with its parent's forward end, with a warning.
 
 **How far off the axis** a part sits is `radialposition` on some tags and `radiusoffset` on others.
 [ADR-052][adr-052] read neither, for want of a source saying what the older name measures from.

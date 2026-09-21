@@ -49,7 +49,6 @@ pub use metrics::{Measured, Reference, ReferenceValue};
 pub use report::{Comparison, Gap, NotReproduced, Report, Source, Verdict};
 pub use run::{CaseRun, ValidateError, run_case, run_lock};
 
-#[cfg(test)]
-mod openrocket;
+pub mod openrocket;
 #[cfg(test)]
 mod tests;
