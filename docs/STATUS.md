@@ -21,7 +21,8 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
   `validation/oracles/openrocket/automatic_radius.py` (ADR-054) runs 24.12 headless through JPype,
   binding empty motor and preset databases in a Python Guice module; it logs to stdout, so the
   script writes to a path. **Read OpenRocket after it re-resolves** (a save does it): its first
-  reading can differ (Dual parachute). M2.2 can build on it or choose the subprocess route.
+  reading can differ (Dual parachute). M2.2 (ADR-035) can build on it or take a subprocess, which
+  alone keeps GPL code out of the process; Java 17 only.
 - **Page rules** (ADR-016 to ADR-020): relative links between pages, GitHub URLs for the rest
   (rustdoc too), labels as links to their rows — a lesson a page names needs a row in
   `decisions-and-roadmap.md` — none in headings; new pages in `SUMMARY.md`, a new library a row in
@@ -51,8 +52,7 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
   `refs/sources/openrocket-finish/`.
 - **Process notes:** `cargo test -p xtask` guards STATUS, ROADMAP, notices, lessons and the lock;
   oracles run from the repo root with `refs/venv/bin/python`; `xtask designs`, `examples` and `ork`
-  rewrite their outputs. **M2.2's oracle** (ADR-035): orhelper is dropped, so decide how to drive
-  the jar — JPype loads the JVM in-process, only a subprocess isolates, Java 17 only.
+  rewrite their outputs.
 
 ## Done log (newest first, keep about 15)
 
@@ -78,6 +78,8 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
   `clippy`, `doc`, `deny`, `wasm-check`, `site` and the three `test (...)` and `validate (...)`
   checks; block force pushes. Don't require approvals (authors can't self-approve).
 - **crates.io names** (whenever): `hpr`, `hpr-sim`, `hpr-core`… unreserved. Reserve them?
+- **OpenRocket example radii in a fixture** (no action if fine): `openrocket-automatic-radius.json`
+  commits 67 body radii OpenRocket computed for the jar's 17 GPL example designs, and their names.
 - **RASAero values in fixtures** (no action if fine): `normal-force-vs-mach.json` commits 30 values
   of RocketPy's 2018 Calisto RASAero II export (ADR-027) plus four summary numbers, and
   `rocketpy-drag-curves.json` enough to rebuild 147 values of five curves (ADR-029).
@@ -85,13 +87,10 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
 ## Decided without Neer (one line each; significant ones get an ADR)
 
 - ADR-054: a radius with nothing fixed along its chain is OpenRocket's 25 mm, never its cache or −1 m.
-- ADR-053: `.ork` angles are degrees; `radialposition` and `radiusoffset` are read on the parts
-  that carry them, so ADR-052's pair needs no source; a part that cannot be shaped honestly is left
-  out with its reason; a tube of no wall is weightless where a body component's zero is solid; an
-  inner tube's automatic radius is its parent's bore; the finish words take published heights.
-- ADR-052: M3.1b splits in two, the values first; an automatic dimension keeps both halves; either
-  name of a rename may be read where the corpus shows the two agree on the number *and* the frame;
-  the pre-1.9 subcomponent-override flag sets all three, with a warning.
+- ADR-053: `.ork` angles are degrees; each radial-offset tag is read on its own parts; a part hpr
+  cannot shape is left out; a wall-less tube weighs nothing; published finish heights.
+- ADR-052: an automatic dimension keeps both halves; a renamed tag is read where both names agree on
+  number *and* frame; the pre-1.9 override flag sets all three, warned.
 - ADR-051: M3.1 is split a to d, the container first; a `.ork` document is kept whole because it
   has no schema, and read-write-read is the guarantee; nesting is capped at 64 before parsing.
 - ADR-050: a reduced element takes the generalized method wherever it has a tangent cone of its

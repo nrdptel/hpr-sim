@@ -574,7 +574,8 @@ OpenRocket 24.12, at least; older releases may differ, as the note below explain
 an oracle for the resolution rules that needs no OpenRocket, and `cargo xtask ork` runs it over the
 corpus — on every automatic dimension that caches a number and sits on a component the file gives
 an `<id>`. On 2026-09-20, **67 of 71 agree** to a part in 10⁹, with 4 more cached but inside a pod
-this milestone does not read.
+this milestone does not read. The 4 that disagree are settled in hpr's favour
+[below](#openrocket-settles-it).
 
 **What that number is, measured.** OpenRocket 24.12 writes the radius it resolved, not the number
 it read: a tube that says `auto 0.04` and has nothing to take is saved again as `auto 0.025`. It
@@ -583,39 +584,51 @@ One older statement disagrees. The 2021 change that started writing the number,
 [OpenRocket PR #998](https://github.com/openrocket/openrocket/pull/998), calls it the "manual
 value", the last one typed in. So a file saved by some release between then and 24.12 may cache a
 hand-typed number rather than an answer. Which releases wrote which is not settled. That is one
-more reason hpr never reads the number as a radius. It reads it in one place only: as the wall of
-a `filled` tube whose radius is automatic but reachable, which has no other number to be solid to
-and says so in a warning. No file in the corpus has one.
+more reason hpr never reads the number as a radius.
+
+It reads the number in one place only: as the wall of a `filled` tube whose radius is automatic but
+reachable, which has no other number to be solid to, and says so in a warning. No file in the
+corpus has one. (A tube whose radius takes OpenRocket's default is solid to that default instead,
+[below](#when-an-automatic-radius-has-nothing-to-take).)
 
 **What the oracle does not reach.** A cached answer only exists where OpenRocket wrote one, and it
 never writes one for two of the tags that matter most here: across the whole corpus, `outerradius`
 caches a number **0 times out of 131** and `innerradius` **0 out of 80**. So the 71 comparisons are
 all `aftradius`, `foreradius`, `radius` and `packedradius` — and the two rules this milestone adds,
-**an inner tube's automatic outer radius** and **a ring's automatic bore**, have *no oracle
-coverage at all*. They rest on their unit tests and on the argument for them, until
-[M2.2](../decisions-and-roadmap.md#m2-2) can run OpenRocket itself. `cargo xtask ork` prints the
+**an inner tube's automatic outer radius** and **a ring's automatic bore**, have *no oracle coverage
+at all*. They rest on their unit tests and on the argument for them, until an OpenRocket oracle
+reads those parts too: the one [below](#held-against-openrocket-itself) reads body radii only, and
+[M2.2](../decisions-and-roadmap.md#m2-2) is where the rest belongs. `cargo xtask ork` prints the
 per-tag denominators and names the tags nothing reaches, so the gap is in the report rather than
 only here.
 
-The four that do not are one body tube and the parachute packed inside it (whose radius follows the
-tube's bore), in **OpenRocket's own "Dual parachute deployment" example**, which the corpus holds
-twice — once inside the jar and once cached beside it. Its spine is a nose cone and four body tubes;
-the third tube *states* a radius of 0.028321 m, every automatic radius caches 0.028321 m too, and
-hpr resolves them all to it — except that the first tube caches 0.025 m.
+The four cached numbers that disagree (not the four inside a pod) are one body tube and the
+parachute packed inside it (whose radius follows the tube's bore), in **OpenRocket's own "Dual
+parachute deployment" example**, which the corpus holds twice — once inside the jar and once cached
+beside it. Its spine is a nose cone and four body tubes; the third tube *states* a radius of
+0.028321 m, every automatic radius caches 0.028321 m too, and hpr resolves them all to it — except
+that the first tube caches 0.025 m.
+
+<a id="openrocket-settles-it"></a>
 
 **OpenRocket itself settles it, and agrees with hpr.** Run on that file
 ([below](#when-an-automatic-radius-has-nothing-to-take)), OpenRocket 24.12 first reads the first tube
 as 0.025 m, its default. As soon as it works the design out again — which saving does — it reads
-0.028321 m, and writes that. The first reading depends on an unrelated part: take out the coupler
-inside the *second* tube, whose own radius is automatic, and OpenRocket reads 0.028321 m from the
-start. So the 0.025 m in the file is a first reading that an earlier save wrote out, not an
-answer OpenRocket stands by. hpr is held to the answer OpenRocket settles on.
+0.028321 m, and writes that. The first reading depends on an unrelated part, the coupler inside
+the *second* tube, whose own radius is automatic: the tenth and eleventh rows of the table below
+are the same small design without and with such a coupler, and only the one with it is first read
+at the default. So the 0.025 m in the file is a first reading that an earlier save wrote out, not
+an answer OpenRocket stands by. hpr is held to the answer OpenRocket settles on.
+
+<a id="held-against-openrocket-itself"></a>
 
 **Held against OpenRocket itself.** `cargo xtask ork` also compares every body radius hpr resolves
-with the one OpenRocket 24.12 settles on for the same file, from the oracle's committed results. It
-covers the 18 designs OpenRocket opens: the 17 examples in its jar, and the parachute catalogue
-below. **67 of 67 agree.** Unlike the cached answers, this reaches every body radius, fixed or
-automatic, including the Dual parachute tube.
+with the one OpenRocket 24.12 settles on for the same file, read from the oracle's committed
+results in `validation/fixtures/ork/openrocket-automatic-radius.json`, and prints the result on its
+line "body radii against OpenRocket 24.12 run on the same file". It covers the 18 designs
+OpenRocket opens: the 17 examples in its jar, and the parachute catalogue below. **67 of 67
+agree** — body radii this time, a different 67 from the cached numbers above. Unlike the cached
+answers, this reaches every body radius, fixed or automatic, including the Dual parachute tube.
 
 ### When an automatic radius has nothing to take
 
@@ -689,11 +702,12 @@ What the table shows:
   ([above](#checked-against-the-answers-openrocket-cached)).
 
 **Worked example.** The eighth row is the chain in [Loft][loft]'s quirks fixture, on a small copy
-the probe writes itself: a nose cone whose base is automatic (it caches 0.033 m), an automatic tube,
-and a transition whose forward end is automatic and whose aft end is fixed at 22 mm, then a 22 mm
-tube. Each automatic radius follows another automatic radius. A transition's forward radius never
-follows its own aft radius, so the fixed 22 mm stops at the transition and none of the three ever
-reaches it.
+the oracle script `automatic_radius.py` writes itself: a nose cone whose base is automatic (it
+caches 0.033 m), an automatic tube, and a transition whose forward end is automatic and whose aft
+end is fixed at 22 mm, then a 22 mm tube. Each automatic radius follows another automatic radius. A
+transition's two ends never follow each other, so the fixed 22 mm stops at the transition and none
+of the three ever reaches it. (The same is why, in the thirteenth row, a transition's fixed forward
+end doesn't reach its automatic aft end.)
 
 hpr gives all three 25 mm. The nose cone ends at 25 mm, the tube is 25 mm, and the transition
 narrows from 25 mm to 22 mm. The cached 0.033 m is not used, and three warnings name the tags.
@@ -709,7 +723,7 @@ gets: `filled`, or a wall at least as thick as 25 mm, is solid to 25 mm. The tes
 |---|---|---|
 | [Debrief][debrief]'s `sample-design.ork` | a `<rocket>` with a name, a comment and nothing else, plus a stored simulation | holds no design; counted apart, not as a failure. Its stored results are [M3.1c](../decisions-and-roadmap.md#m3-1c)'s to read |
 | the `openrocket-database` parachute catalogue | four tubes, every radius a bare `auto`, carrying the catalogue's parachutes | lays out, four tubes at 25 mm, just as OpenRocket 24.12 opens it |
-| [Loft][loft]'s `demo-quirks.ork` | the worked example's chain, and a parallel stage placed directly under the rocket | lays out as in the worked example. **OpenRocket 24.12 will not open this file**: it refuses a parallel stage there, so its answers for this chain come from the probe's copy. hpr opens it and skips the parallel stage with a warning, as it does every parallel stage until [M3.1c](../decisions-and-roadmap.md#m3-1c) |
+| [Loft][loft]'s `demo-quirks.ork` | the worked example's chain, and a parallel stage placed directly under the rocket | lays out as in the worked example. **OpenRocket 24.12 will not open this file**: it refuses a parallel stage there, so its answers for this chain come from the oracle script's copy. hpr opens it and skips the parallel stage with a warning, as it does every parallel stage until [M3.1c](../decisions-and-roadmap.md#m3-1c) |
 
 How it was decided, and the sources quoted in full, are in [ADR-054][adr-054].
 
