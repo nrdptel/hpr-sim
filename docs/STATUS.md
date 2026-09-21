@@ -64,7 +64,7 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
 - 2026-09-21: M3.1c1 A `.ork` design's motors (ADR-055): 206 motors in 174 configurations, 6 left
   out in pods and parallel stages; a curve from the file's own `.rse` first, the bundled catalog
   second. The rocket flies a configuration only if every motor has a curve and lights at launch, on
-  a one-stage airframe read whole: 2 of 174, both assemble. L57, L65 live; #138, #139.
+  a one-stage airframe read without a warning: 1 of 174, and it assembles. L57, L65 live; #138, #139, #141.
 - 2026-09-20: M3.1b4 Every `.ork` design lays out (ADR-054): 75 of 75, and Debrief's results-only
   file counted as holding none. A radius with nothing fixed along its chain takes OpenRocket's
   default, 25 mm, from its maintainers' words and a committed 24.12 probe that also shows it
@@ -130,8 +130,8 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
   flare leaves the crossing's pole — +0.129% on the tests' rocket, +4.3% on a short shoulder
   (#108); a step in radius takes the body off the method past 2.7e-11 m tube to tube or 1.3e-13 m
   up at a boattail — −8.65% to −11.34% (#87).
-- `.ork` (M3.1a to M3.1c1) builds a rocket for all 75 designs and reads their motors, but only 2 of
-  174 configurations fly: 197 motors are not in the 32-motor catalog (M5.1), and staging waits for
+- `.ork` (M3.1a to M3.1c1) builds a rocket for all 75 designs and reads their motors, but only 1 of
+  174 configurations flies: 197 motors are not in the 32-motor catalog (M5.1), and staging waits for
   M1.9. No recovery setting, pod or parallel stage is read (M3.1c2 to c4); 7 radii with nothing to
   take are OpenRocket's default 25 mm. 5 parts are left out with a
   reason, among them the corpus's only tube fins (#133); fin fillets, a rail button's screw head

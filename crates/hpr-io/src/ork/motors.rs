@@ -274,11 +274,13 @@ pub enum NotFlown {
     ///
     /// [m1-9]: https://nrdptel.github.io/hpr-sim/decisions-and-roadmap.html#m1-9
     IgnitesInFlight,
-    /// The airframe was not read exactly as written: a part was left out (a pod, a parallel stage,
-    /// a part hpr could not give a shape) or a value dropped or simplified (a cluster read as one
-    /// tube, a flipped nose cone read forward, a material that could not be read). Flying it would
-    /// fly a different rocket.
-    IncompleteAirframe,
+    /// The airframe or a motor mount was not read exactly as written: reading it raised a
+    /// warning. A part was left out (a pod, a parallel stage, a part hpr could not give a shape), a
+    /// value was dropped or simplified (a cluster read as one tube, a flipped nose cone read
+    /// forward, a material that could not be read), or something was assumed (a shoulder of no
+    /// wall read as solid, a shape hpr does not know read as a cone). Flying it would fly a
+    /// rocket the design may not be.
+    AirframeNotAsWritten,
     /// The rocket has more than one stage. Until a stage's separation is read and flown, hpr would
     /// fly the stack as one body to the ground, which is no configuration OpenRocket flies.
     Staged,
@@ -923,8 +925,8 @@ fn embedded(
 fn airframe(rocket: &Rocket, incomplete: Option<&str>) -> Option<LeftOut> {
     if let Some(what) = incomplete {
         return Some(LeftOut {
-            why: NotFlown::IncompleteAirframe,
-            message: format!("part of the airframe was not read: {what}"),
+            why: NotFlown::AirframeNotAsWritten,
+            message: format!("the airframe was not read exactly as written: {what}"),
         });
     }
     (rocket.stages.len() > 1).then(|| LeftOut {

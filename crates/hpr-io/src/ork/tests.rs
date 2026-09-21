@@ -2084,7 +2084,7 @@ fn per_config_overrides_and_dangling_mount_warn() {
     // is never flown from the body's mount or any other.
     assert_eq!(
         by_id("a").left_out.as_ref().map(|l| l.why),
-        Some(NotFlown::IncompleteAirframe)
+        Some(NotFlown::AirframeNotAsWritten)
     );
     assert!(design.value.rocket.configurations.is_empty());
     assert!(design.value.rocket.assemble("c").is_err());
@@ -2140,11 +2140,8 @@ fn a_configuration_flies_only_as_written() {
     };
     let f15 = |config: &str| motor(config, "Estes", "F15", "4.0");
     let booster_mount = format!(
-        "<overhang>0.0</overhang>{}{}{}{}{}{}{}{}{}",
+        "<overhang>0.0</overhang>{}{}{}{}{}{}",
         f15("boost"),
-        f15("dup"),
-        f15("dup"),
-        f15(""),
         f15("two"),
         f15("clu"),
         f15("off"),
@@ -2186,6 +2183,9 @@ fn a_configuration_flies_only_as_written() {
     let sustainer = tube("sustainer", &sustainer_mount, &cluster);
     let plain_sustainer = tube("sustainer", &sustainer_mount, "");
     let booster = tube("booster", "", &inner("booster-mount", "", &booster_mount));
+    // The same mount with a second motor for `dup` and a motor in no configuration.
+    let messy_mount = format!("{booster_mount}{}{}{}", f15("dup"), f15("dup"), f15(""));
+    let messy_booster = tube("booster", "", &inner("booster-mount", "", &messy_mount));
     let nose = r#"<nosecone><name>Nose</name><id>nose</id>
           <material type="bulk" density="1000.0">Plastic</material>
           <length>0.15</length><thickness>0.002</thickness><shape>ogive</shape>
@@ -2216,6 +2216,10 @@ fn a_configuration_flies_only_as_written() {
         "<stage><name>Sustainer</name><id>upper</id><subcomponents>{nose}{plain_sustainer}\
          </subcomponents></stage>\
          <stage><name>Booster</name><id>lower</id><subcomponents>{booster}</subcomponents></stage>"
+    ));
+    let messy_one_stage = document(&format!(
+        "<stage><name>Booster</name><id>lower</id><subcomponents>{nose}{messy_booster}\
+         </subcomponents></stage>"
     ));
     let one_stage = document(&format!(
         "<stage><name>Booster</name><id>lower</id><subcomponents>{nose}{booster}\
@@ -2250,8 +2254,7 @@ fn a_configuration_flies_only_as_written() {
 
     // The cluster tube is read as one tube, so this airframe is not the design's.
     let two = read_one(&two_stage);
-    assert_eq!(why(&two, "boost"), Some(NotFlown::IncompleteAirframe));
-    assert_eq!(why(&two, "dup"), Some(NotFlown::UnreadMotor));
+    assert_eq!(why(&two, "boost"), Some(NotFlown::AirframeNotAsWritten));
     assert_eq!(why(&two, "two"), Some(NotFlown::IgnitesInFlight));
     assert_eq!(why(&two, "clu"), Some(NotFlown::Cluster));
     assert_eq!(why(&two, "off"), Some(NotFlown::InactiveStage));
@@ -2261,22 +2264,34 @@ fn a_configuration_flies_only_as_written() {
     let configurations = &two.value.motors.configurations;
     let off = configurations.iter().find(|c| c.id == "off").expect("off");
     assert_eq!(off.inactive_stages, [None]);
-    assert!(!configurations.iter().any(|c| c.id.is_empty()));
     // Without the cluster, the airframe is whole, and it is the second stage that keeps `boost` out.
     assert_eq!(
         why(&read_one(&plain_two_stage), "boost"),
         Some(NotFlown::Staged)
     );
+    // A mount with a second motor for one configuration, and a motor in none, says both; the
+    // second motor keeps `dup` out, and the mount's warnings keep every configuration on it out.
+    let messy = read_one(&messy_one_stage);
     for said in [
         "with no `configid`",
         "a second motor for configuration `dup`",
     ] {
         assert!(
-            two.warnings.iter().any(|w| w.message.contains(said)),
+            messy.warnings.iter().any(|w| w.message.contains(said)),
             "{said}: {:?}",
-            two.warnings
+            messy.warnings
         );
     }
+    assert_eq!(why(&messy, "dup"), Some(NotFlown::UnreadMotor));
+    assert_eq!(why(&messy, "boost"), Some(NotFlown::AirframeNotAsWritten));
+    assert!(
+        !messy
+            .value
+            .motors
+            .configurations
+            .iter()
+            .any(|c| c.id.is_empty())
+    );
     let b4 = &configurations
         .iter()
         .find(|c| c.id == "b4")
@@ -2324,7 +2339,47 @@ fn a_configuration_on_an_incomplete_airframe_is_not_flown() {
     ));
     assert_eq!(
         a.left_out.as_ref().map(|l| l.why),
-        Some(NotFlown::IncompleteAirframe)
+        Some(NotFlown::AirframeNotAsWritten)
     );
     assert!(design.rocket.configurations.is_empty());
+}
+
+/// Nor is one whose airframe rests on an assumption: a nose cone's shoulder of no wall is read as
+/// solid, a reading OpenRocket has not confirmed, and with a warning. The same design with a
+/// shoulder wall stated flies.
+#[test]
+fn a_configuration_on_an_assumed_airframe_is_not_flown() {
+    let with_shoulder = |thickness: &str| {
+        motor_design(
+            r#"<motorconfiguration configid="a" default="true"/>"#,
+            "<overhang>0.0</overhang><motor configid='a'><type>single</type>\
+             <manufacturer>Estes</manufacturer><designation>F15</designation>\
+             <diameter>0.029</diameter><length>0.114</length><delay>4.0</delay></motor>",
+            "",
+        )
+        .replace(
+            "<aftradius>0.0165</aftradius></nosecone>",
+            &format!(
+                "<aftradius>0.0165</aftradius><aftshoulderradius>0.0155</aftshoulderradius>\
+                 <aftshoulderlength>0.03</aftshoulderlength>\
+                 <aftshoulderthickness>{thickness}</aftshoulderthickness></nosecone>"
+            ),
+        )
+    };
+    let assumed = read_design(with_shoulder("0.0").as_bytes());
+    assert_eq!(
+        assumed.motors.configurations[0]
+            .left_out
+            .as_ref()
+            .map(|l| l.why),
+        Some(NotFlown::AirframeNotAsWritten)
+    );
+    let stated = read_design(with_shoulder("0.001").as_bytes());
+    let flown: Vec<&str> = stated
+        .rocket
+        .configurations
+        .iter()
+        .map(|c| c.id.as_str())
+        .collect();
+    assert_eq!(flown, ["a"]);
 }

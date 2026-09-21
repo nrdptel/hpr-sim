@@ -5115,10 +5115,10 @@ rests on what OpenRocket means by its words, which its file-format page ([F]) mo
    switched off (OpenRocket removes an inactive stage from the flight: release notes 22.02.beta.05,
    PR #1478). A mount holding two motors for one configuration keeps it out too, since which
    OpenRocket would fly is not known. Two more rules are about the rocket rather than its motors:
-   the airframe must have been read as written, with nothing left out (a pod, a parallel stage, a
-   part hpr cannot shape) and nothing dropped or simplified (a cluster of tubes read as one, a
-   flipped nose cone read forward, a material it could not read), and the rocket must have one
-   stage (OpenRocket drops a booster when it separates, and hpr would
+   the rocket and its motor mounts must have been read without a single warning — nothing left
+   out (a pod, a parallel stage, a part hpr cannot shape), dropped or simplified (a cluster of tubes
+   read as one, a flipped nose cone read forward, a material it could not read) or assumed (a
+   shoulder of no wall read as solid) — and the rocket must have one stage (OpenRocket drops a booster when it separates, and hpr would
    carry it to the ground until M3.1c2 reads separation and M1.9 flies it). Only those
    configurations become `hpr_design::Rocket::configurations`. The reason is that
    `hpr_design::Configuration` lights every motor at `t = 0` until [M1.9] brings staging: flying a
@@ -5135,9 +5135,10 @@ rests on what OpenRocket means by its words, which its file-format page ([F]) mo
 - On 2026-09-21, the library reads 206 motors into 174 configurations and leaves 6 out, 4 inside
   pod sets and 2 inside parallel stages. 4 motors have an embedded curve, all in the library's one
   schema-1.11 file, a two-stage design, so none of them flies yet; 2 have a bundled one; 3 are
-  hybrids and 197 have no curve hpr holds. So 2 of the 174 configurations fly, both on one-stage
-  rockets read whole, in 2 designs, and both assemble. The catalog, not the reader, is the limit, until [M5.1]'s online layer and cache
-  bring ThrustCurve.org's curves.
+  hybrids and 197 have no curve hpr holds. So 1 of the 174 configurations flies, and it assembles;
+  1 more is held back only by its airframe's warnings, shoulders of no wall read as solid, which
+  M2.2's oracle is to settle. The catalog, not the reader, is the main limit, until [M5.1]'s
+  online layer and cache bring ThrustCurve.org's curves.
 - A cluster mount, read as one tube since M3.1b3, keeps its configurations out rather than flying
   one motor where the file has several.
 - Recovery, separation, stored results, pods and `extensions.x-openrocket` are M3.1c2 to M3.1c4.

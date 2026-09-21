@@ -13,8 +13,9 @@ finishes, positions and overrides — and its motor configurations, with the mot
 their thrust curves. That is from Rust; there is no command-line tool yet.
 
 **How far to trust it.** Motors are read, but a configuration flies only when every motor in it
-lights at launch and has a thrust curve, in the file or in hpr's small bundled catalog: **2 of the
-174 motor configurations** in the reference library's 75 designs do
+lights at launch and has a thrust curve, in the file or in hpr's small bundled catalog, on an
+airframe read without a warning: **1 of the 174 motor configurations** in the reference library's
+75 designs does
 ([motors](#motors-and-their-configurations)). **Recovery settings,
 pods and parallel stages are not read yet** ([M3.1c](../decisions-and-roadmap.md#m3-1c)). A part
 hpr cannot give an honest shape — fins on a nose cone, tube fins OpenRocket sizes from the body —
@@ -817,7 +818,7 @@ a radius the file doesn't give are
 its ejection delay, and finds its thrust curve in the file itself or in hpr's bundled catalog. A
 configuration becomes one the rocket can fly only when every motor in it has a curve and lights at
 launch. Most designs in the reference library name motors the bundled catalog doesn't hold yet, so
-**2 of their 174 configurations fly today**; the rest are read, kept, and say why not.
+**1 of their 174 configurations flies today**; the rest are read, kept, and say why not.
 
 A **configuration** is one set of motors to fly the design with: OpenRocket calls it a *flight
 configuration*, and a design can have several, one per motor choice. The file keeps it in two
@@ -904,10 +905,13 @@ all of these hold. Otherwise flying it would be wrong, for example lighting a su
 - No stage is switched off in the configuration's own stage list
   (`<stage number="1" active="false"/>`). OpenRocket leaves a switched-off stage out of the flight,
   and hpr flies every stage.
-- The airframe was read as written: nothing left out (a pod, a parallel stage, a part hpr could not
-  shape), and nothing dropped or simplified (a cluster of tubes read as one, a flipped nose cone
-  read pointing forward, a material that could not be read). Otherwise hpr would fly a different
-  rocket from the design, so no configuration of it is flown.
+- The rocket and its motor mounts were read without a single warning: nothing left out (a pod, a
+  parallel stage, a part hpr could not shape), nothing dropped or simplified (a cluster of tubes
+  read as one, a flipped nose cone read pointing forward, a material that could not be read), and
+  nothing assumed (a shoulder of no wall read as solid, a shape hpr does not know read as a cone).
+  Otherwise hpr might fly a different rocket from the design, so no configuration of it is flown.
+  One design in the library is held back only by this: its shoulders have no wall, which
+  [M2.2](../decisions-and-roadmap.md#m2-2)'s oracle is to settle.
 - No mount holds two motors for the configuration. Which one OpenRocket would fly is not known, so
   neither flies.
 - The rocket has one stage. OpenRocket drops a booster when it separates; hpr would carry it to the
@@ -953,8 +957,8 @@ assert_eq!(assembly.motors[0].mount, "body");
 | thrust curve from the bundled catalog | 2 |
 | no curve | 200: 3 hybrids, and 197 in neither place |
 | ejection delays, of the 206 | 128 in seconds, 23 at 0 s, 53 plugged (`none`), 2 not written |
-| configurations the rocket flies | 2, in 2 designs; both assemble |
-| left out, by first reason | 166 a motor with no curve, 4 a motor in a part not read, 2 a motor lighting in flight |
+| configurations the rocket flies | 1, and it assembles |
+| left out, by first reason | 166 a motor with no curve, 4 a motor in a part not read, 2 a motor lighting in flight, 1 an airframe not read exactly as written |
 
 The catalog is the limit, not the reader. When
 [M5.1](../decisions-and-roadmap.md#m5-1) brings ThrustCurve.org's curves, many of the 197 may find

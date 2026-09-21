@@ -616,7 +616,7 @@
       configuration or left out with its reason, and flies from a curve or is named as unresolved;
       and `cargo xtask ork` prints those counts and how many designs assemble a configuration.
       *Result:* met (ADR-055): 206 motors in 174 configurations, 6 left out in pods and parallel
-      stages; 6 curves found; 2 configurations fly, one-stage and whole, and both assemble.
+      stages; 6 curves found; 1 configuration flies, on an airframe read without a warning.
     - [ ] **M3.1c2 Recovery and separation.** When each parachute and streamer opens and each
       stage separates, per configuration, and the drag coefficient each device states. *Done
       when:* every recovery device and stage in the library has its settings read or left out
