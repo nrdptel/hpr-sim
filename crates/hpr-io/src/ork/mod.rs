@@ -30,12 +30,14 @@
 //! # }
 //! ```
 
+pub mod component;
 pub mod container;
 pub mod document;
 mod error;
 pub mod value;
 mod warning;
 
+pub use component::rocket;
 pub use container::{Attachment, Container, MAX_UNPACKED_BYTES, Unpacked};
 pub use document::{Document, Element, MAX_DEPTH, MAX_KNOWN_MINOR, Node, SchemaVersion};
 pub use error::OrkError;

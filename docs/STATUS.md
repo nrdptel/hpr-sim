@@ -4,16 +4,27 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
 
 ## Now
 
-- **Current milestone:** M1.8e, all done bar M1.8e16 (`[blocked]` on #108); the work is **M3.1b2**,
-  the `.ork` components, now M3.1a has its container and M3.1b1 its values.
-- **Order:** M3.1b2, M3.1c, M3.1d, then M2.2, then M1.9; M1.8e16 (past 24°) waits on #108
+- **Current milestone:** **M3.1b2a**, the `.ork` spine, in progress on `m3.1b2a-ork-spine`
+  (draft PR): the reader and its tests are in, the corpus run is not. M3.1b2 was split into
+  M3.1b2a (the spine) and M3.1b2b (what hangs off it).
+- **Order:** finish M3.1b2a, then M3.1b2b, M3.1c, M3.1d, then M2.2, then M1.9; M1.8e16 (past 24°)
+  waits on #108
 - **Run:** M0.1-M0.4, M1.1-M1.7, M2.1, M1.8a-e19 bar e16, M3.1a, M3.1b1; the site is published.
 - **Neer, 2026-09-20:** Debrief is sunset; a flight log analyzer usable **on its own** is part of
   this project (ADR-046, V21). Phase 5 re-cut.
-- **Last updated:** 2026-09-20 (M3.1a and M3.1b1 shipped, ADR-051 and ADR-052; M3.1b2 is next)
+- **Last updated:** 2026-09-20 (M3.1b2 split; M3.1b2a part-built on its branch)
 
 ## Handoff (overwrite each session)
 
+- **Resume M3.1b2a here.** On `m3.1b2a-ork-spine`: `hpr_io::ork::component::rocket` reads a
+  document's stages and body components, and four tests pass (`cargo test -p hpr-io --lib`),
+  including L59's `auto_fore_radius_resolves_across_stage_boundary`. **What is left:** wire it into
+  `cargo xtask ork` — build a `Rocket` per corpus design, call `layout()`, print how many lay out
+  and a tally of the tags left off the spine, per-file detail to `corpus-out/` — then the guide's
+  `docs/format/ork.md` section, an ADR for the two decisions below, the reviewers and the gate.
+  Two decisions to check against the corpus run: a `<bodytube>` that is `filled` with an automatic
+  radius (warns, reads the cached radius), and `shapeclipped` defaulting to clipped on a transition
+  (1 of 21 state it; the M2.2 oracle settles it).
 - **Page rules** (ADR-016 to ADR-020): relative links between pages, GitHub URLs for the rest
   (rustdoc too), labels as links to their rows — a lesson a page names needs a row in
   `decisions-and-roadmap.md` — none in headings; new pages in `SUMMARY.md`, a new library a row in

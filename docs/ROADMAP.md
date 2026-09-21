@@ -621,8 +621,21 @@
       is what a `<overridecd>0.0</overridecd>` needs (2 in the corpus). The six override tags are
       read independently; the single pre-1.9 flag they replaced (20 elements, never beside a
       per-quantity one) sets all three, with a warning.
-    - [ ] **M3.1b2 The components themselves.** The tree into `hpr-design` types, with the
-      automatic dimensions resolved. Loft lessons L49, L59, L60, L61, and the parent's bullets.
+    - [ ] **M3.1b2a The spine.** The stages and the body components stacked in them — nose
+      cones, body tubes, transitions — with their shapes, lengths, radii, walls, materials and
+      overrides, and every automatic radius marked for `layout()` to resolve rather than filled
+      in, across a stage boundary as well as within one. Loft lesson L59.
+      *Done when:* `hpr_io::ork::tests::auto_fore_radius_resolves_across_stage_boundary` is live;
+      `cargo xtask ork` builds a `hpr_design::Rocket` from every design in the reference library
+      and reports how many spines lay out and what was left off them, with the per-file detail in
+      `corpus-out/`.
+    - [ ] **M3.1b2b The parts on and inside the body.** Inner tubes, rings and bulkheads, fin
+      sets, tube fins, lugs and rail buttons and mass objects, with their positions and the
+      dimensions they take from their parents; a surface finish once OpenRocket's five words
+      (`rough`, `unfinished`, `normal`, `smooth`, `polished`) have a roughness from a document
+      this project may read. Loft lessons L49, L60, L61, and the parent's bullets.
+      *Done when:* those lessons' named tests are live, every design in the reference library
+      gives a `Rocket` whose `layout()` succeeds, and the counts go to `corpus-out/`.
   - [ ] **M3.1c Motors, recovery, stages and what OpenRocket last did.** Motor configurations and
     embedded `.rse` curves, recovery devices, stage and pod structure, stored conditions and
     results, and `extensions.x-openrocket` for the rest. Loft lessons L57, L64, L65, L66.
