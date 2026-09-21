@@ -7,19 +7,26 @@
 //! series (`<datapoint>` rows, comma-separated, in the order its `types` attribute names) with the
 //! flight's `<event>`s ([the file specification][spec], *Simulation Data*).
 //!
-//! **What the numbers mean.** The file-format page gives no units, and its own example writes the
-//! launch rod's direction as `90.0` and the wind's as `1.5707963267948966`. A committed probe
+//! **What the numbers mean.** The file-format page gives units only for the multilevel wind
+//! (metres, m/s and radians), and its own example writes the launch rod's direction as `90.0` and
+//! the wind's as `1.5707963267948966`. A committed probe
 //! (`validation/oracles/openrocket/conditions.py`, results in
 //! `validation/fixtures/ork/openrocket-conditions.json`) runs OpenRocket 24.12 and settles it:
 //!
 //! - `launchrodangle` and `launchroddirection` are **degrees**; this reader gives them in radians.
 //!   The direction is a compass bearing, clockwise from north: a rod tilted toward 90 lands the
-//!   rocket to the east. With `launchintowind`, OpenRocket writes the wind's direction as the rod's.
-//! - `winddirection` is **radians**, the direction the wind blows **from**, and never the rod's
-//!   direction ([Loft lesson L64][l64]: Loft read it from `launchroddirection`).
-//! - The summary and the time series are SI, with angles in radians and latitude and longitude in
-//!   degrees; a stored row carries about four significant figures, and `NaN` where OpenRocket did
-//!   not compute a quantity at that step. This reader keeps every value as written.
+//!   rocket to the east. With `launchintowind`, OpenRocket writes the wind's bearing, in degrees,
+//!   as the rod's.
+//! - `winddirection` is **radians**, the bearing the wind blows **from**: in a wind from the east a
+//!   rocket drifts west. It is never the rod's direction ([Loft lesson L64][l64]: Loft read it from
+//!   `launchroddirection`).
+//! - In the eight columns the probe compared, the time series is SI with angles in radians and
+//!   latitude in degrees, rounded when stored: to three decimal places (287.857 K), and a large
+//!   value to four significant figures (100,796.6 Pa is stored as 100,800). `NaN` marks a quantity
+//!   OpenRocket did not compute at that step, and this reader keeps it as `None`.
+//!
+//! All of this is measured on OpenRocket 24.12; a file written by a much older version may have
+//! meant the rod's direction otherwise, which is not measured.
 //!
 //! [spec]: https://openrocket.readthedocs.io/en/latest/dev_guide/file_specification.html
 //! [l64]: https://nrdptel.github.io/hpr-sim/decisions-and-roadmap.html#l64
@@ -74,6 +81,9 @@ pub struct LaunchConditions {
     /// `<winddirection>`, or the average wind's `<direction>`: the compass bearing the wind blows
     /// from, rad (the file writes radians).
     pub wind_from_rad: Option<f64>,
+    /// `<windmodeltype>`: which wind the run flew, `Average` or the multilevel one. OpenRocket
+    /// writes both winds whichever it flew.
+    pub wind_model: Option<String>,
     /// `<wind model="multilevel">`'s levels, lowest first as written.
     pub wind_levels: Vec<WindLevel>,
     /// The multilevel wind's `altituderef`: whether its altitudes are above the ground (`agl`) or
@@ -124,9 +134,9 @@ pub enum Atmosphere {
         /// `<basepressure>`, Pa.
         pressure_pa: Option<f64>,
     },
-    /// A model not listed here, kept as written.
+    /// A model not listed here, or none, kept by name only.
     Other {
-        /// The `model` attribute.
+        /// The `model` attribute; empty when there is none.
         name: String,
     },
 }
@@ -157,6 +167,8 @@ pub struct StoredResults {
     pub optimum_delay_s: Option<f64>,
     /// The time series, one per stage, in file order.
     pub branches: Vec<StoredBranch>,
+    /// The `<warning>`s OpenRocket stored with the results, each as its text.
+    pub warnings: Vec<String>,
 }
 
 /// One stage's stored time series.
@@ -167,21 +179,22 @@ pub struct StoredBranch {
     pub name: String,
     /// `types`: each column's name as OpenRocket shows it, such as `Time` or `Altitude`.
     pub types: Vec<String>,
-    /// The `<datapoint>` rows, each a value per column, SI (angles in radians); `NaN` where
-    /// OpenRocket did not compute the quantity.
-    pub rows: Vec<Vec<f64>>,
+    /// The `<datapoint>` rows, each a value per column, as written: SI, angles in radians, latitude
+    /// and longitude in degrees. `None` where the file says `NaN`, a quantity OpenRocket did not
+    /// compute at that step.
+    pub rows: Vec<Vec<Option<f64>>>,
     /// The `<event>`s, in file order.
     pub events: Vec<StoredEvent>,
 }
 
 impl StoredBranch {
-    /// The column called `name`, one value per row.
-    pub fn column(&self, name: &str) -> Option<Vec<f64>> {
+    /// The column called `name`, one value per row; `None` where OpenRocket did not compute it.
+    pub fn column(&self, name: &str) -> Option<Vec<Option<f64>>> {
         let index = self.types.iter().position(|column| column == name)?;
         Some(
             self.rows
                 .iter()
-                .map(|row| row.get(index).copied().unwrap_or(f64::NAN))
+                .map(|row| row.get(index).copied().flatten())
                 .collect(),
         )
     }
@@ -264,14 +277,23 @@ fn conditions(element: &Element, at: &str, warnings: &mut Vec<Warning>) -> Launc
     });
     let atmosphere = element.child("atmosphere").map(|atmosphere| {
         let model = atmosphere.attribute("model").unwrap_or_default();
-        if !matches!(model, "isa" | "extendedisa") {
+        let unread = match model {
+            "isa" | "extendedisa" => None,
+            "" => Some(
+                "an atmosphere with no `model`, as older files write their own table; it was not \
+                 read"
+                    .to_owned(),
+            ),
+            other => Some(format!(
+                "an atmosphere whose model is `{other}`, which OpenRocket 24.12 does not write; it \
+                 was kept by name only"
+            )),
+        };
+        if let Some(message) = unread {
             warnings.push(Warning::new(
                 format!("{at}/atmosphere"),
                 WarningKind::Unusual,
-                format!(
-                    "an atmosphere whose model is `{model}`, which OpenRocket 24.12 does not write; \
-                     it was kept by name only"
-                ),
+                message,
             ));
         }
         match model {
@@ -289,15 +311,34 @@ fn conditions(element: &Element, at: &str, warnings: &mut Vec<Warning>) -> Launc
         }
     });
     let mut values = Values::new(element, at, warnings);
+    let legacy_speed = values.number(&["windaverage"]);
+    let legacy_from = values.number(&["winddirection"]);
+    for (what, legacy, average) in [
+        ("speed", legacy_speed, average_speed),
+        ("direction", legacy_from, average_from),
+    ] {
+        if let (Some(legacy), Some(average)) = (legacy, average)
+            && legacy != average
+        {
+            values.warn_at(
+                WarningKind::Dropped,
+                format!(
+                    "the wind's {what} is {legacy} in the legacy tag and {average} in the average \
+                     `wind`; the legacy tag's was taken"
+                ),
+            );
+        }
+    }
     LaunchConditions {
         configuration: values.word(&["configid"]).filter(|id| !id.is_empty()),
         rod_length_m: values.number(&["launchrodlength"]),
         rod_angle_rad: values.number(&["launchrodangle"]).map(f64::to_radians),
         rod_direction_rad: values.number(&["launchroddirection"]).map(f64::to_radians),
         into_wind: values.flag(&["launchintowind"]),
-        wind_speed_m_s: values.number(&["windaverage"]).or(average_speed),
+        wind_speed_m_s: legacy_speed.or(average_speed),
         wind_turbulence: values.number(&["windturbulence"]),
-        wind_from_rad: values.number(&["winddirection"]).or(average_from),
+        wind_from_rad: legacy_from.or(average_from),
+        wind_model: values.word(&["windmodeltype"]),
         wind_levels,
         wind_levels_above: multilevel
             .and_then(|wind| wind.attribute("altituderef"))
@@ -347,6 +388,10 @@ fn results(element: &Element, at: &str, warnings: &mut Vec<Warning>) -> StoredRe
         deployment_speed_m_s: number("deploymentvelocity"),
         optimum_delay_s: number("optimumdelay"),
         branches: Vec::new(),
+        warnings: element
+            .children_named("warning")
+            .map(|warning| warning.text().trim().to_owned())
+            .collect(),
     };
     for (index, element) in element.children_named("databranch").enumerate() {
         let at = format!("{at}/databranch[{index}]");
@@ -362,16 +407,34 @@ fn branch(element: &Element, at: &str, warnings: &mut Vec<Warning>) -> StoredBra
         .unwrap_or_default();
     let mut rows = Vec::new();
     let mut dropped = 0usize;
+    let mut infinite = 0usize;
     for point in element.children_named("datapoint") {
         let text = point.text();
-        let row: Option<Vec<f64>> = text
+        // `NaN` is a value OpenRocket did not compute, kept as `None`; a number that does not read
+        // spoils the row. An infinity is kept as `None` too, and counted.
+        let row: Option<Vec<Option<f64>>> = text
             .split(',')
-            .map(|value| value.trim().parse::<f64>().ok())
+            .map(|value| match value.trim().parse::<f64>() {
+                Ok(v) if v.is_nan() => Some(None),
+                Ok(v) if v.is_finite() => Some(Some(v)),
+                Ok(_) => {
+                    infinite += 1;
+                    Some(None)
+                }
+                Err(_) => None,
+            })
             .collect();
         match row {
             Some(row) if row.len() == types.len() => rows.push(row),
             _ => dropped += 1,
         }
+    }
+    if infinite > 0 {
+        warnings.push(Warning::new(
+            at,
+            WarningKind::Dropped,
+            format!("{infinite} infinite value(s) in the rows were kept as not computed"),
+        ));
     }
     if dropped > 0 {
         warnings.push(Warning::new(
@@ -386,12 +449,22 @@ fn branch(element: &Element, at: &str, warnings: &mut Vec<Warning>) -> StoredBra
     }
     let mut events = Vec::new();
     for event in element.children_named("event") {
-        let Some(time_s) = attribute_number(event, "time", at, warnings) else {
+        let (Some(time_s), Some(kind)) = (
+            attribute_number(event, "time", at, warnings),
+            event
+                .attribute("type")
+                .filter(|kind| !kind.trim().is_empty()),
+        ) else {
+            warnings.push(Warning::new(
+                at,
+                WarningKind::Dropped,
+                "an `event` with no time or no type; it was left out",
+            ));
             continue;
         };
         events.push(StoredEvent {
             time_s,
-            kind: event.attribute("type").unwrap_or_default().to_owned(),
+            kind: kind.trim().to_owned(),
             source: event.attribute("source").map(str::to_owned),
         });
     }

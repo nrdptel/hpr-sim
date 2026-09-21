@@ -2655,11 +2655,32 @@ fn wind_direction_is_not_rod_direction() {
     close(temperature_k, "launch_temperature");
     close(pressure_pa, "launch_pressure");
 
-    // And the rod's direction is a compass bearing: toward 0 the rocket lands north, toward 90
-    // east, as the same probe flew it.
+    // These guard the fixture the docs quote, not the reader. The rod's direction is a compass
+    // bearing: toward 0 the rocket lands north, toward 90 east, while the example's own wind stays
+    // where it was. The wind's direction is where it blows from: from the east, a rocket off a
+    // vertical rod drifts west. With `launchintowind`, the rod is written at the wind's bearing,
+    // in degrees.
     let direction = &fixture["direction"];
     assert!(direction[0]["landed_north_m"].as_f64() > Some(10.0));
     assert!(direction[1]["landed_east_m"].as_f64() > Some(10.0));
+    assert_eq!(
+        direction[0]["wind_direction_rad"],
+        direction[1]["wind_direction_rad"]
+    );
+    let drift = &fixture["drift"];
+    assert_eq!(
+        drift[0]["wind_from_rad"].as_f64(),
+        Some(std::f64::consts::FRAC_PI_2)
+    );
+    assert!(drift[0]["landed_east_m"].as_f64() < Some(-10.0));
+    assert!(drift[1]["landed_north_m"].as_f64() < Some(-10.0));
+    let into_wind = &fixture["into_wind"];
+    let rod_deg: f64 = into_wind["written"]["launchroddirection"]
+        .as_str()
+        .expect("written")
+        .parse()
+        .expect("a number");
+    assert!((rod_deg.to_radians() - 0.5).abs() < 1e-12);
 }
 
 /// A design's stored results read back: the summary, each stage's time series by column, `NaN`
@@ -2694,12 +2715,14 @@ fn stored_results_are_read_back() {
     assert_eq!(results.optimum_delay_s, Some(2.751));
     let branch = &results.branches[0];
     assert_eq!(branch.name, "Sustainer");
-    assert_eq!(branch.column("Altitude"), Some(vec![0.0, 30.25]));
+    assert_eq!(
+        branch.column("Altitude"),
+        Some(vec![Some(0.0), Some(30.25)])
+    );
     let margin = branch
         .column("Stability margin calibers")
         .expect("a column");
-    assert!(margin[0].is_nan());
-    assert_eq!(margin[1], 1.8);
+    assert_eq!(margin, [None, Some(1.8)]);
     let kinds: Vec<&str> = branch.events.iter().map(|e| e.kind.as_str()).collect();
     assert_eq!(kinds, ["launch", "apogee"]);
     assert!(
@@ -2709,5 +2732,55 @@ fn stored_results_are_read_back() {
             .any(|w| w.message.contains("1 `datapoint` row(s) are not 3 numbers")),
         "{:?}",
         design.warnings
+    );
+
+    // A design with stored results survives JSON and back unchanged, `NaN`s and all.
+    let json = serde_json::to_string(&design.value).expect("JSON");
+    let back: Design = serde_json::from_str(&json).expect("read back");
+    assert_eq!(back, design.value);
+}
+
+/// Stored simulations are read from a document that holds no design at all, the average `<wind>`
+/// stands in where the legacy tags are missing, a multilevel wind keeps its levels, and an event
+/// with no type is left out with a warning.
+#[test]
+fn stored_conditions_read_without_a_design() {
+    let xml = r#"<?xml version="1.0" encoding="UTF-8"?>
+<openrocket version="1.10" creator="OpenRocket 24.12">
+  <simulations><simulation status="loaded"><name>Only a result</name><conditions>
+    <launchroddirection>90.0</launchroddirection>
+    <wind model="average"><speed>4.0</speed><direction>1.0</direction></wind>
+    <wind model="multilevel" altituderef="agl">
+      <windlevel altitude="0.0" speed="2.0" direction="1.57" standarddeviation="0.2"/>
+      <windlevel altitude="100.0" speed="3.0" direction="1.6" standarddeviation="0.3"/>
+    </wind>
+    <windmodeltype>Average</windmodeltype>
+  </conditions>
+  <flightdata maxaltitude="10.0"><warning>Recovery device deployment at high speed</warning>
+    <databranch name="Sustainer" types="Time"><event time="1.0"/><datapoint>0</datapoint>
+    </databranch></flightdata>
+  </simulation></simulations>
+</openrocket>"#;
+    let read = read(xml.as_bytes()).expect("a readable document");
+    let design = design(&read.value);
+    let simulation = &design.value.simulations[0];
+    let conditions = simulation.conditions.as_ref().expect("conditions");
+    assert_eq!(conditions.wind_speed_m_s, Some(4.0));
+    assert_eq!(conditions.wind_from_rad, Some(1.0));
+    assert_eq!(conditions.wind_model.as_deref(), Some("Average"));
+    assert_eq!(conditions.wind_levels.len(), 2);
+    assert_eq!(conditions.wind_levels[1].altitude_m, Some(100.0));
+    assert_eq!(conditions.wind_levels_above.as_deref(), Some("agl"));
+    let results = simulation.results.as_ref().expect("results");
+    assert_eq!(
+        results.warnings,
+        ["Recovery device deployment at high speed"]
+    );
+    assert!(results.branches[0].events.is_empty());
+    assert!(
+        design
+            .warnings
+            .iter()
+            .any(|w| w.message.contains("no time or no type"))
     );
 }

@@ -122,8 +122,13 @@ impl MotorTally {
                 }
             }
         }
-        let motor_warnings = &design.warnings[spine_warnings.min(design.warnings.len())..];
-        for warning in motor_warnings {
+        // The motors' warnings follow the spine's; a stored simulation's come after them, and are
+        // counted with the simulations.
+        let motor_warnings: Vec<_> = design.warnings[spine_warnings.min(design.warnings.len())..]
+            .iter()
+            .filter(|warning| !warning.at.starts_with("openrocket/simulations"))
+            .collect();
+        for warning in &motor_warnings {
             *self.warnings.entry(kind_name(warning.kind)).or_default() += 1;
         }
         json!({

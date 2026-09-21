@@ -13,8 +13,10 @@ script measures what the program means, running OpenRocket 24.12 as an external 
 - `direction`: in calm air, the rod tilted 10 degrees, the rocket is flown with the rod's direction
   set to 0 and to 90 degrees, and where it lands (east and north of the pad) is recorded, which says
   whether the direction is a compass bearing;
-- `into_wind`: a file with the rod pointing 90 degrees, wind from 0, and `launchintowind` true is
-  loaded, and the rod direction OpenRocket then holds is recorded;
+- `drift`: from a vertical rod in a steady wind from the east, then from the north, where the
+  rocket lands, which says whether the wind's direction is where it blows from;
+- `into_wind`: a file with the rod pointing 90 degrees, wind from 0.5 rad, and `launchintowind`
+  true is saved and loaded, and the rod direction written and then held is recorded;
 - `datapoints`: a flight is saved with its data, and one row of the stored time series is recorded
   beside the same quantities as the program holds them, which gives each column's unit.
 
@@ -180,6 +182,37 @@ def landing(direction_deg):
     north = list(branch.get(FlightDataType.TYPE_POSITION_Y))
     return {
         "rod_direction_deg": direction_deg,
+        # The wind's direction the example carries, unchanged by these runs: a rod direction taken
+        # relative to it would land the two runs somewhere else.
+        "wind_direction_rad": float(set_.getWindDirection()),
+        "east_column": str(FlightDataType.TYPE_POSITION_X.getName()),
+        "north_column": str(FlightDataType.TYPE_POSITION_Y.getName()),
+        "landed_east_m": round(east[-1], 2),
+        "landed_north_m": round(north[-1], 2),
+    }
+
+
+def drift(wind_from_rad):
+    """Where the example lands from a vertical rod in a steady 5 m/s wind from `wind_from_rad`,
+    with no turbulence: the rocket drifts downwind, away from where the wind blows from."""
+    from info.openrocket.core.simulation import FlightDataType
+
+    document_ = example(SINGLE)
+    simulation = list(document_.getSimulations())[0]
+    set_ = simulation.getOptions()
+    set_.setLaunchIntoWind(False)
+    set_.setLaunchRodAngle(0.0)
+    set_.setWindSpeedAverage(5.0)
+    set_.setWindTurbulenceIntensity(0.0)
+    set_.setWindDirection(wind_from_rad)
+    set_.setRandomSeed(SEED)
+    simulation.simulate()
+    branch = simulation.getSimulatedData().getBranch(0)
+    east = list(branch.get(FlightDataType.TYPE_POSITION_X))
+    north = list(branch.get(FlightDataType.TYPE_POSITION_Y))
+    return {
+        "wind_from_rad": wind_from_rad,
+        "wind_speed_m_s": 5.0,
         "landed_east_m": round(east[-1], 2),
         "landed_north_m": round(north[-1], 2),
     }
@@ -191,7 +224,7 @@ def into_wind():
     document_ = example(SINGLE)
     set_ = options(document_)
     set_.setLaunchRodDirection(math.radians(90.0))
-    set_.setWindDirection(0.0)
+    set_.setWindDirection(0.5)
     set_.setLaunchIntoWind(True)
     xml = save(document_, False)
     conditions = conditions_of(xml)
@@ -263,6 +296,7 @@ def main():
         "jpype": jpype.__version__,
         "conditions": written_and_loaded(),
         "direction": [landing(0.0), landing(90.0)],
+        "drift": [drift(math.pi / 2), drift(0.0)],
         "into_wind": into_wind(),
         "datapoints": datapoints(),
     }

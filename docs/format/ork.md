@@ -737,7 +737,7 @@ gets: `filled`, or a wall at least as thick as 25 mm, is solid to 25 mm. The tes
 
 | file | what it holds | what happens |
 |---|---|---|
-| [Debrief][debrief]'s `sample-design.ork` | a `<rocket>` with a name, a comment and nothing else, plus a stored simulation | holds no design; counted apart, not as a failure. its stored simulation is read ([stored simulations](#what-openrocket-last-did-stored-simulations)) |
+| [Debrief][debrief]'s `sample-design.ork` | a `<rocket>` with a name, a comment and nothing else, plus a stored simulation | holds no design; counted apart, not as a failure. Its stored simulation is read ([stored simulations](#what-openrocket-last-did-stored-simulations)) |
 | the `openrocket-database` parachute catalogue | four tubes, every radius a bare `auto`, carrying the catalogue's parachutes | lays out, four tubes at 25 mm, just as OpenRocket 24.12 opens it |
 | [Loft][loft]'s `demo-quirks.ork` | the worked example's chain, and a parallel stage placed directly under the rocket | lays out as in the worked example. **OpenRocket 24.12 will not open this file**: it refuses a parallel stage there, so its answers for this chain come from the oracle script's copy. hpr opens it and skips the parallel stage with a warning, as it does every parallel stage until [M3.1c](../decisions-and-roadmap.md#m3-1c) |
 
@@ -1067,13 +1067,14 @@ A stored simulation has three parts:
 - **`<conditions>`**: the launch rod, the wind, the launch site, the atmosphere and the time step.
 - **The summary**: ten figures on `<flightdata>`, such as `maxaltitude` and `optimumdelay`.
 - **The time series**: a `<databranch>` per stage, whose `types` name its columns (`Time`,
-  `Altitude` and 56 more) and whose `<datapoint>` rows give a value for each, beside the flight's
-  `<event>`s (`launch`, `apogee`, `recoverydevicedeployment` and so on).
+  `Altitude` and the rest: 58 in the files OpenRocket 24.12 writes, other versions differ) and
+  whose `<datapoint>` rows give a value for each, beside the flight's `<event>`s (`launch`,
+  `apogee`, `recoverydevicedeployment` and so on) and any `<warning>` OpenRocket stored.
 
 ### What the numbers mean
 
-The file-format page gives no units, and its own example writes a launch rod's direction as `90.0`
-and a wind's as `1.5707963267948966`. The committed probe `validation/oracles/openrocket/conditions.py`
+The file-format page gives units only for the multilevel wind (metres, m/s and radians), and its
+own example writes a launch rod's direction as `90.0` and a wind's as `1.5707963267948966`. The committed probe `validation/oracles/openrocket/conditions.py`
 runs OpenRocket 24.12, sets the conditions through its public setters, saves, loads them again and
 flies them. Its results are in `validation/fixtures/ork/openrocket-conditions.json`, and the test
 `hpr_io::ork::tests::wind_direction_is_not_rod_direction` holds hpr's reader to them.
@@ -1082,23 +1083,37 @@ flies them. Its results are in `validation/fixtures/ork/openrocket-conditions.js
 |---|---|---|
 | `<launchrodangle>5.0</launchrodangle>` | the rod tilts 5 degrees from vertical | `rod_angle_rad`, 0.0873 |
 | `<launchroddirection>45.0</launchroddirection>` | toward a compass bearing of 45 degrees, clockwise from north | `rod_direction_rad`, 0.785 |
-| `<winddirection>0.5</winddirection>` | the wind blows **from** a bearing of 0.5 radians | `wind_from_rad`, 0.5 |
+| `<winddirection>0.5</winddirection>` | the wind blows **from** a bearing of 0.5 radians, about 29 degrees | `wind_from_rad`, 0.5 |
 | `<windturbulence>0.1</windturbulence>` | turbulence intensity: the wind speed's standard deviation over its mean | `wind_turbulence`, 0.1 |
 | `<atmosphere model="extendedisa">` with `<basetemperature>` and `<basepressure>` | the standard atmosphere from a temperature (K) and pressure (Pa) at the launch site | `Atmosphere::Extended` |
 
-The rod's direction really is a compass bearing: in the probe, a rod tilted 10 degrees toward 0
-lands the rocket 21.3 m north, and toward 90, 21.3 m east. With `<launchintowind>` true,
-OpenRocket writes the wind's direction as the rod's.
+The probe also flies the example, in three ways that settle what the directions mean:
+
+- **The rod's direction is a compass bearing.** In calm air, a rod tilted 10 degrees toward
+  bearing 0 (north) lands the rocket 21.3 m north, and toward 90 (east), 21.3 m east, while the
+  example's own wind setting stays at 90 degrees. OpenRocket's preferences page still calls the
+  direction relative to the wind; the program does not treat it so.
+- **The wind's direction is where it blows from.** From a vertical rod, in a steady 5 m/s wind
+  from bearing 90 (east), the rocket lands 48.4 m west; from bearing 0, 48.4 m south.
+- **`<launchintowind>` rewrites the rod.** With it true, OpenRocket overwrites the rod's direction
+  with the wind's bearing, in degrees: a wind from 0.5 radians is written as a rod direction of
+  28.648.
+
+All of this is measured on OpenRocket 24.12. A file written by a much older version may have meant
+the rod's direction otherwise, which is not measured.
 
 The rod's direction and the wind's are different numbers in different units.
 [Loft][loft] read the wind's direction from `launchroddirection`
 ([L64](../decisions-and-roadmap.md#l64)). hpr reads each from its own tag.
 
-The summary and the time series are SI, with angles in radians and latitude and longitude in
-degrees: the probe saves a flight and compares a stored row with the same quantities as OpenRocket
-held them. A stored row carries about four significant figures (an air pressure of 100,796.6 Pa is
-stored as 100,800), and `NaN` where OpenRocket did not compute a quantity at that step. hpr keeps
-every value as written.
+The probe saves a flight and compares one stored row with the same quantities as OpenRocket held
+them, in eight columns: time, altitude, vertical velocity, two angles, latitude, air temperature
+and air pressure. Those are SI, with the angles in radians and latitude in degrees; the other
+columns and the summary are taken to follow. Values are rounded when stored: to three decimal
+places (287.857 K, 0.218 rad), so a small quantity keeps few digits, and a large one to four
+significant figures (100,796.6 Pa is stored as 100,800). `NaN` marks a quantity OpenRocket did not
+compute at that step; hpr keeps it as `None`, so a design with stored results survives being saved
+as JSON and read back.
 
 This is from the test `hpr_io::ork::tests::stored_results_are_read_back`: a stored run reads back
 through `design.simulations`, and a column comes out by its name.
@@ -1108,7 +1123,7 @@ let simulation = &design.value.simulations[0];
 let results = simulation.results.as_ref().expect("results");
 assert_eq!(results.max_altitude_m, Some(50.59));
 let branch = &results.branches[0];
-assert_eq!(branch.column("Altitude"), Some(vec![0.0, 30.25]));
+assert_eq!(branch.column("Altitude"), Some(vec![Some(0.0), Some(30.25)]));
 ```
 
 ### Stored simulations in the reference library
@@ -1119,7 +1134,7 @@ assert_eq!(branch.column("Altitude"), Some(vec![0.0, 30.25]));
 |---|---|
 | stored simulations | 178, in 64 documents: 141 `uptodate`, 17 `external`, 11 `outdated`, 9 `notsimulated` |
 | with launch conditions | 177; 129 state the wind's direction, and 135 launch into the wind |
-| atmosphere | 172 `isa`, 2 `extendedisa`, 1 not written, and 2 with a model OpenRocket 24.12 does not write, kept by name with a warning |
+| atmosphere | 172 `isa`, 2 `extendedisa`, 1 not written, and 2 with no model (an older file's own table), not read, with a warning |
 | with a summary | 164 |
 | with a time series | 144, over 178 stage branches and 101,955 rows |
 

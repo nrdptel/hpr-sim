@@ -57,22 +57,42 @@
   "direction": [
     {
       "rod_direction_deg": 0.0,
+      "wind_direction_rad": 1.5707963267948966,
+      "east_column": "Position East of launch",
+      "north_column": "Position North of launch",
       "landed_east_m": 0.0,
       "landed_north_m": 21.29
     },
     {
       "rod_direction_deg": 90.0,
+      "wind_direction_rad": 1.5707963267948966,
+      "east_column": "Position East of launch",
+      "north_column": "Position North of launch",
       "landed_east_m": 21.29,
       "landed_north_m": -0.0
     }
   ],
+  "drift": [
+    {
+      "wind_from_rad": 1.5707963267948966,
+      "wind_speed_m_s": 5.0,
+      "landed_east_m": -48.43,
+      "landed_north_m": 0.0
+    },
+    {
+      "wind_from_rad": 0.0,
+      "wind_speed_m_s": 5.0,
+      "landed_east_m": -0.0,
+      "landed_north_m": -48.43
+    }
+  ],
   "into_wind": {
     "written": {
-      "launchroddirection": "0.0",
-      "winddirection": "0.0",
+      "launchroddirection": "28.64788975654116",
+      "winddirection": "0.5",
       "launchintowind": "true"
     },
-    "loaded_rod_direction_rad": 0.0
+    "loaded_rod_direction_rad": 0.5
   },
   "datapoints": {
     "branch": "Sustainer",
