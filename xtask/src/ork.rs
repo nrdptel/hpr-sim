@@ -101,7 +101,10 @@ pub fn run(args: &[String]) -> Result<(), String> {
                 .to_owned(),
         );
     }
-    report(&root, &files)
+    // The OpenRocket fixture names designs in the library; a run over other directories need not
+    // reach any of them.
+    let library = dirs.is_empty() && root.join(JAR).is_file();
+    report(&root, &files, library)
 }
 
 /// The tags that hold an angle. A `.ork` writes them in degrees and says so nowhere, so this is
@@ -218,8 +221,8 @@ fn resolved_dimension(placed: &PlacedComponent, tag: &str) -> Option<f64> {
 /// One file to read: how to name it, and its bytes.
 type Case = (String, Vec<u8>);
 
-fn report(root: &Path, files: &[Case]) -> Result<(), String> {
-    let openrocket = openrocket_radii(&root.join(OPENROCKET_RADII))?;
+fn report(root: &Path, files: &[Case], library: bool) -> Result<(), String> {
+    let openrocket = openrocket_radii(root, &root.join(OPENROCKET_RADII))?;
     let mut radii_designs = 0usize;
     let mut radii_compared = 0usize;
     let mut radii_agreeing = 0usize;
@@ -374,7 +377,7 @@ fn report(root: &Path, files: &[Case]) -> Result<(), String> {
                         }
                         // OpenRocket itself, run on the same file: every body radius it resolved,
                         // forward to aft, against the one hpr resolved.
-                        if let Some(theirs) = openrocket.get(&oracle_key(name)) {
+                        if let Some(theirs) = openrocket.get(&oracle_key(root, name)) {
                             let ours: Vec<f64> = layout
                                 .body()
                                 .flat_map(|placed| body_radii(&placed.part))
@@ -387,7 +390,7 @@ fn report(root: &Path, files: &[Case]) -> Result<(), String> {
                                         radii_agreeing += 1;
                                     } else {
                                         radii_apart.push(json!({
-                                            "file": oracle_key(name),
+                                            "file": oracle_key(root, name),
                                             "radius": index,
                                             "hpr": ours,
                                             "openrocket": theirs,
@@ -396,7 +399,7 @@ fn report(root: &Path, files: &[Case]) -> Result<(), String> {
                                 }
                             } else {
                                 radii_apart.push(json!({
-                                    "file": oracle_key(name),
+                                    "file": oracle_key(root, name),
                                     "hpr_radii": ours.len(),
                                     "openrocket_radii": theirs.len(),
                                 }));
@@ -757,6 +760,22 @@ fn report(root: &Path, files: &[Case]) -> Result<(), String> {
             stale.join("\n  ")
         ));
     }
+    // The radii are held to OpenRocket's, not only printed beside them: a disagreement fails the
+    // survey, and so does a library run that reached fewer of the designs OpenRocket was run on
+    // than it names, which is what a path that no longer matches the fixture's keys looks like.
+    if !radii_apart.is_empty() {
+        return Err(format!(
+            "{} of OpenRocket's body radii are not hpr's on the same file; see {REPORT}",
+            radii_apart.len()
+        ));
+    }
+    if library && radii_designs != openrocket.len() {
+        return Err(format!(
+            "{OPENROCKET_RADII} holds OpenRocket's radii for {} designs, but {radii_designs} were \
+             compared: a file is missing, does not lay out, or is filed under another key",
+            openrocket.len()
+        ));
+    }
     match (failures, not_round_tripped) {
         (0, 0) => Ok(()),
         (0, lost) => Err(format!(
@@ -781,20 +800,22 @@ fn body_radii(part: &Part) -> Vec<f64> {
     }
 }
 
-/// The key the OpenRocket probe files a design under: its path from `refs/`, or its entry in the
-/// jar, whichever machine ran it.
-fn oracle_key(name: &str) -> String {
+/// The key the OpenRocket probe files a design under: its path from the repository root, or its
+/// entry in the jar, whichever machine ran it. A name already relative to the root, as the
+/// fixture's are, is its own key.
+fn oracle_key(root: &Path, name: &str) -> String {
     let name = name.replace('\\', "/");
-    match name.rsplit_once('!') {
-        Some((_, entry)) => entry.trim_start_matches('/').to_owned(),
-        None => name
-            .find("refs/")
-            .map_or_else(|| name.clone(), |at| name[at..].to_owned()),
+    if let Some((_, entry)) = name.rsplit_once('!') {
+        return entry.trim_start_matches('/').to_owned();
     }
+    let root = root.display().to_string().replace('\\', "/");
+    name.strip_prefix(root.trim_end_matches('/'))
+        .and_then(|rest| rest.strip_prefix('/'))
+        .map_or_else(|| name.clone(), str::to_owned)
 }
 
 /// Every body radius OpenRocket resolved in each file its probe opened, by [`oracle_key`].
-fn openrocket_radii(path: &Path) -> Result<BTreeMap<String, Vec<f64>>, String> {
+fn openrocket_radii(root: &Path, path: &Path) -> Result<BTreeMap<String, Vec<f64>>, String> {
     let text = fs::read_to_string(path).map_err(|error| format!("{}: {error}", path.display()))?;
     let fixture: Value =
         serde_json::from_str(&text).map_err(|error| format!("{}: {error}", path.display()))?;
@@ -813,7 +834,7 @@ fn openrocket_radii(path: &Path) -> Result<BTreeMap<String, Vec<f64>>, String> {
                     .collect::<Vec<_>>()
             })
             .collect();
-        radii.insert(oracle_key(file), values);
+        radii.insert(oracle_key(root, file), values);
     }
     Ok(radii)
 }

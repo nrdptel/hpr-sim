@@ -79,7 +79,8 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
   checks; block force pushes. Don't require approvals (authors can't self-approve).
 - **crates.io names** (whenever): `hpr`, `hpr-sim`, `hpr-core`… unreserved. Reserve them?
 - **OpenRocket example radii in a fixture** (no action if fine): `openrocket-automatic-radius.json`
-  commits 67 body radii OpenRocket computed for the jar's 17 GPL example designs, and their names.
+  commits 67 body radii OpenRocket computed: 63 for the jar's 17 GPL example designs, with their
+  names, and 4 for the Apache-2.0 parachute catalogue.
 - **RASAero values in fixtures** (no action if fine): `normal-force-vs-mach.json` commits 30 values
   of RocketPy's 2018 Calisto RASAero II export (ADR-027) plus four summary numbers, and
   `rocketpy-drag-curves.json` enough to rebuild 147 values of five curves (ADR-029).

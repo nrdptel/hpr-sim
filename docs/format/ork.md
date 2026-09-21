@@ -356,7 +356,8 @@ from the parts:
 
 **Measured on the reference library** (`cargo xtask ork`, 76 readable files): 73 designs' spines lay
 out, over 93 stages and 285 body components — 188 body tubes, 74 nose cones, 23 transitions — with
-81 automatic radii marked (41 outer, 19 base, 14 fore, 7 aft). The counts are what may be
+81 automatic radii marked (41 outer, 19 base, 14 fore, 7 aft); since
+[M3.1b4](../decisions-and-roadmap.md#m3-1b4) gave 7 of them OpenRocket's default, 74 remain marked. The counts are what may be
 published; the per-file detail stays in the gitignored `corpus-out/`.
 
 *(When this was written, 3 designs did not lay out, and they were thought to be waiting on parts that
@@ -574,8 +575,9 @@ OpenRocket 24.12, at least; older releases may differ, as the note below explain
 an oracle for the resolution rules that needs no OpenRocket, and `cargo xtask ork` runs it over the
 corpus — on every automatic dimension that caches a number and sits on a component the file gives
 an `<id>`. On 2026-09-20, **67 of 71 agree** to a part in 10⁹, with 4 more cached but inside a pod
-this milestone does not read. The 4 that disagree are settled in hpr's favour
-[below](#openrocket-settles-it).
+this milestone does not read. Of the 4 that disagree, the 2 body radii are settled in hpr's favour
+[below](#openrocket-settles-it); the 2 packed radii follow the bore of that tube, so they are settled
+with it by the bore rule, not measured (the oracle reads body radii only).
 
 **What that number is, measured.** OpenRocket 24.12 writes the radius it resolved, not the number
 it read: a tube that says `auto 0.04` and has nothing to take is saved again as `auto 0.025`. It
@@ -613,20 +615,23 @@ that the first tube caches 0.025 m.
 
 **OpenRocket itself settles it, and agrees with hpr.** Run on that file
 ([below](#when-an-automatic-radius-has-nothing-to-take)), OpenRocket 24.12 first reads the first tube
-as 0.025 m, its default. As soon as it works the design out again — which saving does — it reads
+as 0.025 m, its default. Once it works the design out again, as it does when saving, it reads
 0.028321 m, and writes that. The first reading depends on an unrelated part, the coupler inside
 the *second* tube, whose own radius is automatic: the tenth and eleventh rows of the table below
 are the same small design without and with such a coupler, and only the one with it is first read
-at the default. So the 0.025 m in the file is a first reading that an earlier save wrote out, not
-an answer OpenRocket stands by. hpr is held to the answer OpenRocket settles on.
+at the default. So the 0.025 m in the file is most likely a first reading that an earlier save wrote out: the probe
+reads before and after a save, not twice without one, and nothing yet checks which radius
+OpenRocket's own simulation uses after a plain open ([M2.2](../decisions-and-roadmap.md#m2-2) will).
+hpr is held to the answer OpenRocket settles on.
 
 <a id="held-against-openrocket-itself"></a>
 
 **Held against OpenRocket itself.** `cargo xtask ork` also compares every body radius hpr resolves
 with the one OpenRocket 24.12 settles on for the same file, read from the oracle's committed
 results in `validation/fixtures/ork/openrocket-automatic-radius.json`, and prints the result on its
-line "body radii against OpenRocket 24.12 run on the same file". It covers the 18 designs
-OpenRocket opens: the 17 examples in its jar, and the parachute catalogue below. **67 of 67
+line "body radii against OpenRocket 24.12 run on the same file". It covers 18 of the 19 files
+OpenRocket was run on: the 17 examples in its jar, and the parachute catalogue below (it refuses
+the 19th, below). **67 of 67
 agree** — body radii this time, a different 67 from the cached numbers above. Unlike the cached
 answers, this reaches every body radius, fixed or automatic, including the Dual parachute tube.
 
@@ -639,8 +644,9 @@ designs in the reference library do this. hpr gives each such radius **OpenRocke
 25 mm**, as a fixed radius, and raises a warning at its tag naming the radius. A document whose
 `<rocket>` holds nothing at all is not a design, and is reported that way.
 
-**If you see that warning,** the design has a radius its author never set: OpenRocket shows it at
-25 mm too, but it is unlikely to be the rocket that was built. Set the radius in the design
+**If you see that warning,** the design has a radius its author never set. OpenRocket 24.12 shows a
+tube there at 25 mm too, and a nose cone's base or a transition's end that looks at another
+automatic radius at −1 m, which no shape can have. Neither is likely to be the rocket that was built. Set the radius in the design
 (in OpenRocket, untick *Automatic* and type the diameter) and open it again.
 
 **Why 25 mm.** OpenRocket's user guide doesn't say what happens here. Its issue tracker does:
@@ -689,8 +695,8 @@ What the table shows:
 
 - **The number cached after `auto` is ignored.** OpenRocket gives the tube that caches 0.04 m
   25 mm, and hpr does the same. The cache is an answer OpenRocket once wrote, never an input.
-- **A chain that reaches a fixed radius takes it**, however many automatic radii are in between and
-  across a stage boundary too, in both programs. The default is only for a chain with nothing
+- **A chain that reaches a fixed radius takes it**, in every case probed (up to two automatic radii
+  in between) and across a stage boundary too, in both programs. The default is only for a chain with nothing
   fixed on it.
 - **hpr departs from OpenRocket in one way, on purpose.** Where a nose cone's base or a
   transition's end looks at another automatic radius, OpenRocket gives it −1 m. No shape can have a
@@ -736,11 +742,11 @@ How it was decided, and the sources quoted in full, are in [ADR-054][adr-054].
 | designs whose `Rocket` lays out | 75 of the 75 files that hold a design |
 | documents that hold no design | 1, the 76th file |
 | automatic radii given OpenRocket's default, 25 mm | 7, in 2 designs: 5 on body tubes, 1 on a nose cone, 1 on a transition |
-| body radii against OpenRocket 24.12 run on the same file | 67 of 67 agree, over the 18 designs it opens |
+| body radii against OpenRocket 24.12 run on the same file | 67 of 67 agree, over 18 of the 19 files it was run on |
 | body components | 285 |
 | parts on and inside them | 765 |
 | by kind | 194 centering rings, 156 inner tubes, 135 parachutes, 107 fin sets, 84 mass components, 40 shock cords, 31 launch lugs, 16 rail buttons, 2 streamers |
-| automatic dimensions marked | 327 |
+| automatic dimensions marked for the layout to resolve | 320, plus the 7 above given the default: 327 in the files |
 | parts left out, with a reason | 5 |
 | parts that lay out weighing nothing | 21, every one explained (below) |
 | warnings raised | 96: 29 dropped, 12 skipped, 55 unusual (below) |

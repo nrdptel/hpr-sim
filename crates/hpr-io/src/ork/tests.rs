@@ -1783,7 +1783,8 @@ fn a_tube_given_the_default_has_its_wall_judged_against_it() {
         let spine = component::rocket(&file.value.document);
         let messages: Vec<&str> = spine.warnings.iter().map(|w| w.message.as_str()).collect();
         assert_eq!(messages.len(), 1, "{thickness}, {radius}: {messages:?}");
-        assert!(messages[0].contains("`outer_radius`"), "{messages:?}");
+        // The warning names the tag the file wrote, not hpr's field.
+        assert!(messages[0].contains("its `radius`;"), "{messages:?}");
         let hpr_design::tree::Part::BodyTube(t) = &spine.value.stages[0].components[0].part else {
             panic!("a body tube");
         };

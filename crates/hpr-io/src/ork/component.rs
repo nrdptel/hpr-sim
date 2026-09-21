@@ -223,11 +223,22 @@ fn default_radii(rocket: &mut Rocket, reads: &[Vec<BodyRead>], warnings: &mut Ve
             WarningKind::Unusual,
             format!(
                 "an automatic radius with no fixed radius anywhere along its chain to take, its \
-                 `{}`; it was given OpenRocket's default radius, {:.0} mm",
-                filled.dimension.name(),
+                 `{}`; it was given {:.0} mm, OpenRocket's default radius for a tube with nothing \
+                 to take",
+                radius_tag(filled.dimension),
                 radius_m * 1e3
             ),
         ));
+    }
+}
+
+/// The tag a body component's radius is written under: a nose cone's base is its `aftradius`.
+fn radius_tag(dimension: AutoDimension) -> &'static str {
+    match dimension {
+        AutoDimension::OuterRadius => "radius",
+        AutoDimension::ForeRadius => "foreradius",
+        AutoDimension::BaseRadius | AutoDimension::AftRadius => "aftradius",
+        other => other.name(),
     }
 }
 

@@ -59,7 +59,7 @@ renumber. Supersede an entry by adding a new one that points back to it.
 | ADR-051 | M3.1 split, and the `.ork` document kept whole rather than interpreted | accepted |
 | ADR-052 | What a `.ork` value means: automatic dimensions, two names for one tag, and overrides | accepted |
 | ADR-053 | The parts on and inside a `.ork` body: degrees, what is left out, and a sourced finish | accepted |
-| ADR-054 | An automatic radius with nothing to take is OpenRocket's default, and a rocket with no stage holds no design | accepted |
+| ADR-054 | An automatic radius with nothing to take is OpenRocket's default, and a rocket with no stage or component holds no design | accepted |
 
 ---
 
@@ -5052,7 +5052,7 @@ for documents that came from `parse`. The canonical writer means a `.ork` re-wri
 not be byte-identical to the one it was read from, which M3.2 will have to live with — matching
 OpenRocket's own layout was never achievable without reading its source.
 
-## ADR-054: An automatic radius with nothing to take is OpenRocket's default, and a rocket with no stage holds no design (2026-09-20)
+## ADR-054: An automatic radius with nothing to take is OpenRocket's default, and a rocket with no stage or component holds no design (2026-09-20)
 
 **Context.** After M3.1b3, 3 of the 76 readable `.ork` files in the reference library still gave
 no rocket that lays out. One, Debrief's `sample-design.ork`, has a `<rocket>` holding a name, a
@@ -5088,14 +5088,15 @@ saves the design (which makes OpenRocket work every radius out again), and reads
 `validation/fixtures/ork/openrocket-automatic-radius.json` holds the result, with the jar's hash
 and the Java and JPype versions:
 
-- Every automatic radius with nothing fixed along its chain settles at **0.025 m**: a lone tube,
-  two tubes, a lone nose cone, a lone transition, and the tube in each longer chain.
+- Every automatic radius with nothing fixed along its chain settles at **0.025 m**, except a nose
+  cone's base or a transition's end that looks at another automatic radius (next bullet but one): a
+  lone tube, two tubes, a lone nose cone, a lone transition, and the tube in each longer chain.
 - A cached number is ignored: `auto 0.04` and `auto 0.03` both come back 0.025. OpenRocket writes
   back what it resolved, not the number it read (`auto 0.04` is saved as `auto 0.025`).
 - Where a nose cone's base or a transition's end looks at another automatic radius, OpenRocket
   settles on **−1 m**, and writes `auto -1.0`. Four shapes show it, 6 radii in all.
-- A chain that reaches a fixed radius takes it in OpenRocket as in hpr, however many automatic
-  radii lie between and across a stage boundary. The control, a nose before a fixed tube, takes the
+- A chain that reaches a fixed radius takes it in OpenRocket as in hpr, in every case probed (up to
+  two automatic radii between) and across a stage boundary. The control, a nose before a fixed tube, takes the
   tube's 0.03 m.
 - **OpenRocket's first reading is not always its answer.** Where the tube after an automatic tube
   holds a coupler whose own radius is automatic, OpenRocket first reads the automatic tube at its
