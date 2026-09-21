@@ -21,7 +21,10 @@ library still produce no rocket at all
 
 ## Opening a file today
 
-This is the doctest on `hpr_io::ork`, which CI runs:
+This is the doctest on `hpr_io::ork`, which CI runs. It stops at the document — the tree of
+elements the file said, with nothing interpreted. To go one step further and get an
+`hpr_design::Rocket` out of that tree, see
+[opening a design, in full](#opening-a-design-in-full).
 
 ```rust
 let xml = br#"<?xml version="1.0" encoding="UTF-8"?>
