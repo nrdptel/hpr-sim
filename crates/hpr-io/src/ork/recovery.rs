@@ -33,6 +33,7 @@ use serde::{Deserialize, Serialize};
 
 use super::component::subcomponents;
 use super::document::Element;
+use super::motors::stage_of;
 use super::value::{Dimension, Values};
 use super::warning::{Warning, WarningKind};
 
@@ -287,10 +288,12 @@ pub(super) fn device(element: &Element, at: &str, warnings: &mut Vec<Warning>) -
     } else {
         DeviceKind::Parachute
     };
-    let cd = Values::new(element, at, warnings).dimension(&["cd"]);
+    // Warnings here are about when the device opens, not its shape, and say so in their path.
+    let here = format!("{at}/deployment");
+    let cd = Values::new(element, &here, warnings).dimension(&["cd"]);
     let (deployment, configurations) = trigger(
         element,
-        at,
+        &here,
         "deploy",
         "deploymentconfiguration",
         DeployEvent::parse,
@@ -311,9 +314,10 @@ pub(super) fn separation(
     at: &str,
     warnings: &mut Vec<Warning>,
 ) -> Option<SeparationRead> {
+    let here = format!("{at}/separation");
     let (separation, configurations) = trigger(
         element,
-        at,
+        &here,
         "separation",
         "separationconfiguration",
         SeparationEvent::parse,
@@ -451,17 +455,4 @@ fn unread_devices(
         let path = format!("{at}/{}[{index}]", child.name);
         unread_devices(child, &path, inside, read, found);
     }
-}
-
-/// The index of the stage holding the component with id `id`.
-fn stage_of(rocket: &Rocket, id: &str) -> Option<usize> {
-    fn holds(components: &[hpr_design::Component], id: &str) -> bool {
-        components
-            .iter()
-            .any(|c| c.id == id || holds(&c.children, id))
-    }
-    rocket
-        .stages
-        .iter()
-        .position(|stage| holds(&stage.components, id))
 }

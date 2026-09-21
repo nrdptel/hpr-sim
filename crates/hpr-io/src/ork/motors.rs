@@ -127,8 +127,8 @@ pub enum IgnitionEvent {
 
 impl IgnitionEvent {
     /// Reads an `<ignitionevent>`'s text.
-    fn parse(text: &str) -> Self {
-        match text {
+    pub fn parse(text: &str) -> Self {
+        match text.trim() {
             "automatic" => Self::Automatic,
             "launch" => Self::Launch,
             "ejectioncharge" => Self::EjectionCharge,
@@ -684,7 +684,7 @@ fn unread_motors(
 }
 
 /// The index of the stage holding the component with id `id`.
-fn stage_of(rocket: &Rocket, id: &str) -> Option<usize> {
+pub(super) fn stage_of(rocket: &Rocket, id: &str) -> Option<usize> {
     fn holds(components: &[hpr_design::Component], id: &str) -> bool {
         components
             .iter()

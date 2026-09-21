@@ -26,6 +26,7 @@ use hpr_design::{Material, MotorMount};
 use super::attached::{self, finish};
 use super::document::{Document, Element};
 use super::motors::{self, MountRead};
+use super::recovery::{self, DeviceRead, SeparationRead};
 use super::value::Values;
 use super::warning::{Imported, Warning, WarningKind};
 
@@ -127,9 +128,9 @@ pub fn rocket(document: &Document) -> Imported<Rocket> {
     walk(document).0
 }
 
-/// [`rocket`], and every motor mount it read with the id it gave the mount's component, for
-/// [`super::motors::read`].
-pub(super) fn walk(document: &Document) -> (Imported<Rocket>, Vec<(String, MountRead)>) {
+/// [`rocket`], and every motor mount, recovery device and stage separation it read, for
+/// [`super::motors::read`] and [`super::recovery::read`].
+pub(super) fn walk(document: &Document) -> (Imported<Rocket>, Walked) {
     let mut warnings = Vec::new();
     let mut rocket = Rocket {
         name: String::new(),
@@ -148,7 +149,7 @@ pub(super) fn walk(document: &Document) -> (Imported<Rocket>, Vec<(String, Mount
                 value: rocket,
                 warnings,
             },
-            Vec::new(),
+            Walked::default(),
         );
     };
     let at = "openrocket/rocket";
@@ -202,7 +203,11 @@ pub(super) fn walk(document: &Document) -> (Imported<Rocket>, Vec<(String, Mount
             value: rocket,
             warnings,
         },
-        ids.mounts,
+        Walked {
+            mounts: ids.mounts,
+            devices: ids.devices,
+            separations: ids.separations,
+        },
     )
 }
 
@@ -274,6 +279,9 @@ fn stage(
     let name = values.word(&["name"]).unwrap_or_default();
     let (overrides, _) = overrides(&mut values);
     let id = ids.take(&mut Values::new(element, &at, warnings), "stage");
+    if let Some(separation) = recovery::separation(element, &at, warnings) {
+        ids.separations.push((id.clone(), separation));
+    }
     let mut components = Vec::new();
     // The index is part of the path so that a warning can be traced back to one part of the 188
     // body tubes in the reference library, the way a stage's already could (issue #132).
@@ -769,6 +777,21 @@ pub(super) struct Ids {
     /// records them here because this is what it carries everywhere, and [`super::motors::read`]
     /// needs the ids.
     pub(super) mounts: Vec<(String, MountRead)>,
+    /// Every parachute and streamer read, with its component's id, in file order.
+    pub(super) devices: Vec<(String, DeviceRead)>,
+    /// Every stage that states when it separates, with the stage's id, in file order.
+    pub(super) separations: Vec<(String, SeparationRead)>,
+}
+
+/// What the walk read besides the rocket, each with the id it gave its component.
+#[derive(Debug, Default)]
+pub(super) struct Walked {
+    /// The motor mounts.
+    pub mounts: Vec<(String, MountRead)>,
+    /// The parachutes and streamers.
+    pub devices: Vec<(String, DeviceRead)>,
+    /// The stages' separations.
+    pub separations: Vec<(String, SeparationRead)>,
 }
 
 impl Ids {

@@ -37,6 +37,7 @@ pub mod container;
 pub mod document;
 mod error;
 pub mod motors;
+pub mod recovery;
 pub mod value;
 mod warning;
 
@@ -48,6 +49,10 @@ pub use error::OrkError;
 pub use motors::{
     Curve, Ignition, IgnitionEvent, LeftOut, MotorConfiguration, Motors, NoCurve, NotFlown,
     OrkMotor, UnreadMotor,
+};
+pub use recovery::{
+    DeployEvent, Deployment, DeviceKind, Recovery, RecoveryDevice, Separation, SeparationEvent,
+    StageSeparation, Trigger, UnreadDevice,
 };
 pub use value::{AXIAL_OFFSET, Dimension, INSTANCE_COUNT, Overrides, Values};
 pub use warning::{Imported, Warning, WarningKind};
@@ -88,6 +93,8 @@ pub struct Design {
     pub rocket: hpr_design::Rocket,
     /// Every motor configuration in the file, flown or not.
     pub motors: Motors,
+    /// When each parachute and streamer opens and each stage separates.
+    pub recovery: Recovery,
 }
 
 /// Reads the design in a `.ork` file: the rocket ([`rocket`]) and its motors ([`motors`]), with
@@ -133,33 +140,51 @@ pub struct Design {
 /// # }
 /// ```
 pub fn design(file: &OrkFile) -> Imported<Design> {
-    let (rocket, mounts) = component::walk(&file.document);
+    let (rocket, walked) = component::walk(&file.document);
     let Imported {
         value: mut rocket,
         mut warnings,
     } = rocket;
-    // Any warning the walk raised means the rocket or a motor mount was not read exactly as written:
-    // a part left out, a value dropped or simplified, or something assumed. No configuration of
-    // such a rocket is flown (ADR-055).
-    let skipped: Vec<&str> = warnings.iter().map(|w| w.message.as_str()).collect();
+    // Any warning the walk raised about the rocket or a motor mount means it was not read exactly
+    // as written: a part left out, a value dropped or simplified, or something assumed. No
+    // configuration of such a rocket is flown (ADR-055). A recovery device's or a stage
+    // separation's own warnings are about when things happen, which is not flown (ADR-056), and
+    // their paths say so.
+    let skipped: Vec<&str> = warnings
+        .iter()
+        .filter(|w| !w.at.contains("/deployment") && !w.at.contains("/separation"))
+        .map(|w| w.message.as_str())
+        .collect();
     let incomplete = match skipped.as_slice() {
         [] => None,
         [one] => Some((*one).to_owned()),
         [first, rest @ ..] => Some(format!("{first}, and {} more", rest.len())),
     };
-    let motors = match file.document.root.child("rocket") {
-        Some(element) => motors::read(
-            element,
-            &mut rocket,
-            incomplete.as_deref(),
-            &mounts,
-            &file.attachments,
-            &mut warnings,
-        ),
-        None => Motors::default(),
+    let Some(element) = file.document.root.child("rocket") else {
+        return Imported {
+            value: Design {
+                rocket,
+                motors: Motors::default(),
+                recovery: Recovery::default(),
+            },
+            warnings,
+        };
     };
+    let motors = motors::read(
+        element,
+        &mut rocket,
+        incomplete.as_deref(),
+        &walked.mounts,
+        &file.attachments,
+        &mut warnings,
+    );
+    let recovery = recovery::read(element, &rocket, walked.devices, walked.separations);
     Imported {
-        value: Design { rocket, motors },
+        value: Design {
+            rocket,
+            motors,
+            recovery,
+        },
         warnings,
     }
 }

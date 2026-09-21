@@ -2383,3 +2383,145 @@ fn a_configuration_on_an_assumed_airframe_is_not_flown() {
         .collect();
     assert_eq!(flown, ["a"]);
 }
+
+/// Every event word OpenRocket 24.12 writes, as its committed probe measured them
+/// (`validation/fixtures/ork/openrocket-events.json`), reads as the event it names and is written
+/// back the same: none falls through to `Other`.
+#[test]
+fn every_event_word_openrocket_writes_is_read() {
+    let text = include_str!("../../../../validation/fixtures/ork/openrocket-events.json");
+    let fixture: serde_json::Value = serde_json::from_str(text).expect("JSON");
+    let words = |event: &str| -> Vec<String> {
+        fixture["words"][event]
+            .as_object()
+            .expect("an event")
+            .values()
+            .map(|entry| entry["word"].as_str().expect("a word").to_owned())
+            .collect()
+    };
+    let ignition = words("ignition");
+    assert_eq!(ignition.len(), 5);
+    for word in &ignition {
+        let event = IgnitionEvent::parse(word);
+        assert!(!matches!(event, IgnitionEvent::Other(_)), "{word}");
+        assert_eq!(event.as_str(), word);
+    }
+    let deployment = words("deployment");
+    assert_eq!(deployment.len(), 6);
+    for word in &deployment {
+        let event = DeployEvent::parse(word);
+        assert!(!matches!(event, DeployEvent::Other(_)), "{word}");
+        assert_eq!(event.as_str(), word);
+    }
+    let separation = words("separation");
+    assert_eq!(separation.len(), 9);
+    for word in &separation {
+        let event = SeparationEvent::parse(word);
+        assert!(!matches!(event, SeparationEvent::Other(_)), "{word}");
+        assert_eq!(event.as_str(), word);
+    }
+    // The same run: an automatic parachute is flown at 0.8, and a deploy height is above ground.
+    assert_eq!(
+        fixture["drag"]["parachute_automatic_cd"].as_f64(),
+        Some(0.8)
+    );
+    let low = &fixture["deploy_height"][0];
+    let above_ground = low["at_deployment_above_ground_m"]
+        .as_f64()
+        .expect("deployed");
+    assert!((above_ground - low["deploy_altitude_m"].as_f64().expect("set")).abs() < 1.0);
+}
+
+/// A parachute's own deployment, a configuration that changes one of its three settings, the drag
+/// coefficient stated or left to OpenRocket, a stage's separation per configuration, and a
+/// parachute inside a pod, which is kept apart as not read.
+#[test]
+fn recovery_settings_are_read_per_configuration() {
+    let chute = |id: &str, cd: &str, extra: &str| {
+        format!(
+            "<parachute><name>{id}</name><id>{id}</id>\
+             <axialoffset method='top'>0.0</axialoffset><packedlength>0.05</packedlength>\
+             <packedradius>0.01</packedradius><cd>{cd}</cd>\
+             <material type='surface' density='0.067'>Ripstop nylon</material>\
+             <deployevent>ejection</deployevent><deployaltitude>200.0</deployaltitude>\
+             <deploydelay>0.0</deploydelay>{extra}<diameter>0.6</diameter><linecount>6</linecount>\
+             <linelength>0.5</linelength>\
+             <linematerial type='line' density='0.0018'>Elastic cord</linematerial></parachute>"
+        )
+    };
+    let main = chute(
+        "main",
+        "auto",
+        "<deploymentconfiguration configid='a'><deployevent>altitude</deployevent>\
+         <deployaltitude>150.0</deployaltitude></deploymentconfiguration>",
+    );
+    let pod = format!(
+        "<podset><name>Pods</name><id>pods</id><instancecount>2</instancecount><subcomponents>\
+         <bodytube><name>Pod</name><id>pod</id>\
+         <material type='bulk' density='680.0'>Cardboard</material><length>0.2</length>\
+         <thickness>0.001</thickness><radius>0.015</radius><subcomponents>{}</subcomponents>\
+         </bodytube></subcomponents></podset>",
+        chute("pod-chute", "1.5", "")
+    );
+    let xml = format!(
+        r#"<?xml version="1.0" encoding="UTF-8"?>
+<openrocket version="1.10" creator="OpenRocket 24.12">
+  <rocket><name>Two-stage</name><motorconfiguration configid="a" default="true"/>
+    <subcomponents>
+      <stage><name>Sustainer</name><id>upper</id><subcomponents>
+        <nosecone><name>Nose</name><id>nose</id>
+          <material type="bulk" density="1000.0">Plastic</material>
+          <length>0.15</length><thickness>0.002</thickness><shape>ogive</shape>
+          <aftradius>0.02</aftradius></nosecone>
+        <bodytube><name>Body</name><id>body</id>
+          <material type="bulk" density="680.0">Cardboard</material>
+          <length>0.4</length><thickness>0.001</thickness><radius>0.02</radius>
+          <subcomponents>{main}{pod}</subcomponents></bodytube>
+      </subcomponents></stage>
+      <stage><name>Booster</name><id>lower</id>
+        <separationevent>ejection</separationevent><separationaltitude>200.0</separationaltitude>
+        <separationdelay>0.0</separationdelay>
+        <separationconfiguration configid="a"><separationevent>burnout</separationevent>
+          <separationdelay>0.5</separationdelay></separationconfiguration>
+        <subcomponents>
+        <bodytube><name>Booster</name><id>booster</id>
+          <material type="bulk" density="680.0">Cardboard</material>
+          <length>0.3</length><thickness>0.001</thickness><radius>0.02</radius>
+          <subcomponents>{drogue}</subcomponents></bodytube>
+      </subcomponents></stage>
+    </subcomponents></rocket>
+</openrocket>"#,
+        drogue = chute("drogue", "0.61", "")
+    );
+    let design = read_design(xml.as_bytes());
+    let recovery = &design.recovery;
+    let ids: Vec<&str> = recovery.devices.iter().map(|d| d.id.as_str()).collect();
+    assert_eq!(ids, ["main", "drogue"]);
+
+    let main = &recovery.devices[0];
+    assert_eq!((main.kind, main.stage), (DeviceKind::Parachute, 0));
+    assert_eq!(main.cd, Some(Dimension::Automatic { cached: None }));
+    assert_eq!(main.deployment.event, Some(DeployEvent::Ejection));
+    // Configuration `a` changes the event and the height, and keeps the device's own delay.
+    let in_a = main.deployment_in("a");
+    assert_eq!(in_a.event, Some(DeployEvent::Altitude));
+    assert_eq!(in_a.altitude_m, Some(150.0));
+    assert_eq!(in_a.delay_s, Some(0.0));
+    assert_eq!(main.deployment_in("b"), &main.deployment);
+
+    let drogue = &recovery.devices[1];
+    assert_eq!(drogue.stage, 1);
+    assert_eq!(drogue.cd, Some(Dimension::Stated { value: 0.61 }));
+
+    // Only the booster states a separation; `a` makes it burnout plus half a second.
+    assert_eq!(recovery.separations.len(), 1);
+    let booster = &recovery.separations[0];
+    assert_eq!((booster.id.as_str(), booster.stage), ("lower", 1));
+    assert_eq!(booster.separation.event, Some(SeparationEvent::Ejection));
+    let in_a = booster.separation_in("a");
+    assert_eq!(in_a.event, Some(SeparationEvent::Burnout));
+    assert_eq!((in_a.altitude_m, in_a.delay_s), (Some(200.0), Some(0.5)));
+
+    assert_eq!(recovery.unread.len(), 1);
+    assert_eq!(recovery.unread[0].inside, "podset");
+}

@@ -39,6 +39,7 @@ use hpr_design::{Finish, MotorMount};
 use super::component::{Ids, material, overrides, stated_radius, subcomponents};
 use super::document::Element;
 use super::motors;
+use super::recovery;
 use super::value::{AXIAL_OFFSET, INSTANCE_COUNT, Values};
 use super::warning::{Warning, WarningKind};
 
@@ -219,6 +220,10 @@ fn one(
         Part::InnerTube(_) => motors::mount(element, at, warnings),
         _ => None,
     };
+    let device = match part {
+        Part::Parachute(_) | Part::Streamer(_) => Some(recovery::device(element, at, warnings)),
+        _ => None,
+    };
     let id = ids.take(
         &mut Values::new(element, at, warnings),
         &element.name.clone(),
@@ -230,6 +235,9 @@ fn one(
         ids.mounts.push((id.clone(), mount));
         spec
     });
+    if let Some(device) = device {
+        ids.devices.push((id.clone(), device));
+    }
     Some(Component {
         id,
         name,
