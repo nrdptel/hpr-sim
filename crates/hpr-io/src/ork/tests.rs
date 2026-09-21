@@ -3014,7 +3014,6 @@ fn snapshot_of(design: &Imported<Design>) -> serde_json::Value {
                         Curve::Embedded { .. } => "embedded".to_owned(),
                         Curve::Catalog { .. } => "catalog".to_owned(),
                         Curve::Unresolved { why, .. } => format!("none: {why:?}"),
-                        _ => "other".to_owned(),
                     },
                     "delay": format!("{:?}", motor.delay),
                     "ignition": format!("{} + {} s", motor.ignition.event.as_str(), motor.ignition.delay_s),
