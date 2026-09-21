@@ -189,12 +189,9 @@
 
 - [x] **M1.7 Recovery.** Parachutes (Cd·S, inflation time or area growth), streamers and tumble;
   drogue and main with their triggers; descent with wind drift, separated bodies tracked
-  independently, landing detection.
-
-  *Done when:* analytic tests for terminal velocity, descent time and drift pass, and descent rate
-  and drift match RocketPy's for 3 example rockets within 3%.
-
-  *Result:* met by M1.7a; M1.7b and M1.7c add the streamers, tumble and separation the entry
+  independently, landing detection. *Done when:* analytic tests for terminal velocity, descent
+  time and drift pass, and descent rate and drift match RocketPy's for 3 example rockets within
+  3%. *Result:* met by M1.7a; M1.7b and M1.7c add the streamers, tumble and separation the entry
   lists (ADR-012, ADR-013, ADR-014).
 
   - [x] **M1.7a Parachutes and descent:** parachutes (Cd·S, inflation time or area-growth model),
@@ -203,25 +200,20 @@
     - Loft lessons: L27, L28, L29, L92.
 
     *Done when:* analytic tests for terminal velocity, descent time and drift pass, and descent
-    rate and drift match RocketPy's for 3 example rockets within 3%.
-
-    *Result (ADR-012):* met. Analytic descents to 2.1e-8; five RocketPy examples within 0.71%
-    (time), 0.03% (rate), 0.27% (drift); worst drift component 2.87% (NDRT's added mass).
-
-  - [x] **M1.7b Streamers and tumble,** each with a cited drag model.
-
-    *Done when:* a streamer's and a tumbling body's descent rates match the terminal velocity of
-    their cited drag models (analytic tests).
-    *Result (ADR-013):* met. Streamers: Carruthers and Filippone (within 9% of Kidwell's flat
-    streamer; appendix C 88% fast). Tumble: OpenRocket §3.5, −10 to +19% on its own drop tests.
-
+    rate and drift match RocketPy's for 3 example rockets within 3%. *Result (ADR-012):* met.
+    Analytic descents to 2.1e-8; five RocketPy examples within 0.71% (time), 0.03% (rate), 0.27%
+    (drift); worst drift component 2.87% (NDRT's added mass).
+  - [x] **M1.7b Streamers and tumble,** each with a cited drag model. *Done when:* a streamer's and
+    a tumbling body's descent rates match the terminal velocity of their cited drag models
+    (analytic tests). *Result (ADR-013):* met. Streamers: Carruthers and Filippone (within 9% of
+    Kidwell's flat streamer; appendix C 88% fast). Tumble: OpenRocket §3.5, −10 to +19% on its own
+    drop tests.
   - [x] **M1.7c Separated bodies:** separation, with every body flown to its own landing and its
     own mass properties and drag. *Done when:* a separation gives every body a landing, and the
-    bodies' masses sum to the rocket's.
-
-    *Result (ADR-014):* met. A `Separation` splits the stack at a stage boundary, each body a point
-    mass under its devices; on the two-stage test design both land (2.11 m/s under a canopy, 16.74
-    m/s tumbling), masses to 1e-12, momenta to 1e-9. Every body carries a device.
+    bodies' masses sum to the rocket's. *Result (ADR-014):* met. A `Separation` splits the stack at
+    a stage boundary, each body a point mass under its devices; on the two-stage test design both
+    land (2.11 m/s under a canopy, 16.74 m/s tumbling), masses to 1e-12, momenta to 1e-9. Every
+    body carries a device.
 
 - [x] **M2.1 Validation harness plus the RocketPy code-to-code suite.** The first end-to-end
   milestone: `hpr-validate` and `cargo xtask validate [--fast]`, TOML cases and reference JSON with
@@ -578,10 +570,11 @@
     refuses at the same line. 73 zip, 3 raw XML (no gzip survives, so a test holds that path);
     schema 1.4 ×4, 1.5 ×10, 1.8 ×5, 1.9 ×3, 1.10 ×53, 1.11 ×1. Nesting is counted before parsing
     (the guide says why).
-  - [ ] **M3.1b The component tree.** Components, shapes, materials, finishes and overrides into
+  - [x] **M3.1b The component tree.** Components, shapes, materials, finishes and overrides into
     `hpr-design` types, automatic dimensions resolved (L49, L58 to L63). *Done when:* every design
     in the reference library gives a `hpr_design::Rocket` whose `layout()` succeeds, each of those
-    lessons' named tests is live, and the counts go to `corpus-out/` as above.
+    lessons' named tests is live, and the counts go to `corpus-out/` as above. *Result:* met by
+    M3.1b1 to M3.1b4 (ADR-052 to ADR-054): 75 of 75 designs lay out; 1 document holds none.
     - [x] **M3.1b1 The values inside the tags.** What every later step asks the tree for: numbers,
       counts, flags, and the dimensions OpenRocket works out for itself; the tags it writes under
       two names; the overrides. Loft lessons L58, L62, L63. *Done when:* those three lessons' named
@@ -619,12 +612,17 @@
       cached `auto` is OpenRocket's own answer and hpr matches 67 of 71 — but nothing caches an
       `outerradius` or `innerradius`, so this milestone's two rules have no oracle. #130 to #132
       fixed bar two bullets; #133, #135, #136 filed.
-    - [ ] **M3.1b4 The designs that still do not lay out**, carrying M3.1b's bullet. Three of the
+    - [x] **M3.1b4 The designs that still do not lay out**, carrying M3.1b's bullet. Three of the
       76: one holds no `<rocket>` with components in it at all, and two have a chain of automatic
       radii with no fixed radius anywhere to resolve against, one caching a number and one not.
       *Done when:* each either lays out or is shown to hold no design, with its reason on the
       `.ork` page; a rule for an unresolvable chain, if there is to be one, rests on something
-      written down rather than on a cached number; and `cargo xtask ork` says so.
+      written down rather than on a cached number; and `cargo xtask ork` says so. *Result:* met
+      (ADR-054). 75 of 75 designs lay out, and Debrief's results-only file is counted as holding
+      none. A radius with nothing fixed along its chain takes OpenRocket's default radius (its
+      maintainers' words, #1988), 25 mm as a committed OpenRocket 24.12 probe measures, which also
+      shows OpenRocket ignoring the cached number: 7 radii in 2 designs, 2 of them −1 m in
+      OpenRocket, which no shape can take. OpenRocket cannot open Loft's quirks fixture at all.
   - [ ] **M3.1c Motors, recovery, stages and what OpenRocket last did.** Motor configurations and
     embedded `.rse` curves, recovery devices, stage and pod structure, stored conditions and
     results, and `extensions.x-openrocket` for the rest. Loft lessons L57, L64, L65, L66.

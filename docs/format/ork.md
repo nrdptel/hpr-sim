@@ -15,9 +15,10 @@ finishes, positions and overrides. That is from Rust; there is no command-line t
 ([M3.1c](../decisions-and-roadmap.md#m3-1c)), so a design that opens still cannot be flown. A part
 hpr cannot give an honest shape — fins on a nose cone, tube fins OpenRocket sizes from the body —
 is **left out**, each one named in a warning rather than guessed at
-([what is left out, and why](#what-is-left-out-and-why)). And 3 of the 76 designs in the reference
-library still produce no rocket at all
-([M3.1b4](../decisions-and-roadmap.md#m3-1b4)).
+([what is left out, and why](#what-is-left-out-and-why)). Every design in the reference library now
+gives a rocket that lays out. Where a file leaves a radius with nothing to be worked out from, it
+gets OpenRocket's own default of 25 mm, with a warning
+([when an automatic radius has nothing to take](#when-an-automatic-radius-has-nothing-to-take)).
 
 ## Opening a file today
 
@@ -356,10 +357,11 @@ out, over 93 stages and 285 body components — 188 body tubes, 74 nose cones, 2
 81 automatic radii marked (41 outer, 19 base, 14 fore, 7 aft). The counts are what may be
 published; the per-file detail stays in the gitignored `corpus-out/`.
 
-*(When this was written, the 3 designs that do not lay out were thought to be waiting on parts that
-were not read yet. Reading those parts, in
-[M3.1b3](../decisions-and-roadmap.md#m3-1b3), showed otherwise: none of the three could have been
-completed by a part. [What they actually need](#measured-on-the-reference-library) is below.)*
+*(When this was written, 3 designs did not lay out, and they were thought to be waiting on parts that
+were not read yet. Reading those parts, in [M3.1b3](../decisions-and-roadmap.md#m3-1b3), showed
+otherwise. One document holds no design at all, and two have radii with nothing to take, which
+[M3.1b4](../decisions-and-roadmap.md#m3-1b4) settled:
+[when an automatic radius has nothing to take](#when-an-automatic-radius-has-nothing-to-take).)*
 
 
 ## The parts on and inside the body
@@ -570,6 +572,15 @@ corpus — on every automatic dimension that caches a number and sits on a compo
 an `<id>`. On 2026-09-20, **67 of 71 agree** to a part in 10⁹, with 4 more cached but inside a pod
 this milestone does not read.
 
+**What that number is, measured.** OpenRocket 24.12 writes the radius it resolved, not the number
+it read: a tube that says `auto 0.04` and has nothing to take is saved again as `auto 0.025`. It
+also ignores the number when it opens a file ([below](#when-an-automatic-radius-has-nothing-to-take)).
+One older statement disagrees. The 2021 change that started writing the number,
+[OpenRocket PR #998](https://github.com/openrocket/openrocket/pull/998), calls it the "manual
+value", the last one typed in. So a file saved by some release between then and 24.12 may cache a
+hand-typed number rather than an answer. Which releases wrote which is not settled. That is one
+more reason hpr never reads the number as an input.
+
 **What the oracle does not reach.** A cached answer only exists where OpenRocket wrote one, and it
 never writes one for two of the tags that matter most here: across the whole corpus, `outerradius`
 caches a number **0 times out of 131** and `innerradius` **0 out of 80**. So the 71 comparisons are
@@ -596,20 +607,90 @@ is stale. Which one OpenRocket would compute today is for the
 [ADR-052][adr-052] treats a cached number as an answer that may have gone stale rather than as an
 input.
 
+### When an automatic radius has nothing to take
+
+Sometimes a chain of automatic radii has no fixed radius anywhere along it, so the neighbour rule
+has nothing to work from. For example, a nose cone's base follows the tube behind it, and that tube
+follows the nose cone. Two designs in the reference library do this. hpr gives each such radius
+**OpenRocket's own default, 25 mm**, as a fixed radius, and raises a warning at its tag. A
+document whose `<rocket>` holds nothing at all is not a design, and is reported that way.
+
+**Why 25 mm.** OpenRocket's user guide doesn't say what happens here. Its issue tracker does:
+
+- A maintainer: "OR returns the default radius"
+  ([#1988](https://github.com/openrocket/openrocket/issues/1988#issuecomment-1397654629)).
+- An open issue: a tube left with nothing to take "reverts to default diameter"
+  ([#1992](https://github.com/openrocket/openrocket/issues/1992)).
+- A user gives that default as "1.969 in"
+  ([#871](https://github.com/openrocket/openrocket/issues/871)), which is 50.0 mm across, or 25 mm
+  of radius.
+
+OpenRocket's own dialogs won't build such a chain: since 2021 they grey out the checkbox that would
+([PR #998](https://github.com/openrocket/openrocket/pull/998)). So chains like these come from
+older or hand-written files.
+
+No page states the number exactly, so it was measured.
+`validation/oracles/openrocket/automatic_radius.py` runs the OpenRocket 24.12 program on nine small
+designs and records the radius it gives each body component. The results are committed in
+`validation/fixtures/ork/openrocket-automatic-radius.json`, and a test holds hpr to them:
+
+| design, forward to aft | what the file says | OpenRocket 24.12 | hpr |
+|---|---|---|---|
+| a tube | `auto` | 25 mm | 25 mm |
+| a tube | `auto 0.04` | 25 mm | 25 mm |
+| two tubes | `auto`, `auto 0.04` | 25, 25 mm | 25, 25 mm |
+| a nose cone | `auto` | 25 mm | 25 mm |
+| a nose cone | `auto 0.03` | 25 mm | 25 mm |
+| a transition | `auto 0.03` to `auto 0.02` | 25 to 25 mm | 25 to 25 mm |
+| a nose cone, a tube | `auto 0.03`, `auto 0.03` | **−1**, 25 mm | 25, 25 mm |
+| a nose cone, a tube, a transition, a tube | `auto 0.033`, `auto`, `auto` to 22 mm, 22 mm | **−1**, 25, **−1** to 22, 22 mm | 25, 25, 25 to 22, 22 mm |
+| a nose cone, a fixed tube (the control) | `auto`, 30 mm | 30, 30 mm | 30, 30 mm |
+
+Three things show in the table:
+
+- **The number cached after `auto` is ignored.** OpenRocket gives the tube that caches 0.04 m
+  25 mm, and hpr does the same. The cache is an answer OpenRocket once wrote, never an input.
+- **hpr departs from OpenRocket in one place, on purpose.** When a nose cone's base or a
+  transition's forward end follows an automatic tube, OpenRocket gives it −1 m. No shape can have a
+  negative radius, so hpr gives it 25 mm too, and the chain is one radius end to end. That is 3 of
+  the 17 radii in the table.
+- **The control takes its neighbour's radius, not the default.** The default is only for a chain
+  with nothing fixed on it.
+
+**Worked example.** The eighth row is the chain in Loft's quirks fixture: a 0.3 m nose cone whose
+base is automatic (it caches 0.033 m), a 0.5 m tube that is automatic, and a transition whose
+forward end is automatic and whose aft end is fixed at 22 mm, then a 22 mm tube. Each automatic
+radius follows another automatic radius, so none of them ever reaches the 22 mm.
+
+hpr gives all three 25 mm. The nose cone ends at 25 mm, the tube is 25 mm, and the transition
+narrows from 25 mm to 22 mm. The cached 0.033 m is not used, and three warnings name the tags.
+
+**The three files this settles** (`cargo xtask ork` prints the counts):
+
+| file | what it holds | what happens |
+|---|---|---|
+| Debrief's `sample-design.ork` | a `<rocket>` with a name, a comment and nothing else, plus a stored simulation | holds no design; counted apart, not as a failure. Its stored results are [M3.1c](../decisions-and-roadmap.md#m3-1c)'s to read |
+| the `openrocket-database` parachute catalogue | four tubes, every radius a bare `auto`, carrying the catalogue's parachutes | lays out, four tubes at 25 mm, just as OpenRocket 24.12 opens it |
+| Loft's `demo-quirks.ork` | the worked example's chain, and a parallel stage placed directly under the rocket | lays out as in the worked example. **OpenRocket 24.12 will not open this file**: it refuses a parallel stage there. hpr opens it and skips the parallel stage with a warning, as it does every parallel stage until [M3.1c](../decisions-and-roadmap.md#m3-1c) |
+
+How it was decided, and the sources quoted in full, are in [ADR-054][adr-054].
+
 ### Measured on the reference library
 
 `cargo xtask ork`, over the 76 readable files, on 2026-09-20:
 
 | | |
 |---|---|
-| designs whose `Rocket` lays out | 73 of 76 |
+| designs whose `Rocket` lays out | 75 of 75 |
+| documents that hold no design | 1 |
+| automatic radii given OpenRocket's default, 25 mm | 7, in 2 designs: 5 on body tubes, 1 on a nose cone, 1 on a transition |
 | body components | 285 |
 | parts on and inside them | 765 |
 | by kind | 194 centering rings, 156 inner tubes, 135 parachutes, 107 fin sets, 84 mass components, 40 shock cords, 31 launch lugs, 16 rail buttons, 2 streamers |
 | automatic dimensions marked | 327 |
 | parts left out, with a reason | 5 |
 | parts that lay out weighing nothing | 21, every one explained (below) |
-| warnings raised | 88: 29 dropped, 12 skipped, 47 unusual (below) |
+| warnings raised | 96: 29 dropped, 12 skipped, 55 unusual (below) |
 | tags no milestone reads yet | 9 `podset`, 3 `parallelstage` |
 
 **The 21 parts that weigh nothing** are worth checking, because a structural part with no mass is
@@ -621,7 +702,7 @@ OpenRocket's ["base drag hack"](https://openrocket.readthedocs.io/en/latest/), a
 transition added only to change the base geometry. `cargo xtask ork` counts them by kind, so a new
 one would show up.
 
-**What the 88 warnings are.** Every one is a reading this page explains, and none of them means a
+**What the 96 warnings are.** Every one is a reading this page explains, and none of them means a
 file is broken:
 
 | kind | count | what raised it |
@@ -630,17 +711,20 @@ file is broken:
 | `Unusual` | 13 | a shoulder of no wall thickness, read as solid |
 | `Unusual` | 12 | a tube of no wall thickness, carrying no mass |
 | `Unusual` | 2 | a body component with no wall thickness at all, and a part with no axial offset |
+| `Unusual` | 7 | an automatic radius with nothing along its chain to take, given OpenRocket's default ([above](#when-an-automatic-radius-has-nothing-to-take)) |
+| `Unusual` | 1 | a `<rocket>` holding nothing, so the document holds no design |
 | `Dropped` | 13 | a part with no material, so it weighs nothing |
 | `Dropped` | 11 | a fin's fillets, a rail button's screw head, a motor cluster read as one tube |
 | `Dropped` | 5 | a `packedradius` the file does not give, read as zero |
 | `Skipped` | 7 | a tally of the pods and parallel stages left for [M3.1c](../decisions-and-roadmap.md#m3-1c), one per design that has any |
 | `Skipped` | 5 | the five parts left out above |
 
-The three designs that do not lay out are [M3.1b4](../decisions-and-roadmap.md#m3-1b4)'s work: one
-document holds no `<rocket>` with any components in it at all — it is a synthesized demonstration
-file carrying a simulation and nothing else — and two have a chain of automatic radii with no fixed
-radius anywhere to resolve against. None of the three could have been fixed by reading more parts.
+Every design lays out. The one document that doesn't is Debrief's demonstration file, which holds
+no design at all: it is a stored simulation with a rocket's name on it. The two designs that needed
+a radius the file doesn't give are
+[above](#when-an-automatic-radius-has-nothing-to-take).
 
+[adr-054]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-054-an-automatic-radius-with-nothing-to-take-is-openrockets-default-and-a-rocket-with-no-stage-holds-no-design-2026-09-20
 [adr-053]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-053-the-parts-on-and-inside-a-ork-body-degrees-what-is-left-out-and-a-sourced-finish-2026-09-20
 [techdoc]: https://openrocket.sourceforge.net/techdoc.pdf
 [dialog]: https://openrocket.readthedocs.io/en/latest/_images/body_tube_config.png
@@ -666,8 +750,7 @@ radius anywhere to resolve against. None of the three could have been fixed by r
 Motor configurations and the embedded `.rse` curves, recovery settings (when a parachute opens, at
 what delay, at what altitude — the chute's *shape* is read, its deployment is not), pods and
 parallel stages, stored launch conditions and simulation results
-([M3.1c](../decisions-and-roadmap.md#m3-1c)). Three designs of the 76 still do not lay out
-([M3.1b4](../decisions-and-roadmap.md#m3-1b4)). Writing a `.ork` back out as a design — rather than
+([M3.1c](../decisions-and-roadmap.md#m3-1c)). Writing a `.ork` back out as a design — rather than
 as the document it was read from — is [M3.2](../decisions-and-roadmap.md#m3-2).
 
 What keeping the whole document buys you is this: when

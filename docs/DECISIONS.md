@@ -59,6 +59,7 @@ renumber. Supersede an entry by adding a new one that points back to it.
 | ADR-051 | M3.1 split, and the `.ork` document kept whole rather than interpreted | accepted |
 | ADR-052 | What a `.ork` value means: automatic dimensions, two names for one tag, and overrides | accepted |
 | ADR-053 | The parts on and inside a `.ork` body: degrees, what is left out, and a sourced finish | accepted |
+| ADR-054 | An automatic radius with nothing to take is OpenRocket's default, and a rocket with no stage holds no design | accepted |
 
 ---
 
@@ -5050,6 +5051,91 @@ in the tree, so a document built by hand can contradict itself; the round-trip g
 for documents that came from `parse`. The canonical writer means a `.ork` re-written by hpr will
 not be byte-identical to the one it was read from, which M3.2 will have to live with — matching
 OpenRocket's own layout was never achievable without reading its source.
+
+## ADR-054: An automatic radius with nothing to take is OpenRocket's default, and a rocket with no stage holds no design (2026-09-20)
+
+**Context.** After M3.1b3, 3 of the 76 readable `.ork` files in the reference library still gave
+no rocket that lays out. One, Debrief's `sample-design.ork`, has a `<rocket>` holding a name, a
+comment and nothing else; its stored simulation is the whole point of the file. The other two have
+a chain of automatic radii with no fixed radius anywhere along it: Loft's `demo-quirks.ork` makes a
+nose cone's base, a tube and a transition's forward end automatic, with only the transition's aft
+end fixed (the nose caches 0.033 m), and the `openrocket-database` parachute catalogue stacks four
+tubes whose radii are all a bare `auto`. `hpr_design`'s neighbour rule ([ADR-007][adr-007]) has
+nothing to take in either, so `layout()` refused both. M3.1b4's *done when* asks that each lay out
+or be shown to hold no design, and that any rule for such a chain rest on something written down
+rather than on a cached number.
+
+**What is written down.** OpenRocket's user guide says only that "the Automatic checkbox will
+adjust the dimensions of the component automatically", and its file-format page shows `auto`
+without explaining it. The issue tracker says more, in prose:
+
+- A maintainer: when the radius is automatic "and there is no previous or next component to the
+  body tube … OR returns the default radius" ([openrocket#1988][or-1988], 2023).
+- An open issue: a tube left with nothing to take "reverts to default diameter" ([#1992][or-1992]).
+- A user: "the default 1.969 in diameter" ([#871][or-871], 2020), which is 50.0 mm.
+- The change that closed #871 ([PR #998][or-998], 2021) disables the checkbox "when the component
+  that you want to get the diameter from already has its auto checkbox checked", so OpenRocket's
+  own dialogs cannot build such a chain. Such chains come from older or hand-written files. The
+  same change says the "manual value" is saved beside `auto`.
+
+No document gives the default as a number, so it was **measured**.
+`validation/oracles/openrocket/automatic_radius.py` runs the OpenRocket 24.12 jar as an external
+oracle on nine small designs of its own. It reads back each body radius OpenRocket resolved, and
+saves each design again. `validation/fixtures/ork/openrocket-automatic-radius.json` holds the
+result:
+
+- Every automatic radius with nothing fixed to take resolves to **0.025 m**. That covers a lone
+  tube, two tubes, a lone nose cone and a lone transition.
+- A cached number is ignored: a tube caching `auto 0.04` and a nose caching `auto 0.03` both come
+  back 0.025.
+- OpenRocket writes back what it resolved, not the number it read (`auto 0.04` is saved as
+  `auto 0.025`).
+- Where a nose cone's base or a transition's forward radius looks at an automatic tube, OpenRocket
+  resolves it to **−1 m**, and writes `auto -1.0`.
+- The control, a nose before a fixed tube, takes the tube's 0.03 m, as the neighbour rule says.
+
+Of the two library files, the parachute catalogue opens with its four tubes at 0.025 m.
+`demo-quirks.ork` does not open at all: OpenRocket refuses a `<parallelstage>` directly under
+`<rocket>` ("Booster Set not currently compatible with component: Rocket").
+
+**Decision.**
+
+1. **An automatic body radius with no fixed radius anywhere along its chain takes OpenRocket's
+   default radius, 25 mm, as a fixed radius, with a warning at its tag.** The number rests on the
+   maintainers' "default radius", the user's 1.969 in, and the measurement, which agrees with both.
+   It never rests on a cached number, which OpenRocket itself ignores. The rule lives in the `.ork`
+   importer (`hpr_io::ork::OPENROCKET_DEFAULT_RADIUS_M`), not in `hpr_design`: it is one program's
+   convention, and a design that says nothing about a radius should still be refused by `layout()`.
+   `Rocket::unresolvable_body_radii` lists exactly the radii `layout()` would refuse, so the
+   importer fills those and no others.
+2. **hpr departs from OpenRocket where OpenRocket answers −1 m.** A negative radius has no
+   geometry, so the nose base or transition end that gets it takes the default too, and the chain
+   is one radius end to end. `hpr_io`'s test against the fixture holds every other radius to
+   OpenRocket's, bit for bit, and counts the departures: 3 of the 17 radii the oracle resolved.
+3. **A `<rocket>` with no stage or component of any kind holds no design.** The reader says so in
+   a warning. `cargo xtask ork` counts such a document apart from the designs, not as a design that
+   fails to lay out. The document is still read whole, and its stored results are M3.1c's to read.
+4. **The probe runs OpenRocket through JPype, inside the Python process** (CLAUDE.md rule 3 permits
+   it). It uses only class and method names that `javap` prints for the jar, and it binds empty motor
+   and preset databases itself, because the graphical providers need a display. This is evidence
+   for M2.2's choice of how to drive the jar ([ADR-035][adr-035]), not that choice. It shows the
+   in-process route works headless with Java 17.
+
+**Consequences.** All 75 designs in the reference library lay out, and the 76th document is
+counted as holding none. `cargo xtask ork` prints both, and prints the 7 radii given the default,
+in 2 designs. Of those 7, OpenRocket agrees on 5 (the catalogue's four tubes and the quirks tube)
+and answers −1 m on the other 2. The in-file oracle's premise, that `auto 0.0125` is what OpenRocket
+last worked out, holds for what OpenRocket 24.12 writes. PR #998 describes the number as the
+manually entered value, so a file saved between 2021 and some later release may cache a hand-typed
+number instead. That is one more reason the number is never read as an input. Which releases wrote
+which is not settled. 67 of 71 cached numbers in the corpus still agree with hpr's resolution.
+
+[adr-007]: #adr-007-design-tree-stations-placement-automatic-radii-overrides-motors-and-checks-2026-09-17
+[adr-035]: #adr-035-drop-the-orhelper-dependency-how-m22-drives-openrocket-is-decided-when-m22-starts-2026-09-19
+[or-871]: https://github.com/openrocket/openrocket/issues/871
+[or-998]: https://github.com/openrocket/openrocket/pull/998
+[or-1988]: https://github.com/openrocket/openrocket/issues/1988#issuecomment-1397654629
+[or-1992]: https://github.com/openrocket/openrocket/issues/1992
 
 ## ADR-053: The parts on and inside a `.ork` body: degrees, what is left out, and a sourced finish (2026-09-20)
 

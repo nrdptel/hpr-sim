@@ -119,6 +119,11 @@ An `auto` list names dimensions that the tree resolves. The part's stored value 
   the next component's forward radius instead: only the first such tube, and then the sweep
   repeats. So a fixed radius forward of a tube wins over one aft of it. A radius with no fixed
   radius to reach is refused.
+  [`Rocket::unresolvable_body_radii`](../api/hpr_design/tree/struct.Rocket.html#method.unresolvable_body_radii)
+  lists exactly those radii. The `.ork` importer gives them OpenRocket's own default of 25 mm
+  before laying the design out
+  ([when an automatic radius has nothing to take](../format/ork.md#when-an-automatic-radius-has-nothing-to-take)).
+  The tree itself never invents a radius.
 - **Shoulders** take the inner radius (`R − t`, outer radius less wall thickness) of the adjoining
   body tube: behind a nose; ahead of a transition for its forward shoulder, behind it for its aft
   one.
