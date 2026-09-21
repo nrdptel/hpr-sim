@@ -5,11 +5,10 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
 ## Now
 
 - **Current milestone:** M1.8e, all done bar M1.8e16 (`[blocked]` on #108); the work is
-  **M3.1b2**, the `.ork` spine, in progress on `m3.1b2-ork-spine` (draft PR): the reader and its
-  tests are in, the corpus run is not. M3.1b was split further: M3.1b2 is the spine, M3.1b3 what hangs off it.
-- **Order:** M3.1b3, M3.1c, M3.1d, then M2.2, then M1.9; M1.8e16 (past 24°)
-  waits on #108
-- **Run:** M0.1-M0.4, M1.1-M1.7, M2.1, M1.8a-e19 bar e16, M3.1a, M3.1b1; the site is published.
+  **M3.1b3**, the `.ork` parts on and inside the body, now M3.1b2 has the spine. M3.1b was split
+  further: M3.1b2 the spine, M3.1b3 what hangs off it.
+- **Order:** M3.1b3, M3.1c, M3.1d, then M2.2, then M1.9; M1.8e16 (past 24°) waits on #108
+- **Run:** M0.1-M0.4, M1.1-M1.7, M2.1, M1.8a-e19 bar e16, M3.1a, M3.1b1-b2; the site is published.
 - **Neer, 2026-09-20:** Debrief is sunset; a flight log analyzer usable **on its own** is part of
   this project (ADR-046, V21). Phase 5 re-cut.
 - **Last updated:** 2026-09-20 (M3.1b2 shipped: the `.ork` spine into `hpr-design` types)
