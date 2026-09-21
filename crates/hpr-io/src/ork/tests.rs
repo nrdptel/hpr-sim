@@ -1661,20 +1661,37 @@ fn body_radii(part: &hpr_design::tree::Part) -> Vec<f64> {
 }
 
 /// An automatic radius with no fixed radius anywhere along its chain takes OpenRocket's default
-/// radius: on every design the oracle ran, every radius hpr resolves is the one OpenRocket 24.12
-/// resolved, bit for bit, except where OpenRocket answers −1 m — a nose cone's base or a
-/// transition's forward radius looking at an automatic tube, which no geometry can take. Those
-/// take the default too, and there are exactly three of them, so a change either way shows.
+/// radius. On every design the oracle ran, every radius hpr resolves is the one OpenRocket 24.12
+/// settles on, bit for bit, except where OpenRocket answers −1 m: a nose cone's base or a
+/// transition's end looking at another automatic radius, which no shape can take. Those take the
+/// default too. The counts are pinned, so a change either way shows.
 ///
-/// The fixture's cached numbers (`auto 0.04`) are ignored by OpenRocket, and so by hpr: the
-/// number is an answer OpenRocket last wrote, never an input.
+/// The cached numbers (`auto 0.04`) are ignored by OpenRocket, and so by hpr: the number is an
+/// answer OpenRocket last wrote, never an input. And OpenRocket's first reading of one shape — a
+/// tube beside an automatic tube that holds a part of automatic radius — is its default, which it
+/// corrects to the neighbour's radius as soon as it works the design out again; hpr is held to the
+/// settled answer, and the count of first readings that differ is pinned here too.
 #[test]
 fn a_radius_with_nothing_to_take_is_openrockets_default() {
     let fixture = automatic_radius_fixture();
     assert_eq!(fixture["openrocket"], "24.12");
+    let radii = |components: &serde_json::Value| -> Vec<f64> {
+        components
+            .as_array()
+            .expect("radii")
+            .iter()
+            .flat_map(|c| {
+                ["base", "outer", "fore", "aft"]
+                    .iter()
+                    .filter_map(|key| c[key].as_f64())
+                    .collect::<Vec<_>>()
+            })
+            .collect()
+    };
     let mut compared = 0usize;
     let mut departures = 0usize;
     let mut defaulted = 0usize;
+    let mut unsettled = 0usize;
     for case in fixture["cases"].as_array().expect("cases") {
         let name = case["name"].as_str().expect("a name");
         let text = case["document"].as_str().expect("a document");
@@ -1687,17 +1704,10 @@ fn a_radius_with_nothing_to_take_is_openrockets_default() {
             .count();
         let layout = spine.value.layout().expect("a design that lays out");
         let ours: Vec<f64> = layout.body().flat_map(|c| body_radii(&c.part)).collect();
-        let theirs: Vec<f64> = case["resolved"]
-            .as_array()
-            .expect("resolved radii")
-            .iter()
-            .flat_map(|c| {
-                ["base", "outer", "fore", "aft"]
-                    .iter()
-                    .filter_map(|key| c[key].as_f64())
-                    .collect::<Vec<_>>()
-            })
-            .collect();
+        let theirs = radii(&case["resolved"]);
+        if radii(&case["opened"]) != theirs {
+            unsettled += 1;
+        }
         assert_eq!(ours.len(), theirs.len(), "{name}");
         for (ours, theirs) in ours.iter().zip(&theirs) {
             compared += 1;
@@ -1709,25 +1719,84 @@ fn a_radius_with_nothing_to_take_is_openrockets_default() {
             }
         }
     }
-    assert_eq!((compared, departures), (17, 3));
-    // Every radius but the control's two, and the two the chain case states outright.
-    assert_eq!(defaulted, 13);
+    assert_eq!((compared, departures, defaulted, unsettled), (39, 6, 17, 1));
 
-    // The two reference-library designs the question came from, when the oracle had them: the
-    // database's parachute catalogue opens with four tubes at the default, and Loft's quirks
-    // fixture does not open in OpenRocket at all.
-    for run in fixture["library"].as_array().expect("library runs") {
-        let file = run["file"].as_str().expect("a file");
-        if file.ends_with("parachutes.ork") {
-            let radii: Vec<f64> = run["resolved"]
-                .as_array()
-                .expect("resolved radii")
-                .iter()
-                .map(|c| c["outer"].as_f64().expect("an outer radius"))
-                .collect();
-            assert_eq!(radii, [OPENROCKET_DEFAULT_RADIUS_M; 4], "{file}");
+    // The files the oracle ran from the reference library and the jar must all be there, or this
+    // half of the test checks nothing: Loft's quirks fixture, which OpenRocket will not open; the
+    // database's parachute catalogue, four tubes at the default; and the jar's 17 examples, one of
+    // which OpenRocket first reads with a tube at its default and then settles. `cargo xtask ork`
+    // holds hpr's radii for each of them to OpenRocket's.
+    let library = fixture["library"].as_array().expect("library runs");
+    let run = |suffix: &str| {
+        library
+            .iter()
+            .find(|run| run["file"].as_str().is_some_and(|f| f.ends_with(suffix)))
+            .unwrap_or_else(|| panic!("the oracle ran {suffix}"))
+    };
+    assert_eq!(run("demo-quirks.ork")["opens"], false);
+    assert_eq!(
+        radii(&run("parachutes.ork")["resolved"]),
+        [OPENROCKET_DEFAULT_RADIUS_M; 4]
+    );
+    let examples: Vec<_> = library
+        .iter()
+        .filter(|run| {
+            run["file"]
+                .as_str()
+                .is_some_and(|f| f.contains("!/datafiles/examples/"))
+        })
+        .collect();
+    assert_eq!(examples.len(), 17);
+    assert!(examples.iter().all(|run| run["opens"] == true));
+    let settled_later = library
+        .iter()
+        .filter(|run| run["opens"] == true && radii(&run["opened"]) != radii(&run["resolved"]))
+        .count();
+    assert_eq!(settled_later, 1);
+}
+
+/// A body tube given the default radius has its wall judged against it, by the rule a stated
+/// radius gets. `filled`, whether the file cached a radius or not, is solid to 25 mm — not
+/// weightless for want of a radius, and not a wall as thick as a cached number OpenRocket ignores —
+/// and a wall thicker than 25 mm is solid rather than a tube `hpr-design` must refuse. The warnings
+/// that said the radius was unknown are withdrawn. A thin wall stays the wall it was.
+#[test]
+fn a_tube_given_the_default_has_its_wall_judged_against_it() {
+    let tube = |thickness: &str, radius: &str| {
+        format!(
+            r#"<openrocket version="1.10" creator="test"><rocket><name>R</name><subcomponents>
+            <stage><name>S</name><subcomponents><bodytube><name>T</name>
+            <material type="bulk" density="680.0">Cardboard</material><length>0.3</length>
+            <thickness>{thickness}</thickness><radius>{radius}</radius></bodytube>
+            </subcomponents></stage></subcomponents></rocket></openrocket>"#
+        )
+    };
+    let solid_kg = 680.0 * std::f64::consts::PI * 0.025 * 0.025 * 0.3;
+    for (thickness, radius, wall_m) in [
+        ("filled", "auto", 0.025),
+        ("filled", "auto 0.01", 0.025),
+        ("0.03", "auto", 0.025),
+        ("0.002", "auto", 0.002),
+    ] {
+        let xml = tube(thickness, radius);
+        let file = read(xml.as_bytes()).expect("a readable design");
+        let spine = component::rocket(&file.value.document);
+        let messages: Vec<&str> = spine.warnings.iter().map(|w| w.message.as_str()).collect();
+        assert_eq!(messages.len(), 1, "{thickness}, {radius}: {messages:?}");
+        assert!(messages[0].contains("`outer_radius`"), "{messages:?}");
+        let hpr_design::tree::Part::BodyTube(t) = &spine.value.stages[0].components[0].part else {
+            panic!("a body tube");
+        };
+        assert_eq!((t.outer_radius_m, t.thickness_m), (0.025, wall_m));
+        let layout = spine.value.layout().expect("a design that lays out");
+        let mass_kg = layout.structure.mass_kg;
+        if wall_m == 0.025 {
+            assert!(
+                (mass_kg - solid_kg).abs() <= 1e-12 * solid_kg,
+                "{thickness}, {radius}: {mass_kg} kg, solid is {solid_kg} kg"
+            );
         } else {
-            assert_eq!(run["opens"], false, "{file}");
+            assert!(mass_kg < solid_kg / 5.0, "{mass_kg} kg");
         }
     }
 }

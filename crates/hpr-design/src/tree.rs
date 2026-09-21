@@ -711,6 +711,21 @@ impl Layout {
     }
 }
 
+/// An automatic body radius that has nothing to take: where it is, and which radius
+/// ([`Rocket::unresolvable_body_radii`]).
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct UnresolvableRadius {
+    /// Index of the component's stage in [`Rocket::stages`].
+    pub stage: usize,
+    /// Index of the component in that stage's [`Stage::components`].
+    pub component: usize,
+    /// The component's id.
+    pub id: String,
+    /// Which of its radii: [`AutoDimension::BaseRadius`], [`AutoDimension::OuterRadius`],
+    /// [`AutoDimension::ForeRadius`] or [`AutoDimension::AftRadius`].
+    pub dimension: AutoDimension,
+}
+
 impl Rocket {
     /// Resolves the tree: checks its structure, fills in automatic dimensions, places every part,
     /// and computes the mass properties with overrides.
@@ -812,45 +827,82 @@ impl Rocket {
         })
     }
 
-    /// The automatic body radii that [`layout`](Self::layout) cannot resolve, as each component's
-    /// id and the dimension, forward to aft.
+    /// The automatic body radii that [`layout`](Self::layout) cannot resolve, forward to aft.
     ///
     /// These are the radii on a chain of automatic radii with no fixed radius anywhere along it:
     /// a nose cone whose base looks back at a tube that looks forward at it, or a stage of tubes
     /// that all say "automatic". Neighbours are followed by the rule each [`AutoDimension`]
     /// documents. `layout` refuses a design for which this list is not empty; what such a radius
     /// should be is not in the design, so an importer that knows its source program's convention
-    /// fills them in first.
+    /// fills them in first ([`fill_unresolvable_body_radii`](Self::fill_unresolvable_body_radii)).
     ///
-    /// Only the body's outer radii are listed, which are the only automatic dimensions that can
-    /// have nothing to take: a shoulder, a ring or a packed part takes its radius from a body or a
-    /// parent that is always there. Automatic dimensions a part does not have are not listed
-    /// either; `layout` refuses those separately.
-    pub fn unresolvable_body_radii(&self) -> Vec<(String, AutoDimension)> {
-        let nodes: Vec<&Component> = self
+    /// Only the body components' own radii are listed. An automatic shoulder with no body tube
+    /// beside it, or an automatic dimension a part does not have, is refused by `layout` with its
+    /// own error instead.
+    pub fn unresolvable_body_radii(&self) -> Vec<UnresolvableRadius> {
+        let nodes: Vec<(usize, usize, &Component)> = self
             .stages
             .iter()
-            .flat_map(|stage| stage.components.iter())
+            .enumerate()
+            .flat_map(|(k, stage)| {
+                stage
+                    .components
+                    .iter()
+                    .enumerate()
+                    .map(move |(i, c)| (k, i, c))
+            })
             .collect();
-        let parts: Vec<Part> = nodes.iter().map(|c| c.part.clone()).collect();
-        let autos: Vec<&[AutoDimension]> = nodes.iter().map(|c| c.auto.as_slice()).collect();
+        let parts: Vec<&Part> = nodes.iter().map(|(_, _, c)| &c.part).collect();
+        let autos: Vec<&[AutoDimension]> =
+            nodes.iter().map(|(_, _, c)| c.auto.as_slice()).collect();
         let (fore, aft) = sweep_body_radii(&parts, &autos);
         let mut unresolvable = Vec::new();
-        for (i, node) in nodes.iter().enumerate() {
-            let mut add = |dimension| unresolvable.push((node.id.clone(), dimension));
+        for (n, &(stage, component, node)) in nodes.iter().enumerate() {
+            let mut add = |dimension| {
+                unresolvable.push(UnresolvableRadius {
+                    stage,
+                    component,
+                    id: node.id.clone(),
+                    dimension,
+                });
+            };
             match node.part {
-                Part::NoseCone(_) if aft[i].is_none() => add(AutoDimension::BaseRadius),
-                Part::BodyTube(_) if aft[i].is_none() => add(AutoDimension::OuterRadius),
+                Part::NoseCone(_) if aft[n].is_none() => add(AutoDimension::BaseRadius),
+                Part::BodyTube(_) if aft[n].is_none() => add(AutoDimension::OuterRadius),
                 Part::Transition(_) => {
-                    if fore[i].is_none() {
+                    if fore[n].is_none() {
                         add(AutoDimension::ForeRadius);
                     }
-                    if aft[i].is_none() {
+                    if aft[n].is_none() {
                         add(AutoDimension::AftRadius);
                     }
                 }
                 _ => {}
             }
+        }
+        unresolvable
+    }
+
+    /// Gives every radius [`unresolvable_body_radii`](Self::unresolvable_body_radii) lists the
+    /// fixed radius `radius_m`, drops its automatic mark, and returns what it filled.
+    ///
+    /// Every radius on such a chain is listed, so the whole chain takes the one radius. Radii the
+    /// neighbour rule could already reach are left as they are and resolve as before. The design
+    /// no longer records that the filled radii were automatic, which is the point: it now says
+    /// what they are.
+    pub fn fill_unresolvable_body_radii(&mut self, radius_m: f64) -> Vec<UnresolvableRadius> {
+        let unresolvable = self.unresolvable_body_radii();
+        for radius in &unresolvable {
+            let component = &mut self.stages[radius.stage].components[radius.component];
+            match (&mut component.part, radius.dimension) {
+                (Part::NoseCone(p), AutoDimension::BaseRadius) => p.base_radius_m = radius_m,
+                (Part::BodyTube(p), AutoDimension::OuterRadius) => p.outer_radius_m = radius_m,
+                (Part::Transition(p), AutoDimension::ForeRadius) => p.fore_radius_m = radius_m,
+                (Part::Transition(p), AutoDimension::AftRadius) => p.aft_radius_m = radius_m,
+                // `unresolvable_body_radii` lists only the four pairings above.
+                _ => continue,
+            }
+            component.auto.retain(|auto| *auto != radius.dimension);
         }
         unresolvable
     }
@@ -1029,15 +1081,16 @@ fn resolve_body_radii(
 }
 
 /// Each body component's forward and aft radius, following automatic radii to their sources;
-/// `None` where a radius is automatic and nothing reaches it.
+/// `None` where a radius is automatic and nothing reaches it. `parts` are the body components,
+/// forward to aft through every stage.
 ///
 /// Each automatic radius has a source: a nose cone's base and a transition's aft radius take the
 /// next component's forward radius; a body tube and a transition's forward radius take the previous
 /// component's aft radius. Sources are followed until nothing changes. Then a body tube still
 /// unresolved takes the next component's forward radius instead (the first one that can), and the
 /// sweep repeats.
-fn sweep_body_radii(
-    parts: &[Part],
+fn sweep_body_radii<P: std::borrow::Borrow<Part>>(
+    parts: &[P],
     autos: &[&[AutoDimension]],
 ) -> (Vec<Option<f64>>, Vec<Option<f64>>) {
     let n = parts.len();
@@ -1045,7 +1098,7 @@ fn sweep_body_radii(
     let mut fore: Vec<Option<f64>> = Vec::with_capacity(n);
     let mut aft: Vec<Option<f64>> = Vec::with_capacity(n);
     for (i, part) in parts.iter().enumerate() {
-        let (f, a) = match part {
+        let (f, a) = match part.borrow() {
             Part::NoseCone(p) => (
                 Some(0.0),
                 (!is_auto(i, AutoDimension::BaseRadius)).then_some(p.base_radius_m),
@@ -1068,7 +1121,7 @@ fn sweep_body_radii(
         for i in 0..n {
             let previous_aft = if i > 0 { aft[i - 1] } else { None };
             let next_fore = fore.get(i + 1).copied().flatten();
-            match parts[i] {
+            match parts[i].borrow() {
                 Part::NoseCone(_) => {
                     if aft[i].is_none()
                         && let Some(r) = next_fore
@@ -1107,7 +1160,7 @@ fn sweep_body_radii(
             continue;
         }
         let fallback = (0..n).find(|&i| {
-            matches!(parts[i], Part::BodyTube(_))
+            matches!(parts[i].borrow(), Part::BodyTube(_))
                 && fore[i].is_none()
                 && fore.get(i + 1).copied().flatten().is_some()
         });
@@ -1609,8 +1662,9 @@ mod tests {
 
     /// The chain in Loft's quirks fixture: a nose's base, a tube and a transition's forward end all
     /// automatic, with only the transition's aft end fixed. Each automatic radius there looks at
-    /// another automatic one, so all three are listed, forward to aft — and giving them a radius is
-    /// all `layout` needs. The fixed tube behind is never listed.
+    /// another automatic one, so all three are listed, forward to aft, and filling them is all
+    /// `layout` needs. The fixed tube behind is never listed, and a radius the neighbour rule can
+    /// reach is never filled.
     #[test]
     fn unresolvable_body_radii_are_the_chain_with_nothing_fixed() {
         let auto = |mut c: Component, dims: &[AutoDimension]| {
@@ -1632,35 +1686,49 @@ mod tests {
                 body("lower", tube(0.45, 0.022, 0.0018)),
             ],
         )]);
-        assert_eq!(
-            design.unresolvable_body_radii(),
-            vec![
-                ("nose".to_owned(), AutoDimension::BaseRadius),
-                ("upper".to_owned(), AutoDimension::OuterRadius),
-                ("shoulder".to_owned(), AutoDimension::ForeRadius),
-            ]
-        );
+        let listed = |design: &Rocket| -> Vec<(usize, usize, String, AutoDimension)> {
+            design
+                .unresolvable_body_radii()
+                .into_iter()
+                .map(|r| (r.stage, r.component, r.id, r.dimension))
+                .collect()
+        };
+        let chain = vec![
+            (0, 0, "nose".to_owned(), AutoDimension::BaseRadius),
+            (0, 1, "upper".to_owned(), AutoDimension::OuterRadius),
+            (0, 2, "shoulder".to_owned(), AutoDimension::ForeRadius),
+        ];
+        assert_eq!(listed(&design), chain);
         assert!(design.layout().is_err());
-        let components = &mut design.stages[0].components;
-        if let Part::NoseCone(n) = &mut components[0].part {
-            n.base_radius_m = 0.025;
-        }
-        components[0].auto.clear();
-        assert!(design.unresolvable_body_radii().is_empty());
-        let layout = design.layout().unwrap();
-        // One fixed radius at the front of the chain is enough; the neighbour rule carries it on.
-        assert_eq!(
-            layout.find("upper").unwrap().1.part.aft_radius_m(),
-            Some(0.025)
+
+        let filled = design.fill_unresolvable_body_radii(0.025);
+        let filled: Vec<_> = filled
+            .into_iter()
+            .map(|r| (r.stage, r.component, r.id, r.dimension))
+            .collect();
+        assert_eq!(filled, chain);
+        assert!(listed(&design).is_empty());
+        assert!(
+            design.stages[0]
+                .components
+                .iter()
+                .all(|c| c.auto.is_empty())
         );
+        let layout = design.layout().unwrap();
+        let radius = |id: &str| layout.find(id).unwrap().1.part.aft_radius_m();
+        assert_eq!(radius("nose"), Some(0.025));
+        assert_eq!(radius("upper"), Some(0.025));
         let Part::Transition(t) = &layout.find("shoulder").unwrap().1.part else {
             panic!("a transition")
         };
         assert_eq!((t.fore_radius_m, t.aft_radius_m), (0.025, 0.022));
 
-        // A design that resolves lists nothing.
-        let design = three_fin_rocket();
+        // A design that resolves lists nothing, and filling it changes nothing.
+        let mut design = three_fin_rocket();
+        let before = design.clone();
         assert!(design.unresolvable_body_radii().is_empty());
+        assert!(design.fill_unresolvable_body_radii(0.025).is_empty());
+        assert_eq!(design, before);
         design.layout().unwrap();
     }
 
@@ -2220,8 +2288,9 @@ mod tests {
     }
 
     proptest! {
-        /// Over random spines, `unresolvable_body_radii` is empty exactly when `layout` succeeds,
-        /// and giving every listed radius a fixed value is all `layout` then needs.
+        /// Over random spines, `unresolvable_body_radii` is empty exactly when `layout` succeeds;
+        /// filling what it lists is all `layout` then needs; and every radius the neighbour rule
+        /// could already reach comes out as it did before the fill.
         #[test]
         fn unresolvable_radii_are_exactly_what_layout_refuses(
             spec in proptest::collection::vec((0usize..3, any::<bool>(), any::<bool>(), 1u8..5, 1u8..5), 1..7),
@@ -2230,24 +2299,40 @@ mod tests {
             let mut design = random_spine(&spec, split);
             let unresolvable = design.unresolvable_body_radii();
             prop_assert_eq!(unresolvable.is_empty(), design.layout().is_ok(), "{:?}", unresolvable);
-            for (id, dimension) in &unresolvable {
-                let c = design
+
+            let body = |design: &Rocket| -> (Vec<Part>, Vec<Vec<AutoDimension>>) {
+                design
                     .stages
-                    .iter_mut()
-                    .flat_map(|s| s.components.iter_mut())
-                    .find(|c| &c.id == id)
-                    .unwrap();
-                match (&mut c.part, dimension) {
-                    (Part::NoseCone(p), AutoDimension::BaseRadius) => p.base_radius_m = 0.025,
-                    (Part::BodyTube(p), AutoDimension::OuterRadius) => p.outer_radius_m = 0.025,
-                    (Part::Transition(p), AutoDimension::ForeRadius) => p.fore_radius_m = 0.025,
-                    (Part::Transition(p), AutoDimension::AftRadius) => p.aft_radius_m = 0.025,
-                    other => prop_assert!(false, "an unexpected pairing {:?}", other),
-                }
-                c.auto.retain(|a| a != dimension);
-            }
+                    .iter()
+                    .flat_map(|s| s.components.iter())
+                    .map(|c| (c.part.clone(), c.auto.clone()))
+                    .unzip()
+            };
+            let (parts, autos) = body(&design);
+            let autos: Vec<&[AutoDimension]> = autos.iter().map(Vec::as_slice).collect();
+            let (fore, aft) = sweep_body_radii(&parts, &autos);
+
+            let filled = design.fill_unresolvable_body_radii(0.025);
+            prop_assert_eq!(&filled, &unresolvable);
             prop_assert!(design.unresolvable_body_radii().is_empty());
-            prop_assert!(design.layout().is_ok(), "{:?}", design.layout().err());
+            let layout = design.layout();
+            prop_assert!(layout.is_ok(), "{:?}", layout.as_ref().err());
+            let layout = layout.unwrap();
+            for (n, placed) in layout.body().enumerate() {
+                let (f, a) = match &placed.part {
+                    Part::NoseCone(p) => (None, Some(p.base_radius_m)),
+                    Part::BodyTube(p) => (Some(p.outer_radius_m), Some(p.outer_radius_m)),
+                    Part::Transition(p) => (Some(p.fore_radius_m), Some(p.aft_radius_m)),
+                    _ => (None, None),
+                };
+                // A radius the sweep reached before the fill is the one layout gives after it.
+                if let (Some(before), Some(after)) = (fore[n], f) {
+                    prop_assert_eq!(before, after, "forward radius of {}", placed.id);
+                }
+                if let (Some(before), Some(after)) = (aft[n], a) {
+                    prop_assert_eq!(before, after, "aft radius of {}", placed.id);
+                }
+            }
         }
 
         /// Placed at random along a tube and rolled, point-like masses sum to the structure's mass
