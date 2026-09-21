@@ -1091,18 +1091,19 @@ fn a_filled_part_is_solid() {
     assert_eq!(nose.wall, hpr_design::solids::Wall::Filled {});
 }
 
-/// What hangs off the spine is counted and left for the next milestone, not silently dropped.
+/// A part no milestone has reached yet is counted and named, not silently dropped. A pod set
+/// carries a spine of its own, which is M3.1c's work.
 #[test]
-fn parts_off_the_spine_are_reported_not_dropped() {
+fn parts_no_milestone_reads_yet_are_reported_not_dropped() {
     let xml = ACROSS_A_STAGE.replace(
         "</bodytube>",
-        "<subcomponents><trapezoidfinset><name>Fins</name></trapezoidfinset></subcomponents></bodytube>",
+        "<subcomponents><podset><name>Pods</name></podset></subcomponents></bodytube>",
     );
     let read = read(xml.as_bytes()).expect("a readable design");
     let spine = component::rocket(&read.value.document);
     let warnings: Vec<&str> = spine.warnings.iter().map(|w| w.message.as_str()).collect();
     assert_eq!(warnings.len(), 1, "{warnings:?}");
-    assert!(warnings[0].contains("2 `trapezoidfinset`"), "{warnings:?}");
+    assert!(warnings[0].contains("2 `podset`"), "{warnings:?}");
     assert_eq!(spine.count(WarningKind::Skipped), 1);
 }
 
@@ -1132,4 +1133,424 @@ fn a_wall_of_no_thickness_is_solid_and_says_so() {
         assert_eq!(spine.count(WarningKind::Unusual), 1, "{:?}", spine.warnings);
         assert!(spine.value.layout().is_ok());
     }
+}
+
+/// A single-stage design carrying one of most of the parts that hang off a spine: a motor tube, a
+/// ring whose bore and outer radius are both automatic, a coupler with a bulkhead nested inside
+/// it, a canted fin set with a tab, and a parachute packed to fill the bore.
+const WITH_PARTS_TEMPLATE: &str = r#"<?xml version="1.0" encoding="UTF-8"?>
+<openrocket version="1.10" creator="OpenRocket 24.12">
+  <rocket>
+    <name>Parts</name>
+    <referencetype>maximum</referencetype>
+    <subcomponents>
+      <stage>
+        <name>Sustainer</name>
+        <id>stage</id>
+        <subcomponents>
+          <nosecone>
+            <name>Nose</name><id>nose</id>
+            <material type="bulk" density="680.0">Cardboard</material>
+            <length>0.3</length><thickness>0.002</thickness>
+            <shape>ogive</shape><shapeparameter>1.0</shapeparameter>
+            <aftradius>0.05</aftradius>
+            <finish>smooth</finish>
+          </nosecone>
+          <bodytube>
+            <name>Tube</name><id>tube</id>
+            <material type="bulk" density="680.0">Cardboard</material>
+            <length>0.6</length><thickness>0.002</thickness>
+            <radius>0.05</radius>
+            <finish>normal</finish>
+            <subcomponents>
+{parts}
+            </subcomponents>
+          </bodytube>
+        </subcomponents>
+      </stage>
+    </subcomponents>
+  </rocket>
+</openrocket>
+"#;
+
+/// The parts inside the body tube of [`WITH_PARTS_TEMPLATE`], each one complete on its own.
+const PARTS: [&str; 5] = [
+    r#"              <innertube>
+                <name>Mount</name><id>mount</id>
+                <material type="bulk" density="680.0">Cardboard</material>
+                <axialoffset method="bottom">0.0</axialoffset>
+                <length>0.2</length><outerradius>0.0095</outerradius><thickness>0.0005</thickness>
+                <radialposition>0.0</radialposition><radialdirection>0.0</radialdirection>
+              </innertube>"#,
+    r#"              <centeringring>
+                <name>Ring</name><id>ring</id>
+                <material type="bulk" density="680.0">Plywood</material>
+                <axialoffset method="bottom">0.0</axialoffset>
+                <length>0.005</length>
+                <outerradius>auto</outerradius><innerradius>auto 0.0095</innerradius>
+              </centeringring>"#,
+    r#"              <tubecoupler>
+                <name>Coupler</name><id>coupler</id>
+                <material type="bulk" density="680.0">Cardboard</material>
+                <axialoffset method="top">0.05</axialoffset>
+                <length>0.1</length><outerradius>auto</outerradius><thickness>0.0015</thickness>
+                <subcomponents>
+                  <bulkhead>
+                    <name>Bulkhead</name><id>bulkhead</id>
+                    <material type="bulk" density="680.0">Plywood</material>
+                    <axialoffset method="top">0.0</axialoffset>
+                    <length>0.003</length><outerradius>auto</outerradius>
+                  </bulkhead>
+                </subcomponents>
+              </tubecoupler>"#,
+    r#"              <trapezoidfinset>
+                <name>Fins</name><id>fins</id>
+                <material type="bulk" density="680.0">Plywood</material>
+                <axialoffset method="bottom">0.0</axialoffset>
+                <instancecount>3</instancecount>
+                <rootchord>0.12</rootchord><tipchord>0.06</tipchord>
+                <height>0.07</height><sweeplength>0.04</sweeplength>
+                <thickness>0.003</thickness><crosssection>rounded</crosssection>
+                <cant>1.0</cant>
+                <angleoffset method="relative">180.0</angleoffset>
+                <radiusoffset method="surface">0.0</radiusoffset>
+                <finish>polished</finish>
+                <tabheight>0.01</tabheight><tablength>0.03</tablength>
+                <tabposition relativeto="center">0.0</tabposition>
+              </trapezoidfinset>"#,
+    r#"              <parachute>
+                <name>Chute</name><id>chute</id>
+                <axialoffset method="top">0.1</axialoffset>
+                <packedlength>0.08</packedlength><packedradius>auto</packedradius>
+                <radialposition>0.0</radialposition><radialdirection>0.0</radialdirection>
+                <material type="surface" density="0.06">Ripstop nylon</material>
+                <diameter>0.6</diameter>
+                <linecount>6</linecount><linelength>0.7</linelength>
+                <linematerial type="line" density="0.0016">Paracord</linematerial>
+              </parachute>"#,
+];
+
+/// The design with its parts written in the order `order` gives.
+fn with_parts(order: [usize; 5]) -> String {
+    let parts: Vec<&str> = order.into_iter().map(|k| PARTS[k]).collect();
+    WITH_PARTS_TEMPLATE.replace("{parts}", &parts.join("\n"))
+}
+
+/// The radius `.ork` tag `dimension` resolved to on the component `id`, after the layout.
+fn resolved(layout: &hpr_design::tree::Layout, id: &str) -> hpr_design::tree::Part {
+    let (_, placed) = layout
+        .find(id)
+        .unwrap_or_else(|| panic!("no component `{id}`"));
+    placed.part.clone()
+}
+
+/// [Loft lesson L60][lessons]: Loft resolved automatic dimensions as it walked the tree, so a ring
+/// whose bore comes from the motor tube beside it got the right answer only when the tube happened
+/// to be written first, and a bulkhead inside a coupler — two levels of automatic radius — stayed
+/// `NaN`. Nothing here is resolved while walking: the reader marks the dimension and
+/// `Rocket::layout` resolves every one of them afterwards, in a pass that cannot see file order.
+///
+/// So the same design written with its parts in the opposite order must lay out to the same
+/// numbers, and every one of them must be a real number.
+///
+/// [lessons]: https://github.com/nrdptel/hpr-sim/blob/main/docs/research/loft-lessons.md
+#[test]
+fn auto_resolution_is_order_independent_and_finite() {
+    let forwards = spine(&with_parts([0, 1, 2, 3, 4]))
+        .layout()
+        .expect("a design that lays out");
+
+    // The bore of the tube is 0.05 - 0.002; the coupler fills it, and the bulkhead fills the
+    // coupler. Two levels of automatic radius, which is the half of L60 that stayed NaN.
+    let hpr_design::tree::Part::InnerTube(coupler) = resolved(&forwards, "coupler") else {
+        panic!("a coupler");
+    };
+    assert!(
+        (coupler.outer_radius_m - 0.048).abs() < 1e-12,
+        "{coupler:?}"
+    );
+    let hpr_design::tree::Part::CenteringRing(bulkhead) = resolved(&forwards, "bulkhead") else {
+        panic!("a bulkhead");
+    };
+    assert!(
+        (bulkhead.outer_radius_m - (0.048 - 0.0015)).abs() < 1e-12,
+        "{bulkhead:?}"
+    );
+
+    for placed in &forwards.components {
+        for value in [
+            placed.part.fore_radius_m(),
+            placed.part.aft_radius_m(),
+            placed.part.outer_radius_about_axis_m(),
+            placed.part.inner_radius_m(),
+        ]
+        .into_iter()
+        .flatten()
+        {
+            assert!(value.is_finite(), "{}: {value}", placed.id);
+        }
+        assert!(placed.own.mass_kg.is_finite(), "{}", placed.id);
+    }
+
+    // The same design with the tube's parts written in the opposite order. None of them is placed
+    // `after` a sibling, so file order is the only thing that changed.
+    let backwards = spine(&with_parts([4, 3, 2, 1, 0]))
+        .layout()
+        .expect("a design that lays out");
+
+    assert_eq!(backwards.components.len(), forwards.components.len());
+    for id in ["mount", "ring", "coupler", "bulkhead", "fins", "chute"] {
+        assert_eq!(resolved(&backwards, id), resolved(&forwards, id), "{id}");
+    }
+    assert!(
+        (backwards.structure.mass_kg - forwards.structure.mass_kg).abs() < 1e-15,
+        "{} vs {}",
+        backwards.structure.mass_kg,
+        forwards.structure.mass_kg
+    );
+}
+
+/// [Loft lesson L61][lessons], both halves. A centering ring whose bore is automatic weighed 0 g
+/// in Loft, because the bore came out equal to the ring; and a stated wall was thrown away
+/// whenever the radius it sat in was automatic, because the wall was judged against a radius that
+/// was not known yet.
+///
+/// The oracle for the first half is in the file: `auto 0.0095` is the bore OpenRocket itself last
+/// worked out, so the resolution can be held to it. Over the reference corpus the same check runs
+/// on every automatic dimension that caches a number — `cargo xtask ork` reports how many agree.
+///
+/// [lessons]: https://github.com/nrdptel/hpr-sim/blob/main/docs/research/loft-lessons.md
+#[test]
+fn auto_ring_bore_and_stated_wall_match_oracle() {
+    let rocket = spine(&with_parts([0, 1, 2, 3, 4]));
+    let layout = rocket.layout().expect("a design that lays out");
+
+    // The bore OpenRocket cached, worked out again from the motor tube beside the ring.
+    let hpr_design::tree::Part::CenteringRing(ring) = resolved(&layout, "ring") else {
+        panic!("a ring");
+    };
+    assert!((ring.inner_radius_m - 0.0095).abs() < 1e-12, "{ring:?}");
+    assert!((ring.outer_radius_m - 0.048).abs() < 1e-12, "{ring:?}");
+    // And so the ring weighs what a ring weighs, rather than nothing.
+    let (_, placed) = layout.find("ring").expect("the ring");
+    let annulus = std::f64::consts::PI * (0.048 * 0.048 - 0.0095 * 0.0095) * 0.005;
+    assert!(
+        (placed.own.mass_kg - 680.0 * annulus).abs() < 1e-12,
+        "{} kg",
+        placed.own.mass_kg
+    );
+
+    // The coupler's wall is stated and its outer radius is automatic. The wall survives.
+    let hpr_design::tree::Part::InnerTube(coupler) = resolved(&layout, "coupler") else {
+        panic!("a coupler");
+    };
+    assert!((coupler.thickness_m - 0.0015).abs() < 1e-12, "{coupler:?}");
+}
+
+/// A `.ork` writes angles in degrees and `hpr-design` holds them in radians, and nothing in the
+/// file says which it is. Reading 180 as radians turns a fin more than fourteen times round.
+#[test]
+fn angles_are_degrees_not_radians() {
+    let hpr_design::tree::Part::FinSet(fins) = fins(&with_parts([0, 1, 2, 3, 4])) else {
+        panic!("a fin set");
+    };
+    assert!(
+        (fins.base_angle_rad - std::f64::consts::PI).abs() < 1e-12,
+        "{fins:?}"
+    );
+    assert!(
+        (fins.cant_rad - 1.0_f64.to_radians()).abs() < 1e-12,
+        "{fins:?}"
+    );
+    assert_eq!(fins.count, 3);
+    assert_eq!(fins.cross_section, hpr_design::FinCrossSection::Rounded);
+    // The tab is measured from the fin's centre in the file and from its leading edge here.
+    assert_eq!(
+        fins.tab,
+        Some(hpr_design::FinTab {
+            height_m: 0.01,
+            length_m: 0.03,
+            offset_m: 0.5 * (0.12 - 0.03),
+        })
+    );
+}
+
+/// The five words OpenRocket writes for a surface finish, as roughness heights. The numbers are
+/// sourced on `hpr_io::ork::attached::finish` and on the guide's `.ork` page.
+#[test]
+fn a_surface_finish_is_a_roughness_height() {
+    let rocket = spine(&with_parts([0, 1, 2, 3, 4]));
+    let tube = &rocket.stages[0].components[1];
+    assert_eq!(
+        rocket.stages[0].components[0].finish,
+        Some(hpr_design::Finish::Custom { roughness_m: 20e-6 })
+    );
+    assert_eq!(
+        tube.finish,
+        Some(hpr_design::Finish::Custom { roughness_m: 60e-6 })
+    );
+    let fins = tube
+        .children
+        .iter()
+        .find(|child| child.id == "fins")
+        .expect("the fins");
+    assert_eq!(
+        fins.finish,
+        Some(hpr_design::Finish::Custom { roughness_m: 2e-6 })
+    );
+
+    // A word with no sourced roughness takes hpr's default, and says so.
+    let xml =
+        with_parts([0, 1, 2, 3, 4]).replace("<finish>normal</finish>", "<finish>anodised</finish>");
+    let read = read(xml.as_bytes()).expect("a readable design");
+    let imported = component::rocket(&read.value.document);
+    assert_eq!(imported.value.stages[0].components[1].finish, None);
+    assert_eq!(imported.count(WarningKind::Unusual), 1);
+}
+
+/// A part this reader cannot give an honest shape to is left out with its reason, rather than
+/// guessed at or silently dropped. Each of these is a real shape in the reference corpus.
+#[test]
+fn a_part_that_cannot_be_read_honestly_is_left_out_with_its_reason() {
+    let cases: [(&str, &str, &str); 3] = [
+        // Fins on a nose cone: hpr attaches an external part to a body tube and nothing else.
+        (
+            "<finish>smooth</finish>",
+            "<finish>smooth</finish><subcomponents><trapezoidfinset><name>Winglets</name>\
+             <axialoffset method=\"bottom\">0.0</axialoffset><instancecount>3</instancecount>\
+             <rootchord>0.05</rootchord><tipchord>0.02</tipchord><height>0.03</height>\
+             <sweeplength>0.01</sweeplength><thickness>0.002</thickness>\
+             <material type=\"bulk\" density=\"680.0\">Plywood</material></trapezoidfinset>\
+             </subcomponents>",
+            "hpr attaches one only to a body tube",
+        ),
+        // A freeform outline that leaves the body at its trailing edge.
+        (
+            "<trapezoidfinset>",
+            "<freeformfinset><name>Winglet</name>\
+             <axialoffset method=\"bottom\">0.0</axialoffset><instancecount>3</instancecount>\
+             <thickness>0.002</thickness>\
+             <material type=\"bulk\" density=\"680.0\">Plywood</material>\
+             <finpoints><point x=\"0.0\" y=\"0.0\"/><point x=\"0.05\" y=\"0.04\"/>\
+             <point x=\"0.1\" y=\"0.002\"/></finpoints></freeformfinset>\
+             <trapezoidfinset>",
+            "does not run from the root leading edge",
+        ),
+        // A tube fin set sized from the body, which hpr has no rule for yet.
+        (
+            "<trapezoidfinset>",
+            "<tubefinset><name>Tubes</name><axialoffset method=\"bottom\">0.0</axialoffset>\
+             <instancecount>6</instancecount><length>0.1</length><radius>auto</radius>\
+             <thickness>0.001</thickness>\
+             <material type=\"bulk\" density=\"680.0\">Cardboard</material></tubefinset>\
+             <trapezoidfinset>",
+            "hpr does not resolve that yet",
+        ),
+    ];
+    for (from, to, says) in cases {
+        let xml = with_parts([0, 1, 2, 3, 4]).replacen(from, to, 1);
+        let read = read(xml.as_bytes()).expect("a readable design");
+        let imported = component::rocket(&read.value.document);
+        let said: Vec<&str> = imported
+            .warnings
+            .iter()
+            .map(|warning| warning.message.as_str())
+            .collect();
+        assert!(
+            said.iter().any(|message| message.contains(says)),
+            "expected `{says}`, got {said:?}"
+        );
+        assert_eq!(imported.count(WarningKind::Skipped), 1, "{said:?}");
+        // The rest of the design still opens, and still lays out.
+        imported.value.layout().expect("a design that lays out");
+    }
+}
+
+/// The fin set of a design read from `xml`.
+fn fins(xml: &str) -> hpr_design::tree::Part {
+    spine(xml).stages[0].components[1]
+        .children
+        .iter()
+        .find(|child| child.id == "fins")
+        .expect("the fins")
+        .part
+        .clone()
+}
+
+/// Three ways a reader can lose a number without saying so, all found reviewing the spine
+/// ([#130][i130], [#131][i131] and [#132][i132]) and all fixed by the milestone that attaches
+/// parts, because that is when each of them starts to change a mass.
+///
+/// [i130]: https://github.com/nrdptel/hpr-sim/issues/130
+/// [i131]: https://github.com/nrdptel/hpr-sim/issues/131
+/// [i132]: https://github.com/nrdptel/hpr-sim/issues/132
+#[test]
+fn a_number_is_never_lost_in_silence() {
+    // A shoulder's stated wall survives an automatic shoulder radius: the wall must not be judged
+    // against a radius that has not resolved yet.
+    let xml = with_parts([0, 1, 2, 3, 4]).replace(
+        "<aftradius>0.05</aftradius>",
+        "<aftradius>0.05</aftradius><aftshoulderlength>0.06</aftshoulderlength>\
+         <aftshoulderradius>auto</aftshoulderradius>\
+         <aftshoulderthickness>0.002</aftshoulderthickness>",
+    );
+    let rocket = spine(&xml);
+    let hpr_design::tree::Part::NoseCone(nose) = &rocket.stages[0].components[0].part else {
+        panic!("a nose cone");
+    };
+    let shoulder = nose.shoulder.as_ref().expect("a shoulder");
+    assert!((shoulder.thickness_m - 0.002).abs() < 1e-12, "{shoulder:?}");
+    // And the layout gives it the tube's bore, wall and all.
+    let layout = rocket.layout().expect("a design that lays out");
+    let hpr_design::tree::Part::NoseCone(nose) = resolved(&layout, "nose") else {
+        panic!("a nose cone");
+    };
+    let shoulder = nose.shoulder.expect("a shoulder");
+    assert!(
+        (shoulder.outer_radius_m - 0.048).abs() < 1e-12,
+        "{shoulder:?}"
+    );
+    assert!((shoulder.thickness_m - 0.002).abs() < 1e-12, "{shoulder:?}");
+
+    // A radius the file simply does not give is read as zero, and says so rather than laying out
+    // as a part with no width.
+    let xml = with_parts([0, 1, 2, 3, 4]).replace("<aftradius>0.05</aftradius>", "");
+    let opened = read(xml.as_bytes()).expect("a readable design");
+    let imported = component::rocket(&opened.value.document);
+    assert!(
+        imported
+            .warnings
+            .iter()
+            .any(|warning| warning.message == "no `aftradius`, so it was read as zero"),
+        "{:?}",
+        imported.warnings
+    );
+
+    // An id the file repeats, or one that collides with a name invented for a part that has none,
+    // is made unique with a warning rather than left to make the whole design unopenable.
+    let xml = with_parts([0, 1, 2, 3, 4]).replace("<id>ring</id>", "<id>mount</id>");
+    let opened = read(xml.as_bytes()).expect("a readable design");
+    let imported = component::rocket(&opened.value.document);
+    assert!(
+        imported
+            .warnings
+            .iter()
+            .any(|warning| warning.message.contains("this one was called `mount-2`")),
+        "{:?}",
+        imported.warnings
+    );
+    imported
+        .value
+        .layout()
+        .expect("a design that still lays out");
+
+    // A warning names which part it is about, not just the tag.
+    let xml =
+        with_parts([0, 1, 2, 3, 4]).replace("<finish>normal</finish>", "<finish>gilt</finish>");
+    let opened = read(xml.as_bytes()).expect("a readable design");
+    let imported = component::rocket(&opened.value.document);
+    assert_eq!(
+        imported.warnings[0].at,
+        "openrocket/rocket/stage[0]/bodytube[1]"
+    );
 }

@@ -5,12 +5,13 @@ are made of, the motors flown in it, and the results of the simulations OpenRock
 the format hobby designs are most often shared in, so reading it is how a design gets into hpr
 without being typed again.
 
-**What works today:** hpr opens a `.ork` file, whichever of its three containers it is in, and
-reads its design document into a tree that keeps everything the file said, with the schema version
-and the program that wrote it — from Rust; there is no command-line tool yet. **It does not yet
-build a rocket from that tree** — no components, no materials, no motors. That is the next
-increment ([M3.1b](../decisions-and-roadmap.md#m3-1b)), and until it lands there is nothing here
-to fly.
+**What works today:** hpr opens a `.ork` file, whichever of its three containers it is in, reads
+its design document into a tree that keeps everything the file said, and builds a rocket out of
+that tree — the stages and body components stacked in them, and the tubes, rings, fins, lugs,
+buttons and recovery gear on and inside each of those, with their shapes, materials, surface
+finishes, positions and overrides. That is from Rust; there is no command-line tool yet. **What it
+does not yet read is motors, recovery settings, pods and parallel stages**
+([M3.1c](../decisions-and-roadmap.md#m3-1c)), so a design that opens still cannot be flown.
 
 ## Opening a file today
 
@@ -338,12 +339,164 @@ on parts that are not read yet: one design's stages are parallel stages, and two
 radius anywhere on the spine to resolve an automatic one against. The counts are what may be
 published; the per-file detail stays in the gitignored `corpus-out/`.
 
+
+## The parts on and inside the body
+
+Everything that is not the spine hangs off it, and hpr reads it into the same
+[`hpr_design::Rocket`][api]: the **tubes** inside a body component (inner tubes, couplers, engine
+blocks), the **rings** that centre them (centering rings, bulkheads), the **fins, tube fins, launch
+lugs and rail buttons** on the outside, and the **mass objects, parachutes, streamers and shock
+cords** packed in the bore. Code: `hpr_io::ork::attached`
+([API reference](../api/hpr_io/ork/attached/index.html)), decided in [ADR-053][adr-053].
+
+| `.ork` tag | read as | notes |
+| --- | --- | --- |
+| `innertube`, `tubecoupler`, `engineblock` | `InnerTube` | may hold parts of its own |
+| `centeringring` | `CenteringRing` | bore and outer radius may both be automatic |
+| `bulkhead` | `CenteringRing` with no bore | |
+| `trapezoidfinset`, `ellipticalfinset`, `freeformfinset` | `FinSet` | with its tab, cant and section |
+| `tubefinset` | `TubeFinSet` | |
+| `launchlug`, `railbutton` | `LaunchLug`, `RailButton` | a row of them is one part with a count and a spacing |
+| `masscomponent` | `MassComponent` | |
+| `parachute`, `streamer`, `shockcord` | `Parachute`, `Streamer`, `ShockCord` | the packed shape, not the deployment |
+| `podset`, `parallelstage` | — | a spine of their own: [M3.1c](../decisions-and-roadmap.md#m3-1c) |
+
+**Angles in a `.ork` are degrees.** Nothing in the file says so, and every length beside them is in
+metres, so it is easy to read one as radians and turn a fin more than fourteen times round instead
+of half a turn. **Observed:** 86 of the angles in the corpus are larger than 2π — more than a whole
+turn — and the values themselves are 180, 90, 45, 30 and 120, carrying the float dust
+(`119.99999999999999`) of a conversion that went through radians and came back.
+`hpr_io::ork::tests::angles_are_degrees_not_radians` holds it.
+
+**Where a part sits** is one tag: `<axialoffset method="bottom">` on the newer name,
+`<position type="bottom">` on the older, with the same five words — `top`, `middle`, `bottom`,
+`after` and `absolute` — which are `hpr_design::Position` unchanged. **Observed:** one tube coupler
+in the corpus has neither tag; it is read flush with its parent's forward end, with a warning.
+
+**How far off the axis** is two tags that look like the two names of one and are not.
+[ADR-052][adr-052] left both unread for want of a source saying what the older name measures from.
+It turns out the question need not be answered: the corpus shows the two never meet.
+`radialposition` (542 elements) is written on the parts *inside* a body, `radiusoffset` (106) on the
+parts *on* it, and **no element carries both**. So each is read where it is the only name its part
+has, and neither is ever read as the other. The **angle** is different again: `angleoffset` and the
+older `rotation` (on a fin set) or `radialdirection` (on everything else) agree on the number on all
+121 elements that carry both, so which is read cannot change an angle, and the frames they differ on
+— `relative` to the parent against `fixed` in the rocket — are the same angle for every parent hpr
+builds, all of which sit on the rocket's own axis. A pod set does not, and a pod set is not read.
+
+**What a part takes from its parent** is resolved by `Rocket::layout()`, never here. A coupler's or
+a ring's automatic outer radius is its parent's bore; a ring's automatic bore is the widest motor
+tube beside it that overlaps it along the axis; a packed part fills the room left in the bore.
+Automatic **outer** radii resolve in a pass before any ring's automatic **bore**, so a ring's answer
+cannot depend on whether the tube inside it was written first —
+[Loft lesson L60](../decisions-and-roadmap.md#l60), where Loft resolved as it walked and a bulkhead
+inside a coupler stayed `NaN`.
+
+### The surface finish
+
+OpenRocket writes one of five words. What each is worth is **not in the file format
+documentation**, and the numbers below are the one thing on this page that comes from neither the
+documentation nor the corpus:
+
+| `<finish>` | OpenRocket calls it | roughness | in the corpus |
+| --- | --- | --- | --- |
+| `rough` | Rough | 500 µm | 8 |
+| `unfinished` | Unfinished | 150 µm | 2 |
+| `normal` | Regular paint | 60 µm | 348 |
+| `smooth` | Smooth paint | 20 µm | 88 |
+| `polished` | Polished | 2 µm | 14 |
+
+The default is confirmed twice over. The [OpenRocket technical documentation][techdoc] section 6
+says that in its test design "the 'regular paint' finish was selected, which corresponds to an
+average surface roughness of 60 µm", and the [user guide's body-tube dialog][dialog] reads
+"Component finish: Regular paint (2.36 mil)", which is 59.9 µm. The [user guide][finishes] names
+all five and their order — "Rough, Unfinished, Regular paint, Smooth paint, and Polished, each with
+a decreasing (CD) from rough to polished" — but gives no numbers; those come from OpenRocket's
+author, in [The Rocketry Forum thread "Open Rocket Finishes"][forum] (post #6, 22 August 2013):
+"Rough (500 µm) / Unfinished (150 µm) / Regular paint (60 µm) / Smooth paint (20 µm) / Polished
+(2 µm)". Each becomes a `Finish::Custom` height rather than one of hpr's
+[named finishes](../physics/aero.md), whose names are other surfaces entirely.
+
+**One of these is not settled.** OpenRocket 23.09 added four more finishes, and in the newer list
+the 2 µm row carries a different label, so `polished` written by a recent OpenRocket may mean
+0.5 µm rather than 2 µm. No file in the corpus writes any word but the five, so nothing here can
+settle it; the [OpenRocket oracle](../decisions-and-roadmap.md#m2-2) can. A word hpr has no sourced
+roughness for takes hpr's default and says so.
+
+### What is left out, and why
+
+A part hpr cannot give an honest shape is **left out with its reason** rather than guessed at. The
+design still opens and still lays out; what is missing is named, never silent. Five parts in the
+whole corpus:
+
+| rule | in the corpus |
+| --- | --- |
+| an external part on anything but a body tube — a fin's root on a nose cone is not a straight line | 2 fin sets, on one design's nose |
+| a freeform outline that does not end on the root, which would have to be closed along a body it never touches | the same 2 |
+| a tube fin set whose radius OpenRocket sizes from the body, which hpr has no rule for ([#133][issue-133]) | 2 |
+| a part whose automatic radius needs a bore its parent has not got | 1 coupler, in a nose cone |
+
+Four more things are read as the simpler part hpr models, each with a warning so that what is
+missing from a mass is visible: a fin's **fillets** (5), a rail button's **screw head** (2), a
+**cluster** of motor tubes read as the one tube it is written as (4), and a **row** of more than one
+ring read as one.
+
+**A tube of no wall thickness carries no mass** — 12 elements, among them two of OpenRocket's own
+example designs. That is the opposite of the rule the spine gives a body component and a shoulder,
+and deliberately: a body component has a `filled` spelling in the file, so a zero there is
+ambiguous, while an inner tube has none and OpenRocket's own geometry makes a tube's bore its outer
+radius less its wall. Reading those as solid would invent the mass instead — a solid coupler
+filling a 50 mm airframe for 180 mm is a few hundred grams the design never had.
+
+### Checked against the answers OpenRocket cached
+
+`auto 0.0125` is not just a flag: the number is what OpenRocket itself last worked out. That makes
+an oracle for the resolution rules that needs no OpenRocket, and `cargo xtask ork` runs it over the
+corpus — on every automatic dimension that caches a number and sits on a component the file gives
+an `<id>`. On 2026-09-20, **67 of 71 agree** to a part in 10⁹.
+
+The four that do not are one body tube and the parachute packed inside it (whose radius follows the
+tube's bore), in a single design the corpus holds twice. There the cache contradicts the file's own
+other caches: the nose cone ahead of that tube caches 0.028321 m for the radius of the very tube
+that caches 0.025 m, and 0.025 m is OpenRocket's default body-tube radius — the number a tube
+starts at, not one worked out from anything. hpr resolves that tube to 0.028321 m, which is what
+every other cached radius in the design says. This is [ADR-052][adr-052]'s warning about stale
+caches, made visible rather than argued.
+
+### Measured on the reference library
+
+`cargo xtask ork`, over the 76 readable files, on 2026-09-20:
+
+| | |
+|---|---|
+| designs whose `Rocket` lays out | 73 of 76 |
+| body components | 285 |
+| parts on and inside them | 765 |
+| by kind | 194 centering rings, 156 inner tubes, 135 parachutes, 107 fin sets, 84 mass components, 40 shock cords, 31 launch lugs, 16 rail buttons, 2 streamers |
+| automatic dimensions marked | 327 |
+| parts left out, with a reason | 5 |
+| warnings raised | 29 dropped, 12 skipped, 47 unusual |
+| tags no milestone reads yet | 9 `podset`, 3 `parallelstage` |
+
+The three designs that do not lay out are [M3.1b4](../decisions-and-roadmap.md#m3-1b4)'s work: one
+document holds no `<rocket>` with any components in it at all — it is a synthesized demonstration
+file carrying a simulation and nothing else — and two have a chain of automatic radii with no fixed
+radius anywhere to resolve against. None of the three is a design a part could have completed.
+
+[adr-053]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-053-the-parts-on-and-inside-a-ork-body-degrees-what-is-left-out-and-a-sourced-finish-2026-09-20
+[techdoc]: https://openrocket.sourceforge.net/techdoc.pdf
+[dialog]: https://openrocket.readthedocs.io/en/latest/_images/body_tube_config.png
+[finishes]: https://openrocket.readthedocs.io/en/latest/user_guide/overrides_and_surface_finish.html
+[forum]: https://www.rocketryforum.com/threads/open-rocket-finishes.57558/post-585716
+[issue-133]: https://github.com/nrdptel/hpr-sim/issues/133
+
 ## What is not read yet
 
-The parts on and inside the body — inner tubes, rings, fins, lugs, rail buttons, mass objects — and
-the surface finish ([M3.1b3](../decisions-and-roadmap.md#m3-1b3)); motor configurations, the
-embedded `.rse` curves, recovery devices, pods, stored launch conditions and simulation results
-([M3.1c](../decisions-and-roadmap.md#m3-1c)). Writing a `.ork` back out as a design — rather than
+Motor configurations and the embedded `.rse` curves, recovery settings (when a parachute opens, at
+what delay, at what altitude — the chute's *shape* is read, its deployment is not), pods and
+parallel stages, stored launch conditions and simulation results
+([M3.1c](../decisions-and-roadmap.md#m3-1c)). Three designs of the 76 still do not lay out
+([M3.1b4](../decisions-and-roadmap.md#m3-1b4)). Writing a `.ork` back out as a design — rather than
 as the document it was read from — is [M3.2](../decisions-and-roadmap.md#m3-2).
 
 What keeping the whole document buys you is this: when

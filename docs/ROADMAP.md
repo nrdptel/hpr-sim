@@ -18,22 +18,20 @@
 
 ## Phase 0: Foundations
 
-- [x] **M0.1 Workspace, CI, licenses.**
-  - The workspace from `ARCHITECTURE.md` (edition 2024, pinned stable, shared lints and
-    dependencies); dual licenses and notices; `deny.toml` denying copyleft; `xtask wasm-check`; CI
-    (fmt, clippy, test on three OSes, doc, wasm-check, deny) on **every** PR, no `paths-ignore`;
-    README "pre-alpha"; `.gitignore` covers `refs/`, `.autopilot/`, `corpus/`.
+- [x] **M0.1 Workspace, CI, licenses:** the workspace from `ARCHITECTURE.md` (edition 2024, pinned
+  stable, shared lints and dependencies); dual licenses and notices; `deny.toml` denying copyleft;
+  `xtask wasm-check`; CI (fmt, clippy, test on three OSes, doc, wasm-check, deny) on **every** PR,
+  no `paths-ignore`; README "pre-alpha"; `.gitignore` covers `refs/`, `.autopilot/`, `corpus/`.
 
   *Done when:* the local gate passes, CI is green on all three operating systems, `cargo deny
   check` passes, and ADR-001 records the license choice and workspace layout. *Met.*
 
-- [x] **M0.2 Reference library.**
-  - `cargo xtask refs fetch|verify|doctor`, driven by `validation/refs.lock.toml`, populates
-    `refs/` with RocketPy (pinned tag), the OpenRocket 24.12 jar (sha256 pinned), the public PDFs
-    listed in `VALIDATION.md`, `openrocket-database` (pinned commit), ThrustCurve and
-    motor.fusionspace.co snapshots, and `fusionspace-loft` plus the private `loft-fixtures` repo
-    (skipped with a note when unavailable, as in CI).
-  - A `uv`-managed Python venv in `refs/venv` with `rocketpy==1.13.0` and JPype; a Java 17 check.
+- [x] **M0.2 Reference library:** `cargo xtask refs fetch|verify|doctor`, driven by
+  `validation/refs.lock.toml`, populates `refs/` with RocketPy (pinned tag), the OpenRocket 24.12
+  jar (sha256 pinned), the public PDFs listed in `VALIDATION.md`, `openrocket-database` (pinned
+  commit), ThrustCurve and motor.fusionspace.co snapshots, and `fusionspace-loft` plus the private
+  `loft-fixtures` repo (skipped with a note when unavailable, as in CI); a `uv`-managed Python venv
+  in `refs/venv` with `rocketpy==1.13.0` and JPype; a Java 17 check.
 
   *Done when:* `fetch` is idempotent, `verify` checks every hash, `doctor` prints which oracles are
   runnable, `git status` shows nothing from `refs/`, and `THIRD-PARTY-NOTICES.md` lists every
@@ -48,9 +46,9 @@
   CLAUDE.md "Documentation is a deliverable"). Retrofit everything shipped so far; later milestones
   keep the site current. Tool and layout by ADR (mdBook first); each page has one source, equations
   render on the site and on GitHub, and workspace rustdoc is published next to the guide, each
-  linking the other. Pages: *Start here*; *Getting started* (a runnable first flight); *How a flight
-  is simulated*; one page per model, each opening with *In short*; *Accuracy* (every result, gaps
-  included); *Glossary*; *Checking a claim*; the decisions; the roadmap.
+  linking the other. Pages: *Start here*; *Getting started* (a runnable first flight); *How a
+  flight is simulated*; one page per model, each opening with *In short*; *Accuracy* (every result,
+  gaps included); *Glossary*; *Checking a claim*; the decisions; the roadmap.
 
   *Done when:* split on 2026-09-17 into M0.4a to M0.4e, which carry its four done-when bullets
   unchanged. Done 2026-09-18, with M0.4d's first deploy.
@@ -62,8 +60,7 @@
   - [x] **M0.4c Getting started, and how a flight is simulated**: the first-flight example runs in
     CI, and the page walks pad to landing with a diagram. *Met.*
   - [x] **M0.4d Publish** (ADR-019): a workflow deploys the site and the rustdoc to GitHub Pages
-    from `main`. *Met* 2026-09-18; Neer turned Pages on, and CI run 35396233336 deployed
-    https://nrdptel.github.io/hpr-sim/.
+    from `main`. *Met* 2026-09-18; Neer turned Pages on, CI run 35396233336 deployed it.
   - [x] **M0.4e The reader test**: a reviewer with no project context answers ten questions from the
     site alone, citing a page each. *Met.*
 
@@ -73,72 +70,69 @@
   interpolation tables (linear/cubic, clamped, with extrapolation flags); the frames spec in
   `docs/physics/frames.md` (ENU launch frame, body frame, Euler conventions, geodetic/ECEF); WGS84
   Somigliana gravity with altitude, optional Earth-rotation terms.
-  - Loft lessons: L1 (tests named in `docs/research/loft-lessons.md`).
+  - Loft lessons: L1.
   *Done when:* gravity matches the published formula values at at least 6 latitude/altitude points
   to 1e-6 relative; frame round-trip property tests pass; quaternion integration keeps the norm
-  within 1e-12 over 1e6 steps in tests; everything compiles for wasm32.
+  within 1e-12 over 1e6 steps; everything compiles for wasm32.
 
-- [x] **M1.2 Atmosphere and wind.** USSA76 from 0 to 86 km (temperature, pressure, density, speed of
-  sound, dynamic viscosity by Sutherland); ISA temperature offset; custom profiles from soundings
-  (p, T, RH, wind vs height) with interpolation; wind models constant, power/log law, tabulated
-  layers and seeded Dryden turbulence.
-  - Loft lessons: L2, L3, L4, L5, L6 (tests named in `docs/research/loft-lessons.md`).
+- [x] **M1.2 Atmosphere and wind.** USSA76 from 0 to 86 km (temperature, pressure, density, speed
+  of sound, dynamic viscosity by Sutherland); ISA temperature offset; custom profiles from
+  soundings (p, T, RH, wind vs height); wind models constant, power/log law, tabulated layers and
+  seeded Dryden turbulence.
+  - Loft lessons: L2, L3, L4, L5, L6.
   *Done when:* USSA76 matches the tables at at least 25 altitudes to at most 0.1% (the small table
   fixture is committed with its citation); a Dryden spectrum test passes (PSD within tolerance of
-  theory); `docs/physics/atmosphere.md` cites every equation.
+  theory); and `docs/physics/atmosphere.md` cites every equation.
 
-- [x] **M1.3 Solid motors.**
-  - `.eng` and `.rse` readers and writers (clean room, from the public specs).
-  - Motor model: thrust(t), propellant mass by impulse fraction (default) with an optional
-    grain-geometry model; CG and inertia over time; nozzle exit area.
-  - Delays (including plugged); case/retainer mass. Offline catalog type with per-curve
-    provenance and license; bundle only curves with clear terms, the rest cached later (M5).
-  - Loft lessons: L36, L37, L38, L39, L40, L41, L42, L43 (`docs/research/loft-lessons.md`).
+- [x] **M1.3 Solid motors:** `.eng` and `.rse` readers and writers (clean room, from the public
+  specs); thrust(t), propellant mass by impulse fraction (default) with an optional grain-geometry
+  model, CG and inertia over time, nozzle exit area; delays (including plugged) and case/retainer
+  mass; an offline catalog type with per-curve provenance and license, bundling only curves with
+  clear terms, the rest cached later (M5).
+  - Loft lessons: L36, L37, L38, L39, L40, L41, L42, L43.
   *Done when:* for every bundled curve, total impulse, average thrust and burn time match the
   ThrustCurve metadata within 1%; parse-write-parse round trips are identical; mass and inertia
   evolution matches RocketPy's SolidMotor for 3 motors within 1% (reference JSON generated by a
   script in `validation/oracles/rocketpy/`).
 
-- [x] **M1.4 Design model and mass properties.**
-  - `hpr-design` components: nose cones (conical, tangent/secant ogive, elliptical, power series,
-    parabolic series, Haack/LV-Haack, von Kármán); body tubes, transitions, couplers; fin sets
-    (trapezoidal, elliptical, freeform, tube fins); launch lugs, rail buttons; inner tubes, motor
-    mounts, centering rings, bulkheads; mass components; parachutes, streamers, shock cords.
-  - Cited clean-room materials; stages and configurations; mass, CG and full inertia tensor from
-    geometry, with overrides; structural checks with typed warnings. A small public test-design
-    set, `validation/designs/`, so tests never snapshot the private corpus.
+- [x] **M1.4 Design model and mass properties:** `hpr-design` components — nose cones (conical,
+  tangent/secant ogive, elliptical, power series, parabolic series, Haack/LV-Haack, von Kármán),
+  body tubes, transitions, couplers, fin sets (trapezoidal, elliptical, freeform, tube fins),
+  launch lugs, rail buttons, inner tubes, motor mounts, centering rings, bulkheads, mass
+  components, parachutes, streamers, shock cords; cited clean-room materials; stages and
+  configurations; mass, CG and full inertia tensor from geometry, with overrides; structural checks
+  with typed warnings; a small public test-design set, `validation/designs/`, so tests never
+  snapshot the private corpus.
 
   *Done when:* analytic volume, area and CG tests pass for every shape; the inertia tensor of
   composite test bodies matches hand calculations; mass, CG and inertia match RocketPy's example
   rockets where RocketPy exposes them; the OpenRocket stored-value comparison is deferred to M2.2
   and noted there.
 
-  - [x] **M1.4a Shapes, materials and component mass properties.**
-    - Every nose and transition shape above (clipped or not), solids of revolution filled or with a
-      wall, fin planforms, cross-sections and tabs, and every other component listed, each with
-      mass, CG and full inertia tensor from geometry in its own frame.
-    - Cited materials; `MassProperties` with the parallel-axis theorem and rotations.
-    - Loft lessons: L44, L45, L46, L48, L49, L91 (tests named in `docs/research/loft-lessons.md`).
+  - [x] **M1.4a Shapes, materials and component mass properties:** every nose and transition shape
+    above (clipped or not), solids of revolution filled or with a wall, fin planforms,
+    cross-sections and tabs, and every other component listed, each with mass, CG and full inertia
+    tensor from geometry in its own frame; cited materials; `MassProperties` with the parallel-axis
+    theorem and rotations.
+    - Loft lessons: L44, L45, L46, L48, L49, L91.
 
     *Done when:* analytic volume, area and CG tests pass for every shape, and the inertia tensor
     of composite test bodies matches hand calculations.
 
-  - [x] **M1.4b Design tree, configurations and checks.**
-    - Stages and component placement, configurations with motors, overrides, reference diameter,
-      structural checks with typed warnings, and `validation/designs/`.
-    - Loft lessons: L47, L50 (tests named in `docs/research/loft-lessons.md`).
+  - [x] **M1.4b Design tree, configurations and checks:** stages and component placement,
+    configurations with motors, overrides, reference diameter, structural checks with typed
+    warnings, and `validation/designs/`.
+    - Loft lessons: L47, L50.
 
     *Done when:* mass, CG and inertia match RocketPy's example rockets where RocketPy exposes
     them, and the OpenRocket stored-value comparison is deferred to M2.2 and noted there.
 
-- [x] **M1.5 Aerodynamics I (subsonic).**
-  - Barrowman CNα and CP for every component, with Prandtl–Glauert; body lift at angle of attack;
-    fin–body interference.
-  - Drag buildup: skin friction (laminar/turbulent with roughness), nose/transition pressure drag,
-    base drag power-on and power-off, fin profile and thickness, protuberances; Cd at angle of
-    attack.
-  - Cd-vs-Mach override tables (power-on/off) from CSV, including RocketPy/RASAero exports, so the
-    dynamics are validated on the oracle's drag first. `docs/physics/aero.md` cites each term.
+- [x] **M1.5 Aerodynamics I (subsonic):** Barrowman CNα and CP for every component with
+  Prandtl–Glauert, body lift at angle of attack and fin–body interference; the drag buildup — skin
+  friction (laminar/turbulent with roughness), nose/transition pressure drag, base drag power-on
+  and power-off, fin profile and thickness, protuberances — and Cd at angle of attack; Cd-vs-Mach
+  override tables (power-on/off) from CSV, including RocketPy/RASAero exports, so the dynamics are
+  validated on the oracle's drag first. `docs/physics/aero.md` cites each term.
 
   *Done when:* split below into M1.5a and M1.5b, which carry its three bullets unchanged.
 
@@ -146,18 +140,17 @@
   Skin friction is fully turbulent with roughness, as in Niskanen; laminar and transitional
   friction were not built (ADR-009).
 
-  - [x] **M1.5a Normal force and centre of pressure.**
-    - Barrowman CNα and CP for every component with Prandtl–Glauert, body lift at angle of attack,
-      fin–body interference, and the `aero.md` sections for them.
-    - Loft lessons: L8, L9, L10, L89 (tests named in `docs/research/loft-lessons.md`).
+  - [x] **M1.5a Normal force and centre of pressure:** Barrowman CNα and CP for every component
+    with Prandtl–Glauert, body lift at angle of attack, fin–body interference, and the `aero.md`
+    sections for them.
+    - Loft lessons: L8, L9, L10, L89.
 
     *Done when:* CNα and CP reproduce Barrowman's worked example(s) within 1%.
 
-  - [x] **M1.5b Drag and override tables.**
-    - The drag buildup, Cd at angle of attack, Cd-vs-Mach override tables from CSV, and the `aero.md`
-      sections for them.
-    - Loft lessons: L11, L12, L13, L14, L15, L16, L90 (tests named in
-      `docs/research/loft-lessons.md`).
+  - [x] **M1.5b Drag and override tables:** the drag buildup, Cd at angle of attack, Cd-vs-Mach
+    override tables from CSV, and the `aero.md` sections for them.
+    - Loft lessons: L11, L12, L13, L14, L15, L16, L90.
+
     *Done when:* subsonic Cd for the RocketPy example rockets is within 10% of their RASAero CSVs
     at Mach 0.3 (tighten this later), and unit tests cover every drag term's limits.
 
@@ -166,35 +159,33 @@
     Calisto, Juno III and Cavour power-off are within 10% (+4.4%, −6.0%, −8.3%) under a declared
     input rule that can't pin the unrecorded inputs.
 
-- [x] **M1.6 6-DOF flight engine.**
-  - State: position, velocity, attitude quaternion, angular velocity, time-varying mass
-    properties. A guided rail/tower phase with friction and rail-button geometry; powered and
-    coast phases with jet damping.
-  - Adaptive Dormand–Prince 5(4) with dense output and event root-finding (liftoff, rail exit,
-    burnout, apogee, ground hit, user events); fixed-step RK4 option.
-  - Recorder with a configurable channel set; observer trait; `criterion` benchmark.
+- [x] **M1.6 6-DOF flight engine:** state — position, velocity, attitude quaternion, angular
+  velocity, time-varying mass properties; a guided rail/tower phase with friction and rail-button
+  geometry; powered and coast phases with jet damping; adaptive Dormand–Prince 5(4) with dense
+  output and event root-finding (liftoff, rail exit, burnout, apogee, ground hit, user events), a
+  fixed-step RK4 option; a recorder with a configurable channel set, an observer trait and a
+  `criterion` benchmark.
 
   *Done when:* analytic tests pass (vacuum ballistic, terminal velocity, torque-free precession,
   and pitch oscillation frequency vs linear theory); step-halving convergence shows the expected
   order; events are located to ≤1e-6 s; and a single typical L2 flight simulates in ≤5 ms
   release-mode (number recorded in `docs/perf.md`).
 
-  - [x] **M1.6a Integrator and events.**
-    - Adaptive Dormand–Prince 5(4) with dense output, event root-finding and stop times that put
-      discontinuities on step boundaries; the fixed-step RK4 option; `docs/physics/integration.md`.
-    - Loft lessons: L21, L22, L23 (tests named in `docs/research/loft-lessons.md`).
+  - [x] **M1.6a Integrator and events:** adaptive Dormand–Prince 5(4) with dense output, event
+    root-finding and stop times that put discontinuities on step boundaries; the fixed-step RK4
+    option; `docs/physics/integration.md`.
+    - Loft lessons: L21, L22, L23.
 
     *Done when:* step-halving convergence shows the expected order, and events are located to
     ≤1e-6 s.
 
-  - [x] **M1.6b Rigid-body flight.**
-    - The state, the rail phase, powered and coast phases with jet damping, the flight events, the
-      recorder and observer, and the `criterion` benchmark.
-    - Loft lessons: L20, L24, L25, L26 (tests named in `docs/research/loft-lessons.md`).
+  - [x] **M1.6b Rigid-body flight:** the state, the rail phase, powered and coast phases with jet
+    damping, the flight events, the recorder and observer, and the `criterion` benchmark.
+    - Loft lessons: L20, L24, L25, L26.
 
-    *Done when:* analytic tests pass (vacuum ballistic, terminal velocity, torque-free precession,
-    and pitch oscillation frequency vs linear theory), and a single typical L2 flight simulates in
-    ≤5 ms release-mode (number recorded in `docs/perf.md`).
+    *Done when:* analytic tests pass (vacuum ballistic, terminal
+    velocity, torque-free precession, and pitch oscillation frequency vs linear theory), and a
+    single typical L2 flight simulates in ≤5 ms release-mode (number recorded in `docs/perf.md`).
 
 - [x] **M1.7 Recovery.** Parachutes (Cd·S, inflation time or area growth), streamers and tumble;
   drogue and main with their triggers; descent with wind drift, separated bodies tracked
@@ -206,15 +197,13 @@
   *Result:* met by M1.7a; M1.7b and M1.7c add the streamers, tumble and separation the entry
   lists (ADR-012, ADR-013, ADR-014).
 
-  - [x] **M1.7a Parachutes and descent.**
-    - Parachutes (Cd·S, inflation time or area-growth model), drogue and main with deployment
-      triggers (apogee, altitude, timer, motor delay), drogue release, descent with wind drift
-      and landing detection.
-    - Loft lessons: L27, L28, L29, L92 (tests named in `docs/research/loft-lessons.md`).
+  - [x] **M1.7a Parachutes and descent:** parachutes (Cd·S, inflation time or area-growth model),
+    drogue and main with deployment triggers (apogee, altitude, timer, motor delay), drogue
+    release, descent with wind drift and landing detection.
+    - Loft lessons: L27, L28, L29, L92.
 
-    *Done when:*
-    - Analytic tests for terminal velocity, descent time and drift pass.
-    - Descent rate and drift match RocketPy's for 3 example rockets within 3%.
+    *Done when:* analytic tests for terminal velocity, descent time and drift pass, and descent
+    rate and drift match RocketPy's for 3 example rockets within 3%.
 
     *Result (ADR-012):* met. Analytic descents to 2.1e-8; five RocketPy examples within 0.71%
     (time), 0.03% (rate), 0.27% (drift); worst drift component 2.87% (NDRT's added mass).
@@ -226,11 +215,9 @@
     *Result (ADR-013):* met. Streamers: Carruthers and Filippone (within 9% of Kidwell's flat
     streamer; appendix C 88% fast). Tumble: OpenRocket §3.5, −10 to +19% on its own drop tests.
 
-  - [x] **M1.7c Separated bodies.**
-    - Separation, with every body flown to its own landing and its own mass properties and drag.
-
-    *Done when:* a separation gives every body a landing, and the bodies' masses sum to the
-    rocket's.
+  - [x] **M1.7c Separated bodies:** separation, with every body flown to its own landing and its
+    own mass properties and drag. *Done when:* a separation gives every body a landing, and the
+    bodies' masses sum to the rocket's.
 
     *Result (ADR-014):* met. A `Separation` splits the stack at a stage boundary, each body a point
     mass under its devices; on the two-stage test design both land (2.11 m/s under a canopy, 16.74
@@ -248,7 +235,7 @@
   and a separate, manually triggered workflow regenerates the references.
 
   - [x] **M2.1a The harness.**
-    - Loft lessons: L76, L77, L78, L79 (tests named in `docs/research/loft-lessons.md`).
+    - Loft lessons: L76, L77, L78, L79.
 
     *Done when:* `cargo xtask validate` runs every case in the lock against its stored reference
     and writes `validation/reports/latest.md`; and a case whose metric has no tolerance, a
@@ -258,10 +245,10 @@
     and more, with twelve tests, four of them L76–L79. Valetudo's northward drift first read 28x
     RocketPy's: hpr's gravity had a horizontal part RocketPy's lacks (issue #27).
 
-  - [x] **M2.1b Whole flights against RocketPy, same-drag.**
-    - A `validation/oracles/rocketpy/flight.py` generator (M2.1b1) and a `Flight::WholeFlight`
-      case variant taking the oracle's `C_D0(M)` through `Simulation::with_drag_table` (M2.1b2).
-    - Loft lessons: L75 (tests named in `docs/research/loft-lessons.md`).
+  - [x] **M2.1b Whole flights against RocketPy, same-drag:** a
+    `validation/oracles/rocketpy/flight.py` generator (M2.1b1) and a `Flight::WholeFlight` case
+    variant taking the oracle's `C_D0(M)` through `Simulation::with_drag_table` (M2.1b2).
+    - Loft lessons: L75.
 
     *Done when:* split below into M2.1b1 and M2.1b2; M2.1b2 carries M2.1b's three bullets.
 
@@ -276,10 +263,10 @@
       apogees 779 to 3,623 m AGL, Prometheus to Mach 1.014. The oracle's own step-size cliff
       (thrust(0) = 0, an unbounded step) was fixed by bounding `max_time_step` (issue #33).
 
-    - [x] **M2.1b2 The whole-flight cases.**
-      - A `Flight::WholeFlight` case variant beside `RecoveryDescent`, taking the case's `C_D0(M)`
-        through `Simulation::with_drag_table`, and the five cases in the lock.
-      - Loft lessons: L75 (tests named in `docs/research/loft-lessons.md`).
+    - [x] **M2.1b2 The whole-flight cases:** a `Flight::WholeFlight` case variant beside
+      `RecoveryDescent`, taking the case's `C_D0(M)` through `Simulation::with_drag_table`, and the
+      five cases in the lock.
+      - Loft lessons: L75.
 
       *Done when:* at least 5 whole-flight cases run in the lock and pass their same-drag
       tolerances, with each metric's tolerance argued in the case file;
@@ -291,10 +278,9 @@
       unscored until issue #50 (M2.1d3); Prometheus was a checked `M ≥ 1` gap until M1.8a. The
       comparison flies RocketPy's gravity, atmosphere, rail and thrust.
 
-  - [x] **M2.1c Predicted mode, CI and regeneration.**
-    - The same cases flown with hpr's own aero, reported beside the same-drag ones.
-    - A CI job that runs `cargo xtask validate` against the stored references, and a separate,
-      manually triggered workflow that regenerates them.
+  - [x] **M2.1c Predicted mode, CI and regeneration:** the same cases flown with hpr's own aero,
+    reported beside the same-drag ones; a CI job that runs `cargo xtask validate` against the
+    stored references, and a separate, manually triggered workflow that regenerates them.
     *Done when:* split below into M2.1c1 and M2.1c2, which carry M2.1c's three bullets between
     them (the first in M2.1c2, the other two in M2.1c1).
 
@@ -312,11 +298,11 @@
       Six `predicted-*` cases, 3% targets: 56 of 75 within; Valetudo and NDRT 2020 +10% in apogee;
       misses pinned.
 
-  - [x] **M2.1d The time-series RMS and the path in wind.**
-    - The two items of M2.1's list that M2.1a to M2.1c leave open: the time-series RMS after
-      alignment (each whole-flight fixture already carries its series), and the landing offset,
-      reported but not scored until issue #50 finds why hpr turns into the wind less than RocketPy.
-    *Done when:* split below into M2.1d1 to M2.1d3, which carry these two bullets between them.
+  - [x] **M2.1d The time-series RMS and the path in wind:** the two items of M2.1's list that
+    M2.1a to M2.1c leave open — the time-series RMS after alignment (each whole-flight fixture
+    already carries its series), and the landing offset, reported but not scored until issue #50
+    finds why hpr turns into the wind less than RocketPy. *Done when:* split below into M2.1d1 to
+    M2.1d3, which carry these two bullets between them.
 
     - [x] **M2.1d1 The time-series RMS.** *Done when:* every whole-flight case reports its
       time-series RMS after alignment against the reference's series, gated with its tolerance
@@ -344,7 +330,7 @@
   - CP shift with Mach.
   - Pitch, yaw and roll damping; roll forcing from cant.
   - Extend the M1.5 override tables to CNα and CP vs Mach and AoA, importable from RASAero CSV.
-  - Loft lessons: L7, L17, L18 (tests named in `docs/research/loft-lessons.md`).
+  - Loft lessons: L7, L17, L18.
   *Done when:*
   - Cd vs Mach is within 10% of RocketPy's RASAero CSVs across Mach 0.1–2.0 for the available
     rockets. Per-band errors are in the report.
@@ -354,17 +340,14 @@
   Split into M1.8a to M1.8e. The measured reference throughout is NASA's Arcas Robin wind-tunnel
   model: TN D-4013 (Mach 0.6–1.2) and TN D-4014 (Mach 1.5–4.63).
 
-  - [x] **M1.8a Normal force and centre of pressure through Mach 1.**
-    - Fin slope through the transonic region to supersonic linear theory, and the fin CP shift
-      with Mach. The normal force accepts Mach numbers past 1, so a flight on a drag table flies
-      through Mach 1. Loft lesson L7.
-    *Done when:*
-    - L7's test passes: the fin slope and CP are Barrowman's at Mach 0 and change with Mach.
-    - A committed fixture, pinned by a test, holds hpr's `C_Nα` and CP against two references:
-      the Arcas Robin measurements at every Mach they give, and RASAero II's Calisto export from
-      Mach 0.1 to 2.0. Targets, set before measuring: CP within 0.5 calibers, `C_Nα` within 15%.
-      Every miss is explained.
-    - The same-drag Prometheus 2022 case flies through Mach 1 and passes its tolerances.
+  - [x] **M1.8a Normal force and centre of pressure through Mach 1:** fin slope through the
+    transonic region to supersonic linear theory, and the fin CP shift with Mach. The normal force
+    accepts Mach numbers past 1, so a flight on a drag table flies through Mach 1. Loft lesson L7.
+    *Done when:* L7's test passes (the fin slope and CP are Barrowman's at Mach 0 and change with
+    Mach); a committed fixture, pinned by a test, holds hpr's `C_Nα` and CP against the Arcas Robin
+    measurements at every Mach they give and RASAero II's Calisto export from Mach 0.1 to 2.0,
+    against targets set before measuring — CP within 0.5 calibers, `C_Nα` within 15% — with every
+    miss explained; and the same-drag Prometheus 2022 case flies through Mach 1 and passes.
 
     *Result (ADR-027):* met. Linear theory from `M_s`, a join from Mach 0.8. L7 passes; 37 rows
     pinned, 16 outside the targets, explained. Mach 1.5–2.96: `C_Nα` −13.4% to +3.3%, CP within
@@ -559,7 +542,8 @@
       measured on both sides. *Result:* met (ADR-050) — the edges are the corner's **crossing** and
       **balance**, solved from its own state, the reduction is read there, so both switches go. What
       is left: ADR-050.
-    - [ ] [blocked] **M1.8e16 The blunt tip's handover, past 24°** (the rest of the old e13, ADR-044;
+    - [ ] [blocked] **M1.8e16 The blunt tip's handover, past 24°** (the rest of the old e13,
+      ADR-044;
       the next free number, so the flare and the step keep theirs). On issue #108; see `STATUS.md`.
       *Done when:* the vertical-tip switch is gone or measured again, fixtures and the guide moving
       together; and, ahead of that, issue #108 closed — a rule for the loading through a crossing
@@ -571,8 +555,7 @@
     simulation results.
   - Unknown content is kept in `extensions.x-openrocket` for a lossless round trip, and warnings
     are graceful, never failures.
-  - Loft lessons: L49, L56, L57, L58, L59, L60, L61, L62, L63, L64, L65, L66 (tests named in
-    `docs/research/loft-lessons.md`).
+  - Loft lessons: L49, L56, L57, L58, L59, L60, L61, L62, L63, L64, L65, L66.
 
   *Done when:*
   - Every `.ork` in `refs/loft-fixtures` and the OR example set imports with zero errors.
@@ -584,8 +567,8 @@
   after it walks that tree.
   - [x] **M3.1a The container and the design document.** Sniff zip, gzip and raw XML by their first
     bytes; take the design out of the archive and keep every other entry; read the XML into a tree
-    that keeps everything the file said, with its schema version and its creator; warn rather than
-    fail; never crash. Loft lesson L56. *Done when:* every `.ork` in the reference library and in
+    that keeps everything the file said, with its schema version and creator; warn, never crash.
+    Loft lesson L56. *Done when:* every `.ork` in the reference library and in
     the OpenRocket jar's example set either reads or is shown by a second XML parser not to be
     well-formed; each one written back out and read again gives the same document; `cargo xtask ork`
     prints those counts and writes the per-file detail to a gitignored `corpus-out/`; and
@@ -622,9 +605,26 @@
       285 body components, 81 automatic radii marked; the 3 left need parts off the spine. A
       shoulder of no wall thickness reads as solid and an unstated `shapeclipped` as clipped, with a
       warning each, for M2.2's oracle to settle.
-    - [ ] **M3.1b3 The parts on and inside the body**, with their positions, what they take from
-      their parents, and a sourced finish (L49, L60, L61). *Done when:* the parent's bullets are
-      met, those lessons' tests live.
+    - [x] **M3.1b3 The parts on and inside the body**, with their positions, what they take from
+      their parents, and a sourced finish (L49, L60, L61). *Done when:* every part OpenRocket
+      writes on or inside a body component is read into an `hpr_design` part or left out with its
+      reason; those three lessons' named tests are live; and `cargo xtask ork` says how many parts
+      were read, how many left out and why. *Result:* met (ADR-053). 765 parts of nine kinds over
+      the 73 designs that lay out, against 285 body components, with 327 automatic dimensions
+      marked and 5 parts left out with a reason (the guide's `.ork` page breaks them down). `.ork`
+      angles are **degrees** (86 exceed 2π); `radialposition` and `radiusoffset` are read on the
+      parts that carry them, which no element carries both of, closing ADR-052's open question
+      without its source; the five finish words take their author's published heights (500, 150,
+      60, 20, 2 µm), `polished` flagged as possibly moved in OpenRocket 23.09; a tube of no wall
+      carries no mass. New oracle: a cached `auto` is OpenRocket's own answer, and hpr matches 67
+      of the 71 that cache one — the 4 apart are one design's stale cache, contradicting its own
+      others. Issues #130 to #132 fixed bar a flipped nose cone and a shape parameter's range.
+    - [ ] **M3.1b4 The designs that still do not lay out.** Three of the 76: one holds no `<rocket>`
+      with components in it at all (a demonstration file carrying only a simulation), and two have
+      a chain of automatic radii with no fixed radius anywhere to resolve against, one caching a
+      number and one not. *Done when:* each either lays out or is shown to hold no design, with its
+      reason on the `.ork` page; a rule for an unresolvable chain, if there is to be one, rests on
+      something written down rather than on a cached number; and `cargo xtask ork` says so.
   - [ ] **M3.1c Motors, recovery, stages and what OpenRocket last did.** Motor configurations and
     embedded `.rse` curves, recovery devices, stage and pod structure, stored conditions and
     results, and `extensions.x-openrocket` for the rest. Loft lessons L57, L64, L65, L66.
@@ -638,7 +638,7 @@
     corpus.
   - The stored results inside the `.ork` files are used as a second reference.
   - The deferred M1.4 mass/CG checks run against OR values.
-  - Loft lessons: L19, L51, L80, L81, L82, L87 (tests named in `docs/research/loft-lessons.md`).
+  - Loft lessons: L19, L51, L80, L81, L82, L87.
   *Done when:*
   - At least 20 designs are in the report with an error distribution (apogee, max velocity,
     stability margin, mass, CG).
@@ -649,7 +649,7 @@
   - Stage separation triggers (burnout plus delay, altitude, time); sustainer ignition.
   - Booster tracked through recovery.
   - Clustered motor mounts, with mass and thrust summed and the thrust offset handled.
-  - Loft lessons: L30, L31, L93 (tests named in `docs/research/loft-lessons.md`).
+  - Loft lessons: L30, L31, L93.
   *Done when:*
   - A two-stage design and a cluster design each match OpenRocket within the per-case tolerance.
   - Event ordering tests pass.
@@ -659,7 +659,7 @@
   - Optimum ejection delay; max q; flutter velocity and margin (primary source cited).
   - Landing point in lat/lon.
   - Exports: CSV, JSON, Parquet (feature), KML and GeoJSON.
-  - Loft lessons: L32, L33, L34, L35, L94 (tests named in `docs/research/loft-lessons.md`).
+  - Loft lessons: L32, L33, L34, L35, L94.
   *Done when:*
   - Metrics are unit-tested.
   - Exported files are validated (GeoJSON by schema, KML by parsing).
@@ -669,7 +669,7 @@
   - Cases from the RocketPy flight data with their ERA5 environments, which needs a weather-file
     reader: a netCDF reader or a documented conversion.
   - Also the corpus flights that have logs.
-  - Loft lessons: L83 (tests named in `docs/research/loft-lessons.md`).
+  - Loft lessons: L83.
   *Done when:*
   - At least 6 real flights are in the report, with apogee error and altitude-trace RMS.
   - Mean absolute apogee error is reported against the 5% target.
@@ -677,7 +677,7 @@
 
 - [ ] **M2.4 Accuracy census gate.** Generate a summary census (a README table and badge) from the
   report. CI fails on any per-case regression beyond tolerance.
-  - Loft lessons: L84, L85, L86, L88 (tests named in `docs/research/loft-lessons.md`).
+  - Loft lessons: L84, L85, L86, L88.
   *Done when:* a deliberately perturbed drag coefficient on a throwaway draft PR makes CI fail.
   The failing run is linked from the real PR's description, and the throwaway PR is closed with
   `gh pr close --delete-branch`.
@@ -722,7 +722,7 @@
 - [ ] **M4.1 Facade API.** The `hpr` crate offers a RocketPy-like builder (`Environment`, `Motor`,
   `Rocket`, `Flight`) plus trait-based custom models. Add `examples/` (at least 4) and a rustdoc
   guide.
-  - Loft lessons: L95 (tests named in `docs/research/loft-lessons.md`).
+  - Loft lessons: L95.
   *Done when:*
   - The examples run in CI.
   - rustdoc has zero warnings.
@@ -740,7 +740,7 @@
   present.
 
 - [ ] **M3.2 OpenRocket `.ork` export** (schema 1.10).
-  - Loft lessons: L67, L68 (tests named in `docs/research/loft-lessons.md`).
+  - Loft lessons: L67, L68.
   *Done when:*
   - `.ork` → hpr → `.ork` → OR 24.12 (oracle) loads every corpus design.
   - OR re-simulation of the exported file matches the original's within 0.5% apogee.
@@ -815,7 +815,7 @@
     tolerances), wind, launch angle, deployment delays.
   - Landing ellipses at confidence levels; apogee distribution.
   - Sensitivity analysis (Morris screening and Sobol indices).
-  - Loft lessons: L52, L53, L54, L55, L96 (tests named in `docs/research/loft-lessons.md`).
+  - Loft lessons: L52, L53, L54, L55, L96.
   *Done when:*
   - Results are bit-reproducible for the same seed.
   - The ellipse math is tested against analytic Gaussians.
@@ -870,13 +870,13 @@
 ## Phase 4: More formats and embeddings
 
 - [ ] **M3.4 RockSim `.rkt` import/export** (clean room, from the RockSim XML doc and samples).
-  - Loft lessons: L69, L70, L71 (tests named in `docs/research/loft-lessons.md`).
+  - Loft lessons: L69, L70, L71.
   *Done when:* the corpus `.rkt` files import, and the exports reopen in our importer with
   semantic equality.
 
 - [ ] **M3.5 RASAero `.CDX1` import/export** (from samples only). Fix the Loft `<Location>` bug
   class.
-  - Loft lessons: L72, L73, L74 (tests named in `docs/research/loft-lessons.md`).
+  - Loft lessons: L72, L73, L74.
   *Done when:* the corpus `.CDX1` files import with overall length within 0.5% of the stated
   values.
 
@@ -956,7 +956,7 @@ up in `docs/research/`.
     sizing).
   - Auto-size parachutes to a target descent rate.
   - Suggestions with reasons.
-  - Loft lessons: L97 (tests named in `docs/research/loft-lessons.md`).
+  - Loft lessons: L97.
   *Done when:* every template simulates and passes its own checks, and each check has
   positive/negative tests.
 

@@ -34,6 +34,12 @@ use crate::solids::{Wall, revolve};
 
 /// A hollow cylinder of `density` on the axis with its forward end at the origin. A thickness
 /// equal to the outer radius gives a solid cylinder.
+///
+/// A thickness of **zero** is allowed, and gives a cylinder of no mass. That is not a mistake
+/// waiting to happen: a tube whose inner radius equals its outer radius is a real thing to say
+/// about a part, imported designs say it, and the formula below already answers it correctly.
+/// Refusing it would leave a reader no choice but to invent a wall — a solid coupler filling a
+/// 50 mm airframe for 180 mm weighs a few hundred grams that the design never had.
 pub(crate) fn hollow_cylinder(
     part: &'static str,
     density_kg_m3: f64,
@@ -43,7 +49,7 @@ pub(crate) fn hollow_cylinder(
 ) -> Result<MassProperties, DesignError> {
     check_dimension("length", length_m, false)?;
     check_dimension("outer radius", outer_radius_m, false)?;
-    check_dimension("wall thickness", thickness_m, false)?;
+    check_dimension("wall thickness", thickness_m, true)?;
     if thickness_m > outer_radius_m {
         return Err(DesignError::Geometry(format!(
             "{part}: wall thickness {thickness_m} m exceeds the outer radius {outer_radius_m} m"

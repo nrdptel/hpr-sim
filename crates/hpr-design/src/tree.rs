@@ -395,8 +395,9 @@ pub enum AutoDimension {
     /// A nose cone's base radius: the next body component's forward radius.
     BaseRadius,
     /// A body tube's outer radius: the previous body component's aft radius, or, when that can't
-    /// be resolved, the next one's forward radius. A centering ring's outer radius: its parent's
-    /// inner radius.
+    /// be resolved, the next one's forward radius. A centering ring's or inner tube's outer
+    /// radius: its parent's inner radius, which is how a coupler or an engine block fills the tube
+    /// it sits in.
     OuterRadius,
     /// A transition's forward radius: the previous body component's aft radius.
     ForeRadius,
@@ -437,7 +438,10 @@ impl AutoDimension {
         matches!(
             (self, part),
             (A::BaseRadius | A::ShoulderRadius, Part::NoseCone(_))
-                | (A::OuterRadius, Part::BodyTube(_) | Part::CenteringRing(_))
+                | (
+                    A::OuterRadius,
+                    Part::BodyTube(_) | Part::CenteringRing(_) | Part::InnerTube(_)
+                )
                 | (
                     A::ForeRadius | A::AftRadius | A::ForeShoulderRadius | A::AftShoulderRadius,
                     Part::Transition(_)
@@ -1180,20 +1184,37 @@ fn finish(
         previous_aft = Some(fore + length);
     }
 
+    let bore = |id: &str| {
+        p_inner.ok_or_else(|| {
+            tree(
+                id,
+                format!("an automatic radius needs a tube's inner radius, and a {p_kind} has none"),
+            )
+        })
+    };
+    // Automatic outer radii come first, in a pass of their own. They need nothing but the parent's
+    // bore, while a ring's automatic *inner* radius reads its siblings' outer radii — so resolving
+    // both in one pass would give a ring whose bore depended on whether the tube inside it was
+    // written before or after it. That is [Loft lesson L60][lessons], and the reason this is two
+    // passes rather than one.
+    //
+    // [lessons]: https://github.com/nrdptel/hpr-sim/blob/main/docs/research/loft-lessons.md
+    let mut resolved: Vec<Part> = node.children.iter().map(|c| c.part.clone()).collect();
+    for (part, child) in resolved.iter_mut().zip(&node.children) {
+        if child.auto.contains(&AutoDimension::OuterRadius) {
+            match part {
+                Part::CenteringRing(ring) => ring.outer_radius_m = bore(&child.id)?,
+                Part::InnerTube(tube) => tube.outer_radius_m = bore(&child.id)?,
+                _ => {}
+            }
+        }
+    }
+
     let mut parts = vec![own];
     for (k, child) in node.children.iter().enumerate() {
         let (fore, length) = stations[k];
-        let mut part = child.part.clone();
-        let parent_inner = || {
-            p_inner.ok_or_else(|| {
-                tree(
-                    &child.id,
-                    format!(
-                        "an automatic radius needs a tube's inner radius, and a {p_kind} has none"
-                    ),
-                )
-            })
-        };
+        let mut part = resolved[k].clone();
+        let parent_inner = || bore(&child.id);
         // A packed part fills the parent's bore on its side of the parent's axis.
         let packed = |packing: &mut crate::parts::Packing| -> Result<(), DesignError> {
             let (x, y) = (
@@ -1212,16 +1233,14 @@ fn finish(
         };
         for auto in &child.auto {
             match (auto, &mut part) {
-                (AutoDimension::OuterRadius, Part::CenteringRing(ring)) => {
-                    ring.outer_radius_m = parent_inner()?;
-                }
+                // Already done in the pass above.
+                (AutoDimension::OuterRadius, _) => {}
                 (AutoDimension::InnerRadius, Part::CenteringRing(ring)) => {
                     let aft = fore + length;
-                    ring.inner_radius_m = node
-                        .children
+                    ring.inner_radius_m = resolved
                         .iter()
                         .zip(&stations)
-                        .filter_map(|(sibling, &(s_fore, s_length))| match &sibling.part {
+                        .filter_map(|(sibling, &(s_fore, s_length))| match sibling {
                             Part::InnerTube(tube)
                                 if tube.radial_offset_m == 0.0
                                     && s_fore.max(fore) < (s_fore + s_length).min(aft) =>
