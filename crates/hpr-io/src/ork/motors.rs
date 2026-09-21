@@ -335,6 +335,8 @@ pub(super) struct MountRead {
 
 /// Reads the `<motormount>` of `element`, a body tube or inner tube at `at`, if it has one.
 pub(super) fn mount(element: &Element, at: &str, warnings: &mut Vec<Warning>) -> Option<MountRead> {
+    super::reads::note(element, "motormount");
+    super::reads::note(element, "clusterconfiguration");
     let mount = element.child("motormount")?;
     let here = format!("{at}/motormount");
     let mut values = Values::new(mount, &here, warnings);
@@ -478,6 +480,7 @@ pub(super) fn read(
 ) -> Motors {
     let at = "openrocket/rocket";
     let mut configurations: Vec<MotorConfiguration> = Vec::new();
+    super::reads::note(rocket_element, "motorconfiguration");
     for element in rocket_element.children_named("motorconfiguration") {
         let Some(id) = configid(element) else {
             warnings.push(Warning::new(
