@@ -199,11 +199,18 @@ fn one(
     let finish = finish(&mut values);
     let (overrides, include_children) = overrides(&mut values);
     radial_offset_on_the_surface(&mut values, &part);
+    // Only a tube holds other parts. `hpr-design` says the same, so anything written inside
+    // another kind is said out loud here rather than tallied with the pods, whose tally carries a
+    // message about a spine of their own. Nothing in the reference library does this.
     let children = if matches!(part, Part::InnerTube(_)) {
         children(element, &part, at, ids, skipped, warnings)
     } else {
-        for child in subcomponents(element) {
-            skipped.push(child.name.clone());
+        if subcomponents(element).next().is_some() {
+            let (kind, inside) = (spoken(&part), and_what_was_inside(element));
+            values.warn_at(
+                WarningKind::Skipped,
+                format!("a {kind} holds no parts in hpr; it was read without{inside}"),
+            );
         }
         Vec::new()
     };
