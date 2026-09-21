@@ -17,6 +17,7 @@ pub(crate) struct RecoveryTally {
     unread: BTreeMap<String, usize>,
     stages: usize,
     stages_separating: usize,
+    separations_not_read: usize,
     separation_events: BTreeMap<String, usize>,
     separation_overrides: usize,
     warnings: usize,
@@ -49,6 +50,7 @@ impl RecoveryTally {
             *self.unread.entry(device.inside.clone()).or_default() += 1;
         }
         self.stages += design.value.rocket.stages.len();
+        self.separations_not_read += recovery.unread_separations.len();
         self.stages_separating += recovery.separations.len();
         for stage in &recovery.separations {
             let event = stage
@@ -62,7 +64,11 @@ impl RecoveryTally {
         let warnings: Vec<Value> = design
             .warnings
             .iter()
-            .filter(|w| w.at.contains("/deployment") || w.at.contains("/separation"))
+            .filter(|w| {
+                ["/deployment", "/drag", "/separation"]
+                    .iter()
+                    .any(|segment| w.at.contains(segment))
+            })
             .map(|w| json!({ "at": w.at, "says": w.message }))
             .collect();
         self.warnings += warnings.len();
@@ -87,6 +93,7 @@ impl RecoveryTally {
             "stages_stating_a_separation": self.stages_separating,
             "separation_events": self.separation_events,
             "separation_overrides": self.separation_overrides,
+            "separations_in_parallel_stages_not_read": self.separations_not_read,
             "warnings": self.warnings,
         })
     }
@@ -115,6 +122,10 @@ impl RecoveryTally {
             self.stages,
             listed(&self.separation_events, ", "),
             self.separation_overrides
+        );
+        println!(
+            "  stage separations left out, in parallel stages hpr does not read: {}",
+            self.separations_not_read
         );
         println!("  warnings reading recovery settings: {}", self.warnings);
     }

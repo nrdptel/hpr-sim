@@ -61,8 +61,8 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
 ## Done log (newest first, keep about 15)
 
 - 2026-09-21: M3.1c2 A `.ork` design's recovery and separation, read not flown (ADR-056): 137
-  devices, 2 left out in pods; 18 of 93 stages separate. A committed probe measures OpenRocket's
-  event words, `cd auto` (0.8) and that a deploy height is above ground; above apogee it never opens.
+  devices, 2 left out in pods; 18 of 93 stages separate. A committed probe measures its event words,
+  `cd auto` (0.8), a deploy height above ground; set above apogee, one did not open.
 - 2026-09-21: M3.1c1 A `.ork` design's motors (ADR-055): 206 motors in 174 configurations, 6 left
   out in pods and parallel stages; a curve from the file's own `.rse` first, the bundled catalog
   second. The rocket flies a configuration only if every motor has a curve and lights at launch, on

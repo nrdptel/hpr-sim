@@ -120,15 +120,17 @@
     {
       "pad_above_sea_m": 1000.0,
       "deploy_altitude_m": 30.0,
-      "apogee_above_ground_m": 51.126,
+      "apogee_above_ground_m": 51.66,
+      "reached_the_ground": true,
       "deployed": true,
-      "at_deployment_above_ground_m": 29.596,
-      "at_deployment_above_sea_m": 1029.596
+      "at_deployment_above_ground_m": 29.87,
+      "at_deployment_above_sea_m": 1029.87
     },
     {
       "pad_above_sea_m": 1000.0,
       "deploy_altitude_m": 100.0,
-      "apogee_above_ground_m": 51.135,
+      "apogee_above_ground_m": 51.66,
+      "reached_the_ground": true,
       "deployed": false
     }
   ]

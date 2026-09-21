@@ -14,13 +14,17 @@
 //! ones OpenRocket 24.12 writes, each measured by setting it through the program's public setters
 //! and saving (`validation/oracles/openrocket/events.py`, whose results
 //! `validation/fixtures/ork/openrocket-events.json` holds and a test reads). The same run shows a
-//! deploy height is above the ground, not the sea, and that a parachute set to open at a height the
-//! rocket never reaches does not open at all.
+//! deploy height is above the ground, not the sea, and that in its run a parachute set to open
+//! above apogee did not open at all.
 //!
-//! **Drag.** `<cd>auto</cd>` leaves the drag coefficient to OpenRocket: 0.8 for a parachute, which
-//! its technical documentation gives as the default (section 4.2.5) and the same run measures, and
-//! for a streamer a value from the strip's size (the documentation's appendix C). This reader keeps
-//! the word, and the number when one is stated; choosing the model is the flight's business.
+//! A per-configuration setting replacing the three one at a time is hpr's reading: OpenRocket was
+//! not probed on a file that leaves one out.
+//!
+//! **Drag.** `<cd>auto</cd>` leaves the drag coefficient to OpenRocket: 0.8 for a parachute, on the
+//! canopy's area, which its technical documentation gives as the default (section 4.2.5) and the
+//! same run reads back, and for a streamer a value from the strip's length and material, on the
+//! strip's area (the documentation's appendix C). This reader keeps the word, and the number when
+//! one is stated; choosing the model is the flight's business.
 //!
 //! Nothing here flies a device: that is `hpr-sim`'s, which `hpr-io` does not depend on.
 //!
@@ -36,6 +40,14 @@ use super::document::Element;
 use super::motors::stage_of;
 use super::value::{Dimension, Values};
 use super::warning::{Warning, WarningKind};
+
+/// The path segment every warning about when a device deploys carries, so that
+/// [`super::design`] can tell it from one about the airframe: recovery is read, not flown.
+pub(super) const DEPLOYMENT: &str = "/deployment";
+/// The same, for a device's drag coefficient.
+pub(super) const DRAG: &str = "/drag";
+/// The same, for a stage's separation.
+pub(super) const SEPARATION: &str = "/separation";
 
 /// What deploys a recovery device, as `<deployevent>` names it.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -152,7 +164,7 @@ impl SeparationEvent {
 /// or a stage separates. Each is `None` where the file does not say.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[non_exhaustive]
-pub struct Trigger<E> {
+pub struct EventSetting<E> {
     /// The event.
     pub event: Option<E>,
     /// The height, m: above the ground for a deployment (measured; see the module docs).
@@ -161,7 +173,7 @@ pub struct Trigger<E> {
     pub delay_s: Option<f64>,
 }
 
-impl<E: Clone> Trigger<E> {
+impl<E: Clone> EventSetting<E> {
     /// This trigger with each field `over` states put in place of this one's.
     fn overridden_by(&self, over: &Self) -> Self {
         Self {
@@ -173,10 +185,10 @@ impl<E: Clone> Trigger<E> {
 }
 
 /// When a recovery device deploys.
-pub type Deployment = Trigger<DeployEvent>;
+pub type Deployment = EventSetting<DeployEvent>;
 
 /// When a stage separates.
-pub type Separation = Trigger<SeparationEvent>;
+pub type Separation = EventSetting<SeparationEvent>;
 
 /// Which kind of recovery device.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
@@ -261,6 +273,8 @@ pub struct Recovery {
     pub separations: Vec<StageSeparation>,
     /// The parachutes and streamers in parts hpr does not read.
     pub unread: Vec<UnreadDevice>,
+    /// The parallel stages that state a separation, which hpr does not read yet.
+    pub unread_separations: Vec<UnreadDevice>,
 }
 
 /// A device's settings, read while the walk reads its component.
@@ -288,15 +302,16 @@ pub(super) fn device(element: &Element, at: &str, warnings: &mut Vec<Warning>) -
     } else {
         DeviceKind::Parachute
     };
-    // Warnings here are about when the device opens, not its shape, and say so in their path.
-    let here = format!("{at}/deployment");
-    let cd = Values::new(element, &here, warnings).dimension(&["cd"]);
+    // Warnings here are about when the device opens and how much drag it states, not its shape,
+    // and say so in their path.
+    let cd = Values::new(element, &format!("{at}{DRAG}"), warnings).dimension(&["cd"]);
     let (deployment, configurations) = trigger(
         element,
-        &here,
+        &format!("{at}{DEPLOYMENT}"),
         "deploy",
         "deploymentconfiguration",
         DeployEvent::parse,
+        |event| !matches!(event, DeployEvent::Other(_)),
         warnings,
     );
     DeviceRead {
@@ -314,13 +329,13 @@ pub(super) fn separation(
     at: &str,
     warnings: &mut Vec<Warning>,
 ) -> Option<SeparationRead> {
-    let here = format!("{at}/separation");
     let (separation, configurations) = trigger(
         element,
-        &here,
+        &format!("{at}{SEPARATION}"),
         "separation",
         "separationconfiguration",
         SeparationEvent::parse,
+        |event| !matches!(event, SeparationEvent::Other(_)),
         warnings,
     );
     let empty = separation.event.is_none()
@@ -341,14 +356,37 @@ fn trigger<E: Clone>(
     prefix: &str,
     per: &str,
     parse: fn(&str) -> E,
+    known: fn(&E) -> bool,
     warnings: &mut Vec<Warning>,
-) -> (Trigger<E>, BTreeMap<String, Trigger<E>>) {
+) -> (EventSetting<E>, BTreeMap<String, EventSetting<E>>) {
+    let tag = format!("{prefix}event");
     let own = |element: &Element, at: &str, warnings: &mut Vec<Warning>| {
         let mut values = Values::new(element, at, warnings);
-        Trigger {
-            event: values
-                .word(&[&format!("{prefix}event")])
-                .map(|text| parse(&text)),
+        let event = match values.word(&[&tag]) {
+            None => None,
+            Some(text) if text.is_empty() => {
+                values.warn_at(
+                    WarningKind::Dropped,
+                    format!("`{tag}` is empty; it was read as not stated"),
+                );
+                None
+            }
+            Some(text) => {
+                let event = parse(&text);
+                if !known(&event) {
+                    values.warn_at(
+                        WarningKind::Unusual,
+                        format!(
+                            "`{tag}` says `{text}`, a word OpenRocket 24.12 does not write; it \
+                             was kept as written"
+                        ),
+                    );
+                }
+                Some(event)
+            }
+        };
+        EventSetting {
+            event,
             altitude_m: values.number(&[&format!("{prefix}altitude")]),
             delay_s: values.number(&[&format!("{prefix}delay")]),
         }
@@ -420,14 +458,23 @@ pub(super) fn read(
         })
         .collect();
     let mut unread = Vec::new();
+    let mut unread_separations = Vec::new();
     for (index, child) in subcomponents(rocket_element).enumerate() {
         let path = format!("openrocket/rocket/{}[{index}]", child.name);
-        unread_devices(child, &path, None, &placed, &mut unread);
+        unread_devices(
+            child,
+            &path,
+            None,
+            &placed,
+            &mut unread,
+            &mut unread_separations,
+        );
     }
     Recovery {
         devices: read_devices,
         separations: read_separations,
         unread,
+        unread_separations,
     }
 }
 
@@ -439,11 +486,22 @@ fn unread_devices(
     inside: Option<&str>,
     read: &BTreeSet<String>,
     found: &mut Vec<UnreadDevice>,
+    separations: &mut Vec<UnreadDevice>,
 ) {
     let inside = inside.or(match element.name.as_str() {
         tag @ ("podset" | "parallelstage") => Some(tag),
         _ => None,
     });
+    let states_a_separation = ["separationevent", "separationconfiguration"]
+        .iter()
+        .any(|tag| element.child(tag).is_some());
+    if element.name == "parallelstage" && states_a_separation {
+        separations.push(UnreadDevice {
+            at: at.to_owned(),
+            tag: element.name.clone(),
+            inside: inside.unwrap_or(element.name.as_str()).to_owned(),
+        });
+    }
     if matches!(element.name.as_str(), "parachute" | "streamer") && !read.contains(at) {
         found.push(UnreadDevice {
             at: at.to_owned(),
@@ -453,6 +511,6 @@ fn unread_devices(
     }
     for (index, child) in subcomponents(element).enumerate() {
         let path = format!("{at}/{}[{index}]", child.name);
-        unread_devices(child, &path, inside, read, found);
+        unread_devices(child, &path, inside, read, found, separations);
     }
 }

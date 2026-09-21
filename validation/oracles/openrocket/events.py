@@ -12,8 +12,8 @@ things M3.1c2 reads a recovery device by:
 - the drag coefficient an automatic streamer is given, for three strip sizes;
 - whether `<deployaltitude>` is above the ground or above sea level, and what happens when the
   rocket never climbs that high: the example's parachute is set to deploy at 30 m, then at 100 m,
-  on a pad 1,000 m above sea level, the flight is simulated, and the height at the deployment
-  event, if there is one, is read both ways.
+  on a pad 1,000 m above sea level in calm air, the flight is simulated, and the height at the
+  deployment event, if there is one, is read both ways.
 
 OpenRocket is run, never read: its source is GPL, and nothing here comes from it. The class and
 method names used are the public API that `javap` prints for the jar. Only numbers and words are
@@ -47,6 +47,7 @@ SINGLE = "datafiles/examples/A simple model rocket.ork"
 STAGED = "datafiles/examples/Two stage high power rocket.ork"
 STREAMERS_M = [(0.5, 0.05), (1.0, 0.1), (1.5, 0.05)]
 PAD_ASL_M = 1000.0
+SEED = 1
 # Below the example's apogee (about 51 m), and above it.
 DEPLOY_ALTITUDES_M = [30.0, 100.0]
 
@@ -60,7 +61,14 @@ def start():
             break
     else:
         sys.exit(f"no JVM library under {home}")
-    jpype.startJVM(jvm, "-Djava.awt.headless=true", classpath=[str(JAR)])
+    # The labels are read in English whatever the machine's language, as the docs quote them.
+    jpype.startJVM(
+        jvm,
+        "-Djava.awt.headless=true",
+        "-Duser.language=en",
+        "-Duser.country=US",
+        classpath=[str(JAR)],
+    )
 
     from com.google.inject import Guice
     from info.openrocket.core.plugin import PluginModule
@@ -225,29 +233,50 @@ def deploy_height(altitude_m):
     deployment.setDeployDelay(0.0)
     simulation = list(document_.getSimulations())[0]
     simulation.getOptions().setLaunchAltitude(PAD_ASL_M)
+    # Calm air and a fixed seed, so that running the probe again writes the same numbers: the
+    # example's own wind is turbulent, and a random seed moves the apogee by centimetres.
+    options = simulation.getOptions()
+    options.setWindSpeedAverage(0.0)
+    options.setWindTurbulenceIntensity(0.0)
+    options.setRandomSeed(SEED)
     simulation.simulate()
     branch = simulation.getSimulatedData().getBranch(0)
     times = list(branch.get(FlightDataType.TYPE_TIME))
     above_ground = list(branch.get(FlightDataType.TYPE_ALTITUDE))
     above_sea = list(branch.get(FlightDataType.TYPE_ALTITUDE_ABOVE_SEA))
+    kinds = [name_of(event.getType()) for event in branch.getEvents()]
     found = {
         "pad_above_sea_m": PAD_ASL_M,
         "deploy_altitude_m": altitude_m,
-        "apogee_above_ground_m": round(max(above_ground), 3),
+        "apogee_above_ground_m": round(max(above_ground), 2),
+        "reached_the_ground": "GROUND_HIT" in kinds,
         "deployed": False,
     }
     for event in branch.getEvents():
         if name_of(event.getType()) == "RECOVERY_DEVICE_DEPLOYMENT":
-            index = min(bisect.bisect_left(times, float(event.getTime())), len(times) - 1)
+            time_s = float(event.getTime())
             found.update(
                 {
                     "deployed": True,
-                    "at_deployment_above_ground_m": round(above_ground[index], 3),
-                    "at_deployment_above_sea_m": round(above_sea[index], 3),
+                    # The heights at the event itself, between the samples either side of it.
+                    "at_deployment_above_ground_m": round(at(times, above_ground, time_s), 2),
+                    "at_deployment_above_sea_m": round(at(times, above_sea, time_s), 2),
                 }
             )
             break
     return found
+
+
+def at(times, values, time_s):
+    """`values` at `time_s`, interpolated linearly between the samples either side."""
+    index = bisect.bisect_left(times, time_s)
+    if index <= 0:
+        return values[0]
+    if index >= len(times):
+        return values[-1]
+    t0, t1 = times[index - 1], times[index]
+    share = 0.0 if t1 == t0 else (time_s - t0) / (t1 - t0)
+    return values[index - 1] + share * (values[index] - values[index - 1])
 
 
 def main():

@@ -974,19 +974,22 @@ one; how many is not measured yet. How this was decided, with the sources in ful
 and when each stage separates, in every configuration. It reads them; it does not fly them yet.
 Turning them into hpr's own [recovery devices](../physics/recovery.md) waits for the flight that
 uses them. Every device and stage in the reference library is read, apart from 2 parachutes inside
-pods.
+pods and the separations of 2 parallel stages, which hpr does not read yet
+([M3.1c4](../decisions-and-roadmap.md#m3-1c4)).
 
 A **deployment** is an event, a height for the event that needs one, and a delay after it. A
 parachute or streamer states its own, and a configuration may change any of the three:
 
-- `<deployevent>ejection</deployevent>`, `<deployaltitude>200.0</deployaltitude>` and
-  `<deploydelay>0.0</deploydelay>` are the device's own.
+- `<deployevent>ejection</deployevent>`, `<deployaltitude>200.0</deployaltitude>` (metres) and
+  `<deploydelay>0.0</deploydelay>` (seconds) are the device's own.
 - `<deploymentconfiguration configid="…">` changes them for one configuration. Whichever of the
-  three it leaves out, the device's own stands, as with a motor's ignition.
+  three it leaves out, hpr keeps the device's own, as it does for a motor's ignition. That is hpr's
+  reading: OpenRocket was not probed on a file that leaves one out.
 
 A stage's **separation** is written the same way, with `<separationevent>`,
 `<separationaltitude>`, `<separationdelay>` and `<separationconfiguration configid="…">`. The stage
-that states it is the lower one, which drops away.
+that states it is the one that drops away: OpenRocket's labels (below) speak of the "current
+stage" and the "upper stage".
 
 ### What the words mean
 
@@ -1015,18 +1018,23 @@ OpenRocket shows. Its results are in `validation/fixtures/ork/openrocket-events.
 
 The same probe measures three things the words do not say:
 
-- **A deploy height is above the ground.** On a pad 1,000 m above sea level, a parachute set to
-  `altitude` 30 m opened at 29.7 m above the ground, 1,029.7 m above the sea.
-- **A height the rocket never reaches opens nothing.** Set to 100 m, on a flight whose apogee was
-  51 m, the parachute never opened. hpr's own altitude trigger opens at apogee instead
+- **A deploy height is above the ground**, meaning the launch site: OpenRocket has no terrain. The
+  probe flies in calm air with a fixed seed, so it writes the same numbers every run. On a pad
+  1,000 m above sea level, a parachute set to `altitude` 30 m opened at 29.9 m above the ground,
+  1,029.9 m above the sea. A height read above the sea would never have been reached.
+- **Set above apogee, it did not open.** Set to 100 m, on a flight whose apogee was 51.7 m, the
+  parachute never opened, and the flight reached the ground. That is one run of one design, not a
+  rule OpenRocket states. hpr's own altitude trigger opens at apogee instead
   ([Recovery](../physics/recovery.md#triggers-lag-and-release)), so the two differ here, and the
   step that flies a `.ork`'s recovery will have to choose.
-- **`<cd>auto</cd>`** is 0.8 for a parachute: OpenRocket's
-  [technical documentation][techdoc] gives 0.8 as the default (section 4.2.5), and the probe
-  measures it. For a streamer it is worked out from the strip's size (the documentation's appendix
-  C): 0.089, 0.060 and 0.050 for strips of 0.5 by 0.05 m, 1.0 by 0.1 m and 1.5 by 0.05 m. OpenRocket
-  [issue #2031](https://github.com/openrocket/openrocket/issues/2031) reports those as far too
-  small. hpr keeps the `auto` or the stated number as the file wrote it.
+- **`<cd>auto</cd>`** is reported as 0.8 for a parachute, on the canopy's area: OpenRocket's
+  [technical documentation][techdoc] gives 0.8 as the default (section 4.2.5), and the probe reads
+  it back. For a streamer it is worked out from the strip's length and material, on the strip's
+  area (appendix C, equations C.4 and C.5): 0.089, 0.060 and 0.050 for strips 0.5, 1.0 and 1.5 m
+  long, in a material of 67 g/m², which the three values imply by equation C.5. The documentation puts that estimate's accuracy at about 20%, and one
+  user's report ([issue #2031](https://github.com/openrocket/openrocket/issues/2031)) finds a
+  2.5 by 44 in streamer's 0.06 far too small. hpr keeps the `auto` or the stated number as the file
+  wrote it.
 
 ### Recovery in the reference library
 
@@ -1040,6 +1048,7 @@ The same probe measures three things the words do not say:
 | deploy event | 77 `ejection`, 35 `apogee`, 18 `altitude`, 6 `lowerstageseparation`, 1 `never` |
 | devices a configuration changes | 9, with 17 changes in all |
 | stages that state a separation | 18 of 93: 12 `ejection`, 4 `upperignition`, 2 `burnout`; 13 changes per configuration |
+| separations left out, in parallel stages hpr does not read yet | 2 |
 
 How this was decided is in [ADR-056][adr-056].
 

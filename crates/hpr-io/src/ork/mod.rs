@@ -51,8 +51,8 @@ pub use motors::{
     OrkMotor, UnreadMotor,
 };
 pub use recovery::{
-    DeployEvent, Deployment, DeviceKind, Recovery, RecoveryDevice, Separation, SeparationEvent,
-    StageSeparation, Trigger, UnreadDevice,
+    DeployEvent, Deployment, DeviceKind, EventSetting, Recovery, RecoveryDevice, Separation,
+    SeparationEvent, StageSeparation, UnreadDevice,
 };
 pub use value::{AXIAL_OFFSET, Dimension, INSTANCE_COUNT, Overrides, Values};
 pub use warning::{Imported, Warning, WarningKind};
@@ -152,7 +152,11 @@ pub fn design(file: &OrkFile) -> Imported<Design> {
     // their paths say so.
     let skipped: Vec<&str> = warnings
         .iter()
-        .filter(|w| !w.at.contains("/deployment") && !w.at.contains("/separation"))
+        .filter(|w| {
+            ![recovery::DEPLOYMENT, recovery::DRAG, recovery::SEPARATION]
+                .iter()
+                .any(|segment| w.at.contains(segment))
+        })
         .map(|w| w.message.as_str())
         .collect();
     let incomplete = match skipped.as_slice() {

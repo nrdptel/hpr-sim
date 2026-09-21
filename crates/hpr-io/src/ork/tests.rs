@@ -2420,7 +2420,10 @@ fn every_event_word_openrocket_writes_is_read() {
         assert!(!matches!(event, SeparationEvent::Other(_)), "{word}");
         assert_eq!(event.as_str(), word);
     }
-    // The same run: an automatic parachute is flown at 0.8, and a deploy height is above ground.
+    // These guard the fixture the docs quote, not the reader: OpenRocket reports an automatic
+    // parachute's drag coefficient as 0.8; a deploy height is above the ground (on a pad 1,000 m
+    // up, set to 30 m, it opens within a metre of 30 m above the ground); and set above apogee, the
+    // parachute never opens on a flight that reaches the ground.
     assert_eq!(
         fixture["drag"]["parachute_automatic_cd"].as_f64(),
         Some(0.8)
@@ -2430,6 +2433,50 @@ fn every_event_word_openrocket_writes_is_read() {
         .as_f64()
         .expect("deployed");
     assert!((above_ground - low["deploy_altitude_m"].as_f64().expect("set")).abs() < 1.0);
+    let high = &fixture["deploy_height"][1];
+    assert!(high["deploy_altitude_m"].as_f64() > high["apogee_above_ground_m"].as_f64());
+    assert_eq!(high["reached_the_ground"].as_bool(), Some(true));
+    assert_eq!(high["deployed"].as_bool(), Some(false));
+}
+
+/// A recovery setting hpr cannot read is not flown, so it does not keep a configuration out of the
+/// air; the same trouble in the parachute's shape does, because that is the airframe.
+#[test]
+fn a_recovery_warning_does_not_ground_a_configuration_but_a_shape_warning_does() {
+    let with_chute = |chute: &str| {
+        motor_design(
+            r#"<motorconfiguration configid="a" default="true"/>"#,
+            "<overhang>0.0</overhang><motor configid='a'><type>single</type>\
+             <manufacturer>Estes</manufacturer><designation>F15</designation>\
+             <diameter>0.029</diameter><length>0.114</length><delay>4.0</delay></motor>",
+            &format!(
+                "<parachute><name>Main</name><id>main</id>\
+                 <axialoffset method='top'>0.0</axialoffset><packedlength>0.05</packedlength>\
+                 <packedradius>0.01</packedradius><cd>auto</cd>\
+                 <material type='surface' density='0.067'>Ripstop nylon</material>{chute}\
+                 <linecount>6</linecount><linelength>0.5</linelength>\
+                 <linematerial type='line' density='0.0018'>Elastic cord</linematerial>\
+                 </parachute>"
+            ),
+        )
+    };
+    let flown = |design: &Design| design.rocket.configurations.len();
+    let late = read_design(
+        with_chute(
+            "<deployevent>Apogee</deployevent><deploydelay>soon</deploydelay>\
+             <diameter>0.6</diameter>",
+        )
+        .as_bytes(),
+    );
+    assert_eq!(flown(&late), 1);
+    assert_eq!(
+        late.recovery.devices[0].deployment.event,
+        Some(DeployEvent::Other("Apogee".to_owned()))
+    );
+    let bad_shape = read_design(
+        with_chute("<deployevent>apogee</deployevent><diameter>wide</diameter>").as_bytes(),
+    );
+    assert_eq!(flown(&bad_shape), 0);
 }
 
 /// A parachute's own deployment, a configuration that changes one of its three settings, the drag
@@ -2524,4 +2571,5 @@ fn recovery_settings_are_read_per_configuration() {
 
     assert_eq!(recovery.unread.len(), 1);
     assert_eq!(recovery.unread[0].inside, "podset");
+    assert!(recovery.unread_separations.is_empty());
 }
