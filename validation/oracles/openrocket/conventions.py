@@ -10,7 +10,9 @@ records its structure (mass, centre of mass, inertias) and its own per-part brea
 `hpr_validate::openrocket::tests` reads the same documents and holds hpr to the answers.
 
 It also records the material OpenRocket gives each kind of part that names none, read through the
-part's public `getMaterial` and `getLineMaterial`.
+part's public `getMaterial` and `getLineMaterial`. M2.2b2 added probes of one tube and one part
+each (every kind of part, fin outlines, sections, a tab, fillets, a cant, rail buttons from each
+end), so that a part's roll inertia is the probe's less the tube's (ADR-062).
 
 OpenRocket is run, never read: its source is GPL, and nothing here comes from it. The class and
 method names used are the public API `javap` prints for the jar. Each probe is saved once, to a
@@ -277,6 +279,136 @@ STAGE_PROBES = {
 }
 
 
+def fins(section="square", extra="", thickness="0.003", outline=("0.1", "0.05", "0.05", "0.05")):
+    """Three trapezoidal fins, 0.1 m below the top of their tube: by default 0.1 m root, and 0.05 m
+    tip, sweep and span; `outline` is root, tip, sweep and span."""
+    root, tip, sweep, span = outline
+    return (
+        f"<trapezoidfinset><name>Fins</name><id>{uid(5)}</id>"
+        '<position type="top">0.1</position><fincount>3</fincount>'
+        f"<rootchord>{root}</rootchord><tipchord>{tip}</tipchord><sweeplength>{sweep}</sweeplength>"
+        f"<height>{span}</height><thickness>{thickness}</thickness>"
+        f"<crosssection>{section}</crosssection>{extra}{MATERIAL}</trapezoidfinset>"
+    )
+
+
+def fillets(radius):
+    return (
+        f"<filletradius>{radius}</filletradius>"
+        '<filletmaterial type="bulk" density="1000.0">Probe</filletmaterial>'
+    )
+
+
+def placed(tag, n, name, body):
+    """A part `tag` 0.1 m below the top of its tube, of the probe material."""
+    return (
+        f"<{tag}><name>{name}</name><id>{uid(n)}</id><position type=\"top\">0.1</position>"
+        f"{body}{MATERIAL}</{tag}>"
+    )
+
+
+def button(end, offset, count):
+    """A 10 mm rail button, or a row of them 0.1 m apart, placed from the tube's `end`."""
+    return (
+        f"<railbutton><name>Button</name><id>{uid(12)}</id>"
+        f'<position type="{end}">{offset}</position><outerdiameter>0.01</outerdiameter>'
+        "<innerdiameter>0.006</innerdiameter><height>0.008</height><baseheight>0.002</baseheight>"
+        f"<flangeheight>0.002</flangeheight><instancecount>{count}</instancecount>"
+        f"<instanceseparation>0.1</instanceseparation>{MATERIAL}</railbutton>"
+    )
+
+
+# Each probe (M2.2b2): one tube and one part, so the part's roll inertia is the probe's less the
+# tube's, and the tube alone is held to OpenRocket's already.
+PART_PROBES = {
+    "a tube and a fin set of square section": fins(),
+    "a tube and a fin set of rounded section": fins("rounded"),
+    "a tube and a fin set of airfoil section": fins("airfoil"),
+    "a tube and a thicker fin set of airfoil section": fins("airfoil", thickness="0.006"),
+    "a tube and a fin set with fillets": fins(extra=fillets("0.005")),
+    "a tube and a fin set with wider fillets": fins(extra=fillets("0.01")),
+    "a tube and a fin set with a tab": fins(
+        extra="<tabheight>0.01</tabheight><tablength>0.05</tablength>"
+        '<tabposition relativeto="front">0.02</tabposition>'
+    ),
+    "a tube and a canted fin set": fins(extra="<cant>5.0</cant>"),
+    "a tube and rectangular fins": fins(outline=("0.1", "0.1", "0.0", "0.05")),
+    "a tube and rectangular fins of twice the chord": fins(outline=("0.2", "0.2", "0.0", "0.05")),
+    "a tube and rectangular fins of twice the span": fins(outline=("0.1", "0.1", "0.0", "0.1")),
+    "a tube and triangular fins": fins(outline=("0.1", "0.0", "0.0", "0.05")),
+    "a tube and an elliptical fin set": placed(
+        "ellipticalfinset", 15, "Elliptical",
+        "<fincount>3</fincount><rootchord>0.1</rootchord><height>0.05</height>"
+        "<thickness>0.003</thickness><crosssection>square</crosssection>",
+    ),
+    "a tube and a freeform fin set": placed(
+        "freeformfinset", 16, "Freeform",
+        "<fincount>3</fincount><thickness>0.003</thickness><crosssection>square</crosssection>"
+        '<finpoints><point x="0.0" y="0.0"/><point x="0.05" y="0.05"/>'
+        '<point x="0.1" y="0.05"/><point x="0.1" y="0.0"/></finpoints>',
+    ),
+    "a tube and an inner tube": inner(),
+    "a tube and a centering ring": placed(
+        "centeringring", 6, "Ring",
+        "<length>0.01</length><outerradius>0.048</outerradius><innerradius>0.02</innerradius>",
+    ),
+    "a tube and a bulkhead": placed(
+        "bulkhead", 7, "Bulkhead", "<length>0.01</length><outerradius>0.048</outerradius>"
+    ),
+    "a tube and a launch lug": lug("0.001"),
+    "a tube and a rail button": placed(
+        "railbutton", 12, "Button",
+        "<outerdiameter>0.01</outerdiameter><innerdiameter>0.006</innerdiameter>"
+        "<height>0.008</height><baseheight>0.002</baseheight><flangeheight>0.002</flangeheight>"
+        "<instancecount>1</instancecount>",
+    ),
+    **{
+        f"a tube and {what} from the {end}": button(end, offset, count)
+        for what, count in [("a rail button", 1), ("a row of two rail buttons", 2)]
+        for end, offset in [("top", "0.1"), ("middle", "0.0"), ("bottom", "-0.1")]
+        if (what, end) != ("a rail button", "top")
+    },
+    "a tube and a parachute": (
+        f"<parachute><name>Chute</name><id>{uid(9)}</id><position type=\"top\">0.1</position>"
+        "<packedlength>0.05</packedlength><packedradius>0.02</packedradius><diameter>0.5</diameter>"
+        "<linecount>6</linecount><linelength>0.5</linelength>"
+        '<material type="surface" density="0.05">Probe</material>'
+        '<linematerial type="line" density="0.002">Probe</linematerial></parachute>'
+    ),
+    "a tube and a parachute with a mass override": (
+        f"<parachute><name>Chute</name><id>{uid(9)}</id><position type=\"top\">0.1</position>"
+        "<packedlength>0.05</packedlength><packedradius>0.02</packedradius><diameter>0.5</diameter>"
+        "<linecount>6</linecount><linelength>0.5</linelength>"
+        '<material type="surface" density="0.05">Probe</material>'
+        '<linematerial type="line" density="0.002">Probe</linematerial>'
+        f"{overrides(mass_kg=0.03)}</parachute>"
+    ),
+    "a tube and a parachute that writes no packed size": (
+        f"<parachute><name>Chute</name><id>{uid(9)}</id><position type=\"top\">0.1</position>"
+        "<diameter>0.5</diameter><linecount>6</linecount><linelength>0.5</linelength>"
+        '<material type="surface" density="0.05">Probe</material>'
+        '<linematerial type="line" density="0.002">Probe</linematerial></parachute>'
+    ),
+    "a tube and a streamer": (
+        f"<streamer><name>Streamer</name><id>{uid(11)}</id><position type=\"top\">0.1</position>"
+        "<packedlength>0.05</packedlength><packedradius>0.01</packedradius>"
+        "<striplength>1.0</striplength><stripwidth>0.05</stripwidth>"
+        '<material type="surface" density="0.05">Probe</material></streamer>'
+    ),
+    "a tube and a shock cord": (
+        f"<shockcord><name>Cord</name><id>{uid(10)}</id><position type=\"top\">0.1</position>"
+        "<packedlength>0.05</packedlength><packedradius>0.01</packedradius>"
+        '<cordlength>1.0</cordlength><material type="line" density="0.002">Probe</material>'
+        "</shockcord>"
+    ),
+    "a tube and a mass component": (
+        f"<masscomponent><name>Mass</name><id>{uid(17)}</id><position type=\"top\">0.1</position>"
+        "<packedlength>0.05</packedlength><packedradius>0.02</packedradius><mass>0.1</mass>"
+        "</masscomponent>"
+    ),
+}
+
+
 def document(parts, stage_tags=""):
     return (
         "<?xml version='1.0' encoding='utf-8'?>\n"
@@ -356,6 +488,11 @@ def main():
     with tempfile.TemporaryDirectory() as scratch:
         everything = [(q, document(parts)) for q, parts in PROBES.items()]
         everything += [(q, document(parts, tags)) for q, (tags, parts) in STAGE_PROBES.items()]
+        everything += [(q, document([tube(children=part)])) for q, part in PART_PROBES.items()]
+        # The body's radius, for the fins' roll inertia: rectangular fins on a tube twice as wide.
+        wide = tube(children=fins(outline=("0.1", "0.1", "0.0", "0.05")))
+        wide = wide.replace("<radius>0.05</radius>", "<radius>0.1</radius>")
+        everything += [("a wider tube and rectangular fins", document([wide]))]
         for k, (question, text) in enumerate(everything):
             probes[question] = measure(text, scratch, f"probe-{k}")
 

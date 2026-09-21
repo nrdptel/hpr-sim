@@ -623,16 +623,19 @@
     17 outside, five causes hpr warns of; roll inertia unexplained (median 2.1%).
   - [ ] **M2.2b OpenRocket's mass conventions** (L51, L87). *Done when:* L51, L87 are live and each
     convention ADR-060 lists, and roll inertia, is hpr's rule or a written departure, M2.2a rerun.
-    Split into b1 to b3 (ADR-061).
+    Split into b1 to b4 (ADR-061, ADR-062).
     - [x] **M2.2b1 What a `.ork` leaves unsaid, and overrides** (L51). *Done when:* a wall-less
       shoulder, a part with no material and inertia under an override are each hpr's rule or a
       written departure, measured on probe designs OpenRocket reads; L51 is live; M2.2a rerun.
       *Result:* met (ADR-061): walls, shoulders and materials read as OpenRocket's; two override
       departures pinned; 61 and 62 of 74 within 1%; 13 outside, each a cluster, fillets or unread.
-    - [ ] **M2.2b2 Clusters, fillets, airfoil fins, unread parts and roll inertia.** *Done when:*
-      each is hpr's rule or a written departure, roll inertia's 2.1% explained or bounded, #151
-      settled, M2.2a rerun.
-    - [ ] **M2.2b3 Stored results as found** (L87). *Done when:* L87 is live.
+    - [x] **M2.2b2 Fins, rail buttons and roll inertia.** *Done when:* roll inertia's 2.1% explained
+      or bounded; airfoil, rounded and elliptical fins each hpr's rule or a written departure; #151
+      settled; M2.2a rerun. *Result:* met (ADR-062): the roll gap is OpenRocket's fin rule (hpr's
+      exact integral kept); with it, median 0.141% and each file outside 1% has a cause; #151 fixed.
+    - [ ] **M2.2b3 Clusters, fillets, packed parts and unread parts.** *Done when:* each is hpr's
+      rule or a written departure, M2.2a rerun.
+    - [ ] **M2.2b4 Stored results as found** (L87). *Done when:* L87 is live.
   - [ ] **M2.2c The motors OpenRocket flies.** *Done when:* every configuration held back only for
     want of a curve flies or is named with its reason, each curve's impulse within 0.1% of OR's.
   - [ ] **M2.2d Flights to apogee on the public designs** (L80, L81). *Done when:* those that fly

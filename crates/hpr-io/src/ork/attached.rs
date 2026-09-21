@@ -199,7 +199,10 @@ fn one(
     }
 
     let name = values.word(&["name"]).unwrap_or_default();
-    let position = position(&mut values);
+    let position = match &part {
+        Part::RailButton(button) => centred_on_its_position(position(&mut values), button),
+        _ => position(&mut values),
+    };
     let finish = finish(&mut values);
     let (overrides, include_children) = overrides(&mut values);
     radial_offset_on_the_surface(&mut values, &part);
@@ -789,6 +792,37 @@ fn position(values: &mut Values<'_>) -> Position {
             );
             Position::Top { aft_offset_m }
         }
+    }
+}
+
+/// Where `hpr-design` must put a rail button's forward edge for its centre to be where OpenRocket
+/// puts it.
+///
+/// OpenRocket 24.12 gives a rail button no length, so it places the button's centre where a part of
+/// no length would sit, from whichever end the offset is measured, and a row's first button there,
+/// the rest following aft (#151; measured on `validation/oracles/openrocket/conventions.py`'s
+/// probes: from the top, the middle and the bottom, one button and a row of two). `hpr-design`
+/// places a part by its forward edge and gives a row the length from the first button's forward
+/// edge to the last one's aft edge, so the offset moves by the difference.
+fn centred_on_its_position(position: Position, button: &RailButton) -> Position {
+    let radius_m = 0.5 * button.outer_diameter_m;
+    let row_m = button.spacing_m * f64::from(button.count.saturating_sub(1));
+    match position {
+        Position::Top { aft_offset_m } => Position::Top {
+            aft_offset_m: aft_offset_m - radius_m,
+        },
+        Position::Middle { aft_offset_m } => Position::Middle {
+            aft_offset_m: aft_offset_m + 0.5 * row_m,
+        },
+        Position::Bottom { aft_offset_m } => Position::Bottom {
+            aft_offset_m: aft_offset_m + radius_m + row_m,
+        },
+        Position::After { aft_offset_m } => Position::After {
+            aft_offset_m: aft_offset_m - radius_m,
+        },
+        Position::Absolute { station_m } => Position::Absolute {
+            station_m: station_m - radius_m,
+        },
     }
 }
 

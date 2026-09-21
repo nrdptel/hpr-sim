@@ -204,10 +204,11 @@ missing or its status disagrees.
 | <a id="m3-1d2"></a>[M3.1d2][phase-1] | Every `.ork` imports without an error, and the cross-check against RocketSerializer | done |
 | <a id="m2-2"></a>[M2.2][phase-1] | OpenRocket as a reference program, and a corpus of designs to compare | not yet done |
 | <a id="m2-2a"></a>[M2.2a][phase-1] | Each design's structure (every stage, no motor): mass, centre of mass and inertia against OpenRocket's | done |
-| <a id="m2-2b"></a>[M2.2b][phase-1] | OpenRocket's mass conventions and roll inertia, split into [M2.2b1](#m2-2b1) to [M2.2b3](#m2-2b3) below | not yet done |
+| <a id="m2-2b"></a>[M2.2b][phase-1] | OpenRocket's mass conventions and roll inertia, split into [M2.2b1](#m2-2b1) to [M2.2b4](#m2-2b4) below | not yet done |
 | <a id="m2-2b1"></a>[M2.2b1][phase-1] | What a `.ork` leaves unsaid (a wall or shoulder of no thickness, no thickness written, no material) read as OpenRocket reads it, and which override wins | done |
-| <a id="m2-2b2"></a>[M2.2b2][phase-1] | Clusters, fin fillets, airfoil fins, the parts kept unread, a rail button's place, and roll inertia | not yet done |
-| <a id="m2-2b3"></a>[M2.2b3][phase-1] | Stored results in a `.ork` used as a reference only when they are current and plausible | not yet done |
+| <a id="m2-2b2"></a>[M2.2b2][phase-1] | Fins and rail buttons against OpenRocket: where the roll inertia's gap comes from, how each fin section is weighed, and where a rail button sits | done |
+| <a id="m2-2b3"></a>[M2.2b3][phase-1] | Motor clusters, fin fillets, packed parts OpenRocket sizes itself, and the parts kept unread | not yet done |
+| <a id="m2-2b4"></a>[M2.2b4][phase-1] | Stored results in a `.ork` used as a reference only when they are current and plausible | not yet done |
 | <a id="m2-2c"></a>[M2.2c][phase-1] | The motors OpenRocket flies, for the configurations held back for want of a thrust curve | not yet done |
 | <a id="m2-2d"></a>[M2.2d][phase-1] | Flights to apogee on the public designs, against OpenRocket | not yet done |
 | <a id="m2-2e"></a>[M2.2e][phase-1] | The corpus, with a hypothesis for every apogee miss over 5% | not yet done |
