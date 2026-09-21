@@ -2140,9 +2140,10 @@ fn a_configuration_flies_only_as_written() {
     };
     let f15 = |config: &str| motor(config, "Estes", "F15", "4.0");
     let booster_mount = format!(
-        "<overhang>0.0</overhang>{}{}{}{}{}{}{}{}",
+        "<overhang>0.0</overhang>{}{}{}{}{}{}{}{}{}",
         f15("boost"),
-        f15("boost"),
+        f15("dup"),
+        f15("dup"),
         f15(""),
         f15("two"),
         f15("clu"),
@@ -2170,21 +2171,20 @@ fn a_configuration_flies_only_as_written() {
              <motormount>{mount}</motormount></innertube>"
         )
     };
-    let sustainer = tube(
-        "sustainer",
+    let sustainer_mount = format!(
+        "<motormount><overhang>0.0</overhang>{}</motormount>",
+        f15("two")
+    );
+    let cluster = inner(
+        "cluster-mount",
+        "<clusterconfiguration>3-ring</clusterconfiguration>",
         &format!(
-            "<motormount><overhang>0.0</overhang>{}</motormount>",
-            f15("two")
-        ),
-        &inner(
-            "cluster-mount",
-            "<clusterconfiguration>3-ring</clusterconfiguration>",
-            &format!(
-                "<ignitionevent>launch</ignitionevent><overhang>0.0</overhang>{}",
-                f15("clu")
-            ),
+            "<ignitionevent>launch</ignitionevent><overhang>0.0</overhang>{}",
+            f15("clu")
         ),
     );
+    let sustainer = tube("sustainer", &sustainer_mount, &cluster);
+    let plain_sustainer = tube("sustainer", &sustainer_mount, "");
     let booster = tube("booster", "", &inner("booster-mount", "", &booster_mount));
     let nose = r#"<nosecone><name>Nose</name><id>nose</id>
           <material type="bulk" density="1000.0">Plastic</material>
@@ -2202,12 +2202,18 @@ fn a_configuration_flies_only_as_written() {
     <motorconfiguration configid="b4"/>
     <motorconfiguration configid="hyb"/>
     <motorconfiguration configid="nosize"/>
+    <motorconfiguration configid="dup"/>
     <subcomponents>{stages}</subcomponents></rocket>
 </openrocket>"#
         )
     };
     let two_stage = document(&format!(
         "<stage><name>Sustainer</name><id>upper</id><subcomponents>{nose}{sustainer}\
+         </subcomponents></stage>\
+         <stage><name>Booster</name><id>lower</id><subcomponents>{booster}</subcomponents></stage>"
+    ));
+    let plain_two_stage = document(&format!(
+        "<stage><name>Sustainer</name><id>upper</id><subcomponents>{nose}{plain_sustainer}\
          </subcomponents></stage>\
          <stage><name>Booster</name><id>lower</id><subcomponents>{booster}</subcomponents></stage>"
     ));
@@ -2242,8 +2248,10 @@ fn a_configuration_flies_only_as_written() {
             .collect()
     };
 
+    // The cluster tube is read as one tube, so this airframe is not the design's.
     let two = read_one(&two_stage);
-    assert_eq!(why(&two, "boost"), Some(NotFlown::Staged));
+    assert_eq!(why(&two, "boost"), Some(NotFlown::IncompleteAirframe));
+    assert_eq!(why(&two, "dup"), Some(NotFlown::UnreadMotor));
     assert_eq!(why(&two, "two"), Some(NotFlown::IgnitesInFlight));
     assert_eq!(why(&two, "clu"), Some(NotFlown::Cluster));
     assert_eq!(why(&two, "off"), Some(NotFlown::InactiveStage));
@@ -2254,9 +2262,14 @@ fn a_configuration_flies_only_as_written() {
     let off = configurations.iter().find(|c| c.id == "off").expect("off");
     assert_eq!(off.inactive_stages, [None]);
     assert!(!configurations.iter().any(|c| c.id.is_empty()));
+    // Without the cluster, the airframe is whole, and it is the second stage that keeps `boost` out.
+    assert_eq!(
+        why(&read_one(&plain_two_stage), "boost"),
+        Some(NotFlown::Staged)
+    );
     for said in [
         "with no `configid`",
-        "a second motor for configuration `boost`",
+        "a second motor for configuration `dup`",
     ] {
         assert!(
             two.warnings.iter().any(|w| w.message.contains(said)),

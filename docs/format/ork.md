@@ -904,8 +904,12 @@ all of these hold. Otherwise flying it would be wrong, for example lighting a su
 - No stage is switched off in the configuration's own stage list
   (`<stage number="1" active="false"/>`). OpenRocket leaves a switched-off stage out of the flight,
   and hpr flies every stage.
-- The whole airframe was read. A pod, a parallel stage or a part hpr could not shape leaves the
-  rocket lighter and slimmer than the design, so no configuration of it is flown.
+- The airframe was read as written: nothing left out (a pod, a parallel stage, a part hpr could not
+  shape), and nothing dropped or simplified (a cluster of tubes read as one, a flipped nose cone
+  read pointing forward, a material that could not be read). Otherwise hpr would fly a different
+  rocket from the design, so no configuration of it is flown.
+- No mount holds two motors for the configuration. Which one OpenRocket would fly is not known, so
+  neither flies.
 - The rocket has one stage. OpenRocket drops a booster when it separates; hpr would carry it to the
   ground, until separation is read ([M3.1c2](../decisions-and-roadmap.md#m3-1c2)) and flown
   ([M1.9](../decisions-and-roadmap.md#m1-9)).

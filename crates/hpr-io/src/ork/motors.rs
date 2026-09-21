@@ -274,9 +274,10 @@ pub enum NotFlown {
     ///
     /// [m1-9]: https://nrdptel.github.io/hpr-sim/decisions-and-roadmap.html#m1-9
     IgnitesInFlight,
-    /// Part of the airframe was left out when the rocket was read — a pod, a parallel stage, or a
-    /// part hpr could not give a shape — so flying it would fly a rocket without that mass and
-    /// drag.
+    /// The airframe was not read exactly as written: a part was left out (a pod, a parallel stage,
+    /// a part hpr could not give a shape) or a value dropped or simplified (a cluster read as one
+    /// tube, a flipped nose cone read forward, a material that could not be read). Flying it would
+    /// fly a different rocket.
     IncompleteAirframe,
     /// The rocket has more than one stage. Until a stage's separation is read and flown, hpr would
     /// fly the stack as one body to the ground, which is no configuration OpenRocket flies.
@@ -324,6 +325,8 @@ pub(super) struct MountRead {
     ignitions: BTreeMap<String, (Option<IgnitionEvent>, Option<f64>)>,
     /// `<motor>`s, by configuration id, in file order.
     motors: Vec<(String, MotorRead)>,
+    /// Second motors for a configuration that already has one here, which cannot be placed.
+    doubled: Vec<(String, UnreadMotor)>,
     /// The tube's `clusterconfiguration`, when it is a cluster rather than one tube.
     cluster: Option<String>,
 }
@@ -342,6 +345,7 @@ pub(super) fn mount(element: &Element, at: &str, warnings: &mut Vec<Warning>) ->
     };
     let mut ignitions = BTreeMap::new();
     let mut motors = Vec::new();
+    let mut doubled = Vec::new();
     for child in mount.elements() {
         if !matches!(child.name.as_str(), "motor" | "ignitionconfiguration") {
             continue;
@@ -359,13 +363,27 @@ pub(super) fn mount(element: &Element, at: &str, warnings: &mut Vec<Warning>) ->
             continue;
         };
         if child.name == "motor" && motors.iter().any(|(c, _)| *c == config) {
+            // Which of the two OpenRocket would fly is not known, so neither flies: the second is
+            // kept as a motor this reader could not place, and its configuration is left out.
             warnings.push(Warning::new(
-                at,
+                at.clone(),
                 WarningKind::Dropped,
                 format!(
                     "a second motor for configuration `{config}` in one mount, which holds one; \
-                     the first was kept"
+                     the configuration is not flown"
                 ),
+            ));
+            doubled.push((
+                config,
+                UnreadMotor {
+                    at,
+                    designation: child
+                        .child("designation")
+                        .map(|d| d.text().trim().to_owned())
+                        .unwrap_or_default(),
+                    inside: element.name.clone(),
+                    reason: "a second motor for this configuration in the same mount".to_owned(),
+                },
             ));
             continue;
         }
@@ -392,6 +410,7 @@ pub(super) fn mount(element: &Element, at: &str, warnings: &mut Vec<Warning>) ->
         default_ignition,
         ignitions,
         motors,
+        doubled,
         cluster,
     })
 }
@@ -517,6 +536,10 @@ pub(super) fn read(
             continue;
         };
         placed.insert(mount.at.as_str());
+        for (config, motor) in &mount.doubled {
+            let index = configuration(&mut configurations, config, at, warnings);
+            configurations[index].unread.push(motor.clone());
+        }
         for (config, read) in &mount.motors {
             let index = configuration(&mut configurations, config, at, warnings);
             let ignition = match mount.ignitions.get(config) {
@@ -548,7 +571,7 @@ pub(super) fn read(
     let mut unread = Vec::new();
     for (index, stage) in subcomponents(rocket_element).enumerate() {
         let path = format!("{at}/{}[{index}]", stage.name);
-        unread_motors(stage, &path, None, &placed, &mut unread);
+        unread_motors(stage, &path, None, &placed, &mut unread, warnings);
     }
     for (config, motor) in unread {
         let index = configuration(&mut configurations, &config, at, warnings);
@@ -609,6 +632,7 @@ fn unread_motors(
     inside: Option<&str>,
     read: &BTreeSet<&str>,
     found: &mut Vec<(String, UnreadMotor)>,
+    warnings: &mut Vec<Warning>,
 ) {
     let inside = inside.or(match element.name.as_str() {
         tag @ ("podset" | "parallelstage") => Some(tag),
@@ -630,6 +654,11 @@ fn unread_motors(
         for motor in mount.children_named("motor") {
             // A motor in no configuration flies in none, so it is no configuration's loss.
             let Some(config) = configid(motor) else {
+                warnings.push(Warning::new(
+                    format!("{at}/motormount/motor"),
+                    WarningKind::Dropped,
+                    "a `motor` with no `configid` belongs to no configuration; it was ignored",
+                ));
                 continue;
             };
             found.push((
@@ -648,7 +677,7 @@ fn unread_motors(
     }
     for (index, child) in subcomponents(element).enumerate() {
         let path = format!("{at}/{}[{index}]", child.name);
-        unread_motors(child, &path, inside, read, found);
+        unread_motors(child, &path, inside, read, found, warnings);
     }
 }
 

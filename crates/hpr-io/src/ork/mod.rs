@@ -138,10 +138,14 @@ pub fn design(file: &OrkFile) -> Imported<Design> {
         value: mut rocket,
         mut warnings,
     } = rocket;
-    // Every part the walk left out of the airframe said so as a skipped warning.
+    // Every part the walk left out of the airframe said so as a skipped warning, and every value it
+    // dropped or read as something simpler — a cluster read as one tube, a flipped nose cone read
+    // forward, a material it could not read — as a dropped one. A motor mount's own warnings are
+    // about its motors, not the airframe.
     let skipped: Vec<&str> = warnings
         .iter()
-        .filter(|w| w.kind == WarningKind::Skipped)
+        .filter(|w| matches!(w.kind, WarningKind::Skipped | WarningKind::Dropped))
+        .filter(|w| !w.at.contains("/motormount"))
         .map(|w| w.message.as_str())
         .collect();
     let incomplete = match skipped.as_slice() {

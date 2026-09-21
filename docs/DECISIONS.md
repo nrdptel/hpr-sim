@@ -5113,9 +5113,12 @@ rests on what OpenRocket means by its words, which its file-format page ([F]) mo
    read, have a curve and a case size, sit in a mount read as the single tube it is, and light at
    launch — `launch`, or `automatic` in the bottom stage (the last in the file), at no delay — and no stage may be
    switched off (OpenRocket removes an inactive stage from the flight: release notes 22.02.beta.05,
-   PR #1478). Two more rules are about the rocket rather than its motors: the whole airframe must
-   have been read (a pod, a parallel stage or a part left out would fly a lighter, slimmer rocket),
-   and the rocket must have one stage (OpenRocket drops a booster when it separates, and hpr would
+   PR #1478). A mount holding two motors for one configuration keeps it out too, since which
+   OpenRocket would fly is not known. Two more rules are about the rocket rather than its motors:
+   the airframe must have been read as written, with nothing left out (a pod, a parallel stage, a
+   part hpr cannot shape) and nothing dropped or simplified (a cluster of tubes read as one, a
+   flipped nose cone read forward, a material it could not read), and the rocket must have one
+   stage (OpenRocket drops a booster when it separates, and hpr would
    carry it to the ground until M3.1c2 reads separation and M1.9 flies it). Only those
    configurations become `hpr_design::Rocket::configurations`. The reason is that
    `hpr_design::Configuration` lights every motor at `t = 0` until [M1.9] brings staging: flying a
