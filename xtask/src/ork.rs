@@ -34,6 +34,10 @@ const JAR: &str = "refs/openrocket/OpenRocket-24.12.jar";
 /// The directories read when none are given.
 const DEFAULT_DIRS: [&str; 1] = ["refs"];
 
+/// How `hpr_io::ork::rocket` begins the warning for a radius it gave OpenRocket's default radius;
+/// a test below holds the two together, so a reworded warning cannot quietly count as none.
+const DEFAULT_RADIUS: &str = "an automatic radius with no fixed radius anywhere along its chain";
+
 /// Files in the reference library that are not well-formed XML, so no reader can open them.
 ///
 /// Both are hand-written fixtures for Loft's browser tests, and both close a `<databranch>` with
@@ -238,6 +242,9 @@ fn report(root: &Path, files: &[Case]) -> Result<(), String> {
     let mut apart_detail: Vec<Value> = Vec::new();
     let mut off_spine: BTreeMap<String, usize> = BTreeMap::new();
     let mut spines_laid_out = 0usize;
+    let mut no_design = 0usize;
+    let mut defaulted: BTreeMap<String, usize> = BTreeMap::new();
+    let mut designs_defaulted = 0usize;
     let mut spine_errors: BTreeMap<String, usize> = BTreeMap::new();
     let mut spine_warnings: BTreeMap<String, usize> = BTreeMap::new();
     let mut failures = 0usize;
@@ -290,7 +297,14 @@ fn report(root: &Path, files: &[Case]) -> Result<(), String> {
                     &mut elements_with_both,
                 );
                 let spine = ork::rocket(&read.value.document);
+                let mut defaulted_here = 0usize;
                 for warning in &spine.warnings {
+                    if warning.message.starts_with(DEFAULT_RADIUS) {
+                        defaulted_here += 1;
+                        let step = warning.at.rsplit('/').next().unwrap_or("?");
+                        let tag = step.split_once('[').map_or(step, |(tag, _)| tag);
+                        *defaulted.entry(tag.to_owned()).or_default() += 1;
+                    }
                     *spine_warnings.entry(warning.message.clone()).or_default() += 1;
                     *spine_warning_kinds
                         .entry(kind_name(warning.kind))
@@ -321,7 +335,23 @@ fn report(root: &Path, files: &[Case]) -> Result<(), String> {
                 }
                 off_the_spine(&read.value.document.root, &mut off_spine);
                 angles(&read.value.document.root, &mut angle_counts);
+                if defaulted_here > 0 {
+                    designs_defaulted += 1;
+                }
+                let holds_design = read
+                    .value
+                    .document
+                    .root
+                    .child("rocket")
+                    .and_then(|rocket| rocket.child("subcomponents"))
+                    .is_some_and(|parts| parts.elements().next().is_some());
+                if !holds_design {
+                    no_design += 1;
+                }
                 let laid_out = match spine.value.layout() {
+                    // A document with nothing in its `rocket` is not a design that failed; it is
+                    // not a design, and is counted as such rather than as a failure.
+                    Err(_) if !holds_design => Some("holds no design".to_owned()),
                     Ok(layout) => {
                         spines_laid_out += 1;
                         // A structural part that weighs nothing is almost always a reading gone
@@ -401,6 +431,8 @@ fn report(root: &Path, files: &[Case]) -> Result<(), String> {
                     "file": name,
                     "round_trip": round_trip,
                     "spine": json!({
+                        "holds_design": holds_design,
+                        "radii_given_openrocket_default": defaulted_here,
                         "stages": spine.value.stages.len(),
                         "body_components": components,
                         "attached_parts": attached,
@@ -463,6 +495,7 @@ fn report(root: &Path, files: &[Case]) -> Result<(), String> {
         }
     }
 
+    let read_count = files.len() - failures - known_bad;
     let summary = json!({
         "files": files.len(),
         "read": files.len() - failures - known_bad,
@@ -479,6 +512,11 @@ fn report(root: &Path, files: &[Case]) -> Result<(), String> {
         "mixed_content_elements": to_value(&mixed),
         "files_with_mixed_content": files_with_mixed,
         "largest_unpacked_bytes": largest_unpacked,
+        "designs": read_count - no_design,
+        "designs_laid_out": spines_laid_out,
+        "documents_holding_no_design": no_design,
+        "radii_given_openrocket_default": to_value(&defaulted),
+        "designs_with_radii_given_openrocket_default": designs_defaulted,
         "attached_parts": to_value(&attached_parts),
         "parts_left_out": to_value(&left_out),
         "design_warnings": to_value(&spine_warning_kinds),
@@ -546,10 +584,30 @@ fn report(root: &Path, files: &[Case]) -> Result<(), String> {
     print_counts("nesting depth", &depths);
     println!("  largest unpacked (document and attachments): {largest_unpacked} bytes");
     println!(
-        "  designs: {spines_laid_out} of {read} lay out, {stages_read} stage(s), \
+        "  designs: {spines_laid_out} of {} lay out, {stages_read} stage(s), \
          {} body component(s), {} attached part(s)",
+        read - no_design,
         body_parts.values().sum::<usize>(),
         attached_parts.values().sum::<usize>()
+    );
+    println!(
+        "  documents that hold no design (a `rocket` with no stage or component of any kind): \
+         {no_design}"
+    );
+    println!(
+        "  automatic radii with no fixed radius along their chain, given OpenRocket's default \
+         {} mm: {} in {designs_defaulted} design(s), on {}",
+        ork::OPENROCKET_DEFAULT_RADIUS_M * 1e3,
+        defaulted.values().sum::<usize>(),
+        if defaulted.is_empty() {
+            "nothing".to_owned()
+        } else {
+            defaulted
+                .iter()
+                .map(|(tag, count)| format!("{tag} {count}"))
+                .collect::<Vec<_>>()
+                .join(", ")
+        }
     );
     print_counts("body components", &body_parts);
     print_counts("attached parts", &attached_parts);
@@ -837,4 +895,28 @@ fn root() -> Result<PathBuf, String> {
         .parent()
         .map(Path::to_path_buf)
         .ok_or_else(|| format!("no workspace root above {}", manifest.display()))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// The survey counts the radii given OpenRocket's default by the start of their warning; this
+    /// holds that start to what the importer actually says.
+    #[test]
+    fn default_radius_warning_is_the_one_counted() {
+        let xml = br#"<openrocket version="1.10" creator="test"><rocket><name>R</name>
+            <subcomponents><stage><name>S</name><subcomponents>
+            <bodytube><name>T</name><length>0.3</length><thickness>0.001</thickness>
+            <radius>auto</radius></bodytube>
+            </subcomponents></stage></subcomponents></rocket></openrocket>"#;
+        let read = ork::read(xml).unwrap();
+        let spine = ork::rocket(&read.value.document);
+        let counted = spine
+            .warnings
+            .iter()
+            .filter(|warning| warning.message.starts_with(DEFAULT_RADIUS))
+            .count();
+        assert_eq!(counted, 1, "{:?}", spine.warnings);
+    }
 }

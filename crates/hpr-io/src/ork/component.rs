@@ -9,9 +9,13 @@
 //! [`Component`]s, each of them carrying whatever [`super::attached`] read inside and on it. It
 //! resolves nothing itself. Where OpenRocket wrote `auto`, the component carries an
 //! [`AutoDimension`] and [`Rocket::layout`] works the radius out from the neighbours, which is the
-//! one place that rule lives.
+//! one place that rule lives. The one exception is a radius that rule cannot reach — a chain of
+//! automatic radii with no fixed radius anywhere along it — which takes OpenRocket's default,
+//! [`OPENROCKET_DEFAULT_RADIUS_M`], because the design holds no other number for it.
 //!
 //! [roadmap]: https://github.com/nrdptel/hpr-sim/blob/main/docs/ROADMAP.md
+
+use std::collections::BTreeMap;
 
 use hpr_design::Material;
 use hpr_design::parts::{BodyTube, NoseCone, Shoulder, Transition};
@@ -28,6 +32,26 @@ use super::warning::{Imported, Warning, WarningKind};
 
 /// The body tags this milestone reads. Anything else in a `<subcomponents>` is counted and left.
 const BODY_TAGS: [&str; 3] = ["nosecone", "bodytube", "transition"];
+
+/// The radius OpenRocket gives an automatic body radius that has no fixed radius anywhere along its
+/// chain to take, in metres: its **default radius**, 25 mm.
+///
+/// OpenRocket's maintainers write that such a radius is "the default radius"
+/// ([openrocket#1988](https://github.com/openrocket/openrocket/issues/1988#issuecomment-1397654629))
+/// and that a tube left with nothing to take "reverts to default diameter"
+/// ([#1992](https://github.com/openrocket/openrocket/issues/1992)); a user reports that default as
+/// "1.969 in" of diameter ([#871](https://github.com/openrocket/openrocket/issues/871)), which is
+/// 50.0 mm. No document states the number exactly, so it was measured: OpenRocket 24.12, run on
+/// nine small designs by `validation/oracles/openrocket/automatic_radius.py`, gives every such
+/// tube, lone nose cone and lone transition 0.025 m and ignores any number cached after `auto`
+/// (`validation/fixtures/ork/openrocket-automatic-radius.json`, [ADR-054][adr-054]).
+///
+/// hpr departs from OpenRocket in one place, on purpose: where a nose cone's base or a transition's
+/// forward radius looks at an automatic tube, OpenRocket 24.12 resolves it to −1 m, which no
+/// geometry can take. hpr gives it this default too, so the chain is one radius end to end.
+///
+/// [adr-054]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-054-an-automatic-radius-with-nothing-to-take-is-openrockets-default-and-a-rocket-with-no-stage-holds-no-design-2026-09-20
+pub const OPENROCKET_DEFAULT_RADIUS_M: f64 = 0.025;
 
 /// Reads a design document into a [`Rocket`]: its stages, the body components stacked in them, and
 /// the parts on and inside each of those.
@@ -104,9 +128,20 @@ pub fn rocket(document: &Document) -> Imported<Rocket> {
         .word(&["name"])
         .unwrap_or_default();
     rocket.reference_diameter = reference_diameter(element, at, &mut warnings);
+    if subcomponents(element).next().is_none() {
+        // A document can carry a rocket's name and stored results and nothing to build: Debrief's
+        // synthesized demonstration file does. There is no design in it to lay out.
+        warnings.push(Warning::new(
+            at,
+            WarningKind::Unusual,
+            "the `rocket` holds no stage or component of any kind, so the document holds no design"
+                .to_owned(),
+        ));
+    }
 
     let mut ids = Ids::default();
     let mut skipped: Vec<String> = Vec::new();
+    let mut paths = BTreeMap::new();
     for (index, stage_element) in subcomponents(element).enumerate() {
         if stage_element.name != "stage" {
             skipped.push(stage_element.name.clone());
@@ -116,6 +151,7 @@ pub fn rocket(document: &Document) -> Imported<Rocket> {
             stage_element,
             index,
             &mut ids,
+            &mut paths,
             &mut skipped,
             &mut warnings,
         ));
@@ -130,17 +166,58 @@ pub fn rocket(document: &Document) -> Imported<Rocket> {
             ),
         ));
     }
+    default_radii(&mut rocket, &paths, &mut warnings);
     Imported {
         value: rocket,
         warnings,
     }
 }
 
-/// Reads one `<stage>`, and everything stacked inside it.
+/// Gives every automatic body radius that [`Rocket::unresolvable_body_radii`] lists
+/// [`OPENROCKET_DEFAULT_RADIUS_M`], as a fixed radius, with a warning at its tag.
+///
+/// Every radius on such a chain is listed, so the whole chain takes the one radius: filling only
+/// the first and letting the neighbour rule carry it along would give the same answer.
+fn default_radii(
+    rocket: &mut Rocket,
+    paths: &BTreeMap<String, String>,
+    warnings: &mut Vec<Warning>,
+) {
+    let radius_m = OPENROCKET_DEFAULT_RADIUS_M;
+    for (id, dimension) in rocket.unresolvable_body_radii() {
+        let Some(component) = rocket
+            .stages
+            .iter_mut()
+            .flat_map(|stage| stage.components.iter_mut())
+            .find(|component| component.id == id)
+        else {
+            continue;
+        };
+        match (&mut component.part, dimension) {
+            (Part::NoseCone(p), AutoDimension::BaseRadius) => p.base_radius_m = radius_m,
+            (Part::BodyTube(p), AutoDimension::OuterRadius) => p.outer_radius_m = radius_m,
+            (Part::Transition(p), AutoDimension::ForeRadius) => p.fore_radius_m = radius_m,
+            (Part::Transition(p), AutoDimension::AftRadius) => p.aft_radius_m = radius_m,
+            // `unresolvable_body_radii` lists only these four pairings.
+            _ => continue,
+        }
+        component.auto.retain(|auto| *auto != dimension);
+        warnings.push(Warning::new(
+            paths.get(&id).map_or("openrocket/rocket", String::as_str),
+            WarningKind::Unusual,
+            "an automatic radius with no fixed radius anywhere along its chain to take; it was \
+             given OpenRocket's default radius, 25 mm, as OpenRocket does",
+        ));
+    }
+}
+
+/// Reads one `<stage>`, and everything stacked inside it. Each body component's path in the file
+/// goes into `paths` under its id, for a warning raised about it later.
 fn stage(
     element: &Element,
     index: usize,
     ids: &mut Ids,
+    paths: &mut BTreeMap<String, String>,
     skipped: &mut Vec<String>,
     warnings: &mut Vec<Warning>,
 ) -> Stage {
@@ -155,7 +232,9 @@ fn stage(
     for (index, child) in subcomponents(element).enumerate() {
         if BODY_TAGS.contains(&child.name.as_str()) {
             let at = format!("{at}/{}[{index}]", child.name);
-            components.push(body(child, &at, ids, skipped, warnings));
+            let component = body(child, &at, ids, skipped, warnings);
+            paths.insert(component.id.clone(), at);
+            components.push(component);
         } else {
             skipped.push(child.name.clone());
         }

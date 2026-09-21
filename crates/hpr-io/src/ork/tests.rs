@@ -1637,3 +1637,148 @@ fn every_axial_offset_word_puts_a_part_somewhere_different() {
         "{mount:?}"
     );
 }
+
+/// What OpenRocket 24.12 did with each of the oracle's designs:
+/// `validation/fixtures/ork/openrocket-automatic-radius.json`, written by
+/// `validation/oracles/openrocket/automatic_radius.py` (ADR-054).
+fn automatic_radius_fixture() -> serde_json::Value {
+    serde_json::from_str(include_str!(
+        "../../../../validation/fixtures/ork/openrocket-automatic-radius.json"
+    ))
+    .expect("the fixture is JSON")
+}
+
+/// A body component's radii, forward to aft, in the fixture's order: a nose cone's base, a tube's
+/// outer radius, a transition's forward then aft radius.
+fn body_radii(part: &hpr_design::tree::Part) -> Vec<f64> {
+    use hpr_design::tree::Part;
+    match part {
+        Part::NoseCone(p) => vec![p.base_radius_m],
+        Part::BodyTube(p) => vec![p.outer_radius_m],
+        Part::Transition(p) => vec![p.fore_radius_m, p.aft_radius_m],
+        _ => Vec::new(),
+    }
+}
+
+/// An automatic radius with no fixed radius anywhere along its chain takes OpenRocket's default
+/// radius: on every design the oracle ran, every radius hpr resolves is the one OpenRocket 24.12
+/// resolved, bit for bit, except where OpenRocket answers −1 m — a nose cone's base or a
+/// transition's forward radius looking at an automatic tube, which no geometry can take. Those
+/// take the default too, and there are exactly three of them, so a change either way shows.
+///
+/// The fixture's cached numbers (`auto 0.04`) are ignored by OpenRocket, and so by hpr: the
+/// number is an answer OpenRocket last wrote, never an input.
+#[test]
+fn a_radius_with_nothing_to_take_is_openrockets_default() {
+    let fixture = automatic_radius_fixture();
+    assert_eq!(fixture["openrocket"], "24.12");
+    let mut compared = 0usize;
+    let mut departures = 0usize;
+    let mut defaulted = 0usize;
+    for case in fixture["cases"].as_array().expect("cases") {
+        let name = case["name"].as_str().expect("a name");
+        let text = case["document"].as_str().expect("a document");
+        let read = read(text.as_bytes()).expect("a readable design");
+        let spine = component::rocket(&read.value.document);
+        defaulted += spine
+            .warnings
+            .iter()
+            .filter(|w| w.message.contains("OpenRocket's default radius"))
+            .count();
+        let layout = spine.value.layout().expect("a design that lays out");
+        let ours: Vec<f64> = layout.body().flat_map(|c| body_radii(&c.part)).collect();
+        let theirs: Vec<f64> = case["resolved"]
+            .as_array()
+            .expect("resolved radii")
+            .iter()
+            .flat_map(|c| {
+                ["base", "outer", "fore", "aft"]
+                    .iter()
+                    .filter_map(|key| c[key].as_f64())
+                    .collect::<Vec<_>>()
+            })
+            .collect();
+        assert_eq!(ours.len(), theirs.len(), "{name}");
+        for (ours, theirs) in ours.iter().zip(&theirs) {
+            compared += 1;
+            if *theirs < 0.0 {
+                departures += 1;
+                assert_eq!(*ours, OPENROCKET_DEFAULT_RADIUS_M, "{name}");
+            } else {
+                assert_eq!(ours, theirs, "{name}");
+            }
+        }
+    }
+    assert_eq!((compared, departures), (17, 3));
+    // Every radius but the control's two, and the two the chain case states outright.
+    assert_eq!(defaulted, 13);
+
+    // The two reference-library designs the question came from, when the oracle had them: the
+    // database's parachute catalogue opens with four tubes at the default, and Loft's quirks
+    // fixture does not open in OpenRocket at all.
+    for run in fixture["library"].as_array().expect("library runs") {
+        let file = run["file"].as_str().expect("a file");
+        if file.ends_with("parachutes.ork") {
+            let radii: Vec<f64> = run["resolved"]
+                .as_array()
+                .expect("resolved radii")
+                .iter()
+                .map(|c| c["outer"].as_f64().expect("an outer radius"))
+                .collect();
+            assert_eq!(radii, [OPENROCKET_DEFAULT_RADIUS_M; 4], "{file}");
+        } else {
+            assert_eq!(run["opens"], false, "{file}");
+        }
+    }
+}
+
+/// Where the neighbour rule does reach a fixed radius, nothing is defaulted and nothing warns: the
+/// default is for a chain with nothing on it, not a fallback for an awkward one.
+#[test]
+fn a_chain_that_reaches_a_fixed_radius_takes_no_default() {
+    let fixture = automatic_radius_fixture();
+    let control = fixture["cases"]
+        .as_array()
+        .expect("cases")
+        .iter()
+        .find(|case| case["name"] == "a nose cone before a fixed tube")
+        .expect("the control case");
+    let rocket = spine(control["document"].as_str().expect("a document"));
+    assert!(rocket.unresolvable_body_radii().is_empty());
+    let layout = rocket.layout().expect("a design that lays out");
+    let radii: Vec<f64> = layout.body().flat_map(|c| body_radii(&c.part)).collect();
+    assert_eq!(radii, [0.03, 0.03]);
+}
+
+/// Debrief's demonstration file carries a rocket's name and a stored simulation, and nothing to
+/// build. That is a document holding no design, said as such — not a design that fails to lay out.
+/// A rocket holding only a part no milestone reads yet does hold something, so it says the other.
+#[test]
+fn a_rocket_with_nothing_in_it_holds_no_design() {
+    let xml = r#"<openrocket version="1.10" creator="synthesized">
+        <rocket><name>Demonstrator</name><comment>results only</comment></rocket>
+        <simulations><simulation status="uptodate"><name>Demo</name>
+          <flightdata maxaltitude="1599.72"/></simulation></simulations></openrocket>"#;
+    let file = read(xml.as_bytes()).expect("a readable document");
+    let spine = component::rocket(&file.value.document);
+    assert!(spine.value.stages.is_empty());
+    let messages: Vec<&str> = spine.warnings.iter().map(|w| w.message.as_str()).collect();
+    assert_eq!(messages.len(), 1, "{messages:?}");
+    assert!(messages[0].contains("holds no design"), "{messages:?}");
+    assert_eq!(spine.count(WarningKind::Unusual), 1);
+    assert!(spine.value.layout().is_err());
+
+    let xml = r#"<openrocket version="1.10" creator="synthesized">
+        <rocket><name>Pods only</name><subcomponents><podset><name>P</name></podset>
+        </subcomponents></rocket></openrocket>"#;
+    let file = read(xml.as_bytes()).expect("a readable document");
+    let spine = component::rocket(&file.value.document);
+    assert!(
+        spine
+            .warnings
+            .iter()
+            .all(|w| !w.message.contains("holds no design")),
+        "{:?}",
+        spine.warnings
+    );
+}
