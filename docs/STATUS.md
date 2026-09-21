@@ -56,7 +56,7 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
 ## Done log (newest first, keep about 15)
 
 - 2026-09-21: M2.2b2 Fins, rail buttons, roll inertia (ADR-062): OpenRocket's fin shortcut
-  inferred on 31 probes; roll median 2.1% → 0.14% with it; sections kept hpr's; #151 fixed.
+  inferred on 33 probes; roll median 2.1% → 0.001% with it; sections kept hpr's; #151 fixed.
 - 2026-09-21: M2.2b1 What a `.ork` leaves unsaid, and overrides (ADR-061): 32 probes; walls,
   shoulders, materials as OpenRocket's; L51 live; 61 and 62 of 74 within 1%; #151. M2.2b split.
 - 2026-09-21: M2.2a Each design's structure against OpenRocket's (ADR-060): 57 and 58 of 74 within

@@ -279,13 +279,13 @@ STAGE_PROBES = {
 }
 
 
-def fins(section="square", extra="", thickness="0.003", outline=("0.1", "0.05", "0.05", "0.05")):
-    """Three trapezoidal fins, 0.1 m below the top of their tube: by default 0.1 m root, and 0.05 m
-    tip, sweep and span; `outline` is root, tip, sweep and span."""
+def fins(section="square", extra="", thickness="0.003", outline=("0.1", "0.05", "0.05", "0.05"), count=3):
+    """Trapezoidal fins, three by default, 0.1 m below the top of their tube: by default 0.1 m root,
+    and 0.05 m tip, sweep and span; `outline` is root, tip, sweep and span."""
     root, tip, sweep, span = outline
     return (
         f"<trapezoidfinset><name>Fins</name><id>{uid(5)}</id>"
-        '<position type="top">0.1</position><fincount>3</fincount>'
+        f'<position type="top">0.1</position><fincount>{count}</fincount>'
         f"<rootchord>{root}</rootchord><tipchord>{tip}</tipchord><sweeplength>{sweep}</sweeplength>"
         f"<height>{span}</height><thickness>{thickness}</thickness>"
         f"<crosssection>{section}</crosssection>{extra}{MATERIAL}</trapezoidfinset>"
@@ -336,6 +336,7 @@ PART_PROBES = {
     "a tube and rectangular fins of twice the chord": fins(outline=("0.2", "0.2", "0.0", "0.05")),
     "a tube and rectangular fins of twice the span": fins(outline=("0.1", "0.1", "0.0", "0.1")),
     "a tube and triangular fins": fins(outline=("0.1", "0.0", "0.0", "0.05")),
+    "a tube and a single fin": fins(count=1),
     "a tube and an elliptical fin set": placed(
         "ellipticalfinset", 15, "Elliptical",
         "<fincount>3</fincount><rootchord>0.1</rootchord><height>0.05</height>"
@@ -379,6 +380,14 @@ PART_PROBES = {
         f"<parachute><name>Chute</name><id>{uid(9)}</id><position type=\"top\">0.1</position>"
         "<packedlength>0.05</packedlength><packedradius>0.02</packedradius><diameter>0.5</diameter>"
         "<linecount>6</linecount><linelength>0.5</linelength>"
+        '<material type="surface" density="0.05">Probe</material>'
+        '<linematerial type="line" density="0.002">Probe</linematerial>'
+        f"{overrides(mass_kg=0.03)}</parachute>"
+    ),
+    "a tube and a parachute of no canopy, under a mass override": (
+        f"<parachute><name>Chute</name><id>{uid(9)}</id><position type=\"top\">0.1</position>"
+        "<packedlength>0.05</packedlength><packedradius>0.02</packedradius><diameter>0.0</diameter>"
+        "<linecount>0</linecount><linelength>0.0</linelength>"
         '<material type="surface" density="0.05">Probe</material>'
         '<linematerial type="line" density="0.002">Probe</linematerial>'
         f"{overrides(mass_kg=0.03)}</parachute>"

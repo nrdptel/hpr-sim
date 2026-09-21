@@ -920,3 +920,79 @@ fn roll_angle(values: &mut Values<'_>) -> f64 {
     }
     newer.or(older).unwrap_or_default().to_radians()
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use hpr_design::Material;
+
+    /// A row of two 10 mm buttons 0.1 m apart: its first button's centre must land where OpenRocket
+    /// puts it, a part of no length placed by the same words, whichever end the offset is from.
+    /// hpr's row runs from the first button's forward edge, 5 mm ahead of its centre, and is
+    /// 0.11 m long.
+    #[test]
+    fn a_rail_button_row_is_placed_by_its_first_centre() {
+        let button = RailButton {
+            outer_diameter_m: 0.01,
+            inner_diameter_m: 0.006,
+            height_m: 0.008,
+            base_height_m: 0.002,
+            flange_height_m: 0.002,
+            angle_rad: 0.0,
+            count: 2,
+            spacing_m: 0.1,
+            material: Material::bulk("Probe", 1000.0),
+        };
+        let cases = [
+            // top 0.1: the forward edge 5 mm ahead.
+            (
+                Position::Top { aft_offset_m: 0.1 },
+                Position::Top {
+                    aft_offset_m: 0.095,
+                },
+            ),
+            // middle 0: the first centre on the middle, so the row's middle 0.05 m aft of it.
+            (
+                Position::Middle { aft_offset_m: 0.0 },
+                Position::Middle { aft_offset_m: 0.05 },
+            ),
+            // bottom −0.1: the first centre 0.1 m above the end, the row's aft edge 5 mm past
+            // the last centre, which is 0.1 m further aft.
+            (
+                Position::Bottom { aft_offset_m: -0.1 },
+                Position::Bottom {
+                    aft_offset_m: 0.005,
+                },
+            ),
+            (
+                Position::After { aft_offset_m: 0.02 },
+                Position::After {
+                    aft_offset_m: 0.015,
+                },
+            ),
+            (
+                Position::Absolute { station_m: 1.0 },
+                Position::Absolute { station_m: 0.995 },
+            ),
+        ];
+        for (read, placed) in cases {
+            let found = centred_on_its_position(read, &button);
+            let offset = |position: &Position| match *position {
+                Position::Top { aft_offset_m }
+                | Position::Middle { aft_offset_m }
+                | Position::Bottom { aft_offset_m }
+                | Position::After { aft_offset_m } => aft_offset_m,
+                Position::Absolute { station_m } => station_m,
+            };
+            assert_eq!(
+                std::mem::discriminant(&found),
+                std::mem::discriminant(&placed),
+                "{read:?}"
+            );
+            assert!(
+                (offset(&found) - offset(&placed)).abs() < 1e-15,
+                "{read:?}: {found:?}"
+            );
+        }
+    }
+}

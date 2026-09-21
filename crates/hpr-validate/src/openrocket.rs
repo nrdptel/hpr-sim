@@ -15,24 +15,27 @@
 
 use hpr_design::fins::FinSet;
 
-/// The roll inertia OpenRocket 24.12 gives a set of two or more fins about the rocket's axis,
-/// kg·m², **inferred from its output, not taken from its source** (which is GPL and not read):
-/// the set's mass `m` times the mean of `r²` over a flat strip from the body at `R` out to `R + hₑ`,
+/// The roll inertia OpenRocket 24.12 gives a fin set about its own centre of mass, kg·m², **inferred
+/// from its output, not taken from its source** (which is GPL and not read). For two or more fins,
+/// whose centre is on the rocket's axis, it is the set's mass `m` spread evenly along a thin rod
+/// from the body at `R` out to `R + hₑ`,
 ///
 /// ```text
 /// I = m (R² + R hₑ + hₑ²/3),   hₑ² = A h / c_r,
 /// ```
 ///
 /// where `A` is one fin's planform area, `h` its span and `c_r` its root chord: a rectangle's own
-/// span, and less for any other outline. `validation/oracles/openrocket/conventions.py` measured
-/// it with OpenRocket's public `getRotationalUnitInertia` on rectangles of three spans, two chords
-/// and two body radii, a trapezoid, a triangle and (by its 30-sided polygon) an ellipse, all to
-/// seven digits; a tab's mass takes the planform's value, and the section's shape and the fins'
-/// thickness play no part. hpr's own roll inertia is the exact integral of `r²` over the fin
-/// ([`FinSet::mass_properties`]); the two agree on a rectangle without a tab
-/// ([ADR-062][adr-062]).
+/// span, shorter for a fin that narrows outward. For one fin it is the same rod about its own
+/// middle, `m hₑ²/12`. `validation/oracles/openrocket/conventions.py` measured it on rectangles of
+/// two chords, two spans and two body radii, a trapezoid, a triangle, an ellipse (OpenRocket's
+/// 30-sided polygon), one fin, and fins with a rounded or airfoil section, a tab or fillets: every
+/// one to 1e-12 on the probe's structure but the ellipse (by its polygon) and a cant (2.66e-5). A
+/// tab's mass takes the planform's value, and the section and thickness play no part. hpr's own is
+/// the exact integral of `r²` over the fin ([`FinSet::mass_properties`]); the two agree on a
+/// rectangle without a tab, but for the thickness ([ADR-062][adr-062]).
 ///
-/// `None` for a single fin, whose rule was not measured, or a planform `hpr-design` refuses.
+/// `mass_kg` is the set's, all fins together. `None` for a planform `hpr-design` refuses, a count
+/// of zero, or a radius or mass that is negative or not finite.
 ///
 /// [adr-062]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-062-fins-and-rail-buttons-against-openrocket-roll-inertia-explained-2026-09-21
 #[must_use]
@@ -41,18 +44,40 @@ pub fn openrocket_fin_set_roll_kg_m2(
     body_radius_m: f64,
     mass_kg: f64,
 ) -> Option<f64> {
-    if fins.count < 2 {
-        return None;
-    }
     let area_m2 = fins.planform.geometry().ok()?.area_m2;
-    let span_m = fins.planform.span_m();
-    let root_m = fins.planform.root_chord_m();
-    if root_m <= 0.0 {
+    rod_roll_kg_m2(
+        fins.count,
+        area_m2,
+        fins.planform.span_m(),
+        fins.planform.root_chord_m(),
+        body_radius_m,
+        mass_kg,
+    )
+}
+
+/// [`openrocket_fin_set_roll_kg_m2`] from the numbers it uses, so that a test can give it
+/// OpenRocket's polygon for an ellipse.
+fn rod_roll_kg_m2(
+    count: u32,
+    area_m2: f64,
+    span_m: f64,
+    root_m: f64,
+    body_radius_m: f64,
+    mass_kg: f64,
+) -> Option<f64> {
+    let usable = |x: f64| x.is_finite() && x >= 0.0;
+    if count == 0
+        || !(usable(area_m2) && usable(span_m) && usable(body_radius_m) && usable(mass_kg))
+        || !(root_m.is_finite() && root_m > 0.0)
+    {
         return None;
     }
-    let reach_m = (area_m2 * span_m / root_m).sqrt();
+    let reach2 = area_m2 * span_m / root_m;
+    if count == 1 {
+        return Some(mass_kg * reach2 / 12.0);
+    }
     let r = body_radius_m;
-    Some(mass_kg * (r * r + r * reach_m + reach_m * reach_m / 3.0))
+    Some(mass_kg * (r * r + r * reach2.sqrt() + reach2 / 3.0))
 }
 
 #[cfg(test)]
@@ -418,9 +443,13 @@ mod tests {
     /// - A launch lug: its pitch inertia is apart by 3.13e-4.
     /// - A parachute that writes no packed size: OpenRocket packs it 25 mm long and 12.5 mm in
     ///   radius (read from its centre and roll inertia); hpr reads no radius, with a warning.
+    /// - A parachute that weighs nothing, under a mass override: OpenRocket spreads the override
+    ///   over its packing, `m r²/2` in roll; hpr makes it a point mass (ADR-061), so −0.805%.
+    /// - A single fin: the rule about the fin's own centre, `m hₑ²/12`, agrees; its pitch is
+    ///   apart by 0.406%.
     ///
     /// [adr-062]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-062-fins-and-rail-buttons-against-openrocket-roll-inertia-explained-2026-09-21
-    const ALONE: [(&str, [f64; 4]); 31] = [
+    const ALONE: [(&str, [f64; 4]); 33] = [
         ("a tube and a bulkhead", [0.0, 0.0, 0.0, 0.0]),
         (
             "a tube and a canted fin set",
@@ -501,6 +530,11 @@ mod tests {
             "a tube and rectangular fins of twice the span",
             [0.0, 0.0, 0.0, 4.2e-6],
         ),
+        ("a tube and a single fin", [0.0, 0.0, 0.0, 0.00406]),
+        (
+            "a tube and a parachute of no canopy, under a mass override",
+            [0.0, 0.0, -0.00805, -0.00128],
+        ),
         ("a tube and triangular fins", [0.0, 0.0, 0.0, 0.00028]),
         ("a wider tube and rectangular fins", [0.0, 0.0, 0.0, 1e-6]),
     ];
@@ -542,6 +576,40 @@ mod tests {
                     "{question}: quantity {k} is {found:e}, not {pinned:e}"
                 );
             }
+        }
+    }
+
+    /// hpr's own fin roll inertia against OpenRocket's, set by set: the departure
+    /// [ADR-062][adr-062] keeps. OpenRocket's set is its structure's roll inertia less everything
+    /// else, which is hpr's (every other part of these probes is OpenRocket's to 1e-15). Pinned to
+    /// three figures: the guide's table quotes them.
+    ///
+    /// [adr-062]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-062-fins-and-rail-buttons-against-openrocket-roll-inertia-explained-2026-09-21
+    #[test]
+    fn hpr_s_own_fin_roll_departs_as_pinned() {
+        let record = record();
+        let departures = [
+            ("a tube and rectangular fins", 0.000_129),
+            ("a tube and a fin set of square section", 0.0241),
+            ("a tube and triangular fins", -0.0214),
+            ("a tube and a fin set with a tab", -0.0512),
+        ];
+        for (question, pinned) in departures {
+            let probe = probe(&record, question);
+            let (ours, theirs, _) = both(probe);
+            let (layout, _) = hpr(probe);
+            let fins = layout
+                .components
+                .iter()
+                .find(|placed| matches!(placed.part, Part::FinSet(_)))
+                .expect("a fin set");
+            let hpr_fins = fins.own.inertia_kg_m2.z_axis.z;
+            let their_fins = theirs[2] - (ours[2] - hpr_fins);
+            let found = relative(hpr_fins, their_fins);
+            assert!(
+                (found - pinned).abs() <= 5e-3 * pinned.abs(),
+                "{question}: {found:e}, not {pinned:e}"
+            );
         }
     }
 
@@ -609,7 +677,7 @@ mod tests {
         }
     }
 
-    /// Loft's `demo-boattail.ork`, whose roll inertia is 2.64% from OpenRocket's, 0.232% with
+    /// Loft's `demo-boattail.ork`, whose roll inertia is 2.64% from OpenRocket's, 0.093% with
     /// OpenRocket's fin rule in place of hpr's (`cargo xtask ork`). Its fins are elliptical, and
     /// OpenRocket's ellipse is a 30-sided polygon, of `sin(π/30) / (π/30)` the area and so the
     /// mass: with that in the rule too, the two are 1.5e-6 apart. The design and OpenRocket's
@@ -644,11 +712,16 @@ mod tests {
                 set.planform,
                 hpr_design::fins::FinPlanform::Elliptical { .. }
             ));
-            let r = placed.body_radius_m.expect("fins sit on a tube");
             // The rule on the polygon: its mass, and its area in `hₑ² = A h / c_r`.
-            let area_m2 = set.planform.geometry().expect("an outline").area_m2 * polygon;
-            let reach2 = area_m2 * set.planform.span_m() / set.planform.root_chord_m();
-            let rule = placed.own.mass_kg * polygon * (r * r + r * reach2.sqrt() + reach2 / 3.0);
+            let rule = super::rod_roll_kg_m2(
+                set.count,
+                set.planform.geometry().expect("an outline").area_m2 * polygon,
+                set.planform.span_m(),
+                set.planform.root_chord_m(),
+                placed.body_radius_m.expect("fins sit on a tube"),
+                placed.own.mass_kg * polygon,
+            )
+            .expect("three fins");
             ours += rule - placed.own.inertia_kg_m2.z_axis.z;
             fins += 1;
         }

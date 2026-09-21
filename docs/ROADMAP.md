@@ -632,7 +632,7 @@
     - [x] **M2.2b2 Fins, rail buttons and roll inertia.** *Done when:* roll inertia's 2.1% explained
       or bounded; airfoil, rounded and elliptical fins each hpr's rule or a written departure; #151
       settled; M2.2a rerun. *Result:* met (ADR-062): the roll gap is OpenRocket's fin rule (hpr's
-      exact integral kept); with it, median 0.141% and each file outside 1% has a cause; #151 fixed.
+      exact integral kept); with it, median 0.001% and each file outside 1% has a cause; #151 fixed.
     - [ ] **M2.2b3 Clusters, fillets, packed parts and unread parts.** *Done when:* each is hpr's
       rule or a written departure, M2.2a rerun.
     - [ ] **M2.2b4 Stored results as found** (L87). *Done when:* L87 is live.

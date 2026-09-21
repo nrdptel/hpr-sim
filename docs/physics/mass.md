@@ -231,7 +231,7 @@ design outside either needs a written reason, not a pass.
 | centre of mass (share of length) | 54 of 74 | 62 of 74 | 0.012% |
 | pitch inertia | 34 of 74 | 53 of 74 | 0.11% |
 | roll inertia | 11 of 74 | 29 of 74 | 2.1% |
-| roll inertia, OpenRocket's fin shortcut in hpr's place | 33 of 74 | 53 of 74 | 0.14% |
+| roll inertia, OpenRocket's fin shortcut in hpr's place | 49 of 74 | 55 of 74 | 0.001% |
 
 Counting each file's content once, 46 of 54 are within 1% in mass and 47 of 54 in centre of mass.
 Before [M2.2b1](../decisions-and-roadmap.md#m2-2b1) (reading what a `.ork` leaves unsaid), 57 of
@@ -279,18 +279,18 @@ to 3.8% apart, though their mass, centre of mass and pitch inertia agree within 
 of each is within 0.3 g of OpenRocket's. Across all 74 files the median is 2.1%. It is the fins:
 OpenRocket takes a shortcut for a fin set's roll inertia, and hpr integrates the fin exactly
 ([below](#fins-rail-buttons-and-roll-inertia)). With OpenRocket's shortcut in hpr's place, the
-median is 0.14% and 53 files are within 1%. Five of the six Loft demos come within 0.0005%. The
-sixth, whose fins are elliptical, is 0.23% apart in that row, and within 0.0002% once OpenRocket's
-ellipse is drawn as OpenRocket draws it, a 30-sided polygon (a test). For each of the 21 files
-still outside 1% (17 by content), `cargo xtask ork` names a cause, and it fails if it can't. Some
-files have two:
+median is 0.001% and 55 files are within 1%. The shortcut takes OpenRocket's own mass for each fin
+set, paired by id, or in an older file by name, so the way OpenRocket weighs a section (below) is
+set aside too. Five of the six Loft demos come within 0.0005%. The sixth, whose fins are
+elliptical, is 0.093% apart in that row, and within 0.0002% once OpenRocket's ellipse is drawn as
+OpenRocket draws it, a 30-sided polygon (a test). For each of the 19 files still outside 1% (15 by
+content), `cargo xtask ork` names a cause, and it fails if it can't. Some files have two:
 
 | cause | files by content |
 |---|---|
 | a mass override covering the parts inside (a departure, [below](#what-a-ork-leaves-unsaid-and-overrides)) | 7 |
 | parts hpr keeps unread (a reduced design) | 6 |
-| an airfoil, rounded or elliptical fin set, or fillets, which OpenRocket weighs otherwise | 8 |
-| recovery gear or a mass component hpr weighs as a point mass ([below](#fins-rail-buttons-and-roll-inertia)) | 5 |
+| recovery gear or a mass component hpr weighs as a point mass, where OpenRocket spreads it over its packing ([below](#fins-rail-buttons-and-roll-inertia)); counted only when hpr's roll inertia is the lower, by no more than such parts could add in a packing as wide as their tube | 3 |
 
 The pitch inertia is within 1% on 53 of 74. The 21 outside have no named cause yet, and no bound
 is known; on the fin probes below, pitch differs by up to 0.11% where the fins weigh the same.
@@ -430,18 +430,20 @@ cargo test -p hpr-validate openrocket
 **In short.** A rocket's roll inertia is its resistance to spinning about its long axis. hpr's was
 a median 2.1% from OpenRocket's on the 74 design files, and nothing explained it. It is the fins.
 OpenRocket works out a fin set's roll inertia with a shortcut; hpr integrates over the fin exactly.
-[M2.2b2](../decisions-and-roadmap.md#m2-2b2) measured the shortcut on 31 more probe designs, each a
+[M2.2b2](../decisions-and-roadmap.md#m2-2b2) measured the shortcut on 33 more probe designs, each a
 tube and one part. hpr keeps its own: a *departure*, a rule hpr keeps on purpose, measured and
 pinned by a test. The same probes settle how each fin section is weighed and where a rail button
 sits. [ADR-062][adr-062] records the decisions.
 
 How far to trust it: the shortcut is inferred from OpenRocket's output; its source is GPL, so the
-project does not read it. It matches every fin probe but two to 15 digits, and those two are
-explained below.
+project does not read it. It matches every fin probe but two to 1e-12, and those two are
+explained below. Every tapered probe has a span half its root chord; Loft's demos, whose spans are
+0.39 to 0.50 of the root, hold to 0.0005% as well.
 
-**Every part but the fins agrees.** A bulkhead, centering ring, inner tube, mass component,
-parachute, shock cord and streamer each have OpenRocket's mass, centre of mass and both inertias on
-their probes, to 1e-15.
+**The other parts agree, bar a rail button.** A bulkhead, centering ring, inner tube, mass
+component, parachute, shock cord and streamer each have OpenRocket's mass, centre of mass and both
+inertias on their probes, to 1e-15. A rail button's inertias are apart by up to 0.05% of its
+probe's, and a launch lug's pitch inertia by 0.03% (below).
 
 **OpenRocket's shortcut.** For a set of two or more fins, OpenRocket spreads the set's mass `m`
 evenly along a thin rod that runs straight out from the body, at radius `R`, to `R + hₑ`, and
@@ -454,7 +456,8 @@ I_roll = m (R² + R hₑ + hₑ²/3),   hₑ² = A h / c_r
 Here `A` is one fin's area, `h` its span and `c_r` its root chord. For a rectangular fin, `hₑ` is
 the span, and the shortcut is exact except that it leaves out the fin's thickness. `hₑ` is shorter
 than the span when the fin narrows outward, and longer when it widens. A tab's mass goes where the
-fin's does, and neither the section nor the thickness enters.
+fin's does, and neither the section nor the thickness enters. A single fin gets the same rod about
+its own middle, `m hₑ²/12`.
 
 **A worked example: the probe's trapezoid.** Three fins with a 100 mm root chord, a 50 mm tip
 chord, a 50 mm span and 50 mm of sweep, 3 mm thick, of 1,000 kg/m³, on a tube 50 mm in radius.
@@ -475,8 +478,8 @@ OpenRocket's figure is the larger there.
 | triangular, 100 mm root, 50 mm span | 1.0314e-4 | 1.0540e-4 | −2.14% |
 | the trapezoid with a tab 50 mm by 10 mm | 1.9199e-4 | 2.0234e-4 | −5.12% |
 
-The two fin probes the shortcut does not match to 15 digits are an elliptical fin set (its
-polygon, below) and a canted one (by 2.66e-5 of the probe's roll inertia, not traced).
+The two fin probes the shortcut does not match to 1e-12 are an elliptical fin set (its polygon,
+below) and a canted one (by 2.66e-5 of the probe's roll inertia, not traced).
 `hpr_validate::openrocket::openrocket_fin_set_roll_kg_m2` states the shortcut, and the 74-file
 comparison uses it for the second roll row of the table [above](#checked-against-openrocket). The
 test `each_part_alone_is_openrocket_s_or_pinned` holds every probe of this section to OpenRocket's,
