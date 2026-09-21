@@ -32,6 +32,7 @@ mod examples;
 mod layering;
 mod ork;
 mod ork_motors;
+mod ork_recovery;
 mod refs;
 mod site;
 mod validate;

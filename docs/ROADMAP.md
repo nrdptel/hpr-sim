@@ -617,10 +617,11 @@
       and `cargo xtask ork` prints those counts and how many designs assemble a configuration.
       *Result:* met (ADR-055): 206 motors in 174 configurations, 6 left out in pods and parallel
       stages; 6 curves found; 1 configuration flies, on an airframe read without a warning.
-    - [ ] **M3.1c2 Recovery and separation.** When each parachute and streamer opens and each
+    - [x] **M3.1c2 Recovery and separation.** When each parachute and streamer opens and each
       stage separates, per configuration, and the drag coefficient each device states. *Done
       when:* every recovery device and stage in the library has its settings read or left out
-      with a reason, and `cargo xtask ork` prints the counts.
+      with a reason, and `cargo xtask ork` prints the counts. *Result:* met (ADR-056): 137 devices
+      read, 2 left out in pods; 18 of 93 stages separate, 2 parallel stages' left out.
     - [ ] **M3.1c3 What OpenRocket last did.** Stored launch conditions and results: the summary,
       the time series and the events (L64). *Done when:* L64's named test is live, a design's
       stored results are read back, and `cargo xtask ork` prints the counts.

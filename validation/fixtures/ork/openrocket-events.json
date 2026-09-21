@@ -1,0 +1,137 @@
+{
+  "source": "validation/oracles/openrocket/events.py",
+  "command": "refs/venv/bin/python validation/oracles/openrocket/events.py validation/fixtures/ork/openrocket-events.json",
+  "openrocket": "24.12",
+  "jar_sha256": "4959b72f52f5f607941e9722abbb7b7f0c4a38ebbbf84204a329db9f31c4f897",
+  "java": "17.0.20.1",
+  "jpype": "1.7.1",
+  "words": {
+    "ignition": {
+      "AUTOMATIC": {
+        "word": "automatic",
+        "label": "Automatic (launch or ejection charge)"
+      },
+      "LAUNCH": {
+        "word": "launch",
+        "label": "Launch"
+      },
+      "EJECTION_CHARGE": {
+        "word": "ejectioncharge",
+        "label": "First ejection charge of previous stage"
+      },
+      "BURNOUT": {
+        "word": "burnout",
+        "label": "First burnout of previous stage"
+      },
+      "NEVER": {
+        "word": "never",
+        "label": "Never"
+      }
+    },
+    "deployment": {
+      "LAUNCH": {
+        "word": "launch",
+        "label": "Launch (plus NN seconds)"
+      },
+      "EJECTION": {
+        "word": "ejection",
+        "label": "First ejection charge of this stage"
+      },
+      "APOGEE": {
+        "word": "apogee",
+        "label": "Apogee"
+      },
+      "ALTITUDE": {
+        "word": "altitude",
+        "label": "Specific altitude during descent"
+      },
+      "LOWER_STAGE_SEPARATION": {
+        "word": "lowerstageseparation",
+        "label": "Lower stage separation"
+      },
+      "NEVER": {
+        "word": "never",
+        "label": "Never"
+      }
+    },
+    "separation": {
+      "LAUNCH": {
+        "word": "launch",
+        "label": "Launch"
+      },
+      "IGNITION": {
+        "word": "ignition",
+        "label": "Current stage motor ignition"
+      },
+      "BURNOUT": {
+        "word": "burnout",
+        "label": "Current stage motor burnout"
+      },
+      "EJECTION": {
+        "word": "ejection",
+        "label": "Current stage ejection charge"
+      },
+      "UPPER_IGNITION": {
+        "word": "upperignition",
+        "label": "Upper stage motor ignition"
+      },
+      "ALTITUDE_ASCENDING": {
+        "word": "altitudeascending",
+        "label": "Specific altitude during ascent"
+      },
+      "APOGEE": {
+        "word": "apogee",
+        "label": "Apogee"
+      },
+      "ALTITUDE_DESCENDING": {
+        "word": "altitudedescending",
+        "label": "Specific altitude during descent"
+      },
+      "NEVER": {
+        "word": "never",
+        "label": "Never"
+      }
+    }
+  },
+  "drag": {
+    "parachute_automatic_cd": 0.8,
+    "parachute_default_cd": 0.8,
+    "streamer_default_cd": 0.6,
+    "streamer_max_computed_cd": 0.4,
+    "streamers": [
+      {
+        "length_m": 0.5,
+        "width_m": 0.05,
+        "cd": 0.08937142857142857
+      },
+      {
+        "length_m": 1.0,
+        "width_m": 0.1,
+        "cd": 0.05958095238095239
+      },
+      {
+        "length_m": 1.5,
+        "width_m": 0.05,
+        "cd": 0.04965079365079366
+      }
+    ]
+  },
+  "deploy_height": [
+    {
+      "pad_above_sea_m": 1000.0,
+      "deploy_altitude_m": 30.0,
+      "apogee_above_ground_m": 51.66,
+      "reached_the_ground": true,
+      "deployed": true,
+      "at_deployment_above_ground_m": 29.87,
+      "at_deployment_above_sea_m": 1029.87
+    },
+    {
+      "pad_above_sea_m": 1000.0,
+      "deploy_altitude_m": 100.0,
+      "apogee_above_ground_m": 51.66,
+      "reached_the_ground": true,
+      "deployed": false
+    }
+  ]
+}
