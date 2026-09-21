@@ -501,14 +501,15 @@ first button there, the rest following aft. hpr now reads a `.ork` button so (is
 [#151](https://github.com/nrdptel/hpr-sim/issues/151)). Before, hpr put the row's forward edge, middle
 or aft edge on the position. The move depends on which end the file measures from:
 
-| measured from | how the row moves (radius r, spacing s, n buttons) | a row of two 10 mm buttons, 100 mm apart |
+| measured from | how the row moves (r the button's outer radius, s the spacing centre to centre, n buttons) | two buttons of 10 mm outer diameter, 100 mm centre to centre |
 |---|---|---|
 | the top, after a part, or absolute | forward r | 5 mm forward |
 | the middle | aft (n − 1)s/2; one button does not move | 50 mm aft |
 | the bottom | aft r + (n − 1)s | 105 mm aft |
 
-A flight leaves the rail when its aft-most guide does, so a row placed from the middle or the
-bottom now leaves it later. The probes check the top, the middle and the bottom, with one button
+A flight leaves the rail when its aft-most guide does. So a row placed from the top, after a part
+or absolutely now leaves it a radius earlier, and one placed from the middle or the bottom leaves it
+later: more rail to travel, so a little faster off the rail. The probes check the top, the middle and the bottom, with one button
 and with a row of two.
 
 **What is left, each pinned by a test.**
