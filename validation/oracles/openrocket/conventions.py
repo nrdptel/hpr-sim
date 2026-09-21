@@ -75,13 +75,58 @@ def tube(extra="", children="", thickness="0.002", material=MATERIAL):
     )
 
 
-def transition(extra="", thickness="0.002"):
+def transition(extra="", thickness="0.002", material=MATERIAL):
     """A transition 0.1 m long from 50 mm to 40 mm, with a 2 mm wall."""
     return (
         f"<transition><name>Transition</name><id>{uid(3)}</id><length>0.1</length>"
         f"<thickness>{thickness}</thickness><shape>conical</shape>"
-        f"<foreradius>0.05</foreradius><aftradius>0.04</aftradius>{extra}{MATERIAL}</transition>"
+        f"<foreradius>0.05</foreradius><aftradius>0.04</aftradius>{extra}{material}</transition>"
     )
+
+
+def attached_tube(tag, n, name, thickness, material=MATERIAL):
+    """An inner tube, coupler or engine block 0.1 m long and 20 mm in radius, 0.1 m below the top
+    of its tube; `thickness` is written as given, or left out when it is `None`."""
+    wall = "" if thickness is None else f"<thickness>{thickness}</thickness>"
+    return (
+        f"<{tag}><name>{name}</name><id>{uid(n)}</id><position type=\"top\">0.1</position>"
+        f"<length>0.1</length><outerradius>0.02</outerradius>{wall}{material}</{tag}>"
+    )
+
+
+def lug(thickness, material=MATERIAL):
+    """A launch lug 50 mm long and 5 mm in radius, 0.1 m below the top of its tube."""
+    wall = "" if thickness is None else f"<thickness>{thickness}</thickness>"
+    return (
+        f"<launchlug><name>Lug</name><id>{uid(8)}</id><position type=\"top\">0.1</position>"
+        f"<length>0.05</length><radius>0.005</radius>{wall}{material}</launchlug>"
+    )
+
+
+def attached_tubes(thickness):
+    """One inner tube, one coupler and one lug, all with the same wall."""
+    return (
+        attached_tube("innertube", 4, "Inner", thickness)
+        + attached_tube("tubecoupler", 13, "Coupler", thickness)
+        + lug(thickness)
+    )
+
+
+# More kinds that name no material: a coupler, an engine block, an elliptical and a freeform fin
+# set, each placed 0.1 m below the top of its tube.
+MORE_NO_MATERIAL_CHILDREN = (
+    attached_tube("tubecoupler", 13, "Coupler", "0.001", material="")
+    + attached_tube("engineblock", 14, "Block", "0.005", material="")
+    + f"<ellipticalfinset><name>Elliptical</name><id>{uid(15)}</id>"
+    '<position type="top">0.1</position><fincount>3</fincount><rootchord>0.1</rootchord>'
+    "<height>0.05</height><thickness>0.003</thickness><crosssection>square</crosssection>"
+    "</ellipticalfinset>"
+    f"<freeformfinset><name>Freeform</name><id>{uid(16)}</id>"
+    '<position type="top">0.1</position><fincount>3</fincount><thickness>0.003</thickness>'
+    '<crosssection>square</crosssection><finpoints><point x="0.0" y="0.0"/>'
+    '<point x="0.05" y="0.05"/><point x="0.1" y="0.05"/><point x="0.1" y="0.0"/></finpoints>'
+    "</freeformfinset>"
+)
 
 
 def inner(extra="", material=MATERIAL):
@@ -166,10 +211,21 @@ PROBES = {
         tube(),
         transition(thickness="").replace("<thickness></thickness>", ""),
     ],
+    "a tube holding an inner tube, a coupler and a lug of no wall": [
+        tube(children=attached_tubes("0.0"))
+    ],
+    "a tube holding an inner tube, a coupler and a lug that write no thickness": [
+        tube(children=attached_tubes(None))
+    ],
+    "a mass override on a nose of no wall": [nose(overrides(mass_kg=0.1), thickness="0.0")],
     # Materials.
     "a nose and a tube that name no material, with one part of each kind inside": [
         nose(material=""),
         tube(children=NO_MATERIAL_CHILDREN, material=""),
+    ],
+    "a transition, and more kinds inside a tube, that name no material": [
+        tube(children=MORE_NO_MATERIAL_CHILDREN),
+        transition(material=""),
     ],
     # Overrides on a part with a shoulder (Loft lesson L51).
     "a centre of gravity override on a nose with a shoulder": [
@@ -225,7 +281,7 @@ def document(parts, stage_tags=""):
     return (
         "<?xml version='1.0' encoding='utf-8'?>\n"
         '<openrocket version="1.10" creator="hpr-sim conventions probe">'
-        "<rocket><name>Probe</name><subcomponents>"
+        f"<rocket><name>Probe</name><id>{uid(98)}</id><subcomponents>"
         f"<stage><name>Stage</name><id>{uid(99)}</id>{stage_tags}<subcomponents>"
         + "".join(parts)
         + "</subcomponents></stage></subcomponents></rocket></openrocket>\n"
@@ -269,6 +325,19 @@ def measure(text, scratch, name):
     }
 
 
+def saved_materials():
+    """The default materials this user has saved in OpenRocket's preferences, by key. OpenRocket
+    keeps a part's default material there once someone changes it; with none saved, the defaults
+    this script records are the ones a fresh install gives."""
+    from java.util.prefs import Preferences
+
+    root = Preferences.userRoot()
+    if not root.nodeExists("OpenRocket/componentMaterials"):
+        return {}
+    node = root.node("OpenRocket/componentMaterials")
+    return {str(key): str(node.get(key, "")) for key in node.keys()}
+
+
 def main():
     if len(sys.argv) != 2:
         sys.exit("usage: conventions.py OUTPUT.json")
@@ -278,6 +347,10 @@ def main():
     import jpype
     from info.openrocket.core.util import BuildProperties
     from java.lang import System
+
+    saved = saved_materials()
+    if saved:
+        sys.exit(f"OpenRocket has saved default materials, so its defaults are not a fresh install's: {saved}")
 
     probes = {}
     with tempfile.TemporaryDirectory() as scratch:
@@ -299,6 +372,7 @@ def main():
                 "jar_sha256": hashlib.sha256(automatic_radius.JAR.read_bytes()).hexdigest(),
                 "java": str(System.getProperty("java.version")),
                 "jpype": jpype.__version__,
+                "saved_default_materials": saved,
                 "probes": probes,
             },
             indent=1,

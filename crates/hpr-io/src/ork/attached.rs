@@ -283,14 +283,15 @@ fn inner_tube(values: &mut Values<'_>, auto: &mut Vec<AutoDimension>) -> Option<
 
 /// A tube's wall, in metres, or `None` when the tube cannot be read at all.
 ///
-/// A tube of **no** wall thickness is read as exactly that, and carries no mass. It is tempting to
-/// read it as solid — the rule a body component and a shoulder get on the spine, where the file
-/// has a `filled` spelling to mean it — but an inner tube has no such spelling, and OpenRocket's
-/// own geometry makes a tube's bore its outer radius less its wall, so a wall of nothing is a part
-/// of nothing. Reading it as solid would invent the mass instead: a solid coupler filling a 50 mm
-/// airframe for 180 mm is a few hundred grams the design never had. Seven tube couplers in the
-/// reference corpus are written this way, three of them in two of OpenRocket's own example
-/// designs, and four launch lugs say the same of themselves.
+/// A tube of **no** wall thickness is read as exactly that, and carries no mass: OpenRocket 24.12
+/// gives an inner tube, a coupler and a lug of no wall no mass either, measured on a probe design
+/// ([ADR-061][adr-061]), so it is read as written and not warned of. Reading it as solid would
+/// invent the mass: a solid coupler filling a 50 mm airframe for 180 mm is a few hundred grams the
+/// design never had. Seven tube couplers in the reference corpus are written this way, three of
+/// them in two of OpenRocket's own example designs, and four launch lugs say the same of
+/// themselves.
+///
+/// [adr-061]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-061-what-a-ork-leaves-unsaid-read-as-openrocket-reads-it-overrides-measured-two-departures-kept-2026-09-21
 fn tube_wall(values: &mut Values<'_>, outer_radius_m: Option<f64>) -> Option<f64> {
     if values.word(&["thickness"]).as_deref() == Some("filled") {
         return match outer_radius_m {
@@ -307,11 +308,11 @@ fn tube_wall(values: &mut Values<'_>, outer_radius_m: Option<f64>) -> Option<f64
     }
     let Some(thickness_m) = values.number(&["thickness"]) else {
         // A *stated* zero is OpenRocket saying the bore reaches the rim. A missing tag says
-        // nothing at all, and the spine reads that as solid, because a body component can be
-        // written `filled` and an absent thickness is likelier a writer that omitted it. A tube
-        // has no `filled` to be confused with, so the two cases part company here: read as solid,
-        // a tube whose wall the file never gave would invent the mass of a rod. Nothing in the
-        // reference library omits it.
+        // nothing at all. OpenRocket 24.12 gives it a wall of its own: on the probe design, 0.5 mm
+        // for a 20 mm inner tube, 1 mm for a 5 mm lug, and none for a coupler (ADR-061). One size
+        // each does not say whether that wall follows the radius, and nothing in the reference
+        // library omits it, so it is read as a tube of no wall, out loud, and the test
+        // `hpr_validate::openrocket::tests` pins the difference.
         values.warn_at(
             WarningKind::Dropped,
             "a tube with no wall thickness at all; it was read as a tube of no wall, which \
@@ -320,11 +321,6 @@ fn tube_wall(values: &mut Values<'_>, outer_radius_m: Option<f64>) -> Option<f64
         return Some(0.0);
     };
     if thickness_m == 0.0 {
-        values.warn_at(
-            WarningKind::Unusual,
-            "a tube of no wall thickness; it carries no mass, which is what OpenRocket's own \
-             geometry gives it",
-        );
         return Some(0.0);
     }
     if thickness_m < 0.0 {

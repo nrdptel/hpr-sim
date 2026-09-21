@@ -16,11 +16,11 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
 ## Handoff (overwrite each session)
 
 - **M2.2b2 next** (ADR-060, ADR-061): clusters (M1.9's, or a written departure), fillets, airfoil
-  fins (OpenRocket 19.4% heavier), unread parts, a rail button's place (#151), roll inertia 2.1%
+  fins (OpenRocket 19.4% heavier), elliptical fins (OpenRocket 0.18% lighter), unread parts, a
+  rail button's place (#151), roll inertia 2.1%
   apart (nose, shoulder, transition and tube roll already agree on probes, so fins and inner
   parts). Add probes to `validation/oracles/openrocket/conventions.py`; every probe needs a test
-  in `hpr_validate::openrocket` (`every_probe_is_checked`). A zero-wall inner tube or lug still
-  warns (Unusual) and so holds a configuration back, though OpenRocket agrees; harmonise it. Then
+  in `hpr_validate::openrocket` (`every_probe_is_checked`). Then
   b3 (L87), c (motors), d, e. **Read OpenRocket after a save**; Java 17. When the library
   changes, rerun `mass.py` and `rocketserializer/geometry.py` (own env) before `xtask ork`.
 - **Page rules** (ADR-016 to ADR-020): relative links between pages, GitHub URLs for the rest
@@ -56,7 +56,7 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
 
 ## Done log (newest first, keep about 15)
 
-- 2026-09-21: M2.2b1 What a `.ork` leaves unsaid, and overrides (ADR-061): 28 probes; walls,
+- 2026-09-21: M2.2b1 What a `.ork` leaves unsaid, and overrides (ADR-061): 32 probes; walls,
   shoulders, materials as OpenRocket's; L51 live; 61 and 62 of 74 within 1%; #151. M2.2b split.
 - 2026-09-21: M2.2a Each design's structure against OpenRocket's (ADR-060): 57 and 58 of 74 within
   1% in mass and CG; the 17 outside have five causes hpr warns of; roll inertia 2.1% unexplained.

@@ -1142,6 +1142,42 @@ fn a_wall_of_no_thickness_weighs_nothing_and_an_unwritten_one_is_two_millimetres
     }
 }
 
+/// A negative wall, on a nose or on its shoulder, is no wall, and the reader says so for each; a
+/// nose that writes no thickness and is no wider than OpenRocket's 2 mm default wall is solid.
+#[test]
+fn a_negative_wall_is_no_wall_and_a_narrow_default_one_is_solid() {
+    let from = "<thickness>0.002</thickness>\n            <shape>ogive";
+    let to = "<thickness>-0.001</thickness><aftshoulderlength>0.05</aftshoulderlength>\
+              <aftshoulderradius>0.01</aftshoulderradius>\
+              <aftshoulderthickness>-0.001</aftshoulderthickness>\n            <shape>ogive";
+    let xml = ACROSS_A_STAGE.replacen(from, to, 1);
+    let first = read(xml.as_bytes()).expect("a readable design");
+    let spine = component::rocket(&first.value.document);
+    let hpr_design::tree::Part::NoseCone(nose) = &spine.value.stages[0].components[0].part else {
+        panic!("a nose cone");
+    };
+    assert_eq!(
+        nose.wall,
+        hpr_design::solids::Wall::Shell { thickness_m: 0.0 }
+    );
+    let shoulder = nose.shoulder.expect("a shoulder");
+    assert_eq!((shoulder.thickness_m, shoulder.capped), (0.0, false));
+    assert_eq!(spine.count(WarningKind::Dropped), 2, "{:?}", spine.warnings);
+
+    let narrow = ACROSS_A_STAGE.replacen(from, "<shape>ogive", 1).replacen(
+        "<aftradius>auto</aftradius>\n          </nosecone>",
+        "<aftradius>0.0015</aftradius>\n          </nosecone>",
+        1,
+    );
+    assert_ne!(narrow, ACROSS_A_STAGE.replacen(from, "<shape>ogive", 1));
+    let second = read(narrow.as_bytes()).expect("a readable design");
+    let spine = component::rocket(&second.value.document);
+    let hpr_design::tree::Part::NoseCone(nose) = &spine.value.stages[0].components[0].part else {
+        panic!("a nose cone");
+    };
+    assert_eq!(nose.wall, hpr_design::solids::Wall::Filled {});
+}
+
 /// A single-stage design carrying one of most of the parts that hang off a spine: a motor tube, a
 /// ring whose bore and outer radius are both automatic, a coupler with a bulkhead nested inside
 /// it, a canted fin set with a tab, and a parachute packed to fill the bore.

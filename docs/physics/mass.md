@@ -229,8 +229,8 @@ Counting each file's content once, 46 of 54 are within 1% in mass and 47 of 54 i
 Before [M2.2b1](../decisions-and-roadmap.md#m2-2b1) (reading what a `.ork` leaves unsaid), 57 of
 74 files were within 1% in mass and 58 in centre of mass (median mass 0.020%).
 
-**The 13 files outside a threshold** are 8 different files by content (7 designs: the library's
-copy of one example differs from the jar's in its bytes). Each has one or two of three causes, and
+**The 13 files outside a threshold** are 8 different files by content, each a different design.
+Each has one or two of three causes, and
 hpr already warns of every one when it reads the file. `cargo xtask ork` works the causes out from
 those warnings, counts them by content as below, and fails if a file outside has none. One file has
 two causes, so the last column adds to 9:
@@ -304,7 +304,7 @@ a wall thickness of 0 weigh? What is a part that names no material made of? When
 parts inside it both have an [override](../glossary.md#override) (a mass or centre of mass the
 designer typed in), which wins? OpenRocket, which writes these files, has an answer to each, and
 its answer is what the file means to the person who wrote it. So hpr asks it:
-`validation/oracles/openrocket/conventions.py` writes 28 small *probe designs*, each a rocket of
+`validation/oracles/openrocket/conventions.py` writes 32 small *probe designs*, each a rocket of
 one or two parts built to ask one question, runs OpenRocket 24.12 on them and records its answers.
 The test module `hpr_validate::openrocket::tests` reads the same designs with hpr and holds hpr to
 them. Where hpr keeps a rule of its own, the test pins how far apart the two are. This was
@@ -315,18 +315,20 @@ measured, not proven for every case. OpenRocket's defaults were read with its pr
 fresh install sets them; an OpenRocket whose preferences were changed may give others.
 
 **Read as OpenRocket reads it.** On every one of these probes hpr's mass is OpenRocket's within
-0.005%, part by part as well as whole, and its centre of mass within 0.001 mm, except that a rail
-button sits 5 mm further aft (issue [#151](https://github.com/nrdptel/hpr-sim/issues/151),
-described below). None of these readings raises a
-warning, since nothing is assumed:
+0.001%, part by part as well as whole (the worst, a transition, is 0.0003% apart), and its centre
+of mass within 0.001 mm. Where no fin, rail button or recovery part is in the probe, the inertias
+agree within 0.001% too. Two gaps are pinned rather than hidden, and described below: a rail
+button sits 5 mm further aft, and an elliptical fin set weighs 0.18% more. None of these readings
+raises a warning, since nothing is assumed:
 
 | the file says | what it weighs (OpenRocket 24.12, and now hpr) |
 |---|---|
-| a nose cone, transition or body tube with a wall of 0 | nothing: the part keeps its shape (so its drag) but has no wall; a part meant to be solid is written `filled` |
+| a nose cone, transition or body tube with a wall of 0 | nothing: the part keeps its shape (hpr's drag uses the shape, not the wall) but has no wall; a part meant to be solid is written `filled` |
+| an inner tube, coupler or launch lug with a wall of 0 | nothing |
 | a shoulder with a wall of 0, or none written | nothing, whether or not the file closes its end with a cap, on a hollow nose or a filled one |
 | a filled nose cone with a walled shoulder | the solid cone plus the shoulder's own wall |
 | a nose cone, transition or body tube with no thickness written | a 2 mm wall, whatever its radius (measured on a nose cone and a tube at 50 mm and at 30 mm, and on a transition) |
-| a part weighed by its volume (a nose, tube, fin, ring or lug) with no material | cardboard, 680 kg/m³ |
+| a part weighed by its volume (a nose, transition, tube, coupler, engine block, fin set, ring or lug) with no material | cardboard, 680 kg/m³ |
 | a canopy or streamer with no material | ripstop nylon, 0.067 kg/m² |
 | shroud lines or a shock cord with no material | a 2 mm elastic cord, 0.0018 kg/m |
 | a rail button with no material | Delrin, 1,420 kg/m³ |
@@ -347,7 +349,8 @@ hpr and OpenRocket agree on which override wins, and on where a centre is measur
   over everything in the stage.
 - A centre-of-gravity override is measured from the part's front, not from its shoulder's, and the
   shoulder moves with the part.
-- A centre-of-gravity override alone, written to cover the parts inside, moves the whole assembly.
+- A centre-of-gravity override alone, written to cover the parts inside, sets the whole assembly's
+  centre. (The two place the parts inside differently, which shows only in the inertia: below.)
 
 This settles [Loft lesson L51](../decisions-and-roadmap.md#l51), whose rule for this came from
 OpenRocket's source and was unsettled by up to 133 mm. The test is
@@ -377,15 +380,21 @@ its centre, with one covering the parts inside and the other not. hpr scopes a p
 once, takes the mass's, and warns. On the probes the centre is 4.7 mm apart when the centre's
 override is the covering one, and agrees when the mass's is (with pitch inertia 8.2% lower in hpr).
 
-**A gap the probes found.** OpenRocket gives a rail button no length along the rocket and puts its
-centre at the position the file gives. hpr places a button by its forward edge, so a button read
-from a `.ork` sits one radius further aft: 5 mm for a 10 mm button (issue
-[#151](https://github.com/nrdptel/hpr-sim/issues/151), for [M2.2b2](../decisions-and-roadmap.md#m2-2b2)).
+**Two gaps the probes found.** Both are for [M2.2b2](../decisions-and-roadmap.md#m2-2b2), and a
+test pins each.
 
-**What it leaves out.** A missing thickness on an inner tube is not probed (hpr reads it as no
-wall; no file in the reference library has one). A zero wall on an inner tube, coupler or lug
-still raises a warning, though OpenRocket agrees it weighs nothing, so such a design is not flown
-yet ([M2.2b2](../decisions-and-roadmap.md#m2-2b2) lines the two up).
+- OpenRocket puts a rail button's centre at the position the file gives. hpr places a button by
+  its forward edge, so a button read from a `.ork` sits one radius further aft: 5 mm for a 10 mm
+  button (issue [#151](https://github.com/nrdptel/hpr-sim/issues/151)).
+- hpr's elliptical fin is the exact ellipse, with an area of `π c h / 4` for a root chord `c` and
+  a span `h`. OpenRocket's weighs 0.18% less on the probe, as a many-sided polygon drawn inside the
+  ellipse would.
+
+**What it leaves out.** An inner tube, coupler or lug that writes no thickness at all is read as
+no wall, with a warning. OpenRocket gives it a wall of its own: on the probe, 0.5 mm for a 20 mm
+inner tube, 1 mm for a 5 mm lug, and none for a coupler. One size each does not say whether that
+wall follows the radius, and no file in the reference library has one, so hpr does not follow it
+yet; the test pins the difference.
 
 **Run it yourself.** With Java 17 and the OpenRocket jar (`cargo xtask refs fetch`), from the
 repository root:

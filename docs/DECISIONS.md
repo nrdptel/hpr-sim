@@ -5073,7 +5073,7 @@ stored results).
 
 **Decision.**
 
-1. **Measured, not assumed.** `validation/oracles/openrocket/conventions.py` writes 28 small probe
+1. **Measured, not assumed.** `validation/oracles/openrocket/conventions.py` writes 32 small probe
    designs, each asking one question, and records what OpenRocket 24.12 makes of each: its
    structure and its own per-part breakdown, and the material it gives each part through the
    public `getMaterial` and `getLineMaterial`. The record is
@@ -5082,7 +5082,8 @@ stored results).
 2. **Where the file leaves something unsaid, hpr reads it as OpenRocket does.** OpenRocket's
    reading is what the file means to the people who wrote it.
    - A wall of no thickness on a nose cone, transition or body tube is a surface with no wall: the
-     part keeps its shape and weighs nothing. `hpr_design::solids::Wall::Shell` now takes a
+     part keeps its shape and weighs nothing. So does an inner tube, coupler or lug of no wall,
+     which hpr already read so but warned of. `hpr_design::solids::Wall::Shell` now takes a
      thickness of zero. A solid part is written `filled`; OpenRocket writes it so.
    - A shoulder of no wall, or none written, weighs nothing, capped or not, and whether or not
      its nose is filled. A filled nose keeps its shoulder's own wall (the probe: 0.84446 kg, the
@@ -5091,21 +5092,31 @@ stored results).
      radius: a nose and a tube at 50 mm and at 30 mm, and a transition, each weigh what a 2 mm
      wall gives.
    - A part that names no material is made of OpenRocket's default for its kind: cardboard,
-     680 kg/m³, for a solid part; ripstop nylon, 0.067 kg/m², for a canopy or streamer; an elastic
+     680 kg/m³, for a part weighed by its volume (probed on a nose, transition, body tube, inner
+     tube, coupler, engine block, three kinds of fin set, ring, bulkhead and lug); ripstop nylon, 0.067 kg/m², for a canopy or streamer; an elastic
      cord, 0.0018 kg/m, for shroud lines and a shock cord; and Delrin, 1,420 kg/m³, for a rail
      button.
 
+   - A mass override on a part that weighs nothing is a point mass at the middle of its length,
+     in both programs.
+
    None of these is warned of any more: nothing is assumed. So a configuration held back only for
-   them now flies.
+   them now flies. One reading is not taken: an inner tube, coupler or lug that writes no
+   thickness gets a wall of OpenRocket's own (0.5 mm on the probe's 20 mm inner tube, 1 mm on its
+   5 mm lug, none on the coupler). One size each does not say whether it follows the radius and
+   no file in the library has one, so hpr keeps reading it as no wall, with a warning, and the
+   test pins the difference. OpenRocket's default materials were read with none saved in its
+   preferences; the script records that and refuses to run otherwise.
 3. **Which override wins is OpenRocket's.** On every override probe hpr's mass is OpenRocket's.
    - A parent's override that covers its children wins over a child's own, and a stage's wins over
      everything in it.
    - A centre-of-gravity override is measured from the part's front, not its shoulder's, and moves
      the shoulder with the part.
-   - A centre-of-gravity override alone, written to cover the parts inside, moves the whole
-     assembly. hpr had taken the scope from the absent mass flag; it now takes the flag of the one
-     quantity overridden.
-4. **Two departures are kept, each pinned by a test.**
+   - A centre-of-gravity override alone, written to cover the parts inside, sets the whole
+     assembly's centre. hpr had taken the scope from the absent mass flag; it now takes the flag
+     of the one quantity overridden. (How the parts inside are placed differs, which shows only in
+     the inertia: §4.)
+4. **Two departures are kept, and one limitation, each pinned by a test.**
    - **The centre under a covering mass override.** When a mass override covers the parts inside
      and states no centre, OpenRocket puts the centre at the overriding part's own and leaves the
      parts inside out of it. hpr keeps the centre its parts lay out. A builder who weighs a tube
@@ -5121,9 +5132,9 @@ stored results).
      for every rocket; hpr's is consistent with its own mass. Likewise under a centre override
      that covers the parts inside: hpr moves the assembly whole, OpenRocket the part alone, and
      OpenRocket adds the parts inside where they were (pitch inertia 2.65% apart on the probe).
-   - **Flags that disagree.** A part overriding both quantities with flags that disagree cannot be
-     said in `hpr-design`, which scopes a part's overrides once: the mass flag decides, with a
-     warning, as before. On the probe that is 4.7 mm.
+   - **Flags that disagree** (a limitation). A part overriding both quantities with flags that
+     disagree cannot be said in `hpr-design`, which scopes a part's overrides once: the mass flag
+     decides, with a warning, as before. On the probe that is 4.7 mm.
 
 **Consequences.** On 2026-09-21, rerunning M2.2a's survey (`cargo xtask ork`, OpenRocket's record
 unchanged):
@@ -5133,10 +5144,10 @@ unchanged):
 - **Outside a threshold:** 13 files (8 by content), down from 17 (12). Each is a cluster, fillets
   left out, or parts kept unread, b2's and M1.9's.
 - **Flying:** a second configuration flies (2 of 174).
-- **Warnings:** those reading designs fall from 96 to 69, and parts that weigh nothing from 21 to 14.
-- **A gap the probes found:** OpenRocket gives a rail button no axial length and puts its centre at
-  its position, where hpr places it by its forward edge, one radius further aft (#151); the test
-  pins the 5 mm.
+- **Warnings:** those reading designs fall from 96 to 57, and parts that weigh nothing from 21 to 14.
+- **Two gaps the probes found**, both for b2 and both pinned: OpenRocket puts a rail button's
+  centre at its position, where hpr places it by its forward edge, one radius (5 mm) further aft
+  (#151); and OpenRocket's elliptical fin weighs 0.18% less than hpr's exact ellipse.
 - **L51 is live:** `hpr_validate::openrocket::tests::override_precedence_matches_oracle`.
 
 ---

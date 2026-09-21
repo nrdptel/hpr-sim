@@ -251,11 +251,11 @@ departs from [F] but leaves the file readable is a warning that travels with the
 |---|---|---|
 | `Skipped` | a whole part was left out | a **component** this reader cannot give an honest shape ([below](#what-is-left-out-and-why)); an **attachment** entry that could not be decompressed, or one that would pass the unpacking limit; a damaged *design* entry is an error, not a warning |
 | `Dropped` | a value was ignored | a comment or processing instruction; an XML namespace; a tag whose text is not the number, count or flag it should be; two names for one value that disagree; a dimension the file does not give, read as zero; a fin's fillets or a rail button's screw head, whose mass hpr does not model |
-| `Unusual` | read as it stands | a schema version past 1.11; no `creator` attribute; a design entry not called `rocket.ork`; the single pre-1.9 subcomponent-override flag; a tube of no wall; a surface finish or an axial-offset method this reader has no rule for; an automatic radius with nothing to take, given OpenRocket's 25 mm default; a `<rocket>` holding nothing |
+| `Unusual` | read as it stands | a schema version past 1.11; no `creator` attribute; a design entry not called `rocket.ork`; the single pre-1.9 subcomponent-override flag; a surface finish or an axial-offset method this reader has no rule for; an automatic radius with nothing to take, given OpenRocket's 25 mm default; a `<rocket>` holding nothing |
 
 **Observed:** reading the corpus's containers and documents raises **no warnings at all** — every
-file that opens is ordinary. Building a *rocket* from those documents raises 69: 16 dropped, 12
-skipped and 41 unusual, over 76 files. Every kind of warning the container and document readers
+file that opens is ordinary. Building a *rocket* from those documents raises 57: 16 dropped, 12
+skipped and 29 unusual, over 76 files. Every kind of warning the container and document readers
 can raise is therefore exercised by a test rather than by a file anyone shipped.
 
 Only these stop a read:
@@ -797,9 +797,12 @@ ring read as one.
 **A tube of no wall thickness carries no mass** — 12 elements, among them two of OpenRocket's own
 example designs. Reading those as solid would invent the mass — a solid coupler filling a 50 mm
 airframe for 180 mm is a few hundred grams the design never had. Since
-[M2.2b1](../decisions-and-roadmap.md#m2-2b1) it is the rule for every part: OpenRocket 24.12 gives a
-nose cone, transition, body tube or shoulder of no wall no mass either, measured on probe designs
-([ADR-061][adr-061]), and a solid body component is written `<thickness>filled</thickness>`.
+[M2.2b1](../decisions-and-roadmap.md#m2-2b1) it is the rule for every part, and it is not warned
+of: OpenRocket 24.12 gives an inner tube, coupler, lug, nose cone, transition, body tube or shoulder
+of no wall no mass either, measured on probe designs ([ADR-061][adr-061]), and a solid body
+component is written `<thickness>filled</thickness>`. An inner tube, coupler or lug that writes no
+thickness at all is still read as no wall, with a warning; OpenRocket gives it a wall of its own,
+and no file in the library has one ([Mass properties](../physics/mass.md#what-a-ork-leaves-unsaid-and-overrides)).
 
 ### Checked against the answers OpenRocket cached
 
@@ -982,7 +985,7 @@ How it was decided, and the sources quoted in full, are in [ADR-054][adr-054].
 | automatic dimensions marked for the layout to resolve | 320, plus the 7 above given the default: 327 in the files |
 | parts left out, with a reason | 5 |
 | parts that lay out weighing nothing | 14, every one explained (below) |
-| warnings raised | 69: 16 dropped, 12 skipped, 41 unusual (below) |
+| warnings raised | 57: 16 dropped, 12 skipped, 29 unusual (below) |
 | tags no milestone reads yet | 9 `podset`, 3 `parallelstage` |
 
 **The 14 parts that weigh nothing** are worth checking, because a structural part with no mass is
@@ -992,18 +995,17 @@ states as zero, which OpenRocket gives no mass too ([ADR-061][adr-061]); 1 mass 
 says weighs 0 kg; and 2 transitions the designs *override* to zero mass —
 which is OpenRocket's ["base drag hack"](https://openrocket.readthedocs.io/en/latest/), a massless,
 dragless transition added only to change the base geometry. `cargo xtask ork` counts them by kind,
-so a new one would show up. (The files hold 12 attached tubes of no wall, the warning count
-below; one of them is not among the parts that lay out, which this page has not traced.) Before
+so a new one would show up. (The files hold 12 attached tubes of no wall; one of them is not among
+the parts that lay out, which this page has not traced.) Before
 [M2.2b1](../decisions-and-roadmap.md#m2-2b1) there were 21: the 7 more (2 body tubes, 2 fin sets,
 2 inner tubes and a nose cone) name no material, and now take OpenRocket's default.
 
-**What the 69 warnings are.** Every one is a reading this page explains, and none of them means a
+**What the 57 warnings are.** Every one is a reading this page explains, and none of them means a
 file is broken:
 
 | kind | count | what raised it |
 |---|---|---|
 | `Unusual` | 20 | the single pre-1.9 subcomponent-override flag, read as setting all three |
-| `Unusual` | 12 | a tube of no wall thickness, carrying no mass |
 | `Unusual` | 1 | a part with no axial offset |
 | `Unusual` | 7 | an automatic radius with nothing along its chain to take, given OpenRocket's default ([above](#when-an-automatic-radius-has-nothing-to-take)) |
 | `Unusual` | 1 | a `<rocket>` holding nothing, so the document holds no design |

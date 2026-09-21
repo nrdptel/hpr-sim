@@ -524,6 +524,8 @@ fn wall(values: &mut Values<'_>, outer_radius_m: Option<f64>) -> Wall {
     }
     match (values.number(&["thickness"]), outer_radius_m) {
         (Some(thickness_m), Some(radius_m)) if thickness_m >= radius_m => Wall::Filled {},
+        // OpenRocket's 2 mm, in a part no wider than it, fills the part.
+        (None, Some(radius_m)) if DEFAULT_WALL_M >= radius_m => Wall::Filled {},
         (Some(thickness_m), _) if thickness_m > 0.0 => Wall::Shell { thickness_m },
         (Some(0.0), _) => Wall::Shell { thickness_m: 0.0 },
         (Some(thickness_m), _) => {
@@ -568,6 +570,13 @@ fn shoulder(
     let thickness_m = match values.number(&[&format!("{end}shoulderthickness")]) {
         Some(stated_m) if stated_m > 0.0 => {
             known_m.map_or(stated_m, |radius_m| stated_m.min(radius_m))
+        }
+        Some(stated_m) if stated_m < 0.0 => {
+            values.warn_at(
+                WarningKind::Dropped,
+                format!("the {end} shoulder's wall is {stated_m} m thick, which is no wall; it was read as none"),
+            );
+            0.0
         }
         _ => 0.0,
     };
@@ -662,7 +671,7 @@ pub(super) fn material(values: &mut Values<'_>, names: &[&str], want: &str) -> M
 /// (`validation/oracles/openrocket/conventions.py`, [ADR-061][adr-061]).
 ///
 /// [adr-061]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-061-what-a-ork-leaves-unsaid-read-as-openrocket-reads-it-overrides-measured-two-departures-kept-2026-09-21
-pub(super) fn unnamed_material(want: &str) -> (&'static str, f64) {
+fn unnamed_material(want: &str) -> (&'static str, f64) {
     match want {
         "surface" => ("Ripstop nylon", 0.067),
         "line" => ("Elastic cord (round 2 mm, 1/16 in)", 0.0018),
@@ -737,7 +746,7 @@ pub(super) fn overrides(values: &mut Values<'_>) -> (Overrides, bool) {
     };
     if read.mass_kg.is_some()
         && read.cg_m.is_some()
-        && read.subcomponents_cg.is_some_and(|cg| cg != mass_flag)
+        && read.subcomponents_cg.unwrap_or_default() != mass_flag
     {
         values.warn_at(
             WarningKind::Dropped,
