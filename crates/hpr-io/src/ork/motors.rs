@@ -350,6 +350,8 @@ pub(super) fn mount(element: &Element, at: &str, warnings: &mut Vec<Warning>) ->
     let mut ignitions = BTreeMap::new();
     let mut motors = Vec::new();
     let mut doubled = Vec::new();
+    super::reads::note(mount, "motor");
+    super::reads::note(mount, "ignitionconfiguration");
     for child in mount.elements() {
         if !matches!(child.name.as_str(), "motor" | "ignitionconfiguration") {
             continue;
@@ -498,6 +500,8 @@ pub(super) fn read(
             ));
             continue;
         }
+        super::reads::note(element, "stage");
+        super::reads::note(element, "name");
         let inactive_stages = element
             .children_named("stage")
             .filter(|stage| stage.attribute("active") == Some("false"))

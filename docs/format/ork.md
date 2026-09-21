@@ -1146,14 +1146,15 @@ How this was decided is in [ADR-057][adr-057].
 ## What hpr keeps for writing the file back
 
 **In short.** Some of what a `.ork` holds, hpr's design does not model: pods, parallel stages,
-OpenRocket's 3D-view settings, a simulation's plug-ins, a part's colour. hpr keeps each whole, beside
+OpenRocket's 3D-view settings, a simulation's plug-ins, a part's colour, a material's group. hpr keeps
+each whole, beside
 the design, in an *extension* (a named slot for data another program wrote) called `x-openrocket`,
 at a path that leads back to where it was, so that writing the file back out
 ([M3.2](../decisions-and-roadmap.md#m3-2)) can put it back. A design whose rocket is missing parts
 this way says it is **reduced**; the flag is on the design, not on its rocket, so check it before
 using the rocket on its own.
 
-Three kinds of thing are kept:
+Four kinds of thing are kept:
 
 - **Parts** hpr does not read: a pod set or a parallel stage, which hpr does not model until
   [M1.13](../decisions-and-roadmap.md#m1-13) ([L66](../decisions-and-roadmap.md#l66)), a part hpr
@@ -1161,15 +1162,20 @@ Three kinds of thing are kept:
 - **Sections** of the document hpr does not read: `<photostudio>` (the 3D view), `<docprefs>` (the
   design's own materials), anything else beside `<rocket>` and `<simulations>`, and the parts of a
   stored simulation beyond its conditions and results, such as an `<extension>`.
-- **Tags** no reader asks for, inside a part, stage or stored simulation hpr does read: a part's
-  colour (`<appearance>`), a catalogue preset, a comment, or a tag hpr has never seen. hpr records
-  every tag its readers ask for while it reads a file, so a tag is kept exactly when nothing asked
-  for it.
+- **Tags** no reader asks for, inside a part, stage or stored simulation hpr does read, or inside
+  a tag it does read: a part's colour (`<appearance>`), a catalogue preset, a comment, a wind's
+  standard deviation, or a tag hpr has never seen. hpr records every tag its readers ask for while
+  it reads a file, so a tag is kept exactly when nothing asked for it.
+- **Attributes** no reader asks for, on an element hpr does read: a material's `group`, an event's
+  `id`, or the reference an angle offset is measured from, which hpr does not read yet
+  ([issue #145](https://github.com/nrdptel/hpr-sim/issues/145)).
 
 Each is kept with its **path**, such as `openrocket/rocket/stage[0]/bodytube[1]/podset[0]`: the
 podset that is the first part inside the second part of the first stage. A tag's last step starts
 with `@`: `openrocket/rocket/stage[0]/nosecone[0]/@appearance[7]` is the eighth tag of that nose
-cone. The function `hpr_io::ork::element_at` follows a path back to the element.
+cone, and a tag inside it adds another, such as `…/@wind[2]/@gusts[1]`. An attribute is kept with
+the path of the element it was on, its name and its value. The function `hpr_io::ork::element_at`
+follows a path back to the element.
 
 The extension is written under its namespace when the design is saved as JSON, and reads back
 unchanged. The test `hpr_io::ork::tests::unknown_content_round_trips_through_x_openrocket` checks
@@ -1182,11 +1188,11 @@ let back: Extensions = serde_json::from_str(&json).expect("read back");
 assert_eq!(back, design.extensions);
 ```
 
-**What is not kept yet.** Anything deeper than a tag of an element hpr reads: an attribute hpr
-does not read, or a tag inside a tag it does read (inside `<motormount>`, say). Those are still in
-the document itself, which hpr keeps whole when it opens a file ([ADR-051][adr-051]), and writing
-the file back ([M3.2](../decisions-and-roadmap.md#m3-2)) starts from both. How much of that there is
-has not been counted.
+**What is not kept.** A second copy of a tag hpr reads once: a reader asks for a tag by name and
+uses the first, so a repeated `<length>` in one part is taken as read. The library has none it
+knows of. That, and everything else, is still in the document itself, which hpr keeps whole when it
+opens a file ([ADR-051][adr-051]); writing the file back
+([M3.2](../decisions-and-roadmap.md#m3-2)) starts from both.
 
 ### Kept in the reference library
 
@@ -1196,8 +1202,9 @@ has not been counted.
 |---|---|
 | parts kept | 17, in 10 reduced designs: 9 pod sets, 3 parallel stages, 2 freeform fin sets, 2 tube fin sets, 1 tube coupler |
 | sections kept | 87: 42 `<photostudio>`, 36 `<docprefs>`, 9 simulation `<extension>`s |
-| tags kept | 1,570, most often a part's `<appearance>` (274), `<radialdirection>` (166), `<instanceseparation>` (155) and `<preset>` (126) |
-| kept elements found again at their path | 1,674 of 1,674 (the survey fails if one is not) |
+| tags kept | 1,947, most often a part's `<appearance>` (274), `<radialdirection>` (166), `<instanceseparation>` (155), a wind's `<standarddeviation>` (129) and `<preset>` (126) |
+| attributes kept | 3,132, most often an event's `id` (1,623), a material's `group` (552), a stage's `number` (201) and a stored branch's optimum altitude and its time (170 each) |
+| kept elements and attributes found again at their path | 5,183 of 5,183 (the survey fails if one is not) |
 
 How this was decided is in [ADR-058][adr-058].
 
@@ -1207,7 +1214,6 @@ How this was decided is in [ADR-058][adr-058].
 
 Pods and parallel stages are kept, not modelled: hpr's design has no pods until
 [M1.13](../decisions-and-roadmap.md#m1-13) ([what hpr keeps](#what-hpr-keeps-for-writing-the-file-back)).
-An attribute hpr does not read, or a tag inside a tag it reads, is kept only in the document.
 Writing a `.ork` back out as a design — rather than
 as the document it was read from — is [M3.2](../decisions-and-roadmap.md#m3-2).
 

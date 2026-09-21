@@ -49,7 +49,7 @@ pub use component::{OPENROCKET_DEFAULT_RADIUS_M, rocket};
 pub use container::{Attachment, Container, MAX_UNPACKED_BYTES, Unpacked};
 pub use document::{Document, Element, MAX_DEPTH, MAX_KNOWN_MINOR, Node, SchemaVersion};
 pub use error::OrkError;
-pub use extensions::{Extensions, Kept, OpenRocketExtension, element_at};
+pub use extensions::{Extensions, Kept, KeptAttribute, OpenRocketExtension, element_at};
 pub use motors::{
     Curve, Ignition, IgnitionEvent, LeftOut, MotorConfiguration, Motors, NoCurve, NotFlown,
     OrkMotor, UnreadMotor,

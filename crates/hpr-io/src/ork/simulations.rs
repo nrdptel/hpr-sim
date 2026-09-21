@@ -269,6 +269,7 @@ fn conditions(element: &Element, at: &str, warnings: &mut Vec<Warning>) -> Launc
         None => (None, None),
     };
     let wind_levels = multilevel.map_or_else(Vec::new, |wind| {
+        super::reads::note(wind, "windlevel");
         wind.children_named("windlevel")
             .map(|level| {
                 let mut number = |name: &str| attribute_number(level, name, at, warnings);
@@ -417,6 +418,8 @@ fn branch(element: &Element, at: &str, warnings: &mut Vec<Warning>) -> StoredBra
     let mut rows = Vec::new();
     let mut dropped = 0usize;
     let mut infinite = 0usize;
+    super::reads::note(element, "datapoint");
+    super::reads::note(element, "event");
     for point in element.children_named("datapoint") {
         let text = point.text();
         // `NaN` is a value OpenRocket did not compute, kept as `None`; a number that does not read

@@ -2848,14 +2848,15 @@ fn unknown_content_round_trips_through_x_openrocket() {
   <rocket><name>R</name><subcomponents>
     <stage><name>Sustainer</name><id>s</id><subcomponents>
       <nosecone><name>Nose</name><id>nose</id>
-        <material type="bulk" density="1000.0">Plastic</material>
+        <material type="bulk" density="1000.0" group="Plastics">Plastic</material>
         <length>0.15</length><thickness>0.002</thickness><shape>ogive</shape>
         <aftradius>0.02</aftradius><appearance><paint red="51" green="51" blue="51"/></appearance>
         <glowsinthedark>true</glowsinthedark></nosecone>
       <fancything kind="new"><name>Something new</name><size unit="m">0.1</size></fancything>
     </subcomponents></stage></subcomponents></rocket>
   <simulations><simulation status="uptodate"><name>Simulation 1</name>
-    <conditions><launchrodlength>1.0</launchrodlength><randomseed>42</randomseed></conditions>
+    <conditions><launchrodlength>1.0</launchrodlength><randomseed>42</randomseed>
+      <wind model="average"><speed>2.0</speed><gusts>3.0</gusts></wind></conditions>
     <extension extensionid="com.example.Wind"><config key="gust">3.0</config></extension>
   </simulation></simulations>
   <photostudio><roll>0.5</roll><sky>Mountains</sky></photostudio>
@@ -2886,7 +2887,22 @@ fn unknown_content_round_trips_through_x_openrocket() {
             "openrocket/rocket/stage[0]/nosecone[0]/@appearance[7]",
             "openrocket/rocket/stage[0]/nosecone[0]/@glowsinthedark[8]",
             "openrocket/simulations/simulation[0]/conditions[1]/@randomseed[1]",
+            "openrocket/simulations/simulation[0]/conditions[1]/@wind[2]/@gusts[1]",
         ]
+    );
+    // And an attribute no reader asked for, on a tag one did: the material's group.
+    let attributes: Vec<(&str, &str, &str)> = kept
+        .attributes
+        .iter()
+        .map(|a| (a.at.as_str(), a.name.as_str(), a.value.as_str()))
+        .collect();
+    assert_eq!(
+        attributes,
+        [(
+            "openrocket/rocket/stage[0]/nosecone[0]/@material[2]",
+            "group",
+            "Plastics"
+        )]
     );
 
     // Written out as JSON under its namespace and read back, the extension is unchanged...
@@ -2902,6 +2918,13 @@ fn unknown_content_round_trips_through_x_openrocket() {
             Some(&kept.element),
             "{}",
             kept.at
+        );
+    }
+    for attribute in &every.attributes {
+        let on = element_at(&file.document, &attribute.at).expect("the element it was on");
+        assert_eq!(
+            on.attribute(&attribute.name),
+            Some(attribute.value.as_str())
         );
     }
 }

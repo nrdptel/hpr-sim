@@ -58,7 +58,7 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
 ## Done log (newest first, keep about 15)
 
 - 2026-09-21: M3.1c4 What a `.ork` holds that hpr does not model, kept whole in `x-openrocket`
-  (ADR-058): 17 parts, 87 sections, 1,570 tags, all found again. L66 live; M3.1c done.
+  (ADR-058): parts, sections, tags and attributes, 5,183 found again. L66 live; #145. M3.1c done.
 - 2026-09-21: M3.1c3 A `.ork` design's stored simulations read back (ADR-057): 178, 144 with a
   time series (101,955 rows); a probe measures their units. L64 live.
 - 2026-09-21: M3.1c2 A `.ork` design's recovery and separation, read not flown (ADR-056): 137
@@ -84,8 +84,8 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
 
 ## Decided without Neer (one line each; significant ones get an ADR)
 
-- ADR-058: what hpr does not model is kept whole in `x-openrocket` at a path back; not yet tags in
-  a part it reads.
+- ADR-058: what hpr does not read is kept whole in `x-openrocket`, at a path back, down to the
+  attribute; readers record what they ask for.
 - ADR-057: a `.ork`'s stored simulations are read as written, to compare against; units measured.
 - ADR-056: `.ork` recovery read as written, not flown; a deploy height above apogee and `cd auto`
   are left for the step that flies it.

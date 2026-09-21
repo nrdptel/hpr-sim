@@ -421,6 +421,7 @@ fn outline(values: &mut Values<'_>) -> Option<FinPlanform> {
         return None;
     };
     let mut points_m = Vec::new();
+    super::reads::note(points, "point");
     for point in points.elements().filter(|point| point.name == "point") {
         let read = |name: &str| {
             point

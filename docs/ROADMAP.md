@@ -608,8 +608,8 @@
     results, and `extensions.x-openrocket` for the rest. Loft lessons L57, L64, L65, L66.
     *Done when:* those lessons' named tests are live, a design's stored results are read back, and
     a document with unknown content round-trips through `extensions.x-openrocket`. Split into
-    M3.1c1 to M3.1c4 (ADR-055), carrying that unchanged. *Result:* met (ADR-055 to ADR-058) for
-    unknown parts, sections and tags; an unknown attribute, or a tag in one hpr reads, is not kept.
+    M3.1c1 to M3.1c4 (ADR-055), carrying that unchanged. *Result:* met (ADR-055 to ADR-058): unknown
+    parts, sections, tags and attributes are kept; a second copy of a tag hpr reads once is not.
     - [x] **M3.1c1 Motors and their configurations.** The configurations a design declares, the
       motor each mount holds in each, when it ignites, its delay, and a thrust curve from the
       archive's `thrustcurves/<digest>.rse` or the bundled catalog (L57, L65). *Done when:* L57's
@@ -629,7 +629,7 @@
       (ADR-057): 178 simulations read, 144 with a time series; units measured by a probe.
     - [x] **M3.1c4 Pods, parallel stages and the rest** (L66). *Done when:* L66's named test is
       live, and a document with unknown content round-trips through `extensions.x-openrocket`.
-      *Result:* met (ADR-058) for parts, sections and tags: 17, 87 and 1,570 kept, all found again.
+      *Result:* met (ADR-058): 17 parts, 87 sections, 1,947 tags, 3,132 attributes, all found again.
   - [ ] **M3.1d The corpus and the cross-check.** `insta` snapshots on public files only, and the
     RocketSerializer cross-check. *Done when:* the parent's four bullets above are met.
 

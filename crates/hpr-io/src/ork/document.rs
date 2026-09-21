@@ -112,6 +112,7 @@ pub enum Node {
 impl Element {
     /// The value of the attribute called `name`, if it has one.
     pub fn attribute(&self, name: &str) -> Option<&str> {
+        super::reads::note_attribute(self, name);
         self.attributes
             .iter()
             .find(|(key, _)| key == name)
