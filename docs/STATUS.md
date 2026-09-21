@@ -56,7 +56,7 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
 
 - 2026-09-21: M3.1d2 Every `.ork` in `loft-fixtures` (27) and the jar's examples (17) imports with
   0 errors; hpr's key geometry held to RocketSerializer's, OpenRocket settling (ADR-059): 1,212
-  numbers over 74 designs, none apart from both. M3.1 done; #147, #135 commented.
+  numbers over 74 designs, each OpenRocket's. M3.1 done; #147, #148, #135 commented.
 - 2026-09-21: M3.1d1 Loft's seven demo designs committed and read into `insta` summary snapshots
   (new dev-dependency), with a synthetic design that flies; M3.1d split into d1 and d2.
 - 2026-09-21: M3.1c4 What a `.ork` holds that hpr does not model, kept whole in `x-openrocket`
