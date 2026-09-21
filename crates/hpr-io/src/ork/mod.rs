@@ -116,7 +116,10 @@ impl Design {
     ///
     /// The flag is on the `Design`, not on [`Design::rocket`]: check it before using the rocket on
     /// its own. A part read as something simpler, such as a cluster of tubes read as one, does not
-    /// make a design reduced; its warning keeps every configuration of it from flying (ADR-055).
+    /// make a design reduced; its warning keeps every configuration of it from flying
+    /// ([ADR-055][adr-055], the rule for which configurations fly).
+    ///
+    /// [adr-055]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-055-m31c-split-and-the-motors-a-ork-flies-its-own-curve-first-and-only-what-lights-at-launch-2026-09-21
     pub fn is_reduced(&self) -> bool {
         !self.extensions.x_openrocket.parts.is_empty()
     }
