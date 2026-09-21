@@ -3,7 +3,7 @@
 //! A `.ork` design is a tree. Its trunk is the **spine**: the stages, and inside each of them the
 //! nose cones, body tubes and transitions that stack end to end along the axis. Everything else —
 //! the tubes and rings inside the body, the fins and lugs on it, the recovery gear — hangs off that
-//! trunk, and is read by the milestone after this one ([M3.1b2b][roadmap]).
+//! trunk, and is read by the milestone after this one ([M3.1b3][roadmap]).
 //!
 //! What this module does is turn the spine into [`hpr_design`] types: a [`Rocket`] of [`Stage`]s of
 //! [`Component`]s. It resolves nothing itself. Where OpenRocket wrote `auto`, the component carries
@@ -302,8 +302,24 @@ fn wall(values: &mut Values<'_>, outer_radius_m: Option<f64>) -> Wall {
     }
     match (values.number(&["thickness"]), outer_radius_m) {
         (Some(thickness_m), Some(radius_m)) if thickness_m >= radius_m => Wall::Filled {},
-        (Some(thickness_m), _) => Wall::Shell { thickness_m },
-        (None, _) => Wall::Filled {},
+        (Some(thickness_m), _) if thickness_m > 0.0 => Wall::Shell { thickness_m },
+        // A wall of nothing has neither mass nor geometry, and `hpr-design` refuses it. Read as
+        // solid, the part carries the mass a solid one has. The same rule a shoulder gets below,
+        // and said out loud for the same reason.
+        (Some(_), _) => {
+            values.warn_at(
+                WarningKind::Unusual,
+                "a wall of no thickness; it was read as solid",
+            );
+            Wall::Filled {}
+        }
+        (None, _) => {
+            values.warn_at(
+                WarningKind::Unusual,
+                "no wall thickness at all; it was read as solid",
+            );
+            Wall::Filled {}
+        }
     }
 }
 
@@ -332,7 +348,7 @@ fn shoulder(
     } else {
         values.warn_at(
             WarningKind::Unusual,
-            format!("a {end} shoulder with no wall thickness; it was read as solid"),
+            format!("the {end} shoulder has no wall thickness; it was read as solid"),
         );
         outer_radius_m
     };

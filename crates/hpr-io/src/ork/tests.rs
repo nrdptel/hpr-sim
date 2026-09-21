@@ -1105,3 +1105,31 @@ fn parts_off_the_spine_are_reported_not_dropped() {
     assert!(warnings[0].contains("2 `trapezoidfinset`"), "{warnings:?}");
     assert_eq!(spine.count(WarningKind::Skipped), 1);
 }
+
+/// A wall of no thickness, and no wall tag at all, are the same thing: a solid part. Read as a
+/// wall of zero, the part is weightless and `hpr-design` refuses the whole design — so the rule a
+/// shoulder gets applies to a body component too, and either way the reader says so.
+#[test]
+fn a_wall_of_no_thickness_is_solid_and_says_so() {
+    for (from, to) in [
+        (
+            "<thickness>0.002</thickness>\n            <shape>ogive",
+            "<thickness>0</thickness>\n            <shape>ogive",
+        ),
+        (
+            "<thickness>0.002</thickness>\n            <shape>ogive",
+            "<shape>ogive",
+        ),
+    ] {
+        let xml = ACROSS_A_STAGE.replacen(from, to, 1);
+        let read = read(xml.as_bytes()).expect("a readable design");
+        let spine = component::rocket(&read.value.document);
+        let hpr_design::tree::Part::NoseCone(nose) = &spine.value.stages[0].components[0].part
+        else {
+            panic!("a nose cone");
+        };
+        assert_eq!(nose.wall, hpr_design::solids::Wall::Filled {});
+        assert_eq!(spine.count(WarningKind::Unusual), 1, "{:?}", spine.warnings);
+        assert!(spine.value.layout().is_ok());
+    }
+}
