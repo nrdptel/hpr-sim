@@ -174,13 +174,10 @@
     burnout, apogee, ground hit, user events); fixed-step RK4 option.
   - Recorder with a configurable channel set; observer trait; `criterion` benchmark.
 
-  *Done when:*
-  - Analytic tests pass: vacuum ballistic, terminal velocity, torque-free precession, and pitch
-    oscillation frequency vs linear theory.
-  - Step-halving convergence shows the expected order.
-  - Events are located to ≤1e-6 s.
-  - A single typical L2 flight simulates in ≤5 ms release-mode (number recorded in
-    `docs/perf.md`).
+  *Done when:* analytic tests pass (vacuum ballistic, terminal velocity, torque-free precession,
+  and pitch oscillation frequency vs linear theory); step-halving convergence shows the expected
+  order; events are located to ≤1e-6 s; and a single typical L2 flight simulates in ≤5 ms
+  release-mode (number recorded in `docs/perf.md`).
 
   - [x] **M1.6a Integrator and events.**
     - Adaptive Dormand–Prince 5(4) with dense output, event root-finding and stop times that put
@@ -203,9 +200,8 @@
   drogue and main with their triggers; descent with wind drift, separated bodies tracked
   independently, landing detection.
 
-  *Done when:*
-  - Analytic tests for terminal velocity, descent time and drift pass.
-  - Descent rate and drift match RocketPy's for 3 example rockets within 3%.
+  *Done when:* analytic tests for terminal velocity, descent time and drift pass, and descent rate
+  and drift match RocketPy's for 3 example rockets within 3%.
 
   *Result:* met by M1.7a; M1.7b and M1.7c add the streamers, tumble and separation the entry
   lists (ADR-012, ADR-013, ADR-014).
@@ -247,21 +243,16 @@
   environment and motor, and **predicted**, hpr's own aero, whose supersonic gaps are reported
   rather than hidden — and CI compares against the stored references.
 
-  *Done when:*
-  - At least 5 cases pass their same-drag tolerances.
-  - Predicted-mode results are reported, with explained gaps.
-  - `validation/reports/latest.md` is generated.
-  - The CI job is green.
-  - A separate, manually triggered workflow regenerates the references.
+  *Done when:* at least 5 cases pass their same-drag tolerances; predicted-mode results are
+  reported, with explained gaps; `validation/reports/latest.md` is generated; the CI job is green;
+  and a separate, manually triggered workflow regenerates the references.
 
   - [x] **M2.1a The harness.**
     - Loft lessons: L76, L77, L78, L79 (tests named in `docs/research/loft-lessons.md`).
 
-    *Done when:*
-    - `cargo xtask validate` runs every case in the lock against its stored reference and writes
-      `validation/reports/latest.md`.
-    - A case whose metric has no tolerance, a reference value with no provenance, and a run with
-      fewer cases than the lock expects each fail.
+    *Done when:* `cargo xtask validate` runs every case in the lock against its stored reference
+    and writes `validation/reports/latest.md`; and a case whose metric has no tolerance, a
+    reference value with no provenance, and a run with fewer cases than the lock expects each fail.
     *Result (ADR-015):* met. Five descent cases, 30 metrics, all within 3% with no floor (largest
     NDRT's northward drift, +2.86%); the command refuses every malformed case the done-when names
     and more, with twelve tests, four of them L76–L79. Valetudo's northward drift first read 28x
@@ -275,12 +266,11 @@
     *Done when:* split below into M2.1b1 and M2.1b2; M2.1b2 carries M2.1b's three bullets.
 
     - [x] **M2.1b1 The whole-flight oracle.**
-      *Done when:*
-      - `refs/venv/bin/python validation/oracles/rocketpy/flight.py` writes a fixture of all five
-        cases, each with the metrics M2.1 names, a time series, a loose-solver run and a source for
-        every value, and re-running it reproduces the committed fixture byte for byte.
-      - No RocketPy data file is committed, and `git status` shows nothing from `refs/`.
-      - Every case's declared drag table is argued in the generator, with its source.
+      *Done when:* `refs/venv/bin/python validation/oracles/rocketpy/flight.py` writes a fixture of
+      all five cases, each with the metrics M2.1 names, a time series, a loose-solver run and a
+      source for every value, and re-running it reproduces the committed fixture byte for byte; no
+      RocketPy data file is committed, and `git status` shows nothing from `refs/`; and every
+      case's declared drag table is argued in the generator, with its source.
 
       *Result:* met. A declared constant `C_D0` of 0.5; the fixture reproduces byte for byte;
       apogees 779 to 3,623 m AGL, Prometheus to Mach 1.014. The oracle's own step-size cliff
@@ -291,13 +281,11 @@
         through `Simulation::with_drag_table`, and the five cases in the lock.
       - Loft lessons: L75 (tests named in `docs/research/loft-lessons.md`).
 
-      *Done when:*
-      - At least 5 whole-flight cases run in the lock and pass their same-drag tolerances, with the
-        tolerance for each metric argued in the case file.
-      - `hpr_validate::rocketpy::tests::oracle_inputs_come_from_the_case_file_not_hpr_outputs`
-        exists and passes.
-      - `validation/reports/latest.md` carries them, and the gravity rule of ADR-015 is applied:
-        the comparison flies the oracle's models where hpr has them.
+      *Done when:* at least 5 whole-flight cases run in the lock and pass their same-drag
+      tolerances, with each metric's tolerance argued in the case file;
+      `hpr_validate::rocketpy::tests::oracle_inputs_come_from_the_case_file_not_hpr_outputs` exists
+      and passes; and `validation/reports/latest.md` carries them under ADR-015's gravity rule (the
+      comparison flies the oracle's models where hpr has them).
       *Result (ADR-021):* met. Six whole-flight cases, fifteen metrics each; five pass every scored
       metric within 3% (largest +1.783%, Bella Lui's power-on peak). The drifts in wind stayed
       unscored until issue #50 (M2.1d3); Prometheus was a checked `M ≥ 1` gap until M1.8a. The
@@ -311,19 +299,16 @@
     them (the first in M2.1c2, the other two in M2.1c1).
 
     - [x] **M2.1c1 The CI job and the regeneration workflow.**
-      *Done when:*
-      - The CI job is green on macOS, Windows and Linux.
-      - The regeneration workflow runs only when a human triggers it, and its output is a diff to
-        review, never an automatic commit.
+      *Done when:* the CI job is green on macOS, Windows and Linux, and the regeneration workflow
+      runs only when a human triggers it, its output a diff to review rather than a commit.
       *Result (ADR-022):* met. `cargo xtask validate --check` writes nothing and fails on a metric
       outside tolerance or a committed report this run does not reproduce; CI runs it on three
       OSes. *Regenerate references* is `workflow_dispatch` only, with a read-only token, and
       uploads the diff; run locally it reproduced every fixture and the report byte for byte.
 
     - [x] **M2.1c2 Predicted mode.**
-      *Done when:*
-      - Predicted-mode results are in the report for every case, each gap explained in the case
-        file or `docs/VALIDATION.md`; `M ≥ 1` cases are reported as gaps, not hidden, until M1.8.
+      *Done when:* predicted-mode results are in the report for every case, each gap explained in
+      the case file or `docs/VALIDATION.md`, with `M ≥ 1` cases reported as gaps until M1.8.
       *Result (ADR-023):* met. `flight.py --own-drag` (hashes, never values). Six `predicted-*`
       cases, 3% targets: 56 of 75 within; Valetudo and NDRT 2020 +10% in apogee; misses pinned.
 
@@ -333,27 +318,23 @@
       reported but not scored until issue #50 finds why hpr turns into the wind less than RocketPy.
     *Done when:* split below into M2.1d1 to M2.1d3, which carry these two bullets between them.
 
-    - [x] **M2.1d1 The time-series RMS.**
-
-      *Done when:*
-      - Every whole-flight case reports its time-series RMS after alignment against the
-        reference's series, gated with its tolerance argued in the case file.
+    - [x] **M2.1d1 The time-series RMS.** *Done when:* every whole-flight case reports its
+      time-series RMS after alignment against the reference's series, gated with its tolerance
+      argued in the case file.
       *Result (ADR-024):* met for every case hpr flies: RMS at RocketPy's 120 series times, held to
       3% of apogee and max speed; same-drag 1.4–39.2 m and 0.13–2.06 m/s, all pass; predicted,
       three outside (the drag), pinned.
 
     - [x] **M2.1d2 The calm-air cases (issue #50).**
-      *Done when:*
-      - The three calm-air cases are in the suite, their apogee and landing drifts scored at 3%,
-        and each passes or is a gap its case file explains.
+      *Done when:* the three calm-air cases are in the suite, their apogee and landing drifts
+      scored at 3%, and each passes or is a gap its case file explains.
       *Result (ADR-025):* met. Calisto and Bella Lui pass (drifts −1.258% to −2.583%); Juno III's
       drifts miss (−3.7%), reported not scored: 1.6 points are the rail release (`rail_release.py`).
 
     - [x] **M2.1d3 The path in wind (issue #50).**
-      *Done when:*
-      - Issue #50's cause is found and the drifts are scored within their tolerances, or an ADR
-        records the measured cause and why they cannot be, and the gap stays visible in the
-        report.
+      *Done when:* issue #50's cause is found and the drifts are scored within their tolerances,
+      or an ADR records the measured cause and why they cannot be, with the gap left visible in
+      the report.
       *Result (ADR-026):* met. Mostly RocketPy's: in the burn it took moments about a point
       mirrored across the dry centre of mass (#1186, PR #1196; PR #1188), both corrected in
       `corrections.py`. `wind_response.py` measures the rest: body lift, the last-button release
@@ -625,6 +606,22 @@
     L63. *Done when:* every design in the reference library gives a `hpr_design::Rocket` whose
     `layout()` succeeds, each of those lessons' named tests is live, and the counts go to
     `corpus-out/` as above.
+    - [x] **M3.1b1 The values inside the tags.** What every later step asks the tree for: numbers,
+      counts, flags, and the dimensions OpenRocket works out for itself; the tags it writes under
+      two names; the overrides. Loft lessons L58, L62, L63.
+      *Done when:* those three lessons' named tests are live, each resting on what the corpus
+      shows rather than on an assumption, and `cargo xtask ork` prints the counts they rest on.
+      *Result:* met (ADR-052). `auto <number>` keeps both the flag and the cached number, and a
+      bare `auto` is a dimension with nothing cached (413 automatic dimensions across 7 tags).
+      Where OpenRocket writes a value under both its names it agrees with itself on all 777
+      elements (642 `axialoffset`/`position`, 109 `instancecount`/`fincount`, 26
+      `angleoffset`/`radialdirection`), so either may be read; `radiusoffset`/`radialposition` is
+      never written twice, so its equivalence is **not** measured. A stated `0` is a value, which
+      is what a `<overridecd>0.0</overridecd>` needs (2 in the corpus). The six override tags are
+      read independently; the single pre-1.9 flag they replaced (20 elements, never beside a
+      per-quantity one) sets all three, with a warning.
+    - [ ] **M3.1b2 The components themselves.** The tree into `hpr-design` types, with the
+      automatic dimensions resolved. Loft lessons L49, L59, L60, L61, and the parent's bullets.
   - [ ] **M3.1c Motors, recovery, stages and what OpenRocket last did.** Motor configurations and
     embedded `.rse` curves, recovery devices, stage and pod structure, stored conditions and
     results, and `extensions.x-openrocket` for the rest. Loft lessons L57, L64, L65, L66.

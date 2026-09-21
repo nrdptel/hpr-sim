@@ -57,6 +57,7 @@ renumber. Supersede an entry by adding a new one that points back to it.
 | ADR-049 | What a step in radius costs, and why the obvious fix is not taken yet | accepted |
 | ADR-050 | A reduced element is read by the generalized method wherever it has a tangent cone of its own | accepted |
 | ADR-051 | M3.1 split, and the `.ork` document kept whole rather than interpreted | accepted |
+| ADR-052 | What a `.ork` value means: automatic dimensions, two names for one tag, and overrides | accepted |
 
 ---
 
@@ -5049,3 +5050,39 @@ for documents that came from `parse`. The canonical writer means a `.ork` re-wri
 not be byte-identical to the one it was read from, which M3.2 will have to live with — matching
 OpenRocket's own layout was never achievable without reading its source.
 
+## ADR-052: What a `.ork` value means: automatic dimensions, two names for one tag, and overrides (2026-09-20)
+
+**Context.** M3.1b turns the document tree into a design. Before any component can be read, three
+things about `.ork` values have to be settled, and Loft got all three wrong: a dimension may say
+`auto 0.0125` rather than a number (L58), a tag may be written under two names at once (L62), and a
+stated `0` is a value rather than a missing one (L63). There is no schema to settle them from, so
+each rests on what the reference corpus shows, counted by `cargo xtask ork`.
+
+**Decision.**
+
+1. **M3.1b splits into M3.1b1 (the values) and M3.1b2 (the components).** The values are what every
+   component reader asks for, and they can be settled and tested on their own.
+2. **An automatic dimension keeps both halves.** `Dimension::Automatic { cached }` holds what
+   OpenRocket last worked out — `auto 0.0125` gives `Some(0.0125)`, a bare `auto` gives `None` —
+   and is never confused with `Dimension::Stated`. Saving a design must write `auto` back, which is
+   what Loft's dropping of the flag broke. 413 dimensions in the corpus are automatic, across
+   `outerradius`, `innerradius`, `radius`, `aftradius`, `foreradius`, `packedradius` and `cd`.
+3. **Either name of a renamed tag may be read, newest first.** Where OpenRocket writes both, it
+   agrees with itself: 777 elements, 642 `axialoffset`/`position`, 109
+   `instancecount`/`fincount`, 26 `angleoffset`/`radialdirection`, identical text on every one.
+   A disagreement is therefore worth a warning, and the newer name wins.
+   `radiusoffset`/`radialposition` is **never** written twice in the corpus, so its equivalence is
+   assumed from the renaming and not measured — recorded as a gap on the `.ork` page.
+4. **A stated zero is a value.** `<overridecd>0.0</overridecd>` (2 in the corpus) is an override to
+   no drag at all. The six override tags — three values, three flags — are read independently.
+5. **The single pre-1.9 `overridesubcomponents` flag sets all three.** It is what the three
+   per-quantity flags replaced; 20 elements of the corpus carry it and **none** of them carries a
+   per-quantity flag beside it, so reading it as all three cannot contradict a file. It raises a
+   warning, so the inference is never silent.
+
+**Consequences.** The value layer is settled before any component reads it, and its three claims
+are counts anyone with the corpus can reproduce. Points 3 and 5 are readings of what a rename
+meant, not statements from a specification: if a file ever turns up where the two names disagree,
+or where the old flag sits beside a new one, the warning says so rather than the reading being
+wrong in silence. `Dimension` carries no unit, because the tags it reads are metres, radians and
+plain numbers alike; the component reader names the unit.

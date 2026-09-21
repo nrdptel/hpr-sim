@@ -509,6 +509,188 @@ fn awkward_text_and_attributes_survive_being_written() {
     assert_eq!(rocket.child("empty").expect("an empty tag").children, []);
 }
 
+/// The one component of a one-component document, the way a component reader will meet it.
+fn component(xml: &str) -> Element {
+    let document = Document::parse(&format!(
+        r#"<openrocket version="1.10" creator="x">{xml}</openrocket>"#
+    ))
+    .expect("read the design");
+    assert!(document.warnings.is_empty(), "{:?}", document.warnings);
+    document
+        .value
+        .root
+        .child("bodytube")
+        .expect("a body tube")
+        .clone()
+}
+
+/// Where a warning from one of these tests says it happened.
+const AT: &str = "openrocket/rocket/bodytube";
+
+/// Loft lesson L58: `auto 0.025` kept the number but lost the flag, so saving the design turned an
+/// automatic dimension into a hand-typed one. Both halves are kept, and a bare `auto` is a
+/// dimension with no cached number rather than a parse failure.
+#[test]
+fn auto_flag_kept_with_cached_value() {
+    let tube = component(concat!(
+        "<bodytube>",
+        "<outerradius>auto 0.0125</outerradius>",
+        "<innerradius>auto</innerradius>",
+        "<thickness>0.0016</thickness>",
+        "<length>  0.61  </length>",
+        "<aftradius>auto  2.5e-2</aftradius>",
+        "<foreradius>sometimes</foreradius>",
+        "</bodytube>",
+    ));
+    let mut warnings = Vec::new();
+    let mut read = Values::new(&tube, AT, &mut warnings);
+
+    let outer = read.dimension(&["outerradius"]).expect("an outer radius");
+    assert_eq!(
+        outer,
+        Dimension::Automatic {
+            cached: Some(0.0125)
+        }
+    );
+    assert!(outer.is_automatic());
+    assert_eq!(outer.value(), Some(0.0125));
+
+    // A bare `auto` is automatic with nothing cached — not a missing tag, and not an error.
+    let inner = read.dimension(&["innerradius"]).expect("an inner radius");
+    assert_eq!(inner, Dimension::Automatic { cached: None });
+    assert_eq!(inner.value(), None);
+
+    // A stated dimension is not automatic, and whitespace around either form is nothing.
+    assert_eq!(
+        read.dimension(&["thickness"]),
+        Some(Dimension::Stated { value: 0.0016 })
+    );
+    assert_eq!(read.number(&["length"]), Some(0.61));
+    assert_eq!(
+        read.dimension(&["aftradius"]),
+        Some(Dimension::Automatic {
+            cached: Some(0.025)
+        })
+    );
+
+    // A tag that is neither is dropped with a word about it, not silently taken as zero.
+    assert_eq!(read.dimension(&["foreradius"]), None);
+    assert_eq!(read.dimension(&["nosuchtag"]), None);
+    assert_eq!(warnings.len(), 1, "{warnings:?}");
+    assert_eq!(warnings[0].kind, WarningKind::Dropped);
+    assert_eq!(warnings[0].at, AT);
+    assert!(
+        warnings[0].message.contains("sometimes"),
+        "{:?}",
+        warnings[0]
+    );
+}
+
+/// Loft lesson L62: OpenRocket renamed several tags and writes both names, and Loft read a stated
+/// `0` as a missing value.
+///
+/// **Observed** by `cargo xtask ork`: across the reference corpus OpenRocket writes both names on
+/// 777 elements — 642 `position`/`axialoffset`, 109 `fincount`/`instancecount`, 26
+/// `radialdirection`/`angleoffset` — and the two texts are identical on every one of them. So
+/// either name may be read; this takes the newer.
+#[test]
+fn legacy_tags_equal_modern_and_zero_is_stated() {
+    let tube = component(concat!(
+        "<bodytube>",
+        // Both names, agreeing, as OpenRocket writes them.
+        r#"<position type="bottom">0.0</position><axialoffset method="bottom">0.0</axialoffset>"#,
+        "<fincount>3</fincount><instancecount>3</instancecount>",
+        // The legacy name alone, as an older file has it.
+        "<radialdirection>60.0</radialdirection>",
+        "<overridecd>0.0</overridecd>",
+        "</bodytube>",
+    ));
+    let mut warnings = Vec::new();
+    let mut read = Values::new(&tube, AT, &mut warnings);
+
+    // A stated zero is a value. Reading it as missing is what charged a zero-drag part full drag.
+    assert_eq!(read.number(&AXIAL_OFFSET), Some(0.0));
+    assert_eq!(read.number(&["overridecd"]), Some(0.0));
+    assert_ne!(read.number(&["overridecd"]), None);
+
+    // The newer name wins, and carries the newer attribute; the older one says the same thing.
+    let offset = read.element(&AXIAL_OFFSET).expect("an axial offset");
+    assert_eq!(offset.name, "axialoffset");
+    assert_eq!(offset.attribute("method"), Some("bottom"));
+    assert_eq!(
+        tube.child("position").expect("a position").text().trim(),
+        offset.text().trim()
+    );
+
+    assert_eq!(read.count(&INSTANCE_COUNT), Some(3));
+    // Only the legacy name is there, so the legacy name is read.
+    assert_eq!(read.number(&ANGLE_OFFSET), Some(60.0));
+    assert!(warnings.is_empty(), "{warnings:?}");
+
+    // Two names that disagree is not something OpenRocket writes: the newer wins, and says so.
+    let odd =
+        component("<bodytube><axialoffset>0.1</axialoffset><position>0.2</position></bodytube>");
+    let mut odd_warnings = Vec::new();
+    let mut read = Values::new(&odd, AT, &mut odd_warnings);
+    assert_eq!(read.number(&AXIAL_OFFSET), Some(0.1));
+    assert_eq!(odd_warnings.len(), 1, "{odd_warnings:?}");
+    assert!(
+        odd_warnings[0].message.contains("two names"),
+        "{:?}",
+        odd_warnings[0]
+    );
+}
+
+/// Loft lesson L63: Loft read neither `overridecd` nor the subcomponent flags, so a part set to a
+/// drag coefficient of zero was still charged drag. Each value and each flag stands on its own.
+#[test]
+fn cd_and_cg_subcomponent_overrides_are_independent() {
+    let tube = component(concat!(
+        "<bodytube>",
+        "<overridemass>0.25</overridemass>",
+        "<overridecg>0.0</overridecg>",
+        "<overridecd>0.0</overridecd>",
+        "<overridesubcomponentsmass>true</overridesubcomponentsmass>",
+        "<overridesubcomponentscg>false</overridesubcomponentscg>",
+        "</bodytube>",
+    ));
+    let mut warnings = Vec::new();
+    let mut read = Values::new(&tube, AT, &mut warnings);
+    let overrides = read.overrides();
+
+    assert_eq!(overrides.mass_kg, Some(0.25));
+    // Zero is an override to zero, not an absent one.
+    assert_eq!(overrides.cg_m, Some(0.0));
+    assert_eq!(overrides.cd, Some(0.0));
+    // One flag set does not set the others, and an absent flag is absent, not false.
+    assert_eq!(overrides.subcomponents_mass, Some(true));
+    assert_eq!(overrides.subcomponents_cg, Some(false));
+    assert_eq!(overrides.subcomponents_cd, None);
+    assert!(warnings.is_empty(), "{warnings:?}");
+
+    // A component with nothing to say overrides nothing.
+    let plain = component("<bodytube><length>0.61</length></bodytube>");
+    let mut plain_warnings = Vec::new();
+    let mut read = Values::new(&plain, AT, &mut plain_warnings);
+    assert_eq!(read.overrides(), Overrides::default());
+    assert!(plain_warnings.is_empty(), "{plain_warnings:?}");
+
+    // Before schema 1.9 the three flags were one. 20 elements of the reference corpus carry it,
+    // and none of them carries a per-quantity flag, so it is read as setting all three — out loud.
+    let old = component(concat!(
+        "<bodytube><overridemass>0.25</overridemass>",
+        "<overridesubcomponents>true</overridesubcomponents></bodytube>",
+    ));
+    let mut old_warnings = Vec::new();
+    let mut read = Values::new(&old, AT, &mut old_warnings);
+    let overrides = read.overrides();
+    assert_eq!(overrides.subcomponents_mass, Some(true));
+    assert_eq!(overrides.subcomponents_cg, Some(true));
+    assert_eq!(overrides.subcomponents_cd, Some(true));
+    assert_eq!(old_warnings.len(), 1, "{old_warnings:?}");
+    assert_eq!(old_warnings[0].kind, WarningKind::Unusual);
+}
+
 /// Text a `.ork` could hold: the characters that make writing awkward, and a few ordinary ones.
 /// Everything XML 1.0 forbids outright (a NUL, say) is left out — such a document could not have
 /// been read from a file in the first place.
