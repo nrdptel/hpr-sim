@@ -68,6 +68,7 @@ new record replaces it and points back. All of them are in the [decision log][de
 | [ADR-049: What a step in radius costs][adr-049] | That a step's cost is measured and published rather than modelled: it takes the whole body off the shock-expansion method, worth −8.65% and 1.03 calibres at its threshold and −12.55% and 1.36 calibres at a 2 mm step down, and −11.34% and 1.10 calibres on a boattailed body, whose threshold is 1.3e−13 m rather than 2.7e−11 m; and that stopping the march at the step instead was built, measured and rejected, because the mixed reading lands outside both pure models and misses the boattail's band | [Aerodynamics](physics/aero.md#a-step-in-radius) |
 | [ADR-050: A reduced element read by the generalized method][adr-050] | That where the second-order method's exponential form cannot hold — the pressure behind a corner on the far side of its tangent cone's from where its own gradient points — the element is read by the generalized method wherever it has a tangent cone of its own, so a near-flat flare no longer takes the whole body off the method; that the region's two edges are solved from the corner's own state rather than bisected, reproducing all three published angles; and that what is left is the loading's step at the crossing, +0.129% and 0.0051 calibres on the tests' rocket but not bounded by it — +4.3% and 0.19 calibres on a body with a short shoulder, and −2.8% between two adjacent Mach rows | [Aerodynamics](physics/aero.md#a-near-flat-flare) |
 | [ADR-051: M3.1 split, and a `.ork` document kept whole][adr-051] | That reading an OpenRocket file is split into four increments, the container and the document first; that the document is read into a tree and interpreted by nobody, because with no schema for `.ork` keeping the whole file is the only way to be sure nothing was dropped; that reading it, writing it and reading it again gives the same document, checked over generated trees and over all 76 corpus files that open; that nesting is counted before the text is parsed, since the XML parser underneath overflows the stack past 120 levels; and that the corpus survey names the two files that are not XML rather than skipping them quietly | [OpenRocket `.ork` design files](format/ork.md) |
+| [ADR-052: What a `.ork` value means][adr-052] | That an automatic dimension keeps both its flag and the number OpenRocket last worked out, rather than becoming a hand-typed one; that either name may be read of the two renames that are only renames, because where OpenRocket writes both it agrees with itself on the number and on the frame every time (642 and 109 elements), while two more pairs that look the same are left unread, their newer name carrying a frame the older never does; that a stated zero is a value, which is what an override to no drag at all needs; and that the single flag the three subcomponent-override flags replaced is read as setting all three, out loud, since no file carries both forms | [`.ork` design files](format/ork.md#the-values-inside-the-tags) |
 
 ## The roadmap
 
@@ -180,6 +181,8 @@ missing or its status disagrees.
 | <a id="m3-1"></a>[M3.1][phase-1] | Reading OpenRocket `.ork` design files | not yet done |
 | <a id="m3-1a"></a>[M3.1a][phase-1] | The container a `.ork` arrives in, and its design document read whole | done |
 | <a id="m3-1b"></a>[M3.1b][phase-1] | The component tree: parts, shapes, materials, finishes and overrides into a design | not yet done |
+| <a id="m3-1b1"></a>[M3.1b1][phase-1] | What a `.ork` value means: dimensions OpenRocket works out for itself, tags written under two names, and overrides | done |
+| <a id="m3-1b2"></a>[M3.1b2][phase-1] | The components themselves, with their automatic dimensions resolved | not yet done |
 | <a id="m3-1c"></a>[M3.1c][phase-1] | Motors, recovery, stages, and what OpenRocket last simulated | not yet done |
 | <a id="m3-1d"></a>[M3.1d][phase-1] | The corpus and the cross-check against RocketSerializer | not yet done |
 | <a id="m2-2"></a>[M2.2][phase-1] | OpenRocket as a reference program, and a corpus of designs to compare | not yet done |
@@ -273,6 +276,9 @@ is the milestone that added or will add that test.
 | <a id="l43"></a>[L43][lessons-motors] | ThrustCurve's data must override a `.eng` header's size: one said 75 mm for a 54 mm motor | [M1.3](#m1-3) |
 | <a id="l56"></a>[L56][lessons-formats] | Loft told a design file's container apart by its first bytes, and a malformed one had to give an error rather than crash | [M3.1a](#m3-1a) |
 | <a id="l57"></a>[L57][lessons-formats] | Loft threw away the thrust curves stored inside a `.ork` archive | [M3.1a](#m3-1a), [M3.1c](#m3-1c) |
+| <a id="l58"></a>[L58][lessons-formats] | Loft kept an automatic dimension's number but lost the flag, so saving turned it into a hand-typed one | [M3.1b1](#m3-1b1) |
+| <a id="l62"></a>[L62][lessons-formats] | Loft met a tag written under two names, and read a stated `0` as a missing value | [M3.1b1](#m3-1b1) |
+| <a id="l63"></a>[L63][lessons-formats] | Loft read neither the drag override nor the subcomponent flags, so a part set to no drag was still charged drag | [M3.1b1](#m3-1b1) |
 | <a id="l44"></a>[L44][lessons-motors] | Loft's inertia was pitch only, with simplified formulas, and zero for rings and masses | [M1.4a](#m1-4a) |
 | <a id="l45"></a>[L45][lessons-motors] | Loft put a hollow transition's centre of gravity at the solid's centroid | [M1.4a](#m1-4a) |
 | <a id="l46"></a>[L46][lessons-motors] | Loft never read fin tabs (100 to 120 g lost on two designs), and rail buttons weighed nothing | [M1.4a](#m1-4a) |
@@ -344,6 +350,7 @@ is the milestone that added or will add that test.
 [adr-049]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-049-what-a-step-in-radius-costs-and-why-the-obvious-fix-is-not-taken-yet-2026-09-20
 [adr-050]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-050-a-reduced-element-is-read-by-the-generalized-method-wherever-it-has-a-tangent-cone-of-its-own-2026-09-20
 [adr-051]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-051-m31-split-and-the-ork-document-kept-whole-rather-than-interpreted-2026-09-20
+[adr-052]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-052-what-a-ork-value-means-automatic-dimensions-two-names-for-one-tag-and-overrides-2026-09-20
 [decisions]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md
 [lessons]: https://github.com/nrdptel/hpr-sim/blob/main/docs/research/loft-lessons.md
 [lessons-formats]: https://github.com/nrdptel/hpr-sim/blob/main/docs/research/loft-lessons.md#file-formats

@@ -33,11 +33,13 @@
 pub mod container;
 pub mod document;
 mod error;
+pub mod value;
 mod warning;
 
 pub use container::{Attachment, Container, MAX_UNPACKED_BYTES, Unpacked};
 pub use document::{Document, Element, MAX_DEPTH, MAX_KNOWN_MINOR, Node, SchemaVersion};
 pub use error::OrkError;
+pub use value::{AXIAL_OFFSET, Dimension, INSTANCE_COUNT, Overrides, Values};
 pub use warning::{Imported, Warning, WarningKind};
 
 /// A `.ork` file, read: the container it came in, its design document, and everything else it

@@ -139,6 +139,74 @@ over generated trees, by `reading_writing_and_reading_again_gives_the_same_docum
 `awkward_text_and_attributes_survive_being_written` on awkward text, and by `cargo xtask ork` over
 every real file in the corpus.
 
+## The values inside the tags
+
+A component's numbers sit in leaf elements, and three things about them are not obvious. All three
+are mistakes [Loft][loft] made, and each is settled here by what the corpus shows rather than by a
+specification, because `.ork` has none. Code: `hpr_io::ork::value`
+([API reference](../api/hpr_io/ork/value/index.html)), decided in [ADR-052][adr-052].
+
+**A dimension may be automatic.** `<aftradius>auto 0.025</aftradius>` means "OpenRocket works this
+out from the neighbouring components, and 0.025 m is what it last worked out". A bare `auto` —
+`<outerradius>auto</outerradius>` — is the same with nothing worked out yet, and is the commoner
+form: 309 of the 413 automatic dimensions in the corpus cache no number, so a reader that resolves
+them cannot treat the cached value as a shortcut. hpr keeps both halves: which it is, and the cached number.
+Keeping only the number is
+[Loft lesson L58](../decisions-and-roadmap.md#l58) — it turned automatic dimensions into hand-typed
+ones the next time the design was saved. **Observed:** 413 automatic dimensions across the corpus,
+on seven tags.
+
+| tag | automatic |
+|---|---|
+| `outerradius` | 131 |
+| `innerradius` | 80 |
+| `cd` | 79 |
+| `radius` | 43 |
+| `packedradius` | 36 |
+| `aftradius` | 30 |
+| `foreradius` | 14 |
+
+**A tag may be written under two names.** OpenRocket renamed several and writes both, so an older
+reader still finds one. Two of those renames are that and nothing more, and hpr reads either name,
+taking the newer. **Observed:** on every element that carries both, the two agree — on the text,
+and on the `type`/`method` attribute that says what the number is measured from.
+
+| newer | older | elements with both | agree on text | differ on frame |
+|---|---|---|---|---|
+| `axialoffset` | `position` | 642 | 642 | 0 |
+| `instancecount` | `fincount` | 109 | 109 | 0 |
+
+Two that disagree is not something OpenRocket writes, so it raises a warning — whether they
+disagree on the number or on where the number is measured from.
+
+**Two more pairs look the same and are not**, which is why hpr does not yet read either name of
+them. The newer name of each carries a `method` attribute — the frame — that the older name never
+carries:
+
+| newer | older | elements with both | agree on text | differ on frame |
+|---|---|---|---|---|
+| `angleoffset` | `radialdirection` | 26 | 26 | **26** |
+| `radiusoffset` | `radialposition` | 0 | — | — |
+
+`angleoffset` and `radialdirection` agree on the number every time and differ on the frame every
+time. `radiusoffset` (on 106 elements) and `radialposition` (on 542) are never written together at
+all, so nothing about them has been measured. Reading one as the other would move a component
+without saying so, so what the older name's frame is belongs to the milestone that places
+components, [M3.1b2](../decisions-and-roadmap.md#m3-1b2), with a source.
+
+**A stated zero is a value.** `<overridecd>0.0</overridecd>` means no drag at all, not "no
+override" — reading it as missing is
+[Loft lesson L63](../decisions-and-roadmap.md#l63), which charged a zero-drag part full drag. A
+component declares its own mass, centre of gravity and drag coefficient with three tags, and
+whether each covers the components inside it with three more, all read independently.
+
+**Observed** override tags: `overridemass` 118, `overridesubcomponentsmass` 95,
+`overridesubcomponents` 20, `overridecg` 16, `overridesubcomponentscg` 9, `overridecd` 2,
+`overridesubcomponentscd` 2. The third of those is the single flag that the three per-quantity ones
+replaced before schema 1.9. **Policy:** it is read as setting all three — which is what it meant —
+and says so in a warning. No element in the corpus carries it beside a per-quantity flag, so the
+reading cannot contradict a file.
+
 ## Warnings, not failures
 
 A design written by an older OpenRocket, or by another program, should still open. Everything that
@@ -148,11 +216,12 @@ departs from [F] but leaves the file readable is a warning that travels with the
 | kind | means | raised for |
 |---|---|---|
 | `Skipped` | a whole part was left out | an **attachment** entry that could not be decompressed, or one that would pass the unpacking limit; a damaged *design* entry is an error, not a warning |
-| `Dropped` | a value was ignored | a comment or processing instruction; an XML namespace |
-| `Unusual` | read as it stands | a schema version past 1.11; no `creator` attribute; a design entry not called `rocket.ork` |
+| `Dropped` | a value was ignored | a comment or processing instruction; an XML namespace; a tag whose text is not the number, count or flag it should be; two names for one value that disagree |
+| `Unusual` | read as it stands | a schema version past 1.11; no `creator` attribute; a design entry not called `rocket.ork`; the single pre-1.9 subcomponent-override flag |
 
-**Observed:** the corpus raises **no warnings at all** — every file that opens is ordinary. So
-every row of the table above is exercised by a test rather than by a file anyone shipped.
+**Observed:** reading the corpus's containers and documents raises **no warnings at all** — every
+file that opens is ordinary. So every row of the table above is exercised by a test rather than by
+a file anyone shipped.
 
 Only these stop a read:
 
@@ -227,12 +296,13 @@ a fresh clone: `cargo xtask ork` needs `cargo xtask refs fetch` first, and stops
 `cargo xtask ork --dir <path>`.
 
 [adr-051]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-051-m31-split-and-the-ork-document-kept-whole-rather-than-interpreted-2026-09-20
+[adr-052]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-052-what-a-ork-value-means-automatic-dimensions-two-names-for-one-tag-and-overrides-2026-09-20
 [loft]: https://github.com/nrdptel/fusionspace-loft
 
 ## What is not read yet
 
-Everything above the document: components, shapes, materials, finishes, overrides and automatic
-dimensions ([M3.1b](../decisions-and-roadmap.md#m3-1b)); motor configurations, the embedded `.rse`
+Everything above the values: components, shapes, materials and finishes, and the automatic
+dimensions worked out rather than cached ([M3.1b2](../decisions-and-roadmap.md#m3-1b2)); motor configurations, the embedded `.rse`
 curves, recovery devices, stages, pods, stored launch conditions and simulation results
 ([M3.1c](../decisions-and-roadmap.md#m3-1c)). Writing a `.ork` back out as a design — rather than
 as the document it was read from — is [M3.2](../decisions-and-roadmap.md#m3-2).
