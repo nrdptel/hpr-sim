@@ -5082,27 +5082,42 @@ rests on what OpenRocket means by its words, which its file-format page ([F]) mo
    falls back to the embedded curve. hpr takes the embedded one first because the digest "uniquely
    identifies the functional characteristics" of a curve (OpenRocket's GitHub wiki, file format
    1.2): it is exactly the curve the design was saved with, while hpr's bundled catalog is 32
-   motors chosen for validation, not OpenRocket's database. The catalog match is on manufacturer
+   motors chosen for validation, not OpenRocket's database. The cost is that on a file carrying
+   curves, hpr and OpenRocket can fly different curves for the same motor: the file specification
+   says OpenRocket prefers its database's, which "may have more accurate or updated data". The
+   motor is built from the curve's header, as a catalog motor is, and the mass and centre of
+   gravity listed beside each thrust point are not used; a case size that differs from the
+   design's by more than a millimetre is warned about. The catalog match is on manufacturer
    (its full name or abbreviation) and designation, compared without case, spaces or hyphens,
    because both are needed: the library's Estes `B4` is not the catalog's Quest `B4`. Two matches
-   are refused as ambiguous. A hybrid is never given a curve (CLAUDE.md rule 6). A motor with no
-   curve is kept with its reason, and nothing is invented for it.
+   are refused as ambiguous. A hybrid is never given a curve, whether the design or its embedded
+   curve says so: the project flies commercial solid motors only. A motor with no curve is kept
+   with its reason, and nothing is invented for it.
 4. **`<delay>none</delay>` is a plugged motor, and `0` a charge at burnout.** OpenRocket's
    technical documentation defines the delay as the time "between the motor burnout and the
    ignition of the ejection charge", which "can also be replaced by 'P', which stands for
    plugged" (p. 8), and describes "zero-delay motors, that ignite the ejection charge immediately
    at burnout" (p. 10); issue #2002 calls typing `none` into the delay box the way to say plugged.
-   `hpr_motor::Delay::Seconds` now documents zero as a value a file may state plainly.
+   OpenRocket flies a `0` that way: its "Parallel booster staging" example stores the E12-0's
+   burnout and ejection charge at the same 2.44 s. Older designs may mean plugged by it — until
+   23.09 added *plugged* to the delay list (#2090), OpenRocket's own examples used `0` so (#2111) —
+   and hpr reads it as the file says, as OpenRocket does. `hpr_motor::Delay::Seconds` now documents
+   zero as a value a file may state plainly.
 5. **The ignition words are OpenRocket 24.12's own**: `automatic`, `launch`, `ejectioncharge`,
-   `burnout` and `never`, each measured by setting it through OpenRocket's public setters and
-   saving. `automatic` lights "the lowest stage … at launch" and each stage above at "the ejection
+   `burnout` and `never`. The library's files use all but `ejectioncharge`, whose spelling was
+   measured by setting it through OpenRocket's public setters and saving, in a probe not committed;
+   M3.1c2 commits one for every event word. `automatic` lights "the lowest stage … at launch" and each stage above at "the ejection
    charge of the lower stage" (OpenRocket's FAQ, "How do I create a staged rocket?"). An unknown
    word is kept as written.
 6. **The rocket flies a configuration only when it can be flown as written.** Every motor must be
    read, have a curve and a case size, sit in a mount read as the single tube it is, and light at
    launch — `launch`, or `automatic` in the bottom stage (the last in the file), at no delay — and no stage may be
    switched off (OpenRocket removes an inactive stage from the flight: release notes 22.02.beta.05,
-   PR #1478). Only those become `hpr_design::Rocket::configurations`. The reason is that
+   PR #1478). Two more rules are about the rocket rather than its motors: the whole airframe must
+   have been read (a pod, a parallel stage or a part left out would fly a lighter, slimmer rocket),
+   and the rocket must have one stage (OpenRocket drops a booster when it separates, and hpr would
+   carry it to the ground until M3.1c2 reads separation and M1.9 flies it). Only those
+   configurations become `hpr_design::Rocket::configurations`. The reason is that
    `hpr_design::Configuration` lights every motor at `t = 0` until [M1.9] brings staging: flying a
    two-stage configuration there would light the sustainer on the pad. Every other configuration
    stays in `hpr_io::ork::Motors` with its first reason (`NotFlown`).
@@ -5114,10 +5129,11 @@ rests on what OpenRocket means by its words, which its file-format page ([F]) mo
 
 **Consequences.**
 
-- On 2026-09-21, the library reads 206 motors into 174 configurations and leaves 6 out, inside 4
-  pod sets and 2 parallel stages. 4 motors fly an embedded curve and 2 a bundled one; 3 are hybrids
-  and 197 have no curve hpr holds. So 2 of the 174 configurations fly, in 2 designs, and both
-  assemble. The catalog, not the reader, is the limit, until [M5.1]'s online layer and cache
+- On 2026-09-21, the library reads 206 motors into 174 configurations and leaves 6 out, 4 inside
+  pod sets and 2 inside parallel stages. 4 motors have an embedded curve, all in the library's one
+  schema-1.11 file, a two-stage design, so none of them flies yet; 2 have a bundled one; 3 are
+  hybrids and 197 have no curve hpr holds. So 2 of the 174 configurations fly, both on one-stage
+  rockets read whole, in 2 designs, and both assemble. The catalog, not the reader, is the limit, until [M5.1]'s online layer and cache
   bring ThrustCurve.org's curves.
 - A cluster mount, read as one tube since M3.1b3, keeps its configurations out rather than flying
   one motor where the file has several.

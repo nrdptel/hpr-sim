@@ -848,8 +848,15 @@ in this order:
    needed: an Estes `B4` is not a Quest `B4`.
 
 OpenRocket's own order is the other way round: its motor database first, then the curve in the
-file. hpr's catalog is far smaller than that database, and the curve in the file is the exact one,
-so hpr reads the file first. A motor found in neither place is kept with its reason. Nothing is
+file, because the database "may have more accurate or updated data" (its file specification). hpr's
+catalog is far smaller than that database, and the curve in the file is the exact one, so hpr reads
+the file first. So on a file that carries curves, hpr and OpenRocket can fly different curves for
+the same motor.
+
+hpr builds the motor from the curve file's header — its case size and its loaded and propellant
+masses — as it does for any catalog motor, and does not use the mass or centre-of-gravity column
+listed beside each thrust point. Where the design's case size and the curve's differ by more than a
+millimetre, a warning says so: the design's size places the motor, and the curve's gives its mass. A motor found in neither place is kept with its reason. Nothing is
 invented for it. A hybrid motor (solid fuel burned with a liquid or gas oxidiser) never gets a
 curve: hpr flies commercial solid motors only.
 
@@ -865,12 +872,19 @@ with `hpr_motor` ([Solid motors](../physics/motor.md)) and put it in an
 | `<delay>0.0</delay>` | the charge fires at burnout | the same, p. 10: "zero-delay motors" |
 | `<delay>none</delay>` | plugged: no ejection charge | the same, p. 8 ("P … stands for plugged"); OpenRocket [issue #2002](https://github.com/openrocket/openrocket/issues/2002) |
 | `<ignitionevent>automatic</ignitionevent>` | the bottom stage lights at launch; a stage above lights at the ejection charge of the stage below | OpenRocket's [FAQ](https://wiki.openrocket.info/FAQ), "How do I create a staged rocket?" |
-| `launch`, `burnout`, `ejectioncharge`, `never` | at launch; at the first burnout or ejection charge of the stage below; never | OpenRocket 24.12's labels for the words it writes |
+| `launch`, `burnout`, `ejectioncharge`, `never` | at launch; at the first burnout or ejection charge of the stage below; never | OpenRocket 24.12's labels; the library's files use all but `ejectioncharge`, whose spelling comes from a probe of OpenRocket run for this milestone and not committed. A word hpr does not know is kept as written |
 | `<ignitiondelay>1.5</ignitiondelay>` | 1.5 s after that event | the [technical documentation][techdoc], section 4.2.6 |
 
 A `0` means something different here than in a motor file. An `.eng` file has no word for plugged,
 so hpr reads its `0` as "zero or plugged" ([ejection delay](../glossary.md#ejection-delay)). A
-`.ork` writes `none` for plugged, so its `0` really is a charge at burnout.
+`.ork` has `none` for plugged, and OpenRocket flies a `0` as a charge at burnout: in its own
+"Parallel booster staging" example, the E12-0's burnout and ejection charge are stored at the same
+2.44 s. But until OpenRocket 23.09 put *plugged* in its delay list
+([issue #2090](https://github.com/openrocket/openrocket/issues/2090)), few authors knew to type
+`none`, and some used `0` to mean plugged, as OpenRocket's own examples did
+([issue #2111](https://github.com/openrocket/openrocket/issues/2111)). So a `0` in an older design
+may be meant as plugged; hpr reads it as the file says, as OpenRocket does. 23 motors in the
+reference library have one.
 
 A configuration's own `<ignitionconfiguration>` replaces the mount's event and delay one at a time:
 whichever it leaves out, the mount's own value stands.
@@ -890,8 +904,15 @@ all of these hold. Otherwise flying it would be wrong, for example lighting a su
 - No stage is switched off in the configuration's own stage list
   (`<stage number="1" active="false"/>`). OpenRocket leaves a switched-off stage out of the flight,
   and hpr flies every stage.
+- The whole airframe was read. A pod, a parallel stage or a part hpr could not shape leaves the
+  rocket lighter and slimmer than the design, so no configuration of it is flown.
+- The rocket has one stage. OpenRocket drops a booster when it separates; hpr would carry it to the
+  ground, until separation is read ([M3.1c2](../decisions-and-roadmap.md#m3-1c2)) and flown
+  ([M1.9](../decisions-and-roadmap.md#m1-9)).
 
-Every other configuration is still read, whole, with the first reason it can't be flown.
+Every other configuration is still read, whole, with the first reason it can't be flown. The
+motors' reasons are checked first, each across every motor, and the two about the whole rocket
+last.
 
 This is the doctest on
 [`hpr_io::ork::design`](../api/hpr_io/ork/fn.design.html), which CI runs. The Estes F15 has no

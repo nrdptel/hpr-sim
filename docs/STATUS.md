@@ -21,8 +21,8 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
   the gitignored `refs/scratch/m31c/or-semantics.md` (pages in `refs/sources/openrocket-docs/`):
   event words are its enum names lower-cased without underscores; `cd auto` is 0.8 for a parachute
   by the tech doc §4.2.5 (cite that, never Loft, whose 0.8 came from OpenRocket's Java); deploy
-  altitude is above ground (oracle only). Its probes in `refs/scratch/m31c/*.py` are uncommitted:
-  commit one before a published count rests on it. **Driving OpenRocket:**
+  altitude is above ground (oracle only). Its probes (`refs/scratch/m31c/*.py`) are uncommitted:
+  commit one for each event word (ADR-055) before a count rests on it. **Driving OpenRocket:**
   `validation/oracles/openrocket/automatic_radius.py` (ADR-054) runs 24.12 headless through JPype,
   binding empty motor and preset databases in a Python Guice module; it logs to stdout, so the
   script writes to a path. **Read OpenRocket after it re-resolves** (a save does it): its first
@@ -62,9 +62,9 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
 ## Done log (newest first, keep about 15)
 
 - 2026-09-21: M3.1c1 A `.ork` design's motors (ADR-055): 206 motors in 174 configurations, 6 left
-  out inside pods; a curve from the file's own `thrustcurves/<digest>.rse` first, the bundled
-  catalog second; `none` plugged, `0` a charge at burnout. The rocket flies a configuration only if
-  every motor lights at launch with a curve: 2 of 174, both assemble. L57, L65 live; #138, #139.
+  out in pods and parallel stages; a curve from the file's own `.rse` first, the bundled catalog
+  second. The rocket flies a configuration only if every motor has a curve and lights at launch, on
+  a one-stage airframe read whole: 2 of 174, both assemble. L57, L65 live; #138, #139.
 - 2026-09-20: M3.1b4 Every `.ork` design lays out (ADR-054): 75 of 75, and Debrief's results-only
   file counted as holding none. A radius with nothing fixed along its chain takes OpenRocket's
   default, 25 mm, from its maintainers' words and a committed 24.12 probe that also shows it

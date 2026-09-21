@@ -1894,21 +1894,30 @@ const SYNTHETIC_RSE: &str = r#"<engine-database>
 
 /// Loft lesson L57: Loft's zip reader kept the design and dropped the `thrustcurves/*.rse`
 /// entries, so a design was refused a flight for want of a curve the file was carrying. Here the
-/// entry the `<digest>` names is the motor's curve, and it is used ahead of the catalog.
+/// entry the `<digest>` names is the motor's curve, and it is used ahead of the catalog: an Estes
+/// F15, which the catalog holds at 49.61 N·s, flies the 102.5 N·s curve its file embeds.
 #[test]
 fn embedded_rse_curves_are_read() {
     let xml = motor_design(
-        r#"<motorconfiguration configid="c1" default="true"><name>G100T</name></motorconfiguration>"#,
+        r#"<motorconfiguration configid="c1" default="true"><name>G100T</name></motorconfiguration>
+           <motorconfiguration configid="c2"><name>F15</name></motorconfiguration>"#,
         r"<ignitionevent>automatic</ignitionevent><ignitiondelay>0.0</ignitiondelay>
           <overhang>0.01</overhang>
           <motor configid='c1'><type>single</type><manufacturer>Nobody</manufacturer>
             <digest>d1935f00</digest><designation>G100T</designation>
-            <diameter>0.029</diameter><length>0.124</length><delay>6.0</delay></motor>",
+            <diameter>0.029</diameter><length>0.124</length><delay>6.0</delay></motor>
+          <motor configid='c2'><type>single</type><manufacturer>Estes</manufacturer>
+            <digest>f15f15f15</digest><designation>F15</designation>
+            <diameter>0.029</diameter><length>0.114</length><delay>4.0</delay></motor>",
         "",
     );
+    let f15 = SYNTHETIC_RSE
+        .replace(r#"mfg="Nobody" code="G100T""#, r#"mfg="Estes" code="F15""#)
+        .replace(r#"len="124.""#, r#"len="114.""#);
     let archive = zip_of(&[
         ("rocket.ork", xml.as_bytes()),
         ("thrustcurves/d1935f00.rse", SYNTHETIC_RSE.as_bytes()),
+        ("thrustcurves/f15f15f15.rse", f15.as_bytes()),
     ]);
     let read = read(&archive).expect("a readable archive");
     let design = design(&read.value);
@@ -1928,6 +1937,14 @@ fn embedded_rse_curves_are_read() {
     assert_eq!(motor.delay, Some(hpr_motor::Delay::Seconds(6.0)));
     assert_eq!(configuration.left_out, None);
 
+    // The catalog has an F15 too, and the file's own curve wins.
+    let f15 = &design.value.motors.configurations[1].motors[0];
+    let Curve::Embedded { motor: solid, .. } = &f15.curve else {
+        panic!("the F15's embedded curve: {:?}", f15.curve);
+    };
+    let impulse_ns = solid.curve().total_impulse_ns();
+    assert!((impulse_ns - 102.5).abs() <= 1e-9 * 102.5, "{impulse_ns}");
+
     // It flies: the nozzle sits 10 mm aft of the 0.75 m airframe's tail.
     let assembly = design
         .value
@@ -1937,8 +1954,13 @@ fn embedded_rse_curves_are_read() {
     assert_eq!(assembly.motors.len(), 1);
     assert!((assembly.motors[0].nozzle_m.z + 0.76).abs() < 1e-12);
 
-    // The same document without the curve names what is missing, and flies nothing.
+    // The same document without the curves names what is missing, and flies no G100T. The F15
+    // falls back to the catalog's curve.
     let bare = read_design(xml.as_bytes());
+    assert!(matches!(
+        bare.motors.configurations[1].motors[0].curve,
+        Curve::Catalog { .. }
+    ));
     let configuration = &bare.motors.configurations[0];
     let Curve::Unresolved { why, reason } = &configuration.motors[0].curve else {
         panic!("no curve without the entry");
@@ -1947,7 +1969,13 @@ fn embedded_rse_curves_are_read() {
     assert!(reason.contains("no embedded curve"), "{reason}");
     let left_out = configuration.left_out.as_ref().expect("left out");
     assert_eq!(left_out.why, NotFlown::NoCurve);
-    assert!(bare.rocket.configurations.is_empty());
+    let flown: Vec<&str> = bare
+        .rocket
+        .configurations
+        .iter()
+        .map(|c| c.id.as_str())
+        .collect();
+    assert_eq!(flown, ["c2"]);
 }
 
 /// Reads a design from raw XML, expecting it to read.
@@ -2052,8 +2080,27 @@ fn per_config_overrides_and_dangling_mount_warn() {
         design.warnings
     );
 
-    let flown: Vec<&str> = design
-        .value
+    // The pod is part of the airframe hpr has not read, so nothing flies on this rocket, and `c`
+    // is never flown from the body's mount or any other.
+    assert_eq!(
+        by_id("a").left_out.as_ref().map(|l| l.why),
+        Some(NotFlown::IncompleteAirframe)
+    );
+    assert!(design.value.rocket.configurations.is_empty());
+    assert!(design.value.rocket.assemble("c").is_err());
+
+    // Without the pod, `a` and `d` fly from the body tube, and `c` holds no motor.
+    let bare = read_design(
+        motor_design(
+            r#"<motorconfiguration configid="a" default="true"/>
+               <motorconfiguration configid="b"/>
+               <motorconfiguration configid="c"/>"#,
+            &mount,
+            "",
+        )
+        .as_bytes(),
+    );
+    let flown: Vec<&str> = bare
         .rocket
         .configurations
         .iter()
@@ -2061,9 +2108,210 @@ fn per_config_overrides_and_dangling_mount_warn() {
         .collect();
     assert_eq!(flown, ["a", "d"]);
     for id in flown {
-        let assembly = design.value.rocket.assemble(id).expect("assembles");
+        let assembly = bare.rocket.assemble(id).expect("assembles");
         assert_eq!(assembly.motors[0].mount, "body");
         assert_eq!(assembly.motors[0].stage, 0);
     }
-    assert!(design.value.rocket.assemble("c").is_err());
+    let c = bare
+        .motors
+        .configurations
+        .iter()
+        .find(|c| c.id == "c")
+        .expect("c");
+    assert_eq!(c.left_out.as_ref().map(|l| l.why), Some(NotFlown::NoMotor));
+}
+
+/// Which configurations a design flies. hpr lights every motor at launch and flies the airframe as
+/// one body, so a configuration is flown only when that is what the file says. In a two-stage
+/// design none is (`Staged`), and each is left out with the first reason that applies: a
+/// sustainer's `automatic` motor lit in flight, a cluster, a switched-off stage, a hybrid, a missing
+/// case size. The same booster flown alone, from its inner tube, is. A motor with a blank
+/// `configid`, and a second motor for one configuration in one mount, are warned about and left out
+/// without costing any other configuration its flight; an Estes `B4` does not take the catalog's
+/// Quest `B4`; and a `0` delay is a charge at burnout.
+#[test]
+fn a_configuration_flies_only_as_written() {
+    let motor = |config: &str, maker: &str, name: &str, delay: &str| {
+        format!(
+            "<motor configid='{config}'><type>single</type><manufacturer>{maker}</manufacturer>\
+             <designation>{name}</designation><diameter>0.029</diameter><length>0.114</length>\
+             <delay>{delay}</delay></motor>"
+        )
+    };
+    let f15 = |config: &str| motor(config, "Estes", "F15", "4.0");
+    let booster_mount = format!(
+        "<overhang>0.0</overhang>{}{}{}{}{}{}{}{}",
+        f15("boost"),
+        f15("boost"),
+        f15(""),
+        f15("two"),
+        f15("clu"),
+        f15("off"),
+        motor("b4", "Estes", "B4", "0.0"),
+        "<motor configid='hyb'><type>hybrid</type><manufacturer>Estes</manufacturer>\
+         <designation>F15</designation><diameter>0.029</diameter><length>0.114</length></motor>\
+         <motor configid='nosize'><type>single</type><manufacturer>Estes</manufacturer>\
+         <designation>F15</designation><delay>4.0</delay></motor>"
+    );
+    let tube = |name: &str, mount: &str, inside: &str| {
+        format!(
+            "<bodytube><name>{name}</name><id>{name}</id>\
+             <material type='bulk' density='680.0'>Cardboard</material>\
+             <length>0.4</length><thickness>0.001</thickness><radius>0.02</radius>{mount}\
+             <subcomponents>{inside}</subcomponents></bodytube>"
+        )
+    };
+    let inner = |id: &str, cluster: &str, mount: &str| {
+        format!(
+            "<innertube><name>{id}</name><id>{id}</id>\
+             <material type='bulk' density='680.0'>Cardboard</material>\
+             <axialoffset method='bottom'>0.0</axialoffset><length>0.2</length>\
+             <outerradius>0.0152</outerradius><thickness>0.0005</thickness>{cluster}\
+             <motormount>{mount}</motormount></innertube>"
+        )
+    };
+    let sustainer = tube(
+        "sustainer",
+        &format!(
+            "<motormount><overhang>0.0</overhang>{}</motormount>",
+            f15("two")
+        ),
+        &inner(
+            "cluster-mount",
+            "<clusterconfiguration>3-ring</clusterconfiguration>",
+            &format!(
+                "<ignitionevent>launch</ignitionevent><overhang>0.0</overhang>{}",
+                f15("clu")
+            ),
+        ),
+    );
+    let booster = tube("booster", "", &inner("booster-mount", "", &booster_mount));
+    let nose = r#"<nosecone><name>Nose</name><id>nose</id>
+          <material type="bulk" density="1000.0">Plastic</material>
+          <length>0.15</length><thickness>0.002</thickness><shape>ogive</shape>
+          <aftradius>0.02</aftradius></nosecone>"#;
+    let document = |stages: &str| {
+        format!(
+            r#"<?xml version="1.0" encoding="UTF-8"?>
+<openrocket version="1.10" creator="OpenRocket 24.12">
+  <rocket><name>Two-stage</name>
+    <motorconfiguration configid="boost" default="true"/>
+    <motorconfiguration configid="two"/>
+    <motorconfiguration configid="clu"/>
+    <motorconfiguration configid="off"><stage active="false"/></motorconfiguration>
+    <motorconfiguration configid="b4"/>
+    <motorconfiguration configid="hyb"/>
+    <motorconfiguration configid="nosize"/>
+    <subcomponents>{stages}</subcomponents></rocket>
+</openrocket>"#
+        )
+    };
+    let two_stage = document(&format!(
+        "<stage><name>Sustainer</name><id>upper</id><subcomponents>{nose}{sustainer}\
+         </subcomponents></stage>\
+         <stage><name>Booster</name><id>lower</id><subcomponents>{booster}</subcomponents></stage>"
+    ));
+    let one_stage = document(&format!(
+        "<stage><name>Booster</name><id>lower</id><subcomponents>{nose}{booster}\
+         </subcomponents></stage>"
+    ));
+
+    let read_one = |xml: &str| {
+        let file = read(xml.as_bytes()).expect("a readable design");
+        design(&file.value)
+    };
+    let why = |design: &Imported<Design>, id: &str| {
+        design
+            .value
+            .motors
+            .configurations
+            .iter()
+            .find(|c| c.id == id)
+            .expect("the configuration")
+            .left_out
+            .as_ref()
+            .map(|l| l.why)
+    };
+    let flown = |design: &Imported<Design>| -> Vec<String> {
+        design
+            .value
+            .rocket
+            .configurations
+            .iter()
+            .map(|c| c.id.clone())
+            .collect()
+    };
+
+    let two = read_one(&two_stage);
+    assert_eq!(why(&two, "boost"), Some(NotFlown::Staged));
+    assert_eq!(why(&two, "two"), Some(NotFlown::IgnitesInFlight));
+    assert_eq!(why(&two, "clu"), Some(NotFlown::Cluster));
+    assert_eq!(why(&two, "off"), Some(NotFlown::InactiveStage));
+    assert_eq!(why(&two, "hyb"), Some(NotFlown::NoCurve));
+    assert_eq!(why(&two, "nosize"), Some(NotFlown::NoSize));
+    assert!(flown(&two).is_empty());
+    let configurations = &two.value.motors.configurations;
+    let off = configurations.iter().find(|c| c.id == "off").expect("off");
+    assert_eq!(off.inactive_stages, [None]);
+    assert!(!configurations.iter().any(|c| c.id.is_empty()));
+    for said in [
+        "with no `configid`",
+        "a second motor for configuration `boost`",
+    ] {
+        assert!(
+            two.warnings.iter().any(|w| w.message.contains(said)),
+            "{said}: {:?}",
+            two.warnings
+        );
+    }
+    let b4 = &configurations
+        .iter()
+        .find(|c| c.id == "b4")
+        .expect("b4")
+        .motors[0];
+    assert!(
+        matches!(
+            b4.curve,
+            Curve::Unresolved {
+                why: NoCurve::NotFound,
+                ..
+            }
+        ),
+        "an Estes B4 is not the catalog's Quest B4: {:?}",
+        b4.curve
+    );
+    assert_eq!(b4.delay, Some(hpr_motor::Delay::Seconds(0.0)));
+
+    // The booster alone flies, from its inner tube, and so do the configurations whose only
+    // trouble was the sustainer.
+    let one = read_one(&one_stage);
+    assert_eq!(flown(&one), ["boost", "two", "clu"]);
+    let assembly = one.value.rocket.assemble("boost").expect("assembles");
+    assert_eq!(assembly.motors.len(), 1);
+    assert_eq!(assembly.motors[0].mount, "booster-mount");
+    assert_eq!(assembly.motors[0].stage, 0);
+}
+
+/// A configuration whose airframe was read only in part is not flown: here a pod set with no
+/// motor in it, which hpr does not read yet, would otherwise fly the rocket without the pod.
+#[test]
+fn a_configuration_on_an_incomplete_airframe_is_not_flown() {
+    let xml = motor_design(
+        r#"<motorconfiguration configid="a" default="true"/>"#,
+        "<overhang>0.0</overhang><motor configid='a'><type>single</type>\
+         <manufacturer>Estes</manufacturer><designation>F15</designation>\
+         <diameter>0.029</diameter><length>0.114</length><delay>4.0</delay></motor>",
+        "<podset><name>Pods</name><id>pods</id><instancecount>2</instancecount></podset>",
+    );
+    let design = read_design(xml.as_bytes());
+    let a = &design.motors.configurations[0];
+    assert!(matches!(
+        a.motors.first().map(|m| &m.curve),
+        Some(Curve::Catalog { .. })
+    ));
+    assert_eq!(
+        a.left_out.as_ref().map(|l| l.why),
+        Some(NotFlown::IncompleteAirframe)
+    );
+    assert!(design.rocket.configurations.is_empty());
 }

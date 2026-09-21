@@ -76,6 +76,10 @@ pub const OPENROCKET_DEFAULT_RADIUS_M: f64 = 0.025;
 /// to aft, with automatic dimensions **marked rather than filled in** — [`Rocket::layout`] resolves
 /// them, and is where a part's mass and station come from.
 ///
+/// A body tube or inner tube that holds a motor is marked as a motor mount, but the motors
+/// themselves are not read here, and [`Rocket::configurations`] is left empty:
+/// [`super::design`] reads them. A `<motormount>` it cannot read still warns here.
+///
 /// ```
 /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
 /// let xml = br#"<?xml version="1.0" encoding="UTF-8"?>

@@ -79,6 +79,7 @@ impl OrkFile {
 /// A `.ork` design read whole: its rocket, carrying every motor configuration hpr can fly as
 /// written, and everything the file says about its motors.
 #[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
+#[non_exhaustive]
 pub struct Design {
     /// The rocket, as [`rocket`] reads it, with [`Rocket::configurations`] holding the
     /// configurations in [`Design::motors`] that were not left out.
@@ -137,10 +138,22 @@ pub fn design(file: &OrkFile) -> Imported<Design> {
         value: mut rocket,
         mut warnings,
     } = rocket;
+    // Every part the walk left out of the airframe said so as a skipped warning.
+    let skipped: Vec<&str> = warnings
+        .iter()
+        .filter(|w| w.kind == WarningKind::Skipped)
+        .map(|w| w.message.as_str())
+        .collect();
+    let incomplete = match skipped.as_slice() {
+        [] => None,
+        [one] => Some((*one).to_owned()),
+        [first, rest @ ..] => Some(format!("{first}, and {} more", rest.len())),
+    };
     let motors = match file.document.root.child("rocket") {
         Some(element) => motors::read(
             element,
             &mut rocket,
+            incomplete.as_deref(),
             &mounts,
             &file.attachments,
             &mut warnings,

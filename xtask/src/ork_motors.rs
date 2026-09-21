@@ -259,6 +259,8 @@ fn not_flown(why: NotFlown) -> &'static str {
         NotFlown::NoSize => "a motor with no size",
         NotFlown::Cluster => "a motor in a cluster",
         NotFlown::IgnitesInFlight => "a motor igniting in flight",
+        NotFlown::IncompleteAirframe => "an airframe read only in part",
+        NotFlown::Staged => "more than one stage",
         _ => "other",
     }
 }
