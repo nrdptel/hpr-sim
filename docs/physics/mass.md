@@ -285,7 +285,7 @@ set, paired by id, or in an older file by name, so the way OpenRocket weighs a s
 set aside too. Five of the six Loft demos come within 0.0005%. The sixth, whose fins are
 elliptical, is 0.093% apart in that row, and within 0.0002% once OpenRocket's ellipse is drawn as
 OpenRocket draws it, a 30-sided polygon (a test). For each of the 17 files still outside 1% (13 by
-content), `cargo xtask ork` names a cause, and it fails if it can't. Some files have two:
+content), `cargo xtask ork` names a cause, and it fails if it can't. Each has exactly one:
 
 | cause | files by content |
 |---|---|
@@ -576,7 +576,9 @@ inertia low, which happened to cancel part of that departure; the packing now ad
 **What it leaves out.** A packed size the file writes but hpr cannot read as a number is read as
 zero, with a warning, as any unreadable number is. Every probe places its part from the tube's top,
 so how the 25 mm length moves a part placed from the middle, the bottom or after another part is
-worked out, not measured. Mass is unchanged: the rules move mass, they add none.
+worked out, not measured. The override rule was probed on a parachute, a mass component and a
+shock cord; a streamer takes it too, by the same packing, without a probe of its own. Mass is
+unchanged: the rules move mass, they add none.
 
 **Run it yourself.** `refs/venv/bin/python validation/oracles/openrocket/conventions.py
 validation/fixtures/ork/openrocket-conventions.json` writes the probes (it needs OpenRocket 24.12

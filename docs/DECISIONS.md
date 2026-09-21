@@ -5083,17 +5083,18 @@ fits in the same session.
    The earlier probes' records are unchanged by the rerun, bit for bit.
 3. **An unwritten packed size is OpenRocket's.** A packed part that writes no `packedlength` is
    25 mm long; one that writes no `packedradius` is 12.5 mm in radius, a fixed number: it is the
-   same in bores of 48 and 98 mm, and OpenRocket does not shrink it to fit an 8 mm bore. hpr does
-   not either (only an automatic radius is fitted to the bore). Each holds on its own: the half-written parachutes take the
-   written half and the default for the other. It holds for all four kinds. The numbers are
-   inferred from OpenRocket's output, not taken from its source. `hpr_io::ork` reads them with no
-   warning, as ADR-061 reads what else a file leaves unsaid. Before, hpr read a length of zero
-   silently and a radius of zero with a warning.
+   same in bores 48 and 98 mm in radius, and OpenRocket does not shrink it to fit a bore 8 mm in
+   radius. hpr does not either (only an automatic radius is fitted to the bore). Each holds on
+   its own: the half-written parachutes take the written half and the default for the other. It
+   holds for all four kinds. The numbers are inferred from OpenRocket's output, not taken from
+   its source. `hpr_io::ork` reads them with no warning, as ADR-061 reads what else a file leaves
+   unsaid. Before, hpr read a length of zero silently and a radius of zero with a warning.
 4. **A mass override on a weightless packed part is spread over its packing.** hpr gives the
    override `m` the packing's solid cylinder: `m r²/2` in roll, `m (3r² + l²)/12` in pitch, its
    centre halfway along. Any other part that weighs nothing still becomes a point mass under an
    override, which ADR-061 measured as both programs' rule. `hpr_design::tree` does this in both
-   places an override applies, the part's own and one covering the parts inside.
+   places an override applies, the part's own and one covering the parts inside. A streamer
+   takes the rule by the same packing; no probe weighs a weightless one under an override.
 5. **One cause retired.** `cargo xtask ork` no longer counts "packed parts hpr weighs as point
    masses" as a cause for a roll gap: hpr no longer makes such a point mass.
 

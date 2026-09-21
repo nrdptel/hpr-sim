@@ -55,7 +55,7 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
 ## Done log (newest first, keep about 15)
 
 - 2026-09-21: M2.2b3 Packed parts (ADR-063): an unwritten packed size is OpenRocket's 25 × 12.5 mm,
-  an override on a weightless one fills its packing; 42 probes to 1e-12; roll 55 → 57 of 74 in 1%.
+  an override on a weightless one fills its packing; nine new probes to 1e-12; roll 55 → 57 of 74 in 1%.
 - 2026-09-21: M2.2b2 Fins, rail buttons, roll inertia (ADR-062): OpenRocket's fin shortcut
   inferred on 33 probes; roll median 2.1% → 0.001% with it; sections kept hpr's; #151 fixed.
 - 2026-09-21: M2.2b1 What a `.ork` leaves unsaid, and overrides (ADR-061): 32 probes; walls,

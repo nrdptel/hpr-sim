@@ -320,9 +320,9 @@ mod tests {
     /// transition or tube that writes no thickness has a 2 mm wall, and a shoulder that writes none
     /// has no wall; a part that names no material is made of OpenRocket's cardboard, ripstop nylon,
     /// elastic cord or (a rail button) Delrin; and a mass override on a part that weighs nothing is
-    /// a point mass at the middle of its length, unless the part is packed (ADR-063, below). So the mass and the centre of mass agree, part by
-    /// part as well as whole, and nothing is warned of; where no fin, rail button or recovery part
-    /// is in the probe, the inertias agree as well.
+    /// a point mass at the middle of its length, unless the part is packed (ADR-063, below). So the
+    /// mass and the centre of mass agree, part by part as well as whole, and nothing is warned of;
+    /// where no fin, rail button or recovery part is in the probe, the inertias agree as well.
     ///
     /// The worst mass is a transition's, 2.9e-6 from OpenRocket's (hpr measures its wall normal to
     /// the surface); the worst centre, 1.5e-7 m. The bounds are a few times those. The two gaps in
