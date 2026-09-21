@@ -15,15 +15,12 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
 
 ## Handoff (overwrite each session)
 
-- **M2.2 next:** fly the OpenRocket examples and the corpus through OpenRocket 24.12 and compare.
-  **Driving OpenRocket:** `validation/oracles/openrocket/automatic_radius.py` (ADR-054) runs 24.12
-  headless through JPype with empty motor and preset databases; `events.py` loads the real motor
-  database and flies (calm air, seed 1, English locale). **Read OpenRocket after it re-resolves** (a
-  save does it). M2.2 (ADR-035) can build on it or take a subprocess; Java 17 only. The
-  RocketSerializer record (`validation/oracles/rocketserializer/geometry.py`, own environment from
-  its `requirements.txt` in `refs/venv-rs`) is rerun before `cargo xtask ork` when the library
-  changes, or the survey fails on a changed file. Its 23 example designs wait on #147; 3 of them
-  meet #135.
+- **M2.2 next:** fly the OR examples and the corpus through OpenRocket 24.12 and compare.
+  `validation/oracles/openrocket/automatic_radius.py` (ADR-054) runs it headless through JPype;
+  `events.py` loads the motor database and flies (calm air, seed 1). **Read OpenRocket after it
+  re-resolves** (a save does it); Java 17 only. When the library changes, rerun
+  `validation/oracles/rocketserializer/geometry.py` (env: its `requirements.txt`) before `xtask
+  ork`, which fails on a stale record. RocketSerializer's 23 examples wait on #147.
 - **Page rules** (ADR-016 to ADR-020): relative links between pages, GitHub URLs for the rest
   (rustdoc too), labels as links to their rows — a lesson a page names needs a row in
   `decisions-and-roadmap.md` — none in headings; new pages in `SUMMARY.md`, a new library a row in
@@ -58,7 +55,7 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
 ## Done log (newest first, keep about 15)
 
 - 2026-09-21: M3.1d2 Every `.ork` in `loft-fixtures` (27) and the jar's examples (17) imports with
-  0 errors; hpr's key geometry held to RocketSerializer's, OpenRocket settling (ADR-059): 1,113
+  0 errors; hpr's key geometry held to RocketSerializer's, OpenRocket settling (ADR-059): 1,212
   numbers over 74 designs, none apart from both. M3.1 done; #147, #135 commented.
 - 2026-09-21: M3.1d1 Loft's seven demo designs committed and read into `insta` summary snapshots
   (new dev-dependency), with a synthetic design that flies; M3.1d split into d1 and d2.
@@ -81,6 +78,8 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
 - **OpenRocket example radii in a fixture** (no action if fine): `openrocket-automatic-radius.json`
   commits 67 body radii OpenRocket computed: 63 for the jar's 17 GPL example designs, with their
   names, and 4 for the Apache-2.0 parachute catalogue.
+- **A glance at GPL source** (no action if fine): M3.1d2's research read about 15 lines of
+  `orhelper`'s (GPL-2.0) signatures before its licence was checked; nothing derived (ADR-059 §5).
 - **RASAero values in fixtures** (no action if fine): `normal-force-vs-mach.json` commits 30 values
   of RocketPy's 2018 Calisto RASAero II export (ADR-027) plus four summary numbers, and
   `rocketpy-drag-curves.json` enough to rebuild 147 values of five curves (ADR-029).

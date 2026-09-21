@@ -20,9 +20,10 @@ BeautifulSoup, and OpenRocket's loaded document, which it walks for stations and
 Both are built here the same way: the JVM is started as
 `validation/oracles/openrocket/automatic_radius.py` starts it, and OpenRocket is run, never read.
 
-One file needs a step before OpenRocket opens it: Loft's `demo-stable.ork` begins with a comment
-long enough that OpenRocket 24.12 no longer recognises the document ("Unsupported or corrupt
-file"). The comment is removed from the copy OpenRocket reads, and the file's record says so.
+Some files need a step before OpenRocket opens them: Loft's `demo-stable.ork`, for one, begins
+with a comment long enough that OpenRocket 24.12 no longer recognises the document ("Unsupported
+or corrupt file"). When OpenRocket refuses a file that begins with a comment, the comment is
+removed from the copy OpenRocket reads, and the file's record says so (`comment_removed`).
 
 This runs in a Python 3.11 environment of its own, every package pinned in `requirements.txt`
 beside it and installed without their declared dependencies, so that RocketSerializer's `orhelper`
@@ -49,6 +50,7 @@ standard output, which OpenRocket logs to.
 import hashlib
 import json
 import logging
+import platform
 import re
 import sys
 import tempfile
@@ -58,6 +60,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "openrocket"))
 
 import automatic_radius  # noqa: E402 - the JVM start and the loader are shared
+import jpype  # noqa: E402
 
 RS_COMMIT = "66d8ca8c9be36816c4157fbdf249e87fb8c1f5dc"
 # Directories under refs/ that are Python environments, not designs. Everything else under refs/
@@ -165,6 +168,7 @@ def openrocket_numbers(tag, component):
         numbers["station_m"] = station(component)
         component.setCantAngle(cant)
         numbers["count"] = int(component.getFinCount())
+        numbers["cross_section"] = str(component.getCrossSection().name())
         numbers["span_m"] = float(component.getHeight())
         numbers["cant_rad"] = float(component.getCantAngle())
         if tag == "trapezoidfinset":
@@ -332,6 +336,7 @@ def main():
     logging.disable(logging.CRITICAL)
     automatic_radius.start()
     from info.openrocket.core.util import BuildProperties
+    from java.lang import System
 
     runs = []
     with tempfile.TemporaryDirectory() as scratch:
@@ -354,6 +359,10 @@ def main():
                 "rocketserializer": f"RocketPy-Team/RocketSerializer@{RS_COMMIT}",
                 "openrocket": str(BuildProperties.getVersion()),
                 "jar_sha256": hashlib.sha256(automatic_radius.JAR.read_bytes()).hexdigest(),
+                "command": " ".join(["geometry.py", *sys.argv[1:]]),
+                "java": str(System.getProperty("java.version")),
+                "python": platform.python_version(),
+                "jpype": jpype.__version__,
                 "designs": runs,
             },
             indent=1,

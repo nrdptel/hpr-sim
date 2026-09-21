@@ -1,4 +1,5 @@
 {
+ "command": "geometry.py validation/fixtures/ork/rocketserializer-loft-demo.json validation/fixtures/ork/loft-demo",
  "designs": [
   {
    "comment_removed": false,
@@ -12,6 +13,7 @@
        "cant_rad": 0.0,
        "canted_station_m": 0.87,
        "count": 3,
+       "cross_section": "SQUARE",
        "earlier_siblings_m": 0.358,
        "length_m": 0.13,
        "root_chord_m": 0.13,
@@ -151,6 +153,7 @@
        "cant_rad": 0.0,
        "canted_station_m": 1.45,
        "count": 4,
+       "cross_section": "SQUARE",
        "earlier_siblings_m": 0.08,
        "length_m": 0.16,
        "root_chord_m": 0.16,
@@ -231,6 +234,7 @@
        "cant_rad": 0.0,
        "canted_station_m": 0.83,
        "count": 3,
+       "cross_section": "SQUARE",
        "earlier_siblings_m": 0.358,
        "length_m": 0.12,
        "root_chord_m": 0.12,
@@ -311,6 +315,7 @@
        "cant_rad": 0.0,
        "canted_station_m": 0.77,
        "count": 3,
+       "cross_section": "SQUARE",
        "earlier_siblings_m": 0.20800000000000002,
        "length_m": 0.11,
        "root_chord_m": 0.11,
@@ -397,6 +402,7 @@
        "cant_rad": 0.0,
        "canted_station_m": 0.83,
        "count": 3,
+       "cross_section": "SQUARE",
        "earlier_siblings_m": 0.358,
        "length_m": 0.12,
        "root_chord_m": 0.12,
@@ -477,6 +483,7 @@
        "cant_rad": 0.0,
        "canted_station_m": 0.865,
        "count": 3,
+       "cross_section": "SQUARE",
        "earlier_siblings_m": 0.358,
        "length_m": 0.085,
        "root_chord_m": 0.085,
@@ -504,7 +511,10 @@
   }
  ],
  "jar_sha256": "4959b72f52f5f607941e9722abbb7b7f0c4a38ebbbf84204a329db9f31c4f897",
+ "java": "17.0.20.1",
+ "jpype": "1.7.1",
  "openrocket": "24.12",
+ "python": "3.11.14",
  "rocketserializer": "RocketPy-Team/RocketSerializer@66d8ca8c9be36816c4157fbdf249e87fb8c1f5dc",
  "source": "validation/oracles/rocketserializer/geometry.py"
 }

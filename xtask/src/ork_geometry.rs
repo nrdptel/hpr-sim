@@ -10,7 +10,7 @@
 use std::collections::BTreeMap;
 
 use hpr_design::tree::{Component, Layout, Part, PlacedComponent, Rocket};
-use hpr_design::{FinPlanform, NoseShape};
+use hpr_design::{FinCrossSection, FinPlanform, NoseShape};
 use serde_json::{Value, json};
 use sha2::{Digest, Sha256};
 
@@ -70,6 +70,8 @@ pub(crate) struct DesignCheck {
     pub(crate) extractor_errors: Vec<String>,
     /// Canted fin sets, and how many of them OpenRocket turns as `canted_shift` says.
     pub(crate) canted: [usize; 2],
+    /// Nose profiles compared with OpenRocket's three radii, and how many are hpr's.
+    pub(crate) profiles: [usize; 2],
 }
 
 /// How far aft OpenRocket moves the front of a canted fin's root, m: it turns the fin about the
@@ -120,7 +122,8 @@ impl DesignCheck {
         rocketserializer: Option<&str>,
         openrocket: Option<&str>,
     ) {
-        let Some(theirs) = rocketserializer else {
+        // RocketSerializer's empty word is its default for a tag the file does not write.
+        let Some(theirs) = rocketserializer.filter(|word| !word.is_empty()) else {
             self.not_stated += 1;
             return;
         };
@@ -173,6 +176,17 @@ fn nose_kind(shape: &NoseShape) -> &'static str {
         NoseShape::Haack { parameter } if *parameter == 0.0 => "Von Karman",
         NoseShape::Haack { .. } => "lvhaack",
         // A shape added later has no word here, and so fails to agree until it is given one.
+        _ => "(unnamed)",
+    }
+}
+
+/// A fin section in the file's words, which RocketSerializer passes on.
+fn section_word(section: FinCrossSection) -> &'static str {
+    match section {
+        FinCrossSection::Square => "square",
+        FinCrossSection::Rounded => "rounded",
+        FinCrossSection::Airfoil => "airfoil",
+        // A section added later has no word here, and so fails to agree until it is given one.
         _ => "(unnamed)",
     }
 }
@@ -326,6 +340,10 @@ fn quantities(
                             })
                 })
             });
+            if or["profile_radii_m"].is_array() {
+                check.profiles[0] += 1;
+                check.profiles[1] += usize::from(draws_ours);
+            }
             let kind = if draws_ours {
                 Some(nose_kind(&shape).to_owned())
             } else {
@@ -337,6 +355,22 @@ fn quantities(
                 rs["kind"].as_str(),
                 kind.as_deref(),
             );
+            // OpenRocket's own word beside the one its profile settled on: an ogive of parameter
+            // 0 draws as the cone hpr reads, and OpenRocket still calls it an ogive.
+            if let Some(last) = check.compared.last_mut() {
+                last.detail["openrocket_word"] = json!(openrocket_kind(or));
+                last.detail["openrocket_draws_hprs_profile"] = json!(draws_ours);
+            }
+            // RocketSerializer passes a Haack series's parameter on, and only a Haack's.
+            if let NoseShape::Haack { parameter } = shape {
+                check.number(
+                    q("haack_parameter"),
+                    parameter,
+                    rs["noseShapeParameter"].as_f64(),
+                    or["shape_parameter"].as_f64(),
+                    none,
+                );
+            }
             check.number(
                 q("length_m"),
                 length_m,
@@ -391,6 +425,13 @@ fn quantities(
                 rs["number"].as_f64(),
                 or["count"].as_f64(),
                 none,
+            );
+            let section = or["cross_section"].as_str().map(str::to_ascii_lowercase);
+            check.word(
+                q("cross_section"),
+                section_word(fins.cross_section),
+                rs["section"].as_str(),
+                section.as_deref(),
             );
             let (root, tip, span, sweep) = match fins.planform {
                 FinPlanform::Trapezoidal {
@@ -499,6 +540,16 @@ pub(crate) struct GeometryTally {
     record: Option<(String, BTreeMap<String, Value>)>,
     compared_designs: usize,
     refused: usize,
+    /// The files the record holds, and how many of them OpenRocket opened.
+    recorded: [usize; 2],
+    /// Designs the survey laid out that the record does not hold: the record is out of date.
+    missing: Vec<String>,
+    /// The content hashes of the designs compared, and the verdict totals over the first design
+    /// of each: the reference library holds some files more than once.
+    distinct: std::collections::BTreeSet<String>,
+    distinct_total: [usize; 3],
+    /// Nose profiles compared with OpenRocket's radii, and how many are hpr's.
+    profiles: [usize; 2],
     /// Designs in the record that hpr reads but does not lay out, so has no geometry to compare.
     not_laid_out: Vec<String>,
     stale: Vec<String>,
@@ -530,8 +581,14 @@ impl GeometryTally {
             .as_str()
             .unwrap_or("?")
             .to_owned();
+        let designs = designs(&record);
+        let opened = designs
+            .values()
+            .filter(|design| design["opens"] == true)
+            .count();
         Ok(Self {
-            record: Some((by, designs(&record))),
+            recorded: [designs.len(), opened],
+            record: Some((by, designs)),
             ..Self::default()
         })
     }
@@ -557,6 +614,7 @@ impl GeometryTally {
             return Value::Null;
         };
         let Some(design) = designs.remove(&key(name)) else {
+            self.missing.push(key(name));
             return Value::Null;
         };
         let digest: String = Sha256::digest(bytes)
@@ -576,7 +634,13 @@ impl GeometryTally {
         }
         self.compared_designs += 1;
         let check = compare(&design, rocket, layout);
+        let first_copy = self.distinct.insert(digest);
+        self.profiles[0] += check.profiles[0];
+        self.profiles[1] += check.profiles[1];
         for compared in &check.compared {
+            if first_copy {
+                self.distinct_total[compared.verdict as usize] += 1;
+            }
             if let Some(same) = compared.openrocket_same {
                 self.openrocket_same[0] += 1;
                 self.openrocket_same[1] += usize::from(same);
@@ -648,8 +712,12 @@ impl GeometryTally {
         });
         println!(
             "  key geometry against {by}, OpenRocket 24.12 settling a difference ({LIBRARY}): \
-             {} design(s) compared",
-            self.compared_designs
+             {} file(s) recorded, {} of them opened by OpenRocket; {} design(s) compared, {} \
+             distinct by content",
+            self.recorded[0],
+            self.recorded[1],
+            self.compared_designs,
+            self.distinct.len()
         );
         println!(
             "    quantities: {} compared, {} agree, {} where RocketSerializer is not OpenRocket and \
@@ -658,6 +726,19 @@ impl GeometryTally {
             total[0],
             total[1],
             total[2]
+        );
+        println!(
+            "    over the distinct designs only: {} compared, {} agree, {} where RocketSerializer \
+             is not OpenRocket and hpr is, {} where hpr is neither",
+            self.distinct_total.iter().sum::<usize>(),
+            self.distinct_total[0],
+            self.distinct_total[1],
+            self.distinct_total[2]
+        );
+        println!(
+            "    nose profiles OpenRocket draws as hpr does, at a quarter, a half and three \
+             quarters of the length: {} of {} (what settles a nose's shape word)",
+            self.profiles[1], self.profiles[0]
         );
         println!(
             "    hpr's number is OpenRocket's too: {} of the {} OpenRocket gave, and {} of the {} \
@@ -692,10 +773,11 @@ impl GeometryTally {
         );
         println!(
             "    not compared: {} entries in parts hpr keeps unread, {} quantities RocketSerializer \
-             gives no number for, {} design(s) OpenRocket does not open, {} hpr does not lay out, \
-             extractor errors: {}",
+             gives no value for, {} file(s) OpenRocket does not open ({} of them a design hpr lays \
+             out), {} hpr does not lay out, extractor errors: {}",
             self.in_kept_parts,
             self.not_stated,
+            self.recorded[0] - self.recorded[1],
             self.refused,
             self.not_laid_out.len(),
             if self.extractor_errors.is_empty() {
@@ -714,6 +796,11 @@ impl GeometryTally {
     pub(crate) fn failure(&self) -> Option<String> {
         let (_, left) = self.record.as_ref()?;
         let mut problems = self.stale.clone();
+        problems.extend(
+            self.missing.iter().map(|file| {
+                format!("{file} lays out but is not in {LIBRARY}: run geometry.py again")
+            }),
+        );
         if self.canted[1] != self.canted[0] {
             problems.push(format!(
                 "{} of {} canted fin sets are not turned about the middle of the root chord, which \
@@ -743,7 +830,7 @@ impl GeometryTally {
         }));
         (!problems.is_empty()).then(|| {
             format!(
-                "hpr's key geometry is not RocketSerializer's or OpenRocket's:\n  {}",
+                "the RocketSerializer cross-check fails:\n  {}",
                 problems.join("\n  ")
             )
         })
@@ -782,12 +869,14 @@ mod tests {
         // the rocket). Every fin set is a tube's later child, so RocketSerializer's walk places
         // each one further aft by the parts before it, and hpr's station is OpenRocket's.
         assert_eq!((tally.compared_designs, tally.refused), (6, 1));
-        assert_eq!(total, [68, 6, 0]);
-        // And every one of hpr's 74 numbers is OpenRocket's, the 68 agreements included.
+        assert_eq!(total, [74, 6, 0]);
+        // And every one of hpr's 80 numbers is OpenRocket's, the 74 agreements included, with
+        // each nose drawn as OpenRocket draws it.
         assert_eq!(
             (tally.openrocket_same, tally.agreeing_openrocket_same),
-            ([74, 74], [68, 68])
+            ([80, 80], [74, 74])
         );
+        assert_eq!(tally.profiles, [6, 6]);
         assert_eq!(
             tally.causes,
             BTreeMap::from([

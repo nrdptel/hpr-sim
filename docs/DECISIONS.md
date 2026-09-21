@@ -5086,9 +5086,9 @@ by name, so a two-way comparison could never agree everywhere without hpr copyin
    **This is what "agrees on the key geometry" is taken to mean.** Every number RocketSerializer
    reads as OpenRocket does, hpr reads the same, and no number of hpr's is apart from both.
 2. **The key geometry** is what RocketSerializer reports about the airframe's shape:
-   - the nose cone's shape, length and base radius;
+   - the nose cone's shape, length and base radius, and a Haack series's parameter;
    - each transition's length and end radii;
-   - each trapezoidal and elliptical fin set's count, chords, span, sweep and cant;
+   - each trapezoidal and elliptical fin set's count, chords, span, sweep, cant and cross-section;
    - the station of each of those parts;
    - the body radius (the largest radius written as a number).
 3. **A cause is named only where the record proves it.** Two causes can be checked:
@@ -5109,8 +5109,8 @@ by name, so a two-way comparison could never agree everywhere without hpr copyin
 5. **Pinned as a tool, not as a reference checkout.** RocketSerializer is pinned at `66d8ca8`, after
    release 0.2.0, with the environment it runs in:
    `validation/oracles/rocketserializer/requirements.txt`, installed with `--no-deps`. `orhelper` is
-   never installed, and JPype is the oracle environment's 1.7.1. A first run with `orhelper` and
-   JPype 1.4.1 installed gave byte-identical records. During the research, about 15 lines of
+   never installed, and JPype is the oracle environment's 1.7.1. (A first run, with `orhelper`
+   and JPype 1.4.1 installed, gave the same records when compared locally; that run is not kept.) During the research, about 15 lines of
    `orhelper`'s source (its function signatures) were read before its licence was checked. Nothing
    here comes from them: the script imports none of it, and it starts the JVM the way
    `automatic_radius.py` (ADR-054) already did.
@@ -5127,17 +5127,20 @@ by name, so a two-way comparison could never agree everywhere without hpr copyin
 **Consequences.** On 2026-09-21:
 - **Imports.** `loft-fixtures` imports 27 of 27 files and the jar's examples 17 of 17, each with 0
   errors. The only errors under `refs/` are the two Loft test fixtures that are not XML (ADR-051).
-- **The cross-check.** The record covers all 78 files the survey reads, and it compares 1,113
-  numbers over the 74 designs OpenRocket opens:
-  - 1,003 agree;
-  - in 110, RocketSerializer is apart and hpr's number is OpenRocket's (75 stations from its walk,
-    15 transition radii from a same-named transition, 20 with no cause shown);
+- **The cross-check.** The record covers all 78 files the survey reads, and the survey fails if a
+  design it lays out is missing from it. It compares 1,212 numbers over the 74 designs OpenRocket
+  opens (54 distinct files; 896 numbers counting each once):
+  - 1,102 agree (813 of the 896);
+  - in 110 (83), RocketSerializer is apart and hpr's number is OpenRocket's: 75 stations from its
+    walk, 15 transition radii from a same-named transition, 20 with no cause shown;
   - in 0, hpr is apart from both.
-  - hpr's number is OpenRocket's in all 1,113, the 1,003 agreements included, so no agreement is a
-    mistake hpr and RocketSerializer share. `cargo xtask ork` prints that count too.
-- **Not compared:** 6 parts inside pods or parallel stages, 1 body radius RocketSerializer has no
-  number for, and 4 files OpenRocket does not open.
-- **The public record.** Six of the seven Loft designs open in OpenRocket. Of their 74 numbers, 68
+  - hpr's number is OpenRocket's in all 1,212, the 1,102 agreements included, so no agreement is a
+    mistake hpr and RocketSerializer share. All 72 noses match OpenRocket's profile at three points.
+  - RocketSerializer's stations come from OpenRocket's tree, and it agrees with hpr on 8 of 96 fin
+    stations, so stations rest on OpenRocket; what it reads from the file agrees every time.
+- **Not compared:** 6 parts inside pods or parallel stages, 3 values RocketSerializer gives none
+  for, and 4 files OpenRocket does not open.
+- **The public record.** Six of the seven Loft designs open in OpenRocket. Of their 80 numbers, 74
   agree, and 6 fin stations are RocketSerializer's walk.
 
 M3.1's *done when* is met.

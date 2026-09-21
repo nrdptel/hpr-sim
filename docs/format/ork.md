@@ -17,7 +17,7 @@ OpenRocket last ran on it. That is from Rust; there is no command-line tool yet.
 
 - **The shape is cross-checked.** The airframe's key geometry was compared with a second program
   that reads `.ork` files, RocketSerializer, and with OpenRocket itself. That geometry is the nose
-  cone, the transitions, the fin sets, where each sits, and the body radius. Of 1,113 numbers over
+  cone, the transitions, the fin sets, where each sits, and the body radius. Of 1,212 numbers over
   74 designs, every one of hpr's is OpenRocket's
   ([checked against RocketSerializer](#checked-against-rocketserializer)).
 - **Few motor configurations fly yet.** Motors are read, but a configuration flies only when every
@@ -382,12 +382,12 @@ RocketPy's team wrote it to turn an OpenRocket design into RocketPy's inputs. Th
 hpr's reading of each design's shape with RocketSerializer's. Where the two differ, OpenRocket
 itself, run on the same file, decides which is right.
 
-On 2026-09-21 the check covered 74 designs. Of 1,113 numbers:
-- hpr matched RocketSerializer on 1,003;
+On 2026-09-21 the check covered 74 designs. Of 1,212 numbers:
+- hpr matched RocketSerializer on 1,102;
 - on the other 110, OpenRocket gave hpr's number, not RocketSerializer's;
 - hpr never differed from both.
 
-**Every one of hpr's 1,113 numbers is also OpenRocket's.** That includes the 1,003 where it matched
+**Every one of hpr's 1,212 numbers is also OpenRocket's.** That includes the 1,102 where it matched
 RocketSerializer. So no agreement here is a mistake the two readers happen to share.
 
 This checks the *reading*: the dimensions in the file, and where each part sits. It does not check
@@ -396,15 +396,18 @@ mass, the centre of gravity, or any physics. Comparing those with OpenRocket's i
 The check was added by [M3.1d2](../decisions-and-roadmap.md#m3-1d2), the roadmap step that closed
 `.ork` import, and [ADR-059][adr-059] records how it was decided.
 
-**What is compared.** Everything RocketSerializer reports about the airframe's shape:
+**What is compared.** What RocketSerializer reports about the airframe's shape:
 
 | part | numbers |
 |---|---|
-| the nose cone | its shape, length and base radius |
+| the nose cone | its shape, length and base radius, and a Haack series's parameter |
 | each transition | its length, and its radius at each end |
-| each trapezoidal or elliptical fin set | the number of fins, root chord, tip chord, span, sweep and [cant](../glossary.md#cant) |
+| each trapezoidal or elliptical fin set | the number of fins, root chord, tip chord, span, sweep, [cant](../glossary.md#cant) and cross-section |
 | each of those parts | its [station](../glossary.md#station): where its front sits, in metres aft of the nose tip |
 | the rocket | its body radius: the largest radius the file writes as a number |
+
+RocketSerializer also reports each part's name, and a fin set's sweep angle when the file writes
+one (the files here write the sweep as a length); those are not compared.
 
 **How a difference is settled.** A script, `validation/oracles/rocketserializer/geometry.py`, runs
 RocketSerializer's *extractors*, the functions it uses to pull each part out of a file, on every
@@ -428,14 +431,17 @@ for every part, so this cause is checked, not assumed.
 **The results.** From `cargo xtask ork` on 2026-09-21, over the 78 files it reads (the reference
 library under `refs/` and the 17 examples inside the OpenRocket jar):
 
-| | count |
-|---|---|
-| files OpenRocket opens, and designs compared | 74 |
-| numbers compared | 1,113 |
-| hpr agrees with RocketSerializer | 1,003 |
-| RocketSerializer differs, and hpr's number is OpenRocket's | 110 |
-| hpr differs from both | **0** |
-| hpr's number is OpenRocket's | 1,113 |
+| | all designs | each file once |
+|---|---|---|
+| designs compared (files OpenRocket opens) | 74 | 54 |
+| numbers compared | 1,212 | 896 |
+| hpr agrees with RocketSerializer | 1,102 | 813 |
+| RocketSerializer differs, and hpr's number is OpenRocket's | 110 | 83 |
+| hpr differs from both | **0** | **0** |
+| hpr's number is OpenRocket's | 1,212 | 896 |
+
+Some files are in the library more than once: 13 of Loft's private designs are copies of the jar's
+examples, for one. The second column counts each file's content once.
 
 The 110 differences, by cause:
 
@@ -444,6 +450,13 @@ The 110 differences, by cause:
 | a station: RocketSerializer adds the lengths of the parts before it in its parent, as in the worked example | 75 |
 | a transition's radius: RocketSerializer looks transitions up in OpenRocket by name, and takes the first of that name | 15 |
 | no cause shown | 20 |
+
+**Stations rest mostly on OpenRocket.** RocketSerializer takes a part's station, and a
+transition's radii, from OpenRocket's own tree rather than reading them from the file. It agrees
+with hpr on 8 of the 96 fin sets' stations; the other 88 are among the 110 above, where hpr's
+station is OpenRocket's. So for stations this is a check against OpenRocket, with RocketSerializer
+as a second opinion only where it agrees. For lengths, chords, spans, counts and cant, which it
+reads from the file, it agrees with hpr every time.
 
 For the 20 with no cause shown, the reason RocketSerializer's number differs has not been traced.
 In each of them hpr's number is OpenRocket's, and the per-file record holds all three programs'
@@ -464,23 +477,26 @@ numbers:
 - **A shape word.** An ogive of shape parameter 0 is a cone
   ([the spine](#the-spine-stages-and-body-components) says why). To tell which shape OpenRocket
   really draws, the script records OpenRocket's radius a quarter, a half and three quarters of the
-  way along the nose. hpr's profile is compared with those three radii.
+  way along the nose. hpr's profile is compared with those three radii: all 72 noses match. So a
+  nose's shape counts as OpenRocket's when OpenRocket draws hpr's profile, whatever word it uses.
+- **A leading comment.** OpenRocket 24.12 refuses a file that begins with a long enough comment. For
+  3 files, the script removes the comment from the copy OpenRocket reads, and the record says so.
 
 **What it leaves out.**
 - RocketSerializer reports no body tube, no inner part, no mass, no fin thickness, and no freeform
   or tube fins, so none of those is compared here.
 - 6 parts inside pods or parallel stages are not compared, because hpr keeps those parts unread
   ([what hpr keeps](#what-hpr-keeps-for-writing-the-file-back)).
-- 1 body radius is not compared: a file that writes every radius as `auto` gives
-  RocketSerializer none.
+- 3 values RocketSerializer gives nothing for are not compared: 1 body radius, in a file that
+  writes every radius as `auto`, and 2 fin cross-sections, in a file that writes none.
 - 4 files are not compared, because OpenRocket 24.12 does not open them. One is Loft's
   `demo-quirks.ork`, whose parallel stage sits directly under the rocket. Two are the Loft fixtures
   above that are not XML. The fourth holds no design.
 
 **Run it yourself.** CI does not run RocketSerializer or OpenRocket. It holds hpr to their saved
 output for the seven public Loft designs, `validation/fixtures/ork/rocketserializer-loft-demo.json`,
-with `cargo test -p xtask rocketserializer`. OpenRocket opens six of the seven. Of their 74
-numbers, 68 agree, and the other 6 are fin stations that RocketSerializer adds earlier lengths to,
+with `cargo test -p xtask rocketserializer`. OpenRocket opens six of the seven. Of their 80
+numbers, 74 agree, and the other 6 are fin stations that RocketSerializer adds earlier lengths to,
 as in the worked example.
 
 To make a record yourself you need Python 3.11, [`uv`](https://docs.astral.sh/uv/), Java 17 and
