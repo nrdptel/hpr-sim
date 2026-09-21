@@ -458,8 +458,14 @@ pub(super) fn read(
             None
         }
     };
+    let mut placed: BTreeSet<&str> = BTreeSet::new();
     for (mount_id, mount) in mounts {
-        let stage = stage_of(rocket, mount_id).unwrap_or_default();
+        // A mount the rocket does not hold is left to the scan for unread motors below, which
+        // says so, rather than being given a stage it is not in (Loft lesson L65).
+        let Some(stage) = stage_of(rocket, mount_id) else {
+            continue;
+        };
+        placed.insert(mount.at.as_str());
         for (config, read) in &mount.motors {
             let index = configuration(&mut configurations, config, at, warnings);
             let ignition = match mount.ignitions.get(config) {
@@ -488,11 +494,10 @@ pub(super) fn read(
         }
     }
 
-    let read_at: BTreeSet<&str> = mounts.iter().map(|(_, mount)| mount.at.as_str()).collect();
     let mut unread = Vec::new();
     for (index, stage) in subcomponents(rocket_element).enumerate() {
         let path = format!("{at}/{}[{index}]", stage.name);
-        unread_motors(stage, &path, None, &read_at, &mut unread);
+        unread_motors(stage, &path, None, &placed, &mut unread);
     }
     for (config, motor) in unread {
         let index = configuration(&mut configurations, &config, at, warnings);
