@@ -105,11 +105,6 @@ expression: snapshot_of(&design)
       "says": "no axial offset at all; the part was read flush with its parent's forward end"
     },
     {
-      "at": "openrocket/rocket/stage[0]/bodytube[1]/streamer[1]",
-      "kind": "dropped",
-      "says": "no `packedradius`, so it was read as zero"
-    },
-    {
       "at": "openrocket/rocket/stage[0]/bodytube[3]/ellipticalfinset[0]",
       "kind": "unusual",
       "says": "this component uses the single `overridesubcomponents` flag that OpenRocket replaced with one flag per quantity; it was read as setting the mass, the centre of gravity, the drag flags"

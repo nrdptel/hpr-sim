@@ -41,8 +41,8 @@ use crate::finish::Finish;
 use crate::fins::{FinSet, TubeFinSet};
 use crate::mass::MassProperties;
 use crate::parts::{
-    BodyTube, CenteringRing, InnerTube, LaunchLug, MassComponent, NoseCone, Parachute, RailButton,
-    ShockCord, Streamer, Transition,
+    BodyTube, CenteringRing, InnerTube, LaunchLug, MassComponent, NoseCone, Packing, Parachute,
+    RailButton, ShockCord, Streamer, Transition,
 };
 use crate::shapes::check_dimension;
 
@@ -231,6 +231,17 @@ impl Part {
             Self::Parachute(p) => p.packing.length_m,
             Self::Streamer(p) => p.packing.length_m,
             Self::ShockCord(p) => p.packing.length_m,
+        }
+    }
+
+    /// How a mass object or recovery part is packed, or `None` for a part that is not packed.
+    pub fn packing(&self) -> Option<&Packing> {
+        match self {
+            Self::MassComponent(p) => Some(&p.packing),
+            Self::Parachute(p) => Some(&p.packing),
+            Self::Streamer(p) => Some(&p.packing),
+            Self::ShockCord(p) => Some(&p.packing),
+            _ => None,
         }
     }
 
@@ -461,12 +472,16 @@ impl AutoDimension {
 /// Values that replace the mass properties computed from geometry. Each applies in turn:
 ///
 /// 1. **Mass** `m′`: the body is rescaled, `I′ = I m′/m`, keeping its centre and shape. A body with
-///    no mass becomes a point mass at its centre.
+///    no mass becomes a point mass at its centre, but for a packed part in a layout (a mass
+///    component, parachute, streamer or shock cord), which takes `m′` as a solid cylinder of its
+///    packing, as OpenRocket 24.12 does ([ADR-063][adr-063]).
 /// 2. **Centre of mass**: the centre moves along the axis to `cg_aft_m` aft of the component's
 ///    forward end (a stage's, for a stage), with or without its children, and off the axis to
 ///    `cg_xy_m` when given (otherwise it keeps its offset); the tensor about the centre is
 ///    unchanged.
 /// 3. **Inertia**: the tensor about the (new) centre is replaced.
+///
+/// [adr-063]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-063-packed-parts-read-and-weighed-as-openrocket-packs-them-2026-09-21
 #[derive(Debug, Clone, Copy, PartialEq, Default, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct Overrides {
@@ -1239,6 +1254,34 @@ fn place(
     Ok(mass.translated(DVec3::new(0.0, 0.0, -fore_station_m)))
 }
 
+/// The body a mass override rescales: `mass` itself, but for a packed part under a mass override,
+/// which becomes that mass as a solid cylinder of its packing. For a part that weighs something this
+/// is the rescaling [`Overrides::apply`] does anyway; for one that weighs nothing it replaces the
+/// point `apply` makes of any other weightless body. OpenRocket 24.12 does the
+/// same: on probes of a parachute, a mass component and a shock cord each weighing nothing, its
+/// roll inertia is the override's `m r²/2` over the packing's radius `r`, and its pitch inertia and
+/// centre are the cylinder's ([ADR-063][adr-063]). `fore_station_m` is the part's forward end.
+///
+/// [adr-063]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-063-packed-parts-read-and-weighed-as-openrocket-packs-them-2026-09-21
+fn packed_for_override(
+    part: &Part,
+    overrides: &Overrides,
+    mass: MassProperties,
+    fore_station_m: f64,
+) -> Result<MassProperties, DesignError> {
+    match (overrides.mass_kg, part.packing()) {
+        // A packed part of any mass is its packing's cylinder, so building the cylinder of `m′`
+        // directly is what rescaling gives, and holds for a weightless (or subnormal) mass too.
+        (Some(mass_kg), Some(packing)) => {
+            check_dimension("mass override (kg)", mass_kg, true)?;
+            Ok(packing
+                .place(mass_kg)?
+                .translated(DVec3::new(0.0, 0.0, -fore_station_m)))
+        }
+        _ => Ok(mass),
+    }
+}
+
 /// Places a component's children, applies its overrides, and returns it with its children.
 fn finish(
     components: &mut Vec<PlacedComponent>,
@@ -1256,8 +1299,8 @@ fn finish(
     let own = if node.overrides_include_children {
         parent.own
     } else {
-        node.overrides
-            .apply(parent.own, p_fore)
+        packed_for_override(&parent.part, &node.overrides, parent.own, p_fore)
+            .and_then(|own| node.overrides.apply(own, p_fore))
             .map_err(|e| within(&node.id, e))?
     };
 
@@ -1401,10 +1444,14 @@ fn finish(
 
     let mut with_children = MassProperties::combine(&parts);
     if node.overrides_include_children {
-        with_children = node
-            .overrides
-            .apply(with_children, p_fore)
-            .map_err(|e| within(&node.id, e))?;
+        with_children = packed_for_override(
+            &components[index].part,
+            &node.overrides,
+            with_children,
+            p_fore,
+        )
+        .and_then(|mass| node.overrides.apply(mass, p_fore))
+        .map_err(|e| within(&node.id, e))?;
     }
     components[index].own = own;
     components[index].with_children = with_children;
@@ -1918,27 +1965,50 @@ mod tests {
         );
         assert_eq!(layout.structure, stage_mass);
 
-        // A massless part given a mass becomes a point mass at its centre.
-        airframe.children = vec![attached(
-            "ballast",
-            mass_component(0.0, 0.1, 0.02),
-            top(0.3),
-        )];
-        airframe.children[0].overrides.mass_kg = Some(0.25);
-        let design = rocket(vec![stage(
-            "s",
-            vec![body("nose", nose(0.2, 0.03)), airframe],
-        )]);
-        let layout = design.layout().unwrap();
-        let (_, b) = layout.find("ballast").unwrap();
-        assert_eq!(b.own.mass_kg, 0.25);
-        close(
-            b.own.cg_m.z,
-            -(0.2 + 0.3 + 0.05),
-            1e-15,
-            "point mass centre",
-        );
-        assert_eq!(b.own.inertia_kg_m2, DMat3::ZERO);
+        // A massless body given a mass becomes a point mass at its centre.
+        let centre = DVec3::new(0.0, 0.0, -0.4);
+        let point = Overrides {
+            mass_kg: Some(0.25),
+            ..Overrides::default()
+        }
+        .apply(MassProperties::point(0.0, centre), 0.0)
+        .unwrap();
+        assert_eq!(point, MassProperties::point(0.25, centre));
+
+        // But a massless packed part takes it as a solid cylinder of its packing (ADR-063),
+        // whether or not the override covers the parts inside.
+        for covering in [false, true] {
+            let mut airframe = airframe.clone();
+            airframe.children = vec![attached(
+                "ballast",
+                mass_component(0.0, 0.1, 0.02),
+                top(0.3),
+            )];
+            airframe.children[0].overrides.mass_kg = Some(0.25);
+            airframe.children[0].overrides_include_children = covering;
+            let design = rocket(vec![stage(
+                "s",
+                vec![body("nose", nose(0.2, 0.03)), airframe],
+            )]);
+            let layout = design.layout().unwrap();
+            let (_, b) = layout.find("ballast").unwrap();
+            let b = if covering { b.with_children } else { b.own };
+            assert_eq!(b.mass_kg, 0.25);
+            close(b.cg_m.z, -(0.2 + 0.3 + 0.05), 1e-15, "packing's centre");
+            let (r, l) = (0.02_f64, 0.1_f64);
+            close(
+                b.inertia_kg_m2.z_axis.z,
+                0.5 * 0.25 * r * r,
+                1e-15,
+                "roll, m r²/2",
+            );
+            close(
+                b.inertia_kg_m2.x_axis.x,
+                0.25 * (3.0 * r * r + l * l) / 12.0,
+                1e-15,
+                "pitch, m (3r² + l²)/12",
+            );
+        }
 
         // Overrides that make no real body are refused.
         let in_stage = |design: &Rocket| match design.layout() {

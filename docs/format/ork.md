@@ -989,7 +989,7 @@ How it was decided, and the sources quoted in full, are in [ADR-054][adr-054].
 | automatic dimensions marked for the layout to resolve | 320, plus the 7 above given the default: 327 in the files |
 | parts left out, with a reason | 5 |
 | parts that lay out weighing nothing | 14, every one explained (below) |
-| warnings raised | 57: 16 dropped, 12 skipped, 29 unusual (below) |
+| warnings raised | 52: 11 dropped, 12 skipped, 29 unusual (below) |
 | tags no milestone reads yet | 9 `podset`, 3 `parallelstage` |
 
 **The 14 parts that weigh nothing** are worth checking, because a structural part with no mass is
@@ -1003,8 +1003,10 @@ so a new one would show up. Before
 [M2.2b1](../decisions-and-roadmap.md#m2-2b1) there were 21: the 7 more (2 body tubes, 2 fin sets,
 2 inner tubes and a nose cone) name no material, and now take OpenRocket's default.
 
-**What the 57 warnings are.** Every one is a reading this page explains, and none of them means a
-file is broken:
+**What the 52 warnings are.** Every one is a reading this page explains, and none of them means a
+file is broken. Before [M2.2b3](../decisions-and-roadmap.md#m2-2b3) there were 57: 5 more for a
+`packedradius` the file does not give, read as zero, which hpr now reads as OpenRocket's 12.5 mm
+([packed parts](../physics/mass.md#packed-parts)).
 
 | kind | count | what raised it |
 |---|---|---|
@@ -1013,7 +1015,6 @@ file is broken:
 | `Unusual` | 7 | an automatic radius with nothing along its chain to take, given OpenRocket's default ([above](#when-an-automatic-radius-has-nothing-to-take)) |
 | `Unusual` | 1 | a `<rocket>` holding nothing, so the document holds no design |
 | `Dropped` | 11 | a fin's fillets, a rail button's screw head, a motor cluster read as one tube |
-| `Dropped` | 5 | a `packedradius` the file does not give, read as zero |
 | `Skipped` | 7 | a tally of the pods and parallel stages, kept in `x-openrocket` and modelled in [M1.13](../decisions-and-roadmap.md#m1-13), one per design that has any |
 | `Skipped` | 5 | the five parts left out above |
 

@@ -415,6 +415,47 @@ PART_PROBES = {
         "<packedlength>0.05</packedlength><packedradius>0.02</packedradius><mass>0.1</mass>"
         "</masscomponent>"
     ),
+    # M2.2b3: the packed size each kind takes when the file writes none, or half of one, and an
+    # override on each kind that weighs nothing (ADR-063).
+    "a tube and a parachute that writes only a packed length": (
+        f"<parachute><name>Chute</name><id>{uid(9)}</id><position type=\"top\">0.1</position>"
+        "<packedlength>0.05</packedlength><diameter>0.5</diameter>"
+        "<linecount>6</linecount><linelength>0.5</linelength>"
+        '<material type="surface" density="0.05">Probe</material>'
+        '<linematerial type="line" density="0.002">Probe</linematerial></parachute>'
+    ),
+    "a tube and a parachute that writes only a packed radius": (
+        f"<parachute><name>Chute</name><id>{uid(9)}</id><position type=\"top\">0.1</position>"
+        "<packedradius>0.02</packedradius><diameter>0.5</diameter>"
+        "<linecount>6</linecount><linelength>0.5</linelength>"
+        '<material type="surface" density="0.05">Probe</material>'
+        '<linematerial type="line" density="0.002">Probe</linematerial></parachute>'
+    ),
+    "a tube and a streamer that writes no packed size": (
+        f"<streamer><name>Streamer</name><id>{uid(11)}</id><position type=\"top\">0.1</position>"
+        "<striplength>1.0</striplength><stripwidth>0.05</stripwidth>"
+        '<material type="surface" density="0.05">Probe</material></streamer>'
+    ),
+    "a tube and a shock cord that writes no packed size": (
+        f"<shockcord><name>Cord</name><id>{uid(10)}</id><position type=\"top\">0.1</position>"
+        '<cordlength>1.0</cordlength><material type="line" density="0.002">Probe</material>'
+        "</shockcord>"
+    ),
+    "a tube and a mass component that writes no packed size": (
+        f"<masscomponent><name>Mass</name><id>{uid(17)}</id><position type=\"top\">0.1</position>"
+        "<mass>0.1</mass></masscomponent>"
+    ),
+    "a tube and a mass component of no mass, under a mass override": (
+        f"<masscomponent><name>Mass</name><id>{uid(17)}</id><position type=\"top\">0.1</position>"
+        "<packedlength>0.05</packedlength><packedradius>0.02</packedradius><mass>0.0</mass>"
+        f"{overrides(mass_kg=0.03)}</masscomponent>"
+    ),
+    "a tube and a shock cord of no length, under a mass override": (
+        f"<shockcord><name>Cord</name><id>{uid(10)}</id><position type=\"top\">0.1</position>"
+        "<packedlength>0.05</packedlength><packedradius>0.01</packedradius>"
+        '<cordlength>0.0</cordlength><material type="line" density="0.002">Probe</material>'
+        f"{overrides(mass_kg=0.03)}</shockcord>"
+    ),
 }
 
 
@@ -502,6 +543,12 @@ def main():
         wide = tube(children=fins(outline=("0.1", "0.1", "0.0", "0.05")))
         wide = wide.replace("<radius>0.05</radius>", "<radius>0.1</radius>")
         everything += [("a wider tube and rectangular fins", document([wide]))]
+        # An unwritten packed size in a tube twice as wide, and in one whose 8 mm bore is narrower
+        # than the packing OpenRocket gives (ADR-063): fixed numbers, or the tube's?
+        for question, radius in [("a wider", "0.1"), ("a narrow", "0.01")]:
+            chute = PART_PROBES["a tube and a parachute that writes no packed size"]
+            text = tube(children=chute).replace("<radius>0.05</radius>", f"<radius>{radius}</radius>")
+            everything += [(f"{question} tube and a parachute that writes no packed size", document([text]))]
         for k, (question, text) in enumerate(everything):
             probes[question] = measure(text, scratch, f"probe-{k}")
 
