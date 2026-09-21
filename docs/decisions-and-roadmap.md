@@ -77,6 +77,7 @@ new record replaces it and points back. All of them are in the [decision log][de
 | [ADR-058: What a `.ork` holds that hpr does not model][adr-058] | That the parts and sections of a `.ork` hpr does not read — pods, parallel stages, OpenRocket's 3D-view settings, a simulation's plug-ins — are kept whole beside the design, in an extension called `x-openrocket`, at a path that leads back to where each was, so that writing the file back can put them back; that a design missing parts this way says it is reduced; and that the same goes for every tag and attribute no reader asks for, recorded as hpr reads | [`.ork` design files](format/ork.md#what-hpr-keeps-for-writing-the-file-back) |
 | [ADR-059: The RocketSerializer cross-check][adr-059] | That hpr's reading of a design's key geometry (the nose cone, transitions, fin sets, where each sits, and the body radius) is held to RocketSerializer's, a second program that reads `.ork` files, with OpenRocket itself run on the same file to settle any difference; that "agrees" means no number of hpr's is apart from both; that a cause is named only where the record proves it; and that an import error is a file that does not read or a design that does not lay out | [`.ork` design files](format/ork.md#checked-against-rocketserializer) |
 | [ADR-060: M2.2 split, and the structure's mass held to OpenRocket's][adr-060] | [The OpenRocket comparison](#m2-2) goes mass first, then OpenRocket's mass conventions, the motors OpenRocket flies, flights on public designs, and the corpus. Each design's structure is held to OpenRocket's within 1% in mass and 1% of length in centre of mass, thresholds set before measuring, and every design outside is given its cause. Which of OpenRocket's inertias is roll is measured on a tube worked out by hand | [Mass properties](physics/mass.md#checked-against-openrocket) |
+| [ADR-061: What a `.ork` leaves unsaid, read as OpenRocket reads it][adr-061] | Probe designs measure what OpenRocket makes of a wall or shoulder of no thickness (nothing), a part with no thickness written (a 2 mm wall) or no material (its default by kind), and which override wins. hpr reads each the same way. Two override rules stay hpr's own, each pinned by a test: the centre under a mass override that covers the parts inside, and inertia under an override | [Mass properties](physics/mass.md#what-a-ork-leaves-unsaid-and-overrides) |
 
 ## The roadmap
 
@@ -204,6 +205,9 @@ missing or its status disagrees.
 | <a id="m2-2"></a>[M2.2][phase-1] | OpenRocket as a reference program, and a corpus of designs to compare | not yet done |
 | <a id="m2-2a"></a>[M2.2a][phase-1] | Each design's structure (every stage, no motor): mass, centre of mass and inertia against OpenRocket's | done |
 | <a id="m2-2b"></a>[M2.2b][phase-1] | OpenRocket's mass conventions: a wall-less shoulder, clusters, fillets, a part with no material, and roll inertia | not yet done |
+| <a id="m2-2b1"></a>[M2.2b1][phase-1] | What a `.ork` leaves unsaid (a wall or shoulder of no thickness, no thickness written, no material) read as OpenRocket reads it, and which override wins | done |
+| <a id="m2-2b2"></a>[M2.2b2][phase-1] | Clusters, fin fillets, airfoil fins, the parts kept unread, a rail button's place, and roll inertia | not yet done |
+| <a id="m2-2b3"></a>[M2.2b3][phase-1] | Stored results in a `.ork` used as a reference only when they are current and plausible | not yet done |
 | <a id="m2-2c"></a>[M2.2c][phase-1] | The motors OpenRocket flies, for the configurations held back for want of a thrust curve | not yet done |
 | <a id="m2-2d"></a>[M2.2d][phase-1] | Flights to apogee on the public designs, against OpenRocket | not yet done |
 | <a id="m2-2e"></a>[M2.2e][phase-1] | The corpus, with a hypothesis for every apogee miss over 5% | not yet done |
@@ -313,7 +317,7 @@ is the milestone that added or will add that test.
 | <a id="l48"></a>[L48][lessons-motors] | Loft had tangent ogives only, a silent default nose shape, and swapped Haack names | [M1.4a](#m1-4a) |
 | <a id="l49"></a>[L49][lessons-motors] | Loft's transitions used a kinked profile, never checked against what OpenRocket means | [M1.4a](#m1-4a), [M3.1](#m3-1) |
 | <a id="l50"></a>[L50][lessons-motors] | Loft let a motor wider than its mount fly (+69% apogee), and fins could sit off the airframe | [M1.4b](#m1-4b) |
-| <a id="l51"></a>[L51][lessons-motors] | Loft's rule for which centre-of-gravity override wins was unsettled (up to 133 mm) and came from OpenRocket's source | [M2.2](#m2-2) |
+| <a id="l51"></a>[L51][lessons-motors] | Loft's rule for which centre-of-gravity override wins was unsettled (up to 133 mm) and came from OpenRocket's source | [M2.2b1](#m2-2b1) |
 | <a id="l75"></a>[L75][lessons-validation] | Loft's RocketPy check wasn't like for like: a different atmosphere, unstated latitude and gravity, and Loft's own drag and mass fed to RocketPy | [M2.1b](#m2-1b), [M2.1b2](#m2-1b2) |
 | <a id="l76"></a>[L76][lessons-validation] | Loft's advice to regenerate a reference when a check failed let the reference follow Loft's own drag | [M2.1a](#m2-1a) |
 | <a id="l77"></a>[L77][lessons-validation] | Loft shipped hand-written "stored" results, one set inconsistent with itself | [M2.1a](#m2-1a) |
@@ -384,6 +388,7 @@ is the milestone that added or will add that test.
 [adr-058]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-058-what-a-ork-holds-that-hpr-does-not-model-kept-whole-in-x-openrocket-2026-09-21
 [adr-059]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-059-the-rocketserializer-cross-check-three-readers-with-openrocket-settling-a-difference-2026-09-21
 [adr-060]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-060-m22-split-and-the-structures-mass-held-to-openrockets-2026-09-21
+[adr-061]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-061-what-a-ork-leaves-unsaid-read-as-openrocket-reads-it-overrides-measured-two-departures-kept-2026-09-21
 [adr-053]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-053-the-parts-on-and-inside-a-ork-body-degrees-what-is-left-out-and-a-sourced-finish-2026-09-20
 [adr-052]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-052-what-a-ork-value-means-automatic-dimensions-two-names-for-one-tag-and-overrides-2026-09-20
 [decisions]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md

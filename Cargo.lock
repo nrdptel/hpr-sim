@@ -516,6 +516,7 @@ dependencies = [
  "hpr-atmos",
  "hpr-core",
  "hpr-design",
+ "hpr-io",
  "hpr-sim",
  "serde",
  "serde_json",

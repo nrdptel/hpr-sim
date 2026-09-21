@@ -36,7 +36,9 @@ use hpr_design::parts::{
 use hpr_design::tree::{AutoDimension, Component, Part, Position};
 use hpr_design::{Finish, MotorMount};
 
-use super::component::{Ids, material, overrides, stated_radius, subcomponents};
+use super::component::{
+    Ids, UNNAMED_RAIL_BUTTON, material, material_or, overrides, stated_radius, subcomponents,
+};
 use super::document::Element;
 use super::motors;
 use super::recovery;
@@ -603,7 +605,7 @@ fn rail_button(values: &mut Values<'_>) -> Option<Part> {
         angle_rad: roll_angle(values),
         count,
         spacing_m,
-        material: material(values, &["material"], "bulk"),
+        material: material_or(values, &["material"], "bulk", UNNAMED_RAIL_BUTTON),
     }))
 }
 

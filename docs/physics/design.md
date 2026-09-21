@@ -163,9 +163,13 @@ Errors inside a stage or component name it (`DesignError::InComponent`).
   total, and the stage override applies last.
 - Scaling the tensor with the mass keeps the radii of gyration (`√(I/m)`: how far out, on
   average, the mass sits). That is the natural reading of
-  "this part weighs more than its geometry says", but other tools may differ. How OpenRocket orders
-  its overrides on parts with shoulders ([Loft lesson L51](../decisions-and-roadmap.md#l51)) will be measured by the planned
-  OpenRocket oracle ([M2.2](../decisions-and-roadmap.md#m2-2)).
+  "this part weighs more than its geometry says". OpenRocket scales only the overriding part's own
+  inertia, and puts the centre under a covering mass override at that part's own; hpr keeps both
+  of its rules as measured departures. Which override wins, and where a centre override is
+  measured from, hpr and OpenRocket agree on
+  ([Loft lesson L51](../decisions-and-roadmap.md#l51), measured on probe designs in
+  [M2.2b1](../decisions-and-roadmap.md#m2-2b1); see
+  [Mass properties](mass.md#what-a-ork-leaves-unsaid-and-overrides)).
 
 ## Reference diameter
 
