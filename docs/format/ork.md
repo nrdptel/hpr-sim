@@ -1176,8 +1176,8 @@ assert_eq!(back, design.extensions);
 
 **What is not kept yet.** A tag hpr does not read *inside* a part it does read, such as a part's
 colour (`<appearance>`), a decal or a catalogue preset, is not in the extension. It is still in the
-document itself, which hpr keeps whole when it opens a file ([ADR-051][adr-051]), and M3.2 starts
-from both.
+document itself, which hpr keeps whole when it opens a file ([ADR-051][adr-051]), and writing the
+file back ([M3.2](../decisions-and-roadmap.md#m3-2)) starts from both.
 
 ### Kept in the reference library
 
