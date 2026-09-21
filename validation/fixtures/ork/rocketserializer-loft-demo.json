@@ -1,0 +1,520 @@
+{
+ "command": "geometry.py validation/fixtures/ork/rocketserializer-loft-demo.json validation/fixtures/ork/loft-demo",
+ "designs": [
+  {
+   "comment_removed": false,
+   "elliptical_fins": {
+    "value": [
+     {
+      "id": "10f70000-0000-4000-8000-0000000000b9",
+      "in_kept_part": false,
+      "name": "Elliptical fins",
+      "openrocket": {
+       "cant_rad": 0.0,
+       "canted_station_m": 0.87,
+       "count": 3,
+       "cross_section": "SQUARE",
+       "earlier_siblings_m": 0.358,
+       "length_m": 0.13,
+       "root_chord_m": 0.13,
+       "span_m": 0.07,
+       "station_m": 0.87
+      },
+      "rocketserializer": {
+       "cant_angle": 0.0,
+       "name": "Elliptical fins",
+       "number": 3,
+       "position": 1.2280000000000002,
+       "root_chord": 0.13,
+       "section": "square",
+       "span": 0.07
+      },
+      "tag": "ellipticalfinset"
+     }
+    ]
+   },
+   "file": "validation/fixtures/ork/loft-demo/demo-boattail.ork",
+   "nose": {
+    "value": [
+     {
+      "id": "10f70000-0000-4000-8000-0000000000b2",
+      "in_kept_part": false,
+      "name": "Nose cone",
+      "openrocket": {
+       "base_radius_m": 0.019,
+       "earlier_siblings_m": 0.0,
+       "length_m": 0.28,
+       "profile_radii_m": [
+        0.008334042350924165,
+        0.014266366113868667,
+        0.017817605628768884
+       ],
+       "shape": "OGIVE",
+       "shape_parameter": 1.0,
+       "station_m": 0.0
+      },
+      "rocketserializer": {
+       "base_radius": 0.019,
+       "kind": "ogive",
+       "length": 0.28,
+       "name": "Nose cone",
+       "position": 0.0
+      },
+      "tag": "nosecone"
+     }
+    ]
+   },
+   "openrocket_largest_radius_m": 0.019,
+   "opens": true,
+   "rocket_radius": {
+    "value": 0.019
+   },
+   "sha256": "cb96b09570a5a084dbc43bfeac2af9df449ed52f5fdd8fa991c11b94d212da88",
+   "transitions": {
+    "value": [
+     {
+      "id": "10f70000-0000-4000-8000-0000000000ba",
+      "in_kept_part": false,
+      "name": "Boattail",
+      "openrocket": {
+       "aft_radius_m": 0.016,
+       "earlier_siblings_m": 1.0,
+       "fore_radius_m": 0.019,
+       "length_m": 0.045,
+       "station_m": 1.0
+      },
+      "rocketserializer": {
+       "bottom_radius": 0.016,
+       "length": 0.045,
+       "name": "Boattail",
+       "position": 1.0,
+       "top_radius": 0.019
+      },
+      "tag": "transition"
+     }
+    ]
+   },
+   "trapezoidal_fins": {
+    "value": []
+   }
+  },
+  {
+   "comment_removed": false,
+   "elliptical_fins": {
+    "value": []
+   },
+   "file": "validation/fixtures/ork/loft-demo/demo-dual-deploy.ork",
+   "nose": {
+    "value": [
+     {
+      "id": "10f70000-0000-4000-8000-000000000103",
+      "in_kept_part": false,
+      "name": "Nose cone",
+      "openrocket": {
+       "base_radius_m": 0.028,
+       "earlier_siblings_m": 0.0,
+       "length_m": 0.36,
+       "profile_radii_m": [
+        0.012291715195715813,
+        0.021031663271033896,
+        0.02625987249029782
+       ],
+       "shape": "OGIVE",
+       "shape_parameter": 1.0,
+       "station_m": 0.0
+      },
+      "rocketserializer": {
+       "base_radius": 0.028,
+       "kind": "ogive",
+       "length": 0.36,
+       "name": "Nose cone",
+       "position": 0.0
+      },
+      "tag": "nosecone"
+     }
+    ]
+   },
+   "openrocket_largest_radius_m": 0.028,
+   "opens": true,
+   "rocket_radius": {
+    "value": 0.028
+   },
+   "sha256": "c6ff714a234c0cb7cbb236e3d990607a46af55c652822e8cd823a5f33a9431f1",
+   "transitions": {
+    "value": []
+   },
+   "trapezoidal_fins": {
+    "value": [
+     {
+      "id": "10f70000-0000-4000-8000-000000000109",
+      "in_kept_part": false,
+      "name": "Fins",
+      "openrocket": {
+       "cant_rad": 0.0,
+       "canted_station_m": 1.45,
+       "count": 4,
+       "cross_section": "SQUARE",
+       "earlier_siblings_m": 0.08,
+       "length_m": 0.16,
+       "root_chord_m": 0.16,
+       "span_m": 0.07,
+       "station_m": 1.45,
+       "sweep_m": 0.09,
+       "tip_chord_m": 0.07
+      },
+      "rocketserializer": {
+       "cant_angle": 0.0,
+       "name": "Fins",
+       "number": 4,
+       "position": 1.5299999999999998,
+       "root_chord": 0.16,
+       "section": "square",
+       "span": 0.07,
+       "sweep_angle": null,
+       "sweep_length": 0.09,
+       "tip_chord": 0.07
+      },
+      "tag": "trapezoidfinset"
+     }
+    ]
+   }
+  },
+  {
+   "comment_removed": false,
+   "elliptical_fins": {
+    "value": []
+   },
+   "file": "validation/fixtures/ork/loft-demo/demo-multi-config.ork",
+   "nose": {
+    "value": [
+     {
+      "id": "10f70000-0000-4000-8000-0000000000c3",
+      "in_kept_part": false,
+      "name": "Nose cone",
+      "openrocket": {
+       "base_radius_m": 0.019,
+       "earlier_siblings_m": 0.0,
+       "length_m": 0.25,
+       "profile_radii_m": [
+        0.008339526603654779,
+        0.014270517617146039,
+        0.01781889796474223
+       ],
+       "shape": "OGIVE",
+       "shape_parameter": 1.0,
+       "station_m": 0.0
+      },
+      "rocketserializer": {
+       "base_radius": 0.019,
+       "kind": "ogive",
+       "length": 0.25,
+       "name": "Nose cone",
+       "position": 0.0
+      },
+      "tag": "nosecone"
+     }
+    ]
+   },
+   "openrocket_largest_radius_m": 0.019,
+   "opens": true,
+   "rocket_radius": {
+    "value": 0.019
+   },
+   "sha256": "7075f9819169b6cec9fddb2f94af9b18d9684a7262048d8dcdd39df85551c252",
+   "transitions": {
+    "value": []
+   },
+   "trapezoidal_fins": {
+    "value": [
+     {
+      "id": "10f70000-0000-4000-8000-0000000000c7",
+      "in_kept_part": false,
+      "name": "Fins",
+      "openrocket": {
+       "cant_rad": 0.0,
+       "canted_station_m": 0.83,
+       "count": 3,
+       "cross_section": "SQUARE",
+       "earlier_siblings_m": 0.358,
+       "length_m": 0.12,
+       "root_chord_m": 0.12,
+       "span_m": 0.06,
+       "station_m": 0.83,
+       "sweep_m": 0.06,
+       "tip_chord_m": 0.06
+      },
+      "rocketserializer": {
+       "cant_angle": 0.0,
+       "name": "Fins",
+       "number": 3,
+       "position": 1.1880000000000002,
+       "root_chord": 0.12,
+       "section": "square",
+       "span": 0.06,
+       "sweep_angle": null,
+       "sweep_length": 0.06,
+       "tip_chord": 0.06
+      },
+      "tag": "trapezoidfinset"
+     }
+    ]
+   }
+  },
+  {
+   "comment_removed": false,
+   "elliptical_fins": {
+    "value": []
+   },
+   "file": "validation/fixtures/ork/loft-demo/demo-payload-separation.ork",
+   "nose": {
+    "value": [
+     {
+      "id": "10f70000-0000-4000-8000-000000000403",
+      "in_kept_part": false,
+      "name": "Nose cone",
+      "openrocket": {
+       "base_radius_m": 0.019,
+       "earlier_siblings_m": 0.0,
+       "length_m": 0.22,
+       "profile_radii_m": [
+        0.008347407212137226,
+        0.014276472539082263,
+        0.017820749738676422
+       ],
+       "shape": "OGIVE",
+       "shape_parameter": 1.0,
+       "station_m": 0.0
+      },
+      "rocketserializer": {
+       "base_radius": 0.019,
+       "kind": "ogive",
+       "length": 0.22,
+       "name": "Nose cone",
+       "position": 0.0
+      },
+      "tag": "nosecone"
+     }
+    ]
+   },
+   "openrocket_largest_radius_m": 0.019,
+   "opens": true,
+   "rocket_radius": {
+    "value": 0.019
+   },
+   "sha256": "36465f2e852b5b55c40d2c0206e67a9ed7b3e94cd66e8aea260316c017907899",
+   "transitions": {
+    "value": []
+   },
+   "trapezoidal_fins": {
+    "value": [
+     {
+      "id": "10f70000-0000-4000-8000-00000000040c",
+      "in_kept_part": false,
+      "name": "Fins",
+      "openrocket": {
+       "cant_rad": 0.0,
+       "canted_station_m": 0.77,
+       "count": 3,
+       "cross_section": "SQUARE",
+       "earlier_siblings_m": 0.20800000000000002,
+       "length_m": 0.11,
+       "root_chord_m": 0.11,
+       "span_m": 0.055,
+       "station_m": 0.77,
+       "sweep_m": 0.06,
+       "tip_chord_m": 0.05
+      },
+      "rocketserializer": {
+       "cant_angle": 0.0,
+       "name": "Fins",
+       "number": 3,
+       "position": 0.978,
+       "root_chord": 0.11,
+       "section": "square",
+       "span": 0.055,
+       "sweep_angle": null,
+       "sweep_length": 0.06,
+       "tip_chord": 0.05
+      },
+      "tag": "trapezoidfinset"
+     }
+    ]
+   }
+  },
+  {
+   "file": "validation/fixtures/ork/loft-demo/demo-quirks.ork",
+   "opens": false,
+   "refused": "java.lang.IllegalStateException: Component: Booster Set not currently compatible with component: Rocket",
+   "sha256": "dfa86bcfe7d97bf0b9cfcd1be60f77c99b4dec1a9d6a28ba97f3bc219879aead"
+  },
+  {
+   "comment_removed": false,
+   "elliptical_fins": {
+    "value": []
+   },
+   "file": "validation/fixtures/ork/loft-demo/demo-single-deploy.ork",
+   "nose": {
+    "value": [
+     {
+      "id": "10f70000-0000-4000-8000-000000000003",
+      "in_kept_part": false,
+      "name": "Nose cone",
+      "openrocket": {
+       "base_radius_m": 0.019,
+       "earlier_siblings_m": 0.0,
+       "length_m": 0.25,
+       "profile_radii_m": [
+        0.008339526603654779,
+        0.014270517617146039,
+        0.01781889796474223
+       ],
+       "shape": "OGIVE",
+       "shape_parameter": 1.0,
+       "station_m": 0.0
+      },
+      "rocketserializer": {
+       "base_radius": 0.019,
+       "kind": "ogive",
+       "length": 0.25,
+       "name": "Nose cone",
+       "position": 0.0
+      },
+      "tag": "nosecone"
+     }
+    ]
+   },
+   "openrocket_largest_radius_m": 0.019,
+   "opens": true,
+   "rocket_radius": {
+    "value": 0.019
+   },
+   "sha256": "1b63cb63e0290f93440368cf77eae40ca66d47873068a57716864afeb7a0aef4",
+   "transitions": {
+    "value": []
+   },
+   "trapezoidal_fins": {
+    "value": [
+     {
+      "id": "10f70000-0000-4000-8000-000000000007",
+      "in_kept_part": false,
+      "name": "Fins",
+      "openrocket": {
+       "cant_rad": 0.0,
+       "canted_station_m": 0.83,
+       "count": 3,
+       "cross_section": "SQUARE",
+       "earlier_siblings_m": 0.358,
+       "length_m": 0.12,
+       "root_chord_m": 0.12,
+       "span_m": 0.06,
+       "station_m": 0.83,
+       "sweep_m": 0.06,
+       "tip_chord_m": 0.06
+      },
+      "rocketserializer": {
+       "cant_angle": 0.0,
+       "name": "Fins",
+       "number": 3,
+       "position": 1.1880000000000002,
+       "root_chord": 0.12,
+       "section": "square",
+       "span": 0.06,
+       "sweep_angle": null,
+       "sweep_length": 0.06,
+       "tip_chord": 0.06
+      },
+      "tag": "trapezoidfinset"
+     }
+    ]
+   }
+  },
+  {
+   "comment_removed": true,
+   "elliptical_fins": {
+    "value": []
+   },
+   "file": "validation/fixtures/ork/loft-demo/demo-stable.ork",
+   "nose": {
+    "value": [
+     {
+      "id": "10f70005-0000-4000-8000-000000000003",
+      "in_kept_part": false,
+      "name": "Nose cone",
+      "openrocket": {
+       "base_radius_m": 0.019,
+       "earlier_siblings_m": 0.0,
+       "length_m": 0.25,
+       "profile_radii_m": [
+        0.008339526603654779,
+        0.014270517617146039,
+        0.01781889796474223
+       ],
+       "shape": "OGIVE",
+       "shape_parameter": 1.0,
+       "station_m": 0.0
+      },
+      "rocketserializer": {
+       "base_radius": 0.019,
+       "kind": "ogive",
+       "length": 0.25,
+       "name": "Nose cone",
+       "position": 0.0
+      },
+      "tag": "nosecone"
+     }
+    ]
+   },
+   "openrocket_largest_radius_m": 0.019,
+   "opens": true,
+   "rocket_radius": {
+    "value": 0.019
+   },
+   "sha256": "199f71f9fc774d5f7f29df70ecac94d8ad46e682a001ef7e67b144970934a234",
+   "transitions": {
+    "value": []
+   },
+   "trapezoidal_fins": {
+    "value": [
+     {
+      "id": "10f70005-0000-4000-8000-000000000007",
+      "in_kept_part": false,
+      "name": "Fins",
+      "openrocket": {
+       "cant_rad": 0.0,
+       "canted_station_m": 0.865,
+       "count": 3,
+       "cross_section": "SQUARE",
+       "earlier_siblings_m": 0.358,
+       "length_m": 0.085,
+       "root_chord_m": 0.085,
+       "span_m": 0.033,
+       "station_m": 0.865,
+       "sweep_m": 0.04,
+       "tip_chord_m": 0.04
+      },
+      "rocketserializer": {
+       "cant_angle": 0.0,
+       "name": "Fins",
+       "number": 3,
+       "position": 1.223,
+       "root_chord": 0.085,
+       "section": "square",
+       "span": 0.033,
+       "sweep_angle": null,
+       "sweep_length": 0.04,
+       "tip_chord": 0.04
+      },
+      "tag": "trapezoidfinset"
+     }
+    ]
+   }
+  }
+ ],
+ "jar_sha256": "4959b72f52f5f607941e9722abbb7b7f0c4a38ebbbf84204a329db9f31c4f897",
+ "java": "17.0.20.1",
+ "jpype": "1.7.1",
+ "openrocket": "24.12",
+ "python": "3.11.14",
+ "rocketserializer": "RocketPy-Team/RocketSerializer@66d8ca8c9be36816c4157fbdf249e87fb8c1f5dc",
+ "source": "validation/oracles/rocketserializer/geometry.py"
+}

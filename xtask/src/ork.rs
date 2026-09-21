@@ -231,6 +231,10 @@ fn report(root: &Path, files: &[Case], library: bool) -> Result<(), String> {
     let mut recovery_tally = crate::ork_recovery::RecoveryTally::default();
     let mut simulation_tally = crate::ork_simulations::SimulationTally::default();
     let mut extension_tally = crate::ork_extensions::ExtensionTally::default();
+    let mut geometry = crate::ork_geometry::GeometryTally::load(root, library)?;
+    // Per source (a directory under `refs/`, or the jar): files, read, laid out, holding no
+    // design, and errors (not read, or read but not laid out).
+    let mut sources: BTreeMap<String, [usize; 5]> = BTreeMap::new();
     let mut containers: BTreeMap<&'static str, usize> = BTreeMap::new();
     let mut versions: BTreeMap<String, usize> = BTreeMap::new();
     let mut creators: BTreeMap<String, usize> = BTreeMap::new();
@@ -275,6 +279,8 @@ fn report(root: &Path, files: &[Case], library: bool) -> Result<(), String> {
 
     for (name, bytes) in files {
         let slashed = name.replace('\\', "/");
+        let source = sources.entry(source_of(root, name)).or_default();
+        source[0] += 1;
         let excuse = NOT_WELL_FORMED
             .iter()
             .find(|(path, _, _)| {
@@ -285,6 +291,7 @@ fn report(root: &Path, files: &[Case], library: bool) -> Result<(), String> {
             .map(|(_, reason, expected)| (*reason, *expected));
         match ork::read(bytes) {
             Ok(read) => {
+                source[1] += 1;
                 if let Some((reason, _)) = excuse {
                     stale.push(format!("{name} reads, though it is listed as {reason}"));
                 }
@@ -371,12 +378,19 @@ fn report(root: &Path, files: &[Case], library: bool) -> Result<(), String> {
                 if !holds_design {
                     no_design += 1;
                 }
+                let mut geometry_here = Value::Null;
                 let laid_out = match spine.value.layout() {
                     // A document with nothing in its `rocket` is not a design that failed; it is
                     // not a design, and is counted as such rather than as a failure.
-                    Err(_) if !holds_design => Some("holds no design".to_owned()),
+                    Err(_) if !holds_design => {
+                        source[3] += 1;
+                        Some("holds no design".to_owned())
+                    }
                     Ok(layout) => {
                         spines_laid_out += 1;
+                        source[2] += 1;
+                        geometry_here =
+                            geometry.add(&oracle_key(root, name), bytes, &spine.value, &layout);
                         // A structural part that weighs nothing is almost always a reading gone
                         // wrong somewhere upstream, and it is silent by nature: the design lays
                         // out, the report is written, and the mass is simply missing.
@@ -449,6 +463,8 @@ fn report(root: &Path, files: &[Case], library: bool) -> Result<(), String> {
                         None
                     }
                     Err(error) => {
+                        source[4] += 1;
+                        geometry.not_laid_out(&oracle_key(root, name));
                         let text = error.to_string();
                         *spine_errors.entry(text.clone()).or_default() += 1;
                         Some(text)
@@ -499,6 +515,7 @@ fn report(root: &Path, files: &[Case], library: bool) -> Result<(), String> {
                     "recovery": recovery_here,
                     "simulations": simulations_here,
                     "extensions": extensions_here,
+                    "rocketserializer": geometry_here,
                     "container": read.value.container.as_str(),
                     "version": read.value.document.version.to_string(),
                     "creator": read.value.document.creator,
@@ -523,6 +540,7 @@ fn report(root: &Path, files: &[Case], library: bool) -> Result<(), String> {
                 }));
             }
             Err(error) => {
+                source[4] += 1;
                 let text = error.to_string();
                 match excuse {
                     // Not merely "it failed with an XML error", which a later size or node limit
@@ -662,6 +680,18 @@ fn report(root: &Path, files: &[Case], library: bool) -> Result<(), String> {
     println!(
         "  documents that hold no design (no `rocket`, or one with nothing in it): {no_design}"
     );
+    // An import error is a file that does not read, or a design that reads but does not lay out;
+    // warnings are not errors (they never stop an import).
+    println!(
+        "  imports by source, as files: read, laid out, holding no design, errors: {}",
+        sources
+            .iter()
+            .map(|(source, [files, read, laid, empty, errors])| format!(
+                "{source} {files}: {read}, {laid}, {empty}, {errors}"
+            ))
+            .collect::<Vec<_>>()
+            .join("; ")
+    );
     println!(
         "  automatic radii with no fixed radius along their chain, given OpenRocket's default \
          {} mm: {} in {designs_defaulted} design(s), on {}",
@@ -747,6 +777,7 @@ fn report(root: &Path, files: &[Case], library: bool) -> Result<(), String> {
     recovery_tally.print();
     simulation_tally.print();
     extension_tally.print();
+    geometry.print();
     if !spine_errors.is_empty() {
         print_counts("designs that do not lay out", &spine_errors);
     }
@@ -781,6 +812,21 @@ fn report(root: &Path, files: &[Case], library: bool) -> Result<(), String> {
     }
     if let Some(failure) = extension_tally.failure() {
         return Err(failure);
+    }
+    if let Some(failure) = geometry.failure() {
+        return Err(failure);
+    }
+    // M3.1's first *done when*: the private design library and the jar's examples import with no
+    // error at all. Held, not only printed.
+    for source in [LIBRARY_SOURCE, EXAMPLES_SOURCE] {
+        if let Some([_, _, _, _, errors]) = sources.get(source)
+            && *errors > 0
+        {
+            return Err(format!(
+                "{errors} file(s) in {source} do not import: they do not read or do not lay out; \
+                 see {REPORT}"
+            ));
+        }
     }
     if !stale.is_empty() {
         return Err(format!(
@@ -840,6 +886,31 @@ fn oracle_key(root: &Path, name: &str) -> String {
     name.strip_prefix(root.trim_end_matches('/'))
         .and_then(|rest| rest.strip_prefix('/'))
         .map_or_else(|| name.clone(), str::to_owned)
+}
+
+/// The source the private design library's files are counted under.
+const LIBRARY_SOURCE: &str = "refs/loft-fixtures";
+
+/// The source the jar's example designs are counted under.
+const EXAMPLES_SOURCE: &str = "OpenRocket 24.12 examples";
+
+/// Where a file came from, for the import counts: the jar, or the directory under `refs/` (or the
+/// directory given) that holds it.
+fn source_of(root: &Path, name: &str) -> String {
+    let name = name.replace('\\', "/");
+    if name.contains('!') {
+        return EXAMPLES_SOURCE.to_owned();
+    }
+    let relative = oracle_key(root, &name);
+    let mut steps = relative.split('/');
+    match (steps.next(), steps.next()) {
+        (Some("refs"), Some(dir)) => format!("refs/{dir}"),
+        // A directory outside the repository, given with `--dir`, is its own source.
+        (Some(first), _) if !first.is_empty() => first.to_owned(),
+        _ => relative
+            .rsplit_once('/')
+            .map_or_else(|| relative.clone(), |(dir, _)| dir.to_owned()),
+    }
 }
 
 /// Every body radius OpenRocket resolved in each file its probe opened, by [`oracle_key`].

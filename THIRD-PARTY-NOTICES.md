@@ -236,11 +236,21 @@ Nothing here is bundled.
 | the dependencies `uv.lock` pins (numpy, scipy, matplotlib, netCDF4 and others) | as each package states | run-only | installed only as the oracles' runtime |
 | a Java 17 runtime (for example `brew install openjdk@17`) | GPL-2.0 WITH Classpath-exception-2.0 | run-only | installed by the user, not fetched; `refs doctor` finds it |
 
+## RocketSerializer's environment (`validation/oracles/rocketserializer/requirements.txt`)
+
+`validation/oracles/rocketserializer/geometry.py` runs in an environment of its own, `refs/venv-rs`,
+installed with `--no-deps` from that file (M3.1d2, ADR-059). Nothing in it is committed or bundled.
+
+| package | license | mode | notes |
+|---|---|---|---|
+| `rocketserializer` at `66d8ca8` (after release 0.2.0) | MIT | run, source read | a second reader of `.ork` files: its extractors are called one by one on each design, and `cargo xtask ork` holds hpr's key geometry to theirs. Its declared dependency `orhelper` (GPL-2.0) is not installed |
+| `JPype1` 1.7.1 | Apache-2.0 | run-only | starts the JVM for OpenRocket, as in the oracle environment |
+| `numpy`, `beautifulsoup4`, `soupsieve`, `typing-extensions`, `lxml`, `packaging` | as each package states | run-only | what the extractors and JPype import |
+
 ## Planned sources (not fetched yet)
 
 | source | license | mode | notes |
 |---|---|---|---|
-| RocketSerializer | MIT | run-only | cross-checks the `.ork` importer (M3.1) |
 | `openrocket/motor-database` | GPL-3.0 | run-only reference | not bundled |
 | ThrustCurve.org thrust-curve files | per file: public domain, free, other, or none | fetched and cached (M5) | 32 public-domain curves are bundled (M1.3, above); the rest are fetched and cached, never bundled |
 | Open-Meteo | data CC BY 4.0 | fetched and cached (M5.2) | attribution required |

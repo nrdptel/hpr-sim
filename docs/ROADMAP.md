@@ -538,7 +538,7 @@
       together; and, ahead of that, issue #108 closed — a rule for the loading through a crossing
       whose answer settles as the nose is cut finer, on a body that crosses (the committed nose
       under a 30° cap at Mach 4.63), and that leaves TN 3527's printed ogives where they are.
-- [ ] **M3.1 OpenRocket `.ork` import.**
+- [x] **M3.1 OpenRocket `.ork` import.**
   - Handles zip, gz and raw XML, schema 1.0 to 1.10, plus the documented 1.11 additions.
   - Reads components, materials, finishes, motor configurations, recovery, stages, and stored
     simulation results.
@@ -546,11 +546,10 @@
     are graceful, never failures.
   - Loft lessons: L49, L56, L57, L58, L59, L60, L61, L62, L63, L64, L65, L66.
 
-  *Done when:*
-  - Every `.ork` in `refs/loft-fixtures` and the OR example set imports with zero errors.
-  - Committed `insta` snapshots use only public files (the Loft demo fixtures and synthetic
-    designs), and private-corpus results go to a gitignored `corpus-out/`, as counts only.
-  - The RocketSerializer cross-check agrees on the key geometry.
+  *Done when:* every `.ork` in `refs/loft-fixtures` and the OR example set imports with zero
+  errors; committed `insta` snapshots use only public files (the Loft demo fixtures and synthetic
+  designs), and private-corpus results go to a gitignored `corpus-out/`, as counts only; the
+  RocketSerializer cross-check agrees on the key geometry. *Result:* met by M3.1a to M3.1d.
 
   Split into M3.1a to M3.1d (ADR-051): the container and the document first, because everything
   after it walks that tree.
@@ -623,15 +622,16 @@
     - [x] **M3.1c4 Pods, parallel stages and the rest** (L66). *Done when:* L66's named test is
       live, and a document with unknown content round-trips through `extensions.x-openrocket`.
       *Result:* met (ADR-058): 17 parts, 87 sections, 1,947 tags, 3,132 attributes, all found again.
-  - [ ] **M3.1d The corpus and the cross-check.** `insta` snapshots on public files only, and the
+  - [x] **M3.1d The corpus and the cross-check.** `insta` snapshots on public files only, and the
     RocketSerializer cross-check. *Done when:* the parent's four bullets above are met. Split: d1, d2.
     - [x] **M3.1d1 Snapshots of public designs.** *Done when:* committed `insta` snapshots use only
       public files (the Loft demo fixtures and synthetic designs), and private-corpus results go to
       a gitignored `corpus-out/`, as counts only. *Result:* met: Loft's seven demo designs and a
       synthetic one, each read by `hpr_io::ork::design` into a summary snapshot; the library: counts.
-    - [ ] **M3.1d2 The cross-check.** *Done when:* every `.ork` in `refs/loft-fixtures` and the OR
+    - [x] **M3.1d2 The cross-check.** *Done when:* every `.ork` in `refs/loft-fixtures` and the OR
       example set imports with zero errors, and the RocketSerializer cross-check agrees on the key
-      geometry.
+      geometry. *Result:* met (ADR-059): 27 and 17 files, 0 errors; of 1,212 numbers over 74
+      designs, none of hpr's is apart from both RocketSerializer and OpenRocket.
 
 - [ ] **M2.2 OpenRocket oracle and corpus.**
   - `validation/oracles/openrocket/` (JPype, OR 24.12) flies the OR examples and the

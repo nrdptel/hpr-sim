@@ -44,7 +44,7 @@ These parts are built and tested. Each page gives its sources, and most say what
 | Aerodynamics | The [centre of pressure](glossary.md#centre-of-pressure-cp) (where the aerodynamic force acts; its distance behind the centre of gravity is the [stability margin](glossary.md#stability-margin)), the [normal force](glossary.md#normal-force) (the sideways force when the rocket flies at an angle to the airflow, its [angle of attack](glossary.md#angle-of-attack)) and drag. For small angles of attack: the normal force and the drag from [Mach](glossary.md#mach-number) 0 to 5, both checked against a wind tunnel from 0.6 to 4.63 (the drag reads high at most speeds) | [Aerodynamics](physics/aero.md) |
 | Flight | The launch rail, powered flight and coast to apogee, with an [adaptive time step](glossary.md#adaptive-time-step) and [events](glossary.md#event) such as burnout and apogee | [Rigid-body flight](physics/flight.md), [Time integration](physics/integration.md) |
 | Recovery | Parachutes, [streamers](glossary.md#streamer) and [tumbling](glossary.md#tumble-recovery), the [drift](glossary.md#drift) they carry the rocket downwind, and a rocket that [separates](glossary.md#separation) into bodies that each descend on their own | [Recovery](physics/recovery.md) |
-| Design files | Opens an OpenRocket `.ork` file — zip, gzip or plain XML — and builds a rocket from it: the stages and body components, and the tubes, rings, fins, lugs and recovery gear on and inside them. Motors, recovery settings, pods and parallel stages are not read yet, so an imported design cannot be flown, and a part hpr cannot shape honestly is left out with a warning | [`.ork` design files](format/ork.md) |
+| Design files | Opens an OpenRocket `.ork` file — zip, gzip or plain XML — and reads the whole design: the stages and body components, the tubes, rings, fins, lugs and recovery gear on and inside them, the motor configurations, when parachutes open, and the simulations OpenRocket stored. The airframe's shape is cross-checked against a second reader and OpenRocket itself (positions against OpenRocket alone; mass and centre of gravity not yet). Pods and parallel stages are kept but not modelled, a part hpr cannot shape honestly is left out with a warning, and only a configuration whose motors all light at launch and have a thrust curve flies: 1 of the 174 in the reference library | [`.ork` design files](format/ork.md) |
 
 ## What doesn't work yet
 
@@ -112,13 +112,11 @@ out.
   gravity, and [Your own rocket](your-own-rocket.md) shows how to get the margin from them. A
   margin tracked through the flight comes with [M1.10](decisions-and-roadmap.md#m1-10), the outputs milestone.
 - **No way to use it without writing Rust.** A simpler library interface ([M4.1](decisions-and-roadmap.md#m4-1)), a
-  command-line tool ([M4.2](decisions-and-roadmap.md#m4-2)), Python ([M4.3](decisions-and-roadmap.md#m4-3)) and OpenRocket `.ork` import
-  ([M3.1](decisions-and-roadmap.md#m3-1)) are planned — a `.ork` file's components do become a
-  rocket today ([`.ork` design files](format/ork.md)), but its motors and recovery settings do not,
-  so an imported design cannot yet be flown. Until then, [Getting started](getting-started.md)
-  flies a first
+  command-line tool ([M4.2](decisions-and-roadmap.md#m4-2)) and Python ([M4.3](decisions-and-roadmap.md#m4-3)) are
+  planned. Until then, [Getting started](getting-started.md) flies a first
   rocket with a short Rust program, and [Your own rocket](your-own-rocket.md) builds a design of
-  your own.
+  your own. Meanwhile, a `.ork` file is read today, from Rust ([`.ork` design files](format/ork.md)),
+  but few of its motor configurations fly yet and its recovery settings are not flown.
 - **No Monte Carlo (flying many copies of a flight with randomly scattered inputs), optimization or
   app.** They are on the [roadmap][roadmap].
 - **No flight-log analyzer yet — the crates are empty, and its milestones come after the file
