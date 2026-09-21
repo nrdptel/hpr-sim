@@ -16,9 +16,7 @@ use std::fs;
 use std::io::Read as _;
 use std::path::{Path, PathBuf};
 
-use hpr_io::ork::{
-    self, ANGLE_OFFSET, AXIAL_OFFSET, Dimension, INSTANCE_COUNT, RADIUS_OFFSET, WarningKind,
-};
+use hpr_io::ork::{self, AXIAL_OFFSET, Dimension, INSTANCE_COUNT, WarningKind};
 use serde_json::{Value, json};
 
 pub const USAGE: &str = "\
@@ -109,7 +107,9 @@ fn report(root: &Path, files: &[Case]) -> Result<(), String> {
     let mut largest_unpacked = 0usize;
     let mut automatic: BTreeMap<String, usize> = BTreeMap::new();
     let mut overrides: BTreeMap<String, usize> = BTreeMap::new();
-    let mut both_names: BTreeMap<String, [usize; 2]> = BTreeMap::new();
+    let mut both_names: BTreeMap<String, [usize; 3]> = BTreeMap::new();
+    let mut tag_totals: BTreeMap<String, usize> = BTreeMap::new();
+    let mut elements_with_both = 0usize;
     let mut failures = 0usize;
     let mut not_round_tripped = 0usize;
     let mut known_bad = 0usize;
@@ -156,6 +156,8 @@ fn report(root: &Path, files: &[Case]) -> Result<(), String> {
                     &mut automatic,
                     &mut overrides,
                     &mut both_names,
+                    &mut tag_totals,
+                    &mut elements_with_both,
                 );
                 let unpacked = read.value.document.to_xml().len()
                     + read
@@ -257,11 +259,20 @@ fn report(root: &Path, files: &[Case]) -> Result<(), String> {
         "largest_unpacked_bytes": largest_unpacked,
         "automatic_dimensions": to_value(&automatic),
         "override_tags": to_value(&overrides),
+        "elements_with_both_names": elements_with_both,
+        "renamed_tag_totals": to_value(&tag_totals),
         "both_names": Value::Object(
             both_names
                 .iter()
-                .map(|(pair, [seen, agreeing])| {
-                    (pair.clone(), json!({ "elements": seen, "agreeing": agreeing }))
+                .map(|(pair, [seen, text, frames])| {
+                    (
+                        pair.clone(),
+                        json!({
+                            "elements": seen,
+                            "agreeing_on_text": text,
+                            "differing_on_frame": frames,
+                        }),
+                    )
                 })
                 .collect(),
         ),
@@ -297,17 +308,14 @@ fn report(root: &Path, files: &[Case]) -> Result<(), String> {
     print_counts("override tags", &overrides);
     let names = both_names
         .iter()
-        .map(|(pair, [seen, agreeing])| format!("{pair} {agreeing}/{seen} agree"))
+        .map(|(pair, [seen, text, frames])| {
+            format!("{pair} {seen} ({text} agree on text, {frames} differ on frame)")
+        })
         .collect::<Vec<_>>()
         .join(", ");
-    println!(
-        "  elements written under both names: {}",
-        if names.is_empty() {
-            "none".to_owned()
-        } else {
-            names
-        }
-    );
+    println!("  elements carrying both names of a pair: {elements_with_both}");
+    println!("  by pair: {names}");
+    print_counts("elements carrying each renamed tag", &tag_totals);
     println!(
         "  text beside child elements: {} element(s) in {files_with_mixed} file(s){}",
         mixed.values().sum::<usize>(),
@@ -384,7 +392,14 @@ fn count_elements(element: &ork::Element) -> usize {
 }
 
 /// The tag pairs OpenRocket writes a value under two names, newest first.
-const NAME_PAIRS: [[&str; 2]; 4] = [AXIAL_OFFSET, INSTANCE_COUNT, ANGLE_OFFSET, RADIUS_OFFSET];
+/// The two the reader takes either name of, and the two it deliberately does not: the newer name
+/// of each of those carries a `method` the older never does, which the counts here measure.
+const NAME_PAIRS: [[&str; 2]; 4] = [
+    AXIAL_OFFSET,
+    INSTANCE_COUNT,
+    ["angleoffset", "radialdirection"],
+    ["radiusoffset", "radialposition"],
+];
 
 /// Counts, over the whole tree, the things a component reader has to get right: dimensions
 /// OpenRocket works out for itself, overrides, and values written under two names at once.
@@ -392,7 +407,9 @@ fn walk(
     element: &ork::Element,
     automatic: &mut BTreeMap<String, usize>,
     overrides: &mut BTreeMap<String, usize>,
-    both_names: &mut BTreeMap<String, [usize; 2]>,
+    both_names: &mut BTreeMap<String, [usize; 3]>,
+    tag_totals: &mut BTreeMap<String, usize>,
+    elements_with_both: &mut usize,
 ) {
     for child in element.elements() {
         if child.name.starts_with("override") {
@@ -404,20 +421,53 @@ fn walk(
             *automatic.entry(child.name.clone()).or_default() += 1;
         }
     }
+    let mut carries_a_pair = false;
     for pair in NAME_PAIRS {
-        let [modern, legacy] = pair;
-        let (Some(modern), Some(legacy)) = (element.child(modern), element.child(legacy)) else {
+        let [modern_name, legacy_name] = pair;
+        // Seeded at zero whether or not this element has either, so that a pair never written
+        // together is a measured zero rather than a missing row.
+        let counts = both_names.entry(pair.join("/")).or_insert([0, 0, 0]);
+        for name in pair {
+            if element.child(name).is_some() {
+                *tag_totals.entry((*name).to_owned()).or_default() += 1;
+            }
+        }
+        let (Some(modern), Some(legacy)) = (element.child(modern_name), element.child(legacy_name))
+        else {
             continue;
         };
-        let counts = both_names.entry(pair.join("/")).or_insert([0, 0]);
+        carries_a_pair = true;
         counts[0] += 1;
         if modern.text().trim() == legacy.text().trim() {
             counts[1] += 1;
         }
+        // The text is only half of it: `position` carries a `type` and `axialoffset` a `method`,
+        // and the same number measured from two places is two different places. Counting the
+        // differences, not the matches, keeps a pair that carries no frame at all out of it.
+        if frame(modern) != frame(legacy) {
+            counts[2] += 1;
+        }
+    }
+    if carries_a_pair {
+        *elements_with_both += 1;
     }
     for child in element.elements() {
-        walk(child, automatic, overrides, both_names);
+        walk(
+            child,
+            automatic,
+            overrides,
+            both_names,
+            tag_totals,
+            elements_with_both,
+        );
     }
+}
+
+/// The frame a placement tag names: `type` on the older tag, `method` on the newer.
+fn frame(element: &ork::Element) -> Option<&str> {
+    element
+        .attribute("method")
+        .or_else(|| element.attribute("type"))
 }
 
 /// How deeply the tree nests, counting the root as one level.

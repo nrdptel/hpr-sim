@@ -23,27 +23,31 @@ use super::warning::{Warning, WarningKind};
 
 /// The two names OpenRocket writes a component's distance along its parent under.
 ///
-/// `position` carries a `type` attribute and `axialoffset` a `method`, with the same vocabulary:
-/// `top`, `middle`, `bottom`, `after`, `absolute`.
+/// `position` carries a `type` attribute and `axialoffset` a `method`, with the same vocabulary —
+/// `top`, `middle`, `bottom`, `after`, `absolute` — and **Observed:** on all 642 elements of the
+/// reference corpus that carry both, the two agree on the text *and* on that attribute.
 pub const AXIAL_OFFSET: [&str; 2] = ["axialoffset", "position"];
 
 /// The two names for how many of an instanced component there are (fins, rail buttons, pods).
+///
+/// **Observed:** 109 elements carry both, agreeing every time. Neither carries an attribute, so a
+/// count is the one value here that a rename cannot change the meaning of.
 pub const INSTANCE_COUNT: [&str; 2] = ["instancecount", "fincount"];
 
-/// The two names for the angle an instanced component sits at about the body axis.
-pub const ANGLE_OFFSET: [&str; 2] = ["angleoffset", "radialdirection"];
-
-/// The two names for the distance an instanced component sits off the body axis.
-///
-/// Unlike the other three, no file in the reference corpus writes both, so they have never been
-/// seen to agree; see the [`.ork` page] for what is and is not measured.
-///
-/// [`.ork` page]: https://nrdptel.github.io/hpr-sim/format/ork.html
-pub const RADIUS_OFFSET: [&str; 2] = ["radiusoffset", "radialposition"];
+// `angleoffset`/`radialdirection` and `radiusoffset`/`radialposition` are deliberately **not**
+// here. They look like the two pairs above, and they are not: the newer name of each carries a
+// `method` attribute — the frame the number is measured in — that the older name never carries.
+// `cargo xtask ork` measures it: of the 26 elements with both `angleoffset` and `radialdirection`
+// the texts agree every time and the frames differ every time, and `radiusoffset` (106 elements)
+// and `radialposition` (542) are never written together at all. Reading one as the other would
+// silently move a component, so settling what the older name's frame is belongs to the milestone
+// that places components (M3.1b2), with a source, not to a constant here. See the `.ork` page:
+// <https://nrdptel.github.io/hpr-sim/format/ork.html>.
 
 /// A number a `.ork` writes, which OpenRocket may be working out for itself.
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case", tag = "kind")]
+#[non_exhaustive]
 pub enum Dimension {
     /// A number the designer typed.
     Stated {
@@ -82,11 +86,13 @@ impl Dimension {
     pub fn parse(text: &str) -> Option<Self> {
         let text = text.trim();
         if let Some(rest) = text.strip_prefix("auto") {
-            let rest = rest.trim();
             if rest.is_empty() {
                 return Some(Self::Automatic { cached: None });
             }
-            return finite(rest).map(|cached| Self::Automatic {
+            // `auto` is a word: `auto 0.025` is a cached dimension, `auto-1` and `automatic` are
+            // not this tag's business.
+            let cached = rest.strip_prefix(char::is_whitespace)?.trim();
+            return finite(cached).map(|cached| Self::Automatic {
                 cached: Some(cached),
             });
         }
@@ -116,30 +122,42 @@ impl<'a> Values<'a> {
 
     /// The first child called one of `names`, newest name first.
     ///
-    /// When more than one is present they are checked against each other: in the reference corpus
-    /// OpenRocket writes both names on 777 elements and the text is the same on every one, so a
-    /// disagreement is worth a warning. The first name still wins.
+    /// When more than one is present they are checked against each other, on the text **and** on
+    /// the `method`/`type` attribute that says what the text is measured from: in the reference
+    /// corpus OpenRocket agrees with itself on both, every time. A disagreement is therefore worth
+    /// a warning, and the first name still wins.
     pub fn element(&mut self, names: &[&str]) -> Option<&'a Element> {
         let mut found: Option<&'a Element> = None;
         for name in names {
             let Some(child) = self.element.child(name) else {
                 continue;
             };
-            match found {
-                None => found = Some(child),
-                Some(first) if first.text().trim() != child.text().trim() => {
-                    let (winner, loser) = (first.name.clone(), child.name.clone());
-                    self.warn(
-                        WarningKind::Dropped,
-                        format!(
-                            "`{winner}` says `{}` and `{loser}` says `{}`; they are two names for \
-                             one value, so `{winner}` was taken",
-                            first.text().trim(),
-                            child.text().trim()
-                        ),
-                    );
-                }
-                Some(_) => {}
+            let Some(first) = found else {
+                found = Some(child);
+                continue;
+            };
+            let (winner, loser) = (first.name.clone(), child.name.clone());
+            if first.text().trim() != child.text().trim() {
+                self.warn(
+                    WarningKind::Dropped,
+                    format!(
+                        "`{winner}` says `{}` and `{loser}` says `{}`; they are two names for one \
+                         value, so `{winner}` was taken",
+                        first.text().trim(),
+                        child.text().trim()
+                    ),
+                );
+            } else if frame(first) != frame(child) {
+                self.warn(
+                    WarningKind::Dropped,
+                    format!(
+                        "`{winner}` and `{loser}` both say `{}` but measure it from {} and {}; \
+                         `{winner}` was taken",
+                        first.text().trim(),
+                        named(frame(first)),
+                        named(frame(child))
+                    ),
+                );
             }
         }
         found
@@ -239,20 +257,38 @@ impl<'a> Values<'a> {
         // The three flags were one until schema 1.9. No element in the reference corpus carries
         // both forms, so the older one is read as setting all three, which is what it meant.
         let all = self.flag(&["overridesubcomponents"]);
+        let per_quantity = [
+            ("mass", self.flag(&["overridesubcomponentsmass"])),
+            ("centre of gravity", self.flag(&["overridesubcomponentscg"])),
+            ("drag", self.flag(&["overridesubcomponentscd"])),
+        ];
         if all.is_some() {
+            let taken: Vec<&str> = per_quantity
+                .iter()
+                .filter(|(_, own)| own.is_none())
+                .map(|(what, _)| *what)
+                .collect();
             self.warn(
                 WarningKind::Unusual,
-                "this component uses the single `overridesubcomponents` flag that OpenRocket \
-                 replaced with one flag per quantity; it was read as setting all three",
+                format!(
+                    "this component uses the single `overridesubcomponents` flag that OpenRocket \
+                     replaced with one flag per quantity; it was read as setting {}",
+                    match taken.as_slice() {
+                        [] => "nothing, since each quantity has a flag of its own".to_owned(),
+                        [one] => format!("the {one} flag"),
+                        many => format!("the {} flags", many.join(", the ")),
+                    }
+                ),
             );
         }
+        let [(_, mass), (_, cg), (_, drag)] = per_quantity;
         Overrides {
             mass_kg,
             cg_m,
             cd,
-            subcomponents_mass: self.flag(&["overridesubcomponentsmass"]).or(all),
-            subcomponents_cg: self.flag(&["overridesubcomponentscg"]).or(all),
-            subcomponents_cd: self.flag(&["overridesubcomponentscd"]).or(all),
+            subcomponents_mass: mass.or(all),
+            subcomponents_cg: cg.or(all),
+            subcomponents_cd: drag.or(all),
         }
     }
 
@@ -271,6 +307,7 @@ impl<'a> Values<'a> {
 ///
 /// [lessons]: https://github.com/nrdptel/hpr-sim/blob/main/docs/research/loft-lessons.md
 #[derive(Debug, Clone, Copy, PartialEq, Default, Serialize, Deserialize)]
+#[non_exhaustive]
 pub struct Overrides {
     /// The mass the component is declared to have, in kilograms.
     pub mass_kg: Option<f64>,
@@ -284,6 +321,18 @@ pub struct Overrides {
     pub subcomponents_cg: Option<bool>,
     /// Whether the drag override covers them.
     pub subcomponents_cd: Option<bool>,
+}
+
+/// What a placement tag says its number is measured from: `method` on the newer name of a pair,
+/// `type` on the older.
+fn frame(element: &Element) -> Option<&str> {
+    element
+        .attribute("method")
+        .or_else(|| element.attribute("type"))
+}
+
+fn named(frame: Option<&str>) -> String {
+    frame.map_or_else(|| "nowhere stated".to_owned(), |frame| format!("`{frame}`"))
 }
 
 /// Rust also parses `inf` and `NaN`, which no design file means.

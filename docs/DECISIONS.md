@@ -5067,12 +5067,20 @@ each rests on what the reference corpus shows, counted by `cargo xtask ork`.
    and is never confused with `Dimension::Stated`. Saving a design must write `auto` back, which is
    what Loft's dropping of the flag broke. 413 dimensions in the corpus are automatic, across
    `outerradius`, `innerradius`, `radius`, `aftradius`, `foreradius`, `packedradius` and `cd`.
-3. **Either name of a renamed tag may be read, newest first.** Where OpenRocket writes both, it
-   agrees with itself: 777 elements, 642 `axialoffset`/`position`, 109
-   `instancecount`/`fincount`, 26 `angleoffset`/`radialdirection`, identical text on every one.
-   A disagreement is therefore worth a warning, and the newer name wins.
-   `radiusoffset`/`radialposition` is **never** written twice in the corpus, so its equivalence is
-   assumed from the renaming and not measured — recorded as a gap on the `.ork` page.
+3. **Either name of a renamed tag may be read, newest first — for the two renames that are only
+   renames.** Where OpenRocket writes both `axialoffset` and `position` (642 elements) or both
+   `instancecount` and `fincount` (109), it agrees with itself on the text *and* on the
+   `type`/`method` attribute that says what the number is measured from, every time. So either
+   name may be read, the newer wins, and a disagreement — in the number or in the frame — raises
+   a warning.
+
+   `angleoffset`/`radialdirection` and `radiusoffset`/`radialposition` are **not** read this way,
+   though they look the same. The newer name of each carries a `method` the older never carries:
+   of the 26 elements with both `angleoffset` and `radialdirection` the texts agree every time and
+   the frames differ every time, and `radiusoffset` (106 elements) and `radialposition` (542) are
+   never written together at all. Reading one as the other would move a component in silence, so
+   what the older name's frame is belongs to M3.1b2, with a source. The constants for them are not
+   in the public API.
 4. **A stated zero is a value.** `<overridecd>0.0</overridecd>` (2 in the corpus) is an override to
    no drag at all. The six override tags — three values, three flags — are read independently.
 5. **The single pre-1.9 `overridesubcomponents` flag sets all three.** It is what the three
@@ -5080,9 +5088,11 @@ each rests on what the reference corpus shows, counted by `cargo xtask ork`.
    per-quantity flag beside it, so reading it as all three cannot contradict a file. It raises a
    warning, so the inference is never silent.
 
-**Consequences.** The value layer is settled before any component reads it, and its three claims
-are counts anyone with the corpus can reproduce. Points 3 and 5 are readings of what a rename
-meant, not statements from a specification: if a file ever turns up where the two names disagree,
-or where the old flag sits beside a new one, the warning says so rather than the reading being
-wrong in silence. `Dimension` carries no unit, because the tags it reads are metres, radians and
+**Consequences.** The value layer is settled before any component reads it, and its claims are
+counts anyone with the corpus can reproduce by running `cargo xtask ork`, which prints each one.
+Points 3 and 5 are readings of what a rename meant, not statements from a specification: if a file
+ever turns up where the two names disagree, or where the old flag sits beside a new one, the
+warning says so rather than the reading being wrong in silence. Two renames are left unread
+rather than guessed, which means M3.1b2 cannot place an instanced component until it settles
+them. `Dimension` carries no unit, because the tags it reads are metres, radians and
 plain numbers alike; the component reader names the unit.

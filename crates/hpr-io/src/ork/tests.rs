@@ -589,10 +589,11 @@ fn auto_flag_kept_with_cached_value() {
 /// Loft lesson L62: OpenRocket renamed several tags and writes both names, and Loft read a stated
 /// `0` as a missing value.
 ///
-/// **Observed** by `cargo xtask ork`: across the reference corpus OpenRocket writes both names on
-/// 777 elements — 642 `position`/`axialoffset`, 109 `fincount`/`instancecount`, 26
-/// `radialdirection`/`angleoffset` — and the two texts are identical on every one of them. So
-/// either name may be read; this takes the newer.
+/// **Observed** by `cargo xtask ork`: OpenRocket writes both names of a pair the reader takes
+/// either of on 751 elements of the reference corpus — 642 `position`/`axialoffset` and 109
+/// `fincount`/`instancecount` — and on every one of them the two agree on the text *and* on the
+/// `type`/`method` attribute that says what the number is measured from. So either name may be
+/// read; this takes the newer.
 #[test]
 fn legacy_tags_equal_modern_and_zero_is_stated() {
     let tube = component(concat!(
@@ -623,8 +624,14 @@ fn legacy_tags_equal_modern_and_zero_is_stated() {
     );
 
     assert_eq!(read.count(&INSTANCE_COUNT), Some(3));
-    // Only the legacy name is there, so the legacy name is read.
-    assert_eq!(read.number(&ANGLE_OFFSET), Some(60.0));
+    // The older name alone is read as itself.
+    let older = component("<bodytube><fincount>4</fincount></bodytube>");
+    let mut older_warnings = Vec::new();
+    assert_eq!(
+        Values::new(&older, AT, &mut older_warnings).count(&INSTANCE_COUNT),
+        Some(4)
+    );
+    assert!(older_warnings.is_empty(), "{older_warnings:?}");
     assert!(warnings.is_empty(), "{warnings:?}");
 
     // Two names that disagree is not something OpenRocket writes: the newer wins, and says so.
@@ -639,6 +646,99 @@ fn legacy_tags_equal_modern_and_zero_is_stated() {
         "{:?}",
         odd_warnings[0]
     );
+
+    // The same number measured from two different places is two different places, and agreeing on
+    // the text hides it. On all 642 corpus elements that carry both, OpenRocket agrees on both.
+    let framed = component(concat!(
+        r#"<bodytube><axialoffset method="top">0.1</axialoffset>"#,
+        r#"<position type="bottom">0.1</position></bodytube>"#,
+    ));
+    let mut frame_warnings = Vec::new();
+    let mut read = Values::new(&framed, AT, &mut frame_warnings);
+    assert_eq!(read.number(&AXIAL_OFFSET), Some(0.1));
+    assert_eq!(frame_warnings.len(), 1, "{frame_warnings:?}");
+    assert!(
+        frame_warnings[0].message.contains("measure it from"),
+        "{:?}",
+        frame_warnings[0]
+    );
+}
+
+/// `auto` is a word. `automatic` is an ignition event, not a dimension, and nothing glued to the
+/// four letters is one either — every `auto`-prefixed text in the reference corpus is `auto`,
+/// `auto <number>` or `automatic`.
+#[test]
+fn a_dimension_is_auto_a_number_or_nothing() {
+    assert_eq!(
+        Dimension::parse("auto"),
+        Some(Dimension::Automatic { cached: None })
+    );
+    assert_eq!(
+        Dimension::parse("auto 0.025"),
+        Some(Dimension::Automatic {
+            cached: Some(0.025)
+        })
+    );
+    for word in [
+        "automatic",
+        "auto-1",
+        "auto0.5",
+        "burnout",
+        "",
+        "auto x",
+        "inf",
+        "NaN",
+    ] {
+        assert_eq!(Dimension::parse(word), None, "{word}");
+    }
+    assert_eq!(
+        Dimension::parse("0.025"),
+        Some(Dimension::Stated { value: 0.025 })
+    );
+}
+
+/// A count is a whole number of things, and anything else is dropped with a word about it rather
+/// than rounded, truncated or wrapped.
+#[test]
+fn a_count_that_is_not_a_whole_number_of_things_is_dropped() {
+    for (text, expected) in [
+        ("3", Some(3)),
+        ("0", Some(0)),
+        ("4294967295", Some(u32::MAX)),
+    ] {
+        let element = component(&format!("<bodytube><fincount>{text}</fincount></bodytube>"));
+        let mut warnings = Vec::new();
+        assert_eq!(
+            Values::new(&element, AT, &mut warnings).count(&INSTANCE_COUNT),
+            expected,
+            "{text}"
+        );
+        assert!(warnings.is_empty(), "{text}: {warnings:?}");
+    }
+    for text in ["-1", "2.5", "4294967296", "1e300", "three"] {
+        let element = component(&format!("<bodytube><fincount>{text}</fincount></bodytube>"));
+        let mut warnings = Vec::new();
+        assert_eq!(
+            Values::new(&element, AT, &mut warnings).count(&INSTANCE_COUNT),
+            None,
+            "{text}"
+        );
+        assert_eq!(warnings.len(), 1, "{text}: {warnings:?}");
+        assert_eq!(warnings[0].kind, WarningKind::Dropped, "{text}");
+    }
+}
+
+/// A flag is `true` or `false`; anything else is dropped rather than read as false.
+#[test]
+fn a_flag_that_is_neither_true_nor_false_is_dropped() {
+    let element = component(
+        "<bodytube><overridesubcomponentsmass>yes</overridesubcomponentsmass></bodytube>",
+    );
+    let mut warnings = Vec::new();
+    let overrides = Values::new(&element, AT, &mut warnings).overrides();
+    assert_eq!(overrides.subcomponents_mass, None);
+    assert_eq!(warnings.len(), 1, "{warnings:?}");
+    assert_eq!(warnings[0].kind, WarningKind::Dropped);
 }
 
 /// Loft lesson L63: Loft read neither `overridecd` nor the subcomponent flags, so a part set to a
@@ -689,6 +789,32 @@ fn cd_and_cg_subcomponent_overrides_are_independent() {
     assert_eq!(overrides.subcomponents_cd, Some(true));
     assert_eq!(old_warnings.len(), 1, "{old_warnings:?}");
     assert_eq!(old_warnings[0].kind, WarningKind::Unusual);
+    assert!(
+        old_warnings[0]
+            .message
+            .contains("the mass, the centre of gravity, the drag flags"),
+        "{:?}",
+        old_warnings[0]
+    );
+
+    // A per-quantity flag beside it wins, and the warning says only what the old flag did set.
+    let mixed = component(concat!(
+        "<bodytube><overridesubcomponents>true</overridesubcomponents>",
+        "<overridesubcomponentscd>false</overridesubcomponentscd></bodytube>",
+    ));
+    let mut mixed_warnings = Vec::new();
+    let overrides = Values::new(&mixed, AT, &mut mixed_warnings).overrides();
+    assert_eq!(overrides.subcomponents_mass, Some(true));
+    assert_eq!(overrides.subcomponents_cg, Some(true));
+    assert_eq!(overrides.subcomponents_cd, Some(false));
+    assert_eq!(mixed_warnings.len(), 1, "{mixed_warnings:?}");
+    assert!(
+        mixed_warnings[0]
+            .message
+            .contains("the mass, the centre of gravity flags"),
+        "{:?}",
+        mixed_warnings[0]
+    );
 }
 
 /// Text a `.ork` could hold: the characters that make writing awkward, and a few ordinary ones.

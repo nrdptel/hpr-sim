@@ -144,12 +144,13 @@ every real file in the corpus.
 A component's numbers sit in leaf elements, and three things about them are not obvious. All three
 are mistakes [Loft][loft] made, and each is settled here by what the corpus shows rather than by a
 specification, because `.ork` has none. Code: `hpr_io::ork::value`
-([API reference](../api/hpr_io/ork/value/index.html)), decided in
-[ADR-052][adr-052].
+([API reference](../api/hpr_io/ork/value/index.html)), decided in [ADR-052][adr-052].
 
-**A dimension may be automatic.** `<outerradius>auto 0.0125</outerradius>` means "OpenRocket works
-this out from the neighbouring components, and 0.0125 m is what it last worked out". A bare `auto`
-is the same with nothing worked out yet. hpr keeps both halves: which it is, and the cached number.
+**A dimension may be automatic.** `<aftradius>auto 0.025</aftradius>` means "OpenRocket works this
+out from the neighbouring components, and 0.025 m is what it last worked out". A bare `auto` —
+`<outerradius>auto</outerradius>` — is the same with nothing worked out yet, and is the commoner
+form: 309 of the 413 automatic dimensions in the corpus cache no number, so a reader that resolves
+them cannot treat the cached value as a shortcut. hpr keeps both halves: which it is, and the cached number.
 Keeping only the number is
 [Loft lesson L58](../decisions-and-roadmap.md#l58) — it turned automatic dimensions into hand-typed
 ones the next time the design was saved. **Observed:** 413 automatic dimensions across the corpus,
@@ -166,20 +167,32 @@ on seven tags.
 | `foreradius` | 14 |
 
 **A tag may be written under two names.** OpenRocket renamed several and writes both, so an older
-reader still finds one. **Observed:** it agrees with itself every time — 777 elements carry both
-names, and the two texts are identical on all of them.
+reader still finds one. Two of those renames are that and nothing more, and hpr reads either name,
+taking the newer. **Observed:** on every element that carries both, the two agree — on the text,
+and on the `type`/`method` attribute that says what the number is measured from.
 
-| newer | older | elements with both | agreeing |
-|---|---|---|---|
-| `axialoffset` | `position` | 642 | 642 |
-| `instancecount` | `fincount` | 109 | 109 |
-| `angleoffset` | `radialdirection` | 26 | 26 |
-| `radiusoffset` | `radialposition` | 0 | — |
+| newer | older | elements with both | agree on text | differ on frame |
+|---|---|---|---|---|
+| `axialoffset` | `position` | 642 | 642 | 0 |
+| `instancecount` | `fincount` | 109 | 109 | 0 |
 
-So either name may be read, and hpr takes the newer. Two that disagree is not something OpenRocket
-writes, so it raises a warning. **The last row is a gap:** no file in the corpus writes
-`radiusoffset` and `radialposition` together, so that they mean the same thing is taken from the
-rename and has not been measured.
+Two that disagree is not something OpenRocket writes, so it raises a warning — whether they
+disagree on the number or on where the number is measured from.
+
+**Two more pairs look the same and are not**, which is why hpr does not yet read either name of
+them. The newer name of each carries a `method` attribute — the frame — that the older name never
+carries:
+
+| newer | older | elements with both | agree on text | differ on frame |
+|---|---|---|---|---|
+| `angleoffset` | `radialdirection` | 26 | 26 | **26** |
+| `radiusoffset` | `radialposition` | 0 | — | — |
+
+`angleoffset` and `radialdirection` agree on the number every time and differ on the frame every
+time. `radiusoffset` (on 106 elements) and `radialposition` (on 542) are never written together at
+all, so nothing about them has been measured. Reading one as the other would move a component
+without saying so, so what the older name's frame is belongs to the milestone that places
+components, [M3.1b2](../decisions-and-roadmap.md#m3-1b2), with a source.
 
 **A stated zero is a value.** `<overridecd>0.0</overridecd>` means no drag at all, not "no
 override" — reading it as missing is

@@ -41,15 +41,15 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
   from its `lib/`, never its `COMPETITION.md`** (GPL-3 Java); its 12 public fixtures may be used.
 - **Process notes:** `cargo test -p xtask` guards STATUS, ROADMAP, notices, lessons and the lock;
   oracles run from the repo root with `refs/venv/bin/python`; `xtask designs`, `examples` and `ork`
-  rewrite their outputs. **M2.2's oracle**
-  (ADR-035): orhelper is dropped, so decide how to drive the jar — JPype loads the JVM in-process,
-  only a subprocess isolates, Java 17 only.
+  rewrite their outputs. **M2.2's oracle** (ADR-035): orhelper is dropped, so decide how to drive
+  the jar — JPype loads the JVM in-process, only a subprocess isolates, Java 17 only.
 
 ## Done log (newest first, keep about 15)
 
 - 2026-09-20: M3.1b1 The values inside a `.ork`'s tags (ADR-052): an automatic dimension keeps its
-  flag and its cached number (413 in the corpus); either name of a renamed tag may be read, because
-  where OpenRocket writes both it agrees with itself on all 777 elements; a stated `0` is a value,
+  flag and its cached number (413 in the corpus, 309 caching nothing); either name of a rename may
+  be read where the corpus shows both agree on the number *and* the frame (642 and 109 elements),
+  and two lookalike pairs are left unread because it shows they do not; a stated `0` is a value,
   and the six override tags are read independently. L58, L62 and L63's named tests are live.
 - 2026-09-20: M3.1a The `.ork` container and its document (ADR-051): M3.1 split into four, and the
   first shipped — 78 files read by `cargo xtask ork`, 76 opening and all 76 unchanged through a
@@ -81,9 +81,9 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
 ## Decided without Neer (one line each; significant ones get an ADR)
 
 - ADR-052: M3.1b splits in two, the values first; an automatic dimension keeps both halves; either
-  name of a renamed tag may be read (777 elements agree, and `radiusoffset`/`radialposition` is
-  never written twice, so it is assumed not measured); the pre-1.9 subcomponent-override flag sets
-  all three, with a warning.
+  name of a rename may be read where the corpus shows the two agree on the number *and* the frame,
+  and the two lookalike pairs are left unread because it shows they do not; the pre-1.9
+  subcomponent-override flag sets all three, with a warning.
 - ADR-051: M3.1 is split a to d, the container first; a `.ork` document is kept whole and read by
   nobody, because it has no schema; the writer is canonical, so read-write-read is the guarantee
   rather than byte fidelity; nesting is capped at 64 before parsing; `zip` and `flate2` added.
@@ -134,9 +134,9 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
   flare leaves the crossing's pole — +0.129% and 0.0051 calibres on the tests' rocket, +4.3% and
   0.19 on a short shoulder (#108); a step in radius takes the body off the method past 2.7e-11 m
   tube to tube or 1.3e-13 m up at a boattail — −8.65% to −11.34% (#87).
-- `.ork` (M3.1a, M3.1b1) reads the container, the document and the values under its tags; no rocket
-  is built from one yet. That `radiusoffset` and `radialposition` mean the same is assumed from the
-  rename, not measured: no corpus file writes both (ADR-052).
+- `.ork` (M3.1a, M3.1b1) reads the container, the document and the values; no rocket is built from
+  one yet, and an instanced component's angle and radius wait on M3.1b2 finding a source for the
+  frame the older tag names (ADR-052).
 - Drag: against RASAero II's Calisto hpr reads −14.9% to −5.1% supersonic (ADR-030); against
   MIL-HDBK-762 the body reads 6–10% low past Mach 1.6 and high through Mach 1 (#67, #68); against
   the Arcas Robin it reads high at every row (#70, #72, #73). A cylinder's base drag is unmeasured

@@ -613,10 +613,11 @@
       shows rather than on an assumption, and `cargo xtask ork` prints the counts they rest on.
       *Result:* met (ADR-052). `auto <number>` keeps both the flag and the cached number, and a
       bare `auto` is a dimension with nothing cached (413 automatic dimensions across 7 tags).
-      Where OpenRocket writes a value under both its names it agrees with itself on all 777
-      elements (642 `axialoffset`/`position`, 109 `instancecount`/`fincount`, 26
-      `angleoffset`/`radialdirection`), so either may be read; `radiusoffset`/`radialposition` is
-      never written twice, so its equivalence is **not** measured. A stated `0` is a value, which
+      Where OpenRocket writes both names of a real rename it agrees with itself on the text and on
+      the frame: 642 `axialoffset`/`position` and 109 `instancecount`/`fincount`, every one. Two
+      more pairs look the same and are **not** read: `angleoffset`/`radialdirection` agree on the
+      text on all 26 and differ on the frame on all 26, and `radiusoffset`/`radialposition` (106
+      and 542 elements) are never written together. A stated `0` is a value, which
       is what a `<overridecd>0.0</overridecd>` needs (2 in the corpus). The six override tags are
       read independently; the single pre-1.9 flag they replaced (20 elements, never beside a
       per-quantity one) sets all three, with a warning.
