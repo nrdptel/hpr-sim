@@ -2784,3 +2784,116 @@ fn stored_conditions_read_without_a_design() {
             .any(|w| w.message.contains("no time or no type"))
     );
 }
+
+/// Loft lesson L66: Loft dropped pods, parallel stages and booster sets, and its export then lost
+/// the note that the rocket was reduced. Here both are kept whole in `extensions.x-openrocket`, at
+/// paths that lead back to them, and the design says it is reduced.
+#[test]
+fn pods_kept_in_extensions_or_flagged_reduced() {
+    let xml = motor_design(
+        r#"<motorconfiguration configid="a" default="true"/>"#,
+        "<overhang>0.0</overhang><motor configid='a'><type>single</type>\
+         <manufacturer>Estes</manufacturer><designation>F15</designation>\
+         <diameter>0.029</diameter><length>0.114</length><delay>4.0</delay></motor>",
+        "<podset><name>Pods</name><id>pods</id><instancecount>2</instancecount>\
+         <radiusoffset method='surface'>0.0</radiusoffset>\
+         <angleoffset method='relative'>90.0</angleoffset><subcomponents>\
+         <bodytube><name>Pod</name><id>pod</id><length>0.2</length><radius>0.01</radius>\
+         </bodytube></subcomponents></podset>\
+         <parallelstage><name>Boosters</name><id>boosters</id><instancecount>2</instancecount>\
+         <separationevent>burnout</separationevent><subcomponents>\
+         <nosecone><name>Booster nose</name><id>booster-nose</id></nosecone>\
+         </subcomponents></parallelstage>",
+    );
+    let file = read(xml.as_bytes()).expect("a readable design").value;
+    let design = design(&file).value;
+    assert!(design.is_reduced());
+    let parts = &design.extensions.x_openrocket.parts;
+    let at: Vec<&str> = parts.iter().map(|kept| kept.at.as_str()).collect();
+    assert_eq!(
+        at,
+        [
+            "openrocket/rocket/stage[0]/bodytube[1]/podset[0]",
+            "openrocket/rocket/stage[0]/bodytube[1]/parallelstage[1]",
+        ]
+    );
+    for kept in parts {
+        assert_eq!(element_at(&file.document, &kept.at), Some(&kept.element));
+    }
+    // Neither is in the rocket, and no configuration flies on a rocket read only in part.
+    assert!(motors::stage_of(&design.rocket, "pod").is_none());
+    assert!(design.rocket.configurations.is_empty());
+
+    // A design with nothing left out is not reduced, and keeps no parts.
+    let whole = read_design(
+        motor_design(
+            r#"<motorconfiguration configid="a"/>"#,
+            "<overhang>0.0</overhang>",
+            "",
+        )
+        .as_bytes(),
+    );
+    assert!(!whole.is_reduced());
+    assert!(whole.extensions.x_openrocket.parts.is_empty());
+}
+
+/// A document with content hpr does not model — a section it does not read, a component tag it
+/// has never seen, a simulation's extension — keeps each in `extensions.x-openrocket`, and the
+/// extension survives being written out and read back: every kept element comes back the same, at
+/// a path that leads to it in the original document.
+#[test]
+fn unknown_content_round_trips_through_x_openrocket() {
+    let xml = r#"<?xml version="1.0" encoding="UTF-8"?>
+<openrocket version="1.10" creator="OpenRocket 24.12">
+  <rocket><name>R</name><subcomponents>
+    <stage><name>Sustainer</name><id>s</id><subcomponents>
+      <nosecone><name>Nose</name><id>nose</id>
+        <material type="bulk" density="1000.0">Plastic</material>
+        <length>0.15</length><thickness>0.002</thickness><shape>ogive</shape>
+        <aftradius>0.02</aftradius></nosecone>
+      <fancything kind="new"><name>Something new</name><size unit="m">0.1</size></fancything>
+    </subcomponents></stage></subcomponents></rocket>
+  <simulations><simulation status="uptodate"><name>Simulation 1</name>
+    <extension extensionid="com.example.Wind"><config key="gust">3.0</config></extension>
+  </simulation></simulations>
+  <photostudio><roll>0.5</roll><sky>Mountains</sky></photostudio>
+  <docprefs><docmaterials><material>BULK|Custom|680.0|1.2E9|Custom</material></docmaterials>
+  </docprefs>
+</openrocket>"#;
+    let file = read(xml.as_bytes()).expect("a readable document").value;
+    let design = design(&file).value;
+    let kept = &design.extensions.x_openrocket;
+    let at = |list: &[Kept]| list.iter().map(|k| k.at.clone()).collect::<Vec<_>>();
+    assert_eq!(
+        at(&kept.parts),
+        ["openrocket/rocket/stage[0]/fancything[1]"]
+    );
+    assert_eq!(
+        at(&kept.sections),
+        [
+            "openrocket/simulations/simulation[0]/extension[1]",
+            "openrocket/photostudio[2]",
+            "openrocket/docprefs[3]",
+        ]
+    );
+
+    // Written out as JSON under its namespace and read back, the extension is unchanged...
+    let json = serde_json::to_string(&design.extensions).expect("JSON");
+    assert!(json.starts_with(r#"{"x-openrocket":"#), "{json}");
+    let back: Extensions = serde_json::from_str(&json).expect("read back");
+    assert_eq!(back, design.extensions);
+    // ...and every element in it is the one at its path in the document it came from.
+    for kept in back
+        .x_openrocket
+        .parts
+        .iter()
+        .chain(&back.x_openrocket.sections)
+    {
+        assert_eq!(
+            element_at(&file.document, &kept.at),
+            Some(&kept.element),
+            "{}",
+            kept.at
+        );
+    }
+}

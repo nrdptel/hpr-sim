@@ -238,6 +238,7 @@ fn one(
     if let Some(device) = device {
         ids.devices.push((id.clone(), device));
     }
+    ids.read.insert(at.to_owned());
     Some(Component {
         id,
         name,

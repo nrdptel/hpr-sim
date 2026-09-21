@@ -36,6 +36,7 @@ pub mod component;
 pub mod container;
 pub mod document;
 mod error;
+pub mod extensions;
 pub mod motors;
 pub mod recovery;
 pub mod simulations;
@@ -47,6 +48,7 @@ pub use component::{OPENROCKET_DEFAULT_RADIUS_M, rocket};
 pub use container::{Attachment, Container, MAX_UNPACKED_BYTES, Unpacked};
 pub use document::{Document, Element, MAX_DEPTH, MAX_KNOWN_MINOR, Node, SchemaVersion};
 pub use error::OrkError;
+pub use extensions::{Extensions, Kept, OpenRocketExtension, element_at};
 pub use motors::{
     Curve, Ignition, IgnitionEvent, LeftOut, MotorConfiguration, Motors, NoCurve, NotFlown,
     OrkMotor, UnreadMotor,
@@ -102,6 +104,16 @@ pub struct Design {
     pub recovery: Recovery,
     /// The simulations OpenRocket last ran on the design, with their conditions and results.
     pub simulations: Vec<StoredSimulation>,
+    /// What the file holds that hpr does not model, kept whole for an export to put back.
+    pub extensions: Extensions,
+}
+
+impl Design {
+    /// Whether the rocket is reduced: the file describes parts of it — a pod, a parallel stage, a
+    /// part hpr cannot shape — that are kept in [`Design::extensions`] rather than read into it.
+    pub fn is_reduced(&self) -> bool {
+        !self.extensions.x_openrocket.parts.is_empty()
+    }
 }
 
 /// Reads the design in a `.ork` file: the rocket ([`rocket`]) and its motors ([`motors`]), with
@@ -175,12 +187,14 @@ pub fn design(file: &OrkFile) -> Imported<Design> {
     // above; a document can hold them without a design, as Debrief's results-only file does.
     let Some(element) = file.document.root.child("rocket") else {
         let simulations = simulations::read(&file.document, &mut warnings);
+        let x_openrocket = extensions::read(&file.document, &walked.read);
         return Imported {
             value: Design {
                 rocket,
                 motors: Motors::default(),
                 recovery: Recovery::default(),
                 simulations,
+                extensions: Extensions { x_openrocket },
             },
             warnings,
         };
@@ -195,12 +209,14 @@ pub fn design(file: &OrkFile) -> Imported<Design> {
     );
     let recovery = recovery::read(element, &rocket, walked.devices, walked.separations);
     let simulations = simulations::read(&file.document, &mut warnings);
+    let x_openrocket = extensions::read(&file.document, &walked.read);
     Imported {
         value: Design {
             rocket,
             motors,
             recovery,
             simulations,
+            extensions: Extensions { x_openrocket },
         },
         warnings,
     }

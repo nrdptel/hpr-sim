@@ -207,6 +207,7 @@ pub(super) fn walk(document: &Document) -> (Imported<Rocket>, Walked) {
             mounts: ids.mounts,
             devices: ids.devices,
             separations: ids.separations,
+            read: ids.read,
         },
     )
 }
@@ -282,6 +283,7 @@ fn stage(
     if let Some(separation) = recovery::separation(element, &at, warnings) {
         ids.separations.push((id.clone(), separation));
     }
+    ids.read.insert(at.clone());
     let mut components = Vec::new();
     // The index is part of the path so that a warning can be traced back to one part of the 188
     // body tubes in the reference library, the way a stage's already could (issue #132).
@@ -341,6 +343,7 @@ fn body(
         ids.mounts.push((id.clone(), mount));
         spec
     });
+    ids.read.insert(at.to_owned());
     let component = Component {
         id,
         name,
@@ -781,6 +784,9 @@ pub(super) struct Ids {
     pub(super) devices: Vec<(String, DeviceRead)>,
     /// Every stage that states when it separates, with the stage's id, in file order.
     pub(super) separations: Vec<(String, SeparationRead)>,
+    /// The path of every stage and component read, for [`super::extensions::read`] to keep the
+    /// rest.
+    pub(super) read: std::collections::BTreeSet<String>,
 }
 
 /// What the walk read besides the rocket, each with the id it gave its component.
@@ -792,6 +798,8 @@ pub(super) struct Walked {
     pub devices: Vec<(String, DeviceRead)>,
     /// The stages' separations.
     pub separations: Vec<(String, SeparationRead)>,
+    /// The path of every stage and component read.
+    pub read: std::collections::BTreeSet<String>,
 }
 
 impl Ids {
