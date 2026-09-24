@@ -1187,16 +1187,16 @@ mod tests {
         collect(&refs, &mut found, Some(&refs.join("scratch"))).unwrap();
         assert_eq!(found.len(), 1);
         assert_eq!(
-            found[0].0,
-            refs.join("vendor/scratch/design.ork").display().to_string()
+            Path::new(&found[0].0),
+            refs.join("vendor/scratch/design.ork").as_path()
         );
 
         found.clear();
         collect(&refs.join("scratch"), &mut found, None).unwrap();
         assert_eq!(found.len(), 1);
         assert_eq!(
-            found[0].0,
-            refs.join("scratch/generated.ork").display().to_string()
+            Path::new(&found[0].0),
+            refs.join("scratch/generated.ork").as_path()
         );
     }
 
