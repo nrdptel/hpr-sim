@@ -19,7 +19,7 @@
   (relative) at the times RocketPy computed, and within 1.1e-5 in mass and 2.6e-5 in inertia
   between them; the propellant grains' mass within 2.4e-9 and 4.9e-5 of its initial value.
   Placement, automatic radii and overrides are checked by hand; the whole structure against
-  OpenRocket on 74 design files, within 1% in mass on 61 and in centre of mass on 62
+  OpenRocket on 71 compared designs, within 1% in mass on 58 and in centre of mass on 59
   ([mass properties](mass.md#checked-against-openrocket)); and body radii against OpenRocket in
   the `.ork` import ([`.ork` design files](../format/ork.md)). Not compared with a real flight.
 - **What it leaves out:** staged flight. Every motor in a configuration ignites together at

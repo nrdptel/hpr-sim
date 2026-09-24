@@ -510,6 +510,11 @@
    }
   }
  ],
+ "generated": "2026-09-23",
+ "inputs_sha256": {
+  "automatic_radius.py": "71c7eaafeebb0d076714f773ad72aa2ca8484dbd5b0a596c4e270aca82836da3",
+  "geometry.py": "d410d9327f1fec89911cf3f597d7cde62559ccc2936106a48f1fc3c4184cc072"
+ },
  "jar_sha256": "4959b72f52f5f607941e9722abbb7b7f0c4a38ebbbf84204a329db9f31c4f897",
  "java": "17.0.20.1",
  "jpype": "1.7.1",

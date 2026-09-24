@@ -44,7 +44,7 @@ These parts are built and tested. Each page gives its sources, and most say what
 | Aerodynamics | The [centre of pressure](glossary.md#centre-of-pressure-cp) (where the aerodynamic force acts; its distance behind the centre of gravity is the [stability margin](glossary.md#stability-margin)), the [normal force](glossary.md#normal-force) (the sideways force when the rocket flies at an angle to the airflow, its [angle of attack](glossary.md#angle-of-attack)) and drag. For small angles of attack: the normal force and the drag from [Mach](glossary.md#mach-number) 0 to 5, both checked against a wind tunnel from 0.6 to 4.63 (the drag reads high at most speeds) | [Aerodynamics](physics/aero.md) |
 | Flight | The launch rail, powered flight and coast to apogee, with an [adaptive time step](glossary.md#adaptive-time-step) and [events](glossary.md#event) such as burnout and apogee | [Rigid-body flight](physics/flight.md), [Time integration](physics/integration.md) |
 | Recovery | Parachutes, [streamers](glossary.md#streamer) and [tumbling](glossary.md#tumble-recovery), the [drift](glossary.md#drift) they carry the rocket downwind, and a rocket that [separates](glossary.md#separation) into bodies that each descend on their own | [Recovery](physics/recovery.md) |
-| Design files | Opens an OpenRocket `.ork` file — zip, gzip or plain XML — and reads the whole design: the stages and body components, the tubes, rings, fins, lugs and recovery gear on and inside them, the motor configurations, when parachutes open, and the simulations OpenRocket stored. The airframe's shape is cross-checked against a second reader and OpenRocket itself (positions against OpenRocket alone; mass and centre of gravity in [Mass properties](physics/mass.md#checked-against-openrocket)). Pods and parallel stages are kept but not modelled, a part hpr cannot shape honestly is left out with a warning, and only a configuration whose motors all light at launch and have a thrust curve flies: 2 of the 174 in the reference library | [`.ork` design files](format/ork.md) |
+| Design files | Opens an OpenRocket `.ork` file — zip, gzip or plain XML — and reads the whole design: the stages and body components, the tubes, rings, fins, lugs and recovery gear on and inside them, the motor configurations, when parachutes open, and the simulations OpenRocket stored. The airframe's shape is cross-checked against a second reader and OpenRocket itself (positions against OpenRocket alone; mass and centre of gravity in [Mass properties](physics/mass.md#checked-against-openrocket)). Pods and parallel stages are kept but not modelled, a part hpr cannot shape honestly is left out with a warning, and only a configuration whose motors all light at launch and have a thrust curve flies: 2 of the 170 in the reference library | [`.ork` design files](format/ork.md) |
 
 ## What doesn't work yet
 
@@ -64,14 +64,13 @@ out.
     ([Aerodynamics](physics/aero.md#drag-against-the-arcas-robin-wind-tunnel)).
   - So for a rocket that goes past Mach 1, expect hpr's apogee to come out low rather than high.
     Its base drag, on the flat aft end, hasn't been checked faster than Mach 0.3 at all.
-  - It hasn't been compared with [RASAero II](glossary.md#rasaero-ii)'s drag near Mach 1 yet; that
-    comes with [M1.8b2](decisions-and-roadmap.md#m1-8b2). Until then, a drag table from another
-    tool can replace hpr's own drag
+  - It has been compared with [RASAero II](glossary.md#rasaero-ii)'s drag near Mach 1; the
+    comparison is not uniformly within the 10% target. See [Accuracy](accuracy.md) for the cases
+    and errors. A drag table from another tool can replace hpr's own drag
     ([Aerodynamics](physics/aero.md#drag)).
-- **The normal force misses near Mach 1 and past Mach 3.** The normal force and centre of pressure
-  carry on to Mach 5, checked against the same wind tunnel to Mach 4.63. Between Mach 0.8 and 1.2
-  they miss it, and past Mach 3 the normal force reads 17 to 25% low
-  ([Aerodynamics](physics/aero.md#normal-force-through-mach-1)).
+- **The normal force still has gaps near Mach 1 and on some supersonic bodies.** The current body
+  and Arcas Robin comparisons, including their measured error ranges, are in
+  [Aerodynamics](physics/aero.md) and [Accuracy](accuracy.md).
 - **Small angles of attack only.** Nothing models [stall](glossary.md#stall), the loss of lift at
   a large angle of attack, yet a flight uses the same models at every angle. So results near rail
   exit in a strong crosswind, and near apogee, are the least trustworthy.
@@ -136,13 +135,13 @@ out.
 [Accuracy](accuracy.md) gathers every result so far, gaps included. In brief:
 
 - **Whole flights match RocketPy's in height, speed and time when both codes fly the same drag.**
-  Five of RocketPy's example rockets agree within 3% on apogee, speeds, burnout and flight time
+  Six of RocketPy's example rockets agree within 3% on apogee, speeds, burnout and flight time
   ([M2.1b2](decisions-and-roadmap.md#m2-1b2), the whole-flight comparison). So does where they
   go, except for rockets that leave the rail slowly in a wind. There hpr's
   [body lift](glossary.md#body-lift), which RocketPy leaves out, its later release from the rail
   and, for one rocket, its simpler fin model put the drift 4.7 to 43% from RocketPy's
   ([Accuracy](accuracy.md#whole-flights-against-rocketpy)). With hpr's own drag, against RocketPy
-  flying the drag its examples ship, hpr's heights differ from RocketPy's by −6.985% to +10.306%.
+  flying the drag its examples ship, hpr's heights differ from RocketPy's by −7.280% to +10.302%.
   The larger gaps are where the two drags differ most: hpr's is well below the example's for two
   rockets, and above it at high speed for Prometheus 2022, which flies through Mach 1
   ([Accuracy](accuracy.md#whole-flights-with-each-codes-own-drag)).
@@ -168,12 +167,12 @@ out.
   [tolerance](glossary.md#tolerance). The largest known gaps:
   - The drag was checked at Mach 0.3 against other programs' curves (below), and from Mach 0.6 to
     4.63 against NASA's Arcas Robin wind tunnel. There it reads high at most speeds, most of all
-    with fins past Mach 1: 8 of 44 measurements are within the 10% target set before measuring
+    with fins past Mach 1: 2 of 44 measurements are within the 10% target set before measuring
     ([Aerodynamics](physics/aero.md#drag-against-the-arcas-robin-wind-tunnel)). The normal force
     and centre of pressure were checked at Mach 0 against Barrowman's worked examples and from
     Mach 0.6 to 4.63 against the same wind tunnel, where they miss between Mach 0.8 and 1.2, and
-    past Mach 3 the normal force reads 17 to 25% low
-    ([Aerodynamics](physics/aero.md#normal-force-through-mach-1)).
+    past Mach 3, the current comparison and its measured range are reported in
+    [Aerodynamics](physics/aero.md#normal-force-through-mach-1).
   - The drag was compared with drag curves that come with RocketPy's example rockets, labelled as
     [RASAero II](glossary.md#rasaero-ii)'s (another rocket aerodynamics program). The curves don't
     record the fins' edges or the surface finish, so hpr's copies of the designs follow a declared

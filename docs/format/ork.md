@@ -5,27 +5,29 @@ are made of, the motors flown in it, and the results of the simulations OpenRock
 the format hobby designs are most often shared in, so reading it is how a design gets into hpr
 without being typed again.
 
-**What works today:** hpr opens a `.ork` file, whichever of its three containers it is in, reads
-its design document into a tree that keeps everything the file said, and builds a rocket out of
-that tree — the stages and body components stacked in them, and the tubes, rings, fins, lugs,
-buttons and recovery gear on and inside each of those, with their shapes, materials, surface
-finishes, positions and overrides — and its motor configurations, with the motors in them and
-their thrust curves, when its parachutes open and its stages separate, and the simulations
-OpenRocket last ran on it. That is from Rust; there is no command-line tool yet.
+**What works today:** hpr reads the three `.ork` container forms and turns the XML into a design tree.
+It preserves unread content for a future round trip, but normalizes layout and drops comments, processing
+instructions and XML namespaces.
+
+It currently builds supported stages, body components, tubes, rings, fins, lugs, rail buttons,
+recovery gear, motor configurations, recovery settings and stored simulations. Pods, parallel
+stages, unsupported shapes and recovery behaviour are not fully modelled; the trust limits below
+are measured against OpenRocket 24.12 and the current reference corpus. That is from Rust; there
+is no command-line tool yet.
 
 **How far to trust it.**
 
 - **The shape is cross-checked.** The airframe's key geometry was compared with a second program
   that reads `.ork` files, RocketSerializer, and with OpenRocket itself. That geometry is the nose
-  cone, the transitions, the fin sets, where each sits, and the body radius. Over 74 designs (all
-  but one of the 75 hpr lays out; OpenRocket 24.12 will not open the 75th), hpr's value equals
-  OpenRocket's for all 1,212 numbers. Where parts sit is checked against OpenRocket alone; mass
+  cone, the transitions, the fin sets, where each sits, and the body radius. Over 71 designs in the current scratch-excluding survey, hpr's value is within the survey's 1-in-10⁹ comparison tolerance of
+  OpenRocket's for all 1,171 numbers. The survey found 75 files, 73 readable and 72 with a design
+  that lays out; four readable designs are not opened by OpenRocket. Where parts sit is checked against OpenRocket alone; mass
   and the centre of gravity are checked in [Mass properties](../physics/mass.md#checked-against-openrocket)
   ([checked against RocketSerializer](#checked-against-rocketserializer)).
 - **Few motor configurations fly yet.** Motors are read, but a configuration flies only when every
   motor in it lights at launch, every motor has a thrust curve (in the file or in hpr's small
-  bundled catalog), and the airframe was read without a warning. That is **2 of the 174 motor
-  configurations** in the reference library's 75 designs
+  bundled catalog), and the airframe was read without a warning. That is **2 of the 170 motor
+  configurations** in the reference library's 72 designs
   ([motors](#motors-and-their-configurations)).
 - **Recovery is read, not flown.** Recovery and separation settings are read, but no flight uses
   them yet ([when parachutes open](#when-parachutes-open-and-stages-separate)).
@@ -34,8 +36,8 @@ OpenRocket last ran on it. That is from Rust; there is no command-line tool yet.
 - **Some parts are left out.** A part hpr cannot give an honest shape, such as fins on a nose cone
   or tube fins OpenRocket sizes from the body, is left out. Each one is named in a warning rather
   than guessed at ([what is left out, and why](#what-is-left-out-and-why)).
-- **Every design in the reference library lays out**, meaning every part gets a position and a
-  radius. A radius the file leaves with nothing to be worked out from gets OpenRocket's own
+- **Every one of the 72 designs in the current reference survey lays out**, meaning every part gets a
+  position and a radius. A radius the file leaves with nothing to be worked out from gets OpenRocket's own
   default of 25 mm, with a warning
   ([when an automatic radius has nothing to take](#when-an-automatic-radius-has-nothing-to-take)).
 
@@ -75,13 +77,14 @@ marked **Observed** (seen in real files) or **Policy** (hpr's own choice).
   <https://openrocket.readthedocs.io/en/latest/dev_guide/file_specification.html>, and the
   `fileformat.txt` shipped with the program. There is **no XSD**: nothing machine-checkable
   describes a `.ork`, and every OpenRocket release has added tags.
-- **Observed:** 78 `.ork` files, all cached under `refs/` and never committed: 27 from the private
+- **Observed:** 75 `.ork` files, all cached under `refs/` and never committed: 27 from the private
   design corpus, 20 hand-authored fixtures from [Loft][loft] and 1 from Debrief (hpr's two
   predecessors), 17 example designs inside the pinned `OpenRocket-24.12.jar`, 9 from the
-  `openrocket-database` parts library, and 4 cached elsewhere. By the files' own `creator`
-  attribute, **58 of the 76 that open were written by OpenRocket** and 18 were hand-authored, so
-  where a count says what a real OpenRocket writes it is given over those 58. Every count below is
-  printed by `cargo xtask ork` unless it names another source.
+  `openrocket-database` parts library, and 1 cached elsewhere. Generated files under
+  `refs/scratch/` are excluded from the default survey. By the files' own `creator` attribute,
+  55 of the 73 readable files were written by OpenRocket and 18 were hand-authored, so where a
+  count says what a real OpenRocket writes it is given over those 55. Every count below is printed
+  by `cargo xtask ork` unless it names another source.
 - OpenRocket's own Java source is **not** consulted: it is GPL, and hpr is MIT OR Apache-2.0
   ([ADR-051][adr-051]): hpr is built from published documentation and real
   files, never from another program's source, which is what "clean room" means here.
@@ -97,10 +100,8 @@ bytes, and a malformed file had to give an error rather than crash):
 | gzip | `1f 8b` | the design document, compressed on its own. What older OpenRocket versions wrote |
 | XML | `<`, after an optional byte-order mark and blank lines | the design document itself |
 
-**Observed:** of the 76 files that open, 73 are zip and 3 are plain XML — and two of those three
-are the same design, one of them the unzipped document of the other, so plain XML rests on two
-designs. No gzip `.ork` survives in the reference library at all, so that path is held by a test
-rather than by a real file.
+**Observed:** of the 73 files that open, 71 are zip and 2 are plain XML. No gzip `.ork` survives in
+the current scratch-excluding survey, so that path is held by a test rather than by a real file.
 
 **Policy.** Inside a zip, the design is the entry named `rocket.ork`. If there is none, the first
 entry whose name ends in `.ork` or `.xml` is read as the design and a warning says so. Every other
@@ -254,8 +255,8 @@ departs from [F] but leaves the file readable is a warning that travels with the
 | `Unusual` | read as it stands | a schema version past 1.11; no `creator` attribute; a design entry not called `rocket.ork`; the single pre-1.9 subcomponent-override flag; a surface finish or an axial-offset method this reader has no rule for; an automatic radius with nothing to take, given OpenRocket's 25 mm default; a `<rocket>` holding nothing |
 
 **Observed:** reading the corpus's containers and documents raises **no warnings at all** — every
-file that opens is ordinary. Building a *rocket* from those documents raises 57: 16 dropped, 12
-skipped and 29 unusual, over 76 files. Every kind of warning the container and document readers
+file that opens is ordinary. Building a *rocket* from those documents raises 39 warnings over 73
+readable files: 8 dropped, 12 skipped and 19 unusual. Every kind of warning the container and document readers
 can raise is therefore exercised by a test rather than by a file anyone shipped.
 
 Only these stop a read:
@@ -295,7 +296,7 @@ can only ever count *more* levels than a parser will descend — XML forbids a r
 attribute value, so every element start it sees is a real one — and
 `hpr_io::ork::tests::the_depth_scan_never_undercounts` holds it to that over generated documents.
 
-**Observed** for the depth, over the 76 files that open: 53 nest 11 deep, and the distribution runs 4, 7, 9, 10,
+**Observed** for the depth, over the 73 files that open: 53 nest 11 deep, and the distribution runs 4, 7, 9, 10,
 11, 12, 13, 14 and 17. An ordinary single-stage design reaches 11; the deepest, at 17, is
 OpenRocket's own parallel-booster example, where each nested stage or inner tube costs two levels
 and a component's appearance three. So 64 leaves about three more levels of nesting than anything
@@ -306,14 +307,14 @@ anyone has written.
 `cargo xtask ork` reads every `.ork` in the reference library and in the OpenRocket jar's example
 set, writes them back out, reads them again, and reports counts. The private corpus stays private:
 the per-file detail goes to a gitignored `corpus-out/`, and only counts are published. On
-2026-09-20:
+2026-09-23, excluding generated `refs/scratch/` files:
 
 | | |
 |---|---|
-| files found | 78 |
-| opened | 76 |
-| written and read back unchanged | 76 |
-| warnings raised reading the container and the document | 0 (building a *rocket* from them raises 88; see [below](#measured-on-the-reference-library)) |
+| files found | 75 |
+| opened | 73 |
+| written and read back unchanged | 73 |
+| warnings raised reading the container and the document | 0 (building a *rocket* from them raises 39; see [below](#measured-on-the-reference-library)) |
 | refused, not well-formed XML | 2 |
 | deepest nesting | 17 |
 | elements holding text beside children | 48, in 19 files |
@@ -330,7 +331,8 @@ table lists them apart.
 
 **Every other file imports without an error.** An import error is a file that does not read, or a
 design that reads but does not lay out. Warnings are not errors, because a warning never stops an
-import. The survey counts both kinds of error for each source. On 2026-09-21:
+import. The survey counts both kinds of error for each source. On 2026-09-23, excluding generated
+`scratch/` files from the default scan:
 
 | source | files | read | laid out | errors |
 |---|---|---|---|---|
@@ -388,17 +390,18 @@ RocketPy's team wrote it to turn an OpenRocket design into RocketPy's inputs. Th
 hpr's reading of each design's shape with RocketSerializer's. Where the two differ, OpenRocket
 itself, run on the same file, decides which is right.
 
-On 2026-09-21 the check covered 74 designs. Of 1,212 numbers:
-- hpr matched RocketSerializer on 1,102;
+On 2026-09-23 the current scratch-excluding check covered 71 designs. Of 1,171 numbers:
+- hpr matched RocketSerializer on 1,061;
 - on the other 110, OpenRocket gave hpr's number, not RocketSerializer's;
 - hpr never differed from both.
 
-**Every one of hpr's 1,212 numbers is also OpenRocket's.** That includes the 1,102 where it matched
+**Every one of hpr's 1,171 numbers is also OpenRocket's.** That includes the 1,061 where it matched
 RocketSerializer. So no agreement here is a mistake the two readers happen to share.
 
 This checks the *reading*: the dimensions in the file, and where each part sits. It does not check
-mass, the centre of gravity, or any physics. Comparing those with OpenRocket's is
-[M2.2](../decisions-and-roadmap.md#m2-2), the next roadmap step.
+mass, the centre of gravity, or any physics. The ongoing [M2.2](../decisions-and-roadmap.md#m2-2)
+work compares those properties, motors, stored results and flights with OpenRocket; completed
+mass-property results are in [Mass properties](../physics/mass.md).
 The check was added by [M3.1d2](../decisions-and-roadmap.md#m3-1d2), the roadmap step that finished
 reading `.ork` files, and [ADR-059][adr-059] records how it was decided.
 
@@ -441,17 +444,17 @@ up the lengths of every part listed before the fins in the same tube, the parach
 included, so it puts them at 1.45 + 0.08 = 1.53 m. The record keeps that sum of earlier lengths
 for every part, so this cause is checked, not assumed.
 
-**The results.** From `cargo xtask ork` on 2026-09-21, over the 78 files it reads (the reference
-library under `refs/` and the 17 examples inside the OpenRocket jar):
+**The results.** From `cargo xtask ork` on 2026-09-23, over the 75 files it finds (the reference
+library under `refs/`, excluding generated `refs/scratch/`, and the 17 examples inside the OpenRocket jar):
 
 | | all designs | each file once |
 |---|---|---|
-| designs compared (files OpenRocket opens) | 74 | 54 |
-| numbers compared | 1,212 | 896 |
-| hpr agrees with RocketSerializer | 1,102 | 813 |
+| designs compared (files OpenRocket opens) | 71 | 51 |
+| numbers compared | 1,171 | 855 |
+| hpr agrees with RocketSerializer | 1,061 | 772 |
 | RocketSerializer differs, and hpr's number is OpenRocket's | 110 | 83 |
 | hpr differs from both | **0** | **0** |
-| hpr's number is OpenRocket's | 1,212 | 896 |
+| hpr's number is OpenRocket's | 1,171 | 855 |
 
 Some files are in the library more than once: 13 of Loft's private designs are copies of the jar's
 examples, for one. The second column counts each file's content once.
@@ -584,18 +587,17 @@ weigh nothing, as in OpenRocket 24.12, measured in [M2.2b1](../decisions-and-roa
 | an angle, **which way it turns** | the same way hpr's own frames turn | hpr measures a roll angle right-handed about an axis pointing at the **nose**; OpenRocket's technical documentation puts its own `x` axis along the centreline pointing **aft** and leaves the rest unstated. If it means what that implies, every angle read here is mirrored — see [below](#which-way-round) |
 | a `polished` finish | 2 µm | the number is the author's, from 2013; a newer OpenRocket may have moved it ([below](#the-surface-finish)) |
 
-**Measured on the reference library** (`cargo xtask ork`, 76 readable files): 73 designs' spines lay
-out, over 93 stages and 285 body components — 188 body tubes, 74 nose cones, 23 transitions — with
-81 automatic radii marked (41 outer, 19 base, 14 fore, 7 aft); since
-[M3.1b4](../decisions-and-roadmap.md#m3-1b4) gave 7 of them OpenRocket's default, 74 remain marked. The counts are what may be
-published; the per-file detail stays in the gitignored `corpus-out/`.
+**Measured on the reference library** (`cargo xtask ork`, 73 readable files): 72 designs' spines lay
+out, over 90 stages and 270 body components — 176 body tubes, 71 nose cones, 23 transitions. The
+survey marked 327 automatic dimensions, including 7 body radii that took OpenRocket's 25 mm default.
+The counts are what may be published; the per-file detail stays in the gitignored `corpus-out/`.
 
 *(When this was written, 3 designs did not lay out, and they were thought to be waiting on parts that
 were not read yet. Reading those parts, in [M3.1b3](../decisions-and-roadmap.md#m3-1b3), showed
 otherwise. One document holds no design at all, and two have radii with nothing to take, which
 [M3.1b4](../decisions-and-roadmap.md#m3-1b4) settled:
 [when an automatic radius has nothing to take](#when-an-automatic-radius-has-nothing-to-take).
-All 75 designs lay out now.)*
+All 72 designs lay out now.)*
 
 
 ## The parts on and inside the body
@@ -648,8 +650,8 @@ assert!(placed.own.mass_kg > 0.0);
 [`Warning`](../api/hpr_io/ork/struct.Warning.html), each carrying where in the file it happened,
 how much was lost (`Skipped`, `Dropped` or `Unusual`) and a sentence saying what was read and how —
 for example "a fin set sits on a nose cone, and hpr attaches one only to a body tube; it was left
-out". Read them: a design that opens cleanly raises none, and the 76 files of the reference library
-raise 96 between them, every one of them explained on this page.
+out". Read them: a design that opens cleanly raises none, and the 73 readable files of the reference library
+raise 39 between them, every one of them explained on this page.
 
 | `.ork` tag | read as | notes |
 | --- | --- | --- |
@@ -796,7 +798,8 @@ first row catches.
 Four more things are read as the simpler part hpr models, each with a warning so that what is
 missing from a mass is visible: a fin's **fillets** (5), a rail button's **screw head** (2), a
 **cluster** of motor tubes read as the one tube it is written as (4), and a **row** of more than one
-ring read as one.
+ring read as one. These are measured departures, not silent compatibility claims
+([ADR-064][adr-064]); full cluster flight behavior is [M1.9](../decisions-and-roadmap.md#m1-9).
 
 **A tube of no wall thickness carries no mass** — among them couplers in two of OpenRocket's own
 example designs. Reading those as solid would invent the mass — a solid coupler filling a 50 mm
@@ -814,7 +817,7 @@ and no file in the library has one ([Mass properties](../physics/mass.md#what-a-
 OpenRocket 24.12, at least; older releases may differ, as the note below explains. That makes
 an oracle for the resolution rules that needs no OpenRocket, and `cargo xtask ork` runs it over the
 corpus — on every automatic dimension that caches a number and sits on a component the file gives
-an `<id>`. On 2026-09-20, **67 of 71 agree** to a part in 10⁹, with 4 more cached but inside a pod
+an `<id>`. On 2026-09-23, **67 of 71 agree** to a part in 10⁹, with 4 more cached but inside a pod
 this milestone does not read. Of the 4 that disagree, the 2 body radii are settled in hpr's favour
 [below](#openrocket-settles-it); the 2 packed radii follow the bore of that tube, so they are settled
 with it by the bore rule, not measured (the oracle reads body radii only).
@@ -975,21 +978,21 @@ How it was decided, and the sources quoted in full, are in [ADR-054][adr-054].
 
 ### Measured on the reference library
 
-`cargo xtask ork`, over the 76 readable files, on 2026-09-20:
+`cargo xtask ork`, over the 73 readable files, on 2026-09-23:
 
 | | |
 |---|---|
-| designs whose `Rocket` lays out | 75 of the 75 files that hold a design |
-| documents that hold no design | 1, the 76th file |
+| designs whose `Rocket` lays out | 72 of the 72 files that hold a design |
+| documents that hold no design | 1, among the 73 readable files |
 | automatic radii given OpenRocket's default, 25 mm | 7, in 2 designs: 5 on body tubes, 1 on a nose cone, 1 on a transition |
 | body radii against OpenRocket 24.12 run on the same file | 67 of 67 agree, over 18 of the 19 files it was run on |
-| body components | 285 |
-| parts on and inside them | 765 |
-| by kind | 194 centering rings, 156 inner tubes, 135 parachutes, 107 fin sets, 84 mass components, 40 shock cords, 31 launch lugs, 16 rail buttons, 2 streamers |
+| body components | 270 |
+| parts on and inside them | 752 |
+| by kind | 194 centering rings, 156 inner tubes, 132 parachutes, 104 fin sets, 81 mass components, 40 shock cords, 27 launch lugs, 16 rail buttons, 2 streamers |
 | automatic dimensions marked for the layout to resolve | 320, plus the 7 above given the default: 327 in the files |
 | parts left out, with a reason | 5 |
 | parts that lay out weighing nothing | 14, every one explained (below) |
-| warnings raised | 52: 11 dropped, 12 skipped, 29 unusual (below) |
+| warnings raised | 39: 8 dropped, 12 skipped, 19 unusual (below) |
 | tags no milestone reads yet | 9 `podset`, 3 `parallelstage` |
 
 **The 14 parts that weigh nothing** are worth checking, because a structural part with no mass is
@@ -1003,22 +1006,22 @@ so a new one would show up. Before
 [M2.2b1](../decisions-and-roadmap.md#m2-2b1) there were 21: the 7 more (2 body tubes, 2 fin sets,
 2 inner tubes and a nose cone) name no material, and now take OpenRocket's default.
 
-**What the 52 warnings are.** Every one is a reading this page explains, and none of them means a
+**What the 39 warnings are.** Every one is a reading this page explains, and none of them means a
 file is broken. Before [M2.2b3](../decisions-and-roadmap.md#m2-2b3) there were 57: 5 more for a
 `packedradius` the file does not give, read as zero, which hpr now reads as OpenRocket's 12.5 mm
 ([packed parts](../physics/mass.md#packed-parts)).
 
 | kind | count | what raised it |
 |---|---|---|
-| `Unusual` | 20 | the single pre-1.9 subcomponent-override flag, read as setting all three |
+| `Unusual` | 10 | the single pre-1.9 subcomponent-override flag, read as setting all three |
 | `Unusual` | 1 | a part with no axial offset |
-| `Unusual` | 7 | an automatic radius with nothing along its chain to take, given OpenRocket's default ([above](#when-an-automatic-radius-has-nothing-to-take)) |
+| `Unusual` | 7 | automatic radii with nothing along their chains to take, given OpenRocket's default ([above](#when-an-automatic-radius-has-nothing-to-take)) |
 | `Unusual` | 1 | a `<rocket>` holding nothing, so the document holds no design |
-| `Dropped` | 11 | a fin's fillets, a rail button's screw head, a motor cluster read as one tube |
+| `Dropped` | 8 | a fin's fillets, a rail button's screw head, a motor cluster read as one tube |
 | `Skipped` | 7 | a tally of the pods and parallel stages, kept in `x-openrocket` and modelled in [M1.13](../decisions-and-roadmap.md#m1-13), one per design that has any |
 | `Skipped` | 5 | the five parts left out above |
 
-Every design lays out. The one document that doesn't is Debrief's demonstration file, which holds
+Every design that holds a design lays out. The one readable document that doesn't is Debrief's demonstration file, which holds
 no design at all: it is a stored simulation with a rocket's name on it. The two designs that needed
 a radius the file doesn't give are
 [above](#when-an-automatic-radius-has-nothing-to-take).
@@ -1050,7 +1053,7 @@ a radius the file doesn't give are
 its ejection delay, and finds its thrust curve in the file itself or in hpr's bundled catalog. A
 configuration becomes one the rocket can fly only when every motor in it has a curve and lights at
 launch. Most designs in the reference library name motors the bundled catalog doesn't hold yet, so
-**2 of their 174 configurations fly today**; the rest are read, kept, and say why not.
+**2 of their 170 configurations fly today**; the rest are read, kept, and say why not.
 
 A **configuration** is one set of motors to fly the design with: OpenRocket calls it a *flight
 configuration*, and a design can have several, one per motor choice. The file keeps it in two
@@ -1178,19 +1181,19 @@ assert_eq!(assembly.motors[0].mount, "body");
 
 ### Motors in the reference library
 
-`cargo xtask ork`, over the 75 designs, on 2026-09-21:
+`cargo xtask ork`, over the 72 designs, on 2026-09-23:
 
 | quantity | count |
 |---|---|
-| motor configurations | 174, in 66 designs, over 79 motor mounts; none named only by a mount |
-| motors read into their configurations | 206: 132 single-use, 65 reloads, 3 hybrids, and 6 with no type written, read like the rest |
+| motor configurations | 170, in 63 designs, over 76 motor mounts; none named only by a mount |
+| motors read into their configurations | 202: 132 single-use, 65 reloads, 3 hybrids, and 2 not written, read like the rest |
 | motors left out, in parts not read yet | 6: 4 in pod sets, 2 in parallel stages |
 | thrust curve from the file itself | 4 |
 | thrust curve from the bundled catalog | 2 |
-| no curve | 200: 3 hybrids, and 197 in neither place |
-| ejection delays, of the 206 | 128 in seconds, 23 at 0 s, 53 plugged (`none`), 2 not written |
+| no curve | 193: 3 hybrids, and 190 in neither place |
+| ejection delays, of the 206 | 128 in seconds, 19 at 0 s, 53 plugged (`none`), 2 not written |
 | configurations the rocket flies | 2, in 2 designs, and both assemble |
-| left out, by first reason | 166 a motor with no curve, 4 a motor in a part not read, 2 a motor lighting in flight; the one held back for an airframe not read exactly as written, a shoulder of no wall, flies since [M2.2b1](../decisions-and-roadmap.md#m2-2b1) |
+| left out, by first reason | 162 a motor with no curve, 4 a motor in a part not read, 2 a motor lighting in flight; the one held back for an airframe not read exactly as written, a shoulder of no wall, flies since [M2.2b1](../decisions-and-roadmap.md#m2-2b1) |
 
 The catalog is the limit, not the reader. When
 [M5.1](../decisions-and-roadmap.md#m5-1) brings ThrustCurve.org's curves, many of the 197 may find
@@ -1268,16 +1271,16 @@ The same probe measures three things the words do not say:
 
 ### Recovery in the reference library
 
-`cargo xtask ork`, over the 75 designs, on 2026-09-21:
+`cargo xtask ork`, over the 72 designs, on 2026-09-23:
 
 | quantity | count |
 |---|---|
-| parachutes and streamers read | 137: 135 parachutes, 2 streamers |
+| parachutes and streamers read | 134: 132 parachutes, 2 streamers |
 | left out, inside pod sets hpr does not read yet | 2 |
-| drag coefficient | 77 `auto`, 60 stated |
+| drag coefficient | 77 `auto`, 57 stated |
 | deploy event | 77 `ejection`, 35 `apogee`, 18 `altitude`, 6 `lowerstageseparation`, 1 `never` |
 | devices a configuration changes | 9, with 17 changes in all |
-| stages that state a separation | 18 of 93: 12 `ejection`, 4 `upperignition`, 2 `burnout`; 13 changes per configuration |
+| stages that state a separation | 18 of 90: 12 `ejection`, 4 `upperignition`, 2 `burnout`; 13 changes per configuration |
 | separations left out, in parallel stages hpr does not read yet | 2 |
 
 How this was decided is in [ADR-056][adr-056].
@@ -1290,7 +1293,7 @@ How this was decided is in [ADR-056][adr-056].
 back: the launch conditions each was flown in, the ten summary figures, and each stage's time
 series with its events. They are OpenRocket's answers, kept as it wrote them, for comparing against
 later ([M2.2](../decisions-and-roadmap.md#m2-2) uses them as a second reference). The reference
-library holds 178 of them, and every one is read.
+library holds 174 of them, and every one is read.
 
 A stored simulation has three parts:
 
@@ -1358,15 +1361,15 @@ assert_eq!(branch.column("Altitude"), Some(vec![Some(0.0), Some(30.25)]));
 
 ### Stored simulations in the reference library
 
-`cargo xtask ork`, over the 76 readable files, on 2026-09-21:
+`cargo xtask ork`, over the 73 readable files, on 2026-09-23:
 
 | quantity | count |
 |---|---|
-| stored simulations | 178, in 64 documents: 141 `uptodate`, 17 `external`, 11 `outdated`, 9 `notsimulated` |
-| with launch conditions | 177; 129 state the wind's direction, and 135 launch into the wind |
-| atmosphere | 172 `isa`, 2 `extendedisa`, 1 not written, and 2 with no model (an older file's own table), not read, with a warning |
-| with a summary | 164 |
-| with a time series | 144, over 178 stage branches and 101,955 rows |
+| stored simulations | 174, in 61 documents: 139 `uptodate`, 17 `external`, 11 `outdated`, 7 `notsimulated` |
+| with launch conditions | 173; 129 state the wind's direction, and 135 launch into the wind |
+| atmosphere | 172 `isa`, 1 not written |
+| with a summary | 162 |
+| with a time series | 142, over 176 stage branches and 97,541 rows |
 
 How this was decided is in [ADR-057][adr-057].
 
@@ -1426,19 +1429,20 @@ hpr keeps whole when it opens a file ([ADR-051][adr-051]); writing the file back
 
 ### Kept in the reference library
 
-`cargo xtask ork`, over the 76 readable files, on 2026-09-21:
+`cargo xtask ork`, over the 73 readable files, on 2026-09-23:
 
 | quantity | count |
 |---|---|
 | parts kept | 17, in 10 reduced designs: 9 pod sets, 3 parallel stages, 2 freeform fin sets, 2 tube fin sets, 1 tube coupler |
 | sections kept | 87: 42 `<photostudio>`, 36 `<docprefs>`, 9 simulation `<extension>`s |
-| tags kept | 1,947, most often a part's `<appearance>` (274), `<radialdirection>` (166), `<instanceseparation>` (155), a wind's `<standarddeviation>` (129) and `<preset>` (126) |
-| attributes kept | 3,132, most often an event's `id` (1,623), a material's `group` (552), an active stage's `number` (201) and a stored branch's optimum altitude and its time (170 each) |
-| kept elements and attributes found again at their path | 5,183 of 5,183 (the survey fails if one is not) |
+| tags kept | 1,888, most often a part's `<appearance>` (274), `<radialdirection>` (166), `<instanceseparation>` (155), a wind's `<standarddeviation>` (129) and `<preset>` (126) |
+| attributes kept | 3,128, most often an event's `id` (1,623), a material's `group` (552), an active stage's `number` (201) and a stored branch's optimum altitude and its time (170 each) |
+| kept elements and attributes found again at their path | 5,120 of 5,120 (the survey fails if one is not) |
 
 How this was decided is in [ADR-058][adr-058].
 
 [adr-058]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-058-what-a-ork-holds-that-hpr-does-not-model-kept-whole-in-x-openrocket-2026-09-21
+[adr-064]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-064-clusters-fillets-and-unread-parts-remain-visible-departures-2026-09-22
 
 ## What is not read yet
 
@@ -1451,6 +1455,8 @@ What keeping the whole document buys you is this: when hpr meets a part it does 
 say so and carry the part's own XML along untouched in `x-openrocket`, rather than dropping it
 silently the way Loft did with pods and parallel stages. The document itself is kept whole too, so
 a writer ([M3.2](../decisions-and-roadmap.md#m3-2)) will have what it needs; what it chooses to do
-with a part hpr does not understand is its decision, taken in the open.
+with a part hpr does not understand is its decision, taken in the open. [ADR-064][adr-064]
+confirms that the reduced flag and this preserved content are the current rule for b4, not a hidden
+mass estimate.
 
 [adr-061]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-061-what-a-ork-leaves-unsaid-read-as-openrocket-reads-it-overrides-measured-two-departures-kept-2026-09-21

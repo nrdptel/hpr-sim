@@ -64,9 +64,10 @@ import automatic_radius  # noqa: E402 - the JVM start and the loader are shared
 import jpype  # noqa: E402
 
 RS_COMMIT = "66d8ca8c9be36816c4157fbdf249e87fb8c1f5dc"
-# Directories under refs/ that are Python environments, not designs. Everything else under refs/
-# is read, as `cargo xtask ork` reads it.
-SKIPPED = {"venv", "venv-rs"}
+GENERATED = "2026-09-23"
+# Directories under refs/ that are Python environments or generated scratch, not pinned designs.
+# Everything else under refs/ is read, as `cargo xtask ork` reads it.
+SKIPPED = {"venv", "venv-rs", "scratch"}
 
 
 def first_line(error):
@@ -398,6 +399,13 @@ def main():
         json.dumps(
             {
                 "source": "validation/oracles/rocketserializer/geometry.py",
+                "generated": GENERATED,
+                "inputs_sha256": {
+                    "geometry.py": hashlib.sha256(Path(__file__).read_bytes()).hexdigest(),
+                    "automatic_radius.py": hashlib.sha256(
+                        Path(automatic_radius.__file__).read_bytes()
+                    ).hexdigest(),
+                },
                 "rocketserializer": f"RocketPy-Team/RocketSerializer@{RS_COMMIT}",
                 "openrocket": str(BuildProperties.getVersion()),
                 "jar_sha256": hashlib.sha256(automatic_radius.JAR.read_bytes()).hexdigest(),

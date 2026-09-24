@@ -1047,7 +1047,7 @@ where it blows *toward*, 180° from this. The wind itself is the air's velocity 
 
 [adr-011]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-011-rigid-body-flight-equations-of-motion-aerodynamic-coupling-rail-phases-and-termination-2026-09-17
 [decisions]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md
-[harness]: https://github.com/nrdptel/hpr-sim/blob/main/docs/VALIDATION.md#the-harness-m21a
+[harness]: https://github.com/nrdptel/hpr-sim/blob/main/docs/VALIDATION.md#the-validation-harness
 [barrowman]: https://github.com/nrdptel/hpr-sim/blob/main/validation/fixtures/aero/barrowman-worked-examples.json
 [designs]: https://github.com/nrdptel/hpr-sim/tree/main/validation/designs
 [lessons]: https://github.com/nrdptel/hpr-sim/blob/main/docs/research/loft-lessons.md

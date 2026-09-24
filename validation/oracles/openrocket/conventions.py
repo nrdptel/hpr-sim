@@ -39,6 +39,10 @@ import automatic_radius  # noqa: E402 - the JVM start, the loader and the settli
 import mass  # noqa: E402 - the structure and the per-part breakdown, asked the same way
 
 
+# Provenance written into the fixture (docs/VALIDATION.md). Update when regenerating.
+GENERATED = "2026-09-23"
+
+
 def uid(n):
     """A fixed id, so that hpr and OpenRocket name each part the same way."""
     return f"00000000-0000-4000-8000-{n:012d}"
@@ -349,6 +353,10 @@ PART_PROBES = {
         '<point x="0.1" y="0.05"/><point x="0.1" y="0.0"/></finpoints>',
     ),
     "a tube and an inner tube": inner(),
+    "a tube and a clustered inner tube": inner(
+        extra="<clusterconfiguration>3-ring</clusterconfiguration>"
+        "<clusterscale>1.0</clusterscale><clusterrotation>0.0</clusterrotation>"
+    ),
     "a tube and a centering ring": placed(
         "centeringring", 6, "Ring",
         "<length>0.01</length><outerradius>0.048</outerradius><innerradius>0.02</innerradius>",
@@ -565,6 +573,14 @@ def main():
                 "jar_sha256": hashlib.sha256(automatic_radius.JAR.read_bytes()).hexdigest(),
                 "java": str(System.getProperty("java.version")),
                 "jpype": jpype.__version__,
+                "generated": GENERATED,
+                "inputs_sha256": {
+                    "conventions.py": hashlib.sha256(Path(__file__).read_bytes()).hexdigest(),
+                    "automatic_radius.py": hashlib.sha256(
+                        Path(automatic_radius.__file__).read_bytes()
+                    ).hexdigest(),
+                    "mass.py": hashlib.sha256(Path(mass.__file__).read_bytes()).hexdigest(),
+                },
                 "saved_default_materials": saved,
                 "probes": probes,
             },

@@ -4,23 +4,22 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
 
 ## Now
 
-- **Current milestone:** M1.8e, all done bar M1.8e16 (`[blocked]` on #108); the work is
-  **M2.2b4**, clusters, fillets and unread parts, now M2.2b3 packs parts as OpenRocket does
-  (ADR-063).
-- **Order:** M2.2b4, b5, c to e, M1.9; M1.8e16 waits on #108. **Run:** M0.1-M0.4,
-  M1.1-M1.7, M2.1, M1.8a-e19 bar e16, M3.1, M2.2a, M2.2b1 to b3; the site is published.
+- **Current milestone:** M1.8e is held at done bar M1.8e16 (`[blocked]` on #108); active
+  follow-on work is M2.2b5 after M2.2b4 made clusters, fillets and unread parts explicit departures (ADR-064).
+- **Order:** M1.8e16 waits on #108; then M2.2b5, c to e, M1.9. **Run:** M0.1-M0.4, M1.1-M1.7,
+  M2.1, M1.8a-e19 bar e16, M3.1, M2.2a, M2.2b1 to b4; the site is published.
 - **Neer, 2026-09-20:** Debrief is sunset; a flight log analyzer usable **on its own** is part of
   this project (ADR-046, V21); Phase 5 re-cut.
-- **Last updated:** 2026-09-21 (M2.2b3 shipped: packed parts)
+- **Last updated:** 2026-09-23; M2.2b4 complete, M2.2b5 next.
 
 ## Handoff (overwrite each session)
 
-- **M2.2b4 next** (ADR-060 to ADR-063): clusters (M1.9's, or a written departure); fillets
-  (OpenRocket's mass on two probes, pinned); unread parts. `cargo xtask ork` fails on a roll gap
-  past 1% without a cause (`ROLL_CAUSES`, three now; #155). Probes go in `conventions.py` with
-  fixed UUIDs (the oracle takes 2 s); `every_probe_is_checked`. Then b5 (L87), c, d, e. **Read
-  OpenRocket after a save**; Java 17. Rerun `mass.py` and `rocketserializer/geometry.py` when the
-  corpus changes.
+- **Resume M2.2b5** on this branch or a fresh `m2.2b5-stored-results` branch. M2.2b4 is
+  complete in ADR-064: a cluster is read as one tube and pinned, fillet mass is omitted and pinned
+  at 5 and 10 mm, and unread parts remain in `x-openrocket` with the design marked reduced. The
+  2026-09-23 scratch-excluding rerun found 75 files, read 73, laid out 72 and compared 71; mass 58/71,
+  centre 59/71, pitch 50/71 and roll 56/71 within 1% using OpenRocket's fin rule. `cargo xtask ork` and the
+  focused tests pass; next b5, c, d, e.
 - **Page rules** (ADR-016 to ADR-020): relative links between pages, GitHub URLs for the rest
   (rustdoc too), labels as links to their rows — a lesson a page names needs a row in
   `decisions-and-roadmap.md` — none in headings; new pages in `SUMMARY.md`, a new library a row in
@@ -54,6 +53,9 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
 
 ## Done log (newest first, keep about 15)
 
+- 2026-09-23: M2.2b4 corpus rerun after excluding generated `refs/scratch/`: 75 files, 73 read,
+  72 laid out and 71 compared; mass 58/71, centre 59/71, pitch 50/71 and roll 56/71 within 1%
+  using OpenRocket's fin rule. The 2026-09-22 ADR-064 measurements remain the prior as-of snapshot.
 - 2026-09-21: M2.2b3 Packed parts (ADR-063): an unwritten packed size is OpenRocket's 25 × 12.5 mm,
   an override on a weightless one fills its packing; nine new probes to 1e-12; roll 55 → 57 of 74 in 1%.
 - 2026-09-21: M2.2b2 Fins, rail buttons, roll inertia (ADR-062): OpenRocket's fin shortcut
@@ -62,10 +64,8 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
   shoulders, materials as OpenRocket's; L51 live; 61 and 62 of 74 within 1%; #151. M2.2b split.
 - 2026-09-21: M2.2a Each design's structure against OpenRocket's (ADR-060): 57 and 58 of 74 within
   1% in mass and CG; the 17 outside have five causes hpr warns of; roll inertia 2.1% unexplained.
-- 2026-09-21: M3.1d1, d2: Loft's demos in `insta` snapshots; every `.ork` imports with 0 errors;
-  key geometry held to RocketSerializer's, OpenRocket settling (ADR-059). M3.1 done.
-- 2026-09-21: M3.1c1 to c4 (ADR-055 to ADR-058): motors, recovery, separation, stored simulations
-  read; what hpr does not model kept in `x-openrocket`. L57, L64, L65, L66 live.
+- 2026-09-21: M3.1c1 to d2 (ADR-055 to ADR-059): motors, recovery, stored simulations read; every
+  `.ork` imports with 0 errors, key geometry held to RocketSerializer's; L57, L64, L65, L66 live.
 ## Needs Neer (blocking or one-way decisions; the session keeps working on other things)
 
 - **Protect `main`** (2 minutes, optional). Settings → Branches → rule for `main`: require `fmt`,
@@ -80,10 +80,11 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
 - **RASAero values in fixtures** (no action if fine): `normal-force-vs-mach.json` commits 30 values
   of RocketPy's 2018 Calisto RASAero II export (ADR-027) plus four summary numbers, and
   `rocketpy-drag-curves.json` enough to rebuild 147 values of five curves (ADR-029).
-
 ## Decided without Neer (one line each; significant ones get an ADR)
 
 - ADR-063: M2.2b3 split; packed parts read and weighed as OpenRocket packs them, measured on probes.
+- ADR-064: M2.2b4 split; clusters and fillets remain measured departures, and unread parts stay
+  visible in `x-openrocket` on reduced designs; full cluster flight behavior remains M1.9.
 - ADR-062: M2.2b2 split; hpr keeps its exact fin roll inertia and fin sections, pinned as departures.
 - ADR-061: what a `.ork` leaves unsaid is OpenRocket's reading; two override rules stay hpr's.
 - ADR-060: M2.2 split a to e, mass first; thresholds (1% mass, 1% of length) set before measuring.
@@ -113,7 +114,6 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
   nose; Niskanen's drag as printed at 20 µm; own DOPRI5; recovery in `hpr-sim`; the site's link,
   label and number checks; 3% gates or a written reason. #11: `SolidMotor` refuses `c = I/m_p`
   outside 200–5,000 m/s. M2.1b1: same-drag cases declare `C_D0(M)`.
-
 ## Known issues and risks
 
 - Two M1.2 sources are pinned from third-party mirrors (MIL-F-8785C, WMO-No. 8). Dryden turbulence
@@ -131,7 +131,7 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
   flare leaves the crossing's pole — +0.129% on the tests' rocket, +4.3% on a short shoulder
   (#108); a step in radius takes the body off the method past 2.7e-11 m tube to tube or 1.3e-13 m
   up at a boattail — −8.65% to −11.34% (#87).
-- `.ork` (M3.1) builds all 75 designs' rockets, motors and recovery, but only 2 of 174
+- `.ork` (M3.1) builds all 72 designs' rockets, motors and recovery, but only 2 of 170
   configurations flies: 197 motors are not in the 32-motor catalog (M5.1), staging waits for M1.9,
   and recovery is read, not flown. Pods are kept, not read (M1.13). 5 parts are left out with a
   reason, among them the corpus's only tube fins (#133); fin fillets, a rail button's screw head and

@@ -113,7 +113,7 @@ nothing about whether either matches a real parachute on a real day. Real flight
   metric is outside its tolerance, or if the committed report no longer matches, apart from
   last-digit rounding. The workflow that regenerates the references runs only when a person starts
   it, and it cannot commit: its output is a diff for a person to review
-  ([how CI and regeneration work](https://github.com/nrdptel/hpr-sim/blob/main/docs/VALIDATION.md#in-ci-and-regenerating-the-references-m21c1)).
+  ([how CI and regeneration work](https://github.com/nrdptel/hpr-sim/blob/main/docs/VALIDATION.md#in-ci-and-regenerating-the-references)).
 - **A tolerance lives in its case file, with its reason.** Loosening one to turn a failure into a
   pass is not allowed. A target that can't be met gets a
   [decision record](glossary.md#decision-record-adr) that shows the measurement, and the gap stays
