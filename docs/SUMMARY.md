@@ -49,6 +49,7 @@
 # Reference
 
 - [Checking a claim](checking-a-claim.md)
+- [Validation plan and reference inventory](VALIDATION.md)
 - [The API reference](api.md)
 - [Glossary](glossary.md)
 - [Decisions and the roadmap](decisions-and-roadmap.md)

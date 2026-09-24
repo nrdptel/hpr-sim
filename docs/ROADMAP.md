@@ -63,7 +63,6 @@
     from `main`. *Met* 2026-09-18; Neer turned Pages on, CI run 35396233336 deployed it.
   - [x] **M0.4e The reader test**: a reviewer with no project context answers ten questions from the
     site alone, citing a page each. *Met.*
-
 ## Phase 1: Physics core (the heart), with validation interleaved
 
 - [x] **M1.1 Core math, frames, Earth.** `hpr-core`: vectors and quaternions (glam f64) and
@@ -595,10 +594,10 @@
     - [x] **M3.1c3 What OpenRocket last did.** Stored launch conditions and results: the summary,
       the time series and the events (L64). *Done when:* L64's named test is live, a design's
       stored results are read back, and `cargo xtask ork` prints the counts. *Result:* met
-      (ADR-057): 178 simulations read, 144 with a time series; units measured by a probe.
+      (ADR-057): 174 simulations read, 142 with a time series; units measured by a probe.
     - [x] **M3.1c4 Pods, parallel stages and the rest** (L66). *Done when:* L66's named test is
       live, and a document with unknown content round-trips through `extensions.x-openrocket`.
-      *Result:* met (ADR-058): 17 parts, 87 sections, 1,947 tags, 3,132 attributes, all found again.
+      *Result:* met (ADR-058): 17 parts, 87 sections, 1,888 tags, 3,128 attributes, all 5,120 found again.
   - [x] **M3.1d The corpus and the cross-check.** `insta` snapshots on public files only, and the
     RocketSerializer cross-check. *Done when:* the parent's four bullets above are met. Split: d1, d2.
     - [x] **M3.1d1 Snapshots of public designs.** *Done when:* committed `insta` snapshots use only
@@ -606,7 +605,7 @@
       a gitignored `corpus-out/`, as counts only. *Result:* met: Loft's 7 demos and a synthetic one.
     - [x] **M3.1d2 The cross-check.** *Done when:* every `.ork` in `refs/loft-fixtures` and the OR
       example set imports with zero errors, and the RocketSerializer cross-check agrees on the key
-      geometry. *Result:* met (ADR-059): 27 and 17 files, 0 errors; of 1,212 numbers over 74
+      geometry. *Result:* met (ADR-059): 27 and 17 files, 0 errors; the original record had 1,212 numbers over 74
       designs, none of hpr's is apart from both RocketSerializer and OpenRocket.
 
 - [ ] **M2.2 OpenRocket oracle and corpus.** `validation/oracles/openrocket/` (JPype, OR 24.12)
@@ -619,7 +618,7 @@
   - [x] **M2.2a Structure mass, CG and inertia** (the M1.4 deferral). *Done when:* `cargo xtask
     ork` holds every design OpenRocket opens to its structure's mass, CG and inertias and prints
     the spread; the Loft demo record is checked in CI; every design outside 1% in mass or 1% of
-    length in CG has a written hypothesis. *Result:* met (ADR-060): 57 and 58 of 74 within 1%; the
+    length in CG has a written hypothesis. *Result:* met (ADR-060): 57 and 58 of 74 within 1% in the original snapshot; the
     17 outside, five causes hpr warns of; roll inertia unexplained (median 2.1%).
   - [ ] **M2.2b OpenRocket's mass conventions** (L51, L87). *Done when:* L51, L87 are live and each
     convention ADR-060 lists, and roll inertia, is hpr's rule or a written departure, M2.2a rerun.
@@ -628,7 +627,7 @@
       shoulder, a part with no material and inertia under an override are each hpr's rule or a
       written departure, measured on probe designs OpenRocket reads; L51 is live; M2.2a rerun.
       *Result:* met (ADR-061): walls, shoulders and materials read as OpenRocket's; two override
-      departures pinned; 61 and 62 of 74 within 1%; 13 outside, each a cluster, fillets or unread.
+      departures pinned; the original rerun had 61 and 62 of 74 within 1%; 13 outside, each a cluster, fillets or unread.
     - [x] **M2.2b2 Fins, rail buttons and roll inertia.** *Done when:* roll inertia's 2.1% explained
       or bounded; airfoil, rounded and elliptical fins each hpr's rule or a written departure; #151
       settled; M2.2a rerun. *Result:* met (ADR-062): the roll gap is OpenRocket's fin rule (hpr's
@@ -636,8 +635,12 @@
     - [x] **M2.2b3 Packed parts.** *Done when:* a packed part with no size, and an override on one
       that weighs nothing, are each hpr's rule or a written departure; M2.2a rerun. *Result:* met
       (ADR-063): both OpenRocket's on probes, to 1e-12; roll within 1% on 57 of 74 (was 55).
-    - [ ] **M2.2b4 Clusters, fillets and unread parts.** *Done when:* each is hpr's rule or a
-      written departure, M2.2a rerun.
+    - [x] **M2.2b4 Clusters, fillets and unread parts.** *Done when:* each is hpr's rule or a
+      written departure, M2.2a rerun. *Result:* met (ADR-064): the 3-ring cluster is read as one
+      tube and pinned, 5 and 10 mm fillets are omitted and pinned, unread parts stay in
+      `x-openrocket` and mark designs reduced; the 2026-09-22 as-of rerun gave 61/74 mass,
+      62/74 centre, 53/74 pitch and 57/74 roll within 1% (the last with OpenRocket's fin rule).
+      The reproducible 2026-09-23 scratch-excluding survey gives 58/71, 59/71, 50/71 and 56/71.
     - [ ] **M2.2b5 Stored results as found** (L87). *Done when:* L87 is live.
   - [ ] **M2.2c The motors OpenRocket flies.** *Done when:* every configuration held back only for
     want of a curve flies or is named with its reason, each curve's impulse within 0.1% of OR's.
@@ -716,7 +719,6 @@
   - A pod's mass properties match the hand-computed parallel-axis values.
   - A pod design matches OpenRocket within the per-case tolerance, with the limits of both codes'
     pod models stated in the docs.
-
 ## Phase 2: Library surfaces and interop
 
 - [ ] **M4.1 Facade API.** The `hpr` crate offers a RocketPy-like builder (`Environment`, `Motor`,
@@ -807,7 +809,6 @@
   notices). Lookup by vendor and part number; parts can be used from the design API.
 
   *Done when:* all `.orc` files parse, and a design built from catalog parts simulates.
-
 ## Phase 3: Uncertainty, optimization, challenges
 
 - [ ] **M6.1 Monte Carlo and sensitivity.**
@@ -866,7 +867,6 @@
     tolerance.
   - A roll-control case damps a step roll disturbance as the linearised analytic response
     predicts.
-
 ## Phase 4: More formats and embeddings
 
 - [ ] **M3.4 RockSim `.rkt` import/export** (clean room, from the RockSim XML doc and samples).
@@ -890,7 +890,6 @@
   `hpr-wasm` package with generated TS types and a Node test.
 
   *Done when:* the C example and the Node test run in CI and reproduce a reference flight.
-
 ## Phase 5: Flight data and forensics
 
 M7.1 and M7.2 must work with no design file and no simulator, so that analysing a flight stands on
@@ -947,7 +946,6 @@ up in `docs/research/`.
   - A seeded synthetic benchmark with at least 200 faulty flights reaches top-1 accuracy ≥80%
     and top-3 ≥95%, reported.
   - At least 2 real anomalous flights are analyzed (if the data exists; otherwise note it).
-
 ## Phase 6: Design experience (library level)
 
 - [ ] **M8.1 Design assistant.**
@@ -965,7 +963,6 @@ up in `docs/research/`.
 
   *Done when:* property tests show undo/redo is a round trip, and re-simulation after an edit is
   measured.
-
 ## Phase 7: UI, 3D, web, mobile (only after the phases above)
 
 - [ ] **M9.0 UI architecture ADR plus a spike.** Compare the leading option (web UI plus WASM core,

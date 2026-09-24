@@ -450,9 +450,12 @@ mod tests {
     ///   −0.805%).
     /// - A single fin: the rule about the fin's own centre, `m hₑ²/12`, agrees; its pitch is
     ///   apart by 0.406%.
+    /// - A 3-ring clustered inner tube: hpr reads one tube and pins the measured departure
+    ///   (−12.85% mass, +5.95 mm centre, −2.43% roll and −3.68% pitch) until M1.9.
     ///
     /// [adr-062]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-062-fins-and-rail-buttons-against-openrocket-roll-inertia-explained-2026-09-21
-    const ALONE: [(&str, [f64; 4]); 42] = [
+    /// [adr-064]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-064-clusters-fillets-and-unread-parts-remain-visible-departures-2026-09-22
+    const ALONE: [(&str, [f64; 4]); 43] = [
         ("a tube and a bulkhead", [0.0, 0.0, 0.0, 0.0]),
         (
             "a tube and a canted fin set",
@@ -560,6 +563,10 @@ mod tests {
             [0.000188, -1.69e-5, 0.000122, -0.000328],
         ),
         ("a tube and an inner tube", [0.0, 0.0, 0.0, 0.0]),
+        (
+            "a tube and a clustered inner tube",
+            [-0.1285, 0.00595, -0.0243, -0.0368],
+        ),
         ("a tube and rectangular fins", [0.0, 0.0, 0.0, 2.3e-6]),
         (
             "a tube and rectangular fins of twice the chord",
@@ -583,7 +590,24 @@ mod tests {
         let record = record();
         for (question, pinned) in ALONE {
             let probe = probe(&record, question);
-            let (ours, theirs, _) = both(probe);
+            let (ours, theirs, warnings) = both(probe);
+            if question == "a tube and a clustered inner tube" {
+                assert_eq!(warnings.len(), 1, "{question}: {warnings:?}");
+                assert!(
+                    warnings[0].contains("a cluster of motor tubes is read as the one tube"),
+                    "{warnings:?}"
+                );
+            } else if question == "a tube and a fin set with fillets"
+                || question == "a tube and a fin set with wider fillets"
+            {
+                assert_eq!(warnings.len(), 1, "{question}: {warnings:?}");
+                assert!(
+                    warnings[0].contains("the fillets along the fin roots were dropped"),
+                    "{warnings:?}"
+                );
+            } else {
+                assert!(warnings.is_empty(), "{question}: {warnings:?}");
+            }
             let (layout, _) = hpr(probe);
             let mut roll = ours[2];
             for part in probe["parts"].as_array().expect("parts") {

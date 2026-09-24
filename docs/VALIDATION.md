@@ -1,7 +1,7 @@
 # Validation plan and reference inventory
 
 This inventory was checked on 2026-09-16. The sources `cargo xtask refs fetch` downloads were pinned
-on 2026-09-17 in `validation/refs.lock.toml` (commits and sha256 values; ADR-002), which is the
+on 2026-09-17 in `validation/refs.lock.toml` (commits and sha256 values; [ADR-002 decision record](https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-002-the-reference-library-lock-file-fetch-verify-and-doctor-2026-09-17)), which is the
 source of truth for versions and URLs. Everything downloaded goes to the gitignored `refs/`; only
 small extracted fixtures with a clear license are committed, each with its provenance.
 
@@ -28,40 +28,42 @@ small extracted fixtures with a clear license are committed, each with its prove
   - Real-flight apogee mean absolute error at or below 5% on well-characterized flights.
   - Every miss is explained in the report.
 
-  Since the first report (M2.1a), the code-to-code 3% is a gate in same-drag mode and stays a
-  target in predicted mode, where neither code's drag is the truth (ADR-023); a predicted miss is
+  Since the first report ([M2.1a milestone](decisions-and-roadmap.md#m2-1a)), the code-to-code 3% is a gate in same-drag mode and stays a
+  target in predicted mode, where neither code's drag is the truth ([ADR-023 decision record](https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-023-predicted-mode-each-codes-own-drag-reported-against-a-target-2026-09-18)); a predicted miss is
   explained in its case file, and the set of misses is pinned by a test.
 
-## The harness (M2.1a)
+## The validation harness
+
+This section covers the [M2.1a validation-harness milestone](decisions-and-roadmap.md#m2-1a).
 
 `cargo xtask validate [--fast|--check]` runs every case in `validation/cases/lock.toml` and writes
 `validation/reports/latest.md` and `latest.json`. `--check` writes nothing (see below); it runs
 the whole suite, so it cannot be combined with `--fast`. A case (`validation/cases/<id>.toml`) says what
 to fly and which metrics to compare, each with its own tolerance, against which reference
 (`validation/fixtures/**`, written by a generator under `validation/oracles/`). Decisions:
-ADR-015; code: `crates/hpr-validate/`.
+[ADR-015 decision record](https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-015-the-validation-harness-cases-references-tolerances-and-reports-2026-09-17); code: `crates/hpr-validate/`.
 
 The rules the harness enforces, each from a Loft lesson:
 
 - A run **reads** references and never writes them: a reference moves only when its generator runs
-  (L76). There is no flag to update one.
+  ([L76 Loft lesson](decisions-and-roadmap.md#l76)). There is no flag to update one.
 - Every reference value carries a source naming the oracle, the generator and the field, and the
-  report carries the reference file's SHA-256, so an edited reference shows up in the report (L77).
+  report carries the reference file's SHA-256, so an edited reference shows up in the report ([L77 Loft lesson](decisions-and-roadmap.md#l77)).
 - Every metric a case reports is either held to a tolerance that bounds something or declared, in
   writing, not scored; a case is refused if hpr measures a metric it does not account for, or if
-  the reference publishes one the case ignores (L79).
+  the reference publishes one the case ignores ([L79 Loft lesson](decisions-and-roadmap.md#l79)).
 - The cases that must run are locked; a missing one fails, a committed case that is not locked
-  fails, and `--fast` may only leave out cases the lock marks slow and names them (L78).
+  fails, and `--fast` may only leave out cases the lock marks slow and names them ([L78 Loft lesson](decisions-and-roadmap.md#l78)).
 - A case's inputs come from the reference's own record of what the oracle flew, never from hpr's
   output — including which design it flew, what that weighed and, for a whole flight, the area its
-  drag table is on (L75, `hpr_validate::rocketpy::tests::oracle_inputs_come_from_the_case_file_not_hpr_outputs`).
+  drag table is on ([L75 Loft lesson](decisions-and-roadmap.md#l75), `hpr_validate::rocketpy::tests::oracle_inputs_come_from_the_case_file_not_hpr_outputs`).
 - A case may declare a **known gap**, a limit of hpr's it runs into. The only one accepted is hpr's
-  refusal of a Mach number past its models' range, which since M1.8b1 ends at Mach 5 for the
+  refusal of a Mach number past its models' range, which since [M1.8b1 milestone](decisions-and-roadmap.md#m1-8b1) ends at Mach 5 for the
   normal force and the drag buildup alike: the reference must reach Mach 5, hpr must refuse the
-  flight with that error, and a gap that hpr starts flying fails the run (L85). A gap scores
-  nothing and is listed in the report's own section, and the set is pinned (ADR-021). No case
-  declares one. Prometheus 2022 was one on the declared drag until M1.8a flew it (ADR-027), and on
-  its own drag, refused at Mach 1 by the drag buildup, until M1.8b1 did (ADR-028).
+  flight with that error, and a gap that hpr starts flying fails the run ([L85 Loft lesson](decisions-and-roadmap.md#l85)). A gap scores
+  nothing and is listed in the report's own section, and the set is pinned ([ADR-021 decision record](https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-021-whole-flights-against-rocketpy-what-is-compared-and-the-gaps-it-may-declare-2026-09-18)). No case
+  declares one. Prometheus 2022 was one on the declared drag until [M1.8a milestone](decisions-and-roadmap.md#m1-8a) flew it ([ADR-027 decision record](https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-027-the-normal-force-through-mach-1-supersonic-linear-theory-a-transonic-join-and-the-measured-references-2026-09-18)), and on
+  its own drag, refused at Mach 1 by the drag buildup, until [M1.8b1 milestone](decisions-and-roadmap.md#m1-8b1) did ([ADR-028 decision record](https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-028-drag-through-mach-1-niskanens-appendix-b-stoneys-curves-and-the-arcas-robins-axial-force-2026-09-18)).
 
 **Not scored** is the harness's one escape hatch, and it is deliberately uncomfortable: the case
 has to write down why, a blank reason fails outright, the metric is still measured and still
@@ -70,8 +72,8 @@ is pinned by `hpr_validate::tests::the_metrics_that_are_not_scored_are_these_and
 It was written for Valetudo's northward drift, which read 28x RocketPy's, and the right answer
 there turned out to be to fix the comparison rather than to excuse the number. So did the drifts
 in wind (issue #50): RocketPy's equations were at fault, and the comparison now flies them
-corrected (ADR-026). Eight whole-flight metrics use it today, each argued in its case file
-(ADR-021, ADR-026): Juno III's and Bella Lui's drifts in wind and NDRT 2020's apogee drift,
+corrected ([ADR-026 decision record](https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-026-the-path-in-wind-rocketpys-corrected-equations-and-hprs-body-lift-2026-09-18)). Eight whole-flight metrics use it today, each argued in its case file
+([ADR-021 decision record](https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-021-whole-flights-against-rocketpy-what-is-compared-and-the-gaps-it-may-declare-2026-09-18), [ADR-026 decision record](https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-026-the-path-in-wind-rocketpys-corrected-equations-and-hprs-body-lift-2026-09-18)): Juno III's and Bella Lui's drifts in wind and NDRT 2020's apogee drift,
 measured model differences (hpr's body lift at the rail exit's angle of attack, which RocketPy
 leaves out, and its release at the last rail button; with both added to RocketPy,
 `wind_response.py` lands every windy drift within 1.3% of hpr's), Calisto's time of peak
@@ -79,7 +81,9 @@ acceleration in wind and in calm air, whose two peaks are 0.9% apart, and NDRT 2
 peak, which is its main opening, where RocketPy has added mass and hpr has none. No case carries an
 absolute floor: every gate is the milestone's 3%.
 
-### In CI, and regenerating the references (M2.1c1)
+### In CI, and regenerating the references
+
+This section covers the [M2.1c1 validation-in-CI milestone](decisions-and-roadmap.md#m2-1c1).
 
 Every pull request runs `cargo xtask validate --check` on macOS, Windows and Linux, in continuous
 integration (CI): the `validate` job in `.github/workflows/ci.yml`. It flies every locked case,
@@ -90,7 +94,7 @@ value and the reference's, read at full precision from `latest.json`, by up to 2
 value, whichever is larger. Everything else must match exactly: the cases, sources, tolerances,
 verdicts, notes, known gaps and the harness version, and `latest.md` must be `latest.json`'s own
 rendering (`Report::reproduces`;
-[ADR-022](DECISIONS.md#adr-022-validation-in-ci-and-regenerating-references-only-by-hand-2026-09-18),
+[ADR-022 decision record](https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-022-validation-in-ci-and-regenerating-references-only-by-hand-2026-09-18),
 the decision behind this section). So a change that moves a number has to commit the report that
 shows it.
 
@@ -121,15 +125,17 @@ Committing it is a decision a PR has to argue:
 [Loft lesson L76](decisions-and-roadmap.md#l76), where a reference regenerated whenever a check
 failed ended up following the simulator it was meant to check.
 
-### Whole flights (M2.1b2)
+### Whole flights
+
+This section covers the [M2.1b2 whole-flight-comparison milestone](decisions-and-roadmap.md#m2-1b2).
 
 The whole-flight cases (`validation/cases/flight-*.toml`) fly RocketPy's examples from the pad to
 the ground in the same-drag mode: hpr flies the reference's declared `C_D0(M)` through
 `Simulation::with_drag_table`, on the reference area the reference records. The metrics are
-measured as RocketPy defines them (L80): at the centre of dry mass, with the rail exit when the
+measured as RocketPy defines them ([L80 Loft lesson](https://github.com/nrdptel/hpr-sim/blob/main/docs/research/loft-lessons.md#validation)): at the centre of dry mass, with the rail exit when the
 forward button reaches the top of the rail. The maxima depart from RocketPy's on purpose: RocketPy
 takes them at its solution's points, and hpr finds each peak between its solver's steps as well
-([ADR-023](DECISIONS.md#adr-023-predicted-mode-each-codes-own-drag-reported-against-a-target-2026-09-18),
+([ADR-023 decision record](https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-023-predicted-mode-each-codes-own-drag-reported-against-a-target-2026-09-18),
 which sets how peaks are found in both modes), because a peak read only at the steps moves with
 the step sequence, which differs across platforms. That can only raise hpr's reading; against its
 old step-end reading it rose by at most 6.3e-5 of itself. RocketPy's own shortfall is not
@@ -140,11 +146,11 @@ thrust for ambient pressure with a sea-level stand-in, which RocketPy's examples
 (`reference_pressure=None`). The designs now say `None`, the reference records the motor RocketPy
 flew, and the harness checks hpr's against it. Heights are measured from the dry centre of mass's
 height at launch, since RocketPy's starts at the ground, and the rail exit at RocketPy's
-`effective_1rl`. Every scored metric agrees within 3%, and since M2.1d3 that includes every drift
+`effective_1rl`. Every scored metric agrees within 3%, and since [M2.1d3 milestone](decisions-and-roadmap.md#m2-1d3) that includes every drift
 but five: those of the two rockets that leave the rail slowly in a wind, Juno III and Bella
-Lui, and NDRT 2020's apogee drift (ADR-026).
+Lui, and NDRT 2020's apogee drift ([ADR-026 decision record](https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-026-the-path-in-wind-rocketpys-corrected-equations-and-hprs-body-lift-2026-09-18)).
 
-**RocketPy's equations as corrected upstream (M2.1d3).** The whole-flight references fly RocketPy
+**RocketPy's equations as corrected upstream ([M2.1d3 milestone](decisions-and-roadmap.md#m2-1d3)).** The whole-flight references fly RocketPy
 1.13.0 with two corrections made or proposed upstream, applied by
 `validation/oracles/rocketpy/corrections.py` and recorded in each fixture's `corrections`: PR #1188
 (merged, unreleased), the nozzle's jet-damping lever, and PR #1196 (open, for issue #1186), the
@@ -154,51 +160,53 @@ of mass is behind it, which made it turn into the wind too far; that was most of
 corrected function is RocketPy's own source with PR #1196's three edits, each required to match
 once, so a RocketPy that has moved stops the generator. `wind_response.py` flies every case as
 released and corrected, then with hpr's rail release, body lift and thin fins added, and lands
-within 1.3% of hpr's drifts in wind (ADR-026; body lift Jorgensen's since M1.8e6, ADR-037). Drop the corrections when RocketPy releases them.
+within 1.3% of hpr's drifts in wind ([ADR-026 decision record](https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-026-the-path-in-wind-rocketpys-corrected-equations-and-hprs-body-lift-2026-09-18); body lift Jorgensen's since [M1.8e6 milestone](decisions-and-roadmap.md#m1-8e6), [ADR-037 decision record](https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-037-body-lift-by-jorgensens-crossflow-at-every-speed-and-a-boattails-measured-share-faster-than-sound-2026-09-19)). Drop the corrections when RocketPy releases them.
 
-That fix is worth stating, because it is what L75 means in practice. hpr's default gravity is the
+That fix is worth stating, because it is what [L75 Loft lesson](decisions-and-roadmap.md#l75) means in practice. hpr's default gravity is the
 full normal-gravity vector, which leans a few parts in 10⁶ toward the equator above the
 ellipsoid; RocketPy
 applies gravity to the vertical axis alone. The difference is 5.2e-4 m of northward drift over an
 800 m descent, which is invisible in every metric that matters and swamps the one 20 µm number that
 does not. hpr ships `GravityModel::VerticalTaylor` as RocketPy's own formula for like-for-like
-comparisons, so the suite flies that, and the metric comes to −1.8% (ADR-015, issue #27,
+comparisons, so the suite flies that, and the metric comes to −1.8% ([ADR-015 decision record](https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-015-the-validation-harness-cases-references-tolerances-and-reports-2026-09-17), issue #27,
 `docs/physics/recovery.md`).
 
 The committed report carries no timestamp, so a number that moves shows up in the diff. A `--fast`
 run writes `latest-fast.{md,json}` instead, which is not committed: a partial report never stands
 in for the whole suite's record.
 
-### Predicted mode (M2.1c2)
+### Predicted mode
+
+This section covers the [M2.1c2 predicted-mode milestone](decisions-and-roadmap.md#m2-1c2).
 
 The `predicted-*` cases fly the same six examples with hpr's own aerodynamics
 (`mode = "predicted"`), against `validation/fixtures/flight/rocketpy-whole-flight-own-drag.json`:
 RocketPy flying each example's own drag, as RocketPy 1.13.0 flies the example
 (`flight.py --own-drag`). The curves stay in `refs/`; the reference records each one's path and
-SHA-256 (ADR-009). Each mode refuses the other's reference.
+SHA-256 ([ADR-009 decision record](https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-009-subsonic-drag-buildup-surface-finishes-and-drag-override-tables-2026-09-17)). Each mode refuses the other's reference.
 
-Each predicted metric keeps M2.1's 3% as a target, not a gate: its verdict is `within target` or
+Each predicted metric keeps [M2.1 milestone](decisions-and-roadmap.md#m2-1)'s 3% as a target, not a gate: its verdict is `within target` or
 `outside target`, it sits in the report's own *Predicted mode* section, and it never fails the run
-(ADR-023). Neither code's drag is the truth, so a miss is a measurement to explain, and each case
+([ADR-023 decision record](https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-023-predicted-mode-each-codes-own-drag-reported-against-a-target-2026-09-18)). Neither code's drag is the truth, so a miss is a measurement to explain, and each case
 file explains its own. In short, 75 of 102 are within target; the apogees are −6.985%
 (Prometheus 2022), −0.604% (Calisto), +1.004% (Bella Lui), +2.157% (Juno III), +10.118% (Valetudo)
 and +10.306% (NDRT 2020). The last two are where hpr's drag is well below the example's, which also
 moves their times and drifts; Juno III's and Bella Lui's drifts in wind differ as in same-drag mode
-(ADR-026). Prometheus 2022 flies through Mach 1 on hpr's drag since M1.8b1 (ADR-028), peaking at
+([ADR-026 decision record](https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-026-the-path-in-wind-rocketpys-corrected-equations-and-hprs-body-lift-2026-09-18)). Prometheus 2022 flies through Mach 1 on hpr's drag since [M1.8b1 milestone](decisions-and-roadmap.md#m1-8b1) ([ADR-028 decision record](https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-028-drag-through-mach-1-niskanens-appendix-b-stoneys-curves-and-the-arcas-robins-axial-force-2026-09-18)), peaking at
 Mach 1.059 against RocketPy's 1.048, with 9 of its 17 metrics within target: hpr's coasting drag
 rises to about 0.49 at Mach 0.8, where the example's falls to 0.30, so it coasts lower. hpr's drag
 is for the designs as transcribed, whose fin edges and finishes are placeholders where the
 examples record none. Predicted mode flies at rtol = atol = 1e-11, so its report reproduces across
-platforms (ADR-023).
+platforms ([ADR-023 decision record](https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-023-predicted-mode-each-codes-own-drag-reported-against-a-target-2026-09-18)).
 
 ## Reference simulators (oracles)
 
 | tool | use | license | where | notes |
 |---|---|---|---|---|
-| RocketPy 1.13.0 (PyPI, 2026-07-22) | primary code-to-code oracle; headless Python | MIT | https://github.com/RocketPy-Team/RocketPy | Install in a `uv` venv under `refs/`. Whole flights fly it with upstream PRs #1188 and #1196 applied (`validation/oracles/rocketpy/corrections.py`, ADR-026). Acceptance tests to mirror: `tests/acceptance/test_{bella_lui,ndrt_2020,prometheus}_rocket.py`. Example apogees are in `docs/examples/index.rst` |
-| OpenRocket 24.12 jar | second oracle (run only, never read its source) | GPL-3.0 | `https://github.com/openrocket/openrocket/releases/download/release-24.12/OpenRocket-24.12.jar` | Needs Java 17 exactly: it refuses 21 with "Supported version(s): 17". `brew install openjdk@17` is keg-only, so `/usr/libexec/java_home` will not list it; `refs doctor` scans the Homebrew kegs and takes it. How M2.2 drives it is open: JPype directly, or the jar as a subprocess. One probe already runs it through JPype, headless, with empty motor and preset databases bound in place of the graphical ones: `validation/oracles/openrocket/automatic_radius.py` → `validation/fixtures/ork/openrocket-automatic-radius.json`, the radius OpenRocket gives an automatic body radius with nothing to take (0.025 m; ADR-054), held by `hpr_io::ork::tests::a_radius_with_nothing_to_take_is_openrockets_default`; `validation/oracles/openrocket/mass.py` → the structure mass, centre of mass and inertias of every design OpenRocket opens, which `cargo xtask ork` holds hpr's to (M2.2a, ADR-060; the public record is `openrocket-mass-loft-demo.json`); and every body radius it settles on in the 17 jar examples and the parachute catalogue, which `cargo xtask ork` holds hpr's to (67 of 67 agree). The GPL-2.0 **orhelper** wrapper was dropped from the environment rather than imported. 17 example `.ork` files are in the jar under `datafiles/examples/` (use them locally, don't commit them; only numbers computed from them, such as the body radii in the ADR-054 fixture, are committed) |
-| RocketSerializer (`66d8ca8`, after 0.2.0) | `.ork` to RocketPy converter; a second reader of the same files | MIT | https://github.com/RocketPy-Team/RocketSerializer | Pinned, with the environment it runs in, by `validation/oracles/rocketserializer/requirements.txt`. `validation/oracles/rocketserializer/geometry.py` calls its extractors one by one on each design and asks OpenRocket 24.12 for the same numbers; `cargo xtask ork` holds hpr's nose cone, transitions, fin sets, stations and body radius to both (M3.1d2, ADR-059): 1,212 numbers over 74 designs, none where hpr is apart from both, and every one of hpr's also OpenRocket's. It runs in its own environment, `refs/venv-rs`, installed with `--no-deps` so that its `orhelper` dependency (GPL-2.0) is never installed; the record for Loft's public demo designs is `validation/fixtures/ork/rocketserializer-loft-demo.json`, checked in CI by `xtask`'s `rocketserializer_agrees_on_the_loft_demos` |
-| RASAero II 1.0.2.0 | Windows-only freeware; no automation | closed | https://www.rasaero.com/dl_software_ii.htm | Use only the exports that ship with RocketPy data. M1.8a also reads the full Calisto export of RocketPy's first commit (`C_D`, `C_Nα` and CP to Mach 25; `rocketpy-calisto-rasaero-2018` in the lock) for the normal force against Mach (ADR-027). Only Calisto's (`data/rockets/calisto/powerOffDragCurve.csv`) is traceable to a RASAero II export; Juno III's, Cavour's and Valetudo's are labelled RASAero but are 3-decimal tables with no input file, and Valetudo's disagrees with its own OpenRocket export by 44%. M1.5b compares hpr's subsonic Cd with all four at Mach 0.3 (ADR-009), and M1.8b2 every 0.05 from Mach 0.1 to 2.0, by band (ADR-029; results in `docs/physics/aero.md`) |
+| RocketPy 1.13.0 (PyPI, 2026-07-22) | primary code-to-code oracle; headless Python | MIT | https://github.com/RocketPy-Team/RocketPy | Install in a `uv` venv under `refs/`. Whole flights fly it with upstream PRs #1188 and #1196 applied (`validation/oracles/rocketpy/corrections.py`, [ADR-026 decision record](https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-026-the-path-in-wind-rocketpys-corrected-equations-and-hprs-body-lift-2026-09-18)). Acceptance tests to mirror: `tests/acceptance/test_{bella_lui,ndrt_2020,prometheus}_rocket.py`. Example apogees are in `docs/examples/index.rst` |
+| OpenRocket 24.12 jar | second oracle (run only, never read its source) | GPL-3.0 | `https://github.com/openrocket/openrocket/releases/download/release-24.12/OpenRocket-24.12.jar` | Needs Java 17 exactly: it refuses 21 with "Supported version(s): 17". `brew install openjdk@17` is keg-only, so `/usr/libexec/java_home` will not list it; `refs doctor` scans the Homebrew kegs and takes it. How [M2.2 milestone](decisions-and-roadmap.md#m2-2) drives it is open: JPype directly, or the jar as a subprocess. One probe already runs it through JPype, headless, with empty motor and preset databases bound in place of the graphical ones: `validation/oracles/openrocket/automatic_radius.py` → `validation/fixtures/ork/openrocket-automatic-radius.json`, the radius OpenRocket gives an automatic body radius with nothing to take (0.025 m; [ADR-054 decision record](https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-054-an-automatic-radius-with-nothing-to-take-is-openrockets-default-and-a-rocket-with-no-stage-or-component-holds-no-design-2026-09-20)), held by `hpr_io::ork::tests::a_radius_with_nothing_to_take_is_openrockets_default`; `validation/oracles/openrocket/mass.py` → the structure mass, centre of mass and inertias of every design OpenRocket opens, which `cargo xtask ork` holds hpr's to ([M2.2a milestone](decisions-and-roadmap.md#m2-2a), [ADR-060 decision record](https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-060-m22-split-and-the-structures-mass-held-to-openrockets-2026-09-21); the public record is `openrocket-mass-loft-demo.json`); and every body radius it settles on in the 17 jar examples and the parachute catalogue, which `cargo xtask ork` holds hpr's to (67 of 67 agree). The GPL-2.0 **orhelper** wrapper was dropped from the environment rather than imported. 17 example `.ork` files are in the jar under `datafiles/examples/` (use them locally, don't commit them; only numbers computed from them, such as the body radii in the [ADR-054 decision record](https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-054-an-automatic-radius-with-nothing-to-take-is-openrockets-default-and-a-rocket-with-no-stage-or-component-holds-no-design-2026-09-20) fixture, are committed) |
+| RocketSerializer (`66d8ca8`, after 0.2.0) | `.ork` to RocketPy converter; a second reader of the same files | MIT | https://github.com/RocketPy-Team/RocketSerializer | Pinned, with the environment it runs in, by `validation/oracles/rocketserializer/requirements.txt`. `validation/oracles/rocketserializer/geometry.py` calls its extractors one by one on each design and asks OpenRocket 24.12 for the same numbers; `cargo xtask ork` holds hpr's nose cone, transitions, fin sets, stations and body radius to both ([M3.1d2 milestone](decisions-and-roadmap.md#m3-1d2), [ADR-059 decision record](https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-059-the-rocketserializer-cross-check-three-readers-with-openrocket-settling-a-difference-2026-09-21)): the current 2026-09-23 survey compares 1,171 numbers over 71 designs, none where hpr is apart from both, and every one of hpr's also OpenRocket's. It runs in its own environment, `refs/venv-rs`, installed with `--no-deps` so that its `orhelper` dependency (GPL-2.0) is never installed; the record for Loft's public demo designs is `validation/fixtures/ork/rocketserializer-loft-demo.json`, checked in CI by `xtask`'s `rocketserializer_agrees_on_the_loft_demos` |
+| RASAero II 1.0.2.0 | Windows-only freeware; no automation | closed | https://www.rasaero.com/dl_software_ii.htm | Use only the exports that ship with RocketPy data. [M1.8a milestone](decisions-and-roadmap.md#m1-8a) also reads the full Calisto export of RocketPy's first commit (`C_D`, `C_Nα` and CP to Mach 25; `rocketpy-calisto-rasaero-2018` in the lock) for the normal force against Mach ([ADR-027 decision record](https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-027-the-normal-force-through-mach-1-supersonic-linear-theory-a-transonic-join-and-the-measured-references-2026-09-18)). Only Calisto's (`data/rockets/calisto/powerOffDragCurve.csv`) is traceable to a RASAero II export; Juno III's, Cavour's and Valetudo's are labelled RASAero but are 3-decimal tables with no input file, and Valetudo's disagrees with its own OpenRocket export by 44%. [M1.5b milestone](decisions-and-roadmap.md#m1-5b) compares hpr's subsonic Cd with all four at Mach 0.3 ([ADR-009 decision record](https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-009-subsonic-drag-buildup-surface-finishes-and-drag-override-tables-2026-09-17)), and [M1.8b2 milestone](decisions-and-roadmap.md#m1-8b2) every 0.05 from Mach 0.1 to 2.0, by band ([ADR-029 decision record](https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-029-drag-against-rasaero-ii-through-mach-2-the-gap-by-band-mil-hdbk-762s-sample-calculation-and-the-boattails-wave-drag-2026-09-18); results in `docs/physics/aero.md`) |
 | JSBSim | optional generic 6-DOF cross-check | LGPL-2.1 | https://github.com/JSBSim-Team/jsbsim | low priority |
 | CamPyRoS | dormant; includes Martlet 4 RASAero data | GPL-3.0 | https://github.com/cuspaceflight/CamPyRoS | Run-only if used at all |
 | Missile DATCOM | **do not use** (ITAR) | — | — | — |
@@ -212,9 +220,9 @@ platforms (ADR-023).
   Centuri TIR-33 (1970), is https://www.nakka-rocketry.net/articles/Barrowman.NARAM-8.pdf. Its
   five worked examples (Testbed II, Aerobee 350, Javelin, Recruiter, Arcon-Hi) are level-2
   references for CNα and CP: `validation/fixtures/aero/barrowman-worked-examples.json`, checked
-  within 1% by `hpr_aero::tests::barrowman_worked_examples` (M1.5a, `docs/physics/aero.md`). Four
+  within 1% by `hpr_aero::tests::barrowman_worked_examples` ([M1.5a milestone](decisions-and-roadmap.md#m1-5a), `docs/physics/aero.md`). Four
   pass on hpr's own model. The Recruiter's six-fin slopes pass only with TIR-33's own six-fin rule
-  substituted: with hpr's rule (MIL-HDBK-762, ADR-008) they are +3.4% (fins) and +2.9% (total).
+  substituted: with hpr's rule (MIL-HDBK-762, [ADR-008 decision record](https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-008-subsonic-normal-force-and-centre-of-pressure-2026-09-17)) they are +3.4% (fins) and +2.9% (total).
 - **Niskanen 2009 OpenRocket thesis** (CC BY-NC-ND; read for methods only, don't copy):
   `https://github.com/openrocket/openrocket/releases/download/Development_of_an_Open_Source_model_rocket_simulation-thesis-v20090520/Development_of_an_Open_Source_model_rocket_simulation-thesis-v20090520.pdf`
 - **OpenRocket technical documentation v13.05** (CC BY-SA):
@@ -227,16 +235,16 @@ platforms (ADR-023).
   normal force, centre of pressure and model dimensions are read into
   `validation/fixtures/aero/arcas-robin-wind-tunnel.json` with figure and page, the level-3
   reference for the normal force through Mach 1, checked by
-  `hpr_aero::tests::normal_force_against_mach` (M1.8a, ADR-027). Their forebody axial force
+  `hpr_aero::tests::normal_force_against_mach` ([M1.8a milestone](decisions-and-roadmap.md#m1-8a), [ADR-027 decision record](https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-027-the-normal-force-through-mach-1-supersonic-linear-theory-a-transonic-join-and-the-measured-references-2026-09-18)). Their forebody axial force
   (drag without the base), fins on and off (TN D-4013 Figs. 11–12, TN D-4014 Figs. 5–6), read
   into the same file, is the level-3 reference for the drag through Mach 1, compared in
   `validation/fixtures/aero/drag-vs-mach.json` and checked by `hpr_aero::tests::drag_against_mach`
-  (M1.8b1, ADR-028): 8 of 44 rows are within the 10% target set before measuring, hpr reading
-  high (`docs/physics/aero.md`). Their roll effectiveness (TN D-4014 Fig. 14) is for M1.8c.
+  ([M1.8b1 milestone](decisions-and-roadmap.md#m1-8b1), [ADR-028 decision record](https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-028-drag-through-mach-1-niskanens-appendix-b-stoneys-curves-and-the-arcas-robins-axial-force-2026-09-18)): 8 of 44 rows are within the 10% target set before measuring, hpr reading
+  high (`docs/physics/aero.md`). Their roll effectiveness (TN D-4014 Fig. 14) is for [M1.8c milestone](decisions-and-roadmap.md#m1-8c).
 - **Stoney, zero-lift drag of bodies of revolution:** NASA TR R-100 (1961), NTRS 19630004995.
   Figure 12's nose pressure-drag curves at fineness 3 are read into `hpr_aero::nose_drag` as the
   model's own data (Niskanen's appendix B uses them the same way), not as a reference; its 3:1
-  cone checks Niskanen's closed-form cone (M1.8b1, ADR-028).
+  cone checks Niskanen's closed-form cone ([M1.8b1 milestone](decisions-and-roadmap.md#m1-8b1), [ADR-028 decision record](https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-028-drag-through-mach-1-niskanens-appendix-b-stoneys-curves-and-the-arcas-robins-axial-force-2026-09-18)).
 - **Galejs, "Wind instability":** https://www.argoshpr.ch/j3/articles/pdf/sentinel39-galejs.pdf
 - **MIL-HDBK-762** (design of aerodynamically stabilized free rockets):
   https://archive.org/details/MILHDBK762DesignOfAerodynamicallyStabilizedFreeRockets. Its sample
@@ -245,7 +253,7 @@ platforms (ADR-023).
   from Mach 0.5 to 3.2 with every input known. It is a calculation by the handbook's methods, not a
   measurement, so it is a code-to-code reference, compared in
   `validation/fixtures/aero/drag-vs-mach.json` and checked by
-  `hpr_aero::tests::drag_against_mil_hdbk_762_sample` (M1.8b2, ADR-029): 2 of 12 rows within 10%,
+  `hpr_aero::tests::drag_against_mil_hdbk_762_sample` ([M1.8b2 milestone](decisions-and-roadmap.md#m1-8b2), [ADR-029 decision record](https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-029-drag-against-rasaero-ii-through-mach-2-the-gap-by-band-mil-hdbk-762s-sample-calculation-and-the-boattails-wave-drag-2026-09-18)): 2 of 12 rows within 10%,
   hpr reading high (`docs/physics/aero.md`).
 - **Fin flutter:** D. J. Martin, NACA TN 4197 (1958), NTRS 19930085030. NTRS serves it with a
   436-byte header before `%PDF`; the lock pins the bytes as served.
@@ -261,10 +269,10 @@ platforms (ADR-023).
   (mpmath, 40 digits, 22 noses and transitions): every filled volume, centroid, moment and area
   agrees to 1e-12 relative. Walls: `validation/oracles/design/walls.py` →
   `validation/fixtures/design/wall-integrals.json` (20 walls, 25 digits): volume, centroid and
-  moments agree to 1e-10 (M1.4a, `docs/physics/shapes.md`).
+  moments agree to 1e-10 ([M1.4a milestone](decisions-and-roadmap.md#m1-4a), `docs/physics/shapes.md`).
 - **Material densities:** USDA Forest Products Laboratory, *Wood Handbook* FPL-GTR-190 (2010),
   pinned as `fpl-gtr-190-wood-handbook`; manufacturers' data sheets and military specifications,
-  cited per value with URLs in `hpr_design::materials` (M1.4a, `docs/physics/mass.md`).
+  cited per value with URLs in `hpr_design::materials` ([M1.4a milestone](decisions-and-roadmap.md#m1-4a), `docs/physics/mass.md`).
 - **Index of further references:** https://wiki.openrocket.info/Resources
 - **Not available:** there's no legitimate free copy of *Topics in Advanced Model Rocketry*. Don't
   use pirated copies.
@@ -317,12 +325,12 @@ excellent offline test fixtures for the weather-file readers.
 
 | source | what | license | notes |
 |---|---|---|---|
-| ThrustCurve.org API v1 (`/api/v1/{metadata,search,download}.json`) | motor metadata and simfiles | spec is ISC; **data license per file** (`PD`, `free`, `other`, or none; "free" can be GPL) | Cache results and give attribution. `search.json?maxResults=10000` returns every motor (1156 on 2026-09-17), out-of-production and **hybrid** ones included, so filter to solids; `availability=all` is ignored. Of 1712 solid-motor files, 554 are PD, and 196 of those match the stored statistics within 1%. **M1.3 bundles 32** (`crates/hpr-motor/data/thrustcurve/`, `validation/oracles/thrustcurve/bundle.py`, ADR-005; survey in `docs/research/thrustcurve-data.md`) |
+| ThrustCurve.org API v1 (`/api/v1/{metadata,search,download}.json`) | motor metadata and simfiles | spec is ISC; **data license per file** (`PD`, `free`, `other`, or none; "free" can be GPL) | Cache results and give attribution. `search.json?maxResults=10000` returns every motor (1156 on 2026-09-17), out-of-production and **hybrid** ones included, so filter to solids; `availability=all` is ignored. Of 1712 solid-motor files, 554 are PD, and 196 of those match the stored statistics within 1%. **[M1.3 milestone](decisions-and-roadmap.md#m1-3) bundles 32** (`crates/hpr-motor/data/thrustcurve/`, `validation/oracles/thrustcurve/bundle.py`, [ADR-005 decision record](https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-005-solid-motors-statistics-consumption-grains-file-models-and-the-bundled-catalog-2026-09-17); survey in `docs/research/thrustcurve-data.md`) |
 | RASP `.eng` spec | https://www.thrustcurve.org/info/raspformat.html (`thrustcurve-rasp-format`) | — | implicit (0,0) first point; ends at zero thrust. Reader and writer: `docs/format/eng.md` |
 | RockSim `.rse` spec | https://www.thrustcurve.org/thirdparty/RockSim%20Engine%20File%20Format.pdf | — | XML; real files disagree with the guide on names and units. Reader and writer: `docs/format/rse.md` |
-| ThrustCurve.org statistics code | `simulate/analyze/analyze.js` at commit `577afa6` (`thrustcurve3-analyze`) | ISC | `validation/oracles/thrustcurve/analyze_stats.js` runs it unchanged on the bundle → `validation/fixtures/motor/thrustcurve-analyze-stats.json`; hpr's impulse, burn window and thrusts agree to 1.8e-15 (M1.3) |
-| RocketPy `SolidMotor` | mass, centres and inertia vs time for BATES grains | MIT | `validation/oracles/rocketpy/solid_motor.py` → `validation/fixtures/motor/rocketpy-solid-motor.json` (three bundled curves). Total mass and both inertias agree within 7.9e-5 relative, the centre of mass within 5.8e-6 of the motor length; propellant quantities within 1e-4 of their ignition values (M1.3; scales in `docs/physics/motor.md`) |
-| RocketPy `Rocket` with a motor | total mass, centre of mass and inertia vs time for seven example rockets (Calisto at two motor positions) and Prometheus's `GenericMotor` | MIT (notebooks and tests only; Valkyrie's data-file inputs are left out) | `validation/oracles/rocketpy/rocket_mass.py` → `validation/fixtures/design/rocketpy-rocket-mass.json`: each example's own inputs, with the bundled public-domain curve nearest in impulse in place of its thrust file (ADR-007). hpr's designs (`validation/designs/`) agree at RocketPy's LSODA knots within 8e-10 (grain propellant mass 2.4e-9), and between knots within 1.1e-5 in mass, 3.6e-6 of the length in centre and 2.6e-5 in inertia, RocketPy's resampling; dry values to 2e-16. Six examples whose motors have no dry mass are not cases; Cavour is, for its drag curve (M1.4b, M1.5b, `docs/physics/design.md`) |
+| ThrustCurve.org statistics code | `simulate/analyze/analyze.js` at commit `577afa6` (`thrustcurve3-analyze`) | ISC | `validation/oracles/thrustcurve/analyze_stats.js` runs it unchanged on the bundle → `validation/fixtures/motor/thrustcurve-analyze-stats.json`; hpr's impulse, burn window and thrusts agree to 1.8e-15 ([M1.3 milestone](decisions-and-roadmap.md#m1-3)) |
+| RocketPy `SolidMotor` | mass, centres and inertia vs time for BATES grains | MIT | `validation/oracles/rocketpy/solid_motor.py` → `validation/fixtures/motor/rocketpy-solid-motor.json` (three bundled curves). Total mass and both inertias agree within 7.9e-5 relative, the centre of mass within 5.8e-6 of the motor length; propellant quantities within 1e-4 of their ignition values ([M1.3 milestone](decisions-and-roadmap.md#m1-3); scales in `docs/physics/motor.md`) |
+| RocketPy `Rocket` with a motor | total mass, centre of mass and inertia vs time for seven example rockets (Calisto at two motor positions) and Prometheus's `GenericMotor` | MIT (notebooks and tests only; Valkyrie's data-file inputs are left out) | `validation/oracles/rocketpy/rocket_mass.py` → `validation/fixtures/design/rocketpy-rocket-mass.json`: each example's own inputs, with the bundled public-domain curve nearest in impulse in place of its thrust file ([ADR-007 decision record](https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-007-design-tree-stations-placement-automatic-radii-overrides-motors-and-checks-2026-09-17)). hpr's designs (`validation/designs/`) agree at RocketPy's LSODA knots within 8e-10 (grain propellant mass 2.4e-9), and between knots within 1.1e-5 in mass, 3.6e-6 of the length in centre and 2.6e-5 in inertia, RocketPy's resampling; dry values to 2e-16. Six examples whose motors have no dry mass are not cases; Cavour is, for its drag curve ([M1.4b milestone](decisions-and-roadmap.md#m1-4b), [M1.5b milestone](decisions-and-roadmap.md#m1-5b), `docs/physics/design.md`) |
 | `broofa/thrustcurve-db` | JSON snapshot including thrust samples | ISC (code) | handy offline seed; check the data terms per curve |
 | openrocket/motor-database | weekly SQLite mirror | GPL-3.0 | run-only reference; don't bundle |
 | motor.fusionspace.co API v1 | live US stock and prices (AeroTech, Cesaroni, Loki) | free to use, attribution appreciated | `https://motor.fusionspace.co/api/v1/{meta,motors,in-stock,vendors}.json`, `/motors/{mfr}/{designation}.json` (`/` becomes `~`), `/openapi.json`. Refreshed hourly, CORS-open, no key. Prices are in integer cents. `schema_version` is 1. Docs: https://github.com/nrdptel/Hobby-Rocket-Motor-Finder/blob/main/docs/api.md |
@@ -332,11 +340,13 @@ excellent offline test fixtures for the weather-file readers.
 
 | source | what | license | notes |
 |---|---|---|---|
-| RocketPy `Flight` parachute phase | descent rate, descent time and drift for five example rockets (Calisto, Valetudo, NDRT 2020, Prometheus 2022, Juno III) | MIT | `validation/oracles/rocketpy/recovery.py` → `validation/fixtures/recovery/rocketpy-descent.json`, replayed by `hpr_sim::recovery::tests::descent_matches_rocketpy_examples`. Both start from the same declared post-burnout state with the first device open, the same drag areas, triggers and declared wind, RocketPy's noise zeroed, and (since issue #27) RocketPy's own gravity model, compared as a vector rather than a magnitude. Agreement: descent time within 0.71%, impact descent rate within 0.03%, drift magnitude within 0.28% in the four cases with wind (Valetudo's still-air 0.19 m, from the Earth's rotation alone, −0.89%), the worst single drift component 2.86% (NDRT's 49 m south of a 327 m drift, where RocketPy's added mass is 15.9 kg against a 20.8 kg rocket), and the deployment heights of the later devices within 0.17% (RocketPy's trigger sampling). The oracle runs at `rtol = atol = 1e-8`; at 1e-6 every compared metric moves by at most 3.5e-6 (its one larger entry, 2.1e-3, is on Valetudo's 20 µm north drift component, which M1.7a did not compare; M2.1a measures it, and reading 28x high there is what found the gravity-model difference in ADR-015, issue #27). M1.7a; `docs/physics/recovery.md` |
-| RocketPy `Flight` from the pad | apogee and time to it, maximum velocity, Mach and acceleration, rail-exit velocity, burnout altitude and velocity, and the trajectory, for the same five example rockets and Bella Lui | MIT | `validation/oracles/rocketpy/flight.py` → `validation/fixtures/flight/rocketpy-whole-flight.json`, the same-drag reference M2.1b2 scores hpr against. The drag is **declared by the generator** as a constant `C_D0` and handed to RocketPy's `power_off_drag` and `power_on_drag`: RocketPy's own exports carry their own terms and are never committed (ADR-009), and a Mach curve invented here would be an uncited drag model inside the reference (L18). Same-drag mode scores the equations of motion, not the aerodynamics. Everything but each example's rail comes from the mass fixture by way of `recovery.py`; Bella Lui, added in M2.1b2 because Prometheus could not be scored until M1.8a, declares its site and wind in `flight.py` itself (its example's weather is an ERA5 file). Each case records the parachutes it flew, so the harness reads everything from the reference (L75). Reproducible byte for byte; the loose run at rtol = atol = 1e-6 (RocketPy's default rtol) moves every metric by at most 3.9e-3. `max_time_step` is bounded at 0.05 s: without it, thrust(0) = 0 and the generator's 6000 s `max_time` let LSODA step over the whole burn and no case leaves the rail (issue #33). Recorded gap until M1.8a: Prometheus peaks at Mach 1.013, which hpr refused until its normal force passed Mach 1 (ADR-027); since then it flies and is scored, its drifts reported as body lift. `max_acceleration` is the whole flight's, which for NDRT and Prometheus is the parachute, so a power-on maximum is recorded beside it. M2.1b1; scored in M2.1b2 (ADR-021): five cases pass every scored metric within 3%; Prometheus was a known gap until M1.8a. Since M2.1d3 RocketPy flies with the upstream corrections to its equations (`corrections.py`, ADR-026): the largest scored whole-flight difference is +1.783% in height, speed and acceleration and, since body lift took Jorgensen's size (M1.8e6, ADR-037), −1.811% in a drift (Valetudo's landing), and eight metrics are argued as not scored, five of them drifts in wind that hpr's body lift and rail release account for (`wind_response.py`); M1.8a adds Prometheus's two drifts and its main opening, eleven in all. The trajectory is the `series`, 120 rows of time since ignition, height and speed of the centre of dry mass, which M2.1d1 compares (ADR-024): hpr's height and speed at the same times, from the shared ignition clock with no fitted shift, until hpr lands, as a root mean square held to 3% of the reference's apogee and max speed. All eighteen same-drag RMS pass (height 0.09 to 35.4 m, speed 0.02 to 1.55 m/s, since ADR-037; the largest are Prometheus's) |
+| RocketPy `Flight` parachute phase | descent rate, descent time and drift for five example rockets (Calisto, Valetudo, NDRT 2020, Prometheus 2022, Juno III) | MIT | `validation/oracles/rocketpy/recovery.py` → `validation/fixtures/recovery/rocketpy-descent.json`, replayed by `hpr_sim::recovery::tests::descent_matches_rocketpy_examples`. Both start from the same declared post-burnout state with the first device open, the same drag areas, triggers and declared wind, RocketPy's noise zeroed, and (since issue #27) RocketPy's own gravity model, compared as a vector rather than a magnitude. Agreement: descent time within 0.71%, impact descent rate within 0.03%, drift magnitude within 0.28% in the four cases with wind (Valetudo's still-air 0.19 m, from the Earth's rotation alone, −0.89%), the worst single drift component 2.86% (NDRT's 49 m south of a 327 m drift, where RocketPy's added mass is 15.9 kg against a 20.8 kg rocket), and the deployment heights of the later devices within 0.17% (RocketPy's trigger sampling). The oracle runs at `rtol = atol = 1e-8`; at 1e-6 every compared metric moves by at most 3.5e-6 (its one larger entry, 2.1e-3, is on Valetudo's 20 µm north drift component, which [M1.7a milestone](decisions-and-roadmap.md#m1-7a) did not compare; [M2.1a milestone](decisions-and-roadmap.md#m2-1a) measures it, and reading 28x high there is what found the gravity-model difference in [ADR-015 decision record](https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-015-the-validation-harness-cases-references-tolerances-and-reports-2026-09-17), issue #27). [M1.7a milestone](decisions-and-roadmap.md#m1-7a); `docs/physics/recovery.md` |
+| RocketPy `Flight` from the pad | apogee and time to it, maximum velocity, Mach and acceleration, rail-exit velocity, burnout altitude and velocity, and the trajectory, for the same five example rockets and Bella Lui | MIT | `validation/oracles/rocketpy/flight.py` → `validation/fixtures/flight/rocketpy-whole-flight.json`, the same-drag reference [M2.1b2 milestone](decisions-and-roadmap.md#m2-1b2) scores hpr against. The drag is **declared by the generator** as a constant `C_D0` and handed to RocketPy's `power_off_drag` and `power_on_drag`: RocketPy's own exports carry their own terms and are never committed ([ADR-009 decision record](https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-009-subsonic-drag-buildup-surface-finishes-and-drag-override-tables-2026-09-17)), and a Mach curve invented here would be an uncited drag model inside the reference ([L18 Loft lesson](decisions-and-roadmap.md#l18)). Same-drag mode scores the equations of motion, not the aerodynamics. Everything but each example's rail comes from the mass fixture by way of `recovery.py`; Bella Lui, added in [M2.1b2 milestone](decisions-and-roadmap.md#m2-1b2) because Prometheus could not be scored until [M1.8a milestone](decisions-and-roadmap.md#m1-8a), declares its site and wind in `flight.py` itself (its example's weather is an ERA5 file). Each case records the parachutes it flew, so the harness reads everything from the reference ([L75 Loft lesson](decisions-and-roadmap.md#l75)). Reproducible byte for byte; the loose run at rtol = atol = 1e-6 (RocketPy's default rtol) moves every metric by at most 3.9e-3. `max_time_step` is bounded at 0.05 s: without it, thrust(0) = 0 and the generator's 6000 s `max_time` let LSODA step over the whole burn and no case leaves the rail (issue #33). Recorded gap until [M1.8a milestone](decisions-and-roadmap.md#m1-8a): Prometheus peaks at Mach 1.013, which hpr refused until its normal force passed Mach 1 ([ADR-027 decision record](https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-027-the-normal-force-through-mach-1-supersonic-linear-theory-a-transonic-join-and-the-measured-references-2026-09-18)); since then it flies and is scored, its drifts reported as body lift. `max_acceleration` is the whole flight's, which for NDRT and Prometheus is the parachute, so a power-on maximum is recorded beside it. [M2.1b1 milestone](decisions-and-roadmap.md#m2-1b1); scored in [M2.1b2 milestone](decisions-and-roadmap.md#m2-1b2) ([ADR-021 decision record](https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-021-whole-flights-against-rocketpy-what-is-compared-and-the-gaps-it-may-declare-2026-09-18)): five cases pass every scored metric within 3%; Prometheus was a known gap until [M1.8a milestone](decisions-and-roadmap.md#m1-8a). Since [M2.1d3 milestone](decisions-and-roadmap.md#m2-1d3) RocketPy flies with the upstream corrections to its equations (`corrections.py`, [ADR-026 decision record](https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-026-the-path-in-wind-rocketpys-corrected-equations-and-hprs-body-lift-2026-09-18)): the largest scored whole-flight difference is +1.783% in height, speed and acceleration and, since body lift took Jorgensen's size ([M1.8e6 milestone](decisions-and-roadmap.md#m1-8e6), [ADR-037 decision record](https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-037-body-lift-by-jorgensens-crossflow-at-every-speed-and-a-boattails-measured-share-faster-than-sound-2026-09-19)), −1.811% in a drift (Valetudo's landing), and eight metrics are argued as not scored, five of them drifts in wind that hpr's body lift and rail release account for (`wind_response.py`); [M1.8a milestone](decisions-and-roadmap.md#m1-8a) adds Prometheus's two drifts and its main opening, eleven in all. The trajectory is the `series`, 120 rows of time since ignition, height and speed of the centre of dry mass, which [M2.1d1 milestone](decisions-and-roadmap.md#m2-1d1) compares ([ADR-024 decision record](https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-024-the-time-series-rms-aligned-at-ignition-held-to-3-of-its-traces-scale-2026-09-18)): hpr's height and speed at the same times, from the shared ignition clock with no fitted shift, until hpr lands, as a root mean square held to 3% of the reference's apogee and max speed. All eighteen same-drag RMS pass (height 0.09 to 35.4 m, speed 0.02 to 1.55 m/s, since [ADR-037 decision record](https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-037-body-lift-by-jorgensens-crossflow-at-every-speed-and-a-boattails-measured-share-faster-than-sound-2026-09-19); the largest are Prometheus's) |
 | Knacke's canopy tables | drag coefficients on the nominal area, canopy fill constants, drag-area growth exponents and opening-force coefficients | no clear terms: cited, never redistributed | transcribed into `hpr_sim::recovery::CanopyType` with the printed page at each accessor, and pinned by `hpr_sim::recovery::tests::default_canopy_cd_carries_its_citation` (which also fixes hpr's default `C_D0` as the middle of each printed range) |
 
-### Streamers and tumble (M1.7b)
+### Streamers and tumble
+
+This section covers the [M1.7b streamer-and-tumble milestone](decisions-and-roadmap.md#m1-7b).
 
 | source | what | license | notes |
 |---|---|---|---|

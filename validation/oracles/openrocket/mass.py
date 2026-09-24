@@ -51,6 +51,7 @@ PROBE_LENGTH_M = 1.0
 PROBE_OUTER_M = 0.05
 PROBE_WALL_M = 0.002
 PROBE_DENSITY = 1000.0
+GENERATED = "2026-09-23"
 PROBE = f"""<?xml version='1.0' encoding='utf-8'?>
 <openrocket version="1.10" creator="hpr-sim mass probe"><rocket><name>Probe</name>
 <subcomponents><stage><name>Stage</name><subcomponents>
@@ -197,6 +198,14 @@ def main():
         json.dumps(
             {
                 "source": "validation/oracles/openrocket/mass.py",
+                "generated": GENERATED,
+                "inputs_sha256": {
+                    "mass.py": hashlib.sha256(Path(__file__).read_bytes()).hexdigest(),
+                    "automatic_radius.py": hashlib.sha256(
+                        Path(automatic_radius.__file__).read_bytes()
+                    ).hexdigest(),
+                    "geometry.py": hashlib.sha256(Path(geometry.__file__).read_bytes()).hexdigest(),
+                },
                 "openrocket": str(BuildProperties.getVersion()),
                 "jar_sha256": hashlib.sha256(automatic_radius.JAR.read_bytes()).hexdigest(),
                 "command": " ".join(["mass.py", *sys.argv[1:]]),

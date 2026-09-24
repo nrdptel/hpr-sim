@@ -7,8 +7,10 @@
 //! which schema versions they claim, and how many warnings of each kind they raised. Those counts
 //! are the part that may be published.
 //!
-//! With no `--dir`, it reads every `.ork` under `refs/` and the example designs inside the pinned
-//! OpenRocket jar (`datafiles/examples/`), which is a zip like any other. It fails when any file
+//! With no `--dir`, it reads every `.ork` under `refs/` except the generated, unpinned
+//! `refs/scratch/` tree, and the example designs inside the pinned OpenRocket jar
+//! (`datafiles/examples/`), which is a zip like any other. Pass `--dir refs/scratch` explicitly
+//! when inspecting scratch files. It fails when any file
 //! cannot be read, which is how milestone M3.1a's "every `.ork` opens" is checked.
 
 use std::collections::{BTreeMap, BTreeSet};
@@ -31,7 +33,7 @@ const REPORT: &str = "corpus-out/ork-survey.json";
 /// The pinned OpenRocket jar, whose `datafiles/examples/` entries are designs in their own right.
 const JAR: &str = "refs/openrocket/OpenRocket-24.12.jar";
 
-/// The directories read when none are given.
+/// The directories read when none are given. Generated scratch files are excluded by `collect`.
 const DEFAULT_DIRS: [&str; 1] = ["refs"];
 
 /// What OpenRocket 24.12 resolved for every body radius of the files its probe ran
@@ -82,7 +84,8 @@ pub fn run(args: &[String]) -> Result<(), String> {
     let mut files = Vec::new();
     if dirs.is_empty() {
         for dir in DEFAULT_DIRS {
-            collect(&root.join(dir), &mut files)?;
+            let path = root.join(dir);
+            collect(&path, &mut files, Some(&path.join("scratch")))?;
         }
         let jar = root.join(JAR);
         if jar.is_file() {
@@ -90,7 +93,7 @@ pub fn run(args: &[String]) -> Result<(), String> {
         }
     } else {
         for dir in &dirs {
-            collect(dir, &mut files)?;
+            collect(dir, &mut files, None)?;
         }
     }
     files.sort_by(|left, right| left.0.cmp(&right.0));
@@ -1109,8 +1112,11 @@ fn mixed_content(element: &ork::Element, at: &str, found: &mut Vec<String>) {
 }
 
 /// Every `.ork` under `dir`, deepest last, with its path relative to the repository root.
-fn collect(dir: &Path, files: &mut Vec<Case>) -> Result<(), String> {
-    if !dir.is_dir() {
+///
+/// The default corpus excludes only `refs/scratch`, whose generated files are not pinned. An
+/// explicit `--dir` opts into the directory exactly as named.
+fn collect(dir: &Path, files: &mut Vec<Case>, excluded: Option<&Path>) -> Result<(), String> {
+    if !dir.is_dir() || excluded == Some(dir) {
         return Ok(());
     }
     let entries = fs::read_dir(dir).map_err(|error| format!("{}: {error}", dir.display()))?;
@@ -1118,7 +1124,7 @@ fn collect(dir: &Path, files: &mut Vec<Case>) -> Result<(), String> {
         let entry = entry.map_err(|error| format!("{}: {error}", dir.display()))?;
         let path = entry.path();
         if path.is_dir() {
-            collect(&path, files)?;
+            collect(&path, files, excluded)?;
         } else if path
             .extension()
             .is_some_and(|extension| extension.eq_ignore_ascii_case("ork"))
@@ -1167,6 +1173,32 @@ fn root() -> Result<PathBuf, String> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn only_the_default_scratch_directory_is_skipped() {
+        let temp = tempfile::tempdir().unwrap();
+        let refs = temp.path().join("refs");
+        fs::create_dir_all(refs.join("scratch")).unwrap();
+        fs::create_dir_all(refs.join("vendor/scratch")).unwrap();
+        fs::write(refs.join("scratch/generated.ork"), b"generated").unwrap();
+        fs::write(refs.join("vendor/scratch/design.ork"), b"design").unwrap();
+
+        let mut found = Vec::new();
+        collect(&refs, &mut found, Some(&refs.join("scratch"))).unwrap();
+        assert_eq!(found.len(), 1);
+        assert_eq!(
+            found[0].0,
+            refs.join("vendor/scratch/design.ork").display().to_string()
+        );
+
+        found.clear();
+        collect(&refs.join("scratch"), &mut found, None).unwrap();
+        assert_eq!(found.len(), 1);
+        assert_eq!(
+            found[0].0,
+            refs.join("scratch/generated.ork").display().to_string()
+        );
+    }
 
     /// The survey counts the radii given OpenRocket's default, and the documents with no design,
     /// by the words of their warnings; this holds those words to what the importer actually says,
