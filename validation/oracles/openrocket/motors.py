@@ -11,7 +11,7 @@ method names are the public API `javap` prints for the jar.
 Run from the repository root with the oracle environment and Java 17 (see `automatic_radius.py`):
 
     refs/venv/bin/python validation/oracles/openrocket/motors.py \\
-        validation/fixtures/ork/openrocket-motor-curves.json \\
+        validation/fixtures/motor/openrocket-curve-stats.json \\
         crates/hpr-motor/data/thrustcurve/curves
 
 The record is written to the path given, not to standard output, which OpenRocket logs to. Each

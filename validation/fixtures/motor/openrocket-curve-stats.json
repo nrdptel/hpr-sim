@@ -951,7 +951,7 @@
  "generated": "2026-09-25",
  "inputs_sha256": {
   "automatic_radius.py": "71c7eaafeebb0d076714f773ad72aa2ca8484dbd5b0a596c4e270aca82836da3",
-  "motors.py": "e73417ac2759ff6871292631b32ef0faa5c4bb288035e4ec7dd05fc8e6987b8f"
+  "motors.py": "7d2a8bf5db4012ec8e95f6b3f374b0101aff5f13894613046a3ed5a637d93099"
  },
  "jar_sha256": "4959b72f52f5f607941e9722abbb7b7f0c4a38ebbbf84204a329db9f31c4f897",
  "java": "17.0.20.1",

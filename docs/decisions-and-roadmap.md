@@ -82,6 +82,7 @@ new record replaces it and points back. All of them are in the [decision log][de
 | [ADR-063: Packed parts read and weighed as OpenRocket packs them][adr-063] | A parachute, streamer, shock cord or mass component whose file writes no packed size is 25 mm long and 12.5 mm in radius, as OpenRocket packs it, and a mass override on one that weighs nothing is spread over its packing, not put at a point; both measured on probe designs | [Mass properties](physics/mass.md#packed-parts) |
 | [ADR-064: Clusters, fillets and unread parts remain visible departures][adr-064] | A 3-ring cluster is read as one tube and pinned as a measured departure; 5 mm and 10 mm fin fillets are omitted and pinned; unread parts remain in `x-openrocket` and mark the design reduced. The 2026-09-23 scratch-excluding corpus rerun gives 58 of 71 within 1% in mass, 59 in centre, 50 in pitch inertia and 56 in roll with OpenRocket's fin rule | [Mass properties](physics/mass.md#clusters-and-fillets) |
 | [ADR-065: Stored results are references only when current and structurally plausible][adr-065] | Stored results remain readable, but only current runs with `RK4Simulator` and `BarrowmanCalculator` provenance markers and complete finite, internally consistent ascent summaries pass the stored-reference screen; the 2026-09-25 survey found 91 of 174 eligible and 83 excluded (47 inconsistent, 17 external, 11 outdated, 7 not-simulated and 1 missing simulator). Hpr reproduction is separate: 1 of those 91 is reproducible and 90 are not. | [`.ork` stored simulations](format/ork.md#what-openrocket-last-did-stored-simulations) |
+| [ADR-066: Every curve hpr flies is integrated as OpenRocket integrates it][adr-066] | The oracle hands OpenRocket the same bytes hpr reads, so the comparison is of two integrations of one file: hpr's total impulse and peak thrust are exactly OpenRocket 24.12's on all 32 bundled curves. OpenRocket's burn time is its own window, up to 12.37% from NFPA 1125's, and its average thrust up to 0.31%; both are written departures, not held. The reference library's own curves stay private, counted in [M2.2c2](#m2-2c2). | [Solid motors: validation](physics/motor.md#validation) |
 
 ## The roadmap
 
@@ -214,7 +215,9 @@ missing or its status disagrees.
 | <a id="m2-2b3"></a>[M2.2b3][phase-1] | Packed parts (parachutes, streamers, shock cords, mass components) against OpenRocket: the size one takes when its file writes none, and a mass override on one that weighs nothing | done |
 | <a id="m2-2b4"></a>[M2.2b4][phase-1] | Motor clusters, fin fillets and the parts kept unread | done |
 | <a id="m2-2b5"></a>[M2.2b5][phase-1] | Stored results in a `.ork` used as a reference only when they are current and plausible | done |
-| <a id="m2-2c"></a>[M2.2c][phase-1] | The motors OpenRocket flies, for the configurations held back for want of a thrust curve | not yet done |
+| <a id="m2-2c"></a>[M2.2c][phase-1] | The motors OpenRocket flies, for the configurations held back for want of a thrust curve, split into [M2.2c1](#m2-2c1) and [M2.2c2](#m2-2c2) below by [ADR-066][adr-066] | not yet done |
+| <a id="m2-2c1"></a>[M2.2c1][phase-1] | Every curve hpr flies integrated as OpenRocket 24.12 integrates it, to the milestone's 0.1% in total impulse | done |
+| <a id="m2-2c2"></a>[M2.2c2][phase-1] | The curves the reference library embeds, and the configurations held back for want of one | not yet done |
 | <a id="m2-2d"></a>[M2.2d][phase-1] | Flights to apogee on the public designs, against OpenRocket | not yet done |
 | <a id="m2-2e"></a>[M2.2e][phase-1] | The corpus, with a hypothesis for every apogee miss over 5% | not yet done |
 | <a id="m1-9"></a>[M1.9][phase-1] | Staging, clusters and air starts, for COTS motors | not yet done |
@@ -399,6 +402,7 @@ is the milestone that added or will add that test.
 [adr-063]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-063-packed-parts-read-and-weighed-as-openrocket-packs-them-2026-09-21
 [adr-064]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-064-clusters-fillets-and-unread-parts-remain-visible-departures-2026-09-22
 [adr-065]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-065-stored-results-are-references-only-when-current-and-structurally-plausible-2026-09-24
+[adr-066]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-066-every-curve-hpr-flies-is-integrated-as-openrocket-integrates-it-2026-09-25
 [adr-053]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-053-the-parts-on-and-inside-a-ork-body-degrees-what-is-left-out-and-a-sourced-finish-2026-09-20
 [adr-052]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-052-what-a-ork-value-means-automatic-dimensions-two-names-for-one-tag-and-overrides-2026-09-20
 [decisions]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md

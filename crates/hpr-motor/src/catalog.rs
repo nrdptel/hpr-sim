@@ -670,6 +670,7 @@ mod tests {
     #[derive(Debug, serde::Deserialize)]
     struct OpenRocketRecord {
         openrocket: String,
+        inputs_sha256: std::collections::BTreeMap<String, String>,
         curves: Vec<OpenRocketCurve>,
     }
 
@@ -677,7 +678,10 @@ mod tests {
     struct OpenRocketCurve {
         file: String,
         sha256: String,
+        #[serde(default)]
         motors: Vec<OpenRocketMotor>,
+        #[serde(default)]
+        driver_error: Option<String>,
     }
 
     #[derive(Debug, serde::Deserialize)]
@@ -685,6 +689,8 @@ mod tests {
         common_name: String,
         total_impulse_ns: f64,
         max_thrust_n: f64,
+        average_thrust_n: f64,
+        burn_time_s: f64,
         first_time_s: f64,
         points: usize,
     }
@@ -695,10 +701,11 @@ mod tests {
     /// the run prints the spread.
     ///
     /// OpenRocket's `getMaxThrustEstimate` is the largest *listed* thrust, which is hpr's
-    /// [`ThrustCurve::peak_thrust_n`], so it is held to rounding as well. Two quantities are
-    /// departures, measured in ADR-066 rather than held here: OpenRocket counts the points it
-    /// keeps after prepending its own origin, and its burn time is
-    /// `total impulse / average thrust` over its own window rather than NFPA 1125's.
+    /// [`ThrustCurve::peak_thrust_n`], so it is held to rounding as well. OpenRocket prepends an
+    /// origin to a file whose first point is after ignition, exactly as hpr does, so the point
+    /// counts are held equal too. Its burn time is its own window rather than NFPA 1125's, and its
+    /// average thrust follows that window: those two are departures, printed here and written down
+    /// with their size in ADR-066, not held.
     #[test]
     fn openrocket_s_total_impulse_matches_every_bundled_curve() {
         let record: OpenRocketRecord = serde_json::from_str(include_str!(
@@ -706,15 +713,24 @@ mod tests {
         ))
         .unwrap();
         assert_eq!(record.openrocket, "24.12");
+        // The record moves only when its script runs, never by hand (Loft lesson L76).
+        assert_eq!(
+            record.inputs_sha256["motors.py"],
+            "7d2a8bf5db4012ec8e95f6b3f374b0101aff5f13894613046a3ed5a637d93099",
+        );
         assert_eq!(record.curves.len(), bundled::CURVE_FILES.len());
         let catalog = bundled();
         let mut worst_impulse = 0.0f64;
         let mut worst_peak = 0.0f64;
+        let mut burn_time = Vec::new();
+        let mut average = Vec::new();
+        let mut files = std::collections::BTreeSet::new();
         for entry in &record.curves {
             let file = entry
                 .file
                 .strip_prefix("crates/hpr-motor/data/thrustcurve/")
                 .expect("the record names the bundled file");
+            assert_eq!(entry.driver_error, None, "{file}");
             let [theirs] = &entry.motors[..] else {
                 panic!("{file}: OpenRocket read {} motors", entry.motors.len());
             };
@@ -725,6 +741,7 @@ mod tests {
                 .unwrap_or_else(|| panic!("{file} is not a bundled curve"));
             // The record is tied to the bytes OpenRocket read, which are the bytes hpr reads.
             assert_eq!(curve.sha256, entry.sha256, "{file}");
+            assert!(files.insert(file.to_owned()), "{file} twice");
             // The two catalogues spell a designation differently (ThrustCurve's `131G84-10A` is
             // OpenRocket's `131-G84-GR-10A`, read from the file's own header), so the common name
             // is what can be compared; the file's SHA-256 is what ties the record to the motor.
@@ -757,14 +774,40 @@ mod tests {
                 }
                 assert!(error <= bound, "{file}: {what} {ours} against {theirs}");
             }
-            // Both readers add an origin when the file's first point is after ignition, so the
-            // point counts differ by exactly that one point and nothing else.
-            let added = usize::from(thrust.times_s()[0] == 0.0 && theirs.first_time_s > 0.0);
-            assert_eq!(thrust.times_s().len(), theirs.points + added, "{file}");
+            // Both readers prepend `(0, 0)` to a file whose first point is after ignition — 29 of
+            // the 32 — so both count that point and neither starts late.
+            assert_eq!(thrust.times_s()[0], 0.0, "{file}");
+            assert_eq!(theirs.first_time_s, 0.0, "{file}");
+            assert_eq!(thrust.times_s().len(), theirs.points, "{file}");
+            // The two definitions that differ, measured rather than held.
+            burn_time.push((thrust.burn_time_s() - theirs.burn_time_s).abs() / theirs.burn_time_s);
+            average.push(
+                (thrust.average_thrust_n() - theirs.average_thrust_n).abs()
+                    / theirs.average_thrust_n,
+            );
         }
+        assert_eq!(
+            files.len(),
+            bundled::CURVE_FILES.len(),
+            "a file twice or missing"
+        );
+        let spread = |mut v: Vec<f64>| {
+            v.sort_by(f64::total_cmp);
+            let mid = v.len() / 2;
+            let median = if v.len() % 2 == 0 {
+                0.5 * (v[mid - 1] + v[mid])
+            } else {
+                v[mid]
+            };
+            (v[v.len() - 1] * 100.0, median * 100.0)
+        };
+        let (burn_worst, burn_median) = spread(burn_time);
+        let (avg_worst, avg_median) = spread(average);
         eprintln!(
             "largest relative difference from OpenRocket 24.12: total impulse {worst_impulse:.2e}, \
-             peak thrust {worst_peak:.2e}"
+             peak thrust {worst_peak:.2e}; its own burn-time window differs by up to \
+             {burn_worst:.2}% (median {burn_median:.2}%) and its average thrust by up to \
+             {avg_worst:.2}% (median {avg_median:.2}%)"
         );
     }
 }
