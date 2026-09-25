@@ -1153,3 +1153,586 @@ fn tree(path: &Path) -> std::collections::BTreeMap<String, Vec<u8>> {
     }
     files
 }
+
+// What a metric word means, tool by tool and version by version (M2.2d1, Loft lessons L80, L81).
+
+use crate::flight_metrics::{
+    Definition, Event, Failure, FlightMetric, MetricOutcome, Occurrence, ReferenceReading, Side,
+    Tool, Withheld, compare, definition,
+};
+
+/// OpenRocket 24.12's flights of the public designs, as `flights.py` recorded them.
+fn openrocket_flights() -> serde_json::Value {
+    serde_json::from_str(include_str!(
+        "../../../validation/fixtures/ork/openrocket-flights.json"
+    ))
+    .expect("the committed record is JSON")
+}
+
+/// Every configuration OpenRocket flew, with its file, aborted runs included.
+fn flown(record: &serde_json::Value) -> Vec<(&str, &serde_json::Value)> {
+    let designs = record["designs"]
+        .as_array()
+        .expect("the record lists designs");
+    designs
+        .iter()
+        .flat_map(|design| {
+            let file = design["file"]
+                .as_str()
+                .expect("every design names its file");
+            design["flights"]
+                .as_array()
+                .into_iter()
+                .flatten()
+                .filter(|flight| flight["summary"].is_object())
+                .map(move |flight| (file, flight))
+        })
+        .collect()
+}
+
+/// The flights OpenRocket ran to their end: the references.
+fn complete(record: &serde_json::Value) -> Vec<(&str, &serde_json::Value)> {
+    flown(record)
+        .into_iter()
+        .filter(|(_, flight)| flight["aborted"] == false)
+        .collect()
+}
+
+fn number(value: &serde_json::Value) -> Option<f64> {
+    value.as_f64()
+}
+
+fn openrocket(version: &str) -> Tool {
+    Tool::OpenRocket {
+        version: version.to_owned(),
+    }
+}
+
+/// The key of a metric in the record's `summary`, which is OpenRocket's own getter's.
+fn summary_key(metric: FlightMetric) -> Option<&'static str> {
+    match metric {
+        FlightMetric::Apogee => Some("max_altitude_m"),
+        FlightMetric::MaxSpeed => Some("max_velocity_m_s"),
+        FlightMetric::MaxAcceleration => Some("max_acceleration_m_s2"),
+        FlightMetric::MaxMach => Some("max_mach"),
+        FlightMetric::TimeToApogee => Some("time_to_apogee_s"),
+        FlightMetric::FlightTime => Some("flight_time_s"),
+        FlightMetric::RodClearanceSpeed => Some("launch_rod_velocity_m_s"),
+        FlightMetric::DeploymentSpeed => Some("deployment_velocity_m_s"),
+        FlightMetric::GroundHitSpeed => Some("ground_hit_velocity_m_s"),
+        FlightMetric::OptimumDelay => Some("optimum_delay_s"),
+        _ => None,
+    }
+}
+
+/// OpenRocket's name for an event, as `flights.py` records it.
+fn event_name(event: Event) -> &'static str {
+    match event {
+        Event::RodClearance => "LAUNCHROD",
+        Event::Deployment => "RECOVERY_DEVICE_DEPLOYMENT",
+        Event::GroundHit => "GROUND_HIT",
+        _ => "none of OpenRocket's",
+    }
+}
+
+/// The occurrences of the event OpenRocket names `kind` in a recorded flight, in time order.
+fn named<'a>(flight: &'a serde_json::Value, kind: &str) -> Vec<&'a serde_json::Value> {
+    flight["events"]
+        .as_array()
+        .expect("a flown configuration records its events")
+        .iter()
+        .filter(|e| e["type"] == kind)
+        .collect()
+}
+
+fn occurrences(flight: &serde_json::Value, event: Event) -> Vec<&serde_json::Value> {
+    named(flight, event_name(event))
+}
+
+/// The total velocity at an event, interpolated linearly in time between the rows either side.
+fn speed_at(event: &serde_json::Value) -> Option<f64> {
+    let (before, after) = (&event["before"], &event["after"]);
+    let t = number(&event["time_s"])?;
+    let (t0, v0) = (
+        number(&before["time_s"])?,
+        number(&before["total_velocity_m_s"])?,
+    );
+    let (t1, v1) = (
+        number(&after["time_s"])?,
+        number(&after["total_velocity_m_s"])?,
+    );
+    if t1 == t0 {
+        return Some(v1);
+    }
+    Some(v0 + (v1 - v0) * (t - t0) / (t1 - t0))
+}
+
+/// The quantity `definition` names, taken from a recorded OpenRocket flight's time series.
+fn taken(flight: &serde_json::Value, definition: Definition) -> Option<f64> {
+    let series = &flight["series"];
+    match definition {
+        Definition::PeakHeight { .. } => number(&series["max_altitude_m"]),
+        Definition::TimeOfPeakHeight { .. } => number(&series["time_of_max_altitude_s"]),
+        Definition::PeakSpeed { .. } => number(&series["max_total_velocity_m_s"]),
+        Definition::PeakMach => number(&series["max_mach"]),
+        Definition::PeakAccelerationBefore { event } => {
+            assert_eq!(
+                event,
+                Event::Deployment,
+                "only before deployment is recorded"
+            );
+            number(&series["max_total_acceleration_before_deployment_m_s2"])
+        }
+        Definition::SpeedAtEvent { event, which, .. } => {
+            let found = occurrences(flight, event);
+            let chosen = match which {
+                Occurrence::First => found.first(),
+                Occurrence::Last => found.last(),
+            };
+            chosen.and_then(|e| speed_at(e))
+        }
+        Definition::TimeOfEvent { event } => number(&occurrences(flight, event).first()?["time_s"]),
+        Definition::StabilityAtEvent { event } => {
+            assert_eq!(event, Event::RodClearance, "only rod clearance is recorded");
+            let rod = &flight["rod_clearance"];
+            let (cp, cg) = (
+                number(&rod["cp_from_nose_m"])?,
+                number(&rod["cg_from_nose_m"])?,
+            );
+            Some((cp - cg) / number(&rod["reference_length_m"])?)
+        }
+    }
+}
+
+fn agree(a: f64, b: f64) -> bool {
+    (a - b).abs() <= 1e-9 * a.abs().max(1.0)
+}
+
+fn sha256_hex(bytes: &[u8]) -> String {
+    use sha2::Digest as _;
+    sha2::Sha256::digest(bytes)
+        .iter()
+        .map(|byte| format!("{byte:02x}"))
+        .collect()
+}
+
+/// The record moves only when its script runs (Loft lesson L76), on the pinned jar, and the
+/// scripts it names are the committed ones.
+#[test]
+fn openrocket_flight_record_is_its_script_s_on_the_pinned_jar() {
+    let record = openrocket_flights();
+    assert_eq!(record["openrocket"], "24.12");
+    assert_eq!(record["source"], "validation/oracles/openrocket/flights.py");
+    assert_eq!(
+        record["jar_sha256"],
+        "4959b72f52f5f607941e9722abbb7b7f0c4a38ebbbf84204a329db9f31c4f897"
+    );
+    // `.gitattributes` keeps these files' line endings LF on every platform.
+    for (name, bytes) in [
+        (
+            "flights.py",
+            include_bytes!("../../../validation/oracles/openrocket/flights.py").as_slice(),
+        ),
+        (
+            "events.py",
+            include_bytes!("../../../validation/oracles/openrocket/events.py").as_slice(),
+        ),
+        (
+            "geometry.py",
+            include_bytes!("../../../validation/oracles/rocketserializer/geometry.py").as_slice(),
+        ),
+    ] {
+        assert_eq!(
+            record["inputs_sha256"][name],
+            sha256_hex(bytes).as_str(),
+            "{name} changed since the record was written: rerun it"
+        );
+    }
+    // One design does not open; every configuration with a motor flew; one run was aborted.
+    let designs = record["designs"]
+        .as_array()
+        .expect("the record lists designs");
+    let refused: Vec<&str> = designs
+        .iter()
+        .filter(|d| d["refused"].is_string())
+        .filter_map(|d| d["file"].as_str())
+        .collect();
+    assert_eq!(
+        refused,
+        ["validation/fixtures/ork/loft-demo/demo-quirks.ork"]
+    );
+    assert!(designs.iter().all(|d| d["driver_error"].is_null()));
+    let flights = designs
+        .iter()
+        .flat_map(|d| d["flights"].as_array().into_iter().flatten());
+    assert!(flights.clone().all(|f| f["refused"].is_null()));
+    assert_eq!(flights.filter(|f| f["has_motors"] == true).count(), 57);
+    let aborted: Vec<_> = flown(&record)
+        .into_iter()
+        .filter(|(_, flight)| flight["aborted"] == true)
+        .collect();
+    assert_eq!(aborted.len(), 1);
+    let (file, flight) = aborted[0];
+    assert!(file.ends_with("Pods--powered with recovery deployment.ork"));
+    assert_eq!(
+        named(flight, "SIM_ABORT")[0]["cause"],
+        "Stage began to tumble under thrust."
+    );
+    // Calm air, the average wind model and OpenRocket's default reference length, so the flights
+    // are repeatable and hpr can fly the same ones.
+    for (file, flight) in flown(&record) {
+        let conditions = &flight["conditions"];
+        assert_eq!(conditions["wind_average_m_s"], 0.0, "{file}");
+        assert_eq!(conditions["wind_turbulence"], 0.0, "{file}");
+        assert_eq!(conditions["wind_model"], "AVERAGE", "{file}");
+        assert_eq!(flight["reference_type"], "MAXIMUM", "{file}");
+    }
+    assert_eq!(complete(&record).len(), 56);
+}
+
+/// Loft lesson L80: the same word is a different quantity in another tool or version. Each of
+/// OpenRocket 24.12's summary words is held, on every complete recorded flight, to the quantity
+/// its [`Definition`] names; the choices that matter are shown to matter; the words with no
+/// definition are shown not to be their obvious candidates; another version has no definition,
+/// and its value is withheld.
+#[allow(
+    clippy::too_many_lines,
+    reason = "one lesson, its evidence in one place"
+)]
+#[test]
+fn stored_metric_definitions_are_per_tool_and_version() {
+    let record = openrocket_flights();
+    let flights = complete(&record);
+    let current = openrocket("24.12");
+    let mut held = 0;
+    for &(file, flight) in &flights {
+        for &metric in FlightMetric::ALL {
+            let (Some(definition), Some(key)) = (definition(&current, metric), summary_key(metric))
+            else {
+                continue;
+            };
+            let word = number(&flight["summary"][key]).expect("a complete flight has every word");
+            let quantity = taken(flight, definition).expect("and every quantity");
+            assert!(
+                agree(word, quantity),
+                "{file} {metric:?}: {word} vs {quantity}"
+            );
+            held += 1;
+        }
+        // The margin has no summary word; the column is Niskanen's (CP - CG) / reference length.
+        let stability = number(&flight["rod_clearance"]["stability_cal"]).expect("on every flight");
+        let defined = definition(&current, FlightMetric::RodClearanceStability)
+            .and_then(|d| taken(flight, d))
+            .expect("defined");
+        assert!(
+            agree(stability, defined),
+            "{file}: {stability} vs {defined}"
+        );
+    }
+    assert_eq!(held, 56 * 9, "nine words on each complete flight");
+
+    // Rod clearance is the first step past the rod's length (every rod is vertical here): the
+    // step before is short of it, and the speed is above the speed at the rod's end.
+    let mut above = Vec::new();
+    for &(file, flight) in &flights {
+        let rod = occurrences(flight, Event::RodClearance)[0];
+        let length = number(&flight["conditions"]["rod_length_m"]).expect("recorded");
+        assert_eq!(flight["conditions"]["rod_angle_rad"], 0.0, "{file}");
+        let (before, after) = (&rod["before"], &rod["after"]);
+        let (h0, h1) = (
+            number(&before["altitude_m"]).expect("recorded"),
+            number(&after["altitude_m"]).expect("recorded"),
+        );
+        assert_eq!(
+            after["time_s"], rod["time_s"],
+            "{file}: the event is on a step"
+        );
+        assert!(
+            h0 < length && length <= h1,
+            "{file}: {h0} < {length} <= {h1}"
+        );
+        let (v0, v1) = (
+            number(&before["total_velocity_m_s"]).expect("recorded"),
+            number(&after["total_velocity_m_s"]).expect("recorded"),
+        );
+        let at_end = v0 + (v1 - v0) * (length - h0) / (h1 - h0);
+        let word = number(&flight["summary"]["launch_rod_velocity_m_s"]).expect("recorded");
+        above.push(word / at_end - 1.0);
+    }
+    let lowest = above.iter().copied().fold(f64::INFINITY, f64::min);
+    let highest = above.iter().copied().fold(f64::NEG_INFINITY, f64::max);
+    // The rod's end is placed by interpolating the speed linearly in height between the steps.
+    assert!(
+        (0.0006..0.00062).contains(&lowest) && (0.0750..0.0751).contains(&highest),
+        "rod clearance speed above the rod's end by {lowest} to {highest}"
+    );
+
+    // A deployment falls between steps on these deployments, so the interpolation is tested.
+    let between = flights
+        .iter()
+        .flat_map(|(_, flight)| occurrences(flight, Event::Deployment))
+        .filter(|e| e["after"]["time_s"] != e["time_s"])
+        .count();
+    assert_eq!(between, 53);
+    // The deployment speed is the last deployment's: on these flights the first differs, and on
+    // one of them the last is not the faster.
+    assert!(
+        flights
+            .iter()
+            .all(|(_, f)| occurrences(f, Event::Deployment).len() <= 2)
+    );
+    let told_apart: Vec<_> = flights
+        .iter()
+        .filter(|(_, flight)| {
+            let found = occurrences(flight, Event::Deployment);
+            let first = found.first().and_then(|e| speed_at(e));
+            let last = found.last().and_then(|e| speed_at(e));
+            matches!((first, last), (Some(first), Some(last)) if !agree(first, last))
+        })
+        .collect();
+    assert_eq!(told_apart.len(), 17);
+    let mut slower_last = 0;
+    for (file, flight) in &told_apart {
+        let word = number(&flight["summary"]["deployment_velocity_m_s"]).expect("deployed");
+        let first = speed_at(occurrences(flight, Event::Deployment)[0]).expect("recorded");
+        assert!(
+            !agree(word, first),
+            "{file}: the first deployment's speed would pass as well"
+        );
+        slower_last += usize::from(word < first);
+    }
+    assert_eq!(
+        slower_last, 1,
+        "the largest deployment speed is not the word either"
+    );
+
+    // The time to apogee is the highest step's, not the apogee event's, on these flights.
+    let event_differs = flights
+        .iter()
+        .filter(|(_, flight)| {
+            let word = number(&flight["summary"]["time_to_apogee_s"]).expect("recorded");
+            let event = number(&named(flight, "APOGEE")[0]["time_s"]).expect("recorded");
+            !agree(word, event)
+        })
+        .count();
+    assert_eq!(event_differs, 13);
+
+    // The largest acceleration stops at the first deployment: over the whole flight it differs
+    // on these. The optimum delay has no definition: it is not the apogee event less the last
+    // burnout on exactly the flights that deploy before apogee, nor the same flight's with nothing
+    // deployed on the same flights. Flown with nothing deployed, every flight's own optimum delay
+    // is its apogee event less its last burnout: an early deployment is what is not understood.
+    let mut delay_differs = Vec::new();
+    let mut undeployed_differs = Vec::new();
+    let mut acceleration_differs = 0;
+    let mut early_charge_only = 0;
+    for (index, (file, flight)) in flights.iter().enumerate() {
+        let times = |kind: &str| -> Vec<f64> {
+            named(flight, kind)
+                .iter()
+                .filter_map(|e| number(&e["time_s"]))
+                .collect()
+        };
+        let apogee = times("APOGEE")[0];
+        let burnout = *times("BURNOUT")
+            .last()
+            .expect("every complete flight burns out");
+        let delay = number(&flight["summary"]["optimum_delay_s"]).expect("recorded");
+        let deploys_early = times("RECOVERY_DEVICE_DEPLOYMENT")
+            .first()
+            .is_some_and(|&t| t < apogee);
+        let misses = !agree(delay, apogee - burnout);
+        assert_eq!(misses, deploys_early, "{file}");
+        if misses {
+            delay_differs.push(index);
+        }
+        let charges_early = times("EJECTION_CHARGE")
+            .first()
+            .is_some_and(|&t| t < apogee);
+        early_charge_only += usize::from(charges_early && !deploys_early);
+        let undeployed = &flight["undeployed"];
+        assert_eq!(undeployed["aborted"], false, "{file}");
+        let again = |key: &str| number(&undeployed[key]).expect("flown again");
+        if !agree(delay, again("apogee_time_s") - burnout) {
+            undeployed_differs.push(index);
+        }
+        let own = again("apogee_time_s") - again("last_burnout_time_s");
+        assert!(agree(again("optimum_delay_s"), own), "{file}");
+        let acceleration = number(&flight["summary"]["max_acceleration_m_s2"]).expect("recorded");
+        let peak = number(&flight["series"]["max_total_acceleration_m_s2"]).expect("recorded");
+        acceleration_differs += usize::from(!agree(acceleration, peak));
+    }
+    assert_eq!((delay_differs.len(), acceleration_differs), (15, 15));
+    assert_eq!(undeployed_differs, delay_differs);
+    assert_eq!(
+        early_charge_only, 5,
+        "an early charge alone changes nothing"
+    );
+    assert_eq!(definition(&current, FlightMetric::OptimumDelay), None);
+
+    // Another OpenRocket version, as a `.ork` names its writer, has no definition measured: its
+    // stored values are withheld, not read as 24.12 reads them.
+    let older = Tool::from_ork_creator("OpenRocket 23.09").expect("an OpenRocket creator");
+    assert_eq!(older, openrocket("23.09"));
+    assert_eq!(
+        Tool::from_ork_creator("OpenRocket 24.12"),
+        Some(current.clone())
+    );
+    assert_eq!(Tool::from_ork_creator("RockSim 9"), None);
+    for &metric in FlightMetric::ALL {
+        assert_eq!(definition(&older, metric), None);
+        assert_eq!(
+            compare(
+                &older,
+                metric,
+                ReferenceReading::Complete(Some(10.0)),
+                Some(10.0)
+            ),
+            MetricOutcome::Withheld(Withheld::DefinitionUnmeasured)
+        );
+    }
+
+    // RocketPy's leaving the rail is a different event from OpenRocket's rod clearance: the
+    // travel equals the rail, found between steps, where OpenRocket takes the step past it.
+    let rocketpy = Tool::RocketPy {
+        version: "1.13.0".to_owned(),
+    };
+    let rail = definition(&rocketpy, FlightMetric::RodClearanceSpeed).expect("defined");
+    let rod = definition(&current, FlightMetric::RodClearanceSpeed).expect("defined");
+    assert_eq!(
+        (rail.event(), rod.event()),
+        (Some(Event::RailExit), Some(Event::RodClearance))
+    );
+    assert_eq!(definition(&rocketpy, FlightMetric::DeploymentSpeed), None);
+}
+
+/// Loft lesson L81: a metric for an event that never happened was scored as 0. Here it is withheld
+/// when neither flight had the event, and fails when one did; either way it is never scored.
+#[test]
+fn metric_for_missing_event_is_withheld_not_scored() {
+    let record = openrocket_flights();
+    let current = openrocket("24.12");
+    let events = [
+        (FlightMetric::DeploymentSpeed, Event::Deployment),
+        (FlightMetric::GroundHitSpeed, Event::GroundHit),
+        (FlightMetric::RodClearanceSpeed, Event::RodClearance),
+    ];
+    // OpenRocket writes `NaN` exactly when the event never happened: on every complete flight,
+    // and on the probe whose parachute was set never to open.
+    let probe = &record["no_deployment"];
+    assert_eq!(probe["aborted"], false);
+    let mut missing = Vec::new();
+    for (file, flight) in complete(&record)
+        .into_iter()
+        .chain([("no_deployment", probe)])
+    {
+        for (metric, event) in events {
+            let key = summary_key(metric).expect("a summary word");
+            let word = number(&flight["summary"][key]);
+            let happened = !occurrences(flight, event).is_empty();
+            assert_eq!(word.is_some(), happened, "{file} {metric:?}");
+            if !happened {
+                missing.push((file, metric));
+            }
+        }
+    }
+    assert_eq!(missing, [("no_deployment", FlightMetric::DeploymentSpeed)]);
+
+    // The probe's missing deployment: withheld if hpr's parachute did not open either, failed if
+    // it did, and never scored.
+    let reading = ReferenceReading::Complete(number(&probe["summary"]["deployment_velocity_m_s"]));
+    let neither = compare(&current, FlightMetric::DeploymentSpeed, reading, None);
+    assert_eq!(
+        neither,
+        MetricOutcome::Withheld(Withheld::NoEventInEither {
+            event: Event::Deployment
+        })
+    );
+    let only_hpr = compare(&current, FlightMetric::DeploymentSpeed, reading, Some(12.0));
+    assert_eq!(
+        only_hpr,
+        MetricOutcome::Failed(Failure::EventOnlyIn {
+            event: Event::Deployment,
+            side: Side::Measured
+        })
+    );
+    assert_eq!((neither.difference(), only_hpr.difference()), (None, None));
+    assert_eq!(
+        compare(
+            &current,
+            FlightMetric::DeploymentSpeed,
+            ReferenceReading::Complete(Some(14.2)),
+            None
+        ),
+        MetricOutcome::Failed(Failure::EventOnlyIn {
+            event: Event::Deployment,
+            side: Side::Reference
+        })
+    );
+
+    // The aborted run never deployed or landed either, and its peaks are where it stopped: every
+    // metric of it is withheld, the apogee included.
+    let (_, aborted) = flown(&record)
+        .into_iter()
+        .find(|(_, flight)| flight["aborted"] == true)
+        .expect("one aborted run");
+    assert!(occurrences(aborted, Event::Deployment).is_empty());
+    assert!(number(&aborted["summary"]["max_altitude_m"]).is_some());
+    for &metric in FlightMetric::ALL {
+        let outcome = compare(&current, metric, ReferenceReading::Aborted, Some(100.0));
+        assert!(
+            matches!(
+                outcome,
+                MetricOutcome::Withheld(
+                    Withheld::ReferenceAborted | Withheld::DefinitionUnmeasured
+                )
+            ),
+            "{metric:?}: {outcome:?}"
+        );
+    }
+
+    // hpr's side: a value that is not a number fails, and so does a missing apogee.
+    let apogee = ReferenceReading::Complete(Some(300.0));
+    assert_eq!(
+        compare(&current, FlightMetric::Apogee, apogee, Some(f64::NAN)),
+        MetricOutcome::Failed(Failure::NotANumber {
+            side: Side::Measured
+        })
+    );
+    assert_eq!(
+        compare(
+            &current,
+            FlightMetric::RodClearanceStability,
+            ReferenceReading::Complete(Some(1.0)),
+            Some(f64::INFINITY)
+        ),
+        MetricOutcome::Failed(Failure::NotANumber {
+            side: Side::Measured
+        })
+    );
+    assert_eq!(
+        compare(&current, FlightMetric::Apogee, apogee, None),
+        MetricOutcome::Failed(Failure::NoValue {
+            side: Side::Measured
+        })
+    );
+    assert_eq!(
+        compare(
+            &current,
+            FlightMetric::Apogee,
+            ReferenceReading::Complete(Some(f64::INFINITY)),
+            Some(300.0)
+        ),
+        MetricOutcome::Failed(Failure::NotANumber {
+            side: Side::Reference
+        })
+    );
+    let scored = compare(&current, FlightMetric::Apogee, apogee, Some(297.0));
+    assert_eq!(scored.difference(), Some(-3.0));
+    // Outcomes go into reports: each survives JSON.
+    for outcome in [neither, only_hpr, scored] {
+        let text = serde_json::to_string(&outcome).expect("serializes");
+        let back: MetricOutcome = serde_json::from_str(&text).expect("deserializes");
+        assert_eq!(back, outcome);
+    }
+}
