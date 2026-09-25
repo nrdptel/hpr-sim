@@ -35,6 +35,7 @@ mod ork_corpus_flights;
 mod ork_extensions;
 mod ork_flights;
 mod ork_geometry;
+mod ork_library_flights;
 mod ork_mass;
 mod ork_motors;
 mod ork_recovery;
