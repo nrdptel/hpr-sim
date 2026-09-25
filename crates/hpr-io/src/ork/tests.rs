@@ -2059,6 +2059,120 @@ fn embedded_rse_curves_are_read() {
     assert_eq!(flown, ["c2"]);
 }
 
+/// The synthetic G100T as a motor database would hand it in: built from the same samples and
+/// envelope as the embedded `.rse`.
+fn synthetic_motor() -> hpr_motor::SolidMotor {
+    let thrust =
+        hpr_motor::ThrustCurve::new(vec![0.0, 0.05, 1.0, 1.1], vec![0.0, 100.0, 100.0, 0.0])
+            .expect("a valid curve");
+    hpr_motor::SolidMotor::from_envelope(thrust, 0.029, 0.124, 0.06, 0.15).expect("a valid motor")
+}
+
+/// M2.2c2: a curve supplied for a motor's digest flies it when the archive embeds none, an
+/// embedded curve still comes first, a supplied curve is never matched by name, and a motor the
+/// supplied curves lack says so in its reason.
+#[test]
+fn supplied_curves_are_used_by_digest_only() {
+    let xml = motor_design(
+        r#"<motorconfiguration configid="c1" default="true"><name>G100T</name></motorconfiguration>
+           <motorconfiguration configid="c2"><name>Other</name></motorconfiguration>
+           <motorconfiguration configid="c3"><name>No digest</name></motorconfiguration>"#,
+        r"<ignitionevent>automatic</ignitionevent><ignitiondelay>0.0</ignitiondelay>
+          <overhang>0.01</overhang>
+          <motor configid='c1'><type>single</type><manufacturer>Nobody</manufacturer>
+            <digest>d1935f00</digest><designation>G100T</designation>
+            <diameter>0.029</diameter><length>0.124</length><delay>6.0</delay></motor>
+          <motor configid='c2'><type>single</type><manufacturer>Nobody</manufacturer>
+            <digest>0ther</digest><designation>G100T</designation>
+            <diameter>0.029</diameter><length>0.124</length><delay>6.0</delay></motor>
+          <motor configid='c3'><type>single</type><manufacturer>Nobody</manufacturer>
+            <designation>G100T</designation>
+            <diameter>0.029</diameter><length>0.124</length><delay>6.0</delay></motor>",
+        "",
+    );
+    let mut supplied = SuppliedCurves::new("a test database");
+    assert!(supplied.is_empty());
+    assert!(
+        supplied
+            .insert("d1935f00", 0.029, 0.124, synthetic_motor())
+            .is_none()
+    );
+    assert_eq!((supplied.len(), supplied.source()), (1, "a test database"));
+    assert!(supplied.get("d1935f00").is_some() && supplied.get("0ther").is_none());
+
+    let plain = read(xml.as_bytes()).expect("a readable document");
+    let design = design_with(&plain.value, &supplied);
+    assert!(design.warnings.is_empty(), "{:?}", design.warnings);
+    let [c1, c2, c3] = design.value.motors.configurations.as_slice() else {
+        panic!("three configurations");
+    };
+    let Curve::Supplied {
+        digest,
+        from,
+        motor,
+    } = &c1.motors[0].curve
+    else {
+        panic!("the supplied curve: {:?}", c1.motors[0].curve);
+    };
+    assert_eq!(
+        (digest.as_str(), from.as_str()),
+        ("d1935f00", "a test database")
+    );
+    let impulse_ns = motor.curve().total_impulse_ns();
+    assert!((impulse_ns - 102.5).abs() <= 1e-9 * 102.5, "{impulse_ns}");
+    assert_eq!(c1.left_out, None);
+    assert!(design.value.rocket.assemble("c1").is_ok());
+
+    // Same maker and designation, another digest: not supplied, and the reason says where hpr
+    // looked. With no digest at all, it says there was nothing to look up.
+    for (configuration, says) in [
+        (c2, "a test database has no curve for its digest"),
+        (c3, "it records no digest to look up in the supplied curves"),
+    ] {
+        let Curve::Unresolved { why, reason } = &configuration.motors[0].curve else {
+            panic!("no curve for {}", configuration.id);
+        };
+        assert_eq!(*why, NoCurve::NotFound);
+        assert!(reason.contains(says), "{reason}");
+        assert!(reason.contains("bundled catalog"), "{reason}");
+        assert_eq!(
+            configuration.left_out.as_ref().map(|out| out.why),
+            Some(NotFlown::NoCurve)
+        );
+    }
+
+    // The archive's own curve still comes first, even with a curve supplied for its digest.
+    let archive = zip_of(&[
+        ("rocket.ork", xml.as_bytes()),
+        ("thrustcurves/d1935f00.rse", SYNTHETIC_RSE.as_bytes()),
+    ]);
+    let zipped = read(&archive).expect("a readable archive");
+    let design = design_with(&zipped.value, &supplied);
+    assert!(matches!(
+        design.value.motors.configurations[0].motors[0].curve,
+        Curve::Embedded { .. }
+    ));
+
+    // A supplied case that differs from the design's by more than a millimetre is warned about.
+    let mut apart = SuppliedCurves::new("a test database");
+    apart.insert("d1935f00", 0.038, 0.124, synthetic_motor());
+    let design = design_with(&plain.value, &apart);
+    assert!(
+        design
+            .warnings
+            .iter()
+            .any(|w| w.kind == WarningKind::Unusual && w.message.contains("in a test database")),
+        "{:?}",
+        design.warnings
+    );
+
+    // No supplied curves at all is `design`, word for word.
+    assert_eq!(
+        design_with(&plain.value, &SuppliedCurves::default()).value,
+        super::design(&plain.value).value
+    );
+}
+
 /// Reads a design from raw XML, expecting it to read.
 fn read_design(xml: &[u8]) -> Design {
     design(&read(xml).expect("a readable design").value).value
@@ -3190,6 +3304,7 @@ fn snapshot_of(design: &Imported<Design>) -> serde_json::Value {
                     "mount": motor.mount,
                     "curve": match &motor.curve {
                         Curve::Embedded { .. } => json!("embedded"),
+                        Curve::Supplied { .. } => json!("supplied"),
                         Curve::Catalog { .. } => json!("catalog"),
                         Curve::Unresolved { why, .. } => json!({ "none": why }),
                     },

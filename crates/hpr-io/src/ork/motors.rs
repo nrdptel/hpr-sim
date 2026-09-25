@@ -15,9 +15,11 @@
 //! archive can carry the curve itself as `thrustcurves/<digest>.rse` ([the file
 //! specification][spec], *Embedded Thrust Curve Data*). That curve is used first: it is the one
 //! the design was saved with, named by the file's own digest ([Loft lesson L57][l57]: Loft threw
-//! such curves away). Otherwise the motor is looked up in the bundled catalog by manufacturer and
-//! designation. A motor found in neither place is read with its reason, and nothing is invented
-//! for it.
+//! such curves away). Next come any curves the caller supplies by digest ([`SuppliedCurves`],
+//! [`design_with`](super::design_with)), such as OpenRocket's own motor database: a digest names
+//! the curve exactly, so a supplied curve is the one the design was saved with too. Last, the
+//! motor is looked up in the bundled catalog by manufacturer and designation. A motor found in none
+//! of these places is read with its reason, and nothing is invented for it.
 //!
 //! **What hpr flies.** [`hpr_design::Configuration`] holds a set of motors that all ignite at
 //! launch; staging and air starts come with [M1.9][m1-9]. So only a configuration whose every motor
@@ -54,6 +56,15 @@ pub enum Curve {
         /// The motor built from it.
         motor: Box<SolidMotor>,
     },
+    /// A curve the caller supplied for the motor's digest ([`SuppliedCurves`]).
+    Supplied {
+        /// The digest the design records, which the curve was supplied for.
+        digest: String,
+        /// Where the supplied curves came from ([`SuppliedCurves::source`]).
+        from: String,
+        /// The motor supplied.
+        motor: Box<SolidMotor>,
+    },
     /// The bundled ThrustCurve.org catalog ([`Catalog::bundled`]).
     Catalog {
         /// ThrustCurve.org's motor id.
@@ -81,7 +92,7 @@ pub enum NoCurve {
     Hybrid,
     /// The `<motor>` names no designation to look up.
     NoDesignation,
-    /// Neither an embedded curve nor the bundled catalog has it.
+    /// Neither an embedded curve, a supplied one nor the bundled catalog has it.
     NotFound,
     /// More than one motor in the bundled catalog has its manufacturer and designation.
     Ambiguous,
@@ -90,11 +101,89 @@ pub enum NoCurve {
     Unusable,
 }
 
+/// Thrust curves the caller supplies, each for the OpenRocket digest a `<motor>` records.
+///
+/// A `.ork` motor names its curve by a digest that "uniquely identifies the functional
+/// characteristics" of the curve ([OpenRocket's GitHub wiki][wiki], file format 1.2), and most
+/// designs do not embed the curve itself: OpenRocket finds it in the motor database its program
+/// ships. hpr's reader does no I/O and bundles only a small catalog, so a caller holding such a
+/// database (`cargo xtask ork` has one from OpenRocket, M2.2c2) hands its curves in here. A curve
+/// is used only for its own digest: never by name, which can match several curves.
+///
+/// [wiki]: https://github.com/openrocket/openrocket/wiki/File-format
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
+pub struct SuppliedCurves {
+    source: String,
+    by_digest: BTreeMap<String, SuppliedCurve>,
+}
+
+/// One supplied curve: the motor built from it and the case it describes.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+struct SuppliedCurve {
+    diameter_m: f64,
+    length_m: f64,
+    motor: SolidMotor,
+}
+
+impl SuppliedCurves {
+    /// No curves yet, from `source`: words a reason can quote, such as `OpenRocket 24.12's motor
+    /// database`.
+    pub fn new(source: impl Into<String>) -> Self {
+        Self {
+            source: source.into(),
+            by_digest: BTreeMap::new(),
+        }
+    }
+
+    /// Supplies `motor`, whose case is `diameter_m` by `length_m`, for `digest`; returns the motor
+    /// it replaces, if any.
+    pub fn insert(
+        &mut self,
+        digest: impl Into<String>,
+        diameter_m: f64,
+        length_m: f64,
+        motor: SolidMotor,
+    ) -> Option<SolidMotor> {
+        self.by_digest
+            .insert(
+                digest.into(),
+                SuppliedCurve {
+                    diameter_m,
+                    length_m,
+                    motor,
+                },
+            )
+            .map(|replaced| replaced.motor)
+    }
+
+    /// Where the curves came from, as given to [`SuppliedCurves::new`].
+    pub fn source(&self) -> &str {
+        &self.source
+    }
+
+    /// The motor supplied for `digest`.
+    pub fn get(&self, digest: &str) -> Option<&SolidMotor> {
+        self.by_digest.get(digest).map(|curve| &curve.motor)
+    }
+
+    /// How many digests have a curve.
+    pub fn len(&self) -> usize {
+        self.by_digest.len()
+    }
+
+    /// Whether no curve is supplied.
+    pub fn is_empty(&self) -> bool {
+        self.by_digest.is_empty()
+    }
+}
+
 impl Curve {
     /// The motor, when a curve was found.
     pub fn motor(&self) -> Option<&SolidMotor> {
         match self {
-            Self::Embedded { motor, .. } | Self::Catalog { motor, .. } => Some(motor),
+            Self::Embedded { motor, .. }
+            | Self::Supplied { motor, .. }
+            | Self::Catalog { motor, .. } => Some(motor),
             Self::Unresolved { .. } => None,
         }
     }
@@ -469,7 +558,8 @@ fn delay(text: &str, values: &mut Values<'_>) -> Option<Delay> {
 
 /// Reads every motor configuration: the ones `<rocket>` declares, filled with the motors in
 /// `mounts` (each with the id the rocket gave its component), plus the motors in parts the rocket
-/// does not read, found in `rocket_element`. Curves come from `attachments` or the bundled catalog.
+/// does not read, found in `rocket_element`. Curves come from `attachments`, `supplied` or the
+/// bundled catalog.
 ///
 /// Every configuration whose motors can all be flown as written is added to `rocket`.
 pub(super) fn read(
@@ -478,6 +568,7 @@ pub(super) fn read(
     incomplete: Option<&str>,
     mounts: &[(String, MountRead)],
     attachments: &[Attachment],
+    supplied: &SuppliedCurves,
     warnings: &mut Vec<Warning>,
 ) -> Motors {
     let at = "openrocket/rocket";
@@ -560,7 +651,14 @@ pub(super) fn read(
                 },
                 None => mount.default_ignition.clone(),
             };
-            let curve = curve(read, attachments, catalog.as_ref(), &mount.at, warnings);
+            let curve = curve(
+                read,
+                attachments,
+                supplied,
+                catalog.as_ref(),
+                &mount.at,
+                warnings,
+            );
             configurations[index].motors.push(OrkMotor {
                 mount: mount_id.clone(),
                 stage,
@@ -711,10 +809,12 @@ fn key(text: &str) -> String {
         .collect()
 }
 
-/// The thrust curve for `motor`: its embedded `.rse` first, then the bundled catalog.
+/// The thrust curve for `motor`: its embedded `.rse` first, then a curve supplied for its digest,
+/// then the bundled catalog.
 fn curve(
     motor: &MotorRead,
     attachments: &[Attachment],
+    supplied: &SuppliedCurves,
     catalog: Option<&Catalog>,
     at: &str,
     warnings: &mut Vec<Warning>,
@@ -766,10 +866,38 @@ fn curve(
             }
         }
     }
+    if let Some(digest) = &motor.digest
+        && let Some(found) = supplied.by_digest.get(digest)
+    {
+        sizes_agree(
+            motor,
+            found.diameter_m * 1e3,
+            found.length_m * 1e3,
+            supplied.source(),
+            at,
+            warnings,
+        );
+        return Curve::Supplied {
+            digest: digest.clone(),
+            from: supplied.source().to_owned(),
+            motor: Box::new(found.motor.clone()),
+        };
+    }
+    // What the supplied curves said, when there were any to look in.
+    let not_supplied = if supplied.is_empty() {
+        String::new()
+    } else if motor.digest.is_some() {
+        format!(", {} has no curve for its digest", supplied.source())
+    } else {
+        ", it records no digest to look up in the supplied curves".to_owned()
+    };
     let Some(catalog) = catalog else {
         return match embedded_failed {
-            Some(reason) => unresolved(NoCurve::Unusable, reason),
-            None => unresolved(NoCurve::NotFound, "no embedded curve".to_owned()),
+            Some(reason) => unresolved(NoCurve::Unusable, format!("{reason}{not_supplied}")),
+            None => unresolved(
+                NoCurve::NotFound,
+                format!("no embedded curve{not_supplied}"),
+            ),
         };
     };
     let maker = key(&motor.manufacturer);
@@ -779,8 +907,11 @@ fn curve(
         .collect();
     // A curve that was there and failed says more about the file than a catalog that lacks it.
     let not_found = |kind: NoCurve, why: &str| match &embedded_failed {
-        Some(lead) => unresolved(NoCurve::Unusable, format!("{lead}, and {why}")),
-        None => unresolved(kind, format!("no embedded curve, and {why}")),
+        Some(lead) => unresolved(
+            NoCurve::Unusable,
+            format!("{lead}{not_supplied}, and {why}"),
+        ),
+        None => unresolved(kind, format!("no embedded curve{not_supplied}, and {why}")),
     };
     match matches.as_slice() {
         [] => not_found(

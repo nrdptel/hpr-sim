@@ -236,6 +236,7 @@ fn report(root: &Path, files: &[Case], library: bool) -> Result<(), String> {
     let mut extension_tally = crate::ork_extensions::ExtensionTally::default();
     let mut geometry = crate::ork_geometry::GeometryTally::load(root, library)?;
     let mut mass = crate::ork_mass::MassTally::load(root, library)?;
+    let mut supply = crate::ork_supply::Supply::load(root, library)?;
     // Per source (a directory under `refs/`, or the jar): files, read, laid out, holding no
     // design, and errors (not read, or read but not laid out).
     let mut sources: BTreeMap<String, [usize; 5]> = BTreeMap::new();
@@ -328,8 +329,14 @@ fn report(root: &Path, files: &[Case], library: bool) -> Result<(), String> {
                     &mut elements_with_both,
                 );
                 let spine = ork::rocket(&read.value.document);
-                // The whole design, motors and all, whose first warnings are the spine's.
-                let whole = ork::design(&read.value);
+                // The whole design, motors and all, whose first warnings are the spine's; with
+                // OpenRocket's database, when there is a record of it, for the curves the design
+                // names by digest and does not embed (M2.2c2).
+                let whole = ork::design_with(&read.value, supply.curves());
+                supply.hold_embedded(&read.value.attachments);
+                if supply.is_present() {
+                    supply.follow(&ork::design(&read.value).value, &whole.value);
+                }
                 let motors_here = motor_tally.add(&whole, spine.warnings.len());
                 let recovery_here = recovery_tally.add(&whole);
                 let simulations_here = simulation_tally.add(&whole);
@@ -661,6 +668,7 @@ fn report(root: &Path, files: &[Case], library: bool) -> Result<(), String> {
     summary["openrocket_body_radii"] = openrocket_body_radii;
     summary["openrocket_mass_outside"] = mass.outside();
     summary["motors"] = motor_tally.summary();
+    summary["motor_supply"] = supply.summary();
     summary["recovery"] = recovery_tally.summary();
     summary["simulations"] = simulation_tally.summary();
     summary["extensions"] = extension_tally.summary();
@@ -795,6 +803,7 @@ fn report(root: &Path, files: &[Case], library: bool) -> Result<(), String> {
     }
     print_counts("tags no milestone reads yet", &off_spine);
     motor_tally.print();
+    supply.print();
     recovery_tally.print();
     simulation_tally.print();
     extension_tally.print();
@@ -830,6 +839,9 @@ fn report(root: &Path, files: &[Case], library: bool) -> Result<(), String> {
     println!("per-file detail (names and all): {REPORT}");
 
     if let Some(failure) = motor_tally.failure() {
+        return Err(failure);
+    }
+    if let Some(failure) = supply.failure() {
         return Err(failure);
     }
     if let Some(failure) = extension_tally.failure() {

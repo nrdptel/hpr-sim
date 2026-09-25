@@ -52,7 +52,7 @@ pub use error::OrkError;
 pub use extensions::{Extensions, Kept, KeptAttribute, OpenRocketExtension, element_at};
 pub use motors::{
     Curve, Ignition, IgnitionEvent, LeftOut, MotorConfiguration, Motors, NoCurve, NotFlown,
-    OrkMotor, UnreadMotor,
+    OrkMotor, SuppliedCurves, UnreadMotor,
 };
 pub use recovery::{
     DeployEvent, Deployment, DeviceKind, EventSetting, Recovery, RecoveryDevice, Separation,
@@ -220,9 +220,50 @@ impl Design {
 /// # }
 /// ```
 pub fn design(file: &OrkFile) -> Imported<Design> {
+    design_with(file, &SuppliedCurves::default())
+}
+
+/// Reads the design in `file` as [`design`] does, with `supplied` curves for the motors whose
+/// digest they name and whose archive embeds no usable curve: an embedded curve first, then a
+/// supplied one, then the bundled catalog.
+///
+/// ```
+/// # fn main() -> Result<(), Box<dyn std::error::Error>> {
+/// use hpr_io::ork::{Curve, SuppliedCurves};
+/// use hpr_motor::{SolidMotor, ThrustCurve};
+///
+/// let xml = br#"<?xml version='1.0' encoding='utf-8'?>
+/// <openrocket version="1.9" creator="example">
+///   <rocket><subcomponents><stage><name>Sustainer</name><subcomponents>
+///     <bodytube><id>body</id><length>0.4</length><thickness>0.001</thickness>
+///       <radius>0.0125</radius>
+///       <motormount><ignitionevent>automatic</ignitionevent><ignitiondelay>0.0</ignitiondelay>
+///         <overhang>0.0</overhang>
+///         <motor configid="c1"><type>single</type><manufacturer>Example</manufacturer>
+///           <digest>0123abcd</digest><designation>E9</designation>
+///           <diameter>0.024</diameter><length>0.07</length><delay>4.0</delay></motor>
+///       </motormount></bodytube>
+///   </subcomponents></stage></subcomponents></rocket>
+/// </openrocket>"#;
+/// let read = hpr_io::ork::read(xml)?;
+///
+/// // A made-up 20 N·s motor: 10 N for two seconds.
+/// let thrust = ThrustCurve::new(vec![0.0, 0.1, 1.9, 2.0], vec![0.0, 10.0, 10.0, 0.0])?;
+/// let motor = SolidMotor::from_envelope(thrust, 0.024, 0.07, 0.01, 0.03)?;
+/// let mut supplied = SuppliedCurves::new("a motor database");
+/// supplied.insert("0123abcd", 0.024, 0.07, motor);
+///
+/// let design = hpr_io::ork::design_with(&read.value, &supplied).value;
+/// let flown = &design.motors.configurations[0].motors[0];
+/// assert!(matches!(flown.curve, Curve::Supplied { .. }));
+/// assert!(design.rocket.assemble("c1").is_ok());
+/// # Ok(())
+/// # }
+/// ```
+pub fn design_with(file: &OrkFile, supplied: &SuppliedCurves) -> Imported<Design> {
     // Every tag the readers ask for is recorded, so that the extension can keep the rest.
     let ((mut design, warnings, read), reads) = reads::recording(|| {
-        let (mut design, mut warnings, read) = read_design(file);
+        let (mut design, mut warnings, read) = read_design(file, supplied);
         // Stored simulations stand apart from the airframe, so their warnings come after the check
         // in `read_design`; a document can hold them without a design, as Debrief's results-only
         // file does.
@@ -240,7 +281,10 @@ pub fn design(file: &OrkFile) -> Imported<Design> {
 
 /// The rocket, its motors and its recovery, the warnings reading them raised, and the paths of
 /// the stages and components read.
-fn read_design(file: &OrkFile) -> (Design, Vec<Warning>, std::collections::BTreeSet<String>) {
+fn read_design(
+    file: &OrkFile,
+    supplied: &SuppliedCurves,
+) -> (Design, Vec<Warning>, std::collections::BTreeSet<String>) {
     let (rocket, walked) = component::walk(&file.document);
     let Imported {
         value: rocket,
@@ -279,6 +323,7 @@ fn read_design(file: &OrkFile) -> (Design, Vec<Warning>, std::collections::BTree
             incomplete.as_deref(),
             &walked.mounts,
             &file.attachments,
+            supplied,
             &mut warnings,
         );
         design.recovery =

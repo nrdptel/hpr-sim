@@ -534,9 +534,16 @@ ejection event by itself: the user has to decide.
     curve's. The tails below 5% are the difference, so hpr's average is the higher on every one of
     the 32, by **+0.0107% to +0.3147%** (median +0.0965%) — the test prints all three. Carrying an
     average thrust between the two codes means saying which numerator it used.
-  - The reference library's designs embed curves of their own. Those are other people's data, so
-    they are counted, never published: [M2.2c2](../decisions-and-roadmap.md#m2-2c2) holds them to
-    the same bound and prints the count.
+  - **Curves outside this repository are held to the same bound.** They are not committed, so
+    `cargo xtask ork` checks them on the machine that has them, and fails if one is outside 0.1%
+    ([M2.2c2](../decisions-and-roadmap.md#m2-2c2), [ADR-067][adr-067]):
+    - the curves the reference library's designs embed, which are other people's data;
+    - every solid curve in the motor database OpenRocket 24.12 ships, which the survey supplies to
+      designs that name a curve by digest without carrying it.
+
+    All 3 embedded curves and all 1,288 database curves hpr builds agree with OpenRocket's total
+    impulse to the last bit. The counts are on the
+    [`.ork` format page](../format/ork.md#motors-in-the-reference-library).
 - **RocketPy** (`motor::tests::matches_rocketpy_solid_motor_for_three_bundled_motors`): three
   bundled curves with BATES loads cover grains that burn out radially (the bore reaches the outer
   wall first) and axially (the burning ends meet first), inhibited ends, and both of RocketPy's
@@ -757,6 +764,7 @@ fn main() -> Result<(), Box<dyn Error>> {
 ```
 
 [adr-066]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-066-every-curve-hpr-flies-is-integrated-as-openrocket-integrates-it-2026-09-25
+[adr-067]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-067-curves-come-from-openrockets-own-database-by-digest-each-held-to-its-impulse-2026-09-25
 [levels]: ../accuracy.md#four-kinds-of-evidence
 [sp]: https://ntrs.nasa.gov/api/citations/19720011135/downloads/19720011135.pdf
 [nar]: https://web.archive.org/web/20140205181530/http://www.nar.org/NARmotors.html

@@ -1181,7 +1181,28 @@ assert_eq!(assembly.motors[0].mount, "body");
 
 ### Motors in the reference library
 
-`cargo xtask ork`, over the 72 designs, on 2026-09-23:
+Most designs don't carry their motors' curves. A `<motor>` records OpenRocket's *digest* of the
+curve, a key that names one curve exactly. OpenRocket looks the digest up in the motor database
+that ships inside its program. hpr's bundled catalog has only 32 curves, so the survey supplies the
+rest. An oracle, `validation/oracles/openrocket/motor_database.py`, records OpenRocket 24.12's own
+database. `cargo xtask ork` then hands each solid motor's curve to the reader for its digest,
+through [`design_with`](../api/hpr_io/ork/fn.design_with.html) and
+`SuppliedCurves`. A curve the file embeds still comes first, and the bundled catalog last. A
+supplied curve is never matched by name, since a name can match several curves. The database's
+terms are unstated, so the record stays on the machine that ran it and only counts are published
+here.
+
+To repeat the survey on a machine with the design library under `refs/`, run these from the
+repository root. The oracle needs the environment and Java 17 described in
+`validation/oracles/openrocket/automatic_radius.py`:
+
+```sh
+refs/venv/bin/python validation/oracles/openrocket/motor_database.py \
+    corpus-out/openrocket-motors.json refs
+cargo xtask ork
+```
+
+`cargo xtask ork`, over the 72 designs, with that record, on 2026-09-25:
 
 | quantity | count |
 |---|---|
@@ -1189,16 +1210,46 @@ assert_eq!(assembly.motors[0].mount, "body");
 | motors read into their configurations | 202: 132 single-use, 65 reloads, 3 hybrids, and 2 not written, read like the rest |
 | motors left out, in parts not read yet | 6: 4 in pod sets, 2 in parallel stages |
 | thrust curve from the file itself | 4 |
-| thrust curve from the bundled catalog | 2 |
-| no curve | 193: 3 hybrids, and 190 in neither place |
-| ejection delays, of the 206 | 128 in seconds, 19 at 0 s, 53 plugged (`none`), 2 not written |
-| configurations the rocket flies | 2, in 2 designs, and both assemble |
-| left out, by first reason | 162 a motor with no curve, 4 a motor in a part not read, 2 a motor lighting in flight; the one held back for an airframe not read exactly as written, a shoulder of no wall, flies since [M2.2b1](../decisions-and-roadmap.md#m2-2b1) |
+| thrust curve from OpenRocket's database, by digest | 172 |
+| thrust curve from the bundled catalog | 1 |
+| no curve | 25: 3 hybrids, and 22 with no curve in any of the three places |
+| ejection delays, of the 202 | 128 in seconds, 19 at 0 s, 53 plugged (`none`), 2 not written |
+| configurations the rocket flies | 68, in 16 designs, and all 68 assemble |
+| left out, by first reason | 29 an airframe not read exactly as written, 24 a motor with no curve, 20 a motor in a cluster, 13 a motor lighting in flight, 12 more than one stage, 4 a motor in a part not read |
 
-The catalog is the limit, not the reader. When
-[M5.1](../decisions-and-roadmap.md#m5-1) brings ThrustCurve.org's curves, many of the 197 may find
-one; how many is not measured yet. How this was decided, with the sources in full, is in [ADR-055][adr-055].
+**Every curve matches OpenRocket's impulse.** The survey fails unless each curve's total impulse is
+within 0.1% of OpenRocket's. That covers every database curve hpr builds (1,288) and every curve a
+design embeds (3), and all of them agree to the last bit.
 
+**What the supply changed.** With the bundled catalog alone, 162 configurations were held back
+for want of a curve, and 2 flew. With the database:
+
+| what became of the 162 | configurations |
+|---|---|
+| fly | 66 |
+| held back for another reason: an airframe not read exactly as written | 29 |
+| held back for another reason: a motor in a cluster | 20 |
+| held back for another reason: more than one stage | 12 |
+| held back for another reason: a motor lighting in flight | 11 |
+| still no curve: the motor records no digest, and the bundled catalog lacks it | 20 |
+| still no curve: a hybrid | 3 |
+| still no curve: a digest the database lacks | 1 |
+
+**What the survey leaves out of the database.** It never supplies these:
+
+- the 164 hybrid motors;
+- one digest that two motors hold with different samples;
+- one motor whose propellant mass implies an impossible exhaust velocity.
+
+**What is not confirmed.** OpenRocket's documentation says it looks in its database first, and the
+digest names the curve exactly, so OpenRocket should fly the same curve. Reading back the motor
+OpenRocket picks is left to [M2.2d](../decisions-and-roadmap.md#m2-2d), which flies these
+designs against OpenRocket.
+
+How this was decided, and the counts in full, is in [ADR-067][adr-067]. The reading order for
+curves is in [ADR-055][adr-055].
+
+[adr-067]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-067-curves-come-from-openrockets-own-database-by-digest-each-held-to-its-impulse-2026-09-25
 [adr-055]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-055-m31c-split-and-the-motors-a-ork-flies-its-own-curve-first-and-only-what-lights-at-launch-2026-09-21
 
 ## When parachutes open and stages separate
@@ -1405,7 +1456,7 @@ stored result's provenance or physical correctness.
 |---|---|
 | stored simulations | 174, in 61 documents: 139 `uptodate`, 17 `external`, 11 `outdated`, 7 `notsimulated` |
 | stored reference screen | 91 eligible, 83 excluded: 47 inconsistent, 17 external, 11 outdated, 7 not-simulated and 1 missing simulator; only the 91 may enter a stored-data reference denominator (the count of runs used to calculate a reference statistic) |
-| hpr reproduction screen | of those 91, 1 reproducible and 90 not reproducible: 79 configurations unflyable and 11 designs reduced |
+| hpr reproduction screen | of those 91, 40 reproducible and 51 not reproducible: 40 configurations unflyable and 11 designs reduced, with the curves of [OpenRocket's database](#motors-in-the-reference-library) supplied |
 | with launch conditions | 173; 129 state the wind's direction, and 135 launch into the wind |
 | atmosphere | 172 `isa`, 1 not written |
 | with a summary | 162 |

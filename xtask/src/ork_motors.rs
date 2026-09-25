@@ -65,6 +65,7 @@ impl MotorTally {
                     .or_default() += 1;
                 let curve = match &motor.curve {
                     Curve::Embedded { .. } => "embedded".to_owned(),
+                    Curve::Supplied { .. } => "OpenRocket's database, by digest".to_owned(),
                     Curve::Catalog { .. } => "bundled catalog".to_owned(),
                     Curve::Unresolved { why, reason } => {
                         unresolved.push(json!({
@@ -244,18 +245,18 @@ fn listed<K: std::fmt::Display>(counts: &BTreeMap<K, usize>, lead: &str) -> Stri
     format!("{lead}{line}")
 }
 
-fn no_curve(why: NoCurve) -> &'static str {
+pub(crate) fn no_curve(why: NoCurve) -> &'static str {
     match why {
         NoCurve::Hybrid => "a hybrid",
         NoCurve::NoDesignation => "no designation",
-        NoCurve::NotFound => "not embedded or in the bundled catalog",
+        NoCurve::NotFound => "not embedded, supplied or in the bundled catalog",
         NoCurve::Ambiguous => "ambiguous in the catalog",
         NoCurve::Unusable => "a curve that could not be used",
         _ => "other",
     }
 }
 
-fn not_flown(why: NotFlown) -> &'static str {
+pub(crate) fn not_flown(why: NotFlown) -> &'static str {
     match why {
         NotFlown::UnreadMotor => "a motor in a part not read",
         NotFlown::NoMotor => "no motor",
