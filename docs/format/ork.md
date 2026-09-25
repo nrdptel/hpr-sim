@@ -1592,9 +1592,9 @@ OpenRocket's on ordinary hobby rockets.
 - On the six *Dual parachute deployment* flights, hpr's apogee is 0.63% to 4.34% low. The cause is
   not traced.
 - The bar, set for the whole corpus ([M2.2](../decisions-and-roadmap.md#m2-2), OpenRocket
-  comparisons), is that every apogee more than 5% off has a written cause. Five are, and each has
-  a named cause. For three of them there is evidence of its size. For two, how much each of two
-  causes contributes is not measured.
+  comparisons), is that every apogee more than 5% off has a written cause. Five apogees are
+  more than 5% off, and each has a named cause. For three of them there is evidence of its size.
+  For two, how much each of two causes contributes is not measured.
 
 **How they were flown.** `cargo xtask ork-flights` flies every configuration of the record in the
 section above that hpr can fly. It uses the conditions OpenRocket flew: a vertical launch rod of
@@ -1627,7 +1627,8 @@ hpr doesn't fly them yet:
   run;
 - a motor with no thrust curve (3), among them the one powered Loft demo.
 
-The other six Loft demos have no motor.
+Of the other six Loft demos, five have no motor OpenRocket finds, and OpenRocket does not open
+`demo-quirks.ork`.
 
 **Where to find it.** The committed
 [report](https://github.com/nrdptel/hpr-sim/blob/main/validation/reports/openrocket-flights.md)
@@ -1676,7 +1677,7 @@ parachute opens only a little early, the parachute's cost and hpr's own miss can
 the mass, the centre of mass, the centre of pressure and the reference diameter. The centre of
 pressure and the reference diameter agree within 0.1 mm, the report's resolution. The largest
 margin gaps are on the *Dual parachute deployment* example, −0.0097 to −0.0151 calibres: hpr's
-centre of mass is 0.6 to 0.9 mm aft of OpenRocket's there. Mass times that gap stays between 1.1
+centre of mass is 0.6 to 0.9 mm aft of OpenRocket's there. Mass times that gap, from the report's JSON figures, stays between 1.1
 and 1.35 g·m on all six motors, while the rocket's mass runs from 1.49 to 2.18 kg. So the gap is
 probably in the airframe, not the motors, but it is not traced yet.
 
@@ -1686,7 +1687,8 @@ flight, the *Dual parachute deployment* example on a J570W, is briefly faster th
 tests hpr faster than sound. That flight is also the largest gap with no named cause: −4.34% in
 apogee, with its largest speed −0.69%. The Earth is not the same in both programs. hpr's is the
 [WGS 84](../glossary.md#wgs-84) ellipsoid, with its gravity and rotation. OpenRocket's runs record
-a flat Earth for 10 of the flights and a spherical one for the other 11. Each program keeps its own
+a flat Earth for 10 of the flights and a spherical one for the other 11 (the record's
+`geodetic` field). Each program keeps its own
 model, and the effect of the difference is not measured. The decision is [ADR-069][adr-069].
 
 [adr-069]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-069-hprs-flights-of-the-public-designs-against-openrockets-2026-09-25
