@@ -646,7 +646,7 @@
       `ork-flights --library` reports it by anonymised id, differences only, curves checked as OR's,
       a test holding its words and sums. *Result:* met: 17 flights, 4 of 12 private designs, 9 in all.
     - [x] **M2.2e4 The causes.** *Done when:* every apogee over 5% has a written hypothesis.
-      *Result:* met (ADR-073): all 5 sized by OR's own flight without the cause, within 5% after.
+      *Result:* met (ADR-073): all 5 sized by OR flying without the cause; 4 within 5%, 1 at +7.80%.
     - [ ] [blocked] **M2.2e5 Twenty designs** (on M1.9, #173, #174, M1.13, #133). *Done when:*
       anonymised ids beside the public report make at least 20 designs with the five spreads; e4's
       bar on the flights added. M1.9: 17 at most; 3 of #173's 1, #174's 5, 4 public the rest.

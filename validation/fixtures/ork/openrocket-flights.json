@@ -4155,15 +4155,19 @@
      },
      "undeployed_without_drag_overrides": {
       "aborted": false,
-      "drag_overrides_cleared": 1,
+      "cleared": [
+       "67405a47-2e95-4e1b-b99c-14f0ab3020d8"
+      ],
       "max_altitude_m": 81.14608706441268,
       "refused": null
      },
      "undeployed_without_parts_set_to_no_drag": {
       "aborted": false,
       "max_altitude_m": 97.38834245262626,
-      "parts_removed": 1,
-      "refused": null
+      "refused": null,
+      "removed": [
+       "67405a47-2e95-4e1b-b99c-14f0ab3020d8"
+      ]
      }
     },
     {
@@ -4389,15 +4393,19 @@
      },
      "undeployed_without_drag_overrides": {
       "aborted": false,
-      "drag_overrides_cleared": 1,
+      "cleared": [
+       "67405a47-2e95-4e1b-b99c-14f0ab3020d8"
+      ],
       "max_altitude_m": 162.69087704766505,
       "refused": null
      },
      "undeployed_without_parts_set_to_no_drag": {
       "aborted": false,
       "max_altitude_m": 208.4396177367668,
-      "parts_removed": 1,
-      "refused": null
+      "refused": null,
+      "removed": [
+       "67405a47-2e95-4e1b-b99c-14f0ab3020d8"
+      ]
      }
     },
     {
@@ -4623,15 +4631,19 @@
      },
      "undeployed_without_drag_overrides": {
       "aborted": false,
-      "drag_overrides_cleared": 1,
+      "cleared": [
+       "67405a47-2e95-4e1b-b99c-14f0ab3020d8"
+      ],
       "max_altitude_m": 244.12149907498252,
       "refused": null
      },
      "undeployed_without_parts_set_to_no_drag": {
       "aborted": false,
       "max_altitude_m": 315.25701263830786,
-      "parts_removed": 1,
-      "refused": null
+      "refused": null,
+      "removed": [
+       "67405a47-2e95-4e1b-b99c-14f0ab3020d8"
+      ]
      }
     }
    ],
@@ -13332,7 +13344,7 @@
  "generated": "2026-09-25",
  "inputs_sha256": {
   "events.py": "313b72db4daae061e476be01cd429db7c2f34432ae45d314f1bbb1586e1f585d",
-  "flights.py": "e77b14ef9b2a5b2057ad3931c8814288286a326d6862fd7332e9eeacbcc118a7",
+  "flights.py": "468453426c76754b021fb6765403ce624d2ba782218357c4cba8867f3460f898",
   "geometry.py": "d410d9327f1fec89911cf3f597d7cde62559ccc2936106a48f1fc3c4184cc072"
  },
  "jar_sha256": "4959b72f52f5f607941e9722abbb7b7f0c4a38ebbbf84204a329db9f31c4f897",
