@@ -25,6 +25,7 @@
 # Environment overrides: HPR_MODEL (default claude-opus-5-5), HPR_EFFORT (default high; the reviewer
 #   subagents set their own in .claude/agents/),
 #   HPR_COMPACT_WINDOW (default 400000; the context size at which a session compacts, see below),
+#   HPR_CLAUDE_BIN (the Claude Code binary to run; see below),
 #   HPR_PERMISSION_MODE (default bypassPermissions; set it to auto for the classifier-checked mode),
 #   HPR_CYCLE_MAX_HOURS (default 10), HPR_STALL_MINUTES (default 120), HPR_LIMIT_POLL_MINUTES (default 10),
 #   HPR_KEEP_LOGS (default 20 cycle transcripts kept uncompressed; archives beyond 3x that are
@@ -301,7 +302,25 @@ nap() {
 for f in "$GOAL_FILE" "$SETTINGS_FILE"; do
   [ -f "$f" ] || { echo "missing $f" >&2; exit 1; }
 done
-command -v claude >/dev/null 2>&1 || { echo "claude CLI not found on PATH" >&2; exit 1; }
+# The binary each cycle runs. On this Mac `claude` is a launcher that, once a Max usage limit is
+# recorded, sends every session to a different API until the weekly reset. For the unattended run
+# that route cached poorly, ran 3 to 6 times slower per call and failed outright twice (cycles 65 to
+# 75, docs/AUTOPILOT.md), and it puts the private fixtures in front of another service. So the run
+# calls the real binary the launcher wraps, when it exists, and waits out a limit itself (the loop
+# below). The launcher's own subscription path clears the same four variables before it runs that
+# binary, so an API key or base URL left in the environment cannot reroute a cycle either.
+# HPR_CLAUDE_BIN names another binary and skips all of this.
+CLAUDE_BIN="${HPR_CLAUDE_BIN:-}"
+if [ -z "$CLAUDE_BIN" ]; then
+  native="${CLAUDE_NATIVE_BIN:-$HOME/.local/bin/claude-native}"
+  if [ -x "$native" ]; then
+    CLAUDE_BIN="$native"
+    unset ANTHROPIC_API_KEY ANTHROPIC_AUTH_TOKEN ANTHROPIC_BASE_URL CLAUDE_SMART_API_MODE
+  else
+    CLAUDE_BIN="claude"
+  fi
+fi
+command -v "$CLAUDE_BIN" >/dev/null 2>&1 || { echo "Claude Code binary not found: $CLAUDE_BIN" >&2; exit 1; }
 command -v python3 >/dev/null 2>&1 || { echo "python3 not found (needed for log parsing and the hooks)" >&2; exit 1; }
 if [ -z "$(git config user.email 2>/dev/null)" ]; then
   echo "git identity not set; run scripts/preflight.sh first" >&2; exit 1
@@ -330,6 +349,7 @@ if command -v caffeinate >/dev/null 2>&1; then
   log "caffeinate is holding off idle and system sleep (system-sleep prevention needs AC power)."
 fi
 memory_baseline
+log "Running $CLAUDE_BIN ($("$CLAUDE_BIN" --version 2>/dev/null | head -1))."
 
 child=""
 child_pgid=""
@@ -495,7 +515,7 @@ while :; do
   start=$(date +%s)
   CLAUDE_CODE_PRINT_BG_WAIT_CEILING_MS=0 \
   CLAUDE_CODE_RETRY_WATCHDOG=1 \
-    claude -p "/goal $GOAL_TEXT" \
+    "$CLAUDE_BIN" -p "/goal $GOAL_TEXT" \
       --model "$MODEL" \
       --effort "$EFFORT" \
       --permission-mode "$PERM_MODE" \
