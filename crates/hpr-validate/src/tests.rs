@@ -1519,14 +1519,14 @@ fn stored_metric_definitions_are_per_tool_and_version() {
 
     // The largest acceleration stops at the first deployment: over the whole flight it differs
     // on these. The optimum delay has no definition: it is not the apogee event less the last
-    // burnout on these flights, each with an ejection charge before apogee, nor the same flight's
-    // with nothing deployed on the same flights. Flown with nothing deployed, every flight's own
-    // optimum delay is its apogee event less its last burnout: the early charge is what is not
-    // understood.
+    // burnout on exactly the flights that deploy before apogee, nor the same flight's with nothing
+    // deployed on the same flights. Flown with nothing deployed, every flight's own optimum delay
+    // is its apogee event less its last burnout: an early deployment is what is not understood.
     let mut delay_differs = Vec::new();
     let mut undeployed_differs = Vec::new();
     let mut acceleration_differs = 0;
-    for (file, flight) in &flights {
+    let mut early_charge_only = 0;
+    for (index, (file, flight)) in flights.iter().enumerate() {
         let times = |kind: &str| -> Vec<f64> {
             named(flight, kind)
                 .iter()
@@ -1538,15 +1538,23 @@ fn stored_metric_definitions_are_per_tool_and_version() {
             .last()
             .expect("every complete flight burns out");
         let delay = number(&flight["summary"]["optimum_delay_s"]).expect("recorded");
-        if !agree(delay, apogee - burnout) {
-            delay_differs.push(*file);
-            assert!(times("EJECTION_CHARGE")[0] < apogee, "{file}");
+        let deploys_early = times("RECOVERY_DEVICE_DEPLOYMENT")
+            .first()
+            .is_some_and(|&t| t < apogee);
+        let misses = !agree(delay, apogee - burnout);
+        assert_eq!(misses, deploys_early, "{file}");
+        if misses {
+            delay_differs.push(index);
         }
+        let charges_early = times("EJECTION_CHARGE")
+            .first()
+            .is_some_and(|&t| t < apogee);
+        early_charge_only += usize::from(charges_early && !deploys_early);
         let undeployed = &flight["undeployed"];
         assert_eq!(undeployed["aborted"], false, "{file}");
         let again = |key: &str| number(&undeployed[key]).expect("flown again");
         if !agree(delay, again("apogee_time_s") - burnout) {
-            undeployed_differs.push(*file);
+            undeployed_differs.push(index);
         }
         let own = again("apogee_time_s") - again("last_burnout_time_s");
         assert!(agree(again("optimum_delay_s"), own), "{file}");
@@ -1556,6 +1564,10 @@ fn stored_metric_definitions_are_per_tool_and_version() {
     }
     assert_eq!((delay_differs.len(), acceleration_differs), (15, 15));
     assert_eq!(undeployed_differs, delay_differs);
+    assert_eq!(
+        early_charge_only, 5,
+        "an early charge alone changes nothing"
+    );
     assert_eq!(definition(&current, FlightMetric::OptimumDelay), None);
 
     // Another OpenRocket version, as a `.ork` names its writer, has no definition measured: its
