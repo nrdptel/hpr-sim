@@ -635,17 +635,20 @@
       bundled curves bit for bit OR's impulse, peak, 5% window and duration; average thrust departs.
     - [x] **M2.2c2 The configurations held back for want of a curve.** Met (ADR-067), bars kept: OR's
       database supplied by digest; of the 162 held back, 66 fly, 72 wait on another reason, 24 named.
-  - [x] **M2.2d Flights to apogee on the public designs.** Met (ADR-068, ADR-069), its done-when
-    bars kept: those that fly are in a report against OR (apogee, max velocity, stability margin)
-    and L80, L81 are live. Split in two.
-    - [x] **M2.2d1 OpenRocket's flights, and what its words mean** (L80, L81). Met (ADR-068), bars
-      kept: every public configuration OR flies, in calm air, pinned; 9 of OR 24.12's 10 words
-      held to a written definition, `optimumdelay` withheld; a missing event is never scored.
+  - [x] **M2.2d Flights to apogee on the public designs.** *Done when:* those that fly are in a
+    report against OR (apogee, max velocity, stability margin) and L80, L81 are live. Met (ADR-068,
+    ADR-069); split in two.
+    - [x] **M2.2d1 OpenRocket's flights, and what its words mean** (L80, L81). *Done when:* an
+      oracle flies every public configuration OR can in calm air, into a record a test pins; each
+      OR 24.12 summary word, and the margin at rod clearance, is held on every flight to a written
+      definition per tool and version, or withheld with the flights that rule out its candidates,
+      other versions withheld; a metric whose event never happened is never scored. *Result:* met
+      (ADR-068): 56 complete flights, 1 aborted; 9 of 10 words held, `optimumdelay` withheld.
       - Loft lessons: L80, L81.
     - [x] **M2.2d2 hpr's flights against the record.** *Done when:* the parent's *done when* is met:
       each configuration hpr flies is in a report against the record's apogee, largest speed and
       margin at rod clearance, by those definitions. *Result:* met (ADR-069): 21 flown; margin
-      within 0.015 cal; 5 apogees over 5%, each with a named cause (early chute, #165).
+      within 0.016 cal; 5 apogees over 5%, each with a named cause (early chute, #165).
   - [ ] **M2.2e The corpus** (L19, L82). *Done when:* the parent's *done when* is met, unchanged.
 
 - [ ] **M1.9 Staging, clusters, airstarts (COTS).**

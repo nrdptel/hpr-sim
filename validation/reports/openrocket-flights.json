@@ -30,25 +30,27 @@
           "room_m": 0.011595199999999998
         }
       ],
+      "file": "refs/openrocket/OpenRocket-24.12.jar!datafiles/examples/3D printable nose cone and fins.ork",
       "launch_mass_kg": {
         "hpr": 0.07378775561897538,
         "openrocket": 0.07376960425393524
       },
+      "max_mach_openrocket": 0.07301338477930663,
       "metrics": {
         "apogee_m": {
-          "difference": 0.08029947406756577,
-          "hpr": 39.097002808025735,
+          "difference": -0.022429753381047135,
+          "hpr": 38.99427358057712,
           "openrocket": 39.01670333395817,
           "outcome": {
             "definition": {
               "kind": "peak_height",
               "point": "unstated"
             },
-            "measured": 39.097002808025735,
+            "measured": 38.99427358057712,
             "outcome": "scored",
             "reference": 39.01670333395817
           },
-          "relative_percent": 0.20580794174293338
+          "relative_percent": -0.05748756677124336
         },
         "max_speed_m_s": {
           "difference": 0.04145161263966202,
@@ -104,7 +106,7 @@
         "time_s": 0.21548778576985783
       },
       "configuration": "05896b5a-71a7-48ac-b7ae-eadeb267975b",
-      "deployed_before_apogee_s": 0.06470412612898002,
+      "deployed_before_apogee_s": 0.09899999999999931,
       "design": "3D printable nose cone and fins",
       "design_errors_accepted": [
         {
@@ -115,25 +117,27 @@
           "room_m": 0.011595199999999998
         }
       ],
+      "file": "refs/openrocket/OpenRocket-24.12.jar!datafiles/examples/3D printable nose cone and fins.ork",
       "launch_mass_kg": {
         "hpr": 0.07565775561897538,
         "openrocket": 0.07563960425393523
       },
+      "max_mach_openrocket": 0.1429316354856846,
       "metrics": {
         "apogee_m": {
-          "difference": -0.2648434385052383,
-          "hpr": 112.60191430294691,
+          "difference": -0.36589863220122254,
+          "hpr": 112.50085910925092,
           "openrocket": 112.86675774145215,
           "outcome": {
             "definition": {
               "kind": "peak_height",
               "point": "unstated"
             },
-            "measured": 112.60191430294691,
+            "measured": 112.50085910925092,
             "outcome": "scored",
             "reference": 112.86675774145215
           },
-          "relative_percent": -0.2346514100386621
+          "relative_percent": -0.32418635878546226
         },
         "max_speed_m_s": {
           "difference": 0.1265301300275965,
@@ -189,7 +193,7 @@
         "time_s": 0.21517033080082254
       },
       "configuration": "b13e8ca2-f54d-4ca8-9b23-06c6c9eb237a",
-      "deployed_before_apogee_s": 0.577791227418909,
+      "deployed_before_apogee_s": 2.588882812500107,
       "design": "3D printable nose cone and fins",
       "design_errors_accepted": [
         {
@@ -200,25 +204,27 @@
           "room_m": 0.011595199999999998
         }
       ],
+      "file": "refs/openrocket/OpenRocket-24.12.jar!datafiles/examples/3D printable nose cone and fins.ork",
       "launch_mass_kg": {
         "hpr": 0.08053775561897537,
         "openrocket": 0.08051960425393523
       },
+      "max_mach_openrocket": 0.24492736829363904,
       "metrics": {
         "apogee_m": {
-          "difference": 29.886775261547342,
-          "hpr": 274.3477749259523,
+          "difference": 29.78972253046149,
+          "hpr": 274.25072219486646,
           "openrocket": 244.46099966440497,
           "outcome": {
             "definition": {
               "kind": "peak_height",
               "point": "unstated"
             },
-            "measured": 274.3477749259523,
+            "measured": 274.25072219486646,
             "outcome": "scored",
             "reference": 244.46099966440497
           },
-          "relative_percent": 12.225580073130594
+          "relative_percent": 12.185879371906642
         },
         "max_speed_m_s": {
           "difference": 0.7116255067437152,
@@ -274,7 +280,7 @@
         "time_s": 0.21517033080082254
       },
       "configuration": "e1dc7488-77c0-403a-b54f-c01db07aba2f",
-      "deployed_before_apogee_s": 0.37406951287992296,
+      "deployed_before_apogee_s": 0.5888828125002004,
       "design": "3D printable nose cone and fins",
       "design_errors_accepted": [
         {
@@ -285,25 +291,27 @@
           "room_m": 0.011595199999999998
         }
       ],
+      "file": "refs/openrocket/OpenRocket-24.12.jar!datafiles/examples/3D printable nose cone and fins.ork",
       "launch_mass_kg": {
         "hpr": 0.08053775561897537,
         "openrocket": 0.08051960425393523
       },
+      "max_mach_openrocket": 0.24492736829363904,
       "metrics": {
         "apogee_m": {
-          "difference": 0.386098592144549,
-          "hpr": 274.3477749259523,
+          "difference": 0.2890458610586961,
+          "hpr": 274.25072219486646,
           "openrocket": 273.96167633380776,
           "outcome": {
             "definition": {
               "kind": "peak_height",
               "point": "unstated"
             },
-            "measured": 274.3477749259523,
+            "measured": 274.25072219486646,
             "outcome": "scored",
             "reference": 273.96167633380776
           },
-          "relative_percent": 0.14093160667994611
+          "relative_percent": 0.105505947009358
         },
         "max_speed_m_s": {
           "difference": 0.7116255067437152,
@@ -370,25 +378,27 @@
           "room_m": 0.011595199999999998
         }
       ],
+      "file": "refs/openrocket/OpenRocket-24.12.jar!datafiles/examples/3D printable nose cone and fins.ork",
       "launch_mass_kg": {
         "hpr": 0.08053775561897537,
         "openrocket": 0.08051960425393523
       },
+      "max_mach_openrocket": 0.24492736829363904,
       "metrics": {
         "apogee_m": {
-          "difference": -0.34905845436247773,
-          "hpr": 274.3477749259523,
+          "difference": -0.4461111854483306,
+          "hpr": 274.25072219486646,
           "openrocket": 274.6968333803148,
           "outcome": {
             "definition": {
               "kind": "peak_height",
               "point": "unstated"
             },
-            "measured": 274.3477749259523,
+            "measured": 274.25072219486646,
             "outcome": "scored",
             "reference": 274.6968333803148
           },
-          "relative_percent": -0.1270704325445245
+          "relative_percent": -0.1624012843390497
         },
         "max_speed_m_s": {
           "difference": 0.7116255067437152,
@@ -447,25 +457,27 @@
       "deployed_before_apogee_s": null,
       "design": "A simple model rocket",
       "design_errors_accepted": [],
+      "file": "refs/openrocket/OpenRocket-24.12.jar!datafiles/examples/A simple model rocket.ork",
       "launch_mass_kg": {
         "hpr": 0.06451915976089379,
         "openrocket": 0.06450913050521777
       },
+      "max_mach_openrocket": 0.0862141712870821,
       "metrics": {
         "apogee_m": {
-          "difference": 0.0236399763484485,
-          "hpr": 51.077460057744986,
+          "difference": -0.13637163500742844,
+          "hpr": 50.91744844638911,
           "openrocket": 51.05382008139654,
           "outcome": {
             "definition": {
               "kind": "peak_height",
               "point": "unstated"
             },
-            "measured": 51.077460057744986,
+            "measured": 50.91744844638911,
             "outcome": "scored",
             "reference": 51.05382008139654
           },
-          "relative_percent": 0.046304030356119526
+          "relative_percent": -0.2671134790501618
         },
         "max_speed_m_s": {
           "difference": 0.05168664211928942,
@@ -521,28 +533,30 @@
         "time_s": 0.187
       },
       "configuration": "05896b5a-71a7-48ac-b7ae-eadeb267975b",
-      "deployed_before_apogee_s": 0.2790028329220453,
+      "deployed_before_apogee_s": 0.369644531250489,
       "design": "A simple model rocket",
       "design_errors_accepted": [],
+      "file": "refs/openrocket/OpenRocket-24.12.jar!datafiles/examples/A simple model rocket.ork",
       "launch_mass_kg": {
         "hpr": 0.06706915976089378,
         "openrocket": 0.06705913050521778
       },
+      "max_mach_openrocket": 0.1567799390048166,
       "metrics": {
         "apogee_m": {
-          "difference": -0.7192761349517696,
-          "hpr": 135.6944433187881,
+          "difference": -0.8745347477158987,
+          "hpr": 135.53918470602397,
           "openrocket": 136.41371945373987,
           "outcome": {
             "definition": {
               "kind": "peak_height",
               "point": "unstated"
             },
-            "measured": 135.6944433187881,
+            "measured": 135.53918470602397,
             "outcome": "scored",
             "reference": 136.41371945373987
           },
-          "relative_percent": -0.527275509994204
+          "relative_percent": -0.6410900246822078
         },
         "max_speed_m_s": {
           "difference": 0.14491186927456567,
@@ -598,28 +612,30 @@
         "time_s": 0.209
       },
       "configuration": "b13e8ca2-f54d-4ca8-9b23-06c6c9eb237a",
-      "deployed_before_apogee_s": 0.5673604832166284,
+      "deployed_before_apogee_s": 2.9888828125001057,
       "design": "A simple model rocket",
       "design_errors_accepted": [],
+      "file": "refs/openrocket/OpenRocket-24.12.jar!datafiles/examples/A simple model rocket.ork",
       "launch_mass_kg": {
         "hpr": 0.07126915976089378,
         "openrocket": 0.07125913050521777
       },
+      "max_mach_openrocket": 0.28067718412998477,
       "metrics": {
         "apogee_m": {
-          "difference": 38.82119944842577,
-          "hpr": 319.0350882393114,
+          "difference": 38.67302785871976,
+          "hpr": 318.8869166496054,
           "openrocket": 280.2138887908856,
           "outcome": {
             "definition": {
               "kind": "peak_height",
               "point": "unstated"
             },
-            "measured": 319.0350882393114,
+            "measured": 318.8869166496054,
             "outcome": "scored",
             "reference": 280.2138887908856
           },
-          "relative_percent": 13.854131076777836
+          "relative_percent": 13.801253044805415
         },
         "max_speed_m_s": {
           "difference": 0.7513634536563814,
@@ -675,28 +691,30 @@
         "time_s": 0.209
       },
       "configuration": "e1dc7488-77c0-403a-b54f-c01db07aba2f",
-      "deployed_before_apogee_s": 0.45678853690221644,
+      "deployed_before_apogee_s": 0.9888828125001989,
       "design": "A simple model rocket",
       "design_errors_accepted": [],
+      "file": "refs/openrocket/OpenRocket-24.12.jar!datafiles/examples/A simple model rocket.ork",
       "launch_mass_kg": {
         "hpr": 0.07126915976089378,
         "openrocket": 0.07125913050521777
       },
+      "max_mach_openrocket": 0.28067718412998477,
       "metrics": {
         "apogee_m": {
-          "difference": -0.10103935459358127,
-          "hpr": 319.0350882393114,
+          "difference": -0.24921094429959112,
+          "hpr": 318.8869166496054,
           "openrocket": 319.136127593905,
           "outcome": {
             "definition": {
               "kind": "peak_height",
               "point": "unstated"
             },
-            "measured": 319.0350882393114,
+            "measured": 318.8869166496054,
             "outcome": "scored",
             "reference": 319.136127593905
           },
-          "relative_percent": -0.031660268411275595
+          "relative_percent": -0.07808922987769897
         },
         "max_speed_m_s": {
           "difference": 0.7513634536563814,
@@ -755,25 +773,27 @@
       "deployed_before_apogee_s": null,
       "design": "A simple model rocket",
       "design_errors_accepted": [],
+      "file": "refs/openrocket/OpenRocket-24.12.jar!datafiles/examples/A simple model rocket.ork",
       "launch_mass_kg": {
         "hpr": 0.07126915976089378,
         "openrocket": 0.07125913050521777
       },
+      "max_mach_openrocket": 0.28067718412998477,
       "metrics": {
         "apogee_m": {
-          "difference": -3.3161333840104703,
-          "hpr": 319.0350882393114,
+          "difference": -3.46430497371648,
+          "hpr": 318.8869166496054,
           "openrocket": 322.35122162332186,
           "outcome": {
             "definition": {
               "kind": "peak_height",
               "point": "unstated"
             },
-            "measured": 319.0350882393114,
+            "measured": 318.8869166496054,
             "outcome": "scored",
             "reference": 322.35122162332186
           },
-          "relative_percent": -1.0287329972912225
+          "relative_percent": -1.0746988816331013
         },
         "max_speed_m_s": {
           "difference": 0.7513634536563814,
@@ -835,25 +855,27 @@
       "drag_overrides_not_applied": [
         "Base-Drag Hack Transition"
       ],
+      "file": "refs/openrocket/OpenRocket-24.12.jar!datafiles/examples/Base drag hack (short-wide).ork",
       "launch_mass_kg": {
         "hpr": 0.15858141744807147,
         "openrocket": 0.1582513265121257
       },
+      "max_mach_openrocket": 0.13883665659853003,
       "metrics": {
         "apogee_m": {
-          "difference": -16.23569755950311,
-          "hpr": 82.56209779004438,
+          "difference": -16.563658225690205,
+          "hpr": 82.23413712385728,
           "openrocket": 98.79779534954748,
           "outcome": {
             "definition": {
               "kind": "peak_height",
               "point": "unstated"
             },
-            "measured": 82.56209779004438,
+            "measured": 82.23413712385728,
             "outcome": "scored",
             "reference": 98.79779534954748
           },
-          "relative_percent": -16.43325896297692
+          "relative_percent": -16.76521036434855
         },
         "max_speed_m_s": {
           "difference": -1.7413436082379832,
@@ -891,19 +913,19 @@
       "termination": "ground_hit",
       "without_the_overridden_parts": {
         "apogee_m": {
-          "difference": -0.1982161883492921,
-          "hpr": 98.59957916119819,
+          "difference": -0.2882301440936459,
+          "hpr": 98.50956520545384,
           "openrocket": 98.79779534954748,
           "outcome": {
             "definition": {
               "kind": "peak_height",
               "point": "unstated"
             },
-            "measured": 98.59957916119819,
+            "measured": 98.50956520545384,
             "outcome": "scored",
             "reference": 98.79779534954748
           },
-          "relative_percent": -0.20062814929017542
+          "relative_percent": -0.2917374249839129
         },
         "max_speed_m_s": {
           "difference": 0.020373082604187687,
@@ -941,31 +963,33 @@
         "time_s": 0.348
       },
       "configuration": "8c7cc3ca-4560-49c7-878b-5cefc81319ef",
-      "deployed_before_apogee_s": 0.5339292075828634,
+      "deployed_before_apogee_s": 1.7989999999999933,
       "design": "Base drag hack (short-wide)",
       "design_errors_accepted": [],
       "drag_overrides_not_applied": [
         "Base-Drag Hack Transition"
       ],
+      "file": "refs/openrocket/OpenRocket-24.12.jar!datafiles/examples/Base drag hack (short-wide).ork",
       "launch_mass_kg": {
         "hpr": 0.16588141744807147,
         "openrocket": 0.16555132651212567
       },
+      "max_mach_openrocket": 0.21705875412381298,
       "metrics": {
         "apogee_m": {
-          "difference": -30.499686492373513,
-          "hpr": 168.72100927840134,
+          "difference": -30.825226140152836,
+          "hpr": 168.39546963062202,
           "openrocket": 199.22069577077485,
           "outcome": {
             "definition": {
               "kind": "peak_height",
               "point": "unstated"
             },
-            "measured": 168.72100927840134,
+            "measured": 168.39546963062202,
             "outcome": "scored",
             "reference": 199.22069577077485
           },
-          "relative_percent": -15.309497025081535
+          "relative_percent": -15.472903566013354
         },
         "max_speed_m_s": {
           "difference": -7.05284404301463,
@@ -1003,19 +1027,19 @@
       "termination": "ground_hit",
       "without_the_overridden_parts": {
         "apogee_m": {
-          "difference": 19.238091090671958,
-          "hpr": 218.4587868614468,
+          "difference": 19.15049815315365,
+          "hpr": 218.3711939239285,
           "openrocket": 199.22069577077485,
           "outcome": {
             "definition": {
               "kind": "peak_height",
               "point": "unstated"
             },
-            "measured": 218.4587868614468,
+            "measured": 218.3711939239285,
             "outcome": "scored",
             "reference": 199.22069577077485
           },
-          "relative_percent": 9.656672975787355
+          "relative_percent": 9.612705185604003
         },
         "max_speed_m_s": {
           "difference": 1.4711450117024896,
@@ -1053,31 +1077,33 @@
         "time_s": 0.3250000000000002
       },
       "configuration": "2d02768e-0dbe-40cd-98d8-7de14669b911",
-      "deployed_before_apogee_s": 0.4961152297675824,
+      "deployed_before_apogee_s": 1.2395858192678224,
       "design": "Base drag hack (short-wide)",
       "design_errors_accepted": [],
       "drag_overrides_not_applied": [
         "Base-Drag Hack Transition"
       ],
+      "file": "refs/openrocket/OpenRocket-24.12.jar!datafiles/examples/Base drag hack (short-wide).ork",
       "launch_mass_kg": {
         "hpr": 0.18318141744807148,
         "openrocket": 0.18285132651212568
       },
+      "max_mach_openrocket": 0.269405522469346,
       "metrics": {
         "apogee_m": {
-          "difference": -60.189889542176275,
-          "hpr": 256.1339150454361,
+          "difference": -60.51454969318522,
+          "hpr": 255.80925489442714,
           "openrocket": 316.32380458761236,
           "outcome": {
             "definition": {
               "kind": "peak_height",
               "point": "unstated"
             },
-            "measured": 256.1339150454361,
+            "measured": 255.80925489442714,
             "outcome": "scored",
             "reference": 316.32380458761236
           },
-          "relative_percent": -19.02793551077989
+          "relative_percent": -19.130570894617726
         },
         "max_speed_m_s": {
           "difference": -11.287584282263197,
@@ -1115,19 +1141,19 @@
       "termination": "ground_hit",
       "without_the_overridden_parts": {
         "apogee_m": {
-          "difference": 23.611281965068656,
-          "hpr": 339.935086552681,
+          "difference": 23.524568526366465,
+          "hpr": 339.8483731139788,
           "openrocket": 316.32380458761236,
           "outcome": {
             "definition": {
               "kind": "peak_height",
               "point": "unstated"
             },
-            "measured": 339.935086552681,
+            "measured": 339.8483731139788,
             "outcome": "scored",
             "reference": 316.32380458761236
           },
-          "relative_percent": 7.464276043293804
+          "relative_percent": 7.436863171595691
         },
         "max_speed_m_s": {
           "difference": 4.792398075136987,
@@ -1183,25 +1209,27 @@
           "mount_inner_diameter_m": 0.028955999999999996
         }
       ],
+      "file": "refs/openrocket/OpenRocket-24.12.jar!datafiles/examples/Chute release.ork",
       "launch_mass_kg": {
         "hpr": 1.0339909925592343,
         "openrocket": 1.0337515635216936
       },
+      "max_mach_openrocket": 0.21227685900070098,
       "metrics": {
         "apogee_m": {
-          "difference": -2.839333353714551,
-          "hpr": 307.1229645838984,
+          "difference": -3.39574588849257,
+          "hpr": 306.5665520491204,
           "openrocket": 309.96229793761296,
           "outcome": {
             "definition": {
               "kind": "peak_height",
               "point": "unstated"
             },
-            "measured": 307.1229645838984,
+            "measured": 306.5665520491204,
             "outcome": "scored",
             "reference": 309.96229793761296
           },
-          "relative_percent": -0.9160253916707096
+          "relative_percent": -1.095535138010895
         },
         "max_speed_m_s": {
           "difference": -0.12157131789956566,
@@ -1275,25 +1303,27 @@
           "mount_inner_diameter_m": 0.028955999999999996
         }
       ],
+      "file": "refs/openrocket/OpenRocket-24.12.jar!datafiles/examples/Chute release.ork",
       "launch_mass_kg": {
         "hpr": 1.0391909925592344,
         "openrocket": 1.0389515635216937
       },
+      "max_mach_openrocket": 0.31291073974369954,
       "metrics": {
         "apogee_m": {
-          "difference": -8.424780261756382,
-          "hpr": 481.8872415354866,
+          "difference": -8.97871881041226,
+          "hpr": 481.33330298683074,
           "openrocket": 490.312021797243,
           "outcome": {
             "definition": {
               "kind": "peak_height",
               "point": "unstated"
             },
-            "measured": 481.8872415354866,
+            "measured": 481.33330298683074,
             "outcome": "scored",
             "reference": 490.312021797243
           },
-          "relative_percent": -1.718248765525935
+          "relative_percent": -1.8312255076880817
         },
         "max_speed_m_s": {
           "difference": -0.16789404051775136,
@@ -1352,25 +1382,27 @@
       "deployed_before_apogee_s": null,
       "design": "Dual parachute deployment",
       "design_errors_accepted": [],
+      "file": "refs/openrocket/OpenRocket-24.12.jar!datafiles/examples/Dual parachute deployment.ork",
       "launch_mass_kg": {
         "hpr": 1.6127771088,
         "openrocket": 1.6127771088
       },
+      "max_mach_openrocket": 0.39793822755298197,
       "metrics": {
         "apogee_m": {
-          "difference": -12.733195673219939,
-          "hpr": 580.4132173559138,
+          "difference": -13.259989744840937,
+          "hpr": 579.8864232842928,
           "openrocket": 593.1464130291338,
           "outcome": {
             "definition": {
               "kind": "peak_height",
               "point": "unstated"
             },
-            "measured": 580.4132173559138,
+            "measured": 579.8864232842928,
             "outcome": "scored",
             "reference": 593.1464130291338
           },
-          "relative_percent": -2.146720505008688
+          "relative_percent": -2.2355340019884165
         },
         "max_speed_m_s": {
           "difference": 0.02595230053950104,
@@ -1429,25 +1461,27 @@
       "deployed_before_apogee_s": null,
       "design": "Dual parachute deployment",
       "design_errors_accepted": [],
+      "file": "refs/openrocket/OpenRocket-24.12.jar!datafiles/examples/Dual parachute deployment.ork",
       "launch_mass_kg": {
         "hpr": 1.6255451088,
         "openrocket": 1.6255451088
       },
+      "max_mach_openrocket": 0.41460595619532065,
       "metrics": {
         "apogee_m": {
-          "difference": -12.973216134880204,
-          "hpr": 685.4139443280228,
+          "difference": -13.496469399660896,
+          "hpr": 684.8906910632421,
           "openrocket": 698.387160462903,
           "outcome": {
             "definition": {
               "kind": "peak_height",
               "point": "unstated"
             },
-            "measured": 685.4139443280228,
+            "measured": 684.8906910632421,
             "outcome": "scored",
             "reference": 698.387160462903
           },
-          "relative_percent": -1.857596598179344
+          "relative_percent": -1.9325196916156369
         },
         "max_speed_m_s": {
           "difference": 0.08950272053445474,
@@ -1506,25 +1540,27 @@
       "deployed_before_apogee_s": null,
       "design": "Dual parachute deployment",
       "design_errors_accepted": [],
+      "file": "refs/openrocket/OpenRocket-24.12.jar!datafiles/examples/Dual parachute deployment.ork",
       "launch_mass_kg": {
         "hpr": 2.2469211088,
         "openrocket": 2.2469211088
       },
+      "max_mach_openrocket": 1.1467406183042437,
       "metrics": {
         "apogee_m": {
-          "difference": -96.06569091008032,
-          "hpr": 2128.6722128425263,
+          "difference": -96.52973964927105,
+          "hpr": 2128.2081641033355,
           "openrocket": 2224.7379037526066,
           "outcome": {
             "definition": {
               "kind": "peak_height",
               "point": "unstated"
             },
-            "measured": 2128.6722128425263,
+            "measured": 2128.2081641033355,
             "outcome": "scored",
             "reference": 2224.7379037526066
           },
-          "relative_percent": -4.318067793425923
+          "relative_percent": -4.33892637359431
         },
         "max_speed_m_s": {
           "difference": -2.6911413794441614,
@@ -1583,25 +1619,27 @@
       "deployed_before_apogee_s": null,
       "design": "Dual parachute deployment",
       "design_errors_accepted": [],
+      "file": "refs/openrocket/OpenRocket-24.12.jar!datafiles/examples/Dual parachute deployment.ork",
       "launch_mass_kg": {
         "hpr": 1.6917771088,
         "openrocket": 1.6917771088
       },
+      "max_mach_openrocket": 0.560853913919123,
       "metrics": {
         "apogee_m": {
-          "difference": -25.57407223040957,
-          "hpr": 872.2111351909504,
+          "difference": -26.08480494790126,
+          "hpr": 871.7004024734587,
           "openrocket": 897.7852074213599,
           "outcome": {
             "definition": {
               "kind": "peak_height",
               "point": "unstated"
             },
-            "measured": 872.2111351909504,
+            "measured": 871.7004024734587,
             "outcome": "scored",
             "reference": 897.7852074213599
           },
-          "relative_percent": -2.848573580741437
+          "relative_percent": -2.905461655224044
         },
         "max_speed_m_s": {
           "difference": 0.07157922848406884,
@@ -1660,25 +1698,27 @@
       "deployed_before_apogee_s": null,
       "design": "Dual parachute deployment",
       "design_errors_accepted": [],
+      "file": "refs/openrocket/OpenRocket-24.12.jar!datafiles/examples/Dual parachute deployment.ork",
       "launch_mass_kg": {
         "hpr": 1.7827771088,
         "openrocket": 1.7827771088
       },
+      "max_mach_openrocket": 0.7135266034790262,
       "metrics": {
         "apogee_m": {
-          "difference": -37.777239234006174,
-          "hpr": 1121.1841912913283,
+          "difference": -38.272527406331164,
+          "hpr": 1120.6889031190033,
           "openrocket": 1158.9614305253344,
           "outcome": {
             "definition": {
               "kind": "peak_height",
               "point": "unstated"
             },
-            "measured": 1121.1841912913283,
+            "measured": 1120.6889031190033,
             "outcome": "scored",
             "reference": 1158.9614305253344
           },
-          "relative_percent": -3.25957691421038
+          "relative_percent": -3.3023124323458273
         },
         "max_speed_m_s": {
           "difference": 0.1334881381688433,
@@ -1737,25 +1777,27 @@
       "deployed_before_apogee_s": null,
       "design": "Dual parachute deployment",
       "design_errors_accepted": [],
+      "file": "refs/openrocket/OpenRocket-24.12.jar!datafiles/examples/Dual parachute deployment.ork",
       "launch_mass_kg": {
         "hpr": 1.5119771088,
         "openrocket": 1.5119771088
       },
+      "max_mach_openrocket": 0.17209534237731142,
       "metrics": {
         "apogee_m": {
-          "difference": -0.8712513758144098,
-          "hpr": 226.55789237741658,
+          "difference": -1.426698819024324,
+          "hpr": 226.00244493420666,
           "openrocket": 227.429143753231,
           "outcome": {
             "definition": {
               "kind": "peak_height",
               "point": "unstated"
             },
-            "measured": 226.55789237741658,
+            "measured": 226.00244493420666,
             "outcome": "scored",
             "reference": 227.429143753231
           },
-          "relative_percent": -0.383086952461884
+          "relative_percent": -0.6273157412808733
         },
         "max_speed_m_s": {
           "difference": -0.06219149305301386,
@@ -1796,218 +1838,290 @@
   "generated_by": "cargo xtask ork-flights",
   "not_flown": [
     {
+      "aborted": false,
       "configuration": "00000000-0000-0000-ffff-fffffdeeb7a2",
       "design": "demo-payload-separation",
+      "file": "validation/fixtures/ork/loft-demo/demo-payload-separation.ork",
       "motors": "[None; F50T-8]",
       "why": "the design's only configuration, which OpenRocket gave a new id: a motor with no curve"
     },
     {
+      "aborted": false,
       "configuration": "c2a3649d-3248-44e0-a5be-d50d73490c56",
       "design": "ARC payload rocket",
+      "file": "refs/openrocket/OpenRocket-24.12.jar!datafiles/examples/ARC payload rocket.ork",
       "motors": "[None; F50T-9]",
       "why": "more than one stage"
     },
     {
+      "aborted": false,
       "configuration": "99b8d6a6-1379-4621-8b01-5d6dd55d686f",
       "design": "Airstart timing",
+      "file": "refs/openrocket/OpenRocket-24.12.jar!datafiles/examples/Airstart timing.ork",
       "motors": "[3× I211W-P, K550W-P]",
       "why": "a motor in a cluster"
     },
     {
+      "aborted": false,
       "configuration": "bbf39580-3dab-4987-9c86-4b3932934a28",
       "design": "Airstart timing",
+      "file": "refs/openrocket/OpenRocket-24.12.jar!datafiles/examples/Airstart timing.ork",
       "motors": "Airstart @2s",
       "why": "a motor in a cluster"
     },
     {
+      "aborted": false,
       "configuration": "bc7de2d0-b362-463a-9853-0200700175c7",
       "design": "Airstart timing",
+      "file": "refs/openrocket/OpenRocket-24.12.jar!datafiles/examples/Airstart timing.ork",
       "motors": "Airstart @1s",
       "why": "a motor in a cluster"
     },
     {
+      "aborted": false,
       "configuration": "37647ba6-86f6-423d-a08c-4c68a3215fc0",
       "design": "Airstart timing",
+      "file": "refs/openrocket/OpenRocket-24.12.jar!datafiles/examples/Airstart timing.ork",
       "motors": "airstart @4s",
       "why": "a motor in a cluster"
     },
     {
+      "aborted": false,
       "configuration": "7c4d659a-a836-434a-acd4-66e27ae5e053",
       "design": "Airstart timing",
+      "file": "refs/openrocket/OpenRocket-24.12.jar!datafiles/examples/Airstart timing.ork",
       "motors": "airstart @6s",
       "why": "a motor in a cluster"
     },
     {
+      "aborted": false,
       "configuration": "da326836-0959-4c94-bcd5-49dee07235a4",
       "design": "Clustered motors",
+      "file": "refs/openrocket/OpenRocket-24.12.jar!datafiles/examples/Clustered motors.ork",
       "motors": "[4× A8-3]",
       "why": "a motor in a cluster"
     },
     {
+      "aborted": false,
       "configuration": "05896b5a-71a7-48ac-b7ae-eadeb267975b",
       "design": "Clustered motors",
+      "file": "refs/openrocket/OpenRocket-24.12.jar!datafiles/examples/Clustered motors.ork",
       "motors": "[4× B4-4]",
       "why": "a motor in a cluster"
     },
     {
+      "aborted": false,
       "configuration": "b13e8ca2-f54d-4ca8-9b23-06c6c9eb237a",
       "design": "Clustered motors",
+      "file": "refs/openrocket/OpenRocket-24.12.jar!datafiles/examples/Clustered motors.ork",
       "motors": "[4× C6-3]",
       "why": "a motor in a cluster"
     },
     {
+      "aborted": false,
       "configuration": "e1dc7488-77c0-403a-b54f-c01db07aba2f",
       "design": "Clustered motors",
+      "file": "refs/openrocket/OpenRocket-24.12.jar!datafiles/examples/Clustered motors.ork",
       "motors": "[4× C6-5]",
       "why": "a motor in a cluster"
     },
     {
+      "aborted": false,
       "configuration": "5d9a2765-395d-4d9c-9678-38eed0988c72",
       "design": "Clustered motors",
+      "file": "refs/openrocket/OpenRocket-24.12.jar!datafiles/examples/Clustered motors.ork",
       "motors": "[4× C6-7]",
       "why": "a motor in a cluster"
     },
     {
+      "aborted": false,
       "configuration": "da326836-0959-4c94-bcd5-49dee07235a4",
       "design": "Deployable payload",
+      "file": "refs/openrocket/OpenRocket-24.12.jar!datafiles/examples/Deployable payload.ork",
       "motors": "[None; A8-3]",
       "why": "more than one stage"
     },
     {
+      "aborted": false,
       "configuration": "05896b5a-71a7-48ac-b7ae-eadeb267975b",
       "design": "Deployable payload",
+      "file": "refs/openrocket/OpenRocket-24.12.jar!datafiles/examples/Deployable payload.ork",
       "motors": "[None; B4-4]",
       "why": "more than one stage"
     },
     {
+      "aborted": false,
       "configuration": "b13e8ca2-f54d-4ca8-9b23-06c6c9eb237a",
       "design": "Deployable payload",
+      "file": "refs/openrocket/OpenRocket-24.12.jar!datafiles/examples/Deployable payload.ork",
       "motors": "[None; C6-3]",
       "why": "more than one stage"
     },
     {
+      "aborted": false,
       "configuration": "e1dc7488-77c0-403a-b54f-c01db07aba2f",
       "design": "Deployable payload",
+      "file": "refs/openrocket/OpenRocket-24.12.jar!datafiles/examples/Deployable payload.ork",
       "motors": "[None; C6-5]",
       "why": "more than one stage"
     },
     {
+      "aborted": false,
       "configuration": "5d9a2765-395d-4d9c-9678-38eed0988c72",
       "design": "Deployable payload",
+      "file": "refs/openrocket/OpenRocket-24.12.jar!datafiles/examples/Deployable payload.ork",
       "motors": "[None; C6-7]",
       "why": "more than one stage"
     },
     {
+      "aborted": false,
       "configuration": "6e2539fb-efe5-43e4-8c58-601dd9b5dc12",
       "design": "Parallel booster staging",
+      "file": "refs/openrocket/OpenRocket-24.12.jar!datafiles/examples/Parallel booster staging.ork",
       "motors": "[I115W-10; 2× E12-0]",
       "why": "a motor in a part not read"
     },
     {
+      "aborted": false,
       "configuration": "61807321-6072-430e-87cd-91fd258cb161",
       "design": "Parallel booster staging",
+      "file": "refs/openrocket/OpenRocket-24.12.jar!datafiles/examples/Parallel booster staging.ork",
       "motors": "[I115W-10; None]",
       "why": "an airframe not read exactly as written"
     },
     {
+      "aborted": false,
       "configuration": "5f9084c7-fb2c-4635-8540-bf065626e673",
       "design": "Pods--airframes and winglets",
+      "file": "refs/openrocket/OpenRocket-24.12.jar!datafiles/examples/Pods--airframes and winglets.ork",
       "motors": "[A8-3]",
       "why": "an airframe not read exactly as written"
     },
     {
+      "aborted": false,
       "configuration": "a11cb733-2b6c-40cf-9aae-4e1079b681ae",
       "design": "Pods--airframes and winglets",
+      "file": "refs/openrocket/OpenRocket-24.12.jar!datafiles/examples/Pods--airframes and winglets.ork",
       "motors": "[B6-4]",
       "why": "an airframe not read exactly as written"
     },
     {
+      "aborted": false,
       "configuration": "ebe43947-e8b6-486a-aaea-07077ea9b8b7",
       "design": "Pods--airframes and winglets",
+      "file": "refs/openrocket/OpenRocket-24.12.jar!datafiles/examples/Pods--airframes and winglets.ork",
       "motors": "[C6-5]",
       "why": "an airframe not read exactly as written"
     },
     {
+      "aborted": false,
       "configuration": "417f165a-5045-491f-9a43-20d9c79e1d01",
       "design": "Pods--airframes and winglets",
+      "file": "refs/openrocket/OpenRocket-24.12.jar!datafiles/examples/Pods--airframes and winglets.ork",
       "motors": "[C12-6]",
       "why": "an airframe not read exactly as written"
     },
     {
+      "aborted": false,
       "configuration": "cb521292-0567-4736-8291-ab66f750931f",
       "design": "Pods--airframes and winglets",
+      "file": "refs/openrocket/OpenRocket-24.12.jar!datafiles/examples/Pods--airframes and winglets.ork",
       "motors": "[D16-6]",
       "why": "an airframe not read exactly as written"
     },
     {
+      "aborted": true,
       "configuration": "a35cf276-8728-4d11-bc67-8acc7f955b2c",
       "design": "Pods--powered with recovery deployment",
+      "file": "refs/openrocket/OpenRocket-24.12.jar!datafiles/examples/Pods--powered with recovery deployment.ork",
       "motors": "[C6-7; 2× A3-4, B6-0]",
       "why": "a motor in a part not read"
     },
     {
+      "aborted": false,
       "configuration": "797c5e3c-8d2d-470c-9102-0a02bf65723d",
       "design": "Pods--powered with recovery deployment",
+      "file": "refs/openrocket/OpenRocket-24.12.jar!datafiles/examples/Pods--powered with recovery deployment.ork",
       "motors": "[C6-7; B6-0]",
       "why": "a motor igniting in flight"
     },
     {
+      "aborted": false,
       "configuration": "98b9db2a-f24c-4c4b-81a9-6aec09596f9d",
       "design": "Pods--powered with recovery deployment",
+      "file": "refs/openrocket/OpenRocket-24.12.jar!datafiles/examples/Pods--powered with recovery deployment.ork",
       "motors": "[C6-5; None]",
       "why": "an airframe not read exactly as written"
     },
     {
+      "aborted": false,
       "configuration": "5f878145-5c0a-4f42-8e1a-215f92c1abbd",
       "design": "Pods--powered with recovery deployment",
+      "file": "refs/openrocket/OpenRocket-24.12.jar!datafiles/examples/Pods--powered with recovery deployment.ork",
       "motors": "[None; 2× A10-3, B6-4]",
       "why": "a motor in a part not read"
     },
     {
+      "aborted": false,
       "configuration": "487170d2-211b-49a5-b58b-9c222d926522",
       "design": "Simulation extensions",
+      "file": "refs/openrocket/OpenRocket-24.12.jar!datafiles/examples/Simulation extensions.ork",
       "motors": "[2800CC172L-L540-P]",
       "why": "a motor with no curve"
     },
     {
+      "aborted": false,
       "configuration": "487170d2-211b-49a5-b58b-9c222d926522",
       "design": "Simulation scripting",
+      "file": "refs/openrocket/OpenRocket-24.12.jar!datafiles/examples/Simulation scripting.ork",
       "motors": "[2800CC172L-L540-P]",
       "why": "a motor with no curve"
     },
     {
+      "aborted": false,
       "configuration": "da326836-0959-4c94-bcd5-49dee07235a4",
       "design": "Three stage low power rocket",
+      "file": "refs/openrocket/OpenRocket-24.12.jar!datafiles/examples/Three stage low power rocket.ork",
       "motors": "[A8-5; B6-0; B6-0]",
       "why": "a motor igniting in flight"
     },
     {
+      "aborted": false,
       "configuration": "05896b5a-71a7-48ac-b7ae-eadeb267975b",
       "design": "Three stage low power rocket",
+      "file": "refs/openrocket/OpenRocket-24.12.jar!datafiles/examples/Three stage low power rocket.ork",
       "motors": "[C6-5; B6-0; B6-0]",
       "why": "a motor igniting in flight"
     },
     {
+      "aborted": false,
       "configuration": "b13e8ca2-f54d-4ca8-9b23-06c6c9eb237a",
       "design": "Three stage low power rocket",
+      "file": "refs/openrocket/OpenRocket-24.12.jar!datafiles/examples/Three stage low power rocket.ork",
       "motors": "[C6-7; C6-0; C6-0]",
       "why": "a motor igniting in flight"
     },
     {
+      "aborted": false,
       "configuration": "f58f38e4-0cb4-45b3-9899-8b5e561d1b73",
       "design": "Tube fin rocket",
+      "file": "refs/openrocket/OpenRocket-24.12.jar!datafiles/examples/Tube fin rocket.ork",
       "motors": "[D12-7]",
       "why": "an airframe not read exactly as written"
     },
     {
+      "aborted": false,
       "configuration": "cf7a0b8c-19e9-4112-912f-505bc8e01067",
       "design": "Two stage high power rocket",
+      "file": "refs/openrocket/OpenRocket-24.12.jar!datafiles/examples/Two stage high power rocket.ork",
       "motors": "[H148R-0; H148R-0]",
       "why": "a motor igniting in flight"
     },
     {
+      "aborted": false,
       "configuration": "fadeeef3-4aa4-49e9-9581-71e14fa91c14",
       "design": "Two stage high power rocket",
+      "file": "refs/openrocket/OpenRocket-24.12.jar!datafiles/examples/Two stage high power rocket.ork",
       "motors": "[I59WN-P; I357T-14]",
       "why": "a motor igniting in flight"
     }
@@ -2033,24 +2147,24 @@
         "scored_by_cause": {
           "a part's drag override not applied": {
             "count": 3,
-            "max": -15.309497025081535,
-            "mean_absolute": 16.923563832946115,
-            "median": -16.43325896297692,
-            "min": -19.02793551077989
+            "max": -15.472903566013354,
+            "mean_absolute": 17.12289494165988,
+            "median": -16.76521036434855,
+            "min": -19.130570894617726
           },
           "no named cause": {
             "count": 12,
-            "max": 0.20580794174293338,
-            "mean_absolute": 1.5713176585965913,
-            "median": -1.373490881408579,
-            "min": -4.318067793425923
+            "max": -0.05748756677124336,
+            "mean_absolute": 1.6525443127951371,
+            "median": -1.4633803228494884,
+            "min": -4.33892637359431
           },
           "reference parachute open before apogee": {
             "count": 6,
-            "max": 13.854131076777836,
-            "mean_absolute": 4.50237165750542,
-            "median": 0.05463566913433526,
-            "min": -0.527275509994204
+            "max": 13.801253044805415,
+            "mean_absolute": 4.522667329511131,
+            "median": 0.013708358565829519,
+            "min": -0.6410900246822078
           }
         }
       },

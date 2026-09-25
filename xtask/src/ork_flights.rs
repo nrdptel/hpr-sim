@@ -163,65 +163,83 @@ fn fly_all(root: &Path, record: &Value) -> Result<Value, String> {
         let read = ork::read(&bytes).map_err(|error| format!("{file}: {error}"))?;
         let design = ork::design_with(&read.value, supply.curves()).value;
         let name = design_name(file);
-        let overridden = drag_overrides(&read.value.document.root);
-        for flight in recorded.iter().filter(|f| f["has_motors"] == true) {
+        let overridden = zero_drag_parts(&read.value.document.root)?;
+        let powered: Vec<&Value> = recorded
+            .iter()
+            .filter(|f| f["has_motors"] == true)
+            .collect();
+        for flight in &powered {
             let id = flight["configuration"]
                 .as_str()
                 .ok_or("a flight without a configuration")?;
             let motors = flight["name"].as_str().unwrap_or_default();
-            let flown = design
-                .rocket
-                .configurations
+            // OpenRocket gives a configuration whose id is not a UUID a new one, so a design's
+            // only configuration is matched to the record's only powered flight.
+            let configurations = &design.motors.configurations;
+            let (matched, renamed) = match configurations
                 .iter()
-                .find(|c| c.id.eq_ignore_ascii_case(id));
-            match flown {
-                Some(configuration) => {
-                    let mut entry = fly(&name, &design.rocket, &configuration.id, motors, flight)?;
-                    if !overridden.is_empty() {
-                        // hpr has no drag override yet (#165), so it charges these parts the
-                        // drag OpenRocket is told they lack. The same flight with them removed
-                        // (their mass and lift go too) sizes what that costs.
-                        let mut without = design.rocket.clone();
-                        for stage in &mut without.stages {
-                            remove(&mut stage.components, &overridden);
-                        }
-                        let probe = fly(&name, &without, &configuration.id, motors, flight)?;
-                        entry["drag_overrides_not_applied"] =
-                            json!(overridden.iter().map(|(_, name)| name).collect::<Vec<_>>());
-                        entry["without_the_overridden_parts"] = json!({
-                            "apogee_m": probe["metrics"]["apogee_m"],
-                            "max_speed_m_s": probe["metrics"]["max_speed_m_s"],
-                        });
+                .find(|c| c.id.eq_ignore_ascii_case(id))
+            {
+                Some(configuration) => (Some(configuration), false),
+                None if configurations.len() == 1 && powered.len() == 1 => {
+                    (configurations.first(), true)
+                }
+                None => (None, false),
+            };
+            let flown = matched.and_then(|matched| {
+                design
+                    .rocket
+                    .configurations
+                    .iter()
+                    .find(|c| c.id == matched.id)
+            });
+            if let Some(configuration) = flown {
+                let mut entry = fly(&name, &design.rocket, &configuration.id, motors, flight)?;
+                entry["file"] = json!(file);
+                if !overridden.is_empty() {
+                    // hpr has no drag override yet (#165), so it charges these parts the drag
+                    // OpenRocket is told is zero. The same flight with them removed (their mass
+                    // and lift go too) is a probe of what that costs, not the override itself.
+                    let mut without = design.rocket.clone();
+                    let mut removed = 0;
+                    for stage in &mut without.stages {
+                        removed += remove(&mut stage.components, &overridden);
                     }
-                    flights.push(entry);
+                    if removed != overridden.len() {
+                        return Err(format!(
+                            "{file}: removed {removed} of the {} parts set to no drag",
+                            overridden.len()
+                        ));
+                    }
+                    let probe = fly(&name, &without, &configuration.id, motors, flight)?;
+                    entry["drag_overrides_not_applied"] =
+                        json!(overridden.iter().map(|(_, name)| name).collect::<Vec<_>>());
+                    entry["without_the_overridden_parts"] = json!({
+                        "apogee_m": probe["metrics"]["apogee_m"],
+                        "max_speed_m_s": probe["metrics"]["max_speed_m_s"],
+                    });
                 }
-                None => {
-                    // OpenRocket gives a configuration whose id is not a UUID a new one, so a
-                    // design's only configuration is matched to the record's only powered flight.
-                    let configurations = &design.motors.configurations;
-                    let powered = recorded.iter().filter(|f| f["has_motors"] == true).count();
-                    let (matched, prefix) = match configurations
-                        .iter()
-                        .find(|c| c.id.eq_ignore_ascii_case(id))
-                    {
-                        Some(configuration) => (Some(configuration), ""),
-                        None if configurations.len() == 1 && powered == 1 => (
-                            configurations.first(),
-                            "the design's only configuration, which OpenRocket gave a new id: ",
-                        ),
-                        None => (None, ""),
-                    };
-                    let why = matched.and_then(|c| c.left_out.as_ref()).map_or_else(
-                        || "the importer builds no configuration of that id".to_owned(),
-                        |out| format!("{prefix}{}", crate::ork_motors::not_flown(out.why)),
-                    );
-                    not_flown.push(json!({
-                        "design": name,
-                        "configuration": id,
-                        "motors": motors,
-                        "why": why,
-                    }));
-                }
+                flights.push(entry);
+            } else {
+                let why = matched.and_then(|c| c.left_out.as_ref()).map_or_else(
+                    || "the importer builds no configuration of that id".to_owned(),
+                    |out| {
+                        let prefix = if renamed {
+                            "the design's only configuration, which OpenRocket gave a new id: "
+                        } else {
+                            ""
+                        };
+                        format!("{prefix}{}", crate::ork_motors::not_flown(out.why))
+                    },
+                );
+                not_flown.push(json!({
+                    "file": file,
+                    "design": name,
+                    "configuration": id,
+                    "motors": motors,
+                    "aborted": flight["aborted"],
+                    "why": why,
+                }));
             }
         }
     }
@@ -242,54 +260,80 @@ fn design_name(file: &str) -> String {
     base.strip_suffix(".ork").unwrap_or(base).to_owned()
 }
 
-/// The parts of the design (not its stored simulations) that state their own drag coefficient,
-/// by id and name.
-fn drag_overrides(root: &ork::Element) -> Vec<(String, String)> {
-    fn walk(element: &ork::Element, found: &mut Vec<(String, String)>) {
+/// The parts of the design (not its stored simulations) that state a drag coefficient of zero,
+/// by id and name. A part stating another value is refused: removing it would not stand in for
+/// its override.
+fn zero_drag_parts(root: &ork::Element) -> Result<Vec<(String, String)>, String> {
+    fn walk(element: &ork::Element, found: &mut Vec<(String, String)>) -> Result<(), String> {
+        let text = |tag: &str| {
+            element
+                .child(tag)
+                .map(|e| e.text().trim().to_owned())
+                .unwrap_or_default()
+        };
         if element.child("overridecd").is_some() {
-            let text = |tag: &str| {
-                element
-                    .child(tag)
-                    .map(|e| e.text().trim().to_owned())
-                    .unwrap_or_default()
-            };
+            if text("overridecd").parse::<f64>() != Ok(0.0) {
+                return Err(format!(
+                    "`{}` states a drag coefficient of {}, which this report has no probe for",
+                    text("name"),
+                    text("overridecd")
+                ));
+            }
             found.push((text("id"), text("name")));
         }
-        for child in element.elements() {
-            walk(child, found);
-        }
+        element.elements().try_for_each(|child| walk(child, found))
     }
     let mut found = Vec::new();
     for rocket in root.children_named("rocket") {
-        walk(rocket, &mut found);
+        walk(rocket, &mut found)?;
     }
-    found
+    Ok(found)
 }
 
-/// Removes the components whose ids are in `parts`, wherever they are.
-fn remove(components: &mut Vec<hpr_design::tree::Component>, parts: &[(String, String)]) {
+/// Removes the components whose ids are in `parts`, wherever they are, and counts them.
+fn remove(components: &mut Vec<hpr_design::tree::Component>, parts: &[(String, String)]) -> usize {
+    let before = components.len();
     components.retain(|component| !parts.iter().any(|(id, _)| *id == component.id));
+    let mut removed = before - components.len();
     for component in components {
-        remove(&mut component.children, parts);
+        removed += remove(&mut component.children, parts);
     }
+    removed
 }
 
-/// The largest speed of the centre of mass over the flight, from the dense output.
+/// The centre of mass's height at the start, and its largest speed up to apogee, from the dense
+/// output. hpr flies no recovery from a `.ork`, so its fall is unbraked and is left out: the
+/// reference's peak speed is on the way up, and a free fall could outrun it.
 #[derive(Default)]
 struct Peaks {
+    start_height_m: Option<f64>,
     max_speed_m_s: Option<f64>,
+    climbed: bool,
+    past_apogee: bool,
 }
 
 impl Observer for Peaks {
     fn step(&mut self, step: &dyn FlightStep) -> Result<(), SimError> {
         let (start, end) = (step.start_s(), step.end_s());
+        if self.start_height_m.is_none() {
+            self.start_height_m = Some(step.sample(start)?.height_above_ground_m);
+        }
         for k in 1..=4 {
+            if self.past_apogee {
+                break;
+            }
             let t = if k == 4 {
                 end
             } else {
                 start + (end - start) * f64::from(k) / 4.0
             };
-            let speed = step.sample(t)?.cg_velocity_enu_m_s.length();
+            let sample = step.sample(t)?;
+            if sample.vertical_speed_m_s > 0.0 {
+                self.climbed = true;
+            } else if self.climbed {
+                self.past_apogee = true;
+            }
+            let speed = sample.cg_velocity_enu_m_s.length();
             if self.max_speed_m_s.is_none_or(|max| speed > max) {
                 self.max_speed_m_s = Some(speed);
             }
@@ -354,9 +398,12 @@ fn fly(
     let result = simulation
         .run(&mut peaks)
         .map_err(|error| format!("{at}: {error}"))?;
+    // OpenRocket's altitude is 0 at launch; hpr's centre of mass starts above the ground (the
+    // rocket stands on the rail's foot), so hpr's apogee is counted from where it starts.
     let apogee_m = result
         .event(EventKind::Apogee)
-        .map(|event| event.sample.height_above_ground_m);
+        .zip(peaks.start_height_m)
+        .map(|(event, start)| event.sample.height_above_ground_m - start);
 
     // The margin at the recorded rod-clearance step: hpr's mass at its time, and its centre of
     // pressure at its Mach number with the air along the axis.
@@ -402,17 +449,8 @@ fn fly(
         );
     }
 
-    let events = recorded["events"].as_array().cloned().unwrap_or_default();
-    let first = |kind: &str| {
-        events
-            .iter()
-            .find(|event| event["type"] == kind)
-            .and_then(|event| event["time_s"].as_f64())
-    };
-    let deployed_before_apogee_s = match (first("RECOVERY_DEVICE_DEPLOYMENT"), first("APOGEE")) {
-        (Some(deployed), Some(apogee)) if deployed < apogee => Some(apogee - deployed),
-        _ => None,
-    };
+    let deployed_before_apogee_s =
+        early_chute(recorded).map_err(|error| format!("{at}: {error}"))?;
     Ok(json!({
         "design": design,
         "configuration": recorded["configuration"],
@@ -422,6 +460,7 @@ fn fly(
         "termination": result.termination,
         "design_errors_accepted": design_errors,
         "deployed_before_apogee_s": deployed_before_apogee_s,
+        "max_mach_openrocket": recorded["summary"]["max_mach"],
         "metrics": metrics,
         "at_rod_clearance": {
             "time_s": clearance_time_s,
@@ -446,6 +485,29 @@ fn fly(
     }))
 }
 
+/// How long before the apogee of the same flight with nothing deployed OpenRocket's first
+/// parachute opened, when it opened before the flight's own apogee: the early parachute moves that
+/// apogee, not the undeployed one.
+fn early_chute(recorded: &Value) -> Result<Option<f64>, String> {
+    let empty = Vec::new();
+    let events = recorded["events"].as_array().unwrap_or(&empty);
+    let first = |kind: &str| {
+        events
+            .iter()
+            .find(|event| event["type"] == kind)
+            .and_then(|event| event["time_s"].as_f64())
+    };
+    match (first("RECOVERY_DEVICE_DEPLOYMENT"), first("APOGEE")) {
+        (Some(deployed), Some(apogee)) if deployed < apogee => {
+            recorded["undeployed"]["apogee_time_s"]
+                .as_f64()
+                .map(|undeployed| Some(undeployed - deployed))
+                .ok_or_else(|| "the record has no apogee without deployment".to_owned())
+        }
+        _ => Ok(None),
+    }
+}
+
 /// The reference tool.
 pub(crate) fn openrocket() -> Tool {
     Tool::OpenRocket {
@@ -463,6 +525,7 @@ pub(crate) fn metric_entry(
         ReferenceReading::Complete(value) => value.filter(|v| v.is_finite()),
         _ => None,
     };
+    let measured = measured.filter(|v| v.is_finite());
     let difference = outcome.difference();
     let relative_percent = match (difference, reference) {
         (Some(difference), Some(reference)) if reference != 0.0 => {
@@ -586,37 +649,47 @@ pub(crate) fn page(report: &Value) -> String {
     let mut out = String::new();
     out.push_str("# hpr against OpenRocket 24.12's flights of the public designs\n\n");
     out.push_str(
-        "Written by `cargo xtask ork-flights` (milestone M2.2d2, ADR-069) from OpenRocket's \
-         calm-air flights in `validation/fixtures/ork/openrocket-flights.json` (M2.2d1, \
-         ADR-068). Each metric is taken by the definition hpr holds for OpenRocket 24.12: the \
-         apogee and largest speed are peaks over the flight, and the margin is OpenRocket's \
-         stability column at its rod-clearance step, which hpr takes at that step's time and \
-         Mach number with the air along the axis. Differences are hpr less OpenRocket. hpr \
-         flies no recovery device from a `.ork` yet, so a flight whose reference parachute \
-         opened before its apogee is marked and summarised apart.\n\n",
+        "Written by `cargo xtask ork-flights` ([M2.2d2][m2-2d2], hpr's flights against \
+         OpenRocket's; decision [ADR-069][adr-069]) from OpenRocket 24.12's calm-air flights in \
+         `validation/fixtures/ork/openrocket-flights.json` ([M2.2d1][m2-2d1]). OR is \
+         OpenRocket. Each metric is taken by the definition hpr holds for OpenRocket 24.12: \
+         the apogee is the highest point above the launch position; the largest speed is the \
+         peak speed (hpr's up to its apogee, since it flies no parachute); the margin, in \
+         calibres, is OpenRocket's stability column at its rod-clearance step, which hpr takes \
+         at that step's time and Mach number with the air along the axis. Differences (Δ) are \
+         hpr less OpenRocket. Motors are OpenRocket's configuration names, one bracketed group \
+         per stage. The explanation is on the [documentation site][site].\n\n\
+         [m2-2d2]: https://nrdptel.github.io/hpr-sim/decisions-and-roadmap.html#m2-2d2\n\
+         [m2-2d1]: https://nrdptel.github.io/hpr-sim/decisions-and-roadmap.html#m2-2d1\n\
+         [adr-069]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-069-hprs-flights-of-the-public-designs-against-openrockets-2026-09-25\n\
+         [site]: https://nrdptel.github.io/hpr-sim/format/ork.html#hprs-flights-against-openrockets\n\n",
     );
     out.push_str(&summary_lines(report));
     out.push('\n');
     out.push_str(
         "| design | motors | apogee OR (m) | hpr (m) | Δ | max speed OR (m/s) | hpr (m/s) | Δ \
-         | margin OR (cal) | hpr (cal) | Δ (cal) |\n",
+         | max Mach OR | margin OR (cal) | hpr (cal) | Δ (cal) |\n",
     );
-    out.push_str("|---|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|\n");
+    out.push_str("|---|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|\n");
     let empty = Vec::new();
     for flight in report["flights"].as_array().unwrap_or(&empty) {
         let m = &flight["metrics"];
         let mut early = flight["deployed_before_apogee_s"]
             .as_f64()
-            .map_or(String::new(), |s| format!(" (chute {s:.2} s before)"));
-        if let Some(without) =
-            flight["without_the_overridden_parts"]["apogee_m"]["relative_percent"].as_f64()
-        {
+            .map_or(String::new(), |s| format!(" (chute {s:.2} s early)"));
+        let probe = &flight["without_the_overridden_parts"];
+        if let Some(without) = probe["apogee_m"]["relative_percent"].as_f64() {
             early.push_str(&format!(
-                " ({without:+.2}% without the drag-overridden part)"
+                " ({without:+.2}% without the part set to no drag)"
             ));
         }
+        let speed_probe = probe["max_speed_m_s"]["relative_percent"]
+            .as_f64()
+            .map_or(String::new(), |p| {
+                format!(" ({p:+.2}% without the part set to no drag)")
+            });
         out.push_str(&format!(
-            "| {} | {} | {} | {} | {}{} | {} | {} | {} | {} | {} | {} |\n",
+            "| {} | {} | {} | {} | {}{} | {} | {} | {}{} | {} | {} | {} | {} |\n",
             flight["design"].as_str().unwrap_or_default(),
             flight["motors"].as_str().unwrap_or_default(),
             fixed(&m["apogee_m"]["openrocket"], 1),
@@ -626,11 +699,21 @@ pub(crate) fn page(report: &Value) -> String {
             fixed(&m["max_speed_m_s"]["openrocket"], 2),
             fixed(&m["max_speed_m_s"]["hpr"], 2),
             percent(&m["max_speed_m_s"]),
+            speed_probe,
+            fixed(&flight["max_mach_openrocket"], 3),
             fixed(&m["rod_clearance_margin_cal"]["openrocket"], 3),
             fixed(&m["rod_clearance_margin_cal"]["hpr"], 3),
-            signed(&m["rod_clearance_margin_cal"]["difference"], 3),
+            signed(&m["rod_clearance_margin_cal"]["difference"], 4),
         ));
     }
+    out.push_str(
+        "\n*Chute s early*: OpenRocket's parachute opened that long before the apogee of the \
+         same flight with nothing deployed, which the record also holds; hpr flies no parachute \
+         from a `.ork` yet. *Without the part set to no drag*: the same flight by hpr with the \
+         parts OpenRocket is told have no drag removed, which takes their mass, lift and shape \
+         away too, so it is a probe, not the override ([#165][i165]).\n\n\
+         [i165]: https://github.com/nrdptel/hpr-sim/issues/165\n",
+    );
     out.push_str(
         "\nAt the rod-clearance step, the parts of the margin (m from the nose tip, and kg):\n\n",
     );
@@ -656,6 +739,30 @@ pub(crate) fn page(report: &Value) -> String {
             fixed(&hpr["mass_kg"], 4),
         ));
     }
+    let checked: Vec<&Value> = report["flights"]
+        .as_array()
+        .unwrap_or(&empty)
+        .iter()
+        .filter(|f| {
+            f["design_errors_accepted"]
+                .as_array()
+                .is_some_and(|e| !e.is_empty())
+        })
+        .collect();
+    if !checked.is_empty() {
+        out.push_str(
+            "\nWhat hpr's design checks object to, in flights flown anyway as OpenRocket flies \
+             them:\n\n| design | motors | findings |\n|---|---|---|\n",
+        );
+        for flight in checked {
+            out.push_str(&format!(
+                "| {} | {} | `{}` |\n",
+                flight["design"].as_str().unwrap_or_default(),
+                flight["motors"].as_str().unwrap_or_default(),
+                flight["design_errors_accepted"],
+            ));
+        }
+    }
     let not_flown = report["not_flown"].as_array().unwrap_or(&empty);
     if !not_flown.is_empty() {
         out.push_str("\nConfigurations OpenRocket flew that hpr does not fly yet:\n\n");
@@ -678,7 +785,7 @@ fn summary_lines(report: &Value) -> String {
     let metrics = &summary["metrics"];
     let line = |label: &str, spread: &Value, unit: &str, digits: usize| {
         format!(
-            "- {label}: {} scored, median {}{unit}, mean size {}{unit}, from {}{unit} to {}{unit}\n",
+            "- {label}: {} scored, median {}{unit}, mean absolute {}{unit}, from {}{unit} to {}{unit}\n",
             spread["count"],
             signed(&spread["median"], digits),
             fixed(&spread["mean_absolute"], digits),
@@ -691,6 +798,24 @@ fn summary_lines(report: &Value) -> String {
          5% from OpenRocket's: {}\n",
         summary["flown"], summary["not_flown"], summary["apogee_over_5_percent"],
     );
+    let empty = Vec::new();
+    let fastest = report["flights"]
+        .as_array()
+        .unwrap_or(&empty)
+        .iter()
+        .filter(|f| f["max_mach_openrocket"].is_f64())
+        .max_by(|a, b| {
+            let mach = |f: &Value| f["max_mach_openrocket"].as_f64().unwrap_or(0.0);
+            mach(a).total_cmp(&mach(b))
+        });
+    if let Some(fastest) = fastest {
+        out.push_str(&format!(
+            "- fastest: {} {}, OpenRocket's largest Mach number {}\n",
+            fastest["design"].as_str().unwrap_or_default(),
+            fastest["motors"].as_str().unwrap_or_default(),
+            fixed(&fastest["max_mach_openrocket"], 3),
+        ));
+    }
     for (key, label, unit, digits) in [
         ("apogee_m", "apogee", "%", 2),
         ("max_speed_m_s", "largest speed", "%", 2),
@@ -698,7 +823,7 @@ fn summary_lines(report: &Value) -> String {
             "rod_clearance_margin_cal",
             "margin at rod clearance",
             " cal",
-            3,
+            4,
         ),
     ] {
         let empty = serde_json::Map::new();
@@ -779,16 +904,16 @@ mod tests {
         )
     }
 
-    /// The record's flight of `design`'s `configuration`.
-    fn recorded<'a>(record: &'a Value, design: &str, configuration: &str) -> &'a Value {
+    /// The record's flight of `file`'s `configuration`.
+    fn recorded<'a>(record: &'a Value, file: &str, configuration: &str) -> &'a Value {
         record["designs"]
             .as_array()
             .unwrap()
             .iter()
-            .filter(|entry| design_name(entry["file"].as_str().unwrap()) == design)
+            .filter(|entry| entry["file"] == file)
             .flat_map(|entry| entry["flights"].as_array().unwrap())
             .find(|flight| flight["configuration"] == configuration)
-            .unwrap_or_else(|| panic!("{design} {configuration} is not in the record"))
+            .unwrap_or_else(|| panic!("{file} {configuration} is not in the record"))
     }
 
     #[test]
@@ -801,7 +926,7 @@ mod tests {
             .chain(report["not_flown"].as_array().unwrap())
             .map(|f| {
                 (
-                    f["design"].as_str().unwrap().to_owned(),
+                    f["file"].as_str().unwrap().to_owned(),
                     f["configuration"].as_str().unwrap().to_owned(),
                 )
             })
@@ -811,7 +936,7 @@ mod tests {
             .unwrap()
             .iter()
             .flat_map(|entry| {
-                let name = design_name(entry["file"].as_str().unwrap());
+                let name = entry["file"].as_str().unwrap().to_owned();
                 entry["flights"]
                     .as_array()
                     .cloned()
@@ -838,10 +963,34 @@ mod tests {
         let (record, report) = committed();
         let tool = openrocket();
         for flight in report["flights"].as_array().unwrap() {
-            let design = flight["design"].as_str().unwrap();
+            let design = flight["file"].as_str().unwrap();
             let configuration = flight["configuration"].as_str().unwrap();
             let source = recorded(&record, design, configuration);
+            assert_eq!(flight["design"], design_name(design).as_str());
             assert_eq!(flight["aborted"], source["aborted"]);
+            assert_eq!(flight["motors"], source["name"]);
+            assert_eq!(flight["rod_length_m"], source["conditions"]["rod_length_m"]);
+            assert_eq!(flight["max_mach_openrocket"], source["summary"]["max_mach"]);
+            assert_eq!(
+                flight["launch_mass_kg"]["openrocket"],
+                source["series"]["launch_mass_kg"]
+            );
+            assert_eq!(
+                flight["deployed_before_apogee_s"],
+                json!(early_chute(source).unwrap()),
+                "{design} {configuration}"
+            );
+            for key in [
+                "mass_kg",
+                "cg_from_nose_m",
+                "cp_from_nose_m",
+                "reference_length_m",
+            ] {
+                assert_eq!(
+                    flight["at_rod_clearance"]["openrocket"][key], source["rod_clearance"][key],
+                    "{design} {configuration} {key}"
+                );
+            }
             let keys = [
                 &source["summary"]["max_altitude_m"],
                 &source["summary"]["max_velocity_m_s"],
@@ -905,6 +1054,35 @@ mod tests {
                 );
             }
         }
+    }
+
+    #[test]
+    fn a_spread_is_the_count_median_mean_size_and_ends() {
+        assert_eq!(
+            spread(&[1.0, -2.0, 3.0, -4.0]),
+            json!({ "count": 4, "median": -0.5, "mean_absolute": 2.5, "min": -4.0, "max": 3.0 })
+        );
+        assert_eq!(spread(&[]), json!({ "count": 0 }));
+    }
+
+    #[test]
+    fn the_check_finds_a_moved_number_a_missing_key_and_a_changed_list() {
+        let committed = json!({ "a": 1.0, "b": [1, 2], "c": "x" });
+        let mut apart = Vec::new();
+        same(
+            &committed,
+            &json!({ "a": 1.0 + 1e-12, "b": [1, 2], "c": "x" }),
+            "",
+            &mut apart,
+        );
+        assert!(apart.is_empty(), "{apart:?}");
+        same(
+            &committed,
+            &json!({ "a": 1.001, "b": [1], "d": "x" }),
+            "",
+            &mut apart,
+        );
+        assert_eq!(apart.len(), 4, "{apart:?}");
     }
 
     #[test]

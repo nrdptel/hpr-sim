@@ -19,8 +19,8 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
   private designs as anonymised ids. Reuse `xtask/src/ork_flights.rs` (`fly`, `summarise`) on the
   library, OR's side from `flights.py` run on `refs/loft-fixtures` into `corpus-out/` (private).
   Named causes so far: OR's early chute (hpr flies no `.ork` recovery; worth flying first) and
-  #165 (drag override ignored). `cargo xtask ork-flights --check` needs the jar and
-  `corpus-out/openrocket-motors.json`; CI checks the committed report against the record only.
+  #165 (drag override ignored). Run `cargo xtask ork-flights --check` after any physics change:
+  CI can't fly them (needs the jar, `corpus-out/openrocket-motors.json`), only checks the record.
 - **Page rules** (ADR-016 to ADR-020): relative links between pages, GitHub URLs for the rest
   (rustdoc too), labels as links to their rows — a lesson a page names needs a row in
   `decisions-and-roadmap.md` — none in headings; new pages in `SUMMARY.md`, a new library a row in
@@ -53,8 +53,8 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
   `xtask designs`, `examples` and `ork` rewrite their outputs.
 ## Done log (newest first, keep about 15)
 
-- 2026-09-25: M2.2d2 hpr's flights against OR's (ADR-069): 21 configurations; margin within 0.015
-  cal; apogee −4.32% to +0.21% with no named cause; 5 over 5%, each an early chute or #165.
+- 2026-09-25: M2.2d2 hpr's flights against OR's (ADR-069): 21 configurations; margin within 0.016
+  cal; apogee −4.34% to −0.06% with no named cause; 5 over 5%, each an early chute or #165.
 - 2026-09-25: M2.2d1 OR's flights, its words' meanings (ADR-068): 56 calm flights, 1 aborted; 9 of
   10 words defined, `optimumdelay` withheld; a missing event is never scored; L80, L81 live.
 - 2026-09-25: M2.2c2 Curves from OpenRocket's own database (ADR-067): supplied by digest, never by
