@@ -11,20 +11,21 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
   M2.1, M1.8a-e19 bar e16, M3.1, M2.2a, M2.2b1 to b5, M2.2c1; the site is published.
 - **Neer, 2026-09-20:** Debrief is sunset; a flight log analyzer usable **on its own** is part of
   this project (ADR-046, V21); Phase 5 re-cut.
-- **Last updated:** 2026-09-25; M2.2c1 complete, M2.2c2 next.
+- **Last updated:** 2026-09-25; M2.2c1 complete, M2.2c2 next, entry points rechecked.
 
 ## Handoff (overwrite each session)
 
-- **Resume M2.2c2** on a fresh `m2.2c2-embedded-curves` branch. M2.2c1 is complete in ADR-066:
-  `validation/oracles/openrocket/motors.py` hands a curve file to OpenRocket 24.12's own loader;
-  on all 32 bundled curves hpr's total impulse, peak thrust, 5% burn-time window and curve duration
-  are bit for bit OpenRocket's; only the average thrust differs (+0.0107% to +0.3147%, hpr's
-  numerator being the whole curve). **c2 is supply, not arithmetic:** 193 of the 202 motor references
-  resolve to no curve (4 embedded, 2 bundled, 3 hybrids), so 79 configurations are unflyable. Run
-  oracle over each design's `thrustcurves/<digest>.rse` (private: counts only, never the curves),
-  hold those to 0.1% too, and name a stable reason for each configuration that still cannot fly:
-  `NotFlown::NoCurve` in `crates/hpr-io/src/ork/motors.rs` decides it, and
-  `StoredReferenceExclusion::UnflyableConfiguration` is the coarse label it collapses into.
+- **Resume M2.2c2** on a fresh `m2.2c2-embedded-curves` branch. M2.2c1 is complete (ADR-066):
+  `validation/oracles/openrocket/motors.py` hands any number of curve files (`curve_files()`) to
+  OpenRocket 24.12's own loader; on all 32 bundled curves hpr's impulse, peak thrust, 5% burn-time
+  window and duration are bit for bit OpenRocket's, only average thrust differing (+0.0107% to
+  +0.3147%, hpr's numerator being the whole curve). **c2 is supply, not arithmetic:** 193 of 202
+  motor references resolve to no curve (4 embedded, 2 bundled, 3 hybrids), so 79 configurations are
+  unflyable. Point that oracle at each design's `thrustcurves/<digest>.rse` (private: counts only,
+  never the curves), hold those to 0.1%, and name a stable reason for every configuration that still
+  cannot fly. The tally side exists, rechecked 2026-09-25: `NotFlown::NoCurve` and its five `NoCurve`
+  variants in `crates/hpr-io/src/ork/motors.rs`, their prose in `xtask/src/ork_motors.rs`'s
+  `no_curve()`, and `ork/simulations.rs`'s `StoredReferenceExclusion::UnflyableConfiguration`.
 - **Page rules** (ADR-016 to ADR-020): relative links between pages, GitHub URLs for the rest
   (rustdoc too), labels as links to their rows — a lesson a page names needs a row in
   `decisions-and-roadmap.md` — none in headings; new pages in `SUMMARY.md`, a new library a row in
@@ -57,10 +58,9 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
   `xtask designs`, `examples` and `ork` rewrite their outputs.
 ## Done log (newest first, keep about 15)
 
-- 2026-09-25: M2.2c1 Every curve as OpenRocket integrates it (ADR-066): the oracle hands each
-  bundled file to OpenRocket 24.12's own loader; impulse, peak thrust, the 5% burn-time window and
-  the curve's duration are all bit for bit OpenRocket's on all 32, well inside M2.2c's 0.1%. Only
-  the average thrust differs (+0.0107% to +0.3147%), by numerator. M2.2c split c1, c2.
+- 2026-09-25: M2.2c1 Every curve as OpenRocket integrates it (ADR-066): the oracle hands each bundled
+  file to OpenRocket 24.12's own loader; on all 32, impulse, peak thrust, the 5% window and duration
+  are bit for bit OpenRocket's, inside M2.2c's 0.1%; only average thrust differs (+0.0107% to +0.3147%).
 - 2026-09-25: M2.2b5 Stored results as found (ADR-065): complete, finite and internally consistent
   `uptodate` runs with `RK4Simulator` and `BarrowmanCalculator` provenance markers are eligible:
   91/174 pass the stored-reference screen; 83 excluded by stable reason. Hpr reproduction is
