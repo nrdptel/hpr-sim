@@ -1099,11 +1099,11 @@ the same motor.
 hpr builds the motor from the curve file's header — its case size and its loaded and propellant
 masses — as it does for any catalog motor, and does not use the mass or centre-of-gravity column
 listed beside each thrust point. Where the design's case size and the curve's differ by more than a
-millimetre, a warning says so: the design's size places the motor, and the curve's gives its mass. A motor found in neither place is kept with its reason. Nothing is
+millimetre, a warning says so: the design's size places the motor, and the curve's gives its mass. A motor found in none of the three places is kept with its reason. Nothing is
 invented for it. A hybrid motor (solid fuel burned with a liquid or gas oxidiser) never gets a
 curve: hpr flies commercial solid motors only.
 
-To fly a motor neither place has, build the configuration yourself: read its `.eng` or `.rse` file
+To fly a motor none of the three places has, build the configuration yourself: read its `.eng` or `.rse` file
 with `hpr_motor` ([Solid motors](../physics/motor.md)) and put it in an
 `hpr_design::Configuration`.
 
@@ -1192,8 +1192,8 @@ assert_eq!(assembly.motors[0].mount, "body");
 curve by its digest, OpenRocket's fingerprint (a hash) of the curve's data, and OpenRocket finds
 the curve in the motor database that ships inside its program. The validation survey supplies that
 database to hpr, so 68 of the 170 configurations fly instead of 2. Every curve involved matches
-OpenRocket's total impulse. OpenRocket was also asked which curve it flies, and it flies the one
-the digest names. What still differs is where the motor's weight sits (below).
+OpenRocket's total impulse, and in every configuration hpr flies with a supplied curve, OpenRocket
+places that same curve. What still differs is where the motor's weight sits (below).
 
 How it works:
 
@@ -1214,7 +1214,7 @@ have, plus Java 17 and the OpenRocket jar (`cargo xtask refs fetch`), as for the
 
 ```sh
 refs/venv/bin/python validation/oracles/openrocket/motor_database.py \
-    corpus-out/openrocket-motors.json refs
+    corpus-out/openrocket-motors.json refs --jar
 cargo xtask ork
 ```
 
@@ -1263,20 +1263,24 @@ curves can still be held back for another reason, so these counts differ from th
   - For the 1,288 solid database curves, both codes integrate the same samples, which OpenRocket
     has already parsed. That check proves the hand-off, not two independent readings.
 - **The curve OpenRocket flies.** The oracle opens each design in OpenRocket with the database
-  loaded and reads back the digest of every motor it places. Of 111 motors that name a digest,
-  OpenRocket flies the curve that digest names for 105. The other 6 name digests the database
-  doesn't hold. 7 designs don't open in OpenRocket, so they aren't counted.
+  loaded, and records the digests of the motors it places in each configuration. The survey fails
+  unless, in every configuration hpr flies with a supplied curve, OpenRocket places the same
+  curves. It does in all 67 such configurations (67 motors), and OpenRocket opens every design
+  they are in.
 - **What the survey doesn't supply:**
   - the 164 hybrid motors;
-  - 6 digests that two different motors share, with different samples or cases;
+  - 6 digests that are each shared by two motors whose data differ (samples, case or masses), in
+    OpenRocket 24.12's database;
   - one motor whose propellant mass gives an [effective exhaust velocity](../glossary.md#effective-exhaust-velocity)
     of 10.1 km/s, which hpr refuses as impossible.
   - Other masses are taken as OpenRocket holds them, including some that are physically unlikely.
 - **Where the weight sits differs.** hpr builds every motor from its envelope. The centre of mass
   sits at mid-case, and the dry case is a thin tube. OpenRocket gives each database motor a fixed
-  centre of mass of its own, and treats the motor as a solid cylinder for inertia. For 163 of the
-  1,221 supplied motors, OpenRocket's centre of mass is more than 1 mm from mid-case. Among the 31
-  the designs fly, 3 are, by up to 5.0 mm. This matters to stability margin and roll, and
+  centre of mass of its own, and treats the motor as a solid cylinder for inertia. The 1,288 solid
+  motors are 1,221 digests once the 54 repeats, the 12 motors sharing 6 digests and the refused one
+  are set aside. For 163 of those 1,221, OpenRocket's centre of mass is more than 1 mm from
+  mid-case. Among the 31 distinct supplied motors in configurations that fly, 3 are, by up to
+  5.0 mm. This matters to stability margin and roll, and
   [M2.2d](../decisions-and-roadmap.md#m2-2d) will meet it when it flies these designs against
   OpenRocket.
 
@@ -1490,7 +1494,7 @@ stored result's provenance or physical correctness.
 |---|---|
 | stored simulations | 174, in 61 documents: 139 `uptodate`, 17 `external`, 11 `outdated`, 7 `notsimulated` |
 | stored reference screen | 91 eligible, 83 excluded: 47 inconsistent, 17 external, 11 outdated, 7 not-simulated and 1 missing simulator; only the 91 may enter a stored-data reference denominator (the count of runs used to calculate a reference statistic) |
-| hpr reproduction screen | of those 91, 40 can be reproduced when [OpenRocket's database](#motors-in-the-reference-library) is supplied (1 without it); 51 can't: 40 because the configuration can't be flown, 11 because the design is reduced |
+| hpr reproduction screen | of those 91, 40 can be reproduced when [OpenRocket's database](#motors-in-the-reference-library) is supplied (1 without it); 51 can't: 40 because their configuration can't be flown, 11 because the design is reduced |
 | with launch conditions | 173; 129 state the wind's direction, and 135 launch into the wind |
 | atmosphere | 172 `isa`, 1 not written |
 | with a summary | 162 |

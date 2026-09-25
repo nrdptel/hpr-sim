@@ -105,7 +105,8 @@ pub enum NoCurve {
 ///
 /// A `.ork` motor records a *digest*: OpenRocket's fingerprint (a hash) of its curve's data, which
 /// "uniquely identifies the functional characteristics" of the curve ([OpenRocket's GitHub
-/// wiki][wiki], file format 1.2). Most designs do not embed the curve itself: OpenRocket finds it
+/// wiki][wiki], file format 1.2), though OpenRocket 24.12's own database holds a few digests that
+/// two different motors share. Most designs do not embed the curve itself: OpenRocket finds it
 /// in the motor database its program ships. hpr's reader does no I/O and bundles only a small
 /// catalog, so a caller holding such a database hands its curves in here: `cargo xtask ork`
 /// supplies OpenRocket's own, for the milestone that measured the design library's curves

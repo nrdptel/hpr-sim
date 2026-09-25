@@ -335,7 +335,7 @@ fn report(root: &Path, files: &[Case], library: bool) -> Result<(), String> {
                 let whole = ork::design_with(&read.value, supply.curves());
                 supply.hold_embedded(&read.value.attachments);
                 if supply.is_present() {
-                    supply.follow(&ork::design(&read.value).value, &whole.value);
+                    supply.follow(bytes, &ork::design(&read.value).value, &whole.value);
                 }
                 let motors_here = motor_tally.add(&whole, spine.warnings.len());
                 let recovery_here = recovery_tally.add(&whole);

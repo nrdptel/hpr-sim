@@ -17,10 +17,10 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
 
 - **Start M2.2d** on a fresh `m2.2d-<slug>` branch: fly the public designs to apogee against
   OpenRocket (apogee, max velocity, stability margin) and make L80, L81 live; split it first if it
-  is big. M2.2c2 (ADR-067): `motor_database.py` writes `corpus-out/openrocket-motors.json` (run it
-  before `cargo xtask ork`), and the survey supplies each solid curve by digest through
+  is big. M2.2c2 (ADR-067): `motor_database.py … refs --jar` writes the record (run it before
+  `cargo xtask ork`), and the survey supplies each solid curve by digest through
   `ork::design_with` and `SuppliedCurves`. 68 of 170 configurations now fly; 40 of the 91 eligible
-  stored runs are reproducible; OR flies the digest's curve for every digest its database holds.
+  stored runs are reproducible; OR places the same curves in all 67 supplied configurations.
   **Open for d:** a motor's CG and inertia are hpr's envelope model, not OR's (3 of the 31 flown
   supplied motors off by up to 5 mm); the 20 no-digest motors stay unflown by design.
 - **Page rules** (ADR-016 to ADR-020): relative links between pages, GitHub URLs for the rest

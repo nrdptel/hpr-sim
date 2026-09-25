@@ -8,8 +8,8 @@ its sampled curve and its own integrals, so that `cargo xtask ork` can supply th
 digest names and hold hpr's integration of each curve to OpenRocket's. It also hands every curve a
 design embeds (`thrustcurves/<digest>.rse`) to OpenRocket's own loader, as `motors.py` does for the
 bundled curves (M2.2c1). Last, it opens every design with that database bound, as the program
-does, and records the digest of the motor OpenRocket puts in each mount of each configuration, so
-that the survey can say whether OpenRocket flies the very curve a design's digest names.
+does, and records the digests of the motors OpenRocket puts in each configuration, so that the
+survey can check that OpenRocket flies the very curves hpr is given for it.
 
 OpenRocket is run, never read: its source is GPL, and nothing here comes from it. The class and
 method names are the public API `javap` prints for the jar. The database's contents come from
@@ -20,30 +20,32 @@ owners.
 Run from the repository root with the oracle environment and Java 17 (see `automatic_radius.py`):
 
     refs/venv/bin/python validation/oracles/openrocket/motor_database.py \\
-        corpus-out/openrocket-motors.json refs
+        corpus-out/openrocket-motors.json refs --jar
 
 The record is written to the path given, not to standard output, which OpenRocket logs to. Each
-input after it may be a `.ork` file or a directory, walked in sorted order for `.ork` files and
-skipping `refs/scratch/`, as `cargo xtask ork` does. The database is the jar's alone: the script stops if OpenRocket's user motor directories hold any file,
+input after it may be a `.ork` file or a directory, found as `mass.py` finds them (the survey's
+own set, without `refs/scratch/`); `--jar` adds the example designs inside the jar, as the survey
+does. A design OpenRocket refuses for a leading comment is opened without it, as `mass.py` opens
+it. The database is the jar's alone: the script stops if OpenRocket's user motor directories hold any file,
 since OpenRocket would load those too.
 """
 
-import collections
-import gzip
 import hashlib
 import io
 import json
+import logging
 import sys
 import tempfile
 import zipfile
-import xml.etree.ElementTree as ET
 from pathlib import Path
 
 import jpype
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "rocketserializer"))
 
 import automatic_radius  # noqa: E402 - the JVM start, with empty databases
+import geometry  # noqa: E402 - the file discovery and comment retry mass.py uses
 import motors  # noqa: E402 - one curve file through OpenRocket's own loader
 
 GENERATED = "2026-09-25"
@@ -93,30 +95,10 @@ def described(motor):
     }
 
 
-def design_files(inputs):
-    """Every `.ork` under the inputs, sorted."""
-    found = []
-    for raw in inputs:
-        path = Path(raw)
-        if path.is_dir():
-            found.extend(
-                sorted(
-                    p
-                    for p in path.rglob("*.ork")
-                    if p.is_file() and "refs/scratch/" not in p.as_posix()
-                )
-            )
-        elif path.suffix.lower() == ".ork":
-            found.append(path)
-        else:
-            sys.exit(f"not a .ork file or a directory: {raw}")
-    return found
-
-
 def embedded(designs):
     """Every distinct embedded curve, by the SHA-256 of its bytes, through OpenRocket's loader."""
     curves = {}
-    for design in designs:
+    for _, design in designs:
         try:
             archive = zipfile.ZipFile(io.BytesIO(design.read_bytes()))
         except zipfile.BadZipFile:
@@ -158,59 +140,38 @@ def bind(held):
     Application.setInjector(Guice.createInjector(CoreServicesModule(), PluginModule(), Loaded()))
 
 
-def written_digests(design):
-    """The `<digest>` of every `<motor>` the design document writes, or `None` if it does not parse."""
-    data = design.read_bytes()
+def flown(name, path, scratch):
+    """The digests of the motors OpenRocket places in each configuration of one design."""
+    entry = {"file": name, "sha256": hashlib.sha256(path.read_bytes()).hexdigest()}
     try:
-        archive = zipfile.ZipFile(io.BytesIO(data))
-        names = [n for n in archive.namelist() if n.lower().endswith(".ork")]
-        data = archive.read(names[0]) if names else b""
-    except zipfile.BadZipFile:
-        if data[:2] == b"\x1f\x8b":
-            data = gzip.decompress(data)
+        text = geometry.document_text(path)
+    except Exception as error:  # noqa: BLE001 - recorded; the survey reports it
+        return {**entry, "driver_error": geometry.first_line(error)}
     try:
-        root = ET.fromstring(data)
-    except ET.ParseError:
-        return None
-    return [
-        (m.findtext("digest") or "").strip()
-        for m in root.iter("motor")
-        if (m.findtext("digest") or "").strip()
-    ]
-
-
-def flown(design):
-    """Per design: how many motors name a digest, and how many OpenRocket flies with that curve."""
-    written = written_digests(design)
-    entry = {"file": design.as_posix(), "sha256": hashlib.sha256(design.read_bytes()).hexdigest()}
-    if written is None:
-        return {**entry, "driver_error": "the design document is not well-formed XML"}
-    try:
-        rocket = automatic_radius.load(design.resolve()).getRocket()
-    except Exception as error:  # noqa: BLE001 - OpenRocket's refusal is the finding
-        first = (str(error).splitlines() or [type(error).__name__])[0]
-        return {**entry, "driver_error": first or type(error).__name__}
-    assigned = collections.Counter()
+        document, stripped = geometry.opened(text, scratch)
+    except Exception as error:  # noqa: BLE001 - a refusal is the measurement
+        return {**entry, "opens": False, "refused": geometry.first_line(error)}
+    rocket = document.getRocket()
+    configurations = {}
     for fcid in rocket.getIds():
-        for placed in rocket.getFlightConfiguration(fcid).getAllMotors():
-            motor = placed.getMotor()
+        placed = []
+        for motor_configuration in rocket.getFlightConfiguration(fcid).getAllMotors():
+            motor = motor_configuration.getMotor()
             if motor is not None:
-                assigned[str(motor.getDigest())] += 1
-    named = collections.Counter(written)
-    return {
-        **entry,
-        "motors_naming_a_digest": sum(named.values()),
-        "flown_with_that_digest": sum((named & assigned).values()),
-        "digests_not_flown": sorted((named - assigned).elements()),
-    }
+                placed.append(str(motor.getDigest()))
+        configurations[str(fcid.key)] = sorted(placed)
+    return {**entry, "opens": True, "comment_removed": stripped, "configurations": configurations}
 
 
 def main():
-    if len(sys.argv) < 2:
-        sys.exit(f"usage: {Path(__file__).name} <output.json> [.ork file or directory]...")
-    output = Path(sys.argv[1])
-    designs = design_files(sys.argv[2:])
+    args = sys.argv[1:]
+    jar = "--jar" in args
+    paths = [arg for arg in args if not arg.startswith("--")]
+    if not paths:
+        sys.exit(f"usage: {Path(__file__).name} <output.json> [.ork file or directory]... [--jar]")
+    output = Path(paths[0])
     here = Path(__file__).resolve().parent
+    logging.disable(logging.CRITICAL)
 
     automatic_radius.start()
     from java.lang import System
@@ -222,9 +183,23 @@ def main():
         (described(m) for s in held.getMotorSets() for m in s.getMotors()),
         key=lambda m: (m["digest"], json.dumps(m, sort_keys=True)),
     )
-    embedded_curves = embedded(designs)
     bind(held)
-    readback = [flown(design) for design in designs]
+    with tempfile.TemporaryDirectory() as scratch:
+        designs = geometry.designs(paths[1:], Path.cwd().resolve())
+        if jar:
+            with zipfile.ZipFile(automatic_radius.JAR) as archive:
+                for entry in sorted(archive.namelist()):
+                    if entry.startswith("datafiles/examples/") and entry.lower().endswith(".ork"):
+                        copy = Path(scratch) / f"example-{len(designs)}.ork"
+                        copy.write_bytes(archive.read(entry))
+                        designs.append((f"{automatic_radius.JAR}!{entry}", copy))
+        embedded_curves = embedded(designs)
+        readback = []
+        for name, path in designs:
+            try:
+                readback.append(flown(name, path, scratch))
+            except Exception as error:  # noqa: BLE001 - recorded; the survey reports it
+                readback.append({"file": name, "driver_error": geometry.first_line(error)})
     output.parent.mkdir(parents=True, exist_ok=True)
     output.write_text(
         json.dumps(
@@ -234,6 +209,8 @@ def main():
                 "inputs_sha256": {
                     name: hashlib.sha256((here / name).read_bytes()).hexdigest()
                     for name in ["motor_database.py", "motors.py", "automatic_radius.py"]
+                } | {
+                    "geometry.py": hashlib.sha256(Path(geometry.__file__).read_bytes()).hexdigest()
                 },
                 "openrocket": str(BuildProperties.getVersion()),
                 "jar_sha256": hashlib.sha256(automatic_radius.JAR.read_bytes()).hexdigest(),

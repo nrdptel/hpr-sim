@@ -3,14 +3,16 @@
 //!
 //! `validation/oracles/openrocket/motor_database.py` writes [`RECORD`]: every motor in the database
 //! OpenRocket 24.12 loads, with its digest, samples, envelope and OpenRocket's own integrals;
-//! OpenRocket's reading of every curve a design embeds; and, per design, whether OpenRocket flies
-//! the curve each motor's digest names. From it the survey:
+//! OpenRocket's reading of every curve a design embeds; and, per design, the digests of the motors
+//! OpenRocket places in each configuration. From it the survey:
 //!
 //! - builds each solid motor as hpr builds a catalog one and supplies it for its digest
 //!   ([`hpr_io::ork::SuppliedCurves`]), so a design flies the curve its digest names;
 //! - holds hpr's total impulse to OpenRocket's within 0.1% on every solid database curve and every
 //!   curve a design embeds, the bound M2.2c1 set for the bundled ones, and supplies no curve
 //!   outside it;
+//! - checks that OpenRocket places the very curves hpr is given in every configuration hpr flies
+//!   with a supplied curve;
 //! - follows every configuration the bundled catalog alone leaves without a curve, and says what
 //!   became of it: flown, held back for another reason, or still without a curve, and why.
 //!
@@ -30,9 +32,23 @@ use crate::ork_motors::{no_curve, not_flown};
 /// Where the oracle writes its record.
 pub(crate) const RECORD: &str = "corpus-out/openrocket-motors.json";
 
-/// The oracle's directory, and the scripts whose current text the record must have been written by.
-const ORACLES: &str = "validation/oracles/openrocket";
-const SCRIPTS: [&str; 3] = ["motor_database.py", "motors.py", "automatic_radius.py"];
+/// The oracle.
+const ORACLE: &str = "validation/oracles/openrocket/motor_database.py";
+
+/// The scripts whose current text the record must have been written by: its name for each, and
+/// where it is.
+const SCRIPTS: [(&str, &str); 4] = [
+    ("motor_database.py", ORACLE),
+    ("motors.py", "validation/oracles/openrocket/motors.py"),
+    (
+        "automatic_radius.py",
+        "validation/oracles/openrocket/automatic_radius.py",
+    ),
+    (
+        "geometry.py",
+        "validation/oracles/rocketserializer/geometry.py",
+    ),
+];
 
 /// The OpenRocket release the record must come from, and its jar.
 const OPENROCKET: &str = "24.12";
@@ -125,12 +141,13 @@ pub(crate) struct Supply {
     embedded_record: BTreeMap<String, Result<Vec<f64>, String>>,
     embedded_seen: BTreeSet<String>,
     embedded_held: Held,
-    /// Over the designs OpenRocket opened: motors naming a digest, and those it flies with that
-    /// digest's curve; the digests it does not fly though the database holds them; and the
-    /// designs it did not open.
-    readback: [usize; 2],
-    readback_missed: Vec<String>,
-    readback_unopened: usize,
+    /// What OpenRocket places in each configuration, by the design's SHA-256: `None` for a design
+    /// it does not open.
+    placed: BTreeMap<String, Option<BTreeMap<String, Vec<String>>>>,
+    /// Configurations flown with a supplied curve: those whose supplied curves OpenRocket places
+    /// too, the motors in them, and those in designs OpenRocket does not open.
+    confirmed: [usize; 2],
+    unopened: usize,
     /// The digests of the supplied curves in the configurations the designs fly.
     used: BTreeSet<String>,
     /// Each configuration the bundled catalog alone leaves without a curve, by what became of it.
@@ -150,9 +167,8 @@ impl Supply {
             serde_json::from_str(&text).map_err(|error| format!("{RECORD}: {error}"))?;
         let mut supply = Self::of(&record);
         let mut current = BTreeMap::new();
-        for script in SCRIPTS {
-            let at = format!("{ORACLES}/{script}");
-            let bytes = std::fs::read(root.join(&at)).map_err(|error| format!("{at}: {error}"))?;
+        for (script, at) in SCRIPTS {
+            let bytes = std::fs::read(root.join(at)).map_err(|error| format!("{at}: {error}"))?;
             current.insert(script, sha256(&bytes));
         }
         let jar = root.join(JAR);
@@ -310,31 +326,23 @@ impl Supply {
             };
             supply.embedded_record.insert(sha, reading);
         }
-        let database: BTreeSet<&str> = record["database"]
-            .as_array()
-            .into_iter()
-            .flatten()
-            .filter_map(|m| m["digest"].as_str())
-            .collect();
         for design in record["flown"].as_array().into_iter().flatten() {
-            if design["driver_error"].is_string() {
-                supply.readback_unopened += 1;
-                continue;
-            }
-            let count = |key: &str| {
-                design[key]
-                    .as_u64()
-                    .and_then(|n| usize::try_from(n).ok())
-                    .unwrap_or_default()
-            };
-            supply.readback[0] += count("motors_naming_a_digest");
-            supply.readback[1] += count("flown_with_that_digest");
-            for digest in design["digests_not_flown"].as_array().into_iter().flatten() {
-                let digest = digest.as_str().unwrap_or_default();
-                if database.contains(digest) {
-                    supply.readback_missed.push(digest.to_owned());
-                }
-            }
+            let sha = design["sha256"].as_str().unwrap_or_default().to_owned();
+            let configurations = design["configurations"].as_object().map(|configurations| {
+                configurations
+                    .iter()
+                    .map(|(id, digests)| {
+                        let digests = digests
+                            .as_array()
+                            .into_iter()
+                            .flatten()
+                            .filter_map(|d| d.as_str().map(str::to_owned))
+                            .collect();
+                        (id.clone(), digests)
+                    })
+                    .collect()
+            });
+            supply.placed.insert(sha, configurations);
         }
         supply
     }
@@ -372,8 +380,7 @@ impl Supply {
             let openrocket = match self.embedded_record.get(&sha) {
                 None => {
                     self.problems.push(format!(
-                        "the embedded curve {short} is not in {RECORD}; run {ORACLES}/{} again",
-                        SCRIPTS[0]
+                        "the embedded curve {short} is not in {RECORD}; run {ORACLE} again"
                     ));
                     continue;
                 }
@@ -428,18 +435,66 @@ impl Supply {
     }
 
     /// Follows each configuration `bare` (read with the bundled catalog alone) leaves without a
-    /// curve into `supplied` (read with the supply), and counts what became of it.
-    pub(crate) fn follow(&mut self, bare: &Design, supplied: &Design) {
+    /// curve into `supplied` (read with the supply), and counts what became of it; and checks
+    /// that OpenRocket places the supplied curves of each configuration flown in the design whose
+    /// file is `bytes`.
+    pub(crate) fn follow(&mut self, bytes: &[u8], bare: &Design, supplied: &Design) {
         if !self.present {
             return;
         }
+        let sha = sha256(bytes);
+        let short = sha.get(..8).unwrap_or(&sha).to_owned();
         for configuration in &supplied.motors.configurations {
-            for motor in &configuration.motors {
-                if let Curve::Supplied { digest, .. } = &motor.curve
-                    && configuration.left_out.is_none()
-                {
-                    self.used.insert(digest.clone());
+            if configuration.left_out.is_some() {
+                continue;
+            }
+            let digests: Vec<&str> = configuration
+                .motors
+                .iter()
+                .filter_map(|motor| match &motor.curve {
+                    Curve::Supplied { digest, .. } => Some(digest.as_str()),
+                    _ => None,
+                })
+                .collect();
+            if digests.is_empty() {
+                continue;
+            }
+            self.used.extend(digests.iter().map(|d| (*d).to_owned()));
+            let id = &configuration.id;
+            let placed = match self.placed.get(&sha) {
+                None => {
+                    self.problems.push(format!(
+                        "design {short} flies supplied curves and is not read back in {RECORD}; \
+                         run {ORACLE} again, with --jar"
+                    ));
+                    continue;
                 }
+                Some(None) => {
+                    self.unopened += 1;
+                    continue;
+                }
+                Some(Some(configurations)) => configurations.get(id.as_str()),
+            };
+            let mut left: Vec<&str> = placed.into_iter().flatten().map(String::as_str).collect();
+            let missing = digests
+                .iter()
+                .filter(|digest| match left.iter().position(|d| d == *digest) {
+                    Some(at) => {
+                        left.swap_remove(at);
+                        false
+                    }
+                    None => true,
+                })
+                .count();
+            if missing == 0 {
+                self.confirmed[0] += 1;
+                self.confirmed[1] += digests.len();
+            } else {
+                self.problems.push(format!(
+                    "design {short}, configuration {id}: OpenRocket does not place {missing} of \
+                     the {} curve(s) hpr is supplied",
+                    digests.len()
+                ));
             }
         }
         for configuration in &bare.motors.configurations {
@@ -530,11 +585,10 @@ impl Supply {
             "names_with_several_curves": self.names_with_several_curves,
             "database_total_impulse": self.database_held.summary(),
             "embedded_total_impulse": self.embedded_held.summary(),
-            "openrocket_flies_the_digest_named_curve": {
-                "motors_naming_a_digest": self.readback[0],
-                "flown_with_that_digest": self.readback[1],
-                "missed_though_in_the_database": self.readback_missed.len(),
-                "designs_openrocket_does_not_open": self.readback_unopened,
+            "openrocket_places_the_supplied_curves": {
+                "configurations": self.confirmed[0],
+                "motors": self.confirmed[1],
+                "configurations_in_designs_openrocket_does_not_open": self.unopened,
             },
             "centre_of_mass_off_mid_case_over_1_mm": {
                 "supplied": all.0,
@@ -552,8 +606,7 @@ impl Supply {
     pub(crate) fn print(&self) {
         if !self.present {
             println!(
-                "  curves from OpenRocket's motor database: not run; {ORACLES}/{} writes {RECORD}",
-                SCRIPTS[0]
+                "  curves from OpenRocket's motor database: not run; {ORACLE} writes {RECORD}"
             );
             return;
         }
@@ -594,13 +647,9 @@ impl Supply {
             self.embedded_held.line()
         );
         println!(
-            "    OpenRocket flies the curve a motor's digest names: {} of {} motors naming a \
-             digest; {} missed though the database holds the digest; {} design(s) OpenRocket \
-             does not open",
-            self.readback[1],
-            self.readback[0],
-            self.readback_missed.len(),
-            self.readback_unopened
+            "    OpenRocket places the supplied curves in each configuration hpr flies with one: {} \
+             configuration(s), {} motor(s); {} configuration(s) in designs OpenRocket does not open",
+            self.confirmed[0], self.confirmed[1], self.unopened
         );
         let [all, used] = self.cg_counts();
         println!(
@@ -638,7 +687,7 @@ fn stale(record: &Value, current: &BTreeMap<&str, String>, jar: Option<&str>) ->
     for (script, sha) in current {
         if record["inputs_sha256"][*script].as_str() != Some(sha.as_str()) {
             problems.push(format!(
-                "{RECORD} was written by another version of {ORACLES}/{script}; run the oracle again"
+                "{RECORD} was written by another version of {script}; run {ORACLE} again"
             ));
         }
     }
@@ -701,11 +750,7 @@ mod tests {
                 motor("ff", "Single-use", 100.0, 100.0, 0.150),
             ],
             "embedded": [],
-            "flown": [
-                {"motors_naming_a_digest": 3, "flown_with_that_digest": 1,
-                 "digests_not_flown": ["aa", "zz"]},
-                {"driver_error": "no"},
-            ],
+            "flown": [],
         });
         let supply = Supply::of(&record);
         assert_eq!(supply.database_motors, 9);
@@ -727,9 +772,6 @@ mod tests {
         );
         let failure = supply.failure().expect("the 1% curve fails the survey");
         assert!(failure.contains("Nobody G100 (ee)"), "{failure}");
-        assert_eq!(supply.readback, [3, 1]);
-        assert_eq!(supply.readback_missed, ["aa"], "zz is not in the database");
-        assert_eq!(supply.readback_unopened, 1);
         assert_eq!(
             supply.why(Some("cc"), NoCurve::NotFound),
             "two different database motors share its digest"
@@ -760,12 +802,14 @@ mod tests {
             "jar_sha256": "j",
             "inputs_sha256": {
                 "motor_database.py": "a", "motors.py": "b", "automatic_radius.py": "c",
+                "geometry.py": "d",
             },
         });
         let current = BTreeMap::from([
             ("motor_database.py", "a".to_owned()),
             ("motors.py", "b".to_owned()),
             ("automatic_radius.py", "c".to_owned()),
+            ("geometry.py", "d".to_owned()),
         ]);
         assert!(stale(&record, &current, Some("j")).is_empty());
         assert!(stale(&record, &current, None).is_empty());
@@ -820,5 +864,54 @@ mod tests {
             "{failure}"
         );
         assert!(failure.contains("is not in"), "{failure}");
+    }
+
+    /// A configuration flown with supplied curves passes only when OpenRocket places the same
+    /// curves in the configuration of the same id; a design OpenRocket does not open is counted
+    /// apart, and one missing from the record fails.
+    #[test]
+    fn openrocket_must_place_the_supplied_curves() {
+        let xml = br#"<?xml version='1.0' encoding='utf-8'?>
+<openrocket version="1.9" creator="test">
+  <rocket><subcomponents><stage><name>Sustainer</name><subcomponents>
+    <bodytube><id>body</id><length>0.4</length><thickness>0.001</thickness>
+      <radius>0.0145</radius>
+      <motormount><ignitionevent>automatic</ignitionevent><ignitiondelay>0.0</ignitiondelay>
+        <overhang>0.0</overhang>
+        <motor configid="c1"><type>single</type><manufacturer>Nobody</manufacturer>
+          <digest>aa</digest><designation>G100</designation>
+          <diameter>0.029</diameter><length>0.124</length><delay>6.0</delay></motor>
+      </motormount></bodytube>
+  </subcomponents></stage></subcomponents></rocket>
+</openrocket>"#;
+        let file = hpr_io::ork::read(xml).expect("a readable design").value;
+        let sha = sha256(xml);
+        let checked = |placed: Value| {
+            let mut supply = Supply::of(&json!({
+                "database": [motor("aa", "Reloadable", 100.0, 100.0, 0.124)],
+                "embedded": [],
+                "flown": [placed],
+            }));
+            let supplied = hpr_io::ork::design_with(&file, supply.curves()).value;
+            let bare = hpr_io::ork::design(&file).value;
+            supply.follow(xml, &bare, &supplied);
+            supply
+        };
+        let good = checked(json!({ "sha256": sha, "configurations": { "c1": ["aa"] } }));
+        assert_eq!((good.confirmed, good.unopened), ([1, 1], 0));
+        assert_eq!(good.fates.get("flies"), Some(&1));
+        assert!(good.failure().is_none(), "{:?}", good.failure());
+
+        let other = checked(json!({ "sha256": sha, "configurations": { "c1": ["bb"] } }));
+        let failure = other.failure().expect("another curve placed");
+        assert!(failure.contains("does not place 1 of the 1"), "{failure}");
+
+        let refused = checked(json!({ "sha256": sha, "opens": false }));
+        assert_eq!((refused.confirmed, refused.unopened), ([0, 0], 1));
+        assert!(refused.failure().is_none());
+
+        let absent = checked(json!({ "sha256": "elsewhere", "configurations": {} }));
+        let failure = absent.failure().expect("not read back");
+        assert!(failure.contains("is not read back"), "{failure}");
     }
 }
