@@ -15,7 +15,15 @@ summary beside the quantities of its own time series that the summary could mean
 - whether OpenRocket aborted the run (a `SIM_ABORT` event), and why;
 - the peak total acceleration before the first deployment, a candidate for `maxacceleration`;
 - the same configuration flown again with nothing deployed: its apogee event, last burnout and
-  own `optimumdelay`, candidates for the first flight's `optimumdelay`.
+  own `optimumdelay`, candidates for the first flight's `optimumdelay`, and its largest altitude,
+  the apogee a parachute opened before apogee took from the first flight;
+- where a part of the design states its own drag coefficient, the configuration flown a third
+  time with nothing deployed and every such statement cleared, so each part takes the drag its
+  shape gives: its largest altitude and the number of statements cleared. hpr applies no drag
+  coefficient a `.ork` states (issue #165), so this is OpenRocket flying what hpr reads;
+- where every part stating a drag coefficient states zero and is neither the rocket nor a stage,
+  the configuration flown a fourth time with nothing deployed and those parts removed, the flight
+  `cargo xtask ork-flights` gives hpr as a probe: its largest altitude and the parts removed.
 
 One more flight, `no_deployment`, is the simple example with its parachute set never to open: a
 complete flight whose deployment never happened.
@@ -219,6 +227,49 @@ def never_deploy(document, configuration):
         held.setDeployEvent(DeploymentConfiguration.DeployEvent.NEVER)
 
 
+def clear_drag_overrides(document):
+    """Clears every part of `document` that states its own drag coefficient, and its children's
+    share of it, so each part takes the drag its shape gives. Returns how many were cleared."""
+    from info.openrocket.core.rocketcomponent import RocketComponent
+
+    cleared = 0
+    for part in events.components(document.getRocket(), RocketComponent):
+        if part.isCDOverridden():
+            part.setSubcomponentsOverriddenCD(False)
+            part.setCDOverridden(False)
+            cleared += 1
+    left = [
+        part
+        for part in events.components(document.getRocket(), RocketComponent)
+        if part.isCDOverridden() or part.getCDOverriddenBy() is not None
+    ]
+    if left:
+        raise RuntimeError(f"{len(left)} parts still take a stated drag coefficient")
+    return cleared
+
+
+def remove_parts_set_to_no_drag(document):
+    """Removes every part of `document` that states a drag coefficient of zero, and returns how
+    many, or `None` when a part states another value or the rocket or a stage states one: then no
+    removal stands in for the statement, as in `cargo xtask ork-flights`'s probe."""
+    from info.openrocket.core.rocketcomponent import AxialStage, Rocket, RocketComponent
+
+    parts = [
+        part
+        for part in events.components(document.getRocket(), RocketComponent)
+        if part.isCDOverridden()
+    ]
+    if not parts or any(
+        isinstance(part, (Rocket, AxialStage)) or float(part.getOverrideCD()) != 0.0
+        for part in parts
+    ):
+        return None
+    for part in parts:
+        if not part.getParent().removeChild(part):
+            raise RuntimeError("a part set to no drag was not removed")
+    return len(parts)
+
+
 def no_deployment():
     """The simple example's first configuration with every recovery device set never to deploy:
     a complete flight with no deployment event, for the missing-event rule (Loft lesson L81)."""
@@ -276,7 +327,34 @@ def design(path, scratch):
                 ),
                 "last_burnout_time_s": last_time("BURNOUT"),
                 "optimum_delay_s": (again.get("summary") or {}).get("optimum_delay_s"),
+                "max_altitude_m": (again.get("series") or {}).get("max_altitude_m"),
             }
+            # Again with nothing deployed and no part's drag coefficient stated, where one is.
+            plain, _ = geometry.opened(text, scratch)
+            never_deploy(plain, configuration)
+            cleared = clear_drag_overrides(plain)
+            if cleared:
+                stored_ = list(plain.getSimulations())
+                third = flight(plain, configuration, stored_[0] if stored_ else None)
+                entry["undeployed_without_drag_overrides"] = {
+                    "drag_overrides_cleared": cleared,
+                    "aborted": third.get("aborted"),
+                    "refused": third.get("refused"),
+                    "max_altitude_m": (third.get("series") or {}).get("max_altitude_m"),
+                }
+            # Again with nothing deployed and the parts set to no drag removed, where that can be.
+            bare, _ = geometry.opened(text, scratch)
+            never_deploy(bare, configuration)
+            removed = remove_parts_set_to_no_drag(bare)
+            if removed:
+                stored_ = list(bare.getSimulations())
+                fourth = flight(bare, configuration, stored_[0] if stored_ else None)
+                entry["undeployed_without_parts_set_to_no_drag"] = {
+                    "parts_removed": removed,
+                    "aborted": fourth.get("aborted"),
+                    "refused": fourth.get("refused"),
+                    "max_altitude_m": (fourth.get("series") or {}).get("max_altitude_m"),
+                }
         flights.append(entry)
     record["flights"] = flights
     return record

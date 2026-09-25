@@ -17,6 +17,8 @@ Written by `cargo xtask ork-flights` ([M2.2d2][m2-2d2], hpr's flights against Op
 - largest speed, a part's drag override not applied: 3 scored, median -9.55%, mean absolute 8.52%, from -12.33% to -3.69%
 - largest speed, no named cause: 18 scored, median +0.17%, mean absolute 0.39%, from -0.69% to +0.85%
 - margin at rod clearance, no named cause: 21 scored, median -0.0007 cal, mean absolute 0.0045 cal, from -0.0151 cal to +0.0037 cal
+- apogee against OpenRocket's own flight with the named causes removed: 9 scored, median -0.16%, mean absolute 1.47%, from -1.07% to +4.79%
+- apogees more than 5% off that are still more than 5% off with the causes removed: 0
 
 hpr's mass and centre of mass less OpenRocket's ([M2.2e1][m2-2e1], decision [ADR-070][adr-070]), over the flights not aborted: the masses in per cent of OpenRocket's, the centre of mass in OpenRocket's calibres, positive when hpr's is further aft, which shortens the margin by as much.
 
@@ -51,6 +53,23 @@ hpr's mass and centre of mass less OpenRocket's ([M2.2e1][m2-2e1], decision [ADR
 *Chute s early*: OpenRocket's parachute opened that long before the apogee of the same flight with nothing deployed, which the record also holds; hpr flies no parachute from a `.ork` yet. *Without the part set to no drag*: the same flight by hpr with the parts OpenRocket is told have no drag removed, which takes their mass, lift and shape away too, so it is a probe, not the override ([#165][i165]).
 
 [i165]: https://github.com/nrdptel/hpr-sim/issues/165
+
+The named causes, sized ([M2.2e4][m2-2e4], decision [ADR-073][adr-073]). OpenRocket flew each flight with a named cause again without it: first with nothing deployed, then, where a part states its own drag coefficient, with every such statement cleared as well, which is what hpr reads. Δ is hpr's apogee less that flight's, in per cent of it.
+
+| design | motors | Δ apogee | chute early (s) | OR, nothing deployed (m) | Δ | OR, drag coefficients cleared too (m) | Δ | OR, the parts removed (m) | hpr (m) | Δ |
+|---|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+| 3D printable nose cone and fins | [B6-4] | -0.32% | 0.10 | 112.9 | -0.32 | — | — | — | — | — |
+| 3D printable nose cone and fins | [C6-3] | +12.19% | 2.59 | 274.7 | -0.16 | — | — | — | — | — |
+| 3D printable nose cone and fins | [C6-5] | +0.11% | 0.59 | 274.7 | -0.16 | — | — | — | — | — |
+| A simple model rocket | [B4-4] | -0.64% | 0.37 | 136.6 | -0.78 | — | — | — | — | — |
+| A simple model rocket | [C6-3] | +13.80% | 2.99 | 322.4 | -1.07 | — | — | — | — | — |
+| A simple model rocket | [C6-5] | -0.08% | 0.99 | 322.4 | -1.07 | — | — | — | — | — |
+| Base drag hack (short-wide) | [C11-5] | -16.77% | — | 98.8 | -16.77 | 81.1 | +1.34 | 97.4 | 98.5 | +1.15 |
+| Base drag hack (short-wide) | [D12-3] | -15.47% | 1.80 | 212.6 | -20.80 | 162.7 | +3.51 | 208.4 | 218.4 | +4.76 |
+| Base drag hack (short-wide) | [E12-4] | -19.13% | 1.24 | 321.8 | -20.50 | 244.1 | +4.79 | 315.3 | 339.8 | +7.80 |
+
+[m2-2e4]: https://nrdptel.github.io/hpr-sim/decisions-and-roadmap.html#m2-2e4
+[adr-073]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-073-each-named-cause-sized-by-openrockets-own-flight-without-it-2026-09-25
 
 At the rod-clearance step, the parts of the margin (m from the nose tip, and kg):
 

@@ -282,6 +282,7 @@
       "aborted": false,
       "apogee_time_s": 8.704999999999858,
       "last_burnout_time_s": 1.43,
+      "max_altitude_m": 360.38556318336543,
       "optimum_delay_s": 7.274999999999858
      }
     }
@@ -527,6 +528,7 @@
       "aborted": false,
       "apogee_time_s": 3.120499999999997,
       "last_burnout_time_s": 0.73,
+      "max_altitude_m": 39.01670333395817,
       "optimum_delay_s": 2.390499999999997
      }
     },
@@ -734,6 +736,7 @@
       "aborted": false,
       "apogee_time_s": 4.96,
       "last_burnout_time_s": 0.86,
+      "max_altitude_m": 112.86575760275885,
       "optimum_delay_s": 4.1
      }
     },
@@ -955,6 +958,7 @@
       "aborted": false,
       "apogee_time_s": 7.449882812500108,
       "last_burnout_time_s": 1.86,
+      "max_altitude_m": 274.69734209204887,
       "optimum_delay_s": 5.589882812500107
      }
     },
@@ -1162,6 +1166,7 @@
       "aborted": false,
       "apogee_time_s": 7.449882812500201,
       "last_burnout_time_s": 1.86,
+      "max_altitude_m": 274.69734213324966,
       "optimum_delay_s": 5.589882812500201
      }
     },
@@ -1369,6 +1374,7 @@
       "aborted": false,
       "apogee_time_s": 7.452624999999982,
       "last_burnout_time_s": 1.86,
+      "max_altitude_m": 274.6968333803148,
       "optimum_delay_s": 5.592624999999981
      }
     }
@@ -1583,6 +1589,7 @@
       "aborted": false,
       "apogee_time_s": 3.470499999999996,
       "last_burnout_time_s": 0.73,
+      "max_altitude_m": 51.05382008139654,
       "optimum_delay_s": 2.740499999999996
      }
     },
@@ -1790,6 +1797,7 @@
       "aborted": false,
       "apogee_time_s": 5.40064453125049,
       "last_burnout_time_s": 1.03,
+      "max_altitude_m": 136.6085662721152,
       "optimum_delay_s": 4.370644531250489
      }
     },
@@ -2011,6 +2019,7 @@
       "aborted": false,
       "apogee_time_s": 7.849882812500106,
       "last_burnout_time_s": 1.86,
+      "max_altitude_m": 322.35151005304897,
       "optimum_delay_s": 5.989882812500106
      }
     },
@@ -2218,6 +2227,7 @@
       "aborted": false,
       "apogee_time_s": 7.8498828125002,
       "last_burnout_time_s": 1.86,
+      "max_altitude_m": 322.3515067177913,
       "optimum_delay_s": 5.989882812500199
      }
     },
@@ -2425,6 +2435,7 @@
       "aborted": false,
       "apogee_time_s": 7.85262499999998,
       "last_burnout_time_s": 1.86,
+      "max_altitude_m": 322.35122162332186,
       "optimum_delay_s": 5.99262499999998
      }
     }
@@ -2653,6 +2664,7 @@
       "aborted": false,
       "apogee_time_s": 8.225164062499989,
       "last_burnout_time_s": 1.43,
+      "max_altitude_m": 452.1894514210456,
       "optimum_delay_s": 6.795164062499989
      }
     }
@@ -2909,6 +2921,7 @@
       "aborted": false,
       "apogee_time_s": 15.656000000000093,
       "last_burnout_time_s": 3.356,
+      "max_altitude_m": 1317.508873255777,
       "optimum_delay_s": 12.300000000000093
      }
     },
@@ -3158,6 +3171,7 @@
       "aborted": false,
       "apogee_time_s": 16.54150000000012,
       "last_burnout_time_s": 4.324,
+      "max_altitude_m": 1296.0313570015023,
       "optimum_delay_s": 12.21750000000012
      }
     },
@@ -3407,6 +3421,7 @@
       "aborted": false,
       "apogee_time_s": 16.004000000000097,
       "last_burnout_time_s": 3.356,
+      "max_altitude_m": 1292.4908038091478,
       "optimum_delay_s": 12.648000000000097
      }
     },
@@ -3656,6 +3671,7 @@
       "aborted": false,
       "apogee_time_s": 17.760000000000144,
       "last_burnout_time_s": 6.324,
+      "max_altitude_m": 1303.710797836307,
       "optimum_delay_s": 11.436000000000144
      }
     },
@@ -3905,6 +3921,7 @@
       "aborted": false,
       "apogee_time_s": 18.910000000000153,
       "last_burnout_time_s": 8.324,
+      "max_altitude_m": 1274.1841296290513,
       "optimum_delay_s": 10.586000000000153
      }
     }
@@ -4133,7 +4150,20 @@
       "aborted": false,
       "apogee_time_s": 4.6105118402726095,
       "last_burnout_time_s": 0.81,
+      "max_altitude_m": 98.79779534954748,
       "optimum_delay_s": 3.8005118402726095
+     },
+     "undeployed_without_drag_overrides": {
+      "aborted": false,
+      "drag_overrides_cleared": 1,
+      "max_altitude_m": 81.14608706441268,
+      "refused": null
+     },
+     "undeployed_without_parts_set_to_no_drag": {
+      "aborted": false,
+      "max_altitude_m": 97.38834245262626,
+      "parts_removed": 1,
+      "refused": null
      }
     },
     {
@@ -4354,7 +4384,20 @@
       "aborted": false,
       "apogee_time_s": 6.449999999999994,
       "last_burnout_time_s": 1.65,
+      "max_altitude_m": 212.62302412351616,
       "optimum_delay_s": 4.799999999999994
+     },
+     "undeployed_without_drag_overrides": {
+      "aborted": false,
+      "drag_overrides_cleared": 1,
+      "max_altitude_m": 162.69087704766505,
+      "refused": null
+     },
+     "undeployed_without_parts_set_to_no_drag": {
+      "aborted": false,
+      "max_altitude_m": 208.4396177367668,
+      "parts_removed": 1,
+      "refused": null
      }
     },
     {
@@ -4575,7 +4618,20 @@
       "aborted": false,
       "apogee_time_s": 7.680585819267822,
       "last_burnout_time_s": 2.44,
+      "max_altitude_m": 321.7576167043844,
       "optimum_delay_s": 5.240585819267823
+     },
+     "undeployed_without_drag_overrides": {
+      "aborted": false,
+      "drag_overrides_cleared": 1,
+      "max_altitude_m": 244.12149907498252,
+      "refused": null
+     },
+     "undeployed_without_parts_set_to_no_drag": {
+      "aborted": false,
+      "max_altitude_m": 315.25701263830786,
+      "parts_removed": 1,
+      "refused": null
      }
     }
    ],
@@ -4803,6 +4859,7 @@
       "aborted": false,
       "apogee_time_s": 8.449999999999985,
       "last_burnout_time_s": 2.3,
+      "max_altitude_m": 309.96229793761296,
       "optimum_delay_s": 6.149999999999985
      }
     },
@@ -5024,6 +5081,7 @@
       "aborted": false,
       "apogee_time_s": 9.948851171875006,
       "last_burnout_time_s": 1.8079,
+      "max_altitude_m": 490.312021797243,
       "optimum_delay_s": 8.140951171875006
      }
     }
@@ -5238,6 +5296,7 @@
       "aborted": false,
       "apogee_time_s": 3.670499999999995,
       "last_burnout_time_s": 0.73,
+      "max_altitude_m": 58.22183371453285,
       "optimum_delay_s": 2.9404999999999952
      }
     },
@@ -5445,6 +5504,7 @@
       "aborted": false,
       "apogee_time_s": 5.40064453125049,
       "last_burnout_time_s": 1.03,
+      "max_altitude_m": 143.07197936859887,
       "optimum_delay_s": 4.370644531250489
      }
     },
@@ -5666,6 +5726,7 @@
       "aborted": false,
       "apogee_time_s": 7.449882812500108,
       "last_burnout_time_s": 1.86,
+      "max_altitude_m": 308.57034749078036,
       "optimum_delay_s": 5.589882812500107
      }
     },
@@ -5873,6 +5934,7 @@
       "aborted": false,
       "apogee_time_s": 7.449882812500201,
       "last_burnout_time_s": 1.86,
+      "max_altitude_m": 308.5703456978393,
       "optimum_delay_s": 5.589882812500201
      }
     },
@@ -6080,6 +6142,7 @@
       "aborted": false,
       "apogee_time_s": 7.452624999999982,
       "last_burnout_time_s": 1.86,
+      "max_altitude_m": 308.5699256161165,
       "optimum_delay_s": 5.592624999999981
      }
     }
@@ -6308,6 +6371,7 @@
       "aborted": false,
       "apogee_time_s": 2.870499999999998,
       "last_burnout_time_s": 0.73,
+      "max_altitude_m": 32.199133957855416,
       "optimum_delay_s": 2.140499999999998
      }
     },
@@ -6529,6 +6593,7 @@
       "aborted": false,
       "apogee_time_s": 4.727499999999991,
       "last_burnout_time_s": 1.03,
+      "max_altitude_m": 96.6650515962832,
       "optimum_delay_s": 3.697499999999991
      }
     },
@@ -6764,6 +6829,7 @@
       "aborted": false,
       "apogee_time_s": 6.9763078559166924,
       "last_burnout_time_s": 1.86,
+      "max_altitude_m": 258.4837181994056,
       "optimum_delay_s": 5.116307855916692
      }
     },
@@ -6985,6 +7051,7 @@
       "aborted": false,
       "apogee_time_s": 7.549882812500201,
       "last_burnout_time_s": 1.86,
+      "max_altitude_m": 266.5721067234107,
       "optimum_delay_s": 5.6898828125002
      }
     },
@@ -7206,6 +7273,7 @@
       "aborted": false,
       "apogee_time_s": 7.552624999999981,
       "last_burnout_time_s": 1.86,
+      "max_altitude_m": 266.5703566611398,
       "optimum_delay_s": 5.692624999999981
      }
     }
@@ -7434,6 +7502,7 @@
       "aborted": false,
       "apogee_time_s": 10.353687500000014,
       "last_burnout_time_s": 0.329,
+      "max_altitude_m": 593.1464130291338,
       "optimum_delay_s": 10.024687500000013
      }
     },
@@ -7655,6 +7724,7 @@
       "aborted": false,
       "apogee_time_s": 11.473702265881728,
       "last_burnout_time_s": 1.34,
+      "max_altitude_m": 698.387160462903,
       "optimum_delay_s": 10.133702265881729
      }
     },
@@ -7890,6 +7960,7 @@
       "aborted": false,
       "apogee_time_s": 17.398500000000112,
       "last_burnout_time_s": 2.052,
+      "max_altitude_m": 2224.7379037526066,
       "optimum_delay_s": 15.346500000000113
      }
     },
@@ -8111,6 +8182,7 @@
       "aborted": false,
       "apogee_time_s": 12.20368750000004,
       "last_burnout_time_s": 0.329,
+      "max_altitude_m": 897.7852074213599,
       "optimum_delay_s": 11.87468750000004
      }
     },
@@ -8332,6 +8404,7 @@
       "aborted": false,
       "apogee_time_s": 13.510804093750059,
       "last_burnout_time_s": 0.34,
+      "max_altitude_m": 1158.9614305253344,
       "optimum_delay_s": 13.170804093750059
      }
     },
@@ -8553,6 +8626,7 @@
       "aborted": false,
       "apogee_time_s": 7.339999999999983,
       "last_burnout_time_s": 2.44,
+      "max_altitude_m": 227.429143753231,
       "optimum_delay_s": 4.899999999999983
      }
     }
@@ -8823,6 +8897,7 @@
       "aborted": false,
       "apogee_time_s": 13.098500000000056,
       "last_burnout_time_s": 3.514,
+      "max_altitude_m": 1123.6307088660315,
       "optimum_delay_s": 9.584500000000057
      }
     },
@@ -9030,6 +9105,7 @@
       "aborted": false,
       "apogee_time_s": 11.16290625000001,
       "last_burnout_time_s": 3.514,
+      "max_altitude_m": 851.7645337592387,
       "optimum_delay_s": 7.64890625000001
      }
     }
@@ -9244,6 +9320,7 @@
       "aborted": false,
       "apogee_time_s": 2.830515625000002,
       "last_burnout_time_s": 0.534,
+      "max_altitude_m": 32.29681385054196,
       "optimum_delay_s": 2.2965156250000023
      }
     },
@@ -9451,6 +9528,7 @@
       "aborted": false,
       "apogee_time_s": 4.3400000000000025,
       "last_burnout_time_s": 0.86,
+      "max_altitude_m": 90.54704030223313,
       "optimum_delay_s": 3.4800000000000026
      }
     },
@@ -9658,6 +9736,7 @@
       "aborted": false,
       "apogee_time_s": 6.228750000000004,
       "last_burnout_time_s": 1.86,
+      "max_altitude_m": 199.72477189892467,
       "optimum_delay_s": 4.368750000000004
      }
     },
@@ -9865,6 +9944,7 @@
       "aborted": false,
       "apogee_time_s": 5.753252624511602,
       "last_burnout_time_s": 0.889,
+      "max_altitude_m": 207.51588753236507,
       "optimum_delay_s": 4.864252624511602
      }
     },
@@ -10072,6 +10152,7 @@
       "aborted": false,
       "apogee_time_s": 5.975402333210509,
       "last_burnout_time_s": 0.838,
+      "max_altitude_m": 245.7340453793023,
       "optimum_delay_s": 5.137402333210509
      }
     }
@@ -10301,6 +10382,7 @@
       "aborted": true,
       "apogee_time_s": null,
       "last_burnout_time_s": 0.86,
+      "max_altitude_m": 85.00260708983599,
       "optimum_delay_s": null
      }
     },
@@ -10578,6 +10660,7 @@
       "aborted": false,
       "apogee_time_s": 4.074881761607787,
       "last_burnout_time_s": 2.72,
+      "max_altitude_m": 152.69756171673492,
       "optimum_delay_s": 1.3548817616077868
      }
     },
@@ -10785,6 +10868,7 @@
       "aborted": false,
       "apogee_time_s": 5.452624999999989,
       "last_burnout_time_s": 1.86,
+      "max_altitude_m": 130.99296538244565,
       "optimum_delay_s": 3.5926249999999884
      }
     },
@@ -11090,6 +11174,7 @@
       "aborted": false,
       "apogee_time_s": 4.703125000000009,
       "last_burnout_time_s": 1.06,
+      "max_altitude_m": 115.60093924423666,
       "optimum_delay_s": 3.643125000000009
      }
     }
@@ -11304,6 +11389,7 @@
       "aborted": false,
       "apogee_time_s": 22.434176625358464,
       "last_burnout_time_s": 9.786,
+      "max_altitude_m": 2475.0735008898255,
       "optimum_delay_s": 12.648176625358465
      }
     }
@@ -11518,6 +11604,7 @@
       "aborted": false,
       "apogee_time_s": 22.449313113164944,
       "last_burnout_time_s": 9.786,
+      "max_altitude_m": 2475.0742200660306,
       "optimum_delay_s": 12.663313113164945
      }
     }
@@ -11844,6 +11931,7 @@
       "aborted": false,
       "apogee_time_s": 7.893999999999998,
       "last_burnout_time_s": 2.444,
+      "max_altitude_m": 277.120044752708,
       "optimum_delay_s": 5.449999999999998
      }
     },
@@ -12163,6 +12251,7 @@
       "aborted": false,
       "apogee_time_s": 10.140671757786638,
       "last_burnout_time_s": 3.574,
+      "max_altitude_m": 505.3891223476048,
       "optimum_delay_s": 6.566671757786638
      }
     },
@@ -12482,6 +12571,7 @@
       "aborted": false,
       "apogee_time_s": 12.37698188232997,
       "last_burnout_time_s": 5.58,
+      "max_altitude_m": 689.5351949881381,
       "optimum_delay_s": 6.79698188232997
      }
     }
@@ -12696,6 +12786,7 @@
       "aborted": false,
       "apogee_time_s": 5.961123177930874,
       "last_burnout_time_s": 1.65,
+      "max_altitude_m": 282.81947009425096,
       "optimum_delay_s": 4.311123177930874
      }
     }
@@ -12980,6 +13071,7 @@
       "aborted": false,
       "apogee_time_s": 10.981591813670175,
       "last_burnout_time_s": 3.07,
+      "max_altitude_m": 678.4527019281985,
       "optimum_delay_s": 7.911591813670174
      }
     },
@@ -13229,6 +13321,7 @@
       "aborted": false,
       "apogee_time_s": 16.25597433775726,
       "last_burnout_time_s": 10.119,
+      "max_altitude_m": 1384.1891330888755,
       "optimum_delay_s": 6.136974337757259
      }
     }
@@ -13239,7 +13332,7 @@
  "generated": "2026-09-25",
  "inputs_sha256": {
   "events.py": "313b72db4daae061e476be01cd429db7c2f34432ae45d314f1bbb1586e1f585d",
-  "flights.py": "4944c04458e72a095597b32b47ab39c9e912b089f22fd1aaf756f1f8e340fb6e",
+  "flights.py": "e77b14ef9b2a5b2057ad3931c8814288286a326d6862fd7332e9eeacbcc118a7",
   "geometry.py": "d410d9327f1fec89911cf3f597d7cde62559ccc2936106a48f1fc3c4184cc072"
  },
  "jar_sha256": "4959b72f52f5f607941e9722abbb7b7f0c4a38ebbbf84204a329db9f31c4f897",

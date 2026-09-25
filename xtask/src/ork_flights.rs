@@ -358,6 +358,11 @@ pub(crate) fn fly_design(
                 "max_speed_m_s": probe["metrics"]["max_speed_m_s"],
             });
         }
+        if let Some(sized) =
+            causes_removed(flight, &entry, overrides.len()).map_err(|e| format!("{motors}: {e}"))?
+        {
+            entry["apogee_with_the_causes_removed"] = sized;
+        }
         out.flights.push(entry);
     }
     Ok(out)
@@ -772,6 +777,82 @@ fn early_chute(recorded: &Value) -> Result<Option<f64>, String> {
     }
 }
 
+/// OpenRocket's apogee with a flight's named causes taken out of its own flight, and hpr's apogee
+/// against it (M2.2e4, decision ADR-073), or `None` for an aborted flight or one with neither
+/// cause. `overrides` is how many parts state a drag coefficient hpr reads and does not apply.
+///
+/// - `parachutes_held`: the record's `undeployed` flight, the same one with nothing deployed. A
+///   parachute that opens before apogee lowers the apogee, and hpr flies none from a `.ork`.
+/// - `drag_overrides_cleared_too`, where a part states a drag coefficient: its
+///   `undeployed_without_drag_overrides` flight, with nothing deployed and every stated coefficient
+///   cleared, which is OpenRocket flying what hpr reads, since hpr applies none (#165).
+///
+/// `remaining_percent` is hpr's apogee against the last of them, in per cent of OpenRocket's:
+/// what the named causes leave unexplained.
+///
+/// - `parts_removed_from_both`, where hpr has flown its probe without the parts set to no drag
+///   (`without_the_overridden_parts`): that probe's apogee against OpenRocket's
+///   `undeployed_without_parts_set_to_no_drag` flight, the same rocket with the same parts gone
+///   and nothing deployed. It asks whether what remains is the parts' own drag.
+fn causes_removed(
+    recorded: &Value,
+    entry: &Value,
+    overrides: usize,
+) -> Result<Option<Value>, String> {
+    let early = !entry["deployed_before_apogee_s"].is_null();
+    if entry["aborted"] == true || (!early && overrides == 0) {
+        return Ok(None);
+    }
+    let hpr = entry["metrics"]["apogee_m"]["hpr"]
+        .as_f64()
+        .ok_or("hpr's flight has no apogee")?;
+    let step = |key: &str| -> Result<Value, String> {
+        let held = &recorded[key];
+        if held["aborted"] != false {
+            return Err(format!("OpenRocket's {key} flight is missing or aborted"));
+        }
+        let openrocket = held["max_altitude_m"]
+            .as_f64()
+            .filter(|m| m.is_finite() && *m > 0.0)
+            .ok_or_else(|| format!("the record's {key} flight has no apogee"))?;
+        Ok(json!({
+            "openrocket_m": openrocket,
+            "relative_percent": 100.0 * (hpr - openrocket) / openrocket,
+        }))
+    };
+    let held = step("undeployed")?;
+    let mut remaining = held["relative_percent"].clone();
+    let mut sized = json!({ "parachutes_held": held });
+    if overrides > 0 {
+        let cleared =
+            recorded["undeployed_without_drag_overrides"]["drag_overrides_cleared"].as_u64();
+        if cleared != Some(overrides as u64) {
+            return Err(format!(
+                "OpenRocket cleared {cleared:?} stated drag coefficients, hpr reads {overrides}"
+            ));
+        }
+        let too = step("undeployed_without_drag_overrides")?;
+        remaining = too["relative_percent"].clone();
+        sized["drag_overrides_cleared_too"] = too;
+    }
+    if let Some(probe) = entry["without_the_overridden_parts"]["apogee_m"]["hpr"].as_f64() {
+        let key = "undeployed_without_parts_set_to_no_drag";
+        if recorded[key]["parts_removed"].as_u64() != Some(overrides as u64) {
+            return Err(format!(
+                "OpenRocket removed {:?} parts set to no drag, hpr removed {overrides}",
+                recorded[key]["parts_removed"].as_u64()
+            ));
+        }
+        let mut both = step(key)?;
+        let openrocket = both["openrocket_m"].as_f64().unwrap_or(f64::NAN);
+        both["hpr_m"] = json!(probe);
+        both["relative_percent"] = json!(100.0 * (probe - openrocket) / openrocket);
+        sized["parts_removed_from_both"] = both;
+    }
+    sized["remaining_percent"] = remaining;
+    Ok(Some(sized))
+}
+
 /// The reference tool.
 pub(crate) fn openrocket() -> Tool {
     Tool::OpenRocket {
@@ -858,7 +939,30 @@ pub(crate) fn summarise(flights: &[Value], not_flown: &[Value]) -> Value {
         "not_flown": not_flown.len(),
         "apogee_over_5_percent": over,
         "metrics": metrics,
+        "apogee_with_the_causes_removed": with_the_causes_removed(flights),
         "mass_and_cg": mass_and_cg(flights),
+    })
+}
+
+/// The spread of what a named cause leaves of hpr's apogee difference, over the flights that have
+/// one (M2.2e4), and how many of those more than 5% from OpenRocket's are still more than 5% from
+/// its flight with the causes removed.
+fn with_the_causes_removed(flights: &[Value]) -> Value {
+    let over = |percent: Option<f64>| percent.is_some_and(|p| p.abs() > APOGEE_CAUSE_PERCENT);
+    let (mut remaining, mut still_over) = (Vec::new(), 0);
+    for flight in flights {
+        let Some(left) = flight["apogee_with_the_causes_removed"]["remaining_percent"].as_f64()
+        else {
+            continue;
+        };
+        remaining.push(left);
+        if over(flight["metrics"]["apogee_m"]["relative_percent"].as_f64()) && over(Some(left)) {
+            still_over += 1;
+        }
+    }
+    json!({
+        "remaining_percent": spread(&remaining),
+        "over_5_percent_still_over": still_over,
     })
 }
 
@@ -1026,6 +1130,7 @@ pub(crate) fn page(report: &Value) -> String {
          away too, so it is a probe, not the override ([#165][i165]).\n\n\
          [i165]: https://github.com/nrdptel/hpr-sim/issues/165\n",
     );
+    out.push_str(&causes_table(report));
     out.push_str(
         "\nAt the rod-clearance step, the parts of the margin (m from the nose tip, and kg):\n\n",
     );
@@ -1091,6 +1196,57 @@ pub(crate) fn page(report: &Value) -> String {
     out
 }
 
+/// The table of each named cause's size: every flight with one, and OpenRocket's own flight flown
+/// again without it (M2.2e4, decision ADR-073).
+fn causes_table(report: &Value) -> String {
+    let empty = Vec::new();
+    let sized: Vec<&Value> = report["flights"]
+        .as_array()
+        .unwrap_or(&empty)
+        .iter()
+        .filter(|f| f["apogee_with_the_causes_removed"].is_object())
+        .collect();
+    if sized.is_empty() {
+        return String::new();
+    }
+    let mut out = String::from(
+        "\nThe named causes, sized ([M2.2e4][m2-2e4], decision [ADR-073][adr-073]). OpenRocket \
+         flew each flight with a named cause again without it: first with nothing deployed, then, \
+         where a part states its own drag coefficient, with every such statement cleared as well, \
+         which is what hpr reads. Δ is hpr's apogee less that flight's, in per cent of it.\n\n\
+         | design | motors | Δ apogee | chute early (s) | OR, nothing deployed (m) | Δ \
+         | OR, drag coefficients cleared too (m) | Δ | OR, the parts removed (m) | hpr (m) | Δ |\n\
+         |---|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|\n",
+    );
+    for flight in sized {
+        let removed = &flight["apogee_with_the_causes_removed"];
+        let (held, too) = (
+            &removed["parachutes_held"],
+            &removed["drag_overrides_cleared_too"],
+        );
+        let both = &removed["parts_removed_from_both"];
+        out.push_str(&format!(
+            "| {} | {} | {} | {} | {} | {} | {} | {} | {} | {} | {} |\n",
+            flight["design"].as_str().unwrap_or_default(),
+            flight["motors"].as_str().unwrap_or_default(),
+            percent(&flight["metrics"]["apogee_m"]),
+            fixed(&flight["deployed_before_apogee_s"], 2),
+            fixed(&held["openrocket_m"], 1),
+            signed(&held["relative_percent"], 2),
+            fixed(&too["openrocket_m"], 1),
+            signed(&too["relative_percent"], 2),
+            fixed(&both["openrocket_m"], 1),
+            fixed(&both["hpr_m"], 1),
+            signed(&both["relative_percent"], 2),
+        ));
+    }
+    out.push_str(
+        "\n[m2-2e4]: https://nrdptel.github.io/hpr-sim/decisions-and-roadmap.html#m2-2e4\n\
+         [adr-073]: https://github.com/nrdptel/hpr-sim/blob/main/docs/DECISIONS.md#adr-073-each-named-cause-sized-by-openrockets-own-flight-without-it-2026-09-25\n",
+    );
+    out
+}
+
 /// The summary, as lines for the terminal and the page.
 pub(crate) fn summary_lines(report: &Value) -> String {
     let summary = &report["summary"];
@@ -1145,6 +1301,20 @@ pub(crate) fn summary_lines(report: &Value) -> String {
         for (cause, spread) in groups {
             out.push_str(&line(&format!("{label}, {cause}"), spread, unit, digits));
         }
+    }
+    let sized = &summary["apogee_with_the_causes_removed"];
+    if sized.is_object() {
+        out.push_str(&line(
+            "apogee against OpenRocket's own flight with the named causes removed",
+            &sized["remaining_percent"],
+            "%",
+            2,
+        ));
+        out.push_str(&format!(
+            "- apogees more than 5% off that are still more than 5% off with the causes removed: \
+             {}\n",
+            sized["over_5_percent_still_over"],
+        ));
     }
     let mass_and_cg = &summary["mass_and_cg"];
     out.push_str(
