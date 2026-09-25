@@ -716,7 +716,7 @@ mod tests {
         // The record moves only when its script runs, never by hand (Loft lesson L76).
         assert_eq!(
             record.inputs_sha256["motors.py"],
-            "7d2a8bf5db4012ec8e95f6b3f374b0101aff5f13894613046a3ed5a637d93099",
+            "e5996dc1207e862ec68c319c2853e0db6d336b1c808b3915d459676bd67d0022",
         );
         assert_eq!(record.curves.len(), bundled::CURVE_FILES.len());
         let catalog = bundled();
@@ -766,7 +766,8 @@ mod tests {
                     1e-12,
                 ),
             ] {
-                let error = (ours - theirs).abs() / theirs.abs();
+                assert!(theirs > 0.0, "{file}: {what} {theirs}");
+                let error = (ours - theirs).abs() / theirs;
                 if what == "total impulse" {
                     worst_impulse = worst_impulse.max(error);
                 } else {

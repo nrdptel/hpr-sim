@@ -52,8 +52,13 @@ def curve_files(inputs):
 
 
 def delay_of(value):
-    """One standard delay, in seconds, or `"plugged"` for OpenRocket's infinite delay."""
-    return float(value) if math.isfinite(float(value)) else "plugged"
+    """One standard delay, in seconds, or `None` for OpenRocket's plugged (infinite) delay.
+
+    A JSON array holds one type, so the plugged delay is `null` rather than the string OpenRocket
+    prints; `Infinity` is not JSON at all.
+    """
+    seconds = float(value)
+    return seconds if math.isfinite(seconds) else None
 
 
 def read(path):
@@ -108,7 +113,8 @@ def main():
         try:
             entry["motors"] = read(path)
         except Exception as error:  # noqa: BLE001 - recorded, and the test fails on it
-            entry["driver_error"] = str(error).splitlines()[0]
+            first = (str(error).splitlines() or [type(error).__name__])[0]
+            entry["driver_error"] = first or type(error).__name__
         curves.append(entry)
 
     output.parent.mkdir(parents=True, exist_ok=True)

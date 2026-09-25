@@ -140,7 +140,7 @@
      "burnout_mass_kg": 1.379799999999999,
      "common_name": "K1075",
      "delays_s": [
-      "plugged"
+      null
      ],
      "designation": "2245-K1075-SK",
      "diameter_m": 0.054,
@@ -168,7 +168,7 @@
      "burnout_mass_kg": 3.0432999999999986,
      "common_name": "M1545",
      "delays_s": [
-      "plugged"
+      null
      ],
      "designation": "8187-M1545-GR",
      "diameter_m": 0.075,
@@ -297,7 +297,7 @@
      "burnout_mass_kg": 5.569999999999995,
      "common_name": "O3400",
      "delays_s": [
-      "plugged"
+      null
      ],
      "designation": "21062-O3400-IM",
      "diameter_m": 0.098,
@@ -325,7 +325,7 @@
      "burnout_mass_kg": 1.6052999999999993,
      "common_name": "L3200",
      "delays_s": [
-      "plugged"
+      null
      ],
      "designation": "3300-L3200-VM",
      "diameter_m": 0.075,
@@ -385,7 +385,7 @@
      "burnout_mass_kg": 4.9170000000000025,
      "common_name": "N5600",
      "delays_s": [
-      "plugged"
+      null
      ],
      "designation": "N5600WT",
      "diameter_m": 0.098,
@@ -413,7 +413,7 @@
      "burnout_mass_kg": 0.6950000000000002,
      "common_name": "J300",
      "delays_s": [
-      "plugged"
+      null
      ],
      "designation": "J300LR",
      "diameter_m": 0.054,
@@ -441,7 +441,7 @@
      "burnout_mass_kg": 1.2779999999999996,
      "common_name": "L1040",
      "delays_s": [
-      "plugged"
+      null
      ],
      "designation": "L1040LR",
      "diameter_m": 0.054,
@@ -469,7 +469,7 @@
      "burnout_mass_kg": 2.6761810000000006,
      "common_name": "L2500",
      "delays_s": [
-      "plugged"
+      null
      ],
      "designation": "L2500ST",
      "diameter_m": 0.098,
@@ -555,7 +555,7 @@
      "burnout_mass_kg": 1.7310000000000003,
      "common_name": "M1378",
      "delays_s": [
-      "plugged"
+      null
      ],
      "designation": "M1378LR",
      "diameter_m": 0.054,
@@ -639,7 +639,7 @@
      "burnout_mass_kg": 2.118,
      "common_name": "M1350",
      "delays_s": [
-      "plugged"
+      null
      ],
      "designation": "M1350W",
      "diameter_m": 0.075,
@@ -693,7 +693,7 @@
      "burnout_mass_kg": 4.757000000000002,
      "common_name": "N3300",
      "delays_s": [
-      "plugged"
+      null
      ],
      "designation": "N3300R",
      "diameter_m": 0.098,
@@ -951,7 +951,7 @@
  "generated": "2026-09-25",
  "inputs_sha256": {
   "automatic_radius.py": "71c7eaafeebb0d076714f773ad72aa2ca8484dbd5b0a596c4e270aca82836da3",
-  "motors.py": "7d2a8bf5db4012ec8e95f6b3f374b0101aff5f13894613046a3ed5a637d93099"
+  "motors.py": "e5996dc1207e862ec68c319c2853e0db6d336b1c808b3915d459676bd67d0022"
  },
  "jar_sha256": "4959b72f52f5f607941e9722abbb7b7f0c4a38ebbbf84204a329db9f31c4f897",
  "java": "17.0.20.1",
