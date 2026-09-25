@@ -1539,7 +1539,7 @@ and so counted in [calibres](../glossary.md#calibre-caliber). OpenRocket's refer
 default the largest body diameter, and that is the setting on all 57 runs. The optimum delay is the
 best [ejection delay](../glossary.md#ejection-delay). The 15 flights it misses are exactly those on
 which a recovery device deploys before apogee; five others fire an ejection charge before apogee
-without deploying, and agree. Flown again with nothing deployed, every one of the 56 gives an
+but deploy only after it, and agree. Flown again with nothing deployed, every one of the 56 gives an
 `optimumdelay` equal to its apogee less its last burnout. So an early deployment is what changes the
 figure, but how is not known, and the figure is not used.
 
