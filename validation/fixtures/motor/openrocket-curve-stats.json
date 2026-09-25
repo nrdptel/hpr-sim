@@ -6,6 +6,7 @@
    "motors": [
     {
      "average_thrust_n": 165.08031407562487,
+     "burn_time_estimate_s": 1.9220723888035223,
      "burn_time_s": 2.138,
      "burnout_mass_kg": 0.14749999999999994,
      "common_name": "H170",
@@ -39,6 +40,7 @@
    "motors": [
     {
      "average_thrust_n": 84.06339703138869,
+     "burn_time_estimate_s": 1.559402062707006,
      "burn_time_s": 1.641,
      "burnout_mass_kg": 0.09470000000000003,
      "common_name": "G84",
@@ -71,6 +73,7 @@
    "motors": [
     {
      "average_thrust_n": 235.91385362471354,
+     "burn_time_estimate_s": 0.28741781295936564,
      "burn_time_s": 0.328,
      "burnout_mass_kg": 0.0615,
      "common_name": "F240",
@@ -104,6 +107,7 @@
    "motors": [
     {
      "average_thrust_n": 53.62095319050884,
+     "burn_time_estimate_s": 3.1269352244529665,
      "burn_time_s": 3.5,
      "burnout_mass_kg": 0.11239999999999999,
      "common_name": "H54",
@@ -136,6 +140,7 @@
    "motors": [
     {
      "average_thrust_n": 1071.2993395889416,
+     "burn_time_estimate_s": 2.101855482085834,
      "burn_time_s": 2.198,
      "burnout_mass_kg": 1.379799999999999,
      "common_name": "K1075",
@@ -164,6 +169,7 @@
    "motors": [
     {
      "average_thrust_n": 1546.830153088202,
+     "burn_time_estimate_s": 5.286555802420464,
      "burn_time_s": 5.396,
      "burnout_mass_kg": 3.0432999999999986,
      "common_name": "M1545",
@@ -192,6 +198,7 @@
    "motors": [
     {
      "average_thrust_n": 936.1105605460433,
+     "burn_time_estimate_s": 1.7462845525523263,
      "burn_time_s": 1.797,
      "burnout_mass_kg": 0.5985000000000003,
      "common_name": "K940",
@@ -226,6 +233,7 @@
    "motors": [
     {
      "average_thrust_n": 757.6486582345627,
+     "burn_time_estimate_s": 1.6713588697326796,
      "burn_time_s": 1.731,
      "burnout_mass_kg": 0.5007999999999999,
      "common_name": "J760",
@@ -260,6 +268,7 @@
    "motors": [
     {
      "average_thrust_n": 173.90884952698718,
+     "burn_time_estimate_s": 2.3630875560421973,
      "burn_time_s": 2.5,
      "burnout_mass_kg": 0.20859999999999987,
      "common_name": "I175",
@@ -293,6 +302,7 @@
    "motors": [
     {
      "average_thrust_n": 3420.951488064338,
+     "burn_time_estimate_s": 6.144537598442495,
      "burn_time_s": 6.322,
      "burnout_mass_kg": 5.569999999999995,
      "common_name": "O3400",
@@ -321,6 +331,7 @@
    "motors": [
     {
      "average_thrust_n": 3205.2488871856226,
+     "burn_time_estimate_s": 1.028930154629547,
      "burn_time_s": 1.055,
      "burnout_mass_kg": 1.6052999999999993,
      "common_name": "L3200",
@@ -349,6 +360,7 @@
    "motors": [
     {
      "average_thrust_n": 30.642127899585255,
+     "burn_time_estimate_s": 0.8505503788941903,
      "burn_time_s": 0.87,
      "burnout_mass_kg": 0.0351,
      "common_name": "E31",
@@ -381,6 +393,7 @@
    "motors": [
     {
      "average_thrust_n": 5622.269506792768,
+     "burn_time_estimate_s": 2.423268026004189,
      "burn_time_s": 2.483,
      "burnout_mass_kg": 4.9170000000000025,
      "common_name": "N5600",
@@ -409,6 +422,7 @@
    "motors": [
     {
      "average_thrust_n": 296.54914516642583,
+     "burn_time_estimate_s": 4.083180057513269,
      "burn_time_s": 4.278,
      "burnout_mass_kg": 0.6950000000000002,
      "common_name": "J300",
@@ -437,6 +451,7 @@
    "motors": [
     {
      "average_thrust_n": 1036.004417776661,
+     "burn_time_estimate_s": 3.589224995950911,
      "burn_time_s": 3.7,
      "burnout_mass_kg": 1.2779999999999996,
      "common_name": "L1040",
@@ -465,6 +480,7 @@
    "motors": [
     {
      "average_thrust_n": 2500.309001830417,
+     "burn_time_estimate_s": 1.8674796853701707,
      "burn_time_s": 1.923,
      "burnout_mass_kg": 2.6761810000000006,
      "common_name": "L2500",
@@ -493,6 +509,7 @@
    "motors": [
     {
      "average_thrust_n": 124.8150558145305,
+     "burn_time_estimate_s": 1.9333023391124813,
      "burn_time_s": 2.001,
      "burnout_mass_kg": 0.22000000000000014,
      "common_name": "H125",
@@ -522,6 +539,7 @@
    "motors": [
     {
      "average_thrust_n": 377.4325792705263,
+     "burn_time_estimate_s": 1.3913653860748734,
      "burn_time_s": 1.43,
      "burnout_mass_kg": 0.31000000000000005,
      "common_name": "I377",
@@ -551,6 +569,7 @@
    "motors": [
     {
      "average_thrust_n": 1372.0706950456886,
+     "burn_time_estimate_s": 3.8982629653403484,
      "burn_time_s": 4.079,
      "burnout_mass_kg": 1.7310000000000003,
      "common_name": "M1378",
@@ -579,6 +598,7 @@
    "motors": [
     {
      "average_thrust_n": 465.3721318579588,
+     "burn_time_estimate_s": 2.2802853335882123,
      "burn_time_s": 2.311,
      "burnout_mass_kg": 0.7130000000000003,
      "common_name": "J450",
@@ -607,6 +627,7 @@
    "motors": [
     {
      "average_thrust_n": 409.5156516499366,
+     "burn_time_estimate_s": 3.190052844831774,
      "burn_time_s": 3.259,
      "burnout_mass_kg": 0.7010000000000004,
      "common_name": "K400",
@@ -635,6 +656,7 @@
    "motors": [
     {
      "average_thrust_n": 1348.287261587476,
+     "burn_time_estimate_s": 3.8364590395952334,
      "burn_time_s": 3.996,
      "burnout_mass_kg": 2.118,
      "common_name": "M1350",
@@ -663,6 +685,7 @@
    "motors": [
     {
      "average_thrust_n": 71.99297262790977,
+     "burn_time_estimate_s": 1.8900488703245393,
      "burn_time_s": 2.0,
      "burnout_mass_kg": 0.13880000000000003,
      "common_name": "G69",
@@ -689,6 +712,7 @@
    "motors": [
     {
      "average_thrust_n": 3188.1003265635286,
+     "burn_time_estimate_s": 4.399905758036865,
      "burn_time_s": 4.519,
      "burnout_mass_kg": 4.757000000000002,
      "common_name": "N3300",
@@ -717,6 +741,7 @@
    "motors": [
     {
      "average_thrust_n": 4.391169620113613,
+     "burn_time_estimate_s": 1.110902808988764,
      "burn_time_s": 1.184,
      "burnout_mass_kg": 0.016200000000000003,
      "common_name": "B4",
@@ -746,6 +771,7 @@
    "motors": [
     {
      "average_thrust_n": 177.22473636485176,
+     "burn_time_estimate_s": 1.8775506816739018,
      "burn_time_s": 1.97,
      "burnout_mass_kg": 0.17999999999999994,
      "common_name": "I175",
@@ -776,6 +802,7 @@
    "motors": [
     {
      "average_thrust_n": 3.926603691869856,
+     "burn_time_estimate_s": 1.9840165590596053,
      "burn_time_s": 1.992,
      "burnout_mass_kg": 0.012800000000000002,
      "common_name": "C5",
@@ -804,6 +831,7 @@
    "motors": [
     {
      "average_thrust_n": 52.79840640436078,
+     "burn_time_estimate_s": 1.2547473974339476,
      "burn_time_s": 1.329,
      "burnout_mass_kg": 0.0514,
      "common_name": "F52",
@@ -834,6 +862,7 @@
    "motors": [
     {
      "average_thrust_n": 3.8363189575130168,
+     "burn_time_estimate_s": 4.590522195098712,
      "burn_time_s": 4.61,
      "burnout_mass_kg": 0.021099999999999983,
      "common_name": "D5",
@@ -863,6 +892,7 @@
    "motors": [
     {
      "average_thrust_n": 14.511013582505225,
+     "burn_time_estimate_s": 3.4172705129799636,
      "burn_time_s": 3.45,
      "burnout_mass_kg": 0.04300000000000001,
      "common_name": "F15",
@@ -894,6 +924,7 @@
    "motors": [
     {
      "average_thrust_n": 23.472069301635038,
+     "burn_time_estimate_s": 1.1758411471348447,
      "burn_time_s": 1.223,
      "burnout_mass_kg": 0.025999999999999992,
      "common_name": "E26",
@@ -924,6 +955,7 @@
    "motors": [
     {
      "average_thrust_n": 5828.186041430284,
+     "burn_time_estimate_s": 6.808805905174705,
      "burn_time_s": 6.828,
      "burnout_mass_kg": 9.5256,
      "common_name": "O6000",
@@ -951,7 +983,7 @@
  "generated": "2026-09-25",
  "inputs_sha256": {
   "automatic_radius.py": "71c7eaafeebb0d076714f773ad72aa2ca8484dbd5b0a596c4e270aca82836da3",
-  "motors.py": "e5996dc1207e862ec68c319c2853e0db6d336b1c808b3915d459676bd67d0022"
+  "motors.py": "1049b94c2c0da896dd84887a06b5ff8fd72865350aa98a2f9e1c8b7e14d5e3e7"
  },
  "jar_sha256": "4959b72f52f5f607941e9722abbb7b7f0c4a38ebbbf84204a329db9f31c4f897",
  "java": "17.0.20.1",

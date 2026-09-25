@@ -671,6 +671,7 @@ mod tests {
     struct OpenRocketRecord {
         openrocket: String,
         inputs_sha256: std::collections::BTreeMap<String, String>,
+        jar_sha256: String,
         curves: Vec<OpenRocketCurve>,
     }
 
@@ -691,6 +692,7 @@ mod tests {
         max_thrust_n: f64,
         average_thrust_n: f64,
         burn_time_s: f64,
+        burn_time_estimate_s: f64,
         first_time_s: f64,
         points: usize,
     }
@@ -700,12 +702,17 @@ mod tests {
     /// milestone's 0.1% is met with room to spare; the check is the bound the milestone names, and
     /// the run prints the spread.
     ///
-    /// OpenRocket's `getMaxThrustEstimate` is the largest *listed* thrust, which is hpr's
-    /// [`ThrustCurve::peak_thrust_n`], so it is held to rounding as well. OpenRocket prepends an
-    /// origin to a file whose first point is after ignition, exactly as hpr does, so the point
-    /// counts are held equal too. Its burn time is its own window rather than NFPA 1125's, and its
-    /// average thrust follows that window: those two are departures, printed here and written down
-    /// with their size in ADR-066, not held.
+    /// Three more of OpenRocket's numbers are the same quantity as one of hpr's, so they are held
+    /// too: `getMaxThrustEstimate` is the largest *listed* thrust ([`ThrustCurve::peak_thrust_n`]),
+    /// `getBurnTimeEstimate` is the 5%-of-peak window ([`ThrustCurve::burn_time_s`], the NFPA 1125
+    /// rule), and `getBurnTime` is the curve's whole duration ([`ThrustCurve::end_time_s`]), not a
+    /// window. OpenRocket prepends an origin to a file whose first point is after ignition, exactly
+    /// as hpr does, so the point counts are held equal as well.
+    ///
+    /// One quantity is a real difference, printed here and written down with its size in ADR-066
+    /// rather than held: OpenRocket's average thrust divides the impulse *inside* the window by the
+    /// window, where hpr (with ThrustCurve.org's code) divides the whole curve's impulse by it, so
+    /// hpr's is the higher on every curve.
     #[test]
     fn openrocket_s_total_impulse_matches_every_bundled_curve() {
         let record: OpenRocketRecord = serde_json::from_str(include_str!(
@@ -716,14 +723,18 @@ mod tests {
         // The record moves only when its script runs, never by hand (Loft lesson L76).
         assert_eq!(
             record.inputs_sha256["motors.py"],
-            "e5996dc1207e862ec68c319c2853e0db6d336b1c808b3915d459676bd67d0022",
+            "1049b94c2c0da896dd84887a06b5ff8fd72865350aa98a2f9e1c8b7e14d5e3e7",
+        );
+        assert_eq!(
+            record.jar_sha256,
+            "4959b72f52f5f607941e9722abbb7b7f0c4a38ebbbf84204a329db9f31c4f897",
         );
         assert_eq!(record.curves.len(), bundled::CURVE_FILES.len());
         let catalog = bundled();
         let mut worst_impulse = 0.0f64;
         let mut worst_peak = 0.0f64;
-        let mut burn_time = Vec::new();
         let mut average = Vec::new();
+        let mut identical = true;
         let mut files = std::collections::BTreeSet::new();
         for entry in &record.curves {
             let file = entry
@@ -765,6 +776,18 @@ mod tests {
                     "peak thrust",
                     1e-12,
                 ),
+                (
+                    thrust.burn_time_s(),
+                    theirs.burn_time_estimate_s,
+                    "burn time",
+                    1e-12,
+                ),
+                (
+                    thrust.end_time_s(),
+                    theirs.burn_time_s,
+                    "curve duration",
+                    1e-12,
+                ),
             ] {
                 assert!(theirs > 0.0, "{file}: {what} {theirs}");
                 let error = (ours - theirs).abs() / theirs;
@@ -774,17 +797,19 @@ mod tests {
                     worst_peak = worst_peak.max(error);
                 }
                 assert!(error <= bound, "{file}: {what} {ours} against {theirs}");
+                // Each is the same quantity computed twice, and each comes out bit for bit equal,
+                // which is what the guide and ADR-066 claim.
+                identical &= ours == theirs;
             }
             // Both readers prepend `(0, 0)` to a file whose first point is after ignition — 29 of
             // the 32 — so both count that point and neither starts late.
             assert_eq!(thrust.times_s()[0], 0.0, "{file}");
             assert_eq!(theirs.first_time_s, 0.0, "{file}");
             assert_eq!(thrust.times_s().len(), theirs.points, "{file}");
-            // The two definitions that differ, measured rather than held.
-            burn_time.push((thrust.burn_time_s() - theirs.burn_time_s).abs() / theirs.burn_time_s);
+            // The one definition that differs, measured rather than held, and signed: hpr's
+            // whole-curve numerator makes it the higher on every curve.
             average.push(
-                (thrust.average_thrust_n() - theirs.average_thrust_n).abs()
-                    / theirs.average_thrust_n,
+                (thrust.average_thrust_n() - theirs.average_thrust_n) / theirs.average_thrust_n,
             );
         }
         assert_eq!(
@@ -792,23 +817,27 @@ mod tests {
             bundled::CURVE_FILES.len(),
             "a file twice or missing"
         );
-        let spread = |mut v: Vec<f64>| {
-            v.sort_by(f64::total_cmp);
-            let mid = v.len() / 2;
-            let median = if v.len() % 2 == 0 {
-                0.5 * (v[mid - 1] + v[mid])
-            } else {
-                v[mid]
-            };
-            (v[v.len() - 1] * 100.0, median * 100.0)
+        assert!(
+            identical,
+            "impulse, peak thrust, burn time and duration are no longer bit for bit OpenRocket's"
+        );
+        average.sort_by(f64::total_cmp);
+        let mid = average.len() / 2;
+        let median = if average.len().is_multiple_of(2) {
+            0.5 * (average[mid - 1] + average[mid])
+        } else {
+            average[mid]
         };
-        let (burn_worst, burn_median) = spread(burn_time);
-        let (avg_worst, avg_median) = spread(average);
+        let (low, high) = (average[0] * 100.0, average[average.len() - 1] * 100.0);
+        assert!(low > 0.0, "hpr's average thrust is no longer the higher");
         eprintln!(
-            "largest relative difference from OpenRocket 24.12: total impulse {worst_impulse:.2e}, \
-             peak thrust {worst_peak:.2e}; its own burn-time window differs by up to \
-             {burn_worst:.2}% (median {burn_median:.2}%) and its average thrust by up to \
-             {avg_worst:.2}% (median {avg_median:.2}%)"
+            "against OpenRocket 24.12 on {} curves: total impulse, peak thrust, the 5% burn-time \
+             window and the curve's duration are all bit for bit equal (worst relative differences \
+             {worst_impulse:.2e} and {worst_peak:.2e}); hpr's average thrust is higher by \
+             {low:+.4}% to {high:+.4}% (median {:+.4}%), because its numerator is the whole curve's \
+             impulse and OpenRocket's is the window's",
+            average.len(),
+            median * 100.0,
         );
     }
 }

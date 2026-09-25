@@ -574,10 +574,9 @@
       written down rather than on a cached number; and `cargo xtask ork` says so. *Result:* met
       (ADR-054): 75 of 75 lay out, 1 document holds none; 7 radii take OpenRocket's 25 mm default;
       67 of 67 body radii agree with OpenRocket.
-  - [x] **M3.1c Motors, recovery, stages and what OpenRocket last did** (L57, L64, L65, L66).
-    *Done when:* those lessons' named tests are live, a design's stored results are read back, and
-    a document with unknown content round-trips through `extensions.x-openrocket`. Split c1 to c4
-    (ADR-055). *Result:* met (ADR-055 to ADR-058), bar the text of a tag's unread second copy.
+  - [x] **M3.1c Motors, recovery, stages and what OpenRocket last did** (L57, L64, L65, L66). Met
+    (ADR-055 to ADR-058) bar the text of a tag's unread second copy, its done-when bars kept; split
+    c1 to c4 (ADR-055).
     - [x] **M3.1c1 Motors and their configurations.** The configurations a design declares, the
       motor each mount holds in each, when it ignites, its delay, and a thrust curve from the
       archive's `thrustcurves/<digest>.rse` or the bundled catalog (L57, L65). *Done when:* L57's
@@ -642,11 +641,12 @@
       thrust-curve file hpr flies into OpenRocket 24.12 and records its numbers; hpr's total impulse
       is within 0.1% of OpenRocket's on every bundled curve, in a committed record a test checks;
       each quantity that differs is a written departure with its size. *Result:* met (ADR-066): all
-      32 agree exactly (0 at f64) in total impulse and peak thrust; NFPA 1125's burn time is up to
-      12.37% from OpenRocket's own window (median 3.19%), its average thrust up to 0.31%.
+      32 agree bit for bit in total impulse, peak thrust, the 5% burn-time window and the curve's
+      duration; hpr's average thrust is +0.0107% to +0.3147% higher (median +0.0965%), its numerator
+      being the whole curve's impulse where OpenRocket's is the window's.
     - [ ] **M2.2c2 The configurations held back for want of a curve.** *Done when:* the curves the
-      reference library embeds are held to the same 0.1%, and every configuration held back only
-      for want of a curve flies or is named with its reason, both counted by `cargo xtask ork`.
+      library embeds are held to the same 0.1% and every configuration held back only for want of
+      one flies or is named with its reason, both counted by `cargo xtask ork`.
   - [ ] **M2.2d Flights to apogee on the public designs** (L80, L81). *Done when:* those that fly
     are in a report against OR (apogee, max velocity, stability margin) and L80, L81 are live.
   - [ ] **M2.2e The corpus** (L19, L82). *Done when:* the parent's *done when* is met, unchanged.

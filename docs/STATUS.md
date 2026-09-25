@@ -17,9 +17,9 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
 
 - **Resume M2.2c2** on a fresh `m2.2c2-embedded-curves` branch. M2.2c1 is complete in ADR-066:
   `validation/oracles/openrocket/motors.py` hands a curve file to OpenRocket 24.12's own loader;
-  on all 32 bundled curves hpr's total impulse and peak thrust are exactly OpenRocket's, its burn
-  time its own window (NFPA 1125's is up to 12.37% off it) and its average thrust up to 0.31% —
-  departures, not held. **c2 is supply, not arithmetic:** 193 of the library's 202 motor references
+  on all 32 bundled curves hpr's total impulse, peak thrust, 5% burn-time window and curve duration
+  are bit for bit OpenRocket's; only the average thrust differs (+0.0107% to +0.3147%, hpr's
+  numerator being the whole curve). **c2 is supply, not arithmetic:** 193 of the 202 motor references
   resolve to no curve (4 embedded, 2 bundled, 3 hybrids), so 79 configurations are unflyable. Run
   oracle over each design's `thrustcurves/<digest>.rse` (private: counts only, never the curves),
   hold those to 0.1% too, and name a stable reason for each configuration that still cannot fly:
@@ -58,9 +58,9 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
 ## Done log (newest first, keep about 15)
 
 - 2026-09-25: M2.2c1 Every curve as OpenRocket integrates it (ADR-066): the oracle hands each
-  bundled file to OpenRocket 24.12's own loader; hpr's total impulse and peak thrust are exactly
-  OpenRocket's on all 32, well inside M2.2c's 0.1%. Burn time (up to 12.37%) and average thrust (up
-  to 0.31%) differ by definition and are printed by the test. M2.2c split c1, c2.
+  bundled file to OpenRocket 24.12's own loader; impulse, peak thrust, the 5% burn-time window and
+  the curve's duration are all bit for bit OpenRocket's on all 32, well inside M2.2c's 0.1%. Only
+  the average thrust differs (+0.0107% to +0.3147%), by numerator. M2.2c split c1, c2.
 - 2026-09-25: M2.2b5 Stored results as found (ADR-065): complete, finite and internally consistent
   `uptodate` runs with `RK4Simulator` and `BarrowmanCalculator` provenance markers are eligible:
   91/174 pass the stored-reference screen; 83 excluded by stable reason. Hpr reproduction is

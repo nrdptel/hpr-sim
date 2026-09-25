@@ -89,6 +89,7 @@ def read(path):
                 "average_thrust_n": float(motor.getAverageThrustEstimate()),
                 "max_thrust_n": float(motor.getMaxThrustEstimate()),
                 "burn_time_s": float(motor.getBurnTime()),
+                "burn_time_estimate_s": float(motor.getBurnTimeEstimate()),
             }
         )
     return motors
