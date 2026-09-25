@@ -5,23 +5,22 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
 ## Now
 
 - **Current milestone:** M1.8e is held at done bar M1.8e16 (`[blocked]` on #108); active
-  follow-on work is M2.2d2, hpr's flights against the record M2.2d1 made of OpenRocket's (ADR-068).
-- **Order:** M1.8e16 waits on #108; then M2.2d2, e, M1.9. **Run:** M0.1-M0.4, M1.1-M1.7,
-  M2.1, M1.8a-e19 bar e16, M3.1, M2.2a to c, M2.2d1; the site is published.
+  follow-on work is M2.2e, the corpus against OpenRocket (L19, L82), after M2.2d (ADR-069).
+- **Order:** M1.8e16 waits on #108; then M2.2e, M1.9. **Run:** M0.1-M0.4, M1.1-M1.7,
+  M2.1, M1.8a-e19 bar e16, M3.1, M2.2a to d; the site is published.
 - **Neer, 2026-09-20:** Debrief is sunset; a flight log analyzer usable **on its own** is part of
   this project (ADR-046, V21); Phase 5 re-cut.
-- **Last updated:** 2026-09-25; M2.2d1 complete, M2.2d2 next.
+- **Last updated:** 2026-09-25; M2.2d complete, M2.2e next.
 
 ## Handoff (overwrite each session)
 
-- **Start M2.2d2** on a fresh `m2.2d2-<slug>` branch: fly hpr on each configuration of
-  `validation/fixtures/ork/openrocket-flights.json` that hpr flies (21, in 5 jar examples), in the
-  recorded conditions, and report apogee, largest speed and margin at rod clearance by
-  `hpr_validate::flight_metrics::definition` and `compare` (the aborted run is no reference). hpr
-  has no margin output yet: CP from `NormalForce.cp_station_m`, at the recorded step's time, Mach
-  and mass; OR's rod clearance is the step past the rod, not its end.
-  **Open:** a motor's CG is hpr's mid-case, not OR's (ADR-067, up to 5 mm); OR's speed point is
-  unstated; `flights.py` is run with `validation/fixtures/ork/loft-demo --jar` (ADR-068).
+- **Start M2.2e** on a fresh `m2.2e-<slug>` branch; split it first (ADR). Bar: ≥20 designs with
+  an error spread (apogee, max speed, margin, mass, CG), a written cause for each apogee over 5%,
+  private designs as anonymised ids. Reuse `xtask/src/ork_flights.rs` (`fly`, `summarise`) on the
+  library, OR's side from `flights.py` run on `refs/loft-fixtures` into `corpus-out/` (private).
+  Named causes so far: OR's early chute (hpr flies no `.ork` recovery; worth flying first) and
+  #165 (drag override ignored). Run `cargo xtask ork-flights --check` after any physics change:
+  CI can't fly them (needs the jar, `corpus-out/openrocket-motors.json`), only checks the record.
 - **Page rules** (ADR-016 to ADR-020): relative links between pages, GitHub URLs for the rest
   (rustdoc too), labels as links to their rows — a lesson a page names needs a row in
   `decisions-and-roadmap.md` — none in headings; new pages in `SUMMARY.md`, a new library a row in
@@ -54,15 +53,15 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
   `xtask designs`, `examples` and `ork` rewrite their outputs.
 ## Done log (newest first, keep about 15)
 
-- 2026-09-25: M2.2d1 OpenRocket's flights and what its words mean (ADR-068): 56 calm flights of
-  the public designs (1 aborted run excluded); 9 of OR 24.12's 10 words defined, `optimumdelay`
-  withheld, as are other versions'; a missing event is never scored; L80, L81 live.
+- 2026-09-25: M2.2d2 hpr's flights against OR's (ADR-069): 21 configurations; margin within 0.016
+  cal; apogee −4.34% to −0.06% with no named cause; 5 over 5%, each an early chute or #165.
+- 2026-09-25: M2.2d1 OR's flights, its words' meanings (ADR-068): 56 calm flights, 1 aborted; 9 of
+  10 words defined, `optimumdelay` withheld; a missing event is never scored; L80, L81 live.
 - 2026-09-25: M2.2c2 Curves from OpenRocket's own database (ADR-067): supplied by digest, never by
   name; 3 embedded and 1,288 database curves bit for bit OR's impulse; of the 162 configurations
   held back for want of a curve, 66 fly, 72 wait on another reason, 24 are named.
-- 2026-09-25: M2.2c1 Every curve as OpenRocket integrates it (ADR-066): the oracle hands each bundled
-  file to OpenRocket 24.12's own loader; on all 32, impulse, peak thrust, the 5% window and duration
-  are bit for bit OpenRocket's, inside M2.2c's 0.1%; only average thrust differs (+0.0107% to +0.3147%).
+- 2026-09-25: M2.2c1 Every curve as OpenRocket integrates it (ADR-066): 32 bundled curves bit for
+  bit OR's impulse, peak, 5% window and duration; average thrust +0.0107% to +0.3147%.
 - 2026-09-25: M2.2b5 Stored results as found (ADR-065): 91/174 pass the stored-reference screen,
   83 excluded by stable reason; hpr reproduction is a separate screen.
 - 2026-09-23: M2.2b4 corpus rerun excluding generated `refs/scratch/`: 75 files, 73 read, 72 laid
@@ -80,6 +79,7 @@ Keep this file under ~150 lines. Overwrite the sections; don't let them pile up.
   of RocketPy's 2018 Calisto RASAero II export (ADR-027) plus four summary numbers, and
   `rocketpy-drag-curves.json` enough to rebuild 147 values of five curves (ADR-029).
 ## Decided without Neer (one line each; significant ones get an ADR)
+- ADR-069: hpr flies OR's record unrecovered, design checks recorded not enforced; causes named.
 - ADR-068: M2.2d split d1, d2; OR flies public designs in calm air; its speed point is "unstated".
 - ADR-066: M2.2c split c1, c2; the oracle compares two integrations of one file, the committed
   record covers the public bundled curves only, and the two burn-time definitions are recorded.

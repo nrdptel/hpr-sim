@@ -745,7 +745,7 @@ fn alike(a: &[f64; 4], b: &[f64; 4]) -> bool {
         .all(|(x, y)| (x - y).abs() <= SAME_ENVELOPE * x.abs().max(y.abs()))
 }
 
-fn sha256(bytes: &[u8]) -> String {
+pub(crate) fn sha256(bytes: &[u8]) -> String {
     Sha256::digest(bytes)
         .iter()
         .map(|b| format!("{b:02x}"))
